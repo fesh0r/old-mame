@@ -143,7 +143,7 @@ static WRITE8_HANDLER(svision_w)
 			break;
 		case 0x26: /* bits 5,6 memory management for a000? */
 			logerror("%.6f svision write %04x %02x\n", attotime_to_double(timer_get_time()),offset,data);
-			memory_set_bankptr(1, memory_region(machine, REGION_USER1) + ((svision_reg[0x26] & 0xe0) << 9));
+			memory_set_bankptr(1, memory_region(machine, "user1") + ((svision_reg[0x26] & 0xe0) << 9));
 			svision_irq( machine );
 			break;
 		case 0x23: /* delta hero irq routine write */
@@ -263,7 +263,7 @@ static ADDRESS_MAP_START( tvlink_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( svision )
-	PORT_START_TAG("JOY")
+	PORT_START("JOY")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
@@ -275,7 +275,7 @@ static INPUT_PORTS_START( svision )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( svisions )
-	PORT_START_TAG("JOY")
+	PORT_START("JOY")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
@@ -284,7 +284,7 @@ static INPUT_PORTS_START( svisions )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_NAME("A") PORT_PLAYER(1)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SELECT) PORT_NAME("Select") PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START) PORT_NAME("Start/Pause") PORT_PLAYER(1)
-	PORT_START_TAG("JOY2")
+	PORT_START("JOY2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
@@ -443,13 +443,13 @@ static DRIVER_INIT( svision )
 {
 	svision.timer1 = timer_alloc(svision_timer, NULL);
 	svision_pet.on = FALSE;
-	memory_set_bankptr(2, memory_region(machine, REGION_USER1) + 0x1c000);
+	memory_set_bankptr(2, memory_region(machine, "user1") + 0x1c000);
 }
 
 static DRIVER_INIT( svisions )
 {
 	svision.timer1 = timer_alloc(svision_timer, NULL);
-	memory_set_bankptr(2, memory_region(machine, REGION_USER1) + 0x1c000);
+	memory_set_bankptr(2, memory_region(machine, "user1") + 0x1c000);
 	svision.timer1 = timer_alloc(svision_timer, NULL);
 	svision_pet.on = TRUE;
 	svision_pet.timer = timer_alloc(svision_pet_timer, NULL);
@@ -460,7 +460,7 @@ static MACHINE_RESET( svision )
 {
 	svision.timer_shot = FALSE;
 	svision_dma.finished = FALSE;
-	memory_set_bankptr(1, memory_region(machine, REGION_USER1));
+	memory_set_bankptr(1, memory_region(machine, "user1"));
 }
 
 
@@ -468,7 +468,7 @@ static MACHINE_RESET( tvlink )
 {
 	svision.timer_shot = FALSE;
 	svision_dma.finished = FALSE;
-	memory_set_bankptr(1, memory_region(machine, REGION_USER1));
+	memory_set_bankptr(1, memory_region(machine, "user1"));
 	tvlink.palette_on = FALSE;
 
 	memset(svision_reg + 0x800, 0xff, 0x40); // normally done from tvlink microcontroller
@@ -480,7 +480,7 @@ static MACHINE_RESET( tvlink )
 	tvlink.palette[3] = MAKE24_RGB15(svisionp_palette[(PALETTE_START+3)*3+0], svisionp_palette[(PALETTE_START+3)*3+1], svisionp_palette[(PALETTE_START+3)*3+2]);
 }
 
-static const struct CustomSound_interface svision_sound_interface =
+static const custom_sound_interface svision_sound_interface =
 {
 	svision_custom_start
 };
@@ -488,7 +488,7 @@ static const struct CustomSound_interface svision_sound_interface =
 
 static MACHINE_DRIVER_START( svision )
 	/* basic machine hardware */
-	 MDRV_CPU_ADD_TAG("main", M65C02, 4000000)        /* ? stz used! speed? */
+	 MDRV_CPU_ADD("main", M65C02, 4000000)        /* ? stz used! speed? */
 	MDRV_CPU_PROGRAM_MAP(svision_mem, 0)
 	MDRV_CPU_VBLANK_INT("main", svision_frame_int)
 
@@ -508,7 +508,7 @@ static MACHINE_DRIVER_START( svision )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(svision_sound_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
@@ -544,7 +544,7 @@ static MACHINE_DRIVER_START( tvlinkp )
 MACHINE_DRIVER_END
 
 ROM_START(svision)
-	ROM_REGION(0x20000, REGION_USER1, 0)
+	ROM_REGION(0x20000, "user1", 0)
 	ROM_CART_LOAD(0, "bin,ws,sv", 0x0000, 0x20000, ROM_MIRROR)
 ROM_END
 

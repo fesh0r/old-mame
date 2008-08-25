@@ -154,7 +154,7 @@ http://www.z88forever.org.uk/zxplus3e/
 #include "sound/speaker.h"
 #include "formats/tzx_cas.h"
 
-static const struct AY8910interface spectrum_ay_interface =
+static const ay8910_interface spectrum_ay_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -219,7 +219,7 @@ void spectrum_128_update_memory(running_machine *machine)
 
 	/* rom 0 is 128K rom, rom 1 is 48 BASIC */
 
-	ChosenROM = memory_region(machine, REGION_CPU1) + 0x010000 + (ROMSelection<<14);
+	ChosenROM = memory_region(machine, "main") + 0x010000 + (ROMSelection<<14);
 
 	memory_set_bankptr(1, ChosenROM);
 
@@ -237,8 +237,8 @@ static ADDRESS_MAP_START (spectrum_128_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x007f, 0x007f) AM_READ(spectrum_port_7f_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x00df, 0x00df) AM_READ(spectrum_port_df_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(spectrum_128_port_7ffd_w) AM_MIRROR(0x3ffd)
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(AY8910_write_port_0_w) AM_MIRROR(0x3ffd)
-	AM_RANGE(0xc000, 0xc000) AM_READWRITE(AY8910_read_port_0_r,AY8910_control_port_0_w) AM_MIRROR(0x3ffd)
+	AM_RANGE(0x8000, 0x8000) AM_WRITE(ay8910_write_port_0_w) AM_MIRROR(0x3ffd)
+	AM_RANGE(0xc000, 0xc000) AM_READWRITE(ay8910_read_port_0_r,ay8910_control_port_0_w) AM_MIRROR(0x3ffd)
 	AM_RANGE(0x0001, 0x0001) AM_READ(spectrum_128_ula_r) AM_MIRROR(0xfffe)	
 ADDRESS_MAP_END
 
@@ -285,7 +285,7 @@ MACHINE_DRIVER_START( spectrum_128 )
 	MDRV_VIDEO_UPDATE( spectrum_128 )
 
 	/* sound hardware */
-	MDRV_SOUND_ADD(AY8912, 1773400)
+	MDRV_SOUND_ADD("ay8912", AY8912, 1773400)
 	MDRV_SOUND_CONFIG(spectrum_ay_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -301,7 +301,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START(spec128)
-	ROM_REGION(0x18000,REGION_CPU1,0)
+	ROM_REGION(0x18000,"main",0)
 	ROM_SYSTEM_BIOS( 0, "en", "English" )
 	ROMX_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5), ROM_BIOS(1))
 	ROMX_LOAD("zx128_1.rom",0x14000,0x4000, CRC(b96a36be) SHA1(80080644289ed93d71a1103992a154cc9802b2fa), ROM_BIOS(1))	
@@ -312,7 +312,7 @@ ROM_START(spec128)
 ROM_END
 
 ROM_START(specpls2)
-	ROM_REGION(0x18000,REGION_CPU1,0)
+	ROM_REGION(0x18000,"main",0)
 	ROM_SYSTEM_BIOS( 0, "en", "English" )
 	ROMX_LOAD("zxp2_0.rom",0x10000,0x4000, CRC(5d2e8c66) SHA1(72703f9a3e734f3c23ec34c0727aae4ccbef9a91), ROM_BIOS(1))
 	ROMX_LOAD("zxp2_1.rom",0x14000,0x4000, CRC(98b1320b) SHA1(de8b0d2d0379cfe7c39322a086ca6da68c7f23cb), ROM_BIOS(1))

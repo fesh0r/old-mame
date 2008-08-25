@@ -120,17 +120,16 @@ static void enterprise_dave_reg_write(int RegIndex, int Data)
 
 static void enterprise_dave_reg_read(int RegIndex)
 {
+	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", 
+										"LINE5", "LINE6", "LINE7", "LINE8", "LINE9" };
 	running_machine *machine = Machine;
 
 	switch (RegIndex)
 	{
 	case 0x015:
 		{
-		char port[6];
-
 		/* read keyboard line */
-		sprintf(port, "LINE%d", Enterprise_KeyboardLine);
-		Dave_setreg(machine, 0x015, input_port_read(machine, port));
+		Dave_setreg(machine, 0x015, input_port_read(machine, keynames[Enterprise_KeyboardLine]));
 		}
 		break;
 
@@ -195,10 +194,10 @@ static void enterprise_reset(running_machine *machine)
 
 	/* set read pointers */
 	/* exos */
-	Enterprise_Pages_Read[MEM_EXOS_0] = &memory_region(machine, REGION_CPU1)[0x010000];
-	Enterprise_Pages_Read[MEM_EXOS_1] = &memory_region(machine, REGION_CPU1)[0x014000];
+	Enterprise_Pages_Read[MEM_EXOS_0] = &memory_region(machine, "main")[0x010000];
+	Enterprise_Pages_Read[MEM_EXOS_1] = &memory_region(machine, "main")[0x014000];
 	/* basic */
-	Enterprise_Pages_Read[MEM_CART_0] = &memory_region(machine, REGION_CPU1)[0x018000];
+	Enterprise_Pages_Read[MEM_CART_0] = &memory_region(machine, "main")[0x018000];
 	/* ram */
 	Enterprise_Pages_Read[MEM_RAM_0] = mess_ram;
 	Enterprise_Pages_Read[MEM_RAM_1] = mess_ram + 0x04000;
@@ -209,8 +208,8 @@ static void enterprise_reset(running_machine *machine)
 	Enterprise_Pages_Read[MEM_RAM_6] = mess_ram + 0x018000;
 	Enterprise_Pages_Read[MEM_RAM_7] = mess_ram + 0x01c000;
 	/* exdos */
-	Enterprise_Pages_Read[MEM_EXDOS_0] = &memory_region(machine, REGION_CPU1)[0x01c000];
-	Enterprise_Pages_Read[MEM_EXDOS_1] = &memory_region(machine, REGION_CPU1)[0x020000];
+	Enterprise_Pages_Read[MEM_EXDOS_0] = &memory_region(machine, "main")[0x01c000];
+	Enterprise_Pages_Read[MEM_EXDOS_1] = &memory_region(machine, "main")[0x020000];
 
 	/* set write pointers */
 	Enterprise_Pages_Write[MEM_RAM_0] = mess_ram;
@@ -419,7 +418,7 @@ Small note about natural keyboard support: currently
 
 
 static INPUT_PORTS_START( ep128 )
-	PORT_START_TAG("LINE0")		/* keyboard line 0 */
+	PORT_START("LINE0")		/* keyboard line 0 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_N)			PORT_CHAR('n') PORT_CHAR('N')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_TILDE)		PORT_CHAR('\\') PORT_CHAR('|')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_B)			PORT_CHAR('b') PORT_CHAR('B')
@@ -429,7 +428,7 @@ static INPUT_PORTS_START( ep128 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_Z)			PORT_CHAR('z') PORT_CHAR('Z')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_LSHIFT)		PORT_CHAR(UCHAR_SHIFT_1)
 
-	PORT_START_TAG("LINE1")		/* keyboard line 1 */
+	PORT_START("LINE1")		/* keyboard line 1 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_H)			PORT_CHAR('h') PORT_CHAR('H')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("LOCK") PORT_CODE(KEYCODE_F9) PORT_CHAR(UCHAR_MAMEKEY(F9))
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_G)			PORT_CHAR('g') PORT_CHAR('G')
@@ -439,7 +438,7 @@ static INPUT_PORTS_START( ep128 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_A)			PORT_CHAR('a') PORT_CHAR('A')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_LCONTROL)		PORT_CHAR(UCHAR_SHIFT_2)
 
-	PORT_START_TAG("LINE2")		/* keyboard line 2 */
+	PORT_START("LINE2")		/* keyboard line 2 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_U)			PORT_CHAR('u') PORT_CHAR('U')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q)			PORT_CHAR('q') PORT_CHAR('Q')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_Y)			PORT_CHAR('y') PORT_CHAR('Y')
@@ -449,7 +448,7 @@ static INPUT_PORTS_START( ep128 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_W)			PORT_CHAR('w') PORT_CHAR('W')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_TAB)			PORT_CHAR('\t')
 
-	PORT_START_TAG("LINE3")		/* keyboard line 3 */
+	PORT_START("LINE3")		/* keyboard line 3 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_7)			PORT_CHAR('7') PORT_CHAR('\'')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_1)			PORT_CHAR('1') PORT_CHAR('!')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_6)			PORT_CHAR('6') PORT_CHAR('&')
@@ -459,7 +458,7 @@ static INPUT_PORTS_START( ep128 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_2)			PORT_CHAR('2') PORT_CHAR('"')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_ESC)			PORT_CHAR(UCHAR_MAMEKEY(ESC))
 
-	PORT_START_TAG("LINE4")		/* keyboard line 4 */
+	PORT_START("LINE4")		/* keyboard line 4 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_F4)			PORT_CHAR(UCHAR_MAMEKEY(F4))
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_F8)			PORT_CHAR(UCHAR_MAMEKEY(F8))
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_F3)			PORT_CHAR(UCHAR_MAMEKEY(F3))
@@ -469,7 +468,7 @@ static INPUT_PORTS_START( ep128 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_F2)			PORT_CHAR(UCHAR_MAMEKEY(F2))
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_F1)			PORT_CHAR(UCHAR_MAMEKEY(F1))
 
-	PORT_START_TAG("LINE5")		/* keyboard line 5 */
+	PORT_START("LINE5")		/* keyboard line 5 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_8)			PORT_CHAR('8') PORT_CHAR('(')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_9)			PORT_CHAR('9') PORT_CHAR(')')
@@ -479,7 +478,7 @@ static INPUT_PORTS_START( ep128 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ERASE") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_UNUSED)
 
-	PORT_START_TAG("LINE6")		/* keyboard line 6 */
+	PORT_START("LINE6")		/* keyboard line 6 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_J)			PORT_CHAR('j') PORT_CHAR('J')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_K)			PORT_CHAR('k') PORT_CHAR('K')
@@ -490,7 +489,7 @@ static INPUT_PORTS_START( ep128 )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	/* Notice that, in fact, ep128 only had the built-in joystick and no cursor arrow keys on the keyboard */
-	PORT_START_TAG("LINE7")		/* keyboard line 7 */
+	PORT_START("LINE7")		/* keyboard line 7 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("STOP")			PORT_CODE(KEYCODE_END)				PORT_CHAR(UCHAR_MAMEKEY(F10))
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_DOWN)		PORT_CODE(JOYCODE_Y_DOWN_SWITCH)	PORT_CHAR(UCHAR_MAMEKEY(DOWN))
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_RIGHT)	PORT_CODE(JOYCODE_X_RIGHT_SWITCH)	PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
@@ -500,7 +499,7 @@ static INPUT_PORTS_START( ep128 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_ENTER)										PORT_CHAR(13)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ALT")			PORT_CODE(KEYCODE_LALT)				PORT_CHAR(UCHAR_MAMEKEY(LALT))
 
-	PORT_START_TAG("LINE8")		/* keyboard line 8 */
+	PORT_START("LINE8")		/* keyboard line 8 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_M)			PORT_CHAR('m') PORT_CHAR('M')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_DEL)			PORT_CHAR(UCHAR_MAMEKEY(DEL))
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA)		PORT_CHAR(',') PORT_CHAR('<')
@@ -510,7 +509,7 @@ static INPUT_PORTS_START( ep128 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_SPACE)		PORT_CHAR(' ')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_INSERT)		PORT_CHAR(UCHAR_MAMEKEY(INSERT))
 
-	PORT_START_TAG("LINE9")		/* keyboard line 9 */
+	PORT_START("LINE9")		/* keyboard line 9 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_I)			PORT_CHAR('i') PORT_CHAR('I')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_O)			PORT_CHAR('o') PORT_CHAR('O')
@@ -520,7 +519,7 @@ static INPUT_PORTS_START( ep128 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_UNUSED)
 
-	PORT_START_TAG("JOY1")		/* external joystick 1 */
+	PORT_START("JOY1")		/* external joystick 1 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("EXTERNAL JOYSTICK 1 RIGHT") PORT_CODE(KEYCODE_RIGHT) PORT_CODE(JOYCODE_X_RIGHT_SWITCH)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("EXTERNAL JOYSTICK 1 LEFT") PORT_CODE(KEYCODE_LEFT) PORT_CODE(JOYCODE_X_LEFT_SWITCH)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("EXTERNAL JOYSTICK 1 DOWN") PORT_CODE(KEYCODE_DOWN) PORT_CODE(JOYCODE_Y_DOWN_SWITCH)
@@ -529,7 +528,7 @@ static INPUT_PORTS_START( ep128 )
 
 INPUT_PORTS_END
 
-static const struct CustomSound_interface dave_custom_sound =
+static const custom_sound_interface dave_custom_sound =
 {
 	Dave_sh_start
 };
@@ -538,7 +537,7 @@ static const struct CustomSound_interface dave_custom_sound =
 
 static MACHINE_DRIVER_START( ep128 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD("main", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(enterprise_mem, 0)
 	MDRV_CPU_IO_MAP(enterprise_io, 0)
 	MDRV_INTERLEAVE(1)
@@ -561,14 +560,14 @@ static MACHINE_DRIVER_START( ep128 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(dave_custom_sound)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 ROM_START( ep128 )
 		/* 128k ram + 32k rom (OS) + 16k rom (BASIC) + 32k rom (EXDOS) */
-		ROM_REGION( 0x24000, REGION_CPU1, 0 )
+		ROM_REGION( 0x24000, "main", 0 )
 		ROM_SYSTEM_BIOS( 0, "default", "EXOS 2.1" )
 		ROMX_LOAD("exos21.rom", 0x10000, 0x8000, CRC(982a3b44) SHA1(55315b20fecb4441a07ee4bc5dc7153f396e0a2e), ROM_BIOS(1) )
 		ROM_SYSTEM_BIOS( 1, "exos20", "EXOS 2.0" )

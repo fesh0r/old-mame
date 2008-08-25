@@ -25,7 +25,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( pokemini )
-	PORT_START_TAG("INPUTS")
+	PORT_START("INPUTS")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_NAME("Button A")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_NAME("Button B")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_NAME("Button C")
@@ -54,7 +54,7 @@ static PALETTE_INIT( pokemini )
 }
 
 
-static const struct Speaker_interface speaker_interface =
+static const speaker_interface pokemini_speaker_interface =
 {
 	3,				/* optional: number of different levels */
 	NULL			/* optional: level lookup table */
@@ -63,7 +63,7 @@ static const struct Speaker_interface speaker_interface =
 
 static MACHINE_DRIVER_START( pokemini )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG( "main", MINX, 4000000 )
+	MDRV_CPU_ADD( "main", MINX, 4000000 )
 	MDRV_CPU_PROGRAM_MAP( pokemini_mem_map, 0 )
 
 	MDRV_INTERLEAVE(1)
@@ -88,8 +88,8 @@ static MACHINE_DRIVER_START( pokemini )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER, 0)
-	MDRV_SOUND_CONFIG(speaker_interface)
+	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_CONFIG(pokemini_speaker_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
@@ -120,7 +120,7 @@ SYSTEM_CONFIG_END
 
 
 ROM_START( pokemini )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )
+	ROM_REGION( 0x200000, "main", 0 )
 	ROM_LOAD( "bios.min", 0x0000, 0x1000, CRC(aed3c14d) SHA1(daad4113713ed776fbd47727762bca81ba74915f) )
 ROM_END
 

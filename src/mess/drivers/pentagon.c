@@ -24,13 +24,13 @@ static OPBASE_HANDLER( pentagon_opbase )
 		if (activecpu_get_pc() >= 0x4000) {
 			ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) ? 1 : 0;
 			betadisk_disable();
-			memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x010000 + 0x4000*ROMSelection); // Set BASIC ROM
+			memory_set_bankptr(1, memory_region(machine, "main") + 0x010000 + 0x4000*ROMSelection); // Set BASIC ROM
 		} 	
 	} else if (((activecpu_get_pc() & 0xff00) == 0x3d00) && (ROMSelection==1))
 	{
 		ROMSelection = 3;
 		betadisk_enable();
-		memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x01c000); // Set TRDOS ROM			
+		memory_set_bankptr(1, memory_region(machine, "main") + 0x01c000); // Set TRDOS ROM			
 	} 
 	return address;
 }
@@ -51,7 +51,7 @@ static void pentagon_update_memory(running_machine *machine)
 		ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) ;
 	}
 	/* rom 0 is 128K rom, rom 1 is 48 BASIC */
-	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x010000 + (ROMSelection<<14));
+	memory_set_bankptr(1, memory_region(machine, "main") + 0x010000 + (ROMSelection<<14));
 }
 
 static WRITE8_HANDLER(pentagon_port_7ffd_w)
@@ -76,8 +76,8 @@ static ADDRESS_MAP_START (pentagon_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x00fe, 0x00fe) AM_READWRITE(spectrum_port_fe_r,spectrum_port_fe_w) AM_MIRROR(0xff00) AM_MASK(0xffff) 
 	AM_RANGE(0x00ff, 0x00ff) AM_READWRITE(betadisk_state_r, betadisk_param_w) AM_MIRROR(0xff00)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(pentagon_port_7ffd_w)  AM_MIRROR(0x3ffd)
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(AY8910_write_port_0_w) AM_MIRROR(0x3ffd)
-	AM_RANGE(0xc000, 0xc000) AM_READWRITE(AY8910_read_port_0_r,AY8910_control_port_0_w) AM_MIRROR(0x3ffd)
+	AM_RANGE(0x8000, 0x8000) AM_WRITE(ay8910_write_port_0_w) AM_MIRROR(0x3ffd)
+	AM_RANGE(0xc000, 0xc000) AM_READWRITE(ay8910_read_port_0_r,ay8910_control_port_0_w) AM_MIRROR(0x3ffd)
 ADDRESS_MAP_END
 
 static MACHINE_RESET( pentagon )
@@ -122,7 +122,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START(pentagon)
-	ROM_REGION(0x020000, REGION_CPU1, 0)
+	ROM_REGION(0x020000, "main", 0)
 	ROM_LOAD("128p-0.rom", 0x010000, 0x4000, CRC(124ad9e0) SHA1(d07fcdeca892ee80494d286ea9ea5bf3928a1aca) )
 	ROM_LOAD("128p-1.rom", 0x014000, 0x4000, CRC(b96a36be) SHA1(80080644289ed93d71a1103992a154cc9802b2fa) )
 	ROM_LOAD("gluck.rom",  0x018000, 0x4000, CRC(ca321d79) SHA1(015eb96dafb273d4f4512c467e9b43c305fd1bc4) )

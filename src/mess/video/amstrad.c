@@ -258,12 +258,29 @@ PALETTE_INIT( amstrad_plus )
 }
 
 
-/* Aleste has a 6-bit RGB palette */
 PALETTE_INIT( aleste )
 {
 	int i;
 
-	palette_set_colors(machine, 0, amstrad_palette, sizeof(amstrad_palette) / 3);
+	/* CPC Colour data is stored in the colour ROM (RFCOLDAT.BIN) at 0x140-0x17f */
+	unsigned char* pal = memory_region(machine,"user4");
+
+	for(i=0; i<32; i++)
+	{
+		int r,g,b;
+		
+		b = (pal[0x140+i] >> 4) & 0x03;
+		g = (pal[0x140+i] >> 2) & 0x03;
+		r = pal[0x140+i] & 0x03;
+		
+		r = (r << 6);
+		g = (g << 6);
+		b = (b << 6);
+
+		palette_set_color_rgb(machine, i, r, g, b);
+	}
+	
+	/* MSX colour palette is 6-bit RGB */
 	for(i=0; i<64; i++)
 	{
 		int r,g,b;
@@ -976,9 +993,9 @@ static void amstrad_plus_dma_parse(running_machine *machine, int channel, int *a
 	switch(command & 0xf000)
 	{
 	case 0x0000:  // Load PSG register
-		AY8910_control_port_0_w(machine, 0,(command & 0x0f00) >> 8);
-		AY8910_write_port_0_w(machine, 0,command & 0x00ff);
-		AY8910_control_port_0_w(machine, 0,prev_reg);
+		ay8910_control_port_0_w(machine, 0,(command & 0x0f00) >> 8);
+		ay8910_write_port_0_w(machine, 0,command & 0x00ff);
+		ay8910_control_port_0_w(machine, 0,prev_reg);
 		logerror("DMA %i: LOAD %i, %i\n",channel,(command & 0x0f00) >> 8, command & 0x00ff);
 		break;
 	case 0x1000:  // Pause for n HSYNCs (0 - 4095)

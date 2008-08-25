@@ -148,7 +148,7 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( studio2 )
-	PORT_START_TAG("KEYPAD_L")
+	PORT_START("KEYPAD_L")
 	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 0") PORT_CODE(KEYCODE_0) PORT_CODE(KEYCODE_X)
 	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 1") PORT_CODE(KEYCODE_1)
 	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 2") PORT_CODE(KEYCODE_2)
@@ -160,7 +160,7 @@ static INPUT_PORTS_START( studio2 )
 	PORT_BIT( 0x100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 8") PORT_CODE(KEYCODE_8) PORT_CODE(KEYCODE_S)
 	PORT_BIT( 0x200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 9") PORT_CODE(KEYCODE_9) PORT_CODE(KEYCODE_D)
 
-	PORT_START_TAG("KEYPAD_R")
+	PORT_START("KEYPAD_R")
 	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 0") PORT_CODE(KEYCODE_0_PAD)
 	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 1") PORT_CODE(KEYCODE_7_PAD)
 	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 2") PORT_CODE(KEYCODE_8_PAD) PORT_CODE(KEYCODE_UP)
@@ -363,7 +363,7 @@ static MACHINE_RESET( mpt02 )
 static MACHINE_DRIVER_START( studio2 )
 	// basic machine hardware
 
-	MDRV_CPU_ADD(CDP1802, 3579545/2) // the real clock is derived from an oscillator circuit
+	MDRV_CPU_ADD("main", CDP1802, 3579545/2) // the real clock is derived from an oscillator circuit
 	MDRV_CPU_PROGRAM_MAP(studio2_map, 0)
 	MDRV_CPU_IO_MAP(studio2_io_map, 0)
 	MDRV_CPU_CONFIG(studio2_config)
@@ -387,14 +387,14 @@ static MACHINE_DRIVER_START( studio2 )
 	// sound hardware
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(BEEP, 0)
+	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mpt02 )
 	// basic machine hardware
 
-	MDRV_CPU_ADD(CDP1802, CDP1864_CLK_FREQ)
+	MDRV_CPU_ADD("main", CDP1802, CDP1864_CLK_FREQ)
 	MDRV_CPU_PROGRAM_MAP(mpt02_map, 0)
 	MDRV_CPU_IO_MAP(mpt02_io_map, 0)
 	MDRV_CPU_CONFIG(mpt02_config)
@@ -417,14 +417,14 @@ static MACHINE_DRIVER_START( mpt02 )
 	// sound hardware
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(BEEP, 0)
+	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 /* ROMs */
 
 ROM_START( studio2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "84932", 0x0000, 0x0200, NO_DUMP )
 	ROM_LOAD( "84933", 0x0200, 0x0200, NO_DUMP )
 	ROM_LOAD( "85456", 0x0400, 0x0200, NO_DUMP )
@@ -433,7 +433,7 @@ ROM_START( studio2 )
 ROM_END
 
 ROM_START( m9016tc )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "86676.ic13",  0x0000, 0x0400, NO_DUMP )
 	ROM_LOAD( "86677b.ic14", 0x0400, 0x0400, NO_DUMP )
 	ROM_LOAD( "87201.ic12",  0x0a00, 0x0400, NO_DUMP )
@@ -462,7 +462,7 @@ static DEVICE_IMAGE_LOAD( studio2_cart )
 	}
 	filesize -= ST2_HEADER_SIZE;
 	/* Read ST2 cartridge contents */
-	ptr = ((UINT8 *)memory_region(image->machine,  REGION_CPU1 ) ) + 0x0400;
+	ptr = ((UINT8 *)memory_region(image->machine,  "main" ) ) + 0x0400;
 	if ( image_fread(image, ptr, filesize ) != filesize ) {
 		logerror( "Error loading cartridge: Unable to read contents from file: %s.\n", image_filename( image ) );
 		return INIT_FAIL;

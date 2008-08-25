@@ -82,10 +82,10 @@ ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( bebox )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("ppc1", PPC603, 66000000)	/* 66 MHz */
+	MDRV_CPU_ADD("ppc1", PPC603, 66000000)	/* 66 MHz */
 	MDRV_CPU_PROGRAM_MAP(bebox_mem, 0)
 
-	MDRV_CPU_ADD_TAG("ppc2", PPC603, 66000000)	/* 66 MHz */
+	MDRV_CPU_ADD("ppc2", PPC603, 66000000)	/* 66 MHz */
 	MDRV_CPU_PROGRAM_MAP(bebox_mem, 0)
 
 	MDRV_INTERLEAVE(1)
@@ -117,7 +117,7 @@ static MACHINE_DRIVER_START( bebox )
 	MDRV_DEVICE_ADD( "ns16550_3", NS16550 )			/* TODO: Verify model */
 	MDRV_DEVICE_CONFIG( bebox_uart_inteface[3] )
 
-	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, bebox_ide_interrupt )	/* FIXME */
+	MDRV_IDE_CONTROLLER_ADD( "ide", bebox_ide_interrupt )	/* FIXME */
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_vga )
@@ -129,10 +129,14 @@ static MACHINE_DRIVER_START( bebox )
 	MDRV_MACHINE_RESET( bebox )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(YM3812, 3579545)
+	MDRV_SOUND_ADD("ym3812", YM3812, 3579545)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_NVRAM_HANDLER( bebox )
+
+	MDRV_DEVICE_ADD( "cdrom", CDROM )
+
+	MDRV_DEVICE_ADD( "harddisk1", HARDDISK )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( bebox2 )
@@ -146,16 +150,16 @@ static INPUT_PORTS_START( bebox )
 INPUT_PORTS_END
 
 ROM_START(bebox)
-    ROM_REGION(0x00200000, REGION_USER1, ROMREGION_64BIT | ROMREGION_BE)
+    ROM_REGION(0x00200000, "user1", ROMREGION_64BIT | ROMREGION_BE)
 	ROM_LOAD( "bootmain.rom", 0x000000, 0x20000, CRC(df2d19e0) SHA1(da86a7d23998dc953dd96a2ac5684faaa315c701) )
-    ROM_REGION(0x4000, REGION_USER2, ROMREGION_64BIT | ROMREGION_BE)
+    ROM_REGION(0x4000, "user2", ROMREGION_64BIT | ROMREGION_BE)
 	ROM_LOAD( "bootnub.rom", 0x000000, 0x4000, CRC(5348d09a) SHA1(1b637a3d7a2b072aa128dd5c037bbb440d525c1a) )
 ROM_END
 
 ROM_START(bebox2)
-    ROM_REGION(0x00200000, REGION_USER1, ROMREGION_64BIT | ROMREGION_BE)
+    ROM_REGION(0x00200000, "user1", ROMREGION_64BIT | ROMREGION_BE)
 	ROM_LOAD( "bootmain.rom", 0x000000, 0x20000, CRC(df2d19e0) SHA1(da86a7d23998dc953dd96a2ac5684faaa315c701) )
-    ROM_REGION(0x4000, REGION_USER2, ROMREGION_64BIT | ROMREGION_BE)
+    ROM_REGION(0x4000, "user2", ROMREGION_64BIT | ROMREGION_BE)
 	ROM_LOAD( "bootnub.rom", 0x000000, 0x4000, CRC(5348d09a) SHA1(1b637a3d7a2b072aa128dd5c037bbb440d525c1a) )
 ROM_END
 
@@ -174,37 +178,12 @@ static void bebox_floppy_getinfo(const mess_device_class *devclass, UINT32 state
 	}
 }
 
-static void bebox_cdrom_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cdrom */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										cdrom_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static void bebox_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* harddisk */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										harddisk_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static SYSTEM_CONFIG_START(bebox)
 	CONFIG_RAM(8 * 1024 * 1024)
 	CONFIG_RAM(16 * 1024 * 1024)
 	CONFIG_RAM_DEFAULT(32 * 1024 * 1024)
 	CONFIG_DEVICE(bebox_floppy_getinfo)
-	CONFIG_DEVICE(bebox_cdrom_getinfo)
-	CONFIG_DEVICE(bebox_harddisk_getinfo)
 SYSTEM_CONFIG_END
 
 

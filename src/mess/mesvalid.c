@@ -141,7 +141,7 @@ static int validate_device(const mess_device_class *devclass)
 
 	/* check creation options */
 	optcount = mess_device_get_info_int(devclass, MESS_DEVINFO_INT_CREATE_OPTCOUNT);
-	if ((optcount < 0) || (optcount >= MESS_DEVINFO_CREATE_OPTMAX))
+	if ((optcount < 0) || (optcount >= DEVINFO_CREATE_OPTMAX))
 	{
 		mame_printf_error("%s: device type '%s' has an invalid creation optcount\n", devclass->gamedrv->name, device_typename(devtype));
 		error = 1;
@@ -284,19 +284,6 @@ int mess_validitychecks(void)
 {
 	int i;
 	int error = 0;
-	iodevice_t devtype;
-	const char *name;
-
-	/* make sure that all of the UI_* strings are set for all devices */
-	for (devtype = 0; devtype < IO_COUNT; devtype++)
-	{
-		name = device_uiname(devtype);
-		if (!name || !name[0])
-		{
-			mame_printf_error("Device type %d does not have an associated UI string\n", devtype);
-			error = 1;
-		}
-	}
 
 	/* MESS specific driver validity checks */
 	for (i = 0; drivers[i]; i++)

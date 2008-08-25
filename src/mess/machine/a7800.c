@@ -52,18 +52,28 @@ static UINT8 *ROM;
 
 /* TODO: Convert the definitions into a syntax accepting input_port_read */
 
-static const struct riot6532_interface r6532_interface =
+static UINT8 riot_input_port_0_r(const device_config *device, UINT8 olddata)
 {
-	input_port_0_r,
-	input_port_3_r,
+	return input_port_0_r(device->machine, 0);
+}
+
+static UINT8 riot_input_port_3_r(const device_config *device, UINT8 olddata)
+{
+	return input_port_3_r(device->machine, 0);
+}
+
+const riot6532_interface r6532_interface_ntsc =
+{
+	riot_input_port_0_r,
+	riot_input_port_3_r,
 	NULL,
 	NULL
 };
 
-static const struct riot6532_interface r6532_interface_pal =
+const riot6532_interface r6532_interface_pal =
 {
-	input_port_0_r,
-	input_port_3_r,
+	riot_input_port_0_r,
+	riot_input_port_3_r,
 	NULL,
 	NULL
 };
@@ -74,20 +84,7 @@ static const struct riot6532_interface r6532_interface_pal =
 
 static void a7800_driver_init(running_machine *machine, int ispal, int lines)
 {
-	if (ispal)
-	{
-		r6532_config(machine, 0, &r6532_interface_pal),
-		r6532_set_clock(0, 3546894/3);
-		r6532_reset(machine, 0);
-	}
-	else
-	{
-		r6532_config(machine, 0, &r6532_interface),
-		r6532_set_clock(0, 3579545/3);
-		r6532_reset(machine, 0);
-	}
-
-	ROM = memory_region(machine, REGION_CPU1);
+	ROM = memory_region(machine, "main");
 	a7800_ispal = ispal;
 	a7800_lines = lines;
 
@@ -130,7 +127,7 @@ MACHINE_RESET( a7800 )
 	maria_flag = 0;
 
 	/* set banks to default states */
-	memory = memory_region(machine, REGION_CPU1);
+	memory = memory_region(machine, "main");
 	memory_set_bankptr( 1, memory + 0x4000 );
 	memory_set_bankptr( 2, memory + 0x8000 );
 	memory_set_bankptr( 3, memory + 0xA000 );
@@ -212,7 +209,7 @@ DEVICE_START( a7800_cart )
 {
 	UINT8	*memory;
 
-	memory = memory_region(device->machine, REGION_CPU1);
+	memory = memory_region(device->machine, "main");
 	a7800_bios_bkup = NULL;
 	a7800_cart_bkup = NULL;
 
@@ -234,7 +231,7 @@ DEVICE_IMAGE_LOAD( a7800_cart )
 	unsigned char header[128];
 	UINT8 *memory;
 
-	memory = memory_region(image->machine, REGION_CPU1);
+	memory = memory_region(image->machine, "main");
 
 	/* Load and decode the header */
 	image_fread( image, header, 128 );
@@ -407,7 +404,7 @@ WRITE8_HANDLER( a7800_RAM0_w )
 
 WRITE8_HANDLER( a7800_cart_w )
 {
-	UINT8 *memory = memory_region(machine, REGION_CPU1);
+	UINT8 *memory = memory_region(machine, "main");
 
 	if(offset < 0x4000)
 	{

@@ -449,11 +449,11 @@ static const UINT16 mgb_cpu_regs[6] = { 0xFFB0, 0x0013, 0x00D8, 0x014D, 0xFFFE, 
 static const UINT16 cgb_cpu_regs[6] = { 0x11B0, 0x0013, 0x00D8, 0x014D, 0xFFFE, 0x0100 };	/* Game Boy Color  / Game Boy Advance */
 static const UINT16 megaduck_cpu_regs[6] = { 0x0000, 0x0000, 0x0000, 0x0000, 0xFFFE, 0x0000 };	/* Megaduck */
 
-static const LR35902_CONFIG dmg_cpu_reset = { NULL, LR35902_FEATURE_HALT_BUG, gb_timer_callback };
-static const LR35902_CONFIG sgb_cpu_reset = { sgb_cpu_regs, LR35902_FEATURE_HALT_BUG, gb_timer_callback };
-static const LR35902_CONFIG mgb_cpu_reset = { mgb_cpu_regs, LR35902_FEATURE_HALT_BUG, gb_timer_callback };
-static const LR35902_CONFIG cgb_cpu_reset = { cgb_cpu_regs, 0, gb_timer_callback };
-static const LR35902_CONFIG megaduck_cpu_reset = { megaduck_cpu_regs, LR35902_FEATURE_HALT_BUG, gb_timer_callback };
+static const lr35902_cpu_core dmg_cpu_reset = { NULL, LR35902_FEATURE_HALT_BUG, gb_timer_callback };
+static const lr35902_cpu_core sgb_cpu_reset = { sgb_cpu_regs, LR35902_FEATURE_HALT_BUG, gb_timer_callback };
+static const lr35902_cpu_core mgb_cpu_reset = { mgb_cpu_regs, LR35902_FEATURE_HALT_BUG, gb_timer_callback };
+static const lr35902_cpu_core cgb_cpu_reset = { cgb_cpu_regs, 0, gb_timer_callback };
+static const lr35902_cpu_core megaduck_cpu_reset = { megaduck_cpu_regs, LR35902_FEATURE_HALT_BUG, gb_timer_callback };
 
 static ADDRESS_MAP_START(gb_map, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
@@ -536,7 +536,7 @@ static GFXDECODE_START( gb )
 GFXDECODE_END
 
 static INPUT_PORTS_START( gameboy )
-	PORT_START_TAG("INPUTS")
+	PORT_START("INPUTS")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_NAME("Left")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_NAME("Right")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_NAME("Up")
@@ -547,13 +547,13 @@ static INPUT_PORTS_START( gameboy )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SELECT) PORT_NAME("Select")
 INPUT_PORTS_END
 
-static const struct CustomSound_interface gameboy_sound_interface =
+static const custom_sound_interface gameboy_sound_interface =
 { gameboy_sh_start, 0, 0 };
 
 
 static MACHINE_DRIVER_START( gameboy )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", LR35902, 4194304)			/* 4.194304 Mhz */
+	MDRV_CPU_ADD("main", LR35902, 4194304)			/* 4.194304 Mhz */
 	MDRV_CPU_PROGRAM_MAP(gb_map, 0)
 	MDRV_CPU_CONFIG(dmg_cpu_reset)
 	MDRV_CPU_VBLANK_INT("main", gb_scanline_interrupt)	/* 1 dummy int each frame */
@@ -580,7 +580,7 @@ static MACHINE_DRIVER_START( gameboy )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(gameboy_sound_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
@@ -671,7 +671,7 @@ SYSTEM_CONFIG_END
 
 static MACHINE_DRIVER_START( megaduck )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", LR35902, 4194304)			/* 4.194304 Mhz */
+	MDRV_CPU_ADD("main", LR35902, 4194304)			/* 4.194304 Mhz */
 	MDRV_CPU_PROGRAM_MAP( megaduck_map, 0 )
 	MDRV_CPU_VBLANK_INT("main", gb_scanline_interrupt)	/* 1 int each scanline ! */
 	MDRV_CPU_CONFIG(megaduck_cpu_reset)
@@ -695,7 +695,7 @@ static MACHINE_DRIVER_START( megaduck )
 	MDRV_PALETTE_INIT(megaduck)
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(gameboy_sound_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
@@ -731,28 +731,28 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 ROM_START( gameboy )
-	ROM_REGION( 0x0100, REGION_CPU1, 0 )
+	ROM_REGION( 0x0100, "main", 0 )
 	ROM_LOAD( "dmg_boot.bin", 0x0000, 0x0100, CRC(59c8598e) SHA1(4ed31ec6b0b175bb109c0eb5fd3d193da823339f) )
 ROM_END
 
 ROM_START( supergb )
-	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
 /*  ROM_LOAD( "sgb_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
 ROM_END
 
 ROM_START( gbpocket )
-	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
 /*  ROM_LOAD( "gbp_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
 ROM_END
 
 ROM_START( gbcolor )
-	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
 /*  ROM_LOAD( "gbc_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
 ROM_END
 
 
 ROM_START( megaduck )
-	ROM_REGION( 0x10000, REGION_CPU1, ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
 ROM_END
 
 /*    YEAR  NAME      PARENT   COMPAT   MACHINE   INPUT    INIT  CONFIG   COMPANY     FULLNAME */

@@ -216,7 +216,7 @@ void ts2068_update_memory(running_machine *machine)
 
 	DOCK = timex_cart_data;
 
-	ExROM = memory_region(machine, REGION_CPU1) + 0x014000;
+	ExROM = memory_region(machine, "main") + 0x014000;
 
 	if (ts2068_port_f4_data & 0x01)
 	{
@@ -248,7 +248,7 @@ void ts2068_update_memory(running_machine *machine)
 	}
 	else
 	{
-		ChosenROM = memory_region(machine, REGION_CPU1) + 0x010000;
+		ChosenROM = memory_region(machine, "main") + 0x010000;
 		memory_set_bankptr(1, ChosenROM);
 		rh = SMH_BANK1;
 		wh = SMH_UNMAP;
@@ -287,7 +287,7 @@ void ts2068_update_memory(running_machine *machine)
 	}
 	else
 	{
-		ChosenROM = memory_region(machine, REGION_CPU1) + 0x012000;
+		ChosenROM = memory_region(machine, "main") + 0x012000;
 		memory_set_bankptr(2, ChosenROM);
 		rh = SMH_BANK2;
 		wh = SMH_UNMAP;
@@ -536,8 +536,8 @@ static ADDRESS_MAP_START (ts2068_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x7f, 0x7f ) AM_READ( spectrum_port_7f_r ) AM_MIRROR(0xff00)
 	AM_RANGE(0xdf, 0xdf ) AM_READ( spectrum_port_df_r ) AM_MIRROR(0xff00)
 	AM_RANGE(0xf4, 0xf4 ) AM_READWRITE( ts2068_port_f4_r,ts2068_port_f4_w ) AM_MIRROR(0xff00)
-	AM_RANGE(0xf5, 0xf5 ) AM_WRITE( AY8910_control_port_0_w ) AM_MIRROR(0xff00)
-	AM_RANGE(0xf6, 0xf6 ) AM_READWRITE( AY8910_read_port_0_r,AY8910_write_port_0_w ) AM_MIRROR(0xff00)
+	AM_RANGE(0xf5, 0xf5 ) AM_WRITE( ay8910_control_port_0_w ) AM_MIRROR(0xff00)
+	AM_RANGE(0xf6, 0xf6 ) AM_READWRITE( ay8910_read_port_0_r,ay8910_write_port_0_w ) AM_MIRROR(0xff00)
 	AM_RANGE(0xfe, 0xfe ) AM_READWRITE( spectrum_port_fe_r,spectrum_port_fe_w )  AM_MIRROR(0xff00)  AM_MASK(0xffff)
 	AM_RANGE(0xff, 0xff ) AM_READWRITE( ts2068_port_ff_r,ts2068_port_ff_w ) AM_MIRROR(0xff00)
 ADDRESS_MAP_END
@@ -654,19 +654,19 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START(tc2048)
-	ROM_REGION(0x10000,REGION_CPU1,0)
+	ROM_REGION(0x10000,"main",0)
 	ROM_LOAD("tc2048.rom",0x0000,0x4000, CRC(f1b5fa67) SHA1(febb2d495b6eda7cdcb4074935d6e9d9f328972d))
 	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(ts2068)
-	ROM_REGION(0x16000,REGION_CPU1,0)
+	ROM_REGION(0x16000,"main",0)
 	ROM_LOAD("ts2068_h.rom",0x10000,0x4000, CRC(bf44ec3f) SHA1(1446cb2780a9dedf640404a639fa3ae518b2d8aa))
 	ROM_LOAD("ts2068_x.rom",0x14000,0x2000, CRC(ae16233a) SHA1(7e265a2c1f621ed365ea23bdcafdedbc79c1299c))
 ROM_END
 
 ROM_START(uk2086)
-	ROM_REGION(0x16000,REGION_CPU1,0)
+	ROM_REGION(0x16000,"main",0)
 	ROM_LOAD("uk2086_h.rom",0x10000,0x4000, CRC(5ddc0ca2) SHA1(1d525fe5cdc82ab46767f665ad735eb5363f1f51))
 	ROM_LOAD("ts2068_x.rom",0x14000,0x2000, CRC(ae16233a) SHA1(7e265a2c1f621ed365ea23bdcafdedbc79c1299c))
 ROM_END

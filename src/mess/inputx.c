@@ -13,10 +13,8 @@
 #include "inptport.h"
 #include "mame.h"
 
-#ifdef ENABLE_DEBUGGER
 #include "deprecat.h"
 #include "debug/debugcon.h"
-#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -635,11 +633,9 @@ static attotime current_rate;
 static TIMER_CALLBACK(inputx_timerproc);
 
 
-
-#ifdef ENABLE_DEBUGGER
+/*  Debugging commands and handlers. */
 static void execute_input(int ref, int params, const char *param[]);
 static void execute_dumpkbd(int ref, int params, const char *param[]);
-#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -671,13 +667,11 @@ void inputx_init(running_machine *machine)
 	charqueue_empty = NULL;
 	keybuffer = NULL;
 
-#ifdef ENABLE_DEBUGGER
-	if (machine->debug_mode)
+	if (machine->debug_flags & DEBUG_FLAG_ENABLED)
 	{
 		debug_console_register_command("input", CMDFLAG_NONE, 0, 1, 1, execute_input);
 		debug_console_register_command("dumpkbd", CMDFLAG_NONE, 0, 0, 1, execute_dumpkbd);
 	}
-#endif /* ENABLE_DEBUGGER */
 
 	/* posting keys directly only makes sense for a computer */
 	if (machine->gamedrv->flags & GAME_COMPUTER)
@@ -1476,26 +1470,31 @@ int input_count_players(running_machine *machine)
 
 int input_category_active(running_machine *machine, int category)
 {
-	int found;
 	const input_port_config *port;
 	const input_field_config *field = NULL;
 	const input_setting_config *setting;
+	input_field_user_settings settings;
 
 	assert(category >= 1);
 
-	found = FALSE;
-	for (port = machine->portconfig; !found && (port != NULL); port = port->next)
+	/* loop through the input ports */
+	for (port = machine->portconfig; port != NULL; port = port->next)
 	{
-		for (field = port->fieldlist; !found && (field != NULL); field = field->next)
-			found = (field->type == IPT_CATEGORY) && (field->category == category);
-	}
-
-	if (field != NULL)
-	{
-		for (setting = field->settinglist; setting != NULL; setting = setting->next)
+		for (field = port->fieldlist; field != NULL; field = field->next)
 		{
-			if (setting->value == field->defvalue)
-				return TRUE;
+			/* is this field a category? */
+			if (field->type == IPT_CATEGORY)
+			{
+				/* get the settings value */
+				input_field_get_user_settings(field, &settings);
+
+				for (setting = field->settinglist; setting != NULL; setting = setting->next)
+				{
+					/* is this the category we want?  if so, is this settings value correct? */
+					if ((setting->category == category) && (settings.value == setting->value))
+						return TRUE;
+				}
+			}
 		}
 	}
 	return FALSE;
@@ -1512,12 +1511,10 @@ int input_category_active(running_machine *machine, int category)
 	natural keyboard input
 -------------------------------------------------*/
 
-#ifdef ENABLE_DEBUGGER
 static void execute_input(int ref, int params, const char *param[])
 {
 	inputx_post_coded(Machine, param[0]);
 }
-#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -1526,7 +1523,6 @@ static void execute_input(int ref, int params, const char *param[])
 	keyboard codes
 -------------------------------------------------*/
 
-#ifdef ENABLE_DEBUGGER
 static void execute_dumpkbd(int ref, int params, const char *param[])
 {
 	const char *filename;
@@ -1593,4 +1589,3 @@ static void execute_dumpkbd(int ref, int params, const char *param[])
 		fclose(file);
 
 }
-#endif /* ENABLE_DEBUGGER */

@@ -251,7 +251,7 @@ ADDRESS_MAP_END
 /* 101-key PC XT keyboard + TI joysticks */
 static INPUT_PORTS_START(geneve)
 
-	PORT_START_TAG("CFG")	/* config */
+	PORT_START("CFG")	/* config */
 		PORT_DIPNAME( config_speech_mask << config_speech_bit, 1 << config_speech_bit, "Speech synthesis")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_speech_bit, DEF_STR( On ) )
@@ -273,7 +273,7 @@ static INPUT_PORTS_START(geneve)
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_usbsm_bit, DEF_STR( On ) )
 
-	PORT_START_TAG("JOY")	/* col 1: "wired handset 1" (= joystick 1) */
+	PORT_START("JOY")	/* col 1: "wired handset 1" (= joystick 1) */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_JOYSTICK_UP/*, "(1UP)", CODE_NONE, OSD_JOY_UP*/) PORT_PLAYER(1)
 		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN/*, "(1DOWN)", CODE_NONE, OSD_JOY_DOWN, 0*/) PORT_PLAYER(1)
 		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT/*, "(1RIGHT)", CODE_NONE, OSD_JOY_RIGHT, 0*/) PORT_PLAYER(1)
@@ -288,18 +288,18 @@ static INPUT_PORTS_START(geneve)
 		PORT_BIT(0x0800, IP_ACTIVE_LOW, IPT_BUTTON1/*, "(2FIRE)", CODE_NONE, OSD_JOY2_FIRE, 0*/) PORT_PLAYER(2)
 		PORT_BIT(0x0700, IP_ACTIVE_HIGH, IPT_UNUSED)
 
-	PORT_START_TAG("MOUSEX") /* Mouse - X AXIS */
+	PORT_START("MOUSEX") /* Mouse - X AXIS */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START_TAG("MOUSEY") /* Mouse - Y AXIS */
+	PORT_START("MOUSEY") /* Mouse - Y AXIS */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START_TAG("MOUSE0") /* mouse buttons */
+	PORT_START("MOUSE0") /* mouse buttons */
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("mouse button 1")
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_NAME("mouse button 2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON3) PORT_NAME("mouse button 3")
 
-	PORT_START_TAG("KEY0")	/* IN3 */
+	PORT_START("KEY0")	/* IN3 */
 	PORT_BIT ( 0x0001, 0x0000, IPT_UNUSED ) 	/* unused scancode 0 */
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Esc") PORT_CODE(KEYCODE_ESC) /* Esc                       01  81 */
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1 !") PORT_CODE(KEYCODE_1) /* 1                           02  82 */
@@ -317,7 +317,7 @@ static INPUT_PORTS_START(geneve)
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Backspace") PORT_CODE(KEYCODE_BACKSPACE) /* Backspace                 0E  8E */
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Tab") PORT_CODE(KEYCODE_TAB) /* Tab                       0F  8F */
 
-	PORT_START_TAG("KEY1")	/* IN4 */
+	PORT_START("KEY1")	/* IN4 */
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Q") PORT_CODE(KEYCODE_Q) /* Q                         10  90 */
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("W") PORT_CODE(KEYCODE_W) /* W                         11  91 */
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E) /* E                         12  92 */
@@ -335,7 +335,7 @@ static INPUT_PORTS_START(geneve)
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("A") PORT_CODE(KEYCODE_A) /* A                         1E  9E */
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("S") PORT_CODE(KEYCODE_S) /* S                         1F  9F */
 
-	PORT_START_TAG("KEY2")	/* IN5 */
+	PORT_START("KEY2")	/* IN5 */
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("D") PORT_CODE(KEYCODE_D) /* D                         20  A0 */
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F") PORT_CODE(KEYCODE_F) /* F                         21  A1 */
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("G") PORT_CODE(KEYCODE_G) /* G                         22  A2 */
@@ -353,7 +353,7 @@ static INPUT_PORTS_START(geneve)
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("C") PORT_CODE(KEYCODE_C) /* C                         2E  AE */
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("V") PORT_CODE(KEYCODE_V) /* V                         2F  AF */
 
-	PORT_START_TAG("KEY3")	/* IN6 */
+	PORT_START("KEY3")	/* IN6 */
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B) /* B                         30  B0 */
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("N") PORT_CODE(KEYCODE_N) /* N                         31  B1 */
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("M") PORT_CODE(KEYCODE_M) /* M                         32  B2 */
@@ -371,7 +371,7 @@ static INPUT_PORTS_START(geneve)
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F4") PORT_CODE(KEYCODE_F4) /* F4                          3E  BE */
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F5") PORT_CODE(KEYCODE_F5) /* F5                          3F  BF */
 
-	PORT_START_TAG("KEY4")	/* IN7 */
+	PORT_START("KEY4")	/* IN7 */
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F6") PORT_CODE(KEYCODE_F6) /* F6                          40  C0 */
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F7") PORT_CODE(KEYCODE_F7) /* F7                          41  C1 */
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F8") PORT_CODE(KEYCODE_F8) /* F8                          42  C2 */
@@ -389,7 +389,7 @@ static INPUT_PORTS_START(geneve)
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("KP +") PORT_CODE(KEYCODE_PLUS_PAD) /* Keypad +                    4E  CE */
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("KP 1 (End)") PORT_CODE(KEYCODE_1_PAD		) /* Keypad 1  (End)            4F  CF */
 
-	PORT_START_TAG("KEY5")	/* IN8 */
+	PORT_START("KEY5")	/* IN8 */
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("KP 2 (Down)") PORT_CODE(KEYCODE_2_PAD		) /* Keypad 2  (Down arrow)     50  D0 */
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("KP 3 (PgDn)") PORT_CODE(KEYCODE_3_PAD		) /* Keypad 3  (PgDn)           51  D1 */
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("KP 0 (Ins)") PORT_CODE(KEYCODE_0_PAD		) /* Keypad 0  (Ins)            52  D2 */
@@ -400,7 +400,7 @@ static INPUT_PORTS_START(geneve)
 	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(101)F12") PORT_CODE(KEYCODE_F12) /* F12                      58  D8 */
 	PORT_BIT ( 0xfe00, 0x0000, IPT_UNUSED )
 
-	PORT_START_TAG("KEY6")	/* IN9 */
+	PORT_START("KEY6")	/* IN9 */
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(101)KP Enter") PORT_CODE(KEYCODE_ENTER_PAD) /* PAD Enter                 60  e0 */
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(101)R-Control") PORT_CODE(KEYCODE_RCONTROL) /* Right Control             61  e1 */
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(101)ALTGR") PORT_CODE(KEYCODE_RALT) /* ALTGR                     64  e4 */
@@ -421,7 +421,7 @@ static INPUT_PORTS_START(geneve)
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(101)PrtScr (F13)") PORT_CODE(KEYCODE_PRTSCR) /* Print Screen             63  e3 */
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(101)Pause (F15)") PORT_CODE(KEYCODE_PAUSE) /* Pause                      65  e5 */
 
-	PORT_START_TAG("KEY7")	/* IN10 */
+	PORT_START("KEY7")	/* IN10 */
 	PORT_BIT ( 0xffff, 0x0000, IPT_UNUSED )
 #if 0
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Print Screen") PORT_CODE(KEYCODE_PRTSCR) /* Print Screen alternate        77  f7 */
@@ -435,7 +435,7 @@ INPUT_PORTS_END
 
 
 
-static const struct TMS5220interface tms5220interface =
+static const tms5220_interface geneve_tms5220interface =
 {
 	NULL,						/* no IRQ callback */
 #if 1
@@ -449,7 +449,7 @@ static const struct TMS5220interface tms5220interface =
 static MACHINE_DRIVER_START(geneve_60hz)
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 12.0 MHz */
-	MDRV_CPU_ADD(TMS9995, 12000000)
+	MDRV_CPU_ADD("main", TMS9995, 12000000)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
 	MDRV_CPU_IO_MAP(readcru, writecru)
 	MDRV_CPU_VBLANK_INT_HACK(geneve_hblank_interrupt, 262)	/* 262.5 in 60Hz, 312.5 in 50Hz */
@@ -473,14 +473,20 @@ static MACHINE_DRIVER_START(geneve_60hz)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SN76496, 3579545)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
-	MDRV_SOUND_ADD(TMS5220, 680000L)
-	MDRV_SOUND_CONFIG(tms5220interface)
+	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
+	MDRV_SOUND_CONFIG(geneve_tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, ti99_ide_interrupt )	/* FIXME */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ti99_ide_interrupt )	/* FIXME */
+
+	MDRV_DEVICE_ADD( "harddisk1", HARDDISK )
+	MDRV_DEVICE_ADD( "harddisk2", HARDDISK )
+	MDRV_DEVICE_ADD( "harddisk3", HARDDISK )
+
+	MDRV_DEVICE_ADD( "ide_harddisk", IDE_HARDDISK )
 MACHINE_DRIVER_END
 
 
@@ -492,7 +498,7 @@ MACHINE_DRIVER_END
 
 ROM_START(geneve)
 	/*CPU memory space*/
-	ROM_REGION(region_cpu1_len_geneve, REGION_CPU1, 0)
+	ROM_REGION(region_cpu1_len_geneve, "main", 0)
 	ROM_LOAD("genbt100.bin", offset_rom_geneve, 0x4000, CRC(8001e386) SHA1(b44618b54dabac3882543e18555d482b299e0109)) /* CPU ROMs */
 
 	/*DSR ROM space*/
@@ -512,7 +518,7 @@ ROM_END
 
 ROM_START(genmod)
 	/*CPU memory space*/
-	ROM_REGION(region_cpu1_len_geneve, REGION_CPU1, 0)
+	ROM_REGION(region_cpu1_len_geneve, "main", 0)
 	ROM_LOAD("gnmbt100.bin", offset_rom_geneve, 0x4000, CRC(19b89479) SHA1(6ef297eda78dc705946f6494e9d7e95e5216ec47)) /* CPU ROMs */
 
 	/*DSR ROM space*/
@@ -545,29 +551,6 @@ static void geneve_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ti99; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static void geneve_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* harddisk */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(mess_hd); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_hd); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_hd); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
-		case MESS_DEVINFO_STR_DEV_TAG:						strcpy(info->s = device_temp_str(), "geneve_hd"); break;
 	}
 }
 
@@ -637,8 +620,6 @@ static void geneve_memcard_getinfo(const mess_device_class *devclass, UINT32 sta
 
 static SYSTEM_CONFIG_START(geneve)
 	CONFIG_DEVICE(geneve_floppy_getinfo)
-	CONFIG_DEVICE(geneve_harddisk_getinfo)
-	CONFIG_DEVICE(ti99_ide_harddisk_getinfo)
 	CONFIG_DEVICE(geneve_parallel_getinfo)
 	CONFIG_DEVICE(geneve_serial_getinfo)
 	CONFIG_DEVICE(geneve_memcard_getinfo)

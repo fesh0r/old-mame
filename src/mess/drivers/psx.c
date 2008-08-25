@@ -196,7 +196,7 @@ static void psx_pad( running_machine *machine, int n_port, int n_data )
 	int b_data;
 	int b_ack;
 	int b_ready;
-	char port[4];
+	static const char *portnames[] = { "IN0", "IN1", "IN2", "IN3" };
 
 	b_sel = ( n_data & PSX_SIO_OUT_DTR ) / PSX_SIO_OUT_DTR;
 	b_clock = ( n_data & PSX_SIO_OUT_CLOCK ) / PSX_SIO_OUT_CLOCK;
@@ -283,8 +283,7 @@ static void psx_pad( running_machine *machine, int n_port, int n_data )
 		{
 			if( m_pad[ n_port ].n_byte < PAD_BYTES_STANDARD )
 			{
-				sprintf(port, "IN%d", m_pad[ n_port ].n_byte + ( n_port * PAD_BYTES_STANDARD ) );
-				m_pad[ n_port ].n_shiftout = input_port_read(machine, port);
+				m_pad[ n_port ].n_shiftout = input_port_read(machine, portnames[m_pad[ n_port ].n_byte + ( n_port * PAD_BYTES_STANDARD )]);
 				m_pad[ n_port ].n_byte++;
 				b_ack = 1;
 			}
@@ -704,7 +703,7 @@ static ADDRESS_MAP_START( psx_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x1f801c00, 0x1f801dff) AM_READWRITE(psx_spu_r, psx_spu_w)
 	AM_RANGE(0x1f802020, 0x1f802033) AM_RAM /* ?? */
 	AM_RANGE(0x1f802040, 0x1f802043) AM_WRITENOP
-	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_SHARE(2) AM_REGION(REGION_USER1, 0) /* bios */
+	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_SHARE(2) AM_REGION("user1", 0) /* bios */
 	AM_RANGE(0x80000000, 0x801fffff) AM_RAM AM_SHARE(1) /* ram mirror */
 	AM_RANGE(0x80600000, 0x807fffff) AM_RAM AM_SHARE(1) /* ram mirror */
 	AM_RANGE(0x9fc00000, 0x9fc7ffff) AM_ROM AM_SHARE(2) /* bios mirror */
@@ -725,7 +724,7 @@ static DRIVER_INIT( psx )
 }
 
 static INPUT_PORTS_START( psx )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_PLAYER(1)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_PLAYER(1)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
@@ -735,7 +734,7 @@ static INPUT_PORTS_START( psx )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_PLAYER(1)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SELECT ) PORT_PLAYER(1)
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) PORT_NAME("P1 Square")
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) PORT_NAME("P1 Cross")
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) PORT_NAME("P1 Circle")
@@ -745,7 +744,7 @@ static INPUT_PORTS_START( psx )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_PLAYER(1) PORT_NAME("P1 R2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_PLAYER(1) PORT_NAME("P1 L2")
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_PLAYER(2)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_PLAYER(2)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
@@ -755,7 +754,7 @@ static INPUT_PORTS_START( psx )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_PLAYER(2)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SELECT ) PORT_PLAYER(2)
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) PORT_NAME("P2 Square")
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) PORT_NAME("P2 Cross")
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2) PORT_NAME("P2 Circle")
@@ -766,7 +765,7 @@ static INPUT_PORTS_START( psx )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_PLAYER(2) PORT_NAME("P2 L2")
 INPUT_PORTS_END
 
-static const struct PSXSPUinterface psxspu_interface =
+static const psx_spu_interface psxspu_interface =
 {
 	&g_p_n_psxram,
 	psx_irq_set,
@@ -776,7 +775,7 @@ static const struct PSXSPUinterface psxspu_interface =
 
 static MACHINE_DRIVER_START( psxntsc )
 	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, XTAL_67_7376MHz )
+	MDRV_CPU_ADD( "main", PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( psx_map, 0 )
 	MDRV_CPU_VBLANK_INT("main", psx_vblank)
 
@@ -798,7 +797,7 @@ static MACHINE_DRIVER_START( psxntsc )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD( PSXSPU, 0 )
+	MDRV_SOUND_ADD( "psxspu", PSXSPU, 0 )
 	MDRV_SOUND_CONFIG( psxspu_interface )
 	MDRV_SOUND_ROUTE( 0, "left", 1.00 )
 	MDRV_SOUND_ROUTE( 1, "right", 1.00 )
@@ -809,7 +808,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( psxpal )
 	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, XTAL_67_7376MHz )
+	MDRV_CPU_ADD( "main", PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( psx_map, 0 )
 	MDRV_CPU_VBLANK_INT("main", psx_vblank)
 
@@ -831,7 +830,7 @@ static MACHINE_DRIVER_START( psxpal )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD( PSXSPU, 0 )
+	MDRV_SOUND_ADD( "psxspu", PSXSPU, 0 )
 	MDRV_SOUND_CONFIG( psxspu_interface )
 	MDRV_SOUND_ROUTE( 0, "left", 1.00 )
 	MDRV_SOUND_ROUTE( 1, "right", 1.00 )
@@ -841,7 +840,7 @@ static MACHINE_DRIVER_START( psxpal )
 MACHINE_DRIVER_END
 
 ROM_START( psj )
-	ROM_REGION32_LE( 0x080000, REGION_USER1, 0 )
+	ROM_REGION32_LE( 0x080000, "user1", 0 )
 
 	ROM_SYSTEM_BIOS( 0, "1.0J", "SCPH-1000/DTL-H1000" ) // 22091994
 	ROMX_LOAD( "ps-10j.bin",    0x0000000, 0x080000, CRC(3b601fc8) SHA1(343883a7b555646da8cee54aadd2795b6e7dd070), ROM_BIOS(1) )
@@ -870,7 +869,7 @@ ROM_START( psj )
 ROM_END
 
 ROM_START( psu )
-	ROM_REGION32_LE( 0x080000, REGION_USER1, 0 )
+	ROM_REGION32_LE( 0x080000, "user1", 0 )
 
 	ROM_SYSTEM_BIOS( 0, "2.0A", "DTL-H1001 (Version 2.0 05/07/95 A)" ) // 22091994
 	ROMX_LOAD( "ps-20a.bin",    0x0000000, 0x080000, CRC(55847d8c) SHA1(649895efd79d14790eabb362e94eb0622093dfb9), ROM_BIOS(1) )
@@ -892,7 +891,7 @@ ROM_START( psu )
 ROM_END
 
 ROM_START( pse )
-	ROM_REGION32_LE( 0x080000, REGION_USER1, 0 )
+	ROM_REGION32_LE( 0x080000, "user1", 0 )
 
 	ROM_SYSTEM_BIOS( 0, "2.0E", "DTL-H1002/SCPH-1002 (Version 2.0 05/10/95 E)" ) // 22091994
 	ROMX_LOAD( "ps-20e.bin",    0x0000000, 0x080000, CRC(9bb87c4b) SHA1(20b98f3d80f11cbf5a7bfd0779b0e63760ecc62c), ROM_BIOS(1) )
@@ -918,7 +917,7 @@ ROM_START( pse )
 ROM_END
 
 ROM_START( psa )
-	ROM_REGION32_LE( 0x080000, REGION_USER1, 0 )
+	ROM_REGION32_LE( 0x080000, "user1", 0 )
 
 	ROM_SYSTEM_BIOS( 0, "3.0A", "SCPH-5501/SCPH-7003 (Version 3.0 11/18/96 A)" ) // 04121995
 	ROMX_LOAD( "ps-30a.bin",    0x0000000, 0x080000, CRC(8d8cb7e4) SHA1(0555c6fae8906f3f09baf5988f00e55f88e9f30b), ROM_BIOS(1) )

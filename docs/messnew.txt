@@ -1,3 +1,79 @@
+0.127
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- IBM PC/XT-286 [Wilbert Pol]
+
+
+
+System Driver Changes:
+----------------------
+- [AMIGA] Fixed crash in CDTV that when accessing the keyboard.
+  [Roberto Zandona']
+
+- [C65] Fixed regression introduced in 0.114. (bug #1244) [Roberto Zandona']
+
+- [COMX35] Fixed to boot again. (bug #1629)  [Curt Coder]
+
+- [DRAGON] Fixed crash that could occur when accessing the printer.  (bug
+  #1643)  [Nate Woods]
+
+- [IBM5150] Implemented low-level keyboard interface to allow real
+  emulation of pc keyboards. Hooked up emulation of a Keytronic
+  KB3270/PC keyboard to this driver.
+  [Wilbert Pol]
+
+- [IBM5170] Added support for the 8042 keyboard controller dumped
+  by Kevtris.  [Wilbert Pol]
+
+- [Mac SE] Added preliminary ADB mouse emulation, system is now working [R. 
+  Belmont]
+
+- [MSX Family] Fixed cartridge loading. (part of bug #1603)  [Wilbert
+  Pol]
+
+- [MSX Family] Fixed fmsx cassette format handling. (part of bug #11)
+  [Wilbert Pol]
+
+- [SVI318] Fixed .cas format handling. (part of bug #11)  [Wilbert Pol]
+
+
+
+User Interface Changes:
+-----------------------
+- Major file manager improvements; much better experience for creating new
+  images.  (bugs #1653, #1654) [Nate Woods]
+
+- Fixed bug that caused "categorized" inputs (used on Atari 2600, NES, SMS)
+  to not be remappable.  (bug #1614) [Nate Woods]
+
+- [Windows] Ensured that the "Debugger..." menu item is always present when
+  the debugger is enabled in the New UI.  (bug #1636) [Nate Woods]
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.127.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Natural keyboard support is now implemented completely in the MESS core.
+  [Nate Woods]
+
+- Moved image creation format code to be based on the new device model.  [Nate
+  Woods]
+
+- Changed the cdrom and harddisk implementation into a mame device.  [Wilbert
+  Pol]
+
+
+
 0.126
 
 New System Drivers Supported (in no particular order):

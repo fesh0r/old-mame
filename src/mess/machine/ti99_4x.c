@@ -404,7 +404,7 @@ DRIVER_INIT( ti99_4 )
 	has_evpc = FALSE;
 
 	/* set up memory pointers */
-	xRAM_ptr = (UINT16 *) (memory_region(machine, REGION_CPU1) + offset_xram);
+	xRAM_ptr = (UINT16 *) (memory_region(machine, "main") + offset_xram);
 	console_GROMs.data_ptr = memory_region(machine, region_grom);
 
 	/* Generate missing chunk of each console GROMs */
@@ -422,13 +422,13 @@ DRIVER_INIT( ti99_4a )
 	has_evpc = FALSE;
 
 	/* set up memory pointers */
-	xRAM_ptr = (UINT16 *) (memory_region(machine, REGION_CPU1) + offset_xram);
+	xRAM_ptr = (UINT16 *) (memory_region(machine, "main") + offset_xram);
 	console_GROMs.data_ptr = memory_region(machine, region_grom);
 }
 
 DRIVER_INIT( ti99_4ev )
 {
-	UINT8 *mem = memory_region(machine, REGION_CPU1);
+	UINT8 *mem = memory_region(machine, "main");
 	ti99_model = model_99_4a;
 	has_evpc = TRUE;
 
@@ -441,7 +441,7 @@ DRIVER_INIT( ti99_4ev )
 
 DRIVER_INIT( ti99_8 )
 {
-	UINT8 *mem = memory_region(machine, REGION_CPU1);
+	UINT8 *mem = memory_region(machine, "main");
 	ti99_model = model_99_8;
 	has_evpc = FALSE;
 
@@ -464,14 +464,14 @@ DRIVER_INIT( ti99_4p )
 	has_evpc = TRUE;
 
 	/* set up memory pointers */
-	xRAM_ptr = (UINT16 *) (memory_region(machine, REGION_CPU1) + offset_xram_4p);
+	xRAM_ptr = (UINT16 *) (memory_region(machine, "main") + offset_xram_4p);
 	/*console_GROMs.data_ptr = memory_region(machine, region_grom);*/
 }
 
 DEVICE_START( ti99_cart )
 {
 	int id = image_index_in_device(device);
-	cartridge_pages[id] = (UINT16 *) (memory_region(device->machine, REGION_CPU1) + offset_cart + (id * 0x2000));
+	cartridge_pages[id] = (UINT16 *) (memory_region(device->machine, "main") + offset_cart + (id * 0x2000));
 }
 
 /*
@@ -689,18 +689,6 @@ DEVICE_IMAGE_UNLOAD( ti99_cart )
 	slot_type[id] = SLOT_EMPTY;
 }
 
-DEVICE_IMAGE_LOAD( ti99_hd )
-{
-	int id = image_index_in_device(image);
-	return smc92x4_hd_load(image, id);
-}
-
-DEVICE_IMAGE_UNLOAD( ti99_hd )
-{
-	int id = image_index_in_device(image);
-	smc92x4_hd_unload(image, id);
-}
-
 static const TMS9928a_interface tms9918_interface =
 {
 	TMS99x8,
@@ -796,7 +784,7 @@ MACHINE_RESET( ti99 )
 	}
 	else if (ti99_model == model_99_4p)
 	{
-		UINT8* mem = memory_region(machine, REGION_CPU1);
+		UINT8* mem = memory_region(machine, "main");
 
 		/* set up system ROM and scratch pad pointers */
 		memory_set_bankptr(1, mem + offset_rom0_4p);	/* system ROM */
@@ -806,7 +794,7 @@ MACHINE_RESET( ti99 )
 	else
 	{
 		/* set up scratch pad pointer */
-		memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + offset_sram);
+		memory_set_bankptr(1, memory_region(machine, "main") + offset_sram);
 	}
 
 	if (ti99_model != model_99_4p)
@@ -1122,7 +1110,7 @@ WRITE16_HANDLER ( ti99_4p_cart_w )
 {
 	if (ti99_4p_internal_rom6_enable)
 	{
-		ti99_4p_internal_ROM6 = (UINT16 *) (memory_region(machine, REGION_CPU1) + (FPTR)((offset & 1) ? offset_rom6b_4p : offset_rom6_4p));
+		ti99_4p_internal_ROM6 = (UINT16 *) (memory_region(machine, "main") + (FPTR)((offset & 1) ? offset_rom6b_4p : offset_rom6_4p));
 		return;
 	}
 
@@ -1170,7 +1158,7 @@ WRITE16_HANDLER ( ti99_wsnd_w )
 {
 	activecpu_adjust_icount(-4);
 
-	SN76496_0_w(machine, offset, (data >> 8) & 0xff);
+	sn76496_0_w(machine, offset, (data >> 8) & 0xff);
 }
 
 /*
@@ -1593,7 +1581,7 @@ WRITE8_HANDLER ( ti99_8_w )
 			case 1:
 				/* sound write + RAM */
 				if (offset < 0x8410)
-					SN76496_0_w(machine, offset, data);
+					sn76496_0_w(machine, offset, data);
 				else
 					sRAM_ptr_8[offset & 0x1fff] = data;
 				break;
@@ -1867,13 +1855,10 @@ static int ti99_handset_poll_keyboard(running_machine *machine, int num)
 	UINT32 key_buf;
 	UINT8 current_key;
 	int i;
-	char port1[5], port2[5];
-
+	static const char *keynames[] = { "KP0", "KP1", "KP2", "KP3", "KP4" };
 
 	/* read current key state */
-	sprintf(port1, "KP%d", num);
-	sprintf(port2, "KP%d", num+1);
-	key_buf = ( input_port_read(machine, port1) | (input_port_read(machine, port2) << 16) ) >> (4*num);
+	key_buf = ( input_port_read(machine, keynames[num]) | (input_port_read(machine, keynames[num + 1]) << 16) ) >> (4*num);
 
 	/* If a key was previously pressed, this key was not shift, and this key is
 	still down, then don't change the current key press. */
@@ -1949,13 +1934,15 @@ static int ti99_handset_poll_joystick(running_machine *machine, int num)
 	UINT8 current_joy;
 	int current_joy_x, current_joy_y;
 	int message;
-	char port1[6], port2[6];
+	static const char *const joynames[2][4] =
+			{
+				{ "JOY0", "JOY2", "JOY4", "JOY6" },		// X axis
+				{ "JOY1", "JOY3", "JOY5", "JOY7" }		// Y axis
+			};
 
 	/* read joystick position */
-	sprintf(port1, "JOY%d", 2*num);
-	sprintf(port2, "JOY%d", 2*num+1);
-	current_joy_x = input_port_read(machine, port1);
-	current_joy_y = input_port_read(machine, port2);
+	current_joy_x = input_port_read(machine, joynames[0][num]);
+	current_joy_y = input_port_read(machine, joynames[1][num]);
 	/* compare with last saved position */
 	current_joy = current_joy_x | (current_joy_y << 4);
 	if (current_joy != previous_joy[num])
@@ -2272,7 +2259,7 @@ static int ti99_R9901_0(int offset)
 {
 	running_machine *machine = Machine;
 	int answer;
-	char port[7];
+	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3" };
 
 	if ((ti99_model == model_99_4) && (KeyCol == 7))
 		answer = (ti99_handset_poll_bus() << 3) | 0x80;
@@ -2291,8 +2278,7 @@ static int ti99_R9901_0(int offset)
 	}
 	else
 	{
-		sprintf(port, "KEY%d", (KeyCol >> 1));
-		answer = ((input_port_read(machine, port) >> ((KeyCol & 1) * 8)) << 3) & 0xF8;
+		answer = ((input_port_read(machine, keynames[KeyCol >> 1]) >> ((KeyCol & 1) * 8)) << 3) & 0xF8;
 	}
 	
 	if ((ti99_model == model_99_4a) || (ti99_model == model_99_4p))
@@ -2317,14 +2303,13 @@ static int ti99_R9901_1(int offset)
 {
 	running_machine *machine = Machine;
 	int answer;
-	char port[7];
+	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3" };
 
 	if (/*(ti99_model == model_99_4) &&*/ (KeyCol == 7))
 		answer = 0x07;
 	else
 	{
-		sprintf(port, "KEY%d", (KeyCol >> 1));
-		answer = ((input_port_read(machine, port) >> ((KeyCol & 1) * 8)) >> 5) & 0x07;
+		answer = ((input_port_read(machine, keynames[KeyCol >> 1]) >> ((KeyCol & 1) * 8)) >> 5) & 0x07;
 	}
 	
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
@@ -2405,7 +2390,8 @@ static int ti99_8_R9901_0(int offset)
 {
 	running_machine *machine = Machine;
 	int answer;
-	char port[7];
+	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
+										"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15" };
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
@@ -2419,8 +2405,7 @@ static int ti99_8_R9901_0(int offset)
 	}
 	else
 	{
-		sprintf(port, "KEY%d", KeyCol);
-		answer = (input_port_read(machine, port) << 6) & 0xC0;
+		answer = (input_port_read(machine, keynames[KeyCol]) << 6) & 0xC0;
 	}
 	
 	return answer;
@@ -2439,7 +2424,8 @@ static int ti99_8_R9901_1(int offset)
 {
 	running_machine *machine = Machine;
 	int answer;
-	char port[7];
+	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
+										"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15" };
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
@@ -2453,8 +2439,7 @@ static int ti99_8_R9901_1(int offset)
 	}
 	else
 	{
-		sprintf(port, "KEY%d", KeyCol);
-		answer = (input_port_read(machine, port) >> 2) & 0x07;
+		answer = (input_port_read(machine, keynames[KeyCol]) >> 2) & 0x07;
 	}
 	
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
@@ -2554,7 +2539,7 @@ static UINT8 *ti99_8_internal_DSR;
 /* set up handlers, and set initial state */
 static void ti99_8_internal_dsr_reset(running_machine *machine)
 {
-	ti99_8_internal_DSR = memory_region(machine, REGION_CPU1) + offset_rom0_8 + 0x4000;
+	ti99_8_internal_DSR = memory_region(machine, "main") + offset_rom0_8 + 0x4000;
 
 	ti99_peb_set_card_handlers(0x2700, & ti99_8_internal_dsr_handlers);
 }
@@ -2611,7 +2596,7 @@ static UINT16 *ti99_4p_internal_DSR;
 /* set up handlers, and set initial state */
 static void ti99_4p_internal_dsr_reset(running_machine *machine)
 {
-	UINT8* mem = memory_region(machine, REGION_CPU1);
+	UINT8* mem = memory_region(machine, "main");
 
 	ti99_4p_internal_DSR = (UINT16 *) (mem + offset_rom4_4p);
 	ti99_4p_internal_ROM6 = (UINT16 *) (mem + offset_rom6_4p);

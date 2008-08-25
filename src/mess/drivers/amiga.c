@@ -63,7 +63,7 @@ static ADDRESS_MAP_START(amiga_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xc80000, 0xcfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w)	/* see Note 1 above */
 	AM_RANGE(0xdf0000, 0xdfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) AM_BASE(&amiga_custom_regs)	/* Custom Chips */
 	AM_RANGE(0xe80000, 0xe8ffff) AM_READWRITE(amiga_autoconfig_r, amiga_autoconfig_w)
-	AM_RANGE(0xf80000, 0xffffff) AM_ROM AM_REGION(REGION_USER1, 0)	/* System ROM - mirror */
+	AM_RANGE(0xf80000, 0xffffff) AM_ROM AM_REGION("user1", 0)	/* System ROM - mirror */
 ADDRESS_MAP_END
 
 /*
@@ -99,7 +99,7 @@ static ADDRESS_MAP_START(cdtv_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xdc8000, 0xdc87ff) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xdf0000, 0xdfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) AM_BASE(&amiga_custom_regs)	/* Custom Chips */
 	AM_RANGE(0xe80000, 0xe8ffff) AM_READWRITE(amiga_autoconfig_r, amiga_autoconfig_w)
-	AM_RANGE(0xf00000, 0xffffff) AM_ROM AM_REGION(REGION_USER1, 0)	/* CDTV & System ROM */
+	AM_RANGE(0xf00000, 0xffffff) AM_ROM AM_REGION("user1", 0)	/* CDTV & System ROM */
 ADDRESS_MAP_END
 
 
@@ -109,7 +109,7 @@ static ADDRESS_MAP_START(a1000_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xc00000, 0xc3ffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) /* See Note 1 above */
 	AM_RANGE(0xdf0000, 0xdfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) AM_BASE(&amiga_custom_regs)	/* Custom Chips */
 	AM_RANGE(0xe80000, 0xe8ffff) AM_READWRITE(amiga_autoconfig_r, amiga_autoconfig_w)
-	AM_RANGE(0xf80000, 0xfbffff) AM_ROM AM_REGION(REGION_USER1, 0)	/* Bootstrap ROM */
+	AM_RANGE(0xf80000, 0xfbffff) AM_ROM AM_REGION("user1", 0)	/* Bootstrap ROM */
 	AM_RANGE(0xfc0000, 0xffffff) AM_RAMBANK(2)	/* Writable Control Store RAM */
 ADDRESS_MAP_END
 
@@ -119,7 +119,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( amiga_common )
-	PORT_START_TAG("input")
+	PORT_START("input")
 	PORT_CONFNAME( 0x20, 0x00, "Input Port 0 Device")
 	PORT_CONFSETTING( 0x00, "Mouse" )
 	PORT_CONFSETTING( 0x20, DEF_STR(Joystick) )
@@ -127,48 +127,48 @@ static INPUT_PORTS_START( amiga_common )
 	PORT_CONFSETTING( 0x00, "Mouse" )
 	PORT_CONFSETTING( 0x10, DEF_STR(Joystick) )
 
-	PORT_START_TAG("CIA0PORTA")
+	PORT_START("CIA0PORTA")
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_SPECIAL )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 
-	PORT_START_TAG("JOY0DAT")
+	PORT_START("JOY0DAT")
 	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(amiga_joystick_convert, "P1JOY")
 	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("JOY1DAT")
+	PORT_START("JOY1DAT")
 	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(amiga_joystick_convert, "P2JOY")
 	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("POTGO")
+	PORT_START("POTGO")
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0xaaff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("P1JOY")
+	PORT_START("P1JOY")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 
-	PORT_START_TAG("P2JOY")
+	PORT_START("P2JOY")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 
-	PORT_START_TAG("P0MOUSEX")
+	PORT_START("P0MOUSEX")
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(1)
 
-	PORT_START_TAG("P0MOUSEY")
+	PORT_START("P0MOUSEY")
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(1)
 
-	PORT_START_TAG("P1MOUSEX")
+	PORT_START("P1MOUSEX")
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(2)
 
-	PORT_START_TAG("P1MOUSEY")
+	PORT_START("P1MOUSEY")
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_MINMAX(0, 255) PORT_PLAYER(2)
 
 	PORT_INCLUDE( amiga_keyboard )
@@ -177,7 +177,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( amiga )
-	PORT_START_TAG("hardware")
+	PORT_START("hardware")
 	PORT_CONFNAME( 0x08, 0x08, "Battery backed-up RTC")
 	PORT_CONFSETTING( 0x00, "Not Installed" )
 	PORT_CONFSETTING( 0x08, "Installed" )
@@ -196,14 +196,29 @@ INPUT_PORTS_END
   Machine drivers
 ***************************************************************************/
 
-static const struct CustomSound_interface amiga_custom_interface =
+static MACHINE_START( cdtv )
+{
+	MACHINE_START_CALL( amigacd );
+}
+
+
+static MACHINE_RESET( cdtv )
+{
+	MACHINE_RESET_CALL( amiga );
+
+	/* initialize the cdrom controller */
+	MACHINE_RESET_CALL( amigacd );
+}
+
+
+static const custom_sound_interface amiga_custom_interface =
 {
 	amiga_sh_start
 };
 
 static MACHINE_DRIVER_START( ntsc )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M68000, AMIGA_68000_NTSC_CLOCK)
+	MDRV_CPU_ADD("main", M68000, AMIGA_68000_NTSC_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(amiga_mem, 0)
 
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -229,7 +244,7 @@ static MACHINE_DRIVER_START( ntsc )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(CUSTOM, 3579545)
+	MDRV_SOUND_ADD("custom", CUSTOM, 3579545)
 	MDRV_SOUND_CONFIG(amiga_custom_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
@@ -242,11 +257,16 @@ static MACHINE_DRIVER_START( cdtv )
 	MDRV_CPU_REPLACE("main", M68000, CDTV_CLOCK_X1 / 4)
 	MDRV_CPU_PROGRAM_MAP(cdtv_mem, 0)
 
+	MDRV_MACHINE_START( cdtv )
+	MDRV_MACHINE_RESET( cdtv )
+
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_SOUND_ADD( CDDA, 0 )
+	MDRV_SOUND_ADD( "cdda", CDDA, 0 )
 	MDRV_SOUND_ROUTE( 0, "left", 1.0 )
 	MDRV_SOUND_ROUTE( 1, "right", 1.0 )
+
+	MDRV_DEVICE_ADD( "cdrom", CDROM )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( a1000n )
@@ -392,7 +412,7 @@ static DRIVER_INIT( amiga )
 
 	/* set up memory */
 	memory_configure_bank(1, 0, 1, amiga_chip_ram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_USER1), 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, "user1"), 0);
 
 	/* initialize cartridge (if present) */
 	amiga_cart_init(machine);
@@ -425,7 +445,7 @@ static DRIVER_INIT( amiga_ecs )
 
 	/* set up memory */
 	memory_configure_bank(1, 0, 1, amiga_chip_ram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_USER1), 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, "user1"), 0);
 
 	/* initialize Action Replay (if present) */
 	amiga_cart_init(machine);
@@ -458,10 +478,10 @@ static DRIVER_INIT( cdtv )
 
 	/* set up memory */
 	memory_configure_bank(1, 0, 1, amiga_chip_ram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_USER1), 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, "user1"), 0);
 
-	/* initialize the cdrom controller */
-	amigacd_init();
+	/* initialize keyboard - in cdtv we can use a standard Amiga keyboard*/
+	amigakbd_init();
 }
 
 /***************************************************************************
@@ -469,12 +489,12 @@ static DRIVER_INIT( cdtv )
 ***************************************************************************/
 
 #define AMIGA_BIOS			\
-	ROM_REGION16_BE(0x080000, REGION_USER1, 0)	\
+	ROM_REGION16_BE(0x080000, "user1", 0)	\
 	ROM_SYSTEM_BIOS(0, "kick13",  "Kickstart 1.3 (34.5)")	\
 	ROMX_LOAD("315093-02.u6", 0x000000, 0x040000, CRC(c4f0f55f) SHA1(891e9a547772fe0c6c19b610baf8bc4ea7fcb785), ROM_GROUPWORD | ROM_BIOS(1))	\
 	ROM_SYSTEM_BIOS(1, "kick12",  "Kickstart 1.2 (33.180)")	\
 	ROMX_LOAD("315093-01.u6", 0x000000, 0x040000, CRC(a6ce1636) SHA1(11f9e62cf299f72184835b7b2a70a16333fc0d88), ROM_GROUPWORD | ROM_BIOS(2))	\
-	ROM_COPY(REGION_USER1, 0x000000, 0x040000, 0x040000)	\
+	ROM_COPY("user1", 0x000000, 0x040000, 0x040000)	\
 	ROM_SYSTEM_BIOS(2, "kick204", "Kickstart 2.04 (37.175)")	\
 	ROMX_LOAD("390979-01.u6", 0x000000, 0x080000, CRC(c3bdb240) SHA1(c5839f5cb98a7a8947065c3ed2f14f5f42e334a1), ROM_GROUPWORD | ROM_BIOS(3))	/* identical to 363968.01 */	\
 	ROM_SYSTEM_BIOS(3, "kick31",  "Kickstart 3.1 (40.63)")	\
@@ -482,7 +502,7 @@ static DRIVER_INIT( cdtv )
 
 
 #define AMIGA_CART			\
-	ROM_REGION16_BE(0x080000, REGION_USER2, 0)	\
+	ROM_REGION16_BE(0x080000, "user2", 0)	\
 	ROM_CART_LOAD(0, "rom,bin", 0x0000, 0x080000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)	\
 
 
@@ -495,7 +515,7 @@ ROM_END
 #define rom_a500p    rom_a500n
 
 ROM_START(a1000n)
-	ROM_REGION16_BE(0x080000, REGION_USER1, 0)
+	ROM_REGION16_BE(0x080000, "user1", 0)
 	ROM_LOAD16_BYTE("252179-01.u5n", 0x000000, 0x001000, CRC(42553bc4) SHA1(8855a97f7a44e3f62d1c88d938fee1f4c606af5b))
 	ROM_LOAD16_BYTE("252180-01.u5p", 0x000001, 0x001000, CRC(8e5b9a37) SHA1(d10f1564b99f5ffe108fa042362e877f569de2c3))
 ROM_END
@@ -503,12 +523,12 @@ ROM_END
 #define rom_a1000p    rom_a1000n
 
 ROM_START(cdtv)
-	ROM_REGION16_BE(0x100000, REGION_USER1, 0)
+	ROM_REGION16_BE(0x100000, "user1", 0)
 	ROM_LOAD16_BYTE("391008-01.u34", 0x000000, 0x020000, CRC(791cb14b) SHA1(277a1778924496353ffe56be68063d2a334360e4))
 	ROM_LOAD16_BYTE("391009-01.u35", 0x000001, 0x020000, CRC(accbbc2e) SHA1(41b06d1679c6e6933c3378b7626025f7641ebc5c))
-	ROM_COPY(REGION_USER1, 0x000000, 0x040000, 0x040000)
+	ROM_COPY("user1", 0x000000, 0x040000, 0x040000)
 	ROMX_LOAD(      "315093-02.u13", 0x080000, 0x040000, CRC(c4f0f55f) SHA1(891e9a547772fe0c6c19b610baf8bc4ea7fcb785), ROM_GROUPWORD)
-	ROM_COPY(REGION_USER1, 0x080000, 0x0c0000, 0x040000)
+	ROM_COPY("user1", 0x080000, 0x0c0000, 0x040000)
 ROM_END
 
 
@@ -525,22 +545,6 @@ static SYSTEM_CONFIG_START(a1000)
 	CONFIG_DEVICE(amiga_floppy_getinfo)
 SYSTEM_CONFIG_END
 
-static void cdtv_cd_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* CHD CD-ROM */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default: cdrom_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(cdtv)
-	CONFIG_DEVICE(cdtv_cd_getinfo)
-SYSTEM_CONFIG_END
-
 /***************************************************************************
   Game drivers
 ***************************************************************************/
@@ -550,4 +554,4 @@ COMP( 1985, a1000n, 0,      0,      a1000n, amiga,  amiga,  a1000,  "Commodore B
 COMP( 1985, a1000p, a1000n, 0,      a1000p, amiga,  amiga,  a1000,  "Commodore Business Machines Co.",  "Amiga 1000 (PAL)",      GAME_IMPERFECT_GRAPHICS )
 COMP( 1987, a500n,  0,      0,      ntsc,   amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 500 (NTSC, OCS)", GAME_IMPERFECT_GRAPHICS )
 COMP( 1987, a500p,  a500n,  0,      pal,    amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 500 (PAL, OCS)",  GAME_IMPERFECT_GRAPHICS )
-COMP( 1991, cdtv,   0,      0,      cdtv,   cdtv,   cdtv,   cdtv,   "Commodore Business Machines Co.",  "CDTV (NTSC)",           GAME_IMPERFECT_GRAPHICS )
+COMP( 1991, cdtv,   0,      0,      cdtv,   cdtv,   cdtv,   0,      "Commodore Business Machines Co.",  "CDTV (NTSC)",           GAME_IMPERFECT_GRAPHICS )

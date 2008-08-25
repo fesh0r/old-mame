@@ -326,7 +326,7 @@ MACHINE_START( pdp1 )
 	pdp1_memory = auto_malloc(0x40000);
 
 	/* set up our font */
-	dst = memory_region(machine, REGION_GFX1);
+	dst = memory_region(machine, "gfx1");
 	memcpy(dst, fontdata6x8, pdp1_fontdata_size);
 
 	memory_set_opbase_handler(0, setOPbasefunc);
@@ -1257,13 +1257,12 @@ static void pdp1_keyboard(running_machine *machine)
 	static int old_typewriter_keys[4];
 
 	int typewriter_transitions;
-	char port[5];
+	static const char *twrnames[] = { "TWR0", "TWR1", "TWR2", "TWR3" };
 
 
 	for (i=0; i<4; i++)
 	{
-		sprintf(port, "TWR%d", i);
-		typewriter_keys[i] = input_port_read(machine, port);
+		typewriter_keys[i] = input_port_read(machine, twrnames[i]);
 	}
 
 	for (i=0; i<4; i++)

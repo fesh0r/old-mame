@@ -10,49 +10,189 @@
 #include "mslegacy.h"
 #include "uimenu.h"
 #include "uimess.h"
+#include "uiinput.h"
 #include "input.h"
 
-//int mess_pause_for_ui = 0;
-static int ui_active = 0;
 
-int mess_ui_active(void)
+/***************************************************************************
+    LOCAL VARIABLES
+***************************************************************************/
+
+/* list of natural keyboard keys that are not associated with UI_EVENT_CHARs */
+static const input_item_id non_char_keys[] =
 {
-	return ui_active;
+	ITEM_ID_ESC,
+	ITEM_ID_F1,
+	ITEM_ID_F2,
+	ITEM_ID_F3,
+	ITEM_ID_F4,
+	ITEM_ID_F5,
+	ITEM_ID_F6,
+	ITEM_ID_F7,
+	ITEM_ID_F8,
+	ITEM_ID_F9,
+	ITEM_ID_F10,
+	ITEM_ID_F11,
+	ITEM_ID_F12,
+	ITEM_ID_NUMLOCK,
+	ITEM_ID_0_PAD,
+	ITEM_ID_1_PAD,
+	ITEM_ID_2_PAD,
+	ITEM_ID_3_PAD,
+	ITEM_ID_4_PAD,
+	ITEM_ID_5_PAD,
+	ITEM_ID_6_PAD,
+	ITEM_ID_7_PAD,
+	ITEM_ID_8_PAD,
+	ITEM_ID_9_PAD,
+	ITEM_ID_DEL_PAD,
+	ITEM_ID_PLUS_PAD,
+	ITEM_ID_MINUS_PAD,
+	ITEM_ID_INSERT,
+	ITEM_ID_DEL,
+	ITEM_ID_HOME,
+	ITEM_ID_END,
+	ITEM_ID_PGUP,
+	ITEM_ID_PGDN,
+	ITEM_ID_UP,
+	ITEM_ID_DOWN,
+	ITEM_ID_LEFT,
+	ITEM_ID_RIGHT,
+	ITEM_ID_PAUSE,
+	ITEM_ID_CANCEL
+};
+
+
+
+/***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
+
+struct _ui_mess_private
+{
+	int active;
+	int use_natural_keyboard;
+	UINT8 non_char_keys_down[(ARRAY_LENGTH(non_char_keys) + 7) / 8];
+};
+
+
+
+/***************************************************************************
+    IMPLEMENTATION
+***************************************************************************/
+
+/*-------------------------------------------------
+    ui_mess_init - initialize the MESS-specific
+	UI
+-------------------------------------------------*/
+
+void ui_mess_init(running_machine *machine)
+{
+	/* allocate memory for our data structure */
+	machine->ui_mess_data = auto_malloc(sizeof(*machine->ui_mess_data));
+	memset(machine->ui_mess_data, 0, sizeof(*machine->ui_mess_data));
+
+	/* retrieve options */
+	machine->ui_mess_data->use_natural_keyboard = options_get_bool(mame_options(), OPTION_NATURAL_KEYBOARD);
 }
 
-void mess_ui_update(running_machine *machine)
-{
-	static int ui_toggle_key = 0;
 
-	int toggled = 0;
+
+/*-------------------------------------------------
+    process_natural_keyboard - processes any
+	natural keyboard input
+-------------------------------------------------*/
+
+static void process_natural_keyboard(running_machine *machine)
+{
+	ui_event event;
+	int i, pressed;
+	input_item_id itemid;
+	input_code code;
+	UINT8 *key_down_ptr;
+	UINT8 key_down_mask;
+
+	/* loop while we have interesting events */
+	while (ui_input_pop_event(machine, &event))
+	{
+		/* if this was a UI_EVENT_CHAR event, post it */
+		if (event.event_type == UI_EVENT_CHAR)
+			inputx_postc(machine, event.ch);
+	}
+
+	/* process natural keyboard keys that don't get UI_EVENT_CHARs */
+	for (i = 0; i < ARRAY_LENGTH(non_char_keys); i++)
+	{
+		/* identify this keycode */
+		itemid = non_char_keys[i];
+		code = input_code_from_input_item_id(itemid);
+
+		/* ...and determine if it is pressed */
+		pressed = input_code_pressed(code);
+
+		/* figure out whey we are in the key_down map */
+		key_down_ptr = &machine->ui_mess_data->non_char_keys_down[i / 8];
+		key_down_mask = 1 << (i % 8);
+
+		if (pressed && !(*key_down_ptr & key_down_mask))
+		{
+			/* this key is now down */
+			*key_down_ptr |= key_down_mask;
+
+			/* post the key */
+			inputx_postc(machine, UCHAR_MAMEKEY_BEGIN + code);
+		}
+		else if (!pressed && (*key_down_ptr & key_down_mask))
+		{
+			/* this key is now up */
+			*key_down_ptr &= ~key_down_mask;
+		}
+	}
+}
+
+
+
+/*-------------------------------------------------
+    ui_mess_handler_ingame - function to determine
+	if the builtin UI should be disabled
+-------------------------------------------------*/
+
+int ui_mess_handler_ingame(running_machine *machine)
+{
+	int ui_disabled;
 	const device_config *dev;
 
-	/* traditional MESS interface */
-	if (machine->gamedrv->flags & GAME_COMPUTER)
+	/* run display routine for devices */
+	if (mame_get_phase(machine) == MAME_PHASE_RUNNING)
 	{
-		if( input_ui_pressed(machine, IPT_UI_TOGGLE_UI) )
+		for (dev = image_device_first(machine->config); dev != NULL; dev = image_device_next(dev))
 		{
-			if( !ui_toggle_key )
+			device_display_func display = (device_display_func) device_get_info_fct(dev, DEVINFO_FCT_DISPLAY);
+			if (display != NULL)
 			{
-				toggled = 1;
-				ui_toggle_key = 1;
-				ui_active = !ui_active;
+				(*display)(dev);
 			}
 		}
-		else
-		{
-			if (ui_toggle_key)
-			{
-				toggled = 1;
-			}
-			ui_toggle_key = 0;
-		}
+	}
 
-		if (ui_active)
+	/* determine if we should disable the rest of the UI */
+	ui_disabled = ui_mess_use_new_ui(machine)
+		|| ((machine->gamedrv->flags & GAME_COMPUTER) && !machine->ui_mess_data->active);
+
+
+	/* is ScrLk UI toggling applicable here? */
+	if (!ui_mess_use_new_ui(machine) && (machine->gamedrv->flags & GAME_COMPUTER))
+	{
+		/* are we toggling the UI with ScrLk? */
+		if (ui_input_pressed(machine, IPT_UI_TOGGLE_UI))
 		{
-			if (toggled)
+			/* toggle the UI */
+			machine->ui_mess_data->active = !machine->ui_mess_data->active;
+
+			/* display a popup indicating the new status */
+			if (machine->ui_mess_data->active)
 			{
-				popmessage("%s\n%s\n%s\n%s\n%s\n%s\n",
+				ui_popup_time(2, "%s\n%s\n%s\n%s\n%s\n%s\n",
 					ui_getstring(UI_keyb1),
 					ui_getstring(UI_keyb2),
 					ui_getstring(UI_keyb3),
@@ -60,12 +200,9 @@ void mess_ui_update(running_machine *machine)
 					ui_getstring(UI_keyb2),
 					ui_getstring(UI_keyb7));
 			}
-		}
-		else
-		{
-			if (toggled)
+			else
 			{
-				popmessage("%s\n%s\n%s\n%s\n%s\n%s\n",
+				ui_popup_time(2, "%s\n%s\n%s\n%s\n%s\n%s\n",
 					ui_getstring(UI_keyb1),
 					ui_getstring(UI_keyb2),
 					ui_getstring(UI_keyb4),
@@ -76,45 +213,44 @@ void mess_ui_update(running_machine *machine)
 		}
 	}
 
-	/* run display routine for device */
-	if (mame_get_phase(machine) == MAME_PHASE_RUNNING)
+	/* is the natural keyboard enabled? */
+	if (ui_mess_get_use_natural_keyboard(machine) && (mame_get_phase(machine) == MAME_PHASE_RUNNING))
+		process_natural_keyboard(machine);
+
+	/* MESS-specific UI; provided that the UI is not disabled */
+	if (!ui_disabled)
 	{
-		for (dev = image_device_first(machine->config); dev != NULL; dev = image_device_next(dev))
-		{
-			device_display_func display = (device_display_func) device_get_info_fct(dev, DEVINFO_FCT_DISPLAY);
-			if (display != NULL)
-			{
-				display(dev);
-			}
-		}
+		/* paste command */
+		if (ui_input_pressed(machine, IPT_UI_PASTE))
+			ui_mess_paste(machine);
 	}
+
+	return ui_disabled;
 }
 
 
 
-/*************************************
- *
- *  Image info
- *
- *************************************/
+/*-------------------------------------------------
+    image_info_astring - populate an allocated
+    string with the image info text
+-------------------------------------------------*/
 
-int ui_sprintf_image_info(running_machine *machine, char *buf)
+static astring *image_info_astring(running_machine *machine, astring *string)
 {
-	char *dst = buf;
 	const device_config *img;
 
-	dst += sprintf(dst, "%s\n\n", machine->gamedrv->description);
+	astring_printf(string, "%s\n\n", machine->gamedrv->description);
 
 	if (mess_ram_size > 0)
 	{
 		char buf2[RAM_STRING_BUFLEN];
-		dst += sprintf(dst, "RAM: %s\n\n", ram_string(buf2, mess_ram_size));
+		astring_catprintf(string, "RAM: %s\n\n", ram_string(buf2, mess_ram_size));
 	}
 
 	for (img = image_device_first(machine->config); img != NULL; img = image_device_next(img))
 	{
 		const char *name = image_filename(img);
-		if( name )
+		if (name != NULL)
 		{
 			const char *base_filename;
 			const char *info;
@@ -124,65 +260,69 @@ int ui_sprintf_image_info(running_machine *machine, char *buf)
 			base_filename_noextension = strip_extension(base_filename);
 
 			/* display device type and filename */
-			dst += sprintf(dst,"%s: %s\n", image_typename_id(img), base_filename);
+			astring_catprintf(string, "%s: %s\n", image_typename_id(img), base_filename);
 
 			/* display long filename, if present and doesn't correspond to name */
 			info = image_longname(img);
 			if (info && (!base_filename_noextension || mame_stricmp(info, base_filename_noextension)))
-				dst += sprintf(dst,"%s\n", info);
+				astring_catprintf(string, "%s\n", info);
 
 			/* display manufacturer, if available */
 			info = image_manufacturer(img);
-			if (info)
+			if (info != NULL)
 			{
-				dst += sprintf(dst,"%s", info);
+				astring_catprintf(string, "%s", info);
 				info = stripspace(image_year(img));
 				if (info && *info)
-					dst += sprintf(dst,", %s", info);
-				dst += sprintf(dst,"\n");
+					astring_catprintf(string, ", %s", info);
+				astring_catprintf(string,"\n");
 			}
 
 			/* display playable information, if available */
 			info = image_playable(img);
-			if (info)
-				dst += sprintf(dst,"%s\n", info);
+			if (info != NULL)
+				astring_catprintf(string, "%s\n", info);
 
-			if (base_filename_noextension)
+			if (base_filename_noextension != NULL)
 				free(base_filename_noextension);
 		}
 		else
 		{
-			dst += sprintf(dst,"%s: ---\n", image_typename_id(img));
+			astring_catprintf(string, "%s: ---\n", image_typename_id(img));
 		}
 	}
-	return dst - buf;
+	return string;
 }
 
 
 
-UINT32 ui_menu_image_info(running_machine *machine, UINT32 state)
+/*-------------------------------------------------
+    ui_menu_image_info - menu that shows info on
+	all loaded images
+-------------------------------------------------*/
+
+void ui_menu_image_info(running_machine *machine, ui_menu *menu, void *parameter, void *state)
 {
-	char buf[2048];
-	char *bufptr = buf;
-	UINT32 selected = 0;
+	/* if the menu isn't built, populate now */
+	if (!ui_menu_populated(menu))
+	{
+		astring *tempstring = image_info_astring(machine, astring_alloc());
+		ui_menu_item_append(menu, astring_c(tempstring), NULL, MENU_FLAG_MULTILINE, NULL);
+		astring_free(tempstring);
+	}
 
-	/* add the game info */
-	bufptr += ui_sprintf_image_info(machine, bufptr);
-
-	/* make it look like a menu */
-	bufptr += sprintf(bufptr, "\n\t%s %s %s", ui_getstring(UI_lefthilight), ui_getstring(UI_returntomain), ui_getstring(UI_righthilight));
-
-	/* draw the text */
-	ui_draw_message_window(buf);
-
-	/* handle the keys */
-	ui_menu_generic_keys(machine, &selected, 1, 0);
-	return selected;
+	/* process the menu */
+	ui_menu_process(menu, 0);
 }
 
 
 
-int mess_use_new_ui(void)
+/*-------------------------------------------------
+    ui_mess_use_new_ui - determines if the "new ui"
+	is in use
+-------------------------------------------------*/
+
+int ui_mess_use_new_ui(running_machine *machine)
 {
 #if (defined(WIN32) || defined(_MSC_VER)) && !defined(SDLMAME_WIN32)
 	if (options_get_bool(mame_options(), "newui"))
@@ -193,18 +333,11 @@ int mess_use_new_ui(void)
 
 
 
-int mess_disable_builtin_ui(running_machine *machine)
-{
-	return mess_use_new_ui() || ((machine->gamedrv->flags & GAME_COMPUTER) && !mess_ui_active());
-}
-
-
-
 /*-------------------------------------------------
-    ui_paste - does a paste from the keyboard
+    ui_mess_paste - does a paste from the keyboard
 -------------------------------------------------*/
 
-void ui_paste(running_machine *machine)
+void ui_mess_paste(running_machine *machine)
 {
 	/* retrieve the clipboard text */
 	char *text = osd_get_clipboard_text();
@@ -218,4 +351,40 @@ void ui_paste(running_machine *machine)
 		/* free the string */
 		free(text);
 	}
+}
+
+
+
+/*-------------------------------------------------
+    ui_mess_keyboard_disabled - returns whether
+	IPT_KEYBOARD input should be disabled
+-------------------------------------------------*/
+
+int ui_mess_keyboard_disabled(running_machine *machine)
+{
+	return ui_mess_get_use_natural_keyboard(machine);
+}
+
+
+
+/*-------------------------------------------------
+    ui_mess_get_use_natural_keyboard - returns
+	whether the natural keyboard is active
+-------------------------------------------------*/
+
+int ui_mess_get_use_natural_keyboard(running_machine *machine)
+{
+	return machine->ui_mess_data->use_natural_keyboard;
+}
+
+
+
+/*-------------------------------------------------
+    ui_mess_set_use_natural_keyboard - specifies
+	whether the natural keyboard is active
+-------------------------------------------------*/
+
+void ui_mess_set_use_natural_keyboard(running_machine *machine, int use_natural_keyboard)
+{
+	machine->ui_mess_data->use_natural_keyboard = use_natural_keyboard;
 }

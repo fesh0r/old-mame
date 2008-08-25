@@ -145,7 +145,7 @@ UINT8 c16_m7501_port_read(void)
 
 static void c16_bankswitch (running_machine *machine)
 {
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 	memory_set_bankptr(9, mess_ram);
 
 	switch (lowrom)
@@ -452,7 +452,7 @@ static void c16_common_driver_init (running_machine *machine)
 	tpi6525[3].c.read=c1551_1_read_handshake;
 	tpi6525[3].c.output=c1551_1_write_handshake;
 
-	rom = memory_region(machine, REGION_CPU1);
+	rom = memory_region(machine, "main");
 	c16_memory_10000 = rom + 0x10000;
 	c16_memory_14000 = rom + 0x14000;
 	c16_memory_18000 = rom + 0x18000;
@@ -621,7 +621,7 @@ DEVICE_IMAGE_LOAD(c16_rom)
 
 static int c16_rom_load(const device_config *image)
 {
-	UINT8 *mem = memory_region(image->machine, REGION_CPU1);
+	UINT8 *mem = memory_region(image->machine, "main");
 	int size, read_;
 	const char *filetype;
 	static unsigned int addr = 0;
@@ -657,14 +657,13 @@ static int c16_rom_load(const device_config *image)
 INTERRUPT_GEN( c16_frame_interrupt )
 {
 	int value, i;
-	char port[6];
+	static const char *c16ports[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7" };
 
 	/* Lines 0-7 : common keyboard */
-	for (i=0; i<8; i++)
+	for (i = 0; i < 8; i++)
 	{
 		value = 0xff;
-		sprintf(port, "ROW%d", i);
-		value &= ~input_port_read(machine, port);
+		value &= ~input_port_read(machine, c16ports[i]);
 		keyline[i] = value;
 	}
 

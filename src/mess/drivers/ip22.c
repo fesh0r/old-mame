@@ -83,15 +83,12 @@ static const struct pit8253_config ip22_pit8254_config =
 	{
 		{
 			1000000,				/* Timer 0: 1MHz */
-			NULL,
 			NULL
 		}, {
 			1000000,				/* Timer 1: 1MHz */
-			NULL,
 			NULL
 		}, {
 			1000000,				/* Timer 2: 1MHz */
-			NULL,
 			NULL
 		}
 	}
@@ -1208,7 +1205,7 @@ static WRITE32_HANDLER( hpc3_pbusdma_w )
 
 static ADDRESS_MAP_START( ip225015_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE( 0x00000000, 0x0007ffff ) AM_READWRITE( SMH_BANK1, SMH_BANK1 )	/* mirror of first 512k of main RAM */
-	AM_RANGE( 0x08000000, 0x0fffffff ) AM_RAM AM_SHARE(1) AM_BASE( &ip22_mainram ) AM_WRITE(ip22_write_ram)		/* 128 MB of main RAM */
+	AM_RANGE( 0x08000000, 0x0fffffff ) AM_SHARE(1) AM_BASE( &ip22_mainram ) AM_RAM_WRITE(ip22_write_ram)		/* 128 MB of main RAM */
 	AM_RANGE( 0x1f0f0000, 0x1f0f1fff ) AM_READWRITE( newport_rex3_r, newport_rex3_w )
 	AM_RANGE( 0x1fa00000, 0x1fa1ffff ) AM_READWRITE( mc_r, mc_w )
 	AM_RANGE( 0x1fb90000, 0x1fb9ffff ) AM_READWRITE( hpc3_hd_enet_r, hpc3_hd_enet_w )
@@ -1219,8 +1216,8 @@ static ADDRESS_MAP_START( ip225015_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE( 0x1fbd9000, 0x1fbd93ff ) AM_READWRITE( hpc3_pbus4_r, hpc3_pbus4_w )
 	AM_RANGE( 0x1fbd9800, 0x1fbd9bff ) AM_READWRITE( hpc3_pbus6_r, hpc3_pbus6_w )
 	AM_RANGE( 0x1fbe0000, 0x1fbe04ff ) AM_READWRITE( rtc_r, rtc_w )
-	AM_RANGE( 0x1fc00000, 0x1fc7ffff ) AM_ROM AM_REGION( REGION_USER1, 0 )
-	AM_RANGE( 0x20000000, 0x27ffffff ) AM_RAM AM_SHARE(1) AM_WRITE(ip22_write_ram)
+	AM_RANGE( 0x1fc00000, 0x1fc7ffff ) AM_ROM AM_REGION( "user1", 0 )
+	AM_RANGE( 0x20000000, 0x27ffffff ) AM_SHARE(1) AM_RAM_WRITE(ip22_write_ram)
 ADDRESS_MAP_END
 
 static UINT32 nIntCounter;
@@ -1422,8 +1419,8 @@ static void scsi_irq(running_machine *machine, int state)
 static const SCSIConfigTable dev_table =
 {
         1,                                      /* 1 SCSI device */
-        { { SCSI_ID_4, 0, SCSI_DEVICE_CDROM } }  /* SCSI ID 4, using CD 0, and it's a CD-ROM */
-//	  { SCSI_ID_2, 0, SCSI_DEVICE_CDROM } } /* SCSI ID 2, using HD 0, and it's a CD-ROM */
+        { { SCSI_ID_4, "cdrom", SCSI_DEVICE_CDROM } }  /* SCSI ID 4, using CD 0, and it's a CD-ROM */
+//	  { SCSI_ID_2, "cdrom", SCSI_DEVICE_CDROM } } /* SCSI ID 2, using HD 0, and it's a CD-ROM */
 };
 
 static const struct WD33C93interface scsi_intf =
@@ -1464,10 +1461,10 @@ static DRIVER_INIT( ip225015 )
 }
 
 static INPUT_PORTS_START( ip225015 )
-	PORT_START_TAG("IN0")	// unused IN0
-	PORT_START_TAG("DSW0")	// unused IN1
-	PORT_START_TAG("DSW1")	// unused IN2
-	PORT_START_TAG("DSW2")	// unused IN3
+	PORT_START("IN0")	// unused IN0
+	PORT_START("DSW0")	// unused IN1
+	PORT_START("DSW1")	// unused IN2
+	PORT_START("DSW2")	// unused IN3
 	PORT_INCLUDE( at_keyboard )		/* IN4 - IN11 */
 	PORT_INCLUDE( pc_mouse_microsoft )	/* IN12 - IN14 */
 INPUT_PORTS_END
@@ -1552,18 +1549,6 @@ static const mips3_config config =
 	32768	/* data cache size */
 };
 
-static void ip22_chdcd_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* CHD CD-ROM */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default: cdrom_device_getinfo(devclass, state, info); break;
-	}
-}
-
 #ifdef UNUSED_FUNCTION
 static void ip22_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -1579,7 +1564,7 @@ static void ip22_harddisk_getinfo(const mess_device_class *devclass, UINT32 stat
 #endif
 
 static MACHINE_DRIVER_START( ip225015 )
-	MDRV_CPU_ADD_TAG( "main", R5000BE, 50000000*3 )
+	MDRV_CPU_ADD( "main", R5000BE, 50000000*3 )
 	MDRV_CPU_CONFIG( config )
 	MDRV_CPU_PROGRAM_MAP( ip225015_map, 0 )
 	MDRV_CPU_VBLANK_INT("main", ip22_vbl)
@@ -1606,10 +1591,12 @@ static MACHINE_DRIVER_START( ip225015 )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DMADAC, 0)
+	MDRV_SOUND_ADD( "dmadac", DMADAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ADD( CDDA, 0 )
+	MDRV_SOUND_ADD( "cdda",  CDDA, 0 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+
+	MDRV_DEVICE_ADD( "cdrom", CDROM )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ip224613 )
@@ -1623,22 +1610,21 @@ static MACHINE_DRIVER_START( ip244415 )
 MACHINE_DRIVER_END
 
 ROM_START( ip225015 )
-	ROM_REGION( 0x80000, REGION_USER1, 0 )
+	ROM_REGION( 0x80000, "user1", 0 )
 	ROM_LOAD( "ip225015.bin", 0x000000, 0x080000, CRC(aee5502e) SHA1(9243fef0a3508790651e0d6d2705c887629b1280) )
 ROM_END
 
 ROM_START( ip224613 )
-	ROM_REGION( 0x80000, REGION_USER1, 0 )
+	ROM_REGION( 0x80000, "user1", 0 )
 	ROM_LOAD( "ip224613.bin", 0x000000, 0x080000, CRC(f1868b5b) SHA1(0dcbbd776e671785b9b65f3c6dbd609794a40157) )
 ROM_END
 
 ROM_START( ip244415 )
-	ROM_REGION( 0x80000, REGION_USER1, 0 )
+	ROM_REGION( 0x80000, "user1", 0 )
 	ROM_LOAD( "ip244415.bin", 0x000000, 0x080000, CRC(2f37825a) SHA1(0d48c573b53a307478820b85aacb57b868297ca3) )
 ROM_END
 
 static SYSTEM_CONFIG_START( ip225015 )
-	CONFIG_DEVICE(ip22_chdcd_getinfo)
 //  CONFIG_DEVICE(ip22_harddisk_getinfo)
 SYSTEM_CONFIG_END
 

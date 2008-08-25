@@ -52,13 +52,13 @@ static DEVICE_IMAGE_LOAD( apexc_cylinder )
 	if (apexc_cylinder.fd)
 	{	/* load RAM contents */
 
-		image_fread(apexc_cylinder.fd, memory_region(image->machine, REGION_CPU1), /*0x8000*/0x1000);
+		image_fread(apexc_cylinder.fd, memory_region(image->machine, "main"), /*0x8000*/0x1000);
 #ifdef LSB_FIRST
 		{	/* fix endianness */
 			UINT32 *RAM;
 			int i;
 
-			RAM = (UINT32 *) memory_region(image->machine, REGION_CPU1);
+			RAM = (UINT32 *) memory_region(image->machine, "main");
 
 			for (i=0; i < /*0x2000*/0x0400; i++)
 				RAM[i] = BIG_ENDIANIZE_INT32(RAM[i]);
@@ -83,14 +83,14 @@ static DEVICE_IMAGE_UNLOAD( apexc_cylinder )
 			UINT32 *RAM;
 			int i;
 
-			RAM = (UINT32 *) memory_region(image->machine, REGION_CPU1);
+			RAM = (UINT32 *) memory_region(image->machine, "main");
 
 			for (i=0; i < /*0x2000*/0x0400; i++)
 				RAM[i] = BIG_ENDIANIZE_INT32(RAM[i]);
 		}
 #endif
 		/* write */
-		image_fwrite(apexc_cylinder.fd, memory_region(image->machine, REGION_CPU1), /*0x8000*/0x1000);
+		image_fwrite(apexc_cylinder.fd, memory_region(image->machine, "main"), /*0x8000*/0x1000);
 	}
 }
 
@@ -267,7 +267,7 @@ enum
 /* fake input ports with keyboard keys */
 static INPUT_PORTS_START(apexc)
 
-	PORT_START_TAG("panel")	/* 0 : panel control */
+	PORT_START("panel")	/* 0 : panel control */
 	PORT_BIT(panel_run, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Run/Stop")                PORT_CODE(KEYCODE_ENTER)
 	PORT_BIT(panel_CR,  IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Read CR")                 PORT_CODE(KEYCODE_1_PAD)
 	PORT_BIT(panel_A,   IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Read A")                  PORT_CODE(KEYCODE_2_PAD)
@@ -277,7 +277,7 @@ static INPUT_PORTS_START(apexc)
 	PORT_BIT(panel_mem, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Read mem")                PORT_CODE(KEYCODE_6_PAD)
 	PORT_BIT(panel_write, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Write instead of read") PORT_CODE(KEYCODE_LSHIFT)
 
-	PORT_START_TAG("data1")	/* 1 : data edit #1 */
+	PORT_START("data1")	/* 1 : data edit #1 */
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Toggle bit #1")              PORT_CODE(KEYCODE_1)
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Toggle bit #2")              PORT_CODE(KEYCODE_2)
 	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Toggle bit #3")              PORT_CODE(KEYCODE_3)
@@ -295,7 +295,7 @@ static INPUT_PORTS_START(apexc)
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Toggle bit #15")             PORT_CODE(KEYCODE_T)
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Toggle bit #16")             PORT_CODE(KEYCODE_Y)
 
-	PORT_START_TAG("data2")	/* 2 : data edit #2 */
+	PORT_START("data2")	/* 2 : data edit #2 */
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Toggle bit #17")             PORT_CODE(KEYCODE_U)
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Toggle bit #18")             PORT_CODE(KEYCODE_I)
 	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("Toggle bit #19")             PORT_CODE(KEYCODE_O)
@@ -753,7 +753,7 @@ static DRIVER_INIT(apexc)
 		0x00
 	};
 
-	dst = memory_region(machine, REGION_GFX1);
+	dst = memory_region(machine, "gfx1");
 
 	memcpy(dst, fontdata6x8, apexcfontdata_size);
 }
@@ -770,7 +770,7 @@ static const gfx_layout fontlayout =
 };
 
 static GFXDECODE_START( apexc )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, fontlayout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, fontlayout, 0, 1 )
 GFXDECODE_END
 
 
@@ -793,7 +793,7 @@ static MACHINE_DRIVER_START(apexc)
 
 	/* basic machine hardware */
 	/* APEXC CPU @ 2.0 kHz (memory word clock frequency) */
-	MDRV_CPU_ADD(APEXC, 2000)
+	MDRV_CPU_ADD("main", APEXC, 2000)
 	/*MDRV_CPU_CONFIG(NULL)*/
 	MDRV_CPU_PROGRAM_MAP(apexc_mem_map, 0)
 	MDRV_CPU_IO_MAP(apexc_io_map, 0)
@@ -822,10 +822,10 @@ MACHINE_DRIVER_END
 
 ROM_START(apexc)
 	/*CPU memory space*/
-	ROM_REGION32_BE(0x10000, REGION_CPU1, ROMREGION_ERASEFF)
+	ROM_REGION32_BE(0x10000, "main", ROMREGION_ERASEFF)
 		/* Note this computer has no ROM... */
 
-	ROM_REGION(apexcfontdata_size, REGION_GFX1, ROMREGION_ERASEFF)
+	ROM_REGION(apexcfontdata_size, "gfx1", ROMREGION_ERASEFF)
 		/* space filled with our font */
 ROM_END
 

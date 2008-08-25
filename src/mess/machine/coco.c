@@ -514,7 +514,7 @@ static int generic_pak_load(const device_config *image, int rambase_index, int r
 	pak_decodedtrailer trailer;
 	int trailer_load = 0;
 
-	ROM = memory_region(image->machine, REGION_CPU1);
+	ROM = memory_region(image->machine, "main");
 	rambase = &mess_ram[rambase_index];
 	rombase = &ROM[rombase_index];
 	pakbase = &ROM[pakbase_index];
@@ -705,25 +705,25 @@ static int generic_rom_load(const device_config *image, UINT8 *dest, UINT16 dest
 
 DEVICE_IMAGE_LOAD(coco_rom)
 {
-	UINT8 *ROM = memory_region(image->machine, REGION_CPU1);
+	UINT8 *ROM = memory_region(image->machine, "main");
 	return generic_rom_load(image, &ROM[0x4000], 0x4000);
 }
 
 DEVICE_IMAGE_UNLOAD(coco_rom)
 {
-	UINT8 *ROM = memory_region(image->machine, REGION_CPU1);
+	UINT8 *ROM = memory_region(image->machine, "main");
 	memset(&ROM[0x4000], 0, 0x4000);
 }
 
 DEVICE_IMAGE_LOAD(coco3_rom)
 {
-	UINT8 *ROM = memory_region(image->machine, REGION_CPU1);
+	UINT8 *ROM = memory_region(image->machine, "main");
 	return generic_rom_load(image, &ROM[0x8000], 0x8000);
 }
 
 DEVICE_IMAGE_UNLOAD(coco3_rom)
 {
-	UINT8 *ROM = memory_region(image->machine, REGION_CPU1);
+	UINT8 *ROM = memory_region(image->machine, "main");
 	memset(&ROM[0x8000], 0, 0x8000);
 }
 
@@ -1143,9 +1143,9 @@ static const device_config *bitbanger_image(running_machine *machine)
 	return device_list_find_by_tag(machine->config->devicelist, BITBANGER, "bitbanger");
 }
 
-static const device_config *printer_image(void)
+static const device_config *printer_image(running_machine *machine)
 {
-	return image_from_devtype_and_index(IO_PRINTER, 0);
+	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
 }
 
 static int get_soundmux_status(void)
@@ -1197,19 +1197,19 @@ static void coco_sound_update(void)
 	{
 		case SOUNDMUX_STATUS_ENABLE:
 			/* DAC */
-			DAC_data_w(0, pia1_pb1 + (dac >> 1) );  /* Mixing the two sources */
+			dac_data_w(0, pia1_pb1 + (dac >> 1) );  /* Mixing the two sources */
 			break;
 		case SOUNDMUX_STATUS_ENABLE | SOUNDMUX_STATUS_SEL1:
 			/* CSN */
-			DAC_data_w(0, pia1_pb1); /* Mixing happens elsewhere */
+			dac_data_w(0, pia1_pb1); /* Mixing happens elsewhere */
 			break;
 		case SOUNDMUX_STATUS_ENABLE | SOUNDMUX_STATUS_SEL2:
 			/* CART Sound */
-			DAC_data_w(0, pia1_pb1); /* To do: mix in cart signal */
+			dac_data_w(0, pia1_pb1); /* To do: mix in cart signal */
 			break;
 		default:
 			/* This pia line is always connected to the output */
-			DAC_data_w(0, pia1_pb1);
+			dac_data_w(0, pia1_pb1);
 			break;
 	}
 }
@@ -1465,7 +1465,7 @@ static void printer_out_dragon(int data)
 	/* If strobe bit is high send data from pia0 port b to dragon parallel printer */
 	if (data & 0x02)
 	{
-		printer_output(printer_image(), pia_get_output_b(0));
+		printer_output(printer_image(Machine), pia_get_output_b(0));
 	}
 }
 
@@ -1611,13 +1611,13 @@ static WRITE8_HANDLER( dgnalpha_pia2_pa_w )
 		case 0x00	: 		/* Inactive, do nothing */
 			break;
 		case 0x01	: 		/* Write to selected port */
-			AY8910_write_port_0_w(machine, 0, pia_get_output_b(2));
+			ay8910_write_port_0_w(machine, 0, pia_get_output_b(2));
 			break;
 		case 0x02	: 		/* Read from selected port */
-			pia_set_input_b(2, AY8910_read_port_0_r(machine, 0));
+			pia_set_input_b(2, ay8910_read_port_0_r(machine, 0));
 			break;
 		case 0x03	:		/* Select port to write to */
-			AY8910_control_port_0_w(machine, 0, pia_get_output_b(2));
+			ay8910_control_port_0_w(machine, 0, pia_get_output_b(2));
 			break;
 	}
 }
@@ -2841,7 +2841,7 @@ static void generic_init_machine(running_machine *machine, const machine_init_in
 	mux_sel2_timer = timer_alloc(coco_update_sel2_timerproc, NULL);
 
 	/* setup ROM */
-	coco_rom = memory_region(machine, REGION_CPU1);
+	coco_rom = memory_region(machine, "main");
 
 	/* setup default rom bank */
 	bas_rom_bank = coco_rom;

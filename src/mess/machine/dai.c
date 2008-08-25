@@ -62,15 +62,12 @@ static UINT8 dai_keyboard_read (void)
 {
 	UINT8 data = 0x00;
 	int i;
-	char port[5];
+	static const char *keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
 	for (i = 0; i < 8; i++)
 	{
 		if (dai_keyboard_scan_mask & (1 << i))
-		{
-			sprintf(port, "IN%d", i);
-			data |= input_port_read(Machine, port);
-		}
+			data |= input_port_read(Machine, keynames[i]);
 	}
 	return data;
 }
@@ -106,23 +103,38 @@ const ppi8255_interface dai_ppi82555_intf =
 	NULL	/* Port C write */
 };
 
+static PIT8253_OUTPUT_CHANGED(dai_pit_out0)
+{
+	dai_set_input(0, state);
+}
+
+
+static PIT8253_OUTPUT_CHANGED(dai_pit_out1)
+{
+	dai_set_input(1, state);
+}
+
+
+static PIT8253_OUTPUT_CHANGED(dai_pit_out2)
+{
+	dai_set_input(2, state);
+}
+
+
 const struct pit8253_config dai_pit8253_intf =
 {
 	{
 		{
 			2000000,
-			NULL,
-			dai_sh_change_clock
+			dai_pit_out0
 		},
 		{
 			2000000,
-			NULL,
-			dai_sh_change_clock
+			dai_pit_out1
 		},
 		{
 			2000000,
-			NULL,
-			dai_sh_change_clock
+			dai_pit_out2
 		}
 	}
 };
@@ -132,7 +144,7 @@ MACHINE_START( dai )
 	memory_set_opbase_handler(0, dai_opbaseoverride);
 
 	memory_set_bankptr(1, mess_ram);
-	memory_configure_bank(2, 0, 4, memory_region(machine, REGION_CPU1) + 0x010000, 0x1000);
+	memory_configure_bank(2, 0, 4, memory_region(machine, "main") + 0x010000, 0x1000);
 
 	tms5501_init(0, &dai_tms5501_init_param);
 

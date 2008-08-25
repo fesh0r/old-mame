@@ -7,7 +7,7 @@
 #include "video/cdp1869.h"
 #include "video/mc6845.h"
 #include "includes/comx35.h"
-#include "rescap.h"
+#include "machine/rescap.h"
 
 enum
 {
@@ -50,7 +50,7 @@ static const device_config *printer_device(running_machine *machine)
 
 static int expansion_box_installed(running_machine *machine)
 {
-	return (memory_region(machine, REGION_CPU1)[0xe800] != 0xff);
+	return (memory_region(machine, CDP1802_TAG)[0xe800] != 0x00);
 }
 
 static int dos_card_active(running_machine *machine)
@@ -287,12 +287,12 @@ static void printer_w(running_machine *machine, UINT8 data)
 static void get_active_bank(running_machine *machine, UINT8 data)
 {
 	comx35_state *state = machine->driver_data;
+	static const char *slotnames[] = { "SLOT1", "SLOT2", "SLOT3", "SLOT4" };
 
 	if (expansion_box_installed(machine))
 	{
 		// expansion box
 
-		char port[6];
 		int i;
 
 		for (i = 1; i < 5; i++)
@@ -305,11 +305,7 @@ static void get_active_bank(running_machine *machine, UINT8 data)
 		}
 
 		if (state->slot > 0)
-		{
-			sprintf(port, "SLOT%d", state->slot);
-
-			state->bank = input_port_read(machine, port);
-		}
+			state->bank = input_port_read(machine, slotnames[state->slot]);
 	}
 	else
 	{
@@ -483,7 +479,6 @@ WRITE8_HANDLER( comx35_io_w )
 		break;
 
 	case BANK_JOYCARD:
-		data = input_port_read(machine, "JOY2");
 		break;
 
 	case BANK_80_COLUMNS:
@@ -510,7 +505,7 @@ static OPBASE_HANDLER( comx35_opbase_handler )
 		if (dos_card_active(machine))
 		{
 			// read opcode from DOS ROM
-			opbase->rom = opbase->ram = memory_region(machine, REGION_USER1);
+			opbase->rom = opbase->ram = memory_region(machine, "user1");
 			return ~0;
 		}
 	}
@@ -527,14 +522,34 @@ MACHINE_START( comx35p )
 {
 	comx35_state *state = machine->driver_data;
 
-	// opbase handling for DOS Card
+	/* opbase handling for DOS Card */
 
 	memory_set_opbase_handler(0, comx35_opbase_handler);
 
-	// card slot banking
+	/* BASIC ROM banking */
 
-	memory_configure_bank(1, 0, 1, memory_region(machine, REGION_CPU1), 0xc000);
-	memory_configure_bank(1, BANK_FLOPPY, 7, memory_region(machine, REGION_USER1), 0x2000);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, SMH_BANK2, SMH_UNMAP);
+	memory_configure_bank(2, 0, 1, memory_region(machine, CDP1802_TAG) + 0x1000, 0); // normal ROM
+	memory_configure_bank(2, 1, 1, memory_region(machine, CDP1802_TAG) + 0xe000, 0); // expansion box ROM
+
+	memory_configure_bank(3, 0, 1, memory_region(machine, CDP1802_TAG) + 0xe000, 0);
+	memory_set_bank(3, 0);
+
+	if (expansion_box_installed(machine))
+	{
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_BANK3, SMH_UNMAP);
+		memory_set_bank(2, 1);
+	}
+	else
+	{
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_set_bank(2, 0);
+	}
+
+	/* card slot banking */
+
+	memory_configure_bank(1, 0, 1, memory_region(machine, CDP1802_TAG) + 0xc000, 0);
+	memory_configure_bank(1, BANK_FLOPPY, 7, memory_region(machine, "user1"), 0x2000);
 	memory_configure_bank(1, BANK_RAMCARD, 4, mess_ram, 0x2000);
 
 	memory_set_bank(1, 0);
@@ -544,17 +559,19 @@ MACHINE_START( comx35p )
 		state->bank = read_expansion(machine);
 	}
 
-	// allocate reset timer
+	/* allocate reset timer */
 	
 	state->reset_timer = timer_alloc(reset_tick, NULL);
 
-	// screen format
+	/* screen format */
 
 	state->pal_ntsc = CDP1869_PAL;
 
+	/* initialize floppy disc controller */
+
 	wd17xx_init(machine, WD_TYPE_1770, comx35_fdc_callback, NULL);
 
-	// register save states
+	/* register for state saving */
 
 	state_save_register_postload(machine, comx35_state_save_postload, NULL);
 

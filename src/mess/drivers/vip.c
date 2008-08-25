@@ -60,7 +60,7 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( vip )
-	PORT_START_TAG("KEYPAD")
+	PORT_START("KEYPAD")
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("0 MW") PORT_CODE(KEYCODE_0) PORT_CODE(KEYCODE_0_PAD)
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1) PORT_CODE(KEYCODE_1_PAD)
 	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2") PORT_CODE(KEYCODE_2) PORT_CODE(KEYCODE_2_PAD)
@@ -78,7 +78,7 @@ static INPUT_PORTS_START( vip )
 	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E)
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F TW") PORT_CODE(KEYCODE_F)
 
-	PORT_START_TAG("RUN")
+	PORT_START("RUN")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Run/Reset") PORT_CODE(KEYCODE_R) PORT_TOGGLE
 INPUT_PORTS_END
 
@@ -190,7 +190,7 @@ static CDP1802_INTERFACE( vip_config )
 
 static MACHINE_START( vip )
 {
-	UINT8 *ram = memory_region(machine, REGION_CPU1);
+	UINT8 *ram = memory_region(machine, "main");
 	UINT16 addr;
 
 	state_save_register_global(keylatch);
@@ -211,7 +211,7 @@ static MACHINE_START( vip )
 		ram[addr] = mame_rand(machine) & 0xff;
 	}
 
-	memory_configure_bank(1, 0, 2, memory_region(machine, REGION_CPU1), 0x8000);
+	memory_configure_bank(1, 0, 2, memory_region(machine, "main"), 0x8000);
 }
 
 static MACHINE_RESET( vip )
@@ -225,7 +225,7 @@ static MACHINE_RESET( vip )
 
 static MACHINE_DRIVER_START( vip )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(CDP1802, XTAL/2)
+	MDRV_CPU_ADD("main", CDP1802, XTAL/2)
 	MDRV_CPU_PROGRAM_MAP(vip_map, 0)
 	MDRV_CPU_IO_MAP(vip_io_map, 0)
 	MDRV_CPU_CONFIG(vip_config)
@@ -247,7 +247,7 @@ static MACHINE_DRIVER_START( vip )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(BEEP, 0)
+	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* devices */
@@ -257,7 +257,7 @@ MACHINE_DRIVER_END
 /* ROMs */
 
 ROM_START( vip )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cdpr566.u10", 0x8000, 0x0200, CRC(5be0a51f) SHA1(40266e6d13e3340607f8b3dcc4e91d7584287c06) )
 ROM_END
 
@@ -269,7 +269,7 @@ static QUICKLOAD_LOAD( vip )
 
 	if (size < 0x8000)
 	{
-		if (image_fread(image, memory_region(image->machine, REGION_CPU1), size) != size)
+		if (image_fread(image, memory_region(image->machine, "main"), size) != size)
 		{
 			return INIT_FAIL;
 		}

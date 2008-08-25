@@ -78,10 +78,10 @@ static NVRAM_HANDLER(93C56)
 		}
 		else
 		{
-			int length;
-			UINT8 *dat;
+			UINT32 length;
+			void *dat;
 
-			dat = eeprom_get_data_pointer(&length);
+			dat = eeprom_get_data_pointer(&length, NULL);
 			memset(dat, 0, length);
 		}
 	}
@@ -539,7 +539,7 @@ static ADDRESS_MAP_START( ip204415_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE( 0x1fa00000, 0x1fa1ffff ) AM_READWRITE( mc_r, mc_w )
 	AM_RANGE( 0x1fb80000, 0x1fb8ffff ) AM_READWRITE( hpc_r, hpc_w )
 	AM_RANGE( 0x1fbd9000, 0x1fbd903f ) AM_READWRITE( int_r, int_w )
-	AM_RANGE( 0x1fc00000, 0x1fc7ffff ) AM_ROM AM_SHARE(2) AM_REGION( REGION_USER1, 0 )
+	AM_RANGE( 0x1fc00000, 0x1fc7ffff ) AM_ROM AM_SHARE(2) AM_REGION( "user1", 0 )
 	AM_RANGE( 0x80000000, 0x801fffff ) AM_RAM AM_SHARE(10)
 	AM_RANGE( 0x88000000, 0x88ffffff ) AM_RAM AM_SHARE(5)
 	AM_RANGE( 0xa0000000, 0xa01fffff ) AM_RAM AM_SHARE(10)
@@ -555,20 +555,6 @@ static ADDRESS_MAP_START( ip204415_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE( 0xbfc00000, 0xbfc7ffff ) AM_ROM AM_SHARE(2) /* BIOS Mirror */
 ADDRESS_MAP_END
 
-static MACHINE_RESET( ip204415 )
-{
-	mc_init(machine);
-
-	nHPC_MiscStatus = 0;
-	nHPC_ParBufPtr = 0;
-	nHPC_LocalIOReg0Mask = 0;
-	nHPC_LocalIOReg1Mask = 0;
-	nHPC_VMEIntMask0 = 0;
-	nHPC_VMEIntMask1 = 0;
-
-	nRTC_Temp = 0;
-}
-
 static void scsi_irq(running_machine *machine, int state)
 {
 }
@@ -576,7 +562,7 @@ static void scsi_irq(running_machine *machine, int state)
 static const SCSIConfigTable dev_table =
 {
         1,                                      /* 1 SCSI device */
-        { { SCSI_ID_6, 0, SCSI_DEVICE_CDROM } } /* SCSI ID 6, using CHD 0, and it's a CD-ROM */
+        { { SCSI_ID_6, "cdrom", SCSI_DEVICE_CDROM } } /* SCSI ID 6, using CHD 0, and it's a CD-ROM */
 };
 
 static const struct WD33C93interface scsi_intf =
@@ -592,26 +578,29 @@ static void ip204415_exit(running_machine *machine)
 
 static DRIVER_INIT( ip204415 )
 {
-	wd33c93_init(&scsi_intf);
 	add_exit_callback(machine, ip204415_exit);
 }
 
+static MACHINE_RESET( ip204415 )
+{
+	wd33c93_init(&scsi_intf);
+
+	mc_init(machine);
+
+	nHPC_MiscStatus = 0;
+	nHPC_ParBufPtr = 0;
+	nHPC_LocalIOReg0Mask = 0;
+	nHPC_LocalIOReg1Mask = 0;
+	nHPC_VMEIntMask0 = 0;
+	nHPC_VMEIntMask1 = 0;
+
+	nRTC_Temp = 0;
+}
+
 static INPUT_PORTS_START( ip204415 )
-	PORT_START
+	PORT_START("unused")
 	PORT_BIT ( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
-
-static void ip20_chdcd_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* CHD CD-ROM */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		default: cdrom_device_getinfo(devclass, state, info);
-	}
-}
 
 static const mips3_config config =
 {
@@ -620,7 +609,7 @@ static const mips3_config config =
 };
 
 static MACHINE_DRIVER_START( ip204415 )
-	MDRV_CPU_ADD_TAG( "main", R4600BE, 50000000*3 )
+	MDRV_CPU_ADD( "main", R4600BE, 50000000*3 )
 	MDRV_CPU_CONFIG( config )
 	MDRV_CPU_PROGRAM_MAP( ip204415_map, 0 )
 	MDRV_CPU_VBLANK_INT_HACK(ip20_update_chips, 10000)
@@ -642,20 +631,18 @@ static MACHINE_DRIVER_START( ip204415 )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD( CDDA, 0 )
+	MDRV_SOUND_ADD( "cdda", CDDA, 0 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	MDRV_DEVICE_ADD("scc", SCC8530)
+
+	MDRV_DEVICE_ADD( "cdrom", CDROM )
 MACHINE_DRIVER_END
 
 ROM_START( ip204415 )
-	ROM_REGION( 0x80000, REGION_USER1, 0 )
+	ROM_REGION( 0x80000, "user1", 0 )
 	ROM_LOAD( "ip204415.bin", 0x000000, 0x080000, CRC(940d960e) SHA1(596aba530b53a147985ff3f6f853471ce48c866c) )
 ROM_END
 
-static SYSTEM_CONFIG_START( ip204415 )
-	CONFIG_DEVICE(ip20_chdcd_getinfo)
-SYSTEM_CONFIG_END
-
-/*     YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
-COMP( 1993, ip204415, 0,        0,        ip204415, ip204415, ip204415, ip204415, "Silicon Graphics, Inc", "IRIS Indigo (R4400, 150MHz)", GAME_NOT_WORKING | GAME_NO_SOUND )
+/*    YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
+COMP( 1993, ip204415, 0,        0,        ip204415, ip204415, ip204415, 0, "Silicon Graphics, Inc", "IRIS Indigo (R4400, 150MHz)", GAME_NOT_WORKING | GAME_NO_SOUND )

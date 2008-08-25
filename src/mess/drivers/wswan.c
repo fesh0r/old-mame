@@ -80,18 +80,18 @@ static ADDRESS_MAP_START (wswan_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( wswan )
-	PORT_START_TAG("CURSX")		/* Cursors (X1-X4) */
+	PORT_START("CURSX")		/* Cursors (X1-X4) */
 	PORT_BIT( 0x1, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP) PORT_NAME("X1 - Up")
 	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN) PORT_NAME("X3 - Down")
 	PORT_BIT( 0x8, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT) PORT_NAME("X4 - Left")
 	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT) PORT_NAME("X2 - Right")
 
-	PORT_START_TAG("BUTTONS")	/* Buttons */
+	PORT_START("BUTTONS")	/* Buttons */
 	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_START1) PORT_NAME("Start")
 	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("Button A")
 	PORT_BIT( 0x8, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_NAME("Button B")
 
-	PORT_START_TAG("CURSY")		/* Cursors (Y1-Y4) */
+	PORT_START("CURSY")		/* Cursors (Y1-Y4) */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Y1 - Left") PORT_CODE(KEYCODE_A)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Y3 - Right") PORT_CODE(KEYCODE_D)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Y4 - Down") PORT_CODE(KEYCODE_S)
@@ -122,14 +122,14 @@ static PALETTE_INIT( wscolor ) {
 	}
 }
 
-static const struct CustomSound_interface wswan_sound_interface =
+static const custom_sound_interface wswan_sound_interface =
 {
 	wswan_sh_start
 };
 
 static MACHINE_DRIVER_START( wswan )
 	/* Basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", V30MZ, 3072000)
+	MDRV_CPU_ADD("main", V30MZ, 3072000)
 	MDRV_CPU_PROGRAM_MAP(wswan_mem, 0)
 	MDRV_CPU_IO_MAP(wswan_io, 0)
 	MDRV_CPU_VBLANK_INT_HACK(wswan_scanline_interrupt, 159)	/* 1 int each scanline */
@@ -156,7 +156,7 @@ static MACHINE_DRIVER_START( wswan )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(wswan_sound_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
@@ -202,12 +202,12 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 ROM_START( wswan )
-	ROM_REGION( 0x100000, REGION_CPU1, ROMREGION_ERASEFF )
+	ROM_REGION( 0x100000, "main", ROMREGION_ERASEFF )
 //  ROM_LOAD_OPTIONAL( "ws_bios.bin", 0x0000, 0x0001, NO_DUMP )
 ROM_END
 
 ROM_START( wscolor )
-	ROM_REGION( 0x100000, REGION_CPU1, ROMREGION_ERASEFF )
+	ROM_REGION( 0x100000, "main", ROMREGION_ERASEFF )
 //  ROM_LOAD_OPTIONAL( "wsc_bios.bin", 0x0000, 0x0001, NO_DUMP )
 ROM_END
 

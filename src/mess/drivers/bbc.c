@@ -117,7 +117,7 @@ static ADDRESS_MAP_START(bbca_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfec0, 0xfedf) AM_NOP													/*    fec0-fedf  uPD7002        1 Analogue to digital converter */
 	AM_RANGE(0xfee0, 0xfeff) AM_READ     (return8_FE    	                	)	/*    fee0-feff  Tube ULA       1 Tube system interface         */
 
-	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION(REGION_USER1, 0x13f00)				/*    ff00-ffff                 OS Rom (continued)              */
+	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION("user1", 0x13f00)				/*    ff00-ffff                 OS Rom (continued)              */
 ADDRESS_MAP_END
 
 
@@ -150,7 +150,7 @@ static ADDRESS_MAP_START(bbcb_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(uPD7002_r			, uPD7002_w		 	)	/*    fec0-fedf  uPD7002        Analogue to digital converter   */
 	AM_RANGE(0xfee0, 0xfeff) AM_READ	 (return8_FE						 	)	/*    fee0-feff  Tube ULA       Tube system interface           */
 
-	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION(REGION_USER1, 0x43f00)				/*    ff00-ffff                 OS Rom (continued)              */
+	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION("user1", 0x43f00)				/*    ff00-ffff                 OS Rom (continued)              */
 ADDRESS_MAP_END
 
 
@@ -184,7 +184,7 @@ static ADDRESS_MAP_START(bbcbp_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(uPD7002_r			, uPD7002_w			)	/*    fec0-fedf  uPD7002        Analogue to digital converter   */
 	AM_RANGE(0xfee0, 0xfeff) AM_READ	 (return8_FE							)	/*    fee0-feff  Tube ULA       Tube system interface           */
 
-	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION(REGION_USER1, 0x43f00)				/*    ff00-ffff                 OS Rom (continued)              */
+	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION("user1", 0x43f00)				/*    ff00-ffff                 OS Rom (continued)              */
 ADDRESS_MAP_END
 
 
@@ -220,7 +220,7 @@ static ADDRESS_MAP_START(bbcbp128_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(uPD7002_r			, uPD7002_w			)	/*    fec0-fedf  uPD7002        Analogue to digital converter   */
 	AM_RANGE(0xfee0, 0xfeff) AM_READ	 (return8_FE							)	/*    fee0-feff  Tube ULA       Tube system interface           */
 
-	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION(REGION_USER1, 0x43f00)				/*    ff00-ffff                 OS Rom (continued)              */
+	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION("user1", 0x43f00)				/*    ff00-ffff                 OS Rom (continued)              */
 ADDRESS_MAP_END
 
 
@@ -259,7 +259,7 @@ static ADDRESS_MAP_START(bbcm_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x9000, 0xbfff) AM_READWRITE(SMH_BANK5		, memorybm5_w		)	/*    9000-bfff                 Rest of paged ROM/RAM area      */
 
 	AM_RANGE(0xc000, 0xdfff) AM_READWRITE(SMH_BANK7		, memorybm7_w		)	/*    c000-dfff                 OS ROM or 8K of RAM       HAZEL */
-	AM_RANGE(0xe000, 0xfbff) AM_ROM AM_REGION(REGION_USER1, 0x42000)				/*    e000-fbff                 OS ROM                          */
+	AM_RANGE(0xe000, 0xfbff) AM_ROM AM_REGION("user1", 0x42000)				/*    e000-fbff                 OS ROM                          */
 
 	AM_RANGE(0xfc00, 0xfeff) AM_READWRITE(bbcm_r			, bbcm_w			)   /*    this is now processed directly because it can be ROM or hardware */
 	/*
@@ -284,7 +284,7 @@ static ADDRESS_MAP_START(bbcm_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE(0xfee0, 0xfeff) AM_READ     (return8_FE                            )         fee0-feff  Tube ULA       Tube system interface
     */
 
-	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION(REGION_USER1, 0x43f00)				/*    ff00-ffff                 OS Rom (continued)              */
+	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION("user1", 0x43f00)				/*    ff00-ffff                 OS Rom (continued)              */
 ADDRESS_MAP_END
 
 
@@ -312,7 +312,7 @@ Small note about natural keyboard support: currently,
 - "Shift Lock" is mapped to 'F12'                      */
 
 static INPUT_PORTS_START(bbca)
-	PORT_START_TAG("COL0")	/* KEYBOARD COLUMN 0 */
+	PORT_START("COL0")	/* KEYBOARD COLUMN 0 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_RSHIFT) PORT_CODE(KEYCODE_LSHIFT)		PORT_CHAR(UCHAR_SHIFT_1)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)	PORT_CODE(KEYCODE_Q)									PORT_CHAR('Q')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F0")			PORT_CODE(KEYCODE_0_PAD)		PORT_CHAR(UCHAR_MAMEKEY(F10))
@@ -322,7 +322,7 @@ static INPUT_PORTS_START(bbca)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_TAB)									PORT_CHAR('\t')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ESCAPE")		PORT_CODE(KEYCODE_ESC)			PORT_CHAR(UCHAR_MAMEKEY(ESC))
 
-	PORT_START_TAG("COL1")	/* KEYBOARD COLUMN 1 */
+	PORT_START("COL1")	/* KEYBOARD COLUMN 1 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("CTRL")		PORT_CODE(KEYCODE_LCONTROL)		PORT_CHAR(UCHAR_SHIFT_2)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_3)			PORT_CHAR('3') PORT_CHAR('#')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_W)			PORT_CHAR('W')
@@ -332,7 +332,7 @@ static INPUT_PORTS_START(bbca)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_Z)			PORT_CHAR('Z')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_1_PAD)		PORT_CHAR(UCHAR_MAMEKEY(F1))
 
-	PORT_START_TAG("COL2")	/* KEYBOARD COLUMN 2 */
+	PORT_START("COL2")	/* KEYBOARD COLUMN 2 */
 	PORT_DIPNAME(0x01, 0x01, "DIP 8 (Not Used)")
 	PORT_DIPSETTING(   0x00, DEF_STR( Off ))
 	PORT_DIPSETTING(   0x01, DEF_STR( On ))
@@ -344,7 +344,7 @@ static INPUT_PORTS_START(bbca)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_SPACE)		PORT_CHAR(' ')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_2_PAD)		PORT_CHAR(UCHAR_MAMEKEY(F2))
 
-	PORT_START_TAG("COL3")	/* KEYBOARD COLUMN 3 */
+	PORT_START("COL3")	/* KEYBOARD COLUMN 3 */
 	PORT_DIPNAME(0x01, 0x01, "DIP 7 (Not Used)")
 	PORT_DIPSETTING(   0x00, DEF_STR( Off ))
 	PORT_DIPSETTING(   0x01, DEF_STR( On ))
@@ -356,7 +356,7 @@ static INPUT_PORTS_START(bbca)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_V)			PORT_CHAR('V')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_3_PAD)		PORT_CHAR(UCHAR_MAMEKEY(F3))
 
-	PORT_START_TAG("COL4")	/* KEYBOARD COLUMN 4 */
+	PORT_START("COL4")	/* KEYBOARD COLUMN 4 */
 	PORT_DIPNAME(0x01, 0x01, "DIP 6 (Disc Speed 1)")
 	PORT_DIPSETTING(   0x00, DEF_STR( Off ))
 	PORT_DIPSETTING(   0x01, DEF_STR( On ))
@@ -368,7 +368,7 @@ static INPUT_PORTS_START(bbca)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_B)			PORT_CHAR('B')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_5_PAD)		PORT_CHAR(UCHAR_MAMEKEY(F5))
 
-	PORT_START_TAG("COL5")	/* KEYBOARD COLUMN 5 */
+	PORT_START("COL5")	/* KEYBOARD COLUMN 5 */
 	PORT_DIPNAME(0x01, 0x01, "DIP 5 (Disc Speed 0)")
 	PORT_DIPSETTING(   0x00, DEF_STR( Off ))
 	PORT_DIPSETTING(   0x01, DEF_STR( On ))
@@ -380,7 +380,7 @@ static INPUT_PORTS_START(bbca)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_M)			PORT_CHAR('M')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_6_PAD)		PORT_CHAR(UCHAR_MAMEKEY(F6))
 
-	PORT_START_TAG("COL6")	/* KEYBOARD COLUMN 6 */
+	PORT_START("COL6")	/* KEYBOARD COLUMN 6 */
 	PORT_DIPNAME(0x01, 0x01, "DIP 4 (Shift Break)")
 	PORT_DIPSETTING(   0x00, DEF_STR( Off ))
 	PORT_DIPSETTING(   0x01, DEF_STR( On ))
@@ -392,7 +392,7 @@ static INPUT_PORTS_START(bbca)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA)		PORT_CHAR(',') PORT_CHAR('<')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_8_PAD)		PORT_CHAR(UCHAR_MAMEKEY(F8))
 
-	PORT_START_TAG("COL7")	/* KEYBOARD COLUMN 7 */
+	PORT_START("COL7")	/* KEYBOARD COLUMN 7 */
 	PORT_DIPNAME(0x01, 0x01, "DIP 3 (Mode bit 2)")
 	PORT_DIPSETTING(   0x00, DEF_STR( Off ))
 	PORT_DIPSETTING(   0x01, DEF_STR( On ))
@@ -404,7 +404,7 @@ static INPUT_PORTS_START(bbca)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP)			PORT_CHAR('.') PORT_CHAR('>')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_9_PAD)		PORT_CHAR(UCHAR_MAMEKEY(F9))
 
-	PORT_START_TAG("COL8")	/* KEYBOARD COLUMN 8 */
+	PORT_START("COL8")	/* KEYBOARD COLUMN 8 */
 	PORT_DIPNAME(0x01, 0x01, "DIP 2 (Mode bit 1)")
 	PORT_DIPSETTING(   0x00, DEF_STR( Off ))
 	PORT_DIPSETTING(   0x01, DEF_STR( On ))
@@ -416,7 +416,7 @@ static INPUT_PORTS_START(bbca)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_SLASH)		PORT_CHAR('/') PORT_CHAR('?')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_BACKSLASH2)	PORT_CHAR('\\') PORT_CHAR('|')
 
-	PORT_START_TAG("COL9")	/* KEYBOARD COLUMN 9 */
+	PORT_START("COL9")	/* KEYBOARD COLUMN 9 */
 	PORT_DIPNAME(0x01, 0x01, "DIP 1 (Mode bit 0)")
 	PORT_DIPSETTING(   0x00, DEF_STR( Off ))
 	PORT_DIPSETTING(   0x01, DEF_STR( On ))
@@ -429,30 +429,30 @@ static INPUT_PORTS_START(bbca)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_RIGHT)		PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
 
 	/* Keyboard columns 10 -> 15 are reserved for BBC Master */
-	PORT_START_TAG("COL10")
-	PORT_START_TAG("COL11")
-	PORT_START_TAG("COL12")
-	PORT_START_TAG("COL13")
-	PORT_START_TAG("COL14")
-	PORT_START_TAG("COL15")
+	PORT_START("COL10")
+	PORT_START("COL11")
+	PORT_START("COL12")
+	PORT_START("COL13")
+	PORT_START("COL14")
+	PORT_START("COL15")
 
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
-	PORT_START_TAG("JOY0")
+	PORT_START("JOY0")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_MINMAX(0x0,0xff ) PORT_PLAYER(1)
 
-	PORT_START_TAG("JOY1")
+	PORT_START("JOY1")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_MINMAX(0x0,0xff ) PORT_PLAYER(1)
 
-	PORT_START_TAG("JOY2")
+	PORT_START("JOY2")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_MINMAX(0x0,0xff ) PORT_PLAYER(2)
 
-	PORT_START_TAG("JOY3")
+	PORT_START("JOY3")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_MINMAX(0x0,0xff ) PORT_PLAYER(2)
 
-	PORT_START_TAG("BBCCONFIG")
+	PORT_START("BBCCONFIG")
 	PORT_DIPNAME( 0x07, 0x00, "DFS SELECT" )
 	PORT_DIPSETTING(    0x00, "Acorn DFS 0.90 (read only)"  )
 	PORT_DIPSETTING(    0x01, "Acorn DNFS 1.20 (read only)" )
@@ -480,9 +480,9 @@ INPUT_PORTS_END
 /* model B driver */
 
 ROM_START(bbca)
-	ROM_REGION(0x04000,REGION_CPU1,ROMREGION_ERASEFF) /* RAM */
+	ROM_REGION(0x04000,"main",ROMREGION_ERASEFF) /* RAM */
 
-	ROM_REGION(0x14000,REGION_USER1,0) /* ROM */
+	ROM_REGION(0x14000,"user1",0) /* ROM */
 	ROM_LOAD("os12.rom",    0x10000,  0x4000, CRC(3c14fc70) SHA1(0d9bcaf6a393c9ce2359ed700ddb53c232c2c45d))
 
 														  /* rom page 0  00000 */
@@ -499,9 +499,9 @@ ROM_END
 
 
 ROM_START(bbcb)
-	ROM_REGION(0x08000,REGION_CPU1,ROMREGION_ERASEFF) /* RAM */
+	ROM_REGION(0x08000,"main",ROMREGION_ERASEFF) /* RAM */
 
-	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
+	ROM_REGION(0x44000,"user1",0) /* ROM */
 
 	ROM_LOAD("os12.rom", 0x40000,0x4000, CRC(3c14fc70) SHA1(0d9bcaf6a393c9ce2359ed700ddb53c232c2c45d))
 
@@ -530,7 +530,7 @@ ROM_START(bbcb)
 														  /* rom page 12 30000 */
 														  /* rom page 13 34000 */
 
-	ROM_REGION(0x20000,REGION_USER2,0) /* DFS ROMS */
+	ROM_REGION(0x20000,"user2",0) /* DFS ROMS */
 
 	ROM_LOAD("dfs09.rom",    0x00000, 0x2000, CRC(3ce609cf) SHA1(5cc0f14b8f46855c70eaa653cca4ad079b458732))
 	ROM_RELOAD(              0x02000, 0x2000                )
@@ -543,15 +543,15 @@ ROM_START(bbcb)
 	ROM_LOAD("ch103.rom",    0x18000, 0x4000, CRC(98367cf4) SHA1(eca3631aa420691f96b72bfdf2e9c2b613e1bf33))
    /*NONE*/
 
-	ROM_REGION(0x80000,REGION_DISKS,ROMREGION_ERASEFF) /* Opus Ram Disc Space */
+	ROM_REGION(0x80000, "disks", ROMREGION_ERASEFF) /* Opus Ram Disc Space */
 
 ROM_END
 
-
+#ifdef UNUSED_DEFINITION
 ROM_START(bbcbcsw)
-	ROM_REGION(0x08000,REGION_CPU1,ROMREGION_ERASEFF) /* RAM */
+	ROM_REGION(0x08000,"main",ROMREGION_ERASEFF) /* RAM */
 
-	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
+	ROM_REGION(0x44000,"user1",0) /* ROM */
 
 	ROM_LOAD("os12.rom", 0x40000,0x4000, CRC(3c14fc70) SHA1(0d9bcaf6a393c9ce2359ed700ddb53c232c2c45d))
 
@@ -580,7 +580,7 @@ ROM_START(bbcbcsw)
 														  /* rom page 12 30000 */
 														  /* rom page 13 34000 */
 
-	ROM_REGION(0x20000,REGION_USER2,0) /* DFS ROMS */
+	ROM_REGION(0x20000,"user2",0) /* DFS ROMS */
 
 	ROM_LOAD("dfs09.rom",    0x00000, 0x2000, CRC(3ce609cf) SHA1(5cc0f14b8f46855c70eaa653cca4ad079b458732))
 	ROM_RELOAD(              0x02000, 0x2000                )
@@ -593,15 +593,15 @@ ROM_START(bbcbcsw)
 	ROM_LOAD("ch103.rom",    0x18000, 0x4000, CRC(98367cf4) SHA1(eca3631aa420691f96b72bfdf2e9c2b613e1bf33))
    /*NONE*/
 
-	ROM_REGION(0x80000,REGION_DISKS,ROMREGION_ERASEFF) /* Opus Ram Disc Space */
+	ROM_REGION(0x80000, "disks", ROMREGION_ERASEFF) /* Opus Ram Disc Space */
 
 ROM_END
-
+#endif
 
 ROM_START(bbcbp)
-	ROM_REGION(0x10000,REGION_CPU1,ROMREGION_ERASEFF) /* ROM MEMORY */
+	ROM_REGION(0x10000,"main",ROMREGION_ERASEFF) /* ROM MEMORY */
 
-	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
+	ROM_REGION(0x44000,"user1",0) /* ROM */
 	ROM_LOAD("bpos2.rom",   0x3c000, 0x4000, CRC(9f356396) SHA1(ea7d3a7e3ee1ecfaa1483af994048057362b01f2))  /* basic rom */
 	ROM_CONTINUE(           0x40000, 0x4000)  /* OS */
 
@@ -627,9 +627,9 @@ ROM_END
 
 
 ROM_START(bbcbp128)
-	ROM_REGION(0x10000,REGION_CPU1,ROMREGION_ERASEFF) /* ROM MEMORY */
+	ROM_REGION(0x10000,"main",ROMREGION_ERASEFF) /* ROM MEMORY */
 
-	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
+	ROM_REGION(0x44000,"user1",0) /* ROM */
 	ROM_LOAD("bpos2.rom",   0x3c000, 0x4000, CRC(9f356396) SHA1(ea7d3a7e3ee1ecfaa1483af994048057362b01f2))  /* basic rom */
 	ROM_CONTINUE(           0x40000, 0x4000)  /* OS */
 
@@ -656,9 +656,9 @@ ROM_END
 
 /* BBC Master Rom Load */
 ROM_START(bbcm)
-	ROM_REGION(0x10000,REGION_CPU1,ROMREGION_ERASEFF) /* ROM MEMORY */
+	ROM_REGION(0x10000,"main",ROMREGION_ERASEFF) /* ROM MEMORY */
 
-	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
+	ROM_REGION(0x44000,"user1",0) /* ROM */
 	ROM_LOAD("mos+3.50.rom",0x40000, 0x4000, CRC(141027b9) SHA1(85211b5bc7c7a269952d2b063b7ec0e1f0196803))
 	ROM_CONTINUE(           0x24000, 0x1c000)
 
@@ -702,7 +702,7 @@ static INTERRUPT_GEN( bbcb_vsync )
 
 static MACHINE_DRIVER_START( bbca )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M6502, 2000000)        /* 2.00Mhz */
+	MDRV_CPU_ADD("main", M6502, 2000000)        /* 2.00Mhz */
 	MDRV_CPU_PROGRAM_MAP( bbca_mem, 0 )
 	MDRV_CPU_VBLANK_INT("main", bbcb_vsync)				/* screen refresh interrupts */
 	MDRV_CPU_PERIODIC_INT(bbcb_keyscan, 1000)		/* scan keyboard */
@@ -726,9 +726,9 @@ static MACHINE_DRIVER_START( bbca )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SN76489, 4000000)	/* 4 MHz */
+	MDRV_SOUND_ADD("sn76489", SN76489, 4000000)	/* 4 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-//  MDRV_SOUND_ADD(TMS5220, tms5220_interface)
+//  MDRV_SOUND_ADD("tms5220", TMS5220, tms5220_interface)
 MACHINE_DRIVER_END
 
 
@@ -765,7 +765,7 @@ MACHINE_DRIVER_END
 /****BBC MASTER */
 static MACHINE_DRIVER_START( bbcm )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M65SC02, 2000000)        /* 2.00Mhz */
+	MDRV_CPU_ADD("main", M65SC02, 2000000)        /* 2.00Mhz */
 	MDRV_CPU_PROGRAM_MAP( bbcm_mem, 0 )
 	MDRV_CPU_VBLANK_INT("main", bbcb_vsync)				/* screen refresh interrupts */
 	MDRV_CPU_PERIODIC_INT(bbcm_keyscan, 1000)		/* scan keyboard */
@@ -789,7 +789,7 @@ static MACHINE_DRIVER_START( bbcm )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SN76489, 4000000)	/* 4 MHz */
+	MDRV_SOUND_ADD("sn76489", SN76489, 4000000)	/* 4 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_NVRAM_HANDLER( mc146818 )

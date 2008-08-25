@@ -31,7 +31,7 @@ static ADDRESS_MAP_START( lynx_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( lynx )
-	PORT_START_TAG("JOY")
+	PORT_START("JOY")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("A")
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_NAME("B")
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Opt 2") PORT_CODE(KEYCODE_2)
@@ -40,10 +40,10 @@ static INPUT_PORTS_START( lynx )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP   )
-	PORT_START_TAG("PAUSE")
+	PORT_START("PAUSE")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(DEF_STR(Pause)) PORT_CODE(KEYCODE_3)
 	// power on and power off buttons
-	PORT_START_TAG("ROTATION")
+	PORT_START("ROTATION")
 	PORT_CONFNAME ( 0x03, 3, "90 Degree Rotation")
 	PORT_CONFSETTING(	2, "Counterclockwise" )
 	PORT_CONFSETTING(	1, "Clockwise" )
@@ -200,12 +200,12 @@ static PALETTE_INIT( lynx )
 	}
 }
 
-static const struct CustomSound_interface lynx_sound_interface =
+static const custom_sound_interface lynx_sound_interface =
 {
 	lynx_custom_start
 };
 
-static const struct CustomSound_interface lynx2_sound_interface =
+static const custom_sound_interface lynx2_sound_interface =
 {
 	lynx2_custom_start
 };
@@ -213,7 +213,7 @@ static const struct CustomSound_interface lynx2_sound_interface =
 
 static MACHINE_DRIVER_START( lynx )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
+	MDRV_CPU_ADD("main", M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
 	MDRV_CPU_PROGRAM_MAP(lynx_mem, 0)
 	MDRV_CPU_VBLANK_INT("main", lynx_frame_int)
 	MDRV_INTERLEAVE(1)
@@ -236,7 +236,7 @@ static MACHINE_DRIVER_START( lynx )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-        MDRV_SOUND_ADD_TAG("lynx", CUSTOM, 0)
+        MDRV_SOUND_ADD("lynx", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(lynx_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
@@ -252,7 +252,7 @@ static MACHINE_DRIVER_START( lynx2 )
         MDRV_SPEAKER_REMOVE("mono")
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
         MDRV_SOUND_REMOVE("lynx")
-        MDRV_SOUND_ADD_TAG("lynx2", CUSTOM, 0)
+        MDRV_SOUND_ADD("lynx2", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(lynx2_sound_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
@@ -269,21 +269,21 @@ MACHINE_DRIVER_END
 		ROMX_LOAD(name, offset, length, hash, ROM_BIOS(bios+1)) /* Note '+1' */
 
 ROM_START(lynx)
-	ROM_REGION(0x200,REGION_CPU1, 0)
+	ROM_REGION(0x200,"main", 0)
 	ROM_SYSTEM_BIOS( 0, "default",   "rom save" )
 	MYROM_LOAD_BIOS( 0, "lynx.bin",    0x00000, 0x200, CRC(e1ffecb6) SHA1(de60f2263851bbe10e5801ef8f6c357a4bc077e6))
 	ROM_SYSTEM_BIOS( 1, "a", "alternate rom save" )
 	MYROM_LOAD_BIOS( 1, "lynxa.bin",    0x00000, 0x200, CRC(0d973c9d) SHA1(e4ed47fae31693e016b081c6bda48da5b70d7ccb))
 //  ROM_LOAD("lynx.bin", 0, 0x200, CRC(e1ffecb6) SHA1(de60f2263851bbe10e5801ef8f6c357a4bc077e6))
-	ROM_REGION(0x100,REGION_GFX1, ROMREGION_ERASE00)
-	ROM_REGION(0x100000, REGION_USER1, ROMREGION_ERASEFF)
+	ROM_REGION(0x100,"gfx1", ROMREGION_ERASE00)
+	ROM_REGION(0x100000, "user1", ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START(lynx2)
-	ROM_REGION(0x200,REGION_CPU1, 0)
+	ROM_REGION(0x200,"main", 0)
 	ROM_LOAD("lynx2.bin", 0, 0x200, NO_DUMP)
-	ROM_REGION(0x100,REGION_GFX1, ROMREGION_ERASE00)
-	ROM_REGION(0x100000, REGION_USER1, ROMREGION_ERASEFF)
+	ROM_REGION(0x100,"gfx1", ROMREGION_ERASE00)
+	ROM_REGION(0x100000, "user1", ROMREGION_ERASEFF)
 ROM_END
 
 
@@ -329,7 +329,7 @@ static void lynx_crc_keyword(const device_config *image)
 
 static DEVICE_IMAGE_LOAD( lynx_cart )
 {
-	UINT8 *rom = memory_region(image->machine, REGION_USER1);
+	UINT8 *rom = memory_region(image->machine, "user1");
 	int size;
 	UINT8 header[0x40];
 /* 64 byte header
@@ -372,7 +372,7 @@ static DEVICE_IMAGE_LOAD( lynx_cart )
 
 static QUICKLOAD_LOAD( lynx )
 {
-	UINT8 *rom = memory_region(image->machine, REGION_CPU1);
+	UINT8 *rom = memory_region(image->machine, "main");
 	UINT8 header[10]; // 80 08 dw Start dw Len B S 9 3
 	// maybe the first 2 bytes must be used to identify the endianess of the file
 	UINT16 start;

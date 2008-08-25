@@ -176,7 +176,7 @@ cpu #0 (PC=0601023A): unmapped program memory dword write to 02000000 = 00000000
 
 #ifdef MAME_DEBUG
 #define LOG_CDB  0
-#define LOG_SMPC 0
+#define LOG_SMPC 1
 #define LOG_SCU  0
 #define LOG_IRQ  0
 #else
@@ -462,7 +462,7 @@ static void system_reset()
 static void smpc_intbackhelper(running_machine *machine)
 {
 	int pad;
-	char port[5];
+	static const char *padnames[] = { "JOY1", "JOY2" };
 
 	if (intback_stage == 1)
 	{
@@ -470,10 +470,9 @@ static void smpc_intbackhelper(running_machine *machine)
 		return;
 	}
 
-	sprintf(port, "JOY%d", intback_stage-1);	// intback_stage will be 2 or 3, 2 = player 1, 3 = player 2
-	pad = input_port_read(machine, port);
+	pad = input_port_read(machine, padnames[intback_stage-2]);
 
-//  if (LOG_SMPC) logerror("SMPC: providing PAD data for intback, pad %d\n", intback_stage-2);
+//	if (LOG_SMPC) logerror("SMPC: providing PAD data for intback, pad %d\n", intback_stage-2);
 	smpc_ram[33] = 0xf1;	// no tap, direct connect
 	smpc_ram[35] = 0x02;	// saturn pad
 	smpc_ram[37] = pad>>8;
@@ -501,14 +500,48 @@ static UINT8 stv_SMPC_r8 (int offset)
 		return_data = smpcSR;
 
 	if (offset == 0x75)//PDR1 read
-		return_data = 0xff; //input_port_read(machine, "PDR1");
+	{
+		if (IOSEL1)
+		{
+			int hshake;
+
+			hshake = (PDR1>>5) & 3;
+
+			if (LOG_SMPC) logerror("SMPC: SH-2 direct mode, returning data for phase %d\n", hshake);
+
+			return_data = 0x9f;
+			
+			switch (hshake)
+			{
+				case 0:
+					return_data = 0x90;
+//					return_data = 0xf0 | ((input_port_read(Machine, "JOY1")>>4) & 0xf);
+					break;
+
+				case 1:
+//					return_data = 0xf0 | ((input_port_read(Machine, "JOY1")>>12) & 0xf); 
+					break;
+
+				case 2:
+//					return_data = 0xf0 | ((input_port_read(Machine, "JOY1")>>8) & 0xf);
+					break;
+
+				case 3:
+					return_data = 0x94;
+//					return_data = 0xf0 | (input_port_read(Machine, "JOY1")&0x8) | 0x4;
+					break;
+			}
+		}
+	}
 
 	if (offset == 0x77)//PDR2 read
-		return_data=  0xff; // | EEPROM_read_bit());
+	{
+		return_data =  0xff; // | EEPROM_read_bit());
+	}
 
 	if (offset == 0x33) return_data = saturn_region;
 
-//  if (LOG_SMPC) logerror ("cpu #%d (PC=%08X) SMPC: Read from Byte Offset %02x (%d) Returns %02x\n", cpu_getactivecpu(), activecpu_get_pc(), offset, offset>>1, return_data);
+	if (LOG_SMPC) logerror ("cpu #%d (PC=%08X) SMPC: Read from Byte Offset %02x (%d) Returns %02x\n", cpu_getactivecpu(), activecpu_get_pc(), offset, offset>>1, return_data);
 
 
 	return return_data;
@@ -522,7 +555,7 @@ static void stv_SMPC_w8 (running_machine *machine, int offset, UINT8 data)
 	/* get the current date/time from the core */
 	mame_get_current_datetime(machine, &systime);
 
-//  if (LOG_SMPC) logerror ("8-bit SMPC Write to Offset %02x (reg %d) with Data %02x (prev %02x)\n", offset, offset>>1, data, smpc_ram[offset]);
+  if (LOG_SMPC) logerror ("8-bit SMPC Write to Offset %02x (reg %d) with Data %02x (prev %02x)\n", offset, offset>>1, data, smpc_ram[offset]);
 
 //  if (offset == 0x7d) printf("IOSEL2 %d IOSEL1 %d\n", (data>>1)&1, data&1);
 
@@ -530,7 +563,7 @@ static void stv_SMPC_w8 (running_machine *machine, int offset, UINT8 data)
 
 	if ((intback_stage > 0) && (offset == 1) && (((data ^ 0x80)&0x80) == (last&0x80)))
 	{
-//      if (LOG_SMPC) logerror("SMPC: CONTINUE request, stage %d\n", intback_stage);
+      if (LOG_SMPC) logerror("SMPC: CONTINUE request, stage %d\n", intback_stage);
 		if (intback_stage != 3)
 		{
 			intback_stage = 2;
@@ -541,21 +574,20 @@ static void stv_SMPC_w8 (running_machine *machine, int offset, UINT8 data)
 
 	if ((offset == 1) && (data & 0x40))
 	{
-//      if (LOG_SMPC) logerror("SMPC: BREAK request\n");
+      if (LOG_SMPC) logerror("SMPC: BREAK request\n");
 		intback_stage = 0;
 	}
 
 	smpc_ram[offset] = data;
 
-	if(offset == 0x75)
+	if (offset == 0x75)	// PDR1
 	{
-		PDR1 = (data & 0x60);
+		PDR1 = (data & smpc_ram[0x79]);	
 	}
 
-	if(offset == 0x77)
+	if (offset == 0x77)	// PDR2
 	{
-		//if(LOG_SMPC) logerror("SMPC: ram [0x77] = %02x\n",smpc_ram[0x77]);
-		PDR2 = (data & 0x60);
+		PDR2 = (data & smpc_ram[0x7b]);
 	}
 
 	if(offset == 0x7d)
@@ -646,7 +678,7 @@ static void stv_SMPC_w8 (running_machine *machine, int offset, UINT8 data)
 				break;
 			/*"Interrupt Back"*/
 			case 0x10:
-//              if(LOG_SMPC) logerror ("SMPC: Status Acquire (IntBack)\n");
+		                if(LOG_SMPC) logerror ("SMPC: Status Acquire (IntBack)\n");
 				smpc_ram[0x5f]=0x10;
 				smpc_ram[0x21] = (0x80) | ((NMI_reset & 1) << 6);
 			  	smpc_ram[0x23] = DectoBCD(systime.local_time.year / 100);
@@ -1846,14 +1878,14 @@ static READ32_HANDLER( stv_sh2_soundram_r )
 static READ32_HANDLER( stv_scsp_regs_r32 )
 {
 	offset <<= 1;
-	return (SCSP_0_r(machine, offset+1, 0xffff) | (SCSP_0_r(machine, offset, 0xffff)<<16));
+	return (scsp_0_r(machine, offset+1, 0xffff) | (scsp_0_r(machine, offset, 0xffff)<<16));
 }
 
 static WRITE32_HANDLER( stv_scsp_regs_w32 )
 {
 	offset <<= 1;
-	SCSP_0_w(machine, offset + 0, data >> 16, mem_mask >> 16);
-	SCSP_0_w(machine, offset + 1, data >>  0, mem_mask);
+	scsp_0_w(machine, offset + 0, data >> 16, mem_mask >> 16);
+	scsp_0_w(machine, offset + 1, data >>  0, mem_mask);
 }
 
 /* communication,SLAVE CPU acquires data from the MASTER CPU and triggers an irq.  *
@@ -1916,14 +1948,14 @@ static NVRAM_HANDLER(saturn)
 }
 
 static ADDRESS_MAP_START( saturn_mem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x0007ffff) AM_ROM   // bios
+	AM_RANGE(0x00000000, 0x0007ffff) AM_ROM AM_SHARE(6)  // bios
 	AM_RANGE(0x00100000, 0x0010007f) AM_READWRITE(stv_SMPC_r32, stv_SMPC_w32)
 	AM_RANGE(0x00180000, 0x0018ffff) AM_READWRITE(satram_r, satram_w)
 	AM_RANGE(0x00200000, 0x002fffff) AM_RAM AM_MIRROR(0x100000) AM_SHARE(2) AM_BASE(&stv_workram_l)
 	AM_RANGE(0x01000000, 0x01000003) AM_WRITE(minit_w)
 	AM_RANGE(0x01406f40, 0x01406f43) AM_WRITE(minit_w) // prikura seems to write here ..
 	AM_RANGE(0x01800000, 0x01800003) AM_WRITE(sinit_w)
-	AM_RANGE(0x02000000, 0x023fffff) AM_ROM AM_REGION(REGION_CPU1, 0x80000)	// cartridge space
+	AM_RANGE(0x02000000, 0x023fffff) AM_ROM AM_SHARE(7) AM_REGION("main", 0x80000)	// cartridge space
 	AM_RANGE(0x05800000, 0x0589ffff) AM_READWRITE(stvcd_r, stvcd_w)
 	/* Sound */
 	AM_RANGE(0x05a00000, 0x05a7ffff) AM_READWRITE(stv_sh2_soundram_r, stv_sh2_soundram_w)
@@ -1941,15 +1973,17 @@ static ADDRESS_MAP_START( saturn_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x05f80000, 0x05fbffff) AM_READWRITE(stv_vdp2_regs_r, stv_vdp2_regs_w)
 	AM_RANGE(0x05fe0000, 0x05fe00cf) AM_READWRITE(stv_scu_r32, stv_scu_w32)
 	AM_RANGE(0x06000000, 0x060fffff) AM_RAM AM_MIRROR(0x01f00000) AM_SHARE(3) AM_BASE(&stv_workram_h)
-ADDRESS_MAP_END
+	AM_RANGE(0x20000000, 0x2007ffff) AM_ROM AM_SHARE(6)  // bios mirror
+	AM_RANGE(0x22000000, 0x24ffffff) AM_ROM AM_SHARE(7)  // cart mirror
+ADDRESS_MAP_END					     
 
 static ADDRESS_MAP_START( sound_mem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_RAM AM_REGION(REGION_CPU3, 0) AM_BASE(&sound_ram)
-	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(SCSP_0_r, SCSP_0_w)
+	AM_RANGE(0x000000, 0x07ffff) AM_RAM AM_BASE(&sound_ram)
+	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(scsp_0_r, scsp_0_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( saturn )
-	PORT_START_TAG("PDR1")
+	PORT_START("PDR1")
 	PORT_DIPNAME( 0x01, 0x01, "PDR1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1975,7 +2009,7 @@ static INPUT_PORTS_START( saturn )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("PDR2")
+	PORT_START("PDR2")
 	PORT_DIPNAME( 0x01, 0x01, "PDR2" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2001,7 +2035,7 @@ static INPUT_PORTS_START( saturn )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("JOY1")
+	PORT_START("JOY1")
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
@@ -2016,7 +2050,7 @@ static INPUT_PORTS_START( saturn )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_NAME("P1 L") PORT_PLAYER(1)	// L
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_NAME("P1 R") PORT_PLAYER(1)	// R
 
-	PORT_START_TAG("JOY2")
+	PORT_START("JOY2")
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
@@ -2037,6 +2071,10 @@ static void saturn_init_driver(running_machine *machine, int rgn)
 	mame_system_time systime;
 
 	saturn_region = rgn;
+
+	// set compatible options
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
+	cpunum_set_info_int(1, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
 
 	/* get the current date/time from the core */
 	mame_get_current_datetime(machine, &systime);
@@ -2145,13 +2183,13 @@ static MACHINE_RESET( saturn )
 	cpunum_set_clock(machine, 1, MASTER_CLOCK_320/2);
 	cpunum_set_clock(machine, 2, MASTER_CLOCK_320/5);
 
-	stvcd_reset();
+	stvcd_reset( machine );
 }
 
 static const gfx_layout tiles8x8x4_layout =
 {
 	8,8,
-	RGN_FRAC(1,1),
+	0x100000/(32*8/8),
 	4,
 	{ 0, 1, 2, 3 },
 	{ 0, 4, 8, 12, 16, 20, 24, 28 },
@@ -2162,7 +2200,7 @@ static const gfx_layout tiles8x8x4_layout =
 static const gfx_layout tiles16x16x4_layout =
 {
 	16,16,
-	RGN_FRAC(1,1),
+	0x100000/(32*32/8),
 	4,
 	{ 0, 1, 2, 3 },
 	{ 0, 4, 8, 12, 16, 20, 24, 28,
@@ -2179,7 +2217,7 @@ static const gfx_layout tiles16x16x4_layout =
 static const gfx_layout tiles8x8x8_layout =
 {
 	8,8,
-	RGN_FRAC(1,1),
+	0x100000/(64*8/8),
 	8,
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	{ 0, 8, 16, 24, 32, 40, 48, 56 },
@@ -2190,7 +2228,7 @@ static const gfx_layout tiles8x8x8_layout =
 static const gfx_layout tiles16x16x8_layout =
 {
 	16,16,
-	RGN_FRAC(1,1),
+	0x100000/(128*16/8),
 	8,
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	{ 0, 8, 16, 24, 32, 40, 48, 56,
@@ -2207,20 +2245,20 @@ static const gfx_layout tiles16x16x8_layout =
 
 
 static GFXDECODE_START( saturn )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8x4_layout, 0x00, (0x80*(2+1)) )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles16x16x4_layout, 0x00, (0x80*(2+1)) )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8x8_layout, 0x00, (0x08*(2+1)) )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles16x16x8_layout, 0x00, (0x08*(2+1)) )
+	GFXDECODE_ENTRY( NULL, 0, tiles8x8x4_layout, 0x00, (0x80*(2+1)) )
+	GFXDECODE_ENTRY( NULL, 0, tiles16x16x4_layout, 0x00, (0x80*(2+1)) )
+	GFXDECODE_ENTRY( NULL, 0, tiles8x8x8_layout, 0x00, (0x08*(2+1)) )
+	GFXDECODE_ENTRY( NULL, 0, tiles16x16x8_layout, 0x00, (0x08*(2+1)) )
 
 	/* vdp1 .. pointless for drawing but can help us debug */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles8x8x4_layout, 0x00, 0x100 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles16x16x4_layout, 0x00, 0x100 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles8x8x8_layout, 0x00, 0x20 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles16x16x8_layout, 0x00, 0x20 )
+	GFXDECODE_ENTRY( NULL, 0, tiles8x8x4_layout, 0x00, 0x100 )
+	GFXDECODE_ENTRY( NULL, 0, tiles16x16x4_layout, 0x00, 0x100 )
+	GFXDECODE_ENTRY( NULL, 0, tiles8x8x8_layout, 0x00, 0x20 )
+	GFXDECODE_ENTRY( NULL, 0, tiles16x16x8_layout, 0x00, 0x20 )
 GFXDECODE_END
 
-static const struct sh2_config sh2_conf_master = { 0 };
-static const struct sh2_config sh2_conf_slave  = { 1 };
+static const sh2_cpu_core sh2_conf_master = { 0 };
+static const sh2_cpu_core sh2_conf_slave  = { 1 };
 
 static void scsp_irq(running_machine *machine, int irq)
 {
@@ -2245,9 +2283,8 @@ static void scsp_irq(running_machine *machine, int irq)
 	}
 }
 
-static const struct SCSPinterface scsp_interface =
+static const scsp_interface saturn_scsp_interface =
 {
-	REGION_CPU3,
 	0,
 	scsp_irq
 };
@@ -2255,16 +2292,16 @@ static const struct SCSPinterface scsp_interface =
 static MACHINE_DRIVER_START( saturn )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(SH2, MASTER_CLOCK_352/2) // 28.6364 MHz
+	MDRV_CPU_ADD("main", SH2, MASTER_CLOCK_352/2) // 28.6364 MHz
 	MDRV_CPU_PROGRAM_MAP(saturn_mem, 0)
 	MDRV_CPU_VBLANK_INT_HACK(stv_interrupt, 264)/*264 lines,224 display lines*/
 	MDRV_CPU_CONFIG(sh2_conf_master)
 
-	MDRV_CPU_ADD(SH2, MASTER_CLOCK_352/2) // 28.6364 MHz
+	MDRV_CPU_ADD("slave", SH2, MASTER_CLOCK_352/2) // 28.6364 MHz
 	MDRV_CPU_PROGRAM_MAP(saturn_mem, 0)
 	MDRV_CPU_CONFIG(sh2_conf_slave)
 
-	MDRV_CPU_ADD(M68000, MASTER_CLOCK_352/5) //11.46 MHz
+	MDRV_CPU_ADD("audio", M68000, MASTER_CLOCK_352/5) //11.46 MHz
 	MDRV_CPU_PROGRAM_MAP(sound_mem, 0)
 
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2288,16 +2325,18 @@ static MACHINE_DRIVER_START( saturn )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(SCSP, 0)
-	MDRV_SOUND_CONFIG(scsp_interface)
+	MDRV_SOUND_ADD("scsp", SCSP, 0)
+	MDRV_SOUND_CONFIG(saturn_scsp_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
+
+	MDRV_DEVICE_ADD( "cdrom", CDROM )
 MACHINE_DRIVER_END
 
 
 /* Japanese Saturn */
 ROM_START(saturnjp)
-	ROM_REGION( 0x480000, REGION_CPU1, 0 ) /* SH2 code */
+	ROM_REGION( 0x480000, "main", 0 ) /* SH2 code */
 	ROM_SYSTEM_BIOS(0, "101", "Japan v1.01 (941228)")
 	ROMX_LOAD("sega_101.bin", 0x00000000, 0x00080000, CRC(224b752c) SHA1(df94c5b4d47eb3cc404d88b33a8fda237eaf4720), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "1003", "Japan v1.003 (941012)")
@@ -2305,79 +2344,51 @@ ROM_START(saturnjp)
 	ROM_SYSTEM_BIOS(2, "100", "Japan v1.00 (940921)")
 	ROMX_LOAD("sega_100.bin", 0x00000000, 0x00080000, CRC(2aba43c2) SHA1(2b8cb4f87580683eb4d760e4ed210813d667f0a2), ROM_BIOS(3))
 	ROM_CART_LOAD(0, "bin", 0x080000, 0x400000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)
-	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
-	ROM_COPY( REGION_CPU1,0,0,0x080000)
-	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_ERASE00 ) /* VDP2 GFX */
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_ERASE00 ) /* VDP1 GFX */
+	ROM_REGION( 0x080000, "slave", 0 ) /* SH2 code */
+	ROM_COPY( "main",0,0,0x080000)
 ROM_END
 
 /* Overseas Saturn */
 ROM_START(saturn)
-	ROM_REGION( 0x480000, REGION_CPU1, 0 ) /* SH2 code */
+	ROM_REGION( 0x480000, "main", 0 ) /* SH2 code */
 	ROM_SYSTEM_BIOS(0, "101a", "Overseas v1.01a (941115)")
 	ROMX_LOAD("sega_101a.bin", 0x00000000, 0x00080000, CRC(4afcf0fa) SHA1(faa8ea183a6d7bbe5d4e03bb1332519800d3fbc3), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "100a", "Overseas v1.00a (941115)")
 	ROMX_LOAD("sega_100a.bin", 0x00000000, 0x00080000, CRC(f90f0089) SHA1(3bb41feb82838ab9a35601ac666de5aacfd17a58), ROM_BIOS(2))
 	ROM_CART_LOAD(0, "bin", 0x080000, 0x400000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)
-	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
-	ROM_COPY( REGION_CPU1,0,0,0x080000)
-	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_ERASE00 ) /* VDP2 GFX */
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_ERASE00 ) /* VDP1 GFX */
+	ROM_REGION( 0x080000, "slave", 0 ) /* SH2 code */
+	ROM_COPY( "main",0,0,0x080000)
 ROM_END
 
 ROM_START(saturneu)
-	ROM_REGION( 0x480000, REGION_CPU1, 0 ) /* SH2 code */
+	ROM_REGION( 0x480000, "main", 0 ) /* SH2 code */
 	ROM_SYSTEM_BIOS(0, "101a", "Overseas v1.01a (941115)")
 	ROMX_LOAD("sega_101a.bin", 0x00000000, 0x00080000, CRC(4afcf0fa) SHA1(faa8ea183a6d7bbe5d4e03bb1332519800d3fbc3), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "100a", "Overseas v1.00a (941115)")
 	ROMX_LOAD("sega_100a.bin", 0x00000000, 0x00080000, CRC(f90f0089) SHA1(3bb41feb82838ab9a35601ac666de5aacfd17a58), ROM_BIOS(2))
 	ROM_CART_LOAD(0, "bin", 0x080000, 0x400000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)
-	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
-	ROM_COPY( REGION_CPU1,0,0,0x080000)
-	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_ERASE00 ) /* VDP2 GFX */
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_ERASE00 ) /* VDP1 GFX */
+	ROM_REGION( 0x080000, "slave", 0 ) /* SH2 code */
+	ROM_COPY( "main",0,0,0x080000)
 ROM_END
 
 ROM_START(vsaturn)
-	ROM_REGION( 0x480000, REGION_CPU1, 0 ) /* SH2 code */
+	ROM_REGION( 0x480000, "main", 0 ) /* SH2 code */
 	ROM_LOAD("vsaturn.bin", 0x00000000, 0x00080000, CRC(e4d61811) SHA1(4154e11959f3d5639b11d7902b3a393a99fb5776))
 	ROM_CART_LOAD(0, "bin", 0x080000, 0x400000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)
-	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
-	ROM_COPY( REGION_CPU1,0,0,0x080000)
-	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_ERASE00 ) /* VDP2 GFX */
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_ERASE00 ) /* VDP1 GFX */
+	ROM_REGION( 0x080000, "slave", 0 ) /* SH2 code */
+	ROM_COPY( "main",0,0,0x080000)
 ROM_END
 
 ROM_START(hisaturn)
-	ROM_REGION( 0x480000, REGION_CPU1, 0 ) /* SH2 code */
+	ROM_REGION( 0x480000, "main", 0 ) /* SH2 code */
 	ROM_LOAD("hisaturn.bin", 0x00000000, 0x00080000, CRC(721e1b60) SHA1(49d8493008fa715ca0c94d99817a5439d6f2c796))
 	ROM_CART_LOAD(0, "bin", 0x080000, 0x400000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)
-	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
-	ROM_COPY( REGION_CPU1,0,0,0x080000)
-	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_ERASE00 ) /* VDP2 GFX */
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_ERASE00 ) /* VDP1 GFX */
+	ROM_REGION( 0x080000, "slave", 0 ) /* SH2 code */
+	ROM_COPY( "main",0,0,0x080000)
 ROM_END
 
 
-static void saturn_chdcd_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* CHD CD-ROM */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default: cdrom_device_getinfo(devclass, state, info);
-	}
-}
-
 static SYSTEM_CONFIG_START( saturn )
-	CONFIG_DEVICE(saturn_chdcd_getinfo)
 	CONFIG_DEVICE(cartslot_device_getinfo)
 SYSTEM_CONFIG_END
 
@@ -2393,3 +2404,5 @@ CONS( 1994, saturnjp,   saturn, 0,      saturn, saturn, saturnjp,   saturn, "Seg
 CONS( 1994, saturneu,   saturn, 0,      saturn, saturn, saturneu,   saturn, "Sega",     "Saturn (PAL)",     GAME_NOT_WORKING )
 CONS( 1995, vsaturn,    saturn, 0,      saturn, saturn, saturnjp,   saturn, "JVC",      "V-Saturn",         GAME_NOT_WORKING )
 CONS( 1995, hisaturn,   saturn, 0,      saturn, saturn, saturnjp,   saturn, "Hitachi",  "HiSaturn",         GAME_NOT_WORKING )
+
+

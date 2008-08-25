@@ -5,18 +5,15 @@
 
 /* defines */
 
-#define HAS_99CCFDC defined(MESS_DEBUG)
+#define HAS_99CCFDC 0
 
 /* region identifiers */
-enum
-{
-	region_grom = REGION_USER1,
-	region_dsr = REGION_USER2,
-	region_hsgpl = REGION_USER3,
-	region_speech_rom = REGION_SOUND1
-};
+#define region_grom "user1"
+#define region_dsr "user2"
+#define region_hsgpl "user3"
+#define region_speech_rom "tms5220"
 
-/* offsets for REGION_CPU1 */
+/* offsets for "main" */
 enum
 {
 	offset_sram = 0x2000,		/* scratch RAM (256 bytes) */
@@ -149,9 +146,6 @@ MACHINE_RESET( ti99 );
 DEVICE_START( ti99_cart );
 DEVICE_IMAGE_LOAD( ti99_cart );
 DEVICE_IMAGE_UNLOAD( ti99_cart );
-
-DEVICE_IMAGE_LOAD( ti99_hd );
-DEVICE_IMAGE_UNLOAD( ti99_hd );
 
 VIDEO_START( ti99_4ev );
 INTERRUPT_GEN( ti99_vblank_interrupt );

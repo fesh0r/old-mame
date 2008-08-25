@@ -36,7 +36,7 @@
 #include "devices/cassette.h"
 #include "video/cdp1864.h"
 #include "sound/beep.h"
-#include "rescap.h"
+#include "machine/rescap.h"
 
 #define SCREEN_TAG "main"
 #define CDP1864_TAG "cdp1864"
@@ -112,7 +112,7 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( tmc2000e )
-	PORT_START_TAG("DSW0")	// System Configuration DIPs
+	PORT_START("DSW0")	// System Configuration DIPs
 	PORT_DIPNAME( 0x80, 0x00, "Keyboard Type" )
 	PORT_DIPSETTING(    0x00, "ASCII" )
 	PORT_DIPSETTING(    0x80, "Matrix" )
@@ -126,7 +126,7 @@ static INPUT_PORTS_START( tmc2000e )
 	PORT_DIPSETTING(    0x30, "UART" )
 	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("RUN")
+	PORT_START("RUN")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Run/Reset") PORT_CODE(KEYCODE_R) PORT_TOGGLE
 INPUT_PORTS_END
 
@@ -189,7 +189,7 @@ static CDP1802_MODE_READ( tmc2000e_mode_r )
 static CDP1802_EF_READ( tmc2000e_ef_r )
 {
 	UINT8 flags = 0x0f;
-	char port[4];
+	static const char *keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
 	/*
         EF1     CDP1864
@@ -208,8 +208,7 @@ static CDP1802_EF_READ( tmc2000e_ef_r )
 	
 	// keyboard
 
-	sprintf(port, "IN%d", keylatch / 8);
-	if (~input_port_read(machine, port) & (1 << (keylatch % 8))) flags -= EF3;
+	if (~input_port_read(machine, keynames[keylatch / 8]) & (1 << (keylatch % 8))) flags -= EF3;
 
 	return flags;
 }
@@ -278,7 +277,7 @@ static MACHINE_RESET( tmc2000e )
 static MACHINE_DRIVER_START( tmc2000e )
 	// basic system hardware
 
-	MDRV_CPU_ADD(CDP1802, XTAL_1_75MHz)
+	MDRV_CPU_ADD("main", CDP1802, XTAL_1_75MHz)
 	MDRV_CPU_PROGRAM_MAP(tmc2000e_map, 0)
 	MDRV_CPU_IO_MAP(tmc2000e_io_map, 0)
 	MDRV_CPU_CONFIG(tmc2000e_config)
@@ -301,7 +300,7 @@ static MACHINE_DRIVER_START( tmc2000e )
 	// sound hardware
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(BEEP, 0)
+	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* printer */
@@ -311,7 +310,7 @@ MACHINE_DRIVER_END
 /* ROMs */
 
 ROM_START( tmc2000e )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "1", 0xc000, 0x0800, NO_DUMP )
 	ROM_LOAD( "2", 0xc800, 0x0800, NO_DUMP )
 	ROM_LOAD( "3", 0xd000, 0x0800, NO_DUMP )

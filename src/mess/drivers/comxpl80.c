@@ -51,7 +51,7 @@ static WRITE8_HANDLER( pl80_port_a_w )
 		// read data from font ROM
 		int font_rom = (input_port_read(machine, "FONT") & 0x03) * 0x2000;
 
-		state->plotter_data = memory_region(machine, REGION_GFX2)[font_rom | state->font_addr];
+		state->plotter_data = memory_region(machine, "gfx2")[font_rom | state->font_addr];
 	}
 	
 	if (!BIT(data, 6))
@@ -172,7 +172,7 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( comxpl80 )
-	PORT_START_TAG("SW")
+	PORT_START("SW")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_NAME("DOWN")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_NAME("PEN-SEL")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_NAME("UP")
@@ -182,7 +182,7 @@ static INPUT_PORTS_START( comxpl80 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_NAME("RIGHT")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_NAME("LEFT")
 
-	PORT_START_TAG("FONT")
+	PORT_START("FONT")
 	PORT_CONFNAME( 0x03, 0x00, "COMX PL-80 Font Pack")
 	PORT_CONFSETTING( 0x00, DEF_STR( None ) )
 	PORT_CONFSETTING( 0x01, "Italic, Emphasized and Outline" )
@@ -196,7 +196,7 @@ static MACHINE_DRIVER_START( comxpl80 )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD(M6805, 4000000) // CX005: some kind of MC6805/MC68HC05 clone
+	MDRV_CPU_ADD("main", M6805, 4000000) // CX005: some kind of MC6805/MC68HC05 clone
 	MDRV_CPU_PROGRAM_MAP(pl80_map, 0)
 	MDRV_CPU_IO_MAP(pl80_io_map, 0)
 MACHINE_DRIVER_END
@@ -204,10 +204,10 @@ MACHINE_DRIVER_END
 /* ROMs */
 
 ROM_START( comxpl80 )
-	ROM_REGION( 0x1000, REGION_CPU1, 0 )
+	ROM_REGION( 0x1000, "main", 0 )
 	ROM_LOAD( "pl80.pt6",		0x0080, 0x0e00, CRC(ae059e5b) SHA1(f25812606b0082d32eb603d0a702a2187089d332) )
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_ERASEFF ) // Plotter fonts
+	ROM_REGION( 0x6000, "gfx1", ROMREGION_ERASEFF ) // Plotter fonts
 	ROM_LOAD( "it.em.ou.bin",	0x2000, 0x2000, CRC(1b4a3198) SHA1(138ff6666a31c2d18cd63e609dd94d9cd1529931) )
 	ROM_LOAD( "tiny.bin",		0x4000, 0x0400, CRC(940ec1ed) SHA1(ad83a3b57e2f0fbaa1e40644cd999b3f239635e8) )
 ROM_END

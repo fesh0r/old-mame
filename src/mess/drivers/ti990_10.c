@@ -75,6 +75,12 @@ TODO :
 #include "machine/990_tap.h"
 #include "video/911_vdt.h"
 
+static MACHINE_START( ti990_10 )
+{
+	MACHINE_START_CALL( ti990_hdc );
+}
+
+
 static MACHINE_RESET( ti990_10 )
 {
 	ti990_hold_load(machine);
@@ -82,7 +88,7 @@ static MACHINE_RESET( ti990_10 )
 	ti990_reset_int();
 
 	ti990_tpc_init(ti990_set_int9);
-	ti990_hdc_init(ti990_set_int13);
+	ti990_hdc_init(machine, ti990_set_int13);
 }
 
 static INTERRUPT_GEN( ti990_10_line_interrupt )
@@ -195,12 +201,13 @@ static const ti990_10reset_param reset_params =
 static MACHINE_DRIVER_START(ti990_10)
 	/* basic machine hardware */
 	/* TI990/10 CPU @ 4.0(???) MHz */
-	MDRV_CPU_ADD(TI990_10, 4000000)
+	MDRV_CPU_ADD("main", TI990_10, 4000000)
 	MDRV_CPU_CONFIG(reset_params)
 	MDRV_CPU_PROGRAM_MAP(ti990_10_memmap, 0)
 	MDRV_CPU_IO_MAP(ti990_10_readcru, ti990_10_writecru)
 	MDRV_CPU_PERIODIC_INT(ti990_10_line_interrupt, 120/*or 100 in Europe*/)
 
+	MDRV_MACHINE_START( ti990_10 )
 	MDRV_MACHINE_RESET( ti990_10 )
 
 	/* video hardware - we emulate a single 911 vdt display */
@@ -221,8 +228,10 @@ static MACHINE_DRIVER_START(ti990_10)
 
 	/* 911 VDT has a beep tone generator */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(BEEP, 0)
+	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	MDRV_IMPORT_FROM( ti990_hdc )
 MACHINE_DRIVER_END
 
 
@@ -234,7 +243,7 @@ ROM_START(ti990_10)
 	/*CPU memory space*/
 #if 0
 
-	ROM_REGION16_BE(0x200000, REGION_CPU1,0)
+	ROM_REGION16_BE(0x200000, "main",0)
 
 	/* TI990/10 : older boot ROMs for floppy-disk */
 	ROM_LOAD16_BYTE("975383.31", 0x1FFC00, 0x100, CRC(64fcd040))
@@ -244,7 +253,7 @@ ROM_START(ti990_10)
 
 #elif 1
 
-	ROM_REGION16_BE(0x200000, REGION_CPU1,0)
+	ROM_REGION16_BE(0x200000, "main",0)
 
 	/* TI990/10 : newer "universal" boot ROMs  */
 	ROM_LOAD16_BYTE("975383.45", 0x1FFC00, 0x100, CRC(391943c7) SHA1(bbd4da60b221d146542a6b547ae1570024e41b8a))
@@ -254,7 +263,7 @@ ROM_START(ti990_10)
 
 #else
 
-	ROM_REGION16_BE(0x202000, REGION_CPU1,0)
+	ROM_REGION16_BE(0x202000, "main",0)
 
 	/* TI990/12 ROMs - actually incompatible with TI990/10, but I just wanted to disassemble them. */
 	ROM_LOAD16_BYTE("ti2025-7", 0x1FFC00, 0x1000, CRC(4824f89c))
@@ -276,7 +285,7 @@ static DRIVER_INIT( ti990_10 )
 	/* load specific ti990/12 rom page */
 	const int page = 3;
 
-	memmove(memory_region(machine, REGION_CPU1)+0x1FFC00, memory_region(machine, REGION_CPU1)+0x1FFC00+(page*0x400), 0x400);
+	memmove(memory_region(machine, "main")+0x1FFC00, memory_region(machine, "main")+0x1FFC00+(page*0x400), 0x400);
 #endif
 	vdt911_init(machine);
 }
@@ -285,27 +294,6 @@ static INPUT_PORTS_START(ti990_10)
 	VDT911_KEY_PORTS
 INPUT_PORTS_END
 
-static void ti990_10_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* harddisk */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(ti990_hd); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti990_hd); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti990_hd); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
-	}
-}
 
 static void ti990_10_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -330,7 +318,6 @@ static void ti990_10_cassette_getinfo(const mess_device_class *devclass, UINT32 
 }
 
 static SYSTEM_CONFIG_START(ti990_10)
-	CONFIG_DEVICE(ti990_10_harddisk_getinfo)
 	CONFIG_DEVICE(ti990_10_cassette_getinfo)
 SYSTEM_CONFIG_END
 

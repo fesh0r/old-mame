@@ -608,7 +608,7 @@ INTERRUPT_GEN( microtan_interrupt )
 {
     int mod, row, col, chg, new;
     static int lastrow = 0, mask = 0x00, key = 0x00, repeat = 0, repeater = 0;
-	char port[6];
+	static const char *keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8" };
 
     if( repeat )
     {
@@ -627,8 +627,7 @@ INTERRUPT_GEN( microtan_interrupt )
 
 	while ( !chg && row > 0)
 	{
-		sprintf(port, "ROW%d", row - 1);
-		new = input_port_read(machine, port); 
+		new = input_port_read(machine, keynames[row - 1]); 
 		chg = keyrows[--row] ^ new; 
 	}
     if (!chg) 
@@ -710,7 +709,7 @@ static void microtan_set_cpu_regs(const UINT8 *snapshot_buff, int base)
 
 static void microtan_snapshot_copy(running_machine *machine, UINT8 *snapshot_buff, int snapshot_size)
 {
-    UINT8 *RAM = memory_region(machine, REGION_CPU1);
+    UINT8 *RAM = memory_region(machine, "main");
 
     /* check for .DMP file format */
     if (snapshot_size == 8263)
@@ -786,15 +785,15 @@ static void microtan_snapshot_copy(running_machine *machine, UINT8 *snapshot_buf
         /* first set of AY8910 registers */
         for (i = 0; i < 16; i++ )
         {
-            AY8910_control_port_0_w(machine, 0, i);
-            AY8910_write_port_0_w(machine, 0, snapshot_buff[base++]);
+            ay8910_control_port_0_w(machine, 0, i);
+            ay8910_write_port_0_w(machine, 0, snapshot_buff[base++]);
         }
 
         /* second set of AY8910 registers */
         for (i = 0; i < 16; i++ )
         {
-            AY8910_control_port_0_w(machine, 0, i);
-            AY8910_write_port_0_w(machine, 0, snapshot_buff[base++]);
+            ay8910_control_port_0_w(machine, 0, i);
+            ay8910_write_port_0_w(machine, 0, snapshot_buff[base++]);
         }
 
         for (i = 0; i < 32*16; i++)
@@ -860,7 +859,7 @@ QUICKLOAD_LOAD( microtan_hexfile )
 
 DRIVER_INIT( microtan )
 {
-    UINT8 *dst = memory_region(machine, REGION_GFX2);
+    UINT8 *dst = memory_region(machine, "gfx2");
     int i;
 
     for (i = 0; i < 256; i++)
@@ -922,12 +921,11 @@ DRIVER_INIT( microtan )
 MACHINE_RESET( microtan )
 {
     int i;
-	char port[6];
+	static const char *keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8" };
 	
-    for (i = 1; i < 10;  i++)
+	for (i = 1; i < 10;  i++)
 	{
-		sprintf(port, "ROW%d", i-1);
-        keyrows[i] = input_port_read(machine, port);
+        keyrows[i] = input_port_read(machine, keynames[i-1]);
 	}
     set_led_status(1, (keyrows[3] & 0x80) ? 0 : 1);
 

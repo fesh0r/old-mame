@@ -27,13 +27,13 @@ static int Gvalue;
 
 DRIVER_INIT( advision )
 {
-	memory_configure_bank(1, 0, 2, memory_region(machine, REGION_CPU1), 0x1000);
+	memory_configure_bank(1, 0, 2, memory_region(machine, "main"), 0x1000);
 }
 
 
 MACHINE_RESET( advision )
 {
-	advision_ram = memory_region(machine, REGION_CPU1) + 0x2000;
+	advision_ram = memory_region(machine, "main") + 0x2000;
 	advision_rambank = 0x300;
 	memory_set_bank(1, 1);
 	advision_framestart = 0;
@@ -109,11 +109,11 @@ static void update_dac(void)
 	/*	logerror("Clock: %x D: %x  G:%x \n",activecpu_get_icount(),Dvalue, Gvalue); */
 
 	if (Gvalue == 0 && Dvalue == 0)
-		DAC_data_w(0, 0xff);
+		dac_data_w(0, 0xff);
 	else if (Gvalue == 1 && Dvalue == 1)
-		DAC_data_w(0, 0x80);
+		dac_data_w(0, 0x80);
 	else
-		DAC_data_w(0, 0x00);
+		dac_data_w(0, 0x00);
 }
 
 

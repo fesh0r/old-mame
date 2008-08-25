@@ -63,6 +63,7 @@ static void io_reset(void);
 */
 static VIDEO_START( exelv )
 {
+	VIDEO_START_CALL( generic_bitmapped );
 	tms3556_init(/*0x8000*/0x10000);	/* tms3556 with 32 kb of video RAM */
 }
 
@@ -70,6 +71,7 @@ static MACHINE_RESET( exelv )
 {
 	tms3556_reset();
 	io_reset();
+	memory_set_bankptr( 1, memory_region(machine, "user1") + 0x0200 );
 }
 
 static INTERRUPT_GEN( exelv_hblank_interrupt )
@@ -510,17 +512,17 @@ static WRITE8_HANDLER(exelv_portb_w)
 static ADDRESS_MAP_START(exelv_memmap, ADDRESS_SPACE_PROGRAM, 8)
 
 	//AM_RANGE(0x0000, 0x007f) AM_READWRITE(tms7000_internal_r, tms7000_internal_w)/* tms7020 internal RAM */
-	AM_RANGE(0x0080, 0x00ff) AM_READWRITE(SMH_NOP, SMH_NOP)		/* reserved */
+	AM_RANGE(0x0080, 0x00ff) AM_NOP
 	//AM_RANGE(0x0100, 0x010b) AM_READWRITE(tms70x0_pf_r, tms70x0_pf_w)/* tms7020 internal I/O ports */
 	//AM_RANGE(0x010c, 0x01ff) AM_READWRITE(SMH_NOP, SMH_NOP)     /* external I/O ports */
 	AM_RANGE(0x012d, 0x0012d) AM_READWRITE(tms3556_reg_r/*right???*/, tms3556_reg_w)
 	AM_RANGE(0x012e, 0x0012e) AM_READWRITE(tms3556_vram_r/*right???*/, tms3556_vram_w)
 	AM_RANGE(0x0130, 0x00130) AM_READWRITE(mailbox_r, mailbox_w)
-	AM_RANGE(0x0200, 0x7fff) AM_READWRITE(SMH_ROM, SMH_ROM)		/* system ROM */
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_NOP, SMH_NOP)
-	AM_RANGE(0xc000, 0xc7ff) AM_READWRITE(SMH_RAM, SMH_RAM)		/* CPU RAM */
-	AM_RANGE(0xc800, /*0xf7ff*/0xefff) AM_READWRITE(SMH_NOP, SMH_NOP)
-	AM_RANGE(/*0xf800*/0xf000, 0xffff) AM_READWRITE(SMH_ROM, SMH_ROM)/* tms7020 internal ROM */
+	AM_RANGE(0x0200, 0x7fff) AM_ROMBANK(1)								/* system ROM */
+	AM_RANGE(0x8000, 0xbfff) AM_NOP
+	AM_RANGE(0xc000, 0xc7ff) AM_RAM										/* CPU RAM */
+	AM_RANGE(0xc800, 0xf7ff) AM_NOP
+	AM_RANGE(0xf800, 0xffff) AM_ROM AM_REGION("main",0x0000)		/* tms7020 internal ROM */
 
 ADDRESS_MAP_END
 
@@ -532,10 +534,19 @@ static ADDRESS_MAP_START(exelv_portmap, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 
+static ADDRESS_MAP_START(exelv_tms7040_map, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0xf000, 0xffff) AM_ROM AM_REGION("tms7040",0x0000)
+ADDRESS_MAP_END
+
+
+static ADDRESS_MAP_START(exelv_tms7040_port, ADDRESS_SPACE_IO, 8)
+ADDRESS_MAP_END
+
+
 /* keyboard: ??? */
 static INPUT_PORTS_START(exelv)
 
-	PORT_START
+	PORT_START("exelv")
 
 INPUT_PORTS_END
 
@@ -543,43 +554,63 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START(exelv)
 	/* basic machine hardware */
 	/* TMS7020 CPU @ 4.91(?) MHz */
-	MDRV_CPU_ADD(TMS7000_EXL, 4910000)
+	MDRV_CPU_ADD("main", TMS7000_EXL, 4910000)
 	MDRV_CPU_PROGRAM_MAP(exelv_memmap, 0)
 	MDRV_CPU_IO_MAP(exelv_portmap, 0)
 	MDRV_CPU_VBLANK_INT_HACK(exelv_hblank_interrupt, 363)
+
+	MDRV_CPU_ADD("tms7040", TMS7000, 4910000)
+	MDRV_CPU_PROGRAM_MAP(exelv_tms7040_map, 0)
+	MDRV_CPU_IO_MAP(exelv_tms7040_port, 0)
+
+	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( exelv )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms3556)
-	MDRV_SCREEN_ADD("main", RASTER)
+
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	MDRV_VIDEO_START(exelv)
 
 	/* sound */
-	/*MDRV_SOUND_ADD(TMS5220, tms5220interface)*/
+	/*MDRV_SOUND_ADD("tms5220", TMS5220, tms5220interface)*/
 MACHINE_DRIVER_END
 
 
 /*
   ROM loading
 */
+ROM_START(exl100)
+	ROM_REGION(0x800, "main", 0)
+	ROM_LOAD("exl100in.bin", 0x0000, 0x0800, BAD_DUMP CRC(049109a3) SHA1(98a07297dcdacef41c793c197b6496dac1e8e744))		/* TMS7020 ROM, needs verification */
+
+	ROM_REGION(0x1000, "tms7040", 0)
+	ROM_LOAD("exl100_7041.bin", 0x0000, 0x1000, NO_DUMP)			/* TMS7041 internal ROM. Max 4KB rom, could also be 2KB */
+
+	ROM_REGION(0x10000, "user1", ROMREGION_ERASEFF)			/* cartridge area */
+ROM_END
+
+
 ROM_START(exeltel)
 	/*CPU memory space*/
-	ROM_REGION(0x10000,REGION_CPU1,0)
-//  ROM_LOAD("exeltel14.bin", 0x0000, 0x8000, CRC(52a80dd4))      /* system ROM */
-	ROM_LOAD("guppy.bin", 0x6000, 0x2000, CRC(c3a3e6d9))          /* cartridge (test) */
-	ROM_LOAD("exeltelin.bin", 0xf006, 0x0ffa, CRC(c12f24b5))      /* internal ROM */
+	ROM_REGION(0x1000, "main", 0)
+	ROM_LOAD("exeltelin.bin", 0x0006, 0x0ffa, BAD_DUMP CRC(c12f24b5))		/* TMS7020 internal ROM */
+
+	ROM_REGION(0x1000, "tms7040", 0)
+	ROM_LOAD("exeltel_7041.bin", 0x0000, 0x1000, NO_DUMP)			/* TMS7041 internal ROM. Max 4KB ROM, could also be 2KB */
+
+	ROM_REGION(0x10000,"user1",0)
+	ROM_LOAD("exeltel14.bin", 0x0000, 0x10000, CRC(52a80dd4) SHA1(2cb4c784fba3aec52770999bb99a9a303269bf89))	/* system ROM */
 ROM_END
 
 static SYSTEM_CONFIG_START(exelv)
-
 	/* cartridge port is not emulated */
-
 SYSTEM_CONFIG_END
 
 /*      YEAR    NAME    PARENT      COMPAT  MACHINE     INPUT   INIT    CONFIG      COMPANY         FULLNAME */
-/*COMP( 1984,   exl100, 0,          0,      exelv,      exelv,  NULL,   exelv,      "Exelvision",   "exl 100" , 0)*/
-COMP(	1986,	exeltel,0/*exl100*/,0,		exelv,		exelv,	0,	exelv,		"Exelvision",	"exeltel" , 0)
+COMP(	1984,	exl100, 0,          0,      exelv,      exelv,  0,		exelv,      "Exelvision",   "EXL 100" , GAME_NOT_WORKING)
+COMP(	1986,	exeltel,exl100,     0,		exelv,		exelv,	0,		exelv,		"Exelvision",	"Exeltel" , GAME_NOT_WORKING)

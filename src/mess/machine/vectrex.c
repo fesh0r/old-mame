@@ -74,7 +74,7 @@ static int vectrex_verify_cart (char *data)
 
 DEVICE_IMAGE_LOAD( vectrex_cart )
 {
-	UINT8 *mem = memory_region(image->machine, REGION_CPU1);
+	UINT8 *mem = memory_region(image->machine, "main");
 	image_fread(image, mem, 0x8000);
 
 	/* check image! */
@@ -219,25 +219,9 @@ void v_via_irq (running_machine *machine, int level)
 READ8_HANDLER( v_via_pb_r )
 {
 	int pot;
-	char port[8];
+	static const char *ctrlnames[] = { "CONTR1X", "CONTR1Y", "CONTR2X", "CONTR2Y" };
 
-	switch (((vectrex_via_out[PORTB] & 0x6) >> 1))
-	{
-		case 0:
-			sprintf(port, "CONTR1X");
-			break;
-		case 1:
-			sprintf(port, "CONTR1Y");
-			break;
-		case 2:
-			sprintf(port, "CONTR2X");
-			break;
-		case 3:
-			sprintf(port, "CONTR2Y");
-			break;
-	}
-	
-	pot = input_port_read(machine, port) - 0x80; 
+	pot = input_port_read(machine, ctrlnames[(vectrex_via_out[PORTB] & 0x6) >> 1]) - 0x80; 
 	
 	if (pot > (signed char)vectrex_via_out[PORTA])
 		vectrex_via_out[PORTB] |= 0x20;
@@ -252,7 +236,7 @@ READ8_HANDLER( v_via_pa_r )
 	if ((!(vectrex_via_out[PORTB] & 0x10)) && (vectrex_via_out[PORTB] & 0x08))
 		/* BDIR inactive, we can read the PSG. BC1 has to be active. */
 	{
-		vectrex_via_out[PORTA] = AY8910_read_port_0_r(machine, 0)
+		vectrex_via_out[PORTA] = ay8910_read_port_0_r(machine, 0)
 			& ~(vectrex_imager_pinlevel & 0x80);
 	}
 	return vectrex_via_out[PORTA];

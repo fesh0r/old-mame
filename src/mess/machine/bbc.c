@@ -72,13 +72,13 @@ Model A memory handling functions
 /* for the model A just address the 4 on board ROM sockets */
 WRITE8_HANDLER ( page_selecta_w )
 {
-	memory_set_bankptr(4,memory_region(machine, REGION_USER1)+((data&0x03)<<14));
+	memory_set_bankptr(4,memory_region(machine, "user1")+((data&0x03)<<14));
 }
 
 
 WRITE8_HANDLER ( memorya1_w )
 {
-	memory_region(machine, REGION_CPU1)[offset]=data;
+	memory_region(machine, "main")[offset]=data;
 
 	// this array is set so that the video emulator know which addresses to redraw
 	vidmem[offset]=1;
@@ -95,9 +95,9 @@ WRITE8_HANDLER ( page_selectb_w )
 	bbc_rombank=data&0x0f;
 	if (bbc_rombank!=1)
 	{
-		memory_set_bankptr(4,memory_region(machine, REGION_USER1)+(bbc_rombank<<14));
+		memory_set_bankptr(4,memory_region(machine, "user1")+(bbc_rombank<<14));
 	} else {
-		memory_set_bankptr(4,memory_region(machine, REGION_USER2)+((bbc_DFSType)<<14));
+		memory_set_bankptr(4,memory_region(machine, "user2")+((bbc_DFSType)<<14));
 	}
 }
 
@@ -105,11 +105,11 @@ WRITE8_HANDLER ( page_selectb_w )
 WRITE8_HANDLER ( memoryb3_w )
 {
 	if (bbc_RAMSize) {
-		memory_region(machine, REGION_CPU1)[offset+0x4000]=data;
+		memory_region(machine, "main")[offset+0x4000]=data;
 		// this array is set so that the video emulator know which addresses to redraw
 		vidmem[offset+0x4000]=1;
 	} else {
-		memory_region(machine, REGION_CPU1)[offset]=data;
+		memory_region(machine, "main")[offset]=data;
 		vidmem[offset]=1;
 	}
 
@@ -130,13 +130,13 @@ WRITE8_HANDLER ( memoryb4_w )
 	if (bbc_rombank==1)
 	{
 		// special DFS case for Acorn DFS E00 Hack that can write to the DFS RAM Bank;
-		if (bbc_DFSType==3) memory_region(machine, REGION_USER2)[((bbc_DFSType)<<14)+offset]=data;
+		if (bbc_DFSType==3) memory_region(machine, "user2")[((bbc_DFSType)<<14)+offset]=data;
 	} else
 	{
 		switch (bbc_SWRAMtype) {
-			case 1:	if (bbc_SWRAMtype1[bbc_userport]) memory_region(machine, REGION_USER1)[(bbc_userport<<14)+offset]=data;
-			case 2:	if (bbc_SWRAMtype2[bbc_rombank])  memory_region(machine, REGION_USER1)[(bbc_rombank<<14)+offset]=data;
-			case 3:	if (bbc_SWRAMtype3[bbc_rombank])  memory_region(machine, REGION_USER1)[(bbc_rombank<<14)+offset]=data;
+			case 1:	if (bbc_SWRAMtype1[bbc_userport]) memory_region(machine, "user1")[(bbc_userport<<14)+offset]=data;
+			case 2:	if (bbc_SWRAMtype2[bbc_rombank])  memory_region(machine, "user1")[(bbc_rombank<<14)+offset]=data;
+			case 3:	if (bbc_SWRAMtype3[bbc_rombank])  memory_region(machine, "user1")[(bbc_rombank<<14)+offset]=data;
 		}
 	}
 }
@@ -174,10 +174,10 @@ WRITE8_HANDLER ( page_selectbp_w )
 		if (pagedRAM)
 		{
 			/* if paged ram then set 8000 to afff to read from the ram 8000 to afff */
-			memory_set_bankptr(4,memory_region(machine, REGION_CPU1)+0x8000);
+			memory_set_bankptr(4,memory_region(machine, "main")+0x8000);
 		} else {
 			/* if paged rom then set the rom to be read from 8000 to afff */
-			memory_set_bankptr(4,memory_region(machine, REGION_USER1)+(bbc_rombank<<14));
+			memory_set_bankptr(4,memory_region(machine, "user1")+(bbc_rombank<<14));
 		};
 
 		/* set the rom to be read from b000 to bfff */
@@ -189,7 +189,7 @@ WRITE8_HANDLER ( page_selectbp_w )
 		vdusel=(data>>7)&0x01;
 		bbcbp_setvideoshadow(machine, vdusel);
 		//need to make the video display do a full screen refresh for the new memory area
-		memory_set_bankptr(2, memory_region(machine, REGION_CPU1)+0x3000);
+		memory_set_bankptr(2, memory_region(machine, "main")+0x3000);
 	}
 }
 
@@ -200,7 +200,7 @@ WRITE8_HANDLER ( page_selectbp_w )
 
 WRITE8_HANDLER ( memorybp1_w )
 {
-	memory_region(machine, REGION_CPU1)[offset]=data;
+	memory_region(machine, "main")[offset]=data;
 
 	// this array is set so that the video emulator know which addresses to redraw
 	vidmem[offset]=1;
@@ -222,7 +222,7 @@ WRITE8_HANDLER ( memorybp1_w )
 
 static OPBASE_HANDLER( bbcbp_opbase_handler )
 {
-	UINT8 *ram = memory_region(machine, REGION_CPU1);
+	UINT8 *ram = memory_region(machine, "main");
 	if (vdusel==0)
 	{
 		// not in shadow ram mode so just read normal ram
@@ -243,7 +243,7 @@ static OPBASE_HANDLER( bbcbp_opbase_handler )
 
 WRITE8_HANDLER ( memorybp2_w )
 {
-	UINT8 *ram = memory_region(machine, REGION_CPU1);
+	UINT8 *ram = memory_region(machine, "main");
 	if (vdusel==0)
 	{
 		// not in shadow ram mode so just write to normal ram
@@ -270,7 +270,7 @@ WRITE8_HANDLER ( memorybp4_w )
 {
 	if (pagedRAM)
 	{
-		memory_region(machine, REGION_CPU1)[offset+0x8000]=data;
+		memory_region(machine, "main")[offset+0x8000]=data;
 	}
 }
 
@@ -290,13 +290,13 @@ WRITE8_HANDLER ( memorybp4_128_w )
 {
 	if (pagedRAM)
 	{
-		memory_region(machine, REGION_CPU1)[offset+0x8000]=data;
+		memory_region(machine, "main")[offset+0x8000]=data;
 	}
 	else
 	{
 		if (bbc_b_plus_sideways_ram_banks[bbc_rombank])
 		{
-			memory_region(machine, REGION_USER1)[offset+(bbc_rombank<<14)]=data;
+			memory_region(machine, "user1")[offset+(bbc_rombank<<14)]=data;
 		}
 	}
 }
@@ -305,7 +305,7 @@ WRITE8_HANDLER ( memorybp6_128_w )
 {
 	if (bbc_b_plus_sideways_ram_banks[bbc_rombank])
 	{
-		memory_region(machine, REGION_USER1)[offset+(bbc_rombank<<14)+0x3000]=data;
+		memory_region(machine, "user1")[offset+(bbc_rombank<<14)+0x3000]=data;
 	}
 }
 
@@ -403,9 +403,9 @@ WRITE8_HANDLER ( bbcm_ACCCON_write )
 
 	if (ACCCON_Y)
 	{
-		memory_set_bankptr(7,memory_region(machine, REGION_CPU1)+0x9000);
+		memory_set_bankptr(7,memory_region(machine, "main")+0x9000);
 	} else {
-		memory_set_bankptr(7,memory_region(machine, REGION_USER1)+0x40000);
+		memory_set_bankptr(7,memory_region(machine, "user1")+0x40000);
 	}
 
 	bbcbp_setvideoshadow(machine, ACCCON_D);
@@ -413,9 +413,9 @@ WRITE8_HANDLER ( bbcm_ACCCON_write )
 
 	if (ACCCON_X)
 	{
-		memory_set_bankptr( 2, memory_region( machine, REGION_CPU1 ) + 0xb000 );
+		memory_set_bankptr( 2, memory_region( machine, "main" ) + 0xb000 );
 	} else {
-		memory_set_bankptr( 2, memory_region( machine, REGION_CPU1 ) + 0x3000 );
+		memory_set_bankptr( 2, memory_region( machine, "main" ) + 0x3000 );
 	}
 
 }
@@ -436,10 +436,10 @@ static WRITE8_HANDLER ( page_selectbm_w )
 
 	if (pagedRAM)
 	{
-		memory_set_bankptr(4,memory_region(machine, REGION_CPU1)+0x8000);
+		memory_set_bankptr(4,memory_region(machine, "main")+0x8000);
 		memory_set_bank(5, bbc_rombank);
 	} else {
-		memory_set_bankptr(4,memory_region(machine, REGION_USER1)+((bbc_rombank)<<14));
+		memory_set_bankptr(4,memory_region(machine, "user1")+((bbc_rombank)<<14));
 		memory_set_bank(5, bbc_rombank);
 	}
 }
@@ -448,7 +448,7 @@ static WRITE8_HANDLER ( page_selectbm_w )
 
 WRITE8_HANDLER ( memorybm1_w )
 {
-	memory_region(machine, REGION_CPU1)[offset]=data;
+	memory_region(machine, "main")[offset]=data;
 	vidmem[offset]=1;
 }
 
@@ -457,13 +457,13 @@ static OPBASE_HANDLER( bbcm_opbase_handler )
 {
 	if (ACCCON_X)
 	{
-		memory_set_bankptr( 2, memory_region( machine, REGION_CPU1 ) + 0xb000 );
+		memory_set_bankptr( 2, memory_region( machine, "main" ) + 0xb000 );
 	} else {
 		if (ACCCON_E && bbcm_vdudriverset())
 		{
-			memory_set_bankptr( 2, memory_region( machine, REGION_CPU1 ) + 0xb000 );
+			memory_set_bankptr( 2, memory_region( machine, "main" ) + 0xb000 );
 		} else {
-			memory_set_bankptr( 2, memory_region( machine, REGION_CPU1 ) + 0x3000 );
+			memory_set_bankptr( 2, memory_region( machine, "main" ) + 0x3000 );
 		}
 	}
 
@@ -474,7 +474,7 @@ static OPBASE_HANDLER( bbcm_opbase_handler )
 
 WRITE8_HANDLER ( memorybm2_w )
 {
-	UINT8 *ram = memory_region(machine, REGION_CPU1);
+	UINT8 *ram = memory_region(machine, "main");
 	if (ACCCON_X)
 	{
 		ram[offset+0xb000]=data;
@@ -501,13 +501,13 @@ WRITE8_HANDLER ( memorybm4_w )
 {
 	if (pagedRAM)
 	{
-		memory_region(machine, REGION_CPU1)[offset+0x8000]=data;
+		memory_region(machine, "main")[offset+0x8000]=data;
 	}
 	else
 	{
 		if (bbc_master_sideways_ram_banks[bbc_rombank])
 		{
-			memory_region(machine, REGION_USER1)[offset+(bbc_rombank<<14)]=data;
+			memory_region(machine, "user1")[offset+(bbc_rombank<<14)]=data;
 		}
 	}
 }
@@ -517,7 +517,7 @@ WRITE8_HANDLER ( memorybm5_w )
 {
 	if (bbc_master_sideways_ram_banks[bbc_rombank])
 	{
-		memory_region(machine, REGION_USER1)[offset+(bbc_rombank<<14)+0x1000]=data;
+		memory_region(machine, "user1")[offset+(bbc_rombank<<14)+0x1000]=data;
 	}
 }
 
@@ -526,7 +526,7 @@ WRITE8_HANDLER ( memorybm7_w )
 {
 	if (ACCCON_Y)
 	{
-		memory_region(machine, REGION_CPU1)[offset+0x9000]=data;
+		memory_region(machine, "main")[offset+0x9000]=data;
 	}
 }
 
@@ -560,7 +560,7 @@ long myo;
 
 	if ( ACCCON_TST )
 	{
-		return memory_region(machine, REGION_USER1)[offset+0x43c00];
+		return memory_region(machine, "user1")[offset+0x43c00];
 	};
 
 	if ((offset>=0x000) && (offset<=0x0ff)) /* FRED */
@@ -748,38 +748,39 @@ static int via_system_porta;
 
 
 // this is a counter on the keyboard
-static int column=0;
+static int column = 0;
 
 
 INTERRUPT_GEN( bbcb_keyscan )
 {
-	char port[6];
+	static const char *colnames[] = { "COL0", "COL1", "COL2", "COL3", "COL4", 
+										"COL5", "COL6", "COL7", "COL8", "COL9" };
 	
   	/* only do auto scan if keyboard is not enabled */
-	if (b3_keyboard==1)
+	if (b3_keyboard == 1)
 	{
-
   		/* KBD IC1 4 bit addressable counter */
   		/* KBD IC3 4 to 10 line decoder */
 		/* keyboard not enabled so increment counter */
-		column=(column+1)%16;
-		if (column<10)
+		column = (column + 1) % 16;
+		if (column < 10)
 		{
-
   			/* KBD IC4 8 input NAND gate */
   			/* set the value of via_system ca2, by checking for any keys
     			 being pressed on the selected column */
-
-			sprintf(port, "COL%d", column);
-			if ((input_port_read(machine, port) | 0x01) != 0xff)
+			if ((input_port_read(machine, colnames[column]) | 0x01) != 0xff)
 			{
-				via_0_ca2_w(machine, 0,1);
-			} else {
-				via_0_ca2_w(machine, 0,0);
+				via_0_ca2_w(machine, 0, 1);
+			} 
+			else 
+			{
+				via_0_ca2_w(machine, 0, 0);
 			}
 
-		} else {
-			via_0_ca2_w(machine, 0,0);
+		} 
+		else 
+		{
+			via_0_ca2_w(machine, 0, 0);
 		}
 	}
 }
@@ -787,34 +788,32 @@ INTERRUPT_GEN( bbcb_keyscan )
 
 INTERRUPT_GEN( bbcm_keyscan )
 {
-	char port[6];
+	static const char *colnames[] = { "COL0", "COL1", "COL2", "COL3", "COL4", 
+										"COL5", "COL6", "COL7", "COL8", "COL9" };
 
   	/* only do auto scan if keyboard is not enabled */
-	if (b3_keyboard==1)
+	if (b3_keyboard == 1)
 	{
-
   		/* KBD IC1 4 bit addressable counter */
   		/* KBD IC3 4 to 10 line decoder */
 		/* keyboard not enabled so increment counter */
-		column=(column+1)%16;
+		column = (column + 1) % 16;
 
 		/* this IF should be removed as soon as the dip switches (keyboard keys) are set for the master */
-		if (column<10)
+		if (column < 10)
 			{
 			/* KBD IC4 8 input NAND gate */
 			/* set the value of via_system ca2, by checking for any keys
 				 being pressed on the selected column */
-
-			sprintf(port, "COL%d", column);
-			if ((input_port_read(machine, port) | 0x01)!=0xff)
+			if ((input_port_read(machine, colnames[column]) | 0x01) != 0xff)
 			{
-				via_0_ca2_w(machine, 0,1);
+				via_0_ca2_w(machine, 0, 1);
 			} else {
-				via_0_ca2_w(machine, 0,0);
+				via_0_ca2_w(machine, 0, 0);
 			}
 
 		} else {
-			via_0_ca2_w(machine, 0,0);
+			via_0_ca2_w(machine, 0, 0);
 		}
 	}
 }
@@ -826,28 +825,36 @@ static int bbc_keyboard(running_machine *machine, int data)
 	int bit;
 	int row;
 	int res;
-	char port[6];
-	column=data & 0x0f;
-	row=(data>>4) & 0x07;
+	static const char *colnames[] = { "COL0", "COL1", "COL2", "COL3", "COL4", 
+										"COL5", "COL6", "COL7", "COL8", "COL9" };
 
-	bit=0;
+	column = data & 0x0f;
+	row = (data>>4) & 0x07;
 
-	if (column<10) {
-		sprintf(port, "COL%d", column);
-		res=input_port_read(machine, port);
-	} else {
-		res=0xff;
+	bit = 0;
+
+	if (column < 10) 
+	{
+		res = input_port_read(machine, colnames[column]);
+	} 
+	else 
+	{
+		res = 0xff;
 	}
 
 	/* Normal keyboard result */
-	if ((res&(1<<row))==0)
-		{ bit=1; }
+	if ((res & (1<<row)) == 0)
+	{ 
+		bit = 1; 
+	}
 
-	if ((res|1)!=0xff)
+	if ((res | 1) != 0xff)
 	{
-		via_0_ca2_w(machine, 0,1);
-	} else {
-		via_0_ca2_w(machine, 0,0);
+		via_0_ca2_w(machine, 0, 1);
+	} 
+	else 
+	{
+		via_0_ca2_w(machine, 0, 0);
 	}
 
 	return (data & 0x7f) | (bit<<7);
@@ -908,7 +915,7 @@ static WRITE8_HANDLER( bbcb_via_system_write_porta )
 	if (b0_sound==0)
 	{
  		//logerror("Doing an unsafe write to the sound chip %d \n",data);
-		SN76496_0_w(machine, 0,via_system_porta);
+		sn76496_0_w(machine, 0,via_system_porta);
 	}
 	if (b3_keyboard==0)
 	{
@@ -1003,7 +1010,7 @@ static WRITE8_HANDLER( bbcb_via_system_write_portb )
 		case 0:
 			if (b0_sound==1) {
 				b0_sound=0;
-				SN76496_0_w(machine, 0,via_system_porta);
+				sn76496_0_w(machine, 0,via_system_porta);
 			}
 			break;
 		case 1:
@@ -1865,7 +1872,7 @@ READ8_HANDLER( bbc_opus_read )
 			}
 
 		} else {
-			return memory_region(machine, REGION_DISKS)[offset+(opusbank<<8)];
+			return memory_region(machine, "disks")[offset+(opusbank<<8)];
 		}
 	}
 	return 0xff;
@@ -1904,7 +1911,7 @@ WRITE8_HANDLER (bbc_opus_write)
 					break;
 			}
 		} else {
-			memory_region(machine, REGION_DISKS)[offset+(opusbank<<8)]=data;
+			memory_region(machine, "disks")[offset+(opusbank<<8)]=data;
 		}
 	}
 }
@@ -2058,7 +2065,7 @@ WRITE8_HANDLER ( bbc_disc_w )
 ***************************************/
 DEVICE_IMAGE_LOAD( bbcb_cart )
 {
-	UINT8 *mem = memory_region (image->machine, REGION_USER1);
+	UINT8 *mem = memory_region (image->machine, "user1");
 	int size, read_;
 	int addr = 0;
 
@@ -2116,12 +2123,12 @@ MACHINE_START( bbca )
 
 MACHINE_RESET( bbca )
 {
-	UINT8 *ram = memory_region(machine, REGION_CPU1);
+	UINT8 *ram = memory_region(machine, "main");
 	memory_set_bankptr(1,ram);
 	memory_set_bankptr(3,ram);
 
-	memory_set_bankptr(4,memory_region(machine, REGION_USER1));          /* bank 4 is the paged ROMs     from 8000 to bfff */
-	memory_set_bankptr(7,memory_region(machine, REGION_USER1)+0x10000);  /* bank 7 points at the OS rom  from c000 to ffff */
+	memory_set_bankptr(4,memory_region(machine, "user1"));          /* bank 4 is the paged ROMs     from 8000 to bfff */
+	memory_set_bankptr(7,memory_region(machine, "user1")+0x10000);  /* bank 7 points at the OS rom  from c000 to ffff */
 
 	via_reset();
 
@@ -2159,7 +2166,7 @@ MACHINE_START( bbcb )
 
 MACHINE_RESET( bbcb )
 {
-	UINT8 *ram = memory_region(machine, REGION_CPU1);
+	UINT8 *ram = memory_region(machine, "main");
 	bbc_DFSType=  (input_port_read(machine, "BBCCONFIG")>>0)&0x07;
 	bbc_SWRAMtype=(input_port_read(machine, "BBCCONFIG")>>3)&0x03;
 	bbc_RAMSize=  (input_port_read(machine, "BBCCONFIG")>>5)&0x01;
@@ -2176,8 +2183,8 @@ MACHINE_RESET( bbcb )
 		set_video_memory_lookups(16);
 	}
 
-	memory_set_bankptr(4,memory_region(machine, REGION_USER1));          /* bank 4 is the paged ROMs     from 8000 to bfff */
-	memory_set_bankptr(7,memory_region(machine, REGION_USER1)+0x40000);  /* bank 7 points at the OS rom  from c000 to ffff */
+	memory_set_bankptr(4,memory_region(machine, "user1"));          /* bank 4 is the paged ROMs     from 8000 to bfff */
+	memory_set_bankptr(7,memory_region(machine, "user1")+0x40000);  /* bank 7 points at the OS rom  from c000 to ffff */
 
 	via_reset();
 
@@ -2204,7 +2211,7 @@ MACHINE_START( bbcbp )
 	memory_set_opbase_handler(0, bbcbp_opbase_handler);
 
 	/* bank 6 is the paged ROMs     from b000 to bfff */
-	memory_configure_bank(6, 0, 16, memory_region(machine, REGION_USER1) + 0x3000, 1<<14);
+	memory_configure_bank(6, 0, 16, memory_region(machine, "user1") + 0x3000, 1<<14);
 
 	via_config(0, &bbcb_system_via);
 	via_set_clock(0,1000000);
@@ -2217,11 +2224,11 @@ MACHINE_START( bbcbp )
 
 MACHINE_RESET( bbcbp )
 {
-	memory_set_bankptr(1,memory_region(machine, REGION_CPU1));
-	memory_set_bankptr(2,memory_region(machine, REGION_CPU1)+0x03000);  /* bank 2 screen/shadow ram     from 3000 to 7fff */
-	memory_set_bankptr(4,memory_region(machine, REGION_USER1));         /* bank 4 is paged ROM or RAM   from 8000 to afff */
+	memory_set_bankptr(1,memory_region(machine, "main"));
+	memory_set_bankptr(2,memory_region(machine, "main")+0x03000);  /* bank 2 screen/shadow ram     from 3000 to 7fff */
+	memory_set_bankptr(4,memory_region(machine, "user1"));         /* bank 4 is paged ROM or RAM   from 8000 to afff */
 	memory_set_bank(6, 0);
-	memory_set_bankptr(7,memory_region(machine, REGION_USER1)+0x40000); /* bank 7 points at the OS rom  from c000 to ffff */
+	memory_set_bankptr(7,memory_region(machine, "user1")+0x40000); /* bank 7 points at the OS rom  from c000 to ffff */
 
 	via_reset();
 
@@ -2241,7 +2248,7 @@ MACHINE_START( bbcm )
 	memory_set_opbase_handler(0, bbcm_opbase_handler);
 
 	/* bank 5 is the paged ROMs     from 9000 to bfff */
-	memory_configure_bank(5, 0, 16, memory_region(machine, REGION_USER1)+0x01000, 1<<14);
+	memory_configure_bank(5, 0, 16, memory_region(machine, "user1")+0x01000, 1<<14);
 
 	via_config(0, &bbcb_system_via);
 	via_set_clock(0,1000000);
@@ -2254,11 +2261,11 @@ MACHINE_START( bbcm )
 
 MACHINE_RESET( bbcm )
 {
-	memory_set_bankptr(1,memory_region(machine, REGION_CPU1));			/* bank 1 regular lower ram		from 0000 to 2fff */
-	memory_set_bankptr(2,memory_region(machine, REGION_CPU1)+0x3000);	/* bank 2 screen/shadow ram		from 3000 to 7fff */
-	memory_set_bankptr(4,memory_region(machine, REGION_USER1));         /* bank 4 is paged ROM or RAM   from 8000 to 8fff */
+	memory_set_bankptr(1,memory_region(machine, "main"));			/* bank 1 regular lower ram		from 0000 to 2fff */
+	memory_set_bankptr(2,memory_region(machine, "main")+0x3000);	/* bank 2 screen/shadow ram		from 3000 to 7fff */
+	memory_set_bankptr(4,memory_region(machine, "user1"));         /* bank 4 is paged ROM or RAM   from 8000 to 8fff */
 	memory_set_bank(5, 0);
-	memory_set_bankptr(7,memory_region(machine, REGION_USER1)+0x40000); /* bank 6 OS rom of RAM			from c000 to dfff */
+	memory_set_bankptr(7,memory_region(machine, "user1")+0x40000); /* bank 6 OS rom of RAM			from c000 to dfff */
 
 	via_reset();
 

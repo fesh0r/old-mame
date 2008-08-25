@@ -81,11 +81,6 @@ enum
 	DEVOPTION_MAX
 };
 
-#ifdef ENABLE_DEBUGGER
-#define HAS_DEBUGGER	1
-#else
-#define HAS_DEBUGGER	0
-#endif
 #ifdef MAME_PROFILER
 #define HAS_PROFILER	1
 #else
@@ -110,7 +105,6 @@ enum
 //	LOCAL VARIABLES
 //============================================================
 
-static int win_use_natural_keyboard;
 static HICON device_icons[IO_COUNT];
 static int use_input_categories;
 static int joystick_menu_setup;
@@ -584,7 +578,6 @@ static void format_combo_changed(dialog_box *dialog, HWND dlgwnd, NMHDR *notific
 	HWND wnd;
 	int format_combo_val;
 	const device_config *dev;
-	const struct IODevice *iodev;
 	const option_guide *guide;
 	const char *optspec;
 	struct file_dialog_params *params;
@@ -602,13 +595,12 @@ static void format_combo_changed(dialog_box *dialog, HWND dlgwnd, NMHDR *notific
 
 	// compute our parameters
 	dev = params->dev;
-	iodev = mess_device_from_core_device(dev);
-	guide = iodev->createimage_optguide;
-	optspec = iodev->createimage_options[format_combo_val].optspec;
+	guide = image_device_get_creation_option_guide(dev);
+	optspec = image_device_get_indexed_creatable_format(dev, format_combo_val)->optspec;
 
 	// set the default extension
 	CommDlg_OpenSave_SetDefExt(GetParent(dlgwnd),
-		iodev->createimage_options[format_combo_val].extensions);
+		image_device_get_indexed_creatable_format(dev, format_combo_val)->extensions);
 
 	// enumerate through all of the child windows
 	wnd = NULL;
@@ -658,18 +650,19 @@ static void storeval_option_resolution(void *storeval_param, int val)
 	option_resolution *resolution;
 	struct storeval_optres_params *params;
 	const device_config *dev;
-	const struct IODevice *iodev;
 	char buf[16];
 
 	params = (struct storeval_optres_params *) storeval_param;
 	dev = params->fdparams->dev;
-	iodev = mess_device_from_core_device(dev);
 
 	// create the resolution, if necessary
 	resolution = *(params->fdparams->create_args);
 	if (!resolution)
 	{
-		resolution = option_resolution_create(iodev->createimage_optguide, iodev->createimage_options[*(params->fdparams->create_format)].optspec);
+		const option_guide *optguide = image_device_get_creation_option_guide(dev);
+		const image_device_format *format = image_device_get_indexed_creatable_format(dev, *(params->fdparams->create_format));
+
+		resolution = option_resolution_create(optguide, format->optspec);
 		if (!resolution)
 			return;
 		*(params->fdparams->create_args) = resolution;
@@ -689,20 +682,18 @@ static dialog_box *build_option_dialog(const device_config *dev, char *filter, s
 {
 	dialog_box *dialog;
 	const option_guide *guide_entry;
-	int found, i, pos;
+	int found, pos;
 	char buf[256];
 	struct file_dialog_params *params;
 	struct storeval_optres_params *storeval_params;
 	static const struct dialog_layout filedialog_layout = { 44, 220 };
-	const struct IODevice *iodev = mess_device_from_core_device(dev);
+	const image_device_format *format;
 
 	// make the filter
 	pos = 0;
-	for (i = 0; iodev->createimage_options[i].optspec; i++)
+	for (format = image_device_get_creatable_formats(dev); format != NULL; format = format->next)
 	{
-		pos += add_filter_entry(filter + pos, filter_len - pos,
-			iodev->createimage_options[i].description,
-			iodev->createimage_options[i].extensions);
+		pos += add_filter_entry(filter + pos, filter_len - pos, format->description, format->extensions);
 	}
 
 	// create the dialog
@@ -723,13 +714,13 @@ static dialog_box *build_option_dialog(const device_config *dev, char *filter, s
 		goto error;
 
 	// loop through the entries
-	for (guide_entry = iodev->createimage_optguide; guide_entry->option_type != OPTIONTYPE_END; guide_entry++)
+	for (guide_entry = image_device_get_creation_option_guide(dev); guide_entry->option_type != OPTIONTYPE_END; guide_entry++)
 	{
 		// make sure that this entry is present on at least one option specification
 		found = FALSE;
-		for (i = 0; iodev->createimage_options[i].optspec; i++)
+		for (format = image_device_get_creatable_formats(dev); format != NULL; format = format->next)
 		{
-			if (option_resolution_contains(iodev->createimage_options[i].optspec, guide_entry->parameter))
+			if (option_resolution_contains(format->optspec, guide_entry->parameter))
 			{
 				found = TRUE;
 				break;
@@ -889,7 +880,6 @@ static void change_device(HWND wnd, const device_config *device, int is_save)
 	option_resolution *create_args = NULL;
 	image_error_t err;
 	image_device_info info;
-	const struct IODevice *iodev;
 
 	// sanity check
 	assert(device != NULL);
@@ -914,10 +904,9 @@ static void change_device(HWND wnd, const device_config *device, int is_save)
 	initial_dir = image_working_directory(device);
 
 	// add custom dialog elements, if appropriate
-	iodev = mess_device_from_core_device(device);
-	if (is_save && (iodev != NULL)
-		&& (iodev->createimage_optguide != NULL)
-		&& (iodev->createimage_options[0].optspec != NULL))
+	if (is_save
+		&& (image_device_get_creation_option_guide(device) != NULL)
+		&& (image_device_get_creatable_formats(device) != NULL))
 	{
 		dialog = build_option_dialog(device, filter, sizeof(filter) / sizeof(filter[0]), &create_format, &create_args);
 		if (!dialog)
@@ -936,7 +925,7 @@ static void change_device(HWND wnd, const device_config *device, int is_save)
 	{
 		// mount the image
 		if (is_save)
-			err = image_create(device, filename, create_format, create_args);
+			err = image_create(device, filename, image_device_get_indexed_creatable_format(device, create_format), create_args);
 		else
 			err = image_load(device, filename);
 
@@ -1320,9 +1309,9 @@ static void prepare_menus(running_machine *machine, HWND wnd)
 #endif
 
 	set_command_state(menu_bar, ID_KEYBOARD_EMULATED,		(has_keyboard) ?
-																(!win_use_natural_keyboard					? MFS_CHECKED : MFS_ENABLED)
+																(!ui_mess_get_use_natural_keyboard(machine)					? MFS_CHECKED : MFS_ENABLED)
 																												: MFS_GRAYED);
-	set_command_state(menu_bar, ID_KEYBOARD_NATURAL,		(has_keyboard && inputx_can_post(machine)) ?																(win_use_natural_keyboard					? MFS_CHECKED : MFS_ENABLED)
+	set_command_state(menu_bar, ID_KEYBOARD_NATURAL,		(has_keyboard && inputx_can_post(machine)) ?																(ui_mess_get_use_natural_keyboard(machine)					? MFS_CHECKED : MFS_ENABLED)
 																												: MFS_GRAYED);
 	set_command_state(menu_bar, ID_KEYBOARD_CUSTOMIZE,		has_keyboard								? MFS_ENABLED : MFS_GRAYED);
 
@@ -1551,7 +1540,7 @@ static void device_command(HWND wnd, const device_config *img, int devoption)
 						break;
 #else
 					case DEVOPTION_CASSETTE_REWIND:
-						cassette_seek(img, +1.0, SEEK_CUR);
+						cassette_seek(img, -1.0, SEEK_CUR);
 						break;
 
 					case DEVOPTION_CASSETTE_FASTFORWARD:
@@ -1658,7 +1647,12 @@ static void set_window_orientation(win_window_info *window, int orientation)
 {
 	render_target_set_orientation(window->target, orientation);
 	if (window->target == render_get_ui_target())
-		render_container_set_orientation(render_container_get_ui(), orientation);
+	{
+		render_container_user_settings settings;
+		render_container_get_user_settings(render_container_get_ui(), &settings);
+		settings.orientation = orientation;
+		render_container_set_user_settings(render_container_get_ui(), &settings);
+	}
 	winwindow_video_window_update(window);
 }
 
@@ -1726,11 +1720,11 @@ static int invoke_command(running_machine *machine, HWND wnd, UINT command)
 			break;
 
 		case ID_KEYBOARD_NATURAL:
-			win_use_natural_keyboard = 1;
+			ui_mess_set_use_natural_keyboard(machine, TRUE);
 			break;
 
 		case ID_KEYBOARD_EMULATED:
-			win_use_natural_keyboard = 0;
+			ui_mess_set_use_natural_keyboard(machine, FALSE);
 			break;
 
 		case ID_KEYBOARD_CUSTOMIZE:
@@ -1771,11 +1765,9 @@ static int invoke_command(running_machine *machine, HWND wnd, UINT command)
 			break;
 #endif // HAS_PROFILER
 
-#if HAS_DEBUGGER
 		case ID_OPTIONS_DEBUGGER:
-			debug_halt_on_next_instruction();
+			debug_cpu_halt_on_next_instruction(machine, "User-initiated break\n");
 			break;
-#endif // HAS_DEBUGGER
 
 		case ID_OPTIONS_CONFIGURATION:
 			customize_configuration(machine, wnd);
@@ -2007,7 +1999,7 @@ int win_setup_menus(running_machine *machine, HMODULE module, HMENU menu_bar)
 	DeleteMenu(menu_bar, ID_OPTIONS_PROFILER, MF_BYCOMMAND);
 #endif
 
-	if (!HAS_DEBUGGER || ((machine->debug_flags & DEBUG_FLAG_ENABLED) == 0))
+	if ((machine->debug_flags & DEBUG_FLAG_ENABLED) == 0)
 		DeleteMenu(menu_bar, ID_OPTIONS_DEBUGGER, MF_BYCOMMAND);
 
 #if !HAS_TOGGLEFULLSCREEN
@@ -2070,10 +2062,7 @@ int win_create_menu(running_machine *machine, HMENU *menus)
 	HMENU menu_bar = NULL;
 	HMODULE module;
 
-	// determine whether we are using the natural keyboard or not
-	win_use_natural_keyboard = options_get_bool(mame_options(), "natural");
-
-	if (mess_use_new_ui())
+	if (ui_mess_use_new_ui(machine))
 	{
 		module = win_resource_module();
 		menu_bar = LoadMenu(module, MAKEINTRESOURCE(IDR_RUNTIME_MENU));
@@ -2102,86 +2091,14 @@ error:
 
 LRESULT CALLBACK win_mess_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
-	int i;
-	MSG msg;
-
-	static const WPARAM keytrans[][2] =
-	{
-		{ VK_ESCAPE,	UCHAR_MAMEKEY(ESC) },
-		{ VK_F1,		UCHAR_MAMEKEY(F1) },
-		{ VK_F2,		UCHAR_MAMEKEY(F2) },
-		{ VK_F3,		UCHAR_MAMEKEY(F3) },
-		{ VK_F4,		UCHAR_MAMEKEY(F4) },
-		{ VK_F5,		UCHAR_MAMEKEY(F5) },
-		{ VK_F6,		UCHAR_MAMEKEY(F6) },
-		{ VK_F7,		UCHAR_MAMEKEY(F7) },
-		{ VK_F8,		UCHAR_MAMEKEY(F8) },
-		{ VK_F9,		UCHAR_MAMEKEY(F9) },
-		{ VK_F10,		UCHAR_MAMEKEY(F10) },
-		{ VK_F11,		UCHAR_MAMEKEY(F11) },
-		{ VK_F12,		UCHAR_MAMEKEY(F12) },
-		{ VK_NUMLOCK,	UCHAR_MAMEKEY(F12) },
-		{ VK_SCROLL,	UCHAR_MAMEKEY(F12) },
-		{ VK_NUMPAD0,	UCHAR_MAMEKEY(0_PAD) },
-		{ VK_NUMPAD1,	UCHAR_MAMEKEY(1_PAD) },
-		{ VK_NUMPAD2,	UCHAR_MAMEKEY(2_PAD) },
-		{ VK_NUMPAD3,	UCHAR_MAMEKEY(3_PAD) },
-		{ VK_NUMPAD4,	UCHAR_MAMEKEY(4_PAD) },
-		{ VK_NUMPAD5,	UCHAR_MAMEKEY(5_PAD) },
-		{ VK_NUMPAD6,	UCHAR_MAMEKEY(6_PAD) },
-		{ VK_NUMPAD7,	UCHAR_MAMEKEY(7_PAD) },
-		{ VK_NUMPAD8,	UCHAR_MAMEKEY(8_PAD) },
-		{ VK_NUMPAD9,	UCHAR_MAMEKEY(9_PAD) },
-		{ VK_DECIMAL,	UCHAR_MAMEKEY(DEL_PAD) },
-		{ VK_ADD,		UCHAR_MAMEKEY(PLUS_PAD) },
-		{ VK_SUBTRACT,	UCHAR_MAMEKEY(MINUS_PAD) },
-		{ VK_INSERT,	UCHAR_MAMEKEY(INSERT) },
-		{ VK_DELETE,	UCHAR_MAMEKEY(DEL) },
-		{ VK_HOME,		UCHAR_MAMEKEY(HOME) },
-		{ VK_END,		UCHAR_MAMEKEY(END) },
-		{ VK_PRIOR,		UCHAR_MAMEKEY(PGUP) },
-		{ VK_NEXT,		UCHAR_MAMEKEY(PGDN) },
-		{ VK_UP,		UCHAR_MAMEKEY(UP) },
-		{ VK_DOWN,		UCHAR_MAMEKEY(DOWN) },
-		{ VK_LEFT,		UCHAR_MAMEKEY(LEFT) },
-		{ VK_RIGHT,		UCHAR_MAMEKEY(RIGHT) },
-		{ VK_PAUSE,		UCHAR_MAMEKEY(PAUSE) },
-		{ VK_CANCEL,	UCHAR_MAMEKEY(CANCEL) }
-	};
-
-	if (win_use_natural_keyboard && (message == WM_KEYDOWN))
-	{
-		for (i = 0; i < sizeof(keytrans) / sizeof(keytrans[0]); i++)
-		{
-			if (wparam == keytrans[i][0])
-			{
-				inputx_postc(Machine, keytrans[i][1]);
-				message = WM_NULL;
-
-				/* check to see if there is a corresponding WM_CHAR in our
-				 * future.  If so, remove it
-				 */
-				PeekMessage(&msg, wnd, 0, 0, PM_NOREMOVE);
-				if ((msg.message == WM_CHAR) && (msg.lParam == lparam))
-					PeekMessage(&msg, wnd, 0, 0, PM_REMOVE);
-				break;
-			}
-		}
-	}
-
 	switch(message)
 	{
 		case WM_INITMENU:
 			prepare_menus(Machine, wnd);
 			break;
 
-		case WM_CHAR:
-			if (win_use_natural_keyboard)
-				inputx_postc(Machine, wparam);
-			break;
-
 		case WM_PASTE:
-			ui_paste(Machine);
+			ui_mess_paste(Machine);
 			break;
 
 		case WM_COMMAND:
@@ -2193,13 +2110,4 @@ LRESULT CALLBACK win_mess_window_proc(HWND wnd, UINT message, WPARAM wparam, LPA
 			return winwindow_video_window_proc(wnd, message, wparam, lparam);
 	}
 	return 0;
-}
-
-//============================================================
-//	osd_keyboard_disabled
-//============================================================
-
-int osd_keyboard_disabled(void)
-{
-	return win_use_natural_keyboard;
 }

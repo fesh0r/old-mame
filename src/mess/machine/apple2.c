@@ -121,9 +121,9 @@ void apple2_update_memory(running_machine *machine)
 	}
 
 	/* get critical info */
-	rom = memory_region(machine, REGION_CPU1);
-	rom_length = memory_region_length(machine, REGION_CPU1) & ~0xFFF;
-	slot_length = memory_region_length(machine, REGION_CPU1) - rom_length;
+	rom = memory_region(machine, "main");
+	rom_length = memory_region_length(machine, "main") & ~0xFFF;
+	slot_length = memory_region_length(machine, "main") - rom_length;
 	slot_ram = (slot_length > 0) ? &rom[rom_length] : NULL;
 
 	/* loop through the entire memory map */
@@ -966,7 +966,7 @@ READ8_HANDLER ( apple2_c03x_r )
 			a2_speaker_state = 0;
 		else
 			a2_speaker_state = 0xFF;
-		DAC_data_w(0, a2_speaker_state);
+		dac_data_w(0, a2_speaker_state);
 	}
 	return apple2_getfloatingbusvalue();
 }
@@ -1285,7 +1285,7 @@ void apple2_init_common(running_machine *machine)
 	a2_set = 0;
 
 	/* disable VAR_ROMSWITCH if the ROM is only 16k */
-	if (memory_region_length(machine, REGION_CPU1) < 0x8000)
+	if (memory_region_length(machine, "main") < 0x8000)
 		a2_mask &= ~VAR_ROMSWITCH;
 
 	if (mess_ram_size <= 64*1024)

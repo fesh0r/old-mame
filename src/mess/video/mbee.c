@@ -99,13 +99,14 @@ WRITE8_HANDLER ( mbee_pcg_color_w )
 
 static int keyboard_matrix_r(running_machine *machine, int offs)
 {
-	char portname[6];
 	int port = (offs >> 7) & 7;
 	int bit = (offs >> 4) & 7;
 	int extra = input_port_read(machine, "EXTRA");
 	int data = 0;
-	sprintf(portname, "LINE%d", port);
-	data = (input_port_read(machine, portname) >> bit) & 1;
+	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
+
+
+	data = (input_port_read(machine, keynames[port]) >> bit) & 1;
 
 	if( extra & 0x01 )	/* extra: cursor up */
 	{
@@ -350,7 +351,7 @@ WRITE8_HANDLER ( m6545_data_w )
 			break;
 		crt.screen_address_hi = data;
 		addr = 0x17000+((data & 32) << 6);
-		memcpy(pcgram, memory_region(machine, REGION_CPU1)+addr, 0x800);
+		memcpy(pcgram, memory_region(machine, "main")+addr, 0x800);
 		for (i = 0; i < 128; i++)
 				decodechar(machine->gfx[0],i, pcgram);
 		break;
@@ -446,14 +447,14 @@ static void mc6845_screen_configure(running_machine *machine)
 
 VIDEO_START( mbee )
 {
-	UINT8 *ram = memory_region(machine, REGION_CPU1);
+	UINT8 *ram = memory_region(machine, "main");
 	videoram = ram+0x15000;
 	pcgram = ram+0x11000;
 }
 
 VIDEO_START( mbeeic )
 {
-	UINT8 *ram = memory_region(machine, REGION_CPU1);
+	UINT8 *ram = memory_region(machine, "main");
 	videoram = ram+0x15000;
 	colorram = ram+0x15800;
 	pcgram = ram+0x11000;

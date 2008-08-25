@@ -78,10 +78,10 @@ static ADDRESS_MAP_START( pce_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x1F0000, 0x1F1FFF) AM_RAM AM_MIRROR(0x6000) AM_BASE( &pce_user_ram )
 	AM_RANGE( 0x1FE000, 0x1FE3FF) AM_READWRITE( vdc_0_r, vdc_0_w )
 	AM_RANGE( 0x1FE400, 0x1FE7FF) AM_READWRITE( vce_r, vce_w )
-	AM_RANGE( 0x1FE800, 0x1FEBFF) AM_READWRITE( C6280_r, C6280_0_w )
-	AM_RANGE( 0x1FEC00, 0x1FEFFF) AM_READWRITE( H6280_timer_r, H6280_timer_w )
+	AM_RANGE( 0x1FE800, 0x1FEBFF) AM_READWRITE( c6280_r, c6280_0_w )
+	AM_RANGE( 0x1FEC00, 0x1FEFFF) AM_READWRITE( h6280_timer_r, h6280_timer_w )
 	AM_RANGE( 0x1FF000, 0x1FF3FF) AM_READWRITE( pce_joystick_r, pce_joystick_w )
-	AM_RANGE( 0x1FF400, 0x1FF7FF) AM_READWRITE( H6280_irq_status_r, H6280_irq_status_w )
+	AM_RANGE( 0x1FF400, 0x1FF7FF) AM_READWRITE( h6280_irq_status_r, h6280_irq_status_w )
 	AM_RANGE( 0x1FF800, 0x1FFBFF) AM_READWRITE( pce_cd_intf_r, pce_cd_intf_w )
 ADDRESS_MAP_END
 
@@ -103,10 +103,10 @@ static ADDRESS_MAP_START( sgx_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x1FE008, 0x1FE00F) AM_READWRITE( vpc_r, vpc_w ) AM_MIRROR(0x03E0)
 	AM_RANGE( 0x1FE010, 0x1FE017) AM_READWRITE( vdc_1_r, vdc_1_w ) AM_MIRROR(0x03E0)
 	AM_RANGE( 0x1FE400, 0x1FE7FF) AM_READWRITE( vce_r, vce_w )
-	AM_RANGE( 0x1FE800, 0x1FEBFF) AM_READWRITE( C6280_r, C6280_0_w )
-	AM_RANGE( 0x1FEC00, 0x1FEFFF) AM_READWRITE( H6280_timer_r, H6280_timer_w )
+	AM_RANGE( 0x1FE800, 0x1FEBFF) AM_READWRITE( c6280_r, c6280_0_w )
+	AM_RANGE( 0x1FEC00, 0x1FEFFF) AM_READWRITE( h6280_timer_r, h6280_timer_w )
 	AM_RANGE( 0x1FF000, 0x1FF3FF) AM_READWRITE( pce_joystick_r, pce_joystick_w )
-	AM_RANGE( 0x1FF400, 0x1FF7FF) AM_READWRITE( H6280_irq_status_r, H6280_irq_status_w )
+	AM_RANGE( 0x1FF400, 0x1FF7FF) AM_READWRITE( h6280_irq_status_r, h6280_irq_status_w )
 	AM_RANGE( 0x1FF800, 0x1FFBFF) AM_READWRITE( pce_cd_intf_r, pce_cd_intf_w )
 ADDRESS_MAP_END
 
@@ -117,7 +117,7 @@ ADDRESS_MAP_END
 /* todo: alternate forms of input (multitap, mouse, etc.) */
 static INPUT_PORTS_START( pce )
 
-    PORT_START_TAG("JOY")  /* Player 1 controls */
+    PORT_START("JOY")  /* Player 1 controls */
     /* II is left of I on the original pad so we map them in reverse order */
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("P1 Button I")
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("P1 Button II")
@@ -142,7 +142,7 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( pce )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(H6280, MAIN_CLOCK/3)
+	MDRV_CPU_ADD("main", H6280, MAIN_CLOCK/3)
 	MDRV_CPU_PROGRAM_MAP(pce_mem, 0)
 	MDRV_CPU_IO_MAP(pce_io, 0)
 	MDRV_CPU_VBLANK_INT_HACK(pce_interrupt, VDC_LPF)
@@ -165,23 +165,25 @@ static MACHINE_DRIVER_START( pce )
 
 	MDRV_NVRAM_HANDLER( pce )
 	MDRV_SPEAKER_STANDARD_STEREO("left","right")
-	MDRV_SOUND_ADD(C6280, MAIN_CLOCK/6)
+	MDRV_SOUND_ADD("c6280", C6280, MAIN_CLOCK/6)
 	MDRV_SOUND_ROUTE(0, "left", 1.00)
 	MDRV_SOUND_ROUTE(1, "right", 1.00)
 
-	MDRV_SOUND_ADD( MSM5205, PCE_CD_CLOCK / 6 )
+	MDRV_SOUND_ADD( "msm5205", MSM5205, PCE_CD_CLOCK / 6 )
 	MDRV_SOUND_CONFIG( pce_cd_msm5205_interface )
 	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "left", 0.00 )
 	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "right", 0.00 )
 
-	MDRV_SOUND_ADD( CDDA, 0 )
+	MDRV_SOUND_ADD( "cdda", CDDA, 0 )
 	MDRV_SOUND_ROUTE( 0, "left", 1.00 )
 	MDRV_SOUND_ROUTE( 1, "right", 1.00 )
+
+	MDRV_DEVICE_ADD( "cdrom", CDROM )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sgx )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(H6280, MAIN_CLOCK/3)
+	MDRV_CPU_ADD("main", H6280, MAIN_CLOCK/3)
 	MDRV_CPU_PROGRAM_MAP(sgx_mem, 0)
 	MDRV_CPU_IO_MAP(sgx_io, 0)
 	MDRV_CPU_VBLANK_INT_HACK(sgx_interrupt, VDC_LPF)
@@ -203,16 +205,16 @@ static MACHINE_DRIVER_START( sgx )
 
 	MDRV_NVRAM_HANDLER( pce )
 	MDRV_SPEAKER_STANDARD_STEREO("left","right")
-	MDRV_SOUND_ADD(C6280, MAIN_CLOCK/6)
+	MDRV_SOUND_ADD("c6280", C6280, MAIN_CLOCK/6)
 	MDRV_SOUND_ROUTE(0, "left", 1.00)
 	MDRV_SOUND_ROUTE(1, "right", 1.00)
 
-	MDRV_SOUND_ADD( MSM5205, PCE_CD_CLOCK / 6 )
+	MDRV_SOUND_ADD( "msm5205", MSM5205, PCE_CD_CLOCK / 6 )
 	MDRV_SOUND_CONFIG( pce_cd_msm5205_interface )
 	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "left", 0.00 )
 	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "right", 0.00 )
 
-	MDRV_SOUND_ADD( CDDA, 0 )
+	MDRV_SOUND_ADD( "cdda", CDDA, 0 )
 	MDRV_SOUND_ROUTE( 0, "left", 1.00 )
 	MDRV_SOUND_ROUTE( 1, "right", 1.00 )
 MACHINE_DRIVER_END
@@ -247,16 +249,9 @@ static void pce_cartslot_getinfo(const mess_device_class *devclass, UINT32 state
 	}
 }
 
-static void pce_chdcd_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info) {
-	switch( state ) {
-	case MESS_DEVINFO_INT_COUNT:			info->i = 1; break;
-	default:						cdrom_device_getinfo(devclass, state, info);
-	}
-}
 
 static SYSTEM_CONFIG_START(pce)
 	CONFIG_DEVICE(pce_cartslot_getinfo)
-	CONFIG_DEVICE(pce_chdcd_getinfo)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -266,7 +261,7 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 ROM_START( pce )
-	ROM_REGION( PCE_ROM_MAXSIZE, REGION_USER1, 0 )		/* Cartridge ROM area */
+	ROM_REGION( PCE_ROM_MAXSIZE, "user1", 0 )		/* Cartridge ROM area */
 	ROM_FILL( 0, PCE_ROM_MAXSIZE, 0xFF )
 ROM_END
 

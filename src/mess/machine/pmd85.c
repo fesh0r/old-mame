@@ -37,7 +37,7 @@ static void pmd851_update_memory(running_machine *machine)
 {
 	if (pmd85_startup_mem_map)
 	{
-		UINT8 *mem = memory_region(machine, REGION_CPU1);
+		UINT8 *mem = memory_region(machine, "main");
 
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
@@ -78,7 +78,7 @@ static void pmd852a_update_memory(running_machine *machine)
 {
 	if (pmd85_startup_mem_map)
 	{
-		UINT8 *mem = memory_region(machine, REGION_CPU1);
+		UINT8 *mem = memory_region(machine, "main");
 
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_UNMAP);
@@ -112,7 +112,7 @@ static void pmd853_update_memory(running_machine *machine)
 {
 	if (pmd85_startup_mem_map)
 	{
-		UINT8 *mem = memory_region(machine, REGION_CPU1);
+		UINT8 *mem = memory_region(machine, "main");
 
 		memory_set_bankptr( 1, mem + 0x010000);
 		memory_set_bankptr( 2, mem + 0x010000);
@@ -140,7 +140,7 @@ static void pmd853_update_memory(running_machine *machine)
 		memory_set_bankptr( 5, mess_ram + 0x8000);
 		memory_set_bankptr( 6, mess_ram + 0xa000);
 		memory_set_bankptr( 7, mess_ram + 0xc000);
-		memory_set_bankptr( 8, pmd853_memory_mapping ? memory_region(machine, REGION_CPU1) + 0x010000 : mess_ram + 0xe000);
+		memory_set_bankptr( 8, pmd853_memory_mapping ? memory_region(machine, "main") + 0x010000 : mess_ram + 0xe000);
 	}
 }
 
@@ -148,7 +148,7 @@ static void alfa_update_memory(running_machine *machine)
 {
 	if (pmd85_startup_mem_map)
 	{
-		UINT8 *mem = memory_region(machine, REGION_CPU1);
+		UINT8 *mem = memory_region(machine, "main");
 
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x33ff, 0, 0, SMH_UNMAP);
@@ -178,7 +178,7 @@ static void mato_update_memory(running_machine *machine)
 {
 	if (pmd85_startup_mem_map)
 	{
-		UINT8 *mem = memory_region(machine, REGION_CPU1);
+		UINT8 *mem = memory_region(machine, "main");
 
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 
@@ -211,10 +211,10 @@ static  READ8_HANDLER ( pmd85_ppi_0_porta_r )
 
 static  READ8_HANDLER ( pmd85_ppi_0_portb_r )
 {
-	char port[7];
-	
-	sprintf(port, "KEY%d", (pmd85_ppi_port_outputs[0][0] & 0x0f));
-	return input_port_read(machine, port) & input_port_read(machine, "KEY15");
+	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
+										"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15" };
+
+	return input_port_read(machine, keynames[(pmd85_ppi_port_outputs[0][0] & 0x0f)]) & input_port_read(machine, "KEY15");
 }
 
 static  READ8_HANDLER ( pmd85_ppi_0_portc_r )
@@ -251,15 +251,12 @@ static  READ8_HANDLER ( mato_ppi_0_portb_r )
 {
 	int i;
 	UINT8 data = 0xff;
-	char port[6];
+	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7" };
 
 	for (i = 0; i < 8; i++)
 	{
 		if (!(pmd85_ppi_port_outputs[0][0] & (1 << i)))
-		{
-			sprintf(port, "KEY%d", i);
-			data &= input_port_read(machine, port);
-		}
+			data &= input_port_read(machine, keynames[i]);
 	}
 	return data;
 }
@@ -394,9 +391,9 @@ static const struct msm8251_interface pmd85_msm8251_interface =
 const struct pit8253_config pmd85_pit8253_interface =
 {
 	{
-		{ 0,		NULL,	NULL },
-		{ 2000000,	NULL,	NULL },
-		{ 1,		NULL,	NULL }
+		{ 0,		NULL },
+		{ 2000000,	NULL },
+		{ 1,		NULL }
 	}
 };
 
@@ -420,7 +417,7 @@ const struct pit8253_config pmd85_pit8253_interface =
 
 static  READ8_HANDLER ( pmd85_ppi_3_porta_r )
 {
-	return memory_region(machine, REGION_USER1)[pmd85_ppi_port_outputs[3][1]|(pmd85_ppi_port_outputs[3][2]<<8)];
+	return memory_region(machine, "user1")[pmd85_ppi_port_outputs[3][1]|(pmd85_ppi_port_outputs[3][2]<<8)];
 }
 
 static  READ8_HANDLER ( pmd85_ppi_3_portb_r )

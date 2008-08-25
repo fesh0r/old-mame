@@ -248,12 +248,10 @@ static WRITE8_HANDLER(apf_imagination_pia_out_b_func)
 	/* bit 7 = ??? */
 
 	int keyboard_line;
-	char port[5];
+	static const char *keynames[] = { "key0", "key1", "key2", "key3", "key4", "key5", "key6", "key7" };
 
 	keyboard_line = data & 0x07;
-
-	sprintf(port, "key%d", keyboard_line);
-	keyboard_data = input_port_read(machine, port);
+	keyboard_data = input_port_read(machine, keynames[keyboard_line]);
 
 	/* bit 4: cassette motor control */
 	cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0),
@@ -405,7 +403,7 @@ static READ8_HANDLER(apf_wd179x_data_r)
 static ADDRESS_MAP_START(apf_imagination_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x00000, 0x003ff) AM_RAM AM_BASE(&apf_video_ram) AM_MIRROR(0x1c00)
 	AM_RANGE( 0x02000, 0x03fff) AM_READWRITE(pia_0_r, pia_0_w)
-	AM_RANGE( 0x04000, 0x047ff) AM_ROM AM_REGION(REGION_CPU1, 0x10000) AM_MIRROR(0x1800)
+	AM_RANGE( 0x04000, 0x047ff) AM_ROM AM_REGION("main", 0x10000) AM_MIRROR(0x1800)
 	AM_RANGE( 0x06000, 0x063ff) AM_READWRITE(pia_1_r, pia_1_w)
 	AM_RANGE( 0x06400, 0x064ff) AM_READWRITE(serial_r, serial_w)
 	AM_RANGE( 0x06500, 0x06500) AM_READWRITE(apf_wd179x_status_r, apf_wd179x_command_w)
@@ -417,17 +415,17 @@ static ADDRESS_MAP_START(apf_imagination_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x07800, 0x07fff) AM_NOP
 	AM_RANGE( 0x08000, 0x09fff) AM_ROM
 	AM_RANGE( 0x0a000, 0x0dfff) AM_RAM
-	AM_RANGE( 0x0e000, 0x0e7ff) AM_ROM AM_REGION(REGION_CPU1, 0x10000) AM_MIRROR(0x1800)
+	AM_RANGE( 0x0e000, 0x0e7ff) AM_ROM AM_REGION("main", 0x10000) AM_MIRROR(0x1800)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(apf_m1000_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x00000, 0x003ff) AM_RAM AM_BASE(&apf_video_ram)  AM_MIRROR(0x1c00)
 	AM_RANGE( 0x02000, 0x03fff) AM_READWRITE(pia_0_r, pia_0_w)
-	AM_RANGE( 0x04000, 0x047ff) AM_ROM AM_REGION(REGION_CPU1, 0x10000) AM_MIRROR(0x1800)
+	AM_RANGE( 0x04000, 0x047ff) AM_ROM AM_REGION("main", 0x10000) AM_MIRROR(0x1800)
 	AM_RANGE( 0x06800, 0x077ff) AM_ROM
-	AM_RANGE( 0x08000, 0x09fff) AM_ROM AM_REGION(REGION_CPU1, 0x8000)
+	AM_RANGE( 0x08000, 0x09fff) AM_ROM AM_REGION("main", 0x8000)
 	AM_RANGE( 0x0a000, 0x0dfff) AM_RAM
-	AM_RANGE( 0x0e000, 0x0e7ff) AM_ROM AM_REGION(REGION_CPU1, 0x10000) AM_MIRROR(0x1800)
+	AM_RANGE( 0x0e000, 0x0e7ff) AM_ROM AM_REGION("main", 0x10000) AM_MIRROR(0x1800)
 ADDRESS_MAP_END
 
 /* The following input ports definitions are wrong and can't be debugged unless the driver
@@ -481,7 +479,7 @@ static INPUT_PORTS_START( apf_m1000 )
  */
 
 	/* line 0 */
-	PORT_START_TAG("joy0")
+	PORT_START("joy0")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 1") PORT_CODE(KEYCODE_1) PORT_PLAYER(1)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 0") PORT_CODE(KEYCODE_0) PORT_PLAYER(1)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 4") PORT_CODE(KEYCODE_4) PORT_PLAYER(1)
@@ -492,7 +490,7 @@ static INPUT_PORTS_START( apf_m1000 )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 7") PORT_CODE(KEYCODE_7_PAD) PORT_PLAYER(2)
 
 	/* line 1 */
-	PORT_START_TAG("joy1")
+	PORT_START("joy1")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_NAME("PAD 1/RIGHT down") PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_NAME("PAD 1/RIGHT right") PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_NAME("PAD 1/RIGHT up") PORT_PLAYER(1) PORT_8WAY
@@ -503,7 +501,7 @@ static INPUT_PORTS_START( apf_m1000 )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_NAME("PAD 2/LEFT left") PORT_PLAYER(2) PORT_8WAY
 
 	/* line 2 */
-	PORT_START_TAG("joy2")
+	PORT_START("joy2")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 3") PORT_CODE(KEYCODE_3) PORT_PLAYER(1)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT clear") PORT_CODE(KEYCODE_DEL) PORT_PLAYER(1)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 6") PORT_CODE(KEYCODE_6) PORT_PLAYER(1)
@@ -514,7 +512,7 @@ static INPUT_PORTS_START( apf_m1000 )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 9") PORT_CODE(KEYCODE_9_PAD) PORT_PLAYER(2)
 
 	/* line 3 */
-	PORT_START_TAG("joy3")
+	PORT_START("joy3")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 2") PORT_CODE(KEYCODE_2) PORT_PLAYER(1)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT enter/fire") PORT_CODE(KEYCODE_ENTER) PORT_PLAYER(1)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 5") PORT_CODE(KEYCODE_5) PORT_PLAYER(1)
@@ -535,7 +533,7 @@ static INPUT_PORTS_START( apf_imagination )
 	/* Reference: http://www.nausicaa.net/~lgreenf/apfpage2.htm */
 
 	/* keyboard line 0 */
-	PORT_START_TAG("key0")
+	PORT_START("key0")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("X")               PORT_CODE(KEYCODE_X)          PORT_CHAR('x')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Z")               PORT_CODE(KEYCODE_Z)          PORT_CHAR('z')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Q       IF")      PORT_CODE(KEYCODE_Q)          PORT_CHAR('q')
@@ -546,7 +544,7 @@ static INPUT_PORTS_START( apf_imagination )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("S")               PORT_CODE(KEYCODE_S)          PORT_CHAR('s')
 
 	/* keyboard line 1 */
-	PORT_START_TAG("key1")
+	PORT_START("key1")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("C")               PORT_CODE(KEYCODE_C)          PORT_CHAR('c')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("V")               PORT_CODE(KEYCODE_V)          PORT_CHAR('v')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("R       READ")    PORT_CODE(KEYCODE_R)          PORT_CHAR('r')
@@ -557,7 +555,7 @@ static INPUT_PORTS_START( apf_imagination )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("D")               PORT_CODE(KEYCODE_D)          PORT_CHAR('d')
 
 	/* keyboard line 2 */
-	PORT_START_TAG("key2")
+	PORT_START("key2")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("N   ^")           PORT_CODE(KEYCODE_N)          PORT_CHAR('n') PORT_CHAR('^')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("B")               PORT_CODE(KEYCODE_B)          PORT_CHAR('b')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("T       NEXT")    PORT_CODE(KEYCODE_T)          PORT_CHAR('t')
@@ -568,7 +566,7 @@ static INPUT_PORTS_START( apf_imagination )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("H")               PORT_CODE(KEYCODE_H)          PORT_CHAR('h')
 
 	/* keyboard line 3 */
-	PORT_START_TAG("key3")
+	PORT_START("key3")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("M   ]")           PORT_CODE(KEYCODE_M)          PORT_CHAR('m') PORT_CHAR(']')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(",   <")           PORT_CODE(KEYCODE_COMMA)      PORT_CHAR(',') PORT_CHAR('<')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("I       LIST")    PORT_CODE(KEYCODE_I)          PORT_CHAR('i')
@@ -579,7 +577,7 @@ static INPUT_PORTS_START( apf_imagination )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("J")               PORT_CODE(KEYCODE_J)          PORT_CHAR('j')
 
 	/* keyboard line 4 */
-	PORT_START_TAG("key4")
+	PORT_START("key4")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("/   ?")           PORT_CODE(KEYCODE_SLASH)      PORT_CHAR('/') PORT_CHAR('?')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(".   >")           PORT_CODE(KEYCODE_STOP)       PORT_CHAR('.') PORT_CHAR('>')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("O   _   REM")     PORT_CODE(KEYCODE_O)          PORT_CHAR('o') PORT_CHAR('_')
@@ -590,7 +588,7 @@ static INPUT_PORTS_START( apf_imagination )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(";   +")           PORT_CODE(KEYCODE_COLON)      PORT_CHAR(';') PORT_CHAR('+')
 
 	/* keyboard line 5 */
-	PORT_START_TAG("key5")
+	PORT_START("key5")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Space")           PORT_CODE(KEYCODE_SPACE)      PORT_CHAR(32)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(":   *")           PORT_CODE(KEYCODE_MINUS)      PORT_CHAR(':') PORT_CHAR('*')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Return")          PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR(13)
@@ -605,7 +603,7 @@ static INPUT_PORTS_START( apf_imagination )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Rubout")          PORT_CODE(KEYCODE_QUOTE)      PORT_CHAR(8)
 
 	/* line 6 */
-	PORT_START_TAG("key6")
+	PORT_START("key6")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Shift")     PORT_CODE(KEYCODE_RSHIFT) PORT_CODE(KEYCODE_LSHIFT)     PORT_CHAR(UCHAR_SHIFT_1)
 /* This key displays the glyph "[", but a quick test reveals that its ASCII code is 27. */
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Esc")             PORT_CODE(KEYCODE_TAB)        PORT_CHAR(27)
@@ -620,7 +618,7 @@ static INPUT_PORTS_START( apf_imagination )
 	PORT_BIT(0x80, 0x80, IPT_UNUSED)
 
 	/* line 7 */
-	PORT_START_TAG("key7")
+	PORT_START("key7")
 	PORT_BIT(0xff, 0xff, IPT_UNUSED)                                                                       /* ??? */
 
 INPUT_PORTS_END
@@ -629,8 +627,8 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( apf_imagination )
 	/* basic machine hardware */
-	//	MDRV_CPU_ADD_TAG("main", M6800, 3750000)        /* 7.8336 Mhz, only 6800p type used 1mhz max*/
-	MDRV_CPU_ADD_TAG("main", M6800, 1000000 )        /* backgammon uses timing from vertical interrupt to switch between video modes during frame */
+	//	MDRV_CPU_ADD("main", M6800, 3750000)        /* 7.8336 Mhz, only 6800p type used 1mhz max*/
+	MDRV_CPU_ADD("main", M6800, 1000000 )        /* backgammon uses timing from vertical interrupt to switch between video modes during frame */
 	MDRV_CPU_PROGRAM_MAP(apf_imagination_map, 0)
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_NTSC_FRAMES_PER_SECOND)
@@ -648,7 +646,7 @@ static MACHINE_DRIVER_START( apf_imagination )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
@@ -668,14 +666,14 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START(apfimag)
-	ROM_REGION(0x10000+0x0800,REGION_CPU1,0)
+	ROM_REGION(0x10000+0x0800,"main",0)
 	ROM_LOAD("apf_4000.rom",0x010000, 0x00800, CRC(2a331a33) SHA1(387b90882cd0b66c192d9cbaa3bec250f897e4f1))
 	ROM_LOAD("basic_68.rom",0x06800, 0x01000, CRC(ef049ab8) SHA1(c4c12aade95dd89a4750fe7f89d57256c93da068))
 	ROM_LOAD("basic_80.rom",0x08000, 0x02000, CRC(a4c69fae) SHA1(7f98aa482589bf7c5a26d338fec105e797ba43f6))
 ROM_END
 
 ROM_START(apfm1000)
-	ROM_REGION(0x10000+0x0800,REGION_CPU1,0)
+	ROM_REGION(0x10000+0x0800,"main",0)
 	ROM_LOAD("apf_4000.rom",0x010000, 0x0800, CRC(2a331a33) SHA1(387b90882cd0b66c192d9cbaa3bec250f897e4f1))
 //	ROM_LOAD("apf-m1000rom.bin",0x010000, 0x0800, CRC(cc6ac840) SHA1(1110a234bcad99bd0894ad44c591389d16376ca4))
 	ROM_CART_LOAD(0, "bin", 0x8000, 0x2000, ROM_OPTIONAL)

@@ -196,14 +196,14 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( channelf )
-	PORT_START_TAG("PANEL") /* Front panel buttons */
+	PORT_START("PANEL") /* Front panel buttons */
 	PORT_BIT ( 0x01, IP_ACTIVE_HIGH, IPT_START )	/* TIME  (1) */
 	PORT_BIT ( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON5 )	/* HOLD  (2) */
 	PORT_BIT ( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON6 )	/* MODE  (3) */
 	PORT_BIT ( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON7 )	/* START (4) */
 	PORT_BIT ( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("RIGHT_C") /* Right controller */
+	PORT_START("RIGHT_C") /* Right controller */
 	PORT_BIT ( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT) PORT_PLAYER(1)
 	PORT_BIT ( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT) PORT_PLAYER(1)
 	PORT_BIT ( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN) PORT_PLAYER(1)
@@ -213,7 +213,7 @@ static INPUT_PORTS_START( channelf )
 	PORT_BIT ( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON2) /* PULL UP     */ PORT_PLAYER(1)
 	PORT_BIT ( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1) /* PUSH DOWN   */ PORT_PLAYER(1)
 
-	PORT_START_TAG("LEFT_C") /* Left controller */
+	PORT_START("LEFT_C") /* Left controller */
 	PORT_BIT ( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT) PORT_PLAYER(2)
 	PORT_BIT ( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT) PORT_PLAYER(2)
 	PORT_BIT ( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN) PORT_PLAYER(2)
@@ -225,7 +225,7 @@ static INPUT_PORTS_START( channelf )
 
 INPUT_PORTS_END
 
-static const struct CustomSound_interface channelf_sound_interface =
+static const custom_sound_interface channelf_sound_interface =
 {
 	channelf_sh_custom_start
 };
@@ -233,7 +233,7 @@ static const struct CustomSound_interface channelf_sound_interface =
 
 static MACHINE_DRIVER_START( channelf )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(F8, 3579545/2)        /* Colorburst/2 */
+	MDRV_CPU_ADD("main", F8, 3579545/2)        /* Colorburst/2 */
 	MDRV_CPU_PROGRAM_MAP(channelf_map, 0)
 	MDRV_CPU_IO_MAP(channelf_io, 0)
 	MDRV_INTERLEAVE(1)
@@ -253,13 +253,13 @@ static MACHINE_DRIVER_START( channelf )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(channelf_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 ROM_START( channelf )
-	ROM_REGION(0x10000,REGION_CPU1,0)
+	ROM_REGION(0x10000,"main",0)
 	ROM_SYSTEM_BIOS( 0, "sl90025", "Luxor Video Entertainment System" )
 	ROMX_LOAD("sl90025.rom",  0x0000, 0x0400, CRC(015c1e38) SHA1(759e2ed31fbde4a2d8daf8b9f3e0dffebc90dae2), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "sl31253", "Channel F" )

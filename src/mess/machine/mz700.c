@@ -16,7 +16,7 @@
 #include "cpu/z80/z80.h"
 #include "machine/pit8253.h"
 #include "machine/8255ppi.h"
-#include "sound/beep.h"
+#include "sound/speaker.h"
 
 #include "includes/mz700.h"
 
@@ -57,17 +57,17 @@ const ppi8255_interface mz700_ppi8255_interface = {
 static int pio_port_a_output;
 static int pio_port_c_output;
 
-static PIT8253_FREQUENCY_CHANGED( pit_clk_0 );
-static PIT8253_FREQUENCY_CHANGED( pit_clk_1 );
+static PIT8253_OUTPUT_CHANGED( pit_out0_changed );
+static PIT8253_OUTPUT_CHANGED( pit_out1_changed );
 static PIT8253_OUTPUT_CHANGED( pit_irq_2 );
 
 const struct pit8253_config mz700_pit8253_config =
 {
 	{
-		/* clockin	  irq callback	 clock change callback */
-		{ 1108800.0,  NULL, 		 pit_clk_0	 },
-		{	15611.0,  NULL, 		 pit_clk_1	 },
-		{		1.0,  pit_irq_2,	 NULL		 },
+		/* clockin	  irq callback	  */
+		{ 1108800.0,  pit_out0_changed },
+		{	15611.0,  pit_out1_changed },
+		{		  0,  pit_irq_2        },
 	}
 };
 
@@ -103,18 +103,19 @@ MACHINE_RESET( mz700 )
 
 /************************ PIT ************************************************/
 
-/* timer 0 is the clock for the speaker output */
-static PIT8253_FREQUENCY_CHANGED( pit_clk_0 )
+/* Timer 0 is the clock for the speaker output */
+static PIT8253_OUTPUT_CHANGED( pit_out0_changed )
 {
-	beep_set_state(0, 1);
-    beep_set_frequency(0, frequency);
+	speaker_level_w( 0, state ? 1 : 0 );
 }
 
-/* timer 1 is the clock for timer 2 clock input */
-static PIT8253_FREQUENCY_CHANGED( pit_clk_1 )
+
+/* Timer 1 is the clock for timer 2 clock input */
+static PIT8253_OUTPUT_CHANGED( pit_out1_changed )
 {
-	pit8253_set_clockin(0, 2, frequency);
+	pit8253_set_clock_signal( device, 2, state );
 }
+
 
 /* timer 2 is the AM/PM (12 hour) interrupt */
 static PIT8253_OUTPUT_CHANGED( pit_irq_2 )
@@ -137,11 +138,11 @@ static  READ8_HANDLER ( pio_port_a_r )
 static  READ8_HANDLER ( pio_port_b_r )
 {
 	UINT8 demux_LS145, data = 0xff;
-	char port[6];
+	static const char *keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", 
+										"ROW6", "ROW7", "ROW8", "ROW9", "ROW10" };
 
     demux_LS145 = pio_port_a_output & 15;
-	sprintf(port, "ROW%d", demux_LS145);
-    data = input_port_read(machine, port);
+    data = input_port_read(machine, keynames[demux_LS145]);
 	LOG(2,"mz700_pio_port_b_r",("%02X\n", data));
 
     return data;
@@ -417,7 +418,7 @@ WRITE8_HANDLER ( mz700_bank_w )
     static int mz700_locked = 0;
 	static int vio_mode = 0;
 	static int vio_lock = 0;
-	UINT8 *mem = memory_region(machine, REGION_CPU1);
+	UINT8 *mem = memory_region(machine, "main");
 
     switch (offset)
 	{
@@ -518,7 +519,7 @@ static UINT8 mz800_palette_bank;
         break;
 
 	default:
-		data = memory_region(machine, REGION_CPU1)[0x16000 + offset];
+		data = memory_region(machine, "main")[0x16000 + offset];
         break;
     }
     return data;
@@ -527,7 +528,7 @@ static UINT8 mz800_palette_bank;
 /* port E0 - E9 */
 READ8_HANDLER( mz800_bank_r )
 {
-	UINT8 *mem = memory_region(machine, REGION_CPU1);
+	UINT8 *mem = memory_region(machine, "main");
     UINT8 data = 0xff;
 
     switch (offset)
@@ -589,7 +590,7 @@ READ8_HANDLER( mz800_bank_r )
 /* port EA */
  READ8_HANDLER( mz800_ramdisk_r )
 {
-	UINT8 *mem = memory_region(machine, REGION_USER1);
+	UINT8 *mem = memory_region(machine, "user1");
 	UINT8 data = mem[mz800_ramaddr];
 	LOG(2,"mz800_ramdisk_r",("[%04X] -> %02X\n", mz800_ramaddr, data));
 	if (mz800_ramaddr++ == 0)
@@ -617,7 +618,7 @@ WRITE8_HANDLER( mz800_read_format_w )
  */
 WRITE8_HANDLER( mz800_display_mode_w )
 {
-	UINT8 *mem = memory_region(machine, REGION_CPU1);
+	UINT8 *mem = memory_region(machine, "main");
 	LOG(1,"mz800_display_mode_w",("%02X\n", data));
     mz800_display_mode = data;
 	if ((mz800_display_mode & 0x08) == 0)
@@ -645,7 +646,7 @@ WRITE8_HANDLER ( mz800_bank_w )
     static int mz800_locked = 0;
     static int vio_mode = 0;
     static int vio_lock = 0;
-    UINT8 *mem = memory_region(machine, REGION_CPU1);
+    UINT8 *mem = memory_region(machine, "main");
 
     switch (offset)
     {
@@ -728,7 +729,7 @@ WRITE8_HANDLER ( mz800_bank_w )
 /* port EA */
 WRITE8_HANDLER( mz800_ramdisk_w )
 {
-	UINT8 *mem = memory_region(machine, REGION_USER1);
+	UINT8 *mem = memory_region(machine, "user1");
 	LOG(2,"mz800_ramdisk_w",("[%04X] <- %02X\n", mz800_ramaddr, data));
 	mem[mz800_ramaddr] = data;
 	if (mz800_ramaddr++ == 0)
@@ -762,7 +763,7 @@ WRITE8_HANDLER( mz800_palette_w )
 
 DRIVER_INIT( mz800 )
 {
-	UINT8 *mem = memory_region(machine, REGION_CPU1);
+	UINT8 *mem = memory_region(machine, "main");
 
 	videoram_size = 0x5000;
 	videoram = auto_malloc(videoram_size);
@@ -772,7 +773,7 @@ DRIVER_INIT( mz800 )
 	mem[0x10002] = 0x00;
     memcpy(&mem[0x00000], &mem[0x10000], 0x02000);
 
-    mem = memory_region(machine, REGION_USER1);
+    mem = memory_region(machine, "user1");
 	memset(&mem[0x00000], 0xff, 0x10000);
 
     mz800_display_mode_w(machine, 0, 0x08);   /* set MZ700 mode */

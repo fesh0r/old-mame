@@ -230,10 +230,10 @@ static OPBASE_HANDLER(atom_opbase_handler)
 	generator. I don't know if this is hardware, or random data because the
 	ram chips are not cleared at start-up. So at this time, these numbers
 	are poked into the memory to simulate it. When I have more details I will fix it */
-	memory_region(machine, REGION_CPU1)[0x08] = mame_rand(machine) & 0x0ff;
-	memory_region(machine, REGION_CPU1)[0x09] = mame_rand(machine) & 0x0ff;
-	memory_region(machine, REGION_CPU1)[0x0a] = mame_rand(machine) & 0x0ff;
-	memory_region(machine, REGION_CPU1)[0x0b] = mame_rand(machine) & 0x0ff;
+	memory_region(machine, "main")[0x08] = mame_rand(machine) & 0x0ff;
+	memory_region(machine, "main")[0x09] = mame_rand(machine) & 0x0ff;
+	memory_region(machine, "main")[0x0a] = mame_rand(machine) & 0x0ff;
+	memory_region(machine, "main")[0x0b] = mame_rand(machine) & 0x0ff;
 
 	return activecpu_get_pc() & 0x0ffff;
 }
@@ -356,13 +356,13 @@ DEVICE_IMAGE_LOAD( atom_floppy )
  READ8_HANDLER ( atom_8255_portb_r )
 {
 	int row;
-	char port[6];
+	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", 
+										"KEY6", "KEY7", "KEY8", "KEY9", "KEY10", "KEY11" };
 	
 	row = atom_8255_porta & 0x0f;
-	sprintf(port, "KEY%d", row);
 	/* logerror("8255: Read port b: %02X %02X\n", input_port_read(machine, port), 
 									input_port_read(machine, "KEY10") & 0xc0); */
-	return ((input_port_read(machine, port) & 0x3f) | (input_port_read(machine, "KEY10") & 0xc0));
+	return ((input_port_read(machine, keynames[row]) & 0x3f) | (input_port_read(machine, "KEY10") & 0xc0));
 }
 
 READ8_HANDLER ( atom_8255_portc_r )
@@ -467,7 +467,7 @@ static void atom_eprom_box_refresh(running_machine *machine)
     unsigned char *eprom_data;
 
 	/* get address of eprom data */
-	eprom_data = memory_region(machine, REGION_CPU1) + 0x010000 + (selected_eprom<<12);
+	eprom_data = memory_region(machine, "main") + 0x010000 + (selected_eprom<<12);
 	/* set bank address */
 	memory_set_bankptr(1, eprom_data);
 }

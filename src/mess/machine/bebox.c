@@ -789,17 +789,14 @@ const struct pit8253_config bebox_pit8254_config =
 	{
 		{
 			4772720/4,				/* heartbeat IRQ */
-			bebox_timer0_w,
-			NULL
+			bebox_timer0_w
 		},
 		{
 			4772720/4,				/* dram refresh */
-			NULL,
 			NULL
 		},
 		{
 			4772720/4,				/* pio port c pin 4, and speaker polling enough */
-			NULL,
 			NULL
 		}
 	}
@@ -1031,8 +1028,8 @@ static const SCSIConfigTable dev_table =
 {
 	2, /* 2 SCSI devices */
 	{
-		{ SCSI_ID_0, 0, SCSI_DEVICE_HARDDISK },	/* SCSI ID 0, using HD 0, HD */
-		{ SCSI_ID_3, 3, SCSI_DEVICE_CDROM }	/* SCSI ID 3, using CHD 0, CD-ROM */
+		{ SCSI_ID_0, "harddisk1", SCSI_DEVICE_HARDDISK },	/* SCSI ID 0, using HD 0, HD */
+		{ SCSI_ID_3, "cdrom", SCSI_DEVICE_CDROM }	/* SCSI ID 3, using CHD 0, CD-ROM */
 	}
 };
 
@@ -1102,8 +1099,8 @@ DRIVER_INIT( bebox )
 		pci_add_device(0, 12, &scsi53c810_callbacks);
 
 	/* set up boot and flash ROM */
-	memory_set_bankptr(2, memory_region(machine, REGION_USER2));
-	intelflash_init(0, FLASH_FUJITSU_29F016A, memory_region(machine, REGION_USER1));
+	memory_set_bankptr(2, memory_region(machine, "user2"));
+	intelflash_init(0, FLASH_FUJITSU_29F016A, memory_region(machine, "user1"));
 
 	/* install MESS managed RAM */
 	for (cpu = 0; cpu < 2; cpu++)

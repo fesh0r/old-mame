@@ -38,57 +38,57 @@ ADDRESS_MAP_END
     Cl  0 En                                                                  */
 
 static INPUT_PORTS_START( arcadia )
-	PORT_START_TAG("panel")
+	PORT_START("panel")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER )    PORT_NAME("Start")           PORT_CODE(KEYCODE_S)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER )    PORT_NAME("Option")          PORT_CODE(KEYCODE_O)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER )    PORT_NAME("Select")          PORT_CODE(KEYCODE_E)
 //  PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER )    PORT_NAME("Reset")           PORT_CODE(KEYCODE_R)         Not implemented
-	PORT_START_TAG("controller1_col1")
+	PORT_START("controller1_col1")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1  ) PORT_NAME("P1 Keypad 1")     PORT_CODE(KEYCODE_1)         PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON4  ) PORT_NAME("P1 Keypad 4")     PORT_CODE(KEYCODE_4)         PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON7  ) PORT_NAME("P1 Keypad 7")     PORT_CODE(KEYCODE_7)         PORT_PLAYER(1)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON10 ) PORT_NAME("P1 Keypad Clear") PORT_CODE(KEYCODE_DEL)       PORT_PLAYER(1)
-	PORT_START_TAG("controller1_col2")
+	PORT_START("controller1_col2")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON2  ) PORT_NAME("P1 Keypad 2 (& Fire Buttons)")     PORT_CODE(KEYCODE_2)         PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON5  ) PORT_NAME("P1 Keypad 5")     PORT_CODE(KEYCODE_5)         PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON8  ) PORT_NAME("P1 Keypad 8")     PORT_CODE(KEYCODE_8)         PORT_PLAYER(1)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON11 ) PORT_NAME("P1 Keypad 0")     PORT_CODE(KEYCODE_0)         PORT_PLAYER(1)
-	PORT_START_TAG("controller1_col3")
+	PORT_START("controller1_col3")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON3  ) PORT_NAME("P1 Keypad 3")     PORT_CODE(KEYCODE_3)         PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON6  ) PORT_NAME("P1 Keypad 6")     PORT_CODE(KEYCODE_6)         PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON9  ) PORT_NAME("P1 Keypad 9")     PORT_CODE(KEYCODE_9)         PORT_PLAYER(1)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON12 ) PORT_NAME("P1 Keypad Enter") PORT_CODE(KEYCODE_ENTER)     PORT_PLAYER(1)
-	PORT_START_TAG("controller1_extra")
+	PORT_START("controller1_extra")
 	PORT_BIT( 0xff, 0xf0, IPT_UNUSED) // used in palladium
-	PORT_START_TAG("controller2_col1")
+	PORT_START("controller2_col1")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1  ) PORT_NAME("P2 Keypad 1")     PORT_CODE(KEYCODE_1_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON4  ) PORT_NAME("P2 Keypad 4")     PORT_CODE(KEYCODE_4_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON7  ) PORT_NAME("P2 Keypad 7")     PORT_CODE(KEYCODE_7_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON10 ) PORT_NAME("P2 Keypad Clear") PORT_CODE(KEYCODE_DEL_PAD)   PORT_PLAYER(2)
-	PORT_START_TAG("controller2_col2")
+	PORT_START("controller2_col2")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON2  ) PORT_NAME("P2 Keypad 2 (& Fire Buttons)")     PORT_CODE(KEYCODE_2_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON5  ) PORT_NAME("P2 Keypad 5")     PORT_CODE(KEYCODE_5_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON8  ) PORT_NAME("P2 Keypad 8")     PORT_CODE(KEYCODE_8_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON11 ) PORT_NAME("P2 Keypad 0")     PORT_CODE(KEYCODE_0_PAD)     PORT_PLAYER(2)
-	PORT_START_TAG("controller2_col3")
+	PORT_START("controller2_col3")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON3  ) PORT_NAME("P2 Keypad 3")     PORT_CODE(KEYCODE_3_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON6  ) PORT_NAME("P2 Keypad 6")     PORT_CODE(KEYCODE_6_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON9  ) PORT_NAME("P2 Keypad 9")     PORT_CODE(KEYCODE_9_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON12 ) PORT_NAME("P2 Keypad Enter") PORT_CODE(KEYCODE_ENTER_PAD) PORT_PLAYER(2)
-	PORT_START_TAG("controller2_extra")
+	PORT_START("controller2_extra")
 	PORT_BIT( 0xff, 0xf0, IPT_UNUSED) // used in palladium
 
 /* FIXME: the joystick are analog - the actual definition is merely an hack */
 
 #if 0
     // shit, auto centering too slow, so only using 5 bits, and scaling at videoside
-    PORT_START_TAG("controller1_joy_x")
+    PORT_START("controller1_joy_x")
     PORT_BIT( 0x1fe,0x10,IPT_AD_STICK_X)
     PORT_SENSITIVITY(1)
     PORT_KEYDELTA(2000)
@@ -100,7 +100,7 @@ static INPUT_PORTS_START( arcadia )
     PORT_PLAYER(1)
     PORT_RESET
 
-    PORT_START_TAG("controller1_joy_y")
+    PORT_START("controller1_joy_y")
     PORT_BIT( 0x1fe,0x10,IPT_AD_STICK_Y)
     PORT_SENSITIVITY(1)
     PORT_KEYDELTA(2000)
@@ -112,7 +112,7 @@ static INPUT_PORTS_START( arcadia )
     PORT_PLAYER(1)
     PORT_RESET
 
-    PORT_START_TAG("controller2_joy_x")
+    PORT_START("controller2_joy_x")
     PORT_BIT( 0x1ff,0x10,IPT_AD_STICK_X)
     PORT_SENSITIVITY(100)
     PORT_KEYDELTA(10)
@@ -124,7 +124,7 @@ static INPUT_PORTS_START( arcadia )
     PORT_PLAYER(2)
     PORT_RESET
 
-    PORT_START_TAG("controller2_joy_y")
+    PORT_START("controller2_joy_y")
     PORT_BIT( 0x1ff,0x10,IPT_AD_STICK_Y)
     PORT_SENSITIVITY(100)
     PORT_KEYDELTA(10)
@@ -136,7 +136,7 @@ static INPUT_PORTS_START( arcadia )
     PORT_PLAYER(2)
     PORT_RESET
 #else
-	PORT_START_TAG("joysticks")
+	PORT_START("joysticks")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )		PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )	PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )		PORT_PLAYER(1) PORT_8WAY
@@ -161,54 +161,54 @@ INPUT_PORTS_END
     10 11 12                                                                           */
 
 static INPUT_PORTS_START( vcg )
-	PORT_START_TAG("panel")
+	PORT_START("panel")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER )    PORT_NAME("Start")        PORT_CODE(KEYCODE_S)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER )    PORT_NAME("Selector A")   PORT_CODE(KEYCODE_A)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER )    PORT_NAME("Selector B")   PORT_CODE(KEYCODE_B)
 //  PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER )    PORT_NAME("Reset")        PORT_CODE(KEYCODE_R)         Not implemented
-	PORT_START_TAG("controller1_col1")
+	PORT_START("controller1_col1")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED) // some bits must be high
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1  ) PORT_NAME("P1 Keypad 1")  PORT_CODE(KEYCODE_1)         PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON4  ) PORT_NAME("P1 Keypad 4")  PORT_CODE(KEYCODE_4)         PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON7  ) PORT_NAME("P1 Keypad 7")  PORT_CODE(KEYCODE_7)         PORT_PLAYER(1)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON10 ) PORT_NAME("P1 Keypad 10") PORT_CODE(KEYCODE_DEL)       PORT_PLAYER(1)
-	PORT_START_TAG("controller1_col2")
+	PORT_START("controller1_col2")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON2  ) PORT_NAME("P1 Keypad 2")  PORT_CODE(KEYCODE_2)         PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON5  ) PORT_NAME("P1 Keypad 5")  PORT_CODE(KEYCODE_5)         PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON8  ) PORT_NAME("P1 Keypad 8")  PORT_CODE(KEYCODE_8)         PORT_PLAYER(1)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON11 ) PORT_NAME("P1 Keypad 11") PORT_CODE(KEYCODE_0)         PORT_PLAYER(1)
-	PORT_START_TAG("controller1_col3")
+	PORT_START("controller1_col3")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON3  ) PORT_NAME("P1 Keypad 3")  PORT_CODE(KEYCODE_3)         PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON6  ) PORT_NAME("P1 Keypad 6")  PORT_CODE(KEYCODE_6)         PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON9  ) PORT_NAME("P1 Keypad 9")  PORT_CODE(KEYCODE_9)         PORT_PLAYER(1)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON12 ) PORT_NAME("P1 Keypad 12") PORT_CODE(KEYCODE_ENTER)     PORT_PLAYER(1)
-	PORT_START_TAG("controller1_extra")
+	PORT_START("controller1_extra")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON13 ) PORT_NAME("P1 Keypad 13") PORT_CODE(KEYCODE_U)         PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON14 ) PORT_NAME("P1 Keypad 14") PORT_CODE(KEYCODE_I)         PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON15 ) PORT_NAME("P1 Keypad 15") PORT_CODE(KEYCODE_O)         PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON16 ) PORT_NAME("P1 Keypad 16") PORT_CODE(KEYCODE_K)         PORT_PLAYER(1)
-	PORT_START_TAG("controller2_col1")
+	PORT_START("controller2_col1")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1  ) PORT_NAME("P2 Keypad 1")  PORT_CODE(KEYCODE_1_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON4  ) PORT_NAME("P2 Keypad 4")  PORT_CODE(KEYCODE_4_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON7  ) PORT_NAME("P2 Keypad 7")  PORT_CODE(KEYCODE_7_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON10 ) PORT_NAME("P2 Keypad 10") PORT_CODE(KEYCODE_DEL_PAD)   PORT_PLAYER(2)
-	PORT_START_TAG("controller2_col2")
+	PORT_START("controller2_col2")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON2  ) PORT_NAME("P2 Keypad 2")  PORT_CODE(KEYCODE_2_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON5  ) PORT_NAME("P2 Keypad 5")  PORT_CODE(KEYCODE_5_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON8  ) PORT_NAME("P2 Keypad 8")  PORT_CODE(KEYCODE_8_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON11 ) PORT_NAME("P2 Keypad 11") PORT_CODE(KEYCODE_0_PAD)     PORT_PLAYER(2)
-	PORT_START_TAG("controller2_col3")
+	PORT_START("controller2_col3")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON3  ) PORT_NAME("P2 Keypad 3")  PORT_CODE(KEYCODE_3_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON6  ) PORT_NAME("P2 Keypad 6")  PORT_CODE(KEYCODE_6_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON9  ) PORT_NAME("P2 Keypad 9")  PORT_CODE(KEYCODE_9_PAD)     PORT_PLAYER(2)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON12 ) PORT_NAME("P2 Keypad 12") PORT_CODE(KEYCODE_ENTER_PAD) PORT_PLAYER(2)
-	PORT_START_TAG("controller2_extra")
+	PORT_START("controller2_extra")
 	PORT_BIT( 0xf0, 0xf0, IPT_UNUSED)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON13 ) PORT_NAME("P2 Keypad 13") PORT_CODE(KEYCODE_SLASH_PAD) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON14 ) PORT_NAME("P2 Keypad 14") PORT_CODE(KEYCODE_ASTERISK)  PORT_PLAYER(2)
@@ -219,7 +219,7 @@ static INPUT_PORTS_START( vcg )
 
 #if 0
     // shit, auto centering too slow, so only using 5 bits, and scaling at videoside
-    PORT_START_TAG("controller1_joy_x")
+    PORT_START("controller1_joy_x")
     PORT_BIT( 0x1fe,0x10,IPT_AD_STICK_X)
     PORT_SENSITIVITY(1)
     PORT_KEYDELTA(2000)
@@ -231,7 +231,7 @@ static INPUT_PORTS_START( vcg )
     PORT_PLAYER(1)
     PORT_RESET
 
-    PORT_START_TAG("controller1_joy_y")
+    PORT_START("controller1_joy_y")
     PORT_BIT( 0x1fe,0x10,IPT_AD_STICK_Y)
     PORT_SENSITIVITY(1)
     PORT_KEYDELTA(2000)
@@ -243,7 +243,7 @@ static INPUT_PORTS_START( vcg )
     PORT_PLAYER(1)
     PORT_RESET
 
-    PORT_START_TAG("controller2_joy_x")
+    PORT_START("controller2_joy_x")
     PORT_BIT( 0x1ff,0x10,IPT_AD_STICK_X)
     PORT_SENSITIVITY(100)
     PORT_KEYDELTA(10)
@@ -255,7 +255,7 @@ static INPUT_PORTS_START( vcg )
     PORT_PLAYER(2)
     PORT_RESET
 
-    PORT_START_TAG("controller2_joy_y")
+    PORT_START("controller2_joy_y")
     PORT_BIT( 0x1ff,0x10,IPT_AD_STICK_Y)
     PORT_SENSITIVITY(100)
     PORT_KEYDELTA(10)
@@ -267,7 +267,7 @@ static INPUT_PORTS_START( vcg )
     PORT_PLAYER(2)
     PORT_RESET
 #else
-	PORT_START_TAG("joysticks")
+	PORT_START("joysticks")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )		PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )	PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )		PORT_PLAYER(1) PORT_8WAY
@@ -302,7 +302,7 @@ static const gfx_layout arcadia_charlayout =
 };
 
 static GFXDECODE_START( arcadia )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, arcadia_charlayout, 0, 128 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, arcadia_charlayout, 0, 128 )
 GFXDECODE_END
 
 static const rgb_t arcadia_palette[] =
@@ -329,7 +329,7 @@ static PALETTE_INIT( arcadia )
 
 static MACHINE_DRIVER_START( arcadia )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", S2650, 3580000/3)        /* 1.796 Mhz */
+	MDRV_CPU_ADD("main", S2650, 3580000/3)        /* 1.796 Mhz */
 	MDRV_CPU_PROGRAM_MAP(arcadia_mem, 0)
 	MDRV_CPU_IO_MAP(arcadia_io, 0)
 	MDRV_CPU_PERIODIC_INT(arcadia_video_line, 262*60)
@@ -351,32 +351,32 @@ static MACHINE_DRIVER_START( arcadia )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(arcadia_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 
 ROM_START(arcadia)
-	ROM_REGION(0x8000,REGION_CPU1, ROMREGION_ERASEFF)
-	ROM_REGION(0x100,REGION_GFX1, ROMREGION_ERASEFF)
+	ROM_REGION(0x8000,"main", ROMREGION_ERASEFF)
+	ROM_REGION(0x100,"gfx1", ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START(vcg)
-	ROM_REGION(0x8000,REGION_CPU1, ROMREGION_ERASEFF)
-	ROM_REGION(0x100,REGION_GFX1, ROMREGION_ERASEFF)
+	ROM_REGION(0x8000,"main", ROMREGION_ERASEFF)
+	ROM_REGION(0x100,"gfx1", ROMREGION_ERASEFF)
 ROM_END
 
 static DEVICE_IMAGE_LOAD( arcadia_cart )
 {
-	UINT8 *rom = memory_region(image->machine, REGION_CPU1);
+	UINT8 *rom = memory_region(image->machine, "main");
 	int size;
 
 	memset(rom, 0, 0x8000);
 	size = image_length(image);
 
-	if (size > memory_region_length(image->machine, REGION_CPU1))
-		size = memory_region_length(image->machine, REGION_CPU1);
+	if (size > memory_region_length(image->machine, "main"))
+		size = memory_region_length(image->machine, "main");
 
 	if (image_fread(image, rom, size) != size)
 		return INIT_FAIL;
@@ -460,13 +460,13 @@ SYSTEM_CONFIG_END
 static DRIVER_INIT( arcadia )
 {
 	int i;
-	UINT8 *gfx=memory_region(machine, REGION_GFX1);
+	UINT8 *gfx=memory_region(machine, "gfx1");
 	for (i=0; i<256; i++) gfx[i]=i;
 #if 0
 	// this is here to allow developement of some simple testroutines
 	// for a real console
 	{
-	    UINT8 *rom=memory_region(machine, REGION_CPU1);
+	    UINT8 *rom=memory_region(machine, "main");
 	    /* this is a simple routine to display all rom characters
            on the display for a snapshot */
 	    static const UINT8 prog[]={ // address 0 of course

@@ -31,8 +31,6 @@
 
 enum
 {
-	MESS_DEVINFO_CREATE_OPTMAX = 32,
-
 	/* --- the following bits of info are returned as 64-bit signed integers --- */
 	MESS_DEVINFO_INT_FIRST = 0x00000,
 
@@ -62,7 +60,7 @@ enum
 	MESS_DEVINFO_PTR_GET_DISPOSITIONS,
 	MESS_DEVINFO_PTR_CREATE_OPTGUIDE,
 	MESS_DEVINFO_PTR_CREATE_OPTSPEC,
-	MESS_DEVINFO_PTR_VALIDITY_CHECK = MESS_DEVINFO_PTR_CREATE_OPTSPEC + MESS_DEVINFO_CREATE_OPTMAX,	/* R/O: int (*validity_check)(const mess_device_class *devclass) */
+	MESS_DEVINFO_PTR_VALIDITY_CHECK = MESS_DEVINFO_PTR_CREATE_OPTSPEC + DEVINFO_CREATE_OPTMAX,	/* R/O: int (*validity_check)(const mess_device_class *devclass) */
 
 	MESS_DEVINFO_PTR_DEV_SPECIFIC = 0x18000,					/* R/W: Device-specific values start here */
 
@@ -74,21 +72,18 @@ enum
 	MESS_DEVINFO_STR_FILE_EXTENSIONS,
 
 	MESS_DEVINFO_STR_CREATE_OPTNAME,
-	MESS_DEVINFO_STR_CREATE_OPTDESC = MESS_DEVINFO_STR_CREATE_OPTNAME + MESS_DEVINFO_CREATE_OPTMAX,
-	MESS_DEVINFO_STR_CREATE_OPTEXTS = MESS_DEVINFO_STR_CREATE_OPTDESC + MESS_DEVINFO_CREATE_OPTMAX,
+	MESS_DEVINFO_STR_CREATE_OPTDESC = MESS_DEVINFO_STR_CREATE_OPTNAME + DEVINFO_CREATE_OPTMAX,
+	MESS_DEVINFO_STR_CREATE_OPTEXTS = MESS_DEVINFO_STR_CREATE_OPTDESC + DEVINFO_CREATE_OPTMAX,
 
-	MESS_DEVINFO_STR_NAME = MESS_DEVINFO_STR_CREATE_OPTEXTS + MESS_DEVINFO_CREATE_OPTMAX,
-	MESS_DEVINFO_STR_SHORT_NAME = MESS_DEVINFO_STR_NAME + MESS_DEVINFO_CREATE_OPTMAX,
+	MESS_DEVINFO_STR_NAME = MESS_DEVINFO_STR_CREATE_OPTEXTS + DEVINFO_CREATE_OPTMAX,
+	MESS_DEVINFO_STR_SHORT_NAME = MESS_DEVINFO_STR_NAME + DEVINFO_CREATE_OPTMAX,
 	MESS_DEVINFO_STR_DESCRIPTION = MESS_DEVINFO_STR_SHORT_NAME + MAX_DEV_INSTANCES,
 
 	MESS_DEVINFO_STR_DEV_SPECIFIC = 0x28000,					/* R/W: Device-specific values start here */
 };
 
 
-struct IODevice;
-
 typedef void (*device_getdispositions_func)(int id, unsigned int *readable, unsigned int *writeable, unsigned int *creatable);
-typedef const char *(*device_getname_func)(const struct IODevice *dev, int id, char *buf, size_t bufsize);
 
 struct _mess_device_class;
 struct _machine_config;
@@ -112,7 +107,6 @@ union devinfo
 	device_getdispositions_func getdispositions;
 
 	device_display_func display;
-	device_getname_func name;
 
 	int (*validity_check)(const struct _mess_device_class *devclass);
 };
@@ -181,52 +175,12 @@ INLINE char *device_temp_str(void)
  *
  *************************************/
 
-typedef struct _create_image_options create_image_options;
-struct _create_image_options
-{
-	const char *name;
-	const char *description;
-	const char *extensions;
-	const char *optspec;
-};
-
-struct IODevice
-{
-	mess_device_class devclass;
-	const device_config *devconfig;
-
-	/* the basics */
-	const char *tag;
-	iodevice_t type;
-	int position;
-	int index_in_device;
-
-	/* open dispositions */
-	unsigned int readable : 1;
-	unsigned int writeable : 1;
-	unsigned int creatable : 1;
-
-	/* miscellaneous flags */
-	unsigned int reset_on_load : 1;
-	unsigned int load_at_init : 1;
-	unsigned int multiple : 1;
-
-	/* image handling callbacks */
-	device_start_func start;
-	device_stop_func stop;
-
-	/* image creation options */
-	const option_guide *createimage_optguide;
-	const create_image_options *createimage_options;
-};
-
 /* interoperability with MAME devices */
 DEVICE_GET_INFO(mess_device);
 struct _machine_config *machine_config_alloc_with_mess_devices(const game_driver *gamedrv);
-const struct IODevice *mess_device_from_core_device(const device_config *device);
+const mess_device_class *mess_devclass_from_core_device(const device_config *device);
 
 /* device naming */
-const char *device_uiname(iodevice_t devtype);
 const char *device_typename(iodevice_t type);
 const char *device_brieftypename(iodevice_t type);
 iodevice_t device_typeid(const char *name);
@@ -238,7 +192,7 @@ void mess_devices_setup(machine_config *config, const game_driver *gamedrv);
 int device_count_tag_from_machine(const running_machine *machine, const char *tag);
 
 /* deprecated: device lookup; both of these function assume only one of each type of device */
-const struct IODevice *device_find_from_machine(const running_machine *machine, iodevice_t type);
+int device_find_from_machine(const running_machine *machine, iodevice_t type);
 int device_count(running_machine *machine, iodevice_t type);
 
 /* deprecated tag management functions; only works on legacy devices */
@@ -247,7 +201,6 @@ void *image_lookuptag(const device_config *device, const char *tag);
 
 /* deprecated device access functions */
 int image_index_in_device(const device_config *device);
-const device_config *image_from_device(const struct IODevice *iodev);
 const device_config *image_from_devtag_and_index(running_machine *machine, const char *devtag, int id);
 
 /* deprecated device access functions that assume one device of any given type */

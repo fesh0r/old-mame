@@ -21,17 +21,17 @@
 
 static READ8_HANDLER( psg_4015_r )
 {
-	return NESPSG_0_r(machine, 0x15);
+	return nes_psg_0_r(machine, 0x15);
 }
 
 static WRITE8_HANDLER( psg_4015_w )
 {
-	NESPSG_0_w(machine, 0x15, data);
+	nes_psg_0_w(machine, 0x15, data);
 }
 
 static WRITE8_HANDLER( psg_4017_w )
 {
-	NESPSG_0_w(machine, 0x17, data);
+	nes_psg_0_w(machine, 0x17, data);
 }
 
 static WRITE8_HANDLER(nes_vh_sprite_dma_w)
@@ -42,7 +42,7 @@ static WRITE8_HANDLER(nes_vh_sprite_dma_w)
 static ADDRESS_MAP_START( nes_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM		AM_MIRROR(0x1800)	/* RAM */
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ppu2c0x_0_r,     ppu2c0x_0_w)			/* PPU registers */
-	AM_RANGE(0x4000, 0x4013) AM_READWRITE(NESPSG_0_r, NESPSG_0_w)			/* PSG primary registers */
+	AM_RANGE(0x4000, 0x4013) AM_READWRITE(nes_psg_0_r, nes_psg_0_w)			/* PSG primary registers */
 	AM_RANGE(0x4014, 0x4014) AM_WRITE(nes_vh_sprite_dma_w)				/* stupid address space hole */
 	AM_RANGE(0x4015, 0x4015) AM_READWRITE(psg_4015_r, psg_4015_w)			/* PSG status / first control register */
 	AM_RANGE(0x4016, 0x4016) AM_READWRITE(nes_IN0_r,        nes_IN0_w)			/* IN0 - input port 1 */
@@ -52,7 +52,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( nes_controllers )
-	PORT_START_TAG("PAD1")  /* IN0 */
+	PORT_START("PAD1")  /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("P1 A") PORT_CODE(KEYCODE_LALT) PORT_CODE(JOYCODE_BUTTON1 )	PORT_CATEGORY(1) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_NAME("P1 B") PORT_CODE(KEYCODE_LCONTROL) PORT_CODE(JOYCODE_BUTTON2 )	PORT_CATEGORY(1) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SELECT)															PORT_CATEGORY(1) PORT_PLAYER(1)
@@ -62,7 +62,7 @@ static INPUT_PORTS_START( nes_controllers )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT) PORT_NAME("P1 Left") PORT_CODE(KEYCODE_LEFT) PORT_CODE(JOYCODE_X_LEFT_SWITCH )	PORT_CATEGORY(1) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT) PORT_NAME("P1 Right") PORT_CODE(KEYCODE_RIGHT) PORT_CODE(JOYCODE_X_RIGHT_SWITCH )	PORT_CATEGORY(1) PORT_PLAYER(1)
 
-	PORT_START_TAG("PAD2")  /* IN1 */
+	PORT_START("PAD2")  /* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("P2 A") PORT_CODE(KEYCODE_0_PAD) PORT_CODE(JOYCODE_BUTTON1 )	PORT_CATEGORY(2) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_NAME("P2 B") PORT_CODE(KEYCODE_DEL_PAD) PORT_CODE(JOYCODE_BUTTON2 )	PORT_CATEGORY(2) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SELECT)															PORT_CATEGORY(2) PORT_PLAYER(2)
@@ -72,7 +72,7 @@ static INPUT_PORTS_START( nes_controllers )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT) PORT_NAME("P2 Left") PORT_CODE(KEYCODE_4_PAD) PORT_CODE(JOYCODE_X_LEFT_SWITCH )	PORT_CATEGORY(2) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT) PORT_NAME("P2 Right") PORT_CODE(KEYCODE_6_PAD) PORT_CODE(JOYCODE_X_RIGHT_SWITCH )	PORT_CATEGORY(2) PORT_PLAYER(2)
 
-	PORT_START_TAG("PAD3")  /* IN2 */
+	PORT_START("PAD3")  /* IN2 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1)															PORT_CATEGORY(3) PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2)															PORT_CATEGORY(3) PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SELECT)															PORT_CATEGORY(3) PORT_PLAYER(3)
@@ -82,7 +82,7 @@ static INPUT_PORTS_START( nes_controllers )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT)															PORT_CATEGORY(3) PORT_PLAYER(3)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT)															PORT_CATEGORY(3) PORT_PLAYER(3)
 
-	PORT_START_TAG("PAD4")  /* IN3 */
+	PORT_START("PAD4")  /* IN3 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1)															PORT_CATEGORY(4) PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2)															PORT_CATEGORY(4) PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SELECT)															PORT_CATEGORY(4) PORT_PLAYER(4)
@@ -92,24 +92,24 @@ static INPUT_PORTS_START( nes_controllers )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT)															PORT_CATEGORY(4) PORT_PLAYER(4)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT)															PORT_CATEGORY(4) PORT_PLAYER(4)
 
-	PORT_START_TAG("ZAPPER1_X")  /* IN4 - P1 zapper */
+	PORT_START("ZAPPER1_X")  /* IN4 - P1 zapper */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X) PORT_SENSITIVITY(70) PORT_KEYDELTA(30) PORT_MINMAX(0,255 )														PORT_CATEGORY(5) PORT_PLAYER(1)
-	PORT_START_TAG("ZAPPER1_Y")  /* IN5 - P1 zapper */
+	PORT_START("ZAPPER1_Y")  /* IN5 - P1 zapper */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_MINMAX(0,255 )														PORT_CATEGORY(5) PORT_PLAYER(1)
-	PORT_START_TAG("ZAPPER1_T")  /* IN6 - P1 zapper trigger */
+	PORT_START("ZAPPER1_T")  /* IN6 - P1 zapper trigger */
 	PORT_BIT( 0x03, IP_ACTIVE_HIGH, IPT_BUTTON3) PORT_NAME("Lightgun Trigger") 										PORT_CATEGORY(5) PORT_PLAYER(1)
 
-	PORT_START_TAG("ZAPPER2_X")  /* IN7 - P2 zapper */
+	PORT_START("ZAPPER2_X")  /* IN7 - P2 zapper */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X) PORT_SENSITIVITY(70) PORT_KEYDELTA(30) PORT_MINMAX(0,255 )														PORT_CATEGORY(6) PORT_PLAYER(2)
-	PORT_START_TAG("ZAPPER2_Y")  /* IN8 - P2 zapper */
+	PORT_START("ZAPPER2_Y")  /* IN8 - P2 zapper */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y) PORT_SENSITIVITY(50) PORT_KEYDELTA(30) PORT_MINMAX(0,255 )														PORT_CATEGORY(6) PORT_PLAYER(2)
-	PORT_START_TAG("ZAPPER2_T")  /* IN9 - P2 zapper trigger */
+	PORT_START("ZAPPER2_T")  /* IN9 - P2 zapper trigger */
 	PORT_BIT( 0x03, IP_ACTIVE_HIGH, IPT_BUTTON3) PORT_NAME("Lightgun 2 Trigger") 										PORT_CATEGORY(6) PORT_PLAYER(2)
 
-	PORT_START_TAG("PADDLE")  /* IN10 - arkanoid paddle */
+	PORT_START("PADDLE")  /* IN10 - arkanoid paddle */
 	PORT_BIT( 0xff, 0x7f, IPT_PADDLE) PORT_SENSITIVITY(25) PORT_KEYDELTA(3) PORT_MINMAX(0x62,0xf2 )																	PORT_CATEGORY(7)
 
-	PORT_START_TAG("CONTROLLERS")  /* IN11 - configuration */
+	PORT_START("CONTROLLERS")  /* IN11 - configuration */
 	PORT_CATEGORY_CLASS( 0x000f, 0x0001, "P1 Controller")
 	PORT_CATEGORY_ITEM(  0x0000, "Unconnected",		0 )
 	PORT_CATEGORY_ITEM(  0x0001, "Gamepad",			1 )
@@ -132,7 +132,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( nes )
 	PORT_INCLUDE( nes_controllers )
 
-	PORT_START_TAG("CONFIG")  /* IN12 - configuration */
+	PORT_START("CONFIG")  /* IN12 - configuration */
 	PORT_CONFNAME( 0x01, 0x00, "Draw Top/Bottom 8 Lines")
 	PORT_CONFSETTING(    0x01, DEF_STR(No) )
 	PORT_CONFSETTING(    0x00, DEF_STR(Yes) )
@@ -144,7 +144,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( famicom )
 	PORT_INCLUDE( nes_controllers )
 
-	PORT_START_TAG("FLIPDISK") /* IN12 - fake keys */
+	PORT_START("FLIPDISK") /* IN12 - fake keys */
 //  PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON3 )
 	PORT_BIT ( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON3) PORT_NAME("Change Disk Side")
 INPUT_PORTS_END
@@ -163,59 +163,59 @@ gfx_layout nes_vram_charlayout =
 };
 #endif
 
-static const struct NESinterface nes_interface =
+static const nes_interface nesntsc_interface =
 {
 	0
 };
 
-static const struct NESinterface nespal_interface =
+static const nes_interface nespal_interface =
 {
 	0
 };
 
 ROM_START( nes )
-    ROM_REGION( 0x10000, REGION_CPU1,0 )  /* Main RAM + program banks */
+    ROM_REGION( 0x10000, "main",0 )  /* Main RAM + program banks */
 	ROM_FILL( 0x0000, 0x10000, 0x00 )
-    ROM_REGION( 0x2000,  REGION_GFX1,0 )  /* VROM */
+    ROM_REGION( 0x2000,  "gfx1",0 )  /* VROM */
 	ROM_FILL( 0x0000, 0x2000, 0x00 )
-    ROM_REGION( 0x2000,  REGION_GFX2,0 )  /* VRAM */
+    ROM_REGION( 0x2000,  "gfx2",0 )  /* VRAM */
 	ROM_FILL( 0x0000, 0x2000, 0x00 )
-    ROM_REGION( 0x10000, REGION_USER1,0 ) /* WRAM */
+    ROM_REGION( 0x10000, "user1",0 ) /* WRAM */
 	ROM_FILL( 0x0000, 0x10000, 0x00 )
 ROM_END
 
 ROM_START( nespal )
-    ROM_REGION( 0x10000, REGION_CPU1,0 )  /* Main RAM + program banks */
+    ROM_REGION( 0x10000, "main",0 )  /* Main RAM + program banks */
 	ROM_FILL( 0x0000, 0x10000, 0x00 )
-    ROM_REGION( 0x2000,  REGION_GFX1,0 )  /* VROM */
+    ROM_REGION( 0x2000,  "gfx1",0 )  /* VROM */
 	ROM_FILL( 0x0000, 0x2000, 0x00 )
-    ROM_REGION( 0x2000,  REGION_GFX2,0 )  /* VRAM */
+    ROM_REGION( 0x2000,  "gfx2",0 )  /* VRAM */
 	ROM_FILL( 0x0000, 0x2000, 0x00 )
-    ROM_REGION( 0x10000, REGION_USER1,0 ) /* WRAM */
+    ROM_REGION( 0x10000, "user1",0 ) /* WRAM */
 	ROM_FILL( 0x0000, 0x10000, 0x00 )
 ROM_END
 
 ROM_START( famicom )
-    ROM_REGION( 0x10000, REGION_CPU1,0 )  /* Main RAM + program banks */
+    ROM_REGION( 0x10000, "main",0 )  /* Main RAM + program banks */
     ROM_LOAD_OPTIONAL ("disksys.rom", 0xe000, 0x2000, CRC(5e607dcf) SHA1(57fe1bdee955bb48d357e463ccbf129496930b62))
 
-    ROM_REGION( 0x2000,  REGION_GFX1,0 )  /* VROM */
+    ROM_REGION( 0x2000,  "gfx1",0 )  /* VROM */
 	ROM_FILL( 0x0000, 0x2000, 0x00 )
-    ROM_REGION( 0x2000,  REGION_GFX2,0 )  /* VRAM */
+    ROM_REGION( 0x2000,  "gfx2",0 )  /* VRAM */
 	ROM_FILL( 0x0000, 0x2000, 0x00 )
-    ROM_REGION( 0x10000, REGION_USER1,0 ) /* WRAM */
+    ROM_REGION( 0x10000, "user1",0 ) /* WRAM */
 	ROM_FILL( 0x0000, 0x10000, 0x00 )
 ROM_END
 
 ROM_START( famitwin )
-    ROM_REGION( 0x10000, REGION_CPU1,0 )  /* Main RAM + program banks */
+    ROM_REGION( 0x10000, "main",0 )  /* Main RAM + program banks */
     ROM_LOAD_OPTIONAL ("disksyst.rom", 0xe000, 0x2000, CRC(4df24a6c) SHA1(e4e41472c454f928e53eb10e0509bf7d1146ecc1))
 
-    ROM_REGION( 0x2000,  REGION_GFX1,0 )  /* VROM */
+    ROM_REGION( 0x2000,  "gfx1",0 )  /* VROM */
 	ROM_FILL( 0x0000, 0x2000, 0x00 )
-    ROM_REGION( 0x2000,  REGION_GFX2,0 )  /* VRAM */
+    ROM_REGION( 0x2000,  "gfx2",0 )  /* VRAM */
 	ROM_FILL( 0x0000, 0x2000, 0x00 )
-    ROM_REGION( 0x10000, REGION_USER1,0 ) /* WRAM */
+    ROM_REGION( 0x10000, "user1",0 ) /* WRAM */
 	ROM_FILL( 0x0000, 0x10000, 0x00 )
 ROM_END
 
@@ -223,7 +223,7 @@ ROM_END
 
 static MACHINE_DRIVER_START( nes )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", N2A03, NTSC_CLOCK)
+	MDRV_CPU_ADD("main", N2A03, NTSC_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(nes_map, 0)
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60.098)
@@ -247,8 +247,8 @@ static MACHINE_DRIVER_START( nes )
 
     /* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD_TAG("nessound", NES, NTSC_CLOCK)
-	MDRV_SOUND_CONFIG(nes_interface)
+	MDRV_SOUND_ADD("nessound", NES, NTSC_CLOCK)
+	MDRV_SOUND_CONFIG(nesntsc_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 

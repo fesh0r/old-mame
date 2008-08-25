@@ -77,7 +77,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( advision )
-    PORT_START_TAG("joystick")      /* IN0 */
+    PORT_START("joystick")      /* IN0 */
     PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON4 )       PORT_PLAYER(1)
     PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 )       PORT_PLAYER(1)
     PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON2 )       PORT_PLAYER(1)
@@ -103,11 +103,11 @@ static COP400_INTERFACE( advision_cop411_interface )
 
 static MACHINE_DRIVER_START( advision )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", I8048, MAIN_CLOCK/15)
+	MDRV_CPU_ADD("main", I8048, MAIN_CLOCK/15)
 	MDRV_CPU_PROGRAM_MAP(advision_mem, 0)
 	MDRV_CPU_IO_MAP(advision_ports, 0)
 
-	MDRV_CPU_ADD(COP411, 52631)
+	MDRV_CPU_ADD("sound", COP411, 52631)
 	MDRV_CPU_CONFIG(advision_cop411_interface)
 	MDRV_CPU_PROGRAM_MAP(advision_sound_mem, 0)
 	MDRV_CPU_IO_MAP(advision_sound_ports, 0)
@@ -131,7 +131,7 @@ static MACHINE_DRIVER_START( advision )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -144,10 +144,10 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( advision )
-	ROM_REGION( 0x2800, REGION_CPU1, 0 )
+	ROM_REGION( 0x2800, "main", 0 )
     ROM_LOAD( "avbios.rom", 0x1000, 0x0400, CRC(279e33d1) SHA1(bf7b0663e9125c9bfb950232eab627d9dbda8460) )
 	ROM_CART_LOAD( 0, "bin", 0x0000, 0x1000, ROM_NOMIRROR | ROM_FULLSIZE )
-	ROM_REGION( 0x0400, REGION_CPU2, 0 )
+	ROM_REGION( 0x0400, "sound", 0 )
 	ROM_LOAD( "avsound.bin", 0x0000, 0x0200, CRC(81e95975) SHA1(8b6f8c30dd3e9d8e43f1ea20fba2361b383790eb) )
 ROM_END
 

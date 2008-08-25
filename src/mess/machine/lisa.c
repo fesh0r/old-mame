@@ -53,7 +53,7 @@
 static UINT8 *lisa_ram_ptr;
 static UINT8 *lisa_rom_ptr;
 
-/* offsets in REGION_CPU1 */
+/* offsets in "main" */
 #define RAM_OFFSET 0x004000
 #define ROM_OFFSET 0x000000
 
@@ -395,13 +395,12 @@ static void scan_keyboard(running_machine *machine)
 	int i, j;
 	int keybuf;
 	UINT8 keycode;
-	char port[6];
+	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
 
 	if (! COPS_force_unplug)
 		for (i=0; i<8; i++)
 		{
-			sprintf(port, "LINE%d", i);
-			keybuf = input_port_read(machine, port);
+			keybuf = input_port_read(machine, keynames[i]);
 
 			if (keybuf != key_matrix[i])
 			{	/* if state has changed, find first bit which has changed */
@@ -1121,10 +1120,10 @@ MACHINE_RESET( lisa )
 {
 	mouse_timer = timer_alloc(handle_mouse, NULL);
 
-	lisa_ram_ptr = memory_region(machine, REGION_CPU1) + RAM_OFFSET;
-	lisa_rom_ptr = memory_region(machine, REGION_CPU1) + ROM_OFFSET;
+	lisa_ram_ptr = memory_region(machine, "main") + RAM_OFFSET;
+	lisa_rom_ptr = memory_region(machine, "main") + ROM_OFFSET;
 
-	videoROM_ptr = memory_region(machine, REGION_GFX1);
+	videoROM_ptr = memory_region(machine, "gfx1");
 
 	memory_set_opbase_handler(0, lisa_OPbaseoverride);
 	memory_set_opbase_handler(1, lisa_fdc_OPbaseoverride);

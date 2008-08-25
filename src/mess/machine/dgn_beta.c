@@ -69,6 +69,9 @@
 #include "machine/wd17xx.h"
 #include "includes/crtc6845.h"
 
+#include "debug/debugcpu.h"
+#include "debug/debugcon.h"
+
 static UINT8 *system_rom;
 
 #define VERBOSE 0
@@ -85,19 +88,13 @@ static UINT8 *system_rom;
 #define LOG_INTS(x) do { if (VERBOSE) logerror x; } while (0)
 
 
-
-#ifdef ENABLE_DEBUGGER
-#include "debug/debugcpu.h"
-#include "debug/debugcon.h"
-#endif /* ENABLE_DEBUGGER */
-
-#ifdef ENABLE_DEBUGGER
+/* Debugging commands and handlers. */
 static offs_t dgnbeta_dasm_override(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 static void ToggleDatLog(int ref, int params, const char *param[]);
 static void DumpKeys(int ref, int params, const char *param[]);
 
+/* Debugging variables */
 static int LogDatWrites;
-#endif /* ENABLE_DEBUGGER */
 
 static READ8_HANDLER(d_pia0_pa_r);
 static WRITE8_HANDLER(d_pia0_pa_w);
@@ -124,7 +121,7 @@ static void cpu0_recalc_firq(running_machine *machine, int state);
 
 static void cpu1_recalc_firq(running_machine *machine, int state);
 
-static	int Keyboard[NoKeyrows];		/* Keyboard bit array */
+static int Keyboard[NoKeyrows];		/* Keyboard bit array */
 static int RowShifter;				/* shift register to select row */
 static int Keyrow;				/* Keyboard row being shifted out */
 static int d_pia0_pb_last;			/* Last byte output to pia0 port b */
@@ -262,10 +259,8 @@ static void UpdateBanks(running_machine *machine, int first, int last)
 			if (!IsIOPage(Page))
 			{
 				readbank = &mess_ram[MapPage*RamPageSize];
-#ifdef ENABLE_DEBUGGER
 				if(LogDatWrites)
 					debug_console_printf("Mapping page %X, pageno=%X, mess_ram[%X]\n",Page,MapPage,(MapPage*RamPageSize));
-#endif
 			}
 			else
 			{
@@ -308,9 +303,7 @@ static void SetDefaultTask(running_machine *machine)
 	int		Idx;
 
 	LOG_DEFAULT_TASK(("SetDefaultTask()\n"));
-#ifdef ENABLE_DEBUGGER
 	if (VERBOSE) debug_console_printf("Set Default task\n");
-#endif
 
 	TaskReg=NoPagingTask;
 
@@ -546,40 +539,40 @@ static READ8_HANDLER(d_pia0_pb_r)
 	int RetVal;
 	int Idx;
 	int Selected;
-	char port[6];
+	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", 
+										"KEY5", "KEY6", "KEY7", "KEY8", "KEY9" };
 	
 	LOG_KEYBOARD(("PB Read\n"));
 
-	KAny_next=0;
+	KAny_next = 0;
 
-	Selected=SelectedKeyrow(RowShifter);
+	Selected = SelectedKeyrow(RowShifter);
 
 	/* Scan the whole keyboard, if output shifter is all low */
 	/* This actually scans in the keyboard */
-	if(RowShifter==0x00)
+	if(RowShifter == 0x00)
 	{
 		for(Idx=0; Idx<NoKeyrows; Idx++)
 		{
-			sprintf(port, "KEY%d", Idx);
-			Keyboard[Idx] = input_port_read(machine, port);
+			Keyboard[Idx] = input_port_read(machine, keynames[Idx]);
 
-			if(Keyboard[Idx]!=0x7F)
+			if(Keyboard[Idx] != 0x7F)
 			{
-				KAny_next=1;
+				KAny_next = 1;
 			}
 		}
 	}
 	else	/* Just scan current row, from previously read values */
 	{
-		if(GetKeyRow(Selected)!=NO_KEY_PRESSED)
+		if(GetKeyRow(Selected) != NO_KEY_PRESSED)
 		{
-			KAny_next=1;
+			KAny_next = 1;
 		}
 	}
 
 	RetVal = (KInDat_next<<5) | (KAny_next<<2);
 
-	LOG_KEYBOARD(("FC22=$%02X KAny=%d\n",RetVal,KAny_next));
+	LOG_KEYBOARD(("FC22=$%02X KAny=%d\n", RetVal, KAny_next));
 
 	return RetVal;
 }
@@ -627,9 +620,7 @@ static WRITE8_HANDLER(d_pia0_cb2_w)
 		RowShifter = (RowShifter<<1) | ((d_pia0_pb_last & KOutDat)>>4);
 		RowShifter &= 0x3FF;
 		LOG_KEYBOARD(("Rowshifter=$%02X Keyrow=$%02X\n",RowShifter,Keyrow));
-#ifdef ENABLE_DEBUGGER
 		if (VERBOSE) debug_console_printf("rowshifter clocked, value=%3X, RowNo=%d, Keyrow=%2X\n",RowShifter,RowNo,Keyrow);
-#endif
 	}
 
 	d_pia0_cb2_last=data;
@@ -973,24 +964,23 @@ static void ScanInKeyboard(void)
 #if 0
 	int	Idx;
 	int	Row;
-	char port[6];
+	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", 
+										"KEY5", "KEY6", "KEY7", "KEY8", "KEY9" };
 	
 	LOG_KEYBOARD(("Scanning Host keyboard\n"));
 
 	for(Idx=0; Idx<NoKeyrows; Idx++)
 	{
 		if (Idx < 10)
-		{
-			sprintf(port, "KEY%d", Idx);
-			Row = input_port_read(machine, port);
-		}
+			Row = input_port_read(machine, keynames[Idx]);
+
 		else
 			Row = 0x7f;
 
 		Keyboard[Idx]=Row;
 		LOG_KEYBOARD(("Keyboard[%d]=$%02X\n",Idx,Row));
 
-		if (Row!=0x7F)
+		if (Row != 0x7F)
 		{
 			LOG_KEYBOARD(("Found Pressed Key\n"));
 		}
@@ -1032,7 +1022,7 @@ void dgn_beta_line_interrupt (int data)
 
 static void dgnbeta_reset(running_machine *machine)
 {
-	system_rom = memory_region(machine, REGION_CPU1);
+	system_rom = memory_region(machine, "main");
 
 	/* Make sure CPU 1 is started out halted ! */
 	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
@@ -1083,21 +1073,17 @@ MACHINE_START( dgnbeta )
 	init_video(machine);
 
 	wd17xx_init(machine, WD_TYPE_179X,dgnbeta_fdc_callback, NULL);
-#ifdef ENABLE_DEBUGGER
 	cpuintrf_set_dasm_override(0,dgnbeta_dasm_override);
-#endif /* ENABLE_DEBUGGER */
 
 	add_reset_callback(machine, dgnbeta_reset);
 	dgnbeta_reset(machine);
-#ifdef ENABLE_DEBUGGER
 	/* setup debug commands */
-	if (machine->debug_mode)
+	if (machine->debug_flags & DEBUG_FLAG_ENABLED)
 	{
 		debug_console_register_command("beta_dat_log", CMDFLAG_NONE, 0, 0, 0,ToggleDatLog);
 		debug_console_register_command("beta_key_dump", CMDFLAG_NONE, 0, 0, 0,DumpKeys);
 	}
 	LogDatWrites=0;
-#endif	/* ENABLE_DEBUGGER */
 }
 
 
@@ -1106,7 +1092,6 @@ MACHINE_START( dgnbeta )
   OS9 Syscalls for disassembly
 ****************************************************************************/
 
-#ifdef ENABLE_DEBUGGER
 
 static const char *const os9syscalls[] =
 {
@@ -1275,7 +1260,6 @@ static offs_t dgnbeta_dasm_override(char *buffer, offs_t pc, const UINT8 *oprom,
 	return result;
 }
 
-#ifdef ENABLE_DEBUGGER
 static void ToggleDatLog(int ref, int params, const char *param[])
 {
 	LogDatWrites=!LogDatWrites;
@@ -1292,6 +1276,3 @@ static void DumpKeys(int ref, int params, const char *param[])
 		debug_console_printf("KeyRow[%d]=%2X\n",Idx,Keyboard[Idx]);
 	}
 }
-#endif
-
-#endif /* ENABLE_DEBUGGER */

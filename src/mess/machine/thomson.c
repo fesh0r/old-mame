@@ -261,7 +261,7 @@ static UINT8 thom_cart_bank;     /* current bank */
 DEVICE_IMAGE_LOAD( to7_cartridge )
 {
 	int i,j;
-	UINT8* pos = memory_region(image->machine,  REGION_CPU1 ) + 0x10000;
+	UINT8* pos = memory_region(image->machine,  "main" ) + 0x10000;
 	offs_t size = image_length ( image );
 	char name[129];
 
@@ -345,7 +345,7 @@ WRITE8_HANDLER ( to7_cartridge_w )
 /* read signal to 0000-0003 generates a bank switch */
 READ8_HANDLER ( to7_cartridge_r )
 {
-	UINT8* pos = memory_region( machine, REGION_CPU1 ) + 0x10000;
+	UINT8* pos = memory_region( machine, "main" ) + 0x10000;
 	UINT8 data = pos[offset + (thom_cart_bank % thom_cart_nb_banks) * 0x4000];
 	thom_cart_bank = offset & 3;
 	to7_update_cart_bank(machine);
@@ -371,7 +371,7 @@ static WRITE8_HANDLER ( to7_timer_port_out )
 
 static WRITE8_HANDLER ( to7_timer_cp2_out )
 {
-	DAC_data_w( THOM_SOUND_BUZ, data ? 0x80 : 0); /* 1-bit buzzer */
+	dac_data_w( THOM_SOUND_BUZ, data ? 0x80 : 0); /* 1-bit buzzer */
 }
 
 
@@ -474,15 +474,13 @@ static READ8_HANDLER ( to7_sys_porta_in )
 		int keyline = pia_get_output_b( THOM_PIA_SYS );
 		UINT8 val = 0xff;
 		int i;
-		char tag[12];
+		static const char *keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", 
+											"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7" };
 		
 		for ( i = 0; i < 8; i++ )
 		{
 			if ( ! (keyline & (1 << i)) )
-			{
-				sprintf(tag, "keyboard_%d", i);
-				val &= input_port_read(machine, tag);
-			}
+				val &= input_port_read(machine, keynames[i]);
 		}
 		return val;
 	}
@@ -851,7 +849,7 @@ static UINT8 to7_get_mouse_signal( running_machine *machine )
 
 static void to7_game_sound_update ( void )
 {
-	DAC_data_w( THOM_SOUND_GAME, to7_game_mute ? 0 : (to7_game_sound << 2) );
+	dac_data_w( THOM_SOUND_GAME, to7_game_mute ? 0 : (to7_game_sound << 2) );
 }
 
 
@@ -1054,12 +1052,12 @@ static void to7_midi_update_irq ( void )
 	if ( (to7_midi_intr & 3) == 1 && (to7_midi_status & ACIA_6850_TDRE) )
 		to7_midi_status |= ACIA_6850_irq; /* ready to transmit interrupt */
 
-	thom_irq_4( to7_midi_status & ACIA_6850_irq );
+	thom_irq_4( Machine, to7_midi_status & ACIA_6850_irq );
 }
 
 
 
-static void to7_midi_byte_received_cb( chardev_err s )
+static void to7_midi_byte_received_cb( running_machine *machine, chardev_err s )
 {
 	to7_midi_status |= ACIA_6850_RDRF;
 	if ( s == CHARDEV_OVERFLOW )
@@ -1069,7 +1067,7 @@ static void to7_midi_byte_received_cb( chardev_err s )
 
 
 
-static void to7_midi_ready_to_send_cb( void )
+static void to7_midi_ready_to_send_cb( running_machine *machine )
 {
 	to7_midi_status |= ACIA_6850_TDRE;
 	to7_midi_update_irq();
@@ -1212,7 +1210,7 @@ static void to7_midi_reset( void )
 static void to7_midi_init( void )
 {
 	LOG (( "to7_midi_init\n" ));
-	to7_midi_chardev = chardev_open( "/dev/snd/midiC1D0", "/dev/snd/midiC1D1", &to7_midi_interface );
+	to7_midi_chardev = chardev_open( Machine, "/dev/snd/midiC1D0", "/dev/snd/midiC1D1", &to7_midi_interface );
 	state_save_register_global( to7_midi_status );
 	state_save_register_global( to7_midi_overrun );
 	state_save_register_global( to7_midi_intr );
@@ -1297,7 +1295,7 @@ MACHINE_RESET ( to7 )
 
 MACHINE_START ( to7 )
 {
-	UINT8* mem = memory_region(machine, REGION_CPU1);
+	UINT8* mem = memory_region(machine, "main");
 
 	LOG (( "to7: machine start called\n" ));
 
@@ -1369,11 +1367,11 @@ static WRITE8_HANDLER ( to770_sys_cb2_out )
 static READ8_HANDLER ( to770_sys_porta_in )
 {
 	/* keyboard */
-	char tag[12];
+	static const char *keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", 
+										"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7" };
 	int keyline = pia_get_output_b( THOM_PIA_SYS ) & 7;
 	
-	sprintf(tag, "keyboard_%d", 7 - keyline);
-	return input_port_read(machine, tag);
+	return input_port_read(machine, keynames[7 - keyline]);
 }
 
 
@@ -1548,7 +1546,7 @@ MACHINE_RESET( to770 )
 
 MACHINE_START ( to770 )
 {
-	UINT8* mem = memory_region(machine, REGION_CPU1);
+	UINT8* mem = memory_region(machine, "main");
 
 	LOG (( "to770: machine start called\n" ));
 
@@ -1662,7 +1660,7 @@ static READ8_HANDLER ( mo5_sys_porta_in )
 
 static WRITE8_HANDLER ( mo5_sys_portb_out )
 {
-	DAC_data_w( THOM_SOUND_BUZ, (data & 1) ? 0x80 : 0); /* 1-bit buzzer */
+	dac_data_w( THOM_SOUND_BUZ, (data & 1) ? 0x80 : 0); /* 1-bit buzzer */
 }
 
 
@@ -1672,10 +1670,10 @@ static READ8_HANDLER ( mo5_sys_portb_in )
 	UINT8 portb = pia_get_output_b( THOM_PIA_SYS );
 	int col = (portb >> 1) & 7;       /* key column */
 	int lin = 7 - ((portb >> 4) & 7); /* key line */
-	char tag[12];
+	static const char *keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", 
+										"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7" };
 	
-	sprintf(tag, "keyboard_%d", lin);
-	return ( input_port_read(machine, tag) & (1 << col) ) ? 0x80 : 0;
+	return ( input_port_read(machine, keynames[lin]) & (1 << col) ) ? 0x80 : 0;
 }
 
 
@@ -1739,7 +1737,7 @@ static UINT8 mo5_reg_cart; /* 0xa7cb bank switch */
 
 DEVICE_IMAGE_LOAD( mo5_cartridge )
 {
-	UINT8* pos = memory_region(image->machine, REGION_CPU1) + 0x10000;
+	UINT8* pos = memory_region(image->machine, "main") + 0x10000;
 	UINT64 size = image_length ( image );
 	int i,j;
 	char name[129];
@@ -1850,7 +1848,7 @@ WRITE8_HANDLER ( mo5_cartridge_w )
 /* read signal to bffc-bfff generates a bank switch */
 READ8_HANDLER ( mo5_cartridge_r )
 {
-	UINT8* pos = memory_region( machine, REGION_CPU1 ) + 0x10000;
+	UINT8* pos = memory_region( machine, "main" ) + 0x10000;
 	UINT8 data = pos[offset + 0xbffc + (thom_cart_bank % thom_cart_nb_banks) * 0x4000];
 	thom_cart_bank = offset & 3;
 	mo5_update_cart_bank(machine);
@@ -1909,7 +1907,7 @@ MACHINE_RESET( mo5 )
 
 MACHINE_START ( mo5 )
 {
-	UINT8* mem = memory_region(machine, REGION_CPU1);
+	UINT8* mem = memory_region(machine, "main");
 
 	LOG (( "mo5: machine start called\n" ));
 
@@ -2223,7 +2221,7 @@ WRITE8_HANDLER ( to9_cartridge_w )
 /* read signal to 0000-0003 generates a bank switch */
 READ8_HANDLER ( to9_cartridge_r )
 {
-	UINT8* pos = memory_region( machine, REGION_CPU1 ) + 0x10000;
+	UINT8* pos = memory_region( machine, "main" ) + 0x10000;
 	UINT8 data = pos[offset + (thom_cart_bank % thom_cart_nb_banks) * 0x4000];
 	thom_cart_bank = offset & 3;
 	to9_update_cart_bank(machine);
@@ -2336,12 +2334,12 @@ static int to9_kbd_ktest ( running_machine *machine )
 {
 	int line, bit;
 	UINT8 port;
-	char tag[12];
+	static const char *keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4", 
+										"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9" };
 
 	for ( line = 0; line < 10; line++ )
 	{
-		sprintf(tag, "keyboard_%d", line);
-		port = input_port_read(machine, tag);
+		port = input_port_read(machine, keynames[line]);
 
 		if ( line == 7 || line == 9 )
 			port |= 1; /* shift & control */
@@ -2570,12 +2568,12 @@ static int to9_kbd_get_key( void )
 	int shift   = ! (input_port_read(Machine, "keyboard_9") & 1);
 	int key = -1, line, bit;
 	UINT8 port;
-	char tag[12];
+	static const char *keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4", 
+										"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9" };
 
 	for ( line = 0; line < 10; line++ )
 	{
-		sprintf(tag, "keyboard_%d", line);
-		port = input_port_read(Machine, tag);
+		port = input_port_read(Machine, keynames[line]);
 
 		if ( line == 7 || line == 9 )
 			port |= 1; /* shift & control */
@@ -2876,7 +2874,7 @@ MACHINE_RESET ( to9 )
 
 MACHINE_START ( to9 )
 {
-	UINT8* mem = memory_region(machine, REGION_CPU1);
+	UINT8* mem = memory_region(machine, "main");
 
 	LOG (( "to9: machine start called\n" ));
 
@@ -2979,15 +2977,15 @@ static int to8_kbd_ktest ( running_machine *machine )
 {
 	int line, bit;
 	UINT8 port;
-	char tag[12];
+	static const char *keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4", 
+										"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9" };
 
 	if ( input_port_read(machine, "config") & 2 )
 		return 0; /* disabled */
 
 	for ( line = 0; line < 10; line++ )
 	{
-		sprintf(tag, "keyboard_%d", line);
-		port = input_port_read(machine, tag);
+		port = input_port_read(machine, keynames[line]);
 
 		if ( line == 7 || line == 9 )
 			port |= 1; /* shift & control */
@@ -3011,15 +3009,15 @@ static int to8_kbd_get_key( running_machine *machine )
 	int shift   = (input_port_read(machine, "keyboard_9") & 1) ? 0 : 0x080;
 	int key = -1, line, bit;
 	UINT8 port;
-	char tag[12];
+	static const char *keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4", 
+										"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9" };
 	
 	if ( input_port_read(machine, "config") & 2 )
 		return -1; /* disabled */
 
 	for ( line = 0; line < 10; line++ )
 	{
-		sprintf(tag, "keyboard_%d", line);
-		port = input_port_read(machine, tag);
+		port = input_port_read(machine, keynames[line]);
 
 		if ( line == 7 || line == 9 )
 			port |= 1; /* shift & control */
@@ -3438,7 +3436,7 @@ WRITE8_HANDLER ( to8_cartridge_w )
 /* read signal to 0000-0003 generates a bank switch */
 READ8_HANDLER ( to8_cartridge_r )
 {
-	UINT8* pos = memory_region( machine, REGION_CPU1 ) + 0x10000;
+	UINT8* pos = memory_region( machine, "main" ) + 0x10000;
 	UINT8 data = pos[offset + (thom_cart_bank % thom_cart_nb_banks) * 0x4000];
 	thom_cart_bank = offset & 3;
 	to8_update_cart_bank(machine);
@@ -3452,7 +3450,7 @@ READ8_HANDLER ( to8_cartridge_r )
 
 static void to8_floppy_init( running_machine *machine )
 {
-	UINT8* mem = memory_region(machine, REGION_CPU1);
+	UINT8* mem = memory_region(machine, "main");
 	to7_floppy_init( machine, mem + 0x34000 );
 }
 
@@ -3460,7 +3458,7 @@ static void to8_floppy_init( running_machine *machine )
 
 static void to8_floppy_reset( running_machine *machine )
 {
-	UINT8* mem = memory_region(machine, REGION_CPU1);
+	UINT8* mem = memory_region(machine, "main");
 	to7_floppy_reset(machine);
 	if ( THOM_FLOPPY_INT )
 		thmfc_floppy_reset(machine);
@@ -3847,7 +3845,7 @@ MACHINE_RESET ( to8 )
 
 MACHINE_START ( to8 )
 {
-	UINT8* mem = memory_region(machine, REGION_CPU1);
+	UINT8* mem = memory_region(machine, "main");
 
 	LOG (( "to8: machine start called\n" ));
 
@@ -4014,7 +4012,7 @@ MACHINE_RESET ( to9p )
 
 MACHINE_START ( to9p )
 {
-	UINT8* mem = memory_region(machine, REGION_CPU1);
+	UINT8* mem = memory_region(machine, "main");
 
 	LOG (( "to9p: machine start called\n" ));
 
@@ -4205,7 +4203,7 @@ WRITE8_HANDLER ( mo6_cartridge_w )
 /* read signal generates a bank switch */
 READ8_HANDLER ( mo6_cartridge_r )
 {
-	UINT8* pos = memory_region( machine, REGION_CPU1 ) + 0x10000;
+	UINT8* pos = memory_region( machine, "main" ) + 0x10000;
 	UINT8 data = pos[offset + 0xbffc + (thom_cart_bank % thom_cart_nb_banks) * 0x4000];
 	thom_cart_bank = offset & 3;
 	mo6_update_cart_bank(machine);
@@ -4333,14 +4331,14 @@ static READ8_HANDLER ( mo6_sys_portb_in )
 	UINT8 portb = pia_get_output_b( THOM_PIA_SYS );
 	int col = (portb >> 4) & 7;    /* B bits 4-6: kbd column */
 	int lin = (portb >> 1) & 7;    /* B bits 1-3: kbd line */
-	char tag[12];
+	static const char *keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4", 
+										"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9" };
 
 	if ( ! (porta & 8) )
 		lin = 8;     /* A bit 3: 9-th kbd line select */
 
-	sprintf(tag, "keyboard_%d", lin);
 	return
-		( input_port_read(machine, tag) & (1 << col) ) ?  0x80 : 0; 
+		( input_port_read(machine, keynames[lin]) & (1 << col) ) ?  0x80 : 0; 
 	/* bit 7: key up */
 }
 
@@ -4360,7 +4358,7 @@ static WRITE8_HANDLER ( mo6_sys_porta_out )
 
 static WRITE8_HANDLER ( mo6_sys_portb_out )
 {
-	DAC_data_w( THOM_SOUND_BUZ, (data & 1) ? 0x80 : 0); /* bit 0: buzzer */
+	dac_data_w( THOM_SOUND_BUZ, (data & 1) ? 0x80 : 0); /* bit 0: buzzer */
 }
 
 
@@ -4603,7 +4601,7 @@ MACHINE_RESET ( mo6 )
 
 MACHINE_START ( mo6 )
 {
-	UINT8* mem = memory_region(machine, REGION_CPU1);
+	UINT8* mem = memory_region(machine, "main");
 
 	LOG (( "mo6: machine start called\n" ));
 
@@ -4757,11 +4755,10 @@ static READ8_HANDLER ( mo5nr_sys_portb_in )
 	UINT8 portb = pia_get_output_b( THOM_PIA_SYS );
 	int col = (portb >> 4) & 7;    /* B bits 4-6: kbd column */
 	int lin = (portb >> 1) & 7;    /* B bits 1-3: kbd line */
-	char tag[12];
+	static const char *keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", 
+										"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7" };
 	
-	sprintf(tag, "keyboard_%d", lin);
-	return
-		( input_port_read(machine, tag) & (1 << col) ) ? 0x80 : 0; 
+	return ( input_port_read(machine, keynames[lin]) & (1 << col) ) ? 0x80 : 0; 
 	/* bit 7: key up */
 }
 
@@ -4878,7 +4875,7 @@ MACHINE_RESET ( mo5nr )
 
 MACHINE_START ( mo5nr )
 {
-	UINT8* mem = memory_region(machine, REGION_CPU1);
+	UINT8* mem = memory_region(machine, "main");
 
 	LOG (( "mo5nr: machine start called\n" ));
 

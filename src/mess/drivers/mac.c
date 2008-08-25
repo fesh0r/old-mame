@@ -73,7 +73,7 @@ ADDRESS_MAP_END
     DEVICE CONFIG
 ***************************************************************************/
 
-static const struct CustomSound_interface custom_interface =
+static const custom_sound_interface custom_interface =
 {
 	mac_sh_start
 };
@@ -83,7 +83,7 @@ static const struct CustomSound_interface custom_interface =
 static const applefdc_interface mac_iwm_interface =
 {
 	sony_set_lines,
-	sony_set_enable_lines,
+	mac_fdc_set_enable_lines,
 
 	sony_read_data,
 	sony_write_data,
@@ -98,7 +98,7 @@ static const applefdc_interface mac_iwm_interface =
 
 static MACHINE_DRIVER_START( mac512ke )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M68000, 7833600)        /* 7.8336 Mhz */
+	MDRV_CPU_ADD("main", M68000, 7833600)        /* 7.8336 Mhz */
 	MDRV_CPU_PROGRAM_MAP(mac512ke_map, 0)
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60.15)
@@ -120,7 +120,7 @@ static MACHINE_DRIVER_START( mac512ke )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(custom_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
@@ -140,18 +140,21 @@ static MACHINE_DRIVER_START( macplus )
 	MDRV_CPU_PROGRAM_MAP(macplus_map, 0)
 
 	MDRV_MACHINE_START(macscsi)
+
+	MDRV_DEVICE_ADD( "harddisk1", HARDDISK )
+	MDRV_DEVICE_ADD( "harddisk2", HARDDISK )
 MACHINE_DRIVER_END
 
 
 
 static INPUT_PORTS_START( macplus )
-	PORT_START_TAG("MOUSE0") /* Mouse - button */
+	PORT_START("MOUSE0") /* Mouse - button */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("Mouse Button") PORT_CODE(MOUSECODE_BUTTON1)
 
-	PORT_START_TAG("MOUSE1") /* Mouse - X AXIS */
+	PORT_START("MOUSE1") /* Mouse - X AXIS */
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START_TAG("MOUSE2") /* Mouse - Y AXIS */
+	PORT_START("MOUSE2") /* Mouse - Y AXIS */
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
 	/* R Nabet 000531 : pseudo-input ports with keyboard layout */
@@ -160,7 +163,7 @@ static INPUT_PORTS_START( macplus )
 
 	/* main keyboard pad */
 
-	PORT_START_TAG("KEY0")
+	PORT_START("KEY0")
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_A) 			PORT_CHAR('a') PORT_CHAR('A')
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_S) 			PORT_CHAR('s') PORT_CHAR('S')
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_D) 			PORT_CHAR('d') PORT_CHAR('D')
@@ -178,7 +181,7 @@ static INPUT_PORTS_START( macplus )
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_E) 			PORT_CHAR('e') PORT_CHAR('E')
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_R) 			PORT_CHAR('r') PORT_CHAR('R')
 
-	PORT_START_TAG("KEY1")
+	PORT_START("KEY1")
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Y) 			PORT_CHAR('y') PORT_CHAR('Y')
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_T) 			PORT_CHAR('t') PORT_CHAR('T')
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) 			PORT_CHAR('1') PORT_CHAR('!')
@@ -196,7 +199,7 @@ static INPUT_PORTS_START( macplus )
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_CLOSEBRACE)	PORT_CHAR(']') PORT_CHAR('}')
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_O) 			PORT_CHAR('o') PORT_CHAR('O')
 
-	PORT_START_TAG("KEY2")
+	PORT_START("KEY2")
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_U)				PORT_CHAR('u') PORT_CHAR('U')
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_OPENBRACE)		PORT_CHAR('[') PORT_CHAR('{')
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_I) 			PORT_CHAR('i') PORT_CHAR('I')
@@ -214,7 +217,7 @@ static INPUT_PORTS_START( macplus )
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_M) 			PORT_CHAR('m') PORT_CHAR('M')
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP)			PORT_CHAR('.') PORT_CHAR('>')
 
-	PORT_START_TAG("KEY3")
+	PORT_START("KEY3")
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_TAB) 			PORT_CHAR('\t')
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SPACE)			PORT_CHAR(' ')
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_TILDE)			PORT_CHAR('`') PORT_CHAR('~')
@@ -231,7 +234,7 @@ static INPUT_PORTS_START( macplus )
 	PORT_BIT(0xE000, IP_ACTIVE_HIGH, IPT_UNUSED)	/* ??? */
 
 	/* keypad */
-	PORT_START_TAG("KEY4")
+	PORT_START("KEY4")
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_UNUSED)
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_DEL_PAD)			PORT_CHAR(UCHAR_MAMEKEY(DEL_PAD))
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_ASTERISK)			PORT_CHAR(UCHAR_MAMEKEY(ASTERISK))
@@ -245,7 +248,7 @@ static INPUT_PORTS_START( macplus )
 	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS_PAD)			PORT_CHAR(UCHAR_MAMEKEY(MINUS_PAD))
 	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_UNUSED)
 
-	PORT_START_TAG("KEY5")
+	PORT_START("KEY5")
 	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_UNUSED)
 	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_UNUSED)
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0_PAD) 			PORT_CHAR(UCHAR_MAMEKEY(0_PAD))
@@ -262,7 +265,7 @@ static INPUT_PORTS_START( macplus )
 	PORT_BIT(0xE000, IP_ACTIVE_HIGH, IPT_UNUSED)
 
 	/* Arrow keys */
-	PORT_START_TAG("KEY6")
+	PORT_START("KEY6")
 	PORT_BIT(0x0003, IP_ACTIVE_HIGH, IPT_UNUSED)
 	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Right Arrow") PORT_CODE(KEYCODE_RIGHT)	PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
 	PORT_BIT(0x0038, IP_ACTIVE_HIGH, IPT_UNUSED	)
@@ -280,39 +283,39 @@ INPUT_PORTS_END
 
   Game driver(s)
 
-  The Mac driver uses a convention of placing the BIOS in REGION_USER1
+  The Mac driver uses a convention of placing the BIOS in "user1"
 
 ***************************************************************************/
 
 ROM_START( mac128k )
-	ROM_REGION16_BE(0x20000, REGION_USER1, 0)
+	ROM_REGION16_BE(0x20000, "user1", 0)
 	ROM_LOAD16_WORD( "mac128k.rom",  0x00000, 0x10000, CRC(6d0c8a28) SHA1(9d86c883aa09f7ef5f086d9e32330ef85f1bc93b) )
 ROM_END
 
 ROM_START( mac512k )
-	ROM_REGION16_BE(0x20000, REGION_USER1, 0)
+	ROM_REGION16_BE(0x20000, "user1", 0)
 	ROM_LOAD16_WORD( "mac512k.rom",  0x00000, 0x10000, CRC(cf759e0d) SHA1(5b1ced181b74cecd3834c49c2a4aa1d7ffe944d7) )
 ROM_END
 
 ROM_START( mac512ke )
-	ROM_REGION16_BE(0x20000, REGION_USER1, 0)
+	ROM_REGION16_BE(0x20000, "user1", 0)
 	ROM_LOAD16_WORD( "macplus.rom",  0x00000, 0x20000, CRC(b2102e8e) SHA1(7d2f808a045aa3a1b242764f0e2c7d13e288bf1f))
 ROM_END
 
 
 ROM_START( macplus )
-	ROM_REGION16_BE(0x20000, REGION_USER1, 0)
+	ROM_REGION16_BE(0x20000, "user1", 0)
 	ROM_LOAD16_WORD( "macplus.rom",  0x00000, 0x20000, CRC(b2102e8e) SHA1(7d2f808a045aa3a1b242764f0e2c7d13e288bf1f))
 ROM_END
 
 
 ROM_START( macse )
-	ROM_REGION16_BE(0x40000, REGION_USER1, 0)
+	ROM_REGION16_BE(0x40000, "user1", 0)
 	ROM_LOAD16_WORD( "macse.rom",  0x00000, 0x40000, CRC(0f7ff80c) SHA1(58532b7d0d49659fd5228ac334a1b094f0241968))
 ROM_END
 
 ROM_START( macclasc )
-	ROM_REGION16_BE(0x40000, REGION_USER1, 0)
+	ROM_REGION16_BE(0x40000, "user1", 0)
 	ROM_LOAD16_WORD( "classic.rom",  0x00000, 0x40000, CRC(b14ddcde) SHA1(f710e73e8e0f99d9d0e9e79e71f67a6c3648bf06) )
 ROM_END
 
@@ -340,18 +343,6 @@ static void mac_floppy_getinfo(const mess_device_class *devclass, UINT32 state, 
 	}
 }
 
-static void mac_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* harddisk */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		default: harddisk_device_getinfo(devclass, state, info); break;
-	}
-}
-
 static SYSTEM_CONFIG_START(mac128k)
 	CONFIG_DEVICE(mac128512_floppy_getinfo)
 	CONFIG_RAM_DEFAULT(0x020000)
@@ -364,7 +355,6 @@ SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(macplus)
 	CONFIG_DEVICE(mac_floppy_getinfo)
-	CONFIG_DEVICE(mac_harddisk_getinfo)
 	CONFIG_RAM			(0x080000)
 	CONFIG_RAM_DEFAULT	(0x100000)
 	CONFIG_RAM			(0x200000)
@@ -374,7 +364,6 @@ SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(macse)
 	CONFIG_DEVICE(mac_floppy_getinfo)
-	CONFIG_DEVICE(mac_harddisk_getinfo)
 	CONFIG_RAM_DEFAULT	(0x100000)
 	CONFIG_RAM			(0x200000)
 	CONFIG_RAM			(0x280000)
@@ -389,7 +378,7 @@ COMP( 1984,	mac128k,  0, 		0,	mac512ke, macplus,  mac128k512k,	mac128k,	"Apple C
 COMP( 1984,	mac512k,  mac128k,	0,	mac512ke, macplus,  mac128k512k,	mac512k,	"Apple Computer",	"Macintosh 512k",  GAME_NOT_WORKING )
 COMP( 1986,	mac512ke, macplus,  0,		mac512ke, macplus,  mac512ke,		mac512k,	"Apple Computer",	"Macintosh 512ke", 0 )
 COMP( 1986,	macplus,  0,		0,	macplus,  macplus,  macplus,		macplus,	"Apple Computer",	"Macintosh Plus",  0 )
-COMP( 1987,	macse,    0,		0,	macplus,  macplus,  macse,		    macse,		"Apple Computer",	"Macintosh SE",  GAME_NOT_WORKING )
+COMP( 1987,	macse,    0,		0,	macplus,  macplus,  macse,		    macse,		"Apple Computer",	"Macintosh SE",  0 )
 COMP( 1990,	macclasc, 0,		0,	macplus,  macplus,  macclassic,		    macse,		"Apple Computer",	"Macintosh Classic",  GAME_NOT_WORKING )
 
 
@@ -410,7 +399,7 @@ ADDRESS_MAP_END
 
 static void mac2_init_machine( void )
 {
-	memset(memory_region(machine, REGION_CPU1), 0, 0x800000);
+	memset(memory_region(machine, "main"), 0, 0x800000);
 }
 
 
@@ -460,7 +449,7 @@ static INPUT_PORTS_START( mac2 )
 INPUT_PORTS_END
 
 ROM_START( mac2 )
-	ROM_REGION(0x00900000,REGION_CPU1,0) /* for ram, etc */
+	ROM_REGION(0x00900000,"main",0) /* for ram, etc */
 	ROM_LOAD_WIDE( "256k.rom",  0x800000, 0x40000, NO_DUMP)
 ROM_END
 

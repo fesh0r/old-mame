@@ -135,21 +135,21 @@ void amstrad_handle_snapshot(running_machine *machine, unsigned char *pSnapshot)
 	AmstradCPC_SetUpperRom(machine, pSnapshot[0x055]);
 
 	/* PPI */
-	ppi8255_w(0,3,pSnapshot[0x059] & 0x0ff);
+	ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ),3,pSnapshot[0x059] & 0x0ff);
 
-	ppi8255_w(0,0,pSnapshot[0x056] & 0x0ff);
-	ppi8255_w(0,1,pSnapshot[0x057] & 0x0ff);
-	ppi8255_w(0,2,pSnapshot[0x058] & 0x0ff);
+	ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ),0,pSnapshot[0x056] & 0x0ff);
+	ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ),1,pSnapshot[0x057] & 0x0ff);
+	ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ),2,pSnapshot[0x058] & 0x0ff);
 
 	/* PSG */
 	for (i=0; i<16; i++)
 	{
-		AY8910_control_port_0_w(machine, 0,i);
+		ay8910_control_port_0_w(machine, 0,i);
 
-		AY8910_write_port_0_w(machine, 0,pSnapshot[0x05b + i] & 0x0ff);
+		ay8910_write_port_0_w(machine, 0,pSnapshot[0x05b + i] & 0x0ff);
 	}
 
-	AY8910_control_port_0_w(machine, 0,pSnapshot[0x05a]);
+	ay8910_control_port_0_w(machine, 0,pSnapshot[0x05a]);
 
 	{
 		int MemSize;
@@ -214,7 +214,7 @@ DEVICE_IMAGE_LOAD(amstrad_plus_cartridge)
 	int ramblock;  // 16k RAM block chunk is to be loaded in to
 	int result;
 	unsigned int bytes_to_read;  // total bytes to read, as mame_feof doesn't react to EOF without trying to go past it.
-	unsigned char* mem = memory_region(image->machine, REGION_CPU1);
+	unsigned char* mem = memory_region(image->machine, "main");
 
 	logerror("IMG: loading CPC+ cartridge file\n");
 	// load RIFF chunk

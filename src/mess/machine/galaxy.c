@@ -18,13 +18,16 @@
 
 READ8_HANDLER( galaxy_keyboard_r )
 {
-	if (offset == 0) {
+	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
+
+	if (offset == 0) 
+	{
 		double level = cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0));
 		return (level >  0) ? 0xfe : 0xff;
-	} else {
-		char port[6];
-		sprintf(port,"LINE%d",(offset>>3)&0x07);
-		return input_port_read(machine, port) & (0x01<<(offset&0x07)) ? 0xfe : 0xff;
+	} 
+	else 
+	{
+		return input_port_read(machine, keynames[(offset>>3) & 0x07]) & (0x01<<(offset & 0x07)) ? 0xfe : 0xff;
 	}
 }
 
@@ -172,7 +175,7 @@ MACHINE_RESET( galaxy )
 	/* ROM 2 enable/disable */
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, input_port_read(machine, "ROM2") ? SMH_BANK10 : SMH_NOP);
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
-	memory_set_bankptr(10, memory_region(machine, REGION_CPU1) + 0x1000);
+	memory_set_bankptr(10, memory_region(machine, "main") + 0x1000);
 
 	cpunum_set_irq_callback(0, galaxy_irq_callback);
 	galaxy_interrupts_enabled = TRUE;
@@ -188,7 +191,7 @@ DRIVER_INIT( galaxyp )
 
 MACHINE_RESET( galaxyp )
 {
-	UINT8 *ROM = memory_region(machine, REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, "main");
 
 	cpunum_set_irq_callback(0, galaxy_irq_callback);
 
@@ -199,7 +202,7 @@ MACHINE_RESET( galaxyp )
 
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_BANK11);
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_NOP);
-	memory_set_bankptr(11, memory_region(machine, REGION_CPU1) + 0xe000);
+	memory_set_bankptr(11, memory_region(machine, "main") + 0xe000);
 	galaxy_interrupts_enabled = TRUE;
 
 	gal_video_timer = timer_alloc(gal_video, NULL);

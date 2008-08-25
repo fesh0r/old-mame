@@ -19,6 +19,14 @@
 
 
 /***************************************************************************
+    CONSTANTS
+***************************************************************************/
+
+#define DEVINFO_CREATE_OPTMAX	32
+
+
+
+/***************************************************************************
     TYPE DEFINITIONS
 ***************************************************************************/
 
@@ -81,6 +89,17 @@ struct _image_device_info
 	char brief_instance_name[16];
 };
 
+typedef struct _image_device_format image_device_format;
+struct _image_device_format
+{
+	image_device_format *next;
+	int index;
+	const char *name;
+	const char *description;
+	const char *extensions;
+	const char *optspec;
+};
+
 struct _images_private;
 typedef struct _images_private images_private;
 
@@ -96,7 +115,13 @@ enum
 	DEVINFO_INT_IMAGE_CREATABLE,
 	DEVINFO_INT_IMAGE_MUST_BE_LOADED,
 	DEVINFO_INT_IMAGE_RESET_ON_LOAD,
+	DEVINFO_INT_IMAGE_CREATE_OPTCOUNT,
 	DEVINFO_INT_IMAGE_LAST = DEVINFO_INT_IMAGE_FIRST + 0x0fff,
+
+	/* --- the following bits of info are returned as pointers --- */
+	DEVINFO_PTR_IMAGE_FIRST = DEVINFO_PTR_FIRST + 0x7000,
+	DEVINFO_PTR_IMAGE_CREATE_OPTGUIDE,
+	DEVINFO_PTR_IMAGE_CREATE_OPTSPEC,
 
 	/* --- the following bits of info are returned as pointers to functions --- */
 	DEVINFO_FCT_IMAGE_FIRST = DEVINFO_FCT_FIRST + 0x7000,
@@ -114,6 +139,9 @@ enum
 	DEVINFO_STR_IMAGE_FILE_EXTENSIONS,
 	DEVINFO_STR_IMAGE_INSTANCE_NAME,
 	DEVINFO_STR_IMAGE_BRIEF_INSTANCE_NAME,
+	DEVINFO_STR_IMAGE_CREATE_OPTNAME,
+	DEVINFO_STR_IMAGE_CREATE_OPTDESC = DEVINFO_STR_IMAGE_CREATE_OPTNAME + DEVINFO_CREATE_OPTMAX,
+	DEVINFO_STR_IMAGE_CREATE_OPTEXTS = DEVINFO_STR_IMAGE_CREATE_OPTDESC + DEVINFO_CREATE_OPTMAX,
 	DEVINFO_STR_IMAGE_LAST = DEVINFO_STR_IMAGE_FIRST + 0x0fff
 };
 
@@ -153,6 +181,20 @@ int image_device_uses_file_extension(const device_config *device, const char *fi
 void image_device_compute_hash(char *dest, const device_config *device,
 	const void *data, size_t length, unsigned int functions);
 
+/* ----- creation formats ----- */
+
+/* accesses the creation option guide */
+const option_guide *image_device_get_creation_option_guide(const device_config *device);
+
+/* accesses the image formats available for image creation */
+const image_device_format *image_device_get_creatable_formats(const device_config *device);
+
+/* accesses a specific image format available for image creation by index */
+const image_device_format *image_device_get_indexed_creatable_format(const device_config *device, int index);
+
+/* accesses a specific image format available for image creation by name */
+const image_device_format *image_device_get_named_creatable_format(const device_config *device, const char *format_name);
+
 
 
 /****************************************************************************
@@ -165,7 +207,7 @@ void image_device_compute_hash(char *dest, const device_config *device,
 
 /* can be called by front ends */
 int image_load(const device_config *img, const char *name);
-int image_create(const device_config *img, const char *name, int create_format, option_resolution *create_args);
+int image_create(const device_config *img, const char *name, const image_device_format *create_format, option_resolution *create_args);
 void image_unload(const device_config *img);
 
 /* used to retrieve error information during image loading */
@@ -175,7 +217,7 @@ const char *image_error(const device_config *img);
 void image_seterror(const device_config *img, image_error_t err, const char *message);
 
 /* used to display a message while loading */
-void image_message(const device_config *device, const char *format, ...);
+void image_message(const device_config *device, const char *format, ...) ATTR_PRINTF(2,3);
 
 
 

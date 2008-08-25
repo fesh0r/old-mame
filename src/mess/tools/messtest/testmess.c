@@ -19,9 +19,7 @@
 #include "render.h"
 #include "messopts.h"
 
-#ifdef ENABLE_DEBUGGER
 #include "debug/debugcpu.h"
-#endif /* ENABLE_DEBUGGER */
 
 
 /***************************************************************************
@@ -92,7 +90,7 @@ struct _messtest_command
 		} input_args;
 		struct
 		{
-			int mem_region;
+			const char *mem_region;
 			offs_t start;
 			offs_t end;
 			const void *verify_data;
@@ -171,7 +169,6 @@ static attotime final_time;
 static const messtest_command *current_command;
 static int test_flags;
 static int screenshot_num;
-static int format_index;
 static UINT64 runtime_hash;
 static void *wavptr;
 static render_target *target;
@@ -742,15 +739,15 @@ static const device_config *find_device_by_identity(running_machine *machine, co
 static void command_image_loadcreate(running_machine *machine)
 {
 	const device_config *image;
-	int i, format_index = 0;
 	const char *filename;
-	const char *format;
+	const char *format_name;
 	char buf[128];
 	image_device_info info;
 	const char *file_extensions;
 	astring *filepath;
 	int success;
 	const game_driver *gamedrv;
+	const image_device_format *format = NULL;
 
 	/* look up the image slot */
 	image = find_device_by_identity(machine, &current_command->u.image_args.device_ident);
@@ -761,11 +758,9 @@ static void command_image_loadcreate(running_machine *machine)
 	file_extensions = info.file_extensions;
 
 	/* is an image format specified? */
-	format = current_command->u.image_args.format;
-	if (format != NULL)
+	format_name = current_command->u.image_args.format;
+	if (format_name != NULL)
 	{
-		const struct IODevice *dev = mess_device_from_core_device(image);
-
 		if (current_command->command_type != MESSTEST_COMMAND_IMAGE_CREATE)
 		{
 			state = STATE_ABORTED;
@@ -773,26 +768,14 @@ static void command_image_loadcreate(running_machine *machine)
 			return;
 		}
 
-		if (!dev->createimage_options)
+		/* look up the format name */
+		format = image_device_get_named_creatable_format(image, format_name);
+		if (format == NULL)
 		{
 			state = STATE_ABORTED;
-			report_message(MSG_FAILURE, "Cannot specify format for device");
+			report_message(MSG_FAILURE, "Unknown device format '%s'", format_name);
 			return;
 		}
-
-		for (i = 0; dev->createimage_options[i].name; i++)
-		{
-			if (!strcmp(format, dev->createimage_options[i].name))
-				break;
-		}
-		if (!dev->createimage_options[i].name)
-		{
-			state = STATE_ABORTED;
-			report_message(MSG_FAILURE, "Unknown device '%s'", format);
-			return;
-		}
-		format_index = i;
-		file_extensions = dev->createimage_options[i].extensions;
 	}
 
 	/* figure out the filename */
@@ -815,7 +798,7 @@ static void command_image_loadcreate(running_machine *machine)
 		switch(current_command->command_type)
 		{
 			case MESSTEST_COMMAND_IMAGE_CREATE:
-				success = (image_create(image, astring_c(filepath), format_index, NULL) == INIT_PASS);
+				success = (image_create(image, astring_c(filepath), format, NULL) == INIT_PASS);
 				break;
 
 			case MESSTEST_COMMAND_IMAGE_LOAD:
@@ -846,7 +829,7 @@ static void command_verify_memory(running_machine *machine)
 	size_t verify_data_size;
 	const UINT8 *target_data;
 	size_t target_data_size;
-	int region;
+	const char *region;
 
 	offset_start = current_command->u.verify_args.start;
 	offset_end = current_command->u.verify_args.end;
@@ -897,8 +880,8 @@ static void command_verify_memory(running_machine *machine)
 		if (verify_data[i] != target_data[offset])
 		{
 			state = STATE_ABORTED;
-			report_message(MSG_FAILURE, "Failed verification step (REGION_%s; 0x%x-0x%x)",
-				memory_region_to_string(region), offset_start, offset_end);
+			report_message(MSG_FAILURE, "Failed verification step (region %s; 0x%x-0x%x)",
+				region, offset_start, offset_end);
 			break;
 		}
 		i = (i + 1) % verify_data_size;
@@ -971,7 +954,6 @@ static void command_verify_image(running_machine *machine)
 
 static void command_trace(running_machine *machine)
 {
-#ifdef ENABLE_DEBUGGER
 	int cpunum;
 	FILE *file;
 	char filename[256];
@@ -991,10 +973,6 @@ static void command_trace(running_machine *machine)
 			fclose(file);
 		}
 	}
-#else
-	state = STATE_ABORTED;
-	report_message(MSG_FAILURE, "Cannot trace; debugger not present");
-#endif
 }
 
 
@@ -1344,7 +1322,6 @@ static void node_image(xml_data_node *node, messtest_command_type_t command)
 		return;
 
 	/* 'format' attribute */
-	format_index = 0;
 	attr_node = xml_get_attribute(node, "format");
 	new_command.u.image_args.format = attr_node ? attr_node->value : NULL;
 
@@ -1378,8 +1355,6 @@ static void node_memverify(xml_data_node *node)
 	xml_attribute_node *attr_node;
 	const char *s1;
 	const char *s2;
-	const char *s3;
-	int region;
 	void *new_buffer;
 	mess_pile pile;
 
@@ -1398,20 +1373,12 @@ static void node_memverify(xml_data_node *node)
 		s2 = "0";
 
 	attr_node = xml_get_attribute(node, "region");
-	s3 = attr_node ? attr_node->value : NULL;
+	new_command.u.verify_args.mem_region = attr_node ? attr_node->value : NULL;
 
 	memset(&new_command, 0, sizeof(new_command));
 	new_command.command_type = MESSTEST_COMMAND_VERIFY_MEMORY;
 	new_command.u.verify_args.start = parse_offset(s1);
 	new_command.u.verify_args.end = parse_offset(s2);
-
-	if (s3)
-	{
-		region = memory_region_from_string(s3);
-		if (region == REGION_INVALID)
-			error_invalidmemregion(s3);
-		new_command.u.verify_args.mem_region = region;
-	}
 
 	pile_init(&pile);
 	messtest_get_data(node, &pile);

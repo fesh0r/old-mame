@@ -30,7 +30,7 @@ void radio86_init_keyboard()
 DRIVER_INIT(radio86)
 {
 	/* set initialy ROM to be visible on first bank */
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 	memset(RAM,0x0000,0x1000); // make frist page empty by default
   	memory_configure_bank(1, 1, 2, RAM, 0x0000);
 	memory_configure_bank(1, 0, 2, RAM, 0xf800);
@@ -134,7 +134,7 @@ static I8275_DMA_REQUEST(radio86_video_dma_request) {
 	dma8257_drq_w(dma8257, 2, state);
 }
 
-static READ8_HANDLER(radio86_dma_read_byte)
+READ8_DEVICE_HANDLER(radio86_dma_read_byte)
 {
 	UINT8 result;
 	cpuintrf_push_context(0);
@@ -143,9 +143,9 @@ static READ8_HANDLER(radio86_dma_read_byte)
 	return result;
 }
 
-static WRITE8_HANDLER(radio86_write_video)
+WRITE8_DEVICE_HANDLER(radio86_write_video)
 {
-	i8275_dack_set_data((device_config*)device_list_find_by_tag( machine->config->devicelist, I8275, "i8275" ),data);
+	i8275_dack_set_data((device_config*)device_list_find_by_tag( device->machine->config->devicelist, I8275, "i8275" ),data);
 }
 
 const dma8257_interface radio86_dma =
@@ -185,7 +185,7 @@ WRITE8_HANDLER ( radio86_pagesel )
 
 static READ8_HANDLER (radio86_romdisk_porta_r )
 {
-	UINT8 *romdisk = memory_region(machine, REGION_CPU1) + 0x10000;	
+	UINT8 *romdisk = memory_region(machine, "main") + 0x10000;	
 	if ((disk_sel & 0x0f) ==0) {
 		return romdisk[romdisk_msb*256+romdisk_lsb];	
 	} else {

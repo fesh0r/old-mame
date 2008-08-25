@@ -95,13 +95,13 @@ static DRIVER_INIT( ti99_2_32 )
 	ROM_paged = 1;
 }
 
-#define TI99_2_32_ROMPAGE0 (memory_region(machine, REGION_CPU1)+0x4000)
-#define TI99_2_32_ROMPAGE1 (memory_region(machine, REGION_CPU1)+0x10000)
+#define TI99_2_32_ROMPAGE0 (memory_region(machine, "main")+0x4000)
+#define TI99_2_32_ROMPAGE1 (memory_region(machine, "main")+0x10000)
 
 static MACHINE_RESET( ti99_2 )
 {
 	if (! ROM_paged)
-		memory_set_bankptr(1, memory_region(machine, REGION_CPU1)+0x4000);
+		memory_set_bankptr(1, memory_region(machine, "main")+0x4000);
 	else
 		memory_set_bankptr(1, TI99_2_32_ROMPAGE0);
 }
@@ -171,7 +171,7 @@ static const gfx_layout ti99_2_charlayout =
 };
 
 static GFXDECODE_START( ti99_2 )
-	GFXDECODE_ENTRY( REGION_CPU1, 0x1c00,  ti99_2_charlayout, 0, 1 )
+	GFXDECODE_ENTRY( "main", 0x1c00,  ti99_2_charlayout, 0, 1 )
 GFXDECODE_END
 
 
@@ -254,10 +254,9 @@ ADDRESS_MAP_END
 /* read keys in the current row */
 static  READ8_HANDLER ( ti99_2_read_kbd )
 {
-	char port[6];
+	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
 
-	sprintf(port, "LINE%d", KeyRow);
-	return input_port_read(machine, port);
+	return input_port_read(machine, keynames[KeyRow]);
 }
 
 static  READ8_HANDLER ( ti99_2_read_misc_cru )
@@ -276,7 +275,7 @@ ADDRESS_MAP_END
 /* ti99/2 : 54-key keyboard */
 static INPUT_PORTS_START(ti99_2)
 
-	PORT_START_TAG("LINE0")    /* col 0 */
+	PORT_START("LINE0")    /* col 0 */
 		PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("1 ! DEL") PORT_CODE(KEYCODE_1)
 		PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("2 @ INS") PORT_CODE(KEYCODE_2)
 		PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("3 #") PORT_CODE(KEYCODE_3)
@@ -286,7 +285,7 @@ static INPUT_PORTS_START(ti99_2)
 		PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("7 & AID") PORT_CODE(KEYCODE_7)
 		PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("8 * REDO") PORT_CODE(KEYCODE_8)
 
-	PORT_START_TAG("LINE1")    /* col 1 */
+	PORT_START("LINE1")    /* col 1 */
 		PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("q Q") PORT_CODE(KEYCODE_Q)
 		PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("w W ~") PORT_CODE(KEYCODE_W)
 		PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("e E (UP)") PORT_CODE(KEYCODE_E)
@@ -296,7 +295,7 @@ static INPUT_PORTS_START(ti99_2)
 		PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("i I ?") PORT_CODE(KEYCODE_I)
 		PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("9 ( BACK") PORT_CODE(KEYCODE_9)
 
-	PORT_START_TAG("LINE2")    /* col 2 */
+	PORT_START("LINE2")    /* col 2 */
 		PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("a A") PORT_CODE(KEYCODE_A)
 		PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("s S (LEFT)") PORT_CODE(KEYCODE_S)
 		PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("d D (RIGHT)") PORT_CODE(KEYCODE_D)
@@ -306,7 +305,7 @@ static INPUT_PORTS_START(ti99_2)
 		PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("o O '") PORT_CODE(KEYCODE_O)
 		PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("0 )") PORT_CODE(KEYCODE_0)
 
-	PORT_START_TAG("LINE3")    /* col 3 */
+	PORT_START("LINE3")    /* col 3 */
 		PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("z Z \\") PORT_CODE(KEYCODE_Z)
 		PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("x X (DOWN)") PORT_CODE(KEYCODE_X)
 		PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("c C `") PORT_CODE(KEYCODE_C)
@@ -316,7 +315,7 @@ static INPUT_PORTS_START(ti99_2)
 		PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("p P \"") PORT_CODE(KEYCODE_P)
 		PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("= + QUIT") PORT_CODE(KEYCODE_EQUALS)
 
-	PORT_START_TAG("LINE4")    /* col 4 */
+	PORT_START("LINE4")    /* col 4 */
 		PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT/*KEYCODE_CAPSLOCK*/)
 		PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("CTRL") PORT_CODE(KEYCODE_LCONTROL)
 		PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("v V") PORT_CODE(KEYCODE_V)
@@ -326,7 +325,7 @@ static INPUT_PORTS_START(ti99_2)
 		PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("; :") PORT_CODE(KEYCODE_COLON)
 		PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("/ -") PORT_CODE(KEYCODE_SLASH)
 
-	PORT_START_TAG("LINE5")    /* col 5 */
+	PORT_START("LINE5")    /* col 5 */
 		PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("BREAK") PORT_CODE(KEYCODE_ESC)
 		PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("(SPACE)") PORT_CODE(KEYCODE_SPACE)
 		PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("b B") PORT_CODE(KEYCODE_B)
@@ -336,10 +335,10 @@ static INPUT_PORTS_START(ti99_2)
 		PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_RSHIFT)
 		PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ENTER") PORT_CODE(KEYCODE_ENTER)
 
-	PORT_START_TAG("LINE6")    /* col 6 */
+	PORT_START("LINE6")    /* col 6 */
 		PORT_BIT(0xFF, IP_ACTIVE_LOW, IPT_UNUSED)
 
-	PORT_START_TAG("LINE7")    /* col 7 */
+	PORT_START("LINE7")    /* col 7 */
 		PORT_BIT(0xFF, IP_ACTIVE_LOW, IPT_UNUSED)
 
 INPUT_PORTS_END
@@ -348,7 +347,7 @@ INPUT_PORTS_END
 static const struct tms9995reset_param ti99_2_processor_config =
 {
 #if 0
-	REGION_CPU1,/* region for processor RAM */
+	"main",/* region for processor RAM */
 	0xf000,     /* offset : this area is unused in our region, and matches the processor address */
 	0xf0fc,		/* offset for the LOAD vector */
 	NULL,       /* no IDLE callback */
@@ -359,7 +358,7 @@ static const struct tms9995reset_param ti99_2_processor_config =
 
 static MACHINE_DRIVER_START(ti99_2)
 	/* basic machine hardware */
-	MDRV_CPU_ADD(TMS9995, 10700000)
+	MDRV_CPU_ADD("main", TMS9995, 10700000)
 	MDRV_CPU_CONFIG(ti99_2_processor_config)
 	MDRV_CPU_PROGRAM_MAP(ti99_2_memmap, 0)
 	MDRV_CPU_IO_MAP(ti99_2_readcru, ti99_2_writecru)
@@ -389,13 +388,13 @@ MACHINE_DRIVER_END
 */
 ROM_START(ti99_224)
 	/*CPU memory space*/
-	ROM_REGION(0x10000,REGION_CPU1,0)
+	ROM_REGION(0x10000,"main",0)
 	ROM_LOAD("992rom.bin", 0x0000, 0x6000, NO_DUMP)      /* system ROMs */
 ROM_END
 
 ROM_START(ti99_232)
 	/*64kb CPU memory space + 8kb to read the extra ROM page*/
-	ROM_REGION(0x12000,REGION_CPU1,0)
+	ROM_REGION(0x12000,"main",0)
 	ROM_LOAD("992rom32.bin", 0x0000, 0x6000, NO_DUMP)    /* system ROM - 32kb */
 	ROM_CONTINUE(0x10000,0x2000)
 ROM_END

@@ -15,6 +15,7 @@ DMAC controller.
 #include "machine/6526cia.h"
 #include "machine/wd33c93.h"
 #include "machine/tpi6525.h"
+#include "devices/chd_cd.h"
 #include "matsucd.h"
 #include "deprecat.h"
 
@@ -499,7 +500,7 @@ static void cdrom_subcode_ready( int level )
 	tpi6525_0_irq1_level( Machine, level );
 }
 
-void amigacd_init( void )
+MACHINE_START( amigacd )
 {
 	/* initialize the dmac */
 	memset( &dmac_data, 0, sizeof( dmac_data ) );
@@ -522,12 +523,16 @@ void amigacd_init( void )
 	tpi6525[0].ca.output = NULL;
 	tpi6525[0].cb.output = NULL;
 
-	/* initialize the cdrom */
-	matsucd_init();
-	matsucd_set_status_enabled_callback( cdrom_status_enabled );
-	matsucd_set_status_changed_callback( cdrom_status_change );
-	matsucd_set_subcode_ready_callback( cdrom_subcode_ready );
-
 	/* set up DMAC with autoconfig */
 	amiga_add_autoconfig( &dmac_device );
 }
+
+MACHINE_RESET( amigacd )
+{
+	/* initialize the cdrom */
+	matsucd_init( device_list_find_by_tag( machine->config->devicelist, CDROM, "cdrom" ) );
+	matsucd_set_status_enabled_callback( cdrom_status_enabled );
+	matsucd_set_status_changed_callback( cdrom_status_change );
+	matsucd_set_subcode_ready_callback( cdrom_subcode_ready );
+}
+

@@ -301,16 +301,16 @@ READ8_HANDLER(sms_input_port_0_r) {
 	}
 }
 
-WRITE8_HANDLER(sms_YM2413_register_port_0_w) {
+WRITE8_HANDLER(sms_ym2413_register_port_0_w) {
 	if ( HAS_FM ) {
-		YM2413_register_port_0_w(machine, offset, (data & 0x3F));
+		ym2413_register_port_0_w(machine, offset, (data & 0x3F));
 	}
 }
 
-WRITE8_HANDLER(sms_YM2413_data_port_0_w) {
+WRITE8_HANDLER(sms_ym2413_data_port_0_w) {
 	if ( HAS_FM ) {
 		logerror("data_port_0_w %x %x\n", offset, data);
-		YM2413_data_port_0_w(machine, offset, data);
+		ym2413_data_port_0_w(machine, offset, data);
 	}
 }
 
@@ -883,15 +883,15 @@ static void setup_cart_banks( void ) {
 }
 
 static void setup_banks( running_machine *machine ) {
-	UINT8 *mem = memory_region(machine, REGION_CPU1);
+	UINT8 *mem = memory_region(machine, "main");
 	sms_banking_bios[1] = sms_banking_cart[1] = sms_banking_none[1] = mem;
 	sms_banking_bios[2] = sms_banking_cart[2] = sms_banking_none[2] = mem;
 	sms_banking_bios[3] = sms_banking_cart[3] = sms_banking_none[3] = mem;
 	sms_banking_bios[4] = sms_banking_cart[4] = sms_banking_none[4] = mem;
 
-	BIOS = memory_region(machine, REGION_USER1);
+	BIOS = memory_region(machine, "user1");
 
-	smsBiosPageCount = ( BIOS ? memory_region_length(machine, REGION_USER1) / 0x4000 : 0 );
+	smsBiosPageCount = ( BIOS ? memory_region_length(machine, "user1") / 0x4000 : 0 );
 
 	setup_cart_banks();
 

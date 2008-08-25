@@ -43,6 +43,7 @@
 #include "sound/5220intf.h"
 #include "devices/harddriv.h"
 #include "machine/idectrl.h"
+#include "machine/smc92x4.h"
 
 static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
 
@@ -94,7 +95,7 @@ ADDRESS_MAP_END
 static INPUT_PORTS_START(ti99_4p)
 
 	/* 1 port for config */
-	PORT_START_TAG("CFG")	/* config */
+	PORT_START("CFG")	/* config */
 		PORT_DIPNAME( config_speech_mask << config_speech_bit, 1 << config_speech_bit, "Speech synthesis")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_speech_bit, DEF_STR( On ) )
@@ -121,19 +122,19 @@ static INPUT_PORTS_START(ti99_4p)
 
 
 	/* 3 ports for mouse */
-	PORT_START_TAG("MOUSEX") /* Mouse - X AXIS */
+	PORT_START("MOUSEX") /* Mouse - X AXIS */
 		PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START_TAG("MOUSEY") /* Mouse - Y AXIS */
+	PORT_START("MOUSEY") /* Mouse - Y AXIS */
 		PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START_TAG("MOUSE0") /* Mouse - buttons */
+	PORT_START("MOUSE0") /* Mouse - buttons */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(1)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_PLAYER(1)
 
 
 	/* 4 ports for keyboard and joystick */
-	PORT_START_TAG("KEY0")	/* col 0 */
+	PORT_START("KEY0")	/* col 0 */
 		PORT_BIT(0x0088, IP_ACTIVE_LOW, IPT_UNUSED)
 		/* The original control key is located on the left, but we accept the
         right control key as well */
@@ -157,7 +158,7 @@ static INPUT_PORTS_START(ti99_4p)
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("l L") PORT_CODE(KEYCODE_L) PORT_CHAR('l') PORT_CHAR('L')
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(". >") PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('>')
 
-	PORT_START_TAG("KEY1")	/* col 2 */
+	PORT_START("KEY1")	/* col 2 */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("c C `") PORT_CODE(KEYCODE_C) PORT_CHAR('c') PORT_CHAR('C') PORT_CHAR('`')
 		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("e E (UP)") PORT_CODE(KEYCODE_E) PORT_CHAR('e') PORT_CHAR('E')
 		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("d D (RIGHT)") PORT_CODE(KEYCODE_D) PORT_CHAR('d') PORT_CHAR('D')
@@ -176,7 +177,7 @@ static INPUT_PORTS_START(ti99_4p)
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("j J") PORT_CODE(KEYCODE_J) PORT_CHAR('j') PORT_CHAR('J')
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("m M") PORT_CODE(KEYCODE_M) PORT_CHAR('m') PORT_CHAR('M')
 
-	PORT_START_TAG("KEY2")	/* col 4 */
+	PORT_START("KEY2")	/* col 4 */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("b B") PORT_CODE(KEYCODE_B) PORT_CHAR('b') PORT_CHAR('B')
 		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("t T ]") PORT_CODE(KEYCODE_T) PORT_CHAR('t') PORT_CHAR('T') PORT_CHAR(']')
 		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("g G }") PORT_CODE(KEYCODE_G) PORT_CHAR('g') PORT_CHAR('G') PORT_CHAR('}')
@@ -195,7 +196,7 @@ static INPUT_PORTS_START(ti99_4p)
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("; :") PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR(':')
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("/ -") PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('-')
 
-	PORT_START_TAG("KEY3")	/* col 6: "wired handset 1" (= joystick 1) */
+	PORT_START("KEY3")	/* col 6: "wired handset 1" (= joystick 1) */
 		PORT_BIT(0x00E0, IP_ACTIVE_LOW, IPT_UNUSED)
 		PORT_BIT(0x0010, IP_ACTIVE_LOW, IPT_JOYSTICK_UP/*, "(1UP)", CODE_NONE, OSD_JOY_UP*/) PORT_PLAYER(1)
 		PORT_BIT(0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN/*, "(1DOWN)", CODE_NONE, OSD_JOY_DOWN, 0*/) PORT_PLAYER(1)
@@ -210,7 +211,7 @@ static INPUT_PORTS_START(ti99_4p)
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT/*, "(2LEFT)", CODE_NONE, OSD_JOY2_LEFT, 0*/) PORT_PLAYER(2)
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_BUTTON1/*, "(2FIRE)", CODE_NONE, OSD_JOY2_FIRE, 0*/) PORT_PLAYER(2)
 
-	PORT_START_TAG("ALPHA")	/* one more port for Alpha line */
+	PORT_START("ALPHA")	/* one more port for Alpha line */
 		PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Alpha Lock") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE
 
 INPUT_PORTS_END
@@ -219,7 +220,7 @@ INPUT_PORTS_END
 static GFXDECODE_START( ti99_4p )
 GFXDECODE_END
 
-static const struct TMS5220interface tms5220interface =
+static const tms5220_interface ti99_4p_tms5220interface =
 {
 	NULL,						/* no IRQ callback */
 #if 1
@@ -243,7 +244,7 @@ static const struct TMS5220interface tms5220interface =
 static MACHINE_DRIVER_START(ti99_4p_60hz)
 	/* basic machine hardware */
 	/* TMS9900 CPU @ 3.0 MHz */
-	MDRV_CPU_ADD(TMS9900, 3000000)
+	MDRV_CPU_ADD("main", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
 	MDRV_CPU_IO_MAP(readcru, writecru)
 	MDRV_CPU_VBLANK_INT_HACK(ti99_4ev_hblank_interrupt, 263)	/* 262.5 in 60Hz, 312.5 in 50Hz */
@@ -266,26 +267,30 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
-	MDRV_SOUND_ADD(WAVE, 0)
+	MDRV_SOUND_ADD("wave.1", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
-	MDRV_SOUND_ADD(WAVE, 0)
+	MDRV_SOUND_ADD("wave.2", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
-	MDRV_SOUND_ADD(SN76496, 3579545)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
-	MDRV_SOUND_ADD(TMS5220, 680000L)
-	MDRV_SOUND_CONFIG(tms5220interface)
+	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
+	MDRV_SOUND_CONFIG(ti99_4p_tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, ti99_ide_interrupt )	/* FIXME */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ti99_ide_interrupt )	/* FIXME */
+
+	MDRV_IMPORT_FROM( smc92x4_hd )
+
+	MDRV_DEVICE_ADD( "ide_harddisk", IDE_HARDDISK )
 MACHINE_DRIVER_END
 
 
 ROM_START(ti99_4p)
 	/*CPU memory space*/
-	ROM_REGION16_BE(region_cpu1_len_4p, REGION_CPU1, 0)
+	ROM_REGION16_BE(region_cpu1_len_4p, "main", 0)
 	ROM_LOAD16_BYTE("sgcpu_hb.bin", 0x0000, 0x8000, CRC(aa100730) SHA1(35e585b2dcd3f2a0005bebb15ede6c5b8c787366) ) /* system ROMs */
 	ROM_LOAD16_BYTE("sgcpu_lb.bin", 0x0001, 0x8000, CRC(2a5dc818) SHA1(dec141fe2eea0b930859cbe1ebd715ac29fa8ecb) ) /* system ROMs */
 
@@ -334,28 +339,6 @@ static void ti99_4p_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ti99; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static void ti99_4p_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* harddisk */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(mess_hd); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_hd); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_hd); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
 	}
 }
 
@@ -447,8 +430,6 @@ static void ti99_4p_memcard_getinfo(const mess_device_class *devclass, UINT32 st
 static SYSTEM_CONFIG_START(ti99_4p)
 	CONFIG_DEVICE(ti99_4p_floppy_getinfo)
 	CONFIG_DEVICE(ti99_4p_floppy_getinfo)
-	CONFIG_DEVICE(ti99_4p_harddisk_getinfo)
-//	CONFIG_DEVICE(ti99_ide_harddisk_getinfo)
 	CONFIG_DEVICE(ti99_4p_parallel_getinfo)
 	CONFIG_DEVICE(ti99_4p_serial_getinfo)
 	/*CONFIG_DEVICE(ti99_4p_quickload_getinfo)*/

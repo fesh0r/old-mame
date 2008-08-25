@@ -104,8 +104,8 @@ static DRIVER_INIT(tutor)
 {
 	tape_interrupt_timer = timer_alloc(tape_interrupt_handler, NULL);
 
-	memory_configure_bank(1, 0, 1, memory_region(machine, REGION_CPU1) + basic_base, 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_CPU1) + cartridge_base, 0);
+	memory_configure_bank(1, 0, 1, memory_region(machine, "main") + basic_base, 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, "main") + cartridge_base, 0);
 	memory_set_bank(1, 0);
 }
 
@@ -178,13 +178,13 @@ static READ8_HANDLER(read_keyboard)
 
 static DEVICE_IMAGE_LOAD( tutor_cart )
 {
-	image_fread(image, memory_region(image->machine, REGION_CPU1) + cartridge_base, 0x6000);
+	image_fread(image, memory_region(image->machine, "main") + cartridge_base, 0x6000);
 	return INIT_PASS;
 }
 
 static DEVICE_IMAGE_UNLOAD( tutor_cart )
 {
-	memset(memory_region(image->machine, REGION_CPU1) + cartridge_base, 0, 0x6000);
+	memset(memory_region(image->machine, "main") + cartridge_base, 0, 0x6000);
 }
 
 /*
@@ -423,7 +423,7 @@ static ADDRESS_MAP_START(tutor_memmap, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe000, 0xe000) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)	/*VDP data*/
 	AM_RANGE(0xe002, 0xe002) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)/*VDP status*/
 	AM_RANGE(0xe100, 0xe1ff) AM_READWRITE(tutor_mapper_r, tutor_mapper_w)	/*cartridge mapper*/
-	AM_RANGE(0xe200, 0xe200) AM_READWRITE(SMH_NOP, SN76496_0_w)			/*sound chip*/
+	AM_RANGE(0xe200, 0xe200) AM_READWRITE(SMH_NOP, sn76496_0_w)			/*sound chip*/
 	AM_RANGE(0xe800, 0xe8ff) AM_READWRITE(tutor_printer_r, tutor_printer_w)	/*printer*/
 	AM_RANGE(0xee00, 0xeeff) AM_READWRITE(SMH_NOP, tutor_cassette_w)		/*cassette interface*/
 
@@ -464,7 +464,7 @@ Small note about natural keyboard support: currently,
 */
 
 static INPUT_PORTS_START(tutor)
-	PORT_START_TAG("LINE0")    /* col 0 */
+	PORT_START("LINE0")    /* col 0 */
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) 				PORT_CHAR('1') PORT_CHAR('!')
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) 				PORT_CHAR('2') PORT_CHAR('"')
 		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q) 				PORT_CHAR('Q')
@@ -474,7 +474,7 @@ static INPUT_PORTS_START(tutor)
 		PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Z) 				PORT_CHAR('Z')
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_X) 				PORT_CHAR('X')
 
-	PORT_START_TAG("LINE1")    /* col 1 */
+	PORT_START("LINE1")    /* col 1 */
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3) 				PORT_CHAR('3') PORT_CHAR('#')
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) 				PORT_CHAR('4') PORT_CHAR('$')
 		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_E) 				PORT_CHAR('E')
@@ -484,7 +484,7 @@ static INPUT_PORTS_START(tutor)
 		PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_C) 				PORT_CHAR('C')
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_V) 				PORT_CHAR('V')
 
-	PORT_START_TAG("LINE2")    /* col 2 */
+	PORT_START("LINE2")    /* col 2 */
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) 				PORT_CHAR('5') PORT_CHAR('%')
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) 				PORT_CHAR('6') PORT_CHAR('&')
 		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_T) 				PORT_CHAR('T')
@@ -494,7 +494,7 @@ static INPUT_PORTS_START(tutor)
 		PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_B) 				PORT_CHAR('B')
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_N) 				PORT_CHAR('N')
 
-	PORT_START_TAG("LINE3")    /* col 3 */
+	PORT_START("LINE3")    /* col 3 */
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7) 				PORT_CHAR('7') PORT_CHAR('\'')
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) 				PORT_CHAR('8') PORT_CHAR('(')
 		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_9) 				PORT_CHAR('9') PORT_CHAR(')')
@@ -504,7 +504,7 @@ static INPUT_PORTS_START(tutor)
 		PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_K) 				PORT_CHAR('K')
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_M)				PORT_CHAR('M')
 
-	PORT_START_TAG("LINE4")    /* col 4 */
+	PORT_START("LINE4")    /* col 4 */
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0)				PORT_CHAR('0') PORT_CHAR('=')
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("-  b") PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-')
 		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_O)				PORT_CHAR('O')
@@ -514,7 +514,7 @@ static INPUT_PORTS_START(tutor)
 		PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA) 			PORT_CHAR(',') PORT_CHAR('<')
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP) 			PORT_CHAR('.') PORT_CHAR('>')
 
-	PORT_START_TAG("LINE4_alt")    /* col 4 */
+	PORT_START("LINE4_alt")    /* col 4 */
 		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(1)
 		PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_PLAYER(1)
 		PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN) PORT_PLAYER(1) PORT_CODE(KEYCODE_2_PAD)
@@ -522,7 +522,7 @@ static INPUT_PORTS_START(tutor)
 		PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP) PORT_PLAYER(1) PORT_CODE(KEYCODE_8_PAD)
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT) PORT_PLAYER(1) PORT_CODE(KEYCODE_6_PAD)
 
-	PORT_START_TAG("LINE5")    /* col 5 */
+	PORT_START("LINE5")    /* col 5 */
 		/* Unused? */
 		PORT_BIT(0x03, IP_ACTIVE_HIGH, IPT_UNUSED)
 
@@ -533,7 +533,7 @@ static INPUT_PORTS_START(tutor)
 		PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SLASH)			PORT_CHAR('/') PORT_CHAR('?')
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_CLOSEBRACE)		PORT_CHAR(']') PORT_CHAR('}') // this one is 4th line, 4th key after 'M'
 
-	PORT_START_TAG("LINE5_alt")    /* col 5 */
+	PORT_START("LINE5_alt")    /* col 5 */
 		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(2)
 		PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_PLAYER(2)
 		PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN) PORT_PLAYER(2)
@@ -541,7 +541,7 @@ static INPUT_PORTS_START(tutor)
 		PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP) PORT_PLAYER(2)
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT) PORT_PLAYER(2)
 
-	PORT_START_TAG("LINE6")    /* col 6 */
+	PORT_START("LINE6")    /* col 6 */
 		/* Unused? */
 		PORT_BIT(0x21, IP_ACTIVE_HIGH, IPT_UNUSED)
 
@@ -555,7 +555,7 @@ static INPUT_PORTS_START(tutor)
 		PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Mod") PORT_CODE(KEYCODE_F2) PORT_CHAR(UCHAR_MAMEKEY(F2))
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SPACE)			PORT_CHAR(' ')
 
-	PORT_START_TAG("LINE7")    /* col 7 */
+	PORT_START("LINE7")    /* col 7 */
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x91") PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
 		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
@@ -569,7 +569,7 @@ INPUT_PORTS_END
 static const struct tms9995reset_param tutor_processor_config =
 {
 #if 0
-	REGION_CPU1,/* region for processor RAM */
+	"main",/* region for processor RAM */
 	0xf000,     /* offset : this area is unused in our region, and matches the processor address */
 	0xf0fc,		/* offset for the LOAD vector */
 	1,          /* use fast IDLE */
@@ -582,7 +582,7 @@ static const struct tms9995reset_param tutor_processor_config =
 static MACHINE_DRIVER_START(tutor)
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 10.7 MHz */
-	MDRV_CPU_ADD(TMS9995, 10700000)
+	MDRV_CPU_ADD("main", TMS9995, 10700000)
 	MDRV_CPU_CONFIG(tutor_processor_config)
 	MDRV_CPU_PROGRAM_MAP(tutor_memmap, 0)
 	MDRV_CPU_IO_MAP(tutor_readcru, /*tutor_writecru*/0)
@@ -599,9 +599,9 @@ static MACHINE_DRIVER_START(tutor)
 
 	/* sound */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SN76489A, 3579545)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD("sn76489a", SN76489A, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
-	MDRV_SOUND_ADD(WAVE, 0)
+	MDRV_SOUND_ADD("wave", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 MACHINE_DRIVER_END
 
@@ -611,7 +611,7 @@ MACHINE_DRIVER_END
 */
 ROM_START(tutor)
 	/*CPU memory space*/
-	ROM_REGION(0x14000,REGION_CPU1,0)
+	ROM_REGION(0x14000,"main",0)
 	ROM_LOAD("tutor1.bin", 0x0000, 0x8000, CRC(702c38ba) SHA1(ce60607c3038895e31915d41bb5cf71cb8522d7a))      /* system ROM */
 	ROM_LOAD("tutor2.bin", 0x8000, 0x4000, CRC(05f228f5) SHA1(46a14a45f6f9e2c30663a2b87ce60c42768a78d0))      /* BASIC ROM */
 ROM_END

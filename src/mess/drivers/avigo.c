@@ -179,12 +179,11 @@ static TIMER_CALLBACK(avigo_dummy_timer_callback)
 	static int ox = 0, oy = 0;
 	int nx,ny;
 	int dx, dy;
-	char port[6];
+	static const char *linenames[] = { "LINE0", "LINE1", "LINE2", "LINE3" };
 
-	for (i=0; i<4; i++)
+	for (i = 0; i < 4; i++)
 	{
-		sprintf(port, "LINE%d", i);
-		current_input_port_data[i] = input_port_read(machine, port);
+		current_input_port_data[i] = input_port_read(machine, linenames[i]);
 	}
 
 	changed = current_input_port_data[3]^previous_input_port_data[3];
@@ -403,13 +402,13 @@ static MACHINE_RESET( avigo )
 {
 	int i;
 	unsigned char *addr;
-	char port[6];
+	static const char *linenames[] = { "LINE0", "LINE1", "LINE2", "LINE3" };
 
 	memset(avigo_banked_opbase, 0, sizeof(avigo_banked_opbase));
 
 	/* initialise flash memory */
-	intelflash_init(0, FLASH_INTEL_E28F008SA, memory_region(machine, REGION_CPU1)+0x10000);
-	intelflash_init(1, FLASH_INTEL_E28F008SA, memory_region(machine, REGION_CPU1)+0x110000);
+	intelflash_init(0, FLASH_INTEL_E28F008SA, memory_region(machine, "main")+0x10000);
+	intelflash_init(1, FLASH_INTEL_E28F008SA, memory_region(machine, "main")+0x110000);
 	intelflash_init(2, FLASH_INTEL_E28F008SA, NULL);
 
 	stylus_marker_x = AVIGO_SCREEN_WIDTH>>1;
@@ -419,10 +418,9 @@ static MACHINE_RESET( avigo )
 	avigo_vh_set_stylus_marker_position(stylus_marker_x, stylus_marker_y);
 
 	/* initialise settings for port data */
-	for (i=0; i<4; i++)
+	for (i = 0; i < 4; i++)
 	{
-		sprintf(port, "LINE%d", i);
-		previous_input_port_data[i] = input_port_read(machine, port);
+		previous_input_port_data[i] = input_port_read(machine, linenames[i]);
 	}
 
 	avigo_irq = 0;
@@ -827,33 +825,33 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START(avigo)
-	PORT_START_TAG("LINE0")
+	PORT_START("LINE0")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("PAGE UP") PORT_CODE(KEYCODE_PGUP)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("PAGE DOWN") PORT_CODE(KEYCODE_PGDN)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("LIGHT") PORT_CODE(KEYCODE_L)
 	PORT_BIT(0xf8, 0xf8, IPT_UNUSED)
 
-	PORT_START_TAG("LINE1")
+	PORT_START("LINE1")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("TO DO") PORT_CODE(KEYCODE_T)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ADDRESS") PORT_CODE(KEYCODE_A)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SCHEDULE") PORT_CODE(KEYCODE_S)
 	PORT_BIT(0xf8, 0xf8, IPT_UNUSED)
 
-	PORT_START_TAG("LINE2")
+	PORT_START("LINE2")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("MEMO") PORT_CODE(KEYCODE_M)
 	PORT_BIT(0x0fe, 0xfe, IPT_UNUSED)
 
-	PORT_START_TAG("LINE3")
+	PORT_START("LINE3")
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Pen/Stylus pressed") PORT_CODE(KEYCODE_Q) PORT_CODE(JOYCODE_BUTTON1)
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("?? Causes a NMI") PORT_CODE(KEYCODE_W) PORT_CODE(JOYCODE_BUTTON2)
 
 	/* these two ports are used to emulate the position of the pen/stylus on the screen */
 	/* a cursor is drawn to indicate the position, so when a click is done, it will occur in the correct place */
 	/* To be converted to crosshair code? */
-	PORT_START_TAG("POSX") /* Mouse - X AXIS */
+	PORT_START("POSX") /* Mouse - X AXIS */
 	PORT_BIT(0xfff, 0x00, IPT_MOUSE_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START_TAG("POSY") /* Mouse - Y AXIS */
+	PORT_START("POSY") /* Mouse - Y AXIS */
 	PORT_BIT(0xfff, 0x00, IPT_MOUSE_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 INPUT_PORTS_END
 
@@ -861,7 +859,7 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( avigo )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD("main", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(avigo_mem, 0)
 	MDRV_CPU_IO_MAP(avigo_io, 0)
 	MDRV_INTERLEAVE(1)
@@ -888,7 +886,7 @@ static MACHINE_DRIVER_START( avigo )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SPEAKER, 0)
+	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
@@ -901,7 +899,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START(avigo)
-	ROM_REGION(0x210000, REGION_CPU1,0)
+	ROM_REGION(0x210000, "main",0)
 	ROM_LOAD("avigo.rom", 0x010000, 0x0150000, CRC(160ee4a6) SHA1(4d09201a3876de16808bd92989f3d8d7182d72b3))
 ROM_END
 

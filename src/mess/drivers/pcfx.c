@@ -36,12 +36,12 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( pcfx )
 {
-	memory_set_bankptr( 1, memory_region(machine, REGION_USER1) );
+	memory_set_bankptr( 1, memory_region(machine, "user1") );
 }
 
 
 static MACHINE_DRIVER_START( pcfx )
-	MDRV_CPU_ADD_TAG( "main", V810, 21477270 )
+	MDRV_CPU_ADD( "main", V810, 21477270 )
 	MDRV_CPU_PROGRAM_MAP( pcfx_mem, 0 )
 	MDRV_CPU_IO_MAP( pcfx_io, 0 )
 
@@ -54,7 +54,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( pcfx )
-	ROM_REGION( 0x100000, REGION_USER1, 0 )
+	ROM_REGION( 0x100000, "user1", 0 )
 	ROM_LOAD( "pcfxbios.bin", 0x000000, 0x100000, CRC(76ffb97a) SHA1(1a77fd83e337f906aecab27a1604db064cf10074) )
 ROM_END
 

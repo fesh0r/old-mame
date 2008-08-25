@@ -7,6 +7,8 @@
 #ifndef DAI_H_
 #define DAI_H_
 
+#include "mame.h"
+#include "sound/custom.h"
 #include "machine/8255ppi.h"
 
 #define DAI_DEBUG	1
@@ -38,8 +40,8 @@ PALETTE_INIT( dai );
 
 /*----------- defined in audio/dai.c -----------*/
 
-extern const struct CustomSound_interface dai_sound_interface;
-void dai_sh_change_clock(const device_config *,double);
+extern const custom_sound_interface dai_sound_interface;
+void dai_set_input(int index, int state);
 
 
 #endif /* DAI_H_ */

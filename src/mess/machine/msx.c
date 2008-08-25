@@ -410,12 +410,10 @@ INTERRUPT_GEN( msx2_interrupt )
 INTERRUPT_GEN( msx_interrupt )
 {
 	int i;
-	char port[7];
 	
-	for (i=0;i<2;i++)
+	for (i=0; i<2; i++)
 	{
-		sprintf(port, "MOUSE%d", i);
-		msx1.mouse[i] = input_port_read(machine, port);
+		msx1.mouse[i] = input_port_read(machine, i ? "MOUSE1" : "MOUSE0");
 		msx1.mouse_stat[i] = -1;
 	}
 
@@ -429,15 +427,15 @@ INTERRUPT_GEN( msx_interrupt )
 
 READ8_HANDLER ( msx_psg_r )
 {
-	return AY8910_read_port_0_r (machine, offset);
+	return ay8910_read_port_0_r (machine, offset);
 }
 
 WRITE8_HANDLER ( msx_psg_w )
 {
 	if (offset & 0x01)
-		AY8910_write_port_0_w (machine, offset, data);
+		ay8910_write_port_0_w (machine, offset, data);
 	else
-		AY8910_control_port_0_w (machine, offset, data);
+		ay8910_control_port_0_w (machine, offset, data);
 }
 
 static const device_config *cassette_device_image(void)
@@ -543,7 +541,7 @@ WRITE8_HANDLER ( msx_printer_w )
 	{
 		/* SIMPL emulation */
 		if (offset == 1)
-			DAC_signed_data_w (0, data);
+			dac_signed_data_w (0, data);
 	}
 	else {
 
@@ -577,10 +575,10 @@ WRITE8_HANDLER (msx_fmpac_w)
 	if (msx1.opll_active) {
 
 		if (offset == 1) {
-			YM2413_data_port_0_w (machine, 0, data);
+			ym2413_data_port_0_w (machine, 0, data);
 		}
 		else {
-			YM2413_register_port_0_w (machine, 0, data);
+			ym2413_register_port_0_w (machine, 0, data);
 		}
 	}
 }
@@ -712,7 +710,7 @@ static WRITE8_HANDLER ( msx_ppi_port_c_w )
 
 	/* key click */
 	if ( (old_val ^ data) & 0x80)
-		DAC_signed_data_w (0, (data & 0x80 ? 0x7f : 0));
+		dac_signed_data_w (0, (data & 0x80 ? 0x7f : 0));
 
 	/* cassette motor on/off */
 	if ( (old_val ^ data) & 0x10)
@@ -732,13 +730,12 @@ static READ8_HANDLER( msx_ppi_port_b_r )
 {
 	UINT8 result = 0xff;
 	int row, data;
-	char port[5];
+	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5" };
 
 	row = ppi8255_r( (device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 2) & 0x0f;
 	if (row <= 10)
 	{
-		sprintf(port, "KEY%d", row/2);
-		data = input_port_read(machine, port);
+		data = input_port_read(machine, keynames[row / 2]);
 
 		if (row & 1)
 			data >>= 8;
@@ -786,6 +783,8 @@ void msx_memory_init (running_machine *machine)
 		return;
 	}
 
+	msx1.layout = layout;
+
 	for (; layout->entry != MSX_LAYOUT_LAST; layout++) {
 
 		switch (layout->entry) {
@@ -828,8 +827,8 @@ void msx_memory_init (running_machine *machine)
 					/* Check whether the optional FM-PAC rom is present */
 					option = 0x10000;
 					size = 0x10000;
-					mem = memory_region(machine, REGION_CPU1) + option;
-					if (memory_region_length(machine, REGION_CPU1) > size && mem[0] == 'A' && mem[1] == 'B') {
+					mem = memory_region(machine, "main") + option;
+					if (memory_region_length(machine, "main") > size && mem[0] == 'A' && mem[1] == 'B') {
 						slot = &msx_slot_list[SLOT_FMPAC];
 					}
 					else {
@@ -843,7 +842,7 @@ void msx_memory_init (running_machine *machine)
 
 				case MSX_MEM_HANDLER:
 				case MSX_MEM_ROM:
-					mem = memory_region(machine, REGION_CPU1) + option;
+					mem = memory_region(machine, "main") + option;
 					break;
 				case MSX_MEM_RAM:
 					mem = NULL;
@@ -868,7 +867,7 @@ void msx_memory_init (running_machine *machine)
 			}
 			break;
 		case MSX_LAYOUT_KANJI_ENTRY:
-			msx1.kanji_mem = memory_region(machine, REGION_CPU1) + layout->option;
+			msx1.kanji_mem = memory_region(machine, "main") + layout->option;
 			break;
 		case MSX_LAYOUT_RAMIO_SET_BITS_ENTRY:
 			msx1.ramio_set_bits = (UINT8)layout->option;

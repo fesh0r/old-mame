@@ -201,7 +201,7 @@
 /* S/SX */
 static INPUT_PORTS_START( hp48sx_kbd )
 
-        PORT_START_TAG( "LINE0" ) /* OUT = 0x001 */
+        PORT_START( "LINE0" ) /* OUT = 0x001 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "+      { }  : :" )
@@ -229,7 +229,7 @@ static INPUT_PORTS_START( hp48sx_kbd )
         PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE1" ) /* OUT = 0x002 */
+        PORT_START( "LINE1" ) /* OUT = 0x002 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
         PORT_NAME ( "-      << >>  \" \"" )
@@ -262,7 +262,7 @@ static INPUT_PORTS_START( hp48sx_kbd )
         PORT_BIT ( 0xffc0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE2" ) /* OUT = 0x004 */
+        PORT_START( "LINE2" ) /* OUT = 0x004 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "*      [ ]     _" )
@@ -295,7 +295,7 @@ static INPUT_PORTS_START( hp48sx_kbd )
 	PORT_BIT ( 0xffc0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE3" ) /* OUT = 0x008 */
+        PORT_START( "LINE3" ) /* OUT = 0x008 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "/      ( )     #" )
@@ -328,7 +328,7 @@ static INPUT_PORTS_START( hp48sx_kbd )
 	PORT_BIT ( 0xffc0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE4" ) /* OUT = 0x010 */
+        PORT_START( "LINE4" ) /* OUT = 0x010 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
         PORT_NAME (" \xE2\x87\x90       DROP  CLR" /* double left arrow */ )
@@ -355,7 +355,7 @@ static INPUT_PORTS_START( hp48sx_kbd )
 	PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE5" ) /* OUT = 0x020 */
+        PORT_START( "LINE5" ) /* OUT = 0x020 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "1/x  X   e^x   LN" )
@@ -380,7 +380,7 @@ static INPUT_PORTS_START( hp48sx_kbd )
         PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE6" ) /* OUT = 0x040 */
+        PORT_START( "LINE6" ) /* OUT = 0x040 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
         PORT_NAME ( "\xE2\x86\x92  R        SWAP" /* right arrow */ )
@@ -408,7 +408,7 @@ static INPUT_PORTS_START( hp48sx_kbd )
         PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE7" ) /* OUT = 0x080 */
+        PORT_START( "LINE7" ) /* OUT = 0x080 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "NXT  L   PREV" )
@@ -434,7 +434,7 @@ static INPUT_PORTS_START( hp48sx_kbd )
         PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE8" ) /* OUT = 0x100 */
+        PORT_START( "LINE8" ) /* OUT = 0x100 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "F" )
@@ -459,7 +459,7 @@ static INPUT_PORTS_START( hp48sx_kbd )
         PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "ON" ) /* ON key, appears on all OUT lines */
+        PORT_START( "ON" ) /* ON key, appears on all OUT lines */
 
 	PORT_BIT  ( 0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "ON  CANCEL CONT OFF" )
@@ -475,7 +475,7 @@ INPUT_PORTS_END
 /* G/GX */
 static INPUT_PORTS_START( hp48gx_kbd )
 
-        PORT_START_TAG( "LINE0" ) /* OUT = 0x001 */
+        PORT_START( "LINE0" ) /* OUT = 0x001 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "+      { }  : :" )
@@ -503,7 +503,7 @@ static INPUT_PORTS_START( hp48gx_kbd )
         PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE1" ) /* OUT = 0x002 */
+        PORT_START( "LINE1" ) /* OUT = 0x002 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
         PORT_NAME ( "-      << >>  \" \"" )
@@ -536,7 +536,7 @@ static INPUT_PORTS_START( hp48gx_kbd )
         PORT_BIT ( 0xffc0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE2" ) /* OUT = 0x004 */
+        PORT_START( "LINE2" ) /* OUT = 0x004 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "*      [ ]     _" )
@@ -569,7 +569,7 @@ static INPUT_PORTS_START( hp48gx_kbd )
 	PORT_BIT ( 0xffc0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE3" ) /* OUT = 0x008 */
+        PORT_START( "LINE3" ) /* OUT = 0x008 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "/      ( )     #" )
@@ -602,7 +602,7 @@ static INPUT_PORTS_START( hp48gx_kbd )
 	PORT_BIT ( 0xffc0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE4" ) /* OUT = 0x010 */
+        PORT_START( "LINE4" ) /* OUT = 0x010 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
         PORT_NAME (" \xE2\x87\x90       DROP" /* double left arrow */ )
@@ -629,7 +629,7 @@ static INPUT_PORTS_START( hp48gx_kbd )
 	PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE5" ) /* OUT = 0x020 */
+        PORT_START( "LINE5" ) /* OUT = 0x020 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "1/x  X   e^x   LN" )
@@ -654,7 +654,7 @@ static INPUT_PORTS_START( hp48gx_kbd )
         PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE6" ) /* OUT = 0x040 */
+        PORT_START( "LINE6" ) /* OUT = 0x040 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
         PORT_NAME ( "\xE2\x86\x92  R        SWAP" /* right arrow */ )
@@ -682,7 +682,7 @@ static INPUT_PORTS_START( hp48gx_kbd )
         PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE7" ) /* OUT = 0x080 */
+        PORT_START( "LINE7" ) /* OUT = 0x080 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "NXT  L   PREV  MENU" )
@@ -708,7 +708,7 @@ static INPUT_PORTS_START( hp48gx_kbd )
         PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "LINE8" ) /* OUT = 0x100 */
+        PORT_START( "LINE8" ) /* OUT = 0x100 */
 
 	PORT_BIT  ( 1, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "F" )
@@ -733,7 +733,7 @@ static INPUT_PORTS_START( hp48gx_kbd )
         PORT_BIT ( 0xffe0, 0, IPT_UNUSED )
 
 
-        PORT_START_TAG( "ON" ) /* ON key, appears on all OUT lines */
+        PORT_START( "ON" ) /* ON key, appears on all OUT lines */
 
 	PORT_BIT  ( 0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD )
 	PORT_NAME ( "ON  CANCEL CONT OFF" )
@@ -751,7 +751,7 @@ INPUT_PORTS_END
  */
 
 static INPUT_PORTS_START( hp48_battery )
-        PORT_START_TAG( "BATTERY" )
+        PORT_START( "BATTERY" )
         PORT_CONFNAME ( 0x03, 0, "Battery status" )
         PORT_CONFSETTING ( 0x00, DEF_STR( Normal ) )
         PORT_CONFSETTING ( 0x01, DEF_STR( Low ) )
@@ -801,7 +801,7 @@ static kermit_config hp48_kermit_rs232_conf = { &hp48_rs232_start_recv_byte };
    no extension may be physically present).
  */
 ROM_START ( hp48gx )
-        ROM_REGION( 0x80000, REGION_CPU1, 0 ) 
+        ROM_REGION( 0x80000, "main", 0 ) 
 
 	/* latest revision (preferred) */
 	ROM_SYSTEM_BIOS( 0, "r", "Version R" )
@@ -850,7 +850,7 @@ ROM_END
  */
 
 ROM_START ( hp48sx )
-        ROM_REGION( 0x40000, REGION_CPU1, 0 ) 
+        ROM_REGION( 0x40000, "main", 0 ) 
 
 	/* latest revision (preferred) */
 	ROM_SYSTEM_BIOS( 0, "j", "Version J" )
@@ -923,7 +923,8 @@ ADDRESS_MAP_END
 
 /********************** Saturn's I/O *******************************/
 
-static const SATURN_CONFIG hp48_config = {
+static const saturn_cpu_core hp48_config =
+{
 	hp48_reg_out, hp48_reg_in,
 	hp48_mem_reset, hp48_mem_config, hp48_mem_unconfig, hp48_mem_id,
 	hp48_mem_crc, 
@@ -948,7 +949,7 @@ static MACHINE_DRIVER_START ( hp48_common )
 	MDRV_MACHINE_RESET ( hp48 )
 
 	/* cpu */
-        MDRV_CPU_ADD_TAG ( "main", SATURN, 3937007 ) /* almost 4 MHz */
+        MDRV_CPU_ADD ( "main", SATURN, 3937007 ) /* almost 4 MHz */
         MDRV_CPU_PROGRAM_MAP ( hp48, 0 )
         MDRV_CPU_CONFIG( hp48_config )
  
@@ -969,7 +970,7 @@ static MACHINE_DRIVER_START ( hp48_common )
      
         /* sound */
         MDRV_SPEAKER_STANDARD_MONO( "mono" )
-        MDRV_SOUND_ADD ( DAC, 0 )
+        MDRV_SOUND_ADD( "dac",  DAC, 0 )
         MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* 1-bit beeper */
 
 MACHINE_DRIVER_END

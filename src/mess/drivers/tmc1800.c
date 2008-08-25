@@ -74,6 +74,7 @@ Notes:
 
 static QUICKLOAD_LOAD( tmc1800 );
 static QUICKLOAD_LOAD( tmc2000 );
+static QUICKLOAD_LOAD( oscnano );
 
 static MACHINE_RESET( tmc1800 );
 static MACHINE_RESET( tmc2000 );
@@ -225,7 +226,7 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( tmc1800 )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0) PORT_CODE(KEYCODE_0_PAD) PORT_CHAR('0')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CODE(KEYCODE_1_PAD) PORT_CHAR('1')
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_CODE(KEYCODE_2_PAD) PORT_CHAR('2')
@@ -235,7 +236,7 @@ static INPUT_PORTS_START( tmc1800 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6) PORT_CODE(KEYCODE_6_PAD) PORT_CHAR('6')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CODE(KEYCODE_7_PAD) PORT_CHAR('7')
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8) PORT_CODE(KEYCODE_8_PAD) PORT_CHAR('8')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CODE(KEYCODE_9_PAD) PORT_CHAR('9')
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_A) PORT_CHAR('A')
@@ -245,14 +246,14 @@ static INPUT_PORTS_START( tmc1800 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_E) PORT_CHAR('E')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F) PORT_CHAR('F')
 
-	PORT_START_TAG("RUN")
+	PORT_START("RUN")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Run/Reset") PORT_CODE(KEYCODE_R) PORT_TOGGLE
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( tmc2000 )
 	PORT_INCLUDE(tmc1800)
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_G) PORT_CHAR('G')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_H) PORT_CHAR('H')
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_I) PORT_CHAR('I')
@@ -262,7 +263,7 @@ static INPUT_PORTS_START( tmc2000 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_M) PORT_CHAR('M')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_N) PORT_CHAR('N')
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_O) PORT_CHAR('O')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_P) PORT_CHAR('P')
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Q) PORT_CHAR('Q')
@@ -272,7 +273,7 @@ static INPUT_PORTS_START( tmc2000 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_U) PORT_CHAR('U')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_V) PORT_CHAR('V')
 
-	PORT_START_TAG("IN4")
+	PORT_START("IN4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_W) PORT_CHAR('W')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X) PORT_CHAR('X')
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Y) PORT_CHAR('Y')
@@ -282,7 +283,7 @@ static INPUT_PORTS_START( tmc2000 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )
 
-	PORT_START_TAG("IN5")
+	PORT_START("IN5")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD )
@@ -292,7 +293,7 @@ static INPUT_PORTS_START( tmc2000 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )
 
-	PORT_START_TAG("IN6")
+	PORT_START("IN6")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD )
@@ -302,7 +303,7 @@ static INPUT_PORTS_START( tmc2000 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )
 
-	PORT_START_TAG("IN7")
+	PORT_START("IN7")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD )
@@ -352,7 +353,7 @@ static CDP1802_EF_READ( tmc1800_ef_r )
 	tmc1800_state *state = machine->driver_data;
 
 	UINT8 flags = 0x0f;
-	char port[4];
+	static const char *keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
 	/*
         EF1     CDP1861
@@ -371,8 +372,7 @@ static CDP1802_EF_READ( tmc1800_ef_r )
 
 	// keyboard
 
-	sprintf(port, "IN%d", state->keylatch / 8);
-	if (~input_port_read(machine, port) & (1 << (state->keylatch % 8))) flags -= EF3;
+	if (~input_port_read(machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
 
 	return flags;
 }
@@ -439,7 +439,7 @@ static CDP1802_EF_READ( tmc2000_ef_r )
 	tmc2000_state *state = machine->driver_data;
 
 	int flags = 0x0f;
-	char port[4];
+	static const char *keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
 	/*
         EF1     CDP1864
@@ -458,8 +458,7 @@ static CDP1802_EF_READ( tmc2000_ef_r )
 
 	// keyboard
 
-	sprintf(port, "IN%d", state->keylatch / 8);
-	if (~input_port_read(machine, port) & (1 << (state->keylatch % 8))) flags -= EF3;
+	if (~input_port_read(machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
 
 	return flags;
 }
@@ -535,7 +534,7 @@ static CDP1802_EF_READ( oscnano_ef_r )
 	tmc2000_state *state = machine->driver_data;
 
 	int flags = 0x0f;
-	char port[4];
+	static const char *keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
 	/*
         EF1     CDP1864
@@ -554,8 +553,7 @@ static CDP1802_EF_READ( oscnano_ef_r )
 
 	// keyboard
 
-	sprintf(port, "IN%d", state->keylatch / 8);
-	if (~input_port_read(machine, port) & (1 << (state->keylatch % 8))) flags -= EF3;
+	if (~input_port_read(machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
 
 	// monitor
 
@@ -635,7 +633,7 @@ static MACHINE_START( tmc2000 )
 
 	// RAM banking
 
-	memory_configure_bank(1, 0, 1, memory_region(machine, REGION_CPU1) + 0x8000, 0);
+	memory_configure_bank(1, 0, 1, memory_region(machine, "main") + 0x8000, 0);
 	memory_configure_bank(1, 1, 1, &mess_ram, 0);
 
 	switch (mess_ram_size)
@@ -664,7 +662,7 @@ static MACHINE_START( tmc2000 )
 
 	state->colorram = auto_malloc(0x200);
 
-	memory_configure_bank(2, 0, 1, memory_region(machine, REGION_CPU1) + 0x8000, 0);
+	memory_configure_bank(2, 0, 1, memory_region(machine, "main") + 0x8000, 0);
 	memory_configure_bank(2, 1, 1, state->colorram, 0);
 
 	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK2, SMH_UNMAP);
@@ -700,7 +698,7 @@ static MACHINE_START( oscnano )
 
 	// RAM banking
 
-	memory_configure_bank(1, 0, 1, memory_region(machine, REGION_CPU1) + 0x8000, 0);
+	memory_configure_bank(1, 0, 1, memory_region(machine, "main") + 0x8000, 0);
 	memory_configure_bank(1, 1, 1, &mess_ram, 0);
 }
 
@@ -721,7 +719,7 @@ static MACHINE_DRIVER_START( tmc1800 )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD(CDP1802, XTAL_1_75MHz)
+	MDRV_CPU_ADD("main", CDP1802, XTAL_1_75MHz)
 	MDRV_CPU_PROGRAM_MAP(tmc1800_map, 0)
 	MDRV_CPU_IO_MAP(tmc1800_io_map, 0)
 	MDRV_CPU_CONFIG(tmc1800_config)
@@ -743,7 +741,7 @@ static MACHINE_DRIVER_START( osc1000b )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD(CDP1802, XTAL_1_75MHz)
+	MDRV_CPU_ADD("main", CDP1802, XTAL_1_75MHz)
 	MDRV_CPU_PROGRAM_MAP(osc1000b_map, 0)
 	MDRV_CPU_IO_MAP(osc1000b_io_map, 0)
 	MDRV_CPU_CONFIG(osc1000b_config)
@@ -765,7 +763,7 @@ static MACHINE_DRIVER_START( tmc2000 )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD(CDP1802, XTAL_1_75MHz)
+	MDRV_CPU_ADD("main", CDP1802, XTAL_1_75MHz)
 	MDRV_CPU_PROGRAM_MAP(tmc2000_map, 0)
 	MDRV_CPU_IO_MAP(tmc2000_io_map, 0)
 	MDRV_CPU_CONFIG(tmc2000_config)
@@ -781,7 +779,7 @@ static MACHINE_DRIVER_START( tmc2000 )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(BEEP, 0)
+	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// quickload
@@ -794,7 +792,7 @@ static MACHINE_DRIVER_START( oscnano )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD(CDP1802, XTAL_1_75MHz)
+	MDRV_CPU_ADD("main", CDP1802, XTAL_1_75MHz)
 	MDRV_CPU_PROGRAM_MAP(oscnano_map, 0)
 	MDRV_CPU_IO_MAP(oscnano_io_map, 0)
 	MDRV_CPU_CONFIG(oscnano_config)
@@ -810,32 +808,32 @@ static MACHINE_DRIVER_START( oscnano )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(BEEP, 0)
+	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// quickload
 
-	MDRV_QUICKLOAD_ADD(tmc1800, "bin", 0)
+	MDRV_QUICKLOAD_ADD(oscnano, "bin", 0)
 MACHINE_DRIVER_END
 
 /* ROMs */
 
 ROM_START( tmc1800 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "mmi6341-1.ic2", 0x8000, 0x0200, NO_DUMP ) // equivalent to 82S141
 ROM_END
 
 ROM_START( osc1000b )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "mmi6341-1.ic2", 0x8000, 0x0200, NO_DUMP ) // equivalent to 82S141
 
-	ROM_REGION( 0x400, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x400, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "mmi6349.5d",	0x0000, 0x0200, NO_DUMP ) // equivalent to 82S147
 	ROM_LOAD( "mmi6349.5c",	0x0200, 0x0200, NO_DUMP ) // equivalent to 82S147
 ROM_END
 
 ROM_START( tmc2000 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_SYSTEM_BIOS( 0, "default",  "PROM N:o 200" )
 	ROMX_LOAD( "200.m5",    0x8000, 0x0200, BAD_DUMP CRC(79da3221) SHA1(008da3ef4f69ab1a493362dfca856375b19c94bd), ROM_BIOS(1) ) // typed in from the manual
 	ROM_SYSTEM_BIOS( 1, "prom202",  "PROM N:o 202" )
@@ -845,7 +843,7 @@ ROM_START( tmc2000 )
 ROM_END
 
 ROM_START( oscnano )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "mmi6349.ic", 0x8000, 0x0200, BAD_DUMP CRC(1ec1b432) SHA1(ac41f5e38bcd4b80bd7a5b277a2c600899fd5fb8) ) // equivalent to 82S141
 ROM_END
 
@@ -881,6 +879,23 @@ static QUICKLOAD_LOAD( tmc2000 )
 	image_fread(image, &mess_ram, size);
 
 	MACHINE_RESET_CALL(tmc2000);
+
+	return INIT_PASS;
+}
+
+static QUICKLOAD_LOAD( oscnano )
+{
+	running_machine *machine = image->machine;
+	int size = image_length(image);
+
+	if (size > mess_ram_size)
+	{
+		return INIT_FAIL;
+	}
+
+	image_fread(image, &mess_ram, size);
+
+	MACHINE_RESET_CALL(oscnano);
 
 	return INIT_PASS;
 }

@@ -249,7 +249,7 @@ void spectrum_plus3_update_memory(running_machine *machine)
 
 			/* rom 0 is editor, rom 1 is syntax, rom 2 is DOS, rom 3 is 48 BASIC */
 
-			ChosenROM = memory_region(machine, REGION_CPU1) + 0x010000 + (ROMSelection<<14);
+			ChosenROM = memory_region(machine, "main") + 0x010000 + (ROMSelection<<14);
 
 			memory_set_bankptr(1, ChosenROM);
 			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
@@ -336,8 +336,8 @@ static ADDRESS_MAP_START (spectrum_plus3_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0000, 0x0000) AM_READWRITE(spectrum_port_fe_r,spectrum_port_fe_w) AM_MIRROR(0xfffe) AM_MASK(0xffff) 
 	AM_RANGE(0x001f, 0x001f) AM_READ(spectrum_port_1f_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(spectrum_plus3_port_7ffd_w) AM_MIRROR(0x3ffd)
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(AY8910_write_port_0_w) AM_MIRROR(0x3ffd)
-	AM_RANGE(0xc000, 0xc000) AM_READWRITE(AY8910_read_port_0_r,AY8910_control_port_0_w) AM_MIRROR(0x3ffd)
+	AM_RANGE(0x8000, 0x8000) AM_WRITE(ay8910_write_port_0_w) AM_MIRROR(0x3ffd)
+	AM_RANGE(0xc000, 0xc000) AM_READWRITE(ay8910_read_port_0_r,ay8910_control_port_0_w) AM_MIRROR(0x3ffd)
 	AM_RANGE(0x1000, 0x1000) AM_WRITE(spectrum_plus3_port_1ffd_w) AM_MIRROR(0x0ffd)
 	AM_RANGE(0x2000, 0x2000) AM_READ(spectrum_plus3_port_2ffd_r) AM_MIRROR(0x0ffd)
 	AM_RANGE(0x3000, 0x3000) AM_READWRITE(spectrum_plus3_port_3ffd_r,spectrum_plus3_port_3ffd_w) AM_MIRROR(0x0ffd)
@@ -377,7 +377,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START(specpl2a)
-	ROM_REGION(0x20000,REGION_CPU1,0)
+	ROM_REGION(0x20000,"main",0)
 	ROM_LOAD("p2a41_0.rom",0x10000,0x4000, CRC(30c9f490) SHA1(62ec15a4af56cd1d206d0bd7011eac7c889a595d))
 	ROM_LOAD("p2a41_1.rom",0x14000,0x4000, CRC(a7916b3f) SHA1(1a7812c383a3701e90e88d1da086efb0c033ac72))
 	ROM_LOAD("p2a41_2.rom",0x18000,0x4000, CRC(c9a0b748) SHA1(8df145d10ff78f98138682ea15ebccb2874bf759))
@@ -386,7 +386,7 @@ ROM_START(specpl2a)
 ROM_END
 
 ROM_START(specpls3)
-	ROM_REGION(0x20000,REGION_CPU1,0)
+	ROM_REGION(0x20000,"main",0)
 	ROM_SYSTEM_BIOS( 0, "en", "English" )
 	ROMX_LOAD("pl3-0.rom",0x10000,0x4000, CRC(17373da2) SHA1(e319ed08b4d53a5e421a75ea00ea02039ba6555b), ROM_BIOS(1))
 	ROMX_LOAD("pl3-1.rom",0x14000,0x4000, CRC(f1d1d99e) SHA1(c9969fc36095a59787554026a9adc3b87678c794), ROM_BIOS(1))
@@ -401,7 +401,7 @@ ROM_START(specpls3)
 ROM_END
 
 ROM_START(specpl3e)
-	ROM_REGION(0x20000,REGION_CPU1,0)
+	ROM_REGION(0x20000,"main",0)
 	ROM_SYSTEM_BIOS( 0, "en", "English" )
 	ROMX_LOAD("roma-en.rom",0x10000,0x8000, CRC(2d533344) SHA1(5ff2dae32eb745d87e0b54c595d1d20a866f316f), ROM_BIOS(1))
 	ROMX_LOAD("romb-en.rom",0x18000,0x8000, CRC(ef8d5d92) SHA1(983aa53aa76e25a3af123c896016bacf6829b72b), ROM_BIOS(1))

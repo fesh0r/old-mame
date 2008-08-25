@@ -45,6 +45,7 @@ READ16_HANDLER ( macplus_scsi_r );
 WRITE16_HANDLER ( macplus_scsi_w );
 NVRAM_HANDLER( mac );
 void mac_scc_mouse_irq( running_machine *machine, int x, int y );
+void mac_fdc_set_enable_lines(int enable_mask);
 
 
 /*----------- defined in video/mac.c -----------*/
@@ -58,7 +59,7 @@ void mac_set_screen_buffer( int buffer );
 
 /*----------- defined in audio/mac.c -----------*/
 
-void *mac_sh_start(int clock, const struct CustomSound_interface *config);
+void *mac_sh_start(int clock, const custom_sound_interface *config);
 
 void mac_enable_sound( int on );
 void mac_set_sound_buffer( int buffer );

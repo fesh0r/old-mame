@@ -192,14 +192,13 @@ static READ8_HANDLER ( svi318_ppi_port_a_r )
 static  READ8_HANDLER ( svi318_ppi_port_b_r )
 {
 	int row;
-	char port[7];
+	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", 
+										"LINE6", "LINE7", "LINE8", "LINE9", "LINE10" };
 
 	row = svi.keyboard_row;
 	if (row <= 10)
-	{
-		sprintf(port, "LINE%d", row);
-		return input_port_read(machine, port);
-	}
+		return input_port_read(machine, keynames[row]);
+
 	return 0xff;
 }
 
@@ -223,7 +222,7 @@ static WRITE8_HANDLER ( svi318_ppi_port_c_w )
 	/* key click */
 	val = (data & 0x80) ? 0x3e : 0;
 	val += (data & 0x40) ? 0x3e : 0;
-	DAC_signed_data_w (0, val);
+	dac_signed_data_w (0, val);
 
 	/* cassette motor on/off */
 	if (svi318_cassette_present(0))
@@ -510,10 +509,10 @@ static void svi318_80col_init(running_machine *machine)
 {
 	/* 2K RAM, but allocating 4KB to make banking easier */
 	/* The upper 2KB will be set to FFs and will never be written to */
-	svi.svi806_ram = new_memory_region( machine, REGION_GFX2, 0x1000, 0 );
+	svi.svi806_ram = memory_region_alloc( machine, "gfx2", 0x1000, 0 );
 	memset( svi.svi806_ram, 0x00, 0x800 );
 	memset( svi.svi806_ram + 0x800, 0xFF, 0x800 );
-	svi.svi806_gfx = memory_region(machine, REGION_GFX1);
+	svi.svi806_gfx = memory_region(machine, "gfx1");
 
 	timer_set( attotime_zero, NULL, 0, svi318_80col_init_registers );
 }
@@ -723,7 +722,7 @@ static void svi318_set_banks(running_machine *machine)
 
 	switch( svi.bankLow ) {
 	case SVI_INTERNAL:
-		svi.bankLow_ptr = memory_region(machine, REGION_CPU1);
+		svi.bankLow_ptr = memory_region(machine, "main");
 		break;
 	case SVI_CART:
 		if ( pcart ) {

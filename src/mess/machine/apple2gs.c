@@ -605,7 +605,7 @@ static void adb_write_datareg(running_machine *machine, UINT8 data)
 					break;
 
 				case 0x07:	/* synchronize */
-					if (memory_region_length(machine, REGION_CPU1) == 0x40000)	/* HACK */
+					if (memory_region_length(machine, "main") == 0x40000)	/* HACK */
 						adb_command_length = 8;
 					else
 						adb_command_length = 4;
@@ -866,7 +866,7 @@ static READ8_HANDLER( gssnd_r )
 			}
 			else
 			{
-				sndglu_dummy_read = ES5503_reg_0_r(machine, sndglu_addr);
+				sndglu_dummy_read = es5503_reg_0_r(machine, sndglu_addr);
 			}
 
 			if (sndglu_ctrl & 0x20)	// auto-increment
@@ -905,7 +905,7 @@ static WRITE8_HANDLER( gssnd_w )
 			}
 			else
 			{
-				ES5503_reg_0_w(machine, sndglu_addr, data);
+				es5503_reg_0_w(machine, sndglu_addr, data);
 			}
 
 			if (sndglu_ctrl & 0x20)	// auto-increment
@@ -1079,8 +1079,8 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 		case 0x74: case 0x75: case 0x76: case 0x77:
 		case 0x78: case 0x79: case 0x7a: case 0x7b:
 		case 0x7c: case 0x7d: case 0x7e: case 0x7f:
-			offset |= (memory_region_length(machine, REGION_CPU1) - 1) & ~0x3FFF;
-			result = memory_region(machine, REGION_CPU1)[offset];
+			offset |= (memory_region_length(machine, "main") - 1) & ~0x3FFF;
+			result = memory_region(machine, "main")[offset];
 			break;
 
 		case 0x21:	/* C021 - MONOCOLOR */
@@ -1523,8 +1523,8 @@ static UINT8 *apple2gs_getslotmem(running_machine *machine, offs_t address)
 	assert(address >= 0xC000);
 	assert(address <= 0xCFFF);
 
-	rom = memory_region(machine, REGION_CPU1);
-	rom += 0x030000 % memory_region_length(machine, REGION_CPU1);
+	rom = memory_region(machine, "main");
+	rom += 0x030000 % memory_region_length(machine, "main");
 	return &rom[address];
 }
 
@@ -1680,10 +1680,10 @@ static void apple2gs_setup_memory(running_machine *machine)
 	memory_set_bankptr(2, apple2gs_slowmem);
 
 	/* install alternate ROM bank */
-	begin = 0x1000000 - memory_region_length(machine, REGION_CPU1);
+	begin = 0x1000000 - memory_region_length(machine, "main");
 	end = 0xffffff;
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, SMH_BANK3);
-	memory_set_bankptr(3, memory_region(machine, REGION_CPU1));
+	memory_set_bankptr(3, memory_region(machine, "main"));
 
 	/* install new xxC000-xxCFFF handlers */
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00c000, 0x00cfff, 0, 0, apple2gs_00Cxxx_r);

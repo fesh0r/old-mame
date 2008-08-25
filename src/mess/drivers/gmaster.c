@@ -31,7 +31,7 @@ static READ8_HANDLER( gmaster_io_r )
 {
     UINT8 data=0;
     if (gmaster.ports[2]&1) {
-	data=memory_region(machine, REGION_CPU1)[0x4000+offset];
+	data=memory_region(machine, "main")[0x4000+offset];
 	logerror("%.4x external memory %.4x read %.2x\n",(int)activecpu_get_reg(CPUINFO_INT_PC), 0x4000+offset,data);
     } else {
 	switch (offset) {
@@ -53,7 +53,7 @@ static READ8_HANDLER( gmaster_io_r )
 static WRITE8_HANDLER( gmaster_io_w )
 {
     if (gmaster.ports[2]&1) {
-	memory_region(machine, REGION_CPU1)[0x4000+offset]=data;
+	memory_region(machine, "main")[0x4000+offset]=data;
 	logerror("%.4x external memory %.4x written %.2x\n",(int)activecpu_get_reg(CPUINFO_INT_PC), 0x4000+offset, data);
     } else {
 	switch (offset) {
@@ -138,7 +138,7 @@ static ADDRESS_MAP_START(gmaster_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( gmaster )
-    PORT_START_TAG("JOY")
+    PORT_START("JOY")
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT)
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
     PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
@@ -212,13 +212,13 @@ static UPD7810_CONFIG config={
     gmaster_io_callback
 };
 
-static const struct CustomSound_interface gmaster_sound_interface =
+static const custom_sound_interface gmaster_sound_interface =
 {
 	gmaster_custom_start
 };
 
 static MACHINE_DRIVER_START( gmaster )
-     MDRV_CPU_ADD_TAG("main", UPD7810, MAIN_XTAL/2/*?*/)
+     MDRV_CPU_ADD("main", UPD7810, MAIN_XTAL/2/*?*/)
 MDRV_CPU_PROGRAM_MAP(gmaster_mem, 0)
 MDRV_CPU_IO_MAP( gmaster_io, 0 )
 MDRV_CPU_CONFIG( config )
@@ -235,14 +235,14 @@ MDRV_CPU_VBLANK_INT("main", gmaster_interrupt)
      MDRV_DEFAULT_LAYOUT(layout_gmaster)
 
      MDRV_SPEAKER_STANDARD_MONO("gmaster")
-     MDRV_SOUND_ADD(CUSTOM, 0)
+     MDRV_SOUND_ADD("custom", CUSTOM, 0)
      MDRV_SOUND_CONFIG(gmaster_sound_interface)
      MDRV_SOUND_ROUTE(0, "gmaster", 0.50)
 MACHINE_DRIVER_END
 
 
 ROM_START(gmaster)
-	ROM_REGION(0x10000,REGION_CPU1, 0)
+	ROM_REGION(0x10000,"main", 0)
      ROM_LOAD("gmaster.bin", 0x0000, 0x1000, CRC(05cc45e5) SHA1(05d73638dea9657ccc2791c0202d9074a4782c1e) )
 //     ROM_CART_LOAD(0, "bin", 0x8000, 0x7f00, 0)
      ROM_CART_LOAD(0, "bin", 0x8000, 0x8000, 0)
@@ -258,7 +258,7 @@ static DRIVER_INIT( gmaster )
 static int gmaster_load_rom(int id)
 {
 	FILE *cartfile;
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 	int size;
 
 	if (device_filename(IO_CARTSLOT, id) == NULL)

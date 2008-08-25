@@ -14,7 +14,7 @@
 #include "video/tia.h"
 
 
-#define CART memory_region(machine, REGION_USER1)
+#define CART memory_region(machine, "user1")
 
 #define MASTER_CLOCK_NTSC	3579545
 #define MASTER_CLOCK_PAL	3546894
@@ -765,12 +765,12 @@ static READ8_HANDLER(modeSS_r)
 		switch ( modeSS_byte & 0x1C ) {
 		case 0x00:
 			bank_base[1] = extra_RAM + 2 * 0x800;
-			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(machine, REGION_CPU1) + 0x1800 : CART;
+			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(machine, "main") + 0x1800 : CART;
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x04:
 			bank_base[1] = extra_RAM;
-			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(machine, REGION_CPU1) + 0x1800 : CART;
+			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(machine, "main") + 0x1800 : CART;
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x08:
@@ -785,12 +785,12 @@ static READ8_HANDLER(modeSS_r)
 			break;
 		case 0x10:
 			bank_base[1] = extra_RAM + 2 * 0x800;
-			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(machine, REGION_CPU1) + 0x1800 : CART;
+			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(machine, "main") + 0x1800 : CART;
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x14:
 			bank_base[1] = extra_RAM + 0x800;
-			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(machine, REGION_CPU1) + 0x1800 : CART;
+			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(machine, "main") + 0x1800 : CART;
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x18:
@@ -1081,12 +1081,14 @@ static ADDRESS_MAP_START(a2600_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x007F) AM_MIRROR(0x0F00) AM_READWRITE(tia_r, tia_w)
 	AM_RANGE(0x0080, 0x00FF) AM_MIRROR(0x0D00) AM_RAM AM_BASE(&riot_ram)
-	AM_RANGE(0x0280, 0x029F) AM_MIRROR(0x0D00) AM_READWRITE(r6532_0_r, r6532_0_w)
+	AM_RANGE(0x0280, 0x029F) AM_MIRROR(0x0D00) AM_DEVREADWRITE(RIOT6532, "riot", riot6532_r, riot6532_w)
 	AM_RANGE(0x1000, 0x1FFF)                   AM_ROMBANK(1)
 ADDRESS_MAP_END
 
-static WRITE8_HANDLER( switch_A_w )
+static void switch_A_w(const device_config *device, UINT8 olddata, UINT8 data)
 {
+	running_machine *machine = device->machine;
+
 	/* Left controller port */
 	if ( input_port_read(machine, "CONTROLLERS") / CATEGORY_SELECT == 0x03 ) {
 		keypad_left_column = data / 16;
@@ -1103,9 +1105,10 @@ static WRITE8_HANDLER( switch_A_w )
 	}
 }
 
-static  READ8_HANDLER( switch_A_r )
+static UINT8 switch_A_r(const device_config *device, UINT8 data)
 {
 	static const UINT8 driving_lookup[4] = { 0x00, 0x02, 0x03, 0x01 };
+	running_machine *machine = device->machine;
 	UINT8 val = 0;
 
 	/* Left controller port PINs 1-4 ( 4321 ) */
@@ -1153,16 +1156,23 @@ static  READ8_HANDLER( switch_A_r )
 	return val;
 }
 
-static WRITE8_HANDLER( switch_B_w ) {
+static void switch_B_w(const device_config *device, UINT8 newdata, UINT8 olddata)
+{
 }
 
-static void irq_callback(running_machine *machine, int state) {
+static void irq_callback(const device_config *device, int state)
+{
 }
 
-static const struct riot6532_interface r6532_interface =
+static UINT8 riot_input_port_8_r(const device_config *device, UINT8 olddata)
+{
+	return input_port_8_r(device->machine, 0);
+}
+
+static const riot6532_interface r6532_interface =
 {
 	switch_A_r,
-	input_port_8_r,
+	riot_input_port_8_r,
 	switch_A_w,
 	switch_B_w,
 	irq_callback
@@ -1427,11 +1437,8 @@ static MACHINE_START( a2600 )
 {
 	const device_config *screen = video_screen_first(machine->config);
 	current_screen_height = video_screen_get_height(screen);
-	extra_RAM = new_memory_region( machine, REGION_USER2, 0x8600, ROM_REQUIRED );
+	extra_RAM = memory_region_alloc( machine, "user2", 0x8600, ROM_REQUIRED );
 	tia_init( machine, &tia_interface );
-	r6532_config( machine, 0, &r6532_interface );
-	r6532_set_clock( 0, MASTER_CLOCK_NTSC / 3 );
-	r6532_reset( machine, 0 );
 	memset( riot_ram, 0x00, 0x80 );
 	current_reset_bank_counter = 0xFF;
 }
@@ -1440,11 +1447,8 @@ static MACHINE_START( a2600p )
 {
 	const device_config *screen = video_screen_first(machine->config);
 	current_screen_height = video_screen_get_height(screen);
-	extra_RAM = new_memory_region( machine, REGION_USER2, 0x8600, ROM_REQUIRED );
+	extra_RAM = memory_region_alloc( machine, "user2", 0x8600, ROM_REQUIRED );
 	tia_init( machine, &tia_interface_pal );
-	r6532_config( machine, 0, &r6532_interface );
-	r6532_set_clock( 0, MASTER_CLOCK_PAL / 3 );
-	r6532_reset( machine, 0 );
 	memset( riot_ram, 0x00, 0x80 );
 	current_reset_bank_counter = 0xFF;
 }
@@ -1809,16 +1813,16 @@ static MACHINE_RESET( a2600 )
 
 static INPUT_PORTS_START( a2600 )
 
-	PORT_START_TAG("PADDLE1") /* [0] */
+	PORT_START("PADDLE1") /* [0] */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(11) PORT_PLAYER(1) PORT_REVERSE
-	PORT_START_TAG("PADDLE3") /* [1] */
+	PORT_START("PADDLE3") /* [1] */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(11) PORT_PLAYER(3) PORT_REVERSE
-	PORT_START_TAG("PADDLE2") /* [2] */
+	PORT_START("PADDLE2") /* [2] */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(21) PORT_PLAYER(2) PORT_REVERSE
-	PORT_START_TAG("PADDLE4") /* [3] */
+	PORT_START("PADDLE4") /* [3] */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(21) PORT_PLAYER(4) PORT_REVERSE PORT_CODE_DEC(KEYCODE_4_PAD) PORT_CODE_INC(KEYCODE_6_PAD)
 
-	PORT_START_TAG("BUTTONS_L") /* [4] left port button(s) */
+	PORT_START("BUTTONS_L") /* [4] left port button(s) */
 //  PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(15) PORT_PLAYER(1)
 //  PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(15) PORT_PLAYER(1)
 	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(15) PORT_PLAYER(1)
@@ -1827,7 +1831,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(10) PORT_PLAYER(1)
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(10) PORT_PLAYER(1)
 
-	PORT_START_TAG("BUTTONS_R") /* [5] right port button(s) */
+	PORT_START("BUTTONS_R") /* [5] right port button(s) */
 //  PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(25) PORT_PLAYER(2)
 //  PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(25) PORT_PLAYER(2)
 	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(25) PORT_PLAYER(2)
@@ -1836,7 +1840,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(20) PORT_PLAYER(2)
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(20) PORT_PLAYER(2)
 
-	PORT_START_TAG("SWA_JOY") /* [6] SWCHA joystick */
+	PORT_START("SWA_JOY") /* [6] SWCHA joystick */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_CATEGORY(20) PORT_PLAYER(2)
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CATEGORY(20) PORT_PLAYER(2)
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CATEGORY(20) PORT_PLAYER(2)
@@ -1846,7 +1850,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CATEGORY(10) PORT_PLAYER(1)
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_CATEGORY(10) PORT_PLAYER(1)
 
-	PORT_START_TAG("SWA_PAD") /* [7] SWCHA paddles */
+	PORT_START("SWA_PAD") /* [7] SWCHA paddles */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(21) PORT_PLAYER(4)
@@ -1856,7 +1860,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(11) PORT_PLAYER(3)
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(11) PORT_PLAYER(1)
 
-	PORT_START_TAG("SWB") /* [8] SWCHB */
+	PORT_START("SWB") /* [8] SWCHB */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Reset Game") PORT_CODE(KEYCODE_2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START) PORT_NAME("Select Game")
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1872,7 +1876,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_DIPSETTING(    0x80, "A" )
 	PORT_DIPSETTING(    0x00, "B" )
 
-	PORT_START_TAG("CONTROLLERS") /* [9] */
+	PORT_START("CONTROLLERS") /* [9] */
 	PORT_CATEGORY_CLASS( 0xf0, 0x00, STR_LEFT_CONTROLLER )
 	PORT_CATEGORY_ITEM(    0x00, DEF_STR( Joystick ), 10 )
 	PORT_CATEGORY_ITEM(    0x10, STR_PADDLES, 11 )
@@ -1898,7 +1902,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_CATEGORY_ITEM(    0x0a, STR_KIDVID, 30 )
 	//PORT_CATEGORY_ITEM(    0x0b, "Save Key", 31 )
 
-	PORT_START_TAG("KEYPAD_L")	/* [10] left keypad */
+	PORT_START("KEYPAD_L")	/* [10] left keypad */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(13) PORT_NAME("left 1") PORT_CODE(KEYCODE_7_PAD)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(13) PORT_NAME("left 2") PORT_CODE(KEYCODE_8_PAD)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(13) PORT_NAME("left 3") PORT_CODE(KEYCODE_9_PAD)
@@ -1912,7 +1916,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(13) PORT_NAME("left 0") PORT_CODE(KEYCODE_DEL_PAD)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(13) PORT_NAME("left #") PORT_CODE(KEYCODE_ENTER_PAD)
 
-	PORT_START_TAG("KEYPAD_R")  /* [11] right keypad */
+	PORT_START("KEYPAD_R")  /* [11] right keypad */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(23) PORT_NAME("right 1") PORT_CODE(KEYCODE_5)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(23) PORT_NAME("right 2") PORT_CODE(KEYCODE_6)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(23) PORT_NAME("right 3") PORT_CODE(KEYCODE_7)
@@ -1926,34 +1930,34 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(23) PORT_NAME("right 0") PORT_CODE(KEYCODE_B)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(23) PORT_NAME("right #") PORT_CODE(KEYCODE_N)
 
-	PORT_START_TAG("WHEEL_L")	/* [12] left driving controller */
+	PORT_START("WHEEL_L")	/* [12] left driving controller */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(12) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(1)
 
-	PORT_START_TAG("WHEEL_R")	/* [13] right driving controller */
+	PORT_START("WHEEL_R")	/* [13] right driving controller */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(22) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
-	PORT_START_TAG("GUNX_L")	/* [14] left light gun X */
+	PORT_START("GUNX_L")	/* [14] left light gun X */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CATEGORY(14) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START_TAG("GUNY_L")	/* [15] left light gun Y */
+	PORT_START("GUNY_L")	/* [15] left light gun Y */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CATEGORY(14) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START_TAG("GUNX_R")	/* [16] right light gun X */
+	PORT_START("GUNX_R")	/* [16] right light gun X */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CATEGORY(24) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START_TAG("GUNY_R")	/* [17] right light gun Y */
+	PORT_START("GUNY_R")	/* [17] right light gun Y */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CATEGORY(24) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START_TAG("TRAKX_L")	/* [18] left trak ball X */
+	PORT_START("TRAKX_L")	/* [18] left trak ball X */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(15) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(1)
 
-	PORT_START_TAG("TRAKY_L")	/* [19] left trak ball Y */
+	PORT_START("TRAKY_L")	/* [19] left trak ball Y */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_CATEGORY(15) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(1)
 
-	PORT_START_TAG("TRAKX_R")	/* [20] right trak ball X */
+	PORT_START("TRAKX_R")	/* [20] right trak ball X */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(25) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
-	PORT_START_TAG("TRAKY_R")	/* [21] right trak ball Y */
+	PORT_START("TRAKY_R")	/* [21] right trak ball Y */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_CATEGORY(25) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
 INPUT_PORTS_END
@@ -1961,7 +1965,7 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( a2600 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, MASTER_CLOCK_NTSC / 3)	/* actually M6507 */
+	MDRV_CPU_ADD("main", M6502, MASTER_CLOCK_NTSC / 3)	/* actually M6507 */
 	MDRV_CPU_PROGRAM_MAP(a2600_mem, 0)
 
 	MDRV_MACHINE_START(a2600)
@@ -1979,15 +1983,18 @@ static MACHINE_DRIVER_START( a2600 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(TIA, MASTER_CLOCK_NTSC/114)
+	MDRV_SOUND_ADD("tia", TIA, MASTER_CLOCK_NTSC/114)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90)
-	MDRV_SOUND_ADD(WAVE, 0)
+	MDRV_SOUND_ADD("wave", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
+
+	/* devices */
+	MDRV_RIOT6532_ADD("riot", MASTER_CLOCK_NTSC / 3, r6532_interface)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( a2600p )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, MASTER_CLOCK_PAL / 3)    /* actually M6507 */
+	MDRV_CPU_ADD("main", M6502, MASTER_CLOCK_PAL / 3)    /* actually M6507 */
 	MDRV_CPU_PROGRAM_MAP(a2600_mem, 0)
 
 	MDRV_MACHINE_START(a2600p)
@@ -2005,17 +2012,20 @@ static MACHINE_DRIVER_START( a2600p )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(TIA, MASTER_CLOCK_PAL/114)
+	MDRV_SOUND_ADD("tia", TIA, MASTER_CLOCK_PAL/114)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90)
-	MDRV_SOUND_ADD(WAVE, 0)
+	MDRV_SOUND_ADD("wave", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
+
+	/* devices */
+	MDRV_RIOT6532_ADD("riot", MASTER_CLOCK_PAL / 3, r6532_interface)
 MACHINE_DRIVER_END
 
 
 ROM_START( a2600 )
-	ROM_REGION( 0x2000, REGION_CPU1, 0 )
+	ROM_REGION( 0x2000, "main", 0 )
 	ROM_FILL( 0x0000, 0x2000, 0xFF )
-	ROM_REGION( 0x80000, REGION_USER1, 0 )
+	ROM_REGION( 0x80000, "user1", 0 )
 	ROM_FILL( 0x00000, 0x80000, 0xFF )
 ROM_END
 

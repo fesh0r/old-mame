@@ -139,7 +139,7 @@ static const char layout_thomson[] = "thomson";
 static INPUT_PORTS_START( thom_game_port )
 
 /* joysticks, common to CM 90-112 & SX 90-018 */
-     PORT_START_TAG ( "game_port_directions" )
+     PORT_START ( "game_port_directions" )
      PAD ( 0x01, 1, "\xE2\x86\x91", JOYSTICK_UP,    UP,    UP)
      PAD ( 0x02, 1, "\xE2\x86\x93", JOYSTICK_DOWN,  DOWN,  DOWN )
      PAD ( 0x04, 1, "\xE2\x86\x90", JOYSTICK_LEFT,  LEFT,  LEFT )
@@ -149,7 +149,7 @@ static INPUT_PORTS_START( thom_game_port )
      PAD ( 0x40, 2, "\xE2\x86\x90", JOYSTICK_LEFT,  LEFT,  4_PAD )
      PAD ( 0x80, 2, "\xE2\x86\x92", JOYSTICK_RIGHT, RIGHT, 6_PAD )
 
-     PORT_START_TAG ( "game_port_buttons" )
+     PORT_START ( "game_port_buttons" )
      PAD ( 0x40, 1, "Action A", BUTTON1, BUTTON1, LCONTROL )
      PAD ( 0x80, 2, "Action A", BUTTON1, BUTTON1, RCONTROL )
 
@@ -160,19 +160,19 @@ static INPUT_PORTS_START( thom_game_port )
      PORT_BIT  ( 0x03, IP_ACTIVE_LOW, IPT_UNUSED ) /* ? */
 
 /* mouse, SX 90-018 specific */
-     PORT_START_TAG ( "mouse_x" )
+     PORT_START ( "mouse_x" )
      PORT_BIT ( 0xffff, 0x00, IPT_MOUSE_X )
      PORT_NAME ( "Mouse X" )
      PORT_SENSITIVITY ( 150 )
      PORT_PLAYER (1)
 
-     PORT_START_TAG ( "mouse_y" )
+     PORT_START ( "mouse_y" )
      PORT_BIT ( 0xffff, 0x00, IPT_MOUSE_Y )
      PORT_NAME ( "Mouse Y" )
      PORT_SENSITIVITY ( 150 )
      PORT_PLAYER (1)
 
-     PORT_START_TAG ( "mouse_button" )
+     PORT_START ( "mouse_button" )
      PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
      PORT_NAME ( "Left Mouse Button" )
      PORT_CODE( MOUSECODE_BUTTON1 )
@@ -186,21 +186,21 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( thom_lightpen )
 
-     PORT_START_TAG ( "lightpen_x" )
+     PORT_START ( "lightpen_x" )
      PORT_BIT ( 0xffff, THOM_TOTAL_WIDTH/2, IPT_LIGHTGUN_X )
      PORT_NAME ( "Lightpen X" )
      PORT_MINMAX( 0, THOM_TOTAL_WIDTH )
      PORT_SENSITIVITY( 50 )
      PORT_CROSSHAIR(X, 1.0, 0.0, 0)
 
-     PORT_START_TAG ( "lightpen_y" )
+     PORT_START ( "lightpen_y" )
      PORT_BIT ( 0xffff, THOM_TOTAL_HEIGHT/2, IPT_LIGHTGUN_Y )
      PORT_NAME ( "Lightpen Y" )
      PORT_MINMAX ( 0, THOM_TOTAL_HEIGHT )
      PORT_SENSITIVITY( 50 )
      PORT_CROSSHAIR(Y, 1.0, 0.0, 0)
 
-     PORT_START_TAG ( "lightpen_button" )
+     PORT_START ( "lightpen_button" )
      PORT_BIT ( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 )
      PORT_NAME ( "Lightpen Button" )
      PORT_CODE( MOUSECODE_BUTTON1 )
@@ -414,10 +414,8 @@ They can run the same software and accept the same devices and extensions.
 
 static ADDRESS_MAP_START ( to7, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x3fff ) AM_ROMBANK   ( THOM_CART_BANK ) /* 4 * 16 KB */
-                                 AM_WRITE     ( to7_cartridge_w )
-     AM_RANGE ( 0x4000, 0x5fff ) AM_RAMBANK   ( THOM_VRAM_BANK )
-                                 AM_WRITE     ( to7_vram_w )
+     AM_RANGE ( 0x0000, 0x3fff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), to7_cartridge_w ) /* 4 * 16 KB */
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to7_vram_w )
      AM_RANGE ( 0x6000, 0x7fff ) AM_RAMBANK   ( THOM_BASE_BANK ) /* 1 * 8 KB */
      AM_RANGE ( 0x8000, 0xbfff ) AM_NOP       /* 16 KB (for extension) */
      AM_RANGE ( 0xc000, 0xdfff ) AM_NOP       /*  8 KB (for extension) */
@@ -503,7 +501,7 @@ ADDRESS_MAP_END
 
 
 ROM_START ( to7 )
-     ROM_REGION ( 0x24800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x24800, "main", 0 )
      ROM_LOAD ( "to7.rom", 0xe800, 0x1800,
 		CRC(0e7826da)
 		MD5(5bf18521bf35293de942645f690b2845)
@@ -513,7 +511,7 @@ ROM_START ( to7 )
 ROM_END
 
 ROM_START ( t9000 )
-     ROM_REGION ( 0x24800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x24800, "main", 0 )
      ROM_LOAD ( "t9000.rom", 0xe800, 0x1800,
 		CRC(daa8cfbf)
 		MD5(b3007f26e7b621c1a4f0fd2c287f80b9)
@@ -526,7 +524,7 @@ ROM_END
 /* ------------ inputs   ------------ */
 
 static INPUT_PORTS_START ( to7_config )
-     PORT_START_TAG ( "config" )
+     PORT_START ( "config" )
 
      PORT_CONFNAME ( 0x01, 0x00, "Game Port" )
      PORT_CONFSETTING ( 0x00, DEF_STR( Joystick ) )
@@ -535,7 +533,7 @@ static INPUT_PORTS_START ( to7_config )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( to7_vconfig )
-     PORT_START_TAG ( "vconfig" )
+     PORT_START ( "vconfig" )
 
      PORT_CONFNAME ( 0x03, 0x00, "Border" )
      PORT_CONFSETTING ( 0x00, "Normal (56x47)" )
@@ -550,7 +548,7 @@ static INPUT_PORTS_START ( to7_vconfig )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( to7_mconfig )
-     PORT_START_TAG ( "mconfig" )
+     PORT_START ( "mconfig" )
 
      PORT_CONFNAME ( 0x01, 0x01, "E7FE-F port" )
      PORT_CONFSETTING ( 0x00, "Modem (unemulated)" )
@@ -559,7 +557,7 @@ static INPUT_PORTS_START ( to7_mconfig )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( to7_fconfig )
-     PORT_START_TAG ( "fconfig" )
+     PORT_START ( "fconfig" )
 
      PORT_CONFNAME ( 0x07, 0x03, "Floppy (reset)" )
      PORT_CONFSETTING ( 0x00, DEF_STR ( None ) )
@@ -607,10 +605,10 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START ( to7_keyboard )
-     PORT_START_TAG ( "keyboard_0" )
+     PORT_START ( "keyboard_0" )
      KEY ( 0, "Shift", LSHIFT ) PORT_CODE ( KEYCODE_RSHIFT ) PORT_CHAR(UCHAR_SHIFT_1)
      PORT_BIT  ( 0xfe, IP_ACTIVE_LOW, IPT_UNUSED )
-     PORT_START_TAG ( "keyboard_1" )
+     PORT_START ( "keyboard_1" )
      KEY ( 0, "W", W )                PORT_CHAR('W')
      KEY ( 1, "\xE2\x86\x91", UP )    PORT_CHAR(UCHAR_MAMEKEY(UP))
      KEY ( 2, "C \303\247", C )       PORT_CHAR('C')
@@ -619,7 +617,7 @@ static INPUT_PORTS_START ( to7_keyboard )
      KEY ( 5, "Control", LCONTROL )   PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
      KEY ( 6, "Accent", END )         PORT_CHAR(UCHAR_MAMEKEY(END))
      KEY ( 7, "Stop", TAB )           PORT_CHAR(27)
-     PORT_START_TAG ( "keyboard_2" )
+     PORT_START ( "keyboard_2" )
      KEY ( 0, "X", X )                PORT_CHAR('X')
      KEY ( 1, "\xE2\x86\x90", LEFT )  PORT_CHAR(UCHAR_MAMEKEY(LEFT))
      KEY ( 2, "V", V )                PORT_CHAR('V')
@@ -628,7 +626,7 @@ static INPUT_PORTS_START ( to7_keyboard )
      KEY ( 5, "A", A )                PORT_CHAR('A')
      KEY ( 6, "+ ;", EQUALS )         PORT_CHAR('+') PORT_CHAR(';')
      KEY ( 7, "1 !", 1 )              PORT_CHAR('1') PORT_CHAR('!')
-     PORT_START_TAG ( "keyboard_3" )
+     PORT_START ( "keyboard_3" )
      KEY ( 0, "Space Caps-Lock", SPACE ) PORT_CHAR(' ') PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
      KEY ( 1, "\xE2\x86\x93", DOWN )  PORT_CHAR(UCHAR_MAMEKEY(DOWN))
      KEY ( 2, "B", B )                PORT_CHAR('B')
@@ -637,7 +635,7 @@ static INPUT_PORTS_START ( to7_keyboard )
      KEY ( 5, "Z \305\223", Z)        PORT_CHAR('Z')
      KEY ( 6, "- =", MINUS )          PORT_CHAR('-') PORT_CHAR('=')
      KEY ( 7, "2 \" \302\250", 2 )    PORT_CHAR('2') PORT_CHAR('"')
-     PORT_START_TAG ( "keyboard_4" )
+     PORT_START ( "keyboard_4" )
      KEY ( 0, "@ \342\206\221", TILDE ) PORT_CHAR('@')
      KEY ( 1, "\xE2\x86\x92", RIGHT ) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
      KEY ( 2, "M", M )                PORT_CHAR('M')
@@ -646,7 +644,7 @@ static INPUT_PORTS_START ( to7_keyboard )
      KEY ( 5, "E", E )                PORT_CHAR('E')
      KEY ( 6, "0 \140", 0 )           PORT_CHAR('0') PORT_CHAR( 0140 )
      KEY ( 7, "3 #", 3 )              PORT_CHAR('3') PORT_CHAR('#')
-     PORT_START_TAG ( "keyboard_5" )
+     PORT_START ( "keyboard_5" )
      KEY ( 0, ". >", STOP )           PORT_CHAR('.') PORT_CHAR('>')
      KEY ( 1, "Home", HOME )          PORT_CHAR(UCHAR_MAMEKEY(HOME))
      KEY ( 2, "L", L )                PORT_CHAR('L')
@@ -655,7 +653,7 @@ static INPUT_PORTS_START ( to7_keyboard )
      KEY ( 5, "R", R )                PORT_CHAR('R')
      KEY ( 6, "9 )", 9 )              PORT_CHAR('9') PORT_CHAR(')')
      KEY ( 7, "4 $", 4 )              PORT_CHAR('4') PORT_CHAR('$')
-     PORT_START_TAG ( "keyboard_6" )
+     PORT_START ( "keyboard_6" )
      KEY ( 0, ", <", COMMA )          PORT_CHAR(',') PORT_CHAR('<')
      KEY ( 1, "Insert", INSERT )      PORT_CHAR(UCHAR_MAMEKEY(INSERT))
      KEY ( 2, "K", K )                PORT_CHAR('K')
@@ -664,7 +662,7 @@ static INPUT_PORTS_START ( to7_keyboard )
      KEY ( 5, "T", T )                PORT_CHAR('T')
      KEY ( 6, "8 (", 8 )              PORT_CHAR('8') PORT_CHAR('(')
      KEY ( 7, "5 %", 5 )              PORT_CHAR('5') PORT_CHAR('%')
-     PORT_START_TAG ( "keyboard_7" )
+     PORT_START ( "keyboard_7" )
      KEY ( 0, "N", N )                PORT_CHAR('N')
      KEY ( 1, "Delete", DEL )         PORT_CHAR(8)
      KEY ( 2, "J \305\222", J )       PORT_CHAR('J')
@@ -675,8 +673,8 @@ static INPUT_PORTS_START ( to7_keyboard )
      KEY ( 7, "6 &", 6 )              PORT_CHAR('6') PORT_CHAR('&')
 
      /* unused */
-     PORT_START_TAG ( "keyboard_8" )
-     PORT_START_TAG ( "keyboard_9" )
+     PORT_START ( "keyboard_8" )
+     PORT_START ( "keyboard_9" )
 
 INPUT_PORTS_END
 
@@ -724,7 +722,7 @@ static MACHINE_DRIVER_START ( to7 )
      MDRV_MACHINE_RESET ( to7 )
 
 /* cpu */
-     MDRV_CPU_ADD_TAG ( "main", M6809, 1000000 )
+     MDRV_CPU_ADD ( "main", M6809, 1000000 )
      MDRV_CPU_PROGRAM_MAP ( to7, 0 )
 
 /* video */
@@ -748,11 +746,11 @@ static MACHINE_DRIVER_START ( to7 )
 
 /* sound */
      MDRV_SPEAKER_STANDARD_MONO("mono")
-     MDRV_SOUND_ADD ( DAC, 0 )
+     MDRV_SOUND_ADD ( "buzzer", DAC, 0 )
      MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* 1-bit buzzer */
-     MDRV_SOUND_ADD ( DAC, 0 )
+     MDRV_SOUND_ADD ( "dac", DAC, 0 )
      MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* 6-bit game extention DAC */
-     MDRV_SOUND_ADD ( DAC, 0 )
+     MDRV_SOUND_ADD ( "speech", DAC, 0 )
      MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* speech synthesis */
 
 	 /* printer */
@@ -821,10 +819,8 @@ In arabic mode, Ctrl+E / Ctrl+X to start / stop typing in-line latin.
 
 static ADDRESS_MAP_START ( to770, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x3fff ) AM_ROMBANK   ( THOM_CART_BANK ) /* 4 * 16 KB */
-                                 AM_WRITE     ( to7_cartridge_w )
-     AM_RANGE ( 0x4000, 0x5fff ) AM_RAMBANK   ( THOM_VRAM_BANK )
-                                 AM_WRITE     ( to770_vram_w )
+     AM_RANGE ( 0x0000, 0x3fff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), to7_cartridge_w ) /* 4 * 16 KB */
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
      AM_RANGE ( 0x6000, 0x9fff ) AM_RAMBANK   ( THOM_BASE_BANK ) /* 16 KB */
      AM_RANGE ( 0xa000, 0xdfff ) AM_RAMBANK   ( THOM_RAM_BANK )  /* 6 * 16 KB */
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
@@ -858,7 +854,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( to770 )
-     ROM_REGION ( 0x24800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x24800, "main", 0 )
      ROM_LOAD ( "to770.rom", 0xe800, 0x1800, /* BIOS */
 		CRC(89518862)
 		MD5(61402c35b75faeb4b74b815f323fff3d)
@@ -868,7 +864,7 @@ ROM_START ( to770 )
 ROM_END
 
 ROM_START ( to770a )
-     ROM_REGION ( 0x24800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x24800, "main", 0 )
      ROM_LOAD ( "to770a.rom", 0xe800, 0x1800,
 		CRC(378ea808)
 		MD5(6b63aa135107beee243967a2da0e5453)
@@ -1020,8 +1016,7 @@ Differences include:
 
 static ADDRESS_MAP_START ( mo5, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x1fff ) AM_RAMBANK   ( THOM_VRAM_BANK )
-                                 AM_WRITE     ( to770_vram_w )
+     AM_RANGE ( 0x0000, 0x1fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
      AM_RANGE ( 0x2000, 0x9fff ) AM_RAMBANK   ( THOM_BASE_BANK )
      AM_RANGE ( 0xa000, 0xa7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
      AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
@@ -1034,8 +1029,7 @@ static ADDRESS_MAP_START ( mo5, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0xa7e8, 0xa7eb ) AM_READWRITE ( acia_6551_r, acia_6551_w )
      AM_RANGE ( 0xa7f2, 0xa7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xa7fe, 0xa7ff ) AM_READWRITE ( mea8000_r, mea8000_w )
-     AM_RANGE ( 0xb000, 0xefff ) AM_ROMBANK   ( THOM_CART_BANK )
-                                 AM_WRITE     ( mo5_cartridge_w )
+     AM_RANGE ( 0xb000, 0xefff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), mo5_cartridge_w )
      AM_RANGE ( 0xf000, 0xffff ) AM_ROM       /* system bios */
 
 /* 0x10000 - 0x1ffff: 16 KB integrated BASIC / 64 KB external cartridge */
@@ -1054,7 +1048,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( mo5 )
-     ROM_REGION ( 0x24800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x24800, "main", 0 )
      ROM_LOAD ( "mo5.rom", 0xf000, 0x1000,
 		CRC(f0ea9140)
 		MD5(ab3533a7132f90933acce80e256ae459)
@@ -1067,7 +1061,7 @@ ROM_START ( mo5 )
 ROM_END
 
 ROM_START ( mo5e )
-     ROM_REGION ( 0x24800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x24800, "main", 0 )
      ROM_LOAD ( "mo5e.rom", 0xf000, 0x1000,
 		CRC(6520213a)
 		MD5(434c42b96c31a341e13085048cdc8eae)
@@ -1232,10 +1226,8 @@ It was replaced quickly with the improved TO9+.
 
 static ADDRESS_MAP_START ( to9, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x3fff ) AM_ROMBANK   ( THOM_CART_BANK )/* 12 * 16 KB */
-                                 AM_WRITE     ( to9_cartridge_w )
-     AM_RANGE ( 0x4000, 0x5fff ) AM_RAMBANK   ( THOM_VRAM_BANK )
-                                 AM_WRITE     ( to770_vram_w )
+     AM_RANGE ( 0x0000, 0x3fff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), to9_cartridge_w )/* 12 * 16 KB */
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
      AM_RANGE ( 0x6000, 0x9fff ) AM_RAMBANK   ( THOM_BASE_BANK ) /* 16 KB */
      AM_RANGE ( 0xa000, 0xdfff ) AM_RAMBANK   ( THOM_RAM_BANK )  /* 10 * 16 KB */
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
@@ -1277,7 +1269,7 @@ ADDRESS_MAP_END
  */
 
 ROM_START ( to9 )
-     ROM_REGION ( 0x44800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x44800, "main", 0 )
      ROM_LOAD ( "to9.rom", 0xe000, 0x2000, /* BIOS & floppy controller */
 		CRC(f9278bf7)
 		MD5(507f0c482462b70b816fd23cf6791179)
@@ -1326,7 +1318,7 @@ ROM_END
 /* ------------ inputs   ------------ */
 
 static INPUT_PORTS_START ( to9_keyboard )
-     PORT_START_TAG ( "keyboard_0" )
+     PORT_START ( "keyboard_0" )
      KEY ( 0, "F2 F7", F2 )           PORT_CHAR(UCHAR_MAMEKEY(F2)) PORT_CHAR(UCHAR_MAMEKEY(F7))
      KEY ( 1, "_ 6", 6 )              PORT_CHAR('_') PORT_CHAR('6')
      KEY ( 2, "Y", Y )                PORT_CHAR('Y')
@@ -1335,7 +1327,7 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 5, "\xE2\x86\x92", RIGHT ) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
      KEY ( 6, "Home Clear", HOME )    PORT_CHAR(UCHAR_MAMEKEY(HOME)) PORT_CHAR(UCHAR_MAMEKEY(ESC))
      KEY ( 7, "N", N )                PORT_CHAR('N')
-     PORT_START_TAG ( "keyboard_1" )
+     PORT_START ( "keyboard_1" )
      KEY ( 0, "F3 F8", F3 )           PORT_CHAR(UCHAR_MAMEKEY(F3)) PORT_CHAR(UCHAR_MAMEKEY(F8))
      KEY ( 1, "( 5", 5 )              PORT_CHAR('(') PORT_CHAR('5')
      KEY ( 2, "T", T )                PORT_CHAR('T')
@@ -1344,7 +1336,7 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 5, "\xE2\x86\x90", LEFT )  PORT_CHAR(UCHAR_MAMEKEY(LEFT))
      KEY ( 6, "Insert", INSERT )      PORT_CHAR(UCHAR_MAMEKEY(INSERT))
      KEY ( 7, "B \302\264", B )       PORT_CHAR('B')
-     PORT_START_TAG ( "keyboard_2" )
+     PORT_START ( "keyboard_2" )
      KEY ( 0, "F4 F9", F4 )           PORT_CHAR(UCHAR_MAMEKEY(F4)) PORT_CHAR(UCHAR_MAMEKEY(F9))
      KEY ( 1, "' 4", 4 )              PORT_CHAR('\'') PORT_CHAR('4')
      KEY ( 2, "R", R )                PORT_CHAR('R')
@@ -1353,7 +1345,7 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 5, "Keypad 1", 1_PAD )     PORT_CHAR(UCHAR_MAMEKEY(1_PAD))
      KEY ( 6, "Delete Backspace", DEL ) PORT_CHAR(8) PORT_CHAR(UCHAR_MAMEKEY(BACKSPACE))
      KEY ( 7, "V", V )                PORT_CHAR('V')
-     PORT_START_TAG ( "keyboard_3" )
+     PORT_START ( "keyboard_3" )
      KEY ( 0, "F5 F10", F5 )          PORT_CHAR(UCHAR_MAMEKEY(F5)) PORT_CHAR(UCHAR_MAMEKEY(F10))
      KEY ( 1, "\" 3", 3 )             PORT_CHAR('"') PORT_CHAR('3')
      KEY ( 2, "E", E )                PORT_CHAR('E')
@@ -1362,7 +1354,7 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 5, "Keypad 4", 4_PAD )     PORT_CHAR(UCHAR_MAMEKEY(4_PAD))
      KEY ( 6, "Keypad 0", 0_PAD )     PORT_CHAR(UCHAR_MAMEKEY(0_PAD))
      KEY ( 7, "C \136", C )           PORT_CHAR('C')
-     PORT_START_TAG ( "keyboard_4" )
+     PORT_START ( "keyboard_4" )
      KEY ( 0, "F1 F6", F1 )           PORT_CHAR(UCHAR_MAMEKEY(F1)) PORT_CHAR(UCHAR_MAMEKEY(F6))
      KEY ( 1, "\303\251 2", 2 )       PORT_CHAR( 0xe9 ) PORT_CHAR('2')
      KEY ( 2, "Z", Z )                PORT_CHAR('Z')
@@ -1371,7 +1363,7 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 5, "Keypad 2", 2_PAD )     PORT_CHAR(UCHAR_MAMEKEY(2_PAD))
      KEY ( 6, "Keypad .", DEL_PAD )   PORT_CHAR(UCHAR_MAMEKEY(DEL_PAD))
      KEY ( 7, "X", X )                PORT_CHAR('X')
-     PORT_START_TAG ( "keyboard_5" )
+     PORT_START ( "keyboard_5" )
      KEY ( 0, "# @", TILDE )          PORT_CHAR('#') PORT_CHAR('@')
      KEY ( 1, "* 1", 1 )              PORT_CHAR('*') PORT_CHAR('1')
      KEY ( 2, "A \140", A )           PORT_CHAR('A')
@@ -1380,7 +1372,7 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 5, "Keypad 5", 5_PAD )     PORT_CHAR(UCHAR_MAMEKEY(5_PAD))
      KEY ( 6, "Keypad 6", 6_PAD )     PORT_CHAR(UCHAR_MAMEKEY(6_PAD))
      KEY ( 7, "W", W )                PORT_CHAR('W')
-     PORT_START_TAG ( "keyboard_6" )
+     PORT_START ( "keyboard_6" )
      KEY ( 0, "Stop", TAB )           PORT_CHAR(27)
      KEY ( 1, "\303\250 7", 7 )       PORT_CHAR( 0xe8 ) PORT_CHAR('7')
      KEY ( 2, "U", U )                PORT_CHAR('U')
@@ -1389,7 +1381,7 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 5, "Keypad 9", 9_PAD )     PORT_CHAR(UCHAR_MAMEKEY(9_PAD))
      KEY ( 6, "Keypad Enter", ENTER_PAD ) PORT_CHAR(UCHAR_MAMEKEY(ENTER_PAD))
      KEY ( 7, ", ?", COMMA )          PORT_CHAR(',') PORT_CHAR('?')
-     PORT_START_TAG ( "keyboard_7" )
+     PORT_START ( "keyboard_7" )
      KEY ( 0, "Control", LCONTROL )   PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
      KEY ( 1, "! 8", 8 )              PORT_CHAR('!') PORT_CHAR('8')
      KEY ( 2, "I", I )                PORT_CHAR('I')
@@ -1398,7 +1390,7 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 5, "\xE2\x86\x93", DOWN )  PORT_CHAR(UCHAR_MAMEKEY(DOWN))
      KEY ( 6, "] }", BACKSLASH )      PORT_CHAR(']') PORT_CHAR('}')
      KEY ( 7, "; .", STOP )           PORT_CHAR(';') PORT_CHAR('.')
-     PORT_START_TAG ( "keyboard_8" )
+     PORT_START ( "keyboard_8" )
      KEY ( 0, "Caps-Lock", CAPSLOCK ) PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
      KEY ( 1, "\303\247 9", 9 )       PORT_CHAR( 0xe7 ) PORT_CHAR('9')
      KEY ( 2, "O", O )                PORT_CHAR('O')
@@ -1407,7 +1399,7 @@ static INPUT_PORTS_START ( to9_keyboard )
      KEY ( 5, "\303\271 %", COLON )   PORT_CHAR( 0xf9 ) PORT_CHAR('%')
      KEY ( 6, "Enter", ENTER )        PORT_CHAR(13)
      KEY ( 7, ": /", SLASH )          PORT_CHAR(':') PORT_CHAR('/')
-     PORT_START_TAG ( "keyboard_9" )
+     PORT_START ( "keyboard_9" )
      KEY ( 0, "Shift", LSHIFT )  PORT_CODE ( KEYCODE_RSHIFT ) PORT_CHAR(UCHAR_SHIFT_1)
      KEY ( 1, "\303\240 0", 0 )       PORT_CHAR( 0xe0 ) PORT_CHAR('0')
      KEY ( 2, "P", P )                PORT_CHAR('P')
@@ -1419,7 +1411,7 @@ static INPUT_PORTS_START ( to9_keyboard )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( to9_fconfig )
-     PORT_START_TAG ( "fconfig" )
+     PORT_START ( "fconfig" )
 
      PORT_CONFNAME ( 0x07, 0x00, "External floppy (reset)" )
      PORT_CONFSETTING ( 0x00, "No external" )
@@ -1564,18 +1556,12 @@ The TO8D is simply a TO8 with an integrated 3"1/2 floppy drive.
 
 static ADDRESS_MAP_START ( to8, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x3fff ) AM_RAMBANK   ( THOM_CART_BANK ) /* 8 * 16 KB */
-                                 AM_WRITE     ( to8_cartridge_w )
-     AM_RANGE ( 0x4000, 0x5fff ) AM_RAMBANK   ( THOM_VRAM_BANK )
-                                 AM_WRITE     ( to770_vram_w )
-     AM_RANGE ( 0x6000, 0x7fff ) AM_RAMBANK   ( TO8_SYS_LO )
-                                 AM_WRITE     ( to8_sys_lo_w )
-     AM_RANGE ( 0x8000, 0x9fff ) AM_RAMBANK   ( TO8_SYS_HI )
-                                 AM_WRITE     ( to8_sys_hi_w )
-     AM_RANGE ( 0xa000, 0xbfff ) AM_RAMBANK   ( TO8_DATA_LO )
-                                 AM_WRITE     ( to8_data_lo_w )
-     AM_RANGE ( 0xc000, 0xdfff ) AM_RAMBANK   ( TO8_DATA_HI )
-                                 AM_WRITE     ( to8_data_hi_w )
+     AM_RANGE ( 0x0000, 0x3fff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), to8_cartridge_w ) /* 8 * 16 KB */
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
+     AM_RANGE ( 0x6000, 0x7fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_LO), to8_sys_lo_w )
+     AM_RANGE ( 0x8000, 0x9fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_HI), to8_sys_hi_w )
+     AM_RANGE ( 0xa000, 0xbfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
+     AM_RANGE ( 0xc000, 0xdfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK ) /* 2 * 2 KB */
      AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_READWRITE ( mc6846_r, mc6846_w )
      AM_RANGE ( 0xe7c8, 0xe7cb ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
@@ -1605,7 +1591,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( to8 )
-     ROM_REGION ( 0x38800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x38800, "main", 0 )
 
      /* BIOS & floppy */
      ROM_LOAD ( "to8-0.rom", 0x30000, 0x2000,
@@ -1641,7 +1627,7 @@ ROM_START ( to8 )
 ROM_END
 
 ROM_START ( to8d )
-     ROM_REGION ( 0x38800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x38800, "main", 0 )
 
      /* BIOS & floppy */
      ROM_LOAD ( "to8d-0.rom", 0x30000, 0x2000,
@@ -1680,7 +1666,7 @@ ROM_END
 /* ------------ inputs   ------------ */
 
 static INPUT_PORTS_START ( to8_config )
-     PORT_START_TAG ( "config" )
+     PORT_START ( "config" )
 
      PORT_CONFNAME ( 0x01, 0x00, "Game Port" )
      PORT_CONFSETTING ( 0x00, DEF_STR( Joystick ) )
@@ -1781,18 +1767,12 @@ The differences with the TO8 are:
 
 static ADDRESS_MAP_START ( to9p, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x3fff ) AM_RAMBANK   ( THOM_CART_BANK ) /* 8 * 16 KB */
-                                 AM_WRITE     ( to8_cartridge_w )
-     AM_RANGE ( 0x4000, 0x5fff ) AM_RAMBANK   ( THOM_VRAM_BANK )
-                                 AM_WRITE     ( to770_vram_w )
-     AM_RANGE ( 0x6000, 0x7fff ) AM_RAMBANK   ( TO8_SYS_LO )
-                                 AM_WRITE     ( to8_sys_lo_w )
-     AM_RANGE ( 0x8000, 0x9fff ) AM_RAMBANK   ( TO8_SYS_HI )
-                                 AM_WRITE     ( to8_sys_hi_w )
-     AM_RANGE ( 0xa000, 0xbfff ) AM_RAMBANK   ( TO8_DATA_LO )
-                                 AM_WRITE     ( to8_data_lo_w )
-     AM_RANGE ( 0xc000, 0xdfff ) AM_RAMBANK   ( TO8_DATA_HI )
-                                 AM_WRITE     ( to8_data_hi_w )
+     AM_RANGE ( 0x0000, 0x3fff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), to8_cartridge_w ) /* 8 * 16 KB */
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
+     AM_RANGE ( 0x6000, 0x7fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_LO), to8_sys_lo_w )
+     AM_RANGE ( 0x8000, 0x9fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_HI), to8_sys_hi_w )
+     AM_RANGE ( 0xa000, 0xbfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
+     AM_RANGE ( 0xc000, 0xdfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK ) /* 2 * 2 KB */
      AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_READWRITE ( mc6846_r, mc6846_w )
      AM_RANGE ( 0xe7c8, 0xe7cb ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
@@ -1823,7 +1803,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( to9p )
-     ROM_REGION ( 0x38800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x38800, "main", 0 )
 
      /* BIOS & floppy */
      ROM_LOAD ( "to9p-0.rom", 0x30000, 0x2000,
@@ -1954,16 +1934,11 @@ a PC XT.
 
 static ADDRESS_MAP_START ( mo6, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x1fff ) AM_RAMBANK   ( THOM_VRAM_BANK )
-                                 AM_WRITE     ( to770_vram_w )
-     AM_RANGE ( 0x2000, 0x3fff ) AM_RAMBANK   ( TO8_SYS_LO )
-                                 AM_WRITE     ( to8_sys_lo_w )
-     AM_RANGE ( 0x4000, 0x5fff ) AM_RAMBANK   ( TO8_SYS_HI )
-                                 AM_WRITE     ( to8_sys_hi_w )
-     AM_RANGE ( 0x6000, 0x7fff ) AM_RAMBANK   ( TO8_DATA_LO )
-                                 AM_WRITE     ( to8_data_lo_w )
-     AM_RANGE ( 0x8000, 0x9fff ) AM_RAMBANK   ( TO8_DATA_HI )
-                                 AM_WRITE     ( to8_data_hi_w )
+     AM_RANGE ( 0x0000, 0x1fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
+     AM_RANGE ( 0x2000, 0x3fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_LO), to8_sys_lo_w )
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_HI), to8_sys_hi_w )
+     AM_RANGE ( 0x6000, 0x7fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
+     AM_RANGE ( 0x8000, 0x9fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
      AM_RANGE ( 0xa000, 0xa7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
      AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
      AM_RANGE ( 0xa7cb, 0xa7cb ) AM_WRITE     ( mo6_ext_w )
@@ -1992,7 +1967,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( mo6 )
-     ROM_REGION ( 0x34800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x34800, "main", 0 )
 
      /* BIOS */
      ROM_LOAD ( "mo6-0.rom", 0x23000, 0x1000,
@@ -2027,7 +2002,7 @@ ROM_START ( mo6 )
 ROM_END
 
 ROM_START ( pro128 )
-     ROM_REGION ( 0x34800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x34800, "main", 0 )
 
      /* BIOS */
      ROM_LOAD ( "pro128-0.rom", 0x23000, 0x1000,
@@ -2066,7 +2041,7 @@ ROM_END
 
 static INPUT_PORTS_START ( mo6_keyboard )
 
-     PORT_START_TAG ( "keyboard_0" )
+     PORT_START ( "keyboard_0" )
      KEY ( 0, "N", N )                   PORT_CHAR('N')
      KEY ( 1, ", ?", COMMA )             PORT_CHAR(',') PORT_CHAR('?')
      KEY ( 2, "; .", STOP )              PORT_CHAR(';') PORT_CHAR('.')
@@ -2075,7 +2050,7 @@ static INPUT_PORTS_START ( mo6_keyboard )
      KEY ( 5, "X", X )                   PORT_CHAR('X')
      KEY ( 6, "W", W )                   PORT_CHAR('W')
      KEY ( 7, "Shift", LSHIFT ) PORT_CODE ( KEYCODE_RSHIFT ) PORT_CHAR(UCHAR_SHIFT_1)
-     PORT_START_TAG ( "keyboard_1" )
+     PORT_START ( "keyboard_1" )
      KEY ( 0, "Delete Backspace", DEL )  PORT_CHAR(8) PORT_CHAR(UCHAR_MAMEKEY(BACKSPACE))
      KEY ( 1, "Insert", INSERT )         PORT_CHAR(UCHAR_MAMEKEY(INSERT))
      KEY ( 2, "> <", BACKSLASH2 )        PORT_CHAR('>') PORT_CHAR('<')
@@ -2084,7 +2059,7 @@ static INPUT_PORTS_START ( mo6_keyboard )
      KEY ( 5, "\xE2\x86\x90", LEFT )     PORT_CHAR(UCHAR_MAMEKEY(LEFT))
      KEY ( 6, "\xE2\x86\x91", UP )       PORT_CHAR(UCHAR_MAMEKEY(UP))
      KEY ( 7, "BASIC", RCONTROL )        PORT_CHAR(UCHAR_MAMEKEY(RCONTROL))
-     PORT_START_TAG ( "keyboard_2" )
+     PORT_START ( "keyboard_2" )
      KEY ( 0, "J", J )                   PORT_CHAR('J')
      KEY ( 1, "K", K )                   PORT_CHAR('K')
      KEY ( 2, "L", L )                   PORT_CHAR('L')
@@ -2093,7 +2068,7 @@ static INPUT_PORTS_START ( mo6_keyboard )
      KEY ( 5, "V", V )                   PORT_CHAR('V')
      KEY ( 6, "C \136", C )              PORT_CHAR('C')
      KEY ( 7, "Caps-Lock", CAPSLOCK )    PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
-     PORT_START_TAG ( "keyboard_3" )
+     PORT_START ( "keyboard_3" )
      KEY ( 0, "H \302\250", H )          PORT_CHAR('H')
      KEY ( 1, "G", G )                   PORT_CHAR('G')
      KEY ( 2, "F", F )                   PORT_CHAR('F')
@@ -2102,7 +2077,7 @@ static INPUT_PORTS_START ( mo6_keyboard )
      KEY ( 5, "Q", Q )                   PORT_CHAR('Q')
      KEY ( 6, "Home Clear", HOME )       PORT_CHAR(UCHAR_MAMEKEY(HOME)) PORT_CHAR(UCHAR_MAMEKEY(ESC))
      KEY ( 7, "F1 F6", F1 )              PORT_CHAR(UCHAR_MAMEKEY(F1)) PORT_CHAR(UCHAR_MAMEKEY(F6))
-     PORT_START_TAG ( "keyboard_4" )
+     PORT_START ( "keyboard_4" )
      KEY ( 0, "U", U )                   PORT_CHAR('U')
      KEY ( 1, "I", I )                   PORT_CHAR('I')
      KEY ( 2, "O", O )                   PORT_CHAR('O')
@@ -2111,7 +2086,7 @@ static INPUT_PORTS_START ( mo6_keyboard )
      KEY ( 5, "$ &", CLOSEBRACE )        PORT_CHAR('$') PORT_CHAR('&')
      KEY ( 6, "Enter", ENTER )           PORT_CHAR(13)
      KEY ( 7, "F2 F7", F2 )              PORT_CHAR(UCHAR_MAMEKEY(F2)) PORT_CHAR(UCHAR_MAMEKEY(F7))
-     PORT_START_TAG ( "keyboard_5" )
+     PORT_START ( "keyboard_5" )
      KEY ( 0, "Y", Y )                   PORT_CHAR('Y')
      KEY ( 1, "T", T )                   PORT_CHAR('T')
      KEY ( 2, "R", R )                   PORT_CHAR('R')
@@ -2120,7 +2095,7 @@ static INPUT_PORTS_START ( mo6_keyboard )
      KEY ( 5, "A \140", A )              PORT_CHAR('A')
      KEY ( 6, "Control", LCONTROL )      PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
      KEY ( 7, "F3 F8", F3 )              PORT_CHAR(UCHAR_MAMEKEY(F3)) PORT_CHAR(UCHAR_MAMEKEY(F8))
-     PORT_START_TAG ( "keyboard_6" )
+     PORT_START ( "keyboard_6" )
      KEY ( 0, "7 \303\250", 7 )          PORT_CHAR('7') PORT_CHAR( 0xe8 )
      KEY ( 1, "8 !", 8 )                 PORT_CHAR('8') PORT_CHAR('!')
      KEY ( 2, "9 \303\247", 9 )          PORT_CHAR('9') PORT_CHAR( 0xe7 )
@@ -2129,7 +2104,7 @@ static INPUT_PORTS_START ( mo6_keyboard )
      KEY ( 5, "= +", EQUALS )            PORT_CHAR('=') PORT_CHAR('+')
      KEY ( 6, "Accent", END )            PORT_CHAR(UCHAR_MAMEKEY(END))
      KEY ( 7, "F4 F9", F4 )              PORT_CHAR(UCHAR_MAMEKEY(F4)) PORT_CHAR(UCHAR_MAMEKEY(F9))
-     PORT_START_TAG ( "keyboard_7" )
+     PORT_START ( "keyboard_7" )
      KEY ( 0, "6 _", 6 )                 PORT_CHAR('6') PORT_CHAR('_')
      KEY ( 1, "5 (", 5 )                 PORT_CHAR('5') PORT_CHAR('(')
      KEY ( 2, "4 '", 4 )                 PORT_CHAR('4') PORT_CHAR('\'')
@@ -2138,7 +2113,7 @@ static INPUT_PORTS_START ( mo6_keyboard )
      KEY ( 5, "1 *", 1 )                 PORT_CHAR('1') PORT_CHAR('*')
      KEY ( 6, "Stop", TAB )              PORT_CHAR(27)
      KEY ( 7, "F5 F10", F5 )             PORT_CHAR(UCHAR_MAMEKEY(F5)) PORT_CHAR(UCHAR_MAMEKEY(F10))
-     PORT_START_TAG ( "keyboard_8" )
+     PORT_START ( "keyboard_8" )
      KEY ( 0, "[ {", QUOTE )             PORT_CHAR('[') PORT_CHAR('{')
      KEY ( 1, "] }", BACKSLASH )         PORT_CHAR(']') PORT_CHAR('}')
      KEY ( 2, ") \302\260", MINUS )      PORT_CHAR(')') PORT_CHAR( 0xb0 )
@@ -2147,7 +2122,7 @@ static INPUT_PORTS_START ( mo6_keyboard )
      PORT_BIT  ( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
      /* unused */
-     PORT_START_TAG ( "keyboard_9" )
+     PORT_START ( "keyboard_9" )
 
 INPUT_PORTS_END
 
@@ -2279,16 +2254,11 @@ Here are the differences between the MO6 and MO5NR:
 
 static ADDRESS_MAP_START ( mo5nr, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x1fff ) AM_RAMBANK   ( THOM_VRAM_BANK )
-                                 AM_WRITE     ( to770_vram_w )
-     AM_RANGE ( 0x2000, 0x3fff ) AM_RAMBANK   ( TO8_SYS_LO )
-                                 AM_WRITE     ( to8_sys_lo_w )
-     AM_RANGE ( 0x4000, 0x5fff ) AM_RAMBANK   ( TO8_SYS_HI )
-                                 AM_WRITE     ( to8_sys_hi_w )
-     AM_RANGE ( 0x6000, 0x7fff ) AM_RAMBANK   ( TO8_DATA_LO )
-                                 AM_WRITE     ( to8_data_lo_w )
-     AM_RANGE ( 0x8000, 0x9fff ) AM_RAMBANK   ( TO8_DATA_HI )
-                                 AM_WRITE     ( to8_data_hi_w )
+     AM_RANGE ( 0x0000, 0x1fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
+     AM_RANGE ( 0x2000, 0x3fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_LO), to8_sys_lo_w )
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_HI), to8_sys_hi_w )
+     AM_RANGE ( 0x6000, 0x7fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
+     AM_RANGE ( 0x8000, 0x9fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
      AM_RANGE ( 0xa000, 0xa7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
      AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
      AM_RANGE ( 0xa7cb, 0xa7cb ) AM_WRITE     ( mo6_ext_w )
@@ -2303,8 +2273,7 @@ static ADDRESS_MAP_START ( mo5nr, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0xa7f2, 0xa7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xa7f8, 0xa7fb ) AM_READWRITE ( pia_3_alt_r, pia_3_alt_w )
      AM_RANGE ( 0xa7fe, 0xa7ff ) AM_READWRITE ( mea8000_r, mea8000_w )
-     AM_RANGE ( 0xb000, 0xefff ) AM_RAMBANK   ( THOM_CART_BANK ) /* 8 * 16 KB */
-                                 AM_WRITE     ( mo6_cartridge_w )
+     AM_RANGE ( 0xb000, 0xefff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), mo6_cartridge_w ) /* 8 * 16 KB */
      AM_RANGE ( 0xf000, 0xffff ) AM_ROMBANK   ( TO8_BIOS_BANK )
 
 /* 0x10000 - 0x1ffff: 64 KB external ROM cartridge */
@@ -2319,7 +2288,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( mo5nr )
-     ROM_REGION ( 0x34800, REGION_CPU1, 0 )
+     ROM_REGION ( 0x34800, "main", 0 )
 
      /* BIOS */
      ROM_LOAD ( "mo5nr-0.rom", 0x23000, 0x1000,
@@ -2360,7 +2329,7 @@ ROM_END
 
 static INPUT_PORTS_START ( mo5nr_keyboard )
 
-     PORT_START_TAG ( "keyboard_0" )
+     PORT_START ( "keyboard_0" )
      KEY ( 0, "N", N )                   PORT_CHAR('N')
      KEY ( 1, ", <", COMMA )             PORT_CHAR(',') PORT_CHAR('<')
      KEY ( 2, ". >", STOP )              PORT_CHAR('.') PORT_CHAR('>')
@@ -2369,7 +2338,7 @@ static INPUT_PORTS_START ( mo5nr_keyboard )
      KEY ( 5, "X", X )                   PORT_CHAR('X')
      KEY ( 6, "W", W )                   PORT_CHAR('W')
      KEY ( 7, "Shift", LSHIFT ) PORT_CODE ( KEYCODE_RSHIFT ) PORT_CHAR(UCHAR_SHIFT_1)
-     PORT_START_TAG ( "keyboard_1" )
+     PORT_START ( "keyboard_1" )
      KEY ( 0, "Delete Backspace", DEL )  PORT_CHAR(8) PORT_CHAR(UCHAR_MAMEKEY(BACKSPACE))
      KEY ( 1, "Insert", INSERT )         PORT_CHAR(UCHAR_MAMEKEY(INSERT))
      KEY ( 2, "Home", HOME )             PORT_CHAR(UCHAR_MAMEKEY(HOME))
@@ -2378,7 +2347,7 @@ static INPUT_PORTS_START ( mo5nr_keyboard )
      KEY ( 5, "\xE2\x86\x90", LEFT )     PORT_CHAR(UCHAR_MAMEKEY(LEFT))
      KEY ( 6, "\xE2\x86\x91", UP )       PORT_CHAR(UCHAR_MAMEKEY(UP))
      KEY ( 7, "BASIC", RCONTROL )
-     PORT_START_TAG ( "keyboard_2" )
+     PORT_START ( "keyboard_2" )
      KEY ( 0, "J", J )                   PORT_CHAR('J')
      KEY ( 1, "K", K )                   PORT_CHAR('K')
      KEY ( 2, "L", L )                   PORT_CHAR('L')
@@ -2387,7 +2356,7 @@ static INPUT_PORTS_START ( mo5nr_keyboard )
      KEY ( 5, "V", V )                   PORT_CHAR('V')
      KEY ( 6, "C \136", C )              PORT_CHAR('C')
      PORT_BIT  ( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
-     PORT_START_TAG ( "keyboard_3" )
+     PORT_START ( "keyboard_3" )
      KEY ( 0, "H \302\250", H )          PORT_CHAR('H')
      KEY ( 1, "G", G )                   PORT_CHAR('G')
      KEY ( 2, "F", F )                   PORT_CHAR('F')
@@ -2396,7 +2365,7 @@ static INPUT_PORTS_START ( mo5nr_keyboard )
      KEY ( 5, "Q", Q )                   PORT_CHAR('Q')
      KEY ( 6, "Clear", ESC )             PORT_CHAR(UCHAR_MAMEKEY(ESC))
      PORT_BIT  ( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
-     PORT_START_TAG ( "keyboard_4" )
+     PORT_START ( "keyboard_4" )
      KEY ( 0, "U", U )                   PORT_CHAR('U')
      KEY ( 1, "I", I )                   PORT_CHAR('I')
      KEY ( 2, "O", O )                   PORT_CHAR('O')
@@ -2405,7 +2374,7 @@ static INPUT_PORTS_START ( mo5nr_keyboard )
      KEY ( 5, "* :", QUOTE )             PORT_CHAR('*') PORT_CHAR(':')
      KEY ( 6, "Enter", ENTER )           PORT_CHAR(13)
      PORT_BIT  ( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
-     PORT_START_TAG ( "keyboard_5" )
+     PORT_START ( "keyboard_5" )
      KEY ( 0, "Y", Y )                   PORT_CHAR('Y')
      KEY ( 1, "T", T )                   PORT_CHAR('T')
      KEY ( 2, "R", R )                   PORT_CHAR('R')
@@ -2414,7 +2383,7 @@ static INPUT_PORTS_START ( mo5nr_keyboard )
      KEY ( 5, "A \140", A )              PORT_CHAR('A')
      KEY ( 6, "Control", LCONTROL )      PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
      PORT_BIT  ( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
-     PORT_START_TAG ( "keyboard_6" )
+     PORT_START ( "keyboard_6" )
      KEY ( 0, "7 ' \303\250", 7 )          PORT_CHAR('7') PORT_CHAR('\'' )
      KEY ( 1, "8 ( \303\271", 8 )          PORT_CHAR('8') PORT_CHAR('(')
      KEY ( 2, "9 ) \303\247", 9 )          PORT_CHAR('9') PORT_CHAR(')')
@@ -2423,7 +2392,7 @@ static INPUT_PORTS_START ( mo5nr_keyboard )
      KEY ( 5, "+ ;", EQUALS )              PORT_CHAR('+') PORT_CHAR(';')
      KEY ( 6, "Accent", END )              PORT_CHAR(UCHAR_MAMEKEY(END))
      PORT_BIT  ( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
-     PORT_START_TAG ( "keyboard_7" )
+     PORT_START ( "keyboard_7" )
      KEY ( 0, "6 & \303\251", 6 )          PORT_CHAR('6') PORT_CHAR('&')
      KEY ( 1, "5 %", 5 )                   PORT_CHAR('5') PORT_CHAR('%')
      KEY ( 2, "4 $", 4 )                   PORT_CHAR('4') PORT_CHAR('$')
@@ -2434,8 +2403,8 @@ static INPUT_PORTS_START ( mo5nr_keyboard )
      PORT_BIT  ( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
      /* unused */
-     PORT_START_TAG ( "keyboard_8" )
-     PORT_START_TAG ( "keyboard_9" )
+     PORT_START ( "keyboard_8" )
+     PORT_START ( "keyboard_9" )
 
 INPUT_PORTS_END
 

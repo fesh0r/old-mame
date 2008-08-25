@@ -35,9 +35,9 @@
 #include "devices/harddriv.h"
 
 static ADDRESS_MAP_START(concept_memmap, ADDRESS_SPACE_PROGRAM, 16)
-	AM_RANGE(0x000000, 0x000007) AM_ROM AM_REGION(REGION_CPU1, 0x010000) 	/* boot ROM mirror */
+	AM_RANGE(0x000000, 0x000007) AM_ROM AM_REGION("main", 0x010000) 	/* boot ROM mirror */
 	AM_RANGE(0x000008, 0x000fff) AM_RAM										/* static RAM */
-	AM_RANGE(0x010000, 0x011fff) AM_ROM AM_REGION(REGION_CPU1, 0x010000)	/* boot ROM */
+	AM_RANGE(0x010000, 0x011fff) AM_ROM AM_REGION("main", 0x010000)	/* boot ROM */
 	AM_RANGE(0x020000, 0x021fff) AM_ROM										/* macsbugs ROM (optional) */
 	AM_RANGE(0x030000, 0x03ffff) AM_READWRITE(concept_io_r,concept_io_w)	/* I/O space */
 
@@ -55,7 +55,7 @@ static PALETTE_INIT( concept )
 /* concept machine */
 static MACHINE_DRIVER_START( concept )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 8182000)        /* 16.364 Mhz / 2 */
+	MDRV_CPU_ADD("main", M68000, 8182000)        /* 16.364 Mhz / 2 */
 	MDRV_CPU_PROGRAM_MAP(concept_memmap, 0)
 	MDRV_CPU_VBLANK_INT("main", concept_interrupt)
 
@@ -77,12 +77,14 @@ static MACHINE_DRIVER_START( concept )
 	MDRV_VIDEO_UPDATE(concept)
 
 	/* no sound? */
+
+	MDRV_DEVICE_ADD( "harddisk1", HARDDISK )
 MACHINE_DRIVER_END
 
 
 static INPUT_PORTS_START( concept )
 
-	PORT_START_TAG("KEY0")	/* port 0: keys 0x00 through 0x0f */
+	PORT_START("KEY0")	/* port 0: keys 0x00 through 0x0f */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(right)") PORT_CODE(KEYCODE_RIGHT)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3") PORT_CODE(KEYCODE_3_PAD)
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("9") PORT_CODE(KEYCODE_9_PAD)
@@ -100,7 +102,7 @@ static INPUT_PORTS_START( concept )
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("5") PORT_CODE(KEYCODE_5_PAD)
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2") PORT_CODE(KEYCODE_2_PAD)
 
-	PORT_START_TAG("KEY1")	/* port 1: keys 0x10 through 0x1f */
+	PORT_START("KEY1")	/* port 1: keys 0x10 through 0x1f */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("= +") PORT_CODE(KEYCODE_EQUALS)
 
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[ {") PORT_CODE(KEYCODE_OPENBRACE)
@@ -118,7 +120,7 @@ static INPUT_PORTS_START( concept )
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("' \"") PORT_CODE(KEYCODE_QUOTE)
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("SHIFT (r)") PORT_CODE(KEYCODE_RSHIFT)
 
-	PORT_START_TAG("KEY2")	/* port 2: keys 0x20 through 0x2f */
+	PORT_START("KEY2")	/* port 2: keys 0x20 through 0x2f */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F1") PORT_CODE(KEYCODE_F1)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F2") PORT_CODE(KEYCODE_F2)
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F3") PORT_CODE(KEYCODE_F3)
@@ -134,7 +136,7 @@ static INPUT_PORTS_START( concept )
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("V") PORT_CODE(KEYCODE_V)
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B)
 
-	PORT_START_TAG("KEY3")	/* port 3: keys 0x30 through 0x3f */
+	PORT_START("KEY3")	/* port 3: keys 0x30 through 0x3f */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2 @") PORT_CODE(KEYCODE_2)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3 #") PORT_CODE(KEYCODE_3)
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("W") PORT_CODE(KEYCODE_W)
@@ -152,7 +154,7 @@ static INPUT_PORTS_START( concept )
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("SHIFT (l)") PORT_CODE(KEYCODE_LSHIFT)
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Z") PORT_CODE(KEYCODE_Z)
 
-	PORT_START_TAG("KEY4")	/* port 4: keys 0x40 through 0x4f */
+	PORT_START("KEY4")	/* port 4: keys 0x40 through 0x4f */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("6 ^") PORT_CODE(KEYCODE_6)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("7 &") PORT_CODE(KEYCODE_7)
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Y") PORT_CODE(KEYCODE_Y)
@@ -170,7 +172,7 @@ static INPUT_PORTS_START( concept )
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("00") PORT_CODE(KEYCODE_ASTERISK)
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(".") PORT_CODE(KEYCODE_DEL_PAD)
 
-	PORT_START_TAG("KEY5")	/* port 5: keys 0x50 through 0x5f */
+	PORT_START("KEY5")	/* port 5: keys 0x50 through 0x5f */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("8 *") PORT_CODE(KEYCODE_8)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("9 (") PORT_CODE(KEYCODE_9)
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("I") PORT_CODE(KEYCODE_I)
@@ -188,7 +190,7 @@ static INPUT_PORTS_START( concept )
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("???") PORT_CODE(KEYCODE_SLASH_PAD)
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("BREAK") PORT_CODE(KEYCODE_PAUSE)
 
-	PORT_START_TAG("DSW0")	/* port 6: on-board DIP switches */
+	PORT_START("DSW0")	/* port 6: on-board DIP switches */
 		PORT_DIPNAME(0x01, 0x00, "Omninet Address bit 0")
 		PORT_DIPSETTING(0x00, DEF_STR( Off ))
 		PORT_DIPSETTING(0x01, DEF_STR( On ))
@@ -214,7 +216,7 @@ static INPUT_PORTS_START( concept )
 		PORT_DIPSETTING(0xc0, "Boot from Diskette")
 
 #if 0
-	PORT_START_TAG("DISPLAY")	/* port 7: Display orientation */
+	PORT_START("DISPLAY")	/* port 7: Display orientation */
 		PORT_DIPNAME(0x01, 0x00, "Screen Orientation")
 		PORT_DIPSETTING(0x00, "Horizontal")
 		PORT_DIPSETTING(0x01, "Vertical")
@@ -224,7 +226,7 @@ INPUT_PORTS_END
 
 
 ROM_START( concept )
-	ROM_REGION16_BE(0x100000,REGION_CPU1,0)	/* 68k rom and ram */
+	ROM_REGION16_BE(0x100000,"main",0)	/* 68k rom and ram */
 
 	// concept boot ROM
 #if 0
@@ -314,22 +316,10 @@ static void concept_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 	}
 }
 
-static void concept_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* Hard Drive */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										harddisk_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static SYSTEM_CONFIG_START(concept)
 	/* The concept should eventually support floppies, hard disks, etc. */
 	CONFIG_DEVICE(concept_floppy_getinfo)
-	CONFIG_DEVICE(concept_harddisk_getinfo)
 SYSTEM_CONFIG_END
 
 
