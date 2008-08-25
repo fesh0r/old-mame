@@ -76,7 +76,7 @@ logerror("%06x eeprom_r\n",activecpu_get_pc());
 	/* bit 6 is EEPROM data */
 	/* bit 7 is EEPROM ready */
 	/* bit 14 is service button */
-	res = (eeprom_read_bit() << 6) | input_port_read_indexed(machine,2);
+	res = (eeprom_read_bit() << 6) | input_port_read(machine, "EEPROM");
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
@@ -93,13 +93,13 @@ logerror("%06x xmen6p_eeprom_r\n",activecpu_get_pc());
 	/* bit 6 is EEPROM data */
 	/* bit 7 is EEPROM ready */
 	/* bit 14 is service button */
-	res = (eeprom_read_bit() << 6) | input_port_read_indexed(machine,2);
+	res = (eeprom_read_bit() << 6) | input_port_read(machine, "EEPROM");
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
 		res &= 0xbfff;
 	}
-	return (res&0x7fff)|xmen_current_frame;
+	return (res & 0x7fff) | xmen_current_frame;
 }
 
 
@@ -160,7 +160,7 @@ static UINT8 sound_curbank;
 
 static void sound_reset_bank(running_machine *machine)
 {
-	memory_set_bankptr(4, memory_region(machine, REGION_CPU2) + 0x10000 + (sound_curbank & 0x07) * 0x4000);
+	memory_set_bankptr(4, memory_region(machine, "audio") + 0x10000 + (sound_curbank & 0x07) * 0x4000);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -182,8 +182,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x10804e, 0x10804f) AM_WRITE(sound_irq_w)
 	AM_RANGE(0x108054, 0x108055) AM_READ(sound_status_r)
 	AM_RANGE(0x108060, 0x10807f) AM_WRITE(K053251_lsb_w)
-	AM_RANGE(0x10a000, 0x10a001) AM_READWRITE(input_port_0_word_r, watchdog_reset16_w)
-	AM_RANGE(0x10a002, 0x10a003) AM_READ(input_port_1_word_r)
+	AM_RANGE(0x10a000, 0x10a001) AM_READ_PORT("P2_P4") AM_WRITE(watchdog_reset16_w)
+	AM_RANGE(0x10a002, 0x10a003) AM_READ_PORT("P1_P3")
 	AM_RANGE(0x10a004, 0x10a005) AM_READ(eeprom_r)
 	AM_RANGE(0x10a00c, 0x10a00d) AM_READ(K053246_word_r)
 	AM_RANGE(0x110000, 0x113fff) AM_RAM		/* main RAM */
@@ -196,9 +196,9 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK4)
 	AM_RANGE(0x8000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_RAM
-	AM_RANGE(0xe000, 0xe22f) AM_READWRITE(K054539_0_r, K054539_0_w)
-	AM_RANGE(0xe800, 0xe800) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0xec01, 0xec01) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
+	AM_RANGE(0xe000, 0xe22f) AM_READWRITE(k054539_0_r, k054539_0_w)
+	AM_RANGE(0xe800, 0xe800) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0xec01, 0xec01) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(soundlatch2_w)
 	AM_RANGE(0xf002, 0xf002) AM_READ(soundlatch_r)
 	AM_RANGE(0xf800, 0xf800) AM_WRITE(sound_bankswitch_w)
@@ -225,10 +225,10 @@ static ADDRESS_MAP_START( 6p_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x10804e, 0x10804f) AM_WRITE(sound_irq_w)
 	AM_RANGE(0x108054, 0x108055) AM_READ(sound_status_r)
 	AM_RANGE(0x108060, 0x10807f) AM_WRITE(K053251_lsb_w)
-	AM_RANGE(0x10a000, 0x10a001) AM_READWRITE(input_port_0_word_r,watchdog_reset16_w)
-	AM_RANGE(0x10a002, 0x10a003) AM_READ(input_port_1_word_r)
+	AM_RANGE(0x10a000, 0x10a001) AM_READ_PORT("P2_P4") AM_WRITE(watchdog_reset16_w)
+	AM_RANGE(0x10a002, 0x10a003) AM_READ_PORT("P1_P3")
 	AM_RANGE(0x10a004, 0x10a005) AM_READ(xmen6p_eeprom_r)
-	AM_RANGE(0x10a006, 0x10a007) AM_READ(input_port_3_word_r)
+	AM_RANGE(0x10a006, 0x10a007) AM_READ_PORT("P5_P6")
 	AM_RANGE(0x10a00c, 0x10a00d) AM_READ(K053246_word_r) /* sprites */
 	AM_RANGE(0x110000, 0x113fff) AM_RAM		/* main RAM */
 	AM_RANGE(0x18fa00, 0x18fa01) AM_WRITE(xmen_18fa00_w)
@@ -270,7 +270,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( xmen )
-	PORT_START	/* IN1 */
+	PORT_START("P2_P4")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -288,7 +288,7 @@ static INPUT_PORTS_START( xmen )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN4 )
 
-	PORT_START	/* IN0 */
+	PORT_START("P1_P3")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -306,7 +306,7 @@ static INPUT_PORTS_START( xmen )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN3 )
 
-	PORT_START	/* COIN  EEPROM and service */
+	PORT_START("EEPROM")	/* COIN  EEPROM and service */
 	PORT_BIT( 0x003f, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
 	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* EEPROM data */
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* EEPROM status - always 1 */
@@ -320,7 +320,7 @@ static INPUT_PORTS_START( xmen )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( xmen6p )
-	PORT_START	/* IN1 */
+	PORT_START("P2_P4")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -338,7 +338,7 @@ static INPUT_PORTS_START( xmen6p )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN4 )
 
-	PORT_START	/* IN0 */
+	PORT_START("P1_P3")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -356,7 +356,7 @@ static INPUT_PORTS_START( xmen6p )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN3 )
 
-	PORT_START	/* COIN  EEPROM and service */
+	PORT_START("EEPROM")	/* COIN  EEPROM and service */
 	PORT_BIT( 0x003f, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
 	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* EEPROM data */
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* EEPROM status - always 1 */
@@ -369,8 +369,7 @@ static INPUT_PORTS_START( xmen6p )
 	PORT_SERVICE_NO_TOGGLE( 0x4000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* screen indicator? */
 
-	/* players 5+6 */
-	PORT_START	/*  */
+	PORT_START("P5_P6")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(5)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(5)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(5)
@@ -390,7 +389,7 @@ static INPUT_PORTS_START( xmen6p )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( xmen2p )
-	PORT_START	/* IN1 */
+	PORT_START("P2_P4")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -399,18 +398,9 @@ static INPUT_PORTS_START( xmen2p )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN2 )
-/*
-    PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(4)
-    PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(4)
-    PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(4)
-    PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(4)
-    PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
-    PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(4)
-    PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
-    PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN4 )
-*/
+	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN0 */
+	PORT_START("P1_P3")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -419,18 +409,9 @@ static INPUT_PORTS_START( xmen2p )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN1 )
-/*
-    PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
-    PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
-    PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
-    PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(3)
-    PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
-    PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
-    PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
-    PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN3 )
-*/
+	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* COIN  EEPROM and service */
+	PORT_START("EEPROM")	/* COIN  EEPROM and service */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SERVICE2 )
 	PORT_BIT( 0x003c, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
@@ -444,13 +425,6 @@ static INPUT_PORTS_START( xmen2p )
 	PORT_SERVICE_NO_TOGGLE( 0x4000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
 INPUT_PORTS_END
-
-
-
-static const struct K054539interface k054539_interface =
-{
-	REGION_SOUND1
-};
 
 
 
@@ -474,12 +448,11 @@ static MACHINE_START( xmen )
 static MACHINE_DRIVER_START( xmen )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 16000000)	/* ? */
+	MDRV_CPU_ADD("main", M68000, 16000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(xmen_interrupt,2)
 
-	MDRV_CPU_ADD(Z80,8000000)	/* verified with M1, guessed but accurate */
-	/* audio CPU */	/* ????? */
+	MDRV_CPU_ADD("audio", Z80,8000000)	/* verified with M1, guessed but accurate */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	MDRV_MACHINE_START(xmen)
@@ -503,12 +476,11 @@ static MACHINE_DRIVER_START( xmen )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 4000000)
+	MDRV_SOUND_ADD("ym", YM2151, 4000000)
 	MDRV_SOUND_ROUTE(0, "left", 0.80)
 	MDRV_SOUND_ROUTE(1, "right", 0.80)
 
-	MDRV_SOUND_ADD(K054539, 48000)
-	MDRV_SOUND_CONFIG(k054539_interface)
+	MDRV_SOUND_ADD("konami", K054539, 48000)
 	MDRV_SOUND_ROUTE(0, "left", 0.80)
 	MDRV_SOUND_ROUTE(1, "right", 0.80)
 MACHINE_DRIVER_END
@@ -541,12 +513,11 @@ static INTERRUPT_GEN( xmen6p_interrupt )
 static MACHINE_DRIVER_START( xmen6p )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 16000000)	/* ? */
+	MDRV_CPU_ADD("main", M68000, 16000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(6p_main_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(xmen6p_interrupt,2)
 
-	MDRV_CPU_ADD(Z80,8000000)	/* verified with M1, guessed but accurate */
-	/* audio CPU */	/* ????? */
+	MDRV_CPU_ADD("audio", Z80,8000000)	/* verified with M1, guessed but accurate */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 
@@ -581,12 +552,11 @@ static MACHINE_DRIVER_START( xmen6p )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 4000000)
+	MDRV_SOUND_ADD("ym", YM2151, 4000000)
 	MDRV_SOUND_ROUTE(0, "left", 0.80)
 	MDRV_SOUND_ROUTE(1, "right", 0.80)
 
-	MDRV_SOUND_ADD(K054539, 48000)
-	MDRV_SOUND_CONFIG(k054539_interface)
+	MDRV_SOUND_ADD("konami", K054539, 48000)
 	MDRV_SOUND_ROUTE(0, "left", 0.80)
 	MDRV_SOUND_ROUTE(1, "right", 0.80)
 MACHINE_DRIVER_END
@@ -649,102 +619,102 @@ MACHINE_DRIVER_END
 */
 
 ROM_START( xmen )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_BYTE( "065-ubb04.10d",  0x00000, 0x20000, CRC(f896c93b) SHA1(0bee89fe4d36a9b2ded864770198eb2df6903580) ) /* US 4 Player version */
 	ROM_LOAD16_BYTE( "065-ubb05.10f",  0x00001, 0x20000, CRC(e02e5d64) SHA1(9838c1cf9862db3ca70a23ef5f3c5883729c4e0c) )
 	ROM_LOAD16_BYTE( "065-a02.9d",     0x80000, 0x40000, CRC(b31dc44c) SHA1(4bdac05826b4d6d4fe46686ede5190e2f73eefc5) )
 	ROM_LOAD16_BYTE( "065-a03.9f",     0x80001, 0x40000, CRC(13842fe6) SHA1(b61f094eb94336edb8708d3437ead9b853b2d6e6) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )		/* 64k+128k for sound cpu */
+	ROM_REGION( 0x30000, "audio", 0 )		/* 64k+128k for sound cpu */
 	ROM_LOAD( "065-a01.6f",   0x00000, 0x20000, CRC(147d3a4d) SHA1(a14409fe991e803b9e7812303e3a9ebd857d8b01) )
 	ROM_RELOAD(               0x10000, 0x20000 )
 
-	ROM_REGION( 0x200000, REGION_GFX1, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x200000, "gfx1", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a08.15l",   0x000000, 0x100000, CRC(6b649aca) SHA1(2595f314517738e8614facf578cc951a6c36a180) )	/* tiles */
 	ROM_LOAD( "065-a07.16l",   0x100000, 0x100000, CRC(c5dc8fc4) SHA1(9887cb002c8b72be7ce933cb397f00cdc5506c8c) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x400000, "gfx2", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a09.2h",  0x000000, 0x100000, CRC(ea05d52f) SHA1(7f2c14f907355856fb94e3a67b73aa1919776835) )	/* sprites */
 	ROM_LOAD( "065-a10.2l",  0x100000, 0x100000, CRC(96b91802) SHA1(641943557b59b91f0edd49ec8a73cef7d9268b32) )
 	ROM_LOAD( "065-a12.1h",  0x200000, 0x100000, CRC(321ed07a) SHA1(5b00ed676daeea974bdce6701667cfe573099dad) )
 	ROM_LOAD( "065-a11.1l",  0x300000, 0x100000, CRC(46da948e) SHA1(168ac9178ee5bad5931557fb549e1237971d7839) )
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )	/* samples for the 054539 */
+	ROM_REGION( 0x200000, "konami", 0 )	/* samples for the 054539 */
 	ROM_LOAD( "065-a06.1f",  0x000000, 0x200000, CRC(5adbcee0) SHA1(435feda697193bc51db80eba46be474cbbc1de4b) )
 ROM_END
 
 ROM_START( xmenj )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_BYTE( "065-jba04.10d",  0x00000, 0x20000, CRC(d86cf5eb) SHA1(8bf67eb6cdb7187142557c27b058282886984a61) ) /* Japan 4 Player version */
 	ROM_LOAD16_BYTE( "065-jba05.10f",  0x00001, 0x20000, CRC(abbc8126) SHA1(482a3c9be45b9d77460bd3df94e3c6cf285e63a2) )
 	ROM_LOAD16_BYTE( "065-a02.9d",     0x80000, 0x40000, CRC(b31dc44c) SHA1(4bdac05826b4d6d4fe46686ede5190e2f73eefc5) )
 	ROM_LOAD16_BYTE( "065-a03.9f",     0x80001, 0x40000, CRC(13842fe6) SHA1(b61f094eb94336edb8708d3437ead9b853b2d6e6) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )		/* 64k+128k for sound cpu */
+	ROM_REGION( 0x30000, "audio", 0 )		/* 64k+128k for sound cpu */
 	ROM_LOAD( "065-a01.6f",   0x00000, 0x20000, CRC(147d3a4d) SHA1(a14409fe991e803b9e7812303e3a9ebd857d8b01) )
 	ROM_RELOAD(               0x10000, 0x20000 )
 
-	ROM_REGION( 0x200000, REGION_GFX1, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x200000, "gfx1", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a08.15l",   0x000000, 0x100000, CRC(6b649aca) SHA1(2595f314517738e8614facf578cc951a6c36a180) )	/* tiles */
 	ROM_LOAD( "065-a07.16l",   0x100000, 0x100000, CRC(c5dc8fc4) SHA1(9887cb002c8b72be7ce933cb397f00cdc5506c8c) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x400000, "gfx2", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a09.2h",  0x000000, 0x100000, CRC(ea05d52f) SHA1(7f2c14f907355856fb94e3a67b73aa1919776835) )	/* sprites */
 	ROM_LOAD( "065-a10.2l",  0x100000, 0x100000, CRC(96b91802) SHA1(641943557b59b91f0edd49ec8a73cef7d9268b32) )
 	ROM_LOAD( "065-a12.1h",  0x200000, 0x100000, CRC(321ed07a) SHA1(5b00ed676daeea974bdce6701667cfe573099dad) )
 	ROM_LOAD( "065-a11.1l",  0x300000, 0x100000, CRC(46da948e) SHA1(168ac9178ee5bad5931557fb549e1237971d7839) )
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )	/* samples for the 054539 */
+	ROM_REGION( 0x200000, "konami", 0 )	/* samples for the 054539 */
 	ROM_LOAD( "065-a06.1f",  0x000000, 0x200000, CRC(5adbcee0) SHA1(435feda697193bc51db80eba46be474cbbc1de4b) )
 ROM_END
 
 ROM_START( xmen2p )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_BYTE( "065-aaa04.10d",  0x00000, 0x20000, CRC(7f8b27c2) SHA1(052db1f47671564a440544a41fc397a19d1aff3a) ) /* Asia 2 Player version */
 	ROM_LOAD16_BYTE( "065-aaa04.10f",  0x00001, 0x20000, CRC(841ed636) SHA1(33f96022ce3dae9b49eb51fd4e8f7387a1777002) )
 	ROM_LOAD16_BYTE( "065-a02.9d",     0x80000, 0x40000, CRC(b31dc44c) SHA1(4bdac05826b4d6d4fe46686ede5190e2f73eefc5) )
 	ROM_LOAD16_BYTE( "065-a03.9f",     0x80001, 0x40000, CRC(13842fe6) SHA1(b61f094eb94336edb8708d3437ead9b853b2d6e6) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )		/* 64k+128k for sound cpu */
+	ROM_REGION( 0x30000, "audio", 0 )		/* 64k+128k for sound cpu */
 	ROM_LOAD( "065-a01.6f",   0x00000, 0x20000, CRC(147d3a4d) SHA1(a14409fe991e803b9e7812303e3a9ebd857d8b01) )
 	ROM_RELOAD(               0x10000, 0x20000 )
 
-	ROM_REGION( 0x200000, REGION_GFX1, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x200000, "gfx1", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a08.15l",   0x000000, 0x100000, CRC(6b649aca) SHA1(2595f314517738e8614facf578cc951a6c36a180) )	/* tiles */
 	ROM_LOAD( "065-a07.16l",   0x100000, 0x100000, CRC(c5dc8fc4) SHA1(9887cb002c8b72be7ce933cb397f00cdc5506c8c) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x400000, "gfx2", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a09.2h",  0x000000, 0x100000, CRC(ea05d52f) SHA1(7f2c14f907355856fb94e3a67b73aa1919776835) )	/* sprites */
 	ROM_LOAD( "065-a10.2l",  0x100000, 0x100000, CRC(96b91802) SHA1(641943557b59b91f0edd49ec8a73cef7d9268b32) )
 	ROM_LOAD( "065-a12.1h",  0x200000, 0x100000, CRC(321ed07a) SHA1(5b00ed676daeea974bdce6701667cfe573099dad) )
 	ROM_LOAD( "065-a11.1l",  0x300000, 0x100000, CRC(46da948e) SHA1(168ac9178ee5bad5931557fb549e1237971d7839) )
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )	/* samples for the 054539 */
+	ROM_REGION( 0x200000, "konami", 0 )	/* samples for the 054539 */
 	ROM_LOAD( "065-a06.1f",  0x000000, 0x200000, CRC(5adbcee0) SHA1(435feda697193bc51db80eba46be474cbbc1de4b) )
 ROM_END
 
 ROM_START( xmen2pj )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_BYTE( "065-jaa04.10d",  0x00000, 0x20000, CRC(66746339) SHA1(8cc5f5deb4178b0444ffc5974940a30cb003114e) ) /* Japan 2 Player version */
 	ROM_LOAD16_BYTE( "065-jaa05.10f",  0x00001, 0x20000, CRC(1215b706) SHA1(b746dedab9c509b5cd941f0f4ddd3709e8a58cce) )
 	ROM_LOAD16_BYTE( "065-a02.9d",     0x80000, 0x40000, CRC(b31dc44c) SHA1(4bdac05826b4d6d4fe46686ede5190e2f73eefc5) )
 	ROM_LOAD16_BYTE( "065-a03.9f",     0x80001, 0x40000, CRC(13842fe6) SHA1(b61f094eb94336edb8708d3437ead9b853b2d6e6) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )		/* 64k+128k for sound cpu */
+	ROM_REGION( 0x30000, "audio", 0 )		/* 64k+128k for sound cpu */
 	ROM_LOAD( "065-a01.6f",   0x00000, 0x20000, CRC(147d3a4d) SHA1(a14409fe991e803b9e7812303e3a9ebd857d8b01) )
 	ROM_RELOAD(               0x10000, 0x20000 )
 
-	ROM_REGION( 0x200000, REGION_GFX1, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x200000, "gfx1", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a08.15l",   0x000000, 0x100000, CRC(6b649aca) SHA1(2595f314517738e8614facf578cc951a6c36a180) )	/* tiles */
 	ROM_LOAD( "065-a07.16l",   0x100000, 0x100000, CRC(c5dc8fc4) SHA1(9887cb002c8b72be7ce933cb397f00cdc5506c8c) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x400000, "gfx2", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a09.2h",  0x000000, 0x100000, CRC(ea05d52f) SHA1(7f2c14f907355856fb94e3a67b73aa1919776835) )	/* sprites */
 	ROM_LOAD( "065-a10.2l",  0x100000, 0x100000, CRC(96b91802) SHA1(641943557b59b91f0edd49ec8a73cef7d9268b32) )
 	ROM_LOAD( "065-a12.1h",  0x200000, 0x100000, CRC(321ed07a) SHA1(5b00ed676daeea974bdce6701667cfe573099dad) )
 	ROM_LOAD( "065-a11.1l",  0x300000, 0x100000, CRC(46da948e) SHA1(168ac9178ee5bad5931557fb549e1237971d7839) )
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )	/* samples for the 054539 */
+	ROM_REGION( 0x200000, "konami", 0 )	/* samples for the 054539 */
 	ROM_LOAD( "065-a06.1f",  0x000000, 0x200000, CRC(5adbcee0) SHA1(435feda697193bc51db80eba46be474cbbc1de4b) )
 ROM_END
 
@@ -803,53 +773,53 @@ ROM_END
 */
 
 ROM_START( xmen6p )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_BYTE( "065-ecb04.18g",  0x00000, 0x20000, CRC(258eb21f) SHA1(f1a22a880245f28195e5b6519822c0aa3b166541) ) /* Euro 6 Player version */
 	ROM_LOAD16_BYTE( "065-ecb05.18j",  0x00001, 0x20000, CRC(25997bcd) SHA1(86fb1c64e133b7ca59ffb3910b62b61ee372c71a) )
 	ROM_LOAD16_BYTE( "065-a02.17g",   0x80000, 0x40000, CRC(b31dc44c) SHA1(4bdac05826b4d6d4fe46686ede5190e2f73eefc5) )
 	ROM_LOAD16_BYTE( "065-a03.17j",   0x80001, 0x40000, CRC(13842fe6) SHA1(b61f094eb94336edb8708d3437ead9b853b2d6e6) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )		/* 64k+128k for sound cpu */
+	ROM_REGION( 0x30000, "audio", 0 )		/* 64k+128k for sound cpu */
 	ROM_LOAD( "065-a01.7b",   0x00000, 0x20000, CRC(147d3a4d) SHA1(a14409fe991e803b9e7812303e3a9ebd857d8b01) )
 	ROM_RELOAD(               0x10000, 0x20000 )
 
-	ROM_REGION( 0x200000, REGION_GFX1, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x200000, "gfx1", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a08.1l",   0x000000, 0x100000, CRC(6b649aca) SHA1(2595f314517738e8614facf578cc951a6c36a180) )	/* tiles */
 	ROM_LOAD( "065-a07.1h",   0x100000, 0x100000, CRC(c5dc8fc4) SHA1(9887cb002c8b72be7ce933cb397f00cdc5506c8c) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x400000, "gfx2", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a09.12l",  0x000000, 0x100000, CRC(ea05d52f) SHA1(7f2c14f907355856fb94e3a67b73aa1919776835) )	/* sprites */
 	ROM_LOAD( "065-a10.17l",  0x100000, 0x100000, CRC(96b91802) SHA1(641943557b59b91f0edd49ec8a73cef7d9268b32) )
 	ROM_LOAD( "065-a12.22h",  0x200000, 0x100000, CRC(321ed07a) SHA1(5b00ed676daeea974bdce6701667cfe573099dad) )
 	ROM_LOAD( "065-a11.22l",  0x300000, 0x100000, CRC(46da948e) SHA1(168ac9178ee5bad5931557fb549e1237971d7839) )
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )	/* samples for the 054539 */
+	ROM_REGION( 0x200000, "konami", 0 )	/* samples for the 054539 */
 	ROM_LOAD( "065-a06.1d",  0x000000, 0x200000, CRC(5adbcee0) SHA1(435feda697193bc51db80eba46be474cbbc1de4b) )
 ROM_END
 
 
 ROM_START( xmen6pu )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_BYTE( "065-ucb04.18g",  0x00000, 0x20000, CRC(0f09b8e0) SHA1(79f4d86d8ec45b39e34ddf45860bea0c74dae183) ) /* US 6 Player version */
 	ROM_LOAD16_BYTE( "065-ucb05.18j",  0x00001, 0x20000, CRC(867becbf) SHA1(3f81f4dbd289f98b78d7821a8925598c771f01ef) )
 	ROM_LOAD16_BYTE( "065-a02.17g",   0x80000, 0x40000, CRC(b31dc44c) SHA1(4bdac05826b4d6d4fe46686ede5190e2f73eefc5) )
 	ROM_LOAD16_BYTE( "065-a03.17j",   0x80001, 0x40000, CRC(13842fe6) SHA1(b61f094eb94336edb8708d3437ead9b853b2d6e6) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )		/* 64k+128k for sound cpu */
+	ROM_REGION( 0x30000, "audio", 0 )		/* 64k+128k for sound cpu */
 	ROM_LOAD( "065-a01.7b",   0x00000, 0x20000, CRC(147d3a4d) SHA1(a14409fe991e803b9e7812303e3a9ebd857d8b01) )
 	ROM_RELOAD(               0x10000, 0x20000 )
 
-	ROM_REGION( 0x200000, REGION_GFX1, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x200000, "gfx1", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a08.1l",   0x000000, 0x100000, CRC(6b649aca) SHA1(2595f314517738e8614facf578cc951a6c36a180) )	/* tiles */
 	ROM_LOAD( "065-a07.1h",   0x100000, 0x100000, CRC(c5dc8fc4) SHA1(9887cb002c8b72be7ce933cb397f00cdc5506c8c) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, 0 )	/* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x400000, "gfx2", 0 )	/* graphics (addressable by the main CPU) */
 	ROM_LOAD( "065-a09.12l",  0x000000, 0x100000, CRC(ea05d52f) SHA1(7f2c14f907355856fb94e3a67b73aa1919776835) )	/* sprites */
 	ROM_LOAD( "065-a10.17l",  0x100000, 0x100000, CRC(96b91802) SHA1(641943557b59b91f0edd49ec8a73cef7d9268b32) )
 	ROM_LOAD( "065-a12.22h",  0x200000, 0x100000, CRC(321ed07a) SHA1(5b00ed676daeea974bdce6701667cfe573099dad) )
 	ROM_LOAD( "065-a11.22l",  0x300000, 0x100000, CRC(46da948e) SHA1(168ac9178ee5bad5931557fb549e1237971d7839) )
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )	/* samples for the 054539 */
+	ROM_REGION( 0x200000, "konami", 0 )	/* samples for the 054539 */
 	ROM_LOAD( "065-a06.1d",  0x000000, 0x200000, CRC(5adbcee0) SHA1(435feda697193bc51db80eba46be474cbbc1de4b) )
 ROM_END
 
@@ -858,8 +828,8 @@ ROM_END
 
 static DRIVER_INIT( xmen )
 {
-	konami_rom_deinterleave_2(REGION_GFX1);
-	konami_rom_deinterleave_4(REGION_GFX2);
+	konami_rom_deinterleave_2("gfx1");
+	konami_rom_deinterleave_4("gfx2");
 }
 
 GAME( 1992, xmen,    0,    xmen, xmen,   xmen,   ROT0, "Konami", "X-Men (4 Players ver UBB)", 0 ) /* Second "version" letter denotes players, A=2 players, B=4 players, C=6 players ??? */

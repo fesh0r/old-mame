@@ -18,6 +18,7 @@
 
 // MAME headers
 #include "driver.h"
+#include "uiinput.h"
 #include "debug/debugvw.h"
 #include "debug/debugcon.h"
 #include "debug/debugcpu.h"
@@ -185,7 +186,6 @@ static debugwin_info *main_console;
 
 static memorycombo_item *memorycombo;
 
-static UINT8 debugger_active_countdown;
 static UINT8 waiting_for_debugger;
 
 static HFONT debug_font;
@@ -197,9 +197,6 @@ static UINT32 hscroll_height;
 static UINT32 vscroll_width;
 
 static DWORD last_debugger_update;
-
-static UINT8 temporarily_fake_that_we_are_not_visible;
-
 
 
 //============================================================
@@ -254,24 +251,32 @@ static void smart_show_all(BOOL show);
 //  osd_wait_for_debugger
 //============================================================
 
-void osd_wait_for_debugger(void)
+void osd_wait_for_debugger(running_machine *machine, int firststop)
 {
 	MSG message;
 
 	// create a console window
 	if (main_console == NULL)
-		console_create_window(Machine);
+		console_create_window(machine);
 
 	// update the views in the console to reflect the current CPU
 	if (main_console != NULL)
-		console_set_cpunum(Machine, cpu_getactivecpu());
+		console_set_cpunum(machine, cpu_getactivecpu());
+
+	// when we are first stopped, adjust focus to us
+	if (firststop && main_console != NULL)
+	{
+		SetForegroundWindow(main_console->wnd);
+		if (winwindow_has_focus())
+			SetFocus(main_console->editwnd);
+	}
 
 	// make sure the debug windows are visible
 	waiting_for_debugger = TRUE;
 	smart_show_all(TRUE);
 
 	// run input polling to ensure that our status is in sync
-	wininput_poll(Machine);
+	wininput_poll(machine);
 
 	// get and process messages
 	GetMessage(&message, NULL, 0, 0);
@@ -290,13 +295,71 @@ void osd_wait_for_debugger(void)
 
 		// process everything else
 		default:
-			winwindow_dispatch_message(Machine, &message);
+			winwindow_dispatch_message(machine, &message);
 			break;
 	}
 
 	// mark the debugger as active
-	debugger_active_countdown = 2;
 	waiting_for_debugger = FALSE;
+}
+
+
+
+//============================================================
+//  debugwin_seq_pressed
+//============================================================
+
+int debugwin_seq_pressed(void)
+{
+	const input_seq *seq = input_type_seq(Machine, IPT_UI_DEBUG_BREAK, 0, SEQ_TYPE_STANDARD);
+	int result = FALSE;
+	int invert = FALSE;
+	int first = TRUE;
+	int codenum;
+
+	// iterate over all of the codes
+	for (codenum = 0; codenum < ARRAY_LENGTH(seq->code); codenum++)
+	{
+		input_code code = seq->code[codenum];
+
+		// handle NOT
+		if (code == SEQCODE_NOT)
+			invert = TRUE;
+
+		// handle OR and END
+		else if (code == SEQCODE_OR || code == SEQCODE_END)
+		{
+			// if we have a positive result from the previous set, we're done
+			if (result || code == SEQCODE_END)
+				break;
+
+			// otherwise, reset our state
+			result = FALSE;
+			invert = FALSE;
+			first = TRUE;
+		}
+
+		// handle everything else as a series of ANDs
+		else
+		{
+			int vkey = wininput_vkey_for_mame_code(code);
+			int pressed = (vkey != 0 && (GetAsyncKeyState(vkey) & 0x8000) != 0);
+
+			// if this is the first in the sequence, result is set equal
+			if (first)
+				result = pressed ^ invert;
+
+			// further values are ANDed
+			else if (result)
+				result &= pressed ^ invert;
+
+			// no longer first, and clear the invert flag
+			first = invert = FALSE;
+		}
+	}
+
+	// return the result if we queried at least one switch
+	return result;
 }
 
 
@@ -419,20 +482,18 @@ void debugwin_show(int type)
 //  debugwin_update_during_game
 //============================================================
 
-void debugwin_update_during_game(void)
+void debugwin_update_during_game(running_machine *machine)
 {
 	// if we're running live, do some checks
-	if (!debug_cpu_is_stopped(Machine) && mame_get_phase(Machine) == MAME_PHASE_RUNNING)
+	if (!winwindow_has_focus() && !debug_cpu_is_stopped(machine) && mame_get_phase(Machine) == MAME_PHASE_RUNNING)
 	{
 		// see if the interrupt key is pressed and break if it is
-		temporarily_fake_that_we_are_not_visible = TRUE;
-		if (input_ui_pressed(Machine, IPT_UI_DEBUG_BREAK))
+		if (debugwin_seq_pressed())
 		{
-			debugwin_info *info;
 			HWND focuswnd = GetFocus();
+			debugwin_info *info;
 
-			debugger_break(Machine);
-			debug_console_printf("User-initiated break\n");
+			debug_cpu_halt_on_next_instruction(Machine, "User-initiated break\n");
 
 			// if we were focused on some window's edit box, reset it to default
 			for (info = window_list; info; info = info->next)
@@ -442,29 +503,7 @@ void debugwin_update_during_game(void)
 					SendMessage(focuswnd, EM_SETSEL, (WPARAM)0, (LPARAM)-1);
 				}
 		}
-		temporarily_fake_that_we_are_not_visible = FALSE;
 	}
-}
-
-
-
-//============================================================
-//  debugwin_is_debugger_visible
-//============================================================
-
-int debugwin_is_debugger_visible(void)
-{
-	debugwin_info *info;
-
-	// a bit of hackiness to allow us to check key sequences even if we are visible
-	if (temporarily_fake_that_we_are_not_visible)
-		return 0;
-
-	// if any one of our windows is visible, return true
-	for (info = window_list; info; info = info->next)
-		if (IsWindowVisible(info->wnd))
-			return 1;
-	return 0;
 }
 
 
@@ -647,10 +686,10 @@ static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam,
 
 		// char: ignore chars associated with keys we've handled
 		case WM_CHAR:
-			if (info->ignore_char_lparam != (lparam >> 16))
-				return DefWindowProc(wnd, message, wparam, lparam);
-			else
+			if (info->ignore_char_lparam == (lparam >> 16))
 				info->ignore_char_lparam = 0;
+			else if (waiting_for_debugger || !debugwin_seq_pressed())
+				return DefWindowProc(wnd, message, wparam, lparam);
 			break;
 
 		// activate: set the focus
@@ -1402,15 +1441,15 @@ static LRESULT CALLBACK debug_view_proc(HWND wnd, UINT message, WPARAM wparam, L
 		// char: ignore chars associated with keys we've handled
 		case WM_CHAR:
 		{
-			if (info->owner->ignore_char_lparam != (lparam >> 16))
+			if (info->owner->ignore_char_lparam == (lparam >> 16))
+				info->owner->ignore_char_lparam = 0;
+			else if (waiting_for_debugger || !debugwin_seq_pressed())
 			{
 				if (wparam >= 32 && wparam < 127 && debug_view_get_property_UINT32(info->view, DVP_SUPPORTS_CURSOR))
 					debug_view_set_property_UINT32(info->view, DVP_CHARACTER, wparam);
 				else
 					return DefWindowProc(wnd, message, wparam, lparam);
 			}
-			else
-				info->owner->ignore_char_lparam = 0;
 			break;
 		}
 
@@ -1530,10 +1569,10 @@ static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, L
 					break;
 
 				default:
-					if (!(*info->handle_key)(info, wparam, lparam))
-						return CallWindowProc(info->original_editproc, wnd, message, wparam, lparam);
-					else
+					if ((*info->handle_key)(info, wparam, lparam))
 						info->ignore_char_lparam = lparam >> 16;
+					else
+						return CallWindowProc(info->original_editproc, wnd, message, wparam, lparam);
 					break;
 			}
 			break;
@@ -1542,7 +1581,9 @@ static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, L
 		case WM_CHAR:
 
 			// ignore chars associated with keys we've handled
-			if (info->ignore_char_lparam != (lparam >> 16))
+			if (info->ignore_char_lparam == (lparam >> 16))
+				info->ignore_char_lparam = 0;
+			else if (waiting_for_debugger || !debugwin_seq_pressed())
 			{
 				switch (wparam)
 				{
@@ -1592,8 +1633,6 @@ static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, L
 						return CallWindowProc(info->original_editproc, wnd, message, wparam, lparam);
 				}
 			}
-			else
-				info->ignore_char_lparam = 0;
 			break;
 
 		// everything else: defaults
@@ -1721,8 +1760,8 @@ static void memory_determine_combo_items(running_machine *machine)
 {
 	memorycombo_item **tail = &memorycombo;
 	UINT32 cpunum, spacenum;
-	int rgnnum, itemnum;
-	TCHAR *t_cpunum_name, *t_address_space_names;
+	const char *rgntag;
+	int itemnum;
 
 	// first add all the CPUs' address spaces
 	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
@@ -1730,60 +1769,51 @@ static void memory_determine_combo_items(running_machine *machine)
 		const debug_cpu_info *cpuinfo = debug_get_cpu_info(cpunum);
 		if (cpuinfo->valid)
 			for (spacenum = 0; spacenum < ADDRESS_SPACES; spacenum++)
-				if (cpuinfo->space[spacenum].databytes)
+				if (cpuinfo->space[spacenum].databytes != 0)
 				{
 					memorycombo_item *ci = malloc_or_die(sizeof(*ci));
+					TCHAR *t_tag, *t_name, *t_space;
+
 					memset(ci, 0, sizeof(*ci));
 					ci->cpunum = cpunum;
 					ci->spacenum = spacenum;
 					ci->prefsize = MIN(cpuinfo->space[spacenum].databytes, 8);
-					t_cpunum_name = tstring_from_utf8(cpunum_name(cpunum));
-					t_address_space_names = tstring_from_utf8(address_space_names[spacenum]);
-					_sntprintf(ci->name, ARRAY_LENGTH(ci->name), TEXT("CPU #%d (%s) %s memory"), cpunum, t_cpunum_name, t_address_space_names);
-					free(t_address_space_names),
-					t_address_space_names = NULL;
-					free(t_cpunum_name);
-					t_cpunum_name = NULL;
+
+					t_tag = tstring_from_utf8(machine->config->cpu[cpunum].tag);
+					t_name = tstring_from_utf8(cpunum_name(cpunum));
+					t_space = tstring_from_utf8(address_space_names[spacenum]);
+					_sntprintf(ci->name, ARRAY_LENGTH(ci->name), TEXT("CPU #%d \"%s\" (%s) %s memory"), cpunum, t_tag, t_name, t_space);
+					free(t_space),
+					free(t_name);
+					free(t_tag);
+
 					*tail = ci;
 					tail = &ci->next;
 				}
 	}
 
 	// then add all the memory regions
-	for (rgnnum = 0; rgnnum < MAX_MEMORY_REGIONS; rgnnum++)
+	for (rgntag = memory_region_next(machine, NULL); rgntag != NULL; rgntag = memory_region_next(machine, rgntag))
 	{
-		TCHAR* t_memory_region_name;
-		UINT8 *base = memory_region(machine, rgnnum);
-		UINT32 type = memory_region_type(machine, rgnnum);
-		if (base != NULL && type > REGION_INVALID && (type - REGION_INVALID) < ARRAY_LENGTH(memory_region_names))
-		{
-			memorycombo_item *ci = malloc_or_die(sizeof(*ci));
-			UINT32 flags = memory_region_flags(machine, rgnnum);
-			UINT8 width, little_endian;
-			memset(ci, 0, sizeof(*ci));
-			ci->base = base;
-			ci->length = memory_region_length(machine, rgnnum);
-			width = 1 << (flags & ROMREGION_WIDTHMASK);
-			little_endian = ((flags & ROMREGION_ENDIANMASK) == ROMREGION_LE);
-			if (type >= REGION_CPU1 && type <= REGION_CPU8)
-			{
-				const debug_cpu_info *cpuinfo = debug_get_cpu_info(type - REGION_CPU1);
-				if (cpuinfo)
-				{
-					width = cpuinfo->space[ADDRESS_SPACE_PROGRAM].databytes;
-					little_endian = (cpuinfo->endianness == CPU_IS_LE);
-				}
-			}
-			ci->prefsize = MIN(width, 8);
-			ci->offset_xor = width - 1;
-			ci->little_endian = little_endian;
-			t_memory_region_name = tstring_from_utf8(memory_region_names[type - REGION_INVALID]);
-			_tcscpy(ci->name, t_memory_region_name);
-			free(t_memory_region_name);
-			t_memory_region_name = NULL;
-			*tail = ci;
-			tail = &ci->next;
-		}
+		memorycombo_item *ci = malloc_or_die(sizeof(*ci));
+		UINT32 flags = memory_region_flags(machine, rgntag);
+		UINT8 little_endian = ((flags & ROMREGION_ENDIANMASK) == ROMREGION_LE);
+		UINT8 width = 1 << ((flags & ROMREGION_WIDTHMASK) >> 8);
+		TCHAR *t_tag;
+
+		memset(ci, 0, sizeof(*ci));
+		ci->base = memory_region(machine, rgntag);
+		ci->length = memory_region_length(machine, rgntag);
+		ci->prefsize = MIN(width, 8);
+		ci->offset_xor = width - 1;
+		ci->little_endian = little_endian;
+
+		t_tag = tstring_from_utf8(rgntag);
+		_sntprintf(ci->name, ARRAY_LENGTH(ci->name), TEXT("Region \"%s\""), t_tag);
+		free(t_tag);
+
+		*tail = ci;
+		tail = &ci->next;
 	}
 
 	// finally add all global array symbols
@@ -1792,7 +1822,6 @@ static void memory_determine_combo_items(running_machine *machine)
 		UINT32 valsize, valcount;
 		const char *name;
 		void *base;
-		TCHAR* t_name;
 
 		/* stop when we run out of items */
 		name = state_save_get_indexed_item(itemnum, &base, &valsize, &valcount);
@@ -1803,15 +1832,18 @@ static void memory_determine_combo_items(running_machine *machine)
 		if (valcount > 1 && strstr(name, "/globals/"))
 		{
 			memorycombo_item *ci = malloc_or_die(sizeof(*ci));
+			TCHAR *t_name;
+
 			memset(ci, 0, sizeof(*ci));
 			ci->base = base;
 			ci->length = valcount * valsize;
 			ci->prefsize = MIN(valsize, 8);
 			ci->little_endian = TRUE;
+
 			t_name = tstring_from_utf8(name);
 			_tcscpy(ci->name, _tcsrchr(t_name, TEXT('/')) + 1);
 			free(t_name);
-			t_name = NULL;
+
 			*tail = ci;
 			tail = &ci->next;
 		}
@@ -2536,7 +2568,7 @@ static void disasm_update_caption(HWND wnd)
 	cpunum = debug_view_get_property_UINT32(info->view[0].view, DVP_DASM_CPUNUM);
 
 	// then update the caption
-	sprintf(title, "Disassembly: %s (%d)", cpunum_name(cpunum), cpunum);
+	sprintf(title, "Disassembly: CPU #%d \"%s\" (%s)", cpunum, Machine->config->cpu[cpunum].tag, cpunum_name(cpunum));
 	win_set_window_text_utf8(wnd, title);
 }
 
@@ -2759,7 +2791,7 @@ static void console_set_cpunum(running_machine *machine, int cpunum)
 		debug_view_set_property_UINT32(main_console->view[1].view, DVP_REGS_CPUNUM, cpunum);
 
 	// then update the caption
-	snprintf(title, ARRAY_LENGTH(title), "Debug: %s - CPU %d (%s)", machine->gamedrv->name, cpu_getactivecpu(), activecpu_name());
+	snprintf(title, ARRAY_LENGTH(title), "Debug: %s - CPU #%d \"%s\" (%s)", machine->gamedrv->name, cpu_getactivecpu(), Machine->config->cpu[cpu_getactivecpu()].tag, activecpu_name());
 	win_get_window_text_utf8(main_console->wnd, curtitle, ARRAY_LENGTH(curtitle));
 	if (strcmp(title, curtitle))
 		win_set_window_text_utf8(main_console->wnd, title);
@@ -2887,11 +2919,8 @@ static int global_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 
 static int global_handle_key(debugwin_info *info, WPARAM wparam, LPARAM lparam)
 {
-	int ignoreme;
-
 	/* ignore any keys that are received while the debug key is down */
-	ignoreme = input_ui_pressed(Machine, IPT_UI_DEBUG_BREAK);
-	if (ignoreme)
+	if (!waiting_for_debugger && debugwin_seq_pressed())
 		return 1;
 
 	switch (wparam)

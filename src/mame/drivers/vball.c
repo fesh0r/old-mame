@@ -129,7 +129,7 @@ INTERRUPT_GEN( vball_interrupt );
 */
 static WRITE8_HANDLER( vb_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 	memory_set_bankptr( 1,&RAM[ 0x10000 + ( 0x4000 * ( data & 1 ) ) ] );
 
 	if (vball_gfxset != ((data  & 0x20) ^ 0x20)) {
@@ -217,20 +217,21 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x8801, 0x8801) AM_READ(YM2151_status_port_0_r)
-	AM_RANGE(0x9800, 0x9800) AM_READ(OKIM6295_status_0_r)
+	AM_RANGE(0x8801, 0x8801) AM_READ(ym2151_status_port_0_r)
+	AM_RANGE(0x9800, 0x9800) AM_READ(okim6295_status_0_r)
 	AM_RANGE(0xA000, 0xA000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x8800, 0x8800) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x8801, 0x8801) AM_WRITE(YM2151_data_port_0_w)
-	AM_RANGE(0x9800, 0x9803) AM_WRITE(OKIM6295_data_0_w)
+	AM_RANGE(0x8800, 0x8800) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x8801, 0x8801) AM_WRITE(ym2151_data_port_0_w)
+	AM_RANGE(0x9800, 0x9803) AM_WRITE(okim6295_data_0_w)
 ADDRESS_MAP_END
 
-#define COMMON_PORTS_BEFORE  PORT_START \
+#define COMMON_PORTS_BEFORE \
+	PORT_START("P1") \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1) \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1) \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1) \
@@ -239,7 +240,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 ) \
-	PORT_START \
+	PORT_START("P2") \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2) \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2) \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2) \
@@ -248,7 +249,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) \
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 ) \
-	PORT_START \
+	PORT_START("SYSTEM") \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 ) \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 ) \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 ) \
@@ -258,7 +259,8 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED ) \
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED ) \
 
-#define COMMON_PORTS_COINS  PORT_START \
+#define COMMON_PORTS_COINS \
+	PORT_START("DSW2") \
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A )) \
 	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C )) \
 	PORT_DIPSETTING(    0x01, DEF_STR( 3C_1C )) \
@@ -289,7 +291,7 @@ static INPUT_PORTS_START (vball)
 	/* The dipswitch instructions in naz's dump (vball) don't quite sync here) */
 	/* Looks like the pins from the dips to the board were mixed up a little. */
 
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ))
 // I've adjusted these to what I think is correct from gameplay testing - SJE - 03/28/03
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ))
@@ -315,7 +317,7 @@ static INPUT_PORTS_START (vball)
 
 	COMMON_PORTS_COINS
 
-	PORT_START
+	PORT_START("P3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
@@ -324,7 +326,8 @@ static INPUT_PORTS_START (vball)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START3 )
-	PORT_START
+
+	PORT_START("P4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(4)
@@ -338,21 +341,22 @@ INPUT_PORTS_END
 static INPUT_PORTS_START (vball2pj)
 	COMMON_PORTS_BEFORE
 
-/* The 2-player roms have the game-time in the difficulty spot, and
-   I've assumed vice-versa. (VS the instructions scanned in Naz's dump)
-*/
-	PORT_START
+	/* The 2-player roms have the game-time in the difficulty spot, and
+       I've assumed vice-versa. (VS the instructions scanned in Naz's dump) */
+
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x00, "Single Player Game Time")
 	PORT_DIPSETTING(    0x00, "1:30")
 	PORT_DIPSETTING(    0x01, "1:45")
 	PORT_DIPSETTING(    0x03, "2:00")
 	PORT_DIPSETTING(    0x02, "2:15")
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ))
-// This ordering is assumed. Someone has to play it a lot and find out.
+	// This ordering is assumed. Someone has to play it a lot and find out.
 	PORT_DIPSETTING(    0x04, DEF_STR( Easy ))
 	PORT_DIPSETTING(    0x00, DEF_STR( Medium ))
 	PORT_DIPSETTING(    0x08, DEF_STR( Hard ))
 	PORT_DIPSETTING(    0x0c, DEF_STR( Very_Hard ))
+
 	COMMON_PORTS_COINS
 INPUT_PORTS_END
 
@@ -383,8 +387,8 @@ static const gfx_layout spritelayout =
 
 
 static GFXDECODE_START( vb )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,     0, 8 )	/* 8x8 chars */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 128, 8 )	/* 16x16 sprites */
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,     0, 8 )	/* 8x8 chars */
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 128, 8 )	/* 16x16 sprites */
 GFXDECODE_END
 
 static void vball_irq_handler(running_machine *machine, int irq)
@@ -392,7 +396,7 @@ static void vball_irq_handler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	vball_irq_handler
 };
@@ -400,12 +404,11 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( vball )
 
 	/* basic machine hardware */
- 	MDRV_CPU_ADD(M6502, 2000000)	/* 2 MHz - measured by guru but it makes the game far far too slow ?! */
+ 	MDRV_CPU_ADD("main", M6502, 2000000)	/* 2 MHz - measured by guru but it makes the game far far too slow ?! */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT_HACK(vball_interrupt,32)	/* ??1 IRQ every 8 visible scanlines, plus NMI for vblank?? */
 
-	MDRV_CPU_ADD(Z80, 3579545)
-	/* audio CPU */	/* 3.579545 MHz */
+	MDRV_CPU_ADD("audio", Z80, 3579545)	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
@@ -425,13 +428,13 @@ static MACHINE_DRIVER_START( vball )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3579545)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 3579545)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.60)
 	MDRV_SOUND_ROUTE(1, "right", 0.60)
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -439,12 +442,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( vball2pj )
 
 	/* basic machine hardware */
- 	MDRV_CPU_ADD(M6502, 2000000)	/* 2.0 MHz */
+ 	MDRV_CPU_ADD("main", M6502, 2000000)	/* 2.0 MHz */
 	MDRV_CPU_PROGRAM_MAP(vball2pj_readmem,writemem)
 	MDRV_CPU_VBLANK_INT_HACK(vball_interrupt,32)	/* ??1 IRQ every 8 visible scanlines, plus NMI for vblank?? */
 
-	MDRV_CPU_ADD(Z80, 3579545)
-	/* audio CPU */	/* 3.579545 MHz */
+	MDRV_CPU_ADD("audio", Z80, 3579545)	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
@@ -464,13 +466,13 @@ static MACHINE_DRIVER_START( vball2pj )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3579545)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 3579545)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.60)
 	MDRV_SOUND_ROUTE(1, "right", 0.60)
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -483,15 +485,15 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( vball )
-	ROM_REGION( 0x18000, REGION_CPU1, 0 )	/* Main CPU: 64k for code */
+	ROM_REGION( 0x18000, "main", 0 )	/* Main CPU: 64k for code */
 	ROM_LOAD( "vball.124",  0x10000, 0x08000, CRC(be04c2b5) SHA1(40fed4ae272719e940f1796ef35420ab451ab7b6) )/* Bankswitched */
 	ROM_CONTINUE(		0x08000, 0x08000 )		 /* Static code  */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* region#2: music CPU, 64kb */
+	ROM_REGION( 0x10000, "audio", 0 ) /* region#2: music CPU, 64kb */
 	ROM_LOAD( "vball.47",  0x00000, 0x8000,  CRC(10ca79ad) SHA1(aad4a09d6745ca0b5665cb00ff7a4e08ea434068) )
 
 	/* These are from the bootleg; the original has the image data stored in a special dip rom */
-	ROM_REGION(0x80000, REGION_GFX1, ROMREGION_DISPOSE )	 /* fg tiles */
+	ROM_REGION(0x80000, "gfx1", ROMREGION_DISPOSE )	 /* fg tiles */
 	ROM_LOAD( "vball13.bin",  0x00000, 0x10000, CRC(f26df8e1) SHA1(72186c1430d07c7fd9211245b539f05a0660bebe) ) /* 0,1,2,3 */
 	ROM_LOAD( "vball14.bin",  0x10000, 0x10000, CRC(c9798d0e) SHA1(ec156f6c7ecccaa216ce8076f75ad7627ee90945) ) /* 0,1,2,3 */
 	ROM_LOAD( "vball15.bin",  0x20000, 0x10000, CRC(68e69c4b) SHA1(9870674c91cab7215ad8ed40eb82facdee478fde) ) /* 0,1,2,3 */
@@ -501,43 +503,43 @@ ROM_START( vball )
 	ROM_LOAD( "vball11.bin",  0x60000, 0x10000, CRC(4754b303) SHA1(8630f077b542590ef1340a2f0a6b94086ff91c40) ) /* 0,1,2,3 */
 	ROM_LOAD( "vball12.bin",  0x70000, 0x10000, CRC(21294a84) SHA1(b36ea9ddf6879443d3104241997fa0f916856528) ) /* 0,1,2,3 */
 
-	ROM_REGION(0x40000, REGION_GFX2, ROMREGION_DISPOSE )	 /* sprites */
+	ROM_REGION(0x40000, "gfx2", ROMREGION_DISPOSE )	 /* sprites */
 	ROM_LOAD( "vball.35",  0x00000, 0x20000, CRC(877826d8) SHA1(fd77298f9343051f66259dad9127f40afb95f385) ) /* 0,1,2,3 */
 	ROM_LOAD( "vball.5",   0x20000, 0x20000, CRC(c6afb4fa) SHA1(6d7c966300ce5fb2094476b393434486965d62b4) ) /* 0,1,2,3 */
 
-	ROM_REGION(0x20000, REGION_SOUND1, 0 ) /* Sound region#1: adpcm */
+	ROM_REGION(0x20000, "oki", 0 ) /* Sound region#1: adpcm */
 	ROM_LOAD( "vball.78a",  0x00000, 0x10000, CRC(f3e63b76) SHA1(da54d1d7d7d55b73e49991e4363bc6f46e0f70eb) )
 	ROM_LOAD( "vball.78b",  0x10000, 0x10000, CRC(7ad9d338) SHA1(3e3c270fa69bda93b03f07a54145eb5e211ec8ba) )
 
-	ROM_REGION(0x1000, REGION_PROMS, 0 )	/* color PROMs */
+	ROM_REGION(0x1000, "proms", 0 )	/* color PROMs */
 	ROM_LOAD_NIB_LOW ( "vball.44",   0x0000, 0x00800, CRC(a317240f) SHA1(bd57ad516f7a8ff774276fd26b02dd34659d41ad) )
 	ROM_LOAD_NIB_HIGH( "vball.43",   0x0000, 0x00800, CRC(1ff70b4f) SHA1(a469baa0dda844ba307c09ddefb23f239cfe7b5f) )
 	ROM_LOAD( "vball.160",  0x0800, 0x00800, CRC(2ffb68b3) SHA1(d560fdcd5e5c79d37e5b5bde22fbaf662fe89252) )
 ROM_END
 
 ROM_START( vball2pj )
-	ROM_REGION( 0x18000, REGION_CPU1, 0 )	/* Main CPU */
+	ROM_REGION( 0x18000, "main", 0 )	/* Main CPU */
 	ROM_LOAD( "25j2-2-5.124",  0x10000, 0x08000,  CRC(432509c4) SHA1(6de50e21d279f4ac9674bc91990ba9535e80908c) )/* Bankswitched */
 	ROM_CONTINUE(		  0x08000, 0x08000 )		 /* Static code  */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* region#2: music CPU, 64kb */
+	ROM_REGION( 0x10000, "audio", 0 ) /* region#2: music CPU, 64kb */
 	ROM_LOAD( "25j1-0.47",  0x00000, 0x8000,  CRC(10ca79ad) SHA1(aad4a09d6745ca0b5665cb00ff7a4e08ea434068) )
 //ROM_LOAD( "vball04.bin",  0x00000, 0x8000,  CRC(534dfbd9) SHA1(d0cb37caf94fa85da4ebdfe15e7a78109084bf91) )
 
    /* the original has the image data stored in a special ceramic embedded package made by Toshiba
      with part number 'TOSHIBA TRJ-101' (which has been dumped using a custom made adapter)
      there are a few bytes different between the bootleg and the original (the original is correct though!) */
-    ROM_REGION(0x80000, REGION_GFX1, ROMREGION_DISPOSE ) /* fg tiles */
+    ROM_REGION(0x80000, "gfx1", ROMREGION_DISPOSE ) /* fg tiles */
     ROM_LOAD( "trj-101.96",  0x00000, 0x80000, CRC(f343eee4) SHA1(1ce95285631f7ec91fe3f6c3d62b13f565d3816a) )
 
-	ROM_REGION(0x40000, REGION_GFX2, ROMREGION_DISPOSE )	 /* sprites */
+	ROM_REGION(0x40000, "gfx2", ROMREGION_DISPOSE )	 /* sprites */
 	ROM_LOAD( "25j4-0.35",  0x00000, 0x20000, CRC(877826d8) SHA1(fd77298f9343051f66259dad9127f40afb95f385) ) /* 0,1,2,3 */
 	ROM_LOAD( "25j3-0.5",   0x20000, 0x20000, CRC(c6afb4fa) SHA1(6d7c966300ce5fb2094476b393434486965d62b4) ) /* 0,1,2,3 */
 
-	ROM_REGION(0x20000, REGION_SOUND1, 0 ) /* Sound region#1: adpcm */
+	ROM_REGION(0x20000, "oki", 0 ) /* Sound region#1: adpcm */
 	ROM_LOAD( "25j0-0.78",  0x00000, 0x20000, CRC(8e04bdbf) SHA1(baafc5033c9442b83cb332c2c453c13117b31a3b) )
 
-	ROM_REGION(0x1000, REGION_PROMS, 0 )	/* color PROMs */
+	ROM_REGION(0x1000, "proms", 0 )	/* color PROMs */
 	ROM_LOAD_NIB_LOW ( "vball.44",   0x0000, 0x00800, CRC(a317240f) SHA1(bd57ad516f7a8ff774276fd26b02dd34659d41ad) )
 	ROM_LOAD_NIB_HIGH( "vball.43",   0x0000, 0x00800, CRC(1ff70b4f) SHA1(a469baa0dda844ba307c09ddefb23f239cfe7b5f) )
 	ROM_LOAD( "vball.160",  0x0800, 0x00800, CRC(2ffb68b3) SHA1(d560fdcd5e5c79d37e5b5bde22fbaf662fe89252) )

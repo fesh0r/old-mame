@@ -191,16 +191,16 @@ static READ16_HANDLER( shadfrce_input_ports_r )
 	switch (offset)
 	{
 		case 0 :
-			data = (input_port_read_indexed(machine, 0) & 0xff) | ((input_port_read_indexed(machine, 7) & 0xc0) << 6) | ((input_port_read_indexed(machine, 4) & 0x0f) << 8);
+			data = (input_port_read(machine, "P1") & 0xff) | ((input_port_read(machine, "DSW2") & 0xc0) << 6) | ((input_port_read(machine, "SYSTEM") & 0x0f) << 8);
 			break;
 		case 1 :
-			data = (input_port_read_indexed(machine, 1) & 0xff) | ((input_port_read_indexed(machine, 7) & 0x3f) << 8);
+			data = (input_port_read(machine, "P2") & 0xff) | ((input_port_read(machine, "DSW2") & 0x3f) << 8);
 			break;
 		case 2 :
-			data = (input_port_read_indexed(machine, 2) & 0xff) | ((input_port_read_indexed(machine, 6) & 0x3f) << 8);
+			data = (input_port_read(machine, "EXTRA") & 0xff) | ((input_port_read(machine, "DSW1") & 0x3f) << 8);
 			break;
 		case 3 :
-			data = (input_port_read_indexed(machine, 3) & 0xff) | ((input_port_read_indexed(machine, 6) & 0xc0) << 2) | ((input_port_read_indexed(machine, 5) & 0x3c) << 8);
+			data = (input_port_read(machine, "OTHER") & 0xff) | ((input_port_read(machine, "DSW1") & 0xc0) << 2) | ((input_port_read(machine, "MISC") & 0x3c) << 8);
 			break;
 	}
 
@@ -242,10 +242,10 @@ static ADDRESS_MAP_START( shadfrce_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 #if USE_SHADFRCE_FAKE_INPUT_PORTS
 	AM_RANGE(0x1d0020, 0x1d0027) AM_READ(shadfrce_input_ports_r)
 #else
-	AM_RANGE(0x1d0020, 0x1d0021) AM_READ(input_port_0_word_r)
-	AM_RANGE(0x1d0022, 0x1d0023) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x1d0024, 0x1d0025) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x1d0026, 0x1d0027) AM_READ(input_port_3_word_r)
+	AM_RANGE(0x1d0020, 0x1d0021) AM_READ_PORT("IN0")
+	AM_RANGE(0x1d0022, 0x1d0023) AM_READ_PORT("IN1")
+	AM_RANGE(0x1d0024, 0x1d0025) AM_READ_PORT("IN2")
+	AM_RANGE(0x1d0026, 0x1d0027) AM_READ_PORT("IN3")
 #endif
 	AM_RANGE(0x1F0000, 0x1FFFFF) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
@@ -284,14 +284,14 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( oki_bankswitch_w )
 {
-	OKIM6295_set_bank_base(0, (data & 1) * 0x40000);
+	okim6295_set_bank_base(0, (data & 1) * 0x40000);
 }
 
 static ADDRESS_MAP_START( readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
 	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xc801, 0xc801) AM_READ(YM2151_status_port_0_r)
-	AM_RANGE(0xd800, 0xd800) AM_READ(OKIM6295_status_0_r)
+	AM_RANGE(0xc801, 0xc801) AM_READ(ym2151_status_port_0_r)
+	AM_RANGE(0xd800, 0xd800) AM_READ(okim6295_status_0_r)
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
 	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
@@ -299,9 +299,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xc800, 0xc800) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0xc801, 0xc801) AM_WRITE(YM2151_data_port_0_w)
-	AM_RANGE(0xd800, 0xd800) AM_WRITE(OKIM6295_data_0_w)
+	AM_RANGE(0xc800, 0xc800) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0xc801, 0xc801) AM_WRITE(ym2151_data_port_0_w)
+	AM_RANGE(0xd800, 0xd800) AM_WRITE(okim6295_data_0_w)
 	AM_RANGE(0xe800, 0xe800) AM_WRITE(oki_bankswitch_w)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
@@ -323,13 +323,13 @@ ADDRESS_MAP_END
 
 #if USE_SHADFRCE_FAKE_INPUT_PORTS
 static INPUT_PORTS_START( shadfrce )
-	PORT_START	/* Fake IN0 (player 1 inputs) */
+	PORT_START("P1")	/* Fake IN0 (player 1 inputs) */
 	SHADFRCE_PLAYER_INPUT( 1, IPT_START1 )
 
-	PORT_START	/* Fake IN1 (player 2 inputs) */
+	PORT_START("P2")	/* Fake IN1 (player 2 inputs) */
 	SHADFRCE_PLAYER_INPUT( 2, IPT_START2 )
 
-	PORT_START	/* Fake IN2 (players 1 & 2 extra inputs */
+	PORT_START("EXTRA")	/* Fake IN2 (players 1 & 2 extra inputs */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(1)
@@ -339,21 +339,21 @@ static INPUT_PORTS_START( shadfrce )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* Fake IN3 (other extra inputs ?) */
+	PORT_START("OTHER")	/* Fake IN3 (other extra inputs ?) */
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* Fake IN4 (system inputs) */
+	PORT_START("SYSTEM")	/* Fake IN4 (system inputs) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )                   /* only in "test mode" ? */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )                /* only in "test mode" ? */
 	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* Fake IN5 (misc) */
+	PORT_START("MISC")	/* Fake IN5 (misc) */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_VBLANK )                  /* guess */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )                 /* must be ACTIVE_LOW or 'shadfrcj' jumps to the end (code at 0x04902e) */
 	PORT_BIT( 0xeb, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* Fake IN6 (DIP1) */
+	PORT_START("DSW1")	/* Fake IN6 (DIP1) */
 	PORT_DIPNAME( 0x01, 0x01, "Unused DIP 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -376,7 +376,7 @@ static INPUT_PORTS_START( shadfrce )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* Fake IN7 (DIP2) */
+	PORT_START("DSW2")	/* Fake IN7 (DIP2) */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
@@ -402,7 +402,7 @@ static INPUT_PORTS_START( shadfrce )
 INPUT_PORTS_END
 #else
 static INPUT_PORTS_START( shadfrce )
-	PORT_START	/* IN0 - $1d0020.w */
+	PORT_START("IN0")	/* IN0 - $1d0020.w */
 	SHADFRCE_PLAYER_INPUT( 1, IPT_START1 )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_COIN2 )                 /* only in "test mode" ? */
@@ -417,7 +417,7 @@ static INPUT_PORTS_START( shadfrce )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN1 - $1d0022.w */
+	PORT_START("IN1")	/* IN1 - $1d0022.w */
 	SHADFRCE_PLAYER_INPUT( 2, IPT_START2 )
 	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x0100, DEF_STR( Easy ) )
@@ -438,7 +438,7 @@ static INPUT_PORTS_START( shadfrce )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN2 - $1d0024.w */
+	PORT_START("IN2")	/* IN2 - $1d0024.w */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(1)
@@ -467,7 +467,7 @@ static INPUT_PORTS_START( shadfrce )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN3 - $1d0026.w */
+	PORT_START("IN3")	/* IN3 - $1d0026.w */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -525,9 +525,9 @@ static const gfx_layout bg16x16x6_layout =
 };
 
 static GFXDECODE_START( shadfrce )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, fg8x8x4_layout,   0x0000, 256 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, sp16x16x5_layout, 0x1000, 128 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, bg16x16x6_layout, 0x2000, 128 )
+	GFXDECODE_ENTRY( "gfx1", 0, fg8x8x4_layout,   0x0000, 256 )
+	GFXDECODE_ENTRY( "gfx2", 0, sp16x16x5_layout, 0x1000, 128 )
+	GFXDECODE_ENTRY( "gfx3", 0, bg16x16x6_layout, 0x2000, 128 )
 GFXDECODE_END
 
 /* Machine Driver Bits */
@@ -537,7 +537,7 @@ static void irq_handler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	irq_handler
 };
@@ -551,12 +551,11 @@ static INTERRUPT_GEN( shadfrce_interrupt ) {
 
 
 static MACHINE_DRIVER_START( shadfrce )
-	MDRV_CPU_ADD(M68000, 28000000/2) /* ? Guess - CPU is rated for 16MHz */
+	MDRV_CPU_ADD("main", M68000, 28000000/2) /* ? Guess - CPU is rated for 16MHz */
 	MDRV_CPU_PROGRAM_MAP(shadfrce_readmem,shadfrce_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(shadfrce_interrupt,2)
 
-	MDRV_CPU_ADD(Z80, 3579545)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 3579545)
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 
 	MDRV_GFXDECODE(shadfrce)
@@ -578,13 +577,13 @@ static MACHINE_DRIVER_START( shadfrce )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3579545)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 3579545)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
 
-	MDRV_SOUND_ADD(OKIM6295, 1584000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1584000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END
@@ -592,60 +591,60 @@ MACHINE_DRIVER_END
 /* Rom Defs. */
 
 ROM_START( shadfrce )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "32a12-01.34", 0x00001, 0x40000, CRC(04501198) SHA1(50f981c13f9ed19d681d494376018ba86464ea13) )
 	ROM_LOAD16_BYTE( "32a13-01.26", 0x00000, 0x40000, CRC(b8f8a05c) SHA1(bd9d4218a7cf57b56aec1f7e710e02af8471f9d7) )
 	ROM_LOAD16_BYTE( "32a14-0.33",  0x80001, 0x40000, CRC(08279be9) SHA1(1833526b23feddb58b21874070ad2bf3b6be8dca) )
 	ROM_LOAD16_BYTE( "32a15-0.14",  0x80000, 0x40000, CRC(bfcadfea) SHA1(1caa9fc30d8622ce4c7221039c446e99cc8f5346) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 Code */
 	ROM_LOAD( "32j10-0.42",  0x00000, 0x10000, CRC(65daf475) SHA1(7144332b2d17af8645e22e1926b33113db0d20e2) )
 
-	ROM_REGION( 0x020000, REGION_GFX1, ROMREGION_DISPOSE ) /* Chars */
+	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE ) /* Chars */
 	ROM_LOAD( "32a11-0.55",  0x00000, 0x20000, CRC(cfaf5e77) SHA1(eab76e085f695c74cc868aaf95f04ff2acf66ee9) )
 
-	ROM_REGION( 0xa00000, REGION_GFX2, ROMREGION_DISPOSE ) /* Sprite Tiles */
+	ROM_REGION( 0xa00000, "gfx2", ROMREGION_DISPOSE ) /* Sprite Tiles */
 	ROM_LOAD( "32j4-0.12",  0x000000, 0x200000, CRC(1ebea5b6) SHA1(35bd49dda9ad75326d45ffb10c87d83fc4f1b7a8) )
 	ROM_LOAD( "32j5-0.13",  0x200000, 0x200000, CRC(600026b5) SHA1(5641246300d7e20dcff1eae004647faaee6cd1c6) )
 	ROM_LOAD( "32j6-0.24",  0x400000, 0x200000, CRC(6cde8ebe) SHA1(750933798235951fe24b2e667c33f692612c0aa0) )
 	ROM_LOAD( "32j7-0.25",  0x600000, 0x200000, CRC(bcb37922) SHA1(f3eee73c8b9f4873a7f1cc42e334e7502eaee3c8) )
 	ROM_LOAD( "32j8-0.32",  0x800000, 0x200000, CRC(201bebf6) SHA1(c89d2895ea5b19daea1f88542419f4e10f437c73) )
 
-	ROM_REGION( 0x300000, REGION_GFX3, ROMREGION_DISPOSE ) /* BG Tiles */
+	ROM_REGION( 0x300000, "gfx3", ROMREGION_DISPOSE ) /* BG Tiles */
 	ROM_LOAD( "32j1-0.4",  0x000000, 0x100000, CRC(f1cca740) SHA1(339079b95ca137e66b4f032ad67a0adf58cca100) )
 	ROM_LOAD( "32j2-0.5",  0x100000, 0x100000, CRC(5fac3e01) SHA1(20c30f4c76e303285ae37e596afe86aa4812c3b9) )
 	ROM_LOAD( "32j3-0.6",  0x200000, 0x100000, CRC(d297925e) SHA1(5bc4d37bf0dc54114884c816b94a64ef1ccfeda5) )
 
-	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x080000, "oki", 0 ) /* Samples */
 	ROM_LOAD( "32j9-0.76",  0x000000, 0x080000, CRC(16001e81) SHA1(67928d2024f963aee91f1498b6f4c76101d2f3b8) )
 ROM_END
 
 ROM_START( shadfrcj )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "32j12-01.ic34", 0x00001, 0x40000, CRC(38fdbe1d) SHA1(476d8ef2c0d2a8c568ce44631f93f8c730f91b08) )
 	ROM_LOAD16_BYTE( "32j13-01.ic26", 0x00000, 0x40000, CRC(6e1df6f1) SHA1(c165553fe967b437413dd7ddc87a267548dd0ca9) )
 	ROM_LOAD16_BYTE( "32j14-01.ic33", 0x80001, 0x40000, CRC(89e3fb60) SHA1(90de38558d63215a0079079030e8b1097599c9e5) )
 	ROM_LOAD16_BYTE( "32j15-01.ic14", 0x80000, 0x40000, CRC(3dc3a84a) SHA1(166ad91b93192d94e3f6d2fe6dde02f59d334f75) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 Code */
 	ROM_LOAD( "32j10-0.42",  0x00000, 0x10000, CRC(65daf475) SHA1(7144332b2d17af8645e22e1926b33113db0d20e2) )
 
-	ROM_REGION( 0x020000, REGION_GFX1, ROMREGION_DISPOSE ) /* Chars */
+	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE ) /* Chars */
 	ROM_LOAD( "32j11-0.ic55",  0x00000, 0x20000, CRC(7252d993) SHA1(43f7de381841039aa290486aafb98e2cf3b8579b) )
 
-	ROM_REGION( 0xa00000, REGION_GFX2, ROMREGION_DISPOSE ) /* Sprite Tiles */
+	ROM_REGION( 0xa00000, "gfx2", ROMREGION_DISPOSE ) /* Sprite Tiles */
 	ROM_LOAD( "32j4-0.12",  0x000000, 0x200000, CRC(1ebea5b6) SHA1(35bd49dda9ad75326d45ffb10c87d83fc4f1b7a8) )
 	ROM_LOAD( "32j5-0.13",  0x200000, 0x200000, CRC(600026b5) SHA1(5641246300d7e20dcff1eae004647faaee6cd1c6) )
 	ROM_LOAD( "32j6-0.24",  0x400000, 0x200000, CRC(6cde8ebe) SHA1(750933798235951fe24b2e667c33f692612c0aa0) )
 	ROM_LOAD( "32j7-0.25",  0x600000, 0x200000, CRC(bcb37922) SHA1(f3eee73c8b9f4873a7f1cc42e334e7502eaee3c8) )
 	ROM_LOAD( "32j8-0.32",  0x800000, 0x200000, CRC(201bebf6) SHA1(c89d2895ea5b19daea1f88542419f4e10f437c73) )
 
-	ROM_REGION( 0x300000, REGION_GFX3, ROMREGION_DISPOSE ) /* BG Tiles */
+	ROM_REGION( 0x300000, "gfx3", ROMREGION_DISPOSE ) /* BG Tiles */
 	ROM_LOAD( "32j1-0.4",  0x000000, 0x100000, CRC(f1cca740) SHA1(339079b95ca137e66b4f032ad67a0adf58cca100) )
 	ROM_LOAD( "32j2-0.5",  0x100000, 0x100000, CRC(5fac3e01) SHA1(20c30f4c76e303285ae37e596afe86aa4812c3b9) )
 	ROM_LOAD( "32j3-0.6",  0x200000, 0x100000, CRC(d297925e) SHA1(5bc4d37bf0dc54114884c816b94a64ef1ccfeda5) )
 
-	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x080000, "oki", 0 ) /* Samples */
 	ROM_LOAD( "32j9-0.76",  0x000000, 0x080000, CRC(16001e81) SHA1(67928d2024f963aee91f1498b6f4c76101d2f3b8) )
 ROM_END
 

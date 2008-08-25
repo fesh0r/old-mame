@@ -681,7 +681,7 @@ WRITE64_HANDLER( dc_g1_ctrl_w )
 	UINT64 shift;
 	UINT32 old,dat;
 	struct sh4_ddt_dma ddtdata;
-	UINT8 *ROM = (UINT8 *)memory_region(machine, REGION_USER1);
+	UINT8 *ROM = (UINT8 *)memory_region(machine, "user1");
 
 	reg = decode_reg_64(offset, mem_mask, &shift);
 	dat = (UINT32)(data >> shift);
@@ -804,12 +804,14 @@ WRITE64_HANDLER( dc_rtc_w )
 	mame_printf_verbose("RTC: [%08x=%x] write %llx to %x, mask %llx\n", 0x710000 + reg*4, dat, data, offset, mem_mask);
 }
 
-/*static void dc_rtc_increment(void)
+#ifdef UNUSED_FUNCTION
+static void dc_rtc_increment(void)
 {
     dc_rtcregister[RTC2] = (dc_rtcregister[RTC2] + 1) & 0xFFFF;
     if (dc_rtcregister[RTC2] == 0)
         dc_rtcregister[RTC1] = (dc_rtcregister[RTC1] + 1) & 0xFFFF;
-}*/
+}
+#endif
 
 MACHINE_START( dc )
 {
@@ -847,7 +849,7 @@ READ64_HANDLER( dc_aica_reg_r )
 
 //  mame_printf_verbose("AICA REG: [%08x] read %llx, mask %llx\n", 0x700000+reg*4, (UINT64)offset, mem_mask);
 
-	return (UINT64) AICA_0_r(machine, offset*2, 0xffff)<<shift;
+	return (UINT64) aica_0_r(machine, offset*2, 0xffff)<<shift;
 }
 
 WRITE64_HANDLER( dc_aica_reg_w )
@@ -873,18 +875,18 @@ WRITE64_HANDLER( dc_aica_reg_w )
 		}
         }
 
-	AICA_0_w(machine, offset*2, dat, shift ? ((mem_mask>>32)&0xffff) : (mem_mask & 0xffff));
+	aica_0_w(machine, offset*2, dat, shift ? ((mem_mask>>32)&0xffff) : (mem_mask & 0xffff));
 
 //  mame_printf_verbose("AICA REG: [%08x=%x] write %llx to %x, mask %llx\n", 0x700000+reg*4, dat, data, offset, mem_mask);
 }
 
 READ32_HANDLER( dc_arm_aica_r )
 {
-	return AICA_0_r(machine, offset*2, 0xffff);
+	return aica_0_r(machine, offset*2, 0xffff);
 }
 
 WRITE32_HANDLER( dc_arm_aica_w )
 {
-	AICA_0_w(machine, offset*2, data, mem_mask&0xffff);
+	aica_0_w(machine, offset*2, data, mem_mask&0xffff);
 }
 

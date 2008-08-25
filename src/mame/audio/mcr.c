@@ -269,7 +269,7 @@ void mcr_sound_reset(void)
 */
 static void ssio_compute_ay8910_modulation(void)
 {
-	UINT8 *prom = memory_region(Machine, REGION_PROMS);
+	UINT8 *prom = memory_region(Machine, "proms");
 	int volval;
 
 	/* loop over all possible values of the duty cycle */
@@ -444,7 +444,7 @@ void ssio_set_custom_output(int which, int mask, write8_machine_func handler)
 
 
 /********* sound interfaces ***********/
-static const struct AY8910interface ssio_ay8910_interface_1 =
+static const ay8910_interface ssio_ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -454,7 +454,7 @@ static const struct AY8910interface ssio_ay8910_interface_1 =
 	ssio_portb0_w
 };
 
-static const struct AY8910interface ssio_ay8910_interface_2 =
+static const ay8910_interface ssio_ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -473,12 +473,12 @@ static ADDRESS_MAP_START( ssio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM
 	AM_RANGE(0x9000, 0x9003) AM_MIRROR(0x0ffc) AM_READ(ssio_data_r)
-	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x0ffc) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x0ffc) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x0ffc) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0xb000, 0xb000) AM_MIRROR(0x0ffc) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0xb001, 0xb001) AM_MIRROR(0x0ffc) AM_READ(AY8910_read_port_1_r)
-	AM_RANGE(0xb002, 0xb002) AM_MIRROR(0x0ffc) AM_WRITE(AY8910_write_port_1_w)
+	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x0ffc) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x0ffc) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x0ffc) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0xb000, 0xb000) AM_MIRROR(0x0ffc) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0xb001, 0xb001) AM_MIRROR(0x0ffc) AM_READ(ay8910_read_port_1_r)
+	AM_RANGE(0xb002, 0xb002) AM_MIRROR(0x0ffc) AM_WRITE(ay8910_write_port_1_w)
 	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(SMH_NOP, ssio_status_w)
 	AM_RANGE(0xd000, 0xdfff) AM_WRITENOP	/* low bit controls yellow LED */
 	AM_RANGE(0xe000, 0xefff) AM_READ(ssio_irq_clear)
@@ -488,16 +488,16 @@ ADDRESS_MAP_END
 
 /********* machine driver ***********/
 MACHINE_DRIVER_START(mcr_ssio)
-	MDRV_CPU_ADD_TAG("ssio", Z80, SSIO_CLOCK/2/4)
+	MDRV_CPU_ADD("ssio", Z80, SSIO_CLOCK/2/4)
 	MDRV_CPU_PROGRAM_MAP(ssio_map,0)
 	MDRV_CPU_PERIODIC_INT(ssio_14024_clock, SSIO_CLOCK/2/16/10)
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD_TAG("ssio.1", AY8910, SSIO_CLOCK/2/4)
+	MDRV_SOUND_ADD("ssio.1", AY8910, SSIO_CLOCK/2/4)
 	MDRV_SOUND_CONFIG(ssio_ay8910_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.33)
 
-	MDRV_SOUND_ADD_TAG("ssio.2", AY8910, SSIO_CLOCK/2/4)
+	MDRV_SOUND_ADD("ssio.2", AY8910, SSIO_CLOCK/2/4)
 	MDRV_SOUND_CONFIG(ssio_ay8910_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.33)
 MACHINE_DRIVER_END
@@ -516,7 +516,7 @@ MACHINE_DRIVER_END
 static WRITE8_HANDLER( csdeluxe_porta_w )
 {
 	dacval = (dacval & ~0x3fc) | (data << 2);
-	DAC_signed_data_16_w(csdeluxe_dac_index, dacval << 6);
+	dac_signed_data_16_w(csdeluxe_dac_index, dacval << 6);
 }
 
 static WRITE8_HANDLER( csdeluxe_portb_w )
@@ -524,7 +524,7 @@ static WRITE8_HANDLER( csdeluxe_portb_w )
 	UINT8 z_mask = pia_get_port_b_z_mask(0);
 
 	dacval = (dacval & ~0x003) | (data >> 6);
-	DAC_signed_data_16_w(csdeluxe_dac_index, dacval << 6);
+	dac_signed_data_16_w(csdeluxe_dac_index, dacval << 6);
 
 	if (~z_mask & 0x10)  csdeluxe_status = (csdeluxe_status & ~1) | ((data >> 4) & 1);
 	if (~z_mask & 0x20)  csdeluxe_status = (csdeluxe_status & ~2) | ((data >> 4) & 2);
@@ -608,19 +608,19 @@ static const pia6821_interface csdeluxe_pia_intf =
 
 /********* machine driver ***********/
 MACHINE_DRIVER_START(chip_squeak_deluxe)
-	MDRV_CPU_ADD_TAG("csd", M68000, CSDELUXE_CLOCK/2)
+	MDRV_CPU_ADD("csd", M68000, CSDELUXE_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(csdeluxe_map,0)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD_TAG("csd", DAC, 0)
+	MDRV_SOUND_ADD("csd", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START(chip_squeak_deluxe_stereo)
-	MDRV_CPU_ADD_TAG("csd", M68000, CSDELUXE_CLOCK/2)
+	MDRV_CPU_ADD("csd", M68000, CSDELUXE_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(csdeluxe_map,0)
 
-	MDRV_SOUND_ADD_TAG("csd", DAC, 0)
+	MDRV_SOUND_ADD("csd", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -639,7 +639,7 @@ MACHINE_DRIVER_END
 static WRITE8_HANDLER( soundsgood_porta_w )
 {
 	dacval = (dacval & ~0x3fc) | (data << 2);
-	DAC_signed_data_16_w(soundsgood_dac_index, dacval << 6);
+	dac_signed_data_16_w(soundsgood_dac_index, dacval << 6);
 }
 
 static WRITE8_HANDLER( soundsgood_portb_w )
@@ -647,7 +647,7 @@ static WRITE8_HANDLER( soundsgood_portb_w )
 	UINT8 z_mask = pia_get_port_b_z_mask(1);
 
 	dacval = (dacval & ~0x003) | (data >> 6);
-	DAC_signed_data_16_w(soundsgood_dac_index, dacval << 6);
+	dac_signed_data_16_w(soundsgood_dac_index, dacval << 6);
 
 	if (~z_mask & 0x10)  soundsgood_status = (soundsgood_status & ~1) | ((data >> 4) & 1);
 	if (~z_mask & 0x20)  soundsgood_status = (soundsgood_status & ~2) | ((data >> 4) & 2);
@@ -715,11 +715,11 @@ static const pia6821_interface soundsgood_pia_intf =
 
 /********* machine driver ***********/
 MACHINE_DRIVER_START(sounds_good)
-	MDRV_CPU_ADD_TAG("sg", M68000, SOUNDSGOOD_CLOCK/2)
+	MDRV_CPU_ADD("sg", M68000, SOUNDSGOOD_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(soundsgood_map,0)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD_TAG("sg", DAC, 0)
+	MDRV_SOUND_ADD("sg", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -737,13 +737,13 @@ MACHINE_DRIVER_END
 static WRITE8_HANDLER( turbocs_porta_w )
 {
 	dacval = (dacval & ~0x3fc) | (data << 2);
-	DAC_signed_data_16_w(turbocs_dac_index, dacval << 6);
+	dac_signed_data_16_w(turbocs_dac_index, dacval << 6);
 }
 
 static WRITE8_HANDLER( turbocs_portb_w )
 {
 	dacval = (dacval & ~0x003) | (data >> 6);
-	DAC_signed_data_16_w(turbocs_dac_index, dacval << 6);
+	dac_signed_data_16_w(turbocs_dac_index, dacval << 6);
 	turbocs_status = (data >> 4) & 3;
 }
 
@@ -804,11 +804,11 @@ static const pia6821_interface turbocs_pia_intf =
 
 /********* machine driver ***********/
 MACHINE_DRIVER_START(turbo_chip_squeak)
-	MDRV_CPU_ADD_TAG("tcs", M6809E, TURBOCS_CLOCK)
+	MDRV_CPU_ADD("tcs", M6809E, TURBOCS_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(turbocs_map,0)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD_TAG("tcs", DAC, 0)
+	MDRV_SOUND_ADD("tcs", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -952,11 +952,11 @@ static const pia6821_interface squawkntalk_pia1_intf =
 
 /********* machine driver ***********/
 MACHINE_DRIVER_START(squawk_n_talk)
-	MDRV_CPU_ADD_TAG("snt", M6802, SQUAWKTALK_CLOCK)
+	MDRV_CPU_ADD("snt", M6802, SQUAWKTALK_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(squawkntalk_map,0)
 
 	/* only used on Discs of Tron, which is stereo */
-	MDRV_SOUND_ADD_TAG("snt", TMS5200, 640000)
+	MDRV_SOUND_ADD("snt", TMS5200, 640000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.60)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.60)
 

@@ -266,7 +266,7 @@ static ADDRESS_MAP_START( alpha_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x17c0, 0x17c0) AM_WRITE(mhavoc_gamma_w)		  /* Gamma Communication Write Port */
 	AM_RANGE(0x1800, 0x1fff) AM_RAM			                  /* Shared Beta Ram */
 	AM_RANGE(0x2000, 0x3fff) AM_ROMBANK(2)			          /* Paged Program ROM (32K) */
-	AM_RANGE(0x4000, 0x4fff) AM_RAM AM_BASE(&vectorram) AM_SIZE(&vectorram_size) AM_REGION(REGION_CPU1, 0x4000)/* Vector Generator RAM */
+	AM_RANGE(0x4000, 0x4fff) AM_RAM AM_BASE(&vectorram) AM_SIZE(&vectorram_size) AM_REGION("alpha", 0x4000)/* Vector Generator RAM */
 	AM_RANGE(0x5000, 0x7fff) AM_ROM			                  /* Vector ROM */
 	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)			      /* Program ROM (32K) */
 ADDRESS_MAP_END
@@ -321,7 +321,7 @@ static ADDRESS_MAP_START( alphaone_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x10e0, 0x10ff) AM_WRITE(SMH_RAM) AM_BASE(&mhavoc_colorram)	/* ColorRAM */
 	AM_RANGE(0x1800, 0x18ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)	/* EEROM */
 	AM_RANGE(0x2000, 0x3fff) AM_ROMBANK(2)						/* Paged Program ROM (32K) */
-	AM_RANGE(0x4000, 0x4fff) AM_RAM AM_BASE(&vectorram) AM_SIZE(&vectorram_size) AM_REGION(REGION_CPU1, 0x4000) /* Vector Generator RAM */
+	AM_RANGE(0x4000, 0x4fff) AM_RAM AM_BASE(&vectorram) AM_SIZE(&vectorram_size) AM_REGION("alpha", 0x4000) /* Vector Generator RAM */
 	AM_RANGE(0x5000, 0x7fff) AM_ROM								/* Vector ROM */
 	AM_RANGE(0x8000, 0xffff) AM_ROM								/* Program ROM (32K) */
 ADDRESS_MAP_END
@@ -335,7 +335,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( mhavoc )
-	PORT_START_TAG("IN0")	/* IN0 - alpha (player_1 = 0) */
+	PORT_START("IN0")	/* IN0 - alpha (player_1 = 0) */
 	PORT_BIT ( 0x03, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
@@ -344,17 +344,17 @@ static INPUT_PORTS_START( mhavoc )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )	/* Left Coin Switch  */
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )	/* Right Coin */
 
-	PORT_START_TAG("IN1")	/* IN1 - gamma */
+	PORT_START("IN1")	/* IN1 - gamma */
 	PORT_BIT ( 0x0f, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
 
-	PORT_START_TAG("DIAL")	/* IN2 - gamma */
+	PORT_START("DIAL")	/* IN2 - gamma */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(40) PORT_REVERSE
 
-	PORT_START_TAG("DSW1")	/* DIP Switch at position 13/14S */
+	PORT_START("DSW1")	/* DIP Switch at position 13/14S */
 	PORT_DIPNAME( 0x01, 0x00, "Adaptive Difficulty" )	PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ))
 	PORT_DIPSETTING(    0x00, DEF_STR( On ))
@@ -377,7 +377,7 @@ static INPUT_PORTS_START( mhavoc )
 	PORT_DIPSETTING(    0x80, "5 (4 in Free Play)")
 	PORT_DIPSETTING(    0x40, "6 (5 in Free Play)")
 
-	PORT_START_TAG("DSW2")	/* DIP Switch at position 8S */
+	PORT_START("DSW2")	/* DIP Switch at position 8S */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )		PORT_DIPLOCATION("SW2:7,8")
 	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -398,7 +398,7 @@ static INPUT_PORTS_START( mhavoc )
 	PORT_DIPSETTING(    0x60, "1 each 5" )
 	PORT_DIPSETTING(    0xe0, DEF_STR( None ) )
 
-	PORT_START_TAG("IN2")	/* IN5 - dummy for player_1 = 1 on alpha */
+	PORT_START("IN2")	/* IN5 - dummy for player_1 = 1 on alpha */
 	PORT_BIT ( 0x3f, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_DIPNAME( 0x40, 0x40, "Credit to start" )
 	PORT_DIPSETTING(    0x40, "1" )
@@ -408,24 +408,24 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( mhavocp )
-	PORT_START_TAG("IN0")	/* IN0 - alpha (player_1 = 0) */
+	PORT_START("IN0")	/* IN0 - alpha (player_1 = 0) */
 	PORT_BIT ( 0x0f, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Diag Step/Coin C") PORT_CODE(KEYCODE_F1)
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )	/* Left Coin Switch  */
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )	/* Right Coin */
 
-	PORT_START_TAG("IN1")	/* IN1 - gamma */
+	PORT_START("IN1")	/* IN1 - gamma */
 	PORT_BIT ( 0x0f, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
 
-	PORT_START_TAG("DIAL")	/* IN2 - gamma */
+	PORT_START("DIAL")	/* IN2 - gamma */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(40) PORT_REVERSE
 
-	PORT_START_TAG("DSW1") /* DIP Switch at position 13/14S */
+	PORT_START("DSW1") /* DIP Switch at position 13/14S */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )		PORT_DIPLOCATION("SW1:7,8")
 	PORT_DIPSETTING(    0x00, "1" )
 	PORT_DIPSETTING(    0x01, "2" )
@@ -447,7 +447,7 @@ static INPUT_PORTS_START( mhavocp )
 	PORT_DIPSETTING(    0x80, "5 (4 in Free Play)")
 	PORT_DIPSETTING(    0x40, "6 (5 in Free Play)")
 
-	PORT_START_TAG("DSW2") /* DIP Switch at position 8S */
+	PORT_START("DSW2") /* DIP Switch at position 8S */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )		PORT_DIPLOCATION("SW2:7,8")
 	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -468,7 +468,7 @@ static INPUT_PORTS_START( mhavocp )
 	PORT_DIPSETTING(    0x60, "1 each 5" )
 	PORT_DIPSETTING(    0xe0, DEF_STR( None ) )
 
-	PORT_START_TAG("IN2")	/* IN5 - dummy for player_1 = 1 on alpha */
+	PORT_START("IN2")	/* IN5 - dummy for player_1 = 1 on alpha */
 	PORT_BIT ( 0x3f, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_DIPNAME( 0x40, 0x40, "Credit to start" )
 	PORT_DIPSETTING(    0x40, "1" )
@@ -478,19 +478,19 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( alphaone )
-	PORT_START_TAG("IN0")	/* IN0 - alpha (player_1 = 0) */
+	PORT_START("IN0")	/* IN0 - alpha (player_1 = 0) */
 	PORT_BIT ( 0x03, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT ( 0x7c, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
 
-	PORT_START_TAG("IN1")	/* IN1 - gamma */
+	PORT_START("IN1")	/* IN1 - gamma */
 	PORT_BIT ( 0x0f, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_SERVICE( 0x10, IP_ACTIVE_LOW )
 	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START_TAG("DIAL")	/* IN2 - gamma */
+	PORT_START("DIAL")	/* IN2 - gamma */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(40) PORT_REVERSE
 INPUT_PORTS_END
 
@@ -502,7 +502,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct POKEYinterface pokey_interface =
+static const pokey_interface pokey_config =
 {
 	{ 0 },
 	input_port_3_r
@@ -518,10 +518,10 @@ static const struct POKEYinterface pokey_interface =
 static MACHINE_DRIVER_START( mhavoc )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("alpha", M6502, MHAVOC_CLOCK_2_5M)		/* 2.5 MHz */
+	MDRV_CPU_ADD("alpha", M6502, MHAVOC_CLOCK_2_5M)		/* 2.5 MHz */
 	MDRV_CPU_PROGRAM_MAP(alpha_map, 0)
 
-	MDRV_CPU_ADD_TAG("gamma", M6502, MHAVOC_CLOCK_1_25M)	/* 1.25 MHz */
+	MDRV_CPU_ADD("gamma", M6502, MHAVOC_CLOCK_1_25M)	/* 1.25 MHz */
 	MDRV_CPU_PROGRAM_MAP(gamma_map, 0)
 
 	MDRV_MACHINE_RESET(mhavoc)
@@ -539,17 +539,17 @@ static MACHINE_DRIVER_START( mhavoc )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("pokey.1", POKEY, MHAVOC_CLOCK_1_25M)
-	MDRV_SOUND_CONFIG(pokey_interface)
+	MDRV_SOUND_ADD("pokey.1", POKEY, MHAVOC_CLOCK_1_25M)
+	MDRV_SOUND_CONFIG(pokey_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD_TAG("pokey.2", POKEY, MHAVOC_CLOCK_1_25M)
+	MDRV_SOUND_ADD("pokey.2", POKEY, MHAVOC_CLOCK_1_25M)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD_TAG("pokey.3", POKEY, MHAVOC_CLOCK_1_25M)
+	MDRV_SOUND_ADD("pokey.3", POKEY, MHAVOC_CLOCK_1_25M)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD_TAG("pokey.4", POKEY, MHAVOC_CLOCK_1_25M)
+	MDRV_SOUND_ADD("pokey.4", POKEY, MHAVOC_CLOCK_1_25M)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
@@ -557,7 +557,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( mhavocrv )
 	MDRV_IMPORT_FROM( mhavoc )
 
-	MDRV_SOUND_ADD(TMS5220, MHAVOC_CLOCK/2/9)
+	MDRV_SOUND_ADD("tms", TMS5220, MHAVOC_CLOCK/2/9)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -604,7 +604,7 @@ MACHINE_DRIVER_END
 
 ROM_START( mhavoc )
 	/* Alpha Processor ROMs */
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* 152KB for ROMs */
+	ROM_REGION( 0x20000, "alpha", 0 )	/* 152KB for ROMs */
 	/* Vector Generator ROM */
 	ROM_LOAD( "136025.210",   0x05000, 0x2000, CRC(c67284ca) SHA1(d9adad80c266d36429444f483cac4ebcf1fec7b8) )
 
@@ -621,19 +621,19 @@ ROM_START( mhavoc )
 	ROM_LOAD( "136025.107",   0x1c000, 0x4000, CRC(5f81c5f3) SHA1(be4055727a2d4536e37ec20150deffdb5af5b01f) ) /* page 2+3 */
 
 	/* Gamma Processor ROM */
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "gamma", 0 )
 	ROM_LOAD( "136025.108",   0x08000, 0x4000, CRC(93faf210) SHA1(7744368a1d520f986d1c4246113a7e24fcdd6d04) )
 	ROM_RELOAD(               0x0c000, 0x4000 ) /* reset+interrupt vectors */
 
 	/* AVG PROM */
-	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "036408-01.b1",	0x0000, 0x0100, BAD_DUMP CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 ROM_END
 
 
 ROM_START( mhavoc2 )
 	/* Alpha Processor ROMs */
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "alpha", 0 )
 	/* Vector Generator ROM */
 	ROM_LOAD( "136025.110",   0x05000, 0x2000, CRC(16eef583) SHA1(277252bd716dd96d5b98ec5e33a3a6a3bc1a9abf) )
 
@@ -652,19 +652,19 @@ ROM_START( mhavoc2 )
 	/* the last 0x1000 is used for the 2 RAM pages */
 
 	/* Gamma Processor ROM */
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "gamma", 0 )
 	ROM_LOAD( "136025.108",   0x08000, 0x4000, CRC(93faf210) SHA1(7744368a1d520f986d1c4246113a7e24fcdd6d04) )
 	ROM_RELOAD(               0x0c000, 0x4000 ) /* reset+interrupt vectors */
 
 	/* AVG PROM */
-	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "036408-01.b1",	0x0000, 0x0100, BAD_DUMP CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 ROM_END
 
 
 ROM_START( mhavocrv )
 	/* Alpha Processor ROMs */
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* 152KB for ROMs */
+	ROM_REGION( 0x20000, "alpha", 0 )	/* 152KB for ROMs */
 	/* Vector Generator ROM */
 	ROM_LOAD( "136025.210",   0x05000, 0x2000, CRC(c67284ca) SHA1(d9adad80c266d36429444f483cac4ebcf1fec7b8) )
 
@@ -681,19 +681,19 @@ ROM_START( mhavocrv )
 	ROM_LOAD( "136025.907",   0x1c000, 0x4000, CRC(4deea2c9) SHA1(c4107581748a3f2d2084de2a4f120abd67a52189) ) /* page 2+3 */
 
 	/* Gamma Processor ROM */
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "gamma", 0 )
 	ROM_LOAD( "136025.908",   0x08000, 0x4000, CRC(c52ec664) SHA1(08120a385f71b17ec02a3c2ef856ff835a91773e) )
 	ROM_RELOAD(               0x0c000, 0x4000 ) /* reset+interrupt vectors */
 
 	/* AVG PROM */
-	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "036408-01.b1",	0x0000, 0x0100, BAD_DUMP CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 ROM_END
 
 
 ROM_START( mhavocp )
 	/* Alpha Processor ROMs */
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "alpha", 0 )
 	/* Vector Generator ROM */
 	ROM_LOAD( "136025.010",   0x05000, 0x2000, CRC(3050c0e6) SHA1(f19a9538996d949cdca7e6abd4f04e8ff6e0e2c1) )
 
@@ -712,18 +712,18 @@ ROM_START( mhavocp )
 	/* the last 0x1000 is used for the 2 RAM pages */
 
 	/* Gamma Processor ROM */
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "gamma", 0 )
 	ROM_LOAD( "136025.008",   0x8000, 0x4000, CRC(22ea7399) SHA1(eeda8cc40089506063835a62c3273e7dd3918fd5) )
 	ROM_RELOAD(               0xc000, 0x4000 )/* reset+interrupt vectors */
 
 	/* AVG PROM */
-	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "036408-01.b1",	0x0000, 0x0100, BAD_DUMP CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 ROM_END
 
 
 ROM_START( alphaone )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "alpha", 0 )
 	/* Vector Generator ROM */
 	ROM_LOAD( "vec5000.tw",   0x05000, 0x1000, CRC(2a4c149f) SHA1(b60a0b29958bee9b5f7c1d88163680b626bb76dd) )
 
@@ -744,13 +744,13 @@ ROM_START( alphaone )
 	/* the last 0x1000 is used for the 2 RAM pages */
 
 	/* AVG PROM */
-	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "036408-01.b1",	0x0000, 0x0100, BAD_DUMP CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 ROM_END
 
 
 ROM_START( alphaona )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "alpha", 0 )
 	/* Vector Generator ROM */
 	ROM_LOAD( "vec5000.tw",   0x05000, 0x1000, CRC(2a4c149f) SHA1(b60a0b29958bee9b5f7c1d88163680b626bb76dd) )
 
@@ -771,7 +771,7 @@ ROM_START( alphaona )
 	/* the last 0x1000 is used for the 2 RAM pages */
 
 	/* AVG PROM */
-	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "136002-125.6c",	 0x0000, 0x0100, BAD_DUMP CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 ROM_END
 

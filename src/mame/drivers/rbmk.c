@@ -32,18 +32,13 @@ Notes:
       68000 clock - 11.000MHz [22/2]
       VSync       - 58Hz
       Hsync       - none (dead board, no signal)
-      M6295 clock - 1.100MHz [22/20], sample rate = 1100000 / 165, chip is
-printed 'AD-65'
-      YM2151 clock- 2.750MHz [22/8], chip is printed 'K-666'. YM3014 chip is
-printed 'K-664'
+      M6295 clock - 1.100MHz [22/20], sample rate = 1100000 / 165, chip is printed 'AD-65'
+      YM2151 clock- 2.750MHz [22/8], chip is printed 'K-666'. YM3014 chip is printed 'K-664'
                 * - Unpopulated position for PIC16F84
-        3.6V_BATT - Purpose of battery unknown, does not appear to be used
-for backup of suicide RAM,
+        3.6V_BATT - Purpose of battery unknown, does not appear to be used for backup of suicide RAM,
                     and there's no RTC on the board.
-            93C46 - 128 x8 EEPROM. This chip was covered by a plactic cover.
-There's nothing else under
-                    the cover, but there was an unpopulated position for a
-PIC16F84
+            93C46 - 128 x8 EEPROM. This chip was covered by a plactic cover. There's nothing else under
+                    the cover, but there was an unpopulated position for a PIC16F84
             89C51 - Atmel 89C51 Microcontroller (protected)
 
       ROMs -
@@ -52,7 +47,6 @@ PIC16F84
             A1 - Atmel AT27C080     (GFX)
             B1 - Macronix MX261000  (GFX?? or PRG/data for 89C51?)
             S1 - Macronix MX27C2000 (OKI samples)
-
 */
 
 #include "driver.h"
@@ -123,7 +117,7 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( rbmk )
 
-	PORT_START_TAG("IN0")	/* 16bit */
+	PORT_START("IN0")	/* 16bit */
 	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Controls ) )
 	PORT_DIPSETTING(      0x0080, DEF_STR( Joystick ) )
 	PORT_DIPSETTING(      0x0000, "Keyboard" )
@@ -177,7 +171,7 @@ static INPUT_PORTS_START( rbmk )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START_TAG("IN1")	/* 16bit */
+	PORT_START("IN1")	/* 16bit */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -211,7 +205,7 @@ static INPUT_PORTS_START( rbmk )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START_TAG("IN2")	/* 16bit */
+	PORT_START("IN2")	/* 16bit */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -262,7 +256,7 @@ static INPUT_PORTS_START( rbmk )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
 
-	PORT_START_TAG("IN3")	/* 16bit */
+	PORT_START("IN3")	/* 16bit */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -312,7 +306,7 @@ static INPUT_PORTS_START( rbmk )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START_TAG("IN4")	/* 16bit */
+	PORT_START("IN4")	/* 16bit */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -362,7 +356,7 @@ static INPUT_PORTS_START( rbmk )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START_TAG("IN5")	/* 16bit */
+	PORT_START("IN5")	/* 16bit */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -440,8 +434,8 @@ static const gfx_layout rbmk8_layout =
 
 
 static GFXDECODE_START( rbmk )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, rbmk32_layout,   0x0, 16  )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, rbmk8_layout,   0x100, 16  )
+	GFXDECODE_ENTRY( "gfx1", 0, rbmk32_layout,   0x0, 16  )
+	GFXDECODE_ENTRY( "gfx2", 0, rbmk8_layout,   0x100, 16  )
 GFXDECODE_END
 
 static VIDEO_START(rbmk)
@@ -490,7 +484,7 @@ static NVRAM_HANDLER( syf )
 		}
 		else
 		{
-			eeprom_set_data(memory_region(machine, REGION_USER2),128);
+			eeprom_set_data(memory_region(machine, "user2"),128);
 		}
 	}
 }
@@ -498,7 +492,7 @@ static NVRAM_HANDLER( syf )
 
 
 static MACHINE_DRIVER_START( rbmk )
-	MDRV_CPU_ADD_TAG("main", M68000, 22000000 /2)
+	MDRV_CPU_ADD("main", M68000, 22000000 /2)
 	MDRV_CPU_PROGRAM_MAP(rbmk_mem,0)
 	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
@@ -522,32 +516,32 @@ static MACHINE_DRIVER_START( rbmk )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(OKIM6295, 1122000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1122000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.47)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.47)
 MACHINE_DRIVER_END
 
 ROM_START( rbmk )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x80000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD( "p1.u64", 0x00000, 0x80000, CRC(83b3c505) SHA1(b943d7312dacdf46d4a55f9dc3cf92e291c40ce7) )
 
-	ROM_REGION( 0x2, REGION_CPU2, 0 ) /* protected MCU? */
+	ROM_REGION( 0x2, "cpu1", 0 ) /* protected MCU? */
 	ROM_LOAD( "89c51.mcu", 0x0, 0x2, NO_DUMP ) // unless it has external rom only?
 
-	ROM_REGION( 0x20000, REGION_USER1, 0 ) /* ??? mcu data / code */
+	ROM_REGION( 0x20000, "user1", 0 ) /* ??? mcu data / code */
 	ROM_LOAD( "b1.u72", 0x00000, 0x20000,  CRC(1a4991ac) SHA1(523b58caa21b4a073c664c076d2d7bb07a4253cd) )
 
-	ROM_REGION( 0x040000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x040000, "oki", 0 ) /* Samples */
 	ROM_LOAD( "s1.u83", 0x00000, 0x40000, CRC(44b20e47) SHA1(54691af73aa5d20f9a9afe145447ef1cf34c9a0c) )
 
-	ROM_REGION( 0x100000, REGION_GFX1, 0 ) /* 8x32 tiles, lots of girls etc. */
+	ROM_REGION( 0x100000, "gfx1", 0 ) /* 8x32 tiles, lots of girls etc. */
 	ROM_LOAD( "a1.u41", 0x00000, 0x100000,  CRC(1924de6b) SHA1(1a72ee2fd0abca51893f0985a591573bfd429389) )
 
-	ROM_REGION( 0x80000, REGION_GFX2, 0 ) /* 8x8 tiles? cards etc */
+	ROM_REGION( 0x80000, "gfx2", 0 ) /* 8x8 tiles? cards etc */
 	ROM_LOAD( "t1.u39", 0x00000, 0x80000, CRC(adf67429) SHA1(ab03c7f68403545f9e86a069581dc3fc3fa6b9c4) )
 
-	ROM_REGION( 0x80, REGION_USER2, 0 ) /* eeprom */
+	ROM_REGION( 0x80, "user2", 0 ) /* eeprom */
 	ROM_LOAD16_WORD_SWAP( "93c46.u51", 0x00, 0x080, CRC(4ca6ff01) SHA1(66c456eac5b0d1176ef9130baf2e746efdf30152) )
 ROM_END
 

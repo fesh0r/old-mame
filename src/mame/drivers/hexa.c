@@ -30,6 +30,20 @@ d008      bit0/1 = flip screen x/y
 d010      watchdog reset, or IRQ acknowledge, or both
 f000      ????????
 
+*************************************************************************
+
+main hardware consists of.....
+
+sub board with Z80 x2, 2 ROMs and a scratched 18 pin chip (probably a PIC)
+
+main board has....
+12MHz xtal
+ay3-8910
+8 position DSW x1
+ROMs x4
+6116 SRAM x3
+82S123 PROMs x3
+
 *************************************************************************/
 
 #include "driver.h"
@@ -48,15 +62,15 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xd001, 0xd001) AM_READ(AY8910_read_port_0_r)
+	AM_RANGE(0xd001, 0xd001) AM_READ(ay8910_read_port_0_r)
 	AM_RANGE(0xe000, 0xe7ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0xd001, 0xd001) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0xd000, 0xd000) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xd001, 0xd001) AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0xd008, 0xd008) AM_WRITE(hexa_d008_w)
 	AM_RANGE(0xd010, 0xd010) AM_WRITE(watchdog_reset_w)	/* or IRQ acknowledge, or both */
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(hexa_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
@@ -65,7 +79,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( hexa )
-	PORT_START	/* IN0 */
+	PORT_START("INPUTS")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
@@ -75,7 +89,7 @@ static INPUT_PORTS_START( hexa )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
-	PORT_START	/* DSW */
+	PORT_START("DSW")	/* DSW */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
@@ -116,12 +130,12 @@ static const gfx_layout charlayout =
 
 
 static GFXDECODE_START( hexa )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, charlayout,  0 , 32 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, charlayout,  0 , 32 )
 GFXDECODE_END
 
 
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -136,7 +150,7 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( hexa )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)		/* 4 MHz ??????? */
+	MDRV_CPU_ADD("main", Z80, 4000000)		/* 4 MHz ??????? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -157,8 +171,8 @@ static MACHINE_DRIVER_START( hexa )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910, 1500000)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, 1500000)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
@@ -170,16 +184,16 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( hexa )
-	ROM_REGION( 0x18000, REGION_CPU1, 0 )		/* 64k for code + 32k for banked ROM */
+	ROM_REGION( 0x18000, "main", 0 )		/* 64k for code + 32k for banked ROM */
 	ROM_LOAD( "hexa.20",      0x00000, 0x8000, CRC(98b00586) SHA1(3591a3b0486d720f0aaa9f0bf4be352cd0ffcbc7) )
 	ROM_LOAD( "hexa.21",      0x10000, 0x8000, CRC(3d5d006c) SHA1(ad4eadab82024b122182eacb5a322cfd6e476a70) )
 
-	ROM_REGION( 0x18000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "hexa.17",      0x00000, 0x8000, CRC(f6911dd6) SHA1(b12ea27ecddd60820a32d4346afab0cc9d06fa57) )
 	ROM_LOAD( "hexa.18",      0x08000, 0x8000, CRC(6e3d95d2) SHA1(6399b7b5d088ceda08fdea9cf650f6b405f038e7) )
 	ROM_LOAD( "hexa.19",      0x10000, 0x8000, CRC(ffe97a31) SHA1(f16b5d2b9ace09bcbbfe3dfb73db7fa377d1af7f) )
 
-	ROM_REGION( 0x0300, REGION_PROMS, 0 )
+	ROM_REGION( 0x0300, "proms", 0 )
 	ROM_LOAD( "hexa.001",     0x0000, 0x0100, CRC(88a055b4) SHA1(eee86a7930d0a251f3e5c2134532cd1dede2026c) )
 	ROM_LOAD( "hexa.003",     0x0100, 0x0100, CRC(3e9d4932) SHA1(9a336dba7134400312985b9902c77b4141105853) )
 	ROM_LOAD( "hexa.002",     0x0200, 0x0100, CRC(ff15366c) SHA1(7feaf1c768bfe76432fb80991585e13d95960b34) )
@@ -190,7 +204,7 @@ ROM_END
 static DRIVER_INIT( hexa )
 {
 #if 0
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 
 
 	/* Hexa is not protected or anything, but it keeps writing 0x3f to register */

@@ -366,7 +366,7 @@ static WRITE8_HANDLER( looping_sound_sw )
 
 	looping_state *state = machine->driver_data;
 	state->sound[offset + 1] = data ^ 1;
-	DAC_data_w(0, ((state->sound[2] << 7) + (state->sound[3] << 6)) * state->sound[7]);
+	dac_data_w(0, ((state->sound[2] << 7) + (state->sound[3] << 6)) * state->sound[7]);
 }
 
 
@@ -473,9 +473,9 @@ static ADDRESS_MAP_START( looping_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb007, 0xb007) AM_MIRROR(0x07f8) AM_WRITE(flip_screen_y_w)
 
 	AM_RANGE(0xe000, 0xefff) AM_RAM
-	AM_RANGE(0xf800, 0xf800) AM_MIRROR(0x03fc) AM_READWRITE(input_port_0_r, out_0_w) /* /OUT0 */
-	AM_RANGE(0xf801, 0xf801) AM_MIRROR(0x03fc) AM_READWRITE(input_port_1_r, looping_soundlatch_w) /* /OUT1 */
-	AM_RANGE(0xf802, 0xf802) AM_MIRROR(0x03fc) AM_READWRITE(input_port_2_r, out_2_w) /* /OUT2 */
+	AM_RANGE(0xf800, 0xf800) AM_MIRROR(0x03fc) AM_READ_PORT("P1") AM_WRITE(out_0_w)					/* /OUT0 */
+	AM_RANGE(0xf801, 0xf801) AM_MIRROR(0x03fc) AM_READ_PORT("P2") AM_WRITE(looping_soundlatch_w)	/* /OUT1 */
+	AM_RANGE(0xf802, 0xf802) AM_MIRROR(0x03fc) AM_READ_PORT("DSW") AM_WRITE(out_2_w)				/* /OUT2 */
 	AM_RANGE(0xf803, 0xf803) AM_MIRROR(0x03fc) AM_READWRITE(adc_r, adc_w)
 ADDRESS_MAP_END
 
@@ -498,8 +498,8 @@ static ADDRESS_MAP_START( looping_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x37ff) AM_ROM
 	AM_RANGE(0x3800, 0x3bff) AM_RAM
-	AM_RANGE(0x3c00, 0x3c00) AM_MIRROR(0x00f4) AM_READWRITE(AY8910_read_port_0_r, AY8910_control_port_0_w)
-	AM_RANGE(0x3c02, 0x3c02) AM_MIRROR(0x00f4) AM_READWRITE(SMH_NOP, AY8910_write_port_0_w)
+	AM_RANGE(0x3c00, 0x3c00) AM_MIRROR(0x00f4) AM_READWRITE(ay8910_read_port_0_r, ay8910_control_port_0_w)
+	AM_RANGE(0x3c02, 0x3c02) AM_MIRROR(0x00f4) AM_READWRITE(SMH_NOP, ay8910_write_port_0_w)
 	AM_RANGE(0x3c03, 0x3c03) AM_MIRROR(0x00f6) AM_NOP
 	AM_RANGE(0x3e00, 0x3e00) AM_MIRROR(0x00f4) AM_READWRITE(SMH_NOP, tms5220_data_w)
 	AM_RANGE(0x3e02, 0x3e02) AM_MIRROR(0x00f4) AM_READWRITE(tms5220_status_r, SMH_NOP)
@@ -545,8 +545,8 @@ static const gfx_layout sprite_layout =
 
 
 static GFXDECODE_START( looping )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, gfx_8x8x2_planar, 0, 8 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, sprite_layout,    0, 8 )
+	GFXDECODE_ENTRY( "gfx1", 0, gfx_8x8x2_planar, 0, 8 )
+	GFXDECODE_ENTRY( "gfx1", 0, sprite_layout,    0, 8 )
 GFXDECODE_END
 
 
@@ -557,12 +557,12 @@ GFXDECODE_END
  *
  *************************************/
 
-static const struct TMS5220interface tms5220_interface =
+static const tms5220_interface tms5220_config =
 {
 	looping_spcint
 };
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -589,16 +589,16 @@ static MACHINE_DRIVER_START( looping )
 	MDRV_DRIVER_DATA(looping_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(TMS9995, MAIN_CPU_CLOCK)
+	MDRV_CPU_ADD("main", TMS9995, MAIN_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(looping_map,0)
 	MDRV_CPU_IO_MAP(looping_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", looping_interrupt)
 
-	MDRV_CPU_ADD(TMS9980, SOUND_CLOCK/4)
+	MDRV_CPU_ADD("audio", TMS9980, SOUND_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(looping_sound_map,0)
 	MDRV_CPU_IO_MAP(looping_sound_io_map,0)
 
-	MDRV_CPU_ADD(COP420, COP_CLOCK)
+	MDRV_CPU_ADD("mcu", COP420, COP_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(looping_cop_map,0)
 	MDRV_CPU_DATA_MAP(looping_cop_data_map,0)
 	MDRV_CPU_CONFIG(looping_cop_intf)
@@ -620,15 +620,15 @@ static MACHINE_DRIVER_START( looping )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, SOUND_CLOCK/4)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, SOUND_CLOCK/4)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
-	MDRV_SOUND_ADD(TMS5220, TMS_CLOCK)
-	MDRV_SOUND_CONFIG(tms5220_interface)
+	MDRV_SOUND_ADD("tms", TMS5220, TMS_CLOCK)
+	MDRV_SOUND_CONFIG(tms5220_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END
 
@@ -641,7 +641,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 static INPUT_PORTS_START( looping )
-	PORT_START_TAG("IN0")
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("P1 Shoot")
@@ -651,7 +651,7 @@ static INPUT_PORTS_START( looping )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START_TAG("IN1") /* cocktail? */
+	PORT_START("P2") /* cocktail? */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
@@ -659,7 +659,7 @@ static INPUT_PORTS_START( looping )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW0")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -688,7 +688,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( skybump )
 	PORT_INCLUDE(looping)
 
-	PORT_MODIFY("DSW0")
+	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x40, "3" )
 	PORT_DIPSETTING(    0x60, "5" )
@@ -705,72 +705,72 @@ INPUT_PORTS_END
  *************************************/
 
 ROM_START( looping )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 ) /* TMS9995 code */
+	ROM_REGION( 0x8000, "main", 0 ) /* TMS9995 code */
 	ROM_LOAD( "vli3.5a",		0x0000, 0x2000, CRC(1ac3ccdf) SHA1(9d1cde8bd4d0f12eaf06225b3ecc4a5c3e4f0c11) )
 	ROM_LOAD( "vli1.2a",		0x2000, 0x2000, CRC(97755fd4) SHA1(4a6ef02b0128cd516ff95083a7caaad8f3756f09) )
 	ROM_LOAD( "l056-6.9a",		0x4000, 0x2000, CRC(548afa52) SHA1(0b88ac7394feede023519c585a4084591eb9661a) )
 	ROM_LOAD( "vli9-5.8a",		0x6000, 0x2000, CRC(5d122f86) SHA1(d1c66b890142bb4d4648f3edec6567f58107dbf0) )
 
-	ROM_REGION( 0x3800, REGION_CPU2, 0 ) /* TMS9980 code */
+	ROM_REGION( 0x3800, "audio", 0 ) /* TMS9980 code */
 	ROM_LOAD( "i-o.13c",		0x0000, 0x0800, CRC(21e9350c) SHA1(f30a180309e373a17569351944f5e7982c3b3f9d) )
 	ROM_LOAD( "i-o.13a",		0x0800, 0x1000, CRC(1de29f25) SHA1(535acb132266d6137b0610ee9a9b946459ae44af) )
 	ROM_LOAD( "i-o.11a",		0x2800, 0x1000, CRC(61c74c79) SHA1(9f34d18a919446dd76857b851cea23fc1526f3c2) ) /* speech */
 
-	ROM_REGION( 0x1000, REGION_CPU3, 0 ) /* COP420 microcontroller code */
+	ROM_REGION( 0x1000, "mcu", 0 ) /* COP420 microcontroller code */
 	ROM_LOAD( "cop.bin",		0x0000, 0x1000, BAD_DUMP CRC(bbfd26d5) SHA1(5f78b32b6e7c003841ef5b635084db2cdfebf0e1) ) // overdumped 4 times, and starting PC is not 0
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "log2.8a",		0x0000, 0x800, CRC(ef3284ac) SHA1(8719c9df8c972a56c306b3c707aaa53092ffa2d6) )
 	ROM_LOAD( "log1-9-3.6a",	0x0800, 0x800, CRC(c434c14c) SHA1(3669aaf7adc6b250378bcf62eb8e7058f55476ef) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, 0 ) /* color prom */
+	ROM_REGION( 0x0020, "proms", 0 ) /* color prom */
 	ROM_LOAD( "18s030.11b",		0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
 ROM_END
 
 ROM_START( loopinga )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 ) /* TMS9995 code */
+	ROM_REGION( 0x8000, "main", 0 ) /* TMS9995 code */
 	ROM_LOAD( "vli3.5a",		0x0000, 0x2000, CRC(1ac3ccdf) SHA1(9d1cde8bd4d0f12eaf06225b3ecc4a5c3e4f0c11) )
 	ROM_LOAD( "vli-4-3",		0x2000, 0x1000, CRC(f32cae2b) SHA1(2c6ef82af438e588b56fd58b95cf969c97bb9a66) )
 	ROM_LOAD( "vli-8-4",		0x3000, 0x1000, CRC(611e1dbf) SHA1(0ab6669f1dec30c3f7bca49e158e4790a78fa308) )
 	ROM_LOAD( "l056-6.9a",		0x4000, 0x2000, CRC(548afa52) SHA1(0b88ac7394feede023519c585a4084591eb9661a) )
 	ROM_LOAD( "vli9-5.8a",		0x6000, 0x2000, CRC(5d122f86) SHA1(d1c66b890142bb4d4648f3edec6567f58107dbf0) )
 
-	ROM_REGION( 0x3800, REGION_CPU2, 0 ) /* TMS9980 code */
+	ROM_REGION( 0x3800, "audio", 0 ) /* TMS9980 code */
 	ROM_LOAD( "i-o-v2.13c",		0x0000, 0x0800, CRC(09765ebe) SHA1(93b035c3a94f2f6d5e463256e26b600a4dd5d3ea) )
     ROM_LOAD( "i-o.13a",		0x0800, 0x1000, CRC(1de29f25) SHA1(535acb132266d6137b0610ee9a9b946459ae44af) ) /* speech */
 	ROM_LOAD( "i-o.11a",		0x2800, 0x1000, CRC(61c74c79) SHA1(9f34d18a919446dd76857b851cea23fc1526f3c2) )
 
-	ROM_REGION( 0x1000, REGION_CPU3, 0 ) /* COP420 microcontroller code */
+	ROM_REGION( 0x1000, "mcu", 0 ) /* COP420 microcontroller code */
 	ROM_LOAD( "cop.bin",		0x0000, 0x1000, BAD_DUMP CRC(bbfd26d5) SHA1(5f78b32b6e7c003841ef5b635084db2cdfebf0e1) ) // overdumped 4 times, and starting PC is not 0
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "log2.8a",		0x0000, 0x800, CRC(ef3284ac) SHA1(8719c9df8c972a56c306b3c707aaa53092ffa2d6) )
 	ROM_LOAD( "log1-9-3.6a",	0x0800, 0x800, CRC(c434c14c) SHA1(3669aaf7adc6b250378bcf62eb8e7058f55476ef) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, 0 ) /* color prom */
+	ROM_REGION( 0x0020, "proms", 0 ) /* color prom */
 	ROM_LOAD( "18s030.11b",		0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
 ROM_END
 
 ROM_START( skybump )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 ) /* TMS9995 code */
+	ROM_REGION( 0x8000, "main", 0 ) /* TMS9995 code */
 	ROM_LOAD( "cpu.5a",			0x0000, 0x2000, CRC(dca38df0) SHA1(86abe04cbabf81399f842f53668fe7a3f7ed3757) )
 	ROM_LOAD( "cpu.2a",			0x2000, 0x2000, CRC(6bcc211a) SHA1(245ebae3934df9c3920743a941546d96bb2e7c03) )
 	ROM_LOAD( "cpu.9a",			0x4000, 0x2000, CRC(c7a50797) SHA1(60aa0a28ba970f12d0a0e538ae1c6807d105855c) )
 	ROM_LOAD( "cpu.8a",			0x6000, 0x2000, CRC(a718c6f2) SHA1(19afa8c353829232cb96c27b87f13b43166ab6fc) )
 
-    ROM_REGION( 0x3800, REGION_CPU2, 0 ) /* TMS9980 code */
+    ROM_REGION( 0x3800, "audio", 0 ) /* TMS9980 code */
 	ROM_LOAD( "snd.13c",		0x0000, 0x0800, CRC(21e9350c) SHA1(f30a180309e373a17569351944f5e7982c3b3f9d) )
 	ROM_LOAD( "snd.13a",		0x0800, 0x1000, CRC(1de29f25) SHA1(535acb132266d6137b0610ee9a9b946459ae44af) )
 	ROM_LOAD( "snd.11a",		0x2800, 0x1000, CRC(61c74c79) SHA1(9f34d18a919446dd76857b851cea23fc1526f3c2) )
 
-	ROM_REGION( 0x1000, REGION_CPU3, 0 ) /* COP420 microcontroller code */
+	ROM_REGION( 0x1000, "mcu", 0 ) /* COP420 microcontroller code */
 	ROM_LOAD( "cop.bin",		0x0000, 0x1000, BAD_DUMP CRC(bbfd26d5) SHA1(5f78b32b6e7c003841ef5b635084db2cdfebf0e1) ) // overdumped 4 times, and starting PC is not 0
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "vid.8a",			0x0000, 0x800, CRC(459ccc55) SHA1(747f6789605b48be9e22f779f9e3f6c98ad4e594) )
 	ROM_LOAD( "vid.6a",			0x0800, 0x800, CRC(12ebbe74) SHA1(0f87c81a45d1bf3b8c6a70ee5e1a014069f67755) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, 0 ) /* color prom */
+	ROM_REGION( 0x0020, "proms", 0 ) /* color prom */
 	ROM_LOAD( "vid.clr",		0x0000, 0x0020, CRC(6a0c7d87) SHA1(140335d85c67c75b65689d4e76d29863c209cf32) )
 ROM_END
 
@@ -784,8 +784,8 @@ ROM_END
 
 static DRIVER_INIT( looping )
 {
-	int length = memory_region_length(machine, REGION_CPU1);
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	int length = memory_region_length(machine, "main");
+	UINT8 *rom = memory_region(machine, "main");
 	int i;
 
 	/* bitswap the TMS9995 ROMs */

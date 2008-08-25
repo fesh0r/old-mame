@@ -1742,9 +1742,10 @@ static void ymf271_init(YMF271Chip *chip, UINT8 *rom, void (*cb)(running_machine
 	init_state(chip);
 }
 
-static void *ymf271_start(int sndindex, int clock, const void *config)
+static void *ymf271_start(const char *tag, int sndindex, int clock, const void *config)
 {
-	const struct YMF271interface *intf;
+	static const ymf271_interface defintrf = { 0 };
+	const ymf271_interface *intf;
 	int i;
 	YMF271Chip *chip;
 
@@ -1753,9 +1754,9 @@ static void *ymf271_start(int sndindex, int clock, const void *config)
 	chip->index = sndindex;
 	chip->clock = clock;
 
-	intf = config;
+	intf = (config != NULL) ? config : &defintrf;
 
-	ymf271_init(chip, memory_region(Machine, intf->region), intf->irq_callback, intf->ext_read, intf->ext_write);
+	ymf271_init(chip, memory_region(Machine, tag), intf->irq_callback, intf->ext_read, intf->ext_write);
 	chip->stream = stream_create(0, 2, clock/384, chip, ymf271_update);
 
 	for (i = 0; i < 256; i++)
@@ -1776,22 +1777,22 @@ static void *ymf271_start(int sndindex, int clock, const void *config)
 	return chip;
 }
 
-READ8_HANDLER( YMF271_0_r )
+READ8_HANDLER( ymf271_0_r )
 {
 	return ymf271_r(0, offset);
 }
 
-WRITE8_HANDLER( YMF271_0_w )
+WRITE8_HANDLER( ymf271_0_w )
 {
 	ymf271_w(0, offset, data);
 }
 
-READ8_HANDLER( YMF271_1_r )
+READ8_HANDLER( ymf271_1_r )
 {
 	return ymf271_r(1, offset);
 }
 
-WRITE8_HANDLER( YMF271_1_w )
+WRITE8_HANDLER( ymf271_1_w )
 {
 	ymf271_w(1, offset, data);
 }

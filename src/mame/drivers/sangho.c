@@ -70,8 +70,8 @@ ADDRESS_MAP_END
 /* Wrong ! */
 static WRITE8_HANDLER(pzlestar_bank_w)
 {
-	memory_set_bankptr(2,&memory_region(machine, REGION_USER1)[0x20000+ ( ((0x8000*data)^0x10000))  ]);
-	memory_set_bankptr(3,&memory_region(machine, REGION_USER1)[  0x18000  ]);
+	memory_set_bankptr(2,&memory_region(machine, "user1")[0x20000+ ( ((0x8000*data)^0x10000))  ]);
+	memory_set_bankptr(3,&memory_region(machine, "user1")[  0x18000  ]);
 }
 
 /* Puzzle Star Ports */
@@ -88,8 +88,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START (writeport_pzlestar, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x91, 0x91) AM_WRITE( pzlestar_bank_w )
-	AM_RANGE( 0x7c, 0x7c) AM_WRITE( YM2413_register_port_0_w )
-	AM_RANGE( 0x7d, 0x7d) AM_WRITE( YM2413_data_port_0_w )
+	AM_RANGE( 0x7c, 0x7c) AM_WRITE( ym2413_register_port_0_w )
+	AM_RANGE( 0x7d, 0x7d) AM_WRITE( ym2413_data_port_0_w )
 	AM_RANGE( 0x98, 0x98) AM_WRITE( v9938_0_vram_w )
 	AM_RANGE( 0x99, 0x99) AM_WRITE( v9938_0_command_w )
 	AM_RANGE( 0x9a, 0x9a) AM_WRITE( v9938_0_palette_w )
@@ -109,8 +109,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (writeport_sexyboom, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE( 0x7c, 0x7c) AM_WRITE( YM2413_register_port_0_w )
-	AM_RANGE( 0x7d, 0x7d) AM_WRITE( YM2413_data_port_0_w )
+	AM_RANGE( 0x7c, 0x7c) AM_WRITE( ym2413_register_port_0_w )
+	AM_RANGE( 0x7d, 0x7d) AM_WRITE( ym2413_data_port_0_w )
 	AM_RANGE( 0xf0, 0xf0) AM_WRITE( v9938_0_vram_w )
 	AM_RANGE( 0xf1, 0xf1) AM_WRITE( v9938_0_command_w )
 	AM_RANGE( 0xf2, 0xf2) AM_WRITE( v9938_0_palette_w )
@@ -121,7 +121,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( sangho )
-    PORT_START
+    PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
     PORT_DIPNAME(   0x02, 0x02, DEF_STR( Unknown ) )
     PORT_DIPSETTING(      0x02, DEF_STR( Off ) )
@@ -137,7 +137,7 @@ static INPUT_PORTS_START( sangho )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-   PORT_START
+   PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START2 )
     PORT_DIPNAME(   0x02, 0x02, DEF_STR( Unknown ) )
     PORT_DIPSETTING(      0x02, DEF_STR( Off ) )
@@ -153,7 +153,7 @@ static INPUT_PORTS_START( sangho )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START("DSW")
     PORT_DIPNAME(   0x01, 0x01, "DIPS" ) /* coinage etc. */
     PORT_DIPSETTING(      0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(      0x00, DEF_STR( On ) )
@@ -192,7 +192,7 @@ static void sangho_common_machine_reset(void)
 static MACHINE_RESET(pzlestar)
 {
 	/* give it some code to run, note this isn't at 0 in the rom! */
-	memcpy(sangho_ram,&memory_region(machine, REGION_USER1)[0x10000],0x8000);
+	memcpy(sangho_ram,&memory_region(machine, "user1")[0x10000],0x8000);
 
 	/* patch out rom check (it fails, due to bad banking) */
 	sangho_ram[0x25c1]=0xaf;
@@ -204,7 +204,7 @@ static MACHINE_RESET(pzlestar)
 static MACHINE_RESET(sexyboom)
 {
 	/* give it some code to run */
-	memcpy(sangho_ram,memory_region(machine, REGION_USER1),0x8000);
+	memcpy(sangho_ram,memory_region(machine, "user1"),0x8000);
 	/* patch out rom check */
 	sangho_ram[0x022e]=0xc9;
 	sangho_ram[0x4604]=0xc9;
@@ -233,7 +233,7 @@ static VIDEO_START( sangho )
 
 static MACHINE_DRIVER_START(pzlestar)
 
-	MDRV_CPU_ADD(Z80,8000000) // ?
+	MDRV_CPU_ADD("main", Z80,8000000) // ?
 	MDRV_CPU_PROGRAM_MAP(readmem, 0)
 	MDRV_CPU_IO_MAP(readport_pzlestar,writeport_pzlestar)
 	MDRV_CPU_VBLANK_INT_HACK(sangho_interrupt,262)
@@ -258,7 +258,7 @@ static MACHINE_DRIVER_START(pzlestar)
 
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(YM2413, 3580000)
+	MDRV_SOUND_ADD("ym", YM2413, 3580000)
 
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -266,7 +266,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(sexyboom )
 
-	MDRV_CPU_ADD(Z80,8000000) // ?
+	MDRV_CPU_ADD("main", Z80,8000000) // ?
 	MDRV_CPU_PROGRAM_MAP(readmem, 0)
 	MDRV_CPU_IO_MAP(readport_sexyboom,writeport_sexyboom)
 	MDRV_CPU_VBLANK_INT_HACK(sangho_interrupt,262)
@@ -290,13 +290,13 @@ static MACHINE_DRIVER_START(sexyboom )
 	MDRV_VIDEO_UPDATE( generic_bitmapped )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(YM2413, 3580000)
+	MDRV_SOUND_ADD("ym", YM2413, 3580000)
 
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 ROM_START( pzlestar )
-	ROM_REGION( 0x20000*16, REGION_USER1, 0 ) // 15 sockets, 13 used
+	ROM_REGION( 0x20000*16, "user1", 0 ) // 15 sockets, 13 used
 	ROM_LOAD( "rom01.bin", 0x000000, 0x20000, CRC(0b327a3b) SHA1(450fd27f9844b9f0b710c1886985bd67cac2716f) ) // seems to be some code at 0x10000
 	ROM_LOAD( "rom02.bin", 0x020000, 0x20000, CRC(dc859437) SHA1(e9fe5aab48d80e8857fc679ff7e35298ce4d47c8) )
 	ROM_LOAD( "rom03.bin", 0x040000, 0x20000, CRC(f92b5624) SHA1(80be9000fc4326d790801d02959550aada111548) )
@@ -315,7 +315,7 @@ ROM_START( pzlestar )
 ROM_END
 
 ROM_START( sexyboom )
-	ROM_REGION( 0x20000*16, REGION_USER1, 0 ) // 15 sockets, 12 used
+	ROM_REGION( 0x20000*16, "user1", 0 ) // 15 sockets, 12 used
 	ROM_LOAD( "rom1.bin",  0x000000, 0x20000, CRC(7827a079) SHA1(a48e7c7d16e50de24c8bf77883230075c1fad858) )
 	ROM_LOAD( "rom2.bin",  0x020000, 0x20000, CRC(7028aa61) SHA1(77d5e5945b90d3e15ba2c1364b76f6643247592d) )
 	ROM_LOAD( "rom3.bin",  0x040000, 0x20000, CRC(340edac9) SHA1(47ffc4553cb34ff932d3d54d5cefe82571c6ddbf) )

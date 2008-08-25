@@ -429,7 +429,7 @@ static WRITE16_HANDLER( fdc_w )
 				break;
 			case 0x9:
 				logerror("Read multiple [%02x] %d..%d side %d track %d\n", data, fdc_sector, fdc_sector+fdc_data-1, data & 8 ? 1 : 0, fdc_phys_track);
-				fdc_pt = memory_region(machine, REGION_USER2) + track_size*(2*fdc_phys_track+(data & 8 ? 1 : 0));
+				fdc_pt = memory_region(machine, "user2") + track_size*(2*fdc_phys_track+(data & 8 ? 1 : 0));
 				fdc_span = track_size;
 				fdc_status = 3;
 				fdc_drq = 1;
@@ -437,7 +437,7 @@ static WRITE16_HANDLER( fdc_w )
 				break;
 			case 0xb:
 				logerror("Write multiple [%02x] %d..%d side %d track %d\n", data, fdc_sector, fdc_sector+fdc_data-1, data & 8 ? 1 : 0, fdc_phys_track);
-				fdc_pt = memory_region(machine, REGION_USER2) + track_size*(2*fdc_phys_track+(data & 8 ? 1 : 0));
+				fdc_pt = memory_region(machine, "user2") + track_size*(2*fdc_phys_track+(data & 8 ? 1 : 0));
 				fdc_span = track_size;
 				fdc_status = 3;
 				fdc_drq = 1;
@@ -508,21 +508,22 @@ static WRITE16_HANDLER( fdc_ctrl_w )
 
 static UINT8 hotrod_io_r(running_machine *machine, int port)
 {
-	switch(port) {
+	switch(port)
+	{
 	case 0:
-		return input_port_read_indexed(machine, 0);
+		return input_port_read(machine, "P1");
 	case 1:
-		return input_port_read_indexed(machine, 1);
+		return input_port_read(machine, "P2");
 	case 2:
-		return 0xff;
+		return input_port_read_safe(machine, "P3", 0xff);
 	case 3:
 		return 0xff;
 	case 4:
-		return input_port_read_indexed(machine, 2);
+		return input_port_read(machine, "SERVICE");
 	case 5: // Dip switches
-		return input_port_read_indexed(machine, 3);
+		return input_port_read(machine, "COINAGE");
 	case 6:
-		return input_port_read_indexed(machine, 4);
+		return input_port_read(machine, "DSW");
 	case 7: // DAC
 		return 0xff;
 	}
@@ -531,23 +532,25 @@ static UINT8 hotrod_io_r(running_machine *machine, int port)
 
 static UINT8 dcclub_io_r(running_machine *machine, int port)
 {
-	switch(port) {
-	case 0: {
+	switch(port)
+	{
+	case 0:
+	{
 		static const UINT8 pos[16] = { 0, 1, 3, 2, 6, 4, 12, 8, 9 };
-		return (input_port_read_indexed(machine, 0) & 0xf) | ((~pos[input_port_read_indexed(machine, 5)>>4]<<4) & 0xf0);
+		return (input_port_read(machine, "P1") & 0xf) | ((~pos[input_port_read(machine, "PADDLE")>>4]<<4) & 0xf0);
 	}
 	case 1:
-		return input_port_read_indexed(machine, 1);
+		return input_port_read(machine, "P2");
 	case 2:
 		return 0xff;
 	case 3:
 		return 0xff;
 	case 4:
-		return input_port_read_indexed(machine, 2);
+		return input_port_read(machine, "SERVICE");
 	case 5: // Dip switches
-		return input_port_read_indexed(machine, 3);
+		return input_port_read(machine, "COINAGE");
 	case 6:
-		return input_port_read_indexed(machine, 4);
+		return input_port_read(machine, "DSW");
 	case 7: // DAC
 		return 0xff;
 	}
@@ -558,44 +561,24 @@ static int cur_input_line;
 
 static UINT8 mahmajn_io_r(running_machine *machine, int port)
 {
-	switch(port) {
+	static const char *keynames[] = { "MJ0", "MJ1", "MJ2", "MJ3", "MJ4", "MJ5", "P1", "P2" };
+
+	switch(port)
+	{
 	case 0:
 		return ~(1 << cur_input_line);
 	case 1:
 		return 0xff;
 	case 2:
-		return input_port_read_indexed(machine, cur_input_line);
+		return input_port_read(machine, keynames[cur_input_line]);
 	case 3:
 		return 0xff;
 	case 4:
-		return input_port_read_indexed(machine, 8);
+		return input_port_read(machine, "SERVICE");
 	case 5: // Dip switches
-		return input_port_read_indexed(machine, 9);
+		return input_port_read(machine, "COINAGE");
 	case 6:
-		return input_port_read_indexed(machine, 10);
-	case 7: // DAC
-		return 0xff;
-	}
-	return 0x00;
-}
-
-static UINT8 gground_io_r(running_machine *machine, int port)
-{
-	switch(port) {
-	case 0:
-		return input_port_read_indexed(machine, 0);
-	case 1:
-		return input_port_read_indexed(machine, 1);
-	case 2: // P3 inputs
-		return input_port_read_indexed(machine, 2);
-	case 3:
-		return 0xff;
-	case 4:
-		return input_port_read_indexed(machine, 3);
-	case 5: // Dip switches
-		return input_port_read_indexed(machine, 4);
-	case 6:
-		return input_port_read_indexed(machine, 5);
+		return input_port_read(machine, "DSW");
 	case 7: // DAC
 		return 0xff;
 	}
@@ -604,13 +587,14 @@ static UINT8 gground_io_r(running_machine *machine, int port)
 
 static void mahmajn_io_w(running_machine *machine, int port, UINT8 data)
 {
-	switch(port) {
+	switch(port)
+	{
 	case 3:
 		if(data & 4)
 			cur_input_line = (cur_input_line + 1) & 7;
 		break;
 	case 7: // DAC
-		DAC_0_signed_data_w(machine, 0, data);
+		dac_0_signed_data_w(machine, 0, data);
 		break;
 	default:
 		fprintf(stderr, "Port %d : %02x\n", port, data & 0xff);
@@ -619,11 +603,12 @@ static void mahmajn_io_w(running_machine *machine, int port, UINT8 data)
 
 static void hotrod_io_w(running_machine *machine, int port, UINT8 data)
 {
-	switch(port) {
+	switch(port)
+	{
 	case 3: // Lamps
 		break;
 	case 7: // DAC
-		DAC_0_signed_data_w(machine,0, data);
+		dac_0_signed_data_w(machine,0, data);
 		break;
 	default:
 		fprintf(stderr, "Port %d : %02x\n", port, data & 0xff);
@@ -634,39 +619,46 @@ static UINT8 hotrod_ctrl_cur;
 
 static WRITE16_HANDLER( hotrod3_ctrl_w )
 {
-	if(ACCESSING_BITS_0_7) {
+	static const char *portnames[] = { "PEDAL1", "PEDAL2", "PEDAL3", "PEDAL4" };
+
+	if(ACCESSING_BITS_0_7)
+	{
 		data &= 3;
-		hotrod_ctrl_cur = input_port_read_indexed(machine, 9+data);
+		hotrod_ctrl_cur = input_port_read_safe(machine, portnames[data], 0);
 	}
 }
 
 static READ16_HANDLER( hotrod3_ctrl_r )
 {
-	if(ACCESSING_BITS_0_7) {
-		switch(offset) {
+	if(ACCESSING_BITS_0_7)
+	{
+		switch(offset)
+		{
 			// Steering dials
-		case 0:
-			return input_port_read_indexed(machine, 5) & 0xff;
-		case 1:
-			return input_port_read_indexed(machine, 5) >> 8;
-		case 2:
-			return input_port_read_indexed(machine, 6) & 0xff;
-		case 3:
-			return input_port_read_indexed(machine, 6) >> 8;
-		case 4:
-			return input_port_read_indexed(machine, 7) & 0xff;
-		case 5:
-			return input_port_read_indexed(machine, 7) >> 8;
-		case 6:
-			return input_port_read_indexed(machine, 8) & 0xff;
-		case 7:
-			return input_port_read_indexed(machine, 8) >> 8;
+			case 0:
+				return input_port_read_safe(machine, "DIAL1", 0) & 0xff;
+			case 1:
+				return input_port_read_safe(machine, "DIAL1", 0) >> 8;
+			case 2:
+				return input_port_read_safe(machine, "DIAL2", 0) & 0xff;
+			case 3:
+				return input_port_read_safe(machine, "DIAL2", 0) >> 8;
+			case 4:
+				return input_port_read_safe(machine, "DIAL3", 0) & 0xff;
+			case 5:
+				return input_port_read_safe(machine, "DIAL3", 0) >> 8;
+			case 6:
+				return input_port_read_safe(machine, "DIAL4", 0) & 0xff;
+			case 7:
+				return input_port_read_safe(machine, "DIAL4", 0) >> 8;
 
-		case 8: { // Serial ADCs for the accel
-			int v = hotrod_ctrl_cur & 0x80;
-			hotrod_ctrl_cur <<= 1;
-			return v ? 0xff : 0;
-		}
+			case 8:
+			{
+				// Serial ADCs for the accel
+				int v = hotrod_ctrl_cur & 0x80;
+				hotrod_ctrl_cur <<= 1;
+				return v ? 0xff : 0;
+			}
 		}
 	}
 	return 0;
@@ -721,7 +713,7 @@ static UINT8 curbank;
 
 static void reset_bank(running_machine *machine)
 {
-	if (memory_region(machine, REGION_USER1))
+	if (memory_region(machine, "user1"))
 	{
 		memory_set_bank(1, curbank & 15);
 		memory_set_bank(2, curbank & 15);
@@ -746,19 +738,19 @@ static WRITE16_HANDLER( curbank_w )
 
 static READ16_HANDLER( ym_status_r )
 {
-	return YM2151_status_port_0_r(machine, 0);
+	return ym2151_status_port_0_r(machine, 0);
 }
 
 static WRITE16_HANDLER( ym_register_w )
 {
 	if(ACCESSING_BITS_0_7)
-		YM2151_register_port_0_w(machine, 0, data);
+		ym2151_register_port_0_w(machine, 0, data);
 }
 
 static WRITE16_HANDLER( ym_data_w )
 {
 	if(ACCESSING_BITS_0_7)
-		YM2151_data_port_0_w(machine, 0, data);
+		ym2151_data_port_0_w(machine, 0, data);
 }
 
 
@@ -1105,14 +1097,14 @@ static DRIVER_INIT(dcclub)
 
 static DRIVER_INIT(qrouka)
 {
-	system24temp_sys16_io_set_callbacks(gground_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
+	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = qrouka_mlt;
 	track_size = 0;
 }
 
 static DRIVER_INIT(quizmeku)
 {
-	system24temp_sys16_io_set_callbacks(gground_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
+	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = quizmeku_mlt;
 	track_size = 0;
 }
@@ -1196,8 +1188,6 @@ static DRIVER_INIT(dcclubfd)
 }
 
 
-
-
 static DRIVER_INIT(sgmast)
 {
 	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
@@ -1217,7 +1207,7 @@ static DRIVER_INIT(qsww)
 
 static DRIVER_INIT(gground)
 {
-	system24temp_sys16_io_set_callbacks(gground_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
+	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = 0;
 	track_size = 0x2d00;
 	s24_fd1094_driver_init(machine);
@@ -1250,14 +1240,14 @@ static NVRAM_HANDLER(system24)
 	if(!track_size || !file)
 		return;
 	if(read_or_write)
-		mame_fwrite(file, memory_region(machine, REGION_USER2), 2*track_size);
+		mame_fwrite(file, memory_region(machine, "user2"), 2*track_size);
 	else
-		mame_fread(file, memory_region(machine, REGION_USER2), 2*track_size);
+		mame_fread(file, memory_region(machine, "user2"), 2*track_size);
 }
 
 static MACHINE_START( system24 )
 {
-	UINT8 *usr1 = memory_region(machine, REGION_USER1);
+	UINT8 *usr1 = memory_region(machine, "user1");
 	if (usr1)
 	{
 		memory_configure_bank(1, 0, 16, usr1, 0x40000);
@@ -1283,7 +1273,7 @@ static MACHINE_RESET(system24)
  *************************************/
 
 static INPUT_PORTS_START( system24_P1_P2 )
-	PORT_START_TAG("P1")
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
  	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
@@ -1293,7 +1283,7 @@ static INPUT_PORTS_START( system24_P1_P2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 
-	PORT_START_TAG("P2")
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
@@ -1305,7 +1295,7 @@ static INPUT_PORTS_START( system24_P1_P2 )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( system24_Service )
-	PORT_START_TAG("SERVICE")
+	PORT_START("SERVICE")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE )
@@ -1317,7 +1307,7 @@ static INPUT_PORTS_START( system24_Service )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( system24_DSW )
-	PORT_START_TAG("COINAGE")
+	PORT_START("COINAGE")
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SWA:1,2,3,4")
 	PORT_DIPSETTING(    0x07, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 3C_1C ) )
@@ -1353,7 +1343,7 @@ static INPUT_PORTS_START( system24_DSW )
 	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x00, "Free Play (if Coin A too) or 1/1" )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) ) PORT_DIPLOCATION("SWB:1")
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1426,28 +1416,28 @@ static INPUT_PORTS_START( hotrod )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DIAL1")
 	PORT_BIT( 0xfff, 0x000, IPT_DIAL ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START("DIAL2")
 	PORT_BIT( 0xfff, 0x000, IPT_DIAL ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START("DIAL3")
 	PORT_BIT( 0xfff, 0x000, IPT_DIAL ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(3)
 
-	PORT_START
+	PORT_START("DIAL4")
 	PORT_BIT( 0xfff, 0x000, IPT_DIAL ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(4)
 
-	PORT_START
+	PORT_START("PEDAL1")
 	PORT_BIT( 0xff, 0x01, IPT_PEDAL ) PORT_MINMAX(0x01,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START("PEDAL2")
 	PORT_BIT( 0xff, 0x01, IPT_PEDAL ) PORT_MINMAX(0x01,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START("PEDAL3")
 	PORT_BIT( 0xff, 0x01, IPT_PEDAL ) PORT_MINMAX(0x01,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(3)
 
-	PORT_START
+	PORT_START("PEDAL4")
 	PORT_BIT( 0xff, 0x01, IPT_PEDAL ) PORT_MINMAX(0x01,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(4)
 INPUT_PORTS_END
 
@@ -1537,10 +1527,10 @@ static INPUT_PORTS_START( roughrac )
 	PORT_DIPSETTING(    0x80, "10" )
 	PORT_DIPSETTING(    0x00, "15" )
 
-	PORT_START
+	PORT_START("DIAL1")
 	PORT_BIT( 0xfff, 0x000, IPT_DIAL ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START("DIAL2")
 	PORT_BIT( 0xfff, 0x000, IPT_DIAL ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -1652,7 +1642,7 @@ static INPUT_PORTS_START( dcclub ) /* In the Japan set missing angle input */
 	PORT_DIPSETTING(    0x40, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 
-	PORT_START
+	PORT_START("PADDLE")
 	PORT_BIT( 0xff, 0x00, IPT_PADDLE ) PORT_MINMAX(0x00,0x8f) PORT_SENSITIVITY(64) PORT_KEYDELTA(64) PORT_PLAYER(1)
 INPUT_PORTS_END
 
@@ -1702,7 +1692,7 @@ static INPUT_PORTS_START( sgmastj )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DIAL1")
 	PORT_BIT( 0xfff, 0x000, IPT_DIAL ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -1719,7 +1709,7 @@ static INPUT_PORTS_START( quizmeku )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
 
-	PORT_START_TAG("P3")
+	PORT_START("P3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(4)
@@ -1781,48 +1771,48 @@ static INPUT_PORTS_START( qrouka )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mahmajn )
-	PORT_START_TAG("MJ0")
+	PORT_START("MJ0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("A") PORT_CODE(KEYCODE_A)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("B") PORT_CODE(KEYCODE_B)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("C") PORT_CODE(KEYCODE_C)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("D") PORT_CODE(KEYCODE_D)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("MJ1")
+	PORT_START("MJ1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("E") PORT_CODE(KEYCODE_E)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("F") PORT_CODE(KEYCODE_F)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("G") PORT_CODE(KEYCODE_G)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("H") PORT_CODE(KEYCODE_H)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("MJ2")
+	PORT_START("MJ2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("I") PORT_CODE(KEYCODE_I)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("J") PORT_CODE(KEYCODE_J)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("K") PORT_CODE(KEYCODE_K)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("L") PORT_CODE(KEYCODE_L)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("MJ3")
+	PORT_START("MJ3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("M") PORT_CODE(KEYCODE_M)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("N") PORT_CODE(KEYCODE_N)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Chi") PORT_CODE(KEYCODE_SPACE)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Pon") PORT_CODE(KEYCODE_LALT)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("MJ4")
+	PORT_START("MJ4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0xfe, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("MJ5")
+	PORT_START("MJ5")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Kan") PORT_CODE(KEYCODE_LCONTROL)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Reach") PORT_CODE(KEYCODE_LSHIFT)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Ron") PORT_CODE(KEYCODE_Z)
 	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("P1")
+	PORT_START("P1")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("P2")
+	PORT_START("P2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_INCLUDE( system24_Service )
@@ -1850,7 +1840,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( gground )
 	PORT_INCLUDE( system24_P1_P2 )
 
-	PORT_START_TAG("P3")
+	PORT_START("P3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
@@ -1895,7 +1885,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	irq_ym
 };
@@ -1907,11 +1897,11 @@ static const struct YM2151interface ym2151_interface =
  *************************************/
 
 static MACHINE_DRIVER_START( system24 )
-	MDRV_CPU_ADD(M68000, 10000000)
+	MDRV_CPU_ADD("main", M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(system24_cpu1_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(irq_vbl, 2)
 
-	MDRV_CPU_ADD(M68000, 10000000)
+	MDRV_CPU_ADD("sub", M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(system24_cpu2_map, 0)
 
 	MDRV_INTERLEAVE(4)
@@ -1936,12 +1926,12 @@ static MACHINE_DRIVER_START( system24 )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 4000000)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 4000000)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END
@@ -1953,38 +1943,38 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( hotrod )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-11339.ic2", 0x000000, 0x20000, CRC(75130e73) SHA1(e079739f4a3da3807aac570442c5afef1a7d7b0e) )
 	ROM_LOAD16_BYTE( "epr-11338.ic1", 0x000001, 0x20000, CRC(7d4a7ff3) SHA1(3d3af04d990d232ba0a8fe155de59bc632a0a461) )
 
-	ROM_REGION( 0x1d6000, REGION_USER2, 0)
+	ROM_REGION( 0x1d6000, "user2", 0)
 	ROM_LOAD( "ds3-5000-01d_3p_turbo.bin", 0x000000, 0x1d6000, CRC(627e8053) SHA1(d1a95f99078f5a29cccacfb1b30c3c9ead7b605c) )
 ROM_END
 
 ROM_START( hotroda )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-11339.ic2", 0x000000, 0x20000, CRC(75130e73) SHA1(e079739f4a3da3807aac570442c5afef1a7d7b0e) )
 	ROM_LOAD16_BYTE( "epr-11338.ic1", 0x000001, 0x20000, CRC(7d4a7ff3) SHA1(3d3af04d990d232ba0a8fe155de59bc632a0a461) )
 
-	ROM_REGION( 0x1d6000, REGION_USER2, 0)
+	ROM_REGION( 0x1d6000, "user2", 0)
 	ROM_LOAD( "ds3-5000-01d.bin", 0x000000, 0x1d6000, CRC(abf67b02) SHA1(f397435eaad691ff5a38d6d1d27840ed95a62df3) ) // World? 3 Playe TURBO
 ROM_END
 
 ROM_START( hotrodj )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-11339.ic2", 0x000000, 0x20000, CRC(75130e73) SHA1(e079739f4a3da3807aac570442c5afef1a7d7b0e) )
 	ROM_LOAD16_BYTE( "epr-11338.ic1", 0x000001, 0x20000, CRC(7d4a7ff3) SHA1(3d3af04d990d232ba0a8fe155de59bc632a0a461) )
 
-	ROM_REGION( 0x1d6000, REGION_USER2, 0)
+	ROM_REGION( 0x1d6000, "user2", 0)
 	ROM_LOAD( "ds3-5000-01a-revb.bin", 0x000000, 0x1d6000, CRC(a39a0c2d) SHA1(ea8104c2266c48f480837aa7679c0a6f0c5e5452) ) // Japanese 4 Player
 ROM_END
 
 ROM_START( qgh )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "16900b", 0x000000, 0x20000, CRC(20d7b7d1) SHA1(345b228c27e5f2fef9a2b8b5f619c59450a070f8) )
 	ROM_LOAD16_BYTE( "16899b", 0x000001, 0x20000, CRC(397b3ba9) SHA1(1773212cd87dcff840f3953ec368be7e2394faf0) )
 
-	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, "user1", 0)
 	ROM_LOAD16_BYTE( "16902a", 0x000000, 0x80000, CRC(d35b7706) SHA1(341bca0af6b6d3f326328a88cdc69c7897b83a0d) )
 	ROM_LOAD16_BYTE( "16901a", 0x000001, 0x80000, CRC(ab4bcb33) SHA1(8acd73096eb485c6dc83da6adfcc47d5d0f5b7f3) )
 	ROM_LOAD16_BYTE( "16904",  0x100000, 0x80000, CRC(10987c88) SHA1(66f893690565aed613427421958ebe225a20ad0f) )
@@ -1996,21 +1986,21 @@ ROM_START( qgh )
 ROM_END
 
 ROM_START( qrouka )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "14485", 0x000000, 0x20000, CRC(fc0085f9) SHA1(0250d1e17e19b541b85198ec4207e55bfbd5c32e) )
 	ROM_LOAD16_BYTE( "14484", 0x000001, 0x20000, CRC(f51c641c) SHA1(3f2fd0be7d58c75e88565393da5e810655413b53) )
 
-	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, "user1", 0)
 	ROM_LOAD16_BYTE( "14482", 0x000000, 0x80000, CRC(7a13dd97) SHA1(bfe9950d2cd41f3f866520923c1ed7b8da1990ec) )
 	ROM_LOAD16_BYTE( "14483", 0x100000, 0x80000, CRC(f3eb51a0) SHA1(6904830ff5e7aa5f016e115572fb6da678896ede) )
 ROM_END
 
 ROM_START( mahmajn )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr14813.bin", 0x000000, 0x20000, CRC(ea38cf4b) SHA1(118ab2e0ae20a4db5e619945dfbb3f200de3979c) )
 	ROM_LOAD16_BYTE( "epr14812.bin", 0x000001, 0x20000, CRC(5a3cb4a7) SHA1(c0f21282140e8e6e927664f5f2b90525ae0207e9) )
 
-	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, "user1", 0)
 	ROM_LOAD16_BYTE( "mpr14820.bin", 0x000000, 0x80000, CRC(8d2a03d3) SHA1(b3339bcd101bcfe042e2a1cfdc8baef0a86624df) )
 	ROM_LOAD16_BYTE( "mpr14819.bin", 0x000001, 0x80000, CRC(e84c4827) SHA1(54741295e1bdca7d0c78eb795a68b92212d43b2e) )
 	ROM_LOAD16_BYTE( "mpr14822.bin", 0x100000, 0x80000, CRC(7c3dcc51) SHA1(a199c2c71cda44a2c8755074c1007d83c8d45d2d) )
@@ -2022,11 +2012,11 @@ ROM_START( mahmajn )
 ROM_END
 
 ROM_START( mahmajn2 )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr16799.bin", 0x000000, 0x20000, CRC(3a34cf75) SHA1(d22bf6334668af29167cf4244d18f9cd2e7ff7d6) )
 	ROM_LOAD16_BYTE( "epr16798.bin", 0x000001, 0x20000, CRC(662923fa) SHA1(dcd3964d899d3f34dab22ffcd1a5af895804fae1) )
 
-	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, "user1", 0)
 	ROM_LOAD16_BYTE( "mpr16801.bin", 0x000000, 0x80000, CRC(74855a17) SHA1(d2d8e7da7b261e7cb64605284d2c78fbd1465b69) )
 	ROM_LOAD16_BYTE( "mpr16800.bin", 0x000001, 0x80000, CRC(6dbc1e02) SHA1(cce5734243ff171759cecb5c05c12dc743a25c1d) )
 	ROM_LOAD16_BYTE( "mpr16803.bin", 0x100000, 0x80000, CRC(9b658dd6) SHA1(eaaae289a3555aa6a92f57eea964dbbf48c5c2a4) )
@@ -2038,11 +2028,11 @@ ROM_START( mahmajn2 )
 ROM_END
 
 ROM_START( bnzabros )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, "user1", 0)
 	ROM_LOAD16_BYTE( "mpr-13188-h.2",  0x000000, 0x80000, CRC(d3802294) SHA1(7608e71e8ef398ac24dbf851994253bca5ace625) )
 	ROM_LOAD16_BYTE( "mpr-13187-h.1",  0x000001, 0x80000, CRC(e3d8c5f7) SHA1(5b1e8646debee2f2ef272ddd3320b0a17192fbbe) )
 	ROM_LOAD16_BYTE( "mpr-13190.4",    0x100000, 0x40000, CRC(0b4df388) SHA1(340478bba82069ab745d6d8703e6801411fd2fc4) )
@@ -2050,16 +2040,16 @@ ROM_START( bnzabros )
 	ROM_LOAD16_BYTE( "mpr-13189.3",    0x100001, 0x40000, CRC(5ea5a2f3) SHA1(514b5446303c50aeb1d6d10d0a3f210da2577e16) )
 	ROM_RELOAD ( 0x180001, 0x40000)
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-07d.img",        0x000000, 0x1c2000, CRC(ea7a3302) SHA1(5f92efb2e1135c1f3eeca38ba5789739a22dbd11) ) /* Region letter needs to be verfied */
 ROM_END
 
 ROM_START( bnzabrsj )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, "user1", 0)
 	ROM_LOAD16_BYTE( "mpr-13188-h.2",  0x000000, 0x80000, CRC(d3802294) SHA1(7608e71e8ef398ac24dbf851994253bca5ace625) )
 	ROM_LOAD16_BYTE( "mpr-13187-h.1",  0x000001, 0x80000, CRC(e3d8c5f7) SHA1(5b1e8646debee2f2ef272ddd3320b0a17192fbbe) )
 	ROM_LOAD16_BYTE( "mpr-13190.4",    0x100000, 0x40000, CRC(0b4df388) SHA1(340478bba82069ab745d6d8703e6801411fd2fc4) )
@@ -2067,16 +2057,16 @@ ROM_START( bnzabrsj )
 	ROM_LOAD16_BYTE( "mpr-13189.3",    0x100001, 0x40000, CRC(5ea5a2f3) SHA1(514b5446303c50aeb1d6d10d0a3f210da2577e16) )
 	ROM_RELOAD ( 0x180001, 0x40000)
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-07b.img",        0x000000, 0x1c2000, CRC(efa7f2a7) SHA1(eb905bff88fa40324fb92b91ac8a5878648c26e5) )
 ROM_END
 
 ROM_START( quizmeku ) // Quiz Mekuromeku Story
-	 ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	 ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	 ROM_LOAD16_BYTE( "epr15343.ic2", 0x000000, 0x20000, CRC(c72399a7) SHA1(bfbf0079ea63f89bca4ce9081aed5d5c1d9d169a) )
 	 ROM_LOAD16_BYTE( "epr15342.ic1", 0x000001, 0x20000, CRC(0968ac84) SHA1(4e1170ac123adaec32819754b5075531ff1925fe) )
 
-	 ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
+	 ROM_REGION16_BE( 0x400000, "user1", 0)
 	 ROM_LOAD16_BYTE( "epr15345.ic5", 0x000000, 0x80000, CRC(88030b5d) SHA1(d2feeedb9a64c3dc8dd25716209f945d12fa9b53) )
 	 ROM_LOAD16_BYTE( "epr15344.ic4", 0x000001, 0x80000, CRC(dd11b382) SHA1(2b0f49fb307a9aba0f295de64782ee095c557170) )
 	 ROM_LOAD16_BYTE( "mpr15347.ic7", 0x100000, 0x80000, CRC(0472677b) SHA1(93ae57a2817b6b54c99814fca28ef51f7ff5e559) )
@@ -2086,44 +2076,44 @@ ROM_START( quizmeku ) // Quiz Mekuromeku Story
 ROM_END
 
 ROM_START( sspirits )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-02-.img",         0x000000, 0x1c2000, CRC(cefbda69) SHA1(5b47ae0f1584ce1eb697246273ba761bd9e981c1)  )
 ROM_END
 
 ROM_START( sspiritj )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-11339.ic2", 0x000000, 0x20000, CRC(75130e73) SHA1(e079739f4a3da3807aac570442c5afef1a7d7b0e) )
 	ROM_LOAD16_BYTE( "epr-11338.ic1", 0x000001, 0x20000, CRC(7d4a7ff3) SHA1(3d3af04d990d232ba0a8fe155de59bc632a0a461) )
 
-	ROM_REGION( 0x1d6000, REGION_USER2, 0)
+	ROM_REGION( 0x1d6000, "user2", 0)
 	ROM_LOAD( "ds3-5000-02-rev-a.img",         0x000000, 0x1d6000, CRC(0385470f) SHA1(62c1bfe3a88b2dee44629809e08b4b8a5770eaab)  )
 ROM_END
 
 ROM_START( sspirtfc )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-02c.key", 0x0000, 0x2000,  CRC(ebae170e) SHA1(b6d1e1b6943a35b96e98e426ecb39bb5a42fb643) )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-02c.img",         0x000000, 0x1c2000, NO_DUMP )
 ROM_END
 
 ROM_START( sgmast )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-05d.key", 0x0000, 0x2000, NO_DUMP )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	/* not sure which of these images is best */
 	ROM_LOAD( "ds3-5000-05d.img",      0x000000, 0x1c2000, CRC(e9a69f93) SHA1(dc15e47ed78373688c1fab72a9605528068ad702) )
 	ROM_LOAD( "ds3-5000-05d_alt.img",  0x000000, 0x1c2000, CRC(e71a8ebf) SHA1(60feb0af1cfc0508c8d68c8572495eec1763dc93) )
@@ -2132,107 +2122,107 @@ ROM_START( sgmast )
 ROM_END
 
 ROM_START( sgmastc )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-05c.key", 0x0000, 0x2000, CRC(ae0eabe5) SHA1(692d7565bf9c5b32cc80bb4bd88c9193aa04cbb0) )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-05c.img",      0x000000, 0x1c2000, CRC(06c4f834) SHA1(5e178ed0edff7721c93f76da2e03ae188dc5efa4) )
 ROM_END
 
 ROM_START( sgmastj )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-05b.key", 0x0000, 0x2000, CRC(adc0c83b) SHA1(2328d82d5057062eeb0072fd57f0422218cf24fc) )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-05b.img",      0x000000, 0x1c2000,  CRC(a136668c) SHA1(7203f9d11023605a0a4b52a4be330785c8f7b623) )
 ROM_END
 
 ROM_START( qsww )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-08b.key", 0x0000, 0x2000,  CRC(fe0a336a) SHA1(f7a5b2c1a057d0bb8c1ae0453c58aa8f5fb731b9) )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-08b.img",    0x000000, 0x1c2000, CRC(5a886d38) SHA1(2e974a9ffe3534da4fb117c579b8b0e61a63542c) )
 ROM_END
 
 ROM_START( gground )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-03c.key", 0x0000, 0x2000,  CRC(e1785bbd) SHA1(b4bebb2829299f1c0815d6a5f317a2526b322f63) ) /* Region letter needs to be verfied */
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-03c.img",         0x000000, 0x1c2000, CRC(5c5910f2) SHA1(9ed564a03c0d4ca4a207f3ecfb7336c6cbcaa70f) ) /* Region letter needs to be verfied */
 ROM_END
 
 ROM_START( ggroundj )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-03b.key", 0x0000, 0x2000,  CRC(84aecdba) SHA1(ceddf967359a6e76543fe1ab00be53d0a11fe1ab) )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-03b.img",         0x000000, 0x1c2000, CRC(7200dac9) SHA1(07cf33bf2a0da36e3852de409959f30128cdbf77) )
 ROM_END
 
 ROM_START( crkdown )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-04c.key", 0x0000, 0x2000,  CRC(16e978cc) SHA1(0e1482b5efa93b732d4cf0990919cb3fc903dca7) )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-04c.img",    0x000000, 0x1c2000, CRC(5edc01a5) SHA1(8eb1bf41f533d16c12930f5831f8bccd4d8de4f7) )
 ROM_END
 
 ROM_START( crkdownu )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-04d.key", 0x0000, 0x2000,  CRC(934ac358) SHA1(73418e22c9d201bc3fec5c63284858958c010e05) )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-04d.img",    0x000000, 0x1c2000, CRC(8679032c) SHA1(887b245a70652897fbda736b60e81a123866ec12) )
 ROM_END
 
 ROM_START( crkdownj )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-04b.key", 0x0000, 0x2000,  CRC(4a99a202) SHA1(d7375f09e7246ecd60ba0e48f049e9e252af92a8) )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-04b.img",    0x000000, 0x1c2000, CRC(5daa1a9a) SHA1(ce2f07b83b607bbbdb70f1ae344c1d897d601809) )
 ROM_END
 
 ROM_START( dcclub )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr13948.bin", 0x000000, 0x20000, CRC(d6a031c8) SHA1(45b7e3cd2c7412e24f547cd4185166199d3938d5) )
 	ROM_LOAD16_BYTE( "epr13947.bin", 0x000001, 0x20000, CRC(7e3cff5e) SHA1(ff8cb776d2491796feeb8892c7e644e590438945) )
 
-	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, "user1", 0)
 	ROM_LOAD16_BYTE( "epr-15345.2",  0x000000, 0x80000, CRC(d9e120c2) SHA1(b18b76733078d8534c6f0d8950632ab51e6a10ab) )
 	ROM_LOAD16_BYTE( "epr-15344.1",  0x000001, 0x80000, CRC(8f8b9f74) SHA1(de6b923118bea60197547ad016cb5d5e1a8f372b) )
 	ROM_LOAD16_BYTE( "mpr-14097-t.4",0x100000, 0x80000, CRC(4bd74cae) SHA1(5aa90bd5d2b8e2338ef0fe41d1f794e8d51321e1) )
@@ -2240,11 +2230,11 @@ ROM_START( dcclub )
 ROM_END
 
 ROM_START( dcclubj )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr13948.bin", 0x000000, 0x20000, CRC(d6a031c8) SHA1(45b7e3cd2c7412e24f547cd4185166199d3938d5) )
 	ROM_LOAD16_BYTE( "epr13947.bin", 0x000001, 0x20000, CRC(7e3cff5e) SHA1(ff8cb776d2491796feeb8892c7e644e590438945) )
 
-	ROM_REGION16_BE( 0x400000, REGION_USER1, 0)
+	ROM_REGION16_BE( 0x400000, "user1", 0)
 	ROM_LOAD16_BYTE( "epr-14095a.2", 0x000000, 0x80000, CRC(88d184e9) SHA1(519F3A22E1619DE9D5F13A45B85EBD249EBFA979) )
 	ROM_LOAD16_BYTE( "epr-14094a.1", 0x000001, 0x80000, CRC(7dd2b7d4) SHA1(C7EAF9E2700E0C55F7E867F5CD3FFAA5AAE97956) )
 	ROM_LOAD16_BYTE( "mpr-14097-t.4",0x100000, 0x80000, CRC(4bd74cae) SHA1(5aa90bd5d2b8e2338ef0fe41d1f794e8d51321e1) )
@@ -2252,26 +2242,26 @@ ROM_START( dcclubj )
 ROM_END
 
 ROM_START( dcclubfd )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-09d.key", 0x0000, 0x2000, CRC(a91ebffb) SHA1(70b8b4272ca456491f254d115b434bb4ce73f049) )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-09d.img", 0x000000, 0x1c2000,  CRC(69870887) SHA1(e47a997c2c783bf6670ab213ebe2ee35492eba34) )
 ROM_END
 
 ROM_START( roughrac )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* FD1094 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* FD1094 code */
 	ROM_LOAD16_BYTE( "epr-12187.ic2", 0x000000, 0x20000, CRC(e83783f3) SHA1(4b3b32df7de85aef9cd77c8a4ffc17e10466b638) )
 	ROM_LOAD16_BYTE( "epr-12186.ic1", 0x000001, 0x20000, CRC(ce76319d) SHA1(0ede61f0700f9161285c768fa97636f0e42b96f8) )
 
-	ROM_REGION( 0x2000, REGION_USER3, 0 )	/* decryption key */
+	ROM_REGION( 0x2000, "user3", 0 )	/* decryption key */
 	ROM_LOAD( "317-0058-06b.key",    0x000000, 0x2000, CRC(6a5bf536) SHA1(3fc3e93ce8a47d7ee86da889efad2e7eca6e2ee9) )
 
-	ROM_REGION( 0x1c2000, REGION_USER2, 0)
+	ROM_REGION( 0x1c2000, "user2", 0)
 	ROM_LOAD( "ds3-5000-06b.img",    0x000000, 0x1c2000, CRC(a7fb2149) SHA1(c04266ae31700b085ab45606aed83019a563de70) )
 ROM_END
 

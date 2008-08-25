@@ -28,11 +28,11 @@ VIDEO_UPDATE( tail2nos );
 static MACHINE_RESET( tail2nos )
 {
 	/* point to the extra ROMs */
-	memory_set_bankptr(1,memory_region(machine, REGION_USER1));
-	memory_set_bankptr(2,memory_region(machine, REGION_USER2));
+	memory_set_bankptr(1,memory_region(machine, "user1"));
+	memory_set_bankptr(2,memory_region(machine, "user2"));
 
 	/* initialize sound bank */
-	memory_set_bankptr(3,memory_region(machine, REGION_CPU2) + 0x10000);
+	memory_set_bankptr(3,memory_region(machine, "audio") + 0x10000);
 }
 
 
@@ -64,7 +64,7 @@ static WRITE16_HANDLER( tail2nos_K051316_ctrl_0_w )
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
-	memory_set_bankptr(3,memory_region(machine, REGION_CPU2) + 0x10000 + (data & 0x01) * 0x8000);
+	memory_set_bankptr(3,memory_region(machine, "audio") + 0x10000 + (data & 0x01) * 0x8000);
 }
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -93,19 +93,19 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_port_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x07, 0x07) AM_READWRITE(soundlatch_r, SMH_NOP)	/* the write is a clear pending command */
-	AM_RANGE(0x08, 0x08) AM_WRITE(YM2608_control_port_0_A_w)
-	AM_RANGE(0x09, 0x09) AM_WRITE(YM2608_data_port_0_A_w)
-	AM_RANGE(0x0a, 0x0a) AM_WRITE(YM2608_control_port_0_B_w)
-	AM_RANGE(0x0b, 0x0b) AM_WRITE(YM2608_data_port_0_B_w)
+	AM_RANGE(0x08, 0x08) AM_WRITE(ym2608_control_port_0_a_w)
+	AM_RANGE(0x09, 0x09) AM_WRITE(ym2608_data_port_0_a_w)
+	AM_RANGE(0x0a, 0x0a) AM_WRITE(ym2608_control_port_0_b_w)
+	AM_RANGE(0x0b, 0x0b) AM_WRITE(ym2608_data_port_0_b_w)
 #if 0
-	AM_RANGE(0x18, 0x18) AM_READ(YM2610_status_port_0_A_r)
-	AM_RANGE(0x1a, 0x1a) AM_READ(YM2610_status_port_0_B_r)
+	AM_RANGE(0x18, 0x18) AM_READ(ym2610_status_port_0_a_r)
+	AM_RANGE(0x1a, 0x1a) AM_READ(ym2610_status_port_0_b_r)
 #endif
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( tail2nos )
-	PORT_START
+	PORT_START("INPUTS")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
@@ -118,12 +118,12 @@ static INPUT_PORTS_START( tail2nos )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT(0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Test Advance") PORT_CODE(KEYCODE_F1)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Test Advance") PORT_CODE(KEYCODE_F1)
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x000f, 0x0000, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0009, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(      0x0008, DEF_STR( 4C_1C ) )
@@ -210,8 +210,8 @@ static const gfx_layout tail2nos_spritelayout =
 };
 
 static GFXDECODE_START( tail2nos )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tail2nos_charlayout,   0, 128 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tail2nos_spritelayout, 0, 128 )
+	GFXDECODE_ENTRY( "gfx1", 0, tail2nos_charlayout,   0, 128 )
+	GFXDECODE_ENTRY( "gfx2", 0, tail2nos_spritelayout, 0, 128 )
 GFXDECODE_END
 
 
@@ -221,7 +221,7 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2608interface ym2608_interface =
+static const ym2608_interface ym2608_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT | AY8910_SINGLE_OUTPUT,
@@ -231,8 +231,7 @@ static const struct YM2608interface ym2608_interface =
 		NULL,
 		sound_bankswitch_w,
 	},
-	irqhandler,
-	REGION_SOUND1
+	irqhandler
 };
 
 
@@ -240,12 +239,11 @@ static const struct YM2608interface ym2608_interface =
 static MACHINE_DRIVER_START( tail2nos )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000,XTAL_20MHz/2)	/* verified on pcb */
+	MDRV_CPU_ADD("main", M68000,XTAL_20MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
-	MDRV_CPU_ADD(Z80,XTAL_20MHz/4)	/* verified on pcb */
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80,XTAL_20MHz/4)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_port_map,0)
 								/* IRQs are triggered by the YM2608 */
@@ -268,8 +266,8 @@ static MACHINE_DRIVER_START( tail2nos )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2608, XTAL_8MHz)	/* verified on pcb */
-	MDRV_SOUND_CONFIG(ym2608_interface)
+	MDRV_SOUND_ADD("ym", YM2608, XTAL_8MHz)	/* verified on pcb */
+	MDRV_SOUND_CONFIG(ym2608_config)
 	MDRV_SOUND_ROUTE(0, "left",  0.25)
 	MDRV_SOUND_ROUTE(0, "right", 0.25)
 	MDRV_SOUND_ROUTE(1, "left",  1.0)
@@ -279,72 +277,72 @@ MACHINE_DRIVER_END
 
 
 ROM_START( tail2nos )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "v4",           0x00000, 0x10000, CRC(1d4240c2) SHA1(db8992d8e718e20acb7b3f2f0b1f358098863145) )
 	ROM_LOAD16_BYTE( "v7",           0x00001, 0x10000, CRC(0fb70066) SHA1(3d38672402d5ab70599c191cc274746a192b399b) )
 	ROM_LOAD16_BYTE( "v3",           0x20000, 0x10000, CRC(e2e0abad) SHA1(1a1054bada9654484fe81fe4b4b32af5ab7b53f0) )
 	ROM_LOAD16_BYTE( "v6",           0x20001, 0x10000, CRC(069817a7) SHA1(cca382fe2a49c8c3c84b879a1c30dffff84ef406) )
 
-	ROM_REGION16_BE( 0x80000, REGION_USER1, 0 )
+	ROM_REGION16_BE( 0x80000, "user1", 0 )
 	/* extra ROM mapped at 200000 */
 	ROM_LOAD16_WORD_SWAP( "a23",     0x00000, 0x80000, CRC(d851cf04) SHA1(ac5b366b686c5a037b127d223dc6fe90985eb160) )
 
-	ROM_REGION16_BE( 0x20000, REGION_USER2, 0 )
+	ROM_REGION16_BE( 0x20000, "user2", 0 )
 	/* extra ROM mapped at 2c0000 */
 	ROM_LOAD16_BYTE( "v5",           0x00000, 0x10000, CRC(a9fe15a1) SHA1(d90bf40c610ea7daaa338f83f82cdffbae7da08e) )
 	ROM_LOAD16_BYTE( "v8",           0x00001, 0x10000, CRC(4fb6a43e) SHA1(5cddda0029b3b141c88b0c128655d35bb12fa34d) )
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 )	/* 64k for the audio CPU + banks */
+	ROM_REGION( 0x20000, "audio", 0 )	/* 64k for the audio CPU + banks */
 	ROM_LOAD( "v2",           0x00000, 0x08000, CRC(920d8920) SHA1(b8d30903248fee6f985af7fafbe534cfc8c6e829) )
 	ROM_LOAD( "v1",           0x10000, 0x10000, CRC(bf35c1a4) SHA1(a838740e023dc3344dc528324a8dbc48bb98b574) )
 
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a24",          0x00000, 0x80000, CRC(b1e9de43) SHA1(0144252dd9ed561fbebd4994cccf11f6c87e1825) )
 	ROM_LOAD( "o1s",          0x80000, 0x40000, CRC(e27a8eb4) SHA1(4fcadabf42a1c3deeb6d74d75cdbee802cf16db5) )
 
-	ROM_REGION( 0x080000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x080000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "oj1",          0x000000, 0x40000, CRC(39c36b35) SHA1(a97480696bf6d81bf415737e03cc5324d439ab84) )
 	ROM_LOAD( "oj2",          0x040000, 0x40000, CRC(77ccaea2) SHA1(e38175859c75c6d0f2f01752fad6e167608c4662) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_ERASE00 )	/* gfx data for the 051316 */
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_ERASE00 )	/* gfx data for the 051316 */
 	/* RAM, not ROM - handled at run time */
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 ) /* sound samples */
+	ROM_REGION( 0x20000, "ym", 0 ) /* sound samples */
 	ROM_LOAD( "osb",          0x00000, 0x20000, CRC(d49ab2f5) SHA1(92f7f6c8f35ac39910879dd88d2cfb6db7c848c9) )
 ROM_END
 
 ROM_START( sformula )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "ic129.4",      0x00000, 0x10000, CRC(672bf690) SHA1(b322234b47f20a36430bc03be0b52d9b7f82967b) )
 	ROM_LOAD16_BYTE( "ic130.7",      0x00001, 0x10000, CRC(73f0c91c) SHA1(faf14eb1a210c7330b47b78ca6c6563ea6482b3b) )
 	ROM_LOAD16_BYTE( "v3",           0x20000, 0x10000, CRC(e2e0abad) SHA1(1a1054bada9654484fe81fe4b4b32af5ab7b53f0) )
 	ROM_LOAD16_BYTE( "v6",           0x20001, 0x10000, CRC(069817a7) SHA1(cca382fe2a49c8c3c84b879a1c30dffff84ef406) )
 
-	ROM_REGION16_BE( 0x80000, REGION_USER1, 0 )
+	ROM_REGION16_BE( 0x80000, "user1", 0 )
 	/* extra ROM mapped at 200000 */
 	ROM_LOAD16_WORD_SWAP( "a23",     0x00000, 0x80000, CRC(d851cf04) SHA1(ac5b366b686c5a037b127d223dc6fe90985eb160) )
 
-	ROM_REGION16_BE( 0x20000, REGION_USER2, 0 )
+	ROM_REGION16_BE( 0x20000, "user2", 0 )
 	/* extra ROM mapped at 2c0000 */
 	ROM_LOAD16_BYTE( "v5",           0x00000, 0x10000, CRC(a9fe15a1) SHA1(d90bf40c610ea7daaa338f83f82cdffbae7da08e) )
 	ROM_LOAD16_BYTE( "v8",           0x00001, 0x10000, CRC(4fb6a43e) SHA1(5cddda0029b3b141c88b0c128655d35bb12fa34d) )
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 )	/* 64k for the audio CPU + banks */
+	ROM_REGION( 0x20000, "audio", 0 )	/* 64k for the audio CPU + banks */
 	ROM_LOAD( "v2",           0x00000, 0x08000, CRC(920d8920) SHA1(b8d30903248fee6f985af7fafbe534cfc8c6e829) )
 	ROM_LOAD( "v1",           0x10000, 0x10000, CRC(bf35c1a4) SHA1(a838740e023dc3344dc528324a8dbc48bb98b574) )
 
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a24",          0x00000, 0x80000, CRC(b1e9de43) SHA1(0144252dd9ed561fbebd4994cccf11f6c87e1825) )
 	ROM_LOAD( "o1s",          0x80000, 0x40000, CRC(e27a8eb4) SHA1(4fcadabf42a1c3deeb6d74d75cdbee802cf16db5) )
 
-	ROM_REGION( 0x080000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x080000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "oj1",          0x000000, 0x40000, CRC(39c36b35) SHA1(a97480696bf6d81bf415737e03cc5324d439ab84) )
 	ROM_LOAD( "oj2",          0x040000, 0x40000, CRC(77ccaea2) SHA1(e38175859c75c6d0f2f01752fad6e167608c4662) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_ERASE00 )	/* gfx data for the 051316 */
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_ERASE00 )	/* gfx data for the 051316 */
 	/* RAM, not ROM - handled at run time */
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 ) /* sound samples */
+	ROM_REGION( 0x20000, "ym", 0 ) /* sound samples */
 	ROM_LOAD( "osb",          0x00000, 0x20000, CRC(d49ab2f5) SHA1(92f7f6c8f35ac39910879dd88d2cfb6db7c848c9) )
 ROM_END
 

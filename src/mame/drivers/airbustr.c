@@ -226,6 +226,8 @@ Code at 505: waits for bit 1 to go low, writes command, waits for bit
 
 static UINT8 *devram;
 static int soundlatch_status, soundlatch2_status;
+static int master_addr;
+static int slave_addr;
 
 extern UINT8 *airbustr_videoram2, *airbustr_colorram2;
 
@@ -278,26 +280,26 @@ static WRITE8_HANDLER( master_nmi_trigger_w )
 	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static void airbustr_bankswitch(running_machine *machine, int cpunum, int data)
+static void airbustr_bankswitch(running_machine *machine, const char *cpu, int bank, int data)
 {
-	UINT8 *ROM = memory_region(machine, REGION_CPU1 + cpunum);
+	UINT8 *ROM = memory_region(machine, cpu);
 
 	if ((data & 0x07) <  3)
 		ROM = &ROM[0x4000 * (data & 0x07)];
 	else
 		ROM = &ROM[0x10000 + 0x4000 * ((data & 0x07) - 3)];
 
-	memory_set_bankptr(cpunum + 1, ROM);
+	memory_set_bankptr(bank, ROM);
 }
 
 static WRITE8_HANDLER( master_bankswitch_w )
 {
-	airbustr_bankswitch(machine, 0, data);
+	airbustr_bankswitch(machine, "master", 1, data);
 }
 
 static WRITE8_HANDLER( slave_bankswitch_w )
 {
-	airbustr_bankswitch(machine, 1, data);
+	airbustr_bankswitch(machine, "slave", 2, data);
 
 	flip_screen_set(data & 0x10);
 
@@ -307,7 +309,7 @@ static WRITE8_HANDLER( slave_bankswitch_w )
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
-	airbustr_bankswitch(machine, 2, data);
+	airbustr_bankswitch(machine, "audio", 3, data);
 }
 
 static READ8_HANDLER( soundcommand_status_r )
@@ -400,9 +402,9 @@ static ADDRESS_MAP_START( slave_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x02, 0x02) AM_READWRITE(soundcommand2_r, soundcommand_w)
 	AM_RANGE(0x04, 0x0c) AM_WRITE(airbustr_scrollregs_w)
 	AM_RANGE(0x0e, 0x0e) AM_READ(soundcommand_status_r)
-	AM_RANGE(0x20, 0x20) AM_READ(input_port_0_r)
-	AM_RANGE(0x22, 0x22) AM_READ(input_port_1_r)
-	AM_RANGE(0x24, 0x24) AM_READ(input_port_2_r)
+	AM_RANGE(0x20, 0x20) AM_READ_PORT("P1")
+	AM_RANGE(0x22, 0x22) AM_READ_PORT("P2")
+	AM_RANGE(0x24, 0x24) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x28, 0x28) AM_WRITE(airbustr_coin_counter_w)
 	AM_RANGE(0x38, 0x38) AM_WRITENOP // ???
 ADDRESS_MAP_END
@@ -416,36 +418,36 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(sound_bankswitch_w)
-	AM_RANGE(0x02, 0x02) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
-	AM_RANGE(0x03, 0x03) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
-	AM_RANGE(0x04, 0x04) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
+	AM_RANGE(0x02, 0x02) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
+	AM_RANGE(0x03, 0x03) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
+	AM_RANGE(0x04, 0x04) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
 	AM_RANGE(0x06, 0x06) AM_READWRITE(soundcommand_r, soundcommand2_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
 
 static INPUT_PORTS_START( airbustr )
-	PORT_START_TAG("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    ) PORT_8WAY
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  ) PORT_8WAY
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  ) PORT_8WAY
+	PORT_START("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  ) PORT_8WAY PORT_PLAYER(2)
+	PORT_START("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -455,7 +457,7 @@ static INPUT_PORTS_START( airbustr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )		// used
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPUNUSED_DIPLOC( 0x01, IP_ACTIVE_LOW, "SW1:1" )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )	PORT_DIPLOCATION("SW1:2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
@@ -483,7 +485,7 @@ static INPUT_PORTS_START( airbustr )
 	PORT_DIPSETTING(    0x40, DEF_STR( 1C_3C ) )	PORT_CONDITION("DSW1", 0x08, PORTCOND_EQUALS, 0x00)
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_4C ) )	PORT_CONDITION("DSW1", 0x08, PORTCOND_EQUALS, 0x00)
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
@@ -552,13 +554,13 @@ static const gfx_layout sprite_gfxlayout =
 /* Graphics Decode Information */
 
 static GFXDECODE_START( airbustr )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tile_gfxlayout,   0, 32 ) // tiles
-	GFXDECODE_ENTRY( REGION_GFX2, 0, sprite_gfxlayout, 512, 16 ) // sprites
+	GFXDECODE_ENTRY( "gfx1", 0, tile_gfxlayout,   0, 32 ) // tiles
+	GFXDECODE_ENTRY( "gfx2", 0, sprite_gfxlayout, 512, 16 ) // sprites
 GFXDECODE_END
 
 /* Sound Interfaces */
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -575,18 +577,14 @@ static const struct YM2203interface ym2203_interface =
 
 static INTERRUPT_GEN( master_interrupt )
 {
-	static int addr = 0xff;
-
-	addr ^= 0x02;
-	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, addr);
+	master_addr ^= 0x02;
+	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, master_addr);
 }
 
 static INTERRUPT_GEN( slave_interrupt )
 {
-	static int addr = 0xfd;
-
-	addr ^= 0x02;
-	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, addr);
+	slave_addr ^= 0x02;
+	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, slave_addr);
 }
 
 /* Machine Initialization */
@@ -594,6 +592,8 @@ static INTERRUPT_GEN( slave_interrupt )
 static MACHINE_RESET( airbustr )
 {
 	soundlatch_status = soundlatch2_status = 0;
+	master_addr = 0xff;
+	slave_addr = 0xfd;
 	master_bankswitch_w(machine, 0, 0x02);
 	slave_bankswitch_w(machine, 0, 0x02);
 	sound_bankswitch_w(machine, 0, 0x02);
@@ -603,17 +603,17 @@ static MACHINE_RESET( airbustr )
 
 static MACHINE_DRIVER_START( airbustr )
 	// basic machine hardware
-	MDRV_CPU_ADD(Z80, 6000000)	// ???
+	MDRV_CPU_ADD("master", Z80, 6000000)	// ???
 	MDRV_CPU_PROGRAM_MAP(master_map, 0)
 	MDRV_CPU_IO_MAP(master_io_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(master_interrupt, 2)	// nmi caused by sub cpu?, ?
 
-	MDRV_CPU_ADD(Z80, 6000000)	// ???
+	MDRV_CPU_ADD("slave", Z80, 6000000)	// ???
 	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
 	MDRV_CPU_IO_MAP(slave_io_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(slave_interrupt, 2)		// nmi caused by main cpu, ?
 
-	MDRV_CPU_ADD(Z80, 6000000)	// ???
+	MDRV_CPU_ADD("audio", Z80, 6000000)	// ???
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 	MDRV_CPU_IO_MAP(sound_io_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)		// nmi are caused by sub cpu writing a sound command
@@ -641,15 +641,15 @@ static MACHINE_DRIVER_START( airbustr )
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 3000000)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym", YM2203, 3000000)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.25)
 	MDRV_SOUND_ROUTE(1, "mono", 0.25)
 	MDRV_SOUND_ROUTE(2, "mono", 0.25)
 	MDRV_SOUND_ROUTE(3, "mono", 0.50)
 
-	MDRV_SOUND_ADD(OKIM6295, 12000000/4)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low)
+	MDRV_SOUND_ADD("oki", OKIM6295, 12000000/4)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7low)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 
@@ -662,50 +662,50 @@ MACHINE_DRIVER_END
 /* ROMs */
 
 ROM_START( airbustr )
-	ROM_REGION( 0x24000, REGION_CPU1, 0 )
+	ROM_REGION( 0x24000, "master", 0 )
 	ROM_LOAD( "pr12.h19",   0x00000, 0x0c000, CRC(91362eb2) SHA1(cd85acfa6542af68dd1cad46f9426a95cfc9432e) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x24000, REGION_CPU2, 0 )
+	ROM_REGION( 0x24000, "slave", 0 )
 	ROM_LOAD( "pr13.l15",   0x00000, 0x0c000, CRC(13b2257b) SHA1(325efa54e757a1f08caf81801930d61ea4e7b6d4) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x24000, REGION_CPU3, 0 )
+	ROM_REGION( 0x24000, "audio", 0 )
 	ROM_LOAD( "pr-21.bin",  0x00000, 0x0c000, CRC(6e0a5df0) SHA1(616b7c7aaf52a9a55b63c60717c1866940635cd4) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "pr-000.bin", 0x00000, 0x80000, CRC(8ca68f0d) SHA1(d60389e7e63e9850bcddecb486558de1414f1276) ) // scrolling layers
 
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "pr-001.bin", 0x00000, 0x80000, CRC(7e6cb377) SHA1(005290f9f53a0c3a6a9d04486b16b7fd52cc94b6) ) // sprites
 	ROM_LOAD( "pr-02.bin",  0x80000, 0x10000, CRC(6bbd5e46) SHA1(26563737f3f91ee0a056d35ce42217bb57d8a081) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* OKI-M6295 samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* OKI-M6295 samples */
 	ROM_LOAD( "pr-200.bin", 0x00000, 0x40000, CRC(a4dd3390) SHA1(2d72b46b4979857f6b66489bebda9f48799f59cf) )
 ROM_END
 
 ROM_START( airbustj )
-	ROM_REGION( 0x24000, REGION_CPU1, 0 )
+	ROM_REGION( 0x24000, "master", 0 )
 	ROM_LOAD( "pr-14j.bin", 0x00000, 0x0c000, CRC(6b9805bd) SHA1(db6df33cf17316a4b81d7731dca9fe8bbf81f014) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x24000, REGION_CPU2, 0 )
+	ROM_REGION( 0x24000, "slave", 0 )
 	ROM_LOAD( "pr-11j.bin", 0x00000, 0x0c000, CRC(85464124) SHA1(8cce8dfdede48032c40d5f155fd58061866668de) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x24000, REGION_CPU3, 0 )
+	ROM_REGION( 0x24000, "audio", 0 )
 	ROM_LOAD( "pr-21.bin",  0x00000, 0x0c000, CRC(6e0a5df0) SHA1(616b7c7aaf52a9a55b63c60717c1866940635cd4) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "pr-000.bin", 0x00000, 0x80000, CRC(8ca68f0d) SHA1(d60389e7e63e9850bcddecb486558de1414f1276) ) // scrolling layers
 
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "pr-001.bin", 0x000000, 0x80000, CRC(7e6cb377) SHA1(005290f9f53a0c3a6a9d04486b16b7fd52cc94b6) ) // sprites
 	ROM_LOAD( "pr-02.bin",  0x080000, 0x10000, CRC(6bbd5e46) SHA1(26563737f3f91ee0a056d35ce42217bb57d8a081) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* OKI-M6295 samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* OKI-M6295 samples */
 	ROM_LOAD( "pr-200.bin", 0x00000, 0x40000, CRC(a4dd3390) SHA1(2d72b46b4979857f6b66489bebda9f48799f59cf) )
 ROM_END
 
@@ -723,26 +723,26 @@ Rom 5 is on a piggyback daughterboard with a z80 and a PAL
 */
 
 ROM_START( airbusb )
-	ROM_REGION( 0x24000, REGION_CPU1, 0 )
+	ROM_REGION( 0x24000, "master", 0 )
 	ROM_LOAD( "5.bin",   0x00000, 0x0c000, CRC(9e4216a2) SHA1(46572da4df5a67b10cc3ee21bdc0ec4bcecaaf93) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x24000, REGION_CPU2, 0 )
+	ROM_REGION( 0x24000, "slave", 0 )
 	ROM_LOAD( "1.bin",   0x00000, 0x0c000, CRC(85464124) SHA1(8cce8dfdede48032c40d5f155fd58061866668de) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x24000, REGION_CPU3, 0 )
+	ROM_REGION( 0x24000, "audio", 0 )
 	ROM_LOAD( "2.bin",  0x00000, 0x0c000, CRC(6e0a5df0) SHA1(616b7c7aaf52a9a55b63c60717c1866940635cd4) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
 	/* Same content as airbusj, pr-001.bin, different sized roms / interleave */
 	ROM_LOAD16_BYTE( "7.bin", 0x00000, 0x20000, CRC(2e3bf0a2) SHA1(84cabc753e5fd1164f0a8a9a9dee7d339a5607c5) )
 	ROM_LOAD16_BYTE( "9.bin", 0x00001, 0x20000, CRC(2c23c646) SHA1(41c0f8788c9715918b4138f076415f8640adc483) )
 	ROM_LOAD16_BYTE( "6.bin", 0x40000, 0x20000, CRC(0d6cd470) SHA1(329286bc6c9d1eccc74735d1c155a0f5f98f1444) )
 	ROM_LOAD16_BYTE( "8.bin", 0x40001, 0x20000, CRC(b3372e51) SHA1(aa8dcbb84c829994ae04ceecbef795ac53e72493) )
 
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx2", ROMREGION_DISPOSE )
 	/* Same content as airbusj, pr-001.bin, different sized roms */
 	ROM_LOAD( "13.bin", 0x00000, 0x20000, CRC(75dee86d) SHA1(fe342fed5bb84ee6f35d3f91987141c559e94d5a) )
 	ROM_LOAD( "12.bin", 0x20000, 0x20000, CRC(c98a8333) SHA1(3a990460e232ee07a9297fcffdb02451406f5bf1) )
@@ -751,7 +751,7 @@ ROM_START( airbusb )
 
 	ROM_LOAD( "14.bin", 0x80000, 0x10000, CRC(6bbd5e46) SHA1(26563737f3f91ee0a056d35ce42217bb57d8a081) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* OKI-M6295 samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* OKI-M6295 samples */
 	/* Same content as airbusj, pr-200.bin, different sized roms */
 	ROM_LOAD( "4.bin", 0x00000, 0x20000, CRC(21d9bfe3) SHA1(4a69458cd2a6309e389c9e7593ae29d3ef0f8daf) )
 	ROM_LOAD( "3.bin", 0x20000, 0x20000, CRC(58cd19e2) SHA1(479f22241bf29f7af67d9679fc6c20f10004fdd8) )

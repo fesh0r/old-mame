@@ -22,6 +22,7 @@
 #include "driver.h"
 #include "deprecat.h"
 #include "cpu/m68000/m68000.h"
+#include "machine/eeprom.h"
 #include "sound/gaelco.h"
 #include "rendlay.h"
 #include "includes/gaelco2.h"
@@ -39,7 +40,7 @@
 
 #define GFXDECODEINFO(NUM,ENTRIES) \
 static GFXDECODE_START( NUM )\
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000000, tilelayout16_##NUM,0,	ENTRIES )						\
+	GFXDECODE_ENTRY( "gfx1", 0x0000000, tilelayout16_##NUM,0,	ENTRIES )						\
 GFXDECODE_END
 
 
@@ -61,9 +62,9 @@ static ADDRESS_MAP_START( maniacsq_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x200000, 0x20ffff) AM_READ(SMH_RAM)			/* Video RAM */
 	AM_RANGE(0x210000, 0x211fff) AM_READ(SMH_RAM)			/* Palette */
 	AM_RANGE(0x218004, 0x218009) AM_READ(SMH_RAM)			/* Video Registers */
-	AM_RANGE(0x300000, 0x300001) AM_READ(input_port_0_word_r)/* DSW #1 + Input 1P */
-	AM_RANGE(0x300002, 0x300003) AM_READ(input_port_1_word_r)/* DSW #2 + Input 2P */
-	AM_RANGE(0x320000, 0x320001) AM_READ(input_port_2_word_r)/* COINSW + SERVICESW */
+	AM_RANGE(0x300000, 0x300001) AM_READ_PORT("IN0")		/* DSW #1 + Input 1P */
+	AM_RANGE(0x300002, 0x300003) AM_READ_PORT("IN1")		/* DSW #2 + Input 2P */
+	AM_RANGE(0x320000, 0x320001) AM_READ_PORT("COIN")		/* COINSW + SERVICESW */
 	AM_RANGE(0xfe0000, 0xfeffff) AM_READ(SMH_RAM)			/* Work RAM */
 ADDRESS_MAP_END
 
@@ -80,7 +81,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( maniacsq )
-PORT_START_TAG("IN0")	/* DSW #1 + 1P INPUTS */
+	PORT_START("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -116,7 +117,7 @@ PORT_START_TAG("IN0")	/* DSW #1 + 1P INPUTS */
 	PORT_DIPSETTING(      0xa000, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(      0x0000, "Disabled or Free Play (if Coin A too)" )
 
-PORT_START_TAG("IN1")	/* DSW #2 + 2P INPUTS */
+	PORT_START("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
@@ -147,7 +148,7 @@ PORT_START_TAG("IN1")	/* DSW #2 + 2P INPUTS */
 	PORT_DIPSETTING(      0x4000, DEF_STR( On ) )
 	PORT_SERVICE( 0x8000, IP_ACTIVE_LOW )
 
-PORT_START_TAG("COIN")	/* COINSW & SERVICESW */
+	PORT_START("COIN")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -157,15 +158,15 @@ PORT_START_TAG("COIN")	/* COINSW & SERVICESW */
 	PORT_BIT( 0xffc0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-static const struct gaelcosnd_interface maniacsq_snd_interface =
+static const gaelcosnd_interface maniacsq_snd_interface =
 {
-	REGION_GFX1, 							/* memory region */
+	"gfx1",		 							/* memory region */
 	{ 0*0x0080000, 1*0x0080000, 0, 0 },		/* start of each ROM bank */
 };
 
 static MACHINE_DRIVER_START( maniacsq )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 26000000/2)		/* 13 MHz? */
+	MDRV_CPU_ADD("main", M68000, 26000000/2)		/* 13 MHz? */
 	MDRV_CPU_PROGRAM_MAP(maniacsq_readmem, maniacsq_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
@@ -189,7 +190,7 @@ static MACHINE_DRIVER_START( maniacsq )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(GAELCO_GAE1, 0)
+	MDRV_SOUND_ADD("gaelco", GAELCO_GAE1, 0)
 	MDRV_SOUND_CONFIG(maniacsq_snd_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
@@ -197,11 +198,11 @@ MACHINE_DRIVER_END
 
 
 ROM_START( maniacsq )
-	ROM_REGION( 0x040000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x040000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "d8-d15.1m",	0x000000, 0x020000, CRC(9121d1b6) SHA1(ad8f0d996b6d42fc0c6645466608e82ca96e0b66) )
 	ROM_LOAD16_BYTE( "d0-d7.1m",	0x000001, 0x020000, CRC(a95cfd2a) SHA1(b5bad76f12d2a1f6bf6b35482f2f933ceb00e552) )
 
-	ROM_REGION( 0x0280000, REGION_GFX1, 0 ) /* GFX + Sound */
+	ROM_REGION( 0x0280000, "gfx1", 0 ) /* GFX + Sound */
 	ROM_LOAD( "d0-d7.4m",	0x0000000, 0x0080000, CRC(d8551b2f) SHA1(78b5b07112bd89fed18055180e7cc64f8e0bd0b1) )	/* GFX + Sound */
 	ROM_LOAD( "d8-d15.4m",	0x0080000, 0x0080000, CRC(b269c427) SHA1(b7f9501529fbb7ee82700cff82740ba5770cf3c5) )	/* GFX + Sound */
 	ROM_LOAD( "d16-d23.1m",	0x0100000, 0x0020000, CRC(af4ea5e7) SHA1(ffaf09dc2588e32c124e7dd2f86ba009f1b8b176) )	/* GFX only */
@@ -228,10 +229,10 @@ static ADDRESS_MAP_START( bang_readmem, ADDRESS_SPACE_PROGRAM, 16 )
     AM_RANGE(0x200000, 0x20ffff) AM_READ(SMH_RAM) /* Video RAM */
     AM_RANGE(0x210000, 0x211fff) AM_READ(SMH_RAM) /* Palette */
     AM_RANGE(0x218004, 0x218009) AM_READ(SMH_RAM) /* Video Registers */
-    AM_RANGE(0x300000, 0x300001) AM_READ(input_port_0_word_r)/* 1P Input */
+    AM_RANGE(0x300000, 0x300001) AM_READ_PORT("P1")
     AM_RANGE(0x300002, 0x300003) AM_READ(SMH_NOP) /* Random number generator? */
-    AM_RANGE(0x300010, 0x300011) AM_READ(input_port_1_word_r)/* 2P Input */
-    AM_RANGE(0x300020, 0x300021) AM_READ(gaelco2_eeprom_r) /* EEPROM status + read */
+    AM_RANGE(0x300010, 0x300011) AM_READ_PORT("P2")
+    AM_RANGE(0x300020, 0x300021) AM_READ_PORT("COIN")
     AM_RANGE(0x310000, 0x310001) AM_READ(p1_gun_x)/* Gun 1P X */
     AM_RANGE(0x310002, 0x310003) AM_READ(p2_gun_x)/* Gun 2P X */
     AM_RANGE(0x310004, 0x310005) AM_READ(p1_gun_y)/* Gun 1P Y */
@@ -256,43 +257,44 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( bang )
-PORT_START_TAG("P1")	/* 1P INPUTS */
+	PORT_START("P1")
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_IMPULSE(1) PORT_PLAYER(1)
 
-PORT_START_TAG("P2")	/* 2P INPUTS */
+	PORT_START("P2")
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 
-PORT_START_TAG("COIN")	/* COINSW & Service */
+	PORT_START("COIN")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_SERVICE_NO_TOGGLE( 0x0004, IP_ACTIVE_LOW)	/* go to service mode NOW */
+	PORT_SERVICE_NO_TOGGLE( 0x0004, IP_ACTIVE_LOW )	/* go to service mode NOW */
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_START2 )
-	/* bits 6 & 7 are used for accessing the NVRAM */
+	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)	/* bit 6 is EEPROM data (DOUT) */
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_SPECIAL )	/* bit 7 is EEPROM ready */
 
-	PORT_START_TAG("LIGHT0_X")	/* Gun 1 X */
+	PORT_START("LIGHT0_X")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START_TAG("LIGHT1_X")	/* Gun 2 X */
+	PORT_START("LIGHT1_X")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START_TAG("LIGHT0_Y")	/* Gun 1 Y */
+	PORT_START("LIGHT0_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, -6.0 / 240, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START_TAG("LIGHT1_Y")	/* Gun 2 Y */
+	PORT_START("LIGHT1_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, -6.0 / 240, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
 INPUT_PORTS_END
 
-static const struct gaelcosnd_interface bang_snd_interface =
+static const gaelcosnd_interface bang_snd_interface =
 {
-	REGION_GFX1, 											/* memory region */
+	"gfx1",		 											/* memory region */
 	{ 0*0x0200000, 1*0x0200000, 2*0x0200000, 3*0x0200000 }	/* start of each ROM bank */
 };
 
 static MACHINE_DRIVER_START( bang )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 30000000/2)			/* 15 MHz */
+	MDRV_CPU_ADD("main", M68000, 30000000/2)			/* 15 MHz */
 	MDRV_CPU_PROGRAM_MAP(bang_readmem, bang_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(bang_interrupt, 6)
 
@@ -318,7 +320,7 @@ static MACHINE_DRIVER_START( bang )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(GAELCO_CG1V, 0)
+	MDRV_SOUND_ADD("gaelco", GAELCO_CG1V, 0)
 	MDRV_SOUND_CONFIG(bang_snd_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
@@ -326,11 +328,11 @@ MACHINE_DRIVER_END
 
 
 ROM_START( bang )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "bang.u53",	0x000000, 0x080000, CRC(014bb939) SHA1(bb245acf7a3bd4a56b3559518bcb8d0ae39dbaf4) )
 	ROM_LOAD16_BYTE( "bang.u55",	0x000001, 0x080000, CRC(582f8b1e) SHA1(c9b0d4c1dee71cdb2c01d49f20ffde32eddc9583) )
 
-	ROM_REGION( 0x0a00000, REGION_GFX1, 0 ) /* GFX + Sound */
+	ROM_REGION( 0x0a00000, "gfx1", 0 ) /* GFX + Sound */
 	ROM_LOAD( "bang.u16",	0x0000000, 0x0080000, CRC(6ee4b878) SHA1(f646380d95650a60b5a17973bdfd3b80450a4d3b) )	/* GFX only */
 	ROM_LOAD( "bang.u17",	0x0080000, 0x0080000, CRC(0c35aa6f) SHA1(df0474b1b9466d3c199e5aade39b7233f0cb45ee) )	/* GFX only */
 	ROM_LOAD( "bang.u18",	0x0100000, 0x0080000, CRC(2056b1ad) SHA1(b796f92eef4bbb0efa12c53580e429b8a0aa394c) )	/* Sound only */
@@ -355,11 +357,11 @@ ROM_END
 
 
 ROM_START( bangj )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "bang-a.u53",	0x000000, 0x080000, CRC(5ee514e9) SHA1(b78b507d18de41be58049f5c597acd107ec1273f) )
 	ROM_LOAD16_BYTE( "bang-a.u55",	0x000001, 0x080000, CRC(b90223ab) SHA1(7c097754a710169f41c574c3cc1a6346824853c4) )
 
-	ROM_REGION( 0x0a00000, REGION_GFX1, 0 ) /* GFX + Sound */
+	ROM_REGION( 0x0a00000, "gfx1", 0 ) /* GFX + Sound */
 	ROM_LOAD( "bang-a.u16",	0x0000000, 0x0080000, CRC(3b63acfc) SHA1(48f5598cdbc70f342d6b75909166571271920a8f) )	/* GFX only */
 	ROM_LOAD( "bang-a.u17",	0x0080000, 0x0080000, CRC(72865b80) SHA1(ec7753ea7961015149b9e6386fdeb9bd59aa962a) )	/* GFX only */
 	ROM_LOAD( "bang.u18",	0x0100000, 0x0080000, CRC(2056b1ad) SHA1(b796f92eef4bbb0efa12c53580e429b8a0aa394c) )	/* Sound only */
@@ -393,9 +395,9 @@ static ADDRESS_MAP_START( alighunt_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x200000, 0x20ffff) AM_READ(SMH_RAM)			/* Video RAM */
 	AM_RANGE(0x210000, 0x211fff) AM_READ(SMH_RAM)			/* Palette */
 	AM_RANGE(0x218004, 0x218009) AM_READ(SMH_RAM)			/* Video Registers */
-	AM_RANGE(0x300000, 0x300001) AM_READ(input_port_0_word_r)/* DSW #1 + Input 1P */
-	AM_RANGE(0x300002, 0x300003) AM_READ(input_port_1_word_r)/* DSW #2 + Input 2P */
-	AM_RANGE(0x320000, 0x320001) AM_READ(input_port_2_word_r)/* COINSW + Service */
+	AM_RANGE(0x300000, 0x300001) AM_READ_PORT("IN0")		/* DSW #1 + Input 1P */
+	AM_RANGE(0x300002, 0x300003) AM_READ_PORT("IN1")		/* DSW #2 + Input 2P */
+	AM_RANGE(0x320000, 0x320001) AM_READ_PORT("COIN")		/* COINSW + SERVICESW */
 	AM_RANGE(0xfe0000, 0xfeffff) AM_READ(SMH_RAM)			/* Work RAM */
 ADDRESS_MAP_END
 
@@ -412,8 +414,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( alighunt )
-
-PORT_START_TAG("IN0")	/* DSW #1 */
+	PORT_START("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -449,7 +450,7 @@ PORT_START_TAG("IN0")	/* DSW #1 */
 	PORT_DIPSETTING(      0xa000, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(      0x0000, "Disabled or Free Play (if Coin A too)" )
 
-PORT_START_TAG("IN1")	/* DSW #2 */
+	PORT_START("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
@@ -479,7 +480,7 @@ PORT_START_TAG("IN1")	/* DSW #2 */
 	PORT_DIPSETTING(      0x4000, DEF_STR( Standard ) )
 	PORT_SERVICE( 0x8000, IP_ACTIVE_LOW )
 
-PORT_START_TAG("COIN")	/* COINSW & Service */
+	PORT_START("COIN")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -489,15 +490,15 @@ PORT_START_TAG("COIN")	/* COINSW & Service */
 	PORT_BIT( 0xffc0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
-static const struct gaelcosnd_interface alighunt_snd_interface =
+static const gaelcosnd_interface alighunt_snd_interface =
 {
-	REGION_GFX1, 											/* memory region */
+	"gfx1",		 											/* memory region */
 	{ 0*0x0400000, 1*0x0400000, 2*0x0400000, 3*0x0400000 }	/* start of each ROM bank */
 };
 
 static MACHINE_DRIVER_START( alighunt )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 24000000/2)			/* 12 MHz */
+	MDRV_CPU_ADD("main", M68000, 24000000/2)			/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(alighunt_readmem, alighunt_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
@@ -521,7 +522,7 @@ static MACHINE_DRIVER_START( alighunt )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(GAELCO_GAE1, 0)
+	MDRV_SOUND_ADD("gaelco", GAELCO_GAE1, 0)
 	MDRV_SOUND_CONFIG(alighunt_snd_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
@@ -565,15 +566,15 @@ REF: 940411
 
 
 ROM_START( aligator )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE(	"u45",	0x000000, 0x080000, CRC(61c47c56) SHA1(6dd3fc6fdab252e0fb43c0793eef70203c888d7f) )
 	ROM_LOAD16_BYTE(	"u44",	0x000001, 0x080000, CRC(f0be007a) SHA1(2112b2e5f020028b50c8f2c72c83c9fee7a78224) )
 
-	ROM_REGION( 0x1400000, REGION_GFX1, 0 ) /* GFX + Sound */
+	ROM_REGION( 0x1400000, "gfx1", 0 ) /* GFX + Sound */
 	/* 0x0000000-0x0ffffff filled in in the DRIVER_INIT */
 	ROM_FILL(				0x1000000, 0x0400000, 0x0 )		/* to decode GFX as 5 bpp */
 
-	ROM_REGION( 0x1000000, REGION_GFX2, ROMREGION_DISPOSE ) /* Temporary storage */
+	ROM_REGION( 0x1000000, "gfx2", ROMREGION_DISPOSE ) /* Temporary storage */
 	ROM_LOAD( "u48",		0x0000000, 0x0400000, CRC(19e03bf1) SHA1(2b3a4bb438b0aebf4f6a9fd26b071e5c9dd222b8) )	/* GFX only */
 	ROM_LOAD( "u47",		0x0400000, 0x0400000, CRC(74a5a29f) SHA1(8ea2aa1f8a80c5b88ca9222c5ecc3c4794e0a160) )	/* GFX + Sound */
 	ROM_LOAD( "u50",		0x0800000, 0x0400000, CRC(85daecf9) SHA1(824f6d2491075b1ef96ecd6667c5510409338a2f) )	/* GFX only */
@@ -581,15 +582,15 @@ ROM_START( aligator )
 ROM_END
 
 ROM_START( aligatun )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE(	"ahntu45n.040",	0x000000, 0x080000, CRC(fc02cb2d) SHA1(700aa60ec0d2bb705b1335de63daae678dcb8570) )
 	ROM_LOAD16_BYTE(	"ahntu44n.040",	0x000001, 0x080000, CRC(7fbea3a3) SHA1(89efa5b7908c2f010a3097954dbccd9cb7adc50c) )
 
-	ROM_REGION( 0x1400000, REGION_GFX1, 0 ) /* GFX + Sound */
+	ROM_REGION( 0x1400000, "gfx1", 0 ) /* GFX + Sound */
 	/* 0x0000000-0x0ffffff filled in in the DRIVER_INIT */
 	ROM_FILL(				0x1000000, 0x0400000, 0x0 )		/* to decode GFX as 5 bpp */
 
-	ROM_REGION( 0x1000000, REGION_GFX2, ROMREGION_DISPOSE ) /* Temporary storage */
+	ROM_REGION( 0x1000000, "gfx2", ROMREGION_DISPOSE ) /* Temporary storage */
 	ROM_LOAD( "u48",		0x0000000, 0x0400000, CRC(19e03bf1) SHA1(2b3a4bb438b0aebf4f6a9fd26b071e5c9dd222b8) )	/* GFX only */
 	ROM_LOAD( "u47",		0x0400000, 0x0400000, CRC(74a5a29f) SHA1(8ea2aa1f8a80c5b88ca9222c5ecc3c4794e0a160) )	/* GFX + Sound */
 	ROM_LOAD( "u50",		0x0800000, 0x0400000, CRC(85daecf9) SHA1(824f6d2491075b1ef96ecd6667c5510409338a2f) )	/* GFX only */
@@ -615,10 +616,10 @@ static ADDRESS_MAP_START( touchgo_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x200000, 0x20ffff) AM_READ(SMH_RAM)			/* Video RAM */
 	AM_RANGE(0x210000, 0x211fff) AM_READ(SMH_RAM)			/* Palette */
 	AM_RANGE(0x218004, 0x218009) AM_READ(SMH_RAM)			/* Video Registers */
-	AM_RANGE(0x300000, 0x300001) AM_READ(input_port_0_word_r)/* DSW #2 + Input 1P */
-	AM_RANGE(0x300002, 0x300003) AM_READ(input_port_1_word_r)/* DSW #1 + Input 2P */
-	AM_RANGE(0x300004, 0x300005) AM_READ(input_port_2_word_r)/* COINSW + Input 3P */
-	AM_RANGE(0x300006, 0x300007) AM_READ(input_port_3_word_r)/* SERVICESW + Input 4P */
+	AM_RANGE(0x300000, 0x300001) AM_READ_PORT("IN0")		/* DSW #1 + Input 1P */
+	AM_RANGE(0x300002, 0x300003) AM_READ_PORT("IN1")		/* DSW #2 + Input 2P */
+	AM_RANGE(0x300004, 0x300005) AM_READ_PORT("IN2")		/* COINSW + Input 3P */
+	AM_RANGE(0x300006, 0x300007) AM_READ_PORT("IN3")		/* SERVICESW + Input 4P */
 	AM_RANGE(0xfefffa, 0xfefffb) AM_READ(dallas_kludge_r)	/* DS5002FP related patch */
 	AM_RANGE(0xfe0000, 0xfeffff) AM_READ(SMH_RAM)			/* Work RAM */
 ADDRESS_MAP_END
@@ -635,8 +636,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( touchgo )
-
-PORT_START_TAG("IN0")	/* DSW #2 + 1P INPUTS */
+	PORT_START("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -665,7 +665,7 @@ PORT_START_TAG("IN0")	/* DSW #2 + 1P INPUTS */
 	PORT_DIPSETTING(      0x4000, DEF_STR( On ) )
 	PORT_SERVICE( 0x8000, IP_ACTIVE_LOW )
 
-PORT_START_TAG("IN1")	/* DSW #1 + 2P INPUTS */
+	PORT_START("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
@@ -709,7 +709,7 @@ PORT_START_TAG("IN1")	/* DSW #1 + 2P INPUTS */
 	PORT_DIPSETTING(      0xb000, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(      0xa000, DEF_STR( 1C_6C ) )
 
-PORT_START_TAG("IN2")	/* COINSW + 3P */
+	PORT_START("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(3)
@@ -724,7 +724,7 @@ PORT_START_TAG("IN2")	/* COINSW + 3P */
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN4 )
 	PORT_BIT( 0xf000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-PORT_START_TAG("IN3")	/* SERVICESW + 4P INPUTS */
+	PORT_START("IN3")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(4)
@@ -738,19 +738,19 @@ PORT_START_TAG("IN3")	/* SERVICESW + 4P INPUTS */
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_SERVICE2 )
 	PORT_BIT( 0xf800, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-PORT_START_TAG("FAKE")	/* Fake: To switch between monitors at run time */
+	PORT_START("FAKE")	/* To switch between monitors at run time */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE4 ) PORT_TOGGLE
 INPUT_PORTS_END
 
-static const struct gaelcosnd_interface touchgo_snd_interface =
+static const gaelcosnd_interface touchgo_snd_interface =
 {
-	REGION_GFX1, 							/* memory region */
+	"gfx1",		 							/* memory region */
 	{ 0*0x0400000, 1*0x0400000, 0, 0 }		/* start of each ROM bank */
 };
 
 static MACHINE_DRIVER_START( touchgo )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 32000000/2)			/* 16 MHz */
+	MDRV_CPU_ADD("main", M68000, 32000000/2)			/* 16 MHz */
 	MDRV_CPU_PROGRAM_MAP(touchgo_readmem, touchgo_writemem)
 	MDRV_CPU_VBLANK_INT("left", irq6_line_hold)
 
@@ -782,7 +782,7 @@ static MACHINE_DRIVER_START( touchgo )
 	/* the chip is stereo, but the game sound is mono because the right channel
        output is for cabinet 1 and the left channel output is for cabinet 2 */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD(GAELCO_GAE1, 0)
+	MDRV_SOUND_ADD("gaelco", GAELCO_GAE1, 0)
 	MDRV_SOUND_CONFIG(touchgo_snd_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
@@ -832,15 +832,15 @@ REF: 950510-1
 
 
 ROM_START( touchgo ) /* REF: 950906 */
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "tg_56", 0x000000, 0x080000, CRC(8ab065f3) SHA1(7664abd7e5f66ffca4a2865bba56ac36bd04f4e9) )
 	ROM_LOAD16_BYTE( "tg_57", 0x000001, 0x080000, CRC(0dfd3f65) SHA1(afb2ce8988c84f211ac71b84928ce4c421de7fee) )
 
-	ROM_REGION( 0x1400000, REGION_GFX1, 0 ) /* GFX + Sound */
+	ROM_REGION( 0x1400000, "gfx1", 0 ) /* GFX + Sound */
 	/* 0x0000000-0x0ffffff filled in in the DRIVER_INIT */
 	ROM_LOAD( "ic69",  0x1000000, 0x0200000, CRC(18bb12d4) SHA1(ee6e7a63b86c56d71e62db0ae5892ab3ab94b0a0) )	/* GFX only */
 
-	ROM_REGION( 0x0c00000, REGION_GFX2, ROMREGION_DISPOSE ) /* Temporary storage */
+	ROM_REGION( 0x0c00000, "gfx2", ROMREGION_DISPOSE ) /* Temporary storage */
 	ROM_LOAD( "ic65",  0x0000000, 0x0400000, CRC(91b89c7c) SHA1(1c24b494b56845b0f21be40ab737f251d7683c7d) )	/* GFX only */
 	ROM_LOAD( "ic66",  0x0400000, 0x0200000, CRC(52682953) SHA1(82cde061bdd827ed4a47a9a4256cd0e887ebc29d) )	/* Sound only */
 	ROM_FILL(          0x0600000, 0x0200000, 0x0 )			/* Empty */
@@ -848,15 +848,15 @@ ROM_START( touchgo ) /* REF: 950906 */
 ROM_END
 
 ROM_START( touchgon ) /* REF 950906, no plug-in daughterboard, Non North America Notice */
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "tg56.bin", 0x000000, 0x080000, CRC(fd3b4642) SHA1(3cab42aecad5ee641711763c6047b56784c2bcf3) )
 	ROM_LOAD16_BYTE( "tg57.bin", 0x000001, 0x080000, CRC(ee891835) SHA1(9f8c60e5e3696b70f756c3521e10313005053cc7) )
 
-	ROM_REGION( 0x1400000, REGION_GFX1, 0 ) /* GFX + Sound */
+	ROM_REGION( 0x1400000, "gfx1", 0 ) /* GFX + Sound */
 	/* 0x0000000-0x0ffffff filled in in the DRIVER_INIT */
 	ROM_LOAD( "ic69",  0x1000000, 0x0200000, CRC(18bb12d4) SHA1(ee6e7a63b86c56d71e62db0ae5892ab3ab94b0a0) )	/* GFX only */
 
-	ROM_REGION( 0x0c00000, REGION_GFX2, ROMREGION_DISPOSE ) /* Temporary storage */
+	ROM_REGION( 0x0c00000, "gfx2", ROMREGION_DISPOSE ) /* Temporary storage */
 	ROM_LOAD( "ic65",  0x0000000, 0x0400000, CRC(91b89c7c) SHA1(1c24b494b56845b0f21be40ab737f251d7683c7d) )	/* GFX only */
 	ROM_LOAD( "ic66",  0x0400000, 0x0200000, CRC(52682953) SHA1(82cde061bdd827ed4a47a9a4256cd0e887ebc29d) )	/* Sound only */
 	ROM_FILL(          0x0600000, 0x0200000, 0x0 )			/* Empty */
@@ -864,15 +864,15 @@ ROM_START( touchgon ) /* REF 950906, no plug-in daughterboard, Non North America
 ROM_END
 
 ROM_START( touchgoe ) /* REF: 950510-1 */
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "tg56", 0x000000, 0x080000, CRC(6d0f5c65) SHA1(00db7a7da3ec1676169aa78fe4f08a7746c3accf) )
 	ROM_LOAD16_BYTE( "tg57", 0x000001, 0x080000, CRC(845787b5) SHA1(27c9910cd9f38328326ecb5cd093dfeb6d4f6244) )
 
-	ROM_REGION( 0x1400000, REGION_GFX1, 0 ) /* GFX + Sound */
+	ROM_REGION( 0x1400000, "gfx1", 0 ) /* GFX + Sound */
 	/* 0x0000000-0x0ffffff filled in in the DRIVER_INIT */
 	ROM_LOAD( "ic69",  0x1000000, 0x0200000, CRC(18bb12d4) SHA1(ee6e7a63b86c56d71e62db0ae5892ab3ab94b0a0) )	/* GFX only */
 
-	ROM_REGION( 0x0c00000, REGION_GFX2, ROMREGION_DISPOSE ) /* Temporary storage */
+	ROM_REGION( 0x0c00000, "gfx2", ROMREGION_DISPOSE ) /* Temporary storage */
 	ROM_LOAD( "ic65",  0x0000000, 0x0400000, CRC(91b89c7c) SHA1(1c24b494b56845b0f21be40ab737f251d7683c7d) )	/* GFX only */
 	ROM_LOAD( "ic66",  0x0400000, 0x0200000, CRC(52682953) SHA1(82cde061bdd827ed4a47a9a4256cd0e887ebc29d) )	/* Sound only */
 	ROM_FILL(          0x0600000, 0x0200000, 0x0 )			/* Empty */
@@ -891,9 +891,9 @@ static ADDRESS_MAP_START( snowboar_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x210000, 0x211fff) AM_READ(SMH_RAM)			/* Palette */
 	AM_RANGE(0x212000, 0x213fff) AM_READ(SMH_RAM)			/* Extra RAM */
 	AM_RANGE(0x218004, 0x218009) AM_READ(SMH_RAM)			/* Video Registers */
-	AM_RANGE(0x300000, 0x300001) AM_READ(input_port_0_word_r)/* Input 1P */
-	AM_RANGE(0x300010, 0x300011) AM_READ(input_port_1_word_r)/* Input 2P */
-	AM_RANGE(0x300020, 0x300021) AM_READ(gaelco2_eeprom_r)	/* EEPROM status + read */
+	AM_RANGE(0x300000, 0x300001) AM_READ_PORT("P1")
+	AM_RANGE(0x300010, 0x300011) AM_READ_PORT("P2")
+	AM_RANGE(0x300020, 0x300021) AM_READ_PORT("COIN")
 	AM_RANGE(0x310000, 0x31ffff) AM_READ(snowboar_protection_r)/* Protection */
 	AM_RANGE(0xfe0000, 0xfeffff) AM_READ(SMH_RAM)			/* Work RAM */
 ADDRESS_MAP_END
@@ -915,7 +915,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( snowboar )
-PORT_START_TAG("P1")	/* 1P INPUTS */
+	PORT_START("P1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -925,7 +925,7 @@ PORT_START_TAG("P1")	/* 1P INPUTS */
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0xff80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-PORT_START_TAG("P2")	/* 2P INPUTS */
+	PORT_START("P2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
@@ -935,25 +935,26 @@ PORT_START_TAG("P2")	/* 2P INPUTS */
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0xff80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-PORT_START_TAG("COIN")	/* COINSW & Service */
+	PORT_START("COIN")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW)	/* go to service mode NOW */
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW )	/* go to service mode NOW */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 )
-	/* bits 6 & 7 are used for accessing the NVRAM */
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)	/* bit 6 is EEPROM data (DOUT) */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL )	/* bit 7 is EEPROM ready */
 INPUT_PORTS_END
 
-static const struct gaelcosnd_interface snowboar_snd_interface =
+static const gaelcosnd_interface snowboar_snd_interface =
 {
-	REGION_GFX1, 							/* memory region */
+	"gfx1",		 							/* memory region */
 	{ 0*0x0400000, 1*0x0400000, 0, 0 }		/* start of each ROM bank */
 };
 
 static MACHINE_DRIVER_START( snowboar )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 30000000/2)			/* 15 MHz */
+	MDRV_CPU_ADD("main", M68000, 30000000/2)			/* 15 MHz */
 	MDRV_CPU_PROGRAM_MAP(snowboar_readmem, snowboar_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
@@ -979,7 +980,7 @@ static MACHINE_DRIVER_START( snowboar )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(GAELCO_CG1V, 0)
+	MDRV_SOUND_ADD("gaelco", GAELCO_CG1V, 0)
 	MDRV_SOUND_CONFIG(snowboar_snd_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
@@ -1022,27 +1023,27 @@ REF: 960419/1
 */
 
 ROM_START( snowboar )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE(	"sb53",	0x000000, 0x080000, CRC(e4eaefd4) SHA1(c7de2ae3a4a919fbe16d4997e3f9e2303b8c96b1) )
 	ROM_LOAD16_BYTE(	"sb55",	0x000001, 0x080000, CRC(e2476994) SHA1(2ad18652a1fc6ac058c8399373fb77e7a81d5bbd) )
 
-	ROM_REGION( 0x1400000, REGION_GFX1, 0 )	/* GFX + Sound */
+	ROM_REGION( 0x1400000, "gfx1", 0 )	/* GFX + Sound */
 	/* 0x0000000-0x0ffffff filled in in the DRIVER_INIT */
 	ROM_LOAD( "sb43",		0x1000000, 0x0200000, CRC(afce54ed) SHA1(1d2933d64790612918adbaabcd2a82dad79953c9) )	/* GFX only */
 	ROM_FILL(				0x1200000, 0x0200000, 0x0 )			/* Empty */
 
-	ROM_REGION( 0x0c00000, REGION_GFX2, ROMREGION_DISPOSE ) /* Temporary storage */
+	ROM_REGION( 0x0c00000, "gfx2", ROMREGION_DISPOSE ) /* Temporary storage */
 	ROM_LOAD( "sb44",		0x0000000, 0x0400000, CRC(1bbe88bc) SHA1(15bce9ada2b742ba4d537fa8efc0f29f661bff00) )	/* GFX only */
 	ROM_LOAD( "sb45",		0x0400000, 0x0400000, CRC(373983d9) SHA1(05e35a8b27cab469885f0ec2a5df200a366b50a1) )	/* Sound only */
 	ROM_LOAD( "sb46",		0x0800000, 0x0400000, CRC(22e7c648) SHA1(baddb9bc13accd83bea61533d7286cf61cd89279) )	/* GFX only */
 ROM_END
 
 ROM_START( snowbalt )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE(	"sb.53",	0x000000, 0x080000, CRC(4742749e) SHA1(933e39893ab74895ae4a99a932f8245a03ea0b5d) )
 	ROM_LOAD16_BYTE(	"sb.55",	0x000001, 0x080000, CRC(6ddc431f) SHA1(8801c0cf1711bb956447ba1e631db28bd075caea) )
 
-	ROM_REGION( 0x1400000, REGION_GFX1, 0 )	/* GFX + Sound */
+	ROM_REGION( 0x1400000, "gfx1", 0 )	/* GFX + Sound */
 	ROM_LOAD( "sb.a0",		0x0000000, 0x0080000, CRC(aa476e44) SHA1(2b87689489b9619e9e5ca32c3e3d2aec8ef31c88) )	/* GFX only */
 	ROM_LOAD( "sb.a1",		0x0080000, 0x0080000, CRC(6bc99195) SHA1(276e9383fac9cb5141b23ffdf381b0d7e60a6861) )	/* GFX only */
 	ROM_LOAD( "sb.a2",		0x0100000, 0x0080000, CRC(fae2ebba) SHA1(653a12846abe4de36f5565c3bf849fce7c2893b6) )	/* GFX only */
@@ -1087,10 +1088,10 @@ static ADDRESS_MAP_START( wrally2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x210000, 0x211fff) AM_READ(SMH_RAM)			/* Palette */
 	AM_RANGE(0x212000, 0x213fff) AM_READ(SMH_RAM)			/* Extra RAM */
 	AM_RANGE(0x218004, 0x218009) AM_READ(SMH_RAM)			/* Video Registers */
-	AM_RANGE(0x300000, 0x300001) AM_READ(input_port_0_word_r)/* DIPSW #2 + Inputs 1P */
-	AM_RANGE(0x300002, 0x300003) AM_READ(input_port_1_word_r)/* DIPSW #1 */
-	AM_RANGE(0x300004, 0x300005) AM_READ(input_port_2_word_r)/* Inputs 2P + COINSW */
-	AM_RANGE(0x300006, 0x300007) AM_READ(input_port_3_word_r)/* SERVICESW */
+	AM_RANGE(0x300000, 0x300001) AM_READ_PORT("IN0")		/* DIPSW #2 + Inputs 1P */
+	AM_RANGE(0x300002, 0x300003) AM_READ_PORT("IN1")		/* DIPSW #1 */
+	AM_RANGE(0x300004, 0x300005) AM_READ_PORT("IN2")		/* Inputs 2P + COINSW */
+	AM_RANGE(0x300006, 0x300007) AM_READ_PORT("IN3")		/* SERVICESW */
 	AM_RANGE(0xfe0000, 0xfeffff) AM_READ(SMH_RAM)			/* Work RAM */
 ADDRESS_MAP_END
 
@@ -1109,7 +1110,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( wrally2 )
-PORT_START_TAG("IN0")	/* DIPSW #2 + 1P INPUTS */
+	PORT_START("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -1140,14 +1141,14 @@ PORT_START_TAG("IN0")	/* DIPSW #2 + 1P INPUTS */
 	PORT_DIPSETTING(      0x8000, DEF_STR( Hard ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
 
-PORT_START_TAG("IN1")	/* DIPSW #1 */
+	PORT_START("IN1")
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Free_Play ) )
-	PORT_DIPSETTING(    0x0100, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x0000, DEF_STR( On ) )
+	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0200, 0x0200, "Credit configuration" )
-	PORT_DIPSETTING(    0x0000, "Start 2C/Continue 1C" )
-	PORT_DIPSETTING(    0x0200, "Start 1C/Continue 1C" )
+	PORT_DIPSETTING(      0x0000, "Start 2C/Continue 1C" )
+	PORT_DIPSETTING(      0x0200, "Start 1C/Continue 1C" )
 	PORT_DIPNAME( 0x1c00, 0x1c00, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(      0x1800, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(      0x1000, DEF_STR( 3C_1C ) )
@@ -1167,7 +1168,7 @@ PORT_START_TAG("IN1")	/* DIPSW #1 */
 	PORT_DIPSETTING(      0xa000, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x2000, DEF_STR( 1C_4C ) )
 
-PORT_START_TAG("IN2")	/* 2P INPUTS */
+	PORT_START("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
@@ -1180,32 +1181,32 @@ PORT_START_TAG("IN2")	/* 2P INPUTS */
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0xfa00, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-PORT_START_TAG("IN3")	/* SERVICESW */
+	PORT_START("IN3")
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_SERVICE3 ) /* go to test mode NOW */
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_SERVICE2 )
 	PORT_BIT( 0xf800, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-PORT_START_TAG("FAKE")	/* Fake: To switch between monitors at run time */
+	PORT_START("FAKE")	/* Fake: To switch between monitors at run time */
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_SERVICE4 ) PORT_TOGGLE
 
-PORT_START_TAG("ANALOG0")	/* steering wheel player 1 */
+	PORT_START("ANALOG0")	/* steering wheel player 1 */
 	PORT_BIT( 0xff, 0x8A, IPT_PADDLE ) PORT_MINMAX(0x00,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(25) PORT_REVERSE PORT_NAME("P1 Wheel")
 
-PORT_START_TAG("ANALOG1")	/* steering wheel player 2 */
+	PORT_START("ANALOG1")	/* steering wheel player 2 */
 	PORT_BIT( 0xff, 0x8A, IPT_PADDLE_V ) PORT_MINMAX(0x00,0xff) PORT_SENSITIVITY(25) PORT_KEYDELTA(25) PORT_REVERSE PORT_NAME("P2 Wheel")
 INPUT_PORTS_END
 
-static const struct gaelcosnd_interface wrally2_snd_interface =
+static const gaelcosnd_interface wrally2_snd_interface =
 {
-	REGION_GFX1, 						/* memory region */
+	"gfx1", 							/* memory region */
 	{ 0*0x0200000, 1*0x0200000, 0, 0 }	/* start of each ROM bank */
 };
 
 static MACHINE_DRIVER_START( wrally2 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 26000000/2)			/* 13 MHz */
+	MDRV_CPU_ADD("main", M68000, 26000000/2)			/* 13 MHz */
 	MDRV_CPU_PROGRAM_MAP(wrally2_readmem, wrally2_writemem)
 	MDRV_CPU_VBLANK_INT("left", irq6_line_hold)
 
@@ -1240,7 +1241,7 @@ static MACHINE_DRIVER_START( wrally2 )
 	/* the chip is stereo, but the game sound is mono because the right channel
        output is for cabinet 1 and the left channel output is for cabinet 2 */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD(GAELCO_GAE1, 0)
+	MDRV_SOUND_ADD("gaelco", GAELCO_GAE1, 0)
 	MDRV_SOUND_CONFIG(wrally2_snd_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
@@ -1348,11 +1349,11 @@ TLC569 (IC2 and IC7) is a 8-bit serial ADC
 */
 
 ROM_START( wrally2 )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "wr2.64",	0x000000, 0x080000, CRC(4cdf4e1e) SHA1(a3b3ff4a70336b61c7bba5d518527bf4bd901867) )
 	ROM_LOAD16_BYTE( "wr2.63",	0x000001, 0x080000, CRC(94887c9f) SHA1(ad09f1fbeff4c3ba47f72346d261b22fa6a51457) )
 
-	ROM_REGION( 0x0a00000, REGION_GFX1, 0 )	/* GFX + Sound */
+	ROM_REGION( 0x0a00000, "gfx1", 0 )	/* GFX + Sound */
 	ROM_LOAD( "wr2.16d",	0x0000000, 0x0080000, CRC(ad26086b) SHA1(487ffaaca57c9d030fc486b8cae6735ee40a0ac3) ) 	/* GFX only */
 	ROM_LOAD( "wr2.17d",	0x0080000, 0x0080000, CRC(c1ec0745) SHA1(a6c3ce9c889e6a53f4155f54d6655825af34a35b) ) 	/* GFX only */
 	ROM_LOAD( "wr2.18d",	0x0100000, 0x0080000, CRC(e3617814) SHA1(9f9514052bb07d7e243f33b11bae409a444b7d9f) ) 	/* Sound only */

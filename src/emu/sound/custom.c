@@ -4,13 +4,13 @@
 
 struct custom_info
 {
-	const struct CustomSound_interface *intf;
+	const custom_sound_interface *intf;
 	void *		token;
 };
 
 
 
-static void *custom_start(int sndindex, int clock, const void *config)
+static void *custom_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	struct custom_info *info;
 

@@ -42,7 +42,7 @@
 enum { V_ON = 1, V_DONE = 2 };
 
 struct ics2115{
-	const struct ics2115_interface *intf;
+	const ics2115_interface *intf;
 	int index;
 	UINT8 *rom;
 	INT16 *ulaw;
@@ -73,7 +73,7 @@ static int caller_get_pc(void)
 	if(pc == 0x14b || pc == 0x26e || pc == 0x284 || pc == 0x28d ||
 	   pc == 0x290 || pc == 0x299 || pc == 0x2a2 || pc == 0x2b3) {
 		int sp = z80_get_reg(Z80_SP);
-		pc = cpu_readmem16(sp)|(cpu_readmem16((UINT16)(sp+1)) << 8);
+		pc = program_read_word(sp)|(program_read_word((UINT16)(sp+1)) << 8);
 	}
 #endif
 
@@ -448,7 +448,7 @@ static UINT16 ics2115_reg_r(struct ics2115 *chip, UINT8 reg)
 }
 
 
-static void *ics2115_start(int sndindex, int clock, const void *config)
+static void *ics2115_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	struct ics2115 *chip;
 	int i;
@@ -458,7 +458,7 @@ static void *ics2115_start(int sndindex, int clock, const void *config)
 
 	chip->intf = config;
 	chip->index = sndindex;
-	chip->rom = memory_region(Machine, chip->intf->region);
+	chip->rom = memory_region(Machine, tag);
 	chip->timer[0].timer = timer_alloc(timer_cb_0, chip);
 	chip->timer[1].timer = timer_alloc(timer_cb_1, chip);
 	chip->ulaw = auto_malloc(256*sizeof(INT16));

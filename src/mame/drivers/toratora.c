@@ -38,7 +38,7 @@ static UINT8 clear_tv;
 static READ8_HANDLER( port_b_u3_r )
 {
 	logerror("%04x: read DIP\n",activecpu_get_pc());
-	return input_port_read_indexed(machine, 1);
+	return input_port_read(machine, "DSW");
 }
 
 
@@ -139,16 +139,16 @@ static UINT8 last = 0;
 	if (timer & 0x100) popmessage("watchdog!");
 
 
-	if (last != (input_port_read_indexed(machine, 0) & 0x0f))
+	if (last != (input_port_read(machine, "INPUT") & 0x0f))
 	{
-		last = input_port_read_indexed(machine, 0) & 0x0f;
+		last = input_port_read(machine, "INPUT") & 0x0f;
 		cpunum_set_input_line(machine, 0, 0, PULSE_LINE);
 	}
-	pia_set_input_a(0, input_port_read_indexed(machine, 0) & 0x0f, 0);
+	pia_set_input_a(0, input_port_read(machine, "INPUT") & 0x0f, 0);
 
-	pia_set_input_ca1(0, input_port_read_indexed(machine, 0) & 0x10);
+	pia_set_input_ca1(0, input_port_read(machine, "INPUT") & 0x10);
 
-	pia_set_input_ca2(0, input_port_read_indexed(machine, 0) & 0x20);
+	pia_set_input_ca2(0, input_port_read(machine, "INPUT") & 0x20);
 }
 
 static READ8_HANDLER( timer_r )
@@ -169,7 +169,7 @@ static WRITE8_HANDLER( clear_timer_w )
  *
  *************************************/
 
-static const struct SN76477interface sn76477_interface =
+static const sn76477_interface sn76477_intf =
 {
 	RES_K(47),	/*  4 noise_res                */
 //  RES_K(120), /*  5 filter_res               */
@@ -200,8 +200,8 @@ static const struct SN76477interface sn76477_interface =
 
 static void port_a_u2_u3_w(int which, UINT8 data)
 {
-	SN76477_vco_voltage_w(which, 2.35 * (data & 0x7f) / 128.0);
-	SN76477_enable_w(which, (data >> 7) & 0x01);
+	sn76477_vco_voltage_w(which, 2.35 * (data & 0x7f) / 128.0);
+	sn76477_enable_w(which, (data >> 7) & 0x01);
 }
 
 
@@ -219,18 +219,18 @@ static void port_b_u2_u3_w(int which, UINT8 data)
 	  RES_K(47)
 	};
 
-	SN76477_mixer_a_w      (which, (data >> 0) & 0x01);
-	SN76477_mixer_b_w      (which, (data >> 1) & 0x01);
-	SN76477_mixer_c_w      (which, (data >> 2) & 0x01);
-	SN76477_envelope_1_w   (which, (data >> 3) & 0x01);
-	SN76477_envelope_2_w   (which, (data >> 4) & 0x01);
-	SN76477_amplitude_res_w(which, resistances[(data >> 5)] * 2);  /* the *2 shouldn't be neccassary, but... */
+	sn76477_mixer_a_w      (which, (data >> 0) & 0x01);
+	sn76477_mixer_b_w      (which, (data >> 1) & 0x01);
+	sn76477_mixer_c_w      (which, (data >> 2) & 0x01);
+	sn76477_envelope_1_w   (which, (data >> 3) & 0x01);
+	sn76477_envelope_2_w   (which, (data >> 4) & 0x01);
+	sn76477_amplitude_res_w(which, resistances[(data >> 5)] * 2);  /* the *2 shouldn't be neccassary, but... */
 }
 
 
 static void ca2_u2_u3_w(int which, UINT8 data)
 {
-	SN76477_vco_w(which, data);
+	sn76477_vco_w(which, data);
 }
 
 
@@ -357,7 +357,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( toratora )
-	PORT_START
+	PORT_START("INPUT")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON1 )
@@ -367,7 +367,7 @@ static INPUT_PORTS_START( toratora )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x03, "3" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -399,7 +399,7 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( toratora )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6800,500000)	/* ?????? game speed is entirely controlled by this */
+	MDRV_CPU_ADD("main", M6800,500000)	/* ?????? game speed is entirely controlled by this */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_PERIODIC_INT(toratora_timer,16)	/* timer counting at 16 Hz */
 
@@ -419,12 +419,12 @@ static MACHINE_DRIVER_START( toratora )
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SN76477, 0)
-	MDRV_SOUND_CONFIG(sn76477_interface)
+	MDRV_SOUND_ADD("sn1", SN76477, 0)
+	MDRV_SOUND_CONFIG(sn76477_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(SN76477, 0)
-	MDRV_SOUND_CONFIG(sn76477_interface)
+	MDRV_SOUND_ADD("sn2", SN76477, 0)
+	MDRV_SOUND_CONFIG(sn76477_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 MACHINE_DRIVER_END
@@ -438,7 +438,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( toratora )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "tora.u1",  0x1000, 0x0800, CRC(413c743a) SHA1(a887dfaaee557327a1699bb424488b934dab8612) )
 	ROM_LOAD( "tora.u10", 0x1800, 0x0800, CRC(dc771b1c) SHA1(1bd81decb4d0a854878227c52d45ac0eea0602ec) )
 	ROM_LOAD( "tora.u2",  0x2000, 0x0800, CRC(c574c664) SHA1(9f41a53ca51d04e5bec7525fe83c5f4bdfcf128d) )

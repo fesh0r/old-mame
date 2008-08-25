@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef __SP0256_H__
 #define __SP0256_H__
 
@@ -21,10 +23,10 @@
 
 */
 
-struct sp0256_interface {
+typedef struct _sp0256_interface sp0256_interface;
+struct _sp0256_interface {
 	void (*lrq_callback)(int state);
 	void (*sby_callback)(int state);
-	int	memory_region;
 };
 
 void sp0256_bitrevbuff(UINT8 *buffer, unsigned int start, unsigned int length);
@@ -34,4 +36,4 @@ WRITE8_HANDLER( sp0256_ALD_w );
 READ16_HANDLER( spb640_r );
 WRITE16_HANDLER( spb640_w );
 
-#endif
+#endif /* __SP0256_H__ */

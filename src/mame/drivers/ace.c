@@ -157,27 +157,27 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xc005) AM_WRITE(ace_objpos_w)
 
 	/* players inputs */
-	AM_RANGE(0xc008, 0xc008) AM_READ(input_port_0_r)
-	AM_RANGE(0xc009, 0xc009) AM_READ(input_port_1_r)
-	AM_RANGE(0xc00a, 0xc00a) AM_READ(input_port_2_r)
-	AM_RANGE(0xc00b, 0xc00b) AM_READ(input_port_3_r)
-	AM_RANGE(0xc00c, 0xc00c) AM_READ(input_port_4_r)
-	AM_RANGE(0xc00d, 0xc00d) AM_READ(input_port_5_r)
-	AM_RANGE(0xc00e, 0xc00e) AM_READ(input_port_6_r)
-	AM_RANGE(0xc00f, 0xc00f) AM_READ(input_port_7_r)
-	AM_RANGE(0xc010, 0xc010) AM_READ(input_port_8_r)
-	AM_RANGE(0xc011, 0xc011) AM_READ(input_port_9_r)
+	AM_RANGE(0xc008, 0xc008) AM_READ_PORT("c008")
+	AM_RANGE(0xc009, 0xc009) AM_READ_PORT("c009")
+	AM_RANGE(0xc00a, 0xc00a) AM_READ_PORT("c00a")
+	AM_RANGE(0xc00b, 0xc00b) AM_READ_PORT("c00b")
+	AM_RANGE(0xc00c, 0xc00c) AM_READ_PORT("c00c")
+	AM_RANGE(0xc00d, 0xc00d) AM_READ_PORT("c00d")
+	AM_RANGE(0xc00e, 0xc00e) AM_READ_PORT("c00e")
+	AM_RANGE(0xc00f, 0xc00f) AM_READ_PORT("c00f")
+	AM_RANGE(0xc010, 0xc010) AM_READ_PORT("c010")
+	AM_RANGE(0xc011, 0xc011) AM_READ_PORT("c011")
 
 	AM_RANGE(0xc012, 0xc012) AM_READ(unk_r)
 
 	/* vblank */
-	AM_RANGE(0xc014, 0xc014) AM_READ(input_port_10_r)
+	AM_RANGE(0xc014, 0xc014) AM_READ_PORT("c014")
 
 	/* coin */
-	AM_RANGE(0xc015, 0xc015) AM_READ(input_port_11_r)
+	AM_RANGE(0xc015, 0xc015) AM_READ_PORT("c015")
 
 	/* start (must read 1 at least once to make the game run) */
-	AM_RANGE(0xc016, 0xc016) AM_READ(input_port_12_r)
+	AM_RANGE(0xc016, 0xc016) AM_READ_PORT("c016")
 
 	AM_RANGE(0xc017, 0xc017) AM_READ(unk_r)
 	AM_RANGE(0xc018, 0xc018) AM_READ(unk_r)
@@ -195,49 +195,46 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( ace )
-
-	PORT_START_TAG("c008")	/* player thrust */
+	PORT_START("c008")	/* player thrust */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(1) PORT_NAME("P1 Thrust")
 
-	PORT_START_TAG("c009")	/* player slowdown */
+	PORT_START("c009")	/* player slowdown */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1) PORT_NAME("P1 Slowdown")
 
-	PORT_START_TAG("c00a")	/* player left */
+	PORT_START("c00a")	/* player left */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 
-	PORT_START_TAG("c00b")	/* player right */
+	PORT_START("c00b")	/* player right */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 
-	PORT_START_TAG("c00c")	/* player fire */
+	PORT_START("c00c")	/* player fire */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1) PORT_NAME("P1 Fire")
 
-	PORT_START_TAG("c00d")	/* enemy thrust */
+	PORT_START("c00d")	/* enemy thrust */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(2) PORT_NAME("P2 Thrust")
 
-	PORT_START_TAG("c00e")	/* enemy slowdown */
+	PORT_START("c00e")	/* enemy slowdown */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2) PORT_NAME("P2 Slowdown")
 
-	PORT_START_TAG("c00f")	/* enemy left  */
+	PORT_START("c00f")	/* enemy left  */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 
-	PORT_START_TAG("c010")	/* enemy right */
+	PORT_START("c010")	/* enemy right */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 
-	PORT_START_TAG("c011")	/* enemy fire */
+	PORT_START("c011")	/* enemy fire */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2) PORT_NAME("P2 Fire")
 
-//c012
+	//c012
 
-
-	PORT_START_TAG("c014")	/* VBLANK??? */
+	PORT_START("c014")	/* VBLANK??? */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START_TAG("c015")	/* coin input */
+	PORT_START("c015")	/* coin input */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START_TAG("c016")	/* game start */
+	PORT_START("c016")	/* game start */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
-
 INPUT_PORTS_END
 
 
@@ -297,11 +294,11 @@ static const gfx_layout scorelayout =
 };
 
 static GFXDECODE_START( ace )
-	GFXDECODE_ENTRY( REGION_GFX1, 0     , charlayout,  0, 2 )
-	GFXDECODE_ENTRY( 0          , 0x8000, charlayout0, 0, 2 )    /* the game dynamically modifies this */
-	GFXDECODE_ENTRY( 0          , 0x8000, charlayout1, 0, 2 )    /* the game dynamically modifies this */
-	GFXDECODE_ENTRY( 0          , 0x8000, charlayout2, 0, 2 )    /* the game dynamically modifies this */
-	GFXDECODE_ENTRY( 0          , 0x8000, scorelayout, 0, 2 )    /* the game dynamically modifies this */
+	GFXDECODE_ENTRY( "gfx1", 0     , charlayout,  0, 2 )
+	GFXDECODE_ENTRY( NULL          , 0x8000, charlayout0, 0, 2 )    /* the game dynamically modifies this */
+	GFXDECODE_ENTRY( NULL          , 0x8000, charlayout1, 0, 2 )    /* the game dynamically modifies this */
+	GFXDECODE_ENTRY( NULL          , 0x8000, charlayout2, 0, 2 )    /* the game dynamically modifies this */
+	GFXDECODE_ENTRY( NULL          , 0x8000, scorelayout, 0, 2 )    /* the game dynamically modifies this */
 GFXDECODE_END
 
 
@@ -309,7 +306,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( ace )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(8080, 18000000 / 9)	/* 2 MHz ? */
+	MDRV_CPU_ADD("main", 8080, 18000000 / 9)	/* 2 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	/* video hardware */
@@ -337,7 +334,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( ace )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "ace.a1",		0x0000, 0x0200, CRC(16811834) SHA1(5502812dd161908eea3fa8851d7e5c1e22b0f8ff) )
 	ROM_LOAD( "ace.a2",		0x0200, 0x0200, CRC(f9eae80e) SHA1(8865b86c7b5d57c76312c16f8a614bf35ffaf532) )
 	ROM_LOAD( "ace.a3",		0x0400, 0x0200, CRC(c5c63b8c) SHA1(2079dd12ff0c4aafec19aeb9baa70fc9b6788356) )
@@ -345,7 +342,7 @@ ROM_START( ace )
 	ROM_LOAD( "ace.a5",		0x0800, 0x0200, CRC(623c58e7) SHA1(a92418bc323a1ae76eae8e094e4d6ebd1e8da14e) )
 
 	/* not used - I couldn't guess when this should be displayed */
-	ROM_REGION( 0x0200, REGION_GFX1, 0 )
+	ROM_REGION( 0x0200, "gfx1", 0 )
 	ROM_LOAD( "ace.k4",		0x0000, 0x0200, CRC(daa05ec6) SHA1(8b71ffb802293dc93f6b492ff128a704e676a5fd) )
 
 ROM_END

@@ -60,8 +60,8 @@ static WRITE8_HANDLER( sound_control_w )
     D3 - /Reset
 
 */
-	if ((data &7)==7) AY8910_control_port_0_w(machine,0,ay_data);
-	if ((data &7)==6) AY8910_write_port_0_w(machine,0,ay_data);
+	if ((data &7)==7) ay8910_control_port_0_w(machine,0,ay_data);
+	if ((data &7)==6) ay8910_write_port_0_w(machine,0,ay_data);
 }
 
 
@@ -72,9 +72,9 @@ static ADDRESS_MAP_START( dynadice_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dynadice_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x50, 0x50) AM_READ(input_port_0_r)
-	AM_RANGE(0x51, 0x51) AM_READ(input_port_1_r)
-	AM_RANGE(0x52, 0x52) AM_READ(input_port_2_r)
+	AM_RANGE(0x50, 0x50) AM_READ_PORT("IN0")
+	AM_RANGE(0x51, 0x51) AM_READ_PORT("IN1")
+	AM_RANGE(0x52, 0x52) AM_READ_PORT("DSW")
 	AM_RANGE(0x62, 0x62) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x63, 0x63) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x70, 0x77) AM_WRITE(SMH_NOP)
@@ -94,21 +94,19 @@ static ADDRESS_MAP_START( dynadice_sound_io_map, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( dynadice )
-
-	PORT_START
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_DIPNAME( 0x02, 0x02, "Initialize NVRAM" )
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-
 	PORT_BIT( 0x30, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) /* increase number of coins */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) /* decrease number of coins */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )  /* start /stop */
 
-	PORT_START
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x1c, 0x1c, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 5C_1C ))
 	PORT_DIPSETTING(    0x04, DEF_STR( 4C_1C ))
@@ -134,7 +132,6 @@ static INPUT_PORTS_START( dynadice )
 	PORT_DIPNAME( 0x80, 0x80, "DSW 1-7" )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-
 INPUT_PORTS_END
 
 static const gfx_layout charlayout =
@@ -161,8 +158,8 @@ static const gfx_layout charlayout2 =
 
 
 static GFXDECODE_START( dynadice )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0, 1 ) /* 1bpp */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout2,  0, 1 ) /* 3bpp */
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,   0, 1 ) /* 1bpp */
+	GFXDECODE_ENTRY( "gfx2", 0, charlayout2,  0, 1 ) /* 3bpp */
 GFXDECODE_END
 
 static TILE_GET_INFO( get_tile_info )
@@ -196,12 +193,11 @@ static PALETTE_INIT( dynadice )
 }
 
 static MACHINE_DRIVER_START( dynadice )
-	MDRV_CPU_ADD(8080,18432000/8)
+	MDRV_CPU_ADD("main", 8080,18432000/8)
 	MDRV_CPU_PROGRAM_MAP(dynadice_map,0)
 	MDRV_CPU_IO_MAP(dynadice_io_map,0)
 
-	MDRV_CPU_ADD(Z80,18432000/6)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80,18432000/6)
 	MDRV_CPU_PROGRAM_MAP(dynadice_sound_map,0)
 	MDRV_CPU_IO_MAP(dynadice_sound_io_map,0)
 
@@ -224,36 +220,36 @@ static MACHINE_DRIVER_START( dynadice )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 ROM_START( dynadice )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "dy_1.bin",     0x0000, 0x1000, CRC(4ad18724) SHA1(78151b02a727f4272eff72765883df9ca09606c3) )
 	ROM_LOAD( "dy_2.bin",     0x1000, 0x0800, CRC(82cb1873) SHA1(661f33af4a536b7929d432d755ab44f9280f82db) )
 	ROM_LOAD( "dy_3.bin",     0x1800, 0x0800, CRC(a8edad20) SHA1(b812141f216355c986047969326bd1e036be71e6) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "dy_6.bin",     0x0000, 0x0800, CRC(d4e6e6a3) SHA1(84c0fcfd8326a4301accbd192df6e372b98ae537) )
 
-	ROM_REGION( 0x0800, REGION_GFX1, 0 )
+	ROM_REGION( 0x0800, "gfx1", 0 )
 	ROM_LOAD( "dy_4.bin",     0x0000, 0x0800, CRC(306b851b) SHA1(bf69ed126d32b31e1711ff23c5a75b8a8bd28207) )
 
-	ROM_REGION( 0x0800*8, REGION_GFX2, ROMREGION_ERASE00 )
+	ROM_REGION( 0x0800*8, "gfx2", ROMREGION_ERASE00 )
 	/* gfx data will be rearranged here for 8x8 3bpp tiles */
 
-	ROM_REGION( 0x0800, REGION_USER1,0 )
+	ROM_REGION( 0x0800, "user1",0 )
 	ROM_LOAD( "dy_5.bin",     0x0000, 0x0800, CRC(e4799462) SHA1(5cd0f003572540522d72706bc5a8fa6588553031) )
 ROM_END
 
 static DRIVER_INIT( dynadice )
 {
 	int i,j;
-	UINT8 *usr1 = memory_region(machine, REGION_USER1);
-	UINT8 *cpu2 = memory_region(machine, REGION_CPU2);
-	UINT8 *gfx1 = memory_region(machine, REGION_GFX1);
-	UINT8 *gfx2 = memory_region(machine, REGION_GFX2);
+	UINT8 *usr1 = memory_region(machine, "user1");
+	UINT8 *cpu2 = memory_region(machine, "audio");
+	UINT8 *gfx1 = memory_region(machine, "gfx1");
+	UINT8 *gfx2 = memory_region(machine, "gfx2");
 
 	cpu2[0x0b]=0x23;	/* bug in game code  Dec HL -> Inc HL*/
 

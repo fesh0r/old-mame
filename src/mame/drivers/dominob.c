@@ -122,22 +122,16 @@ static WRITE8_HANDLER( dominob_d008_w )
 	/* is there a purpose on this ? always set to 0x00 (read from 0xc47b in RAM) */
 }
 
-static READ8_HANDLER( dominob_input_2_r )
-{
-	return input_port_read(machine, "IN2");
-}
-
-
 static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_READWRITE(SMH_ROM, SMH_NOP) // there are some garbage writes to ROM
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM
 
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0xd001, 0xd001) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
+	AM_RANGE(0xd000, 0xd000) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xd001, 0xd001) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
 	AM_RANGE(0xd008, 0xd008) AM_WRITE(dominob_d008_w)
-	AM_RANGE(0xd00c, 0xd00c) AM_READ(input_port_0_r)
-	AM_RANGE(0xd010, 0xd010) AM_READWRITE(input_port_1_r, SMH_NOP)
-	AM_RANGE(0xd018, 0xd018) AM_READ(dominob_input_2_r) AM_WRITENOP
+	AM_RANGE(0xd00c, 0xd00c) AM_READ_PORT("IN0")
+	AM_RANGE(0xd010, 0xd010) AM_READ_PORT("IN1") AM_WRITE(SMH_NOP)
+	AM_RANGE(0xd018, 0xd018) AM_READ_PORT("IN2") AM_WRITENOP
 
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM AM_BASE(&videoram)
 	AM_RANGE(0xe800, 0xe83f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
@@ -161,7 +155,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( dominob )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )             /* works (subs 2 credits), but starts a 1 player game as START1 */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )              /* SERVICE1 in 'arkanoid' */
@@ -171,19 +165,19 @@ static INPUT_PORTS_START( dominob )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_SPECIAL )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )            /* also works in "demo mode" ! */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )            /* also works in "demo mode" ! */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )            /* player 2 BUTTON1 in 'arkanoid' - only read to select the girl */
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")      /* Spinner Player 1 */
+	PORT_START("IN2")      /* Spinner Player 1 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(30) PORT_KEYDELTA(15)
 
-	PORT_START_TAG("IN3")      /* Spinner Player 2 */ /* No Player 2 */
+	PORT_START("IN3")      /* Spinner Player 2 */ /* No Player 2 */
 //  PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(30) PORT_KEYDELTA(15) PORT_COCKTAIL
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -236,12 +230,12 @@ static const gfx_layout bglayout =
 };
 
 static GFXDECODE_START( dominob )
-	GFXDECODE_ENTRY(REGION_GFX1, 0, charlayout,   0, 0x20)
-	GFXDECODE_ENTRY(REGION_GFX2, 0, bglayout,     0x100, 0x10)
+	GFXDECODE_ENTRY("gfx1", 0, charlayout,   0, 0x20)
+	GFXDECODE_ENTRY("gfx2", 0, bglayout,     0x100, 0x10)
 GFXDECODE_END
 
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -255,7 +249,7 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( dominob )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,8000000/2)
+	MDRV_CPU_ADD("main", Z80,8000000/2)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
 	MDRV_CPU_IO_MAP(portmap,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -276,8 +270,8 @@ static MACHINE_DRIVER_START( dominob )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910, 8000000/4 /* guess */)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, 8000000/4 /* guess */)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END
 
@@ -288,15 +282,15 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( dominob )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "u81",   0x0000, 0x10000, CRC(709b7a29) SHA1(7c95cbaf669a0885101a48e937868c245f87567e) )
 
-	ROM_REGION( 0x18000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "u33",   0x00000, 0x8000, CRC(359c98de) SHA1(5c96dfb538c6b25530582f8c2a0cb20d85c39f68) )
 	ROM_LOAD( "u34",   0x08000, 0x8000, CRC(0031f713) SHA1(9341f84081e2d8954e476236e93e49b4d8819b8f) )
 	ROM_LOAD( "u35",   0x10000, 0x8000, CRC(6eb87657) SHA1(40ff9d6f21ade48b16f0cefea08a9364a4ee9144) )
 
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "u111",   0x00000, 0x40000, CRC(b835be84) SHA1(bbb744a28df00017f81d6eac12b00b5f3aca3a8b) )
 	ROM_CONTINUE(0x00000,0x40000) // 1ST AND 2ND HALF IDENTICAL
 	ROM_LOAD( "u112",   0x40000, 0x40000, CRC(60d7bfd7) SHA1(9f6475ce717e3d5a42aaaacc3ec340e74b7e40b4) )

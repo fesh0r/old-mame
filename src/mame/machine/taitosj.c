@@ -28,8 +28,8 @@ void taitosj_register_main_savestate(void);
 
 MACHINE_START( taitosj )
 {
-	memory_configure_bank(1, 0, 1, memory_region(machine, REGION_CPU1) + 0x6000, 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_CPU1) + 0x10000, 0);
+	memory_configure_bank(1, 0, 1, memory_region(machine, "main") + 0x6000, 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, "main") + 0x10000, 0);
 
 	taitosj_register_main_savestate();
 
@@ -316,5 +316,5 @@ WRITE8_HANDLER( alpinea_bankswitch_w )
 
 READ8_HANDLER( alpine_port_2_r )
 {
-	return input_port_read_indexed(machine,2) | protection_value;
+	return input_port_read(machine, "IN2") | protection_value;
 }

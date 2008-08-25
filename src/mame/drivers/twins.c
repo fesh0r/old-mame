@@ -84,8 +84,8 @@ static ADDRESS_MAP_START( twins_map, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( twins_io, ADDRESS_SPACE_IO, 16 )
-	AM_RANGE(0x0000, 0x0001) AM_WRITE(AY8910_control_port_0_lsb_w)
-	AM_RANGE(0x0002, 0x0003) AM_READ(AY8910_read_port_0_lsb_r) AM_WRITE(AY8910_write_port_0_lsb_w)
+	AM_RANGE(0x0000, 0x0001) AM_WRITE(ay8910_control_port_0_lsb_w)
+	AM_RANGE(0x0002, 0x0003) AM_READ(ay8910_read_port_0_lsb_r) AM_WRITE(ay8910_write_port_0_lsb_w)
 	AM_RANGE(0x0004, 0x0005) AM_READWRITE(twins_port4_r, twins_port4_w)
 	AM_RANGE(0x0006, 0x0007) AM_WRITE(port6_pal0_w)
 	AM_RANGE(0x000e, 0x000f) AM_WRITE(porte_paloff0_w)
@@ -135,7 +135,7 @@ static VIDEO_UPDATE(twins)
 
 
 static INPUT_PORTS_START(twins)
-	PORT_START	/* 8bit */
+	PORT_START("P1")	/* 8bit */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1) PORT_8WAY
@@ -145,7 +145,7 @@ static INPUT_PORTS_START(twins)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 
-	PORT_START	/* 8bit */
+	PORT_START("P2")	/* 8bit */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2) PORT_8WAY
@@ -157,7 +157,7 @@ static INPUT_PORTS_START(twins)
 INPUT_PORTS_END
 
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -167,7 +167,7 @@ static const struct AY8910interface ay8910_interface =
 
 static MACHINE_DRIVER_START( twins )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(V30, 8000000)
+	MDRV_CPU_ADD("main", V30, 8000000)
 	MDRV_CPU_PROGRAM_MAP(twins_map, 0)
 	MDRV_CPU_IO_MAP(twins_io,0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
@@ -188,8 +188,8 @@ static MACHINE_DRIVER_START( twins )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, 2000000)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -247,15 +247,15 @@ static ADDRESS_MAP_START( twinsa_io, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE(0x0000, 0x0001) AM_READWRITE(twinsa_unk_r, porte_paloff0_w)
 	AM_RANGE(0x0002, 0x0003) AM_WRITE(porte_paloff0_w)
 	AM_RANGE(0x0004, 0x0005) AM_WRITE(twinsa_port4_w) // palette on this set
-	AM_RANGE(0x0008, 0x0009) AM_WRITE(AY8910_control_port_0_lsb_w)
-	AM_RANGE(0x0010, 0x0011) AM_READWRITE(AY8910_read_port_0_lsb_r, AY8910_write_port_0_lsb_w)
+	AM_RANGE(0x0008, 0x0009) AM_WRITE(ay8910_control_port_0_lsb_w)
+	AM_RANGE(0x0010, 0x0011) AM_READWRITE(ay8910_read_port_0_lsb_r, ay8910_write_port_0_lsb_w)
 	AM_RANGE(0x0018, 0x0019) AM_READ(twins_port4_r) AM_WRITE(twins_port4_w)
 ADDRESS_MAP_END
 
 
 static MACHINE_DRIVER_START( twinsa )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(V30, XTAL_16MHz/2) /* verified on pcb */
+	MDRV_CPU_ADD("main", V30, XTAL_16MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(twins_map, 0)
 	MDRV_CPU_IO_MAP(twinsa_io,0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
@@ -276,14 +276,14 @@ static MACHINE_DRIVER_START( twinsa )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, XTAL_16MHz/8) /* verified on pcb */
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, XTAL_16MHz/8) /* verified on pcb */
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( twins )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_BYTE( "1.bin", 0x000000, 0x080000, CRC(d5ef7b0d) SHA1(7261dca5bb0aef755b4f2b85a159b356e7ac8219) )
 	ROM_LOAD16_BYTE( "2.bin", 0x000001, 0x080000, CRC(8a5392f4) SHA1(e6a2ecdb775138a87d27aa4ad267bdec33c26baa) )
 ROM_END
@@ -307,7 +307,7 @@ hmm, we're only emulating 1x ay-3-8910, is the other at port 0 on this?
 */
 
 ROM_START( twinsa )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_BYTE( "lp.bin", 0x000000, 0x080000, CRC(4f07862e) SHA1(fbda1973f79c6938c7f026a4db706e78781c2df8) )
 	ROM_LOAD16_BYTE( "hp.bin", 0x000001, 0x080000, CRC(aaf74b83) SHA1(09bd76b9fc5cb7ba6ffe1a2581ffd5633fe440b3) )
 ROM_END

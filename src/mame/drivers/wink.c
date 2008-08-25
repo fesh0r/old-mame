@@ -45,12 +45,12 @@ static WRITE8_HANDLER( wink_coin_counter_w )
 
 static READ8_HANDLER( analog_port_r )
 {
-	return input_port_read_indexed(machine, 0 /*+ 2 * player_mux*/);
+	return input_port_read(machine, /* player_mux ? "DIAL2" : */ "DIAL1");
 }
 
 static READ8_HANDLER( player_inputs_r )
 {
-	return input_port_read_indexed(machine, 1 /*+ 2 * player_mux*/);
+	return input_port_read(machine, /* player_mux ? "INPUTS2" : */ "INPUTS1");
 }
 
 static WRITE8_HANDLER( sound_irq_w )
@@ -103,25 +103,25 @@ either from the system-bus for loading the palet-data or from the xor-registers
 for displaying the content.
 so it's a palet-ram write-enable.
 */
-	AM_RANGE(0x00, 0x1f) AM_RAM AM_BASE(&colorram) //?
-	AM_RANGE(0x20, 0x20) AM_WRITENOP //??? seems unused..
-	AM_RANGE(0x21, 0x21) AM_WRITE(player_mux_w) //??? no mux on the pcb.
+	AM_RANGE(0x00, 0x1f) AM_RAM AM_BASE(&colorram)	//?
+	AM_RANGE(0x20, 0x20) AM_WRITENOP				//??? seems unused..
+	AM_RANGE(0x21, 0x21) AM_WRITE(player_mux_w)		//??? no mux on the pcb.
 	AM_RANGE(0x22, 0x22) AM_WRITE(tile_banking_w)
-	AM_RANGE(0x23, 0x23) AM_WRITENOP //?
-	AM_RANGE(0x24, 0x24) AM_WRITENOP //cab Knocker like in q-bert!
+	AM_RANGE(0x23, 0x23) AM_WRITENOP				//?
+	AM_RANGE(0x24, 0x24) AM_WRITENOP				//cab Knocker like in q-bert!
 	AM_RANGE(0x25, 0x27) AM_WRITE(wink_coin_counter_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x60, 0x60) AM_WRITE(sound_irq_w)
 	AM_RANGE(0x80, 0x80) AM_READ(analog_port_r)
 	AM_RANGE(0xa0, 0xa0) AM_READ(player_inputs_r)
-	AM_RANGE(0xa4, 0xa4) AM_READ(input_port_2_r) //dipswitch bank2
-	AM_RANGE(0xa8, 0xa8) AM_READ(input_port_3_r) //dipswitch bank1
-	AM_RANGE(0xac, 0xac) AM_WRITENOP //protection - loads video xor unit (written only once at startup)
-	AM_RANGE(0xb0, 0xb0) AM_READ(input_port_4_r) //unused inputs
-	AM_RANGE(0xb4, 0xb4) AM_READ(input_port_5_r) //dipswitch bank3
-	AM_RANGE(0xc0, 0xdf) AM_WRITE(prot_w) //load load protection-buffer from upper address bus
-	AM_RANGE(0xc3, 0xc3) AM_READNOP //watchdog?
-	AM_RANGE(0xe0, 0xff) AM_READ(prot_r) //load math unit from buffer & lower address-bus
+	AM_RANGE(0xa4, 0xa4) AM_READ_PORT("DSW1")	//dipswitch bank2
+	AM_RANGE(0xa8, 0xa8) AM_READ_PORT("DSW2")	//dipswitch bank1
+	AM_RANGE(0xac, 0xac) AM_WRITENOP			//protection - loads video xor unit (written only once at startup)
+	AM_RANGE(0xb0, 0xb0) AM_READ_PORT("DSW3")	//unused inputs
+	AM_RANGE(0xb4, 0xb4) AM_READ_PORT("DSW4")	//dipswitch bank3
+	AM_RANGE(0xc0, 0xdf) AM_WRITE(prot_w)		//load load protection-buffer from upper address bus
+	AM_RANGE(0xc3, 0xc3) AM_READNOP				//watchdog?
+	AM_RANGE(0xe0, 0xff) AM_READ(prot_r)		//load math unit from buffer & lower address-bus
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wink_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -132,25 +132,25 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wink_sound_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(AY8910_control_port_0_w)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
+	AM_RANGE(0x80, 0x80) AM_WRITE(ay8910_control_port_0_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( wink )
-	PORT_START
+	PORT_START("DIAL1")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(3) PORT_REVERSE
 
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) // right curve
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) // left curve
+	PORT_START("INPUTS1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )	// right curve
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	// left curve
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON3 ) // slam
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON3 )	// slam
 
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, "1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -176,7 +176,7 @@ static INPUT_PORTS_START( wink )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, "2" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -202,7 +202,7 @@ static INPUT_PORTS_START( wink )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DSW3")
 	PORT_DIPNAME( 0x01, 0x01, "3" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -228,7 +228,7 @@ static INPUT_PORTS_START( wink )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DSW4")
 	PORT_DIPNAME( 0x01, 0x01, "Summary" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -290,7 +290,7 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( wink )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0, 4 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0, 4 )
 GFXDECODE_END
 
 static READ8_HANDLER( sound_r )
@@ -298,7 +298,7 @@ static READ8_HANDLER( sound_r )
 	return sound_flag;
 }
 
-static const struct AY8910interface ay8912_interface =
+static const ay8910_interface ay8912_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -321,12 +321,12 @@ static MACHINE_RESET( wink )
 
 static MACHINE_DRIVER_START( wink )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 12000000 / 4)
+	MDRV_CPU_ADD("main", Z80, 12000000 / 4)
 	MDRV_CPU_PROGRAM_MAP(wink_map,0)
 	MDRV_CPU_IO_MAP(wink_io,0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
-	MDRV_CPU_ADD(Z80, 12000000 / 8)
+	MDRV_CPU_ADD("audio", Z80, 12000000 / 8)
 	MDRV_CPU_PROGRAM_MAP(wink_sound_map,0)
 	MDRV_CPU_IO_MAP(wink_sound_io,0)
 	MDRV_CPU_PERIODIC_INT(wink_sound, 15625)
@@ -350,7 +350,7 @@ static MACHINE_DRIVER_START( wink )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910, 12000000 / 8) // AY8912 actually
+	MDRV_SOUND_ADD("ay", AY8910, 12000000 / 8) // AY8912 actually
 	MDRV_SOUND_CONFIG(ay8912_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -362,28 +362,28 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( wink )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "midcoin-wink00.rom", 0x0000, 0x4000, CRC(044f82d6) SHA1(4269333578c4fb14891b937c683aa5b105a193e7) )
 	ROM_LOAD( "midcoin-wink01.rom", 0x4000, 0x4000, CRC(acb0a392) SHA1(428c24845a27b8021823a4a930071b3b47108f01) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "midcoin-wink05.rom", 0x0000, 0x2000, CRC(c6c9d9cf) SHA1(99984905282c2310058d1ce93aec68d8a920b2c0) )
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "midcoin-wink02.rom", 0x0000, 0x2000, CRC(d1cd9d06) SHA1(3b3ce61a0516cc94663f6d3aff3fea46aceb771f) )
 	ROM_LOAD( "midcoin-wink03.rom", 0x2000, 0x2000, CRC(2346f50c) SHA1(a8535fcde0e9782ea61ad18443186fd5a6ebdc7d) )
 	ROM_LOAD( "midcoin-wink04.rom", 0x4000, 0x2000, CRC(06dd229b) SHA1(9057cf10e9ec4119297c2d40b26f0ce0c1d7b86a) )
 ROM_END
 
 ROM_START( winka )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "wink0.bin",    0x0000, 0x4000, CRC(554d86e5) SHA1(bf2de874a62d9137f79063d6ca1906b1ed0c87e6) )
 	ROM_LOAD( "wink1.bin",    0x4000, 0x4000, CRC(9d8ad539) SHA1(77246df8195f7e3f3b06edc08d344801bf62e1ba) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "wink5.bin",    0x0000, 0x2000, CRC(c6c9d9cf) SHA1(99984905282c2310058d1ce93aec68d8a920b2c0) )
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "wink2.bin",    0x0000, 0x2000, CRC(d1cd9d06) SHA1(3b3ce61a0516cc94663f6d3aff3fea46aceb771f) )
 	ROM_LOAD( "wink3.bin",    0x2000, 0x2000, CRC(2346f50c) SHA1(a8535fcde0e9782ea61ad18443186fd5a6ebdc7d) )
 	ROM_LOAD( "wink4.bin",    0x4000, 0x2000, CRC(06dd229b) SHA1(9057cf10e9ec4119297c2d40b26f0ce0c1d7b86a) )
@@ -392,7 +392,7 @@ ROM_END
 static DRIVER_INIT( wink )
 {
 	UINT32 i;
-	UINT8 *ROM = memory_region(machine, REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, "main");
 	UINT8 *buffer = malloc_or_die(0x8000);
 
 	// protection module reverse engineered by HIGHWAYMAN

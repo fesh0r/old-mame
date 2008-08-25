@@ -291,14 +291,14 @@ static READ16_HANDLER(ac_devices_r)
             */
 			return (ac_devram[offset]);
 		case 0x0016/2:
-			return OKIM6295_status_0_r(machine,0);
+			return okim6295_status_0_r(machine,0);
 		case 0x0018/2:
 			/*
                 ---- ---- ---- x--- Astronaut - switch
             */
 			return ac_devram[offset];
 		case 0x001a/2:
-			return OKIM6295_status_1_r(machine,0);
+			return okim6295_status_1_r(machine,0);
 		case 0x0040/2:
 			/*
                 x-x- x-x- x-x- xx-- (ACTIVE HIGH?) [eori #$aaac, D0]
@@ -329,14 +329,14 @@ static WRITE16_HANDLER(ac_devices_w)
 			if(ACCESSING_BITS_0_7)
 			{
 				logerror("Request to play sample %02x with rom 2\n",data);
-				OKIM6295_data_0_w(machine,0,data);
+				okim6295_data_0_w(machine,0,data);
 			}
 			break;
 		case 0x1a/2:
 			if(ACCESSING_BITS_0_7)
 			{
 				logerror("Request to play sample %02x with rom 1\n",data);
-				OKIM6295_data_1_w(machine,0,data);
+				okim6295_data_1_w(machine,0,data);
 			}
 			break;
 		case 0x1c/2:
@@ -375,7 +375,7 @@ static ADDRESS_MAP_START( acommand, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( acommand )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -425,7 +425,7 @@ static INPUT_PORTS_START( acommand )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -501,9 +501,9 @@ static const gfx_layout tilelayout =
 };
 
 static GFXDECODE_START( acommand )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0x2700, 16 ) /*???*/
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout, 0x1800, 256 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, tilelayout, 0x1800, 256 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0x2700, 16 ) /*???*/
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayout, 0x1800, 256 )
+	GFXDECODE_ENTRY( "gfx3", 0, tilelayout, 0x1800, 256 )
 GFXDECODE_END
 
 static INTERRUPT_GEN( acommand_irq )
@@ -517,7 +517,7 @@ static INTERRUPT_GEN( acommand_irq )
 static MACHINE_DRIVER_START( acommand )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000,12000000)
+	MDRV_CPU_ADD("main",M68000,12000000)
 	MDRV_CPU_PROGRAM_MAP(acommand,0)
 	MDRV_CPU_VBLANK_INT_HACK(acommand_irq,2)
 
@@ -537,12 +537,12 @@ static MACHINE_DRIVER_START( acommand )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 2400000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low)
+	MDRV_SOUND_ADD("oki1", OKIM6295, 2400000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7low)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(OKIM6295, 2400000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7low)
+	MDRV_SOUND_ADD("oki2", OKIM6295, 2400000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7low)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -553,17 +553,17 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( acommand )
-	ROM_REGION( 0x040000, REGION_CPU1, 0 )
+	ROM_REGION( 0x040000, "main", 0 )
 	ROM_LOAD16_BYTE( "jalcf3.bin",   0x000000, 0x020000, CRC(f031abf7) SHA1(e381742fd6a6df4ddae42ddb3a074a55dc550b3c) )
 	ROM_LOAD16_BYTE( "jalcf4.bin",   0x000001, 0x020000, CRC(dd0c0540) SHA1(3e788fcb30ae725bd0ec9b57424e3946db1e946f) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, 0 ) /* BG0 */
+	ROM_REGION( 0x20000, "gfx1", 0 ) /* BG0 */
 	ROM_LOAD( "jalcf6.bin",   0x000000, 0x020000, CRC(442173d6) SHA1(56c02bc2761967040127977ecabe844fc45e2218) )
 
-	ROM_REGION( 0x080000, REGION_GFX2, 0 ) /* BG1 */
+	ROM_REGION( 0x080000, "gfx2", 0 ) /* BG1 */
 	ROM_LOAD( "jalcf5.bin",   0x000000, 0x080000, CRC(ff0be97f) SHA1(5ccab778318dec30849d7b7f25091d4aab8bde32) )
 
-	ROM_REGION( 0x400000, REGION_GFX3, 0 ) /* SPR */
+	ROM_REGION( 0x400000, "gfx3", 0 ) /* SPR */
 	ROM_LOAD16_BYTE( "jalgp1.bin",   0x000000, 0x080000, CRC(c4aeeae2) SHA1(ee0d3dd93a604f8e1a96b55c4a1cd001d49f1157) )
 	ROM_LOAD16_BYTE( "jalgp2.bin",   0x000001, 0x080000, CRC(f0e4e80e) SHA1(08252ef8b5e309cce2d4654410142f4ae9e3ef22) )
 	ROM_LOAD16_BYTE( "jalgp3.bin",   0x100000, 0x080000, CRC(7acebd83) SHA1(64be95186d62003b637fcdf45a9c0b7aab182116) )
@@ -573,13 +573,13 @@ ROM_START( acommand )
 	ROM_LOAD16_BYTE( "jalgp7.bin",   0x300000, 0x080000, CRC(44b71098) SHA1(a6ec2573f9a266d4f8f315f6e99b12525011f512) )
 	ROM_LOAD16_BYTE( "jalgp8.bin",   0x300001, 0x080000, CRC(ce0b7838) SHA1(46e34971cb62565a3948d8c0a18086648c32e13b) )
 
-	ROM_REGION( 0x100000, REGION_SOUND2, 0 )
+	ROM_REGION( 0x100000, "oki2", 0 )
 	ROM_LOAD( "jalcf1.bin",   0x000000, 0x100000, CRC(24af21d3) SHA1(f68ab81a6c833b57ae9eef916a1c8578f3d893dd) )
 
-	ROM_REGION( 0x100000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x100000, "oki1", 0 )
 	ROM_LOAD( "jalcf2.bin",   0x000000, 0x100000, CRC(b982fd97) SHA1(35ee5b1b9be762ccfefda24d73e329ceea876deb) )
 
-	ROM_REGION( 0x100000, REGION_USER1, 0 ) /* ? these two below are identical*/
+	ROM_REGION( 0x100000, "user1", 0 ) /* ? these two below are identical*/
 	ROM_LOAD( "jalmr14.bin",   0x000000, 0x080000, CRC(9d428fb7) SHA1(02f72938d73db932bd217620a175a05215f6016a) )
 	ROM_LOAD( "jalmr17.bin",   0x080000, 0x080000, CRC(9d428fb7) SHA1(02f72938d73db932bd217620a175a05215f6016a) )
 ROM_END

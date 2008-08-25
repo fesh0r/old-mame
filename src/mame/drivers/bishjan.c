@@ -228,7 +228,7 @@ static READ16_HANDLER( bishjan_input_r )
 			res = input_port_read(machine, port[i]);
 
 	return	(res << 8) |
-			input_port_read(machine, "IN0") |
+			input_port_read(machine, "SYSTEM") |
 			((bishjan_hopper && !(video_screen_get_frame_number(machine->primary_screen)%10)) ? 0x00 : 0x04)	// bit 2: hopper sensor
 	;
 }
@@ -260,8 +260,8 @@ static WRITE16_HANDLER( bishjan_coin_w )
 static ADDRESS_MAP_START( bishjan_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_GLOBAL_MASK(0xffffff)
 
-	AM_RANGE( 0x000000, 0x07ffff ) AM_ROM AM_REGION(REGION_CPU1, 0)
-	AM_RANGE( 0x080000, 0x0fffff ) AM_ROM AM_REGION(REGION_CPU1, 0)
+	AM_RANGE( 0x000000, 0x07ffff ) AM_ROM AM_REGION("main", 0)
+	AM_RANGE( 0x080000, 0x0fffff ) AM_ROM AM_REGION("main", 0)
 
 	AM_RANGE( 0x200000, 0x207fff ) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)	// battery
 
@@ -289,11 +289,11 @@ static ADDRESS_MAP_START( bishjan_map, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE( 0xa00020, 0xa00025 ) AM_WRITE( SMH_RAM ) AM_BASE( &bishjan_scroll )
 
-	AM_RANGE( 0xc00000, 0xc00001 ) AM_READ( input_port_1_word_r )	// c00001 sw1
-	AM_RANGE( 0xc00002, 0xc00003 ) AM_READWRITE( input_port_2_word_r, bishjan_input_w )	// in c
+	AM_RANGE( 0xc00000, 0xc00001 ) AM_READ_PORT("DSW")	// c00001 sw1
+	AM_RANGE( 0xc00002, 0xc00003 ) AM_READ_PORT("JOY") AM_WRITE( bishjan_input_w )	// in c
 	AM_RANGE( 0xc00004, 0xc00005 ) AM_READ( bishjan_input_r )	// in a & b
 	AM_RANGE( 0xc00006, 0xc00007 ) AM_READ( bishjan_unk_r )		// c00006 in d ($18)
-	AM_RANGE( 0xc00008, 0xc00009 ) AM_READWRITE( input_port_0_word_r, bishjan_coin_w )	// c00009 reset
+	AM_RANGE( 0xc00008, 0xc00009 ) AM_READ_PORT("RESET") AM_WRITE( bishjan_coin_w )	// c00009 reset
 ADDRESS_MAP_END
 
 
@@ -313,7 +313,7 @@ static const gfx_layout bishjan_8x8_layout =
 };
 
 static GFXDECODE_START( bishjan )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, bishjan_8x8_layout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, bishjan_8x8_layout, 0, 1 )
 GFXDECODE_END
 
 
@@ -322,10 +322,10 @@ GFXDECODE_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( bishjan )
-	PORT_START_TAG("RESET")		/* IN0 - Reset */
+	PORT_START("RESET")		/* IN0 - Reset */
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Reset") PORT_CODE(KEYCODE_F1)
 
-	PORT_START_TAG("DSW")		/* IN1 - DSW(SW1) */
+	PORT_START("DSW")		/* IN1 - DSW(SW1) */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Controls ) )
 	PORT_DIPSETTING(      0x0001, "Keyboard" )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Joystick ) )
@@ -351,17 +351,17 @@ static INPUT_PORTS_START( bishjan )
 	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START_TAG("JOY")		/* IN2 - C */
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1			)	// start (joy)
+	PORT_START("JOY")		/* IN2 - C */
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1			) PORT_NAME("1 Player Start (Joy Mode)")	// start (joy)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	)	// down (joy)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN		)
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT	)	// left (joy)
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	)	// right (joy)
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON1		)	// n (joy)
-	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_MAHJONG_BET	)	// bet (joy)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_MAHJONG_BET	) PORT_NAME("P1 Mahjong Bet (Joy Mode)")	// bet (joy)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_BUTTON2		)	// select (joy)
 
-	PORT_START_TAG("IN0")		/* IN3 - A */
+	PORT_START("SYSTEM")		/* IN3 - A */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN		)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SERVICE		)	// test
 	PORT_BIT( 0x0004, IP_ACTIVE_HIGH,IPT_SPECIAL		)	// hopper sensor
@@ -371,7 +371,7 @@ static INPUT_PORTS_START( bishjan )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE3		)	// pay out? "hopper empty"
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN2			)	PORT_IMPULSE(2)	// coin
 
-	PORT_START_TAG("KEYB_0")	/* IN4 - B(1) */
+	PORT_START("KEYB_0")	/* IN4 - B(1) */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_A		)	// a
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_E		)	// e
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_I		)	// i
@@ -381,7 +381,7 @@ static INPUT_PORTS_START( bishjan )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN		)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN		)
 
-	PORT_START_TAG("KEYB_1")	/* IN5 - B(2) */
+	PORT_START("KEYB_1")	/* IN5 - B(2) */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_B		)	// b
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_F		)	// f
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_J		)	// j
@@ -391,7 +391,7 @@ static INPUT_PORTS_START( bishjan )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN		)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN		)
 
-	PORT_START_TAG("KEYB_2")	/* IN6 - B(3) */
+	PORT_START("KEYB_2")	/* IN6 - B(3) */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_C		)	// c
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_G		)	// g
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_K		)	// k
@@ -401,7 +401,7 @@ static INPUT_PORTS_START( bishjan )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN		)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN		)
 
-	PORT_START_TAG("KEYB_3")	/* IN7 - B(4) */
+	PORT_START("KEYB_3")	/* IN7 - B(4) */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_D		)	// d
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_H		)	// h
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_L		)	// l
@@ -411,7 +411,7 @@ static INPUT_PORTS_START( bishjan )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN		)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN		)
 
-	PORT_START_TAG("KEYB_4")	/* IN8 - B(5) */
+	PORT_START("KEYB_4")	/* IN8 - B(5) */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN		)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN		)	// g2
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN		)	// e2
@@ -441,7 +441,7 @@ static INTERRUPT_GEN( bishjan_interrupt )
 }
 
 static MACHINE_DRIVER_START( bishjan )
-	MDRV_CPU_ADD(H83044, 44100000/3)
+	MDRV_CPU_ADD("main", H83044, 44100000/3)
 	MDRV_CPU_PROGRAM_MAP( bishjan_map, 0 )
 	MDRV_CPU_VBLANK_INT_HACK(bishjan_interrupt,2)
 
@@ -466,22 +466,22 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( bishjan )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )		// H8/3044 program
+	ROM_REGION( 0x100000, "main", 0 )		// H8/3044 program
 	ROM_LOAD( "1-v203.u21", 0x000000, 0x080000, CRC(1f891d48) SHA1(0b6a5aa8b781ba8fc133289790419aa8ea21c400) )
 
-	ROM_REGION( 0x400000, REGION_GFX1, 0 )		// Tiles
+	ROM_REGION( 0x400000, "gfx1", 0 )		// Tiles
 	ROM_LOAD32_BYTE( "3-v201.u25", 0x000000, 0x100000, CRC(e013e647) SHA1(a5b0f82f3454393c1ea5e635b0d37735a25e2ea5) )
 	ROM_LOAD32_BYTE( "4-v201.u26", 0x000001, 0x100000, CRC(e0d40ef1) SHA1(95f80889103a7b93080b46387274cb1ffe0c8768) )
 	ROM_LOAD32_BYTE( "5-v201.u27", 0x000002, 0x100000, CRC(85067d40) SHA1(3ecf7851311a77a0dfca90775fcbf6faabe9c2ab) )
 	ROM_LOAD32_BYTE( "6-v201.u28", 0x000003, 0x100000, CRC(430bd9d7) SHA1(dadf5a7eb90cf2dc20f97dbf20a4b6c8e7734fb1) )
 
-	ROM_REGION( 0x100000, REGION_SOUND1, 0 )	// Samples
+	ROM_REGION( 0x100000, "samples", 0 )	// Samples
 	ROM_LOAD( "2-v201.u9", 0x000000, 0x100000, CRC(ea42764d) SHA1(13fe1cd30e474f4b092949c440068e9ddca79976) )
 ROM_END
 
 static DRIVER_INIT(bishjan)
 {
-	UINT16 *rom = (UINT16*)memory_region(machine, REGION_CPU1);
+	UINT16 *rom = (UINT16*)memory_region(machine, "main");
 
 	// check
 	rom[0x042EA/2] = 0x4008;

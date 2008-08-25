@@ -242,7 +242,7 @@ static TIMER_CALLBACK( music_playback )
 {
 	int pattern = 0;
 
-	if ((OKIM6295_status_0_r(machine,0) & 0x08) == 0)
+	if ((okim6295_status_0_r(machine,0) & 0x08) == 0)
 	{
 		if (sslam_bar != 0) {
 			sslam_bar += 1;
@@ -263,8 +263,8 @@ static TIMER_CALLBACK( music_playback )
 		}
 		if (pattern) {
 			logerror("Changing bar in music track to pattern %02x\n",pattern);
-			OKIM6295_data_0_w(machine,0,(0x80 | pattern));
-			OKIM6295_data_0_w(machine,0,0x81);
+			okim6295_data_0_w(machine,0,(0x80 | pattern));
+			okim6295_data_0_w(machine,0,0x81);
 		}
 	}
 //  {
@@ -276,7 +276,7 @@ static TIMER_CALLBACK( music_playback )
 
 static void sslam_play(running_machine *machine, int track, int data)
 {
-	int status = OKIM6295_status_0_r(machine,0);
+	int status = okim6295_status_0_r(machine,0);
 
 	if (data < 0x80) {
 		if (track) {
@@ -284,24 +284,24 @@ static void sslam_play(running_machine *machine, int track, int data)
 				sslam_track  = data;
 				sslam_bar = 1;
 				if (status & 0x08)
-					OKIM6295_data_0_w(machine,0,0x40);
-				OKIM6295_data_0_w(machine,0,(0x80 | data));
-				OKIM6295_data_0_w(machine,0,0x81);
+					okim6295_data_0_w(machine,0,0x40);
+				okim6295_data_0_w(machine,0,(0x80 | data));
+				okim6295_data_0_w(machine,0,0x81);
 				timer_adjust_periodic(music_timer, ATTOTIME_IN_MSEC(4), 0, ATTOTIME_IN_HZ(250));	/* 250Hz for smooth sequencing */
 			}
 		}
 		else {
 			if ((status & 0x01) == 0) {
-				OKIM6295_data_0_w(machine,0,(0x80 | data));
-				OKIM6295_data_0_w(machine,0,0x11);
+				okim6295_data_0_w(machine,0,(0x80 | data));
+				okim6295_data_0_w(machine,0,0x11);
 			}
 			else if ((status & 0x02) == 0) {
-				OKIM6295_data_0_w(machine,0,(0x80 | data));
-				OKIM6295_data_0_w(machine,0,0x21);
+				okim6295_data_0_w(machine,0,(0x80 | data));
+				okim6295_data_0_w(machine,0,0x21);
 			}
 			else if ((status & 0x04) == 0) {
-				OKIM6295_data_0_w(machine,0,(0x80 | data));
-				OKIM6295_data_0_w(machine,0,0x41);
+				okim6295_data_0_w(machine,0,(0x80 | data));
+				okim6295_data_0_w(machine,0,0x41);
 			}
 		}
 	}
@@ -313,7 +313,7 @@ static void sslam_play(running_machine *machine, int track, int data)
 			sslam_bar = 0;
 		}
 		data &= 0x7f;
-		OKIM6295_data_0_w(machine,0,data);
+		okim6295_data_0_w(machine,0,data);
 	}
 }
 
@@ -346,13 +346,13 @@ static WRITE16_HANDLER( sslam_snd_w )
 			else if (sslam_sound >= 0x70) {
 				/* These vocals are in bank 1, but a bug in the actual MCU doesn't set the bank */
 //              if (sslam_snd_bank != 1)
-//                  OKIM6295_set_bank_base(0, (1 * 0x40000));
+//                  okim6295_set_bank_base(0, (1 * 0x40000));
 //              sslam_snd_bank = 1;
 				sslam_play(machine, 0, sslam_sound);
 			}
 			else if (sslam_sound >= 0x69) {
 				if (sslam_snd_bank != 2)
-					OKIM6295_set_bank_base(0, (2 * 0x40000));
+					okim6295_set_bank_base(0, (2 * 0x40000));
 				sslam_snd_bank = 2;
 				switch (sslam_sound)
 				{
@@ -365,14 +365,14 @@ static WRITE16_HANDLER( sslam_snd_w )
 			}
 			else if (sslam_sound >= 0x65) {
 				if (sslam_snd_bank != 1)
-					OKIM6295_set_bank_base(0, (1 * 0x40000));
+					okim6295_set_bank_base(0, (1 * 0x40000));
 				sslam_snd_bank = 1;
 				sslam_melody = 4;
 				sslam_play(machine, sslam_melody, sslam_sound);
 			}
 			else if (sslam_sound >= 0x60) {
 				if (sslam_snd_bank != 0)
-					OKIM6295_set_bank_base(0, (0 * 0x40000));
+					okim6295_set_bank_base(0, (0 * 0x40000));
 				sslam_snd_bank = 0;
 				switch (sslam_sound)
 				{
@@ -456,7 +456,7 @@ static READ8_HANDLER( playmark_snd_command_r )
 		data = soundlatch_r(machine,0);
 	}
 	else if ((playmark_oki_control & 0x38) == 0x28) {
-		data = (OKIM6295_status_0_r(machine,0) & 0x0f);
+		data = (okim6295_status_0_r(machine,0) & 0x0f);
 	}
 
 	return data;
@@ -476,13 +476,13 @@ static WRITE8_HANDLER( playmark_snd_control_w )
 		if(playmark_oki_bank != ((data & 3) - 1))
 		{
 			playmark_oki_bank = (data & 3) - 1;
-			OKIM6295_set_bank_base(0, 0x40000 * playmark_oki_bank);
+			okim6295_set_bank_base(0, 0x40000 * playmark_oki_bank);
 		}
 	}
 
 	if ((data & 0x38) == 0x18)
 	{
-		OKIM6295_data_0_w(machine, 0, playmark_oki_command);
+		okim6295_data_0_w(machine, 0, playmark_oki_command);
 	}
 
 //  !(data & 0x80) -> sound enable
@@ -501,7 +501,7 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( sslam )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -511,7 +511,7 @@ static INPUT_PORTS_START( sslam )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN4 )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -521,7 +521,7 @@ static INPUT_PORTS_START( sslam )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -531,7 +531,7 @@ static INPUT_PORTS_START( sslam )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
@@ -541,7 +541,7 @@ static INPUT_PORTS_START( sslam )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START3 )
 
-	PORT_START_TAG("IN4")
+	PORT_START("IN4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(4)
@@ -551,7 +551,7 @@ static INPUT_PORTS_START( sslam )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START4 )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x07, 0x07, "Coin(s) per Player" )	PORT_DIPLOCATION("SW2:1,2,3")
 	PORT_DIPSETTING(    0x07, "1" )
 	PORT_DIPSETTING(    0x06, "2" )
@@ -577,7 +577,7 @@ static INPUT_PORTS_START( sslam )
 	PORT_DIPSETTING(    0x80, "Common" )
 	PORT_DIPSETTING(    0x00, "Individual" )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Unknown ) )		PORT_DIPLOCATION("SW1:1,2")	// 0x000522 = 0x00400e
 	PORT_DIPSETTING(    0x03, "0" )
 	PORT_DIPSETTING(    0x02, "1" )
@@ -603,7 +603,7 @@ static INPUT_PORTS_START( sslam )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( powerbls )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -613,7 +613,7 @@ static INPUT_PORTS_START( powerbls )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -623,7 +623,7 @@ static INPUT_PORTS_START( powerbls )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -633,7 +633,7 @@ static INPUT_PORTS_START( powerbls )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Difficulty ) )		PORT_DIPLOCATION("SW1:1,2")
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Hard ) )
@@ -657,7 +657,7 @@ static INPUT_PORTS_START( powerbls )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )			PORT_DIPLOCATION("SW2:1,2,3")
 	PORT_DIPSETTING(    0x07, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_4C ) )
@@ -711,15 +711,15 @@ static const gfx_layout tiles16x16_layout =
 };
 
 static GFXDECODE_START( sslam )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles8x8_layout,   0x300, 16 ) /* spr */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles16x16_layout,     0, 16 ) /* bg */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles16x16_layout, 0x100, 16 ) /* mid */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout,   0x200, 16 ) /* tx */
+	GFXDECODE_ENTRY( "gfx2", 0, tiles8x8_layout,   0x300, 16 ) /* spr */
+	GFXDECODE_ENTRY( "gfx1", 0, tiles16x16_layout,     0, 16 ) /* bg */
+	GFXDECODE_ENTRY( "gfx1", 0, tiles16x16_layout, 0x100, 16 ) /* mid */
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout,   0x200, 16 ) /* tx */
 GFXDECODE_END
 
 static GFXDECODE_START( powerbls )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles8x8_layout,   0x100, 16 ) /* spr */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout,       0, 16 ) /* bg */
+	GFXDECODE_ENTRY( "gfx2", 0, tiles8x8_layout,   0x100, 16 ) /* spr */
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout,       0, 16 ) /* bg */
 GFXDECODE_END
 
 
@@ -728,11 +728,11 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( sslam )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
+	MDRV_CPU_ADD("main", M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(sslam_program_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
-	MDRV_CPU_ADD(I8051, 12000000)
+	MDRV_CPU_ADD("audio", I8051, 12000000)
 	MDRV_CPU_FLAGS(CPU_DISABLE)		/* Internal code is not dumped - 2 boards were protected */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(0,0)
@@ -754,19 +754,19 @@ static MACHINE_DRIVER_START( sslam )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki", OKIM6295, 1000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( powerbls )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
+	MDRV_CPU_ADD("main", M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(powerbls_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
-	MDRV_CPU_ADD(I8051, 12000000)
+	MDRV_CPU_ADD("audio", I8051, 12000000)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 
@@ -787,15 +787,15 @@ static MACHINE_DRIVER_START( powerbls )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000)	/* verified on original PCB */
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki", OKIM6295, 1000000)	/* verified on original PCB */
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 
 /* maybe one dump is bad .. which? -> 2nd set was verified good from 2 pcbs */
 
 ROM_START( sslam )
-	ROM_REGION( 0x1000000, REGION_CPU1, ROMREGION_ERASE00 ) /* 68000 Code */
+	ROM_REGION( 0x1000000, "main", ROMREGION_ERASE00 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "2.u67", 0x00000, 0x80000, CRC(1ce52917) SHA1(b9b1d14ea44c248ce6e615c5c553c0d485c1302b) )
 	ROM_RELOAD ( 0x100000, 0x80000 )
 	ROM_RELOAD ( 0x200000, 0x80000 )
@@ -829,16 +829,16 @@ ROM_START( sslam )
 	ROM_RELOAD ( 0xe00001, 0x80000 )
 	ROM_RELOAD ( 0xf00001, 0x80000 )
 
-	ROM_REGION( 0x0800, REGION_CPU2, 0 )
+	ROM_REGION( 0x0800, "audio", 0 )
 	ROM_LOAD( "s87c751.bin",  0x0000, 0x0800, NO_DUMP )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE  ) /* Bg */
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE  ) /* Bg */
 	ROM_LOAD( "7.u45",     0x000000, 0x80000, CRC(64ecdde9) SHA1(576ba1169d90970622249e532baa4209bf12de5a) )
 	ROM_LOAD( "6.u39",     0x080000, 0x80000, CRC(6928065c) SHA1(ad5b1889bebf0358df0295d6041b798ac53ac625) )
 	ROM_LOAD( "5.u42",     0x100000, 0x80000, CRC(8d18bdc6) SHA1(cacc4f475f85438a00ead4911730202e995983a7) )
 	ROM_LOAD( "4.u36",     0x180000, 0x80000, CRC(8e15fb9d) SHA1(47917d8aac1bce2e15f36904f5c2534e5b80236b) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE  ) /* Sprites */
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE  ) /* Sprites */
 	ROM_LOAD( "8.u83",     0x000000, 0x80000, CRC(19bb89dd) SHA1(c2a0c32d350a193d366b5086502998281fd0bec4) )
 	ROM_LOAD( "9.u84",     0x080000, 0x80000, CRC(d50d86c7) SHA1(7ecbcc03851a8174610f7f5ad889e40543da928e) )
 	ROM_LOAD( "10.u85",    0x100000, 0x80000, CRC(681b8ac8) SHA1(ebfeffc091f53af246311574b9c5d83d2716a7be) )
@@ -846,16 +846,16 @@ ROM_START( sslam )
 
 	/* $00000-$20000 stays the same in all sound banks, */
 	/* the second half of the bank is the area that gets switched */
-	ROM_REGION( 0xc0000, REGION_SOUND1, 0 ) /* OKI Samples */
+	ROM_REGION( 0xc0000, "oki", 0 ) /* OKI Samples */
 	ROM_LOAD( "3.u13",       0x00000, 0x40000, CRC(d0a9245f) SHA1(2e840cdd7bdfe7c6f986daf88576de0559597499) )
 	ROM_CONTINUE(            0x60000, 0x20000 )
 	ROM_CONTINUE(            0xa0000, 0x20000 )
-	ROM_COPY( REGION_SOUND1, 0x00000, 0x40000, 0x20000)
-	ROM_COPY( REGION_SOUND1, 0x00000, 0x80000, 0x20000)
+	ROM_COPY( "oki", 0x00000, 0x40000, 0x20000)
+	ROM_COPY( "oki", 0x00000, 0x80000, 0x20000)
 ROM_END
 
 ROM_START( sslama )
-	ROM_REGION( 0x1000000, REGION_CPU1, ROMREGION_ERASE00 ) /* 68000 Code */
+	ROM_REGION( 0x1000000, "main", ROMREGION_ERASE00 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "2.u67", 0x00000, 0x80000, CRC(1ce52917) SHA1(b9b1d14ea44c248ce6e615c5c553c0d485c1302b) )
 	ROM_RELOAD ( 0x100000, 0x80000 )
 	ROM_RELOAD ( 0x200000, 0x80000 )
@@ -889,16 +889,16 @@ ROM_START( sslama )
 	ROM_RELOAD ( 0xe00001, 0x80000 )
 	ROM_RELOAD ( 0xf00001, 0x80000 )
 
-	ROM_REGION( 0x0800, REGION_CPU2, 0 )
+	ROM_REGION( 0x0800, "audio", 0 )
 	ROM_LOAD( "s87c751.bin",  0x0000, 0x0800, NO_DUMP )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE  ) /* Bg */
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE  ) /* Bg */
 	ROM_LOAD( "7.u45",     0x000000, 0x80000, CRC(64ecdde9) SHA1(576ba1169d90970622249e532baa4209bf12de5a) )
 	ROM_LOAD( "6.u39",     0x080000, 0x80000, CRC(6928065c) SHA1(ad5b1889bebf0358df0295d6041b798ac53ac625) )
 	ROM_LOAD( "5.u42",     0x100000, 0x80000, CRC(8d18bdc6) SHA1(cacc4f475f85438a00ead4911730202e995983a7) )
 	ROM_LOAD( "4.u36",     0x180000, 0x80000, CRC(8e15fb9d) SHA1(47917d8aac1bce2e15f36904f5c2534e5b80236b) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE  ) /* Sprites */
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE  ) /* Sprites */
 	ROM_LOAD( "8.u83",     0x000000, 0x80000, CRC(19bb89dd) SHA1(c2a0c32d350a193d366b5086502998281fd0bec4) )
 	ROM_LOAD( "9.u84",     0x080000, 0x80000, CRC(d50d86c7) SHA1(7ecbcc03851a8174610f7f5ad889e40543da928e) )
 	ROM_LOAD( "10.u85",    0x100000, 0x80000, CRC(681b8ac8) SHA1(ebfeffc091f53af246311574b9c5d83d2716a7be) )
@@ -906,30 +906,30 @@ ROM_START( sslama )
 
 	/* $00000-$20000 stays the same in all sound banks, */
 	/* the second half of the bank is the area that gets switched */
-	ROM_REGION( 0xc0000, REGION_SOUND1, 0 ) /* OKI Samples */
+	ROM_REGION( 0xc0000, "oki", 0 ) /* OKI Samples */
 	ROM_LOAD( "3.u13",       0x00000, 0x40000, CRC(d0a9245f) SHA1(2e840cdd7bdfe7c6f986daf88576de0559597499) )
 	ROM_CONTINUE(            0x60000, 0x20000 )
 	ROM_CONTINUE(            0xa0000, 0x20000 )
-	ROM_COPY( REGION_SOUND1, 0x00000, 0x40000, 0x20000)
-	ROM_COPY( REGION_SOUND1, 0x00000, 0x80000, 0x20000)
+	ROM_COPY( "oki", 0x00000, 0x40000, 0x20000)
+	ROM_COPY( "oki", 0x00000, 0x80000, 0x20000)
 ROM_END
 
 // it's a conversion for a sslam pcb
 ROM_START( powerbls )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x80000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "21.u67", 0x00000, 0x40000, CRC(4e302381) SHA1(5685d15fd3137866093ff13b95a7df2265a8bc64) )
 	ROM_LOAD16_BYTE( "22.u66", 0x00001, 0x40000, CRC(89b70599) SHA1(57a5d71e4d8ca62fffe2e81116c5236d2194ae11) )
 
-	ROM_REGION( 0x0800, REGION_CPU2, 0 )
+	ROM_REGION( 0x0800, "audio", 0 )
 	ROM_LOAD( "s87c751.bin",  0x0000, 0x0800, CRC(5b8b2d3a) SHA1(c3409243dfc0ca959a80f6890c87b4ce9eb0741d) )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE  ) /* Bg */
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE  ) /* Bg */
 	ROM_LOAD( "26.u45",    0x000000, 0x80000, CRC(fc9d25c7) SHA1(057702753eddffb9e7bff76311c5e8891343174b) )
 	ROM_LOAD( "25.u39",    0x080000, 0x80000, CRC(f20ea774) SHA1(fd284a5ee2cd9d1b5db53225bdfb31dc5bd3f581) )
 	ROM_LOAD( "24.u42",    0x100000, 0x80000, CRC(e1829809) SHA1(2fdf0b5580609bff0040c909d2e1ff9fae7dcc9c) )
 	ROM_LOAD( "23.u36",    0x180000, 0x80000, CRC(7805275e) SHA1(f0499cf4c84704a6de93a2a1a229af6068ad8771) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE  ) /* Sprites */
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE  ) /* Sprites */
 	ROM_LOAD( "27.u83",    0x000000, 0x80000, CRC(92d7d40a) SHA1(81879945790feb9aeb45750e9b5ded3356571503) )
 	ROM_LOAD( "28.u84",    0x080000, 0x80000, CRC(90412135) SHA1(499619c72613a1dd63a6504e39b159a18a71f4fa) )
 	ROM_LOAD( "29.u85",    0x100000, 0x80000, CRC(e7bcd2e7) SHA1(01a5e5ac5da2fd79a0c9088f775096b9915bae92) )
@@ -937,12 +937,12 @@ ROM_START( powerbls )
 
 	/* $00000-$20000 stays the same in all sound banks, */
 	/* the second half of the bank is the area that gets switched */
-	ROM_REGION( 0xc0000, REGION_SOUND1, 0 ) /* OKI Samples */
+	ROM_REGION( 0xc0000, "oki", 0 ) /* OKI Samples */
 	ROM_LOAD( "20.i013",     0x00000, 0x40000, CRC(12776dbc) SHA1(9ab9930fd581296642834d2cb4ba65264a588af3) )
 	ROM_CONTINUE(            0x60000, 0x20000 )
 	ROM_CONTINUE(            0xa0000, 0x20000 )
-	ROM_COPY( REGION_SOUND1, 0x00000, 0x40000, 0x20000)
-	ROM_COPY( REGION_SOUND1, 0x00000, 0x80000, 0x20000)
+	ROM_COPY( "oki", 0x00000, 0x40000, 0x20000)
+	ROM_COPY( "oki", 0x00000, 0x80000, 0x20000)
 ROM_END
 
 static DRIVER_INIT( sslam )

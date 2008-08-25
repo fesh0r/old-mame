@@ -43,7 +43,7 @@ PALETTE_INIT( wiping );
 VIDEO_UPDATE( wiping );
 
 extern UINT8 *wiping_soundregs;
-void *wiping_sh_start(int clock, const struct CustomSound_interface *config);
+void *wiping_sh_start(int clock, const custom_sound_interface *config);
 WRITE8_HANDLER( wiping_sound_w );
 
 
@@ -74,11 +74,11 @@ static WRITE8_HANDLER( shared2_w )
 static READ8_HANDLER( ports_r )
 {
 	int i,res;
-
+	static const char *port[] = { "P1", "P2", "IN2", "IN3", "IN4", "IN5", "SYSTEM", "DSW" };
 
 	res = 0;
-	for (i = 0;i < 8;i++)
-		res |= ((input_port_read_indexed(machine, i) >> offset) & 1) << i;
+	for (i = 0; i < 8; i++)
+		res |= ((input_port_read(machine, port[i]) >> offset) & 1) << i;
 
 	return res;
 }
@@ -118,7 +118,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( wiping )
-	PORT_START	/* 0 */
+	PORT_START("P1")	/* 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY
@@ -126,7 +126,7 @@ static INPUT_PORTS_START( wiping )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0xe0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 1 */
+	PORT_START("P2")	/* 1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
@@ -134,15 +134,19 @@ static INPUT_PORTS_START( wiping )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0xe0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 2 */
+	PORT_START("IN2")	/* 2 */
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 3 */
+	PORT_START("IN3")	/* 3 */
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 4 */
+	PORT_START("IN4")	/* 4 */
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 5 */
+	PORT_START("IN5")	/* 5 */
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 6 */
+	PORT_START("SYSTEM")	/* 6 */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x05, IP_ACTIVE_LOW, IPT_COIN2 )	/* note that this changes two bits */
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_START1 )
@@ -155,7 +159,7 @@ static INPUT_PORTS_START( wiping )
 	PORT_DIPSETTING(    0x00, "30000 70000" )
 	PORT_DIPSETTING(    0x80, "50000 150000" )
 
-	PORT_START	/* 7 */
+	PORT_START("DSW")	/* 7 */
 	PORT_DIPNAME( 0x07, 0x01, DEF_STR( Coin_B )  )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
@@ -183,7 +187,7 @@ INPUT_PORTS_END
 
 /* identical apart from bonus life */
 static INPUT_PORTS_START( rugrats )
-	PORT_START	/* 0 */
+	PORT_START("P1")	/* 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY
@@ -191,7 +195,7 @@ static INPUT_PORTS_START( rugrats )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0xe0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 1 */
+	PORT_START("P2")	/* 1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
@@ -199,15 +203,19 @@ static INPUT_PORTS_START( rugrats )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0xe0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 2 */
+	PORT_START("IN2")	/* 2 */
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 3 */
+	PORT_START("IN3")	/* 3 */
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 4 */
+	PORT_START("IN4")	/* 4 */
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 5 */
+	PORT_START("IN5")	/* 5 */
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* 6 */
+	PORT_START("SYSTEM")	/* 6 */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x05, IP_ACTIVE_LOW, IPT_COIN2 )	/* note that this changes two bits */
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_START1 )
@@ -220,7 +228,7 @@ static INPUT_PORTS_START( rugrats )
 	PORT_DIPSETTING(    0x00, "100000 200000" )
 	PORT_DIPSETTING(    0x80, "150000 300000" )
 
-	PORT_START	/* 7 */
+	PORT_START("DSW")	/* 7 */
 	PORT_DIPNAME( 0x07, 0x01, DEF_STR( Coin_B )  )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
@@ -273,13 +281,13 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( wiping )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,      0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 64*4, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,      0, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 64*4, 64 )
 GFXDECODE_END
 
 
 
-static const struct CustomSound_interface custom_interface =
+static const custom_sound_interface custom_interface =
 {
 	wiping_sh_start
 };
@@ -289,12 +297,11 @@ static const struct CustomSound_interface custom_interface =
 static MACHINE_DRIVER_START( wiping )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("main", Z80,18432000/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80,18432000/6)
-	/* audio CPU */	/* 3.072 MHz */
+	MDRV_CPU_ADD("audio", Z80,18432000/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold,120)	/* periodic interrupt, don't know about the frequency */
 
@@ -315,7 +322,7 @@ static MACHINE_DRIVER_START( wiping )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("wiping", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(custom_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -329,59 +336,59 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( wiping )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* main cpu code */
+	ROM_REGION( 0x10000, "main", 0 )	/* main cpu code */
 	ROM_LOAD( "1",            0x0000, 0x2000, CRC(b55d0d19) SHA1(dac6096d3ee9dd8b1b6da5c2c613b54ce303cb7b) )
 	ROM_LOAD( "2",            0x2000, 0x2000, CRC(b1f96e47) SHA1(8f3f882a3c366e6a2d2682603d425eb0491b5487) )
 	ROM_LOAD( "3",            0x4000, 0x2000, CRC(c67bab5a) SHA1(3d74ed4be5a6bdc02cf1feb3ce3f4b1607ec6b80) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* sound cpu */
+	ROM_REGION( 0x10000, "audio", 0 )	/* sound cpu */
 	ROM_LOAD( "4",            0x0000, 0x1000, CRC(a1547e18) SHA1(1f86d770e42ff1d94bf1f8b12f9b74accc3bb193) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "8",            0x0000, 0x1000, CRC(601160f6) SHA1(2465a1319d442a96d3b1b5e3ad544b0a0126762c) ) /* chars */
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "7",            0x0000, 0x2000, CRC(2c2cc054) SHA1(31851983de61bb8616856b0067c4e237819df5fb) ) /* sprites */
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "wip-g13.bin",  0x0000, 0x0020, CRC(b858b897) SHA1(5fc87e210bdaa675fdf8c6762526c345bd451eab) )	/* palette */
 	ROM_LOAD( "wip-f4.bin",   0x0020, 0x0100, CRC(3f56c8d5) SHA1(7d279b2f29911c44b4136068770accf7196057d7) )	/* char lookup table */
 	ROM_LOAD( "wip-e11.bin",  0x0120, 0x0100, CRC(e7400715) SHA1(c67193e5f0a43942ddf03058a0bb8b3275308459) )	/* sprite lookup table */
 
-	ROM_REGION( 0x4000, REGION_SOUND1, 0 )	/* samples */
+	ROM_REGION( 0x4000, "samples", 0 )	/* samples */
 	ROM_LOAD( "rugr5c8",	  0x0000, 0x2000, CRC(67bafbbf) SHA1(2085492b58ce44f61a42320c54595b79fdf7a91c) )
 	ROM_LOAD( "rugr6c9",	  0x2000, 0x2000, CRC(cac84a87) SHA1(90f6c514d0cdbeb4c8c979597db79ebcdf443df4) )
 
-	ROM_REGION( 0x0200, REGION_SOUND2, 0 )	/* 4bit->8bit sample expansion PROMs */
+	ROM_REGION( 0x0200, "soundproms", 0 )	/* 4bit->8bit sample expansion PROMs */
 	ROM_LOAD( "wip-e8.bin",   0x0000, 0x0100, CRC(bd2c080b) SHA1(9782bb5001e96db56bc29df398187f700bce4f8e) )	/* low 4 bits */
 	ROM_LOAD( "wip-e9.bin",   0x0100, 0x0100, CRC(4017a2a6) SHA1(dadef2de7a1119758c8e6d397aa42815b0218889) )	/* high 4 bits */
 ROM_END
 
 ROM_START( rugrats )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* main cpu code */
+	ROM_REGION( 0x10000, "main", 0 )	/* main cpu code */
 	ROM_LOAD( "rugr1d1",      0x0000, 0x2000, CRC(e7e1bd6d) SHA1(985799b1bfd001c6304e6166180745cb019f834e) )
 	ROM_LOAD( "rugr2d2",      0x2000, 0x2000, CRC(5f47b9ad) SHA1(2d3eb737ea8e86691293e432e866d2623d6b6b1b) )
 	ROM_LOAD( "rugr3d3",      0x4000, 0x2000, CRC(3d748d1a) SHA1(2b301119b6eb3f0f9bb2ad734cff1d25365dfe99) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* sound cpu */
+	ROM_REGION( 0x10000, "audio", 0 )	/* sound cpu */
 	ROM_LOAD( "rugr4c4",      0x0000, 0x2000, CRC(d4a92c38) SHA1(4a31cfef9f084b4d2934595155bf0f3dd589efb3) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "rugr8d2",      0x0000, 0x1000, CRC(a3dcaca5) SHA1(d71f9090bf95dfd035ee0e0619a1cce575033cf3) ) /* chars */
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "rugr7c13",     0x0000, 0x2000, CRC(fe1191dd) SHA1(80ebf093f7a32f4cc9dc89dcc44cab6e3db4fca1) ) /* sprites */
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "prom.13g",     0x0000, 0x0020, CRC(f21238f0) SHA1(944627d1551453c7f828d96b83fd4eeb038b20ad) )	/* palette */
 	ROM_LOAD( "prom.4f",      0x0020, 0x0100, CRC(cfc90f3d) SHA1(99f7dc0d14c62d4c676c96310c219c696c9a7897) )	/* char lookup table */
 	ROM_LOAD( "prom.11e",     0x0120, 0x0100, CRC(cfc90f3d) SHA1(99f7dc0d14c62d4c676c96310c219c696c9a7897) )	/* sprite lookup table */
 
-	ROM_REGION( 0x4000, REGION_SOUND1, 0 )	/* samples */
+	ROM_REGION( 0x4000, "samples", 0 )	/* samples */
 	ROM_LOAD( "rugr5c8",	  0x0000, 0x2000, CRC(67bafbbf) SHA1(2085492b58ce44f61a42320c54595b79fdf7a91c) )
 	ROM_LOAD( "rugr6c9",	  0x2000, 0x2000, CRC(cac84a87) SHA1(90f6c514d0cdbeb4c8c979597db79ebcdf443df4) )
 
-	ROM_REGION( 0x0200, REGION_SOUND2, 0 )	/* 4bit->8bit sample expansion PROMs */
+	ROM_REGION( 0x0200, "soundproms", 0 )	/* 4bit->8bit sample expansion PROMs */
 	ROM_LOAD( "wip-e8.bin",   0x0000, 0x0100, CRC(bd2c080b) SHA1(9782bb5001e96db56bc29df398187f700bce4f8e) )	/* low 4 bits */
 	ROM_LOAD( "wip-e9.bin",   0x0100, 0x0100, CRC(4017a2a6) SHA1(dadef2de7a1119758c8e6d397aa42815b0218889) )	/* high 4 bits */
 ROM_END

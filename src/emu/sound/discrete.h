@@ -1,7 +1,9 @@
-#ifndef _discrete_h_
-#define _discrete_h_
+#pragma once
 
-#include "rescap.h"
+#ifndef __DISCRETE_H__
+#define __DISCRETE_H__
+
+#include "machine/rescap.h"
 
 /***********************************************************************
  *
@@ -125,9 +127,9 @@
  * DISCRETE_SOUND_START(STRUCTURENAME)
  * DISCRETE_SOUND_END
  *
- * DISCRETE_ADJUSTMENT(NODE,ENAB,MIN,MAX,LOGLIN,PORT)
- * DISCRETE_ADJUSTMENT_TAG(NODE,ENAB,MIN,MAX,LOGLIN,TAG)
- * DISCRETE_ADJUSTMENTX(NODE,ENAB,MIN,MAX,LOGLIN,PORT,PMIN,PMAX)
+ * DISCRETE_ADJUSTMENT(NODE,MIN,MAX,LOGLIN,PORT)
+ * DISCRETE_ADJUSTMENT_TAG(NODE,MIN,MAX,LOGLIN,TAG)
+ * DISCRETE_ADJUSTMENTX(NODE,MIN,MAX,LOGLIN,PORT,PMIN,PMAX)
  * DISCRETE_CONSTANT(NODE,CONST0)
  * DISCRETE_INPUT_DATA(NODE)
  * DISCRETE_INPUTX_DATA(NODE,GAIN,OFFSET,INIT)
@@ -272,14 +274,12 @@
  *  Declaration syntax
  *
  *     DISCRETE_ADJUSTMENT(name of node,
- *                         enable node or static value,
  *                         static minimum value the node can take,
  *                         static maximum value the node can take,
  *                         log/linear scale 0=Linear !0=Logarithmic,
  *                         input port number of the adjuster)
  *
  *     DISCRETE_ADJUSTMENT_TAG(name of node,
- *                             enable node or static value,
  *                             static minimum value the node can take,
  *                             static maximum value the node can take,
  *                             log/linear scale 0=Linear !0=Logarithmic,
@@ -292,7 +292,7 @@
  *
  *  Example config line
  *
- *     DISCRETE_ADJUSTMENT(NODE_01,1,0.0,5.0,DISC_LINADJ,0,5)
+ *     DISCRETE_ADJUSTMENT(NODE_01,0.0,5.0,DISC_LINADJ,0,5)
  *
  *  Define an adjustment slider that takes a 0-100 input from input
  *  port #5, scaling between 0.0 and 5.0. Adjustment scaling is Linear.
@@ -3154,6 +3154,14 @@
 
 /*************************************
  *
+ *  Profiling Nodes
+ *
+ *************************************/
+
+#define DISCRETE_PROFILING			(0)
+
+/*************************************
+ *
  *  Core constants
  *
  *************************************/
@@ -3391,6 +3399,7 @@ typedef struct _discrete_sound_block discrete_sound_block;
 
 typedef struct _node_description node_description;
 
+typedef struct _discrete_module discrete_module;
 struct _discrete_module
 {
 	int				type;
@@ -3400,7 +3409,6 @@ struct _discrete_module
 	void (*reset)(node_description *node);	/* Called to reset a node after creation or system reset */
 	void (*step)(node_description *node);	/* Called to execute one time delta of output update */
 };
-typedef struct _discrete_module discrete_module;
 
 
 /*************************************
@@ -3423,6 +3431,9 @@ struct _node_description
 	void *			context;							/* Contextual information specific to this node type */
 	const char *	name;								/* Text name string for identification/debug */
 	const void *	custom;								/* Custom function specific initialisation data */
+#if (DISCRETE_PROFILING)
+	osd_ticks_t		run_time;
+#endif
 };
 
 
@@ -3433,6 +3444,7 @@ struct _node_description
  *
  *************************************/
 
+typedef struct _discrete_lfsr_desc discrete_lfsr_desc;
 struct _discrete_lfsr_desc
 {
 	int clock_type;
@@ -3452,9 +3464,9 @@ struct _discrete_lfsr_desc
 
 	int output_bit;
 };
-typedef struct _discrete_lfsr_desc discrete_lfsr_desc;
 
 
+typedef struct _discrete_op_amp_osc_info discrete_op_amp_osc_info;
 struct _discrete_op_amp_osc_info
 {
 	int		type;
@@ -3469,13 +3481,13 @@ struct _discrete_op_amp_osc_info
 	double	c;
 	double	vP;		// Op amp B+
 };
-typedef struct _discrete_op_amp_osc_info discrete_op_amp_osc_info;
 
 
 #define DEFAULT_7414_VALUES 	1.7, 0.9, 3.4
 
 #define DEFAULT_74LS14_VALUES 	1.6, 0.8, 3.4
 
+typedef struct _discrete_schmitt_osc_desc discrete_schmitt_osc_desc;
 struct _discrete_schmitt_osc_desc
 {
 	double	rIn;
@@ -3486,9 +3498,9 @@ struct _discrete_schmitt_osc_desc
 	double	vGate;		// the output high voltage of the gate that gets fedback through rFeedback
 	int		options;	// bitmaped options
 };
-typedef struct _discrete_schmitt_osc_desc discrete_schmitt_osc_desc;
 
 
+typedef struct _discrete_comp_adder_table discrete_comp_adder_table;
 struct _discrete_comp_adder_table
 {
 	int		type;
@@ -3496,9 +3508,9 @@ struct _discrete_comp_adder_table
 	int		length;
 	double	c[DISC_LADDER_MAXRES];	// Componet table
 };
-typedef struct _discrete_comp_adder_table discrete_comp_adder_table;
 
 
+typedef struct _discrete_dac_r1_ladder discrete_dac_r1_ladder;
 struct _discrete_dac_r1_ladder
 {
 	int		ladderLength;		// 2 to DISC_LADDER_MAXRES.  1 would be useless.
@@ -3508,9 +3520,9 @@ struct _discrete_dac_r1_ladder
 	double	rGnd;			// Resistor tied to ground (0 = not used)
 	double	cFilter;		// Filtering cap (0 = not used)
 };
-typedef struct _discrete_dac_r1_ladder discrete_dac_r1_ladder;
 
 
+typedef struct _discrete_integrate_info discrete_integrate_info;
 struct _discrete_integrate_info
 {
 	int		type;
@@ -3524,10 +3536,10 @@ struct _discrete_integrate_info
 	double	f1;
 	double	f2;
 };
-typedef struct _discrete_integrate_info discrete_integrate_info;
 
 
 #define DISC_MAX_MIXER_INPUTS	8
+typedef struct _discrete_mixer_desc discrete_mixer_desc;
 struct _discrete_mixer_desc
 {
 	int		type;
@@ -3541,9 +3553,9 @@ struct _discrete_mixer_desc
 	double	vRef;
 	double	gain;				// Scale value to get output close to +/- 32767
 };
-typedef struct _discrete_mixer_desc discrete_mixer_desc;
 
 
+typedef struct _discrete_op_amp_info discrete_op_amp_info;
 struct _discrete_op_amp_info
 {
 	int		type;
@@ -3555,9 +3567,9 @@ struct _discrete_op_amp_info
 	double	vN;		// Op amp B-
 	double	vP;		// Op amp B+
 };
-typedef struct _discrete_op_amp_info discrete_op_amp_info;
 
 
+typedef struct _discrete_op_amp_1sht_info discrete_op_amp_1sht_info;
 struct _discrete_op_amp_1sht_info
 {
 	int		type;
@@ -3571,9 +3583,9 @@ struct _discrete_op_amp_1sht_info
 	double	vN;		// Op amp B-
 	double	vP;		// Op amp B+
 };
-typedef struct _discrete_op_amp_1sht_info discrete_op_amp_1sht_info;
 
 
+typedef struct _discrete_op_amp_tvca_info discrete_op_amp_tvca_info;
 struct _discrete_op_amp_tvca_info
 {
 	double	r1;
@@ -3601,9 +3613,9 @@ struct _discrete_op_amp_tvca_info
 	int		f4;
 	int		f5;
 };
-typedef struct _discrete_op_amp_tvca_info discrete_op_amp_tvca_info;
 
 
+typedef struct _discrete_op_amp_filt_info discrete_op_amp_filt_info;
 struct _discrete_op_amp_filt_info
 {
 	double	r1;
@@ -3618,7 +3630,6 @@ struct _discrete_op_amp_filt_info
 	double	vP;
 	double	vN;
 };
-typedef struct _discrete_op_amp_filt_info discrete_op_amp_filt_info;
 
 
 #define DEFAULT_555_HIGH		-1
@@ -3626,6 +3637,7 @@ typedef struct _discrete_op_amp_filt_info discrete_op_amp_filt_info;
 #define DEFAULT_555_TRIGGER		-1
 #define DEFAULT_555_VALUES		DEFAULT_555_HIGH, DEFAULT_555_THRESHOLD, DEFAULT_555_TRIGGER
 
+typedef struct _discrete_555_desc discrete_555_desc;
 struct _discrete_555_desc
 {
 	int		options;		// bit mapped options
@@ -3634,9 +3646,9 @@ struct _discrete_555_desc
 	double	threshold555;	// normally 2/3 of v555
 	double	trigger555;		// normally 1/3 of v555
 };
-typedef struct _discrete_555_desc discrete_555_desc;
 
 
+typedef struct _discrete_555_cc_desc discrete_555_cc_desc;
 struct _discrete_555_cc_desc
 {
 	int		options;		// bit mapped options
@@ -3647,9 +3659,9 @@ struct _discrete_555_cc_desc
 	double	vCCsource;		// B+ voltage of the Constant Current source
 	double	vCCjunction;	// The voltage drop of the Constant Current source transitor (0 if Op Amp)
 };
-typedef struct _discrete_555_cc_desc discrete_555_cc_desc;
 
 
+typedef struct _discrete_555_vco1_desc discrete_555_vco1_desc;
 struct _discrete_555_vco1_desc
 {
 	int    options;				// bit mapped options
@@ -3659,18 +3671,18 @@ struct _discrete_555_vco1_desc
 	double threshold555;		// normally 2/3 of v555
 	double trigger555;			// normally 1/3 of v555
 };
-typedef struct _discrete_555_vco1_desc discrete_555_vco1_desc;
 
 
+typedef struct _discrete_566_desc discrete_566_desc;
 struct _discrete_566_desc
 {
 	int		options;	// bit mapped options
 	double	vPlus;		// B+ voltage of 566
 	double	vNeg;		// B- voltage of 566
 };
-typedef struct _discrete_566_desc discrete_566_desc;
 
 
+typedef struct _discrete_adsr discrete_adsr;
 struct _discrete_adsr
 {
 	double attack_time;  /* All times are in seconds */
@@ -3682,9 +3694,9 @@ struct _discrete_adsr
 	double release_time;
 	double release_value;
 };
-typedef struct _discrete_adsr discrete_adsr;
 
 
+typedef struct _discrete_custom_info discrete_custom_info;
 struct _discrete_custom_info
 {
 	void (*reset)(node_description *node);	/* Called to reset a node after creation or system reset */
@@ -3692,7 +3704,6 @@ struct _discrete_custom_info
 	size_t contextsize;
 	const void *custom;						/* Custom function specific initialisation data */
 };
-typedef struct _discrete_custom_info discrete_custom_info;
 
 
 // Taken from the transfer characteristerics diagram in CD4049UB datasheet (TI)
@@ -3709,6 +3720,7 @@ typedef struct _discrete_custom_info discrete_custom_info;
 
 #define DISC_OSC_INVERTER_OUT_IS_LOGIC		0x10
 
+typedef struct _discrete_inverter_osc_desc discrete_inverter_osc_desc;
 struct _discrete_inverter_osc_desc
 {
 	double	vB;
@@ -3719,7 +3731,6 @@ struct _discrete_inverter_osc_desc
 	double	clamp; 		// voltage is clamped to -clamp ... vb+clamp if clamp>= 0;
 	int		options;	// bitmaped options
 };
-typedef struct _discrete_inverter_osc_desc discrete_inverter_osc_desc;
 
 
 /*************************************
@@ -3930,9 +3941,9 @@ enum
 #define DISCRETE_SOUND_END                                              { NODE_00, DSS_NULL     , 0, { NODE_NC }, { 0 } ,NULL  ,"End Marker" }  };
 
 /* from disc_inp.c */
-#define DISCRETE_ADJUSTMENT(NODE,ENAB,MIN,MAX,LOGLIN,PORT)              { NODE, DSS_ADJUSTMENT  , 7, { ENAB,NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC }, { ENAB,MIN,MAX,LOGLIN,PORT,0   ,100  }, NULL  , "DISCRETE_ADJUSTMENT"  },
-#define DISCRETE_ADJUSTMENT_TAG(NODE,ENAB,MIN,MAX,LOGLIN,TAG)           { NODE, DSS_ADJUSTMENT  , 7, { ENAB,NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC }, { ENAB,MIN,MAX,LOGLIN,0   ,0   ,100  }, TAG   , "DISCRETE_ADJUSTMENT_TAG" },
-#define DISCRETE_ADJUSTMENTX(NODE,ENAB,MIN,MAX,LOGLIN,PORT,PMIN,PMAX)   { NODE, DSS_ADJUSTMENT  , 7, { ENAB,NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC }, { ENAB,MIN,MAX,LOGLIN,PORT,PMIN,PMAX }, NULL  , "DISCRETE_ADJUSTMENTX"  },
+#define DISCRETE_ADJUSTMENT(NODE,MIN,MAX,LOGLIN,PORT)                   { NODE, DSS_ADJUSTMENT  , 7, { NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC }, { MIN,MAX,LOGLIN,PORT,0   ,100  }, NULL  , "DISCRETE_ADJUSTMENT"  },
+#define DISCRETE_ADJUSTMENT_TAG(NODE,MIN,MAX,LOGLIN,TAG)                { NODE, DSS_ADJUSTMENT  , 7, { NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC }, { MIN,MAX,LOGLIN,0   ,0   ,100  }, TAG   , "DISCRETE_ADJUSTMENT_TAG" },
+#define DISCRETE_ADJUSTMENTX(NODE,MIN,MAX,LOGLIN,PORT,PMIN,PMAX)        { NODE, DSS_ADJUSTMENT  , 7, { NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC,NODE_NC }, { MIN,MAX,LOGLIN,PORT,PMIN,PMAX }, NULL  , "DISCRETE_ADJUSTMENTX"  },
 #define DISCRETE_CONSTANT(NODE,CONST)                                   { NODE, DSS_CONSTANT    , 1, { NODE_NC }, { CONST } ,NULL  ,"Constant" },
 #define DISCRETE_INPUT_DATA(NODE)                                       { NODE, DSS_INPUT_DATA  , 3, { NODE_NC,NODE_NC,NODE_NC }, { 1,0,0 }, NULL, "Input Data" },
 #define DISCRETE_INPUTX_DATA(NODE,GAIN,OFFSET,INIT)                     { NODE, DSS_INPUT_DATA  , 3, { NODE_NC,NODE_NC,NODE_NC }, { GAIN,OFFSET,INIT }, NULL, "InputX Data" },
@@ -4092,4 +4103,4 @@ node_description *discrete_find_node(void *chip, int node);
 WRITE8_HANDLER(discrete_sound_w);
 READ8_HANDLER(discrete_sound_r);
 
-#endif
+#endif /* __DISCRETE_H__ */

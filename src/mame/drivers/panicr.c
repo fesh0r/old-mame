@@ -126,8 +126,8 @@ static TILE_GET_INFO( get_bgtile_info )
 {
 	int code,attr;
 
-	code=memory_region(machine, REGION_USER1)[tile_index];
-	attr=memory_region(machine, REGION_USER2)[tile_index];
+	code=memory_region(machine, "user1")[tile_index];
+	attr=memory_region(machine, "user2")[tile_index];
 	code+=((attr&7)<<8);
 	SET_TILE_INFO(
 		1,
@@ -170,7 +170,7 @@ static ADDRESS_MAP_START( panicr_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x00000, 0x01fff) AM_RAM AM_BASE(&mainram)
 	AM_RANGE(0x02000, 0x02fff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x03000, 0x03fff) AM_RAM
-	AM_RANGE(0x08000, 0x0bfff) AM_RAM AM_REGION(REGION_USER3, 0) //attribue map ?
+	AM_RANGE(0x08000, 0x0bfff) AM_RAM AM_REGION("user3", 0) //attribue map ?
 	AM_RANGE(0x0c000, 0x0cfff) AM_RAM AM_BASE(&videoram)
 	AM_RANGE(0x0d000, 0x0d000) AM_WRITE(t5182_sound_irq_w)
 	AM_RANGE(0x0d002, 0x0d002) AM_READ(t5182_sharedram_semaphore_snd_r)
@@ -239,26 +239,26 @@ static INTERRUPT_GEN( panicr_interrupt )
 }
 
 static INPUT_PORTS_START( panicr )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) //left
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) //right
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) //shake 1
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1) //shake 2
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) //left
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) //right
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2) //shake 1
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2) //shake 2
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0xe7, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )	PORT_DIPLOCATION("SW1:8,7,6")
 	PORT_DIPSETTING(    0x00, DEF_STR( 5C_1C ))
 	PORT_DIPSETTING(    0x04, DEF_STR( 4C_1C ))
@@ -281,7 +281,7 @@ static INPUT_PORTS_START( panicr )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW2:8")
  	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -304,7 +304,7 @@ static INPUT_PORTS_START( panicr )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG(T5182COINPORT)
+	PORT_START(T5182COINPORT)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(2)
 INPUT_PORTS_END
@@ -350,17 +350,17 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( panicr )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0x000,  8 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout,   0x100, 16 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, spritelayout, 0x200, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,   0x000,  8 )
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayout,   0x100, 16 )
+	GFXDECODE_ENTRY( "gfx3", 0, spritelayout, 0x200, 16 )
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( panicr )
-	MDRV_CPU_ADD(V20,16000000/2) /* Sony 8623h9 CXQ70116D-8 (V20 compatible) */
+	MDRV_CPU_ADD("main", V20,16000000/2) /* Sony 8623h9 CXQ70116D-8 (V20 compatible) */
 	MDRV_CPU_PROGRAM_MAP(panicr_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(panicr_interrupt,2)
 
-	MDRV_CPU_ADD_TAG(CPUTAG_T5182,Z80,14318180/4)	/* 3.579545 MHz */
+	MDRV_CPU_ADD(CPUTAG_T5182,Z80,14318180/4)	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(t5182_map, 0)
 	MDRV_CPU_IO_MAP(t5182_io, 0)
 
@@ -381,7 +381,7 @@ static MACHINE_DRIVER_START( panicr )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, 14318180/4)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD("ym", YM2151, 14318180/4)	/* 3.579545 MHz */
 	MDRV_SOUND_CONFIG(t5182_ym2151_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 1.0)
 	MDRV_SOUND_ROUTE(1, "mono", 1.0)
@@ -389,37 +389,37 @@ static MACHINE_DRIVER_START( panicr )
 MACHINE_DRIVER_END
 
 ROM_START( panicr )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 ) /* v20 main cpu */
+	ROM_REGION( 0x200000, "main", 0 ) /* v20 main cpu */
 	ROM_LOAD16_BYTE("2.19m",   0x0f0000, 0x08000, CRC(3d48b0b5) SHA1(a6e8b38971a8964af463c16f32bb7dbd301dd314) )
 	ROM_LOAD16_BYTE("1.19n",   0x0f0001, 0x08000, CRC(674131b9) SHA1(63499cd5ad39e79e70f3ba7060680f0aa133f095) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Toshiba T5182 module */
+	ROM_REGION( 0x10000, "T5182", 0 ) /* Toshiba T5182 module */
 	ROM_LOAD( "t5182.rom", 0x0000, 0x2000, CRC(d354c8fc) SHA1(a1c9e1ac293f107f69cc5788cf6abc3db1646e33) )
 	ROM_LOAD( "22d.bin",   0x8000, 0x8000, CRC(eb1a46e1) SHA1(278859ae4bca9f421247e646d789fa1206dcd8fc) )
 
-	ROM_REGION( 0x04000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "13f.bin", 0x000000, 0x2000, CRC(4e6b3c04) SHA1(f388969d5d822df0eaa4d8300cbf9cee47468360) )
 	ROM_LOAD( "15f.bin", 0x002000, 0x2000, CRC(d735b572) SHA1(edcdb6daec97ac01a73c5010727b1694f512be71) )
 
-	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "2a.bin", 0x000000, 0x20000, CRC(3ac0e5b4) SHA1(96b8bdf02002ec8ce87fd47fd21f7797a79d79c9) )
 	ROM_LOAD( "2b.bin", 0x020000, 0x20000, CRC(567d327b) SHA1(762b18ef1627d71074ba02b0eb270bd9a01ac0d8) )
 	ROM_LOAD( "2c.bin", 0x040000, 0x20000, CRC(cd77ec79) SHA1(94b61b7d77c016ae274eddbb1e66e755f312e11d) )
 	ROM_LOAD( "2d.bin", 0x060000, 0x20000, CRC(218d2c3e) SHA1(9503b3b67e71dc63448aed7815845b844e240afe) )
 
-	ROM_REGION( 0x40000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x40000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "2j.bin", 0x000000, 0x20000, CRC(80f05923) SHA1(5c886446fd77d3c39cb4fa43ea4beb8c89d20636) )
 	ROM_LOAD( "2k.bin", 0x020000, 0x20000, CRC(35f07bca) SHA1(54e6f82c2e6e1373c3ac1c6138ef738e5a0be6d0) )
 
-	ROM_REGION( 0x04000, REGION_USER1, 0 )
+	ROM_REGION( 0x04000, "user1", 0 )
 	ROM_LOAD( "5d.bin", 0x00000, 0x4000, CRC(f3466906) SHA1(42b512ba93ba7ac958402d1871c5ae015def3501) ) //tilemaps
-	ROM_REGION( 0x04000, REGION_USER2, 0 )
+	ROM_REGION( 0x04000, "user2", 0 )
 	ROM_LOAD( "7d.bin", 0x00000, 0x4000, CRC(8032c1e9) SHA1(fcc8579c0117ebe9271cff31e14a30f61a9cf031) ) //attribute maps
 
-	ROM_REGION( 0x04000, REGION_USER3, 0 )
-	ROM_COPY( REGION_USER2, 0x0000, 0x0000, 0x4000 )
+	ROM_REGION( 0x04000, "user3", 0 )
+	ROM_COPY( "user2", 0x0000, 0x0000, 0x4000 )
 
-	ROM_REGION( 0x0800,  REGION_PROMS, 0 )
+	ROM_REGION( 0x0800,  "proms", 0 )
 	ROM_LOAD( "b.14c",   0x00000, 0x100, CRC(145d1e0d) SHA1(8073fd176a1805552a5ac00ca0d9189e6e8936b1) )	// red
 	ROM_LOAD( "a.15c",   0x00100, 0x100, CRC(c75772bc) SHA1(ec84052aedc1d53f9caba3232ffff17de69561b2) )	// green
 	ROM_LOAD( "c.13c",   0x00200, 0x100, CRC(11c11bbd) SHA1(73663b2cf7269a62011ee067a026269ce0c15a7c) )	// blue
@@ -438,8 +438,8 @@ static DRIVER_INIT( panicr )
 	int size;
 	int i;
 
-	rom = memory_region(machine, REGION_GFX1);
-	size = memory_region_length(machine, REGION_GFX1);
+	rom = memory_region(machine, "gfx1");
+	size = memory_region_length(machine, "gfx1");
 
 	// text data lines
 	for (i = 0;i < size/2;i++)
@@ -461,8 +461,8 @@ static DRIVER_INIT( panicr )
 	}
 
 
-	rom = memory_region(machine, REGION_GFX2);
-	size = memory_region_length(machine, REGION_GFX2);
+	rom = memory_region(machine, "gfx2");
+	size = memory_region_length(machine, "gfx2");
 
 	// tiles data lines
 	for (i = 0;i < size/4;i++)
@@ -488,8 +488,8 @@ static DRIVER_INIT( panicr )
 	}
 
 
-	rom = memory_region(machine, REGION_GFX3);
-	size = memory_region_length(machine, REGION_GFX3);
+	rom = memory_region(machine, "gfx3");
+	size = memory_region_length(machine, "gfx3");
 
 	// sprites data lines
 	for (i = 0;i < size/2;i++)
@@ -514,8 +514,8 @@ static DRIVER_INIT( panicr )
 
 	//rearrange  bg tilemaps a bit....
 
-	rom = memory_region(machine, REGION_USER1);
-	size = memory_region_length(machine, REGION_USER1);
+	rom = memory_region(machine, "user1");
+	size = memory_region_length(machine, "user1");
 	memcpy(buf,rom, size);
 
 	{
@@ -527,8 +527,8 @@ static DRIVER_INIT( panicr )
 			}
 	}
 
-	rom = memory_region(machine, REGION_USER2);
-	size = memory_region_length(machine, REGION_USER2);
+	rom = memory_region(machine, "user2");
+	size = memory_region_length(machine, "user2");
 
 	memcpy(buf,rom, size);
 	{

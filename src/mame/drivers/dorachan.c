@@ -75,7 +75,7 @@ static VIDEO_UPDATE( dorachan )
 
 	get_pens(pens);
 
-	color_map_base = memory_region(screen->machine, REGION_PROMS);
+	color_map_base = memory_region(screen->machine, "proms");
 
 	for (offs = 0; offs < dorachan_videoram_size; offs++)
 	{
@@ -134,10 +134,10 @@ static ADDRESS_MAP_START( dorachan_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x17ff) AM_ROM
 	AM_RANGE(0x1800, 0x1fff) AM_RAM
 	AM_RANGE(0x2000, 0x23ff) AM_ROM
-	AM_RANGE(0x2400, 0x2400) AM_MIRROR(0x03ff) AM_READ(input_port_0_r)
-	AM_RANGE(0x2800, 0x2800) AM_MIRROR(0x03ff) AM_READ(input_port_1_r)
-	AM_RANGE(0x2c00, 0x2c00) AM_MIRROR(0x03ff) AM_READ(input_port_2_r)
-	AM_RANGE(0x3800, 0x3800) AM_MIRROR(0x03ff) AM_READ(input_port_3_r)
+	AM_RANGE(0x2400, 0x2400) AM_MIRROR(0x03ff) AM_READ_PORT("PROT")
+	AM_RANGE(0x2800, 0x2800) AM_MIRROR(0x03ff) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x2c00, 0x2c00) AM_MIRROR(0x03ff) AM_READ_PORT("JOY")
+	AM_RANGE(0x3800, 0x3800) AM_MIRROR(0x03ff) AM_READ_PORT("V128")
 	AM_RANGE(0x4000, 0x5fff) AM_RAM AM_BASE(&dorachan_videoram) AM_SIZE(&dorachan_videoram_size)
 	AM_RANGE(0x6000, 0x77ff) AM_ROM
 ADDRESS_MAP_END
@@ -166,10 +166,10 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( dorachan )
-	PORT_START
-	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(dorachan_protection_r, 0)
+	PORT_START("PROT")
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(dorachan_protection_r, NULL)
 
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
@@ -185,7 +185,7 @@ static INPUT_PORTS_START( dorachan )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("JOY")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_COCKTAIL
@@ -195,8 +195,8 @@ static INPUT_PORTS_START( dorachan )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(dorachan_v128_r, 0)
+	PORT_START("V128")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(dorachan_v128_r, NULL)
 	PORT_BIT( 0xfe, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -211,7 +211,7 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( dorachan )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 2000000)
+	MDRV_CPU_ADD("main", Z80, 2000000)
 	MDRV_CPU_PROGRAM_MAP(dorachan_map,0)
 	MDRV_CPU_IO_MAP(dorachan_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
@@ -236,7 +236,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( dorachan )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "c1.e1",      0x0000, 0x0400, CRC(29d66a96) SHA1(a0297d87574af65c6ded99aeb377ac407f6f163f) )
 	ROM_LOAD( "d2.e2",      0x0400, 0x0400, CRC(144b6cd1) SHA1(195ce86e912a4b395097008c6d812fd75a1a2482) )
 	ROM_LOAD( "d3.e3",      0x0800, 0x0400, CRC(a9a1bed7) SHA1(98af6f851c4477f770b6bd67e5465b5a271311ee) )
@@ -251,7 +251,7 @@ ROM_START( dorachan )
 	ROM_LOAD( "d12.rom",    0x7000, 0x0400, CRC(275e5dc1) SHA1(ac07db4b428daa49a52c679de95ddedbea0076b9) )
 	ROM_LOAD( "d13.rom",    0x7400, 0x0400, CRC(24ccfcf9) SHA1(85e5052ee657f518b0509eb64e494bc3a74e651e) )
 
-	ROM_REGION( 0x0400, REGION_PROMS, 0 )  /* color map */
+	ROM_REGION( 0x0400, "proms", 0 )  /* color map */
 	ROM_LOAD( "d14.rom",    0x0000, 0x0400, CRC(c0d3ee84) SHA1(f2207c685ce8d5144a373c28f11d2cebf9518b65) )
 ROM_END
 

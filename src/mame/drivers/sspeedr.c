@@ -154,15 +154,15 @@ static const UINT32 sspeedr_controller_table[] =
 
 static INPUT_PORTS_START( sspeedr )
 
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x3f, 0x00, IPT_POSITIONAL ) PORT_POSITIONS(64) PORT_REMAP_TABLE(sspeedr_controller_table) PORT_WRAPS PORT_SENSITIVITY(25) PORT_KEYDELTA(10)
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	/* The gas pedal is adjusted physically so the encoder is at position 2 when the pedal is not pressed. */
 	/* It also only uses half of the encoder. */
 	PORT_BIT( 0x1f, 0x00, IPT_POSITIONAL ) PORT_POSITIONS(30) PORT_REMAP_TABLE(sspeedr_controller_table + 2) PORT_SENSITIVITY(25) PORT_KEYDELTA(20)
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -181,7 +181,7 @@ static INPUT_PORTS_START( sspeedr )
 	PORT_DIPSETTING(    0xA0, "RAM/ROM Test" )
 	PORT_DIPSETTING(    0xE0, "Accelerator Adjustment" )
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_TOGGLE /* gear shift lever */
@@ -211,15 +211,15 @@ static const gfx_layout car_layout =
 
 
 static GFXDECODE_START( sspeedr )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, car_layout, 0, 1 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, car_layout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, car_layout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx2", 0, car_layout, 0, 1 )
 GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( sspeedr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 19968000 / 8)
+	MDRV_CPU_ADD("main", Z80, 19968000 / 8)
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 	MDRV_CPU_IO_MAP(readport, writeport)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
@@ -245,17 +245,17 @@ MACHINE_DRIVER_END
 
 
 ROM_START( sspeedr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "ssr0000.pgm", 0x0000, 0x0800, CRC(bfc7069a) SHA1(2f7aa3d3c7cfd804ba4b625c6a8338534a204855) )
 	ROM_LOAD( "ssr0800.pgm", 0x0800, 0x0800, CRC(ec46b59a) SHA1(d5727efecb32ad3d034b885e4a57d7373368ca9e) )
 
-	ROM_REGION( 0x0800, REGION_GFX1, ROMREGION_DISPOSE ) /* driver */
+	ROM_REGION( 0x0800, "gfx1", ROMREGION_DISPOSE ) /* driver */
 	ROM_LOAD( "ssrm762a.f3", 0x0000, 0x0800, CRC(de4653a9) SHA1(a6bbffb7eb60581eee43c74d20ca00b50c9a6e07) )
 
-	ROM_REGION( 0x0800, REGION_GFX2, ROMREGION_DISPOSE ) /* drone */
+	ROM_REGION( 0x0800, "gfx2", ROMREGION_DISPOSE ) /* drone */
 	ROM_LOAD( "ssrm762b.j3", 0x0000, 0x0800, CRC(ef6a1cd6) SHA1(77c31f14783e5ba90849bdc930b099c8360aeba7) )
 
-	ROM_REGION( 0x0800, REGION_GFX3, 0 ) /* track */
+	ROM_REGION( 0x0800, "gfx3", 0 ) /* track */
 	ROM_LOAD( "ssrm762c.l3", 0x0000, 0x0800, CRC(ebaad3ee) SHA1(54ac994b505d20c75cf07a4f68da12360ee00153) )
 ROM_END
 

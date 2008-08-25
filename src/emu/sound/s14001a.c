@@ -461,9 +461,8 @@ static void s14001a_pcm_update(void *param, stream_sample_t **inputs, stream_sam
 	}
 }
 
-static void *s14001a_start(int sndindex, int clock, const void *config)
+static void *s14001a_start(const char *tag, int sndindex, int clock, const void *config)
 {
-	const struct S14001A_interface *intf;
 	S14001AChip *chip;
 	int i;
 
@@ -480,9 +479,7 @@ static void *s14001a_start(int sndindex, int clock, const void *config)
 		chip->filtervals[i] = SILENCE;
 	}
 
-	intf = config;
-
-	chip->SpeechRom = memory_region(Machine, intf->region);
+	chip->SpeechRom = memory_region(Machine, tag);
 
 	chip->stream = stream_create(0, 1, clock ? clock : Machine->sample_rate, chip, s14001a_pcm_update);
 
@@ -497,7 +494,7 @@ static void s14001a_set_info(void *token, UINT32 state, sndinfo *info)
 	}
 }
 
-int S14001A_bsy_0_r(void)
+int s14001a_bsy_0_r(void)
 {
 	S14001AChip *chip = sndti_token(SOUND_S14001A, 0);
 	stream_update(chip->stream);
@@ -507,14 +504,14 @@ int S14001A_bsy_0_r(void)
 	return (chip->machineState != 0);
 }
 
-void S14001A_reg_0_w(int data)
+void s14001a_reg_0_w(int data)
 {
 	S14001AChip *chip = sndti_token(SOUND_S14001A, 0);
 	stream_update(chip->stream);
 	chip->WordInput = data;
 }
 
-void S14001A_rst_0_w(int data)
+void s14001a_rst_0_w(int data)
 {
 	S14001AChip *chip = sndti_token(SOUND_S14001A, 0);
 	stream_update(chip->stream);
@@ -523,13 +520,13 @@ void S14001A_rst_0_w(int data)
 	chip->machineState = chip->resetState ? 1 : chip->machineState;
 }
 
-void S14001A_set_clock(int clock)
+void s14001a_set_clock(int clock)
 {
 	S14001AChip *chip = sndti_token(SOUND_S14001A, 0);
 	stream_set_sample_rate(chip->stream, clock);
 }
 
-void S14001A_set_volume(int volume)
+void s14001a_set_volume(int volume)
 {
 	S14001AChip *chip = sndti_token(SOUND_S14001A, 0);
 	stream_update(chip->stream);

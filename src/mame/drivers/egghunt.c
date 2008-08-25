@@ -184,7 +184,7 @@ static READ8_HANDLER( egghunt_okibanking_r )
 static WRITE8_HANDLER( egghunt_okibanking_w )
 {
 	egghunt_okibanking = data;
-	OKIM6295_set_bank_base(0, (data & 0x10) ? 0x40000 : 0);
+	okim6295_set_bank_base(0, (data & 0x10) ? 0x40000 : 0);
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -204,12 +204,12 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
-	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
-	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
-	AM_RANGE(0x03, 0x03) AM_READ(input_port_3_r)
-	AM_RANGE(0x04, 0x04) AM_READ(input_port_4_r)
-	AM_RANGE(0x06, 0x06) AM_READ(input_port_5_r)
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("DSW1")
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("P1")
+	AM_RANGE(0x03, 0x03) AM_READ_PORT("P2")
+	AM_RANGE(0x04, 0x04) AM_READ_PORT("DSW2")
+	AM_RANGE(0x06, 0x06) AM_READ_PORT("UNK")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
@@ -225,20 +225,20 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
-	AM_RANGE(0xe004, 0xe004) AM_READ(OKIM6295_status_0_r)
+	AM_RANGE(0xe004, 0xe004) AM_READ(okim6295_status_0_r)
 	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xe001, 0xe001) AM_READWRITE(egghunt_okibanking_r, egghunt_okibanking_w)
-	AM_RANGE(0xe004, 0xe004) AM_WRITE(OKIM6295_data_0_w)
+	AM_RANGE(0xe004, 0xe004) AM_WRITE(okim6295_data_0_w)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( egghunt )
-	PORT_START	/* 8bit */
+	PORT_START("DSW1")	/* 8bit */
 	PORT_DIPNAME( 0x01, 0x01, "Debug Mode" ) // Run all the animations
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -264,7 +264,7 @@ static INPUT_PORTS_START( egghunt )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 
-	PORT_START	/* 8bit */
+	PORT_START("SYSTEM")	/* 8bit */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -274,7 +274,7 @@ static INPUT_PORTS_START( egghunt )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START      /* IN1 */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -284,7 +284,7 @@ static INPUT_PORTS_START( egghunt )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 
-	PORT_START      /* IN2 */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
@@ -294,7 +294,7 @@ static INPUT_PORTS_START( egghunt )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 
-	PORT_START	/* 8bit */
+	PORT_START("DSW2")	/* 8bit */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -320,7 +320,7 @@ static INPUT_PORTS_START( egghunt )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 
-	PORT_START	/* 8bit */
+	PORT_START("UNK")	/* 8bit */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -372,8 +372,8 @@ static const gfx_layout tiles16x16_layout =
 };
 
 static GFXDECODE_START( egghunt )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout, 0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles16x16_layout, 0, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 0, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, tiles16x16_layout, 0, 64 )
 GFXDECODE_END
 
 
@@ -385,12 +385,12 @@ static MACHINE_RESET( egghunt )
 
 static MACHINE_DRIVER_START( egghunt )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,12000000/2)		 /* 6 MHz ?*/
+	MDRV_CPU_ADD("main", Z80,12000000/2)		 /* 6 MHz ?*/
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) // or 2 like mitchell.c?
 
-	MDRV_CPU_ADD(Z80,12000000/2)		 /* 6 MHz ?*/
+	MDRV_CPU_ADD("audio", Z80,12000000/2)		 /* 6 MHz ?*/
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_RESET(egghunt)
@@ -412,31 +412,31 @@ static MACHINE_DRIVER_START( egghunt )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000) // ?
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000) // ?
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 ROM_START( egghunt )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "prg.bin", 0x00000, 0x20000, CRC(eb647145) SHA1(792951b76b5fac01e72ae34a2fe2108e373c5b62) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "rom2.bin", 0x00000, 0x10000, CRC(88a71bc3) SHA1(cf5acccfda9fda0d55af91a415a54391d0d0b7a2) )
 
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_INVERT )
+	ROM_REGION( 0x100000, "gfx1", ROMREGION_INVERT )
 	ROM_LOAD( "rom3.bin", 0x00000, 0x40000, CRC(9d51ac49) SHA1(b0785d746fb2872a04386016ffdee80e6174dfc0) )
 	ROM_LOAD( "rom4.bin", 0x40000, 0x40000, CRC(41c63041) SHA1(24e9a21d448c144db2356329cf87dc99598c96dc) )
 	ROM_LOAD( "rom5.bin", 0x80000, 0x40000, CRC(6f96cb97) SHA1(7dde7d2aec6b5f9929b98d06c07bb07bf7bd59dd) )
 	ROM_LOAD( "rom6.bin", 0xc0000, 0x40000, CRC(b5a41d4b) SHA1(1b4cf9c944e3eb7dc2d26d8a73bf5efb7b53253a) )
 
-	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_INVERT )
+	ROM_REGION( 0x80000, "gfx2", ROMREGION_INVERT )
 	ROM_LOAD( "rom7.bin", 0x00000, 0x20000, CRC(1b43fb57) SHA1(f06e186bf514f2ad655df23636eab72e6fafd815) )
 	ROM_LOAD( "rom8.bin", 0x20000, 0x20000, CRC(f8122d0d) SHA1(78551c689b9e4eeed5e1ae97d8c7a907a388a9ff) )
 	ROM_LOAD( "rom9.bin", 0x40000, 0x20000, CRC(dbfa0ffe) SHA1(2aa759c0bd3945473a6d8fa48226ce6c6c94d740) )
 	ROM_LOAD( "rom10.bin",0x60000, 0x20000, CRC(14f5fc74) SHA1(769bccf9c1b42c35c3aee3866ed015de7c83b710) )
 
-	ROM_REGION( 0x80000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x80000, "oki", 0 )
 	ROM_LOAD( "rom1.bin", 0x00000, 0x80000, CRC(f03589bc) SHA1(4d9c8422ac3c4c3ecba3bcf0ed47b8c7d5903f8c) )
 ROM_END
 

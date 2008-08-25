@@ -82,22 +82,11 @@ struct _bsmt2000_chip
 
 
 /***************************************************************************
-    GLOBAL VARIABLES
-***************************************************************************/
-
-const struct BSMT2000interface bsmt2000_interface_region_1 = { REGION_SOUND1 };
-const struct BSMT2000interface bsmt2000_interface_region_2 = { REGION_SOUND2 };
-const struct BSMT2000interface bsmt2000_interface_region_3 = { REGION_SOUND3 };
-const struct BSMT2000interface bsmt2000_interface_region_4 = { REGION_SOUND4 };
-
-
-
-/***************************************************************************
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
 /* core implementation */
-static void *bsmt2000_start(int sndindex, int clock, const void *config);
+static void *bsmt2000_start(const char *tag, int sndindex, int clock, const void *config);
 static void bsmt2000_reset(void *_chip);
 static void bsmt2000_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length);
 
@@ -118,9 +107,8 @@ static void set_regmap(bsmt2000_chip *chip, UINT8 posbase, UINT8 ratebase, UINT8
     bsmt2000_start - initialization callback
 -------------------------------------------------*/
 
-static void *bsmt2000_start(int sndindex, int clock, const void *config)
+static void *bsmt2000_start(const char *tag, int sndindex, int clock, const void *config)
 {
-	const struct BSMT2000interface *intf = config;
 	bsmt2000_chip *chip;
 	int voicenum;
 
@@ -133,8 +121,8 @@ static void *bsmt2000_start(int sndindex, int clock, const void *config)
 	chip->clock = clock;
 
 	/* initialize the regions */
-	chip->region_base = (INT8 *)memory_region(Machine, intf->region);
-	chip->total_banks = memory_region_length(Machine, intf->region) / 0x10000;
+	chip->region_base = (INT8 *)memory_region(Machine, tag);
+	chip->total_banks = memory_region_length(Machine, tag) / 0x10000;
 
 	/* register chip-wide data for save states */
 	state_save_register_item("bsmt2000", sndindex * 16, chip->last_register);
@@ -334,9 +322,7 @@ static void bsmt2000_update(void *param, stream_sample_t **inputs, stream_sample
 
 static void bsmt2000_reg_write(bsmt2000_chip *chip, offs_t offset, UINT16 data)
 {
-#if LOG_COMMANDS
-	mame_printf_debug("BSMT write: reg %02X = %04X\n", offset, data);
-#endif
+	if (LOG_COMMANDS) mame_printf_debug("BSMT write: reg %02X = %04X\n", offset, data);
 
 	/* remember the last write */
 	chip->last_register = offset;
@@ -366,10 +352,10 @@ static void bsmt2000_reg_write(bsmt2000_chip *chip, offs_t offset, UINT16 data)
 ***************************************************************************/
 
 /*-------------------------------------------------
-    BSMT2000_data_0_w - write to chip 0
+    bsmt2000_data_0_w - write to chip 0
 -------------------------------------------------*/
 
-WRITE16_HANDLER( BSMT2000_data_0_w )
+WRITE16_HANDLER( bsmt2000_data_0_w )
 {
 	bsmt2000_reg_write(sndti_token(SOUND_BSMT2000, 0), offset, data);
 }

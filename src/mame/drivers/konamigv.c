@@ -150,7 +150,7 @@ static NVRAM_HANDLER( konamigv_93C46 )
 		}
 		else
 		{
-			eeprom_set_data( memory_region( machine, REGION_USER2 ), memory_region_length( machine, REGION_USER2 ) );
+			eeprom_set_data( memory_region( machine, "user2" ), memory_region_length( machine, "user2" ) );
 		}
 	}
 }
@@ -174,9 +174,9 @@ static READ32_HANDLER( mb89371_r )
 static ADDRESS_MAP_START( konamigv_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x001fffff) AM_RAM	AM_SHARE(1) AM_BASE(&g_p_n_psxram) AM_SIZE(&g_n_psxramsize) /* ram */
 	AM_RANGE(0x1f000000, 0x1f00001f) AM_READWRITE(am53cf96_r, am53cf96_w)
-	AM_RANGE(0x1f100000, 0x1f100003) AM_READ(input_port_0_dword_r)
-	AM_RANGE(0x1f100004, 0x1f100007) AM_READ(input_port_1_dword_r)
-	AM_RANGE(0x1f100008, 0x1f10000b) AM_READ(input_port_2_dword_r)
+	AM_RANGE(0x1f100000, 0x1f100003) AM_READ_PORT("P1")
+	AM_RANGE(0x1f100004, 0x1f100007) AM_READ_PORT("P2")
+	AM_RANGE(0x1f100008, 0x1f10000b) AM_READ_PORT("P3_P4")
 	AM_RANGE(0x1f180000, 0x1f180003) AM_WRITE(eeprom_w)
 	AM_RANGE(0x1f680000, 0x1f68001f) AM_READWRITE(mb89371_r, mb89371_w)
 	AM_RANGE(0x1f780000, 0x1f780003) AM_WRITENOP /* watchdog? */
@@ -196,7 +196,7 @@ static ADDRESS_MAP_START( konamigv_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x1f801c00, 0x1f801dff) AM_READWRITE(psx_spu_r, psx_spu_w)
 	AM_RANGE(0x1f802020, 0x1f802033) AM_RAM /* ?? */
 	AM_RANGE(0x1f802040, 0x1f802043) AM_WRITENOP
-	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_SHARE(2) AM_REGION(REGION_USER1, 0) /* bios */
+	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_SHARE(2) AM_REGION("user1", 0) /* bios */
 	AM_RANGE(0x80000000, 0x801fffff) AM_RAM AM_SHARE(1) /* ram mirror */
 	AM_RANGE(0x9fc00000, 0x9fc7ffff) AM_ROM AM_SHARE(2) /* bios mirror */
 	AM_RANGE(0xa0000000, 0xa01fffff) AM_RAM AM_SHARE(1) /* ram mirror */
@@ -291,7 +291,7 @@ static const SCSIConfigTable dev_table =
 {
 	1, /* 1 SCSI device */
 	{
-		{ SCSI_ID_4, 0, SCSI_DEVICE_CDROM } /* SCSI ID 4, using CHD 0, and it's a CD-ROM */
+		{ SCSI_ID_4, "cdrom", SCSI_DEVICE_CDROM } /* SCSI ID 4, using CHD 0, and it's a CD-ROM */
 	}
 };
 
@@ -332,7 +332,7 @@ static MACHINE_RESET( konamigv )
 	state_save_register_global_array(btc_trackball_data);
 }
 
-static const struct PSXSPUinterface konamigv_psxspu_interface =
+static const psx_spu_interface konamigv_psxspu_interface =
 {
 	&g_p_n_psxram,
 	psx_irq_set,
@@ -342,7 +342,7 @@ static const struct PSXSPUinterface konamigv_psxspu_interface =
 
 static MACHINE_DRIVER_START( konamigv )
 	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, XTAL_67_7376MHz )
+	MDRV_CPU_ADD("main",  PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( konamigv_map, 0 )
 	MDRV_CPU_VBLANK_INT("main", psx_vblank)
 
@@ -366,18 +366,18 @@ static MACHINE_DRIVER_START( konamigv )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD( PSXSPU, 0 )
+	MDRV_SOUND_ADD( "spu", PSXSPU, 0 )
 	MDRV_SOUND_CONFIG( konamigv_psxspu_interface )
 	MDRV_SOUND_ROUTE( 0, "left", 0.75 )
 	MDRV_SOUND_ROUTE( 1, "right", 0.75 )
 
-	MDRV_SOUND_ADD( CDDA, 0 )
+	MDRV_SOUND_ADD( "cdda", CDDA, 0 )
 	MDRV_SOUND_ROUTE( 0, "left", 1.0 )
 	MDRV_SOUND_ROUTE( 1, "right", 1.0 )
 MACHINE_DRIVER_END
 
 static INPUT_PORTS_START( konamigv )
-	PORT_START_TAG("IN0")
+	PORT_START("P1")
 	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_8WAY
 	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_8WAY
@@ -391,12 +391,12 @@ static INPUT_PORTS_START( konamigv )
 	PORT_BIT( 0x00000400, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x00000800, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE_NO_TOGGLE( 0x00001000, IP_ACTIVE_LOW )
-	PORT_BIT( 0x00002000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( eeprom_bit_r, 0 )
+	PORT_BIT( 0x00002000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( eeprom_bit_r, NULL )
 	PORT_BIT( 0x00004000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00008000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0xffff0000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
+	PORT_START("P2")
 	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
@@ -415,7 +415,7 @@ static INPUT_PORTS_START( konamigv )
 	PORT_BIT( 0x00008000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0xffff0000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("P3_P4")
 	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
@@ -557,10 +557,10 @@ MACHINE_DRIVER_END
 static INPUT_PORTS_START( simpbowl )
 	PORT_INCLUDE( konamigv )
 
-	PORT_START_TAG("TRACK0_X")
+	PORT_START("TRACK0_X")
 	PORT_BIT( 0xfff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START_TAG("TRACK0_Y")
+	PORT_START("TRACK0_Y")
 	PORT_BIT( 0xfff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_PLAYER(1)
 
 INPUT_PORTS_END
@@ -645,16 +645,16 @@ MACHINE_DRIVER_END
 static INPUT_PORTS_START( btchamp )
 	PORT_INCLUDE( konamigv )
 
-	PORT_START_TAG("TRACK0_X")
+	PORT_START("TRACK0_X")
 	PORT_BIT( 0x7ff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START_TAG("TRACK0_Y")
+	PORT_START("TRACK0_Y")
 	PORT_BIT( 0x7ff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_PLAYER(1)
 
-	PORT_START_TAG("TRACK1_X")
+	PORT_START("TRACK1_X")
 	PORT_BIT( 0x7ff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_REVERSE PORT_PLAYER(2)
 
-	PORT_START_TAG("TRACK1_Y")
+	PORT_START("TRACK1_Y")
 	PORT_BIT( 0x7ff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -717,11 +717,11 @@ static DRIVER_INIT( kdeadeye )
 {
 	intelflash_init( 0, FLASH_SHARP_LH28F400, NULL );
 
-	memory_install_read32_handler     ( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f680080, 0x1f680083, 0, 0, input_port_3_dword_r );
-	memory_install_read32_handler     ( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f680090, 0x1f680093, 0, 0, input_port_4_dword_r );
-	memory_install_read32_handler     ( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f6800a0, 0x1f6800a3, 0, 0, input_port_5_dword_r );
-	memory_install_read32_handler     ( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f6800b0, 0x1f6800b3, 0, 0, input_port_6_dword_r );
-	memory_install_read32_handler     ( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f6800c0, 0x1f6800c3, 0, 0, input_port_7_dword_r );
+	memory_install_read32_handler     ( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f680080, 0x1f680083, 0, 0, input_port_read_handler32(machine->portconfig, "GUNX1") );
+	memory_install_read32_handler     ( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f680090, 0x1f680093, 0, 0, input_port_read_handler32(machine->portconfig, "GUNY1") );
+	memory_install_read32_handler     ( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f6800a0, 0x1f6800a3, 0, 0, input_port_read_handler32(machine->portconfig, "GUNX2") );
+	memory_install_read32_handler     ( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f6800b0, 0x1f6800b3, 0, 0, input_port_read_handler32(machine->portconfig, "GUNY2") );
+	memory_install_read32_handler     ( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f6800c0, 0x1f6800c3, 0, 0, input_port_read_handler32(machine->portconfig, "BUTTONS") );
 	memory_install_write32_handler    ( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f6800e0, 0x1f6800e3, 0, 0, kdeadeye_0_w );
 	memory_install_readwrite32_handler( machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f380000, 0x1f3fffff, 0, 0, btcflash_r, btcflash_w );
 
@@ -736,28 +736,28 @@ MACHINE_DRIVER_END
 static INPUT_PORTS_START( kdeadeye )
 	PORT_INCLUDE( konamigv )
 
-	PORT_MODIFY("IN0")
+	PORT_MODIFY("P1")
 	PORT_BIT( 0x0000007f, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_MODIFY("IN1")
+	PORT_MODIFY("P2")
 	PORT_BIT( 0x0000007f, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_MODIFY("IN2")
+	PORT_MODIFY("P3_P4")
 	PORT_BIT( 0x0000ffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN3")
+	PORT_START("GUNX1")
 	PORT_BIT( 0xffff, 0x0100, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX( 0x004c, 0x01bb ) PORT_SENSITIVITY( 100 ) PORT_KEYDELTA( 5 ) PORT_PLAYER( 1 )
 
-	PORT_START_TAG("IN4")
+	PORT_START("GUNY1")
 	PORT_BIT( 0xffff, 0x0077, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX( 0x0000, 0x00ef ) PORT_SENSITIVITY( 100 ) PORT_KEYDELTA( 5 ) PORT_PLAYER( 1 )
 
-	PORT_START_TAG("IN5")
+	PORT_START("GUNX2")
 	PORT_BIT( 0xffff, 0x0100, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX( 0x004c, 0x01bb ) PORT_SENSITIVITY( 100 ) PORT_KEYDELTA( 5 ) PORT_PLAYER( 2 )
 
-	PORT_START_TAG("IN6")
+	PORT_START("GUNY2")
 	PORT_BIT( 0xffff, 0x0077, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_MINMAX( 0x0000, 0x00ef ) PORT_SENSITIVITY( 100 ) PORT_KEYDELTA( 5 ) PORT_PLAYER( 2 )
 
-	PORT_START_TAG("IN7")
+	PORT_START("BUTTONS")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER( 1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER( 2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -778,111 +778,111 @@ static INPUT_PORTS_START( kdeadeye )
 INPUT_PORTS_END
 
 #define GV_BIOS	\
-	ROM_REGION32_LE( 0x080000, REGION_USER1, 0 )	\
+	ROM_REGION32_LE( 0x080000, "user1", 0 )	\
 	ROM_LOAD( "999a01.7e",   0x0000000, 0x080000, CRC(ad498d2d) SHA1(02a82a2fe1fba0404517c3602324bfa64e23e478) )
 
 ROM_START( konamigv )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, ROMREGION_ERASE00 ) /* default eeprom */
+	ROM_REGION( 0x0000080, "user2", ROMREGION_ERASE00 ) /* default eeprom */
 ROM_END
 
 ROM_START( susume )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, 0 ) /* default eeprom */
+	ROM_REGION( 0x0000080, "user2", 0 ) /* default eeprom */
 	ROM_LOAD( "susume.25c",   0x000000, 0x000080, CRC(52f17df7) SHA1(b8ad7787b0692713439d7d9bebfa0c801c806006) )
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "gv027j1", 0, MD5(4443754686d399c3ad12349ac2565f94) SHA1(36676b7bd63e20ce6126280a3f7a3e3ea0a4b8c0) )
 ROM_END
 
 ROM_START( hyperath )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, 0 ) /* default eeprom */
+	ROM_REGION( 0x0000080, "user2", 0 ) /* default eeprom */
 	ROM_LOAD( "hyperath.25c", 0x000000, 0x000080, CRC(20a8c435) SHA1(a0f203a999757fba68b391c525ac4b9684a57ba9) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "hyperath", 0, MD5(a777d62bc998768e53d3d764d96cd990) SHA1(dfe0a68258cf33ca09639a752611302b361698e8) )
 ROM_END
 
 ROM_START( pbball96 )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, 0 ) /* default eeprom */
+	ROM_REGION( 0x0000080, "user2", 0 ) /* default eeprom */
 	ROM_LOAD( "pbball96.25c", 0x000000, 0x000080, CRC(405a7fc9) SHA1(e2d978f49748ba3c4a425188abcd3d272ec23907) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "pbball96", 0, MD5(5962a38e2af6299659f53613956cd9ed) SHA1(a056138fc68bd1580b1de89b622b159150413a3f) )
 ROM_END
 
 ROM_START( weddingr )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, 0 ) /* default eeprom */
+	ROM_REGION( 0x0000080, "user2", 0 ) /* default eeprom */
 	ROM_LOAD( "weddingr.25c", 0x000000, 0x000080, CRC(b90509a0) SHA1(41510a0ceded81dcb26a70eba97636d38d3742c3) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "weddingr", 0, MD5(cacc28156b037e13098f3624ae92ab85) SHA1(e6481c367ad24aa285e51c01221a169b1b74b15f) )
 ROM_END
 
 ROM_START( simpbowl )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, 0 ) /* default eeprom */
+	ROM_REGION( 0x0000080, "user2", 0 ) /* default eeprom */
 	ROM_LOAD( "simpbowl.25c", 0x000000, 0x000080, CRC(2c61050c) SHA1(16ae7f81cbe841c429c5c7326cf83e87db1782bf) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "simpbowl", 0, MD5(47702fc060f3f1fbb2dba84ea3544a4a) SHA1(791ce11b0645fd5c3f5b30483bad879f26bb97db) )
 ROM_END
 
 ROM_START( btchamp )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, 0 ) /* default eeprom */
+	ROM_REGION( 0x0000080, "user2", 0 ) /* default eeprom */
 	ROM_LOAD( "btchmp.25c", 0x000000, 0x000080, CRC(6d02ea54) SHA1(d3babf481fd89db3aec17f589d0d3d999a2aa6e1) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "btchamp", 0, MD5(edc387207bc878b3a4044441e77d25f7) SHA1(e1a75a034d83cffa44268eb30653ba334cc6252d) )
 ROM_END
 
 ROM_START( kdeadeye )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, 0 ) /* default eeprom */
+	ROM_REGION( 0x0000080, "user2", 0 ) /* default eeprom */
 	ROM_LOAD( "kdeadeye.25c", 0x000000, 0x000080, CRC(3935d2df) SHA1(cbb855c475269077803c380dbc3621e522efe51e) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "kdeadeye", 0, MD5(5109d61ab8791a6d622499b51e613a8c) SHA1(2b413a2a22e1959fb4f71b67ba51c6c8e0d58970) )
 ROM_END
 
 ROM_START( nagano98 )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, 0 ) /* default eeprom */
+	ROM_REGION( 0x0000080, "user2", 0 ) /* default eeprom */
 	ROM_LOAD( "nagano98.25c",  0x000000, 0x000080, CRC(b64b7451) SHA1(a77a37e0cc580934d1e7e05d523bae0acd2c1480) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "nagano98", 0, MD5(cbedbd2953b70f214e72179b2cc0dcd8) SHA1(21d14864cdd34c6e052f3577f8d805dce49fcab6) )
 ROM_END
 
 ROM_START( tokimosh )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, 0 ) /* default eeprom */
+	ROM_REGION( 0x0000080, "user2", 0 ) /* default eeprom */
         ROM_LOAD( "tokimosh.25c", 0x000000, 0x000080, CRC(e57b833f) SHA1(f18a0974a6be69dc179706643aab837ff61c2738) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "755jaa01", 0, MD5(221a0e871de10b50947c8fcd8820eafa) SHA1(d633937885b6f7c1615a9aa97f79cfc1f817c955) )
 ROM_END
 
 ROM_START( tokimosp )
 	GV_BIOS
 
-	ROM_REGION( 0x0000080, REGION_USER2, 0 ) /* default eeprom */
+	ROM_REGION( 0x0000080, "user2", 0 ) /* default eeprom */
 	ROM_LOAD( "tokimosp.25c", 0x000000, 0x000080, CRC(af4cdd87) SHA1(97041e287e4c80066043967450779b81b62b2b8e) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "756jab01", 0, MD5(3c814208a8d9aafdb4989369f4222dba) SHA1(3766e0750484cd5d9da0c570aee4639300da5399) )
 ROM_END
 
@@ -899,4 +899,3 @@ GAME( 1997, tokimosh, konamigv, konamigv, konamigv, tokimosh, ROT0, "Konami", "T
 GAME( 1997, tokimosp, konamigv, konamigv, konamigv, tokimosh, ROT0, "Konami", "Tokimeki Memorial Oshiete Your Heart Seal version PLUS (GE756 JAB)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
 GAME( 1998, nagano98, konamigv, konamigv, konamigv, konamigv, ROT0, "Konami", "Nagano Winter Olympics '98 (GX720 EAA)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE)
 GAME( 2000, simpbowl, konamigv, simpbowl, simpbowl, simpbowl, ROT0, "Konami", "Simpsons Bowling (GQ829 UAA)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE)
-

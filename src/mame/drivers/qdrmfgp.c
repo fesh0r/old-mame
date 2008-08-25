@@ -90,7 +90,7 @@ static WRITE16_HANDLER( gp_control_w )
 			double gain = vol / 90.0;
 
 			for (i=0; i<8; i++)
-				K054539_set_gain(0, i, gain);
+				k054539_set_gain(0, i, gain);
 		}
 	}
 }
@@ -119,7 +119,7 @@ static WRITE16_HANDLER( gp2_control_w )
 			double gain = vol / 90.0;
 
 			for (i=0; i<8; i++)
-				K054539_set_gain(0, i, gain);
+				k054539_set_gain(0, i, gain);
 		}
 	}
 }
@@ -127,7 +127,7 @@ static WRITE16_HANDLER( gp2_control_w )
 
 static READ16_HANDLER( v_rom_r )
 {
-	UINT8 *mem8 = memory_region(machine, REGION_GFX1);
+	UINT8 *mem8 = memory_region(machine, "gfx1");
 	int bank = K056832_word_r(machine, 0x34/2, 0xffff);
 
 	offset += bank * 0x800 * 4;
@@ -195,7 +195,7 @@ static WRITE16_HANDLER( sndram_w )
 static READ16_HANDLER( k054539_word_r )
 {
 	if (ACCESSING_BITS_0_7)
-		return K054539_0_r(machine, offset);
+		return k054539_0_r(machine, offset);
 
 	return 0;
 }
@@ -203,7 +203,7 @@ static READ16_HANDLER( k054539_word_r )
 static WRITE16_HANDLER( k054539_word_w )
 {
 	if (ACCESSING_BITS_0_7)
-		K054539_0_w(machine, offset, data);
+		k054539_0_w(machine, offset, data);
 }
 
 /*************/
@@ -420,7 +420,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( qdrmfgp )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(1)	/* 1P STOP */
@@ -441,7 +441,7 @@ static INPUT_PORTS_START( qdrmfgp )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_BIT( 0x0003, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_DIPNAME( 0x0004, 0x0004, "Extended Service Menu" )		/* and skipped initial checks. */
 	PORT_DIPSETTING(    0x0004, DEF_STR( Off ) )
@@ -492,7 +492,7 @@ static INPUT_PORTS_START( qdrmfgp )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Hard ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Very_Hard ) )
 
-	PORT_START_TAG("SENSOR")
+	PORT_START("SENSOR")
 	PORT_BIT( 0x0003, IP_ACTIVE_LOW, IPT_SPECIAL )		/* battery power sensor */
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE2 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_SERVICE3 )
@@ -500,7 +500,7 @@ static INPUT_PORTS_START( qdrmfgp )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( qdrmfgp2 )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(1)	/* 1P STOP */
@@ -521,7 +521,7 @@ static INPUT_PORTS_START( qdrmfgp2 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_BIT( 0x0003, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_DIPNAME( 0x0004, 0x0004, "Extended Service Menu & None Sounds Mode" )		/* and skipped initial checks. */
 	PORT_DIPSETTING(    0x0004, DEF_STR( Off ) )
@@ -572,7 +572,7 @@ static INPUT_PORTS_START( qdrmfgp2 )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Hard ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Very_Hard ) )
 
-	PORT_START_TAG("SENSOR")
+	PORT_START("SENSOR")
 	PORT_BIT( 0x0003, IP_ACTIVE_LOW, IPT_SPECIAL )		/* battery power sensor */
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE2 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_SERVICE3 )
@@ -599,16 +599,11 @@ static void sound_irq(running_machine *machine)
 		cpunum_set_input_line(machine, 0, 1, HOLD_LINE);
 }
 
-static const struct K054539interface k054539_interface =
+static const k054539_interface k054539_config =
 {
-	REGION_SOUND1,
+	NULL,
 	NULL,
 	sound_irq
-};
-
-static const struct K054539interface gp2_k054539_interface =
-{
-	REGION_SOUND1
 };
 
 
@@ -627,7 +622,7 @@ static MACHINE_START( qdrmfgp )
 
 static MACHINE_RESET( qdrmfgp )
 {
-	sndram = memory_region(machine, REGION_SOUND1) + 0x100000;
+	sndram = memory_region(machine, "konami") + 0x100000;
 
 	/* reset the IDE controller */
 	gp2_irq_control = 0;
@@ -636,7 +631,7 @@ static MACHINE_RESET( qdrmfgp )
 
 static MACHINE_RESET( qdrmfgp2 )
 {
-	sndram = memory_region(machine, REGION_SOUND1) + 0x100000;
+	sndram = memory_region(machine, "konami") + 0x100000;
 
 	/* sound irq (CCU? 240Hz) */
 	timer_pulse(ATTOTIME_IN_HZ(18432000/76800), NULL, 0, gp2_timer_callback);
@@ -656,7 +651,7 @@ static MACHINE_RESET( qdrmfgp2 )
 static MACHINE_DRIVER_START( qdrmfgp )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 32000000/2)	/*  16.000 MHz */
+	MDRV_CPU_ADD("main", M68000, 32000000/2)	/*  16.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT_HACK(qdrmfgp_interrupt, 2)
 
@@ -664,7 +659,7 @@ static MACHINE_DRIVER_START( qdrmfgp )
 	MDRV_MACHINE_RESET(qdrmfgp)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
-	MDRV_IDE_CONTROLLER_ADD("ide", 0, ide_interrupt)
+	MDRV_IDE_CONTROLLER_ADD("ide", ide_interrupt)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -682,8 +677,8 @@ static MACHINE_DRIVER_START( qdrmfgp )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(K054539, 18432000/384)
-	MDRV_SOUND_CONFIG(k054539_interface)
+	MDRV_SOUND_ADD("konami", K054539, 18432000/384)
+	MDRV_SOUND_CONFIG(k054539_config)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
@@ -691,7 +686,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( qdrmfgp2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 32000000/2)	/*  16.000 MHz */
+	MDRV_CPU_ADD("main", M68000, 32000000/2)	/*  16.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(gp2_readmem,gp2_writemem)
 	MDRV_CPU_VBLANK_INT("main", qdrmfgp2_interrupt)
 
@@ -699,7 +694,7 @@ static MACHINE_DRIVER_START( qdrmfgp2 )
 	MDRV_MACHINE_RESET(qdrmfgp2)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
-	MDRV_IDE_CONTROLLER_ADD("ide", 0, gp2_ide_interrupt)
+	MDRV_IDE_CONTROLLER_ADD("ide", gp2_ide_interrupt)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -717,8 +712,7 @@ static MACHINE_DRIVER_START( qdrmfgp2 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(K054539, 18432000/384)
-	MDRV_SOUND_CONFIG(gp2_k054539_interface)
+	MDRV_SOUND_ADD("konami", K054539, 18432000/384)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
@@ -731,36 +725,36 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( qdrmfgp )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "gq_460_b04.20e", 0x000000, 0x80000, CRC(293d8174) SHA1(cf507d0b29dab161190f0160c05c640f16306bae) )
 	ROM_LOAD16_WORD_SWAP( "gq_460_a05.22e", 0x080000, 0x80000, CRC(4128cb3c) SHA1(4a16d85a66934a20afd074546de362c40a1ea785) )
 
-	ROM_REGION( 0x100000, REGION_GFX1, 0 )		/* TILEMAP */
+	ROM_REGION( 0x100000, "gfx1", 0 )		/* TILEMAP */
 	ROM_LOAD( "gq_460_a01.15e", 0x000000, 0x80000, CRC(6536b700) SHA1(47ffe0cfbf80810179560150b23d825fe1a5c5ca) )
 	ROM_LOAD( "gq_460_a02.17e", 0x080000, 0x80000, CRC(ac01d675) SHA1(bf66433ace95f4ef14699d03add7cbc2e5d90eea) )
 
-	ROM_REGION( 0x460000, REGION_SOUND1, 0)		/* SE SAMPLES + space for additional RAM */
+	ROM_REGION( 0x460000, "konami", 0)		/* SE SAMPLES + space for additional RAM */
 	ROM_LOAD( "gq_460_a07.14h", 0x000000, 0x80000, CRC(67d8ea6b) SHA1(11af1b5a33de2a6e24823964d210bef193ecefe4) )
 	ROM_LOAD( "gq_460_a06.12h", 0x080000, 0x80000, CRC(97ed5a77) SHA1(68600fd8d914451284cf181fb4bd5872860fb9ad) )
 
-	DISK_REGION( REGION_DISKS )			/* IDE HARD DRIVE */
+	DISK_REGION( "ide" )			/* IDE HARD DRIVE */
 	DISK_IMAGE( "gq460a08", 0, MD5(b79eebad38782e6713ab0bd7560817a2) SHA1(0cae7769fbb603d3c3e3627dde84a6c5a9b1062d) )
 ROM_END
 
 ROM_START( qdrmfgp2 )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "ge_557_c05.20e", 0x000000, 0x80000, CRC(336df99f) SHA1(46fb36d40371761be0cfa17b34f28cc893a44a22) )
 	ROM_LOAD16_WORD_SWAP( "ge_557_a06.22e", 0x080000, 0x80000, CRC(ad77e10f) SHA1(4a762a59fe3096d48e3cbf0da3bb0d75c5087e78) )
 
-	ROM_REGION( 0x100000, REGION_GFX1, 0 )		/* TILEMAP */
+	ROM_REGION( 0x100000, "gfx1", 0 )		/* TILEMAP */
 	ROM_LOAD( "ge_557_a01.13e", 0x000000, 0x80000, CRC(c301d406) SHA1(5fad8cc611edd83380972abf37ec80561b9317a6) )
 	ROM_LOAD( "ge_557_a02.15e", 0x080000, 0x80000, CRC(3bfe1e56) SHA1(9e4df512a804a96fcb545d4e0eb58b5421d65ea4) )
 
-	ROM_REGION( 0x460000, REGION_SOUND1, 0)		/* SE SAMPLES + space for additional RAM */
+	ROM_REGION( 0x460000, "konami", 0)		/* SE SAMPLES + space for additional RAM */
 	ROM_LOAD( "ge_557_a07.19h", 0x000000, 0x80000, CRC(7491e0c8) SHA1(6459ab5e7af052ef7a1c4ce01cd844c0f4319f2e) )
 	ROM_LOAD( "ge_557_a08.19k", 0x080000, 0x80000, CRC(3da2b20c) SHA1(fdc2cdc27f3299f541944a78ce36ed33a7926056) )
 
-	DISK_REGION( REGION_DISKS )			/* IDE HARD DRIVE */
+	DISK_REGION( "ide" )			/* IDE HARD DRIVE */
 	DISK_IMAGE( "ge557a09", 0, MD5(df5039dc4e9dbb1f02ec408d839a42db) SHA1(5e836dbace34c9c1b107cce6a50071a4205a1534) )
 ROM_END
 

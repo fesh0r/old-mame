@@ -262,7 +262,7 @@ static WRITE8_HANDLER( dunhuang_block_h_w )
 
 	dunhuang_block_h = data;
 
-	tile_addr = memory_region(machine, REGION_GFX2) + ((dunhuang_block_addr_hi << 8) + dunhuang_block_addr_lo)*4;
+	tile_addr = memory_region(machine, "gfx2") + ((dunhuang_block_addr_hi << 8) + dunhuang_block_addr_lo)*4;
 
 	switch (dunhuang_block_dest)
 	{
@@ -373,7 +373,7 @@ static READ8_HANDLER( dunhuang_input_r )
 
 static WRITE8_HANDLER( dunhuang_rombank_w )
 {
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 	memory_set_bankptr( 1, rom + 0x10000 + 0x8000 * ((data >> 2) & 0x7) );
 
 	// ?                data & 0x01
@@ -416,8 +416,8 @@ static ADDRESS_MAP_START( dunhuang_io_map, ADDRESS_SPACE_IO, 8 )
 
 	AM_RANGE( 0x001b, 0x001b ) AM_WRITE( dunhuang_block_dest_w )
 
-	AM_RANGE( 0x0081, 0x0081 ) AM_WRITE( YM2413_register_port_0_w	)
-	AM_RANGE( 0x0089, 0x0089 ) AM_WRITE( YM2413_data_port_0_w		)
+	AM_RANGE( 0x0081, 0x0081 ) AM_WRITE( ym2413_register_port_0_w	)
+	AM_RANGE( 0x0089, 0x0089 ) AM_WRITE( ym2413_data_port_0_w		)
 
 //  AM_RANGE( 0x0082, 0x0082 ) AM_WRITE( dunhuang_82_w )
 
@@ -430,9 +430,9 @@ static ADDRESS_MAP_START( dunhuang_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x0086, 0x0086 ) AM_WRITE( dunhuang_rombank_w )
 	AM_RANGE( 0x0087, 0x0087 ) AM_WRITE( dunhuang_layers_w )
 
-	AM_RANGE( 0x0088, 0x0088 ) AM_READ( AY8910_read_port_0_r )
-	AM_RANGE( 0x0090, 0x0090 ) AM_WRITE( AY8910_write_port_0_w )
-	AM_RANGE( 0x0098, 0x0098 ) AM_WRITE( AY8910_control_port_0_w )
+	AM_RANGE( 0x0088, 0x0088 ) AM_READ( ay8910_read_port_0_r )
+	AM_RANGE( 0x0090, 0x0090 ) AM_WRITE( ay8910_write_port_0_w )
+	AM_RANGE( 0x0098, 0x0098 ) AM_WRITE( ay8910_control_port_0_w )
 ADDRESS_MAP_END
 
 
@@ -442,7 +442,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( dunhuang )
-	PORT_START_TAG("DSW1")		/* IN0 - DSW1 */
+	PORT_START("DSW1")		/* IN0 - DSW1 */
 	PORT_DIPNAME( 0x0f, 0x0f, "Main Game Chance (%)" )	PORT_DIPLOCATION("SW1:1,2,3,4")
 	PORT_DIPSETTING(    0x00, "78" )
 	PORT_DIPSETTING(    0x01, "80" )
@@ -472,7 +472,7 @@ static INPUT_PORTS_START( dunhuang )
 	PORT_DIPSETTING(    0x80, "Keys" )
 	PORT_DIPSETTING(    0x00, "Payout" )
 
-	PORT_START_TAG("DSW2")		/* IN1 - DSW2 */
+	PORT_START("DSW2")		/* IN1 - DSW2 */
 	PORT_DIPUNKNOWN_DIPLOC( 0x01, 0x01, "SW2:1" )
 	PORT_DIPNAME( 0x06, 0x06, "Credits Per Coin" )		PORT_DIPLOCATION("SW2:2,3")
 	PORT_DIPSETTING(    0x06, "1" )
@@ -493,7 +493,7 @@ static INPUT_PORTS_START( dunhuang )
 	PORT_DIPSETTING(    0x80, "1000" )
 	PORT_DIPSETTING(    0xc0, "3000" )
 
-	PORT_START_TAG("DSW3")		/* IN2 - DSW3 */
+	PORT_START("DSW3")		/* IN2 - DSW3 */
 	PORT_DIPNAME( 0x03, 0x03, "Min Bet" )				PORT_DIPLOCATION("SW3:1,2")
 	PORT_DIPSETTING(    0x03, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -515,7 +515,7 @@ static INPUT_PORTS_START( dunhuang )
 	PORT_DIPSETTING(    0x80, "5" )
 	PORT_DIPSETTING(    0xc0, "6" )
 
-	PORT_START_TAG("DSW4")		/* IN3 - DSW4 */
+	PORT_START("DSW4")		/* IN3 - DSW4 */
 	PORT_DIPNAME( 0x07, 0x07, "Credits Limit" )			PORT_DIPLOCATION("SW4:1,2,3")
 	PORT_DIPSETTING(    0x07, "2k" )
 	PORT_DIPSETTING(    0x06, "3k" )
@@ -541,7 +541,7 @@ static INPUT_PORTS_START( dunhuang )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 
-	PORT_START_TAG("DSW5")		/* IN4 - DSW5 */
+	PORT_START("DSW5")		/* IN4 - DSW5 */
 	PORT_DIPNAME( 0x03, 0x03, "Douple Up Chance (%)" )	PORT_DIPLOCATION("SW5:1,2")
 	PORT_DIPSETTING(    0x00, "50" )
 	PORT_DIPSETTING(    0x01, "60" )
@@ -565,7 +565,7 @@ static INPUT_PORTS_START( dunhuang )
 	PORT_DIPSETTING(    0x80, "Strong" )
 	PORT_DIPSETTING(    0x00, "Weak" )
 
-	PORT_START_TAG("SERVICE")		/* IN5 - SERVICE */
+	PORT_START("SERVICE")		/* IN5 - SERVICE */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_SERVICE3 )		// clear (during boot)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_SERVICE2 )		// book
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_SERVICE  )		// test (in game: dips, during boot: service mode)
@@ -575,7 +575,7 @@ static INPUT_PORTS_START( dunhuang )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )		// 0 = tiles block transferrer busy
 
-	PORT_START_TAG("IN0")		/* IN6 - P1 */
+	PORT_START("IN0")		/* IN6 - P1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_A )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_E )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_I )
@@ -585,7 +585,7 @@ static INPUT_PORTS_START( dunhuang )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")		/* IN7 - P1 */
+	PORT_START("IN1")		/* IN7 - P1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_B )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_F )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_J )
@@ -595,7 +595,7 @@ static INPUT_PORTS_START( dunhuang )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")		/* IN8 - P1 */
+	PORT_START("IN2")		/* IN8 - P1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_C )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_G )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_K )
@@ -605,7 +605,7 @@ static INPUT_PORTS_START( dunhuang )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN3")		/* IN9 - P1 */
+	PORT_START("IN3")		/* IN9 - P1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_D )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_H )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_L )
@@ -615,7 +615,7 @@ static INPUT_PORTS_START( dunhuang )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN4")		/* IN10 - P1 */
+	PORT_START("IN4")		/* IN10 - P1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_LAST_CHANCE	)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_SCORE )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_DOUBLE_UP )
@@ -654,8 +654,8 @@ static const gfx_layout layout_8x32 =
 };
 
 static GFXDECODE_START( dunhuang )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, layout_8x8,  0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, layout_8x32, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, layout_8x8,  0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, layout_8x32, 0, 16 )
 GFXDECODE_END
 
 
@@ -663,7 +663,7 @@ GFXDECODE_END
                                 Machine Drivers
 ***************************************************************************/
 
-static const struct AY8910interface dunhuang_ay8910_interface =
+static const ay8910_interface dunhuang_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -674,7 +674,7 @@ static const struct AY8910interface dunhuang_ay8910_interface =
 
 static MACHINE_DRIVER_START( dunhuang )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,12000000/2)
+	MDRV_CPU_ADD("main", Z80,12000000/2)
 	MDRV_CPU_PROGRAM_MAP(dunhuang_map,0)
 	MDRV_CPU_IO_MAP(dunhuang_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -698,15 +698,15 @@ static MACHINE_DRIVER_START( dunhuang )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2413, 3579545)
+	MDRV_SOUND_ADD("ym", YM2413, 3579545)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MDRV_SOUND_ADD_TAG("ay8910", AY8910, 12000000/8)
+	MDRV_SOUND_ADD("ay8910", AY8910, 12000000/8)
 	MDRV_SOUND_CONFIG(dunhuang_ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(OKIM6295, 12000000/8)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki", OKIM6295, 12000000/8)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 
@@ -716,19 +716,19 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( dunhuang )
-	ROM_REGION( 0x50000, REGION_CPU1, 0 )
+	ROM_REGION( 0x50000, "main", 0 )
 	ROM_LOAD( "rom1.u9", 0x00000, 0x40000, CRC(843a0117) SHA1(26a838cb3552ea6a9ec55940fcbf83b06c068743) )
 	ROM_RELOAD(          0x10000, 0x40000 )
 
-	ROM_REGION( 0xc0000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0xc0000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "rom3.u4", 0x00000, 0x80000, CRC(1ff5d35e) SHA1(b808eb4f81be8fc77a58dadd661a9cc2b376a509) )
 	ROM_LOAD( "rom2.u5", 0x80000, 0x40000, CRC(384fa1d3) SHA1(f329db17aacacf1768ebd6ca2cc612503db93fac) )
 
-	ROM_REGION( 0xc0000, REGION_GFX2, 0 )	// do not dispose
+	ROM_REGION( 0xc0000, "gfx2", 0 )	// do not dispose
 	ROM_LOAD( "rom4.u3", 0x00000, 0x40000, CRC(7db45227) SHA1(2a12a2b8a1e58946ce3e7c770b3ca4803c3c3ccd) )
 	ROM_LOAD( "rom5.u2", 0x40000, 0x80000, CRC(d609880e) SHA1(3d69800e959e8f24ef950fea4312610c4407f6ba) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x20000, "oki", 0 )
 	ROM_LOAD( "rom6.u1", 0x00000, 0x20000, CRC(31cfdc29) SHA1(725249eae9227eadf05418b799e0da0254bb2f51) )
 ROM_END
 

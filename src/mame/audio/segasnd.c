@@ -171,7 +171,7 @@ static READ8_HANDLER( speech_p1_r )
 
 static READ8_HANDLER( speech_rom_r )
 {
-	return memory_region(machine, REGION_SOUND1)[0x100 * (speech_p2 & 0x3f) + offset];
+	return memory_region(machine, "speech")[0x100 * (speech_p2 & 0x3f) + offset];
 }
 
 static WRITE8_HANDLER( speech_p1_w )
@@ -280,12 +280,12 @@ static const struct sp0250_interface sp0250_interface =
 MACHINE_DRIVER_START( sega_speech_board )
 
 	/* CPU for the speech board */
-	MDRV_CPU_ADD(I8035, SPEECH_MASTER_CLOCK)		/* divide by 15 in CPU */
+	MDRV_CPU_ADD("audio", I8035, SPEECH_MASTER_CLOCK)		/* divide by 15 in CPU */
 	MDRV_CPU_PROGRAM_MAP(speech_map, 0)
 	MDRV_CPU_IO_MAP(speech_portmap, 0)
 
 	/* sound hardware */
-	MDRV_SOUND_ADD(SP0250, SPEECH_MASTER_CLOCK)
+	MDRV_SOUND_ADD("speech", SP0250, SPEECH_MASTER_CLOCK)
 	MDRV_SOUND_CONFIG(sp0250_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -640,7 +640,7 @@ static void usb_stream_update(void *param, stream_sample_t **inputs, stream_samp
 }
 
 
-static void *usb_start(int clock, const struct CustomSound_interface *config)
+static void *usb_start(int clock, const custom_sound_interface *config)
 {
 	filter_state temp;
 	int tchan, tgroup;
@@ -902,7 +902,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static const struct CustomSound_interface usb_custom_interface =
+static const custom_sound_interface usb_custom_interface =
 {
     usb_start
 };
@@ -918,12 +918,12 @@ static const struct CustomSound_interface usb_custom_interface =
 MACHINE_DRIVER_START( sega_universal_sound_board )
 
 	/* CPU for the usb board */
-	MDRV_CPU_ADD_TAG("usb", I8035, USB_MASTER_CLOCK)		/* divide by 15 in CPU */
+	MDRV_CPU_ADD("usb", I8035, USB_MASTER_CLOCK)		/* divide by 15 in CPU */
 	MDRV_CPU_PROGRAM_MAP(usb_map, 0)
 	MDRV_CPU_IO_MAP(usb_portmap, 0)
 
 	/* sound hardware */
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("usb", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(usb_custom_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END

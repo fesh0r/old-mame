@@ -53,8 +53,8 @@ VIDEO_START( aeroboto )
 		UINT8 *rom, *temp;
 		int i, length;
 
-		rom = memory_region(machine, REGION_GFX2);
-		length = memory_region_length(machine, REGION_GFX2);
+		rom = memory_region(machine, "gfx2");
+		length = memory_region_length(machine, "gfx2");
 		temp = malloc_or_die(length);
 		memcpy(temp, rom, length);
 
@@ -75,7 +75,7 @@ VIDEO_START( aeroboto )
 
 READ8_HANDLER( aeroboto_in0_r )
 {
-	return input_port_read(machine, flip_screen_get() ? "IN1" : "IN0");
+	return input_port_read(machine, flip_screen_get() ? "P2" : "P1");
 }
 
 WRITE8_HANDLER( aeroboto_3000_w )
@@ -170,7 +170,7 @@ VIDEO_UPDATE( aeroboto )
 		oy = *aeroboto_stary;
 		y = sy / SCROLL_SPEED;
 
-		src_base = memory_region(screen->machine, REGION_GFX2);
+		src_base = memory_region(screen->machine, "gfx2");
 
 		for (i=0; i<256; i++)
 		{

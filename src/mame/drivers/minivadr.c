@@ -50,12 +50,12 @@ static VIDEO_UPDATE( minivadr )
 static ADDRESS_MAP_START( minivadr_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0xa000, 0xbfff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0xe008, 0xe008) AM_READWRITE(input_port_0_r, SMH_NOP)	// W - ???
+	AM_RANGE(0xe008, 0xe008) AM_READ_PORT("INPUTS") AM_WRITENOP		// W - ???
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( minivadr )
-	PORT_START
+	PORT_START("INPUTS")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -70,7 +70,7 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( minivadr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,24000000 / 6)		 /* 4 MHz ? */
+	MDRV_CPU_ADD("main", Z80,24000000 / 6)		 /* 4 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(minivadr_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -95,7 +95,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( minivadr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "d26-01.bin",	0x0000, 0x2000, CRC(a96c823d) SHA1(aa9969ff80e94b0fff0f3530863f6b300510162e) )
 ROM_END
 

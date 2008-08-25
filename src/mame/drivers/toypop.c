@@ -55,17 +55,17 @@ PALETTE_INIT( toypop );
 
 ***************************************************************************/
 
-static READ8_HANDLER( in0_l )	{ return input_port_read_indexed(machine, 0); }		// P1 joystick
-static READ8_HANDLER( in0_h )	{ return input_port_read_indexed(machine, 0) >> 4; }	// P2 joystick
-static READ8_HANDLER( in1_l )	{ return input_port_read_indexed(machine, 1); }		// fire and start buttons
-static READ8_HANDLER( in1_h )	{ return input_port_read_indexed(machine, 1) >> 4; }	// coins
-static READ8_HANDLER( dipA_l )	{ return input_port_read_indexed(machine, 2); }		// dips A
-static READ8_HANDLER( dipA_h )	{ return input_port_read_indexed(machine, 2) >> 4; }	// dips A
-static READ8_HANDLER( dipB_l )	{ return input_port_read_indexed(machine, 3); }		// dips B
-static READ8_HANDLER( dipB_h )	{ return input_port_read_indexed(machine, 3) >> 4; }	// dips B
-static READ8_HANDLER( in2_l )	{ return input_port_read_indexed(machine, 4); }		// P1 joystick left in liblrabl
-static READ8_HANDLER( in2_h )	{ return input_port_read_indexed(machine, 4) >> 4; }	// P2 joystick left in liblrabl
-static READ8_HANDLER( in3 )		{ return input_port_read_indexed(machine, 5); }		// test, cocktail, optional buttons
+static READ8_HANDLER( in0_l )	{ return input_port_read(machine, "INPUT_RIGHT"); }			// P1 joystick
+static READ8_HANDLER( in0_h )	{ return input_port_read(machine, "INPUT_RIGHT") >> 4; }	// P2 joystick
+static READ8_HANDLER( in1_l )	{ return input_port_read(machine, "SYSTEM"); }				// fire and start buttons
+static READ8_HANDLER( in1_h )	{ return input_port_read(machine, "SYSTEM") >> 4; }			// coins
+static READ8_HANDLER( dipA_l )	{ return input_port_read(machine, "DSW1"); }				// dips A
+static READ8_HANDLER( dipA_h )	{ return input_port_read(machine, "DSW1") >> 4; }			// dips A
+static READ8_HANDLER( dipB_l )	{ return input_port_read(machine, "DSW2"); }				// dips B
+static READ8_HANDLER( dipB_h )	{ return input_port_read(machine, "DSW2") >> 4; }			// dips B
+static READ8_HANDLER( in2_l )	{ return input_port_read(machine, "INPUT_LEFT"); }			// P1 joystick left in liblrabl
+static READ8_HANDLER( in2_h )	{ return input_port_read(machine, "INPUT_LEFT") >> 4; }		// P2 joystick left in liblrabl
+static READ8_HANDLER( in3 )		{ return input_port_read(machine, "SERVICE"); }				// test, cocktail, optional buttons
 static WRITE8_HANDLER( out_coin0 )
 {
 	coin_lockout_global_w(data & 4);
@@ -358,7 +358,7 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( liblrabl )
 	/* The inputs are not memory mapped, they are handled by three I/O chips. */
-	PORT_START	/* 58XX #0 pins 22-29 */
+	PORT_START("INPUT_RIGHT")	/* 58XX #0 pins 22-29 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_UP ) PORT_8WAY
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_RIGHT ) PORT_8WAY
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_DOWN ) PORT_8WAY
@@ -368,7 +368,7 @@ static INPUT_PORTS_START( liblrabl )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_LEFT ) PORT_8WAY PORT_COCKTAIL
 
-	PORT_START	/* 58XX #0 pins 30-33 and 38-41 */
+	PORT_START("SYSTEM")	/* 58XX #0 pins 30-33 and 38-41 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -378,7 +378,7 @@ static INPUT_PORTS_START( liblrabl )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
 
-	PORT_START	/* 56XX #1 pins 22-29 */
+	PORT_START("DSW1")	/* 56XX #1 pins 22-29 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x02, "1" )
 	PORT_DIPSETTING(    0x00, "2" )
@@ -404,7 +404,7 @@ static INPUT_PORTS_START( liblrabl )
 	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( 1C_6C ) )
 
-	PORT_START	/* 56XX #1 pins 30-33 and 38-41 */
+	PORT_START("DSW2")	/* 56XX #1 pins 30-33 and 38-41 */
 	PORT_DIPNAME( 0x01, 0x01, "Freeze" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -428,7 +428,7 @@ static INPUT_PORTS_START( liblrabl )
 	PORT_DIPSETTING(    0x80, "C" )
 	PORT_DIPSETTING(    0x00, "D" )
 
-	PORT_START	/* 56XX #2 pins 22-29 */
+	PORT_START("INPUT_LEFT")	/* 56XX #2 pins 22-29 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_UP ) PORT_8WAY
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_RIGHT ) PORT_8WAY
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_DOWN ) PORT_8WAY
@@ -438,7 +438,7 @@ static INPUT_PORTS_START( liblrabl )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_LEFT ) PORT_8WAY PORT_COCKTAIL
 
-	PORT_START	/* 56XX #2 pins 30-33 */
+	PORT_START("SERVICE")	/* 56XX #2 pins 30-33 */
 	PORT_BIT( 0x03, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Upright ) )
@@ -448,7 +448,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( toypop )
 	/* The inputs are not memory mapped, they are handled by three I/O chips. */
-	PORT_START	/* 58XX #0 pins 22-29 */
+	PORT_START("INPUT_RIGHT")	/* 58XX #0 pins 22-29 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
@@ -458,7 +458,7 @@ static INPUT_PORTS_START( toypop )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_PLAYER(2)
 
-	PORT_START	/* 58XX #0 pins 30-33 and 38-41 */
+	PORT_START("SYSTEM")	/* 58XX #0 pins 30-33 and 38-41 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -468,7 +468,7 @@ static INPUT_PORTS_START( toypop )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
 
-	PORT_START	/* 56XX #1 pins 22-29 */
+	PORT_START("DSW1")	/* 56XX #1 pins 22-29 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x02, "1" )
 	PORT_DIPSETTING(    0x01, "2" )
@@ -489,7 +489,7 @@ static INPUT_PORTS_START( toypop )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* 56XX #1 pins 30-33 and 38-41 */
+	PORT_START("DSW2")	/* 56XX #1 pins 30-33 and 38-41 */
 	PORT_DIPNAME( 0x01, 0x01, "Freeze" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -514,10 +514,10 @@ static INPUT_PORTS_START( toypop )
 	PORT_DIPSETTING(    0x80, "Every 15000 points" )
 	PORT_DIPSETTING(    0x00, "Every 20000 points" )
 
-	PORT_START	/* 56XX #2 pins 22-29 */
+	PORT_START("INPUT_LEFT")	/* 56XX #2 pins 22-29 */
 	PORT_BIT(0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* 56XX #2 pins 30-33 */
+	PORT_START("SERVICE")	/* 56XX #2 pins 30-33 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )	// would be Cabinet, but this game has no cocktail mode
@@ -551,16 +551,16 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( toypop )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,       0, 128 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 128*4,  64 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,       0, 128 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 128*4,  64 )
 GFXDECODE_END
 
 
 
-static const struct namco_interface namco_interface =
+static const namco_interface namco_config =
 {
 	8,		/* number of voices */
-	REGION_SOUND1	/* memory region */
+	0		/* stereo */
 };
 
 
@@ -568,16 +568,15 @@ static const struct namco_interface namco_interface =
 static MACHINE_DRIVER_START( liblrabl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M6809, 1536000)	/* 1.536 MHz (measured on Libble Rabble board) */
+	MDRV_CPU_ADD("main", M6809, 1536000)	/* 1.536 MHz (measured on Libble Rabble board) */
 	MDRV_CPU_PROGRAM_MAP(readmem_mainCPU_liblrabl,writemem_mainCPU_liblrabl)
 	MDRV_CPU_VBLANK_INT("main", toypop_main_interrupt)
 
-	MDRV_CPU_ADD(M6809, 1536000)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", M6809, 1536000)
 	MDRV_CPU_PROGRAM_MAP(readmem_soundCPU,writemem_soundCPU)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_CPU_ADD(M68000, 6144000)	/* 6.144 MHz (measured on Libble Rabble board) */
+	MDRV_CPU_ADD("sub", M68000, 6144000)	/* 6.144 MHz (measured on Libble Rabble board) */
 	MDRV_CPU_PROGRAM_MAP(readmem_68k,writemem_68k)
 	MDRV_CPU_VBLANK_INT("main", toypop_m68000_interrupt)
 
@@ -603,8 +602,8 @@ static MACHINE_DRIVER_START( liblrabl )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(NAMCO_15XX, 24000)
-	MDRV_SOUND_CONFIG(namco_interface)
+	MDRV_SOUND_ADD("namco", NAMCO_15XX, 24000)
+	MDRV_SOUND_CONFIG(namco_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -625,62 +624,62 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( liblrabl )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for the first CPU */
+	ROM_REGION( 0x10000, "main", 0 )	/* 64k for the first CPU */
 	ROM_LOAD( "5b.rom",   0x8000, 0x4000, CRC(da7a93c2) SHA1(fe4a02cdab66722eb7b8cf58825f899b1949a6a2) )
 	ROM_LOAD( "5c.rom",   0xc000, 0x4000, CRC(6cae25dc) SHA1(de74317a7d5de1865d096c377923a764be5e6879) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "2c.rom",   0xe000, 0x2000, CRC(7c09e50a) SHA1(5f004d60bbb7355e008a9cda137b28bc2192b8ef) )
 
-	ROM_REGION( 0x8000, REGION_CPU3, 0 )		/* 32k for the third CPU */
+	ROM_REGION( 0x8000, "sub", 0 )		/* 32k for the third CPU */
 	ROM_LOAD16_BYTE( "8c.rom",   0x0000, 0x4000, CRC(a00cd959) SHA1(cc5621103c31cfbc65941615cab391db0f74e6ce) )
 	ROM_LOAD16_BYTE("10c.rom",   0x0001, 0x4000, CRC(09ce209b) SHA1(2ed46d6592f8227bac8ab54963d9a300706ade47) )
 
 	/* temporary space for graphics (disposed after conversion) */
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "5p.rom",   0x0000, 0x2000, CRC(3b4937f0) SHA1(06d9de576f1c2262c34aeb91054e68c9298af688) )	/* characters */
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "9t.rom",   0x0000, 0x4000, CRC(a88e24ca) SHA1(eada133579f19de09255084dcdc386311606a335) )	/* sprites */
 
-	ROM_REGION( 0x0600, REGION_PROMS, 0 )	/* color proms */
+	ROM_REGION( 0x0600, "proms", 0 )	/* color proms */
 	ROM_LOAD( "lr1-3.1r", 0x0000, 0x0100, CRC(f3ec0d07) SHA1(b0aad1fb6df79f202889600f486853995352f9c2) )	// palette: red component
 	ROM_LOAD( "lr1-2.1s", 0x0100, 0x0100, CRC(2ae4f702) SHA1(838fdca9e91fea4f64a59880ac47c48973bb8fbf) )	// palette: green component
 	ROM_LOAD( "lr1-1.1t", 0x0200, 0x0100, CRC(7601f208) SHA1(572d070ca387b780030ed5de38a8970b7cc14349) )	// palette: blue component
 	ROM_LOAD( "lr1-5.5l", 0x0300, 0x0100, CRC(940f5397) SHA1(825a7bd78a8a08d30bad2e4890ae6e9ad88b36b8) )	/* characters */
 	ROM_LOAD( "lr1-6.2p", 0x0400, 0x0200, CRC(a6b7f850) SHA1(7cfde16dfd5c4d5b876b4fbe4f924f1385932a93) )	/* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "lr1-4.3d", 0x0000, 0x0100, CRC(16a9166a) SHA1(847cbaf7c88616576c410177e066ae1d792ac0ba) )
 ROM_END
 
 ROM_START( toypop )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for the first CPU */
+	ROM_REGION( 0x10000, "main", 0 )	/* 64k for the first CPU */
 	ROM_LOAD( "tp1-2.5b", 0x8000, 0x4000, CRC(87469620) SHA1(2ee257486c9c044386ac7d0cd4a90583eaeb3e97) )
 	ROM_LOAD( "tp1-1.5c", 0xc000, 0x4000, CRC(dee2fd6e) SHA1(b2c12008d6d3e7544ba3c12a52a6abf9181842c8) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "tp1-3.2c", 0xe000, 0x2000, CRC(5f3bf6e2) SHA1(d1b3335661b9b23cb10001416c515b77b5e783e9) )
 
-	ROM_REGION( 0x8000, REGION_CPU3, 0 )		/* 32k for the third CPU */
+	ROM_REGION( 0x8000, "sub", 0 )		/* 32k for the third CPU */
 	ROM_LOAD16_BYTE( "tp1-4.8c", 0x0000, 0x4000, CRC(76997db3) SHA1(5023a2f20a5f2c9baff130f6832583493c71f883) )
 	ROM_LOAD16_BYTE("tp1-5.10c", 0x0001, 0x4000, CRC(37de8786) SHA1(710365e34c05d01815844c414518f93234b6160b) )
 
 	/* temporary space for graphics (disposed after conversion) */
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "tp1-7.5p", 0x0000, 0x2000, CRC(95076f9e) SHA1(1e3d32b21f6d46591ec3921aba51f672d64a9023) )	/* characters */
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "tp1-6.9t", 0x0000, 0x4000, CRC(481ffeaf) SHA1(c51735ad3a1dbb46ad414408b54554e9223b2219) )	/* sprites */
 
-	ROM_REGION( 0x0600, REGION_PROMS, 0 )	/* color proms */
+	ROM_REGION( 0x0600, "proms", 0 )	/* color proms */
 	ROM_LOAD( "tp1-3.1r", 0x0000, 0x0100, CRC(cfce2fa5) SHA1(b42aa0f34d885389d2650bf7a0531b95703b8a28) )	// palette: red component
 	ROM_LOAD( "tp1-2.1s", 0x0100, 0x0100, CRC(aeaf039d) SHA1(574560526100d38635aecd71eb73499c4f57d586) )	// palette: green component
 	ROM_LOAD( "tp1-1.1t", 0x0200, 0x0100, CRC(08e7cde3) SHA1(5261aca6834d635d17f8afaa8e35848930030ba4) )	// palette: blue component
 	ROM_LOAD( "tp1-4.5l", 0x0300, 0x0100, CRC(74138973) SHA1(2e21dbb1b19dd089da52e70fcb0ca91336e004e6) )	/* characters */
 	ROM_LOAD( "tp1-5.2p", 0x0400, 0x0200, CRC(4d77fa5a) SHA1(2438910314b23ecafb553230244f3931861ad2da) )	/* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "lr1-4.3d", 0x0000, 0x0100, CRC(16a9166a) SHA1(847cbaf7c88616576c410177e066ae1d792ac0ba) )
 ROM_END
 

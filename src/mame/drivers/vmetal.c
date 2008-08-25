@@ -98,7 +98,7 @@ static READ16_HANDLER ( varia_crom_read )
 {
 	/* game reads the cgrom, result is 7772, verified to be correct on the real board */
 
-	UINT8 *cgrom = memory_region(machine, REGION_GFX1);
+	UINT8 *cgrom = memory_region(machine, "gfx1");
 	UINT16 retdat;
 	offset = offset << 1;
 	offset |= (vmetal_videoregs[0x0ab/2]&0x7f) << 16;
@@ -143,14 +143,14 @@ static WRITE16_HANDLER( vmetal_mid2tileram_w )
 }
 
 
-static READ16_HANDLER ( varia_dips_bit8_r ) { return ((input_port_read_indexed(machine, 3) & 0x80) << 0) | ((input_port_read_indexed(machine, 2) & 0x80) >> 1); }
-static READ16_HANDLER ( varia_dips_bit7_r ) { return ((input_port_read_indexed(machine, 3) & 0x40) << 1) | ((input_port_read_indexed(machine, 2) & 0x40) >> 0); }
-static READ16_HANDLER ( varia_dips_bit6_r ) { return ((input_port_read_indexed(machine, 3) & 0x20) << 2) | ((input_port_read_indexed(machine, 2) & 0x20) << 1); }
-static READ16_HANDLER ( varia_dips_bit5_r ) { return ((input_port_read_indexed(machine, 3) & 0x10) << 3) | ((input_port_read_indexed(machine, 2) & 0x10) << 2); }
-static READ16_HANDLER ( varia_dips_bit4_r ) { return ((input_port_read_indexed(machine, 3) & 0x08) << 4) | ((input_port_read_indexed(machine, 2) & 0x08) << 3); }
-static READ16_HANDLER ( varia_dips_bit3_r ) { return ((input_port_read_indexed(machine, 3) & 0x04) << 5) | ((input_port_read_indexed(machine, 2) & 0x04) << 4); }
-static READ16_HANDLER ( varia_dips_bit2_r ) { return ((input_port_read_indexed(machine, 3) & 0x02) << 6) | ((input_port_read_indexed(machine, 2) & 0x02) << 5); }
-static READ16_HANDLER ( varia_dips_bit1_r ) { return ((input_port_read_indexed(machine, 3) & 0x01) << 7) | ((input_port_read_indexed(machine, 2) & 0x01) << 6); }
+static READ16_HANDLER ( varia_dips_bit8_r ) { return ((input_port_read(machine, "DSW2") & 0x80) << 0) | ((input_port_read(machine, "DSW1") & 0x80) >> 1); }
+static READ16_HANDLER ( varia_dips_bit7_r ) { return ((input_port_read(machine, "DSW2") & 0x40) << 1) | ((input_port_read(machine, "DSW1") & 0x40) >> 0); }
+static READ16_HANDLER ( varia_dips_bit6_r ) { return ((input_port_read(machine, "DSW2") & 0x20) << 2) | ((input_port_read(machine, "DSW1") & 0x20) << 1); }
+static READ16_HANDLER ( varia_dips_bit5_r ) { return ((input_port_read(machine, "DSW2") & 0x10) << 3) | ((input_port_read(machine, "DSW1") & 0x10) << 2); }
+static READ16_HANDLER ( varia_dips_bit4_r ) { return ((input_port_read(machine, "DSW2") & 0x08) << 4) | ((input_port_read(machine, "DSW1") & 0x08) << 3); }
+static READ16_HANDLER ( varia_dips_bit3_r ) { return ((input_port_read(machine, "DSW2") & 0x04) << 5) | ((input_port_read(machine, "DSW1") & 0x04) << 4); }
+static READ16_HANDLER ( varia_dips_bit2_r ) { return ((input_port_read(machine, "DSW2") & 0x02) << 6) | ((input_port_read(machine, "DSW1") & 0x02) << 5); }
+static READ16_HANDLER ( varia_dips_bit1_r ) { return ((input_port_read(machine, "DSW2") & 0x01) << 7) | ((input_port_read(machine, "DSW1") & 0x01) << 6); }
 
 static WRITE16_HANDLER( vmetal_control_w )
 {
@@ -164,12 +164,12 @@ static WRITE16_HANDLER( vmetal_control_w )
 	if ((data & 0x40) == 0)
 		sndti_reset(SOUND_ES8712, 0);
 	else
-		ES8712_play(0);
+		es8712_play(0);
 
 	if (data & 0x10)
-		ES8712_set_bank_base(0, 0x100000);
+		es8712_set_bank_base(0, 0x100000);
 	else
-		ES8712_set_bank_base(0, 0x000000);
+		es8712_set_bank_base(0, 0x000000);
 
 	if (data & 0xa0)
 		logerror("PC:%06x - Writing unknown bits %04x to $200000\n",activecpu_get_previouspc(),data);
@@ -207,7 +207,7 @@ static WRITE16_HANDLER( vmetal_es8712_w )
     16   002a 000e 0083 00ee 000f 0069 0069   0e832a-0f69ee
     */
 
-	ES8712_data_0_lsb_w(machine, offset, data, mem_mask);
+	es8712_data_0_lsb_w(machine, offset, data, mem_mask);
 	logerror("PC:%06x - Writing %04x to ES8712 offset %02x\n",activecpu_get_previouspc(),data,offset);
 }
 
@@ -227,8 +227,8 @@ static ADDRESS_MAP_START( varia_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x178800, 0x1796ff) AM_RAM AM_BASE(&vmetal_videoregs)
 	AM_RANGE(0x179700, 0x179713) AM_WRITE(SMH_RAM) AM_BASE(&metro_videoregs	)	// Video Registers
 
-	AM_RANGE(0x200000, 0x200001) AM_READWRITE(input_port_0_word_r, vmetal_control_w)
-	AM_RANGE(0x200002, 0x200003) AM_READ(input_port_1_word_r )
+	AM_RANGE(0x200000, 0x200001) AM_READ_PORT("P1_P2") AM_WRITE(vmetal_control_w)
+	AM_RANGE(0x200002, 0x200003) AM_READ_PORT("SYSTEM")
 
 	/* i have no idea whats meant to be going on here .. it seems to read one bit of the dips from some of them, protection ??? */
 	AM_RANGE(0x30fffe, 0x30ffff) AM_READ(varia_random )  // nothing?
@@ -249,8 +249,8 @@ static ADDRESS_MAP_START( varia_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x31fffc, 0x31fffd) AM_READ(varia_dips_bit1_r )  // 0x40 = dip1-1 , 0x80 = dip2-1
 	AM_RANGE(0x31fffe, 0x31ffff) AM_READ(varia_random )  // nothing?
 
-	AM_RANGE(0x400000, 0x400001) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w )
-	AM_RANGE(0x400002, 0x400003) AM_WRITE(OKIM6295_data_0_lsb_w )	// Volume/channel info
+	AM_RANGE(0x400000, 0x400001) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w )
+	AM_RANGE(0x400002, 0x400003) AM_WRITE(okim6295_data_0_lsb_w )	// Volume/channel info
 	AM_RANGE(0x500000, 0x50000d) AM_WRITE(vmetal_es8712_w)
 
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM
@@ -259,7 +259,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( varia )
-	PORT_START		/* IN0 */
+	PORT_START("P1_P2")	/* IN0 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -277,7 +277,7 @@ static INPUT_PORTS_START( varia )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START		/* IN1 */
+	PORT_START("SYSTEM")	/* IN1 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_TILT )
@@ -285,7 +285,7 @@ static INPUT_PORTS_START( varia )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SERVICE2 ) // 'Test'
 	PORT_BIT( 0xffe0, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 
-	PORT_START		/* Dips 1 */
+	PORT_START("DSW1")	/* Dips 1 */
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0005, DEF_STR( 3C_1C )  )
 	PORT_DIPSETTING(      0x0006, DEF_STR( 2C_1C )  )
@@ -311,7 +311,7 @@ static INPUT_PORTS_START( varia )
 	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START		/* Dips 2 */
+	PORT_START("DSW2")	/* Dips 2 */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ))
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -360,8 +360,8 @@ static const gfx_layout char8x8layout =
 };
 
 static GFXDECODE_START( vmetal )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, char16x16layout,   0x1000, 512  ) /* bg tiles */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, char8x8layout,   0x1000, 512  ) /* bg tiles */
+	GFXDECODE_ENTRY( "gfx1", 0, char16x16layout,   0x1000, 512  ) /* bg tiles */
+	GFXDECODE_ENTRY( "gfx1", 0, char8x8layout,   0x1000, 512  ) /* bg tiles */
 GFXDECODE_END
 
 
@@ -424,7 +424,7 @@ static VIDEO_UPDATE(varia)
 }
 
 static MACHINE_DRIVER_START( varia )
-	MDRV_CPU_ADD(M68000, 16000000)
+	MDRV_CPU_ADD("main", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(varia_program_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq1_line_hold) // also level 3
 
@@ -444,53 +444,52 @@ static MACHINE_DRIVER_START( varia )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(OKIM6295, 1320000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1320000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.75)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.75)
 
-	MDRV_SOUND_ADD(ES8712, 12000)
-	MDRV_SOUND_CONFIG(es8712_interface_region_2)
+	MDRV_SOUND_ADD("es", ES8712, 12000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END
 
 
 ROM_START( vmetal )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "5b.u19", 0x00001, 0x80000, CRC(4933ac6c) SHA1(1a3303e32fcb08854d4d6e13f36ca99d92aed4cc) )
 	ROM_LOAD16_BYTE( "6b.u18", 0x00000, 0x80000, CRC(4eb939d5) SHA1(741ab05043fc3bd886162d878630e45da9359718) )
 
-	ROM_REGION( 0x800000, REGION_GFX1, 0 )
+	ROM_REGION( 0x800000, "gfx1", 0 )
 	ROMX_LOAD( "1.u29", 0x000004, 0x200000, CRC(b470c168) SHA1(c30462dc134da1e71a94b36ef96ecd65c325b07e) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "2.u31", 0x000000, 0x200000, CRC(b36f8d60) SHA1(1676859d0fee4eb9897ce1601a2c9fd9a6dc4a43) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "3.u28", 0x000006, 0x200000, CRC(00fca765) SHA1(ca9010bd7f59367e483868018db9a9abf871386e) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "4.u30", 0x000002, 0x200000, CRC(5a25a49c) SHA1(c30781202ec882e1ec6adfb560b0a1075b3cce55) , ROM_GROUPWORD | ROM_SKIP(6))
 
-	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* OKI6295 Samples */
+	ROM_REGION( 0x080000, "oki", 0 ) /* OKI6295 Samples */
 	/* Second half is junk */
 	ROM_LOAD( "8.u9", 0x00000, 0x80000, CRC(c14c001c) SHA1(bad96b5cd40d1c34ef8b702262168ecab8192fb6) )
 
-	ROM_REGION( 0x200000, REGION_SOUND2, 0 ) /* Samples */
+	ROM_REGION( 0x200000, "es", 0 ) /* Samples */
 	ROM_LOAD( "7.u12", 0x00000, 0x200000, CRC(a88c52f1) SHA1(d74a5a11f84ba6b1042b33a2c156a1071b6fbfe1) )
 ROM_END
 
 ROM_START( vmetaln )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "vm5.bin", 0x00001, 0x80000, CRC(43ef844e) SHA1(c673f34fcc9e406282c9008795b52d01a240099a) )
 	ROM_LOAD16_BYTE( "vm6.bin", 0x00000, 0x80000, CRC(cb292ab1) SHA1(41fdfe67e6cb848542fd5aa0dfde3b1936bb3a28) )
 
-	ROM_REGION( 0x800000, REGION_GFX1, 0 )
+	ROM_REGION( 0x800000, "gfx1", 0 )
 	ROMX_LOAD( "1.u29", 0x000004, 0x200000, CRC(b470c168) SHA1(c30462dc134da1e71a94b36ef96ecd65c325b07e) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "2.u31", 0x000000, 0x200000, CRC(b36f8d60) SHA1(1676859d0fee4eb9897ce1601a2c9fd9a6dc4a43) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "3.u28", 0x000006, 0x200000, CRC(00fca765) SHA1(ca9010bd7f59367e483868018db9a9abf871386e) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "4.u30", 0x000002, 0x200000, CRC(5a25a49c) SHA1(c30781202ec882e1ec6adfb560b0a1075b3cce55) , ROM_GROUPWORD | ROM_SKIP(6))
 
-	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* OKI6295 Samples */
+	ROM_REGION( 0x080000, "oki", 0 ) /* OKI6295 Samples */
 	/* Second half is junk */
 	ROM_LOAD( "8.u9", 0x00000, 0x80000, CRC(c14c001c) SHA1(bad96b5cd40d1c34ef8b702262168ecab8192fb6) )
 
-	ROM_REGION( 0x200000, REGION_SOUND2, 0 ) /* Samples */
+	ROM_REGION( 0x200000, "es", 0 ) /* Samples */
 	ROM_LOAD( "7.u12", 0x00000, 0x200000, CRC(a88c52f1) SHA1(d74a5a11f84ba6b1042b33a2c156a1071b6fbfe1) )
 ROM_END
 

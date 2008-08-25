@@ -6,6 +6,32 @@ the hardware seems to fall somewhere between the
 hardware playmark commonly used and the hardware
 unico used for zero point etc.
 
+PCB Layout
+----------
+
+  DM1001    DM1002   6116   6116     DM1003
+    6295 6295        6116   *PLCC84  DM1004
+                     6116            DM1005
+     PIC16C55                        DM1006
+
+       6116            6116          DM1007
+       6116            6116          DM1008
+                       6116
+                       6116
+                                     TPC1020
+DSW1 62256   62256                   (PLCC84)
+    DM1000A DM1000B
+DSW2    68000      TPC1020           62256
+                   (PLCC84)          62256
+12MHz 32MHz
+
+
+Notes:
+          *: Unknown PLCC84 chip (surface scratched)
+      VSync: 60Hz
+      HSync: 15.625kHz
+  68K clock: 16MHz
+
 */
 
 #include "driver.h"
@@ -70,8 +96,8 @@ static READ8_HANDLER( drgnmst_snd_command_r )
 
 	switch (drgnmst_oki_control & 0x1f)
 	{
-		case 0x12:	data = (OKIM6295_status_1_r(machine, 0) & 0x0f); break;
-		case 0x16:	data = (OKIM6295_status_0_r(machine, 0) & 0x0f); break;
+		case 0x12:	data = (okim6295_status_1_r(machine, 0) & 0x0f); break;
+		case 0x16:	data = (okim6295_status_0_r(machine, 0) & 0x0f); break;
 		case 0x0b:
 		case 0x0f:	data = drgnmst_snd_command; break;
 		default:	break;
@@ -138,12 +164,12 @@ static WRITE8_HANDLER( drgnmst_snd_control_w )
 	if (oki_new_bank != drgnmst_oki0_bank) {
 		drgnmst_oki0_bank = oki_new_bank;
 		if (drgnmst_oki0_bank) oki_new_bank--;
-		OKIM6295_set_bank_base(0, (oki_new_bank * 0x40000));
+		okim6295_set_bank_base(0, (oki_new_bank * 0x40000));
 	}
 	oki_new_bank = ((pic16c5x_port0 & 0x3) >> 0) | ((drgnmst_oki_control & 0x20) >> 3);
 	if (oki_new_bank != drgnmst_oki1_bank) {
 		drgnmst_oki1_bank = oki_new_bank;
-		OKIM6295_set_bank_base(1, (oki_new_bank * 0x40000));
+		okim6295_set_bank_base(1, (oki_new_bank * 0x40000));
 	}
 
 	switch(drgnmst_oki_control & 0x1f)
@@ -151,12 +177,12 @@ static WRITE8_HANDLER( drgnmst_snd_control_w )
 		case 0x11:
 //                  logerror("Writing %02x to OKI1",drgnmst_oki_command);
 //                  logerror(", PortC=%02x, Code=%02x, Bank0=%01x, Bank1=%01x\n",drgnmst_oki_control,drgnmst_snd_command,drgnmst_oki0_bank,drgnmst_oki1_bank);
-					OKIM6295_data_1_w(machine, 0, drgnmst_oki_command);
+					okim6295_data_1_w(machine, 0, drgnmst_oki_command);
 					break;
 		case 0x15:
 //                  logerror("Writing %02x to OKI0",drgnmst_oki_command);
 //                  logerror(", PortC=%02x, Code=%02x, Bank0=%01x, Bank1=%01x\n",drgnmst_oki_control,drgnmst_snd_command,drgnmst_oki0_bank,drgnmst_oki1_bank);
-					OKIM6295_data_0_w(machine, 0, drgnmst_oki_command);
+					okim6295_data_0_w(machine, 0, drgnmst_oki_command);
 					break;
 		default:	break;
 	}
@@ -173,16 +199,16 @@ static READ8_HANDLER( PIC16C5X_T0_clk_r )
 
 static ADDRESS_MAP_START( drgnmst_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
-	AM_RANGE(0x800000, 0x800001) AM_READ(input_port_0_word_r)
-	AM_RANGE(0x800018, 0x800019) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x80001a, 0x80001b) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x80001c, 0x80001d) AM_READ(input_port_3_word_r)
+	AM_RANGE(0x800000, 0x800001) AM_READ_PORT("P1_P2")
+	AM_RANGE(0x800018, 0x800019) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x80001a, 0x80001b) AM_READ_PORT("DSW1")
+	AM_RANGE(0x80001c, 0x80001d) AM_READ_PORT("DSW2")
 	AM_RANGE(0x800030, 0x800031) AM_WRITE(drgnmst_coin_w)
 	AM_RANGE(0x800100, 0x80011f) AM_WRITE(SMH_RAM) AM_BASE(&drgnmst_vidregs)
 	AM_RANGE(0x800120, 0x800121) AM_WRITENOP
 	AM_RANGE(0x80014a, 0x80014b) AM_WRITENOP
 	AM_RANGE(0x800154, 0x800155) AM_WRITE(SMH_RAM) AM_BASE(&drgnmst_vidregs2) // seems to be priority control
-	AM_RANGE(0x800176, 0x800177) AM_READ(input_port_4_word_r)
+	AM_RANGE(0x800176, 0x800177) AM_READ_PORT("EXTRA")
 	AM_RANGE(0x800180, 0x800181) AM_WRITE(drgnmst_snd_command_w)
 	AM_RANGE(0x800188, 0x800189) AM_WRITE(drgnmst_snd_flag_w)
 	AM_RANGE(0x8001e0, 0x8001e1) AM_WRITENOP
@@ -213,7 +239,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( drgnmst )
-	PORT_START
+	PORT_START("P1_P2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -231,7 +257,7 @@ static INPUT_PORTS_START( drgnmst )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -241,7 +267,7 @@ static INPUT_PORTS_START( drgnmst )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x0700, 0x0700, DEF_STR( Coinage ) )
 /*  PORT_DIPSETTING(      0x0300, DEF_STR( Off ) ) */
 	PORT_DIPSETTING(      0x0000, DEF_STR( 4C_1C ) )
@@ -267,7 +293,7 @@ static INPUT_PORTS_START( drgnmst )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x0700, 0x0400, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x0700, DEF_STR( Easiest ) )
 	PORT_DIPSETTING(      0x0600, DEF_STR( Easier ) )
@@ -291,7 +317,7 @@ static INPUT_PORTS_START( drgnmst )
 	PORT_DIPSETTING(      0x0000, "Red" )
 	PORT_SERVICE( 0x8000, IP_ACTIVE_LOW )
 
-	PORT_START
+	PORT_START("EXTRA")
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_PLAYER(1)
@@ -350,19 +376,19 @@ static const gfx_layout drgnmst_char32x32_layout =
 
 
 static GFXDECODE_START( drgnmst )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, drgnmst_char16x16_layout,   0,      0x200  ) /* sprite tiles */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, drgnmst_char8x8_layout,     0x200,  0x200  ) /* fg tiles */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, drgnmst_char16x16_layout,   0x0400, 0x200  ) /* md tiles */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, drgnmst_char32x32_layout,   0x0600, 0x200  ) /* bg tiles */
+	GFXDECODE_ENTRY( "gfx1", 0, drgnmst_char16x16_layout,   0,      0x200  ) /* sprite tiles */
+	GFXDECODE_ENTRY( "gfx2", 0, drgnmst_char8x8_layout,     0x200,  0x200  ) /* fg tiles */
+	GFXDECODE_ENTRY( "gfx2", 0, drgnmst_char16x16_layout,   0x0400, 0x200  ) /* md tiles */
+	GFXDECODE_ENTRY( "gfx2", 0, drgnmst_char32x32_layout,   0x0600, 0x200  ) /* bg tiles */
 GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( drgnmst )
-	MDRV_CPU_ADD(M68000, 12000000) /* Confirmed */
+	MDRV_CPU_ADD("main", M68000, 12000000) /* Confirmed */
 	MDRV_CPU_PROGRAM_MAP(drgnmst_main_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
-	MDRV_CPU_ADD(PIC16C55, 32000000/8)	/* Confirmed */
+	MDRV_CPU_ADD("audio", PIC16C55, 32000000/8)	/* Confirmed */
 	/* Program and Data Maps are internal to the MCU */
 	MDRV_CPU_IO_MAP(drgnmst_sound_io_map, 0)
 
@@ -384,37 +410,37 @@ static MACHINE_DRIVER_START( drgnmst )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(OKIM6295, 32000000/32)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki1", OKIM6295, 32000000/32)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 
-	MDRV_SOUND_ADD(OKIM6295, 32000000/32)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high)
+	MDRV_SOUND_ADD("oki2", OKIM6295, 32000000/32)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END
 
 
 ROM_START( drgnmst )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "dm1000e", 0x00000, 0x80000, CRC(29467dac) SHA1(42ca42340ffd9b04be23853ca4e936d0528a66ee) )
 	ROM_LOAD16_BYTE( "dm1000o", 0x00001, 0x80000, CRC(ba48e9cf) SHA1(1107f927424107918bb10ff23f40c50579b23836) )
 
-	ROM_REGION( 0x400, REGION_CPU2, ROMREGION_ERASE00 ) /* PIC16C55 Code */
+	ROM_REGION( 0x400, "audio", ROMREGION_ERASE00 ) /* PIC16C55 Code */
 //  ROM_LOAD( "pic16c55", 0x0000, 0x400, CRC(531c9f8d) SHA1(8ec180b0566f2ce1e08f0347e5ad402c73b44049) )
 	/* ROM will be copied here by the init code from the USER1 region */
 
-	ROM_REGION( 0x1000, REGION_USER1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "user1", ROMREGION_DISPOSE )
 	ROM_LOAD( "pic16c55.hex", 0x000, 0x0b7b, CRC(f17011e7) SHA1(8f3bd94ffb528f661eed77d89e5b772442d2f5a6) )
 
-	ROM_REGION( 0x140000, REGION_SOUND1, 0 ) /* OKI-0 Samples */
+	ROM_REGION( 0x140000, "oki1", 0 ) /* OKI-0 Samples */
 	ROM_LOAD( "dm1001", 0x00000, 0x100000, CRC(63566f7f) SHA1(0fe6cb67a5d99cd54e46e9889ea121097756b9ef) )
 
-	ROM_REGION( 0x200000, REGION_SOUND2, 0 ) /* OKI-1 Samples */
+	ROM_REGION( 0x200000, "oki2", 0 ) /* OKI-1 Samples */
 	ROM_LOAD( "dm1002", 0x00000, 0x200000, CRC(0f1a874e) SHA1(8efc39f8ff7e6e7138b19959bd083b9df002acca) )
 
-	ROM_REGION( 0x800000, REGION_GFX1, 0 ) /* Sprites (16x16x4) */
+	ROM_REGION( 0x800000, "gfx1", 0 ) /* Sprites (16x16x4) */
 	ROM_LOAD16_BYTE( "dm1003", 0x000000, 0x080000, CRC(0ca10e81) SHA1(abebd8437764110278c8b7e583d846db27e205ec) )
 	ROM_CONTINUE(0x400000, 0x080000)
 	ROM_CONTINUE(0x100000, 0x080000)
@@ -428,7 +454,7 @@ ROM_START( drgnmst )
 	ROM_LOAD16_BYTE( "dm1006", 0x200001, 0x040000, CRC(c46da6fc) SHA1(f2256f02c833bc1074681729bd2b95fa6f3350cf) )
 	ROM_CONTINUE(0x600001, 0x040000)
 
-	ROM_REGION( 0x200000, REGION_GFX2, 0 ) /* BG Tiles (8x8x4, 16x16x4 and 32x32x4) */
+	ROM_REGION( 0x200000, "gfx2", 0 ) /* BG Tiles (8x8x4, 16x16x4 and 32x32x4) */
 	ROM_LOAD16_BYTE( "dm1007", 0x000001, 0x100000, CRC(d5ad81c4) SHA1(03df467b218682a02245a6e8f500ab83de382448) )
 	ROM_LOAD16_BYTE( "dm1008", 0x000000, 0x100000, CRC(b8572be3) SHA1(29aab76821e0a56033cf06b0a1890b11804da8d8) )
 ROM_END
@@ -448,9 +474,9 @@ static UINT8 drgnmst_asciitohex(UINT8 data)
 
 static DRIVER_INIT( drgnmst )
 {
-	UINT8 *drgnmst_PICROM_HEX = memory_region(machine, REGION_USER1);
-	UINT16 *drgnmst_PICROM = (UINT16 *)memory_region(machine, REGION_CPU2);
-	UINT8 *drgnmst_PCM = memory_region(machine, REGION_SOUND1);
+	UINT8 *drgnmst_PICROM_HEX = memory_region(machine, "user1");
+	UINT16 *drgnmst_PICROM = (UINT16 *)memory_region(machine, "audio");
+	UINT8 *drgnmst_PCM = memory_region(machine, "oki1");
 	INT32   offs, data;
 	UINT16  src_pos = 0;
 	UINT16  dst_pos = 0;

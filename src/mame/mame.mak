@@ -55,9 +55,14 @@ CPUS += I8088
 CPUS += I80186
 CPUS += I80188
 CPUS += I80286
+CPUS += I386
+CPUS += I486
+CPUS += PENTIUM
+CPUS += MEDIAGX
 CPUS += V20
 CPUS += V25
 CPUS += V30
+CPUS += V30MZ
 CPUS += V33
 CPUS += V35
 CPUS += V60
@@ -90,6 +95,7 @@ CPUS += M6809
 CPUS += M6809E
 CPUS += KONAMI
 CPUS += M68000
+#CPUS += M68008
 CPUS += M68010
 CPUS += M68EC020
 CPUS += M68020
@@ -106,6 +112,8 @@ CPUS += TMS9980
 CPUS += TMS9995
 #CPUS += TMS99105A
 #CPUS += TMS99110A
+#CPUS += TMS99000
+#CPUS += TMS99010
 CPUS += Z8000
 CPUS += TMS32010
 CPUS += TMS32025
@@ -121,12 +129,15 @@ CPUS += ADSP2105
 CPUS += ADSP2115
 CPUS += ADSP2181
 CPUS += PSXCPU
+CPUS += CXD8661R
 CPUS += ASAP
 CPUS += UPD7810
 CPUS += UPD7807
+#CPUS += UPD7801
 CPUS += ARM
 CPUS += ARM7
 CPUS += JAGUAR
+CPUS += CUBEQCPU
 CPUS += R3000
 CPUS += R3041
 CPUS += R4600
@@ -135,6 +146,7 @@ CPUS += R4700
 CPUS += R5000
 CPUS += QED5271
 CPUS += RM7000
+CPUS += SH1
 CPUS += SH2
 CPUS += SH4
 CPUS += DSP32C
@@ -159,10 +171,6 @@ CPUS += GMS30C2116
 CPUS += GMS30C2132
 CPUS += GMS30C2216
 CPUS += GMS30C2232
-CPUS += I386
-CPUS += I486
-CPUS += PENTIUM
-CPUS += MEDIAGX
 CPUS += I960
 CPUS += H83002
 CPUS += V810
@@ -175,6 +183,7 @@ CPUS += PPC602
 CPUS += PPC603
 CPUS += PPC603E
 CPUS += PPC603R
+#CPUS += PPC604
 CPUS += MPC8240
 CPUS += SE3208
 CPUS += MC68HC11
@@ -184,9 +193,10 @@ CPUS += RSP
 CPUS += ALPHA8201
 CPUS += ALPHA8301
 CPUS += CDP1802
+CPUS += COP410
+#CPUS += COP411
 CPUS += COP420
 CPUS += COP421
-CPUS += COP410
 CPUS += TLCS90
 CPUS += MB8841
 CPUS += MB8842
@@ -201,14 +211,12 @@ CPUS += LH5801
 CPUS += PDP1
 CPUS += SATURN
 CPUS += SC61860
-CPUS += TX0_64KW
-CPUS += TX0_8KW
+CPUS += TX0
 CPUS += LR35902
 CPUS += TMS7000
 CPUS += TMS7000_EXL
 CPUS += SM8500
-CPUS += V30MZ
-CPUS += CXD8661R
+#CPUS += MINX
 
 
 
@@ -221,20 +229,25 @@ SOUNDS += CUSTOM
 SOUNDS += SAMPLES
 SOUNDS += DAC
 SOUNDS += DMADAC
+SOUNDS += SPEAKER
+SOUNDS += BEEP
 SOUNDS += DISCRETE
 SOUNDS += AY8910
-SOUNDS += YM2203
 SOUNDS += YM2151
+SOUNDS += YM2203
+SOUNDS += YM2413
 SOUNDS += YM2608
 SOUNDS += YM2610
 SOUNDS += YM2610B
 SOUNDS += YM2612
 SOUNDS += YM3438
-SOUNDS += YM2413
 SOUNDS += YM3812
-SOUNDS += YMZ280B
 SOUNDS += YM3526
 SOUNDS += Y8950
+SOUNDS += YMF262
+SOUNDS += YMF271
+SOUNDS += YMF278B
+SOUNDS += YMZ280B
 SOUNDS += SN76477
 SOUNDS += SN76496
 SOUNDS += POKEY
@@ -245,9 +258,10 @@ SOUNDS += NAMCO
 SOUNDS += NAMCO_15XX
 SOUNDS += NAMCO_CUS30
 SOUNDS += NAMCO_52XX
-SOUNDS += NAMCO_54XX
 SOUNDS += NAMCO_63701X
 SOUNDS += NAMCONA
+SOUNDS += C140
+SOUNDS += C352
 SOUNDS += TMS36XX
 SOUNDS += TMS3615
 SOUNDS += TMS5100
@@ -262,9 +276,9 @@ SOUNDS += TMS5200
 SOUNDS += TMS5220
 SOUNDS += VLM5030
 SOUNDS += ADPCM
-SOUNDS += OKIM6295
 SOUNDS += MSM5205
 SOUNDS += MSM5232
+SOUNDS += OKIM6295
 SOUNDS += UPD7759
 SOUNDS += HC55516
 SOUNDS += K005289
@@ -273,9 +287,12 @@ SOUNDS += K051649
 SOUNDS += K053260
 SOUNDS += K054539
 SOUNDS += SEGAPCM
+SOUNDS += MULTIPCM
+SOUNDS += SCSP
+SOUNDS += AICA
 SOUNDS += RF5C68
+SOUNDS += RF5C400
 SOUNDS += CEM3394
-SOUNDS += C140
 SOUNDS += QSOUND
 SOUNDS += SAA1099
 SOUNDS += IREMGA20
@@ -283,35 +300,25 @@ SOUNDS += ES5503
 SOUNDS += ES5505
 SOUNDS += ES5506
 SOUNDS += BSMT2000
-SOUNDS += YMF262
-SOUNDS += YMF278B
 SOUNDS += GAELCO_CG1V
 SOUNDS += GAELCO_GAE1
-SOUNDS += X1_010
-SOUNDS += MULTIPCM
 SOUNDS += C6280
 SOUNDS += SP0250
-SOUNDS += SCSP
-SOUNDS += YMF271
 SOUNDS += PSXSPU
 SOUNDS += CDDA
 SOUNDS += ICS2115
 SOUNDS += ST0016
 SOUNDS += NILE
-SOUNDS += C352
+SOUNDS += X1_010
 SOUNDS += VRENDER0
 #SOUNDS += VOTRAX
 SOUNDS += ES8712
-SOUNDS += RF5C400
-SOUNDS += SPEAKER
 SOUNDS += CDP1869
 SOUNDS += S14001A
-SOUNDS += BEEP
 #SOUNDS += WAVE
 #SOUNDS += SID6581
 #SOUNDS += SID8580
 SOUNDS += SP0256
-SOUNDS += AICA
 
 
 #-------------------------------------------------
@@ -426,6 +433,7 @@ $(MAMEOBJ)/shared.a: \
 	$(MACHINE)/segacrpt.o \
 	$(MACHINE)/ticket.o \
 	$(VIDEO)/avgdvg.o \
+	$(VIDEO)/hd63484.o \
 
 
 
@@ -446,7 +454,6 @@ $(MAMEOBJ)/alpha.a: \
 	$(DRIVERS)/alpha68k.o $(VIDEO)/alpha68k.o \
 	$(DRIVERS)/champbas.o $(VIDEO)/champbas.o \
 	$(DRIVERS)/equites.o $(VIDEO)/equites.o \
-	$(DRIVERS)/exctsccr.o $(VIDEO)/exctsccr.o \
 	$(DRIVERS)/meijinsn.o \
 	$(DRIVERS)/shougi.o \
 
@@ -639,7 +646,7 @@ $(MAMEOBJ)/dataeast.a: \
 	$(DRIVERS)/kingobox.o $(VIDEO)/kingobox.o \
 	$(DRIVERS)/lemmings.o $(VIDEO)/lemmings.o \
 	$(DRIVERS)/liberate.o $(VIDEO)/liberate.o \
-	$(DRIVERS)/madalien.o $(VIDEO)/madalien.o \
+	$(DRIVERS)/madalien.o $(AUDIO)/madalien.o $(VIDEO)/madalien.o \
 	$(DRIVERS)/madmotor.o $(VIDEO)/madmotor.o \
 	$(DRIVERS)/metlclsh.o $(VIDEO)/metlclsh.o \
 	$(DRIVERS)/pcktgal.o $(VIDEO)/pcktgal.o \
@@ -750,6 +757,7 @@ $(MAMEOBJ)/igs.a: \
 	$(DRIVERS)/ddz.o \
 	$(DRIVERS)/dunhuang.o \
 	$(DRIVERS)/goldstar.o $(VIDEO)/goldstar.o \
+	$(DRIVERS)/igs009.o \
 	$(DRIVERS)/igs_blit.o \
 	$(DRIVERS)/igs_180.o \
 	$(DRIVERS)/igs_m027.o \
@@ -1043,7 +1051,7 @@ $(MAMEOBJ)/nichibut.a: \
 $(MAMEOBJ)/nintendo.a: \
 	$(DRIVERS)/dkong.o $(AUDIO)/dkong.o $(VIDEO)/dkong.o \
 	$(DRIVERS)/cham24.o \
-	$(DRIVERS)/kinstb.o \
+	$(DRIVERS)/snesb.o \
 	$(DRIVERS)/mario.o $(AUDIO)/mario.o $(VIDEO)/mario.o \
 	$(DRIVERS)/multigam.o \
 	$(DRIVERS)/n8080.o $(AUDIO)/n8080.o $(VIDEO)/n8080.o \
@@ -1159,7 +1167,7 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/model1.o $(MACHINE)/model1.o $(VIDEO)/model1.o \
 	$(DRIVERS)/model2.o $(VIDEO)/model2.o \
 	$(DRIVERS)/model3.o $(VIDEO)/model3.o $(MACHINE)/model3.o \
-	$(DRIVERS)/naomi.o $(MACHINE)/dc.o $(VIDEO)/dc.o \
+	$(DRIVERS)/naomi.o $(MACHINE)/dc.o $(VIDEO)/dc.o $(MACHINE)/gdcrypt.o \
 	$(DRIVERS)/puckpkmn.o \
 	$(DRIVERS)/segac2.o \
 	$(DRIVERS)/segag80r.o $(MACHINE)/segag80.o $(AUDIO)/segag80r.o $(VIDEO)/segag80r.o \
@@ -1529,6 +1537,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/coolpool.o \
 	$(DRIVERS)/cowrace.o \
 	$(DRIVERS)/crystal.o $(VIDEO)/vrender0.o \
+	$(DRIVERS)/cubeqst.o \
 	$(DRIVERS)/cybertnk.o \
 	$(DRIVERS)/dcheese.o $(VIDEO)/dcheese.o \
 	$(DRIVERS)/dgpix.o \
@@ -1550,6 +1559,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/fortecar.o \
 	$(DRIVERS)/freekick.o $(VIDEO)/freekick.o \
 	$(DRIVERS)/funworld.o $(VIDEO)/funworld.o \
+	$(DRIVERS)/galaxi.o \
 	$(DRIVERS)/gamecstl.o \
 	$(DRIVERS)/gtipoker.o \
 	$(DRIVERS)/go2000.o \
@@ -1577,7 +1587,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/lethalj.o $(VIDEO)/lethalj.o \
 	$(DRIVERS)/limenko.o \
 	$(DRIVERS)/ltcasino.o \
-	$(DRIVERS)/lucky74.o \
+	$(DRIVERS)/lucky74.o $(VIDEO)/lucky74.o \
 	$(DRIVERS)/lucky8.o \
 	$(DRIVERS)/magic10.o \
 	$(DRIVERS)/magicfly.o \
@@ -1608,6 +1618,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/policetr.o $(VIDEO)/policetr.o \
 	$(DRIVERS)/polyplay.o $(AUDIO)/polyplay.o $(VIDEO)/polyplay.o \
 	$(DRIVERS)/quizo.o \
+	$(DRIVERS)/quizpun2.o \
 	$(DRIVERS)/rbmk.o \
 	$(DRIVERS)/rcorsair.o \
 	$(DRIVERS)/sfkick.o \
@@ -1701,6 +1712,8 @@ $(DRIVERS)/firebeat.o:	$(LAYOUT)/firebeat.lh
 $(DRIVERS)/funworld.o:	$(LAYOUT)/funworld.lh
 
 $(DRIVERS)/lazercmd.o:	$(LAYOUT)/lazercmd.lh
+
+$(DRIVERS)/lucky74.o:	$(LAYOUT)/lucky74.lh
 
 $(DRIVERS)/maxaflex.o:	$(LAYOUT)/maxaflex.lh
 

@@ -119,7 +119,7 @@ static TIMER_CALLBACK( scanline_callback )
 		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 
 	/* update the DAC state */
-	DAC_data_w(0, (videoram[0x380 + 0x11] & (scanline >> 2)) ? 255 : 0);
+	dac_data_w(0, (videoram[0x380 + 0x11] & (scanline >> 2)) ? 255 : 0);
 
 	/* on the VBLANK, read the pot and schedule an interrupt time for it */
 	if (scanline == video_screen_get_visible_area(machine->primary_screen)->max_y + 1)
@@ -359,7 +359,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( sbrkout )
-	PORT_START_TAG("DIPS")
+	PORT_START("DIPS")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Language ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( English ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( German ) )
@@ -400,29 +400,29 @@ static INPUT_PORTS_START( sbrkout )
 	PORT_DIPSETTING(	0x80, "3" )
 	PORT_DIPSETTING(	0x00, "5" )
 
-	PORT_START_TAG("COIN")
+	PORT_START("COIN")
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN2 )
 
-	PORT_START_TAG("START")
+	PORT_START("START")
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("SERVICE")
+	PORT_START("SERVICE")
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("SERVE")
+	PORT_START("SERVE")
 	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 
-	PORT_START_TAG("PADDLE")
+	PORT_START("PADDLE")
 	PORT_BIT( 0xff, 0x00, IPT_PADDLE ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_CENTERDELTA(0)
 
-	PORT_START_TAG("SELECT")		/* IN6 - fake port, used to set the game select dial */
+	PORT_START("SELECT")		/* IN6 - fake port, used to set the game select dial */
 	PORT_CONFNAME( 0x03, 0x00, "Game Select" )
 	PORT_CONFSETTING(    0x00, "Progressive" )
 	PORT_CONFSETTING(    0x02, "Double" )
@@ -462,8 +462,8 @@ static const gfx_layout balllayout =
 
 
 static GFXDECODE_START( sbrkout )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0, 1 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, balllayout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx2", 0, balllayout, 0, 1 )
 GFXDECODE_END
 
 
@@ -477,7 +477,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( sbrkout )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502,MAIN_CLOCK/16) 	   /* 375 KHz? Should be 750KHz? */
+	MDRV_CPU_ADD("main", M6502,MAIN_CLOCK/16) 	   /* 375 KHz? Should be 750KHz? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	MDRV_MACHINE_START(sbrkout)
@@ -498,7 +498,7 @@ static MACHINE_DRIVER_START( sbrkout )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -511,19 +511,19 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( sbrkout )
-	ROM_REGION( 0x4000, REGION_CPU1, 0 )
+	ROM_REGION( 0x4000, "main", 0 )
 	ROM_LOAD( "033453.c1",    0x2800, 0x0800, CRC(a35d00e3) SHA1(53617ed1d362e82d6f45abd66056bffe23300e3b) )
 	ROM_LOAD( "033454.d1",    0x3000, 0x0800, CRC(d42ea79a) SHA1(66c9b29226cde36d1ac6d1e81f34ebb5c79eded4) )
 	ROM_LOAD( "033455.e1",    0x3800, 0x0800, CRC(e0a6871c) SHA1(1bdfa73d7b8d91e1c68b7847fc310cac314ee02d) )
 
-	ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "033280.p4",    0x0000, 0x0200, CRC(5a69ce85) SHA1(ad9078d12495c350738bdb0b1e1b6120d9e01f60) )
 	ROM_LOAD( "033281.r4",    0x0200, 0x0200, CRC(066bd624) SHA1(cfb86c7013a70b8375126b23a4e66df5f3b9186b) )
 
-	ROM_REGION( 0x0020, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0020, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "033282.k6",    0x0000, 0x0020, CRC(6228736b) SHA1(bc176261dba11521df19d545ce604f8cc294287a) )
 
-	ROM_REGION( 0x0120, REGION_PROMS, 0 )
+	ROM_REGION( 0x0120, "proms", 0 )
 	ROM_LOAD( "006400.m2",    0x0000, 0x0100, CRC(b8094b4c) SHA1(82dc6799a19984f3b204ee3aeeb007e55afc8be3) )	/* sync (not used) */
 	ROM_LOAD( "006401.e2",    0x0100, 0x0020, CRC(857df8db) SHA1(06313d5bde03220b2bc313d18e50e4bb1d0cfbbb) )	/* memory mapper */
 ROM_END

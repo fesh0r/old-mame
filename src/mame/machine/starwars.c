@@ -126,23 +126,10 @@ WRITE8_HANDLER( starwars_out_w )
  *
  *************************************/
 
-READ8_HANDLER( starwars_input_1_r )
+CUSTOM_INPUT( matrix_flag_r )
 {
-	int x = input_port_read_indexed(machine, 1);
-
 	/* set the matrix processor flag */
-	if (math_run)
-		x |= 0x80;
-	else
-		x &= ~0x80;
-
-	/* set the AVG done flag */
-	if (avgdvg_done())
-		x |= 0x40;
-	else
-		x &= ~0x40;
-
-	return x;
+	return math_run ? 1 : 0;
 }
 
 
@@ -157,11 +144,11 @@ READ8_HANDLER( starwars_adc_r )
 {
 	/* pitch */
 	if (control_num == kPitch)
-		return input_port_read_indexed(machine, 4);
+		return input_port_read(machine, "STICKY");
 
 	/* yaw */
 	else if (control_num == kYaw)
-		return input_port_read_indexed(machine, 5);
+		return input_port_read(machine, "STICKX");
 
 	/* default to unused thrust */
 	else
@@ -184,7 +171,7 @@ WRITE8_HANDLER( starwars_adc_select_w )
 
 void starwars_mproc_init(running_machine *machine)
 {
-	UINT8 *src = memory_region(machine, REGION_USER2);
+	UINT8 *src = memory_region(machine, "user2");
 	int cnt, val;
 
 	PROM_STR = auto_malloc(1024 * sizeof(PROM_STR[0]));

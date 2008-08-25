@@ -108,8 +108,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( hotblock_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x0000) AM_WRITE(hotblock_port0_w)
 	AM_RANGE(0x0004, 0x0004) AM_READ(hotblock_port4_r) AM_WRITE(hotblock_port4_w)
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_READ( AY8910_read_port_0_r ) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0x8000, 0x8000) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x8001, 0x8001) AM_READ( ay8910_read_port_0_r ) AM_WRITE(ay8910_write_port_0_w)
 ADDRESS_MAP_END
 
 
@@ -150,7 +150,7 @@ static VIDEO_UPDATE(hotblock)
 
 
 static INPUT_PORTS_START(hotblock)
-	PORT_START	/* 8bit */
+	PORT_START("P1")	/* 8bit */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1) PORT_8WAY
@@ -160,7 +160,7 @@ static INPUT_PORTS_START(hotblock)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) // unused?
 
-	PORT_START	/* 8bit */
+	PORT_START("P2")	/* 8bit */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2) PORT_8WAY
@@ -176,7 +176,7 @@ static INTERRUPT_GEN( hotblocks_irq ) /* right? */
 	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -189,7 +189,7 @@ static const struct AY8910interface ay8910_interface =
 
 static MACHINE_DRIVER_START( hotblock )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(I8088, 10000000)
+	MDRV_CPU_ADD("main", I8088, 10000000)
 	MDRV_CPU_PROGRAM_MAP(hotblock_map, 0)
 	MDRV_CPU_IO_MAP(hotblock_io,0)
 	MDRV_CPU_VBLANK_INT("main", hotblocks_irq)
@@ -210,13 +210,13 @@ static MACHINE_DRIVER_START( hotblock )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1000000)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, 1000000)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 ROM_START( hotblock )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD( "hotblk5.ic4", 0x000000, 0x080000, CRC(5f90f776) SHA1(5ca74714a7d264b4fafaad07dc11e57308828d30) )
 	ROM_LOAD( "hotblk6.ic5", 0x080000, 0x080000, CRC(3176d231) SHA1(ac22fd0e9820c6714f51a3d8315eb5d43ef91eeb) )
 ROM_END

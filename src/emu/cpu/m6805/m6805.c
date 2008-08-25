@@ -36,7 +36,8 @@
 
 #define IRQ_LEVEL_DETECT 0
 
-enum {
+enum
+{
 	SUBTYPE_M6805,
 	SUBTYPE_M68705,
 	SUBTYPE_HD63705
@@ -178,6 +179,9 @@ static const UINT8 flags8d[256]= /* decrement */
 #define INDEXED2 {IMMWORD(ea); EA+=X;}
 
 /* macros to set status flags */
+#if defined(SEC)
+#undef SEC
+#endif
 #define SEC CC|=CFLAG
 #define CLC CC&=~CFLAG
 #define SEZ CC|=ZFLAG

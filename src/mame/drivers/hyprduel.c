@@ -242,7 +242,7 @@ static UINT16 *hyprduel_rombank;
 
 static READ16_HANDLER( hyprduel_bankedrom_r )
 {
-	const int region = REGION_GFX1;
+	const char *region = "gfx1";
 
 	UINT8 *ROM = memory_region( machine, region );
 	size_t  len  = memory_region_length( machine, region );
@@ -328,7 +328,7 @@ static WRITE16_HANDLER( hyprduel_blitter_w )
 
 	if (offset == 0xC/2)
 	{
-		const int region = REGION_GFX1;
+		const char *region = "gfx1";
 
 		UINT8 *src	=	memory_region(machine, region);
 		size_t  src_len	=	memory_region_length(machine, region);
@@ -472,10 +472,10 @@ static ADDRESS_MAP_START( hyprduel_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x478000, 0x4787ff) AM_READ(SMH_RAM				)	// Tiles Set
 	AM_RANGE(0x4788a2, 0x4788a3) AM_READ(hyprduel_irq_cause_r	)	// IRQ Cause
 	AM_RANGE(0xc00000, 0xc07fff) AM_READ(SMH_RAM				)	// (sound driver controls)
-	AM_RANGE(0xe00000, 0xe00001) AM_READ(input_port_0_word_r	)	// Inputs
-	AM_RANGE(0xe00002, 0xe00003) AM_READ(input_port_1_word_r	)	//
-	AM_RANGE(0xe00004, 0xe00005) AM_READ(input_port_2_word_r	)	//
-	AM_RANGE(0xe00006, 0xe00007) AM_READ(input_port_3_word_r	)	//
+	AM_RANGE(0xe00000, 0xe00001) AM_READ_PORT("SERVICE")
+	AM_RANGE(0xe00002, 0xe00003) AM_READ_PORT("DSW")
+	AM_RANGE(0xe00004, 0xe00005) AM_READ_PORT("P1_P2")
+	AM_RANGE(0xe00006, 0xe00007) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0xfe0000, 0xffffff) AM_READ(SMH_RAM				)
 ADDRESS_MAP_END
 
@@ -509,8 +509,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( hyprduel_readmem2, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x003fff) AM_READ(SMH_RAM						)
 	AM_RANGE(0x004000, 0x007fff) AM_READ(SMH_RAM						)
-	AM_RANGE(0x400002, 0x400003) AM_READ(YM2151_status_port_0_lsb_r	)
-	AM_RANGE(0x400004, 0x400005) AM_READ(OKIM6295_status_0_lsb_r		)
+	AM_RANGE(0x400002, 0x400003) AM_READ(ym2151_status_port_0_lsb_r	)
+	AM_RANGE(0x400004, 0x400005) AM_READ(okim6295_status_0_lsb_r		)
 	AM_RANGE(0xc00000, 0xc07fff) AM_READ(SMH_RAM						)
 	AM_RANGE(0xfe0000, 0xffffff) AM_READ(SMH_RAM						)
 ADDRESS_MAP_END
@@ -518,9 +518,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( hyprduel_writemem2, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x003fff) AM_WRITE(SMH_RAM) AM_BASE(&hypr_sub_sharedram1_2	)	// shadow ($c00000 - $c03fff : vector, write ok)
 	AM_RANGE(0x004000, 0x007fff) AM_WRITE(SMH_RAM) AM_BASE(&hypr_sub_sharedram2_2	)	// shadow ($fe4000 - $fe7fff : read only)
-	AM_RANGE(0x400000, 0x400001) AM_WRITE(YM2151_register_port_0_lsb_w	)
-	AM_RANGE(0x400002, 0x400003) AM_WRITE(YM2151_data_port_0_lsb_w		)
-	AM_RANGE(0x400004, 0x400005) AM_WRITE(OKIM6295_data_0_lsb_w			)
+	AM_RANGE(0x400000, 0x400001) AM_WRITE(ym2151_register_port_0_lsb_w	)
+	AM_RANGE(0x400002, 0x400003) AM_WRITE(ym2151_data_port_0_lsb_w		)
+	AM_RANGE(0x400004, 0x400005) AM_WRITE(okim6295_data_0_lsb_w			)
 	AM_RANGE(0x800000, 0x800001) AM_WRITE(SMH_NOP						)
 	AM_RANGE(0xc00000, 0xc07fff) AM_WRITE(SMH_RAM) AM_BASE(&hypr_sub_sharedram1_1	)	// (sound driver)
 	AM_RANGE(0xfe0000, 0xffffff) AM_WRITE(SMH_RAM) AM_BASE(&hypr_sub_sharedram2_1	)
@@ -540,10 +540,10 @@ static ADDRESS_MAP_START( magerror_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x878000, 0x8787ff) AM_READ(SMH_RAM				)	// Tiles Set
 	AM_RANGE(0x8788a2, 0x8788a3) AM_READ(hyprduel_irq_cause_r	)	// IRQ Cause
 	AM_RANGE(0xc00000, 0xc1ffff) AM_READ(SMH_RAM				)	// (sound driver controls) ?
-	AM_RANGE(0xe00000, 0xe00001) AM_READ(input_port_0_word_r	)	// Inputs
-	AM_RANGE(0xe00002, 0xe00003) AM_READ(input_port_1_word_r	)	//
-	AM_RANGE(0xe00004, 0xe00005) AM_READ(input_port_2_word_r	)	//
-	AM_RANGE(0xe00006, 0xe00007) AM_READ(input_port_3_word_r	)	//
+	AM_RANGE(0xe00000, 0xe00001) AM_READ_PORT("SERVICE")
+	AM_RANGE(0xe00002, 0xe00003) AM_READ_PORT("DSW")
+	AM_RANGE(0xe00004, 0xe00005) AM_READ_PORT("P1_P2")
+	AM_RANGE(0xe00006, 0xe00007) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0xfe0000, 0xffffff) AM_READ(SMH_RAM				)
 ADDRESS_MAP_END
 
@@ -577,8 +577,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( magerror_readmem2, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x003fff) AM_READ(SMH_RAM						)
 	AM_RANGE(0x004000, 0x007fff) AM_READ(SMH_RAM						)
-//  AM_RANGE(0x400002, 0x400003) AM_READ(YM2151_status_port_0_lsb_r )
-	AM_RANGE(0x400004, 0x400005) AM_READ(OKIM6295_status_0_lsb_r		)
+//  AM_RANGE(0x400002, 0x400003) AM_READ(ym2151_status_port_0_lsb_r )
+	AM_RANGE(0x400004, 0x400005) AM_READ(okim6295_status_0_lsb_r		)
 	AM_RANGE(0xc00000, 0xc07fff) AM_READ(SMH_RAM						)
 	AM_RANGE(0xfe0000, 0xffffff) AM_READ(SMH_RAM						)
 ADDRESS_MAP_END
@@ -586,9 +586,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( magerror_writemem2, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x003fff) AM_WRITE(SMH_RAM) AM_BASE(&hypr_sub_sharedram1_2	)	// shadow ($c00000 - $c03fff : vector, write ok)
 	AM_RANGE(0x004000, 0x007fff) AM_WRITE(SMH_RAM) AM_BASE(&hypr_sub_sharedram2_2	)	// shadow ($fe4000 - $fe7fff : read only)
-  	AM_RANGE(0x400000, 0x400001) AM_WRITE(YM2413_register_port_0_lsb_w  )
-  	AM_RANGE(0x400002, 0x400003) AM_WRITE(YM2413_data_port_0_lsb_w      )
-	AM_RANGE(0x400004, 0x400005) AM_WRITE(OKIM6295_data_0_lsb_w			)
+  	AM_RANGE(0x400000, 0x400001) AM_WRITE(ym2413_register_port_0_lsb_w  )
+  	AM_RANGE(0x400002, 0x400003) AM_WRITE(ym2413_data_port_0_lsb_w      )
+	AM_RANGE(0x400004, 0x400005) AM_WRITE(okim6295_data_0_lsb_w			)
 	AM_RANGE(0x800000, 0x800001) AM_WRITE(SMH_NOP						)
 	AM_RANGE(0xc00000, 0xc07fff) AM_WRITE(SMH_RAM) AM_BASE(&hypr_sub_sharedram1_1	)	// (sound driver)
 	AM_RANGE(0xfe0000, 0xffffff) AM_WRITE(SMH_RAM) AM_BASE(&hypr_sub_sharedram2_1	)
@@ -621,14 +621,14 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( hyprduel )
-	PORT_START
+	PORT_START("SERVICE")
 	PORT_SERVICE_NO_TOGGLE( 0x8000, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x4000, 0x0000, "Show Warning" )
 	PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_BIT( 0x3fff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( 3C_1C ) )
@@ -669,11 +669,11 @@ static INPUT_PORTS_START( hyprduel )
 	PORT_DIPSETTING(      0x0000, "5" )
 	PORT_BIT(     0xc000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("P1_P2")
 	JOY_LSB(1, BUTTON1, BUTTON2, BUTTON3, UNKNOWN)
 	JOY_MSB(2, BUTTON1, BUTTON2, BUTTON3, UNKNOWN)
 
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW,  IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW,  IPT_COIN2 ) PORT_IMPULSE(2)
 	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -694,8 +694,8 @@ static GFXLAYOUT_RAW( layout_8x8x4, 4, 8, 8, 4*8, 32*8 )
 static GFXLAYOUT_RAW( layout_8x8x8h, 8, 8, 8, 8*8, 32*8 )
 
 static GFXDECODE_START( 14220 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, layout_8x8x4,    0x0, 0x200 ) // [0] 4 Bit Tiles
-	GFXDECODE_ENTRY( REGION_GFX1, 0, layout_8x8x8h,   0x0,  0x20 ) // [1] 8 Bit Tiles
+	GFXDECODE_ENTRY( "gfx1", 0, layout_8x8x4,    0x0, 0x200 ) // [0] 4 Bit Tiles
+	GFXDECODE_ENTRY( "gfx1", 0, layout_8x8x8h,   0x0,  0x20 ) // [1] 8 Bit Tiles
 GFXDECODE_END
 
 /***************************************************************************
@@ -707,7 +707,7 @@ static void sound_irq(running_machine *machine, int state)
 	cpunum_set_input_line(machine, 1, 1, HOLD_LINE);
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	sound_irq
 };
@@ -719,11 +719,11 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( hyprduel )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000,20000000/2)		/* 10MHz */
+	MDRV_CPU_ADD("main", M68000,20000000/2)		/* 10MHz */
 	MDRV_CPU_PROGRAM_MAP(hyprduel_readmem,hyprduel_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(hyprduel_interrupt,RASTER_LINES)
 
-	MDRV_CPU_ADD(M68000,20000000/2)		/* 10MHz */
+	MDRV_CPU_ADD("sub", M68000,20000000/2)		/* 10MHz */
 	MDRV_CPU_PROGRAM_MAP(hyprduel_readmem2,hyprduel_writemem2)
 
 	MDRV_MACHINE_RESET(hyprduel)
@@ -745,13 +745,13 @@ static MACHINE_DRIVER_START( hyprduel )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 4000000)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 4000000)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.80)
 	MDRV_SOUND_ROUTE(1, "right", 0.80)
 
-	MDRV_SOUND_ADD(OKIM6295, 4000000/16/16*132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 4000000/16/16*132)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.57)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.57)
 MACHINE_DRIVER_END
@@ -760,11 +760,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( magerror )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000,20000000/2)		/* 10MHz */
+	MDRV_CPU_ADD("main", M68000,20000000/2)		/* 10MHz */
 	MDRV_CPU_PROGRAM_MAP(magerror_readmem,magerror_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(hyprduel_interrupt,RASTER_LINES)
 
-	MDRV_CPU_ADD(M68000,20000000/2)		/* 10MHz */
+	MDRV_CPU_ADD("sub", M68000,20000000/2)		/* 10MHz */
 	MDRV_CPU_PROGRAM_MAP(magerror_readmem2,magerror_writemem2)
 
 	MDRV_MACHINE_RESET(hyprduel)
@@ -786,12 +786,12 @@ static MACHINE_DRIVER_START( magerror )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2413, 3579545)
+	MDRV_SOUND_ADD("ym", YM2413, 3579545)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.57)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.57)
 
-	MDRV_SOUND_ADD(OKIM6295, 4000000/16/16*132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 4000000/16/16*132)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.57)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.57)
 MACHINE_DRIVER_END
@@ -802,8 +802,8 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( hyprduel )
 {
-	int i, len = memory_region_length(machine, REGION_GFX1);
-	UINT8 *ROM = memory_region(machine, REGION_GFX1);
+	int i, len = memory_region_length(machine, "gfx1");
+	UINT8 *ROM = memory_region(machine, "gfx1");
 
 	/*
       Tiles can be either 4-bit or 8-bit, and both depths can be used at the same
@@ -833,47 +833,47 @@ static DRIVER_INIT( hyprduel )
 
 
 ROM_START( hyprduel )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD16_BYTE( "24.u24", 0x000000, 0x40000, CRC(c7402722) SHA1(e385676cdcee65a3ddf07791d82a1fe83ba1b3e2) ) /* Also silk screened as position 10 */
 	ROM_LOAD16_BYTE( "23.u23", 0x000001, 0x40000, CRC(d8297c2b) SHA1(2e23c5b1784d0a465c0c0dc3ca28505689a8b16c) ) /* Also silk screened as position  9 */
 
-	ROM_REGION( 0x400000, REGION_GFX1, 0 )	/* Gfx + Prg + Data (Addressable by CPU & Blitter) */
+	ROM_REGION( 0x400000, "gfx1", 0 )	/* Gfx + Prg + Data (Addressable by CPU & Blitter) */
 	ROMX_LOAD( "ts_hyper-1.u74", 0x000000, 0x100000, CRC(4b3b2d3c) SHA1(5e9e8ec853f71aeff3910b93dadbaeae2b61717b) , ROM_GROUPWORD | ROM_SKIP(6) )
 	ROMX_LOAD( "ts_hyper-2.u75", 0x000002, 0x100000, CRC(dc230116) SHA1(a3c447657d8499764f52c81382961f425c56037b) , ROM_GROUPWORD | ROM_SKIP(6) )
 	ROMX_LOAD( "ts_hyper-3.u76", 0x000004, 0x100000, CRC(2d770dd0) SHA1(27f9e7f67e96210d3710ab4f940c5d7ae13f8bbf) , ROM_GROUPWORD | ROM_SKIP(6) )
 	ROMX_LOAD( "ts_hyper-4.u77", 0x000006, 0x100000, CRC(f88c6d33) SHA1(277b56df40a17d7dd9f1071b0d498635a5b783cd) , ROM_GROUPWORD | ROM_SKIP(6) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "97.u97", 0x00000, 0x40000, CRC(bf3f8574) SHA1(9e743f05e53256c886d43e1f0c43d7417134b9b3) ) /* Also silk screened as position 11 */
 ROM_END
 
 ROM_START( hyprdelj )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD16_BYTE( "24a.u24", 0x000000, 0x40000, CRC(2458f91d) SHA1(c75c7bccc84738e29b35667793491a1213aea1da) ) /* Also silk screened as position 10 */
 	ROM_LOAD16_BYTE( "23a.u23", 0x000001, 0x40000, CRC(98aedfca) SHA1(42028e57ac79473cde683be2100b953ff3b2b345) ) /* Also silk screened as position  9 */
 
-	ROM_REGION( 0x400000, REGION_GFX1, 0 )	/* Gfx + Prg + Data (Addressable by CPU & Blitter) */
+	ROM_REGION( 0x400000, "gfx1", 0 )	/* Gfx + Prg + Data (Addressable by CPU & Blitter) */
 	ROMX_LOAD( "ts_hyper-1.u74", 0x000000, 0x100000, CRC(4b3b2d3c) SHA1(5e9e8ec853f71aeff3910b93dadbaeae2b61717b) , ROM_GROUPWORD | ROM_SKIP(6) )
 	ROMX_LOAD( "ts_hyper-2.u75", 0x000002, 0x100000, CRC(dc230116) SHA1(a3c447657d8499764f52c81382961f425c56037b) , ROM_GROUPWORD | ROM_SKIP(6) )
 	ROMX_LOAD( "ts_hyper-3.u76", 0x000004, 0x100000, CRC(2d770dd0) SHA1(27f9e7f67e96210d3710ab4f940c5d7ae13f8bbf) , ROM_GROUPWORD | ROM_SKIP(6) )
 	ROMX_LOAD( "ts_hyper-4.u77", 0x000006, 0x100000, CRC(f88c6d33) SHA1(277b56df40a17d7dd9f1071b0d498635a5b783cd) , ROM_GROUPWORD | ROM_SKIP(6) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "97.u97", 0x00000, 0x40000, CRC(bf3f8574) SHA1(9e743f05e53256c886d43e1f0c43d7417134b9b3) ) /* Also silk screened as position 11 */
 ROM_END
 
 ROM_START( magerror )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD16_BYTE( "24.u24", 0x000000, 0x40000, CRC(5e78027f) SHA1(053374942bc545a92cc6f6ab6784c4626e4ec9e1) ) /* Also silk screened as position 10 */
 	ROM_LOAD16_BYTE( "23.u23", 0x000001, 0x40000, CRC(7271ec70) SHA1(bd7666390b70821f90ba976a3afe3194fb119478) ) /* Also silk screened as position  9 */
 
-	ROM_REGION( 0x400000, REGION_GFX1, 0 )	/* Gfx + Prg + Data (Addressable by CPU & Blitter) */
+	ROM_REGION( 0x400000, "gfx1", 0 )	/* Gfx + Prg + Data (Addressable by CPU & Blitter) */
 	ROMX_LOAD( "mr93046-02.u74", 0x000000, 0x100000, CRC(f7ba06fb) SHA1(e1407b0d03863f434b68183c01e8547612e5c5fd) , ROM_GROUPWORD | ROM_SKIP(6) )
 	ROMX_LOAD( "mr93046-04.u75", 0x000002, 0x100000, CRC(8c114d15) SHA1(4eb1f82e7992deb126633287cb4fd2a6d215346c) , ROM_GROUPWORD | ROM_SKIP(6) )
 	ROMX_LOAD( "mr93046-01.u76", 0x000004, 0x100000, CRC(6cc3b928) SHA1(f19d0add314867bfb7dcefe8e7a2d50a84530df7) , ROM_GROUPWORD | ROM_SKIP(6) )
 	ROMX_LOAD( "mr93046-03.u77", 0x000006, 0x100000, CRC(6b1eb0ea) SHA1(6167a61562ef28147a7917c692f181f3fc2d5be6) , ROM_GROUPWORD | ROM_SKIP(6) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "97.u97", 0x00000, 0x40000, CRC(2e62bca8) SHA1(191fff11186dbbc1d9d9f3ba1b6e17c38a7d2d1d) ) /* Also silk screened as position 11 */
 ROM_END
 

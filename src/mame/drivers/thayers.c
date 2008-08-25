@@ -18,8 +18,7 @@
 
 extern const char layout_dlair[];
 
-static laserdisc_info *discinfo;
-static UINT8 laserdisc_type;
+static const device_config *laserdisc;
 static UINT8 laserdisc_data;
 
 static int rx_bit;
@@ -38,17 +37,6 @@ static int cart_present;
 static int pr7820_enter;
 
 static const UINT8 led_map[16] = { 0x3f, 0x06, 0x5b, 0x4f, 0x66, 0x6d, 0x7c, 0x07, 0x7f, 0x67, 0x77, 0x7c, 0x39, 0x5e, 0x79, 0x00 };
-
-/* Video */
-
-static VIDEO_UPDATE( thayers )
-{
-	/* display disc information */
-	if (discinfo != NULL)
-		popmessage("%s", laserdisc_describe_state(discinfo));
-
-	return 0;
-}
 
 /* Interrupts */
 
@@ -324,7 +312,7 @@ static READ8_HANDLER( dsw_b_r )
 
 static READ8_HANDLER( laserdsc_data_r )
 {
-	return laserdisc_data_r(discinfo);
+	return laserdisc_data_r(laserdisc);
 }
 
 static WRITE8_HANDLER( laserdsc_data_w )
@@ -353,21 +341,21 @@ static WRITE8_HANDLER( laserdsc_control_w )
 
 	if (BIT(data, 5))
 	{
-		laserdisc_data_w(discinfo, laserdisc_data);
+		laserdisc_data_w(laserdisc, laserdisc_data);
 	}
 
-	switch (laserdisc_type)
+	switch (device_get_info_int(laserdisc, LDINFO_INT_TYPE))
 	{
-	case LASERDISC_TYPE_PR7820:
+	case LASERDISC_TYPE_PIONEER_PR7820:
 		pr7820_enter = BIT(data, 6) ? CLEAR_LINE : ASSERT_LINE;
 
-		laserdisc_line_w(discinfo, LASERDISC_LINE_ENTER, pr7820_enter);
+		laserdisc_line_w(laserdisc, LASERDISC_LINE_ENTER, pr7820_enter);
 
 		// BIT(data, 7) is INT/_EXT, but there is no such input line in laserdsc.h
 		break;
 
-	case LASERDISC_TYPE_LDV1000:
-		laserdisc_line_w(discinfo, LASERDISC_LINE_ENTER, BIT(data, 7) ? CLEAR_LINE : ASSERT_LINE);
+	case LASERDISC_TYPE_PIONEER_LDV1000:
+		laserdisc_line_w(laserdisc, LASERDISC_LINE_ENTER, BIT(data, 7) ? CLEAR_LINE : ASSERT_LINE);
 		break;
 	}
 }
@@ -599,16 +587,13 @@ ADDRESS_MAP_END
 
 static CUSTOM_INPUT( laserdisc_enter_r )
 {
-	if (discinfo == NULL)
-		return 0;
-
-	switch (laserdisc_type)
+	switch (device_get_info_int(laserdisc, LDINFO_INT_TYPE))
 	{
-	case LASERDISC_TYPE_PR7820:
-		return pr7820_enter;
+		case LASERDISC_TYPE_PIONEER_PR7820:
+			return pr7820_enter;
 
-	case LASERDISC_TYPE_LDV1000:
-		return (laserdisc_line_r(discinfo, LASERDISC_LINE_STATUS) == ASSERT_LINE) ? 0 : 1;
+		case LASERDISC_TYPE_PIONEER_LDV1000:
+			return (laserdisc_line_r(laserdisc, LASERDISC_LINE_STATUS) == ASSERT_LINE) ? 0 : 1;
 	}
 
 	return 0;
@@ -616,23 +601,20 @@ static CUSTOM_INPUT( laserdisc_enter_r )
 
 static CUSTOM_INPUT( laserdisc_ready_r )
 {
-	if (discinfo == NULL)
-		return 0;
-
-	switch (laserdisc_type)
+	switch (device_get_info_int(laserdisc, LDINFO_INT_TYPE))
 	{
-	case LASERDISC_TYPE_PR7820:
-		return (laserdisc_line_r(discinfo, LASERDISC_LINE_READY) == ASSERT_LINE) ? 0 : 1;
+		case LASERDISC_TYPE_PIONEER_PR7820:
+			return (laserdisc_line_r(laserdisc, LASERDISC_LINE_READY) == ASSERT_LINE) ? 0 : 1;
 
-	case LASERDISC_TYPE_LDV1000:
-		return (laserdisc_line_r(discinfo, LASERDISC_LINE_COMMAND) == ASSERT_LINE) ? 0 : 1;
+		case LASERDISC_TYPE_PIONEER_LDV1000:
+			return (laserdisc_line_r(laserdisc, LASERDISC_LINE_COMMAND) == ASSERT_LINE) ? 0 : 1;
 	}
 
 	return 0;
 }
 
 static INPUT_PORTS_START( thayers )
-	PORT_START_TAG("DSWA")
+	PORT_START("DSWA")
 	PORT_DIPNAME( 0x07, 0x07, "Time Per Coin" ) PORT_DIPLOCATION( "A:3,2,1" )
 	PORT_DIPSETTING(    0x07, "110 Seconds" )
 	PORT_DIPSETTING(    0x06, "95 Seconds" )
@@ -656,7 +638,7 @@ static INPUT_PORTS_START( thayers )
 	PORT_DIPSETTING(    0x00, "One Out of 8 Times" )
 	PORT_DIPUNUSED_DIPLOC( 0x80, IP_ACTIVE_LOW, "A:8" )
 
-	PORT_START_TAG("DSWB")
+	PORT_START("DSWB")
 	PORT_SERVICE_DIPLOC( 0x01, 0x01, "B:1" )
 	PORT_DIPUNUSED_DIPLOC( 0x02, IP_ACTIVE_LOW, "B:2" )
 	PORT_DIPUNUSED_DIPLOC( 0x04, IP_ACTIVE_LOW, "B:3" )
@@ -665,67 +647,67 @@ static INPUT_PORTS_START( thayers )
 	PORT_DIPSETTING(    0x00, "PR-7820" )
 	PORT_DIPUNUSED_DIPLOC( 0xe0, IP_ACTIVE_LOW, "B:8,7,6" )
 
-	PORT_START_TAG("COIN")
+	PORT_START("COIN")
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(laserdisc_enter_r, 0 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(laserdisc_ready_r, 0 )
 
-	PORT_START_TAG("R0")
+	PORT_START("R0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "2" ) PORT_CODE( KEYCODE_F2 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "1 - Clear" ) PORT_CODE( KEYCODE_BACKSPACE )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Q" ) PORT_CODE( KEYCODE_Q )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( DEF_STR( Yes ) ) PORT_CODE( KEYCODE_0_PAD )
 
-	PORT_START_TAG("R1")
+	PORT_START("R1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Z - Spell of Release" ) PORT_CODE( KEYCODE_Z )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "A" ) PORT_CODE( KEYCODE_A )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "W - Amulet" ) PORT_CODE( KEYCODE_W )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Items" ) PORT_CODE( KEYCODE_1_PAD )
 
-	PORT_START_TAG("R2")
+	PORT_START("R2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "X - Scepter" ) PORT_CODE( KEYCODE_X )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "S - Dagger" ) PORT_CODE( KEYCODE_S )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "E - Black Mace" ) PORT_CODE( KEYCODE_E )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Drop Item" ) PORT_CODE( KEYCODE_2_PAD )
 
-	PORT_START_TAG("R3")
+	PORT_START("R3")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "C - Spell of Seeing" ) PORT_CODE( KEYCODE_C )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "D - Great Circlet" ) PORT_CODE( KEYCODE_D )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "R - Blood Sword" ) PORT_CODE( KEYCODE_R )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Give Score" ) PORT_CODE( KEYCODE_3_PAD )
 
-	PORT_START_TAG("R4")
+	PORT_START("R4")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "V - Shield" ) PORT_CODE( KEYCODE_V )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "F - Hunting Horn" ) PORT_CODE( KEYCODE_F )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "T - Chalice" ) PORT_CODE( KEYCODE_T )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Replay" ) PORT_CODE( KEYCODE_4_PAD )
 
-	PORT_START_TAG("R5")
+	PORT_START("R5")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "B - Silver Wheat" ) PORT_CODE( KEYCODE_B )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "G - Long Bow" ) PORT_CODE( KEYCODE_G )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Y - Coins" ) PORT_CODE( KEYCODE_Y )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Combine Action" ) PORT_CODE( KEYCODE_6_PAD )
 
-	PORT_START_TAG("R6")
+	PORT_START("R6")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "N - Staff" ) PORT_CODE( KEYCODE_N )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "H - Medallion" ) PORT_CODE( KEYCODE_H )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "U - Cold Fire" ) PORT_CODE( KEYCODE_U )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Save Game" ) PORT_CODE( KEYCODE_7_PAD )
 
-	PORT_START_TAG("R7")
+	PORT_START("R7")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "M - Spell of Understanding" ) PORT_CODE( KEYCODE_M )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "J - Onyx Seal" ) PORT_CODE( KEYCODE_J )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "I - Crown" ) PORT_CODE( KEYCODE_I )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Update" ) PORT_CODE( KEYCODE_8_PAD )
 
-	PORT_START_TAG("R8")
+	PORT_START("R8")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "3 - Enter" ) PORT_CODE( KEYCODE_ENTER )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "K - Orb of Quoid" ) PORT_CODE( KEYCODE_K )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "O - Crystal" ) PORT_CODE( KEYCODE_O )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Hint" ) PORT_CODE( KEYCODE_9_PAD )
 
-	PORT_START_TAG("R9")
+	PORT_START("R9")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "4 - Space" ) PORT_CODE( KEYCODE_SPACE )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "L" ) PORT_CODE( KEYCODE_L )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "P" ) PORT_CODE( KEYCODE_P )
@@ -736,23 +718,19 @@ INPUT_PORTS_END
 
 static MACHINE_START( thayers )
 {
-	laserdisc_type = LASERDISC_TYPE_LDV1000;
-
-	discinfo = laserdisc_init(machine, laserdisc_type, get_disk_handle(0), 0);
-
+	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
 	memset(&ssi263, 0, sizeof(ssi263));
 }
 
 static MACHINE_RESET( thayers )
 {
-	laserdisc_type = (input_port_read(machine, "DSWB") & 0x18) ? LASERDISC_TYPE_LDV1000 : LASERDISC_TYPE_PR7820;
-
-	laserdisc_reset(discinfo, laserdisc_type);
+	int newtype = (input_port_read(machine, "DSWB") & 0x18) ? LASERDISC_TYPE_PIONEER_LDV1000 : LASERDISC_TYPE_PIONEER_PR7820;
+	device_set_info_int(laserdisc, LDINFO_INT_TYPE, newtype);
 }
 
 static INTERRUPT_GEN( vblank_callback_thayers )
 {
-	laserdisc_vsync(discinfo);
+	laserdisc_vsync(laserdisc);
 }
 
 /* COP400 Interface */
@@ -768,29 +746,25 @@ static COP400_INTERFACE( thayers_cop_intf )
 
 static MACHINE_DRIVER_START( thayers )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, XTAL_4MHz)
+	MDRV_CPU_ADD("main", Z80, XTAL_4MHz)
 	MDRV_CPU_PROGRAM_MAP(thayers_map, 0)
 	MDRV_CPU_IO_MAP(thayers_io_map, 0)
 	MDRV_CPU_VBLANK_INT("main", vblank_callback_thayers)
 
-	MDRV_MACHINE_START(thayers)
-	MDRV_MACHINE_RESET(thayers)
-
-	MDRV_CPU_ADD(COP421, XTAL_4MHz/2) // COP421L-PCA/N
+	MDRV_CPU_ADD("mcu", COP421, XTAL_4MHz/2) // COP421L-PCA/N
 	MDRV_CPU_PROGRAM_MAP(thayers_cop_map, 0)
 	MDRV_CPU_IO_MAP(thayers_cop_io_map, 0)
 	MDRV_CPU_CONFIG(thayers_cop_intf)
 
+	MDRV_MACHINE_START(thayers)
+	MDRV_MACHINE_RESET(thayers)
+
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_PR7820)
+
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) // inaccurate
-	MDRV_SCREEN_SIZE(32*10, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0*10, 32*10-1, 0*8, 32*8-1)
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_RGB32)
 
 	MDRV_PALETTE_LENGTH(256)
-	MDRV_VIDEO_UPDATE(thayers)
 
 	/* sound hardware */
 	// SSI 263 @ 2MHz
@@ -799,26 +773,26 @@ MACHINE_DRIVER_END
 /* ROMs */
 
 ROM_START( thayers )
-	ROM_REGION( 0xe000, REGION_CPU1, 0 )
+	ROM_REGION( 0xe000, "main", 0 )
 	ROM_LOAD( "tq_u33.bin", 0x0000, 0x8000, CRC(82df5d89) SHA1(58dfd62bf8c5a55d1eba397d2c284e99a4685a3f) )
 	ROM_LOAD( "tq_u1.bin",  0xc000, 0x2000, CRC(e8e7f566) SHA1(df7b83ef465c65446c8418bc6007447693b75021) )
 
-	ROM_REGION( 0x400, REGION_CPU2, 0 )
+	ROM_REGION( 0x400, "mcu", 0 )
 	ROM_LOAD( "tq_cop.bin", 0x000, 0x400, CRC(6748e6b3) SHA1(5d7d1ecb57c1501ef6a2d9691eecc9970586606b) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "laserdisc" )
 	DISK_IMAGE_READONLY( "thayers", 0, NO_DUMP )
 ROM_END
 
 ROM_START( thayersa )
-	ROM_REGION( 0xe000, REGION_CPU1, 0 )
+	ROM_REGION( 0xe000, "main", 0 )
 	ROM_LOAD( "tq_u33.bin", 0x0000, 0x8000, CRC(82df5d89) SHA1(58dfd62bf8c5a55d1eba397d2c284e99a4685a3f) )
 	ROM_LOAD( "tq_u1.bin",  0xc000, 0x2000, CRC(33817e25) SHA1(f9750da863dd57fe2f5b6e8fce9c6695dc5c9adc) )
 
-	ROM_REGION( 0x400, REGION_CPU2, 0 )
+	ROM_REGION( 0x400, "mcu", 0 )
 	ROM_LOAD( "tq_cop.bin", 0x000, 0x400, CRC(6748e6b3) SHA1(5d7d1ecb57c1501ef6a2d9691eecc9970586606b) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "laserdisc" )
 	DISK_IMAGE_READONLY( "thayers", 0, NO_DUMP )
 ROM_END
 

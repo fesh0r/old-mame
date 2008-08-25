@@ -49,7 +49,6 @@ struct IremGA20_channel_def
 
 struct IremGA20_chip_def
 {
-	const struct IremGA20_interface *intf;
 	UINT8 *rom;
 	INT32 rom_size;
 	sound_stream * stream;
@@ -133,7 +132,7 @@ static void IremGA20_update( void *param, stream_sample_t **inputs, stream_sampl
 	}
 }
 
-WRITE16_HANDLER( IremGA20_w )
+WRITE16_HANDLER( irem_ga20_w )
 {
 	struct IremGA20_chip_def *chip = sndti_token(SOUND_IREMGA20, 0);
 	int channel;
@@ -184,7 +183,7 @@ WRITE16_HANDLER( IremGA20_w )
 	}
 }
 
-READ16_HANDLER( IremGA20_r )
+READ16_HANDLER( irem_ga20_r )
 {
 	struct IremGA20_chip_def *chip = sndti_token(SOUND_IREMGA20, 0);
 	int channel;
@@ -227,7 +226,7 @@ static void iremga20_reset( void *_chip )
 }
 
 
-static void *iremga20_start(int sndindex, int clock, const void *config)
+static void *iremga20_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	struct IremGA20_chip_def *chip;
 	int i;
@@ -236,9 +235,8 @@ static void *iremga20_start(int sndindex, int clock, const void *config)
 	memset(chip, 0, sizeof(*chip));
 
 	/* Initialize our chip structure */
-	chip->intf = config;
-	chip->rom = memory_region(Machine, chip->intf->region);
-	chip->rom_size = memory_region_length(Machine, chip->intf->region);
+	chip->rom = memory_region(Machine, tag);
+	chip->rom_size = memory_region_length(Machine, tag);
 
 	iremga20_reset(chip);
 

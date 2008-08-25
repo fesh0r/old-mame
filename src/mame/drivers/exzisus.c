@@ -69,7 +69,7 @@ VIDEO_UPDATE( exzisus );
 
 static WRITE8_HANDLER( exzisus_cpua_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 	static int exzisus_cpua_bank = 0;
 
 	if ( (data & 0x0f) != exzisus_cpua_bank )
@@ -86,7 +86,7 @@ static WRITE8_HANDLER( exzisus_cpua_bankswitch_w )
 
 static WRITE8_HANDLER( exzisus_cpub_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU3);
+	UINT8 *RAM = memory_region(machine, "cpub");
 	static int exzisus_cpub_bank = 0;
 
 	if ( (data & 0x0f) != exzisus_cpub_bank )
@@ -139,7 +139,7 @@ static WRITE8_HANDLER( exzisus_cpub_reset_w )
 // the RAM check to work
 static DRIVER_INIT( exzisus )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 
 	/* Fix WORK RAM error */
 	RAM[0x67fd] = 0x18;
@@ -183,11 +183,11 @@ static ADDRESS_MAP_START( cpub_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_RAM)
 	AM_RANGE(0xf000, 0xf000) AM_READ(SMH_NOP)
 	AM_RANGE(0xf001, 0xf001) AM_READ(taitosound_comm_r)
-	AM_RANGE(0xf400, 0xf400) AM_READ(input_port_0_r)
-	AM_RANGE(0xf401, 0xf401) AM_READ(input_port_1_r)
-	AM_RANGE(0xf402, 0xf402) AM_READ(input_port_2_r)
-	AM_RANGE(0xf404, 0xf404) AM_READ(input_port_3_r)
-	AM_RANGE(0xf405, 0xf405) AM_READ(input_port_4_r)
+	AM_RANGE(0xf400, 0xf400) AM_READ_PORT("P1")
+	AM_RANGE(0xf401, 0xf401) AM_READ_PORT("P2")
+	AM_RANGE(0xf402, 0xf402) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0xf404, 0xf404) AM_READ_PORT("DSWA")
+	AM_RANGE(0xf405, 0xf405) AM_READ_PORT("DSWB")
 	AM_RANGE(0xf800, 0xffff) AM_READ(exzisus_sharedram_ab_r)
 ADDRESS_MAP_END
 
@@ -224,7 +224,7 @@ static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x9000, 0x9000) AM_READ(SMH_NOP)
-	AM_RANGE(0x9001, 0x9001) AM_READ(YM2151_status_port_0_r)
+	AM_RANGE(0x9001, 0x9001) AM_READ(ym2151_status_port_0_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(SMH_NOP)
 	AM_RANGE(0xa001, 0xa001) AM_READ(taitosound_slave_comm_r)
 ADDRESS_MAP_END
@@ -232,8 +232,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x8fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x9001, 0x9001) AM_WRITE(YM2151_data_port_0_w)
+	AM_RANGE(0x9000, 0x9000) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x9001, 0x9001) AM_WRITE(ym2151_data_port_0_w)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(taitosound_slave_comm_w)
 ADDRESS_MAP_END
@@ -246,13 +246,13 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( exzisus )
-	PORT_START_TAG("IN0")
+	PORT_START("P1")
 	TAITO_JOY_UDRL_2_BUTTONS( 1 )
 
-	PORT_START_TAG("IN1")
+	PORT_START("P2")
 	TAITO_JOY_UDRL_2_BUTTONS( 2 )
 
-	PORT_START_TAG("IN2")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_SERVICE1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_TILT )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_START1 )
@@ -261,11 +261,11 @@ static INPUT_PORTS_START( exzisus )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 
-	PORT_START_TAG("DSWA")
+	PORT_START("DSWA")
 	TAITO_MACHINE_COCKTAIL
 	TAITO_COINAGE_JAPAN_OLD
 
-	PORT_START_TAG("DSWB")
+	PORT_START("DSWB")
 	TAITO_DIFFICULTY
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x08, "100k and every 150k" )
@@ -304,8 +304,8 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( exzisus )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0, 256 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout, 256, 256 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,   0, 256 )
+	GFXDECODE_ENTRY( "gfx2", 0, charlayout, 256, 256 )
 GFXDECODE_END
 
 
@@ -315,7 +315,7 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	irqhandler
 };
@@ -325,18 +325,18 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( exzisus )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 6000000)			/* 6 MHz ??? */
+	MDRV_CPU_ADD("main", Z80, 6000000)			/* 6 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(cpua_readmem,cpua_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)			/* 4 MHz ??? */
+	MDRV_CPU_ADD("audio", Z80, 4000000)			/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_CPU_ADD(Z80, 6000000)			/* 6 MHz ??? */
+	MDRV_CPU_ADD("cpub", Z80, 6000000)			/* 6 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(cpub_readmem,cpub_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 6000000)			/* 6 MHz ??? */
+	MDRV_CPU_ADD("cpuc", Z80, 6000000)			/* 6 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(cpuc_readmem,cpuc_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -359,8 +359,8 @@ static MACHINE_DRIVER_START( exzisus )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, 4000000)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 4000000)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.50)
 	MDRV_SOUND_ROUTE(1, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -373,24 +373,24 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( exzisus )
-	ROM_REGION( 0x48000, REGION_CPU1, 0 ) 					/* Z80 CPU A */
+	ROM_REGION( 0x48000, "main", 0 ) 					/* Z80 CPU A */
 	ROM_LOAD( "b23-10.bin", 0x00000, 0x08000, CRC(c80216fc) SHA1(7b952779c420be08573768f09bd65d0a188df024) )
 	ROM_CONTINUE(           0x10000, 0x08000 )
 	ROM_LOAD( "b23-12.bin", 0x18000, 0x10000, CRC(13637f54) SHA1(c175bc60120e32eec6ccca822fa497a42dd59823) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     				/* Z80 for Sound */
+	ROM_REGION( 0x10000, "audio", 0 )     				/* Z80 for Sound */
 	ROM_LOAD( "b23-14.bin",  0x00000, 0x08000, CRC(f7ca7df2) SHA1(6048d9341f0303546e447a76439e1927d14cdd57) )
 
-	ROM_REGION( 0x48000, REGION_CPU3, 0 )     				/* Z80 CPU B */
+	ROM_REGION( 0x48000, "cpub", 0 )     				/* Z80 CPU B */
 	ROM_LOAD( "b23-11.bin", 0x00000, 0x08000, CRC(d6a79cef) SHA1(e2b56aa38c017b24b50f304b9fe49ee14006f9a4) )
 	ROM_CONTINUE(           0x10000, 0x08000 )
 	ROM_LOAD( "b12-12.bin", 0x18000, 0x10000, CRC(a662be67) SHA1(0643480d56d8ac020288db800a705dd5d0d3ad9f) )
 	ROM_LOAD( "b12-13.bin", 0x28000, 0x10000, CRC(04a29633) SHA1(39476365241718f01f9630c12467cb24791a67e1) )
 
-	ROM_REGION( 0x10000, REGION_CPU4, 0 )     				/* Z80 CPU C */
+	ROM_REGION( 0x10000, "cpuc", 0 )     				/* Z80 CPU C */
 	ROM_LOAD( "b23-13.bin",  0x00000, 0x08000, CRC(51110aa1) SHA1(34c2701625eb1987affad1efd19ff8c9971456ae) )
 
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )	/* BG 0 */
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )	/* BG 0 */
 	ROM_LOAD( "b12-16.bin",  0x00000, 0x10000, CRC(6fec6acb) SHA1(2289c116d3f6093988a088d011f192dd4a99aa77) )
 	ROM_LOAD( "b12-18.bin",  0x10000, 0x10000, CRC(64e358aa) SHA1(cd1a23458b1a2f9c8c8aea8086dc04e0f6cc6908) )
 	ROM_LOAD( "b12-20.bin",  0x20000, 0x10000, CRC(87f52e89) SHA1(3f8530aca087fa2a32dc6dfbcfe2f86604ee3ca1) )
@@ -398,13 +398,13 @@ ROM_START( exzisus )
 	ROM_LOAD( "b12-17.bin",  0x50000, 0x10000, CRC(db1d5a6c) SHA1(c2e1b8d92c2b3b2ce775ed50ca4a37e84ed35a93) )
 	ROM_LOAD( "b12-19.bin",  0x60000, 0x10000, CRC(772b2641) SHA1(35cc6d5a725f1817791e710afde992e64d14104f) )
 
-	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE | ROMREGION_INVERT )	/* BG 1 */
+	ROM_REGION( 0x80000, "gfx2", ROMREGION_DISPOSE | ROMREGION_INVERT )	/* BG 1 */
 	ROM_LOAD( "b23-06.bin",  0x00000, 0x10000, CRC(44f8f661) SHA1(d77160a89e45556cd9ce211d89c398e1086d8d92) )
 	ROM_LOAD( "b23-08.bin",  0x10000, 0x10000, CRC(1ce498c1) SHA1(a9ce3de997089bd40c99bd89919b459c9f215fc8) )
 	ROM_LOAD( "b23-07.bin",  0x40000, 0x10000, CRC(d7f6ec89) SHA1(e8da207ddaf46ceff870b45ecec0e89c499291b4) )
 	ROM_LOAD( "b23-09.bin",  0x50000, 0x10000, CRC(6651617f) SHA1(6351a0b01589cb181b896285ade70e9dfcd799ec) )
 
-	ROM_REGION( 0x00c00, REGION_PROMS, 0 )					/* PROMS */
+	ROM_REGION( 0x00c00, "proms", 0 )					/* PROMS */
 	ROM_LOAD( "b23-04.bin",  0x00000, 0x00400, CRC(5042cffa) SHA1(c969748866a12681cf2dbf25a46da2c4e4f92313) )
 	ROM_LOAD( "b23-03.bin",  0x00400, 0x00400, CRC(9458fd45) SHA1(7f7cdacf37bb6f15de1109fa73ba3c5fc88893d0) )
 	ROM_LOAD( "b23-05.bin",  0x00800, 0x00400, CRC(87f0f69a) SHA1(37df6fd56245fab9beaabfd86fd8f95d7c42c2a5) )

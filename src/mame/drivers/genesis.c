@@ -270,11 +270,11 @@ READ16_HANDLER ( genesis_68k_to_z80_r )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_BITS_8_15)	 return YM3438_status_port_0_A_r(machine, 0) << 8;
-			else 				 return YM3438_read_port_0_r(machine, 0);
+			if (ACCESSING_BITS_8_15)	 return ym3438_status_port_0_a_r(machine, 0) << 8;
+			else 				 return ym3438_read_port_0_r(machine, 0);
 			break;
 		case 2:
-			if (ACCESSING_BITS_8_15)	return YM3438_status_port_0_B_r(machine, 0) << 8;
+			if (ACCESSING_BITS_8_15)	return ym3438_status_port_0_b_r(machine, 0) << 8;
 			else 				return 0;
 			break;
 		}
@@ -330,11 +330,11 @@ READ16_HANDLER ( megaplay_68k_to_z80_r )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_BITS_8_15)	 return YM3438_status_port_0_A_r(machine, 0) << 8;
-			else 				 return YM3438_read_port_0_r(machine, 0);
+			if (ACCESSING_BITS_8_15)	 return ym3438_status_port_0_a_r(machine, 0) << 8;
+			else 				 return ym3438_read_port_0_r(machine, 0);
 			break;
 		case 2:
-			if (ACCESSING_BITS_8_15)	return YM3438_status_port_0_B_r(machine, 0) << 8;
+			if (ACCESSING_BITS_8_15)	return ym3438_status_port_0_b_r(machine, 0) << 8;
 			else 				return 0;
 			break;
 		}
@@ -382,12 +382,12 @@ WRITE16_HANDLER ( genesis_68k_to_z80_w )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_BITS_8_15)	YM3438_control_port_0_A_w	(machine, 0,	(data >> 8) & 0xff);
-			else 				YM3438_data_port_0_A_w		(machine, 0,	(data >> 0) & 0xff);
+			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_a_w	(machine, 0,	(data >> 8) & 0xff);
+			else 				ym3438_data_port_0_a_w		(machine, 0,	(data >> 0) & 0xff);
 			break;
 		case 2:
-			if (ACCESSING_BITS_8_15)	YM3438_control_port_0_B_w	(machine, 0,	(data >> 8) & 0xff);
-			else 				YM3438_data_port_0_B_w		(machine, 0,	(data >> 0) & 0xff);
+			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_b_w	(machine, 0,	(data >> 8) & 0xff);
+			else 				ym3438_data_port_0_b_w		(machine, 0,	(data >> 0) & 0xff);
 			break;
 		}
 	}
@@ -411,8 +411,8 @@ WRITE16_HANDLER ( genesis_68k_to_z80_w )
 
 		if ( (offset >= 0x10) && (offset <=0x17) )
 		{
-			if (ACCESSING_BITS_0_7) SN76496_0_w(machine, 0, data & 0xff);
-			if (ACCESSING_BITS_8_15) SN76496_0_w(machine, 0, (data >>8) & 0xff);
+			if (ACCESSING_BITS_0_7) sn76496_0_w(machine, 0, data & 0xff);
+			if (ACCESSING_BITS_8_15) sn76496_0_w(machine, 0, (data >>8) & 0xff);
 		}
 
 	}
@@ -548,9 +548,9 @@ READ8_HANDLER ( genesis_z80_r )
 	{
 		switch (offset & 3)
 		{
-		case 0: return YM3438_status_port_0_A_r(machine, 0);
-		case 1: return YM3438_read_port_0_r(machine, 0);
-		case 2: return YM3438_status_port_0_B_r(machine, 0);
+		case 0: return ym3438_status_port_0_a_r(machine, 0);
+		case 1: return ym3438_read_port_0_r(machine, 0);
+		case 2: return ym3438_status_port_0_b_r(machine, 0);
 		case 3: return 0;
 		}
 	}
@@ -585,13 +585,13 @@ WRITE8_HANDLER ( genesis_z80_w )
 	{
 		switch (offset & 3)
 		{
-		case 0: YM3438_control_port_0_A_w	(machine, 0,	data);
+		case 0: ym3438_control_port_0_a_w	(machine, 0,	data);
 			break;
-		case 1: YM3438_data_port_0_A_w		(machine, 0, data);
+		case 1: ym3438_data_port_0_a_w		(machine, 0, data);
 			break;
-		case 2: YM3438_control_port_0_B_w	(machine, 0,	data);
+		case 2: ym3438_control_port_0_b_w	(machine, 0,	data);
 			break;
-		case 3: YM3438_data_port_0_B_w		(machine, 0,	data);
+		case 3: ym3438_data_port_0_b_w		(machine, 0,	data);
 			break;
 		}
 	}
@@ -618,6 +618,7 @@ WRITE8_HANDLER ( genesis_z80_w )
 READ8_HANDLER ( genesis_z80_bank_r )
 {
 	int address = (z80_68000_latch) + (offset & 0x7fff);
+	const UINT8 *base = memory_region(machine, "sound");
 
 	if (!z80running) logerror("undead Z80->68000 read!\n");
 
@@ -626,7 +627,7 @@ READ8_HANDLER ( genesis_z80_bank_r )
 	logerror("z80 read from address %x\n", address);
 
 	/* Read the data out of the 68k ROM */
-	if (address < 0x400000) return memory_region(machine, REGION_CPU1)[BYTE_XOR(address)];
+	if (base != NULL && address < 0x400000) return base[BYTE_XOR(address)];
 	/* else read the data out of the 68k RAM */
 //  else if (address > 0xff0000) return genesis_68k_ram[BYTE_XOR(offset)];
 
@@ -651,11 +652,11 @@ ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( genesis_base )
 	/*basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M68000, MASTER_CLOCK / 7)
+	MDRV_CPU_ADD("main", M68000, MASTER_CLOCK / 7)
 	MDRV_CPU_PROGRAM_MAP(genesis_readmem, genesis_writemem)
 	MDRV_CPU_VBLANK_INT("main", genesis_vblank_interrupt)
 
-	MDRV_CPU_ADD_TAG("sound", Z80, MASTER_CLOCK / 15)
+	MDRV_CPU_ADD("sound", Z80, MASTER_CLOCK / 15)
 	MDRV_CPU_PROGRAM_MAP(genesis_z80_readmem, genesis_z80_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* from vdp at scanline 0xe0 */
 
@@ -681,7 +682,7 @@ static MACHINE_DRIVER_START( genesis_base )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3438, MASTER_CLOCK/7)
+	MDRV_SOUND_ADD("ym", YM3438, MASTER_CLOCK/7)
 	MDRV_SOUND_ROUTE(0, "mono", 0.50)
 	MDRV_SOUND_ROUTE(1, "mono", 0.50)
 MACHINE_DRIVER_END

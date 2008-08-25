@@ -6,6 +6,9 @@
 
     Emulation by Bryan McPhail, mish@tendril.co.uk and T.Nogi
 
+    2008-07
+    Dip Locations added based on crazykong BogeyManor.txt
+
 ***************************************************************************/
 
 #include "driver.h"
@@ -47,9 +50,9 @@ static WRITE8_HANDLER( bogeyman_8910_control_w )
 	{
 		// bit 4 goes to the 8910 #0 BC1 pin
 		if (last & 0x10)
-			AY8910_control_port_0_w(machine,0,psg_latch);
+			ay8910_control_port_0_w(machine,0,psg_latch);
 		else
-			AY8910_write_port_0_w(machine,0,psg_latch);
+			ay8910_write_port_0_w(machine,0,psg_latch);
 	}
 
 	// bit 7 goes to 8910 #1 BDIR pin
@@ -57,9 +60,9 @@ static WRITE8_HANDLER( bogeyman_8910_control_w )
 	{
 		// bit 6 goes to the 8910 #1 BC1 pin
 		if (last & 0x40)
-			AY8910_control_port_1_w(machine,0,psg_latch);
+			ay8910_control_port_1_w(machine,0,psg_latch);
 		else
-			AY8910_write_port_1_w(machine,0,psg_latch);
+			ay8910_write_port_1_w(machine,0,psg_latch);
 	}
 
 	last = data;
@@ -75,17 +78,17 @@ static ADDRESS_MAP_START( bogeyman_map, ADDRESS_SPACE_PROGRAM, 8 )
   	AM_RANGE(0x2100, 0x21ff) AM_RAM_WRITE(bogeyman_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x2800, 0x2bff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x3000, 0x300f) AM_RAM_WRITE(bogeyman_paletteram_w) AM_BASE(&paletteram)
-	AM_RANGE(0x3800, 0x3800) AM_READWRITE(input_port_0_r, bogeyman_8910_control_w)
-	AM_RANGE(0x3801, 0x3801) AM_READWRITE(input_port_1_r, bogeyman_8910_latch_w)
-	AM_RANGE(0x3802, 0x3802) AM_READ(input_port_2_r)
-	AM_RANGE(0x3803, 0x3803) AM_READ(input_port_3_r) AM_WRITENOP // ??? sound
+	AM_RANGE(0x3800, 0x3800) AM_READ_PORT("P1") AM_WRITE(bogeyman_8910_control_w)
+	AM_RANGE(0x3801, 0x3801) AM_READ_PORT("P2") AM_WRITE(bogeyman_8910_latch_w)
+	AM_RANGE(0x3802, 0x3802) AM_READ_PORT("DSW1")
+	AM_RANGE(0x3803, 0x3803) AM_READ_PORT("DSW2") AM_WRITENOP // ??? sound
 	AM_RANGE(0x4000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 /* Input Ports */
 
 static INPUT_PORTS_START( bogeyman )
-	PORT_START_TAG("IN0")
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  ) PORT_8WAY
@@ -95,7 +98,7 @@ static INPUT_PORTS_START( bogeyman )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("IN1")
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  ) PORT_8WAY PORT_COCKTAIL
@@ -105,36 +108,36 @@ static INPUT_PORTS_START( bogeyman )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START_TAG("DSW1")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
+	PORT_START("DSW1")
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:1,2")
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("SW1:3,4")
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Demo_Sounds ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:5")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW1:6")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Cocktail ) )
-	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Allow_Continue ) )
+	PORT_SERVICE_DIPLOC( 0x40, IP_ACTIVE_LOW, "SW1:7" )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Allow_Continue ) ) PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 
-	PORT_START_TAG("DSW2")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) )
+	PORT_START("DSW2")
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x01, "3" )
 	PORT_DIPSETTING(    0x00, "5" )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Bonus_Life ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW2:2")
 	PORT_DIPSETTING(    0x02, "50K" )
 	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:3,4")
 	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
@@ -211,13 +214,13 @@ static const gfx_layout sprites =
 /* Graphics Decode Information */
 
 static GFXDECODE_START( bogeyman )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x00000, charlayout1,     16, 32 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x00000, charlayout2,     16, 32 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x00000, sprites,          0,  2 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x00000, tiles1a,     16+128,  8 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x00000, tiles1b,     16+128,  8 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x04000, tiles1a,     16+128,  8 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x04000, tiles1b,     16+128,  8 )
+	GFXDECODE_ENTRY( "gfx1", 0x00000, charlayout1,     16, 32 )
+	GFXDECODE_ENTRY( "gfx1", 0x00000, charlayout2,     16, 32 )
+	GFXDECODE_ENTRY( "gfx2", 0x00000, sprites,          0,  2 )
+	GFXDECODE_ENTRY( "gfx3", 0x00000, tiles1a,     16+128,  8 )
+	GFXDECODE_ENTRY( "gfx3", 0x00000, tiles1b,     16+128,  8 )
+	GFXDECODE_ENTRY( "gfx3", 0x04000, tiles1a,     16+128,  8 )
+	GFXDECODE_ENTRY( "gfx3", 0x04000, tiles1b,     16+128,  8 )
 	// colors 16+192 to 16+255 are currently unassigned
 GFXDECODE_END
 
@@ -226,7 +229,7 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( bogeyman )
 	// basic machine hardware
-	MDRV_CPU_ADD(M6502, 2000000)	// 12 MHz clock on board
+	MDRV_CPU_ADD("main", M6502, 2000000)	// 12 MHz clock on board
 	MDRV_CPU_PROGRAM_MAP(bogeyman_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 16) // Controls sound
 
@@ -250,32 +253,32 @@ static MACHINE_DRIVER_START( bogeyman )
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay1", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay2", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END
 
 /* ROMs */
 
 ROM_START( bogeyman )
-	ROM_REGION( 0x58000, REGION_CPU1, 0 )
+	ROM_REGION( 0x58000, "main", 0 )
  	ROM_LOAD( "j20.c14",  0x04000, 0x04000, CRC(ea90d637) SHA1(aa89bee806badb05119516d84e7674cd302aaf4e) )
 	ROM_LOAD( "j10.c15",  0x08000, 0x04000, CRC(0a8f218d) SHA1(5e5958cccfe634e3d274d187a0a7fe4789f3a9c3) )
 	ROM_LOAD( "j00.c17",  0x0c000, 0x04000, CRC(5d486de9) SHA1(40ea14a4a25f8f38d33a8844f627ba42503e1280) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "j70.h15",  0x00000, 0x04000, CRC(fdc787bf) SHA1(1f185a1927fff6ce793d673ebd882a852ac547e4) )	/* Characters */
 	ROM_LOAD( "j60.c17",  0x08000, 0x01000, CRC(cc03ceb2) SHA1(0149eacac2c1469be6e19f7a43c13d1fe8790f2c) )
 	ROM_CONTINUE(         0x0a000, 0x01000 )
 
-	ROM_REGION( 0x0c000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0c000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "j30.c9",   0x00000, 0x04000, CRC(41af81c0) SHA1(d8465622cdf16bc906818641d7988fc412454a45) )	/* Sprites */
 	ROM_LOAD( "j40.c7",   0x04000, 0x04000, CRC(8b438421) SHA1(295806c119f4ddc01afc15550e1ff397fbf5d862) )
 	ROM_LOAD( "j50.c5",   0x08000, 0x04000, CRC(b507157f) SHA1(471f67eb5e7aedef52353581405d9613d2a86898) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "j90.h12",  0x00000, 0x04000, CRC(46b2d4d0) SHA1(35cd320d4db7aa6a89f83ba4d9ff88925357d640) )	/* Tiles */
 	ROM_LOAD( "j80.h13",  0x04000, 0x04000, CRC(77ebd0a4) SHA1(c6921ee59633eeeda97c73cb7833578fa8a84fa3) )
 	ROM_LOAD( "ja0.h10",  0x08000, 0x01000, CRC(f2aa05ed) SHA1(e6df96e4128eff6de7e6483254608dd8a7b258b9) )
@@ -283,7 +286,7 @@ ROM_START( bogeyman )
 	ROM_CONTINUE(         0x0c000, 0x01000 )
 	ROM_CONTINUE(         0x0e000, 0x01000 )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "82s129.5k",  0x0000, 0x0100, CRC(4a7c5367) SHA1(a67f5b90c18238cbfb1507230b4614191d37eef4) )	/* Colour prom 1 */
 	ROM_LOAD( "82s129.6k",  0x0100, 0x0100, CRC(b6127713) SHA1(5bd8627453916ac6605af7d1193f79c748eab981) )	/* Colour prom 2 */
 ROM_END

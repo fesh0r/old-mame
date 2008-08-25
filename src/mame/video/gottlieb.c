@@ -1,105 +1,73 @@
 /***************************************************************************
 
-  video.c
-
-  Functions to emulate the video hardware of the machine.
+    Gottlieb hardware
 
 ***************************************************************************/
 
 #include "driver.h"
+#include "gottlieb.h"
+#include "machine/laserdsc.h"
+#include "video/resnet.h"
 
 UINT8 *gottlieb_charram;
 
-static int background_priority = 0;
-static int spritebank;
+UINT8 gottlieb_gfxcharlo;
+UINT8 gottlieb_gfxcharhi;
+
+static UINT8 background_priority = 0;
+static UINT8 spritebank;
 
 static tilemap *bg_tilemap;
-static int swap_bg_ramrom;
+static double weights[4];
 
-static UINT8 last_video_outputs;
 
-/***************************************************************************
+/*************************************
+ *
+ *  Palette RAM writes
+ *
+ *************************************/
 
-  Gottlieb games dosn't have a color PROM. They use 32 bytes of RAM to
-  dynamically create the palette. Each couple of bytes defines one
-  color (4 bits per pixel; the high 4 bits of the second byte are unused).
-
-  The RAM is conected to the RGB output this way:
-
-  bit 7 -- 240 ohm resistor  -- GREEN
-        -- 470 ohm resistor  -- GREEN
-        -- 1  kohm resistor  -- GREEN
-        -- 2  kohm resistor  -- GREEN
-        -- 240 ohm resistor  -- RED
-        -- 470 ohm resistor  -- RED
-        -- 1  kohm resistor  -- RED
-  bit 0 -- 2  kohm resistor  -- RED
-
-  bit 7 -- unused
-        -- unused
-        -- unused
-        -- unused
-        -- 240 ohm resistor  -- BLUE
-        -- 470 ohm resistor  -- BLUE
-        -- 1  kohm resistor  -- BLUE
-  bit 0 -- 2  kohm resistor  -- BLUE
-
-***************************************************************************/
 WRITE8_HANDLER( gottlieb_paletteram_w )
 {
-	int bit0, bit1, bit2, bit3;
 	int r, g, b, val;
 
 	paletteram[offset] = data;
 
-	/* red component */
+	/* blue & green are encoded in the even bytes */
+	val = paletteram[offset & ~1];
+	g = combine_4_weights(weights, (val >> 4) & 1, (val >> 5) & 1, (val >> 6) & 1, (val >> 7) & 1);
+	b = combine_4_weights(weights, (val >> 0) & 1, (val >> 1) & 1, (val >> 2) & 1, (val >> 3) & 1);
 
+	/* red is encoded in the odd bytes */
 	val = paletteram[offset | 1];
+	r = combine_4_weights(weights, (val >> 0) & 1, (val >> 1) & 1, (val >> 2) & 1, (val >> 3) & 1);
 
-	bit0 = (val >> 0) & 0x01;
-	bit1 = (val >> 1) & 0x01;
-	bit2 = (val >> 2) & 0x01;
-	bit3 = (val >> 3) & 0x01;
-
-	r = 0x10 * bit0 + 0x21 * bit1 + 0x46 * bit2 + 0x88 * bit3;
-
-	/* green component */
-
-	val = paletteram[offset & ~1];
-
-	bit0 = (val >> 4) & 0x01;
-	bit1 = (val >> 5) & 0x01;
-	bit2 = (val >> 6) & 0x01;
-	bit3 = (val >> 7) & 0x01;
-
-	g = 0x10 * bit0 + 0x21 * bit1 + 0x46 * bit2 + 0x88 * bit3;
-
-	/* blue component */
-
-	val = paletteram[offset & ~1];
-
-	bit0 = (val >> 0) & 0x01;
-	bit1 = (val >> 1) & 0x01;
-	bit2 = (val >> 2) & 0x01;
-	bit3 = (val >> 3) & 0x01;
-
-	b = 0x10 * bit0 + 0x21 * bit1 + 0x46 * bit2 + 0x88 * bit3;
-
-	palette_set_color(machine, offset / 2, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset / 2, MAKE_ARGB(((offset & ~1) == 0) ? 0x00 : 0xff, r, g, b));
 }
 
-WRITE8_HANDLER( gottlieb_video_outputs_w )
-{
-	extern void gottlieb_knocker(void);
 
+
+/*************************************
+ *
+ *  Video controls
+ *
+ *************************************/
+
+WRITE8_HANDLER( gottlieb_video_control_w )
+{
+	/* bit 0 controls foreground/background priority */
+	if (background_priority != (data & 0x01))
+		video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 	background_priority = data & 0x01;
 
+	/* bit 1 controls horizonal flip screen */
 	if (flip_screen_x_get() != (data & 0x02))
 	{
 		flip_screen_x_set(data & 0x02);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 
+	/* bit 2 controls horizonal flip screen */
 	if (flip_screen_y_get() != (data & 0x04))
 	{
 		flip_screen_y_set(data & 0x04);
@@ -108,26 +76,34 @@ WRITE8_HANDLER( gottlieb_video_outputs_w )
 
 	/* in Q*Bert Qubes only, bit 4 controls the sprite bank */
 	spritebank = (data & 0x10) >> 4;
-
-	output_set_value("knocker0", (data >> 5) & 1);
-
-	last_video_outputs = data;
 }
 
-WRITE8_HANDLER( usvsthem_video_outputs_w )
-{
-	background_priority = data & 0x01;
 
-	/* in most games, bits 1 and 2 flip screen, however in the laser */
-	/* disc games they are different. */
+WRITE8_HANDLER( gottlieb_laserdisc_video_control_w )
+{
+	const device_config *laserdisc = device_list_first(machine->config->devicelist, LASERDISC);
+
+	/* bit 0 works like the other games */
+	gottlieb_video_control_w(machine, offset, data & 0x01);
 
 	/* bit 1 controls the sprite bank. */
 	spritebank = (data & 0x02) >> 1;
 
 	/* bit 2 video enable (0 = black screen) */
-
 	/* bit 3 genlock control (1 = show laserdisc image) */
+	laserdisc_overlay_enable(laserdisc, (data & 0x04) ? TRUE : FALSE);
+	laserdisc_video_enable(laserdisc, ((data & 0x0c) == 0x0c) ? TRUE : FALSE);
+
+	render_container_set_palette_alpha(render_container_get_screen(machine->primary_screen), 0, (data & 0x08) ? 0x00 : 0xff);
 }
+
+
+
+/*************************************
+ *
+ *  Video RAM and character RAM access
+ *
+ *************************************/
 
 WRITE8_HANDLER( gottlieb_videoram_w )
 {
@@ -135,50 +111,75 @@ WRITE8_HANDLER( gottlieb_videoram_w )
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
+
 WRITE8_HANDLER( gottlieb_charram_w )
 {
 	if (gottlieb_charram[offset] != data)
 	{
 		gottlieb_charram[offset] = data;
-
 		decodechar(machine->gfx[0], offset / 32, gottlieb_charram);
-
 		tilemap_mark_all_tiles_dirty(bg_tilemap);
 	}
 }
 
+
+
+/*************************************
+ *
+ *  Palette RAM writes
+ *
+ *************************************/
+
 static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index];
-
-	SET_TILE_INFO(0, code^swap_bg_ramrom, 0, 0);
+	if ((code & 0x80) == 0)
+		SET_TILE_INFO(gottlieb_gfxcharlo, code, 0, 0);
+	else
+		SET_TILE_INFO(gottlieb_gfxcharhi, code, 0, 0);
 }
 
-static void gottlieb_video_start_common(void)
-{
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		 8, 8, 32, 32);
-
-	tilemap_set_transparent_pen(bg_tilemap, 0);
-}
 
 VIDEO_START( gottlieb )
 {
-	swap_bg_ramrom = 0x00;
-	gottlieb_video_start_common();
+	static const int resistances[4] = { 2000, 1000, 470, 240 };
+
+	/* compute palette information */
+	/* note that there really are pullup/pulldown resistors, but this situation is complicated */
+	/* by the use of transistors, so we ignore that and just use the realtive resistor weights */
+	compute_resistor_weights(0,	255, -1.0,
+			4, resistances, weights, 180, 0,
+			4, resistances, weights, 180, 0,
+			4, resistances, weights, 180, 0);
+
+	/* configure the background tilemap */
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	tilemap_set_transparent_pen(bg_tilemap, 0);
+	tilemap_set_scrolldx(bg_tilemap, 0, 318 - 256);
+
+	/* save some state */
+	state_save_register_global(background_priority);
+	state_save_register_global(spritebank);
 }
 
-VIDEO_START( vidvince )
-{
-	swap_bg_ramrom = 0x80;
-	gottlieb_video_start_common();
-}
+
+
+/*************************************
+ *
+ *  Sprite rendering
+ *
+ *************************************/
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
+	rectangle clip = *cliprect;
     int offs;
 
-	for (offs = 0; offs < spriteram_size - 8; offs += 4)     /* it seems there's something strange with sprites #62 and #63 */
+    /* this is a temporary guess until the sprite hardware is better understood */
+    /* there is some additional clipping, but this may not be it */
+    clip.min_x = 8;
+
+	for (offs = 0; offs < 256; offs += 4)
 	{
 		/* coordinates hand tuned to make the position correct in Q*Bert Qubes start */
 		/* of level animation. */
@@ -189,25 +190,35 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		if (flip_screen_x_get()) sx = 233 - sx;
 		if (flip_screen_y_get()) sy = 244 - sy;
 
-		if (spriteram[offs] || spriteram[offs + 1])	/* needed to avoid garbage on screen */
-			drawgfx(bitmap, machine->gfx[1],
-				code, 0,
-				flip_screen_x_get(), flip_screen_y_get(),
-				sx,sy,
-				cliprect,
-				TRANSPARENCY_PEN, 0);
+		drawgfx(bitmap, machine->gfx[2],
+			code, 0,
+			flip_screen_x_get(), flip_screen_y_get(),
+			sx,sy,
+			&clip,
+			TRANSPARENCY_PEN, 0);
 	}
 }
 
+
+
+/*************************************
+ *
+ *  Video update
+ *
+ *************************************/
+
 VIDEO_UPDATE( gottlieb )
 {
+	/* if the background has lower priority, render it first, else clear the screen */
 	if (!background_priority)
 		tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_OPAQUE, 0);
 	else
 		fillbitmap(bitmap, 0, cliprect);
 
+	/* draw the sprites */
 	draw_sprites(screen->machine, bitmap, cliprect);
 
+	/* if the background has higher priority, render it now */
 	if (background_priority)
 		tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 

@@ -116,7 +116,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( qwak )
-	PORT_START_TAG("3000D7")	/* 3000 D7 */
+	PORT_START("3000D7")	/* 3000 D7 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -126,7 +126,7 @@ static INPUT_PORTS_START( qwak )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN3 )
 
-	PORT_START_TAG("3000D6")	/* 3000 D6 */
+	PORT_START("3000D6")	/* 3000 D6 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
@@ -136,7 +136,7 @@ static INPUT_PORTS_START( qwak )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("4000")	/* 4000 */
+	PORT_START("4000")	/* 4000 */
 	PORT_DIPNAME( 0x01, 0x00, "DIP 1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ))
 	PORT_DIPSETTING(    0x00, DEF_STR( On ))
@@ -162,13 +162,13 @@ static INPUT_PORTS_START( qwak )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ))
 	PORT_DIPSETTING(    0x00, DEF_STR( On ))
 
-	PORT_START_TAG("6008") /* 6008 not used */
-	PORT_START_TAG("7000") /* 7000 not used */
+	PORT_START("6008") /* 6008 not used */
+	PORT_START("7000") /* 7000 not used */
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( runaway )
-	PORT_START_TAG("3000D7") /* 3000 D7 */
+	PORT_START("3000D7") /* 3000 D7 */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x02, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_TILT )
@@ -178,7 +178,7 @@ static INPUT_PORTS_START( runaway )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN3 )
 
-	PORT_START_TAG("3000D6") /* 3000 D6 */
+	PORT_START("3000D6") /* 3000 D6 */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -188,7 +188,7 @@ static INPUT_PORTS_START( runaway )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("4000") /* 4000 */
+	PORT_START("4000") /* 4000 */
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ))
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ))
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ))
@@ -212,7 +212,7 @@ static INPUT_PORTS_START( runaway )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ))
 	PORT_DIPSETTING(    0x00, DEF_STR( On ))
 
-	PORT_START_TAG("6008") /* 6008 */
+	PORT_START("6008") /* 6008 */
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ))
 	PORT_DIPSETTING(    0x00, "2" )
 	PORT_DIPSETTING(    0x01, "3" )
@@ -236,7 +236,7 @@ static INPUT_PORTS_START( runaway )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ))
 	PORT_DIPSETTING(    0x80, DEF_STR( On ))
 
-	PORT_START_TAG("7000") /* 7000 */
+	PORT_START("7000") /* 7000 */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_TOGGLE
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -326,24 +326,24 @@ static const gfx_layout qwak_sprite_layout =
 
 
 static GFXDECODE_START( runaway )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x000, runaway_tile_layout,   0, 1 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x800, runaway_sprite_layout, 8, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0x000, runaway_tile_layout,   0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0x800, runaway_sprite_layout, 8, 1 )
 GFXDECODE_END
 
 
 static GFXDECODE_START( qwak )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x800, qwak_tile_layout,   0, 1 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x000, qwak_sprite_layout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0x800, qwak_tile_layout,   0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0x000, qwak_sprite_layout, 0, 1 )
 GFXDECODE_END
 
 
-static const struct POKEYinterface pokey_interface_1 =
+static const pokey_interface pokey_interface_1 =
 {
 	{ 0 },
 	input_port_3_r
 };
 
-static const struct POKEYinterface pokey_interface_2 =
+static const pokey_interface pokey_interface_2 =
 {
 	{ runaway_pot_r,runaway_pot_r,runaway_pot_r,runaway_pot_r,runaway_pot_r,runaway_pot_r,runaway_pot_r,runaway_pot_r }
 };
@@ -352,7 +352,7 @@ static const struct POKEYinterface pokey_interface_2 =
 static MACHINE_DRIVER_START( runaway )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, 12096000 / 8) /* ? */
+	MDRV_CPU_ADD("main", M6502, 12096000 / 8) /* ? */
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 
 	MDRV_MACHINE_RESET(runaway)
@@ -374,11 +374,11 @@ static MACHINE_DRIVER_START( runaway )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(POKEY, 12096000 / 8)
+	MDRV_SOUND_ADD("pokey1", POKEY, 12096000 / 8)
 	MDRV_SOUND_CONFIG(pokey_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(POKEY, 12096000 / 8)
+	MDRV_SOUND_ADD("pokey2", POKEY, 12096000 / 8)
 	MDRV_SOUND_CONFIG(pokey_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -399,7 +399,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( runaway )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "choo8000.d1", 0x8000, 0x1000, CRC(35794abe) SHA1(5ce872bda8bb2ed4888ba8b47ecd1afbe24b22eb) )
 	ROM_LOAD( "choo9000.d1", 0x9000, 0x1000, CRC(0d63756d) SHA1(2549a57ca106635f5c53ea1b03f5a0d6e901ab47) )
 	ROM_LOAD( "chooa000.e1", 0xa000, 0x1000, CRC(e6806b6b) SHA1(c260eaa35cbc46f0c0fd4006ec6d04315c3bb851) )
@@ -407,7 +407,7 @@ ROM_START( runaway )
 	ROM_LOAD( "chooc000",    0xc000, 0x1000, CRC(452ddea2) SHA1(1072de8935aae23eb1ef7b16e308180cd3e91da2) )
 	ROM_RELOAD(              0xf000, 0x1000 )
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "chop0", 0x0000, 0x2000, CRC(225a8c5e) SHA1(13394320640355d67414e085ad28364814147b63) )
 	ROM_LOAD( "chop1", 0x2000, 0x2000, CRC(70389c0f) SHA1(6baf4a17c11e9b27a1e09cce301f931f5099978d) )
 	ROM_LOAD( "chop2", 0x4000, 0x2000, CRC(63655f1c) SHA1(c235be3945067c873c03ce8a0c5cfb76984f66ff) )
@@ -415,14 +415,14 @@ ROM_END
 
 
 ROM_START( qwak )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "qwak8000.bin", 0x8000, 0x1000, CRC(4d002d8a) SHA1(8621e7ec1ab3cb8d003858227e858354cd79dbf1) )
 	ROM_LOAD( "qwak9000.bin", 0x9000, 0x1000, CRC(e0c78fd7) SHA1(f5f397950971d12a7ae47fc64aa8f5751463b8a5) )
 	ROM_LOAD( "qwaka000.bin", 0xa000, 0x1000, CRC(e5770fc9) SHA1(c9556e9c2f7b6c37755ac9f10d95027118317b4a) )
 	ROM_LOAD( "qwakb000.bin", 0xb000, 0x1000, CRC(90771cc0) SHA1(5715e5bfccb05c51d871b443e42b0950ec23e330) )
 	ROM_RELOAD(               0xf000, 0x1000 )
 
-	ROM_REGION( 0x4000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "qwakgfx0.bin", 0x0000, 0x1000, CRC(bed2c067) SHA1(53d909b414042d54fe2e86ae0d6c7a4ded16b87e) )
 	ROM_LOAD( "qwakgfx1.bin", 0x1000, 0x1000, CRC(73a31d28) SHA1(bbe076432866398bcd02962dd90eb178e3a38fb1) )
 	ROM_LOAD( "qwakgfx2.bin", 0x2000, 0x1000, CRC(07fd9e80) SHA1(83d5f22b8316ac7e88d8ecdb238182a35a6f6362) )

@@ -31,7 +31,7 @@ static int multiply_reg[2];
 
 static MACHINE_RESET( flkatck )
 {
-	K007232_set_bank( 0, 0, 1 );
+	k007232_set_bank( 0, 0, 1 );
 }
 
 static INTERRUPT_GEN( flkatck_interrupt )
@@ -42,7 +42,7 @@ static INTERRUPT_GEN( flkatck_interrupt )
 
 static WRITE8_HANDLER( flkatck_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 	int bankaddress = 0;
 
 	/* bits 3-4: coin counters */
@@ -133,8 +133,8 @@ static ADDRESS_MAP_START( flkatck_readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 //  AM_RANGE(0x9001, 0x9001) AM_READ(SMH_RAM)               /* ??? */
 	AM_RANGE(0x9004, 0x9004) AM_READ(SMH_RAM)				/* ??? */
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)			/* soundlatch_r */
-	AM_RANGE(0xb000, 0xb00d) AM_READ(K007232_read_port_0_r)	/* 007232 registers */
-	AM_RANGE(0xc001, 0xc001) AM_READ(YM2151_status_port_0_r) /* YM2151 */
+	AM_RANGE(0xb000, 0xb00d) AM_READ(k007232_read_port_0_r)	/* 007232 registers */
+	AM_RANGE(0xc001, 0xc001) AM_READ(ym2151_status_port_0_r) /* YM2151 */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( flkatck_writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
@@ -143,14 +143,14 @@ static ADDRESS_MAP_START( flkatck_writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9000, 0x9001) AM_WRITE(multiply_w)					/* ??? */
 //  AM_RANGE(0x9001, 0x9001) AM_WRITE(SMH_RAM)                  /* ??? */
 	AM_RANGE(0x9006, 0x9006) AM_WRITE(SMH_RAM)					/* ??? */
-	AM_RANGE(0xb000, 0xb00d) AM_WRITE(K007232_write_port_0_w) 	/* 007232 registers */
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(YM2151_register_port_0_w)	/* YM2151 */
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(YM2151_data_port_0_w)		/* YM2151 */
+	AM_RANGE(0xb000, 0xb00d) AM_WRITE(k007232_write_port_0_w) 	/* 007232 registers */
+	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym2151_register_port_0_w)	/* YM2151 */
+	AM_RANGE(0xc001, 0xc001) AM_WRITE(ym2151_data_port_0_w)		/* YM2151 */
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( flkatck )
-	PORT_START_TAG("DSW1")	/* DSW #1 */
+	PORT_START("DSW1")	/* DSW #1 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(	0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(	0x05, DEF_STR( 3C_1C ) )
@@ -186,7 +186,7 @@ static INPUT_PORTS_START( flkatck )
 	PORT_DIPSETTING(	0x90, DEF_STR( 1C_7C ) )
 	//PORT_DIPSETTING(    0x00, "Invalid" )
 
-	PORT_START_TAG("DSW2")	/* DSW #2 */
+	PORT_START("DSW2")	/* DSW #2 */
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ) )
 	PORT_DIPSETTING(	0x03, "1" )
 	PORT_DIPSETTING(	0x02, "2" )
@@ -209,7 +209,7 @@ static INPUT_PORTS_START( flkatck )
 	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW3")	/* DSW #3 */
+	PORT_START("DSW3")	/* DSW #3 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -222,7 +222,7 @@ static INPUT_PORTS_START( flkatck )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("COIN")	/* COINSW & START */
+	PORT_START("COIN")	/* COINSW & START */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )	/* service */
@@ -232,7 +232,7 @@ static INPUT_PORTS_START( flkatck )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("P1")	/* PLAYER 1 INPUTS */
+	PORT_START("P1")	/* PLAYER 1 INPUTS */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	 ) PORT_8WAY PORT_PLAYER(1)
@@ -242,7 +242,7 @@ static INPUT_PORTS_START( flkatck )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("P2")	/* PLAYER 2 INPUTS */
+	PORT_START("P2")	/* PLAYER 2 INPUTS */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	 ) PORT_8WAY PORT_PLAYER(2)
@@ -265,18 +265,17 @@ static const gfx_layout gfxlayout =
 };
 
 static GFXDECODE_START( flkatck )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, gfxlayout, 0, 32 )
+	GFXDECODE_ENTRY( "gfx1", 0, gfxlayout, 0, 32 )
 GFXDECODE_END
 
 static void volume_callback0(int v)
 {
-	K007232_set_volume(0,0,(v >> 4) * 0x11,0);
-	K007232_set_volume(0,1,0,(v & 0x0f) * 0x11);
+	k007232_set_volume(0,0,(v >> 4) * 0x11,0);
+	k007232_set_volume(0,1,0,(v & 0x0f) * 0x11);
 }
 
-static const struct K007232_interface k007232_interface =
+static const k007232_interface k007232_config =
 {
-	REGION_SOUND1,		/* memory region */
 	volume_callback0	/* external port callback */
 };
 
@@ -284,11 +283,11 @@ static const struct K007232_interface k007232_interface =
 static MACHINE_DRIVER_START( flkatck )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(HD6309,3000000*4) /* HD63C09EP, 24/8 MHz */
+	MDRV_CPU_ADD("main", HD6309,3000000*4) /* HD63C09EP, 24/8 MHz */
 	MDRV_CPU_PROGRAM_MAP(flkatck_readmem,flkatck_writemem)
 	MDRV_CPU_VBLANK_INT("main", flkatck_interrupt)
 
-	MDRV_CPU_ADD(Z80,3579545)	/* NEC D780C-1, 3.579545 MHz */
+	MDRV_CPU_ADD("audio", Z80,3579545)	/* NEC D780C-1, 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(flkatck_readmem_sound,flkatck_writemem_sound)
 
 	MDRV_INTERLEAVE(10)
@@ -312,12 +311,12 @@ static MACHINE_DRIVER_START( flkatck )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3579545)
+	MDRV_SOUND_ADD("ym", YM2151, 3579545)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
-	MDRV_SOUND_ADD(K007232, 3579545)
-	MDRV_SOUND_CONFIG(k007232_interface)
+	MDRV_SOUND_ADD("konami", K007232, 3579545)
+	MDRV_SOUND_CONFIG(k007232_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(0, "right", 0.50)
 	MDRV_SOUND_ROUTE(1, "left", 0.50)
@@ -327,32 +326,32 @@ MACHINE_DRIVER_END
 
 
 ROM_START( mx5000 )
-	ROM_REGION( 0x18000, REGION_CPU1, 0 )		/* 6309 code */
+	ROM_REGION( 0x18000, "main", 0 )		/* 6309 code */
 	ROM_LOAD( "r01",          0x010000, 0x006000, CRC(79b226fc) SHA1(3bc4d93717230fecd54bd08a0c3eeedc1c8f571d) )/* banked ROM */
 	ROM_CONTINUE(			  0x006000, 0x00a000 )			/* fixed ROM */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )		/* 64k for the SOUND CPU */
+	ROM_REGION( 0x10000, "audio", 0 )		/* 64k for the SOUND CPU */
 	ROM_LOAD( "m02.bin",        0x000000, 0x008000, CRC(7e11e6b9) SHA1(7a7d65a458b15842a6345388007c8f682aec20a7) )
 
-	ROM_REGION( 0x080000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x080000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "mask4m.bin",     0x000000, 0x080000, CRC(ff1d718b) SHA1(d44fe3ed5a3ba1b3036264e37f9cd3500b706635) )/* tiles + sprites */
 
-	ROM_REGION( 0x040000, REGION_SOUND1, 0 )	/* 007232 data (chip 1) */
+	ROM_REGION( 0x040000, "konami", 0 )	/* 007232 data (chip 1) */
 	ROM_LOAD( "mask2m.bin",     0x000000, 0x040000, CRC(6d1ea61c) SHA1(9e6eb9ac61838df6e1f74e74bb72f3edf1274aed) )
 ROM_END
 
 ROM_START( flkatck )
-	ROM_REGION( 0x18000, REGION_CPU1, 0 )		/* 6309 code */
+	ROM_REGION( 0x18000, "main", 0 )		/* 6309 code */
 	ROM_LOAD( "gx669_p1.16c", 0x010000, 0x006000, CRC(c5cd2807) SHA1(22ddd911a23954ff2d52552e07323f5f0ddaeead) )/* banked ROM */
 	ROM_CONTINUE(			  0x006000, 0x00a000 )			/* fixed ROM */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )		/* 64k for the SOUND CPU */
+	ROM_REGION( 0x10000, "audio", 0 )		/* 64k for the SOUND CPU */
 	ROM_LOAD( "m02.bin",        0x000000, 0x008000, CRC(7e11e6b9) SHA1(7a7d65a458b15842a6345388007c8f682aec20a7) )
 
-	ROM_REGION( 0x080000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x080000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "mask4m.bin",     0x000000, 0x080000, CRC(ff1d718b) SHA1(d44fe3ed5a3ba1b3036264e37f9cd3500b706635) )/* tiles + sprites */
 
-	ROM_REGION( 0x040000, REGION_SOUND1, 0 )	/* 007232 data (chip 1) */
+	ROM_REGION( 0x040000, "konami", 0 )	/* 007232 data (chip 1) */
 	ROM_LOAD( "mask2m.bin",     0x000000, 0x040000, CRC(6d1ea61c) SHA1(9e6eb9ac61838df6e1f74e74bb72f3edf1274aed) )
 ROM_END
 

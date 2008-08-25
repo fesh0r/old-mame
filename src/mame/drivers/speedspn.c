@@ -75,7 +75,7 @@ static WRITE8_HANDLER(speedspn_banked_rom_change)
 {
 	/* is this weird banking some form of protection? */
 
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 	int addr;
 
 	switch (data)
@@ -108,7 +108,7 @@ static WRITE8_HANDLER(speedspn_sound_w)
 
 static WRITE8_HANDLER( oki_banking_w )
 {
-	OKIM6295_set_bank_base(0, 0x40000 * (data & 3));
+	okim6295_set_bank_base(0, 0x40000 * (data & 3));
 }
 
 /*** MEMORY MAPS *************************************************************/
@@ -161,7 +161,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( readmem2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x9800, 0x9800) AM_READ(OKIM6295_status_0_r)
+	AM_RANGE(0x9800, 0x9800) AM_READ(okim6295_status_0_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
@@ -169,13 +169,13 @@ static ADDRESS_MAP_START( writemem2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(oki_banking_w)
-	AM_RANGE(0x9800, 0x9800) AM_WRITE(OKIM6295_data_0_w)
+	AM_RANGE(0x9800, 0x9800) AM_WRITE(okim6295_data_0_w)
 ADDRESS_MAP_END
 
 /*** INPUT PORT **************************************************************/
 
 static INPUT_PORTS_START( speedspn )
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -185,7 +185,7 @@ static INPUT_PORTS_START( speedspn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START /* Player 1 Inputs */
+	PORT_START("P1") /* Player 1 Inputs */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
@@ -195,7 +195,7 @@ static INPUT_PORTS_START( speedspn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 
-	PORT_START /* Player 2 Inputs */
+	PORT_START("P2") /* Player 2 Inputs */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
@@ -205,7 +205,7 @@ static INPUT_PORTS_START( speedspn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 
-	PORT_START /* Dips */
+	PORT_START("DSW1") /* Dips */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 4C_1C ) )
@@ -241,7 +241,7 @@ static INPUT_PORTS_START( speedspn )
 	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
 
-	PORT_START /* Dips */
+	PORT_START("DSW2") /* Dips */
 	PORT_DIPNAME( 0x01, 0x01, "World Cup" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -292,8 +292,8 @@ static const gfx_layout speedspn_spritelayout =
 
 
 static GFXDECODE_START( speedspn )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, speedspn_charlayout,   0x000, 0x40 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, speedspn_spritelayout, 0x000, 0x40 )
+	GFXDECODE_ENTRY( "gfx1", 0, speedspn_charlayout,   0x000, 0x40 )
+	GFXDECODE_ENTRY( "gfx2", 0, speedspn_spritelayout, 0x000, 0x40 )
 GFXDECODE_END
 
 /*** MACHINE DRIVER **********************************************************/
@@ -302,13 +302,12 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( speedspn )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main",Z80,6000000)		 /* 6 MHz */
+	MDRV_CPU_ADD("main",Z80,6000000)		 /* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport, writeport)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80,6000000)		 /* 6 MHz */
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80,6000000)		 /* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem2,writemem2)
 
 	/* video hardware */
@@ -328,44 +327,44 @@ static MACHINE_DRIVER_START( speedspn )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1122000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1122000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 /*** ROM LOADING *************************************************************/
 
 ROM_START( speedspn )
-	ROM_REGION( 0x088000, REGION_CPU1, 0 )	/* CPU1 code */
+	ROM_REGION( 0x088000, "main", 0 )	/* CPU1 code */
 	/* most of this is probably actually banked */
 	ROM_LOAD( "tch-ss1.u78", 0x00000, 0x008000, CRC(41b6b45b) SHA1(d969119959db4cc3be50f188bfa41e4b4896eaca) ) /* fixed code */
 	ROM_CONTINUE(            0x10000, 0x078000 ) /* banked data */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* CPU2 code */
+	ROM_REGION( 0x10000, "audio", 0 )	/* CPU2 code */
 	ROM_LOAD( "tch-ss2.u96", 0x00000, 0x10000, CRC(4611fd0c) SHA1(b49ad6a8be6ccfef0b2ed187fb3b008fb7eeb2b5) ) // FIRST AND SECOND HALF IDENTICAL
 
-	ROM_REGION( 0x080000, REGION_USER1, 0 )	/* Samples */
+	ROM_REGION( 0x080000, "user1", 0 )	/* Samples */
 	ROM_LOAD( "tch-ss3.u95", 0x00000, 0x080000, CRC(1c9deb5e) SHA1(89f01a8e8bdb0eee47e9195b312d2e65d41d3548) )
 
 	/* $00000-$20000 stays the same in all sound banks, */
 	/* the second half of the bank is what gets switched */
-	ROM_REGION( 0x100000, REGION_SOUND1, 0 ) /* Samples */
-	ROM_COPY( REGION_USER1, 0x000000, 0x000000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x000000, 0x020000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x000000, 0x040000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x020000, 0x060000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x000000, 0x080000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x040000, 0x0a0000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x000000, 0x0c0000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x060000, 0x0e0000, 0x020000)
+	ROM_REGION( 0x100000, "oki", 0 ) /* Samples */
+	ROM_COPY( "user1", 0x000000, 0x000000, 0x020000)
+	ROM_COPY( "user1", 0x000000, 0x020000, 0x020000)
+	ROM_COPY( "user1", 0x000000, 0x040000, 0x020000)
+	ROM_COPY( "user1", 0x020000, 0x060000, 0x020000)
+	ROM_COPY( "user1", 0x000000, 0x080000, 0x020000)
+	ROM_COPY( "user1", 0x040000, 0x0a0000, 0x020000)
+	ROM_COPY( "user1", 0x000000, 0x0c0000, 0x020000)
+	ROM_COPY( "user1", 0x060000, 0x0e0000, 0x020000)
 
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )	/* GFX */
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )	/* GFX */
 	ROM_LOAD( "tch-ss4.u70", 0x00000, 0x020000, CRC(41517859) SHA1(3c5102e41c5a70e02ed88ea43ca63edf13f4c1b9) )
 	ROM_LOAD( "tch-ss5.u69", 0x20000, 0x020000, CRC(832b2f34) SHA1(7a3060869a9698c9ed4187b239a70e273de64e3c) )
 	ROM_LOAD( "tch-ss6.u60", 0x40000, 0x020000, CRC(f1fd7289) SHA1(8950ef58efdffc45d68152257ca36aedf5ddf677) )
 	ROM_LOAD( "tch-ss7.u59", 0x60000, 0x020000, CRC(c4958543) SHA1(c959b440801707c30a8968a1f44abe5442d03eff) )
 
-	ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE | ROMREGION_INVERT )	/* GFX */
+	ROM_REGION( 0x40000, "gfx2", ROMREGION_DISPOSE | ROMREGION_INVERT )	/* GFX */
 	ROM_LOAD( "tch-ss8.u39", 0x00000, 0x020000, CRC(2f27b16d) SHA1(7cc017fa08573f8a9d94d017abb987f8288bcd29) )
 	ROM_LOAD( "tch-ss9.u34", 0x20000, 0x020000, CRC(c372f8ec) SHA1(514bef0859c0adfd9cdd22864230fc83e9b1962d) )
 ROM_END

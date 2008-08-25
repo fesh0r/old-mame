@@ -144,7 +144,7 @@ typedef struct
 	UINT16				z;
 	UINT16				texheader[4];
 	UINT8				luma;
-} quad;
+} _quad;
 
 typedef struct _poly_extra_data poly_extra_data;
 struct _poly_extra_data
@@ -368,7 +368,7 @@ void model2_3d_set_zclip( UINT8 clip )
 
 static void model2_3d_process_quad( UINT32 attr )
 {
-	quad		object;
+	_quad		object;
 	UINT16		*th, *tp;
 	INT32		tho;
 	UINT32		cull, i;
@@ -2714,10 +2714,10 @@ VIDEO_START(model2)
 	add_exit_callback(machine, model2_exit);
 
 	/* initialize the geometry engine */
-	geo_init( (UINT32*)memory_region(machine, REGION_USER2) );
+	geo_init( (UINT32*)memory_region(machine, "user2") );
 
 	/* initialize the hardware rasterizer */
-	model2_3d_init( (UINT16*)memory_region(machine, REGION_USER3) );
+	model2_3d_init( (UINT16*)memory_region(machine, "user3") );
 }
 
 static void convert_bitmap( running_machine *machine, bitmap_t *dst, bitmap_t *src, const rectangle *rect )

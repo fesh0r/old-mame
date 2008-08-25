@@ -52,11 +52,11 @@ static READ8_HANDLER( skyraid_alpha_num_r)
 
 static READ8_HANDLER( skyraid_port_0_r )
 {
-	UINT8 val = input_port_read_indexed(machine, 0);
+	UINT8 val = input_port_read(machine, "LANGUAGE");
 
-	if (input_port_read_indexed(machine, 4) > analog_range)
+	if (input_port_read(machine, "STICKY") > analog_range)
 		val |= 0x40;
-	if (input_port_read_indexed(machine, 5) > analog_range)
+	if (input_port_read(machine, "STICKX") > analog_range)
 		val |= 0x80;
 
 	return val;
@@ -105,9 +105,9 @@ static ADDRESS_MAP_START( skyraid_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x087f) AM_READ(SMH_RAM)
 	AM_RANGE(0x0880, 0x0bff) AM_READ(skyraid_alpha_num_r)
 	AM_RANGE(0x1000, 0x1000) AM_READ(skyraid_port_0_r)
-	AM_RANGE(0x1000, 0x1001) AM_READ(input_port_1_r)
-	AM_RANGE(0x1400, 0x1400) AM_READ(input_port_2_r)
-	AM_RANGE(0x1400, 0x1401) AM_READ(input_port_3_r)
+	AM_RANGE(0x1000, 0x1001) AM_READ_PORT("DSW")
+	AM_RANGE(0x1400, 0x1400) AM_READ_PORT("COIN")
+	AM_RANGE(0x1400, 0x1401) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x7000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
@@ -130,7 +130,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( skyraid )
-	PORT_START
+	PORT_START("LANGUAGE")
 	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Language ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( English ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( French ) )
@@ -139,7 +139,7 @@ static INPUT_PORTS_START( skyraid )
 	PORT_BIT (0x40, IP_ACTIVE_HIGH, IPT_UNUSED) /* POT1 */
 	PORT_BIT (0x80, IP_ACTIVE_HIGH, IPT_UNUSED) /* POT0 */
 
-	PORT_START
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x30, 0x10, "Play Time" )
 	PORT_DIPSETTING(    0x00, "60 Seconds" )
 	PORT_DIPSETTING(    0x10, "80 Seconds" )
@@ -154,7 +154,7 @@ static INPUT_PORTS_START( skyraid )
 
 	/* coinage settings are insane, refer to the manual */
 
-	PORT_START
+	PORT_START("COIN")
 	PORT_DIPNAME( 0x0F, 0x01, DEF_STR( Coinage )) /* dial */
 	PORT_DIPSETTING(    0x00, "Mode 0" )
 	PORT_DIPSETTING(    0x01, "Mode 1" )
@@ -179,16 +179,16 @@ static INPUT_PORTS_START( skyraid )
 	PORT_BIT (0x40, IP_ACTIVE_HIGH, IPT_COIN1)
 	PORT_BIT (0x80, IP_ACTIVE_HIGH, IPT_COIN2)
 
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_TILT)
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_NAME("Hiscore Reset") PORT_CODE(KEYCODE_H)
 	PORT_BIT (0x40, IP_ACTIVE_LOW, IPT_START1)
 	PORT_SERVICE(0x80, IP_ACTIVE_LOW)
 
-	PORT_START
+	PORT_START("STICKY")
 	PORT_BIT( 0x3f, 0x20, IPT_AD_STICK_Y ) PORT_MINMAX(0,63) PORT_SENSITIVITY(10) PORT_KEYDELTA(10) PORT_REVERSE
 
-	PORT_START
+	PORT_START("STICKX")
 	PORT_BIT( 0x3f, 0x20, IPT_AD_STICK_X ) PORT_MINMAX(0,63) PORT_SENSITIVITY(10) PORT_KEYDELTA(10)
 INPUT_PORTS_END
 
@@ -252,16 +252,16 @@ static const gfx_layout skyraid_missile_layout =
 
 
 static GFXDECODE_START( skyraid )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, skyraid_text_layout, 18, 1 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, skyraid_sprite_layout, 8, 2 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, skyraid_missile_layout, 16, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, skyraid_text_layout, 18, 1 )
+	GFXDECODE_ENTRY( "gfx2", 0, skyraid_sprite_layout, 8, 2 )
+	GFXDECODE_ENTRY( "gfx3", 0, skyraid_missile_layout, 16, 1 )
 GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( skyraid )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, 12096000 / 12)
+	MDRV_CPU_ADD("main", M6502, 12096000 / 12)
 	MDRV_CPU_PROGRAM_MAP(skyraid_readmem, skyraid_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -286,31 +286,31 @@ MACHINE_DRIVER_END
 
 
 ROM_START( skyraid )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "030595.e1", 0x7000, 0x800, CRC(c6cb3a2b) SHA1(e4cb8d259446d0614c0c8f097f97dcf21869782e) )
 	ROM_RELOAD(            0xF000, 0x800 )
 	ROM_LOAD( "030594.d1", 0x7800, 0x800, CRC(27979e96) SHA1(55ffe3094c6764e6b99ee148e3dd730ca263fa3a) )
 	ROM_RELOAD(            0xF800, 0x800 )
 
-	ROM_REGION( 0x0200, REGION_GFX1, ROMREGION_DISPOSE ) /* alpha numerics */
+	ROM_REGION( 0x0200, "gfx1", ROMREGION_DISPOSE ) /* alpha numerics */
 	ROM_LOAD( "030598.h2", 0x0000, 0x200, CRC(2a7c5fa0) SHA1(93a79e5948dfcd9b6c2ff390e85a43f7a8cac327) )
 
-	ROM_REGION( 0x0800, REGION_GFX2, ROMREGION_DISPOSE ) /* sprites */
+	ROM_REGION( 0x0800, "gfx2", ROMREGION_DISPOSE ) /* sprites */
 	ROM_LOAD( "030599.m7", 0x0000, 0x800, CRC(0cd179ea) SHA1(e3c763f76e6103e5909e7b5a979206b262d6e96a) )
 
-	ROM_REGION( 0x0100, REGION_GFX3, ROMREGION_DISPOSE ) /* missiles */
+	ROM_REGION( 0x0100, "gfx3", ROMREGION_DISPOSE ) /* missiles */
 	ROM_LOAD_NIB_LOW ( "030597.n5", 0x0000, 0x100, CRC(319ff49c) SHA1(ff4d8b20436179910bf30c720d98df4678f683a9) )
 	ROM_LOAD_NIB_HIGH( "030596.m4", 0x0000, 0x100, CRC(30454ed0) SHA1(4216a54c13d9c4803f88f2de35cdee31290bb15e) )
 
-	ROM_REGION( 0x0800, REGION_USER1, 0 ) /* terrain */
+	ROM_REGION( 0x0800, "user1", 0 ) /* terrain */
 	ROM_LOAD_NIB_LOW ( "030584.j5", 0x0000, 0x800, CRC(81f6e8a5) SHA1(ad77b469ed0c9d5dfaa221ecf47d0db4a7f7ac91) )
 	ROM_LOAD_NIB_HIGH( "030585.k5", 0x0000, 0x800, CRC(b49bec3f) SHA1(b55d25230ec11c52e7b47d2c10194a49adbeb50a) )
 
-	ROM_REGION( 0x0100, REGION_USER2, 0 ) /* trapezoid */
+	ROM_REGION( 0x0100, "user2", 0 ) /* trapezoid */
 	ROM_LOAD_NIB_LOW ( "030582.a6", 0x0000, 0x100, CRC(0eacd595) SHA1(5469e312a1f522ce0a61054b50895a5b1a3f19ba) )
 	ROM_LOAD_NIB_HIGH( "030583.b6", 0x0000, 0x100, CRC(3edd6fbc) SHA1(0418ea78cf51e18c51087b43a41cd9e13aac0a16) )
 
-	ROM_REGION( 0x0300, REGION_PROMS, 0 )
+	ROM_REGION( 0x0300, "proms", 0 )
 	ROM_LOAD( "006559.c4", 0x0200, 0x100, CRC(5a8d0e42) SHA1(772220c4c24f18769696ddba26db2bc2e5b0909d) ) /* sync */
 ROM_END
 

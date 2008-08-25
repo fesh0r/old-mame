@@ -194,8 +194,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sauro_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(YM3812_control_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(YM3812_write_port_0_w)
+	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym3812_control_port_0_w)
+	AM_RANGE(0xc001, 0xc001) AM_WRITE(ym3812_write_port_0_w)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(adpcm_w)
 	AM_RANGE(0xe000, 0xe006) AM_WRITE(SMH_NOP)	/* echo from write to e0000 */
 	AM_RANGE(0xe00e, 0xe00f) AM_WRITE(SMH_NOP)
@@ -218,8 +218,8 @@ static ADDRESS_MAP_START( trckydoc_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xec00, 0xefff) AM_WRITE(trckydoc_spriteram_mirror_w) // it clears sprites from the screen by writing here to set some of the attributes
 	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(tecfri_videoram_w) AM_BASE(&tecfri_videoram)
 	AM_RANGE(0xf400, 0xf7ff) AM_WRITE(tecfri_colorram_w) AM_BASE(&tecfri_colorram)
-	AM_RANGE(0xf820, 0xf820) AM_WRITE(YM3812_control_port_0_w)
-	AM_RANGE(0xf821, 0xf821) AM_WRITE(YM3812_write_port_0_w)
+	AM_RANGE(0xf820, 0xf820) AM_WRITE(ym3812_control_port_0_w)
+	AM_RANGE(0xf821, 0xf821) AM_WRITE(ym3812_write_port_0_w)
 	AM_RANGE(0xf830, 0xf830) AM_WRITE(tecfri_scroll_bg_w)
 	AM_RANGE(0xf838, 0xf838) AM_WRITE(SMH_NOP)				/* only written at startup */
 	AM_RANGE(0xf839, 0xf839) AM_WRITE(flip_screen_w)
@@ -230,7 +230,7 @@ static ADDRESS_MAP_START( trckydoc_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( tecfri )
-	PORT_START      /* IN0 */
+	PORT_START("P1")      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN1 )
@@ -240,7 +240,7 @@ static INPUT_PORTS_START( tecfri )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY
 
-	PORT_START      /* IN1 */
+	PORT_START("P2")      /* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
@@ -250,7 +250,7 @@ static INPUT_PORTS_START( tecfri )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 
-	PORT_START
+	PORT_START("DSW1")
 	PORT_SERVICE( 0x01, IP_ACTIVE_HIGH )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -273,7 +273,7 @@ static INPUT_PORTS_START( tecfri )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 3C_1C ) )
@@ -337,22 +337,21 @@ static const gfx_layout sauro_spritelayout =
     16*16     /* every sprite takes 32 consecutive bytes */
 };
 
-static const struct sp0256_interface sauro_sp256 =
+static const sp0256_interface sauro_sp256 =
 {
 	lrq_callback,
-	0,
-	REGION_SOUND1
+	0
 };
 
 static GFXDECODE_START( sauro )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout, 0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, sauro_spritelayout, 0, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, charlayout, 0, 64 )
+	GFXDECODE_ENTRY( "gfx3", 0, sauro_spritelayout, 0, 64 )
 GFXDECODE_END
 
 static GFXDECODE_START( trckydoc )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, trckydoc_spritelayout, 0, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, trckydoc_spritelayout, 0, 64 )
 GFXDECODE_END
 
 static INTERRUPT_GEN( sauro_interrupt )
@@ -362,7 +361,7 @@ static INTERRUPT_GEN( sauro_interrupt )
 
 static MACHINE_DRIVER_START( tecfri )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", Z80, 4000000)        // 4 MHz???
+	MDRV_CPU_ADD("main", Z80, 4000000)        // 4 MHz???
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
@@ -379,7 +378,7 @@ static MACHINE_DRIVER_START( tecfri )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, 3600000)
+	MDRV_SOUND_ADD("ym", YM3812, 3600000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 MACHINE_DRIVER_END
@@ -403,8 +402,7 @@ static MACHINE_DRIVER_START( sauro )
 	MDRV_CPU_PROGRAM_MAP(sauro_readmem, sauro_writemem)
 	MDRV_CPU_IO_MAP(sauro_readport, sauro_writeport)
 
-	MDRV_CPU_ADD(Z80, 4000000)	// 4 MHz?
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 4000000)	// 4 MHz?
 	MDRV_CPU_PROGRAM_MAP(sauro_sound_readmem, sauro_sound_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(sauro_interrupt, 8) // ?
 
@@ -413,7 +411,7 @@ static MACHINE_DRIVER_START( sauro )
 	MDRV_VIDEO_START(sauro)
 	MDRV_VIDEO_UPDATE(sauro)
 
-	MDRV_SOUND_ADD(SP0256, 3120000)
+	MDRV_SOUND_ADD("speech", SP0256, 3120000)
 	MDRV_SOUND_CONFIG(sauro_sp256)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
@@ -426,82 +424,82 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( sauro )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "sauro-2.bin",     0x00000, 0x8000, CRC(19f8de25) SHA1(52eea7c0416ab0a8dbb3d1664b2f57ab7a405a67) )
 	ROM_LOAD( "sauro-1.bin",     0x08000, 0x8000, CRC(0f8b876f) SHA1(6e61a8934a2cc3c80c1f47dd59aa43aaeec12f75) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "sauro-3.bin",     0x00000, 0x8000, CRC(0d501e1b) SHA1(20a56ff30d4fa5d2f483a449703b49153839f6bc) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "sauro-6.bin",     0x00000, 0x8000, CRC(4b77cb0f) SHA1(7b9cb2dca561d81390106c1a5c0533dcecaf6f1a) )
 	ROM_LOAD( "sauro-7.bin",     0x08000, 0x8000, CRC(187da060) SHA1(1df156e58379bb39acade02aabab6ff1cb7cc288) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "sauro-4.bin",     0x00000, 0x8000, CRC(9b617cda) SHA1(ce26b84ad5ecd6185ae218520e9972645bbf09ad) )
 	ROM_LOAD( "sauro-5.bin",     0x08000, 0x8000, CRC(a6e2640d) SHA1(346ffcf62e27ce8134f4e5e0dbcf11f110e19e04) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "sauro-8.bin",     0x00000, 0x8000, CRC(e08b5d5e) SHA1(eaaeaa08b19c034ab2a2140f887edffca5f441b9) )
 	ROM_LOAD( "sauro-9.bin",     0x08000, 0x8000, CRC(7c707195) SHA1(0529f6808b0cec3e12ca51bee189841d21577786) )
 	ROM_LOAD( "sauro-10.bin",    0x10000, 0x8000, CRC(c93380d1) SHA1(fc9655cc94c2d2058f83eb341be7e7856a08194f) )
 	ROM_LOAD( "sauro-11.bin",    0x18000, 0x8000, CRC(f47982a8) SHA1(cbaeac272c015d9439f151cfb3449082f11a57a1) )
 
-	ROM_REGION( 0x0c00, REGION_PROMS, 0 )
+	ROM_REGION( 0x0c00, "proms", 0 )
 	ROM_LOAD( "82s137-3.bin",    0x0000, 0x0400, CRC(d52c4cd0) SHA1(27d6126b46616c06b55d8018c97f6c3d7805ae9e) )  /* Red component */
 	ROM_LOAD( "82s137-2.bin",    0x0400, 0x0400, CRC(c3e96d5d) SHA1(3f6f21526a4357e4a9a9d56a6f4ef5911af2d120) )  /* Green component */
 	ROM_LOAD( "82s137-1.bin",    0x0800, 0x0400, CRC(bdfcf00c) SHA1(9faf4d7f8959b64faa535c9945eec59c774a3760) )  /* Blue component */
 
-	ROM_REGION( 0x10000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x10000, "speech", 0 )
 	/* SP0256 mask rom */
 	ROM_LOAD( "sp0256-al2.bin",   0x1000, 0x0800, CRC(df8de0b0) SHA1(86fb6d9fef955ac0bc76e0c45c66585946d278a1) )
 ROM_END
 
 ROM_START( trckydoc )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "trckydoc.d9",  0x0000,  0x8000, CRC(c6242fc3) SHA1(c8a6f6abe8b51061a113ed75fead0479df68ec40) )
 	ROM_LOAD( "trckydoc.b9",  0x8000,  0x8000, CRC(8645c840) SHA1(79c2acfc1aeafbe94afd9d230200bd7cdd7bcd1b) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "trckydoc.e6",     0x00000, 0x8000, CRC(ec326392) SHA1(e6954fecc501a821caa21e67597914519fbbe58f) )
 	ROM_LOAD( "trckydoc.g6",     0x08000, 0x8000, CRC(6a65c088) SHA1(4a70c104809d86b4eef6cc0df9452966fe7c9859) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "trckydoc.h1",    0x00000, 0x4000, CRC(8b73cbf3) SHA1(d10f79a38c1596c90bac9cf4c64ba38ae6ecd8cb) )
 	ROM_LOAD( "trckydoc.e1",    0x04000, 0x4000, CRC(841be98e) SHA1(82da07490b73edcbffc3b9247205aab3a1f7d7ad) )
 	ROM_LOAD( "trckydoc.c1",    0x08000, 0x4000, CRC(1d25574b) SHA1(924e4376a7fe6cdfff0fa6045aaa3f7c0633d275) )
 	ROM_LOAD( "trckydoc.a1",    0x0c000, 0x4000, CRC(436c59ba) SHA1(2aa9c155c432a3c81420520c53bb944dcc613a94) )
 
-	ROM_REGION( 0x0c00, REGION_PROMS, 0 ) // colour proms
+	ROM_REGION( 0x0c00, "proms", 0 ) // colour proms
 	ROM_LOAD( "tdclr3.prm",    0x0000, 0x0100, CRC(671d0140) SHA1(7d5fcd9589c46590b0a240cac428f993201bec2a) )
 	ROM_LOAD( "tdclr2.prm",    0x0400, 0x0100, CRC(874f9050) SHA1(db40d68f5166657fce0eadcd82143112b0388894) )
 	ROM_LOAD( "tdclr1.prm",    0x0800, 0x0100, CRC(57f127b0) SHA1(3d2b18a7a31933579f06d92fa0cc3f0e1fe8b98a) )
 
-	ROM_REGION( 0x0200, REGION_USER1, 0 ) // unknown
+	ROM_REGION( 0x0200, "user1", 0 ) // unknown
 	ROM_LOAD( "tdprm.prm",    0x0000, 0x0200,  CRC(5261bc11) SHA1(1cc7a9a7376e65f4587b75ef9382049458656372) )
 ROM_END
 
 ROM_START( trckydca )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "trckydca.d9",  0x0000,  0x8000, CRC(99c38aa4) SHA1(298a19439cc17743e10d101c50a26b9a7348299e) )
 	ROM_LOAD( "trckydca.b9",  0x8000,  0x8000, CRC(b6048a15) SHA1(d982fafbfa391ef9bab50bfd52607494e2a9eedf) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "trckydoc.e6",     0x00000, 0x8000, CRC(ec326392) SHA1(e6954fecc501a821caa21e67597914519fbbe58f) )
 	ROM_LOAD( "trckydoc.g6",     0x08000, 0x8000, CRC(6a65c088) SHA1(4a70c104809d86b4eef6cc0df9452966fe7c9859) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "trckydoc.h1",    0x00000, 0x4000, CRC(8b73cbf3) SHA1(d10f79a38c1596c90bac9cf4c64ba38ae6ecd8cb) )
 	ROM_LOAD( "trckydoc.e1",    0x04000, 0x4000, CRC(841be98e) SHA1(82da07490b73edcbffc3b9247205aab3a1f7d7ad) )
 	ROM_LOAD( "trckydoc.c1",    0x08000, 0x4000, CRC(1d25574b) SHA1(924e4376a7fe6cdfff0fa6045aaa3f7c0633d275) )
 	ROM_LOAD( "trckydoc.a1",    0x0c000, 0x4000, CRC(436c59ba) SHA1(2aa9c155c432a3c81420520c53bb944dcc613a94) )
 
-	ROM_REGION( 0x0c00, REGION_PROMS, 0 ) // colour proms
+	ROM_REGION( 0x0c00, "proms", 0 ) // colour proms
 	ROM_LOAD( "tdclr3.prm",    0x0000, 0x0100, CRC(671d0140) SHA1(7d5fcd9589c46590b0a240cac428f993201bec2a) )
 	ROM_LOAD( "tdclr2.prm",    0x0400, 0x0100, CRC(874f9050) SHA1(db40d68f5166657fce0eadcd82143112b0388894) )
 	ROM_LOAD( "tdclr1.prm",    0x0800, 0x0100, CRC(57f127b0) SHA1(3d2b18a7a31933579f06d92fa0cc3f0e1fe8b98a) )
 
-	ROM_REGION( 0x0200, REGION_USER1, 0 ) // unknown
+	ROM_REGION( 0x0200, "user1", 0 ) // unknown
 	ROM_LOAD( "tdprm.prm",    0x0000, 0x0200,  CRC(5261bc11) SHA1(1cc7a9a7376e65f4587b75ef9382049458656372) )
 ROM_END
 
@@ -510,7 +508,7 @@ static DRIVER_INIT( tecfri )
 	/* This game doesn't like all memory to be initialized to zero, it won't
        initialize the high scores */
 
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 
 	memset(&RAM[0xe000], 0, 0x100);
 	RAM[0xe000] = 1;

@@ -98,21 +98,15 @@ extern WRITE8_HANDLER( marvins_palette_bank_w );
 
 static int sound_cpu_busy;
 
-static const struct namco_interface snkwave_interface =
+static const namco_interface snkwave_interface =
 {
 	1,				/* number of voices */
-	-1				/* memory region */
+	0				/* stereo */
 };
-
-static void init_sound( int busy_bit )
-{
-	snk_sound_busy_bit = busy_bit;
-	sound_cpu_busy = 0;
-}
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	sound_cpu_busy = snk_sound_busy_bit;
+	sound_cpu_busy = 0x01;
 	soundlatch_w(machine, 0, data);
 	cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
 }
@@ -129,20 +123,19 @@ static READ8_HANDLER( sound_nmi_ack_r )
 	return 0;
 }
 
-/* this input port has one of its bits mapped to sound CPU status */
-static READ8_HANDLER( marvins_port_0_r )
+static CUSTOM_INPUT( sound_status_r )
 {
-	return(input_port_read(machine, "IN0") | sound_cpu_busy);
+	return sound_cpu_busy;
 }
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM AM_BASE(&namco_wavedata)	/* silly hack - this shouldn't be here */
 	AM_RANGE(0x4000, 0x4000) AM_READ(sound_command_r)
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0x8000, 0x8000) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x8001, 0x8001) AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0x8002, 0x8007) AM_WRITE(snkwave_w)
-	AM_RANGE(0x8008, 0x8008) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0x8009, 0x8009) AM_WRITE(AY8910_write_port_1_w)
+	AM_RANGE(0x8008, 0x8008) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x8009, 0x8009) AM_WRITE(ay8910_write_port_1_w)
 	AM_RANGE(0xa000, 0xa000) AM_READ(sound_nmi_ack_r)
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM
 ADDRESS_MAP_END
@@ -167,12 +160,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( marvins_cpuA_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_ROM
 	AM_RANGE(0x6000, 0x6000) AM_WRITE(marvins_palette_bank_w)
-	AM_RANGE(0x8000, 0x8000) AM_READ(marvins_port_0_r)	/* coin input, start, sound CPU status */
-	AM_RANGE(0x8100, 0x8100) AM_READ_PORT("IN1")			/* player #1 controls */
-	AM_RANGE(0x8200, 0x8200) AM_READ_PORT("IN2")			/* player #2 controls */
+	AM_RANGE(0x8000, 0x8000) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x8100, 0x8100) AM_READ_PORT("P1")
+	AM_RANGE(0x8200, 0x8200) AM_READ_PORT("P2")
 	AM_RANGE(0x8300, 0x8300) AM_WRITE(sound_command_w)
-	AM_RANGE(0x8400, 0x8400) AM_READ_PORT("DSW1")		/* dipswitch#1 */
-	AM_RANGE(0x8500, 0x8500) AM_READ_PORT("DSW2")		/* dipswitch#2 */
+	AM_RANGE(0x8400, 0x8400) AM_READ_PORT("DSW1")
+	AM_RANGE(0x8500, 0x8500) AM_READ_PORT("DSW2")
 	AM_RANGE(0x8600, 0x8600) AM_RAM						/* video attribute */
 	AM_RANGE(0x8700, 0x8700) AM_READWRITE(snk_cpuB_nmi_trigger_r, snk_cpuA_nmi_ack_w)
 	AM_RANGE(0xc000, 0xcfff) AM_RAM AM_BASE(&spriteram) AM_SHARE(1)
@@ -193,13 +186,13 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( madcrash_cpuA_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x8000) AM_READ(marvins_port_0_r)	/* coin input, start, sound CPU status */
-	AM_RANGE(0x8100, 0x8100) AM_READ_PORT("IN1")			/* player #1 controls */
-	AM_RANGE(0x8200, 0x8200) AM_READ_PORT("IN2")			/* player #2 controls */
+	AM_RANGE(0x8000, 0x8000) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x8100, 0x8100) AM_READ_PORT("P1")
+	AM_RANGE(0x8200, 0x8200) AM_READ_PORT("P2")
 	AM_RANGE(0x8300, 0x8300) AM_WRITE(sound_command_w)
-	AM_RANGE(0x8400, 0x8400) AM_READ_PORT("DSW1")		/* dipswitch#1 */
-	AM_RANGE(0x8500, 0x8500) AM_READ_PORT("DSW2")		/* dipswitch#2 */
-	AM_RANGE(0x8600, 0x86ff) AM_RAM	// video attribute
+	AM_RANGE(0x8400, 0x8400) AM_READ_PORT("DSW1")
+	AM_RANGE(0x8500, 0x8500) AM_READ_PORT("DSW2")
+	AM_RANGE(0x8600, 0x86ff) AM_RAM						/* video attribute */
 	AM_RANGE(0x8700, 0x8700) AM_READWRITE(snk_cpuB_nmi_trigger_r, snk_cpuA_nmi_ack_w)
 //  AM_RANGE(0xc800, 0xc800) AM_WRITE(marvins_palette_bank_w)   // palette bank switch (c8f1 for Vanguard)
 	AM_RANGE(0xc800, 0xc8ff) AM_RAM
@@ -221,17 +214,17 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( marvins )
-	PORT_START_TAG("IN0")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SERVICE1 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW,  IPT_START1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW,  IPT_START2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN ) /* sound CPU status */
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(sound_status_r, NULL) /* sound CPU status */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1") /* player#1 controls */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -240,7 +233,7 @@ static INPUT_PORTS_START( marvins )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN2") /* player#2 controls */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
@@ -249,7 +242,7 @@ static INPUT_PORTS_START( marvins )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Lives ) )		PORT_DIPLOCATION("SW1:1,2")
 	PORT_DIPSETTING(    0x00, "1" )
 	PORT_DIPSETTING(    0x01, "2" )
@@ -274,7 +267,7 @@ static INPUT_PORTS_START( marvins )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x07, 0x00, "1st Bonus Life" )		PORT_DIPLOCATION("SW2:1,2,3")
 	PORT_DIPSETTING(    0x00, "10000" )
 	PORT_DIPSETTING(    0x01, "20000" )
@@ -302,17 +295,17 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( vangrd2 )
-	PORT_START_TAG("IN0")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW,  IPT_START1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW,  IPT_START2 )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN ) /* sound CPU status */
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(sound_status_r, NULL) /* sound CPU status */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1") /* player#1 controls */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -321,7 +314,7 @@ static INPUT_PORTS_START( vangrd2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN2") /* player#2 controls */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
@@ -330,7 +323,7 @@ static INPUT_PORTS_START( vangrd2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )			PORT_DIPLOCATION("SW1:1,2,3")
 	PORT_DIPSETTING(    0x00, DEF_STR( 6C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 5C_1C ) )
@@ -355,7 +348,7 @@ static INPUT_PORTS_START( vangrd2 )
 	PORT_DIPSETTING(    0x80, "3" )
 	PORT_DIPSETTING(    0xc0, "5" )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )		PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -384,17 +377,17 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( madcrash )
-	PORT_START_TAG("IN0")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN3 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW,  IPT_START1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW,  IPT_START2 )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN ) /* sound CPU status */
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(sound_status_r, NULL) /* sound CPU status */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("IN1") /* player#1 controls */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -403,7 +396,7 @@ static INPUT_PORTS_START( madcrash )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN2") /* player#2 controls */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
@@ -412,7 +405,7 @@ static INPUT_PORTS_START( madcrash )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPUNUSED_DIPLOC(0x01, IP_ACTIVE_LOW, "SW1:1")	/* Listed as Unused */
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Cabinet ) )		PORT_DIPLOCATION("SW1:2")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
@@ -435,7 +428,7 @@ static INPUT_PORTS_START( madcrash )
 	PORT_DIPSETTING(    0x40, "50000 120000" )
 	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x00, "Bonus Life Occurence" )		PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x01, "1st, 2nd, then every 2nd" )	/* Check the "Non Bugs" page */
 	PORT_DIPSETTING(    0x00, "1st and 2nd only" )
@@ -494,10 +487,10 @@ static const gfx_layout tile_layout =
 };
 
 static GFXDECODE_START( marvins )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tile_layout,	0x080, 8  ) /* text layer */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tile_layout,	0x110, 1  ) /* background */
-	GFXDECODE_ENTRY( REGION_GFX3, 0, tile_layout,	0x100, 1  ) /* foreground */
-	GFXDECODE_ENTRY( REGION_GFX4, 0, sprite_layout,	0x000, 16 ) /* sprites */
+	GFXDECODE_ENTRY( "gfx1", 0, tile_layout,	0x080, 8  ) /* text layer */
+	GFXDECODE_ENTRY( "gfx2", 0, tile_layout,	0x110, 1  ) /* background */
+	GFXDECODE_ENTRY( "gfx3", 0, tile_layout,	0x100, 1  ) /* foreground */
+	GFXDECODE_ENTRY( "gfx4", 0, sprite_layout,	0x000, 16 ) /* sprites */
 GFXDECODE_END
 
 
@@ -510,16 +503,15 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( marvins )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 3360000)	/* 3.36 MHz */
+	MDRV_CPU_ADD("main", Z80, 3360000)	/* 3.36 MHz */
 	MDRV_CPU_PROGRAM_MAP(marvins_cpuA_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 3360000)	/* 3.36 MHz */
+	MDRV_CPU_ADD("sub", Z80, 3360000)	/* 3.36 MHz */
 	MDRV_CPU_PROGRAM_MAP(marvins_cpuB_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)	/* 4.0 MHz */
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4.0 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_assert, 244)	// schematics show a separate 244Hz timer
@@ -545,13 +537,13 @@ static MACHINE_DRIVER_START( marvins )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay1", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay2", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(NAMCO, 8000000/256)
+	MDRV_SOUND_ADD("namco", NAMCO, 8000000/256)
 	MDRV_SOUND_CONFIG(snkwave_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 MACHINE_DRIVER_END
@@ -560,16 +552,15 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( vangrd2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", Z80, 3360000)	/* 3.36 MHz */
+	MDRV_CPU_ADD("main", Z80, 3360000)	/* 3.36 MHz */
 	MDRV_CPU_PROGRAM_MAP(madcrash_cpuA_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD_TAG("sub", Z80, 3360000)	/* 3.36 MHz */
+	MDRV_CPU_ADD("sub", Z80, 3360000)	/* 3.36 MHz */
 	MDRV_CPU_PROGRAM_MAP(madcrash_cpuB_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)	/* 4.0 MHz */
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4.0 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_assert, 244)
@@ -595,13 +586,13 @@ static MACHINE_DRIVER_START( vangrd2 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay1", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay2", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(NAMCO, 8000000/256)
+	MDRV_SOUND_ADD("namco", NAMCO, 8000000/256)
 	MDRV_SOUND_CONFIG(snkwave_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 MACHINE_DRIVER_END
@@ -637,106 +628,106 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( marvins )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for CPUA code */
+	ROM_REGION( 0x10000, "main", 0 )	/* 64k for CPUA code */
 	ROM_LOAD( "pa1",   0x0000, 0x2000, CRC(0008d791) SHA1(6ffb174b2d680314f74efeef83da9f3ee3e0c753) )
 	ROM_LOAD( "pa2",   0x2000, 0x2000, CRC(9457003c) SHA1(05ecd5c638a12163e2a65bdfcc09875618f792e1) )
 	ROM_LOAD( "pa3",   0x4000, 0x2000, CRC(54c33ecb) SHA1(cfbf9ffc125fbc51f2abef180f36781f9e748bbd) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for CPUB code */
+	ROM_REGION( 0x10000, "sub", 0 )	/* 64k for CPUB code */
 	ROM_LOAD( "pb1",   0x0000, 0x2000, CRC(3b6941a5) SHA1(9c29870196eaed87f34456fdb06bf7b69c8f489d) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64k for sound code */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound code */
 	ROM_LOAD( "m1",    0x0000, 0x2000, CRC(2314c696) SHA1(1b84a0c82a4dcff648752f53aa1f0abf5357c5d1) )
 	ROM_LOAD( "m2",    0x2000, 0x2000, CRC(74ba5799) SHA1(c278b0e5c4134f6077d4ae7b51e3c5cba28af1a8) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "s1",    0x0000, 0x2000, CRC(327f70f3) SHA1(078dcc6b4697617d4d833ccd59c6a543b2a88d9e) )	/* characters */
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "b1",    0x0000, 0x2000, CRC(e528bc60) SHA1(3365ac7cbc57739054bc11e68831be87c0c1a97a) )	/* background tiles */
 
-	ROM_REGION( 0x2000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "b2",    0x0000, 0x2000, CRC(e528bc60) SHA1(3365ac7cbc57739054bc11e68831be87c0c1a97a) )	/* foreground tiles */
 
-	ROM_REGION( 0x6000, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "f3",    0x0000, 0x2000, CRC(e55c9b83) SHA1(04b0d99955e4b11820015b7721ac6399a3d5a829) )	/* sprites */
 	ROM_LOAD( "f2",    0x2000, 0x2000, CRC(8fc2b081) SHA1(fb345965375cb62ec1b947d6c6d071380dc0f395) )
 	ROM_LOAD( "f1",    0x4000, 0x2000, CRC(0bd6b4e5) SHA1(c56747ff2135db734f1b5f6c2906de5ac8f53bbc) )
 
-	ROM_REGION( 0x0c00, REGION_PROMS, 0 )
+	ROM_REGION( 0x0c00, "proms", 0 )
 	ROM_LOAD( "marvmaze.j1",  0x000, 0x400, CRC(92f5b06d) SHA1(97979ffb6fb065d9c99da43173180fefb2de1886) )
 	ROM_LOAD( "marvmaze.j2",  0x400, 0x400, CRC(d2b25665) SHA1(b913b8b9c5ee0a29b5a115b2432c5706979059cf) )
 	ROM_LOAD( "marvmaze.j3",  0x800, 0x400, CRC(df9e6005) SHA1(8f633f664c3f8e4f6ca94bee74a68c8fda8873e3) )
 ROM_END
 
 ROM_START( madcrash )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )	/* 64k for CPUA code */
+	ROM_REGION( 0x10000, "main", 0 )	/* 64k for CPUA code */
 	ROM_LOAD( "p8",    0x0000, 0x2000, CRC(ecb2fdc9) SHA1(7dd79fbbe286a9f18ed2cae45b1bfab765e549a1) )
 	ROM_LOAD( "p9",    0x2000, 0x2000, CRC(0a87df26) SHA1(327710452bdc5dbb931abc853957225814f224c5) )
 	ROM_LOAD( "p10",   0x4000, 0x2000, CRC(6eb8a87c) SHA1(375377df22b331175aaf1f9eb8d8ad83e8e146f6) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for CPUB code */
+	ROM_REGION( 0x10000, "sub", 0 )	/* 64k for CPUB code */
 	ROM_LOAD( "p4",   0x0000, 0x2000, CRC(5664d699) SHA1(5bfa57a0f8d718d522003da6513a70d7ca3a87a3) )
 	ROM_LOAD( "p5",   0x2000, 0x2000, CRC(dea2865a) SHA1(0807281e35159ee29fbe2d1aa087b57804f1a14f) )
 	ROM_LOAD( "p6",   0x4000, 0x2000, CRC(e25a9b9c) SHA1(26853611e3898907239e15f1a00f62290889f89b) )
 	ROM_LOAD( "p7",   0x6000, 0x2000, CRC(55b14a36) SHA1(7d5566a6ba285af92ddf560efda60a79f1da84c2) )
 	ROM_LOAD( "p3",   0x8000, 0x2000, CRC(e3c8c2cb) SHA1(b3e39eacd2609ff0fa0f511bff0fc83e6b3970d4) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64k for sound code */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound code */
 	ROM_LOAD( "p1",   0x0000, 0x2000, CRC(2dcd036d) SHA1(4da42ab1e502fff57f5d5787df406289538fa484) )
 	ROM_LOAD( "p2",   0x2000, 0x2000, CRC(cc30ae8b) SHA1(ffedc747b9e0b616a163ff8bb1def318e522585b) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "p13",    0x0000, 0x2000, CRC(48c4ade0) SHA1(3628abb4f425b8c9d8659c8e4082735168b0f3e9) )	/* characters */
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "p11",    0x0000, 0x2000, CRC(67174956) SHA1(65a921176294212971c748932a9010f45e1fb499) )	/* background tiles */
 
-	ROM_REGION( 0x2000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "p12",    0x0000, 0x2000, CRC(085094c1) SHA1(5c5599d1ed7f8a717ada54bbd28383a22e09a8fe) )	/* foreground tiles */
 
-	ROM_REGION( 0x6000, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "p14",    0x0000, 0x2000, CRC(07e807bc) SHA1(f651d3a5394ced8e0a1b2be3aa52b3e5a5d84c37) )	/* sprites */
 	ROM_LOAD( "p15",    0x2000, 0x2000, CRC(a74149d4) SHA1(e8011a8d4d1a98a0ffe67fc28ea9fa192ca80321) )
 	ROM_LOAD( "p16",    0x4000, 0x2000, CRC(6153611a) SHA1(b352f92b233761122f74830e46913cc4df800259) )
 
-	ROM_REGION( 0x0c00, REGION_PROMS, 0 )
+	ROM_REGION( 0x0c00, "proms", 0 )
 	ROM_LOAD( "m3-prom.j3",  0x000, 0x400, CRC(d19e8a91) SHA1(b21fbdb8ed8d0b27c3ec78cf2e115624f69c67e0) )
 	ROM_LOAD( "m2-prom.j4",  0x400, 0x400, CRC(9fc325af) SHA1(a180662f168ba001376f25f5d9205cb119c1ffee) )
 	ROM_LOAD( "m1-prom.j5",  0x800, 0x400, CRC(07678443) SHA1(267951886d8b031dd633dc4823d9bd862a585437) )
 ROM_END
 
 ROM_START( vangrd2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "p1.9a",  0x0000, 0x2000, CRC(bc9eeca5) SHA1(5a737e0f0aa1a3a5296d1e1fec13b34aee970609) )
 	ROM_LOAD( "p3.11a", 0x2000, 0x2000, CRC(3970f69d) SHA1(b0ef7494888804ab5b4002730fb0232a7fd6797b) )
 	ROM_LOAD( "p2.12a", 0x4000, 0x2000, CRC(58b08b58) SHA1(eccc85191d678a0115a113002a43203afd857a5b) )
 	ROM_LOAD( "p4.14a", 0x6000, 0x2000, CRC(a95f11ea) SHA1(8007efb4ad948c8768e474fc77134f3ce52da1d2) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "p5.4a", 0x0000, 0x2000, CRC(e4dfd0ba) SHA1(12d45ff147f3ea9c9e898c3831874cd7c1a071b7) )
 	ROM_LOAD( "p6.6a", 0x2000, 0x2000, CRC(894ff00d) SHA1(1c66f327d8e94dc6ac386e11fcc5eb17c9081434) )
 	ROM_LOAD( "p7.7a", 0x4000, 0x2000, CRC(40b4d069) SHA1(56c464bd055125ffc2da02d70137aa5efe5cd8f6) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64k for sound code */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound code */
 	ROM_LOAD( "p8.6a", 0x0000, 0x2000, CRC(a3daa438) SHA1(4e659ac7e3ebaf85bc3ce5c9946fcf0af23083b4) )
 	ROM_LOAD( "p9.8a", 0x2000, 0x2000, CRC(9345101a) SHA1(b99ad1c2a79df50b0a60fdd43ca466f6cb38445b) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "p15.1e", 0x0000, 0x2000, CRC(85718a41) SHA1(4c9aa1f8b229410414cd67bac8cb10a14bea12f4) )	/* characters */
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "p13.1a", 0x0000, 0x2000, CRC(912f22c6) SHA1(5042edc80b58f77b3576b5e6eb8c6460c8a35494) )	/* background tiles */
 
-	ROM_REGION( 0x2000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "p9",     0x0000, 0x2000, CRC(7aa0b684) SHA1(d52670ec50b1a07d6c2c537f67922063deacdeea) )	/* foreground tiles */
 
-	ROM_REGION( 0x6000, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "p12.1kl", 0x0000, 0x2000, CRC(8658ea6c) SHA1(d5ea9be2c1776b11abc77c944a653eeb73b27fc8) )	/* sprites */
 	ROM_LOAD( "p11.3kl", 0x2000, 0x2000, CRC(620cd4ec) SHA1(a2fcc3d24d0d3c7cc601620ae7a709f46b613c0f) )
 	ROM_LOAD( "p10.4kl", 0x4000, 0x2000, CRC(5bfc04c0) SHA1(4eb152fdf39cb0024f71d5bdf1bfc79c2b8c2329) )
 
-	ROM_REGION( 0x0c00, REGION_PROMS, 0 )
+	ROM_REGION( 0x0c00, "proms", 0 )
 	ROM_LOAD( "mb7054.3j", 0x000, 0x400, CRC(506f659a) SHA1(766f1a0dd462eba64546c514004e6542e200d7c3) )
 	ROM_LOAD( "mb7054.4j", 0x400, 0x400, CRC(222133ce) SHA1(109a63c8c44608a8ad9183e7b5d269765cc5f067) )
 	ROM_LOAD( "mb7054.5j", 0x800, 0x400, CRC(2e21a79b) SHA1(1956377c799e0bbd127bf4fae016adc148efe007) )
@@ -747,7 +738,7 @@ ROM_END
 
 static DRIVER_INIT( marvins )
 {
-	init_sound( 0x40 );
+	sound_cpu_busy = 0;
 	snk_gamegroup = 0;
 }
 
@@ -758,17 +749,17 @@ static DRIVER_INIT( madcrash )
     because of bit rot, so the rest of the test mode (what little there
     is) can be explored.
 
-    UINT8 *mem = memory_region(machine, REGION_CPU1);
+    UINT8 *mem = memory_region(machine, "main");
     mem[0x3a5d] = 0; mem[0x3a5e] = 0; mem[0x3a5f] = 0;
 */
-	init_sound( 0x20 );
+	sound_cpu_busy = 0;
 	snk_gamegroup = 1;
 	snk_irq_delay = 1700;
 }
 
 static DRIVER_INIT( vangrd2 )
 {
-	init_sound( 0x20 );
+	sound_cpu_busy = 0;
 	snk_gamegroup = 2;
 }
 

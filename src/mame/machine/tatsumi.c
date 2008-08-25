@@ -131,8 +131,8 @@ WRITE16_HANDLER(apache3_z80_w)
 READ8_HANDLER( apache3_adc_r )
 {
 	if (apache3_adc==0)
-		return input_port_read_indexed(machine, 1);
-	return input_port_read_indexed(machine, 2);
+		return input_port_read(machine, "STICKX");
+	return input_port_read(machine, "STICKY");
 }
 
 WRITE8_HANDLER( apache3_adc_w )
@@ -305,7 +305,7 @@ WRITE16_HANDLER(cyclwarr_control_w)
 
 READ16_HANDLER( tatsumi_v30_68000_r )
 {
-	const UINT16* rom=(UINT16*)memory_region(machine, REGION_CPU2);
+	const UINT16* rom=(UINT16*)memory_region(machine, "sub");
 
 logerror("%05X:68000_r(%04X),cw=%04X\n", activecpu_get_pc(), offset*2, tatsumi_control_word);
 	/* Read from 68k RAM */
@@ -314,7 +314,7 @@ logerror("%05X:68000_r(%04X),cw=%04X\n", activecpu_get_pc(), offset*2, tatsumi_c
 		// hack to make roundup 5 boot
 		if (activecpu_get_pc()==0xec575)
 		{
-			UINT8 *dst = memory_region(machine, REGION_CPU1);
+			UINT8 *dst = memory_region(machine, "main");
 			dst[BYTE_XOR_LE(0xec57a)]=0x46;
 			dst[BYTE_XOR_LE(0xec57b)]=0x46;
 
@@ -349,7 +349,7 @@ WRITE16_HANDLER( tatsumi_v30_68000_w )
 // self-test in Tatsumi games.  Needs fixed, but hack it here for now.
 READ8_HANDLER(tatsumi_hack_ym2151_r)
 {
-	int r=YM2151_status_port_0_r(machine,0);
+	int r=ym2151_status_port_0_r(machine,0);
 
 	if (activecpu_get_pc()==0x2aca || activecpu_get_pc()==0x29fe
 		|| activecpu_get_pc()==0xf9721
@@ -362,7 +362,7 @@ READ8_HANDLER(tatsumi_hack_ym2151_r)
 // Mame really should emulate the OKI status reads even with Mame sound off.
 READ8_HANDLER(tatsumi_hack_oki_r)
 {
-	int r=OKIM6295_status_0_r(machine,0);
+	int r=okim6295_status_0_r(machine,0);
 
 	if (activecpu_get_pc()==0x2b70 || activecpu_get_pc()==0x2bb5
 		|| activecpu_get_pc()==0x2acc

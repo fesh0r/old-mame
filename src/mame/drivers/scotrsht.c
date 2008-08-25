@@ -72,12 +72,12 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( scotrsht_sound_port, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(YM2203_write_port_0_w)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_WRITE(ym2203_write_port_0_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( scotrsht )
-	PORT_START	/* IN0 - $3300 */
+	PORT_START("SYSTEM")	/* IN0 - $3300 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -85,7 +85,7 @@ static INPUT_PORTS_START( scotrsht )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN1 - $3301 */
+	PORT_START("P1")	/* IN1 - $3301 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -94,7 +94,7 @@ static INPUT_PORTS_START( scotrsht )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN2 - $3302 */
+	PORT_START("P2")	/* IN2 - $3302 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
@@ -103,7 +103,7 @@ static INPUT_PORTS_START( scotrsht )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* DSW0  - $3303 */
+	PORT_START("DSW1")	/* DSW0  - $3303 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
@@ -139,7 +139,7 @@ static INPUT_PORTS_START( scotrsht )
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
 	PORT_DIPSETTING(    0x00, "Invalid" )
 
-	PORT_START	/* DSW1  - $3100 */
+	PORT_START("DSW2")	/* DSW1  - $3100 */
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x03, "2" )
 	PORT_DIPSETTING(    0x02, "3" )
@@ -163,7 +163,7 @@ static INPUT_PORTS_START( scotrsht )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* DSW2  - $3200 */
+	PORT_START("DSW3")	/* DSW2  - $3200 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -216,19 +216,18 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( scotrsht )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,         0, 16*8 ) /* characters */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 16*16*8, 16*8 ) /* sprites */
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,         0, 16*8 ) /* characters */
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 16*16*8, 16*8 ) /* sprites */
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( scotrsht )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, 18432000/6)        /* 3.072 MHz */
+	MDRV_CPU_ADD("main", M6809, 18432000/6)        /* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(scotrsht_map,0)
 	MDRV_CPU_VBLANK_INT("main", scotrsht_interrupt)
 
-	MDRV_CPU_ADD(Z80, 18432000/6)
-	/* audio CPU */        /* 3.072 MHz */
+	MDRV_CPU_ADD("audio", Z80, 18432000/6)        /* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(scotrsht_sound_map,0)
 	MDRV_CPU_IO_MAP(scotrsht_sound_port,0)
 
@@ -250,7 +249,7 @@ static MACHINE_DRIVER_START( scotrsht )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 18432000/6)
+	MDRV_SOUND_ADD("ym", YM2203, 18432000/6)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 MACHINE_DRIVER_END
 
@@ -262,22 +261,22 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( scotrsht )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "gx545_g03_12c.bin", 0x8000, 0x4000, CRC(b808e0d3) SHA1(d42b6979ade705a7522bd0bbc3eaa6d661580902) )
 	ROM_CONTINUE(				   0x4000, 0x4000 )
 	ROM_LOAD( "gx545_g02_10c.bin", 0xc000, 0x4000, CRC(b22c0586) SHA1(07c21609c6cdfe2b8dd734d21086c5236ff8197b) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for sound code */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound code */
 	ROM_LOAD( "gx545_g01_8c.bin",  0x0000, 0x4000, CRC(46a7cc65) SHA1(73389fe04ce40da124d630dc3f8e58600d9556fc) )
 
-	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "gx545_g05_5f.bin",  0x0000, 0x8000, CRC(856c349c) SHA1(ba45e6d18e56cc7fc49c8fda190ec152ce6bd15c) )	/* characters */
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "gx545_g06_6f.bin",  0x0000, 0x8000, CRC(14ad7601) SHA1(6dfcf2abfa2ea056c948d82d35c55f033f3e4678) )	/* sprites */
 	ROM_LOAD( "gx545_h04_4f.bin",  0x8000, 0x8000, CRC(c06c11a3) SHA1(6e89c738498d716fd43d9cc7b71b23438bd3c4b8) )
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )
+	ROM_REGION( 0x0500, "proms", 0 )
 	ROM_LOAD( "gx545_6301_1f.bin", 0x0000, 0x0100, CRC(f584586f) SHA1(0576cd0a738737c18143af887efd5ce76cdfc7cb) ) /* red */
 	ROM_LOAD( "gx545_6301_2f.bin", 0x0100, 0x0100, CRC(ad464db1) SHA1(24937f2c9143e925c9becb488e11aa6daa807817) ) /* green */
 	ROM_LOAD( "gx545_6301_3f.bin", 0x0200, 0x0100, CRC(bd475d23) SHA1(4ae6dfbb5c40a5ff97d7d80d0a441c1dc6dc5705) ) /* blue */

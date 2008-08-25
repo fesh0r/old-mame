@@ -149,7 +149,7 @@ static MACHINE_RESET( capbowl )
 static WRITE8_HANDLER( capbowl_rom_select_w )
 {
 	int bankaddress = ((data & 0x0c) << 13) + ((data & 0x01) << 14);
-	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x10000 + bankaddress);
+	memory_set_bankptr(1, memory_region(machine, "main") + 0x10000 + bankaddress);
 }
 
 
@@ -276,10 +276,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x1000, 0x1000) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
-	AM_RANGE(0x1001, 0x1001) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
+	AM_RANGE(0x1000, 0x1000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
+	AM_RANGE(0x1001, 0x1001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
 	AM_RANGE(0x2000, 0x2000) AM_WRITENOP  				/* Not hooked up according to the schematics */
-	AM_RANGE(0x6000, 0x6000) AM_WRITE(DAC_0_data_w)
+	AM_RANGE(0x6000, 0x6000) AM_WRITE(dac_0_data_w)
 	AM_RANGE(0x7000, 0x7000) AM_READ(soundlatch_r)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -293,7 +293,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( capbowl )
-	PORT_START_TAG("IN0")	/* IN0 */
+	PORT_START("IN0")	/* IN0 */
 	/* low 4 bits are for the trackball */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
@@ -302,20 +302,20 @@ static INPUT_PORTS_START( capbowl )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START_TAG("IN1")	/* IN1 */
+	PORT_START("IN1")	/* IN1 */
 	/* low 4 bits are for the trackball */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START_TAG("TRACKY")	/* FAKE */
+	PORT_START("TRACKY")	/* FAKE */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(40) PORT_REVERSE
 
-	PORT_START_TAG("TRACKX")	/* FAKE */
+	PORT_START("TRACKX")	/* FAKE */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(20) PORT_KEYDELTA(40)
 
-	PORT_START_TAG("SERVICE")	/* FAKE */
+	PORT_START("SERVICE")	/* FAKE */
 	/* This fake input port is used to get the status of the F2 key, */
 	/* and activate the test mode, which is triggered by a NMI */
 	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_HIGH )
@@ -329,7 +329,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -353,12 +353,11 @@ static const struct YM2203interface ym2203_interface =
 static MACHINE_DRIVER_START( capbowl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M6809E, MASTER_CLOCK)
+	MDRV_CPU_ADD("main", M6809E, MASTER_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(capbowl_map,0)
 	MDRV_CPU_VBLANK_INT("main", capbowl_interrupt)
 
-	/* audio CPU */
-	MDRV_CPU_ADD(M6809E, MASTER_CLOCK)
+	MDRV_CPU_ADD("audio", M6809E, MASTER_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	MDRV_MACHINE_RESET(capbowl)
@@ -377,14 +376,14 @@ static MACHINE_DRIVER_START( capbowl )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, MASTER_CLOCK/2)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym", YM2203, MASTER_CLOCK/2)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.07)
 	MDRV_SOUND_ROUTE(1, "mono", 0.07)
 	MDRV_SOUND_ROUTE(2, "mono", 0.07)
 	MDRV_SOUND_ROUTE(3, "mono", 0.75)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -411,73 +410,73 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( capbowl )
-	ROM_REGION( 0x28000, REGION_CPU1, 0 )
+	ROM_REGION( 0x28000, "main", 0 )
 	ROM_LOAD( "u6",           0x08000, 0x8000, CRC(14924c96) SHA1(d436c5115873c9c2bc7657acff1cf7d99c0c5d6d) )
 	ROM_LOAD( "gr0",          0x10000, 0x8000, CRC(ef53ca7a) SHA1(219dc342595bfd23c1336f3e167e40ff0c5e7994) )
 	ROM_LOAD( "gr1",          0x18000, 0x8000, CRC(27ede6ce) SHA1(14aa31cbcf089419b5b2ea8d57e82fc51895fc2e) )
 	ROM_LOAD( "gr2",          0x20000, 0x8000, CRC(e49238f4) SHA1(ac76f1a761d6b0765437fb7367442667da7bb373) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "sound",        0x8000, 0x8000, CRC(8c9c3b8a) SHA1(f3cdf42ef19012817e6b7966845f9ede39f61b07) )
 ROM_END
 
 
 ROM_START( capbowl2 )
-	ROM_REGION( 0x28000, REGION_CPU1, 0 )
+	ROM_REGION( 0x28000, "main", 0 )
 	ROM_LOAD( "progrev3.u6",  0x08000, 0x8000, CRC(9162934a) SHA1(7542dd68a2aa55ad4f03b23ae2313ed6a34ae145) )
 	ROM_LOAD( "gr0",          0x10000, 0x8000, CRC(ef53ca7a) SHA1(219dc342595bfd23c1336f3e167e40ff0c5e7994) )
 	ROM_LOAD( "gr1",          0x18000, 0x8000, CRC(27ede6ce) SHA1(14aa31cbcf089419b5b2ea8d57e82fc51895fc2e) )
 	ROM_LOAD( "gr2",          0x20000, 0x8000, CRC(e49238f4) SHA1(ac76f1a761d6b0765437fb7367442667da7bb373) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "sound",        0x8000, 0x8000, CRC(8c9c3b8a) SHA1(f3cdf42ef19012817e6b7966845f9ede39f61b07) )
 ROM_END
 
 
 ROM_START( capbowl3 )
-	ROM_REGION( 0x28000, REGION_CPU1, 0 )
+	ROM_REGION( 0x28000, "main", 0 )
 	ROM_LOAD( "bowl30.bin",   0x08000, 0x8000, CRC(32e30928) SHA1(db47b6ace949d86aa1cdd1e5c7a5981f30b590af) )
 	ROM_LOAD( "bfb.gr0",      0x10000, 0x8000, CRC(2b5eb091) SHA1(43976bfa9fbe9694c7274f113641f671fa32bbb7) )
 	ROM_LOAD( "bfb.gr1",      0x18000, 0x8000, CRC(880e4e1c) SHA1(9f88b26877596667f1ac4e0083795bf266712879) )
 	ROM_LOAD( "bfb.gr2",      0x20000, 0x8000, CRC(f3d2468d) SHA1(0348ee5d0000b753ad90a525048d05bfb552bee1) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "sound-r2.bin",  0x8000, 0x8000, CRC(43ac1658) SHA1(1fab23d649d0c565ef1a7f45b30806f9d1bb4afd) )
 ROM_END
 
 
 ROM_START( capbowl4 )
-	ROM_REGION( 0x28000, REGION_CPU1, 0 )
+	ROM_REGION( 0x28000, "main", 0 )
 	ROM_LOAD( "bfb.u6",        0x08000, 0x8000, CRC(79f1d083) SHA1(36e9a90403fc9b876d7660ee46c5fbb855321769) )
 	ROM_LOAD( "bfb.gr0",       0x10000, 0x8000, CRC(2b5eb091) SHA1(43976bfa9fbe9694c7274f113641f671fa32bbb7) )
 	ROM_LOAD( "bfb.gr1",       0x18000, 0x8000, CRC(880e4e1c) SHA1(9f88b26877596667f1ac4e0083795bf266712879) )
 	ROM_LOAD( "bfb.gr2",       0x20000, 0x8000, CRC(f3d2468d) SHA1(0348ee5d0000b753ad90a525048d05bfb552bee1) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "bfb.u30",     0x8000, 0x8000, CRC(6fe2c4ff) SHA1(862823264d243be590fd29a228a32e7a0a818e57) )
 ROM_END
 
 
 ROM_START( clbowl )
-	ROM_REGION( 0x28000, REGION_CPU1, 0 )
+	ROM_REGION( 0x28000, "main", 0 )
 	ROM_LOAD( "u6.cl",        0x08000, 0x8000, CRC(91e06bc4) SHA1(efa54328417f971cc482a4529d05331a3baffc1a) )
 	ROM_LOAD( "gr0.cl",       0x10000, 0x8000, CRC(899c8f15) SHA1(dbb4a9c015b5e64c62140f0c99b87da2793ae5c1) )
 	ROM_LOAD( "gr1.cl",       0x18000, 0x8000, CRC(0ac0dc4c) SHA1(61afa3af1f84818b940b5c6f6a8cfb58ca557551) )
 	ROM_LOAD( "gr2.cl",       0x20000, 0x8000, CRC(251f5da5) SHA1(063001cfb68e3ec35baa24eed186214e26d55b82) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "sound.cl",     0x8000, 0x8000, CRC(1eba501e) SHA1(684bdc18cf5e01a86d8018a3e228ec34e5dec57d) )
 ROM_END
 
 
 ROM_START( bowlrama )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "u6",           0x08000, 0x08000, CRC(7103ad55) SHA1(92dccc5e6df3e18fc8cdcb67ef14d50ce5eb8b2c) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "u30",          0x8000, 0x8000, CRC(f3168834) SHA1(40b7fbe9c15cc4442f4394b71c0666185afe4c8d) )
 
-	ROM_REGION( 0x40000, REGION_GFX1, 0 )
+	ROM_REGION( 0x40000, "gfx1", 0 )
 	ROM_LOAD( "ux7",          0x00000, 0x40000, CRC(8727432a) SHA1(a81d366c5f8df0bdb97e795bba7752e6526ddba0) )
 ROM_END
 

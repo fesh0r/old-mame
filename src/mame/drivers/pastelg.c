@@ -28,9 +28,9 @@ Memo:
 
 #define SIGNED_DAC	0		// 0:unsigned DAC, 1:signed DAC
 #if SIGNED_DAC
-#define DAC_0_WRITE	DAC_0_signed_data_w
+#define DAC_0_WRITE	dac_0_signed_data_w
 #else
-#define DAC_0_WRITE	DAC_0_data_w
+#define DAC_0_WRITE	dac_0_data_w
 #endif
 
 
@@ -51,7 +51,7 @@ static DRIVER_INIT( pastelg )
 
 static READ8_HANDLER( pastelg_sndrom_r )
 {
-	UINT8 *ROM = memory_region(machine, REGION_SOUND1);
+	UINT8 *ROM = memory_region(machine, "voice");
 
 	return ROM[pastelg_blitter_src_addr_r() & 0x7fff];
 }
@@ -71,7 +71,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( readport_pastelg, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
-	AM_RANGE(0x81, 0x81) AM_READ(AY8910_read_port_0_r)
+	AM_RANGE(0x81, 0x81) AM_READ(ay8910_read_port_0_r)
 	AM_RANGE(0x90, 0x90) AM_READ(nb1413m3_inputport0_r)
 	AM_RANGE(0xa0, 0xa0) AM_READ(nb1413m3_inputport1_r)
 	AM_RANGE(0xb0, 0xb0) AM_READ(nb1413m3_inputport2_r)
@@ -83,8 +83,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( writeport_pastelg, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 //  AM_RANGE(0x00, 0x00) AM_WRITE(SMH_NOP)
-	AM_RANGE(0x82, 0x82) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x83, 0x83) AM_WRITE(AY8910_control_port_0_w)
+	AM_RANGE(0x82, 0x82) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x83, 0x83) AM_WRITE(ay8910_control_port_0_w)
 	AM_RANGE(0x90, 0x96) AM_WRITE(pastelg_blitter_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(pastelg_romsel_w)
@@ -94,7 +94,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( pastelg )
-	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
+	PORT_START("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, "1 (Easy)" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -119,7 +119,7 @@ static INPUT_PORTS_START( pastelg )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
+	PORT_START("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x03, 0x00, "Number of last chance" )
 	PORT_DIPSETTING(    0x03, "0" )
 	PORT_DIPSETTING(    0x02, "1" )
@@ -143,7 +143,7 @@ static INPUT_PORTS_START( pastelg )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSWC")	/* (2) DIPSW-C */
+	PORT_START("DSWC")	/* (2) DIPSW-C */
 	PORT_DIPNAME( 0x03, 0x03, "Change Rate" )
 	PORT_DIPSETTING(    0x03, "Type-A" )
 	PORT_DIPSETTING(    0x02, "Type-B" )
@@ -167,7 +167,7 @@ static INPUT_PORTS_START( pastelg )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("SYSTEM")	/* (3) PORT 0 */
+	PORT_START("SYSTEM")	/* (3) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// DRAW BUSY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )			//
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
@@ -181,7 +181,7 @@ static INPUT_PORTS_START( pastelg )
 INPUT_PORTS_END
 
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -195,7 +195,7 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( pastelg )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 19968000/8)	/* 2.496 MHz ? */
+	MDRV_CPU_ADD("main", Z80, 19968000/8)	/* 2.496 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(readmem_pastelg, writemem_pastelg)
 	MDRV_CPU_IO_MAP(readport_pastelg, writeport_pastelg)
 //  MDRV_CPU_VBLANK_INT_HACK(nb1413m3_interrupt,96)  // nmiclock not written, chip is 1411M1 instead of 1413M3
@@ -221,25 +221,25 @@ static MACHINE_DRIVER_START( pastelg )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1250000)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, 1250000)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 
 ROM_START( pastelg )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* program */
+	ROM_REGION( 0x10000, "main", 0 ) /* program */
 	ROM_LOAD( "pgal_09.bin",  0x00000, 0x04000, CRC(1e494af3) SHA1(1597a7da22ecfbb1df83cf9d0acc7a8be461bc2c) )
 	ROM_LOAD( "pgal_10.bin",  0x04000, 0x04000, CRC(677cccea) SHA1(a294bf4e3c5e74291160a0858371961868afc1d1) )
 	ROM_LOAD( "pgal_11.bin",  0x08000, 0x04000, CRC(c2ccea38) SHA1(0374e8aa0e7961426e417ffe6e1a0d8dc7fd9ecf) )
 
-	ROM_REGION( 0x08000, REGION_SOUND1, 0 ) /* voice */
+	ROM_REGION( 0x08000, "voice", 0 ) /* voice */
 	ROM_LOAD( "pgal_08.bin",  0x00000, 0x08000, CRC(895961a1) SHA1(f02d517f46cc490db02c4feb369e2a386c764297) )
 
-	ROM_REGION( 0x38000, REGION_GFX1, 0 ) /* gfx */
+	ROM_REGION( 0x38000, "gfx1", 0 ) /* gfx */
 	ROM_LOAD( "pgal_01.bin",  0x00000, 0x08000, CRC(1bb14d52) SHA1(b3974e3c9b56a752ddcb206f7bb2bc658b0e77f1) )
 	ROM_LOAD( "pgal_02.bin",  0x08000, 0x08000, CRC(ea85673a) SHA1(85ef2bb736fe5229ce4153197db8a57bca982a8b) )
 	ROM_LOAD( "pgal_03.bin",  0x10000, 0x08000, CRC(40011248) SHA1(935f442a47e02bf8c6ccb324c7fad1b481b8b19a) )
@@ -248,7 +248,7 @@ ROM_START( pastelg )
 	ROM_LOAD( "pgal_06.bin",  0x28000, 0x08000, CRC(f56acfe8) SHA1(2f4ad3990f2d4d4a9fcec7adab119459423b308b) )
 	ROM_LOAD( "pgal_07.bin",  0x30000, 0x08000, CRC(fa4226dc) SHA1(2313449521f81a191e87f1e4c0f3473f3c27dd9d) )
 
-	ROM_REGION( 0x0040, REGION_PROMS, 0 ) /* color */
+	ROM_REGION( 0x0040, "proms", 0 ) /* color */
 	ROM_LOAD( "pgal_bp1.bin", 0x0000, 0x0020, CRC(2b7fc61a) SHA1(278830e8728ea143208376feb20fff56de88ae1c) )
 	ROM_LOAD( "pgal_bp2.bin", 0x0020, 0x0020, CRC(4433021e) SHA1(e0d6619a193d26ad24788d4af5ef01ee89cffacd) )
 ROM_END

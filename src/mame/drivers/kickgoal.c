@@ -130,7 +130,7 @@ VIDEO_UPDATE( actionhw );
 #ifdef UNUSED_FUNCTION
 static void kickgoal_play(int melody, int data)
 {
-	int status = OKIM6295_status_0_r(0);
+	int status = okim6295_status_0_r(0);
 
 	logerror("Playing sample %01x:%02x from command %02x\n",kickgoal_snd_bank,kickgoal_sound,data);
 	if (kickgoal_sound == 0) popmessage("Unknown sound command %02x",kickgoal_sound);
@@ -140,23 +140,23 @@ static void kickgoal_play(int melody, int data)
 			kickgoal_melody      = kickgoal_sound;
 			kickgoal_melody_loop = kickgoal_sound;
 			if (status & 0x08)
-				OKIM6295_data_0_w(0,0x40);
-			OKIM6295_data_0_w(0,(0x80 | kickgoal_melody));
-			OKIM6295_data_0_w(0,0x81);
+				okim6295_data_0_w(0,0x40);
+			okim6295_data_0_w(0,(0x80 | kickgoal_melody));
+			okim6295_data_0_w(0,0x81);
 		}
 	}
 	else {
 		if ((status & 0x01) == 0) {
-		OKIM6295_data_0_w(0,(0x80 | kickgoal_sound));
-			OKIM6295_data_0_w(0,0x11);
+		okim6295_data_0_w(0,(0x80 | kickgoal_sound));
+			okim6295_data_0_w(0,0x11);
 		}
 		else if ((status & 0x02) == 0) {
-		OKIM6295_data_0_w(0,(0x80 | kickgoal_sound));
-			OKIM6295_data_0_w(0,0x21);
+		okim6295_data_0_w(0,(0x80 | kickgoal_sound));
+			okim6295_data_0_w(0,0x21);
 		}
 		else if ((status & 0x04) == 0) {
-		OKIM6295_data_0_w(0,(0x80 | kickgoal_sound));
-			OKIM6295_data_0_w(0,0x41);
+		okim6295_data_0_w(0,(0x80 | kickgoal_sound));
+			okim6295_data_0_w(0,0x41);
 		}
 	}
 }
@@ -168,7 +168,7 @@ WRITE16_HANDLER( kickgoal_snd_w )
 		logerror("PC:%06x Writing %04x to Sound CPU\n",activecpu_get_previouspc(),data);
 		if (data >= 0x40) {
 			if (data == 0xfe) {
-				OKIM6295_data_0_w(0,0x40);	/* Stop playing the melody */
+				okim6295_data_0_w(0,0x40);	/* Stop playing the melody */
 				kickgoal_melody      = 0x00;
 				kickgoal_melody_loop = 0x00;
 			}
@@ -177,32 +177,32 @@ WRITE16_HANDLER( kickgoal_snd_w )
 			}
 		}
 		else if (data == 0) {
-			OKIM6295_data_0_w(0,0x38);		/* Stop playing effects */
+			okim6295_data_0_w(0,0x38);		/* Stop playing effects */
 		}
 		else {
 			kickgoal_sound = kickgoal_cmd_snd[data];
 
 			if (kickgoal_sound >= 0x70) {
 				if (kickgoal_snd_bank != 1)
-					OKIM6295_set_bank_base(0, (1 * 0x40000));
+					okim6295_set_bank_base(0, (1 * 0x40000));
 				kickgoal_snd_bank = 1;
 				kickgoal_play(0, data);
 			}
 			else if (kickgoal_sound >= 0x69) {
 				if (kickgoal_snd_bank != 2)
-					OKIM6295_set_bank_base(0, (2 * 0x40000));
+					okim6295_set_bank_base(0, (2 * 0x40000));
 				kickgoal_snd_bank = 2;
 				kickgoal_play(4, data);
 			}
 			else if (kickgoal_sound >= 0x65) {
 				if (kickgoal_snd_bank != 1)
-					OKIM6295_set_bank_base(0, (1 * 0x40000));
+					okim6295_set_bank_base(0, (1 * 0x40000));
 				kickgoal_snd_bank = 1;
 				kickgoal_play(4, data);
 			}
 			else if (kickgoal_sound >= 0x60) {
 				kickgoal_snd_bank = 0;
-					OKIM6295_set_bank_base(0, (0 * 0x40000));
+					okim6295_set_bank_base(0, (0 * 0x40000));
 				kickgoal_snd_bank = 0;
 				kickgoal_play(4, data);
 			}
@@ -222,11 +222,11 @@ static WRITE16_HANDLER( actionhw_snd_w )
 
 	switch (data)
 	{
-		case 0xfc:	OKIM6295_set_bank_base(0, (0 * 0x40000)); break;
-		case 0xfd:	OKIM6295_set_bank_base(0, (2 * 0x40000)); break;
-		case 0xfe:	OKIM6295_set_bank_base(0, (1 * 0x40000)); break;
-		case 0xff:	OKIM6295_set_bank_base(0, (3 * 0x40000)); break;
-		case 0x78:	OKIM6295_data_0_w(machine,0,data);
+		case 0xfc:	okim6295_set_bank_base(0, (0 * 0x40000)); break;
+		case 0xfd:	okim6295_set_bank_base(0, (2 * 0x40000)); break;
+		case 0xfe:	okim6295_set_bank_base(0, (1 * 0x40000)); break;
+		case 0xff:	okim6295_set_bank_base(0, (3 * 0x40000)); break;
+		case 0x78:	okim6295_data_0_w(machine,0,data);
 					snd_sam[0]=00; snd_sam[1]=00; snd_sam[2]=00; snd_sam[3]=00;
 					break;
 		default:	if (snd_new) /* Play new sample */
@@ -234,44 +234,44 @@ static WRITE16_HANDLER( actionhw_snd_w )
 						if ((data & 0x80) && (snd_sam[3] != snd_new))
 						{
 							logerror("About to play sample %02x at vol %02x\n",snd_new,data);
-							if ((OKIM6295_status_0_r(machine,0) & 0x08) != 0x08)
+							if ((okim6295_status_0_r(machine,0) & 0x08) != 0x08)
 							{
 							logerror("Playing sample %02x at vol %02x\n",snd_new,data);
-								OKIM6295_data_0_w(machine,0,snd_new);
-								OKIM6295_data_0_w(machine,0,data);
+								okim6295_data_0_w(machine,0,snd_new);
+								okim6295_data_0_w(machine,0,data);
 							}
 							snd_new = 00;
 						}
 						if ((data & 0x40) && (snd_sam[2] != snd_new))
 						{
 							logerror("About to play sample %02x at vol %02x\n",snd_new,data);
-							if ((OKIM6295_status_0_r(machine,0) & 0x04) != 0x04)
+							if ((okim6295_status_0_r(machine,0) & 0x04) != 0x04)
 							{
 							logerror("Playing sample %02x at vol %02x\n",snd_new,data);
-								OKIM6295_data_0_w(machine,0,snd_new);
-								OKIM6295_data_0_w(machine,0,data);
+								okim6295_data_0_w(machine,0,snd_new);
+								okim6295_data_0_w(machine,0,data);
 							}
 							snd_new = 00;
 						}
 						if ((data & 0x20) && (snd_sam[1] != snd_new))
 						{
 							logerror("About to play sample %02x at vol %02x\n",snd_new,data);
-							if ((OKIM6295_status_0_r(machine,0) & 0x02) != 0x02)
+							if ((okim6295_status_0_r(machine,0) & 0x02) != 0x02)
 							{
 							logerror("Playing sample %02x at vol %02x\n",snd_new,data);
-								OKIM6295_data_0_w(machine,0,snd_new);
-								OKIM6295_data_0_w(machine,0,data);
+								okim6295_data_0_w(machine,0,snd_new);
+								okim6295_data_0_w(machine,0,data);
 							}
 							snd_new = 00;
 						}
 						if ((data & 0x10) && (snd_sam[0] != snd_new))
 						{
 							logerror("About to play sample %02x at vol %02x\n",snd_new,data);
-							if ((OKIM6295_status_0_r(machine,0) & 0x01) != 0x01)
+							if ((okim6295_status_0_r(machine,0) & 0x01) != 0x01)
 							{
 							logerror("Playing sample %02x at vol %02x\n",snd_new,data);
-								OKIM6295_data_0_w(machine,0,snd_new);
-								OKIM6295_data_0_w(machine,0,data);
+								okim6295_data_0_w(machine,0,snd_new);
+								okim6295_data_0_w(machine,0,data);
 							}
 							snd_new = 00;
 						}
@@ -286,7 +286,7 @@ static WRITE16_HANDLER( actionhw_snd_w )
 					else /* Turn a channel off */
 					{
 						logerror("Turning channel %02x off\n",data);
-						OKIM6295_data_0_w(machine,0,data);
+						okim6295_data_0_w(machine,0,data);
 						if (data & 0x40) snd_sam[3] = 00;
 						if (data & 0x20) snd_sam[2] = 00;
 						if (data & 0x10) snd_sam[1] = 00;
@@ -305,7 +305,7 @@ static int m6295_bank;
 static UINT16 m6295_key_delay;
 static INTERRUPT_GEN( kickgoal_interrupt )
 {
-	if ((OKIM6295_status_0_r(machine,0) & 0x08) == 0)
+	if ((okim6295_status_0_r(machine,0) & 0x08) == 0)
 	{
 		switch(kickgoal_melody_loop)
 		{
@@ -334,8 +334,8 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 		if (kickgoal_melody_loop)
 		{
 //          logerror("Changing to sample %02x\n",kickgoal_melody_loop);
-			OKIM6295_data_0_w(machine,0,((0x80 | kickgoal_melody_loop) & 0xff));
-			OKIM6295_data_0_w(machine,0,0x81);
+			okim6295_data_0_w(machine,0,((0x80 | kickgoal_melody_loop) & 0xff));
+			okim6295_data_0_w(machine,0,0x81);
 		}
 	}
 	if ( input_code_pressed_once(KEYCODE_PGUP) )
@@ -346,7 +346,7 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 			m6295_bank &= 0x03;
 			if (m6295_bank == 0x03) m6295_bank = 0x00;
 			popmessage("Changing Bank to %02x",m6295_bank);
-			OKIM6295_set_bank_base(0, ((m6295_bank) * 0x40000));
+			okim6295_set_bank_base(0, ((m6295_bank) * 0x40000));
 
 			if (m6295_key_delay == 0xffff) m6295_key_delay = 0x00;
 			else m6295_key_delay = (0x30 * oki_time_base);
@@ -362,7 +362,7 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 			m6295_bank &= 0x03;
 			if (m6295_bank == 0x03) m6295_bank = 0x02;
 			popmessage("Changing Bank to %02x",m6295_bank);
-			OKIM6295_set_bank_base(0, ((m6295_bank) * 0x40000));
+			okim6295_set_bank_base(0, ((m6295_bank) * 0x40000));
 
 			if (m6295_key_delay == 0xffff) m6295_key_delay = 0x00;
 			else m6295_key_delay = (0x30 * oki_time_base);
@@ -376,11 +376,11 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 		{
 			m6295_comm += 1;
 			m6295_comm &= 0x7f;
-			if (m6295_comm == 0x00) { OKIM6295_set_bank_base(0, (0 * 0x40000)); m6295_bank = 0; }
-			if (m6295_comm == 0x60) { OKIM6295_set_bank_base(0, (0 * 0x40000)); m6295_bank = 0; }
-			if (m6295_comm == 0x65) { OKIM6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
-			if (m6295_comm == 0x69) { OKIM6295_set_bank_base(0, (2 * 0x40000)); m6295_bank = 2; }
-			if (m6295_comm == 0x70) { OKIM6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
+			if (m6295_comm == 0x00) { okim6295_set_bank_base(0, (0 * 0x40000)); m6295_bank = 0; }
+			if (m6295_comm == 0x60) { okim6295_set_bank_base(0, (0 * 0x40000)); m6295_bank = 0; }
+			if (m6295_comm == 0x65) { okim6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
+			if (m6295_comm == 0x69) { okim6295_set_bank_base(0, (2 * 0x40000)); m6295_bank = 2; }
+			if (m6295_comm == 0x70) { okim6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
 			popmessage("Sound test command %02x on Bank %02x",m6295_comm,m6295_bank);
 
 			if (m6295_key_delay == 0xffff) m6295_key_delay = 0x00;
@@ -395,11 +395,11 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 		{
 			m6295_comm -= 1;
 			m6295_comm &= 0x7f;
-			if (m6295_comm == 0x2b) { OKIM6295_set_bank_base(0, (0 * 0x40000)); m6295_bank = 0; }
-			if (m6295_comm == 0x64) { OKIM6295_set_bank_base(0, (0 * 0x40000)); m6295_bank = 0; }
-			if (m6295_comm == 0x68) { OKIM6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
-			if (m6295_comm == 0x6c) { OKIM6295_set_bank_base(0, (2 * 0x40000)); m6295_bank = 2; }
-			if (m6295_comm == 0x76) { OKIM6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
+			if (m6295_comm == 0x2b) { okim6295_set_bank_base(0, (0 * 0x40000)); m6295_bank = 0; }
+			if (m6295_comm == 0x64) { okim6295_set_bank_base(0, (0 * 0x40000)); m6295_bank = 0; }
+			if (m6295_comm == 0x68) { okim6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
+			if (m6295_comm == 0x6c) { okim6295_set_bank_base(0, (2 * 0x40000)); m6295_bank = 2; }
+			if (m6295_comm == 0x76) { okim6295_set_bank_base(0, (1 * 0x40000)); m6295_bank = 1; }
 			popmessage("Sound test command %02x on Bank %02x",m6295_comm,m6295_bank);
 
 			if (m6295_key_delay == 0xffff) m6295_key_delay = 0x00;
@@ -412,9 +412,9 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 	{
 		if (m6295_key_delay >= (0x80 * oki_time_base))
 		{
-			OKIM6295_data_0_w(machine,0,0x78);
-			OKIM6295_data_0_w(machine,0,(0x80 | m6295_comm));
-			OKIM6295_data_0_w(machine,0,0x11);
+			okim6295_data_0_w(machine,0,0x78);
+			okim6295_data_0_w(machine,0,(0x80 | m6295_comm));
+			okim6295_data_0_w(machine,0,0x11);
 
 			popmessage("Playing sound %02x on Bank %02x",m6295_comm,m6295_bank);
 
@@ -498,8 +498,8 @@ static WRITE16_HANDLER( kickgoal_eeprom_w )
 static ADDRESS_MAP_START( kickgoal_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 /// AM_RANGE(0x30001e, 0x30001f) AM_WRITE(kickgoal_snd_w)
-	AM_RANGE(0x800000, 0x800001) AM_READ(input_port_0_word_r)
-	AM_RANGE(0x800002, 0x800003) AM_READ(input_port_1_word_r)
+	AM_RANGE(0x800000, 0x800001) AM_READ_PORT("P1_P2")
+	AM_RANGE(0x800002, 0x800003) AM_READ_PORT("SYSTEM")
 /// AM_RANGE(0x800004, 0x800005) AM_WRITE(soundlatch_word_w)
 	AM_RANGE(0x800004, 0x800005) AM_WRITE(actionhw_snd_w)
 	AM_RANGE(0x900000, 0x900005) AM_WRITE(kickgoal_eeprom_w)
@@ -531,7 +531,7 @@ ADDRESS_MAP_END
 /* INPUT ports ***************************************************************/
 
 static INPUT_PORTS_START( kickgoal )
-	PORT_START_TAG("IN0")
+	PORT_START("P1_P2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -550,7 +550,7 @@ static INPUT_PORTS_START( kickgoal )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -563,7 +563,7 @@ static INPUT_PORTS_START( kickgoal )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_SERVICE_NO_TOGGLE(0x0800, IP_ACTIVE_LOW)
+	PORT_SERVICE_NO_TOGGLE( 0x0800, IP_ACTIVE_LOW )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -622,9 +622,9 @@ static const gfx_layout bg3264_charlayout =
 
 
 static GFXDECODE_START( kickgoal )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, fg816_charlayout,   0x000, 0x40 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, bg1632_charlayout,  0x000, 0x40 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, bg3264_charlayout,  0x000, 0x40 )
+	GFXDECODE_ENTRY( "gfx1", 0, fg816_charlayout,   0x000, 0x40 )
+	GFXDECODE_ENTRY( "gfx1", 0, bg1632_charlayout,  0x000, 0x40 )
+	GFXDECODE_ENTRY( "gfx1", 0, bg3264_charlayout,  0x000, 0x40 )
 GFXDECODE_END
 
 static const gfx_layout actionhw_fg88_alt_charlayout =
@@ -654,8 +654,8 @@ static const gfx_layout actionhw_bg1616_charlayout =
 
 
 static GFXDECODE_START( actionhw )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, actionhw_fg88_alt_charlayout,   0x000, 0x40 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, actionhw_bg1616_charlayout,  0x000, 0x40 )
+	GFXDECODE_ENTRY( "gfx1", 0, actionhw_fg88_alt_charlayout,   0x000, 0x40 )
+	GFXDECODE_ENTRY( "gfx1", 0, actionhw_bg1616_charlayout,  0x000, 0x40 )
 GFXDECODE_END
 
 /* MACHINE drivers ***********************************************************/
@@ -665,12 +665,12 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( kickgoal )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
+	MDRV_CPU_ADD("main", M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(kickgoal_program_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 	MDRV_CPU_PERIODIC_INT(kickgoal_interrupt, 240)
 
-	MDRV_CPU_ADD(PIC16C57, 12000000/4)	/* 3MHz ? */
+	MDRV_CPU_ADD("audio", PIC16C57, 12000000/4)	/* 3MHz ? */
 	MDRV_CPU_FLAGS(CPU_DISABLE)	/* Disables since the internal rom isn't dumped */
 	/* Program and Data Maps are internal to the MCU */
 	MDRV_CPU_IO_MAP(kickgoal_sound_io_map, 0)
@@ -693,19 +693,19 @@ static MACHINE_DRIVER_START( kickgoal )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(OKIM6295, 12000000/8)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low)
+	MDRV_SOUND_ADD("oki", OKIM6295, 12000000/8)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7low)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( actionhw )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, XTAL_12MHz)	/* verified on pcb */
+	MDRV_CPU_ADD("main", M68000, XTAL_12MHz)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(kickgoal_program_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
-	MDRV_CPU_ADD(PIC16C57, XTAL_12MHz/3)	/* verified on pcb */
+	MDRV_CPU_ADD("audio", PIC16C57, XTAL_12MHz/3)	/* verified on pcb */
 	MDRV_CPU_FLAGS(CPU_DISABLE) /* Disables since the internal rom isn't dumped */
 	/* Program and Data Maps are internal to the MCU */
 	MDRV_CPU_IO_MAP(actionhw_io_map, 0)
@@ -728,8 +728,8 @@ static MACHINE_DRIVER_START( actionhw )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(OKIM6295, XTAL_12MHz/12) /* verified on pcb */
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) /* verified on pcb */
+	MDRV_SOUND_ADD("oki", OKIM6295, XTAL_12MHz/12) /* verified on pcb */
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 
@@ -738,15 +738,15 @@ MACHINE_DRIVER_END
 /* Rom Loading ***************************************************************/
 
 ROM_START( kickgoal )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "ic6",   0x000000, 0x40000, CRC(498ca792) SHA1(c638c3a1755870010c5961b58bcb02458ff4e238) )
 	ROM_LOAD16_BYTE( "ic5",   0x000001, 0x40000, CRC(d528740a) SHA1(d56a71004aabc839b0833a6bf383e5ef9d4948fa) )
 
-	ROM_REGION( 0x1000, REGION_CPU2, 0 )	/* sound? (missing) */
+	ROM_REGION( 0x1000, "audio", 0 )	/* sound? (missing) */
 	/* Remove the CPU_DISABLED flag in MACHINE_DRIVER when the rom is dumped */
 	ROM_LOAD( "pic16c57",     0x0000, 0x0800, NO_DUMP )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "ic33",   0x000000, 0x80000, CRC(5038f52a) SHA1(22ed0e2c8a99056e73cff912731626689996a276) )
 	ROM_LOAD( "ic34",   0x080000, 0x80000, CRC(06e7094f) SHA1(e41b893ef91d541d2623d76ce6c69ecf4218c16d) )
 	ROM_LOAD( "ic35",   0x100000, 0x80000, CRC(ea010563) SHA1(5e474db372550e9d33f933ab00881a9b29a712d1) )
@@ -754,25 +754,25 @@ ROM_START( kickgoal )
 
 	/* $00000-$20000 stays the same in all sound banks, */
 	/* the second half of the bank is the area that gets switched */
-	ROM_REGION( 0x100000, REGION_SOUND1, 0 )	/* OKIM6295 samples */
+	ROM_REGION( 0x100000, "oki", 0 )	/* OKIM6295 samples */
 	ROM_LOAD( "ic13",        0x00000, 0x40000, BAD_DUMP CRC(c6cb56e9) SHA1(835773b3f0647d3c553180bcf10e57ad44d68353) ) // BAD ADDRESS LINES (mask=010000)
 	ROM_CONTINUE(            0x60000, 0x20000 )
 	ROM_CONTINUE(            0xa0000, 0x20000 )
-	ROM_COPY( REGION_SOUND1, 0x00000, 0x40000, 0x20000)
-	ROM_COPY( REGION_SOUND1, 0x00000, 0x80000, 0x20000)
-	ROM_COPY( REGION_SOUND1, 0x00000, 0xc0000, 0x20000)
+	ROM_COPY( "oki", 0x00000, 0x40000, 0x20000)
+	ROM_COPY( "oki", 0x00000, 0x80000, 0x20000)
+	ROM_COPY( "oki", 0x00000, 0xc0000, 0x20000)
 ROM_END
 
 ROM_START( actionhw )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "2.ic6",  0x000000, 0x80000, CRC(2b71d58c) SHA1(3e58531fa56d41a3c7944e3beab4850907564a89) )
 	ROM_LOAD16_BYTE( "1.ic5",  0x000001, 0x80000, CRC(136b9711) SHA1(553f9fdd99bb9ce2e1492d0755633075e59ba587) )
 
-	ROM_REGION( 0x1000, REGION_CPU2, 0 )	/* sound? (missing) */
+	ROM_REGION( 0x1000, "audio", 0 )	/* sound? (missing) */
 	/* Remove the CPU_DISABLED flag in MACHINE_DRIVER when the rom is dumped */
 	ROM_LOAD( "pic16c57",     0x0000, 0x0800, NO_DUMP )
 
-	ROM_REGION( 0x400000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x400000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "4.ic29",  0x000000, 0x80000, CRC(df076744) SHA1(4b2c8e21a201e1491e4ba3cda8d71b51e0943431) )
 	ROM_LOAD( "5.ic33",  0x080000, 0x80000, CRC(8551fdd4) SHA1(f29bdfb75af7607534de171d7b3927419c00377c) )
 	ROM_LOAD( "6.ic30",  0x100000, 0x80000, CRC(5cb005a5) SHA1(d3a5ab8f9a520bfaa53fdf6145142ccba416fbb8) )
@@ -784,13 +784,13 @@ ROM_START( actionhw )
 
 	/* $00000-$20000 stays the same in all sound banks, */
 	/* the second half of the bank is the area that gets switched */
-	ROM_REGION( 0x100000, REGION_SOUND1, 0 )    /* OKIM6295 samples */
+	ROM_REGION( 0x100000, "oki", 0 )    /* OKIM6295 samples */
 	ROM_LOAD( "3.ic13",      0x00000, 0x40000, CRC(b8f6705d) SHA1(55116e14aba6dac7334e26f704b3e6b0b9f856c2) )
 	ROM_CONTINUE(            0x60000, 0x20000 )
 	ROM_CONTINUE(            0xa0000, 0x20000 )
-	ROM_COPY( REGION_SOUND1, 0x00000, 0x40000, 0x20000)
-	ROM_COPY( REGION_SOUND1, 0x00000, 0x80000, 0x20000)
-	ROM_COPY( REGION_SOUND1, 0x00000, 0xc0000, 0x20000) /* Last bank used in Test Mode */
+	ROM_COPY( "oki", 0x00000, 0x40000, 0x20000)
+	ROM_COPY( "oki", 0x00000, 0x80000, 0x20000)
+	ROM_COPY( "oki", 0x00000, 0xc0000, 0x20000) /* Last bank used in Test Mode */
 ROM_END
 
 /* GAME drivers **************************************************************/
@@ -798,7 +798,7 @@ ROM_END
 static DRIVER_INIT( kickgoal )
 {
 #if 0 /* we should find a real fix instead  */
-	UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(machine, "main");
 
 	/* fix "bug" that prevents game from writing to EEPROM */
 	rom[0x12b0/2] = 0x0001;

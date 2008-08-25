@@ -212,17 +212,17 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( snd_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x8801, 0x8801) AM_READ(YM2151_status_port_0_r)
-	AM_RANGE(0x9800, 0x9800) AM_READ(OKIM6295_status_0_r)
+	AM_RANGE(0x8801, 0x8801) AM_READ(ym2151_status_port_0_r)
+	AM_RANGE(0x9800, 0x9800) AM_READ(okim6295_status_0_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( snd_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x8800, 0x8800) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x8801, 0x8801) AM_WRITE(YM2151_data_port_0_w)
-	AM_RANGE(0x9800, 0x9800) AM_WRITE(OKIM6295_data_0_w)
+	AM_RANGE(0x8800, 0x8800) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x8801, 0x8801) AM_WRITE(ym2151_data_port_0_w)
+	AM_RANGE(0x9800, 0x9800) AM_WRITE(okim6295_data_0_w)
 ADDRESS_MAP_END
 
 
@@ -239,18 +239,18 @@ ADDRESS_MAP_END
 
 #if USE_FAKE_INPUT_PORTS
 static INPUT_PORTS_START( mugsmash )
-	PORT_START_TAG("P1")	/* Fake IN0 (player 1 inputs) */
+	PORT_START("P1")	/* Fake IN0 (player 1 inputs) */
 	MUGSMASH_PLAYER_INPUT( 1, IPT_START1 )
 
-	PORT_START_TAG("P2")	/* Fake IN1 (player 2 inputs) */
+	PORT_START("P2")	/* Fake IN1 (player 2 inputs) */
 	MUGSMASH_PLAYER_INPUT( 2, IPT_START2 )
 
-	PORT_START_TAG("IN0")	/* Fake IN2 (system inputs) */
+	PORT_START("IN0")	/* Fake IN2 (system inputs) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW1")	/* Fake IN3 (SW1) */
+	PORT_START("DSW1")	/* Fake IN3 (SW1) */
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )						// SW1-1
 	PORT_DIPNAME( 0x0e, 0x00, DEF_STR( Coinage ) )			// SW1-2 to SW1-4
 	PORT_DIPSETTING(    0x0c, DEF_STR( 4C_1C ) )
@@ -274,7 +274,7 @@ static INPUT_PORTS_START( mugsmash )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")	/* Fake IN4 (SW2) */
+	PORT_START("DSW2")	/* Fake IN4 (SW2) */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )		// SW2-1
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -300,7 +300,7 @@ static INPUT_PORTS_START( mugsmash )
 INPUT_PORTS_END
 #else
 static INPUT_PORTS_START( mugsmash )
-	PORT_START_TAG("IN0")	/* IN0 - $180000.w */
+	PORT_START("IN0")	/* IN0 - $180000.w */
 	MUGSMASH_PLAYER_INPUT( 1, IPT_START1 )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -315,7 +315,7 @@ static INPUT_PORTS_START( mugsmash )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")	/* IN1 - $180002.w */
+	PORT_START("IN1")	/* IN1 - $180002.w */
 	MUGSMASH_PLAYER_INPUT( 2, IPT_START2 )
 	PORT_SERVICE( 0x0100, IP_ACTIVE_LOW )					// SW1-1
 	PORT_DIPNAME( 0x0e00, 0x0000, DEF_STR( Coinage ) )		// SW1-2 to SW1-4
@@ -336,7 +336,7 @@ static INPUT_PORTS_START( mugsmash )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN2")	/* IN2 - $180004.w */
+	PORT_START("IN2")	/* IN2 - $180004.w */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -364,7 +364,7 @@ static INPUT_PORTS_START( mugsmash )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN3")	/* IN3 - $180006.w */
+	PORT_START("IN3")	/* IN3 - $180006.w */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -412,8 +412,8 @@ static const gfx_layout mugsmash2_layout =
 };
 
 static GFXDECODE_START( mugsmash )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, mugsmash_layout,   0x00, 16  ) /* sprites */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, mugsmash2_layout,  0x100, 256  ) /* bg tiles */
+	GFXDECODE_ENTRY( "gfx1", 0, mugsmash_layout,   0x00, 16  ) /* sprites */
+	GFXDECODE_ENTRY( "gfx2", 0, mugsmash2_layout,  0x100, 256  ) /* bg tiles */
 GFXDECODE_END
 
 static void irq_handler(running_machine *machine, int irq)
@@ -421,18 +421,17 @@ static void irq_handler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	irq_handler
 };
 
 static MACHINE_DRIVER_START( mugsmash )
-	MDRV_CPU_ADD(M68000, 12000000)
+	MDRV_CPU_ADD("main", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(mugsmash_readmem,mugsmash_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)
-	/* audio CPU */	/* Guess */
+	MDRV_CPU_ADD("audio", Z80, 4000000)	/* Guess */
 	MDRV_CPU_PROGRAM_MAP(snd_readmem,snd_writemem)
 
 	MDRV_GFXDECODE(mugsmash)
@@ -452,30 +451,30 @@ static MACHINE_DRIVER_START( mugsmash )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3579545)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 3579545)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 1.00)	/* music */
 	MDRV_SOUND_ROUTE(1, "right", 1.00)
 
-	MDRV_SOUND_ADD(OKIM6295, 1122000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1122000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)	/* sound fx */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END
 
 ROM_START( mugsmash )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x80000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "mugs_04.bin", 0x00000, 0x40000, CRC(2498fd27) SHA1(7b746efe8aaf346e4489118ac2a3fc9929a55b83) )
 	ROM_LOAD16_BYTE( "mugs_05.bin", 0x00001, 0x40000, CRC(95efb40b) SHA1(878c0a3754aa728f58044c6a7f243724b718fe1b) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 Code */
 	ROM_LOAD( "mugs_03.bin", 0x00000, 0x10000 , CRC(0101df2d) SHA1(35e1efa4a11c0f9d9db5ee057926e5de29c3a4c1) )
 
-	ROM_REGION( 0x040000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x040000, "oki", 0 ) /* Samples */
 	ROM_LOAD( "mugs_02.bin", 0x00000, 0x20000, CRC(f92a7f4a) SHA1(3717ef64876be9ada378b449749918ce9072073a) )
 	ROM_LOAD( "mugs_01.bin", 0x20000, 0x20000, CRC(1a3a0b39) SHA1(8847530027cf4be03ffbc6d78dee97b459d03a04) )
 
-	ROM_REGION( 0x300000, REGION_GFX1, 0 ) /* Sprites */
+	ROM_REGION( 0x300000, "gfx1", 0 ) /* Sprites */
 	ROM_LOAD16_BYTE( "mugs_11.bin", 0x000000, 0x080000, CRC(1c9f5acf) SHA1(dd8329ed05a3467844c26d3f89ffb6213aba2034) )
 	ROM_LOAD16_BYTE( "mugs_10.bin", 0x000001, 0x080000, CRC(6b3c22d9) SHA1(7ba6d754c08ed5b2be282ffd6a674c3a4aa0e9b2) )
 	ROM_LOAD16_BYTE( "mugs_09.bin", 0x100000, 0x080000, CRC(4e9490f3) SHA1(e5f195c9bee3b92c559d1100c1019473a30ba28e) )
@@ -483,7 +482,7 @@ ROM_START( mugsmash )
 	ROM_LOAD16_BYTE( "mugs_07.bin", 0x200000, 0x080000, CRC(9e3167fd) SHA1(8c73c26e8e50e8f2ee3307f5aef23caba90c22eb) )
 	ROM_LOAD16_BYTE( "mugs_06.bin", 0x200001, 0x080000, CRC(8df75d29) SHA1(d0add24ac974da4636d2631f5590516de0f8df4a) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, 0 ) /* BG Tiles */
+	ROM_REGION( 0x200000, "gfx2", 0 ) /* BG Tiles */
 	ROM_LOAD( "mugs_12.bin", 0x000000, 0x080000, CRC(c0a6ed98) SHA1(13850c6bcca65bdc782040c470c4966aee19551d) )
 	ROM_LOAD( "mugs_13.bin", 0x080000, 0x080000, CRC(e2be8595) SHA1(077b1a262c54acf74e6ec37702bcfed41bc31000) )
 	ROM_LOAD( "mugs_14.bin", 0x100000, 0x080000, CRC(24e81068) SHA1(1e33aa7d2b873dd13d5823880c46d3d3e867d6b6) )

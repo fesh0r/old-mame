@@ -152,14 +152,14 @@ static WRITE32_HANDLER( speedup_w );
  *
  *************************************/
 
-void cage_init(running_machine *machine, int boot_region, offs_t speedup)
+void cage_init(running_machine *machine, offs_t speedup)
 {
 	attotime cage_cpu_clock_period;
 
 	cage_irqhandler = NULL;
 
-	memory_set_bankptr(10, memory_region(machine, boot_region));
-	memory_set_bankptr(11, memory_region(machine, boot_region + 1));
+	memory_set_bankptr(10, memory_region(machine, "cageboot"));
+	memory_set_bankptr(11, memory_region(machine, "cage"));
 
 	cage_cpu = mame_find_cpu_index(machine, "cage");
 	cage_cpu_clock_period = ATTOTIME_IN_HZ(cpunum_get_clock(cage_cpu));
@@ -642,8 +642,7 @@ ADDRESS_MAP_END
 MACHINE_DRIVER_START( cage )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("cage", TMS32031, 33868800)
-	/* audio CPU */
+	MDRV_CPU_ADD("cage", TMS32031, 33868800)
 	MDRV_CPU_CONFIG(cage_config)
 	MDRV_CPU_PROGRAM_MAP(cage_map,0)
 
@@ -651,22 +650,22 @@ MACHINE_DRIVER_START( cage )
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
 #if (DAC_BUFFER_CHANNELS == 4)
-	MDRV_SOUND_ADD(DMADAC, 0)
+	MDRV_SOUND_ADD("dac1", DMADAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 
-	MDRV_SOUND_ADD(DMADAC, 0)
+	MDRV_SOUND_ADD("dac2", DMADAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 
-	MDRV_SOUND_ADD(DMADAC, 0)
+	MDRV_SOUND_ADD("dac3", DMADAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 
-	MDRV_SOUND_ADD(DMADAC, 0)
+	MDRV_SOUND_ADD("dac4", DMADAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 #else
-	MDRV_SOUND_ADD(DMADAC, 0)
+	MDRV_SOUND_ADD("dac1", DMADAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 
-	MDRV_SOUND_ADD(DMADAC, 0)
+	MDRV_SOUND_ADD("dac2", DMADAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 #endif
 MACHINE_DRIVER_END

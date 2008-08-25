@@ -134,8 +134,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x100000, 0x100001) AM_READ(SMH_NOP)
-	AM_RANGE(0x110000, 0x110001) AM_READ(YM2151_status_port_0_r)
-	AM_RANGE(0x120000, 0x120001) AM_READ(OKIM6295_status_0_r)
+	AM_RANGE(0x110000, 0x110001) AM_READ(ym2151_status_port_0_r)
+	AM_RANGE(0x120000, 0x120001) AM_READ(okim6295_status_0_r)
 	AM_RANGE(0x130000, 0x130001) AM_READ(SMH_NOP) /* This board only has 1 oki chip */
 	AM_RANGE(0x140000, 0x140001) AM_READ(soundlatch_r)
 	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK8)
@@ -144,18 +144,18 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x100001) AM_WRITE(SMH_NOP) /* YM2203 - this board doesn't have one */
-	AM_RANGE(0x110000, 0x110001) AM_WRITE(YM2151_word_0_w)
-	AM_RANGE(0x120000, 0x120001) AM_WRITE(OKIM6295_data_0_w)
+	AM_RANGE(0x110000, 0x110001) AM_WRITE(ym2151_word_0_w)
+	AM_RANGE(0x120000, 0x120001) AM_WRITE(okim6295_data_0_w)
 	AM_RANGE(0x130000, 0x130001) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK8)
-	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(H6280_timer_w)
-	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
+	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(h6280_timer_w)
+	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(h6280_irq_status_w)
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
 static INPUT_PORTS_START( funkyjet )
-	PORT_START_TAG("P1")	/* Player 1 controls */
+	PORT_START("P1")	/* Player 1 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -165,7 +165,7 @@ static INPUT_PORTS_START( funkyjet )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )	/* Button 3 only in "test mode" */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("P2")	/* Player 2 controls */
+	PORT_START("P2")	/* Player 2 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -175,7 +175,7 @@ static INPUT_PORTS_START( funkyjet )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )	/* Button 3 only in "test mode" */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("IN0")	/* System Inputs */
+	PORT_START("IN0")	/* System Inputs */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -183,7 +183,7 @@ static INPUT_PORTS_START( funkyjet )
 
 	/* Dips seem inverted with respect to other Deco games */
 
-	PORT_START_TAG("DSWA")	/* Dip switch bank 1 */
+	PORT_START("DSWA")	/* Dip switch bank 1 */
 	PORT_DIPNAME( 0xe0, 0xe0, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 2C_1C ) )
@@ -207,7 +207,7 @@ static INPUT_PORTS_START( funkyjet )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("DSWB")	/* Dip switch bank 2 */
+	PORT_START("DSWB")	/* Dip switch bank 2 */
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x80, "1" )
 	PORT_DIPSETTING(    0xc0, "2" )
@@ -243,7 +243,7 @@ static INPUT_PORTS_START( funkyjej )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( sotsugyo )
-	PORT_START_TAG("P1")	/* Player 1 controls */
+	PORT_START("P1")	/* Player 1 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -253,7 +253,7 @@ static INPUT_PORTS_START( sotsugyo )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)	/* only in "test mode" */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("P2")	/* Player 2 controls */
+	PORT_START("P2")	/* Player 2 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -263,7 +263,7 @@ static INPUT_PORTS_START( sotsugyo )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)	/* only in "test mode" */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("IN0")	/* System Inputs */
+	PORT_START("IN0")	/* System Inputs */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )		// Not working - see notes
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )		// See notes
@@ -271,7 +271,7 @@ static INPUT_PORTS_START( sotsugyo )
 
 	/* Dips seem inverted with respect to other Deco games */
 
-	PORT_START_TAG("DSWA")	/* Dip switch bank 1 */
+	PORT_START("DSWA")	/* Dip switch bank 1 */
 	PORT_DIPNAME( 0xe0, 0xe0, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 2C_1C ) )
@@ -295,7 +295,7 @@ static INPUT_PORTS_START( sotsugyo )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("DSWB")	/* Dip switch bank 2 */
+	PORT_START("DSWB")	/* Dip switch bank 2 */
 	PORT_DIPNAME( 0x80, 0x80, "Freeze" )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -345,9 +345,9 @@ static const gfx_layout tile_layout =
 };
 
 static GFXDECODE_START( funkyjet )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,  256, 32 )	/* Characters 8x8 */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tile_layout, 256, 32 )	/* Tiles 16x16 */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tile_layout,   0, 16 )	/* Sprites 16x16 */
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,  256, 32 )	/* Characters 8x8 */
+	GFXDECODE_ENTRY( "gfx1", 0, tile_layout, 256, 32 )	/* Tiles 16x16 */
+	GFXDECODE_ENTRY( "gfx2", 0, tile_layout,   0, 16 )	/* Sprites 16x16 */
 GFXDECODE_END
 
 /******************************************************************************/
@@ -357,7 +357,7 @@ static void sound_irq(running_machine *machine, int state)
 	cpunum_set_input_line(machine, 1,1,state); /* IRQ 2 */
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	sound_irq
 };
@@ -365,12 +365,11 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( funkyjet )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 14000000) /* 28 MHz crystal */
+	MDRV_CPU_ADD("main", M68000, 14000000) /* 28 MHz crystal */
 	MDRV_CPU_PROGRAM_MAP(funkyjet_readmem,funkyjet_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
-	MDRV_CPU_ADD(H6280,32220000/4)	/* Custom chip 45, Audio section crystal is 32.220 MHz */
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", H6280,32220000/4)	/* Custom chip 45, Audio section crystal is 32.220 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
@@ -390,13 +389,13 @@ static MACHINE_DRIVER_START( funkyjet )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 32220000/9)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 32220000/9)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.45)
 	MDRV_SOUND_ROUTE(1, "right", 0.45)
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki", OKIM6295, 1000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END
@@ -404,65 +403,65 @@ MACHINE_DRIVER_END
 /******************************************************************************/
 
 ROM_START( funkyjet )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "jk00.12f", 0x00000, 0x40000, CRC(712089c1) SHA1(84167c90303a228107f55596e2ff8b9f111d1bc2) )
 	ROM_LOAD16_BYTE( "jk01.13f", 0x00001, 0x40000, CRC(be3920d7) SHA1(6627956d148681bc49991c544a09b07271ea4c7f) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
 	ROM_LOAD( "jk02.16f",    0x00000, 0x10000, CRC(748c0bd8) SHA1(35910e6a4c4f198fb76bde0f5b053e2c66cfa0ff) )
 
-	ROM_REGION( 0x080000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x080000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "mat02", 0x000000, 0x80000, CRC(e4b94c7e) SHA1(7b6ddd0bd388c8d32277fce4b3abb102724bc7d1) ) /* Encrypted chars */
 
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "mat01", 0x000000, 0x80000, CRC(24093a8d) SHA1(71f76ddd8a4b6e05ceb2fff4e20b6edb5e011e79) ) /* sprites */
   	ROM_LOAD( "mat00", 0x080000, 0x80000, CRC(fbda0228) SHA1(815d49898d02e699393e370209181f2ca8301949) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x20000, "oki", 0 )	/* ADPCM samples */
   	ROM_LOAD( "jk03.15h",    0x00000, 0x20000, CRC(69a0eaf7) SHA1(05038e82ee03106625f05082fe9912e16be181ee) )
 ROM_END
 
 ROM_START( funkyjej )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "jh00-2.11f", 0x00000, 0x40000, CRC(5b98b700) SHA1(604bd04f4031b0a3b53db2fab4a0e160dff6936d) )
 	ROM_LOAD16_BYTE( "jh01-2.13f", 0x00001, 0x40000, CRC(21280220) SHA1(b365b6c8aa778e21a14b2813e93b9c9d02e14995) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
 	ROM_LOAD( "jk02.16f",    0x00000, 0x10000, CRC(748c0bd8) SHA1(35910e6a4c4f198fb76bde0f5b053e2c66cfa0ff) )
 
-	ROM_REGION( 0x080000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x080000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "mat02", 0x000000, 0x80000, CRC(e4b94c7e) SHA1(7b6ddd0bd388c8d32277fce4b3abb102724bc7d1) ) /* Encrypted chars */
 
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "mat01", 0x000000, 0x80000, CRC(24093a8d) SHA1(71f76ddd8a4b6e05ceb2fff4e20b6edb5e011e79) ) /* sprites */
   	ROM_LOAD( "mat00", 0x080000, 0x80000, CRC(fbda0228) SHA1(815d49898d02e699393e370209181f2ca8301949) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x20000, "oki", 0 )	/* ADPCM samples */
   	ROM_LOAD( "jk03.15h",    0x00000, 0x20000, CRC(69a0eaf7) SHA1(05038e82ee03106625f05082fe9912e16be181ee) )
 ROM_END
 
 ROM_START( sotsugyo )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "03.12f", 0x00000, 0x40000, CRC(d175dfd1) SHA1(61c91d5e20b0492e6ac3b19fe9639eb4f169ae77) )
 	ROM_LOAD16_BYTE( "04.13f", 0x00001, 0x40000, CRC(2072477c) SHA1(23820a519e4503854e63ab3ad7eec58178c8d822) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
 	ROM_LOAD( "sb020.16f",    0x00000, 0x10000, CRC(baf5ec93) SHA1(82b22a0b565e51cd40733f21fa876dd7064eb604) )
 
-	ROM_REGION( 0x080000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x080000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "02.2f", 0x000000, 0x80000, CRC(337b1451) SHA1(ab3a4526e683c23b7634ac3304fb073f6ce98e82) ) /* chars */
 
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "01.4a", 0x000000, 0x80000, CRC(fa10dd54) SHA1(5dfe66df0bbab5eb151bf65f7e767a2325a50b36) ) /* sprites */
   	ROM_LOAD( "00.2a", 0x080000, 0x80000, CRC(d35a14ef) SHA1(b8d27766db7e183aee208c690364e4383f3c6882) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x20000, "oki", 0 )	/* ADPCM samples */
   	ROM_LOAD( "sb030.15h",    0x00000, 0x20000, CRC(1ea43f48) SHA1(74cc8c740f1c7fa94c2cb460ea4ee7aa0c490ed7) )
 ROM_END
 
 static DRIVER_INIT( funkyjet )
 {
-	deco74_decrypt(machine, REGION_GFX1);
+	deco74_decrypt_gfx(machine, "gfx1");
 }
 
 /******************************************************************************/

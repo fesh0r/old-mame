@@ -58,7 +58,7 @@ static TIMER_CALLBACK( dac_irq )
 
 static WRITE8_HANDLER( audio_dac_w)
 {
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 	int	dac_address = ( data & 0xf0 ) << 8;
 	int	sel = ( ( (~data) >> 1 ) & 2 ) | ( data & 1 );
 
@@ -80,7 +80,7 @@ static WRITE8_HANDLER( audio_dac_w)
 
 	dac_address += 0x10000;
 
-	DAC_data_w( 0, rom[dac_address+cur_dac_address_index] );
+	dac_data_w( 0, rom[dac_address+cur_dac_address_index] );
 
 	timer_set( ATTOTIME_IN_HZ( 16000 ), NULL, 0, dac_irq );
 }
@@ -98,7 +98,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( trucocl )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
@@ -124,8 +124,8 @@ static const gfx_layout tilelayout =
 
 
 static GFXDECODE_START( trucocl )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, 		tilelayout,      0, 2 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x10000, tilelayout,      0, 2 )
+	GFXDECODE_ENTRY( "gfx1", 0, 		tilelayout,      0, 2 )
+	GFXDECODE_ENTRY( "gfx1", 0x10000, tilelayout,      0, 2 )
 GFXDECODE_END
 
 static INTERRUPT_GEN( trucocl_interrupt )
@@ -135,7 +135,7 @@ static INTERRUPT_GEN( trucocl_interrupt )
 
 static MACHINE_DRIVER_START( trucocl )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 18432000/6)
+	MDRV_CPU_ADD("main", Z80, 18432000/6)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", trucocl_interrupt)
 
@@ -157,7 +157,7 @@ static MACHINE_DRIVER_START( trucocl )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -168,14 +168,14 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( trucocl )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )	/* ROMs + space for additional RAM + samples */
+	ROM_REGION( 0x40000, "main", 0 )	/* ROMs + space for additional RAM + samples */
 	ROM_LOAD( "trucocl.01", 0x00000, 0x20000, CRC(c9511c37) SHA1(d6a0fa573c8d2faf1a94a2be26fcaafe631d0699) )
 	ROM_LOAD( "trucocl.03", 0x20000, 0x20000, CRC(b37ce38c) SHA1(00bd506e9a03cb8ed65b0b599514db6b9b0ee5f3) ) /* samples */
 
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "trucocl.02", 0x0000, 0x20000, CRC(bda803e5) SHA1(e4fee42f23be4e0dc8926b6294e4b3e4a38ff185) ) /* tiles */
 
-	ROM_REGION( 0x0040, REGION_PROMS, 0 )
+	ROM_REGION( 0x0040, "proms", 0 )
 	ROM_LOAD( "27s19.u2",    0x0000, 0x0020, CRC(75aeff6a) SHA1(fecd117ec9bb8ac2834d422eb507ec78410aff0f) )
 	ROM_LOAD( "27s19.u1",    0x0020, 0x0020, CRC(f952f823) SHA1(adc6a05827b1bc47d84827808c324d93ee0f32b9) )
 ROM_END

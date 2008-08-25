@@ -78,13 +78,13 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( prehisle_sound_readport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ(YM3812_status_port_0_r)
+	AM_RANGE(0x00, 0x00) AM_READ(ym3812_status_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( prehisle_sound_writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(YM3812_control_port_0_w)
-	AM_RANGE(0x20, 0x20) AM_WRITE(YM3812_write_port_0_w)
+	AM_RANGE(0x00, 0x00) AM_WRITE(ym3812_control_port_0_w)
+	AM_RANGE(0x20, 0x20) AM_WRITE(ym3812_write_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(D7759_write_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(upd7759_0_reset_w)
 ADDRESS_MAP_END
@@ -92,7 +92,7 @@ ADDRESS_MAP_END
 /******************************************************************************/
 
 static INPUT_PORTS_START( prehisle )
-	PORT_START_TAG("P1")	/* Player 1 controls */
+	PORT_START("P1")	/* Player 1 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -102,7 +102,7 @@ static INPUT_PORTS_START( prehisle )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("P2")	/* Player 2 controls */
+	PORT_START("P2")	/* Player 2 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -112,7 +112,7 @@ static INPUT_PORTS_START( prehisle )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2  )
 
-	PORT_START_TAG("COIN")	/* coin */
+	PORT_START("COIN")	/* coin */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -120,7 +120,7 @@ static INPUT_PORTS_START( prehisle )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW0")	/* Dip switches */
+	PORT_START("DSW0")	/* Dip switches */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -144,7 +144,7 @@ static INPUT_PORTS_START( prehisle )
 	PORT_DIPSETTING(	0x40, "4" )
 	PORT_DIPSETTING(	0x00, "5" )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(	0x02, DEF_STR( Easy ) )
 	PORT_DIPSETTING(	0x03, DEF_STR( Standard ) )
@@ -206,10 +206,10 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( prehisle )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,	 0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout, 768, 16 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, tilelayout, 512, 16 )
-	GFXDECODE_ENTRY( REGION_GFX4, 0, spritelayout, 256, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,	 0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayout, 768, 16 )
+	GFXDECODE_ENTRY( "gfx3", 0, tilelayout, 512, 16 )
+	GFXDECODE_ENTRY( "gfx4", 0, spritelayout, 256, 16 )
 GFXDECODE_END
 
 /******************************************************************************/
@@ -219,14 +219,9 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM3812interface ym3812_interface =
+static const ym3812_interface ym3812_config =
 {
 	irqhandler
-};
-
-static const struct upd7759_interface upd7759_interface =
-{
-	REGION_SOUND1			/* memory region */
 };
 
 /******************************************************************************/
@@ -234,11 +229,11 @@ static const struct upd7759_interface upd7759_interface =
 static MACHINE_DRIVER_START( prehisle )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, XTAL_18MHz/2) 	/* verified on pcb */
+	MDRV_CPU_ADD("main", M68000, XTAL_18MHz/2) 	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(prehisle_readmem,prehisle_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
-	MDRV_CPU_ADD(Z80, XTAL_4MHz)	/* verified on pcb */
+	MDRV_CPU_ADD("audio", Z80, XTAL_4MHz)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(prehisle_sound_readmem,prehisle_sound_writemem)
 	MDRV_CPU_IO_MAP(prehisle_sound_readport,prehisle_sound_writeport)
 
@@ -259,98 +254,97 @@ static MACHINE_DRIVER_START( prehisle )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, XTAL_4MHz)	/* verified on pcb */
-	MDRV_SOUND_CONFIG(ym3812_interface)
+	MDRV_SOUND_ADD("ym", YM3812, XTAL_4MHz)	/* verified on pcb */
+	MDRV_SOUND_CONFIG(ym3812_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(UPD7759, UPD7759_STANDARD_CLOCK)
-	MDRV_SOUND_CONFIG(upd7759_interface)
+	MDRV_SOUND_ADD("upd", UPD7759, UPD7759_STANDARD_CLOCK)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90)
 MACHINE_DRIVER_END
 
 /******************************************************************************/
 
 ROM_START( prehisle )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )
+	ROM_REGION( 0x40000, "main", 0 )
 	ROM_LOAD16_BYTE( "gt.2", 0x00000, 0x20000, CRC(7083245a) SHA1(c4f72440e3fb130c8c44224c958bf70c61e8c34e) )
 	ROM_LOAD16_BYTE( "gt.3", 0x00001, 0x20000, CRC(6d8cdf58) SHA1(0078e54db899132d2b1244aed0b974173717f82e) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
 	ROM_LOAD( "gt.1",  0x000000, 0x10000, CRC(80a4c093) SHA1(abe59e43259eb80b504bd5541f58cd0e5eb998ab) )
 
-	ROM_REGION( 0x008000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x008000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "gt15.b15",   0x000000, 0x08000, CRC(ac652412) SHA1(916c04c3a8a7bfb961313ab73c0a27d7f5e48de1) )
 
-	ROM_REGION( 0x040000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x040000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "pi8914.b14", 0x000000, 0x40000, CRC(207d6187) SHA1(505dfd1424b894e7b898f91b89f021ddde433c48) )
 
-	ROM_REGION( 0x040000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x040000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "pi8916.h16", 0x000000, 0x40000, CRC(7cffe0f6) SHA1(aba08617964fc425418b098be5167021768bd47c) )
 
-	ROM_REGION( 0x0a0000, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0a0000, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "pi8910.k14", 0x000000, 0x80000, CRC(5a101b0b) SHA1(9645ab1f8d058cf2c6c42ccb4ce92a9b5db10c51) )
 	ROM_LOAD( "gt.5",       0x080000, 0x20000, CRC(3d3ab273) SHA1(b5706ada9eb2c22fcc0ac8ede2d2ee02ee853191) )
 
-	ROM_REGION( 0x10000, REGION_GFX5, 0 )	/* background tilemaps */
+	ROM_REGION( 0x10000, "gfx5", 0 )	/* background tilemaps */
 	ROM_LOAD( "gt.11",  0x000000, 0x10000, CRC(b4f0fcf0) SHA1(b81cc0b6e3e6f5616789bb3e77807dc0ef718a38) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x20000, "upd", 0 )	/* ADPCM samples */
 	ROM_LOAD( "gt.4",  0x000000, 0x20000, CRC(85dfb9ec) SHA1(78c865e7ccffddb71dcddccab358fa945f521f25) )
 ROM_END
 
 ROM_START( prehislu )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )
+	ROM_REGION( 0x40000, "main", 0 )
 	ROM_LOAD16_BYTE( "gt-u2.2h", 0x00000, 0x20000, CRC(a14f49bb) SHA1(6b39a894c3d3862be349a58c748d2d763d5a269c) )
 	ROM_LOAD16_BYTE( "gt-u3.3h", 0x00001, 0x20000, CRC(f165757e) SHA1(26cf369fed1713deec182852d76fe014ed46d6ac) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
 	ROM_LOAD( "gt.1",  0x000000, 0x10000, CRC(80a4c093) SHA1(abe59e43259eb80b504bd5541f58cd0e5eb998ab) )
 
-	ROM_REGION( 0x008000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x008000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "gt15.b15",   0x000000, 0x08000, CRC(ac652412) SHA1(916c04c3a8a7bfb961313ab73c0a27d7f5e48de1) )
 
-	ROM_REGION( 0x040000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x040000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "pi8914.b14", 0x000000, 0x40000, CRC(207d6187) SHA1(505dfd1424b894e7b898f91b89f021ddde433c48) )
 
-	ROM_REGION( 0x040000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x040000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "pi8916.h16", 0x000000, 0x40000, CRC(7cffe0f6) SHA1(aba08617964fc425418b098be5167021768bd47c) )
 
-	ROM_REGION( 0x0a0000, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0a0000, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "pi8910.k14", 0x000000, 0x80000, CRC(5a101b0b) SHA1(9645ab1f8d058cf2c6c42ccb4ce92a9b5db10c51) )
 	ROM_LOAD( "gt.5",       0x080000, 0x20000, CRC(3d3ab273) SHA1(b5706ada9eb2c22fcc0ac8ede2d2ee02ee853191) )
 
-	ROM_REGION( 0x10000, REGION_GFX5, 0 )	/* background tilemaps */
+	ROM_REGION( 0x10000, "gfx5", 0 )	/* background tilemaps */
 	ROM_LOAD( "gt.11",  0x000000, 0x10000, CRC(b4f0fcf0) SHA1(b81cc0b6e3e6f5616789bb3e77807dc0ef718a38) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x20000, "upd", 0 )	/* ADPCM samples */
 	ROM_LOAD( "gt.4",  0x000000, 0x20000, CRC(85dfb9ec) SHA1(78c865e7ccffddb71dcddccab358fa945f521f25) )
 ROM_END
 
 ROM_START( gensitou )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )
+	ROM_REGION( 0x40000, "main", 0 )
 	ROM_LOAD16_BYTE( "gt2j.bin", 0x00000, 0x20000, CRC(a2da0b6b) SHA1(d102118f83b96094fd4ea4b3468713c4946c949d) )
 	ROM_LOAD16_BYTE( "gt3j.bin", 0x00001, 0x20000, CRC(c1a0ae8e) SHA1(2c9643abfd71edf8612e63d69cea4fbc19aad19d) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
 	ROM_LOAD( "gt.1",  0x000000, 0x10000, CRC(80a4c093) SHA1(abe59e43259eb80b504bd5541f58cd0e5eb998ab) )
 
-	ROM_REGION( 0x008000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x008000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "gt15.b15",   0x000000, 0x08000, CRC(ac652412) SHA1(916c04c3a8a7bfb961313ab73c0a27d7f5e48de1) )
 
-	ROM_REGION( 0x040000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x040000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "pi8914.b14", 0x000000, 0x40000, CRC(207d6187) SHA1(505dfd1424b894e7b898f91b89f021ddde433c48) )
 
-	ROM_REGION( 0x040000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x040000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "pi8916.h16", 0x000000, 0x40000, CRC(7cffe0f6) SHA1(aba08617964fc425418b098be5167021768bd47c) )
 
-	ROM_REGION( 0x0a0000, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0a0000, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "pi8910.k14", 0x000000, 0x80000, CRC(5a101b0b) SHA1(9645ab1f8d058cf2c6c42ccb4ce92a9b5db10c51) )
 	ROM_LOAD( "gt.5",       0x080000, 0x20000, CRC(3d3ab273) SHA1(b5706ada9eb2c22fcc0ac8ede2d2ee02ee853191) )
 
-	ROM_REGION( 0x10000, REGION_GFX5, 0 )	/* background tilemaps */
+	ROM_REGION( 0x10000, "gfx5", 0 )	/* background tilemaps */
 	ROM_LOAD( "gt.11",  0x000000, 0x10000, CRC(b4f0fcf0) SHA1(b81cc0b6e3e6f5616789bb3e77807dc0ef718a38) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x20000, "upd", 0 )	/* ADPCM samples */
 	ROM_LOAD( "gt.4",  0x000000, 0x20000, CRC(85dfb9ec) SHA1(78c865e7ccffddb71dcddccab358fa945f521f25) )
 ROM_END
 

@@ -105,11 +105,11 @@ static READ8_HANDLER( starfire_input_r )
 {
 	switch (offset & 15)
 	{
-		case 0:	return input_port_read_indexed(machine, 0);
-		case 1:	return input_port_read_indexed(machine, 1);	/* Note: need to loopback sounds lengths on that one */
-		case 5: return input_port_read_indexed(machine, 4);
-		case 6:	return input_port_read_indexed(machine, 2);
-		case 7:	return input_port_read_indexed(machine, 3);
+		case 0:	return input_port_read(machine, "DSW");
+		case 1:	return input_port_read(machine, "SYSTEM");	/* Note: need to loopback sounds lengths on that one */
+		case 5: return input_port_read(machine, "STICKZ");
+		case 6:	return input_port_read(machine, "STICKX");
+		case 7:	return input_port_read(machine, "STICKY");
 		default: return 0xff;
 	}
 }
@@ -132,10 +132,10 @@ static READ8_HANDLER( fireone_input_r )
 
 	switch (offset & 15)
 	{
-		case 0:	return input_port_read_indexed(machine, 0);
-		case 1: return input_port_read_indexed(machine, 1);
+		case 0:	return input_port_read(machine, "DSW");
+		case 1:	return input_port_read(machine, "SYSTEM");
 		case 2:
-			temp = fireone_select ? input_port_read_indexed(machine, 2) : input_port_read_indexed(machine, 3);
+			temp = fireone_select ? input_port_read(machine, "P1") : input_port_read(machine, "P2");
 			temp = (temp & 0xc0) | fireone_paddle_map[temp & 0x3f];
 			return temp;
 		default: return 0xff;
@@ -166,7 +166,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( starfire )
-	PORT_START      /* DSW0 */
+	PORT_START("DSW")	/* DSW0 */
 	PORT_DIPNAME( 0x03, 0x00, "Time" )
 	PORT_DIPSETTING(    0x00, "90 Sec" )
 	PORT_DIPSETTING(    0x01, "80 Sec" )
@@ -188,7 +188,7 @@ static INPUT_PORTS_START( starfire )
 	PORT_DIPSETTING(    0x40, "fixed length+fire" )
 	PORT_SERVICE( 0x80, IP_ACTIVE_HIGH )
 
-	PORT_START      /* IN1 */
+	PORT_START("SYSTEM")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON1 )
@@ -198,19 +198,19 @@ static INPUT_PORTS_START( starfire )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START  /* IN2 */
+	PORT_START("STICKX")	/* IN2 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10)
 
-	PORT_START  /* IN3 */
+	PORT_START("STICKY")	/* IN3 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_REVERSE
 
-	PORT_START  /* IN4 */ /* throttle */
+	PORT_START("STICKZ")	/* IN4 */ /* throttle */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Z ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_REVERSE
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( fireone )
-	PORT_START      /* DSW0 */
+	PORT_START("DSW")	/* DSW0 */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, "2 Coins/1 Player" )
 	PORT_DIPSETTING(    0x02, "2 Coins/1 or 2 Players" )
@@ -231,7 +231,7 @@ static INPUT_PORTS_START( fireone )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_HIGH )
 
-	PORT_START      /* IN1 */
+	PORT_START("SYSTEM")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
@@ -241,12 +241,12 @@ static INPUT_PORTS_START( fireone )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START  /* IN2 */
+	PORT_START("P1")	/* IN2 */
 	PORT_BIT( 0x3f, 0x20, IPT_PADDLE ) PORT_MINMAX(0,63) PORT_SENSITIVITY(50) PORT_KEYDELTA(1) PORT_PLAYER(1)
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
 
-	PORT_START  /* IN3 */
+	PORT_START("P2")	/* IN3 */
 	PORT_BIT( 0x3f, 0x20, IPT_PADDLE ) PORT_MINMAX(0,63) PORT_SENSITIVITY(50) PORT_KEYDELTA(1) PORT_PLAYER(2)
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -263,7 +263,7 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( starfire )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, STARFIRE_CPU_CLOCK)
+	MDRV_CPU_ADD("main", Z80, STARFIRE_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
@@ -287,7 +287,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( starfire )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "sfire.1a",     0x0000, 0x0800, CRC(9990af64) SHA1(05eccf1084ace55be9d6cf0fccddcaa18fa5487a) )
 	ROM_LOAD( "sfire.2a",     0x0800, 0x0800, CRC(6e17ba33) SHA1(59433696f56018a7b253491b1db3ff45546dcd46) )
 	ROM_LOAD( "sfire.1b",     0x1000, 0x0800, CRC(946175d0) SHA1(6a55d9f6031b96e9e05d61d59a23d4fc6df724bf) )
@@ -302,7 +302,7 @@ ROM_START( starfire )
 ROM_END
 
 ROM_START( starfira )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "starfire.1a",  0x0000, 0x0800, CRC(6adcd7e7) SHA1(a931fb80e48db3050ce3bc39f455961c0c7c56ce) )
 	ROM_LOAD( "starfire.2a",  0x0800, 0x0800, CRC(835c70ea) SHA1(36828735aa48de5e3e973ca1f42ef08537e1c6ce) )
 	ROM_LOAD( "starfire.1b",  0x1000, 0x0800, CRC(377afbef) SHA1(97cb5a20aeb8c70670d6db8f41b2abcb181755c6) )
@@ -316,7 +316,7 @@ ROM_START( starfira )
 ROM_END
 
 ROM_START( fireone )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "fo-ic13.7b",     0x0000, 0x0800, CRC(f927f086) SHA1(509db84d781dd2d5aaefd561539738f0db7c4ca5) )
 	ROM_LOAD( "fo-ic24.7c",     0x0800, 0x0800, CRC(0d2d8723) SHA1(e9bb2092ce7786016f15e42916ad48ef12735e9c) )
 	ROM_LOAD( "fo-ic12.6b",     0x1000, 0x0800, CRC(ac7783d9) SHA1(8bcfcc5d3126382f4ec8904e0435de0931abc41e) )
@@ -334,7 +334,7 @@ ROM_START( fireone )
 ROM_END
 
 ROM_START( starfir2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "sfire2.01",     0x0000, 0x0800, CRC(f75be2f4) SHA1(b15511c345363f45eee0c019aa336a9aa16e63ea) )
 	ROM_LOAD( "sfire2.02",     0x0800, 0x0800, CRC(ccf98c6a) SHA1(3e7792aa47750ee19baf1e74016038fe80c92381) )
 	ROM_LOAD( "sfire2.03",     0x1000, 0x0800, CRC(604b2d50) SHA1(39d402135aaaa44c1ad05e1665eb6668280fae28) )

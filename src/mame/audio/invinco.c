@@ -35,7 +35,7 @@ static const char *const invinco_sample_names[] =
 };
 
 
-static const struct Samplesinterface invinco_samples_interface =
+static const samples_interface invinco_samples_interface =
 {
 	8,
 	invinco_sample_names
@@ -43,7 +43,7 @@ static const struct Samplesinterface invinco_samples_interface =
 
 
 MACHINE_DRIVER_START( invinco_audio )
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(invinco_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 MACHINE_DRIVER_END

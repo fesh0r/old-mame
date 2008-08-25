@@ -118,7 +118,7 @@ static INTERRUPT_GEN (megaplay_bios_irq)
 static UINT32 readpos = 1;  // serial bank selection position (9-bit)
 
 static INPUT_PORTS_START ( megaplay )
-	PORT_START_TAG("P1_1")	/* Player 1 Controls - part 1 */
+	PORT_START("P1_1")	/* Player 1 Controls - part 1 */
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
@@ -128,7 +128,7 @@ static INPUT_PORTS_START ( megaplay )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("P1_2")	/* Player 1 Controls - part 2 */
+	PORT_START("P1_2")	/* Player 1 Controls - part 2 */
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT(  0x04, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -138,7 +138,7 @@ static INPUT_PORTS_START ( megaplay )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("P2_1")	/* Player 2 Controls - part 1 */
+	PORT_START("P2_1")	/* Player 2 Controls - part 1 */
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
@@ -148,7 +148,7 @@ static INPUT_PORTS_START ( megaplay )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("P2_2")	/* Player 2 Controls - part 2 */
+	PORT_START("P2_2")	/* Player 2 Controls - part 2 */
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT(  0x04, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -158,7 +158,7 @@ static INPUT_PORTS_START ( megaplay )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("TEST")
+	PORT_START("TEST")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE2 ) PORT_NAME("Select") PORT_CODE(KEYCODE_0)
     PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN ) PORT_NAME("0x6400 bit 1") PORT_CODE(KEYCODE_W)
     PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN ) PORT_NAME("0x6400 bit 2") PORT_CODE(KEYCODE_E)
@@ -168,7 +168,7 @@ static INPUT_PORTS_START ( megaplay )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN ) PORT_NAME("0x6400 bit 6") PORT_CODE(KEYCODE_U)
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("COIN")
+	PORT_START("COIN")
  	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
     PORT_BIT ( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -183,7 +183,7 @@ static INPUT_PORTS_START ( megaplay )
  *  PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_START2 )
  */
 
-	PORT_START_TAG("DSW0")
+	PORT_START("DSW0")
 	PORT_DIPNAME( 0x0f, 0x0f, "Coin slot 1" ) PORT_DIPLOCATION("SW1:1,2,3,4")
     PORT_DIPSETTING( 0x07, DEF_STR( 4C_1C ) )
     PORT_DIPSETTING( 0x08, DEF_STR( 3C_1C ) )
@@ -219,12 +219,26 @@ static INPUT_PORTS_START ( megaplay )
     PORT_DIPSETTING( 0x20, "1 coin/1 credit - 4 coins/5 credits" )
     PORT_DIPSETTING( 0x10, "1 coin/1 credit - 2 coins/3 credits" )
     PORT_DIPSETTING( 0x00, " 1 coin/1 credit" )
+
+	PORT_START("DSW1")	/* DSW C  (per game settings) */
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW3:1")
+    PORT_DIPSETTING( 0x01, DEF_STR( Off )  )
+    PORT_DIPSETTING( 0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW3:2")
+    PORT_DIPSETTING( 0x02, DEF_STR( Off )  )
+    PORT_DIPSETTING( 0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW3:3")
+    PORT_DIPSETTING( 0x04, DEF_STR( Off )  )
+    PORT_DIPSETTING( 0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW3:4")
+    PORT_DIPSETTING( 0x08, DEF_STR( Off )  )
+    PORT_DIPSETTING( 0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( mp_sonic )
 	PORT_INCLUDE( megaplay )
 
-	PORT_START_TAG("DSW1")	/* DSW C  (per game settings) */
+	PORT_MODIFY("DSW1")	/* DSW C  (per game settings) */
 	PORT_DIPNAME( 0x03, 0x01, "Initial Players" ) PORT_DIPLOCATION("SW3:1,2")
     PORT_DIPSETTING( 0x00, "4" )
     PORT_DIPSETTING( 0x01, "3" )
@@ -245,7 +259,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START ( mp_gaxe2 )
 	PORT_INCLUDE( megaplay )
 
-	PORT_START_TAG("DSW1")	/* DSW C  (per game settings) */
+	PORT_MODIFY("DSW1")	/* DSW C  (per game settings) */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW3:1")
     PORT_DIPSETTING( 0x01, DEF_STR( Normal ) )
     PORT_DIPSETTING( 0x00, DEF_STR( Hard ) )
@@ -269,7 +283,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START ( mp_col3 )
 	PORT_INCLUDE( megaplay )
 
-	PORT_START_TAG("DSW1")	/* DSW C  (per game settings) */
+	PORT_MODIFY("DSW1")	/* DSW C  (per game settings) */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Language ) ) PORT_DIPLOCATION("SW3:1")
     PORT_DIPSETTING( 0x01, DEF_STR( English ) )
     PORT_DIPSETTING( 0x00, DEF_STR( Japanese ) )
@@ -292,7 +306,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START ( mp_twc )
 	PORT_INCLUDE( megaplay )
 
-	PORT_START_TAG("DSW1")	/* DSW C  (per game settings) */
+	PORT_MODIFY("DSW1")	/* DSW C  (per game settings) */
 	PORT_DIPNAME( 0x01, 0x01, "Time" ) PORT_DIPLOCATION("SW3:1")
     PORT_DIPSETTING( 0x01, DEF_STR( Normal ) )
     PORT_DIPSETTING( 0x00, "Short" )
@@ -310,7 +324,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START ( mp_sor2 )
 	PORT_INCLUDE( megaplay )
 
-	PORT_START_TAG("DSW1")	/* DSW C  (per game settings) */
+	PORT_MODIFY("DSW1")	/* DSW C  (per game settings) */
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW3:1,2")
     PORT_DIPSETTING( 0x00, "4" )
     PORT_DIPSETTING( 0x01, "3" )
@@ -326,7 +340,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START ( mp_bio )
 	PORT_INCLUDE( megaplay )
 
-	PORT_START_TAG("DSW1")	/* DSW C  (per game settings) */
+	PORT_MODIFY("DSW1")	/* DSW C  (per game settings) */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW3:1,2")
     PORT_DIPSETTING( 0x00, "5" )
     PORT_DIPSETTING( 0x01, "4" )
@@ -342,7 +356,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START ( mp_gslam )
 	PORT_INCLUDE( megaplay )
 
-	PORT_START_TAG("DSW1")	/* DSW C  (per game settings) */
+	PORT_MODIFY("DSW1")	/* DSW C  (per game settings) */
 	PORT_DIPNAME( 0x07, 0x04, DEF_STR ( Game_Time ) ) PORT_DIPLOCATION("SW3:1,2,3")
     PORT_DIPSETTING( 0x00, "5:00" )
     PORT_DIPSETTING( 0x01, "4:30" )
@@ -360,7 +374,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START ( mp_mazin )
 	PORT_INCLUDE( megaplay )
 
-	PORT_START_TAG("DSW1")	/* DSW C  (per game settings) */
+	PORT_MODIFY("DSW1")	/* DSW C  (per game settings) */
 	PORT_DIPNAME( 0x01, 0x01, "Initial Player" ) PORT_DIPLOCATION("SW3:1")
     PORT_DIPSETTING( 0x01, "2" )
     PORT_DIPSETTING( 0x00, "1" )
@@ -378,7 +392,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START ( mp_soni2 )
 	PORT_INCLUDE( megaplay )
 
-	PORT_START_TAG("DSW1")	/* DSW C  (per game settings) */
+	PORT_MODIFY("DSW1")	/* DSW C  (per game settings) */
 	PORT_DIPNAME( 0x03, 0x01, "Initial Players (Normal mode)" ) PORT_DIPLOCATION("SW3:1,2")
     PORT_DIPSETTING( 0x00, "4" )
     PORT_DIPSETTING( 0x01, "3" )
@@ -389,6 +403,22 @@ static INPUT_PORTS_START ( mp_soni2 )
     PORT_DIPSETTING( 0x04, "2" )
     PORT_DIPSETTING( 0x08, "1" )
     PORT_DIPSETTING( 0x0c, "3" )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START ( mp_shnb3 )
+	PORT_INCLUDE( megaplay )
+
+	PORT_MODIFY("DSW1")	/* DSW C  (per game settings) */
+	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW3:1,2")
+    PORT_DIPSETTING( 0x00, "4" )
+    PORT_DIPSETTING( 0x01, "3" )
+    PORT_DIPSETTING( 0x02, "2" )
+    PORT_DIPSETTING( 0x03, "1" )
+	PORT_DIPNAME( 0xc, 0x0c, DEF_STR ( Difficulty ) ) PORT_DIPLOCATION("SW3:3,4")
+    PORT_DIPSETTING( 0x00, "Expert" )
+    PORT_DIPSETTING( 0x04, DEF_STR ( Hard ) )
+    PORT_DIPSETTING( 0x08, DEF_STR ( Easy ) )
+    PORT_DIPSETTING( 0x0c, DEF_STR ( Normal ) )
 INPUT_PORTS_END
 
 /*MEGAPLAY specific*/
@@ -531,8 +561,8 @@ static WRITE16_HANDLER ( OLD_megaplay_genesis_io_w )
 
 static READ8_HANDLER( bank_r )
 {
-	UINT8* bank = memory_region(machine, REGION_CPU3);
-	UINT8* game = memory_region(machine, REGION_CPU1);
+	UINT8* bank = memory_region(machine, "megaplay_bios");
+	UINT8* game = memory_region(machine, "main");
 
 	if(game_banksel == 0x142) // Genesis I/O
 		return OLD_megaplay_genesis_io_r(machine, (offset & 0x1f) / 2, 0xffff);
@@ -730,7 +760,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( megaplay_bios_writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 //  AM_RANGE(0x3f, 0x3f) AM_WRITE(megatech_bios_port_ctrl_w)
-	AM_RANGE(0x7f, 0x7f) AM_WRITE(SN76496_1_w)	/* SN76489 */
+	AM_RANGE(0x7f, 0x7f) AM_WRITE(sn76496_1_w)	/* SN76489 */
 	AM_RANGE(0xbe, 0xbf) AM_WRITE(megaplay_bios_port_be_bf_w)			/* VDP */
 ADDRESS_MAP_END
 
@@ -764,14 +794,14 @@ static MACHINE_DRIVER_START( mpnew )
 
 	/* The Megaplay has an extra BIOS cpu which drives an SMS VDP
        which includes an SN76496 for sound */
-	MDRV_CPU_ADD_TAG("megaplay_bios", Z80, MASTER_CLOCK / 15) /* ?? */
+	MDRV_CPU_ADD("megaplay_bios", Z80, MASTER_CLOCK / 15) /* ?? */
 	MDRV_CPU_PROGRAM_MAP(megaplay_bios_readmem, megaplay_bios_writemem)
 	MDRV_CPU_IO_MAP(megaplay_bios_readport,megaplay_bios_writeport)
 	MDRV_CPU_VBLANK_INT_HACK(megaplay_bios_irq, 262)
 
 	MDRV_INTERLEAVE(100)
 
-	MDRV_SOUND_ADD(SN76496, MASTER_CLOCK/15)
+	MDRV_SOUND_ADD("sn2", SN76496, MASTER_CLOCK/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.25) /* 3.58 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right",0.25) /* 3.58 MHz */
 
@@ -793,24 +823,24 @@ MACHINE_DRIVER_END
 	ROM_LOAD_BIOS( 1, "epr-a15294.ic2",0x000000, 0x20000, CRC(f97c68aa) SHA1(bcabc879950bca1ced11c550a484e697ec5706b2) ) \
 
 ROM_START( megaplay )
-	ROM_REGION( 0x400000, REGION_CPU1, ROMREGION_ERASEFF )
+	ROM_REGION( 0x400000, "main", ROMREGION_ERASEFF )
 
-	ROM_REGION( 0x8000, REGION_USER1, ROMREGION_ERASEFF )
+	ROM_REGION( 0x8000, "user1", ROMREGION_ERASEFF )
 
-	ROM_REGION( 0x28000, REGION_CPU3, 0 ) /* Bios */
+	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
 ROM_START( mp_sonic ) /* Sonic */
-	ROM_REGION( 0x400000, REGION_CPU1, 0 )
+	ROM_REGION( 0x400000, "main", 0 )
 	ROM_LOAD16_BYTE( "ep15177.ic2", 0x000000, 0x040000, CRC(a389b03b) SHA1(8e9e1cf3dd65ddf08757f5a1ce472130c902ea2c) )
 	ROM_LOAD16_BYTE( "ep15176.ic1", 0x000001, 0x040000, CRC(d180cc21) SHA1(62805cfaaa80c1da6146dd89fc2b49d819fd4f22) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
-	ROM_REGION( 0x8000, REGION_USER1, 0 ) /* Game Instructions */
+	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "ep15175-01.ic3", 0x000000, 0x08000, CRC(99246889) SHA1(184aa3b7fdedcf578c5e34edb7ed44f57f832258) )
 
-	ROM_REGION( 0x28000, REGION_CPU3, 0 ) /* Bios */
+	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
@@ -818,112 +848,124 @@ ROM_END
    but the code looks like it's probably real */
 /* pcb  171-5834 */
 ROM_START( mp_col3 ) /* Columns 3 */
-	ROM_REGION( 0x400000, REGION_CPU1, 0 )
+	ROM_REGION( 0x400000, "main", 0 )
 	ROM_LOAD16_BYTE( "3.ic2", 0x000000, 0x040000, CRC(a1602235) SHA1(38751b585849c8966acc3f508714937fe29dcf5c) )
 	ROM_LOAD16_BYTE( "2.ic1", 0x000001, 0x040000, CRC(999b2fe6) SHA1(ad967a28e4eebd7b01273e4e04c35a0198ef834a) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
-	ROM_REGION( 0x8000, REGION_USER1, 0 ) /* Game Instructions */
+	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "1.ic3", 0x000000, 0x08000,  CRC(dac9bf91) SHA1(0117972a7181f8aaf942a259cc8764b821031253) )
 
-	ROM_REGION( 0x28000, REGION_CPU3, 0 ) /* Bios */
+	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
 ROM_START( mp_gaxe2 ) /* Golden Axe 2 */
-	ROM_REGION( 0x400000, REGION_CPU1, 0 )
+	ROM_REGION( 0x400000, "main", 0 )
 	ROM_LOAD16_BYTE( "ep15179b.ic2", 0x000000, 0x040000, CRC(00d97b84) SHA1(914bbf566ddf940aab67b92af237d251650ddadf) )
 	ROM_LOAD16_BYTE( "ep15178b.ic1", 0x000001, 0x040000, CRC(2ea576db) SHA1(6d96b948243533de1f488b1f80e0d5431a4f1f53) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
-	ROM_REGION( 0x8000, REGION_USER1, 0 ) /* Game Instructions */
+	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "ep15175-02b.ic3", 0x000000, 0x08000, CRC(3039b653) SHA1(b19874c74d0fc0cca1169f62e5e74f0e8ca83679) ) // 15175-02b.ic3
 
-	ROM_REGION( 0x28000, REGION_CPU3, 0 ) /* Bios */
+	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
 ROM_START( mp_gslam ) /* Grand Slam */
-	ROM_REGION( 0x400000, REGION_CPU1, 0 )
+	ROM_REGION( 0x400000, "main", 0 )
 	ROM_LOAD16_BYTE( "epr-15181.ic2", 0x000000, 0x040000, CRC(642437c1) SHA1(cbf88e196c04b6d886bf9642b69bf165045510fe) )
 	ROM_LOAD16_BYTE( "epr-15180.ic1", 0x000001, 0x040000, CRC(73bb48f1) SHA1(981b64f834d5618599352f5fad683bf232390ba3) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
-	ROM_REGION( 0x8000, REGION_USER1, 0 ) /* Game Instructions */
+	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "epr-15175-03.ic3", 0x000000, 0x08000, CRC(70ea1aec) SHA1(0d9d82a1f8aa51d02707f7b343e7cfb6591efccd) ) // 15175-02b.ic3
 
-	ROM_REGION( 0x28000, REGION_CPU3, 0 ) /* Bios */
+	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
 
 ROM_START( mp_twc ) /* Tecmo World Cup */
-	ROM_REGION( 0x400000, REGION_CPU1, 0 )
+	ROM_REGION( 0x400000, "main", 0 )
 	ROM_LOAD16_BYTE( "ep15183.ic2", 0x000000, 0x040000, CRC(8b79b861) SHA1(c72af72840513b82f2562409eccdf13b031bf3c0) )
 	ROM_LOAD16_BYTE( "ep15182.ic1", 0x000001, 0x040000, CRC(eb8325c3) SHA1(bb21ac926c353e14184dd476222bc6a8714606e5) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
- 	ROM_REGION( 0x8000, REGION_USER1, 0 ) /* Game Instructions */
+ 	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "ep15175-04.ic3", 0x000000, 0x08000, CRC(faf7c030) SHA1(16ef405335b4d3ecb0b7d97b088dafc4278d4726) )
 
- 	ROM_REGION( 0x28000, REGION_CPU3, 0 ) /* Bios */
+ 	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
  	MEGAPLAY_BIOS
 ROM_END
 
 ROM_START( mp_sor2 ) /* Streets of Rage 2 */
-	ROM_REGION( 0x400000, REGION_CPU1, 0 )
+	ROM_REGION( 0x400000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "mpr-15425.ic1", 0x000000, 0x200000, CRC(cd6376af) SHA1(57ec210975e40505649f152b60ef54f99da31f0e) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
-	ROM_REGION( 0x8000, REGION_USER1, 0 ) /* Game Instructions */
+	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "epr-15175-05.ic2", 0x000000, 0x08000, CRC(1df5347c) SHA1(faced2e875e1914392f61577b5256d006eebeef9) )
 
-	ROM_REGION( 0x28000, REGION_CPU3, 0 ) /* Bios */
+	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
 ROM_START( mp_bio ) /* Bio Hazard Battle */
-	ROM_REGION( 0x400000, REGION_CPU1, 0 )
+	ROM_REGION( 0x400000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "mpr-15699-f.ic1", 0x000000, 0x100000, CRC(4b193229) SHA1(f8629171ae9b4792f142f6957547d886e5cc6817) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
-	ROM_REGION( 0x8000, REGION_USER1, 0 ) /* Game Instructions */
+	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "epr-15175-06.ic2", 0x000000, 0x08000, CRC(1ef64e41) SHA1(13984b714b014ea41963b70de74a5358ed223bc5) )
 
-	ROM_REGION( 0x28000, REGION_CPU3, 0 ) /* Bios */
+	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
 ROM_START( mp_soni2 ) /* Sonic The Hedgehog 2 */
-	ROM_REGION( 0x400000, REGION_CPU1, 0 )
+	ROM_REGION( 0x400000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "mpr-16011.ic1", 0x000000, 0x100000, CRC(3d7bf98a) SHA1(dce0e4e8f2573e0ffe851edaa235e4ed9e61ee2d) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
-	ROM_REGION( 0x8000, REGION_USER1, 0 ) /* Game Instructions */
+	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "epr-15175-07.ic1", 0x000000, 0x08000, CRC(bb5f67f0) SHA1(33b7a5d14015a5fcf41976a8f648f8f48ce9bb03) )
 
-	ROM_REGION( 0x28000, REGION_CPU3, 0 ) /* Bios */
+	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
 ROM_START( mp_mazin ) /* Mazin Wars */
-	ROM_REGION( 0x400000, REGION_CPU1, 0 )
+	ROM_REGION( 0x400000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "mpr-16460.ic1", 0x000000, 0x100000, CRC(e9635a83) SHA1(ab3afa11656f0ae3a50c957dce012fb15d3992e0) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
-	ROM_REGION( 0x8000, REGION_USER1, 0 ) /* Game Instructions */
+	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "epr-15175-11.ic2", 0x000000, 0x08000, CRC(bb651120) SHA1(81cb736f2732373e260dde162249c1d29a3489c3) )
 
-	ROM_REGION( 0x28000, REGION_CPU3, 0 ) /* Bios */
+	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+	MEGAPLAY_BIOS
+ROM_END
+
+ROM_START( mp_shnb3 ) /* Shinobi 3 */
+	ROM_REGION( 0x400000, "main", 0 )
+	ROM_LOAD16_WORD_SWAP( "mpr-16197.ic1", 0x000000, 0x100000, CRC(48162361) SHA1(77d544509339b5ddf6d19941377e81d29e9e21dc) )
+	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
+
+	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
+	ROM_LOAD( "epr-15175-09.ic2", 0x000000, 0x08000, CRC(6254e45a) SHA1(8667922a6eade03c964ce224f7fa39ba871c60a4) )
+
+	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
 
 static void megplay_stat(running_machine *machine)
 {
-	UINT8 *src = memory_region(machine, REGION_CPU3);
-	UINT8 *instruction_rom = memory_region(machine, REGION_USER1);
-	UINT8 *game_rom = memory_region(machine, REGION_CPU1);
+	UINT8 *src = memory_region(machine, "megaplay_bios");
+	UINT8 *instruction_rom = memory_region(machine, "user1");
+	UINT8 *game_rom = memory_region(machine, "main");
 	int offs;
 
 
@@ -1007,11 +1049,11 @@ Columns 3            171-5834                      610-0297-04*         2       
 Streets Of Rage II   171-6215A   837-9165-05       610-0297-05          MPR-15425   (8316200A)  EPR-15175-05 (27256)   n/a
 Bio-Hazard Battle    171-6215A   837-9165-06       610-0298-06          MPR-15699-F (838200)    EPR-15175-06 (27256)   n/a
 Sonic The Hedgehog 2 171-6215A   837-9165-07       610-0297-07          MPR-16011   (838200)    EPR-15175-07 (27256)   n/a
+Shinobi III          171-6215A   837-9165-09       610-0297-09          MPR-16197   (838200)    EPR-15175-09 (27256)   n/a
 Mazin Wars           171-6215A   837-9165-11       610-0297-11          MPR-16460   (838200)    EPR-15175-11 (27256)   n/a
 
 * This is the code for Tecmo World Cup, as the ROMs in the Columns 3 cart
 didn't have original Sega part numbers it's probably a converted TWC cart
-
 */
 
 /* -- */ GAME( 1993, megaplay, 0, mpnew, megaplay, megaplay, ROT0, "Sega",                  "Mega Play BIOS", GAME_IS_BIOS_ROOT )
@@ -1023,7 +1065,7 @@ didn't have original Sega part numbers it's probably a converted TWC cart
 /* 06 */ GAME( 1993, mp_bio,   megaplay, mpnew, mp_bio,   megaplay, ROT0, "Sega",                  "Bio-hazard Battle (Mega Play)" , 0 )
 /* 07 */ GAME( 1993, mp_soni2, megaplay, mpnew, mp_soni2, megaplay, ROT0, "Sega",                  "Sonic The Hedgehog 2 (Mega Play)" , 0 )
 /* 08 */
-/* 09 */
+/* 09 */ GAME( 1993, mp_shnb3, megaplay, mpnew, mp_shnb3, megaplay, ROT0, "Sega",                  "Shinobi III (Mega Play)" , 0 )
 /* 10 */
 /* 11 */ GAME( 1993, mp_mazin, megaplay, mpnew, mp_mazin, megaplay, ROT0, "Sega",                  "Mazin Wars / Mazin Saga (Mega Play)",0  )
 
@@ -1032,7 +1074,6 @@ didn't have original Sega part numbers it's probably a converted TWC cart
 
 /* Also confirmed to exist:
 Gunstar Heroes
-Shinobi III
 
 system16.com lists 'Streets of Rage' but this seems unlikely, there are no gaps in
 the numbering prior to 'Streets of Rage 2'

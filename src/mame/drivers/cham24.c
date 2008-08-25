@@ -68,17 +68,17 @@ static WRITE8_HANDLER( sprite_dma_w )
 
 static READ8_HANDLER( psg_4015_r )
 {
-	return NESPSG_0_r(machine,0x15);
+	return nes_psg_0_r(machine,0x15);
 }
 
 static WRITE8_HANDLER( psg_4015_w )
 {
-	NESPSG_0_w(machine,0x15, data);
+	nes_psg_0_w(machine,0x15, data);
 }
 
 static WRITE8_HANDLER( psg_4017_w )
 {
-	NESPSG_0_w(machine,0x17, data);
+	nes_psg_0_w(machine,0x17, data);
 }
 
 static UINT32 in_0;
@@ -124,8 +124,8 @@ static WRITE8_HANDLER( cham24_mapper_w )
 	UINT32 prg_bank_page_size = (offset >> 12) & 0x01;
 	UINT32 gfx_mirroring = (offset >> 13) & 0x01;
 
-	UINT8* dst = memory_region( machine, REGION_CPU1 );
-	UINT8* src = memory_region( machine, REGION_USER1 );
+	UINT8* dst = memory_region( machine, "main" );
+	UINT8* src = memory_region( machine, "user1" );
 
 	// switch PPU VROM bank
 	ppu2c0x_set_videorom_bank( 0, 0, 8, gfx_bank, 512 );
@@ -159,7 +159,7 @@ static WRITE8_HANDLER( cham24_mapper_w )
 static ADDRESS_MAP_START( cham24_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM	/* NES RAM */
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ppu2c0x_0_r, ppu2c0x_0_w)
-	AM_RANGE(0x4000, 0x4013) AM_READWRITE(NESPSG_0_r, NESPSG_0_w)			/* PSG primary registers */
+	AM_RANGE(0x4000, 0x4013) AM_READWRITE(nes_psg_0_r, nes_psg_0_w)			/* PSG primary registers */
 	AM_RANGE(0x4014, 0x4014) AM_WRITE(sprite_dma_w)
 	AM_RANGE(0x4015, 0x4015) AM_READWRITE(psg_4015_r, psg_4015_w)			/* PSG status / first control register */
 	AM_RANGE(0x4016, 0x4016) AM_READWRITE(cham24_IN0_r,        cham24_IN0_w)			/* IN0 - input port 1 */
@@ -168,7 +168,7 @@ static ADDRESS_MAP_START( cham24_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( cham24 )
-	PORT_START_TAG("P1") /* IN0 */
+	PORT_START("P1") /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(1)	/* Select */
@@ -178,7 +178,7 @@ static INPUT_PORTS_START( cham24 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 
-	PORT_START_TAG("P2") /* IN1 */
+	PORT_START("P2") /* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(2)	/* Select */
@@ -190,16 +190,16 @@ static INPUT_PORTS_START( cham24 )
 
 INPUT_PORTS_END
 
-static const struct NESinterface cham24_interface_1 =
+static const nes_interface cham24_interface_1 =
 {
-	REGION_CPU1
+	"main"
 };
 
 static MACHINE_RESET( cham24 )
 {
 	/* switch PRG rom */
-	UINT8* dst = memory_region( machine, REGION_CPU1 );
-	UINT8* src = memory_region( machine, REGION_USER1 );
+	UINT8* dst = memory_region( machine, "main" );
+	UINT8* src = memory_region( machine, "user1" );
 
 	memcpy( &dst[0x8000], &src[0x0f8000], 0x4000 );
 	memcpy( &dst[0xc000], &src[0x0f8000], 0x4000 );
@@ -223,7 +223,7 @@ static const ppu2c0x_interface ppu_interface =
 {
 	PPU_2C04,				/* type */
 	1,						/* num */
-	{ REGION_GFX1 },		/* vrom gfx region */
+	{ "gfx1" },				/* vrom gfx region */
 	{ 0 },					/* gfxlayout num */
 	{ 0 },					/* color base */
 	{ PPU_MIRROR_NONE },	/* mirroring */
@@ -252,7 +252,7 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( cham24 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", N2A03, N2A03_DEFAULTCLOCK)
+	MDRV_CPU_ADD("main", N2A03, N2A03_DEFAULTCLOCK)
 	MDRV_CPU_PROGRAM_MAP(cham24_map, 0)
 
 	MDRV_MACHINE_RESET( cham24 )
@@ -274,24 +274,24 @@ static MACHINE_DRIVER_START( cham24 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(NES, N2A03_DEFAULTCLOCK)
+	MDRV_SOUND_ADD("nes", NES, N2A03_DEFAULTCLOCK)
 	MDRV_SOUND_CONFIG(cham24_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 ROM_START( cham24 )
-	ROM_REGION(0x10000, REGION_CPU1, ROMREGION_ERASE00)
+	ROM_REGION(0x10000, "main", ROMREGION_ERASE00)
 
-	ROM_REGION(0x100000, REGION_USER1, 0)
+	ROM_REGION(0x100000, "user1", 0)
 	ROM_LOAD( "24-2.u2", 0x000000, 0x100000, CRC(686e9d05) SHA1(a55b9850a4b47f1b4495710e71534ca0287b05ee) )
 
-	ROM_REGION(0x080000, REGION_GFX1, 0)
+	ROM_REGION(0x080000, "gfx1", 0)
 	ROM_LOAD( "24-1.u1", 0x000000, 0x080000, CRC(43c43d58) SHA1(3171befaca28acc80fb70226748d9abde76a1b56) )
 
-	ROM_REGION(0x10000, REGION_USER2, 0)
+	ROM_REGION(0x10000, "user2", 0)
 	ROM_LOAD( "24-3.u3", 0x0000, 0x10000, CRC(e97955fa) SHA1(6d686c5d0967c9c2f40dbd8e6a0c0907606f2c7d) ) // unknown rom
 ROM_END
 

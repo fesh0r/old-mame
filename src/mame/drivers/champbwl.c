@@ -178,7 +178,7 @@ static WRITE8_HANDLER( champbwl_misc_w )
 	coin_lockout_w(0, ~data & 8);
 	coin_lockout_w(1, ~data & 4);
 
-	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x10000 + 0x4000 * ((data & 0x30)>>4));
+	memory_set_bankptr(1, memory_region(machine, "main") + 0x10000 + 0x4000 * ((data & 0x30)>>4));
 }
 
 static WRITE8_HANDLER( champbwl_objctrl_w )
@@ -190,7 +190,7 @@ static WRITE8_HANDLER( champbwl_objctrl_w )
 }
 
 static ADDRESS_MAP_START( champbwl_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_ROM AM_REGION(REGION_CPU1, 0x10000)
+	AM_RANGE(0x0000, 0x3fff) AM_ROM AM_REGION("main", 0x10000)
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1)
 	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xa000, 0xbfff) AM_RAM AM_BASE(&tnzs_objram)
@@ -214,7 +214,7 @@ static ADDRESS_MAP_START( champbwl_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( champbwl )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -224,7 +224,7 @@ static INPUT_PORTS_START( champbwl )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) // INT( 4M)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) // INT(16M)
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -250,7 +250,7 @@ static INPUT_PORTS_START( champbwl )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_SERVICE_DIPLOC( 0x01, IP_ACTIVE_LOW, "SW1:1" )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW1:2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Upright ) )
@@ -274,7 +274,7 @@ static INPUT_PORTS_START( champbwl )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:5")
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -299,10 +299,10 @@ static INPUT_PORTS_START( champbwl )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("FAKEX")		/* FAKE */
+	PORT_START("FAKEX")		/* FAKE */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X )PORT_SENSITIVITY(50) PORT_KEYDELTA(50) PORT_CENTERDELTA(0)
 
-	PORT_START_TAG("FAKEY")		/* FAKE */
+	PORT_START("FAKEY")		/* FAKE */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(50) PORT_KEYDELTA(45) PORT_CENTERDELTA(0) PORT_REVERSE
 INPUT_PORTS_END
 
@@ -320,10 +320,10 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( champbwl )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0, 32 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0, 32 )
 GFXDECODE_END
 
-static const struct x1_010_interface champbwl_sound_intf =
+static const x1_010_interface champbwl_sound_intf =
 {
 	0x0000		/* address */
 };
@@ -331,7 +331,7 @@ static const struct x1_010_interface champbwl_sound_intf =
 static MACHINE_DRIVER_START( champbwl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 16000000/4) /* 4MHz */
+	MDRV_CPU_ADD("main", Z80, 16000000/4) /* 4MHz */
 	MDRV_CPU_PROGRAM_MAP(champbwl_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -355,27 +355,27 @@ static MACHINE_DRIVER_START( champbwl )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(X1_010, 16000000)
+	MDRV_SOUND_ADD("x1", X1_010, 16000000)
 	MDRV_SOUND_CONFIG(champbwl_sound_intf)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
 ROM_START( champbwl )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )		/* Z80 Code */
+	ROM_REGION( 0x20000, "main", 0 )		/* Z80 Code */
 	ROM_LOAD( "ab001001.u1",  0x10000, 0x10000, CRC(6c6f7675) SHA1(19834f25f2644ae5d156c1e1bbb3fc50cae10fd2) )
 
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "ab001007.u22", 0x00000, 0x20000, CRC(1ee9f6b1) SHA1(1a67e969b1f471ec7ada294b89185c15cde8c1ab) )
 	ROM_LOAD( "ab001006.u15", 0x20000, 0x20000, CRC(37baf753) SHA1(efa57d915a9e14393b62b161e1ac807b8fcb8501) )
 	ROM_LOAD( "ab001005.u9",  0x40000, 0x20000, CRC(b80a9ed6) SHA1(ac7a31ad82a60c4d2034770c59cf383b8a036e6a) )
 	ROM_LOAD( "ab001004.u7",  0x60000, 0x20000, CRC(584477b1) SHA1(296f96526044e9bd13673e5d817260e3f98f696c) )
 
-	ROM_REGION( 0x0400, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, "proms", 0 )
 	ROM_LOAD( "ab001008.u26", 0x0000, 0x0200, CRC(30ac8d48) SHA1(af034de3f3b8548534effdf4e3717fe3838b7754) )
 	ROM_LOAD( "ab001009.u27", 0x0200, 0x0200, CRC(3bbd4bcd) SHA1(8c87ccc42ece2432b8ad25f8679cdf886e12a43c) )
 
-	ROM_REGION( 0x100000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_REGION( 0x100000, "x1", 0 )	/* Samples */
 	ROM_LOAD( "ab003003.3-3", 0x00000, 0x40000, CRC(ad40ad10) SHA1(db0e5744ea3fcda87345b545031f82fcb3fec175) )
 	ROM_LOAD( "ab003002.3-2", 0x40000, 0x40000, CRC(7ede8f28) SHA1(b5519c09b4f0019dc76cadca725da1d581912540) )
 	ROM_LOAD( "ab002003.2-3", 0x80000, 0x40000, CRC(3051b8c3) SHA1(5f53596d7af1c79db1dde4bdca3878e07c67b5d1) )

@@ -105,8 +105,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_map_sound_cowrace, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x40) AM_READWRITE(YM2203_read_port_0_r,YM2203_write_port_0_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(YM2203_control_port_0_w)
+	AM_RANGE(0x40, 0x40) AM_READWRITE(ym2203_read_port_0_r,ym2203_write_port_0_w)
+	AM_RANGE(0x41, 0x41) AM_WRITE(ym2203_control_port_0_w)
 ADDRESS_MAP_END
 
 
@@ -141,21 +141,21 @@ static const gfx_layout layout8x8x4 =
 };
 
 static GFXDECODE_START( cowrace )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x000000, layout8x8x4, 0, 0x1 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x000000, layout8x8x2, 0, 0x1 )
+	GFXDECODE_ENTRY( "gfx1", 0x000000, layout8x8x4, 0, 0x1 )
+	GFXDECODE_ENTRY( "gfx2", 0x000000, layout8x8x2, 0, 0x1 )
 GFXDECODE_END
 
 static INPUT_PORTS_START( cowrace )
-	PORT_START	// IN0
+	PORT_START("IN0")
 INPUT_PORTS_END
 
-static const struct YM2203interface ym2203_interface_1 =
+static const ym2203_interface ym2203_interface_1 =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		soundlatch_r,	OKIM6295_status_0_r,	// read  A,B
-		NULL,			OKIM6295_data_0_w,		// write A,B
+		soundlatch_r,	okim6295_status_0_r,	// read  A,B
+		NULL,			okim6295_data_0_w,		// write A,B
 	},
 	NULL
 };
@@ -164,12 +164,12 @@ static const struct YM2203interface ym2203_interface_1 =
 static MACHINE_DRIVER_START( cowrace )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD("main", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(mem_map_cowrace,0)
 	MDRV_CPU_IO_MAP(io_map_cowrace,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD("audio", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(mem_map_sound_cowrace,0)
 	MDRV_CPU_IO_MAP(io_map_sound_cowrace,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	// NMI by main CPU
@@ -190,12 +190,12 @@ static MACHINE_DRIVER_START( cowrace )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.80)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.80)
 
-	MDRV_SOUND_ADD(YM2203, 3000000)
+	MDRV_SOUND_ADD("ym", YM2203, 3000000)
 	MDRV_SOUND_CONFIG(ym2203_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.80)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.80)
@@ -203,21 +203,21 @@ MACHINE_DRIVER_END
 
 
 ROM_START( cowrace )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "u3.bin", 0x0000, 0x8000, CRC(c05c3bd3) SHA1(b7199a069ab45edd25e021589b79105cdfa5511a) )
 
-	ROM_REGION( 0x2000, REGION_CPU2, 0 )
+	ROM_REGION( 0x2000, "audio", 0 )
 	ROM_LOAD( "u164.bin", 0x0000, 0x2000, CRC(9affa1c8) SHA1(bfc07693e8f749cbf20ab8cda33975b66f567962) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, 0 )
+	ROM_REGION( 0x10000, "gfx1", 0 )
 	ROM_LOAD( "u94.bin", 0x0000, 0x8000, CRC(945dc115) SHA1(bdd145234e6361c42ed20e8ca4cac64f07332748) )
 	ROM_LOAD( "u95.bin", 0x8000, 0x8000, CRC(fc1fc006) SHA1(326a67c1ea0f487ecc8b7aef2d90124a01e6dee3) )
 
-	ROM_REGION( 0x4000, REGION_GFX2, 0 )
+	ROM_REGION( 0x4000, "gfx2", 0 )
 	ROM_LOAD( "u139.bin", 0x0000, 0x2000, CRC(b746bb2f) SHA1(5f5f48752689079ed65fe7bb4a69512ada5db05d) )
 	ROM_LOAD( "u140.bin", 0x2000, 0x2000, CRC(7e24b674) SHA1(c774efeb8e4e833e73c29007d5294c93df1abef4) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x20000, "oki", 0 )
 	ROM_LOAD( "u4.bin", 0x00000, 0x20000, CRC(f92a3ab5) SHA1(fc164492793597eadb8a50154410936edb74fa23) )
 ROM_END
 

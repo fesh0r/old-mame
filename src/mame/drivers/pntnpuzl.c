@@ -147,11 +147,11 @@ static NVRAM_HANDLER( pntnpuzl )
 			eeprom_load(file);
 		else
 		{
-			int length;
+			UINT32 length, size;
 			UINT8 *dat;
 
-			dat = eeprom_get_data_pointer(&length);
-			memset(dat, 0, length);
+			dat = eeprom_get_data_pointer(&length, &size);
+			memset(dat, 0, length * size);
 		}
 	}
 }
@@ -420,7 +420,7 @@ static INTERRUPT_GEN( pntnpuzl_irq )
 }
 
 static INPUT_PORTS_START( pntnpuzl )
-	PORT_START_TAG("IN0")	/* fake inputs */
+	PORT_START("IN0")	/* fake inputs */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
 	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_HIGH ) PORT_IMPULSE(1)
@@ -428,17 +428,17 @@ static INPUT_PORTS_START( pntnpuzl )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 
 	/* game uses a touch screen */
-	PORT_START_TAG("TOUCHX")
+	PORT_START("TOUCHX")
 	PORT_BIT( 0x7f, 0x40, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,0x7f) PORT_SENSITIVITY(25) PORT_KEYDELTA(13)
 
-	PORT_START_TAG("TOUCHY")
+	PORT_START("TOUCHY")
 	PORT_BIT( 0x7f, 0x40, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(Y, -1.0, 0.0, 0) PORT_MINMAX(0,0x7f) PORT_SENSITIVITY(25) PORT_KEYDELTA(13)
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_S)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_A)
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_B)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_V)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_C)
@@ -452,7 +452,7 @@ INPUT_PORTS_END
 
 
 static MACHINE_DRIVER_START( pntnpuzl )
-	MDRV_CPU_ADD_TAG("main", M68000, 12000000)//??
+	MDRV_CPU_ADD("main", M68000, 12000000)//??
 	MDRV_CPU_PROGRAM_MAP(pntnpuzl_map,0)
 	MDRV_CPU_VBLANK_INT("main", pntnpuzl_irq)	// irq1 = coin irq2 = service irq4 = coin
 
@@ -473,7 +473,7 @@ static MACHINE_DRIVER_START( pntnpuzl )
 MACHINE_DRIVER_END
 
 ROM_START( pntnpuzl )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x80000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "pntnpuzl.u2", 0x00001, 0x40000, CRC(dfda3f73) SHA1(cca8ccdd501a26cba07365b1238d7b434559bbc6) )
 	ROM_LOAD16_BYTE( "pntnpuzl.u3", 0x00000, 0x40000, CRC(4173f250) SHA1(516fe6f91b925f71c36b97532608b82e63bda436) )
 ROM_END
@@ -481,7 +481,7 @@ ROM_END
 
 static DRIVER_INIT(pip)
 {
-//  UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
+//  UINT16 *rom = (UINT16 *)memory_region(machine, "main");
 //  rom[0x2696/2] = 0x4e71;
 //  rom[0x26a0/2] = 0x4e71;
 }

@@ -1,13 +1,10 @@
-#ifndef _C352_H_
-#define _C352_H_
+#pragma once
 
-struct C352interface
-{
-	int region;				/* memory region of sample ROMs */
-};
+#ifndef __C352_H__
+#define __C352_H__
 
 READ16_HANDLER( c352_0_r );
 WRITE16_HANDLER( c352_0_w );
 
-#endif
+#endif /* __C352_H__ */
 

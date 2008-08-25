@@ -56,9 +56,9 @@ extern WRITE8_HANDLER( gotya_soundlatch_w );
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x5000, 0x5fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x6000, 0x6000) AM_READ(input_port_0_r)
-	AM_RANGE(0x6001, 0x6001) AM_READ(input_port_1_r)
-	AM_RANGE(0x6002, 0x6002) AM_READ(input_port_2_r)
+	AM_RANGE(0x6000, 0x6000) AM_READ_PORT("P1")
+	AM_RANGE(0x6001, 0x6001) AM_READ_PORT("P2")
+	AM_RANGE(0x6002, 0x6002) AM_READ_PORT("DSW")
 	AM_RANGE(0xc000, 0xd3ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
@@ -77,7 +77,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( gotya )
-	PORT_START	/* IN0 */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
@@ -87,7 +87,7 @@ static INPUT_PORTS_START( gotya )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("P1 Scissors") PORT_PLAYER(1)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("P1 Rock") PORT_PLAYER(1)
 
-	PORT_START	/* IN1 */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
@@ -99,7 +99,7 @@ static INPUT_PORTS_START( gotya )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("P2 Scissors") PORT_PLAYER(2)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("P2 Rock") PORT_PLAYER(2)
 
-	PORT_START	/* DSW1 */
+	PORT_START("DSW")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
@@ -115,10 +115,9 @@ static INPUT_PORTS_START( gotya )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x40, "5" )
-	PORT_DIPNAME( 0x80, 0x80, "Game Type" )	/* Manual Says:  Before main switch on: Test Pattern */
+	PORT_DIPNAME( 0x80, 0x80, "Game Type" )			/* Manual Says:  Before main switch on: Test Pattern */
 	PORT_DIPSETTING(    0x80, DEF_STR( Normal ) )	/*                After main switch on: Endless game */
 	PORT_DIPSETTING(    0x00, "Endless" )
-
 INPUT_PORTS_END
 
 
@@ -147,8 +146,8 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( gotya )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,   0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 0, 16 )
 GFXDECODE_END
 
 
@@ -188,7 +187,7 @@ static const char *const sample_names[] =
 	0
 };
 
-static const struct Samplesinterface samples_interface =
+static const samples_interface gotya_samples_interface =
 {
 	4,	/* 4 channels */
 	sample_names
@@ -198,7 +197,7 @@ static const struct Samplesinterface samples_interface =
 static MACHINE_DRIVER_START( gotya )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,18432000/6)	/* 3.072 MHz ??? */
+	MDRV_CPU_ADD("main", Z80,18432000/6)	/* 3.072 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -220,8 +219,8 @@ static MACHINE_DRIVER_START( gotya )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(samples_interface)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
+	MDRV_SOUND_CONFIG(gotya_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -232,27 +231,27 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( thehand )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "hand6.bin",	0x0000, 0x1000, CRC(a33b806c) SHA1(1e552af5362e7b003f55e78bb59589e1db55557c) )
 	ROM_LOAD( "hand5.bin",	0x1000, 0x1000, CRC(89bcde82) SHA1(d074bb6a1975160eb533d5fd9289170a68209046) )
 	ROM_LOAD( "hand4.bin",	0x2000, 0x1000, CRC(c6844a83) SHA1(84e220dce3f5ddee9dd0377f3bebdd4027fc9108) )
 	ROM_LOAD( "gb-03.bin",	0x3000, 0x1000, CRC(f34d90ab) SHA1(bec5f6a34a273f308083a280f2b425d9c273c69b) )
 
-	ROM_REGION( 0x1000,  REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
+	ROM_REGION( 0x1000,  "gfx1", ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "hand12.bin",	0x0000, 0x1000, CRC(95773b46) SHA1(db8d7ace4eafd4c72edfeff6003ca6e96e0239b5) )
 
-	ROM_REGION( 0x1000,  REGION_GFX2, ROMREGION_DISPOSE )	/* sprites */
+	ROM_REGION( 0x1000,  "gfx2", ROMREGION_DISPOSE )	/* sprites */
 	ROM_LOAD( "gb-11.bin",	0x0000, 0x1000, CRC(5d5eca1b) SHA1(d7c6b5f4d398d5e33cc411ed593d6f53a9979493) )
 
-	ROM_REGION( 0x0120,  REGION_PROMS, 0 )
+	ROM_REGION( 0x0120,  "proms", 0 )
 	ROM_LOAD( "prom.1a",    0x0000, 0x0020, CRC(4864a5a0) SHA1(5b49f60b085fa026d4e8d4a5ad28ee7037a8ff9c) )    /* color PROM */
 	ROM_LOAD( "prom.4c",    0x0020, 0x0100, CRC(4745b5f6) SHA1(02a7f759e9bc8089cbd9213a71bbe671f9641638) )    /* lookup table */
 
-	ROM_REGION( 0x1000,  REGION_USER1, 0 )		/* no idea what these are */
+	ROM_REGION( 0x1000,  "user1", 0 )		/* no idea what these are */
 	ROM_LOAD( "hand1.bin",	0x0000, 0x0800, CRC(ccc537e0) SHA1(471fd49225aa14b91d085178e1b58b6c4ae76481) )
 	ROM_LOAD( "gb-02.bin",	0x0800, 0x0800, CRC(65a7e284) SHA1(91e9c34dcf20608863ad5475dc0c4309971c8eee) )
 
-	ROM_REGION( 0x4000,  REGION_USER2, 0 )		/* HD38880 code? */
+	ROM_REGION( 0x4000,  "user2", 0 )		/* HD38880 code? */
 	ROM_LOAD( "gb-10.bin",	0x0000, 0x1000, CRC(8101915f) SHA1(c4d21b1938ea7e0d47c48e74037f005280ac101b) )
 	ROM_LOAD( "gb-09.bin",	0x1000, 0x1000, CRC(619bba76) SHA1(2a2deffe6f058fc840329fbfffbc0c70a0147c14) )
 	ROM_LOAD( "gb-08.bin",	0x2000, 0x1000, CRC(82f59528) SHA1(6bfa2329eb291040bfc229c56420865253b0132a) )
@@ -260,27 +259,27 @@ ROM_START( thehand )
 ROM_END
 
 ROM_START( gotya )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "gb-06.bin",	0x0000, 0x1000, CRC(7793985a) SHA1(23aa8bd161e700bea59b92075423cdf55e9a26c3) )
 	ROM_LOAD( "gb-05.bin",	0x1000, 0x1000, CRC(683d188b) SHA1(5341c62f5cf384c73be0d7a0a230bb8cebfbe709) )
 	ROM_LOAD( "gb-04.bin",	0x2000, 0x1000, CRC(15b72f09) SHA1(bd941722ed1310d5c8ca8a44899368cba3815f3b) )
 	ROM_LOAD( "gb-03.bin",	0x3000, 0x1000, CRC(f34d90ab) SHA1(bec5f6a34a273f308083a280f2b425d9c273c69b) )    /* this is the only ROM that passes the ROM test */
 
-	ROM_REGION( 0x1000,  REGION_GFX1, ROMREGION_DISPOSE )	/* characters */
+	ROM_REGION( 0x1000,  "gfx1", ROMREGION_DISPOSE )	/* characters */
 	ROM_LOAD( "gb-12.bin",	0x0000, 0x1000, CRC(4993d735) SHA1(9e47876238a8af3659721191a5f75c33507ed1a5) )
 
-	ROM_REGION( 0x1000,  REGION_GFX2, ROMREGION_DISPOSE )	/* sprites */
+	ROM_REGION( 0x1000,  "gfx2", ROMREGION_DISPOSE )	/* sprites */
 	ROM_LOAD( "gb-11.bin",	0x0000, 0x1000, CRC(5d5eca1b) SHA1(d7c6b5f4d398d5e33cc411ed593d6f53a9979493) )
 
-	ROM_REGION( 0x0120,  REGION_PROMS, 0 )
+	ROM_REGION( 0x0120,  "proms", 0 )
 	ROM_LOAD( "prom.1a",    0x0000, 0x0020, CRC(4864a5a0) SHA1(5b49f60b085fa026d4e8d4a5ad28ee7037a8ff9c) )    /* color PROM */
 	ROM_LOAD( "prom.4c",    0x0020, 0x0100, CRC(4745b5f6) SHA1(02a7f759e9bc8089cbd9213a71bbe671f9641638) )    /* lookup table */
 
-	ROM_REGION( 0x1000,  REGION_USER1, 0 )		/* no idea what these are */
+	ROM_REGION( 0x1000,  "user1", 0 )		/* no idea what these are */
 	ROM_LOAD( "gb-01.bin",	0x0000, 0x0800, CRC(c31dba64) SHA1(15ae54b7d475ca3f0a3acc45cd8da2916c5fdef2) )
 	ROM_LOAD( "gb-02.bin",	0x0800, 0x0800, CRC(65a7e284) SHA1(91e9c34dcf20608863ad5475dc0c4309971c8eee) )
 
-	ROM_REGION( 0x4000,  REGION_USER2, 0 )		/* HD38880 code? */
+	ROM_REGION( 0x4000,  "user2", 0 )		/* HD38880 code? */
 	ROM_LOAD( "gb-10.bin",	0x0000, 0x1000, CRC(8101915f) SHA1(c4d21b1938ea7e0d47c48e74037f005280ac101b) )
 	ROM_LOAD( "gb-09.bin",	0x1000, 0x1000, CRC(619bba76) SHA1(2a2deffe6f058fc840329fbfffbc0c70a0147c14) )
 	ROM_LOAD( "gb-08.bin",	0x2000, 0x1000, CRC(82f59528) SHA1(6bfa2329eb291040bfc229c56420865253b0132a) )

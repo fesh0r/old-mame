@@ -10,6 +10,94 @@
 
 ********************************************************************************
 
+WWF Superstars
+Technos 1989
+
+PCB Layout
+----------
+
+TA-0024-P1-05
+|--------------------------------------------------------------------|
+|M51516   558     558   YM3012        M6295       YM2151  3.579545MHz|
+|                                1.056MHz                            |
+|         558     558                               6116             |
+|                              24A9-0.45                            |-|
+|                                                   Z80             | |
+|                              24J8-0.44                            | |
+|                                                   B.12            | |
+|                                                                   | |
+|               24AA-0.58                                           | |
+|                                                   6116            | |
+|                                                                   | |
+|J                                                                  | |
+|A                                                                  |-|
+|M                                                                   |
+|M                                                                   |
+|A    DSW1                                       6116 6116           |
+|     DSW2                                                           |
+|                                                                   |-|
+|                                                                   | |
+|                                                                   | |
+|                                                                   | |
+|                                                                   | |
+|                                                                   | |
+|                                                                   | |
+|                                                                   | |
+|                                                                   | |
+|                 68000        24AD-04.35    6264                   |-|
+|                                                                    |
+|                              24AC-04.34    6264                    |
+|20MHz                                                               |
+|--------------------------------------------------------------------|
+Notes:
+      Z80    - 3.579545MHz
+      68000  - 10.000MHz [20/2]
+      M6295  - 1.056MHz (resonator)
+      YM2151 - 3.579545MHz
+      VSync  - 57.4447Hz
+
+
+Bottom Board
+
+TA-0024-P2-23
+|--------------------------------------------------------------------|
+|                                     2018                           |
+| IC119                                                              |
+|                                                                    |
+|                                                                   |-|
+| IC118                                                             | |
+|                                     2018                          | |
+|                                                                   | |
+| IC117                                                             | |
+|                                                                   | |
+|                                                                   | |
+| IC116                                         2018                | |
+|                                                                   | |
+|                                                                   |-|
+| IC115              2018             2018                           |
+|                                                                    |
+|                                     2018                           |
+| IC114                                                              |
+|                                                                   |-|
+|                                                                   | |
+|                                                                   | |
+|                                                                   | |
+|                                                                   | |
+|                                                                   | |
+| IC113                                                             | |
+|                                                                   | |
+|                                                                   | |
+|                                       |-------|                   |-|
+| IC112                                 |TECHNOS|  24MHz             |
+|                                       |TJ-001 |                    |
+|                                       |-------|                    |
+|--------------------------------------------------------------------|
+Notes:
+      IC11x  - TC534000 MaskROMs
+      TJ-001 - Probably a microcontroller badged as a Technos Custom IC (QFP80).
+               Clocks: pin 1 - 24MHz, pin 3 - 24/2, pin 4 - 24/4, pin 5 - 24/8,
+               pin 6 - 24/16, pin 7 - 24/32, pin 8 - 24/64, pin 64,65 - 1.5MHz
+
  Hardware:
 
  Primary CPU : 68000
@@ -85,23 +173,23 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x1003ff) AM_RAM AM_BASE(&spriteram16)		/* SPR Ram */
 	AM_RANGE(0x140000, 0x140fff) AM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x180000, 0x180003) AM_WRITE(wwfsstar_irqack_w)
-	AM_RANGE(0x180000, 0x180001) AM_READ(input_port_3_word_r)		/* DSW0 */
-	AM_RANGE(0x180002, 0x180003) AM_READ(input_port_4_word_r)		/* DSW1 */
-	AM_RANGE(0x180004, 0x180005) AM_READ(input_port_0_word_r)		/* CTRLS0 */
+	AM_RANGE(0x180000, 0x180001) AM_READ_PORT("DSW0")				/* DSW0 */
+	AM_RANGE(0x180002, 0x180003) AM_READ_PORT("DSW1")				/* DSW1 */
+	AM_RANGE(0x180004, 0x180005) AM_READ_PORT("P1")					/* CTRLS0 */
 	AM_RANGE(0x180004, 0x180007) AM_WRITE(wwfsstar_scrollwrite)
-	AM_RANGE(0x180006, 0x180007) AM_READ(input_port_1_word_r)		/* CTRLS1 */
+	AM_RANGE(0x180006, 0x180007) AM_READ_PORT("P2")					/* CTRLS1 */
 	AM_RANGE(0x180008, 0x180009) AM_READ(input_port_2_word_r_cust)	/* MISC */
 	AM_RANGE(0x180008, 0x180009) AM_WRITE(wwfsstar_soundwrite)
 	AM_RANGE(0x18000a, 0x18000b) AM_WRITE(wwfsstar_flipscreen_w)
-	AM_RANGE(0x1c0000, 0x1c3fff) AM_RAM		/* Work Ram */
+	AM_RANGE(0x1c0000, 0x1c3fff) AM_RAM								/* Work Ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
-	AM_RANGE(0x8800, 0x8800) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x8801, 0x8801) AM_READWRITE(YM2151_status_port_0_r,YM2151_data_port_0_w)
-	AM_RANGE(0x9800, 0x9800) AM_READWRITE(OKIM6295_status_0_r,OKIM6295_data_0_w)
+	AM_RANGE(0x8800, 0x8800) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x8801, 0x8801) AM_READWRITE(ym2151_status_port_0_r,ym2151_data_port_0_w)
+	AM_RANGE(0x9800, 0x9800) AM_READWRITE(okim6295_status_0_r,okim6295_data_0_w)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
@@ -191,7 +279,7 @@ static INTERRUPT_GEN( wwfsstars_interrupt )
 
 static READ16_HANDLER( input_port_2_word_r_cust )
 {
-	return input_port_read_indexed(machine, 2) | vblank;
+	return input_port_read(machine, "SYSTEM") | vblank;
 }
 
 /*******************************************************************************
@@ -203,7 +291,7 @@ static READ16_HANDLER( input_port_2_word_r_cust )
 *******************************************************************************/
 
 static INPUT_PORTS_START( wwfsstar )
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -211,19 +299,19 @@ static INPUT_PORTS_START( wwfsstar )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_START1 ) PORT_NAME("Button A (1P VS CPU - Power Up)")
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_START1 ) PORT_NAME("Button A (1P VS CPU - Power Up)")
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_START3 ) PORT_NAME("Button C (1P/2P VS CPU)")
-	PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_START2 ) PORT_NAME("Button B (1P VS 2P - Buy-in)")
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_START3 ) PORT_NAME("Button C (1P/2P VS CPU)")
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_START2 ) PORT_NAME("Button B (1P VS 2P - Buy-in)")
 
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_SPECIAL ) /* VBlank */
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -233,7 +321,7 @@ static INPUT_PORTS_START( wwfsstar )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* DSW0 */
+	PORT_START("DSW0")	/* DSW0 */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00,  DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x01,  DEF_STR( 3C_1C ) )
@@ -259,7 +347,7 @@ static INPUT_PORTS_START( wwfsstar )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* DSW1 */
+	PORT_START("DSW1")	/* DSW1 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
@@ -316,9 +404,9 @@ static const gfx_layout tiles16x16_layout =
 };
 
 static GFXDECODE_START( wwfsstar )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout,     0, 16 )	/* colors   0-255 */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles16x16_layout, 128, 16 )	/* colors   128-383 */
-	GFXDECODE_ENTRY( REGION_GFX3, 0, tiles16x16_layout, 256,  8 )	/* colors   256-383 */
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout,     0, 16 )	/* colors   0-255 */
+	GFXDECODE_ENTRY( "gfx2", 0, tiles16x16_layout, 128, 16 )	/* colors   128-383 */
+	GFXDECODE_ENTRY( "gfx3", 0, tiles16x16_layout, 256,  8 )	/* colors   256-383 */
 GFXDECODE_END
 
 
@@ -333,7 +421,7 @@ static void wwfsstar_ymirq_handler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	wwfsstar_ymirq_handler
 };
@@ -345,11 +433,11 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( wwfsstar )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 10000000)
+	MDRV_CPU_ADD("main", M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(wwfsstars_interrupt,272)
 
-	MDRV_CPU_ADD(Z80, 3579545)
+	MDRV_CPU_ADD("audio", Z80, 3579545)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	/* video hardware */
@@ -369,13 +457,13 @@ static MACHINE_DRIVER_START( wwfsstar )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3579545)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 3579545)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.45)
 	MDRV_SOUND_ROUTE(1, "right", 0.45)
 
-	MDRV_SOUND_ADD(OKIM6295, 1122000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1122000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.47)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.47)
 MACHINE_DRIVER_END
@@ -385,25 +473,25 @@ MACHINE_DRIVER_END
 *******************************************************************************/
 
 ROM_START( wwfsstar )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* Main CPU  (68000) */
+	ROM_REGION( 0x40000, "main", 0 ) /* Main CPU  (68000) */
 	ROM_LOAD16_BYTE( "24ac-0_j-1.34", 0x00000, 0x20000, CRC(ec8fd2c9) SHA1(04ab93e2a1becdc480750c3b55839328b2af4639) )
 	ROM_LOAD16_BYTE( "24ad-0_j-1.35", 0x00001, 0x20000, CRC(54e614e4) SHA1(ee924dea977606fcb1222d1aa89211994126a182)  )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Sound CPU (Z80)  */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Sound CPU (Z80)  */
 	ROM_LOAD( "b.12",    0x00000, 0x08000, CRC(1e44f8aa) SHA1(e03857d6954e9b9b6073b211e2d6570032af8807) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* ADPCM samples */
 	ROM_LOAD( "24a9.46",	   0x00000, 0x20000, CRC(703ff08f) SHA1(08c4d33208eb4c76c751a1a0fe16a817bdc30820) )
 	ROM_LOAD( "wwfs03.bin",    0x20000, 0x10000, CRC(8a35a20e) SHA1(3bc1a43f956b6840a4bee9e8fb2a6e3d4ac18f75) )
 	ROM_LOAD( "wwfs05.bin",    0x30000, 0x10000, CRC(6df08962) SHA1(e3dec81644fe5867024a2fcf34a67924622f3a5b) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE ) /* FG0 Tiles (8x8) */
+	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE ) /* FG0 Tiles (8x8) */
 	/* this rom may not be correct for this set.. the rom in the set had half the data missing and only a 99%
        match with wwfsstau for the first part */
 	ROM_LOAD( "24a4-0.58",    0x00000, 0x20000, BAD_DUMP CRC(cb12ba40) SHA1(2d39f778d9daf0d3606b63975bd6cfc45847a265) )
 
 	/* these are bootleg roms ...  the original has mask roms */
-	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE ) /* SPR Tiles (16x16) */
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE ) /* SPR Tiles (16x16) */
 	ROM_LOAD( "wwfs39.bin",    0x000000, 0x010000, CRC(d807b09a) SHA1(e5a221ac57e16cb3fb47d986e62f265ebbc5b0e6) )
 	ROM_LOAD( "wwfs38.bin",    0x010000, 0x010000, CRC(d8ea94d3) SHA1(3a9e200dbcd456364317858e4b5fa6a149cb3c61) )
 	ROM_LOAD( "wwfs37.bin",    0x020000, 0x010000, CRC(5e8d7407) SHA1(829cc0c2013138097aa49c9072b87452bf8c8936) )
@@ -437,7 +525,7 @@ ROM_START( wwfsstar )
 	ROM_LOAD( "wwfs29.bin",    0x1e0000, 0x010000, CRC(7b5b9d83) SHA1(e7381e48a3a63f28fc9a997bfda3e612f4fcccf9) )
 	ROM_LOAD( "wwfs28.bin",    0x1f0000, 0x010000, CRC(70fda626) SHA1(049ef67f57953266ef2c750f58c0ee9baf963b39) )
 
-	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE ) /* BG0 Tiles (16x16) */
+	ROM_REGION( 0x80000, "gfx3", ROMREGION_DISPOSE ) /* BG0 Tiles (16x16) */
 	ROM_LOAD( "wwfs51.bin",    0x00000, 0x10000, CRC(51157385) SHA1(fa9f74ace9432d8686402e410cbc03a8c3b86f4d) )
 	ROM_LOAD( "wwfs50.bin",    0x10000, 0x10000, CRC(7fc79df5) SHA1(c57e8bb55a1d176b9232395207c5a28c622de9a4) )
 	ROM_LOAD( "wwfs49.bin",    0x20000, 0x10000, CRC(a14076b0) SHA1(6817f56d2c6e2d596ebc7827d816ad331b425eeb) )
@@ -449,23 +537,23 @@ ROM_START( wwfsstar )
 ROM_END
 
 ROM_START( wwfsstau )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* Main CPU  (68000) */
+	ROM_REGION( 0x40000, "main", 0 ) /* Main CPU  (68000) */
 	ROM_LOAD16_BYTE( "24ac-04.34", 0x00000, 0x20000, CRC(ee9b850e) SHA1(6b634ad98b6104b9e860d05e73f3a139c2a19a78) )
 	ROM_LOAD16_BYTE( "24ad-04.35", 0x00001, 0x20000, CRC(057c2eef) SHA1(6eb5f60fa51b3e7f17fc6a81182a01ea406febea) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Sound CPU (Z80)  */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Sound CPU (Z80)  */
 	ROM_LOAD( "b.12",    0x00000, 0x08000, CRC(1e44f8aa) SHA1(e03857d6954e9b9b6073b211e2d6570032af8807) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* ADPCM samples */
 	ROM_LOAD( "24a9.46",	   0x00000, 0x20000, CRC(703ff08f) SHA1(08c4d33208eb4c76c751a1a0fe16a817bdc30820) )
 	ROM_LOAD( "wwfs03.bin",    0x20000, 0x10000, CRC(8a35a20e) SHA1(3bc1a43f956b6840a4bee9e8fb2a6e3d4ac18f75) )
 	ROM_LOAD( "wwfs05.bin",    0x30000, 0x10000, CRC(6df08962) SHA1(e3dec81644fe5867024a2fcf34a67924622f3a5b) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE ) /* FG0 Tiles (8x8) */
+	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE ) /* FG0 Tiles (8x8) */
 	ROM_LOAD( "24a4-0.58",    0x00000, 0x20000, CRC(cb12ba40) SHA1(2d39f778d9daf0d3606b63975bd6cfc45847a265) )
 
 	/* these are bootleg roms ...  the original has mask roms */
-	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE ) /* SPR Tiles (16x16) */
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE ) /* SPR Tiles (16x16) */
 	ROM_LOAD( "wwfs39.bin",    0x000000, 0x010000, CRC(d807b09a) SHA1(e5a221ac57e16cb3fb47d986e62f265ebbc5b0e6) )
 	ROM_LOAD( "wwfs38.bin",    0x010000, 0x010000, CRC(d8ea94d3) SHA1(3a9e200dbcd456364317858e4b5fa6a149cb3c61) )
 	ROM_LOAD( "wwfs37.bin",    0x020000, 0x010000, CRC(5e8d7407) SHA1(829cc0c2013138097aa49c9072b87452bf8c8936) )
@@ -499,7 +587,7 @@ ROM_START( wwfsstau )
 	ROM_LOAD( "wwfs29.bin",    0x1e0000, 0x010000, CRC(7b5b9d83) SHA1(e7381e48a3a63f28fc9a997bfda3e612f4fcccf9) )
 	ROM_LOAD( "wwfs28.bin",    0x1f0000, 0x010000, CRC(70fda626) SHA1(049ef67f57953266ef2c750f58c0ee9baf963b39) )
 
-	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE ) /* BG0 Tiles (16x16) */
+	ROM_REGION( 0x80000, "gfx3", ROMREGION_DISPOSE ) /* BG0 Tiles (16x16) */
 	ROM_LOAD( "wwfs51.bin",    0x00000, 0x10000, CRC(51157385) SHA1(fa9f74ace9432d8686402e410cbc03a8c3b86f4d) )
 	ROM_LOAD( "wwfs50.bin",    0x10000, 0x10000, CRC(7fc79df5) SHA1(c57e8bb55a1d176b9232395207c5a28c622de9a4) )
 	ROM_LOAD( "wwfs49.bin",    0x20000, 0x10000, CRC(a14076b0) SHA1(6817f56d2c6e2d596ebc7827d816ad331b425eeb) )
@@ -512,21 +600,21 @@ ROM_END
 
 /* this set is using the proper mask rom dumps */
 ROM_START( wwfsstaa )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* Main CPU  (68000) */
+	ROM_REGION( 0x40000, "main", 0 ) /* Main CPU  (68000) */
 	ROM_LOAD16_BYTE( "24ac-06.34", 0x00000, 0x20000, CRC(924a50e4) SHA1(e163ffc6bada5db0d979523dde77355acedcd456) )
 	ROM_LOAD16_BYTE( "24ad-07.35", 0x00001, 0x20000, CRC(9a76a50e) SHA1(adde96956a7602ae1ece797732e8295dc176b071) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Sound CPU (Z80)  */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Sound CPU (Z80)  */
 	ROM_LOAD( "24ab-0.12", 0x00000, 0x08000, CRC(1e44f8aa) SHA1(e03857d6954e9b9b6073b211e2d6570032af8807) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* ADPCM samples */
 	ROM_LOAD( "24a9-0.46", 0x00000, 0x20000, CRC(703ff08f) SHA1(08c4d33208eb4c76c751a1a0fe16a817bdc30820) )
 	ROM_LOAD( "24j8-0.45", 0x20000, 0x20000, CRC(61138487) SHA1(6d5e3b12acdefb6923aa8ae0704f6c328f4747b3) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE ) /* FG0 Tiles (8x8) */
+	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE ) /* FG0 Tiles (8x8) */
 	ROM_LOAD( "24aa-0.58", 0x00000, 0x20000, CRC(cb12ba40) SHA1(2d39f778d9daf0d3606b63975bd6cfc45847a265) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE ) /* SPR Tiles (16x16) */
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE ) /* SPR Tiles (16x16) */
 	ROM_LOAD( "c951.114",   0x000000, 0x80000, CRC(fa76d1f0) SHA1(f69f8e6d1c5f27b054133e0faa49a8e1a9c391b2) )
 	ROM_LOAD( "24j4-0.115", 0x080000, 0x40000, CRC(c4a589a3) SHA1(5511e77c8b381419d7c63971023783c26ef6d94b) )
 	ROM_LOAD( "24j5-0.116", 0x0c0000, 0x40000, CRC(d6bca436) SHA1(25857a840b93f7f106a3a5c7dde8e0a732f45013) )
@@ -534,31 +622,31 @@ ROM_START( wwfsstaa )
 	ROM_LOAD( "24j2-0.118", 0x180000, 0x40000, CRC(dc1b7600) SHA1(bd80d7d4063f2b739ac9420132859c23473d9968) )
 	ROM_LOAD( "24j3-0.119", 0x1c0000, 0x40000, CRC(3ba12d43) SHA1(f60d5ff54fdef5a31fe1ee7041dda325ef6649c8) )
 
-	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE ) /* BG0 Tiles (16x16) */
+	ROM_REGION( 0x80000, "gfx3", ROMREGION_DISPOSE ) /* BG0 Tiles (16x16) */
 	ROM_LOAD( "24j7-0.113", 0x00000, 0x40000, CRC(e0a1909e) SHA1(6ec0db2e0297256d1c6d003a0e5b29236048bd88) )
 	ROM_LOAD( "24j6-0.112", 0x40000, 0x40000, CRC(77932ef8) SHA1(a6ee3fc05ca0001d5181b69f2b754170ba7a814a) )
 ROM_END
 
 ROM_START( wwfsstaj )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* Main CPU  (68000) */
+	ROM_REGION( 0x40000, "main", 0 ) /* Main CPU  (68000) */
 	ROM_LOAD16_BYTE( "24ac-0_j-1_japan.34", 0x00000, 0x20000, CRC(f872e968) SHA1(e52298817348601ed88c369018d3110e467cf602) )
 	ROM_LOAD16_BYTE( "24ad-0_j-1_japan.35", 0x00001, 0x20000, NO_DUMP )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Sound CPU (Z80)  */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Sound CPU (Z80)  */
 	ROM_LOAD( "b.12",    0x00000, 0x08000, CRC(1e44f8aa) SHA1(e03857d6954e9b9b6073b211e2d6570032af8807) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* ADPCM samples */
 	ROM_LOAD( "24a9.46",	   0x00000, 0x20000, CRC(703ff08f) SHA1(08c4d33208eb4c76c751a1a0fe16a817bdc30820) )
 	ROM_LOAD( "wwfs03.bin",    0x20000, 0x10000, CRC(8a35a20e) SHA1(3bc1a43f956b6840a4bee9e8fb2a6e3d4ac18f75) )
 	ROM_LOAD( "wwfs05.bin",    0x30000, 0x10000, CRC(6df08962) SHA1(e3dec81644fe5867024a2fcf34a67924622f3a5b) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE ) /* FG0 Tiles (8x8) */
+	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE ) /* FG0 Tiles (8x8) */
 	/* this rom may not be correct for this set.. the rom in the set had half the data missing and only a 99%
        match with wwfsstau for the first part */
 	ROM_LOAD( "24a4-0.58",    0x00000, 0x20000, BAD_DUMP CRC(cb12ba40) SHA1(2d39f778d9daf0d3606b63975bd6cfc45847a265) )
 
 	/* these are bootleg roms ...  the original has mask roms */
-	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE ) /* SPR Tiles (16x16) */
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE ) /* SPR Tiles (16x16) */
 	ROM_LOAD( "wwfs39.bin",    0x000000, 0x010000, CRC(d807b09a) SHA1(e5a221ac57e16cb3fb47d986e62f265ebbc5b0e6) )
 	ROM_LOAD( "wwfs38.bin",    0x010000, 0x010000, CRC(d8ea94d3) SHA1(3a9e200dbcd456364317858e4b5fa6a149cb3c61) )
 	ROM_LOAD( "wwfs37.bin",    0x020000, 0x010000, CRC(5e8d7407) SHA1(829cc0c2013138097aa49c9072b87452bf8c8936) )
@@ -592,7 +680,7 @@ ROM_START( wwfsstaj )
 	ROM_LOAD( "wwfs29.bin",    0x1e0000, 0x010000, CRC(7b5b9d83) SHA1(e7381e48a3a63f28fc9a997bfda3e612f4fcccf9) )
 	ROM_LOAD( "wwfs28.bin",    0x1f0000, 0x010000, CRC(70fda626) SHA1(049ef67f57953266ef2c750f58c0ee9baf963b39) )
 
-	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE ) /* BG0 Tiles (16x16) */
+	ROM_REGION( 0x80000, "gfx3", ROMREGION_DISPOSE ) /* BG0 Tiles (16x16) */
 	ROM_LOAD( "wwfs51.bin",    0x00000, 0x10000, CRC(51157385) SHA1(fa9f74ace9432d8686402e410cbc03a8c3b86f4d) )
 	ROM_LOAD( "wwfs50.bin",    0x10000, 0x10000, CRC(7fc79df5) SHA1(c57e8bb55a1d176b9232395207c5a28c622de9a4) )
 	ROM_LOAD( "wwfs49.bin",    0x20000, 0x10000, CRC(a14076b0) SHA1(6817f56d2c6e2d596ebc7827d816ad331b425eeb) )

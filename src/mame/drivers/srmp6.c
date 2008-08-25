@@ -317,14 +317,14 @@ static WRITE16_HANDLER( srmp6_input_select_w )
 static READ16_HANDLER( srmp6_inputs_r )
 {
 	if (offset == 0)			// DSW
-		return input_port_read_indexed(machine, 4);
+		return input_port_read(machine, "DSW");
 
 	switch(srmp6_input_select)	// inputs
 	{
-		case 1<<0: return input_port_read_indexed(machine, 0);
-		case 1<<1: return input_port_read_indexed(machine, 1);
-		case 1<<2: return input_port_read_indexed(machine, 2);
-		case 1<<3: return input_port_read_indexed(machine, 3);
+		case 1<<0: return input_port_read(machine, "KEY0");
+		case 1<<1: return input_port_read(machine, "KEY1");
+		case 1<<2: return input_port_read(machine, "KEY2");
+		case 1<<3: return input_port_read(machine, "KEY3");
 	}
 
 	return 0;
@@ -341,7 +341,7 @@ static WRITE16_HANDLER( video_regs_w )
 		case 0x5e/2: // bank switch, used by ROM check
 			LOG(("%x\n",data));
 
-			memory_set_bankptr(1,(UINT16 *)(memory_region(machine, REGION_USER2) + (data & 0x0f)*0x200000));
+			memory_set_bankptr(1,(UINT16 *)(memory_region(machine, "nile") + (data & 0x0f)*0x200000));
 			break;
 
 		// set by IT4
@@ -424,7 +424,7 @@ static WRITE16_HANDLER(srmp6_dma_w)
 	COMBINE_DATA(&dmaram[offset]);
 	if(offset==13 && dmaram[offset]==0x40)
 	{
-		const UINT8 *rom = memory_region(machine, REGION_USER2);
+		const UINT8 *rom = memory_region(machine, "nile");
 		UINT32 srctab=2*((((UINT32)dmaram[5])<<16)|dmaram[4]);
 		UINT32 srcdata=2*((((UINT32)dmaram[11])<<16)|dmaram[10]);
 		UINT32 len=4*(((((UINT32)dmaram[7]&3)<<16)|dmaram[6])+1); //??? WRONG!
@@ -547,7 +547,7 @@ static ADDRESS_MAP_START( srmp6, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 	AM_RANGE(0x200000, 0x23ffff) AM_RAM					// work RAM
 	AM_RANGE(0x600000, 0x7fffff) AM_READ(SMH_BANK1)	// banked ROM (used by ROM check)
-	AM_RANGE(0x800000, 0x9fffff) AM_ROM AM_REGION(REGION_USER1, 0)
+	AM_RANGE(0x800000, 0x9fffff) AM_ROM AM_REGION("nile", 0)
 
 	AM_RANGE(0x300000, 0x300005) AM_READWRITE(srmp6_inputs_r, srmp6_input_select_w)		// inputs
 	AM_RANGE(0x480000, 0x480fff) AM_RAM_WRITE(paletteram_w) AM_BASE(&paletteram16)
@@ -578,44 +578,44 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( srmp6 )
 
-	PORT_START
-	PORT_BIT ( 0xfe01, IP_ACTIVE_LOW, IPT_UNUSED ) // explicitely discarded
-	PORT_BIT ( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_A )
-	PORT_BIT ( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_E )
-	PORT_BIT ( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_I )
-	PORT_BIT ( 0x0010, IP_ACTIVE_LOW, IPT_MAHJONG_M )
-	PORT_BIT ( 0x0020, IP_ACTIVE_LOW, IPT_MAHJONG_KAN )
-	PORT_BIT ( 0x0040, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT ( 0x0080, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
+	PORT_START("KEY0")
+	PORT_BIT( 0xfe01, IP_ACTIVE_LOW, IPT_UNUSED ) // explicitely discarded
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_A )
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_E )
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_I )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_MAHJONG_M )
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_MAHJONG_KAN )
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_SERVICE_NO_TOGGLE( 0x0100, IP_ACTIVE_LOW )
 
-	PORT_START
-	PORT_BIT ( 0xfe41, IP_ACTIVE_LOW, IPT_UNUSED ) // explicitely discarded
-	PORT_BIT ( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_B )
-	PORT_BIT ( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_F )
-	PORT_BIT ( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_J )
-	PORT_BIT ( 0x0010, IP_ACTIVE_LOW, IPT_MAHJONG_N )
-	PORT_BIT ( 0x0020, IP_ACTIVE_LOW, IPT_MAHJONG_REACH )
-	PORT_BIT ( 0x0180, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_START("KEY1")
+	PORT_BIT( 0xfe41, IP_ACTIVE_LOW, IPT_UNUSED ) // explicitely discarded
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_B )
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_F )
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_J )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_MAHJONG_N )
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_MAHJONG_REACH )
+	PORT_BIT( 0x0180, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
-	PORT_BIT ( 0xfe41, IP_ACTIVE_LOW, IPT_UNUSED ) // explicitely discarded
-	PORT_BIT ( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_C )
-	PORT_BIT ( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_G )
-	PORT_BIT ( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_K )
-	PORT_BIT ( 0x0010, IP_ACTIVE_LOW, IPT_MAHJONG_CHI )
-	PORT_BIT ( 0x0020, IP_ACTIVE_LOW, IPT_MAHJONG_RON )
-	PORT_BIT ( 0x0180, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_START("KEY2")
+	PORT_BIT( 0xfe41, IP_ACTIVE_LOW, IPT_UNUSED ) // explicitely discarded
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_C )
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_G )
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_K )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_MAHJONG_CHI )
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_MAHJONG_RON )
+	PORT_BIT( 0x0180, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
-	PORT_BIT ( 0xfe61, IP_ACTIVE_LOW, IPT_UNUSED ) // explicitely discarded
-	PORT_BIT ( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_D )
-	PORT_BIT ( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_H )
-	PORT_BIT ( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_L )
-	PORT_BIT ( 0x0010, IP_ACTIVE_LOW, IPT_MAHJONG_PON )
-	PORT_BIT ( 0x0180, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_START("KEY3")
+	PORT_BIT( 0xfe61, IP_ACTIVE_LOW, IPT_UNUSED ) // explicitely discarded
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_D )
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_H )
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_L )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_MAHJONG_PON )
+	PORT_BIT( 0x0180, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* 16-bit DSW1+DSW2 */
+	PORT_START("DSW")	/* 16-bit DSW1+DSW2 */
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coinage ) )		// DSW1
 	PORT_DIPSETTING(      0x0000, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 4C_1C ) )
@@ -676,13 +676,8 @@ static INTERRUPT_GEN(srmp6_interrupt)
 		cpunum_set_input_line(machine, 0,4,HOLD_LINE);
 }
 
-static const struct NiLe_interface nile_interface =
-{
-	REGION_USER2
-};
-
 static MACHINE_DRIVER_START( srmp6 )
-	MDRV_CPU_ADD(M68000, 16000000)
+	MDRV_CPU_ADD("main", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(srmp6,0)
 	MDRV_CPU_VBLANK_INT_HACK(srmp6_interrupt,2)
 
@@ -702,8 +697,7 @@ static MACHINE_DRIVER_START( srmp6 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(NILE, 0)
-	MDRV_SOUND_CONFIG(nile_interface)
+	MDRV_SOUND_ADD("nile", NILE, 0)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
@@ -714,15 +708,15 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( srmp6 )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "sx011-10.4", 0x000001, 0x080000, CRC(8f4318a5) SHA1(44160968cca027b3d42805f2dd42662d11257ef6) )
 	ROM_LOAD16_BYTE( "sx011-11.5", 0x000000, 0x080000, CRC(7503d9cf) SHA1(03ab35f13b6166cb362aceeda18e6eda8d3abf50) )
 
-	ROM_REGION( 0x200000, REGION_USER1, 0 ) /* 68000 Data */
+	ROM_REGION( 0x200000, "user1", 0 ) /* 68000 Data */
 	ROM_LOAD( "sx011-09.10", 0x000000, 0x200000, CRC(58f74438) SHA1(a256e39ca0406e513ab4dbd812fb0b559b4f61f2) )
 
  	/* these are accessed directly by the 68k, DMA device etc.  NOT decoded */
-	ROM_REGION( 0x2000000, REGION_USER2, 0)	/* Banked ROM */
+	ROM_REGION( 0x2000000, "nile", 0)	/* Banked ROM */
 	ROM_LOAD16_WORD_SWAP( "sx011-08.15", 0x0000000, 0x0400000, CRC(01b3b1f0) SHA1(bbd60509c9ba78358edbcbb5953eafafd6e2eaf5) ) // CHR00
 	ROM_LOAD16_WORD_SWAP( "sx011-07.16", 0x0400000, 0x0400000, CRC(26e57dac) SHA1(91272268977c5fbff7e8fbe1147bf108bd2ed321) ) // CHR01
 	ROM_LOAD16_WORD_SWAP( "sx011-06.17", 0x0800000, 0x0400000, CRC(220ee32c) SHA1(77f39b54891c2381b967534b0f6d380962eadcae) ) // CHR02
@@ -741,4 +735,3 @@ ROM_END
 
 /*GAME( YEAR,NAME,PARENT,MACHINE,INPUT,INIT,MONITOR,COMPANY,FULLNAME,FLAGS)*/
 GAME( 1995, srmp6, 0, srmp6, srmp6, 0, ROT0, "Seta", "Super Real Mahjong P6 (Japan)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND)
-

@@ -388,7 +388,7 @@ static READ8_HANDLER( dsw_port_1_r )
     BIT 7 = Complement of DS1, bit 7
 ------------------------------------*/
 {
-return input_port_read_indexed(machine,3);
+return input_port_read(machine, "SW1");
 }
 
 /**********************
@@ -431,7 +431,7 @@ static WRITE8_HANDLER( output_port_0_w )
 	bit1 = (data >> 3) & 1;
 	bit2 = (data >> 5) & 1;
 	bit3 = (data >> 7) & 1;
-	bit4 = (input_port_read_indexed(machine,5) & 1);
+	bit4 = (input_port_read_safe(machine, "IN5", 0) & 1); /* "IN5" has yet to be implemented! */
 
 	output_set_lamp_value(1, (bit1 & bit3));	/* Lamp 1 - START  */
 	output_set_lamp_value(2, (bit0 & bit3));	/* Lamp 2 - CANCEL */
@@ -456,8 +456,8 @@ static WRITE8_HANDLER( output_port_1_w )
 {
 	int bit0, bit1, bit4;
 
-	bit0 = (input_port_read_indexed(machine,4) >> 1) & 1;
-	bit1 = (input_port_read_indexed(machine,4) >> 3) & 1;
+	bit0 = (input_port_read_safe(machine, "IN4", 0) >> 1) & 1; /* "IN4" has yet to be implemented! */
+	bit1 = (input_port_read_safe(machine, "IN4", 0) >> 3) & 1; /* "IN4" has yet to be implemented! */
 	bit4 = (data & 1);
 
 	output_set_lamp_value(6, (bit1 & bit4));	/* Lamp 6 - STOP4  */
@@ -471,30 +471,30 @@ static WRITE8_HANDLER( output_port_1_w )
 
 static ADDRESS_MAP_START( snookr10_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0x1000, 0x1000) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
-	AM_RANGE(0x3000, 0x3000) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x3001, 0x3001) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x3002, 0x3002) AM_READ(input_port_2_r)	/* IN2 */
-	AM_RANGE(0x3003, 0x3003) AM_READ(input_port_3_r)	/* DS1 */
+	AM_RANGE(0x1000, 0x1000) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
+	AM_RANGE(0x3000, 0x3000) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x3001, 0x3001) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x3002, 0x3002) AM_READ_PORT("IN2")		/* IN2 */
+	AM_RANGE(0x3003, 0x3003) AM_READ_PORT("SW1")		/* DS1 */
 	AM_RANGE(0x3004, 0x3004) AM_READ(dsw_port_1_r)		/* complement of DS1, bit 7 */
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(output_port_0_w)	/* OUT0 */
 	AM_RANGE(0x5001, 0x5001) AM_WRITE(output_port_1_w)	/* OUT1 */
 	AM_RANGE(0x6000, 0x6fff) AM_RAM_WRITE(snookr10_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x7000, 0x7fff) AM_RAM	AM_WRITE(snookr10_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x7000, 0x7fff) AM_RAM_WRITE(snookr10_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tenballs_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0x1000, 0x1000) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
-	AM_RANGE(0x4000, 0x4000) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x4001, 0x4001) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x4002, 0x4002) AM_READ(input_port_2_r)	/* IN2 */
-	AM_RANGE(0x4003, 0x4003) AM_READ(input_port_3_r)	/* DS1 */
+	AM_RANGE(0x1000, 0x1000) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
+	AM_RANGE(0x4000, 0x4000) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x4001, 0x4001) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x4002, 0x4002) AM_READ_PORT("IN2")		/* IN2 */
+	AM_RANGE(0x4003, 0x4003) AM_READ_PORT("SW1")		/* DS1 */
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(output_port_0_w)	/* OUT0 */
 	AM_RANGE(0x5001, 0x5001) AM_WRITE(output_port_1_w)	/* OUT1 */
 	AM_RANGE(0x6000, 0x6fff) AM_RAM_WRITE(snookr10_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x7000, 0x7fff) AM_RAM	AM_WRITE(snookr10_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x7000, 0x7fff) AM_RAM_WRITE(snookr10_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -507,7 +507,7 @@ ADDRESS_MAP_END
     All Hold & Cancel buttons have a rattle sound in the real PCB. */
 
 static INPUT_PORTS_START( snookr10 )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Remote x100") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_NAME("Stop 1") PORT_CODE(KEYCODE_Z)	/* Input Test in stats mode */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 )	PORT_NAME("Cancella (Cancel) / Play / Bet") PORT_CODE(KEYCODE_N)
@@ -517,7 +517,7 @@ static INPUT_PORTS_START( snookr10 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE2 )	PORT_NAME("Management")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 )	PORT_NAME("Stop 4 / Alta (High)") PORT_CODE(KEYCODE_V)
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )	PORT_NAME("Stop 2 / Bassa (Low)") PORT_CODE(KEYCODE_X)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )	PORT_NAME("Stop 3") PORT_CODE(KEYCODE_C)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Ticket") PORT_CODE(KEYCODE_T)
@@ -527,7 +527,7 @@ static INPUT_PORTS_START( snookr10 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON7 )	PORT_NAME("Scarica (Payout)") PORT_CODE(KEYCODE_M)
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -537,7 +537,7 @@ static INPUT_PORTS_START( snookr10 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("SW1")
+	PORT_START("SW1")
 	PORT_DIPNAME( 0x03, 0x00, "Pool Value" )				PORT_DIPLOCATION("SW1:7,8")
 	PORT_DIPSETTING(    0x03, "100" )
 	PORT_DIPSETTING(    0x02, "200" )
@@ -566,7 +566,7 @@ static INPUT_PORTS_START( apple10 )
 /*  Eliminated all PORT_IMPULSE limitations.
     All Hold & Cancel buttons have a rattle sound in the real PCB. */
 
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Remote x100") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_NAME("Stop 1") PORT_CODE(KEYCODE_Z)	/* Input Test in stats mode */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 )	PORT_NAME("Cancella (Cancel) / Play / Bet") PORT_CODE(KEYCODE_N)
@@ -576,7 +576,7 @@ static INPUT_PORTS_START( apple10 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE2 )	PORT_NAME("Management")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 )	PORT_NAME("Stop 4 / Alta (High)") PORT_CODE(KEYCODE_V)
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )	PORT_NAME("Stop 2 / Bassa (Low)") PORT_CODE(KEYCODE_X)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )	PORT_NAME("Stop 3") PORT_CODE(KEYCODE_C)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Ticket") PORT_CODE(KEYCODE_T)
@@ -586,7 +586,7 @@ static INPUT_PORTS_START( apple10 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON7 )	PORT_NAME("Scarica (Payout)") PORT_CODE(KEYCODE_M)
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -596,7 +596,7 @@ static INPUT_PORTS_START( apple10 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("SW1")
+	PORT_START("SW1")
 	PORT_DIPNAME( 0x03, 0x00, "Pool Value" )				PORT_DIPLOCATION("SW1:7,8")
 	PORT_DIPSETTING(    0x03, "100" )
 	PORT_DIPSETTING(    0x02, "200" )
@@ -625,7 +625,7 @@ static INPUT_PORTS_START( tenballs )
 /*  Eliminated all PORT_IMPULSE limitations.
     All Hold & Cancel buttons have a rattle sound in the real PCB. */
 
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Remote x100") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_NAME("Stop 1") PORT_CODE(KEYCODE_Z)	/* no Input Test in stats mode */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 )	PORT_NAME("Cancella (Cancel) / Play / Bet") PORT_CODE(KEYCODE_N)
@@ -635,7 +635,7 @@ static INPUT_PORTS_START( tenballs )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE2 )	PORT_NAME("Management")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 )	PORT_NAME("Stop 4 / Alta (High)") PORT_CODE(KEYCODE_V)
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )	PORT_NAME("Stop 2 / Bassa (Low)") PORT_CODE(KEYCODE_X)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )	PORT_NAME("Stop 3") PORT_CODE(KEYCODE_C)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Ticket") PORT_CODE(KEYCODE_T)
@@ -645,7 +645,7 @@ static INPUT_PORTS_START( tenballs )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON7 )	PORT_NAME("Scarica (Payout)") PORT_CODE(KEYCODE_M)
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -658,7 +658,7 @@ static INPUT_PORTS_START( tenballs )
     /* tenballs seems a prototype, most DIP
        switches seems to do nothing at all.
     */
-	PORT_START_TAG("SW1")
+	PORT_START("SW1")
 	PORT_DIPNAME( 0x03, 0x00, "Pool Value" )		PORT_DIPLOCATION("SW1:7,8")
 	PORT_DIPSETTING(    0x03, "100" )
 	PORT_DIPSETTING(    0x02, "200" )
@@ -710,7 +710,7 @@ static const gfx_layout charlayout =
 ******************************/
 
 static GFXDECODE_START( snookr10 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, charlayout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, charlayout, 0, 16 )
 GFXDECODE_END
 
 
@@ -721,7 +721,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( snookr10 )
 
     /* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M65SC02, MASTER_CLOCK/8)	/* 2 MHz (1.999 MHz measured) */
+	MDRV_CPU_ADD("main", M65SC02, MASTER_CLOCK/8)	/* 2 MHz (1.999 MHz measured) */
 	MDRV_CPU_PROGRAM_MAP(snookr10_map, 0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
@@ -745,8 +745,8 @@ static MACHINE_DRIVER_START( snookr10 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(OKIM6295, MASTER_CLOCK/16)	/* 1 MHz (995.5 kHz measured) */
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)	/* pin7 checked HIGH on PCB */
+	MDRV_SOUND_ADD("oki", OKIM6295, MASTER_CLOCK/16)	/* 1 MHz (995.5 kHz measured) */
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)	/* pin7 checked HIGH on PCB */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.8)
 
 MACHINE_DRIVER_END
@@ -778,49 +778,49 @@ MACHINE_DRIVER_END
 *************************/
 
 ROM_START( snookr10 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "1.u2", 0x8000, 0x8000, CRC(216ccb2d) SHA1(d86270cd03a08f6fd3e7b327b8173f66da28e5e8) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "2.u22", 0x0000, 0x8000, CRC(a70d9c48) SHA1(3fa90190323526553866662afda4dbe1c94abeff) )
 	ROM_LOAD( "3.u25", 0x8000, 0x8000, CRC(3009faaa) SHA1(d1cda455b270cb9afa65b9701735a3a1f2a48df2) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* ADPCM samples */
 	ROM_LOAD( "4.u18", 0x00000, 0x40000 , CRC(17090d56) SHA1(3a4c247f96c80f8cf4c1389b273880c5ea6fc39d) )
 
     /* this should be changed because the palette is stored in a normal ROM instead of a color PROM */
-	ROM_REGION( 0x8000, REGION_PROMS, 0 )
+	ROM_REGION( 0x8000, "proms", 0 )
 	ROM_LOAD( "5.u27", 0x0000, 0x8000, CRC(f3d7d640) SHA1(f78060f4603e316fa3c2ec4ba6d7edf261cf6d8a) )
 ROM_END
 
 ROM_START( apple10 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "1.u2", 0x8000, 0x8000, CRC(7d538566) SHA1(2e805157010c366ab1f2313a2bedb071c1dde733) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "2.u22", 0x0000, 0x8000, CRC(42b016f4) SHA1(59d1b77f8cb706a3878813111c6a71514c413784) )
 	ROM_LOAD( "3.u25", 0x8000, 0x8000, CRC(afc535dc) SHA1(ed2d65f3154c6d80b7b22bfef1f30232e4496128) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* ADPCM samples */
 	ROM_LOAD( "4.u18", 0x00000, 0x40000 , CRC(17090d56) SHA1(3a4c247f96c80f8cf4c1389b273880c5ea6fc39d) )
 
     /* this should be changed because the palette is stored in a normal ROM instead of a color PROM */
-	ROM_REGION( 0x8000, REGION_PROMS, 0 )
+	ROM_REGION( 0x8000, "proms", 0 )
 	ROM_LOAD( "5.u27", 0x0000, 0x8000, CRC(3510d705) SHA1(2190c8199d29bf89e3007eb771cc6b0e2b58f6cd) )
 ROM_END
 
 ROM_START( tenballs )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "4.u2", 0x8000, 0x8000, CRC(2f334862) SHA1(61d57995451b6bc7de23900c460c3e073993899c) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "3.u16", 0x0000, 0x8000, CRC(9eb88a08) SHA1(ab52924103e2b14c598a21c3d77b053da37a0212) )
 	ROM_LOAD( "2.u15", 0x8000, 0x8000, CRC(a5091583) SHA1(c0775d9b77cb634d3702b6c08cdf73c867b6169a) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* ADPCM samples */
 	ROM_LOAD( "1.u28", 0x00000, 0x40000 , CRC(17090d56) SHA1(3a4c247f96c80f8cf4c1389b273880c5ea6fc39d) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "82s147.u17", 0x0000, 0x0200, CRC(20234dcc) SHA1(197937bbec0201888467e250bdba49e39aa4204a) )
 ROM_END
 

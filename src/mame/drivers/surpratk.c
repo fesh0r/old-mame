@@ -94,7 +94,7 @@ static ADDRESS_MAP_START( surpratk_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5f8e, 0x5f8e) AM_READ(input_port_4_r)
 	AM_RANGE(0x5f8f, 0x5f8f) AM_READ(input_port_2_r)
 	AM_RANGE(0x5f90, 0x5f90) AM_READ(input_port_3_r)
-//  AM_RANGE(0x5f91, 0x5f91) AM_READ(YM2151_status_port_0_r)    /* ? */
+//  AM_RANGE(0x5f91, 0x5f91) AM_READ(ym2151_status_port_0_r)    /* ? */
 	AM_RANGE(0x5fa0, 0x5faf) AM_READ(K053244_r)
 	AM_RANGE(0x5fc0, 0x5fc0) AM_READ(watchdog_reset_r)
 	AM_RANGE(0x4000, 0x7fff) AM_READ(K052109_r)
@@ -108,8 +108,8 @@ static ADDRESS_MAP_START( surpratk_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5fa0, 0x5faf) AM_WRITE(K053244_w)
 	AM_RANGE(0x5fb0, 0x5fbf) AM_WRITE(K053251_w)
 	AM_RANGE(0x5fc0, 0x5fc0) AM_WRITE(surpratk_5fc0_w)
-	AM_RANGE(0x5fd0, 0x5fd0) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x5fd1, 0x5fd1) AM_WRITE(YM2151_data_port_0_w)
+	AM_RANGE(0x5fd0, 0x5fd0) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x5fd1, 0x5fd1) AM_WRITE(ym2151_data_port_0_w)
 	AM_RANGE(0x5fc4, 0x5fc4) AM_WRITE(surpratk_videobank_w)
 	AM_RANGE(0x4000, 0x7fff) AM_WRITE(K052109_w)
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)					/* ROM */
@@ -123,7 +123,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( surpratk )
-	PORT_START	/* PLAYER 1 INPUTS */
+	PORT_START("P1")	/* PLAYER 1 INPUTS */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -133,7 +133,7 @@ static INPUT_PORTS_START( surpratk )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* PLAYER 2 INPUTS */
+	PORT_START("P2")	/* PLAYER 2 INPUTS */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -143,7 +143,7 @@ static INPUT_PORTS_START( surpratk )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* DSW #1 */
+	PORT_START("DSW1")	/* DSW #1 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
@@ -179,7 +179,7 @@ static INPUT_PORTS_START( surpratk )
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
 //  PORT_DIPSETTING(    0x00, "No Use" )
 
-	PORT_START	/* DSW #2 */
+	PORT_START("DSW2")	/* DSW #2 */
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x03, "2" )
 	PORT_DIPSETTING(    0x02, "3" )
@@ -203,7 +203,7 @@ static INPUT_PORTS_START( surpratk )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* DSW #3 */
+	PORT_START("DSW3")	/* DSW #3 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -227,7 +227,7 @@ static void irqhandler(running_machine *machine, int linestate)
 	cpunum_set_input_line(machine, 0,KONAMI_FIRQ_LINE,linestate);
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	irqhandler
 };
@@ -237,7 +237,7 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( surpratk )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(KONAMI, 3000000)	/* 053248 */
+	MDRV_CPU_ADD("main", KONAMI, 3000000)	/* 053248 */
 	MDRV_CPU_PROGRAM_MAP(surpratk_readmem,surpratk_writemem)
 	MDRV_CPU_VBLANK_INT("main", surpratk_interrupt)
 
@@ -261,8 +261,8 @@ static MACHINE_DRIVER_START( surpratk )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3579545)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 3579545)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
@@ -275,46 +275,46 @@ MACHINE_DRIVER_END
 
 
 ROM_START( suratk )
-	ROM_REGION( 0x51000, REGION_CPU1, 0 ) /* code + banked roms + palette RAM */
+	ROM_REGION( 0x51000, "main", 0 ) /* code + banked roms + palette RAM */
 	ROM_LOAD( "911j01.f5", 0x10000, 0x20000, CRC(1e647881) SHA1(241e421d5599ebd9fcfb8be9c48dfd3b4c671958) )
 	ROM_LOAD( "911k02.h5", 0x30000, 0x18000, CRC(ef10e7b6) SHA1(0b41a929c0c579d688653a8d90dd6b40db12cfb3) )
 	ROM_CONTINUE(           0x08000, 0x08000 )
 
-	ROM_REGION( 0x080000, REGION_GFX1, 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
+	ROM_REGION( 0x080000, "gfx1", 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
 	ROM_LOAD( "911d05.bin", 0x000000, 0x040000, CRC(308d2319) SHA1(521d2a72fecb094e2c2f23b535f0b527886b4d3a) ) /* characters */
 	ROM_LOAD( "911d06.bin", 0x040000, 0x040000, CRC(91cc9b32) SHA1(e05b7bbff30f24fe6f009560410f5e90bb118692) ) /* characters */
 
-	ROM_REGION( 0x080000, REGION_GFX2, 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
+	ROM_REGION( 0x080000, "gfx2", 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
 	ROM_LOAD( "911d03.bin", 0x000000, 0x040000, CRC(e34ff182) SHA1(075ca7a91c843bdac7da21ddfcd43f7a043a09b6) )	/* sprites */
 	ROM_LOAD( "911d04.bin", 0x040000, 0x040000, CRC(20700bd2) SHA1(a2fa4a3ee28c1542cdd798907a9ece249aadff0a) )	/* sprites */
 ROM_END
 
 ROM_START( suratka )
-	ROM_REGION( 0x51000, REGION_CPU1, 0 ) /* code + banked roms + palette RAM */
+	ROM_REGION( 0x51000, "main", 0 ) /* code + banked roms + palette RAM */
 	ROM_LOAD( "911j01.f5", 0x10000, 0x20000, CRC(1e647881) SHA1(241e421d5599ebd9fcfb8be9c48dfd3b4c671958) )
 	ROM_LOAD( "911l02.h5", 0x30000, 0x18000, CRC(11db8288) SHA1(09fe187855172ebf0c57f561cce7f41e47f53114) )
 	ROM_CONTINUE(           0x08000, 0x08000 )
 
-	ROM_REGION( 0x080000, REGION_GFX1, 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
+	ROM_REGION( 0x080000, "gfx1", 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
 	ROM_LOAD( "911d05.bin", 0x000000, 0x040000, CRC(308d2319) SHA1(521d2a72fecb094e2c2f23b535f0b527886b4d3a) ) /* characters */
 	ROM_LOAD( "911d06.bin", 0x040000, 0x040000, CRC(91cc9b32) SHA1(e05b7bbff30f24fe6f009560410f5e90bb118692) ) /* characters */
 
-	ROM_REGION( 0x080000, REGION_GFX2, 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
+	ROM_REGION( 0x080000, "gfx2", 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
 	ROM_LOAD( "911d03.bin", 0x000000, 0x040000, CRC(e34ff182) SHA1(075ca7a91c843bdac7da21ddfcd43f7a043a09b6) )	/* sprites */
 	ROM_LOAD( "911d04.bin", 0x040000, 0x040000, CRC(20700bd2) SHA1(a2fa4a3ee28c1542cdd798907a9ece249aadff0a) )	/* sprites */
 ROM_END
 
 ROM_START( suratkj )
-	ROM_REGION( 0x51000, REGION_CPU1, 0 ) /* code + banked roms + palette RAM */
+	ROM_REGION( 0x51000, "main", 0 ) /* code + banked roms + palette RAM */
 	ROM_LOAD( "911m01.f5", 0x10000, 0x20000, CRC(ee5b2cc8) SHA1(4b05f7ba4e804a3bccb41fe9d3258cbcfe5324aa) )
 	ROM_LOAD( "911m02.h5", 0x30000, 0x18000, CRC(5d4148a8) SHA1(4fa5947db777b4c742775d588dea38758812a916) )
 	ROM_CONTINUE(           0x08000, 0x08000 )
 
-	ROM_REGION( 0x080000, REGION_GFX1, 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
+	ROM_REGION( 0x080000, "gfx1", 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
 	ROM_LOAD( "911d05.bin", 0x000000, 0x040000, CRC(308d2319) SHA1(521d2a72fecb094e2c2f23b535f0b527886b4d3a) ) /* characters */
 	ROM_LOAD( "911d06.bin", 0x040000, 0x040000, CRC(91cc9b32) SHA1(e05b7bbff30f24fe6f009560410f5e90bb118692) ) /* characters */
 
-	ROM_REGION( 0x080000, REGION_GFX2, 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
+	ROM_REGION( 0x080000, "gfx2", 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
 	ROM_LOAD( "911d03.bin", 0x000000, 0x040000, CRC(e34ff182) SHA1(075ca7a91c843bdac7da21ddfcd43f7a043a09b6) )	/* sprites */
 	ROM_LOAD( "911d04.bin", 0x040000, 0x040000, CRC(20700bd2) SHA1(a2fa4a3ee28c1542cdd798907a9ece249aadff0a) )	/* sprites */
 ROM_END
@@ -327,7 +327,7 @@ ROM_END
 
 static void surpratk_banking(int lines)
 {
-	UINT8 *RAM = memory_region(Machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(Machine, "main");
 	int offs = 0;
 
 logerror("%04x: setlines %02x\n",activecpu_get_pc(),lines);
@@ -341,13 +341,13 @@ static MACHINE_RESET( surpratk )
 {
 	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)surpratk_banking);
 
-	paletteram = &memory_region(machine, REGION_CPU1)[0x48000];
+	paletteram = &memory_region(machine, "main")[0x48000];
 }
 
 static DRIVER_INIT( surpratk )
 {
-	konami_rom_deinterleave_2(REGION_GFX1);
-	konami_rom_deinterleave_2(REGION_GFX2);
+	konami_rom_deinterleave_2("gfx1");
+	konami_rom_deinterleave_2("gfx2");
 }
 
 

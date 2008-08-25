@@ -113,8 +113,8 @@ static WRITE8_HANDLER( tankbust_e0xx_w )
 	case 7: /* 0xe007 bankswitch */
 		/* bank 1 at 0x6000-9fff = from 0x10000 when bit0=0 else from 0x14000 */
 		/* bank 2 at 0xa000-bfff = from 0x18000 when bit0=0 else from 0x1a000 */
-		memory_set_bankptr( 1, memory_region(machine, REGION_CPU1) + 0x10000 + ((data&1) * 0x4000) );
-		memory_set_bankptr( 2, memory_region(machine, REGION_CPU1) + 0x18000 + ((data&1) * 0x2000) ); /* verified (the game will reset after the "game over" otherwise) */
+		memory_set_bankptr( 1, memory_region(machine, "main") + 0x10000 + ((data&1) * 0x4000) );
+		memory_set_bankptr( 2, memory_region(machine, "main") + 0x18000 + ((data&1) * 0x2000) ); /* verified (the game will reset after the "game over" otherwise) */
 	break;
 	}
 }
@@ -212,12 +212,12 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( port_map_cpu2, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x10, 0x10) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0x30, 0x30) AM_READ(AY8910_read_port_1_r)
-	AM_RANGE(0x30, 0x30) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0xc0, 0xc0) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0xc0, 0xc0) AM_WRITE(AY8910_control_port_0_w)
+	AM_RANGE(0x10, 0x10) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x30, 0x30) AM_READ(ay8910_read_port_1_r)
+	AM_RANGE(0x30, 0x30) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x40, 0x40) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0xc0, 0xc0) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xc0, 0xc0) AM_WRITE(ay8910_control_port_0_w)
 ADDRESS_MAP_END
 
 
@@ -233,7 +233,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( tankbust )
-	PORT_START	/* IN0 */
+	PORT_START("INPUTS")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
@@ -243,7 +243,7 @@ static INPUT_PORTS_START( tankbust )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN1 */
+	PORT_START("SYSTEM")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -253,7 +253,7 @@ static INPUT_PORTS_START( tankbust )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* DSW */
+	PORT_START("DSW")	/* DSW */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(	0x03, DEF_STR( Easy ) )
 	PORT_DIPSETTING(	0x02, DEF_STR( Hard ) )
@@ -318,12 +318,12 @@ static const gfx_layout charlayout2 =
 };
 
 static GFXDECODE_START( tankbust )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, spritelayout,	0x00, 2 )	/* sprites 32x32  (2 * 16 colors) */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout,		0x20, 8 )	/* bg tilemap characters */
-	GFXDECODE_ENTRY( REGION_GFX3, 0, charlayout2,		0x60, 16  )	/* txt tilemap characters*/
+	GFXDECODE_ENTRY( "gfx1", 0, spritelayout,	0x00, 2 )	/* sprites 32x32  (2 * 16 colors) */
+	GFXDECODE_ENTRY( "gfx2", 0, charlayout,		0x20, 8 )	/* bg tilemap characters */
+	GFXDECODE_ENTRY( "gfx3", 0, charlayout2,		0x60, 16  )	/* txt tilemap characters*/
 GFXDECODE_END
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -336,11 +336,11 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( tankbust )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)		/* 4 MHz ? */
+	MDRV_CPU_ADD("main", Z80, 4000000)		/* 4 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)		/* 3.072 MHz ? */
+	MDRV_CPU_ADD("sub", Z80, 4000000)		/* 3.072 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(map_cpu2,0)
 	MDRV_CPU_IO_MAP(port_map_cpu2,0)
 
@@ -368,11 +368,11 @@ static MACHINE_DRIVER_START( tankbust )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay1", AY8910, 2000000)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay2", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 MACHINE_DRIVER_END
 
@@ -384,7 +384,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( tankbust )
-	ROM_REGION( 0x1c000, REGION_CPU1, 0 )
+	ROM_REGION( 0x1c000, "main", 0 )
 	ROM_LOAD( "a-s4-6.bin",		0x00000, 0x4000, CRC(8ebe7317) SHA1(bc45d530ad6335312c9c3efdcedf7acd2cdeeb55) )
 	ROM_LOAD( "a-s7-9.bin",		0x04000, 0x2000, CRC(047aee33) SHA1(62ee776c403b228e065baa9218f32597951ca935) )
 
@@ -399,24 +399,24 @@ ROM_START( tankbust )
 
 	ROM_LOAD( "a-s8-10.bin",	0x18000, 0x4000, CRC(9e826faa) SHA1(6a252428c69133d3e9d7a9938140d5ae37fb0c7d) )	/* banked at 0xa000-0xbfff */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "a-b3-1.bin",		0x0000, 0x2000, CRC(b0f56102) SHA1(4f427c3bd6131b7cba42a0e24a69bd1b6a1b0a3c) )
 
-	ROM_REGION( 0x8000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a-d5-2.bin",		0x0000, 0x2000, CRC(0bbf3fdb) SHA1(035c2db6eca701be690042e006c0d07c90d752f1) )	/* sprites 32x32 */
 	ROM_LOAD( "a-d6-3.bin",		0x2000, 0x2000, CRC(4398dc21) SHA1(3b23433d0c9daa554ad6615af2fdec715e4e3794) )
 	ROM_LOAD( "a-d7-4.bin",		0x4000, 0x2000, CRC(aca197fc) SHA1(03ecd94b84a31389539074079ed7f2a500e588ab) )
 	ROM_LOAD( "a-d8-5.bin",		0x6000, 0x2000, CRC(1e6edc17) SHA1(4dbc91938c999348bcbd5f960fc3bb49f3174059) )
 
-	ROM_REGION( 0xc000, REGION_GFX2, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0xc000, "gfx2", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "b-m4-11.bin",	0x0000, 0x4000, CRC(eb88ee1f) SHA1(60ec2d77186c196a27278b0639cbfa838986e2e2) )	/* background tilemap characters 8x8 */
 	ROM_LOAD( "b-m5-12.bin",	0x4000, 0x4000, CRC(4c65f399) SHA1(72db15884f346c001d3b86cb33e3f6d339eedb56) )
 	ROM_LOAD( "b-m6-13.bin",	0x8000, 0x4000, CRC(a5baa413) SHA1(dc772042706c3a92594ee8422aafed77375c0632) )
 
-	ROM_REGION( 0x2000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "b-r3-14.bin",	0x0000, 0x2000, CRC(4310a815) SHA1(bf58a7a8d3f82fcaa0c46d9ebb13cac1231b80ad) )	/* text tilemap characters 8x8 */
 
-	ROM_REGION( 0x0080, REGION_PROMS, 0 )
+	ROM_REGION( 0x0080, "proms", 0 )
 	ROM_LOAD( "tb-prom.1s8",	0x0000, 0x0020, CRC(dfaa086c) SHA1(f534aedddd18addd0833a3a28a4297689c4a46ac) ) //sprites
 	ROM_LOAD( "tb-prom.2r8",	0x0020, 0x0020, CRC(ec50d674) SHA1(64c8961eca33b23e14b7383eb7e64fcac8772ee7) ) //background
 	ROM_LOAD( "tb-prom.3p8",	0x0040, 0x0020, CRC(3e70eafd) SHA1(b200350a3f6c166228706734419dd3ef1207eeef) ) //background palette 2 ??

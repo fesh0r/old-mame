@@ -84,7 +84,7 @@ static READ16_HANDLER( alpha_mcu_r )
 	switch (offset)
 	{
 		case 0: /* Dipswitch 2 */
-			shared_ram[0] = (source&0xff00)|input_port_read(machine, "IN2");
+			shared_ram[0] = (source&0xff00)|input_port_read(machine, "DSW");
 			return 0;
 
 		case 0x22: /* Coin value */
@@ -95,15 +95,15 @@ static READ16_HANDLER( alpha_mcu_r )
 
 			credits=0;
 
-			if ((input_port_read(machine, "IN3")&0x3)==3) latch=0;
+			if ((input_port_read(machine, "COINS")&0x3)==3) latch=0;
 
-			if ((input_port_read(machine, "IN3")&0x1)==0 && !latch)
+			if ((input_port_read(machine, "COINS")&0x1)==0 && !latch)
 			{
 				shared_ram[0x29] = (source&0xff00)|(0x22);	// coinA
 				shared_ram[0x22] = (source&0xff00)|0x0;
 				latch=1;
 
-				coinvalue = (~input_port_read(machine, "IN2")>>3) & 1;
+				coinvalue = (~input_port_read(machine, "DSW")>>3) & 1;
 
 				deposits1++;
 				if (deposits1 == coinage1[coinvalue][0])
@@ -114,13 +114,13 @@ static READ16_HANDLER( alpha_mcu_r )
 				else
 					credits = 0;
 			}
-			else if ((input_port_read(machine, "IN3")&0x2)==0 && !latch)
+			else if ((input_port_read(machine, "COINS")&0x2)==0 && !latch)
 			{
 				shared_ram[0x29] = (source&0xff00)|(0x22);	// coinA
 				shared_ram[0x22] = (source&0xff00)|0x0;
 				latch=1;
 
-				coinvalue = (~input_port_read(machine, "IN2")>>3) & 1;
+				coinvalue = (~input_port_read(machine, "DSW")>>3) & 1;
 
 				deposits2++;
 				if (deposits2 == coinage2[coinvalue][0])
@@ -149,8 +149,8 @@ static ADDRESS_MAP_START( meijinsn_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x180000, 0x180dff) AM_RAM
 	AM_RANGE(0x180e00, 0x180fff) AM_RAM AM_BASE(&shared_ram)
 	AM_RANGE(0x181000, 0x181fff) AM_RAM
-	AM_RANGE(0x1c0000, 0x1c0001) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x1a0000, 0x1a0001) AM_WRITE(sound_w) AM_READ(input_port_0_word_r)
+	AM_RANGE(0x1c0000, 0x1c0001) AM_READ_PORT("P2")
+	AM_RANGE(0x1a0000, 0x1a0001) AM_READ_PORT("P1") AM_WRITE(sound_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( meijinsn_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -160,35 +160,35 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( meijinsn_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
+	AM_RANGE(0x00, 0x00) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(soundlatch_clear_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( meijinsn )
-PORT_START_TAG("IN0")
-	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    ) PORT_PLAYER(1)
-	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  ) PORT_PLAYER(1)
+	PORT_START("P1")
+	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
-	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  ) PORT_PLAYER(1)
-	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_BUTTON1        ) PORT_PLAYER(1)
-	PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_BUTTON2        ) PORT_PLAYER(1)
-	PORT_BIT( 0x7cc0, IP_ACTIVE_HIGH, IPT_UNKNOWN        )
-	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_START1  )
-	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_START2  )
+	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x7cc0, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_START1 )
+	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_SERVICE )
 
-	PORT_START_TAG("IN1")
-	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    ) PORT_PLAYER(2)
-	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  ) PORT_PLAYER(2)
-	PORT_BIT( 0x0400, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
-	PORT_BIT( 0x0800, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  ) PORT_PLAYER(2)
-	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_BUTTON1        ) PORT_PLAYER(2)
-	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_BUTTON2        ) PORT_PLAYER(2)
-	PORT_BIT( 0xc0ff, IP_ACTIVE_HIGH, IPT_UNKNOWN        )
+	PORT_START("P2")
+	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
+	PORT_BIT( 0x0400, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT) PORT_PLAYER(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0xc0ff, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x07, 0x00, "Game time (actual game)" )
 	PORT_DIPSETTING(    0x07, "1:00" )
 	PORT_DIPSETTING(    0x06, "2:00" )
@@ -208,7 +208,7 @@ PORT_START_TAG("IN0")
 	PORT_DIPSETTING(    0x20, "1:00" )
 	PORT_DIPSETTING(    0x00, "2:00" )
 
-	PORT_START_TAG("IN3")  /* Coin input to microcontroller */
+	PORT_START("COINS")  /* Coin input to microcontroller */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 INPUT_PORTS_END
@@ -289,7 +289,7 @@ static INTERRUPT_GEN( meijinsn_interrupt )
 		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
 }
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -305,11 +305,11 @@ static MACHINE_RESET( meijinsn )
 
 
 static MACHINE_DRIVER_START( meijinsn )
-	MDRV_CPU_ADD_TAG("main", M68000, 9000000 )
+	MDRV_CPU_ADD("main", M68000, 9000000 )
 	MDRV_CPU_PROGRAM_MAP(meijinsn_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(meijinsn_interrupt,2)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD("audio", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(meijinsn_sound_map,0)
 	MDRV_CPU_IO_MAP(meijinsn_sound_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 160)
@@ -333,15 +333,15 @@ static MACHINE_DRIVER_START( meijinsn )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, 2000000)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
 MACHINE_DRIVER_END
 
 
 ROM_START( meijinsn )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )
+	ROM_REGION( 0x40000, "main", 0 )
 	ROM_LOAD16_BYTE( "p1", 0x00000, 0x04000, CRC(8c9697a3) SHA1(19258e20a6aaadd6ba3469079fef85bc6dba548c) )
 	ROM_CONTINUE   (       0x20000,  0x4000 )
 	ROM_LOAD16_BYTE( "p2", 0x00001, 0x04000, CRC(f7da3535) SHA1(fdbacd075d45abda782966b16b3ea1ad68d60f91) )
@@ -359,11 +359,11 @@ ROM_START( meijinsn )
 	ROM_LOAD16_BYTE( "p8", 0x18001, 0x04000, CRC(e3eaef19) SHA1(b290922f252a790443109e5023c3c35b133275cc) )
 	ROM_CONTINUE   (       0x38001,  0x4000 )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Sound CPU */
 	ROM_LOAD( "p9", 0x00000, 0x04000, CRC(aedfefdf) SHA1(f9d35737a0e942fe7d483f87c52efa92a1bbb3e5) )
 	ROM_LOAD( "p10",0x04000, 0x04000, CRC(93b4d764) SHA1(4fedd3fd1f3ef6c5f60ca86219f877df68d3027d) )
 
-	ROM_REGION( 0x20, REGION_PROMS, 0 ) /* Colour PROM */
+	ROM_REGION( 0x20, "proms", 0 ) /* Colour PROM */
 	ROM_LOAD( "clr", 0x00, 0x20, CRC(7b95b5a7) SHA1(c15be28bcd6f5ffdde659f2d352ae409f04b2557) )
 ROM_END
 

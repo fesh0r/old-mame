@@ -8,6 +8,95 @@
     Known issues:
         * none at this time
 
+******************************************************************************************
+
+Missile Command
+Atari, 1979
+
+PCB Layout
+----------
+
+MISSILE COMMAND
+A035467-04
+ATARI (C)79
+|---------------------------------------------------------------------|
+|                           T_5MHz   T_10MHz                          |
+|    MC14584     MC14584         10MHz               RESET_SW         |
+|J19                    T_HSYNC              T_R/W02         UM6502A  |
+|                 T_WDOG_DIS                           T_-5V          |
+|   T_BW_VID                                                       X  |
+|-|                                                                X  |
+  |        T_START2                        MM5290J-3               X  |
+|-|J20     T_START1   T_GND     T_GND      MM5290J-3     035820-01.H1 |
+|2         T_SLAM                          MM5290J-3     035821-01.JK1|
+|2         T_COINR  T_COINC                MM5290J-3     035822-01.KL1|
+|W  T_TEST T_COINL                                     T_GND          |
+|A         T_AUD2           N82S25         MM5290J-3     035823-01.MN1|
+|Y         T_AUD1             035826-01.L6 MM5290J-3               X  |
+|-|           LM324   T_VSYNC              MM5290J-3   T_+12V         |
+  |                   C012294B-01          MM5290J-3     035824-01.NP1|
+|-|T_+5V    DSW(8)     DSW(8)                       X   035825-01.R1  |
+|---------------------------------------------------------------------|
+Notes:
+       UM6502A     - 6502 CPU, clock input is on pin 37. This is a little strange because it
+                     measures 1.17240MHz. It was assumed to be 1.25MHz [10/8]. This might be
+                     caused by old components that are out of spec now, but the PCB does run
+                     flawlessly, and the other clocks measure correctly so I'm not sure what's going on.
+       C012294B-01 - 'Pokey' sound chip, clock 1.25MHz on pin 7 [10/8]
+       035826-01   - MMI 6331 bipolar PROM
+       MM5290J-3   - National Semiconductor MM5290J-3 16kx1 DRAM (=TMM416, uPD416, MK4116, TMS4116 etc)
+       MC14584     - Hex Schmitt Trigger
+       82S25       - Signetics 64-bit (16x4) bipolar scratch pad memory (=3101, 74S189, 7489, 9410 etc)
+       LM324       - Low Power Quad Operational Amplifier
+       J20         - 22-Way edge connector (for upright)
+       J19         - 12-Way edge connector (additional controls for cocktail)
+       T_*         - Test points
+       X           - Empty location for DIP24 device (no socket)
+       HSYNC       - 15.618kHz
+       VSYNC       - 61.0076Hz
+
+
+       Edge Connector J20 Pinout
+       -------------------------
+       GND                  A | 1   GND
+       + 5V                 B | 2   + 5V
+       + 12V                C | 3
+       - 5V                 D | 4
+       Audio 1 Out          E | 5   Audio 2 Out
+       HSync                F | 6   VSync
+       Start2 LED           H | 7   Left Fire
+       Center Fire          J | 8   Right Fire
+       Right Coin           K | 9   Left Coin
+       Video Blue           L | 10  Video Red
+       Video Green          M | 11  Left Coin Counter
+       Center Coin Counter  N | 12  Right Coin Counter
+       Start 1 LED          P | 13  Start Button 1
+       Test Switch          R | 14  Slam Switch
+       Center Coin Slot*    S | 15  Start Button 2
+       Vert. Trackball Dir. T | 16  Vert. Trackball Clock
+       Horiz. Trackball Clk U | 17  Horiz. Trackball Dir.
+                            V | 18  Comp Sync
+       NC                   W | 19  - 5V
+       NC                   X | 20  + 12V
+       + 5V                 Y | 21  + 5V
+       GND                  Z | 22  GND
+
+
+       Edge Connector J19 Pinout (Only used in cocktail version)
+       -------------------------
+                              A | 1
+                              B | 2
+                              C | 3
+       Right Fire Button 2    D | 4
+       Center Fire Button 2   E | 5   Left Fire Button 2
+                              F | 6
+       Cocktail               H | 7
+                              J | 8
+       Horiz. Trkball Dir. 2  K | 9   Vert. Trackball Dir. 2
+       Horiz. Trkball Clock 2 L | 10  Vert. Trackball Clock 2
+                              M | 11
+                              N | 12
+
 ****************************************************************************
 
     Horizontal sync chain:
@@ -236,7 +325,7 @@
     as well as set 2. Missile Command set 1 will not work with the SMA board. It would
         appear set 1 and set 2 as labeled by mame are reversed.
 
-******************************************************************************************/
+*****************************************************************************************/
 
 #include "driver.h"
 #include "sound/pokey.h"
@@ -371,7 +460,7 @@ static OPBASE_HANDLER( missile_opbase_handler )
 	/* ROM? */
 	else if (address >= 0x5000)
 	{
-		opbase->rom = opbase->ram = memory_region(machine, REGION_CPU1) - offset;
+		opbase->rom = opbase->ram = memory_region(machine, "main") - offset;
 		return ~0;
 	}
 
@@ -383,7 +472,7 @@ static OPBASE_HANDLER( missile_opbase_handler )
 static MACHINE_START( missile )
 {
 	/* initialize globals */
-	writeprom = memory_region(machine, REGION_PROMS);
+	writeprom = memory_region(machine, "proms");
 	flipscreen = 0;
 
 	/* set up an opcode base handler since we use mapped handlers for RAM */
@@ -644,7 +733,7 @@ static READ8_HANDLER( missile_r )
 
 	/* ROM */
 	else if (offset >= 0x5000)
-		result = memory_region(machine, REGION_CPU1)[offset];
+		result = memory_region(machine, "main")[offset];
 
 	/* POKEY */
 	else if (offset < 0x4800)
@@ -700,7 +789,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( missile )
-	PORT_START_TAG("IN0")	/* IN0 */
+	PORT_START("IN0")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
@@ -710,16 +799,16 @@ static INPUT_PORTS_START( missile )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN3 )
 
-	PORT_START_TAG("IN1")	/* IN1 */
+	PORT_START("IN1")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x18, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_vblank, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_vblank, NULL)
 
-	PORT_START_TAG("R10")	/* IN2 */
+	PORT_START("R10")	/* IN2 */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("R10:1,2")
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -742,7 +831,7 @@ static INPUT_PORTS_START( missile )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("R8")	/* IN3 */
+	PORT_START("R8")	/* IN3 */
 	PORT_DIPNAME( 0x03, 0x00, "Cities" ) PORT_DIPLOCATION("R8:1,2")
 	PORT_DIPSETTING(    0x02, "4" )
 	PORT_DIPSETTING(    0x01, "5" )
@@ -767,22 +856,22 @@ static INPUT_PORTS_START( missile )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("TRACK0_X")	/* FAKE */
+	PORT_START("TRACK0_X")	/* FAKE */
 	PORT_BIT( 0x0f, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10)
 
-	PORT_START_TAG("TRACK0_Y")	/* FAKE */
+	PORT_START("TRACK0_Y")	/* FAKE */
 	PORT_BIT( 0x0f, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_REVERSE
 
-	PORT_START_TAG("TRACK1_X")	/* FAKE */
+	PORT_START("TRACK1_X")	/* FAKE */
 	PORT_BIT( 0x0f, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_REVERSE PORT_COCKTAIL
 
-	PORT_START_TAG("TRACK1_Y")	/* FAKE */
+	PORT_START("TRACK1_Y")	/* FAKE */
 	PORT_BIT( 0x0f, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_REVERSE PORT_COCKTAIL
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( suprmatk )
-	PORT_START_TAG("IN0")	/* IN0 */
+	PORT_START("IN0")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
@@ -792,16 +881,16 @@ static INPUT_PORTS_START( suprmatk )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN3 )
 
-	PORT_START_TAG("IN1")	/* IN1 */
+	PORT_START("IN1")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x18, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_vblank, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_vblank, NULL)
 
-	PORT_START_TAG("R10")	/* IN2 */
+	PORT_START("R10")	/* IN2 */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("R10:1,2")
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -824,7 +913,7 @@ static INPUT_PORTS_START( suprmatk )
 	PORT_DIPSETTING(    0x80, "Reg. Super Missile Attack" )
 	PORT_DIPSETTING(    0xc0, "Hard Super Missile Attack" )
 
-	PORT_START_TAG("R8")	/* IN3 */
+	PORT_START("R8")	/* IN3 */
 	PORT_DIPNAME( 0x03, 0x00, "Cities" ) PORT_DIPLOCATION("R8:1,2")
 	PORT_DIPSETTING(    0x02, "4" )
 	PORT_DIPSETTING(    0x01, "5" )
@@ -849,16 +938,16 @@ static INPUT_PORTS_START( suprmatk )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("TRACK0_X")	/* FAKE */
+	PORT_START("TRACK0_X")	/* FAKE */
 	PORT_BIT( 0x0f, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10)
 
-	PORT_START_TAG("TRACK0_Y")	/* FAKE */
+	PORT_START("TRACK0_Y")	/* FAKE */
 	PORT_BIT( 0x0f, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_REVERSE
 
-	PORT_START_TAG("TRACK1_X")	/* FAKE */
+	PORT_START("TRACK1_X")	/* FAKE */
 	PORT_BIT( 0x0f, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_REVERSE PORT_COCKTAIL
 
-	PORT_START_TAG("TRACK1_Y")	/* FAKE */
+	PORT_START("TRACK1_Y")	/* FAKE */
 	PORT_BIT( 0x0f, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_REVERSE PORT_COCKTAIL
 INPUT_PORTS_END
 
@@ -870,7 +959,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct POKEYinterface pokey_interface =
+static const pokey_interface pokey_config =
 {
 	{ 0 },
 	input_port_3_r
@@ -887,7 +976,7 @@ static const struct POKEYinterface pokey_interface =
 static MACHINE_DRIVER_START( missile )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, MASTER_CLOCK/8)
+	MDRV_CPU_ADD("main", M6502, MASTER_CLOCK/8)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	MDRV_MACHINE_START(missile)
@@ -906,8 +995,8 @@ static MACHINE_DRIVER_START( missile )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(POKEY, MASTER_CLOCK/8)
-	MDRV_SOUND_CONFIG(pokey_interface)
+	MDRV_SOUND_ADD("pokey", POKEY, MASTER_CLOCK/8)
+	MDRV_SOUND_CONFIG(pokey_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -920,7 +1009,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( missile )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "035820.02",    0x5000, 0x0800, CRC(7a62ce6a) SHA1(9a39978138dc28fdefe193bfae1b226391e471db) )
 	ROM_LOAD( "035821.02",    0x5800, 0x0800, CRC(df3bd57f) SHA1(0916925d3c94d766d33f0e4badf6b0add835d748) )
 	ROM_LOAD( "035822.02",    0x6000, 0x0800, CRC(a1cd384a) SHA1(a1dd0953423750a0fbc6e3dccbf2ca64ef5a1f54) )
@@ -928,13 +1017,13 @@ ROM_START( missile )
 	ROM_LOAD( "035824.02",    0x7000, 0x0800, CRC(606e42e0) SHA1(9718f84a73c66b4e8ef7805a7ab638a7380624e1) )
 	ROM_LOAD( "035825.02",    0x7800, 0x0800, CRC(f752eaeb) SHA1(0339a6ce6744d2091cc7e07675e509b202b0f380) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "035826.01",   0x0000, 0x0020, CRC(86a22140) SHA1(2beebf7855e29849ada1823eae031fc98220bc43) )
 ROM_END
 
 
 ROM_START( missile2 )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "35820-01.h1",  0x5000, 0x0800, CRC(41cbb8f2) SHA1(5dcb58276c08d75d36baadb6cefe30d4916de9b0) )
 	ROM_LOAD( "35821-01.jk1", 0x5800, 0x0800, CRC(728702c8) SHA1(6f25af7133d3ec79029117162649f94e93f36e0e) )
 	ROM_LOAD( "35822-01.kl1", 0x6000, 0x0800, CRC(28f0999f) SHA1(eb52b11c6757c8dc3be88b276ea4dc7dfebf7cf7) )
@@ -942,13 +1031,13 @@ ROM_START( missile2 )
 	ROM_LOAD( "35824-01.np1", 0x7000, 0x0800, CRC(0ca089c8) SHA1(7f69ee990fd4fa1f2fceca7fc66fcaa02e4d2314) )
 	ROM_LOAD( "35825-01.r1",  0x7800, 0x0800, CRC(428cf0d5) SHA1(03cabbef50c33852fbbf38dd3eecaf70a82df82f) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "035826.01",   0x0000, 0x0020, CRC(86a22140) SHA1(2beebf7855e29849ada1823eae031fc98220bc43) )
 ROM_END
 
 
 ROM_START( suprmatk )
-	ROM_REGION( 0x9000, REGION_CPU1, 0 )
+	ROM_REGION( 0x9000, "main", 0 )
 	ROM_LOAD( "035820.02",    0x5000, 0x0800, CRC(7a62ce6a) SHA1(9a39978138dc28fdefe193bfae1b226391e471db) )
 	ROM_LOAD( "035821.02",    0x5800, 0x0800, CRC(df3bd57f) SHA1(0916925d3c94d766d33f0e4badf6b0add835d748) )
 	ROM_LOAD( "035822.02",    0x6000, 0x0800, CRC(a1cd384a) SHA1(a1dd0953423750a0fbc6e3dccbf2ca64ef5a1f54) )
@@ -958,13 +1047,13 @@ ROM_START( suprmatk )
 	ROM_LOAD( "e0.rom",       0x8000, 0x0800, CRC(d0b20179) SHA1(e2a9855899b6ff96b8dba169e0ab83f00a95919f) )
 	ROM_LOAD( "e1.rom",       0x8800, 0x0800, CRC(c6c818a3) SHA1(b9c92a85c07dd343d990e196d37b92d92a85a5e0) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "035826.01",   0x0000, 0x0020, CRC(86a22140) SHA1(2beebf7855e29849ada1823eae031fc98220bc43) )
 ROM_END
 
 
 ROM_START( sprmatkd )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "035820.sma",   0x5000, 0x0800, CRC(75f01b87) SHA1(32ed71b6a869d7b361f244c384bbe6f407f6c6d7) )
 	ROM_LOAD( "035821.sma",   0x5800, 0x0800, CRC(3320d67e) SHA1(5bb04b985421af6309818b94676298f4b90495cf) )
 	ROM_LOAD( "035822.sma",   0x6000, 0x0800, CRC(e6be5055) SHA1(43912cc565cb43256a9193594cf36abab1c85d6f) )
@@ -972,7 +1061,7 @@ ROM_START( sprmatkd )
 	ROM_LOAD( "035824.sma",   0x7000, 0x0800, CRC(90a06be8) SHA1(f46fd6847bc9836d11ea0042df19fbf33ddab0db) )
 	ROM_LOAD( "035825.sma",   0x7800, 0x0800, CRC(1298213d) SHA1(c8e4301704e3700c339557f2a833e70f6a068d5e) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "035826.01",   0x0000, 0x0020, CRC(86a22140) SHA1(2beebf7855e29849ada1823eae031fc98220bc43) )
 ROM_END
 
@@ -990,7 +1079,7 @@ PCB is marked: "VIDEOTRON BOLOGNA 002"
 */
 
 ROM_START( mcombat )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "002-0-0.10a",  0x5000, 0x0800, CRC(589b81de) SHA1(06f18a837cedb0da5464dfaa04f92bd035db3752) )
 	ROM_LOAD( "002-1-1.9a",   0x5800, 0x0800, CRC(08796a78) SHA1(e5aabe775889752ad1581098fcbf52ff1fa03b3b) )
 	ROM_LOAD( "002-2-2.8a",   0x6000, 0x0800, CRC(59ab750c) SHA1(4555c27ddeb22ba895610a9c516fe574664a6f4b) )
@@ -998,13 +1087,13 @@ ROM_START( mcombat )
 	ROM_LOAD( "002-4-4.6a",   0x7000, 0x0800, CRC(aac71e95) SHA1(7daf115eb2cdde69b7c4de1e1a6ee68cd2fd0f2c) )
 	ROM_LOAD( "002-5-5.5a",   0x7800, 0x0800, CRC(1b9a16e2) SHA1(03fb292bb6f815724b2fc4b2f561398000367373) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "mmi6331.6f",   0x0000, 0x0020, CRC(86a22140) SHA1(2beebf7855e29849ada1823eae031fc98220bc43) )
 ROM_END
 
 
 ROM_START( mcombata )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "002-0-0.10a",  0x5000, 0x0800, CRC(589b81de) SHA1(06f18a837cedb0da5464dfaa04f92bd035db3752) )
 	ROM_LOAD( "002-1-1.9a",   0x5800, 0x0800, CRC(08796a78) SHA1(e5aabe775889752ad1581098fcbf52ff1fa03b3b) )
 	ROM_LOAD( "002-2-2.8a",   0x6000, 0x0800, CRC(59ab750c) SHA1(4555c27ddeb22ba895610a9c516fe574664a6f4b) )
@@ -1012,7 +1101,7 @@ ROM_START( mcombata )
 	ROM_LOAD( "4.bin",        0x7000, 0x0800, CRC(e3b5428d) SHA1(ac9eb459df68a117a49e92fbc5ed88faaf46a395) )
 	ROM_LOAD( "002-5-5.5a",   0x7800, 0x0800, CRC(1b9a16e2) SHA1(03fb292bb6f815724b2fc4b2f561398000367373) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "mmi6331.6f",   0x0000, 0x0020, CRC(86a22140) SHA1(2beebf7855e29849ada1823eae031fc98220bc43) )
 ROM_END
 
@@ -1025,7 +1114,7 @@ ROM_END
 static DRIVER_INIT( suprmatk )
 {
 	int i;
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 
 	for (i = 0; i < 0x40; i++)
 	{

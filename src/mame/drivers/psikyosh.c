@@ -314,8 +314,8 @@ static const gfx_layout layout_16x16x8 =
 };
 
 static GFXDECODE_START( psikyosh )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, layout_16x16x4, 0x000, 0x100 ) // 4bpp tiles
-	GFXDECODE_ENTRY( REGION_GFX1, 0, layout_16x16x8, 0x000, 0x100 ) // 8bpp tiles
+	GFXDECODE_ENTRY( "gfx1", 0, layout_16x16x4, 0x000, 0x100 ) // 4bpp tiles
+	GFXDECODE_ENTRY( "gfx1", 0, layout_16x16x8, 0x000, 0x100 ) // 8bpp tiles
 GFXDECODE_END
 
 static const eeprom_interface eeprom_interface_93C56 =
@@ -346,11 +346,11 @@ static NVRAM_HANDLER(93C56)
 		}
 		else	// these games want the eeprom all zeros by default
 		{
-			int length;
+			UINT32 length, size;
 			UINT8 *dat;
 
-			dat = eeprom_get_data_pointer(&length);
-			memset(dat, 0, length);
+			dat = eeprom_get_data_pointer(&length, &size);
+			memset(dat, 0, length * size);
 
  			if (use_factory_eeprom!=eeprom_0) /* Set the EEPROM to Factory Defaults for games needing them*/
  			{
@@ -442,7 +442,7 @@ static WRITE32_HANDLER( psikyosh_vidregs_w )
 	{
 		if (ACCESSING_BITS_0_15)	// Bank
 		{
-			UINT8 *ROM = memory_region(machine, REGION_GFX1);
+			UINT8 *ROM = memory_region(machine, "gfx1");
 			memory_set_bankptr(2,&ROM[0x20000 * (psikyosh_vidregs[offset]&0xfff)]); /* Bank comes from vidregs */
 		}
 	}
@@ -454,7 +454,7 @@ static UINT32 sample_offs = 0;
 
 static READ32_HANDLER( psh_sample_r ) /* Send sample data for test */
 {
-	UINT8 *ROM = memory_region(machine, REGION_SOUND1);
+	UINT8 *ROM = memory_region(machine, "ymf");
 
 	return ROM[sample_offs++]<<16;
 }
@@ -462,29 +462,29 @@ static READ32_HANDLER( psh_sample_r ) /* Send sample data for test */
 
 static READ32_HANDLER( psh_ymf_fm_r )
 {
-	return YMF278B_status_port_0_r(machine,0)<<24; /* Also, bit 0 being high indicates not ready to send sample data for test */
+	return ymf278b_status_port_0_r(machine,0)<<24; /* Also, bit 0 being high indicates not ready to send sample data for test */
 }
 
 static WRITE32_HANDLER( psh_ymf_fm_w )
 {
 	if (ACCESSING_BITS_24_31)	// FM bank 1 address (OPL2/OPL3 compatible)
 	{
-		YMF278B_control_port_0_A_w(machine, 0, data>>24);
+		ymf278b_control_port_0_a_w(machine, 0, data>>24);
 	}
 
 	if (ACCESSING_BITS_16_23)	// FM bank 1 data
 	{
-		YMF278B_data_port_0_A_w(machine, 0, data>>16);
+		ymf278b_data_port_0_a_w(machine, 0, data>>16);
 	}
 
 	if (ACCESSING_BITS_8_15)	// FM bank 2 address (OPL3/YMF 262 extended)
 	{
-		YMF278B_control_port_0_B_w(machine, 0, data>>8);
+		ymf278b_control_port_0_b_w(machine, 0, data>>8);
 	}
 
 	if (ACCESSING_BITS_0_7)	// FM bank 2 data
 	{
-		YMF278B_data_port_0_B_w(machine, 0, data);
+		ymf278b_data_port_0_b_w(machine, 0, data);
 	}
 }
 
@@ -492,7 +492,7 @@ static WRITE32_HANDLER( psh_ymf_pcm_w )
 {
 	if (ACCESSING_BITS_24_31)	// PCM address (OPL4/YMF 278B extended)
 	{
-		YMF278B_control_port_0_C_w(machine, 0, data>>24);
+		ymf278b_control_port_0_c_w(machine, 0, data>>24);
 
 #if ROMTEST
 		if (data>>24 == 0x06)	// Reset Sample reading (They always write this code immediately before reading data)
@@ -504,7 +504,7 @@ static WRITE32_HANDLER( psh_ymf_pcm_w )
 
 	if (ACCESSING_BITS_16_23)	// PCM data
 	{
-		YMF278B_data_port_0_C_w(machine, 0, data>>16);
+		ymf278b_data_port_0_c_w(machine, 0, data>>16);
 	}
 }
 
@@ -587,15 +587,14 @@ static void irqhandler(running_machine *machine, int linestate)
 		cpunum_set_input_line(machine, 0, 12, CLEAR_LINE);
 }
 
-static const struct YMF278B_interface ymf278b_interface =
+static const ymf278b_interface ymf278b_config =
 {
-	REGION_SOUND1,
 	irqhandler
 };
 
 static MACHINE_DRIVER_START( psikyo3v1 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", SH2, MASTER_CLOCK/2)
+	MDRV_CPU_ADD("main", SH2, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(ps3v1_readmem,ps3v1_writemem)
 	MDRV_CPU_VBLANK_INT("main", psikyosh_interrupt)
 
@@ -621,8 +620,8 @@ static MACHINE_DRIVER_START( psikyo3v1 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YMF278B, MASTER_CLOCK/2)
-	MDRV_SOUND_CONFIG(ymf278b_interface)
+	MDRV_SOUND_ADD("ymf", YMF278B, MASTER_CLOCK/2)
+	MDRV_SOUND_CONFIG(ymf278b_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -651,7 +650,7 @@ MACHINE_DRIVER_END
 
 
 #define UNUSED_PORT \
-	PORT_START_TAG("IN2")/* not read? */ \
+	PORT_START("IN2")/* not read? */ \
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
@@ -662,7 +661,7 @@ MACHINE_DRIVER_END
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 #define PORT_COIN( debug ) \
-	PORT_START_TAG("IN3") /* System inputs */ \
+	PORT_START("IN3") /* System inputs */ \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1    ) \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2    ) \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN  ) \
@@ -685,42 +684,42 @@ MACHINE_DRIVER_END
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    ) PORT_PLAYER(player)
 
 static INPUT_PORTS_START( s1945ii )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
 
 	UNUSED_PORT
 	PORT_COIN( 0x40 )
 
-	PORT_START_TAG("IN4")	/* jumper pads on the PCB */
+	PORT_START("IN4")	/* jumper pads on the PCB */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( World ) )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( soldivid )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
 
 	UNUSED_PORT
 	PORT_COIN( 0x40 )
 
-	PORT_START_TAG("IN4")	/* jumper pads on the PCB */
+	PORT_START("IN4")	/* jumper pads on the PCB */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( World ) )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( daraku )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")  /* more controls */
+	PORT_START("IN2")  /* more controls */
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN                      )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNKNOWN                      )
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
@@ -732,37 +731,37 @@ static INPUT_PORTS_START( daraku )
 
 	PORT_COIN( 0x40 )
 
-	PORT_START_TAG("IN4")	/* jumper pads on the PCB */
+	PORT_START("IN4")	/* jumper pads on the PCB */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( World ) ) /* Title screen is different, English is default now */
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( sbomberb )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
 
 	UNUSED_PORT
 	PORT_COIN( 0x40 ) /* If HIGH then you can perform rom test, but EEPROM resets? */
 
-	PORT_START_TAG("IN4")	/* jumper pads on the PCB */
+	PORT_START("IN4")	/* jumper pads on the PCB */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( World ) )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( gunbird2 ) /* Different Region */
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
 
 	UNUSED_PORT
 	PORT_COIN( 0x40 ) /* If HIGH then you can perform rom test, but EEPROM resets */
 
-	PORT_START_TAG("IN4")	/* jumper pads on the PCB */
+	PORT_START("IN4")	/* jumper pads on the PCB */
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x01, "International Ver A." )
@@ -770,15 +769,15 @@ static INPUT_PORTS_START( gunbird2 ) /* Different Region */
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( s1945iii ) /* Different Region again */
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
 
 	UNUSED_PORT
 	PORT_COIN( 0x40 ) /* If HIGH then you can perform rom test, EEPROM doesn't reset */
 
-	PORT_START_TAG("IN4")	/* IN4 jumper pads on the PCB */
+	PORT_START("IN4")	/* IN4 jumper pads on the PCB */
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x02, "International Ver A." )
@@ -786,16 +785,16 @@ static INPUT_PORTS_START( s1945iii ) /* Different Region again */
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( dragnblz ) /* Security requires bit high */
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
 
 	UNUSED_PORT
 
 	PORT_COIN( 0 ) /* Must be HIGH (Or Security Error), so can perform test */
 
-	PORT_START_TAG("IN4")	/* jumper pads on the PCB */
+	PORT_START("IN4")	/* jumper pads on the PCB */
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x02, "International Ver A." )
@@ -803,15 +802,15 @@ static INPUT_PORTS_START( dragnblz ) /* Security requires bit high */
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( gnbarich ) /* Same as S1945iii except only one button */
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
 
 	UNUSED_PORT
 	PORT_COIN( 0x40 ) /* If HIGH then you can perform rom test, but EEPROM resets? */
 
-	PORT_START_TAG("IN4")/* jumper pads on the PCB */
+	PORT_START("IN4")/* jumper pads on the PCB */
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Region ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
 	PORT_DIPSETTING(    0x02, "International Ver A." )
@@ -819,15 +818,15 @@ static INPUT_PORTS_START( gnbarich ) /* Same as S1945iii except only one button 
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mjgtaste ) /* This will need the Mahjong inputs */
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
 
 	UNUSED_PORT
 	PORT_COIN( 0x40 )
 
-	PORT_START_TAG("IN4")	/* jumper pads on the PCB */
+	PORT_START("IN4")	/* jumper pads on the PCB */
 //  PORT_DIPNAME( 0x03, 0x01, DEF_STR( Region ) )
 //  PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
 //  PORT_DIPSETTING(    0x02, "International Ver A." )
@@ -844,11 +843,11 @@ INPUT_PORTS_END
 /* PS3 */
 
 ROM_START( soldivid )
-	ROM_REGION( 0x100000, REGION_CPU1, 0)
+	ROM_REGION( 0x100000, "main", 0)
 	ROM_LOAD32_WORD_SWAP( "2-prog_l.u18", 0x000002, 0x080000, CRC(cf179b04) SHA1(343f00a81cffd44334a4db81b6b828b7cf73c1e8) )
 	ROM_LOAD32_WORD_SWAP( "1-prog_h.u17", 0x000000, 0x080000, CRC(f467d1c4) SHA1(a011e6f310a54f09efa0bf4597783cd78c05ad6f) )
 
-	ROM_REGION( 0x3800000, REGION_GFX1, ROMTEST_GFX )
+	ROM_REGION( 0x3800000, "gfx1", ROMTEST_GFX )
 	/* This Space Empty! */
 	ROM_LOAD32_WORD_SWAP( "4l.u10", 0x2000000, 0x400000, CRC(9eb9f269) SHA1(4a4d90eefe62b5462f5ed5e062eea7b6b4900f85) )
 	ROM_LOAD32_WORD_SWAP( "4h.u31", 0x2000002, 0x400000, CRC(7c76cfe7) SHA1(14e291e840a4afe3802fe1847615c5e806d7492a) )
@@ -857,16 +856,16 @@ ROM_START( soldivid )
 	ROM_LOAD32_WORD_SWAP( "6l.u8",  0x3000000, 0x400000, CRC(f01b816e) SHA1(2a0d86c1c106eef539028aa9ebe49d13216a6b9c) )
 	ROM_LOAD32_WORD_SWAP( "6h.u37", 0x3000002, 0x400000, CRC(fdd57361) SHA1(f58d91acde1f4e6d4f0e8dcd1b23aa5092d89916) )
 
-	ROM_REGION( 0x400000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x400000, "ymf", 0 )
 	ROM_LOAD( "sound.bin", 0x000000, 0x400000, CRC(e98f8d45) SHA1(7791c0f31d08f37c6ec65e7cecf8ef54ca73b1fd) )
 ROM_END
 
 ROM_START( s1945ii )
-	ROM_REGION( 0x100000, REGION_CPU1, 0) /* Code */
+	ROM_REGION( 0x100000, "main", 0) /* Code */
 	ROM_LOAD32_WORD_SWAP( "2_prog_l.u18", 0x000002, 0x080000, CRC(20a911b8) SHA1(82ba7b93bd621fc45a4dc2722752077b59a0a233) )
 	ROM_LOAD32_WORD_SWAP( "1_prog_h.u17", 0x000000, 0x080000, CRC(4c0fe85e) SHA1(74f810a1c3e9d629c8b190f68d73ce07b11f77b7) )
 
-	ROM_REGION( 0x2000000, REGION_GFX1, ROMTEST_GFX )	/* Tiles */
+	ROM_REGION( 0x2000000, "gfx1", ROMTEST_GFX )	/* Tiles */
 	ROM_LOAD32_WORD( "0l.u4",    0x0000000, 0x400000, CRC(bfacf98d) SHA1(19954f12881e6e95e808bd1f2c2f5a425786727f) )
 	ROM_LOAD32_WORD( "0h.u13",   0x0000002, 0x400000, CRC(1266f67c) SHA1(cf93423a827aa92aa54afbbecf8509d2590edc9b) )
 	ROM_LOAD32_WORD( "1l.u3",    0x0800000, 0x400000, CRC(2d3332c9) SHA1(f2e54100a48061bfd589e8765f59ca051176a38b) )
@@ -876,7 +875,7 @@ ROM_START( s1945ii )
 	ROM_LOAD32_WORD( "3l.u1",    0x1800000, 0x400000, CRC(a6c3704e) SHA1(cb9881e4235cc8e4bcca4c6ccbd8d8d8634e3624) )
 	ROM_LOAD32_WORD( "3h.u19",   0x1800002, 0x400000, CRC(4cd3ca70) SHA1(5b0a6ea4fe0e821cebe6e840596f648e24dded51) )
 
-	ROM_REGION( 0x800000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x800000, "ymf", 0 ) /* Samples */
 	ROM_LOAD( "sound.u32", 0x000000, 0x400000, CRC(ba680ca7) SHA1(b645896e297aad426784aa656bff738e1b33c2a2) )
 	ROM_RELOAD ( 0x400000, 0x400000 )
 	/* 0x400000 - 0x7fffff allocated but left blank, it randomly reads from here on the
@@ -885,12 +884,12 @@ ROM_END
 
 ROM_START( daraku )
 	/* main program */
-	ROM_REGION( 0x200000, REGION_CPU1, 0)
+	ROM_REGION( 0x200000, "main", 0)
 	ROM_LOAD32_WORD_SWAP( "4_prog_l.u18", 0x000002, 0x080000, CRC(660b4609) SHA1(ee6b5606fae41881c3e671ee642baae5c03331ca) )
 	ROM_LOAD32_WORD_SWAP( "3_prog_h.u17", 0x000000, 0x080000, CRC(7a9cf601) SHA1(8df464ce3fd02b30dd2ab77828594f4916375fd5) )
 	ROM_LOAD16_WORD_SWAP( "prog.u16",     0x100000, 0x100000, CRC(3742e990) SHA1(dd4b8777e57245151b3d520ed1bdab207530420b) )
 
-	ROM_REGION( 0x3400000, REGION_GFX1, ROMTEST_GFX )
+	ROM_REGION( 0x3400000, "gfx1", ROMTEST_GFX )
 	ROM_LOAD32_WORD( "0l.u4",  0x0000000, 0x400000, CRC(565d8427) SHA1(090ce9213c530d29e488cfb89bb39fd7169985d5) )
 	ROM_LOAD32_WORD( "0h.u13", 0x0000002, 0x400000, CRC(9a602630) SHA1(ab176490b36aec7ce30d1cf20b57c02c926c59d3) )
 	ROM_LOAD32_WORD( "1l.u3",  0x0800000, 0x400000, CRC(ac5ce8e1) SHA1(7df6a04ea2530cc669581474e8b8ee6f59caae1b) )
@@ -906,16 +905,16 @@ ROM_START( daraku )
 	ROM_LOAD32_WORD( "6l.u8",  0x3000000, 0x200000, CRC(9f008d1b) SHA1(9607e09bde430eefe126569a6e251114bc8f754b) )
 	ROM_LOAD32_WORD( "6h.u37", 0x3000002, 0x200000, CRC(acd2d0e3) SHA1(dee96bdf3b8efde1298b73c5e7dd62abcdc101cf) )
 
-	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x400000, "ymf", 0 ) /* Samples */
 	ROM_LOAD( "sound.u32", 0x000000, 0x400000, CRC(ef2c781d) SHA1(1313f082f6dbe4da0efaf261226085eb7325667f) )
 ROM_END
 
 ROM_START( sbomberb )
-	ROM_REGION( 0x100000, REGION_CPU1, 0)
+	ROM_REGION( 0x100000, "main", 0)
 	ROM_LOAD32_WORD_SWAP( "1-b_pr_l.u18", 0x000002, 0x080000, CRC(52d12225) SHA1(0a31a5d557414e7bf51dc6f7fbdd417a20b78df1) )
 	ROM_LOAD32_WORD_SWAP( "1-b_pr_h.u17", 0x000000, 0x080000, CRC(1bbd0345) SHA1(c6ccb7c97cc9e9ea298c1883d1dd5563907a7255) )
 
-	ROM_REGION( 0x2800000, REGION_GFX1, ROMTEST_GFX )
+	ROM_REGION( 0x2800000, "gfx1", ROMTEST_GFX )
 	ROM_LOAD32_WORD( "0l.u4",  0x0000000, 0x400000, CRC(b7e4ac51) SHA1(70e802b6235932116496a77ee0c78a256e85aff3) )
 	ROM_LOAD32_WORD( "0h.u13", 0x0000002, 0x400000, CRC(235e6c27) SHA1(c597d7b5bef4edac1474ad0024cfb33eb1257106) )
 	ROM_LOAD32_WORD( "1l.u3",  0x0800000, 0x400000, CRC(3c88c48c) SHA1(d1ce4ab60ba18449bbd96e29c310e060a0bb6de6) )
@@ -927,19 +926,19 @@ ROM_START( sbomberb )
 	ROM_LOAD32_WORD( "4l.u10", 0x2000000, 0x400000, CRC(e491d593) SHA1(12a7f6c282969be342b70443b8c802a399571245) )
 	ROM_LOAD32_WORD( "4h.u31", 0x2000002, 0x400000, CRC(7bdd377a) SHA1(e357c98f82b8ea3ae4fd8eae6c1ad2dfb500db9c) )
 
-	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x400000, "ymf", 0 ) /* Samples */
 	ROM_LOAD( "sound.u32", 0x000000, 0x400000, CRC(85cbff69) SHA1(34c7f4d337111de2064f84214294b6bdc37bf16c) )
 ROM_END
 
 /* PS5 */
 
 ROM_START( gunbird2 )
-	ROM_REGION( 0x180000, REGION_CPU1, 0)
+	ROM_REGION( 0x180000, "main", 0)
 	ROM_LOAD32_WORD_SWAP( "2_prog_l.u16", 0x000002, 0x080000, CRC(76f934f0) SHA1(cf197796d66f15639a6b3d5311c18da33cefd06b) )
 	ROM_LOAD32_WORD_SWAP( "1_prog_h.u17", 0x000000, 0x080000, CRC(7328d8bf) SHA1(c640de1ab5b32400b2d77e0dc6e3ee0f78ab7803) )
 	ROM_LOAD16_WORD_SWAP( "3_pdata.u1",   0x100000, 0x080000, CRC(a5b697e6) SHA1(947f124fa585c2cf77c6571af7559bd652897b89) )
 
-	ROM_REGION( 0x3800000, REGION_GFX1, ROMTEST_GFX )
+	ROM_REGION( 0x3800000, "gfx1", ROMTEST_GFX )
 	ROM_LOAD32_WORD( "0l.u3",  0x0000000, 0x800000, CRC(5c826bc8) SHA1(74fb6b242b4c5fe5365cfcc3029ed6da4cf3a621) )
 	ROM_LOAD32_WORD( "0h.u10", 0x0000002, 0x800000, CRC(3df0cb6c) SHA1(271d276fa0f63d84e458223316a9517865fc2255) )
 	ROM_LOAD32_WORD( "1l.u4",  0x1000000, 0x800000, CRC(1558358d) SHA1(e3b9c3da4e9b29ffa9568b57d14fe2b600aead68) )
@@ -949,17 +948,17 @@ ROM_START( gunbird2 )
 	ROM_LOAD32_WORD( "3l.u6",  0x3000000, 0x400000, CRC(0229d37f) SHA1(f9d98d1d2dda2d552b2a46c76b4c7fc84b1aa4c6) )
 	ROM_LOAD32_WORD( "3h.u13", 0x3000002, 0x400000, CRC(f41bbf2b) SHA1(b705274e392541e2f513a4ae4bae543c03be0913) )
 
-	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x400000, "ymf", 0 ) /* Samples */
 	ROM_LOAD( "sound.u9", 0x000000, 0x400000, CRC(f19796ab) SHA1(b978f0550ebd675e8ce9d9edcfcc3f6214e49e8b) )
 ROM_END
 
 ROM_START( s1945iii )
-	ROM_REGION( 0x180000, REGION_CPU1, 0)
+	ROM_REGION( 0x180000, "main", 0)
 	ROM_LOAD32_WORD_SWAP( "2_progl.u16", 0x000002, 0x080000, CRC(5d5d385f) SHA1(67b3bcabd71cf084bcea7a59939281a8d6257059) )
 	ROM_LOAD32_WORD_SWAP( "1_progh.u17", 0x000000, 0x080000, CRC(1b8a5a18) SHA1(718a176bd48e16f964fcb07c568b5227cfc0515f) )
 	ROM_LOAD16_WORD_SWAP( "3_data.u1",   0x100000, 0x080000, CRC(8ff5f7d3) SHA1(420a3d7f2d5ab6a56789d36b418431f12f5f73f5) )
 
-	ROM_REGION( 0x3800000, REGION_GFX1, ROMTEST_GFX )
+	ROM_REGION( 0x3800000, "gfx1", ROMTEST_GFX )
 	ROM_LOAD32_WORD( "0l.u3",  0x0000000, 0x800000, CRC(70a0d52c) SHA1(c9d9534da59123b577dc22020273b94ccdeeb67d) )
 	ROM_LOAD32_WORD( "0h.u10", 0x0000002, 0x800000, CRC(4dcd22b4) SHA1(2df7a7d08df17d2a62d574fccc8ba40aaae21a13) )
 	ROM_LOAD32_WORD( "1l.u4",  0x1000000, 0x800000, CRC(de1042ff) SHA1(468f6dfd5c1f2084c573b6851e314ff2826dc350) )
@@ -969,7 +968,7 @@ ROM_START( s1945iii )
 	ROM_LOAD32_WORD( "3l.u6",  0x3000000, 0x400000, CRC(f693438c) SHA1(d70e25a3f56aae6575c696d9b7b6d7a9d04f0104) )
 	ROM_LOAD32_WORD( "3h.u13", 0x3000002, 0x400000, CRC(2d0c334f) SHA1(74d94abb34484c7b79dbb989645f53124e53e3b7) )
 
-	ROM_REGION( 0x800000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x800000, "ymf", 0 ) /* Samples */
 	ROM_LOAD( "sound.u9", 0x000000, 0x400000, CRC(c5374beb) SHA1(d13e12cbd249246d953c45bb3bfa576a0ec75595) )
 	ROM_RELOAD ( 0x400000, 0x400000 )
 ROM_END
@@ -977,11 +976,11 @@ ROM_END
 /* PS5v2 */
 
 ROM_START( dragnblz )
-	ROM_REGION( 0x100000, REGION_CPU1, 0)
+	ROM_REGION( 0x100000, "main", 0)
 	ROM_LOAD32_WORD_SWAP( "2prog_h.u21",   0x000000, 0x080000, CRC(fc5eade8) SHA1(e5d05543641e4a3900b0d42e0d5f75734683d635) )
 	ROM_LOAD32_WORD_SWAP( "1prog_l.u22",   0x000002, 0x080000, CRC(95d6fd02) SHA1(2b2830e7fa66cbd13666191762bfddc40571caec) )
 
-	ROM_REGION( 0x2c00000, REGION_GFX1, ROMTEST_GFX )	/* Sprites */
+	ROM_REGION( 0x2c00000, "gfx1", ROMTEST_GFX )	/* Sprites */
 	ROM_LOAD32_WORD( "1l.u4",  0x0400000, 0x200000, CRC(c2eb565c) SHA1(07e41b36cc03a87f28d091754fdb0d1a7316a532) )
 	ROM_LOAD32_WORD( "1h.u12", 0x0400002, 0x200000, CRC(23cb46b7) SHA1(005b7cc40eea103688a64a72c219c7535970dbfb) )
 	ROM_LOAD32_WORD( "2l.u5",  0x0800000, 0x200000, CRC(bc256aea) SHA1(1f1d678e8a63513a95f296b8a07d2ea485d1e53f) )
@@ -1003,18 +1002,18 @@ ROM_START( dragnblz )
 	ROM_LOAD32_WORD( "10l.u58",0x2800000, 0x200000, CRC(a3f5c7f8) SHA1(d17478ca3e7ef46270f350ffa35d43acb05b1185) )
 	ROM_LOAD32_WORD( "10h.u59",0x2800002, 0x200000, CRC(30e304c4) SHA1(1d866276bfe7f7524306a880d225aaf11ac2e5dd) )
 
-	ROM_REGION( 0x800000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x800000, "ymf", 0 ) /* Samples */
 	ROM_LOAD( "snd0.u52", 0x000000, 0x200000, CRC(7fd1b225) SHA1(6aa61021ada51393bbb34fd1aea00b8feccc8197) )
 ROM_END
 
 /* Most of the roms on this board are from Dragon Blaze and not used by the game, they're needed for the board to
    work, but the content doesn't matter. */
 ROM_START( gnbarich )
-	ROM_REGION( 0x100000, REGION_CPU1, 0)
+	ROM_REGION( 0x100000, "main", 0)
 	ROM_LOAD32_WORD_SWAP( "2-prog_l.u21",   0x000000, 0x080000, CRC(c136cd9c) SHA1(ab66c4f5196a66a97dbb5832336a203421cf40fa) )
 	ROM_LOAD32_WORD_SWAP( "1-prog_h.u22",   0x000002, 0x080000, CRC(6588fc96) SHA1(3db29fcf17e8b2aee465319b557bd3e45bc966b2) )
 
-	ROM_REGION( 0x2c00000, REGION_GFX1, ROMTEST_GFX )	/* Sprites */
+	ROM_REGION( 0x2c00000, "gfx1", ROMTEST_GFX )	/* Sprites */
 	/* Gunbarich doesn't actually use 1-5 and 10, they're on the board, but all the gfx are in 6-9
        The game was an upgrade to Dragon Blaze, only some of the roms were replaced however it
        appears the board needs to be fully populated to work correctly so the Dragon Blaze roms
@@ -1041,19 +1040,19 @@ ROM_START( gnbarich )
 //  ROM_LOAD32_WORD( "10l.u58",0x2800000, 0x200000, CRC(a3f5c7f8) SHA1(d17478ca3e7ef46270f350ffa35d43acb05b1185) ) /* From Dragon Blaze */
 //  ROM_LOAD32_WORD( "10h.u59",0x2800002, 0x200000, CRC(30e304c4) SHA1(1d866276bfe7f7524306a880d225aaf11ac2e5dd) ) /* From Dragon Blaze */
 
-	ROM_REGION( 0x800000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x800000, "ymf", 0 ) /* Samples */
 	ROM_LOAD( "snd0.u52", 0x000000, 0x200000, CRC(7b10436b) SHA1(c731fcce024e286a677ca10a91761c1ee06094a5) )
 ROM_END
 
 /* Most of the roms on this board are from Dragon Blaze and not used by the game, they're needed for the board to
    work, but the content doesn't matter. */
 ROM_START( mjgtaste )
-	ROM_REGION( 0x100000, REGION_CPU1, 0)
+	ROM_REGION( 0x100000, "main", 0)
 	ROM_LOAD32_WORD_SWAP( "2.u21",   0x000000, 0x080000, CRC(5f2041dc) SHA1(f3862ffdb8df0cf921ce1cb0236935731e7729a7) )
 	ROM_LOAD32_WORD_SWAP( "1.u22",   0x000002, 0x080000, CRC(f5ff7876) SHA1(4c909db9c97f29fd79df6dacd29762688701b973) )
 
 	/* exact number of gfx / sound roms may be incorrect */
-	ROM_REGION( 0x2c00000, REGION_GFX1, ROMTEST_GFX | ROMREGION_ERASE00 )	/* Sprites */
+	ROM_REGION( 0x2c00000, "gfx1", ROMTEST_GFX | ROMREGION_ERASE00 )	/* Sprites */
 	ROM_LOAD32_WORD( "1l.u4",  0x0400000, 0x200000, CRC(30da42b1) SHA1(8485f2c0e7769b50b95d962afe14fa7ae74cd887) )
 	ROM_LOAD32_WORD( "1h.u12", 0x0400002, 0x200000, CRC(629c1d44) SHA1(61909091328bb7b6d3e6e0bff91e14c9b4b86c2c) )
 	ROM_LOAD32_WORD( "2l.u5",  0x0800000, 0x200000, CRC(1f6126ab) SHA1(e9fc70ca42798c04a4d4e1ef1113a59477c77fdc) )
@@ -1075,7 +1074,7 @@ ROM_START( mjgtaste )
 //  ROM_LOAD32_WORD( "10l.u58",0x2800000, 0x200000, CRC(a3f5c7f8) SHA1(d17478ca3e7ef46270f350ffa35d43acb05b1185) ) /* From Dragon Blaze */
 //  ROM_LOAD32_WORD( "10h.u59",0x2800002, 0x200000, CRC(30e304c4) SHA1(1d866276bfe7f7524306a880d225aaf11ac2e5dd) ) /* From Dragon Blaze */
 
-	ROM_REGION( 0x800000, REGION_SOUND1, 0 ) /* Samples - Not Dumped */
+	ROM_REGION( 0x800000, "ymf", 0 ) /* Samples - Not Dumped */
 	ROM_LOAD( "snd0.u52", 0x000000, 0x400000, CRC(0179f018) SHA1(16ae63e021230356777342ed902e02407a1a1b82) )
 ROM_END
 
@@ -1095,8 +1094,8 @@ PC  : 0001AE7C: MOV.L   @R3,R0
 PC  : 0001AE7E: TST     R0,R0
 PC  : 0001AE80: BT      $0001AE74
 */
-	if (activecpu_get_pc()==0x0001AFAC) cpu_spinuntil_int(); // Character Select + InGame
-	if (activecpu_get_pc()==0x0001AE76) cpu_spinuntil_int(); // Everything Else?
+	if (activecpu_get_pc()==0x0001AFAA) cpu_spinuntil_int(); // Character Select + InGame
+	if (activecpu_get_pc()==0x0001AE74) cpu_spinuntil_int(); // Everything Else?
 
 	return psh_ram[0x00000C/4];
 }
@@ -1112,9 +1111,9 @@ PC  : 0609FC70: MOV.L   @R3,R0  // whats there into r0
 PC  : 0609FC72: TST     R0,R0 // test
 PC  : 0609FC74: BT      $0609FC68
 */
-	if (activecpu_get_pc()==0x609FC6A) cpu_spinuntil_int(); // Title Screens
-	if (activecpu_get_pc()==0x609FED4) cpu_spinuntil_int(); // In Game
-	if (activecpu_get_pc()==0x60A0172) cpu_spinuntil_int(); // Attract Demo
+	if (activecpu_get_pc()==0x609FC68) cpu_spinuntil_int(); // Title Screens
+	if (activecpu_get_pc()==0x609FED2) cpu_spinuntil_int(); // In Game
+	if (activecpu_get_pc()==0x60A0170) cpu_spinuntil_int(); // Attract Demo
 
 	return psh_ram[0x00000C/4];
 }
@@ -1131,8 +1130,8 @@ PC  : 00047622: MOV.L   @R3,R0
 PC  : 00047624: TST     R0,R0
 PC  : 00047626: BT      $00047618
 */
-	if (activecpu_get_pc()==0x0004761C) cpu_spinuntil_int(); // title
-	if (activecpu_get_pc()==0x00047978) cpu_spinuntil_int(); // ingame
+	if (activecpu_get_pc()==0x0004761a) cpu_spinuntil_int(); // title
+	if (activecpu_get_pc()==0x00047976) cpu_spinuntil_int(); // ingame
 
 	return psh_ram[0x00000C/4];
 }
@@ -1148,9 +1147,9 @@ PC  : 060A10F4: MOV.L   @R1,R2
 PC  : 060A10F6: TST     R2,R2
 PC  : 060A10F8: BT      $060A10EC
 */
-	if (activecpu_get_pc()==0x060A10EE) cpu_spinuntil_int(); // title
-	if (activecpu_get_pc()==0x060A165A) cpu_spinuntil_int(); // attract
-	if (activecpu_get_pc()==0x060A1382) cpu_spinuntil_int(); // game
+	if (activecpu_get_pc()==0x060A10EC) cpu_spinuntil_int(); // title
+	if (activecpu_get_pc()==0x060A1658) cpu_spinuntil_int(); // attract
+	if (activecpu_get_pc()==0x060A1380) cpu_spinuntil_int(); // game
 
 	return psh_ram[0x00000C/4];
 }
@@ -1166,19 +1165,19 @@ PC  : 0602897A: MOV.L   @R1,R2
 PC  : 0602897C: TST     R2,R2
 PC  : 0602897E: BT      $06028972
 */
-	if (activecpu_get_pc()==0x06028974) cpu_spinuntil_int();
-	if (activecpu_get_pc()==0x06028E64) cpu_spinuntil_int();
-	if (activecpu_get_pc()==0x06028BE6) cpu_spinuntil_int();
+	if (activecpu_get_pc()==0x06028972) cpu_spinuntil_int();
+	if (activecpu_get_pc()==0x06028E62) cpu_spinuntil_int();
+	if (activecpu_get_pc()==0x06028BE4) cpu_spinuntil_int();
 
 	return psh_ram[0x04000C/4];
 }
 
 static READ32_HANDLER( s1945iii_speedup_r )
 {
-	if (activecpu_get_pc()==0x0602B464) cpu_spinuntil_int(); // start up text
-	if (activecpu_get_pc()==0x0602B6E2) cpu_spinuntil_int(); // intro attract
-	if (activecpu_get_pc()==0x0602BC1E) cpu_spinuntil_int(); // game attract
-	if (activecpu_get_pc()==0x0602B97C) cpu_spinuntil_int(); // game
+	if (activecpu_get_pc()==0x0602B462) cpu_spinuntil_int(); // start up text
+	if (activecpu_get_pc()==0x0602B6E0) cpu_spinuntil_int(); // intro attract
+	if (activecpu_get_pc()==0x0602BC1C) cpu_spinuntil_int(); // game attract
+	if (activecpu_get_pc()==0x0602B97A) cpu_spinuntil_int(); // game
 
 	return psh_ram[0x06000C/4];
 }
@@ -1186,10 +1185,10 @@ static READ32_HANDLER( s1945iii_speedup_r )
 
 static READ32_HANDLER( dragnblz_speedup_r )
 {
-	if (activecpu_get_pc()==0x06027440) cpu_spinuntil_int(); // startup texts
-	if (activecpu_get_pc()==0x060276E6) cpu_spinuntil_int(); // attract intro
-	if (activecpu_get_pc()==0x06027C74) cpu_spinuntil_int(); // attract game
-	if (activecpu_get_pc()==0x060279A8) cpu_spinuntil_int(); // game
+	if (activecpu_get_pc()==0x0602743e) cpu_spinuntil_int(); // startup texts
+	if (activecpu_get_pc()==0x060276e4) cpu_spinuntil_int(); // attract intro
+	if (activecpu_get_pc()==0x06027C72) cpu_spinuntil_int(); // attract game
+	if (activecpu_get_pc()==0x060279A6) cpu_spinuntil_int(); // game
 
 	return psh_ram[0x006000C/4];
 }
@@ -1206,10 +1205,10 @@ PC  :0602CAF0: TST     R2,R2
 PC  :0602CAF2: BT      $0602CAE6
 */
 
-	if (activecpu_get_pc()==0x0602CAE8) cpu_spinuntil_int(); // title logos
-	if (activecpu_get_pc()==0x0602CD88) cpu_spinuntil_int(); // attract intro
-	if (activecpu_get_pc()==0x0602D2F0) cpu_spinuntil_int(); // game attract
-	if (activecpu_get_pc()==0x0602D042) cpu_spinuntil_int(); // game play
+	if (activecpu_get_pc()==0x0602CAE6) cpu_spinuntil_int(); // title logos
+	if (activecpu_get_pc()==0x0602CD86) cpu_spinuntil_int(); // attract intro
+	if (activecpu_get_pc()==0x0602D2ee) cpu_spinuntil_int(); // game attract
+	if (activecpu_get_pc()==0x0602D040) cpu_spinuntil_int(); // game play
 
 	return psh_ram[0x006000C/4];
 }
@@ -1217,31 +1216,46 @@ PC  :0602CAF2: BT      $0602CAE6
 static READ32_HANDLER( mjgtaste_speedup_r )
 {
 
-	if (activecpu_get_pc()==0x6031f04) {cpu_spinuntil_int();return psh_ram[0x006000C/4];} // title logos
-	if (activecpu_get_pc()==0x603214c) {cpu_spinuntil_int();return psh_ram[0x006000C/4];} // attract game
+	if (activecpu_get_pc()==0x6031f02) {cpu_spinuntil_int();return psh_ram[0x006000C/4];} // title logos
+	if (activecpu_get_pc()==0x603214a) {cpu_spinuntil_int();return psh_ram[0x006000C/4];} // attract game
 
 //  mame_printf_debug("at %08x\n",activecpu_get_pc());
 
 	return psh_ram[0x006000C/4];
 }
 
-
-
 static DRIVER_INIT( soldivid )
 {
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x1afaa);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x1ae74);
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, soldivid_speedup_r );
 	use_factory_eeprom=eeprom_0;
 }
 
 static DRIVER_INIT( s1945ii )
 {
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x609fc68);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x609fed2);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60a0170);
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, s1945ii_speedup_r );
 	use_factory_eeprom=eeprom_DEFAULT;
 }
 
 static DRIVER_INIT( daraku )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x4761a);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x47976);
 	memory_set_bankptr(1,&RAM[0x100000]);
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, daraku_speedup_r );
 	use_factory_eeprom=eeprom_DARAKU;
@@ -1249,13 +1263,27 @@ static DRIVER_INIT( daraku )
 
 static DRIVER_INIT( sbomberb )
 {
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60a10ec);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60a1658);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60a1380);
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, sbomberb_speedup_r );
 	use_factory_eeprom=eeprom_DEFAULT;
 }
 
 static DRIVER_INIT( gunbird2 )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x6028972);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x6028e62);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x6028be4);
 	memory_set_bankptr(1,&RAM[0x100000]);
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x604000c, 0x604000f, 0, 0, gunbird2_speedup_r );
 	use_factory_eeprom=eeprom_DEFAULT;
@@ -1263,7 +1291,16 @@ static DRIVER_INIT( gunbird2 )
 
 static DRIVER_INIT( s1945iii )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602b462);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602b6e0);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602bc1c);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 3);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602b97a);
 	memory_set_bankptr(1,&RAM[0x100000]);
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, s1945iii_speedup_r );
 	use_factory_eeprom=eeprom_S1945III;
@@ -1271,18 +1308,41 @@ static DRIVER_INIT( s1945iii )
 
 static DRIVER_INIT( dragnblz )
 {
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602743e);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60276e4);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x6027c72);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 3);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60279a6);
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, dragnblz_speedup_r );
 	use_factory_eeprom=eeprom_DRAGNBLZ;
 }
 
 static DRIVER_INIT( gnbarich )
 {
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602cae6);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602cd86);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602d2ee);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 3);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602d040);
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, gnbarich_speedup_r );
 	use_factory_eeprom=eeprom_GNBARICH;
 }
 
 static DRIVER_INIT( mjgtaste )
 {
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x6031f02);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
+	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x603214a);
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, mjgtaste_speedup_r );
 	use_factory_eeprom=eeprom_MJGTASTE;
 	/* needs to install mahjong controls too (can select joystick in test mode tho) */

@@ -98,7 +98,7 @@ static const char *const carnival_sample_names[] =
 };
 
 
-static const struct Samplesinterface carnival_samples_interface =
+static const samples_interface carnival_samples_interface =
 {
 	10,
 	carnival_sample_names
@@ -273,11 +273,11 @@ static WRITE8_HANDLER( carnival_music_port_2_w )
 			break;
 
 		case PSG_BC_WRITE:
-			AY8910_write_port_0_w( machine, 0, psgData );
+			ay8910_write_port_0_w( machine, 0, psgData );
 			break;
 
 		case PSG_BC_LATCH_ADDRESS:
-			AY8910_control_port_0_w( machine, 0, psgData );
+			ay8910_control_port_0_w( machine, 0, psgData );
 			break;
 		}
 	}
@@ -296,16 +296,16 @@ ADDRESS_MAP_END
 
 
 MACHINE_DRIVER_START( carnival_audio )
-	MDRV_CPU_ADD(I8039, 3579545)
+	MDRV_CPU_ADD("audio", I8039, 3579545)
 	MDRV_CPU_PROGRAM_MAP(carnival_audio_map,0)
 	MDRV_CPU_IO_MAP(carnival_audio_io_map,0)
 
 	MDRV_INTERLEAVE(10)
 
-	MDRV_SOUND_ADD(AY8910, PSG_CLOCK)
+	MDRV_SOUND_ADD("psg", AY8910, PSG_CLOCK)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(carnival_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END

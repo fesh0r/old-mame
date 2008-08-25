@@ -155,7 +155,7 @@ static UINT16 exterm_trackball_port_r(running_machine *machine, int which, UINT1
 	aimpos[which] = (aimpos[which] + trackball_diff) & 0x3f;
 
 	/* Combine it with the standard input bits */
-	port = which ? input_port_read(machine, "IN1") : input_port_read(machine, "IN0");
+	port = which ? input_port_read(machine, "P2") : input_port_read(machine, "P1");
 
 	return (port & 0xc0ff) | (aimpos[which] << 8);
 }
@@ -244,9 +244,9 @@ static WRITE8_HANDLER( ym2151_data_latch_w )
 {
 	/* bit 7 of the sound control selects which port */
 	if (sound_control & 0x80)
-		YM2151_data_port_0_w(machine, offset, data);
+		ym2151_data_port_0_w(machine, offset, data);
 	else
-		YM2151_register_port_0_w(machine, offset, data);
+		ym2151_register_port_0_w(machine, offset, data);
 }
 
 
@@ -280,7 +280,7 @@ static WRITE8_HANDLER( sound_slave_dac_w )
 {
 	/* DAC A is used to modulate DAC B */
 	dac_value[offset & 1] = data;
-	DAC_data_16_w(0, (dac_value[0] ^ 0xff) * dac_value[1]);
+	dac_data_16_w(0, (dac_value[0] ^ 0xff) * dac_value[1]);
 }
 
 
@@ -319,13 +319,13 @@ static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x01000000, 0x013fffff) AM_MIRROR(0xfc000000) AM_READWRITE(exterm_host_data_r, exterm_host_data_w)
 	AM_RANGE(0x01400000, 0x0143ffff) AM_MIRROR(0xfc000000) AM_READ(exterm_input_port_0_r)
 	AM_RANGE(0x01440000, 0x0147ffff) AM_MIRROR(0xfc000000) AM_READ(exterm_input_port_1_r)
-	AM_RANGE(0x01480000, 0x014bffff) AM_MIRROR(0xfc000000) AM_READ(input_port_2_word_r)
+	AM_RANGE(0x01480000, 0x014bffff) AM_MIRROR(0xfc000000) AM_READ_PORT("DSW")
 	AM_RANGE(0x01500000, 0x0153ffff) AM_MIRROR(0xfc000000) AM_WRITE(exterm_output_port_0_w)
 	AM_RANGE(0x01580000, 0x015bffff) AM_MIRROR(0xfc000000) AM_WRITE(sound_latch_w)
 	AM_RANGE(0x015c0000, 0x015fffff) AM_MIRROR(0xfc000000) AM_WRITE(watchdog_reset16_w)
 	AM_RANGE(0x01800000, 0x01807fff) AM_MIRROR(0xfc7f8000) AM_RAM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x02800000, 0x02807fff) AM_MIRROR(0xfc7f8000) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0x03000000, 0x03ffffff) AM_MIRROR(0xfc000000) AM_ROM AM_REGION(REGION_USER1, 0)
+	AM_RANGE(0x03000000, 0x03ffffff) AM_MIRROR(0xfc000000) AM_ROM AM_REGION("user1", 0)
 ADDRESS_MAP_END
 
 
@@ -371,7 +371,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( exterm )
-	PORT_START_TAG("IN0")		/* IN0 */
+	PORT_START("P1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_8WAY PORT_PLAYER(1)
@@ -384,7 +384,7 @@ static INPUT_PORTS_START( exterm )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_SERVICE( 0x8000, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("IN1")		/* IN1 */
+	PORT_START("P2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_8WAY PORT_PLAYER(2)
@@ -396,7 +396,7 @@ static INPUT_PORTS_START( exterm )
 	PORT_BIT( 0x3f00, IP_ACTIVE_LOW, IPT_SPECIAL) /* trackball data */
 	PORT_BIT( 0xc000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW")		/* DSW */
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unused ) ) /* According to the test screen */
 	PORT_DIPSETTING(	  0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
@@ -425,10 +425,10 @@ static INPUT_PORTS_START( exterm )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DIAL0") /* IN3, fake trackball input port */
+	PORT_START("DIAL0") /* Fake trackball input port */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(1) PORT_CODE_DEC(KEYCODE_Z) PORT_CODE_INC(KEYCODE_X)
 
-	PORT_START_TAG("DIAL1") /* IN4, fake trackball input port. */
+	PORT_START("DIAL1") /* Fake trackball input port. */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(2) PORT_CODE_DEC(KEYCODE_N) PORT_CODE_INC(KEYCODE_M)
 INPUT_PORTS_END
 
@@ -475,18 +475,18 @@ static const tms34010_config slave_config =
 static MACHINE_DRIVER_START( exterm )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(TMS34010, 40000000)
+	MDRV_CPU_ADD("main", TMS34010, 40000000)
 	MDRV_CPU_CONFIG(master_config)
 	MDRV_CPU_PROGRAM_MAP(master_map,0)
 
-	MDRV_CPU_ADD(TMS34010, 40000000)
+	MDRV_CPU_ADD("slave", TMS34010, 40000000)
 	MDRV_CPU_CONFIG(slave_config)
 	MDRV_CPU_PROGRAM_MAP(slave_map,0)
 
-	MDRV_CPU_ADD(M6502, 2000000)
+	MDRV_CPU_ADD("audio", M6502, 2000000)
 	MDRV_CPU_PROGRAM_MAP(sound_master_map,0)
 
-	MDRV_CPU_ADD(M6502, 2000000)
+	MDRV_CPU_ADD("audioslave", M6502, 2000000)
 	MDRV_CPU_PROGRAM_MAP(sound_slave_map,0)
 
 	MDRV_INTERLEAVE(100)
@@ -507,10 +507,10 @@ static MACHINE_DRIVER_START( exterm )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
-	MDRV_SOUND_ADD(YM2151, 4000000)
+	MDRV_SOUND_ADD("ym", YM2151, 4000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -523,13 +523,13 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( exterm )
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )		/* 64k for YM2151 code */
+	ROM_REGION( 0x10000, "audio", 0 )		/* 64k for YM2151 code */
 	ROM_LOAD( "v101y1", 0x8000, 0x8000, CRC(cbeaa837) SHA1(87d8a258f059512dbf9bc0e7cfff728ef9e616f1) )
 
-	ROM_REGION( 0x10000, REGION_CPU4, 0 )		/* 64k for DAC code */
+	ROM_REGION( 0x10000, "audioslave", 0 )		/* 64k for DAC code */
 	ROM_LOAD( "v101d1", 0x8000, 0x8000, CRC(83268b7d) SHA1(a9139e80e2382122e9919c0555937e120d4414cf) )
 
-	ROM_REGION16_LE( 0x200000, REGION_USER1, 0 )	/* 2MB for 34010 code */
+	ROM_REGION16_LE( 0x200000, "user1", 0 )	/* 2MB for 34010 code */
 	ROM_LOAD16_BYTE( "v101bg0",  0x000000, 0x10000, CRC(8c8e72cf) SHA1(5e0fa805334f54f7e0293ea400bacb0e3e79ed56) )
 	ROM_LOAD16_BYTE( "v101bg1",  0x000001, 0x10000, CRC(cc2da0d8) SHA1(4ac23048d3ca771e315388603ad3b1b25030d6ff) )
 	ROM_LOAD16_BYTE( "v101bg2",  0x020000, 0x10000, CRC(2dcb3653) SHA1(2d74b58b02ae0587e3789d69feece268f582f226) )

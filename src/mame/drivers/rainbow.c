@@ -347,7 +347,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( bankswitch_w )
 {
-	memory_set_bankptr(5, memory_region(machine, REGION_CPU2) + ((data - 1) & 3) * 0x4000 + 0x10000);
+	memory_set_bankptr(5, memory_region(machine, "audio") + ((data - 1) & 3) * 0x4000 + 0x10000);
 }
 
 static READ8_HANDLER( jumping_latch_r )
@@ -360,7 +360,7 @@ static ADDRESS_MAP_START( rainbow_s_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK5)
 	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x9001, 0x9001) AM_READ(YM2151_status_port_0_r)
+	AM_RANGE(0x9001, 0x9001) AM_READ(ym2151_status_port_0_r)
 	AM_RANGE(0x9002, 0x9100) AM_READ(SMH_RAM)
 	AM_RANGE(0xa001, 0xa001) AM_READ(taitosound_slave_comm_r)
 ADDRESS_MAP_END
@@ -368,8 +368,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( rainbow_s_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x8fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x9001, 0x9001) AM_WRITE(YM2151_data_port_0_w)
+	AM_RANGE(0x9000, 0x9000) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x9001, 0x9001) AM_WRITE(ym2151_data_port_0_w)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(taitosound_slave_comm_w)
 ADDRESS_MAP_END
@@ -377,8 +377,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( jumping_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_RAM)
-	AM_RANGE(0xb000, 0xb000) AM_READ(YM2203_status_port_0_r)
-	AM_RANGE(0xb400, 0xb400) AM_READ(YM2203_status_port_1_r)
+	AM_RANGE(0xb000, 0xb000) AM_READ(ym2203_status_port_0_r)
+	AM_RANGE(0xb400, 0xb400) AM_READ(ym2203_status_port_1_r)
 	AM_RANGE(0xb800, 0xb800) AM_READ(jumping_latch_r)
 	AM_RANGE(0xc000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
@@ -386,10 +386,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( jumping_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x8fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xb000, 0xb000) AM_WRITE(YM2203_control_port_0_w)
-	AM_RANGE(0xb001, 0xb001) AM_WRITE(YM2203_write_port_0_w)
-	AM_RANGE(0xb400, 0xb400) AM_WRITE(YM2203_control_port_1_w)
-	AM_RANGE(0xb401, 0xb401) AM_WRITE(YM2203_write_port_1_w)
+	AM_RANGE(0xb000, 0xb000) AM_WRITE(ym2203_control_port_0_w)
+	AM_RANGE(0xb001, 0xb001) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0xb400, 0xb400) AM_WRITE(ym2203_control_port_1_w)
+	AM_RANGE(0xb401, 0xb401) AM_WRITE(ym2203_write_port_1_w)
 	AM_RANGE(0xbc00, 0xbc00) AM_WRITE(SMH_NOP)	/* looks like a bankswitch, but sound works with or without it */
 ADDRESS_MAP_END
 
@@ -399,7 +399,7 @@ ADDRESS_MAP_END
 ***********************************************************/
 
 static INPUT_PORTS_START( rainbow_generic )
-	PORT_START_TAG("DSWA")
+	PORT_START("DSWA")
 	TAITO_MACHINE_COCKTAIL
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) ) PORT_CONDITION("DSWB",0x80,PORTCOND_EQUALS,0x00)
@@ -420,7 +420,7 @@ static INPUT_PORTS_START( rainbow_generic )
 	PORT_DIPSETTING(    0x40, DEF_STR( 1C_4C ) ) PORT_CONDITION("DSWB",0x80,PORTCOND_EQUALS,0x00)
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_6C ) ) PORT_CONDITION("DSWB",0x80,PORTCOND_EQUALS,0x00)
 
-	PORT_START_TAG("DSWB")
+	PORT_START("DSWB")
 	TAITO_DIFFICULTY
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x04, "100k 1000k" )
@@ -448,7 +448,7 @@ static INPUT_PORTS_START( rainbow )
 
 	/* 0x3b0000 -> 0x10cfc4 ($fc4,A5) : DSWB */
 
-	PORT_START_TAG("800007")
+	PORT_START("800007")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -458,7 +458,7 @@ static INPUT_PORTS_START( rainbow )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
 
-	PORT_START_TAG("800009")
+	PORT_START("800009")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -468,7 +468,7 @@ static INPUT_PORTS_START( rainbow )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("80000B")
+	PORT_START("80000B")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -478,7 +478,7 @@ static INPUT_PORTS_START( rainbow )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
-	PORT_START_TAG("80000D")
+	PORT_START("80000D")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -501,7 +501,7 @@ static INPUT_PORTS_START( jumping )
 	PORT_MODIFY("DSWB")
 	PORT_DIPUNUSED( 0x40, IP_ACTIVE_LOW )                        /* see notes */
 
-	PORT_START_TAG("401001")
+	PORT_START("401001")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -511,7 +511,7 @@ static INPUT_PORTS_START( jumping )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("401003")
+	PORT_START("401003")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -551,8 +551,8 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( rainbow )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x000000, spritelayout, 0, 0x80 )	/* OBJ 16x16 */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x000000, tilelayout,   0, 0x80 )	/* SCR 8x8 */
+	GFXDECODE_ENTRY( "gfx2", 0x000000, spritelayout, 0, 0x80 )	/* OBJ 16x16 */
+	GFXDECODE_ENTRY( "gfx1", 0x000000, tilelayout,   0, 0x80 )	/* SCR 8x8 */
 GFXDECODE_END
 
 
@@ -579,8 +579,8 @@ static const gfx_layout jumping_spritelayout =
 };
 
 static GFXDECODE_START( jumping )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, jumping_spritelayout, 0, 0x80 )	/* OBJ 16x16 */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, jumping_tilelayout,   0, 0x80 )	/* SCR 8x8 */
+	GFXDECODE_ENTRY( "gfx2", 0, jumping_spritelayout, 0, 0x80 )	/* OBJ 16x16 */
+	GFXDECODE_ENTRY( "gfx1", 0, jumping_tilelayout,   0, 0x80 )	/* SCR 8x8 */
 GFXDECODE_END
 
 
@@ -595,7 +595,7 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	irqhandler,
 	bankswitch_w
@@ -609,11 +609,11 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( rainbow )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, XTAL_16MHz/2) /* verified on pcb */
+	MDRV_CPU_ADD("main", M68000, XTAL_16MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(rainbow_readmem,rainbow_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
-	MDRV_CPU_ADD(Z80, XTAL_16MHz/4) /* verified on pcb */
+	MDRV_CPU_ADD("audio", Z80, XTAL_16MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(rainbow_s_readmem,rainbow_s_writemem)
 
 	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
@@ -635,8 +635,8 @@ static MACHINE_DRIVER_START( rainbow )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, XTAL_16MHz/4) /* verified on pcb */
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, XTAL_16MHz/4) /* verified on pcb */
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.50)
 	MDRV_SOUND_ROUTE(1, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -646,11 +646,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( jumping )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, XTAL_24MHz/3)	/* not verified but matches original */
+	MDRV_CPU_ADD("main", M68000, XTAL_24MHz/3)	/* not verified but matches original */
 	MDRV_CPU_PROGRAM_MAP(jumping_readmem,jumping_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
-	MDRV_CPU_ADD(Z80, XTAL_18_432MHz/6)	/* not verified but music tempo matches original */
+	MDRV_CPU_ADD("audio", Z80, XTAL_18_432MHz/6)	/* not verified but music tempo matches original */
 	MDRV_CPU_PROGRAM_MAP(jumping_sound_readmem,jumping_sound_writemem)
 
 	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough ? */
@@ -672,10 +672,10 @@ static MACHINE_DRIVER_START( jumping )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, XTAL_18_432MHz/6)	/* not verified */
+	MDRV_SOUND_ADD("ym1", YM2203, XTAL_18_432MHz/6)	/* not verified */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(YM2203, XTAL_18_432MHz/6)	/* not verified */
+	MDRV_SOUND_ADD("ym2", YM2203, XTAL_18_432MHz/6)	/* not verified */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END
 
@@ -685,7 +685,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( rainbow )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD16_BYTE( "b22-10-1.19",   0x00000, 0x10000, CRC(e34a50ca) SHA1(17a92cd7182db1e18000b1ae689758fcfd70fe16) )
 	ROM_LOAD16_BYTE( "b22-11-1.20",   0x00001, 0x10000, CRC(6a31a093) SHA1(1e99ae47811c0d3774d138dab02ac50bc1b92173) )
 	ROM_LOAD16_BYTE( "b22-08-1.21",   0x20000, 0x10000, CRC(15d6e17a) SHA1(7b0339180239e75adf1437aee276b652a1bfee51) )
@@ -693,21 +693,21 @@ ROM_START( rainbow )
 	ROM_LOAD16_BYTE( "b22-03.23",     0x40000, 0x20000, CRC(3ebb0fb8) SHA1(1b41b305623d121255eb70cb992e4d9da13abd82) )
 	ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, CRC(91625e7f) SHA1(765afd973d9b82bb496b04beca284bf2769d6e6f) )
 
-	ROM_REGION( 0x1c000, REGION_CPU2, 0 )
+	ROM_REGION( 0x1c000, "audio", 0 )
 	ROM_LOAD( "b22-14.43",            0x00000, 0x4000, CRC(113c1a5b) SHA1(effa2adf54a6be78b2d4baf3a47529342fb0d895) )
 	ROM_CONTINUE(                     0x10000, 0xc000 )
 
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "b22-01.2",             0x00000, 0x80000, CRC(b76c9168) SHA1(e924be0c8294b930488bb04583784254a840a52e) )	/* tiles */
 
-	ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0xa0000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "b22-01.5",             0x00000, 0x80000, CRC(1b87ecf0) SHA1(37a463184f4064fe0565367236e289d57639614c) )	/* sprites */
 	ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, CRC(67a76dc6) SHA1(626ee684eb3ea859c695ffe03344ccaa442da4af) )
 	ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, CRC(2fda099f) SHA1(a1e27a4497f6733608be924d69d965b19f725b99) )
 ROM_END
 
 ROM_START( rainbowo )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD16_BYTE( "b22-10.19",     0x00000, 0x10000, CRC(3b013495) SHA1(fc89f401a80b9bde174df8a257bb7fad4937c838) )
 	ROM_LOAD16_BYTE( "b22-11.20",     0x00001, 0x10000, CRC(80041a3d) SHA1(619d71a2bef5fd898a15d37d8016850f832428c3) )
 	ROM_LOAD16_BYTE( "b22-08.21",     0x20000, 0x10000, CRC(962fb845) SHA1(1c5581e697902ee5cde0fb841ef05eade04a901b) )
@@ -715,21 +715,21 @@ ROM_START( rainbowo )
 	ROM_LOAD16_BYTE( "b22-03.23",     0x40000, 0x20000, CRC(3ebb0fb8) SHA1(1b41b305623d121255eb70cb992e4d9da13abd82) )
 	ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, CRC(91625e7f) SHA1(765afd973d9b82bb496b04beca284bf2769d6e6f) )
 
-	ROM_REGION( 0x1c000, REGION_CPU2, 0 )
+	ROM_REGION( 0x1c000, "audio", 0 )
 	ROM_LOAD( "b22-14.43",            0x00000, 0x4000, CRC(113c1a5b) SHA1(effa2adf54a6be78b2d4baf3a47529342fb0d895) )
 	ROM_CONTINUE(                     0x10000, 0xc000 )
 
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "b22-01.2",             0x00000, 0x80000, CRC(b76c9168) SHA1(e924be0c8294b930488bb04583784254a840a52e) )	/* tiles */
 
-	ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0xa0000, "gfx2", ROMREGION_DISPOSE )
   	ROM_LOAD( "b22-01.5",             0x00000, 0x80000, CRC(1b87ecf0) SHA1(37a463184f4064fe0565367236e289d57639614c) )	/* sprites */
 	ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, CRC(67a76dc6) SHA1(626ee684eb3ea859c695ffe03344ccaa442da4af) )
 	ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, CRC(2fda099f) SHA1(a1e27a4497f6733608be924d69d965b19f725b99) )
 ROM_END
 
 ROM_START( rainbowe )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD16_BYTE( "b39-01.19",     0x00000, 0x10000, CRC(50690880) SHA1(88cd8739eaa6e4e5988be225c31d2a6605173d39) )
 	ROM_LOAD16_BYTE( "b39-02.20",     0x00001, 0x10000, CRC(4dead71f) SHA1(03e9df33fc8fc64d6eeb1c3a763acac00b10c071) )
 	ROM_LOAD16_BYTE( "b39-03.21",     0x20000, 0x10000, CRC(4a4cb785) SHA1(6ba7de3901a001cbb31713664ccb68b943a5578f) )
@@ -737,21 +737,21 @@ ROM_START( rainbowe )
 	ROM_LOAD16_BYTE( "b22-03.23",     0x40000, 0x20000, CRC(3ebb0fb8) SHA1(1b41b305623d121255eb70cb992e4d9da13abd82) )
 	ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, CRC(91625e7f) SHA1(765afd973d9b82bb496b04beca284bf2769d6e6f) )
 
-	ROM_REGION( 0x1c000, REGION_CPU2, 0 )
+	ROM_REGION( 0x1c000, "audio", 0 )
 	ROM_LOAD( "b22-14.43",            0x00000, 0x4000, CRC(113c1a5b) SHA1(effa2adf54a6be78b2d4baf3a47529342fb0d895) )
 	ROM_CONTINUE(                     0x10000, 0xc000 )
 
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "b22-01.2",             0x00000, 0x80000, CRC(b76c9168) SHA1(e924be0c8294b930488bb04583784254a840a52e) )	/* tiles */
 
-	ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0xa0000, "gfx2", ROMREGION_DISPOSE )
   	ROM_LOAD( "b22-01.5",             0x00000, 0x80000, CRC(1b87ecf0) SHA1(37a463184f4064fe0565367236e289d57639614c) )	/* sprites */
 	ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, CRC(67a76dc6) SHA1(626ee684eb3ea859c695ffe03344ccaa442da4af) )
 	ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, CRC(2fda099f) SHA1(a1e27a4497f6733608be924d69d965b19f725b99) )
 ROM_END
 
 ROM_START( jumping )
-	ROM_REGION( 0xa0000, REGION_CPU1, 0 )
+	ROM_REGION( 0xa0000, "main", 0 )
 	ROM_LOAD16_BYTE( "jb1_h4",        0x00000, 0x10000, CRC(3fab6b31) SHA1(57803478949cb62f7eab2ef9be08b13aa2237dbc) )
 	ROM_LOAD16_BYTE( "jb1_h8",        0x00001, 0x10000, CRC(8c878827) SHA1(4a54a217b7c442305c3ce9298aa36ae225382444) )
 	ROM_LOAD16_BYTE( "jb1_i4",        0x20000, 0x10000, CRC(443492cf) SHA1(fc3809d784d611df4fd446ca2443eebdf4f0bfd7) )
@@ -760,12 +760,12 @@ ROM_START( jumping )
 	ROM_LOAD16_BYTE( "b22-04.24",     0x40001, 0x20000, CRC(91625e7f) SHA1(765afd973d9b82bb496b04beca284bf2769d6e6f) )
 	ROM_LOAD16_BYTE( "jb1_f89",       0x80001, 0x10000, CRC(0810d327) SHA1(fe91ac02e617bde413dc8a20b7cbcaf3e20aeb28) )	/* c-chip substitute */
 
-	ROM_REGION( 0x14000, REGION_CPU2, 0 )
+	ROM_REGION( 0x14000, "audio", 0 )
 	ROM_LOAD( "jb1_cd67",             0x00000, 0x8000, CRC(8527c00e) SHA1(86e3824caca39aca4ca4df63bb4474adacfc4c53) )
 	ROM_CONTINUE(                     0x10000, 0x4000 )
 	ROM_CONTINUE(                     0x0c000, 0x4000 )
 
-	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "jb2_ic8",              0x00000, 0x10000, CRC(65b76309) SHA1(1e345726e137f4c56d4bf239651c986fd53a16c3) )	/* tiles */
 	ROM_LOAD( "jb2_ic7",              0x10000, 0x10000, CRC(43a94283) SHA1(d6a05cbc7b996a8e7f1520563f6fada9a59021a4) )
 	ROM_LOAD( "jb2_ic10",             0x20000, 0x10000, CRC(e61933fb) SHA1(02bc0e1a7a3ce9e15fb83b28ce8fafb0b8d80ebd) )
@@ -775,7 +775,7 @@ ROM_START( jumping )
 	ROM_LOAD( "jb2_ic14",             0x60000, 0x10000, CRC(9fdc6c8e) SHA1(ff4e1a98dc982bce2f9d235cac62c7166f477f64) )
 	ROM_LOAD( "jb2_ic13",             0x70000, 0x10000, CRC(06226492) SHA1(834280ec49e61a0c9c6b6fe2033e1b20bd1bffbf) )
 
-	ROM_REGION( 0xa0000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0xa0000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "jb2_ic62",             0x00000, 0x10000, CRC(8548db6c) SHA1(675cd301259d5ed16098a38ac58b27b5ccd91264) )	/* sprites */
 	ROM_LOAD( "jb2_ic61",             0x10000, 0x10000, CRC(37c5923b) SHA1(c83ef45564c56ef62d7019aecbd79dccc671deee) )
 	ROM_LOAD( "jb2_ic60",             0x20000, 0x08000, CRC(662a2f1e) SHA1(1c5e8b1f0623e64faf9cd60f9653fc5957191a9b) )
@@ -803,8 +803,8 @@ static DRIVER_INIT( rainbowe )
 
 static DRIVER_INIT( jumping )
 {
-	int i, len = memory_region_length(machine, REGION_GFX2);
-	UINT8 *rom = memory_region(machine, REGION_GFX2);
+	int i, len = memory_region_length(machine, "gfx2");
+	UINT8 *rom = memory_region(machine, "gfx2");
 
 	/* Sprite colour map is reversed - switch to normal */
 

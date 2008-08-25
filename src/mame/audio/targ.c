@@ -63,7 +63,7 @@ WRITE8_HANDLER( targ_audio_1_w )
 {
 	/* CPU music */
 	if ((data & 0x01) != (port_1_last & 0x01))
-		DAC_data_w(0,(data & 0x01) * 0xff);
+		dac_data_w(0,(data & 0x01) * 0xff);
 
 	/* shot */
 	if (FALLING_EDGE(0x02) && !sample_playing(0))  sample_start(0,1,0);
@@ -112,7 +112,7 @@ WRITE8_HANDLER( targ_audio_2_w )
 {
 	if ((data & 0x01) && !(port_2_last & 0x01))
 	{
-		UINT8 *prom = memory_region(machine, TARG_TONE_REGION);
+		UINT8 *prom = memory_region(machine, "targ");
 
 		tone_pointer = (tone_pointer + 1) & 0x0f;
 
@@ -174,7 +174,7 @@ static void targ_audio_start(void)
 }
 
 
-static const struct Samplesinterface spectar_samples_interface =
+static const samples_interface spectar_samples_interface =
 {
 	4,	/* number of channel */
 	sample_names,
@@ -182,7 +182,7 @@ static const struct Samplesinterface spectar_samples_interface =
 };
 
 
-static const struct Samplesinterface targ_samples_interface =
+static const samples_interface targ_samples_interface =
 {
 	4,	/* number of channel */
 	sample_names,
@@ -194,11 +194,11 @@ MACHINE_DRIVER_START( spectar_audio )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(spectar_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -207,10 +207,10 @@ MACHINE_DRIVER_START( targ_audio )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(targ_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END

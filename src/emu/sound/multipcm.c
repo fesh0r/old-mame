@@ -481,22 +481,21 @@ static void MultiPCM_update(void *param, stream_sample_t **inputs, stream_sample
 	}
 }
 
-unsigned char MultiPCM_reg_r(int chip, int offset)
+unsigned char multi_pcm_reg_r(int chip, int offset)
 {
 //  struct _MultiPCM *ptChip = sndti_token(SOUND_MULTIPCM, chip);
 	return 0;
 }
 
-static void *multipcm_start(int sndindex, int clock, const void *config)
+static void *multipcm_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	struct _MultiPCM *ptChip;
 	int i;
-	const struct MultiPCM_interface *intf = config;
 	char mname[20];
 
 	ptChip=(struct _MultiPCM *)auto_malloc(sizeof(struct _MultiPCM));
 
-	ptChip->ROM=(INT8 *)memory_region(Machine, intf->region);
+	ptChip->ROM=(INT8 *)memory_region(Machine, tag);
 	ptChip->Rate=(float) clock / MULTIPCM_CLOCKDIV;
 
 	ptChip->stream = stream_create(0, 2, ptChip->Rate, ptChip, MultiPCM_update);
@@ -648,7 +647,7 @@ static void *multipcm_start(int sndindex, int clock, const void *config)
 }
 
 
-static void MultiPCM_reg_w(int chip, int offset, UINT8 data)
+static void multi_pcm_reg_w(int chip, int offset, UINT8 data)
 {
 	struct _MultiPCM *ptChip = sndti_token(SOUND_MULTIPCM, chip);
 	switch(offset)
@@ -668,27 +667,27 @@ static void MultiPCM_reg_w(int chip, int offset, UINT8 data)
 
 /* MAME/M1 access functions */
 
-READ8_HANDLER( MultiPCM_reg_0_r )
+READ8_HANDLER( multi_pcm_reg_0_r )
 {
-	return MultiPCM_reg_r(0, offset);
+	return multi_pcm_reg_r(0, offset);
 }
 
-WRITE8_HANDLER( MultiPCM_reg_0_w )
+WRITE8_HANDLER( multi_pcm_reg_0_w )
 {
-	MultiPCM_reg_w(0, offset, data);
+	multi_pcm_reg_w(0, offset, data);
 }
 
-READ8_HANDLER( MultiPCM_reg_1_r )
+READ8_HANDLER( multi_pcm_reg_1_r )
 {
-	return MultiPCM_reg_r(1, offset);
+	return multi_pcm_reg_r(1, offset);
 }
 
-WRITE8_HANDLER( MultiPCM_reg_1_w )
+WRITE8_HANDLER( multi_pcm_reg_1_w )
 {
-	MultiPCM_reg_w(1, offset, data);
+	multi_pcm_reg_w(1, offset, data);
 }
 
-void multipcm_set_bank(int which, UINT32 leftoffs, UINT32 rightoffs)
+void multi_pcm_set_bank(int which, UINT32 leftoffs, UINT32 rightoffs)
 {
 	struct _MultiPCM *ptChip = sndti_token(SOUND_MULTIPCM, which);
 	ptChip->BankL = leftoffs;

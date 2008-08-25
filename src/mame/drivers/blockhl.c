@@ -66,44 +66,31 @@ static WRITE8_HANDLER( blockhl_sh_irqtrigger_w )
 
 
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x1f94, 0x1f94) AM_READ(input_port_4_r)
-	AM_RANGE(0x1f95, 0x1f95) AM_READ(input_port_0_r)
-	AM_RANGE(0x1f96, 0x1f96) AM_READ(input_port_1_r)
-	AM_RANGE(0x1f97, 0x1f97) AM_READ(input_port_2_r)
-	AM_RANGE(0x1f98, 0x1f98) AM_READ(input_port_3_r)
-	AM_RANGE(0x0000, 0x3fff) AM_READ(K052109_051960_r)
-	AM_RANGE(0x4000, 0x57ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x5800, 0x5fff) AM_READ(bankedram_r)
-	AM_RANGE(0x6000, 0x7fff) AM_READ(SMH_BANK1)
-	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1f84, 0x1f84) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x1f88, 0x1f88) AM_WRITE(blockhl_sh_irqtrigger_w)
 	AM_RANGE(0x1f8c, 0x1f8c) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(K052109_051960_w)
-	AM_RANGE(0x4000, 0x57ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x5800, 0x5fff) AM_WRITE(bankedram_w) AM_BASE(&ram)
-	AM_RANGE(0x6000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x1f94, 0x1f94) AM_READ_PORT("DSW3")
+	AM_RANGE(0x1f95, 0x1f95) AM_READ_PORT("P1")
+	AM_RANGE(0x1f96, 0x1f96) AM_READ_PORT("P2")
+	AM_RANGE(0x1f97, 0x1f97) AM_READ_PORT("DSW1")
+	AM_RANGE(0x1f98, 0x1f98) AM_READ_PORT("DSW2")
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(K052109_051960_r, K052109_051960_w)
+	AM_RANGE(0x4000, 0x57ff) AM_RAM
+	AM_RANGE(0x5800, 0x5fff) AM_READWRITE(bankedram_r, bankedram_w) AM_BASE(&ram)
+	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(SMH_BANK1, SMH_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x87ff) AM_RAM
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
-	AM_RANGE(0xc001, 0xc001) AM_READ(YM2151_status_port_0_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(YM2151_data_port_0_w)
+	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0xc001, 0xc001) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
 	AM_RANGE(0xe00c, 0xe00d) AM_WRITE(SMH_NOP)		/* leftover from missing 007232? */
 ADDRESS_MAP_END
+
 
 /***************************************************************************
 
@@ -112,7 +99,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( blockhl )
-	PORT_START	/* PLAYER 1 INPUTS */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
@@ -122,7 +109,7 @@ static INPUT_PORTS_START( blockhl )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START	/* PLAYER 2 INPUTS */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
@@ -132,7 +119,7 @@ static INPUT_PORTS_START( blockhl )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START	/* DSW #1 */
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )		PORT_DIPLOCATION("SW1:1,2,3,4")
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
@@ -168,7 +155,7 @@ static INPUT_PORTS_START( blockhl )
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
 //  PORT_DIPSETTING(    0x00, "Invalid" )
 
-	PORT_START	/* DSW #2 */
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) )		PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x01, "1" )
 	PORT_DIPSETTING(    0x00, "2" )
@@ -185,7 +172,7 @@ static INPUT_PORTS_START( blockhl )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* DSW #3 */
+	PORT_START("DSW3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -208,13 +195,12 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( blockhl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(KONAMI,3000000)		/* Konami custom 052526 */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
+	MDRV_CPU_ADD("main", KONAMI,3000000)		/* Konami custom 052526 */
+	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", blockhl_interrupt)
 
-	MDRV_CPU_ADD(Z80, 3579545)
-	/* audio CPU */		/* ? */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
+	MDRV_CPU_ADD("audio", Z80, 3579545)
+	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 
 	MDRV_MACHINE_RESET(blockhl)
 
@@ -236,7 +222,7 @@ static MACHINE_DRIVER_START( blockhl )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, 3579545)
+	MDRV_SOUND_ADD("ym", YM2151, 3579545)
 	MDRV_SOUND_ROUTE(0, "mono", 0.60)
 	MDRV_SOUND_ROUTE(1, "mono", 0.60)
 MACHINE_DRIVER_END
@@ -249,50 +235,50 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( blockhl )
-	ROM_REGION( 0x18800, REGION_CPU1, 0 ) /* code + banked roms + space for banked RAM */
+	ROM_REGION( 0x18800, "main", 0 ) /* code + banked roms + space for banked RAM */
 	ROM_LOAD( "973l02.e21", 0x10000, 0x08000, CRC(e14f849a) SHA1(d44cf178cc98998b72ed32c6e20b6ebdf1f97579) )
 	ROM_CONTINUE(           0x08000, 0x08000 )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "973d01.g6",  0x0000, 0x8000, CRC(eeee9d92) SHA1(6c6c324b1f6f4fba0aa12e0d1fc5dbab133ef669) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, 0 ) /* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x20000, "gfx1", 0 ) /* graphics (addressable by the main CPU) */
 	ROM_LOAD16_BYTE( "973f07.k15", 0x00000, 0x08000, CRC(1a8cd9b4) SHA1(7cb7944d24ac51fa6b610542d9dec68697cacf0f) )	/* tiles */
 	ROM_LOAD16_BYTE( "973f08.k18", 0x00001, 0x08000, CRC(952b51a6) SHA1(017575738d444b688b137cad5611638d53be84f2) )
 	ROM_LOAD16_BYTE( "973f09.k20", 0x10000, 0x08000, CRC(77841594) SHA1(e1bfdc5bb598d865868d578ef7faba8078becd7a) )
 	ROM_LOAD16_BYTE( "973f10.k23", 0x10001, 0x08000, CRC(09039fab) SHA1(a9dea17aacf4484d21ef3b16470263447b51b6b5) )
 
-	ROM_REGION( 0x20000, REGION_GFX2, 0 ) /* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x20000, "gfx2", 0 ) /* graphics (addressable by the main CPU) */
 	ROM_LOAD16_BYTE( "973f06.k12", 0x00000, 0x08000, CRC(51acfdb6) SHA1(94d243f341b490684f5297d95d4835bd522ece35) )	/* sprites */
 	ROM_LOAD16_BYTE( "973f05.k9",  0x00001, 0x08000, CRC(4cfea298) SHA1(4772b5b99f5fd8174d8884bd84173512e1edabf4) )
 	ROM_LOAD16_BYTE( "973f04.k7",  0x10000, 0x08000, CRC(69ca41bd) SHA1(9b0b1c888efd2f2d5525f14778e18fb4a7353eb6) )
 	ROM_LOAD16_BYTE( "973f03.k4",  0x10001, 0x08000, CRC(21e98472) SHA1(8c697d369a1f57be0825c33b4e9107ce1b02a130) )
 
-	ROM_REGION( 0x0100, REGION_PROMS, 0 )	/* PROMs */
+	ROM_REGION( 0x0100, "proms", 0 )	/* PROMs */
 	ROM_LOAD( "973a11.h10", 0x0000, 0x0100, CRC(46d28fe9) SHA1(9d0811a928c8907785ef483bfbee5445506b3ec8) )	/* priority encoder (not used) */
 ROM_END
 
 ROM_START( quarth )
-	ROM_REGION( 0x18800, REGION_CPU1, 0 ) /* code + banked roms + space for banked RAM */
+	ROM_REGION( 0x18800, "main", 0 ) /* code + banked roms + space for banked RAM */
 	ROM_LOAD( "973j02.e21", 0x10000, 0x08000, CRC(27a90118) SHA1(51309385b93db29b9277d14252166c4ea1746303) )
 	ROM_CONTINUE(           0x08000, 0x08000 )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "973d01.g6",  0x0000, 0x8000, CRC(eeee9d92) SHA1(6c6c324b1f6f4fba0aa12e0d1fc5dbab133ef669) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, 0 ) /* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x20000, "gfx1", 0 ) /* graphics (addressable by the main CPU) */
 	ROM_LOAD16_BYTE( "973e07.k15", 0x00000, 0x08000, CRC(0bd6b0f8) SHA1(6c59cf637354fe2df424eaa89feb9c1bc1f66a92) )	/* tiles */
 	ROM_LOAD16_BYTE( "973e08.k18", 0x00001, 0x08000, CRC(104d0d5f) SHA1(595698911513113d01e5b565f5b073d1bd033d3f) )
 	ROM_LOAD16_BYTE( "973e09.k20", 0x10000, 0x08000, CRC(bd3a6f24) SHA1(eb45db3a6a52bb2b25df8c2dace877e59b4130a6) )
 	ROM_LOAD16_BYTE( "973e10.k23", 0x10001, 0x08000, CRC(cf5e4b86) SHA1(43348753894c1763b26dbfc70245dac92048db8f) )
 
-	ROM_REGION( 0x20000, REGION_GFX2, 0 ) /* graphics (addressable by the main CPU) */
+	ROM_REGION( 0x20000, "gfx2", 0 ) /* graphics (addressable by the main CPU) */
 	ROM_LOAD16_BYTE( "973e06.k12", 0x00000, 0x08000, CRC(0d58af85) SHA1(2efd661d614fb305a14cfe1aa4fb17714f215d4f) )	/* sprites */
 	ROM_LOAD16_BYTE( "973e05.k9",  0x00001, 0x08000, CRC(15d822cb) SHA1(70ecad5e0a461df0da6e6eb23f43a7b643297f0d) )
 	ROM_LOAD16_BYTE( "973e04.k7",  0x10000, 0x08000, CRC(d70f4a2c) SHA1(25f835a17bacf2b8debb2eb8a3cff90cab3f402a) )
 	ROM_LOAD16_BYTE( "973e03.k4",  0x10001, 0x08000, CRC(2c5a4b4b) SHA1(e2991dd78b9cd96cf93ebd6de0d4e060d346ab9c) )
 
-	ROM_REGION( 0x0100, REGION_PROMS, 0 )	/* PROMs */
+	ROM_REGION( 0x0100, "proms", 0 )	/* PROMs */
 	ROM_LOAD( "973a11.h10", 0x0000, 0x0100, CRC(46d28fe9) SHA1(9d0811a928c8907785ef483bfbee5445506b3ec8) )	/* priority encoder (not used) */
 ROM_END
 
@@ -305,7 +291,7 @@ ROM_END
 
 static void blockhl_banking( int lines )
 {
-	UINT8 *RAM = memory_region(Machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(Machine, "main");
 	int offs;
 
 	/* bits 0-1 = ROM bank */
@@ -332,7 +318,7 @@ static void blockhl_banking( int lines )
 
 static MACHINE_RESET( blockhl )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 
 	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)blockhl_banking);
 
@@ -342,8 +328,8 @@ static MACHINE_RESET( blockhl )
 
 static DRIVER_INIT( blockhl )
 {
-	konami_rom_deinterleave_2(REGION_GFX1);
-	konami_rom_deinterleave_2(REGION_GFX2);
+	konami_rom_deinterleave_2("gfx1");
+	konami_rom_deinterleave_2("gfx2");
 }
 
 

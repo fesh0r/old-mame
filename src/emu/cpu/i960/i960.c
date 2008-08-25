@@ -430,8 +430,8 @@ static void take_interrupt(int vector, int lvl)
 	do_call(IRQV, 7, SP);
 
 	// save the processor state
-	program_write_dword_32le(i960.r[I960_FP]-16, i960.AC);
-	program_write_dword_32le(i960.r[I960_FP]-12, i960.PC);
+	program_write_dword_32le(i960.r[I960_FP]-16, i960.PC);
+	program_write_dword_32le(i960.r[I960_FP]-12, i960.AC);
 	// store the vector
 	program_write_dword_32le(i960.r[I960_FP]-8, vector-8);
 
@@ -1566,7 +1566,17 @@ static int i960_execute(int cycles)
 			case 0x0: // cvtri
 				i960_icount -= 33;
 				t1f = get_1_rif(opcode);
-				set_ri(opcode, (INT32)t1f);
+				// apply rounding mode
+				// we do this a little indirectly to avoid some odd GCC warnings
+				t2f = 0.0;
+				switch((i960.AC>>30)&3)
+				{
+					case 0: t2f = floor(t1f+0.5); break;
+					case 1: t2f = floor(t1f); break;
+					case 2: t2f = ceil(t1f); break;
+					case 3: t2f = t1f; break;
+				}
+				set_ri(opcode, (INT32)t2f);
 				break;
 
 			case 0x2: // cvtzri

@@ -107,17 +107,17 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x10, 0x10) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x11, 0x11) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x20, 0x20) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0x21, 0x21) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0x30, 0x30) AM_WRITE(AY8910_control_port_2_w)
-	AM_RANGE(0x31, 0x31) AM_WRITE(AY8910_write_port_2_w)
+	AM_RANGE(0x10, 0x10) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x11, 0x11) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x20, 0x20) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x21, 0x21) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x30, 0x30) AM_WRITE(ay8910_control_port_2_w)
+	AM_RANGE(0x31, 0x31) AM_WRITE(ay8910_write_port_2_w)
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( pbaction )
-	PORT_START	/* IN0 */
+	PORT_START("P1")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON3 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON4 )
@@ -127,7 +127,7 @@ static INPUT_PORTS_START( pbaction )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START	/* IN1 */
+	PORT_START("P2")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_COCKTAIL
@@ -137,7 +137,7 @@ static INPUT_PORTS_START( pbaction )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START	/* IN2 */
+	PORT_START("SYSTEM")	/* IN2 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
@@ -147,7 +147,7 @@ static INPUT_PORTS_START( pbaction )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START	/* DSW0 */
+	PORT_START("DSW1")	/* DSW0 */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_2C ) )
@@ -170,7 +170,7 @@ static INPUT_PORTS_START( pbaction )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* DSW1 */
+	PORT_START("DSW2")	/* DSW1 */
 	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x01, "70K 200K 1000K" )
 	PORT_DIPSETTING(    0x00, "70K 200K" )
@@ -249,10 +249,10 @@ static const gfx_layout spritelayout2 =
 
 
 static GFXDECODE_START( pbaction )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x00000, charlayout1,    0, 16 )	/*   0-127 characters */
-	GFXDECODE_ENTRY( REGION_GFX2, 0x00000, charlayout2,  128,  8 )	/* 128-255 background */
-	GFXDECODE_ENTRY( REGION_GFX3, 0x00000, spritelayout1,  0, 16 )	/*   0-127 normal sprites */
-	GFXDECODE_ENTRY( REGION_GFX3, 0x01000, spritelayout2,  0, 16 )	/*   0-127 large sprites */
+	GFXDECODE_ENTRY( "gfx1", 0x00000, charlayout1,    0, 16 )	/*   0-127 characters */
+	GFXDECODE_ENTRY( "gfx2", 0x00000, charlayout2,  128,  8 )	/* 128-255 background */
+	GFXDECODE_ENTRY( "gfx3", 0x00000, spritelayout1,  0, 16 )	/*   0-127 normal sprites */
+	GFXDECODE_ENTRY( "gfx3", 0x01000, spritelayout2,  0, 16 )	/*   0-127 large sprites */
 GFXDECODE_END
 
 
@@ -265,12 +265,11 @@ static INTERRUPT_GEN( pbaction_interrupt )
 static MACHINE_DRIVER_START( pbaction )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz? */
+	MDRV_CPU_ADD("main", Z80, 4000000)	/* 4 MHz? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
-	MDRV_CPU_ADD(Z80, 3072000)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 3072000)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(0,sound_writeport)
 	MDRV_CPU_VBLANK_INT_HACK(pbaction_interrupt,2)	/* ??? */
@@ -293,13 +292,13 @@ static MACHINE_DRIVER_START( pbaction )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay1", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay2", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay3", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
@@ -312,26 +311,26 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( pbaction )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "b-p7.bin",     0x0000, 0x4000, CRC(8d6dcaae) SHA1(c9e605f9d291cb8c7163655ea96c605b7d30365f) )
 	ROM_LOAD( "b-n7.bin",     0x4000, 0x4000, CRC(d54d5402) SHA1(a4c3205bfe5fba8bb1ff3ad15941a77c35b44a27) )
 	ROM_LOAD( "b-l7.bin",     0x8000, 0x2000, CRC(e7412d68) SHA1(e75731d9bea80e0dc09798dd46e3b947fdb54aaa) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for sound board */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound board */
 	ROM_LOAD( "a-e3.bin",     0x0000,  0x2000, CRC(0e53a91f) SHA1(df2827197cd55c3685e5ac8b26c20800623cb932) )
 
-	ROM_REGION( 0x06000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x06000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a-s6.bin",     0x00000, 0x2000, CRC(9a74a8e1) SHA1(bd27439b91f41db3fd7eedb44e828d61b793bda0) )
 	ROM_LOAD( "a-s7.bin",     0x02000, 0x2000, CRC(5ca6ad3c) SHA1(7c8eff087f18cc2ff0572ea45e681a3a1ec94fad) )
 	ROM_LOAD( "a-s8.bin",     0x04000, 0x2000, CRC(9f00b757) SHA1(74b6d926b8f456c8d0101f0232c5d3662423b396) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "a-j5.bin",     0x00000, 0x4000, CRC(21efe866) SHA1(0c0a05a26d793ba98b0f421d464ff4b1d301ff9e) )
 	ROM_LOAD( "a-j6.bin",     0x04000, 0x4000, CRC(7f984c80) SHA1(18795ecbcd2da94f1cfcce5559d652388d1b8bc0) )
 	ROM_LOAD( "a-j7.bin",     0x08000, 0x4000, CRC(df69e51b) SHA1(52ab15c63332f0fa98884fa9adc8d35b93c939c4) )
 	ROM_LOAD( "a-j8.bin",     0x0c000, 0x4000, CRC(0094cb8b) SHA1(58f48d24903b797e8451bf231f9e8df621685d9f) )
 
-	ROM_REGION( 0x06000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x06000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "b-c7.bin",     0x00000, 0x2000, CRC(d1795ef5) SHA1(69ad8e419e340d2f548468ed7838102789b978da) )
 	ROM_LOAD( "b-d7.bin",     0x02000, 0x2000, CRC(f28df203) SHA1(060f70ed6386c808303a488c97691257681bd8f3) )
 	ROM_LOAD( "b-f7.bin",     0x04000, 0x2000, CRC(af6e9817) SHA1(56f47d25761b3850c49a3a81b5ea35f12bd77b14) )
@@ -339,55 +338,55 @@ ROM_END
 
 
 ROM_START( pbactio2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "pba16.bin",     0x0000, 0x4000, CRC(4a239ebd) SHA1(74e6da0485ac78093b4f09953fa3accb14bc3e43) )
 	ROM_LOAD( "pba15.bin",     0x4000, 0x4000, CRC(3afef03a) SHA1(dec714415d2fd00c9021171a48f6c94b40888ae8) )
 	ROM_LOAD( "pba14.bin",     0x8000, 0x2000, CRC(c0a98c8a) SHA1(442f37af31db13fd98602dd7f9eeae5529da0f44) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for sound board */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound board */
 	ROM_LOAD( "pba1.bin",     0x0000,  0x2000, CRC(8b69b933) SHA1(eb0762579d52ed9f5b1a002ffe7e517c59650e22) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/* 64k for a third Z80 (not emulated) */
+	ROM_REGION( 0x10000, "cpu2", 0 )	/* 64k for a third Z80 (not emulated) */
 	ROM_LOAD( "pba17.bin",    0x0000,  0x4000, CRC(2734ae60) SHA1(4edcdfac1611c49c4f890609efbe8352b8161f8e) )
 
-	ROM_REGION( 0x06000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x06000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a-s6.bin",     0x00000, 0x2000, CRC(9a74a8e1) SHA1(bd27439b91f41db3fd7eedb44e828d61b793bda0) )
 	ROM_LOAD( "a-s7.bin",     0x02000, 0x2000, CRC(5ca6ad3c) SHA1(7c8eff087f18cc2ff0572ea45e681a3a1ec94fad) )
 	ROM_LOAD( "a-s8.bin",     0x04000, 0x2000, CRC(9f00b757) SHA1(74b6d926b8f456c8d0101f0232c5d3662423b396) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "a-j5.bin",     0x00000, 0x4000, CRC(21efe866) SHA1(0c0a05a26d793ba98b0f421d464ff4b1d301ff9e) )
 	ROM_LOAD( "a-j6.bin",     0x04000, 0x4000, CRC(7f984c80) SHA1(18795ecbcd2da94f1cfcce5559d652388d1b8bc0) )
 	ROM_LOAD( "a-j7.bin",     0x08000, 0x4000, CRC(df69e51b) SHA1(52ab15c63332f0fa98884fa9adc8d35b93c939c4) )
 	ROM_LOAD( "a-j8.bin",     0x0c000, 0x4000, CRC(0094cb8b) SHA1(58f48d24903b797e8451bf231f9e8df621685d9f) )
 
-	ROM_REGION( 0x06000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x06000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "b-c7.bin",     0x00000, 0x2000, CRC(d1795ef5) SHA1(69ad8e419e340d2f548468ed7838102789b978da) )
 	ROM_LOAD( "b-d7.bin",     0x02000, 0x2000, CRC(f28df203) SHA1(060f70ed6386c808303a488c97691257681bd8f3) )
 	ROM_LOAD( "b-f7.bin",     0x04000, 0x2000, CRC(af6e9817) SHA1(56f47d25761b3850c49a3a81b5ea35f12bd77b14) )
 ROM_END
 
 ROM_START( pbactio3 )
-	ROM_REGION( 2*0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 2*0x10000, "main", 0 )
 	ROM_LOAD( "14.bin",     0x0000, 0x4000, CRC(f17a62eb) SHA1(8dabfc0ad127c154c0293a65df32d52d57dd9755) )
 	ROM_LOAD( "12.bin",     0x4000, 0x4000, CRC(ec3c64c6) SHA1(6130b80606d717f95e219316c2d3fa0a1980ea1d) )
 	ROM_LOAD( "13.bin",     0x8000, 0x4000, CRC(c93c851e) SHA1(b41077708fce4ccbcecdeae32af8821ca5322e87) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for sound board */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound board */
 	ROM_LOAD( "pba1.bin",     0x0000,  0x2000, CRC(8b69b933) SHA1(eb0762579d52ed9f5b1a002ffe7e517c59650e22) )
 
-	ROM_REGION( 0x06000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x06000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a-s6.bin",     0x00000, 0x2000, CRC(9a74a8e1) SHA1(bd27439b91f41db3fd7eedb44e828d61b793bda0) )
 	ROM_LOAD( "a-s7.bin",     0x02000, 0x2000, CRC(5ca6ad3c) SHA1(7c8eff087f18cc2ff0572ea45e681a3a1ec94fad) )
 	ROM_LOAD( "a-s8.bin",     0x04000, 0x2000, CRC(9f00b757) SHA1(74b6d926b8f456c8d0101f0232c5d3662423b396) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "a-j5.bin",     0x00000, 0x4000, CRC(21efe866) SHA1(0c0a05a26d793ba98b0f421d464ff4b1d301ff9e) )
 	ROM_LOAD( "a-j6.bin",     0x04000, 0x4000, CRC(7f984c80) SHA1(18795ecbcd2da94f1cfcce5559d652388d1b8bc0) )
 	ROM_LOAD( "a-j7.bin",     0x08000, 0x4000, CRC(df69e51b) SHA1(52ab15c63332f0fa98884fa9adc8d35b93c939c4) )
 	ROM_LOAD( "a-j8.bin",     0x0c000, 0x4000, CRC(0094cb8b) SHA1(58f48d24903b797e8451bf231f9e8df621685d9f) )
 
-	ROM_REGION( 0x06000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x06000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "b-c7.bin",     0x00000, 0x2000, CRC(d1795ef5) SHA1(69ad8e419e340d2f548468ed7838102789b978da) )
 	ROM_LOAD( "b-d7.bin",     0x02000, 0x2000, CRC(f28df203) SHA1(060f70ed6386c808303a488c97691257681bd8f3) )
 	ROM_LOAD( "b-f7.bin",     0x04000, 0x2000, CRC(af6e9817) SHA1(56f47d25761b3850c49a3a81b5ea35f12bd77b14) )
@@ -406,7 +405,7 @@ static READ8_HANDLER( pbactio3_prot_kludge_r )
 static DRIVER_INIT( pbactio3 )
 {
 	int i;
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 
 	/* first of all, do a simple bitswap */
 	for (i = 0;i < 0xc000;i++)
@@ -415,7 +414,7 @@ static DRIVER_INIT( pbactio3 )
 	}
 
 	/* then do the standard Sega decryption */
-	pbaction_decode(machine);
+	pbaction_decode(machine, "main");
 
 	/* install a protection (?) workaround */
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc000, 0, 0, pbactio3_prot_kludge_r );

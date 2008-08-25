@@ -35,7 +35,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "rescap.h"
+#include "machine/rescap.h"
 #include "sound/discrete.h"
 #include "nitedrvr.h"
 
@@ -43,7 +43,7 @@
 
 static ADDRESS_MAP_START( nitedrvr_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x00ff) AM_RAM AM_MIRROR(0x100) // SCRAM
-	AM_RANGE(0x0200, 0x027f) AM_RAM AM_MIRROR(0x180) AM_WRITE(nitedrvr_videoram_w) AM_BASE(&videoram) // PFW
+	AM_RANGE(0x0200, 0x027f) AM_RAM_WRITE(nitedrvr_videoram_w) AM_MIRROR(0x180) AM_BASE(&videoram) // PFW
 	AM_RANGE(0x0400, 0x05ff) AM_WRITE(nitedrvr_hvc_w) AM_BASE(&nitedrvr_hvc) // POSH, POSV, CHAR, Watchdog
 	AM_RANGE(0x0600, 0x07ff) AM_READ(nitedrvr_in0_r)
 	AM_RANGE(0x0800, 0x09ff) AM_READ(nitedrvr_in1_r)
@@ -58,7 +58,7 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( nitedrvr )
-	PORT_START_TAG("DSW0")	// fake
+	PORT_START("DSW0")	// fake
 	PORT_DIPNAME( 0x30, 0x10, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(	0x30, DEF_STR( 2C_1C ) )
 	//PORT_DIPSETTING(  0x20, DEF_STR( 1C_1C ) ) // not a typo
@@ -70,7 +70,7 @@ static INPUT_PORTS_START( nitedrvr )
 	PORT_DIPSETTING(	0x80, "100" )
 	PORT_DIPSETTING(	0xC0, "125" )
 
-	PORT_START_TAG("DSW1")	// fake
+	PORT_START("DSW1")	// fake
 	PORT_DIPNAME( 0x10, 0x00, "Track Set" )
 	PORT_DIPSETTING(	0x00, DEF_STR( Normal ) )
 	PORT_DIPSETTING(	0x10, DEF_STR( Reverse ) )
@@ -80,20 +80,20 @@ static INPUT_PORTS_START( nitedrvr )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("GEARS")	// fake
+	PORT_START("GEARS")	// fake
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON5 ) PORT_NAME("1st Gear")
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON6 ) PORT_NAME("2nd Gear")
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON7 ) PORT_NAME("3rd Gear")
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON8 ) PORT_NAME("4th Gear")
 
-	PORT_START_TAG("DSW2")	// fake
+	PORT_START("DSW2")	// fake
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNKNOWN )	// Spare
 	PORT_DIPNAME( 0x20, 0x00, "Difficult Bonus" )
 	PORT_DIPSETTING(	0x00, DEF_STR( Normal ) )
 	PORT_DIPSETTING(	0x20, "Difficult" )
 	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("IN0")	// fake
+	PORT_START("IN0")	// fake
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -103,10 +103,10 @@ static INPUT_PORTS_START( nitedrvr )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_NAME("Pro Track")
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	// Alternating signal?
 
-	PORT_START_TAG("STEER")	// fake
+	PORT_START("STEER")	// fake
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10)
 
-	PORT_START_TAG("MOTOR")
+	PORT_START("MOTOR")
 	PORT_ADJUSTER( 60, "Motor RPM" )
 INPUT_PORTS_END
 
@@ -126,7 +126,7 @@ static const gfx_layout charlayout =
 /* Graphics Decode Information */
 
 static GFXDECODE_START( nitedrvr )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0, 1 )
 GFXDECODE_END
 
 /* Machine Initialization */
@@ -146,7 +146,7 @@ static MACHINE_RESET( nitedrvr )
 
 static MACHINE_DRIVER_START( nitedrvr )
 	// basic machine hardware
-	MDRV_CPU_ADD(M6502, 12096000/12) // 1 MHz
+	MDRV_CPU_ADD("main", M6502, 12096000/12) // 1 MHz
 	MDRV_CPU_PROGRAM_MAP(nitedrvr_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 	MDRV_WATCHDOG_VBLANK_INIT(3)
@@ -172,7 +172,7 @@ static MACHINE_DRIVER_START( nitedrvr )
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(nitedrvr)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -181,7 +181,7 @@ MACHINE_DRIVER_END
 
 /*
 ROM_START( nitedrvo )       // early revision has the program code stored in 8 chips
-    ROM_REGION( 0x10000, REGION_CPU1, 0 )
+    ROM_REGION( 0x10000, "main", 0 )
     ROM_LOAD( "006560-01.h1", 0x9000, 0x0200, NO_DUMP ) // PROM 1
     ROM_LOAD( "006561-01.c1", 0x9200, 0x0200, NO_DUMP ) // PROM 2
     ROM_LOAD( "006562-01.j1", 0x9400, 0x0200, NO_DUMP ) // PROM 3
@@ -194,15 +194,15 @@ ROM_END
 */
 
 ROM_START( nitedrvr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "006569-01.d2", 0x9000, 0x0800, CRC(7afa7542) SHA1(81018e25ebdeae1daf1308676661063b6fd7fd22) ) // MASK ROM 1
 	ROM_LOAD( "006570-01.f2", 0x9800, 0x0800, CRC(bf5d77b1) SHA1(6f603f8b0973bd89e0e721b66944aac8e9f904d9) ) // MASK ROM 2
 	ROM_RELOAD( 			  0xf800, 0x0800 ) // vectors
 
-	ROM_REGION( 0x200, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x200, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "006568-01.p2", 0x0000, 0x0200, CRC(f80d8889) SHA1(ca573543dcce1221459d5693c476cef14bfac4f4) ) // PROM, Alpha-Numeric
 
-	ROM_REGION( 0x100, REGION_PROMS, 0 )
+	ROM_REGION( 0x100, "proms", 0 )
 	ROM_LOAD( "006559-01.h7", 0x0000, 0x0100, CRC(5a8d0e42) SHA1(772220c4c24f18769696ddba26db2bc2e5b0909d) ) // PROM, Sync
 ROM_END
 

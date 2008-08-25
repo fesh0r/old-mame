@@ -96,7 +96,7 @@ static READ8_HANDLER( key_matrix_r )
 	{
 		case 0x02:
 		{
-			switch(input_port_read_indexed(machine, 1))
+			switch(input_port_read(machine, "P1"))
 			{
 				case 0x002: return 0x02;
 				case 0x001: return 0x01;
@@ -115,7 +115,7 @@ static READ8_HANDLER( key_matrix_r )
 		}
 		case 0x04:
 		{
-			switch(input_port_read_indexed(machine, 2))
+			switch(input_port_read(machine, "P2"))
 			{
 				case 0x002: return 0x02;
 				case 0x001: return 0x01;
@@ -171,7 +171,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x40) AM_READ(input_port_0_r)
+	AM_RANGE(0x40, 0x40) AM_READ_PORT("DSW")
 	/* are these not used? after they're read it sets bit 7 */
 	AM_RANGE(0x60, 0x60) AM_READ(SMH_NOP)
 	AM_RANGE(0x61, 0x61) AM_READ(SMH_NOP)
@@ -181,12 +181,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01, 0x01) AM_WRITE(speedatk_flip_screen_w)
-	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0x40, 0x40) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x41, 0x41) AM_WRITE(ay8910_write_port_0_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( speedatk )
-	PORT_START
+	PORT_START("DSW")
 	PORT_SERVICE( 0x01, IP_ACTIVE_HIGH )
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -209,7 +209,7 @@ static INPUT_PORTS_START( speedatk )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(    0xc0, "1 Coin/10 Credits" )
 
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1) //P1 A
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1) //P1 B
 	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(1) //P1 C
@@ -223,7 +223,7 @@ static INPUT_PORTS_START( speedatk )
 	PORT_BIT( 0x0400, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x800, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(2)
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2) //P2 A
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2) //P2 B
 	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(2) //P2 C
@@ -262,12 +262,12 @@ static const gfx_layout charlayout_3bpp =
 
 
 static GFXDECODE_START( speedatk )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout_1bpp,   0, 32 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout_3bpp,   0, 32 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout_1bpp,   0, 32 )
+	GFXDECODE_ENTRY( "gfx2", 0, charlayout_3bpp,   0, 32 )
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( speedatk )
-	MDRV_CPU_ADD(Z80,12000000/2)
+	MDRV_CPU_ADD("main", Z80,12000000/2)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -290,27 +290,27 @@ static MACHINE_DRIVER_START( speedatk )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 4000000)
+	MDRV_SOUND_ADD("ay", AY8910, 4000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 ROM_START( speedatk )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cb1-1",        0x0000, 0x2000, CRC(df988e05) SHA1(0ec91c5f2e1adf952a4fe7aede591e763773a75b) )
 	ROM_LOAD( "cb0-2",        0x2000, 0x2000, CRC(be949154) SHA1(8a594a7ebdc8456290919163f7ea4ccb0d1f4edb) )
 	ROM_LOAD( "cb1-3",        0x4000, 0x2000, CRC(741a5949) SHA1(7f7bebd4fb73fef9aa28549d100f632c442ac9b3) )
 	ROM_LOAD( "cb0-4",        0x6000, 0x2000, CRC(53a9c0c8) SHA1(cd0fd94411dabf09828c1f629891158c40794127) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "cb0-7",        0x0000, 0x2000, CRC(a86007b5) SHA1(8e5cab76c37a8d53e1355000cd1a0a85ffae0e8c) )
 
-	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "cb0-5",        0x0000, 0x2000, CRC(47a966e7) SHA1(fdaa0f88656afc431bae367679ce6298fa962e0f) )
 	ROM_LOAD( "cb0-6",        0x2000, 0x2000, CRC(cc1da937) SHA1(1697bb008bfa5c33a282bd470ac39c324eea7509) )
-	ROM_COPY( REGION_GFX2,    0x0000, 0x4000, 0x1000 ) /* Fill the blank space with cards gfx */
-	ROM_COPY( REGION_GFX1,    0x1000, 0x5000, 0x1000 ) /* Gfx from cb0-7 */
+	ROM_COPY( "gfx2",    0x0000, 0x4000, 0x1000 ) /* Fill the blank space with cards gfx */
+	ROM_COPY( "gfx1",    0x1000, 0x5000, 0x1000 ) /* Gfx from cb0-7 */
 
-	ROM_REGION( 0x0120, REGION_PROMS, 0 )
+	ROM_REGION( 0x0120, "proms", 0 )
 	ROM_LOAD( "cb1.bpr",      0x0000, 0x0020, CRC(a0176c23) SHA1(133fb9eef8a6595cac2dcd7edce4789899a59e84) ) /* color PROM */
 	ROM_LOAD( "cb2.bpr",      0x0020, 0x0100, CRC(a604cf96) SHA1(a4ef6e77dcd3abe4c27e8e636222a5ee711a51f5) ) /* lookup table */
 ROM_END

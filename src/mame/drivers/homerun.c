@@ -74,8 +74,8 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( homerun )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, gfxlayout,   0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout,   0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, gfxlayout,   0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout,   0, 16 )
 GFXDECODE_END
 
 static ADDRESS_MAP_START( homerun_memmap, ADDRESS_SPACE_PROGRAM, 8 )
@@ -87,12 +87,11 @@ static ADDRESS_MAP_START( homerun_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xdfff) AM_RAM
 ADDRESS_MAP_END
 
-static READ8_HANDLER(homerun_40_r)
+static CUSTOM_INPUT( homerun_40_r )
 {
-	if(video_screen_get_vpos(machine->primary_screen)>116)
-		return input_port_read(machine, "IN0") | 0x40;
-	else
-		return input_port_read(machine, "IN0");
+	UINT8 ret = (video_screen_get_vpos(field->port->machine->primary_screen) > 116) ? 1 : 0;
+
+	return ret;
 }
 
 static ADDRESS_MAP_START( homerun_iomap, ADDRESS_SPACE_IO, 8 )
@@ -100,14 +99,14 @@ static ADDRESS_MAP_START( homerun_iomap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x10, 0x10) AM_WRITE(SMH_NOP) /* ?? */
 	AM_RANGE(0x20, 0x20) AM_WRITE(SMH_NOP) /* ?? */
 	AM_RANGE(0x30, 0x33) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
-	AM_RANGE(0x40, 0x40) AM_READ(homerun_40_r)
+	AM_RANGE(0x40, 0x40) AM_READ_PORT("IN0")
 	AM_RANGE(0x50, 0x50) AM_READ_PORT("IN2")
 	AM_RANGE(0x60, 0x60) AM_READ_PORT("IN1")
-	AM_RANGE(0x70, 0x70) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
-	AM_RANGE(0x71, 0x71) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
+	AM_RANGE(0x70, 0x70) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
+	AM_RANGE(0x71, 0x71) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
 ADDRESS_MAP_END
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -122,24 +121,25 @@ static const struct YM2203interface ym2203_interface =
 
 
 static INPUT_PORTS_START( homerun )
-	PORT_START_TAG("IN0")
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1  )
+	PORT_START("IN0")
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(homerun_40_r, NULL)
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( On ) )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1   )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 
-	PORT_START_TAG("IN2")
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2  )
+	PORT_START("IN2")
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( 3C_1C ) )
@@ -151,25 +151,26 @@ static INPUT_PORTS_START( homerun )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( dynashot )
-	PORT_START_TAG("IN0")
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1  )
-	PORT_BIT( 0xf7, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_START("IN0")
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(homerun_40_r, NULL)
+	PORT_BIT( 0xb7, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN  )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNUSED )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1   )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 
-	PORT_START_TAG("IN2")
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2  )
+	PORT_START("IN2")
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0xdf, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( 3C_1C ) )
@@ -186,7 +187,7 @@ INPUT_PORTS_END
 
 
 static MACHINE_DRIVER_START( homerun )
-	MDRV_CPU_ADD(Z80, 5000000)
+	MDRV_CPU_ADD("main", Z80, 5000000)
 	MDRV_CPU_PROGRAM_MAP(homerun_memmap, 0)
 	MDRV_CPU_IO_MAP(homerun_iomap, 0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -212,40 +213,70 @@ static MACHINE_DRIVER_START( homerun )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 6000000/2)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym", YM2203, 6000000/2)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 MACHINE_DRIVER_END
 
+
+/*
+Moero Pro Yakyuu Homerun Kyousou
+Jaleco, 1988
+
+PCB Layout
+----------
+
+HR-8847
+-----------------------------------
+| YM2203    Z80B         6264     |
+|YM3014 DSW(8)     HOMERUN.43     |
+|    D7756C   6264                |
+|                                 |
+|J  640KhZ   HOMERUN.60           |
+|A 2018                           |
+|M      2018    2018          8255|
+|M          2018                  |
+|A                                |
+|                                 |
+|                                 |
+| HOMERUN.120                20MHz|
+-----------------------------------
+
+Notes:
+      Z80 clock: 5.000MHz
+          VSync: 60Hz
+          HSync: 15.21kHz
+*/
+
 ROM_START( homerun )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
+	ROM_REGION( 0x30000, "main", 0 )
 	ROM_LOAD( "homerun.43",        0x0000, 0x4000, CRC(e759e476) SHA1(ad4f356ff26209033320a3e6353e4d4d9beb59c1) )
 	ROM_CONTINUE(        0x10000,0x1c000)
 
-	ROM_REGION( 0x010000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x010000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "homerun.60",  0x00000, 0x10000, CRC(69a720d1) SHA1(0f0a4877578f358e9e829ece8c31e23f01adcf83) )
 
-	ROM_REGION( 0x020000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x020000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "homerun.120",  0x00000, 0x20000, CRC(52f0709b) SHA1(19e675bcccadb774f60ec5929fc1fb5cf0d3f617) )
 
-	ROM_REGION( 0x01000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x01000, "d7756c", 0 )
 	ROM_LOAD( "homerun.snd",  0x00000, 0x1000, NO_DUMP ) /* D7756C internal rom */
 
 ROM_END
 
 ROM_START( dynashot )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
+	ROM_REGION( 0x30000, "main", 0 )
 	ROM_LOAD( "1.ic43",        0x0000, 0x4000, CRC(bf3c9586) SHA1(439effbda305f5fa265e5897c81dc1447e5d867d) )
 	ROM_CONTINUE(        0x10000,0x1c000)
 
-	ROM_REGION( 0x010000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x010000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "3.ic60",  0x00000, 0x10000, CRC(77d6a608) SHA1(a31ff343a5d4d6f20301c030ecc2e252149bcf9d) )
 
-	ROM_REGION( 0x020000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x020000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "2.ic120",  0x00000, 0x20000, CRC(bedf7b98) SHA1(cb6c5fcaf8df5f5c7636c3c8f79b9dda78e30c2e) )
 
-	ROM_REGION( 0x01000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x01000, "d7756c", 0 )
 	ROM_LOAD( "dynashot.snd",  0x00000, 0x1000, NO_DUMP ) /* D7756C internal rom */
 
 ROM_END

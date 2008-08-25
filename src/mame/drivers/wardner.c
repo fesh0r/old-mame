@@ -137,7 +137,7 @@ static WRITE8_HANDLER( wardner_ramrom_bank_sw )
 	if (wardner_membank != data) {
 		int bankaddress = 0;
 
-		UINT8 *RAM = memory_region(machine, REGION_CPU1);
+		UINT8 *RAM = memory_region(machine, "main");
 
 		wardner_membank = data;
 
@@ -230,8 +230,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(YM3812_status_port_0_r, YM3812_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(YM3812_write_port_0_w)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(ym3812_status_port_0_r, ym3812_control_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_WRITE(ym3812_write_port_0_w)
 ADDRESS_MAP_END
 
 
@@ -261,8 +261,7 @@ ADDRESS_MAP_END
     player 1 start button when in the cross-hatch screen.
 *****************************************************************************/
 
-#define  WARDNER_PLAYER_INPUT( player )										 \
-	PORT_START 				/* Player 1 button 3 skips video RAM tests */	 \
+#define  WARDNER_PLAYER_INPUT( player )		/* Player 1 button 3 skips video RAM tests */	 \
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(player) PORT_8WAY \
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(player) PORT_8WAY \
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(player) PORT_8WAY \
@@ -273,7 +272,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_PLAYER(player)	/* Shot D */
 
 #define  WARDNER_SYSTEM_INPUTS												\
-	PORT_START				/* test button doesnt seem to do anything ? */	\
+	PORT_START("SYSTEM")				/* test button doesnt seem to do anything ? */	\
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN3 )		/* Service button */	\
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_TILT )								\
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED )	/* Test button */		\
@@ -284,7 +283,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )	/* V-Blank */
 
 #define  PYROS_DSW_A									\
-	PORT_START		/* DSW A */							\
+	PORT_START("DSWA")		/* DSW A */							\
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )		\
 	PORT_DIPSETTING(	0x01, DEF_STR( Upright ) )		\
 	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )		\
@@ -309,7 +308,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(	0x40, DEF_STR( 1C_2C ) )
 
 #define  WARDNER_DSW_B									\
-	PORT_START		/* DSW B */							\
+	PORT_START("DSWB")		/* DSW B */							\
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Difficulty ) )	\
 	PORT_DIPSETTING(	0x01, DEF_STR( Easy ) )					\
 	PORT_DIPSETTING(	0x00, DEF_STR( Normal ) )				\
@@ -336,10 +335,14 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( wardner )
 	WARDNER_SYSTEM_INPUTS
+
+	PORT_START("P1")
 	WARDNER_PLAYER_INPUT( 1 )
+
+	PORT_START("P2")
 	WARDNER_PLAYER_INPUT( 2 )
 
-	PORT_START		/* DSW A */
+	PORT_START("DSWA")		/* DSW A */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Upright ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )
@@ -368,11 +371,16 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( pyros )
 	WARDNER_SYSTEM_INPUTS
+
+	PORT_START("P1")
 	WARDNER_PLAYER_INPUT( 1 )
+
+	PORT_START("P2")
 	WARDNER_PLAYER_INPUT( 2 )
+
 	PYROS_DSW_A
 
-	PORT_START		/* DSW B */
+	PORT_START("DSWB")		/* DSW B */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Easy ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( Normal ) )
@@ -398,9 +406,15 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( wardnerj )
 	WARDNER_SYSTEM_INPUTS
+
+	PORT_START("P1")
 	WARDNER_PLAYER_INPUT( 1 )
+
+	PORT_START("P2")
 	WARDNER_PLAYER_INPUT( 2 )
+
 	PYROS_DSW_A
+
 	WARDNER_DSW_B
 INPUT_PORTS_END
 
@@ -447,33 +461,33 @@ static void irqhandler(running_machine *machine, int linestate)
 	cpunum_set_input_line(machine, 1,0,linestate);
 }
 
-static const struct YM3812interface ym3812_interface =
+static const ym3812_interface ym3812_config =
 {
 	irqhandler
 };
 
 
 static GFXDECODE_START( wardner )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x00000, charlayout,   1536, 32 )	/* colors 1536-1791 */
-	GFXDECODE_ENTRY( REGION_GFX2, 0x00000, tilelayout,   1280, 16 )	/* colors 1280-1535 */
-	GFXDECODE_ENTRY( REGION_GFX3, 0x00000, tilelayout,   1024, 16 )	/* colors 1024-1079 */
-	GFXDECODE_ENTRY( REGION_GFX4, 0x00000, spritelayout,    0, 64 )	/* colors    0-1023 */
+	GFXDECODE_ENTRY( "gfx1", 0x00000, charlayout,   1536, 32 )	/* colors 1536-1791 */
+	GFXDECODE_ENTRY( "gfx2", 0x00000, tilelayout,   1280, 16 )	/* colors 1280-1535 */
+	GFXDECODE_ENTRY( "gfx3", 0x00000, tilelayout,   1024, 16 )	/* colors 1024-1079 */
+	GFXDECODE_ENTRY( "gfx4", 0x00000, spritelayout,    0, 64 )	/* colors    0-1023 */
 GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( wardner )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,24000000/4)			/* 6MHz ??? - Real board crystal is 24MHz */
+	MDRV_CPU_ADD("main", Z80,24000000/4)			/* 6MHz ??? - Real board crystal is 24MHz */
 	MDRV_CPU_PROGRAM_MAP(main_program_map, 0)
 	MDRV_CPU_IO_MAP(main_io_map, 0)
 	MDRV_CPU_VBLANK_INT("main", wardner_interrupt)
 
-	MDRV_CPU_ADD(Z80,24000000/7)			/* 3.43MHz ??? */
+	MDRV_CPU_ADD("audio", Z80,24000000/7)			/* 3.43MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_program_map, 0)
 	MDRV_CPU_IO_MAP(sound_io_map, 0)
 
-	MDRV_CPU_ADD(TMS32010,14000000)	/* 14MHz Crystal CLKin */
+	MDRV_CPU_ADD("dsp", TMS32010,14000000)	/* 14MHz Crystal CLKin */
 	MDRV_CPU_PROGRAM_MAP(DSP_program_map, 0)
 	/* Data Map is internal to the CPU */
 	MDRV_CPU_IO_MAP(DSP_io_map, 0)
@@ -502,8 +516,8 @@ static MACHINE_DRIVER_START( wardner )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, 24000000/7)
-	MDRV_SOUND_CONFIG(ym3812_interface)
+	MDRV_SOUND_ADD("ym", YM3812, 24000000/7)
+	MDRV_SOUND_CONFIG(ym3812_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -518,16 +532,16 @@ MACHINE_DRIVER_END
 
 
 ROM_START( wardner )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )	/* Banked Main Z80 code */
+	ROM_REGION( 0x40000, "main", 0 )	/* Banked Main Z80 code */
 	ROM_LOAD( "wardner.17", 0x00000, 0x08000, CRC(c5dd56fd) SHA1(f0a09557150e9c1c6b9d8e125f5408fc269c9d17) )	/* Main Z80 code */
 	ROM_LOAD( "b25-18.rom", 0x10000, 0x10000, CRC(9aab8ee2) SHA1(16fa44b75f4a3a5b1ff713690a299ecec2b5a4bf) )	/* OBJ ROMs */
 	ROM_LOAD( "b25-19.rom", 0x20000, 0x10000, CRC(95b68813) SHA1(06ea1b1d6e2e6326ceb9324fc471d082fda6112e) )
 	ROM_LOAD( "wardner.20", 0x38000, 0x08000, CRC(347f411b) SHA1(1fb2883d74d10350cb1c62fb58d5783652861b37) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound Z80 code */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound Z80 code */
 	ROM_LOAD( "b25-16.rom", 0x00000, 0x08000, CRC(e5202ff8) SHA1(15ae8c0bb16a20bee14e8d80d81c249404ab1463) )
 
-	ROM_REGION( 0x2000, REGION_CPU3, 0 )	/* Co-Processor TMS320C10 */
+	ROM_REGION( 0x2000, "dsp", 0 )	/* Co-Processor TMS320C10 */
 	ROMX_LOAD( "82s137.1d",  0x0000, 0x0400, CRC(cc5b3f53) SHA1(33589665ac995cc4645b56bbcd6d1c1cd5368f88), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(1) ) /* msb */
 	ROMX_LOAD( "82s137.1e",  0x0000, 0x0400, CRC(47351d55) SHA1(826add3ea3987f2c9ba2d3fc69a4ad2d9b033c89), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(1) )
 	ROMX_LOAD( "82s137.3d",  0x0001, 0x0400, CRC(70b537b9) SHA1(5211ec4605894727747dda66b70c9427652b16b4), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(1) ) /* lsb */
@@ -537,30 +551,30 @@ ROM_START( wardner )
 	ROMX_LOAD( "82s131.2a",  0x0801, 0x0200, CRC(ac843ca6) SHA1(8fd278748ec89d8ebe2d4f3bf8b6731f357ddfb3), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(1) )
 	ROMX_LOAD( "82s131.1a",  0x0801, 0x0200, CRC(50452ff8) SHA1(76964fa9ee89a51cc71904e08cfc83bf81bb89aa), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(1) )
 
-	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
+	ROM_REGION( 0x0c000, "gfx1", ROMREGION_DISPOSE )	/* chars */
 	ROM_LOAD( "wardner.07", 0x00000, 0x04000, CRC(1392b60d) SHA1(86b9eab87f8d5f68fda500420f4ed61331089fc2) )
 	ROM_LOAD( "wardner.06", 0x04000, 0x04000, CRC(0ed848da) SHA1(e4b38e21c101a28a8961a9fe30c9cb10919cc148) )
 	ROM_LOAD( "wardner.05", 0x08000, 0x04000, CRC(79792c86) SHA1(648b97f1ec30d46e40e60eb13159b4f6f86e9243) )
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )	/* fg tiles */
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )	/* fg tiles */
 	ROM_LOAD( "b25-12.rom",  0x00000, 0x08000, CRC(15d08848) SHA1(e2e62d95a3f240664b5e0ac0f163a0d5cefa5312) )
 	ROM_LOAD( "b25-15.rom",  0x08000, 0x08000, CRC(cdd2d408) SHA1(7e4d77f8725fa30d4d65e811d10e0b2c00b23cfe) )
 	ROM_LOAD( "b25-14.rom",  0x10000, 0x08000, CRC(5a2aef4f) SHA1(60f4ab2582a924defb5241ab367826ae1f4b3f5e) )
 	ROM_LOAD( "b25-13.rom",  0x18000, 0x08000, CRC(be21db2b) SHA1(7fc1809618f2432c9ec6eb33ce57a5faffd44974) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg tiles */
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_DISPOSE )	/* bg tiles */
 	ROM_LOAD( "b25-08.rom",  0x00000, 0x08000, CRC(883ccaa3) SHA1(90d686094eac6e80caf8e2cf90c00bb41a0d26e2) )
 	ROM_LOAD( "b25-11.rom",  0x08000, 0x08000, CRC(d6ebd510) SHA1(d65e0db7756ebe6828bf637a6c915bb06082636c) )
 	ROM_LOAD( "b25-10.rom",  0x10000, 0x08000, CRC(b9a61e81) SHA1(541e579664d583fbbf81111046115018fdaff073) )
 	ROM_LOAD( "b25-09.rom",  0x18000, 0x08000, CRC(585411b7) SHA1(67c0f4b7ab303341d5481c4024dc4199acb7c279) )
 
-	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE )	/* sprites */
+	ROM_REGION( 0x40000, "gfx4", ROMREGION_DISPOSE )	/* sprites */
 	ROM_LOAD( "b25-01.rom",  0x00000, 0x10000, CRC(42ec01fb) SHA1(646192a2e89f795ed016860cdcdc0b5ef645fca2) )
 	ROM_LOAD( "b25-02.rom",  0x10000, 0x10000, CRC(6c0130b7) SHA1(8b6ad72848d03c3d4ee3acd35abbb3a0e678122c) )
 	ROM_LOAD( "b25-03.rom",  0x20000, 0x10000, CRC(b923db99) SHA1(2f4be81afdf200586bc44b1e94553d84d16d0b62) )
 	ROM_LOAD( "b25-04.rom",  0x30000, 0x10000, CRC(8059573c) SHA1(75bd19e504433438b85ed00e50e85fb98eebf4de) )
 
-	ROM_REGION( 0x260, REGION_PROMS, 0 )		/* nibble bproms, lo/hi order to be determined */
+	ROM_REGION( 0x260, "proms", 0 )		/* nibble bproms, lo/hi order to be determined */
 	ROM_LOAD( "82s129.b19",  0x000, 0x100, CRC(24e7d62f) SHA1(1c06a1ef1b6a722794ca1d5ee2c476ecaa5178a3) )	/* sprite priority control ?? */
 	ROM_LOAD( "82s129.b18",  0x100, 0x100, CRC(a50cef09) SHA1(55cafb5b2551b80ae708e9b966cf37c70a16d310) )	/* sprite priority control ?? */
 	ROM_LOAD( "82s123.b21",  0x200, 0x020, CRC(f72482db) SHA1(b0cb911f9c81f6088a5aa8760916ddae1f8534d7) )	/* sprite control ?? */
@@ -569,16 +583,16 @@ ROM_START( wardner )
 ROM_END
 
 ROM_START( pyros )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )	/* Banked Z80 code */
+	ROM_REGION( 0x40000, "main", 0 )	/* Banked Z80 code */
 	ROM_LOAD( "b25-29.rom", 0x00000, 0x08000, CRC(b568294d) SHA1(5d04dd006f5180fa0c9340e2efa6613625d712a8) )	/* Main Z80 code */
 	ROM_LOAD( "b25-18.rom", 0x10000, 0x10000, CRC(9aab8ee2) SHA1(16fa44b75f4a3a5b1ff713690a299ecec2b5a4bf) )	/* OBJ ROMs */
 	ROM_LOAD( "b25-19.rom", 0x20000, 0x10000, CRC(95b68813) SHA1(06ea1b1d6e2e6326ceb9324fc471d082fda6112e) )
 	ROM_LOAD( "b25-30.rom", 0x38000, 0x08000, CRC(5056c799) SHA1(9750fa8bf5d1181a4fecbcbf822f8f027bebd5a8) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound Z80 code */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound Z80 code */
 	ROM_LOAD( "b25-16.rom", 0x00000, 0x08000, CRC(e5202ff8) SHA1(15ae8c0bb16a20bee14e8d80d81c249404ab1463) )
 
-	ROM_REGION( 0x2000, REGION_CPU3, 0 )	/* Co-Processor TMS320C10 */
+	ROM_REGION( 0x2000, "dsp", 0 )	/* Co-Processor TMS320C10 */
 	ROMX_LOAD( "82s137.1d",  0x0000, 0x0400, CRC(cc5b3f53) SHA1(33589665ac995cc4645b56bbcd6d1c1cd5368f88), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(1) ) /* msb */
 	ROMX_LOAD( "82s137.1e",  0x0000, 0x0400, CRC(47351d55) SHA1(826add3ea3987f2c9ba2d3fc69a4ad2d9b033c89), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(1) )
 	ROMX_LOAD( "82s137.3d",  0x0001, 0x0400, CRC(70b537b9) SHA1(5211ec4605894727747dda66b70c9427652b16b4), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(1) ) /* lsb */
@@ -588,30 +602,30 @@ ROM_START( pyros )
 	ROMX_LOAD( "82s131.2a",  0x0801, 0x0200, CRC(ac843ca6) SHA1(8fd278748ec89d8ebe2d4f3bf8b6731f357ddfb3), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(1) )
 	ROMX_LOAD( "82s131.1a",  0x0801, 0x0200, CRC(50452ff8) SHA1(76964fa9ee89a51cc71904e08cfc83bf81bb89aa), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(1) )
 
-	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
+	ROM_REGION( 0x0c000, "gfx1", ROMREGION_DISPOSE )	/* chars */
 	ROM_LOAD( "b25-35.rom", 0x00000, 0x04000, CRC(fec6f0c0) SHA1(f91d698fa0712659c2e6b382a8166b1cacc50a3f) )
 	ROM_LOAD( "b25-34.rom", 0x04000, 0x04000, CRC(02505dad) SHA1(28993c68a17929d6b819ca81cdf60985531fc80b) )
 	ROM_LOAD( "b25-33.rom", 0x08000, 0x04000, CRC(9a55fcb9) SHA1(e04d68cc0b80b79b5f4c19c14b2e87f226f45ac8) )
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )	/* fg tiles */
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )	/* fg tiles */
 	ROM_LOAD( "b25-12.rom",  0x00000, 0x08000, CRC(15d08848) SHA1(e2e62d95a3f240664b5e0ac0f163a0d5cefa5312) )
 	ROM_LOAD( "b25-15.rom",  0x08000, 0x08000, CRC(cdd2d408) SHA1(7e4d77f8725fa30d4d65e811d10e0b2c00b23cfe) )
 	ROM_LOAD( "b25-14.rom",  0x10000, 0x08000, CRC(5a2aef4f) SHA1(60f4ab2582a924defb5241ab367826ae1f4b3f5e) )
 	ROM_LOAD( "b25-13.rom",  0x18000, 0x08000, CRC(be21db2b) SHA1(7fc1809618f2432c9ec6eb33ce57a5faffd44974) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg tiles */
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_DISPOSE )	/* bg tiles */
 	ROM_LOAD( "b25-08.rom",  0x00000, 0x08000, CRC(883ccaa3) SHA1(90d686094eac6e80caf8e2cf90c00bb41a0d26e2) )
 	ROM_LOAD( "b25-11.rom",  0x08000, 0x08000, CRC(d6ebd510) SHA1(d65e0db7756ebe6828bf637a6c915bb06082636c) )
 	ROM_LOAD( "b25-10.rom",  0x10000, 0x08000, CRC(b9a61e81) SHA1(541e579664d583fbbf81111046115018fdaff073) )
 	ROM_LOAD( "b25-09.rom",  0x18000, 0x08000, CRC(585411b7) SHA1(67c0f4b7ab303341d5481c4024dc4199acb7c279) )
 
-	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE )	/* sprites */
+	ROM_REGION( 0x40000, "gfx4", ROMREGION_DISPOSE )	/* sprites */
 	ROM_LOAD( "b25-01.rom",  0x00000, 0x10000, CRC(42ec01fb) SHA1(646192a2e89f795ed016860cdcdc0b5ef645fca2) )
 	ROM_LOAD( "b25-02.rom",  0x10000, 0x10000, CRC(6c0130b7) SHA1(8b6ad72848d03c3d4ee3acd35abbb3a0e678122c) )
 	ROM_LOAD( "b25-03.rom",  0x20000, 0x10000, CRC(b923db99) SHA1(2f4be81afdf200586bc44b1e94553d84d16d0b62) )
 	ROM_LOAD( "b25-04.rom",  0x30000, 0x10000, CRC(8059573c) SHA1(75bd19e504433438b85ed00e50e85fb98eebf4de) )
 
-	ROM_REGION( 0x260, REGION_PROMS, 0 )		/* nibble bproms, lo/hi order to be determined */
+	ROM_REGION( 0x260, "proms", 0 )		/* nibble bproms, lo/hi order to be determined */
 	ROM_LOAD( "82s129.b19",  0x000, 0x100, CRC(24e7d62f) SHA1(1c06a1ef1b6a722794ca1d5ee2c476ecaa5178a3) )	/* sprite priority control ?? */
 	ROM_LOAD( "82s129.b18",  0x100, 0x100, CRC(a50cef09) SHA1(55cafb5b2551b80ae708e9b966cf37c70a16d310) )	/* sprite priority control ?? */
 	ROM_LOAD( "82s123.b21",  0x200, 0x020, CRC(f72482db) SHA1(b0cb911f9c81f6088a5aa8760916ddae1f8534d7) )	/* sprite control ?? */
@@ -620,16 +634,16 @@ ROM_START( pyros )
 ROM_END
 
 ROM_START( wardnerj )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )	/* Banked Z80 code */
+	ROM_REGION( 0x40000, "main", 0 )	/* Banked Z80 code */
 	ROM_LOAD( "b25-17.bin",  0x00000, 0x08000, CRC(4164dca9) SHA1(1f02c0991d7c14230043e34cb4b8e089b467b234) )	/* Main Z80 code */
 	ROM_LOAD( "b25-18.rom",  0x10000, 0x10000, CRC(9aab8ee2) SHA1(16fa44b75f4a3a5b1ff713690a299ecec2b5a4bf) )	/* OBJ ROMs */
 	ROM_LOAD( "b25-19.rom",  0x20000, 0x10000, CRC(95b68813) SHA1(06ea1b1d6e2e6326ceb9324fc471d082fda6112e) )
 	ROM_LOAD( "b25-20.bin",  0x38000, 0x08000, CRC(1113ad38) SHA1(88f89054954b1d2776ceaedc7a3605190808d7e5) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound Z80 code */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound Z80 code */
 	ROM_LOAD( "b25-16.rom", 0x00000, 0x08000, CRC(e5202ff8) SHA1(15ae8c0bb16a20bee14e8d80d81c249404ab1463) )
 
-	ROM_REGION( 0x2000, REGION_CPU3, 0 )	/* Co-Processor TMS320C10 */
+	ROM_REGION( 0x2000, "dsp", 0 )	/* Co-Processor TMS320C10 */
 	ROMX_LOAD( "82s137.1d",  0x0000, 0x0400, CRC(cc5b3f53) SHA1(33589665ac995cc4645b56bbcd6d1c1cd5368f88), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(1) ) /* msb */
 	ROMX_LOAD( "82s137.1e",  0x0000, 0x0400, CRC(47351d55) SHA1(826add3ea3987f2c9ba2d3fc69a4ad2d9b033c89), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(1) )
 	ROMX_LOAD( "82s137.3d",  0x0001, 0x0400, CRC(70b537b9) SHA1(5211ec4605894727747dda66b70c9427652b16b4), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(1) ) /* lsb */
@@ -639,30 +653,30 @@ ROM_START( wardnerj )
 	ROMX_LOAD( "82s131.2a",  0x0801, 0x0200, CRC(ac843ca6) SHA1(8fd278748ec89d8ebe2d4f3bf8b6731f357ddfb3), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(1) )
 	ROMX_LOAD( "82s131.1a",  0x0801, 0x0200, CRC(50452ff8) SHA1(76964fa9ee89a51cc71904e08cfc83bf81bb89aa), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(1) )
 
-	ROM_REGION( 0x0c000, REGION_GFX1, ROMREGION_DISPOSE )	/* chars */
+	ROM_REGION( 0x0c000, "gfx1", ROMREGION_DISPOSE )	/* chars */
 	ROM_LOAD( "b25-07.bin", 0x00000, 0x04000, CRC(50e329e0) SHA1(5d5fb7043457d952b28101acb909ed65bf13a2dc) )
 	ROM_LOAD( "b25-06.bin", 0x04000, 0x04000, CRC(3bfeb6ae) SHA1(3a251f49901ccb17b5fedf81980d54e4f6f49d4d) )
 	ROM_LOAD( "b25-05.bin", 0x08000, 0x04000, CRC(be36a53e) SHA1(320fc5b88ed1fce1aa8d8e76e1046206c138b35c) )
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )	/* fg tiles */
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )	/* fg tiles */
 	ROM_LOAD( "b25-12.rom",  0x00000, 0x08000, CRC(15d08848) SHA1(e2e62d95a3f240664b5e0ac0f163a0d5cefa5312) )
 	ROM_LOAD( "b25-15.rom",  0x08000, 0x08000, CRC(cdd2d408) SHA1(7e4d77f8725fa30d4d65e811d10e0b2c00b23cfe) )
 	ROM_LOAD( "b25-14.rom",  0x10000, 0x08000, CRC(5a2aef4f) SHA1(60f4ab2582a924defb5241ab367826ae1f4b3f5e) )
 	ROM_LOAD( "b25-13.rom",  0x18000, 0x08000, CRC(be21db2b) SHA1(7fc1809618f2432c9ec6eb33ce57a5faffd44974) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg tiles */
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_DISPOSE )	/* bg tiles */
 	ROM_LOAD( "b25-08.rom",  0x00000, 0x08000, CRC(883ccaa3) SHA1(90d686094eac6e80caf8e2cf90c00bb41a0d26e2) )
 	ROM_LOAD( "b25-11.rom",  0x08000, 0x08000, CRC(d6ebd510) SHA1(d65e0db7756ebe6828bf637a6c915bb06082636c) )
 	ROM_LOAD( "b25-10.rom",  0x10000, 0x08000, CRC(b9a61e81) SHA1(541e579664d583fbbf81111046115018fdaff073) )
 	ROM_LOAD( "b25-09.rom",  0x18000, 0x08000, CRC(585411b7) SHA1(67c0f4b7ab303341d5481c4024dc4199acb7c279) )
 
-	ROM_REGION( 0x40000, REGION_GFX4, ROMREGION_DISPOSE )	/* sprites */
+	ROM_REGION( 0x40000, "gfx4", ROMREGION_DISPOSE )	/* sprites */
 	ROM_LOAD( "b25-01.rom",  0x00000, 0x10000, CRC(42ec01fb) SHA1(646192a2e89f795ed016860cdcdc0b5ef645fca2) )
 	ROM_LOAD( "b25-02.rom",  0x10000, 0x10000, CRC(6c0130b7) SHA1(8b6ad72848d03c3d4ee3acd35abbb3a0e678122c) )
 	ROM_LOAD( "b25-03.rom",  0x20000, 0x10000, CRC(b923db99) SHA1(2f4be81afdf200586bc44b1e94553d84d16d0b62) )
 	ROM_LOAD( "b25-04.rom",  0x30000, 0x10000, CRC(8059573c) SHA1(75bd19e504433438b85ed00e50e85fb98eebf4de) )
 
-	ROM_REGION( 0x260, REGION_PROMS, 0 )		/* nibble bproms, lo/hi order to be determined */
+	ROM_REGION( 0x260, "proms", 0 )		/* nibble bproms, lo/hi order to be determined */
 	ROM_LOAD( "82s129.b19",  0x000, 0x100, CRC(24e7d62f) SHA1(1c06a1ef1b6a722794ca1d5ee2c476ecaa5178a3) )	/* sprite priority control ?? */
 	ROM_LOAD( "82s129.b18",  0x100, 0x100, CRC(a50cef09) SHA1(55cafb5b2551b80ae708e9b966cf37c70a16d310) )	/* sprite priority control ?? */
 	ROM_LOAD( "82s123.b21",  0x200, 0x020, CRC(f72482db) SHA1(b0cb911f9c81f6088a5aa8760916ddae1f8534d7) )	/* sprite control ?? */

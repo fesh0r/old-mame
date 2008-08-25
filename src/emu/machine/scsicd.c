@@ -10,6 +10,7 @@
 #include "sound/cdda.h"
 #ifdef MESS
 #include "devices/chd_cd.h"
+#include "deprecat.h"
 #endif
 #include "scsicd.h"
 
@@ -670,9 +671,10 @@ static void scsicd_write_data( SCSIInstance *scsiInstance, UINT8 *data, int data
 	}
 }
 
-static void scsicd_alloc_instance( SCSIInstance *scsiInstance, int diskId )
+static void scsicd_alloc_instance( SCSIInstance *scsiInstance, const char *diskregion )
 {
 	SCSICd *our_this = SCSIThis( &SCSIClassCDROM, scsiInstance );
+	char tag[256];
 
 	our_this->lba = 0;
 	our_this->blocks = 0;
@@ -682,18 +684,21 @@ static void scsicd_alloc_instance( SCSIInstance *scsiInstance, int diskId )
 	our_this->cur_subblock = 0;
 	our_this->play_err_flag = 0;
 
-	state_save_register_item( "scsicd", diskId, our_this->lba );
-	state_save_register_item( "scsicd", diskId, our_this->blocks );
-	state_save_register_item( "scsicd", diskId, our_this->last_lba );
-	state_save_register_item( "scsicd", diskId, our_this->bytes_per_sector );
-	state_save_register_item( "scsicd", diskId, our_this->num_subblocks );
-	state_save_register_item( "scsicd", diskId, our_this->cur_subblock );
-	state_save_register_item( "scsicd", diskId, our_this->play_err_flag );
+	state_save_combine_module_and_tag(tag, "scsicd", diskregion);
+
+	state_save_register_item( tag, 0, our_this->lba );
+	state_save_register_item( tag, 0, our_this->blocks );
+	state_save_register_item( tag, 0, our_this->last_lba );
+	state_save_register_item( tag, 0, our_this->bytes_per_sector );
+	state_save_register_item( tag, 0, our_this->num_subblocks );
+	state_save_register_item( tag, 0, our_this->cur_subblock );
+	state_save_register_item( tag, 0, our_this->play_err_flag );
 
 #ifdef MESS
-	our_this->cdrom = mess_cd_get_cdrom_file_by_number( diskId );
+	/* TODO: get rid of this ifdef MESS section */
+	our_this->cdrom = mess_cd_get_cdrom_file( device_list_find_by_tag( Machine->config->devicelist, CDROM, "cdrom" ) );
 #else
-	our_this->cdrom = cdrom_open(get_disk_handle( diskId ));
+	our_this->cdrom = cdrom_open(get_disk_handle( diskregion ));
 
 	if (!our_this->cdrom)
 	{
@@ -727,6 +732,8 @@ static void scsicd_set_device( SCSIInstance *scsiInstance, cdrom_file *cdrom )
 
 static int scsicd_dispatch(int operation, void *file, INT64 intparm, void *ptrparm)
 {
+	SCSIAllocInstanceParams *params;
+
 	switch (operation)
 	{
 		case SCSIOP_EXEC_COMMAND:
@@ -741,8 +748,9 @@ static int scsicd_dispatch(int operation, void *file, INT64 intparm, void *ptrpa
 			return 0;
 
 		case SCSIOP_ALLOC_INSTANCE:
+			params = ptrparm;
 			SCSIBase( &SCSIClassCDROM, operation, file, intparm, ptrparm );
-			scsicd_alloc_instance( *((SCSIInstance **) ptrparm), intparm );
+			scsicd_alloc_instance( params->instance, params->diskregion );
 			return 0;
 
 		case SCSIOP_DELETE_INSTANCE:

@@ -55,16 +55,12 @@ static int toggle_bit;
 
 static READ16_HANDLER( wheelfir_rand1 )
 {
-
-
-
-
-	return input_port_read_indexed(machine, 0)^toggle_bit;// mame_rand(machine);
+	return input_port_read(machine, "IN0") ^ toggle_bit;	// mame_rand(machine);
 }
 
 static READ16_HANDLER( wheelfir_rand2 )
 {
-	return input_port_read_indexed(machine, 1);// mame_rand(machine);
+	return input_port_read(machine, "IN1");		// mame_rand(machine);
 }
 
 
@@ -186,7 +182,7 @@ static WRITE16_HANDLER(wheelfir_blit_w)
 
 		int x,y;
 		int xsize,ysize;
-		UINT8 *rom = memory_region(machine, REGION_GFX1);
+		UINT8 *rom = memory_region(machine, "gfx1");
 		int dir=0;
 
 
@@ -310,7 +306,7 @@ static VIDEO_UPDATE(wheelfir)
 
     if ( input_code_pressed(KEYCODE_R) )
     {
-        const UINT8 *gfx = memory_region(machine, REGION_GFX1);
+        const UINT8 *gfx = memory_region(machine, "gfx1");
         for (y=0;y<128;y++)
         {
             for (x=0;x<512;x++)
@@ -380,8 +376,8 @@ static ADDRESS_MAP_START( wheelfir_main, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x7c0000, 0x7c0001) AM_READ(wheelfir_rand1)
 	AM_RANGE(0x780000, 0x780001) AM_READ(wheelfir_rand2)
-	AM_RANGE(0x7e0000, 0x7e0001) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x7e0002, 0x7e0003) AM_READ(input_port_3_word_r)
+	AM_RANGE(0x7e0000, 0x7e0001) AM_READ_PORT("P1")
+	AM_RANGE(0x7e0002, 0x7e0003) AM_READ_PORT("P2")
 
 
 	AM_RANGE(0x700000, 0x70001f) AM_WRITE(wheelfir_blit_w) // blitter stuff
@@ -410,7 +406,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( wheelfir )
-	PORT_START	/* 16bit */
+	PORT_START("IN0")	/* 16bit */
 	PORT_DIPNAME( 0x0001, 0x0001, "0" )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -460,7 +456,7 @@ static INPUT_PORTS_START( wheelfir )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START	/* 16bit */
+	PORT_START("IN1")	/* 16bit */
 	PORT_DIPNAME( 0x0001, 0x0001, "1" )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -510,7 +506,7 @@ static INPUT_PORTS_START( wheelfir )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START	/* 16bit */
+	PORT_START("P1")	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -530,7 +526,7 @@ static INPUT_PORTS_START( wheelfir )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* 16bit */
+	PORT_START("P2")	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -632,11 +628,11 @@ static INTERRUPT_GEN( wheelfir_irq )
 
 
 static MACHINE_DRIVER_START( wheelfir )
-	MDRV_CPU_ADD_TAG("main", M68000, 32000000)
+	MDRV_CPU_ADD("main", M68000, 32000000)
 	MDRV_CPU_PROGRAM_MAP(wheelfir_main, 0)
 	MDRV_CPU_VBLANK_INT_HACK(wheelfir_irq,256)  // 1,3,5 valid
 
-	MDRV_CPU_ADD_TAG("main", M68000, 32000000/2)
+	MDRV_CPU_ADD("sub", M68000, 32000000/2)
 	MDRV_CPU_PROGRAM_MAP(wheelfir_sub, 0)
 	MDRV_CPU_VBLANK_INT("main", irq1_line_hold) // 1 valid
 
@@ -659,15 +655,15 @@ MACHINE_DRIVER_END
 
 
 ROM_START( wheelfir )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "tch1.u19", 0x00001, 0x80000, CRC(33bbbc67) SHA1(c2ecc0ab522ee442076ea7b9536aee6e1fad0540) )
 	ROM_LOAD16_BYTE( "tch2.u21", 0x00000, 0x80000, CRC(ed6b9e8a) SHA1(214c5aaf55963a219db33dd5d530492e09ad5e07) )
 
-	ROM_REGION( 0x100000, REGION_CPU2, 0 ) /* 68000 Code + sound samples */
+	ROM_REGION( 0x100000, "sub", 0 ) /* 68000 Code + sound samples */
 	ROM_LOAD16_BYTE( "tch3.u83",  0x00001, 0x80000, CRC(43c014a6) SHA1(6c01a08dda204f36e8768795dd5d405576a49140) )
 	ROM_LOAD16_BYTE( "tch11.u65", 0x00000, 0x80000, CRC(fc894b2e) SHA1(ebe6d1adf889731fb6f53b4ce5f09c60e2aefb97) )
 
-	ROM_REGION( 0x400000, REGION_GFX1, 0 ) // 512x512 gfx pages
+	ROM_REGION( 0x400000, "gfx1", 0 ) // 512x512 gfx pages
 	ROM_LOAD( "tch4.u52", 0x000000, 0x80000, CRC(fe4bc2c7) SHA1(33a2ef79cb13f9e7e7d513915c6e13c4e7fe0188) )
 	ROM_LOAD( "tch5.u53", 0x080000, 0x80000, CRC(a38b9ca5) SHA1(083c9f700b9df1039fb553e918e205c6d32057ad) )
 	ROM_LOAD( "tch6.u54", 0x100000, 0x80000, CRC(2733ae6b) SHA1(ebd91e123b670159f79be19a552d1ae0c8a0faff) )
@@ -680,7 +676,7 @@ ROM_END
 
 static DRIVER_INIT(wheelfir)
 {
-	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, "main");
 	RAM[0xdd3da/2] = 0x4e71; // hack!
 }
 

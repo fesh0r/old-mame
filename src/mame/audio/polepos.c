@@ -6,7 +6,7 @@
 #include "deprecat.h"
 #include "streams.h"
 #include "sound/filter.h"
-#include "rescap.h"
+#include "machine/rescap.h"
 #include "sound/custom.h"
 #include "namco54.h"
 #include "polepos.h"
@@ -70,7 +70,7 @@ static void engine_sound_update(void *param, stream_sample_t **inputs, stream_sa
 	/* determine the volume */
 	slot = (sample_msb >> 3) & 7;
 	volume = volume_table[slot];
-	base = &memory_region(Machine, REGION_SOUND2)[slot * 0x800];
+	base = &memory_region(Machine, "engine")[slot * 0x800];
 
 	/* fill in the sample */
 	while (length--)
@@ -100,7 +100,7 @@ static void engine_sound_update(void *param, stream_sample_t **inputs, stream_sa
 /************************************/
 /* Sound handler start              */
 /************************************/
-void *polepos_sh_start(int clock, const struct CustomSound_interface *config)
+void *polepos_sh_start(int clock, const custom_sound_interface *config)
 {
 	stream = stream_create(0, 1, OUTPUT_RATE, NULL, engine_sound_update);
 	sample_msb = sample_lsb = 0;

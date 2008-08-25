@@ -88,7 +88,8 @@ static UINT8 pal[768];
 static UINT32 *main_ram;
 
 static UINT32 disp_ctrl_reg[256/4];
-static int frame_width = 1, frame_height = 1;
+static int frame_width;
+static int frame_height;
 
 static UINT32 memory_ctrl_reg[256/4];
 static int pal_index = 0;
@@ -502,11 +503,11 @@ static WRITE32_HANDLER( io20_w )
 static READ32_HANDLER( parallel_port_r )
 {
 	UINT32 r = 0;
-//  static const char *portnames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
+//  static const char *portnames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7", "IN8" }; // but parallel_pointer takes values 0 -> 23
 
 	if (ACCESSING_BITS_8_15)
 	{
-		UINT8 nibble = parallel_latched;//(input_port_read(machine, portnames[parallel_pointer / 3]) >> (4 * (parallel_pointer % 3))) & 15;
+		UINT8 nibble = parallel_latched;//(input_port_read_safe(machine, portnames[parallel_pointer / 3], 0) >> (4 * (parallel_pointer % 3))) & 15;
 		r |= ((~nibble & 0x08) << 12) | ((nibble & 0x07) << 11);
 		logerror("%08X:parallel_port_r()\n", activecpu_get_pc());
 /*      if (controls_data == 0x18)
@@ -534,6 +535,8 @@ static READ32_HANDLER( parallel_port_r )
 
 static WRITE32_HANDLER( parallel_port_w )
 {
+	static const char *portnames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7", "IN8" };	// but parallel_pointer takes values 0 -> 23
+
 	COMBINE_DATA( &parport );
 
 	if (ACCESSING_BITS_0_7)
@@ -555,7 +558,7 @@ static WRITE32_HANDLER( parallel_port_w )
 
 		logerror("%08X:", activecpu_get_pc());
 
-		parallel_latched = (input_port_read_indexed(machine, parallel_pointer / 3) >> (4 * (parallel_pointer % 3))) & 15;
+		parallel_latched = (input_port_read_safe(machine, portnames[parallel_pointer / 3], 0) >> (4 * (parallel_pointer % 3))) & 15;
 //      parallel_pointer++;
 //      logerror("[%02X] Advance pointer to %d\n", data, parallel_pointer);
 		switch (data & 0xfc)
@@ -836,7 +839,7 @@ static ADDRESS_MAP_START( mediagx_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x40008300, 0x400083ff) AM_READWRITE(disp_ctrl_r, disp_ctrl_w)
 	AM_RANGE(0x40008400, 0x400084ff) AM_READWRITE(memory_ctrl_r, memory_ctrl_w)
 	AM_RANGE(0x40800000, 0x40bfffff) AM_RAM AM_BASE(&vram)
-	AM_RANGE(0xfffc0000, 0xffffffff) AM_ROM AM_REGION(REGION_USER1, 0)	/* System BIOS */
+	AM_RANGE(0xfffc0000, 0xffffffff) AM_ROM AM_REGION("user1", 0)	/* System BIOS */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mediagx_io, ADDRESS_SPACE_IO, 32)
@@ -874,14 +877,14 @@ static const gfx_layout CGA_charlayout =
 
 static GFXDECODE_START( CGA )
 /* Support up to four CGA fonts */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, CGA_charlayout,              0, 256 )   /* Font 0 */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0800, CGA_charlayout,              0, 256 )   /* Font 1 */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x1000, CGA_charlayout,              0, 256 )   /* Font 2 */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x1800, CGA_charlayout,              0, 256 )   /* Font 3*/
+	GFXDECODE_ENTRY( "gfx1", 0x0000, CGA_charlayout,              0, 256 )   /* Font 0 */
+	GFXDECODE_ENTRY( "gfx1", 0x0800, CGA_charlayout,              0, 256 )   /* Font 1 */
+	GFXDECODE_ENTRY( "gfx1", 0x1000, CGA_charlayout,              0, 256 )   /* Font 2 */
+	GFXDECODE_ENTRY( "gfx1", 0x1800, CGA_charlayout,              0, 256 )   /* Font 3*/
 GFXDECODE_END
 
 static INPUT_PORTS_START(mediagx)
-	PORT_START
+	PORT_START("IN0")
 	PORT_SERVICE_NO_TOGGLE( 0x001, IP_ACTIVE_HIGH )
 	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_SERVICE1 )
 	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_SERVICE2 )
@@ -895,42 +898,42 @@ static INPUT_PORTS_START(mediagx)
 	PORT_BIT( 0x400, IP_ACTIVE_HIGH, IPT_START3 )
 	PORT_BIT( 0x800, IP_ACTIVE_HIGH, IPT_START4 )
 
-	PORT_START
+	PORT_START("IN1")
 	PORT_BIT( 0x00f, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0x0f0, IP_ACTIVE_HIGH, IPT_BUTTON2 )
 	PORT_BIT( 0xf00, IP_ACTIVE_HIGH, IPT_BUTTON3 )
 
-	PORT_START
+	PORT_START("IN2")
 	PORT_BIT( 0x00f, IP_ACTIVE_HIGH, IPT_BUTTON4 )
 	PORT_BIT( 0x0f0, IP_ACTIVE_HIGH, IPT_BUTTON5 )
 	PORT_BIT( 0xf00, IP_ACTIVE_HIGH, IPT_BUTTON6 )
 
-	PORT_START
+	PORT_START("IN3")
 	PORT_BIT( 0x00f, IP_ACTIVE_HIGH, IPT_BUTTON7 )
 	PORT_BIT( 0x0f0, IP_ACTIVE_HIGH, IPT_BUTTON8 )
 	PORT_BIT( 0xf00, IP_ACTIVE_HIGH, IPT_BUTTON9 )
 
-	PORT_START
+	PORT_START("IN4")
 	PORT_BIT( 0x00f, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0f0, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0xf00, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START("IN5")
 	PORT_BIT( 0x00f, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(3)
 	PORT_BIT( 0x0f0, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(3)
 	PORT_BIT( 0xf00, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(3)
 
-	PORT_START
+	PORT_START("IN6")
 	PORT_BIT( 0x00f, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )
 	PORT_BIT( 0x0f0, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0xf00, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
 
-	PORT_START
+	PORT_START("IN7")
 	PORT_BIT( 0x00f, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x0f0, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0xf00, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START("IN8")
 	PORT_BIT( 0x00f, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(3)
 	PORT_BIT( 0x0f0, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(3)
 	PORT_BIT( 0xf00, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(3)
@@ -958,7 +961,7 @@ static MACHINE_START(mediagx)
 
 static MACHINE_RESET(mediagx)
 {
-	UINT8 *rom = memory_region(machine, REGION_USER1);
+	UINT8 *rom = memory_region(machine, "user1");
 
 	cpunum_set_irq_callback(0, irq_callback);
 
@@ -1017,15 +1020,12 @@ static const struct pit8253_config mediagx_pit8254_config =
 	{
 		{
 			4772720/4,				/* heartbeat IRQ */
-			pc_timer0_w,
-			NULL
+			pc_timer0_w
 		}, {
 			4772720/4,				/* dram refresh */
-			NULL,
 			NULL
 		}, {
 			4772720/4,				/* pio port c pin 4, and speaker polling enough */
-			NULL,
 			NULL
 		}
 	}
@@ -1035,7 +1035,7 @@ static const struct pit8253_config mediagx_pit8254_config =
 static MACHINE_DRIVER_START(mediagx)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(MEDIAGX, 166000000)
+	MDRV_CPU_ADD("main", MEDIAGX, 166000000)
 	MDRV_CPU_PROGRAM_MAP(mediagx_map, 0)
 	MDRV_CPU_IO_MAP(mediagx_io, 0)
 
@@ -1057,7 +1057,7 @@ static MACHINE_DRIVER_START(mediagx)
 	MDRV_DEVICE_ADD( "pic8259_2", PIC8259 )
 	MDRV_DEVICE_CONFIG( mediagx_pic8259_2_config )
 
-	MDRV_IDE_CONTROLLER_ADD("ide", 0, ide_interrupt)
+	MDRV_IDE_CONTROLLER_ADD("ide", ide_interrupt)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
 
@@ -1077,10 +1077,10 @@ static MACHINE_DRIVER_START(mediagx)
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(DMADAC, 0)
+	MDRV_SOUND_ADD("dac1", DMADAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 
-	MDRV_SOUND_ADD(DMADAC, 0)
+	MDRV_SOUND_ADD("dac2", DMADAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
 
@@ -1120,6 +1120,8 @@ static void mediagx_set_keyb_int(int state) {
 
 static void init_mediagx(running_machine *machine)
 {
+	frame_width = frame_height = 1;
+
 	init_pc_common(machine, PCCOMMON_KEYBOARD_AT,mediagx_set_keyb_int);
 	mc146818_init(machine, MC146818_STANDARD);
 
@@ -1227,13 +1229,13 @@ static DRIVER_INIT( a51site4 )
 /*****************************************************************************/
 
 ROM_START(a51site4)
-	ROM_REGION32_LE(0x40000, REGION_USER1, 0)
+	ROM_REGION32_LE(0x40000, "user1", 0)
 	ROM_LOAD("tinybios.rom", 0x00000, 0x40000, CRC(5ee189cc) SHA1(0b0d9321a4c59b1deea6854923e655a4d8c4fcfe))
 
-	ROM_REGION(0x08100, REGION_GFX1, 0)
+	ROM_REGION(0x08100, "gfx1", 0)
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "ide" )
 	DISK_IMAGE( "a51site4", 0, MD5(be0dd1a6f0bba175c25da3d056fa426d) SHA1(49dee1b903a37b99266cc3e19227942c3cf75821) )
 ROM_END
 

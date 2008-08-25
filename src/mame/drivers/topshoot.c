@@ -138,7 +138,7 @@ connector, but of course, I can be wrong.
 
 
 static INPUT_PORTS_START( topshoot ) /* Top Shooter Input Ports */
-	PORT_START_TAG("IN0")	/* 16bit */
+	PORT_START("IN0")	/* 16bit */
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -237,10 +237,10 @@ ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( genesis_base )
 	/*basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M68000, MASTER_CLOCK / 7)
+	MDRV_CPU_ADD("main", M68000, MASTER_CLOCK / 7)
 	MDRV_CPU_VBLANK_INT("main", genesis_vblank_interrupt)
 
-	MDRV_CPU_ADD_TAG("sound", Z80, MASTER_CLOCK / 15)
+	MDRV_CPU_ADD("sound", Z80, MASTER_CLOCK / 15)
 	MDRV_CPU_PROGRAM_MAP(genesis_z80_readmem, genesis_z80_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* from vdp at scanline 0xe0 */
 
@@ -266,7 +266,7 @@ static MACHINE_DRIVER_START( genesis_base )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3438, MASTER_CLOCK/7)
+	MDRV_SOUND_ADD("ym", YM3438, MASTER_CLOCK/7)
 	MDRV_SOUND_ROUTE(0, "mono", 0.50)
 	MDRV_SOUND_ROUTE(1, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -284,12 +284,12 @@ static MACHINE_DRIVER_START( topshoot )
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 223)
 
 	/* sound hardware */
-	MDRV_SOUND_ADD(SN76496, MASTER_CLOCK/15)
+	MDRV_SOUND_ADD("sn", SN76496, MASTER_CLOCK/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 ROM_START( topshoot ) /* Top Shooter (c)1995 Sun Mixing */
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )
+	ROM_REGION( 0x200000, "main", 0 )
 	ROM_LOAD16_BYTE( "tc574000ad_u11_2.bin", 0x000000, 0x080000, CRC(b235c4d9) SHA1(fbb308a5f6e769f3277824cb6a3b50c308969ac2) )
 	ROM_LOAD16_BYTE( "tc574000ad_u12_1.bin", 0x000001, 0x080000, CRC(e826f6ad) SHA1(23ec8bb608f954d3b915f061e7076c0c63b8259e) )
 ROM_END
@@ -304,7 +304,7 @@ static DRIVER_INIT(topshoot)
 	/* hack -- fix vdp emulation instead */
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC00004, 0xC00005, 0, 0, vdp_fake_r);
 
-	memory_set_bankptr(3, memory_region(machine, REGION_CPU1) );
+	memory_set_bankptr(3, memory_region(machine, "main") );
 	memory_set_bankptr(4, genesis_68k_ram );
 }
 

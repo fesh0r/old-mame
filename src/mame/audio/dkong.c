@@ -271,7 +271,7 @@ static DISCRETE_SOUND_START(dkong2b)
     DISCRETE_INPUT_LOGIC(DS_DAC_DISCHARGE)
     DISCRETE_INPUT_DATA(DS_DAC)
 	// Mixing - DAC
-	DISCRETE_ADJUSTMENT_TAG(DS_ADJ_DAC, 1, 0, 1, DISC_LINADJ, "VR2")
+	DISCRETE_ADJUSTMENT_TAG(DS_ADJ_DAC, 0, 1, DISC_LINADJ, "VR2")
 
 	/************************************************/
 	/* SIGNALS                                      */
@@ -534,7 +534,7 @@ static DISCRETE_SOUND_START(radarscp)
     DISCRETE_INPUT_DATA(DS_DAC)
 
 	// Mixing - DAC
-	DISCRETE_ADJUSTMENT_TAG(DS_ADJ_DAC, 1, 0, 1, DISC_LINADJ, "VR2")
+	DISCRETE_ADJUSTMENT_TAG(DS_ADJ_DAC, 0, 1, DISC_LINADJ, "VR2")
 
 	/************************************************/
 	/* SIGNALS                                      */
@@ -996,7 +996,7 @@ Addresses found at @0x510, cpu2
         0
     };
 
-    static const struct Samplesinterface radarsc1_samples_interface =
+    static const samples_interface radarsc1_samples_interface =
     {
         8,
         radarsc1_sample_names
@@ -1008,8 +1008,8 @@ static WRITE8_HANDLER( M58817_command_w )
 {
 	logerror("PA Write %x\n", data);
 
-	tms5110_CTL_w(machine, 0, data & 0x0f);
-	tms5110_PDC_w(machine, 0, (data>>4) & 0x01);
+	tms5110_ctl_w(machine, 0, data & 0x0f);
+	tms5110_pdc_w(machine, 0, (data>>4) & 0x01);
 	// FIXME 0x20 is CS
 }
 
@@ -1058,7 +1058,7 @@ static READ8_HANDLER( dkong_voice_status_r )
 static READ8_HANDLER( dkong_sh_tune_r )
 {
 	dkong_state *state = machine->driver_data;
-	UINT8 *SND = memory_region(machine, REGION_CPU2);
+	UINT8 *SND = memory_region(machine, "sound");
 
 	if ( state->page & 0x40 )
 	{
@@ -1268,16 +1268,16 @@ static ADDRESS_MAP_START( dkong3_sound1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_RAM
 	AM_RANGE(0x4016, 0x4016) AM_READ(soundlatch_r)		// overwrite default
 	AM_RANGE(0x4017, 0x4017) AM_READ(soundlatch2_r)
-	AM_RANGE(0x4000, 0x4017) AM_READ(NESPSG_0_r)
-	AM_RANGE(0x4000, 0x4017) AM_WRITE(NESPSG_0_w)
+	AM_RANGE(0x4000, 0x4017) AM_READ(nes_psg_0_r)
+	AM_RANGE(0x4000, 0x4017) AM_WRITE(nes_psg_0_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dkong3_sound2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_RAM
 	AM_RANGE(0x4016, 0x4016) AM_READ(soundlatch3_r)		// overwrite default
-	AM_RANGE(0x4000, 0x4017) AM_READ(NESPSG_1_r)
-	AM_RANGE(0x4000, 0x4017) AM_WRITE(NESPSG_1_w)
+	AM_RANGE(0x4000, 0x4017) AM_READ(nes_psg_1_r)
+	AM_RANGE(0x4000, 0x4017) AM_WRITE(nes_psg_1_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -1287,15 +1287,8 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static const struct NESinterface nes_interface_1 = { REGION_CPU2 };
-static const struct NESinterface nes_interface_2 = { REGION_CPU3 };
-
-static const struct TMS5110interface tms5110_interface =
-{
-	REGION_SOUND1,		/* Sample Rom */
-	NULL,
-	NULL
-};
+static const nes_interface nes_interface_1 = { "n2a03a" };
+static const nes_interface nes_interface_2 = { "n2a03b" };
 
 /*************************************
  *
@@ -1305,7 +1298,7 @@ static const struct TMS5110interface tms5110_interface =
 
 MACHINE_DRIVER_START( dkong2b_audio )
 
-	MDRV_CPU_ADD_TAG("sound", I8035,I8035_CLOCK)
+	MDRV_CPU_ADD("sound", I8035,I8035_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(dkong_sound_map,0)
 	MDRV_CPU_IO_MAP(dkong_sound_io_map, 0)
 
@@ -1313,7 +1306,7 @@ MACHINE_DRIVER_START( dkong2b_audio )
 	MDRV_SOUND_RESET(dkong)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(dkong2b)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
@@ -1335,15 +1328,14 @@ MACHINE_DRIVER_START( radarsc1_audio )
 	MDRV_CPU_MODIFY("sound")
 	MDRV_CPU_IO_MAP(radarsc1_sound_io_map, 0)
 
-	MDRV_SOUND_ADD(M58817, XTAL_640kHz)
-	MDRV_SOUND_CONFIG(tms5110_interface)
+	MDRV_SOUND_ADD("tms", M58817, XTAL_640kHz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( dkongjr_audio )
 
-	MDRV_CPU_ADD_TAG("sound", I8035,I8035_CLOCK)
+	MDRV_CPU_ADD("sound", I8035,I8035_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(dkong_sound_map,0)
 	MDRV_CPU_IO_MAP(dkongjr_sound_io_map, 0)
 
@@ -1352,7 +1344,7 @@ MACHINE_DRIVER_START( dkongjr_audio )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(dkongjr)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
@@ -1360,20 +1352,20 @@ MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( dkong3_audio )
 
-	MDRV_CPU_ADD_TAG("n2a03a", N2A03,N2A03_DEFAULTCLOCK)
+	MDRV_CPU_ADD("n2a03a", N2A03,N2A03_DEFAULTCLOCK)
 	MDRV_CPU_PROGRAM_MAP(dkong3_sound1_map, 0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
-	MDRV_CPU_ADD_TAG("n2a03b", N2A03,N2A03_DEFAULTCLOCK)
+	MDRV_CPU_ADD("n2a03b", N2A03,N2A03_DEFAULTCLOCK)
 	MDRV_CPU_PROGRAM_MAP(dkong3_sound2_map, 0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(NES, N2A03_DEFAULTCLOCK)
+	MDRV_SOUND_ADD("nes1", NES, N2A03_DEFAULTCLOCK)
 	MDRV_SOUND_CONFIG(nes_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(NES, N2A03_DEFAULTCLOCK)
+	MDRV_SOUND_ADD("nes2", NES, N2A03_DEFAULTCLOCK)
 	MDRV_SOUND_CONFIG(nes_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 

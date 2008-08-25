@@ -82,7 +82,7 @@ static ADDRESS_MAP_START( metlclsh_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc003, 0xc003) AM_READ_PORT("DSW")
 //  AM_RANGE(0xc800, 0xc82f) AM_READ(SMH_RAM                   )   // not actually read
 //  AM_RANGE(0xcc00, 0xcc2f) AM_READ(SMH_RAM                   )   // ""
-	AM_RANGE(0xd000, 0xd000) AM_READ(YM2203_status_port_0_r	)
+	AM_RANGE(0xd000, 0xd000) AM_READ(ym2203_status_port_0_r	)
 //  AM_RANGE(0xd800, 0xdfff) AM_READ(SMH_RAM                   )   // not actually read
 	AM_RANGE(0xe800, 0xe9ff) AM_READ(SMH_RAM					)
 	AM_RANGE(0xfff0, 0xffff) AM_READ(SMH_ROM					)	// Reset/IRQ vectors
@@ -97,10 +97,10 @@ static ADDRESS_MAP_START( metlclsh_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc0c3, 0xc0c3) AM_WRITE(metlclsh_ack_nmi			)	// nmi ack
 	AM_RANGE(0xc800, 0xc82f) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split1_w) AM_BASE(&paletteram		)
 	AM_RANGE(0xcc00, 0xcc2f) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split2_w) AM_BASE(&paletteram_2	)
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(YM2203_control_port_0_w	)
-	AM_RANGE(0xd001, 0xd001) AM_WRITE(YM2203_write_port_0_w		)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(YM3526_control_port_0_w	)
-	AM_RANGE(0xe001, 0xe001) AM_WRITE(YM3526_write_port_0_w		)
+	AM_RANGE(0xd000, 0xd000) AM_WRITE(ym2203_control_port_0_w	)
+	AM_RANGE(0xd001, 0xd001) AM_WRITE(ym2203_write_port_0_w		)
+	AM_RANGE(0xe000, 0xe000) AM_WRITE(ym3526_control_port_0_w	)
+	AM_RANGE(0xe001, 0xe001) AM_WRITE(ym3526_write_port_0_w		)
 	AM_RANGE(0xe800, 0xe9ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size	)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITE(metlclsh_fgram_w) AM_BASE(&metlclsh_fgram		)
 	AM_RANGE(0xfff0, 0xffff) AM_WRITE(SMH_ROM					)
@@ -168,7 +168,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( metlclsh )
-	PORT_START_TAG("IN0")		/* c000 */
+	PORT_START("IN0")		/* c000 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -193,7 +193,7 @@ static INPUT_PORTS_START( metlclsh )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN1")		/* c001 */
+	PORT_START("IN1")		/* c001 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT	)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		)
@@ -203,7 +203,7 @@ static INPUT_PORTS_START( metlclsh )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1			)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2			)
 
-	PORT_START_TAG("IN2")		/* c002 */
+	PORT_START("IN2")		/* c002 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT	) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_COCKTAIL
@@ -213,7 +213,7 @@ static INPUT_PORTS_START( metlclsh )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(1)
 
-	PORT_START_TAG("DSW")		/* c003 */
+	PORT_START("DSW")		/* c003 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "2" )
 	PORT_DIPSETTING(    0x01, "3" )
@@ -275,9 +275,9 @@ static const gfx_layout tilelayout8 =
 };
 
 static GFXDECODE_START( metlclsh )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, spritelayout, 0x00, 2 ) // [0] Sprites
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout16, 0x10, 1 ) // [1] Background
-	GFXDECODE_ENTRY( REGION_GFX3, 0, tilelayout8,  0x20, 4 ) // [2] Foreground
+	GFXDECODE_ENTRY( "gfx1", 0, spritelayout, 0x00, 2 ) // [0] Sprites
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayout16, 0x10, 1 ) // [1] Background
+	GFXDECODE_ENTRY( "gfx3", 0, tilelayout8,  0x20, 4 ) // [2] Foreground
 GFXDECODE_END
 
 
@@ -292,7 +292,7 @@ static void metlclsh_irqhandler(running_machine *machine, int linestate)
 	cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,linestate);
 }
 
-static const struct YM3526interface ym3526_interface =
+static const ym3526_interface ym3526_config =
 {
 	metlclsh_irqhandler
 };
@@ -314,11 +314,11 @@ static MACHINE_RESET( metlclsh )
 static MACHINE_DRIVER_START( metlclsh )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, 1500000)        // ?
+	MDRV_CPU_ADD("main", M6809, 1500000)        // ?
 	MDRV_CPU_PROGRAM_MAP(metlclsh_readmem, metlclsh_writemem)
 	// IRQ by YM3526, NMI by cpu #2
 
-	MDRV_CPU_ADD(M6809, 1500000)        // ?
+	MDRV_CPU_ADD("sub", M6809, 1500000)        // ?
 	MDRV_CPU_PROGRAM_MAP(metlclsh_readmem2, metlclsh_writemem2)
 	MDRV_CPU_VBLANK_INT_HACK(metlclsh_interrupt2,2)
 	// IRQ by cpu #1, NMI by coins insertion
@@ -342,14 +342,14 @@ static MACHINE_DRIVER_START( metlclsh )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 1500000)
+	MDRV_SOUND_ADD("ym1", YM2203, 1500000)
 	MDRV_SOUND_ROUTE(0, "mono", 0.10)
 	MDRV_SOUND_ROUTE(1, "mono", 0.10)
 	MDRV_SOUND_ROUTE(2, "mono", 0.10)
 	MDRV_SOUND_ROUTE(3, "mono", 0.50)
 
-	MDRV_SOUND_ADD(YM3526, 3000000)
-	MDRV_SOUND_CONFIG(ym3526_interface)
+	MDRV_SOUND_ADD("ym2", YM3526, 3000000)
+	MDRV_SOUND_CONFIG(ym3526_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
@@ -417,21 +417,21 @@ SW2
 ***************************************************************************/
 
 ROM_START( metlclsh )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cs04.bin",    0x00000, 0x8000, CRC(c2cc79a6) SHA1(0f586d4145afabbb45ea4865ed7a6590b14a2ab0) )
 	ROM_LOAD( "cs00.bin",    0x0a000, 0x2000, CRC(af0f2998) SHA1(09dd2516406168660d5cd3a36be1e5f0adbcdb8a) )
-	ROM_COPY( REGION_CPU1, 0x7ff0, 0xfff0, 0x10 )
+	ROM_COPY( "main", 0x7ff0, 0xfff0, 0x10 )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "cs03.bin",    0x00000, 0x8000, CRC(51c4720c) SHA1(7fd93bdcf029e7d2509b73b32f61fddf85f3453f) )
-	ROM_COPY( REGION_CPU2, 0x7ff0, 0xfff0, 0x10 )
+	ROM_COPY( "sub", 0x7ff0, 0xfff0, 0x10 )
 
-	ROM_REGION( 0x18000, REGION_GFX1, ROMREGION_DISPOSE )	// Sprites
+	ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )	// Sprites
 	ROM_LOAD( "cs06.bin",    0x00000, 0x8000, CRC(9f61403f) SHA1(0ebb1cb9d4983746b6b32ec948e7b9efd90783d1) )
 	ROM_LOAD( "cs07.bin",    0x08000, 0x8000, CRC(d0610ea5) SHA1(3dfa16cbe93a4c08993111f78a8dd22c874fdd28) )
 	ROM_LOAD( "cs08.bin",    0x10000, 0x8000, CRC(a8b02125) SHA1(145a22b2910b2fbfb28925f58968ee2bdeae1dda) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE )	// Background
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_DISPOSE )	// Background
 	ROM_LOAD( "cs01.bin",    0x00000, 0x1000, CRC(9c72343d) SHA1(c5618be7874ab6c930b0e68935c93f1958a1916d) )
 	ROM_CONTINUE(            0x04000, 0x1000 )
 	ROM_CONTINUE(            0x08000, 0x1000 )
@@ -449,11 +449,11 @@ ROM_START( metlclsh )
 	ROM_CONTINUE(            0x0b000, 0x1000 )
 	ROM_CONTINUE(            0x0f000, 0x1000 )
 
-	ROM_REGION( 0x04000, REGION_GFX3, ROMREGION_DISPOSE )	// Foreground
+	ROM_REGION( 0x04000, "gfx3", ROMREGION_DISPOSE )	// Foreground
 	ROM_LOAD( "cs05.bin",    0x00000, 0x4000, CRC(f90c9c6b) SHA1(ca8e497e9c388078343dd1303beef6ee38748d6a) )
 	ROM_CONTINUE(            0x00000, 0x4000 )	// first half is empty
 
-	ROM_REGION( 0x020, REGION_PROMS, 0 )	// ?
+	ROM_REGION( 0x020, "proms", 0 )	// ?
 	ROM_LOAD( "82s123.prm",   0x0000, 0x20, CRC(6844cc88) SHA1(89d23367aa6ff541205416e82781fe938dfeeb52) )
 ROM_END
 

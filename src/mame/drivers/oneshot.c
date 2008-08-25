@@ -106,7 +106,7 @@ static WRITE16_HANDLER( soundbank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		OKIM6295_set_bank_base(0, 0x40000 * ((data & 0x03) ^ 0x03));
+		okim6295_set_bank_base(0, 0x40000 * ((data & 0x03) ^ 0x03));
 	}
 }
 
@@ -147,21 +147,21 @@ static ADDRESS_MAP_START( snd_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x8000) AM_READ(soundlatch_r)
 	AM_RANGE(0x8001, 0x87ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe000, 0xe000) AM_READ(YM3812_status_port_0_r)
-	AM_RANGE(0xe010, 0xe010) AM_READ(OKIM6295_status_0_r)
+	AM_RANGE(0xe000, 0xe000) AM_READ(ym3812_status_port_0_r)
+	AM_RANGE(0xe010, 0xe010) AM_READ(okim6295_status_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( snd_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x8001, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(YM3812_control_port_0_w)
-	AM_RANGE(0xe001, 0xe001) AM_WRITE(YM3812_write_port_0_w)
-	AM_RANGE(0xe010, 0xe010) AM_WRITE(OKIM6295_data_0_w)
+	AM_RANGE(0xe000, 0xe000) AM_WRITE(ym3812_control_port_0_w)
+	AM_RANGE(0xe001, 0xe001) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0xe010, 0xe010) AM_WRITE(okim6295_data_0_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( oneshot )
-	PORT_START_TAG("DSW1")	/* DSW 1    (0x19c020.l -> 0x08006c.l) */
+	PORT_START("DSW1")	/* DSW 1    (0x19c020.l -> 0x08006c.l) */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) )		// 0x080084.l : credits (00-09)
 	PORT_DIPSETTING(    0x03, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
@@ -183,7 +183,7 @@ static INPUT_PORTS_START( oneshot )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")	/* DSW 2    (0x19c024.l -> 0x08006e.l) */
+	PORT_START("DSW2")	/* DSW 2    (0x19c024.l -> 0x08006e.l) */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )		// 0x082500.l
 	PORT_DIPSETTING(    0x01, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -203,7 +203,7 @@ static INPUT_PORTS_START( oneshot )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START_TAG("CREDITS")	/* Credits  (0x19c02c.l -> 0x08007a.l) */
+	PORT_START("CREDITS")	/* Credits  (0x19c02c.l -> 0x08007a.l) */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -213,7 +213,7 @@ static INPUT_PORTS_START( oneshot )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("P1")	/* Player 1 Gun Trigger (0x19c030.l) */
+	PORT_START("P1")	/* Player 1 Gun Trigger (0x19c030.l) */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -223,7 +223,7 @@ static INPUT_PORTS_START( oneshot )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("P2")	/* Player 2 Gun Trigger (0x19c034.l) */
+	PORT_START("P2")	/* Player 2 Gun Trigger (0x19c034.l) */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -233,22 +233,22 @@ static INPUT_PORTS_START( oneshot )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("LIGHT0_X")	/* Player 1 Gun X       ($190026.l) */
+	PORT_START("LIGHT0_X")	/* Player 1 Gun X       ($190026.l) */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START_TAG("LIGHT0_Y")	/* Player 1 Gun Y       ($190036.l) */
+	PORT_START("LIGHT0_Y")	/* Player 1 Gun Y       ($190036.l) */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START_TAG("LIGHT1_X")	/* Player 2 Gun X       ($19002e.l) */
+	PORT_START("LIGHT1_X")	/* Player 2 Gun X       ($19002e.l) */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START_TAG("LIGHT1_Y")	/* Player 2 Gun Y       ($19003e.l) */
+	PORT_START("LIGHT1_Y")	/* Player 2 Gun Y       ($19003e.l) */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( maddonna )
-	PORT_START_TAG("DSW1") /* DSW A */
+	PORT_START("DSW1") /* DSW A */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
@@ -271,7 +271,7 @@ static INPUT_PORTS_START( maddonna )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_HIGH )
 
-	PORT_START_TAG("DSW2") /* DSW B */
+	PORT_START("DSW2") /* DSW B */
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )				// 2 Monsters at start, but "dumber"??
 	PORT_DIPSETTING(    0x01, DEF_STR( Normal ) )			// 2 Monsters at start
@@ -294,7 +294,7 @@ static INPUT_PORTS_START( maddonna )
 	PORT_DIPSETTING(    0x80, "On - 01" )
 	PORT_DIPSETTING(    0xc0, "On - 11" )
 
-	PORT_START_TAG("CREDITS")	/* Credits */
+	PORT_START("CREDITS")	/* Credits */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -304,7 +304,7 @@ static INPUT_PORTS_START( maddonna )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("P1")	/* Player 1 */
+	PORT_START("P1")	/* Player 1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -314,7 +314,7 @@ static INPUT_PORTS_START( maddonna )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("P2")	/* Player 1 */
+	PORT_START("P2")	/* Player 1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -352,8 +352,8 @@ static const gfx_layout oneshot8x8_layout =
 
 
 static GFXDECODE_START( oneshot )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, oneshot16x16_layout,   0x00, 4  ) /* sprites */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, oneshot8x8_layout,     0x00, 4  ) /* sprites */
+	GFXDECODE_ENTRY( "gfx1", 0, oneshot16x16_layout,   0x00, 4  ) /* sprites */
+	GFXDECODE_ENTRY( "gfx1", 0, oneshot8x8_layout,     0x00, 4  ) /* sprites */
 GFXDECODE_END
 
 static void irq_handler(running_machine *machine, int irq)
@@ -361,7 +361,7 @@ static void irq_handler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM3812interface ym3812_interface =
+static const ym3812_interface ym3812_config =
 {
 	irq_handler
 };
@@ -369,11 +369,11 @@ static const struct YM3812interface ym3812_interface =
 static MACHINE_DRIVER_START( oneshot )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000)
+	MDRV_CPU_ADD("main", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(oneshot_readmem,oneshot_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
-	MDRV_CPU_ADD(Z80, 5000000)
+	MDRV_CPU_ADD("audio", Z80, 5000000)
 	MDRV_CPU_PROGRAM_MAP(snd_readmem, snd_writemem)
 
 	MDRV_GFXDECODE(oneshot)
@@ -393,12 +393,12 @@ static MACHINE_DRIVER_START( oneshot )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, 3500000)
-	MDRV_SOUND_CONFIG(ym3812_interface)
+	MDRV_SOUND_ADD("ym", YM3812, 3500000)
+	MDRV_SOUND_CONFIG(ym3812_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -413,14 +413,14 @@ MACHINE_DRIVER_END
 
 
 ROM_START( oneshot )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "1shot-u.a24", 0x00000, 0x20000, CRC(0ecd33da) SHA1(d050e9a1900cd9f629818034b1445e034b6cf81c) )
 	ROM_LOAD16_BYTE( "1shot-u.a22", 0x00001, 0x20000, CRC(26c3ae2d) SHA1(47e479abe06d508a9d9fe677d34d6a485bde5533) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 Code */
 	ROM_LOAD( "1shot.ua2", 0x00000, 0x010000, CRC(f655b80e) SHA1(2574a812c35801755c187a47f46ccdb0983c5feb) )
 
-	ROM_REGION( 0x400000, REGION_GFX1, 0 ) /* Sprites */
+	ROM_REGION( 0x400000, "gfx1", 0 ) /* Sprites */
 	ROM_LOAD( "1shot-ui.16a",0x000000, 0x080000, CRC(f765f9a2) SHA1(f6c386e0421fcb0e420585dd27d9dad951bb2556) )
 	ROM_LOAD( "1shot-ui.13a",0x080000, 0x080000, CRC(3361b5d8) SHA1(f7db674d479765d4e58fb663aa5e13dde2abcce7) )
 	ROM_LOAD( "1shot-ui.11a",0x100000, 0x080000, CRC(8f8bd027) SHA1(fbec952ab5604c8e20c5e7cfd2844f4fe5441186) )
@@ -430,23 +430,23 @@ ROM_START( oneshot )
 	ROM_LOAD( "1shot-ui.11", 0x300000, 0x080000, CRC(b8938345) SHA1(318cf0d070db786680a45811bbd765fa37caaf62) )
 	ROM_LOAD( "1shot-ui.08", 0x380000, 0x080000, CRC(c9953bef) SHA1(21917a9dcc0afaeec20672ad863d0c9d583369e3) )
 
-	ROM_REGION( 0x100000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x100000, "oki", 0 ) /* Samples */
 	ROM_LOAD( "1shot.u15", 0x000000, 0x080000, CRC(e3759a47) SHA1(1159335924a6d68a0a24bfbe0c9182107f3f05f8) )
 	ROM_LOAD( "1shot.u14", 0x080000, 0x080000, CRC(222e33f8) SHA1(2665afdf4cb1a29325df62efc1843a4b2cf34a4e) )
 
-	ROM_REGION( 0x10000, REGION_USER1, 0 )
+	ROM_REGION( 0x10000, "user1", 0 )
 	ROM_LOAD( "1shot.mb", 0x00000, 0x10000, CRC(6b213183) SHA1(599c59d155d11edb151bfaed1d24ef964462a447) ) // motherboard rom, zooming?
 ROM_END
 
 ROM_START( maddonna )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "maddonna.b16", 0x00000, 0x20000, CRC(643f9054) SHA1(77907ecdb02a525f9beed7fee203431eda16c831) )
 	ROM_LOAD16_BYTE( "maddonna.b15", 0x00001, 0x20000, CRC(e36c0e26) SHA1(f261b2c74eeca05df302aa4956f5d02121d42054) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 Code */
 	ROM_LOAD( "x13.ua2", 0x00000, 0x010000, CRC(f2080071) SHA1(68cbae9559879b2dc19c41a7efbd13ab4a569d3f) ) // b13
 
-	ROM_REGION( 0x400000, REGION_GFX1, 0 ) /* Sprites */
+	ROM_REGION( 0x400000, "gfx1", 0 ) /* Sprites */
 	ROM_LOAD( "maddonna.b5",  0x000000, 0x080000, CRC(838d3244) SHA1(7339143481ec043219825f282450ff53bb718f8c) )
 	ROM_LOAD( "maddonna.b7",  0x080000, 0x080000, CRC(4920d2ec) SHA1(e72a374bca81ffa4f925326455e007df7227ae08) )
 	ROM_LOAD( "maddonna.b9",  0x100000, 0x080000, CRC(3a8a3feb) SHA1(832654902963c163644134431fd1221e1895cfec) )
@@ -456,23 +456,23 @@ ROM_START( maddonna )
 	ROM_LOAD( "maddonna.b10",  0x300000, 0x080000, CRC(87936423) SHA1(dda42f3685427edad7686d9712ff07d2fd9bf57e) )
 	ROM_LOAD( "maddonna.b12",  0x380000, 0x080000, CRC(879ab23c) SHA1(5288016542a10e60ccb28a930d8dfe4db41c6fc6) )
 
-	ROM_REGION( 0x100000, REGION_SOUND1, ROMREGION_ERASE00 ) /* Samples */
+	ROM_REGION( 0x100000, "oki", ROMREGION_ERASE00 ) /* Samples */
 	/* no samples for this game */
 
-	ROM_REGION( 0x10000, REGION_USER1, 0 )
+	ROM_REGION( 0x10000, "user1", 0 )
 	ROM_LOAD( "x1", 0x00000, 0x10000, CRC(6b213183) SHA1(599c59d155d11edb151bfaed1d24ef964462a447) ) // motherboard rom, zooming?
 ROM_END
 
 ROM_START( maddonnb )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 Code */
 	/* program roms missing in this dump, gfx don't seem 100% correct for other ones */
 	ROM_LOAD16_BYTE( "maddonnb.b16", 0x00000, 0x20000, NO_DUMP )
 	ROM_LOAD16_BYTE( "maddonnb.b15", 0x00001, 0x20000, NO_DUMP )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 Code */
 	ROM_LOAD( "x13.ua2", 0x00000, 0x010000, CRC(f2080071) SHA1(68cbae9559879b2dc19c41a7efbd13ab4a569d3f) )
 
-	ROM_REGION( 0x400000, REGION_GFX1, 0 ) /* Sprites */
+	ROM_REGION( 0x400000, "gfx1", 0 ) /* Sprites */
 	ROM_LOAD( "x5.16a",  0x000000, 0x080000, CRC(1aae0ad3) SHA1(a5afe699c66dcc5e7928807ae1c8be7ffdda798c) )
 	ROM_LOAD( "x7.13a",  0x080000, 0x080000, CRC(39d13e25) SHA1(bfe8b187c7fc9dc1ac2cc3f840a686a25ec55340) )
 	ROM_LOAD( "x9.11a",  0x100000, 0x080000, CRC(2027faeb) SHA1(cb8c697705ac70ec3cf74901a2becf6abd8be63d) )
@@ -482,10 +482,10 @@ ROM_START( maddonnb )
 	ROM_LOAD( "x10.11",  0x300000, 0x080000, CRC(479d718c) SHA1(4fbc2568744cf78b15c6e0f3caba4d7109743cdd) )
 	ROM_LOAD( "x12.08",  0x380000, 0x080000, CRC(d56ca9f8) SHA1(49bca5dbc048e7b7efa34e1c08ee1b76767ffe38) )
 
-	ROM_REGION( 0x100000, REGION_SOUND1, ROMREGION_ERASE00 ) /* Samples */
+	ROM_REGION( 0x100000, "oki", ROMREGION_ERASE00 ) /* Samples */
 	/* no samples for this game */
 
-	ROM_REGION( 0x10000, REGION_USER1, 0 )
+	ROM_REGION( 0x10000, "user1", 0 )
 	ROM_LOAD( "x1", 0x00000, 0x10000, CRC(6b213183) SHA1(599c59d155d11edb151bfaed1d24ef964462a447) ) // motherboard rom, zooming?
 ROM_END
 

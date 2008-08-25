@@ -7,11 +7,6 @@ Atari Wolf Pack (prototype) driver
 #include "driver.h"
 #include "sound/s14001a.h"
 
-static const struct S14001A_interface wolfpack_s14001a_interface =
-{
-	REGION_SOUND1	/* voice data region */
-};
-
 extern int wolfpack_collision;
 
 extern UINT8* wolfpack_alpha_num_ram;
@@ -58,13 +53,13 @@ static MACHINE_RESET( wolfpack )
 
 static READ8_HANDLER( wolfpack_input_r )
 {
-	UINT8 val = input_port_read_indexed(machine, 0);
+	UINT8 val = input_port_read(machine, "INPUTS");
 
-	if (((input_port_read_indexed(machine, 2) + 0) / 2) & 1)
+	if (((input_port_read(machine, "DIAL") + 0) / 2) & 1)
 	{
 		val |= 1;
 	}
-	if (((input_port_read_indexed(machine, 2) + 1) / 2) & 1)
+	if (((input_port_read(machine, "DIAL") + 1) / 2) & 1)
 	{
 		val |= 2;
 	}
@@ -86,7 +81,7 @@ static READ8_HANDLER( wolfpack_misc_r )
 	/* BIT6 => UNUSED      */
 	/* BIT7 => VBLANK      */
 
-	if (!S14001A_bsy_0_r())
+	if (!s14001a_bsy_0_r())
         val |= 0x01;
 
 	if (!wolfpack_collision)
@@ -114,13 +109,13 @@ static WRITE8_HANDLER( wolfpack_word_w )
 {
        /* latch word from bus into temp register, and place on s14001a input bus */
        /* there is no real need for a temp register at all, since the bus 'register' acts as one */
-        S14001A_reg_0_w(data & 0x1f); /* SA0 (IN5) is pulled low according to the schematic, so its 0x1f and not 0x3f as one would expect */
+        s14001a_reg_0_w(data & 0x1f); /* SA0 (IN5) is pulled low according to the schematic, so its 0x1f and not 0x3f as one would expect */
 }
 
 static WRITE8_HANDLER( wolfpack_start_speech_w )
 {
-        S14001A_set_volume(15); /* hack, should be executed just once during game init, or defaulted to this in the s14001a core */
-        S14001A_rst_0_w(data&1);
+        s14001a_set_volume(15); /* hack, should be executed just once during game init, or defaulted to this in the s14001a core */
+        s14001a_rst_0_w(data&1);
 }
 
 
@@ -162,7 +157,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x200d, 0x200d) AM_WRITE(wolfpack_attract_w)
 	AM_RANGE(0x200e, 0x200e) AM_WRITE(wolfpack_pt_pos_select_w)
 	AM_RANGE(0x200f, 0x200f) AM_WRITE(wolfpack_warning_light_w)
-	AM_RANGE(0x3000, 0x3000) AM_READ(input_port_1_r)
+	AM_RANGE(0x3000, 0x3000) AM_READ_PORT("DSW")
 	AM_RANGE(0x3000, 0x3000) AM_WRITE(wolfpack_audamp_w)
 	AM_RANGE(0x3001, 0x3001) AM_WRITE(wolfpack_pt_horz_w)
 	AM_RANGE(0x3003, 0x3003) AM_WRITE(wolfpack_pt_pic_w)
@@ -183,8 +178,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( wolfpack )
-
-	PORT_START
+	PORT_START("INPUTS")
 	PORT_BIT ( 0x03, IP_ACTIVE_HIGH, IPT_UNUSED ) /* dial connects here */
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -193,7 +187,7 @@ static INPUT_PORTS_START( wolfpack )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
@@ -216,7 +210,7 @@ static INPUT_PORTS_START( wolfpack )
 	PORT_DIPSETTING(    0x80, "16000" )
 	PORT_DIPSETTING(    0xc0, "20000" )
 
-	PORT_START
+	PORT_START("DIAL")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(30) PORT_KEYDELTA(5)
 INPUT_PORTS_END
 
@@ -312,10 +306,10 @@ static const gfx_layout torpedo_layout =
 
 
 static GFXDECODE_START( wolfpack )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tile_layout, 0, 2 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, ship_layout, 6, 1 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, pt_layout, 0, 1 )
-	GFXDECODE_ENTRY( REGION_GFX4, 0, torpedo_layout, 4, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, tile_layout, 0, 2 )
+	GFXDECODE_ENTRY( "gfx2", 0, ship_layout, 6, 1 )
+	GFXDECODE_ENTRY( "gfx3", 0, pt_layout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx4", 0, torpedo_layout, 4, 1 )
 GFXDECODE_END
 
 
@@ -323,7 +317,7 @@ static MACHINE_DRIVER_START(wolfpack)
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, 12096000 / 16)
+	MDRV_CPU_ADD("main", M6502, 12096000 / 16)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	/* video hardware */
@@ -344,14 +338,13 @@ static MACHINE_DRIVER_START(wolfpack)
 	MDRV_VIDEO_EOF(wolfpack)
 
 	/* sound hardware */
-	MDRV_SOUND_ADD(S14001A, 20000) /* RC Clock (C=100pf, R=470K-670K ohms, adjustable) ranging from 14925.37313hz to 21276.59574hz, likely factory set to 20000hz since anything below 19500 is too slow */
-	MDRV_SOUND_CONFIG(wolfpack_s14001a_interface)
+	MDRV_SOUND_ADD("speech", S14001A, 20000) /* RC Clock (C=100pf, R=470K-670K ohms, adjustable) ranging from 14925.37313hz to 21276.59574hz, likely factory set to 20000hz since anything below 19500 is too slow */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 
 ROM_START( wolfpack )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD_NIB_LOW ( "30285.e3", 0x7000, 0x0800, CRC(b4d30b33) SHA1(46645c227828632b57244bdccad455e1831b5273) )
 	ROM_RELOAD       (             0xF000, 0x0800 )
 	ROM_LOAD_NIB_HIGH( "30287.g3", 0x7000, 0x0800, CRC(c6300dc9) SHA1(6a0ec0bfa6ad4c870aa6f21bfde094da6975b58b) )
@@ -361,20 +354,20 @@ ROM_START( wolfpack )
 	ROM_LOAD_NIB_HIGH( "30288.h3", 0x7800, 0x0800, CRC(b80ab7b6) SHA1(f2ede98ac5337064499ae2262a8a81f83505bd66) )
 	ROM_RELOAD       (             0xF800, 0x0800 )
 
-	ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "30291.c1", 0x0000, 0x0400, CRC(7e3d22cf) SHA1(92e6bbe049dc8fcd674f2ff96cde3786f714508d) )
 
-	ROM_REGION( 0x1000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "30289.j6", 0x0000, 0x0800, CRC(f63e5629) SHA1(d64f19fc62060d395df5bb8663a7694a23b0aa2e) )
 	ROM_LOAD( "30290.k6", 0x0800, 0x0800, CRC(70d5430e) SHA1(d512fc3bb0cf0816a1c987f7188c4b331303347f) )
 
-	ROM_REGION( 0x0400, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "30294.p4", 0x0000, 0x0400, CRC(ea93f4b9) SHA1(48b4e0136f5349eb53fea7127a969d87457d70f9) )
 
-	ROM_REGION( 0x0400, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "30293.m6", 0x0000, 0x0400, CRC(11900d47) SHA1(2dcb3c3488a5e9ed7f1751649f8dc25696f0f57a) )
 
-	ROM_REGION( 0x0800, REGION_SOUND1, 0 ) /* voice data */
+	ROM_REGION( 0x0800, "speech", 0 ) /* voice data */
 	ROM_LOAD_NIB_LOW ( "30863.r1", 0x0000, 0x0800, CRC(3f779f13) SHA1(8ed8a1bf680e8277066416f467388e3875e8cbbd) )
 	ROM_LOAD_NIB_HIGH( "30864.r3", 0x0000, 0x0800, CRC(c4a58d1d) SHA1(a2ba9354b99c739bbfa94458d671c109be163ca0) )
 ROM_END

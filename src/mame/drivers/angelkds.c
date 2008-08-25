@@ -161,7 +161,7 @@ VIDEO_UPDATE( angelkds );
 static WRITE8_HANDLER ( angelkds_cpu_bank_write )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, REGION_USER1);
+	UINT8 *RAM = memory_region(machine, "user1");
 
 	bankaddress = data & 0x0f;
 	memory_set_bankptr(1,&RAM[bankaddress*0x4000]);
@@ -262,10 +262,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sub_portmap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(YM2203_write_port_0_w)
-	AM_RANGE(0x40, 0x40) AM_READWRITE(YM2203_status_port_1_r, YM2203_control_port_1_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(YM2203_write_port_1_w)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0x40, 0x40) AM_READWRITE(ym2203_status_port_1_r, ym2203_control_port_1_w)
+	AM_RANGE(0x41, 0x41) AM_WRITE(ym2203_write_port_1_w)
 	AM_RANGE(0x80, 0x83) AM_READWRITE(angelkds_sub_sound_r, angelkds_sub_sound_w) // spcpostn
 ADDRESS_MAP_END
 
@@ -300,7 +300,7 @@ static INPUT_PORTS_START( angelkds )
         Joystick Test: Set SW1:1-7 ON & SW1:8 OFF (A:Free Play & B:3C_1C), hold test switch and reboot.
         Joystick Test Coin_A & Coin_B seem to be switched, only works when setting A to 3C_1C and B to Free Play.
     */
-	PORT_START_TAG("I40")		/* inport $40 */
+	PORT_START("I40")		/* inport $40 */
 	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_A ) )		PORT_DIPLOCATION("SW1:1,2,3,4")
 	PORT_DIPSETTING(	0x70, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( 3C_1C ) )
@@ -337,7 +337,7 @@ static INPUT_PORTS_START( angelkds )
 	PORT_DIPSETTING(	0x0a, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( Free_Play ) )
 
-	PORT_START_TAG("I41")		/* inport $41 */
+	PORT_START("I41")		/* inport $41 */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )				PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
@@ -360,7 +360,7 @@ static INPUT_PORTS_START( angelkds )
 	PORT_DIPSETTING(    0x80, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Very_Hard ) )
 
-	PORT_START_TAG("I42")		/* inport $42 */
+	PORT_START("I42")		/* inport $42 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -370,7 +370,7 @@ static INPUT_PORTS_START( angelkds )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("I80")		/* inport $80 */
+	PORT_START("I80")		/* inport $80 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -380,22 +380,22 @@ static INPUT_PORTS_START( angelkds )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("I81")		/* inport $81 */
+	PORT_START("I81")		/* inport $81 */
 	ANGELDSK_PLAYERS_INPUT( 1 )
 
-	PORT_START_TAG("I82")		/* inport $82 */
+	PORT_START("I82")		/* inport $82 */
 	ANGELDSK_PLAYERS_INPUT( 2 )
 
 #if FAKEINPUTS
 
 	/* Fake inputs to allow to play the game with 1 joystick instead of 2 */
-	PORT_START_TAG("FAKE1")
+	PORT_START("FAKE1")
 	PORT_DIPNAME( 0x01, 0x00, "FAKE (for debug) Joysticks (Player 1)" )
 	PORT_DIPSETTING(	0x01, "1" )
 	PORT_DIPSETTING(	0x00, "2" )
 	ANGELDSK_FAKE_PLAYERS_INPUT( 1 )
 
-	PORT_START_TAG("FAKE2")
+	PORT_START("FAKE2")
 	PORT_DIPNAME( 0x01, 0x00, "FAKE (for debug) Joysticks (Player 2)" )
 	PORT_DIPSETTING(	0x01, "1" )
 	PORT_DIPSETTING(	0x00, "2" )
@@ -406,7 +406,7 @@ static INPUT_PORTS_START( angelkds )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( spcpostn )
-	PORT_START_TAG("I40")		/* inport $40 */
+	PORT_START("I40")		/* inport $40 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )			PORT_DIPLOCATION("SW1:1,2,3,4")
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
@@ -442,7 +442,7 @@ static INPUT_PORTS_START( spcpostn )
 	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
 
-	PORT_START_TAG("I41")		/* inport $41 */
+	PORT_START("I41")		/* inport $41 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR(Allow_Continue ) )	PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x01, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
@@ -464,7 +464,7 @@ static INPUT_PORTS_START( spcpostn )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPUNUSED_DIPLOC( 0x80, 0x80, "SW2:8" )			/* Listed as "Unused" */
 
-	PORT_START_TAG("I42")		/* inport $42 */
+	PORT_START("I42")		/* inport $42 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -474,7 +474,7 @@ static INPUT_PORTS_START( spcpostn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("I80")		/* inport $80 */
+	PORT_START("I80")		/* inport $80 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -484,7 +484,7 @@ static INPUT_PORTS_START( spcpostn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("I81")		/* inport $81 */
+	PORT_START("I81")		/* inport $81 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_PLAYER(1) PORT_8WAY
@@ -494,7 +494,7 @@ static INPUT_PORTS_START( spcpostn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_PLAYER(1) // probably unused
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_PLAYER(1) // probably unused
 
-	PORT_START_TAG("I82")		/* inport $82 */
+	PORT_START("I82")		/* inport $82 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_PLAYER(2) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_PLAYER(2) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_PLAYER(2) PORT_8WAY
@@ -543,7 +543,7 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -583,10 +583,10 @@ static const gfx_layout angelkds_spritelayout =
 };
 
 static GFXDECODE_START( angelkds )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, angelkds_charlayout,   0x30, 1  )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, angelkds_charlayout,   0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX4, 0, angelkds_charlayout,   0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, angelkds_spritelayout, 0x20, 0x0d )
+	GFXDECODE_ENTRY( "gfx1", 0, angelkds_charlayout,   0x30, 1  )
+	GFXDECODE_ENTRY( "gfx3", 0, angelkds_charlayout,   0, 16 )
+	GFXDECODE_ENTRY( "gfx4", 0, angelkds_charlayout,   0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, angelkds_spritelayout, 0x20, 0x0d )
 GFXDECODE_END
 
 /*** Machine Driver
@@ -599,12 +599,12 @@ GFXDECODE_END
 */
 
 static MACHINE_DRIVER_START( angelkds )
-	MDRV_CPU_ADD(Z80, 8000000) /* 8MHz? 6 seems too slow? */
+	MDRV_CPU_ADD("main", Z80, 8000000) /* 8MHz? 6 seems too slow? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000) /* 8 MHz? */
+	MDRV_CPU_ADD("sub", Z80, 4000000) /* 8 MHz? */
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
 	MDRV_CPU_IO_MAP(sub_portmap,0)
 
@@ -625,14 +625,14 @@ static MACHINE_DRIVER_START( angelkds )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 4000000)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym1", YM2203, 4000000)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.65)
 	MDRV_SOUND_ROUTE(1, "mono", 0.65)
 	MDRV_SOUND_ROUTE(2, "mono", 0.65)
 	MDRV_SOUND_ROUTE(3, "mono", 0.45)
 
-	MDRV_SOUND_ADD(YM2203, 4000000)
+	MDRV_SOUND_ADD("ym2", YM2203, 4000000)
 	MDRV_SOUND_ROUTE(0, "mono", 0.65)
 	MDRV_SOUND_ROUTE(1, "mono", 0.65)
 	MDRV_SOUND_ROUTE(2, "mono", 0.65)
@@ -641,41 +641,41 @@ MACHINE_DRIVER_END
 
 /*** Rom Loading
 
- REGION_CPU1 for the main code
- REGION_USER1 for the banked data
- REGION_CPU2 for the sound cpu code
- REGION_GFX1 for the 8x8 Txt Layer Tiles
- REGION_GFX2 for the 16x16 Sprites
- REGION_GFX3 for the 8x8 Bg Layer Tiles (top tilemap)
- REGION_GFX4 for the 8x8 Bg Layer Tiles (bottom tilemap)
- REGION_PROMS for the Prom (same between games)
+ "main" for the main code
+ "user1" for the banked data
+ "sub" for the sound cpu code
+ "gfx1" for the 8x8 Txt Layer Tiles
+ "gfx2" for the 16x16 Sprites
+ "gfx3" for the 8x8 Bg Layer Tiles (top tilemap)
+ "gfx4" for the 8x8 Bg Layer Tiles (bottom tilemap)
+ "proms" for the Prom (same between games)
 
 */
 
 ROM_START( angelkds )
 	/* Nasco X090-PC-A  (Sega 837-6600) */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "11428.c10",    0x00000, 0x08000, CRC(90daacd2) SHA1(7e50ad1cbed0c1e6bad04ef1611cad25538c905f) )
 
-	ROM_REGION( 0x20000, REGION_USER1, 0 ) /* Banked Code */
+	ROM_REGION( 0x20000, "user1", 0 ) /* Banked Code */
 	ROM_LOAD( "11424.c1",     0x00000, 0x08000, CRC(b55997f6) SHA1(7ed746becac1851f39591f1fdbeff64aa97d6206) )
 	ROM_LOAD( "11425.c2",     0x08000, 0x08000, CRC(299359de) SHA1(f531dd3bfe6f64e9e043cb4f85d5657455241dc7) )
 	ROM_LOAD( "11426.c3",     0x10000, 0x08000, CRC(5fad8bd3) SHA1(4d865342eb10dcfb779eee4ac1e159bb9ec140cb) )
 	ROM_LOAD( "11427.c4",     0x18000, 0x08000, CRC(ef920c74) SHA1(81c0fbe4ace5441e4cd99ba423e0190cc541da31) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "11429.d4",     0x00000, 0x08000, CRC(0ca50a66) SHA1(cccb081b447419138b1ebd309e7f291e392a44d5) )
 
 	/* Nasco X090-PC-B */
-	ROM_REGION( 0x08000, REGION_GFX1, 0 )
+	ROM_REGION( 0x08000, "gfx1", 0 )
 	ROM_LOAD( "11446",        0x00000, 0x08000, CRC(45052470) SHA1(c2312a9f814d6dbe42aa465147a04a2bd9b2aa1b) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, 0 )
+	ROM_REGION( 0x10000, "gfx2", 0 )
 	ROM_LOAD( "11447.f7",     0x08000, 0x08000, CRC(b3afc5b3) SHA1(376d527f60e9044f18d19a5535bca77606efbd4c) )
 	ROM_LOAD( "11448.h7",     0x00000, 0x08000, CRC(05dab626) SHA1(73feaca6e23c673a7d8c9e972714b20bd8f2d51e) )
 
 	/* both tilemaps on angelkds use the same gfx */
-	ROM_REGION( 0x40000, REGION_GFX3, 0 )
+	ROM_REGION( 0x40000, "gfx3", 0 )
 	ROM_LOAD( "11437",        0x00000, 0x08000, CRC(a520b628) SHA1(2b51f59e760e740e5e6b06dad61bbc23fc84a72b) )
 	ROM_LOAD( "11436",        0x08000, 0x08000, CRC(469ab216) SHA1(8223f072a6f9135ff84841c95410368bcea073d8) )
 	ROM_LOAD( "11435",        0x10000, 0x08000, CRC(b0f8c245) SHA1(882e27eaceac46c397fdae8427a082caa7d6b7dc) )
@@ -685,7 +685,7 @@ ROM_START( angelkds )
 	ROM_LOAD( "11431",        0x30000, 0x08000, CRC(ac2025af) SHA1(2aba145df3ccdb1a7f0fec524bd2de3f9aab4161) )
 	ROM_LOAD( "11430",        0x38000, 0x08000, CRC(d640f89e) SHA1(38fb67bcb2a3d1ad614fc62e42f22a66bc757137) )
 
-	ROM_REGION( 0x40000, REGION_GFX4, 0 )
+	ROM_REGION( 0x40000, "gfx4", 0 )
 	ROM_LOAD( "11445",        0x00000, 0x08000, CRC(a520b628) SHA1(2b51f59e760e740e5e6b06dad61bbc23fc84a72b) )
 	ROM_LOAD( "11444",        0x08000, 0x08000, CRC(469ab216) SHA1(8223f072a6f9135ff84841c95410368bcea073d8) )
 	ROM_LOAD( "11443",        0x10000, 0x08000, CRC(b0f8c245) SHA1(882e27eaceac46c397fdae8427a082caa7d6b7dc) )
@@ -695,49 +695,49 @@ ROM_START( angelkds )
 	ROM_LOAD( "11439",        0x30000, 0x08000, CRC(ac2025af) SHA1(2aba145df3ccdb1a7f0fec524bd2de3f9aab4161) )
 	ROM_LOAD( "11438",        0x38000, 0x08000, CRC(d640f89e) SHA1(38fb67bcb2a3d1ad614fc62e42f22a66bc757137) )
 
-	ROM_REGION( 0x20, REGION_PROMS, 0 )
+	ROM_REGION( 0x20, "proms", 0 )
 	ROM_LOAD( "63s081n.u5",	  0x00,    0x20,    CRC(36b98627) SHA1(d2d54d92d1d47e7cc85104989ee421ce5d80a42a) )
 ROM_END
 
 ROM_START( spcpostn )
 	/* X090-PC-A 171-5383 */
-	ROM_REGION( 2*0x10000, REGION_CPU1, 0 ) /* D317-0005 (NEC Z80 Custom) */
+	ROM_REGION( 2*0x10000, "main", 0 ) /* D317-0005 (NEC Z80 Custom) */
 	ROM_LOAD( "epr10125.c10", 0x00000, 0x08000, CRC(bffd38c6) SHA1(af02907124343ddecd21439d25f1ebb81ef9f51a) ) /* encrypted */
 
-	ROM_REGION( 0x28000, REGION_USER1, 0 ) /* Banked Code */
+	ROM_REGION( 0x28000, "user1", 0 ) /* Banked Code */
 	ROM_LOAD( "epr10120.c1",  0x00000, 0x08000, CRC(d6399f99) SHA1(4c7d19a8798e5a10b688bf793ca74f5170fd9b51) )
 	ROM_LOAD( "epr10121.c2",  0x08000, 0x08000, CRC(d4861560) SHA1(74d28c36a08880abbd3c398cc3e990e8986caccb) )
 	ROM_LOAD( "epr10122.c3",  0x10000, 0x08000, CRC(7a1bff1b) SHA1(e1bda8430fd632c1813dd78e0f210a358e1b0d2f) )
 	ROM_LOAD( "epr10123.c4",  0x18000, 0x08000, CRC(6aed2925) SHA1(75848c8086c460b72494da2367f592d7d5dcf9f1) )
 	ROM_LOAD( "epr10124.c5",  0x20000, 0x08000, CRC(a1d7ae6b) SHA1(ec81fecf63e0515cae2077e2623262227adfdf37) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* NEC D780C-1 */
+	ROM_REGION( 0x10000, "sub", 0 ) /* NEC D780C-1 */
 	ROM_LOAD( "epr10126.d4",  0x00000, 0x08000, CRC(ab17f852) SHA1(dc0db427ddb4df97bb40dfb6fc65cb9354a6b9ad) )
 
 	/* X090-PC-B 171-5384 */
-	ROM_REGION( 0x08000, REGION_GFX1, 0 )
+	ROM_REGION( 0x08000, "gfx1", 0 )
 	ROM_LOAD( "epr10133.17",  0x00000, 0x08000, CRC(642e6609) SHA1(2dfb4cc66f89543b55ed2a5b914e2c9304e821ca) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, 0 )
+	ROM_REGION( 0x10000, "gfx2", 0 )
 	ROM_LOAD( "epr10134.18",  0x08000, 0x08000, CRC(c674ff88) SHA1(9f240910a1ffb7c9e09d2326de280e6a5dd84565) )
 	ROM_LOAD( "epr10135.19",  0x00000, 0x08000, CRC(0685c4fa) SHA1(6950d9ad9ec13236cf24e83e87adb62aa53af7bb) )
 
-	ROM_REGION( 0x30000, REGION_GFX3, 0 )
+	ROM_REGION( 0x30000, "gfx3", 0 )
 	ROM_LOAD( "epr10130.14",  0x10000, 0x08000, CRC(b68fcb36) SHA1(3943dd550b13f2911d56d8dad675410da79196e6) )
 	ROM_LOAD( "epr10131.15",  0x08000, 0x08000, CRC(de223817) SHA1(1860db0a19c926fcfaabe676cb57fff38c4df8e6) )
 	ROM_LOAD( "epr10132.16",  0x00000, 0x08000, CRC(2df8b1bd) SHA1(cad8befa3f2c158d2aa74073066ccd2b54e68825) )
 
-	ROM_REGION( 0x18000, REGION_GFX4, 0 )
+	ROM_REGION( 0x18000, "gfx4", 0 )
 	ROM_LOAD( "epr10127.06",  0x10000, 0x08000, CRC(b68fcb36) SHA1(3943dd550b13f2911d56d8dad675410da79196e6) )
 	ROM_LOAD( "epr10128.07",  0x08000, 0x08000, CRC(de223817) SHA1(1860db0a19c926fcfaabe676cb57fff38c4df8e6) )
 	ROM_LOAD( "epr10129.08",  0x00000, 0x08000, CRC(a6f21023) SHA1(8d573446a2d3d3428409707d0c59b118d1463131) )
 
-	ROM_REGION( 0x20, REGION_PROMS, 0 )
+	ROM_REGION( 0x20, "proms", 0 )
 	ROM_LOAD( "63s081n.u5",   0x00,    0x20,    CRC(36b98627) SHA1(d2d54d92d1d47e7cc85104989ee421ce5d80a42a) )
 ROM_END
 
 
-static DRIVER_INIT( spcpostn )	{ spcpostn_decode(machine); }
+static DRIVER_INIT( spcpostn )	{ spcpostn_decode(machine, "main"); }
 
 
 GAME( 1988, angelkds, 0, angelkds, angelkds,        0,  ROT90,  "Sega / Nasco?", "Angel Kids (Japan)" , 0) /* Nasco not displayed but 'Exa Planning' is */

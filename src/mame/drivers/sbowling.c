@@ -54,7 +54,7 @@ static UINT8 pix[2] = {0, 0};
 
 static TILE_GET_INFO( get_sb_tile_info )
 {
-	UINT8 *rom = memory_region(machine, REGION_USER1);
+	UINT8 *rom = memory_region(machine, "user1");
 	int tileno = rom[tile_index + bgmap * 1024];
 
 	SET_TILE_INFO(0, tileno, 0, 0);
@@ -176,49 +176,49 @@ static WRITE8_HANDLER(graph_control_w)
 
 static READ8_HANDLER (controls_r)
 {
-	if(sbw_system&2)
-		return input_port_read_indexed(machine, 2);
+	if(sbw_system & 2)
+		return input_port_read(machine, "TRACKY");
 	else
-		return input_port_read_indexed(machine, 3);
+		return input_port_read(machine, "TRACKX");
 }
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x2fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_RAM_WRITE(sbw_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0xf800, 0xf800) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0xf801, 0xf801) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
+	AM_RANGE(0xf800, 0xf800) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xf801, 0xf801) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
 	AM_RANGE(0xfc00, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( port_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x00, 0x00) AM_READWRITE(input_port_0_r, watchdog_reset_w)
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0") AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(controls_r, pix_data_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(pix_data_r, pix_shift_w)
-	AM_RANGE(0x03, 0x03) AM_READWRITE(input_port_1_r, SMH_NOP)
-	AM_RANGE(0x04, 0x04) AM_READWRITE(input_port_4_r, system_w)
-	AM_RANGE(0x05, 0x05) AM_READWRITE(input_port_5_r, graph_control_w)
+	AM_RANGE(0x03, 0x03) AM_READ_PORT("IN1") AM_WRITENOP
+	AM_RANGE(0x04, 0x04) AM_READ_PORT("DSW0") AM_WRITE(system_w)
+	AM_RANGE(0x05, 0x05) AM_READ_PORT("DSW1") AM_WRITE(graph_control_w)
 ADDRESS_MAP_END
 
 
 
 static INPUT_PORTS_START( sbowling )
-	PORT_START
+	PORT_START("IN0")
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_COIN1   )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH,	IPT_TILT )
 
-	PORT_START
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START2 )
 
-	PORT_START
+	PORT_START("TRACKY")
 	PORT_BIT( 0xff, 0, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(30) PORT_KEYDELTA(30)
 
-	PORT_START
+	PORT_START("TRACKX")
 	PORT_BIT( 0xff, 0, IPT_TRACKBALL_X ) PORT_SENSITIVITY(30) PORT_KEYDELTA(30) PORT_REVERSE
 
-	PORT_START	/* coin slots: A 4 LSB, B 4 MSB */
+	PORT_START("DSW0")	/* coin slots: A 4 LSB, B 4 MSB */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -244,7 +244,7 @@ static INPUT_PORTS_START( sbowling )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
@@ -283,7 +283,7 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( sbowling )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0x18, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,   0x18, 1 )
 GFXDECODE_END
 
 
@@ -328,7 +328,7 @@ static PALETTE_INIT( sbowling )
 
 static MACHINE_DRIVER_START( sbowling )
 
-	MDRV_CPU_ADD(8080, 19968000/10 )
+	MDRV_CPU_ADD("main", 8080, 19968000/10 )
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(port_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(sbw_interrupt, 2)
@@ -349,25 +349,25 @@ static MACHINE_DRIVER_START( sbowling )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 19968000 / 16)
+	MDRV_SOUND_ADD("ay", AY8910, 19968000 / 16)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.12)
 MACHINE_DRIVER_END
 
 ROM_START( sbowling )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "kb01.6h",        0x0000, 0x1000, CRC(dd5d411a) SHA1(ca15676d234353bc47f642be13d58f3d6d880126))
 	ROM_LOAD( "kb02.5h",        0x1000, 0x1000, CRC(75d3c45f) SHA1(af6e6237b7b28efaac258e6ddd85518c3406b24a))
 	ROM_LOAD( "kb03.3h",        0x2000, 0x1000, CRC(955fbfb8) SHA1(05d501f924adc5b816670f6f5e58a98a0c1bc962))
 
-	ROM_REGION( 0x1800, REGION_GFX1, 0 )
+	ROM_REGION( 0x1800, "gfx1", 0 )
 	ROM_LOAD( "kb05.9k",        0x0000, 0x800,  CRC(4b4d9569) SHA1(d69e69add69ec11724090e34838ec8c61de81f4e))
 	ROM_LOAD( "kb06.7k",        0x0800, 0x800,  CRC(d89ba78b) SHA1(9e01be976e1e14feb8f7bd9f699a977a15a72e0d))
 	ROM_LOAD( "kb07.6k",        0x1000, 0x800,  CRC(9fb5db1a) SHA1(0b28ca5277ebe0d78d1a3f2d414efb5fd7c6e9ee))
 
-	ROM_REGION( 0x01000, REGION_USER1, 0 )
+	ROM_REGION( 0x01000, "user1", 0 )
 	ROM_LOAD( "kb04.10k",       0x0000, 0x1000, CRC(1c27adc1) SHA1(a68748fbdbd8fb48f20b3675d793e5c156d1bd02))
 
-	ROM_REGION( 0x0800, REGION_PROMS, 0 )
+	ROM_REGION( 0x0800, "proms", 0 )
 	ROM_LOAD( "kb08.7m",        0x0000, 0x0400, CRC(e949e441) SHA1(8e0fe71ed6d4e6f94a703c27a8364da27b443730))
 	ROM_LOAD( "kb09.6m",        0x0400, 0x0400, CRC(e29191a6) SHA1(9a2c78a96ef6d118f4dacbea0b7d454b66a452ae))
 ROM_END

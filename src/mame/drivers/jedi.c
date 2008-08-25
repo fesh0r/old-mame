@@ -161,7 +161,7 @@ static MACHINE_START( jedi )
 	timer_adjust_oneshot(state->interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, 32, 0), 32);
 
 	/* configure the banks */
-	memory_configure_bank(1, 0, 3, memory_region(machine, REGION_CPU1) + 0x10000, 0x4000);
+	memory_configure_bank(1, 0, 3, memory_region(machine, "main") + 0x10000, 0x4000);
 
 	/* set up save state */
 	state_save_register_global(state->nvram_enabled);
@@ -270,8 +270,8 @@ static WRITE8_HANDLER( nvram_enable_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM
 	AM_RANGE(0x0800, 0x08ff) AM_MIRROR(0x0300) AM_RAM_WRITE(nvram_data_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0x0c00, 0x0c00) AM_MIRROR(0x03fe) AM_READWRITE(input_port_0_r, SMH_NOP)
-	AM_RANGE(0x0c01, 0x0c01) AM_MIRROR(0x03fe) AM_READWRITE(input_port_1_r, SMH_NOP)
+	AM_RANGE(0x0c00, 0x0c00) AM_MIRROR(0x03fe) AM_READ_PORT("0c00") AM_WRITENOP
+	AM_RANGE(0x0c01, 0x0c01) AM_MIRROR(0x03fe) AM_READ_PORT("0c01") AM_WRITENOP
 	AM_RANGE(0x1000, 0x13ff) AM_NOP
 	AM_RANGE(0x1400, 0x1400) AM_MIRROR(0x03ff) AM_READWRITE(jedi_audio_ack_latch_r, SMH_NOP)
 	AM_RANGE(0x1800, 0x1800) AM_MIRROR(0x03ff) AM_READWRITE(a2d_data_r, SMH_NOP)
@@ -309,7 +309,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( jedi )
-	PORT_START_TAG("0c00")	/* 0C00 */
+	PORT_START("0c00")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_BUTTON3 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_BUTTON1 )
@@ -319,17 +319,17 @@ static INPUT_PORTS_START( jedi )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_COIN1 )
 
-	PORT_START_TAG("0c01")	/* 0C01 */
+	PORT_START("0c01")
 	PORT_BIT( 0x03, IP_ACTIVE_LOW,  IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_TILT )
 	PORT_BIT( 0x18, IP_ACTIVE_LOW,  IPT_UNUSED )
-	PORT_BIT( 0x60, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(jedi_audio_comm_stat_r, 0)
+	PORT_BIT( 0x60, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(jedi_audio_comm_stat_r, NULL)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START_TAG("STICKY")	/* analog Y */
+	PORT_START("STICKY")	/* analog Y */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10)
 
-	PORT_START_TAG("STICKX")	/* analog X */
+	PORT_START("STICKX")	/* analog X */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10)
 INPUT_PORTS_END
 
@@ -346,7 +346,7 @@ static MACHINE_DRIVER_START( jedi )
 	MDRV_DRIVER_DATA(jedi_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, JEDI_MAIN_CPU_CLOCK)
+	MDRV_CPU_ADD("main", M6502, JEDI_MAIN_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	MDRV_INTERLEAVE(4)
@@ -371,31 +371,31 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( jedi )
-	ROM_REGION( 0x1C000, REGION_CPU1, 0 )	/* 64k for code + 48k for banked ROMs */
+	ROM_REGION( 0x1C000, "main", 0 )	/* 64k for code + 48k for banked ROMs */
 	ROM_LOAD( "136030-221.14f",  0x08000, 0x4000, CRC(414d05e3) SHA1(e5f5f8d85433467a13d6ca9e3889e07a62b00e52) )
 	ROM_LOAD( "136030-222.13f",  0x0c000, 0x4000, CRC(7b3f21be) SHA1(8fe62401f9b78c7a3e62b544c4b705b1bfa9b8f3) )
 	ROM_LOAD( "136030-123.13d",  0x10000, 0x4000, CRC(877f554a) SHA1(8b51109cabd84741b024052f892b3172fbe83223) ) /* Page 0 */
 	ROM_LOAD( "136030-124.13b",  0x14000, 0x4000, CRC(e72d41db) SHA1(1b3fcdc435f1e470e8d5b7241856e398a4c3910e) ) /* Page 1 */
 	ROM_LOAD( "136030-122.13a",  0x18000, 0x4000, CRC(cce7ced5) SHA1(bff031a637aefca713355dbf251dcb5c2cea0885) ) /* Page 2 */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* space for the sound ROMs */
+	ROM_REGION( 0x10000, "audio", 0 )	/* space for the sound ROMs */
 	ROM_LOAD( "136030-133.01c",  0x8000, 0x4000, CRC(6c601c69) SHA1(618b77800bbbb4db34a53ca974a71bdaf89b5930) )
 	ROM_LOAD( "136030-134.01a",  0xC000, 0x4000, CRC(5e36c564) SHA1(4b0afceb9a1d912f1d5c1f26928d244d5b14ea4a) )
 
-	ROM_REGION( 0x02000, REGION_GFX1,0 )
+	ROM_REGION( 0x02000, "gfx1",0 )
 	ROM_LOAD( "136030-215.11t",  0x00000, 0x2000, CRC(3e49491f) SHA1(ade5e846069c2fa6edf667469d13ce5a6a45c06d) ) /* Alphanumeric */
 
-	ROM_REGION( 0x10000, REGION_GFX2,0 )
+	ROM_REGION( 0x10000, "gfx2",0 )
 	ROM_LOAD( "136030-126.06r",  0x00000, 0x8000, CRC(9c55ece8) SHA1(b8faa23314bb0d199ef46199bfabd9cb17510dd3) ) /* Playfield */
 	ROM_LOAD( "136030-127.06n",  0x08000, 0x8000, CRC(4b09dcc5) SHA1(d46b5f4fb69c4b8d823dd9c4d92f8713badfa44a) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, 0 )
+	ROM_REGION( 0x20000, "gfx3", 0 )
 	ROM_LOAD( "136030-130.01h",  0x00000, 0x8000, CRC(2646a793) SHA1(dcb5fd50eafbb27565bce099a884be83a9d82285) ) /* Sprites */
 	ROM_LOAD( "136030-131.01f",  0x08000, 0x8000, CRC(60107350) SHA1(ded03a46996d3f2349df7f59fd435a7ad6ed465e) )
 	ROM_LOAD( "136030-128.01m",  0x10000, 0x8000, CRC(24663184) SHA1(5eba142ed926671ee131430944e59f21a55a5c57) )
 	ROM_LOAD( "136030-129.01k",  0x18000, 0x8000, CRC(ac86b98c) SHA1(9f86c8801a7293fa46e9432f1651dd85bf00f4b9) )
 
-	ROM_REGION( 0x1000, REGION_PROMS, 0 )	/* background smoothing */
+	ROM_REGION( 0x1000, "proms", 0 )	/* background smoothing */
 	ROM_LOAD( "136030-117.bin",   0x0000, 0x0400, CRC(9831bd55) SHA1(12945ef2d1582914125b9ee591567034d71d6573) )
 	ROM_LOAD( "136030-118.bin",   0x0800, 0x0400, CRC(261fbfe7) SHA1(efc65a74a3718563a07b718e34d8a7aa23339a69) )
 ROM_END

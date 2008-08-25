@@ -174,7 +174,7 @@ static const char *const astrof_sample_names[] =
 };
 
 
-static const struct Samplesinterface astrof_samples_interface =
+static const samples_interface astrof_samples_interface =
 {
 	4,	/* 4 channels */
 	astrof_sample_names
@@ -184,7 +184,7 @@ static const struct Samplesinterface astrof_samples_interface =
 
 MACHINE_DRIVER_START( astrof_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD_TAG("samples", SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(astrof_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -228,7 +228,7 @@ WRITE8_HANDLER( tomahawk_audio_w )
 	/* D4 - UFO */
 
 	/* D5 - UFO under water */
-	SN76477_enable_w(0, (~data >> 5) & 0x01);
+	sn76477_enable_w(0, (~data >> 5) & 0x01);
 
 	/* D6 - explosion */
 
@@ -237,7 +237,7 @@ WRITE8_HANDLER( tomahawk_audio_w )
 }
 
 
-static const struct SN76477interface tomahawk_sn76477_interface =
+static const sn76477_interface tomahawk_sn76477_interface =
 {
 	0,				/*  4 noise_res (N/C)        */
 	0,				/*  5 filter_res (N/C)       */
@@ -267,7 +267,7 @@ static const struct SN76477interface tomahawk_sn76477_interface =
 
 MACHINE_DRIVER_START( tomahawk_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SN76477, 0)
+	MDRV_SOUND_ADD("sn", SN76477, 0)
 	MDRV_SOUND_CONFIG(tomahawk_sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END

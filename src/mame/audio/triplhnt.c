@@ -16,7 +16,7 @@ static const char *const triplhnt_sample_names[] =
 	0
 };
 
-const struct Samplesinterface triplhnt_samples_interface =
+const samples_interface triplhnt_samples_interface =
 {
 	2,	/* 2 channels */
 	triplhnt_sample_names
@@ -131,7 +131,7 @@ DISCRETE_SOUND_START(triplhnt)
 	/************************************************/
 	/* Bear Roar is a VCO with noise mixed in.      */
 	/************************************************/
-	DISCRETE_ADJUSTMENT_TAG(NODE_20, 1,
+	DISCRETE_ADJUSTMENT_TAG(NODE_20,
 				10000,	// R86 + R88 @ 0
 				260000,	// R86 + R88 @ max
 				DISC_LOGADJ, "BEAR")

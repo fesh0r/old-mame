@@ -517,7 +517,7 @@ static READ8_HANDLER(banked_ram_r)
 
 		if (bank>0x3) // ROM access
 		{
-			UINT8 *src    = memory_region( machine, REGION_GFX1 );
+			UINT8 *src    = memory_region( machine, "gfx1" );
 			bank &=0x3;
 			return src[offset+(bank*0x4000)];
 		}
@@ -533,7 +533,7 @@ static READ8_HANDLER(banked_ram_r)
 		UINT8 *src;
 		int bank;
 		bank = mastboy_bank & 0x7f;
-		src = memory_region       ( machine, REGION_USER1 ) + bank * 0x4000;
+		src = memory_region       ( machine, "user1" ) + bank * 0x4000;
 		return src[offset];
 	}
 }
@@ -608,7 +608,7 @@ static WRITE8_HANDLER( backupram_enable_w )
 static WRITE8_HANDLER( msm5205_mastboy_m5205_sambit0_w )
 {
 	mastboy_m5205_sambit0 = data & 1;
-	MSM5205_playmode_w(0,  (1 << 2) | (mastboy_m5205_sambit1 << 1) | (mastboy_m5205_sambit0) );
+	msm5205_playmode_w(0,  (1 << 2) | (mastboy_m5205_sambit1 << 1) | (mastboy_m5205_sambit0) );
 
 	logerror("msm5205 samplerate bit 0, set to %02x\n",data);
 }
@@ -617,15 +617,15 @@ static WRITE8_HANDLER( msm5205_mastboy_m5205_sambit1_w )
 {
 	mastboy_m5205_sambit1 = data & 1;
 
-	MSM5205_playmode_w(0,  (1 << 2) | (mastboy_m5205_sambit1 << 1) | (mastboy_m5205_sambit0) );
+	msm5205_playmode_w(0,  (1 << 2) | (mastboy_m5205_sambit1 << 1) | (mastboy_m5205_sambit0) );
 
 	logerror("msm5205 samplerate bit 0, set to %02x\n",data);
 }
 
-static WRITE8_HANDLER( msm5205_reset_w )
+static WRITE8_HANDLER( mastboy_msm5205_reset_w )
 {
 	mastboy_m5205_part = 0;
-	MSM5205_reset_w(0,data&1);
+	msm5205_reset_w(0,data&1);
 }
 
 static WRITE8_HANDLER( mastboy_msm5205_data_w )
@@ -635,7 +635,7 @@ static WRITE8_HANDLER( mastboy_msm5205_data_w )
 
 static void mastboy_adpcm_int(running_machine *machine, int data)
 {
-	MSM5205_data_w (0,mastboy_m5205_next);
+	msm5205_data_w (0,mastboy_m5205_next);
 	mastboy_m5205_next>>=4;
 
 	mastboy_m5205_part ^= 1;
@@ -644,7 +644,7 @@ static void mastboy_adpcm_int(running_machine *machine, int data)
 }
 
 
-static const struct MSM5205interface msm5205_interface =
+static const msm5205_interface msm5205_config =
 {
 	mastboy_adpcm_int,	/* interrupt function */
 	MSM5205_SEX_4B		/* 4KHz 4-bit */
@@ -677,10 +677,10 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xffff) AM_READ(banked_ram_r) // mastboy bank area read
 
 	AM_RANGE(0xff000, 0xff7ff) AM_READ(mastboy_backupram_r)
-	AM_RANGE(0xff800, 0xff807) AM_READ(input_port_0_r) // P1
-	AM_RANGE(0xff808, 0xff80f) AM_READ(input_port_1_r) // P2
-	AM_RANGE(0xff810, 0xff817) AM_READ(input_port_2_r) // DSW1
-	AM_RANGE(0xff818, 0xff81f) AM_READ(input_port_3_r) // DSW2
+	AM_RANGE(0xff800, 0xff807) AM_READ_PORT("P1")
+	AM_RANGE(0xff808, 0xff80f) AM_READ_PORT("P2")
+	AM_RANGE(0xff810, 0xff817) AM_READ_PORT("DSW1")
+	AM_RANGE(0xff818, 0xff81f) AM_READ_PORT("DSW2")
 	AM_RANGE(0xffc00, 0xfffff) AM_READ(SMH_RAM) // Internal RAM
 ADDRESS_MAP_END
 
@@ -701,7 +701,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xff838, 0xff838) AM_WRITE(mastboy_irq0_ack_w)
 	AM_RANGE(0xff839, 0xff839) AM_WRITE(msm5205_mastboy_m5205_sambit0_w)
 	AM_RANGE(0xff83a, 0xff83a) AM_WRITE(msm5205_mastboy_m5205_sambit1_w)
-	AM_RANGE(0xff83b, 0xff83b) AM_WRITE(msm5205_reset_w)
+	AM_RANGE(0xff83b, 0xff83b) AM_WRITE(mastboy_msm5205_reset_w)
 	AM_RANGE(0xff83c, 0xff83c) AM_WRITE(backupram_enable_w)
 	AM_RANGE(0xffc00, 0xfffff) AM_WRITE(SMH_RAM) // Internal RAM
 ADDRESS_MAP_END
@@ -727,21 +727,21 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( mastboy )
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN1 )
-	PORT_BIT( 0x1e, IP_ACTIVE_LOW,  IPT_UNUSED )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW,  IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_START1 )
+	PORT_START("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x1e, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN2 )
-	PORT_BIT( 0x1e, IP_ACTIVE_LOW,  IPT_UNUSED )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW,  IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_START2 )
+	PORT_START("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x1e, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, "Game Mode" )
 	PORT_DIPSETTING(    0x01, "1" ) /* 1: Counts only the right or wrong answer from the player who answered first. */
 	PORT_DIPSETTING(    0x00, "2" ) /* 2: Waits until both players have answered and then counts the right or wrong answers. */
@@ -770,7 +770,7 @@ static INPUT_PORTS_START( mastboy )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 9C_1C ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( 8C_1C ) )
@@ -806,7 +806,6 @@ static INPUT_PORTS_START( mastboy )
 	PORT_DIPSETTING(    0x0a, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x09, DEF_STR( 1C_7C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_8C ) )
-
 INPUT_PORTS_END
 
 /* GFX Decodes */
@@ -836,8 +835,8 @@ static const gfx_layout tiles8x8_layout_2 =
 
 
 static GFXDECODE_START( mastboy )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout, 0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2,  0, tiles8x8_layout_2, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx2",  0, tiles8x8_layout_2, 0, 16 )
 GFXDECODE_END
 
 /* Machine Functions / Driver */
@@ -851,14 +850,14 @@ static MACHINE_RESET( mastboy )
 	memset( mastboy_vram, 0x00, 0x10000);
 
 	mastboy_m5205_part = 0;
-	MSM5205_reset_w(0,1);
+	msm5205_reset_w(0,1);
 	mastboy_irq0_ack = 0;
 }
 
 
 
 static MACHINE_DRIVER_START( mastboy )
-	MDRV_CPU_ADD_TAG("main", Z180, 12000000/2)	/* HD647180X0CP6-1M1R */
+	MDRV_CPU_ADD("main", Z180, 12000000/2)	/* HD647180X0CP6-1M1R */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(port_readmem,0)
 	MDRV_CPU_VBLANK_INT("main", mastboy_interrupt)
@@ -883,31 +882,31 @@ static MACHINE_DRIVER_START( mastboy )
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SAA1099, 6000000 )
+	MDRV_SOUND_ADD("saa", SAA1099, 6000000 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(MSM5205, 384000)
-	MDRV_SOUND_CONFIG(msm5205_interface)
+	MDRV_SOUND_ADD("msm", MSM5205, 384000)
+	MDRV_SOUND_CONFIG(msm5205_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 /* Romsets */
 
 ROM_START( mastboy )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "hd647180.bin", 0x00000, 0x4000, CRC(75716dd1) SHA1(9b14b9b889b29b6022a3815de95487fb6a720d7a) ) // game code is internal to the CPU!
 	ROM_LOAD( "03.bin",       0x04000, 0x4000, CRC(5020a37f) SHA1(8bc75623232f3ab457b47d5af6cd1c3fb24c0d0e) ) // sound data? (+ 1 piece of) 1ST AND 2ND HALF IDENTICAL
 	ROM_CONTINUE(             0x04000, 0x4000 )
 	ROM_CONTINUE(             0x04000, 0x4000 )
 	ROM_CONTINUE(             0x04000, 0x4000 ) // only the last 16kb matters
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_ERASE00 ) /* RAM accessed by the video chip */
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_ERASE00 ) /* RAM accessed by the video chip */
 	/* 0x00000 - 0x0ffff = banked ram */
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_INVERT ) /* ROM accessed by the video chip */
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_INVERT ) /* ROM accessed by the video chip */
 	ROM_LOAD( "04.bin", 0x00000, 0x10000, CRC(565932f4) SHA1(4b184aa445b5671072031ad4a2ccb13868d6d3a4) )
 
-	ROM_REGION( 0x200000, REGION_USER1, 0 ) /* banked data - 8 banks, 6 'question' slots */
+	ROM_REGION( 0x200000, "user1", 0 ) /* banked data - 8 banks, 6 'question' slots */
 	ROM_LOAD( "01.bin", 0x000000,   0x040000, CRC(36755831) SHA1(706fba5fc765502774643bfef8a3c9d2c01eb01b) ) // 99% gfx
 	ROM_LOAD( "02.bin", 0x040000,   0x020000, CRC(69cf6b7c) SHA1(a7bdc62051d09636dcd54db102706a9b42465e63) ) // data
 	ROM_RELOAD(         0x060000,   0x020000) // 128kb roms are mirrored
@@ -934,20 +933,20 @@ ROM_END
 
 /* Is this actually official, or a hack? */
 ROM_START( mastboyi )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "hd647180.bin", 0x00000, 0x4000, CRC(75716dd1) SHA1(9b14b9b889b29b6022a3815de95487fb6a720d7a) ) // game code is internal to the CPU!
 	ROM_LOAD( "3-mem-a.ic77", 0x04000, 0x4000, CRC(3ee33282) SHA1(26371e3bb436869461e9870409b69aa9fb1845d6) ) // sound data? (+ 1 piece of) 1ST AND 2ND HALF IDENTICAL
 	ROM_CONTINUE(             0x04000, 0x4000 )
 	ROM_CONTINUE(             0x04000, 0x4000 )
 	ROM_CONTINUE(             0x04000, 0x4000 ) // only the last 16kb matters
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_ERASE00 ) /* RAM accessed by the video chip */
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_ERASE00 ) /* RAM accessed by the video chip */
 	/* 0x00000 - 0x0ffff = banked ram */
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_INVERT ) /* ROM accessed by the video chip */
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_INVERT ) /* ROM accessed by the video chip */
 	ROM_LOAD( "4.ic91", 0x00000, 0x10000, CRC(858d7b27) SHA1(b0ddf49df5665003f3616d67f7fc27408433483b) )
 
-	ROM_REGION( 0x200000, REGION_USER1, 0 ) /* question data - 6 sockets */
+	ROM_REGION( 0x200000, "user1", 0 ) /* question data - 6 sockets */
 	ROM_LOAD( "1-mem-c.ic75", 0x000000, 0x040000, CRC(7c7b1cc5) SHA1(73ad7bdb61d1f99ce09ef3a5a3ae0f1e72364eee) ) // 99% gfx
 	ROM_LOAD( "2-mem-b.ic76", 0x040000, 0x020000, CRC(87015c18) SHA1(a16bf2707ce847da0923662796195b75719a6d77) ) // data
 	ROM_RELOAD(               0x060000, 0x020000) // 128kb roms are mirrored
@@ -972,7 +971,7 @@ ROM_END
 
 static DRIVER_INIT( mastboy )
 {
-	mastboy_vram = memory_region( machine, REGION_GFX1 ); // makes decoding the RAM based tiles easier this way
+	mastboy_vram = memory_region( machine, "gfx1" ); // makes decoding the RAM based tiles easier this way
 }
 
 GAME( 1991, mastboy,  0,          mastboy, mastboy, mastboy, ROT0, "Gaelco", "Master Boy (Spanish, PCB Rev A)", 0 )

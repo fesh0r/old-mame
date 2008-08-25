@@ -100,8 +100,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_cpu_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(YM3812_status_port_0_r, YM3812_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(YM3812_write_port_0_w)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(ym3812_status_port_0_r, ym3812_control_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_WRITE(ym3812_write_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_WRITENOP
 	AM_RANGE(0x80, 0x80) AM_WRITENOP
 	AM_RANGE(0x82, 0x82) AM_WRITENOP
@@ -110,7 +110,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( speedbal )
-	PORT_START      /* DSW2 */
+	PORT_START("DSW2")      /* DSW2 */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x06, "70000 200000 1M" )
 	PORT_DIPSETTING(    0x07, "70000 200000" )
@@ -134,7 +134,7 @@ static INPUT_PORTS_START( speedbal )
 	PORT_DIPSETTING(    0x40, "Difficult" )
 	PORT_DIPSETTING(    0x00, "Very Difficult" )
 
-	PORT_START      /* DSW1 */
+	PORT_START("DSW1")      /* DSW1 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
@@ -157,7 +157,7 @@ static INPUT_PORTS_START( speedbal )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW , IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW , IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW , IPT_BUTTON4 )
@@ -167,7 +167,7 @@ static INPUT_PORTS_START( speedbal )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW , IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW , IPT_COIN1 )
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW , IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW , IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW , IPT_BUTTON4 ) PORT_COCKTAIL
@@ -218,9 +218,9 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( speedbal )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,	 256, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout,	 512, 16 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, spritelayout,   0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,	 256, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayout,	 512, 16 )
+	GFXDECODE_ENTRY( "gfx3", 0, spritelayout,   0, 16 )
 GFXDECODE_END
 
 
@@ -228,12 +228,12 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( speedbal )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz ??? */
+	MDRV_CPU_ADD("main", Z80, 4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(main_cpu_map,0)
 	MDRV_CPU_IO_MAP(main_cpu_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 2660000)	/* 2.66 MHz ???  Maybe yes */
+	MDRV_CPU_ADD("audio", Z80, 2660000)	/* 2.66 MHz ???  Maybe yes */
 	MDRV_CPU_PROGRAM_MAP(sound_cpu_map,0)
 	MDRV_CPU_IO_MAP(sound_cpu_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,8)
@@ -255,7 +255,7 @@ static MACHINE_DRIVER_START( speedbal )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, 3600000)
+	MDRV_SOUND_ADD("ym", YM3812, 3600000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -268,23 +268,23 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( speedbal )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64K for code: main */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64K for code: main */
 	ROM_LOAD( "sb1.bin",  0x0000,  0x8000, CRC(1c242e34) SHA1(8b2e8983e0834c99761ce2b5ea765dba56e77964) )
 	ROM_LOAD( "sb3.bin",  0x8000,  0x8000, CRC(7682326a) SHA1(15a72bf088a9adfaa50c11202b4970e07c309a21) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64K for second CPU: sound */
+	ROM_REGION( 0x10000, "audio", 0 )     /* 64K for second CPU: sound */
 	ROM_LOAD( "sb2.bin",  0x0000, 0x8000, CRC(e6a6d9b7) SHA1(35d228d13d4305f606fdd84adad1d6e435f4b7ce) )
 
-	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD("sb10.bin",  0x00000, 0x08000, CRC(36dea4bf) SHA1(60095f482af4595a39be5ae6def8cd30298c1ef8) )    /* chars */
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "sb9.bin",  0x00000, 0x08000, CRC(b567e85e) SHA1(7036792ea70ad48384f348399ed9b136272fedb6) )    /* bg tiles */
 	ROM_LOAD( "sb5.bin",  0x08000, 0x08000, CRC(b0eae4ba) SHA1(baee3fcb1399c56efaa5f97912de324d7b38f286) )
 	ROM_LOAD( "sb8.bin",  0x10000, 0x08000, CRC(d2bfbdb6) SHA1(b552b055450f438729c83337f561d05b6518ae75) )
 	ROM_LOAD( "sb4.bin",  0x18000, 0x08000, CRC(1d23a130) SHA1(aabf7c46f9299ffb8b8ca92839622d000a470a0b) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_INVERT | ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_INVERT | ROMREGION_DISPOSE )
 	ROM_LOAD( "sb7.bin",  0x00000, 0x08000, CRC(9f1b33d1) SHA1(1f8be8f8e6a2ee99a7dafeead142ccc629fa792d) )   /* sprites */
 	ROM_LOAD( "sb6.bin",  0x08000, 0x08000, CRC(0e2506eb) SHA1(56f779266b977819063c475b84ca246fc6d8d6a7) )
 ROM_END

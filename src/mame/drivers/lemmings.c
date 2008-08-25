@@ -44,14 +44,14 @@ static READ16_HANDLER( lemmings_trackball_r )
 static READ16_HANDLER( lemmings_prot_r )
 {
  	switch (offset<<1) {
-		case 0x41a: /* Player input */
-			return input_port_read(machine, "IN0");
+		case 0x41a:
+			return input_port_read(machine, "BUTTONS");
 
-		case 0x320: /* Coins */
-			return input_port_read(machine, "IN1");
+		case 0x320:
+			return input_port_read(machine, "SYSTEM");
 
-		case 0x4e6: /* Dips */
-			return (input_port_read(machine, "DSW1") + (input_port_read(machine, "DSW2") << 8));
+		case 0x4e6:
+			return input_port_read(machine, "DSW");
 	}
 
 	return 0;
@@ -116,17 +116,17 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x0801, 0x0801) AM_READ(YM2151_status_port_0_r)
-	AM_RANGE(0x1000, 0x1000) AM_READ(OKIM6295_status_0_r)
+	AM_RANGE(0x0801, 0x0801) AM_READ(ym2151_status_port_0_r)
+	AM_RANGE(0x1000, 0x1000) AM_READ(okim6295_status_0_r)
 	AM_RANGE(0x1800, 0x1800) AM_READ(soundlatch_r)
 	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x0800, 0x0800) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x0801, 0x0801) AM_WRITE(YM2151_data_port_0_w)
-	AM_RANGE(0x1000, 0x1000) AM_WRITE(OKIM6295_data_0_w)
+	AM_RANGE(0x0800, 0x0800) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x0801, 0x0801) AM_WRITE(ym2151_data_port_0_w)
+	AM_RANGE(0x1000, 0x1000) AM_WRITE(okim6295_data_0_w)
 	AM_RANGE(0x1800, 0x1800) AM_WRITE(lemmings_sound_ack_w)
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
@@ -134,7 +134,7 @@ ADDRESS_MAP_END
 /******************************************************************************/
 
 static INPUT_PORTS_START( lemmings )
-	PORT_START_TAG("IN0")
+	PORT_START("BUTTONS")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("P1 Select")
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("P1 Hurry")
@@ -152,7 +152,7 @@ static INPUT_PORTS_START( lemmings )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")	/* Credits */
+	PORT_START("SYSTEM")	/* Credits */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_SERVICE_NO_TOGGLE(0x0004, IP_ACTIVE_LOW)
@@ -163,65 +163,60 @@ static INPUT_PORTS_START( lemmings )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW1")
-	PORT_DIPNAME( 0x03, 0x03, "Credits for 1 Player" )
-	PORT_DIPSETTING(    0x03, "1" )
-	PORT_DIPSETTING(    0x02, "2" )
-	PORT_DIPSETTING(    0x01, "3" )
-	PORT_DIPSETTING(    0x00, "4" )
-	PORT_DIPNAME( 0x0c, 0x0c, "Credits for 2 Player" )
-	PORT_DIPSETTING(    0x0c, "1" )
-	PORT_DIPSETTING(    0x08, "2" )
-	PORT_DIPSETTING(    0x04, "3" )
-	PORT_DIPSETTING(    0x00, "4" )
-	PORT_DIPNAME( 0x30, 0x30, "Credits for Continue" )
-	PORT_DIPSETTING(    0x30, "1" )
-	PORT_DIPSETTING(    0x20, "2" )
-	PORT_DIPSETTING(    0x10, "3" )
-	PORT_DIPSETTING(    0x00, "4" )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Free_Play ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_START("DSW")
+	PORT_DIPNAME( 0x0003, 0x0003, "Credits for 1 Player" )
+	PORT_DIPSETTING(      0x0003, "1" )
+	PORT_DIPSETTING(      0x0002, "2" )
+	PORT_DIPSETTING(      0x0001, "3" )
+	PORT_DIPSETTING(      0x0000, "4" )
+	PORT_DIPNAME( 0x000c, 0x000c, "Credits for 2 Player" )
+	PORT_DIPSETTING(      0x000c, "1" )
+	PORT_DIPSETTING(      0x0008, "2" )
+	PORT_DIPSETTING(      0x0004, "3" )
+	PORT_DIPSETTING(      0x0000, "4" )
+	PORT_DIPNAME( 0x0030, 0x0030, "Credits for Continue" )
+	PORT_DIPSETTING(      0x0030, "1" )
+	PORT_DIPSETTING(      0x0020, "2" )
+	PORT_DIPSETTING(      0x0010, "3" )
+	PORT_DIPSETTING(      0x0000, "4" )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Free_Play ) )
+	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")
-	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x07, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x06, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x05, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_5C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 1C_6C ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 1C_7C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_8C ) )
-	PORT_DIPNAME( 0x38, 0x38, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x38, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x28, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(    0x18, DEF_STR( 1C_5C ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 1C_6C ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( 1C_7C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_8C ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0700, 0x0700, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(      0x0700, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0600, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0500, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0400, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x0300, DEF_STR( 1C_5C ) )
+	PORT_DIPSETTING(      0x0200, DEF_STR( 1C_6C ) )
+	PORT_DIPSETTING(      0x0100, DEF_STR( 1C_7C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_8C ) )
+	PORT_DIPNAME( 0x3800, 0x3800, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(      0x3800, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x3000, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x2800, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x2000, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x1800, DEF_STR( 1C_5C ) )
+	PORT_DIPSETTING(      0x1000, DEF_STR( 1C_6C ) )
+	PORT_DIPSETTING(      0x0800, DEF_STR( 1C_7C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( 1C_8C ) )
+	PORT_DIPUNKNOWN( 0x4000, 0x4000 )
+	PORT_DIPUNKNOWN( 0x8000, 0x8000 )
 
-	PORT_START_TAG("AN0")
+	PORT_START("AN0")
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START_TAG("AN1")
+	PORT_START("AN1")
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START_TAG("AN2")
+	PORT_START("AN2")
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(2)
 
-	PORT_START_TAG("AN3")
+	PORT_START("AN3")
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -252,9 +247,9 @@ static const gfx_layout sprite_layout =
 };
 
 static GFXDECODE_START( lemmings )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, sprite_layout,  32*16, 16 )	/* Sprites 16x16 */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, sprite_layout,  48*16, 16 )	/* Sprites 16x16 */
-	GFXDECODE_ENTRY( 0,           0, charlayout,         0, 16 ) /* Dynamically modified */
+	GFXDECODE_ENTRY( "gfx1", 0, sprite_layout,  32*16, 16 )	/* Sprites 16x16 */
+	GFXDECODE_ENTRY( "gfx2", 0, sprite_layout,  48*16, 16 )	/* Sprites 16x16 */
+	GFXDECODE_ENTRY( NULL,           0, charlayout,         0, 16 ) /* Dynamically modified */
 GFXDECODE_END
 
 /******************************************************************************/
@@ -264,7 +259,7 @@ static void sound_irq(running_machine *machine, int state)
 	cpunum_set_input_line(machine, 1,0,state);
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	sound_irq
 };
@@ -272,12 +267,11 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( lemmings )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 14000000)
+	MDRV_CPU_ADD("main", M68000, 14000000)
 	MDRV_CPU_PROGRAM_MAP(lemmings_readmem,lemmings_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
-	MDRV_CPU_ADD(M6809,32220000/8)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", M6809,32220000/8)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
@@ -300,13 +294,13 @@ static MACHINE_DRIVER_START( lemmings )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 32220000/9)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 32220000/9)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.45)
 	MDRV_SOUND_ROUTE(1, "right", 0.45)
 
-	MDRV_SOUND_ADD(OKIM6295, 1023924)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1023924)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END
@@ -314,7 +308,7 @@ MACHINE_DRIVER_END
 /******************************************************************************/
 
 ROM_START( lemmings )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "lemmings.5", 0x00000, 0x20000, CRC(e9a2b439) SHA1(873723a06d71bb41772951f451a75578b30267d5) )
 	ROM_LOAD16_BYTE( "lemmings.1", 0x00001, 0x20000, CRC(bf52293b) SHA1(47a1ed64bf02776db086fdce80997b8a0c068791) )
 	ROM_LOAD16_BYTE( "lemmings.6", 0x40000, 0x20000, CRC(0e3dc0ea) SHA1(533abf66ca4b578d03566d5de922dc5828c26eca) )
@@ -324,22 +318,22 @@ ROM_START( lemmings )
 	ROM_LOAD16_BYTE( "lemmings.8", 0xc0000, 0x20000, CRC(9166ce09) SHA1(7f0970cc07ebdbfc9a738342259d07d37b397161) )
 	ROM_LOAD16_BYTE( "lemmings.4", 0xc0001, 0x20000, CRC(aa845488) SHA1(d17ec80f43d2a0123e93fad83d4e1319eb18d7c7) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
 	ROM_LOAD( "lemmings.15",    0x00000, 0x10000, CRC(f0b24a35) SHA1(1aaeb1e6faee04d2e433161fd7aa965b58e3b8a7) )
 
-	ROM_REGION( 0x40000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x40000, "gfx1", ROMREGION_DISPOSE )
   	ROM_LOAD( "lemmings.9",  0x000000, 0x10000, CRC(e06442f5) SHA1(d9c8b681cce1d0257a0446bc820c7d679e2a1168) )
 	ROM_LOAD( "lemmings.10", 0x010000, 0x10000, CRC(36398848) SHA1(6c6956607f889c35367e6df4a32359042fad695e) )
   	ROM_LOAD( "lemmings.11", 0x020000, 0x10000, CRC(b46a54e5) SHA1(53b053346f80357aecff4ab888a8562f99cb318f) )
 	ROM_FILL(                0x030000, 0x10000, 0 ) /* 3bpp data but sprite chip expects 4 */
 
-	ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x40000, "gfx2", ROMREGION_DISPOSE )
  	ROM_LOAD( "lemmings.12", 0x000000, 0x10000, CRC(dc9047ff) SHA1(1bbe573fa51127a9e8b970a353f3cceab00f486a) )
   	ROM_LOAD( "lemmings.13", 0x010000, 0x10000, CRC(7cc15491) SHA1(73c1c11b2738f6679c70cae8ac4c55cdc9b8fc27) )
 	ROM_LOAD( "lemmings.14", 0x020000, 0x10000, CRC(c162788f) SHA1(e1f669efa59699cd1b7da71b112701ee79240c18) )
 	ROM_FILL(                0x030000, 0x10000, 0 ) /* 3bpp data but sprite chip expects 4 */
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x20000, "oki", 0 )	/* ADPCM samples */
   	ROM_LOAD( "lemmings.16",    0x00000, 0x20000, CRC(f747847c) SHA1(00880fa6dff979e5d15daea61938bd18c768c92f) )
 ROM_END
 

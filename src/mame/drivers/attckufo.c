@@ -46,7 +46,7 @@ LOIPOIO-B
 #include "includes/attckufo.h"
 
 
-static const struct CustomSound_interface attckufo_sound_interface =
+static const custom_sound_interface attckufo_sound_interface =
 {
 	attckufo_custom_start
 };
@@ -92,7 +92,7 @@ static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( attckufo )
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
@@ -115,7 +115,7 @@ static INPUT_PORTS_START( attckufo )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START_TAG("INPUT")
+	PORT_START("INPUT")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(1)
@@ -128,7 +128,7 @@ INPUT_PORTS_END
 
 
 static MACHINE_DRIVER_START( attckufo )
-	MDRV_CPU_ADD_TAG("main", M6502, 14318181/14)
+	MDRV_CPU_ADD("main", M6502, 14318181/14)
 	MDRV_CPU_PROGRAM_MAP(cpu_map, 0)
 	MDRV_CPU_PERIODIC_INT(attckufo_raster_interrupt, 15625)
 
@@ -148,13 +148,13 @@ static MACHINE_DRIVER_START( attckufo )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("attckufo", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(attckufo_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 ROM_START( attckufo )
-	ROM_REGION( 0x4000, REGION_CPU1, 0 )
+	ROM_REGION( 0x4000, "main", 0 )
 	ROM_LOAD( "1", 0x2000, 0x0400, CRC(b32a36ab) SHA1(4e64686d498f7a79f5213c42b7afbf35aac2b622) )
 	ROM_LOAD( "2", 0x2400, 0x0400, CRC(35fc8424) SHA1(d4926768f2e5b21476c7ec33743fe3e1c76662db) )
 	ROM_LOAD( "3", 0x2800, 0x0400, CRC(6341c8c4) SHA1(8647a4fabad0399769dd068d784be72e27afca35) )
@@ -164,8 +164,8 @@ ROM_START( attckufo )
 	ROM_LOAD( "7", 0x3800, 0x0400, CRC(43a41012) SHA1(edd14f49dc9ae7a5a14583b9a92ebbbdd021d7b1) )
 	ROM_LOAD( "8", 0x3c00, 0x0400, CRC(9ce93eb0) SHA1(68753e88db4e920446b9582b5cb713b1beec3b27) )
 
-	ROM_REGION( 0x400, REGION_USER1, 0 )
-	ROM_COPY( REGION_CPU1, 0x02000, 0x00000, 0x400)
+	ROM_REGION( 0x400, "user1", 0 )
+	ROM_COPY( "main", 0x02000, 0x00000, 0x400)
 
 ROM_END
 

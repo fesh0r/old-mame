@@ -41,7 +41,7 @@ extern UINT8 *usgames_videoram,*usgames_charram;
 
 static WRITE8_HANDLER( usgames_rombank_w )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 
 //  logerror ("BANK WRITE? -%02x-\n",data);
 //popmessage("%02x",data);
@@ -79,8 +79,8 @@ static ADDRESS_MAP_START( usgames_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2041, 0x2041) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0x2060, 0x2060) AM_WRITE(usgames_rombank_w)
 	AM_RANGE(0x2070, 0x2070) AM_READ(input_port_3_r)
-	AM_RANGE(0x2400, 0x2400) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x2401, 0x2401) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0x2400, 0x2400) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x2401, 0x2401) AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0x2800, 0x2fff) AM_RAM_WRITE(usgames_charram_w) AM_BASE(&usgames_charram)
 	AM_RANGE(0x3000, 0x3fff) AM_RAM_WRITE(usgames_videoram_w) AM_BASE(&usgames_videoram)
 	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK1, SMH_ROM)
@@ -90,8 +90,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( usg185_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0x2000, 0x2000) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x2001, 0x2001) AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0x2400, 0x2400) AM_READ(input_port_1_r)
 	AM_RANGE(0x2410, 0x2410) AM_READ(input_port_0_r)
 	AM_RANGE(0x2420, 0x2420) AM_WRITE(lamps1_w)
@@ -108,7 +108,7 @@ static ADDRESS_MAP_START( usg185_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 #define USGIN0\
-	PORT_START_TAG("IN0")\
+	PORT_START("IN0")\
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Button 1") PORT_CODE(KEYCODE_Z)\
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Button 2") PORT_CODE(KEYCODE_X)\
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Button 3") PORT_CODE(KEYCODE_C)\
@@ -123,7 +123,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 #define USGIN2 \
-	PORT_START_TAG("IN2")\
+	PORT_START("IN2")\
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )\
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )\
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )\
@@ -150,7 +150,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 #define USGIN3\
-	PORT_START_TAG("IN3")\
+	PORT_START("IN3")\
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )\
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )\
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )\
@@ -181,7 +181,7 @@ static INPUT_PORTS_START( usg32 )
 
 	USGIN0
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x01, "Service Keyboard Attached?" ) //Not actually a DIP, when keyboard is plugged in, this goes low
 	PORT_DIPSETTING(    0x01, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
@@ -212,7 +212,7 @@ static INPUT_PORTS_START( usg83 ) //From here, the hardware was slightly upgrade
 
     USGIN0
 
-	PORT_START
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x01, "Service Keyboard Attached?" ) //Not actually a DIP, when keyboard is plugged in, this goes low
 	PORT_DIPSETTING(    0x01, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
@@ -252,7 +252,7 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( usgames )
-	GFXDECODE_ENTRY( REGION_CPU1, 0x2800, charlayout, 0, 256 )
+	GFXDECODE_ENTRY( NULL, 0x2800, charlayout, 0, 256 )
 GFXDECODE_END
 
 
@@ -260,7 +260,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( usg32 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M6809, 2000000) /* ?? */
+	MDRV_CPU_ADD("main", M6809, 2000000) /* ?? */
 	MDRV_CPU_PROGRAM_MAP(usgames_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,5) /* ?? */
 
@@ -286,7 +286,7 @@ static MACHINE_DRIVER_START( usg32 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END
 
@@ -299,7 +299,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( usg32 )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD( "usg32-0.bin", 0x08000, 0x08000, CRC(bc313387) SHA1(8df2e2736f14e965303993ae4105176bdd59f49d) )
 	/* for the banked region */
 	ROM_LOAD( "usg32-1.bin", 0x18000, 0x08000, CRC(baaea800) SHA1(1f35b8c0d40a923488c591497a3c3806d6d104e1) )
@@ -310,7 +310,7 @@ ROM_END
 
 /* You can't change the status of "Sexy Triv I" and "Sexy Triv II" */
 ROM_START( usg83 )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD( "grom08-3.rom", 0x08000, 0x08000, CRC(aae84186) SHA1(8385b5c1dded1ea6f90c277b045778c7110a45db) )
 	/* for the banked region */
 	ROM_LOAD( "usg83-1.bin", 0x18000, 0x08000, CRC(7b520b6f) SHA1(2231e63fecc6e9026dd4b6ee3e21a74cc0e0ae44) )
@@ -321,7 +321,7 @@ ROM_END
 
 /* Similar to 'usg83', but you can change the status of "Sexy Triv I" */
 ROM_START( usg83x )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD( "usg83-0.bin", 0x08000, 0x08000, CRC(4ad9b6e0) SHA1(54940619511b37577bbcd9d05b941079ba793c72) )
 	/* for the banked region */
 	ROM_LOAD( "usg83-1.bin", 0x18000, 0x08000, CRC(7b520b6f) SHA1(2231e63fecc6e9026dd4b6ee3e21a74cc0e0ae44) )
@@ -332,7 +332,7 @@ ROM_END
 
 /* Similar to 'usg83', but "Sport Triv" and "Rush Hour" aren't available by default */
 ROM_START( usg82 )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD( "rom0.rom",   0x08000, 0x08000, CRC(09c20b78) SHA1(8b622fef536e98e22866a15c6a5b5da583169e8c) )
 	/* for the banked region */
 	ROM_LOAD( "grom1.rom",   0x18000, 0x08000, CRC(915a9ff4) SHA1(5007210ed46a9cea530c18a8c4a67b07b87cb781) )
@@ -371,7 +371,7 @@ PCB Layout
 */
 
 ROM_START( usg182 )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD( "grom0.u12",    0x08000, 0x08000, CRC(f5a053c1) SHA1(ae2740cd9af0af7a74a88720ebafd785bfc8614b) )
 	/* for the banked region */
 	ROM_LOAD( "grom4.u36",    0x10000, 0x10000, CRC(b104744d) SHA1(fa2128c39a135b119ef625eed447afa523f912c0) )
@@ -382,7 +382,7 @@ ROM_END
 
 
 ROM_START( usg185 ) // an upgraded 182?
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD( "usg182.u12",   0x08000, 0x08000, CRC(2f4ed125) SHA1(6ea2ce263b8abe8d283d1c85d403ec908a422448) )
 	/* for the banked region */
 	ROM_LOAD( "usg185.u36",   0x10000, 0x10000, CRC(b104744d) SHA1(fa2128c39a135b119ef625eed447afa523f912c0) ) // ROM 4
@@ -393,7 +393,7 @@ ROM_END
 
 
 ROM_START( usg252 )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 )
+	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD( "usg252.u12",   0x08000, 0x08000, CRC(766a855a) SHA1(e67ca9944d92192de423de6aa8a60f2e28b17db1) )
 	/* for the banked region */
 	ROM_LOAD( "usg252.u28",   0x1c000, 0x04000, CRC(d44d2ffa) SHA1(8bd756418b4f8ad11cb0f2044fb91c63d7771497) )	// ROM 2

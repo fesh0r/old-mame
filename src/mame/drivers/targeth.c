@@ -35,7 +35,7 @@ static const gfx_layout tilelayout16_0x080000 =
 };
 
 static GFXDECODE_START( 0x080000 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x000000, tilelayout16_0x080000, 0, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0x000000, tilelayout16_0x080000, 0, 64 )
 GFXDECODE_END
 
 
@@ -56,7 +56,7 @@ static INTERRUPT_GEN(targeth_interrupt )
 
 static WRITE16_HANDLER( OKIM6295_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, REGION_SOUND1);
+	UINT8 *RAM = memory_region(machine, "oki");
 
 	if (ACCESSING_BITS_0_7){
 		memcpy(&RAM[0x30000], &RAM[0x40000 + (data & 0x0f)*0x10000], 0x10000);
@@ -86,29 +86,29 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x700008, 0x700009) AM_READ(input_port_7_word_r)		/* Service & Guns Reload? */
 	AM_RANGE(0x70000a, 0x70001b) AM_WRITE(SMH_NOP)					/* ??? Guns reload related? */
 	AM_RANGE(0x70000c, 0x70000d) AM_WRITE(OKIM6295_bankswitch_w)	/* OKI6295 bankswitch */
-	AM_RANGE(0x70000e, 0x70000f) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w)	/* OKI6295 status register */
+	AM_RANGE(0x70000e, 0x70000f) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)	/* OKI6295 status register */
 	AM_RANGE(0x70002a, 0x70003b) AM_WRITE(targeth_coin_counter_w)	/* Coin counters */
 	AM_RANGE(0xfe0000, 0xfeffff) AM_RAM								/* Work RAM (partially shared with DS5002FP) */
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( targeth )
-PORT_START	/* Gun 1 X */
+	PORT_START("GUNX1")	/* Gun 1 X */
 	PORT_BIT( 0x01ff, 200, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.05, -0.028, 0) PORT_MINMAX( 0, 400 + 4) PORT_SENSITIVITY(100) PORT_KEYDELTA(20) PORT_PLAYER(1)
 	PORT_BIT( 0xfe00, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-PORT_START	/* Gun 1 Y */
+	PORT_START("GUNY1")	/* Gun 1 Y */
 	PORT_BIT( 0x01ff, 128, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.041, -0.011, 0) PORT_MINMAX(4,255) PORT_SENSITIVITY(100) PORT_KEYDELTA(20) PORT_PLAYER(1)
 	PORT_BIT( 0xfe00, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-PORT_START	/* Gun 2 X */
+	PORT_START("GUNX2")	/* Gun 2 X */
 	PORT_BIT( 0x01ff, 400 + 4, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.05, -0.028, 0) PORT_MINMAX( 0, 400 + 4) PORT_SENSITIVITY(100) PORT_KEYDELTA(20) PORT_PLAYER(2)
 	PORT_BIT( 0xfe00, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-PORT_START	/* Gun 2 Y */
+	PORT_START("GUNY2")	/* Gun 2 Y */
 	PORT_BIT( 0x01ff, 255, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.041, -0.011, 0) PORT_MINMAX(4,255) PORT_SENSITIVITY(100) PORT_KEYDELTA(20) PORT_PLAYER(2)
 	PORT_BIT( 0xfe00, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-PORT_START	/* DSW #2 */
+	PORT_START("DSW2")	/* DSW #2 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
@@ -131,7 +131,7 @@ PORT_START	/* DSW #2 */
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-PORT_START	/* DSW #1 */
+	PORT_START("DSW1")	/* DSW #1 */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 6C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 5C_1C ) )
@@ -157,7 +157,7 @@ PORT_START	/* DSW #1 */
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-PORT_START	/* Button 1, COINSW & STARTSW */
+	PORT_START("SYSTEM")	/* Button 1, COINSW & STARTSW */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -167,7 +167,7 @@ PORT_START	/* Button 1, COINSW & STARTSW */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-PORT_START	/* Service & Button 2 */
+	PORT_START("SERVICE")	/* Service & Button 2 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* this MUST be low or the game doesn't boot */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)	/* Reload 1P? */
@@ -179,7 +179,7 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( targeth )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000,24000000/2)			/* 12 MHz */
+	MDRV_CPU_ADD("main", M68000,24000000/2)			/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(targeth_interrupt,3)
 
@@ -200,23 +200,23 @@ static MACHINE_DRIVER_START( targeth )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 ROM_START( targeth )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE(	"targeth.c23",	0x000000, 0x040000, CRC(840887d6) SHA1(9a36b346608d531a62a2e0704ea44f12e07f9d91) )
 	ROM_LOAD16_BYTE(	"targeth.c22",	0x000001, 0x040000, CRC(d2435eb8) SHA1(ce75a115dad8019c8e66a1c3b3e15f54781f65ae) )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )	/* Graphics */
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )	/* Graphics */
 	ROM_LOAD( "targeth.i13",	0x000000, 0x080000, CRC(b892be24) SHA1(9cccaaacf20e77c7358f0ceac60b8a1012f1216c) )
 	ROM_LOAD( "targeth.i11",	0x080000, 0x080000, CRC(6797faf9) SHA1(112cffe72f91cb46c262e19a47b0cab3237dd60f) )
 	ROM_LOAD( "targeth.i9",		0x100000, 0x080000, CRC(0e922c1c) SHA1(6920e345c82e76f7e0af6101f39eb65ac1f112b9) )
 	ROM_LOAD( "targeth.i7",		0x180000, 0x080000, CRC(d8b41000) SHA1(cbe91eb91bdc7a60b2333c6bea37d08a57902669) )
 
-	ROM_REGION( 0x140000, REGION_SOUND1, 0 )	/* ADPCM samples - sound chip is OKIM6295 */
+	ROM_REGION( 0x140000, "oki", 0 )	/* ADPCM samples - sound chip is OKIM6295 */
 	ROM_LOAD( "targeth.c1",		0x000000, 0x080000, CRC(d6c9dfbc) SHA1(3ec70dea94fc89df933074012a52de6034571e87) )
 	/* 0x00000-0x2ffff is fixed, 0x30000-0x3ffff is bank switched from all the ROMs */
 	ROM_RELOAD(					0x040000, 0x080000 )

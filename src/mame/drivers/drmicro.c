@@ -47,7 +47,7 @@ static int pcm_adr;
 
 static void pcm_w(running_machine *machine, int irq)
 {
-	UINT8 *PCM = memory_region(machine, REGION_SOUND1);
+	UINT8 *PCM = memory_region(machine, "adpcm");
 
 	int data = PCM[pcm_adr / 2];
 
@@ -56,13 +56,13 @@ static void pcm_w(running_machine *machine, int irq)
 		if (~pcm_adr & 1)
 			data >>= 4;
 
-		MSM5205_data_w(0, data & 0x0f);
-		MSM5205_reset_w(0, 0);
+		msm5205_data_w(0, data & 0x0f);
+		msm5205_reset_w(0, 0);
 
 		pcm_adr = (pcm_adr + 1) & 0x7fff;
 	}
 	else
-		MSM5205_reset_w(0, 1);
+		msm5205_reset_w(0, 1);
 }
 
 static WRITE8_HANDLER( pcm_set_w )
@@ -89,18 +89,18 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
-	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
-	AM_RANGE(0x03, 0x03) AM_READ(input_port_2_r)
-	AM_RANGE(0x04, 0x04) AM_READ(input_port_3_r)
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("P1")
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("P2")
+	AM_RANGE(0x03, 0x03) AM_READ_PORT("DSW1")
+	AM_RANGE(0x04, 0x04) AM_READ_PORT("DSW2")
 	AM_RANGE(0x05, 0x05) AM_READ(SMH_NOP) // unused?
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(SN76496_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(SN76496_1_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE(SN76496_2_w)
+	AM_RANGE(0x00, 0x00) AM_WRITE(sn76496_0_w)
+	AM_RANGE(0x01, 0x01) AM_WRITE(sn76496_1_w)
+	AM_RANGE(0x02, 0x02) AM_WRITE(sn76496_2_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(pcm_set_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(nmi_enable_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(SMH_NOP) // watchdog?
@@ -109,7 +109,7 @@ ADDRESS_MAP_END
 /****************************************************************************/
 
 static INPUT_PORTS_START( drmicro )
-	PORT_START // 1P (0)
+	PORT_START("P1")
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SERVICE1 )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_COIN1 )
@@ -119,7 +119,7 @@ static INPUT_PORTS_START( drmicro )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_4WAY
 
-	PORT_START // 2P (1)
+	PORT_START("P2")
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 )
@@ -129,7 +129,7 @@ static INPUT_PORTS_START( drmicro )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_PLAYER(2)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_4WAY PORT_PLAYER(2)
 
-	PORT_START // DSW1 (2)
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "2" )
 	PORT_DIPSETTING(    0x01, "3" )
@@ -151,7 +151,7 @@ static INPUT_PORTS_START( drmicro )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START // DSW2 (3)
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 3C_1C ) )
@@ -162,7 +162,6 @@ static INPUT_PORTS_START( drmicro )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_5C ) )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNKNOWN ) // 4-8
-
 INPUT_PORTS_END
 
 /****************************************************************************/
@@ -212,13 +211,13 @@ static const gfx_layout charlayout8 =
 };
 
 static GFXDECODE_START( drmicro )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, charlayout4,     0, 64 ) /* tiles */
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0000, charlayout8,   256, 32 ) /* tiles */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, spritelayout4,   0, 64 ) /* sprites */
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0000, spritelayout8, 256, 32 ) /* sprites */
+	GFXDECODE_ENTRY( "gfx1", 0x0000, charlayout4,     0, 64 ) /* tiles */
+	GFXDECODE_ENTRY( "gfx2", 0x0000, charlayout8,   256, 32 ) /* tiles */
+	GFXDECODE_ENTRY( "gfx1", 0x0000, spritelayout4,   0, 64 ) /* sprites */
+	GFXDECODE_ENTRY( "gfx2", 0x0000, spritelayout8, 256, 32 ) /* sprites */
 GFXDECODE_END
 
-static const struct MSM5205interface msm5205_interface =
+static const msm5205_interface msm5205_config =
 {
 	pcm_w,			/* IRQ handler */
 	MSM5205_S64_4B	/* 6 KHz */
@@ -229,7 +228,7 @@ static const struct MSM5205interface msm5205_interface =
 static MACHINE_DRIVER_START( drmicro )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,MCLK/6)	/* 3.072MHz? */
+	MDRV_CPU_ADD("main", Z80,MCLK/6)	/* 3.072MHz? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT("main", drmicro_interrupt)
@@ -254,24 +253,24 @@ static MACHINE_DRIVER_START( drmicro )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SN76496, MCLK/4)
+	MDRV_SOUND_ADD("sn1", SN76496, MCLK/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(SN76496, MCLK/4)
+	MDRV_SOUND_ADD("sn2", SN76496, MCLK/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(SN76496, MCLK/4)
+	MDRV_SOUND_ADD("sn3", SN76496, MCLK/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(MSM5205, 384000)
-	MDRV_SOUND_CONFIG(msm5205_interface)
+	MDRV_SOUND_ADD("msm", MSM5205, 384000)
+	MDRV_SOUND_CONFIG(msm5205_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 MACHINE_DRIVER_END
 
 /****************************************************************************/
 
 ROM_START( drmicro )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) // CPU
+	ROM_REGION( 0x10000, "main", 0 ) // CPU
 	ROM_LOAD( "dm-00.13b", 0x0000,  0x2000, CRC(270f2145) SHA1(1557428387e2c0f711c676a13a763c8d48aa497b) )
 	ROM_LOAD( "dm-01.14b", 0x2000,  0x2000, CRC(bba30c80) SHA1(a084429fad58fa6348936084652235d5f55e3b89) )
 	ROM_LOAD( "dm-02.15b", 0x4000,  0x2000, CRC(d9e4ca6b) SHA1(9fb6d1d6b45628891deae389cf1d142332b110ba) )
@@ -279,20 +278,20 @@ ROM_START( drmicro )
 	ROM_LOAD( "dm-04.14d", 0x8000,  0x2000, CRC(071db054) SHA1(75929b7692bebf2246fa84581b6d1eedb02c9aba) )
 	ROM_LOAD( "dm-05.15d", 0xa000,  0x2000, CRC(f41b8d8a) SHA1(802830f3f0362ec3df257f31dc22390e8ae4207c) )
 
-	ROM_REGION( 0x04000, REGION_GFX1, ROMREGION_DISPOSE ) // gfx 1
+	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE ) // gfx 1
 	ROM_LOAD( "dm-23.5l",  0x0000,  0x2000, CRC(279a76b8) SHA1(635650621bdce5873bb5faf64f8352149314e784) )
 	ROM_LOAD( "dm-24.5n",  0x2000,  0x2000, CRC(ee8ed1ec) SHA1(7afc05c73186af9fe3d3f3ce13412c8ee560b146) )
 
-	ROM_REGION( 0x06000, REGION_GFX2, ROMREGION_DISPOSE ) // gfx 2
+	ROM_REGION( 0x06000, "gfx2", ROMREGION_DISPOSE ) // gfx 2
 	ROM_LOAD( "dm-20.4a",  0x0000,  0x2000, CRC(6f5dbf22) SHA1(41ef084336e2ebb1016b28505dcb43483e37a0de) )
 	ROM_LOAD( "dm-21.4c",  0x2000,  0x2000, CRC(8b17ff47) SHA1(5bcc14489ea1d4f1fe8e51c24a72a8e787ab8159) )
 	ROM_LOAD( "dm-22.4d",  0x4000,  0x2000, CRC(84daf771) SHA1(d187debcca59ceab6cd696be246370120ee575c6) )
 
-	ROM_REGION( 0x04000, REGION_SOUND1, 0 ) // samples
+	ROM_REGION( 0x04000, "adpcm", 0 ) // samples
 	ROM_LOAD( "dm-40.12m",  0x0000,  0x2000, CRC(3d080af9) SHA1(f9527fae69fe3ca0762024ac4a44b1f02fbee66a) )
 	ROM_LOAD( "dm-41.13m",  0x2000,  0x2000, CRC(ddd7bda2) SHA1(bbe9276cb47fa3e82081d592522640e04b4a9223) )
 
-	ROM_REGION( 0x00220, REGION_PROMS, 0 ) // PROMs
+	ROM_REGION( 0x00220, "proms", 0 ) // PROMs
 	ROM_LOAD( "dm-62.9h", 0x0000,  0x0020, CRC(e3e36eaf) SHA1(5954400190e587a20cad60f5829f4bddc85ea526) )
 	ROM_LOAD( "dm-61.4m", 0x0020,  0x0100, CRC(0dd8e365) SHA1(cbd43a2d4af053860932af32ca5e13bef728e38a) )
 	ROM_LOAD( "dm-60.6e", 0x0120,  0x0100, CRC(540a3953) SHA1(bc65388a1019dadf8c71705e234763f5c735e282) )

@@ -133,10 +133,8 @@ static FILE *sample[1];
 	#endif
 #endif
 
-/*#define LOG_CYM_FILE*/
-#ifdef LOG_CYM_FILE
-	FILE * cymfile = NULL;
-#endif
+#define LOG_CYM_FILE 0
+static FILE * cymfile = NULL;
 
 
 
@@ -1623,8 +1621,7 @@ static void OPL3WriteReg(OPL3 *chip, int r, int v)
 
 
 
-#ifdef LOG_CYM_FILE
-	if ((cymfile) && ((r&255)!=0) && (r!=255) )
+	if (LOG_CYM_FILE && (cymfile) && ((r&255)!=0) && (r!=255) )
 	{
 		if (r>0xff)
 			fputc( (unsigned char)0xff, cymfile );/*mark writes to second register set*/
@@ -1632,7 +1629,6 @@ static void OPL3WriteReg(OPL3 *chip, int r, int v)
 		fputc( (unsigned char)r&0xff, cymfile );
 		fputc( (unsigned char)v, cymfile );
 	}
-#endif
 
 	if(r&0x100)
 	{
@@ -2240,7 +2236,6 @@ static void OPL3WriteReg(OPL3 *chip, int r, int v)
 	}
 }
 
-#ifdef LOG_CYM_FILE
 static TIMER_CALLBACK( cymfile_callback )
 {
 	if (cymfile)
@@ -2248,7 +2243,6 @@ static TIMER_CALLBACK( cymfile_callback )
 		fputc( (unsigned char)0, cymfile );
 	}
 }
-#endif
 
 /* lock/unlock for common table */
 static int OPL3_LockTable(void)
@@ -2266,13 +2260,14 @@ static int OPL3_LockTable(void)
 		return -1;
 	}
 
-#ifdef LOG_CYM_FILE
-	cymfile = fopen("ymf262_.cym","wb");
-	if (cymfile)
-		timer_pulse ( ATTOTIME_IN_HZ(110), 0, cymfile_callback); /*110 Hz pulse timer*/
-	else
-		logerror("Could not create ymf262_.cym file\n");
-#endif
+	if (LOG_CYM_FILE)
+	{
+		cymfile = fopen("ymf262_.cym","wb");
+		if (cymfile)
+			timer_pulse ( ATTOTIME_IN_HZ(110), NULL, 0, cymfile_callback); /*110 Hz pulse timer*/
+		else
+			logerror("Could not create ymf262_.cym file\n");
+	}
 
 	return 0;
 }
@@ -2287,11 +2282,9 @@ static void OPL3_UnLockTable(void)
 	cur_chip = NULL;
 	OPLCloseTable();
 
-#ifdef LOG_CYM_FILE
-	fclose (cymfile);
+	if (LOG_CYM_FILE)
+		fclose (cymfile);
 	cymfile = NULL;
-#endif
-
 }
 
 static void OPL3ResetChip(OPL3 *chip)
@@ -2471,26 +2464,26 @@ static int OPL3TimerOver(OPL3 *chip,int c)
 
 
 
-void * YMF262Init(int clock, int rate)
+void * ymf262_init(int clock, int rate)
 {
 	return OPL3Create(OPL3_TYPE_YMF262,clock,rate);
 }
 
-void YMF262Shutdown(void *chip)
+void ymf262_shutdown(void *chip)
 {
 	OPL3Destroy(chip);
 }
-void YMF262ResetChip(void *chip)
+void ymf262_reset_chip(void *chip)
 {
 	OPL3ResetChip(chip);
 }
 
-int YMF262Write(void *chip, int a, int v)
+int ymf262_write(void *chip, int a, int v)
 {
 	return OPL3Write(chip, a, v);
 }
 
-unsigned char YMF262Read(void *chip, int a)
+unsigned char ymf262_read(void *chip, int a)
 {
 	/* Note on status register: */
 
@@ -2503,20 +2496,20 @@ unsigned char YMF262Read(void *chip, int a)
 
 	return OPL3Read(chip, a);
 }
-int YMF262TimerOver(void *chip, int c)
+int ymf262_timer_over(void *chip, int c)
 {
 	return OPL3TimerOver(chip, c);
 }
 
-void YMF262SetTimerHandler(void *chip, OPL3_TIMERHANDLER timer_handler, void *param)
+void ymf262_set_timer_handler(void *chip, OPL3_TIMERHANDLER timer_handler, void *param)
 {
 	OPL3SetTimerHandler(chip, timer_handler, param);
 }
-void YMF262SetIRQHandler(void *chip,OPL3_IRQHANDLER IRQHandler,void *param)
+void ymf262_set_irq_handler(void *chip,OPL3_IRQHANDLER IRQHandler,void *param)
 {
 	OPL3SetIRQHandler(chip, IRQHandler, param);
 }
-void YMF262SetUpdateHandler(void *chip,OPL3_UPDATEHANDLER UpdateHandler,void *param)
+void ymf262_set_update_handler(void *chip,OPL3_UPDATEHANDLER UpdateHandler,void *param)
 {
 	OPL3SetUpdateHandler(chip, UpdateHandler, param);
 }
@@ -2529,7 +2522,7 @@ void YMF262SetUpdateHandler(void *chip,OPL3_UPDATEHANDLER UpdateHandler,void *pa
 ** '**buffers' is table of 4 pointers to the buffers: CH.A, CH.B, CH.C and CH.D
 ** 'length' is the number of samples that should be generated
 */
-void YMF262UpdateOne(void *_chip, OPL3SAMPLE **buffers, int length)
+void ymf262_update_one(void *_chip, OPL3SAMPLE **buffers, int length)
 {
 	OPL3		*chip  = _chip;
 	UINT8		rhythm = chip->rhythm&0x20;

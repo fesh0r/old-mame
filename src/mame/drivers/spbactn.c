@@ -201,7 +201,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xefff) AM_READ(SMH_ROM)
 	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xf800, 0xf800) AM_READ(OKIM6295_status_0_r)
+	AM_RANGE(0xf800, 0xf800) AM_READ(okim6295_status_0_r)
 	AM_RANGE(0xfc00, 0xfc00) AM_READ(SMH_NOP)	/* irq ack ?? */
 	AM_RANGE(0xfc20, 0xfc20) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
@@ -209,14 +209,14 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xefff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xf800, 0xf800) AM_WRITE(OKIM6295_data_0_w)
-	AM_RANGE(0xf810, 0xf810) AM_WRITE(YM3812_control_port_0_w)
-	AM_RANGE(0xf811, 0xf811) AM_WRITE(YM3812_write_port_0_w)
+	AM_RANGE(0xf800, 0xf800) AM_WRITE(okim6295_data_0_w)
+	AM_RANGE(0xf810, 0xf810) AM_WRITE(ym3812_control_port_0_w)
+	AM_RANGE(0xf811, 0xf811) AM_WRITE(ym3812_write_port_0_w)
 	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(SMH_NOP)	/* irq ack ?? */
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( spbactn )
-	PORT_START	/* IN0 */
+	PORT_START("IN0")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -226,7 +226,7 @@ static INPUT_PORTS_START( spbactn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* IN1 */
+	PORT_START("IN1")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -236,7 +236,7 @@ static INPUT_PORTS_START( spbactn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* IN2 */
+	PORT_START("SYSTEM")	/* IN2 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )		// Press mulitple times for multiple players
@@ -246,7 +246,7 @@ static INPUT_PORTS_START( spbactn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* DSW1 */
+	PORT_START("DSW1")	/* DSW1 */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 3C_1C ) )
@@ -271,7 +271,7 @@ static INPUT_PORTS_START( spbactn )
 	PORT_DIPSETTING(    0x80, "4" )
 	PORT_DIPSETTING(    0x40, "5" )
 
-	PORT_START	/* DSW2 */
+	PORT_START("DSW2")	/* DSW2 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
@@ -336,9 +336,9 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( spbactn )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, fgtilelayout,   0x0200, 16 + 240 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, bgtilelayout,   0x0300, 16 + 128 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, spritelayout,   0x0000, 16 + 384 )
+	GFXDECODE_ENTRY( "gfx1", 0, fgtilelayout,   0x0200, 16 + 240 )
+	GFXDECODE_ENTRY( "gfx2", 0, bgtilelayout,   0x0300, 16 + 128 )
+	GFXDECODE_ENTRY( "gfx3", 0, spritelayout,   0x0000, 16 + 384 )
 GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int linestate)
@@ -346,19 +346,18 @@ static void irqhandler(running_machine *machine, int linestate)
 	cpunum_set_input_line(machine, 1,0,linestate);
 }
 
-static const struct YM3812interface ym3812_interface =
+static const ym3812_interface ym3812_config =
 {
 	irqhandler
 };
 
 static MACHINE_DRIVER_START( spbactn )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000)
+	MDRV_CPU_ADD("main", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(spbactn_readmem,spbactn_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq3_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)
-	/* audio CPU */	/* 4 MHz ??? */
+	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
@@ -378,63 +377,63 @@ static MACHINE_DRIVER_START( spbactn )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, 3579545)
-	MDRV_SOUND_CONFIG(ym3812_interface)
+	MDRV_SOUND_ADD("ym", YM3812, 3579545)
+	MDRV_SOUND_CONFIG(ym3812_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 ROM_START( spbactn )
 	/* Board 9002-A (CPU Board) */
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )
+	ROM_REGION( 0x40000, "main", 0 )
 	ROM_LOAD16_BYTE( "rom1.bin", 0x00000, 0x20000, CRC(6741bd3f) SHA1(844eb6465a15d339043fd6d2b6ba20ba216de493) )
 	ROM_LOAD16_BYTE( "rom2.bin", 0x00001, 0x20000, CRC(488cc511) SHA1(41b4a01f35e0e93634b4843dbb894ab9840807bf) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "a-u14.3", 0x00000, 0x10000, CRC(57f4c503) SHA1(e5ddc63a43ba824bcaa4340eeba25a0d3f26cad9) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x20000, "oki", 0 )
 	ROM_LOAD( "a-u19",   0x00000, 0x20000,  CRC(87427d7d) SHA1(f76b0dc3f0d87deb0f0c81084aff9756b236e867) )
 
 	/* Board 9002-B (GFX Board) */
-	ROM_REGION( 0x080000, REGION_GFX1, 0 ) /* 16x8 FG Tiles */
+	ROM_REGION( 0x080000, "gfx1", 0 ) /* 16x8 FG Tiles */
 	ROM_LOAD( "b-u98",   0x00000, 0x40000, CRC(315eab4d) SHA1(6f812c85981dc649caca8b4635e3b8fd3a3c054d) )
 	ROM_LOAD( "b-u99",   0x40000, 0x40000, CRC(7b76efd9) SHA1(9f23460aebe12cb5c4193776bf876d6044892979) )
 
-	ROM_REGION( 0x080000, REGION_GFX2, 0 ) /* 16x8 BG Tiles */
+	ROM_REGION( 0x080000, "gfx2", 0 ) /* 16x8 BG Tiles */
 	ROM_LOAD( "b-u104",  0x00000, 0x40000, CRC(b648a40a) SHA1(1fb756dcd027a5702596e33bbe8a0beeb3ceb22b) )
 	ROM_LOAD( "b-u105",  0x40000, 0x40000, CRC(0172d79a) SHA1(7ee1faa65c85860bd81988329df516bc34940ef5) )
 
-	ROM_REGION( 0x080000, REGION_GFX3, 0 ) /* 8x8 Sprite Tiles */
+	ROM_REGION( 0x080000, "gfx3", 0 ) /* 8x8 Sprite Tiles */
 	ROM_LOAD( "b-u110",  0x00000, 0x40000, CRC(862ebacd) SHA1(05732e8524c50256c1db29317625d0edc19b87d2) )
 	ROM_LOAD( "b-u111",  0x40000, 0x40000, CRC(1cc1379a) SHA1(44fdab8cb5ab1488688f1ac52f005454e835efee) )
 ROM_END
 
 ROM_START( spbactnj )
 	/* Board 9002-A (CPU Board) */
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )
+	ROM_REGION( 0x40000, "main", 0 )
 	ROM_LOAD16_BYTE( "a-u68.1", 0x00000, 0x20000, CRC(b5b2d824) SHA1(be04ca370a381d7396f39e31fb2680973193daee) )
 	ROM_LOAD16_BYTE( "a-u67.2", 0x00001, 0x20000, CRC(9577b48b) SHA1(291d890a9d0e434455f183eb12ae6edf3156688d) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "a-u14.3", 0x00000, 0x10000, CRC(57f4c503) SHA1(e5ddc63a43ba824bcaa4340eeba25a0d3f26cad9) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x20000, "oki", 0 )
 	ROM_LOAD( "a-u19",   0x00000, 0x20000,  CRC(87427d7d) SHA1(f76b0dc3f0d87deb0f0c81084aff9756b236e867) )
 
 	/* Board 9002-B (GFX Board) */
-	ROM_REGION( 0x080000, REGION_GFX1, 0 ) /* 16x8 FG Tiles */
+	ROM_REGION( 0x080000, "gfx1", 0 ) /* 16x8 FG Tiles */
 	ROM_LOAD( "b-u98",   0x00000, 0x40000, CRC(315eab4d) SHA1(6f812c85981dc649caca8b4635e3b8fd3a3c054d) )
 	ROM_LOAD( "b-u99",   0x40000, 0x40000, CRC(7b76efd9) SHA1(9f23460aebe12cb5c4193776bf876d6044892979) )
 
-	ROM_REGION( 0x080000, REGION_GFX2, 0 ) /* 16x8 BG Tiles */
+	ROM_REGION( 0x080000, "gfx2", 0 ) /* 16x8 BG Tiles */
 	ROM_LOAD( "b-u104",  0x00000, 0x40000, CRC(b648a40a) SHA1(1fb756dcd027a5702596e33bbe8a0beeb3ceb22b) )
 	ROM_LOAD( "b-u105",  0x40000, 0x40000, CRC(0172d79a) SHA1(7ee1faa65c85860bd81988329df516bc34940ef5) )
 
-	ROM_REGION( 0x080000, REGION_GFX3, 0 ) /* 8x8 Sprite Tiles */
+	ROM_REGION( 0x080000, "gfx3", 0 ) /* 8x8 Sprite Tiles */
 	ROM_LOAD( "b-u110",  0x00000, 0x40000, CRC(862ebacd) SHA1(05732e8524c50256c1db29317625d0edc19b87d2) )
 	ROM_LOAD( "b-u111",  0x40000, 0x40000, CRC(1cc1379a) SHA1(44fdab8cb5ab1488688f1ac52f005454e835efee) )
 ROM_END

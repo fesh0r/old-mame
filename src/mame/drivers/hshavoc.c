@@ -41,7 +41,7 @@ Unfortunately it's read protected.
 
 
 static INPUT_PORTS_START( hshavoc )
-	PORT_START_TAG("IN0")	/* 16bit */
+	PORT_START("IN0")	/* 16bit */
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -132,10 +132,10 @@ ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( genesis_base )
 	/*basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M68000, MASTER_CLOCK / 7)
+	MDRV_CPU_ADD("main", M68000, MASTER_CLOCK / 7)
 	MDRV_CPU_VBLANK_INT("main", genesis_vblank_interrupt)
 
-	MDRV_CPU_ADD_TAG("sound", Z80, MASTER_CLOCK / 15)
+	MDRV_CPU_ADD("sound", Z80, MASTER_CLOCK / 15)
 	MDRV_CPU_PROGRAM_MAP(genesis_z80_readmem, genesis_z80_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* from vdp at scanline 0xe0 */
 
@@ -161,7 +161,7 @@ static MACHINE_DRIVER_START( genesis_base )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3438, MASTER_CLOCK/7)
+	MDRV_SOUND_ADD("ym", YM3438, MASTER_CLOCK/7)
 	MDRV_SOUND_ROUTE(0, "mono", 0.50)
 	MDRV_SOUND_ROUTE(1, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -174,26 +174,26 @@ static MACHINE_DRIVER_START( hshavoc )
 	MDRV_CPU_PROGRAM_MAP(topshoot_readmem,topshoot_writemem)
 
 	/* sound hardware */
-	MDRV_SOUND_ADD(SN76496, MASTER_CLOCK/15)
+	MDRV_SOUND_ADD("sn", SN76496, MASTER_CLOCK/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 ROM_START( hshavoc )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )
+	ROM_REGION( 0x200000, "main", 0 )
 	ROM_LOAD16_BYTE( "d-25.11a", 0x000000, 0x080000, CRC(6a155060) SHA1(ecb47bd428786e50e300a062b5038f943419a389) )
 	ROM_LOAD16_BYTE( "d-26.9a",  0x000001, 0x080000, CRC(1afa84fe) SHA1(041296e0360b7747aedc2d948c39e06ba03a7d08) )
 
-	ROM_REGION( 0x200000, REGION_USER1, 0 ) // other
+	ROM_REGION( 0x200000, "user1", 0 ) // other
 	ROM_LOAD( "peel18cv8s.4b.bin",  0x000, 0x155, CRC(b5fb1d5f) SHA1(f0ac80471d97f77f415b5a1f153e1fce66720963) )
 	ROM_LOAD( "peel18cv8s.5b.bin",  0x000, 0x155, CRC(efc7ceea) SHA1(1c31a56bc4b83bfa708048b7de4cee7a24537500) )
 
-	ROM_REGION( 0x200000, REGION_USER2, 0 ) // other
+	ROM_REGION( 0x200000, "user2", 0 ) // other
 	ROM_LOAD( "pic16c57",  0x00, 0x01, NO_DUMP ) // protected
 ROM_END
 
 #ifdef UNUSED_DEFINITION
 ROM_START( hshavoc2 ) /* Genesis Version, for reference */
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )
+	ROM_REGION( 0x200000, "main", 0 )
 	ROM_LOAD( "hsh.rom", 0x000000, 0x100000, CRC(17be551c) SHA1(0dc1969098716ba332978b89356f62961417682b) )
 ROM_END
 #endif
@@ -208,7 +208,7 @@ static DRIVER_INIT(genesis)
 	/* hack -- fix vdp emulation instead */
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC00004, 0xC00005, 0, 0, vdp_fake_r);
 
-	memory_set_bankptr(3, memory_region(machine, REGION_CPU1) );
+	memory_set_bankptr(3, memory_region(machine, "main") );
 	memory_set_bankptr(4, genesis_68k_ram );
 }
 
@@ -216,7 +216,7 @@ static DRIVER_INIT(hshavoc)
 {
 
 	int x;
-	UINT16 *src = (UINT16 *)memory_region(machine, REGION_CPU1);
+	UINT16 *src = (UINT16 *)memory_region(machine, "main");
 
 	static const UINT16 typedat[16] = {
 		1,1,1,1, 1,1,1,1,

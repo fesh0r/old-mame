@@ -123,12 +123,10 @@ struct _SLOT
 	struct _LFO ALFO;		//Amplitude LFO
 	int slot;
 	int cur_sample;       //current ADPCM sample
-	int nxt_sample;       //next ADPCM sample
 	int cur_quant;        //current ADPCM step
-	int nxt_quant;        //next ADPCM step
-	int curstep, nxtstep;
+	int curstep;
 	int cur_lpquant, cur_lpsample, cur_lpstep;
-	UINT8 *adbase, *nxtbase, *adlpbase;
+	UINT8 *adbase, *adlpbase;
 	UINT8 mslc;			// monitored?
 };
 
@@ -444,8 +442,9 @@ static void InitADPCM(int *PrevSignal, int *PrevQuant)
 
 INLINE signed short DecodeADPCM(int *PrevSignal, unsigned char Delta, int *PrevQuant)
 {
-	*PrevSignal+=(*PrevQuant*quant_mul[Delta&15])>>(3);
-	*PrevSignal=ICLIP16(*PrevSignal);
+	int x = *PrevQuant * quant_mul [Delta & 15];
+        x = *PrevSignal + ((int)(x + ((UINT32)x >> 29)) >> 3);
+	*PrevSignal=ICLIP16(x);
 	*PrevQuant=(*PrevQuant*TableQuant[Delta&7])>>ADPCMSHIFT;
 	*PrevQuant=(*PrevQuant<0x7f)?0x7f:((*PrevQuant>0x6000)?0x6000:*PrevQuant);
 	return *PrevSignal;
@@ -471,10 +470,9 @@ static void AICA_StartSlot(struct _AICA *AICA, struct _SLOT *slot)
 		UINT8 *base;
 		UINT32 curstep, steps_to_go;
 
-		slot->curstep = slot->nxtstep = 0;
-		slot->adbase = slot->nxtbase = (unsigned char *) (AICA->AICARAM+((SA(slot))&0x7fffff));
+		slot->curstep = 0;
+		slot->adbase = (unsigned char *) (AICA->AICARAM+((SA(slot))&0x7fffff));
 		InitADPCM(&(slot->cur_sample), &(slot->cur_quant));
-		InitADPCM(&(slot->nxt_sample), &(slot->nxt_quant));
 		InitADPCM(&(slot->cur_lpsample), &(slot->cur_lpquant));
 
 		// walk to the ADPCM state at LSA
@@ -515,7 +513,7 @@ static void AICA_StopSlot(struct _SLOT *slot,int keyoff)
 
 #define log_base_2(n) (log((float) n)/log((float) 2))
 
-static void AICA_Init(struct _AICA *AICA, const struct AICAinterface *intf, int sndindex)
+static void AICA_Init(const char *tag, struct _AICA *AICA, const aica_interface *intf, int sndindex)
 {
 	int i;
 
@@ -536,11 +534,11 @@ static void AICA_Init(struct _AICA *AICA, const struct AICAinterface *intf, int 
 			AICA->Master=0;
 		}
 
-		if (intf->region)
+		AICA->AICARAM = memory_region(Machine, tag);
+		if (AICA->AICARAM)
 		{
-			AICA->AICARAM = memory_region(Machine, intf->region);
 			AICA->AICARAM += intf->roffset;
-			AICA->AICARAM_LENGTH = memory_region_length(Machine, intf->region);
+			AICA->AICARAM_LENGTH = memory_region_length(Machine, tag);
 			AICA->RAM_MASK = AICA->AICARAM_LENGTH-1;
 			AICA->RAM_MASK16 = AICA->RAM_MASK & 0x7ffffe;
 			AICA->DSP.AICARAM = (UINT16 *)AICA->AICARAM;
@@ -739,7 +737,7 @@ static void AICA_UpdateReg(struct _AICA *AICA, int reg)
 			break;
 		case 0x8:
 		case 0x9:
-			AICA_MidiIn(Machine, 0, AICA->udata.data[0x8/2]&0xff, 0);
+			aica_midi_in(Machine, 0, AICA->udata.data[0x8/2]&0xff, 0);
 			break;
 		case 0x12:
 		case 0x13:
@@ -943,7 +941,7 @@ static void AICA_w16(struct _AICA *AICA,unsigned int addr,unsigned short val)
 
 			if (addr == 0x3bfe)
 			{
-				AICADSP_Start(&AICA->DSP);
+				aica_dsp_start(&AICA->DSP);
 			}
 		}
 	}
@@ -1085,12 +1083,16 @@ INLINE INT32 AICA_UpdateSlot(struct _AICA *AICA, struct _SLOT *slot)
 	{
 		UINT8 *base= slot->adbase;
 		INT32 s;
+		int cur_sample;       //current ADPCM sample
+		int nxt_sample;       //next ADPCM sample
 		INT32 fpart=slot->cur_addr&((1<<SHIFT)-1);
-		UINT32 steps_to_go = addr1, curstep = slot->curstep;
+		UINT32 steps_to_go = addr2, curstep = slot->curstep;
 
 		if (slot->adbase)
 		{
-			// seek to the current sample
+			cur_sample = slot->cur_sample; // may already contains current decoded sample
+
+			// seek to the interpolation sample
 			while (curstep < steps_to_go)
 			{
 				int shift1, delta1;
@@ -1102,33 +1104,15 @@ INLINE INT32 AICA_UpdateSlot(struct _AICA *AICA, struct _SLOT *slot)
 				{
 					base++;
 				}
+				if (curstep == addr1)
+					cur_sample = slot->cur_sample;
 			}
+			nxt_sample = slot->cur_sample;
 
 			slot->adbase = base;
 			slot->curstep = curstep;
 
-			base = slot->nxtbase;
-			curstep = slot->nxtstep;
-			steps_to_go = addr2;
-
-			// seek to the interpolation sample
-			while (curstep < steps_to_go)
-			{
-				int shift1, delta1;
-				shift1 = 4*((curstep&1));
-				delta1 = (*base>>shift1)&0xf;
-				DecodeADPCM(&(slot->nxt_sample),delta1,&(slot->nxt_quant));
-				curstep++;
-				if (!(curstep & 1))
-				{
-					base++;
-				}
-			}
-
-			slot->nxtbase = base;
-			slot->nxtstep = curstep;
-
-			s=(int) slot->cur_sample*((1<<SHIFT)-fpart)+(int) slot->nxt_sample*fpart;
+			s=(int)cur_sample*((1<<SHIFT)-fpart)+(int)nxt_sample*fpart;
 		}
 		else
 		{
@@ -1171,7 +1155,7 @@ INLINE INT32 AICA_UpdateSlot(struct _AICA *AICA, struct _SLOT *slot)
 				rem_addr = *slot_addr[addr_select] - (LEA(slot)<<SHIFT);
 				*slot_addr[addr_select]=(LSA(slot)<<SHIFT) + rem_addr;
 
-				if(PCMS(slot)>=2 && addr_select==0)
+				if(PCMS(slot)>=2)
 				{
 					// restore the state @ LSA - the sampler will naturally walk to (LSA + remainder)
 					slot->adbase = &AICA->AICARAM[SA(slot)+(LSA(slot)/2)];
@@ -1183,16 +1167,6 @@ INLINE INT32 AICA_UpdateSlot(struct _AICA *AICA, struct _SLOT *slot)
 					}
 
 //                  printf("Looping: slot_addr %x LSA %x LEA %x step %x base %x\n", *slot_addr[addr_select]>>SHIFT, LSA(slot), LEA(slot), slot->curstep, slot->adbase);
-				}
-				else if(PCMS(slot)>=2 && addr_select==1)
-				{
-					slot->nxtbase = &AICA->AICARAM[SA(slot)+(LSA(slot)/2)];
-					slot->nxtstep = LSA(slot);
-					if (PCMS(slot) == 2)
-					{
-						slot->nxt_sample = slot->cur_lpsample;
-						slot->nxt_quant = slot->cur_lpquant;
-					}
 				}
 			}
 			break;
@@ -1212,7 +1186,7 @@ INLINE INT32 AICA_UpdateSlot(struct _AICA *AICA, struct _SLOT *slot)
 
 	if(slot->mslc)
 	{
-		AICA->udata.data[0x12/2] = addr1;
+		AICA->udata.data[0x14/2] = addr1;
 		if (!(AFSEL(AICA)))
 		{
 			AICA->udata.data[0x10/2] |= slot->EG.state<<13;
@@ -1251,7 +1225,7 @@ static void AICA_DoMasterSamples(struct _AICA *AICA, int nsamples)
 				sample=AICA_UpdateSlot(AICA, slot);
 
 				Enc=((TL(slot))<<0x0)|((IMXL(slot))<<0xd);
-				AICADSP_SetSample(&AICA->DSP,(sample*AICA->LPANTABLE[Enc])>>(SHIFT-2),ISEL(slot),IMXL(slot));
+				aica_dsp_setsample(&AICA->DSP,(sample*AICA->LPANTABLE[Enc])>>(SHIFT-2),ISEL(slot),IMXL(slot));
 				Enc=((TL(slot))<<0x0)|((DIPAN(slot))<<0x8)|((DISDL(slot))<<0xd);
 				{
 					smpl+=(sample*AICA->LPANTABLE[Enc])>>SHIFT;
@@ -1263,7 +1237,7 @@ static void AICA_DoMasterSamples(struct _AICA *AICA, int nsamples)
 		}
 
 		// process the DSP
-		AICADSP_Step(&AICA->DSP);
+		aica_dsp_step(&AICA->DSP);
 
 		// mix DSP output
 		for(i=0;i<16;++i)
@@ -1298,9 +1272,9 @@ static void AICA_Update(void *param, stream_sample_t **inputs, stream_sample_t *
 	AICA_DoMasterSamples(AICA, samples);
 }
 
-static void *aica_start(int sndindex, int clock, const void *config)
+static void *aica_start(const char *tag, int sndindex, int clock, const void *config)
 {
-	const struct AICAinterface *intf;
+	const aica_interface *intf;
 
 	struct _AICA *AICA;
 
@@ -1310,7 +1284,7 @@ static void *aica_start(int sndindex, int clock, const void *config)
 	intf = config;
 
 	// init the emulation
-	AICA_Init(AICA, intf, sndindex);
+	AICA_Init(tag, AICA, intf, sndindex);
 
 	// set up the IRQ callbacks
 	{
@@ -1328,7 +1302,7 @@ static void aica_stop(void)
 }
 #endif
 
-void AICA_set_ram_base(int which, void *base, int size)
+void aica_set_ram_base(int which, void *base, int size)
 {
 	struct _AICA *AICA = sndti_token(SOUND_AICA, which);
 	if (AICA)
@@ -1342,7 +1316,7 @@ void AICA_set_ram_base(int which, void *base, int size)
 	}
 }
 
-READ16_HANDLER( AICA_0_r )
+READ16_HANDLER( aica_0_r )
 {
 	struct _AICA *AICA = sndti_token(SOUND_AICA, 0);
 	UINT16 res = AICA_r16(AICA, offset*2);
@@ -1350,7 +1324,7 @@ READ16_HANDLER( AICA_0_r )
 	return res;
 }
 
-WRITE16_HANDLER( AICA_0_w )
+WRITE16_HANDLER( aica_0_w )
 {
 	struct _AICA *AICA = sndti_token(SOUND_AICA, 0);
 	UINT16 tmp;
@@ -1360,14 +1334,14 @@ WRITE16_HANDLER( AICA_0_w )
 	AICA_w16(AICA,offset*2, tmp);
 }
 
-WRITE16_HANDLER( AICA_MidiIn )
+WRITE16_HANDLER( aica_midi_in )
 {
 	struct _AICA *AICA = sndti_token(SOUND_AICA, 0);
 	AICA->MidiStack[AICA->MidiW++]=data;
 	AICA->MidiW &= 15;
 }
 
-READ16_HANDLER( AICA_MidiOutR )
+READ16_HANDLER( aica_midi_out_r )
 {
 	struct _AICA *AICA = sndti_token(SOUND_AICA, 0);
 	unsigned char val;

@@ -4,6 +4,9 @@
 
 ***************************************************************************/
 
+#include "machine/6532riot.h"
+
+
 /*----------- defined in drivers/starwars.c -----------*/
 
 extern UINT8 starwars_is_esb;
@@ -17,7 +20,7 @@ extern UINT8 *starwars_ram_overlay;
 WRITE8_HANDLER( starwars_nstore_w );
 
 WRITE8_HANDLER( starwars_out_w );
-READ8_HANDLER( starwars_input_1_r );
+CUSTOM_INPUT( matrix_flag_r );
 
 READ8_HANDLER( starwars_adc_r );
 WRITE8_HANDLER( starwars_adc_select_w );
@@ -33,6 +36,10 @@ WRITE8_HANDLER( starwars_math_w );
 
 
 /*----------- defined in audio/starwars.c -----------*/
+
+extern const riot6532_interface starwars_riot6532_intf;
+
+SOUND_START( starwars );
 
 READ8_HANDLER( starwars_main_read_r );
 READ8_HANDLER( starwars_main_ready_flag_r );

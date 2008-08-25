@@ -10,6 +10,9 @@
         * To play Pac-Man instead of Ms. Pac-Man, insert coins then enter the following
           sequence: U U U D D D L R L R L. A sound will play and the ghost will change
           from red to pink.
+        * To toggle the built-in speedup, insert coins then enter the following sequence:
+          L R L R U U U Fire.  A sound will play if you did it correctly.  This will toggle
+          the speed in both Ms Pacman & Pacman as well as provide a "Fast Shot" in Galaga
         * Writes to the Z180 ASCI port:
           MS PAC-MAN/GALAGA
           arcade video system
@@ -76,16 +79,16 @@ static WRITE8_HANDLER( irqack_w )
  *
  *************************************/
 
-static const struct namco_interface namco_interface =
+static const namco_interface namco_config =
 {
-	3,	/* number of voices */
-	-1,	/* memory region */
+	3,		/* number of voices */
+	0		/* stereo */
 };
 
 
 static WRITE8_HANDLER( _20pacgal_dac_w )
 {
-	DAC_signed_data_w(0, data);
+	dac_signed_data_w(0, data);
 }
 
 
@@ -168,7 +171,7 @@ static WRITE8_HANDLER( rom_bank_select_w )
 
 	if (state->game_selected == 0)
 	{
-		UINT8 *rom = memory_region(machine, REGION_CPU1);
+		UINT8 *rom = memory_region(machine, "main");
 		memcpy(rom+0x48000, rom+0x8000, 0x2000);
 	}
 }
@@ -183,7 +186,7 @@ static WRITE8_HANDLER( rom_48000_w )
 		if (offset < 0x0800)
 			state->video_ram[offset & 0x07ff] = data;
 
-		memory_region(machine, REGION_CPU1)[0x48000 + offset] = data;
+		memory_region(machine, "main")[0x48000 + offset] = data;
 	}
 }
 
@@ -224,9 +227,9 @@ static ADDRESS_MAP_START( 20pacgal_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x3f) AM_NOP /* Z180 internal registers */
 	AM_RANGE(0x40, 0x7f) AM_NOP	/* Z180 internal registers */
-	AM_RANGE(0x80, 0x80) AM_READ(input_port_0_r)
-	AM_RANGE(0x81, 0x81) AM_READ(input_port_1_r)
-	AM_RANGE(0x82, 0x82) AM_READ(input_port_2_r)
+	AM_RANGE(0x80, 0x80) AM_READ_PORT("P1")
+	AM_RANGE(0x81, 0x81) AM_READ_PORT("P2")
+	AM_RANGE(0x82, 0x82) AM_READ_PORT("SERVICE")
 	AM_RANGE(0x80, 0x80) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x81, 0x81) AM_WRITE(SMH_NOP)				/* ??? pulsed by the timer irq */
 	AM_RANGE(0x82, 0x82) AM_WRITE(irqack_w)
@@ -248,27 +251,27 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( 20pacgal )
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  )
+	PORT_START("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
 
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    ) PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  ) PORT_COCKTAIL
+	PORT_START("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  ) PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START3 ) PORT_NAME( "Right 1 Player Start" )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START1 ) PORT_NAME( "Left 1 Player Start" )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 ) PORT_NAME( "Left 2 Players Start" )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START4 ) PORT_NAME( "Right 2 Players Start" )
 
-	PORT_START
+	PORT_START("SERVICE")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -292,7 +295,7 @@ static MACHINE_DRIVER_START( 20pacgal )
 	MDRV_DRIVER_DATA(_20pacgal_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z180, MAIN_CPU_CLOCK)
+	MDRV_CPU_ADD("main", Z180, MAIN_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(20pacgal_map,0)
 	MDRV_CPU_IO_MAP(20pacgal_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
@@ -305,11 +308,11 @@ static MACHINE_DRIVER_START( 20pacgal )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(NAMCO, NAMCO_AUDIO_CLOCK)
-	MDRV_SOUND_CONFIG(namco_interface)
+	MDRV_SOUND_ADD("namco", NAMCO, NAMCO_AUDIO_CLOCK)
+	MDRV_SOUND_CONFIG(namco_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -321,11 +324,11 @@ MACHINE_DRIVER_END
  *
  *************************************/
 
-ROM_START( 20pacgal )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+ROM_START( 20pacgal ) /* Version 1.01 */
+	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD( "20th_101.u13", 0x00000, 0x40000, CRC(77159582) SHA1(c05e005a941cbdc806dcd76b315069362c792a72) )
 
-	ROM_REGION( 0x8000, REGION_PROMS, 0 )	/* palette */
+	ROM_REGION( 0x8000, "proms", 0 )	/* palette */
 	ROM_LOAD( "20th_101.u14", 0x0000, 0x8000, CRC(c19d9ad0) SHA1(002581fbc2c32cdf7cfb0b0f64061591a462ec14) )
 ROM_END
 

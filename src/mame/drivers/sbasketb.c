@@ -90,9 +90,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x43ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(VLM5030_data_w) /* speech data */
+	AM_RANGE(0xa000, 0xa000) AM_WRITE(vlm5030_data_w) /* speech data */
 	AM_RANGE(0xc000, 0xdfff) AM_WRITE(hyperspt_sound_w)     /* speech and output controll */
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(DAC_0_data_w)
+	AM_RANGE(0xe000, 0xe000) AM_WRITE(dac_0_data_w)
 	AM_RANGE(0xe001, 0xe001) AM_WRITE(konami_SN76496_latch_w)  /* Loads the snd command into the snd latch */
 	AM_RANGE(0xe002, 0xe002) AM_WRITE(konami_SN76496_0_w)      /* This address triggers the SN chip to read the data port. */
 ADDRESS_MAP_END
@@ -100,7 +100,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( sbasketb )
-	PORT_START	/* IN0 */
+	PORT_START("SYSTEM")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -110,7 +110,7 @@ static INPUT_PORTS_START( sbasketb )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* IN1 */
+	PORT_START("P1")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -120,7 +120,7 @@ static INPUT_PORTS_START( sbasketb )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* IN2 */
+	PORT_START("P2")	/* IN2 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
@@ -130,7 +130,7 @@ static INPUT_PORTS_START( sbasketb )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3  ) PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* DSW0 */
+	PORT_START("DSW1")	/* DSW0 */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Game_Time ) )
 	PORT_DIPSETTING(    0x03, "30" )
 	PORT_DIPSETTING(    0x01, "40" )
@@ -154,7 +154,7 @@ static INPUT_PORTS_START( sbasketb )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* DSW1 */
+	PORT_START("DSW2")	/* DSW1 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
@@ -221,27 +221,19 @@ static const gfx_layout spritelayout =
 
 
 static GFXDECODE_START( sbasketb )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,       0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,       0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 16*16, 16*16 )
 GFXDECODE_END
-
-
-static const struct VLM5030interface sbasketb_vlm5030_interface =
-{
-	REGION_SOUND1,	/* memory region  */
-	0           /* memory size    */
-};
 
 
 static MACHINE_DRIVER_START( sbasketb )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, 1400000)        /* 1.400 MHz ??? */
+	MDRV_CPU_ADD("main", M6809, 1400000)        /* 1.400 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80,14318000/4)
-	/* audio CPU */	/* 3.5795 MHz */
+	MDRV_CPU_ADD("audio", Z80,14318000/4)	/* 3.5795 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
@@ -262,14 +254,13 @@ static MACHINE_DRIVER_START( sbasketb )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MDRV_SOUND_ADD(SN76496, 14318180/8)
+	MDRV_SOUND_ADD("sn", SN76496, 14318180/8)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(VLM5030, 3580000)
-	MDRV_SOUND_CONFIG(sbasketb_vlm5030_interface)
+	MDRV_SOUND_ADD("vlm", VLM5030, 3580000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -282,20 +273,20 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( sbasketb )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "405g05",  0x6000, 0x2000, CRC(336dc0ab) SHA1(0fe47fdbf183683c569785fc6b980337a9cfde95) )
 	ROM_LOAD( "405g04",  0x8000, 0x2000, CRC(f064a9bc) SHA1(4f1b94a880385c6ba74cc0883b24f6fec934e35d) )
 	ROM_LOAD( "405g03",  0xa000, 0x2000, CRC(b9de7d53) SHA1(5a4e5491ff3511992d949367fd7b5d383c2727db) )
 	ROM_LOAD( "405g02",  0xc000, 0x2000, CRC(e98470a0) SHA1(79af25af941fe357a8c9f0a2f11e5558670b8027) )
 	ROM_LOAD( "405g01",  0xe000, 0x2000, CRC(1bd0cd2e) SHA1(d162f9b989f718d9882a02a8c64743adf3d8e239) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "405e13",       0x0000, 0x2000, CRC(1ec7458b) SHA1(a015b982bff5f9e7ece33f2e69ff8c6c2174e710) )
 
-	ROM_REGION( 0x04000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "405e12",       0x0000, 0x4000, CRC(e02c54da) SHA1(2fa19f3bce894ef05820f95e0b88428e4f946a35) )
 
-	ROM_REGION( 0x0c000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0c000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "405e06",       0x0000, 0x2000, CRC(7e2f5bb2) SHA1(e22008c0ef7ae000dcca7f43a386d43064aaea62) )
 	ROM_LOAD( "405e07",       0x2000, 0x2000, CRC(963a44f9) SHA1(03cd7699668b010f27af025ba6bd44509526ec7b) )
 	ROM_LOAD( "405e08",       0x4000, 0x2000, CRC(63901deb) SHA1(c65d896298846ed8b70a4d38b32820746214fa5c) )
@@ -303,32 +294,32 @@ ROM_START( sbasketb )
 	ROM_LOAD( "405e10",       0x8000, 0x2000, CRC(824815e8) SHA1(470e9d74fa2c397605a74e0bf173a6d9db4cc721) )
 	ROM_LOAD( "405e11",       0xa000, 0x2000, CRC(dca9b447) SHA1(12d7e85dc2fc6bd4ea7ad9035ae0b7487e4bc4bc) )
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )
+	ROM_REGION( 0x0500, "proms", 0 )
 	ROM_LOAD( "405e17",       0x0000, 0x0100, CRC(b4c36d57) SHA1(c4a63f57edce2b9588e2394ff54a28f91213d550) ) /* palette red component */
 	ROM_LOAD( "405e16",       0x0100, 0x0100, CRC(0b7b03b8) SHA1(81297cb2b0b28b0fc0939a37ff30844d69fb65ac) ) /* palette green component */
 	ROM_LOAD( "405e18",       0x0200, 0x0100, CRC(9e533bad) SHA1(611e7af6813caaf2bc36c311ae48a5efd30e6f0c) ) /* palette blue component */
 	ROM_LOAD( "405e20",       0x0300, 0x0100, CRC(8ca6de2f) SHA1(67d29708d1a07d17c5dc5793a3293e7ace3a4e19) ) /* character lookup table */
 	ROM_LOAD( "405e19",       0x0400, 0x0100, CRC(e0bc782f) SHA1(9f71e696d11a60f771535f6837ecad6132047b0a) ) /* sprite lookup table */
 
-	ROM_REGION( 0x10000, REGION_SOUND1, 0 )     /* 64k for speech rom */
+	ROM_REGION( 0x10000, "vlm", 0 )     /* 64k for speech rom */
 	ROM_LOAD( "405e15",       0x0000, 0x2000, CRC(01bb5ce9) SHA1(f48477b4011befba13c8bcd83e0c9f7deb14a1e1) )
 ROM_END
 
 ROM_START( sbasketo )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "405e05",  0x6000, 0x2000, CRC(32ea5b71) SHA1(d917c31d2c9a7229396e4a930e8d27394329533a) )
 	ROM_LOAD( "405e04",  0x8000, 0x2000, CRC(7abf3087) SHA1(fbaaaaae0b8bed1bc6ad7f2da267c2ef8bd75b15) )
 	ROM_LOAD( "405e03",  0xa000, 0x2000, CRC(9c6fcdcd) SHA1(a644ec98f49f84311829149c181aba25e7681793) )
 	ROM_LOAD( "405e02",  0xc000, 0x2000, CRC(0f145648) SHA1(2e238eb0663295887bf6b4905f1fd386db16d82a) )
 	ROM_LOAD( "405e01",  0xe000, 0x2000, CRC(6a27f1b1) SHA1(38c0be98fb122a7a6ed833af011bda5663a06510) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "405e13",       0x0000, 0x2000, CRC(1ec7458b) SHA1(a015b982bff5f9e7ece33f2e69ff8c6c2174e710) )
 
-	ROM_REGION( 0x04000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "405e12",       0x0000, 0x4000, CRC(e02c54da) SHA1(2fa19f3bce894ef05820f95e0b88428e4f946a35) )
 
-	ROM_REGION( 0x0c000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0c000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "405e06",       0x0000, 0x2000, CRC(7e2f5bb2) SHA1(e22008c0ef7ae000dcca7f43a386d43064aaea62) )
 	ROM_LOAD( "405e07",       0x2000, 0x2000, CRC(963a44f9) SHA1(03cd7699668b010f27af025ba6bd44509526ec7b) )
 	ROM_LOAD( "405e08",       0x4000, 0x2000, CRC(63901deb) SHA1(c65d896298846ed8b70a4d38b32820746214fa5c) )
@@ -336,30 +327,30 @@ ROM_START( sbasketo )
 	ROM_LOAD( "405e10",       0x8000, 0x2000, CRC(824815e8) SHA1(470e9d74fa2c397605a74e0bf173a6d9db4cc721) )
 	ROM_LOAD( "405e11",       0xa000, 0x2000, CRC(dca9b447) SHA1(12d7e85dc2fc6bd4ea7ad9035ae0b7487e4bc4bc) )
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )
+	ROM_REGION( 0x0500, "proms", 0 )
 	ROM_LOAD( "405e17",       0x0000, 0x0100, CRC(b4c36d57) SHA1(c4a63f57edce2b9588e2394ff54a28f91213d550) ) /* palette red component */
 	ROM_LOAD( "405e16",       0x0100, 0x0100, CRC(0b7b03b8) SHA1(81297cb2b0b28b0fc0939a37ff30844d69fb65ac) ) /* palette green component */
 	ROM_LOAD( "405e18",       0x0200, 0x0100, CRC(9e533bad) SHA1(611e7af6813caaf2bc36c311ae48a5efd30e6f0c) ) /* palette blue component */
 	ROM_LOAD( "405e20",       0x0300, 0x0100, CRC(8ca6de2f) SHA1(67d29708d1a07d17c5dc5793a3293e7ace3a4e19) ) /* character lookup table */
 	ROM_LOAD( "405e19",       0x0400, 0x0100, CRC(e0bc782f) SHA1(9f71e696d11a60f771535f6837ecad6132047b0a) ) /* sprite lookup table */
 
-	ROM_REGION( 0x10000, REGION_SOUND1, 0 )     /* 64k for speech rom */
+	ROM_REGION( 0x10000, "vlm", 0 )     /* 64k for speech rom */
 	ROM_LOAD( "405e15",       0x0000, 0x2000, CRC(01bb5ce9) SHA1(f48477b4011befba13c8bcd83e0c9f7deb14a1e1) )
 ROM_END
 
 ROM_START( sbasketu )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "sbb_j13.bin",  0x6000, 0x2000, CRC(263ec36b) SHA1(b445b600726ba4935623311e1a178aeb4a356b0a) )
 	ROM_LOAD( "sbb_j11.bin",  0x8000, 0x4000, CRC(0a4d7a82) SHA1(2e0153b41e23284427881258a44bd55be3570eb2) )
 	ROM_LOAD( "sbb_j09.bin",  0xc000, 0x4000, CRC(4f9dd9a0) SHA1(97f4c208509d50a7ce4c1ebe8a3f643ad75e833b) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "405e13",       0x0000, 0x2000, CRC(1ec7458b) SHA1(a015b982bff5f9e7ece33f2e69ff8c6c2174e710) )
 
-	ROM_REGION( 0x04000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "405e12",       0x0000, 0x4000, CRC(e02c54da) SHA1(2fa19f3bce894ef05820f95e0b88428e4f946a35) )
 
-	ROM_REGION( 0x0c000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0c000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "405e06",       0x0000, 0x2000, CRC(7e2f5bb2) SHA1(e22008c0ef7ae000dcca7f43a386d43064aaea62) )
 	ROM_LOAD( "405e07",       0x2000, 0x2000, CRC(963a44f9) SHA1(03cd7699668b010f27af025ba6bd44509526ec7b) )
 	ROM_LOAD( "405e08",       0x4000, 0x2000, CRC(63901deb) SHA1(c65d896298846ed8b70a4d38b32820746214fa5c) )
@@ -367,21 +358,21 @@ ROM_START( sbasketu )
 	ROM_LOAD( "405e10",       0x8000, 0x2000, CRC(824815e8) SHA1(470e9d74fa2c397605a74e0bf173a6d9db4cc721) )
 	ROM_LOAD( "405e11",       0xa000, 0x2000, CRC(dca9b447) SHA1(12d7e85dc2fc6bd4ea7ad9035ae0b7487e4bc4bc) )
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )
+	ROM_REGION( 0x0500, "proms", 0 )
 	ROM_LOAD( "405e17",       0x0000, 0x0100, CRC(b4c36d57) SHA1(c4a63f57edce2b9588e2394ff54a28f91213d550) ) /* palette red component */
 	ROM_LOAD( "405e16",       0x0100, 0x0100, CRC(0b7b03b8) SHA1(81297cb2b0b28b0fc0939a37ff30844d69fb65ac) ) /* palette green component */
 	ROM_LOAD( "405e18",       0x0200, 0x0100, CRC(9e533bad) SHA1(611e7af6813caaf2bc36c311ae48a5efd30e6f0c) ) /* palette blue component */
 	ROM_LOAD( "405e20",       0x0300, 0x0100, CRC(8ca6de2f) SHA1(67d29708d1a07d17c5dc5793a3293e7ace3a4e19) ) /* character lookup table */
 	ROM_LOAD( "405e19",       0x0400, 0x0100, CRC(e0bc782f) SHA1(9f71e696d11a60f771535f6837ecad6132047b0a) ) /* sprite lookup table */
 
-	ROM_REGION( 0x10000, REGION_SOUND1, 0 )     /* 64k for speech rom */
+	ROM_REGION( 0x10000, "vlm", 0 )     /* 64k for speech rom */
 	ROM_LOAD( "405e15",       0x0000, 0x2000, CRC(01bb5ce9) SHA1(f48477b4011befba13c8bcd83e0c9f7deb14a1e1) )
 ROM_END
 
 
 static DRIVER_INIT( sbasketb )
 {
-	konami1_decode(machine, 0);
+	konami1_decode(machine, "main");
 }
 
 

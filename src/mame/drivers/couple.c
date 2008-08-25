@@ -119,7 +119,7 @@ static WRITE8_HANDLER( merit_prot_w )
 }
 
 #if 0
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	input_port_4_r,
 };
@@ -153,8 +153,8 @@ static ADDRESS_MAP_START( merit_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0xc008, 0xc00a ) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
 	AM_RANGE( 0xc00b, 0xc00b ) AM_WRITE(merit_prot_w)
 //  AM_RANGE( 0xc000, 0xc00f ) AM_READ(dummy_inputs_r)
-//  AM_RANGE( 0xc008, 0xc008 ) AM_READ(input_port_0_r)
-//  AM_RANGE( 0xc00a, 0xc00a ) AM_READ(input_port_1_r)
+//  AM_RANGE( 0xc008, 0xc008 ) AM_READ_PORT("P1")
+//  AM_RANGE( 0xc00a, 0xc00a ) AM_READ_PORT("DSW")
   	AM_RANGE( 0xe000, 0xe000 ) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
   	AM_RANGE( 0xe001, 0xe001 ) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE( 0xe800, 0xefff ) AM_RAM_WRITE(couple_vram_hi_w) AM_BASE(&vram_hi)
@@ -164,8 +164,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( merit_io, ADDRESS_SPACE_IO, 8 )
 //  ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xc00c, 0xc00c) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0xc10c, 0xc10c) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0xc00c, 0xc00c) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xc10c, 0xc10c) AM_WRITE(ay8910_write_port_0_w)
 ADDRESS_MAP_END
 
 static PALETTE_INIT( couple )
@@ -199,8 +199,8 @@ static PALETTE_INIT( couple )
 	}
 }
 
-#define PORT_INPUTS \
-	PORT_START \
+static INPUT_PORTS_START( couple )
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1) \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1) \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1) \
@@ -210,8 +210,7 @@ static PALETTE_INIT( couple )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) PORT_IMPULSE(1) \
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1) PORT_IMPULSE(1) \
 
-#define PORT_DSW \
-	PORT_START \
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x00, "Number of Attempts" ) \
 	PORT_DIPSETTING(    0x01, "99" ) \
 	PORT_DIPSETTING(    0x00, "9" ) \
@@ -230,11 +229,6 @@ static PALETTE_INIT( couple )
 	PORT_DIPNAME( 0x20, 0x00, "Sound" ) \
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) ) \
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) ) \
-
-static INPUT_PORTS_START( couple )
-	PORT_INPUTS
-
-	PORT_DSW
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -242,10 +236,8 @@ static INPUT_PORTS_START( couple )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -265,7 +257,8 @@ static INPUT_PORTS_START( couple )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_START
+
+	PORT_START("IN3")
 	PORT_DIPNAME( 0x01, 0x01, "3" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -290,7 +283,8 @@ static INPUT_PORTS_START( couple )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_START
+
+	PORT_START("IN4")
 	PORT_DIPNAME( 0x01, 0x01, "4" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -319,86 +313,13 @@ INPUT_PORTS_END
 
 /*Different DSWs*/
 static INPUT_PORTS_START( couplep )
-	PORT_INPUTS
+	PORT_INCLUDE( couple )
 
-	PORT_DSW
+	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x40, 0x40, "Bonus Play" )
 	PORT_DIPSETTING(    0x40, "at 150.000" )
 	PORT_DIPSETTING(    0x00, "at 200.000" )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_START
-	PORT_DIPNAME( 0x01, 0x01, "3" )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_START
-	PORT_DIPNAME( 0x01, 0x01, "4" )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
@@ -427,14 +348,14 @@ static const gfx_layout tiles8x8x3_layout =
 };
 
 static GFXDECODE_START( couple )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8x3_layout, 0, 32 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles8x8x4_layout, 0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX1, 8, tiles8x8x3_layout, 0, 32 ) //flipped tiles
-	GFXDECODE_ENTRY( REGION_GFX2, 8, tiles8x8x4_layout, 0, 16 ) //flipped tiles
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8x3_layout, 0, 32 )
+	GFXDECODE_ENTRY( "gfx2", 0, tiles8x8x4_layout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 8, tiles8x8x3_layout, 0, 32 ) //flipped tiles
+	GFXDECODE_ENTRY( "gfx2", 8, tiles8x8x4_layout, 0, 16 ) //flipped tiles
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( couple )
-	MDRV_CPU_ADD(Z80,18432000/6)		 /* ?? */
+	MDRV_CPU_ADD("main", Z80,18432000/6)		 /* ?? */
 	MDRV_CPU_PROGRAM_MAP(merit_mem,0)
 	MDRV_CPU_IO_MAP(merit_io,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -464,25 +385,25 @@ static MACHINE_DRIVER_START( couple )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 4000000)
-//  MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, 4000000)
+//  MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 ROM_START( couple )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "1.1d",  0x00000, 0x8000, CRC(bc70337a) SHA1(ffc484bc3965f0780d3fa5d8801af27a7164a417) )
 	ROM_LOAD( "2.1e",  0x10000, 0x8000, CRC(17372a93) SHA1(e0f0980003473555c2543d98d1494f82afa49f1a) )
 
-	ROM_REGION( 0x18000, REGION_GFX1, 0 )
+	ROM_REGION( 0x18000, "gfx1", 0 )
 	ROM_LOAD( "3.9c",  0x00000, 0x8000, CRC(f017399a) SHA1(baf4c1bea6a12b1d4c8838552503fbdb81378411) )
 	ROM_LOAD( "4.9d",  0x08000, 0x8000, CRC(66da76c1) SHA1(8cdcec008d0d51704544069246e9eabb5d5958ea) )
 	ROM_LOAD( "5.10c", 0x10000, 0x8000, CRC(fc22bcf4) SHA1(cf3f6872965cb264d56d3a0b5ab998541b9af4ef) )
 
-	ROM_REGION( 0x08000, REGION_GFX2, 0 )
+	ROM_REGION( 0x08000, "gfx2", 0 )
 	ROM_LOAD( "6.10d", 0x00000, 0x8000, CRC(a6a9a73d) SHA1(f3cb1d434d730f6e00f48079eaf8b88f57779fa0) )
 
-	ROM_REGION( 0x0800, REGION_PROMS, 0 )
+	ROM_REGION( 0x0800, "proms", 0 )
 	/*Only 0x00-0xff data seems color prom*/
 	ROM_LOAD( "7.7a",  0x00000, 0x0800, CRC(6c36361e) SHA1(7a018eecf3d8b7cf8845dcfcf8067feb292933b2) )
 ROM_END
@@ -491,19 +412,19 @@ ROM_END
 it doesn't jump to the backup ram area and it gives an extra play if you reach a certain
 amount of points (there is a dip switch to select the trigger: 150.000 or 200.000*/
 ROM_START( couplep )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "1.1d",  0x00000, 0x8000, CRC(4601ace6) SHA1(a824ceebf8b9ce77ef2c8e92636e4261f2ae0420) )
 	ROM_LOAD( "2.1e",  0x10000, 0x8000, CRC(17372a93) SHA1(e0f0980003473555c2543d98d1494f82afa49f1a) )
 
-	ROM_REGION( 0x18000, REGION_GFX1, 0 )
+	ROM_REGION( 0x18000, "gfx1", 0 )
 	ROM_LOAD( "3.9c",  0x00000, 0x8000, CRC(f017399a) SHA1(baf4c1bea6a12b1d4c8838552503fbdb81378411) )
 	ROM_LOAD( "4.9d",  0x08000, 0x8000, CRC(66da76c1) SHA1(8cdcec008d0d51704544069246e9eabb5d5958ea) )
 	ROM_LOAD( "5.10c", 0x10000, 0x8000, CRC(fc22bcf4) SHA1(cf3f6872965cb264d56d3a0b5ab998541b9af4ef) )
 
-	ROM_REGION( 0x08000, REGION_GFX2, 0 )
+	ROM_REGION( 0x08000, "gfx2", 0 )
 	ROM_LOAD( "6.10d", 0x00000, 0x8000, CRC(a6a9a73d) SHA1(f3cb1d434d730f6e00f48079eaf8b88f57779fa0) )
 
-	ROM_REGION( 0x0800, REGION_PROMS, 0 )
+	ROM_REGION( 0x0800, "proms", 0 )
 	/*Only 0x00-0xff data seems color prom*/
 	ROM_LOAD( "7.7a",  0x00000, 0x0800, CRC(6c36361e) SHA1(7a018eecf3d8b7cf8845dcfcf8067feb292933b2) )
 ROM_END
@@ -511,26 +432,26 @@ ROM_END
 /*f205v's dump,this one looks like an intermediate release between set1 and set2;
 it has same dips as set1, but remaining machine code is the same as set2*/
 ROM_START( couplei )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "1.1d",  0x00000, 0x8000, CRC(760fa29e) SHA1(a37a1562028d9615adff3d2ef88e0156354c720a) )
 	ROM_LOAD( "2.1e",  0x10000, 0x8000, CRC(17372a93) SHA1(e0f0980003473555c2543d98d1494f82afa49f1a) )
 
-	ROM_REGION( 0x18000, REGION_GFX1, 0 )
+	ROM_REGION( 0x18000, "gfx1", 0 )
 	ROM_LOAD( "3.9c",  0x00000, 0x8000, CRC(f017399a) SHA1(baf4c1bea6a12b1d4c8838552503fbdb81378411) )
 	ROM_LOAD( "4.9d",  0x08000, 0x8000, CRC(66da76c1) SHA1(8cdcec008d0d51704544069246e9eabb5d5958ea) )
 	ROM_LOAD( "5.10c", 0x10000, 0x8000, CRC(fc22bcf4) SHA1(cf3f6872965cb264d56d3a0b5ab998541b9af4ef) )
 
-	ROM_REGION( 0x08000, REGION_GFX2, 0 )
+	ROM_REGION( 0x08000, "gfx2", 0 )
 	ROM_LOAD( "6.10d", 0x00000, 0x8000, CRC(a6a9a73d) SHA1(f3cb1d434d730f6e00f48079eaf8b88f57779fa0) )
 
-	ROM_REGION( 0x0800, REGION_PROMS, 0 )
+	ROM_REGION( 0x0800, "proms", 0 )
 	/*Only 0x00-0xff data seems color prom*/
 	ROM_LOAD( "7.7a",  0x00000, 0x0800, CRC(6c36361e) SHA1(7a018eecf3d8b7cf8845dcfcf8067feb292933b2) )
 ROM_END
 
 static DRIVER_INIT( couple )
 {
-	UINT8 *ROM = memory_region(machine, REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, "main");
 
 	#if 0 //quick rom compare test
 	{

@@ -55,7 +55,7 @@ VIDEO_UPDATE( yunsung8 );
 
 static MACHINE_RESET( yunsung8 )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1) + 0x24000;
+	UINT8 *RAM = memory_region(machine, "main") + 0x24000;
 
 	yunsung8_videoram_0 = RAM + 0x0000;	// Ram is banked
 	yunsung8_videoram_1 = RAM + 0x2000;
@@ -74,7 +74,7 @@ static MACHINE_RESET( yunsung8 )
 
 static WRITE8_HANDLER( yunsung8_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 
 	int bank				=	data & 7;		// ROM bank
 	yunsung8_layers_ctrl	=	data & 0x30;	// Layers enable
@@ -131,7 +131,7 @@ static int adpcm;
 
 static WRITE8_HANDLER( yunsung8_sound_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, "audio");
 	int bank = data & 7;
 
 	if ( bank != (data&(~0x20)) ) 	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
@@ -141,7 +141,7 @@ static WRITE8_HANDLER( yunsung8_sound_bankswitch_w )
 
 	memory_set_bankptr(2, RAM);
 
-	MSM5205_reset_w(0,data & 0x20);
+	msm5205_reset_w(0,data & 0x20);
 }
 
 static WRITE8_HANDLER( yunsung8_adpcm_w )
@@ -157,8 +157,8 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK2,SMH_ROM		)	// Banked ROM
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(yunsung8_sound_bankswitch_w	)	// ROM Bank
 	AM_RANGE(0xe400, 0xe400) AM_WRITE(yunsung8_adpcm_w				)
-	AM_RANGE(0xec00, 0xec00) AM_WRITE(YM3812_control_port_0_w		)	// YM3812
-	AM_RANGE(0xec01, 0xec01) AM_WRITE(YM3812_write_port_0_w			)
+	AM_RANGE(0xec00, 0xec00) AM_WRITE(ym3812_control_port_0_w		)	// YM3812
+	AM_RANGE(0xec01, 0xec01) AM_WRITE(ym3812_write_port_0_w			)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM
 	AM_RANGE(0xf800, 0xf800) AM_READ(soundlatch_r					)	// From Main CPU
 ADDRESS_MAP_END
@@ -180,7 +180,7 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( magix )
 
-	PORT_START	// IN0 - Coins
+	PORT_START("SYSTEM")	// IN0 - Coins
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_START2   )
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -190,7 +190,7 @@ static INPUT_PORTS_START( magix )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_COIN1    )
 
-	PORT_START	// IN1 - Player 1
+	PORT_START("P1")	// IN1 - Player 1
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)	// same as button1 !?
@@ -200,7 +200,7 @@ static INPUT_PORTS_START( magix )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START	// IN2 - Player 2
+	PORT_START("P2")	// IN2 - Player 2
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)	// same as button1 !?
@@ -210,7 +210,7 @@ static INPUT_PORTS_START( magix )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 
-	PORT_START	// IN3 - DSW 1
+	PORT_START("DSW1")	// IN3 - DSW 1
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
@@ -233,7 +233,7 @@ static INPUT_PORTS_START( magix )
 	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_4C ) )
 
-	PORT_START	// IN4 - DSW 2
+	PORT_START("DSW2")	// IN4 - DSW 2
 	PORT_DIPNAME( 0x01, 0x01, "Title" )
 	PORT_DIPSETTING(    0x01, "Magix" )
 	PORT_DIPSETTING(    0x00, "Rock" )
@@ -268,7 +268,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( cannball )
 
-	PORT_START	// IN0 - Coins
+	PORT_START("SYSTEM")	// IN0 - Coins
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_START2   )
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -278,7 +278,7 @@ static INPUT_PORTS_START( cannball )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_COIN1    )
 
-	PORT_START	// IN1 - Player 1
+	PORT_START("P1")	// IN1 - Player 1
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
@@ -288,7 +288,7 @@ static INPUT_PORTS_START( cannball )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START	// IN2 - Player 2
+	PORT_START("P2")	// IN2 - Player 2
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
@@ -298,7 +298,7 @@ static INPUT_PORTS_START( cannball )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 
-	PORT_START	// IN3 - DSW 1
+	PORT_START("DSW1")	// IN3 - DSW 1
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
@@ -321,7 +321,7 @@ static INPUT_PORTS_START( cannball )
 	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_4C ) )
 
-	PORT_START	// IN4 - DSW 2
+	PORT_START("DSW2")	// IN4 - DSW 2
 	PORT_DIPNAME( 0x01, 0x01, "Unknown 2-0" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -354,7 +354,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( rocktris )
 
-	PORT_START	// IN0 - Coins
+	PORT_START("SYSTEM")	// IN0 - Coins
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_START2   )
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -364,7 +364,7 @@ static INPUT_PORTS_START( rocktris )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_COIN1    ) PORT_IMPULSE(1)
 
-	PORT_START	// IN1 - Player 1
+	PORT_START("P1")	// IN1 - Player 1
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)	// same as button1 !?
@@ -374,7 +374,7 @@ static INPUT_PORTS_START( rocktris )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START	// IN2 - Player 2
+	PORT_START("P2")	// IN2 - Player 2
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)	// same as button1 !?
@@ -384,7 +384,7 @@ static INPUT_PORTS_START( rocktris )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 
-	PORT_START	// IN3 - DSW 1
+	PORT_START("DSW1")	// IN3 - DSW 1
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
@@ -407,7 +407,7 @@ static INPUT_PORTS_START( rocktris )
 	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_4C ) )
 
-	PORT_START	// IN4 - DSW 2
+	PORT_START("DSW2")	// IN4 - DSW 2
 	PORT_DIPNAME( 0x01, 0x01, "Unknown 2-0" ) 	// the rest seems unused
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -469,8 +469,8 @@ static const gfx_layout layout_8x8x8 =
 };
 
 static GFXDECODE_START( yunsung8 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, layout_8x8x8, 0, 0x08 ) // [0] Tiles (Background)
-	GFXDECODE_ENTRY( REGION_GFX2, 0, layout_8x8x4, 0,	0x40 ) // [1] Tiles (Text)
+	GFXDECODE_ENTRY( "gfx1", 0, layout_8x8x8, 0, 0x08 ) // [0] Tiles (Background)
+	GFXDECODE_ENTRY( "gfx2", 0, layout_8x8x4, 0,	0x40 ) // [1] Tiles (Text)
 GFXDECODE_END
 
 
@@ -488,7 +488,7 @@ static void yunsung8_adpcm_int(running_machine *machine, int irq)
 {
 	static int toggle=0;
 
-	MSM5205_data_w (0,adpcm>>4);
+	msm5205_data_w (0,adpcm>>4);
 	adpcm<<=4;
 
 	toggle ^= 1;
@@ -496,7 +496,7 @@ static void yunsung8_adpcm_int(running_machine *machine, int irq)
 		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static const struct MSM5205interface yunsung8_msm5205_interface =
+static const msm5205_interface yunsung8_msm5205_interface =
 {
 	yunsung8_adpcm_int,	/* interrupt function */
 	MSM5205_S96_4B		/* 4KHz, 4 Bits */
@@ -506,13 +506,12 @@ static const struct MSM5205interface yunsung8_msm5205_interface =
 static MACHINE_DRIVER_START( yunsung8 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 8000000)			/* Z80B */
+	MDRV_CPU_ADD("main", Z80, 8000000)			/* Z80B */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(port_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	/* No nmi routine */
 
-	MDRV_CPU_ADD(Z80, 4000000)			/* ? */
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 4000000)			/* ? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	/* NMI caused by the MSM5205? */
 
@@ -535,11 +534,11 @@ static MACHINE_DRIVER_START( yunsung8 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM3812, 4000000)
+	MDRV_SOUND_ADD("ym", YM3812, 4000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 
-	MDRV_SOUND_ADD(MSM5205, 384000)
+	MDRV_SOUND_ADD("msm", MSM5205, 384000)
 	MDRV_SOUND_CONFIG(yunsung8_msm5205_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.80)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.80)
@@ -567,23 +566,23 @@ OSC : 16.000
 
 ROM_START( magix )
 
-	ROM_REGION( 0x24000+0x4000, REGION_CPU1, 0 )		/* Main Z80 Code */
+	ROM_REGION( 0x24000+0x4000, "main", 0 )		/* Main Z80 Code */
 	ROM_LOAD( "yunsung8.07", 0x00000, 0x0c000, CRC(d4d0b68b) SHA1(d7e1fb57a14f8b822791b98cecc6d5a053a89e0f) )
 	ROM_CONTINUE(         0x10000, 0x14000             )
 	/* $2000 bytes for bank 0 of video ram (text) */
 	/* $2000 bytes for bank 1 of video ram (background) */
 
-	ROM_REGION( 0x24000, REGION_CPU2, 0 )		/* Sound Z80 Code */
+	ROM_REGION( 0x24000, "audio", 0 )		/* Sound Z80 Code */
 	ROM_LOAD( "yunsung8.08", 0x00000, 0x0c000, CRC(6fd60be9) SHA1(87622dc2967842629e90a02b415bec86cc26cbc7) )
 	ROM_CONTINUE(         0x10000, 0x14000             )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )	/* Background */
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )	/* Background */
 	ROM_LOAD( "yunsung8.04",  0x000000, 0x80000, CRC(0a100d2b) SHA1(c36a2489748c8ac7b6d7457ad09d8153707c85be) )
 	ROM_LOAD( "yunsung8.03",  0x080000, 0x80000, CRC(c8cb0373) SHA1(339c4e0fef44da3cab615e07dc8739bd925ebf28) )
 	ROM_LOAD( "yunsung8.02",  0x100000, 0x80000, CRC(09efb8e5) SHA1(684bb5c4b579f8c77e79aab4decbefea495d9474) )
 	ROM_LOAD( "yunsung8.01",  0x180000, 0x80000, CRC(4590d782) SHA1(af875166207793572b9ecf01bb6a24feba562a96) )
 
-	ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE )	/* Text */
+	ROM_REGION( 0x40000, "gfx2", ROMREGION_DISPOSE )	/* Text */
 	ROM_LOAD( "yunsung8.05", 0x00000, 0x20000, CRC(862d378c) SHA1(a4e2cf14b5b25c6b8725dd285ddea65ce9ee257a) )	// only first $8000 bytes != 0
 	ROM_LOAD( "yunsung8.06", 0x20000, 0x20000, CRC(8b2ab901) SHA1(1a5c05dd0cf830b645357a62d8e6e876b44c6b7f) )	// only first $8000 bytes != 0
 
@@ -607,23 +606,23 @@ Cy7c384A
 
 ROM_START( cannball )
 
-	ROM_REGION( 0x24000+0x4000, REGION_CPU1, 0 )		/* Main Z80 Code */
+	ROM_REGION( 0x24000+0x4000, "main", 0 )		/* Main Z80 Code */
 	ROM_LOAD( "cannball.07", 0x00000, 0x0c000, CRC(17db56b4) SHA1(032e3dbde0b0e315dcb5f2b31f57e75e78818f2d) )
 	ROM_CONTINUE(            0x10000, 0x14000             )
 	/* $2000 bytes for bank 0 of video ram (text) */
 	/* $2000 bytes for bank 1 of video ram (background) */
 
-	ROM_REGION( 0x24000, REGION_CPU2, 0 )		/* Sound Z80 Code */
+	ROM_REGION( 0x24000, "audio", 0 )		/* Sound Z80 Code */
 	ROM_LOAD( "cannball.08", 0x00000, 0x0c000, CRC(11403875) SHA1(9f583bc4f08e7aef3fd0f3fe3f31cce1d226641a) )
 	ROM_CONTINUE(            0x10000, 0x14000             )
 
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )	/* Background */
+	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )	/* Background */
 	ROM_LOAD( "cannball.01",  0x000000, 0x40000, CRC(2d7785e4) SHA1(9911354c0be192506f8bfca3e85ede0bbc4828d5) )
 	ROM_LOAD( "cannball.02",  0x040000, 0x40000, CRC(24df387e) SHA1(5f4afe11feb367ca3b3c4f5eb37a6b6c4edb83bb) )
 	ROM_LOAD( "cannball.03",  0x080000, 0x40000, CRC(4d62f192) SHA1(8c60b9b4b36c13c2d145c49413580a10e71eb283) )
 	ROM_LOAD( "cannball.04",  0x0c0000, 0x40000, CRC(37cf8b12) SHA1(f93df8e0babe2c4ec996aa3c2a48bf40a5a02e62) )
 
-	ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE )	/* Text */
+	ROM_REGION( 0x40000, "gfx2", ROMREGION_DISPOSE )	/* Text */
 	ROM_LOAD( "cannball.05", 0x00000, 0x20000, CRC(87c1f1fa) SHA1(dbc568d2133734e41b69fd8d18b76531648b32ef) )
 	ROM_LOAD( "cannball.06", 0x20000, 0x20000, CRC(e722bee8) SHA1(3aed7df9df81a6776b6bf2f5b167965b0d689216) )
 
@@ -651,24 +650,24 @@ they jumpered the first position)
 
 ROM_START( rocktris )
 
-	ROM_REGION( 0x24000+0x4000, REGION_CPU1, 0 )		/* Main Z80 Code */
+	ROM_REGION( 0x24000+0x4000, "main", 0 )		/* Main Z80 Code */
 	ROM_LOAD( "cpu.bin",     0x00000, 0x0c000, CRC(46e3b79c) SHA1(81a587b9f986c4e39b1888ec6ed6b86d1469b9a0) )
 	ROM_CONTINUE(         0x10000, 0x14000             )
 	/* $2000 bytes for bank 0 of video ram (text) */
 	/* $2000 bytes for bank 1 of video ram (background) */
 
-	ROM_REGION( 0x24000, REGION_CPU2, 0 )		/* Sound Z80 Code */
+	ROM_REGION( 0x24000, "audio", 0 )		/* Sound Z80 Code */
 	ROM_LOAD( "cpu2.bin",    0x00000, 0x0c000, CRC(3a78a4cf) SHA1(f643c7a217cbb71f3a03f1f4a16545c546332819) )
 	ROM_CONTINUE(         0x10000, 0x14000             )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )	/* Background */
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )	/* Background */
 	ROM_LOAD( "gfx4.bin",     0x000000, 0x80000, CRC(abb49cac) SHA1(e2d766e950df398a8ec8b6888e128ffc3bdf1ce9) )
 	ROM_LOAD( "gfx3.bin",     0x080000, 0x80000, CRC(70a6ad52) SHA1(04cd58d3f885dd7c2fb1061f93d3ae3a418ad762) )
 	ROM_LOAD( "gfx2.bin",     0x100000, 0x80000, CRC(fcc9ec97) SHA1(1f09452988e3fa976b233e3b458c7a60977b76aa) )
 	ROM_LOAD( "gfx1.bin",     0x180000, 0x80000, CRC(4295034d) SHA1(9bdbbcdb46eb659a13b77c5bb26c9d8ad43731a7) )
 
 
-	ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE )	/* Text */
+	ROM_REGION( 0x40000, "gfx2", ROMREGION_DISPOSE )	/* Text */
 	ROM_LOAD( "gfx5.bin",     0x00000, 0x20000, CRC(058ee379) SHA1(57088bb02c56212979b9119b773eedc31af17e50) )
 	ROM_LOAD( "gfx6.bin",     0x20000, 0x20000, CRC(593cbd39) SHA1(4d60b5811118f3f22f6f3b300a4daec158456b72) )
 

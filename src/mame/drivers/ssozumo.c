@@ -34,7 +34,7 @@ static INTERRUPT_GEN( ssozumo_interrupt )
 {
 	static int coin;
 
-	if ((input_port_read_indexed(machine, 0) & 0xc0) != 0xc0)
+	if ((input_port_read(machine, "P1") & 0xc0) != 0xc0)
 	{
 		if (coin == 0)
 		{
@@ -62,10 +62,10 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x27ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x3000, 0x31ff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x4000, 0x4000) AM_READ(input_port_0_r)
-	AM_RANGE(0x4010, 0x4010) AM_READ(input_port_1_r)
-	AM_RANGE(0x4020, 0x4020) AM_READ(input_port_2_r)
-	AM_RANGE(0x4030, 0x4030) AM_READ(input_port_3_r)
+	AM_RANGE(0x4000, 0x4000) AM_READ_PORT("P1")
+	AM_RANGE(0x4010, 0x4010) AM_READ_PORT("P2")
+	AM_RANGE(0x4020, 0x4020) AM_READ_PORT("DSW2")
+	AM_RANGE(0x4030, 0x4030) AM_READ_PORT("DSW1")
 
 	AM_RANGE(0x6000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
@@ -101,18 +101,18 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x2002, 0x2002) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0x2003, 0x2003) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0x2004, 0x2004) AM_WRITE(DAC_0_signed_data_w)
+	AM_RANGE(0x2000, 0x2000) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x2001, 0x2001) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x2002, 0x2002) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x2003, 0x2003) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x2004, 0x2004) AM_WRITE(dac_0_signed_data_w)
 	AM_RANGE(0x2005, 0x2005) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x4000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( ssozumo )
-	PORT_START	/* IN0 */
+	PORT_START("P1")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -122,7 +122,7 @@ static INPUT_PORTS_START( ssozumo )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START	/* IN1 */
+	PORT_START("P2")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
@@ -132,7 +132,7 @@ static INPUT_PORTS_START( ssozumo )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START      /* DSW2 */
+	PORT_START("DSW2")	/* DSW2 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
@@ -158,7 +158,7 @@ static INPUT_PORTS_START( ssozumo )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START      /* DSW1 */
+	PORT_START("DSW1")	/* DSW1 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -224,21 +224,20 @@ static const gfx_layout spritelayout =
 
 
 static GFXDECODE_START( ssozumo )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,     0, 4 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout,   4*8, 4 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, spritelayout, 8*8, 2 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,     0, 4 )
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayout,   4*8, 4 )
+	GFXDECODE_ENTRY( "gfx3", 0, spritelayout, 8*8, 2 )
 GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( ssozumo )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, 1200000)	/* 1.2 MHz ???? */
+	MDRV_CPU_ADD("main", M6502, 1200000)	/* 1.2 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT("main", ssozumo_interrupt)
 
-	MDRV_CPU_ADD(M6502, 975000)
-	/* audio CPU */ 		/* 975 kHz ?? */
+	MDRV_CPU_ADD("audio", M6502, 975000) 		/* 975 kHz ?? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16)	/* IRQs are triggered by the main CPU */
 
@@ -260,20 +259,20 @@ static MACHINE_DRIVER_START( ssozumo )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay1", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay2", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END
 
 
 
 ROM_START( ssozumo )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	/* Main Program ROMs */
 	ROM_LOAD( "ic61.g01",	0x06000, 0x2000, CRC(86968f46) SHA1(6acd111b71fbb4ef00ae03be4fb93d305a6564e7) )	// m1
 	ROM_LOAD( "ic60.g11",	0x08000, 0x2000, CRC(1a5143dd) SHA1(19e36afcd0827f14f4360b55d952cc1af38327fd) )	// m2
@@ -281,7 +280,7 @@ ROM_START( ssozumo )
 	ROM_LOAD( "ic58.g31",	0x0c000, 0x2000, CRC(0ee43a78) SHA1(383a29a2dfdbd600dacf3885039759efab718a45) )	// m4
 	ROM_LOAD( "ic57.g41",	0x0e000, 0x2000, CRC(ac77aa4c) SHA1(36ee826327e4433bcdcb8d770fc6176f53d3eed0) )	// m5
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	/* Sound Program & Voice Sample ROMs*/
 	ROM_LOAD( "ic47.g50",	0x04000, 0x2000, CRC(b64ec829) SHA1(684f1c37c05fc3812f11e040fb96789c8abb987f) )	// a1
 	ROM_LOAD( "ic46.g60",	0x06000, 0x2000, CRC(630d7380) SHA1(aab3f034417a9712c8fa922946eda02751c9e319) )	// a2
@@ -290,19 +289,19 @@ ROM_START( ssozumo )
 	ROM_LOAD( "ic43.g90",	0x0c000, 0x2000, CRC(20262064) SHA1(2845efa458f4fd873b8559489bcee4b9d8e437c1) )	// a5
 	ROM_LOAD( "ic42.ga0",	0x0e000, 0x2000, CRC(98d7e998) SHA1(16bb3315db7d52531a3297e1255478aa1ebc32c2) )	// a6
 
-	ROM_REGION( 0x06000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x06000, "gfx1", ROMREGION_DISPOSE )
 	/* Character ROMs */
 	ROM_LOAD( "ic22.gq0",	0x00000, 0x2000, CRC(b4c7e612) SHA1(2d4f6f79b65aa27e00f173777959ec07e81ff15e) )	// c1
 	ROM_LOAD( "ic23.gr0",	0x02000, 0x2000, CRC(90bb9fda) SHA1(9c065a54330133e5afadcb2ae29add5e1005d977) )	// c2
 	ROM_LOAD( "ic21.gs0",	0x04000, 0x2000, CRC(d8cd5c78) SHA1(f1567850db649d2b7a029a5f71bbade25bb0393f) )	// c3
 
-	ROM_REGION( 0x06000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x06000, "gfx2", ROMREGION_DISPOSE )
 	/* tile set ROMs */
 	ROM_LOAD( "ic69.gt0",	0x00000, 0x2000, CRC(771116ca) SHA1(2d1c656315f57e1a142725e2d2034543cb3917ea) )	// t1
 	ROM_LOAD( "ic59.gu0",	0x02000, 0x2000, CRC(68035bfd) SHA1(da535ff6860f71c1780d4d9dfd1944e355234c5b) )	// t2
 	ROM_LOAD( "ic81.gv0",	0x04000, 0x2000, CRC(cdda1f9f) SHA1(d1f1b3e0578fd991c74d4a85313c5d37f08f1eee) )	// t3
 
-	ROM_REGION( 0x1e000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1e000, "gfx3", ROMREGION_DISPOSE )
 	/* sprites ROMs */
 	ROM_LOAD( "ic06.gg0",	0x00000, 0x2000, CRC(d2342c50) SHA1(f502b716d659d9fd3119dbb454296fe9e280fa5d) )	// s1a
 	ROM_LOAD( "ic05.gh0",	0x02000, 0x2000, CRC(14a3cb10) SHA1(7b6d63f43ebbe3c3aea7f2e04789cdb78cdd8495) )	// s1b
@@ -320,7 +319,7 @@ ROM_START( ssozumo )
 	ROM_LOAD( "ic41.ge0",	0x1a000, 0x2000, CRC(935578d0) SHA1(e9a9f439e0781627df076c454b16f5796ac991bc) )	// s3d
 	ROM_LOAD( "ic40.gf0",	0x1c000, 0x2000, CRC(5a3bf1ba) SHA1(6beebb7ac9c8baa3bbb5b0ebf6a6da768e52d1d3) )	// s3e
 
-	ROM_REGION( 0x0080, REGION_PROMS, 0 )
+	ROM_REGION( 0x0080, "proms", 0 )
 	ROM_LOAD( "ic33.gz0",	0x00000, 0x0020, CRC(523d29ad) SHA1(48d0ae83a07e4409a1def56772c5156e8d505749) )	/* char palette red and green components */
 	ROM_LOAD( "ic30.gz2",	0x00020, 0x0020, CRC(0de202e1) SHA1(ca1aa66c1d3d4724d322ec0346860c37729ddaed) )	/* tile palette red and green components */
 	ROM_LOAD( "ic32.gz1",	0x00040, 0x0020, CRC(6fbff4d2) SHA1(b2cd38fa8e9a74539b96d6e8e0375fff2dd77a20) )	/* char palette blue component */

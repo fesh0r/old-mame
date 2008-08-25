@@ -8,6 +8,38 @@ Supported:
 Puckman Pockimon - (c)2000 Genie? (there should be a way to show Sun Mixing copyright, roms are the same
                                    on a version with the SM (c)
 
+|---------------------------------------|
+| VOL    4558    4MHz   PAL     62256   |
+| YM3812 YM3014                         |
+| 3.579545MHz    555    PAL     |------||
+| LM324     M6295        |----| |TV16B ||
+|          ROM.U3   PAL  |YBOX| |      ||
+|J   PAL                 |----| |      ||
+|A         PAL      PAL         |------||
+|M         PAL      PAL  PAL            |
+|M         PAL      PAL     53.693175MHz|
+|A   DSW2                               |
+|          PAL      PAL    |------|     |
+|    DSW1                  |TA06SD|     |
+|          ROM.U5   ROM.U4 |      |     |
+|                          |------|     |
+|          ROM.U8   ROM.U7 62256  D41264|
+|          *        *      62256  D41264|
+|---------------------------------------|
+Notes:
+      Main CPU is 68000-based, but actual CPU chip is not known
+      Master clock 53.693175MHz. CPU likely running at 53.693175/7 or /6 (??)
+      YM3812 clock 3.579545MHz
+      M6295 clock 1.000MHz (4/4]. Sample rate = 1000000/132
+      VSync 60Hz
+      HSync 16.24kHz
+      62256 - 8k x8 SRAM (DIP28)
+      D41264 - NEC D41264V-15V 64k x4 VRAM (ZIP24)
+      * Unpopulated DIP32 socket
+      Custom ICs -
+                  Y-BOX TA891945 (QFP100)
+                  TA-06SD 9933 B816453 (QFP128)
+                  TV16B 0010 ME251271 (QFP160)
 */
 
 #include "driver.h"
@@ -18,7 +50,7 @@ Puckman Pockimon - (c)2000 Genie? (there should be a way to show Sun Mixing copy
 static UINT16* main_ram;
 
 static INPUT_PORTS_START( puckpkmn ) /* Puckman Pockimon Input Ports */
-	PORT_START_TAG("P2")	/* Player 2 Controls ($700011.b) */
+	PORT_START("P2")	/* Player 2 Controls ($700011.b) */
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_START2 )
@@ -28,7 +60,7 @@ static INPUT_PORTS_START( puckpkmn ) /* Puckman Pockimon Input Ports */
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 
-	PORT_START_TAG("P1")	/* Player 1 Controls ($700013.b) */
+	PORT_START("P1")	/* Player 1 Controls ($700013.b) */
 	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(10)
 	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -38,9 +70,9 @@ static INPUT_PORTS_START( puckpkmn ) /* Puckman Pockimon Input Ports */
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 
-	PORT_START_TAG("IN0")	/* ? ($700015.b) */
+	PORT_START("IN0")	/* ? ($700015.b) */
 
-	PORT_START_TAG("DSW1")	/* DSW 1 ($700017.b) */
+	PORT_START("DSW1")	/* DSW 1 ($700017.b) */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 4C_1C ) )
@@ -65,7 +97,7 @@ static INPUT_PORTS_START( puckpkmn ) /* Puckman Pockimon Input Ports */
 	PORT_DIPSETTING(    0x40, DEF_STR( Hard )    )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 
-	PORT_START_TAG("DSW2")	/* DSW 1 ($700019.b) */
+	PORT_START("DSW2")	/* DSW 1 ($700019.b) */
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -92,7 +124,7 @@ INPUT_PORTS_END
 
 static READ16_HANDLER( puckpkmn_YM3438_r )
 {
-	return	YM3438_status_port_0_A_r(machine, 0) << 8;
+	return	ym3438_status_port_0_a_r(machine, 0) << 8;
 }
 
 static WRITE16_HANDLER( puckpkmn_YM3438_w )
@@ -100,12 +132,12 @@ static WRITE16_HANDLER( puckpkmn_YM3438_w )
 	switch (offset)
 	{
 		case 0:
-			if (ACCESSING_BITS_8_15)	YM3438_control_port_0_A_w	(machine, 0,	(data >> 8) & 0xff);
-			else 				YM3438_data_port_0_A_w		(machine, 0,	(data >> 0) & 0xff);
+			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_a_w	(machine, 0,	(data >> 8) & 0xff);
+			else 				ym3438_data_port_0_a_w		(machine, 0,	(data >> 0) & 0xff);
 			break;
 		case 1:
-			if (ACCESSING_BITS_8_15)	YM3438_control_port_0_B_w	(machine, 0,	(data >> 8) & 0xff);
-			else 				YM3438_data_port_0_B_w		(machine, 0,	(data >> 0) & 0xff);
+			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_b_w	(machine, 0,	(data >> 8) & 0xff);
+			else 				ym3438_data_port_0_b_w		(machine, 0,	(data >> 0) & 0xff);
 			break;
 	}
 }
@@ -118,7 +150,7 @@ static ADDRESS_MAP_START( puckpkmn_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x700014, 0x700015) AM_READ(input_port_2_word_r)		/* Input (?) */
 	AM_RANGE(0x700016, 0x700017) AM_READ(input_port_3_word_r)		/* Input (DSW1) */
 	AM_RANGE(0x700018, 0x700019) AM_READ(input_port_4_word_r)		/* Input (DSW2) */
-	AM_RANGE(0x700022, 0x700023) AM_READ(OKIM6295_status_0_lsb_r)	/* M6295 Sound Chip Status Register */
+	AM_RANGE(0x700022, 0x700023) AM_READ(okim6295_status_0_lsb_r)	/* M6295 Sound Chip Status Register */
 	AM_RANGE(0xa04000, 0xa04001) AM_READ(puckpkmn_YM3438_r)			/* Ym3438 Sound Chip Status Register */
 	AM_RANGE(0xc00000, 0xc0001f) AM_READ(genesis_vdp_r)				/* VDP Access */
 	AM_RANGE(0xe00000, 0xe1ffff) AM_READ(SMH_BANK1)				/* VDP sees the roms here */
@@ -133,7 +165,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( puckpkmn_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)					/* Main 68k Program Roms */
-	AM_RANGE(0x700022, 0x700023) AM_WRITE(OKIM6295_data_0_lsb_w)		/* M6295 Sound Chip Writes */
+	AM_RANGE(0x700022, 0x700023) AM_WRITE(okim6295_data_0_lsb_w)		/* M6295 Sound Chip Writes */
 	AM_RANGE(0xa04000, 0xa04003) AM_WRITE(puckpkmn_YM3438_w)			/* Ym3438 Sound Chip Writes */
 	AM_RANGE(0xc00000, 0xc0001f) AM_WRITE(genesis_vdp_w)				/* VDP Access */
 	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM) AM_BASE(&main_ram)		/* Main Ram */
@@ -148,7 +180,7 @@ static ADDRESS_MAP_START( puckpkmn_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 
-static const struct YM3438interface ym3438_intf =
+static const ym3438_interface ym3438_intf =
 {
 	genesis_irq2_interrupt		/* IRQ handler */
 };
@@ -156,7 +188,7 @@ static const struct YM3438interface ym3438_intf =
 static MACHINE_DRIVER_START( puckpkmn )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main",M68000, MASTER_CLOCK/7) 		/*???*/
+	MDRV_CPU_ADD("main",M68000, MASTER_CLOCK/7) 		/*???*/
 	MDRV_CPU_PROGRAM_MAP(puckpkmn_readmem,puckpkmn_writemem)
 	MDRV_CPU_VBLANK_INT("main", genesis_vblank_interrupt)
 
@@ -179,17 +211,17 @@ static MACHINE_DRIVER_START( puckpkmn )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3438, MASTER_CLOCK/7)
+	MDRV_SOUND_ADD("ym", YM3438, MASTER_CLOCK/7)
 	MDRV_SOUND_CONFIG(ym3438_intf)
 	MDRV_SOUND_ROUTE(0, "mono", 0.50)
 	MDRV_SOUND_ROUTE(1, "mono", 0.50)
 
-	MDRV_SOUND_ADD(SN76496, MASTER_CLOCK/15)
+	MDRV_SOUND_ADD("sn", SN76496, MASTER_CLOCK/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* sound hardware */
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
@@ -269,25 +301,25 @@ Screenshots available on my site at http://unemulated.emuunlim.com (under PCB Sh
 
 static DRIVER_INIT( puckpkmn )
 {
-	UINT8 *rom	=	memory_region(machine, REGION_CPU1);
-	size_t len		=	memory_region_length(machine, REGION_CPU1);
+	UINT8 *rom	=	memory_region(machine, "main");
+	size_t len		=	memory_region_length(machine, "main");
 	int i;
 
 	for (i = 0; i < len; i++)
 		rom[i] = BITSWAP8(rom[i],1,4,2,0,7,5,3,6);
 
-	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) );	// VDP reads the roms from here
+	memory_set_bankptr(1, memory_region(machine, "main") );	// VDP reads the roms from here
 	memory_set_bankptr(2, main_ram );						// VDP reads the ram from here
 }
 
 ROM_START( puckpkmn ) /* Puckman Pockimon  (c)2000 Genie */
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )
+	ROM_REGION( 0x200000, "main", 0 )
 	ROM_LOAD16_BYTE( "puckpoke.u5", 0x000000, 0x080000, CRC(fd334b91) SHA1(cf8bf6645a4082ea4392937e169b1686c9c7e246) )
 	ROM_LOAD16_BYTE( "puckpoke.u4", 0x000001, 0x080000, CRC(839cc76b) SHA1(e15662a7175db7a8e222dda176a8ed92e0d56e9d) )
 	ROM_LOAD16_BYTE( "puckpoke.u8", 0x100000, 0x080000, CRC(7936bec8) SHA1(4b350105abe514fbfeabae1c6f3aeee695c3d07a) )
 	ROM_LOAD16_BYTE( "puckpoke.u7", 0x100001, 0x080000, CRC(96b66bdf) SHA1(3cc2861ad9bc232cbe683e01b58090f832d03db5) )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x40000, "oki", 0 )
 	ROM_LOAD( "puckpoke.u3", 0x00000, 0x40000, CRC(7b066bac) SHA1(429616e21c672b07e0705bc63234249cac3af56f) )
 ROM_END
 

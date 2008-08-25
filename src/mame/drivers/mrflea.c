@@ -84,8 +84,8 @@ static const gfx_layout sprite_layout = {
 };
 
 static GFXDECODE_START( mrflea )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, sprite_layout,	0x10, 1 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tile_layout,		0x00, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, sprite_layout,	0x10, 1 )
+	GFXDECODE_ENTRY( "gfx2", 0, tile_layout,		0x00, 1 )
 GFXDECODE_END
 
 /*******************************************************/
@@ -242,21 +242,21 @@ static ADDRESS_MAP_START( readport_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static WRITE8_HANDLER( mrflea_data0_w ){
-	AY8910_control_port_0_w( machine, offset, mrflea_select0 );
-	AY8910_write_port_0_w( machine, offset, data );
+	ay8910_control_port_0_w( machine, offset, mrflea_select0 );
+	ay8910_write_port_0_w( machine, offset, data );
 }
 
 static WRITE8_HANDLER( mrflea_data1_w ){
 }
 
 static WRITE8_HANDLER( mrflea_data2_w ){
-	AY8910_control_port_1_w( machine, offset, mrflea_select2 );
-	AY8910_write_port_1_w( machine, offset, data );
+	ay8910_control_port_1_w( machine, offset, mrflea_select2 );
+	ay8910_write_port_1_w( machine, offset, data );
 }
 
 static WRITE8_HANDLER( mrflea_data3_w ){
-	AY8910_control_port_2_w( machine, offset, mrflea_select3 );
-	AY8910_write_port_2_w( machine, offset, data );
+	ay8910_control_port_2_w( machine, offset, mrflea_select3 );
+	ay8910_write_port_2_w( machine, offset, data );
 }
 
 static ADDRESS_MAP_START( writeport_io, ADDRESS_SPACE_IO, 8 )
@@ -279,12 +279,12 @@ ADDRESS_MAP_END
 static MACHINE_DRIVER_START( mrflea )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000) /* 4 MHz? */
+	MDRV_CPU_ADD("main", Z80, 4000000) /* 4 MHz? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* NMI resets the game */
 
-	MDRV_CPU_ADD(Z80, 6000000)
+	MDRV_CPU_ADD("sub", Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(readmem_io,writemem_io)
 	MDRV_CPU_IO_MAP(readport_io,writeport_io)
 	MDRV_CPU_VBLANK_INT_HACK(mrflea_io_interrupt,2)
@@ -308,18 +308,18 @@ static MACHINE_DRIVER_START( mrflea )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay1", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay2", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay3", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
 ROM_START( mrflea )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code; main CPU */
+	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code; main CPU */
 	ROM_LOAD( "cpu_d1",	0x0000, 0x2000, CRC(d286217c) SHA1(d750d64bb70f735a38b737881abb9a5fbde1c98c) )
 	ROM_LOAD( "cpu_d3",	0x2000, 0x2000, CRC(95cf94bc) SHA1(dd0a51d79b0b28952e6177f36af93f296b3cd954) )
 	ROM_LOAD( "cpu_d5",	0x4000, 0x2000, CRC(466ca77e) SHA1(513f41a888166a057d28bdc572571a713d77ae5f) )
@@ -327,12 +327,12 @@ ROM_START( mrflea )
 	ROM_LOAD( "cpu_b3",	0x8000, 0x2000, CRC(f55b01e4) SHA1(93689fa02aab9d1f1acd55b305eafe542ee447b8) )
 	ROM_LOAD( "cpu_b5",	0xa000, 0x2000, CRC(79f560aa) SHA1(7326693d7369682f5770bf80df0181d603212900) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code; IO CPU */
+	ROM_REGION( 0x10000, "sub", 0 ) /* Z80 code; IO CPU */
 	ROM_LOAD( "io_a11",	0x0000, 0x1000, CRC(7a20c3ee) SHA1(8e0d5770881e6d3d1df17a2ede5a8823ca9d78e3) )
 	ROM_LOAD( "io_c11",	0x2000, 0x1000, CRC(8d26e0c8) SHA1(e90e37bd64e991dc47ab80394337073c69b450da) )
 	ROM_LOAD( "io_d11",	0x3000, 0x1000, CRC(abd9afc0) SHA1(873314164707ee84739ec76c6119a65a17001620) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, 0 ) /* sprites */
+	ROM_REGION( 0x10000, "gfx1", 0 ) /* sprites */
 	ROM_LOAD( "vd_l10",	0x0000, 0x2000, CRC(48b2adf9) SHA1(91390cdbd8df610edec87c1681db1576e2f3c58d) )
 	ROM_LOAD( "vd_l11",	0x2000, 0x2000, CRC(2ff168c0) SHA1(e24b6a33e9ce50771983db8b8de7e79a1e87929c) )
 	ROM_LOAD( "vd_l6",	0x4000, 0x2000, CRC(100158ca) SHA1(83a619e5897a2b379eb7a72fde3e1bc08b7a34c4) )
@@ -342,7 +342,7 @@ ROM_START( mrflea )
 	ROM_LOAD( "vd_j6",	0xc000, 0x2000, CRC(2b4b110e) SHA1(37644113b2ce7bd525697ebb2fc8cb295c228a60) )
 	ROM_LOAD( "vd_j7",	0xe000, 0x2000, CRC(3a3c8b1e) SHA1(5991d80990212ffe92c546b0e4b4e01c68fdd0cd) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, 0 ) /* characters */
+	ROM_REGION( 0x10000, "gfx2", 0 ) /* characters */
 	ROM_LOAD( "vd_k1",	0x0000, 0x2000, CRC(7540e3a7) SHA1(e292e7ec47eaefee8bec1585ec33ea4e6cb64e81) )
 	ROM_LOAD( "vd_k2",	0x2000, 0x2000, CRC(6c688219) SHA1(323640b99d9e39b327f500ff2ae6a7f8d0da3ada) )
 	ROM_LOAD( "vd_k3",	0x4000, 0x2000, CRC(15e96f3c) SHA1(e57a219666dd440909d3fb75d9a5708cbb904389) )
@@ -354,7 +354,7 @@ ROM_START( mrflea )
 ROM_END
 
 static INPUT_PORTS_START( mrflea )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
@@ -364,12 +364,12 @@ static INPUT_PORTS_START( mrflea )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x03, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW1")		/* DSW1 */
+	PORT_START("DSW1")		/* DSW1 */
 /*
     ------xx
     -----x--
@@ -399,7 +399,7 @@ static INPUT_PORTS_START( mrflea )
 	PORT_DIPSETTING( 0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")		/* DSW2 */
+	PORT_START("DSW2")		/* DSW2 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING( 0x02, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING( 0x03, DEF_STR( 1C_1C ) )

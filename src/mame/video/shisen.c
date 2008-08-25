@@ -14,7 +14,7 @@ WRITE8_HANDLER( sichuan2_bankswitch_w )
 {
 	int bankaddress;
 	int bank;
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 
 	if (data & 0xc0) logerror("bank switch %02x\n",data);
 
@@ -60,6 +60,12 @@ VIDEO_START( sichuan2 )
 
 VIDEO_UPDATE( sichuan2 )
 {
+	// on Irem boards, screen flip is handled in both hardware and software.
+	// this game doesn't have cocktail mode so if there's software control we don't
+	// know where it is mapped.
+	flip_screen_set(~input_port_read(screen->machine, "DSW2") & 1);
+
+
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	return 0;
 }

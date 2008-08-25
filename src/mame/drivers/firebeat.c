@@ -883,9 +883,9 @@ static void atapi_init(running_machine *machine)
 	atapi_cdata_wait = 0;
 
 	// allocate two SCSI CD-ROM devices
-	SCSIAllocInstance( SCSI_DEVICE_CDROM, &atapi_device_data[0], 0 );
+	SCSIAllocInstance( SCSI_DEVICE_CDROM, &atapi_device_data[0], "scsi0" );
 	// TODO: the slave drive can be either CD-ROM, DVD-ROM or HDD
-	SCSIAllocInstance( SCSI_DEVICE_CDROM, &atapi_device_data[1], 1 );
+	SCSIAllocInstance( SCSI_DEVICE_CDROM, &atapi_device_data[1], "scsi1" );
 	add_exit_callback(machine, atapi_exit);
 }
 
@@ -1338,11 +1338,11 @@ static READ32_HANDLER( sound_r )
 
 	if (ACCESSING_BITS_24_31)	/* External RAM read */
 	{
-		r |= YMZ280B_data_0_r(machine, offset) << 24;
+		r |= ymz280b_data_0_r(machine, offset) << 24;
 	}
 	if (ACCESSING_BITS_16_23)
 	{
-		r |= YMZ280B_status_0_r(machine, offset) << 16;
+		r |= ymz280b_status_0_r(machine, offset) << 16;
 	}
 
 	return r;
@@ -1353,11 +1353,11 @@ static WRITE32_HANDLER( sound_w )
 //  printf("sound_w: %08X, %08X, %08X\n", offset, data, mem_mask);
 	if (ACCESSING_BITS_24_31)
 	{
-		YMZ280B_register_0_w(machine, offset, (data >> 24) & 0xff);
+		ymz280b_register_0_w(machine, offset, (data >> 24) & 0xff);
 	}
 	if (ACCESSING_BITS_16_23)
 	{
-		YMZ280B_data_0_w(machine, offset, (data >> 16) & 0xff);
+		ymz280b_data_0_w(machine, offset, (data >> 16) & 0xff);
 	}
 }
 
@@ -1792,7 +1792,7 @@ static ADDRESS_MAP_START( firebeat_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x7e800100, 0x7e8001ff) AM_READWRITE(gcu1_r, gcu1_w)
 	AM_RANGE(0x7fe00000, 0x7fe0000f) AM_READWRITE(atapi_command_r, atapi_command_w)
 	AM_RANGE(0x7fe80000, 0x7fe8000f) AM_READWRITE(atapi_control_r, atapi_control_w)
-	AM_RANGE(0x7ff80000, 0x7fffffff) AM_ROM AM_REGION(REGION_USER1, 0)		/* System BIOS */
+	AM_RANGE(0x7ff80000, 0x7fffffff) AM_ROM AM_REGION("user1", 0)		/* System BIOS */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( spu_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1824,9 +1824,8 @@ static void sound_irq_callback(running_machine *machine, int state)
 {
 }
 
-static const struct YMZ280Binterface ymz280b_intf =
+static const ymz280b_interface ymz280b_intf =
 {
-	REGION_SOUND1,
 	sound_irq_callback,			// irq
 	soundram_r,
 	soundram_w,
@@ -1854,7 +1853,7 @@ static NVRAM_HANDLER(firebeat)
 }
 
 static INPUT_PORTS_START(ppp)
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )			// Left
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )			// Right
 	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW) 			// Test
@@ -1863,22 +1862,22 @@ static INPUT_PORTS_START(ppp)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START1 )				// Start / Ok
 	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* Dip switches */
 
 	// ParaParaParadise has 24 sensors, grouped into groups of 3 for each sensor bar
 	// Sensors 15...23 are only used by the Korean version of PPP, which has 8 sensor bars
 
-	PORT_START_TAG("SENSOR1")
+	PORT_START("SENSOR1")
 	PORT_BIT( 0x00070000, IP_ACTIVE_HIGH, IPT_BUTTON3 )		// Sensor 0, 1, 2  (Sensor bar 1)
 	PORT_BIT( 0x00380000, IP_ACTIVE_HIGH, IPT_BUTTON4 )		// Sensor 3, 4, 5  (Sensor bar 2)
 	PORT_BIT( 0x00c00001, IP_ACTIVE_HIGH, IPT_BUTTON5 )		// Sensor 6, 7, 8  (Sensor bar 3)
 	PORT_BIT( 0x0000000e, IP_ACTIVE_HIGH, IPT_BUTTON6 )		// Sensor 9, 10,11 (Sensor bar 4)
 
-	PORT_START_TAG("SENSOR2")
+	PORT_START("SENSOR2")
 	PORT_BIT( 0x00070000, IP_ACTIVE_HIGH, IPT_BUTTON7 )		// Sensor 12,13,14 (Sensor bar 5)
 	PORT_BIT( 0x00380000, IP_ACTIVE_HIGH, IPT_BUTTON8 )		// Sensor 15,16,17 (Sensor bar 6)   (unused by PPP)
 	PORT_BIT( 0x00c00001, IP_ACTIVE_HIGH, IPT_BUTTON9 )		// Sensor 18,19,20 (Sensor bar 7)   (unused by PPP)
@@ -1887,7 +1886,7 @@ static INPUT_PORTS_START(ppp)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START(kbm)
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )				// Start P1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )				// Start P2
 	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW) 			// Test
@@ -1895,20 +1894,20 @@ static INPUT_PORTS_START(kbm)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )				// Coin
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )			// e-Amusement
 	PORT_BIT( 0xfe, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* Dip switches */
 
-	PORT_START_TAG("WHEEL_P1")			// Keyboard modulation wheel (P1)
+	PORT_START("WHEEL_P1")			// Keyboard modulation wheel (P1)
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE_V ) PORT_MINMAX(0xff, 0x00) PORT_SENSITIVITY(30) PORT_KEYDELTA(10)
 
-	PORT_START_TAG("WHEEL_P2")			// Keyboard modulation wheel (P2)
+	PORT_START("WHEEL_P2")			// Keyboard modulation wheel (P2)
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE_V ) PORT_MINMAX(0xff, 0x00) PORT_SENSITIVITY(30) PORT_KEYDELTA(10)
 
-	PORT_START_TAG("KEYBOARD_P1")
+	PORT_START("KEYBOARD_P1")
 	PORT_BIT( 0x000001, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("P1 C1") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x000002, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("P1 C1#") PORT_CODE(KEYCODE_W)
 	PORT_BIT( 0x000004, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("P1 D1") PORT_CODE(KEYCODE_E)
@@ -1934,7 +1933,7 @@ static INPUT_PORTS_START(kbm)
 	PORT_BIT( 0x400000, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("P1 A2#") PORT_CODE(KEYCODE_B)
 	PORT_BIT( 0x800000, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("P1 B2") PORT_CODE(KEYCODE_N)
 
-	PORT_START_TAG("KEYBOARD_P2")
+	PORT_START("KEYBOARD_P2")
 	PORT_BIT( 0x000001, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("P2 C1") PORT_CODE(KEYCODE_Q)
 	PORT_BIT( 0x000002, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("P2 C1#") PORT_CODE(KEYCODE_W)
 	PORT_BIT( 0x000004, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("P2 D1") PORT_CODE(KEYCODE_E)
@@ -1963,7 +1962,7 @@ static INPUT_PORTS_START(kbm)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START(popn)
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )			// Switch 1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )			// Switch 2
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 )			// Switch 3
@@ -1973,7 +1972,7 @@ static INPUT_PORTS_START(popn)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON7 )			// Switch 7
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON8 )			// Switch 8
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON9 )			// Switch 9
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )				// Coin
@@ -1983,7 +1982,7 @@ static INPUT_PORTS_START(popn)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service") PORT_CODE(KEYCODE_7)		// Service
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* Dip switches */
 
 INPUT_PORTS_END
@@ -2003,7 +2002,7 @@ static MACHINE_RESET( firebeat )
 {
 	void *cd;
 	int i;
-	UINT8 *sound = memory_region(machine, REGION_SOUND1);
+	UINT8 *sound = memory_region(machine, "ymz");
 
 	for (i=0; i < 0x200000; i++)
 	{
@@ -2018,7 +2017,7 @@ static MACHINE_RESET( firebeat )
 static MACHINE_DRIVER_START(firebeat)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC403GCX, 66000000)
+	MDRV_CPU_ADD("main", PPC403GCX, 66000000)
 	MDRV_CPU_PROGRAM_MAP(firebeat_map, 0)
 	MDRV_CPU_VBLANK_INT("main", firebeat_interrupt)
 
@@ -2043,12 +2042,12 @@ static MACHINE_DRIVER_START(firebeat)
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YMZ280B, 16934400)
+	MDRV_SOUND_ADD("ymz", YMZ280B, 16934400)
 	MDRV_SOUND_CONFIG(ymz280b_intf)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
-	MDRV_SOUND_ADD(CDDA, 0)
+	MDRV_SOUND_ADD("cdda", CDDA, 0)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
@@ -2057,7 +2056,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(firebeat2)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC403GCX, 66000000)
+	MDRV_CPU_ADD("main", PPC403GCX, 66000000)
 	MDRV_CPU_PROGRAM_MAP(firebeat_map, 0)
 	MDRV_CPU_VBLANK_INT("left", firebeat_interrupt)
 
@@ -2088,12 +2087,12 @@ static MACHINE_DRIVER_START(firebeat2)
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YMZ280B, 16934400)
+	MDRV_SOUND_ADD("ymz", YMZ280B, 16934400)
 	MDRV_SOUND_CONFIG(ymz280b_intf)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
-	MDRV_SOUND_ADD(CDDA, 0)
+	MDRV_SOUND_ADD("cdda", CDDA, 0)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
@@ -2102,7 +2101,7 @@ static MACHINE_DRIVER_START(firebeat_spu)
 
 	MDRV_IMPORT_FROM(firebeat)
 
-	MDRV_CPU_ADD(M68000, 16000000)
+	MDRV_CPU_ADD("audio", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(spu_map, 0)
 
 MACHINE_DRIVER_END
@@ -2274,7 +2273,7 @@ static void init_lights(running_machine *machine, write32_machine_func out1, wri
 
 static void init_firebeat(running_machine *machine)
 {
-	UINT8 *rom = memory_region(machine, REGION_USER2);
+	UINT8 *rom = memory_region(machine, "user2");
 
 	atapi_init(machine);
 	intelflash_init(0, FLASH_FUJITSU_29F016A, NULL);
@@ -2333,104 +2332,116 @@ static DRIVER_INIT(kbm)
 /*****************************************************************************/
 
 ROM_START( ppp )
-	ROM_REGION32_BE(0x80000, REGION_USER1, 0)
+	ROM_REGION32_BE(0x80000, "user1", 0)
 	ROM_LOAD16_WORD_SWAP("977jaa03.e21", 0x00000, 0x80000, CRC(7b83362a) SHA1(2857a93be58636c10a8d180dbccf2caeeaaff0e2))
 
-	ROM_REGION(0x400000, REGION_SOUND1, ROMREGION_ERASE00)
+	ROM_REGION(0x400000, "ymz", ROMREGION_ERASE00)
 
-	ROM_REGION(0xc0, REGION_USER2, 0)	// Security dongle
+	ROM_REGION(0xc0, "user2", 0)	// Security dongle
 	ROM_LOAD("gq977-ja", 0x00, 0xc0, BAD_DUMP CRC(55b5abdb) SHA1(d8da5bac005235480a1815bd0a79c3e8a63ebad1))
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "scsi0" )
 	DISK_IMAGE_READONLY( "977jaa01", 0, MD5(9abc766b72dab28db920f3d264fc2254) SHA1(05bce40c3b241cd1f634d6688ec179a86f57da9f) )
 
 	// TODO: the audio CD is not dumped
 ROM_END
 
 ROM_START( kbm )
-	ROM_REGION32_BE(0x80000, REGION_USER1, 0)
+	ROM_REGION32_BE(0x80000, "user1", 0)
 	ROM_LOAD16_WORD_SWAP("974a03.e21", 0x00000, 0x80000, CRC(ef9a932d) SHA1(6299d3b9823605e519dbf1f105b59a09197df72f))
 
-	ROM_REGION(0x400000, REGION_SOUND1, ROMREGION_ERASE00)
+	ROM_REGION(0x400000, "ymz", ROMREGION_ERASE00)
 
-	ROM_REGION(0xc0, REGION_USER2, ROMREGION_ERASE00)	// Security dongle
+	ROM_REGION(0xc0, "user2", ROMREGION_ERASE00)	// Security dongle
 	ROM_LOAD("gq974-ja", 0x00, 0xc0, BAD_DUMP CRC(4578f29b) SHA1(faaeaf6357c1e86e898e7017566cfd2fc7ee3d6f))
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "scsi0" )
 	DISK_IMAGE_READONLY( "974jac01", 0, SHA1(18179bf23519d5b0c82c72e8f47dfaa4d2c4a3e2) MD5(cb68cf69e55aa33429f149f474e2c96e) )
+
+	DISK_REGION( "scsi1" )
 	DISK_IMAGE_READONLY( "974jaa02", 1, SHA1(8d78a91d98967a232c4b98628e2db25df0a7f8bd) MD5(5cb0100791294559fedccc2a9a46fd86) )
 ROM_END
 
 ROM_START( kbm2nd )
-	ROM_REGION32_BE(0x80000, REGION_USER1, 0)
+	ROM_REGION32_BE(0x80000, "user1", 0)
 	ROM_LOAD16_WORD_SWAP("974a03.e21", 0x00000, 0x80000, CRC(ef9a932d) SHA1(6299d3b9823605e519dbf1f105b59a09197df72f))
 
-	ROM_REGION(0x400000, REGION_SOUND1, ROMREGION_ERASE00)
+	ROM_REGION(0x400000, "ymz", ROMREGION_ERASE00)
 
-	ROM_REGION(0xc0, REGION_USER2, ROMREGION_ERASE00)	// Security dongle
+	ROM_REGION(0xc0, "user2", ROMREGION_ERASE00)	// Security dongle
 	ROM_LOAD("gca01-ja", 0x00, 0xc0, BAD_DUMP CRC(2bda339d) SHA1(031cb3f44e7a89cd62a9ba948f3d19d53a325abd))
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "scsi0" )
 	DISK_IMAGE_READONLY( "a01jaa01", 0, SHA1(87c21dc6b9fe8d9f696985cfd9dc14a23f0932fe) MD5(0eff2ca8ebef1fd8815d1d7cb0c2383a) )
+
+	DISK_REGION( "scsi1" )
 	DISK_IMAGE_READONLY( "a01jaa02", 1, SHA1(fabfcc02f97c867c361df7b9539e6b77f369b73f) MD5(25679474e987d0dd83a0db2bad24bc14) )
 ROM_END
 
 ROM_START( kbm3rd )
-	ROM_REGION32_BE(0x80000, REGION_USER1, 0)
+	ROM_REGION32_BE(0x80000, "user1", 0)
 	ROM_LOAD16_WORD_SWAP("974a03.e21", 0x00000, 0x80000, CRC(ef9a932d) SHA1(6299d3b9823605e519dbf1f105b59a09197df72f))
 
-	ROM_REGION(0x400000, REGION_SOUND1, ROMREGION_ERASE00)
+	ROM_REGION(0x400000, "ymz", ROMREGION_ERASE00)
 
-	ROM_REGION(0xc0, REGION_USER2, 0)	// Security dongle
+	ROM_REGION(0xc0, "user2", 0)	// Security dongle
 	ROM_LOAD("gca12-ja", 0x00, 0xc0, BAD_DUMP CRC(cf01dc15) SHA1(da8d208233487ebe65a0a9826fc72f1f459baa26))
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "scsi0" )
 	DISK_IMAGE_READONLY( "a12jaa01", 0, MD5(130a11bd229d9c30bd6d9ffeaf94926e) SHA1(6b595b17260b0ca17d04d7911616d5ff88158f26) )
+
+	DISK_REGION( "scsi1" )
 	DISK_IMAGE_READONLY( "a12jaa02", 1, MD5(10ff654cf3d9b833ecbe72a395e7bb60) SHA1(4adddc8e028111169889bfb99007238da5f4d330) )
 ROM_END
 
 ROM_START( popn7 )
-	ROM_REGION32_BE(0x80000, REGION_USER1, 0)
+	ROM_REGION32_BE(0x80000, "user1", 0)
 	ROM_LOAD16_WORD_SWAP("a02jaa03.e21", 0x00000, 0x80000, CRC(43ecc093) SHA1(637df5b546cf7409dd4752dc471674fe2a046599))
 
-	ROM_REGION(0x400000, REGION_SOUND1, ROMREGION_ERASE00)
+	ROM_REGION(0x400000, "ymz", ROMREGION_ERASE00)
 
-	ROM_REGION(0xc0, REGION_USER2, ROMREGION_ERASE00)	// Security dongle
+	ROM_REGION(0xc0, "user2", ROMREGION_ERASE00)	// Security dongle
 	ROM_LOAD("gcb00-ja", 0x00, 0xc0, BAD_DUMP CRC(cc28625a) SHA1(e7de79ae72fdbd22328c9de74dfa17b5e6ae43b6))
 
-	ROM_REGION(0x80000, REGION_CPU2, 0)			// SPU 68K program
+	ROM_REGION(0x80000, "audio", 0)			// SPU 68K program
 	ROM_LOAD16_WORD_SWAP("a02jaa04.3q", 0x00000, 0x80000, CRC(8c6000dd) SHA1(94ab2a66879839411eac6c673b25143d15836683))
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "scsi0" )
 	DISK_IMAGE_READONLY( "b00jab01", 0, SHA1(7462586f67b5c3b015ac581ad0afc089fcd6f537) MD5(af9a249b23783d53ff27ea7dc7e6735c) )
+
+	DISK_REGION( "scsi1" )
 	DISK_IMAGE_READONLY( "b00jaa02", 1, SHA1(fea9439f14304d865830fb34f8781346d95a1df7) MD5(cf4c4f7c2321fcca6d86e8c144261752) )
 ROM_END
 
 ROM_START( ppd )
-	ROM_REGION32_BE(0x80000, REGION_USER1, 0)
+	ROM_REGION32_BE(0x80000, "user1", 0)
 	ROM_LOAD16_WORD_SWAP("977jaa03.e21", 0x00000, 0x80000, CRC(7b83362a) SHA1(2857a93be58636c10a8d180dbccf2caeeaaff0e2))
 
-	ROM_REGION(0x400000, REGION_SOUND1, ROMREGION_ERASE00)
+	ROM_REGION(0x400000, "ymz", ROMREGION_ERASE00)
 
-	ROM_REGION(0xc0, REGION_USER2, ROMREGION_ERASE00)	// Security dongle
+	ROM_REGION(0xc0, "user2", ROMREGION_ERASE00)	// Security dongle
 	ROM_LOAD("gq977-ko", 0x00, 0xc0, BAD_DUMP CRC(ee743323) SHA1(2042e45879795557ad3cc21b37962f6bf54da60d))
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "scsi0" )
 	DISK_IMAGE_READONLY( "977kaa01", 0, SHA1(7069c1e42bf994ccdfcf6ff0dda9c5de94f1cc65) MD5(f499cb458d823200dc96fe9cef5c08c8) )
+
+	DISK_REGION( "scsi1" )
 	DISK_IMAGE_READONLY( "977kaa02", 1, SHA1(45d5cda77f789351260bbd6f9c47a5fa93998133) MD5(b58978a81931058fe28825b6147b1bed) )
 ROM_END
 
 ROM_START( ppp11 )
-	ROM_REGION32_BE(0x80000, REGION_USER1, 0)
+	ROM_REGION32_BE(0x80000, "user1", 0)
 	ROM_LOAD16_WORD_SWAP("977jaa03.e21", 0x00000, 0x80000, CRC(7b83362a) SHA1(2857a93be58636c10a8d180dbccf2caeeaaff0e2))
 
-	ROM_REGION(0x400000, REGION_SOUND1, ROMREGION_ERASE00)
+	ROM_REGION(0x400000, "ymz", ROMREGION_ERASE00)
 
-	ROM_REGION(0xc0, REGION_USER2, ROMREGION_ERASE00)	// Security dongle
+	ROM_REGION(0xc0, "user2", ROMREGION_ERASE00)	// Security dongle
 	ROM_LOAD("gq977-ja", 0x00, 0xc0, BAD_DUMP CRC(55b5abdb) SHA1(d8da5bac005235480a1815bd0a79c3e8a63ebad1))
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "scsi0" )
 	DISK_IMAGE_READONLY( "gc977jaa01", 0, SHA1(aa43526971dad6502e4b9583d8f5c18d93ced820) MD5(161ab0096d8def5ef133eec872afc645) )
+
+	DISK_REGION( "scsi1" )
 	DISK_IMAGE_READONLY( "gc977jaa02", 1, SHA1(4a0edf424e091c33db91b00edf7c7246754cc8bb) MD5(9cb7cb79d2f0a47e994cfb91847ca190) )
 ROM_END
 

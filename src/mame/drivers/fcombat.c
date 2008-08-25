@@ -2,7 +2,7 @@
 
     TS 2004.10.22. analog[at]op.pl
     - fixed sprite issues
-  - added backgrounds and terrain info (external roms)
+    - added backgrounds and terrain info (external roms)
 
     (press buttons 1+2 at the same time, to release 'army' ;)
 
@@ -10,7 +10,7 @@
         - fix colours (sprites , bg)
 */
 
-/* dump info
+/*
 
 Field Combat (c)1985 Jaleco
 
@@ -23,7 +23,6 @@ Other: Unmarked 24 pin near ROMs 2 & 3
 RAM: 6116 (x3)
 
 X-TAL: 20 MHz
-
 
 inputs + notes by stephh
 
@@ -66,7 +65,7 @@ static INPUT_CHANGED( coin_inserted )
 
 
 static INPUT_PORTS_START( fcombat )
-	PORT_START_TAG("IN0")      /* player 1 inputs (muxed on 0xe000) */
+	PORT_START("IN0")      /* player 1 inputs (muxed on 0xe000) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -76,7 +75,7 @@ static INPUT_PORTS_START( fcombat )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("IN1")      /* player 2 inputs (muxed on 0xe000) */
+	PORT_START("IN1")      /* player 2 inputs (muxed on 0xe000) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
@@ -86,7 +85,7 @@ static INPUT_PORTS_START( fcombat )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("DSW0")      /* dip switches (0xe100) */
+	PORT_START("DSW0")      /* dip switches (0xe100) */
 	PORT_DIPNAME( 0x07, 0x02, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "1" )
 	PORT_DIPSETTING(    0x01, "2" )
@@ -109,7 +108,7 @@ static INPUT_PORTS_START( fcombat )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW1")      /* dip switches/VBLANK (0xe200) */
+	PORT_START("DSW1")      /* dip switches/VBLANK (0xe200) */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Unknown ) )		// related to vblank
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
@@ -121,7 +120,7 @@ static INPUT_PORTS_START( fcombat )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_4C ) )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("COIN")
+	PORT_START("COIN")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
@@ -187,7 +186,7 @@ static READ8_HANDLER(e300_r)
 	int wx=(tx+fcombat_sh)/16;
 	int wy=(ty*2+fcombat_sv)/16;
 
-	return memory_region(machine, REGION_USER2)[wx*32*16+wy];
+	return memory_region(machine, "user2")[wx*32*16+wy];
 }
 
 static WRITE8_HANDLER(ee00_w)
@@ -220,15 +219,15 @@ static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM
 	AM_RANGE(0x6000, 0x6000) AM_READ(soundlatch_r)
-	AM_RANGE(0x8001, 0x8001) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0x8002, 0x8002) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x8003, 0x8003) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_READ(AY8910_read_port_1_r)
-	AM_RANGE(0xa002, 0xa002) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0xa003, 0xa003) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0xc001, 0xc001) AM_READ(AY8910_read_port_2_r)
-	AM_RANGE(0xc002, 0xc002) AM_WRITE(AY8910_write_port_2_w)
-	AM_RANGE(0xc003, 0xc003) AM_WRITE(AY8910_control_port_2_w)
+	AM_RANGE(0x8001, 0x8001) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x8002, 0x8002) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x8003, 0x8003) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xa001, 0xa001) AM_READ(ay8910_read_port_1_r)
+	AM_RANGE(0xa002, 0xa002) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0xa003, 0xa003) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0xc001, 0xc001) AM_READ(ay8910_read_port_2_r)
+	AM_RANGE(0xc002, 0xc002) AM_WRITE(ay8910_write_port_2_w)
+	AM_RANGE(0xc003, 0xc003) AM_WRITE(ay8910_control_port_2_w)
 ADDRESS_MAP_END
 
 
@@ -267,9 +266,9 @@ static const gfx_layout spritelayout =
 
 
 static GFXDECODE_START( fcombat )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,         0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout,     256, 64 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, spritelayout,     512, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,         0, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout,     256, 64 )
+	GFXDECODE_ENTRY( "gfx3", 0, spritelayout,     512, 64 )
 GFXDECODE_END
 
 
@@ -282,10 +281,10 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( fcombat )
 
-	MDRV_CPU_ADD(Z80, 10000000/3)
+	MDRV_CPU_ADD("main", Z80, 10000000/3)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_CPU_ADD(Z80, 10000000/3)
+	MDRV_CPU_ADD("audio", Z80, 10000000/3)
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 
 	/* video hardware */
@@ -303,13 +302,13 @@ static MACHINE_DRIVER_START( fcombat )
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay1", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.12)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay2", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.12)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay3", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.12)
 MACHINE_DRIVER_END
 
@@ -329,8 +328,8 @@ static DRIVER_INIT( fcombat )
 
 	/* make a temporary copy of the character data */
 	src = temp;
-	dst = memory_region(machine, REGION_GFX1);
-	length = memory_region_length(machine, REGION_GFX1);
+	dst = memory_region(machine, "gfx1");
+	length = memory_region_length(machine, "gfx1");
 	memcpy(src, dst, length);
 
 	/* decode the characters */
@@ -347,8 +346,8 @@ static DRIVER_INIT( fcombat )
 
 	/* make a temporary copy of the sprite data */
 	src = temp;
-	dst = memory_region(machine, REGION_GFX2);
-	length = memory_region_length(machine, REGION_GFX2);
+	dst = memory_region(machine, "gfx2");
+	length = memory_region_length(machine, "gfx2");
 	memcpy(src, dst, length);
 
 	/* decode the sprites */
@@ -368,8 +367,8 @@ static DRIVER_INIT( fcombat )
 
 	/* make a temporary copy of the character data */
 	src = temp;
-	dst = memory_region(machine, REGION_GFX3);
-	length = memory_region_length(machine, REGION_GFX3);
+	dst = memory_region(machine, "gfx3");
+	length = memory_region_length(machine, "gfx3");
 	memcpy(src, dst, length);
 
 	/* decode the characters */
@@ -387,8 +386,8 @@ static DRIVER_INIT( fcombat )
 	}
 
 	src = temp;
-	dst = memory_region(machine, REGION_USER1);
-	length = memory_region_length(machine, REGION_USER1);
+	dst = memory_region(machine, "user1");
+	length = memory_region_length(machine, "user1");
 	memcpy(src, dst, length);
 
 	for (oldaddr = 0; oldaddr < 32; oldaddr++)
@@ -399,8 +398,8 @@ static DRIVER_INIT( fcombat )
 
 
 	src = temp;
-	dst = memory_region(machine, REGION_USER2);
-	length = memory_region_length(machine, REGION_USER2);
+	dst = memory_region(machine, "user2");
+	length = memory_region_length(machine, "user2");
 	memcpy(src, dst, length);
 
 	for (oldaddr = 0; oldaddr < 32; oldaddr++)
@@ -413,31 +412,31 @@ static DRIVER_INIT( fcombat )
 }
 
 ROM_START( fcombat )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "fcombat2.t9",  0x0000, 0x4000, CRC(30cb0c14) SHA1(8b5b6a4efaca2f138709184725e9e0e0b9cfc4c7) )
 	ROM_LOAD( "fcombat3.10t", 0x4000, 0x4000, CRC(e8511da0) SHA1(bab5c9244c970b97c025381c37ad372aa3b5cddf) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audio", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "fcombat1.t5",  0x0000, 0x4000, CRC(a0cc1216) SHA1(3a8963ffde2ff4a3f428369133f94bb37717cae5) )
 
-	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "fcombat7.l11", 0x00000, 0x2000, BAD_DUMP CRC(54e978ef) SHA1(834f428f8d3e6b2cd865db8d2a0e069484a98316) ) /* fg chars */
 
-	ROM_REGION( 0x0c000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0c000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "fcombat8.d10", 0x00000, 0x4000, CRC(e810941e) SHA1(19ae85af0bf245caf3afe10d65e618cfb47d33c2) ) /* sprites */
 	ROM_LOAD( "fcombat9.d11", 0x04000, 0x4000, CRC(f95988e6) SHA1(25876652decca7ec1e9b37a16536c15ca2d1cb12) )
 	ROM_LOAD( "fcomba10.d12", 0x08000, 0x4000, CRC(908f154c) SHA1(b3761ee60d4a5ea36376759875105d23c57b4bf2) )
 
-	ROM_REGION( 0x04000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x04000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "fcombat6.f3",  0x00000, 0x4000, CRC(97282729) SHA1(72db0593551c2d15631341bf621b96013b46ce72) )
 
-	ROM_REGION( 0x04000, REGION_USER1, 0 )
+	ROM_REGION( 0x04000, "user1", 0 )
 	ROM_LOAD( "fcombat5.l3",  0x00000, 0x4000, CRC(96194ca7) SHA1(087d6ac8f93f087cb5e378dbe9a8cfcffa2cdddc) ) /* bg data */
 
-	ROM_REGION( 0x04000, REGION_USER2, 0 )
+	ROM_REGION( 0x04000, "user2", 0 )
 	ROM_LOAD( "fcombat4.p3",  0x00000, 0x4000, CRC(efe098ab) SHA1(fe64a5e9170835d242368109b1b221b0f8090e7e) ) /* terrain info */
 
-	ROM_REGION( 0x0420, REGION_PROMS, 0 )
+	ROM_REGION( 0x0420, "proms", 0 )
 	ROM_LOAD( "fcprom_a.c2",  0x0000, 0x0020, CRC(7ac480f0) SHA1(f491fe4da19d8c037e3733a5836de35cc438907e) ) /* palette */
 	ROM_LOAD( "fcprom_d.k12", 0x0020, 0x0100, CRC(9a348250) SHA1(faf8db4c42adee07795d06bea20704f8c51090ff) ) /* fg char lookup table */
 	ROM_LOAD( "fcprom_b.c4",  0x0120, 0x0100, CRC(ac9049f6) SHA1(57aa5b5df3e181bad76149745a422c3dd1edad49) ) /* sprite lookup table */

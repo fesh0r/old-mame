@@ -168,17 +168,17 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
     AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_RAM)
-    AM_RANGE(0x1000, 0x1000) AM_WRITE(YM2203_control_port_0_w)
-    AM_RANGE(0x1001, 0x1001) AM_WRITE(YM2203_write_port_0_w)
-    AM_RANGE(0x2000, 0x2000) AM_WRITE(YM3526_control_port_0_w)
-    AM_RANGE(0x2001, 0x2001) AM_WRITE(YM3526_write_port_0_w)
+    AM_RANGE(0x1000, 0x1000) AM_WRITE(ym2203_control_port_0_w)
+    AM_RANGE(0x1001, 0x1001) AM_WRITE(ym2203_write_port_0_w)
+    AM_RANGE(0x2000, 0x2000) AM_WRITE(ym3526_control_port_0_w)
+    AM_RANGE(0x2001, 0x2001) AM_WRITE(ym3526_write_port_0_w)
     AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
 static INPUT_PORTS_START( sidepckt )
-    PORT_START_TAG("0X3000")
+    PORT_START("0X3000")
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
     PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -188,7 +188,7 @@ static INPUT_PORTS_START( sidepckt )
     PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
     PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-    PORT_START_TAG("0X3001")
+    PORT_START("0X3001")
 	/* I haven't found a way to make the game use the 2p controls */
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
@@ -199,7 +199,7 @@ static INPUT_PORTS_START( sidepckt )
     PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
     PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-    PORT_START_TAG("0X3002")
+    PORT_START("0X3002")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
@@ -223,7 +223,7 @@ static INPUT_PORTS_START( sidepckt )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-    PORT_START_TAG("0X3003")
+    PORT_START("0X3003")
 	PORT_DIPNAME( 0x03, 0x03, "Timer Speed" )
 	PORT_DIPSETTING(    0x00, "Stopped (Cheat)")
 	PORT_DIPSETTING(    0x03, "Slow" )
@@ -270,8 +270,8 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( sidepckt )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   128,  4 )	/* colors 128-159 */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout,   0, 16 )	/* colors   0-127 */
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,   128,  4 )	/* colors 128-159 */
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout,   0, 16 )	/* colors   0-127 */
 GFXDECODE_END
 
 
@@ -282,7 +282,7 @@ static void irqhandler(running_machine *machine, int linestate)
 	cpunum_set_input_line(machine, 1,0,linestate);
 }
 
-static const struct YM3526interface ym3526_interface =
+static const ym3526_interface ym3526_config =
 {
 	irqhandler
 };
@@ -292,12 +292,11 @@ static const struct YM3526interface ym3526_interface =
 static MACHINE_DRIVER_START( sidepckt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, 2000000)        /* 2 MHz */
+	MDRV_CPU_ADD("main", M6809, 2000000)        /* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
-	MDRV_CPU_ADD(M6502, 1500000)
-	/* audio CPU */        /* 1.5 MHz */
+	MDRV_CPU_ADD("audio", M6502, 1500000)        /* 1.5 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 								/* NMIs are triggered by the main cpu */
 
@@ -319,11 +318,11 @@ static MACHINE_DRIVER_START( sidepckt )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 1500000)
+	MDRV_SOUND_ADD("ym1", YM2203, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(YM3526, 3000000)
-	MDRV_SOUND_CONFIG(ym3526_interface)
+	MDRV_SOUND_ADD("ym2", YM3526, 3000000)
+	MDRV_SOUND_CONFIG(ym3526_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -331,12 +330,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( sidepctj )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, 2000000)        /* 2 MHz */
+	MDRV_CPU_ADD("main", M6809, 2000000)        /* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,j_writemem)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
-	MDRV_CPU_ADD(M6502, 1500000)
-	/* audio CPU */        /* 1.5 MHz */
+	MDRV_CPU_ADD("audio", M6502, 1500000)        /* 1.5 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 								/* NMIs are triggered by the main cpu */
 
@@ -358,11 +356,11 @@ static MACHINE_DRIVER_START( sidepctj )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 1500000)
+	MDRV_SOUND_ADD("ym1", YM2203, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(YM3526, 3000000)
-	MDRV_SOUND_CONFIG(ym3526_interface)
+	MDRV_SOUND_ADD("ym2", YM3526, 3000000)
+	MDRV_SOUND_CONFIG(ym3526_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -373,68 +371,68 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( sidepckt )
-    ROM_REGION( 0x10000, REGION_CPU1, 0 )
+    ROM_REGION( 0x10000, "main", 0 )
     ROM_LOAD( "dh00",         0x00000, 0x10000, CRC(251b316e) SHA1(c777d87621b8fefe0e33156be03da8aed733db9a) )
 
-    ROM_REGION( 0x10000, REGION_CPU2, 0 )
+    ROM_REGION( 0x10000, "audio", 0 )
     ROM_LOAD( "dh04.bin",     0x08000, 0x8000, CRC(d076e62e) SHA1(720ff1a6a58697b4a9c7c4f31c24a2cf8a04900a) )
 
-    ROM_REGION( 0x18000, REGION_GFX1, ROMREGION_DISPOSE )
+    ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )
     ROM_LOAD( "sp_07.bin",    0x00000, 0x8000, CRC(9d6f7969) SHA1(583852be0861a89c63ce09eb39146ec379b9e12d) ) /* characters */
     ROM_LOAD( "sp_06.bin",    0x08000, 0x8000, CRC(580e4e43) SHA1(de152a5d4fbc52d80e3eb9af17835ecb6258d45e) )
     ROM_LOAD( "sp_05.bin",    0x10000, 0x8000, CRC(05ab71d2) SHA1(6f06d1d1440a5fb05c01f712457d0bb167e93099) )
 
-    ROM_REGION( 0x18000, REGION_GFX2, ROMREGION_DISPOSE )
+    ROM_REGION( 0x18000, "gfx2", ROMREGION_DISPOSE )
     ROM_LOAD( "dh01.bin",     0x00000, 0x8000, CRC(a2cdfbea) SHA1(0721e538e3306d616f11008f784cf21e679f330d) ) /* sprites */
     ROM_LOAD( "dh02.bin",     0x08000, 0x8000, CRC(eeb5c3e7) SHA1(57eda1cc29124e04fe5025a904634d8ca52c0f12) )
     ROM_LOAD( "dh03.bin",     0x10000, 0x8000, CRC(8e18d21d) SHA1(74f0ddf1fcbed386332eba882b4136295b4f096d) )
 
-    ROM_REGION( 0x0200, REGION_PROMS, 0 )	/* color PROMs */
+    ROM_REGION( 0x0200, "proms", 0 )	/* color PROMs */
     ROM_LOAD( "dh-09.bpr",    0x0000, 0x0100, CRC(ce049b4f) SHA1(e4918cef7b319dd40cf1722eb8bf5e79be04fd6c) )
     ROM_LOAD( "dh-08.bpr",    0x0100, 0x0100, CRC(cdf2180f) SHA1(123215d096f88b66396d40d7a579380d0b5b2b89) )
 ROM_END
 
 ROM_START( sidepctj )
-    ROM_REGION( 0x10000, REGION_CPU1, 0 )
+    ROM_REGION( 0x10000, "main", 0 )
     ROM_LOAD( "dh00.bin",     0x00000, 0x10000, CRC(a66bc28d) SHA1(cd62ce1dce6fe42d9745eec50d11e86b076d28e1) )
 
-    ROM_REGION( 0x10000, REGION_CPU2, 0 )
+    ROM_REGION( 0x10000, "audio", 0 )
     ROM_LOAD( "dh04.bin",     0x08000, 0x8000, CRC(d076e62e) SHA1(720ff1a6a58697b4a9c7c4f31c24a2cf8a04900a) )
 
-    ROM_REGION( 0x18000, REGION_GFX1, ROMREGION_DISPOSE )
+    ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )
     ROM_LOAD( "dh07.bin",     0x00000, 0x8000, CRC(7d0ce858) SHA1(3a158f218a762e6841d2611f41ace67a1afefb35) ) /* characters */
     ROM_LOAD( "dh06.bin",     0x08000, 0x8000, CRC(b86ddf72) SHA1(7596dd1b646971d8df1bc4fd157ccf161a712d59) )
     ROM_LOAD( "dh05.bin",     0x10000, 0x8000, CRC(df6f94f2) SHA1(605796191f37cb76d496aa459243655070bb90c0) )
 
-    ROM_REGION( 0x18000, REGION_GFX2, ROMREGION_DISPOSE )
+    ROM_REGION( 0x18000, "gfx2", ROMREGION_DISPOSE )
     ROM_LOAD( "dh01.bin",     0x00000, 0x8000, CRC(a2cdfbea) SHA1(0721e538e3306d616f11008f784cf21e679f330d) ) /* sprites */
     ROM_LOAD( "dh02.bin",     0x08000, 0x8000, CRC(eeb5c3e7) SHA1(57eda1cc29124e04fe5025a904634d8ca52c0f12) )
     ROM_LOAD( "dh03.bin",     0x10000, 0x8000, CRC(8e18d21d) SHA1(74f0ddf1fcbed386332eba882b4136295b4f096d) )
 
-    ROM_REGION( 0x0200, REGION_PROMS, 0 )	/* color PROMs */
+    ROM_REGION( 0x0200, "proms", 0 )	/* color PROMs */
     ROM_LOAD( "dh-09.bpr",    0x0000, 0x0100, CRC(ce049b4f) SHA1(e4918cef7b319dd40cf1722eb8bf5e79be04fd6c) )
     ROM_LOAD( "dh-08.bpr",    0x0100, 0x0100, CRC(cdf2180f) SHA1(123215d096f88b66396d40d7a579380d0b5b2b89) )
 ROM_END
 
 ROM_START( sidepctb )
-    ROM_REGION( 0x10000, REGION_CPU1, 0 )
+    ROM_REGION( 0x10000, "main", 0 )
     ROM_LOAD( "sp_09.bin",    0x04000, 0x4000, CRC(3c6fe54b) SHA1(4025ac48d75f171f4c979d3fcd6a2f8da18cef4f) )
     ROM_LOAD( "sp_08.bin",    0x08000, 0x8000, CRC(347f81cd) SHA1(5ab06130f35788e51a881cc0f387649532145bd6) )
 
-    ROM_REGION( 0x10000, REGION_CPU2, 0 )
+    ROM_REGION( 0x10000, "audio", 0 )
     ROM_LOAD( "dh04.bin",     0x08000, 0x8000, CRC(d076e62e) SHA1(720ff1a6a58697b4a9c7c4f31c24a2cf8a04900a) )
 
-    ROM_REGION( 0x18000, REGION_GFX1, ROMREGION_DISPOSE )
+    ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )
     ROM_LOAD( "sp_07.bin",    0x00000, 0x8000, CRC(9d6f7969) SHA1(583852be0861a89c63ce09eb39146ec379b9e12d) ) /* characters */
     ROM_LOAD( "sp_06.bin",    0x08000, 0x8000, CRC(580e4e43) SHA1(de152a5d4fbc52d80e3eb9af17835ecb6258d45e) )
     ROM_LOAD( "sp_05.bin",    0x10000, 0x8000, CRC(05ab71d2) SHA1(6f06d1d1440a5fb05c01f712457d0bb167e93099) )
 
-    ROM_REGION( 0x18000, REGION_GFX2, ROMREGION_DISPOSE )
+    ROM_REGION( 0x18000, "gfx2", ROMREGION_DISPOSE )
     ROM_LOAD( "dh01.bin",     0x00000, 0x8000, CRC(a2cdfbea) SHA1(0721e538e3306d616f11008f784cf21e679f330d) ) /* sprites */
     ROM_LOAD( "dh02.bin",     0x08000, 0x8000, CRC(eeb5c3e7) SHA1(57eda1cc29124e04fe5025a904634d8ca52c0f12) )
     ROM_LOAD( "dh03.bin",     0x10000, 0x8000, CRC(8e18d21d) SHA1(74f0ddf1fcbed386332eba882b4136295b4f096d) )
 
-    ROM_REGION( 0x0200, REGION_PROMS, 0 )	/* color PROMs */
+    ROM_REGION( 0x0200, "proms", 0 )	/* color PROMs */
     ROM_LOAD( "dh-09.bpr",    0x0000, 0x0100, CRC(ce049b4f) SHA1(e4918cef7b319dd40cf1722eb8bf5e79be04fd6c) )
     ROM_LOAD( "dh-08.bpr",    0x0100, 0x0100, CRC(cdf2180f) SHA1(123215d096f88b66396d40d7a579380d0b5b2b89) )
 ROM_END

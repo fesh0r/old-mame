@@ -80,7 +80,7 @@ static VIDEO_UPDATE( sstrngr2 )
 
 	get_pens(pens);
 
-	color_map_base = &memory_region(screen->machine, REGION_PROMS)[sstrngr_flip_screen ? 0x0000 : 0x0200];
+	color_map_base = &memory_region(screen->machine, "proms")[sstrngr_flip_screen ? 0x0000 : 0x0200];
 
 	for (offs = 0; offs < sstrngr_ram_size; offs++)
 	{
@@ -143,7 +143,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( sstrangr )
-	PORT_START_TAG("DSW0")
+	PORT_START("DSW0")
 	PORT_DIPNAME( 0x03, 0x01, "Extra Play" )
 	PORT_DIPSETTING(    0x00, "Never" )
 	PORT_DIPSETTING(    0x01, "3000" )
@@ -160,7 +160,7 @@ static INPUT_PORTS_START( sstrangr )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(2)
 
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
@@ -172,7 +172,7 @@ static INPUT_PORTS_START( sstrangr )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY
 
-	PORT_START_TAG("EXT")      /* External switches */
+	PORT_START("EXT")      /* External switches */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 INPUT_PORTS_END
@@ -181,7 +181,7 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( sstrangr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main",8080,1996800)	/* clock is a guess, taken from mw8080bw */
+	MDRV_CPU_ADD("main",8080,1996800)	/* clock is a guess, taken from mw8080bw */
 	MDRV_CPU_PROGRAM_MAP(sstrangr_map,0)
 	MDRV_CPU_IO_MAP(sstrangr_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
@@ -210,7 +210,7 @@ MACHINE_DRIVER_END
 /* color version of Space Stranger, board has Stranger 2 written on it */
 
 static INPUT_PORTS_START( sstrngr2 )
-	PORT_START_TAG("DSW0")
+	PORT_START("DSW0")
 	PORT_DIPNAME( 0x03, 0x01, "Extra Play" )
 	PORT_DIPSETTING(    0x00, "Never" )
 	PORT_DIPSETTING(    0x01, "3000" )
@@ -229,7 +229,7 @@ static INPUT_PORTS_START( sstrngr2 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(2)
 
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
@@ -241,7 +241,7 @@ static INPUT_PORTS_START( sstrngr2 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(1)
 
-	PORT_START_TAG("EXT")      /* External switches */
+	PORT_START("EXT")      /* External switches */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_DIPNAME( 0x02, 0x00, "Player's Bullet Speed (Cheat)" )
 	PORT_DIPSETTING(    0x00, "Slow" )
@@ -263,7 +263,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( sstrangr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "hss-01.58",     0x0000, 0x0400, CRC(feec7600) SHA1(787a6be4e24ce931e7678e777699b9f6789bc199) )
 	ROM_LOAD( "hss-02.59",     0x0400, 0x0400, CRC(7281ff0b) SHA1(56649d1362be1b9f517cb8616cbf9e4f955e9a2d) )
 	ROM_LOAD( "hss-03.60",     0x0800, 0x0400, CRC(a09ec572) SHA1(9c4ad811a6c0460403f9cdc9fe5381c460249ff5) )
@@ -275,11 +275,11 @@ ROM_START( sstrangr )
 ROM_END
 
 ROM_START( sstrngr2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "4764.09",      0x0000, 0x2000, CRC(d88f86cc) SHA1(9f284ee50caf3c64bd04a79a798de620348881bc) )
 	ROM_LOAD( "2708.10",      0x6000, 0x0400, CRC(eba304c1) SHA1(3fa6fbb29fa46c146283f69a712bfc51cbb2a43c) )
 
-	ROM_REGION( 0x0400, REGION_PROMS, 0 )		/* color maps player 1/player 2 */
+	ROM_REGION( 0x0400, "proms", 0 )		/* color maps player 1/player 2 */
 	ROM_LOAD( "2708.15",      0x0000, 0x0400, CRC(c176a89d) SHA1(955dd540dc3787091c3f34ae122a13e6b7523414) )
 ROM_END
 

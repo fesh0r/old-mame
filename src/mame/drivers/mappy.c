@@ -927,7 +927,7 @@ ADDRESS_MAP_END
 
 
 #define NAMCO_56IN0\
-	PORT_START_TAG("IN0")	/* 56XX #0 pins 22-29 */\
+	PORT_START("IN0")	/* 56XX #0 pins 22-29 */\
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY\
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY\
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY\
@@ -938,7 +938,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
 
 #define NAMCO_5XIN0\
-	PORT_START_TAG("IN0") /* 56XX #0 pins 22-29 */\
+	PORT_START("IN0") /* 56XX #0 pins 22-29 */\
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY\
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY\
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY\
@@ -949,7 +949,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 
 #define NAMCO_56IN1\
-	PORT_START_TAG("IN1")	/* 56XX #0 pins 30-33 and 38-41 */\
+	PORT_START("IN1")	/* 56XX #0 pins 30-33 and 38-41 */\
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )\
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL\
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )\
@@ -960,7 +960,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
 
 #define NAMCO_56DSW0\
-	PORT_START_TAG("DSW0")	/* 56XX #1 pins 30-33 */\
+	PORT_START("DSW0")	/* 56XX #1 pins 30-33 */\
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )\
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )\
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Cabinet ) )\
@@ -973,7 +973,7 @@ NAMCO_56IN0
 NAMCO_56IN1
 NAMCO_56DSW0
 
-	PORT_START_TAG("DSW1")	/* 56XX #1 pins 22-29 */
+	PORT_START("DSW1")	/* 56XX #1 pins 22-29 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x0f, "Rank 0-Normal" )
 	PORT_DIPSETTING(    0x0e, "Rank 1-Easiest" )
@@ -1003,7 +1003,7 @@ NAMCO_56DSW0
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
+	PORT_START("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
@@ -1042,7 +1042,7 @@ NAMCO_56IN0
 NAMCO_56IN1
 NAMCO_56DSW0
 
-	PORT_START_TAG("DSW1")	/* ???? #1 pins ??-?? */
+	PORT_START("DSW1")	/* ???? #1 pins ??-?? */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
@@ -1074,7 +1074,7 @@ NAMCO_56DSW0
 	PORT_DIPSETTING(    0x40, "3" )
 	PORT_DIPSETTING(    0x00, "5" )
 
-	PORT_START_TAG("DSW2")	/* ???? #1 pins ??-?? */
+	PORT_START("DSW2")	/* ???? #1 pins ??-?? */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -1104,7 +1104,7 @@ static INPUT_PORTS_START( grobda )
 NAMCO_5XIN0
 NAMCO_56IN1
 
-	PORT_START_TAG("DSW0")	/* 56XX #1 pins 30-33 */
+	PORT_START("DSW0")	/* 56XX #1 pins 30-33 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Cabinet ) )
@@ -1112,7 +1112,7 @@ NAMCO_56IN1
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE )	// service mode again
 
-	PORT_START_TAG("DSW1")	/* 56XX #1 pins 22-29 */
+	PORT_START("DSW1")	/* 56XX #1 pins 22-29 */
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x0e, 0x08, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 4C_1C ) )
@@ -1136,7 +1136,7 @@ NAMCO_56IN1
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
+	PORT_START("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x02, "1" )
 	PORT_DIPSETTING(    0x01, "2" )
@@ -1166,7 +1166,7 @@ NAMCO_5XIN0
 NAMCO_56IN1
 NAMCO_56DSW0
 
-	PORT_START_TAG("DSW1")	/* 56XX #1 pins 22-29 */
+	PORT_START("DSW1")	/* 56XX #1 pins 22-29 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1193,7 +1193,7 @@ NAMCO_56DSW0
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 
-	PORT_START_TAG("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
+	PORT_START("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x02, "1" )
 	PORT_DIPSETTING(    0x03, "3" )
@@ -1228,7 +1228,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( mappy )
-	PORT_START_TAG("IN0")	/* 58XX #0 pins 22-29 */
+	PORT_START("IN0")	/* 58XX #0 pins 22-29 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1241,7 +1241,7 @@ static INPUT_PORTS_START( mappy )
 NAMCO_56IN1
 NAMCO_56DSW0
 
-	PORT_START_TAG("DSW1")	/* 58XX #1 pins 22-29 */
+	PORT_START("DSW1")	/* 58XX #1 pins 22-29 */
 /* According to the manual, 0x04, 0x08 and 0x10 should always be off, but... */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty )  )
 	PORT_DIPSETTING(    0x07, "Rank A" )
@@ -1267,7 +1267,7 @@ NAMCO_56DSW0
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")	/* 58XX #1 pins 38-41 multiplexed */
+	PORT_START("DSW2")	/* 58XX #1 pins 38-41 multiplexed */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
@@ -1305,7 +1305,7 @@ static INPUT_PORTS_START( todruaga )
 NAMCO_56IN0
 NAMCO_56IN1
 
-	PORT_START_TAG("DSW0")	/* 56XX #1 pins 30-33 */
+	PORT_START("DSW0")	/* 56XX #1 pins 30-33 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Cabinet ) )
@@ -1313,7 +1313,7 @@ NAMCO_56IN1
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE )	// service mode again
 
-	PORT_START_TAG("DSW1")	/* 56XX #1 pins 22-29 */
+	PORT_START("DSW1")	/* 56XX #1 pins 22-29 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x01, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -1334,7 +1334,7 @@ NAMCO_56IN1
 	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( 1C_2C ) )
 
-	PORT_START_TAG("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
+	PORT_START("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1366,7 +1366,7 @@ static INPUT_PORTS_START( digdug2 )
 NAMCO_56IN0
 NAMCO_56IN1
 
-	PORT_START_TAG("DSW0")	/* 56XX #1 pins 30-33 */
+	PORT_START("DSW0")	/* 56XX #1 pins 30-33 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Cabinet ) )
@@ -1374,7 +1374,7 @@ NAMCO_56IN1
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE )	// service mode again
 
-	PORT_START_TAG("DSW1")	/* 56XX #1 pins 22-29 */
+	PORT_START("DSW1")	/* 56XX #1 pins 22-29 */
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x02, "3" )
@@ -1396,7 +1396,7 @@ NAMCO_56IN1
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
+	PORT_START("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1428,7 +1428,7 @@ static INPUT_PORTS_START( motos )
 NAMCO_5XIN0
 NAMCO_56IN1
 
-	PORT_START_TAG("DSW0")	/* 56XX #1 pins 30-33 */
+	PORT_START("DSW0")	/* 56XX #1 pins 30-33 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Cabinet ) )
@@ -1436,7 +1436,7 @@ NAMCO_56IN1
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE )	// service mode again
 
-	PORT_START_TAG("DSW1")	/* 56XX #1 pins 22-29 */
+	PORT_START("DSW1")	/* 56XX #1 pins 22-29 */
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
@@ -1458,7 +1458,7 @@ NAMCO_56IN1
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
+	PORT_START("DSW2")	/* 56XX #1 pins 38-41 multiplexed */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1538,31 +1538,31 @@ static const gfx_layout spritelayout_4bpp =
 
 
 static GFXDECODE_START( superpac )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,           0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout_2bpp, 64*4, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,           0, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout_2bpp, 64*4, 64 )
 GFXDECODE_END
 
 static GFXDECODE_START( phozon )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,          0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout_8x8, 64*4, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,          0, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout_8x8, 64*4, 64 )
 GFXDECODE_END
 
 static GFXDECODE_START( mappy )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,           0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout_4bpp, 64*4, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,           0, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout_4bpp, 64*4, 16 )
 GFXDECODE_END
 
 static GFXDECODE_START( todruaga )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,           0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout_4bpp, 64*4, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,           0, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout_4bpp, 64*4, 64 )
 GFXDECODE_END
 
 
 
-static const struct namco_interface namco_interface =
+static const namco_interface namco_config =
 {
 	8,				/* number of voices */
-	REGION_SOUND1	/* memory region */
+	0				/* stereo */
 };
 
 
@@ -1570,11 +1570,11 @@ static const struct namco_interface namco_interface =
 static MACHINE_DRIVER_START( superpac )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
+	MDRV_CPU_ADD("main", M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(superpac_cpu1_map,0)
 	MDRV_CPU_VBLANK_INT("main", mappy_interrupt_1)	// also update the custom I/O chips
 
-	MDRV_CPU_ADD(M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
+	MDRV_CPU_ADD("sub", M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(superpac_cpu2_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
@@ -1598,8 +1598,8 @@ static MACHINE_DRIVER_START( superpac )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(NAMCO_15XX, 18432000/768)
-	MDRV_SOUND_CONFIG(namco_interface)
+	MDRV_SOUND_ADD("namco", NAMCO_15XX, 18432000/768)
+	MDRV_SOUND_CONFIG(namco_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -1609,7 +1609,7 @@ static MACHINE_DRIVER_START( grobda )
 	MDRV_IMPORT_FROM( superpac )
 
 	/* sound hardware */
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.55)
 MACHINE_DRIVER_END
 
@@ -1617,15 +1617,15 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( phozon )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809,	PIXEL_CLOCK/4)	/* MAIN CPU */
+	MDRV_CPU_ADD("main", M6809,	PIXEL_CLOCK/4)	/* MAIN CPU */
 	MDRV_CPU_PROGRAM_MAP(phozon_cpu1_map,0)
 	MDRV_CPU_VBLANK_INT("main", mappy_interrupt_1)	// also update the custom I/O chips
 
-	MDRV_CPU_ADD(M6809,	PIXEL_CLOCK/4)	/* SOUND CPU */
+	MDRV_CPU_ADD("sub", M6809,	PIXEL_CLOCK/4)	/* SOUND CPU */
 	MDRV_CPU_PROGRAM_MAP(phozon_cpu2_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_CPU_ADD(M6809,	PIXEL_CLOCK/4)	/* SUB CPU */
+	MDRV_CPU_ADD("sub2", M6809,	PIXEL_CLOCK/4)	/* SUB CPU */
 	MDRV_CPU_PROGRAM_MAP(phozon_cpu3_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
@@ -1649,8 +1649,8 @@ static MACHINE_DRIVER_START( phozon )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(NAMCO_15XX, 18432000/768)
-	MDRV_SOUND_CONFIG(namco_interface)
+	MDRV_SOUND_ADD("namco", NAMCO_15XX, 18432000/768)
+	MDRV_SOUND_CONFIG(namco_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -1658,11 +1658,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( mappy )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
+	MDRV_CPU_ADD("main", M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(mappy_cpu1_map,0)
 	MDRV_CPU_VBLANK_INT("main", mappy_interrupt_1)	// also update the custom I/O chips
 
-	MDRV_CPU_ADD(M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
+	MDRV_CPU_ADD("sub", M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(mappy_cpu2_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
@@ -1686,8 +1686,8 @@ static MACHINE_DRIVER_START( mappy )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(NAMCO_15XX, 18432000/768)
-	MDRV_SOUND_CONFIG(namco_interface)
+	MDRV_SOUND_ADD("namco", NAMCO_15XX, 18432000/768)
+	MDRV_SOUND_CONFIG(namco_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -1711,222 +1711,222 @@ MACHINE_DRIVER_END
 
 
 ROM_START( superpac )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "sp1-2.1c",     0xc000, 0x2000, CRC(4bb33d9c) SHA1(dd87f71b4db090a32a6b791079eedd17580cc741) )
 	ROM_LOAD( "sp1-1.1b",     0xe000, 0x2000, CRC(846fbb4a) SHA1(f6bf90281986b9b7a3ef1dbbeddb722182e84d7c) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "spc-3.1k",     0xf000, 0x1000, CRC(04445ddb) SHA1(ce7d14963d5ddaefdeaf433a6f82c43cd1611d9b) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "sp1-6.3c",     0x0000, 0x1000, CRC(91c5935c) SHA1(10579edabc26a0910253fab7d41b4c19ecdaaa09) )
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "spv-2.3f",     0x0000, 0x2000, CRC(670a42f2) SHA1(9171922df07e31fd1dc415766f7d2cc50a9d10dc) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "superpac.4c",  0x0000, 0x0020, CRC(9ce22c46) SHA1(d97f53ef4c5ef26659a22ed0de4ce7ef3758c924) ) /* palette */
 	ROM_LOAD( "superpac.4e",  0x0020, 0x0100, CRC(1253c5c1) SHA1(df46a90170e9761d45c90fbd04ef2aa1e8c9944b) ) /* chars */
 	ROM_LOAD( "superpac.3l",  0x0120, 0x0100, CRC(d4d7026f) SHA1(a486573437c54bfb503424574ad82655491e85e1) ) /* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "superpac.3m",  0x0000, 0x0100, CRC(ad43688f) SHA1(072f427453efb1dda8147da61804fff06e1bc4d5) )
 ROM_END
 
 ROM_START( superpcm )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "spc-2.1c",     0xc000, 0x2000, CRC(1a38c30e) SHA1(ae0ee9f3df0991a80698fe745a7a853a4bb60710) )
 	ROM_LOAD( "spc-1.1b",     0xe000, 0x2000, CRC(730e95a9) SHA1(ca73c8bcb03c2f5c05968c707a5d3f7f9956b886) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "spc-3.1k",     0xf000, 0x1000, CRC(04445ddb) SHA1(ce7d14963d5ddaefdeaf433a6f82c43cd1611d9b) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "spv-1.3c",     0x0000, 0x1000, CRC(78337e74) SHA1(11222adb55e6bce508896ccb1f6dbab0c1d44e5b) )
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "spv-2.3f",     0x0000, 0x2000, CRC(670a42f2) SHA1(9171922df07e31fd1dc415766f7d2cc50a9d10dc) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "superpac.4c",  0x0000, 0x0020, CRC(9ce22c46) SHA1(d97f53ef4c5ef26659a22ed0de4ce7ef3758c924) ) /* palette */
 	ROM_LOAD( "superpac.4e",  0x0020, 0x0100, CRC(1253c5c1) SHA1(df46a90170e9761d45c90fbd04ef2aa1e8c9944b) ) /* chars */
 	ROM_LOAD( "superpac.3l",  0x0120, 0x0100, CRC(d4d7026f) SHA1(a486573437c54bfb503424574ad82655491e85e1) ) /* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "superpac.3m",  0x0000, 0x0100, CRC(ad43688f) SHA1(072f427453efb1dda8147da61804fff06e1bc4d5) )
 ROM_END
 
 ROM_START( pacnpal )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "pap1-3b.1d",    0xa000, 0x2000, CRC(ed64a565) SHA1(b16930981490d97486d4df96acbb3d1cddbd3a80) )
 	ROM_LOAD( "pap1-2b.1c",    0xc000, 0x2000, CRC(15308bcf) SHA1(334603f8904f8968d05edc420b5f9e3b483ee86d) )
 	ROM_LOAD( "pap3-1.1b",     0xe000, 0x2000, CRC(3cac401c) SHA1(38a14228469fa4a20cbc5d862198dc901842682e) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "pap1-4.1k",     0xf000, 0x1000, CRC(330e20de) SHA1(5b23e5dcc38dc644a36efc8b03eba34cea540bea) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "pap1-6.3c",     0x0000, 0x1000, CRC(a36b96cb) SHA1(e0a11b5a43cbf756ddb045c743973d0a55dbb979) )
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "pap1-5.3f",     0x0000, 0x2000, CRC(fb6f56e3) SHA1(fd10d2ee49b4e059e9ef6046bc86d97e3185164d) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "pap1-6.4c",     0x0000, 0x0020, CRC(52634b41) SHA1(dfb109c8e2c62ae1612ba0e3272468d152123842) ) /* palette */
 	ROM_LOAD( "pap1-5.4e",     0x0020, 0x0100, CRC(ac46203c) SHA1(3f47f1991aab9640c0d5f70fad85d20d6cf2ea3d) ) /* chars */
 	ROM_LOAD( "pap1-4.3l",     0x0120, 0x0100, CRC(686bde84) SHA1(541d08b43dbfb789c2867955635d2c9e051fedd9) ) /* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "pap1-3.3m",     0x0000, 0x0100, CRC(94782db5) SHA1(ac0114f0611c81dfac9469253048ae0214d570ee) )
 ROM_END
 
 ROM_START( pacnpal2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "pap1-3.1d",    0xa000, 0x2000, CRC(d7ec2719) SHA1(b633a5360a199d528bcef209c06a21f266525769) )
 	ROM_LOAD( "pap1-2.1c",    0xc000, 0x2000, CRC(0245396e) SHA1(7e8467e317879621a7b31bc922b5187f20fcea78) )
 	ROM_LOAD( "pap1-1.1b",    0xe000, 0x2000, CRC(7f046b58) SHA1(2024019e5fafb698bb5775075c9b88c5ed35f7ba) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "pap1-4.1k",     0xf000, 0x1000, CRC(330e20de) SHA1(5b23e5dcc38dc644a36efc8b03eba34cea540bea) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "pap1-6.3c",     0x0000, 0x1000, CRC(a36b96cb) SHA1(e0a11b5a43cbf756ddb045c743973d0a55dbb979) )
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "pap1-5.3f",     0x0000, 0x2000, CRC(fb6f56e3) SHA1(fd10d2ee49b4e059e9ef6046bc86d97e3185164d) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "pap1-6.4c",     0x0000, 0x0020, CRC(52634b41) SHA1(dfb109c8e2c62ae1612ba0e3272468d152123842) ) /* palette */
 	ROM_LOAD( "pap1-5.4e",     0x0020, 0x0100, CRC(ac46203c) SHA1(3f47f1991aab9640c0d5f70fad85d20d6cf2ea3d) ) /* chars */
 	ROM_LOAD( "pap1-4.3l",     0x0120, 0x0100, CRC(686bde84) SHA1(541d08b43dbfb789c2867955635d2c9e051fedd9) ) /* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "pap1-3.3m",     0x0000, 0x0100, CRC(94782db5) SHA1(ac0114f0611c81dfac9469253048ae0214d570ee) )
 ROM_END
 
 /* should there be a pacnchmp set with pap2-x program roms? */
 
 ROM_START( pacnchmp )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "pap3-3.1d",      0xa000, 0x2000, CRC(20a07d3d) SHA1(2135ad154b575a73cfb1b0f0f282dfc013672aec) )
 	ROM_LOAD( "pap3-2.1c",      0xc000, 0x2000, CRC(505bae56) SHA1(590ce9f0e92115a71eb76b71ab4eac16ffa2a28e) )
 	ROM_LOAD( "pap3-1.1b",      0xe000, 0x2000, CRC(3cac401c) SHA1(38a14228469fa4a20cbc5d862198dc901842682e) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "pap1-4.1k",     0xf000, 0x1000, CRC(330e20de) SHA1(5b23e5dcc38dc644a36efc8b03eba34cea540bea) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "pap2-6.3c",      0x0000, 0x1000, CRC(93d15c30) SHA1(5da4120b680726c83a651b445254604cbf7cc883) )
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "pap2-5.3f",      0x0000, 0x2000, CRC(39f44aa4) SHA1(0696539cb2c7fcda2f6c295c7d65678dac18950b) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "pap2-6.4c",     0x0000, 0x0020, CRC(18c3db79) SHA1(a37d3cbfc5d4bd740b02ae69a374292e937215e2)  ) /* palette */
 	ROM_LOAD( "pap2-5.4e",     0x0020, 0x0100, CRC(875b49bb) SHA1(34b4622eecefd9fe0e9d883246d5c0e0c7f9ad43)  ) /* chars */
 	ROM_LOAD( "pap2-4.3l",     0x0120, 0x0100, CRC(23701566) SHA1(afa22f5b9eb77679b5d5c2ed27d6590776a59f6f)  ) /* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "pap1-3.3m",     0x0000, 0x0100, CRC(94782db5) SHA1(ac0114f0611c81dfac9469253048ae0214d570ee) )
 ROM_END
 
 ROM_START( grobda )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code for the first CPU  */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64k for code for the first CPU  */
 	ROM_LOAD( "gr2-3.1d",  0xa000, 0x2000, CRC(8e3a23be) SHA1(e54c1366adc561609a3817e074b01245fb335153) )
 	ROM_LOAD( "gr2-2.1c",  0xc000, 0x2000, CRC(19ffa83d) SHA1(9f4faf5e0de783868d984f166b92ebcf8bb0f93f) )
 	ROM_LOAD( "gr2-1.1b",  0xe000, 0x2000, CRC(0089b13a) SHA1(286d6a60fc46a6db9a52c19c4e33114717747caf) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "gr1-4.1k",  0xe000, 0x2000, CRC(3fe78c08) SHA1(dd49a96e613e0ced5b82eafcaf935e136e7db53a) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "gr1-7.3c",  0x0000, 0x1000, CRC(4ebfabfd) SHA1(fffce05f59e090c4281aca0c0494825027b764fb) )	/* characters */
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "gr1-5.3f",  0x0000, 0x2000, CRC(eed43487) SHA1(d2b39651f39bdfca3754f7bbd7a52e7bf843dabe) )	/* sprites */
 	ROM_LOAD( "gr1-6.3e",  0x2000, 0x2000, CRC(cebb7362) SHA1(6efd57f9fa0f93f70e60efc387b3a782fad2665c) )	/* sprites */
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "gr1-6.4c",  0x0000, 0x0020, CRC(c65efa77) SHA1(ead74917744cb11556153bd6c09a987bc9c6ef08) )	/* palette */
 	ROM_LOAD( "gr1-5.4e",  0x0020, 0x0100, CRC(a0f66911) SHA1(e08a56327055994e3d9e2c3816d57a3cc2434c88) )	/* characters */
 	ROM_LOAD( "gr1-4.3l",  0x0120, 0x0100, CRC(f1f2c234) SHA1(d59879e7a598a363d8d9ac9e630ae698f14833f7) )	/* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "gr1-3.3m",  0x0000, 0x0100, CRC(66eb1467) SHA1(02b99ced4afd9ac139f634739769f7bf353274f9) )
 ROM_END
 
 ROM_START( grobda2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code for the first CPU  */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64k for code for the first CPU  */
 	ROM_LOAD( "gr1-3.1d",  0xa000, 0x2000, CRC(4ef4a7c1) SHA1(33367e63531601c3d4f4a7b2170cb1c87f6d72a7) )
 	ROM_LOAD( "gr2-2a.1c", 0xc000, 0x2000, CRC(f93e82ae) SHA1(cb591bbcaab5ef26f097e7bab9b3638990465d4c) )
 	ROM_LOAD( "gr1-1.1b",  0xe000, 0x2000, CRC(32d42f22) SHA1(f83d17029f19fc2e8bac183771dbf9d786a56681) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "gr1-4.1k",  0xe000, 0x2000, CRC(3fe78c08) SHA1(dd49a96e613e0ced5b82eafcaf935e136e7db53a) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "gr1-7.3c",  0x0000, 0x1000, CRC(4ebfabfd) SHA1(fffce05f59e090c4281aca0c0494825027b764fb) )	/* characters */
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "gr1-5.3f",  0x0000, 0x2000, CRC(eed43487) SHA1(d2b39651f39bdfca3754f7bbd7a52e7bf843dabe) )	/* sprites */
 	ROM_LOAD( "gr1-6.3e",  0x2000, 0x2000, CRC(cebb7362) SHA1(6efd57f9fa0f93f70e60efc387b3a782fad2665c) )	/* sprites */
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "gr1-6.4c",  0x0000, 0x0020, CRC(c65efa77) SHA1(ead74917744cb11556153bd6c09a987bc9c6ef08) )	/* palette */
 	ROM_LOAD( "gr1-5.4e",  0x0020, 0x0100, CRC(a0f66911) SHA1(e08a56327055994e3d9e2c3816d57a3cc2434c88) )	/* characters */
 	ROM_LOAD( "gr1-4.3l",  0x0120, 0x0100, CRC(f1f2c234) SHA1(d59879e7a598a363d8d9ac9e630ae698f14833f7) )	/* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "gr1-3.3m",  0x0000, 0x0100, CRC(66eb1467) SHA1(02b99ced4afd9ac139f634739769f7bf353274f9) )
 ROM_END
 
 ROM_START( grobda3 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code for the first CPU  */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64k for code for the first CPU  */
 	ROM_LOAD( "gr1-3.1d",  0xa000, 0x2000, CRC(4ef4a7c1) SHA1(33367e63531601c3d4f4a7b2170cb1c87f6d72a7) )
 	ROM_LOAD( "gr1-2.1c",  0xc000, 0x2000, CRC(7dcc6e8e) SHA1(7580686b7082432a79217c3d7b5ebfa0c25952e3) )
 	ROM_LOAD( "gr1-1.1b",  0xe000, 0x2000, CRC(32d42f22) SHA1(f83d17029f19fc2e8bac183771dbf9d786a56681) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "gr1-4.1k",  0xe000, 0x2000, CRC(3fe78c08) SHA1(dd49a96e613e0ced5b82eafcaf935e136e7db53a) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "gr1-7.3c",  0x0000, 0x1000, CRC(4ebfabfd) SHA1(fffce05f59e090c4281aca0c0494825027b764fb) )	/* characters */
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "gr1-5.3f",  0x0000, 0x2000, CRC(eed43487) SHA1(d2b39651f39bdfca3754f7bbd7a52e7bf843dabe) )	/* sprites */
 	ROM_LOAD( "gr1-6.3e",  0x2000, 0x2000, CRC(cebb7362) SHA1(6efd57f9fa0f93f70e60efc387b3a782fad2665c) )	/* sprites */
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "gr1-6.4c",  0x0000, 0x0020, CRC(c65efa77) SHA1(ead74917744cb11556153bd6c09a987bc9c6ef08) )	/* palette */
 	ROM_LOAD( "gr1-5.4e",  0x0020, 0x0100, CRC(a0f66911) SHA1(e08a56327055994e3d9e2c3816d57a3cc2434c88) )	/* characters */
 	ROM_LOAD( "gr1-4.3l",  0x0120, 0x0100, CRC(f1f2c234) SHA1(d59879e7a598a363d8d9ac9e630ae698f14833f7) )	/* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "gr1-3.3m",  0x0000, 0x0100, CRC(66eb1467) SHA1(02b99ced4afd9ac139f634739769f7bf353274f9) )
 ROM_END
 
 
 ROM_START( phozon )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code for the MAIN CPU  */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64k for code for the MAIN CPU  */
 	ROM_LOAD( "6e.rom", 0x8000, 0x2000, CRC(a6686af1) SHA1(87a948b289356675d0418c87c3c0ae36ceba3ee0) )
 	ROM_LOAD( "6h.rom", 0xa000, 0x2000, CRC(72a65ba0) SHA1(b1d5146c009469d4c6695f08ea2c6ad5d05b5b9b) )
 	ROM_LOAD( "6c.rom", 0xc000, 0x2000, CRC(f1fda22e) SHA1(789881e94743efae01c63c1e3ce8d039cfa0324c) )
 	ROM_LOAD( "6d.rom", 0xe000, 0x2000, CRC(f40e6df0) SHA1(48585ac1eff8fb7ed35f56c767d725cae88ff128) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the SOUND CPU */
+	ROM_REGION( 0x10000, "sub", 0 )     /* 64k for the SOUND CPU */
 	ROM_LOAD( "3b.rom", 0xe000, 0x2000, CRC(5a4b3a79) SHA1(2774681ea668403de31ea218d5df3ce64e3b9243) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 )     /* 64k for the SUB CPU */
+	ROM_REGION( 0x10000, "sub2", 0 )     /* 64k for the SUB CPU */
 	ROM_LOAD( "9r.rom", 0xe000, 0x2000, CRC(5d9f0a28) SHA1(2caef680229180b237f8c4becf052f1a96592efd) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "7j.rom", 0x0000, 0x1000, CRC(27f9db5b) SHA1(12ef817136b45927d7f279952fa19049a1349f60) ) /* characters (set 1) */
 	ROM_LOAD( "8j.rom", 0x1000, 0x1000, CRC(15b12ef8) SHA1(e3303656b4e8b988e55a9551e5344e289958f677) ) /* characters (set 2) */
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "5t.rom", 0x0000, 0x2000, CRC(d50f08f8) SHA1(4e9dda0d5ad1c1b8b3be7edb05b3060f5f63a9c7) ) /* sprites */
 
-	ROM_REGION( 0x0520, REGION_PROMS, 0 )
+	ROM_REGION( 0x0520, "proms", 0 )
 	ROM_LOAD( "red.prm",     0x0000, 0x0100, CRC(a2880667) SHA1(b24d9b3354d20a7ecc02c428245669c6c86bfd61) ) /* red palette ROM (4 bits) */
 	ROM_LOAD( "green.prm",   0x0100, 0x0100, CRC(d6e08bef) SHA1(b0ca7f8a77b7208cf974a8cc565fc91b7f40f51f) ) /* green palette ROM (4 bits) */
 	ROM_LOAD( "blue.prm",    0x0200, 0x0100, CRC(b2d69c72) SHA1(e7b1ed698ab0e87872cb3a8f3ec102ca3a753259) ) /* blue palette ROM (4 bits) */
@@ -1934,179 +1934,179 @@ ROM_START( phozon )
 	ROM_LOAD( "sprite.prm",  0x0400, 0x0100, CRC(9061db07) SHA1(4305d37e613e1d15d37539b152c948648189c2cd) ) /* sprites */
 	ROM_LOAD( "palette.prm", 0x0500, 0x0020, CRC(60e856ed) SHA1(dcc9a2dfc728b9ca1ab895008de07e20ebed9da3) ) /* unused - timing? */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound PROMs */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound PROMs */
 	ROM_LOAD( "sound.prm", 0x0000, 0x0100, CRC(ad43688f) SHA1(072f427453efb1dda8147da61804fff06e1bc4d5) )
 ROM_END
 
 
 ROM_START( mappy )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code for the first CPU  */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64k for code for the first CPU  */
 	ROM_LOAD( "mpx_3.1d",	0xa000, 0x2000, CRC(52e6c708) SHA1(b9722941438e93325e84691ada4e95620bec73b2) )
 	ROM_LOAD( "mp1_2.1c",	0xc000, 0x2000, CRC(a958a61c) SHA1(e5198703cdf47b2cd7fc9f2a5fde7bf4ab2275db) )
 	ROM_LOAD( "mpx_1.1b",	0xe000, 0x2000, CRC(203766d4) SHA1(1dbc4f42d4c16a08240a221bec27dcc3a8dd7461) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "mp1_4.1k",	0xe000, 0x2000, CRC(8182dd5b) SHA1(f36b57f7f1e79f00b3f07afe1960bca5f5325ee2) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "mp1_5.3b",	0x0000, 0x1000, CRC(16498b9f) SHA1(76610149c65f955484fef1c033ddc3fed3f4e568) )
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "mp1_6.3m",	0x0000, 0x2000, CRC(f2d9647a) SHA1(3cc216793c6a5f73c437ad2524563deb3b5e2890) )
 	ROM_LOAD( "mp1_7.3n",	0x2000, 0x2000, CRC(757cf2b6) SHA1(8dfbf03953d5219d9eb5fc654ec3392442ba1dc4) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "mp1-5.5b",	0x0000, 0x0020, CRC(56531268) SHA1(2e356706c07f43eeb67783fb122bdc7fed1b3589) ) /* palette */
 	ROM_LOAD( "mp1-6.4c",	0x0020, 0x0100, CRC(50765082) SHA1(f578e14f15783acb2073644db4a2f0d196cc0957) ) /* characters */
 	ROM_LOAD( "mp1-7.5k",	0x0120, 0x0100, CRC(5396bd78) SHA1(2e387e5d8b8cab005f67f821b4db65d0ae8bd362) ) /* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "mp1-3.3m",	0x0000, 0x0100, CRC(16a9166a) SHA1(847cbaf7c88616576c410177e066ae1d792ac0ba) )
 ROM_END
 
 ROM_START( mappyj )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code for the first CPU  */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64k for code for the first CPU  */
 	ROM_LOAD( "mp1_3.1d",	0xa000, 0x2000, CRC(db9d5ab5) SHA1(32a0190f96f9c00c541b24dd17d6ad487938a8bf) )
 	ROM_LOAD( "mp1_2.1c",	0xc000, 0x2000, CRC(a958a61c) SHA1(e5198703cdf47b2cd7fc9f2a5fde7bf4ab2275db) )
 	ROM_LOAD( "mp1_1.1b",	0xe000, 0x2000, CRC(77c0b492) SHA1(631b73560ac59c3612e692fa59558773639ceda7) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "mp1_4.1k",	0xe000, 0x2000, CRC(8182dd5b) SHA1(f36b57f7f1e79f00b3f07afe1960bca5f5325ee2) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "mp1_5.3b",	0x0000, 0x1000, CRC(16498b9f) SHA1(76610149c65f955484fef1c033ddc3fed3f4e568) )
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "mp1_6.3m",	0x0000, 0x2000, CRC(f2d9647a) SHA1(3cc216793c6a5f73c437ad2524563deb3b5e2890) )
 	ROM_LOAD( "mp1_7.3n",	0x2000, 0x2000, CRC(757cf2b6) SHA1(8dfbf03953d5219d9eb5fc654ec3392442ba1dc4) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "mp1-5.5b",	0x0000, 0x0020, CRC(56531268) SHA1(2e356706c07f43eeb67783fb122bdc7fed1b3589) ) /* palette */
 	ROM_LOAD( "mp1-6.4c",	0x0020, 0x0100, CRC(50765082) SHA1(f578e14f15783acb2073644db4a2f0d196cc0957) ) /* characters */
 	ROM_LOAD( "mp1-7.5k",	0x0120, 0x0100, CRC(5396bd78) SHA1(2e387e5d8b8cab005f67f821b4db65d0ae8bd362) ) /* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "mp1-3.3m",	0x0000, 0x0100, CRC(16a9166a) SHA1(847cbaf7c88616576c410177e066ae1d792ac0ba) )
 ROM_END
 
 ROM_START( todruaga )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code for the first CPU  */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64k for code for the first CPU  */
 	ROM_LOAD( "td2_3.1d",	0x8000, 0x4000, CRC(fbf16299) SHA1(9abbaaaf0a53aff38df8287f62d091b13146cf13) )
 	ROM_LOAD( "td2_1.1b",	0xc000, 0x4000, CRC(b238d723) SHA1(ab8eadd45638ff1ab2dacbd5ab2c6870b9f79086) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "td1_4.1k",	0xe000, 0x2000, CRC(ae9d06d9) SHA1(3d8621fdd74fafa61f342886faa37f0aab50c5a7) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "td1_5.3b",	0x0000, 0x1000, CRC(d32b249f) SHA1(7d7cee4101ef615fb92c3702f89a9823a6231195) )
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "td1_6.3m",	0x0000, 0x2000, CRC(e827e787) SHA1(74e0af4c7d6e334bcd211a33eb18dddc8a182aa7) )
 	ROM_LOAD( "td1_7.3n",	0x2000, 0x2000, CRC(962bd060) SHA1(74cdcafc26475bda085bf62ed17e6474ed782453) )
 
-	ROM_REGION( 0x0520, REGION_PROMS, 0 )
+	ROM_REGION( 0x0520, "proms", 0 )
 	ROM_LOAD( "td1-5.5b",	0x0000, 0x0020, CRC(122cc395) SHA1(a648c53f2e95634bb5b27d79be3fd908021d056e) ) /* palette */
 	ROM_LOAD( "td1-6.4c",	0x0020, 0x0100, CRC(8c661d6a) SHA1(1340e4f657f4f2c4ef651a441c3b51632e757d0b) ) /* characters */
 	ROM_LOAD( "td1-7.5k",	0x0120, 0x0400, CRC(a86c74dd) SHA1(dfd7d6b2740761c3bcab4c7999d2699d920843e7) ) /* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "td1-3.3m",	0x0000, 0x0100, CRC(07104c40) SHA1(16db55525034bacb71e7dc8bd2a7c3c4464d4808) )
 ROM_END
 
 ROM_START( todruago )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code for the first CPU  */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64k for code for the first CPU  */
 	ROM_LOAD( "td1_3.1d",	0x8000, 0x4000, CRC(7ab4f5b2) SHA1(65035a5ecdff14bf23e01fe0f5e0935d156d94ff) )
 	ROM_LOAD( "td1_1.1b",	0xc000, 0x4000, CRC(8c20ef10) SHA1(12ea4875ce4d4590b88862139d3379ab9f5cec03) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "td1_4.1k",	0xe000, 0x2000, CRC(ae9d06d9) SHA1(3d8621fdd74fafa61f342886faa37f0aab50c5a7) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "td1_5.3b",	0x0000, 0x1000, CRC(d32b249f) SHA1(7d7cee4101ef615fb92c3702f89a9823a6231195) )
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "td1_6.3m",	0x0000, 0x2000, CRC(e827e787) SHA1(74e0af4c7d6e334bcd211a33eb18dddc8a182aa7) )
 	ROM_LOAD( "td1_7.3n",	0x2000, 0x2000, CRC(962bd060) SHA1(74cdcafc26475bda085bf62ed17e6474ed782453) )
 
-	ROM_REGION( 0x0520, REGION_PROMS, 0 )
+	ROM_REGION( 0x0520, "proms", 0 )
 	ROM_LOAD( "td1-5.5b",	0x0000, 0x0020, CRC(122cc395) SHA1(a648c53f2e95634bb5b27d79be3fd908021d056e) ) /* palette */
 	ROM_LOAD( "td1-6.4c",	0x0020, 0x0100, CRC(8c661d6a) SHA1(1340e4f657f4f2c4ef651a441c3b51632e757d0b) ) /* characters */
 	ROM_LOAD( "td1-7.5k",	0x0120, 0x0400, CRC(a86c74dd) SHA1(dfd7d6b2740761c3bcab4c7999d2699d920843e7) ) /* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "td1-3.3m",	0x0000, 0x0100, CRC(07104c40) SHA1(16db55525034bacb71e7dc8bd2a7c3c4464d4808) )
 ROM_END
 
 ROM_START( digdug2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code for the first CPU  */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64k for code for the first CPU  */
 	ROM_LOAD( "d23_3.1d",	0x8000, 0x4000, CRC(cc155338) SHA1(d6796479ebb00081e9ae281380a4ce75f730766e) )
 	ROM_LOAD( "d23_1.1b",	0xc000, 0x4000, CRC(40e46af8) SHA1(698a5c425e23627331d85216a4edee9c391e5749) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "d21_4.1k",	0xe000, 0x2000, CRC(737443b1) SHA1(0e46204089cc6e5ffab0d2a62f9a1728f8c35948) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "d21_5.3b",	0x0000, 0x1000, CRC(afcb4509) SHA1(c9a54df22b0b92efbe7417a00200587225906b46) )
 
-	ROM_REGION( 0x8000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "d21_6.3m",	0x0000, 0x4000, CRC(df1f4ad8) SHA1(004fba630018dbf03c4b0e284c98077e19fface3) )
 	ROM_LOAD( "d21_7.3n",	0x4000, 0x4000, CRC(ccadb3ea) SHA1(77d8d8e6039272f73e63c8f76084138ec613365a) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "d21-5.5b",	0x0000, 0x0020, CRC(9b169db5) SHA1(77e840d10ab59708a051c3b15305b33d431ee06d) ) /* palette */
 	ROM_LOAD( "d21-6.4c",	0x0020, 0x0100, CRC(55a88695) SHA1(bd6bd641c9f220b6a2cc414a1117d5c089571400) ) /* characters */
 	ROM_LOAD( "d21-7.5k",	0x0120, 0x0100, CRC(9c55feda) SHA1(30a4593726f5a4791e0812fd593e592087e730e3) ) /* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "d21-3.3m",	0x0000, 0x0100, CRC(e0074ee2) SHA1(f4f02977130110be52f4dd82fc3c0d02f45778b9) )
 ROM_END
 
 ROM_START( digdug2o )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code for the first CPU  */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64k for code for the first CPU  */
 	ROM_LOAD( "d21_3.1d",	0x8000, 0x4000, CRC(be7ec80b) SHA1(a053274ffbf3200e9b89a8be1bd91744acb4a823) )
 	ROM_LOAD( "d21_1.1b",	0xc000, 0x4000, CRC(5c77c0d4) SHA1(56709e5db1686fd996d21c1005accf34e2d863e1) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "d21_4.1k",	0xe000, 0x2000, CRC(737443b1) SHA1(0e46204089cc6e5ffab0d2a62f9a1728f8c35948) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "d21_5.3b",	0x0000, 0x1000, CRC(afcb4509) SHA1(c9a54df22b0b92efbe7417a00200587225906b46) )
 
-	ROM_REGION( 0x8000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "d21_6.3m",	0x0000, 0x4000, CRC(df1f4ad8) SHA1(004fba630018dbf03c4b0e284c98077e19fface3) )
 	ROM_LOAD( "d21_7.3n",	0x4000, 0x4000, CRC(ccadb3ea) SHA1(77d8d8e6039272f73e63c8f76084138ec613365a) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "d21-5.5b",	0x0000, 0x0020, CRC(9b169db5) SHA1(77e840d10ab59708a051c3b15305b33d431ee06d) ) /* palette */
 	ROM_LOAD( "d21-6.4c",	0x0020, 0x0100, CRC(55a88695) SHA1(bd6bd641c9f220b6a2cc414a1117d5c089571400) ) /* characters */
 	ROM_LOAD( "d2x-7.5k",	0x0120, 0x0100, CRC(1525a4d1) SHA1(bbedb0cf5957671fca1229d38cb33086356813e1) ) /* sprites */
 	/* the sprite lookup table is different from the other set, could be a bad dump */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "d21-3.3m",	0x0000, 0x0100, CRC(e0074ee2) SHA1(f4f02977130110be52f4dd82fc3c0d02f45778b9) )
 ROM_END
 
 ROM_START( motos )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code for the first CPU  */
+	ROM_REGION( 0x10000, "main", 0 )     /* 64k for code for the first CPU  */
 	ROM_LOAD( "mo1_3.1d",	0x8000, 0x4000, CRC(1104abb2) SHA1(ade809a73ac24494b9f95f65b7592df5f86dce60) )
 	ROM_LOAD( "mo1_1.1b",	0xc000, 0x4000, CRC(57b157e2) SHA1(b050495fcc4a4d93551b29d4f05e49f64017c870) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "sub", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "mo1_4.1k",	0xe000, 0x2000, CRC(55e45d21) SHA1(a8b195acfec542734751de29c9dafc2b165a5881) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "mo1_5.3b",	0x0000, 0x1000, CRC(5d4a2a22) SHA1(4af9bf2ae9bb78d2d029ef38809181ffa3c0eb66) )
 
-	ROM_REGION( 0x8000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "mo1_6.3m",	0x0000, 0x4000, CRC(2f0e396e) SHA1(664679f9d3d74a3fccb086af910392b4fe40c9bc) )
 	ROM_LOAD( "mo1_7.3n",	0x4000, 0x4000, CRC(cf8a3b86) SHA1(2b49cdec516e23783f2a291633d81ab8bd0245fc) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "mo1-5.5b",	0x0000, 0x0020, CRC(71972383) SHA1(66b0619affcc5168b099108800a941d6e2416ab0) ) /* palette */
 	ROM_LOAD( "mo1-6.4c",	0x0020, 0x0100, CRC(730ba7fb) SHA1(24eb167266752b064689662e3ef0f62d0407ac26) ) /* characters */
 	ROM_LOAD( "mo1-7.5k",	0x0120, 0x0100, CRC(7721275d) SHA1(543adb5348db81ea82a5c039451001ebd82735e3) ) /* sprites */
 
-	ROM_REGION( 0x0100, REGION_SOUND1, 0 )	/* sound prom */
+	ROM_REGION( 0x0100, "namco", 0 )	/* sound prom */
 	ROM_LOAD( "mo1-3.3m",	0x0000, 0x0100, CRC(2accdfb4) SHA1(e21a0618c0f8e35ce26666b6850ac9c0d95d7971) )
 ROM_END
 
@@ -2114,7 +2114,7 @@ ROM_END
 
 static WRITE8_HANDLER( grobda_DAC_w )
 {
-	DAC_data_w(0, (data << 4) | data);
+	dac_data_w(0, (data << 4) | data);
 }
 
 static DRIVER_INIT( grobda )

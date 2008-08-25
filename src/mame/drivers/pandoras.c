@@ -166,14 +166,14 @@ static ADDRESS_MAP_START( pandoras_readmem_snd, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)				/* ROM */
 	AM_RANGE(0x2000, 0x23ff) AM_READ(SMH_RAM)				/* RAM */
 	AM_RANGE(0x4000, 0x4000) AM_READ(soundlatch_r)			/* soundlatch_r */
-	AM_RANGE(0x6001, 0x6001) AM_READ(AY8910_read_port_0_r)	/* AY-8910 */
+	AM_RANGE(0x6001, 0x6001) AM_READ(ay8910_read_port_0_r)	/* AY-8910 */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pandoras_writemem_snd, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)				/* ROM */
 	AM_RANGE(0x2000, 0x23ff) AM_WRITE(SMH_RAM)				/* RAM */
-	AM_RANGE(0x6000, 0x6000) AM_WRITE(AY8910_control_port_0_w)/* AY-8910 */
-	AM_RANGE(0x6002, 0x6002) AM_WRITE(AY8910_write_port_0_w)	/* AY-8910 */
+	AM_RANGE(0x6000, 0x6000) AM_WRITE(ay8910_control_port_0_w)/* AY-8910 */
+	AM_RANGE(0x6002, 0x6002) AM_WRITE(ay8910_write_port_0_w)	/* AY-8910 */
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(pandoras_i8039_irqtrigger_w)/* cause INT on the 8039 */
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(soundlatch2_w)			/* sound command to the 8039 */
 ADDRESS_MAP_END
@@ -191,7 +191,7 @@ static ADDRESS_MAP_START( i8039_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( i8039_writeport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(I8039_p1, I8039_p1) AM_WRITE(DAC_0_data_w)
+	AM_RANGE(I8039_p1, I8039_p1) AM_WRITE(dac_0_data_w)
 	AM_RANGE(I8039_p2, I8039_p2) AM_WRITE(i8039_irqen_and_status_w)
 ADDRESS_MAP_END
 
@@ -203,7 +203,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( pandoras )
-	PORT_START	/* DSW #1 */
+	PORT_START("DSW1")	/* DSW #1 */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
@@ -239,7 +239,7 @@ static INPUT_PORTS_START( pandoras )
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
 //  PORT_DIPSETTING(    0x00, "Invalid" )
 
-	PORT_START	/* DSW #2 */
+	PORT_START("DSW2")	/* DSW #2 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x03, "3" )
 	PORT_DIPSETTING(    0x02, "4" )
@@ -262,7 +262,7 @@ static INPUT_PORTS_START( pandoras )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* DSW #3 */
+	PORT_START("DSw3")	/* DSW #3 */
 	PORT_DIPNAME( 0x01, 0x01, "Freeze" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -288,7 +288,7 @@ static INPUT_PORTS_START( pandoras )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* COINSW */
+	PORT_START("SYSTEM")	/* COINSW */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -297,7 +297,7 @@ static INPUT_PORTS_START( pandoras )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* PLAYER 1 INPUTS */
+	PORT_START("P1")	/* PLAYER 1 INPUTS */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -305,7 +305,7 @@ static INPUT_PORTS_START( pandoras )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* PLAYER 2 INPUTS */
+	PORT_START("P2")	/* PLAYER 2 INPUTS */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
@@ -341,8 +341,8 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( pandoras )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, spritelayout,     0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout,   16*16, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, spritelayout,     0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, charlayout,   16*16, 16 )
 GFXDECODE_END
 
 /***************************************************************************
@@ -367,7 +367,7 @@ static READ8_HANDLER( pandoras_portB_r )
 	return (activecpu_gettotalcycles() / 512) & 0x0f;
 }
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -380,20 +380,18 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( pandoras )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809,18432000/6)	/* CPU A */
+	MDRV_CPU_ADD("main", M6809,18432000/6)	/* CPU A */
 	MDRV_CPU_PROGRAM_MAP(pandoras_readmem_a,pandoras_writemem_a)
 	MDRV_CPU_VBLANK_INT("main", pandoras_interrupt_a)
 
-	MDRV_CPU_ADD(M6809,18432000/6)	/* CPU B */
+	MDRV_CPU_ADD("sub", M6809,18432000/6)	/* CPU B */
 	MDRV_CPU_PROGRAM_MAP(pandoras_readmem_b,pandoras_writemem_b)
 	MDRV_CPU_VBLANK_INT("main", pandoras_interrupt_b)
 
-	MDRV_CPU_ADD(Z80,14318000/8)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80,14318000/8)
 	MDRV_CPU_PROGRAM_MAP(pandoras_readmem_snd,pandoras_writemem_snd)
 
-	MDRV_CPU_ADD(I8039,14318000/2)
-	/* audio CPU */
+	MDRV_CPU_ADD("mcu", I8039,14318000/2)
 	MDRV_CPU_PROGRAM_MAP(i8039_readmem,i8039_writemem)
 	MDRV_CPU_IO_MAP(i8039_readport,i8039_writeport)
 
@@ -419,11 +417,11 @@ static MACHINE_DRIVER_START( pandoras )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 14318000/8)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, 14318000/8)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
@@ -435,31 +433,31 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( pandoras )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64K for the CPU A */
+	ROM_REGION( 0x10000, "main", 0 ) /* 64K for the CPU A */
 	ROM_LOAD( "pand_j13.cpu",	0x08000, 0x02000, CRC(7a0fe9c5) SHA1(e68c8d76d1abb69ac72b0e2cd8c1dfc540064ee3) )
 	ROM_LOAD( "pand_j12.cpu",	0x0a000, 0x02000, CRC(7dc4bfe1) SHA1(359c3051e5d7a34d0e49578e4c168fd19c73e202) )
 	ROM_LOAD( "pand_j10.cpu",	0x0c000, 0x02000, CRC(be3af3b7) SHA1(91321b53e17e58b674104cb95b1c35ee8fecae22) )
 	ROM_LOAD( "pand_j9.cpu",	0x0e000, 0x02000, CRC(e674a17a) SHA1(a4b096dc455425dd60298acf2203659ef6f8d857) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* 64K for the CPU B */
+	ROM_REGION( 0x10000, "sub", 0 ) /* 64K for the CPU B */
 	ROM_LOAD( "pand_j5.cpu",	0x0e000, 0x02000, CRC(4aab190b) SHA1(d2204953d6b6b34cea851bfc9c2b31426e75f90b) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* 64K for the Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 ) /* 64K for the Sound CPU */
 	ROM_LOAD( "pand_6c.snd",	0x00000, 0x02000, CRC(0c1f109d) SHA1(4e6cdee99261764bd2fea5abbd49d800baba0dc5) )
 
-	ROM_REGION( 0x1000, REGION_CPU4, 0 ) /* 4K for the Sound CPU 2 */
+	ROM_REGION( 0x1000, "mcu", 0 ) /* 4K for the Sound CPU 2 */
 	ROM_LOAD( "pand_7e.snd",	0x00000, 0x01000, CRC(18b0f9d0) SHA1(2a6119423222577a4c2b99ed78f61ba387eec7f8) )
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "pand_j18.cpu",	0x00000, 0x02000, CRC(99a696c5) SHA1(35a27cd5ecc51a9a1acf01eb8078a1028f03be32) )	/* sprites */
 	ROM_LOAD( "pand_j17.cpu",	0x02000, 0x02000, CRC(38a03c21) SHA1(b0c8f642787bab3cd1d76657e56f07f4f6f9073c) )
 	ROM_LOAD( "pand_j16.cpu",	0x04000, 0x02000, CRC(e0708a78) SHA1(9dbd08b6ca8a66a61e128d1806888696273de848) )
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "pand_a18.cpu",	0x00000, 0x02000, CRC(23706d4a) SHA1(cca92e6ff90e3006a79a214f1211fd659771de53) )	/* tiles */
 	ROM_LOAD( "pand_a19.cpu",	0x02000, 0x02000, CRC(a463b3f9) SHA1(549b7ee6e47325b80186441da11879fb8b1b47be) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "pandora.2a",		0x0000, 0x020, CRC(4d56f939) SHA1(a8dac604bfdaf4b153b75dbf165de113152b6daa) ) /* palette */
 	ROM_LOAD( "pandora.17g",	0x0020, 0x100, CRC(c1a90cfc) SHA1(c6581f2d543e38f1de399774183cf0698e61dab5) ) /* sprite lookup table */
 	ROM_LOAD( "pandora.16b",	0x0120, 0x100, CRC(c89af0c3) SHA1(4072c8d61521b34ce4dbce1d48f546402e9539cd) ) /* character lookup table */

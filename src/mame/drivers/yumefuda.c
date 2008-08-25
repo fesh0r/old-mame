@@ -98,7 +98,7 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( yumefuda )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, charlayout,   0, 0x10 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, charlayout,   0, 0x10 )
 GFXDECODE_END
 
 
@@ -152,7 +152,7 @@ static WRITE8_HANDLER( port_c0_w )
 
 static READ8_HANDLER( eeprom_r )
 {
-	return ((~eeprom_read_bit()&0x01)<<6) | (0xff&~0x40);
+	return ((~eeprom_read_bit() & 0x01)<<6) | (0xff & ~0x40);
 }
 
 static UINT8 mux_data;
@@ -161,14 +161,14 @@ static READ8_HANDLER( mux_r )
 {
 	switch(mux_data)
 	{
-		case 0x00: return input_port_read_indexed(machine, 0);
-		case 0x01: return input_port_read_indexed(machine, 1);
-		case 0x02: return input_port_read_indexed(machine, 2);
-		case 0x04: return input_port_read_indexed(machine, 3);
-		case 0x08: return input_port_read_indexed(machine, 4);
+		case 0x00: return input_port_read(machine, "IN0");
+		case 0x01: return input_port_read(machine, "IN1");
+		case 0x02: return input_port_read(machine, "IN2");
+		case 0x04: return input_port_read(machine, "IN3");
+		case 0x08: return input_port_read(machine, "IN4");
 		/* FIXME: Was this a quick hack? */
-		case 0x10: return 0xff; //return input_port_read_indexed(machine, 5);
-		case 0x20: return 0xff; //return input_port_read_indexed(machine, 6);
+		case 0x10: return 0xff; //return input_port_read(machine, "IN5");
+		case 0x20: return 0xff; //return input_port_read(machine, "IN6");
 	}
 	return 0xff;
 }
@@ -184,7 +184,7 @@ static WRITE8_HANDLER( mux_w )
 	//0x14000 bonus game
 	//0x16000 ?
 	if(bank!=new_bank) {
-		UINT8 *ROM = memory_region(machine, REGION_CPU1);
+		UINT8 *ROM = memory_region(machine, "main");
 		UINT32 bankaddress;
 
 		bank = new_bank;
@@ -212,8 +212,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( port_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x40) AM_READWRITE(AY8910_read_port_0_r, AY8910_control_port_0_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0x40, 0x40) AM_READWRITE(ay8910_read_port_0_r, ay8910_control_port_0_w)
+	AM_RANGE(0x41, 0x41) AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(mux_w)
 	AM_RANGE(0x81, 0x81) AM_READ(eeprom_r)
 	AM_RANGE(0x82, 0x82) AM_READ(mux_r)
@@ -223,7 +223,7 @@ ADDRESS_MAP_END
 static MACHINE_DRIVER_START( yumefuda )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80 , 6000000) /*???*/
+	MDRV_CPU_ADD("main", Z80 , 6000000) /*???*/
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(port_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -247,14 +247,14 @@ static MACHINE_DRIVER_START( yumefuda )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 /***************************************************************************************/
 
 static INPUT_PORTS_START( yumefuda )
-	PORT_START
+	PORT_START( "IN0")
 	PORT_DIPNAME( 0x01, 0x01, "Port 0" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -276,7 +276,7 @@ static INPUT_PORTS_START( yumefuda )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START( "IN1")
 	PORT_DIPNAME( 0x01, 0x01, "Port 1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -298,7 +298,7 @@ static INPUT_PORTS_START( yumefuda )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START( "IN2")
 	PORT_DIPNAME( 0x01, 0x01, "Port 2" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -316,7 +316,7 @@ static INPUT_PORTS_START( yumefuda )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 )
 
-	PORT_START
+	PORT_START( "IN3")
 	PORT_DIPNAME( 0x01, 0x01, "Port 3" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -338,7 +338,7 @@ static INPUT_PORTS_START( yumefuda )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START( "IN4")
 	PORT_DIPNAME( 0x01, 0x01, "Port 4" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -364,7 +364,7 @@ static INPUT_PORTS_START( yumefuda )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 /*
-    PORT_START
+    PORT_START( "IN5")
     PORT_DIPNAME( 0x01, 0x01, "Port 5" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -390,7 +390,7 @@ static INPUT_PORTS_START( yumefuda )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-    PORT_START
+    PORT_START( "IN6")
     PORT_DIPNAME( 0x01, 0x01, "Port 6" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -421,11 +421,11 @@ INPUT_PORTS_END
 
 
 ROM_START( yumefuda )
-	ROM_REGION( 0x18000, REGION_CPU1, 0 ) /* code */
+	ROM_REGION( 0x18000, "main", 0 ) /* code */
 	ROM_LOAD("zg004y02.u43", 0x00000, 0x8000, CRC(974c543c) SHA1(56aeb318cb00445f133246dfddc8c24bb0c23f2d))
 	ROM_LOAD("zg004y01.u42", 0x10000, 0x8000, CRC(ae99126b) SHA1(4ae2c1c804bbc505a013f5e3d98c0bfbb51b747a))
 
-	ROM_REGION( 0x10000, REGION_GFX1, 0 )
+	ROM_REGION( 0x10000, "gfx1", 0 )
 	ROM_LOAD("zg001006.u6", 0x0000, 0x4000, CRC(a5df443c) SHA1(a6c088a463c05e43a7b559c5d0afceddc88ef476))
 	ROM_LOAD("zg001005.u5", 0x4000, 0x4000, CRC(158b6cde) SHA1(3e335b7dc1bbae2edb02722025180f32ab91f69f))
 	ROM_LOAD("zg001004.u4", 0x8000, 0x4000, CRC(d8676435) SHA1(9b6df5378948f492717e1a4d9c833ddc5a9e8225))

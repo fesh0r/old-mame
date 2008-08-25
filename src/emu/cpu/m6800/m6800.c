@@ -82,7 +82,8 @@ TODO:
 
 #if 0
 /* CPU subtypes, needed for extra insn after TAP/CLI/SEI */
-enum {
+enum
+{
 	SUBTYPE_M6800,
 	SUBTYPE_M6801,
 	SUBTYPE_M6802,
@@ -367,6 +368,9 @@ static const UINT8 flags8d[256]= /* decrement */
 #define INDEXED {EA=X+(UINT8)M_RDOP_ARG(PCD);PC++;}
 
 /* macros to set status flags */
+#if defined(SEC)
+#undef SEC
+#endif
 #define SEC CC|=0x01
 #define CLC CC&=0xfe
 #define SEZ CC|=0x04

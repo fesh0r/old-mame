@@ -32,7 +32,7 @@ RAM = 4116 (x11)
 
 #include "driver.h"
 #include "deprecat.h"
-#include "rescap.h"
+#include "machine/rescap.h"
 #include "machine/6821pia.h"
 #include "machine/74123.h"
 #include "video/mc6845.h"
@@ -150,12 +150,12 @@ static READ8_HANDLER( AY8910_port_r )
 
 	if (AY8910_selected & 0x08)
 {
-		ret = AY8910_read_port_0_r(machine, offset);
+		ret = ay8910_read_port_0_r(machine, offset);
 if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Port Read: %x\n", safe_activecpu_get_pc(), ret);}
 
 	if (AY8910_selected & 0x10)
 {
-		ret = AY8910_read_port_1_r(machine, offset);
+		ret = ay8910_read_port_1_r(machine, offset);
 if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Port Read: %x\n", safe_activecpu_get_pc(), ret);}
 
 	return ret;
@@ -168,29 +168,29 @@ static WRITE8_HANDLER( AY8910_port_w )
 	{
 		if (AY8910_selected & 0x08)
 {if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Control Write: %x\n", safe_activecpu_get_pc(), data);
-			AY8910_control_port_0_w(machine, offset, data);
+			ay8910_control_port_0_w(machine, offset, data);
 }
 		if (AY8910_selected & 0x10)
 {if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Control Write: %x\n", safe_activecpu_get_pc(), data);
-			AY8910_control_port_1_w(machine, offset, data);
+			ay8910_control_port_1_w(machine, offset, data);
 }
 	}
 	else
 	{
 		if (AY8910_selected & 0x08)
 {if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Port Write: %x\n", safe_activecpu_get_pc(), data);
-			AY8910_write_port_0_w(machine, offset, data);
+			ay8910_write_port_0_w(machine, offset, data);
 }
 
 		if (AY8910_selected & 0x10)
 {if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Port Write: %x\n", safe_activecpu_get_pc(), data);
-			AY8910_write_port_1_w(machine, offset, data);
+			ay8910_write_port_1_w(machine, offset, data);
 }
 	}
 }
 
 
-static const struct AY8910interface ay8910_1_interface =
+static const ay8910_interface ay8910_1_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -201,7 +201,7 @@ static const struct AY8910interface ay8910_1_interface =
 };
 
 
-static const struct AY8910interface ay8910_2_interface =
+static const ay8910_interface ay8910_2_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -454,7 +454,7 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( r2dtank )
 
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_SERVICE_NO_TOGGLE(0x04, IP_ACTIVE_LOW)
@@ -464,7 +464,7 @@ static INPUT_PORTS_START( r2dtank )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_ttl74123_output, 0)
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
@@ -474,7 +474,7 @@ static INPUT_PORTS_START( r2dtank )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
 
-	PORT_START_TAG("DSWA")
+	PORT_START("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -499,7 +499,7 @@ static INPUT_PORTS_START( r2dtank )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0xc0, DEF_STR( Free_Play ) )
 
-	PORT_START_TAG("DSWB")
+	PORT_START("DSWB")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -536,11 +536,10 @@ INPUT_PORTS_END
  *************************************/
 
 static MACHINE_DRIVER_START( r2dtank )
-	MDRV_CPU_ADD(M6809,3000000)		 /* ?? too fast ? */
+	MDRV_CPU_ADD("main", M6809,3000000)		 /* ?? too fast ? */
 	MDRV_CPU_PROGRAM_MAP(r2dtank_main_map,0)
 
-	/* audio CPU */
-	MDRV_CPU_ADD(M6802,3000000)			/* ?? */
+	MDRV_CPU_ADD("audio", M6802,3000000)			/* ?? */
 	MDRV_CPU_PROGRAM_MAP(r2dtank_audio_map,0)
 
 	MDRV_MACHINE_START(r2dtank)
@@ -560,11 +559,11 @@ static MACHINE_DRIVER_START( r2dtank )
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, (4000000 / 4))
+	MDRV_SOUND_ADD("ay1", AY8910, (4000000 / 4))
 	MDRV_SOUND_CONFIG(ay8910_1_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, (4000000 / 4))
+	MDRV_SOUND_ADD("ay2", AY8910, (4000000 / 4))
 	MDRV_SOUND_CONFIG(ay8910_2_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
@@ -579,13 +578,13 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( r2dtank )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "r2d1.1c",      0xc800, 0x0800, CRC(20606a0f) SHA1(9a55e595c7ea332bdc89142338947be8a28a92a3) )
 	ROM_LOAD( "r2d2.1a",      0xd000, 0x1000, CRC(7561c67f) SHA1(cccc7bbd7975db340fe571a4c31c25b41b2563b8) )
 	ROM_LOAD( "r2d3.2c",      0xe000, 0x1000, CRC(fc53c538) SHA1(8f9a2edcf7a2cb2a8ddd084828b52f1bf45f434a) )
 	ROM_LOAD( "r2d4.2a",      0xf000, 0x1000, CRC(56636225) SHA1(dcfc6e29b4c51a45cfbecf6790b7d88b89af433b) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "r2d5.7l",      0xf800, 0x0800, CRC(c49bed15) SHA1(ffa635a65c024c532bb13fb91bbd3e54923e81bf) )
 ROM_END
 

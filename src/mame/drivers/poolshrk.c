@@ -14,8 +14,8 @@ static int poolshrk_da_latch;
 
 static DRIVER_INIT( poolshrk )
 {
-	UINT8* pSprite = memory_region(machine, REGION_GFX1);
-	UINT8* pOffset = memory_region(machine, REGION_PROMS);
+	UINT8* pSprite = memory_region(machine, "gfx1");
+	UINT8* pOffset = memory_region(machine, "proms");
 
 	int i;
 	int j;
@@ -117,16 +117,16 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( poolshrk )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x0C, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x0C, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_DIPNAME( 0x80, 0x00, "Extended Play" )
 	PORT_DIPSETTING( 0x80, DEF_STR( Off ))
 	PORT_DIPSETTING( 0x00, DEF_STR( On ))
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_DIPNAME( 0x03, 0x02, "Racks Per Game" )
 	PORT_DIPSETTING( 0x03, "2" )
 	PORT_DIPSETTING( 0x02, "3" )
@@ -136,7 +136,7 @@ static INPUT_PORTS_START( poolshrk )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ))
 	PORT_DIPSETTING( 0x00, DEF_STR( 2C_1C ))
 	PORT_DIPSETTING( 0x03, DEF_STR( 1C_1C ))
@@ -147,16 +147,16 @@ static INPUT_PORTS_START( poolshrk )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START_TAG("AN0")
+	PORT_START("AN0")
 	PORT_BIT( 15, 8, IPT_AD_STICK_X ) PORT_MINMAX(0,15) PORT_SENSITIVITY(25) PORT_KEYDELTA(1) PORT_PLAYER(1)
 
-	PORT_START_TAG("AN1")
+	PORT_START("AN1")
 	PORT_BIT( 15, 8, IPT_AD_STICK_X ) PORT_MINMAX(0,15) PORT_SENSITIVITY(25) PORT_KEYDELTA(1) PORT_PLAYER(2)
 
-	PORT_START_TAG("AN2")
+	PORT_START("AN2")
 	PORT_BIT( 15, 8, IPT_AD_STICK_Y ) PORT_MINMAX(0,15) PORT_SENSITIVITY(25) PORT_KEYDELTA(1) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START_TAG("AN3")
+	PORT_START("AN3")
 	PORT_BIT( 15, 8, IPT_AD_STICK_Y ) PORT_MINMAX(0,15) PORT_SENSITIVITY(25) PORT_KEYDELTA(1) PORT_REVERSE PORT_PLAYER(2)
 
 INPUT_PORTS_END
@@ -197,8 +197,8 @@ static const gfx_layout poolshrk_tile_layout =
 
 
 static GFXDECODE_START( poolshrk )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, poolshrk_sprite_layout, 0, 2 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, poolshrk_tile_layout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, poolshrk_sprite_layout, 0, 2 )
+	GFXDECODE_ENTRY( "gfx2", 0, poolshrk_tile_layout, 0, 1 )
 GFXDECODE_END
 
 
@@ -214,7 +214,7 @@ static PALETTE_INIT( poolshrk )
 static MACHINE_DRIVER_START( poolshrk )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6800, 11055000 / 8) /* ? */
+	MDRV_CPU_ADD("main", M6800, 11055000 / 8) /* ? */
 	MDRV_CPU_PROGRAM_MAP(poolshrk_cpu_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
@@ -234,25 +234,25 @@ static MACHINE_DRIVER_START( poolshrk )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(poolshrk)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( poolshrk )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "7329.k1", 0x7000, 0x800, CRC(88152245) SHA1(c7c5e43ea488a197e92a1dc2231578f8ed86c98d) )
 	ROM_LOAD( "7330.l1", 0x7800, 0x800, CRC(fb41d3e9) SHA1(c17994179362da13acfcd36a28f45e328428c031) )
 
-	ROM_REGION( 0x400, REGION_GFX1, ROMREGION_DISPOSE )   /* sprites */
+	ROM_REGION( 0x400, "gfx1", ROMREGION_DISPOSE )   /* sprites */
 	ROM_LOAD( "7325.j5", 0x0000, 0x200, CRC(fae87eed) SHA1(8891d0ea60f72f826d71dc6b064a2ba81b298914) )
 	ROM_LOAD( "7326.h5", 0x0200, 0x200, CRC(05ec9762) SHA1(6119c4529334c98a0a42ca13a98a8661fc594d80) )
 
-	ROM_REGION( 0x200, REGION_GFX2, ROMREGION_DISPOSE )   /* tiles */
+	ROM_REGION( 0x200, "gfx2", ROMREGION_DISPOSE )   /* tiles */
 	ROM_LOAD( "7328.n6", 0x0000, 0x200, CRC(64bcbf3a) SHA1(a4e3ce6b4734234359e3ef784a771e40580c2a2a) )
 
-	ROM_REGION( 0x20, REGION_PROMS, 0 )                   /* line offsets */
+	ROM_REGION( 0x20, "proms", 0 )                   /* line offsets */
 	ROM_LOAD( "7327.k6", 0x0000, 0x020, CRC(f74cef5b) SHA1(f470bf5b193dae4b44e89bc4c4476cf8d98e7cfd) )
 ROM_END
 

@@ -133,20 +133,20 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( slave_map, ADDRESS_SPACE_PROGRAM, 8 )
     AM_RANGE(0x0000, 0x1fff) AM_RAM
-    AM_RANGE(0x2000, 0x2000) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
-    AM_RANGE(0x4000, 0x4000) AM_READWRITE(YM3526_status_port_0_r, YM3526_control_port_0_w)
-    AM_RANGE(0x4001, 0x4001) AM_WRITE(YM3526_write_port_0_w)
+    AM_RANGE(0x2000, 0x2000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
+	AM_RANGE(0x2001, 0x2001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
+    AM_RANGE(0x4000, 0x4000) AM_READWRITE(ym3526_status_port_0_r, ym3526_control_port_0_w)
+    AM_RANGE(0x4001, 0x4001) AM_WRITE(ym3526_write_port_0_w)
 	AM_RANGE(0x6000, 0x6000) AM_READ(soundlatch_r)
     AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( exprraid )
-	PORT_START_TAG("IN0")	/* IN 0 - 0x3800 */
+	PORT_START("IN0")	/* IN 0 - 0x3800 */
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START_TAG("DSW0")	/* DSW 0 - 0x1800 */
+	PORT_START("DSW0")	/* DSW 0 - 0x1800 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -166,7 +166,7 @@ static INPUT_PORTS_START( exprraid )
 	PORT_DIPSETTING(    0x40, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")	/* IN 1 - 0x1801 */
+	PORT_START("IN1")	/* IN 1 - 0x1801 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -176,7 +176,7 @@ static INPUT_PORTS_START( exprraid )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("IN2")	/* IN 2 - 0x1802 */
+	PORT_START("IN2")	/* IN 2 - 0x1802 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
@@ -186,7 +186,7 @@ static INPUT_PORTS_START( exprraid )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START_TAG("DSW1")	/* IN 3 - 0x1803 */
+	PORT_START("DSW1")	/* IN 3 - 0x1803 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x01, "1" )
 	PORT_DIPSETTING(    0x03, "3" )
@@ -258,16 +258,16 @@ static const gfx_layout tile2 =
 
 
 static GFXDECODE_START( exprraid )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x00000, charlayout,   128, 2 ) /* characters */
-	GFXDECODE_ENTRY( REGION_GFX2, 0x00000, spritelayout,  64, 8 ) /* sprites */
-	GFXDECODE_ENTRY( REGION_GFX3, 0x00000, tile1,          0, 4 ) /* background tiles */
-	GFXDECODE_ENTRY( REGION_GFX3, 0x00000, tile2,          0, 4 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x04000, tile1,          0, 4 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x04000, tile2,          0, 4 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x08000, tile1,          0, 4 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x08000, tile2,          0, 4 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x0c000, tile1,          0, 4 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x0c000, tile2,          0, 4 )
+	GFXDECODE_ENTRY( "gfx1", 0x00000, charlayout,   128, 2 ) /* characters */
+	GFXDECODE_ENTRY( "gfx2", 0x00000, spritelayout,  64, 8 ) /* sprites */
+	GFXDECODE_ENTRY( "gfx3", 0x00000, tile1,          0, 4 ) /* background tiles */
+	GFXDECODE_ENTRY( "gfx3", 0x00000, tile2,          0, 4 )
+	GFXDECODE_ENTRY( "gfx3", 0x04000, tile1,          0, 4 )
+	GFXDECODE_ENTRY( "gfx3", 0x04000, tile2,          0, 4 )
+	GFXDECODE_ENTRY( "gfx3", 0x08000, tile1,          0, 4 )
+	GFXDECODE_ENTRY( "gfx3", 0x08000, tile2,          0, 4 )
+	GFXDECODE_ENTRY( "gfx3", 0x0c000, tile1,          0, 4 )
+	GFXDECODE_ENTRY( "gfx3", 0x0c000, tile2,          0, 4 )
 GFXDECODE_END
 
 
@@ -278,7 +278,7 @@ static void irqhandler(running_machine *machine, int linestate)
 	cpunum_set_input_line_and_vector(machine, 1,0,linestate,0xff);
 }
 
-static const struct YM3526interface ym3526_interface =
+static const ym3526_interface ym3526_config =
 {
 	irqhandler
 };
@@ -302,11 +302,11 @@ static INTERRUPT_GEN( exprraid_interrupt )
 static MACHINE_DRIVER_START( exprraid )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, 4000000)        /* 4 MHz ??? */
+	MDRV_CPU_ADD("main", M6502, 4000000)        /* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(master_map, 0)
 	MDRV_CPU_VBLANK_INT("main", exprraid_interrupt)
 
-	MDRV_CPU_ADD(M6809, 2000000)        /* 2 MHz ??? */
+	MDRV_CPU_ADD("slave", M6809, 2000000)        /* 2 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
 								/* IRQs are caused by the YM3526 */
 
@@ -328,11 +328,11 @@ static MACHINE_DRIVER_START( exprraid )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 1500000)
+	MDRV_SOUND_ADD("ym1", YM2203, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(YM3526, 3600000)
-	MDRV_SOUND_CONFIG(ym3526_interface)
+	MDRV_SOUND_ADD("ym2", YM3526, 3600000)
+	MDRV_SOUND_CONFIG(ym3526_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 MACHINE_DRIVER_END
 
@@ -345,17 +345,17 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( exprraid )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cz01",    0x4000, 0x4000, CRC(dc8f9fba) SHA1(cae6af54fc0081d606b6884e8873aed356a37ba9) )
 	ROM_LOAD( "cz00",    0x8000, 0x8000, CRC(a81290bc) SHA1(ddb0acda6124427bee691f9926c41fda27ed816e) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the sub cpu */
+	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the sub cpu */
 	ROM_LOAD( "cz02",    0x8000, 0x8000, CRC(552e6112) SHA1(f8412a63cab0aa47321d602f69bf534426c6aa5d) )
 
-	ROM_REGION( 0x04000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz07",    0x00000, 0x4000, CRC(686bac23) SHA1(b6c96ed40e90a8ba32c2e78a65f9589d387b0254) )	/* characters */
 
-	ROM_REGION( 0x30000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x30000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz09",    0x00000, 0x8000, CRC(1ed250d1) SHA1(c98b0440e4319308e683e857bbfeb6a150c76ff3) )	/* sprites */
 	ROM_LOAD( "cz08",    0x08000, 0x8000, CRC(2293fc61) SHA1(bf81db375f5424396559dcf0e04d34a52f6a020a) )
 	ROM_LOAD( "cz13",    0x10000, 0x8000, CRC(7c3bfd00) SHA1(87b48e09aaeacf78f3260df893b0922e25d10a5d) )
@@ -363,38 +363,38 @@ ROM_START( exprraid )
 	ROM_LOAD( "cz11",    0x20000, 0x8000, CRC(b7418335) SHA1(e9d08ee651b9221c371e2629a757bceca7b6192b) )
 	ROM_LOAD( "cz10",    0x28000, 0x8000, CRC(2f611978) SHA1(fb60be573184d2af1dfdd543e68eeec53f2788f2) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz04",    0x00000, 0x8000, CRC(643a1bd3) SHA1(b23631d96cb413808f65f3ebe8fe6539b6140606) )	/* tiles */
 	/* Save 0x08000-0x0ffff to expand the previous so we can decode the thing */
 	ROM_LOAD( "cz05",    0x10000, 0x8000, CRC(c44570bf) SHA1(3e9b8b6b36c7f5ae016dba3987ea19a29bd5ee5b) )	/* tiles */
 	ROM_LOAD( "cz06",    0x18000, 0x8000, CRC(b9bb448b) SHA1(84974b1f3a5b58cd427d874f805a6dd9244c1101) )	/* tiles */
 
-	ROM_REGION( 0x8000, REGION_GFX4, 0 )     /* background tilemaps */
+	ROM_REGION( 0x8000, "gfx4", 0 )     /* background tilemaps */
 	ROM_LOAD( "cz03",    0x0000, 0x8000, CRC(6ce11971) SHA1(16bfa69b3ad02253e81c8110c9b840be03952790) )
 
-	ROM_REGION( 0x0400, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, "proms", 0 )
 	ROM_LOAD( "cz17.prm", 0x0000, 0x0100, CRC(da31dfbc) SHA1(ac476440864f538918f7bef2e1db82fd19195f89) ) /* red */
 	ROM_LOAD( "cz16.prm", 0x0100, 0x0100, CRC(51f25b4c) SHA1(bfcca57613fbb22919e00db1f6a8c7ca50faa60b) ) /* green */
 	ROM_LOAD( "cz15.prm", 0x0200, 0x0100, CRC(a6168d7f) SHA1(0c7b31adcd764ce2631c3fb5c1a968b01f65e741) ) /* blue */
 	ROM_LOAD( "cz14.prm", 0x0300, 0x0100, CRC(52aad300) SHA1(ff09772b930afa87e28d0628ef85a589a3d149c9) ) /* ??? */
 
-	ROM_REGION( 0x0400, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "plds", ROMREGION_DISPOSE )
 	ROM_LOAD( "pal16r4a.5c",   0x0000, 0x0104, CRC(d66aaa87) SHA1(dc29b473238ed6a9de2076c79644b613a9ba6924) )
 	ROM_LOAD( "pal16r4a.5e",   0x0200, 0x0104, CRC(9a8766a7) SHA1(5f84ad9e633daeb14531ef527827ef3d9b269437) )
 ROM_END
 
 ROM_START( exprrada )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cz01-2e.15a", 0x4000, 0x4000, CRC(a0ae6756) SHA1(7f7ec1efddbb62e9d201c6013bca8ab72c3f75f6) )
 	ROM_LOAD( "cz00-4e.16b", 0x8000, 0x8000, CRC(910f6ccc) SHA1(1dbf164a7add9335d90ee07b6db9a162a28e407b) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the sub cpu */
+	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the sub cpu */
 	ROM_LOAD( "cz02-1.2a",    0x8000, 0x8000, CRC(552e6112) SHA1(f8412a63cab0aa47321d602f69bf534426c6aa5d) )
 
-	ROM_REGION( 0x04000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz07.5b",    0x00000, 0x4000, CRC(686bac23) SHA1(b6c96ed40e90a8ba32c2e78a65f9589d387b0254) )	/* characters */
 
-	ROM_REGION( 0x30000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x30000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz09.16h",    0x00000, 0x8000, CRC(1ed250d1) SHA1(c98b0440e4319308e683e857bbfeb6a150c76ff3) )	/* sprites */
 	ROM_LOAD( "cz08.14h",    0x08000, 0x8000, CRC(2293fc61) SHA1(bf81db375f5424396559dcf0e04d34a52f6a020a) )
 	ROM_LOAD( "cz13.16k",    0x10000, 0x8000, CRC(7c3bfd00) SHA1(87b48e09aaeacf78f3260df893b0922e25d10a5d) )
@@ -402,38 +402,38 @@ ROM_START( exprrada )
 	ROM_LOAD( "cz11.13k",    0x20000, 0x8000, CRC(b7418335) SHA1(e9d08ee651b9221c371e2629a757bceca7b6192b) )
 	ROM_LOAD( "cz10.11k",    0x28000, 0x8000, CRC(2f611978) SHA1(fb60be573184d2af1dfdd543e68eeec53f2788f2) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz04.8e",    0x00000, 0x8000, CRC(643a1bd3) SHA1(b23631d96cb413808f65f3ebe8fe6539b6140606) )	/* tiles */
 	/* Save 0x08000-0x0ffff to expand the previous so we can decode the thing */
 	ROM_LOAD( "cz05.8f",    0x10000, 0x8000, CRC(c44570bf) SHA1(3e9b8b6b36c7f5ae016dba3987ea19a29bd5ee5b) )	/* tiles */
 	ROM_LOAD( "cz06.8h",    0x18000, 0x8000, CRC(b9bb448b) SHA1(84974b1f3a5b58cd427d874f805a6dd9244c1101) )	/* tiles */
 
-	ROM_REGION( 0x8000, REGION_GFX4, 0 )     /* background tilemaps */
+	ROM_REGION( 0x8000, "gfx4", 0 )     /* background tilemaps */
 	ROM_LOAD( "cz03.12d",    0x0000, 0x8000, CRC(6ce11971) SHA1(16bfa69b3ad02253e81c8110c9b840be03952790) )
 
-	ROM_REGION( 0x0400, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, "proms", 0 )
 	ROM_LOAD( "cz17.prm", 0x0000, 0x0100, CRC(da31dfbc) SHA1(ac476440864f538918f7bef2e1db82fd19195f89) ) /* red */
 	ROM_LOAD( "cz16.prm", 0x0100, 0x0100, CRC(51f25b4c) SHA1(bfcca57613fbb22919e00db1f6a8c7ca50faa60b) ) /* green */
 	ROM_LOAD( "cz15.prm", 0x0200, 0x0100, CRC(a6168d7f) SHA1(0c7b31adcd764ce2631c3fb5c1a968b01f65e741) ) /* blue */
 	ROM_LOAD( "cz14.prm", 0x0300, 0x0100, CRC(52aad300) SHA1(ff09772b930afa87e28d0628ef85a589a3d149c9) ) /* ??? */
 
-	ROM_REGION( 0x0400, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "plds", ROMREGION_DISPOSE )
 	ROM_LOAD( "pal16r4a.5c",   0x0000, 0x0104, CRC(d66aaa87) SHA1(dc29b473238ed6a9de2076c79644b613a9ba6924) )
 	ROM_LOAD( "pal16r4a.5e",   0x0200, 0x0104, CRC(9a8766a7) SHA1(5f84ad9e633daeb14531ef527827ef3d9b269437) )
 ROM_END
 
 ROM_START( wexpress )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "2",       0x4000, 0x4000, CRC(ea5e5a8f) SHA1(fa92bcb6b97c2966cd330b309eba73f9c059f14e) )
 	ROM_LOAD( "1",       0x8000, 0x8000, CRC(a7daae12) SHA1(a97f4bc05a3ec096d8c717bdf096f4b0e59dc2c2) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the sub cpu */
+	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the sub cpu */
 	ROM_LOAD( "cz02",    0x8000, 0x8000, CRC(552e6112) SHA1(f8412a63cab0aa47321d602f69bf534426c6aa5d) )
 
-	ROM_REGION( 0x04000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz07",    0x00000, 0x4000, CRC(686bac23) SHA1(b6c96ed40e90a8ba32c2e78a65f9589d387b0254) )	/* characters */
 
-	ROM_REGION( 0x30000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x30000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz09",    0x00000, 0x8000, CRC(1ed250d1) SHA1(c98b0440e4319308e683e857bbfeb6a150c76ff3) )	/* sprites */
 	ROM_LOAD( "cz08",    0x08000, 0x8000, CRC(2293fc61) SHA1(bf81db375f5424396559dcf0e04d34a52f6a020a) )
 	ROM_LOAD( "cz13",    0x10000, 0x8000, CRC(7c3bfd00) SHA1(87b48e09aaeacf78f3260df893b0922e25d10a5d) )
@@ -441,38 +441,38 @@ ROM_START( wexpress )
 	ROM_LOAD( "cz11",    0x20000, 0x8000, CRC(b7418335) SHA1(e9d08ee651b9221c371e2629a757bceca7b6192b) )
 	ROM_LOAD( "cz10",    0x28000, 0x8000, CRC(2f611978) SHA1(fb60be573184d2af1dfdd543e68eeec53f2788f2) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "4",       0x00000, 0x8000, CRC(f2e93ff0) SHA1(2e631966e1fa0b2699aa782b589d36801072ba03) )	/* tiles */
 	/* Save 0x08000-0x0ffff to expand the previous so we can decode the thing */
 	ROM_LOAD( "cz05",    0x10000, 0x8000, CRC(c44570bf) SHA1(3e9b8b6b36c7f5ae016dba3987ea19a29bd5ee5b) )	/* tiles */
 	ROM_LOAD( "6",       0x18000, 0x8000, CRC(c3a56de5) SHA1(aefc516c6c69b12291c0bda03729910181a91a17) )	/* tiles */
 
-	ROM_REGION( 0x8000, REGION_GFX4, 0 )     /* background tilemaps */
+	ROM_REGION( 0x8000, "gfx4", 0 )     /* background tilemaps */
 	ROM_LOAD( "3",        0x0000, 0x8000, CRC(242e3e64) SHA1(4fa8e93ef055bfdbe3bd619c53bf2448e1b832f0) )
 
-	ROM_REGION( 0x0400, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, "proms", 0 )
 	ROM_LOAD( "cz17.prm", 0x0000, 0x0100, CRC(da31dfbc) SHA1(ac476440864f538918f7bef2e1db82fd19195f89) ) /* red */
 	ROM_LOAD( "cz16.prm", 0x0100, 0x0100, CRC(51f25b4c) SHA1(bfcca57613fbb22919e00db1f6a8c7ca50faa60b) ) /* green */
 	ROM_LOAD( "cz15.prm", 0x0200, 0x0100, CRC(a6168d7f) SHA1(0c7b31adcd764ce2631c3fb5c1a968b01f65e741) ) /* blue */
 	ROM_LOAD( "cz14.prm", 0x0300, 0x0100, CRC(52aad300) SHA1(ff09772b930afa87e28d0628ef85a589a3d149c9) ) /* ??? */
 
-	ROM_REGION( 0x0400, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "plds", ROMREGION_DISPOSE )
 	ROM_LOAD( "pal16r4a.5c",   0x0000, 0x0104, CRC(d66aaa87) SHA1(dc29b473238ed6a9de2076c79644b613a9ba6924) )
 	ROM_LOAD( "pal16r4a.5e",   0x0200, 0x0104, CRC(9a8766a7) SHA1(5f84ad9e633daeb14531ef527827ef3d9b269437) )
 ROM_END
 
 ROM_START( wexpresb )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "wexpress.3", 0x4000, 0x4000, CRC(b4dd0fa4) SHA1(8d17eb28ae92486c67859871ea2bef8f50f39dbd) )
 	ROM_LOAD( "wexpress.1", 0x8000, 0x8000, CRC(e8466596) SHA1(dbbd3b84d0f017292595fc19f7412b984851221a) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the sub cpu */
+	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the sub cpu */
 	ROM_LOAD( "cz02",    0x8000, 0x8000, CRC(552e6112) SHA1(f8412a63cab0aa47321d602f69bf534426c6aa5d) )
 
-	ROM_REGION( 0x04000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz07",    0x00000, 0x4000, CRC(686bac23) SHA1(b6c96ed40e90a8ba32c2e78a65f9589d387b0254) )	/* characters */
 
-	ROM_REGION( 0x30000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x30000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz09",    0x00000, 0x8000, CRC(1ed250d1) SHA1(c98b0440e4319308e683e857bbfeb6a150c76ff3) )	/* sprites */
 	ROM_LOAD( "cz08",    0x08000, 0x8000, CRC(2293fc61) SHA1(bf81db375f5424396559dcf0e04d34a52f6a020a) )
 	ROM_LOAD( "cz13",    0x10000, 0x8000, CRC(7c3bfd00) SHA1(87b48e09aaeacf78f3260df893b0922e25d10a5d) )
@@ -480,16 +480,16 @@ ROM_START( wexpresb )
 	ROM_LOAD( "cz11",    0x20000, 0x8000, CRC(b7418335) SHA1(e9d08ee651b9221c371e2629a757bceca7b6192b) )
 	ROM_LOAD( "cz10",    0x28000, 0x8000, CRC(2f611978) SHA1(fb60be573184d2af1dfdd543e68eeec53f2788f2) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "4",       0x00000, 0x8000, CRC(f2e93ff0) SHA1(2e631966e1fa0b2699aa782b589d36801072ba03) )	/* tiles */
 	/* Save 0x08000-0x0ffff to expand the previous so we can decode the thing */
 	ROM_LOAD( "cz05",    0x10000, 0x8000, CRC(c44570bf) SHA1(3e9b8b6b36c7f5ae016dba3987ea19a29bd5ee5b) )	/* tiles */
 	ROM_LOAD( "6",       0x18000, 0x8000, CRC(c3a56de5) SHA1(aefc516c6c69b12291c0bda03729910181a91a17) )	/* tiles */
 
-	ROM_REGION( 0x8000, REGION_GFX4, 0 )     /* background tilemaps */
+	ROM_REGION( 0x8000, "gfx4", 0 )     /* background tilemaps */
 	ROM_LOAD( "3",        0x0000, 0x8000, CRC(242e3e64) SHA1(4fa8e93ef055bfdbe3bd619c53bf2448e1b832f0) )
 
-	ROM_REGION( 0x0400, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, "proms", 0 )
 	ROM_LOAD( "cz17.prm", 0x0000, 0x0100, CRC(da31dfbc) SHA1(ac476440864f538918f7bef2e1db82fd19195f89) ) /* red */
 	ROM_LOAD( "cz16.prm", 0x0100, 0x0100, CRC(51f25b4c) SHA1(bfcca57613fbb22919e00db1f6a8c7ca50faa60b) ) /* green */
 	ROM_LOAD( "cz15.prm", 0x0200, 0x0100, CRC(a6168d7f) SHA1(0c7b31adcd764ce2631c3fb5c1a968b01f65e741) ) /* blue */
@@ -497,17 +497,17 @@ ROM_START( wexpresb )
 ROM_END
 
 ROM_START( wexpresc )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "s2",      0x4000, 0x4000, CRC(40d70fcb) SHA1(1327d39f872a39e020972952e5756ca59c55f9d0) )
 	ROM_LOAD( "s1",      0x8000, 0x8000, CRC(7c573824) SHA1(f5e4d4f0866c08c88d012a77e8aa2e74a779f986) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for the sub cpu */
+	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the sub cpu */
 	ROM_LOAD( "cz02",    0x8000, 0x8000, CRC(552e6112) SHA1(f8412a63cab0aa47321d602f69bf534426c6aa5d) )
 
-	ROM_REGION( 0x04000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz07",    0x00000, 0x4000, CRC(686bac23) SHA1(b6c96ed40e90a8ba32c2e78a65f9589d387b0254) )	/* characters */
 
-	ROM_REGION( 0x30000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x30000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "cz09",    0x00000, 0x8000, CRC(1ed250d1) SHA1(c98b0440e4319308e683e857bbfeb6a150c76ff3) )	/* sprites */
 	ROM_LOAD( "cz08",    0x08000, 0x8000, CRC(2293fc61) SHA1(bf81db375f5424396559dcf0e04d34a52f6a020a) )
 	ROM_LOAD( "cz13",    0x10000, 0x8000, CRC(7c3bfd00) SHA1(87b48e09aaeacf78f3260df893b0922e25d10a5d) )
@@ -515,16 +515,16 @@ ROM_START( wexpresc )
 	ROM_LOAD( "cz11",    0x20000, 0x8000, CRC(b7418335) SHA1(e9d08ee651b9221c371e2629a757bceca7b6192b) )
 	ROM_LOAD( "cz10",    0x28000, 0x8000, CRC(2f611978) SHA1(fb60be573184d2af1dfdd543e68eeec53f2788f2) )
 
-	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "4",       0x00000, 0x8000, CRC(f2e93ff0) SHA1(2e631966e1fa0b2699aa782b589d36801072ba03) )	/* tiles */
 	/* Save 0x08000-0x0ffff to expand the previous so we can decode the thing */
 	ROM_LOAD( "cz05",    0x10000, 0x8000, CRC(c44570bf) SHA1(3e9b8b6b36c7f5ae016dba3987ea19a29bd5ee5b) )	/* tiles */
 	ROM_LOAD( "6",       0x18000, 0x8000, CRC(c3a56de5) SHA1(aefc516c6c69b12291c0bda03729910181a91a17) )	/* tiles */
 
-	ROM_REGION( 0x8000, REGION_GFX4, 0 )     /* background tilemaps */
+	ROM_REGION( 0x8000, "gfx4", 0 )     /* background tilemaps */
 	ROM_LOAD( "3",        0x0000, 0x8000, CRC(242e3e64) SHA1(4fa8e93ef055bfdbe3bd619c53bf2448e1b832f0) )
 	/* Proms Weren't Present In This Set, Using the One from the Other */
-	ROM_REGION( 0x0400, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, "proms", 0 )
 	ROM_LOAD( "cz17.prm", 0x0000, 0x0100, CRC(da31dfbc) SHA1(ac476440864f538918f7bef2e1db82fd19195f89) ) /* red */
 	ROM_LOAD( "cz16.prm", 0x0100, 0x0100, CRC(51f25b4c) SHA1(bfcca57613fbb22919e00db1f6a8c7ca50faa60b) ) /* green */
 	ROM_LOAD( "cz15.prm", 0x0200, 0x0100, CRC(a6168d7f) SHA1(0c7b31adcd764ce2631c3fb5c1a968b01f65e741) ) /* blue */
@@ -536,7 +536,7 @@ static void exprraid_gfx_expand(running_machine *machine)
 {
 	/* Expand the background rom so we can use regular decode routines */
 
-	UINT8	*gfx = memory_region(machine, REGION_GFX3);
+	UINT8	*gfx = memory_region(machine, "gfx3");
 	int				offs = 0x10000-0x1000;
 	int				i;
 
@@ -556,7 +556,7 @@ static void exprraid_gfx_expand(running_machine *machine)
 
 static void patch_rom1(running_machine *machine)
 {
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 	int i;
 
 	/* HACK!: Implement custom opcode as regular with a mapped io read */
@@ -581,7 +581,7 @@ static DRIVER_INIT( wexpress )
 
 static DRIVER_INIT( exprraid )
 {
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 
 
 	/* decode vectors */

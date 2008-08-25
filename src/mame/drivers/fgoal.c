@@ -117,14 +117,12 @@ static READ8_HANDLER( fgoal_analog_r )
 }
 
 
-static READ8_HANDLER( fgoal_switches_r )
+static CUSTOM_INPUT( fgoal_80_r )
 {
-	if (video_screen_get_vpos(machine->primary_screen) & 0x80)
-		return input_port_read(machine, "IN1") | 0x80;
-	else
-		return input_port_read(machine, "IN1");
-}
+	UINT8 ret = (video_screen_get_vpos(field->port->machine->primary_screen) & 0x80) ? 1 : 0;
 
+	return ret;
+}
 
 static READ8_HANDLER( fgoal_nmi_reset_r )
 {
@@ -224,8 +222,8 @@ static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x00f0, 0x00f0) AM_READ(fgoal_row_r)
 	AM_RANGE(0x00f1, 0x00f1) AM_READ(fgoal_analog_r)
-	AM_RANGE(0x00f2, 0x00f2) AM_READ(input_port_0_r)
-	AM_RANGE(0x00f3, 0x00f3) AM_READ(fgoal_switches_r)
+	AM_RANGE(0x00f2, 0x00f2) AM_READ_PORT("IN0")
+	AM_RANGE(0x00f3, 0x00f3) AM_READ_PORT("IN1")
 	AM_RANGE(0x00f4, 0x00f4) AM_READ(fgoal_address_hi_r)
 	AM_RANGE(0x00f5, 0x00f5) AM_READ(fgoal_address_lo_r)
 	AM_RANGE(0x00f6, 0x00f6) AM_READ(fgoal_shifter_r)
@@ -254,8 +252,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( fgoal )
-
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_DIPNAME( 0x40, 0x40, "Display Coinage Settings" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ))
@@ -277,11 +274,10 @@ static INPUT_PORTS_START( fgoal )
 	PORT_DIPSETTING(    0x05, "65000" )
 	PORT_DIPSETTING(    0x06, "79000" )
 	PORT_DIPSETTING(    0x07, "93000" )
-
 	/* extra credit score changes depending on player's performance */
 
-	PORT_START_TAG("IN1")
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) /* 128V */
+	PORT_START("IN1")
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(fgoal_80_r, NULL) /* 128V */
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Cabinet ))
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ))
 	PORT_DIPSETTING(    0x40, DEF_STR( Cocktail ))
@@ -299,13 +295,11 @@ static INPUT_PORTS_START( fgoal )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ))
 
 	/* game freezes when analog controls read $00 or $ff */
-
-	PORT_START_TAG("PADDLE0")
+	PORT_START("PADDLE0")
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE ) PORT_MINMAX(1, 254) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START_TAG("PADDLE1")
+	PORT_START("PADDLE1")
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE ) PORT_MINMAX(1, 254) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_REVERSE PORT_PLAYER(2)
-
 INPUT_PORTS_END
 
 static const UINT32 gfxlayout_xoffset[64] =
@@ -347,15 +341,15 @@ static const gfx_layout gfxlayout =
 
 
 static GFXDECODE_START( fgoal )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, gfxlayout, 0x00, 8 ) /* foreground */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, gfxlayout, 0x80, 1 ) /* background */
+	GFXDECODE_ENTRY( "gfx1", 0, gfxlayout, 0x00, 8 ) /* foreground */
+	GFXDECODE_ENTRY( "gfx1", 0, gfxlayout, 0x80, 1 ) /* background */
 GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( fgoal )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6800, 10065000 / 10) /* ? */
+	MDRV_CPU_ADD("main", M6800, 10065000 / 10) /* ? */
 	MDRV_CPU_PROGRAM_MAP(cpu_map, 0)
 
 	MDRV_MACHINE_RESET(fgoal)
@@ -379,7 +373,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( fgoal )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "tf04.m28", 0xa000, 0x0800, CRC(45fd7b03) SHA1(adc75a7fff6402c5c668ac28aec5d7c31c67c948) )
 	ROM_RELOAD(           0xe000, 0x0800 )
 	ROM_LOAD( "tf03.m31", 0xa800, 0x0800, CRC(01891c32) SHA1(013480dc970da83bda969506b2bd8865753a78ad) )
@@ -389,20 +383,20 @@ ROM_START( fgoal )
 	ROM_LOAD( "tf01.m46", 0xb800, 0x0800, CRC(1b0bfa5c) SHA1(768e14f08063cc022d7e18a9cb2197d64a9e1b8d) )
 	ROM_RELOAD(           0xf800, 0x0800 )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE ) /* overlay proms */
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE ) /* overlay proms */
 	ROM_LOAD( "tf05.m11", 0x0000, 0x0400, CRC(925b78ab) SHA1(97d6e572658715dc4f6c37b98ba5352643fc8e27) )
 	ROM_LOAD( "tf06.m4",  0x0400, 0x0400, CRC(3d2f007b) SHA1(7f4b6f3f08be8c886af3e2ccd3c0d93ae54d4649) )
 	ROM_LOAD( "tf07.m12", 0x0800, 0x0400, CRC(0b1d01c4) SHA1(8680602fecd412e5136e1107618a2e0a59b37d08) )
 	ROM_LOAD( "tf08.m5",  0x0c00, 0x0400, CRC(5cbc7dfd) SHA1(1a054dc72d25615ea6f903f6da8108033514fd1f) )
 
-	ROM_REGION( 0x0100, REGION_PROMS, ROMREGION_INVERT )
+	ROM_REGION( 0x0100, "proms", ROMREGION_INVERT )
 	ROM_LOAD_NIB_LOW ( "tf09.m13", 0x0000, 0x0100, CRC(b0fc4b80) SHA1(c6029f6d912275aa65302ca97281e10ccbf63159) )
 	ROM_LOAD_NIB_HIGH( "tf10.m6",  0x0000, 0x0100, CRC(7b30b15d) SHA1(e9826a107b209e18d891ead341eda3d4523ce195) )
 ROM_END
 
 
 ROM_START( fgoala )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "mf04.m28", 0xa000, 0x0800, CRC(acba21bc) SHA1(4a82e88555491883628a07f905d130380d5274f1) )
 	ROM_RELOAD(           0xe000, 0x0800 )
 	ROM_LOAD( "mf03.m31", 0xa800, 0x0800, CRC(4ce7462d) SHA1(ff02b4a831967c4e75e1d42e0679224b107d61bd) )
@@ -413,13 +407,13 @@ ROM_START( fgoala )
 	ROM_RELOAD(           0xf800, 0x0800 )
 	ROM_LOAD( "mf05.m22", 0xd800, 0x0800, CRC(58082b8b) SHA1(72cd4153f7939cd33fc69ba82b44391fc19ae152) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE ) /* overlay proms */
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE ) /* overlay proms */
 	ROM_LOAD( "tf05.m11", 0x0000, 0x0400, CRC(925b78ab) SHA1(97d6e572658715dc4f6c37b98ba5352643fc8e27) )
 	ROM_LOAD( "tf06.m4",  0x0400, 0x0400, CRC(3d2f007b) SHA1(7f4b6f3f08be8c886af3e2ccd3c0d93ae54d4649) )
 	ROM_LOAD( "tf07.m12", 0x0800, 0x0400, CRC(0b1d01c4) SHA1(8680602fecd412e5136e1107618a2e0a59b37d08) )
 	ROM_LOAD( "tf08.m5",  0x0c00, 0x0400, CRC(5cbc7dfd) SHA1(1a054dc72d25615ea6f903f6da8108033514fd1f) )
 
-	ROM_REGION( 0x0100, REGION_PROMS, ROMREGION_INVERT )
+	ROM_REGION( 0x0100, "proms", ROMREGION_INVERT )
 	ROM_LOAD_NIB_LOW ( "tf09.m13", 0x0000, 0x0100, CRC(b0fc4b80) SHA1(c6029f6d912275aa65302ca97281e10ccbf63159) )
 	ROM_LOAD_NIB_HIGH( "tf10.m6",  0x0000, 0x0100, CRC(7b30b15d) SHA1(e9826a107b209e18d891ead341eda3d4523ce195) )
 ROM_END

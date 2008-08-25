@@ -5,19 +5,11 @@
  *
  **********************************************************************************************/
 
-#ifndef BSMT2000_H
-#define BSMT2000_H
+#pragma once
 
-struct BSMT2000interface
-{
-	int region;						/* memory region where the sample ROM lives */
-};
+#ifndef __BSMT2000_H__
+#define __BSMT2000_H__
 
-WRITE16_HANDLER( BSMT2000_data_0_w );
+WRITE16_HANDLER( bsmt2000_data_0_w );
 
-extern const struct BSMT2000interface bsmt2000_interface_region_1;
-extern const struct BSMT2000interface bsmt2000_interface_region_2;
-extern const struct BSMT2000interface bsmt2000_interface_region_3;
-extern const struct BSMT2000interface bsmt2000_interface_region_4;
-
-#endif
+#endif /* __BSMT2000_H__ */

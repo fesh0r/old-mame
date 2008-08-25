@@ -40,7 +40,7 @@ struct TMS36XX {
 	int tune_ofs;		/* note currently playing */
 	int tune_max;		/* end of tune */
 
-	const struct TMS36XXinterface *intf;
+	const tms36xx_interface *intf;
 };
 
 #define C(n)	(int)((FSCALE<<(n-1))*1.18921)	/* 2^(3/12) */
@@ -485,7 +485,7 @@ void tms3617_enable_w(int chip, int enable)
 	tms3617_enable(tms, enable);
 }
 
-static void *tms36xx_start(int sndindex, int clock, const void *config)
+static void *tms36xx_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	int j;
 	struct TMS36XX *tms;

@@ -7,6 +7,8 @@ the most protected of the DE102 games?
 -- you can't select your plane
 -- locks up at boss
 
+
+-- Dip locations verified with Japanese manual
 */
 
 #include "driver.h"
@@ -305,13 +307,13 @@ static ADDRESS_MAP_START( dblewing_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x106000, 0x106fff) AM_READ(SMH_RAM) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
 
 	/* protection */
-//  AM_RANGE(0x280104, 0x280105) AM_WRITE(SMH_NOP) // ??
-	AM_RANGE(0x2800ac, 0x2800ad) AM_READ(input_port_2_word_r) // dips
-	AM_RANGE(0x280298, 0x280299) AM_READ(input_port_1_word_r) // vbl
-	AM_RANGE(0x280506, 0x280507) AM_READ(input_port_3_word_r)
-	AM_RANGE(0x2802B4, 0x2802B5) AM_READ(input_port_0_word_r) // inverted?
-//  AM_RANGE(0x280330, 0x280331) AM_READ(SMH_NOP) // sound?
-//  AM_RANGE(0x280380, 0x280381) AM_WRITE(SMH_NOP) // sound
+//  AM_RANGE(0x280104, 0x280105) AM_WRITE(SMH_NOP)              // ??
+	AM_RANGE(0x2800ac, 0x2800ad) AM_READ_PORT("DSW")			// dips
+	AM_RANGE(0x280298, 0x280299) AM_READ_PORT("SYSTEM")			// vbl
+	AM_RANGE(0x280506, 0x280507) AM_READ_PORT("UNK")
+	AM_RANGE(0x2802B4, 0x2802B5) AM_READ_PORT("P1_P2")			// inverted?
+//  AM_RANGE(0x280330, 0x280331) AM_READ(SMH_NOP)               // sound?
+//  AM_RANGE(0x280380, 0x280381) AM_WRITE(SMH_NOP)              // sound
 
 	AM_RANGE(0x280000, 0x2807ff) AM_READWRITE(dlbewing_prot_r,dblewing_prot_w)
 
@@ -330,10 +332,10 @@ static WRITE8_HANDLER( YM2151_w )
 {
 	switch (offset) {
 	case 0:
-		YM2151_register_port_0_w(0,data);
+		ym2151_register_port_0_w(0,data);
 		break;
 	case 1:
-		YM2151_data_port_0_w(0,data);
+		ym2151_data_port_0_w(0,data);
 		break;
 	}
 }
@@ -343,8 +345,8 @@ static WRITE8_HANDLER( YM2151_w )
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
-//  AM_RANGE(0xa000, 0xa001) AM_READWRITE(YM2151_status_port_0_r,YM2151_w)
-//  AM_RANGE(0xb000, 0xb000) AM_READ(OKIM6295_status_0_r)
+//  AM_RANGE(0xa000, 0xa001) AM_READWRITE(ym2151_status_port_0_r,YM2151_w)
+//  AM_RANGE(0xb000, 0xb000) AM_READ(okim6295_status_0_r)
 //  AM_RANGE(0xd000, 0xd000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
@@ -386,13 +388,13 @@ static const gfx_layout spritelayout =
 
 
 static GFXDECODE_START( dblewing )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tile_8x8_layout,     0x000, 32 )	/* Tiles (8x8) */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tile_16x16_layout,   0x000, 32 )	/* Tiles (16x16) */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout,        0x200, 32 )	/* Sprites (16x16) */
+	GFXDECODE_ENTRY( "gfx1", 0, tile_8x8_layout,     0x000, 32 )	/* Tiles (8x8) */
+	GFXDECODE_ENTRY( "gfx1", 0, tile_16x16_layout,   0x000, 32 )	/* Tiles (16x16) */
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout,        0x200, 32 )	/* Sprites (16x16) */
 GFXDECODE_END
 
 static INPUT_PORTS_START( dblewing )
-	PORT_START	/* 16bit */
+	PORT_START("P1_P2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -410,7 +412,7 @@ static INPUT_PORTS_START( dblewing )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START	/* 16bit */
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -424,8 +426,9 @@ static INPUT_PORTS_START( dblewing )
    Also the Original PCB showed the title screen in English, and the current implementation shows it
    in Korean(?), so it is likely there is a Language dip/jumper setting */
 
-	PORT_START
-	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) ) /* 16bit - These values are for Dip Switch #1 */
+	PORT_START("DSW")
+	 /* 16bit - These values are for Dip Switch #1 */
+	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:1,2,3")
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(      0x0007, DEF_STR( 1C_1C ) )
@@ -434,7 +437,7 @@ static INPUT_PORTS_START( dblewing )
 	PORT_DIPSETTING(      0x0004, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(      0x0003, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( 1C_6C ) )
-	PORT_DIPNAME( 0x0038, 0x0038, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0x0038, 0x0038, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("SW1:4,5,6")
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0008, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(      0x0038, DEF_STR( 1C_1C ) )
@@ -443,35 +446,34 @@ static INPUT_PORTS_START( dblewing )
 	PORT_DIPSETTING(      0x0020, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(      0x0018, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(      0x0010, DEF_STR( 1C_6C ) )
-	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Flip_Screen ) )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:7")
 	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Lives ) ) /* 16bit - These values are for Dip Switch #2 */
+	PORT_DIPUNKNOWN_DIPLOC( 0x0080, 0x0080, "SW1:8" )	/* Manual says 'Don't change' */
+	 /* 16bit - These values are for Dip Switch #2 */
+	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(      0x0200, "1" )
 	PORT_DIPSETTING(      0x0100, "2" )
 	PORT_DIPSETTING(      0x0300, "3" )
 	PORT_DIPSETTING(      0x0000, "5" )
-	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:3,4")
 	PORT_DIPSETTING(      0x0800, DEF_STR( Easy ) )
 	PORT_DIPSETTING(      0x0c00, DEF_STR( Normal ) )
 	PORT_DIPSETTING(      0x0400, DEF_STR( Hard ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
-	PORT_DIPNAME( 0x3000, 0x3000, DEF_STR( Bonus_Life ) )
+	PORT_DIPNAME( 0x3000, 0x3000, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW2:5,6")
 	PORT_DIPSETTING(      0x2000, "Every 100,000" )
 	PORT_DIPSETTING(      0x3000, "Every 150,000" )
 	PORT_DIPSETTING(      0x1000, "Every 300,000" )
 	PORT_DIPSETTING(      0x0000, "250,000 Only" )
-	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Allow_Continue ) )
+	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Allow_Continue ) ) PORT_DIPLOCATION("SW2:7")
 	PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x8000, 0x0000, DEF_STR( Demo_Sounds ) )
+	PORT_DIPNAME( 0x8000, 0x0000, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW2:8")
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START	/* 16bit */
+	PORT_START("UNK")
 	PORT_DIPNAME( 0x0001, 0x0001, "2" )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -520,8 +522,6 @@ static INPUT_PORTS_START( dblewing )
 	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-
-
 INPUT_PORTS_END
 
 static void sound_irq(running_machine *machine, int irq)
@@ -530,7 +530,7 @@ static void sound_irq(running_machine *machine, int irq)
 //  mame_printf_debug("sound irq\n");
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	sound_irq
 };
@@ -538,11 +538,11 @@ static const struct YM2151interface ym2151_interface =
 
 static MACHINE_DRIVER_START( dblewing )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 14000000)	/* DE102 */
+	MDRV_CPU_ADD("main", M68000, 14000000)	/* DE102 */
 	MDRV_CPU_PROGRAM_MAP(dblewing_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD("audio", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 
@@ -563,12 +563,12 @@ static MACHINE_DRIVER_START( dblewing )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, 32220000/9)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 32220000/9)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.45)
 
-	MDRV_SOUND_ADD(OKIM6295, 32220000/32)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki", OKIM6295, 32220000/32)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 MACHINE_DRIVER_END
 
@@ -616,28 +616,28 @@ MBE-02.8H    [5a6d3ac5]
 */
 
 ROM_START( dblewing )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* DE102 code (encrypted) */
+	ROM_REGION( 0x80000, "main", 0 ) /* DE102 code (encrypted) */
 	ROM_LOAD16_BYTE( "kp_00-.3d",    0x000001, 0x040000, CRC(547dc83e) SHA1(f6f96bd4338d366f06df718093f035afabc073d1) )
 	ROM_LOAD16_BYTE( "kp_01-.5d",    0x000000, 0x040000, CRC(7a210c33) SHA1(ced89140af6d6a1bc0ffb7728afca428ed007165) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) // sound cpu?
+	ROM_REGION( 0x10000, "audio", 0 ) // sound cpu?
 	ROM_LOAD( "kp_02-.10h",    0x00000, 0x10000, CRC(def035fa) SHA1(fd50314e5c94c25df109ee52c0ce701b0ff2140c) )
 
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "mbe-02.8h",    0x00000, 0x100000, CRC(5a6d3ac5) SHA1(738bb833e2c5d929ac75fe4e69ee0af88197d8a6) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD16_BYTE( "mbe-00.14a",    0x000000, 0x100000, CRC(e33f5c93) SHA1(720904b54d02dace2310ac6bd07d5ed4bc4fd69c) )
 	ROM_LOAD16_BYTE( "mbe-01.16a",    0x000001, 0x100000, CRC(ef452ad7) SHA1(7fe49123b5c2778e46104eaa3a2104ce09e05705) )
 
-	ROM_REGION( 0x80000, REGION_SOUND1, 0 ) /* Oki samples */
+	ROM_REGION( 0x80000, "oki", 0 ) /* Oki samples */
 	ROM_LOAD( "kp_03-.16h",    0x00000, 0x20000, CRC(5d7f930d) SHA1(ad23aa804ea3ccbd7630ade9b53fc3ea2718a6ec) )
 ROM_END
 
 static DRIVER_INIT( dblewing )
 {
-	deco56_decrypt(machine, REGION_GFX1);
-	deco102_decrypt(machine, REGION_CPU1, 0x399d, 0x25, 0x3d);
+	deco56_decrypt_gfx(machine, "gfx1");
+	deco102_decrypt_cpu(machine, "main", 0x399d, 0x25, 0x3d);
 }
 
 

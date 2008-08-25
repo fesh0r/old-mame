@@ -60,8 +60,8 @@ static READ16_HANDLER( nvram_r )
 
 static READ16_HANDLER( joystick_r )
 {
-    return (((input_port_read(machine, "IN0") - 0xf) << 8) |
-            ((input_port_read(machine, "IN1") - 0xf) & 0xff));
+    return (((input_port_read(machine, "STICKZ") - 0xf) << 8) |
+            ((input_port_read(machine, "STICKY") - 0xf) & 0xff));
 }
 
 
@@ -76,9 +76,9 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x00bfff) AM_ROM
 	AM_RANGE(0x022000, 0x0220ff) AM_READWRITE(nvram_r, SMH_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x027000, 0x027001) AM_READ(joystick_r)
-	AM_RANGE(0x027004, 0x027005) AM_READ(input_port_3_word_r)
+	AM_RANGE(0x027004, 0x027005) AM_READ_PORT("INPUTS")
 	AM_RANGE(0x027008, 0x027009) AM_READWRITE(aztarac_sound_r, aztarac_sound_w)
-	AM_RANGE(0x02700c, 0x02700d) AM_READ(input_port_2_word_r)
+	AM_RANGE(0x02700c, 0x02700d) AM_READ_PORT("DIAL")
 	AM_RANGE(0x02700e, 0x02700f) AM_READ(watchdog_reset16_r)
 	AM_RANGE(0xff8000, 0xffafff) AM_RAM AM_BASE(&aztarac_vectorram)
 	AM_RANGE(0xffb000, 0xffb001) AM_WRITE(aztarac_ubr_w)
@@ -97,14 +97,14 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
 	AM_RANGE(0x8800, 0x8800) AM_READ(aztarac_snd_command_r)
-	AM_RANGE(0x8c00, 0x8c00) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
-	AM_RANGE(0x8c01, 0x8c01) AM_READWRITE(AY8910_read_port_0_r, AY8910_control_port_0_w)
-	AM_RANGE(0x8c02, 0x8c02) AM_READWRITE(AY8910_read_port_1_r, AY8910_write_port_1_w)
-	AM_RANGE(0x8c03, 0x8c03) AM_READWRITE(AY8910_read_port_1_r, AY8910_control_port_1_w)
-	AM_RANGE(0x8c04, 0x8c04) AM_READWRITE(AY8910_read_port_2_r, AY8910_write_port_2_w)
-	AM_RANGE(0x8c05, 0x8c05) AM_READWRITE(AY8910_read_port_2_r, AY8910_control_port_2_w)
-	AM_RANGE(0x8c06, 0x8c06) AM_READWRITE(AY8910_read_port_3_r, AY8910_write_port_3_w)
-	AM_RANGE(0x8c07, 0x8c07) AM_READWRITE(AY8910_read_port_3_r, AY8910_control_port_3_w)
+	AM_RANGE(0x8c00, 0x8c00) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
+	AM_RANGE(0x8c01, 0x8c01) AM_READWRITE(ay8910_read_port_0_r, ay8910_control_port_0_w)
+	AM_RANGE(0x8c02, 0x8c02) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
+	AM_RANGE(0x8c03, 0x8c03) AM_READWRITE(ay8910_read_port_1_r, ay8910_control_port_1_w)
+	AM_RANGE(0x8c04, 0x8c04) AM_READWRITE(ay8910_read_port_2_r, ay8910_write_port_2_w)
+	AM_RANGE(0x8c05, 0x8c05) AM_READWRITE(ay8910_read_port_2_r, ay8910_control_port_2_w)
+	AM_RANGE(0x8c06, 0x8c06) AM_READWRITE(ay8910_read_port_3_r, ay8910_write_port_3_w)
+	AM_RANGE(0x8c07, 0x8c07) AM_READWRITE(ay8910_read_port_3_r, ay8910_control_port_3_w)
 	AM_RANGE(0x9000, 0x9000) AM_READWRITE(aztarac_snd_status_r, aztarac_snd_status_w)
 ADDRESS_MAP_END
 
@@ -117,16 +117,16 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( aztarac )
-	PORT_START_TAG("IN0")
+	PORT_START("STICKZ")
 	PORT_BIT( 0x1f, 0xf, IPT_AD_STICK_Z ) PORT_MINMAX(0,0x1e) PORT_SENSITIVITY(100) PORT_KEYDELTA(1)
 
-	PORT_START_TAG("IN1")
+	PORT_START("STICKY")
 	PORT_BIT( 0x1f, 0xf, IPT_AD_STICK_Y ) PORT_MINMAX(0,0x1e) PORT_SENSITIVITY(100) PORT_KEYDELTA(1) PORT_REVERSE
 
-	PORT_START_TAG("IN2")
+	PORT_START("DIAL")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(10) PORT_CODE_DEC(KEYCODE_Z) PORT_CODE_INC(KEYCODE_X) PORT_REVERSE
 
-	PORT_START_TAG("IN3")
+	PORT_START("INPUTS")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -148,11 +148,11 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( aztarac )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 8000000)
+	MDRV_CPU_ADD("main", M68000, 8000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
-	MDRV_CPU_ADD(Z80, 2000000)
+	MDRV_CPU_ADD("audio", Z80, 2000000)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_PERIODIC_INT(aztarac_snd_timed_irq, 100)
 
@@ -171,16 +171,16 @@ static MACHINE_DRIVER_START( aztarac )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay1", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay2", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay3", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(AY8910, 2000000)
+	MDRV_SOUND_ADD("ay4", AY8910, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 MACHINE_DRIVER_END
 
@@ -193,7 +193,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( aztarac )
-	ROM_REGION( 0xc000, REGION_CPU1, 0 )
+	ROM_REGION( 0xc000, "main", 0 )
 	ROM_LOAD16_BYTE( "l8_6.bin", 0x000000, 0x001000, CRC(25f8da18) SHA1(e8179ba3683e39c8225b549ead74c8af2d0a0b3e) )
 	ROM_LOAD16_BYTE( "n8_0.bin", 0x000001, 0x001000, CRC(04e20626) SHA1(2b6a04992037257830df2c01a6da748fb4449f79) )
 	ROM_LOAD16_BYTE( "l7_7.bin", 0x002000, 0x001000, CRC(230e244c) SHA1(42283a368144acf2aad2ef390e312e0951c3ea64) )
@@ -207,7 +207,7 @@ ROM_START( aztarac )
 	ROM_LOAD16_BYTE( "l3_b.bin", 0x00a000, 0x001000, CRC(8cc7f7fa) SHA1(fefb9a4fdd63878bc5d8138e3e8456cb6638425a) )
 	ROM_LOAD16_BYTE( "n3_5.bin", 0x00a001, 0x001000, CRC(40452376) SHA1(1d058b7ecd2bbff3393950aab9215b262908475b) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "j4_c.bin", 0x0000, 0x1000, CRC(e897dfcd) SHA1(750df3d08512d8098a13ec62677831efa164c126) )
 	ROM_LOAD( "j3_d.bin", 0x1000, 0x1000, CRC(4016de77) SHA1(7232ec003f1b9d3623d762f3270108a1d1837846) )
 ROM_END

@@ -1707,8 +1707,8 @@ static int draw_one_sprite(running_machine *machine, UINT16 *data, int xoffs, in
 	};
 
 	bitmap_t *bitmap = layer_data[(!is_multi32 || !(data[3] & 0x0800)) ? MIXER_LAYER_SPRITES_2 : MIXER_LAYER_MULTISPR_2].bitmap;
-	UINT8 numbanks = memory_region_length(machine, REGION_GFX2) / 0x400000;
-	const UINT32 *spritebase = (const UINT32 *)memory_region(machine, REGION_GFX2);
+	UINT8 numbanks = memory_region_length(machine, "gfx2") / 0x400000;
+	const UINT32 *spritebase = (const UINT32 *)memory_region(machine, "gfx2");
 
 	int indirect = data[0] & 0x2000;
 	int indlocal = data[0] & 0x1000;
@@ -2378,7 +2378,6 @@ static void mix_all_layers(int which, int xoffs, bitmap_t *bitmap, const rectang
 
 static void print_mixer_data(int which)
 {
-#if PRINTF_MIXER_DATA
 	static int count = 0;
 	if (++count > 60 * 5)
 	{
@@ -2446,7 +2445,6 @@ static void print_mixer_data(int which)
 			mixer_control[which][0x2f]);
 		count = 0;
 	}
-#endif
 }
 
 VIDEO_UPDATE( system32 )
@@ -2486,9 +2484,7 @@ VIDEO_UPDATE( system32 )
 	mix_all_layers(0, 0, bitmap, cliprect, enablemask);
 	profiler_mark(PROFILER_END);
 
-#if LOG_SPRITES
-{
-	if (input_code_pressed(KEYCODE_L))
+	if (LOG_SPRITES && input_code_pressed(KEYCODE_L))
 	{
 		const rectangle *visarea = video_screen_get_visible_area(screen);
 		FILE *f = fopen("sprite.txt", "w");
@@ -2543,8 +2539,6 @@ VIDEO_UPDATE( system32 )
 		}
 		fclose(f);
 	}
-}
-#endif
 
 #if SHOW_ALPHA
 {
@@ -2626,7 +2620,7 @@ for (showclip = 0; showclip < 4; showclip++)
 }
 #endif
 
-	print_mixer_data(0);
+	if (PRINTF_MIXER_DATA) print_mixer_data(0);
 	return 0;
 }
 
@@ -2670,11 +2664,12 @@ VIDEO_UPDATE( multi32 )
 	mix_all_layers(((screen == left_screen) ? 0 : 1), 0, bitmap, cliprect, enablemask);
 	profiler_mark(PROFILER_END);
 
+if (PRINTF_MIXER_DATA)
+{
 	if (!input_code_pressed(KEYCODE_M)) print_mixer_data(0);
 	else print_mixer_data(1);
-#if LOG_SPRITES
-{
-	if (input_code_pressed(KEYCODE_L))
+}
+	if (LOG_SPRITES && input_code_pressed(KEYCODE_L))
 	{
 		const rectangle *visarea = video_screen_get_visible_area(screen);
 		FILE *f = fopen("sprite.txt", "w");
@@ -2689,8 +2684,6 @@ VIDEO_UPDATE( multi32 )
 		}
 		fclose(f);
 	}
-}
-#endif
 
 	return 0;
 }

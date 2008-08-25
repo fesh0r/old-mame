@@ -77,7 +77,7 @@ static NVRAM_HANDLER( xorworld )
 /* the EEPROM is read thru bit 4 */
 static READ16_HANDLER( xorworld_input_r )
 {
-	return input_port_read_indexed(machine, 0) | ((eeprom_read_bit() & 0x01) << 4);
+	return input_port_read(machine, "DSW") | ((eeprom_read_bit() & 0x01) << 4);
 }
 
 static WRITE16_HANDLER( eeprom_chip_select_w )
@@ -101,8 +101,8 @@ static WRITE16_HANDLER( eeprom_data_w )
 
 static ADDRESS_MAP_START( xorworld_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x01ffff) AM_ROM
-	AM_RANGE(0x200000, 0x200001) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x400000, 0x400001) AM_READ(input_port_2_word_r)
+	AM_RANGE(0x200000, 0x200001) AM_READ_PORT("P1")
+	AM_RANGE(0x400000, 0x400001) AM_READ_PORT("P2")
 	AM_RANGE(0x600000, 0x600001) AM_READ(xorworld_input_r)				// DIPSW #1 + EEPROM data
 	AM_RANGE(0x800000, 0x800001) AM_WRITE(saa1099_write_port_0_lsb_w)
 	AM_RANGE(0x800002, 0x800003) AM_WRITE(saa1099_control_port_0_lsb_w)
@@ -118,7 +118,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( xorworld )
-	PORT_START	// DSW0
+	PORT_START("DSW")	// DSW0
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_2C ) )
@@ -139,7 +139,7 @@ static INPUT_PORTS_START( xorworld )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	// IN0
+	PORT_START("P1")	// IN0
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -149,7 +149,7 @@ static INPUT_PORTS_START( xorworld )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START	// IN1
+	PORT_START("P2")	// IN1
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
@@ -187,8 +187,8 @@ static const gfx_layout spritelayout =
 
 
 static GFXDECODE_START( xorworld )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x000000, tilelayout,	0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x000000, spritelayout, 0, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0x000000, tilelayout,	0, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0x000000, spritelayout, 0, 64 )
 GFXDECODE_END
 
 
@@ -207,7 +207,7 @@ static INTERRUPT_GEN( xorworld_interrupt )
 
 static MACHINE_DRIVER_START( xorworld )
 	// basic machine hardware
-	MDRV_CPU_ADD(M68000, 10000000)	// 10 MHz
+	MDRV_CPU_ADD("main", M68000, 10000000)	// 10 MHz
 	MDRV_CPU_PROGRAM_MAP(xorworld_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(xorworld_interrupt, 4)	// 1 IRQ2 + 1 IRQ4 + 1 IRQ6
 
@@ -233,21 +233,21 @@ static MACHINE_DRIVER_START( xorworld )
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SAA1099, 8000000 /* guess */)
+	MDRV_SOUND_ADD("saa", SAA1099, 8000000 /* guess */)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( xorworld )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "c13.bin", 0x000000, 0x010000, CRC(615a864d) SHA1(db07eef19d26a4daa0bcc17ac24d237483f93bf6) )
 	ROM_LOAD16_BYTE( "b13.bin", 0x000001, 0x010000, CRC(632e8ee5) SHA1(ec53e632c762f72ad1fe3fab85111bdcc1e818ae) )
 
-	ROM_REGION( 0x020000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "d9.bin",	0x000000, 0x010000, CRC(da8d4d65) SHA1(41bcc15f26066bd820b44c0f258e70d0102953c9) )
 	ROM_LOAD( "d10.bin",	0x010000, 0x010000, CRC(3b1d6f24) SHA1(bedf60a4cbf20492b8a846b6a7b578f8fe8dbde9) )
 
-	ROM_REGION( 0x0300, REGION_PROMS, 0 )
+	ROM_REGION( 0x0300, "proms", 0 )
 	ROM_LOAD( "b4.bin",   0x0000, 0x0100, CRC(75e468af) SHA1(b5fd1a086c27ca2e837cbbf1b7e57dfdd369b0d0) )  /* Red palette ROM (4 bits) */
 	ROM_LOAD( "b7.bin",   0x0100, 0x0100, CRC(7e1cd146) SHA1(fd26a28f90c50ffcb0fe7718820c81eb9fe79e66) )  /* Green palette ROM (4 bits) */
 	ROM_LOAD( "b5.bin",   0x0200, 0x0100, CRC(c1b9d9f9) SHA1(c4b02bf60db449fb308a5eb3e41c43299ad8e3e3) )  /* Blue palette ROM (4 bits) */
@@ -261,7 +261,7 @@ static DRIVER_INIT( xorworld )
 	/*  patch some strange protection (without this, strange characters appear
         after level 5 and some pieces don't rotate properly some times) */
 
-	UINT16 *rom = (UINT16 *)(memory_region(machine, REGION_CPU1) + 0x1390);
+	UINT16 *rom = (UINT16 *)(memory_region(machine, "main") + 0x1390);
 
 	PATCH(0x4239); PATCH(0x00ff); PATCH(0xe196);	/* clr.b $ffe196 */
 	PATCH(0x4239); PATCH(0x00ff); PATCH(0xe197);	/* clr.b $ffe197 */

@@ -30,7 +30,7 @@ static int mono_flop[3];
 
 
 
-static const struct SN76477interface sheriff_sn76477_interface =
+static const sn76477_interface sheriff_sn76477_interface =
 {
 	RES_K(36)  ,  /* 04 */
 	RES_K(100) ,  /* 05 */
@@ -58,7 +58,7 @@ static const struct SN76477interface sheriff_sn76477_interface =
 };
 
 
-static const struct SN76477interface spacefev_sn76477_interface =
+static const sn76477_interface spacefev_sn76477_interface =
 {
 	RES_K(36)  ,  /* 04 */
 	RES_K(150) ,  /* 05 */
@@ -100,18 +100,18 @@ static void spacefev_update_SN76477_status(void)
 		dblR1 = 1 / (1 / RES_K(620) + 1 / dblR1); /* ? */
 	}
 
-	SN76477_decay_res_w(0, dblR0);
+	sn76477_decay_res_w(0, dblR0);
 
-	SN76477_vco_res_w(0, dblR1);
+	sn76477_vco_res_w(0, dblR1);
 
-	SN76477_enable_w(0,
+	sn76477_enable_w(0,
 		!mono_flop[0] &&
 		!mono_flop[1] &&
 		!mono_flop[2]);
 
-	SN76477_vco_w(0, mono_flop[1]);
+	sn76477_vco_w(0, mono_flop[1]);
 
-	SN76477_mixer_b_w(0, mono_flop[0]);
+	sn76477_mixer_b_w(0, mono_flop[0]);
 }
 
 
@@ -119,20 +119,20 @@ static void sheriff_update_SN76477_status(void)
 {
 	if (mono_flop[1])
 	{
-		SN76477_vco_voltage_w(0, 5);
+		sn76477_vco_voltage_w(0, 5);
 	}
 	else
 	{
-		SN76477_vco_voltage_w(0, 0);
+		sn76477_vco_voltage_w(0, 0);
 	}
 
-	SN76477_enable_w(0,
+	sn76477_enable_w(0,
 		!mono_flop[0] &&
 		!mono_flop[1]);
 
-	SN76477_vco_w(0, mono_flop[0]);
+	sn76477_vco_w(0, mono_flop[0]);
 
-	SN76477_mixer_b_w(0, !mono_flop[0]);
+	sn76477_mixer_b_w(0, !mono_flop[0]);
 }
 
 
@@ -408,13 +408,13 @@ static READ8_HANDLER( helifire_8035_p2_r )
 
 static WRITE8_HANDLER( n8080_dac_w )
 {
-	DAC_data_w(0, data & 0x80);
+	dac_data_w(0, data & 0x80);
 }
 
 
 static WRITE8_HANDLER( helifire_dac_w )
 {
-	DAC_data_w(0, data * helifire_dac_volume);
+	dac_data_w(0, data * helifire_dac_volume);
 }
 
 
@@ -447,7 +447,7 @@ static TIMER_CALLBACK( spacefev_vco_voltage_timer )
 		voltage = 5 * (1 - exp(- attotime_to_double(timer_timeelapsed(sound_timer[2])) / 0.22));
 	}
 
-	SN76477_vco_voltage_w(0, voltage);
+	sn76477_vco_voltage_w(0, voltage);
 }
 
 
@@ -546,8 +546,7 @@ ADDRESS_MAP_END
 MACHINE_DRIVER_START( spacefev_sound )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(I8035, 6000000)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", I8035, 6000000)
 	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
 	MDRV_CPU_IO_MAP(n8080_sound_io_map, 0)
 
@@ -556,10 +555,10 @@ MACHINE_DRIVER_START( spacefev_sound )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(SN76477, 0)
+	MDRV_SOUND_ADD("sn", SN76477, 0)
 	MDRV_SOUND_CONFIG(spacefev_sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35)
 MACHINE_DRIVER_END
@@ -568,8 +567,7 @@ MACHINE_DRIVER_END
 MACHINE_DRIVER_START( sheriff_sound )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(I8035, 6000000)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", I8035, 6000000)
 	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
 	MDRV_CPU_IO_MAP(n8080_sound_io_map, 0)
 
@@ -578,10 +576,10 @@ MACHINE_DRIVER_START( sheriff_sound )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(SN76477, 0)
+	MDRV_SOUND_ADD("sn", SN76477, 0)
 	MDRV_SOUND_CONFIG(sheriff_sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35)
 MACHINE_DRIVER_END
@@ -590,8 +588,7 @@ MACHINE_DRIVER_END
 MACHINE_DRIVER_START( helifire_sound )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(I8035, 6000000)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", I8035, 6000000)
 	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
 	MDRV_CPU_IO_MAP(helifire_sound_io_map, 0)
 
@@ -600,6 +597,6 @@ MACHINE_DRIVER_START( helifire_sound )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END

@@ -76,7 +76,6 @@ struct QSOUND_CHANNEL
 struct qsound_info
 {
 	/* Private variables */
-	const struct QSound_interface *intf;	/* Interface  */
 	sound_stream * stream;				/* Audio stream */
 	struct QSOUND_CHANNEL channel[QSOUND_CHANNELS];
 	int data;				  /* register latch data */
@@ -86,28 +85,24 @@ struct qsound_info
 	int pan_table[33];		 /* Pan volume table */
 	float frq_ratio;		   /* Frequency ratio */
 
-	#if LOG_WAVE
 	FILE *fpRawDataL;
 	FILE *fpRawDataR;
-	#endif
 };
 
 /* Function prototypes */
 static void qsound_update( void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length );
 static void qsound_set_command(struct qsound_info *chip, int data, int value);
 
-static void *qsound_start(int sndindex, int clock, const void *config)
+static void *qsound_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	struct qsound_info *chip;
 	int i;
 
 	chip = auto_malloc(sizeof(*chip));
-	memset(chip, 0, sizeof(chip));
+	memset(chip, 0, sizeof(*chip));
 
-	chip->intf = config;
-
-	chip->sample_rom = (QSOUND_SRC_SAMPLE *)memory_region(Machine, chip->intf->region);
-	chip->sample_rom_length = memory_region_length(Machine, chip->intf->region);
+	chip->sample_rom = (QSOUND_SRC_SAMPLE *)memory_region(Machine, tag);
+	chip->sample_rom_length = memory_region_length(Machine, tag);
 
 	memset(chip->channel, 0, sizeof(chip->channel));
 
@@ -132,14 +127,11 @@ static void *qsound_start(int sndindex, int clock, const void *config)
 			qsound_update );
 	}
 
-#if LOG_WAVE
-	chip->fpRawDataR=fopen("qsoundr.raw", "w+b");
-	chip->fpRawDataL=fopen("qsoundl.raw", "w+b");
-	if (!chip->fpRawDataR || !chip->fpRawDataL)
+	if (LOG_WAVE)
 	{
-		return NULL;
+		chip->fpRawDataR=fopen("qsoundr.raw", "w+b");
+		chip->fpRawDataL=fopen("qsoundl.raw", "w+b");
 	}
-#endif
 
 	/* state save */
 	for (i=0; i<QSOUND_CHANNELS; i++)
@@ -163,16 +155,17 @@ static void *qsound_start(int sndindex, int clock, const void *config)
 
 static void qsound_stop (void *_chip)
 {
-#if LOG_WAVE
+	struct qsound_info *chip = _chip;
 	if (chip->fpRawDataR)
 	{
 		fclose(chip->fpRawDataR);
 	}
+	chip->fpRawDataR = NULL;
 	if (chip->fpRawDataL)
 	{
 		fclose(chip->fpRawDataL);
 	}
-#endif
+	chip->fpRawDataL = NULL;
 }
 
 WRITE8_HANDLER( qsound_data_h_w )
@@ -365,10 +358,10 @@ static void qsound_update( void *param, stream_sample_t **inputs, stream_sample_
 		pC++;
 	}
 
-#if LOG_WAVE
-	fwrite(datap[0], length*sizeof(QSOUND_SAMPLE), 1, chip->fpRawDataL);
-	fwrite(datap[1], length*sizeof(QSOUND_SAMPLE), 1, chip->fpRawDataR);
-#endif
+	if (chip->fpRawDataL)
+		fwrite(datap[0], length*sizeof(QSOUND_SAMPLE), 1, chip->fpRawDataL);
+	if (chip->fpRawDataR)
+		fwrite(datap[1], length*sizeof(QSOUND_SAMPLE), 1, chip->fpRawDataR);
 }
 
 

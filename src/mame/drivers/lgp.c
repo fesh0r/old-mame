@@ -72,7 +72,7 @@ Dumping Notes:
 #define SOUND_PCB_CLOCK (6000000)
 
 /* Misc variables */
-static laserdisc_info *discinfo;
+static const device_config *laserdisc;
 
 static UINT8 *tile_ram;
 static UINT8 *tile_control_ram;
@@ -83,12 +83,13 @@ static VIDEO_UPDATE( lgp )
 {
 	int charx, chary;
 
+	render_container_set_palette_alpha(render_container_get_screen(screen), 0, 0x00);
+
 	/* clear */
 	fillbitmap(bitmap, 0, cliprect);
 
 	/* display disc information */
-	if (discinfo != NULL)
-		popmessage("%s", laserdisc_describe_state(discinfo));
+	popmessage("%s", laserdisc_describe_state(laserdisc));
 
 	/* Draw tiles */
 	for (charx = 0; charx < 32; charx++)
@@ -114,12 +115,12 @@ static VIDEO_UPDATE( lgp )
 /* Main Z80 R/W */
 static READ8_HANDLER(ldp_read)
 {
-	return laserdisc_data_r(discinfo);
+	return laserdisc_data_r(laserdisc);
 }
 
 static WRITE8_HANDLER(ldp_write)
 {
-	laserdisc_data_w(discinfo,data);
+	laserdisc_data_w(laserdisc,data);
 }
 
 
@@ -166,7 +167,7 @@ ADDRESS_MAP_END
 /* PORTS */
 /*  (DIPLOCATION diplay inverted) */
 static INPUT_PORTS_START( lgp )
-	PORT_START_TAG("DSWA")
+	PORT_START("DSWA")
 	PORT_DIPNAME( 0x03, 0x03, "1st Round" ) PORT_DIPLOCATION("SWA:2,1")
 	PORT_DIPSETTING(    0x03, "68 Seconds" )
 	PORT_DIPSETTING(    0x02, "66 Seconds" )
@@ -188,7 +189,7 @@ static INPUT_PORTS_START( lgp )
 	PORT_DIPSETTING(    0x40, "40 Seconds" )
 	PORT_DIPSETTING(    0x00, "38 Seconds" )
 
-	PORT_START_TAG("DSWB")
+	PORT_START("DSWB")
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SWB:4,3,2,1")
 	PORT_DIPSETTING(    0x00, DEF_STR( 9C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 8C_1C ) )
@@ -224,7 +225,7 @@ static INPUT_PORTS_START( lgp )
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_8C ) )
 
-	PORT_START_TAG("DSWC")
+	PORT_START("DSWC")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Free_Play ) ) PORT_DIPLOCATION("SWC:1")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -251,7 +252,7 @@ static INPUT_PORTS_START( lgp )
 	PORT_DIPSETTING(    0x80, "2-Ways" )
 
 
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE )	/* Manual says service switch simply increases credit count. */
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_TILT )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
@@ -261,7 +262,7 @@ static INPUT_PORTS_START( lgp )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON1 )
@@ -272,7 +273,7 @@ static INPUT_PORTS_START( lgp )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON6 )
 
 /*
-    PORT_START_TAG("IN_TEST")
+    PORT_START("IN_TEST")
     PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 )
     PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 )
     PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 )
@@ -311,14 +312,9 @@ static const gfx_layout lgp_gfx_layout_16x32 =
 };
 
 static GFXDECODE_START( lgp )
-	GFXDECODE_ENTRY(REGION_GFX1, 0, lgp_gfx_layout, 0x0, 0x100)
-	GFXDECODE_ENTRY(REGION_GFX4, 0, lgp_gfx_layout_16x32, 0x0, 0x100)
+	GFXDECODE_ENTRY("gfx1", 0, lgp_gfx_layout, 0x0, 0x100)
+	GFXDECODE_ENTRY("gfx4", 0, lgp_gfx_layout_16x32, 0x0, 0x100)
 GFXDECODE_END
-
-static MACHINE_START( lgp )
-{
-	discinfo = laserdisc_init(machine, LASERDISC_TYPE_LDV1000, get_disk_handle(0), 0);
-}
 
 static TIMER_CALLBACK( irq_stop )
 {
@@ -334,104 +330,112 @@ static INTERRUPT_GEN( vblank_callback_lgp )
 	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, irq_stop);
 
-	laserdisc_vsync(discinfo);
+	laserdisc_vsync(laserdisc);
+}
+
+
+static MACHINE_START( lgp )
+{
+	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
 }
 
 
 /* DRIVER */
 static MACHINE_DRIVER_START( lgp )
-/*  main cpu */
-	MDRV_CPU_ADD(Z80, CPU_PCB_CLOCK)
+	/* main cpu */
+	MDRV_CPU_ADD("main", Z80, CPU_PCB_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_program_map,0)
 	MDRV_CPU_IO_MAP(main_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", vblank_callback_lgp)
 
-/*  sound cpu */
-	MDRV_CPU_ADD(Z80, SOUND_PCB_CLOCK)
+	/* sound cpu */
+	MDRV_CPU_ADD("audio", Z80, SOUND_PCB_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(sound_program_map,0)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 
 	MDRV_MACHINE_START(lgp)
 
-/*  video */
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000)
+	MDRV_LASERDISC_OVERLAY(lgp, 256, 256, BITMAP_FORMAT_INDEXED16)
 
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	/* video hardware */
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_INDEXED16)
 
 	MDRV_PALETTE_LENGTH(256)
 	/* MDRV_PALETTE_INIT(lgp) */
 
 	MDRV_GFXDECODE(lgp)
-	MDRV_VIDEO_UPDATE(lgp)
 
-/*  sound */
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+
+	MDRV_SOUND_ADD("laserdisc", CUSTOM, 0)
+	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
+	MDRV_SOUND_ROUTE(0, "left", 1.0)
+	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( lgp )
 	/* CPU PCB */
 	/* Main program */
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "a02_01.63", 0x0000, 0x2000, CRC(088ca6e1) SHA1(b3f0869b0c333d991363ac46a1c53daa3f6c85e9) )
 	ROM_LOAD( "a02_02.62", 0x2000, 0x2000, CRC(8e1be578) SHA1(cfad7cb72c7d13b2b614680bccc6f807521f3bf4) )
 	ROM_LOAD( "a02_03.61", 0x4000, 0x2000, CRC(4978953a) SHA1(eec6596430238ffffb0d173852bdd7f11c60e9b2) )
 	ROM_LOAD( "a02_04.60", 0x6000, 0x2000, CRC(903d0ae2) SHA1(bd04182dd77eb5a4ef28d7127f631689b6695e17) )
 
 	/* Tiles */
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a02_14.13", 0x0000, 0x4000, CRC(28996b3c) SHA1(664aa4d2582784bb7c56cfb8883294578fe18dd9) )
 	ROM_LOAD( "a02_15.12", 0x4000, 0x4000, CRC(6b7abbb2) SHA1(890777d99b646147359d09e42692a272e570113c) )
 	ROM_LOAD( "a02_16.11", 0x8000, 0x4000, CRC(aad4fb3c) SHA1(2cd4a331a8e0f010d60b594655361776fa24255f) )
 	ROM_LOAD( "a02_17.10", 0xc000, 0x4000, CRC(db8b9723) SHA1(1319a3f35dffdcf65fe7496cfabaf5787989d0bc) )
 
 	/* ??? */
-	ROM_REGION( 0x10000, REGION_GFX2, 0 )
+	ROM_REGION( 0x10000, "gfx2", 0 )
 	ROM_LOAD( "a02_06.53", 0x0000, 0x4000, CRC(c724f96c) SHA1(6531bd57c87118479700e5f8708060deb6b21d91) )
 	ROM_LOAD( "a02_07.52", 0x4000, 0x4000, CRC(4b81eb3b) SHA1(76f5c0b2b4d450fd633199ac4aba66ed5a8a530b) )
 	ROM_LOAD( "a02_08.51", 0x8000, 0x4000, CRC(deb7e494) SHA1(cc5b2f9c622ec3b599fe6752233d44a820951a98) )
 	ROM_LOAD( "a02_09.50", 0xc000, 0x4000, CRC(6d077a30) SHA1(00888e0f54a5b4d647921caf37f7b3e4a7934a1f) )
 
 	/* ??? */
-	ROM_REGION( 0x10000, REGION_GFX3, 0 )
+	ROM_REGION( 0x10000, "gfx3", 0 )
 	ROM_LOAD( "a02_10.49", 0x0000, 0x4000, CRC(56bbe961) SHA1(97ebaeb3bc3948724e19a7279e13314a3470e5ef) )
 	ROM_LOAD( "a02_11.48", 0x4000, 0x4000, CRC(5d0aebb2) SHA1(4cdfb82fa459c9d168a79b5a643fdde45906872b) )
 	ROM_LOAD( "a02_12.47", 0x8000, 0x4000, CRC(1b7c578c) SHA1(6bf2d6e908176e5ef83649b34df9976a55319176) )
 	ROM_LOAD( "a02_13.46", 0xc000, 0x4000, CRC(d7fccfb1) SHA1(9b8a2813b98eb00c2adc347a902a40e7a462070d) )
 
 	/* Lame lookup table? */
-	ROM_REGION( 0x1000, REGION_USER1, 0 )
+	ROM_REGION( 0x1000, "user1", 0 )
 	ROM_LOAD( "a02_05.54", 0x0000, 0x1000, CRC(f5e06a8b) SHA1(d2659bc185ecb66f9ac8e015a60259efd13ba84a) )
 
 	/* Color ROMs? */
-	ROM_REGION( 0x400, REGION_USER2, 0 )
+	ROM_REGION( 0x400, "user2", 0 )
 	ROM_LOAD( "a02_31.106", 0x000, 0x100, CRC(ff586bfd) SHA1(61631bae9ba87f2ced142fb8907b313e5424374f) )
 	ROM_LOAD( "a02_32.111", 0x100, 0x100, CRC(8e00230e) SHA1(5dc1d01c0c3e34cdfcde81227c48a7293115d257) )
 	ROM_LOAD( "a02_33.116", 0x200, 0x100, CRC(507fb884) SHA1(7bae761d69dfb035b71b4650f226df4b3d0df67d) )
 	ROM_LOAD( "a02_34.122", 0x300, 0x100, CRC(fb2e6898) SHA1(a78e45b015edbe91912f8bf915761daf683126a7) )
 
 	/* Nearly-unused ROM */
-	ROM_REGION( 0x2000, REGION_USER3, 0 )
+	ROM_REGION( 0x2000, "user3", 0 )
 	ROM_LOAD( "a02_41.59", 0x0000, 0x2000, CRC(2c55a3c0) SHA1(7e25217ed8e65549eb0043a5d2dc83e0ffea1177) )
 
 
 	/* SOUND PCB */
 	/* Sound CPU - on Sound PCB */
-	ROM_REGION( 0x4000, REGION_CPU2, 0 )
+	ROM_REGION( 0x4000, "audio", 0 )
 	ROM_LOAD( "a02_29.ic11", 0x0000, 0x2000, CRC(c44026db) SHA1(93a6e8f272ca826c05a7be59e14a1a0c848fbaa0) )
 	ROM_LOAD( "a02_30.ic17", 0x2000, 0x2000, CRC(8c324556) SHA1(9e1f6f00d4023d9cfd414d3cc02af55be49dde2c) )	/* Sound data? */
 
 
 	/* OBJ PCB */
 	/* Zig-Zag bitmaps? */
-	ROM_REGION( 0x2000, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "a02_18.143", 0x0000, 0x2000, CRC(1b4e1980) SHA1(9dffb6a047427290ad63e3d7df7c5942c2b2dfc1) )
 
 	/* Misc bitmaps? */
-	ROM_REGION( 0x28000, REGION_GFX5, 0 )
+	ROM_REGION( 0x28000, "gfx5", 0 )
 	ROM_LOAD( "a02_19.140", 0x00000, 0x4000, CRC(eedd3167) SHA1(a17976425b2e208485bcb189ef2e69dd709a9957) )
 	ROM_LOAD( "a02_20.139", 0x04000, 0x4000, CRC(5182f87b) SHA1(13d466c18fe5cc5da8e931130ee7defd3a9ebf12) )
 	ROM_LOAD( "a02_21.138", 0x08000, 0x4000, CRC(ca16a6e3) SHA1(a82396ea51fa6a320e501d86a23e1e1ebe8d29d5) )
@@ -444,13 +448,16 @@ ROM_START( lgp )
 	ROM_LOAD( "a02_28.114", 0x24000, 0x4000, CRC(cd69ed20) SHA1(d60782637085491527814889856eb3553950ab55) )
 
 	/* Small ROM dumping ground - color? */
-	ROM_REGION( 0x520, REGION_USER4, 0 )
+	ROM_REGION( 0x520, "user4", 0 )
 	ROM_LOAD( "a02_35.23",  0x00000, 0x100, CRC(7b9d44f1) SHA1(bbd7c35a03ca6de116a01f6dcfa2ecd13a7ddb53) )
 	ROM_LOAD( "a02_36.24",  0x00100, 0x100, CRC(169c4216) SHA1(23921e9ef61a68fdd8afceb3b95bbac48190cf1a) )
 	ROM_LOAD( "a02_37.43",  0x00200, 0x20,  CRC(925ba961) SHA1(6715d80f2346374a0e880cf44cadc36e4a5316ed) )
 	ROM_LOAD( "a02_38.44",  0x00220, 0x100, CRC(6f37212a) SHA1(32b891dc9b97637620b2f1f9d9d76509c333cb2d) )
 	ROM_LOAD( "a02_39.109", 0x00320, 0x100, CRC(88363809) SHA1(b22a7bd8ce6b28bf7cfa64c3a08e4cf7f9b4cd20) )
 	ROM_LOAD( "a02_40.110", 0x00420, 0x100, CRC(fdfc7aac) SHA1(2413f7f9ad11c91d2adc0aab37bf70ff5c68ab6f) )
+
+	DISK_REGION( "laserdisc" )
+	DISK_IMAGE_READONLY( "lgp", 0, NO_DUMP )
 ROM_END
 
 

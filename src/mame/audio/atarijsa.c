@@ -116,7 +116,7 @@ void atarijsa_init(running_machine *machine, const char *testport, int testmask)
 	test_mask = testmask;
 
 	/* predetermine the bank base */
-	rgn = memory_region(machine, REGION_CPU1+cpu_num);
+	rgn = memory_region(machine, "jsa");
 	bank_base = &rgn[0x03000];
 	bank_source_data = &rgn[0x10000];
 
@@ -149,22 +149,29 @@ void atarijsa_init(running_machine *machine, const char *testport, int testmask)
 
 	init_save_state();
 	atarijsa_reset();
-}
 
+	/* initialize JSA III ADPCM */
+	{
+		static const char *regions[] = { "adpcm", "adcpml", "adpcmr" };
+		int rgn;
 
-void atarijsa3_init_adpcm(running_machine *machine, int region)
-{
-	UINT8 *base = memory_region(machine, region);
+		/* expand the ADPCM data to avoid lots of memcpy's during gameplay */
+		/* the upper 128k is fixed, the lower 128k is bankswitched */
+		for (rgn = 0; rgn < ARRAY_LENGTH(regions); rgn++)
+		{
+			UINT8 *base = memory_region(machine, regions[rgn]);
+			if (base != NULL && memory_region_length(machine, regions[rgn]) >= 0x100000)
+			{
+				memcpy(&base[0x00000], &base[0x80000], 0x20000);
+				memcpy(&base[0x40000], &base[0x80000], 0x20000);
+				memcpy(&base[0x80000], &base[0xa0000], 0x20000);
 
-	/* expand the ADPCM data to avoid lots of memcpy's during gameplay */
-	/* the upper 128k is fixed, the lower 128k is bankswitched */
-	memcpy(&base[0x00000], &base[0x80000], 0x20000);
-	memcpy(&base[0x40000], &base[0x80000], 0x20000);
-	memcpy(&base[0x80000], &base[0xa0000], 0x20000);
-
-	memcpy(&base[0x20000], &base[0xe0000], 0x20000);
-	memcpy(&base[0x60000], &base[0xe0000], 0x20000);
-	memcpy(&base[0xa0000], &base[0xe0000], 0x20000);
+				memcpy(&base[0x20000], &base[0xe0000], 0x20000);
+				memcpy(&base[0x60000], &base[0xe0000], 0x20000);
+				memcpy(&base[0xa0000], &base[0xe0000], 0x20000);
+			}
+		}
+	}
 }
 
 
@@ -327,7 +334,7 @@ static READ8_HANDLER( jsa2_io_r )
 	{
 		case 0x000:		/* /RDV */
 			if (has_oki6295)
-				result = OKIM6295_status_0_r(machine, offset);
+				result = okim6295_status_0_r(machine, offset);
 			else
 				logerror("atarijsa: Unknown read at %04X\n", offset & 0x206);
 			break;
@@ -385,7 +392,7 @@ static WRITE8_HANDLER( jsa2_io_w )
 
 		case 0x200:		/* /WRV */
 			if (has_oki6295)
-				OKIM6295_data_0_w(machine, offset, data);
+				okim6295_data_0_w(machine, offset, data);
 			else
 				logerror("atarijsa: Unknown write (%02X) at %04X\n", data & 0xff, offset & 0x206);
 			break;
@@ -414,7 +421,7 @@ static WRITE8_HANDLER( jsa2_io_w )
 			coin_counter_w(0, (data >> 4) & 1);
 
 			/* update the OKI frequency */
-			if (has_oki6295) OKIM6295_set_pin7(0, data & 8);
+			if (has_oki6295) okim6295_set_pin7(0, data & 8);
 			break;
 
 		case 0x206:		/* /MIX */
@@ -448,7 +455,7 @@ static READ8_HANDLER( jsa3_io_r )
 	{
 		case 0x000:		/* /RDV */
 			if (has_oki6295)
-				result = OKIM6295_status_0_r(machine, offset);
+				result = okim6295_status_0_r(machine, offset);
 			break;
 
 		case 0x002:		/* /RDP */
@@ -508,7 +515,7 @@ static WRITE8_HANDLER( jsa3_io_w )
 
 		case 0x200:		/* /WRV */
 			if (has_oki6295)
-				OKIM6295_data_0_w(machine, offset, data);
+				okim6295_data_0_w(machine, offset, data);
 			break;
 
 		case 0x202:		/* /WRP */
@@ -529,7 +536,7 @@ static WRITE8_HANDLER( jsa3_io_w )
 			/* update the OKI bank */
 
 			oki6295_bank_base = (0x40000 * ((data >> 1) & 1)) | (oki6295_bank_base & 0x80000);
-			if (has_oki6295) OKIM6295_set_bank_base(0, oki6295_bank_base);
+			if (has_oki6295) okim6295_set_bank_base(0, oki6295_bank_base);
 
 			/* update the bank */
 			memcpy(bank_base, &bank_source_data[0x1000 * ((data >> 6) & 3)], 0x1000);
@@ -540,7 +547,7 @@ static WRITE8_HANDLER( jsa3_io_w )
 			coin_counter_w(0, (data >> 4) & 1);
 
 			/* update the OKI frequency */
-			if (has_oki6295) OKIM6295_set_pin7(0, data & 8);
+			if (has_oki6295) okim6295_set_pin7(0, data & 8);
 			break;
 
 		case 0x206:		/* /MIX */
@@ -554,7 +561,7 @@ static WRITE8_HANDLER( jsa3_io_w )
 
 			/* update the OKI bank */
 			oki6295_bank_base = (0x80000 * ((data >> 4) & 1)) | (oki6295_bank_base & 0x40000);
-			if (has_oki6295) OKIM6295_set_bank_base(0, oki6295_bank_base);
+			if (has_oki6295) okim6295_set_bank_base(0, oki6295_bank_base);
 
 			/* update the volumes */
 			ym2151_volume = ((data >> 1) & 7) * 100 / 7;
@@ -582,9 +589,9 @@ static READ8_HANDLER( jsa3s_io_r )
 			if (has_oki6295)
 			{
 				if (offset & 1)
-					result = OKIM6295_status_1_r(machine, offset);
+					result = okim6295_status_1_r(machine, offset);
 				else
-					result = OKIM6295_status_0_r(machine, offset);
+					result = okim6295_status_0_r(machine, offset);
 			}
 			break;
 
@@ -647,9 +654,9 @@ static WRITE8_HANDLER( jsa3s_io_w )
 			if (has_oki6295)
 			{
 				if (offset & 1)
-					OKIM6295_data_1_w(machine, offset, data);
+					okim6295_data_1_w(machine, offset, data);
 				else
-					OKIM6295_data_0_w(machine, offset, data);
+					okim6295_data_0_w(machine, offset, data);
 			}
 			break;
 
@@ -670,7 +677,7 @@ static WRITE8_HANDLER( jsa3s_io_w )
 
 			/* update the OKI bank */
 			oki6295_bank_base = (0x40000 * ((data >> 1) & 1)) | (oki6295_bank_base & 0x80000);
-			OKIM6295_set_bank_base(0, oki6295_bank_base);
+			okim6295_set_bank_base(0, oki6295_bank_base);
 
 			/* update the bank */
 			memcpy(bank_base, &bank_source_data[0x1000 * ((data >> 6) & 3)], 0x1000);
@@ -681,8 +688,8 @@ static WRITE8_HANDLER( jsa3s_io_w )
 			coin_counter_w(0, (data >> 4) & 1);
 
 			/* update the OKI frequency */
-			OKIM6295_set_pin7(0, data & 8);
-			OKIM6295_set_pin7(1, data & 8);
+			okim6295_set_pin7(0, data & 8);
+			okim6295_set_pin7(1, data & 8);
 			break;
 
 		case 0x206:		/* /MIX */
@@ -696,8 +703,8 @@ static WRITE8_HANDLER( jsa3s_io_w )
 
 			/* update the OKI bank */
 			oki6295_bank_base = (0x80000 * ((data >> 4) & 1)) | (oki6295_bank_base & 0x40000);
-			OKIM6295_set_bank_base(0, oki6295_bank_base);
-			OKIM6295_set_bank_base(1, 0x40000 * (data >> 6));
+			okim6295_set_bank_base(0, oki6295_bank_base);
+			okim6295_set_bank_base(1, 0x40000 * (data >> 6));
 
 			/* update the volumes */
 			ym2151_volume = ((data >> 1) & 7) * 100 / 7;
@@ -733,9 +740,9 @@ static void update_all_volumes(running_machine *machine )
 
 static ADDRESS_MAP_START( atarijsa1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_WRITE(YM2151_data_port_0_w)
-	AM_RANGE(0x2000, 0x2001) AM_READ(YM2151_status_port_0_r)
+	AM_RANGE(0x2000, 0x2000) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x2001, 0x2001) AM_WRITE(ym2151_data_port_0_w)
+	AM_RANGE(0x2000, 0x2001) AM_READ(ym2151_status_port_0_r)
 	AM_RANGE(0x2800, 0x2bff) AM_READWRITE(jsa1_io_r, jsa1_io_w)
 	AM_RANGE(0x3000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -743,9 +750,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( atarijsa2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_WRITE(YM2151_data_port_0_w)
-	AM_RANGE(0x2000, 0x2001) AM_READ(YM2151_status_port_0_r)
+	AM_RANGE(0x2000, 0x2000) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x2001, 0x2001) AM_WRITE(ym2151_data_port_0_w)
+	AM_RANGE(0x2000, 0x2001) AM_READ(ym2151_status_port_0_r)
 	AM_RANGE(0x2800, 0x2bff) AM_READWRITE(jsa2_io_r, jsa2_io_w)
 	AM_RANGE(0x3000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -754,9 +761,9 @@ ADDRESS_MAP_END
 /* full map verified from schematics and Batman GALs */
 static ADDRESS_MAP_START( atarijsa3_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM
-	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x07fe) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x07fe) AM_WRITE(YM2151_data_port_0_w)
-	AM_RANGE(0x2000, 0x2001) AM_MIRROR(0x07fe) AM_READ(YM2151_status_port_0_r)
+	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x07fe) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x07fe) AM_WRITE(ym2151_data_port_0_w)
+	AM_RANGE(0x2000, 0x2001) AM_MIRROR(0x07fe) AM_READ(ym2151_status_port_0_r)
 	AM_RANGE(0x2800, 0x2fff) AM_READWRITE(jsa3_io_r, jsa3_io_w)
 	AM_RANGE(0x3000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -764,9 +771,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( atarijsa3s_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM
-	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x07fe) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x07fe) AM_WRITE(YM2151_data_port_0_w)
-	AM_RANGE(0x2000, 0x2001) AM_MIRROR(0x07fe) AM_READ(YM2151_status_port_0_r)
+	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x07fe) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x07fe) AM_WRITE(ym2151_data_port_0_w)
+	AM_RANGE(0x2000, 0x2001) AM_MIRROR(0x07fe) AM_READ(ym2151_status_port_0_r)
 	AM_RANGE(0x2800, 0x2fff) AM_READWRITE(jsa3s_io_r, jsa3s_io_w)
 	AM_RANGE(0x3000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -779,7 +786,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	atarigen_ym2151_irq_gen
 };
@@ -796,15 +803,15 @@ static const struct YM2151interface ym2151_interface =
 MACHINE_DRIVER_START( jsa_i_stereo )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("jsa", M6502, JSA_MASTER_CLOCK/2)
+	MDRV_CPU_ADD("jsa", M6502, JSA_MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(atarijsa1_map,0)
 	MDRV_CPU_PERIODIC_INT(atarigen_6502_irq_gen, (double)JSA_MASTER_CLOCK/4/16/16/14)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD_TAG("ym", YM2151, JSA_MASTER_CLOCK)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, JSA_MASTER_CLOCK)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.60)
 	MDRV_SOUND_ROUTE(1, "right", 0.60)
 MACHINE_DRIVER_END
@@ -818,7 +825,7 @@ MACHINE_DRIVER_START( jsa_i_stereo_swapped )
 
 	/* sound hardware */
 	MDRV_SOUND_REPLACE("ym", YM2151, JSA_MASTER_CLOCK)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "right", 0.60)
 	MDRV_SOUND_ROUTE(1, "left", 0.60)
 MACHINE_DRIVER_END
@@ -831,7 +838,7 @@ MACHINE_DRIVER_START( jsa_i_stereo_pokey )
 	MDRV_IMPORT_FROM(jsa_i_stereo)
 
 	/* sound hardware */
-	MDRV_SOUND_ADD(POKEY, JSA_MASTER_CLOCK/2)
+	MDRV_SOUND_ADD("pokey", POKEY, JSA_MASTER_CLOCK/2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.40)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.40)
 MACHINE_DRIVER_END
@@ -841,19 +848,19 @@ MACHINE_DRIVER_END
 MACHINE_DRIVER_START( jsa_i_mono_speech )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("jsa", M6502, JSA_MASTER_CLOCK/2)
+	MDRV_CPU_ADD("jsa", M6502, JSA_MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(atarijsa1_map,0)
 	MDRV_CPU_PERIODIC_INT(atarigen_6502_irq_gen, (double)JSA_MASTER_CLOCK/4/16/16/14)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("ym", YM2151, JSA_MASTER_CLOCK)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, JSA_MASTER_CLOCK)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.60)
 	MDRV_SOUND_ROUTE(1, "mono", 0.60)
 
-	MDRV_SOUND_ADD(TMS5220, JSA_MASTER_CLOCK*2/11) /* potentially JSA_MASTER_CLOCK/9 as well */
+	MDRV_SOUND_ADD("tms", TMS5220, JSA_MASTER_CLOCK*2/11) /* potentially JSA_MASTER_CLOCK/9 as well */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -862,20 +869,20 @@ MACHINE_DRIVER_END
 MACHINE_DRIVER_START( jsa_ii_mono )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("jsa", M6502, JSA_MASTER_CLOCK/2)
+	MDRV_CPU_ADD("jsa", M6502, JSA_MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(atarijsa2_map,0)
 	MDRV_CPU_PERIODIC_INT(atarigen_6502_irq_gen, (double)JSA_MASTER_CLOCK/4/16/16/14)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("ym", YM2151, JSA_MASTER_CLOCK)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, JSA_MASTER_CLOCK)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.60)
 	MDRV_SOUND_ROUTE(1, "mono", 0.60)
 
-	MDRV_SOUND_ADD_TAG("adpcm", OKIM6295, JSA_MASTER_CLOCK/3)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("adpcm", OKIM6295, JSA_MASTER_CLOCK/3)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 MACHINE_DRIVER_END
 
@@ -905,23 +912,66 @@ MACHINE_DRIVER_END
 MACHINE_DRIVER_START( jsa_iiis_stereo )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("jsa", M6502, JSA_MASTER_CLOCK/2)
+	MDRV_CPU_ADD("jsa", M6502, JSA_MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(atarijsa3s_map,0)
 	MDRV_CPU_PERIODIC_INT(atarigen_6502_irq_gen, (double)JSA_MASTER_CLOCK/4/16/16/14)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD_TAG("ym", YM2151, JSA_MASTER_CLOCK)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, JSA_MASTER_CLOCK)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.60)
 	MDRV_SOUND_ROUTE(1, "right", 0.60)
 
-	MDRV_SOUND_ADD(OKIM6295, JSA_MASTER_CLOCK/3)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("adpcml", OKIM6295, JSA_MASTER_CLOCK/3)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.75)
 
-	MDRV_SOUND_ADD(OKIM6295, JSA_MASTER_CLOCK/3)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("adpcmr", OKIM6295, JSA_MASTER_CLOCK/3)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.75)
 MACHINE_DRIVER_END
+
+
+/*************************************
+ *
+ *  Port definitions
+ *
+ *************************************/
+
+INPUT_PORTS_START( atarijsa_i )
+	PORT_START("JSAI")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN3 )
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNUSED )	/* speech chip ready */
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNUSED )	/* output buffer full */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )		/* input buffer full */
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )	/* self test */
+INPUT_PORTS_END
+
+INPUT_PORTS_START( atarijsa_ii )
+	PORT_START("JSAII")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN3 )
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNUSED )	/* output buffer full */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )		/* input buffer full */
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )	/* self test */
+INPUT_PORTS_END
+
+INPUT_PORTS_START( atarijsa_iii )
+	PORT_START("JSAIII")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN2 )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN1 )
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_TILT )
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SERVICE )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNUSED )	/* self test */
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNUSED )	/* output buffer full */
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )	/* input buffer full */
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )	/* self test */
+INPUT_PORTS_END

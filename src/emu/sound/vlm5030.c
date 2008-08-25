@@ -89,7 +89,7 @@ chirp 12-..: vokume   0   : silent
 
 struct vlm5030_info
 {
-	const struct VLM5030interface *intf;
+	const vlm5030_interface *intf;
 
 	sound_stream * channel;
 
@@ -516,14 +516,14 @@ static void VLM5030_reset(struct vlm5030_info *chip)
 }
 
 /* set speech rom address */
-void VLM5030_set_rom(void *speech_rom)
+void vlm5030_set_rom(void *speech_rom)
 {
 	struct vlm5030_info *chip = sndti_token(SOUND_VLM5030, 0);
 	chip->rom = (UINT8 *)speech_rom;
 }
 
 /* get BSY pin level */
-int VLM5030_BSY(void)
+int vlm5030_bsy(void)
 {
 	struct vlm5030_info *chip = sndti_token(SOUND_VLM5030, 0);
 	VLM5030_update(chip);
@@ -531,14 +531,14 @@ int VLM5030_BSY(void)
 }
 
 /* latch contoll data */
-WRITE8_HANDLER( VLM5030_data_w )
+WRITE8_HANDLER( vlm5030_data_w )
 {
 	struct vlm5030_info *chip = sndti_token(SOUND_VLM5030, 0);
 	chip->latch_data = (UINT8)data;
 }
 
 /* set RST pin level : reset / set table address A8-A15 */
-void VLM5030_RST (int pin )
+void vlm5030_rst (int pin )
 {
 	struct vlm5030_info *chip = sndti_token(SOUND_VLM5030, 0);
 	if( chip->pin_RST )
@@ -563,7 +563,7 @@ void VLM5030_RST (int pin )
 }
 
 /* set VCU pin level : ?? unknown */
-void VLM5030_VCU(int pin)
+void vlm5030_vcu(int pin)
 {
 	struct vlm5030_info *chip = sndti_token(SOUND_VLM5030, 0);
 	/* direct mode / indirect mode */
@@ -572,7 +572,7 @@ void VLM5030_VCU(int pin)
 }
 
 /* set ST pin level  : set table address A0-A7 / start speech */
-void VLM5030_ST(int pin )
+void vlm5030_st(int pin )
 {
 	struct vlm5030_info *chip = sndti_token(SOUND_VLM5030, 0);
 	int table;
@@ -631,15 +631,16 @@ if( chip->interp_step != 1)
 
 /* start VLM5030 with sound rom              */
 /* speech_rom == 0 -> use sampling data mode */
-static void *vlm5030_start(int sndindex, int clock, const void *config)
+static void *vlm5030_start(const char *tag, int sndindex, int clock, const void *config)
 {
+	const vlm5030_interface defintrf = { 0 };
 	int emulation_rate;
 	struct vlm5030_info *chip;
 
 	chip = auto_malloc(sizeof(*chip));
 	memset(chip, 0, sizeof(*chip));
 
-	chip->intf = config;
+	chip->intf = (config != NULL) ? config : &defintrf;
 
 	emulation_rate = clock / 440;
 
@@ -650,16 +651,16 @@ static void *vlm5030_start(int sndindex, int clock, const void *config)
 	VLM5030_reset(chip);
 	chip->phase = PH_IDLE;
 
-	chip->rom = memory_region(Machine, chip->intf->memory_region);
+	chip->rom = memory_region(Machine, tag);
 	/* memory size */
 	if( chip->intf->memory_size == 0)
-		chip->address_mask = memory_region_length(Machine, chip->intf->memory_region)-1;
+		chip->address_mask = memory_region_length(Machine, tag)-1;
 	else
 		chip->address_mask = chip->intf->memory_size-1;
 
 	chip->channel = stream_create(0, 1, emulation_rate,chip,vlm5030_update_callback);
 
-	/* don't restore "UINT8 *chip->rom" when use VLM5030_set_rom() */
+	/* don't restore "UINT8 *chip->rom" when use vlm5030_set_rom() */
 
 	state_save_register_item(VLM_NAME,sndindex,chip->address);
 	state_save_register_item(VLM_NAME,sndindex,chip->pin_BSY);

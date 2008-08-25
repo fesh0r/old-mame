@@ -75,7 +75,7 @@ static void triplhnt_update_misc(running_machine *machine, int offset)
 	discrete_sound_w(machine, TRIPLHNT_LAMP_EN, triplhnt_misc_flags & 0x02);	// Lamp is used to reset noise
 	discrete_sound_w(machine, TRIPLHNT_BEAR_EN, triplhnt_misc_flags & 0x80);	// bear
 
-	is_witch_hunt = input_port_read_indexed(machine, 2) == 0x40;
+	is_witch_hunt = input_port_read(machine, "0C09") == 0x40;
 	bit = ~triplhnt_misc_flags & 0x40;
 
 	/* if we're not playing the sample yet, start it */
@@ -107,21 +107,21 @@ static READ8_HANDLER( triplhnt_cmos_r )
 static READ8_HANDLER( triplhnt_input_port_4_r )
 {
 	watchdog_reset_w(machine, 0, 0);
-	return input_port_read_indexed(machine, 4);
+	return input_port_read(machine, "0C0B");
 }
 
 
 static READ8_HANDLER( triplhnt_misc_r )
 {
 	triplhnt_update_misc(machine, offset);
-	return input_port_read_indexed(machine, 7) | triplhnt_hit_code;
+	return input_port_read(machine, "VBLANK") | triplhnt_hit_code;
 }
 
 
 static READ8_HANDLER( triplhnt_da_latch_r )
 {
-	int cross_x = input_port_read_indexed(machine, 8);
-	int cross_y = input_port_read_indexed(machine, 9);
+	int cross_x = input_port_read(machine, "STICKX");
+	int cross_y = input_port_read(machine, "STICKY");
 
 	triplhnt_da_latch = offset;
 
@@ -133,16 +133,16 @@ static READ8_HANDLER( triplhnt_da_latch_r )
 
 static ADDRESS_MAP_START( triplhnt_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x00ff) AM_READ(SMH_RAM) AM_MIRROR(0x300)
-	AM_RANGE(0x0c00, 0x0c00) AM_READ(input_port_0_r)
-	AM_RANGE(0x0c08, 0x0c08) AM_READ(input_port_1_r)
-	AM_RANGE(0x0c09, 0x0c09) AM_READ(input_port_2_r)
-	AM_RANGE(0x0c0a, 0x0c0a) AM_READ(input_port_3_r)
+	AM_RANGE(0x0c00, 0x0c00) AM_READ_PORT("0C00")
+	AM_RANGE(0x0c08, 0x0c08) AM_READ_PORT("0C08")
+	AM_RANGE(0x0c09, 0x0c09) AM_READ_PORT("0C09")
+	AM_RANGE(0x0c0a, 0x0c0a) AM_READ_PORT("0C0A")
 	AM_RANGE(0x0c0b, 0x0c0b) AM_READ(triplhnt_input_port_4_r)
 	AM_RANGE(0x0c10, 0x0c1f) AM_READ(triplhnt_da_latch_r)
 	AM_RANGE(0x0c20, 0x0c2f) AM_READ(triplhnt_cmos_r)
 	AM_RANGE(0x0c30, 0x0c3f) AM_READ(triplhnt_misc_r)
-	AM_RANGE(0x0c40, 0x0c40) AM_READ(input_port_5_r)
-	AM_RANGE(0x0c48, 0x0c48) AM_READ(input_port_6_r)
+	AM_RANGE(0x0c40, 0x0c40) AM_READ_PORT("0C40")
+	AM_RANGE(0x0c48, 0x0c48) AM_READ_PORT("0C48")
 	AM_RANGE(0x7000, 0x7fff) AM_READ(SMH_ROM) /* program */
 	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_ROM) /* program mirror */
 ADDRESS_MAP_END
@@ -161,39 +161,39 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( triplhnt )
-	PORT_START /* 0C00 */
+	PORT_START("0C00")	/* 0C00 */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START /* 0C08 */
+	PORT_START("0C08")	/* 0C08 */
 	PORT_DIPNAME( 0xc0, 0x00, "Play Time" )
 	PORT_DIPSETTING( 0x00, "32 seconds / 16 raccoons" )
 	PORT_DIPSETTING( 0x40, "64 seconds / 32 raccoons" )
 	PORT_DIPSETTING( 0x80, "96 seconds / 48 raccoons" )
 	PORT_DIPSETTING( 0xc0, "128 seconds / 64 raccoons" )
 
-	PORT_START /* 0C09 */
+	PORT_START("0C09")	/* 0C09 */
 	PORT_DIPNAME( 0xc0, 0x40, "Game Select" )
 	PORT_DIPSETTING( 0x00, "Hit the Bear" )
 	PORT_DIPSETTING( 0x40, "Witch Hunt" )
 	PORT_DIPSETTING( 0xc0, "Raccoon Hunt" )
 
-	PORT_START /* 0C0A */
+	PORT_START("0C0A")	/* 0C0A */
 	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Coinage ))
 	PORT_DIPSETTING( 0x40, DEF_STR( 2C_1C ))
 	PORT_DIPSETTING( 0x00, DEF_STR( 1C_1C ))
 	PORT_DIPSETTING( 0x80, DEF_STR( 1C_2C ))
 
-	PORT_START /* 0C0B */
+	PORT_START("0C0B")	/* 0C0B */
 	PORT_DIPNAME( 0x80, 0x00, "Extended Play" )
 	PORT_DIPSETTING( 0x80, DEF_STR( Off ))
 	PORT_DIPSETTING( 0x00, DEF_STR( On ))
 
-	PORT_START /* 0C40 */
+	PORT_START("0C40")	/* 0C40 */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN2 )
 
-	PORT_START /* 0C48 */
+	PORT_START("0C48")	/* 0C48 */
 // default to service enabled to make users calibrate gun
 //  PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Service_Mode )) PORT_TOGGLE PORT_CODE(KEYCODE_F2)
@@ -201,16 +201,16 @@ static INPUT_PORTS_START( triplhnt )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
 
-	PORT_START
+	PORT_START("VBLANK")
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START
+	PORT_START("STICKX")
 	PORT_BIT( 0xfc, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0x00,0xfc)  PORT_CROSSHAIR(X, 62.0/64, 1.0/64, 0) PORT_SENSITIVITY(25) PORT_KEYDELTA(15)
 
-	PORT_START
+	PORT_START("STICKY")
 	PORT_BIT( 0xfc, 0x78, IPT_AD_STICK_Y ) PORT_MINMAX(0x00,0xec)  PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(25) PORT_KEYDELTA(15)
 
-	PORT_START_TAG("BEAR")	/* 10 */
+	PORT_START("BEAR")	/* 10 */
 	PORT_ADJUSTER( 35, "Bear Roar Frequency" )
 INPUT_PORTS_END
 
@@ -294,9 +294,9 @@ static const gfx_layout triplhnt_tile_layout =
 
 
 static GFXDECODE_START( triplhnt )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, triplhnt_small_sprite_layout, 0, 1 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, triplhnt_large_sprite_layout, 0, 1 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, triplhnt_tile_layout, 4, 2 )
+	GFXDECODE_ENTRY( "gfx1", 0, triplhnt_small_sprite_layout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, triplhnt_large_sprite_layout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx2", 0, triplhnt_tile_layout, 4, 2 )
 GFXDECODE_END
 
 
@@ -316,7 +316,7 @@ static PALETTE_INIT( triplhnt )
 static MACHINE_DRIVER_START( triplhnt )
 
 /* basic machine hardware */
-	MDRV_CPU_ADD(M6800, 800000)
+	MDRV_CPU_ADD("main", M6800, 800000)
 	MDRV_CPU_PROGRAM_MAP(triplhnt_readmem, triplhnt_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -338,18 +338,18 @@ static MACHINE_DRIVER_START( triplhnt )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(triplhnt_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(triplhnt)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90)
 MACHINE_DRIVER_END
 
 
 ROM_START( triplhnt )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD_NIB_HIGH( "8404.f1", 0x7000, 0x400, CRC(abc8acd5) SHA1(bcef2abc5829829a01aa21776c3deb2e1bf1d4ac) )
 	ROM_LOAD_NIB_LOW ( "8408.f2", 0x7000, 0x400, CRC(77fcdd3f) SHA1(ce0196abb8d6510aa9a5308f8efd6442e94272c4) )
 	ROM_LOAD_NIB_HIGH( "8403.e1", 0x7400, 0x400, CRC(8d756fa1) SHA1(48a74f710b130d9af0c866483d6fc4ecce4a3ac5) )
@@ -361,11 +361,11 @@ ROM_START( triplhnt )
 	ROM_LOAD_NIB_LOW ( "8405.c2", 0x7C00, 0x400, CRC(ba370b97) SHA1(5d799ce6ae56c315ff0abedea7ad9204bacc266b) )
 	ROM_RELOAD(                   0xFC00, 0x400 )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )  /* sprites */
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )  /* sprites */
 	ROM_LOAD( "8423.n1", 0x0000, 0x800, CRC(9937d0da) SHA1(abb906c2d9869b09be5172cc7639bb9cda38831b) )
 	ROM_LOAD( "8422.r1", 0x0800, 0x800, CRC(803621dd) SHA1(ffbd7f87a86477e5eb94f12fc20a837128a02442) )
 
-	ROM_REGION( 0x200, REGION_GFX2, ROMREGION_DISPOSE )   /* tiles */
+	ROM_REGION( 0x200, "gfx2", ROMREGION_DISPOSE )   /* tiles */
 	ROM_LOAD_NIB_HIGH( "8409.l3", 0x0000, 0x200, CRC(ec304172) SHA1(ccbf7e117fef7fa4288e3bf68f1a150b3a492ce6) )
 	ROM_LOAD_NIB_LOW ( "8410.m3", 0x0000, 0x200, CRC(f75a1b08) SHA1(81b4733194462cd4cef7f4221ecb7abd1556b871) )
 ROM_END

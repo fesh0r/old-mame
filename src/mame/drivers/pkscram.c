@@ -48,14 +48,14 @@ static WRITE16_HANDLER( pkscramble_YM2203_w )
 {
 	switch (offset)
 	{
-		case 0: YM2203_control_port_0_w(machine,0,data & 0xff);break;
-		case 1: YM2203_write_port_0_w(machine,0,data & 0xff);break;
+		case 0: ym2203_control_port_0_w(machine,0,data & 0xff);break;
+		case 1: ym2203_write_port_0_w(machine,0,data & 0xff);break;
 	}
 }
 
 static READ16_HANDLER( pkscramble_YM2203_r )
 {
-	return YM2203_status_port_0_r(machine,0);
+	return ym2203_status_port_0_r(machine,0);
 }
 
 // input bit 0x20 in port1 should stay low until bit 0x20 is written here, then
@@ -118,7 +118,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( pkscramble )
-	PORT_START	/* Dips */
+	PORT_START("DSW")	/* Dips */
 	PORT_DIPNAME( 0x0007, 0x0003, "Level" )
 	PORT_DIPSETTING(      0x0000, "0" )
 	PORT_DIPSETTING(      0x0001, "1" )
@@ -166,7 +166,7 @@ static INPUT_PORTS_START( pkscramble )
 	PORT_DIPSETTING(      0x4000, DEF_STR( On ) )
 	PORT_SERVICE( 0x8000, IP_ACTIVE_HIGH )
 
-	PORT_START	/* 16bit */
+	PORT_START("INPUTS")	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_BUTTON1 ) // Kick
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_BUTTON2 ) // Left
 	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_BUTTON3 ) // Center
@@ -254,7 +254,7 @@ static const gfx_layout tiles8x8_layout =
 
 
 static GFXDECODE_START( pkscram )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout, 0, 0x80 )
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 0, 0x80 )
 GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int irq)
@@ -263,7 +263,7 @@ static void irqhandler(running_machine *machine, int irq)
 		cpunum_set_input_line(machine, 0,2,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -286,7 +286,7 @@ static MACHINE_RESET( pkscramble)
 
 static MACHINE_DRIVER_START( pkscramble )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 8000000 )
+	MDRV_CPU_ADD("main", M68000, 8000000 )
 	MDRV_CPU_PROGRAM_MAP(pkscramble_map,0)
 	//MDRV_CPU_VBLANK_INT("main", irq1_line_hold) /* only valid irq */
 
@@ -311,18 +311,18 @@ static MACHINE_DRIVER_START( pkscramble )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 12000000/4)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym", YM2203, 12000000/4)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 MACHINE_DRIVER_END
 
 
 ROM_START( pkscram )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 ) /* 68k */
+	ROM_REGION( 0x20000, "main", 0 ) /* 68k */
 	ROM_LOAD16_BYTE( "pk1.6e", 0x00000, 0x10000, CRC(80e972e5) SHA1(cbbc6e1e3fbb65b40164e140f368d8fff85c1521) )
 	ROM_LOAD16_BYTE( "pk2.6j", 0x00001, 0x10000, CRC(752c86d1) SHA1(2e0c669307bed6f9eab957b0e1316416e653a72f) )
 
-	ROM_REGION( 0x40000, REGION_GFX1, 0 ) /* gfx */
+	ROM_REGION( 0x40000, "gfx1", 0 ) /* gfx */
 	ROM_LOAD16_BYTE( "pk3.1c", 0x00000, 0x20000, CRC(0b18f2bc) SHA1(32892589442884ba02a1c6059ecb94e4ef516b86) )
 	ROM_LOAD16_BYTE( "pk4.1e", 0x00001, 0x20000, CRC(a232d993) SHA1(1b7b15cf0fabf3b2b2e429506a78ff4c08f4f7a5) )
 ROM_END

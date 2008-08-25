@@ -135,10 +135,10 @@ static ADDRESS_MAP_START( drill_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x500000, 0x501fff) AM_RAM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x502000, 0x503fff) AM_RAM
 	AM_RANGE(0x700000, 0x70000f) AM_READ(drill_unk_r) AM_WRITE(SMH_NOP) // i/o
-	AM_RANGE(0x600000, 0x600001) AM_READ(YM2610_status_port_0_A_lsb_r) AM_WRITE(YM2610_control_port_0_A_lsb_w)
-	AM_RANGE(0x600002, 0x600003) AM_READ(YM2610_read_port_0_lsb_r) AM_WRITE(YM2610_data_port_0_A_lsb_w)
-	AM_RANGE(0x600004, 0x600005) AM_READ(YM2610_status_port_0_B_lsb_r) AM_WRITE(YM2610_control_port_0_B_lsb_w)
-	AM_RANGE(0x600006, 0x600007) AM_WRITE(YM2610_data_port_0_B_lsb_w)
+	AM_RANGE(0x600000, 0x600001) AM_READ(ym2610_status_port_0_a_lsb_r) AM_WRITE(ym2610_control_port_0_a_lsb_w)
+	AM_RANGE(0x600002, 0x600003) AM_READ(ym2610_read_port_0_lsb_r) AM_WRITE(ym2610_data_port_0_a_lsb_w)
+	AM_RANGE(0x600004, 0x600005) AM_READ(ym2610_status_port_0_b_lsb_r) AM_WRITE(ym2610_control_port_0_b_lsb_w)
+	AM_RANGE(0x600006, 0x600007) AM_WRITE(ym2610_data_port_0_b_lsb_w)
 	AM_RANGE(0x60000c, 0x60000d) AM_READ(SMH_NOP) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x60000e, 0x60000f) AM_READ(SMH_NOP) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
@@ -169,8 +169,8 @@ static const gfx_layout vramlayout=
 };
 
 static GFXDECODE_START( 2mindril )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, drill_layout,  0, 256  )
-	GFXDECODE_ENTRY( 0,		   	0, vramlayout,   0, 256 )
+	GFXDECODE_ENTRY( "gfx1", 0, drill_layout,  0, 256  )
+	GFXDECODE_ENTRY( NULL,		   	0, vramlayout,   0, 256 )
 GFXDECODE_END
 
 
@@ -184,15 +184,13 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 0,5,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2610interface ym2610_interface =
+static const ym2610_interface ym2610_config =
 {
-	irqhandler,
-	0,
-	REGION_SOUND1
+	irqhandler
 };
 
 static MACHINE_DRIVER_START( drill )
-	MDRV_CPU_ADD_TAG("main", M68000, 16000000 )
+	MDRV_CPU_ADD("main", M68000, 16000000 )
 	MDRV_CPU_PROGRAM_MAP(drill_map,0)
 	MDRV_CPU_VBLANK_INT("main", drill_interrupt)
 	MDRV_GFXDECODE(2mindril)
@@ -210,8 +208,8 @@ static MACHINE_DRIVER_START( drill )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2610, 16000000/2)
-	MDRV_SOUND_CONFIG(ym2610_interface)
+	MDRV_SOUND_ADD("ym", YM2610, 16000000/2)
+	MDRV_SOUND_CONFIG(ym2610_config)
 	MDRV_SOUND_ROUTE(0, "left",  0.25)
 	MDRV_SOUND_ROUTE(0, "right", 0.25)
 	MDRV_SOUND_ROUTE(1, "left",  1.0)
@@ -220,27 +218,27 @@ MACHINE_DRIVER_END
 
 
 ROM_START( 2mindril )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x80000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "d58-38.ic11", 0x00000, 0x40000, CRC(c58e8e4f) SHA1(648db679c3bfb5de1cd6c1b1217773a2fe56f11b) )
 	ROM_LOAD16_BYTE( "d58-37.ic9",  0x00001, 0x40000, CRC(19e5cc3c) SHA1(04ac0eef893c579fe90d91d7fd55c5741a2b7460) )
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x200000, "ym", 0 ) /* Samples */
 	ROM_LOAD( "d58-11.ic31", 0x000000, 0x200000,  CRC(dc26d58d) SHA1(cffb18667da18f5367b02af85a2f7674dd61ae97) )
 
-	ROM_REGION( 0x800000, REGION_GFX1, ROMREGION_ERASE00 )
+	ROM_REGION( 0x800000, "gfx1", ROMREGION_ERASE00 )
 	ROM_LOAD32_WORD( "d58-09.ic28", 0x000000, 0x200000, CRC(d8f6a86a) SHA1(d6b2ec309e21064574ee63e025ae4716b1982a98) )
 	ROM_LOAD32_WORD( "d58-08.ic27", 0x000002, 0x200000, CRC(9f5a3f52) SHA1(7b696bd823819965b974c853cebc1660750db61e) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, 0 )
+	ROM_REGION( 0x400000, "gfx2", 0 )
 	ROM_LOAD32_WORD( "d58-10.ic29", 0x000000, 0x200000, CRC(74c87e08) SHA1(f39b3a64f8338ccf5ca6eb76cee92a10fe0aad8f) )
 ROM_END
 
 static DRIVER_INIT( drill )
 {
 	// rearrange gfx roms to something we can decode, two of the roms form 4bpp of the graphics, the third forms another 2bpp but is in a different format
-	UINT32 *src = (UINT32*)memory_region( machine, REGION_GFX2 );
-	UINT32 *dst = (UINT32*)memory_region( machine, REGION_GFX1 );// + 0x400000;
-	UINT8 *rom = memory_region( machine, REGION_CPU1 );
+	UINT32 *src = (UINT32*)memory_region( machine, "gfx2" );
+	UINT32 *dst = (UINT32*)memory_region( machine, "gfx1" );// + 0x400000;
+	UINT8 *rom = memory_region( machine, "main" );
 	int i;
 
 	for (i=0; i< 0x400000/4; i++)

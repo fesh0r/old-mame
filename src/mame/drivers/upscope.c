@@ -239,9 +239,9 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE(amiga_cia_r, amiga_cia_w)
 	AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) AM_BASE(&amiga_custom_regs)
 	AM_RANGE(0xe80000, 0xe8ffff) AM_READWRITE(amiga_autoconfig_r, amiga_autoconfig_w)
-	AM_RANGE(0xfc0000, 0xffffff) AM_ROM AM_REGION(REGION_USER1, 0)			/* System ROM */
+	AM_RANGE(0xfc0000, 0xffffff) AM_ROM AM_REGION("user1", 0)			/* System ROM */
 
-	AM_RANGE(0xf00000, 0xf7ffff) AM_ROM AM_REGION(REGION_USER2, 0)
+	AM_RANGE(0xf00000, 0xf7ffff) AM_ROM AM_REGION("user2", 0)
 ADDRESS_MAP_END
 
 
@@ -253,10 +253,10 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( upscope )
-	PORT_START_TAG("POT1DAT")
+	PORT_START("POT1DAT")
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(25) PORT_MINMAX(0x02,0xfe) PORT_KEYDELTA(5) PORT_CENTERDELTA(0) PORT_REVERSE
 
-	PORT_START_TAG("IO0")
+	PORT_START("IO0")
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -273,7 +273,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct CustomSound_interface amiga_custom_interface =
+static const custom_sound_interface amiga_custom_interface =
 {
 	amiga_sh_start
 };
@@ -289,7 +289,7 @@ static const struct CustomSound_interface amiga_custom_interface =
 static MACHINE_DRIVER_START( upscope )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, AMIGA_68000_NTSC_CLOCK)
+	MDRV_CPU_ADD("main", M68000, AMIGA_68000_NTSC_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	MDRV_MACHINE_RESET(amiga)
@@ -314,7 +314,7 @@ static MACHINE_DRIVER_START( upscope )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(CUSTOM, 3579545)
+	MDRV_SOUND_ADD("amiga", CUSTOM, 3579545)
 	MDRV_SOUND_CONFIG(amiga_custom_interface)
 	MDRV_SOUND_ROUTE(0, "right", 0.50)
 	MDRV_SOUND_ROUTE(1, "left", 0.50)
@@ -331,11 +331,11 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( upscope )
-	ROM_REGION(0x80000, REGION_USER1, 0)
+	ROM_REGION(0x80000, "user1", 0)
 	ROM_LOAD16_WORD_SWAP( "kick12.rom", 0x000000, 0x40000, CRC(a6ce1636) SHA1(11f9e62cf299f72184835b7b2a70a16333fc0d88) )
-	ROM_COPY( REGION_USER1, 0x000000, 0x040000, 0x040000 )
+	ROM_COPY( "user1", 0x000000, 0x040000, 0x040000 )
 
-	ROM_REGION(0x080000, REGION_USER2, 0)
+	ROM_REGION(0x080000, "user2", 0)
 	ROM_LOAD16_BYTE( "upscope.u5",   0x000000, 0x008000, CRC(c109912e) SHA1(dcac9522e3c4818b2a02212b9173540fcf4bd463) )
 	ROM_LOAD16_BYTE( "upscope.u13",  0x000001, 0x008000, CRC(9c8b071a) SHA1(69f9f8c17630ed568975e65dadc03213677a12dd) )
 	ROM_LOAD16_BYTE( "upscope.u6",   0x010000, 0x008000, CRC(962f371e) SHA1(5682c62f34df2cc70f6125cf14203087670571db) )
@@ -383,7 +383,7 @@ static DRIVER_INIT( upscope )
 
 	/* set up memory */
 	memory_configure_bank(1, 0, 1, amiga_chip_ram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_USER1), 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, "user1"), 0);
 }
 
 

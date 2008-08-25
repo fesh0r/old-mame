@@ -28,7 +28,7 @@ static struct
 static void cps3_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
 {
 	int i;
-	INT8 *base = (INT8*)memory_region(Machine, REGION_USER5);
+	INT8 *base = (INT8*)memory_region(Machine, "user5");
 
 	/* Clear the buffers */
 	memset(buffer[0], 0, length*sizeof(*buffer[0]));
@@ -97,7 +97,7 @@ static void cps3_stream_update(void *param, stream_sample_t **inputs, stream_sam
 
 }
 
-void *cps3_sh_start(int clock, const struct CustomSound_interface *config)
+void *cps3_sh_start(int clock, const custom_sound_interface *config)
 {
 	/* Allocate the stream */
 	cps3_stream = stream_create(0, 2, clock / 384, NULL, cps3_stream_update);

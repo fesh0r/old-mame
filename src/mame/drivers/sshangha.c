@@ -98,11 +98,11 @@ static READ16_HANDLER( sshangha_protection16_r )
 	switch (offset)
 	{
 		case 0x050 >> 1: /* Player 1 & Player 2 joysticks & fire buttons */
-			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
+			return (input_port_read(machine, "P1") + (input_port_read(machine, "P2") << 8));
 		case 0x76a >> 1: /* Credits */
-			return input_port_read_indexed(machine, 2);
+			return input_port_read(machine, "SYSTEM");
 		case 0x0ac >> 1: /* DIPS */
-			return (input_port_read_indexed(machine, 3) + (input_port_read_indexed(machine, 4) << 8));
+			return (input_port_read(machine, "DSW1") + (input_port_read(machine, "DSW2") << 8));
 
 		// Protection TODO
 	}
@@ -116,11 +116,11 @@ static READ16_HANDLER( sshanghb_protection16_r )
 	switch (offset)
 	{
 		case 0x050 >> 1: /* Player 1 & Player 2 joysticks & fire buttons */
-			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
+			return (input_port_read(machine, "P1") + (input_port_read(machine, "P2") << 8));
 		case 0x76a >> 1: /* Credits */
-			return input_port_read_indexed(machine, 2);
+			return input_port_read(machine, "SYSTEM");
 		case 0x0ac >> 1: /* DIPS */
-			return (input_port_read_indexed(machine, 3) + (input_port_read_indexed(machine, 4) << 8));
+			return (input_port_read(machine, "DSW1") + (input_port_read(machine, "DSW2") << 8));
 	}
 	return sshangha_prot_data[offset];
 }
@@ -187,22 +187,22 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0xc000, 0xc000) AM_READ(YM2203_status_port_0_r)
+	AM_RANGE(0xc000, 0xc000) AM_READ(ym2203_status_port_0_r)
 	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_RAM)
 //  AM_RANGE(0xf800, 0xf800) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(YM2203_control_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(YM2203_write_port_0_w)
+	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym2203_control_port_0_w)
+	AM_RANGE(0xc001, 0xc001) AM_WRITE(ym2203_write_port_0_w)
 	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
 static INPUT_PORTS_START( sshangha )
-	PORT_START_TAG("IN0")	/* Player 1 controls (0xfec047.b) */
+	PORT_START("P1")	/* Player 1 controls (0xfec047.b) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -212,7 +212,7 @@ static INPUT_PORTS_START( sshangha )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)	PORT_NAME("P1 Help")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN1")	/* Player 2 controls (0xfec046.b) */
+	PORT_START("P2")	/* Player 2 controls (0xfec046.b) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -222,7 +222,7 @@ static INPUT_PORTS_START( sshangha )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)	PORT_NAME("P2 Help")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("IN2")	/* Credits */
+	PORT_START("SYSTEM")	/* Credits */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -234,7 +234,7 @@ static INPUT_PORTS_START( sshangha )
 
 	/* Dips seem inverted with respect to other Deco games */
 
-	PORT_START_TAG("DSW1")	/* Dip switch bank 1 (0xfec04a.b, inverted bits order) */
+	PORT_START("DSW1")	/* Dip switch bank 1 (0xfec04a.b, inverted bits order) */
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Demo_Sounds ) )	// To be confirmed
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
@@ -264,7 +264,7 @@ static INPUT_PORTS_START( sshangha )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_4C ) )PORT_CONDITION("DSW1",0x10,PORTCOND_NOTEQUALS,0x10)//Mode 2
 
-	PORT_START_TAG("DSW2")	/* Dip switch bank 2 (0xfec04b.b, inverted bits order) */
+	PORT_START("DSW2")	/* Dip switch bank 2 (0xfec04b.b, inverted bits order) */
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0xc0, DEF_STR( Normal ) )
@@ -319,9 +319,9 @@ static const gfx_layout tilelayout =
 };
 
 static GFXDECODE_START( sshangha )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,  256, 64 ) /* Characters 8x8 */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout,  256, 64 ) /* Tiles 16x16 */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout,    0, 32 ) /* Sprites 16x16 */
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,  256, 64 ) /* Characters 8x8 */
+	GFXDECODE_ENTRY( "gfx1", 0, tilelayout,  256, 64 ) /* Tiles 16x16 */
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayout,    0, 32 ) /* Sprites 16x16 */
 GFXDECODE_END
 
 /******************************************************************************/
@@ -331,7 +331,7 @@ static void irqhandler(running_machine *machine, int state)
 	cpunum_set_input_line(machine, 1,0,state);
 }
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -344,12 +344,11 @@ static const struct YM2203interface ym2203_interface =
 static MACHINE_DRIVER_START( sshangha )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 28000000/2)
+	MDRV_CPU_ADD("main", M68000, 28000000/2)
 	MDRV_CPU_PROGRAM_MAP(sshangha_readmem,sshangha_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
-	MDRV_CPU_ADD(Z80, 16000000/4)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 16000000/4)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_RESET(sshangha)	/* init machine */
@@ -373,13 +372,13 @@ static MACHINE_DRIVER_START( sshangha )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2203, 16000000/4)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym", YM2203, 16000000/4)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.33)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.33)
 
-	MDRV_SOUND_ADD(OKIM6295, 1023924)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1023924)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.27)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.27)
 MACHINE_DRIVER_END
@@ -387,42 +386,42 @@ MACHINE_DRIVER_END
 /******************************************************************************/
 
 ROM_START( sshangha )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "ss007-1.u28", 0x00000, 0x20000, CRC(bc466edf) SHA1(b96525b2c879d15b46a7753fa6ebf12a851cd019) )
 	ROM_LOAD16_BYTE( "ss006-1.u27", 0x00001, 0x20000, CRC(872a2a2d) SHA1(42d7a01465d5c403354aaf0f2dab8adb9afe61b0) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
 	ROM_LOAD( "ss008.u82", 0x000000, 0x010000, CRC(04dc3647) SHA1(c06a7e8932c03de5759a9b69da0d761006b49517) )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "ss001.u8",  0x000000, 0x100000, CRC(ebeca5b7) SHA1(1746e757ad9bbef2aa9028c54f25d4aa4dedf79e) )
 	ROM_LOAD( "ss002.u7",  0x100000, 0x100000, CRC(67659f29) SHA1(50944877665b7b848b3f7063892bd39a96a847cf) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "ss003.u39", 0x000000, 0x100000, CRC(fbecde72) SHA1(2fe32b28e77ec390c534d276261eefac3fbe21fd) ) /* Copy of rom at u47 */
 	ROM_LOAD( "ss004.u37", 0x100000, 0x100000, CRC(98b82c5e) SHA1(af1b52d4b36b1776c148478b5a5581e6a57256b8) ) /* Copy of rom at u46 */
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* ADPCM samples */
 	ROM_LOAD( "ss005.u86", 0x000000, 0x040000, CRC(c53a82ad) SHA1(756e453c8b5ce8e47f93fbda3a9e48bb73e93e2e) )
 ROM_END
 
 ROM_START( sshanghb )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "sshanb_2.010", 0x00000, 0x20000, CRC(bc7ed254) SHA1(aeee4b8a8265902bb41575cc143738ecf3aff57d) )
 	ROM_LOAD16_BYTE( "sshanb_1.010", 0x00001, 0x20000, CRC(7b049f49) SHA1(2570077c67dbd35053d475a18c3f10813bf914f7) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
 	ROM_LOAD( "ss008.u82", 0x000000, 0x010000, CRC(04dc3647) SHA1(c06a7e8932c03de5759a9b69da0d761006b49517) )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "ss001.u8",  0x000000, 0x100000, CRC(ebeca5b7) SHA1(1746e757ad9bbef2aa9028c54f25d4aa4dedf79e) )
 	ROM_LOAD( "ss002.u7",  0x100000, 0x100000, CRC(67659f29) SHA1(50944877665b7b848b3f7063892bd39a96a847cf) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "ss003.u39", 0x000000, 0x100000, CRC(fbecde72) SHA1(2fe32b28e77ec390c534d276261eefac3fbe21fd) ) /* Copy of rom at u47 */
 	ROM_LOAD( "ss004.u37", 0x100000, 0x100000, CRC(98b82c5e) SHA1(af1b52d4b36b1776c148478b5a5581e6a57256b8) ) /* Copy of rom at u46 */
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* ADPCM samples */
 	ROM_LOAD( "ss005.u86", 0x000000, 0x040000, CRC(c53a82ad) SHA1(756e453c8b5ce8e47f93fbda3a9e48bb73e93e2e) )
 ROM_END
 
@@ -432,7 +431,7 @@ static DRIVER_INIT( sshangha )
 #if SSHANGHA_HACK
 	/* This is a hack to allow you to use the extra features
          of the first "Unused" Dip Switch (see notes above). */
-	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, "main");
 	RAM[0x000384/2] = 0x4e71;
 	RAM[0x000386/2] = 0x4e71;
 	RAM[0x000388/2] = 0x4e71;

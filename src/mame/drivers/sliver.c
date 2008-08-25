@@ -256,7 +256,7 @@ static WRITE16_HANDLER( fifo_data_w )
 static void blit_gfx(running_machine *machine)
 {
 	int tmpptr=0;
-	const UINT8 *rom = memory_region(machine, REGION_USER1);
+	const UINT8 *rom = memory_region(machine, "user1");
 
 	while(tmpptr<fptr)
 	{
@@ -315,7 +315,7 @@ static void render_jpeg(running_machine *machine)
 	{
 		return;
 	}
-	rom = memory_region(machine, REGION_USER3);
+	rom = memory_region(machine, "user3");
 	for (y=0;y<jpeg_h;y++)
 	{
 		for (x=0;x<jpeg_w;x++)
@@ -426,7 +426,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER(oki_setbank)
 {
-	UINT8 *sound = memory_region(machine, REGION_SOUND1);
+	UINT8 *sound = memory_region(machine, "oki");
 	int bank=(data^0xff)&3; //xor or not ?
 	memcpy(sound+0x20000, sound+0x100000+0x20000*bank, 0x20000);
 }
@@ -436,7 +436,7 @@ static ADDRESS_MAP_START( soundmem_prg, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( soundmem_data, ADDRESS_SPACE_DATA, 8 )
-	AM_RANGE(0x0100, 0x0100) AM_READWRITE( OKIM6295_status_0_r, OKIM6295_data_0_w )
+	AM_RANGE(0x0100, 0x0100) AM_READWRITE( okim6295_status_0_r, okim6295_data_0_w )
 	AM_RANGE(0x0101, 0x0101) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
@@ -458,8 +458,7 @@ static VIDEO_UPDATE(sliver)
 }
 
 static INPUT_PORTS_START( sliver )
-
-	PORT_START
+	PORT_START("P1_P2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
@@ -477,7 +476,7 @@ static INPUT_PORTS_START( sliver )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -485,7 +484,7 @@ static INPUT_PORTS_START( sliver )
 	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_UNKNOWN ) //jpeg ready flag
 	PORT_BIT( 0xffa4, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x000f, 0x000f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(	0x000f, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(	0x000e, DEF_STR( 1C_2C ) )
@@ -526,7 +525,6 @@ static INPUT_PORTS_START( sliver )
 	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-
 INPUT_PORTS_END
 
 static INTERRUPT_GEN( sliver_int )
@@ -536,11 +534,11 @@ static INTERRUPT_GEN( sliver_int )
 }
 
 static MACHINE_DRIVER_START( sliver )
-	MDRV_CPU_ADD_TAG("main", M68000, 12000000)
+	MDRV_CPU_ADD("main", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(sliver_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(sliver_int,3)
 
-	MDRV_CPU_ADD(I8051, 8000000)
+	MDRV_CPU_ADD("audio", I8051, 8000000)
 	MDRV_CPU_PROGRAM_MAP(soundmem_prg,0)
 	MDRV_CPU_DATA_MAP(soundmem_data,0)
 	MDRV_CPU_IO_MAP(soundmem_io,0)
@@ -558,36 +556,36 @@ static MACHINE_DRIVER_START( sliver )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki", OKIM6295, 1000000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.6)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.6)
 MACHINE_DRIVER_END
 
 ROM_START( sliver )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "ka-4.bin", 0x00001, 0x20000, CRC(4906367f) SHA1(cc030930ffe7018ba6c362cab136798d027db7d8) )
 	ROM_LOAD16_BYTE( "ka-5.bin", 0x00000, 0x20000, CRC(f260dabc) SHA1(3727cb8aa652809386075b39a1d85d5b20973702) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* 8031 */
+	ROM_REGION( 0x10000, "audio", 0 ) /* 8031 */
 	ROM_LOAD( "ka-1.bin", 0x000000, 0x10000, CRC(56e616a2) SHA1(f8952aba62ae0410e300d99e95dc8b752543af1e) )
 
-	ROM_REGION( 0x180000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x180000, "oki", 0 ) /* Samples */
 	ROM_LOAD( "ka-2.bin", 0x000000, 0x20000, CRC(3df96eb0) SHA1(ec3dfc29da08f6525a1c708839f83094a6784f72) )
 	ROM_LOAD( "ka-3.bin", 0x100000, 0x80000, CRC(33ee929c) SHA1(a652ad68c547248ef5fa1ed8006b7ac7aef76383) )
 
-	ROM_REGION( 0x200000, REGION_USER1, 0 ) /* Graphics (not tiles) */
+	ROM_REGION( 0x200000, "user1", 0 ) /* Graphics (not tiles) */
 	ROM_LOAD16_BYTE( "ka-8.bin", 0x000000, 0x80000, CRC(dbfd7489) SHA1(4a7b07d041dce04a8d8d6688698164f988baefc9) )
 	ROM_LOAD16_BYTE( "ka-6.bin", 0x000001, 0x80000, CRC(bd182316) SHA1(a22db9f73a2865f59630183c14201aeede821642) )
 	ROM_LOAD16_BYTE( "ka-9.bin", 0x100000, 0x40000, CRC(71f044ba) SHA1(bd88bfaa0249de9fd8eb8bd25eae0126744a9046) )
 	ROM_LOAD16_BYTE( "ka-7.bin", 0x100001, 0x40000, CRC(1c5d6fb9) SHA1(372533264eb41a5f57b2a59eb039adb6334f36c5) )
 
-	ROM_REGION( 0x180000, REGION_USER2, 0 ) /* JPEG(!) compressed GFX */
+	ROM_REGION( 0x180000, "user2", 0 ) /* JPEG(!) compressed GFX */
 	ROM_LOAD( "ka-10.bin", 0x000000, 0x80000, CRC(a6824271) SHA1(2eefa4e61491f7b72ccde744fa6f88a1a3c60c92) )
 	ROM_LOAD( "ka-11.bin", 0x080000, 0x80000, CRC(4ae121ff) SHA1(ece7cc07483801a0d436def977d72dc7b1a07c8f) )
 	ROM_LOAD( "ka-12.bin", 0x100000, 0x80000, CRC(0901e142) SHA1(68ebd38beeedf53414a831c01813881feee33446) )
 
-	ROM_REGION( 0x2000000, REGION_USER3, 0 ) /* decompressed GFX  - temporary!*/
+	ROM_REGION( 0x2000000, "user3", 0 ) /* decompressed GFX  - temporary!*/
 	ROM_LOAD( "gfx.bin", 0x000000, 0x2000000, BAD_DUMP CRC(706f264e) SHA1(dbcc8dbf30bd65d86bcde7d6db1b08af4242a253) )
 ROM_END
 

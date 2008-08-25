@@ -177,7 +177,8 @@ typedef struct _av_codec_data av_codec_data;
 struct _av_codec_data
 {
 	avcomp_state *			compstate;
-	av_codec_decompress_config decompconfig;
+	av_codec_compress_config compress;
+	av_codec_decompress_config decompress;
 };
 
 
@@ -812,9 +813,7 @@ void chd_close(chd_file *chd)
 	if (chd->owns_file && chd->file != NULL)
 		core_fclose(chd->file);
 
-#if PRINTF_MAX_HUNK
-	printf("Max hunk = %d/%d\n", chd->maxhunk, chd->header.totalhunks);
-#endif
+	if (PRINTF_MAX_HUNK) printf("Max hunk = %d/%d\n", chd->maxhunk, chd->header.totalhunks);
 
 	/* free our memory */
 	free(chd);
@@ -833,33 +832,45 @@ core_file *chd_core_file(chd_file *chd)
 
 
 /*-------------------------------------------------
-    chd_multi_filename - compute the indexed CHD
-    filename
+    chd_error_string - return an error string for
+    the given CHD error
 -------------------------------------------------*/
 
-#ifdef UNUSED_FUNCTION
-void chd_multi_filename(const char *origname, char *finalname, int index)
+const char *chd_error_string(chd_error err)
 {
-	char *extension;
-	char findex[5];
-
-	/* copy the original name */
-	strcpy(finalname, origname);
-
-	/* determine the offset of the extension period */
-	extension = strchr(finalname, '.');
-	if (extension == NULL)
-		extension = finalname + strlen(finalname);
-
-	/* compute our extension */
-	sprintf(findex, ".%3d", index);
-	if (findex[1] == ' ')
-		findex[1] = 'c';
-	if (findex[2] == ' ')
-		findex[2] = 'h';
-	strcpy(extension, findex);
+	switch (err)
+	{
+		case CHDERR_NONE:						return "no error";
+		case CHDERR_NO_INTERFACE:				return "no drive interface";
+		case CHDERR_OUT_OF_MEMORY:				return "out of memory";
+		case CHDERR_INVALID_FILE:				return "invalid file";
+		case CHDERR_INVALID_PARAMETER:			return "invalid parameter";
+		case CHDERR_INVALID_DATA:				return "invalid data";
+		case CHDERR_FILE_NOT_FOUND:				return "file not found";
+		case CHDERR_REQUIRES_PARENT:			return "requires parent";
+		case CHDERR_FILE_NOT_WRITEABLE:			return "file not writeable";
+		case CHDERR_READ_ERROR:					return "read error";
+		case CHDERR_WRITE_ERROR:				return "write error";
+		case CHDERR_CODEC_ERROR:				return "codec error";
+		case CHDERR_INVALID_PARENT:				return "invalid parent";
+		case CHDERR_HUNK_OUT_OF_RANGE:			return "hunk out of range";
+		case CHDERR_DECOMPRESSION_ERROR:		return "decompression error";
+		case CHDERR_COMPRESSION_ERROR:			return "compression error";
+		case CHDERR_CANT_CREATE_FILE:			return "can't create file";
+		case CHDERR_CANT_VERIFY:				return "can't verify file";
+		case CHDERR_NOT_SUPPORTED:				return "operation not supported";
+		case CHDERR_METADATA_NOT_FOUND:			return "can't find metadata";
+		case CHDERR_INVALID_METADATA_SIZE:		return "invalid metadata size";
+		case CHDERR_UNSUPPORTED_VERSION:		return "unsupported CHD version";
+		case CHDERR_VERIFY_INCOMPLETE:			return "incomplete verify";
+		case CHDERR_INVALID_METADATA:			return "invalid metadata";
+		case CHDERR_INVALID_STATE:				return "invalid state";
+		case CHDERR_OPERATION_PENDING:			return "operation pending";
+		case CHDERR_NO_ASYNC_OPERATION:			return "no async operation in progress";
+		case CHDERR_UNSUPPORTED_FORMAT:			return "unsupported format";
+		default:								return "undocumented error";
+	}
 }
-#endif
 
 
 
@@ -1372,7 +1383,7 @@ chd_error chd_compress_hunk(chd_file *chd, const void *data, double *curratio)
 
 	/* if we are lossy, then we need to use the decompressed version in */
 	/* the cache as our MD5/SHA1 source */
-	crcdata = chd->codecintf->lossy ? chd->cache : data;
+	crcdata = (chd->codecintf->lossy || data == NULL) ? chd->cache : data;
 
 	/* update the MD5/SHA1 */
 	bytestochecksum = chd->header.hunkbytes;
@@ -1923,10 +1934,12 @@ static chd_error hunk_write_from_memory(chd_file *chd, UINT32 hunknum, const UIN
 		chd->maxhunk = hunknum;
 
 	/* first compute the CRC of the original data */
-	newentry.crc = crc32(0, &src[0], chd->header.hunkbytes);
+	newentry.crc = 0;
+	if (src != NULL)
+		newentry.crc = crc32(0, &src[0], chd->header.hunkbytes);
 
 	/* if we're not a lossy codec, compute the CRC and look for matches */
-	if (!chd->codecintf->lossy)
+	if (!chd->codecintf->lossy && src != NULL)
 	{
 		/* some extra stuff for zlib+ compression */
 		if (chd->header.compression >= CHDCOMPRESSION_ZLIB_PLUS)
@@ -1976,7 +1989,7 @@ static chd_error hunk_write_from_memory(chd_file *chd, UINT32 hunknum, const UIN
 		err = (*chd->codecintf->compress)(chd, src, &bytes);
 
 	/* if that worked, and we're lossy, decompress and CRC the result */
-	if (err == CHDERR_NONE && chd->codecintf->lossy)
+	if (err == CHDERR_NONE && (chd->codecintf->lossy || src == NULL))
 	{
 		err = (*chd->codecintf->decompress)(chd, bytes, chd->cache);
 		if (err == CHDERR_NONE)
@@ -2700,9 +2713,6 @@ static chd_error av_codec_init(chd_file *chd)
 	memset(data, 0, sizeof(*data));
 	chd->codecdata = data;
 
-	/* set up the default decompression configuration */
-	data->decompconfig.decode_mask = AVCOMP_DECODE_DEFAULT;
-
 	/* attempt to do a post-init now; if we're creating a new CHD, this won't work */
 	/* but that's ok */
 	av_codec_postinit(chd);
@@ -2749,10 +2759,13 @@ static chd_error av_codec_compress(chd_file *chd, const void *src, UINT32 *lengt
 	}
 
 	/* make sure short frames are padded with 0 */
-	size = av_raw_data_size(src);
-	while (size < chd->header.hunkbytes)
-		if (((const UINT8 *)src)[size++] != 0)
-			return CHDERR_INVALID_DATA;
+	if (src != NULL)
+	{
+		size = av_raw_data_size(src);
+		while (size < chd->header.hunkbytes)
+			if (((const UINT8 *)src)[size++] != 0)
+				return CHDERR_INVALID_DATA;
+	}
 
 	/* encode the audio and video */
 	averr = avcomp_encode_data(data->compstate, src, chd->compressed, length);
@@ -2790,9 +2803,12 @@ static chd_error av_codec_decompress(chd_file *chd, UINT32 srclength, void *dest
 		return CHDERR_DECOMPRESSION_ERROR;
 
 	/* pad short frames with 0 */
-	size = av_raw_data_size(dest);
-	while (size < chd->header.hunkbytes)
-		((UINT8 *)dest)[size++] = 0;
+	if (dest != NULL)
+	{
+		size = av_raw_data_size(dest);
+		while (size < chd->header.hunkbytes)
+			((UINT8 *)dest)[size++] = 0;
+	}
 
 	return CHDERR_NONE;
 }
@@ -2807,12 +2823,21 @@ static chd_error av_codec_config(chd_file *chd, int param, void *config)
 {
 	av_codec_data *data = chd->codecdata;
 
-	/* if we're getting the decompression configuration, apply it now */
-	if (param == AV_CODEC_DECOMPRESS_CONFIG)
+	/* if we're getting the compression configuration, apply it now */
+	if (param == AV_CODEC_COMPRESS_CONFIG)
 	{
-		data->decompconfig = *(av_codec_decompress_config *)config;
+		data->compress = *(av_codec_compress_config *)config;
 		if (data->compstate != NULL)
-			avcomp_decompress_config(data->compstate, data->decompconfig.decode_mask, data->decompconfig.video_buffer, data->decompconfig.video_stride, data->decompconfig.video_xor, data->decompconfig.audio_xor);
+			avcomp_config_compress(data->compstate, &data->compress);
+		return CHDERR_NONE;
+	}
+
+	/* if we're getting the decompression configuration, apply it now */
+	else if (param == AV_CODEC_DECOMPRESS_CONFIG)
+	{
+		data->decompress = *(av_codec_decompress_config *)config;
+		if (data->compstate != NULL)
+			avcomp_config_decompress(data->compstate, &data->decompress);
 		return CHDERR_NONE;
 	}
 
@@ -2829,7 +2854,7 @@ static chd_error av_codec_config(chd_file *chd, int param, void *config)
 
 static chd_error av_codec_postinit(chd_file *chd)
 {
-	int fps, fpsfrac, width, height, interlaced, channels, rate, metabytes;
+	int fps, fpsfrac, width, height, interlaced, channels, rate;
 	UINT32 fps_times_1million, max_samples_per_frame, bytes_per_frame;
 	av_codec_data *data = chd->codecdata;
 	char metadata[256];
@@ -2845,13 +2870,13 @@ static chd_error av_codec_postinit(chd_file *chd)
 		return err;
 
 	/* extract the info */
-	if (sscanf(metadata, AV_METADATA_FORMAT, &fps, &fpsfrac, &width, &height, &interlaced, &channels, &rate, &metabytes) != 8)
+	if (sscanf(metadata, AV_METADATA_FORMAT, &fps, &fpsfrac, &width, &height, &interlaced, &channels, &rate) != 7)
 		return CHDERR_INVALID_METADATA;
 
 	/* compute the bytes per frame */
 	fps_times_1million = fps * 1000000 + fpsfrac;
 	max_samples_per_frame = ((UINT64)rate * 1000000 + fps_times_1million - 1) / fps_times_1million;
-	bytes_per_frame = 12 + metabytes + channels * max_samples_per_frame * 2 + width * height * 2;
+	bytes_per_frame = 12 + channels * max_samples_per_frame * 2 + width * height * 2;
 	if (bytes_per_frame > chd->header.hunkbytes)
 		return CHDERR_INVALID_METADATA;
 
@@ -2859,6 +2884,7 @@ static chd_error av_codec_postinit(chd_file *chd)
 	data->compstate = avcomp_init(width, height, channels);
 
 	/* configure the codec */
-	avcomp_decompress_config(data->compstate, data->decompconfig.decode_mask, data->decompconfig.video_buffer, data->decompconfig.video_stride, data->decompconfig.video_xor, data->decompconfig.audio_xor);
+	avcomp_config_compress(data->compstate, &data->compress);
+	avcomp_config_decompress(data->compstate, &data->decompress);
 	return CHDERR_NONE;
 }

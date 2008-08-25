@@ -37,9 +37,9 @@ Year + Game         PCB             Notes
 
 ***************************************************************************/
 
-static READ16_HANDLER ( YM3812_status_port_0_msb_r )	{	return YM3812_status_port_0_r(machine,0) << 8;	}
-static WRITE16_HANDLER( YM3812_register_port_0_msb_w )	{	if (ACCESSING_BITS_8_15)	YM3812_control_port_0_w(machine,0,data >> 8);	}
-static WRITE16_HANDLER( YM3812_data_port_0_msb_w )		{	if (ACCESSING_BITS_8_15)	YM3812_write_port_0_w(machine,0,data >> 8);		}
+static READ16_HANDLER ( YM3812_status_port_0_msb_r )	{	return ym3812_status_port_0_r(machine,0) << 8;	}
+static WRITE16_HANDLER( YM3812_register_port_0_msb_w )	{	if (ACCESSING_BITS_8_15)	ym3812_control_port_0_w(machine,0,data >> 8);	}
+static WRITE16_HANDLER( YM3812_data_port_0_msb_w )		{	if (ACCESSING_BITS_8_15)	ym3812_write_port_0_w(machine,0,data >> 8);		}
 
 
 /*
@@ -57,7 +57,7 @@ static WRITE16_HANDLER( burglarx_sound_bank_w )
 	if (ACCESSING_BITS_8_15)
 	{
 		int bank = (data >> 8 ) & 1;
-		OKIM6295_set_bank_base(0, 0x40000 * bank );
+		okim6295_set_bank_base(0, 0x40000 * bank );
 	}
 }
 
@@ -68,7 +68,7 @@ static ADDRESS_MAP_START( readmem_burglarx, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800018, 0x800019) AM_READ(input_port_1_word_r			)	// Buttons
 	AM_RANGE(0x80001a, 0x80001b) AM_READ(input_port_2_word_r			)	// DSW
 	AM_RANGE(0x80001c, 0x80001d) AM_READ(input_port_3_word_r			)	// DSW
-	AM_RANGE(0x800188, 0x800189) AM_READ(OKIM6295_status_0_lsb_r		)	// Sound
+	AM_RANGE(0x800188, 0x800189) AM_READ(okim6295_status_0_lsb_r		)	// Sound
 	AM_RANGE(0x80018c, 0x80018d) AM_READ(YM3812_status_port_0_msb_r	)	//
 /**/AM_RANGE(0x904000, 0x907fff) AM_READ(SMH_RAM						)	// Layers
 /**/AM_RANGE(0x908000, 0x90bfff) AM_READ(SMH_RAM						)	//
@@ -88,7 +88,7 @@ static ADDRESS_MAP_START( writemem_burglarx, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800114, 0x800115) AM_WRITE(SMH_RAM) AM_BASE(&unico_scrollx_2		)	//
 	AM_RANGE(0x800116, 0x800117) AM_WRITE(SMH_RAM) AM_BASE(&unico_scrollx_1		)	//
 	AM_RANGE(0x800120, 0x800121) AM_WRITE(SMH_RAM) AM_BASE(&unico_scrolly_1		)	//
-	AM_RANGE(0x800188, 0x800189) AM_WRITE(OKIM6295_data_0_lsb_w				)	// Sound
+	AM_RANGE(0x800188, 0x800189) AM_WRITE(okim6295_data_0_lsb_w				)	// Sound
 	AM_RANGE(0x80018a, 0x80018b) AM_WRITE(YM3812_data_port_0_msb_w			)	//
 	AM_RANGE(0x80018c, 0x80018d) AM_WRITE(YM3812_register_port_0_msb_w		)	//
 	AM_RANGE(0x80018e, 0x80018f) AM_WRITE(burglarx_sound_bank_w				)	//
@@ -115,7 +115,7 @@ static WRITE16_HANDLER( zeropnt_sound_bank_w )
            contains garbage. Indeed, only banks 0&1 are used */
 
 		int bank = (data >> 8 ) & 1;
-		UINT8 *dst	= memory_region(machine, REGION_SOUND1);
+		UINT8 *dst	= memory_region(machine, "oki");
 		UINT8 *src	= dst + 0x80000 + 0x20000 + 0x20000 * bank;
 		memcpy(dst + 0x20000, src, 0x20000);
 
@@ -176,7 +176,7 @@ static ADDRESS_MAP_START( readmem_zeropnt, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800174, 0x800175) AM_READ(unico_gunx_0_msb_r			)	//
 	AM_RANGE(0x800178, 0x800179) AM_READ(unico_guny_1_msb_r			)	//
 	AM_RANGE(0x80017c, 0x80017d) AM_READ(unico_gunx_1_msb_r			)	//
-	AM_RANGE(0x800188, 0x800189) AM_READ(OKIM6295_status_0_lsb_r		)	// Sound
+	AM_RANGE(0x800188, 0x800189) AM_READ(okim6295_status_0_lsb_r		)	// Sound
 	AM_RANGE(0x80018c, 0x80018d) AM_READ(YM3812_status_port_0_msb_r	)	//
 /**/AM_RANGE(0x904000, 0x907fff) AM_READ(SMH_RAM						)	// Layers
 /**/AM_RANGE(0x908000, 0x90bfff) AM_READ(SMH_RAM						)	//
@@ -196,7 +196,7 @@ static ADDRESS_MAP_START( writemem_zeropnt, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800114, 0x800115) AM_WRITE(SMH_RAM) AM_BASE(&unico_scrollx_2		)	//
 	AM_RANGE(0x800116, 0x800117) AM_WRITE(SMH_RAM) AM_BASE(&unico_scrollx_1		)	//
 	AM_RANGE(0x800120, 0x800121) AM_WRITE(SMH_RAM) AM_BASE(&unico_scrolly_1		)	//
-	AM_RANGE(0x800188, 0x800189) AM_WRITE(OKIM6295_data_0_lsb_w				)	// Sound
+	AM_RANGE(0x800188, 0x800189) AM_WRITE(okim6295_data_0_lsb_w				)	// Sound
 	AM_RANGE(0x80018a, 0x80018b) AM_WRITE(YM3812_data_port_0_msb_w			)	//
 	AM_RANGE(0x80018c, 0x80018d) AM_WRITE(YM3812_register_port_0_msb_w		)	//
 	AM_RANGE(0x80018e, 0x80018f) AM_WRITE(zeropnt_sound_bank_w				)	//
@@ -224,21 +224,21 @@ static READ32_HANDLER( zeropnt2_guny_0_msb_r )		{ return (unico_guny_0_msb_r(mac
 static READ32_HANDLER( zeropnt2_gunx_1_msb_r )		{ return (unico_gunx_1_msb_r(machine,0,0xffff)-0x0800) << 16; }
 static READ32_HANDLER( zeropnt2_guny_1_msb_r )		{ return (unico_guny_1_msb_r(machine,0,0xffff)+0x0800) << 16; }
 
-static READ32_HANDLER ( zeropnt2_oki0_r )			{ return OKIM6295_status_0_r(machine,0) << 16; }
-static READ32_HANDLER ( zeropnt2_oki1_r )			{ return OKIM6295_status_1_r(machine,0) << 16; }
-static WRITE32_HANDLER( zeropnt2_oki0_w )			{ if (ACCESSING_BITS_16_23)	OKIM6295_data_0_w(machine,0,(data >> 16) & 0xff); }
-static WRITE32_HANDLER( zeropnt2_oki1_w )			{ if (ACCESSING_BITS_16_23)	OKIM6295_data_1_w(machine,0,(data >> 16) & 0xff); }
+static READ32_HANDLER ( zeropnt2_oki0_r )			{ return okim6295_status_0_r(machine,0) << 16; }
+static READ32_HANDLER ( zeropnt2_oki1_r )			{ return okim6295_status_1_r(machine,0) << 16; }
+static WRITE32_HANDLER( zeropnt2_oki0_w )			{ if (ACCESSING_BITS_16_23)	okim6295_data_0_w(machine,0,(data >> 16) & 0xff); }
+static WRITE32_HANDLER( zeropnt2_oki1_w )			{ if (ACCESSING_BITS_16_23)	okim6295_data_1_w(machine,0,(data >> 16) & 0xff); }
 
-static READ32_HANDLER( zeropnt2_ym2151_status_r )	{ return YM2151_status_port_0_r(machine,0) << 16; }
-static WRITE32_HANDLER( zeropnt2_ym2151_reg_w )		{ if (ACCESSING_BITS_16_23)	YM2151_register_port_0_w(machine,0,(data >> 16) & 0xff); }
-static WRITE32_HANDLER( zeropnt2_ym2151_data_w )	{ if (ACCESSING_BITS_16_23)	YM2151_data_port_0_w(machine,0,(data >> 16) & 0xff); }
+static READ32_HANDLER( zeropnt2_ym2151_status_r )	{ return ym2151_status_port_0_r(machine,0) << 16; }
+static WRITE32_HANDLER( zeropnt2_ym2151_reg_w )		{ if (ACCESSING_BITS_16_23)	ym2151_register_port_0_w(machine,0,(data >> 16) & 0xff); }
+static WRITE32_HANDLER( zeropnt2_ym2151_data_w )	{ if (ACCESSING_BITS_16_23)	ym2151_data_port_0_w(machine,0,(data >> 16) & 0xff); }
 
 static WRITE32_HANDLER( zeropnt2_sound_bank_w )
 {
 	if (ACCESSING_BITS_24_31)
 	{
 		int bank = ((data >> 24) & 3) % 4;
-		UINT8 *dst	= memory_region(machine, REGION_SOUND1);
+		UINT8 *dst	= memory_region(machine, "oki1");
 		UINT8 *src	= dst + 0x80000 + 0x20000 + 0x20000 * bank;
 		memcpy(dst + 0x20000, src, 0x20000);
 	}
@@ -329,7 +329,7 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( burglarx )
 
-	PORT_START_TAG("IN0")	//$800000.w
+	PORT_START("IN0")	//$800000.w
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
@@ -348,7 +348,7 @@ static INPUT_PORTS_START( burglarx )
 	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")	//$800019.b
+	PORT_START("IN1")	//$800019.b
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_COIN1    )
 	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_COIN2    )
 	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -359,7 +359,7 @@ static INPUT_PORTS_START( burglarx )
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT(  0xff00, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 
-	PORT_START_TAG("DSW1")	//$80001a.b
+	PORT_START("DSW1")	//$80001a.b
 	PORT_BIT(     0x00ff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_SERVICE( 0x0100, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Free_Play ) )
@@ -384,7 +384,7 @@ static INPUT_PORTS_START( burglarx )
 	PORT_DIPSETTING(      0xa000, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x8000, DEF_STR( 1C_4C ) )
 
-	PORT_START_TAG("DSW2")	//$80001c.b
+	PORT_START("DSW2")	//$80001c.b
 	PORT_BIT(     0x00ff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(      0x0200, DEF_STR( None ) )
@@ -418,7 +418,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( zeropnt )
 
-	PORT_START_TAG("IN0")	//$800018.w
+	PORT_START("IN0")	//$800018.w
 	PORT_BIT(  0x0001, IP_ACTIVE_HIGH, IPT_COIN1    )
 	PORT_BIT(  0x0002, IP_ACTIVE_HIGH, IPT_COIN2    )
 	PORT_SERVICE_NO_TOGGLE( 0x0004, IP_ACTIVE_HIGH)
@@ -438,7 +438,7 @@ static INPUT_PORTS_START( zeropnt )
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 
 
-	PORT_START_TAG("DSW1")	//$80001a.b
+	PORT_START("DSW1")	//$80001a.b
 	PORT_BIT(     0x00ff, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_DIPNAME( 0x0100, 0x0000, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
@@ -465,7 +465,7 @@ static INPUT_PORTS_START( zeropnt )
 	PORT_DIPSETTING(      0x4000, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x6000, DEF_STR( 1C_4C ) )
 
-	PORT_START_TAG("DSW2")	//$80001c.b
+	PORT_START("DSW2")	//$80001c.b
 	PORT_BIT(     0x00ff, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_DIPNAME( 0x0100, 0x0000, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
@@ -489,16 +489,16 @@ static INPUT_PORTS_START( zeropnt )
 	PORT_DIPSETTING(      0x8000, "4" )
 	PORT_DIPSETTING(      0xc000, "5" )
 
-	PORT_START_TAG("Y0")	//$800170.b
+	PORT_START("Y0")	//$800170.b
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START_TAG("X0")	//$800174.b
+	PORT_START("X0")	//$800174.b
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START_TAG("Y1")	//$800178.b
+	PORT_START("Y1")	//$800178.b
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START_TAG("X1")	//$80017c.b
+	PORT_START("X1")	//$80017c.b
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
 INPUT_PORTS_END
@@ -510,7 +510,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( zeropnt2 )
-	PORT_START_TAG("IN0")	//$800019.b
+	PORT_START("IN0")	//$800019.b
 	PORT_BIT(  0x0001, IP_ACTIVE_HIGH, IPT_COIN1    )
 	PORT_BIT(  0x0002, IP_ACTIVE_HIGH, IPT_COIN2    )
 	PORT_SERVICE_NO_TOGGLE( 0x0004, IP_ACTIVE_HIGH)
@@ -521,7 +521,7 @@ static INPUT_PORTS_START( zeropnt2 )
 	PORT_BIT(  0x0080, IP_ACTIVE_HIGH, IPT_SERVICE1 )
 	PORT_BIT(  0xff00, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW1")	//$80001a.b
+	PORT_START("DSW1")	//$80001a.b
 	PORT_BIT(     0x00ff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Free_Play ) )
 	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
@@ -547,7 +547,7 @@ static INPUT_PORTS_START( zeropnt2 )
 	PORT_DIPSETTING(      0xa000, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x8000, DEF_STR( 1C_4C ) )
 
-	PORT_START_TAG("DSW2")	//$80001c.b
+	PORT_START("DSW2")	//$80001c.b
 	PORT_BIT(     0x00ff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_DIPNAME( 0x0100, 0x0100, "Korean Language" )
 	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
@@ -573,19 +573,19 @@ static INPUT_PORTS_START( zeropnt2 )
 	PORT_DIPSETTING(      0x4000, DEF_STR( Harder ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
 
-	PORT_START_TAG("Y0")	//$800140.b
+	PORT_START("Y0")	//$800140.b
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START_TAG("X0")	//$800144.b
+	PORT_START("X0")	//$800144.b
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START_TAG("Y1")	//$800148.b
+	PORT_START("Y1")	//$800148.b
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START_TAG("X1")	//$80014c.b
+	PORT_START("X1")	//$80014c.b
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START_TAG("IN7")	//$80015c.b
+	PORT_START("IN7")	//$80015c.b
 	PORT_BIT(  0x00ff, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW,  IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW,  IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -623,8 +623,8 @@ static const gfx_layout layout_16x16x8 =
 };
 
 static GFXDECODE_START( unico )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, layout_16x16x8, 0x0, 0x20 ) // [0] Sprites
-	GFXDECODE_ENTRY( REGION_GFX2, 0, layout_16x16x8, 0x0, 0x20 ) // [1] Layers
+	GFXDECODE_ENTRY( "gfx1", 0, layout_16x16x8, 0x0, 0x20 ) // [0] Sprites
+	GFXDECODE_ENTRY( "gfx2", 0, layout_16x16x8, 0x0, 0x20 ) // [1] Layers
 GFXDECODE_END
 
 
@@ -674,7 +674,7 @@ static NVRAM_HANDLER( zeropnt2 )
 static MACHINE_DRIVER_START( burglarx )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 16000000)
+	MDRV_CPU_ADD("main", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(readmem_burglarx,writemem_burglarx)
 	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
@@ -697,12 +697,12 @@ static MACHINE_DRIVER_START( burglarx )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM3812, 3579545) /* 14.31818MHz OSC divided by 4 */
+	MDRV_SOUND_ADD("ym", YM3812, 3579545) /* 14.31818MHz OSC divided by 4 */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.40)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.40)
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.80)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.80)
 MACHINE_DRIVER_END
@@ -721,7 +721,7 @@ static MACHINE_RESET( zeropt )
 static MACHINE_DRIVER_START( zeropnt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 16000000)
+	MDRV_CPU_ADD("main", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(readmem_zeropnt,writemem_zeropnt)
 	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
@@ -744,12 +744,12 @@ static MACHINE_DRIVER_START( zeropnt )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM3812, 3579545) /* 14.31818MHz OSC divided by 4 */
+	MDRV_SOUND_ADD("ym", YM3812, 3579545) /* 14.31818MHz OSC divided by 4 */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.40)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.40)
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.80)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.80)
 MACHINE_DRIVER_END
@@ -763,7 +763,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( zeropnt2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68EC020, 16000000)
+	MDRV_CPU_ADD("main", M68EC020, 16000000)
 	MDRV_CPU_PROGRAM_MAP(readmem_zeropnt2,writemem_zeropnt2)
 	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
@@ -788,16 +788,16 @@ static MACHINE_DRIVER_START( zeropnt2 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3579545)
+	MDRV_SOUND_ADD("ym", YM2151, 3579545)
 	MDRV_SOUND_ROUTE(0, "left", 0.70)
 	MDRV_SOUND_ROUTE(1, "right", 0.70)
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki1", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.40)
 
-	MDRV_SOUND_ADD(OKIM6295, 3960000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki2", OKIM6295, 3960000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.20)
 MACHINE_DRIVER_END
 
@@ -825,12 +825,12 @@ by Unico
 
 ROM_START( burglarx )
 
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "bx-rom2.pgm", 0x000000, 0x080000, CRC(f81120c8) SHA1(f0240cf9aceb755e3c920bc3bcae0a9de29fd8c1) )
 	ROM_LOAD16_BYTE( "bx-rom3.pgm", 0x000001, 0x080000, CRC(080b4e82) SHA1(7eb08a7ea7684297e879123ae7ddc88d7fc1b87b) )
 
 	/* Notice the weird ROMs order? Pretty much bit scrambling */
-	ROM_REGION( 0x400000, REGION_GFX1, ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Sprites */
+	ROM_REGION( 0x400000, "gfx1", ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Sprites */
 	ROM_LOAD16_BYTE( "bx-rom4",  0x000000, 0x080000, CRC(f74ce31f) SHA1(bafe247a2fdc918318ccf7b11f0406c78909dcaa) )
 	ROM_LOAD16_BYTE( "bx-rom10", 0x000001, 0x080000, CRC(6f56ca23) SHA1(5cfedda8d9fe4b575932a6a136d7b525d96e5454) )
 	ROM_LOAD16_BYTE( "bx-rom9",  0x100000, 0x080000, CRC(33f29d79) SHA1(287d8412842887af5a5c7a0f5e5736a741c3c7db) )
@@ -840,7 +840,7 @@ ROM_START( burglarx )
 	ROM_LOAD16_BYTE( "bx-rom11", 0x300000, 0x080000, CRC(898d176a) SHA1(4c85948b7e639743d0f1676fdc463267f550f97c) )
 	ROM_LOAD16_BYTE( "bx-rom5",  0x300001, 0x080000, CRC(fdee1423) SHA1(319610435b3dea61276d412e2bf6a3f32809ae19) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Layers */
+	ROM_REGION( 0x400000, "gfx2", ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Layers */
 	ROM_LOAD16_BYTE( "bx-rom14", 0x000000, 0x080000, CRC(30413373) SHA1(37bbc4d2943a32ee9f6bb268c823ffe162fe92a2) )
 	ROM_LOAD16_BYTE( "bx-rom18", 0x000001, 0x080000, CRC(8e7fc99f) SHA1(81141e3c9111944aae97d27e5631b11eaf6f8734) )
 	ROM_LOAD16_BYTE( "bx-rom19", 0x100000, 0x080000, CRC(d40eabcd) SHA1(e41d5e921a1648d6d4907f18e0256dbe3a01e9d3) )
@@ -850,7 +850,7 @@ ROM_START( burglarx )
 	ROM_LOAD16_BYTE( "bx-rom13", 0x300000, 0x080000, CRC(da34bbb5) SHA1(455c2412135b89670c2ecda9fd02f4da9b891ee4) )
 	ROM_LOAD16_BYTE( "bx-rom16", 0x300001, 0x080000, CRC(55b28ef9) SHA1(48615d53ac955ba6aca86ad4f8b61f4d2675d840) )
 
-	ROM_REGION( 0x80000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_REGION( 0x80000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "bx-rom1.snd", 0x000000, 0x080000, CRC(8ae67138) SHA1(3ea44f805a1f978e0a1c1bb7f45507379b147bc0) )	// 2 x 40000
 
 ROM_END
@@ -891,46 +891,46 @@ zpscrz08.BIN  -/
 ***************************************************************************/
 
 ROM_START( zeropnt )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "zero_2.bin", 0x000000, 0x080000, CRC(1e599509) SHA1(5a562a3c85700126b95fbdf21ef8c0ddd35d9037) )
 	ROM_LOAD16_BYTE( "zero_3.bin", 0x000001, 0x080000, CRC(588aeef7) SHA1(0dfa22c9e7b1fe493c16160b1ac76fa4d3bb2e68) )
 
-	ROM_REGION( 0x800000, REGION_GFX1, ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Sprites */
+	ROM_REGION( 0x800000, "gfx1", ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Sprites */
 	ROM_LOAD( "zpobjz01.bin", 0x000000, 0x200000, CRC(1f2768a3) SHA1(75c83458afc527dda47bfbd86a8e9c5ded7a5444) )
 	ROM_LOAD( "zpobjz02.bin", 0x200000, 0x200000, CRC(de34f33a) SHA1(b77c7d508942176585afaeeaea2f34f60326eeb1) )
 	ROM_LOAD( "zpobjz03.bin", 0x400000, 0x200000, CRC(d7a657f7) SHA1(f1f9e6a01eef4d0c8c4b2e161136cc4438d770e2) )
 	ROM_LOAD( "zpobjz04.bin", 0x600000, 0x200000, CRC(3aec2f8d) SHA1(6fb1cfabfb0bddf688d3bfb60f7538209efbd8f1) )
 
-	ROM_REGION( 0x800000, REGION_GFX2, ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Layers */
+	ROM_REGION( 0x800000, "gfx2", ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Layers */
 	ROM_LOAD( "zpscrz06.bin", 0x000000, 0x200000, CRC(e1e53cf0) SHA1(b440e09f6229d486d1a8be476ac8a17adde1ff7e) )
 	ROM_LOAD( "zpscrz05.bin", 0x200000, 0x200000, CRC(0d7d4850) SHA1(43f87d0461fe022b68b4e57e6c9542bcd78e301b) )
 	ROM_LOAD( "zpscrz07.bin", 0x400000, 0x200000, CRC(bb178f32) SHA1(1354f4d90a8cec58d1f2b6809985776b309b96a8) )
 	ROM_LOAD( "zpscrz08.bin", 0x600000, 0x200000, CRC(672f02e5) SHA1(8e8b28a8b2293950764d453a3c385d7083eb5a57) )
 
-	ROM_REGION( 0x80000 * 2, REGION_SOUND1, 0 )	/* Samples */
+	ROM_REGION( 0x80000 * 2, "oki", 0 )	/* Samples */
 	ROM_LOAD( "zero_1.bin", 0x000000, 0x080000, CRC(fd2384fa) SHA1(8ae83665fe952c5d03bd62d2abb507c351cf0fb5) )
 	ROM_RELOAD(            0x080000, 0x080000             )
 ROM_END
 
 
 ROM_START( zeropnta )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "zpa2.bin", 0x000000, 0x080000, CRC(285fbca3) SHA1(61f8d48388a666ed9300c0688fbf844e316b8892) )
 	ROM_LOAD16_BYTE( "zpa3.bin", 0x000001, 0x080000, CRC(ad7b3129) SHA1(d814b5d9336d011386aa0b316b11225e5ea799fc) )
 
-	ROM_REGION( 0x800000, REGION_GFX1, ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Sprites */
+	ROM_REGION( 0x800000, "gfx1", ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Sprites */
 	ROM_LOAD( "zpobjz01.bin", 0x000000, 0x200000, CRC(1f2768a3) SHA1(75c83458afc527dda47bfbd86a8e9c5ded7a5444) )
 	ROM_LOAD( "zpobjz02.bin", 0x200000, 0x200000, CRC(de34f33a) SHA1(b77c7d508942176585afaeeaea2f34f60326eeb1) )
 	ROM_LOAD( "zpobjz03.bin", 0x400000, 0x200000, CRC(d7a657f7) SHA1(f1f9e6a01eef4d0c8c4b2e161136cc4438d770e2) )
 	ROM_LOAD( "zpobjz04.bin", 0x600000, 0x200000, CRC(3aec2f8d) SHA1(6fb1cfabfb0bddf688d3bfb60f7538209efbd8f1) )
 
-	ROM_REGION( 0x800000, REGION_GFX2, ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Layers */
+	ROM_REGION( 0x800000, "gfx2", ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Layers */
 	ROM_LOAD( "zpscrz06.bin", 0x000000, 0x200000, CRC(e1e53cf0) SHA1(b440e09f6229d486d1a8be476ac8a17adde1ff7e) )
 	ROM_LOAD( "zpscrz05.bin", 0x200000, 0x200000, CRC(0d7d4850) SHA1(43f87d0461fe022b68b4e57e6c9542bcd78e301b) )
 	ROM_LOAD( "zpscrz07.bin", 0x400000, 0x200000, CRC(bb178f32) SHA1(1354f4d90a8cec58d1f2b6809985776b309b96a8) )
 	ROM_LOAD( "zpscrz08.bin", 0x600000, 0x200000, CRC(672f02e5) SHA1(8e8b28a8b2293950764d453a3c385d7083eb5a57) )
 
-	ROM_REGION( 0x80000 * 2, REGION_SOUND1, 0 )	/* Samples */
+	ROM_REGION( 0x80000 * 2, "oki", 0 )	/* Samples */
 	ROM_LOAD( "zero_1.bin", 0x000000, 0x080000, CRC(fd2384fa) SHA1(8ae83665fe952c5d03bd62d2abb507c351cf0fb5) )
 	ROM_RELOAD(            0x080000, 0x080000             )
 ROM_END
@@ -1098,27 +1098,27 @@ BrianT
 ***************************************************************************/
 
 ROM_START( zeropnt2 )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )		/* 68020 Code */
+	ROM_REGION( 0x200000, "main", 0 )		/* 68020 Code */
 	ROM_LOAD32_WORD_SWAP( "d16-d31.4", 0x000000, 0x100000, CRC(48314fdb) SHA1(a5bdb6a3f520587ff5e73438dc414cfdff34167b) )
 	ROM_LOAD32_WORD_SWAP( "d0-d15.3",  0x000002, 0x100000, CRC(5ec4151e) SHA1(f7c857bdb6a92f76f09a089b37def7e6cf24b65a) )
 
-	ROM_REGION( 0x1000000, REGION_GFX1, ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Sprites */
+	ROM_REGION( 0x1000000, "gfx1", ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Sprites */
 	ROM_LOAD( "db0db1zp.209", 0x000000, 0x400000, CRC(474b460c) SHA1(72104b7a00cb6d62b3cee2cfadc928669ca948c4) )
 	ROM_LOAD( "db2db3zp.210", 0x400000, 0x400000, CRC(0a1d0a88) SHA1(b0a6ba9eba539fff417557c9af60d408c2912491) )
 	ROM_LOAD( "db4db5zp.211", 0x800000, 0x400000, CRC(227169dc) SHA1(b03d8d46714e5aa3631fde7d65466334dafdc341) )
 	ROM_LOAD( "db6db7zp.212", 0xc00000, 0x400000, CRC(a6306cdb) SHA1(da48c5981b72b87df40602e03e56a40a24728262) )
 
-	ROM_REGION( 0x1000000, REGION_GFX2, ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Layers */
+	ROM_REGION( 0x1000000, "gfx2", ROMREGION_INVERT | ROMREGION_DISPOSE )	/* 16x16x8 Layers */
 	ROM_LOAD( "a0-a1zp.205", 0x000000, 0x400000, CRC(f7ca9c0e) SHA1(541139b617ff34c378a506cf88fe97234c93ee20) )
 	ROM_LOAD( "a2-a3zp.206", 0x400000, 0x400000, CRC(0581c8fe) SHA1(9bbffc9c758bbaba2b43a63811b725e51996268a) )
 	ROM_LOAD( "a4-a5zp.208", 0x800000, 0x400000, CRC(ddd091ef) SHA1(c1751aef2546a35f2fdbfeca9647a88fd3e65cdd) )
 	ROM_LOAD( "a6-a7zp.207", 0xc00000, 0x400000, CRC(3fd46113) SHA1(326684b92c258bde318693cd9b3a7660aed3cd6f) )
 
-	ROM_REGION( 0x80000 * 2, REGION_SOUND1, 0 )	/* Samples */
+	ROM_REGION( 0x80000 * 2, "oki1", 0 )	/* Samples */
 	ROM_LOAD( "uzp2-1.bin", 0x000000, 0x080000, CRC(ed0966ed) SHA1(a43b9c493f94d1fb11e1b189caaf37d3d792c730) )
 	ROM_RELOAD(             0x080000, 0x080000             )
 
-	ROM_REGION( 0x40000, REGION_SOUND2, 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki2", 0 )	/* Samples */
 	ROM_LOAD( "uzp2-2.bin", 0x000000, 0x040000, CRC(db8cb455) SHA1(6723b4018208d554bd1bf1e0640b72d2f4f47302) )
 ROM_END
 

@@ -68,11 +68,11 @@ static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd002, 0xd002) AM_WRITE(t5182_sharedram_semaphore_main_acquire_w)
 	AM_RANGE(0xd003, 0xd003) AM_WRITE(t5182_sharedram_semaphore_main_release_w)
 	AM_RANGE(0xd400, 0xd4ff) AM_READWRITE(t5182shared_r, t5182shared_w)
-	AM_RANGE(0xd800, 0xd800) AM_READ(input_port_0_r) /* IN 0 */
-	AM_RANGE(0xd801, 0xd801) AM_READ(input_port_1_r) /* IN 1 */
-	AM_RANGE(0xd802, 0xd802) AM_READ(input_port_2_r) /* IN 2 */
-	AM_RANGE(0xd803, 0xd803) AM_READ(input_port_3_r)	/* DSW A */
-	AM_RANGE(0xd804, 0xd804) AM_READ(input_port_4_r)	/* DSW B */
+	AM_RANGE(0xd800, 0xd800) AM_READ_PORT("P1")
+	AM_RANGE(0xd801, 0xd801) AM_READ_PORT("P2")
+	AM_RANGE(0xd802, 0xd802) AM_READ_PORT("START")
+	AM_RANGE(0xd803, 0xd803) AM_READ_PORT("DSWA")
+	AM_RANGE(0xd804, 0xd804) AM_READ_PORT("DSWB")
 	AM_RANGE(0xd806, 0xd806) AM_WRITE(mustache_scroll_w)
 	AM_RANGE(0xd807, 0xd807) AM_WRITE(mustache_video_control_w)
 	AM_RANGE(0xe800, 0xefff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
@@ -82,17 +82,15 @@ ADDRESS_MAP_END
 /******************************************************************************/
 
 static INPUT_PORTS_START( mustache )
-	PORT_START	/* IN 1 */
-
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP  )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  )
+	PORT_START("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
-	PORT_START	/* IN 2 */
-
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
@@ -100,33 +98,30 @@ static INPUT_PORTS_START( mustache )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 
-	PORT_START	/* IN 3 */
+	PORT_START("START")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START1  )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2  )
 	PORT_BIT( 0xf9, IP_ACTIVE_LOW, IPT_UNUSED  )
 
-	PORT_START	/* DSW A */
+	PORT_START("DSWA")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-
 	PORT_DIPNAME( 0x06, 0x04, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
-
 	PORT_DIPNAME( 0x18, 0x18, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x08, "4" )
 	PORT_DIPSETTING(    0x10, "1" )
 	PORT_DIPSETTING(    0x18, "3" )
+	PORT_DIPSETTING(    0x08, "4" )
 	PORT_DIPSETTING(    0x00, "5" )
-
 	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START /* DSW B */
+	PORT_START("DSWB")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 4C_1C ) )
@@ -136,22 +131,19 @@ static INPUT_PORTS_START( mustache )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_5C ) )
-
 	PORT_DIPNAME( 0x18, 0x18, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x18, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
-
 	PORT_SERVICE( 0x20, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Free_Play ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG(T5182COINPORT)
+	PORT_START(T5182COINPORT)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(2)
-
 INPUT_PORTS_END
 
 
@@ -177,8 +169,8 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( mustache )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0x00, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 0x80, 8 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,   0x00, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 0x80, 8 )
 GFXDECODE_END
 
 static TIMER_CALLBACK( clear_irq_cb )
@@ -204,11 +196,11 @@ static INTERRUPT_GEN( assert_irq )
 static MACHINE_DRIVER_START( mustache )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, CPU_CLOCK)
+	MDRV_CPU_ADD("main", Z80, CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
 	MDRV_CPU_VBLANK_INT("main", assert_irq)
 
-	MDRV_CPU_ADD_TAG(CPUTAG_T5182,Z80, T5182_CLOCK)
+	MDRV_CPU_ADD(CPUTAG_T5182,Z80, T5182_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(t5182_map, 0)
 	MDRV_CPU_IO_MAP(t5182_io, 0)
 
@@ -230,33 +222,33 @@ static MACHINE_DRIVER_START( mustache )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, YM_CLOCK)
+	MDRV_SOUND_ADD("ym", YM2151, YM_CLOCK)
 	MDRV_SOUND_CONFIG(t5182_ym2151_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 1.0)
 	MDRV_SOUND_ROUTE(1, "mono", 1.0)
 MACHINE_DRIVER_END
 
 ROM_START( mustache )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "mustache.h18", 0x0000, 0x8000, CRC(123bd9b8) SHA1(33a7cba5c3a54b0b1a15dd1e24d298b6f7274321) )
 	ROM_LOAD( "mustache.h16", 0x8000, 0x4000, CRC(62552beb) SHA1(ee10991d7de0596608fa1db48805781cbfbbdb9f) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Toshiba T5182 module */
+	ROM_REGION( 0x10000, "T5182", 0 ) /* Toshiba T5182 module */
 	ROM_LOAD( "t5182.rom",   0x0000, 0x2000, CRC(d354c8fc) SHA1(a1c9e1ac293f107f69cc5788cf6abc3db1646e33) )
 	ROM_LOAD( "mustache.e5", 0x8000, 0x8000, CRC(efbb1943) SHA1(3320e9eaeb776d09ed63f7dedc79e720674e6718) )
 
-	ROM_REGION( 0x0c000, REGION_GFX1,0)	/* BG tiles  */
+	ROM_REGION( 0x0c000, "gfx1",0)	/* BG tiles  */
 	ROM_LOAD( "mustache.a13", 0x0000,  0x4000, CRC(9baee4a7) SHA1(31bcec838789462e67e54ebe7256db9fc4e51b69) )
 	ROM_LOAD( "mustache.a14", 0x4000,  0x4000, CRC(8155387d) SHA1(5f0a394c7671442519a831b0eeeaba4eecd5a406) )
 	ROM_LOAD( "mustache.a16", 0x8000,  0x4000, CRC(4db4448d) SHA1(50a94fd65c263d95fd24b4009dbb87707929fdcb) )
 
-	ROM_REGION( 0x20000, REGION_GFX2,0 )	/* sprites */
+	ROM_REGION( 0x20000, "gfx2",0 )	/* sprites */
 	ROM_LOAD( "mustache.a4", 0x00000,  0x8000, CRC(d5c3bbbf) SHA1(914e3feea54246476701f492c31bd094ad9cea10) )
 	ROM_LOAD( "mustache.a7", 0x08000,  0x8000, CRC(e2a6012d) SHA1(4e4cd1a186870c8a88924d5bff917c6889da953d) )
 	ROM_LOAD( "mustache.a5", 0x10000,  0x8000, CRC(c975fb06) SHA1(4d166bd79e19c7cae422673de3e095ad8101e013) )
 	ROM_LOAD( "mustache.a8", 0x18000,  0x8000, CRC(2e180ee4) SHA1(a5684a25c337aeb4effeda7982164d35bc190af9) )
 
-	ROM_REGION( 0x1300, REGION_PROMS,0 )	/* proms */
+	ROM_REGION( 0x1300, "proms",0 )	/* proms */
 	ROM_LOAD( "mustache.c3",0x0000, 0x0100, CRC(68575300) SHA1(bc93a38df91ad8c2f335f9bccc98b52376f9b483) )
 	ROM_LOAD( "mustache.c2",0x0100, 0x0100, CRC(eb008d62) SHA1(a370fbd1affaa489210ea36eb9e365263fb4e232) )
 	ROM_LOAD( "mustache.c1",0x0200, 0x0100, CRC(65da3604) SHA1(e4874d4152a57944d4e47306250833ea5cd0d89b) )
@@ -268,10 +260,10 @@ static DRIVER_INIT( mustache )
 {
 	int i;
 
-	int G1 = memory_region_length(machine, REGION_GFX1)/3;
-	int G2 = memory_region_length(machine, REGION_GFX2)/2;
-	UINT8 *gfx1 = memory_region(machine, REGION_GFX1);
-	UINT8 *gfx2 = memory_region(machine, REGION_GFX2);
+	int G1 = memory_region_length(machine, "gfx1")/3;
+	int G2 = memory_region_length(machine, "gfx2")/2;
+	UINT8 *gfx1 = memory_region(machine, "gfx1");
+	UINT8 *gfx2 = memory_region(machine, "gfx2");
 	UINT8 *buf=malloc_or_die(G2*2);
 
 	/* BG data lines */
@@ -309,7 +301,7 @@ static DRIVER_INIT( mustache )
 		gfx2[i] = buf[BITSWAP24(i,23,22,21,20,19,18,17,16,15,12,11,10,9,8,7,6,5,4,13,14,3,2,1,0)];
 
 	free(buf);
-	seibu_sound_decrypt(machine,REGION_CPU1,0x8000);
+	seibu_sound_decrypt(machine,"main",0x8000);
 }
 
 

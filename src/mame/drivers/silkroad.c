@@ -147,20 +147,20 @@ static WRITE32_HANDLER( paletteram32_xRRRRRGGGGGBBBBB_dword_w )
 /* player inputs */
 static READ32_HANDLER(io32_r)
 {
-	return ((input_port_read_indexed(machine, 0) << 16) |  (input_port_read_indexed(machine, 1) << 0));
+	return ((input_port_read(machine, "PLAYERS") << 16) |  (input_port_read(machine, "SYSTEM") << 0));
 }
 
 /* dipswitches */
 static READ32_HANDLER(io32_1_r)
 {
-	return input_port_read_indexed(machine, 2)<<16;
+	return input_port_read(machine, "DSW")<<16;
 }
 
 /* sound I/O */
 
 static READ32_HANDLER(silk_6295_0_r)
 {
-	return OKIM6295_status_0_r(machine, 0)<<16;
+	return okim6295_status_0_r(machine, 0)<<16;
 }
 
 static WRITE32_HANDLER(silk_6295_0_w)
@@ -168,13 +168,13 @@ static WRITE32_HANDLER(silk_6295_0_w)
 	if (ACCESSING_BITS_16_23)
 	{
 		logerror("OKI0: write %x mem_mask %8x\n", data>>16, mem_mask);
-		OKIM6295_data_0_w(machine, 0, (data>>16) & 0xff);
+		okim6295_data_0_w(machine, 0, (data>>16) & 0xff);
 	}
 }
 
 static READ32_HANDLER(silk_6295_1_r)
 {
-	return OKIM6295_status_1_r(machine, 0)<<16;
+	return okim6295_status_1_r(machine, 0)<<16;
 }
 
 static WRITE32_HANDLER(silk_6295_1_w)
@@ -182,20 +182,20 @@ static WRITE32_HANDLER(silk_6295_1_w)
 	if (ACCESSING_BITS_16_23)
 	{
 		logerror("OKI1: write %x mem_mask %8x\n", data>>16, mem_mask);
-		OKIM6295_data_1_w(machine, 0, (data>>16) & 0xff);
+		okim6295_data_1_w(machine, 0, (data>>16) & 0xff);
 	}
 }
 
 static READ32_HANDLER(silk_ym_r)
 {
-	return YM2151_status_port_0_r(machine, 0)<<16;
+	return ym2151_status_port_0_r(machine, 0)<<16;
 }
 
 static WRITE32_HANDLER(silk_ym_regport_w)
 {
 	if (ACCESSING_BITS_16_23)
 	{
-		YM2151_register_port_0_w(machine, 0, (data>>16) & 0xff);
+		ym2151_register_port_0_w(machine, 0, (data>>16) & 0xff);
 	}
 }
 
@@ -203,7 +203,7 @@ static WRITE32_HANDLER(silk_ym_dataport_w)
 {
 	if (ACCESSING_BITS_16_23)
 	{
-		YM2151_data_port_0_w(machine, 0, (data>>16) & 0xff);
+		ym2151_data_port_0_w(machine, 0, (data>>16) & 0xff);
 	}
 }
 
@@ -217,7 +217,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x808000, 0x80bfff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0xC00000, 0xC00003) AM_READ(io32_r)	// player inputs
-	AM_RANGE(0xC00004, 0xC00007) AM_READ(io32_1_r) // dip switches
+	AM_RANGE(0xC00004, 0xC00007) AM_READ(io32_1_r)	// dip switches
 	AM_RANGE(0xC00024, 0xC00027) AM_READ(silk_6295_0_r)
 	AM_RANGE(0xC0002C, 0xC0002f) AM_READ(silk_ym_r)
 	AM_RANGE(0xC00030, 0xC00033) AM_READ(silk_6295_1_r)
@@ -259,7 +259,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( silkroad )
-	PORT_START	/* Players inputs */
+	PORT_START("PLAYERS")	/* Players inputs */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
@@ -277,7 +277,7 @@ static INPUT_PORTS_START( silkroad )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 
-	PORT_START	/* System inputs */
+	PORT_START("SYSTEM")	/* System inputs */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
@@ -295,7 +295,7 @@ static INPUT_PORTS_START( silkroad )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* DSW */
+	PORT_START("DSW")	/* DSW */
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Lives ) )
 	PORT_DIPSETTING(      0x0001, "1" )
 	PORT_DIPSETTING(      0x0000, "2" )
@@ -345,7 +345,7 @@ static INPUT_PORTS_START( silkroad )
 	PORT_DIPSETTING( 0xa000, DEF_STR(1C_3C))
 	PORT_DIPSETTING( 0x8000, DEF_STR(1C_4C))
 
-//  PORT_START  /* Misc inputs */
+//  PORT_START("MISC")  /* Misc inputs */
 //  PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_SPECIAL ) /* VBLANK ? */
 //  PORT_BIT( 0xff7f, IP_ACTIVE_LOW, IPT_UNUSED ) /* unknown / unused */
 INPUT_PORTS_END
@@ -364,13 +364,13 @@ static const gfx_layout tiles16x16x6_layout =
 };
 
 static GFXDECODE_START( silkroad )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles16x16x6_layout,  0x0000, 256 )
+	GFXDECODE_ENTRY( "gfx1", 0, tiles16x16x6_layout,  0x0000, 256 )
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( silkroad )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68EC020, 16000000)
+	MDRV_CPU_ADD("main", M68EC020, 16000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
@@ -391,17 +391,17 @@ static MACHINE_DRIVER_START( silkroad )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3579545)
+	MDRV_SOUND_ADD("ym", YM2151, 3579545)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki1", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.45)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.45)
 
-	MDRV_SOUND_ADD(OKIM6295, 2112000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki2", OKIM6295, 2112000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.45)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.45)
 MACHINE_DRIVER_END
@@ -419,7 +419,7 @@ static DRIVER_INIT( silkroad )
        verified as correct... problem with the original which the gfx
        hardware didn't care about? */
 
-	UINT8 *src = memory_region(machine, REGION_GFX1)+0x1000000;
+	UINT8 *src = memory_region(machine, "gfx1")+0x1000000;
 	int len = 0x0200000;
 	UINT8 *buffer;
 
@@ -438,11 +438,11 @@ static DRIVER_INIT( silkroad )
 }
 
 ROM_START( silkroad )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )
+	ROM_REGION( 0x200000, "main", 0 )
 	ROM_LOAD32_WORD_SWAP( "rom02.bin", 0x000000, 0x100000, CRC(4e5200fc) SHA1(4d4cab03a6ec4ad825001e1e92193940646141e5) )
 	ROM_LOAD32_WORD_SWAP( "rom03.bin", 0x000002, 0x100000, CRC(73ccc78c) SHA1(2ac17aa8d7dac8636d29a4e4228a556334b51f1a) )
 
-	ROM_REGION( 0x1800000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x1800000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	/* Sprites */
 	ROM_LOAD( "rom12.bin",	0x0000000, 0x0200000, CRC(96393d04) SHA1(f512bb8603510d39e649f4ec1c5e2d0e4bf3a2cc) ) // 0
 	ROM_LOAD( "rom08.bin",	0x0800000, 0x0200000, CRC(23f1d462) SHA1(6ca8052b16ccc1fe59716e03f66bd33af5145b37) ) // 0
@@ -459,10 +459,10 @@ ROM_START( silkroad )
 	ROM_LOAD( "rom11.bin",	0x0e00000, 0x0200000, CRC(11abaf1c) SHA1(19e86f3ebfec518a96c0520f36cfc1b525e7e55c) ) // 3
 	ROM_LOAD( "rom15.bin",	0x1600000, 0x0200000, CRC(26a3b168) SHA1(a4b7955cc4d4fbec7c975a9456f2219ef33f1166) ) // 3
 
-	ROM_REGION( 0x080000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x080000, "oki1", 0 )
 	ROM_LOAD( "rom00.bin", 0x000000, 0x080000, CRC(b10ba7ab) SHA1(a6a3ae71b803af9c31d7e97dc86cfcc123ee9a40) )
 
-	ROM_REGION( 0x080000, REGION_SOUND2, 0 )
+	ROM_REGION( 0x080000, "oki2", 0 )
 	ROM_LOAD( "rom01.bin", 0x000000, 0x040000, CRC(db8cb455) SHA1(6723b4018208d554bd1bf1e0640b72d2f4f47302) )
 ROM_END
 

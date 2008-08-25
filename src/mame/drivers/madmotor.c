@@ -61,9 +61,9 @@ static ADDRESS_MAP_START( madmotor_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x3e0000, 0x3e3fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x3e8000, 0x3e87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x3f0000, 0x3f07ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3f8002, 0x3f8003) AM_READ(input_port_0_word_r)
-	AM_RANGE(0x3f8004, 0x3f8005) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x3f8006, 0x3f8007) AM_READ(input_port_2_word_r)
+	AM_RANGE(0x3f8002, 0x3f8003) AM_READ_PORT("P1_P2")
+	AM_RANGE(0x3f8004, 0x3f8005) AM_READ_PORT("DSW")
+	AM_RANGE(0x3f8006, 0x3f8007) AM_READ_PORT("SYSTEM")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( madmotor_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -88,10 +88,10 @@ static WRITE8_HANDLER( YM2151_w )
 {
 	switch (offset) {
 	case 0:
-		YM2151_register_port_0_w(machine,0,data);
+		ym2151_register_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM2151_data_port_0_w(machine,0,data);
+		ym2151_data_port_0_w(machine,0,data);
 		break;
 	}
 }
@@ -100,10 +100,10 @@ static WRITE8_HANDLER( YM2203_w )
 {
 	switch (offset) {
 	case 0:
-		YM2203_control_port_0_w(machine,0,data);
+		ym2203_control_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM2203_write_port_0_w(machine,0,data);
+		ym2203_write_port_0_w(machine,0,data);
 		break;
 	}
 }
@@ -111,10 +111,10 @@ static WRITE8_HANDLER( YM2203_w )
 /* Physical memory map (21 bits) */
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x100000, 0x100001) AM_READ(YM2203_status_port_0_r)
-	AM_RANGE(0x110000, 0x110001) AM_READ(YM2151_status_port_0_r)
-	AM_RANGE(0x120000, 0x120001) AM_READ(OKIM6295_status_0_r)
-	AM_RANGE(0x130000, 0x130001) AM_READ(OKIM6295_status_1_r)
+	AM_RANGE(0x100000, 0x100001) AM_READ(ym2203_status_port_0_r)
+	AM_RANGE(0x110000, 0x110001) AM_READ(ym2151_status_port_0_r)
+	AM_RANGE(0x120000, 0x120001) AM_READ(okim6295_status_0_r)
+	AM_RANGE(0x130000, 0x130001) AM_READ(okim6295_status_1_r)
 	AM_RANGE(0x140000, 0x140001) AM_READ(soundlatch_r)
 	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK8)
 ADDRESS_MAP_END
@@ -123,17 +123,17 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x100001) AM_WRITE(YM2203_w)
 	AM_RANGE(0x110000, 0x110001) AM_WRITE(YM2151_w)
-	AM_RANGE(0x120000, 0x120001) AM_WRITE(OKIM6295_data_0_w)
-	AM_RANGE(0x130000, 0x130001) AM_WRITE(OKIM6295_data_1_w)
+	AM_RANGE(0x120000, 0x120001) AM_WRITE(okim6295_data_0_w)
+	AM_RANGE(0x130000, 0x130001) AM_WRITE(okim6295_data_1_w)
 	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK8)
-	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(H6280_timer_w)
-	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
+	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(h6280_timer_w)
+	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(h6280_irq_status_w)
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
 static INPUT_PORTS_START( madmotor )
-	PORT_START
+	PORT_START("P1_P2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -151,7 +151,7 @@ static INPUT_PORTS_START( madmotor )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )	/* button 3 - unused */
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 2C_1C ) )
@@ -199,7 +199,7 @@ static INPUT_PORTS_START( madmotor )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START	/* Credits */
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -263,10 +263,10 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( madmotor )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,     0, 16 )	/* Characters 8x8 */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout,   512, 16 )	/* Tiles 16x16 */
-	GFXDECODE_ENTRY( REGION_GFX3, 0, tilelayout2,  768, 16 )	/* Tiles 16x16 */
-	GFXDECODE_ENTRY( REGION_GFX4, 0, spritelayout, 256, 16 )	/* Sprites 16x16 */
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,     0, 16 )	/* Characters 8x8 */
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayout,   512, 16 )	/* Tiles 16x16 */
+	GFXDECODE_ENTRY( "gfx3", 0, tilelayout2,  768, 16 )	/* Tiles 16x16 */
+	GFXDECODE_ENTRY( "gfx4", 0, spritelayout, 256, 16 )	/* Sprites 16x16 */
 GFXDECODE_END
 
 /******************************************************************************/
@@ -276,7 +276,7 @@ static void sound_irq(running_machine *machine, int state)
 	cpunum_set_input_line(machine, 1,1,state); /* IRQ 2 */
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	sound_irq
 };
@@ -284,12 +284,11 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( madmotor )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000) /* Custom chip 59, 24 MHz crystal */
+	MDRV_CPU_ADD("main", M68000, 12000000) /* Custom chip 59, 24 MHz crystal */
 	MDRV_CPU_PROGRAM_MAP(madmotor_readmem,madmotor_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)/* VBL */
 
-	MDRV_CPU_ADD(H6280, 8053000/2) /* Custom chip 45, Crystal near CPU is 8.053 MHz */
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", H6280, 8053000/2) /* Custom chip 45, Crystal near CPU is 8.053 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
@@ -311,50 +310,50 @@ static MACHINE_DRIVER_START( madmotor )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 21470000/6)
+	MDRV_SOUND_ADD("ym1", YM2203, 21470000/6)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
-	MDRV_SOUND_ADD(YM2151, 21470000/6)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym2", YM2151, 21470000/6)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.45)
 	MDRV_SOUND_ROUTE(1, "mono", 0.45)
 
-	MDRV_SOUND_ADD(OKIM6295, 1023924)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki1", OKIM6295, 1023924)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(OKIM6295, 2047848)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki2", OKIM6295, 2047848)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
 /******************************************************************************/
 
 ROM_START( madmotor )
-	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "02", 0x00000, 0x20000, CRC(50b554e0) SHA1(e33d0ab5464ab5ff394dd630536ac83baf0aa2c9) )
 	ROM_LOAD16_BYTE( "00", 0x00001, 0x20000, CRC(2d6a1b3f) SHA1(fa7058bf907becac56ed9938c5643aaefdf7a2c0) )
 	ROM_LOAD16_BYTE( "03", 0x40000, 0x20000, CRC(442a0a52) SHA1(86bb5470d5653d125481250f778c632371dddad8) )
 	ROM_LOAD16_BYTE( "01", 0x40001, 0x20000, CRC(e246876e) SHA1(648dca8bab001cfb42618081bbc1efa14118743e) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
 	ROM_LOAD( "14",    0x00000, 0x10000, CRC(1c28a7e5) SHA1(ed30d0a5a8a079677bd34b6d98ab1b15b934b30f) )
 
-	ROM_REGION( 0x020000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "04",    0x000000, 0x10000, CRC(833ca3ab) SHA1(7a3e7ebecc1596d2e487595369ad9ba54ced5bfb) )	/* chars */
 	ROM_LOAD( "05",    0x010000, 0x10000, CRC(a691fbfe) SHA1(c726a4c15d599feb6883d9b643453e7028fa16d6) )
 
-	ROM_REGION( 0x040000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x040000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "10",    0x000000, 0x20000, CRC(9dbf482b) SHA1(086e9170d577e502604c180f174fbce53a1e20e5) )	/* tiles */
 	ROM_LOAD( "11",    0x020000, 0x20000, CRC(593c48a9) SHA1(1158888f6b836253b8ae9db9b8e352f289b2e815) )
 
-	ROM_REGION( 0x080000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x080000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "06",    0x000000, 0x20000, CRC(448850e5) SHA1(6a44a42738cf6a55b4bec807e0a3939a42b36793) )	/* tiles */
 	ROM_LOAD( "07",    0x020000, 0x20000, CRC(ede4d141) SHA1(7b847372bac043aa397aa5c274f90b9193de9176) )
 	ROM_LOAD( "08",    0x040000, 0x20000, CRC(c380e5e5) SHA1(ec87a94e7948b84c96b1577f5a8caebc56e38a94) )
 	ROM_LOAD( "09",    0x060000, 0x20000, CRC(1ee3326a) SHA1(bd03e5c4a2e7689260e6cc67288e71ef13f05a4b) )
 
-	ROM_REGION( 0x100000, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "15",    0x000000, 0x20000, CRC(90ae9f74) SHA1(806f96fd08fca1beeeaefe3c0fac1991410aa9c4) )	/* sprites */
 	ROM_LOAD( "16",    0x020000, 0x20000, CRC(e96ac815) SHA1(a2b22a29ad0a4f144bb09299c454dc7a842a5318) )
 	ROM_LOAD( "17",    0x040000, 0x20000, CRC(abad9a1b) SHA1(3cec6b4ef925205efe4a8fb28e08eb58e3ba4019) )
@@ -364,10 +363,10 @@ ROM_START( madmotor )
 	ROM_LOAD( "21",    0x0c0000, 0x20000, CRC(9c72d364) SHA1(9290e463273fa1f921279f1bab808d91d3aa9648) )
 	ROM_LOAD( "22",    0x0e0000, 0x20000, CRC(1e78aa60) SHA1(f5f58ee6f5efe56e72623e57ce27884551e09bd9) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x20000, "oki1", 0 )	/* ADPCM samples */
 	ROM_LOAD( "12",    0x00000, 0x20000, CRC(c202d200) SHA1(8470654923a0e8780dad678f5745f8e3e3be08b2) )
 
-	ROM_REGION( 0x20000, REGION_SOUND2, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x20000, "oki2", 0 )	/* ADPCM samples */
 	ROM_LOAD( "13",    0x00000, 0x20000, CRC(cc4d65e9) SHA1(b9bcaa52c570f94d2f2e5dd84c94773cc4115442) )
 ROM_END
 
@@ -375,7 +374,7 @@ ROM_END
 
 static DRIVER_INIT( madmotor )
 {
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 	int i;
 
 	for (i = 0x00000;i < 0x80000;i++)

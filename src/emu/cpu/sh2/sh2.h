@@ -25,8 +25,10 @@
  *
  *****************************************************************************/
 
-#ifndef _SH2_H
-#define _SH2_H
+#pragma once
+
+#ifndef __SH2_H__
+#define __SH2_H__
 
 #include "cpuintrf.h"
 
@@ -49,7 +51,8 @@
 #define SH2_INT_15		15
 #define SH2_INT_ABUS	16
 
-enum {
+enum
+{
 	SH2_PC=1, SH2_SR, SH2_PR, SH2_GBR, SH2_VBR, SH2_MACH, SH2_MACL,
 	SH2_R0, SH2_R1, SH2_R2, SH2_R3, SH2_R4, SH2_R5, SH2_R6, SH2_R7,
 	SH2_R8, SH2_R9, SH2_R10, SH2_R11, SH2_R12, SH2_R13, SH2_R14, SH2_R15, SH2_EA
@@ -57,15 +60,33 @@ enum {
 
 enum
 {
-	CPUINFO_INT_SH2_FRT_INPUT = CPUINFO_INT_CPU_SPECIFIC
+	CPUINFO_INT_SH2_FRT_INPUT = CPUINFO_INT_CPU_SPECIFIC,
+
+	CPUINFO_INT_SH2_DRC_OPTIONS,
+
+	CPUINFO_INT_SH2_FASTRAM_SELECT,
+	CPUINFO_INT_SH2_FASTRAM_START,
+	CPUINFO_INT_SH2_FASTRAM_END,
+	CPUINFO_INT_SH2_FASTRAM_READONLY,
+
+	CPUINFO_INT_SH2_HOTSPOT_SELECT,
+	CPUINFO_INT_SH2_HOTSPOT_PC,
+	CPUINFO_INT_SH2_HOTSPOT_OPCODE,
+	CPUINFO_INT_SH2_HOTSPOT_CYCLES,
+
+	CPUINFO_INT_SH2_PCFLUSH_SELECT,
+	CPUINFO_INT_SH2_PCFLUSH_ADDR
 };
 
 enum
 {
 	CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK = CPUINFO_PTR_CPU_SPECIFIC,
+
+	CPUINFO_PTR_SH2_FASTRAM_BASE
 };
 
-struct sh2_config
+typedef struct _sh2_cpu_core sh2_cpu_core;
+struct _sh2_cpu_core
 {
   int is_slave;
 };
@@ -77,5 +98,15 @@ READ32_HANDLER( sh2_internal_r );
 
 extern unsigned DasmSH2( char *dst, unsigned pc, UINT16 opcode );
 
-#endif /* _SH2_H */
+/***************************************************************************
+    COMPILER-SPECIFIC OPTIONS
+***************************************************************************/
 
+#define SH2DRC_STRICT_VERIFY		0x0001			/* verify all instructions */
+#define SH2DRC_FLUSH_PC			0x0002			/* flush the PC value before each memory access */
+#define SH2DRC_STRICT_PCREL		0x0004			/* do actual loads on MOVLI/MOVWI instead of collapsing to immediates */
+
+#define SH2DRC_COMPATIBLE_OPTIONS	(SH2DRC_STRICT_VERIFY | SH2DRC_FLUSH_PC | SH2DRC_STRICT_PCREL)
+#define SH2DRC_FASTEST_OPTIONS	(0)
+
+#endif /* __SH2_H__ */

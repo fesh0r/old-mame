@@ -67,12 +67,12 @@ static READ16_HANDLER( mahjong_panel_r )
 {
 	switch(sengokumj_mux_data)
 	{
-		case 1:    return input_port_read_indexed(machine, 2);
-		case 2:    return input_port_read_indexed(machine, 3);
-		case 4:    return input_port_read_indexed(machine, 4);
-		case 8:    return input_port_read_indexed(machine, 5);
-		case 0x10: return input_port_read_indexed(machine, 6);
-		case 0x20: return input_port_read_indexed(machine, 7);
+		case 1:    return input_port_read(machine, "KEY0");
+		case 2:    return input_port_read(machine, "KEY1");
+		case 4:    return input_port_read(machine, "KEY2");
+		case 8:    return input_port_read(machine, "KEY3");
+		case 0x10: return input_port_read(machine, "KEY4");
+		case 0x20: return input_port_read(machine, "UNUSED");
 	}
 
 	return 0xffff;
@@ -130,16 +130,16 @@ static ADDRESS_MAP_START( sengokmj_io_map, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE(0x8080, 0x8081) AM_WRITENOP // ?
 	AM_RANGE(0x80c0, 0x80c1) AM_WRITENOP // ?
 	AM_RANGE(0x8140, 0x8141) AM_WRITE(mahjong_panel_w)
-	AM_RANGE(0xc000, 0xc001) AM_READ(input_port_1_word_r)
+	AM_RANGE(0xc000, 0xc001) AM_READ_PORT("DSW1")
 	AM_RANGE(0xc002, 0xc003) AM_READ(mahjong_panel_r)
-	AM_RANGE(0xc004, 0xc005) AM_READ(input_port_8_word_r)
+	AM_RANGE(0xc004, 0xc005) AM_READ_PORT("DSW2")
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( sengokmj )
 	SEIBU_COIN_INPUTS	/* coin inputs read through sound cpu */
 
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(	  0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
@@ -166,7 +166,7 @@ static INPUT_PORTS_START( sengokmj )
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("KEY0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_A )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_E )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_I )
@@ -176,7 +176,7 @@ static INPUT_PORTS_START( sengokmj )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("KEY1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_B )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_F )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_J )
@@ -186,7 +186,7 @@ static INPUT_PORTS_START( sengokmj )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("KEY2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_C )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_G )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_K )
@@ -196,7 +196,7 @@ static INPUT_PORTS_START( sengokmj )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("KEY3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_D )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_H )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_L )
@@ -206,7 +206,7 @@ static INPUT_PORTS_START( sengokmj )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("KEY4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_LAST_CHANCE )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_SCORE )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_DOUBLE_UP )
@@ -216,10 +216,10 @@ static INPUT_PORTS_START( sengokmj )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("UNUSED")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x0001, 0x0001, "Door" )
 	PORT_DIPSETTING(	  0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
@@ -272,9 +272,9 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( sengokmj )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout, 0x000, 0x40 ) /* Sprites */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout, 0x400, 0x30 ) /* Tiles */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout, 0x700, 0x10 ) /* Text */
+	GFXDECODE_ENTRY( "gfx1", 0, tilelayout, 0x000, 0x40 ) /* Sprites */
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayout, 0x400, 0x30 ) /* Tiles */
+	GFXDECODE_ENTRY( "gfx2", 0, charlayout, 0x700, 0x10 ) /* Text */
 GFXDECODE_END
 
 static INTERRUPT_GEN( sengokmj_interrupt )
@@ -285,14 +285,14 @@ static INTERRUPT_GEN( sengokmj_interrupt )
 static MACHINE_DRIVER_START( sengokmj )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(V30, 16000000/2) /* V30-8 */
+	MDRV_CPU_ADD("main", V30, 16000000/2) /* V30-8 */
 	MDRV_CPU_PROGRAM_MAP(sengokmj_map,0)
 	MDRV_CPU_IO_MAP(sengokmj_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", sengokmj_interrupt)
 
 	SEIBU_SOUND_SYSTEM_CPU(14318180/4)
 
-	MDRV_MACHINE_RESET(seibu_sound_1)
+	MDRV_MACHINE_RESET(seibu_sound)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -309,31 +309,31 @@ static MACHINE_DRIVER_START( sengokmj )
 	MDRV_VIDEO_UPDATE(sengokmj)
 
 	/* sound hardware */
-	SEIBU_SOUND_SYSTEM_YM3812_INTERFACE(14318180/4,1320000,1)
+	SEIBU_SOUND_SYSTEM_YM3812_INTERFACE(14318180/4,1320000)
 MACHINE_DRIVER_END
 
 
 ROM_START( sengokmj )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* V30 code */
+	ROM_REGION( 0x100000, "main", 0 ) /* V30 code */
 	ROM_LOAD16_BYTE( "mm01-1-1.21",  0xc0000, 0x20000, CRC(74076b46) SHA1(64b0ed5a8c32e21157ae12fe40519e4c605b329c) )
 	ROM_LOAD16_BYTE( "mm01-2-1.24",  0xc0001, 0x20000, CRC(f1a7c131) SHA1(d0fbbdedbff8f05da0e0296baa41369bc41a67e4) )
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 ) /* 64k code for sound Z80 */
+	ROM_REGION( 0x20000, "audio", 0 ) /* 64k code for sound Z80 */
 	ROM_LOAD( "mah1-2-1.013", 0x000000, 0x08000, CRC(6a4f31b8) SHA1(5e1d7ed299c1fd65c7a43faa02831220f4251733) )
 	ROM_CONTINUE(             0x010000, 0x08000 )
-	ROM_COPY( REGION_CPU2, 0, 0x018000, 0x08000 )
+	ROM_COPY( "audio", 0, 0x018000, 0x08000 )
 
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "rssengo2.72", 0x00000, 0x100000, CRC(fb215ff8) SHA1(f98c0a53ad9b97d209dd1f85c994fc17ec585bd7) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "rssengo0.64", 0x000000, 0x100000, CRC(36924b71) SHA1(814b2c69ab9876ccc57774e5718c05059ea23150) )
 	ROM_LOAD( "rssengo1.68", 0x100000, 0x100000, CRC(1bbd00e5) SHA1(86391323b8e0d3b7e09a5914d87fb2adc48e5af4) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )	 /* ADPCM samples */
+	ROM_REGION( 0x20000, "oki", 0 )	 /* ADPCM samples */
 	ROM_LOAD( "mah1-1-1.915", 0x00000, 0x20000, CRC(d4612e95) SHA1(937c5dbd25c89d4f4178b0bed510307020c5f40e) )
 
-	ROM_REGION( 0x200, REGION_USER1, ROMREGION_DISPOSE ) /* not used */
+	ROM_REGION( 0x200, "user1", ROMREGION_DISPOSE ) /* not used */
 	ROM_LOAD( "rs006.89", 0x000, 0x200, CRC(96f7646e) SHA1(400a831b83d6ac4d2a46ef95b97b1ee237099e44) ) /* Priority */
 ROM_END
 

@@ -127,32 +127,33 @@ static const struct via6522_interface via_1_interface =
 
 static WRITE8_HANDLER( audio_reset_w )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	gameplan_state *state = machine->driver_data;
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
+	if (data == 0)
+	{
+		device_reset(state->riot);
+		cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(10));
+	}
 }
 
 
 static WRITE8_HANDLER( audio_cmd_w )
 {
 	gameplan_state *state = machine->driver_data;
-
-	state->audio_cmd = data & 0x7f;
+	riot6532_porta_in_set(state->riot, data, 0x7f);
 }
 
 
 static WRITE8_HANDLER( audio_trigger_w )
 {
 	gameplan_state *state = machine->driver_data;
-
-	UINT8 cmd = (data << 7) | (state->audio_cmd & 0x7f);
-
-	soundlatch_w(machine, 0, cmd);
-	r6532_0_porta_w(machine, 0, cmd);
+	riot6532_porta_in_set(state->riot, data << 7, 0x80);
 }
 
 
 static const struct via6522_interface via_2_interface =
 {
-	0, soundlatch2_r,					  /*inputs : A/B         */
+	0, soundlatch_r,					  /*inputs : A/B         */
 	0, 0, 0, 0,							  /*inputs : CA/B1,CA/B2 */
 	audio_cmd_w, 0,						  /*outputs: A/B         */
 	0, 0, audio_trigger_w, audio_reset_w, /*outputs: CA/B1,CA/B2 */
@@ -167,19 +168,27 @@ static const struct via6522_interface via_2_interface =
  *
  *************************************/
 
-static void r6532_irq(running_machine *machine, int state)
+static void r6532_irq(const device_config *device, int state)
 {
-	cpunum_set_input_line(machine, 1, 0, state);
+	cpunum_set_input_line(device->machine, 1, 0, state);
+	if (state == ASSERT_LINE)
+		cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(10));
 }
 
 
-static const struct riot6532_interface r6532_interface =
+static void r6532_soundlatch_w(const device_config *device, UINT8 newdata, UINT8 olddata)
 {
-	soundlatch_r,		/* port A read handler */
-	0,					/* port B read handler */
-	0,					/* port A write handler */
-	soundlatch2_w,		/* port B write handler */
-	r6532_irq			/* IRQ callback */
+	soundlatch_w(device->machine, 0, newdata);
+}
+
+
+static const riot6532_interface r6532_interface =
+{
+	NULL,					/* port A read handler */
+	NULL,					/* port B read handler */
+	NULL,					/* port A write handler */
+	r6532_soundlatch_w,		/* port B write handler */
+	r6532_irq				/* IRQ callback */
 };
 
 
@@ -194,16 +203,13 @@ static MACHINE_START( gameplan )
 {
 	gameplan_state *state = machine->driver_data;
 
+	state->riot = device_list_find_by_tag(machine->config->devicelist, RIOT6532, "riot");
+
 	via_config(1, &via_1_interface);
 	via_config(2, &via_2_interface);
 
-	r6532_config(machine, 0, &r6532_interface);
-	r6532_set_clock(0, GAMEPLAN_AUDIO_CPU_CLOCK);
-	r6532_reset(machine, 0);
-
 	/* register for save states */
 	state_save_register_global(state->current_port);
-	state_save_register_global(state->audio_cmd);
 }
 
 
@@ -232,8 +238,6 @@ static ADDRESS_MAP_START( gameplan_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x200f) AM_MIRROR(0x07f0) AM_READWRITE(via_0_r, via_0_w)	/* VIA 1 */
 	AM_RANGE(0x2800, 0x280f) AM_MIRROR(0x07f0) AM_READWRITE(via_1_r, via_1_w)	/* VIA 2 */
 	AM_RANGE(0x3000, 0x300f) AM_MIRROR(0x07f0) AM_READWRITE(via_2_r, via_2_w)	/* VIA 3 */
-	AM_RANGE(0x3800, 0x3fff) AM_NOP
-	AM_RANGE(0x4000, 0x7fff) AM_NOP
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -247,13 +251,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gameplan_audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x007f) AM_MIRROR(0x1780) AM_RAM  /* 6532 internal RAM */
-	AM_RANGE(0x0800, 0x081f) AM_MIRROR(0x17e0) AM_READWRITE(r6532_0_r, r6532_0_w)
-	AM_RANGE(0x2000, 0x9fff) AM_NOP
-	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ffc) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ffc) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ffc) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ffc) AM_NOP
-	AM_RANGE(0xc000, 0xdfff) AM_NOP
+	AM_RANGE(0x0800, 0x081f) AM_MIRROR(0x17e0) AM_DEVREADWRITE(RIOT6532, "riot", riot6532_r, riot6532_w)
+	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ffc) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ffc) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ffc) AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0xe000, 0xe7ff) AM_MIRROR(0x1800) AM_ROM
 ADDRESS_MAP_END
 
@@ -261,13 +262,10 @@ ADDRESS_MAP_END
 /* same as Gameplan, but larger ROM */
 static ADDRESS_MAP_START( leprechn_audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x007f) AM_MIRROR(0x1780) AM_RAM  /* 6532 internal RAM */
-	AM_RANGE(0x0800, 0x081f) AM_MIRROR(0x17e0) AM_READWRITE(r6532_0_r, r6532_0_w)
-	AM_RANGE(0x2000, 0x9fff) AM_NOP
-	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ffc) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ffc) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ffc) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ffc) AM_NOP
-	AM_RANGE(0xc000, 0xdfff) AM_NOP
+	AM_RANGE(0x0800, 0x081f) AM_MIRROR(0x17e0) AM_DEVREADWRITE(RIOT6532, "riot", riot6532_r, riot6532_w)
+	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ffc) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ffc) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ffc) AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0xe000, 0xefff) AM_MIRROR(0x1000) AM_ROM
 ADDRESS_MAP_END
 
@@ -280,7 +278,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( killcom )
-	PORT_START_TAG("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
+	PORT_START("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_TILT )
@@ -290,7 +288,7 @@ static INPUT_PORTS_START( killcom )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START_TAG("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
+	PORT_START("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -300,7 +298,7 @@ static INPUT_PORTS_START( killcom )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
+	PORT_START("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON4 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 )
@@ -310,7 +308,7 @@ static INPUT_PORTS_START( killcom )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 
-	PORT_START_TAG("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
+	PORT_START("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_COCKTAIL
@@ -320,7 +318,7 @@ static INPUT_PORTS_START( killcom )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_COCKTAIL
 
-	PORT_START_TAG("DSW0")	/* DSW A - from "TEST NO.6 - dip switch A" */
+	PORT_START("DSW0")	/* DSW A - from "TEST NO.6 - dip switch A" */
 	PORT_DIPNAME( 0x03, 0x03, "Coinage P1/P2" )
 	PORT_DIPSETTING(    0x03, "1 Credit/2 Credits" )
 	PORT_DIPSETTING(    0x02, "2 Credits/3 Credits" )
@@ -344,7 +342,7 @@ static INPUT_PORTS_START( killcom )
 	PORT_DIPSETTING(    0x40, "Fast" )
 	PORT_DIPSETTING(    0x00, "Fastest" )
 
-	PORT_START_TAG("DSW1")	/* DSW B - from "TEST NO.6 - dip switch B" */
+	PORT_START("DSW1")	/* DSW B - from "TEST NO.6 - dip switch B" */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -370,7 +368,7 @@ static INPUT_PORTS_START( killcom )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW2")	/* audio board DSW A */
+	PORT_START("DSW2")	/* audio board DSW A */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -396,7 +394,7 @@ static INPUT_PORTS_START( killcom )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW3")	/* audio board DSW B */
+	PORT_START("DSW3")	/* audio board DSW B */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -425,7 +423,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( megatack )
-	PORT_START_TAG("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
+	PORT_START("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_TILT )
@@ -435,7 +433,7 @@ static INPUT_PORTS_START( megatack )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START_TAG("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
+	PORT_START("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -445,7 +443,7 @@ static INPUT_PORTS_START( megatack )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
+	PORT_START("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -455,7 +453,7 @@ static INPUT_PORTS_START( megatack )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
+	PORT_START("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -465,7 +463,7 @@ static INPUT_PORTS_START( megatack )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW0")	/* DSW A - from "TEST NO.6 - dip switch A" */
+	PORT_START("DSW0")	/* DSW A - from "TEST NO.6 - dip switch A" */
 	PORT_DIPNAME( 0x03, 0x03, "Coinage P1/P2" )
 	PORT_DIPSETTING(    0x03, "1 Credit/2 Credits" )
 	PORT_DIPSETTING(    0x02, "2 Credits/3 Credits" )
@@ -490,7 +488,7 @@ static INPUT_PORTS_START( megatack )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW1")	/* DSW B - from "TEST NO.6 - dip switch B" */
+	PORT_START("DSW1")	/* DSW B - from "TEST NO.6 - dip switch B" */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x07, "20000" )
 	PORT_DIPSETTING(    0x06, "30000" )
@@ -516,7 +514,7 @@ static INPUT_PORTS_START( megatack )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW2")	/* audio board DSW A */
+	PORT_START("DSW2")	/* audio board DSW A */
 	PORT_DIPNAME( 0x01, 0x00, "Sound Test A 0" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -542,7 +540,7 @@ static INPUT_PORTS_START( megatack )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW3")	/* audio board DSW B */
+	PORT_START("DSW3")	/* audio board DSW B */
 	PORT_DIPNAME( 0x01, 0x00, "Sound Test B 0" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -571,7 +569,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( challeng )
-	PORT_START_TAG("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
+	PORT_START("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_TILT )
@@ -581,7 +579,7 @@ static INPUT_PORTS_START( challeng )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START_TAG("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
+	PORT_START("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -591,7 +589,7 @@ static INPUT_PORTS_START( challeng )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
+	PORT_START("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -601,7 +599,7 @@ static INPUT_PORTS_START( challeng )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
+	PORT_START("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -611,7 +609,7 @@ static INPUT_PORTS_START( challeng )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW0")	/* DSW A - from "TEST NO.6 - dip switch A" */
+	PORT_START("DSW0")	/* DSW A - from "TEST NO.6 - dip switch A" */
 	PORT_DIPNAME( 0x03, 0x03, "Coinage P1/P2" )
 	PORT_DIPSETTING(    0x03, "1 Credit/2 Credits" )
 	PORT_DIPSETTING(    0x02, "2 Credits/3 Credits" )
@@ -635,7 +633,7 @@ static INPUT_PORTS_START( challeng )
 	PORT_DIPSETTING(    0x40, "5" )
 	PORT_DIPSETTING(    0x00, "6" )
 
-	PORT_START_TAG("DSW1")	/* DSW B - from "TEST NO.6 - dip switch B" */
+	PORT_START("DSW1")	/* DSW B - from "TEST NO.6 - dip switch B" */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x01, "20000" )
 	PORT_DIPSETTING(    0x00, "30000" )
@@ -661,7 +659,7 @@ static INPUT_PORTS_START( challeng )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW2")	/* audio board DSW A */
+	PORT_START("DSW2")	/* audio board DSW A */
 	PORT_DIPNAME( 0x01, 0x00, "Sound Test A 0" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -687,7 +685,7 @@ static INPUT_PORTS_START( challeng )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW3")	/* audio board DSW B */
+	PORT_START("DSW3")	/* audio board DSW B */
 	PORT_DIPNAME( 0x01, 0x00, "Sound Test B 0" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -716,7 +714,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( kaos )
-	PORT_START_TAG("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
+	PORT_START("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_TILT )
@@ -726,7 +724,7 @@ static INPUT_PORTS_START( kaos )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START_TAG("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
+	PORT_START("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -736,7 +734,7 @@ static INPUT_PORTS_START( kaos )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
+	PORT_START("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
@@ -746,7 +744,7 @@ static INPUT_PORTS_START( kaos )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
+	PORT_START("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_COCKTAIL
@@ -756,7 +754,7 @@ static INPUT_PORTS_START( kaos )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW0")
+	PORT_START("DSW0")
 	PORT_DIPNAME( 0x0f, 0x0e, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x0e, DEF_STR( 1C_1C ) )
@@ -786,7 +784,7 @@ static INPUT_PORTS_START( kaos )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x01, "3" )
 	PORT_DIPSETTING(    0x00, "4" )
@@ -811,7 +809,7 @@ static INPUT_PORTS_START( kaos )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW2")	/* audio board DSW A */
+	PORT_START("DSW2")	/* audio board DSW A */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -837,7 +835,7 @@ static INPUT_PORTS_START( kaos )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW3")	/* audio board DSW B */
+	PORT_START("DSW3")	/* audio board DSW B */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -866,7 +864,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( leprechn )
-	PORT_START_TAG("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
+	PORT_START("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_TILT )
@@ -876,7 +874,7 @@ static INPUT_PORTS_START( leprechn )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START_TAG("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
+	PORT_START("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -886,7 +884,7 @@ static INPUT_PORTS_START( leprechn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
+	PORT_START("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -896,7 +894,7 @@ static INPUT_PORTS_START( leprechn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 
-	PORT_START_TAG("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
+	PORT_START("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -906,7 +904,7 @@ static INPUT_PORTS_START( leprechn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_COCKTAIL
 
-	PORT_START_TAG("DSW0")	/* DSW A - from "TEST NO.6 - dip switch A" */
+	PORT_START("DSW0")	/* DSW A - from "TEST NO.6 - dip switch A" */
 	PORT_DIPNAME( 0x09, 0x09, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x09, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_5C ) )
@@ -929,7 +927,7 @@ static INPUT_PORTS_START( leprechn )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_4C ) )
 
-	PORT_START_TAG("DSW1")	/* DSW B - from "TEST NO.6 - dip switch B" */
+	PORT_START("DSW1")	/* DSW B - from "TEST NO.6 - dip switch B" */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -954,7 +952,7 @@ static INPUT_PORTS_START( leprechn )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")	/* audio board DSW A */
+	PORT_START("DSW2")	/* audio board DSW A */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -980,7 +978,7 @@ static INPUT_PORTS_START( leprechn )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW3")	/* audio board DSW B */
+	PORT_START("DSW3")	/* audio board DSW B */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1009,7 +1007,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( piratetr )
-	PORT_START_TAG("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
+	PORT_START("IN0")	/* COL. A - from "TEST NO.7 - status locator - coin-door" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_TILT )
@@ -1019,7 +1017,7 @@ static INPUT_PORTS_START( piratetr )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START_TAG("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
+	PORT_START("IN1")	/* COL. B - from "TEST NO.7 - status locator - start sws." */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1029,7 +1027,7 @@ static INPUT_PORTS_START( piratetr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
+	PORT_START("IN2")	/* COL. C - from "TEST NO.8 - status locator - player no.1" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1039,7 +1037,7 @@ static INPUT_PORTS_START( piratetr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 
-	PORT_START_TAG("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
+	PORT_START("IN3")	/* COL. D - from "TEST NO.8 - status locator - player no.2" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1049,7 +1047,7 @@ static INPUT_PORTS_START( piratetr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_COCKTAIL
 
-	PORT_START_TAG("DSW0")	/* DSW A - from "TEST NO.6 - dip switch A" */
+	PORT_START("DSW0")	/* DSW A - from "TEST NO.6 - dip switch A" */
 	PORT_DIPNAME( 0x09, 0x09, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x09, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_5C ) )
@@ -1072,7 +1070,7 @@ static INPUT_PORTS_START( piratetr )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_4C ) )
 
-	PORT_START_TAG("DSW1")	/* DSW B - from "TEST NO.6 - dip switch B" */
+	PORT_START("DSW1")	/* DSW B - from "TEST NO.6 - dip switch B" */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1097,7 +1095,7 @@ static INPUT_PORTS_START( piratetr )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")	/* audio board DSW A */
+	PORT_START("DSW2")	/* audio board DSW A */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1123,7 +1121,7 @@ static INPUT_PORTS_START( piratetr )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW3")	/* audio board DSW B */
+	PORT_START("DSW3")	/* audio board DSW B */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1158,12 +1156,12 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
 	input_port_6_r,
-	input_port_7_r,
+	input_port_7_r
 };
 
 
@@ -1172,11 +1170,13 @@ static MACHINE_DRIVER_START( gameplan )
 	MDRV_DRIVER_DATA(gameplan_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, GAMEPLAN_MAIN_CPU_CLOCK)
+	MDRV_CPU_ADD("main", M6502, GAMEPLAN_MAIN_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(gameplan_main_map,0)
 
-	MDRV_CPU_ADD_TAG("audio", M6502, GAMEPLAN_AUDIO_CPU_CLOCK)
+	MDRV_CPU_ADD("audio", M6502, GAMEPLAN_AUDIO_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(gameplan_audio_map,0)
+
+	MDRV_RIOT6532_ADD("riot", GAMEPLAN_AUDIO_CPU_CLOCK, r6532_interface)
 
 	MDRV_MACHINE_START(gameplan)
 	MDRV_MACHINE_RESET(gameplan)
@@ -1187,8 +1187,8 @@ static MACHINE_DRIVER_START( gameplan )
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, GAMEPLAN_AY8910_CLOCK)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, GAMEPLAN_AY8910_CLOCK)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.33)
 MACHINE_DRIVER_END
 
@@ -1214,7 +1214,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( killcom )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "killcom.e2",   0xc000, 0x0800, CRC(a01cbb9a) SHA1(a8769243adbdddedfda5f3c8f054e9281a0eca46) )
 	ROM_LOAD( "killcom.f2",   0xc800, 0x0800, CRC(bb3b4a93) SHA1(a0ea61ac30a4d191db619b7bfb697914e1500036) )
 	ROM_LOAD( "killcom.g2",   0xd000, 0x0800, CRC(86ec68b2) SHA1(a09238190d61684d943ce0acda25eb901d2580ac) )
@@ -1224,12 +1224,12 @@ ROM_START( killcom )
 	ROM_LOAD( "killcom.f1",   0xf000, 0x0800, CRC(ef652762) SHA1(414714e5a3f83916bd3ae54afe2cb2271ee9008b) )
 	ROM_LOAD( "killcom.e1",   0xf800, 0x0800, CRC(bc19dcb7) SHA1(eb983d2df010c12cb3ffb584fceafa54a4e956b3) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "killsnd.e1",   0xe000, 0x0800, CRC(77d4890d) SHA1(a3ed7e11dec5d404f022c521256ff50aa6940d3c) )
 ROM_END
 
 ROM_START( megatack )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "megattac.e2",  0xc000, 0x0800, CRC(33fa5104) SHA1(15693eb540563e03502b53ed8a83366e395ca529) )
 	ROM_LOAD( "megattac.f2",  0xc800, 0x0800, CRC(af5e96b1) SHA1(5f6ab47c12d051f6af446b08f3cd459fbd2c13bf) )
 	ROM_LOAD( "megattac.g2",  0xd000, 0x0800, CRC(670103ea) SHA1(e11f01e8843ed918c6ea5dda75319dc95105d345) )
@@ -1239,12 +1239,12 @@ ROM_START( megatack )
 	ROM_LOAD( "megattac.f1",  0xf000, 0x0800, CRC(c93a8ed4) SHA1(c87e2f13f2cc00055f4941c272a3126b165a6252) )
 	ROM_LOAD( "megattac.e1",  0xf800, 0x0800, CRC(d9996b9f) SHA1(e71d65b695000fdfd5fd1ce9ae39c0cb0b61669e) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "megatsnd.e1",  0xe000, 0x0800, CRC(0c186bdb) SHA1(233af9481a3979971f2d5aa75ec8df4333aa5e0d) )
 ROM_END
 
 ROM_START( challeng )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "chall.6",      0xa000, 0x1000, CRC(b30fe7f5) SHA1(ce93a57d626f90d31ddedbc35135f70758949dfa) )
 	ROM_LOAD( "chall.5",      0xb000, 0x1000, CRC(34c6a88e) SHA1(250577e2c8eb1d3a78cac679310ec38924ac1fe0) )
 	ROM_LOAD( "chall.4",      0xc000, 0x1000, CRC(0ddc18ef) SHA1(9f1aa27c71d7e7533bddf7de420c06fb0058cf60) )
@@ -1252,12 +1252,12 @@ ROM_START( challeng )
 	ROM_LOAD( "chall.2",      0xe000, 0x1000, CRC(948912ad) SHA1(e79738ab94501f858f4d5f218787267523611e92) )
 	ROM_LOAD( "chall.1",      0xf000, 0x1000, CRC(7c71a9dc) SHA1(2530ada6390fb46c44bf7bf2636910ee54786493) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "chall.snd",    0xe000, 0x0800, CRC(1b2bffd2) SHA1(36ceb5abbc92a17576c375019f1c5900320398f9) )
 ROM_END
 
 ROM_START( kaos )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "kaosab.g2",    0x9000, 0x0800, CRC(b23d858f) SHA1(e31fa657ace34130211a0b9fc0d115fd89bb20dd) )
 	ROM_CONTINUE(		   	  0xd000, 0x0800 )
 	ROM_LOAD( "kaosab.j2",    0x9800, 0x0800, CRC(4861e5dc) SHA1(96ca0b8625af3897bd4a50a45ea964715f9e4973) )
@@ -1271,12 +1271,12 @@ ROM_START( kaos )
 	ROM_LOAD( "kaosab.e1",    0xb800, 0x0800, CRC(3da5202a) SHA1(6b5aaf44377415763aa0895c64765a4b82086f25) )
 	ROM_CONTINUE(		   	  0xf800, 0x0800 )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "kaossnd.e1",   0xe000, 0x0800, CRC(ab23d52a) SHA1(505f3e4a56e78a3913010f5484891f01c9831480) )
 ROM_END
 
 ROM_START( leprechn )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "lep1",         0x8000, 0x1000, CRC(2c4a46ca) SHA1(28a157c1514bc9f27cc27baddb83cf1a1887f3d1) )
 	ROM_LOAD( "lep2",         0x9000, 0x1000, CRC(6ed26b3e) SHA1(4ee5d09200d9e8f94ae29751c8ee838faa268f15) )
 	ROM_LOAD( "lep3",         0xa000, 0x1000, CRC(a2eaa016) SHA1(be992ee787766137fd800ec59529c98ef2e6991e) )
@@ -1286,12 +1286,12 @@ ROM_START( leprechn )
 	ROM_LOAD( "lep7",         0xe000, 0x1000, CRC(7e06d56d) SHA1(5f68f2047969d803b752a4cd02e0e0af916c8358) )
 	ROM_LOAD( "lep8",         0xf000, 0x1000, CRC(097ede60) SHA1(5509c41167c066fa4e7f4f4bd1ce9cd00773a82c) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "lepsound",     0xe000, 0x1000, CRC(6651e294) SHA1(ce2875fc4df61a30d51d3bf2153864b562601151) )
 ROM_END
 
 ROM_START( potogold )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "pog.pg1",      0x8000, 0x1000, CRC(9f1dbda6) SHA1(baf20e9a0793c0f1529396f95a820bd1f9431465) )
 	ROM_LOAD( "pog.pg2",      0x9000, 0x1000, CRC(a70e3811) SHA1(7ee306dc7d75a7d3fd497870ec92bef9d86535e9) )
 	ROM_LOAD( "pog.pg3",      0xa000, 0x1000, CRC(81cfb516) SHA1(12732707e2a51ec39563f2d1e898cc567ab688f0) )
@@ -1301,12 +1301,12 @@ ROM_START( potogold )
 	ROM_LOAD( "pog.pg7",      0xe000, 0x1000, CRC(84399f54) SHA1(c90ba3e3120adda2785ab5abd309e0a703d39f8b) )
 	ROM_LOAD( "pog.pg8",      0xf000, 0x1000, CRC(9e995a1a) SHA1(5c525e6c161d9d7d646857b27cecfbf8e0943480) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "pog.snd",      0xe000, 0x1000, CRC(ec61f0a4) SHA1(26944ecc3e7413259928c8b0a74b2260e67d2c4e) )
 ROM_END
 
 ROM_START( leprechp )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "lep1",         0x8000, 0x1000, CRC(2c4a46ca) SHA1(28a157c1514bc9f27cc27baddb83cf1a1887f3d1) )
 	ROM_LOAD( "lep2",         0x9000, 0x1000, CRC(6ed26b3e) SHA1(4ee5d09200d9e8f94ae29751c8ee838faa268f15) )
 	ROM_LOAD( "3u15.bin",     0xa000, 0x1000, CRC(b5f79fd8) SHA1(271f7b55ecda5bb99f40687264256b82649e2141) )
@@ -1316,12 +1316,12 @@ ROM_START( leprechp )
 	ROM_LOAD( "lep7",         0xe000, 0x1000, CRC(7e06d56d) SHA1(5f68f2047969d803b752a4cd02e0e0af916c8358) )
 	ROM_LOAD( "lep8",         0xf000, 0x1000, CRC(097ede60) SHA1(5509c41167c066fa4e7f4f4bd1ce9cd00773a82c) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "lepsound",     0xe000, 0x1000, CRC(6651e294) SHA1(ce2875fc4df61a30d51d3bf2153864b562601151) )
 ROM_END
 
 ROM_START( piratetr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "1u13.bin",     0x8000, 0x1000, CRC(4433bb61) SHA1(eee0d7f356118f8595dd7533541db744a63a8176) )
 	ROM_LOAD( "2u14.bin",     0x9000, 0x1000, CRC(9bdc4b77) SHA1(ebaab8b3024efd3d0b76647085d441ca204ad5d5) )
 	ROM_LOAD( "3u15.bin",     0xa000, 0x1000, CRC(ebced718) SHA1(3a2f4385347f14093360cfa595922254c9badf1a) )
@@ -1331,7 +1331,7 @@ ROM_START( piratetr )
 	ROM_LOAD( "7u19.bin",     0xe000, 0x1000, CRC(6e8808c4) SHA1(d1f76fd37d8f78552a9d53467073cc9a571d96ce) )
 	ROM_LOAD( "8u20.bin",     0xf000, 0x1000, CRC(2802d626) SHA1(b0db688500076ee73e0001c00089a8d552c6f607) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "su31.bin",     0xe000, 0x1000, CRC(2fe86a11) SHA1(aaafe411b9cb3d0221cc2af73d34ad8bb74f8327) )
 ROM_END
 

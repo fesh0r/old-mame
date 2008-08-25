@@ -44,13 +44,17 @@ static READ8_HANDLER(mux_r)
         xxxx - input port #2
     xxxx     - dip switches (2x8 bits) (multiplexed)
 */
-	int retval=input_port_read_indexed(machine, 2)&0x0f;
-	switch(mux_port&0x30)
+	int retval = input_port_read(machine, "SYSTEM") & 0x0f;
+	switch(mux_port & 0x30)
 	{
-		case 0x00: retval|=((input_port_read_indexed(machine, 4)&1)<<4)|((input_port_read_indexed(machine, 4)&0x10)<<1)|((input_port_read_indexed(machine, 5)&1)<<6)|((input_port_read_indexed(machine, 5)&0x10)<<3);break;
-		case 0x10: retval|=((input_port_read_indexed(machine, 4)&2)<<3)|((input_port_read_indexed(machine, 4)&0x20)   )|((input_port_read_indexed(machine, 5)&2)<<5)|((input_port_read_indexed(machine, 5)&0x20)<<2);break;
-		case 0x20: retval|=((input_port_read_indexed(machine, 4)&4)<<2)|((input_port_read_indexed(machine, 4)&0x40)>>1)|((input_port_read_indexed(machine, 5)&4)<<4)|((input_port_read_indexed(machine, 5)&0x40)<<1);break;
-		case 0x30: retval|=((input_port_read_indexed(machine, 4)&8)<<1)|((input_port_read_indexed(machine, 4)&0x80)>>2)|((input_port_read_indexed(machine, 5)&8)<<3)|((input_port_read_indexed(machine, 5)&0x80)   );break;
+		case 0x00: retval |= ((input_port_read(machine, "DSW1") & 1) << 4) | ((input_port_read(machine, "DSW1") & 0x10) << 1)
+								| ((input_port_read(machine, "DSW2") & 1) << 6) | ((input_port_read(machine, "DSW2") & 0x10) <<3); break;
+		case 0x10: retval |= ((input_port_read(machine, "DSW1") & 2) << 3) | ((input_port_read(machine, "DSW1") & 0x20)   )
+								| ((input_port_read(machine, "DSW2") & 2) << 5) | ((input_port_read(machine, "DSW2") & 0x20) <<2); break;
+		case 0x20: retval |= ((input_port_read(machine, "DSW1") & 4) << 2) | ((input_port_read(machine, "DSW1") & 0x40) >> 1)
+								| ((input_port_read(machine, "DSW2") & 4) << 4) | ((input_port_read(machine, "DSW2") & 0x40) <<1); break;
+		case 0x30: retval |= ((input_port_read(machine, "DSW1") & 8) << 1) | ((input_port_read(machine, "DSW1") & 0x80) >> 2)
+								| ((input_port_read(machine, "DSW2") & 8) << 3) | ((input_port_read(machine, "DSW2") & 0x80)    ); break;
 	}
 	return retval;
 }
@@ -62,7 +66,7 @@ static WRITE8_HANDLER(mux_select_w)
 
 WRITE8_HANDLER(st0016_rom_bank_w)
 {
-	memory_set_bankptr( 1, memory_region(machine, REGION_CPU1) + (data* 0x4000) + 0x10000 );
+	memory_set_bankptr( 1, memory_region(machine, "main") + (data* 0x4000) + 0x10000 );
 	st0016_rom_bank=data;
 }
 
@@ -71,10 +75,10 @@ READ8_HANDLER(st0016_dma_r);
 static ADDRESS_MAP_START( st0016_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0xbf) AM_READ(st0016_vregs_r) AM_WRITE(st0016_vregs_w) /* video/crt regs ? */
-	AM_RANGE(0xc0, 0xc0) AM_READ(input_port_0_r) AM_WRITE(mux_select_w)
-	AM_RANGE(0xc1, 0xc1) AM_READ(input_port_1_r) AM_WRITENOP
+	AM_RANGE(0xc0, 0xc0) AM_READ_PORT("P1") AM_WRITE(mux_select_w)
+	AM_RANGE(0xc1, 0xc1) AM_READ_PORT("P2") AM_WRITENOP
 	AM_RANGE(0xc2, 0xc2) AM_READ(mux_r) AM_WRITENOP
-	AM_RANGE(0xc3, 0xc3) AM_READ(input_port_1_r) AM_WRITENOP
+	AM_RANGE(0xc3, 0xc3) AM_READ_PORT("P2") AM_WRITENOP
 	AM_RANGE(0xe0, 0xe0) AM_WRITENOP /* renju = $40, neratte = 0 */
 	AM_RANGE(0xe1, 0xe1) AM_WRITE(st0016_rom_bank_w)
 	AM_RANGE(0xe2, 0xe2) AM_WRITE(st0016_sprite_bank_w)
@@ -135,12 +139,11 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( st0016_m2_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0xbf) AM_READ(st0016_vregs_r) AM_WRITE(st0016_vregs_w)
-	AM_RANGE(0xc0, 0xc3)	AM_READ(latch8_r) AM_WRITE(latch8_w)
-
-	AM_RANGE(0xd0, 0xd0) AM_READ(input_port_0_r) AM_WRITE(mux_select_w)
-	AM_RANGE(0xd1, 0xd1) AM_READ(input_port_1_r) AM_WRITENOP
+	AM_RANGE(0xc0, 0xc3) AM_READ(latch8_r) AM_WRITE(latch8_w)
+	AM_RANGE(0xd0, 0xd0) AM_READ_PORT("P1") AM_WRITE(mux_select_w)
+	AM_RANGE(0xd1, 0xd1) AM_READ_PORT("P2") AM_WRITENOP
 	AM_RANGE(0xd2, 0xd2) AM_READ(mux_r) AM_WRITENOP
-	AM_RANGE(0xd3, 0xd3) AM_READ(input_port_1_r) AM_WRITENOP
+	AM_RANGE(0xd3, 0xd3) AM_READ_PORT("P2") AM_WRITENOP
 	AM_RANGE(0xe0, 0xe0) AM_WRITENOP
 	AM_RANGE(0xe1, 0xe1) AM_WRITE(st0016_rom_bank_w)
 	AM_RANGE(0xe2, 0xe2) AM_WRITE(st0016_sprite_bank_w)
@@ -157,7 +160,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 static INPUT_PORTS_START( st0016 )
-	PORT_START_TAG("IN0")
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
@@ -167,7 +170,7 @@ static INPUT_PORTS_START( st0016 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN1")
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
@@ -177,66 +180,66 @@ static INPUT_PORTS_START( st0016 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("IN2")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE( 0x08, IP_ACTIVE_LOW)
 
-	PORT_START_TAG("IN3")
+	PORT_START("UNK")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* unused ? */
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
 /*************************************
@@ -248,75 +251,74 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( renju )
 	PORT_INCLUDE( st0016 )
 
-	PORT_MODIFY("IN2")
+	PORT_MODIFY("SYSTEM")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_MODIFY("DSW1")	/* Dip switch A  */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x08, DEF_STR( On ) )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(      0x20, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0x30, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x00, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(      0x10, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0x30, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(	0x10, DEF_STR( 1C_2C ) )
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(      0x80, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0xc0, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x00, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(      0x80, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0xc0, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( 1C_2C ) )
 
 	PORT_MODIFY("DSW2")	/* Dip switch B */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(      0x00, DEF_STR( Very_Hard ) )
-	PORT_DIPSETTING(      0x01, DEF_STR( Hard ) )
-	PORT_DIPSETTING(      0x02, DEF_STR( Easy ) )
-	PORT_DIPSETTING(      0x03, DEF_STR( Normal ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Very_Hard ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( Hard ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Easy ) )
+	PORT_DIPSETTING(	0x03, DEF_STR( Normal ) )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( koikois )
 	PORT_INCLUDE( st0016 )
 
-
-	PORT_MODIFY("IN0")
+	PORT_MODIFY("P1")
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_MODIFY("IN2")
+	PORT_MODIFY("SYSTEM")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_MODIFY("DSW1")	/* Dip switch A  */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_DIPNAME( 0x02, 0x02, "Crt Mode" ) //flip screen ?
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x08, DEF_STR( On ) )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(      0x10, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0x30, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x00, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(      0x20, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x10, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0x30, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( 1C_2C ) )
 	PORT_DIPNAME( 0x40, 0x40,  DEF_STR( Controls ) )
-	PORT_DIPSETTING(    0x00, "Majyan Panel" )
-	PORT_DIPSETTING(    0x40, DEF_STR( Joystick ) )
+	PORT_DIPSETTING(	0x00, "Majyan Panel" )
+	PORT_DIPSETTING(	0x40, DEF_STR( Joystick ) )
 
 	PORT_MODIFY("DSW2")	/* Dip switch B */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(      0x00, DEF_STR( Very_Hard ) )
-	PORT_DIPSETTING(      0x01, DEF_STR( Hard ) )
-	PORT_DIPSETTING(      0x02, DEF_STR( Easy ) )
-	PORT_DIPSETTING(      0x03, DEF_STR( Normal ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Very_Hard ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( Hard ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Easy ) )
+	PORT_DIPSETTING(	0x03, DEF_STR( Normal ) )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( nratechu )
@@ -324,34 +326,34 @@ static INPUT_PORTS_START( nratechu )
 
 	PORT_MODIFY("DSW1")	/* Dip switch A  */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(      0x01, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(      0x02, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(      0x03, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0x07, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x06, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(      0x05, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(      0x04, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(	0x03, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0x07, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x06, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x05, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(	0x04, DEF_STR( 1C_4C ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Language ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( English ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Japanese ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( English ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( Japanese ) )
 
 	PORT_MODIFY("DSW2")	/* Dip switch B */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) ) //  speed / time..
-	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( Normal ))
-	PORT_DIPSETTING(    0x01, DEF_STR( Hard ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Easy ) )
+	PORT_DIPSETTING(	0x03, DEF_STR( Normal ))
+	PORT_DIPSETTING(	0x01, DEF_STR( Hard ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Hardest ) )
 	PORT_DIPNAME( 0x0C, 0x0C, "VS Round" )
-	PORT_DIPSETTING(    0x00, "1" )
-	PORT_DIPSETTING(    0x0C, "2" )
-	PORT_DIPSETTING(    0x08, "3" )
-	PORT_DIPSETTING(    0x04, "4" )
+	PORT_DIPSETTING(	0x00, "1" )
+	PORT_DIPSETTING(	0x0C, "2" )
+	PORT_DIPSETTING(	0x08, "3" )
+	PORT_DIPSETTING(	0x04, "4" )
 	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, "Test Mode" )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mayjisn2 )
@@ -359,38 +361,38 @@ static INPUT_PORTS_START( mayjisn2 )
 
 	PORT_MODIFY("DSW1")	/* Dip switch A  */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(      0x01, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(      0x02, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(      0x03, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0x07, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x06, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(      0x05, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(      0x04, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(	0x03, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0x07, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x06, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x05, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(	0x04, DEF_STR( 1C_4C ) )
 	PORT_DIPNAME( 0x18, 0x18, "Timer" )
-	PORT_DIPSETTING(    0x00, "6:00" )
-	PORT_DIPSETTING(    0x08, "5:00" )
-	PORT_DIPSETTING(    0x18, "4:00" )
-	PORT_DIPSETTING(    0x10, "3:00" )
+	PORT_DIPSETTING(	0x00, "6:00" )
+	PORT_DIPSETTING(	0x08, "5:00" )
+	PORT_DIPSETTING(	0x18, "4:00" )
+	PORT_DIPSETTING(	0x10, "3:00" )
 
 	PORT_MODIFY("DSW2")	/* Dip switch B */
 	PORT_DIPNAME( 0x18, 0x18, "Music in Game"  )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, "Remixed" )
-	PORT_DIPSETTING(    0x18, "Only Intro" )
-	PORT_DIPSETTING(    0x10, "Classic" )
+	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x08, "Remixed" )
+	PORT_DIPSETTING(	0x18, "Only Intro" )
+	PORT_DIPSETTING(	0x10, "Classic" )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( On ) )
 	PORT_DIPNAME( 0x40, 0x40, "Position of Title" )
-	PORT_DIPSETTING(    0x00, "B" )
-	PORT_DIPSETTING(    0x40, "A" )
+	PORT_DIPSETTING(	0x00, "B" )
+	PORT_DIPSETTING(	0x40, "A" )
 	PORT_DIPNAME( 0x80, 0x80, "Test mode" )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
 static GFXDECODE_START( st0016 )
-//  GFXDECODE_ENTRY( 0, 0, charlayout,      0, 16*4  )
+//  GFXDECODE_ENTRY( NULL, 0, charlayout,      0, 16*4  )
 GFXDECODE_END
 
 static INTERRUPT_GEN(st0016_int)
@@ -403,7 +405,7 @@ static INTERRUPT_GEN(st0016_int)
 }
 
 extern UINT8 *st0016_charram;
-static const struct ST0016interface st0016_interface =
+static const st0016_interface st0016_config =
 {
 	&st0016_charram
 };
@@ -416,7 +418,7 @@ static const struct ST0016interface st0016_interface =
 
 static MACHINE_DRIVER_START( st0016 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main",Z80,8000000) /* 8 MHz ? */
+	MDRV_CPU_ADD("main",Z80,8000000) /* 8 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(st0016_mem,0)
 	MDRV_CPU_IO_MAP(st0016_io,0)
 
@@ -438,8 +440,8 @@ static MACHINE_DRIVER_START( st0016 )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(ST0016, 0)
-	MDRV_SOUND_CONFIG(st0016_interface)
+	MDRV_SOUND_ADD("st", ST0016, 0)
+	MDRV_SOUND_CONFIG(st0016_config)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
@@ -448,7 +450,7 @@ static MACHINE_DRIVER_START( mayjinsn )
 	MDRV_IMPORT_FROM(st0016)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(st0016_m2_io,0)
-	MDRV_CPU_ADD(V810, 10000000)//25 Mhz ?
+	MDRV_CPU_ADD("sub", V810, 10000000)//25 Mhz ?
 	MDRV_CPU_PROGRAM_MAP(v810_mem,0)
 	MDRV_INTERLEAVE(1)
 MACHINE_DRIVER_END
@@ -483,20 +485,24 @@ E51-00001-A
 |                                    |
 |  DSW1   DSW2        RENJYU-1  6264 |
 |------------------------------------|
+
+Note:
+      Unknown QFP (surface scratched off) is the CPU
+        + GFX generator - it's possibly NEC V70/V810
 */
 
 ROM_START( renju )
-	ROM_REGION( 0x290000, REGION_CPU1, 0 )
+	ROM_REGION( 0x290000, "main", 0 )
 	ROM_LOAD( "renjyu-1.u31",0x010000, 0x200000, CRC(e0fdbe9b) SHA1(52d31024d1a88b8fcca1f87366fcaf80e3c387a1) )
 	ROM_LOAD( "rnj2.u32",    0x210000, 0x080000, CRC(2015289c) SHA1(5223b6d3dbe4657cd63cf5b527eaab84cf23587a ) )
-	ROM_COPY( REGION_CPU1,   0x210000, 0x000000, 0x08000 )
+	ROM_COPY( "main",   0x210000, 0x000000, 0x08000 )
 ROM_END
 
 ROM_START( nratechu )
-	ROM_REGION( 0x210000, REGION_CPU1, 0 )
+	ROM_REGION( 0x210000, "main", 0 )
 	ROM_LOAD( "sx012-01",   0x10000, 0x80000,   CRC(6ca01d57) SHA1(065848f19ecf2dc1f7bbc7ddd87bca502e4b8b16) )
 	ROM_LOAD( "sx012-02",   0x110000, 0x100000, CRC(40a4e354) SHA1(8120ce8deee6805050a5b083a334c3743c09566b) )
-	ROM_COPY( REGION_CPU1,  0x10000, 0x00000, 0x08000 )
+	ROM_COPY( "main",  0x10000, 0x00000, 0x08000 )
 ROM_END
 
 /*
@@ -530,14 +536,14 @@ E63-00001
 */
 
 ROM_START( koikois )
-	ROM_REGION( 0x410000, REGION_CPU1, 0 )
+	ROM_REGION( 0x410000, "main", 0 )
 
 	ROM_LOAD16_BYTE( "koi-2.6c", 0x010001, 0x080000, CRC(2722be71) SHA1(1aa3d819eef01db042ee04a01c1b18c4d9dae65e) )
 	ROM_LOAD16_BYTE( "koi-1.4c", 0x010000, 0x080000, CRC(c79e2b43) SHA1(868174f7ab8e68e31d3302ae94dd742048deed9f) )
 	ROM_LOAD16_BYTE( "koi-4.8c", 0x110001, 0x080000, CRC(ace236df) SHA1(4bf56affe5b6d0ba3cc677eaa91f9be77f26c654) )
 	ROM_LOAD16_BYTE( "koi-3.5c", 0x110000, 0x080000, CRC(6fd88149) SHA1(87b1be32770232eb041e3ef9d1da45282af8a5d4) )
 	ROM_LOAD( "koi-5.2c", 0x210000, 0x200000, CRC(561e12c8) SHA1(a7aedf549bc3141fc01bc4a10c235af265ba4ee9) )
-	ROM_COPY( REGION_CPU1,  0x10000, 0x00000, 0x08000 )
+	ROM_COPY( "main",  0x10000, 0x00000, 0x08000 )
 ROM_END
 
 
@@ -595,13 +601,13 @@ E52-00001
 */
 
 ROM_START(mayjinsn )
-	ROM_REGION( 0x190000, REGION_CPU1, 0 )
+	ROM_REGION( 0x190000, "main", 0 )
 	ROM_LOAD( "sx003.05d",   0x010000, 0x80000,  CRC(2be6d620) SHA1(113db888fb657d45be55708bbbf9a9ac159a9636) )
 	ROM_LOAD( "sx003.06",    0x090000, 0x80000,  CRC(f0553386) SHA1(8915cb3ce03b9a12612694caec9bbec6de4dd070) )
 	ROM_LOAD( "sx003.07d",   0x110000, 0x80000, CRC(8db281c3) SHA1(f8b488dd28010f01f789217a4d62ba2116e06e94) )
-	ROM_COPY( REGION_CPU1,   0x010000, 0x00000, 0x08000 )
+	ROM_COPY( "main",   0x010000, 0x00000, 0x08000 )
 
-	ROM_REGION32_LE( 0x20000*4, REGION_USER1, 0 ) /* V810 code */
+	ROM_REGION32_LE( 0x20000*4, "user1", 0 ) /* V810 code */
 	ROM_LOAD32_BYTE( "sx003.04",   0x00003, 0x20000,   CRC(fa15459f) SHA1(4163ab842943705c550f137abbdd2cb51ba5390f) )
 	ROM_LOAD32_BYTE( "sx003.03",   0x00002, 0x20000,   CRC(71a438ea) SHA1(613bab6a59aa1bced2ab37177c61a0fd7ce7e64f) )
 	ROM_LOAD32_BYTE( "sx003.02",   0x00001, 0x20000,   CRC(61911eed) SHA1(1442b3867b85120ba652ec8205d74332addffb67) )
@@ -609,11 +615,11 @@ ROM_START(mayjinsn )
 ROM_END
 
 ROM_START(mayjisn2 )
-	ROM_REGION( 0x110000, REGION_CPU1, 0 )
+	ROM_REGION( 0x110000, "main", 0 )
 	ROM_LOAD( "sx007-05.8b",   0x10000, 0x100000,  CRC(b13ea605) SHA1(75c067df02c988f170c24153d3852c472355fc9d) )
-	ROM_COPY( REGION_CPU1,  0x10000, 0x00000, 0x08000 )
+	ROM_COPY( "main",  0x10000, 0x00000, 0x08000 )
 
-	ROM_REGION32_LE( 0x20000*4, REGION_USER1, 0 ) /* V810 code */
+	ROM_REGION32_LE( 0x20000*4, "user1", 0 ) /* V810 code */
 	ROM_LOAD32_BYTE( "sx007-04.4b",   0x00003, 0x20000,   CRC(fa15459f) SHA1(4163ab842943705c550f137abbdd2cb51ba5390f) )
 	ROM_LOAD32_BYTE( "sx007-03.4j",   0x00002, 0x20000,   CRC(71a438ea) SHA1(613bab6a59aa1bced2ab37177c61a0fd7ce7e64f) )
 	ROM_LOAD32_BYTE( "sx007-02.4m",   0x00001, 0x20000,   CRC(61911eed) SHA1(1442b3867b85120ba652ec8205d74332addffb67) )
@@ -639,13 +645,13 @@ static DRIVER_INIT(nratechu)
 static DRIVER_INIT(mayjinsn)
 {
 	st0016_game=4|0x80;
-	memory_set_bankptr(2, memory_region(machine, REGION_USER1));
+	memory_set_bankptr(2, memory_region(machine, "user1"));
 }
 
 static DRIVER_INIT(mayjisn2)
 {
 	st0016_game=4;
-	memory_set_bankptr(2, memory_region(machine, REGION_USER1));
+	memory_set_bankptr(2, memory_region(machine, "user1"));
 }
 
 /*************************************

@@ -148,7 +148,7 @@ static WRITE8_HANDLER( ppmast93_bgram_w )
 
 static WRITE8_HANDLER( ppmast93_port4_w )
 {
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 	int bank;
 
 	coin_counter_w(0, data & 0x08);
@@ -159,7 +159,7 @@ static WRITE8_HANDLER( ppmast93_port4_w )
 }
 
 static ADDRESS_MAP_START( ppmast93_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM) AM_WRITENOP AM_REGION(REGION_CPU1, 0x10000)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM) AM_WRITENOP AM_REGION("main", 0x10000)
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xd000, 0xd7ff) AM_RAM_WRITE(ppmast93_bgram_w) AM_BASE(&ppmast93_bgram) AM_SHARE(1)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITENOP
@@ -180,7 +180,7 @@ static ADDRESS_MAP_START( ppmast93_cpu1_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ppmast93_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xfbff) AM_ROM AM_REGION(REGION_CPU2, 0x10000)
+	AM_RANGE(0x0000, 0xfbff) AM_ROM AM_REGION("sub", 0x10000)
 	AM_RANGE(0xfc00, 0xfc00) AM_READ(soundlatch_r)
 	AM_RANGE(0xfd00, 0xffff) AM_RAM
 ADDRESS_MAP_END
@@ -190,19 +190,19 @@ static WRITE8_HANDLER(ppmast_sound_w)
 {
 	switch(offset&0xff)
 	{
-		case 0: YM2413_register_port_0_w(machine,0,data); break;
-		case 1: YM2413_data_port_0_w(machine,0,data); break;
-		case 2: DAC_0_data_w(machine,0,data);break;
+		case 0: ym2413_register_port_0_w(machine,0,data); break;
+		case 1: ym2413_data_port_0_w(machine,0,data); break;
+		case 2: dac_0_data_w(machine,0,data);break;
 		default: logerror("%x %x - %x\n",offset,data,activecpu_get_previouspc());
 	}
 }
 
 static ADDRESS_MAP_START( ppmast93_cpu2_io, ADDRESS_SPACE_IO, 8 )
-	  AM_RANGE(0x0000, 0xffff) AM_READ(SMH_ROM) AM_WRITE(ppmast_sound_w) AM_REGION(REGION_CPU2, 0x20000)
+	  AM_RANGE(0x0000, 0xffff) AM_READ(SMH_ROM) AM_WRITE(ppmast_sound_w) AM_REGION("sub", 0x20000)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( ppmast93 )
-	PORT_START	/* 8bit */
+	PORT_START("P1")	/* 8bit */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_PLAYER(1)
@@ -212,7 +212,7 @@ static INPUT_PORTS_START( ppmast93 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) // nothing?
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START	/* 8bit */
+	PORT_START("P2")	/* 8bit */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_PLAYER(2)
@@ -222,7 +222,7 @@ static INPUT_PORTS_START( ppmast93 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2) // nothing?
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START	/* 8bit */
+	PORT_START("SYSTEM")	/* 8bit */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -232,7 +232,7 @@ static INPUT_PORTS_START( ppmast93 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) // or it always goes to test mode
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 4C_1C ) )
@@ -268,7 +268,7 @@ static INPUT_PORTS_START( ppmast93 )
 	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Very_Hard ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Hard ) )
@@ -304,7 +304,7 @@ static const gfx_layout tiles8x8_layout =
 };
 
 static GFXDECODE_START( ppmast93 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 0, 16 )
 GFXDECODE_END
 
 static TILE_GET_INFO( get_ppmast93_bg_tile_info )
@@ -344,12 +344,12 @@ static VIDEO_UPDATE( ppmast93 )
 
 static MACHINE_DRIVER_START( ppmast93 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,5000000)		 /* 5 MHz */
+	MDRV_CPU_ADD("main", Z80,5000000)		 /* 5 MHz */
 	MDRV_CPU_PROGRAM_MAP(ppmast93_cpu1_map,0)
 	MDRV_CPU_IO_MAP(ppmast93_cpu1_io,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80,5000000)		 /* 5 MHz */
+	MDRV_CPU_ADD("sub", Z80,5000000)		 /* 5 MHz */
 	MDRV_CPU_PROGRAM_MAP(ppmast93_cpu2_map,0)
 	MDRV_CPU_IO_MAP(ppmast93_cpu2_io,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold,8000)
@@ -372,26 +372,26 @@ static MACHINE_DRIVER_START( ppmast93 )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2413, 5000000/2)
+	MDRV_SOUND_ADD("ym", YM2413, 5000000/2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 
 MACHINE_DRIVER_END
 
 ROM_START( ppmast93 )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
+	ROM_REGION( 0x30000, "main", 0 )
 	ROM_LOAD( "2.up7", 0x10000, 0x20000, CRC(8854d8db) SHA1(9d93ddfb44d533772af6519747a6cb50b42065cd) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )
+	ROM_REGION( 0x30000, "sub", 0 )
 	ROM_LOAD( "1.ue7", 0x10000, 0x20000, CRC(8e26939e) SHA1(e62441e523f5be6a3889064cc5e0f44545260e93) )
 
-	ROM_REGION( 0x40000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x40000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "3.ug16", 0x00000, 0x20000, CRC(8ab24641) SHA1(c0ebee90bf3fe208947ae5ea56f31469ed24d198) )
 	ROM_LOAD( "4.ug15", 0x20000, 0x20000, CRC(b16e9fb6) SHA1(53aa962c63319cd649e0c8cf0c26e2308598e1aa) )
 
-	ROM_REGION( 0x300, REGION_PROMS, 0 )
+	ROM_REGION( 0x300, "proms", 0 )
 	ROM_LOAD( "prom3.ug24", 0x000, 0x100, CRC(b1a4415a) SHA1(1dd22260f7dbdc9c812a2349069ed5f3c9c92826) )
 	ROM_LOAD( "prom2.ug25", 0x100, 0x100, CRC(4b5055ba) SHA1(6213e79492d35593c643ef5c01ce6a58a77866aa) )
 	ROM_LOAD( "prom1.ug26", 0x200, 0x100, CRC(d979c64e) SHA1(172c9579013d58e35a5b4f732e360811ac36295e) )

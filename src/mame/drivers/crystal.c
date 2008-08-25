@@ -132,10 +132,10 @@ static UINT32 *workram,*textureram,*frameram;
 static UINT32 *sysregs,*vidregs;
 static UINT32 Bank;
 static UINT8 FlipCount,IntHigh;
-static UINT32 Timer0ctrl,Timer1ctrl,Timer2ctrl,Timer3ctrl;
-static void *Timer0,*Timer1,*Timer2,*Timer3;
+static UINT32 Timerctrl[4];
+static emu_timer *Timer[4];
 static UINT32 FlashCmd,PIO;
-static UINT32 DMA0ctrl,DMA1ctrl;
+static UINT32 DMActrl[2];
 static UINT8 OldPort4;
 static UINT32 *ResetPatch;
 
@@ -181,12 +181,12 @@ static WRITE32_HANDLER(FlipCount_w)
 static READ32_HANDLER(Input_r)
 {
 	if(offset == 0)
-		return input_port_read(machine, "IN0")|(input_port_read(machine, "IN1")<<16);
+		return input_port_read(machine, "P1_P2");
 	else if(offset == 1)
-		return input_port_read(machine, "IN2")|(input_port_read(machine, "IN3")<<16);
+		return input_port_read(machine, "P3_P4");
 	else if(offset == 2)
 	{
-		UINT8 Port4 = input_port_read(machine, "IN4");
+		UINT8 Port4 = input_port_read(machine, "SYSTEM");
 		if(!(Port4 & 0x10) && ((OldPort4^Port4) & 0x10))	//coin buttons trigger IRQs
 			IntReq(machine, 12);
 		if(!(Port4 & 0x20) && ((OldPort4^Port4) & 0x20))
@@ -230,121 +230,75 @@ static WRITE32_HANDLER(Banksw_w)
 {
 	Bank=(data>>1)&7;
 	if(Bank<=2)
-		memory_set_bankptr(1,memory_region(machine, REGION_USER1)+Bank*0x1000000);
+		memory_set_bankptr(1,memory_region(machine, "user1")+Bank*0x1000000);
 	else
-		memory_set_bankptr(1,memory_region(machine, REGION_USER2));
+		memory_set_bankptr(1,memory_region(machine, "user2"));
 }
 
-static TIMER_CALLBACK( Timer0cb )
+static TIMER_CALLBACK( Timercb )
 {
-	if(!(Timer0ctrl&2))
-		Timer0ctrl&=~1;
-	IntReq(machine, 0);
+	int which = (int)(FPTR)ptr;
+	static const int num[] = { 0, 1, 9, 10 };
+
+	if(!(Timerctrl[which]&2))
+		Timerctrl[which]&=~1;
+	IntReq(machine, num[which]);
+}
+
+INLINE void Timer_w(int which, UINT32 data, UINT32 mem_mask)
+{
+	if(((data^Timerctrl[which])&1) && (data&1))	//Timer activate
+	{
+		int PD=(data>>8)&0xff;
+		int TCV=program_read_dword_32le(0x01801404+which*8);
+		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
+
+		if(Timerctrl[which]&2)
+			timer_adjust_periodic(Timer[which],period,0,period);
+		else
+			timer_adjust_oneshot(Timer[which],period,0);
+	}
+	COMBINE_DATA(&Timerctrl[which]);
 }
 
 static WRITE32_HANDLER(Timer0_w)
 {
-	if(((data^Timer0ctrl)&1) && (data&1))	//Timer activate
-	{
-		int PD=(data>>8)&0xff;
-		int TCV=program_read_dword_32le(0x01801404);
-		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
-
-		if(Timer0ctrl&2)
-			timer_adjust_periodic(Timer0,period,0,period);
-		else
-			timer_adjust_oneshot(Timer0,period,0);
-	}
-	COMBINE_DATA(&Timer0ctrl);
+	Timer_w(0, data, mem_mask);
 }
 
 static READ32_HANDLER(Timer0_r)
 {
-	return Timer0ctrl;
-}
-
-static TIMER_CALLBACK( Timer1cb )
-{
-	if(!(Timer1ctrl&2))
-		Timer1ctrl&=~1;
-	IntReq(machine, 1);
+	return Timerctrl[0];
 }
 
 static WRITE32_HANDLER(Timer1_w)
 {
-	if(((data^Timer1ctrl)&1) && (data&1))	//Timer activate
-	{
-		int PD=(data>>8)&0xff;
-		int TCV=program_read_dword_32le(0x0180140C);
-		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
-
-		if(Timer1ctrl&2)
-			timer_adjust_periodic(Timer1,period,0,period);
-		else
-			timer_adjust_oneshot(Timer1,period,0);
-	}
-	COMBINE_DATA(&Timer1ctrl);
+	Timer_w(1, data, mem_mask);
 }
 
 static READ32_HANDLER(Timer1_r)
 {
-	return Timer1ctrl;
-}
-
-static TIMER_CALLBACK( Timer2cb )
-{
-	if(!(Timer2ctrl&2))
-		Timer2ctrl&=~1;
-	IntReq(machine, 9);
+	return Timerctrl[1];
 }
 
 static WRITE32_HANDLER(Timer2_w)
 {
-	if(((data^Timer2ctrl)&1) && (data&1))	//Timer activate
-	{
-		int PD=(data>>8)&0xff;
-		int TCV=program_read_dword_32le(0x01801414);
-		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
-
-		if(Timer2ctrl&2)
-			timer_adjust_periodic(Timer2,period,0,period);
-		else
-			timer_adjust_oneshot(Timer2,period,0);
-	}
-	COMBINE_DATA(&Timer2ctrl);
+	Timer_w(2, data, mem_mask);
 }
 
 static READ32_HANDLER(Timer2_r)
 {
-	return Timer2ctrl;
-}
-
-static TIMER_CALLBACK( Timer3cb )
-{
-	if(!(Timer3ctrl&2))
-		Timer3ctrl&=~1;
-	IntReq(machine, 10);
+	return Timerctrl[2];
 }
 
 static WRITE32_HANDLER(Timer3_w)
 {
-	if(((data^Timer3ctrl)&1) && (data&1))	//Timer activate
-	{
-		int PD=(data>>8)&0xff;
-		int TCV=program_read_dword_32le(0x0180141C);
-		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
-
-		if(Timer3ctrl&2)
-			timer_adjust_periodic(Timer3,period,0,period);
-		else
-			timer_adjust_oneshot(Timer3,period,0);
-	}
-	COMBINE_DATA(&Timer3ctrl);
+	Timer_w(3, data, mem_mask);
 }
 
 static READ32_HANDLER(Timer3_r)
 {
-	return Timer3ctrl;
+	return Timerctrl[3];
 }
 
 static READ32_HANDLER(FlashCmd_r)
@@ -353,7 +307,7 @@ static READ32_HANDLER(FlashCmd_r)
 	{
 		if(Bank<=2)
 		{
-			UINT32 *ptr=(UINT32*)(memory_region(machine, REGION_USER1)+Bank*0x1000000);
+			UINT32 *ptr=(UINT32*)(memory_region(machine, "user1")+Bank*0x1000000);
 			return ptr[0];
 		}
 		else
@@ -397,96 +351,65 @@ static WRITE32_HANDLER(PIO_w)
 	COMBINE_DATA(&PIO);
 }
 
+INLINE void DMA_w(running_machine *machine, int which, UINT32 data, UINT32 mem_mask)
+{
+	if(((data^DMActrl[which])&(1<<10)) && (data&(1<<10)))	//DMAOn
+	{
+		UINT32 CTR=data;
+		UINT32 SRC=program_read_dword_32le(0x01800804+which*0x10);
+		UINT32 DST=program_read_dword_32le(0x01800808+which*0x10);
+		UINT32 CNT=program_read_dword_32le(0x0180080C+which*0x10);
+		int i;
+
+		if(CTR&0x2)	//32 bits
+		{
+			for(i=0;i<CNT;++i)
+			{
+				UINT32 v=program_read_dword_32le(SRC+i*4);
+				program_write_dword_32le(DST+i*4,v);
+			}
+		}
+		else if(CTR&0x1)	//16 bits
+		{
+			for(i=0;i<CNT;++i)
+			{
+				UINT16 v=program_read_word_32le(SRC+i*2);
+				program_write_word_32le(DST+i*2,v);
+			}
+		}
+		else	//8 bits
+		{
+			for(i=0;i<CNT;++i)
+			{
+				UINT8 v=program_read_byte_32le(SRC+i);
+				program_write_byte_32le(DST+i,v);
+			}
+		}
+		data&=~(1<<10);
+		program_write_dword_32le(0x0180080C+which*0x10,0);
+		IntReq(machine, 7+which);
+	}
+	COMBINE_DATA(&DMActrl[which]);
+}
+
 static READ32_HANDLER(DMA0_r)
 {
-	return DMA0ctrl;
+	return DMActrl[0];
 }
 
 static WRITE32_HANDLER(DMA0_w)
 {
-	if(((data^DMA0ctrl)&(1<<10)) && (data&(1<<10)))	//DMAOn
-	{
-		UINT32 CTR=data;
-		UINT32 SRC=program_read_dword_32le(0x01800804);
-		UINT32 DST=program_read_dword_32le(0x01800808);
-		UINT32 CNT=program_read_dword_32le(0x0180080C);
-		int i;
-
-		if(CTR&0x2)	//32 bits
-		{
-			for(i=0;i<CNT;++i)
-			{
-				UINT32 v=program_read_dword_32le(SRC+i*4);
-				program_write_dword_32le(DST+i*4,v);
-			}
-		}
-		else if(CTR&0x1)	//16 bits
-		{
-			for(i=0;i<CNT;++i)
-			{
-				UINT16 v=program_read_word_32le(SRC+i*2);
-				program_write_word_32le(DST+i*2,v);
-			}
-		}
-		else	//8 bits
-		{
-			for(i=0;i<CNT;++i)
-			{
-				UINT8 v=program_read_byte_32le(SRC+i);
-				program_write_byte_32le(DST+i,v);
-			}
-		}
-		data&=~(1<<10);
-		program_write_dword_32le(0x0180080C,0);
-		IntReq(machine, 7);
-	}
-	COMBINE_DATA(&DMA0ctrl);
+	DMA_w(machine, 0, data, mem_mask);
 }
 
 static READ32_HANDLER(DMA1_r)
 {
-	return DMA1ctrl;
+	return DMActrl[1];
 }
 
 static WRITE32_HANDLER(DMA1_w)
 {
-	if(((data^DMA1ctrl)&(1<<10)) && (data&(1<<10)))	//DMAOn
-	{
-		UINT32 CTR=data;
-		UINT32 SRC=program_read_dword_32le(0x01800814);
-		UINT32 DST=program_read_dword_32le(0x01800818);
-		UINT32 CNT=program_read_dword_32le(0x0180081C);
-		int i;
-
-		if(CTR&0x2)	//32 bits
-		{
-			for(i=0;i<CNT;++i)
-			{
-				UINT32 v=program_read_dword_32le(SRC+i*4);
-				program_write_dword_32le(DST+i*4,v);
-			}
-		}
-		else if(CTR&0x1)	//16 bits
-		{
-			for(i=0;i<CNT;++i)
-			{
-				UINT16 v=program_read_word_32le(SRC+i*2);
-				program_write_word_32le(DST+i*2,v);
-			}
-		}
-		else	//8 bits
-		{
-			for(i=0;i<CNT;++i)
-			{
-				UINT8 v=program_read_byte_32le(SRC+i);
-				program_write_byte_32le(DST+i,v);
-			}
-		}
-		data&=~(1<<10);
-		program_write_dword_32le(0x0180081C,0);
-		IntReq(machine, 8);
-	}
-	COMBINE_DATA(&DMA1ctrl);
+	DMA_w(machine, 1, data, mem_mask);
 }
 
 
@@ -515,7 +438,7 @@ static ADDRESS_MAP_START( crystal_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x03000000, 0x0300ffff) AM_RAM AM_BASE(&vidregs)
 	AM_RANGE(0x03800000, 0x03ffffff) AM_RAM AM_BASE(&textureram)
 	AM_RANGE(0x04000000, 0x047fffff) AM_RAM AM_BASE(&frameram)
-	AM_RANGE(0x04800000, 0x04800fff) AM_READ(VR0_Snd_Read) AM_WRITE(VR0_Snd_Write)
+	AM_RANGE(0x04800000, 0x04800fff) AM_READ(vr0_snd_read) AM_WRITE(vr0_snd_write)
 
 	AM_RANGE(0x05000000, 0x05000003) AM_READ(FlashCmd_r) AM_WRITE(FlashCmd_w)
 	AM_RANGE(0x05000000, 0x05ffffff) AM_READ(SMH_BANK1)
@@ -572,39 +495,41 @@ loop:
 #endif
 }
 
+static MACHINE_START(crystal)
+{
+	int i;
+
+	cpunum_set_irq_callback(0,icallback);
+	for (i=0; i<4; i++)
+		Timer[i] = timer_alloc(Timercb, (void*)(FPTR)i);
+
+	PatchReset();
+}
+
 static MACHINE_RESET(crystal)
 {
+	int i;
+
 	memset(sysregs,0,0x10000);
 	memset(vidregs,0,0x10000);
 	FlipCount=0;
 	IntHigh=0;
 	cpunum_set_irq_callback(0,icallback);
 	Bank=0;
-	memory_set_bankptr(1,memory_region(machine, REGION_USER1)+0);
+	memory_set_bankptr(1,memory_region(machine, "user1")+0);
 	FlashCmd=0xff;
 	OldPort4=0;
 
-	DMA0ctrl=0;
-	DMA1ctrl=0;
+	DMActrl[0]=0;
+	DMActrl[1]=0;
 
-	Timer0ctrl=0;
-	Timer1ctrl=0;
-	Timer2ctrl=0;
-	Timer3ctrl=0;
+	for (i=0; i<4; i++)
+	{
+		Timerctrl[i]=0;
+		timer_adjust_oneshot(Timer[i],attotime_never,0);
+	}
 
-	Timer0=timer_alloc(Timer0cb, NULL);
-	timer_adjust_oneshot(Timer0,attotime_never,0);
-
-	Timer1=timer_alloc(Timer1cb, NULL);
-	timer_adjust_oneshot(Timer1,attotime_never,0);
-
-	Timer2=timer_alloc(Timer2cb, NULL);
-	timer_adjust_oneshot(Timer2,attotime_never,0);
-
-	Timer3=timer_alloc(Timer3cb, NULL);
-	timer_adjust_oneshot(Timer3,attotime_never,0);
-
-	VR0_Snd_Set_Areas(textureram,frameram);
+	vr0_snd_set_areas(textureram,frameram);
 #ifdef IDLE_LOOP_SPEEDUP
 	FlipCntRead=0;
 #endif
@@ -719,47 +644,49 @@ static INTERRUPT_GEN(crystal_interrupt)
 }
 
 static INPUT_PORTS_START(crystal)
-	PORT_START_TAG("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
+	PORT_START("P1_P2")
+	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x00000008, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x00000010, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_BIT( 0x00000020, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
+	PORT_BIT( 0x00000040, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
+	PORT_BIT( 0x00000080, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
+	PORT_BIT( 0x0000ff00, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
+	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+	PORT_BIT( 0x00040000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT( 0x00080000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
+	PORT_BIT( 0x00100000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT( 0x00200000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
+	PORT_BIT( 0x00400000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+	PORT_BIT( 0x00800000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
+	PORT_BIT( 0xff000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(4)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(3)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(4)
+	PORT_START("P3_P4")
+	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
+	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
+	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
+	PORT_BIT( 0x00000008, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(4)
+	PORT_BIT( 0x00000010, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
+	PORT_BIT( 0x00000020, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
+	PORT_BIT( 0x00000040, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(3)
+	PORT_BIT( 0x00000080, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(4)
+	PORT_BIT( 0x0000ff00, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN3")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(3)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(4)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(3)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(4)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(3)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(4)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(3)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(4)
+	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(3)
+	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(4)
+	PORT_BIT( 0x00040000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(3)
+	PORT_BIT( 0x00080000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(4)
+	PORT_BIT( 0x00100000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(3)
+	PORT_BIT( 0x00200000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(4)
+	PORT_BIT( 0x00400000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(3)
+	PORT_BIT( 0x00800000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(4)
+	PORT_BIT( 0xff000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN4")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )
@@ -769,7 +696,7 @@ static INPUT_PORTS_START(crystal)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Pause ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -794,20 +721,20 @@ static INPUT_PORTS_START(crystal)
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Test ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-
 INPUT_PORTS_END
 
-static const struct VR0Interface vr0_interface =
+static const vr0_interface vr0_config =
 {
 	0x04800000
 };
 
 
 static MACHINE_DRIVER_START( crystal )
-	MDRV_CPU_ADD(SE3208, 43000000)
+	MDRV_CPU_ADD("main", SE3208, 43000000)
 	MDRV_CPU_PROGRAM_MAP(crystal_mem,0)
  	MDRV_CPU_VBLANK_INT("main", crystal_interrupt)
 
+	MDRV_MACHINE_START(crystal)
 	MDRV_MACHINE_RESET(crystal)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -828,8 +755,8 @@ static MACHINE_DRIVER_START( crystal )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(VRENDER0, 0)
-	MDRV_SOUND_CONFIG(vr0_interface)
+	MDRV_SOUND_ADD("vrender", VRENDER0, 0)
+	MDRV_SOUND_CONFIG(vr0_config)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
@@ -847,64 +774,64 @@ static MACHINE_DRIVER_START( topbladv )
 MACHINE_DRIVER_END
 
 ROM_START( crysbios )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 ) // bios
+	ROM_REGION( 0x20000, "main", 0 ) // bios
 	ROM_LOAD("mx27l1000.u14",  0x000000, 0x020000, CRC(BEFF39A9) SHA1(b6f6dda58d9c82273f9422c1bd623411e58982cb) )
 
-	ROM_REGION32_LE( 0x3000000, REGION_USER1, ROMREGION_ERASEFF ) // Flash
+	ROM_REGION32_LE( 0x3000000, "user1", ROMREGION_ERASEFF ) // Flash
 
-	ROM_REGION( 0x10000, REGION_USER2,	ROMREGION_ERASEFF )	//Unmapped flash
+	ROM_REGION( 0x10000, "user2",	ROMREGION_ERASEFF )	//Unmapped flash
 ROM_END
 
 ROM_START( crysking )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 ) // bios
+	ROM_REGION( 0x20000, "main", 0 ) // bios
 	ROM_LOAD("mx27l1000.u14",  0x000000, 0x020000, CRC(BEFF39A9) SHA1(b6f6dda58d9c82273f9422c1bd623411e58982cb))
 
-	ROM_REGION32_LE( 0x3000000, REGION_USER1, 0 ) // Flash
+	ROM_REGION32_LE( 0x3000000, "user1", 0 ) // Flash
 	ROM_LOAD("bcsv0004f01.u1",  0x0000000, 0x1000000, CRC(8FEFF120) SHA1(2ea42fa893bff845b5b855e2556789f8354e9066) )
 	ROM_LOAD("bcsv0004f02.u2",  0x1000000, 0x1000000, CRC(0E799845) SHA1(419674ce043cb1efb18303f4cb7fdbbae642ee39) )
 	ROM_LOAD("bcsv0004f03.u3",  0x2000000, 0x1000000, CRC(659E2D17) SHA1(342c98f3f695ef4dea8b533612451c4d2fb58809) )
 
-	ROM_REGION( 0x10000, REGION_USER2,	ROMREGION_ERASEFF )	//Unmapped flash
+	ROM_REGION( 0x10000, "user2",	ROMREGION_ERASEFF )	//Unmapped flash
 ROM_END
 
 ROM_START( evosocc )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 ) // bios
+	ROM_REGION( 0x20000, "main", 0 ) // bios
 	ROM_LOAD("mx27l1000.u14",  0x000000, 0x020000, CRC(BEFF39A9) SHA1(b6f6dda58d9c82273f9422c1bd623411e58982cb))
 
-	ROM_REGION32_LE( 0x3000000, REGION_USER1, 0 ) // Flash
+	ROM_REGION32_LE( 0x3000000, "user1", 0 ) // Flash
 	ROM_LOAD("bcsv0001u01",  0x0000000, 0x1000000, CRC(2581A0EA) SHA1(ee483ac60a3ed00a21cb515974cec4af19916a7d) )
 	ROM_LOAD("bcsv0001u02",  0x1000000, 0x1000000, CRC(47EF1794) SHA1(f573706c17d1342b9b7aed9b40b8b648f0bf58db) )
 	ROM_LOAD("bcsv0001u03",  0x2000000, 0x1000000, CRC(F396A2EC) SHA1(f305eb10856fb5d4c229a6b09d6a2fb21b24ce66) )
 
-	ROM_REGION( 0x10000, REGION_USER2,	ROMREGION_ERASEFF )	//Unmapped flash
+	ROM_REGION( 0x10000, "user2",	ROMREGION_ERASEFF )	//Unmapped flash
 ROM_END
 
 ROM_START( topbladv )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 ) // bios
+	ROM_REGION( 0x20000, "main", 0 ) // bios
 	ROM_LOAD("mx27l1000.u14",  0x000000, 0x020000, CRC(BEFF39A9) SHA1(b6f6dda58d9c82273f9422c1bd623411e58982cb))
 
-	ROM_REGION32_LE( 0x1000000, REGION_USER1, 0 ) // Flash
+	ROM_REGION32_LE( 0x1000000, "user1", 0 ) // Flash
 	ROM_LOAD("flash.u1",  0x0000000, 0x1000000, CRC(bd23f640) SHA1(1d22aa2c828642bb7c1dfea4e13f777f95acc701) )
 
-	ROM_REGION( 0x10000, REGION_USER2,	ROMREGION_ERASEFF )	//Unmapped flash
+	ROM_REGION( 0x10000, "user2",	ROMREGION_ERASEFF )	//Unmapped flash
 ROM_END
 
 
 ROM_START( officeye )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 ) // bios (not the standard one)
+	ROM_REGION( 0x20000, "main", 0 ) // bios (not the standard one)
 	ROM_LOAD("bios.u14",  0x000000, 0x020000, CRC(ffc57e90) SHA1(6b6a17fd4798dea9c7b880f3063be8494e7db302) )
 
-	ROM_REGION32_LE( 0x2000000, REGION_USER1, 0 ) // Flash
+	ROM_REGION32_LE( 0x2000000, "user1", 0 ) // Flash
 	ROM_LOAD("flash.u1",  0x0000000, 0x1000000, CRC(d3f3eec4) SHA1(ea728415bd4906964b7d37f4379a8a3bd42a1c2d) )
 	ROM_LOAD("flash.u2",  0x1000000, 0x1000000, CRC(e4f85d0a) SHA1(2ddfa6b3a30e69754aa9d96434ff3d37784bfa57) )
 
-	ROM_REGION( 0x10000, REGION_USER2,	ROMREGION_ERASEFF )	//Unmapped flash
+	ROM_REGION( 0x10000, "user2",	ROMREGION_ERASEFF )	//Unmapped flash
 ROM_END
 
 
 static DRIVER_INIT(crysking)
 {
-	UINT16 *Rom=(UINT16*) memory_region(machine, REGION_USER1);
+	UINT16 *Rom=(UINT16*) memory_region(machine, "user1");
 
 	//patch the data feed by the protection
 
@@ -923,7 +850,7 @@ static DRIVER_INIT(crysking)
 
 static DRIVER_INIT(evosocc)
 {
-	UINT16 *Rom=(UINT16*) memory_region(machine, REGION_USER1);
+	UINT16 *Rom=(UINT16*) memory_region(machine, "user1");
 	Rom+=0x1000000*2/2;
 
 	Rom[WORD_XOR_LE(0x97388E/2)]=0x90FC;	//PUSH R2..R7
@@ -941,7 +868,7 @@ static DRIVER_INIT(evosocc)
 
 static DRIVER_INIT(topbladv)
 {
-	UINT16 *Rom=(UINT16*) memory_region(machine, REGION_USER1);
+	UINT16 *Rom=(UINT16*) memory_region(machine, "user1");
 
 	Rom[WORD_XOR_LE(0x12d7a/2)]=0x90FC;	//PUSH R7-R6-R5-R4-R3-R2
 	Rom[WORD_XOR_LE(0x12d7c/2)]=0x9001;	//PUSH R0
@@ -959,7 +886,7 @@ static DRIVER_INIT(topbladv)
 
 static DRIVER_INIT(officeye)
 {
-	UINT16 *Rom=(UINT16*) memory_region(machine, REGION_USER1);
+	UINT16 *Rom=(UINT16*) memory_region(machine, "user1");
 
 	Rom[WORD_XOR_LE(0x9c9e/2)]=0x901C;	//PUSH R4-R3-R2
 	Rom[WORD_XOR_LE(0x9ca0/2)]=0x9001;	//PUSH R0

@@ -103,15 +103,9 @@ static void cage_irq_callback(running_machine *machine, int reason)
  *
  *************************************/
 
-static READ32_HANDLER( inputs_01_r )
-{
-	return (input_port_read(machine, "IN0") << 16) | input_port_read(machine, "IN1");
-}
-
-
 static READ32_HANDLER( special_port2_r )
 {
-	int temp = input_port_read(machine, "IN2");
+	int temp = input_port_read(machine, "SERVICE");
 	temp ^= 0x0001;		/* /A2DRDY always high for now */
 	temp ^= 0x0008;		/* A2D.EOC always high for now */
 	return (temp << 16) | temp;
@@ -120,7 +114,7 @@ static READ32_HANDLER( special_port2_r )
 
 static READ32_HANDLER( special_port3_r )
 {
-	int temp = input_port_read(machine, "IN3");
+	int temp = input_port_read(machine, "COIN");
 	if (atarigen_video_int_state) temp ^= 0x0001;
 	if (atarigen_scanline_int_state) temp ^= 0x0002;
 	return (temp << 16) | temp;
@@ -167,7 +161,7 @@ static READ32_HANDLER( analog_port0_r )
 	compute_fake_pots(pots);
 	return (pots[0] << 24) | (pots[3] << 8);
 #else
-	return (input_port_read(machine, "IN4") << 24) | (input_port_read(machine, "IN5") << 8);
+	return (input_port_read(machine, "AN1") << 24) | (input_port_read(machine, "AN2") << 8);
 #endif
 }
 
@@ -179,7 +173,7 @@ static READ32_HANDLER( analog_port1_r )
 	compute_fake_pots(pots);
 	return (pots[2] << 24) | (pots[1] << 8);
 #else
-	return (input_port_read(machine, "IN6") << 24) | (input_port_read(machine, "IN7") << 8);
+	return (input_port_read(machine, "AN3") << 24) | (input_port_read(machine, "AN4") << 8);
 #endif
 }
 
@@ -292,9 +286,7 @@ static void tmek_update_mode(offs_t offset)
 
 static void tmek_protection_w(offs_t offset, UINT16 data)
 {
-#if LOG_PROTECTION
-	logerror("%06X:Protection W@%06X = %04X\n", activecpu_get_previouspc(), offset, data);
-#endif
+	if (LOG_PROTECTION) logerror("%06X:Protection W@%06X = %04X\n", activecpu_get_previouspc(), offset, data);
 
 	/* track accesses */
 	tmek_update_mode(offset);
@@ -309,9 +301,7 @@ static void tmek_protection_w(offs_t offset, UINT16 data)
 
 static void tmek_protection_r(offs_t offset, UINT16 *data)
 {
-#if LOG_PROTECTION
-	logerror("%06X:Protection R@%06X\n", activecpu_get_previouspc(), offset);
-#endif
+	if (LOG_PROTECTION) logerror("%06X:Protection R@%06X\n", activecpu_get_previouspc(), offset);
 
 	/* track accesses */
 	tmek_update_mode(offset);
@@ -353,21 +343,21 @@ static void primage_update_mode(offs_t offset)
 		/* this is from the code at $20f90 */
 		if (protaddr[1] == 0xdcc7c4 && protaddr[2] == 0xdcc7c4 && protaddr[3] == 0xdc4010)
 		{
-//          logerror("prot:Entering mode 1\n");
+			if (LOG_PROTECTION) logerror("prot:Entering mode 1\n");
 			protmode = 1;
 		}
 
 		/* this is from the code at $27592 */
 		if (protaddr[0] == 0xdcc7ca && protaddr[1] == 0xdcc7ca && protaddr[2] == 0xdcc7c6 && protaddr[3] == 0xdc4022)
 		{
-//          logerror("prot:Entering mode 2\n");
+			if (LOG_PROTECTION) logerror("prot:Entering mode 2\n");
 			protmode = 2;
 		}
 
 		/* this is from the code at $3d8dc */
 		if (protaddr[0] == 0xdcc7c0 && protaddr[1] == 0xdcc7c0 && protaddr[2] == 0xdc80f2 && protaddr[3] == 0xdc7af2)
 		{
-//          logerror("prot:Entering mode 3\n");
+			if (LOG_PROTECTION) logerror("prot:Entering mode 3\n");
 			protmode = 3;
 		}
 	}
@@ -377,8 +367,8 @@ static void primage_update_mode(offs_t offset)
 
 static void primrage_protection_w(offs_t offset, UINT16 data)
 {
-#if LOG_PROTECTION
-{
+	if (LOG_PROTECTION)
+	{
 	UINT32 pc = activecpu_get_previouspc();
 	switch (pc)
 	{
@@ -415,8 +405,7 @@ static void primrage_protection_w(offs_t offset, UINT16 data)
 			logerror("%06X:Unknown protection W@%06X = %04X\n", activecpu_get_previouspc(), offset, data);
 			break;
 	}
-}
-#endif
+	}
 
 /* mask = 0x78fff */
 
@@ -430,7 +419,7 @@ static void primrage_protection_w(offs_t offset, UINT16 data)
 	if (protmode == 2)
 	{
 		int temp = (offset - 0xdc7800) / 2;
-//      logerror("prot:mode 2 param = %04X\n", temp);
+		if (LOG_PROTECTION) logerror("prot:mode 2 param = %04X\n", temp);
 		protresult = temp * 0x6915 + 0x6915;
 	}
 
@@ -438,7 +427,7 @@ static void primrage_protection_w(offs_t offset, UINT16 data)
 	{
 		if (offset == 0xdc4700)
 		{
-//          logerror("prot:Clearing mode 3\n");
+			if (LOG_PROTECTION) logerror("prot:Clearing mode 3\n");
 			protmode = 0;
 		}
 	}
@@ -451,7 +440,7 @@ static void primrage_protection_r(offs_t offset, UINT16 *data)
 	/* track accesses */
 	primage_update_mode(offset);
 
-#if LOG_PROTECTION
+if (LOG_PROTECTION)
 {
 	UINT32 pc = activecpu_get_previouspc();
 	UINT32 p1, p2, a6;
@@ -474,8 +463,8 @@ static void primrage_protection_r(offs_t offset, UINT16 *data)
 			break;
 		case 0x275cc:
 			a6 = activecpu_get_reg(M68K_A6);
-			p1 = (cpu_readmem24bedw_word(a6+8) << 16) | cpu_readmem24bedw_word(a6+10);
-			p2 = (cpu_readmem24bedw_word(a6+12) << 16) | cpu_readmem24bedw_word(a6+14);
+			p1 = (program_read_word(a6+8) << 16) | program_read_word(a6+10);
+			p2 = (program_read_word(a6+12) << 16) | program_read_word(a6+14);
 			logerror("Known Protection @ 275BC(%08X, %08X): R@%06X ", p1, p2, offset);
 			break;
 		case 0x275d2:
@@ -492,7 +481,7 @@ static void primrage_protection_r(offs_t offset, UINT16 *data)
 		/* protection code from 3d8dc - 3d95a */
 		case 0x3d8f4:
 			a6 = activecpu_get_reg(M68K_A6);
-			p1 = (cpu_readmem24bedw_word(a6+12) << 16) | cpu_readmem24bedw_word(a6+14);
+			p1 = (program_read_word(a6+12) << 16) | program_read_word(a6+14);
 			logerror("Known Protection @ 3D8F4(%08X): R@%06X ", p1, offset);
 			break;
 		case 0x3d8fa:
@@ -503,7 +492,7 @@ static void primrage_protection_r(offs_t offset, UINT16 *data)
 		/* protection code from 437fa - 43860 */
 		case 0x43814:
 			a6 = activecpu_get_reg(M68K_A6);
-			p1 = cpu_readmem24bedw(a6+15);
+			p1 = program_read_dword(a6+14) & 0xffffff;
 			logerror("Known Protection @ 43814(%08X): R@%06X ", p1, offset);
 			break;
 		case 0x4381c:
@@ -520,7 +509,6 @@ static void primrage_protection_r(offs_t offset, UINT16 *data)
 			break;
 	}
 }
-#endif
 
 	/* handle specific reads */
 	switch (offset)
@@ -539,7 +527,7 @@ static void primrage_protection_r(offs_t offset, UINT16 *data)
 			{
 				*data = protresult;
 				protmode = 0;
-//              logerror("prot:Clearing mode 2\n");
+			if (LOG_PROTECTION) logerror("prot:Clearing mode 2\n");
 			}
 			break;
 
@@ -547,7 +535,7 @@ static void primrage_protection_r(offs_t offset, UINT16 *data)
 			if (protmode == 1)
 			{
 				protmode = 0;
-//              logerror("prot:Clearing mode 1\n");
+			if (LOG_PROTECTION) logerror("prot:Clearing mode 1\n");
 			}
 			break;
 	}
@@ -628,7 +616,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xe0a000, 0xe0a003) AM_WRITE(atarigen_scanline_int_ack32_w)
 	AM_RANGE(0xe0c000, 0xe0c003) AM_WRITE(atarigen_video_int_ack32_w)
 	AM_RANGE(0xe0e000, 0xe0e003) AM_WRITE(SMH_NOP)//watchdog_reset_w },
-	AM_RANGE(0xe80000, 0xe80003) AM_READ(inputs_01_r)
+	AM_RANGE(0xe80000, 0xe80003) AM_READ_PORT("P1_P2")
 	AM_RANGE(0xe82000, 0xe82003) AM_READ(special_port2_r)
 	AM_RANGE(0xe82004, 0xe82007) AM_READ(special_port3_r)
 	AM_RANGE(0xf80000, 0xffffff) AM_RAM
@@ -642,32 +630,29 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-#define COMMON_IN0\
-	PORT_START_TAG("IN0")\
-	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )\
-	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )\
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)\
-	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)\
-	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)\
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)\
-	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)\
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)\
-	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
-
-#define COMMON_IN1\
-	PORT_START_TAG("IN1")\
-	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )\
-	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START2 )\
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)\
-	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)\
-	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)\
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)\
-	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)\
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)\
-	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+#define COMMON_IN01\
+	PORT_START("P1_P2")\
+	PORT_BIT( 0x000000ff, IP_ACTIVE_LOW, IPT_UNUSED )\
+	PORT_BIT( 0x00000100, IP_ACTIVE_LOW, IPT_START2 )\
+	PORT_BIT( 0x00000200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)\
+	PORT_BIT( 0x00000400, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)\
+	PORT_BIT( 0x00000800, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)\
+	PORT_BIT( 0x00001000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)\
+	PORT_BIT( 0x00002000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)\
+	PORT_BIT( 0x00004000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)\
+	PORT_BIT( 0x00008000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)\
+	PORT_BIT( 0x00ff0000, IP_ACTIVE_LOW, IPT_UNUSED )\
+	PORT_BIT( 0x01000000, IP_ACTIVE_LOW, IPT_START1 )\
+	PORT_BIT( 0x02000000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)\
+	PORT_BIT( 0x04000000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)\
+	PORT_BIT( 0x08000000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)\
+	PORT_BIT( 0x10000000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)\
+	PORT_BIT( 0x20000000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)\
+	PORT_BIT( 0x40000000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)\
+	PORT_BIT( 0x80000000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
 #define COMMON_IN2\
-	PORT_START_TAG("IN2")      /* 68.STATUS (A2=0) */ \
+	PORT_START("SERVICE")      /* 68.STATUS (A2=0) */ \
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_SPECIAL )	/* /A2DRDY */ \
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_TILT )		/* TILT */ \
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SPECIAL )	/* /XIRQ23 */ \
@@ -678,7 +663,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
 #define COMMON_IN3\
-	PORT_START_TAG("IN3")      /* 68.STATUS (A2=1) */ \
+	PORT_START("COIN")      /* 68.STATUS (A2=1) */ \
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_SPECIAL )	/* /VBIRQ */ \
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SPECIAL )	/* /4MSIRQ */ \
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SPECIAL )	/* /XIRQ0 */ \
@@ -690,31 +675,30 @@ ADDRESS_MAP_END
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
 static INPUT_PORTS_START( tmek )
-	COMMON_IN0		/* 68.SW (A1=0) */
-
-	COMMON_IN1		/* 68.SW (A1=1) */
+	COMMON_IN01		/* 68.SW (A1=0) */
+					/* 68.SW (A1=1) */
 
 	COMMON_IN2
 
 	COMMON_IN3
 
 #if (HACK_TMEK_CONTROLS)
-	PORT_START_TAG("FAKE")		/* single digital joystick */
+	PORT_START("FAKE")		/* single digital joystick */
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 #else
-	PORT_START_TAG("IN4")
+	PORT_START("AN1")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
-	PORT_START_TAG("IN5")
+	PORT_START("AN2")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START_TAG("IN6")
+	PORT_START("AN3")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START_TAG("IN7")
+	PORT_START("AN4")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
 #endif
 
@@ -722,24 +706,23 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( primrage )
-	COMMON_IN0		/* 68.SW (A1=0) */
-
-	COMMON_IN1		/* 68.SW (A1=1) bit 0x0008 does something */
+	COMMON_IN01		/* 68.SW (A1=0) */
+					/* 68.SW (A1=1) bit 0x0008 does something */
 
 	COMMON_IN2      /* 68.STATUS (A2=0) */
 
 	COMMON_IN3      /* 68.STATUS (A2=1) */
 
-	PORT_START_TAG("IN4")
+	PORT_START("AN1")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN5")
+	PORT_START("AN2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN6")
+	PORT_START("AN3")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN7")
+	PORT_START("AN4")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -788,9 +771,9 @@ static const gfx_layout anlayout =
 
 
 static GFXDECODE_START( atarigt )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, pflayout, 0x000, 64 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, anlayout, 0x000, 16 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, pftoplayout, 0x000, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0, pflayout, 0x000, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, anlayout, 0x000, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, pftoplayout, 0x000, 64 )
 GFXDECODE_END
 
 
@@ -804,7 +787,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( atarigt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68EC020, ATARI_CLOCK_50MHz/2)
+	MDRV_CPU_ADD("main", M68EC020, ATARI_CLOCK_50MHz/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", atarigen_video_int_gen)
 	MDRV_CPU_PERIODIC_INT(atarigen_scanline_int_gen, 250)
@@ -840,16 +823,16 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( tmek )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )	/* 8*64k for 68000 code */
+	ROM_REGION( 0x200000, "main", 0 )	/* 8*64k for 68000 code */
 	ROM_LOAD32_BYTE( "0044d", 0x00000, 0x20000, CRC(1cd62725) SHA1(7685794d9fbe3fe7a9978d12e489447b4fba5282) )
 	ROM_LOAD32_BYTE( "0043d", 0x00001, 0x20000, CRC(82185051) SHA1(a21aad4f6ec948d9cd47efb89e7811c5c2e4850b) )
 	ROM_LOAD32_BYTE( "0042d", 0x00002, 0x20000, CRC(ef9feda4) SHA1(9fb6e91d4c22e28ced61d0d1f28f5e43191c8762) )
 	ROM_LOAD32_BYTE( "0041d", 0x00003, 0x20000, CRC(179da056) SHA1(5f7ddf44aab55beaf2c377b0c93279acb6273255) )
 
-	ROM_REGION32_LE( 0x200000, REGION_USER1, 0 )	/* TMS320C31 boot ROM */
+	ROM_REGION32_LE( 0x200000, "cageboot", 0 )	/* TMS320C31 boot ROM */
 	ROM_LOAD32_BYTE( "0078c", 0x000000, 0x080000, CRC(ff5b979a) SHA1(deb8ee454b6b7c7bddb2ba0c808869e45b19e55f) )
 
-	ROM_REGION32_LE( 0x1000000, REGION_USER2, 0 )	/* TMS320C31 sound ROMs */
+	ROM_REGION32_LE( 0x1000000, "cage", 0 )	/* TMS320C31 sound ROMs */
 	ROM_LOAD32_WORD( "0077",  0x400000, 0x200000, CRC(8f650f8b) SHA1(e3b48ff4e2093d709134b6bf62cecd101ab5cef4) )
 	ROM_LOAD32_BYTE( "2501a", 0x400002, 0x080000, CRC(98e51103) SHA1(420d0aac6b1de1bd990b9e4219041192400299f8) )
 	ROM_LOAD32_BYTE( "2500a", 0x400003, 0x080000, CRC(49c0136c) SHA1(1ad463b1e50df9843abb8c645cbe8a79e42cbb87) )
@@ -858,7 +841,7 @@ ROM_START( tmek )
 	ROM_LOAD32_WORD( "0076",  0x800000, 0x200000, CRC(74dffe2d) SHA1(9436f69827050ad2f3be58f1cb57d7a06b75ab61) )
 	ROM_LOAD32_WORD( "0074",  0x800002, 0x200000, CRC(8dfc6ce0) SHA1(5b0d4dd4cb7934f542e67217a2542a3c69558cea) )
 
-	ROM_REGION( 0x300000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x300000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "0250",  0x000000, 0x80000, CRC(56bd9f25) SHA1(a8161aeee274f28c41f82b6b3f63570970ee281d) ) /* playfield, planes 0-1 */
 	ROM_LOAD( "0253a", 0x080000, 0x80000, CRC(23e2f83d) SHA1(804a17ce8768bd48cda853e55fc1f54ed7475968) )
 	ROM_LOAD( "0251",  0x100000, 0x80000, CRC(0d3b08f7) SHA1(72ec2383011ef20e9054594279cc85fa55c3a9b2) ) /* playfield, planes 2-3 */
@@ -866,10 +849,10 @@ ROM_START( tmek )
 	ROM_LOAD( "0252",  0x200000, 0x80000, CRC(95a1c23b) SHA1(74eb69dcaebd7a7a03d8f7c9bf6183ece695e91d) ) /* playfield, planes 4-5 */
 	ROM_LOAD( "0255a", 0x280000, 0x80000, CRC(f0fbb700) SHA1(3f0355b137f6426a07abab77f25e718c6102a16f) )
 
-	ROM_REGION( 0x020000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x020000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "0045a", 0x000000, 0x20000, CRC(057a5304) SHA1(d44c0cf885a1324888b7e8118f124c0dae616859) ) /* alphanumerics */
 
-	ROM_REGION16_BE( 0x1000000, REGION_GFX3, 0 )
+	ROM_REGION16_BE( 0x1000000, "gfx3", 0 )
 	ROM_LOAD16_BYTE( "0300", 0x000001, 0x100000, CRC(8367ddac) SHA1(9ca77962259284cef8a261b652ab1327817ee8d0) )
 	ROM_LOAD16_BYTE( "0301", 0x000000, 0x100000, CRC(94524b5b) SHA1(db401fd7ba56658fcb614406672c02569d845930) )
 	ROM_LOAD16_BYTE( "0302", 0x200001, 0x100000, CRC(c03f1aa7) SHA1(c68b52280d0695629c843b9c90f7a39713e063b0) )
@@ -887,7 +870,7 @@ ROM_START( tmek )
 	ROM_LOAD16_BYTE( "0314", 0xe00001, 0x100000, CRC(4f01db8d) SHA1(c18c72f1ccbe6ff18576592548c960f9ce357016) )
 	ROM_LOAD16_BYTE( "0315", 0xe00000, 0x100000, CRC(28e97d06) SHA1(ef115f393c568822cb2cb3cca92c7656e1ee07f9) )
 
-	ROM_REGION( 0x0600, REGION_PROMS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0600, "proms", ROMREGION_DISPOSE )
 	ROM_LOAD( "0001a",  0x0000, 0x0200, CRC(a70ade3f) SHA1(f4a558b17767eed2683c768d1b441e75edcff967) )	/* microcode for growth renderer */
 	ROM_LOAD( "0001b",  0x0200, 0x0200, CRC(f4768b4d) SHA1(a506fa5386ab0ea2851ff1f8474d4bfc66deaa70) )
 	ROM_LOAD( "0001c",  0x0400, 0x0200, CRC(22a76ad4) SHA1(ce840c283bbd3a5f19dc8d91b19d1571eff51ff4) )
@@ -895,16 +878,16 @@ ROM_END
 
 
 ROM_START( tmekprot )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )	/* 8*64k for 68000 code */
+	ROM_REGION( 0x200000, "main", 0 )	/* 8*64k for 68000 code */
 	ROM_LOAD32_BYTE( "pgm0", 0x00000, 0x20000, CRC(f5f7f7be) SHA1(66be472e7c0ef26e2ce2b45488a8e4cfc1b0f80a) )
 	ROM_LOAD32_BYTE( "pgm1", 0x00001, 0x20000, CRC(284f7971) SHA1(5327f6368abd2ab9740a5150a8660c420f750476) )
 	ROM_LOAD32_BYTE( "pgm2", 0x00002, 0x20000, CRC(ce9a77d4) SHA1(025143b59d85180286086940b05c8e5ea0b4a7fe) )
 	ROM_LOAD32_BYTE( "pgm3", 0x00003, 0x20000, CRC(28b0e210) SHA1(7567671beecc7d30e9d4b61cf7d3448bb1dbb072) )
 
-	ROM_REGION32_LE( 0x200000, REGION_USER1, 0 )	/* TMS320C31 boot ROM */
+	ROM_REGION32_LE( 0x200000, "cageboot", 0 )	/* TMS320C31 boot ROM */
 	ROM_LOAD32_BYTE( "0078c", 0x000000, 0x080000, NO_DUMP CRC(ff5b979a) SHA1(deb8ee454b6b7c7bddb2ba0c808869e45b19e55f) )
 
-	ROM_REGION32_LE( 0x1000000, REGION_USER2, 0 )	/* TMS320C31 sound ROMs */
+	ROM_REGION32_LE( 0x1000000, "cage", 0 )	/* TMS320C31 sound ROMs */
 	ROM_LOAD32_WORD( "0077",  0x400000, 0x200000, CRC(8f650f8b) SHA1(e3b48ff4e2093d709134b6bf62cecd101ab5cef4) )
 	ROM_LOAD32_BYTE( "2501a", 0x400002, 0x080000, CRC(98e51103) SHA1(420d0aac6b1de1bd990b9e4219041192400299f8) )
 	ROM_LOAD32_BYTE( "2500a", 0x400003, 0x080000, CRC(49c0136c) SHA1(1ad463b1e50df9843abb8c645cbe8a79e42cbb87) )
@@ -913,7 +896,7 @@ ROM_START( tmekprot )
 	ROM_LOAD32_WORD( "0076",  0x800000, 0x200000, CRC(74dffe2d) SHA1(9436f69827050ad2f3be58f1cb57d7a06b75ab61) )
 	ROM_LOAD32_WORD( "0074",  0x800002, 0x200000, CRC(8dfc6ce0) SHA1(5b0d4dd4cb7934f542e67217a2542a3c69558cea) )
 
-	ROM_REGION( 0x300000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x300000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "0250",  0x000000, 0x80000, CRC(56bd9f25) SHA1(a8161aeee274f28c41f82b6b3f63570970ee281d) ) /* playfield, planes 0-1 */
 	ROM_LOAD( "0253a", 0x080000, 0x80000, CRC(23e2f83d) SHA1(804a17ce8768bd48cda853e55fc1f54ed7475968) )
 	ROM_LOAD( "0251",  0x100000, 0x80000, CRC(0d3b08f7) SHA1(72ec2383011ef20e9054594279cc85fa55c3a9b2) ) /* playfield, planes 2-3 */
@@ -921,10 +904,10 @@ ROM_START( tmekprot )
 	ROM_LOAD( "0252",  0x200000, 0x80000, CRC(95a1c23b) SHA1(74eb69dcaebd7a7a03d8f7c9bf6183ece695e91d) ) /* playfield, planes 4-5 */
 	ROM_LOAD( "0255a", 0x280000, 0x80000, CRC(f0fbb700) SHA1(3f0355b137f6426a07abab77f25e718c6102a16f) )
 
-	ROM_REGION( 0x020000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x020000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "alpha", 0x000000, 0x20000, CRC(8f57a604) SHA1(f076636430ff73ea11e4687ef7b21a7bac1d8e34) ) /* alphanumerics */
 
-	ROM_REGION16_BE( 0x1000000, REGION_GFX3, 0 )
+	ROM_REGION16_BE( 0x1000000, "gfx3", 0 )
 	ROM_LOAD16_BYTE( "0300", 0x000001, 0x100000, CRC(8367ddac) SHA1(9ca77962259284cef8a261b652ab1327817ee8d0) )
 	ROM_LOAD16_BYTE( "0301", 0x000000, 0x100000, CRC(94524b5b) SHA1(db401fd7ba56658fcb614406672c02569d845930) )
 	ROM_LOAD16_BYTE( "0302", 0x200001, 0x100000, CRC(c03f1aa7) SHA1(c68b52280d0695629c843b9c90f7a39713e063b0) )
@@ -942,7 +925,7 @@ ROM_START( tmekprot )
 	ROM_LOAD16_BYTE( "0314", 0xe00001, 0x100000, CRC(4f01db8d) SHA1(c18c72f1ccbe6ff18576592548c960f9ce357016) )
 	ROM_LOAD16_BYTE( "0315", 0xe00000, 0x100000, CRC(28e97d06) SHA1(ef115f393c568822cb2cb3cca92c7656e1ee07f9) )
 
-	ROM_REGION( 0x0600, REGION_PROMS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0600, "proms", ROMREGION_DISPOSE )
 	ROM_LOAD( "0001a",  0x0000, 0x0200, CRC(a70ade3f) SHA1(f4a558b17767eed2683c768d1b441e75edcff967) )	/* microcode for growth renderer */
 	ROM_LOAD( "0001b",  0x0200, 0x0200, CRC(f4768b4d) SHA1(a506fa5386ab0ea2851ff1f8474d4bfc66deaa70) )
 	ROM_LOAD( "0001c",  0x0400, 0x0200, CRC(22a76ad4) SHA1(ce840c283bbd3a5f19dc8d91b19d1571eff51ff4) )
@@ -950,28 +933,28 @@ ROM_END
 
 
 ROM_START( primrage )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )	/* 8*64k for 68000 code */
+	ROM_REGION( 0x200000, "main", 0 )	/* 8*64k for 68000 code */
 	ROM_LOAD32_BYTE( "1044b", 0x000000, 0x80000, CRC(35c9c34b) SHA1(4bd1d35cc7c68574819afd648405eedb8db25b4c) )
 	ROM_LOAD32_BYTE( "1043b", 0x000001, 0x80000, CRC(86322829) SHA1(e0e72888def0931d078921f099bae6788738a291) )
 	ROM_LOAD32_BYTE( "1042b", 0x000002, 0x80000, CRC(750e8095) SHA1(4660637136b1a25169d8c43646c8b87081763987) )
 	ROM_LOAD32_BYTE( "1041b", 0x000003, 0x80000, CRC(6a90d283) SHA1(7c18c97cb5e5cdd26a52cd6bc099fbce87055311) )
 
-	ROM_REGION32_LE( 0x200000, REGION_USER1, 0 )	/* TMS320C31 boot ROM */
+	ROM_REGION32_LE( 0x200000, "cageboot", 0 )	/* TMS320C31 boot ROM */
 	ROM_LOAD32_BYTE( "1078a", 0x000000, 0x080000, CRC(0656435f) SHA1(f8e498171e754eb8703dad6b2351509bbb27e06b) )
 
-	ROM_REGION32_LE( 0x1000000, REGION_USER2, 0 )	/* TMS320C31 sound ROMs */
+	ROM_REGION32_LE( 0x1000000, "cage", 0 )	/* TMS320C31 sound ROMs */
 	ROM_LOAD32_WORD( "0075",  0x400000, 0x200000, CRC(b685a88e) SHA1(998b8fe54971f6cd96e4c22b19e3831f29d8172d) )
 	ROM_LOAD32_WORD( "0077",  0x400002, 0x200000, CRC(3283cea8) SHA1(fb7333ca951053a56c501f2ce0eb197c8fcafaf7) )
 
-	ROM_REGION( 0x300000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x300000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "0050a",  0x000000, 0x80000, CRC(66896e8f) SHA1(7675b24c15ca0608f11f2a7b8d70717adb10924c) ) /* playfield, planes 0-1 */
 	ROM_LOAD( "0051a",  0x100000, 0x80000, CRC(fb5b3e7b) SHA1(f43fe4b5c4bbea10da46b60c644f586fb391355d) ) /* playfield, planes 2-3 */
 	ROM_LOAD( "0052a",  0x200000, 0x80000, CRC(cbe38670) SHA1(0780e599007851f6d37cdd8c701d01cb1ae48b9d) ) /* playfield, planes 4-5 */
 
-	ROM_REGION( 0x020000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x020000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "1045b", 0x000000, 0x20000, CRC(1d3260bf) SHA1(85d9db8499cbe180c8d52710f3cfe64453a530ff) ) /* alphanumerics */
 
-	ROM_REGION16_BE( 0x2000000, REGION_GFX3, 0 )
+	ROM_REGION16_BE( 0x2000000, "gfx3", 0 )
 	ROM_LOAD16_BYTE( "1100a", 0x0000001, 0x080000, CRC(6e9c80b5) SHA1(ec724011527dd8707c733211b1a6c51b22f580c7) )
 	ROM_LOAD16_BYTE( "1101a", 0x0000000, 0x080000, CRC(bb7ee624) SHA1(0de6385aee7d25b41fd5bf232e44e5da536504ac) )
 	ROM_LOAD16_BYTE( "0332",  0x0800001, 0x100000, CRC(610cfcb4) SHA1(bed1bd0d11c0a7cc48d020fc0acec34daf48c5ac) )
@@ -999,7 +982,7 @@ ROM_START( primrage )
 	ROM_LOAD16_BYTE( "0330",  0x1e00001, 0x100000, CRC(7bf6bb8f) SHA1(f34bd8a9c7f95436a1c816badc59673cd2a6969a) )
 	ROM_LOAD16_BYTE( "0331",  0x1e00000, 0x100000, CRC(c6a64dad) SHA1(ee54514463ab61cbaef70da064cf5de591e5861f) )
 
-	ROM_REGION( 0x0600, REGION_PROMS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0600, "proms", ROMREGION_DISPOSE )
 	ROM_LOAD( "0001a",  0x0000, 0x0200, CRC(a70ade3f) SHA1(f4a558b17767eed2683c768d1b441e75edcff967) )	/* microcode for growth renderer */
 	ROM_LOAD( "0001b",  0x0200, 0x0200, CRC(f4768b4d) SHA1(a506fa5386ab0ea2851ff1f8474d4bfc66deaa70) )
 	ROM_LOAD( "0001c",  0x0400, 0x0200, CRC(22a76ad4) SHA1(ce840c283bbd3a5f19dc8d91b19d1571eff51ff4) )
@@ -1007,28 +990,28 @@ ROM_END
 
 
 ROM_START( primraga )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )	/* 8*64k for 68000 code */
+	ROM_REGION( 0x200000, "main", 0 )	/* 8*64k for 68000 code */
 	ROM_LOAD32_BYTE( "0044b", 0x000000, 0x80000, CRC(26139575) SHA1(22e59ab621d58e56969b64701fc59aec085193dd) )
 	ROM_LOAD32_BYTE( "0043b", 0x000001, 0x80000, CRC(928d2447) SHA1(9bbbdbf056a7b986d985d79be889b9876a710631) )
 	ROM_LOAD32_BYTE( "0042b", 0x000002, 0x80000, CRC(cd6062b9) SHA1(2973fb561ab68cd48ec132b6720c04d10bedfd19) )
 	ROM_LOAD32_BYTE( "0041b", 0x000003, 0x80000, CRC(3008f6f0) SHA1(45aac457b4584ee3bd3561e3b2e34e49aa61fbc5) )
 
-	ROM_REGION32_LE( 0x200000, REGION_USER1, 0 )	/* TMS320C31 boot ROM */
+	ROM_REGION32_LE( 0x200000, "cageboot", 0 )	/* TMS320C31 boot ROM */
 	ROM_LOAD32_BYTE( "0078a", 0x000000, 0x080000, CRC(91df8d8f) SHA1(6d361f88de604b8f11dd9bfe85ff18bcd322862d) )
 
-	ROM_REGION32_LE( 0x1000000, REGION_USER2, 0 )	/* TMS320C31 sound ROMs */
+	ROM_REGION32_LE( 0x1000000, "cage", 0 )	/* TMS320C31 sound ROMs */
 	ROM_LOAD32_WORD( "0075",  0x400000, 0x200000, CRC(b685a88e) SHA1(998b8fe54971f6cd96e4c22b19e3831f29d8172d) )
 	ROM_LOAD32_WORD( "0077",  0x400002, 0x200000, CRC(3283cea8) SHA1(fb7333ca951053a56c501f2ce0eb197c8fcafaf7) )
 
-	ROM_REGION( 0x300000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x300000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "0050a",  0x000000, 0x80000, CRC(66896e8f) SHA1(7675b24c15ca0608f11f2a7b8d70717adb10924c) ) /* playfield, planes 0-1 */
 	ROM_LOAD( "0051a",  0x100000, 0x80000, CRC(fb5b3e7b) SHA1(f43fe4b5c4bbea10da46b60c644f586fb391355d) ) /* playfield, planes 2-3 */
 	ROM_LOAD( "0052a",  0x200000, 0x80000, CRC(cbe38670) SHA1(0780e599007851f6d37cdd8c701d01cb1ae48b9d) ) /* playfield, planes 4-5 */
 
-	ROM_REGION( 0x020000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x020000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "0045a", 0x000000, 0x20000, CRC(c8b39b1c) SHA1(836c0ccf96b2beccacf6d8ac23981fc2d1f09803) ) /* alphanumerics */
 
-	ROM_REGION16_BE( 0x2000000, REGION_GFX3, 0 )
+	ROM_REGION16_BE( 0x2000000, "gfx3", 0 )
 	ROM_LOAD16_BYTE( "0100a", 0x0000001, 0x080000, CRC(5299fb2a) SHA1(791378215ab6ffff3ab2ae7192ce9f88dae4090d) )
 	ROM_LOAD16_BYTE( "0101a", 0x0000000, 0x080000, CRC(3e234711) SHA1(6a9f19db2b4c8c34d3d7b4984206e3d5c4398d7f) )
 	ROM_LOAD16_BYTE( "0332",  0x0800001, 0x100000, CRC(610cfcb4) SHA1(bed1bd0d11c0a7cc48d020fc0acec34daf48c5ac) )
@@ -1056,7 +1039,7 @@ ROM_START( primraga )
 	ROM_LOAD16_BYTE( "0330",  0x1e00001, 0x100000, CRC(7bf6bb8f) SHA1(f34bd8a9c7f95436a1c816badc59673cd2a6969a) )
 	ROM_LOAD16_BYTE( "0331",  0x1e00000, 0x100000, CRC(c6a64dad) SHA1(ee54514463ab61cbaef70da064cf5de591e5861f) )
 
-	ROM_REGION( 0x0600, REGION_PROMS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0600, "proms", ROMREGION_DISPOSE )
 	ROM_LOAD( "0001a",  0x0000, 0x0200, CRC(a70ade3f) SHA1(f4a558b17767eed2683c768d1b441e75edcff967) )	/* microcode for growth renderer */
 	ROM_LOAD( "0001b",  0x0200, 0x0200, CRC(f4768b4d) SHA1(a506fa5386ab0ea2851ff1f8474d4bfc66deaa70) )
 	ROM_LOAD( "0001c",  0x0400, 0x0200, CRC(22a76ad4) SHA1(ce840c283bbd3a5f19dc8d91b19d1571eff51ff4) )
@@ -1094,7 +1077,7 @@ static DRIVER_INIT( tmek )
 	atarigen_eeprom_default = NULL;
 	atarigt_is_primrage = 0;
 
-	cage_init(machine, REGION_USER1, 0x4fad);
+	cage_init(machine, 0x4fad);
 	cage_set_irq_handler(cage_irq_callback);
 
 	/* setup protection */
@@ -1111,7 +1094,7 @@ static void primrage_init_common(running_machine *machine, offs_t cage_speedup)
 	atarigen_eeprom_default = NULL;
 	atarigt_is_primrage = 1;
 
-	cage_init(machine, REGION_USER1, cage_speedup);
+	cage_init(machine, cage_speedup);
 	cage_set_irq_handler(cage_irq_callback);
 
 	/* install protection */

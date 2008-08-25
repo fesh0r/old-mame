@@ -201,8 +201,8 @@ static READ16_HANDLER( slapshot_service_input_r )
 	switch (offset)
 	{
 		case 0x03:
-			return ((input_port_read_indexed(machine,3) & 0xef) |
-				  (input_port_read_indexed(machine,5) & 0x10))  << 8;	/* IN3 + service switch */
+			return ((input_port_read(machine, "IN1") & 0xef) |
+				  (input_port_read(machine, "SERVICE") & 0x10))  << 8;	/* IN3 + service switch */
 
 		default:
 			return TC0640FIO_r(machine,offset) << 8;
@@ -211,7 +211,9 @@ static READ16_HANDLER( slapshot_service_input_r )
 
 static READ16_HANDLER( opwolf3_adc_r )
 {
-	return input_port_read_indexed(machine, 6 + offset)<<8;
+	static const char *adcnames[] = { "GUN1X", "GUN1Y", "GUN2X", "GUN2Y" };
+
+	return input_port_read(machine, adcnames[offset]) << 8;
 }
 
 static WRITE16_HANDLER( opwolf3_adc_req_w )
@@ -228,7 +230,7 @@ static INT32 banknum = -1;
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr( 10, memory_region(machine, REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr( 10, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
 }
 
 static STATE_POSTLOAD( slapshot_postload )
@@ -282,7 +284,7 @@ static ADDRESS_MAP_START( slapshot_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x80ffff) AM_READ(TC0480SCP_word_r)	/* tilemaps */
 	AM_RANGE(0x830000, 0x83002f) AM_READ(TC0480SCP_ctrl_word_r)
 	AM_RANGE(0x900000, 0x907fff) AM_READ(color_ram_word_r)	/* 8bpg palette */
-	AM_RANGE(0xa00000, 0xa03fff) AM_READ(timekeeper_0_msb16_r)	/* nvram (only low bytes used) */
+	AM_RANGE(0xa00000, 0xa03fff) AM_READ8(timekeeper_0_r, 0xff00)	/* nvram (only low bytes used) */
 	AM_RANGE(0xc00000, 0xc0000f) AM_READ(TC0640FIO_halfword_byteswap_r)
 	AM_RANGE(0xc00020, 0xc0002f) AM_READ(slapshot_service_input_r)	/* service mirror */
 	AM_RANGE(0xd00000, 0xd00003) AM_READ(slapshot_msb_sound_r)
@@ -296,7 +298,7 @@ static ADDRESS_MAP_START( slapshot_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x80ffff) AM_WRITE(TC0480SCP_word_w)	  /* tilemaps */
 	AM_RANGE(0x830000, 0x83002f) AM_WRITE(TC0480SCP_ctrl_word_w)
 	AM_RANGE(0x900000, 0x907fff) AM_WRITE(color_ram_word_w) AM_BASE(&color_ram)
-	AM_RANGE(0xa00000, 0xa03fff) AM_WRITE(timekeeper_0_msb16_w)
+	AM_RANGE(0xa00000, 0xa03fff) AM_WRITE8(timekeeper_0_w, 0xff00)
 	AM_RANGE(0xb00000, 0xb0001f) AM_WRITE(TC0360PRI_halfword_swap_w)	/* priority chip */
 	AM_RANGE(0xc00000, 0xc0000f) AM_WRITE(TC0640FIO_halfword_byteswap_w)
 	AM_RANGE(0xd00000, 0xd00003) AM_WRITE(slapshot_msb_sound_w)
@@ -310,7 +312,7 @@ static ADDRESS_MAP_START( opwolf3_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x80ffff) AM_READ(TC0480SCP_word_r)	/* tilemaps */
 	AM_RANGE(0x830000, 0x83002f) AM_READ(TC0480SCP_ctrl_word_r)
 	AM_RANGE(0x900000, 0x907fff) AM_READ(color_ram_word_r)	/* 8bpg palette */
-	AM_RANGE(0xa00000, 0xa03fff) AM_READ(timekeeper_0_msb16_r)	/* nvram (only low bytes used) */
+	AM_RANGE(0xa00000, 0xa03fff) AM_READ8(timekeeper_0_r, 0xff00)	/* nvram (only low bytes used) */
 	AM_RANGE(0xc00000, 0xc0000f) AM_READ(TC0640FIO_halfword_byteswap_r)
 	AM_RANGE(0xc00020, 0xc0002f) AM_READ(slapshot_service_input_r)	/* service mirror */
 	AM_RANGE(0xd00000, 0xd00003) AM_READ(slapshot_msb_sound_r)
@@ -325,7 +327,7 @@ static ADDRESS_MAP_START( opwolf3_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x80ffff) AM_WRITE(TC0480SCP_word_w)	  /* tilemaps */
 	AM_RANGE(0x830000, 0x83002f) AM_WRITE(TC0480SCP_ctrl_word_w)
 	AM_RANGE(0x900000, 0x907fff) AM_WRITE(color_ram_word_w) AM_BASE(&color_ram)
-	AM_RANGE(0xa00000, 0xa03fff) AM_WRITE(timekeeper_0_msb16_w)
+	AM_RANGE(0xa00000, 0xa03fff) AM_WRITE8(timekeeper_0_w, 0xff00)
 	AM_RANGE(0xb00000, 0xb0001f) AM_WRITE(TC0360PRI_halfword_swap_w)	/* priority chip */
 	AM_RANGE(0xc00000, 0xc0000f) AM_WRITE(TC0640FIO_halfword_byteswap_w)
 	AM_RANGE(0xd00000, 0xd00003) AM_WRITE(slapshot_msb_sound_w)
@@ -338,9 +340,9 @@ static ADDRESS_MAP_START( z80_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK10)
 	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe000, 0xe000) AM_READ(YM2610_status_port_0_A_r)
-	AM_RANGE(0xe001, 0xe001) AM_READ(YM2610_read_port_0_r)
-	AM_RANGE(0xe002, 0xe002) AM_READ(YM2610_status_port_0_B_r)
+	AM_RANGE(0xe000, 0xe000) AM_READ(ym2610_status_port_0_a_r)
+	AM_RANGE(0xe001, 0xe001) AM_READ(ym2610_read_port_0_r)
+	AM_RANGE(0xe002, 0xe002) AM_READ(ym2610_status_port_0_b_r)
 	AM_RANGE(0xe200, 0xe200) AM_READ(SMH_NOP)
 	AM_RANGE(0xe201, 0xe201) AM_READ(taitosound_slave_comm_r)
 	AM_RANGE(0xea00, 0xea00) AM_READ(SMH_NOP)
@@ -349,10 +351,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( z80_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(YM2610_control_port_0_A_w)
-	AM_RANGE(0xe001, 0xe001) AM_WRITE(YM2610_data_port_0_A_w)
-	AM_RANGE(0xe002, 0xe002) AM_WRITE(YM2610_control_port_0_B_w)
-	AM_RANGE(0xe003, 0xe003) AM_WRITE(YM2610_data_port_0_B_w)
+	AM_RANGE(0xe000, 0xe000) AM_WRITE(ym2610_control_port_0_a_w)
+	AM_RANGE(0xe001, 0xe001) AM_WRITE(ym2610_data_port_0_a_w)
+	AM_RANGE(0xe002, 0xe002) AM_WRITE(ym2610_control_port_0_b_w)
+	AM_RANGE(0xe003, 0xe003) AM_WRITE(ym2610_data_port_0_b_w)
 	AM_RANGE(0xe200, 0xe200) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xe201, 0xe201) AM_WRITE(taitosound_slave_comm_w)
 	AM_RANGE(0xe400, 0xe403) AM_WRITE(SMH_NOP) /* pan */
@@ -366,8 +368,9 @@ ADDRESS_MAP_END
              INPUT PORTS (DIPs in nvram)
 ***********************************************************/
 
+/* Tags below are the ones expected by TC0640FIO_halfword_byteswap_r */
 static INPUT_PORTS_START( slapshot )
-	PORT_START_TAG("IN0")
+	PORT_START("DSWA")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -377,7 +380,7 @@ static INPUT_PORTS_START( slapshot )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
+	PORT_START("DSWB")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -387,7 +390,7 @@ static INPUT_PORTS_START( slapshot )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
@@ -397,7 +400,7 @@ static INPUT_PORTS_START( slapshot )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -407,7 +410,7 @@ static INPUT_PORTS_START( slapshot )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN4")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -417,12 +420,13 @@ static INPUT_PORTS_START( slapshot )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 
-	PORT_START_TAG("IN5")      /* IN5, so we can OR in service switch */
+	PORT_START("SERVICE")      /* IN5, so we can OR in service switch */
 	PORT_SERVICE_NO_TOGGLE(0x10, IP_ACTIVE_LOW)
 INPUT_PORTS_END
 
+/* Tags below are the ones expected by TC0640FIO_halfword_byteswap_r */
 static INPUT_PORTS_START( opwolf3 )
-	PORT_START_TAG("IN0")      /* IN0, all bogus */
+	PORT_START("DSWA")      /* IN0, all bogus */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -432,7 +436,7 @@ static INPUT_PORTS_START( opwolf3 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
+	PORT_START("DSWB")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -442,7 +446,7 @@ static INPUT_PORTS_START( opwolf3 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN4 )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )	PORT_NAME("1 Player Start/Button3")// also button 3
@@ -452,7 +456,7 @@ static INPUT_PORTS_START( opwolf3 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )	PORT_NAME("2 Player Start/Button3")// also button 3
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -462,7 +466,7 @@ static INPUT_PORTS_START( opwolf3 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN4")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -472,19 +476,19 @@ static INPUT_PORTS_START( opwolf3 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN5")      /* IN5, so we can OR in service switch */
+	PORT_START("SERVICE")      /* IN5, so we can OR in service switch */
 	PORT_SERVICE_NO_TOGGLE(0x10, IP_ACTIVE_LOW)
 
-	PORT_START_TAG("IN6")	/* IN 6, P1X */
+	PORT_START("GUN1X")	/* IN 6, P1X */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(30) PORT_KEYDELTA(20) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START_TAG("IN7")	/* IN 7, P1Y */
+	PORT_START("GUN1Y")	/* IN 7, P1Y */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(30) PORT_KEYDELTA(20) PORT_PLAYER(1)
 
-	PORT_START_TAG("IN8")	/* IN 8, P2X */
+	PORT_START("GUN2X")	/* IN 8, P2X */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(30) PORT_KEYDELTA(20) PORT_REVERSE PORT_PLAYER(2)
 
-	PORT_START_TAG("IN9")	/* IN 9, P2Y */
+	PORT_START("GUN2Y")	/* IN 9, P2Y */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(30) PORT_KEYDELTA(20) PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -521,8 +525,8 @@ static const gfx_layout slapshot_charlayout =
 };
 
 static GFXDECODE_START( slapshot )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0, tilelayout,  0, 256 )	/* sprite parts */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0, slapshot_charlayout,  0, 256 )	/* sprites & playfield */
+	GFXDECODE_ENTRY( "gfx2", 0x0, tilelayout,  0, 256 )	/* sprite parts */
+	GFXDECODE_ENTRY( "gfx1", 0x0, slapshot_charlayout,  0, 256 )	/* sprites & playfield */
 GFXDECODE_END
 
 
@@ -537,11 +541,9 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2610interface ym2610_interface =
+static const ym2610_interface ym2610_config =
 {
-	irqhandler,
-	REGION_SOUND2,	/* Delta-T */
-	REGION_SOUND1	/* ADPCM */
+	irqhandler
 };
 
 
@@ -552,12 +554,11 @@ static const struct YM2610interface ym2610_interface =
 static MACHINE_DRIVER_START( slapshot )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 14346000)	/* 28.6860 MHz / 2 ??? */
+	MDRV_CPU_ADD("main", M68000, 14346000)	/* 28.6860 MHz / 2 ??? */
 	MDRV_CPU_PROGRAM_MAP(slapshot_readmem,slapshot_writemem)
 	MDRV_CPU_VBLANK_INT("main", slapshot_interrupt)
 
-	MDRV_CPU_ADD(Z80,32000000/8)
-	/* audio CPU */	/* 4 MHz */
+	MDRV_CPU_ADD("audio", Z80,32000000/8)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(z80_sound_readmem,z80_sound_writemem)
 
 	MDRV_INTERLEAVE(10)
@@ -583,8 +584,8 @@ static MACHINE_DRIVER_START( slapshot )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2610B, 16000000/2)
-	MDRV_SOUND_CONFIG(ym2610_interface)
+	MDRV_SOUND_ADD("ym", YM2610B, 16000000/2)
+	MDRV_SOUND_CONFIG(ym2610_config)
 	MDRV_SOUND_ROUTE(0, "left",  0.25)
 	MDRV_SOUND_ROUTE(0, "right", 0.25)
 	MDRV_SOUND_ROUTE(1, "left",  1.0)
@@ -594,12 +595,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( opwolf3 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 14346000)	/* 28.6860 MHz / 2 ??? */
+	MDRV_CPU_ADD("main", M68000, 14346000)	/* 28.6860 MHz / 2 ??? */
 	MDRV_CPU_PROGRAM_MAP(opwolf3_readmem,opwolf3_writemem)
 	MDRV_CPU_VBLANK_INT("main", slapshot_interrupt)
 
-	MDRV_CPU_ADD(Z80,32000000/8)
-	/* audio CPU */	/* 4 MHz */
+	MDRV_CPU_ADD("audio", Z80,32000000/8)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(z80_sound_readmem,z80_sound_writemem)
 
 	MDRV_INTERLEAVE(10)
@@ -624,8 +624,8 @@ static MACHINE_DRIVER_START( opwolf3 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2610B, 16000000/2)
-	MDRV_SOUND_CONFIG(ym2610_interface)
+	MDRV_SOUND_ADD("ym", YM2610B, 16000000/2)
+	MDRV_SOUND_CONFIG(ym2610_config)
 	MDRV_SOUND_ROUTE(0, "left",  0.25)
 	MDRV_SOUND_ROUTE(0, "right", 0.25)
 	MDRV_SOUND_ROUTE(1, "left",  1.0)
@@ -637,25 +637,25 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( slapshot )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 1024K for 68000 code */
+	ROM_REGION( 0x100000, "main", 0 )	/* 1024K for 68000 code */
 	ROM_LOAD16_BYTE( "d71-15.3",  0x00000, 0x80000, CRC(1470153f) SHA1(63fd5314fcaafba7326fd9481e3c686901dde65c) )
 	ROM_LOAD16_BYTE( "d71-16.1",  0x00001, 0x80000, CRC(f13666e0) SHA1(e8b475163ea7da5ee3f2b900004cc67c684bab75) )
 
-	ROM_REGION( 0x1c000, REGION_CPU2, 0 )	/* sound cpu */
+	ROM_REGION( 0x1c000, "audio", 0 )	/* sound cpu */
 	ROM_LOAD    ( "d71-07.77",    0x00000, 0x4000, CRC(dd5f670c) SHA1(743a9563c40fe40178c9ec8eece71a08380c2239) )
 	ROM_CONTINUE(                 0x10000, 0xc000 )	/* banked stuff */
 
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD16_BYTE( "d71-04.79", 0x00000, 0x80000, CRC(b727b81c) SHA1(9f56160e2b3e4d59cfa96b5c013f4e368781666e) )	/* SCR */
 	ROM_LOAD16_BYTE( "d71-05.80", 0x00001, 0x80000, CRC(7b0f5d6d) SHA1(a54e4a651dc7cdc160286afb3d38531c7b9396b1) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x400000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD16_BYTE( "d71-01.23", 0x000000, 0x100000, CRC(0b1e8c27) SHA1(ffa452f7414f3d61edb69bb61b29a0cc8d9176d0) )	/* OBJ 6bpp */
 	ROM_LOAD16_BYTE( "d71-02.24", 0x000001, 0x100000, CRC(ccaaea2d) SHA1(71b507f215f37e991abae5523642417a6b23a70d) )
 	ROM_LOAD       ( "d71-03.25", 0x300000, 0x100000, CRC(dccef9ec) SHA1(ee7a49727b822cf4c1d7acff994b77ea6191c423) )
 	ROM_FILL       (              0x200000, 0x100000, 0 )
 
-	ROM_REGION( 0x80000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x80000, "ym", 0 )	/* ADPCM samples */
 	ROM_LOAD( "d71-06.37", 0x00000, 0x80000, CRC(f3324188) SHA1(70dd724441eae8614218bc7f0f51860bd2462f0c) )
 
 	/* no Delta-T samples */
@@ -670,54 +670,54 @@ ROM_START( slapshot )
 ROM_END
 
 ROM_START( opwolf3 )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )	/* 1024K for 68000 code */
+	ROM_REGION( 0x200000, "main", 0 )	/* 1024K for 68000 code */
 	ROM_LOAD16_BYTE( "d74_16.3",  0x000000, 0x80000, CRC(198ff1f6) SHA1(f5b51e39cd73ea56cbf53731d3c885bfcecbd696) )
 	ROM_LOAD16_BYTE( "d74_21.1",  0x000001, 0x80000, CRC(c61c558b) SHA1(6340eb83ba4cd8d7c63b22ea738c8367c87c1de1) )
 	ROM_LOAD16_BYTE( "d74_18.18", 0x100000, 0x80000, CRC(bd5d7cdb) SHA1(29f1cd7b86bc05f873e93f088194113da87a3b86) )	// data ???
 	ROM_LOAD16_BYTE( "d74_17.17", 0x100001, 0x80000, CRC(ac35a672) SHA1(8136bd076443bfaeb3d339971d88951e8b2b59b4) )	// data ???
 
-	ROM_REGION( 0x1c000, REGION_CPU2, 0 )	/* sound cpu */
+	ROM_REGION( 0x1c000, "audio", 0 )	/* sound cpu */
 	ROM_LOAD    ( "d74_22.77",    0x00000, 0x4000, CRC(118374a6) SHA1(cc1d0d28efdf1df3e648e7d932405811854ba4ee) )
 	ROM_CONTINUE(                 0x10000, 0xc000 )	/* banked stuff */
 
-	ROM_REGION( 0x400000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x400000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD16_BYTE( "d74_05.80", 0x000000, 0x200000, CRC(85ea64cc) SHA1(1960a934191c451df1554323d47f6fc64939b0ce) )	/* SCR */
 	ROM_LOAD16_BYTE( "d74_06.81", 0x000001, 0x200000, CRC(2fa1e08d) SHA1(f1f34b308202fe08e73535424b5b4e3d91295224) )
 
-	ROM_REGION( 0x800000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x800000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD16_BYTE( "d74_02.23", 0x000000, 0x200000, CRC(aab86332) SHA1(b9133407504e9ef4fd5ae7d284cdb0c7f78f9a99) )	/* OBJ 6bpp */
 	ROM_LOAD16_BYTE( "d74_03.24", 0x000001, 0x200000, CRC(3f398916) SHA1(4b6a3ee0baf5f32e24e5040f233300f1ca347fe7) )
 	ROM_LOAD       ( "d74_04.25", 0x600000, 0x200000, CRC(2f385638) SHA1(1ba2ec7d9b1c491e1cc6d7e646e09ef2bc063f25) )
 	ROM_FILL       (              0x400000, 0x200000, 0 )
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x200000, "ym", 0 )	/* ADPCM samples */
 	ROM_LOAD( "d74_01.37",  0x000000, 0x200000, CRC(115313e0) SHA1(51a69e7a26960b1328ccefeaec0fb26bdccc39f2) )
 
 	/* no Delta-T samples */
 ROM_END
 
 ROM_START( opwolf3u )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )	/* 1024K for 68000 code */
+	ROM_REGION( 0x200000, "main", 0 )	/* 1024K for 68000 code */
 	ROM_LOAD16_BYTE( "d74_16.3",  0x000000, 0x80000, CRC(198ff1f6) SHA1(f5b51e39cd73ea56cbf53731d3c885bfcecbd696) )
 	ROM_LOAD16_BYTE( "d74_20.1",  0x000001, 0x80000, CRC(960fd892) SHA1(2584a048d29a96b69428fba2b71269ea6ccf9010) )
 	ROM_LOAD16_BYTE( "d74_18.18", 0x100000, 0x80000, CRC(bd5d7cdb) SHA1(29f1cd7b86bc05f873e93f088194113da87a3b86) )	// data ???
 	ROM_LOAD16_BYTE( "d74_17.17", 0x100001, 0x80000, CRC(ac35a672) SHA1(8136bd076443bfaeb3d339971d88951e8b2b59b4) )	// data ???
 
-	ROM_REGION( 0x1c000, REGION_CPU2, 0 )	/* sound cpu */
+	ROM_REGION( 0x1c000, "audio", 0 )	/* sound cpu */
 	ROM_LOAD    ( "d74_19.77",    0x00000, 0x4000, CRC(05d53f06) SHA1(48b0cd68ad3758f424552a4e3833c5a1c2f1825b) )
 	ROM_CONTINUE(                 0x10000, 0xc000 )	/* banked stuff */
 
-	ROM_REGION( 0x400000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x400000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD16_BYTE( "d74_05.80", 0x000000, 0x200000, CRC(85ea64cc) SHA1(1960a934191c451df1554323d47f6fc64939b0ce) )	/* SCR */
 	ROM_LOAD16_BYTE( "d74_06.81", 0x000001, 0x200000, CRC(2fa1e08d) SHA1(f1f34b308202fe08e73535424b5b4e3d91295224) )
 
-	ROM_REGION( 0x800000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x800000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD16_BYTE( "d74_02.23", 0x000000, 0x200000, CRC(aab86332) SHA1(b9133407504e9ef4fd5ae7d284cdb0c7f78f9a99) )	/* OBJ 6bpp */
 	ROM_LOAD16_BYTE( "d74_03.24", 0x000001, 0x200000, CRC(3f398916) SHA1(4b6a3ee0baf5f32e24e5040f233300f1ca347fe7) )
 	ROM_LOAD       ( "d74_04.25", 0x600000, 0x200000, CRC(2f385638) SHA1(1ba2ec7d9b1c491e1cc6d7e646e09ef2bc063f25) )
 	ROM_FILL       (              0x400000, 0x200000, 0 )
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x200000, "ym", 0 )	/* ADPCM samples */
 	ROM_LOAD( "d74_01.37",  0x000000, 0x200000, CRC(115313e0) SHA1(51a69e7a26960b1328ccefeaec0fb26bdccc39f2) )
 
 	/* no Delta-T samples */
@@ -727,8 +727,8 @@ ROM_END
 static DRIVER_INIT( slapshot )
 {
 	UINT32 offset,i;
-	UINT8 *gfx = memory_region(machine, REGION_GFX2);
-	int size=memory_region_length(machine, REGION_GFX2);
+	UINT8 *gfx = memory_region(machine, "gfx2");
+	int size=memory_region_length(machine, "gfx2");
 	int data;
 
 	timekeeper_init( machine, 0, TIMEKEEPER_MK48T08, NULL );

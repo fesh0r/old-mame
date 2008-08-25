@@ -115,7 +115,7 @@ static READ32_HANDLER( superchs_input_r )
 	switch (offset)
 	{
 		case 0x00:
-			return (input_port_read_indexed(machine,0) << 16) | input_port_read_indexed(machine,1) |
+			return (input_port_read(machine, "SYSTEM") << 16) | input_port_read(machine, "INPUT") |
 				  (eeprom_read_bit() << 7);
 
 		case 0x01:
@@ -176,12 +176,12 @@ static WRITE32_HANDLER( superchs_input_w )
 
 static READ32_HANDLER( superchs_stick_r )
 {
-	int fake = input_port_read_indexed(machine,6);
+	int fake = input_port_read(machine, "FAKE");
 	int accel;
 
 	if (!(fake &0x10))	/* Analogue steer (the real control method) */
 	{
-		steer = input_port_read_indexed(machine,2);
+		steer = input_port_read(machine, "WHEEL");
 	}
 	else	/* Digital steer, with smoothing - speed depends on how often stick_r is called */
 	{
@@ -206,13 +206,13 @@ static READ32_HANDLER( superchs_stick_r )
 	}
 
 	/* Accelerator is an analogue input but the game treats it as digital (on/off) */
-	if (input_port_read_indexed(machine,6) & 0x1)	/* pressing B1 */
+	if (input_port_read(machine,  "FAKE") & 0x1)	/* pressing B1 */
 		accel = 0x0;
 	else
 		accel = 0xff;
 
 	/* Todo: Verify brake - and figure out other input */
-	return (steer << 24) | (accel << 16) | (input_port_read_indexed(machine,4) << 8) | input_port_read_indexed(machine,5);
+	return (steer << 24) | (accel << 16) | (input_port_read(machine, "SOUND") << 8) | input_port_read(machine, "UNKNOWN");
 }
 
 static WRITE32_HANDLER( superchs_stick_w )
@@ -273,7 +273,7 @@ ADDRESS_MAP_END
 /***********************************************************/
 
 static INPUT_PORTS_START( superchs )
-	PORT_START      /* IN0 */
+	PORT_START("SYSTEM")	/* IN0 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_UNKNOWN )
@@ -291,7 +291,7 @@ static INPUT_PORTS_START( superchs )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 
-	PORT_START      /* IN1 */
+	PORT_START("INPUT")		/* IN1 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_UNKNOWN )
@@ -304,24 +304,24 @@ static INPUT_PORTS_START( superchs )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(0x1000, IP_ACTIVE_LOW,  IPT_BUTTON3 ) PORT_NAME("Nitro")
-	PORT_BIT(0x2000, IP_ACTIVE_LOW,  IPT_BUTTON4 ) PORT_NAME("Gear Shift")
-	PORT_BIT(0x4000, IP_ACTIVE_LOW,  IPT_BUTTON2 ) PORT_NAME("Brake")
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW,  IPT_BUTTON3 ) PORT_NAME("Nitro")
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW,  IPT_BUTTON4 ) PORT_NAME("Gear Shift")
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW,  IPT_BUTTON2 ) PORT_NAME("Brake")
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_START1 )
 
-	PORT_START	/* IN 2, steering wheel */
+	PORT_START("WHEEL")		/* IN 2, steering wheel */
 	PORT_BIT( 0xff, 0x7f, IPT_AD_STICK_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START	/* IN 3, accel [effectively also brake for the upright] */
+	PORT_START("ACCEL")		/* IN 3, accel [effectively also brake for the upright] */
 	PORT_BIT( 0xff, 0x00, IPT_AD_STICK_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START	/* IN 4, sound volume */
+	PORT_START("SOUND")		/* IN 4, sound volume */
 	PORT_BIT( 0xff, 0x00, IPT_AD_STICK_X ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(2)
 
-	PORT_START	/* IN 5, unknown */
+	PORT_START("UNKNOWN")	/* IN 5, unknown */
 	PORT_BIT( 0xff, 0x00, IPT_AD_STICK_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
-	PORT_START	/* IN 6, inputs and DSW all fake */
+	PORT_START("FAKE")		/* IN 6, inputs and DSW all fake */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(1)
@@ -358,8 +358,8 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( superchs )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0, tile16x16_layout,  0, 512 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0, charlayout,        0, 512 )
+	GFXDECODE_ENTRY( "gfx2", 0x0, tile16x16_layout,  0, 512 )
+	GFXDECODE_ENTRY( "gfx1", 0x0, charlayout,        0, 512 )
 GFXDECODE_END
 
 
@@ -414,14 +414,13 @@ static NVRAM_HANDLER( superchs )
 static MACHINE_DRIVER_START( superchs )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68EC020, 16000000)	/* 16 MHz */
+	MDRV_CPU_ADD("main", M68EC020, 16000000)	/* 16 MHz */
 	MDRV_CPU_PROGRAM_MAP(superchs_readmem,superchs_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)/* VBL */
 
 	TAITO_F3_SOUND_SYSTEM_CPU(16000000)
 
-
-	MDRV_CPU_ADD(M68000, 16000000)	/* 16 MHz */
+	MDRV_CPU_ADD("sub", M68000, 16000000)	/* 16 MHz */
 	MDRV_CPU_PROGRAM_MAP(superchs_cpub_readmem,superchs_cpub_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)/* VBL */
 
@@ -451,34 +450,34 @@ MACHINE_DRIVER_END
 /***************************************************************************/
 
 ROM_START( superchs )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )	/* 1024K for 68020 code (CPU A) */
+	ROM_REGION( 0x100000, "main", 0 )	/* 1024K for 68020 code (CPU A) */
 	ROM_LOAD32_BYTE( "d46-35.27", 0x00000, 0x40000, CRC(1575c9a7) SHA1(e3441d6018ed3315c62c5e5c4534d8712b025ae2) )
 	ROM_LOAD32_BYTE( "d46-34.25", 0x00001, 0x40000, CRC(c72a4d2b) SHA1(6ef64de15e52007406ce3255071a1f856e0e8b49) )
 	ROM_LOAD32_BYTE( "d46-33.23", 0x00002, 0x40000, CRC(3094bcd0) SHA1(b6779b81a3ebec440a9359868dc43fc3a631ee11) )
 	ROM_LOAD32_BYTE( "d46-31.21", 0x00003, 0x40000, CRC(38b983a3) SHA1(c4859cecc2f3506b7090c462cecd3e4eaabe85aa) )
 
-	ROM_REGION( 0x140000, REGION_CPU2, 0 )	/* Sound cpu */
+	ROM_REGION( 0x140000, "audio", 0 )	/* Sound cpu */
 	ROM_LOAD16_BYTE( "d46-37.8up", 0x100000, 0x20000, CRC(60b51b91) SHA1(0d0b017808e0a3bdabe8ef5a726bbe16428db06b) )
 	ROM_LOAD16_BYTE( "d46-36.7lo", 0x100001, 0x20000, CRC(8f7aa276) SHA1(b3e330e33099d3cbf4cdc43063119b041e9eea3a) )
 
-	ROM_REGION( 0x40000, REGION_CPU3, 0 )	/* 256K for 68000 code (CPU B) */
+	ROM_REGION( 0x40000, "sub", 0 )	/* 256K for 68000 code (CPU B) */
 	ROM_LOAD16_BYTE( "d46-24.127", 0x00000, 0x20000, CRC(a006baa1) SHA1(e691ddab6cb79444bd6c3fc870e0dff3051d8cf9) )
 	ROM_LOAD16_BYTE( "d46-23.112", 0x00001, 0x20000, CRC(9a69dbd0) SHA1(13eca492f1db834c599656750864e7003514f3d4) )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD16_BYTE( "d46-05.87", 0x00000, 0x100000, CRC(150d0e4c) SHA1(9240b32900be733b8f44868ed5d64f5f1aaadb47) )	/* SCR 16x16 tiles */
 	ROM_LOAD16_BYTE( "d46-06.88", 0x00001, 0x100000, CRC(321308be) SHA1(17e724cce39b1331650c1f08d693d057dcd43a3f) )
 
-	ROM_REGION( 0x800000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x800000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD32_BYTE( "d46-01.64", 0x000003, 0x200000, CRC(5c2ae92d) SHA1(bee2caed4729a27fa0569d952d6d12170c2aa2a8) )	/* OBJ 16x16 tiles: each rom has 1 bitplane */
 	ROM_LOAD32_BYTE( "d46-02.65", 0x000002, 0x200000, CRC(a83ca82e) SHA1(03759be87a8d62c0044e8a44e90c47308e32d3e5) )
 	ROM_LOAD32_BYTE( "d46-03.66", 0x000001, 0x200000, CRC(e0e9cbfd) SHA1(b7deb2c58320af9d1b4273ad2758ce927d2e279c) )
 	ROM_LOAD32_BYTE( "d46-04.67", 0x000000, 0x200000, CRC(832769a9) SHA1(136ead19edeee90b5be91a6e2f434193dc670fd8) )
 
-	ROM_REGION16_LE( 0x80000, REGION_USER1, 0 )
+	ROM_REGION16_LE( 0x80000, "user1", 0 )
 	ROM_LOAD16_WORD( "d46-07.34", 0x00000, 0x80000, CRC(c3b8b093) SHA1(f34364248ca7fdaaa1a0f8f6f795f9b4bc935fb9) )	/* STY, used to create big sprites on the fly */
 
-	ROM_REGION16_BE( 0x1000000, REGION_SOUND1 , ROMREGION_ERASE00 )
+	ROM_REGION16_BE( 0x1000000, "ensoniq.0" , ROMREGION_ERASE00 )
 	ROM_LOAD16_BYTE( "d46-10.2", 0xc00000, 0x200000, CRC(306256be) SHA1(e6e5d4a4c0b98470f2aff2e94624dd19af73ec5d) )
 	ROM_LOAD16_BYTE( "d46-12.4", 0x000000, 0x200000, CRC(a24a53a8) SHA1(5d5fb87a94ceabda89360064d7d9b6d23c4c606b) )
 	ROM_RELOAD     (             0x400000, 0x200000 )

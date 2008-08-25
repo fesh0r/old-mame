@@ -336,7 +336,7 @@ static READ8_HANDLER( psychic5_bankselect_r )
 
 static WRITE8_HANDLER( psychic5_bankselect_w )
 {
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 	int bankaddress;
 
 	if (data != psychic5_bank_latch)
@@ -413,15 +413,15 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(YM2203_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(YM2203_write_port_0_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(YM2203_control_port_1_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(YM2203_write_port_1_w)
+	AM_RANGE(0x00, 0x00) AM_WRITE(ym2203_control_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0x80, 0x80) AM_WRITE(ym2203_control_port_1_w)
+	AM_RANGE(0x81, 0x81) AM_WRITE(ym2203_write_port_1_w)
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( psychic5 )
-    PORT_START_TAG("IN0")
+    PORT_START("IN0")
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
     PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -431,7 +431,7 @@ static INPUT_PORTS_START( psychic5 )
     PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
     PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-    PORT_START_TAG("P1")		/* player 1 controls */
+    PORT_START("P1")		/* player 1 controls */
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
     PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -441,7 +441,7 @@ static INPUT_PORTS_START( psychic5 )
     PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
     PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-    PORT_START_TAG("P2")		/* player 2 controls */
+    PORT_START("P2")		/* player 2 controls */
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
     PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
@@ -451,7 +451,7 @@ static INPUT_PORTS_START( psychic5 )
     PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
     PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-    PORT_START_TAG("DSW0")
+    PORT_START("DSW0")
     PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -476,7 +476,7 @@ static INPUT_PORTS_START( psychic5 )
     PORT_DIPSETTING(    0x40, "4" )
     PORT_DIPSETTING(    0x00, "5" )
 
-    PORT_START_TAG("DSW1")
+    PORT_START("DSW1")
     PORT_DIPNAME( 0x01, 0x01, "Invulnerability (Cheat)")
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -528,9 +528,9 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( psychic5 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, spritelayout,  0*16, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 16*16, 16 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, charlayout,   32*16, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, spritelayout,  0*16, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 16*16, 16 )
+	GFXDECODE_ENTRY( "gfx3", 0, charlayout,   32*16, 16 )
 GFXDECODE_END
 
 
@@ -540,7 +540,7 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -553,12 +553,11 @@ static const struct YM2203interface ym2203_interface =
 static MACHINE_DRIVER_START( psychic5 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 6000000)
+	MDRV_CPU_ADD("main", Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT_HACK(psychic5_interrupt,2)
 
-	MDRV_CPU_ADD(Z80, 6000000)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(0,sound_writeport)
 
@@ -583,14 +582,14 @@ static MACHINE_DRIVER_START( psychic5 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 6000000/4)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym1", YM2203, 6000000/4)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.15)
 	MDRV_SOUND_ROUTE(1, "mono", 0.15)
 	MDRV_SOUND_ROUTE(2, "mono", 0.15)
 	MDRV_SOUND_ROUTE(3, "mono", 0.50)
 
-	MDRV_SOUND_ADD(YM2203, 6000000/4)
+	MDRV_SOUND_ADD("ym2", YM2203, 6000000/4)
 	MDRV_SOUND_ROUTE(0, "mono", 0.15)
 	MDRV_SOUND_ROUTE(1, "mono", 0.15)
 	MDRV_SOUND_ROUTE(2, "mono", 0.15)
@@ -605,22 +604,22 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( psychic5 )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 ) 				/* 2*64K for main CPU, Z80 */
+	ROM_REGION( 0x20000, "main", 0 ) 				/* 2*64K for main CPU, Z80 */
 	ROM_LOAD( "p5d",          0x00000, 0x08000, CRC(90259249) SHA1(ac2d8dd95f6c04b6ad726136931e37dcd537e977) )
 	ROM_LOAD( "p5e",          0x10000, 0x10000, CRC(72298f34) SHA1(725be2fbf5f3622f646c0fb8e6677cbddf0b1fc2) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) 				/*64K for 2nd z80 CPU*/
+	ROM_REGION( 0x10000, "audio", 0 ) 				/*64K for 2nd z80 CPU*/
 	ROM_LOAD( "p5a",          0x00000, 0x08000, CRC(50060ecd) SHA1(e6051fb4a1fa9429cfb6084e8a5dfe994a08280b) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "p5b",          0x00000, 0x10000, CRC(7e3f87d4) SHA1(b8e7fa3f96d2e3937e4cb530f105bb84d5743b43) )	/* sprite tiles */
 	ROM_LOAD( "p5c",          0x10000, 0x10000, CRC(8710fedb) SHA1(c7e8dc6b733e4ecce37d56fc429c00ade8736ff3) )
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "p5g",          0x00000, 0x10000, CRC(f9262f32) SHA1(bae2dc77be7024bd85f213e4da746c5903db6ea5) )	/* background tiles */
 	ROM_LOAD( "p5h",          0x10000, 0x10000, CRC(c411171a) SHA1(d5893563715ba231e42b084b88f5176bb94a4da9) )
 
-	ROM_REGION( 0x08000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x08000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "p5f",          0x00000, 0x08000, CRC(04d7e21c) SHA1(6046c506bdedc233e3730f90c7897e847bec8758) )	/* foreground tiles */
 ROM_END
 

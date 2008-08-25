@@ -54,7 +54,7 @@ static VIDEO_UPDATE( missb2 )
 
 	sx = 0;
 
-	prom = memory_region(screen->machine, REGION_PROMS);
+	prom = memory_region(screen->machine, "proms");
 	for (offs = 0;offs < bublbobl_objectram_size;offs += 4)
 	{
 		/* skip empty sprites */
@@ -132,7 +132,7 @@ static WRITE8_HANDLER( bg_paletteram_RRRRGGGGBBBBxxxx_be_w )
 static WRITE8_HANDLER( missb2_bg_bank_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, "slave");
 
 	// I don't know how this is really connected,bit 1 is always high afaik...
 	bankaddress = ((data & 2) ? 0x1000 : 0x0000) | ((data & 1) ? 0x4000 : 0x0000) | (0x8000);
@@ -156,10 +156,10 @@ static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xfd00, 0xfdff) AM_RAM			// ???
 	AM_RANGE(0xfe00, 0xfe03) AM_RAM			// ???
 	AM_RANGE(0xfe80, 0xfe83) AM_RAM			// ???
-	AM_RANGE(0xff00, 0xff00) AM_READ(input_port_0_r)
-	AM_RANGE(0xff01, 0xff01) AM_READ(input_port_1_r)
-	AM_RANGE(0xff02, 0xff02) AM_READ(input_port_2_r)
-	AM_RANGE(0xff03, 0xff03) AM_READ(input_port_3_r)
+	AM_RANGE(0xff00, 0xff00) AM_READ_PORT("DSW1")
+	AM_RANGE(0xff01, 0xff01) AM_READ_PORT("DSW2")
+	AM_RANGE(0xff02, 0xff02) AM_READ_PORT("P1")
+	AM_RANGE(0xff03, 0xff03) AM_READ_PORT("P2")
 	AM_RANGE(0xff94, 0xff94) AM_WRITENOP	// ???
 	AM_RANGE(0xff98, 0xff98) AM_WRITENOP	// ???
 ADDRESS_MAP_END
@@ -181,9 +181,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x8fff) AM_RAM
-	AM_RANGE(0x9000, 0x9000) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
-	AM_RANGE(0xa000, 0xa000) AM_READWRITE(YM3526_status_port_0_r, YM3526_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(YM3526_write_port_0_w)
+	AM_RANGE(0x9000, 0x9000) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
+	AM_RANGE(0xa000, 0xa000) AM_READWRITE(ym3526_status_port_0_r, ym3526_control_port_0_w)
+	AM_RANGE(0xa001, 0xa001) AM_WRITE(ym3526_write_port_0_w)
 	AM_RANGE(0xb000, 0xb000) AM_READ(soundlatch_r) AM_WRITENOP // message for main cpu
 	AM_RANGE(0xb001, 0xb001) AM_READNOP AM_WRITE(bublbobl_sh_nmi_enable_w)	// bit 0: message pending for main cpu, bit 1: message pending for sound cpu
 	AM_RANGE(0xb002, 0xb002) AM_WRITE(bublbobl_sh_nmi_disable_w)
@@ -193,7 +193,7 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( missb2 )
-	PORT_START_TAG("DSW0")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Language ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( English ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Japanese ) )
@@ -215,7 +215,7 @@ static INPUT_PORTS_START( missb2 )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Medium ) )
@@ -237,8 +237,8 @@ static INPUT_PORTS_START( missb2 )
 	PORT_DIPSETTING(    0x80, DEF_STR( High ) )
 	PORT_DIPSETTING(    0xc0, DEF_STR( Very_High ) )
 
-	PORT_START_TAG("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  ) PORT_2WAY
+	PORT_START("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -247,8 +247,8 @@ static INPUT_PORTS_START( missb2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  ) PORT_2WAY PORT_PLAYER(2)
+	PORT_START("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_TILT ) // ???
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -323,8 +323,8 @@ static const gfx_layout bglayout =
 /* Graphics Decode Information */
 
 static GFXDECODE_START( missb2 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x00000, charlayout, 0, 1 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x00000, bglayout,   0, 2 )
+	GFXDECODE_ENTRY( "gfx1", 0x00000, charlayout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx2", 0x00000, bglayout,   0, 2 )
 GFXDECODE_END
 
 
@@ -339,7 +339,7 @@ static void irqhandler(running_machine *machine, int irq)
 //  cpunum_set_input_line(machine, 2,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM3526interface ym3526_interface =
+static const ym3526_interface ym3526_config =
 {
 	irqhandler
 };
@@ -355,16 +355,15 @@ static INTERRUPT_GEN( missb2_interrupt )
 
 static MACHINE_DRIVER_START( missb2 )
 	// basic machine hardware
-	MDRV_CPU_ADD(Z80, MAIN_XTAL/4)	// 6 MHz
+	MDRV_CPU_ADD("main", Z80, MAIN_XTAL/4)	// 6 MHz
 	MDRV_CPU_PROGRAM_MAP(master_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, MAIN_XTAL/4)	// 6 MHz
+	MDRV_CPU_ADD("slave", Z80, MAIN_XTAL/4)	// 6 MHz
 	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, MAIN_XTAL/8)
-	/* audio CPU */	// 3 MHz
+	MDRV_CPU_ADD("audio", Z80, MAIN_XTAL/8)	// 3 MHz
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 //  MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 	MDRV_CPU_VBLANK_INT("main", missb2_interrupt)
@@ -388,46 +387,46 @@ static MACHINE_DRIVER_START( missb2 )
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3526, MAIN_XTAL/8)
-	MDRV_SOUND_CONFIG(ym3526_interface)
+	MDRV_SOUND_ADD("ym", YM3526, MAIN_XTAL/8)
+	MDRV_SOUND_CONFIG(ym3526_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.4)
 MACHINE_DRIVER_END
 
 /* ROMs */
 
 ROM_START( missb2 )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
+	ROM_REGION( 0x30000, "main", 0 )
 	ROM_LOAD( "msbub2-u.204", 0x00000, 0x10000, CRC(b633bdde) SHA1(29a389c52ff06718f1c4c39f6a854856c237356b) ) /* FIRST AND SECOND HALF IDENTICAL */
 	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "msbub2-u.203", 0x10000, 0x10000, CRC(29fd8afe) SHA1(94ead80d20cd3974dd4fb0358915e3bd8b793158) )
 	/* 20000-2ffff empty */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "slave", 0 ) /* 64k for the second CPU */
 	ROM_LOAD( "msbub2-u.11",  0x0000, 0x10000, CRC(003dc092) SHA1(dff3c2b31d0804a308e5c42cf9705cd3d6144ad7) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* 64k for the third CPU */
+	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the third CPU */
 	ROM_LOAD( "msbub2-u.211", 0x0000, 0x08000, CRC(08e5d846) SHA1(8509a71df984f0348bdc6ab60eb2ba7ceb9b1246) )
 
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "msbub2-u.14",  0x00000, 0x40000, CRC(b3164b47) SHA1(083a63010515b0aa43b482938ae302b2df985312) )
 	ROM_LOAD( "msbub2-u.126", 0x40000, 0x40000, CRC(b0a9a353) SHA1(40d7f4c970d8571de319231c295fa0d2836efcf7) )
 	ROM_LOAD( "msbub2-u.124", 0x80000, 0x40000, CRC(4b0d8e5b) SHA1(218da3edcfea228e6df1ac59bc24217713d79410) )
 	ROM_LOAD( "msbub2-u.125", 0xc0000, 0x40000, CRC(77b710e2) SHA1(f6f46804a23de6c930bc40a3f45ac70e160f0645) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, 0 ) /* background images */
+	ROM_REGION( 0x200000, "gfx2", 0 ) /* background images */
 	ROM_LOAD16_BYTE( "msbub2-u.ic1", 0x100001, 0x80000, CRC(d621cbc3) SHA1(36343d85bdde0e40dfe0f0e4e646546f175903f8) )
 	ROM_LOAD16_BYTE( "msbub2-u.ic3", 0x100000, 0x80000, CRC(90e56035) SHA1(8fa18d97a05890178c52b97ff75aed300344a93e) )
 	ROM_LOAD16_BYTE( "msbub2-u.ic2", 0x000001, 0x80000, CRC(694c2783) SHA1(401dc8713a02130289f364786c38e70c4c4f9b2e) )
 	ROM_LOAD16_BYTE( "msbub2-u.ic4", 0x000000, 0x80000, CRC(be71c9f0) SHA1(1961e931017f644486cea0ce431d50973679c848) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 ) /* samples */
+	ROM_REGION( 0x20000, "oki", 0 ) /* samples */
 	ROM_LOAD( "msbub2-u.13", 0x00000, 0x20000, BAD_DUMP CRC(14f07386) SHA1(097897d92226f900e11dbbdd853aff3ac46ff016) )
 
-	ROM_REGION( 0x0100, REGION_PROMS, 0 )
+	ROM_REGION( 0x0100, "proms", 0 )
 	ROM_LOAD( "a71-25.bin",  0x0000, 0x0100, CRC(2d0f8545) SHA1(089c31e2f614145ef2743164f7b52ae35bc06808) )	/* video timing - taken from bublbobl */
 ROM_END
 
@@ -435,7 +434,7 @@ ROM_END
 
 static DRIVER_INIT( missb2 )
 {
-	UINT8 *ROM = memory_region(machine, REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, "main");
 
 	/* in Bubble Bobble, bank 0 has code falling from 7fff to 8000,
        so I have to copy it there because bank switching wouldn't catch it */

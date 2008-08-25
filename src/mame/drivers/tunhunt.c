@@ -175,7 +175,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( tunhunt )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT ( 0x01, IP_ACTIVE_HIGH, IPT_TILT )
 	PORT_BIT ( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Service_Mode ) )
@@ -189,13 +189,13 @@ static INPUT_PORTS_START( tunhunt )
 	PORT_BIT ( 0x40, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0xff, 0x00, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(4)
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0xff, 0x00, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(4) PORT_REVERSE
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME (0x0003, 0x0002, DEF_STR( Coinage ) )
 	PORT_DIPSETTING (     0x0003, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING (     0x0002, DEF_STR( 1C_1C ) )
@@ -275,9 +275,9 @@ static const gfx_layout obj_layout =
 
 
 static GFXDECODE_START( tunhunt )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x000, alpha_layout, 0x10, 4 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x200, obj_layout,   0x18, 1 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x000, obj_layout,   0x18, 1 ) /* second bank, or second bitplane? */
+	GFXDECODE_ENTRY( "gfx1", 0x000, alpha_layout, 0x10, 4 )
+	GFXDECODE_ENTRY( "gfx2", 0x200, obj_layout,   0x18, 1 )
+	GFXDECODE_ENTRY( "gfx2", 0x000, obj_layout,   0x18, 1 ) /* second bank, or second bitplane? */
 GFXDECODE_END
 
 
@@ -288,13 +288,13 @@ GFXDECODE_END
  *
  *************************************/
 
-static const struct POKEYinterface pokey_interface_1 =
+static const pokey_interface pokey_interface_1 =
 {
 	{ 0 },
 	dsw1_r
 };
 
-static const struct POKEYinterface pokey_interface_2 =
+static const pokey_interface pokey_interface_2 =
 {
 	{ input_port_1_r,input_port_2_r,dsw2_0r,dsw2_1r,dsw2_2r,dsw2_3r,dsw2_4r }
 };
@@ -310,7 +310,7 @@ static const struct POKEYinterface pokey_interface_2 =
 static MACHINE_DRIVER_START( tunhunt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502,2000000)		/* ??? */
+	MDRV_CPU_ADD("main", M6502,2000000)		/* ??? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* ? probably wrong */
 
@@ -332,11 +332,11 @@ static MACHINE_DRIVER_START( tunhunt )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(POKEY, 1209600)
+	MDRV_SOUND_ADD("pokey1", POKEY, 1209600)
 	MDRV_SOUND_CONFIG(pokey_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(POKEY, 1209600)
+	MDRV_SOUND_ADD("pokey2", POKEY, 1209600)
 	MDRV_SOUND_CONFIG(pokey_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -371,7 +371,7 @@ ATARI TUBE CHASE
 */
 
 ROM_START( tunhunt )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "001.lm1",	0x5000, 0x800, CRC(2601a3a4) SHA1(939bafc54576fdaccf688b49cc9d201b03feec3a) )
 	ROM_LOAD( "002.k1",		0x5800, 0x800, CRC(29bbf3df) SHA1(4a0ec4cfab362a976d3962b347f687db45095cfd) )
 	ROM_LOAD( "136000.103",	0x6000, 0x800, CRC(1a6a60a4) SHA1(7c60cc92595f1b90f421eabbaa20f657181ed4f0) )
@@ -380,14 +380,14 @@ ROM_START( tunhunt )
 	ROM_LOAD( "006.d1",		0x7800, 0x800, CRC(c3ae8519) SHA1(2b2e49065bc38429894ef29a29ffc60f96e64840) )
 	ROM_RELOAD( 		  	0xf800, 0x800 ) /* 6502 vectors  */
 
-	ROM_REGION( 0x400, REGION_GFX1, ROMREGION_DISPOSE ) /* alphanumeric characters */
+	ROM_REGION( 0x400, "gfx1", ROMREGION_DISPOSE ) /* alphanumeric characters */
 	ROM_LOAD( "019.c10",	0x000, 0x400, CRC(d6fd45a9) SHA1(c86ea3790c29c554199af8ad6f3d563dcb7723c7) )
 
-	ROM_REGION( 0x400, REGION_GFX2, 0 ) /* "SHELL" objects (16x16 pixel sprites) */
+	ROM_REGION( 0x400, "gfx2", 0 ) /* "SHELL" objects (16x16 pixel sprites) */
 	ROM_LOAD( "016.a8",		0x000, 0x200, CRC(830e6c34) SHA1(37a5eeb722dd80c4224c7f622b0edabb3ac1ca19) )
 	ROM_LOAD( "017.b8",		0x200, 0x200, CRC(5bef8b5a) SHA1(bfd9c592a34ed4861a6ad76ef10ea0d9b76a92b2) )
 
-	ROM_REGION( 0x540, REGION_PROMS, 0 )
+	ROM_REGION( 0x540, "proms", 0 )
 	ROM_LOAD( "013.d11",	0x000, 0x020, CRC(66f1f5eb) SHA1(bcf5348ae328cf943d2bf6e38df727c0c4c466b7) )	/* hue: BBBBGGGG? */
 	ROM_LOAD( "014.c11",	0x020, 0x020, CRC(662444b2) SHA1(2e510c1d9b7e34a3045048a46045e61fabaf918e) )	/* hue: RRRR----? */
 	ROM_LOAD( "015.n4",		0x040, 0x100, CRC(00e224a0) SHA1(1a384ef488791c62566c91b18d6a1fb4a5def2ba) )	/* timing? */
@@ -395,7 +395,7 @@ ROM_START( tunhunt )
 ROM_END
 
 ROM_START( tunhuntc )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "001.lm1",	0x5000, 0x800, CRC(2601a3a4) SHA1(939bafc54576fdaccf688b49cc9d201b03feec3a) )
 	ROM_LOAD( "002.k1",		0x5800, 0x800, CRC(29bbf3df) SHA1(4a0ec4cfab362a976d3962b347f687db45095cfd) )
 	ROM_LOAD( "003.j1",		0x6000, 0x800, CRC(360c0f47) SHA1(8e3d815836504c7651812e0e26423b0c7045621c) ) /* bad crc? fails self-test */
@@ -405,14 +405,14 @@ ROM_START( tunhuntc )
 	ROM_LOAD( "006.d1",		0x7800, 0x800, CRC(c3ae8519) SHA1(2b2e49065bc38429894ef29a29ffc60f96e64840) )
 	ROM_RELOAD( 		  	0xf800, 0x800 ) /* 6502 vectors  */
 
-	ROM_REGION( 0x400, REGION_GFX1, ROMREGION_DISPOSE ) /* alphanumeric characters */
+	ROM_REGION( 0x400, "gfx1", ROMREGION_DISPOSE ) /* alphanumeric characters */
 	ROM_LOAD( "019.c10",	0x000, 0x400, CRC(d6fd45a9) SHA1(c86ea3790c29c554199af8ad6f3d563dcb7723c7) )
 
-	ROM_REGION( 0x400, REGION_GFX2, 0 ) /* "SHELL" objects (16x16 pixel sprites) */
+	ROM_REGION( 0x400, "gfx2", 0 ) /* "SHELL" objects (16x16 pixel sprites) */
 	ROM_LOAD( "016.a8",		0x000, 0x200, CRC(830e6c34) SHA1(37a5eeb722dd80c4224c7f622b0edabb3ac1ca19) )
 	ROM_LOAD( "017.b8",		0x200, 0x200, CRC(5bef8b5a) SHA1(bfd9c592a34ed4861a6ad76ef10ea0d9b76a92b2) )
 
-	ROM_REGION( 0x540, REGION_PROMS, 0 )
+	ROM_REGION( 0x540, "proms", 0 )
 	ROM_LOAD( "013.d11",	0x000, 0x020, CRC(66f1f5eb) SHA1(bcf5348ae328cf943d2bf6e38df727c0c4c466b7) )	/* hue: BBBBGGGG? */
 	ROM_LOAD( "014.c11",	0x020, 0x020, CRC(662444b2) SHA1(2e510c1d9b7e34a3045048a46045e61fabaf918e) )	/* hue: RRRR----? */
 	ROM_LOAD( "015.n4",		0x040, 0x100, CRC(00e224a0) SHA1(1a384ef488791c62566c91b18d6a1fb4a5def2ba) )	/* timing? */

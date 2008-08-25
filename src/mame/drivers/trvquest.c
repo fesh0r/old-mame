@@ -43,7 +43,7 @@ static READ8_HANDLER( trvquest_question_r )
 {
 	gameplan_state *state = machine->driver_data;
 
-	return memory_region(machine, REGION_USER1)[*state->trvquest_question * 0x2000 + offset];
+	return memory_region(machine, "user1")[*state->trvquest_question * 0x2000 + offset];
 }
 
 static WRITE8_HANDLER( trvquest_coin_w )
@@ -62,10 +62,10 @@ static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3800, 0x380f) AM_READWRITE(via_1_r, via_1_w)
 	AM_RANGE(0x3810, 0x381f) AM_READWRITE(via_2_r, via_2_w)
 	AM_RANGE(0x3820, 0x382f) AM_READWRITE(via_0_r, via_0_w)
-	AM_RANGE(0x3830, 0x3830) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x3831, 0x3831) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x3840, 0x3840) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0x3841, 0x3841) AM_WRITE(AY8910_write_port_1_w)
+	AM_RANGE(0x3830, 0x3830) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x3831, 0x3831) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x3840, 0x3840) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x3841, 0x3841) AM_WRITE(ay8910_write_port_1_w)
 	AM_RANGE(0x3850, 0x3850) AM_READNOP //watchdog_reset_r ?
 	AM_RANGE(0x8000, 0x9fff) AM_READ(trvquest_question_r)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(gameplan_state, trvquest_question)
@@ -74,7 +74,7 @@ static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( trvquest )
-	PORT_START
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Reset")
@@ -84,7 +84,7 @@ static INPUT_PORTS_START( trvquest )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -94,7 +94,7 @@ static INPUT_PORTS_START( trvquest )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
 
-	PORT_START
+	PORT_START("UNK")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -120,7 +120,7 @@ static INPUT_PORTS_START( trvquest )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x07, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
@@ -203,7 +203,7 @@ static MACHINE_DRIVER_START( trvquest )
 
 	MDRV_DRIVER_DATA(gameplan_state)
 
-	MDRV_CPU_ADD(M6809,6000000)
+	MDRV_CPU_ADD("main", M6809,6000000)
 	MDRV_CPU_PROGRAM_MAP(cpu_map,0)
 	MDRV_CPU_VBLANK_INT("main", trvquest_interrupt)
 
@@ -217,22 +217,22 @@ static MACHINE_DRIVER_START( trvquest )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay1", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay2", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
 ROM_START( trvquest )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "rom3", 0xb000, 0x1000, CRC(2ff7f370) SHA1(66f40426ed02ee44235e17a49d9054ede42b83b9) )
 	ROM_LOAD( "rom4", 0xc000, 0x1000, CRC(b1adebcb) SHA1(661cabc92b1defce5c2edb8e873a80d5032084d0) )
 	ROM_LOAD( "rom5", 0xd000, 0x1000, CRC(2fc10a15) SHA1(8ecce32a5a167056c8fb48554a8907ae6299921e) )
 	ROM_LOAD( "rom6", 0xe000, 0x1000, CRC(fabf4846) SHA1(862cac32de78f2ff4afef398b864d5533d302a4f) )
 	ROM_LOAD( "rom7", 0xf000, 0x1000, CRC(a9f56551) SHA1(fb6fc3b17a6e66571a5ba837befbfac1ac26cc39) )
 
-	ROM_REGION( 0x18000, REGION_USER1, ROMREGION_ERASEFF ) /* Question roms */
+	ROM_REGION( 0x18000, "user1", ROMREGION_ERASEFF ) /* Question roms */
 	/* 0x00000 - 0x07fff empty */
 	ROM_LOAD( "romi", 0x06000, 0x2000, CRC(c8368f69) SHA1(c1dfb701482c5ae922df0a93665a519995a2f4f1) )
 	ROM_LOAD( "romh", 0x08000, 0x2000, CRC(f3aa8a08) SHA1(2bf8f878cc1df84806a6fb8e7be2656c422d61b9) )

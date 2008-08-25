@@ -8,7 +8,7 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "rescap.h"
+#include "machine/rescap.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/6821pia.h"
 #include "sound/ay8910.h"
@@ -96,18 +96,18 @@ static WRITE8_HANDLER( redalert_AY8910_w )
 
 		/* BC1=1, BDIR=0 : read from PSG */
 		case 0x01:
-			ay8910_latch_1 = AY8910_read_port_0_r(machine, 0);
+			ay8910_latch_1 = ay8910_read_port_0_r(machine, 0);
 			break;
 
 		/* BC1=0, BDIR=1 : write to PSG */
 		case 0x02:
-			AY8910_write_port_0_w(machine, 0, ay8910_latch_2);
+			ay8910_write_port_0_w(machine, 0, ay8910_latch_2);
 			break;
 
 		/* BC1=1, BDIR=1 : latch address */
 		default:
 		case 0x03:
-			AY8910_control_port_0_w(machine, 0, ay8910_latch_2);
+			ay8910_control_port_0_w(machine, 0, ay8910_latch_2);
 			break;
 	}
 }
@@ -125,7 +125,7 @@ static WRITE8_HANDLER( redalert_ay8910_latch_2_w )
 }
 
 
-static const struct AY8910interface redalert_ay8910_interface =
+static const ay8910_interface redalert_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -143,13 +143,17 @@ static ADDRESS_MAP_START( redalert_audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7000, 0x77ff) AM_MIRROR(0x0800) AM_ROM
 ADDRESS_MAP_END
 
+/*************************************
+ *
+ * Red Alert audio board
+ *
+ *************************************/
 
 static SOUND_START( redalert_audio )
 {
 	state_save_register_global(ay8910_latch_1);
 	state_save_register_global(ay8910_latch_2);
 }
-
 
 
 /*************************************
@@ -209,34 +213,71 @@ static SOUND_START( redalert )
 
 /*************************************
  *
- *  Red Alert machine driver
+ *  Red Alert audio board (m37b)
  *
  *************************************/
 
-MACHINE_DRIVER_START( redalert_audio )
+static MACHINE_DRIVER_START( redalert_audio_m37b )
 
-	MDRV_CPU_ADD(M6502, REDALERT_AUDIO_CPU_CLOCK)
+	MDRV_CPU_ADD("audio", M6502, REDALERT_AUDIO_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(redalert_audio_map,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, REDALERT_AUDIO_CPU_IRQ_FREQ)
 
-	MDRV_CPU_ADD(8085A, REDALERT_VOICE_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(redalert_voice_map,0)
-
-	MDRV_SOUND_START( redalert )
-
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-
-	MDRV_SOUND_ADD(AY8910, REDALERT_AY8910_CLOCK)
+	MDRV_SOUND_ADD("ay", AY8910, REDALERT_AY8910_CLOCK)
 	MDRV_SOUND_CONFIG(redalert_ay8910_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 0.50)
 	MDRV_SOUND_ROUTE(1, "mono", 0.50)
 	/* channel C is used a noise source and is not connected to a speaker */
 
-	MDRV_SOUND_ADD(HC55516, REDALERT_HC55516_CLOCK)
+MACHINE_DRIVER_END
+
+/*************************************
+ *
+ *  Red Alert voice board (ue17b)
+ *
+ *************************************/
+
+static MACHINE_DRIVER_START( redalert_audio_voice )
+
+	MDRV_CPU_ADD("voice", 8085A, REDALERT_VOICE_CPU_CLOCK)
+	MDRV_CPU_PROGRAM_MAP(redalert_voice_map,0)
+
+	MDRV_SOUND_ADD("cvsd", HC55516, REDALERT_HC55516_CLOCK)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
+/*************************************
+ *
+ *  Red Alert
+ *
+ *************************************/
 
+MACHINE_DRIVER_START( redalert_audio )
+
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+
+	MDRV_IMPORT_FROM( redalert_audio_m37b )
+	MDRV_IMPORT_FROM( redalert_audio_voice )
+
+	MDRV_SOUND_START( redalert )
+
+MACHINE_DRIVER_END
+
+/*************************************
+ *
+ *  Red Alert
+ *
+ *************************************/
+
+MACHINE_DRIVER_START( ww3_audio )
+
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+
+	MDRV_IMPORT_FROM( redalert_audio_m37b )
+
+	MDRV_SOUND_START( redalert_audio )
+
+MACHINE_DRIVER_END
 
 /*************************************
  *
@@ -271,28 +312,28 @@ static WRITE8_HANDLER( demoneye_ay8910_data_w )
 	{
 		case 0x00:
 			if (ay8910_latch_1 & 0x10)
-				AY8910_write_port_0_w(machine, 0, data);
+				ay8910_write_port_0_w(machine, 0, data);
 
 			if (ay8910_latch_1 & 0x20)
-				AY8910_write_port_1_w(machine, 0, data);
+				ay8910_write_port_1_w(machine, 0, data);
 
 			break;
 
 		case 0x01:
 			if (ay8910_latch_1 & 0x10)
-				ay8910_latch_2 = AY8910_read_port_0_r(machine, 0);
+				ay8910_latch_2 = ay8910_read_port_0_r(machine, 0);
 
 			if (ay8910_latch_1 & 0x20)
-				ay8910_latch_2 = AY8910_read_port_1_r(machine, 0);
+				ay8910_latch_2 = ay8910_read_port_1_r(machine, 0);
 
 			break;
 
 		case 0x03:
 			if (ay8910_latch_1 & 0x10)
-				AY8910_control_port_0_w(machine, 0, data);
+				ay8910_control_port_0_w(machine, 0, data);
 
 			if (ay8910_latch_1 & 0x20)
-				AY8910_control_port_1_w(machine, 0, data);
+				ay8910_control_port_1_w(machine, 0, data);
 
 			break;
 
@@ -311,7 +352,7 @@ static ADDRESS_MAP_START( demoneye_audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static const struct AY8910interface demoneye_ay8910_interface =
+static const ay8910_interface demoneye_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -366,7 +407,7 @@ static SOUND_RESET( demoneye )
 
 MACHINE_DRIVER_START( demoneye_audio )
 
-	MDRV_CPU_ADD(M6802, DEMONEYE_AUDIO_CPU_CLOCK)
+	MDRV_CPU_ADD("audio", M6802, DEMONEYE_AUDIO_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(demoneye_audio_map,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, REDALERT_AUDIO_CPU_IRQ_FREQ)  /* guess */
 
@@ -375,10 +416,10 @@ MACHINE_DRIVER_START( demoneye_audio )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, DEMONEYE_AY8910_CLOCK)
+	MDRV_SOUND_ADD("ay1", AY8910, DEMONEYE_AY8910_CLOCK)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(AY8910, DEMONEYE_AY8910_CLOCK)
+	MDRV_SOUND_ADD("ay2", AY8910, DEMONEYE_AY8910_CLOCK)
 	MDRV_SOUND_CONFIG(demoneye_ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END

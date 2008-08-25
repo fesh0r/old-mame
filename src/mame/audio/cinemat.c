@@ -151,7 +151,7 @@ static const char *const spacewar_sample_names[] =
     0
 };
 
-static const struct Samplesinterface spacewar_samples_interface =
+static const samples_interface spacewar_samples_interface =
 {
 	8,
 	spacewar_sample_names
@@ -206,7 +206,7 @@ MACHINE_DRIVER_START( spacewar_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(spacewar_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -228,7 +228,7 @@ static const char *const barrier_sample_names[] =
     0
 };
 
-static const struct Samplesinterface barrier_samples_interface =
+static const samples_interface barrier_samples_interface =
 {
 	3,
 	barrier_sample_names
@@ -259,7 +259,7 @@ MACHINE_DRIVER_START( barrier_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(barrier_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -279,7 +279,7 @@ static const char *const speedfrk_sample_names[] =
     NULL
 };
 
-static const struct Samplesinterface speedfrk_samples_interface =
+static const samples_interface speedfrk_samples_interface =
 {
 	1,
 	speedfrk_sample_names
@@ -317,7 +317,7 @@ MACHINE_DRIVER_START( speedfrk_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(speedfrk_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -342,7 +342,7 @@ static const char *const starhawk_sample_names[] =
     NULL
 };
 
-static const struct Samplesinterface starhawk_samples_interface =
+static const samples_interface starhawk_samples_interface =
 {
 	5,
 	starhawk_sample_names
@@ -391,7 +391,7 @@ MACHINE_DRIVER_START( starhawk_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(starhawk_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -416,7 +416,7 @@ static const char *const sundance_sample_names[] =
     0
 };
 
-static const struct Samplesinterface sundance_samples_interface =
+static const samples_interface sundance_samples_interface =
 {
 	6,
 	sundance_sample_names
@@ -459,7 +459,7 @@ MACHINE_DRIVER_START( sundance_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(sundance_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -484,7 +484,7 @@ static const char *const tailg_sample_names[] =
     NULL
 };
 
-static const struct Samplesinterface tailg_samples_interface =
+static const samples_interface tailg_samples_interface =
 {
 	6,
 	tailg_sample_names
@@ -546,7 +546,7 @@ MACHINE_DRIVER_START( tailg_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(tailg_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -570,7 +570,7 @@ static const char *const warrior_sample_names[] =
     NULL
 };
 
-static const struct Samplesinterface warrior_samples_interface =
+static const samples_interface warrior_samples_interface =
 {
 	5,
 	warrior_sample_names
@@ -613,7 +613,7 @@ MACHINE_DRIVER_START( warrior_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(warrior_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -639,7 +639,7 @@ static const char *const armora_sample_names[] =
     NULL
 };
 
-static const struct Samplesinterface armora_samples_interface =
+static const samples_interface armora_samples_interface =
 {
 	7,
 	armora_sample_names
@@ -706,7 +706,7 @@ MACHINE_DRIVER_START( armora_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(armora_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -738,7 +738,7 @@ static const char *const ripoff_sample_names[] =
     NULL
 };
 
-static const struct Samplesinterface ripoff_samples_interface =
+static const samples_interface ripoff_samples_interface =
 {
 	6,
 	ripoff_sample_names
@@ -796,7 +796,7 @@ MACHINE_DRIVER_START( ripoff_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(ripoff_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -823,7 +823,7 @@ static const char *const starcas_sample_names[] =
     0
 };
 
-static const struct Samplesinterface starcas_samples_interface =
+static const samples_interface starcas_samples_interface =
 {
 	8,
 	starcas_sample_names
@@ -908,7 +908,7 @@ MACHINE_DRIVER_START( starcas_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(starcas_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 MACHINE_DRIVER_END
@@ -935,7 +935,7 @@ static const char *const solarq_sample_names[] =
     NULL
 };
 
-static const struct Samplesinterface solarq_samples_interface =
+static const samples_interface solarq_samples_interface =
 {
 	8,
 	solarq_sample_names
@@ -1043,7 +1043,7 @@ MACHINE_DRIVER_START( solarq_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(solarq_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 MACHINE_DRIVER_END
@@ -1074,7 +1074,7 @@ static const char *const boxingb_sample_names[] =
     NULL
 };
 
-static const struct Samplesinterface boxingb_samples_interface =
+static const samples_interface boxingb_samples_interface =
 {
 	12,
 	boxingb_sample_names
@@ -1176,7 +1176,7 @@ MACHINE_DRIVER_START( boxingb_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(boxingb_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -1203,7 +1203,7 @@ static const char *const wotw_sample_names[] =
     0
 };
 
-static const struct Samplesinterface wotw_samples_interface =
+static const samples_interface wotw_samples_interface =
 {
 	8,
 	wotw_sample_names
@@ -1288,7 +1288,7 @@ MACHINE_DRIVER_START( wotw_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(wotw_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -1315,7 +1315,7 @@ static const char *const wotwc_sample_names[] =
     0
 };
 
-static const struct Samplesinterface wotwc_samples_interface =
+static const samples_interface wotwc_samples_interface =
 {
 	8,
 	wotwc_sample_names
@@ -1400,7 +1400,7 @@ MACHINE_DRIVER_START( wotwc_sound )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(wotwc_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -1469,7 +1469,7 @@ static WRITE8_HANDLER( sound_output_w )
 }
 
 
-static const struct AY8910interface demon_ay8910_interface_1 =
+static const ay8910_interface demon_ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -1479,7 +1479,7 @@ static const struct AY8910interface demon_ay8910_interface_1 =
 	sound_portb_w
 };
 
-static const struct AY8910interface demon_ay8910_interface_3 =
+static const ay8910_interface demon_ay8910_interface_3 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -1528,15 +1528,15 @@ static MACHINE_RESET( demon_sound )
 static ADDRESS_MAP_START( demon_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x3000, 0x33ff) AM_RAM
-	AM_RANGE(0x4001, 0x4001) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0x4002, 0x4002) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x4003, 0x4003) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x5001, 0x5001) AM_READ(AY8910_read_port_1_r)
-	AM_RANGE(0x5002, 0x5002) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0x5003, 0x5003) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0x6001, 0x6001) AM_READ(AY8910_read_port_2_r)
-	AM_RANGE(0x6002, 0x6002) AM_WRITE(AY8910_write_port_2_w)
-	AM_RANGE(0x6003, 0x6003) AM_WRITE(AY8910_control_port_2_w)
+	AM_RANGE(0x4001, 0x4001) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x4002, 0x4002) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x4003, 0x4003) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x5001, 0x5001) AM_READ(ay8910_read_port_1_r)
+	AM_RANGE(0x5002, 0x5002) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x5003, 0x5003) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x6001, 0x6001) AM_READ(ay8910_read_port_2_r)
+	AM_RANGE(0x6002, 0x6002) AM_WRITE(ay8910_write_port_2_w)
+	AM_RANGE(0x6003, 0x6003) AM_WRITE(ay8910_control_port_2_w)
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(SMH_NOP)  /* watchdog? */
 ADDRESS_MAP_END
 
@@ -1558,8 +1558,7 @@ static const struct z80_irq_daisy_chain daisy_chain[] =
 MACHINE_DRIVER_START( demon_sound )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 3579545)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 3579545)
 	MDRV_CPU_CONFIG(daisy_chain)
 	MDRV_CPU_PROGRAM_MAP(demon_sound_map,0)
 	MDRV_CPU_IO_MAP(demon_sound_ports,0)
@@ -1569,14 +1568,14 @@ MACHINE_DRIVER_START( demon_sound )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 3579545)
+	MDRV_SOUND_ADD("ay1", AY8910, 3579545)
 	MDRV_SOUND_CONFIG(demon_ay8910_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 3579545)
+	MDRV_SOUND_ADD("ay2", AY8910, 3579545)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 3579545)
+	MDRV_SOUND_ADD("ay3", AY8910, 3579545)
 	MDRV_SOUND_CONFIG(demon_ay8910_interface_3)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -1603,7 +1602,7 @@ static MACHINE_RESET( qb3_sound )
 
 	/* this patch prevents the sound ROM from eating itself when command $0A is sent */
 	/* on a cube rotate */
-	memory_region(machine, REGION_CPU2)[0x11dc] = 0x09;
+	memory_region(machine, "audio")[0x11dc] = 0x09;
 }
 
 

@@ -27,23 +27,12 @@
 #include "machine/laserdsc.h"
 #include "video/resnet.h"
 
-static laserdisc_info *discinfo;
-static UINT8 superdq_ld_in_latch = 0, superdq_ld_out_latch = 0xff;
+static const device_config *laserdisc;
+static UINT8 superdq_ld_in_latch;
+static UINT8 superdq_ld_out_latch;
 
 static tilemap *superdq_tilemap;
 static int superdq_color_bank = 0;
-
-static render_texture *video_texture;
-static render_texture *overlay_texture;
-static bitmap_t *last_video_bitmap;
-
-static void video_cleanup(running_machine *machine)
-{
-	if (video_texture != NULL)
-		render_texture_free(video_texture);
-	if (overlay_texture != NULL)
-		render_texture_free(overlay_texture);
-}
 
 static TILE_GET_INFO( get_tile_info )
 {
@@ -55,45 +44,16 @@ static TILE_GET_INFO( get_tile_info )
 static VIDEO_START( superdq )
 {
 	superdq_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows, 8, 8, 32, 32);
-
-	add_exit_callback(machine, video_cleanup);
 }
 
 static VIDEO_UPDATE( superdq )
 {
+	render_container_set_palette_alpha(render_container_get_screen(screen), 0, 0x00);
+
 	tilemap_draw(bitmap,cliprect,superdq_tilemap,0,0);
 
-	if (!video_skip_this_frame() && discinfo != NULL)
-	{
-		bitmap_t *vidbitmap;
-		rectangle fixedvis = *video_screen_get_visible_area(screen);
-		fixedvis.max_x++;
-		fixedvis.max_y++;
-
-		laserdisc_get_video(discinfo, &vidbitmap);
-
-		/* first lay down the video data */
-		if (video_texture == NULL)
-			video_texture = render_texture_alloc(NULL, NULL);
-		if (vidbitmap != last_video_bitmap)
-			render_texture_set_bitmap(video_texture, vidbitmap, NULL, 0, TEXFORMAT_YUY16);
-
-		last_video_bitmap = vidbitmap;
-
-		/* then overlay the TMS9928A video */
-		if (overlay_texture == NULL)
-			overlay_texture = render_texture_alloc(NULL, NULL);
-		render_texture_set_bitmap(overlay_texture, bitmap, &fixedvis, 0, TEXFORMAT_PALETTEA16);
-
-		/* add both quads to the screen */
-		render_container_empty(render_container_get_screen(screen));
-		render_screen_add_quad(screen, 0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(0xff,0xff,0xff,0xff), video_texture, PRIMFLAG_BLENDMODE(BLENDMODE_NONE) | PRIMFLAG_SCREENTEX(1));
-		render_screen_add_quad(screen, 0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(0xff,0xff,0xff,0xff), overlay_texture, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA) | PRIMFLAG_SCREENTEX(1));
-	}
-
 	/* display disc information */
-	if (discinfo != NULL)
-		popmessage("%s", laserdisc_describe_state(discinfo));
+	popmessage("%s", laserdisc_describe_state(laserdisc));
 
 	return 0;
 }
@@ -145,24 +105,26 @@ static PALETTE_INIT( superdq )
 	}
 }
 
-static MACHINE_START( superdq )
+static MACHINE_RESET( superdq )
 {
-	discinfo = laserdisc_init(machine, LASERDISC_TYPE_LDV1000, get_disk_handle(0), 0);
+	superdq_ld_in_latch = 0;
+	superdq_ld_out_latch = 0xff;
+	superdq_color_bank = 0;
 }
 
 static INTERRUPT_GEN( superdq_vblank )
 {
-	laserdisc_vsync(discinfo);
+	laserdisc_vsync(laserdisc);
 
 	/* status is read when the STATUS line from the laserdisc
        toggles (600usec after the vblank). We could set up a
        timer to do that, but this works as well */
-	superdq_ld_in_latch = laserdisc_data_r(discinfo);
+	superdq_ld_in_latch = laserdisc_data_r(laserdisc);
 
 	/* command is written when the COMMAND line from the laserdisc
        toggles (680usec after the vblank). We could set up a
        timer to do that, but this works as well */
-	laserdisc_data_w(discinfo, superdq_ld_out_latch);
+	laserdisc_data_w(laserdisc, superdq_ld_out_latch);
 	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 }
 
@@ -225,7 +187,7 @@ static ADDRESS_MAP_START( superdq_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("DSW1")
 	AM_RANGE(0x03, 0x03) AM_READ_PORT("DSW2")
-	AM_RANGE(0x04, 0x04) AM_READWRITE(superdq_ld_r,SN76496_0_w)
+	AM_RANGE(0x04, 0x04) AM_READWRITE(superdq_ld_r,sn76496_0_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(superdq_io_w)
 	AM_RANGE(0x0c, 0x0d) AM_NOP /* HD46505S */
 ADDRESS_MAP_END
@@ -239,7 +201,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( superdq )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -249,7 +211,7 @@ static INPUT_PORTS_START( superdq )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )	/* Service button */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_TILT )		/* TEST button */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -259,7 +221,7 @@ static INPUT_PORTS_START( superdq )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Normal ) )
@@ -283,7 +245,7 @@ static INPUT_PORTS_START( superdq )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
@@ -318,7 +280,7 @@ static const gfx_layout charlayout =
 
 
 static GFXDECODE_START( superdq )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0, 2 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0, 2 )
 GFXDECODE_END
 
 
@@ -329,40 +291,42 @@ GFXDECODE_END
  *
  *************************************/
 
+static MACHINE_START( superdq )
+{
+	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
+}
+
+
 static MACHINE_DRIVER_START( superdq )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, MASTER_CLOCK/8)
+	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/8)
 	MDRV_CPU_PROGRAM_MAP(superdq_map,0)
 	MDRV_CPU_IO_MAP(superdq_io,0)
 	MDRV_CPU_VBLANK_INT("main", superdq_vblank)
 
 	MDRV_MACHINE_START(superdq)
+	MDRV_MACHINE_RESET(superdq)
+
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000)
+	MDRV_LASERDISC_OVERLAY(superdq, 256, 256, BITMAP_FORMAT_INDEXED16)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_SELF_RENDER)
-
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_INDEXED16)
 
 	MDRV_GFXDECODE(superdq)
 	MDRV_PALETTE_LENGTH(32)
 
 	MDRV_PALETTE_INIT(superdq)
 	MDRV_VIDEO_START(superdq)
-	MDRV_VIDEO_UPDATE(superdq)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(SN76496, MASTER_CLOCK/8)
+	MDRV_SOUND_ADD("sn", SN76496, MASTER_CLOCK/8)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.8)
 
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("laserdisc", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
@@ -377,44 +341,44 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( superdq )		/* long scenes */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "sdq-prog.bin", 0x0000, 0x4000, CRC(96b931e2) SHA1(a2408272e19b02755368a6d7e526eec15896e586) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "sdq-char.bin", 0x0000, 0x2000, CRC(5fb0e440) SHA1(267413aeb36b661458b7229d65d7b1d03562a1d3) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0020, "proms", ROMREGION_DISPOSE )
 	ROM_LOAD( "sdq-cprm.bin", 0x0000, 0x0020, CRC(96701569) SHA1(b0f40373735d1af0c62e5ab06045a064b4eb1794) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "laserdisc" )
 	DISK_IMAGE_READONLY( "superdq", 0, NO_DUMP )
 ROM_END
 
 ROM_START( superdqs )		/* short scenes */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "sdq_c45.rom", 0x0000, 0x4000, CRC(0f4d4832) SHA1(c6db63721f0c73151eb9a678ceafd0e7d6121fd3) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "sdq_a8.rom", 0x0000, 0x2000, CRC(7d981a14) SHA1(0a0949113b80c30adbb5bdb108d396993225be5b) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0020, "proms", ROMREGION_DISPOSE )
 	ROM_LOAD( "sdq-cprm.bin", 0x0000, 0x0020, CRC(96701569) SHA1(b0f40373735d1af0c62e5ab06045a064b4eb1794) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "laserdisc" )
 	DISK_IMAGE_READONLY( "superdq", 0, NO_DUMP )
 ROM_END
 
 ROM_START( superdqa )		/* short scenes, alternate */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "sdq_c45a.rom", 0x0000, 0x4000, CRC(b12ce1f8) SHA1(3f0238ea73a6d3e1fe62f83ed3343ca4c268bdd6) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "sdq_a8.rom", 0x0000, 0x2000, CRC(7d981a14) SHA1(0a0949113b80c30adbb5bdb108d396993225be5b) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0020, "proms", ROMREGION_DISPOSE )
 	ROM_LOAD( "sdq-cprm.bin", 0x0000, 0x0020, CRC(96701569) SHA1(b0f40373735d1af0c62e5ab06045a064b4eb1794) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "laserdisc" )
 	DISK_IMAGE_READONLY( "superdq", 0, NO_DUMP )
 ROM_END
 

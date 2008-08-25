@@ -97,26 +97,26 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(hanaawas_input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READNOP /* it must return 0 */
-	AM_RANGE(0x10, 0x10) AM_READ(AY8910_read_port_0_r)
+	AM_RANGE(0x10, 0x10) AM_READ(ay8910_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(hanaawas_inputs_mux_w)
-	AM_RANGE(0x10, 0x10) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x11, 0x11) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0x10, 0x10) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x11, 0x11) AM_WRITE(ay8910_write_port_0_w)
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( hanaawas )
-	PORT_START_TAG("IN0")	/* IN0 */
+	PORT_START("IN0")	/* IN0 */
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
 
-	PORT_START_TAG("DSW")	/* DSW0 */
+	PORT_START("DSW")	/* DSW0 */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -141,7 +141,7 @@ static INPUT_PORTS_START( hanaawas )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 
 	/* fake port.  The button depressed gets converted to an integer in the 1-10 range */
-	PORT_START_TAG("P1")	/* IN2 */
+	PORT_START("P1")	/* IN2 */
 	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_BUTTON1  ) PORT_PLAYER(1)
 	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_BUTTON2  ) PORT_PLAYER(1)
 	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_BUTTON3  ) PORT_PLAYER(1)
@@ -154,7 +154,7 @@ static INPUT_PORTS_START( hanaawas )
 	PORT_BIT( 0x200, IP_ACTIVE_HIGH, IPT_BUTTON10 ) PORT_PLAYER(1)
 
 	/* fake port.  The button depressed gets converted to an integer in the 1-10 range */
-	PORT_START_TAG("P2")	/* IN3 */
+	PORT_START("P2")	/* IN3 */
 	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_BUTTON1  ) PORT_PLAYER(2)
 	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_BUTTON2  ) PORT_PLAYER(2)
 	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_BUTTON3  ) PORT_PLAYER(2)
@@ -166,7 +166,7 @@ static INPUT_PORTS_START( hanaawas )
 	PORT_BIT( 0x100, IP_ACTIVE_HIGH, IPT_BUTTON9  ) PORT_PLAYER(2)
 	PORT_BIT( 0x200, IP_ACTIVE_HIGH, IPT_BUTTON10 ) PORT_PLAYER(2)
 
-	PORT_START_TAG("START")	/* IN4 */
+	PORT_START("START")	/* IN4 */
 	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_START2 )
 INPUT_PORTS_END
@@ -188,12 +188,12 @@ GFX( charlayout_1bpp, 0x2000*8+4, 0x2000*8+4, 0x2000*8+4 )
 GFX( charlayout_3bpp, 0x2000*8,   0,          4          )
 
 static GFXDECODE_START( hanaawas )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout_1bpp, 0, 32 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout_3bpp, 0, 32 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout_1bpp, 0, 32 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout_3bpp, 0, 32 )
 GFXDECODE_END
 
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -207,7 +207,7 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( hanaawas )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,18432000/6)	/* 3.072 MHz ??? */
+	MDRV_CPU_ADD("main", Z80,18432000/6)	/* 3.072 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -230,8 +230,8 @@ static MACHINE_DRIVER_START( hanaawas )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 18432000/12)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, 18432000/12)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
@@ -243,19 +243,19 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( hanaawas )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "1.1e",    	0x0000, 0x2000, CRC(618dc1e3) SHA1(31817f256512352db0d27322998d9dcf95a993cf) )
 	ROM_LOAD( "2.3e",    	0x2000, 0x1000, CRC(5091b67f) SHA1(5a66740b8829b9b4d3aea274f9ff36e0b9e8c151) )
 	ROM_LOAD( "3.4e",    	0x4000, 0x1000, CRC(dcb65067) SHA1(37964ff4016bd927b9f13b4358b831bb667f993b) )
 	ROM_LOAD( "4.6e",    	0x6000, 0x1000, CRC(24bee0dc) SHA1(a4237ad3611c923b563923462e79b0b3f66cc721) )
 
-	ROM_REGION( 0x4000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "5.9a",		0x0000, 0x1000, CRC(304ae219) SHA1(c1eac4973a6aec9fd8e848c206870667a8bb0922) )
 	ROM_LOAD( "6.10a",		0x1000, 0x1000, CRC(765a4e5f) SHA1(b2f148c60cffb75d1a841be8b924a874bff22ce4) )
 	ROM_LOAD( "7.12a",		0x2000, 0x1000, CRC(5245af2d) SHA1(a1262fa5828a52de28cc953ab465cbc719c56c32) )
 	ROM_LOAD( "8.13a",		0x3000, 0x1000, CRC(3356ddce) SHA1(68818d0692fca548a49a74209bd0ef6f16484eba) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "13j.bpr",	0x0000, 0x0020, CRC(99300d85) SHA1(dd383db1f3c8c6d784121d32f20ffed3d83e2278) )	/* color PROM */
 	ROM_LOAD( "2a.bpr",		0x0020, 0x0100, CRC(e26f21a2) SHA1(d0df06f833e0f97872d9d2ffeb7feef94aaaa02a) )	/* lookup table */
 	ROM_LOAD( "6g.bpr",		0x0120, 0x0100, CRC(4d94fed5) SHA1(3ea8e6fb95d5677991dc90fe7435f91e5320bb16) )	/* I don't know what this is */

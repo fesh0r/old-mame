@@ -30,7 +30,7 @@ Todo:
 
 
 /* Misc variables */
-static laserdisc_info *discinfo;
+static const device_config *laserdisc;
 
 static UINT8 *tile_ram;
 static UINT8 *tile_control_ram;
@@ -42,12 +42,14 @@ static VIDEO_UPDATE( esh )
 {
 	int charx, chary;
 
+	render_container_set_palette_alpha(render_container_get_screen(screen), 0, 0x00);
+
 	/* clear */
 	fillbitmap(bitmap, 0, cliprect);
 
 	/* display disc information */
-	if (discinfo != NULL && ld_video_visible)
-		popmessage("%s", laserdisc_describe_state(discinfo));
+	if (ld_video_visible)
+		popmessage("%s", laserdisc_describe_state(laserdisc));
 
 	/* Draw tiles */
 	for (charx = 0; charx < 32; charx++)
@@ -77,12 +79,12 @@ static VIDEO_UPDATE( esh )
 /* MEMORY HANDLERS */
 static READ8_HANDLER(ldp_read)
 {
-	return laserdisc_data_r(discinfo);
+	return laserdisc_data_r(laserdisc);
 }
 
 static WRITE8_HANDLER(ldp_write)
 {
-	laserdisc_data_w(discinfo,data);
+	laserdisc_data_w(laserdisc,data);
 }
 
 static WRITE8_HANDLER(misc_write)
@@ -168,7 +170,7 @@ ADDRESS_MAP_END									/*   (someday 0xf8-0xff will probably be a single handle
 
 /* PORTS */
 static INPUT_PORTS_START( esh )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -178,7 +180,7 @@ static INPUT_PORTS_START( esh )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -188,7 +190,7 @@ static INPUT_PORTS_START( esh )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -198,7 +200,7 @@ static INPUT_PORTS_START( esh )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -255,14 +257,8 @@ static const gfx_layout esh_gfx_layout =
 };
 
 static GFXDECODE_START( esh )
-	GFXDECODE_ENTRY(REGION_GFX1, 0, esh_gfx_layout, 0x0, 0x100)
+	GFXDECODE_ENTRY("gfx1", 0, esh_gfx_layout, 0x0, 0x100)
 GFXDECODE_END
-
-static MACHINE_START( esh )
-{
-	discinfo = laserdisc_init(machine, LASERDISC_TYPE_LDV1000, get_disk_handle(0), 0);
-	return;
-}
 
 static TIMER_CALLBACK( irq_stop )
 {
@@ -275,95 +271,113 @@ static INTERRUPT_GEN( vblank_callback_esh )
 	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, irq_stop);
 
-	laserdisc_vsync(discinfo);
+	laserdisc_vsync(laserdisc);
+}
+
+static MACHINE_START( esh )
+{
+	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
 }
 
 
 /* DRIVER */
 static MACHINE_DRIVER_START( esh )
-/*  main cpu */
-	MDRV_CPU_ADD(Z80, PCB_CLOCK/6)						/* The denominator is a Daphne guess based on PacMan's hardware */
+
+	/* main cpu */
+	MDRV_CPU_ADD("main", Z80, PCB_CLOCK/6)						/* The denominator is a Daphne guess based on PacMan's hardware */
 	MDRV_CPU_PROGRAM_MAP(z80_0_mem,0)
 	MDRV_CPU_IO_MAP(z80_0_io,0)
 	MDRV_CPU_VBLANK_INT("main", vblank_callback_esh)
 
-	MDRV_MACHINE_START(esh)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-/*  video */
+	MDRV_MACHINE_START(esh)
 
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000)
+	MDRV_LASERDISC_OVERLAY(esh, 256, 256, BITMAP_FORMAT_INDEXED16)
+
+	/* video hardware */
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_INDEXED16)
 
 	MDRV_PALETTE_LENGTH(256)
 	MDRV_PALETTE_INIT(esh)
 
 	MDRV_GFXDECODE(esh)
-	MDRV_VIDEO_UPDATE(esh)
 
-/*  sound */
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+
+	MDRV_SOUND_ADD("laserdisc", CUSTOM, 0)
+	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
+	MDRV_SOUND_ROUTE(0, "left", 1.0)
+	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( esh )
 	/* Main program CPU */
-	ROM_REGION( 0x4000, REGION_CPU1, 0 )
+	ROM_REGION( 0x4000, "main", 0 )
 	ROM_LOAD( "is1.h8", 0x0000, 0x2000, CRC(114c912b) SHA1(7c033a102d046199f3e2c6787579dac5b5295d50) )
 	ROM_LOAD( "is2.f8", 0x2000, 0x2000, CRC(0e3b6e62) SHA1(5e8160180e20705e727329f9d70305fcde176a25) )
 
 	/* Tiles */
-	ROM_REGION( 0x3000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x3000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a.m3", 0x0000, 0x1000, CRC(a04736d8) SHA1(3b642b5d7168cf4a09328eee54c532be815d2bcf) )
 	ROM_LOAD( "b.l3", 0x1000, 0x1000, CRC(9366dde7) SHA1(891db65384d47d13355b2eea37f57c34bc775c8f) )
 	ROM_LOAD( "c.k3", 0x2000, 0x1000, CRC(a936ef01) SHA1(bcacb281ccb72ceb57fb6a79380cc3a9688743c4) )
 
 	/* Color (+other) PROMs */
-	ROM_REGION( 0x400, REGION_PROMS, 0 )
+	ROM_REGION( 0x400, "proms", 0 )
 	ROM_LOAD( "rgb.j1", 0x000, 0x200, CRC(1e9f795f) SHA1(61a58694929fa39b2412bc9244e5681d65a0eacb) )
 	ROM_LOAD( "h.c5",   0x200, 0x100, CRC(abde5e4b) SHA1(9dd3a7fd523b519ac613b9f08ae9cc962992cf5d) )	/* Video timing? */
 	ROM_LOAD( "v.c6",   0x300, 0x100, CRC(7157ba22) SHA1(07355f30efe46196d216356eda48a59fc622e43f) )
+
+	DISK_REGION( "laserdisc" )
+	DISK_IMAGE_READONLY( "esh", 0, NO_DUMP )
 ROM_END
 
 ROM_START( esha )
 	/* Main program CPU */
-	ROM_REGION( 0x4000, REGION_CPU1, 0 )
+	ROM_REGION( 0x4000, "main", 0 )
 	ROM_LOAD( "is1.h8", 0x0000, 0x2000, CRC(114c912b) SHA1(7c033a102d046199f3e2c6787579dac5b5295d50) )
 	ROM_LOAD( "is2.f8", 0x2000, 0x2000, CRC(7a562f49) SHA1(acfa49b3b3d96b001a5dbdee39cbb0ca80be1763) )
 
 	/* Tiles */
-	ROM_REGION( 0x3000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x3000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a.m3", 0x0000, 0x1000, CRC(a04736d8) SHA1(3b642b5d7168cf4a09328eee54c532be815d2bcf) )
 	ROM_LOAD( "b.l3", 0x1000, 0x1000, CRC(9366dde7) SHA1(891db65384d47d13355b2eea37f57c34bc775c8f) )
 	ROM_LOAD( "c.k3", 0x2000, 0x1000, CRC(a936ef01) SHA1(bcacb281ccb72ceb57fb6a79380cc3a9688743c4) )
 
 	/* Color (+other) PROMs */
-	ROM_REGION( 0x400, REGION_PROMS, 0 )
+	ROM_REGION( 0x400, "proms", 0 )
 	ROM_LOAD( "rgb.j1", 0x000, 0x200, CRC(1e9f795f) SHA1(61a58694929fa39b2412bc9244e5681d65a0eacb) )
 	ROM_LOAD( "h.c5",   0x200, 0x100, CRC(abde5e4b) SHA1(9dd3a7fd523b519ac613b9f08ae9cc962992cf5d) )	/* Video timing? */
 	ROM_LOAD( "v.c6",   0x300, 0x100, CRC(7157ba22) SHA1(07355f30efe46196d216356eda48a59fc622e43f) )
+
+	DISK_REGION( "laserdisc" )
+	DISK_IMAGE_READONLY( "esh", 0, NO_DUMP )
 ROM_END
 
 ROM_START( eshb )
 	/* Main program CPU */
-	ROM_REGION( 0x4000, REGION_CPU1, 0 )
+	ROM_REGION( 0x4000, "main", 0 )
 	ROM_LOAD( "1.h8",   0x0000, 0x2000, CRC(8d27d363) SHA1(529d8e4283e736edb5a9193df1ed8d0164471864) )	/* Hand-written ROM label */
 	ROM_LOAD( "is2.f8", 0x2000, 0x2000, CRC(0e3b6e62) SHA1(5e8160180e20705e727329f9d70305fcde176a25) )
 
 	/* Tiles */
-	ROM_REGION( 0x3000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x3000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a.m3", 0x0000, 0x1000, CRC(a04736d8) SHA1(3b642b5d7168cf4a09328eee54c532be815d2bcf) )
 	ROM_LOAD( "b.l3", 0x1000, 0x1000, CRC(9366dde7) SHA1(891db65384d47d13355b2eea37f57c34bc775c8f) )
 	ROM_LOAD( "c.k3", 0x2000, 0x1000, CRC(a936ef01) SHA1(bcacb281ccb72ceb57fb6a79380cc3a9688743c4) )
 
 	/* Color (+other) PROMs */
-	ROM_REGION( 0x400, REGION_PROMS, 0 )
+	ROM_REGION( 0x400, "proms", 0 )
 	ROM_LOAD( "rgb.j1", 0x000, 0x200, CRC(1e9f795f) SHA1(61a58694929fa39b2412bc9244e5681d65a0eacb) )
 	ROM_LOAD( "h.c5",   0x200, 0x100, CRC(abde5e4b) SHA1(9dd3a7fd523b519ac613b9f08ae9cc962992cf5d) )	/* Video timing? */
 	ROM_LOAD( "v.c6",   0x300, 0x100, CRC(7157ba22) SHA1(07355f30efe46196d216356eda48a59fc622e43f) )
+
+	DISK_REGION( "laserdisc" )
+	DISK_IMAGE_READONLY( "esh", 0, NO_DUMP )
 ROM_END
 
 

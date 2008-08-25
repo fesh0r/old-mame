@@ -283,7 +283,7 @@ static READ64_HANDLER(unk2_r)
 }
 #endif
 
-static UINT64 unk3 = -1;
+static UINT64 unk3;
 static READ64_HANDLER(unk3_r)
 {
 	//return U64(0xffffffffffffffff);
@@ -457,7 +457,7 @@ static CDE_DMA cde_dma[2];
 
 static void cde_init(void)
 {
-	cdrom_file *cd = cdrom_open(get_disk_handle(0));
+	cdrom_file *cd = cdrom_open(get_disk_handle("cdrom"));
 	const cdrom_toc *toc = cdrom_get_toc(cd);
 
 	if (cd)
@@ -1103,7 +1103,7 @@ static ADDRESS_MAP_START( m2_main, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x10000008, 0x10001007) AM_NOP		// ???
 	AM_RANGE(0x20000000, 0x201fffff) AM_ROM AM_SHARE(2)
 	AM_RANGE(0x40000000, 0x407fffff) AM_RAM AM_SHARE(3) AM_BASE(&main_ram)
-	AM_RANGE(0xfff00000, 0xffffffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_SHARE(2)
+	AM_RANGE(0xfff00000, 0xffffffff) AM_ROM AM_REGION("user1", 0) AM_SHARE(2)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( m2 )
@@ -1133,12 +1133,12 @@ static INTERRUPT_GEN(m2)
 static MACHINE_DRIVER_START( m2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC602, 33000000)	/* actually PPC602, 66MHz */
+	MDRV_CPU_ADD("main", PPC602, 33000000)	/* actually PPC602, 66MHz */
 	MDRV_CPU_CONFIG(ppc602_config)
 	MDRV_CPU_PROGRAM_MAP(m2_main, 0)
 	MDRV_CPU_VBLANK_INT("main", m2)
 
-	MDRV_CPU_ADD(PPC602, 33000000)	/* actually PPC602, 66MHz */
+	MDRV_CPU_ADD("sub", PPC602, 33000000)	/* actually PPC602, 66MHz */
 	MDRV_CPU_CONFIG(ppc602_config)
 	MDRV_CPU_PROGRAM_MAP(m2_main, 0)
 
@@ -1159,70 +1159,70 @@ static MACHINE_DRIVER_START( m2 )
 MACHINE_DRIVER_END
 
 
-#define ROM_REGION64_BE(length,type,flags)	      ROM_REGION(length, type, (flags) | ROMREGION_64BIT | ROMREGION_BE)
-
 ROM_START(polystar)
-	ROM_REGION64_BE(0x200000, REGION_USER1, 0)	/* boot rom */
+	ROM_REGION64_BE(0x200000, "user1", 0)	/* boot rom */
 	ROM_LOAD16_WORD("623b01.8q", 0x000000, 0x200000, CRC(bd879f93) SHA1(e2d63bfbd2b15260a2664082652442eadea3eab6))
 
-	ROM_REGION( 0x80, REGION_USER2, 0 ) /* serial eeprom */
+	ROM_REGION( 0x80, "user2", 0 ) /* serial eeprom */
 	ROM_LOAD( "93c46.7k",  0x000000, 0x000080, CRC(66d02984) SHA1(d07c57d198c611b6ff67a783c20a3d038ba34cd1) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE( "623jaa02", 0, MD5(6071c1b70c190fa7c50676eb5308e024) SHA1(a7dc6086d0244b5472f61b41992623c7a9dc2e9c))
 ROM_END
 
 ROM_START(btltryst)
-	ROM_REGION64_BE(0x200000, REGION_USER1, 0)	/* boot rom */
+	ROM_REGION64_BE(0x200000, "user1", 0)	/* boot rom */
 	ROM_LOAD16_WORD("636a01.8q", 0x000000, 0x200000, CRC(7b1dc738) SHA1(32ae8e7ddd38fcc70b4410275a2cc5e9a0d7d33b))
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE( "btltryst", 0, MD5(4286d25a896d1450705f742cccd26ef2) SHA1(becc606b8480f6a09365b611565d83cfdc82b0b3))
 ROM_END
 
 ROM_START(heatof11)
-	ROM_REGION64_BE(0x200000, REGION_USER1, 0)	/* boot rom */
+	ROM_REGION64_BE(0x200000, "user1", 0)	/* boot rom */
 	ROM_LOAD16_WORD("636a01.8q", 0x000000, 0x200000, CRC(7b1dc738) SHA1(32ae8e7ddd38fcc70b4410275a2cc5e9a0d7d33b))
 
-	ROM_REGION( 0x2000, REGION_USER2, 0 ) /* timekeeper eeprom */
+	ROM_REGION( 0x2000, "user2", 0 ) /* timekeeper eeprom */
 	ROM_LOAD( "dallas.5e",  0x000000, 0x002000, CRC(8611ff09) SHA1(6410236947d99c552c4a1f7dd5fd8c7a5ae4cba1) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE( "heatof11", 0, MD5(1eef9f191439f13d1a867629226b0230) SHA1(87599d03aecadf5d119d05173bdef2940bcce515))
 ROM_END
 
 ROM_START(evilngt)
-	ROM_REGION64_BE(0x200000, REGION_USER1, 0)	/* boot rom */
+	ROM_REGION64_BE(0x200000, "user1", 0)	/* boot rom */
 	ROM_LOAD16_WORD("636a01.8q", 0x000000, 0x200000, CRC(7b1dc738) SHA1(32ae8e7ddd38fcc70b4410275a2cc5e9a0d7d33b))
 
-	ROM_REGION( 0x1000, REGION_USER2, 0 ) /* timekeeper eeprom */
+	ROM_REGION( 0x1000, "user2", 0 ) /* timekeeper eeprom */
 	ROM_LOAD( "m48t58y.u1",  0x000000, 0x001000, CRC(169bb8f4) SHA1(55c0bafab5d309fe69156489186e232aa87ca0dd) )
 ROM_END
 
 ROM_START(hellngt)
-	ROM_REGION64_BE(0x200000, REGION_USER1, 0)	/* boot rom */
+	ROM_REGION64_BE(0x200000, "user1", 0)	/* boot rom */
 	ROM_LOAD16_WORD("636a01.8q", 0x000000, 0x200000, CRC(7b1dc738) SHA1(32ae8e7ddd38fcc70b4410275a2cc5e9a0d7d33b))
 
-	ROM_REGION( 0x1000, REGION_USER2, 0 ) /* timekeeper eeprom */
+	ROM_REGION( 0x1000, "user2", 0 ) /* timekeeper eeprom */
 	ROM_LOAD( "m48t58y.u1",  0x000000, 0x001000, CRC(169bb8f4) SHA1(55c0bafab5d309fe69156489186e232aa87ca0dd) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE( "810eaa02", 0, MD5(250a1b9cc2a25aed6c27321dd8f4f8a2) SHA1(d2f48a389f8091e03ada81c255231c7957d1aee3))
 ROM_END
 
 ROM_START(totlvice)
-	ROM_REGION64_BE(0x200000, REGION_USER1, 0)	/* boot rom */
+	ROM_REGION64_BE(0x200000, "user1", 0)	/* boot rom */
 	ROM_LOAD16_WORD("636a01.8q", 0x000000, 0x200000, CRC(7b1dc738) SHA1(32ae8e7ddd38fcc70b4410275a2cc5e9a0d7d33b))
 
-	ROM_REGION( 0x100000, REGION_USER2, 0 ) /* sound rom on sub board */
+	ROM_REGION( 0x100000, "user2", 0 ) /* sound rom on sub board */
 	ROM_LOAD( "639jaa02.bin",  0x000000, 0x100000, CRC(c6163818) SHA1(b6f8f2d808b98610becc0a5be5443ece3908df0b) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE( "639jad01", 0, MD5(bc3156be374e7a99040763bf0cea7ad3) SHA1(c4503d9954c72dd8f70521f313f0338528116c26))
 ROM_END
 
 static DRIVER_INIT( m2 )
 {
+	unk3 = U64(0xffffffffffffffff);
+	unk20004 = 0;
 	cde_init();
 }
 

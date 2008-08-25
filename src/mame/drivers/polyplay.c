@@ -113,7 +113,7 @@ static WRITE8_HANDLER( polyplay_sound_channel );
 
 
 /* Polyplay Sound Interface */
-static const struct Samplesinterface polyplay_samples_interface =
+static const samples_interface polyplay_samples_interface =
 {
 	2,
 	NULL,
@@ -164,7 +164,7 @@ static ADDRESS_MAP_START( polyplay_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0bff) AM_ROM
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM
 	AM_RANGE(0x1000, 0x8fff) AM_ROM
-	AM_RANGE(0xe800, 0xebff) AM_ROM
+	AM_RANGE(0xe800, 0xebff) AM_ROM AM_REGION("gfx1", 0)
 	AM_RANGE(0xec00, 0xf7ff) AM_RAM_WRITE(polyplay_characterram_w) AM_BASE(&polyplay_characterram)
 	AM_RANGE(0xf800, 0xffff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
@@ -181,7 +181,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( polyplay )
-	PORT_START_TAG("INPUT")	/* IN0 */
+	PORT_START("INPUT")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -279,8 +279,8 @@ static const gfx_layout charlayout_3_bit =
 };
 
 static GFXDECODE_START( polyplay )
-	GFXDECODE_ENTRY( REGION_CPU1, 0xe800, charlayout_1_bit, 0, 1 )
-	GFXDECODE_ENTRY( REGION_CPU1, 0xec00, charlayout_3_bit, 2, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, charlayout_1_bit, 0, 1 )
+	GFXDECODE_ENTRY( NULL,   0xec00, charlayout_3_bit, 2, 1 )
 GFXDECODE_END
 
 
@@ -289,7 +289,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( polyplay )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 9830400/4)
+	MDRV_CPU_ADD("main", Z80, 9830400/4)
 	MDRV_CPU_PROGRAM_MAP(polyplay_map,0)
 	MDRV_CPU_IO_MAP(polyplay_io_map,0)
 	MDRV_CPU_PERIODIC_INT(periodic_interrupt,75)
@@ -313,7 +313,7 @@ static MACHINE_DRIVER_START( polyplay )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(polyplay_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -321,7 +321,7 @@ MACHINE_DRIVER_END
 
 /* ROM loading and mapping */
 ROM_START( polyplay )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cpu_0000.37",       0x0000, 0x0400, CRC(87884c5f) SHA1(849c6b3f40496c694a123d6eec268a7128c037f0) )
 	ROM_LOAD( "cpu_0400.36",       0x0400, 0x0400, CRC(d5c84829) SHA1(baa8790e77db66e1e543b3a0e5390cc71256de2f) )
 	ROM_LOAD( "cpu_0800.35",       0x0800, 0x0400, CRC(5f36d08e) SHA1(08ecf8143e818a9844b4f168e68629d6d4481a8a) )
@@ -357,7 +357,9 @@ ROM_START( polyplay )
 	ROM_LOAD( "1_-_8400.29",       0x8400, 0x0400, CRC(9db09598) SHA1(8eb385542a617b23caad3ce7bbdd9714c1dd684f) )
 	ROM_LOAD( "1_-_8800.25",       0x8800, 0x0400, CRC(ca2f963f) SHA1(34295f02bfd1bca141d650bbbbc1989e01c67b2f) )
 	ROM_LOAD( "1_-_8c00.21",       0x8c00, 0x0400, CRC(0c7dec2d) SHA1(48d776b97c1eca851f89b0c5df4d5765d9aa0319) )
-	ROM_LOAD( "char.1",            0xe800, 0x0400, CRC(5242dd6b) SHA1(ba8f317df62fe4360757333215ce3c8223c68c4e) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "char.1",            0x0000, 0x0400, CRC(5242dd6b) SHA1(ba8f317df62fe4360757333215ce3c8223c68c4e) )
 ROM_END
 
 

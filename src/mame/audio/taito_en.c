@@ -36,7 +36,7 @@ WRITE16_HANDLER(f3_68000_share_w)
 
 WRITE16_HANDLER( f3_es5505_bank_w )
 {
-	UINT32 max_banks_this_game=(memory_region_length(machine, REGION_SOUND1)/0x200000)-1;
+	UINT32 max_banks_this_game=(memory_region_length(machine, "ensoniq.0")/0x200000)-1;
 
 #if 0
 {
@@ -48,7 +48,7 @@ WRITE16_HANDLER( f3_es5505_bank_w )
 
 	/* mask out unused bits */
 	data &= max_banks_this_game;
-	ES5505_voice_bank_0_w(offset,data<<20);
+	es5505_voice_bank_0_w(offset,data<<20);
 }
 
 WRITE16_HANDLER( f3_volume_w )
@@ -190,7 +190,7 @@ READ16_HANDLER(es5510_dsp_r)
 
 WRITE16_HANDLER(es5510_dsp_w)
 {
-	UINT8 *snd_mem = (UINT8 *)memory_region(machine, REGION_SOUND1);
+	UINT8 *snd_mem = (UINT8 *)memory_region(machine, "ensoniq.0");
 
 //  if (offset>4 && offset!=0x80  && offset!=0xa0  && offset!=0xc0  && offset!=0xe0)
 //      logerror("%06x: DSP write offset %04x %04x\n",activecpu_get_pc(),offset,data);
@@ -234,7 +234,7 @@ static UINT16 *sound_ram;
 ADDRESS_MAP_START( f3_sound_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x00ffff) AM_RAM AM_MIRROR(0x30000) AM_SHARE(1) AM_BASE(&sound_ram)
 	AM_RANGE(0x140000, 0x140fff) AM_READWRITE(f3_68000_share_r, f3_68000_share_w)
-	AM_RANGE(0x200000, 0x20001f) AM_READWRITE(ES5505_data_0_r, ES5505_data_0_w)
+	AM_RANGE(0x200000, 0x20001f) AM_READWRITE(es5505_data_0_r, es5505_data_0_w)
 	AM_RANGE(0x260000, 0x2601ff) AM_READWRITE(es5510_dsp_r, es5510_dsp_w)
 	AM_RANGE(0x280000, 0x28001f) AM_READWRITE(f3_68681_r, f3_68681_w)
 	AM_RANGE(0x300000, 0x30003f) AM_WRITE(f3_es5505_bank_w)
@@ -248,7 +248,7 @@ ADDRESS_MAP_END
 void taito_f3_soundsystem_reset(running_machine *machine)
 {
 	/* Sound cpu program loads to 0xc00000 so we use a bank */
-	UINT16 *ROM = (UINT16 *)memory_region(machine, REGION_CPU2);
+	UINT16 *ROM = (UINT16 *)memory_region(machine, "audio");
 	memory_set_bankptr(1,&ROM[0x80000]);
 	memory_set_bankptr(2,&ROM[0x90000]);
 	memory_set_bankptr(3,&ROM[0xa0000]);
@@ -261,10 +261,10 @@ void taito_f3_soundsystem_reset(running_machine *machine)
 	//cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 }
 
-const struct ES5505interface es5505_interface =
+const es5505_interface es5505_taito_f3_config =
 {
-	REGION_SOUND1,	/* Bank 0: Unused by F3 games? */
-	REGION_SOUND1,	/* Bank 1: All games seem to use this */
+	"ensoniq.0",	/* Bank 0: Unused by F3 games? */
+	"ensoniq.0",	/* Bank 1: All games seem to use this */
 	0 /* irq */
 };
 

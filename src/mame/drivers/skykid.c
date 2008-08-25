@@ -52,19 +52,19 @@ static READ8_HANDLER( inputport_r )
 	switch (inputport_selected)
 	{
 		case 0x00:	/* DSW B (bits 0-4) */
-			return (input_port_read_indexed(machine, 1) & 0xf8) >> 3; break;
+			return (input_port_read(machine, "DSWB") & 0xf8) >> 3; break;
 		case 0x01:	/* DSW B (bits 5-7), DSW A (bits 0-1) */
-			return ((input_port_read_indexed(machine, 1) & 0x07) << 2) | ((input_port_read_indexed(machine, 0) & 0xc0) >> 6); break;
+			return ((input_port_read(machine, "DSWB") & 0x07) << 2) | ((input_port_read(machine, "DSWA") & 0xc0) >> 6); break;
 		case 0x02:	/* DSW A (bits 2-6) */
-			return (input_port_read_indexed(machine, 0) & 0x3e) >> 1; break;
+			return (input_port_read(machine, "DSWA") & 0x3e) >> 1; break;
 		case 0x03:	/* DSW A (bit 7), DSW C (bits 0-3) */
-			return ((input_port_read_indexed(machine, 0) & 0x01) << 4) | (input_port_read_indexed(machine, 2) & 0x0f); break;
+			return ((input_port_read(machine, "DSWA") & 0x01) << 4) | (input_port_read(machine, "BUTTON2") & 0x0f); break;
 		case 0x04:	/* coins, start */
-			return input_port_read_indexed(machine, 3); break;
+			return input_port_read(machine, "SYSTEM"); break;
 		case 0x05:	/* 2P controls */
-			return input_port_read_indexed(machine, 5); break;
+			return input_port_read(machine, "P2"); break;
 		case 0x06:	/* 1P controls */
-			return input_port_read_indexed(machine, 4); break;
+			return input_port_read(machine, "P1"); break;
 		default:
 			return 0xff;
 	}
@@ -106,7 +106,7 @@ static WRITE8_HANDLER( skykid_irq_2_ctrl_w )
 static MACHINE_START( skykid )
 {
 	/* configure the banks */
-	memory_configure_bank(1, 0, 2, memory_region(machine, REGION_CPU1) + 0x10000, 0x2000);
+	memory_configure_bank(1, 0, 2, memory_region(machine, "main") + 0x10000, 0x2000);
 
 	state_save_register_global(inputport_selected);
 }
@@ -156,7 +156,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( skykid )
-	PORT_START	/* DSW A */
+	PORT_START("DSWA")	/* DSW A */
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
@@ -178,7 +178,7 @@ static INPUT_PORTS_START( skykid )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
 
-	PORT_START	/* DSW B */
+	PORT_START("DSWB")	/* DSW B */
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x80, "1" )
 	PORT_DIPSETTING(    0x40, "2" )
@@ -202,14 +202,14 @@ static INPUT_PORTS_START( skykid )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("BUTTON2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN 0 */
+	PORT_START("SYSTEM")	/* IN 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -217,7 +217,7 @@ static INPUT_PORTS_START( skykid )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN 1 */
+	PORT_START("P1")	/* IN 1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -225,7 +225,7 @@ static INPUT_PORTS_START( skykid )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN 2 */
+	PORT_START("P2")	/* IN 2 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -235,7 +235,7 @@ static INPUT_PORTS_START( skykid )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( skykids )
-	PORT_START	/* DSW A */
+	PORT_START("DSWA")	/* DSW A */
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
@@ -257,7 +257,7 @@ static INPUT_PORTS_START( skykids )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
 
-	PORT_START	/* DSW B */
+	PORT_START("DSWB")	/* DSW B */
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x80, "1" )
 	PORT_DIPSETTING(    0x40, "2" )
@@ -281,14 +281,14 @@ static INPUT_PORTS_START( skykids )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("BUTTON2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN 0 */
+	PORT_START("SYSTEM")	/* IN 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -296,7 +296,7 @@ static INPUT_PORTS_START( skykids )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN 1 */
+	PORT_START("P1")	/* IN 1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -304,7 +304,7 @@ static INPUT_PORTS_START( skykids )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN 2 */
+	PORT_START("P2")	/* IN 2 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -314,7 +314,7 @@ static INPUT_PORTS_START( skykids )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( drgnbstr )
-	PORT_START	/* DSW A */
+	PORT_START("DSWA")	/* DSW A */
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
@@ -336,7 +336,7 @@ static INPUT_PORTS_START( drgnbstr )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
 
-	PORT_START	/* DSW B */
+	PORT_START("DSWB")	/* DSW B */
 	PORT_DIPNAME( 0x80, 0x80, "Spurt Time" )
 	PORT_DIPSETTING(    0x80, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x00, "Difficult" )
@@ -360,7 +360,7 @@ static INPUT_PORTS_START( drgnbstr )
 	PORT_DIPSETTING(    0x01, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 
-	PORT_START
+	PORT_START("BUTTON2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Upright ) )
@@ -369,7 +369,7 @@ static INPUT_PORTS_START( drgnbstr )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN 0 */
+	PORT_START("SYSTEM")	/* IN 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -377,7 +377,7 @@ static INPUT_PORTS_START( drgnbstr )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN 1 */
+	PORT_START("P1")	/* IN 1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
@@ -385,7 +385,7 @@ static INPUT_PORTS_START( drgnbstr )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN 2 */
+	PORT_START("P2")	/* IN 2 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
@@ -432,17 +432,16 @@ static const gfx_layout sprite_layout =
 };
 
 static GFXDECODE_START( skykid )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, text_layout,   0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tile_layout,   64*4, 128 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, sprite_layout, 64*4+128*4, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0, text_layout,   0, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, tile_layout,   64*4, 128 )
+	GFXDECODE_ENTRY( "gfx3", 0, sprite_layout, 64*4+128*4, 64 )
 GFXDECODE_END
 
 
 
-static const struct namco_interface namco_interface =
+static const namco_interface namco_config =
 {
 	8,					/* number of voices */
-	-1,					/* memory region */
 	0					/* stereo */
 };
 
@@ -451,11 +450,11 @@ static const struct namco_interface namco_interface =
 static MACHINE_DRIVER_START( skykid )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809,49152000/32)
+	MDRV_CPU_ADD("main", M6809,49152000/32)
 	MDRV_CPU_PROGRAM_MAP(skykid_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_CPU_ADD(HD63701,49152000/8)	/* or compatible 6808 with extra instructions */
+	MDRV_CPU_ADD("mcu", HD63701,49152000/8)	/* or compatible 6808 with extra instructions */
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 	MDRV_CPU_IO_MAP(mcu_port_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
@@ -482,35 +481,35 @@ static MACHINE_DRIVER_START( skykid )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(NAMCO_CUS30, 49152000/2048)
-	MDRV_SOUND_CONFIG(namco_interface)
+	MDRV_SOUND_ADD("namco", NAMCO_CUS30, 49152000/2048)
+	MDRV_SOUND_CONFIG(namco_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( skykid )
-	ROM_REGION( 0x14000, REGION_CPU1, 0 )	/* 6809 code */
+	ROM_REGION( 0x14000, "main", 0 )	/* 6809 code */
 	ROM_LOAD( "sk2_2.6c",     0x08000, 0x4000, CRC(ea8a5822) SHA1(5b13133410bcb7d647e662b476dbfd2edab8aac0) )
 	ROM_LOAD( "sk1-1c.6b",    0x0c000, 0x4000, CRC(7abe6c6c) SHA1(7d2631cc6149fa3e02b1355cb899de5474ff5d0a) )
 	ROM_LOAD( "sk1_3.6d",     0x10000, 0x4000, CRC(314b8765) SHA1(d90a8a853ce672fe5ee190f07bcb33262c73df3b) )	/* banked ROM */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* MCU code */
+	ROM_REGION( 0x10000, "mcu", 0 ) /* MCU code */
 	ROM_LOAD( "sk2_4.3c",       0x8000, 0x2000, CRC(a460d0e0) SHA1(7124ffeb3b84b282940dcbf9421ae4934bcce1c8) )	/* subprogram for the MCU */
 	ROM_LOAD( "cus63-63a1.mcu", 0xf000, 0x1000, CRC(6ef08fb3) SHA1(4842590d60035a0059b0899eb2d5f58ae72c2529) )	/* MCU internal code */
 
-	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_6.6l",     0x0000, 0x2000, CRC(58b731b9) SHA1(40f7be85914833ce02a734c20d68c0db8b77911d) )	/* chars */
 
-	ROM_REGION( 0x02000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_5.7e",     0x0000, 0x2000, CRC(c33a498e) SHA1(9f89a514888418a9bebbca341a8cc66e41b58acb) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_8.10n",    0x0000, 0x4000, CRC(44bb7375) SHA1(5b2fa6782671150bab5f3c3ac46b47bc23f3d7e0) )	/* sprites */
 	ROM_LOAD( "sk1_7.10m",    0x4000, 0x4000, CRC(3454671d) SHA1(723b26a0f208addc2a22736457cb4be6ab6c69cc) )
 	/* 0x8000-0xbfff  will be unpacked from 0x4000-0x5fff */
 	ROM_FILL(                 0xc000, 0x4000, 0x00 )	// part of the gfx is 2bpp decoded as 3bpp
 
-	ROM_REGION( 0x0700, REGION_PROMS, 0 )
+	ROM_REGION( 0x0700, "proms", 0 )
 	ROM_LOAD( "sk1-1.2n",     0x0000, 0x0100, CRC(0218e726) SHA1(8b766162a4783c058d9a1ecf8741673d7ef955fb) )	/* red component */
 	ROM_LOAD( "sk1-2.2p",     0x0100, 0x0100, CRC(fc0d5b85) SHA1(d1b13e42e735b24594cf0b840dee8110de23369e) )	/* green component */
 	ROM_LOAD( "sk1-3.2r",     0x0200, 0x0100, CRC(d06b620b) SHA1(968a2d62c65e201d521e9efa8fcf6ad15898e4b3) )	/* blue component */
@@ -519,28 +518,28 @@ ROM_START( skykid )
 ROM_END
 
 ROM_START( skykido )
-	ROM_REGION( 0x14000, REGION_CPU1, 0 )	/* 6809 code */
+	ROM_REGION( 0x14000, "main", 0 )	/* 6809 code */
 	ROM_LOAD( "sk2_2.6c",     0x08000, 0x4000, CRC(ea8a5822) SHA1(5b13133410bcb7d647e662b476dbfd2edab8aac0) )
 	ROM_LOAD( "sk1_1.6b",     0x0c000, 0x4000, CRC(070a49d4) SHA1(4b994bde3e34b574bd927843804d2fb1a08d1bdf) )
 	ROM_LOAD( "sk1_3.6d",     0x10000, 0x4000, CRC(314b8765) SHA1(d90a8a853ce672fe5ee190f07bcb33262c73df3b) )	/* banked ROM */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* MCU code */
+	ROM_REGION( 0x10000, "mcu", 0 ) /* MCU code */
 	ROM_LOAD( "sk2_4.3c",       0x8000, 0x2000, CRC(a460d0e0) SHA1(7124ffeb3b84b282940dcbf9421ae4934bcce1c8) )	/* subprogram for the MCU */
 	ROM_LOAD( "cus63-63a1.mcu", 0xf000, 0x1000, CRC(6ef08fb3) SHA1(4842590d60035a0059b0899eb2d5f58ae72c2529) )	/* MCU internal code */
 
-	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_6.6l",     0x0000, 0x2000, CRC(58b731b9) SHA1(40f7be85914833ce02a734c20d68c0db8b77911d) )	/* chars */
 
-	ROM_REGION( 0x02000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_5.7e",     0x0000, 0x2000, CRC(c33a498e) SHA1(9f89a514888418a9bebbca341a8cc66e41b58acb) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_8.10n",    0x0000, 0x4000, CRC(44bb7375) SHA1(5b2fa6782671150bab5f3c3ac46b47bc23f3d7e0) )	/* sprites */
 	ROM_LOAD( "sk1_7.10m",    0x4000, 0x4000, CRC(3454671d) SHA1(723b26a0f208addc2a22736457cb4be6ab6c69cc) )
 	/* 0x8000-0xbfff  will be unpacked from 0x4000-0x5fff */
 	ROM_FILL(                 0xc000, 0x4000, 0x00 )	// part of the gfx is 2bpp decoded as 3bpp
 
-	ROM_REGION( 0x0700, REGION_PROMS, 0 )
+	ROM_REGION( 0x0700, "proms", 0 )
 	ROM_LOAD( "sk1-1.2n",     0x0000, 0x0100, CRC(0218e726) SHA1(8b766162a4783c058d9a1ecf8741673d7ef955fb) )	/* red component */
 	ROM_LOAD( "sk1-2.2p",     0x0100, 0x0100, CRC(fc0d5b85) SHA1(d1b13e42e735b24594cf0b840dee8110de23369e) )	/* green component */
 	ROM_LOAD( "sk1-3.2r",     0x0200, 0x0100, CRC(d06b620b) SHA1(968a2d62c65e201d521e9efa8fcf6ad15898e4b3) )	/* blue component */
@@ -549,28 +548,28 @@ ROM_START( skykido )
 ROM_END
 
 ROM_START( skykidd )
-	ROM_REGION( 0x14000, REGION_CPU1, 0 )	/* 6809 code */
+	ROM_REGION( 0x14000, "main", 0 )	/* 6809 code */
 	ROM_LOAD( "sk1_2.6c",     0x08000, 0x4000, CRC(8370671a) SHA1(7038f952ebfc4482440b73ee4027fa908561d122) )
 	ROM_LOAD( "sk1_1.6b",     0x0c000, 0x4000, CRC(070a49d4) SHA1(4b994bde3e34b574bd927843804d2fb1a08d1bdf) )
 	ROM_LOAD( "sk1_3.6d",     0x10000, 0x4000, CRC(314b8765) SHA1(d90a8a853ce672fe5ee190f07bcb33262c73df3b) )	/* banked ROM */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* MCU code */
+	ROM_REGION( 0x10000, "mcu", 0 ) /* MCU code */
 	ROM_LOAD( "sk1_4.3c",       0x8000, 0x2000, CRC(887137cc) SHA1(dd0f66afb78833c4da73539b692854346f448c0d) )	/* subprogram for the MCU */
 	ROM_LOAD( "cus60-60a1.mcu", 0xf000, 0x1000, CRC(076ea82a) SHA1(22b5e62e26390d7d5cacc0503c7aa5ed524204df) )	/* MCU internal code */
 
-	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_6.6l",     0x0000, 0x2000, CRC(58b731b9) SHA1(40f7be85914833ce02a734c20d68c0db8b77911d) )	/* chars */
 
-	ROM_REGION( 0x02000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_5.7e",     0x0000, 0x2000, CRC(c33a498e) SHA1(9f89a514888418a9bebbca341a8cc66e41b58acb) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_8.10n",    0x0000, 0x4000, CRC(44bb7375) SHA1(5b2fa6782671150bab5f3c3ac46b47bc23f3d7e0) )	/* sprites */
 	ROM_LOAD( "sk1_7.10m",    0x4000, 0x4000, CRC(3454671d) SHA1(723b26a0f208addc2a22736457cb4be6ab6c69cc) )
 	/* 0x8000-0xbfff  will be unpacked from 0x4000-0x5fff */
 	ROM_FILL(                 0xc000, 0x4000, 0x00 )	// part of the gfx is 2bpp decoded as 3bpp
 
-	ROM_REGION( 0x0700, REGION_PROMS, 0 )
+	ROM_REGION( 0x0700, "proms", 0 )
 	ROM_LOAD( "sk1-1.2n",     0x0000, 0x0100, CRC(0218e726) SHA1(8b766162a4783c058d9a1ecf8741673d7ef955fb) )	/* red component */
 	ROM_LOAD( "sk1-2.2p",     0x0100, 0x0100, CRC(fc0d5b85) SHA1(d1b13e42e735b24594cf0b840dee8110de23369e) )	/* green component */
 	ROM_LOAD( "sk1-3.2r",     0x0200, 0x0100, CRC(d06b620b) SHA1(968a2d62c65e201d521e9efa8fcf6ad15898e4b3) )	/* blue component */
@@ -579,28 +578,28 @@ ROM_START( skykidd )
 ROM_END
 
 ROM_START( skykids )
-	ROM_REGION( 0x14000, REGION_CPU1, 0 )	/* 6809 code */
+	ROM_REGION( 0x14000, "main", 0 )	/* 6809 code */
 	ROM_LOAD( "sk2a.6c",     0x08000, 0x4000, CRC(68492672) SHA1(3dbe5ec930de5c526d3ef65513993c10f2153a36) )
 	ROM_LOAD( "sk1a.6b",     0x0c000, 0x4000, CRC(e16abe25) SHA1(78e0d30b15fb62c4399d847784ddc61f6819feba) )
 	ROM_LOAD( "sk1_3.6d",     0x10000, 0x4000, CRC(314b8765) SHA1(d90a8a853ce672fe5ee190f07bcb33262c73df3b) )	/* banked ROM */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* MCU code */
+	ROM_REGION( 0x10000, "mcu", 0 ) /* MCU code */
 	ROM_LOAD( "sk2_4.3c",       0x8000, 0x2000, CRC(a460d0e0) SHA1(7124ffeb3b84b282940dcbf9421ae4934bcce1c8) )	/* subprogram for the MCU */
 	ROM_LOAD( "cus63-63a1.mcu", 0xf000, 0x1000, CRC(6ef08fb3) SHA1(4842590d60035a0059b0899eb2d5f58ae72c2529) )	/* MCU internal code */
 
-	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_6.6l",     0x0000, 0x2000, CRC(58b731b9) SHA1(40f7be85914833ce02a734c20d68c0db8b77911d) )	/* chars */
 
-	ROM_REGION( 0x02000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_5.7e",     0x0000, 0x2000, CRC(c33a498e) SHA1(9f89a514888418a9bebbca341a8cc66e41b58acb) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "sk1_8.10n",    0x0000, 0x4000, CRC(44bb7375) SHA1(5b2fa6782671150bab5f3c3ac46b47bc23f3d7e0) )	/* sprites */
 	ROM_LOAD( "sk1_7.10m",    0x4000, 0x4000, CRC(3454671d) SHA1(723b26a0f208addc2a22736457cb4be6ab6c69cc) )
 	/* 0x8000-0xbfff  will be unpacked from 0x4000-0x5fff */
 	ROM_FILL(                 0xc000, 0x4000, 0x00 )	// part of the gfx is 2bpp decoded as 3bpp
 
-	ROM_REGION( 0x0700, REGION_PROMS, 0 )
+	ROM_REGION( 0x0700, "proms", 0 )
 	ROM_LOAD( "sk1-1.2n",     0x0000, 0x0100, CRC(0218e726) SHA1(8b766162a4783c058d9a1ecf8741673d7ef955fb) )	/* red component */
 	ROM_LOAD( "sk1-2.2p",     0x0100, 0x0100, CRC(fc0d5b85) SHA1(d1b13e42e735b24594cf0b840dee8110de23369e) )	/* green component */
 	ROM_LOAD( "sk1-3.2r",     0x0200, 0x0100, CRC(d06b620b) SHA1(968a2d62c65e201d521e9efa8fcf6ad15898e4b3) )	/* blue component */
@@ -609,28 +608,28 @@ ROM_START( skykids )
 ROM_END
 
 ROM_START( drgnbstr )
-	ROM_REGION( 0x14000, REGION_CPU1, 0 ) /* 6809 code */
+	ROM_REGION( 0x14000, "main", 0 ) /* 6809 code */
 	ROM_LOAD( "db1_2b.6c",    0x08000, 0x04000, CRC(0f11cd17) SHA1(691d853f4f08898ecf4bccfb70a568de309329f1) )
 	ROM_LOAD( "db1_1.6b",     0x0c000, 0x04000, CRC(1c7c1821) SHA1(8b6111afc42e2996bdc2fc276be0c40556cd431e) )
 	ROM_LOAD( "db1_3.6d",     0x10000, 0x04000, CRC(6da169ae) SHA1(235211c26562fef0660e3fde1e87f2e52626d119) )	/* banked ROM */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* MCU code */
+	ROM_REGION( 0x10000, "mcu", 0 ) /* MCU code */
 	ROM_LOAD( "db1_4.3c",       0x8000, 0x02000, CRC(8a0b1fc1) SHA1(c2861d0da63e2d17f2d1ad46dccf753ecd902ce3) )	/* subprogram for the MCU */
 	ROM_LOAD( "cus60-60a1.mcu", 0xf000, 0x01000, CRC(076ea82a) SHA1(22b5e62e26390d7d5cacc0503c7aa5ed524204df) )	/* MCU internal code */
 
-	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "db1_6.6l",     0x0000, 0x2000, CRC(c080b66c) SHA1(05dcd45274d0bd12ef8ae7fd10c8719e679b3e7b) )	/* tiles */
 
-	ROM_REGION( 0x02000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "db1_5.7e",     0x0000, 0x2000, CRC(28129aed) SHA1(d7f52e871d97179ec88c142a1c70eb6ad09e534a) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "db1_8.10n",    0x0000, 0x4000, CRC(11942c61) SHA1(0f065cb82cf83967e90b3c7326b36956f4fa9a52) )	/* sprites */
 	ROM_LOAD( "db1_7.10m",    0x4000, 0x4000, CRC(cc130fe2) SHA1(4f5d4f21152b3b4e523a6d17dd5ff5cef52447f2) )
 	/* 0x8000-0xbfff  will be unpacked from 0x4000-0x5fff */
 	ROM_FILL(                 0xc000, 0x4000, 0x00 )	// part of the gfx is 2bpp decoded as 3bpp
 
-	ROM_REGION( 0x0700, REGION_PROMS, 0 )
+	ROM_REGION( 0x0700, "proms", 0 )
 	ROM_LOAD( "db1-1.2n",     0x0000, 0x0100, CRC(3f8cce97) SHA1(027b3fb0f322a9d68b434b207a40b31799a8a8d6) )	/* red component */
 	ROM_LOAD( "db1-2.2p",     0x0100, 0x0100, CRC(afe32436) SHA1(e405787f7f2aa992edd63078e3944334d8acddb1) )	/* green component */
 	ROM_LOAD( "db1-3.2r",     0x0200, 0x0100, CRC(c95ff576) SHA1(861a7340d29e6a6a0d5ead93abd3f73cc3df0cc7) )	/* blue component */
@@ -646,7 +645,7 @@ static DRIVER_INIT( skykid )
 	int i;
 
 	/* unpack the third sprite ROM */
-	rom = memory_region(machine, REGION_GFX3) + 0x4000;
+	rom = memory_region(machine, "gfx3") + 0x4000;
 	for (i = 0;i < 0x2000;i++)
 	{
 		rom[i + 0x4000] = rom[i];		// sprite set #1, plane 3

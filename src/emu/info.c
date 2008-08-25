@@ -338,8 +338,8 @@ static void print_game_bios(FILE *out, const game_driver *game)
 	for (rom = game->rom; !ROMENTRY_ISEND(rom); rom++)
 		if (ROMENTRY_ISSYSTEM_BIOS(rom))
 		{
-			const char *name = ROM_GETHASHDATA(rom);
-			const char *description = name + strlen(name) + 1;
+			const char *name = ROM_GETNAME(rom);
+			const char *description = ROM_GETHASHDATA(rom);
 
 			/* output extracted name and descriptions */
 			fprintf(out, "\t\t<biosset");
@@ -426,7 +426,7 @@ static void print_game_rom(FILE *out, const game_driver *game)
 					for (brom = rom - 1; brom != game->rom; brom--)
 						if (ROMENTRY_ISSYSTEM_BIOS(brom))
 						{
-							strcpy(bios_name, ROM_GETHASHDATA(brom));
+							strcpy(bios_name, ROM_GETNAME(brom));
 							break;
 						}
 				}
@@ -460,57 +460,7 @@ static void print_game_rom(FILE *out, const game_driver *game)
 				}
 
 				/* append a region name */
-				switch (ROMREGION_GETTYPE(region))
-				{
-					case REGION_CPU1: 	fprintf(out, " region=\"cpu1\"");	break;
-					case REGION_CPU2: 	fprintf(out, " region=\"cpu2\"");	break;
-					case REGION_CPU3: 	fprintf(out, " region=\"cpu3\"");	break;
-					case REGION_CPU4: 	fprintf(out, " region=\"cpu4\"");	break;
-					case REGION_CPU5: 	fprintf(out, " region=\"cpu5\"");	break;
-					case REGION_CPU6: 	fprintf(out, " region=\"cpu6\"");	break;
-					case REGION_CPU7: 	fprintf(out, " region=\"cpu7\"");	break;
-					case REGION_CPU8: 	fprintf(out, " region=\"cpu8\"");	break;
-					case REGION_GFX1: 	fprintf(out, " region=\"gfx1\"");	break;
-					case REGION_GFX2: 	fprintf(out, " region=\"gfx2\"");	break;
-					case REGION_GFX3: 	fprintf(out, " region=\"gfx3\"");	break;
-					case REGION_GFX4: 	fprintf(out, " region=\"gfx4\"");	break;
-					case REGION_GFX5: 	fprintf(out, " region=\"gfx5\"");	break;
-					case REGION_GFX6: 	fprintf(out, " region=\"gfx6\"");	break;
-					case REGION_GFX7: 	fprintf(out, " region=\"gfx7\"");	break;
-					case REGION_GFX8: 	fprintf(out, " region=\"gfx8\"");	break;
-					case REGION_PROMS: 	fprintf(out, " region=\"proms\"");	break;
-					case REGION_PLDS: 	fprintf(out, " region=\"plds\"");	break;
-					case REGION_SOUND1: fprintf(out, " region=\"sound1\"");	break;
-					case REGION_SOUND2: fprintf(out, " region=\"sound2\"");	break;
-					case REGION_SOUND3: fprintf(out, " region=\"sound3\"");	break;
-					case REGION_SOUND4: fprintf(out, " region=\"sound4\"");	break;
-					case REGION_SOUND5: fprintf(out, " region=\"sound5\"");	break;
-					case REGION_SOUND6: fprintf(out, " region=\"sound6\"");	break;
-					case REGION_SOUND7: fprintf(out, " region=\"sound7\"");	break;
-					case REGION_SOUND8: fprintf(out, " region=\"sound8\"");	break;
-					case REGION_USER1: 	fprintf(out, " region=\"user1\"");	break;
-					case REGION_USER2: 	fprintf(out, " region=\"user2\"");	break;
-					case REGION_USER3: 	fprintf(out, " region=\"user3\"");	break;
-					case REGION_USER4: 	fprintf(out, " region=\"user4\"");	break;
-					case REGION_USER5: 	fprintf(out, " region=\"user5\"");	break;
-					case REGION_USER6: 	fprintf(out, " region=\"user6\"");	break;
-					case REGION_USER7: 	fprintf(out, " region=\"user7\"");	break;
-					case REGION_USER8: 	fprintf(out, " region=\"user8\"");	break;
-					case REGION_USER9: 	fprintf(out, " region=\"user9\"");	break;
-					case REGION_USER10: fprintf(out, " region=\"user10\"");	break;
-					case REGION_USER11: fprintf(out, " region=\"user11\"");	break;
-					case REGION_USER12: fprintf(out, " region=\"user12\"");	break;
-					case REGION_USER13: fprintf(out, " region=\"user13\"");	break;
-					case REGION_USER14: fprintf(out, " region=\"user14\"");	break;
-					case REGION_USER15: fprintf(out, " region=\"user15\"");	break;
-					case REGION_USER16: fprintf(out, " region=\"user16\"");	break;
-					case REGION_USER17: fprintf(out, " region=\"user17\"");	break;
-					case REGION_USER18: fprintf(out, " region=\"user18\"");	break;
-					case REGION_USER19: fprintf(out, " region=\"user19\"");	break;
-					case REGION_USER20: fprintf(out, " region=\"user20\"");	break;
-					case REGION_DISKS: 	fprintf(out, " region=\"disks\"");	break;
-					default:	 		fprintf(out, " region=\"0x%x\"", (int)ROMREGION_GETTYPE(region)); break;
-				}
+				fprintf(out, " region=\"%s\"", ROMREGION_GETTAG(region));
 
 				/* add nodump/baddump flags */
 				if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_NO_DUMP))
@@ -549,7 +499,7 @@ static void print_game_sampleof(FILE *out, const game_driver *game, const machin
 	for (sndnum = 0; sndnum < ARRAY_LENGTH(config->sound) && config->sound[sndnum].type != SOUND_DUMMY; sndnum++)
 		if (config->sound[sndnum].type == SOUND_SAMPLES)
 		{
-			const char *const *samplenames = ((const struct Samplesinterface *)config->sound[sndnum].config)->samplenames;
+			const char *const *samplenames = ((const samples_interface *)config->sound[sndnum].config)->samplenames;
 			if (samplenames != NULL)
 			{
 				int sampnum;
@@ -583,7 +533,7 @@ static void print_game_sample(FILE *out, const game_driver *game, const machine_
 	for (sndnum = 0; sndnum < ARRAY_LENGTH(config->sound) && config->sound[sndnum].type != SOUND_DUMMY; sndnum++)
 		if (config->sound[sndnum].type == SOUND_SAMPLES)
 		{
-			const char *const *samplenames = ((const struct Samplesinterface *)config->sound[sndnum].config)->samplenames;
+			const char *const *samplenames = ((const samples_interface *)config->sound[sndnum].config)->samplenames;
 			if (samplenames != NULL)
 			{
 				int sampnum;
@@ -629,6 +579,7 @@ static void print_game_chips(FILE *out, const game_driver *game, const machine_c
 		{
 			fprintf(out, "\t\t<chip");
 			fprintf(out, " type=\"cpu\"");
+			fprintf(out, " tag=\"%s\"", xml_normalize_string(config->cpu[chipnum].tag));
 			fprintf(out, " name=\"%s\"", xml_normalize_string(cputype_name(config->cpu[chipnum].type)));
 			fprintf(out, " clock=\"%d\"", config->cpu[chipnum].clock);
 			fprintf(out, "/>\n");
@@ -640,6 +591,7 @@ static void print_game_chips(FILE *out, const game_driver *game, const machine_c
 		{
 			fprintf(out, "\t\t<chip");
 			fprintf(out, " type=\"audio\"");
+			fprintf(out, " tag=\"%s\"", xml_normalize_string(config->sound[chipnum].tag));
 			fprintf(out, " name=\"%s\"", xml_normalize_string(sndtype_name(config->sound[chipnum].type)));
 			if (config->sound[chipnum].clock != 0)
 				fprintf(out, " clock=\"%d\"", config->sound[chipnum].clock);
@@ -970,6 +922,7 @@ void print_mame_xml(FILE *out, const game_driver *const games[], const char *gam
 		"\t\t\t<!ATTLIST sample name CDATA #REQUIRED>\n"
 		"\t\t<!ELEMENT chip EMPTY>\n"
 		"\t\t\t<!ATTLIST chip name CDATA #REQUIRED>\n"
+		"\t\t\t<!ATTLIST chip tag CDATA #IMPLIED>\n"
 		"\t\t\t<!ATTLIST chip type (cpu|audio) #REQUIRED>\n"
 		"\t\t\t<!ATTLIST chip clock CDATA #IMPLIED>\n"
 		"\t\t<!ELEMENT display EMPTY>\n"

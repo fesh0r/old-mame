@@ -167,9 +167,9 @@ static TIMER_CALLBACK( duart_callback );
 MACHINE_START( harddriv )
 {
 	/* predetermine memory regions */
-	sim_memory = (UINT16 *)memory_region(machine, REGION_USER1);
+	sim_memory = (UINT16 *)memory_region(machine, "user1");
 	som_memory = (UINT16 *)auto_malloc(0x8000);
-	sim_memory_size = memory_region_length(machine, REGION_USER1) / 2;
+	sim_memory_size = memory_region_length(machine, "user1") / 2;
 	adsp_pgm_memory_word = (UINT16 *)((UINT8 *)hdadsp_pgm_memory + 1);
 }
 
@@ -912,8 +912,7 @@ WRITE16_HANDLER( hd68k_adsp_buffer_w )
 
 static TIMER_CALLBACK( deferred_adsp_bank_switch )
 {
-#if LOG_COMMANDS
-	if (m68k_adsp_buffer_bank != param && input_code_pressed(KEYCODE_L))
+	if (LOG_COMMANDS && m68k_adsp_buffer_bank != param && input_code_pressed(KEYCODE_L))
 	{
 		static FILE *commands;
 		if (!commands) commands = fopen("commands.log", "w");
@@ -956,7 +955,7 @@ static TIMER_CALLBACK( deferred_adsp_bank_switch )
 				fprintf(commands, "  %04X\n", *current++);
 		}
 	}
-#endif
+
 	m68k_adsp_buffer_bank = param;
 	logerror("ADSP bank = %d\n", param);
 }

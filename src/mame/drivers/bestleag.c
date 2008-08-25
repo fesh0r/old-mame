@@ -15,6 +15,8 @@ Changes 29/03/2005 - Pierpaolo Prazzoli
 - Added sprites wraparound
 - Added sprites color masking
 
+Dip Locations added according to Service Mode
+
 *******************************************************************************************/
 
 #include "driver.h"
@@ -178,7 +180,7 @@ static WRITE16_HANDLER( bestleag_fgram_w )
 
 static WRITE16_HANDLER( oki_bank_w )
 {
-	OKIM6295_set_bank_base(0, 0x40000 * ((data & 3) - 1));
+	okim6295_set_bank_base(0, 0x40000 * ((data & 3) - 1));
 }
 
 
@@ -193,13 +195,13 @@ static ADDRESS_MAP_START( bestleag_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0f8000, 0x0f800b) AM_RAM AM_BASE(&bestleag_vregs)
 	AM_RANGE(0x100000, 0x100fff) AM_RAM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x200000, 0x200fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x300010, 0x300011) AM_READ(input_port_0_word_r)
-	AM_RANGE(0x300012, 0x300013) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x300014, 0x300015) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x300016, 0x300017) AM_READ(input_port_3_word_r)
-	AM_RANGE(0x300018, 0x300019) AM_READ(input_port_4_word_r)
+	AM_RANGE(0x300010, 0x300011) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x300012, 0x300013) AM_READ_PORT("P1")
+	AM_RANGE(0x300014, 0x300015) AM_READ_PORT("P2")
+	AM_RANGE(0x300016, 0x300017) AM_READ_PORT("DSWA")
+	AM_RANGE(0x300018, 0x300019) AM_READ_PORT("DSWB")
 	AM_RANGE(0x30001c, 0x30001d) AM_WRITE(oki_bank_w)
-	AM_RANGE(0x30001e, 0x30001f) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w)
+	AM_RANGE(0x30001e, 0x30001f) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
 	AM_RANGE(0x304000, 0x304001) AM_WRITENOP
 	AM_RANGE(0xfe0000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
@@ -215,7 +217,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
 static INPUT_PORTS_START( bestleag )
-	PORT_START	/* System inputs */
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -225,14 +227,14 @@ static INPUT_PORTS_START( bestleag )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START	/* Player 1 controls */
+	PORT_START("P1")
 	BESTLEAG_PLAYER_INPUT( 1 )
 
-	PORT_START	/* Player 2 controls */
+	PORT_START("P2")
 	BESTLEAG_PLAYER_INPUT( 2 )
 
-	PORT_START	/* DSW0 */
-	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
+	PORT_START("DSWA")
+	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW.A:1,2,3,4")
 	PORT_DIPSETTING(    0x07, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x09, DEF_STR( 2C_1C ) )
@@ -245,7 +247,7 @@ static INPUT_PORTS_START( bestleag )
 	PORT_DIPSETTING(    0x0a, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )	// also set "Coin B" to "Free Play"
 	/* 0x01 to 0x05 gives 2C_3C */
-	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("SW.A:5,6,7,8")
 	PORT_DIPSETTING(    0x70, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x90, DEF_STR( 2C_1C ) )
@@ -259,27 +261,27 @@ static INPUT_PORTS_START( bestleag )
 	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )	// also set "Coin A" to "Free Play"
 	/* 0x10 to 0x50 gives 2C_3C */
 
-	PORT_START	/* DSW1 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) ) // Doesn't work ?
+	PORT_START("DSWB")
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW.B:1") // Doesn't work ?
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW.B:2,3")
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
-	PORT_DIPNAME( 0x18, 0x18, "Timer Speed" )
+	PORT_DIPNAME( 0x18, 0x18, "Timer Speed" ) PORT_DIPLOCATION("SW.B:4,5")
 	PORT_DIPSETTING(    0x08, "Slow" )				// 65
 	PORT_DIPSETTING(    0x18, DEF_STR( Normal ) )	// 50
 	PORT_DIPSETTING(    0x10, "Fast" )				// 35
 	PORT_DIPSETTING(    0x00, "Fastest" )			// 25
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW.B:6")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, "2 Players Game" )
+	PORT_DIPNAME( 0x40, 0x40, "2 Players Game" ) PORT_DIPLOCATION("SW.B:7")
 	PORT_DIPSETTING(    0x40, "1 Credit" )
 	PORT_DIPSETTING(    0x00, "2 Credits" )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
+	PORT_SERVICE_DIPLOC( 0x80, IP_ACTIVE_LOW, "SW.B:8")
 INPUT_PORTS_END
 
 /* GFX Decode */
@@ -307,13 +309,13 @@ static const gfx_layout bestleag_char16layout =
 };
 
 static GFXDECODE_START( bestleag )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, bestleag_charlayout,     0x200, 16 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, bestleag_char16layout,   0x000, 32 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, bestleag_char16layout,   0x300, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, bestleag_charlayout,     0x200, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, bestleag_char16layout,   0x000, 32 )
+	GFXDECODE_ENTRY( "gfx2", 0, bestleag_char16layout,   0x300, 16 )
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( bestleag )
-	MDRV_CPU_ADD(M68000, 12000000)
+	MDRV_CPU_ADD("main", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(bestleag_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
@@ -333,8 +335,8 @@ static MACHINE_DRIVER_START( bestleag )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000) /* Hand-tuned */
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki", OKIM6295, 1000000) /* Hand-tuned */
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.00)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.00)
 MACHINE_DRIVER_END
@@ -342,32 +344,32 @@ MACHINE_DRIVER_END
 /* Rom Loading */
 
 ROM_START( bestleag )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x40000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "2.bin", 0x00000, 0x20000, CRC(d2be3431) SHA1(37815c80b9fbc246fcdaa202d40fb40b10f55b45) )
 	ROM_LOAD16_BYTE( "3.bin", 0x00001, 0x20000, CRC(f29c613a) SHA1(c66fa53f38bfa77ce1b894db74f94ce573c62412) )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE ) /* 16x16x4 BG and 8x8x4 FG Tiles */
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE ) /* 16x16x4 BG and 8x8x4 FG Tiles */
 	ROM_LOAD( "4.bin", 0x000000, 0x80000, CRC(47f7c9bc) SHA1(f0e5ef971f3bd6972316c248175436055cb5789d) )
 	ROM_LOAD( "5.bin", 0x080000, 0x80000, CRC(6a6f499d) SHA1(cacdccc64d09fa7289221cdea4654e6c2d811647) )
 	ROM_LOAD( "6.bin", 0x100000, 0x80000, CRC(0c3d2609) SHA1(6e1f1c5b010ef0dfa3f7b4ff9a832e758fbb97d5) )
 	ROM_LOAD( "7.bin", 0x180000, 0x80000, CRC(dcece871) SHA1(7db919ab7f51748b77b3bd35228bbf71b951349f) )
 
-	ROM_REGION( 0x080000, REGION_GFX2, ROMREGION_DISPOSE ) /* 16x16x4 Sprites */
+	ROM_REGION( 0x080000, "gfx2", ROMREGION_DISPOSE ) /* 16x16x4 Sprites */
 	ROM_LOAD( "8.bin",  0x000000, 0x20000, CRC(a463422a) SHA1(a3b6efd1c57b0a3b0ce4ce734a9a9b79540c4136) )
 	ROM_LOAD( "9.bin",  0x020000, 0x20000, CRC(ebec74ed) SHA1(9a1620f4ca163470f5e567f650663ae368bdd3c1) )
 	ROM_LOAD( "10.bin", 0x040000, 0x20000, CRC(7ea4e22d) SHA1(3c7f05dfd1c5889bfcbc14d08026e2a484870216) )
 	ROM_LOAD( "11.bin", 0x060000, 0x20000, CRC(283d9ba6) SHA1(6054853f76907a4a0f89ad5aa02dde9d3d4ff196) )
 
-	ROM_REGION( 0x80000, REGION_USER1, 0 ) /* Samples */
+	ROM_REGION( 0x80000, "user1", 0 ) /* Samples */
 	ROM_LOAD( "1.bin", 0x00000, 0x80000, CRC(e152138e) SHA1(9d41b61b98414e1d5804b5a9edf4acb4c5f31615) )
 
-	ROM_REGION( 0xc0000, REGION_SOUND1, 0 )
-	ROM_COPY( REGION_USER1, 0x000000, 0x000000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x020000, 0x020000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x000000, 0x040000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x040000, 0x060000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x000000, 0x080000, 0x020000)
-	ROM_COPY( REGION_USER1, 0x060000, 0x0a0000, 0x020000)
+	ROM_REGION( 0xc0000, "oki", 0 )
+	ROM_COPY( "user1", 0x000000, 0x000000, 0x020000)
+	ROM_COPY( "user1", 0x020000, 0x020000, 0x020000)
+	ROM_COPY( "user1", 0x000000, 0x040000, 0x020000)
+	ROM_COPY( "user1", 0x040000, 0x060000, 0x020000)
+	ROM_COPY( "user1", 0x000000, 0x080000, 0x020000)
+	ROM_COPY( "user1", 0x060000, 0x0a0000, 0x020000)
 ROM_END
 
 /* GAME drivers */

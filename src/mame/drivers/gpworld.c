@@ -54,7 +54,7 @@ static UINT8* tile_RAM;
 static UINT8* sprite_RAM;
 static UINT8* palette_RAM;
 
-static laserdisc_info *discinfo;
+static const device_config *laserdisc;
 
 
 /* VIDEO GOODS */
@@ -105,7 +105,7 @@ static void gpworld_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 
 	int i;
 
-	UINT8 *GFX = memory_region(machine, REGION_GFX2);
+	UINT8 *GFX = memory_region(machine, "gfx2");
 
 	/* Heisted from Daphne which heisted it from MAME */
 	for (i = 0; i < 0x800; i += 8)
@@ -203,18 +203,24 @@ static void gpworld_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 
 static VIDEO_UPDATE( gpworld )
 {
+	render_container_set_palette_alpha(render_container_get_screen(screen), 0, 0x00);
+
 	fillbitmap(bitmap, 0, cliprect);
 
 	gpworld_draw_tiles(screen->machine, bitmap, cliprect);
 	gpworld_draw_sprites(screen->machine, bitmap, cliprect);
 
 	/* display disc information */
-	if (discinfo != NULL)
-		popmessage("%s", laserdisc_describe_state(discinfo));
+	popmessage("%s", laserdisc_describe_state(laserdisc));
 
 	return 0;
 }
 
+
+static MACHINE_START( gpworld )
+{
+	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
+}
 
 
 /* MEMORY HANDLERS */
@@ -289,7 +295,7 @@ ADDRESS_MAP_END
 
 /* PORTS */
 static INPUT_PORTS_START( gpworld )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -299,7 +305,7 @@ static INPUT_PORTS_START( gpworld )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )		/* maybe? it's not listed in the test screen. */
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_SERVICE )
@@ -309,7 +315,7 @@ static INPUT_PORTS_START( gpworld )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("INWHEEL")
+	PORT_START("INWHEEL")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME( "SLIGHT RIGHT" ) PORT_CODE( KEYCODE_Y )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME( "MEDIUM RIGHT" ) PORT_CODE( KEYCODE_U )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME( "STRONG RIGHT" ) PORT_CODE( KEYCODE_I )
@@ -319,10 +325,10 @@ static INPUT_PORTS_START( gpworld )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME( "STRONG LEFT" ) PORT_CODE( KEYCODE_E )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME( "FIERCE LEFT" ) PORT_CODE( KEYCODE_W )
 
-	PORT_START_TAG("INACCEL")	/* both accelerator & brake right now :P */
+	PORT_START("INACCEL")	/* both accelerator & brake right now :P */
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(30) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:1,2,3,4")
 	PORT_DIPSETTING(    0x70, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 3C_1C ) )
@@ -358,7 +364,7 @@ static INPUT_PORTS_START( gpworld )
 	PORT_DIPSETTING(    0x0b, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(    0x0a, DEF_STR( 1C_6C ) )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -384,12 +390,6 @@ static INPUT_PORTS_START( gpworld )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-static MACHINE_START( gpworld )
-{
-	discinfo = laserdisc_init(machine, LASERDISC_TYPE_LDV1000, get_disk_handle(0), 0);
-	return;
-}
-
 static TIMER_CALLBACK( irq_stop )
 {
 	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
@@ -400,8 +400,8 @@ static INTERRUPT_GEN( vblank_callback_gpworld )
 	/* Do an NMI if the enabled bit is set */
 	if (nmi_enable)
 	{
-		laserdisc_data_w(discinfo,ldp_write_latch);
-		ldp_read_latch  = laserdisc_data_r(discinfo);
+		laserdisc_data_w(laserdisc,ldp_write_latch);
+		ldp_read_latch  = laserdisc_data_r(laserdisc);
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 	}
 
@@ -409,7 +409,7 @@ static INTERRUPT_GEN( vblank_callback_gpworld )
 	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 	timer_set(ATTOTIME_IN_USEC(100), NULL, 0, irq_stop);
 
-	laserdisc_vsync(discinfo);
+	laserdisc_vsync(laserdisc);
 }
 
 static const gfx_layout gpworld_tile_layout =
@@ -424,47 +424,51 @@ static const gfx_layout gpworld_tile_layout =
 };
 
 static GFXDECODE_START( gpworld )
-	GFXDECODE_ENTRY(REGION_GFX1, 0, gpworld_tile_layout, 0x0, 0x100)
+	GFXDECODE_ENTRY("gfx1", 0, gpworld_tile_layout, 0x0, 0x100)
 GFXDECODE_END
 
 /* DRIVER */
 static MACHINE_DRIVER_START( gpworld )
-/*  main cpu */
-	MDRV_CPU_ADD(Z80, GUESSED_CLOCK)
+
+	/* main cpu */
+	MDRV_CPU_ADD("main", Z80, GUESSED_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(mainmem,0)
 	MDRV_CPU_IO_MAP(mainport,0)
 	MDRV_CPU_VBLANK_INT("main", vblank_callback_gpworld)
 
 	MDRV_MACHINE_START(gpworld)
 
-/*  video */
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000)
+	MDRV_LASERDISC_OVERLAY(gpworld, 512, 256, BITMAP_FORMAT_INDEXED16)
 
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_SIZE(64*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 32*8-1)
+	/* video hardware */
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_INDEXED16)
 
 	MDRV_GFXDECODE(gpworld)
 	MDRV_PALETTE_LENGTH(1024)
-	MDRV_VIDEO_UPDATE(gpworld)
 
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+
+	MDRV_SOUND_ADD("laserdisc", CUSTOM, 0)
+	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
+	MDRV_SOUND_ROUTE(0, "left", 1.0)
+	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( gpworld )
-	ROM_REGION( 0xc000, REGION_CPU1, 0 )
+	ROM_REGION( 0xc000, "main", 0 )
 	ROM_LOAD( "epr6162a.ic51", 0x0000, 0x4000, CRC(70e42574) SHA1(2fa50c7a67a2efb6b2c313850ace40e42d18b0a8) )
 	ROM_LOAD( "epr6163.ic67",  0x4000, 0x4000, CRC(49539e46) SHA1(7cfd5b6b356c3fa5439e6fe3ac2e6a097b722a2c) )
 	ROM_LOAD( "epr6164.ic83",  0x8000, 0x4000, CRC(7f0e6853) SHA1(c255ac6e4b61faa8da9b5aa70f12c868b81acfe1) )
 
 	/* Tiles */
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "epr6148.ic18", 0x0000, 0x1000, CRC(a4b11cf5) SHA1(9697494335089b13071d773812eec373ef5b358c) )
 
 	/* Sprites */
-	ROM_REGION( 0x30000, REGION_GFX2, 0 )
+	ROM_REGION( 0x30000, "gfx2", 0 )
 	ROM_LOAD( "epr6149.ic111", 0x00000, 0x4000, CRC(7e6c4797) SHA1(acf934e1f3f55a0d1cd1630f6a78f9954f1ec53f) )
 	ROM_LOAD( "epr6151.ic110", 0x04000, 0x4000, CRC(26d72b96) SHA1(759ef85877edfc37f2a1a242bf1c9b0e8d5e9a88) )
 	ROM_LOAD( "epr6150.ic128", 0x08000, 0x4000, CRC(6837e095) SHA1(b2ac8341fcf0037d186b0759227597643ca0336d) )
@@ -479,10 +483,13 @@ ROM_START( gpworld )
 	/*                 ic123 Unpopulated? */
 
 	/* Misc PROMs */
-	ROM_REGION( 0x0220, REGION_PROMS, 0 )
+	ROM_REGION( 0x0220, "proms", 0 )
 	ROM_LOAD( "pr6146.ic2",  0x000, 0x020, CRC(d10801a0) SHA1(89e9ac0d9c9eee6efd5455a3416c436ceda8f632) )
 	ROM_LOAD( "pr6147.ic28", 0x020, 0x100, CRC(b7173df9) SHA1(044beda43cb1793033021a08b3ee3441d5ffe6c3) )
 	ROM_LOAD( "pr5501.ic14", 0x120, 0x100, CRC(1bdf71d4) SHA1(ac52e948cce6df4abb7543c08e2c6454efd63e79) )
+
+	DISK_REGION( "laserdisc" )
+	DISK_IMAGE_READONLY( "gpworld", 0, NO_DUMP )
 ROM_END
 
 

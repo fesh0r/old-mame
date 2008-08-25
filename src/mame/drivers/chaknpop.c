@@ -44,12 +44,12 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8800, 0x8800) AM_READ(chaknpop_mcu_portA_r)
 	AM_RANGE(0x8801, 0x8801) AM_READ(chaknpop_mcu_portB_r)
 	AM_RANGE(0x8802, 0x8802) AM_READ(chaknpop_mcu_portC_r)
-	AM_RANGE(0x8805, 0x8805) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0x8807, 0x8807) AM_READ(AY8910_read_port_1_r)
-	AM_RANGE(0x8808, 0x8808) AM_READ(input_port_3_r)		// DSW C
-	AM_RANGE(0x8809, 0x8809) AM_READ(input_port_1_r)		// IN1
-	AM_RANGE(0x880a, 0x880a) AM_READ(input_port_0_r)		// IN0
-	AM_RANGE(0x880b, 0x880b) AM_READ(input_port_2_r)		// IN2
+	AM_RANGE(0x8805, 0x8805) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x8807, 0x8807) AM_READ(ay8910_read_port_1_r)
+	AM_RANGE(0x8808, 0x8808) AM_READ_PORT("DSWC")
+	AM_RANGE(0x8809, 0x8809) AM_READ_PORT("P1")
+	AM_RANGE(0x880a, 0x880a) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x880b, 0x880b) AM_READ_PORT("P2")
 	AM_RANGE(0x880c, 0x880c) AM_READ(chaknpop_gfxmode_r)
 	AM_RANGE(0x9000, 0x93ff) AM_READ(SMH_RAM)			// TX tilemap
 	AM_RANGE(0x9800, 0x983f) AM_READ(SMH_RAM)			// Color attribute
@@ -64,10 +64,10 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8800, 0x8800) AM_WRITE(chaknpop_mcu_portA_w)
 	AM_RANGE(0x8801, 0x8801) AM_WRITE(chaknpop_mcu_portB_w)
 	AM_RANGE(0x8802, 0x8802) AM_WRITE(chaknpop_mcu_portC_w)
-	AM_RANGE(0x8804, 0x8804) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x8805, 0x8805) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x8806, 0x8806) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0x8807, 0x8807) AM_WRITE(AY8910_write_port_1_w)
+	AM_RANGE(0x8804, 0x8804) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x8805, 0x8805) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x8806, 0x8806) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x8807, 0x8807) AM_WRITE(ay8910_write_port_1_w)
 	AM_RANGE(0x880c, 0x880c) AM_WRITE(chaknpop_gfxmode_w)
 	AM_RANGE(0x880D, 0x880D) AM_WRITE(coinlock_w)			// coin lock out
 	AM_RANGE(0x9000, 0x93ff) AM_WRITE(chaknpop_txram_w) AM_BASE(&chaknpop_txram)
@@ -77,7 +77,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xffff) AM_WRITE(SMH_BANK1)			// bitmap plane 1-4
 ADDRESS_MAP_END
 
-static const struct AY8910interface ay8910_interface_1 =
+static const ay8910_interface ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -87,7 +87,7 @@ static const struct AY8910interface ay8910_interface_1 =
 	NULL
 };
 
-static const struct AY8910interface ay8910_interface_2 =
+static const ay8910_interface ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -105,7 +105,7 @@ static const struct AY8910interface ay8910_interface_2 =
 ***************************************************************************/
 
 static INPUT_PORTS_START( chaknpop )
-	PORT_START_TAG("IN0")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )	// LEFT COIN
@@ -115,7 +115,7 @@ static INPUT_PORTS_START( chaknpop )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_TILT )
 
-	PORT_START_TAG("IN1")
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -125,7 +125,7 @@ static INPUT_PORTS_START( chaknpop )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -135,7 +135,7 @@ static INPUT_PORTS_START( chaknpop )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN3")      /* DSW C */
+	PORT_START("DSWC")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Language ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( English ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Japanese ) )
@@ -161,7 +161,7 @@ static INPUT_PORTS_START( chaknpop )
 	PORT_DIPSETTING(    0x00, "1 Way" )
 	PORT_DIPSETTING(    0x80, "2 Way" )
 
-	PORT_START_TAG("IN4")      /* DSW B */
+	PORT_START("DSWB")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x00, "80k and every 100k" )
 	PORT_DIPSETTING(    0x01, "60k and every 100k" )
@@ -185,7 +185,7 @@ static INPUT_PORTS_START( chaknpop )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("IN5")      /* DSW A */
+	PORT_START("DSWA")
 	PORT_DIPNAME(0x0f,  0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x0f, DEF_STR( 9C_1C ) )
 	PORT_DIPSETTING(    0x0e, DEF_STR( 8C_1C ) )
@@ -254,17 +254,17 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( chaknpop )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, spritelayout, 0,  8 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout,   32, 8 )
+	GFXDECODE_ENTRY( "gfx1", 0, spritelayout, 0,  8 )
+	GFXDECODE_ENTRY( "gfx2", 0, charlayout,   32, 8 )
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( chaknpop )
 
 	/* basic machine hardware */
 	/* the real board is 3.072MHz, but it is faster for MAME */
-	//MDRV_CPU_ADD(Z80, 18432000 / 6)   /* 3.072 MHz */
-	MDRV_CPU_ADD(Z80, 2350000)
-	//MDRV_CPU_ADD(Z80, 2760000)
+	//MDRV_CPU_ADD("main", Z80, 18432000 / 6)   /* 3.072 MHz */
+	MDRV_CPU_ADD("main", Z80, 2350000)
+	//MDRV_CPU_ADD("main", Z80, 2760000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -288,11 +288,11 @@ static MACHINE_DRIVER_START( chaknpop )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 18432000 / 12)
+	MDRV_SOUND_ADD("ay1", AY8910, 18432000 / 12)
 	MDRV_SOUND_CONFIG(ay8910_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(AY8910, 18432000 / 12)
+	MDRV_SOUND_ADD("ay2", AY8910, 18432000 / 12)
 	MDRV_SOUND_CONFIG(ay8910_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 MACHINE_DRIVER_END
@@ -305,27 +305,27 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( chaknpop )
-	ROM_REGION( 0x18000, REGION_CPU1, 0 )			/* Main CPU */
+	ROM_REGION( 0x18000, "main", 0 )			/* Main CPU */
 	ROM_LOAD( "a04-01.28",    0x00000, 0x2000, CRC(386fe1c8) SHA1(cca24abfb8a7f439251e7936036475c694002561) )
 	ROM_LOAD( "a04-02.27",    0x02000, 0x2000, CRC(5562a6a7) SHA1(0c5d81f9aaf858f88007a6bca7f83dc3ef59c5b5) )
 	ROM_LOAD( "a04-03.26",    0x04000, 0x2000, CRC(3e2f0a9c) SHA1(f1cf87a4cb07f77104d4a4d369807dac522e052c) )
 	ROM_LOAD( "a04-04.25",    0x06000, 0x2000, CRC(5209c7d4) SHA1(dcba785a697df55d84d65735de38365869a1da9d) )
 	ROM_LOAD( "a04-05.3",     0x0a000, 0x2000, CRC(8720e024) SHA1(99e445c117d1501a245f9eb8d014abc4712b4963) )
 
-	ROM_REGION( 0x0800, REGION_CPU2, 0 )	/* 2k for the microcontroller */
+	ROM_REGION( 0x0800, "cpu1", 0 )	/* 2k for the microcontroller */
 	/* MCU isn't dumped (its protected) however we simulate it using data
        extracted with a trojan, see machine/chaknpop.c */
 	ROM_LOAD( "68705.mcu",   0x0000, 0x0800, NO_DUMP )
 
-	ROM_REGION( 0x4000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprite */
+	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )	/* Sprite */
 	ROM_LOAD( "a04-08.14",     0x0000, 0x2000, CRC(5575a021) SHA1(c2fad53fe6a12c19cec69d27c13fce6aea2502f2) )
 	ROM_LOAD( "a04-07.15",     0x2000, 0x2000, CRC(ae687c18) SHA1(65b25263da88d30cbc0dad94511869596e5c975a) )
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )	/* Text */
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )	/* Text */
 	ROM_LOAD( "a04-09.98",     0x0000, 0x2000, CRC(757a723a) SHA1(62ab84d2aaa9bc1ea5aa9df8155aa3b5a1e93889) )
 	ROM_LOAD( "a04-10.97",     0x2000, 0x2000, CRC(3e3fd608) SHA1(053a8fbdb35bf1c142349f78a63e8cd1adb41ef6) )
 
-	ROM_REGION( 0x0800, REGION_PROMS, 0 )			/* Palette */
+	ROM_REGION( 0x0800, "proms", 0 )			/* Palette */
 	ROM_LOAD( "a04-11.bin",    0x0000, 0x0400, CRC(9bf0e85f) SHA1(44f0a4712c99a715dec54060afb0b27dc48998b4) )
 	ROM_LOAD( "a04-12.bin",    0x0400, 0x0400, CRC(954ce8fc) SHA1(e187f9e2cb754264d149c2896ca949dea3bcf2eb) )
 ROM_END

@@ -38,8 +38,8 @@ static UINT32	romHI_addr_msb = 0;
 static UINT8	DISP = 0;
 static UINT8	background_romsel = 0;
 static UINT8	color_A4 = 0;
-static UINT8	ls175_b7 = 0x0f | 0xf0;
-static UINT8	ls175_e8 = 0x0f;
+static UINT8	ls175_b7;
+static UINT8	ls175_e8;
 static UINT8	ls377_data = 0;
 static UINT32	page = 0;
 
@@ -368,7 +368,6 @@ PALETTE_INIT( tubep )
 VIDEO_START( tubep )
 {
 	spritemap = auto_malloc(256*256*2);
-	memset(spritemap,0,256*256*2);
 
 	/* Set up save state */
 	state_save_register_global(romD_addr);
@@ -392,6 +391,34 @@ VIDEO_START( tubep )
 	state_save_register_global(ls175_e8);
 	state_save_register_global(ls377_data);
 	state_save_register_global(page);
+}
+
+
+VIDEO_RESET( tubep )
+{
+	memset(spritemap,0,256*256*2);
+
+	romD_addr = 0;
+	romEF_addr = 0;
+	E16_add_b = 0;
+	HINV = 0;
+	VINV = 0;
+	XSize = 0;
+	YSize = 0;
+	mark_1 = 0;
+	mark_2 = 0;
+	colorram_addr_hi = 0;
+	ls273_g6 = 0;
+	ls273_j6 = 0;
+	romHI_addr_mid = 0;
+	romHI_addr_msb = 0;
+	DISP = 0;
+	background_romsel = 0;
+	color_A4 = 0;
+	ls175_b7 = 0x0f | 0xf0;
+	ls175_e8 = 0x0f;
+	ls377_data = 0;
+	page = 0;
 }
 
 
@@ -435,7 +462,7 @@ static void draw_sprite(running_machine *machine)
 {
 	UINT32	XDOT;
 	UINT32	YDOT;
-	UINT8 * romCxx  = memory_region(machine, REGION_USER2)+0x00000;
+	UINT8 * romCxx  = memory_region(machine, "user2")+0x00000;
 	UINT8 * romD10  = romCxx+0x10000;
 	UINT8 * romEF13 = romCxx+0x12000;
 	UINT8 * romHI2  = romCxx+0x14000;
@@ -584,8 +611,8 @@ VIDEO_UPDATE( tubep )
 	pen_t pen_base = 32; //change it later
 
 	UINT32 v;
-	UINT8 *text_gfx_base = memory_region(screen->machine, REGION_GFX1);
-	UINT8 *romBxx = memory_region(screen->machine, REGION_USER1) + 0x2000*background_romsel;
+	UINT8 *text_gfx_base = memory_region(screen->machine, "gfx1");
+	UINT8 *romBxx = memory_region(screen->machine, "user1") + 0x2000*background_romsel;
 
 	/* logerror(" update: from DISP=%i y_min=%3i y_max=%3i\n", DISP_, cliprect->min_y, cliprect->max_y+1); */
 
@@ -737,8 +764,8 @@ VIDEO_UPDATE( rjammer )
 	int DISP_ = DISP^1;
 
 	UINT32 v;
-	UINT8 *text_gfx_base = memory_region(screen->machine, REGION_GFX1);
-	UINT8 *rom13D  = memory_region(screen->machine, REGION_USER1);
+	UINT8 *text_gfx_base = memory_region(screen->machine, "gfx1");
+	UINT8 *rom13D  = memory_region(screen->machine, "user1");
 	UINT8 *rom11BD = rom13D+0x1000;
 	UINT8 *rom19C  = rom13D+0x5000;
 

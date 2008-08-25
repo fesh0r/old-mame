@@ -630,7 +630,7 @@ static void set_main_cpu_vector_table_source(UINT8 data)
 
 static void _set_main_cpu_bank_address(running_machine *machine)
 {
-	memory_set_bankptr(NEOGEO_BANK_CARTRIDGE, &memory_region(machine, NEOGEO_REGION_MAIN_CPU_CARTRIDGE)[main_cpu_bank_address]);
+	memory_set_bankptr(NEOGEO_BANK_CARTRIDGE, &memory_region(machine, "main")[main_cpu_bank_address]);
 }
 
 
@@ -647,7 +647,7 @@ void neogeo_set_main_cpu_bank_address(UINT32 bank_address)
 static WRITE16_HANDLER( main_cpu_bank_select_w )
 {
 	UINT32 bank_address;
-	UINT32 len = memory_region_length(machine, NEOGEO_REGION_MAIN_CPU_CARTRIDGE);
+	UINT32 len = memory_region_length(machine, "main");
 
 	if ((len <= 0x100000) && (data & 0x07))
 		logerror("PC %06x: warning: bankswitch to %02x but no banks available\n", activecpu_get_pc(), data);
@@ -669,11 +669,11 @@ static WRITE16_HANDLER( main_cpu_bank_select_w )
 static void main_cpu_banking_init(running_machine *machine)
 {
 	/* create vector banks */
-	memory_configure_bank(NEOGEO_BANK_VECTORS, 0, 1, memory_region(machine, NEOGEO_REGION_MAIN_CPU_BIOS), 0);
-	memory_configure_bank(NEOGEO_BANK_VECTORS, 1, 1, memory_region(machine, NEOGEO_REGION_MAIN_CPU_CARTRIDGE), 0);
+	memory_configure_bank(NEOGEO_BANK_VECTORS, 0, 1, memory_region(machine, "mainbios"), 0);
+	memory_configure_bank(NEOGEO_BANK_VECTORS, 1, 1, memory_region(machine, "main"), 0);
 
 	/* set initial main CPU bank */
-	if (memory_region_length(machine, NEOGEO_REGION_MAIN_CPU_CARTRIDGE) > 0x100000)
+	if (memory_region_length(machine, "main") > 0x100000)
 		neogeo_set_main_cpu_bank_address(0x100000);
 	else
 		neogeo_set_main_cpu_bank_address(0x000000);
@@ -740,7 +740,7 @@ static READ8_HANDLER( audio_cpu_bank_select_8000_bfff_r )
 
 static void _set_audio_cpu_rom_source(running_machine *machine)
 {
-/*  if (!memory_region(machine, NEOGEO_REGION_AUDIO_CPU_BIOS))   */
+/*  if (!memory_region(machine, "audiobios"))   */
 		audio_cpu_rom_source = 1;
 
 	memory_set_bank(NEOGEO_BANK_AUDIO_CPU_MAIN_BANK, audio_cpu_rom_source);
@@ -773,14 +773,14 @@ static void audio_cpu_banking_init(running_machine *machine)
 	UINT32 address_mask;
 
 	/* audio bios/cartridge selection */
- 	if (memory_region(machine, NEOGEO_REGION_AUDIO_CPU_BIOS))
-		memory_configure_bank(NEOGEO_BANK_AUDIO_CPU_MAIN_BANK, 0, 1, memory_region(machine, NEOGEO_REGION_AUDIO_CPU_BIOS), 0);
-	memory_configure_bank(NEOGEO_BANK_AUDIO_CPU_MAIN_BANK, 1, 1, memory_region(machine, NEOGEO_REGION_AUDIO_CPU_CARTRIDGE), 0);
+ 	if (memory_region(machine, "audiobios"))
+		memory_configure_bank(NEOGEO_BANK_AUDIO_CPU_MAIN_BANK, 0, 1, memory_region(machine, "audiobios"), 0);
+	memory_configure_bank(NEOGEO_BANK_AUDIO_CPU_MAIN_BANK, 1, 1, memory_region(machine, "audio"), 0);
 
 	/* audio banking */
-	address_mask = memory_region_length(machine, NEOGEO_REGION_AUDIO_CPU_CARTRIDGE) - 0x10000 - 1;
+	address_mask = memory_region_length(machine, "audio") - 0x10000 - 1;
 
-	rgn = memory_region(machine, NEOGEO_REGION_AUDIO_CPU_CARTRIDGE);
+	rgn = memory_region(machine, "audio");
 	for (region = 0; region < 4; region++)
 	{
 		for (bank = 0; bank < 0x100; bank++)
@@ -959,7 +959,7 @@ static STATE_POSTLOAD( neogeo_postload )
 static MACHINE_START( neogeo )
 {
 	/* set the BIOS bank */
-	memory_set_bankptr(NEOGEO_BANK_BIOS, memory_region(machine, NEOGEO_REGION_MAIN_CPU_BIOS));
+	memory_set_bankptr(NEOGEO_BANK_BIOS, memory_region(machine, "mainbios"));
 
 	/* set the initial main CPU bank */
 	main_cpu_banking_init(machine);
@@ -1088,10 +1088,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( auido_io_map, ADDRESS_SPACE_IO, 8 )
   /*AM_RANGE(0x00, 0x00) AM_MIRROR(0xff00) AM_READWRITE(audio_command_r, audio_cpu_clear_nmi_w);*/  /* may not and NMI clear */
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0xff00) AM_READ(audio_command_r)
-	AM_RANGE(0x04, 0x04) AM_MIRROR(0xff00) AM_READWRITE(YM2610_status_port_0_A_r, YM2610_control_port_0_A_w)
-	AM_RANGE(0x05, 0x05) AM_MIRROR(0xff00) AM_READWRITE(YM2610_read_port_0_r, YM2610_data_port_0_A_w)
-	AM_RANGE(0x06, 0x06) AM_MIRROR(0xff00) AM_READWRITE(YM2610_status_port_0_B_r, YM2610_control_port_0_B_w)
-	AM_RANGE(0x07, 0x07) AM_MIRROR(0xff00) AM_WRITE(YM2610_data_port_0_B_w)
+	AM_RANGE(0x04, 0x04) AM_MIRROR(0xff00) AM_READWRITE(ym2610_status_port_0_a_r, ym2610_control_port_0_a_w)
+	AM_RANGE(0x05, 0x05) AM_MIRROR(0xff00) AM_READWRITE(ym2610_read_port_0_r, ym2610_data_port_0_a_w)
+	AM_RANGE(0x06, 0x06) AM_MIRROR(0xff00) AM_READWRITE(ym2610_status_port_0_b_r, ym2610_control_port_0_b_w)
+	AM_RANGE(0x07, 0x07) AM_MIRROR(0xff00) AM_WRITE(ym2610_data_port_0_b_w)
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0xff00) /* write - NMI enable / acknowledge? (the data written doesn't matter) */
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_f000_f7ff_r)
 	AM_RANGE(0x09, 0x09) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_e000_efff_r)
@@ -1109,11 +1109,9 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static struct YM2610interface ym2610_interface =
+static ym2610_interface ym2610_config =
 {
-	audio_cpu_irq,
-	-1,	 /* this will be set by DRIVER_INIT */
-	NEOGEO_REGION_AUDIO_DATA_1
+	audio_cpu_irq
 };
 
 
@@ -1150,7 +1148,7 @@ static struct YM2610interface ym2610_interface =
 
 
 #define STANDARD_IN0														\
-	PORT_START_TAG("IN0")													\
+	PORT_START("IN0")													\
 	STANDARD_DIPS															\
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)		\
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)		\
@@ -1163,7 +1161,7 @@ static struct YM2610interface ym2610_interface =
 
 
 #define STANDARD_IN1														\
-	PORT_START_TAG("IN1")													\
+	PORT_START("IN1")													\
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )							\
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)		\
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)		\
@@ -1176,7 +1174,7 @@ static struct YM2610interface ym2610_interface =
 
 
 #define STANDARD_IN2																				\
-	PORT_START_TAG("IN2")																			\
+	PORT_START("IN2")																			\
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )													\
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )   												\
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Next Game") PORT_CODE(KEYCODE_7)		\
@@ -1187,7 +1185,7 @@ static struct YM2610interface ym2610_interface =
 
 
 #define STANDARD_IN3																				\
-	PORT_START_TAG("IN3")																			\
+	PORT_START("IN3")																			\
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )													\
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )													\
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )													\
@@ -1199,7 +1197,7 @@ static struct YM2610interface ym2610_interface =
 
 
 #define STANDARD_IN4																			\
-	PORT_START_TAG("IN4")																		\
+	PORT_START("IN4")																		\
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_UNKNOWN )												\
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_UNKNOWN )												\
 	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_UNKNOWN )												\
@@ -1234,10 +1232,10 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( neogeo )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M68000, NEOGEO_MAIN_CPU_CLOCK)
+	MDRV_CPU_ADD("main", M68000, NEOGEO_MAIN_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_CPU_ADD(Z80, NEOGEO_AUDIO_CPU_CLOCK)
+	MDRV_CPU_ADD("audio", Z80, NEOGEO_AUDIO_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 	MDRV_CPU_IO_MAP(auido_io_map,0)
 
@@ -1261,8 +1259,8 @@ static MACHINE_DRIVER_START( neogeo )
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2610, NEOGEO_YM2610_CLOCK)
-	MDRV_SOUND_CONFIG(ym2610_interface)
+	MDRV_SOUND_ADD("ym", YM2610, NEOGEO_YM2610_CLOCK)
+	MDRV_SOUND_CONFIG(ym2610_config)
 	MDRV_SOUND_ROUTE(0, "left",  0.60)
 	MDRV_SOUND_ROUTE(0, "right", 0.60)
 	MDRV_SOUND_ROUTE(1, "left",  1.0)
@@ -1277,8 +1275,6 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( neogeo )
 {
-	/* set the Delta-T sample region */
-	ym2610_interface.pcmromb = memory_region(machine, NEOGEO_REGION_AUDIO_DATA_2) ? NEOGEO_REGION_AUDIO_DATA_2 : NEOGEO_REGION_AUDIO_DATA_1;
 }
 
 

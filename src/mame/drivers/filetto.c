@@ -355,7 +355,7 @@ static WRITE8_HANDLER( disk_iobank_w )
 	if (newbank != bank)
 	{
 		bank = newbank;
-		memory_set_bankptr( 1,memory_region(machine, REGION_USER1) + 0x10000 * bank );
+		memory_set_bankptr( 1,memory_region(machine, "user1") + 0x10000 * bank );
 	}
 
 	lastvalue = data;
@@ -395,15 +395,12 @@ static const struct pit8253_config pc_pit8253_config =
 	{
 		{
 			4772720/4,				/* heartbeat IRQ */
-			pc_timer0_w,
-			NULL
+			pc_timer0_w
 		}, {
 			4772720/4,				/* dram refresh */
-			NULL,
 			NULL
 		}, {
 			4772720/4,				/* pio port c pin 4, and speaker polling enough */
-			NULL,
 			NULL
 		}
 	}
@@ -582,7 +579,7 @@ static ADDRESS_MAP_START( filetto_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( filetto )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED ) //START1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(1)
@@ -602,7 +599,7 @@ static INPUT_PORTS_START( filetto )
     DSW2
     <unused>
     */
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -653,9 +650,9 @@ static const gfx_layout dos_chars2 =
 };
 
 static GFXDECODE_START( filetto )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, dos_chars,    0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x1000, dos_chars2,   0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x1800, dos_chars2,   0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, dos_chars,    0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0x1000, dos_chars2,   0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0x1800, dos_chars2,   0, 16 )
 GFXDECODE_END
 
 
@@ -736,7 +733,7 @@ static INTERRUPT_GEN( filetto_irq )
 
 
 static MACHINE_DRIVER_START( filetto )
-	MDRV_CPU_ADD_TAG("main", I8088, 8000000)
+	MDRV_CPU_ADD("main", I8088, 8000000)
 	MDRV_CPU_PROGRAM_MAP(filetto_map,0)
 	MDRV_CPU_IO_MAP(filetto_io,0)
 	MDRV_CPU_VBLANK_INT_HACK(filetto_irq,200)
@@ -769,7 +766,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( filetto )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )
+	ROM_REGION( 0x100000, "main", 0 )
 
 	ROM_LOAD("u49.bin", 0xfc000, 0x2000, CRC(1be6948a) SHA1(9c433f63d347c211ee4663f133e8417221bc4bf0))
 	ROM_RELOAD(         0xf8000, 0x2000 )
@@ -781,16 +778,16 @@ ROM_START( filetto )
 	ROM_RELOAD(         0xf2000, 0x2000 )
 
 
-	ROM_REGION( 0x40000, REGION_USER1, 0 ) // program data
+	ROM_REGION( 0x40000, "user1", 0 ) // program data
 	ROM_LOAD( "m0.u1", 0x00000, 0x10000, CRC(2408289d) SHA1(eafc144a557a79b58bcb48545cb9c9778e61fcd3) )
 	ROM_LOAD( "m1.u2", 0x10000, 0x10000, CRC(5b623114) SHA1(0d9a14e6b7f57ce4fa09762343b610a973910f58) )
 	ROM_LOAD( "m2.u3", 0x20000, 0x10000, CRC(abc64869) SHA1(564fc9d90d241a7b7776160b3fd036fb08037355) )
 	ROM_LOAD( "m3.u4", 0x30000, 0x10000, CRC(0c1e8a67) SHA1(f1b9280c65fcfcb5ec481cae48eb6f52d6cdbc9d) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD("u67.bin", 0x0000, 0x2000, CRC(09710122) SHA1(de84bdd9245df287bbd3bb808f0c3531d13a3545) )
 
-	ROM_REGION( 0x40000, REGION_USER2, ROMREGION_DISPOSE ) // unknown
+	ROM_REGION( 0x40000, "user2", ROMREGION_DISPOSE ) // unknown
 	ROM_LOAD16_BYTE("v1.u15",  0x00000, 0x20000, CRC(613ddd07) SHA1(ebda3d559315879819cb7034b5696f8e7861fe42) )
 	ROM_LOAD16_BYTE("v2.u14",  0x00001, 0x20000, CRC(427e012e) SHA1(50514a6307e63078fe7444a96e39d834684db7df) )
 ROM_END

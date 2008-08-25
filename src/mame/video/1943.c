@@ -1,3 +1,32 @@
+/***************************************************************************
+
+1943 Video Hardware
+
+This board handles tile/tile and tile/sprite priority with a PROM. Its
+working is hardcoded in the driver.
+
+The PROM have address inputs wired as follows:
+
+A0 bg (SCR) opaque
+A1 bit 2 of sprite (OBJ) attribute (guess)
+A2 bit 3 of sprite (OBJ) attribute (guess)
+A3 sprite (OBJ) opaque
+A4 fg (CHAR) opaque
+A5 wired to mass
+A6 wired to mass
+A7 wired to mass
+
+2 bits of the output selects the active layer, it can be:
+(output & 0x03)
+0 bg2 (SCR2)
+1 bg (SCR)
+2 sprite (OBJ)
+3 fg (CHAR)
+
+other 2 bits (output & 0x0c) unknown
+
+***************************************************************************/
+
 #include "driver.h"
 
 UINT8 *c1943_scrollx;
@@ -111,7 +140,7 @@ WRITE8_HANDLER( c1943_colorram_w )
 WRITE8_HANDLER( c1943_c804_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 
 	/* bits 0 and 1 are coin counters */
 	coin_counter_w(0, data & 0x01);
@@ -144,7 +173,7 @@ WRITE8_HANDLER( c1943_d806_w )
 
 static TILE_GET_INFO( c1943_get_bg2_tile_info )
 {
-	UINT8 *tilerom = memory_region(machine, REGION_GFX5) + 0x8000;
+	UINT8 *tilerom = memory_region(machine, "gfx5") + 0x8000;
 
 	int offs = tile_index * 2;
 	int attr = tilerom[offs + 1];
@@ -157,7 +186,7 @@ static TILE_GET_INFO( c1943_get_bg2_tile_info )
 
 static TILE_GET_INFO( c1943_get_bg_tile_info )
 {
-	UINT8 *tilerom = memory_region(machine, REGION_GFX5);
+	UINT8 *tilerom = memory_region(machine, "gfx5");
 
 	int offs = tile_index * 2;
 	int attr = tilerom[offs + 1];

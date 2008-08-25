@@ -62,15 +62,15 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xe7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe800, 0xebff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0xec00, 0xec00) AM_READ(input_port_0_r)
-	AM_RANGE(0xec01, 0xec01) AM_READ(input_port_1_r)
-	AM_RANGE(0xec02, 0xec02) AM_READ(input_port_2_r)
-	AM_RANGE(0xec03, 0xec03) AM_READ(input_port_3_r)
-	AM_RANGE(0xec10, 0xec10) AM_READ(input_port_4_r)
-	AM_RANGE(0xec12, 0xec12) AM_READ(input_port_5_r)
+	AM_RANGE(0xec00, 0xec00) AM_READ_PORT("IN0")
+	AM_RANGE(0xec01, 0xec01) AM_READ_PORT("IN1")
+	AM_RANGE(0xec02, 0xec02) AM_READ_PORT("IN2")
+	AM_RANGE(0xec03, 0xec03) AM_READ_PORT("IN3")
+	AM_RANGE(0xec10, 0xec10) AM_READ_PORT("IN4")
+	AM_RANGE(0xec12, 0xec12) AM_READ_PORT("IN5")
 
-	AM_RANGE(0xec20, 0xec20) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0xec21, 0xec21) AM_READ(input_port_6_r) //ltcasino -> pc: F3F3 (A in service) and F3FD (B in service)
+	AM_RANGE(0xec20, 0xec20) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xec21, 0xec21) AM_READ_PORT("BUTTONS") //ltcasino -> pc: F3F3 (A in service) and F3FD (B in service)
 	AM_RANGE(0xec3e, 0xec3e) AM_READ(SMH_NOP) //not used
 
 	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_ROM)
@@ -85,8 +85,8 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(ltcasino_tile_atr_w) AM_BASE(&ltcasino_tile_atr_ram)
 	AM_RANGE(0xe800, 0xebff) AM_WRITE(SMH_RAM)
 
-	AM_RANGE(0xec20, 0xec20) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0xec21, 0xec21) AM_WRITE(AY8910_control_port_0_w)
+	AM_RANGE(0xec20, 0xec20) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0xec21, 0xec21) AM_WRITE(ay8910_control_port_0_w)
 
 	AM_RANGE(0xec30, 0xec3f) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_ROM)
@@ -94,7 +94,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( ltcasino )
-	PORT_START /* Q in service */
+	PORT_START("IN0") /* Q in service */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CODE(KEYCODE_Z) PORT_NAME("Hold 1")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CODE(KEYCODE_X) PORT_NAME("Hold 2")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_CODE(KEYCODE_C) PORT_NAME("Hold 3")
@@ -110,7 +110,7 @@ static INPUT_PORTS_START( ltcasino )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("IN1")
 	PORT_DIPNAME( 0x01, 0x00, "1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -134,7 +134,7 @@ static INPUT_PORTS_START( ltcasino )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START /* R in service */
+	PORT_START("IN2") /* R in service */
 	PORT_DIPNAME( 0x01, 0x00, "2" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -160,7 +160,7 @@ static INPUT_PORTS_START( ltcasino )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("IN3")
 	PORT_DIPNAME( 0x01, 0x00, "3" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -184,7 +184,7 @@ static INPUT_PORTS_START( ltcasino )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN2 )
 
-	PORT_START /* S in service */
+	PORT_START("IN4") /* S in service */
 	PORT_DIPNAME( 0x01, 0x00, "4" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -208,7 +208,7 @@ static INPUT_PORTS_START( ltcasino )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START /* T in service */
+	PORT_START("IN5") /* T in service */
 	PORT_DIPNAME( 0x01, 0x00, "5" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -234,7 +234,7 @@ static INPUT_PORTS_START( ltcasino )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-/*  PORT_START // A and B in service  //is there a switch?
+/*  PORT_START("IN6") // A and B in service  //is there a switch?
     PORT_DIPNAME( 0x01, 0x01, "6" ) // from 1 to 0x40 seem affect the credit
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -260,7 +260,7 @@ static INPUT_PORTS_START( ltcasino )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 */
-	PORT_START
+	PORT_START("BUTTONS")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 )
@@ -273,7 +273,7 @@ static INPUT_PORTS_START( ltcasino )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( ltcasinn )
-	PORT_START /* Q in service */
+	PORT_START("IN0") /* Q in service */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 ) //start?
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
@@ -297,7 +297,7 @@ static INPUT_PORTS_START( ltcasinn )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("IN1")
 	PORT_DIPNAME( 0x01, 0x00, "1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -323,7 +323,7 @@ static INPUT_PORTS_START( ltcasinn )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START /* R in service */
+	PORT_START("IN2") /* R in service */
 	PORT_DIPNAME( 0x01, 0x00, "2" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -349,7 +349,7 @@ static INPUT_PORTS_START( ltcasinn )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("IN3")
 	PORT_DIPNAME( 0x01, 0x00, "3" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -375,7 +375,7 @@ static INPUT_PORTS_START( ltcasinn )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START /* S in service */
+	PORT_START("IN4") /* S in service */
 	PORT_DIPNAME( 0x01, 0x01, "Plug the Keyboard" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -399,7 +399,7 @@ static INPUT_PORTS_START( ltcasinn )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START /* T in service */
+	PORT_START("IN5") /* T in service */
 	PORT_DIPNAME( 0x01, 0x00, "5" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -425,7 +425,7 @@ static INPUT_PORTS_START( ltcasinn )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-/*  PORT_START // A and B in service  //is there a switch?
+/*  PORT_START("IN6") // A and B in service  //is there a switch?
     PORT_DIPNAME( 0x01, 0x01, "6" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -452,7 +452,7 @@ static INPUT_PORTS_START( ltcasinn )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 */
 
-	PORT_START
+	PORT_START("BUTTONS")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 )
@@ -466,7 +466,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( mv4in1 )
-	PORT_START
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CODE(KEYCODE_Z) PORT_NAME("Hold 1")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CODE(KEYCODE_X) PORT_NAME("Hold 2")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_CODE(KEYCODE_C) PORT_NAME("Hold 3")
@@ -483,7 +483,7 @@ static INPUT_PORTS_START( mv4in1 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("IN1")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -507,7 +507,7 @@ static INPUT_PORTS_START( mv4in1 )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START
+	PORT_START("IN2")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -533,7 +533,7 @@ static INPUT_PORTS_START( mv4in1 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("IN3")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -557,7 +557,7 @@ static INPUT_PORTS_START( mv4in1 )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN2 )
 
-	PORT_START
+	PORT_START("IN4")
 	PORT_DIPNAME( 0x01, 0x01, "Keyboard" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -581,7 +581,7 @@ static INPUT_PORTS_START( mv4in1 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("IN5")
 	PORT_DIPNAME( 0x01, 0x00, "5" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -608,7 +608,7 @@ static INPUT_PORTS_START( mv4in1 )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 
-	PORT_START
+	PORT_START("BUTTONS")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 )
@@ -634,7 +634,7 @@ static const gfx_layout tiles8x8_layout =
 
 
 static GFXDECODE_START( ltcasino )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 0, 16 )
 GFXDECODE_END
 
 
@@ -647,7 +647,7 @@ static VIDEO_UPDATE(ltcasino)
 
 static MACHINE_DRIVER_START( ltcasino )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502,2000000)		 /* ? MHz */
+	MDRV_CPU_ADD("main", M6502,2000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -668,13 +668,13 @@ static MACHINE_DRIVER_START( ltcasino )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1000000)
+	MDRV_SOUND_ADD("ay", AY8910, 1000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.4)
 MACHINE_DRIVER_END
 
 
 ROM_START( ltcasino )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "a",			0x8000, 0x1000, CRC(14909fee) SHA1(bf53fa65da7f013ea1ac6b4942cdfdb34ef16252) )
 	ROM_LOAD( "b",			0x9800, 0x0800, CRC(1473f854) SHA1(eadaec1f6d653e61458bc262945c20140f4530eb) )
 	ROM_LOAD( "c",			0xa800, 0x0800, CRC(7a07004b) SHA1(62bd0f3d12b7eada6fc271abea60569aca7262b0) )
@@ -682,13 +682,13 @@ ROM_START( ltcasino )
 	ROM_LOAD( "e",			0xc800, 0x0800, CRC(5f9e103a) SHA1(b0e9ace4c3962c06e5250fac16a245dca711350f) )
 	ROM_LOAD( "f",			0xf000, 0x1000, CRC(7345aada) SHA1(6640f5eb1130c8f1cb197eb12b8e6403c7f8d34d) )
 
-	ROM_REGION( 0x0800, REGION_GFX1, 0 )
+	ROM_REGION( 0x0800, "gfx1", 0 )
 	ROM_LOAD( "v",			0x0000, 0x0800, CRC(f1f75675) SHA1(8f3777e6b2a3f824f94b28669cac501ec02bbf36) )
 ROM_END
 
 
 ROM_START( ltcasinn )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "lc2_ra.bin", 0x8000, 0x1000, CRC(1a595442) SHA1(b8fe3e5ed2024a57187c0ce547c1bbef2429ed63) )
 	ROM_LOAD( "lc2_rb.bin", 0x9000, 0x1000, CRC(4f5502c1) SHA1(cd1b7c08d26fed71c45e44ebd208bd18dc262e8f) )
 	ROM_LOAD( "lc2_rc.bin", 0xa000, 0x1000, CRC(990283b8) SHA1(8a3fe5be8381894b8e8dd14c7d42190e60a25600) )
@@ -696,12 +696,12 @@ ROM_START( ltcasinn )
 	ROM_LOAD( "lc2_re.bin", 0xc000, 0x1000, CRC(fae38204) SHA1(e5908734cee0a89d873ab3761ded285f8ae138d3) )
 	ROM_LOAD( "lc2_rf.bin", 0xf000, 0x1000, CRC(7e8ad9d3) SHA1(8cbe342af7d9f32b2214664db318edd3d2e75630) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, 0 )
+	ROM_REGION( 0x1000, "gfx1", 0 )
 	ROM_LOAD( "lc2_rv.bin", 0x0000, 0x1000, CRC(84cbee7b) SHA1(742831d5ae0db6c7c644a18a837831ee0474d472) )
 ROM_END
 
 ROM_START( mv4in1 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "g.ic13",   0x8000, 0x1000, CRC(ac33bd85) SHA1(fd555f70d0a7040473d35ec38e19185671a471ea) )
 	ROM_LOAD( "f.ic14",   0x9000, 0x1000, CRC(f95c87d1) SHA1(df5ed53722ec55a97eabe10b0ed3f1ba32cbe55f) )
 	ROM_LOAD( "e.ic15",   0xa000, 0x1000, CRC(e525fcf2) SHA1(f1ec0c514e25ec4a1caf737ff8a962c81fb2706a) )
@@ -709,14 +709,14 @@ ROM_START( mv4in1 )
 	ROM_LOAD( "c.ic17",   0xc000, 0x1000, CRC(e384edf4) SHA1(99042528ce2b35191248d90162ca06a1a585667c) )
 	ROM_LOAD( "b.ic18",   0xf000, 0x1000, CRC(3450b862) SHA1(816d13fd8d03c299c1dbecf971ee5fae2f1d64bc) )
 
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a.ic19",   0x0000, 0x1000, CRC(a25c125e) SHA1(e0ba83ccddbd82a2bf52585ae0accb9192cbb00e) )
 ROM_END
 
 static DRIVER_INIT(mv4in1)
 {
 	int i;
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 	for(i=0;i<0x10000;i++)
 		rom[i]=BITSWAP8(rom[i],7,6,5,4,3,1,2,0);
 }

@@ -68,17 +68,17 @@ static WRITE8_HANDLER( m6803_port2_w )
 		{
 			/* PSG 0 or 1? */
 			if (port2 & 0x08)
-				AY8910_control_port_0_w(machine, 0, port1);
+				ay8910_control_port_0_w(machine, 0, port1);
 			if (port2 & 0x10)
-				AY8910_control_port_1_w(machine, 0, port1);
+				ay8910_control_port_1_w(machine, 0, port1);
 		}
 		else
 		{
 			/* PSG 0 or 1? */
 			if (port2 & 0x08)
-				AY8910_write_port_0_w(machine, 0, port1);
+				ay8910_write_port_0_w(machine, 0, port1);
 			if (port2 & 0x10)
-				AY8910_write_port_1_w(machine, 0, port1);
+				ay8910_write_port_1_w(machine, 0, port1);
 		}
 	}
 	port2 = data;
@@ -96,9 +96,9 @@ static READ8_HANDLER( m6803_port1_r )
 {
 	/* PSG 0 or 1? */
 	if (port2 & 0x08)
-		return AY8910_read_port_0_r(machine, 0);
+		return ay8910_read_port_0_r(machine, 0);
 	if (port2 & 0x10)
-		return AY8910_read_port_1_r(machine, 0);
+		return ay8910_read_port_1_r(machine, 0);
 	return 0xff;
 }
 
@@ -119,14 +119,14 @@ static READ8_HANDLER( m6803_port2_r )
 static WRITE8_HANDLER( ay8910_0_portb_w )
 {
 	/* bits 2-4 select MSM5205 clock & 3b/4b playback mode */
-	MSM5205_playmode_w(0, (data >> 2) & 7);
+	msm5205_playmode_w(0, (data >> 2) & 7);
 	if (sndti_exists(SOUND_MSM5205, 1))
-		MSM5205_playmode_w(1, ((data >> 2) & 4) | 3);	/* always in slave mode */
+		msm5205_playmode_w(1, ((data >> 2) & 4) | 3);	/* always in slave mode */
 
 	/* bits 0 and 1 reset the two chips */
-	MSM5205_reset_w(0, data & 1);
+	msm5205_reset_w(0, data & 1);
 	if (sndti_exists(SOUND_MSM5205, 1))
-		MSM5205_reset_w(1, data & 2);
+		msm5205_reset_w(1, data & 2);
 }
 
 
@@ -154,15 +154,15 @@ static WRITE8_HANDLER( sound_irq_ack_w )
 static WRITE8_HANDLER( m52_adpcm_w )
 {
 	if (offset & 1)
-		MSM5205_data_w(0, data);
+		msm5205_data_w(0, data);
 	if ((offset & 2) && sndti_exists(SOUND_MSM5205, 1))
-		MSM5205_data_w(1, data);
+		msm5205_data_w(1, data);
 }
 
 
 static WRITE8_HANDLER( m62_adpcm_w )
 {
-	MSM5205_data_w(offset, data);
+	msm5205_data_w(offset, data);
 }
 
 
@@ -180,8 +180,8 @@ static void adpcm_int(running_machine *machine, int data)
 	/* the first MSM5205 clocks the second */
 	if (sndti_exists(SOUND_MSM5205, 1))
 	{
-		MSM5205_vclk_w(1,1);
-		MSM5205_vclk_w(1,0);
+		msm5205_vclk_w(1,1);
+		msm5205_vclk_w(1,0);
 	}
 }
 
@@ -197,7 +197,7 @@ static void adpcm_int(running_machine *machine, int data)
  * and put with 470 KOhm to gnd.
  * The following is a approximation */
 
-static const struct AY8910interface irem_ay8910_interface_1 =
+static const ay8910_interface irem_ay8910_interface_1 =
 {
 	AY8910_SINGLE_OUTPUT,
 	{470, 0, 0},
@@ -207,7 +207,7 @@ static const struct AY8910interface irem_ay8910_interface_1 =
 	ay8910_0_portb_w
 };
 
-static const struct AY8910interface irem_ay8910_interface_2 =
+static const ay8910_interface irem_ay8910_interface_2 =
 {
 	AY8910_SINGLE_OUTPUT,
 	{470, 0, 0},
@@ -217,13 +217,13 @@ static const struct AY8910interface irem_ay8910_interface_2 =
 	NULL
 };
 
-static const struct MSM5205interface irem_msm5205_interface_1 =
+static const msm5205_interface irem_msm5205_interface_1 =
 {
 	adpcm_int,			/* interrupt function */
 	MSM5205_S96_4B		/* default to 4KHz, but can be changed at run time */
 };
 
-static const struct MSM5205interface irem_msm5205_interface_2 =
+static const msm5205_interface irem_msm5205_interface_2 =
 {
 	0,				/* interrupt function */
 	MSM5205_SEX_4B		/* default to 4KHz, but can be changed at run time, slave */
@@ -363,25 +363,25 @@ static MACHINE_DRIVER_START( irem_audio_base )
 	MDRV_SOUND_START(irem_audio)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("iremsound", M6803, XTAL_3_579545MHz) /* verified on pcb */
+	MDRV_CPU_ADD("iremsound", M6803, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_CPU_IO_MAP(irem_sound_portmap,0)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, XTAL_3_579545MHz/4) /* verified on pcb */
+	MDRV_SOUND_ADD("ay1", AY8910, XTAL_3_579545MHz/4) /* verified on pcb */
 	MDRV_SOUND_CONFIG(irem_ay8910_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MDRV_SOUND_ADD(AY8910, XTAL_3_579545MHz/4) /* verified on pcb */
+	MDRV_SOUND_ADD("ay2", AY8910, XTAL_3_579545MHz/4) /* verified on pcb */
 	MDRV_SOUND_CONFIG(irem_ay8910_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MDRV_SOUND_ADD(MSM5205, XTAL_384kHz) /* verified on pcb */
+	MDRV_SOUND_ADD("msm1", MSM5205, XTAL_384kHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(irem_msm5205_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MDRV_SOUND_ADD(MSM5205, XTAL_384kHz) /* verified on pcb */
+	MDRV_SOUND_ADD("msm2", MSM5205, XTAL_384kHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(irem_msm5205_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
@@ -391,26 +391,26 @@ MACHINE_DRIVER_START( m52_sound_c_audio )
 	MDRV_SOUND_START(irem_audio)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("iremsound", M6803, XTAL_3_579545MHz) /* verified on pcb */
+	MDRV_CPU_ADD("iremsound", M6803, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_CPU_IO_MAP(irem_sound_portmap,0)
 	MDRV_CPU_PROGRAM_MAP(m52_small_sound_map,0)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("ay8910.0", AY8910, XTAL_3_579545MHz/4) /* verified on pcb */
+	MDRV_SOUND_ADD("ay8910.0", AY8910, XTAL_3_579545MHz/4) /* verified on pcb */
 	MDRV_SOUND_CONFIG(irem_ay8910_interface_1)
 	MDRV_SOUND_ROUTE_EX(0, "filtermix", 1.0, 0)
 
-	MDRV_SOUND_ADD_TAG("ay8910.0", AY8910, XTAL_3_579545MHz/4) /* verified on pcb */
+	MDRV_SOUND_ADD("ay8910.1", AY8910, XTAL_3_579545MHz/4) /* verified on pcb */
 	MDRV_SOUND_CONFIG(irem_ay8910_interface_2)
 	MDRV_SOUND_ROUTE_EX(0, "filtermix", 1.0, 1)
 
-	MDRV_SOUND_ADD_TAG("msm5250", MSM5205, XTAL_384kHz) /* verified on pcb */
+	MDRV_SOUND_ADD("msm5250", MSM5205, XTAL_384kHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(irem_msm5205_interface_1)
 	MDRV_SOUND_ROUTE_EX(0, "filtermix", 1.0, 2)
 
-	MDRV_SOUND_ADD_TAG("filtermix", DISCRETE, 0)
+	MDRV_SOUND_ADD("filtermix", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(m52_sound_c)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 

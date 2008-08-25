@@ -160,10 +160,8 @@ static FILE *sample[1];
 	#endif
 #endif
 
-/*#define LOG_CYM_FILE*/
-#ifdef LOG_CYM_FILE
-	FILE * cymfile = NULL;
-#endif
+#define LOG_CYM_FILE 0
+static FILE * cymfile = NULL;
 
 
 
@@ -1661,13 +1659,11 @@ static void OPLLWriteReg(YM2413 *chip, int r, int v)
 	v &= 0xff;
 
 
-#ifdef LOG_CYM_FILE
-	if ((cymfile) && (r!=8) )
+	if (LOG_CYM_FILE && (cymfile) && (r!=8) )
 	{
 		fputc( (unsigned char)r, cymfile );
 		fputc( (unsigned char)v, cymfile );
 	}
-#endif
 
 
 	switch(r&0xf0)
@@ -1916,7 +1912,6 @@ static void OPLLWriteReg(YM2413 *chip, int r, int v)
 	}
 }
 
-#ifdef LOG_CYM_FILE
 static TIMER_CALLBACK( cymfile_callback )
 {
 	if (cymfile)
@@ -1924,7 +1919,6 @@ static TIMER_CALLBACK( cymfile_callback )
 		fputc( (unsigned char)8, cymfile );
 	}
 }
-#endif
 
 /* lock/unlock for common table */
 static int OPLL_LockTable(void)
@@ -1942,13 +1936,14 @@ static int OPLL_LockTable(void)
 		return -1;
 	}
 
-#ifdef LOG_CYM_FILE
-	cymfile = fopen("2413_.cym","wb");
-	if (cymfile)
-		timer_pulse ( ATTOTIME_IN_HZ(110), 0, cymfile_callback); /*110 Hz pulse timer*/
-	else
-		logerror("Could not create file 2413_.cym\n");
-#endif
+	if (LOG_CYM_FILE)
+	{
+		cymfile = fopen("2413_.cym","wb");
+		if (cymfile)
+			timer_pulse ( ATTOTIME_IN_HZ(110), NULL, 0, cymfile_callback); /*110 Hz pulse timer*/
+		else
+			logerror("Could not create file 2413_.cym\n");
+	}
 
 	return 0;
 }
@@ -1963,11 +1958,9 @@ static void OPLL_UnLockTable(void)
 	cur_chip = NULL;
 	OPLCloseTable();
 
-#ifdef LOG_CYM_FILE
-	fclose (cymfile);
+	if (cymfile)
+		fclose (cymfile);
 	cymfile = NULL;
-#endif
-
 }
 
 static void OPLLResetChip(YM2413 *chip)
@@ -2089,13 +2082,13 @@ static unsigned char OPLLRead(YM2413 *chip,int a)
 
 
 
-void * YM2413Init(int clock, int rate, int index)
+void * ym2413_init(int clock, int rate, int index)
 {
 	/* emulator create */
 	return OPLLCreate(clock, rate, index);
 }
 
-void YM2413Shutdown(void *chip)
+void ym2413_shutdown(void *chip)
 {
 	YM2413 *OPLL = chip;
 
@@ -2103,25 +2096,25 @@ void YM2413Shutdown(void *chip)
 	OPLLDestroy(OPLL);
 }
 
-void YM2413ResetChip(void *chip)
+void ym2413_reset_chip(void *chip)
 {
 	YM2413 *OPLL = chip;
 	OPLLResetChip(OPLL);
 }
 
-void YM2413Write(void *chip, int a, int v)
+void ym2413_write(void *chip, int a, int v)
 {
 	YM2413 *OPLL = chip;
 	OPLLWrite(OPLL, a, v);
 }
 
-unsigned char YM2413Read(void *chip, int a)
+unsigned char ym2413_read(void *chip, int a)
 {
 	YM2413 *OPLL = chip;
 	return OPLLRead(OPLL, a) & 0x03 ;
 }
 
-void YM2413SetUpdateHandler(void *chip,OPLL_UPDATEHANDLER UpdateHandler,void *param)
+void ym2413_set_update_handler(void *chip,OPLL_UPDATEHANDLER UpdateHandler,void *param)
 {
 	YM2413 *OPLL = chip;
 	OPLLSetUpdateHandler(OPLL, UpdateHandler, param);
@@ -2135,7 +2128,7 @@ void YM2413SetUpdateHandler(void *chip,OPLL_UPDATEHANDLER UpdateHandler,void *pa
 ** '*buffer' is the output buffer pointer
 ** 'length' is the number of samples that should be generated
 */
-void YM2413UpdateOne(void *_chip, SAMP **buffers, int length)
+void ym2413_update_one(void *_chip, SAMP **buffers, int length)
 {
 	YM2413		*chip  = _chip;
 	UINT8		rhythm = chip->rhythm&0x20;

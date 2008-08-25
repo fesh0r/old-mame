@@ -17,7 +17,7 @@ static int starshp1_analog_in_select;
 
 static INTERRUPT_GEN( starshp1_interrupt )
 {
-	if ((input_port_read_indexed(machine, 0) & 0x90) != 0x90)
+	if ((input_port_read(machine, "SYSTEM") & 0x90) != 0x90)
 		cpunum_set_input_line(machine, 0, 0, PULSE_LINE);
 }
 
@@ -69,26 +69,26 @@ static READ8_HANDLER( starshp1_port_1_r )
 	switch (starshp1_analog_in_select)
 	{
 	case 0:
-		val = input_port_read_indexed(machine, 4);
+		val = input_port_read(machine, "STICKY");
 		break;
 	case 1:
-		val = input_port_read_indexed(machine, 5);
+		val = input_port_read(machine, "STICKX");
 		break;
 	case 2:
 		val = 0x20; /* DAC feedback, not used */
 		break;
 	case 3:
-		val = input_port_read_indexed(machine, 3);
+		val = input_port_read(machine, "PLAYTIME");
 		break;
 	}
 
-	return (val & 0x3f) | input_port_read_indexed(machine, 1);
+	return (val & 0x3f) | input_port_read(machine, "VBLANK");
 }
 
 
 static READ8_HANDLER( starshp1_port_2_r )
 {
-	return input_port_read_indexed(machine, 2) | (starshp1_collision_latch & 0x0f);
+	return input_port_read(machine, "COINAGE") | (starshp1_collision_latch & 0x0f);
 }
 
 
@@ -190,41 +190,41 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( starshp1 )
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* SWA1? */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_DIPNAME( 0x20, 0x20, "Extended Play" )
-	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Yes ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( Yes ) )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_TOGGLE
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START
+	PORT_START("VBLANK")
 	PORT_BIT( 0x3f, IP_ACTIVE_HIGH, IPT_UNUSED ) /* analog in */
 	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START
+	PORT_START("COINAGE")
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED ) /* collision latch */
 	PORT_DIPNAME( 0x70, 0x20, DEF_STR( Coinage ))
-	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ))
-	PORT_DIPSETTING(    0x20, DEF_STR( 1C_1C ))
-	PORT_DIPSETTING(    0x40, DEF_STR( 1C_2C ))
+	PORT_DIPSETTING(	0x10, DEF_STR( 2C_1C ))
+	PORT_DIPSETTING(	0x20, DEF_STR( 1C_1C ))
+	PORT_DIPSETTING(	0x40, DEF_STR( 1C_2C ))
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_UNUSED ) /* ground */
 
-	PORT_START
+	PORT_START("PLAYTIME")
 	PORT_DIPNAME( 0x3f, 0x20, "Play Time" ) /* potentiometer */
-	PORT_DIPSETTING(    0x00, "60 Seconds" )
-	PORT_DIPSETTING(    0x20, "90 Seconds" )
-	PORT_DIPSETTING(    0x3f, "120 Seconds" )
+	PORT_DIPSETTING(	0x00, "60 Seconds" )
+	PORT_DIPSETTING(	0x20, "90 Seconds" )
+	PORT_DIPSETTING(	0x3f, "120 Seconds" )
 
-	PORT_START
+	PORT_START("STICKY")
 	PORT_BIT( 0x3f, 0x20, IPT_AD_STICK_Y ) PORT_MINMAX(0,63) PORT_SENSITIVITY(10) PORT_KEYDELTA(10) PORT_REVERSE
 
-	PORT_START
+	PORT_START("STICKX")
 	PORT_BIT( 0x3f, 0x20, IPT_AD_STICK_X ) PORT_MINMAX(0,63) PORT_SENSITIVITY(10) PORT_KEYDELTA(10) PORT_REVERSE
 INPUT_PORTS_END
 
@@ -290,9 +290,9 @@ static const gfx_layout shiplayout =
 
 
 static GFXDECODE_START( starshp1 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout,   0, 1 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 2, 2 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, shiplayout,   6, 2 )
+	GFXDECODE_ENTRY( "gfx1", 0, tilelayout,   0, 1 )
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 2, 2 )
+	GFXDECODE_ENTRY( "gfx3", 0, shiplayout,   6, 2 )
 GFXDECODE_END
 
 
@@ -300,7 +300,7 @@ static MACHINE_DRIVER_START( starshp1 )
 
 	/* basic machine hardware */
 
-	MDRV_CPU_ADD(M6502, STARSHP1_CPU_CLOCK)
+	MDRV_CPU_ADD("main", M6502, STARSHP1_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 	MDRV_CPU_VBLANK_INT("main", starshp1_interrupt)
 
@@ -330,7 +330,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( starshp1 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD_NIB_HIGH( "7529-02.c2", 0x2c00, 0x0400, CRC(f191c328) SHA1(5d44be879bcf16a142a69e4f1501533e02720fe5) )
 	ROM_LOAD_NIB_LOW ( "7528-02.c1", 0x2c00, 0x0400, CRC(605ed4df) SHA1(b0d892bcd08b611d2c01ab23b491c1d9db498e7b) )
 	ROM_LOAD(          "7530-02.h3", 0x3000, 0x0800, CRC(4b2d466c) SHA1(2104c4d163adbf53f9853334868622752ccb01b8) )
@@ -338,24 +338,24 @@ ROM_START( starshp1 )
 	ROM_LOAD(          "7531-02.e3", 0x3800, 0x0800, CRC(b35b2c0e) SHA1(e52240cdfbba3dc380ba63f24cfc07b44feafd53) )
 	ROM_RELOAD(                      0xf800, 0x0800 )
 
-	ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "7513-01.n7",	 0x0000, 0x0400, CRC(8fb0045d) SHA1(fb311c6977dec6e2a04179406e9ffdb920989a47) )
 
-	ROM_REGION( 0x0100, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0100, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "7515-01.j5",	 0x0000, 0x0100, CRC(fcbcbf2e) SHA1(adf3cc43b77ad18eddbe39ee11625e552d1abab9) )
 
-	ROM_REGION( 0x0800, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0800, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "7517-01.r1",	 0x0000, 0x0400, CRC(1531f85f) SHA1(291822614fc6d3a71bf56607c796e18779f8cfc9) )
 	ROM_LOAD( "7516-01.p1",	 0x0400, 0x0400, CRC(64fbfe4c) SHA1(b2dfdcc1c9927c693fe43b2e1411d0f14375fdeb) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0220, "proms", ROMREGION_DISPOSE )
 	ROM_LOAD( "7518-01.r10", 0x0000, 0x0100, CRC(80877f7e) SHA1(8b28f48936a4247c583ca6713bfbaf4772c7a4f5) ) /* video output */
 	ROM_LOAD( "7514-01.n9",  0x0100, 0x0100, CRC(3610b453) SHA1(9e33ee04f22a9174c29fafb8e71781fa330a7a08) ) /* sync */
 	ROM_LOAD( "7519-01.b5",  0x0200, 0x0020, CRC(23b9cd3c) SHA1(220f9f73d86cdcf1b390c52c591750a73402af50) ) /* address */
 ROM_END
 
 ROM_START( starshpp )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD_NIB_HIGH( "7529-02.c2", 0x2c00, 0x0400, CRC(f191c328) SHA1(5d44be879bcf16a142a69e4f1501533e02720fe5) )
 	ROM_LOAD_NIB_LOW ( "7528-02.c1", 0x2c00, 0x0400, CRC(605ed4df) SHA1(b0d892bcd08b611d2c01ab23b491c1d9db498e7b) )
 	ROM_LOAD_NIB_HIGH( "7521.h2", 0x3000, 0x0400, CRC(6e3525db) SHA1(b615c60e4958d6576f4c179bbead9e8d330bba99) )
@@ -375,17 +375,17 @@ ROM_START( starshpp )
 	ROM_LOAD_NIB_LOW ( "d1",      0x3c00, 0x0400, CRC(be4050b6) SHA1(03ca4833769efb10f18f52b7ba4d016568d3cab9) )
 	ROM_RELOAD(                   0xfc00, 0x0400 )
 
-	ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "7513-01.n7", 0x0000, 0x0400, CRC(8fb0045d) SHA1(fb311c6977dec6e2a04179406e9ffdb920989a47) )
 
-	ROM_REGION( 0x0100, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0100, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "7515-01.j5", 0x0000, 0x0100, CRC(fcbcbf2e) SHA1(adf3cc43b77ad18eddbe39ee11625e552d1abab9) )
 
-	ROM_REGION( 0x0800, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0800, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "7517-01.r1", 0x0000, 0x0400, CRC(1531f85f) SHA1(291822614fc6d3a71bf56607c796e18779f8cfc9) )
 	ROM_LOAD( "7516-01.p1", 0x0400, 0x0400, CRC(64fbfe4c) SHA1(b2dfdcc1c9927c693fe43b2e1411d0f14375fdeb) )
 
-	ROM_REGION( 0x0220, REGION_PROMS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0220, "proms", ROMREGION_DISPOSE )
 	ROM_LOAD( "7518-01.r10", 0x0000, 0x0100, CRC(80877f7e) SHA1(8b28f48936a4247c583ca6713bfbaf4772c7a4f5) ) /* video output */
 	ROM_LOAD( "7514-01.n9",  0x0100, 0x0100, CRC(3610b453) SHA1(9e33ee04f22a9174c29fafb8e71781fa330a7a08) ) /* sync */
 	ROM_LOAD( "7519-01.b5",  0x0200, 0x0020, CRC(23b9cd3c) SHA1(220f9f73d86cdcf1b390c52c591750a73402af50) ) /* address */

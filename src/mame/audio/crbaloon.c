@@ -44,7 +44,7 @@ void crbaloon_audio_set_music_enable(running_machine *machine, int enabled)
 
 void crbaloon_audio_set_explosion_enable(int enabled)
 {
-	SN76477_enable_w(0, enabled);
+	sn76477_enable_w(0, enabled);
 }
 
 
@@ -53,14 +53,14 @@ void crbaloon_audio_set_breath_enable(int enabled)
 	/* changes slf_res to 10k (middle of two 10k resistors)
        it also puts a tantal capacitor against GND on the output,
        but this section of the schematics is not readable. */
-	SN76477_slf_res_w(0, enabled ? RES_K(10) : RES_K(20) );
+	sn76477_slf_res_w(0, enabled ? RES_K(10) : RES_K(20) );
 }
 
 
 void crbaloon_audio_set_appear_enable(int enabled)
 {
 	/* APPEAR is connected to MIXER B */
-	SN76477_mixer_b_w(0, enabled);
+	sn76477_mixer_b_w(0, enabled);
 }
 
 
@@ -97,8 +97,8 @@ static DISCRETE_SOUND_START(crbaloon)
 	DISCRETE_INPUT_LOGIC(CRBALOON_MUSIC_EN)
 	DISCRETE_INPUT_DATA (CRBALOON_MUSIC_DATA)
 
-	DISCRETE_ADJUSTMENT_TAG(CRBALOON_VR2, 1, 0, 0.5, DISC_LINADJ, "VR2")
-	DISCRETE_ADJUSTMENT_TAG(CRBALOON_VR3, 1, 0, 1,   DISC_LINADJ, "VR3")
+	DISCRETE_ADJUSTMENT_TAG(CRBALOON_VR2, 0, 0.5, DISC_LINADJ, "VR2")
+	DISCRETE_ADJUSTMENT_TAG(CRBALOON_VR3, 0, 1,   DISC_LINADJ, "VR3")
 
 	/************************************************
     * Laugh is a VCO modulated by a constant
@@ -136,7 +136,7 @@ DISCRETE_SOUND_END
 
 
 
-static const struct SN76477interface sn76477_interface =
+static const sn76477_interface crbaloon_sn76477_interface =
 {
 	RES_K( 47),	/*  4 noise_res          */
 	RES_K(330),	/*  5 filter_res         */
@@ -169,11 +169,11 @@ MACHINE_DRIVER_START( crbaloon_audio )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SN76477, 0)
-	MDRV_SOUND_CONFIG(sn76477_interface)
+	MDRV_SOUND_ADD("sn", SN76477, 0)
+	MDRV_SOUND_CONFIG(crbaloon_sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 2.0)
 
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(crbaloon)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END

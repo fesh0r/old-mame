@@ -99,8 +99,8 @@ static WRITE8_HANDLER( narc_slave_sync_w );
 /* CVSD readmem/writemem structures */
 static ADDRESS_MAP_START( williams_cvsd_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x1800) AM_RAM
-	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x1ffe) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x1ffe) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
+	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x1ffe) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x1ffe) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
 	AM_RANGE(0x4000, 0x4003) AM_MIRROR(0x1ffc) AM_READWRITE(cvsd_pia_r, cvsd_pia_w)
 	AM_RANGE(0x6000, 0x6000) AM_MIRROR(0x07ff) AM_WRITE(hc55516_0_digit_clock_clear_w)
 	AM_RANGE(0x6800, 0x6800) AM_MIRROR(0x07ff) AM_WRITE(hc55516_0_clock_set_w)
@@ -112,11 +112,11 @@ ADDRESS_MAP_END
 /* NARC master readmem/writemem structures */
 static ADDRESS_MAP_START( williams_narc_master_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM
-	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x03fe) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x03fe) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
+	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x03fe) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x03fe) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
 	AM_RANGE(0x2800, 0x2800) AM_MIRROR(0x03ff) AM_WRITE(narc_master_talkback_w)
 	AM_RANGE(0x2c00, 0x2c00) AM_MIRROR(0x03ff) AM_WRITE(narc_command2_w)
-	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x03ff) AM_WRITE(DAC_0_data_w)
+	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x03ff) AM_WRITE(dac_0_data_w)
 	AM_RANGE(0x3400, 0x3400) AM_MIRROR(0x03ff) AM_READ(narc_command_r)
 	AM_RANGE(0x3800, 0x3800) AM_MIRROR(0x03ff) AM_WRITE(narc_master_bank_select_w)
 	AM_RANGE(0x3c00, 0x3c00) AM_MIRROR(0x03ff) AM_WRITE(narc_master_sync_w)
@@ -130,7 +130,7 @@ static ADDRESS_MAP_START( williams_narc_slave_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x03ff) AM_WRITE(hc55516_0_clock_set_w)
 	AM_RANGE(0x2400, 0x2400) AM_MIRROR(0x03ff) AM_WRITE(hc55516_0_digit_clock_clear_w)
 	AM_RANGE(0x2800, 0x2800) AM_MIRROR(0x03ff) AM_WRITE(narc_slave_talkback_w)
-	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x03ff) AM_WRITE(DAC_1_data_w)
+	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x03ff) AM_WRITE(dac_1_data_w)
 	AM_RANGE(0x3400, 0x3400) AM_MIRROR(0x03ff) AM_READ(narc_command2_r)
 	AM_RANGE(0x3800, 0x3800) AM_MIRROR(0x03ff) AM_WRITE(narc_slave_bank_select_w)
 	AM_RANGE(0x3c00, 0x3c00) AM_MIRROR(0x03ff) AM_WRITE(narc_slave_sync_w)
@@ -143,10 +143,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( williams_adpcm_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM
 	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x03ff) AM_WRITE(adpcm_bank_select_w)
-	AM_RANGE(0x2400, 0x2400) AM_MIRROR(0x03fe) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x2401, 0x2401) AM_MIRROR(0x03fe) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
-	AM_RANGE(0x2800, 0x2800) AM_MIRROR(0x03ff) AM_WRITE(DAC_0_data_w)
-	AM_RANGE(0x2c00, 0x2c00) AM_MIRROR(0x03ff) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
+	AM_RANGE(0x2400, 0x2400) AM_MIRROR(0x03fe) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x2401, 0x2401) AM_MIRROR(0x03fe) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
+	AM_RANGE(0x2800, 0x2800) AM_MIRROR(0x03ff) AM_WRITE(dac_0_data_w)
+	AM_RANGE(0x2c00, 0x2c00) AM_MIRROR(0x03ff) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
 	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x03ff) AM_READ(adpcm_command_r)
 	AM_RANGE(0x3400, 0x3400) AM_MIRROR(0x03ff) AM_WRITE(adpcm_6295_bank_select_w)
 	AM_RANGE(0x3c00, 0x3c00) AM_MIRROR(0x03ff) AM_WRITE(adpcm_talkback_w)
@@ -160,7 +160,7 @@ ADDRESS_MAP_END
 static const pia6821_interface cvsd_pia_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ DAC_0_data_w, cvsd_talkback_w, 0, 0,
+	/*outputs: A/B,CA/B2       */ dac_0_data_w, cvsd_talkback_w, 0, 0,
 	/*irqs   : A/B             */ cvsd_irqa, cvsd_irqb
 };
 
@@ -171,14 +171,14 @@ static const pia6821_interface cvsd_pia_intf =
 ****************************************************************************/
 
 /* YM2151 structure (CVSD variant) */
-static const struct YM2151interface cvsd_ym2151_interface =
+static const ym2151_interface cvsd_ym2151_interface =
 {
 	cvsd_ym2151_irq
 };
 
 
 /* YM2151 structure (ADPCM variant) */
-static const struct YM2151interface adpcm_ym2151_interface =
+static const ym2151_interface adpcm_ym2151_interface =
 {
 	adpcm_ym2151_irq
 };
@@ -190,66 +190,66 @@ static const struct YM2151interface adpcm_ym2151_interface =
 ****************************************************************************/
 
 MACHINE_DRIVER_START( williams_cvsd_sound )
-	MDRV_CPU_ADD_TAG("cvsd", M6809E, CVSD_MASTER_CLOCK)
+	MDRV_CPU_ADD("cvsd", M6809E, CVSD_MASTER_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(williams_cvsd_map,0)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, CVSD_FM_CLOCK)
+	MDRV_SOUND_ADD("ym", YM2151, CVSD_FM_CLOCK)
 	MDRV_SOUND_CONFIG(cvsd_ym2151_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(HC55516, 0)
+	MDRV_SOUND_ADD("cvsd", HC55516, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.60)
 MACHINE_DRIVER_END
 
 
 MACHINE_DRIVER_START( williams_narc_sound )
-	MDRV_CPU_ADD_TAG("narc1", M6809E, NARC_MASTER_CLOCK)
+	MDRV_CPU_ADD("narc1", M6809E, NARC_MASTER_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(williams_narc_master_map,0)
 
-	MDRV_CPU_ADD_TAG("narc2", M6809E, NARC_MASTER_CLOCK)
+	MDRV_CPU_ADD("narc2", M6809E, NARC_MASTER_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(williams_narc_slave_map,0)
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, NARC_FM_CLOCK)
+	MDRV_SOUND_ADD("ym", YM2151, NARC_FM_CLOCK)
 	MDRV_SOUND_CONFIG(adpcm_ym2151_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.10)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.10)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac1", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac2", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 
-	MDRV_SOUND_ADD(HC55516, 0)
+	MDRV_SOUND_ADD("cvsd", HC55516, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.60)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.60)
 MACHINE_DRIVER_END
 
 
 MACHINE_DRIVER_START( williams_adpcm_sound )
-	MDRV_CPU_ADD_TAG("adpcm", M6809E, ADPCM_MASTER_CLOCK)
+	MDRV_CPU_ADD("adpcm", M6809E, ADPCM_MASTER_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(williams_adpcm_map,0)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2151, ADPCM_FM_CLOCK)
+	MDRV_SOUND_ADD("ym", YM2151, ADPCM_FM_CLOCK)
 	MDRV_SOUND_CONFIG(adpcm_ym2151_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(OKIM6295, ADPCM_MASTER_CLOCK/8)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, ADPCM_MASTER_CLOCK/8)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
@@ -273,7 +273,7 @@ void williams_cvsd_init(int pianum)
 	pia_config(pianum, &cvsd_pia_intf);
 
 	/* configure master CPU banks */
-	ROM = memory_region(Machine, REGION_CPU1 + sound_cpunum);
+	ROM = memory_region(Machine, "cvsd");
 	for (bank = 0; bank < 16; bank++)
 	{
 		/*
@@ -305,7 +305,7 @@ void williams_narc_init(void)
 	soundalt_cpunum = mame_find_cpu_index(Machine, "narc2");
 
 	/* configure master CPU banks */
-	ROM = memory_region(Machine, REGION_CPU1 + sound_cpunum);
+	ROM = memory_region(Machine, "narc1");
 	for (bank = 0; bank < 16; bank++)
 	{
 		/*
@@ -319,7 +319,7 @@ void williams_narc_init(void)
 	memory_set_bankptr(6, &ROM[0x10000 + 0x4000 + 0x8000 + 0x10000 + 0x20000 * 3]);
 
 	/* configure slave CPU banks */
-	ROM = memory_region(Machine, REGION_CPU1 + soundalt_cpunum);
+	ROM = memory_region(Machine, "narc2");
 	for (bank = 0; bank < 16; bank++)
 	{
 		/*
@@ -348,13 +348,13 @@ void williams_adpcm_init(void)
 	soundalt_cpunum = -1;
 
 	/* configure banks */
-	ROM = memory_region(Machine, REGION_CPU1 + sound_cpunum);
+	ROM = memory_region(Machine, "adpcm");
 	memory_configure_bank(5, 0, 8, &ROM[0x10000], 0x8000);
 	memory_set_bankptr(6, &ROM[0x10000 + 0x4000 + 7 * 0x8000]);
 
 	/* expand ADPCM data */
 	/* it is assumed that U12 is loaded @ 0x00000 and U13 is loaded @ 0x40000 */
-	ROM = memory_region(Machine, REGION_SOUND1);
+	ROM = memory_region(Machine, "oki");
 	memcpy(ROM + 0x1c0000, ROM + 0x080000, 0x20000);	/* expand individual banks */
 	memcpy(ROM + 0x180000, ROM + 0x0a0000, 0x20000);
 	memcpy(ROM + 0x140000, ROM + 0x0c0000, 0x20000);
@@ -626,7 +626,7 @@ static WRITE8_HANDLER( adpcm_bank_select_w )
 
 static WRITE8_HANDLER( adpcm_6295_bank_select_w )
 {
-	OKIM6295_set_bank_base(0, (data & 7) * 0x40000);
+	okim6295_set_bank_base(0, (data & 7) * 0x40000);
 }
 
 

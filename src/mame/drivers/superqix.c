@@ -135,8 +135,8 @@ static INT16 *samplebuf;
 
 static void pbillian_sh_start(void)
 {
-	UINT8 *src = memory_region(Machine, REGION_SOUND1);
-	int i, len = memory_region_length(Machine, REGION_SOUND1);
+	UINT8 *src = memory_region(Machine, "samples");
+	int i, len = memory_region_length(Machine, "samples");
 
 	/* convert 8-bit unsigned samples to 8-bit signed */
 	samplebuf = auto_malloc(len * 2);
@@ -195,7 +195,7 @@ static int from_mcu_pending, from_z80_pending, invert_coin_lockout;
 static READ8_HANDLER( in4_mcu_r )
 {
 //  logerror("%04x: in4_mcu_r\n",activecpu_get_pc());
-	return input_port_read_indexed(machine, 4) | (from_mcu_pending << 6) | (from_z80_pending << 7);
+	return input_port_read(machine, "P2") | (from_mcu_pending << 6) | (from_z80_pending << 7);
 }
 
 static READ8_HANDLER( sqix_from_mcu_r )
@@ -268,11 +268,11 @@ static READ8_HANDLER( mcu_p3_r )
 {
 	if ((port1 & 0x10) == 0)
 	{
-		return input_port_read_indexed(machine, 0);
+		return input_port_read(machine, "DSW1");
 	}
 	else if ((port1 & 0x20) == 0)
 	{
-		return input_port_read_indexed(machine, 2) | (from_mcu_pending << 6) | (from_z80_pending << 7);
+		return input_port_read(machine, "SYSTEM") | (from_mcu_pending << 6) | (from_z80_pending << 7);
 	}
 	else if ((port1 & 0x40) == 0)
 	{
@@ -297,7 +297,7 @@ static READ8_HANDLER( nmi_ack_r )
 
 static READ8_HANDLER( bootleg_in0_r )
 {
-	return BITSWAP8(input_port_read_indexed(machine, 0), 0,1,2,3,4,5,6,7);
+	return BITSWAP8(input_port_read(machine, "DSW1"), 0,1,2,3,4,5,6,7);
 }
 
 static WRITE8_HANDLER( bootleg_flipscreen_w )
@@ -325,7 +325,7 @@ static int read_dial(running_machine *machine, int player)
 	static int sign[2];
 
 	/* get the new position and adjust the result */
-	newpos = input_port_read_indexed(machine, 3 + player);
+	newpos = input_port_read(machine, player ? "DIAL2" : "DIAL1");
 	if (newpos != oldpos[player])
 	{
 		sign[player] = ((newpos - oldpos[player]) & 0x80) >> 7;
@@ -401,11 +401,11 @@ static WRITE8_HANDLER( hotsmash_68705_portC_w )
 		switch (data & 0x07)
 		{
 			case 0x0:	// dsw A
-				portA_in = input_port_read_indexed(machine, 0);
+				portA_in = input_port_read(machine, "DSW1");
 				break;
 
 			case 0x1:	// dsw B
-				portA_in = input_port_read_indexed(machine, 1);
+				portA_in = input_port_read(machine, "DSW2");
 				break;
 
 			case 0x2:
@@ -449,7 +449,7 @@ logerror("%04x: z80 reads answer %02x\n",activecpu_get_pc(),from_mcu);
 static READ8_HANDLER(hotsmash_ay_port_a_r)
 {
 //logerror("%04x: ay_port_a_r and mcu_pending is %d\n",activecpu_get_pc(),from_mcu_pending);
-	return input_port_read_indexed(machine, 2) | ((from_mcu_pending^1) << 7);
+	return input_port_read(machine, "SYSTEM") | ((from_mcu_pending^1) << 7);
 }
 
 /**************************************************************************
@@ -469,10 +469,10 @@ static READ8_HANDLER(pbillian_from_mcu_r)
 
 	switch (from_z80)
 	{
-		case 0x01: return input_port_read_indexed(machine, 4 + 2 * curr_player);
-		case 0x02: return input_port_read_indexed(machine, 5 + 2 * curr_player);
-		case 0x04: return input_port_read_indexed(machine, 0);
-		case 0x08: return input_port_read_indexed(machine, 1);
+		case 0x01: return input_port_read(machine, curr_player ? "PADDLE2" : "PADDLE1");
+		case 0x02: return input_port_read(machine, curr_player ? "DIAL2" : "DIAL1");
+		case 0x04: return input_port_read(machine, "DSW1");
+		case 0x08: return input_port_read(machine, "DSW2");
 		case 0x80: curr_player = 0; return 0;
 		case 0x81: curr_player = 1; return 0;
 	}
@@ -485,7 +485,7 @@ static READ8_HANDLER(pbillian_ay_port_a_r)
 {
 //  logerror("%04x: ay_port_a_r\n",activecpu_get_pc());
 	 /* bits 76------  MCU status bits */
-	return (mame_rand(machine)&0xc0)|input_port_read_indexed(machine, 3);
+	return (mame_rand(machine) & 0xc0) | input_port_read(machine, "BUTTONS");
 }
 
 
@@ -510,7 +510,7 @@ static void machine_init_common(void)
 static MACHINE_START( superqix )
 {
 	/* configure the banks */
-	memory_configure_bank(1, 0, 4, memory_region(machine, REGION_CPU1) + 0x10000, 0x4000);
+	memory_configure_bank(1, 0, 4, memory_region(machine, "main") + 0x10000, 0x4000);
 
 	machine_init_common();
 }
@@ -518,7 +518,7 @@ static MACHINE_START( superqix )
 static MACHINE_START( pbillian )
 {
 	/* configure the banks */
-	memory_configure_bank(1, 0, 2, memory_region(machine, REGION_CPU1) + 0x10000, 0x4000);
+	memory_configure_bank(1, 0, 2, memory_region(machine, "main") + 0x10000, 0x4000);
 
 	machine_init_common();
 }
@@ -535,9 +535,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pbillian_port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
-	AM_RANGE(0x0401, 0x0401) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0x0402, 0x0402) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x0403, 0x0403) AM_WRITE(AY8910_control_port_0_w)
+	AM_RANGE(0x0401, 0x0401) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x0402, 0x0402) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x0403, 0x0403) AM_WRITE(ay8910_control_port_0_w)
 	AM_RANGE(0x0408, 0x0408) AM_READ(pbillian_from_mcu_r)
 	AM_RANGE(0x0408, 0x0408) AM_WRITE(pbillian_z80_mcu_w)
 	AM_RANGE(0x0410, 0x0410) AM_WRITE(pbillian_0410_w)
@@ -549,9 +549,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hotsmash_port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
-	AM_RANGE(0x0401, 0x0401) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0x0402, 0x0402) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x0403, 0x0403) AM_WRITE(AY8910_control_port_0_w)
+	AM_RANGE(0x0401, 0x0401) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x0402, 0x0402) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x0403, 0x0403) AM_WRITE(ay8910_control_port_0_w)
 	AM_RANGE(0x0408, 0x0408) AM_READ(hotsmash_from_mcu_r)
 	AM_RANGE(0x0408, 0x0408) AM_WRITE(hotsmash_z80_mcu_w)
 	AM_RANGE(0x0410, 0x0410) AM_WRITE(pbillian_0410_w)
@@ -563,12 +563,12 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sqix_port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x00ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
-	AM_RANGE(0x0401, 0x0401) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0x0402, 0x0402) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x0403, 0x0403) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x0405, 0x0405) AM_READ(AY8910_read_port_1_r)
-	AM_RANGE(0x0406, 0x0406) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0x0407, 0x0407) AM_WRITE(AY8910_control_port_1_w)
+	AM_RANGE(0x0401, 0x0401) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x0402, 0x0402) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x0403, 0x0403) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x0405, 0x0405) AM_READ(ay8910_read_port_1_r)
+	AM_RANGE(0x0406, 0x0406) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x0407, 0x0407) AM_WRITE(ay8910_control_port_1_w)
 	AM_RANGE(0x0408, 0x0408) AM_READ(mcu_acknowledge_r)
 	AM_RANGE(0x0410, 0x0410) AM_WRITE(superqix_0410_w)	/* ROM bank, NMI enable, tile bank */
 	AM_RANGE(0x0418, 0x0418) AM_READ(nmi_ack_r)
@@ -578,15 +578,15 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bootleg_port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x00ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
-	AM_RANGE(0x0401, 0x0401) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0x0402, 0x0402) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x0403, 0x0403) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x0405, 0x0405) AM_READ(AY8910_read_port_1_r)
-	AM_RANGE(0x0406, 0x0406) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0x0407, 0x0407) AM_WRITE(AY8910_control_port_1_w)
+	AM_RANGE(0x0401, 0x0401) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x0402, 0x0402) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x0403, 0x0403) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x0405, 0x0405) AM_READ(ay8910_read_port_1_r)
+	AM_RANGE(0x0406, 0x0406) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x0407, 0x0407) AM_WRITE(ay8910_control_port_1_w)
 	AM_RANGE(0x0408, 0x0408) AM_WRITE(bootleg_flipscreen_w)
 	AM_RANGE(0x0410, 0x0410) AM_WRITE(superqix_0410_w)	/* ROM bank, NMI enable, tile bank */
-	AM_RANGE(0x0418, 0x0418) AM_READ(input_port_2_r)
+	AM_RANGE(0x0418, 0x0418) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x0800, 0x77ff) AM_RAM_WRITE(superqix_bitmapram_w) AM_BASE(&superqix_bitmapram)
 	AM_RANGE(0x8800, 0xf7ff) AM_RAM_WRITE(superqix_bitmapram2_w) AM_BASE(&superqix_bitmapram2)
 ADDRESS_MAP_END
@@ -604,7 +604,7 @@ ADDRESS_MAP_END
 
 /* I8751 memory handlers */
 static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_RAM	AM_REGION(REGION_CPU2, 0) // AM_ROM
+	AM_RANGE(0x0000, 0x0fff) AM_RAM	AM_REGION("mcu", 0) // AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mcu_io_map, ADDRESS_SPACE_IO, 8 )
@@ -615,56 +615,56 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( pbillian )
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 5C_1C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x06, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x07, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(	0x03, DEF_STR( 5C_1C ) )
+	PORT_DIPSETTING(	0x04, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(	0x05, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(	0x06, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0x07, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( 1C_3C ) )
 	PORT_DIPNAME( 0x38, 0x38, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x18, DEF_STR( 5C_1C ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x28, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x38, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(	0x18, DEF_STR( 5C_1C ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(	0x28, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(	0x30, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0x38, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(	0x10, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x08, DEF_STR( 1C_3C ) )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Allow_Continue ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( No ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x80, 0x80, "Freeze" )
-	PORT_DIPSETTING(    0x80, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( No ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Yes ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x03, "2" )
-	PORT_DIPSETTING(    0x02, "3" )
-	PORT_DIPSETTING(    0x01, "4" )
-	PORT_DIPSETTING(    0x00, "5" )
+	PORT_DIPSETTING(	0x03, "2" )
+	PORT_DIPSETTING(	0x02, "3" )
+	PORT_DIPSETTING(	0x01, "4" )
+	PORT_DIPSETTING(	0x00, "5" )
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x0c, "10/20/300K Points" )
-	PORT_DIPSETTING(    0x00, "10/30/500K Points" )
-	PORT_DIPSETTING(    0x08, "20/30/400K Points" )
-	PORT_DIPSETTING(    0x04, "30/40/500K Points" )
+	PORT_DIPSETTING(	0x0c, "10/20/300K Points" )
+	PORT_DIPSETTING(	0x00, "10/30/500K Points" )
+	PORT_DIPSETTING(	0x08, "20/30/400K Points" )
+	PORT_DIPSETTING(	0x04, "30/40/500K Points" )
 	PORT_DIPNAME( 0x30, 0x10, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Hard ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( Very_Hard ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Easy ) )
+	PORT_DIPSETTING(	0x10, DEF_STR( Normal ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( Hard ) )
+	PORT_DIPSETTING(	0x30, DEF_STR( Very_Hard ) )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Cocktail ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( Cocktail ) )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
@@ -674,7 +674,7 @@ static INPUT_PORTS_START( pbillian )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START("BUTTONS")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 )	// high score initials
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )	// fire (M powerup) + high score initials
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_COCKTAIL	// high score initials
@@ -684,71 +684,71 @@ static INPUT_PORTS_START( pbillian )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL )	// mcu status (pending mcu->z80)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	// mcu status (pending z80->mcu)
 
-	PORT_START
+	PORT_START("PADDLE1")
 	PORT_BIT( 0x3f, 0x00, IPT_PADDLE_V  ) PORT_MINMAX(0,0x3f) PORT_SENSITIVITY(30) PORT_KEYDELTA(3) PORT_CENTERDELTA(0) PORT_REVERSE
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 
-	PORT_START
+	PORT_START("DIAL1")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10)
 
-	PORT_START
+	PORT_START("PADDLE2")
 	PORT_BIT( 0x3f, 0x00, IPT_PADDLE_V  ) PORT_MINMAX(0,0x3f) PORT_SENSITIVITY(30) PORT_KEYDELTA(3) PORT_CENTERDELTA(0) PORT_REVERSE  PORT_COCKTAIL
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL
 
-	PORT_START
+	PORT_START("DIAL2")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_COCKTAIL
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( hotsmash )
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x08, DEF_STR( On ) )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x10, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0x30, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( 1C_2C ) )
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0xc0, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( 1C_2C ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x03, "Difficulty vs. CPU" )
-	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Hard ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Easy ) )
+	PORT_DIPSETTING(	0x03, DEF_STR( Normal ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( Hard ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Hardest ) )
 	PORT_DIPNAME( 0x0c, 0x0c, "Difficulty vs. 2P" )
-	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
+	PORT_DIPSETTING(	0x08, DEF_STR( Easy ) )
+	PORT_DIPSETTING(	0x0c, DEF_STR( Normal ) )
+	PORT_DIPSETTING(	0x04, DEF_STR( Hard ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Hardest ) )
 	PORT_DIPNAME( 0x10, 0x10, "Points per game" )
-	PORT_DIPSETTING(    0x00, "3" )
-	PORT_DIPSETTING(    0x10, "4" )
+	PORT_DIPSETTING(	0x00, "3" )
+	PORT_DIPSETTING(	0x10, "4" )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
@@ -758,63 +758,63 @@ static INPUT_PORTS_START( hotsmash )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	// mcu status (0 = pending mcu->z80)
 
-	PORT_START
+	PORT_START("DIAL1")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(15) PORT_KEYDELTA(30) PORT_CENTERDELTA(0) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START("DIAL2")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(15) PORT_KEYDELTA(30) PORT_CENTERDELTA(0) PORT_PLAYER(2)
 
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( superqix )
-	PORT_START	/* DSW1 */
+	PORT_START("DSW1")	/* DSW1 */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( Cocktail ) )
 	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x04, 0x04, "Freeze" )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Allow_Continue ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
+	PORT_DIPSETTING(	0x08, DEF_STR( No ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ))
-	PORT_DIPSETTING(    0x20, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x10, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0x30, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( 2C_3C ))
+	PORT_DIPSETTING(	0x20, DEF_STR( 1C_2C ) )
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ))
-	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0xc0, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( 2C_3C ))
+	PORT_DIPSETTING(	0x80, DEF_STR( 1C_2C ) )
 
-	PORT_START	/* DSW2 */
+	PORT_START("DSW2")	/* DSW2 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Hard ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Easy ) )
+	PORT_DIPSETTING(	0x03, DEF_STR( Normal ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( Hard ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Hardest ) )
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x08, "20000 50000" )
-	PORT_DIPSETTING(    0x0c, "30000 100000" )
-	PORT_DIPSETTING(    0x04, "50000 100000" )
-	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
+	PORT_DIPSETTING(	0x08, "20000 50000" )
+	PORT_DIPSETTING(	0x0c, "30000 100000" )
+	PORT_DIPSETTING(	0x04, "50000 100000" )
+	PORT_DIPSETTING(	0x00, DEF_STR( None ) )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x20, "2" )
-	PORT_DIPSETTING(    0x30, "3" )
-	PORT_DIPSETTING(    0x10, "4" )
-	PORT_DIPSETTING(    0x00, "5" )
+	PORT_DIPSETTING(	0x20, "2" )
+	PORT_DIPSETTING(	0x30, "3" )
+	PORT_DIPSETTING(	0x10, "4" )
+	PORT_DIPSETTING(	0x00, "5" )
 	PORT_DIPNAME( 0xc0, 0xc0, "Fill Area" )
-	PORT_DIPSETTING(    0x80, "70%" )
-	PORT_DIPSETTING(    0xc0, "75%" )
-	PORT_DIPSETTING(    0x40, "80%" )
-	PORT_DIPSETTING(    0x00, "85%" )
+	PORT_DIPSETTING(	0x80, "70%" )
+	PORT_DIPSETTING(	0xc0, "75%" )
+	PORT_DIPSETTING(	0x40, "80%" )
+	PORT_DIPSETTING(	0x00, "85%" )
 
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -824,7 +824,7 @@ static INPUT_PORTS_START( superqix )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	// Z80 status (pending z80->mcu)
 
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
@@ -834,7 +834,7 @@ static INPUT_PORTS_START( superqix )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_VBLANK )	/* ??? */
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
@@ -884,26 +884,26 @@ static const gfx_layout spritelayout =
 
 
 static GFXDECODE_START( pbillian )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, pbillian_charlayout, 16*16, 16 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, spritelayout,            0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, pbillian_charlayout, 16*16, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, spritelayout,            0, 16 )
 GFXDECODE_END
 
 static GFXDECODE_START( sqix )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x00000, sqix_charlayout,   0, 16 )	/* Chars */
-	GFXDECODE_ENTRY( REGION_GFX2, 0x00000, sqix_charlayout,   0, 16 )	/* Background tiles */
-	GFXDECODE_ENTRY( REGION_GFX3, 0x00000, spritelayout,      0, 16 )	/* Sprites */
+	GFXDECODE_ENTRY( "gfx1", 0x00000, sqix_charlayout,   0, 16 )	/* Chars */
+	GFXDECODE_ENTRY( "gfx2", 0x00000, sqix_charlayout,   0, 16 )	/* Background tiles */
+	GFXDECODE_ENTRY( "gfx3", 0x00000, spritelayout,      0, 16 )	/* Sprites */
 GFXDECODE_END
 
 
 
-static const struct Samplesinterface pbillian_samples_interface =
+static const samples_interface pbillian_samples_interface =
 {
 	1,
 	NULL,
 	pbillian_sh_start
 };
 
-static const struct AY8910interface pbillian_ay8910_interface =
+static const ay8910_interface pbillian_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -913,7 +913,7 @@ static const struct AY8910interface pbillian_ay8910_interface =
 	NULL
 };
 
-static const struct AY8910interface hotsmash_ay8910_interface =
+static const ay8910_interface hotsmash_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -923,7 +923,7 @@ static const struct AY8910interface hotsmash_ay8910_interface =
 	NULL
 };
 
-static const struct AY8910interface sqix_ay8910_interface_1 =
+static const ay8910_interface sqix_ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -933,7 +933,7 @@ static const struct AY8910interface sqix_ay8910_interface_1 =
 	NULL
 };
 
-static const struct AY8910interface sqix_ay8910_interface_2 =
+static const ay8910_interface sqix_ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -943,7 +943,7 @@ static const struct AY8910interface sqix_ay8910_interface_2 =
 	sqix_z80_mcu_w		/* port Bwrite */
 };
 
-static const struct AY8910interface bootleg_ay8910_interface_1 =
+static const ay8910_interface bootleg_ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -953,7 +953,7 @@ static const struct AY8910interface bootleg_ay8910_interface_1 =
 	NULL
 };
 
-static const struct AY8910interface bootleg_ay8910_interface_2 =
+static const ay8910_interface bootleg_ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -982,7 +982,7 @@ static INTERRUPT_GEN( bootleg_interrupt )
 
 
 static MACHINE_DRIVER_START( pbillian )
-	MDRV_CPU_ADD(Z80,12000000/2)		 /* 6 MHz */
+	MDRV_CPU_ADD("main", Z80,12000000/2)		 /* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(pbillian_port_map,0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
@@ -1005,22 +1005,22 @@ static MACHINE_DRIVER_START( pbillian )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 12000000/8)
+	MDRV_SOUND_ADD("ay", AY8910, 12000000/8)
 	MDRV_SOUND_CONFIG(pbillian_ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(pbillian_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( hotsmash )
-	MDRV_CPU_ADD(Z80,12000000/2)		 /* 6 MHz */
+	MDRV_CPU_ADD("main", Z80,12000000/2)		 /* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(hotsmash_port_map,0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
-	MDRV_CPU_ADD(M68705, 4000000) /* ???? */
+	MDRV_CPU_ADD("mcu", M68705, 4000000) /* ???? */
 	MDRV_CPU_PROGRAM_MAP(m68705_map,0)
 
 	MDRV_MACHINE_START(pbillian)
@@ -1041,11 +1041,11 @@ static MACHINE_DRIVER_START( hotsmash )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 12000000/8)
+	MDRV_SOUND_ADD("ay", AY8910, 12000000/8)
 	MDRV_SOUND_CONFIG(hotsmash_ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(pbillian_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -1053,12 +1053,12 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( sqix )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 12000000/2)	/* 6 MHz */
+	MDRV_CPU_ADD("main", Z80, 12000000/2)	/* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(sqix_port_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(sqix_interrupt,6)	/* ??? */
 
-	MDRV_CPU_ADD(I8751, 12000000/3)	/* ??? */
+	MDRV_CPU_ADD("mcu", I8751, 12000000/3)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 	MDRV_CPU_IO_MAP(mcu_io_map,0)
 
@@ -1083,11 +1083,11 @@ static MACHINE_DRIVER_START( sqix )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 12000000/8)
+	MDRV_SOUND_ADD("ay1", AY8910, 12000000/8)
 	MDRV_SOUND_CONFIG(sqix_ay8910_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 12000000/8)
+	MDRV_SOUND_ADD("ay2", AY8910, 12000000/8)
 	MDRV_SOUND_CONFIG(sqix_ay8910_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -1096,7 +1096,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( sqixbl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 12000000/2)	/* 6 MHz */
+	MDRV_CPU_ADD("main", Z80, 12000000/2)	/* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(bootleg_port_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(bootleg_interrupt,6)	/* ??? */
@@ -1120,11 +1120,11 @@ static MACHINE_DRIVER_START( sqixbl )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 12000000/8)
+	MDRV_SOUND_ADD("ay1", AY8910, 12000000/8)
 	MDRV_SOUND_CONFIG(bootleg_ay8910_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 12000000/8)
+	MDRV_SOUND_ADD("ay2", AY8910, 12000000/8)
 	MDRV_SOUND_CONFIG(bootleg_ay8910_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -1138,139 +1138,139 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( pbillian )
-	ROM_REGION( 0x018000, REGION_CPU1, 0 )
+	ROM_REGION( 0x018000, "main", 0 )
 	ROM_LOAD( "1.6c",  0x00000, 0x08000, CRC(d379fe23) SHA1(e147a9151b1cdeacb126d9713687bd0aa92980ac) )
 	ROM_LOAD( "2.6d",  0x14000, 0x04000, CRC(1af522bc) SHA1(83e002dc831bfcedbd7096b350c9b34418b79674) )
 
-	ROM_REGION( 0x0800, REGION_CPU2, 0 )
+	ROM_REGION( 0x0800, "cpu1", 0 )
 	ROM_LOAD( "pbillian.mcu", 0x0000, 0x0800, NO_DUMP )
 
-	ROM_REGION( 0x8000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x8000, "samples", 0 )
 	ROM_LOAD( "3.7j",  0x0000, 0x08000, CRC(3f9bc7f1) SHA1(0b0c2ec3bea6a7f3fc6c0c8b750318f3f9ec3d1f) )
 
-	ROM_REGION( 0x018000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x018000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "4.1n",  0x00000, 0x08000, CRC(9c08a072) SHA1(25f31fcf72216cf42528b07ad8c09113aa69861a) )
 	ROM_LOAD( "5.1r",  0x08000, 0x08000, CRC(2dd5b83f) SHA1(b05e3a008050359d0207757b9cbd8cee87abc697) )
 	ROM_LOAD( "6.1t",  0x10000, 0x08000, CRC(33b855b0) SHA1(5a1df4f82fc0d6f78883b759fd61f395942645eb) )
 ROM_END
 
 ROM_START( hotsmash )
-	ROM_REGION( 0x018000, REGION_CPU1, 0 )
+	ROM_REGION( 0x018000, "main", 0 )
 	ROM_LOAD( "b18-04",  0x00000, 0x08000, CRC(981bde2c) SHA1(ebcc901a036cde16b33d534d423500d74523b781) )
 
-	ROM_REGION( 0x0800, REGION_CPU2, 0 )
+	ROM_REGION( 0x0800, "mcu", 0 )
 	ROM_LOAD( "b18-06.mcu", 0x0000, 0x0800, CRC(67c0920a) SHA1(23a294892823d1d9216ea8ddfa9df1c8af149477) )
 
-	ROM_REGION( 0x8000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x8000, "samples", 0 )
 	ROM_LOAD( "b18-05",  0x0000, 0x08000, CRC(dab5e718) SHA1(6cf6486f283f5177dfdc657b1627fbfa3f0743e8) )
 
-	ROM_REGION( 0x018000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x018000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "b18-01",  0x00000, 0x08000, CRC(870a4c04) SHA1(a029108bcda40755c8320d2ee297f42d816aa7c0) )
 	ROM_LOAD( "b18-02",  0x08000, 0x08000, CRC(4e625cac) SHA1(2c21b32240eaada9a5f909a2ec5b335372c8c994) )
 	ROM_LOAD( "b18-03",  0x14000, 0x04000, CRC(1c82717d) SHA1(6942c8877e24ac51ed71036e771a1655d82f3491) )
 ROM_END
 
 ROM_START( sqix )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "b03-01-1",     0x00000, 0x08000, CRC(ad614117) SHA1(c461f00a2aecde1bc3860c15a3c31091b14665a2) )
 	ROM_LOAD( "b03-02",       0x10000, 0x10000, CRC(9c23cb64) SHA1(7e04cb18cabdc0031621162cbc228cd95875a022) )
 
-	ROM_REGION( 0x1000, REGION_CPU2, 0 )	/* I8751 code */
+	ROM_REGION( 0x1000, "mcu", 0 )	/* I8751 code */
 	ROM_LOAD( "sq07.108",     0x00000, 0x1000, BAD_DUMP CRC(8be4d2a8) SHA1(a0c72cd87b2cddc67070b0a533fca111dbb9a984) )	// from sqixa
 
-	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-04",       0x00000, 0x08000, CRC(f815ef45) SHA1(4189d455b6ccf3ae922d410fb624c4665203febf) )
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-03",       0x00000, 0x10000, CRC(6e8b6a67) SHA1(c71117cc880a124c46397c446d1edc1cbf681200) )
 	ROM_LOAD( "b03-06",       0x10000, 0x10000, CRC(38154517) SHA1(703ad4cfe54a4786c67aedcca5998b57f39fd857) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-05",       0x00000, 0x10000, CRC(df326540) SHA1(1fe025edcd38202e24c4e1005f478b6a88533453) )
 ROM_END
 
 ROM_START( sqixu )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "b03-06.f3",     0x00000, 0x08000, CRC(4f59f7af) SHA1(6ea627ea8505cf8d1a5a1350258180c61fbd1ed9) )
 	ROM_LOAD( "b03-07.h3",     0x10000, 0x10000, CRC(4c417d4a) SHA1(de46551da1b27312dca40240a210e77595cf9dbd) )
 
-	ROM_REGION( 0x1000, REGION_CPU2, 0 )	/* I8751 code */
+	ROM_REGION( 0x1000, "mcu", 0 )	/* I8751 code */
 	ROM_LOAD( "b03-08",     0x00000, 0x1000, BAD_DUMP CRC(8be4d2a8) SHA1(a0c72cd87b2cddc67070b0a533fca111dbb9a984) )	// from sqixa
 
-	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-04",       0x00000, 0x08000, CRC(f815ef45) SHA1(4189d455b6ccf3ae922d410fb624c4665203febf) )
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-03",       0x00000, 0x10000, CRC(6e8b6a67) SHA1(c71117cc880a124c46397c446d1edc1cbf681200) )
 	ROM_LOAD( "b03-06",       0x10000, 0x10000, CRC(38154517) SHA1(703ad4cfe54a4786c67aedcca5998b57f39fd857) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-09.t8",    0x00000, 0x10000, CRC(69d2a84a) SHA1(b461d8a01f73c6aaa4aac85602c688c111bdca5d) )
 ROM_END
 
 /* this was probably a bootleg */
 ROM_START( sqixa )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "sq01.97",      0x00000, 0x08000, CRC(0888b7de) SHA1(de3e4637436de185f43d2ad4186d4cfdcd4d33d9) )
 	ROM_LOAD( "b03-02",       0x10000, 0x10000, CRC(9c23cb64) SHA1(7e04cb18cabdc0031621162cbc228cd95875a022) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* I8751 code */
+	ROM_REGION( 0x10000, "mcu", 0 )	/* I8751 code */
 	ROM_LOAD( "sq07.108",     0x00000, 0x1000, BAD_DUMP CRC(8be4d2a8) SHA1(a0c72cd87b2cddc67070b0a533fca111dbb9a984) )
 
-	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-04",       0x00000, 0x08000, CRC(f815ef45) SHA1(4189d455b6ccf3ae922d410fb624c4665203febf) )
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-03",       0x00000, 0x10000, CRC(6e8b6a67) SHA1(c71117cc880a124c46397c446d1edc1cbf681200) )
 	ROM_LOAD( "b03-06",       0x10000, 0x10000, CRC(38154517) SHA1(703ad4cfe54a4786c67aedcca5998b57f39fd857) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-05",       0x00000, 0x10000, CRC(df326540) SHA1(1fe025edcd38202e24c4e1005f478b6a88533453) )
 ROM_END
 
 ROM_START( sqixbl )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "cpu.2",        0x00000, 0x08000, CRC(682e28e3) SHA1(fe9221d26d7397be5a0fc8fdc51672b5924f3cf2) )
 	ROM_LOAD( "b03-02",       0x10000, 0x10000, CRC(9c23cb64) SHA1(7e04cb18cabdc0031621162cbc228cd95875a022) )
 
-	ROM_REGION( 0x08000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-04",       0x00000, 0x08000, CRC(f815ef45) SHA1(4189d455b6ccf3ae922d410fb624c4665203febf) )
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-03",       0x00000, 0x10000, CRC(6e8b6a67) SHA1(c71117cc880a124c46397c446d1edc1cbf681200) )
 	ROM_LOAD( "b03-06",       0x10000, 0x10000, CRC(38154517) SHA1(703ad4cfe54a4786c67aedcca5998b57f39fd857) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "b03-05",       0x00000, 0x10000, CRC(df326540) SHA1(1fe025edcd38202e24c4e1005f478b6a88533453) )
 ROM_END
 
 ROM_START( perestrf )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	/* 0x8000 - 0x10000 in the rom is empty anyway */
 	ROM_LOAD( "rom1.bin",        0x00000, 0x20000, CRC(0cbf96c1) SHA1(cf2b1367887d1b8812a56aa55593e742578f220c) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "rom4.bin",       0x00000, 0x10000, CRC(c56122a8) SHA1(1d24b2f0358e14aca5681f92175869224584a6ea) ) /* both halves identical */
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "rom2.bin",       0x00000, 0x20000, CRC(36f93701) SHA1(452cb23efd955c6c155cef2b1b650e253e195738) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "rom3.bin",       0x00000, 0x10000, CRC(00c91d5a) SHA1(fdde56d3689a47e6bfb296e442207b93b887ec7a) )
 ROM_END
 
 ROM_START( perestro )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	/* 0x8000 - 0x10000 in the rom is empty anyway */
 	ROM_LOAD( "rom1.bin",        0x00000, 0x20000, CRC(0cbf96c1) SHA1(cf2b1367887d1b8812a56aa55593e742578f220c) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "rom4.bin",       0x00000, 0x10000, CRC(c56122a8) SHA1(1d24b2f0358e14aca5681f92175869224584a6ea) ) /* both halves identical */
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "rom2.bin",       0x00000, 0x20000, CRC(36f93701) SHA1(452cb23efd955c6c155cef2b1b650e253e195738) )
 
-	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "rom3a.bin",       0x00000, 0x10000, CRC(7a2a563f) SHA1(e3654091b858cc80ec1991281447fc3622a0d4f9) )
 ROM_END
 
@@ -1304,8 +1304,8 @@ static DRIVER_INIT( perestro )
 	int i,j;
 
 	/* decrypt program code; the address lines are shuffled around in a non-trivial way */
-	src = memory_region(machine, REGION_CPU1);
-	len = memory_region_length(machine, REGION_CPU1);
+	src = memory_region(machine, "main");
+	len = memory_region_length(machine, "main");
 	for (i = 0;i < len;i += 16)
 	{
 		memcpy(temp,&src[i],16);
@@ -1324,8 +1324,8 @@ static DRIVER_INIT( perestro )
 	}
 
 	/* decrypt gfx ROMs; simple bit swap on the address lines */
-	src = memory_region(machine, REGION_GFX1);
-	len = memory_region_length(machine, REGION_GFX1);
+	src = memory_region(machine, "gfx1");
+	len = memory_region_length(machine, "gfx1");
 	for (i = 0;i < len;i += 16)
 	{
 		memcpy(temp,&src[i],16);
@@ -1335,8 +1335,8 @@ static DRIVER_INIT( perestro )
 		}
 	}
 
-	src = memory_region(machine, REGION_GFX2);
-	len = memory_region_length(machine, REGION_GFX2);
+	src = memory_region(machine, "gfx2");
+	len = memory_region_length(machine, "gfx2");
 	for (i = 0;i < len;i += 16)
 	{
 		memcpy(temp,&src[i],16);
@@ -1346,8 +1346,8 @@ static DRIVER_INIT( perestro )
 		}
 	}
 
-	src = memory_region(machine, REGION_GFX3);
-	len = memory_region_length(machine, REGION_GFX3);
+	src = memory_region(machine, "gfx3");
+	len = memory_region_length(machine, "gfx3");
 	for (i = 0;i < len;i += 16)
 	{
 		memcpy(temp,&src[i],16);

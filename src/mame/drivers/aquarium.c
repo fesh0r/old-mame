@@ -73,7 +73,7 @@ VIDEO_UPDATE(aquarium);
 #if AQUARIUS_HACK
 static MACHINE_RESET( aquarium )
 {
-	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, "main");
 	int data = input_port_read(machine, "FAKE");
 
 	/* Language : 0x0000 = Japanese - Other value = English */
@@ -86,7 +86,7 @@ static MACHINE_RESET( aquarium )
 static READ16_HANDLER( aquarium_coins_r )
 {
 	int data;
-	data = (input_port_read(machine, "IN1") & 0x7fff);
+	data = (input_port_read(machine, "SYSTEM") & 0x7fff);
 	data |= aquarium_snd_ack;
 	aquarium_snd_ack = 0;
 	return data;
@@ -108,7 +108,7 @@ static WRITE16_HANDLER( aquarium_sound_w )
 static WRITE8_HANDLER( aquarium_z80_bank_w )
 {
 	int soundbank = ((data & 0x7) + 1) * 0x8000;
-	UINT8 *Z80 = (UINT8 *)memory_region(machine, REGION_CPU2);
+	UINT8 *Z80 = (UINT8 *)memory_region(machine, "audio");
 
 	memory_set_bankptr(1, &Z80[soundbank + 0x10000]);
 }
@@ -131,13 +131,13 @@ static UINT8 aquarium_snd_bitswap(UINT8 scrambled_data)
 
 static READ8_HANDLER( aquarium_oki_r )
 {
-	return (aquarium_snd_bitswap(OKIM6295_status_0_r(machine,0)) );
+	return (aquarium_snd_bitswap(okim6295_status_0_r(machine,0)) );
 }
 
 static WRITE8_HANDLER( aquarium_oki_w )
 {
 	logerror("Z80-PC:%04x Writing %04x to the OKI M6295\n",activecpu_get_previouspc(),aquarium_snd_bitswap(data));
-	OKIM6295_data_0_w( machine, 0, (aquarium_snd_bitswap(data)) );
+	okim6295_data_0_w( machine, 0, (aquarium_snd_bitswap(data)) );
 }
 
 
@@ -151,12 +151,12 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xc80000, 0xc81fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd00000, 0xd00fff) AM_RAM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xd80014, 0xd8001f) AM_WRITE(SMH_RAM) AM_BASE(&aquarium_scroll)
-	AM_RANGE(0xd80068, 0xd80069) AM_WRITENOP  /* probably not used */
-	AM_RANGE(0xd80080, 0xd80081) AM_READ(input_port_0_word_r)
+	AM_RANGE(0xd80068, 0xd80069) AM_WRITENOP		/* probably not used */
+	AM_RANGE(0xd80080, 0xd80081) AM_READ_PORT("DSW")
 	AM_RANGE(0xd80082, 0xd80083) AM_READ(SMH_NOP)	/* stored but not read back ? check code at 0x01f440 */
-	AM_RANGE(0xd80084, 0xd80085) AM_READ(input_port_1_word_r)
+	AM_RANGE(0xd80084, 0xd80085) AM_READ_PORT("INPUTS")
 	AM_RANGE(0xd80086, 0xd80087) AM_READ(aquarium_coins_r)
-	AM_RANGE(0xd80088, 0xd80089) AM_WRITENOP /* ?? video related */
+	AM_RANGE(0xd80088, 0xd80089) AM_WRITENOP		/* ?? video related */
 	AM_RANGE(0xd8008a, 0xd8008b) AM_WRITE(aquarium_sound_w)
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
@@ -169,8 +169,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( snd_portmap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
+	AM_RANGE(0x00, 0x00) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(aquarium_oki_r, aquarium_oki_w)
 	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_r)
 	AM_RANGE(0x06, 0x06) AM_WRITE(aquarium_snd_ack_w)
@@ -178,7 +178,7 @@ static ADDRESS_MAP_START( snd_portmap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( aquarium )
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( Easy ) )
 	PORT_DIPSETTING(      0x0003, DEF_STR( Normal ) )
@@ -215,7 +215,7 @@ static INPUT_PORTS_START( aquarium )
 	PORT_DIPUNUSED( 0x4000, IP_ACTIVE_LOW )
 	PORT_DIPUNUSED( 0x8000, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("IN0")
+	PORT_START("INPUTS")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -233,7 +233,7 @@ static INPUT_PORTS_START( aquarium )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN1")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* untested */
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -245,7 +245,7 @@ static INPUT_PORTS_START( aquarium )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* sound status */
 
 #if AQUARIUS_HACK
-	PORT_START_TAG("FAKE")	/* FAKE DSW to support language */
+	PORT_START("FAKE")	/* FAKE DSW to support language */
 	PORT_DIPNAME( 0xffff, 0x0001, DEF_STR( Language ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Japanese ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( English ) )		// This is a guess of what should be the value
@@ -291,8 +291,8 @@ static DRIVER_INIT( aquarium )
        the roms containing the 1bpp data so we can decode it
        correctly */
 
-	UINT8 *DAT2 = memory_region(machine, REGION_GFX1)+0x080000;
-	UINT8 *DAT = memory_region(machine, REGION_USER1);
+	UINT8 *DAT2 = memory_region(machine, "gfx1")+0x080000;
+	UINT8 *DAT = memory_region(machine, "user1");
 	int len = 0x0200000;
 
 	for (len = 0 ; len < 0x020000 ; len ++ )
@@ -307,8 +307,8 @@ static DRIVER_INIT( aquarium )
 		DAT2[len*4+2] |= (DAT[len] & 0x01) << 3;
 	}
 
-	DAT2 = memory_region(machine, REGION_GFX4)+0x080000;
-	DAT = memory_region(machine, REGION_USER2);
+	DAT2 = memory_region(machine, "gfx4")+0x080000;
+	DAT = memory_region(machine, "user2");
 
 	for (len = 0 ; len < 0x020000 ; len ++ )
 	{
@@ -328,10 +328,10 @@ static DRIVER_INIT( aquarium )
 
 
 static GFXDECODE_START( aquarium )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, tilelayout,       0x300, 32 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, char5bpplayout,   0x400, 32 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, char_8x8_layout,  0x200, 32 )
-	GFXDECODE_ENTRY( REGION_GFX4, 0, char5bpplayout,   0x400, 32 )
+	GFXDECODE_ENTRY( "gfx3", 0, tilelayout,       0x300, 32 )
+	GFXDECODE_ENTRY( "gfx1", 0, char5bpplayout,   0x400, 32 )
+	GFXDECODE_ENTRY( "gfx2", 0, char_8x8_layout,  0x200, 32 )
+	GFXDECODE_ENTRY( "gfx4", 0, char5bpplayout,   0x400, 32 )
 GFXDECODE_END
 
 static void irq_handler(running_machine *machine, int irq)
@@ -339,7 +339,7 @@ static void irq_handler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
-static const struct YM2151interface ym2151_interface =
+static const ym2151_interface ym2151_config =
 {
 	irq_handler
 };
@@ -348,11 +348,11 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( aquarium )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 32000000/2)
+	MDRV_CPU_ADD("main", M68000, 32000000/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
-	MDRV_CPU_ADD(Z80, 6000000)
+	MDRV_CPU_ADD("audio", Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(snd_map,0)
 	MDRV_CPU_IO_MAP(snd_portmap,0)
 
@@ -376,44 +376,44 @@ static MACHINE_DRIVER_START( aquarium )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 3579545)
-	MDRV_SOUND_CONFIG(ym2151_interface)
+	MDRV_SOUND_ADD("ym", YM2151, 3579545)
+	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.45)
 	MDRV_SOUND_ROUTE(1, "right", 0.45)
 
-	MDRV_SOUND_ADD(OKIM6295, 1122000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1122000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.47)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.47)
 MACHINE_DRIVER_END
 
 ROM_START( aquarium )
-	ROM_REGION( 0x080000, REGION_CPU1, 0 )     /* 68000 code */
+	ROM_REGION( 0x080000, "main", 0 )     /* 68000 code */
 	ROM_LOAD16_WORD_SWAP( "aquar3",  0x000000, 0x080000, CRC(344509a1) SHA1(9deb610732dee5066b3225cd7b1929b767579235) )
 
-	ROM_REGION( 0x50000, REGION_CPU2, 0 ) /* z80 (sound) code */
+	ROM_REGION( 0x50000, "audio", 0 ) /* z80 (sound) code */
 	ROM_LOAD( "aquar5",  0x000000, 0x40000, CRC(fa555be1) SHA1(07236f2b2ba67e92984b9ddf4a8154221d535245) )
 	ROM_RELOAD( 		0x010000, 0x40000 )
 
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE ) /* BG Tiles */
+	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE ) /* BG Tiles */
 	ROM_LOAD( "aquar1",      0x000000, 0x080000, CRC(575df6ac) SHA1(071394273e512666fe124facdd8591a767ad0819) ) // 4bpp
 	/* data is expanded here from USER1 */
-	ROM_REGION( 0x100000, REGION_USER1, ROMREGION_DISPOSE ) /* BG Tiles */
+	ROM_REGION( 0x100000, "user1", ROMREGION_DISPOSE ) /* BG Tiles */
 	ROM_LOAD( "aquar6",      0x000000, 0x020000, CRC(9065b146) SHA1(befc218bbcd63453ea7eb8f976796d36f2b2d552) ) // 1bpp
 
-	ROM_REGION( 0x100000, REGION_GFX4, ROMREGION_DISPOSE ) /* BG Tiles */
+	ROM_REGION( 0x100000, "gfx4", ROMREGION_DISPOSE ) /* BG Tiles */
 	ROM_LOAD( "aquar8",      0x000000, 0x080000, CRC(915520c4) SHA1(308207cb20f1ed6df365710c808644a6e4f07614) ) // 4bpp
 	/* data is expanded here from USER2 */
-	ROM_REGION( 0x100000, REGION_USER2, ROMREGION_DISPOSE ) /* BG Tiles */
+	ROM_REGION( 0x100000, "user2", ROMREGION_DISPOSE ) /* BG Tiles */
 	ROM_LOAD( "aquar7",      0x000000, 0x020000, CRC(b96b2b82) SHA1(2b719d0c185d1eca4cd9ea66bed7842b74062288) ) // 1bpp
 
-	ROM_REGION( 0x060000, REGION_GFX2, ROMREGION_DISPOSE ) /* FG Tiles */
+	ROM_REGION( 0x060000, "gfx2", ROMREGION_DISPOSE ) /* FG Tiles */
 	ROM_LOAD( "aquar2",   0x000000, 0x020000, CRC(aa071b05) SHA1(517415bfd8e4dd51c6eb03a25c706f8613d34a09) )
 
-	ROM_REGION( 0x200000, REGION_GFX3, ROMREGION_DISPOSE ) /* Sprites? */
+	ROM_REGION( 0x200000, "gfx3", ROMREGION_DISPOSE ) /* Sprites? */
 	ROM_LOAD( "aquarf1",     0x000000, 0x0100000, CRC(14758b3c) SHA1(b372ccb42acb55a3dd15352a9d4ed576878a6731) )
 
-	ROM_REGION( 0x100000, REGION_SOUND1, 0 ) /* Samples */
+	ROM_REGION( 0x100000, "oki", 0 ) /* Samples */
 	ROM_LOAD( "aquar4",  0x000000, 0x80000, CRC(9a4af531) SHA1(bb201b7a6c9fd5924a0d79090257efffd8d4aba1) )
 ROM_END
 

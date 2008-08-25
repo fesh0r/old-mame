@@ -121,7 +121,7 @@ static WRITE8_HANDLER( wc90b_shared_w )
 static WRITE8_HANDLER( wc90b_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 
 
 	bankaddress = 0x10000 + ((data & 0xf8) << 8);
@@ -131,7 +131,7 @@ static WRITE8_HANDLER( wc90b_bankswitch_w )
 static WRITE8_HANDLER( wc90b_bankswitch1_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, "sub");
 
 
 	bankaddress = 0x10000 + ((data & 0xf8) << 8);
@@ -147,13 +147,13 @@ static WRITE8_HANDLER( wc90b_sound_command_w )
 static WRITE8_HANDLER( adpcm_control_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, "sub");
 
 	/* the code writes either 2 or 3 in the bottom two bits */
 	bankaddress = 0x10000 + (data & 0x01) * 0x4000;
 	memory_set_bankptr(3,&RAM[bankaddress]);
 
-	MSM5205_reset_w(0,data & 0x08);
+	msm5205_reset_w(0,data & 0x08);
 }
 
 static WRITE8_HANDLER( adpcm_data_w )
@@ -199,8 +199,8 @@ static ADDRESS_MAP_START( sound_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(3)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(adpcm_control_w)
 	AM_RANGE(0xe400, 0xe400) AM_WRITE(adpcm_data_w)
-	AM_RANGE(0xe800, 0xe800) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
-	AM_RANGE(0xe801, 0xe801) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
+	AM_RANGE(0xe800, 0xe800) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
+	AM_RANGE(0xe801, 0xe801) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM
 	AM_RANGE(0xf800, 0xf800) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
@@ -208,7 +208,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( wc90b )
-	PORT_START	/* IN0 bit 0-5 */
+	PORT_START("P1")	/* IN0 bit 0-5 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -218,7 +218,7 @@ static INPUT_PORTS_START( wc90b )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START	/* IN1 bit 0-5 */
+	PORT_START("P2")	/* IN1 bit 0-5 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -228,7 +228,7 @@ static INPUT_PORTS_START( wc90b )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START	/* DSWA */
+	PORT_START("DSW1")	/* DSWA */
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, "10 Coins/1 Credit" )
 	PORT_DIPSETTING(    0x08, DEF_STR( 9C_1C ) )
@@ -258,7 +258,7 @@ static INPUT_PORTS_START( wc90b )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START	/* DSWB */
+	PORT_START("DSW2")	/* DSWB */
 	PORT_DIPNAME( 0x03, 0x03, "1 Player Game Time" )
 	PORT_DIPSETTING(    0x01, "1:00" )
 	PORT_DIPSETTING(    0x02, "1:30" )
@@ -324,24 +324,24 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( wc90b )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x00000, charlayout,      	1*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x00000, tilelayout,			2*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x02000, tilelayout,			2*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x04000, tilelayout,			2*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x06000, tilelayout,			2*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x08000, tilelayout,			2*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0a000, tilelayout,			2*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0c000, tilelayout,			2*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0e000, tilelayout,			2*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x10000, tilelayout,			3*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x12000, tilelayout,			3*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x14000, tilelayout,			3*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x16000, tilelayout,			3*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x18000, tilelayout,			3*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x1a000, tilelayout,			3*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x1c000, tilelayout,			3*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x1e000, tilelayout,			3*16*16, 16*16 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x00000, spritelayout,		0*16*16, 16*16 ) // sprites
+	GFXDECODE_ENTRY( "gfx1", 0x00000, charlayout,      	1*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x00000, tilelayout,			2*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x02000, tilelayout,			2*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x04000, tilelayout,			2*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x06000, tilelayout,			2*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x08000, tilelayout,			2*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x0a000, tilelayout,			2*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x0c000, tilelayout,			2*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x0e000, tilelayout,			2*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x10000, tilelayout,			3*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x12000, tilelayout,			3*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x14000, tilelayout,			3*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x16000, tilelayout,			3*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x18000, tilelayout,			3*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x1a000, tilelayout,			3*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x1c000, tilelayout,			3*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx2", 0x1e000, tilelayout,			3*16*16, 16*16 )
+	GFXDECODE_ENTRY( "gfx3", 0x00000, spritelayout,		0*16*16, 16*16 ) // sprites
 GFXDECODE_END
 
 
@@ -352,7 +352,7 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -366,7 +366,7 @@ static void adpcm_int(running_machine *machine, int data)
 {
 	static int toggle = 0;
 
-	MSM5205_data_w (0,msm5205next);
+	msm5205_data_w (0,msm5205next);
 	msm5205next>>=4;
 
 	toggle ^= 1;
@@ -375,7 +375,7 @@ static void adpcm_int(running_machine *machine, int data)
 
 }
 
-static const struct MSM5205interface msm5205_interface =
+static const msm5205_interface msm5205_config =
 {
 	adpcm_int,	            /* interrupt function */
 	MSM5205_S96_4B		/* 4KHz 4-bit */
@@ -384,15 +384,15 @@ static const struct MSM5205interface msm5205_interface =
 static MACHINE_DRIVER_START( wc90b )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, XTAL_14MHz/2)
+	MDRV_CPU_ADD("main", Z80, XTAL_14MHz/2)
 	MDRV_CPU_PROGRAM_MAP(wc90b_map1,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, XTAL_14MHz/2)
+	MDRV_CPU_ADD("sub", Z80, XTAL_14MHz/2)
 	MDRV_CPU_PROGRAM_MAP(wc90b_map2,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, XTAL_19_6608MHz/8)
+	MDRV_CPU_ADD("audio", Z80, XTAL_19_6608MHz/8)
 	MDRV_CPU_PROGRAM_MAP(sound_cpu,0)
 	/* IRQs are triggered by the main CPU */
 
@@ -413,41 +413,41 @@ static MACHINE_DRIVER_START( wc90b )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 2510000/2)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym", YM2203, 2510000/2)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
-	MDRV_SOUND_ADD(MSM5205, 384000)
-	MDRV_SOUND_CONFIG(msm5205_interface)
+	MDRV_SOUND_ADD("msm", MSM5205, 384000)
+	MDRV_SOUND_CONFIG(msm5205_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END
 
 ROM_START( wc90b )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "a02.bin",      0x00000, 0x10000, CRC(192a03dd) SHA1(ab98d370bba5437f956631b0199b173be55f1c27) )	/* c000-ffff is not used */
 	ROM_LOAD( "a03.bin",      0x10000, 0x10000, CRC(f54ff17a) SHA1(a19850fc28a5a0da20795a5cc6b56d9c16554bce) )	/* banked at f000-f7ff */
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 )  /* Second CPU */
+	ROM_REGION( 0x20000, "sub", 0 )  /* Second CPU */
 	ROM_LOAD( "a04.bin",      0x00000, 0x10000, CRC(3d535e2f) SHA1(f1e1878b5a8316e770c74a1e1f29a7a81a4e5dfe) )	/* c000-ffff is not used */
 	ROM_LOAD( "a05.bin",      0x10000, 0x10000, CRC(9e421c4b) SHA1(e23a1f1d5d1e960696f45df653869712eb889839) )	/* banked at f000-f7ff */
 
-	ROM_REGION( 0x18000, REGION_CPU3, 0 )
+	ROM_REGION( 0x18000, "audio", 0 )
 	ROM_LOAD( "a01.bin",      0x00000, 0x8000, CRC(3d317622) SHA1(ae4e8c5247bc215a2769786cb8639bce2f80db22) )
 	ROM_CONTINUE(             0x10000, 0x8000 ) /* banked at 8000-bfff */
 
-	ROM_REGION( 0x010000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x010000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a06.bin",      0x000000, 0x04000, CRC(3b5387b7) SHA1(b839b4eafe8bf6f9e841e19fee1bdb64a66f3448) )
 	ROM_LOAD( "a08.bin",      0x004000, 0x04000, CRC(c622a5a3) SHA1(468c8c24af1f6f244228b66df04cb0ea81c1875e) )
 	ROM_LOAD( "a10.bin",      0x008000, 0x04000, CRC(0923d9f6) SHA1(4b10ee3fc17bb63cda51b2a978d066b6a140a551) )
 	ROM_LOAD( "a20.bin",      0x00c000, 0x04000, CRC(b8dec83e) SHA1(fe617ddccdd0dbd05ca09a1507074aa14b529322) )
 
-	ROM_REGION( 0x080000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x080000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "a07.bin",      0x000000, 0x20000, CRC(38c31817) SHA1(cb24ed8702d62066366924c033c07ffc78bd1fad) )
 	ROM_LOAD( "a09.bin",      0x020000, 0x20000, CRC(32e39e29) SHA1(44f22ed6c983541c7fea5857ba0456aaa87b36d1) )
 	ROM_LOAD( "a11.bin",      0x040000, 0x20000, CRC(5ccec796) SHA1(2cc191a4267819eb31962726e2ed4567c825c39e) )
 	ROM_LOAD( "a21.bin",      0x060000, 0x20000, CRC(0c54a091) SHA1(3eecb285b5a7bbc310c87492516d7ffb2841aa3b) )
 
-	ROM_REGION( 0x080000, REGION_GFX3, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x080000, "gfx3", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "146_a12.bin",  0x000000, 0x10000, CRC(d5a60096) SHA1(a8e351a4b020b4fc2b2cb7d3f0fdfb43fc44d7d9) )
 	ROM_LOAD( "147_a13.bin",  0x010000, 0x10000, CRC(36bbf467) SHA1(627b5847ffb098c92edfd58c25391799f3b209e0) )
 	ROM_LOAD( "148_a14.bin",  0x020000, 0x10000, CRC(26371c18) SHA1(0887041d86dc9f19dad264ae27dc56fb89ac3265) )
@@ -457,7 +457,7 @@ ROM_START( wc90b )
 	ROM_LOAD( "152_a18.bin",  0x060000, 0x10000, CRC(516b6c09) SHA1(9d02514dece864b087f67886009ce54bd51b5575) )
 	ROM_LOAD( "153_a19.bin",  0x070000, 0x10000, CRC(f36390a9) SHA1(e5ea36e91b3ced068281524ee79d0432f489715c) )
 
-	ROM_REGION( 0x1000, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "plds", ROMREGION_DISPOSE )
 	ROM_LOAD( "el_ic39_gal16v8_0.bin", 0x0000, 0x0117, NO_DUMP SHA1(894b345b395097acf6cf52ab8bc922099f97a85f) )
 	ROM_LOAD( "el_ic44_gal16v8_1.bin", 0x0200, 0x0117, NO_DUMP SHA1(fd41f55d857995fe87217dd9679c42760c241dc4) )
 	ROM_LOAD( "el_ic54_gal16v8_2.bin", 0x0400, 0x0117, NO_DUMP SHA1(f6d138fe42549219e11ee8524b05fe3c2b43f5d3) )
@@ -474,31 +474,31 @@ probably just a minor text mod from the supported set (only two bytes differs), 
     00000591: FF FA
 */
 ROM_START( wc90ba )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "a02.bin",      0x00000, 0x10000, CRC(192a03dd) SHA1(ab98d370bba5437f956631b0199b173be55f1c27) )	/* c000-ffff is not used */
 	ROM_LOAD( "a03.bin",      0x10000, 0x10000, CRC(f54ff17a) SHA1(a19850fc28a5a0da20795a5cc6b56d9c16554bce) )	/* banked at f000-f7ff */
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 )  /* Second CPU */
+	ROM_REGION( 0x20000, "sub", 0 )  /* Second CPU */
 	ROM_LOAD( "a04.bin",              0x00000, 0x10000, CRC(3d535e2f) SHA1(f1e1878b5a8316e770c74a1e1f29a7a81a4e5dfe) )	/* c000-ffff is not used */
 	ROM_LOAD( "el_ic98_27c512_05.bin",0x10000, 0x10000, CRC(c70d8c13) SHA1(365718725ea7d0355c68ba703b7f9624cb1134bc) )
 
-	ROM_REGION( 0x18000, REGION_CPU3, 0 )
+	ROM_REGION( 0x18000, "audio", 0 )
 	ROM_LOAD( "a01.bin",      0x00000, 0x8000, CRC(3d317622) SHA1(ae4e8c5247bc215a2769786cb8639bce2f80db22) )
 	ROM_CONTINUE(             0x10000, 0x8000 ) /* banked at 8000-bfff */
 
-	ROM_REGION( 0x010000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x010000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a06.bin",      0x000000, 0x04000, CRC(3b5387b7) SHA1(b839b4eafe8bf6f9e841e19fee1bdb64a66f3448) )
 	ROM_LOAD( "a08.bin",      0x004000, 0x04000, CRC(c622a5a3) SHA1(468c8c24af1f6f244228b66df04cb0ea81c1875e) )
 	ROM_LOAD( "a10.bin",      0x008000, 0x04000, CRC(0923d9f6) SHA1(4b10ee3fc17bb63cda51b2a978d066b6a140a551) )
 	ROM_LOAD( "a20.bin",      0x00c000, 0x04000, CRC(b8dec83e) SHA1(fe617ddccdd0dbd05ca09a1507074aa14b529322) )
 
-	ROM_REGION( 0x080000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x080000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "a07.bin",      0x000000, 0x20000, CRC(38c31817) SHA1(cb24ed8702d62066366924c033c07ffc78bd1fad) )
 	ROM_LOAD( "a09.bin",      0x020000, 0x20000, CRC(32e39e29) SHA1(44f22ed6c983541c7fea5857ba0456aaa87b36d1) )
 	ROM_LOAD( "a11.bin",      0x040000, 0x20000, CRC(5ccec796) SHA1(2cc191a4267819eb31962726e2ed4567c825c39e) )
 	ROM_LOAD( "a21.bin",      0x060000, 0x20000, CRC(0c54a091) SHA1(3eecb285b5a7bbc310c87492516d7ffb2841aa3b) )
 
-	ROM_REGION( 0x080000, REGION_GFX3, ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x080000, "gfx3", ROMREGION_DISPOSE | ROMREGION_INVERT )
 	ROM_LOAD( "146_a12.bin",  0x000000, 0x10000, CRC(d5a60096) SHA1(a8e351a4b020b4fc2b2cb7d3f0fdfb43fc44d7d9) )
 	ROM_LOAD( "147_a13.bin",  0x010000, 0x10000, CRC(36bbf467) SHA1(627b5847ffb098c92edfd58c25391799f3b209e0) )
 	ROM_LOAD( "148_a14.bin",  0x020000, 0x10000, CRC(26371c18) SHA1(0887041d86dc9f19dad264ae27dc56fb89ac3265) )
@@ -508,7 +508,7 @@ ROM_START( wc90ba )
 	ROM_LOAD( "152_a18.bin",  0x060000, 0x10000, CRC(516b6c09) SHA1(9d02514dece864b087f67886009ce54bd51b5575) )
 	ROM_LOAD( "153_a19.bin",  0x070000, 0x10000, CRC(f36390a9) SHA1(e5ea36e91b3ced068281524ee79d0432f489715c) )
 
-	ROM_REGION( 0x1000, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "plds", ROMREGION_DISPOSE )
 	ROM_LOAD( "el_ic39_gal16v8_0.bin", 0x0000, 0x0117, NO_DUMP SHA1(894b345b395097acf6cf52ab8bc922099f97a85f) )
 	ROM_LOAD( "el_ic44_gal16v8_1.bin", 0x0200, 0x0117, NO_DUMP SHA1(fd41f55d857995fe87217dd9679c42760c241dc4) )
 	ROM_LOAD( "el_ic54_gal16v8_2.bin", 0x0400, 0x0117, NO_DUMP SHA1(f6d138fe42549219e11ee8524b05fe3c2b43f5d3) )

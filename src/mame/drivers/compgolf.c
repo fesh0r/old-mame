@@ -42,7 +42,7 @@ static WRITE8_HANDLER( compgolf_ctrl_w )
 	if( bank != new_bank )
 	{
 		bank = new_bank;
-		memory_set_bankptr(1, memory_region(machine, REGION_USER1) + 0x4000 * bank);
+		memory_set_bankptr(1, memory_region(machine, "user1") + 0x4000 * bank);
 	}
 
 	compgolf_scrollx_hi = (data & 1) << 8;
@@ -54,11 +54,11 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1000, 0x17ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x1800, 0x1fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x2000, 0x2060) AM_READ(SMH_RAM)
-	AM_RANGE(0x3000, 0x3000) AM_READ(input_port_0_r) //player 1 + start buttons
-	AM_RANGE(0x3001, 0x3001) AM_READ(input_port_1_r) //player 2 + vblank
-	AM_RANGE(0x3002, 0x3002) AM_READ(input_port_2_r) //dip-switches
-	AM_RANGE(0x3003, 0x3003) AM_READ(input_port_3_r) //coins
-	AM_RANGE(0x3800, 0x3800) AM_READ(YM2203_status_port_0_r)
+	AM_RANGE(0x3000, 0x3000) AM_READ_PORT("P1")
+	AM_RANGE(0x3001, 0x3001) AM_READ_PORT("P2")
+	AM_RANGE(0x3002, 0x3002) AM_READ_PORT("DSW1")
+	AM_RANGE(0x3003, 0x3003) AM_READ_PORT("DSW2")
+	AM_RANGE(0x3800, 0x3800) AM_READ(ym2203_status_port_0_r)
 	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
@@ -70,8 +70,8 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x2060) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)
 	AM_RANGE(0x2061, 0x2061) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x3001, 0x3001) AM_WRITE(compgolf_ctrl_w)
-	AM_RANGE(0x3800, 0x3800) AM_WRITE(YM2203_control_port_0_w)
-	AM_RANGE(0x3801, 0x3801) AM_WRITE(YM2203_write_port_0_w)
+	AM_RANGE(0x3800, 0x3800) AM_WRITE(ym2203_control_port_0_w)
+	AM_RANGE(0x3801, 0x3801) AM_WRITE(ym2203_write_port_0_w)
 	AM_RANGE(0x4000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
@@ -79,30 +79,27 @@ ADDRESS_MAP_END
 /***************************************************************************/
 
 static INPUT_PORTS_START( compgolf )
-	/* Player 1 Port */
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	/* Player 2 Port */
-	PORT_START
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1	 ) PORT_PLAYER(2)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2	 ) PORT_PLAYER(2)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	 ) PORT_PLAYER(2)
+	PORT_START("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	/* Dip-Switch Port */
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03,   0x03, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(      0x03, DEF_STR( 1C_1C ) )
@@ -126,8 +123,7 @@ static INPUT_PORTS_START( compgolf )
 	PORT_DIPSETTING(      0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x00, DEF_STR( On ) )
 
-	/* System Port */
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01,   0x01, DEF_STR( Unused ) )
 	PORT_DIPSETTING(      0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x00, DEF_STR( On ) )
@@ -186,9 +182,9 @@ static const gfx_layout tilelayout8 =
 };
 
 static GFXDECODE_START( compgolf )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, spritelayout, 0, 0x10 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayoutbg, 0, 0x20 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, tilelayout8,  0, 0x10 )
+	GFXDECODE_ENTRY( "gfx1", 0, spritelayout, 0, 0x10 )
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayoutbg, 0, 0x20 )
+	GFXDECODE_ENTRY( "gfx3", 0, tilelayout8,  0, 0x10 )
 GFXDECODE_END
 
 /***************************************************************************/
@@ -198,7 +194,7 @@ static void sound_irq(running_machine *machine, int linestate)
 	cpunum_set_input_line(machine, 0,0,linestate);
 }
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 			AY8910_LEGACY_OUTPUT,
@@ -212,7 +208,7 @@ static const struct YM2203interface ym2203_interface =
 };
 
 static MACHINE_DRIVER_START( compgolf )
-	MDRV_CPU_ADD(M6809, 2000000)
+	MDRV_CPU_ADD("main", M6809, 2000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
@@ -233,69 +229,69 @@ static MACHINE_DRIVER_START( compgolf )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 1500000)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym", YM2203, 1500000)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 /***************************************************************************/
 
 ROM_START( compgolf )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cv05-3.bin",   0x08000, 0x8000, CRC(af9805bf) SHA1(bdde482906bb267e76317067785ac0ab7816df63) )
 
-	ROM_REGION( 0x8000, REGION_USER1, 0 ) // background data
+	ROM_REGION( 0x8000, "user1", 0 ) // background data
 	ROM_LOAD( "cv06.bin",     0x00000, 0x8000, CRC(8f76979d) SHA1(432f6a1402fd3276669f5f45f03fd12380900178) )
 
-	ROM_REGION( 0x18000, REGION_GFX1, ROMREGION_DISPOSE ) // Sprites
+	ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE ) // Sprites
 	ROM_LOAD( "cv00.bin",     0x00000, 0x8000, CRC(aa3d3b99) SHA1(eb968e40bcc7e7dd1acc0bbe885fd3f7d70d4bb5) )
 	ROM_LOAD( "cv01.bin",     0x08000, 0x8000, CRC(f68c2ff6) SHA1(dda9159fb59d3855025b98c272722b031617c89a) )
 	ROM_LOAD( "cv02.bin",     0x10000, 0x8000, CRC(979cdb5a) SHA1(25c1f3e6ddf50168c7e1a967bfa2753bea6106ec) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "cv03.bin",     0x00000, 0x8000, CRC(cc7ed6d8) SHA1(4ffcfa3f720414e1b7e929bdf29359ebcd8717c3) )
 	/* we expand rom cv04.bin to 0x8000 - 0xffff */
 
-	ROM_REGION( 0x8000,  REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000,  "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "cv07.bin",     0x00000, 0x8000, CRC(ed5441ba) SHA1(69d50695e8b92544f9857c6f3de0efb399899a2c) )
 
-	ROM_REGION( 0x4000, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "cv04.bin",     0x00000, 0x4000, CRC(df693a04) SHA1(45bef98c7e66881f8c62affecc1ab90dd2707240) )
 
-	ROM_REGION( 0x100, REGION_PROMS, 0 )
+	ROM_REGION( 0x100, "proms", 0 )
 	ROM_LOAD( "cv08-1.bpr",   0x00000, 0x0100, CRC(b7c43db9) SHA1(418b11e4c8a9bce6873b0624ac53a5011c5807d0) )
 ROM_END
 
 ROM_START( compglfo )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cv05.bin",     0x08000, 0x8000, CRC(3cef62c9) SHA1(c4827b45faf7aa4c80ddd3c57f1ed6ba76b5c49b) )
 
-	ROM_REGION( 0x8000, REGION_USER1, 0 ) // background data
+	ROM_REGION( 0x8000, "user1", 0 ) // background data
 	ROM_LOAD( "cv06.bin",     0x00000, 0x8000, CRC(8f76979d) SHA1(432f6a1402fd3276669f5f45f03fd12380900178) )
 
-	ROM_REGION( 0x18000, REGION_GFX1, ROMREGION_DISPOSE ) // Sprites
+	ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE ) // Sprites
 	ROM_LOAD( "cv00.bin",     0x00000, 0x8000, CRC(aa3d3b99) SHA1(eb968e40bcc7e7dd1acc0bbe885fd3f7d70d4bb5) )
 	ROM_LOAD( "cv01.bin",     0x08000, 0x8000, CRC(f68c2ff6) SHA1(dda9159fb59d3855025b98c272722b031617c89a) )
 	ROM_LOAD( "cv02.bin",     0x10000, 0x8000, CRC(979cdb5a) SHA1(25c1f3e6ddf50168c7e1a967bfa2753bea6106ec) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "cv03.bin",     0x00000, 0x8000, CRC(cc7ed6d8) SHA1(4ffcfa3f720414e1b7e929bdf29359ebcd8717c3) )
 	/* we expand rom cv04.bin to 0x8000 - 0xffff */
 
-	ROM_REGION( 0x8000,  REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000,  "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "cv07.bin",     0x00000, 0x8000, CRC(ed5441ba) SHA1(69d50695e8b92544f9857c6f3de0efb399899a2c) )
 
-	ROM_REGION( 0x4000, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "cv04.bin",     0x00000, 0x4000, CRC(df693a04) SHA1(45bef98c7e66881f8c62affecc1ab90dd2707240) )
 
-	ROM_REGION( 0x100, REGION_PROMS, 0 )
+	ROM_REGION( 0x100, "proms", 0 )
 	ROM_LOAD( "cv08-1.bpr",   0x00000, 0x0100, CRC(b7c43db9) SHA1(418b11e4c8a9bce6873b0624ac53a5011c5807d0) )
 ROM_END
 
 static void compgolf_expand_bg(running_machine *machine)
 {
-	UINT8 *GFXDST = memory_region(machine, REGION_GFX2);
-	UINT8 *GFXSRC = memory_region(machine, REGION_GFX4);
+	UINT8 *GFXDST = memory_region(machine, "gfx2");
+	UINT8 *GFXSRC = memory_region(machine, "gfx4");
 
 	int x;
 

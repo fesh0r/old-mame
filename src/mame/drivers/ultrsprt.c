@@ -52,7 +52,7 @@ static READ32_HANDLER( eeprom_r )
 	UINT32 r = 0;
 
 	if (ACCESSING_BITS_24_31)
-		r |= (((eeprom_read_bit()) << 1) | (input_port_read_indexed(machine, 6) << 3)) << 24;
+		r |= (((eeprom_read_bit()) << 1) | (input_port_read(machine, "SERVICE") << 3)) << 24;
 
 	return r;
 }
@@ -69,12 +69,12 @@ static WRITE32_HANDLER( eeprom_w )
 
 static READ32_HANDLER( control1_r )
 {
-	return (input_port_read_indexed(machine, 0) << 28) | ((input_port_read_indexed(machine, 1) & 0xfff) << 16) | (input_port_read_indexed(machine, 2) & 0xfff);
+	return (input_port_read(machine, "P1") << 28) | ((input_port_read(machine, "STICKX1") & 0xfff) << 16) | (input_port_read(machine, "STICKY1") & 0xfff);
 }
 
 static READ32_HANDLER( control2_r )
 {
-	return (input_port_read_indexed(machine, 3) << 28) | ((input_port_read_indexed(machine, 4) & 0xfff) << 16) | (input_port_read_indexed(machine, 5) & 0xfff);
+	return (input_port_read(machine, "P2") << 28) | ((input_port_read(machine, "STICKX2") & 0xfff) << 16) | (input_port_read(machine, "STICKY2") & 0xfff);
 }
 
 static WRITE32_HANDLER( int_ack_w )
@@ -113,7 +113,7 @@ static ADDRESS_MAP_START( ultrsprt_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x7f700000, 0x7f703fff) AM_RAM_WRITE(palette_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x7fa00000, 0x7fbfffff) AM_ROM AM_SHARE(1)
 	AM_RANGE(0x7fc00000, 0x7fdfffff) AM_ROM AM_SHARE(1)
-	AM_RANGE(0x7fe00000, 0x7fffffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_SHARE(1)
+	AM_RANGE(0x7fe00000, 0x7fffffff) AM_ROM AM_REGION("user1", 0) AM_SHARE(1)
 ADDRESS_MAP_END
 
 
@@ -126,10 +126,10 @@ static READ16_HANDLER( sound_r )
 	int reg = offset * 2;
 
 	if (ACCESSING_BITS_8_15)
-		r |= K054539_0_r(machine, reg+0) << 8;
+		r |= k054539_0_r(machine, reg+0) << 8;
 
 	if (ACCESSING_BITS_0_7)
-		r |= K054539_0_r(machine, reg+1) << 0;
+		r |= k054539_0_r(machine, reg+1) << 0;
 
 	return r;
 }
@@ -139,10 +139,10 @@ static WRITE16_HANDLER( sound_w )
 	int reg = offset * 2;
 
 	if (ACCESSING_BITS_8_15)
-		K054539_0_w(machine, reg+0, (data >> 8) & 0xff);
+		k054539_0_w(machine, reg+0, (data >> 8) & 0xff);
 
 	if (ACCESSING_BITS_0_7)
-		K054539_0_w(machine, reg+1, (data >> 0) & 0xff);
+		k054539_0_w(machine, reg+1, (data >> 0) & 0xff);
 }
 
 static READ16_HANDLER( K056800_68k_r )
@@ -178,29 +178,29 @@ ADDRESS_MAP_END
 /*****************************************************************************/
 
 static INPUT_PORTS_START( ultrsprt )
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x1, IP_ACTIVE_HIGH, IPT_START1 )
 
-	PORT_START
+	PORT_START("STICKX1")
 	PORT_BIT( 0xfff, 0x800, IPT_AD_STICK_X ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START("STICKY1")
 	PORT_BIT( 0xfff, 0x800, IPT_AD_STICK_Y ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_SERVICE1 )
 	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x1, IP_ACTIVE_HIGH, IPT_START2 )
 
-	PORT_START
+	PORT_START("STICKX2")
 	PORT_BIT( 0xfff, 0x800, IPT_AD_STICK_X ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START("STICKY2")
 	PORT_BIT( 0xfff, 0x800, IPT_AD_STICK_Y ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START("SERVICE")
 	PORT_SERVICE_NO_TOGGLE( 0x1, IP_ACTIVE_LOW )
 
 INPUT_PORTS_END
@@ -226,11 +226,6 @@ static NVRAM_HANDLER(ultrsprt)
 	eeprom_handler(file, read_or_write);
 }
 
-static const struct K054539interface k054539_interface =
-{
-	REGION_SOUND1
-};
-
 static INTERRUPT_GEN( ultrsprt_vblank )
 {
 	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
@@ -239,11 +234,11 @@ static INTERRUPT_GEN( ultrsprt_vblank )
 
 static MACHINE_DRIVER_START( ultrsprt )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC403GA, 25000000)		/* PowerPC 403GA 25MHz */
+	MDRV_CPU_ADD("main", PPC403GA, 25000000)		/* PowerPC 403GA 25MHz */
 	MDRV_CPU_PROGRAM_MAP(ultrsprt_map, 0)
 	MDRV_CPU_VBLANK_INT("main", ultrsprt_vblank)
 
-	MDRV_CPU_ADD(M68000, 8000000)		/* Not sure about the frequency */
+	MDRV_CPU_ADD("audio", M68000, 8000000)		/* Not sure about the frequency */
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 	MDRV_CPU_PERIODIC_INT(irq5_line_hold, 1)	// ???
 
@@ -267,8 +262,7 @@ static MACHINE_DRIVER_START( ultrsprt )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(K054539, 48000)
-	MDRV_SOUND_CONFIG(k054539_interface)
+	MDRV_SOUND_ADD("konami", K054539, 48000)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
@@ -291,16 +285,16 @@ static DRIVER_INIT( ultrsprt )
 /*****************************************************************************/
 
 ROM_START( fiveside )
-	ROM_REGION(0x200000, REGION_USER1, 0)	/* PowerPC program roms */
+	ROM_REGION(0x200000, "user1", 0)	/* PowerPC program roms */
 	ROM_LOAD32_BYTE("479uaa01.bin", 0x000003, 0x80000, CRC(1bc4893d) SHA1(2c9df38ecb7efa7b686221ee98fa3aad9a63e152))
 	ROM_LOAD32_BYTE("479uaa02.bin", 0x000002, 0x80000, CRC(ae74a6d0) SHA1(6113c2eea1628b22737c7b87af0e673d94984e88))
 	ROM_LOAD32_BYTE("479uaa03.bin", 0x000001, 0x80000, CRC(5c0b176f) SHA1(9560259bc081d4cfd72eb485c3fdcecf484ba7a8))
 	ROM_LOAD32_BYTE("479uaa04.bin", 0x000000, 0x80000, CRC(01a3e4cb) SHA1(819df79909d57fa12481698ffdb32b00586131d8))
 
-	ROM_REGION(0x20000, REGION_CPU2, 0)		/* M68K program */
+	ROM_REGION(0x20000, "audio", 0)		/* M68K program */
 	ROM_LOAD("479_a05.bin", 0x000000, 0x20000, CRC(251ae299) SHA1(5ffd74357e3c6ddb3a208c39a3b32b53fea90282))
 
-	ROM_REGION(0x100000, REGION_SOUND1, 0)	/* Sound roms */
+	ROM_REGION(0x100000, "konami", 0)	/* Sound roms */
 	ROM_LOAD("479_a06.bin", 0x000000, 0x80000, CRC(8d6ac8a2) SHA1(7c4b8bd47cddc766cbdb6a486acc9221be55b579))
 	ROM_LOAD("479_a07.bin", 0x080000, 0x80000, CRC(75835df8) SHA1(105b95c16f2ce6902c2e4c9c2fd9f2f7a848c546))
 ROM_END

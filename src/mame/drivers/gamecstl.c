@@ -176,7 +176,7 @@ static void mxtc_config_w(int function, int reg, UINT8 data)
 			}
 			else					// disable RAM access (reads go to BIOS ROM)
 			{
-				memory_set_bankptr(1, memory_region(Machine, REGION_USER1) + 0x30000);
+				memory_set_bankptr(1, memory_region(Machine, "user1") + 0x30000);
 			}
 			break;
 		}
@@ -462,11 +462,6 @@ static WRITE32_HANDLER(at_page32_w)
 }
 
 
-DEV_READWRITE8TO32LE( gamecstl_pit8254_32le, pit8253_r, pit8253_w )
-DEV_READWRITE8TO32LE( gamecstl_dma8237_32le, dma8237_r, dma8237_w )
-DEV_READWRITE8TO32LE( gamecstl_pic8259_32le, pic8259_r, pic8259_w )
-
-
 /*****************************************************************************/
 
 static ADDRESS_MAP_START( gamecstl_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -477,17 +472,17 @@ static ADDRESS_MAP_START( gamecstl_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000f0000, 0x000fffff) AM_ROMBANK(1)
 	AM_RANGE(0x000f0000, 0x000fffff) AM_WRITE(bios_ram_w)
 	AM_RANGE(0x00100000, 0x01ffffff) AM_RAM
-	AM_RANGE(0xfffc0000, 0xffffffff) AM_ROM AM_REGION(REGION_USER1, 0)	/* System BIOS */
+	AM_RANGE(0xfffc0000, 0xffffffff) AM_ROM AM_REGION("user1", 0)	/* System BIOS */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(gamecstl_io, ADDRESS_SPACE_IO, 32)
-	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE(DMA8237, "dma8237_1", gamecstl_dma8237_32le_r, gamecstl_dma8237_32le_w)
-	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE(PIC8259, "pic8259_1", gamecstl_pic8259_32le_r, gamecstl_pic8259_32le_w)
-	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE(PIT8254, "pit8254", gamecstl_pit8254_32le_r, gamecstl_pit8254_32le_w)
+	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8(DMA8237, "dma8237_1", dma8237_r, dma8237_w, 0xffffffff)
+	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8(PIC8259, "pic8259_1", pic8259_r, pic8259_w, 0xffffffff)
+	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8(PIT8254, "pit8254", pit8253_r, pit8253_w, 0xffffffff)
 	AM_RANGE(0x0060, 0x006f) AM_READWRITE(kbdc8042_32le_r,			kbdc8042_32le_w)
 	AM_RANGE(0x0070, 0x007f) AM_READWRITE(mc146818_port32le_r,		mc146818_port32le_w)
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE(at_page32_r,				at_page32_w)
-	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE(PIC8259, "pic8259_2", gamecstl_pic8259_32le_r, gamecstl_pic8259_32le_w)
+	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8(PIC8259, "pic8259_2", pic8259_r, pic8259_w, 0xffffffff)
 	AM_RANGE(0x00c0, 0x00df) AM_DEVREADWRITE(DMA8237, "dma8237_2", at32_dma8237_2_r, at32_dma8237_2_w)
 	AM_RANGE(0x00e8, 0x00eb) AM_NOP
 	AM_RANGE(0x01f0, 0x01f7) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", ide_r, ide_w)
@@ -517,35 +512,35 @@ static const gfx_layout CGA_charlayout =
 
 static GFXDECODE_START( CGA )
 /* Support up to four CGA fonts */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, CGA_charlayout,              0, 256 )   /* Font 0 */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0800, CGA_charlayout,              0, 256 )   /* Font 1 */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x1000, CGA_charlayout,              0, 256 )   /* Font 2 */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x1800, CGA_charlayout,              0, 256 )   /* Font 3*/
+	GFXDECODE_ENTRY( "gfx1", 0x0000, CGA_charlayout,              0, 256 )   /* Font 0 */
+	GFXDECODE_ENTRY( "gfx1", 0x0800, CGA_charlayout,              0, 256 )   /* Font 1 */
+	GFXDECODE_ENTRY( "gfx1", 0x1000, CGA_charlayout,              0, 256 )   /* Font 2 */
+	GFXDECODE_ENTRY( "gfx1", 0x1800, CGA_charlayout,              0, 256 )   /* Font 3*/
 GFXDECODE_END
 
 #define AT_KEYB_HELPER(bit, text, key1) \
 	PORT_BIT( bit, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(text) PORT_CODE(key1)
 
 static INPUT_PORTS_START(gamecstl)
-	PORT_START_TAG("pc_keyboard_0")
+	PORT_START("pc_keyboard_0")
 	PORT_BIT ( 0x0001, 0x0000, IPT_UNUSED ) 	/* unused scancode 0 */
 	AT_KEYB_HELPER( 0x0002, "Esc",          KEYCODE_Q           ) /* Esc                         01  81 */
 
-	PORT_START_TAG("pc_keyboard_1")
+	PORT_START("pc_keyboard_1")
 	AT_KEYB_HELPER( 0x0020, "Y",            KEYCODE_Y           ) /* Y                           15  95 */
 	AT_KEYB_HELPER( 0x1000, "Enter",        KEYCODE_ENTER       ) /* Enter                       1C  9C */
 
-	PORT_START_TAG("pc_keyboard_2")
+	PORT_START("pc_keyboard_2")
 
-	PORT_START_TAG("pc_keyboard_3")
+	PORT_START("pc_keyboard_3")
 	AT_KEYB_HELPER( 0x0002, "N",            KEYCODE_N           ) /* N                           31  B1 */
 	AT_KEYB_HELPER( 0x0800, "F1",           KEYCODE_S           ) /* F1                          3B  BB */
 
-	PORT_START_TAG("pc_keyboard_4")
+	PORT_START("pc_keyboard_4")
 
-	PORT_START_TAG("pc_keyboard_5")
+	PORT_START("pc_keyboard_5")
 
-	PORT_START_TAG("pc_keyboard_6")
+	PORT_START("pc_keyboard_6")
 	AT_KEYB_HELPER( 0x0040, "(MF2)Cursor Up",		KEYCODE_UP          ) /* Up                          67  e7 */
 	AT_KEYB_HELPER( 0x0080, "(MF2)Page Up",			KEYCODE_PGUP        ) /* Page Up                     68  e8 */
 	AT_KEYB_HELPER( 0x0100, "(MF2)Cursor Left",		KEYCODE_LEFT        ) /* Left                        69  e9 */
@@ -554,7 +549,7 @@ static INPUT_PORTS_START(gamecstl)
 	AT_KEYB_HELPER( 0x1000, "(MF2)Page Down",		KEYCODE_PGDN        ) /* Page Down                   6d  ed */
 	AT_KEYB_HELPER( 0x4000, "Del",       		    KEYCODE_A           ) /* Delete                      6f  ef */
 
-	PORT_START_TAG("pc_keyboard_7")
+	PORT_START("pc_keyboard_7")
 INPUT_PORTS_END
 
 static IRQ_CALLBACK(irq_callback)
@@ -570,7 +565,7 @@ static IRQ_CALLBACK(irq_callback)
 
 static MACHINE_RESET(gamecstl)
 {
-	memory_set_bankptr(1, memory_region(machine, REGION_USER1) + 0x30000);
+	memory_set_bankptr(1, memory_region(machine, "user1") + 0x30000);
 
 	cpunum_set_irq_callback(0, irq_callback);
 
@@ -624,15 +619,12 @@ static const struct pit8253_config gamecstl_pit8254_config =
 	{
 		{
 			4772720/4,				/* heartbeat IRQ */
-			pc_timer0_w,
-			NULL
+			pc_timer0_w
 		}, {
 			4772720/4,				/* dram refresh */
-			NULL,
 			NULL
 		}, {
 			4772720/4,				/* pio port c pin 4, and speaker polling enough */
-			NULL,
 			NULL
 		}
 	}
@@ -641,7 +633,7 @@ static const struct pit8253_config gamecstl_pit8254_config =
 static MACHINE_DRIVER_START(gamecstl)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PENTIUM, 200000000)
+	MDRV_CPU_ADD("main", PENTIUM, 200000000)
 	MDRV_CPU_PROGRAM_MAP(gamecstl_map, 0)
 	MDRV_CPU_IO_MAP(gamecstl_io, 0)
 
@@ -662,7 +654,7 @@ static MACHINE_DRIVER_START(gamecstl)
 	MDRV_DEVICE_ADD( "pic8259_2", PIC8259 )
 	MDRV_DEVICE_CONFIG( gamecstl_pic8259_2_config )
 
-	MDRV_IDE_CONTROLLER_ADD("ide", 0, ide_interrupt)
+	MDRV_IDE_CONTROLLER_ADD("ide", ide_interrupt)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
 
@@ -742,13 +734,13 @@ static DRIVER_INIT( gamecstl )
 
 // not the correct BIOS, f205v owes me a dump of it...
 ROM_START(gamecstl)
-	ROM_REGION32_LE(0x40000, REGION_USER1, 0)
+	ROM_REGION32_LE(0x40000, "user1", 0)
 	ROM_LOAD("p5tx-la.bin", 0x00000, 0x40000, BAD_DUMP CRC(072e6d51) SHA1(70414349b37e478fc28ecbaba47ad1033ae583b7))
 
-	ROM_REGION(0x08100, REGION_GFX1, 0)
+	ROM_REGION(0x08100, "gfx1", 0)
 	ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "ide" )
 	DISK_IMAGE( "gamecstl", 0, MD5(501ddbebb530b8fd67eb64a4a2de3e35) SHA1(2477468ef1c1d4529057064a319ebfe9fd8facd7) )
 ROM_END
 

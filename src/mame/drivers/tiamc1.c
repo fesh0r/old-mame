@@ -136,7 +136,7 @@ extern UINT8 *tiamc1_spriteram_x, *tiamc1_spriteram_y, *tiamc1_spriteram_n,
 	*tiamc1_spriteram_a;
 
 /* routines defined in audio */
-extern void *tiamc1_sh_start(int clock, const struct CustomSound_interface *config);
+extern void *tiamc1_sh_start(int clock, const custom_sound_interface *config);
 extern WRITE8_HANDLER( tiamc1_timer0_w );
 extern WRITE8_HANDLER( tiamc1_timer1_w );
 extern WRITE8_HANDLER( tiamc1_timer1_gate_w );
@@ -209,7 +209,7 @@ static ADDRESS_MAP_START( tiamc1_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( tiamc1 )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNUSED ) /* Player 0 JOYSTICK_RIGHT */
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED ) /* Player 2 JOYSTICK_RIGHT */
@@ -219,7 +219,7 @@ static INPUT_PORTS_START( tiamc1 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED ) /* Player 2 JOYSTICK_LEFT */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED ) /* Player 3 JOYSTICK_LEFT */
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNUSED ) /* Player 0 JOYSTICK_UP */
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED ) /* Player 2 JOYSTICK_UP */
@@ -229,7 +229,7 @@ static INPUT_PORTS_START( tiamc1 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED ) /* Player 2 JOYSTICK_DOWN */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SERVICE )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL )  /* OUT:coin lockout */
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SPECIAL ) /* OUT:game counter */
@@ -263,11 +263,11 @@ static const gfx_layout char_layout =
 };
 
 static GFXDECODE_START( tiamc1 )
-	GFXDECODE_ENTRY( 0, 0x0000, char_layout, 0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, sprites16x16_layout, 0, 16 )
+	GFXDECODE_ENTRY( NULL, 0x0000, char_layout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, sprites16x16_layout, 0, 16 )
 GFXDECODE_END
 
-static const struct CustomSound_interface tiamc1_custom_interface =
+static const custom_sound_interface tiamc1_custom_interface =
 {
         tiamc1_sh_start
 };
@@ -275,7 +275,7 @@ static const struct CustomSound_interface tiamc1_custom_interface =
 
 static MACHINE_DRIVER_START( tiamc1 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(8080,16000000/9)		 /* 16 MHz */
+	MDRV_CPU_ADD("main", 8080,16000000/9)		 /* 16 MHz */
 	MDRV_CPU_PROGRAM_MAP(tiamc1_readmem,tiamc1_writemem)
 	MDRV_CPU_IO_MAP(tiamc1_readport,tiamc1_writeport)
 
@@ -301,14 +301,14 @@ static MACHINE_DRIVER_START( tiamc1 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("2 x 8253", CUSTOM, 16000000/9)
+	MDRV_SOUND_ADD("2 x 8253", CUSTOM, 16000000/9)
 	MDRV_SOUND_CONFIG(tiamc1_custom_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( konek )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "g1.d17", 0x00000, 0x2000, CRC(f41d82c9) SHA1(63ac1be2ad58af0e5ef2d33e5c8d790769d80af9) )
 	ROM_LOAD( "g2.d17", 0x02000, 0x2000, CRC(b44e7491) SHA1(ff4cb1d76a36f504d670a207ee25556c5faad435) )
 	ROM_LOAD( "g3.d17", 0x04000, 0x2000, CRC(91301282) SHA1(cb448a1bb7a9c1768f870a8c062e37807431c9c7) )
@@ -317,13 +317,13 @@ ROM_START( konek )
 	ROM_FILL( 0xa000, 0x2000, 0x00 ) /* g6.d17 is unpopulated */
 	ROM_LOAD( "g7.d17", 0x0c000, 0x2000, CRC(fe4e9fdd) SHA1(2033585a6c53455d1dafee85cbb807d424ed231d) )
 
-	ROM_REGION( 0x8000, REGION_GFX1, 0 )
+	ROM_REGION( 0x8000, "gfx1", 0 )
 	ROM_LOAD( "a2.b07", 0x00000, 0x2000, CRC(9eed06ee) SHA1(1b64a3f8fe3df4b4870315dbdf69bf60b1c272d0) )
 	ROM_LOAD( "a3.g07", 0x02000, 0x2000, CRC(eeff9b77) SHA1(5dc66292a59f24277a8c2f38158a2e1d58f81338) )
 	ROM_LOAD( "a5.l07", 0x04000, 0x2000, CRC(fff9e089) SHA1(f0d64dceaf72da785d55316bf8a7433faa09fabb) )
 	ROM_LOAD( "a6.r07", 0x06000, 0x2000, CRC(092e8ee2) SHA1(6c4842e992c592b9f0663e039668f61a7b56700f) )
 
-	ROM_REGION( 0x0400, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, "proms", 0 )
 	ROM_LOAD( "prom100.e10", 0x0000, 0x100, NO_DUMP ) /* i/o ports map 256x8 */
 	ROM_LOAD( "prom101.a01", 0x0100, 0x100, NO_DUMP ) /* video sync 256x8 */
 	ROM_LOAD( "prom102.b03", 0x0200, 0x080, NO_DUMP ) /* sprites rom index 256x4 */
@@ -332,4 +332,23 @@ ROM_START( konek )
 
 ROM_END
 
+ROM_START( sosterm )
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "04.1g", 0x00000, 0x2000, CRC(d588081e) SHA1(5dd9f889e932ee356f8e511b22b424eaeb502ef9) )
+	ROM_LOAD( "05.2g", 0x02000, 0x2000, CRC(b44e7491) SHA1(ff4cb1d76a36f504d670a207ee25556c5faad435) )
+	ROM_LOAD( "06.3g", 0x04000, 0x2000, CRC(34dacde6) SHA1(6c91e4dc1d3c85768a94fb4c7d38f29c23664740) )
+	ROM_LOAD( "07.4g", 0x06000, 0x2000, CRC(9f6f8cdd) SHA1(3fa3928935d98906fdf07ed372764456d7a9729a) )
+	ROM_LOAD( "08.5g", 0x08000, 0x2000, CRC(25e70da4) SHA1(ec77b0b79c0477c0939022d7f2a24ae48e4530bf) )
+	ROM_FILL( 0xa000, 0x2000, 0x00 ) /* 09.6g is unpopulated */
+	ROM_LOAD( "10.7g", 0x0c000, 0x2000, CRC(22bc9997) SHA1(fd638529e29d9fd32dd22534cb748841dde9a2c3) )
+
+	ROM_REGION( 0x8000, "gfx1", 0 )
+	ROM_LOAD( "00.2a", 0x00000, 0x2000, CRC(a1c7f07a) SHA1(2ae702258be48ba70c126bfe94fbeec3353fc75a) )
+	ROM_LOAD( "01.3a", 0x02000, 0x2000, CRC(788b4036) SHA1(a0020ae1720cc2e5a6db0f8fe9350de43246f552) )
+	ROM_LOAD( "02.5a", 0x04000, 0x2000, CRC(9506cf9b) SHA1(3e54593d4452b956509877d9b6b26aa3e3a90beb) )
+	ROM_LOAD( "03.6a", 0x06000, 0x2000, CRC(5a0c14e1) SHA1(3eebe2c3ce114b87723fa6571623ee065a0b5646) )
+
+ROM_END
+
 GAME( 1988, konek, 0, tiamc1, tiamc1, tiamc1, ROT0, "Terminal", "Konek-Gorbunok", GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
+GAME( 1988, sosterm, 0, tiamc1, tiamc1, tiamc1, ROT0, "Terminal", "S.O.S.", GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )

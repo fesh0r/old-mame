@@ -223,10 +223,10 @@ Thrill Drive 713A13  -       713A14  -
 #include "video/voodoo.h"
 #include "machine/timekpr.h"
 
-static UINT8 led_reg0 = 0x7f, led_reg1 = 0x7f;
+static UINT8 led_reg0, led_reg1;
 
 static UINT32 *work_ram;
-static UINT8 backup_ram[0x2000];
+static UINT8 *backup_ram;
 
 
 static WRITE32_HANDLER( paletteram32_w )
@@ -251,7 +251,7 @@ static int K001604_tilemap_offset;
 static tilemap *K001604_layer_roz[MAX_K001604_CHIPS][2];
 static int K001604_roz_size[MAX_K001604_CHIPS];
 
-static UINT32 K001604_reg[MAX_K001604_CHIPS][256];
+static UINT32 *K001604_reg[MAX_K001604_CHIPS];
 
 static int K001604_layer_size;
 
@@ -426,6 +426,7 @@ int K001604_vh_start(running_machine *machine, int chip)
 	K001604_dirty_map[chip][0] = auto_malloc(K001604_NUM_TILES_LAYER0);
 	K001604_dirty_map[chip][1] = auto_malloc(K001604_NUM_TILES_LAYER1);
 
+	K001604_reg[chip] = auto_malloc(0x400);
 
 	if (chip == 0)
 	{
@@ -455,6 +456,7 @@ int K001604_vh_start(running_machine *machine, int chip)
 	memset(K001604_tile_ram[chip], 0, 0x10000);
 	memset(K001604_dirty_map[chip][0], 0, K001604_NUM_TILES_LAYER0);
 	memset(K001604_dirty_map[chip][1], 0, K001604_NUM_TILES_LAYER1);
+	memset(K001604_reg[chip], 0, 0x400);
 
 
 	machine->gfx[K001604_gfx_index[chip][0]] = allocgfx(&K001604_char_layout_layer_8x8);
@@ -826,7 +828,15 @@ static WRITE32_HANDLER( sysreg_w )
 static int fpga_uploaded = 0;
 static int lanc2_ram_r = 0;
 static int lanc2_ram_w = 0;
-static UINT8 lanc2_ram[0x8000];
+static UINT8 *lanc2_ram;
+
+static void lanc2_init(void)
+{
+	fpga_uploaded = 0;
+	lanc2_ram_r = 0;
+	lanc2_ram_w = 0;
+	lanc2_ram = auto_malloc(0x8000);
+}
 
 static READ32_HANDLER( lanc1_r )
 {
@@ -960,15 +970,15 @@ static ADDRESS_MAP_START( nwktr_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x780c0000, 0x780c0003) AM_READWRITE(cgboard_dsp_comm_r_ppc, cgboard_dsp_comm_w_ppc)
 	AM_RANGE(0x7d000000, 0x7d00ffff) AM_READ(sysreg_r)
 	AM_RANGE(0x7d010000, 0x7d01ffff) AM_WRITE(sysreg_w)
-	AM_RANGE(0x7d020000, 0x7d021fff) AM_READWRITE(timekeeper_0_32be_r, timekeeper_0_32be_w)	/* M48T58Y RTC/NVRAM */
+	AM_RANGE(0x7d020000, 0x7d021fff) AM_READWRITE8(timekeeper_0_r, timekeeper_0_w, 0xffffffff)	/* M48T58Y RTC/NVRAM */
 	AM_RANGE(0x7d030000, 0x7d030007) AM_READ(K056800_host_r)
 	AM_RANGE(0x7d030000, 0x7d030007) AM_WRITE(K056800_host_w)
 	AM_RANGE(0x7d030008, 0x7d03000f) AM_WRITE(K056800_host_w)
 	AM_RANGE(0x7d040000, 0x7d04ffff) AM_READWRITE(lanc1_r, lanc1_w)
 	AM_RANGE(0x7d050000, 0x7d05ffff) AM_READWRITE(lanc2_r, lanc2_w)
-	AM_RANGE(0x7e000000, 0x7e7fffff) AM_ROM AM_REGION(REGION_USER2, 0)	/* Data ROM */
+	AM_RANGE(0x7e000000, 0x7e7fffff) AM_ROM AM_REGION("user2", 0)	/* Data ROM */
 	AM_RANGE(0x7f000000, 0x7f1fffff) AM_ROM AM_SHARE(2)
-	AM_RANGE(0x7fe00000, 0x7fffffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_SHARE(2)	/* Program ROM */
+	AM_RANGE(0x7fe00000, 0x7fffffff) AM_ROM AM_REGION("user1", 0) AM_SHARE(2)	/* Program ROM */
 ADDRESS_MAP_END
 
 /*****************************************************************************/
@@ -976,7 +986,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_memmap, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM		/* Work RAM */
-	AM_RANGE(0x200000, 0x200fff) AM_READWRITE(RF5C400_0_r, RF5C400_0_w)		/* Ricoh RF5C400 */
+	AM_RANGE(0x200000, 0x200fff) AM_READWRITE(rf5c400_0_r, rf5c400_0_w)		/* Ricoh RF5C400 */
 	AM_RANGE(0x300000, 0x30000f) AM_READWRITE(K056800_sound_r, K056800_sound_w)
 	AM_RANGE(0x600000, 0x600001) AM_NOP
 ADDRESS_MAP_END
@@ -1008,7 +1018,7 @@ ADDRESS_MAP_END
 /*****************************************************************************/
 
 static INPUT_PORTS_START( nwktr )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1018,17 +1028,17 @@ static INPUT_PORTS_START( nwktr )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_7)
 	PORT_SERVICE_NO_TOGGLE( 0x10, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x80, 0x00, "Test Mode" )
 	PORT_DIPSETTING( 0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING( 0x80, DEF_STR( On ) )
@@ -1054,27 +1064,22 @@ static INPUT_PORTS_START( nwktr )
 	PORT_DIPSETTING( 0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("ANALOG1")		// Steering
+	PORT_START("ANALOG1")		// Steering
 	PORT_BIT( 0xfff, 0x800, IPT_PADDLE ) PORT_MINMAX(0x000, 0xfff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
 
-	PORT_START_TAG("ANALOG2")		// Acceleration pedal
+	PORT_START("ANALOG2")		// Acceleration pedal
 	PORT_BIT( 0x7ff, 0x000, IPT_PEDAL ) PORT_MINMAX(0x000, 0x7ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
 
-	PORT_START_TAG("ANALOG3")		// Foot brake pedal
+	PORT_START("ANALOG3")		// Foot brake pedal
 	PORT_BIT( 0x7ff, 0x000, IPT_PEDAL2 ) PORT_MINMAX(0x000, 0x7ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
 
-	PORT_START_TAG("ANALOG4")		// Hand brake lever
+	PORT_START("ANALOG4")		// Hand brake lever
 	PORT_BIT( 0x7ff, 0x000, IPT_AD_STICK_Y ) PORT_MINMAX(0x000, 0x7ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
 
-	PORT_START_TAG("ANALOG5")		// Clutch pedal
+	PORT_START("ANALOG5")		// Clutch pedal
 	PORT_BIT( 0x7ff, 0x000, IPT_PEDAL3 ) PORT_MINMAX(0x000, 0x7ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
 
 INPUT_PORTS_END
-
-static const struct RF5C400interface rf5c400_interface =
-{
-	REGION_SOUND1
-};
 
 static const sharc_config sharc_cfg =
 {
@@ -1089,13 +1094,13 @@ static MACHINE_RESET( nwktr )
 static MACHINE_DRIVER_START( nwktr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
+	MDRV_CPU_ADD("main", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_PROGRAM_MAP(nwktr_map, 0)
 
-	MDRV_CPU_ADD(M68000, 64000000/4)	/* 16MHz */
+	MDRV_CPU_ADD("audio", M68000, 64000000/4)	/* 16MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
 
-	MDRV_CPU_ADD(ADSP21062, 36000000)
+	MDRV_CPU_ADD("dsp", ADSP21062, 36000000)
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
@@ -1124,8 +1129,7 @@ static MACHINE_DRIVER_START( nwktr )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(RF5C400, 64000000/4)
-	MDRV_SOUND_CONFIG(rf5c400_interface)
+	MDRV_SOUND_ADD("rf", RF5C400, 64000000/4)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
@@ -1141,12 +1145,13 @@ static void sound_irq_callback(running_machine *machine, int irq)
 		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ2, PULSE_LINE);
 }
 
-static DRIVER_INIT( nwktr )
+static void init_nwktr(running_machine *machine)
 {
 	init_konami_cgboard(1, CGBOARD_TYPE_NWKTR);
-	set_cgboard_texture_bank(0, 5, memory_region(machine, REGION_USER5));
+	set_cgboard_texture_bank(0, 5, memory_region(machine, "user5"));
 
 	sharc_dataram = auto_malloc(0x100000);
+	led_reg0 = led_reg1 = 0x7f;
 	timekeeper_init(machine, 0, TIMEKEEPER_M48T58, backup_ram);
 
 	K056800_init(sound_irq_callback);
@@ -1156,12 +1161,16 @@ static DRIVER_INIT( nwktr )
 //  cpunum_set_info_fct(0, CPUINFO_PTR_SPU_RX_HANDLER, (genf *)jamma_jvs_r);
 
 	adc1213x_init(0, adc12138_input_callback);
+	lanc2_init();
 }
 
 static DRIVER_INIT(thrilld)
 {
 	int i;
 	UINT16 checksum;
+
+	backup_ram = auto_malloc(0x2000);
+	memset(backup_ram, 0, 0x2000);
 
 	/* RTC data */
 	backup_ram[0x00] = 0x47;	// 'G'
@@ -1190,13 +1199,16 @@ static DRIVER_INIT(thrilld)
 	backup_ram[0x0e] = (checksum >> 8) & 0xff;	// checksum
 	backup_ram[0x0f] = (checksum >> 0) & 0xff;	// checksum
 
-	DRIVER_INIT_CALL(nwktr);
+	init_nwktr(machine);
 }
 
 static DRIVER_INIT(racingj)
 {
 	int i;
 	UINT32 checksum;
+
+	backup_ram = auto_malloc(0x2000);
+	memset(backup_ram, 0, 0x2000);
 
 	/* RTC data */
 	backup_ram[0x00] = 0x47;	// 'G'
@@ -1215,22 +1227,25 @@ static DRIVER_INIT(racingj)
 	backup_ram[0x0d] = 0x00;	//
 
 	checksum = 0;
-    for (i=0; i < 14; i+=2)
-    {
+	for (i=0; i < 14; i+=2)
+	{
 		checksum += (backup_ram[i] << 8) | (backup_ram[i+1]);
-        checksum &= 0xffff;
-    }
+		checksum &= 0xffff;
+	}
 	checksum = -1 - checksum;
 	backup_ram[0x0e] = (checksum >> 8) & 0xff;	// checksum
 	backup_ram[0x0f] = (checksum >> 0) & 0xff;	// checksum
 
-	DRIVER_INIT_CALL(nwktr);
+	init_nwktr(machine);
 }
 
 static DRIVER_INIT(racingj2)
 {
 	int i;
 	UINT32 checksum;
+
+	backup_ram = auto_malloc(0x2000);
+	memset(backup_ram, 0, 0x2000);
 
 	/* RTC data */
 	backup_ram[0x00] = 0x47;	// 'G'
@@ -1258,69 +1273,69 @@ static DRIVER_INIT(racingj2)
 	backup_ram[0x0e] = (checksum >> 8) & 0xff;	// checksum
 	backup_ram[0x0f] = (checksum >> 0) & 0xff;	// checksum
 
-	DRIVER_INIT_CALL(nwktr);
+	init_nwktr(machine);
 }
 
 
 /*****************************************************************************/
 
 ROM_START(racingj)
-	ROM_REGION32_BE(0x200000, REGION_USER1, 0)	/* PowerPC program roms */
+	ROM_REGION32_BE(0x200000, "user1", 0)	/* PowerPC program roms */
 	ROM_LOAD16_WORD_SWAP("676nc01.bin", 0x000000, 0x200000, CRC(690346b5) SHA1(157ab6788382ef4f5a8772f08819f54d0856fcc8))
 
-	ROM_REGION32_BE(0x800000, REGION_USER2, 0)		/* Data roms */
+	ROM_REGION32_BE(0x800000, "user2", 0)		/* Data roms */
 		ROM_LOAD32_WORD_SWAP("676a04.bin", 0x000000, 0x200000, CRC(d7808cb6) SHA1(0668fae5bb94cc120fe196d4b18200f7b512317f))
 		ROM_LOAD32_WORD_SWAP("676a05.bin", 0x000002, 0x200000, CRC(fb4de1ad) SHA1(f6aa4eb1b5d22901a2aaf899ed3237a9dfdc55b5))
 
-	ROM_REGION32_BE(0x800000, REGION_USER5, 0)	/* CG Board texture roms */
+	ROM_REGION32_BE(0x800000, "user5", 0)	/* CG Board texture roms */
 	    ROM_LOAD32_WORD_SWAP( "676a13.8x",    0x000000, 0x400000, CRC(29077763) SHA1(ee087ca0d41966ca0fd10727055bb1dcd05a0873) )
         ROM_LOAD32_WORD_SWAP( "676a14.16x",   0x000002, 0x400000, CRC(50a7e3c0) SHA1(7468a66111a3ddf7c043cd400fa175cae5f65632) )
 
-	ROM_REGION(0x80000, REGION_CPU2, 0)		/* 68k program roms */
+	ROM_REGION(0x80000, "audio", 0)		/* 68k program roms */
         ROM_LOAD16_WORD_SWAP( "676gna08.7s", 0x000000, 0x080000, CRC(8973f6f2) SHA1(f5648a7e0205f7e979ccacbb52936809ce14a184) )
 
-	ROM_REGION(0x1000000, REGION_SOUND1, 0) 		/* other roms (textures?) */
+	ROM_REGION(0x1000000, "rf", 0) 		/* other roms (textures?) */
         ROM_LOAD( "676a09.16p",   0x000000, 0x400000, CRC(f85c8dc6) SHA1(8b302c80be309b5cc68b75945fcd7b87a56a4c9b) )
         ROM_LOAD( "676a10.14p",   0x400000, 0x400000, CRC(7b5b7828) SHA1(aec224d62e4b1e8fdb929d7947ce70d84ba676cf) )
 ROM_END
 
 ROM_START(racingj2)
-	ROM_REGION32_BE(0x200000, REGION_USER1, 0)	/* PowerPC program roms */
+	ROM_REGION32_BE(0x200000, "user1", 0)	/* PowerPC program roms */
 	ROM_LOAD16_WORD_SWAP("888a01.27p", 0x000000, 0x200000, CRC(d077890a) SHA1(08b252324cf46fbcdb95e8f9312287920cd87c5d))
 
-	ROM_REGION32_BE(0x800000, REGION_USER2, 0)		/* Data roms */
+	ROM_REGION32_BE(0x800000, "user2", 0)		/* Data roms */
 		ROM_LOAD32_WORD_SWAP( "676a04.bin",	0x000000, 0x200000, CRC(d7808cb6) SHA1(0668fae5bb94cc120fe196d4b18200f7b512317f))
 		ROM_LOAD32_WORD_SWAP( "676a05.bin",	0x000002, 0x200000, CRC(fb4de1ad) SHA1(f6aa4eb1b5d22901a2aaf899ed3237a9dfdc55b5))
 	ROM_LOAD32_WORD_SWAP( "888a06.12t",	0x400000, 0x200000, CRC(00cbec4d) SHA1(1ce7807d86e90edbf4eecba462a27c725f5ad862))
 
-	ROM_REGION32_BE(0x800000, REGION_USER5, 0)	/* CG Board Texture roms */
+	ROM_REGION32_BE(0x800000, "user5", 0)	/* CG Board Texture roms */
 	    ROM_LOAD32_WORD_SWAP( "888a13.8x",    0x000000, 0x400000, CRC(2292f530) SHA1(0f4d1332708fd5366a065e0a928cc9610558b42d) )
         ROM_LOAD32_WORD_SWAP( "888a14.16x",   0x000002, 0x400000, CRC(6a834a26) SHA1(d1fbd7ae6afd05f0edac4efde12a5a45aa2bc7df) )
 
-	ROM_REGION(0x80000, REGION_CPU2, 0)		/* 68k program roms */
+	ROM_REGION(0x80000, "audio", 0)		/* 68k program roms */
         ROM_LOAD16_WORD_SWAP( "888a08.7s",    0x000000, 0x080000, CRC(55fbea65) SHA1(ad953f758181731efccadcabc4326e6634c359e8) )
 
-	ROM_REGION(0x1000000, REGION_SOUND1, 0) 		/* PCM sample roms */
+	ROM_REGION(0x1000000, "rf", 0) 		/* PCM sample roms */
         ROM_LOAD( "888a09.16p",   0x000000, 0x400000, CRC(11e2fed2) SHA1(24b8a367b59fedb62c56f066342f2fa87b135fc5) )
         ROM_LOAD( "888a10.14p",   0x400000, 0x400000, CRC(328ce610) SHA1(dbbc779a1890c53298c0db129d496df048929496) )
 ROM_END
 
 ROM_START(thrilld)
-	ROM_REGION32_BE(0x200000, REGION_USER1, 0)	/* PowerPC program roms */
+	ROM_REGION32_BE(0x200000, "user1", 0)	/* PowerPC program roms */
 	ROM_LOAD16_WORD_SWAP("713be01.27p", 0x000000, 0x200000, CRC(d84a7723) SHA1(f4e9e08591b7e5e8419266dbe744d56a185384ed))
 
-	ROM_REGION32_BE(0x800000, REGION_USER2, 0)		/* Data roms */
+	ROM_REGION32_BE(0x800000, "user2", 0)		/* Data roms */
 		ROM_LOAD32_WORD_SWAP("713a04.16t", 0x000000, 0x200000, CRC(c994aaa8) SHA1(d82b9930a11e5384ad583684a27c95beec03cd5a))
 		ROM_LOAD32_WORD_SWAP("713a05.14t", 0x000002, 0x200000, CRC(6f1e6802) SHA1(91f8a170327e9b4ee6a64aee0c106b981a317e69))
 
-	ROM_REGION32_BE(0x800000, REGION_USER5, 0)	/* CG Board Texture roms */
+	ROM_REGION32_BE(0x800000, "user5", 0)	/* CG Board Texture roms */
         ROM_LOAD32_WORD_SWAP( "713a13.8x",    0x000000, 0x400000, CRC(b795c66b) SHA1(6e50de0d5cc444ffaa0fec7ada8c07f643374bb2) )
         ROM_LOAD32_WORD_SWAP( "713a14.16x",   0x000002, 0x400000, CRC(5275a629) SHA1(16fadef06975f0f3625cac8f84e2e77ed7d75e15) )
 
-	ROM_REGION(0x80000, REGION_CPU2, 0)		/* 68k program roms */
+	ROM_REGION(0x80000, "audio", 0)		/* 68k program roms */
         ROM_LOAD16_WORD_SWAP( "713a08.7s",    0x000000, 0x080000, CRC(6a72a825) SHA1(abeac99c5343efacabcb0cdff6d34f9f967024db) )
 
-	ROM_REGION(0x1000000, REGION_SOUND1, 0) 		/* PCM sample roms */
+	ROM_REGION(0x1000000, "rf", 0) 		/* PCM sample roms */
         ROM_LOAD( "713a09.16p",   0x000000, 0x400000, CRC(058f250a) SHA1(63b8e60004ec49009633e86b4992c00083def9a8) )
         ROM_LOAD( "713a10.14p",   0x400000, 0x400000, CRC(27f9833e) SHA1(1540f00d2571ecb81b914c553682b67fca94bbbd) )
 ROM_END

@@ -68,7 +68,7 @@ VIDEO_UPDATE( lordgun );
 static DRIVER_INIT( lordgun )
 {
 	int i;
-	UINT16 *src = (UINT16 *)memory_region(machine, REGION_CPU1);
+	UINT16 *src = (UINT16 *)memory_region(machine, "main");
 
 	int rom_size = 0x100000;
 
@@ -108,9 +108,9 @@ static WRITE8_HANDLER(fake2_w)
 //  popmessage("%02x",data);
 }
 
-static READ8_HANDLER( lordgun_eeprom_r )
+static READ8_HANDLER( lordgun_port_0_r )
 {
-	return input_port_read(machine, "IN0") | ((eeprom_read_bit() & 1) << 7);
+	return input_port_read(machine, "IN0");
 }
 
 static WRITE8_HANDLER( lordgun_eeprom_w )
@@ -240,15 +240,15 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( lordgun_okibank_w )
 {
-	OKIM6295_set_bank_base(0, (data & 2) ? 0x40000 : 0);
+	okim6295_set_bank_base(0, (data & 2) ? 0x40000 : 0);
 	if (data & ~3)	logerror("%04x: unknown okibank bits %02x\n", activecpu_get_pc(), data);
 //  popmessage("OKI %x", data);
 }
 
 static ADDRESS_MAP_START( lordgun_soundio_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x1000, 0x1000) AM_WRITE( YM3812_control_port_0_w )
-	AM_RANGE(0x1001, 0x1001) AM_WRITE( YM3812_write_port_0_w )
-	AM_RANGE(0x2000, 0x2000) AM_READWRITE( OKIM6295_status_0_r, OKIM6295_data_0_w )
+	AM_RANGE(0x1000, 0x1000) AM_WRITE( ym3812_control_port_0_w )
+	AM_RANGE(0x1001, 0x1001) AM_WRITE( ym3812_write_port_0_w )
+	AM_RANGE(0x2000, 0x2000) AM_READWRITE( okim6295_status_0_r, okim6295_data_0_w )
 	AM_RANGE(0x3000, 0x3000) AM_READ( soundlatch2_r )
 	AM_RANGE(0x4000, 0x4000) AM_READ( soundlatch_r )
 	AM_RANGE(0x5000, 0x5000) AM_READ( SMH_NOP )
@@ -260,10 +260,10 @@ static ADDRESS_MAP_START( hfh_soundio_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x3000, 0x3000) AM_READ( soundlatch2_r )
 	AM_RANGE(0x4000, 0x4000) AM_READ( soundlatch_r )
 	AM_RANGE(0x5000, 0x5000) AM_READ( SMH_NOP )
-	AM_RANGE(0x7000, 0x7000) AM_WRITE( YM3812_control_port_0_w )
-	AM_RANGE(0x7001, 0x7001) AM_WRITE( YM3812_write_port_0_w )
-	AM_RANGE(0x7400, 0x7400) AM_READWRITE( OKIM6295_status_0_r, OKIM6295_data_0_w )
-	AM_RANGE(0x7800, 0x7800) AM_READWRITE( OKIM6295_status_1_r, OKIM6295_data_1_w )
+	AM_RANGE(0x7000, 0x7000) AM_WRITE( ym3812_control_port_0_w )
+	AM_RANGE(0x7001, 0x7001) AM_WRITE( ym3812_write_port_0_w )
+	AM_RANGE(0x7400, 0x7400) AM_READWRITE( okim6295_status_0_r, okim6295_data_0_w )
+	AM_RANGE(0x7800, 0x7800) AM_READWRITE( okim6295_status_1_r, okim6295_data_1_w )
 ADDRESS_MAP_END
 
 
@@ -313,11 +313,11 @@ static const gfx_layout lordgun_32x32x6_layout =
 };
 
 static GFXDECODE_START( lordgun )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, lordgun_16x16x6_layout,  0x000, 0x400/0x40  )	// [0] Sprites
-	GFXDECODE_ENTRY( REGION_GFX2, 0, lordgun_8x8x6_layout,    0x500, 0x100/0x40  )	// [1] Tilemap 0
-	GFXDECODE_ENTRY( REGION_GFX3, 0, lordgun_16x16x6_layout,  0x600, 0x200/0x40  )	// [2] Tilemap 1
-	GFXDECODE_ENTRY( REGION_GFX3, 0, lordgun_32x32x6_layout,  0x700, 0x100/0x40  )	// [3] Tilemap 2
-	GFXDECODE_ENTRY( REGION_GFX2, 0, lordgun_8x8x6_layout,    0x400, 0x400/0x40  )	// [4] Tilemap 3
+	GFXDECODE_ENTRY( "gfx1", 0, lordgun_16x16x6_layout,  0x000, 0x400/0x40  )	// [0] Sprites
+	GFXDECODE_ENTRY( "gfx2", 0, lordgun_8x8x6_layout,    0x500, 0x100/0x40  )	// [1] Tilemap 0
+	GFXDECODE_ENTRY( "gfx3", 0, lordgun_16x16x6_layout,  0x600, 0x200/0x40  )	// [2] Tilemap 1
+	GFXDECODE_ENTRY( "gfx3", 0, lordgun_32x32x6_layout,  0x700, 0x100/0x40  )	// [3] Tilemap 2
+	GFXDECODE_ENTRY( "gfx2", 0, lordgun_8x8x6_layout,    0x400, 0x400/0x40  )	// [4] Tilemap 3
 GFXDECODE_END
 
 
@@ -328,7 +328,7 @@ GFXDECODE_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( lordgun )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_DIPNAME( 0x01, 0x01, "Game Mode" )
 	PORT_DIPSETTING(    0x01, "Arcade" )
 	PORT_DIPSETTING(    0x00, "Street" )
@@ -344,9 +344,9 @@ static INPUT_PORTS_START( lordgun )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_SERVICE_NO_TOGGLE( 0x40, IP_ACTIVE_LOW )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	// eeprom
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1   )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -355,7 +355,7 @@ static INPUT_PORTS_START( lordgun )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE2 ) // cheat: skip ahead
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START2  )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -365,7 +365,7 @@ static INPUT_PORTS_START( lordgun )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -375,7 +375,7 @@ static INPUT_PORTS_START( lordgun )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 
-	PORT_START_TAG("IN4")
+	PORT_START("IN4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1   ) PORT_IMPULSE(5)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2   ) PORT_IMPULSE(5)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -385,16 +385,16 @@ static INPUT_PORTS_START( lordgun )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("LIGHT0_X")
+	PORT_START("LIGHT0_X")
 	PORT_BIT( 0x1ff, 0x100, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,0x1ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START_TAG("LIGHT1_X")
+	PORT_START("LIGHT1_X")
 	PORT_BIT( 0x1ff, 0x100, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,0x1ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
-	PORT_START_TAG("LIGHT0_Y")
+	PORT_START("LIGHT0_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START_TAG("LIGHT1_Y")
+	PORT_START("LIGHT1_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(10) PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -409,7 +409,7 @@ INPUT_PORTS_END
 static const ppi8255_interface ppi8255_intf[2] =
 {
 	{
-		lordgun_eeprom_r,			// Port A read
+		lordgun_port_0_r,			// Port A read
 		NULL,						// Port B read
 		input_port_3_r,				// Port C read
 		fake_w,						// Port A write
@@ -431,17 +431,17 @@ static void soundirq(running_machine *machine, int state)
 	cpunum_set_input_line(machine, 1, 0, state);
 }
 
-static const struct YM3812interface lordgun_ym3812_interface =
+static const ym3812_interface lordgun_ym3812_interface =
 {
 	soundirq
 };
 
 static MACHINE_DRIVER_START( lordgun )
-	MDRV_CPU_ADD_TAG("main", M68000, 10000000)
+	MDRV_CPU_ADD("main", M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(lordgun_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
-	MDRV_CPU_ADD_TAG("sound", Z80, 5000000)
+	MDRV_CPU_ADD("sound", Z80, 5000000)
 	MDRV_CPU_PROGRAM_MAP(lordgun_soundmem_map,0)
 	MDRV_CPU_IO_MAP(lordgun_soundio_map,0)
 
@@ -471,13 +471,13 @@ static MACHINE_DRIVER_START( lordgun )
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM3812, 3579545)
+	MDRV_SOUND_ADD("ym", YM3812, 3579545)
 	MDRV_SOUND_CONFIG(lordgun_ym3812_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000)	// 5MHz can't be right!
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki", OKIM6295, 1000000)	// 5MHz can't be right!
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -492,8 +492,8 @@ static MACHINE_DRIVER_START( hfh )
 	MDRV_CPU_IO_MAP(hfh_soundio_map,0)
 
 	// sound hardware
-	MDRV_SOUND_ADD(OKIM6295, 1000000)	// 5MHz can't be right!
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high)
+	MDRV_SOUND_ADD("oki2", OKIM6295, 1000000)	// 5MHz can't be right!
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
@@ -681,14 +681,14 @@ NOTE: Speakers should be connected serially to Speaker (+) and Speaker (-).
 */
 
 ROM_START( lordgun )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) // 68000
+	ROM_REGION( 0x100000, "main", 0 ) // 68000
 	ROM_LOAD16_BYTE( "lordgun.10", 0x00000, 0x80000, CRC(acda77ef) SHA1(7cd8580419e2f62a3b5a1e4a6020a3ef978ff1e8) )
 	ROM_LOAD16_BYTE( "lordgun.4",  0x00001, 0x80000, CRC(a1a61254) SHA1(b0c5aa656024cfb9be28a11061656159e7b72d00) )
 
-	ROM_REGION( 0x010000, REGION_CPU2, 0 ) // Z80
+	ROM_REGION( 0x010000, "sound", 0 ) // Z80
 	ROM_LOAD( "lordgun.90", 0x00000, 0x10000, CRC(d59b5e28) SHA1(36696058684d69306f463ed543c8b0195bafa21e) )	// 1xxxxxxxxxxxxxxx = 0xFF
 
-	ROM_REGION( 0xc00000, REGION_GFX1, 0 )	// Sprites
+	ROM_REGION( 0xc00000, "gfx1", 0 )	// Sprites
 	ROM_LOAD( "igsa001.14", 0x000000, 0x200000, CRC(400abe33) SHA1(20de1eb626424ea41bd55eb3cecd6b50be744ee0) )
 	ROM_LOAD( "igsa004.13", 0x200000, 0x200000, CRC(52687264) SHA1(28444cf6b5662054e283992857e0827a2ca15b83) )
 	ROM_LOAD( "igsa002.9",  0x400000, 0x200000, CRC(a4810e38) SHA1(c31fe641feab2c93795fc35bf71d4f37af1056d4) )
@@ -696,17 +696,17 @@ ROM_START( lordgun )
 	ROM_LOAD( "igsa003.3",  0x800000, 0x200000, CRC(649e48d9) SHA1(ce346154024cf13f3e40000ceeb4c2003cd35894) )
 	ROM_LOAD( "igsa006.2",  0xa00000, 0x200000, CRC(39288eb6) SHA1(54d157f0e151f6665f4288b4d09bd65571005132) )
 
-	ROM_REGION( 0x300000, REGION_GFX2, 0 )	// Tilemaps 0 & 3
+	ROM_REGION( 0x300000, "gfx2", 0 )	// Tilemaps 0 & 3
 	ROM_LOAD( "igst001.108", 0x000000, 0x100000, CRC(36dd96f3) SHA1(4e70eb807160e7ed1b19d7f38df3a38021f42d9b) )
 	ROM_LOAD( "igst002.114", 0x100000, 0x100000, CRC(816a7665) SHA1(f2f2624ab262c957f84c657cfc432d14c61b19e8) )
 	ROM_LOAD( "igst003.119", 0x200000, 0x100000, CRC(cbfee543) SHA1(6fad8ef8d683f709f6ff2b16319447516c372fc8) )
 
-	ROM_REGION( 0x600000, REGION_GFX3, 0 )	// Tilemaps 1 & 2
+	ROM_REGION( 0x600000, "gfx3", 0 )	// Tilemaps 1 & 2
 	ROM_LOAD( "igsb001.82", 0x000000, 0x200000, CRC(3096de1c) SHA1(d010990d21cfda9cb8ab5b4bc0e329c23b7719f5) )
 	ROM_LOAD( "igsb002.91", 0x200000, 0x200000, CRC(2234531e) SHA1(58a82e31a1c0c1a4dd026576319f4e7ecffd140e) )
 	ROM_LOAD( "igsb003.97", 0x400000, 0x200000, CRC(6cbf21ac) SHA1(ad25090a00f291aa48929ffa01347cc53e0051f8) )
 
-	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) // Samples
+	ROM_REGION( 0x080000, "oki", 0 ) // Samples
 	ROM_LOAD( "lordgun.100", 0x00000, 0x80000, CRC(b4e0fa07) SHA1(f5f33fe3f3a124f4737751fda3ea409fceeec0be) )
 ROM_END
 
@@ -719,26 +719,26 @@ ROM_END
 */
 
 ROM_START( hfh )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) // 68000
+	ROM_REGION( 0x100000, "main", 0 ) // 68000
 	ROM_LOAD16_BYTE( "hfh_p.u80", 0x00000, 0x80000, CRC(5175ebdc) SHA1(4a0bdda0f8291f895f888bfd45328b2b124b9051) )
 	ROM_LOAD16_BYTE( "hfh_p.u79", 0x00001, 0x80000, CRC(42ad978c) SHA1(eccb96e7170902b37989c8f207e1a821f29b2475) )
 
-	ROM_REGION( 0x010000, REGION_CPU2, 0 ) // Z80
+	ROM_REGION( 0x010000, "sound", 0 ) // Z80
 	ROM_LOAD( "hfh_s.u86", 0x00000, 0x10000, CRC(5728a9ed) SHA1(e5a9e4a1a2cc6c848b08608bc8727bc739270873) )
 
-	ROM_REGION( 0x100000, REGION_GFX1, 0 )
+	ROM_REGION( 0x100000, "gfx1", 0 )
 	ROM_LOAD( "hfh_g1", 0x000000, 0x100000, NO_DUMP )
 
-	ROM_REGION( 0x100000, REGION_GFX2, 0 )
+	ROM_REGION( 0x100000, "gfx2", 0 )
 	ROM_LOAD( "hfh_g2", 0x000000, 0x100000, NO_DUMP )
 
-	ROM_REGION( 0x100000, REGION_GFX3, 0 )
+	ROM_REGION( 0x100000, "gfx3", 0 )
 	ROM_LOAD( "hfh_g3", 0x000000, 0x100000, NO_DUMP )
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 ) // Samples
+	ROM_REGION( 0x40000, "oki", 0 ) // Samples
 	ROM_LOAD( "hfh_g.u65", 0x00000, 0x40000, CRC(ec469b57) SHA1(ba1668078987ad51f47bcd3e61c51a0cf2545350) )
 
-	ROM_REGION( 0x40000, REGION_SOUND2, 0 ) // Samples
+	ROM_REGION( 0x40000, "oki2", 0 ) // Samples
 	ROM_LOAD( "hfh_g.u66", 0x00000, 0x40000, CRC(7cfcd98e) SHA1(3b03123160adfd3404a9e0c4c68420930e80ae48) )
 ROM_END
 

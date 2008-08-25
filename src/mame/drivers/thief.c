@@ -53,7 +53,7 @@ VIDEO_UPDATE( thief );
 static INTERRUPT_GEN( thief_interrupt )
 {
 	/* SLAM switch causes an NMI if it's pressed */
-	if( (input_port_read_indexed(machine, 3) & 0x10) == 0 )
+	if( (input_port_read(machine, "P2") & 0x10) == 0 )
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 	else
 		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
@@ -158,58 +158,45 @@ static READ8_HANDLER( thief_io_r )
 {
 	switch( thief_input_select )
 	{
-		case 0x01: return input_port_read_indexed(machine, 0); /* dsw#1 */
-		case 0x02: return input_port_read_indexed(machine, 1); /* dsw#2 */
-		case 0x04: return input_port_read_indexed(machine, 2); /* inp#1 */
-		case 0x08: return input_port_read_indexed(machine, 3); /* inp#2 */
+		case 0x01: return input_port_read(machine, "DSW1");
+		case 0x02: return input_port_read(machine, "DSW2");
+		case 0x04: return input_port_read(machine, "P1");
+		case 0x08: return input_port_read(machine, "P2");
 	}
 	return 0x00;
 }
 
-static ADDRESS_MAP_START( sharkatt_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_RAM)			/* 2114 (working RAM) */
-	AM_RANGE(0xc000, 0xdfff) AM_READ(thief_videoram_r)	/* 4116 */
+static ADDRESS_MAP_START( sharkatt_main_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x8fff) AM_RAM		/* 2114 */
+	AM_RANGE(0xc000, 0xdfff) AM_READWRITE(thief_videoram_r, thief_videoram_w)	/* 4116 */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sharkatt_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x8000, 0x8fff) AM_WRITE(SMH_RAM)			/* 2114 */
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(thief_videoram_w)	/* 4116 */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( thief_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_RAM)			/* 2114 (working RAM) */
-	AM_RANGE(0xa000, 0xafff) AM_READ(SMH_ROM)			/* NATO Defense diagnostic ROM */
-	AM_RANGE(0xc000, 0xdfff) AM_READ(thief_videoram_r)	/* 4116 */
-	AM_RANGE(0xe000, 0xe008) AM_READ(thief_coprocessor_r)
-	AM_RANGE(0xe010, 0xe02f) AM_READ(SMH_ROM)
-	AM_RANGE(0xe080, 0xe0bf) AM_READ(thief_context_ram_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( thief_writemem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( thief_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0000) AM_WRITE(thief_blit_w)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x0001, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x8000, 0x8fff) AM_WRITE(SMH_RAM)			/* 2114 */
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(thief_videoram_w)	/* 4116 */
-	AM_RANGE(0xe000, 0xe008) AM_WRITE(thief_coprocessor_w)
-	AM_RANGE(0xe010, 0xe02f) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xe080, 0xe0bf) AM_WRITE(thief_context_ram_w)
+	AM_RANGE(0x8000, 0x8fff) AM_RAM		/* 2114 */
+	AM_RANGE(0xa000, 0xafff) AM_READ(SMH_ROM)		/* NATO Defense diagnostic ROM */
+	AM_RANGE(0xc000, 0xdfff) AM_READWRITE(thief_videoram_r, thief_videoram_w)	/* 4116 */
+	AM_RANGE(0xe000, 0xe008) AM_READWRITE(thief_coprocessor_r, thief_coprocessor_w)
+	AM_RANGE(0xe010, 0xe02f) AM_ROM
+	AM_RANGE(0xe080, 0xe0bf) AM_READWRITE(thief_context_ram_r, thief_context_ram_w)
 	AM_RANGE(0xe0c0, 0xe0c0) AM_WRITE(thief_context_bank_w)
 ADDRESS_MAP_END
+
 
 static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(SMH_NOP) /* watchdog */
 	AM_RANGE(0x10, 0x10) AM_WRITE(thief_video_control_w)
-	AM_RANGE(0x30, 0x30) AM_WRITE(thief_input_select_w) // 8255
-	AM_RANGE(0x31, 0x31) AM_READ(thief_io_r) // 8255
+	AM_RANGE(0x30, 0x30) AM_WRITE(thief_input_select_w) /* 8255 */
+	AM_RANGE(0x31, 0x31) AM_READ(thief_io_r) 	/* 8255 */
 	AM_RANGE(0x33, 0x33) AM_WRITE(tape_control_w)
-	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x41, 0x41) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
-	AM_RANGE(0x42, 0x42) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0x43, 0x43) AM_READWRITE(AY8910_read_port_1_r, AY8910_write_port_1_w)
+	AM_RANGE(0x40, 0x40) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x41, 0x41) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
+	AM_RANGE(0x42, 0x42) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x43, 0x43) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
 	AM_RANGE(0x50, 0x50) AM_WRITE(thief_color_plane_w)
 	AM_RANGE(0x60, 0x6f) AM_WRITE(thief_vtcsel_w)
 	AM_RANGE(0x70, 0x7f) AM_WRITE(thief_color_map_w)
@@ -219,13 +206,13 @@ ADDRESS_MAP_END
 /**********************************************************/
 
 static INPUT_PORTS_START( sharkatt )
-	PORT_START      /* IN0 */
+	PORT_START("DSW1")	/* IN0 */
 	PORT_DIPNAME( 0x7f, 0x7f, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x7f, DEF_STR( 1C_1C ) ) // if any are set
 	PORT_SERVICE( 0x80, IP_ACTIVE_HIGH )
 
-	PORT_START      /* IN1 */
+	PORT_START("DSW2")	/* IN1 */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(	0x00, "3" )
 	PORT_DIPSETTING(	0x01, "4" )
@@ -250,7 +237,7 @@ static INPUT_PORTS_START( sharkatt )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
 
-	PORT_START      /* IN2 */
+	PORT_START("P1")	/* IN2 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -260,7 +247,7 @@ static INPUT_PORTS_START( sharkatt )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
-	PORT_START      /* IN3 */
+	PORT_START("P2")	/* IN3 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
@@ -272,7 +259,7 @@ static INPUT_PORTS_START( sharkatt )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( thief )
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -296,7 +283,7 @@ static INPUT_PORTS_START( thief )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x0f, 0x00, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x00|0x0c, "10K" )
 	PORT_DIPSETTING(    0x01|0x0c, "20K" )
@@ -319,7 +306,7 @@ static INPUT_PORTS_START( thief )
 	PORT_DIPSETTING(    0x80|0x60, "I/O Board Test" )
 	PORT_DIPSETTING(    0x80|0x70, "Reserved" )
 
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
@@ -329,7 +316,7 @@ static INPUT_PORTS_START( thief )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
@@ -341,7 +328,7 @@ static INPUT_PORTS_START( thief )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( natodef )
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -364,7 +351,7 @@ static INPUT_PORTS_START( natodef )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -386,7 +373,7 @@ static INPUT_PORTS_START( natodef )
 	PORT_DIPSETTING(    0x80|0x60, "I/O Board Test" )
 	PORT_DIPSETTING(    0x80|0x70, "Reserved" )
 
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
@@ -396,7 +383,7 @@ static INPUT_PORTS_START( natodef )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
@@ -418,7 +405,7 @@ static const char *const sharkatt_sample_names[] =
 	0	/* end of array */
 };
 
-static const struct Samplesinterface sharkatt_samples_interface =
+static const samples_interface sharkatt_samples_interface =
 {
 	2,	/* number of channels */
 	sharkatt_sample_names
@@ -434,7 +421,7 @@ static const char *const thief_sample_names[] =
 	0	/* end of array */
 };
 
-static const struct Samplesinterface thief_samples_interface =
+static const samples_interface thief_samples_interface =
 {
 	2,	/* number of channels */
 	thief_sample_names
@@ -450,7 +437,7 @@ static const char *const natodef_sample_names[] =
 	0	/* end of array */
 };
 
-static const struct Samplesinterface natodef_samples_interface =
+static const samples_interface natodef_samples_interface =
 {
 	2,	/* number of channels */
 	natodef_sample_names
@@ -461,8 +448,8 @@ static const struct Samplesinterface natodef_samples_interface =
 static MACHINE_DRIVER_START( sharkatt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)        /* 4 MHz? */
-	MDRV_CPU_PROGRAM_MAP(sharkatt_readmem,sharkatt_writemem)
+	MDRV_CPU_ADD("main", Z80, 4000000)        /* 4 MHz? */
+	MDRV_CPU_PROGRAM_MAP(sharkatt_main_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
 	MDRV_CPU_VBLANK_INT("main", thief_interrupt)
 
@@ -482,13 +469,13 @@ static MACHINE_DRIVER_START( sharkatt )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 4000000/4)
+	MDRV_SOUND_ADD("ay1", AY8910, 4000000/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(AY8910, 4000000/4)
+	MDRV_SOUND_ADD("ay2", AY8910, 4000000/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(sharkatt_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -497,8 +484,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( thief )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000) /* 4 MHz? */
-	MDRV_CPU_PROGRAM_MAP(thief_readmem,thief_writemem)
+	MDRV_CPU_ADD("main", Z80, 4000000) /* 4 MHz? */
+	MDRV_CPU_PROGRAM_MAP(thief_main_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
 	MDRV_CPU_VBLANK_INT("main", thief_interrupt)
 
@@ -518,13 +505,13 @@ static MACHINE_DRIVER_START( thief )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 4000000/4)
+	MDRV_SOUND_ADD("ay1", AY8910, 4000000/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(AY8910, 4000000/4)
+	MDRV_SOUND_ADD("ay2", AY8910, 4000000/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(thief_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -533,8 +520,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( natodef )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000) /* 4 MHz? */
-	MDRV_CPU_PROGRAM_MAP(thief_readmem,thief_writemem)
+	MDRV_CPU_ADD("main", Z80, 4000000) /* 4 MHz? */
+	MDRV_CPU_PROGRAM_MAP(thief_main_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
 	MDRV_CPU_VBLANK_INT("main", thief_interrupt)
 
@@ -554,13 +541,13 @@ static MACHINE_DRIVER_START( natodef )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 4000000/4)
+	MDRV_SOUND_ADD("ay1", AY8910, 4000000/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(AY8910, 4000000/4)
+	MDRV_SOUND_ADD("ay2", AY8910, 4000000/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(natodef_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -568,7 +555,7 @@ MACHINE_DRIVER_END
 /**********************************************************/
 
 ROM_START( sharkatt )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "sharkatt.0",   0x0000, 0x800, CRC(c71505e9) SHA1(068c92e9d797918f281fa509f3c86578b3f0de3a) )
 	ROM_LOAD( "sharkatt.1",   0x0800, 0x800, CRC(3e3abf70) SHA1(ef69e72db583a22093a3c32ba437a6eaef4b132a) )
 	ROM_LOAD( "sharkatt.2",   0x1000, 0x800, CRC(96ded944) SHA1(e60db225111423b0a481e85fe38a85c3ea844351) )
@@ -585,7 +572,7 @@ ROM_START( sharkatt )
 ROM_END
 
 ROM_START( thief )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code */
 	ROM_LOAD( "t8a0ah0a",	0x0000, 0x1000, CRC(edbbf71c) SHA1(9f13841c54fbe5449280c24954a45517014a834e) )
 	ROM_LOAD( "t2662h2",	0x1000, 0x1000, CRC(85b4f6ff) SHA1(8e007bfff2f27809e7a9881bc3b2587bf35cff6d) )
 	ROM_LOAD( "tc162h4",	0x2000, 0x1000, CRC(70478a82) SHA1(547bad88a44c63657bf8f65f2877ab1323515521) )
@@ -595,20 +582,20 @@ ROM_START( thief )
 	ROM_LOAD( "t606bh12",	0x6000, 0x1000, CRC(4ca2748b) SHA1(07df2fac63471d716923f859105421e22e5e970e) )
 	ROM_LOAD( "tae4bh14",	0x7000, 0x1000, CRC(22e7dcc3) SHA1(fd4302688905bbd47dfdc1d7cdb55212a5e99f81) ) /* diagnostics ROM */
 
-	ROM_REGION( 0x400, REGION_CPU2, 0 ) /* coprocessor */
+	ROM_REGION( 0x400, "cpu1", 0 ) /* coprocessor */
 	ROM_LOAD( "b8",			0x000, 0x0200, CRC(fe865b2a) SHA1(b29144b05cb2846ea9c868ebf843d74d94c7bcc6) )
 	/* B8 is a function dispatch table for the coprocessor (unused) */
 	ROM_LOAD( "c8", 		0x200, 0x0200, CRC(7ed5c923) SHA1(35757d50bfa9ea3cf916576a148064a0f9be8732) )
 	/* C8 is mapped (banked) in CPU1's address space; it contains Z80 code */
 
-	ROM_REGION( 0x6000, REGION_GFX1, 0 ) /* image ROMs for coprocessor */
+	ROM_REGION( 0x6000, "gfx1", 0 ) /* image ROMs for coprocessor */
 	ROM_LOAD16_BYTE( "t079ahd4" ,  0x0001, 0x1000, CRC(928bd8ef) SHA1(3a2de005176ef012c0411d7752a69c03fb165b28) )
 	ROM_LOAD16_BYTE( "tdda7hh4" ,  0x0000, 0x1000, CRC(b48f0862) SHA1(c62ccf407e819fe7fa94a4353a17da47b91f0606) )
 	/* next 0x4000 bytes are unmapped (used by Nato Defense) */
 ROM_END
 
 ROM_START( natodef )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code */
 	ROM_LOAD( "natodef.cp0",	0x0000, 0x1000, CRC(8397c787) SHA1(5957613f1ace7dc4612f28f6fba3a7374be905ac) )
 	ROM_LOAD( "natodef.cp2",	0x1000, 0x1000, CRC(8cfbf26f) SHA1(a15f0d5d82cd96b80ee91dc91858b660c5895f34) )
 	ROM_LOAD( "natodef.cp4",	0x2000, 0x1000, CRC(b4c90fb2) SHA1(3ff4691415433863bfe74d51b9f3aa428f3bf88f) )
@@ -619,12 +606,12 @@ ROM_START( natodef )
 	ROM_LOAD( "natodef.cpe",	0x7000, 0x1000, CRC(4eef6bf4) SHA1(ab094198ea4d2267194ace5d382abb78d568983a) )
 	ROM_LOAD( "natodef.cp5",	0xa000, 0x1000, CRC(65c3601b) SHA1(c7bf31e6cb781405b3665b3aa93644ed57616256) )	/* diagnostics ROM */
 
-	ROM_REGION( 0x400, REGION_CPU2, 0 ) /* coprocessor */
+	ROM_REGION( 0x400, "cpu1", 0 ) /* coprocessor */
 	ROM_LOAD( "b8",			0x000, 0x0200, CRC(fe865b2a) SHA1(b29144b05cb2846ea9c868ebf843d74d94c7bcc6) )
 	ROM_LOAD( "c8", 		0x200, 0x0200, CRC(7ed5c923) SHA1(35757d50bfa9ea3cf916576a148064a0f9be8732) )
 	/* C8 is mapped (banked) in CPU1's address space; it contains Z80 code */
 
-	ROM_REGION( 0x6000, REGION_GFX1, 0 ) /* image ROMs for coprocessor */
+	ROM_REGION( 0x6000, "gfx1", 0 ) /* image ROMs for coprocessor */
 	ROM_LOAD16_BYTE( "natodef.o4",	0x0001, 0x1000, CRC(39a868f8) SHA1(870795f18cd8f831b714b809a380e30b5d323a5f) )
 	ROM_LOAD16_BYTE( "natodef.e1",	0x0000, 0x1000, CRC(b6d1623d) SHA1(0aa15db0e1459a6cc7d2a5bc8e588fd514b71d85) )
 	ROM_LOAD16_BYTE( "natodef.o2",	0x2001, 0x1000, CRC(77cc9cfd) SHA1(1bbed3cb834b844fb2d9d48a3a142edaeb33ccc6) )
@@ -634,7 +621,7 @@ ROM_START( natodef )
 ROM_END
 
 ROM_START( natodefa )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code */
 	ROM_LOAD( "natodef.cp0",	0x0000, 0x1000, CRC(8397c787) SHA1(5957613f1ace7dc4612f28f6fba3a7374be905ac) )
 	ROM_LOAD( "natodef.cp2",	0x1000, 0x1000, CRC(8cfbf26f) SHA1(a15f0d5d82cd96b80ee91dc91858b660c5895f34) )
 	ROM_LOAD( "natodef.cp4",	0x2000, 0x1000, CRC(b4c90fb2) SHA1(3ff4691415433863bfe74d51b9f3aa428f3bf88f) )
@@ -645,12 +632,12 @@ ROM_START( natodefa )
 	ROM_LOAD( "natodef.cpe",	0x7000, 0x1000, CRC(4eef6bf4) SHA1(ab094198ea4d2267194ace5d382abb78d568983a) )
 	ROM_LOAD( "natodef.cp5",	0xa000, 0x1000, CRC(65c3601b) SHA1(c7bf31e6cb781405b3665b3aa93644ed57616256) )	/* diagnostics ROM */
 
-	ROM_REGION( 0x400, REGION_CPU2, 0 ) /* coprocessor */
+	ROM_REGION( 0x400, "cpu1", 0 ) /* coprocessor */
 	ROM_LOAD( "b8",			0x000, 0x0200, CRC(fe865b2a) SHA1(b29144b05cb2846ea9c868ebf843d74d94c7bcc6) )
 	ROM_LOAD( "c8", 		0x200, 0x0200, CRC(7ed5c923) SHA1(35757d50bfa9ea3cf916576a148064a0f9be8732) )
 	/* C8 is mapped (banked) in CPU1's address space; it contains Z80 code */
 
-	ROM_REGION( 0x6000, REGION_GFX1, 0 ) /* image ROMs for coprocessor */
+	ROM_REGION( 0x6000, "gfx1", 0 ) /* image ROMs for coprocessor */
 	ROM_LOAD16_BYTE( "natodef.o4",	0x0001, 0x1000, CRC(39a868f8) SHA1(870795f18cd8f831b714b809a380e30b5d323a5f) )
 	ROM_LOAD16_BYTE( "natodef.e1",	0x0000, 0x1000, CRC(b6d1623d) SHA1(0aa15db0e1459a6cc7d2a5bc8e588fd514b71d85) )
 	ROM_LOAD16_BYTE( "natodef.o3",	0x2001, 0x1000, CRC(b217909a) SHA1(a26eb5bf2c92d79a75376deb6278710426b34cc5) ) /* same ROMs as natodef, */
@@ -662,8 +649,8 @@ ROM_END
 
 static DRIVER_INIT( thief )
 {
-	UINT8 *dest = memory_region( machine, REGION_CPU1 );
-	const UINT8 *source = memory_region( machine, REGION_CPU2 );
+	UINT8 *dest = memory_region( machine, "main" );
+	const UINT8 *source = memory_region( machine, "cpu1" );
 
 	/* C8 is mapped (banked) in CPU1's address space; it contains Z80 code */
 	memcpy( &dest[0xe010], &source[0x290], 0x20 );

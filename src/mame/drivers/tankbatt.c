@@ -80,24 +80,24 @@ static READ8_HANDLER( tankbatt_in0_r )
 {
 	int val;
 
-	val = input_port_read_indexed(machine, 0);
-	return ((val << (7-offset)) & 0x80);
+	val = input_port_read(machine, "P1");
+	return ((val << (7 - offset)) & 0x80);
 }
 
 static READ8_HANDLER( tankbatt_in1_r )
 {
 	int val;
 
-	val = input_port_read_indexed(machine, 1);
-	return ((val << (7-offset)) & 0x80);
+	val = input_port_read(machine, "P2");
+	return ((val << (7 - offset)) & 0x80);
 }
 
 static READ8_HANDLER( tankbatt_dsw_r )
 {
 	int val;
 
-	val = input_port_read_indexed(machine, 2);
-	return ((val << (7-offset)) & 0x80);
+	val = input_port_read(machine, "DSW");
+	return ((val << (7 - offset)) & 0x80);
 }
 
 static WRITE8_HANDLER( tankbatt_interrupt_enable_w )
@@ -173,53 +173,53 @@ ADDRESS_MAP_END
 
 static INTERRUPT_GEN( tankbatt_interrupt )
 {
-	if ((input_port_read_indexed(machine, 0) & 0x60) == 0) cpunum_set_input_line(machine, 0,0,HOLD_LINE);
+	if ((input_port_read(machine, "P1") & 0x60) == 0) cpunum_set_input_line(machine, 0,0,HOLD_LINE);
 	else if (tankbatt_nmi_enable) cpunum_set_input_line(machine, 0,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 static INPUT_PORTS_START( tankbatt )
-	PORT_START	/* IN0 */
-	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
-	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
-	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
-	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
-	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
+	PORT_START("P1")	/* IN0 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x60, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
-	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_TILT )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_TILT )
 
-	PORT_START	/* IN1 */
-	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
-	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
-	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
-	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
-	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_START("P2")	/* IN1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* DSW */
+	PORT_START("DSW")	/* DSW */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( Upright ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )
  	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x06, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
+	PORT_DIPSETTING(	0x04, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(	0x06, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Free_Play ) )
 	PORT_DIPNAME( 0x18, 0x08, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x00, "10000" )
-	PORT_DIPSETTING(    0x10, "15000" )
-	PORT_DIPSETTING(    0x08, "20000" )
-	PORT_DIPSETTING(    0x18, DEF_STR( None ) )
+	PORT_DIPSETTING(	0x00, "10000" )
+	PORT_DIPSETTING(	0x10, "15000" )
+	PORT_DIPSETTING(	0x08, "20000" )
+	PORT_DIPSETTING(	0x18, DEF_STR( None ) )
 	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x20, "2" )
-	PORT_DIPSETTING(    0x00, "3" )
+	PORT_DIPSETTING(	0x20, "2" )
+	PORT_DIPSETTING(	0x00, "3" )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
 
@@ -248,8 +248,8 @@ static const gfx_layout bulletlayout =
 
 
 static GFXDECODE_START( tankbatt )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0, 256 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, bulletlayout, 0, 256 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,   0, 256 )
+	GFXDECODE_ENTRY( "gfx1", 0, bulletlayout, 0, 256 )
 GFXDECODE_END
 
 
@@ -264,7 +264,7 @@ static const char *const tankbatt_sample_names[] =
     0	/* end of array */
 };
 
-static const struct Samplesinterface samples_interface =
+static const samples_interface tankbatt_samples_interface =
 {
 	3,	/* 3 channels */
 	tankbatt_sample_names
@@ -275,7 +275,7 @@ static const struct Samplesinterface samples_interface =
 static MACHINE_DRIVER_START( tankbatt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, 1000000)	/* 1 MHz ???? */
+	MDRV_CPU_ADD("main", M6502, 1000000)	/* 1 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", tankbatt_interrupt)
 
@@ -297,8 +297,8 @@ static MACHINE_DRIVER_START( tankbatt )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(samples_interface)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
+	MDRV_SOUND_CONFIG(tankbatt_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
@@ -311,17 +311,17 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( tankbatt )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "tb1-1.1a",  0x6000, 0x0800, CRC(278a0b8c) SHA1(11ea8fe8401b3cd986616a30a759c0ac1a5ce73b) )
 	ROM_LOAD( "tb1-2.1b",  0x6800, 0x0800, CRC(e0923370) SHA1(8d3dbea877bed9f9c267d8002dc180f6eb1e5a8f) )
 	ROM_LOAD( "tb1-3.1c",  0x7000, 0x0800, CRC(85005ea4) SHA1(91583081803a5ef600fb90bee34be9edd87f157e) )
 	ROM_LOAD( "tb1-4.1d",  0x7800, 0x0800, CRC(3dfb5bcf) SHA1(aa24bf74f4d5dc81baf3843196c837e0b731077b) )
 	ROM_RELOAD(            0xf800, 0x0800 )	/* for the reset and interrupt vectors */
 
-	ROM_REGION( 0x0800, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0800, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "tb1-5.2k",  0x0000, 0x0800, CRC(aabd4fb1) SHA1(5cff659b531d0f1b6faa503f7c06045c3a209a84) )
 
-	ROM_REGION( 0x0100, REGION_PROMS, 0 )
+	ROM_REGION( 0x0100, "proms", 0 )
 	ROM_LOAD( "bct1-1.l3", 0x0000, 0x0100, CRC(d17518bc) SHA1(f3b0deffa586808bc59e9a24ec1699c54ebe84cc) ) /* prom is a Fujitsu MB7052 or equivalent */
 ROM_END
 

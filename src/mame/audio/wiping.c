@@ -162,7 +162,7 @@ static void wiping_update_mono(void *param, stream_sample_t **inputs, stream_sam
 
 
 
-void *wiping_sh_start(int clock, const struct CustomSound_interface *config)
+void *wiping_sh_start(int clock, const custom_sound_interface *config)
 {
 	sound_channel *voice;
 
@@ -181,8 +181,8 @@ void *wiping_sh_start(int clock, const struct CustomSound_interface *config)
 	num_voices = 8;
 	last_channel = channel_list + num_voices;
 
-	sound_rom = memory_region(Machine, REGION_SOUND1);
-	sound_prom = memory_region(Machine, REGION_SOUND2);
+	sound_rom = memory_region(Machine, "samples");
+	sound_prom = memory_region(Machine, "soundproms");
 
 	/* start with sound enabled, many games don't have a sound enable register */
 	sound_enable = 1;

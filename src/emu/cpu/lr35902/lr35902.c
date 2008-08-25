@@ -75,7 +75,7 @@ typedef struct {
 	int doHALTbug;
 	int haltIFstatus;
 	UINT8	features;
-	const LR35902_CONFIG *config;
+	const lr35902_cpu_core *config;
 } lr35902_16BitRegs;
 
 #ifdef LSB_FIRST
@@ -179,7 +179,7 @@ static const int CyclesCB[256] =
 
 static void lr35902_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	Regs.w.config = (const LR35902_CONFIG *) config;
+	Regs.w.config = (const lr35902_cpu_core *) config;
 	Regs.w.irq_callback = irqcallback;
 }
 
@@ -379,10 +379,12 @@ static void lr35902_set_irq_line (int irqline, int state)
      }
 }
 
-/*static void lr35902_clear_pending_interrupts (void)
+#ifdef UNUSED_FUNCTION
+static void lr35902_clear_pending_interrupts (void)
 {
     Regs.w.IF = 0;
-}*/
+}
+#endif
 
 static void lr35902_set_info(UINT32 state, cpuinfo *info)
 {

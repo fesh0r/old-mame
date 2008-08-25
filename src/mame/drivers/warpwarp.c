@@ -144,12 +144,13 @@ static int handle_joystick;
 static READ8_HANDLER( geebee_in_r )
 {
 	int res;
+	static const char *portnames[] = { "SW0", "SW1", "DSW2", "PLACEHOLDER" };	// "IN1" & "IN2" are read separately when offset==3
 
 	offset &= 3;
-	res = input_port_read_indexed(machine, offset);
+	res = input_port_read_safe(machine, portnames[offset], 0);
 	if (offset == 3)
 	{
-		res = input_port_read_indexed(machine, 3 + (flip_screen_get() & 1));	// read player 2 input in cocktail mode
+		res = input_port_read(machine, (flip_screen_get() & 1) ? "IN2" : "IN1");	// read player 2 input in cocktail mode
 		if (handle_joystick)
 		{
 			/* map digital two-way joystick to two fixed VOLIN values */
@@ -217,13 +218,13 @@ static WRITE8_HANDLER( geebee_out7_w )
 /* Read Switch Inputs */
 static READ8_HANDLER( warpwarp_sw_r )
 {
-	return (input_port_read_indexed(machine, 0) >> (offset & 7)) & 1;
+	return (input_port_read(machine, "IN0") >> (offset & 7)) & 1;
 }
 
 /* Read Dipswitches */
 static READ8_HANDLER( warpwarp_dsw1_r )
 {
-	return (input_port_read_indexed(machine, 1) >> (offset & 7)) & 1;
+	return (input_port_read(machine, "DSW1") >> (offset & 7)) & 1;
 }
 
 /* Read mux Controller Inputs */
@@ -231,7 +232,7 @@ static READ8_HANDLER( warpwarp_vol_r )
 {
 	int res;
 
-	res = input_port_read_indexed(machine, 2 + (flip_screen_get() & 1));
+	res = input_port_read(machine, (flip_screen_get() & 1) ? "VOLIN2" : "VOLIN1");
 	if (handle_joystick)
 	{
 		if (res & 1) return 0x0f;
@@ -302,7 +303,7 @@ static ADDRESS_MAP_START( geebee_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x23ff) AM_RAM_WRITE(geebee_videoram_w) AM_BASE(&geebee_videoram)
 	AM_RANGE(0x2400, 0x27ff) AM_WRITE(geebee_videoram_w) /* mirror used by kaiteik due to a bug */
-	AM_RANGE(0x3000, 0x37ff) AM_ROM			/* 3000-33ff in GeeBee */
+	AM_RANGE(0x3000, 0x37ff) AM_ROM	AM_REGION("gfx1", 0)		/* 3000-33ff in GeeBee */
     AM_RANGE(0x4000, 0x40ff) AM_RAM
 	AM_RANGE(0x5000, 0x53ff) AM_READ(geebee_in_r)
 	AM_RANGE(0x6000, 0x6fff) AM_WRITE(geebee_out6_w)
@@ -320,7 +321,7 @@ static ADDRESS_MAP_START( bombbee_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x23ff) AM_RAM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM_WRITE(warpwarp_videoram_w) AM_BASE(&warpwarp_videoram)
-	AM_RANGE(0x4800, 0x4fff) AM_ROM
+	AM_RANGE(0x4800, 0x4fff) AM_ROM AM_REGION("gfx1", 0)
 	AM_RANGE(0x6000, 0x600f) AM_READWRITE(warpwarp_sw_r, warpwarp_out0_w)
 	AM_RANGE(0x6010, 0x601f) AM_READWRITE(warpwarp_vol_r, warpwarp_music1_w)
 	AM_RANGE(0x6020, 0x602f) AM_READWRITE(warpwarp_dsw1_r, warpwarp_music2_w)
@@ -331,7 +332,7 @@ static ADDRESS_MAP_START( warpwarp_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x8000, 0x83ff) AM_RAM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM_WRITE(warpwarp_videoram_w) AM_BASE(&warpwarp_videoram)
-	AM_RANGE(0x4800, 0x4fff) AM_ROM
+	AM_RANGE(0x4800, 0x4fff) AM_ROM AM_REGION("gfx1", 0)
 	AM_RANGE(0xc000, 0xc00f) AM_READWRITE(warpwarp_sw_r, warpwarp_out0_w)
 	AM_RANGE(0xc010, 0xc01f) AM_READWRITE(warpwarp_vol_r, warpwarp_music1_w)
 	AM_RANGE(0xc020, 0xc02f) AM_READWRITE(warpwarp_dsw1_r, warpwarp_music2_w)
@@ -340,7 +341,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( geebee )
-	PORT_START_TAG("SW0")
+	PORT_START("SW0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1   )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2   )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1  )
@@ -349,10 +350,10 @@ static INPUT_PORTS_START( geebee )
 	PORT_SERVICE( 0x20, IP_ACTIVE_LOW )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("SW1")
+	PORT_START("SW1")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail) )
@@ -372,15 +373,15 @@ static INPUT_PORTS_START( geebee )
 	PORT_DIPSETTING(    0x0c, DEF_STR( Free_Play ) )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("VOLIN")
+	PORT_START("IN1")
 	PORT_BIT( 0xff, 0x58, IPT_PADDLE ) PORT_MINMAX(0x10,0xa0) PORT_SENSITIVITY(30) PORT_KEYDELTA(15) PORT_CENTERDELTA(0) PORT_REVERSE
 
-	PORT_START_TAG("VOLINC") //Cocktail
+	PORT_START("IN2")	/* Cocktail */
 	PORT_BIT( 0xff, 0x58, IPT_PADDLE ) PORT_MINMAX(0x10,0xa0) PORT_SENSITIVITY(30) PORT_KEYDELTA(15) PORT_CENTERDELTA(0) PORT_REVERSE PORT_COCKTAIL
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( navarone )
-	PORT_START_TAG("SW0")
+	PORT_START("SW0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1   )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1  )
@@ -389,10 +390,10 @@ static INPUT_PORTS_START( navarone )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("SW1")
+	PORT_START("SW1")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail) )
@@ -412,17 +413,17 @@ static INPUT_PORTS_START( navarone )
 	PORT_DIPSETTING(	0x00, DEF_STR( Free_Play ) )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("FAKE1")	/* Fake input port to support digital joystick */
+	PORT_START("IN1")	/* Fake input port to support digital joystick */
 	PORT_BIT( 0x01, 0x00, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x02, 0x00, IPT_JOYSTICK_LEFT )
 
-	PORT_START_TAG("FAKE2")	/* Fake input port to support digital joystick */
+	PORT_START("IN2")	/* Fake input port to support digital joystick */
 	PORT_BIT( 0x01, 0x00, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x02, 0x00, IPT_JOYSTICK_LEFT ) PORT_COCKTAIL
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( kaitei )
-	PORT_START_TAG("SW0")
+	PORT_START("SW0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,	IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,	IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,	IPT_START1 )
@@ -431,10 +432,10 @@ static INPUT_PORTS_START( kaitei )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW,	IPT_SERVICE1 )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW,	IPT_UNUSED )
 
-	PORT_START_TAG("SW1")
+	PORT_START("SW1")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW,	IPT_UNUSED )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ) )
 	PORT_DIPSETTING(	0x00, "2" )
 	PORT_DIPSETTING(	0x01, "3" )
@@ -452,23 +453,23 @@ static INPUT_PORTS_START( kaitei )
 	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW,	IPT_UNUSED )
 
-	PORT_START_TAG("FAKE1")	/* Fake input port to support digital joystick */
+	PORT_START("IN1")	/* Fake input port to support digital joystick */
 	PORT_BIT( 0x01, 0x00, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x02, 0x00, IPT_JOYSTICK_LEFT )
 
-	PORT_START_TAG("FAKE")	/* Fake input port to support digital joystick */
+	PORT_START("IN2")	/* Fake input port to support digital joystick */
 	PORT_BIT( 0x01, 0x00, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x02, 0x00, IPT_JOYSTICK_LEFT ) PORT_COCKTAIL
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( kaiteik )
-	PORT_START_TAG("SW0")
+	PORT_START("SW0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,	IPT_COIN1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,	IPT_START1 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW,	IPT_START2 )
 	PORT_BIT( 0xf2, 0xa0, IPT_UNKNOWN )	// game verifies these bits and freezes if they don't match
 
-	PORT_START_TAG("SW1")
+	PORT_START("SW1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,	IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,	IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,	IPT_BUTTON1 )
@@ -477,7 +478,7 @@ static INPUT_PORTS_START( kaiteik )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW,	IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0xc0, 0x80, IPT_UNKNOWN )	// game verifies these two bits and freezes if they don't match
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Upright ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )
@@ -496,17 +497,17 @@ static INPUT_PORTS_START( kaiteik )
 	PORT_DIPSETTING(	0x20, DEF_STR( On ) )
 	PORT_BIT( 0xc0, 0x80, IPT_UNKNOWN )	// game verifies these two bits and freezes if they don't match
 
-	PORT_START_TAG("VOLIN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x3f, 0x00, IPT_UNKNOWN )
 	PORT_BIT( 0xc0, 0x80, IPT_UNKNOWN )	// game verifies these two bits and freezes if they don't match
 
-	PORT_START_TAG("VOLIN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x3f, 0x00, IPT_UNKNOWN )
 	PORT_BIT( 0xc0, 0x80, IPT_UNKNOWN )	// game verifies these two bits and freezes if they don't match
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( sos )
-	PORT_START_TAG("SW0")
+	PORT_START("SW0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1   )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1  )
@@ -515,10 +516,10 @@ static INPUT_PORTS_START( sos )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE1   )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("SW1")
+	PORT_START("SW1")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail) )
@@ -537,17 +538,17 @@ static INPUT_PORTS_START( sos )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("FAKE1")	/* Fake input port to support digital joystick */
+	PORT_START("IN1")	/* Fake input port to support digital joystick */
 	PORT_BIT( 0x01, 0x00, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x02, 0x00, IPT_JOYSTICK_LEFT )
 
-	PORT_START_TAG("FAKE2")	/* Fake input port to support digital joystick */
+	PORT_START("IN2")	/* Fake input port to support digital joystick */
 	PORT_BIT( 0x01, 0x00, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x02, 0x00, IPT_JOYSTICK_LEFT ) PORT_COCKTAIL
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( bombbee )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -559,7 +560,7 @@ static INPUT_PORTS_START( bombbee )
 	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(	0x02, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(	0x03, DEF_STR( 1C_1C ) )
@@ -583,40 +584,17 @@ static INPUT_PORTS_START( bombbee )
 	PORT_DIPSETTING(	0xc0, "150000" )
 	PORT_DIPSETTING(	0xe0, DEF_STR( None ) )
 
-	PORT_START_TAG("VOLIN1")	/* Mux input - player 1 controller - handled by warpwarp_vol_r */
+	PORT_START("VOLIN1")	/* Mux input - player 1 controller - handled by warpwarp_vol_r */
 	PORT_BIT( 0xff, 0x60, IPT_PADDLE ) PORT_MINMAX(0x14,0xac) PORT_SENSITIVITY(30) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_REVERSE
 
-	PORT_START_TAG("VOLIN2")	/* Mux input - player 2 controller - handled by warpwarp_vol_r */
+	PORT_START("VOLIN2")	/* Mux input - player 2 controller - handled by warpwarp_vol_r */
 	PORT_BIT( 0xff, 0x60, IPT_PADDLE ) PORT_MINMAX(0x14,0xac) PORT_SENSITIVITY(30) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_REVERSE PORT_COCKTAIL
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( cutieq )
-	PORT_START_TAG("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_SERVICE( 0x20, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Upright ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_INCLUDE( bombbee )
 
-	PORT_START_TAG("DSW1")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(	0x03, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Lives ) )
-	PORT_DIPSETTING(	0x00, "3" )
-	PORT_DIPSETTING(	0x04, "4" )
-//  PORT_DIPSETTING(    0x08, "4" )             // duplicated setting
-	PORT_DIPSETTING(	0x0c, "5" )
-	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Unused ) )
-	PORT_DIPSETTING(	0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_MODIFY("DSW1")
 	PORT_DIPNAME( 0xe0, 0x00, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(	0x00, "50000" )
 	PORT_DIPSETTING(	0x20, "60000" )
@@ -626,16 +604,10 @@ static INPUT_PORTS_START( cutieq )
 	PORT_DIPSETTING(	0xa0, "150000" )
 	PORT_DIPSETTING(	0xc0, "200000" )
 	PORT_DIPSETTING(	0xe0, DEF_STR( None ) )
-
-	PORT_START_TAG("VOLIN1")	/* Mux input - player 1 controller - handled by warpwarp_vol_r */
-	PORT_BIT( 0xff, 0x60, IPT_PADDLE ) PORT_MINMAX(0x14,0xac) PORT_SENSITIVITY(30) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_REVERSE
-
-	PORT_START_TAG("VOLIN2")	/* Mux input - player 2 controller - handled by warpwarp_vol_r */
-	PORT_BIT( 0xff, 0x60, IPT_PADDLE ) PORT_MINMAX(0x14,0xac) PORT_SENSITIVITY(30) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_REVERSE PORT_COCKTAIL
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( warpwarp )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -647,7 +619,7 @@ static INPUT_PORTS_START( warpwarp )
 	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(	0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( 1C_1C ) )
@@ -679,13 +651,13 @@ static INPUT_PORTS_START( warpwarp )
 	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("VOLIN1")	/* FAKE - input port to simulate an analog stick - handled by warpwarp_vol_r */
+	PORT_START("VOLIN1")	/* FAKE - input port to simulate an analog stick - handled by warpwarp_vol_r */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 
-	PORT_START_TAG("VOLIN2")	/* FAKE - input port to simulate an analog stick - handled by warpwarp_vol_r */
+	PORT_START("VOLIN2")	/* FAKE - input port to simulate an analog stick - handled by warpwarp_vol_r */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
@@ -694,79 +666,20 @@ INPUT_PORTS_END
 
 /* has High Score Initials dip switch instead of rack test */
 static INPUT_PORTS_START( warpwarr )
-	PORT_START_TAG("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_SERVICE( 0x20, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Upright ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Cocktail ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_INCLUDE( warpwarp )
 
-	PORT_START_TAG("DSW1")
-	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(	0x03, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(	0x02, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x0c, 0x04, DEF_STR( Lives ) )
-	PORT_DIPSETTING(	0x00, "2" )
-	PORT_DIPSETTING(	0x04, "3" )
-	PORT_DIPSETTING(	0x08, "4" )
-	PORT_DIPSETTING(	0x0c, "5" )
-	/* Bonus Lives when "Lives" Dip Switch is set to "2", "3" or "4" */
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(	0x00, "8000 30000" )
-	PORT_DIPSETTING(	0x10, "10000 40000" )
-	PORT_DIPSETTING(	0x20, "15000 60000" )
-	PORT_DIPSETTING(	0x30, DEF_STR( None ) )
-	/* Bonus Lives when "Lives" Dip Switch is set to "5"
-    PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x00, "30000" )
-    PORT_DIPSETTING(    0x10, "40000" )
-    PORT_DIPSETTING(    0x20, "60000" )
-    PORT_DIPSETTING(    0x30, DEF_STR( None ) )
-    */
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_MODIFY("DSW1")
 	PORT_DIPNAME( 0x80, 0x00, "High Score Initials" )
 	PORT_DIPSETTING(	0x80, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( Yes ) )
-
-	PORT_START_TAG("VOLIN1")	/* FAKE - input port to simulate an analog stick - handled by warpwarp_vol_r */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_4WAY
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_4WAY
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY
-
-	PORT_START_TAG("VOLIN2")	/* FAKE - input port to simulate an analog stick - handled by warpwarp_vol_r */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
 INPUT_PORTS_END
 
 
 
-static const gfx_layout charlayout_1k =
+static const gfx_layout charlayout =
 {
 	8,8,
-	128,
-	1,
-	{ 0 },
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8
-};
-
-static const gfx_layout charlayout_2k =
-{
-	8,8,
-	256,
+	RGN_FRAC(1,1),
 	1,
 	{ 0 },
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
@@ -775,24 +688,24 @@ static const gfx_layout charlayout_2k =
 };
 
 static GFXDECODE_START( 1k )
-	GFXDECODE_ENTRY( REGION_CPU1, 0x3000, charlayout_1k, 0, 4 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, charlayout, 0, 4 )
 GFXDECODE_END
 
 static GFXDECODE_START( 2k )
-	GFXDECODE_ENTRY( REGION_CPU1, 0x3000, charlayout_2k, 0, 2 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, charlayout, 0, 2 )
 GFXDECODE_END
 
 static GFXDECODE_START( color )
-	GFXDECODE_ENTRY( REGION_CPU1, 0x4800, charlayout_2k, 0, 256 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, charlayout, 0, 256 )
 GFXDECODE_END
 
 
-static const struct CustomSound_interface geebee_custom_interface =
+static const custom_sound_interface geebee_custom_interface =
 {
 	geebee_sh_start
 };
 
-static const struct CustomSound_interface warpwarp_custom_interface =
+static const custom_sound_interface warpwarp_custom_interface =
 {
 	warpwarp_sh_start
 };
@@ -802,7 +715,7 @@ static const struct CustomSound_interface warpwarp_custom_interface =
 static MACHINE_DRIVER_START( geebee )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", 8080,XTAL_18_432MHz/9) /* verified on pcb */
+	MDRV_CPU_ADD("main", 8080,XTAL_18_432MHz/9) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(geebee_map,0)
 	MDRV_CPU_IO_MAP(geebee_port_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_pulse)
@@ -825,7 +738,7 @@ static MACHINE_DRIVER_START( geebee )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("geebee", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(geebee_custom_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -846,7 +759,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( bombbee )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", 8080,18432000/9) 		/* 18.432 MHz / 9 */
+	MDRV_CPU_ADD("main", 8080,18432000/9) 		/* 18.432 MHz / 9 */
 	MDRV_CPU_PROGRAM_MAP(bombbee_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
@@ -868,7 +781,7 @@ static MACHINE_DRIVER_START( bombbee )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("warpwarp", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(warpwarp_custom_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -889,96 +802,120 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( geebee )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "geebee.1k",    0x0000, 0x1000, CRC(8a5577e0) SHA1(356d33e19c6b4f519816ee4b65ff9b59d6c1b565) )
-	ROM_LOAD( "geebee.3a",    0x3000, 0x0400, CRC(f257b21b) SHA1(c788fd923438f1bffbff9ff3cd4c5c8b547c0c14) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "geebee.3a",    0x0000, 0x0400, CRC(f257b21b) SHA1(c788fd923438f1bffbff9ff3cd4c5c8b547c0c14) )
 ROM_END
 
 ROM_START( geebeeb )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "1.1m",    0x0000, 0x0400, CRC(23252fc7) SHA1(433f0f435ff741a789942194356aaec53192608a) )
 	ROM_LOAD( "2.1p",    0x0400, 0x0400, CRC(0bc4d4ca) SHA1(46028ce1dbf46e49b921cfabec78cded914af358) )
 	ROM_LOAD( "3.1s",    0x0800, 0x0400, CRC(7899b4c1) SHA1(70f609f9873f1a4d9c8a90361c7519bdd24ad9ea) )
 	ROM_LOAD( "4.1t",    0x0c00, 0x0400, CRC(0b6e6fcb) SHA1(e7c3e8a13e3d2be6cfb6675fb57cc4a2fda6bec2) )
-	ROM_LOAD( "geebee.3a",    0x3000, 0x0400, CRC(f257b21b) SHA1(c788fd923438f1bffbff9ff3cd4c5c8b547c0c14) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "geebee.3a",    0x0000, 0x0400, CRC(f257b21b) SHA1(c788fd923438f1bffbff9ff3cd4c5c8b547c0c14) )
 ROM_END
 
 ROM_START( geebeeg )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "geebee.1k",    0x0000, 0x1000, CRC(8a5577e0) SHA1(356d33e19c6b4f519816ee4b65ff9b59d6c1b565) )
-	ROM_LOAD( "geebeeg.3a",   0x3000, 0x0400, CRC(a45932ba) SHA1(48f70742c42a9377f31fac3a1e43123751e57656) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "geebee.3a",    0x0000, 0x0400, CRC(f257b21b) SHA1(c788fd923438f1bffbff9ff3cd4c5c8b547c0c14) )
 ROM_END
 
 ROM_START( navarone )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "navalone.p1",  0x0000, 0x0800, CRC(5a32016b) SHA1(d856d069eba470a81341de0bf47eca2a629a69a6) )
 	ROM_LOAD( "navalone.p2",  0x0800, 0x0800, CRC(b1c86fe3) SHA1(0293b742806c1517cb126443701115a3427fc60a) )
-	ROM_LOAD( "navalone.chr", 0x3000, 0x0800, CRC(b26c6170) SHA1(ae0aec2b60e1fd3b212e311afb1c588b2b286433) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "navalone.chr", 0x0000, 0x0800, CRC(b26c6170) SHA1(ae0aec2b60e1fd3b212e311afb1c588b2b286433) )
 ROM_END
 
 ROM_START( kaitei )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "kaitein.p1",   0x0000, 0x0800, CRC(d88e10ae) SHA1(76d6cd46b6e59e528e7a8fff9965375a1446a91d) )
 	ROM_LOAD( "kaitein.p2",   0x0800, 0x0800, CRC(aa9b5763) SHA1(64a6c8f25b0510841dcce0b57505731aa0deeda7) )
-	ROM_LOAD( "kaitein.chr",  0x3000, 0x0800, CRC(3125af4d) SHA1(9e6b161636665ee48d6bde2d5fc412fde382c687) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "kaitein.chr",  0x0000, 0x0800, CRC(3125af4d) SHA1(9e6b161636665ee48d6bde2d5fc412fde382c687) )
 ROM_END
 
 ROM_START( kaiteik )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "kaitei_7.1k",  0x0000, 0x0800, CRC(32f70d48) SHA1(c5ae606df1d0e513daea909f5474309a176096c1) )
 	ROM_RELOAD(               0x0800, 0x0800 )
     ROM_LOAD( "kaitei_1.1m",  0x1000, 0x0400, CRC(9a7ab3b9) SHA1(94a82ba66e51c8203ec61c9320edbddbb6462d33) )
 	ROM_LOAD( "kaitei_2.1p",  0x1400, 0x0400, CRC(5eeb0fff) SHA1(91cb84a9af8e4df4e6c896e7655199328b7da30b) )
 	ROM_LOAD( "kaitei_3.1s",  0x1800, 0x0400, CRC(5dff4df7) SHA1(c179c93a559a0d18db3092c842634de02f3f03ea) )
 	ROM_LOAD( "kaitei_4.1t",  0x1c00, 0x0400, CRC(e5f303d6) SHA1(6dd57e0b17f51d101c6c5dbfeadb7418098cc440) )
-	ROM_LOAD( "kaitei_5.bin", 0x3000, 0x0400, CRC(60fdb795) SHA1(723e635eed9937a28bee0b7978413984651ee87f) )
-	ROM_LOAD( "kaitei_6.bin", 0x3400, 0x0400, CRC(21399ace) SHA1(0ad49be2c9bdab2f9dc41c7348d1d4b4b769e3c4) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "kaitei_5.bin", 0x0000, 0x0400, CRC(60fdb795) SHA1(723e635eed9937a28bee0b7978413984651ee87f) )
+	ROM_LOAD( "kaitei_6.bin", 0x0400, 0x0400, CRC(21399ace) SHA1(0ad49be2c9bdab2f9dc41c7348d1d4b4b769e3c4) )
 ROM_END
 
 ROM_START( sos )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "sos.p1",       0x0000, 0x0800, CRC(f70bdafb) SHA1(e71d552ccc9adad48225bdb4d62c31c5741a3e95) )
 	ROM_LOAD( "sos.p2",       0x0800, 0x0800, CRC(58e9c480) SHA1(0eeb5982183d0e9f9dbae04839b604a0c22b420e) )
-	ROM_LOAD( "sos.chr",      0x3000, 0x0800, CRC(66f983e4) SHA1(b3cf8bff4ac6b554d3fc06eeb8227b3b2a0dd554) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "sos.chr",      0x0000, 0x0800, CRC(66f983e4) SHA1(b3cf8bff4ac6b554d3fc06eeb8227b3b2a0dd554) )
 ROM_END
 
 ROM_START( bombbee )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "bombbee.1k",   0x0000, 0x2000, CRC(9f8cd7af) SHA1(0d6e1ee5519660d1498eb7a093872ed5034423f2) )
-	ROM_LOAD( "bombbee.4c",   0x4800, 0x0800, CRC(5f37d569) SHA1(d5e3fb4c5a1612a6e568c8970161b0290b88993f) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "bombbee.4c",   0x0000, 0x0800, CRC(5f37d569) SHA1(d5e3fb4c5a1612a6e568c8970161b0290b88993f) )
 ROM_END
 
 ROM_START( cutieq )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cutieq.1k",    0x0000, 0x2000, CRC(6486cdca) SHA1(914c36487fba2dd57c3fd1f011b2225d2baac2bf) )
-	ROM_LOAD( "cutieq.4c",    0x4800, 0x0800, CRC(0e1618c9) SHA1(456e9b3d6bae8b4af7778a38e4f40bb6736b0690) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "cutieq.4c",    0x0000, 0x0800, CRC(0e1618c9) SHA1(456e9b3d6bae8b4af7778a38e4f40bb6736b0690) )
 ROM_END
 
 ROM_START( warpwarp )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "g-n9601n.2r",  0x0000, 0x1000, CRC(f5262f38) SHA1(1c64d0282b0a209390a548ceeaaf8b7b55e50896) )
 	ROM_LOAD( "g-09602n.2m",  0x1000, 0x1000, CRC(de8355dd) SHA1(133d137711d79aaeb45cd3ee041c0be3b73e1b2f) )
 	ROM_LOAD( "g-09603n.1p",  0x2000, 0x1000, CRC(bdd1dec5) SHA1(bb3d9d1500e31bb271a394facaec7adc3c987e5e) )
 	ROM_LOAD( "g-09613n.1t",  0x3000, 0x0800, CRC(af3d77ef) SHA1(5b79aabbe14c2997e0b1a9276c483ae76814a63a) )
-	ROM_LOAD( "g-9611n.4c",   0x4800, 0x0800, CRC(380994c8) SHA1(0cdf6a05db52c423365bff9c9df6d93ac885794e) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "g-9611n.4c",   0x0000, 0x0800, CRC(380994c8) SHA1(0cdf6a05db52c423365bff9c9df6d93ac885794e) )
 ROM_END
 
 ROM_START( warpwarr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "g-09601.2r",   0x0000, 0x1000, CRC(916ffa35) SHA1(bca2087f8b78a128cdffc55db9814854b72daab5) )
 	ROM_LOAD( "g-09602.2m",   0x1000, 0x1000, CRC(398bb87b) SHA1(74373336288dc13d59e6f7e7c718aa51d857b087) )
 	ROM_LOAD( "g-09603.1p",   0x2000, 0x1000, CRC(6b962fc4) SHA1(0291d0c574a1048e52121ca57e01098bff04da40) )
 	ROM_LOAD( "g-09613.1t",   0x3000, 0x0800, CRC(60a67e76) SHA1(af65e7bf16a5e69fee05c0134e3b8d5bca142402) )
-	ROM_LOAD( "g-9611.4c",    0x4800, 0x0800, CRC(00e6a326) SHA1(67b7ab5b7b2c9a97d4d690d88561da48b86bc66e) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "g-9611.4c",    0x0000, 0x0800, CRC(00e6a326) SHA1(67b7ab5b7b2c9a97d4d690d88561da48b86bc66e) )
 ROM_END
 
 ROM_START( warpwar2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "g-09601.2r",   0x0000, 0x1000, CRC(916ffa35) SHA1(bca2087f8b78a128cdffc55db9814854b72daab5) )
 	ROM_LOAD( "g-09602.2m",   0x1000, 0x1000, CRC(398bb87b) SHA1(74373336288dc13d59e6f7e7c718aa51d857b087) )
 	ROM_LOAD( "g-09603.1p",   0x2000, 0x1000, CRC(6b962fc4) SHA1(0291d0c574a1048e52121ca57e01098bff04da40) )
 	ROM_LOAD( "g-09612.1t",   0x3000, 0x0800, CRC(b91e9e79) SHA1(378323d83c550b3acabc83dba946ab089b9195cb) )
-	ROM_LOAD( "g-9611.4c",    0x4800, 0x0800, CRC(00e6a326) SHA1(67b7ab5b7b2c9a97d4d690d88561da48b86bc66e) )
+
+	ROM_REGION( 0x800, "gfx1", 0 )
+	ROM_LOAD( "g-9611.4c",    0x0000, 0x0800, CRC(00e6a326) SHA1(67b7ab5b7b2c9a97d4d690d88561da48b86bc66e) )
 ROM_END
 
 

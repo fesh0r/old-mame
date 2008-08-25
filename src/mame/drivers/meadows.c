@@ -345,10 +345,10 @@ static PALETTE_INIT( meadows )
 
 static ADDRESS_MAP_START( meadows_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0bff) AM_ROM
-	AM_RANGE(0x0c00, 0x0c00) AM_READ(input_port_0_r)
-	AM_RANGE(0x0c01, 0x0c01) AM_READ(input_port_1_r)
+	AM_RANGE(0x0c00, 0x0c00) AM_READ_PORT("INPUTS")
+	AM_RANGE(0x0c01, 0x0c01) AM_READ_PORT("STICK")
 	AM_RANGE(0x0c02, 0x0c02) AM_READ(hsync_chain_r)
-	AM_RANGE(0x0c03, 0x0c03) AM_READ(input_port_2_r)
+	AM_RANGE(0x0c03, 0x0c03) AM_READ_PORT("DSW")
 	AM_RANGE(0x0c00, 0x0c03) AM_WRITE(meadows_audio_w)
 	AM_RANGE(0x0d00, 0x0d0f) AM_WRITE(meadows_spriteram_w) AM_BASE(&spriteram)
 	AM_RANGE(0x0e00, 0x0eff) AM_RAM
@@ -360,10 +360,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( minferno_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0bff) AM_ROM
 	AM_RANGE(0x1c00, 0x1eff) AM_RAM_WRITE(meadows_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x1f00, 0x1f00) AM_READ(input_port_0_r)
-	AM_RANGE(0x1f01, 0x1f01) AM_READ(input_port_1_r)
-	AM_RANGE(0x1f02, 0x1f02) AM_READ(input_port_2_r)
-	AM_RANGE(0x1f03, 0x1f03) AM_READ(input_port_3_r)
+	AM_RANGE(0x1f00, 0x1f00) AM_READ_PORT("JOY1")
+	AM_RANGE(0x1f01, 0x1f01) AM_READ_PORT("JOY2")
+	AM_RANGE(0x1f02, 0x1f02) AM_READ_PORT("BUTTONS")
+	AM_RANGE(0x1f03, 0x1f03) AM_READ_PORT("DSW1")
 	AM_RANGE(0x1f00, 0x1f03) AM_WRITE(meadows_audio_w)
 	AM_RANGE(0x1f04, 0x1f04) AM_READ(vsync_chain_hi_r)
 	AM_RANGE(0x1f05, 0x1f05) AM_READ(vsync_chain_lo_r)
@@ -371,7 +371,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( minferno_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(S2650_DATA_PORT, S2650_DATA_PORT) AM_READ(input_port_4_r)
+	AM_RANGE(S2650_DATA_PORT, S2650_DATA_PORT) AM_READ_PORT("DSW2")
 ADDRESS_MAP_END
 
 
@@ -398,7 +398,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( meadows )
-	PORT_START		/* IN0 buttons */
+	PORT_START("INPUTS")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START1  )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -408,10 +408,10 @@ static INPUT_PORTS_START( meadows )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START		/* IN1 control 1 */
+	PORT_START("STICK")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(100) PORT_KEYDELTA(10)
 
-	PORT_START		/* IN2 dip switch */
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x07, 0x01, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "2" )
 	PORT_DIPSETTING(    0x01, "3" )
@@ -435,32 +435,32 @@ static INPUT_PORTS_START( meadows )
 	PORT_DIPSETTING(    0xc0, "35000")
 	PORT_DIPSETTING(    0x00, DEF_STR( None ))
 
-	PORT_START		/* FAKE coinage */
+	PORT_START("FAKE")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 	PORT_BIT( 0x8e, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( minferno )
-	PORT_START		/* IN0 left joystick */
+	PORT_START("JOY1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 
-	PORT_START		/* IN1 right joystick */
+	PORT_START("JOY2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 
-	PORT_START		/* IN2 buttons */
+	PORT_START("BUTTONS")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START		/* IN3 coinage */
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, "Coin Option" )
 	PORT_DIPSETTING(    0x00, "1 Game/Coin" )
 	PORT_DIPSETTING(    0x01, "1 Player/Coin" )
@@ -470,7 +470,7 @@ static INPUT_PORTS_START( minferno )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START		/* IN4 dip switch */
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Game_Time ) )
 	PORT_DIPSETTING(    0x00, "60s" )
 	PORT_DIPSETTING(    0x01, "90s" )
@@ -529,16 +529,16 @@ static const gfx_layout spritelayout =
 
 
 static GFXDECODE_START( meadows )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,	 0, 1 )		/* character generator */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 0, 1 )		/* sprite prom 1 */
-	GFXDECODE_ENTRY( REGION_GFX3, 0, spritelayout, 0, 1 )		/* sprite prom 2 */
-	GFXDECODE_ENTRY( REGION_GFX4, 0, spritelayout, 0, 1 )		/* sprite prom 3 (unused) */
-	GFXDECODE_ENTRY( REGION_GFX5, 0, spritelayout, 0, 1 )		/* sprite prom 4 (unused) */
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,	 0, 1 )		/* character generator */
+	GFXDECODE_ENTRY( "gfx2", 0, spritelayout, 0, 1 )		/* sprite prom 1 */
+	GFXDECODE_ENTRY( "gfx3", 0, spritelayout, 0, 1 )		/* sprite prom 2 */
+	GFXDECODE_ENTRY( "gfx4", 0, spritelayout, 0, 1 )		/* sprite prom 3 (unused) */
+	GFXDECODE_ENTRY( "gfx5", 0, spritelayout, 0, 1 )		/* sprite prom 4 (unused) */
 GFXDECODE_END
 
 
 static GFXDECODE_START( minferno )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0, 4 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,   0, 4 )
 GFXDECODE_END
 
 
@@ -562,7 +562,7 @@ static const char *const bowl3d_sample_names[] =
 };
 
 
-static const struct Samplesinterface meadows_samples_interface =
+static const samples_interface meadows_samples_interface =
 {
 	2,
 	NULL,
@@ -570,7 +570,7 @@ static const struct Samplesinterface meadows_samples_interface =
 };
 
 
-static const struct Samplesinterface bowl3d_samples_interface =
+static const samples_interface bowl3d_samples_interface =
 {
  	1,
 	bowl3d_sample_names
@@ -587,12 +587,11 @@ static const struct Samplesinterface bowl3d_samples_interface =
 static MACHINE_DRIVER_START( meadows )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(S2650, 5000000/8) 	/* 5MHz / 8 = 625 kHz */
+	MDRV_CPU_ADD("main", S2650, 5000000/8) 	/* 5MHz / 8 = 625 kHz */
 	MDRV_CPU_PROGRAM_MAP(meadows_main_map,0)
 	MDRV_CPU_VBLANK_INT("main", meadows_interrupt) 	/* one interrupt per frame!? */
 
-	MDRV_CPU_ADD(S2650, 5000000/8)
-	/* audio CPU */ 	/* 5MHz / 8 = 625 kHz */
+	MDRV_CPU_ADD("audio", S2650, 5000000/8) 	/* 5MHz / 8 = 625 kHz */
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 	MDRV_CPU_PERIODIC_INT(audio_interrupt, (double)5000000/131072)
 
@@ -615,10 +614,10 @@ static MACHINE_DRIVER_START( meadows )
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(meadows_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -627,7 +626,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( minferno )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(S2650, 5000000/8/3) 	/* 5MHz / 8 = 625 kHz */
+	MDRV_CPU_ADD("main", S2650, 5000000/8/3) 	/* 5MHz / 8 = 625 kHz */
 	MDRV_CPU_PROGRAM_MAP(minferno_main_map,0)
 	MDRV_CPU_IO_MAP(minferno_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", minferno_interrupt)
@@ -655,7 +654,7 @@ static MACHINE_DRIVER_START( bowl3d )
 	MDRV_IMPORT_FROM(meadows)
 
  	/* audio hardware */
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples2", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(bowl3d_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -669,7 +668,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( deadeye )
-	ROM_REGION( 0x08000, REGION_CPU1, 0 )
+	ROM_REGION( 0x08000, "main", 0 )
 	ROM_LOAD( "de1.8h",       0x0000, 0x0400, CRC(bd09e4dc) SHA1(5428835f6bc3d162496fdce174fcaaaba98c09f9) )
 	ROM_LOAD( "de2.9h",       0x0400, 0x0400, CRC(b89edec3) SHA1(5ce0058f23b7e5c832029ca97d9a40d1494bf972) )
 	ROM_LOAD( "de3.10h",      0x0800, 0x0400, CRC(acf24438) SHA1(d7ea668ee19a167cb006c92e9606e20ef13d052e) )
@@ -677,27 +676,27 @@ ROM_START( deadeye )
 	ROM_LOAD( "de5.12h",      0x1400, 0x0400, CRC(7bdb535c) SHA1(7bd2e261a22f5f3ffc60ea12ca5f38c445ec0030) )
 	ROM_LOAD( "de6.13h",      0x1800, 0x0400, CRC(847f9467) SHA1(253d386b76be99a1deef9e6b4cd906efdd9cf6d9) )
 
-	ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "de_char.15e",  0x0000, 0x0400, CRC(b032bd8d) SHA1(130614d951c440a31c1262517cca0a133ddd1545) )
 
-	ROM_REGION( 0x0400, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "de_mov1.5a",   0x0000, 0x0400, CRC(c046b4c6) SHA1(3baa47a6c8962f6f66c08847b4ee4aa91580ad1a) )
 
-	ROM_REGION( 0x0400, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "de_mov2.13a",  0x0000, 0x0400, CRC(b89c5df9) SHA1(dd0eac9d646dd24575c7b61ce141fdc66994c188) )
 
-	ROM_REGION( 0x0400, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx4", ROMREGION_DISPOSE )
 	/* empty */
-	ROM_REGION( 0x0400, REGION_GFX5, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx5", ROMREGION_DISPOSE )
 	/* empty */
 
-	ROM_REGION( 0x08000, REGION_CPU2, 0 )
+	ROM_REGION( 0x08000, "audio", 0 )
 	ROM_LOAD( "de_snd",       0x0000, 0x0400, CRC(c10a1b1a) SHA1(779ea261d23360634081295a164cacbd819d8719) )
 ROM_END
 
 
 ROM_START( bowl3d )
-	ROM_REGION( 0x08000, REGION_CPU1, 0 )
+	ROM_REGION( 0x08000, "main", 0 )
 	ROM_LOAD( "b3d.h8",       0x0000, 0x0400, CRC(be38feeb) SHA1(feab3c61ce1e351c02f6ffa7f7f2ac90e62e7719) )
 	ROM_LOAD( "b3d.h9",       0x0400, 0x0400, CRC(4e8acead) SHA1(3c00f0d05b9cb80a2245bc68a45732ab6ac87b7f) )
 	ROM_LOAD( "b3d.h10",      0x0800, 0x0400, CRC(16677267) SHA1(0131f68e87d6326870f95c1ff364a97436b6c4d8) )
@@ -706,53 +705,53 @@ ROM_START( bowl3d )
 	// h13 empty
 
     /* Universal Game Logic according to schematics  */
-    ROM_REGION( 0x08000, REGION_CPU2, 0 ) 	/* 2650 CPU at j8 */
+    ROM_REGION( 0x08000, "audio", 0 ) 	/* 2650 CPU at j8 */
 	ROM_LOAD( "82s115.a6",    0x0000, 0x0001, NO_DUMP ) /* 82s115 eprom */
 	ROM_LOAD( "82s115.c6",    0x0000, 0x0001, NO_DUMP ) /* 82s115 eprom */
 
-	ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "b3d.e15",      0x0000, 0x0400, CRC(4414e24f) SHA1(835c989143895848df7154c2d82a499dea79c1c5) )
 
-	ROM_REGION( 0x0400, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "b3d.a5",       0x0000, 0x0400, CRC(4b657f8a) SHA1(52eb90ff5048db30e9710e96793bad5e2c7ad6db) )
 
-	ROM_REGION( 0x0400, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "b3d.a13",      0x0000, 0x0400, CRC(ca7f33b9) SHA1(6c63a41be57e71d6a58112be13d77e695a0faa10) )
 
-	ROM_REGION( 0x0400, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx4", ROMREGION_DISPOSE )
 	/* empty */
-	ROM_REGION( 0x0400, REGION_GFX5, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx5", ROMREGION_DISPOSE )
 	/* empty */
 
-	ROM_REGION( 0x0001, REGION_PROMS, 0 )
+	ROM_REGION( 0x0001, "proms", 0 )
 	ROM_LOAD( "82s123.r8",    0x0000, 0x0001, NO_DUMP ) /* 82s123 prom located on Universal Game Logic */
 ROM_END
 
 
 ROM_START( gypsyjug )
-	ROM_REGION( 0x08000, REGION_CPU1, 0 )
+	ROM_REGION( 0x08000, "main", 0 )
 	ROM_LOAD( "gj.1b",        0x0000, 0x0400, CRC(f6a71d9f) SHA1(11a86ae781297e4077a69e6809487022fed9c444) )
 	ROM_LOAD( "gj.2b",        0x0400, 0x0400, CRC(94c14455) SHA1(ed704680c2b83d1726d1a17d64f5d57925a495b2) )
 	ROM_LOAD( "gj.3b",        0x0800, 0x0400, CRC(87ee0490) SHA1(7ecca4df9755b604d179d407e7c9c04d616b689b) )
 	ROM_LOAD( "gj.4b",        0x1000, 0x0400, CRC(dca519c8) SHA1(7651aa8b2a8e53113eb08108a5b8fb20518ae185) )
 	ROM_LOAD( "gj.5b",        0x1400, 0x0400, CRC(7d83f9d0) SHA1(9aa8b281b5de7d913cf364a1159f2762fc69022d) )
 
-	ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "gj.e15",       0x0000, 0x0400, CRC(adb25e13) SHA1(67b5a24a724310f3817a891a54d239d60fe80760) )
 
-	ROM_REGION( 0x0400, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "gj.a",         0x0000, 0x0400, CRC(d3725193) SHA1(5ea28c410a7b9532276fb98c7003b4c8f64d24c9) )
 
-	ROM_REGION( 0x0400, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx3", ROMREGION_DISPOSE )
 	/* empty (copied from 2) */
 
-	ROM_REGION( 0x0400, REGION_GFX4, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx4", ROMREGION_DISPOSE )
 	ROM_LOAD( "gj.x",         0x0000, 0x0400, NO_DUMP )		/* missing */
 
-	ROM_REGION( 0x0400, REGION_GFX5, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0400, "gfx5", ROMREGION_DISPOSE )
 	ROM_LOAD( "gj.y",         0x0000, 0x0400, NO_DUMP )		/* missing */
 
-	ROM_REGION( 0x08000, REGION_CPU2, 0 )
+	ROM_REGION( 0x08000, "audio", 0 )
 	ROM_LOAD( "gj.a4s",       0x0000, 0x0400, CRC(17a116bc) SHA1(797ba0b292afa3ba7eec985b533014acc00ed47d) )
 	ROM_LOAD( "gj.a5s",       0x0400, 0x0400, CRC(fc23ae09) SHA1(42be34a9ef8c4c8ef9f94c85ca031076f84faa96) )
 	ROM_LOAD( "gj.a6s",       0x0800, 0x0400, CRC(9e7bd71e) SHA1(e00801820c1a39cbfed124a29470da03cf8b40b4) )
@@ -760,7 +759,7 @@ ROM_END
 
 
 ROM_START( minferno )
-	ROM_REGION( 0x08000, REGION_CPU1, ROMREGION_INVERT )
+	ROM_REGION( 0x08000, "main", ROMREGION_INVERT )
 	ROM_LOAD_NIB_LOW ( "inferno.f5",	0x0000, 0x0400, CRC(58472a73) SHA1(7f8b9502c3db11219d6b765dec7b6ff3f62d6c8b) )
 	ROM_LOAD_NIB_HIGH( "inferno.e5",	0x0000, 0x0400, CRC(451942af) SHA1(0a03d74c1b98771d2170c76ca41e972300c34c3a) )
 	ROM_LOAD_NIB_LOW ( "inferno.f6",	0x0400, 0x0400, CRC(d85a195b) SHA1(8250f8e80a9bf196d7bf122af9aad0ae00dedd26) )
@@ -768,7 +767,7 @@ ROM_START( minferno )
 	ROM_LOAD_NIB_LOW ( "inferno.f7",	0x0800, 0x0400, CRC(73b4e9a3) SHA1(d9de88748a3009f3fc1f90c96bfc9732dc6a4a22) )
 	ROM_LOAD_NIB_HIGH( "inferno.e7",	0x0800, 0x0400, CRC(902d9b78) SHA1(3bebbba6c7d00bea2c687b965f59a9e55b430dfa) )
 
-	ROM_REGION( 0x00400, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x00400, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "inferno.b8",		0x0200, 0x0200, CRC(1b06466b) SHA1(aef13ab84526ee7493837eef7f48d9ede65b8e62) )
 ROM_END
 
@@ -791,12 +790,12 @@ static DRIVER_INIT( gypsyjug )
 		0x01,0x80, 0x03,0xc0, 0x03,0xc0, 0x01,0x80
 	};
 	int i;
-	UINT8 *gfx2 = memory_region(machine, REGION_GFX2);
-	UINT8 *gfx3 = memory_region(machine, REGION_GFX3);
-	UINT8 *gfx4 = memory_region(machine, REGION_GFX4);
-	UINT8 *gfx5 = memory_region(machine, REGION_GFX5);
-	int len3 = memory_region_length(machine, REGION_GFX3);
-	int len4 = memory_region_length(machine, REGION_GFX4);
+	UINT8 *gfx2 = memory_region(machine, "gfx2");
+	UINT8 *gfx3 = memory_region(machine, "gfx3");
+	UINT8 *gfx4 = memory_region(machine, "gfx4");
+	UINT8 *gfx5 = memory_region(machine, "gfx5");
+	int len3 = memory_region_length(machine, "gfx3");
+	int len4 = memory_region_length(machine, "gfx4");
 
 	memcpy(gfx3,gfx2,len3);
 
@@ -815,8 +814,8 @@ static DRIVER_INIT( minferno )
 	UINT8 *mem;
 
 	/* create an inverted copy of the graphics data */
-	mem = memory_region(machine, REGION_GFX1);
-	length = memory_region_length(machine, REGION_GFX1);
+	mem = memory_region(machine, "gfx1");
+	length = memory_region_length(machine, "gfx1");
 	for (i = 0; i < length/2; i++)
 		mem[i] = ~mem[i + length/2];
 }

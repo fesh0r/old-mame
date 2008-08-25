@@ -1345,7 +1345,7 @@ static void ide_controller_write(const device_config *device, offs_t offset, int
 							LOGPRINT(("IDE Unlocked master password\n"));
 							ide->master_password_enable = 0;
 						}
-#if PRINTF_IDE_PASSWORD
+						if (PRINTF_IDE_PASSWORD)
 						{
 							int i;
 
@@ -1359,7 +1359,6 @@ static void ide_controller_write(const device_config *device, offs_t offset, int
 							}
 							mame_printf_debug("\n");
 						}
-#endif
 
 						/* clear the busy adn error flags */
 						ide->status &= ~IDE_STATUS_ERROR;
@@ -1685,7 +1684,8 @@ static DEVICE_START( ide_controller )
 
 	/* set MAME harddisk handle */
 	config = device->inline_config;
-	ide->disk = hard_disk_open(get_disk_handle(config->disknum));
+	ide->disk = hard_disk_open(get_disk_handle((config->master != NULL) ? config->master : device->tag));
+	assert_always(config->slave == NULL, "IDE controller does not yet support slave drives\n");
 
 	/* get and copy the geometry */
 	if (ide->disk != NULL)
@@ -1696,9 +1696,7 @@ static DEVICE_START( ide_controller )
 			ide->num_cylinders = hdinfo->cylinders;
 			ide->num_sectors = hdinfo->sectors;
 			ide->num_heads = hdinfo->heads;
-#if PRINTF_IDE_COMMANDS
-			mame_printf_debug("CHS: %d %d %d\n", ide->num_cylinders, ide->num_heads, ide->num_sectors);
-#endif
+			if (PRINTF_IDE_COMMANDS) mame_printf_debug("CHS: %d %d %d\n", ide->num_cylinders, ide->num_heads, ide->num_sectors);
 		}
 	}
 

@@ -51,7 +51,7 @@ static void handle_coins(running_machine *machine, int coin)
 
 	if (coin & 1)	// Coin 2 !
 	{
-		tmp = (input_port_read_indexed(machine, 2) & 0xc0) >> 6;
+		tmp = (input_port_read(machine, "DSW") & 0xc0) >> 6;
 		coins++;
 		if (coins >= coinage_table[tmp][0])
 		{
@@ -64,7 +64,7 @@ static void handle_coins(running_machine *machine, int coin)
 
 	if (coin & 2)	// Coin 1 !
 	{
-		tmp = (input_port_read_indexed(machine, 2) & 0x30) >> 4;
+		tmp = (input_port_read(machine, "DSW") & 0x30) >> 4;
 		coins++;
 		if (coins >= coinage_table[tmp][0])
 		{
@@ -98,14 +98,14 @@ static READ8_HANDLER ( xyonix_io_r )
 		switch (e0_data)
 		{
 			case 0x81 :
-				return input_port_read_indexed(machine, 0) & 0x7f;
+				return input_port_read(machine, "P1") & 0x7f;
 				break;
 			case 0x82 :
-				return input_port_read_indexed(machine, 1) & 0x7f;
+				return input_port_read(machine, "P2") & 0x7f;
 				break;
 			case 0x91:
 				/* check coin inputs */
-				coin = ((input_port_read_indexed(machine, 0) & 0x80) >> 7) | ((input_port_read_indexed(machine, 1) & 0x80) >> 6);
+				coin = ((input_port_read(machine, "P1") & 0x80) >> 7) | ((input_port_read(machine, "P2") & 0x80) >> 6);
 				if (coin ^ prev_coin && coin != 3)
 				{
 					if (credits < 9) handle_coins(machine, coin);
@@ -114,7 +114,7 @@ static READ8_HANDLER ( xyonix_io_r )
 				return credits;
 				break;
 			case 0x92:
-				return ((input_port_read_indexed(machine, 0) & 0x80) >> 7) | ((input_port_read_indexed(machine, 1) & 0x80) >> 6);
+				return ((input_port_read(machine, "P1") & 0x80) >> 7) | ((input_port_read(machine, "P2") & 0x80) >> 6);
 				break;
 			case 0xe0:	/* reset? */
 				coins = 0;
@@ -126,10 +126,10 @@ static READ8_HANDLER ( xyonix_io_r )
 				return 0xff;
 				break;
 			case 0xfe:	/* Dip Switches 1 to 4 */
-				return input_port_read_indexed(machine, 2) & 0x0f;
+				return input_port_read(machine, "DSW") & 0x0f;
 				break;
 			case 0xff:	/* Dip Switches 5 to 8 */
-				return input_port_read_indexed(machine, 2) >> 4;
+				return input_port_read(machine, "DSW") >> 4;
 				break;
 		}
 	}
@@ -156,8 +156,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( port_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x20, 0x20) AM_READWRITE(SMH_NOP, SN76496_0_w)	/* SN76496 ready signal */
-	AM_RANGE(0x21, 0x21) AM_READWRITE(SMH_NOP, SN76496_1_w)
+	AM_RANGE(0x20, 0x20) AM_READWRITE(SMH_NOP, sn76496_0_w)	/* SN76496 ready signal */
+	AM_RANGE(0x21, 0x21) AM_READWRITE(SMH_NOP, sn76496_1_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(SMH_NOP)		/* NMI ack? */
 	AM_RANGE(0x50, 0x50) AM_WRITE(xyonix_irqack_w)
 	AM_RANGE(0x60, 0x61) AM_WRITE(SMH_NOP)		/* mc6845 */
@@ -167,7 +167,7 @@ ADDRESS_MAP_END
 /* Inputs Ports **************************************************************/
 
 static INPUT_PORTS_START( xyonix )
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -177,7 +177,7 @@ static INPUT_PORTS_START( xyonix )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )		/* handled by xyonix_io_r() */
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -187,7 +187,7 @@ static INPUT_PORTS_START( xyonix )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )		/* handled by xyonix_io_r() */
 
-	PORT_START
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Normal ) )
@@ -223,7 +223,7 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( xyonix )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0, 16 )
 GFXDECODE_END
 
 /* MACHINE driver *************************************************************/
@@ -231,7 +231,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( xyonix )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,16000000 / 4)		 /* 4 MHz ? */
+	MDRV_CPU_ADD("main", Z80,16000000 / 4)		 /* 4 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(port_map,0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
@@ -255,24 +255,24 @@ static MACHINE_DRIVER_START( xyonix )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SN76496, 16000000/4)
+	MDRV_SOUND_ADD("sn1", SN76496, 16000000/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(SN76496, 16000000/4)
+	MDRV_SOUND_ADD("sn2", SN76496, 16000000/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 /* ROM Loading ***************************************************************/
 
 ROM_START( xyonix )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "xyonix3.bin", 0x00000, 0x10000, CRC(1960a74e) SHA1(5fd7bc31ca2f5f1e114d3d0ccf6554ebd712cbd3) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "xyonix1.bin", 0x00000, 0x08000, CRC(3dfa9596) SHA1(52cdbbe18f83cea7248c29588ea3a18c4bb7984f) )
 	ROM_LOAD( "xyonix2.bin", 0x08000, 0x08000, CRC(db87343e) SHA1(62bc30cd65b2f8976cd73a0b349a9ccdb3faaad2) )
 
-	ROM_REGION( 0x0100, REGION_PROMS, 0 )
+	ROM_REGION( 0x0100, "proms", 0 )
 	ROM_LOAD( "xyonix.pr",   0x0000, 0x0100, CRC(0012cfc9) SHA1(c7454107a1a8083a370b662c617117b769c0dc1c) )
 ROM_END
 

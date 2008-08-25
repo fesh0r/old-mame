@@ -207,7 +207,7 @@ static READ16_HANDLER( control1_r )
 	/* bit 0 is EEPROM data */
 	/* bit 1 is EEPROM ready */
 	/* bit 3 is service button */
-	res = eeprom_read_bit() | input_port_read_indexed(machine,1);
+	res = eeprom_read_bit() | input_port_read(machine, "EEPROM");
 
 	if (init_eeprom_count)
 	{
@@ -282,7 +282,7 @@ static READ16_HANDLER( sound_status_r )
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr(2, memory_region(machine, REGION_CPU2) + 0x10000 + cur_sound_region*0x4000);
+	memory_set_bankptr(2, memory_region(machine, "audio") + 0x10000 + cur_sound_region*0x4000);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -367,9 +367,9 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0d6014, 0x0d6015) AM_READ(sound_status_r)
 	AM_RANGE(0x0d6000, 0x0d601f) AM_RAM									// sound regs fall through
 	AM_RANGE(0x0d8000, 0x0d8007) AM_WRITE(K056832_b_word_w)				// VSCCS regs
-	AM_RANGE(0x0da000, 0x0da001) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x0da002, 0x0da003) AM_READ(input_port_3_word_r)
-	AM_RANGE(0x0dc000, 0x0dc001) AM_READ(input_port_0_word_r)
+	AM_RANGE(0x0da000, 0x0da001) AM_READ_PORT("P1")
+	AM_RANGE(0x0da002, 0x0da003) AM_READ_PORT("P2")
+	AM_RANGE(0x0dc000, 0x0dc001) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x0dc002, 0x0dc003) AM_READ(control1_r)
 	AM_RANGE(0x0de000, 0x0de001) AM_READWRITE(control2_r, control2_w)
 	AM_RANGE(0x100000, 0x17ffff) AM_ROM
@@ -395,9 +395,9 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK2)
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xdfff) AM_RAM
-	AM_RANGE(0xe000, 0xe22f) AM_READWRITE(K054539_0_r, K054539_0_w)
-	AM_RANGE(0xec00, 0xec00) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0xec01, 0xec01) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
+	AM_RANGE(0xe000, 0xe22f) AM_READWRITE(k054539_0_r, k054539_0_w)
+	AM_RANGE(0xec00, 0xec00) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0xec01, 0xec01) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(soundlatch3_w)
 	AM_RANGE(0xf002, 0xf002) AM_READ(soundlatch_r)
 	AM_RANGE(0xf003, 0xf003) AM_READ(soundlatch2_r)
@@ -406,7 +406,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( xexex )
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -416,14 +416,14 @@ static INPUT_PORTS_START( xexex )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("EEPROM")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* EEPROM data */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL )	/* EEPROM ready (always 1) */
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_SERVICE_NO_TOGGLE( 0x08, IP_ACTIVE_LOW )
 	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
@@ -433,7 +433,7 @@ static INPUT_PORTS_START( xexex )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
@@ -446,24 +446,22 @@ INPUT_PORTS_END
 
 
 
-static const struct K054539interface k054539_interface =
+static const k054539_interface k054539_config =
 {
-	REGION_SOUND1,
+	NULL,
 	ym_set_mixing
 };
 
 static MACHINE_DRIVER_START( xexex )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 16000000)	// 16MHz (32MHz xtal)
+	MDRV_CPU_ADD("main", M68000, 16000000)	// 16MHz (32MHz xtal)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(xexex_interrupt,2)
 
 	// 8MHz (PCB shows one 32MHz/18.432MHz xtal, reference: www.system16.com)
 	// more likely 32MHz since 18.432MHz yields 4.608MHz(too slow) or 9.216MHz(too fast) with integer divisors
-	MDRV_CPU_ADD(Z80, 8000000)
-
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 8000000)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	MDRV_INTERLEAVE(32)
@@ -491,113 +489,113 @@ static MACHINE_DRIVER_START( xexex )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 4000000)
+	MDRV_SOUND_ADD("ym", YM2151, 4000000)
 	MDRV_SOUND_ROUTE(0, "filter1l", 0.50)
 	MDRV_SOUND_ROUTE(0, "filter1r", 0.50)
 	MDRV_SOUND_ROUTE(1, "filter2l", 0.50)
 	MDRV_SOUND_ROUTE(1, "filter2r", 0.50)
 
-	MDRV_SOUND_ADD(K054539, 48000)
-	MDRV_SOUND_CONFIG(k054539_interface)
+	MDRV_SOUND_ADD("konami", K054539, 48000)
+	MDRV_SOUND_CONFIG(k054539_config)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(0, "right", 1.0)
 	MDRV_SOUND_ROUTE(1, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
-	MDRV_SOUND_ADD_TAG("filter1l", FILTER_VOLUME, 0)
+	MDRV_SOUND_ADD("filter1l", FILTER_VOLUME, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ADD_TAG("filter1r", FILTER_VOLUME, 0)
+	MDRV_SOUND_ADD("filter1r", FILTER_VOLUME, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
-	MDRV_SOUND_ADD_TAG("filter2l", FILTER_VOLUME, 0)
+	MDRV_SOUND_ADD("filter2l", FILTER_VOLUME, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ADD_TAG("filter2r", FILTER_VOLUME, 0)
+	MDRV_SOUND_ADD("filter2r", FILTER_VOLUME, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( xexex ) /* Europe, Version AA */
-	ROM_REGION( 0x180000, REGION_CPU1, 0 )
+	ROM_REGION( 0x180000, "main", 0 )
 	ROM_LOAD16_BYTE( "067eaa01.16d", 0x000000, 0x40000, CRC(3ebcb066) SHA1(83a20433d9fdcc8b8d7133991f9a8164dddb61f3) )
 	ROM_LOAD16_BYTE( "067eaa02.16f", 0x000001, 0x40000, CRC(36ea7a48) SHA1(34f8046d7ecf5ea66c59c5bc0d7627942c28fd3b) )
 	ROM_LOAD16_BYTE( "067_b03.rom",  0x100000, 0x40000, CRC(97833086) SHA1(a564f7b1b52c774d78a59f4418c7ecccaf94ad41) )
 	ROM_LOAD16_BYTE( "067_b04.rom",  0x100001, 0x40000, CRC(26ec5dc8) SHA1(9da62683bfa8f16607cbea2d59a1446ec8588c5b) )
 
-	ROM_REGION( 0x030000, REGION_CPU2, 0 )
+	ROM_REGION( 0x030000, "audio", 0 )
 	ROM_LOAD( "067eaa05.4e", 0x000000, 0x020000, CRC(0e33d6ec) SHA1(4dd68cb78c779e2d035e43fec35a7672ed1c259b) )
 	ROM_RELOAD(              0x010000, 0x020000 )
 
-	ROM_REGION( 0x200000, REGION_GFX1, 0 )
+	ROM_REGION( 0x200000, "gfx1", 0 )
 	ROM_LOAD( "067_b14.rom", 0x000000, 0x100000, CRC(02a44bfa) SHA1(ad95df4dbf8842820ef20f54407870afb6d0e4a3) )
 	ROM_LOAD( "067_b13.rom", 0x100000, 0x100000, CRC(633c8eb5) SHA1(a11f78003a1dffe2d8814d368155059719263082) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, 0 )
+	ROM_REGION( 0x400000, "gfx2", 0 )
 	ROM_LOAD( "067_b12.rom", 0x000000, 0x100000, CRC(08d611b0) SHA1(9cac60131e0411f173acd8ef3f206e5e58a7e5d2) )
 	ROM_LOAD( "067_b11.rom", 0x100000, 0x100000, CRC(a26f7507) SHA1(6bf717cb9fcad59a2eafda967f14120b9ebbc8c5) )
 	ROM_LOAD( "067_b10.rom", 0x200000, 0x100000, CRC(ee31db8d) SHA1(c41874fb8b401ea9cdd327ee6239b5925418cf7b) )
 	ROM_LOAD( "067_b09.rom", 0x300000, 0x100000, CRC(88f072ef) SHA1(7ecc04dbcc29b715117e970cc96e11137a21b83a) )
 
-	ROM_REGION( 0x100000, REGION_GFX3, 0 ) // NOTE: region must be 2xROM size for unpacking
+	ROM_REGION( 0x100000, "gfx3", 0 ) // NOTE: region must be 2xROM size for unpacking
 	ROM_LOAD( "067_b08.rom", 0x000000, 0x080000, CRC(ca816b7b) SHA1(769ce3700e41200c34adec98598c0fe371fe1e6d) )
 
-	ROM_REGION( 0x300000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x300000, "konami", 0 )
 	ROM_LOAD( "067_b06.rom", 0x000000, 0x200000, CRC(3b12fce4) SHA1(c69172d9965b8da8a539812fac92d5f1a3c80d17) )
 	ROM_LOAD( "067_b07.rom", 0x200000, 0x100000, CRC(ec87fe1b) SHA1(ec9823aea5a1fc5c47c8262e15e10b28be87231c) )
 ROM_END
 
 ROM_START( xexexa ) /* Asia, Version AA */
-	ROM_REGION( 0x180000, REGION_CPU1, 0 )
+	ROM_REGION( 0x180000, "main", 0 )
 	ROM_LOAD16_BYTE( "067aaa01.16d", 0x000000, 0x40000, CRC(cf557144) SHA1(4ce587580d953b88864652dd66485d49ca719ec5) )
 	ROM_LOAD16_BYTE( "067aaa02.16f", 0x000001, 0x40000, CRC(b7b98d52) SHA1(ca2343bf37f779699b6782772e559ea5662c1742) )
 	ROM_LOAD16_BYTE( "067_b03.rom",  0x100000, 0x40000, CRC(97833086) SHA1(a564f7b1b52c774d78a59f4418c7ecccaf94ad41) )
 	ROM_LOAD16_BYTE( "067_b04.rom",  0x100001, 0x40000, CRC(26ec5dc8) SHA1(9da62683bfa8f16607cbea2d59a1446ec8588c5b) )
 
-	ROM_REGION( 0x030000, REGION_CPU2, 0 )
+	ROM_REGION( 0x030000, "audio", 0 )
 	ROM_LOAD( "067eaa05.4e", 0x000000, 0x020000, CRC(0e33d6ec) SHA1(4dd68cb78c779e2d035e43fec35a7672ed1c259b) )
 	ROM_RELOAD(              0x010000, 0x020000 )
 
-	ROM_REGION( 0x200000, REGION_GFX1, 0 )
+	ROM_REGION( 0x200000, "gfx1", 0 )
 	ROM_LOAD( "067_b14.rom", 0x000000, 0x100000, CRC(02a44bfa) SHA1(ad95df4dbf8842820ef20f54407870afb6d0e4a3) )
 	ROM_LOAD( "067_b13.rom", 0x100000, 0x100000, CRC(633c8eb5) SHA1(a11f78003a1dffe2d8814d368155059719263082) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, 0 )
+	ROM_REGION( 0x400000, "gfx2", 0 )
 	ROM_LOAD( "067_b12.rom", 0x000000, 0x100000, CRC(08d611b0) SHA1(9cac60131e0411f173acd8ef3f206e5e58a7e5d2) )
 	ROM_LOAD( "067_b11.rom", 0x100000, 0x100000, CRC(a26f7507) SHA1(6bf717cb9fcad59a2eafda967f14120b9ebbc8c5) )
 	ROM_LOAD( "067_b10.rom", 0x200000, 0x100000, CRC(ee31db8d) SHA1(c41874fb8b401ea9cdd327ee6239b5925418cf7b) )
 	ROM_LOAD( "067_b09.rom", 0x300000, 0x100000, CRC(88f072ef) SHA1(7ecc04dbcc29b715117e970cc96e11137a21b83a) )
 
-	ROM_REGION( 0x100000, REGION_GFX3, 0 ) // NOTE: region must be 2xROM size for unpacking
+	ROM_REGION( 0x100000, "gfx3", 0 ) // NOTE: region must be 2xROM size for unpacking
 	ROM_LOAD( "067_b08.rom", 0x000000, 0x080000, CRC(ca816b7b) SHA1(769ce3700e41200c34adec98598c0fe371fe1e6d) )
 
-	ROM_REGION( 0x300000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x300000, "konami", 0 )
 	ROM_LOAD( "067_b06.rom", 0x000000, 0x200000, CRC(3b12fce4) SHA1(c69172d9965b8da8a539812fac92d5f1a3c80d17) )
 	ROM_LOAD( "067_b07.rom", 0x200000, 0x100000, CRC(ec87fe1b) SHA1(ec9823aea5a1fc5c47c8262e15e10b28be87231c) )
 ROM_END
 
 ROM_START( xexexj ) /* Japan, Version AA */
-	ROM_REGION( 0x180000, REGION_CPU1, 0 )
+	ROM_REGION( 0x180000, "main", 0 )
 	ROM_LOAD16_BYTE( "067jaa01.16d", 0x000000, 0x40000, CRC(06e99784) SHA1(d53fe3724608992a6938c36aa2719dc545d6b89e) )
 	ROM_LOAD16_BYTE( "067jaa02.16f", 0x000001, 0x40000, CRC(30ae5bc4) SHA1(60491e31eef64a9206d1372afa32d83c6c0968b3) )
 	ROM_LOAD16_BYTE( "067_b03.rom",  0x100000, 0x40000, CRC(97833086) SHA1(a564f7b1b52c774d78a59f4418c7ecccaf94ad41) )
 	ROM_LOAD16_BYTE( "067_b04.rom",  0x100001, 0x40000, CRC(26ec5dc8) SHA1(9da62683bfa8f16607cbea2d59a1446ec8588c5b) )
 
-	ROM_REGION( 0x030000, REGION_CPU2, 0 )
+	ROM_REGION( 0x030000, "audio", 0 )
 	ROM_LOAD( "067jaa05.4e", 0x000000, 0x020000, CRC(2f4dd0a8) SHA1(bfa76c9c968f1beba648a2911510e3d666a8fe3a) )
 	ROM_RELOAD(              0x010000, 0x020000 )
 
-	ROM_REGION( 0x200000, REGION_GFX1, 0 )
+	ROM_REGION( 0x200000, "gfx1", 0 )
 	ROM_LOAD( "067_b14.rom", 0x000000, 0x100000, CRC(02a44bfa) SHA1(ad95df4dbf8842820ef20f54407870afb6d0e4a3) )
 	ROM_LOAD( "067_b13.rom", 0x100000, 0x100000, CRC(633c8eb5) SHA1(a11f78003a1dffe2d8814d368155059719263082) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, 0 )
+	ROM_REGION( 0x400000, "gfx2", 0 )
 	ROM_LOAD( "067_b12.rom", 0x000000, 0x100000, CRC(08d611b0) SHA1(9cac60131e0411f173acd8ef3f206e5e58a7e5d2) )
 	ROM_LOAD( "067_b11.rom", 0x100000, 0x100000, CRC(a26f7507) SHA1(6bf717cb9fcad59a2eafda967f14120b9ebbc8c5) )
 	ROM_LOAD( "067_b10.rom", 0x200000, 0x100000, CRC(ee31db8d) SHA1(c41874fb8b401ea9cdd327ee6239b5925418cf7b) )
 	ROM_LOAD( "067_b09.rom", 0x300000, 0x100000, CRC(88f072ef) SHA1(7ecc04dbcc29b715117e970cc96e11137a21b83a) )
 
-	ROM_REGION( 0x100000, REGION_GFX3, 0 ) // NOTE: region must be 2xROM size for unpacking
+	ROM_REGION( 0x100000, "gfx3", 0 ) // NOTE: region must be 2xROM size for unpacking
 	ROM_LOAD( "067_b08.rom", 0x000000, 0x080000, CRC(ca816b7b) SHA1(769ce3700e41200c34adec98598c0fe371fe1e6d) )
 
-	ROM_REGION( 0x300000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x300000, "konami", 0 )
 	ROM_LOAD( "067_b06.rom", 0x000000, 0x200000, CRC(3b12fce4) SHA1(c69172d9965b8da8a539812fac92d5f1a3c80d17) )
 	ROM_LOAD( "067_b07.rom", 0x200000, 0x100000, CRC(ec87fe1b) SHA1(ec9823aea5a1fc5c47c8262e15e10b28be87231c) )
 ROM_END
@@ -606,7 +604,7 @@ static MACHINE_RESET( xexex )
 {
 	cur_sound_region = 0;
 	suspension_active = 0;
-	K054539_init_flags(0, K054539_REVERSE_STEREO);
+	k054539_init_flags(0, K054539_REVERSE_STEREO);
 }
 
 static STATE_POSTLOAD( xexex_postload )
@@ -632,14 +630,14 @@ static DRIVER_INIT( xexex )
 	if (!strcmp(machine->gamedrv->name, "xexex"))
 	{
 		// Invulnerability
-//      *(UINT16 *)(memory_region(machine, REGION_CPU1) + 0x648d4) = 0x4a79;
-//      *(UINT16 *)(memory_region(machine, REGION_CPU1) + 0x00008) = 0x5500;
+//      *(UINT16 *)(memory_region(machine, "main") + 0x648d4) = 0x4a79;
+//      *(UINT16 *)(memory_region(machine, "main") + 0x00008) = 0x5500;
 		xexex_strip0x1a = 1;
 	}
 
-	konami_rom_deinterleave_2(REGION_GFX1);
-	konami_rom_deinterleave_4(REGION_GFX2);
-	K053250_unpack_pixels(REGION_GFX3);
+	konami_rom_deinterleave_2("gfx1");
+	konami_rom_deinterleave_4("gfx2");
+	K053250_unpack_pixels("gfx3");
 }
 
 GAME( 1991, xexex,  0,     xexex, xexex, xexex, ROT0, "Konami", "Xexex (ver EAA)", 0 )

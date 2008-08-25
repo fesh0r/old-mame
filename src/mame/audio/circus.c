@@ -13,7 +13,7 @@ static const char *const circus_sample_names[] =
 	0
 };
 
-const struct Samplesinterface circus_samples_interface =
+const samples_interface circus_samples_interface =
 {
 	3,	/* 3 channels */
 	circus_sample_names
@@ -26,7 +26,7 @@ static const char *const crash_sample_names[] =
 	0
 };
 
-const struct Samplesinterface crash_samples_interface =
+const samples_interface crash_samples_interface =
 {
 	1,	/* 1 channel */
 	crash_sample_names
@@ -42,7 +42,7 @@ static const char *const ripcord_sample_names[] =
 	0
 };
 
-const struct Samplesinterface ripcord_samples_interface =
+const samples_interface ripcord_samples_interface =
 {
 	4,	/* 4 channels */
 	ripcord_sample_names
@@ -59,7 +59,7 @@ static const char *const robotbwl_sample_names[] =
 	0
 };
 
-const struct Samplesinterface robotbwl_samples_interface =
+const samples_interface robotbwl_samples_interface =
 {
 	5,	/* 5 channels */
 	robotbwl_sample_names
@@ -124,8 +124,8 @@ DISCRETE_SOUND_START(crash)
 	DISCRETE_INPUT_LOGIC(CRASH_MUSIC_BIT)
 	DISCRETE_INPUT_PULSE(CRASH_BEEPER_EN, 1)
 
-	DISCRETE_ADJUSTMENT_TAG(CRASH_R63, 1, 0, 5.0*RES_K(100)/(RES_K(47+100))-0.5, DISC_LINADJ, "R63")
-	DISCRETE_ADJUSTMENT_TAG(CRASH_R39, 1, 0, 1, DISC_LINADJ, "R39")
+	DISCRETE_ADJUSTMENT_TAG(CRASH_R63, 0, 5.0*RES_K(100)/(RES_K(47+100))-0.5, DISC_LINADJ, "R63")
+	DISCRETE_ADJUSTMENT_TAG(CRASH_R39, 0, 1, DISC_LINADJ, "R39")
 
 	/************************************************/
 	/* Music is just a 1 bit DAC                    */
@@ -175,7 +175,7 @@ DISCRETE_SOUND_END
 WRITE8_HANDLER( circus_clown_z_w )
 {
 	clown_z = (data & 0x0f);
-	*(memory_region(machine, REGION_CPU1)+0x8000)=data; logerror("Z:%02x\n",data); //DEBUG
+	*(memory_region(machine, "main")+0x8000)=data; logerror("Z:%02x\n",data); //DEBUG
 	/* Bits 4-6 enable/disable trigger different events */
 
 	switch (circus_game)

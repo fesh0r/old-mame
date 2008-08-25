@@ -120,11 +120,11 @@ extern UINT32 skns_v3t_4bppdirty[0x8000]; // allocate this elsewhere?
 extern int skns_v3t_somedirty,skns_v3t_4bpp_somedirty;
 
 static UINT8 decodebuffer[SUPRNOVA_DECODE_BUFFER_SIZE];
-static int old_depthA=0, depthA=0;
-static int old_depthB=0, depthB=0;
+static int depthA=0;
+static int depthB=0;
 
 static int sprite_kludge_x=0, sprite_kludge_y=0;
-static int use_spc_bright = 1, use_v3_bright = 1; // makes sarukani rather dark, but should be default..
+static int use_spc_bright, use_v3_bright; // makes sarukani rather dark, but should be default..
 static UINT8 bright_spc_b=0x00, bright_spc_g=0x00, bright_spc_r=0x00;
 
 static UINT8 bright_spc_b_trans=0x00, bright_spc_g_trans=0x00, bright_spc_r_trans=0x00;
@@ -135,7 +135,7 @@ static UINT8 bright_v3_b_trans = 0x00, bright_v3_g_trans = 0x00, bright_v3_r_tra
 
 // This ignores the alpha values atm.
 static int spc_changed=0, v3_changed=0, palette_updated=0;
-int suprnova_alt_enable_background = 1, suprnova_alt_enable_sprites = 1;
+static int suprnova_alt_enable_background, suprnova_alt_enable_sprites;
 
 WRITE32_HANDLER ( skns_pal_regs_w )
 {
@@ -320,8 +320,8 @@ static void palette_update(running_machine *machine)
 
 static int skns_rle_decode ( running_machine *machine, int romoffset, int size )
 {
-	UINT8 *src = memory_region (machine, REGION_GFX1);
-	size_t srcsize = memory_region_length (machine, REGION_GFX1);
+	UINT8 *src = memory_region (machine, "gfx1");
+	size_t srcsize = memory_region_length (machine, "gfx1");
 	UINT8 *dst = decodebuffer;
 	int decodeoffset = 0;
 
@@ -342,7 +342,7 @@ static int skns_rle_decode ( running_machine *machine, int romoffset, int size )
 			} while(code != 0xff);
 		}
 	}
-	return &src[romoffset%srcsize]-memory_region (machine, REGION_GFX1);
+	return &src[romoffset%srcsize]-memory_region (machine, "gfx1");
 }
 
 void skns_sprite_kludge(int x, int y)
@@ -618,7 +618,7 @@ void skns_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectang
 		sprite_y_scroll += sprite_kludge_y;
 
 
-		gfxlen = memory_region_length (machine, REGION_GFX1);
+		gfxlen = memory_region_length (machine, "gfx1");
 		while( source<finish )
 		{
 			xflip = (source[0] & 0x00000200) >> 9;
@@ -898,8 +898,8 @@ WRITE32_HANDLER ( skns_v3_regs_w )
 	/* if the depth changes we need to dirty the tilemap */
 	if (offset == 0x0c/4)
 	{
-		old_depthA = depthA;
-		old_depthB = depthB;
+		int old_depthA = depthA;
+		int old_depthB = depthB;
 
 		depthA = (skns_v3_regs[0x0c/4] & 0x0001) << 1;
 		depthB = (skns_v3_regs[0x0c/4] & 0x0100) >> 7;
@@ -929,6 +929,19 @@ VIDEO_START(skns)
 
 	machine->gfx[2]->color_granularity=256;
 	machine->gfx[3]->color_granularity=256;
+}
+
+VIDEO_RESET( skns )
+{
+	depthA = depthB = 0;
+	use_spc_bright = use_v3_bright = 1;
+	bright_spc_b= bright_spc_g = bright_spc_r = 0x00;
+	bright_spc_b_trans = bright_spc_g_trans = bright_spc_r_trans = 0x00;
+	bright_v3_b = bright_v3_g = bright_v3_r = 0x00;
+	bright_v3_b_trans = bright_v3_g_trans = bright_v3_r_trans = 0x00;
+
+	spc_changed = v3_changed = palette_updated = 0;
+	suprnova_alt_enable_background = suprnova_alt_enable_sprites = 1;
 }
 
 static void supernova_draw_a( bitmap_t *bitmap, bitmap_t* bitmap_flags, const rectangle *cliprect, int tran )
@@ -993,7 +1006,7 @@ VIDEO_UPDATE(skns)
 
 	palette_update(screen->machine);
 
-	btiles = memory_region (screen->machine, REGION_GFX3);
+	btiles = memory_region (screen->machine, "gfx3");
 
 //  if (!(skns_v3_regs[0x0c/4] & 0x0100)); // if tilemap b is in 8bpp mode
 	{

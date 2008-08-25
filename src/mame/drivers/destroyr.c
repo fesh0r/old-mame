@@ -181,20 +181,20 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( destroyr )
-	PORT_START_TAG("IN0")	/* IN0 */
+	PORT_START("IN0")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_UNUSED ) /* call 7400 */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED ) /* potsense1 */
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED ) /* potsense2 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW,  IPT_START1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW,  IPT_START2 )
-	PORT_DIPNAME( 0xc0, 0x80, "Extended Play" )
+	PORT_DIPNAME( 0xc0, 0x80, "Extended Play" ) PORT_DIPLOCATION("SW2:8,7")
 	PORT_DIPSETTING( 0x40, "1500 points" )
 	PORT_DIPSETTING( 0x80, "2500 points" )
 	PORT_DIPSETTING( 0xc0, "3500 points" )
 	PORT_DIPSETTING( 0x00, "never" )
 
-	PORT_START_TAG("IN1")	/* IN1 */
+	PORT_START("IN1")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_TILT )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 ) /* actually a lever */
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON1 )
@@ -204,18 +204,18 @@ static INPUT_PORTS_START( destroyr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START_TAG("IN2")	/* IN2 */
-	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Coinage ) )
+	PORT_START("IN2")	/* IN2 */
+	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW:4,3")
 	PORT_DIPSETTING( 0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING( 0x02, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING( 0x01, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING( 0x00, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x0c, 0x08, "Play Time" )
+	PORT_DIPNAME( 0x0c, 0x08, "Play Time" ) PORT_DIPLOCATION("SW:2,1")
 	PORT_DIPSETTING( 0x00, "50 seconds" )
 	PORT_DIPSETTING( 0x04, "75 seconds" )
 	PORT_DIPSETTING( 0x08, "100 seconds" )
 	PORT_DIPSETTING( 0x0c, "125 seconds" )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Language ) ) /* requires translation ROMs */
+	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Language ) ) PORT_DIPLOCATION("SW2:5,6") /* requires translation ROMs */
 	PORT_DIPSETTING( 0x30, DEF_STR( German ) )
 	PORT_DIPSETTING( 0x20, DEF_STR( French ) )
 	PORT_DIPSETTING( 0x10, DEF_STR( Spanish ) )
@@ -223,7 +223,7 @@ static INPUT_PORTS_START( destroyr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("PADDLE")	/* IN3 */
+	PORT_START("PADDLE")	/* IN3 */
 	PORT_BIT( 0xff, 0x00, IPT_PADDLE_V ) PORT_MINMAX(0,160) PORT_SENSITIVITY(30) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_REVERSE
 INPUT_PORTS_END
 
@@ -316,10 +316,10 @@ static const gfx_layout destroyr_waves_layout =
 
 
 static GFXDECODE_START( destroyr )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, destroyr_alpha_num_layout, 4, 1 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, destroyr_minor_object_layout, 4, 1 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, destroyr_major_object_layout, 0, 1 )
-	GFXDECODE_ENTRY( REGION_GFX4, 0, destroyr_waves_layout, 4, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0, destroyr_alpha_num_layout, 4, 1 )
+	GFXDECODE_ENTRY( "gfx2", 0, destroyr_minor_object_layout, 4, 1 )
+	GFXDECODE_ENTRY( "gfx3", 0, destroyr_major_object_layout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx4", 0, destroyr_waves_layout, 4, 1 )
 GFXDECODE_END
 
 
@@ -339,7 +339,7 @@ static PALETTE_INIT( destroyr )
 static MACHINE_DRIVER_START( destroyr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6800, 12096000 / 16)
+	MDRV_CPU_ADD("main", M6800, 12096000 / 16)
 	MDRV_CPU_PROGRAM_MAP(destroyr_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_assert, 4)
 
@@ -362,23 +362,23 @@ MACHINE_DRIVER_END
 
 
 ROM_START( destroyr )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )                  /* program code */
+	ROM_REGION( 0x8000, "main", 0 )                  /* program code */
 	ROM_LOAD( "30146-01.c3", 0x7800, 0x0800, CRC(e560c712) SHA1(0505ab57eee5421b4ff4e87d14505e02b18fd54c) )
 
-	ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE )   /* alpha numerics */
+	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE )   /* alpha numerics */
 	ROM_LOAD( "30135-01.p4", 0x0000, 0x0400, CRC(184824cf) SHA1(713cfd1d41ef7b1c345ea0038b652c4ba3f08301) )
 
-	ROM_REGION( 0x0400, REGION_GFX2, ROMREGION_DISPOSE )   /* minor objects */
+	ROM_REGION( 0x0400, "gfx2", ROMREGION_DISPOSE )   /* minor objects */
 	ROM_LOAD( "30132-01.f4", 0x0000, 0x0400, CRC(e09d3d55) SHA1(b26013397ef2cb32d0416ecb118387b9c2dffa9a) )
 
-	ROM_REGION( 0x0400, REGION_GFX3, ROMREGION_DISPOSE )   /* major objects */
+	ROM_REGION( 0x0400, "gfx3", ROMREGION_DISPOSE )   /* major objects */
 	ROM_LOAD_NIB_HIGH( "30134-01.p8", 0x0000, 0x0400, CRC(6259e007) SHA1(049f5f7160305cb4f4b499dd113cb11eea73fc95) )
 	ROM_LOAD_NIB_LOW ( "30133-01.n8", 0x0000, 0x0400, CRC(108d3e2c) SHA1(8c993369d37c6713670483af78e6d04d38f4b4fc) )
 
-	ROM_REGION( 0x0020, REGION_GFX4, ROMREGION_DISPOSE )   /* waves */
+	ROM_REGION( 0x0020, "gfx4", ROMREGION_DISPOSE )   /* waves */
 	ROM_LOAD( "30136-01.k2", 0x0000, 0x0020, CRC(532c11b1) SHA1(18ab5369a3f2cfcc9a44f38fa8649524bea5b203) )
 
-	ROM_REGION( 0x0100, REGION_USER1, 0 )                  /* sync (unused) */
+	ROM_REGION( 0x0100, "user1", 0 )                  /* sync (unused) */
 	ROM_LOAD( "30131-01.m1", 0x0000, 0x0100, CRC(b8094b4c) SHA1(82dc6799a19984f3b204ee3aeeb007e55afc8be3) )
 ROM_END
 

@@ -126,10 +126,10 @@ WRITE8_HANDLER( timeplt_sh_irqtrigger_w )
 static ADDRESS_MAP_START( timeplt_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x2fff) AM_ROM
 	AM_RANGE(0x3000, 0x33ff) AM_MIRROR(0x0c00) AM_RAM
-	AM_RANGE(0x4000, 0x4000) AM_MIRROR(0x0fff) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
-	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0x0fff) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x6000, 0x6000) AM_MIRROR(0x0fff) AM_READWRITE(AY8910_read_port_1_r, AY8910_write_port_1_w)
-	AM_RANGE(0x7000, 0x7000) AM_MIRROR(0x0fff) AM_WRITE(AY8910_control_port_1_w)
+	AM_RANGE(0x4000, 0x4000) AM_MIRROR(0x0fff) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
+	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0x0fff) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x6000, 0x6000) AM_MIRROR(0x0fff) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
+	AM_RANGE(0x7000, 0x7000) AM_MIRROR(0x0fff) AM_WRITE(ay8910_control_port_1_w)
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(timeplt_filter_w)
 ADDRESS_MAP_END
 
@@ -138,10 +138,10 @@ static ADDRESS_MAP_START( locomotn_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x23ff) AM_MIRROR(0x0c00) AM_RAM
 	AM_RANGE(0x3000, 0x3fff) AM_WRITE(timeplt_filter_w)
-	AM_RANGE(0x4000, 0x4000) AM_MIRROR(0x0fff) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
-	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0x0fff) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x6000, 0x6000) AM_MIRROR(0x0fff) AM_READWRITE(AY8910_read_port_1_r, AY8910_write_port_1_w)
-	AM_RANGE(0x7000, 0x7000) AM_MIRROR(0x0fff) AM_WRITE(AY8910_control_port_1_w)
+	AM_RANGE(0x4000, 0x4000) AM_MIRROR(0x0fff) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
+	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0x0fff) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x6000, 0x6000) AM_MIRROR(0x0fff) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
+	AM_RANGE(0x7000, 0x7000) AM_MIRROR(0x0fff) AM_WRITE(ay8910_control_port_1_w)
 ADDRESS_MAP_END
 
 
@@ -152,7 +152,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static const struct AY8910interface timeplt_ay8910_interface =
+static const ay8910_interface timeplt_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -173,7 +173,7 @@ static const struct AY8910interface timeplt_ay8910_interface =
 MACHINE_DRIVER_START( timeplt_sound )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("tpsound",Z80,MASTER_CLOCK/8)
+	MDRV_CPU_ADD("tpsound",Z80,MASTER_CLOCK/8)
 	MDRV_CPU_PROGRAM_MAP(timeplt_sound_map,0)
 
 	MDRV_SOUND_START(timeplt)
@@ -181,29 +181,29 @@ MACHINE_DRIVER_START( timeplt_sound )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, MASTER_CLOCK/8)
+	MDRV_SOUND_ADD("ay1", AY8910, MASTER_CLOCK/8)
 	MDRV_SOUND_CONFIG(timeplt_ay8910_interface)
 	MDRV_SOUND_ROUTE(0, "filter.0.0", 0.60)
 	MDRV_SOUND_ROUTE(1, "filter.0.1", 0.60)
 	MDRV_SOUND_ROUTE(2, "filter.0.2", 0.60)
 
-	MDRV_SOUND_ADD(AY8910, MASTER_CLOCK/8)
+	MDRV_SOUND_ADD("ay2", AY8910, MASTER_CLOCK/8)
 	MDRV_SOUND_ROUTE(0, "filter.1.0", 0.60)
 	MDRV_SOUND_ROUTE(1, "filter.1.1", 0.60)
 	MDRV_SOUND_ROUTE(2, "filter.1.2", 0.60)
 
-	MDRV_SOUND_ADD_TAG("filter.0.0", FILTER_RC, 0)
+	MDRV_SOUND_ADD("filter.0.0", FILTER_RC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ADD_TAG("filter.0.1", FILTER_RC, 0)
+	MDRV_SOUND_ADD("filter.0.1", FILTER_RC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ADD_TAG("filter.0.2", FILTER_RC, 0)
+	MDRV_SOUND_ADD("filter.0.2", FILTER_RC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD_TAG("filter.1.0", FILTER_RC, 0)
+	MDRV_SOUND_ADD("filter.1.0", FILTER_RC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ADD_TAG("filter.1.1", FILTER_RC, 0)
+	MDRV_SOUND_ADD("filter.1.1", FILTER_RC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ADD_TAG("filter.1.2", FILTER_RC, 0)
+	MDRV_SOUND_ADD("filter.1.2", FILTER_RC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 

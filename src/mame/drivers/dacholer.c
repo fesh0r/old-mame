@@ -73,11 +73,6 @@ static WRITE8_HANDLER(snd_w)
 	cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
-static READ8_HANDLER(dswa_r)
-{
-	return (input_port_read(machine, "DSWA")&0x0f)|(snd_ack<<4); //guess ...
-}
-
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8800, 0x97ff) AM_RAM
@@ -88,11 +83,11 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( main_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
-	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
-	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
-	AM_RANGE(0x03, 0x03) AM_READ(dswa_r)
-	AM_RANGE(0x04, 0x04) AM_READ(input_port_4_r)
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("P1")
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("P2")
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x03, 0x03) AM_READ_PORT("DSWA")
+	AM_RANGE(0x04, 0x04) AM_READ_PORT("DSWB")
 	AM_RANGE(0x20, 0x20) AM_WRITE(coins_w)
 	AM_RANGE(0x21, 0x21) AM_WRITE(bg_bank_w)
 	AM_RANGE(0x22, 0x22) AM_WRITENOP
@@ -107,25 +102,30 @@ static ADDRESS_MAP_START( snd_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xe7ff) AM_RAM
 ADDRESS_MAP_END
 
-static WRITE8_HANDLER(adpcm_w)
+static WRITE8_HANDLER( adpcm_w )
 {
 	msm_data = data;
-	msm_toggle=0;
+	msm_toggle = 0;
 }
 
-static WRITE8_HANDLER(snd_ack_w)
+static WRITE8_HANDLER( snd_ack_w )
 {
-	snd_ack=data;
+	snd_ack = data;
+}
+
+static CUSTOM_INPUT( snd_ack_r )
+{
+	return snd_ack;		//guess ...
 }
 
 static WRITE8_HANDLER( snd_irq_w )
 {
-	snd_interrupt_enable=data;
+	snd_interrupt_enable = data;
 }
 
 static WRITE8_HANDLER( music_irq_w )
 {
-	music_interrupt_enable=data;
+	music_interrupt_enable = data;
 }
 
 static ADDRESS_MAP_START( snd_io_map, ADDRESS_SPACE_IO, 8 )
@@ -135,17 +135,17 @@ static ADDRESS_MAP_START( snd_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x08, 0x08) AM_WRITE(snd_irq_w)
 	AM_RANGE(0x0c, 0x0c) AM_WRITE(snd_ack_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(adpcm_w)
-	AM_RANGE(0x86, 0x86) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x87, 0x87) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x8a, 0x8a) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0x8b, 0x8b) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0x8e, 0x8e) AM_WRITE(AY8910_write_port_2_w)
-	AM_RANGE(0x8f, 0x8f) AM_WRITE(AY8910_control_port_2_w)
+	AM_RANGE(0x86, 0x86) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x87, 0x87) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x8a, 0x8a) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x8b, 0x8b) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x8e, 0x8e) AM_WRITE(ay8910_write_port_2_w)
+	AM_RANGE(0x8f, 0x8f) AM_WRITE(ay8910_control_port_2_w)
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( dacholer )
-	PORT_START_TAG("IN0")
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
@@ -155,17 +155,17 @@ static INPUT_PORTS_START( dacholer )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_COCKTAIL
+	PORT_START("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_COCKTAIL
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -175,7 +175,7 @@ static INPUT_PORTS_START( dacholer )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSWA")
+	PORT_START("DSWA")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )           /* table at 0x0a8c */
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -186,8 +186,9 @@ static INPUT_PORTS_START( dacholer )
 	PORT_DIPSETTING(    0x04, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(snd_ack_r, NULL)
 
-	PORT_START_TAG("DSWB")
+	PORT_START("DSWB")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )            /* table at 0x0a9c */
 	PORT_DIPSETTING(    0x03, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -364,9 +365,9 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( dacholer )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout,   0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, spritelayout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,   0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, charlayout,   0, 16 )
+	GFXDECODE_ENTRY( "gfx3", 0, spritelayout, 0, 16 )
 GFXDECODE_END
 
 
@@ -382,7 +383,7 @@ static INTERRUPT_GEN(adpcm_int)
 {
 	if(snd_interrupt_enable == 1 || (snd_interrupt_enable ==0 && msm_toggle==1))
 	{
-		MSM5205_data_w(0,msm_data >> 4);
+		msm5205_data_w(0,msm_data >> 4);
 		msm_data<<=4;
 		msm_toggle^=1;
 		if (msm_toggle==0)
@@ -392,7 +393,7 @@ static INTERRUPT_GEN(adpcm_int)
 	}
 }
 
-static struct MSM5205interface msm_interface =
+static msm5205_interface msm_interface =
 {
 	adpcm_int,			/* interrupt function */
 	MSM5205_S96_4B 	/* 1 / 96 = 3906.25Hz playback  - guess */
@@ -401,12 +402,12 @@ static struct MSM5205interface msm_interface =
 static MACHINE_DRIVER_START( dacholer )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 4000000)	/* ? */
+	MDRV_CPU_ADD("main", Z80, 4000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(main_map, 0)
 	MDRV_CPU_IO_MAP(main_io_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)	/* ? */
+	MDRV_CPU_ADD("audio", Z80, 4000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(snd_map, 0)
 	MDRV_CPU_IO_MAP(snd_io_map, 0)
 	MDRV_CPU_VBLANK_INT("main",sound_irq)
@@ -428,75 +429,75 @@ static MACHINE_DRIVER_START( dacholer )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay1", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay2", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay3", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(MSM5205, 375000)
+	MDRV_SOUND_ADD("msm", MSM5205, 375000)
 	MDRV_SOUND_CONFIG(msm_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
 MACHINE_DRIVER_END
 
 ROM_START( dacholer )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "dacholer8.rom",  0x0000, 0x2000, CRC(8b73a441) SHA1(6de9e4845b9063af8df42aa82ad536737190582c) )
 	ROM_LOAD( "dacholer9.rom",  0x2000, 0x2000, CRC(9499289f) SHA1(bcfe554eb1f8e686d193050c18278b6bf93f179f) )
 	ROM_LOAD( "dacholer10.rom", 0x4000, 0x2000, CRC(39d37281) SHA1(daaf84079dd18dd854946e066e2dcde994bcbba4) )
 	ROM_LOAD( "dacholer11.rom", 0x6000, 0x2000, CRC(bb781ea4) SHA1(170966c4bcd0246968850d908a69f81ea1e136d5) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "dacholer12.rom", 0x0000, 0x2000, CRC(cc3a4b68) SHA1(29344dc10c5d236f9a452196b3809565b4101327) )
 	ROM_LOAD( "dacholer13.rom", 0x2000, 0x2000, CRC(aa18e126) SHA1(e6af334188d0edbc37a7fb4a00a325b2039172b7) )
 	ROM_LOAD( "dacholer14.rom", 0x4000, 0x2000, CRC(3b0131c7) SHA1(338ca2c2c7480e1cd0bb15ee6b90d683ce06f0fd) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "dacholer7.rom", 0x0000, 0x2000, CRC(fd649d36) SHA1(77d78eef44f348b635dbc0711e662a5236c00d51) )
 
-	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "dacholer1.rom", 0x0000, 0x2000, CRC(9cca0fd2) SHA1(3ca1b4cca9611232df1195ae6ac172a79c8368c3) )
 	ROM_LOAD( "dacholer2.rom", 0x2000, 0x2000, CRC(c1322b27) SHA1(8022f59b8ae10a7a911563b01bffc2d5646108a5) )
 	ROM_LOAD( "dacholer3.rom", 0x4000, 0x2000, CRC(9e1e7198) SHA1(7a75da1ae09f6cf095976b48f462ede42625b244) )
 
-	ROM_REGION( 0x6000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "dacholer5.rom", 0x0000, 0x2000, CRC(dd4818f0) SHA1(718236932248512f8779f640e0367b5d92e6497e) )
 	ROM_LOAD( "dacholer4.rom", 0x2000, 0x2000, CRC(7f338ae0) SHA1(9206ed044feb44c55990803cdf608dd899e976ff) )
 	ROM_LOAD( "dacholer6.rom", 0x4000, 0x2000, CRC(0a6d4ec4) SHA1(419ea1f6ead3afb2de98432d9f8ead7447842a1e) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "proms", 0x0000, 0x0020, NO_DUMP )
 ROM_END
 
 ROM_START( kickboy )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "kickboy1.rom", 0x0000, 0x2000, CRC(525746f1) SHA1(4044f880f271f77b56b2d8964ab97d34fb507c7a) )
 	ROM_LOAD( "kickboy2.rom", 0x2000, 0x2000, CRC(9d091725) SHA1(827cea1c371094720b47fda271945cee20c9d956) )
 	ROM_LOAD( "kickboy3.rom", 0x4000, 0x2000, CRC(d61b6ff6) SHA1(071ab4c05ed54526144f2ba751c111e8c4bdc61a) )
 	ROM_LOAD( "kickboy4.rom", 0x6000, 0x2000, CRC(a8985bfe) SHA1(a8e466a7df381dfc8dd2e3483eba0215bfec7551) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "kickboy5.rom", 0x0000, 0x2000, CRC(cc3a4b68) SHA1(29344dc10c5d236f9a452196b3809565b4101327) )
 	ROM_LOAD( "kickboy6.rom", 0x2000, 0x2000, CRC(aa18e126) SHA1(e6af334188d0edbc37a7fb4a00a325b2039172b7) )
 	ROM_LOAD( "kickboy7.rom", 0x4000, 0x2000, CRC(3b0131c7) SHA1(338ca2c2c7480e1cd0bb15ee6b90d683ce06f0fd) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "kickboy13.rom", 0x0000, 0x2000, CRC(22be46e8) SHA1(d92b3913d8eba881c69acd1d85ca73ee58489fae) )
 
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "kickboy9.rom",  0x0000, 0x2000, CRC(7eac2a64) SHA1(b4a44770bbded59cd572ac5d0ae178affc8cdab8) )
 	ROM_LOAD( "kickboy8.rom",  0x2000, 0x2000, CRC(b8829572) SHA1(01009ec63449c809608923fd9dcecd82b29c5d6d) )
 
-	ROM_REGION( 0x6000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "kickboy11.rom", 0x0000, 0x2000, CRC(4b769a1c) SHA1(fde17dcd4b7cda9cc54572e81bc2f0e48c19277d) )
 	ROM_LOAD( "kickboy10.rom", 0x2000, 0x2000, CRC(45199750) SHA1(a04b4d6d0defa613d269625b089d28dc68d5b73a) )
 	ROM_LOAD( "kickboy12.rom", 0x4000, 0x2000, CRC(d1795506) SHA1(e0f7a64e301cf43c4739031461dba16aa44100a1) )
 
-	ROM_REGION( 0x0020, REGION_PROMS, 0 )
+	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "proms", 0x0000, 0x0020, NO_DUMP )
 ROM_END
 

@@ -127,7 +127,7 @@ static const char *const seawolf_sample_names[] =
 };
 
 
-static const struct Samplesinterface seawolf_samples_interface =
+static const samples_interface seawolf_samples_interface =
 {
 	5,	/* 5 channels */
 	seawolf_sample_names
@@ -138,7 +138,7 @@ MACHINE_DRIVER_START( seawolf_audio )
 	MDRV_SOUND_START(samples)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(seawolf_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.6)
 MACHINE_DRIVER_END
@@ -187,7 +187,7 @@ static const char *const gunfight_sample_names[] =
 };
 
 
-static const struct Samplesinterface gunfight_samples_interface =
+static const samples_interface gunfight_samples_interface =
 {
 	1,	/* 1 channel */
 	gunfight_sample_names
@@ -199,11 +199,11 @@ MACHINE_DRIVER_START( gunfight_audio )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples1", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(gunfight_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples2", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(gunfight_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 MACHINE_DRIVER_END
@@ -303,7 +303,7 @@ DISCRETE_SOUND_END
 
 MACHINE_DRIVER_START( tornbase_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(tornbase)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1)
 MACHINE_DRIVER_END
@@ -561,7 +561,7 @@ DISCRETE_SOUND_END
 
 MACHINE_DRIVER_START( maze_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(maze)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -749,7 +749,7 @@ static DISCRETE_SOUND_START(boothill)
 	/* The low value of the pot is set to 75000.  A real 1M pot will never go to 0 anyways.
        This will give the control more apparent volume range.
        The music way overpowers the rest of the sounds anyways. */
-	DISCRETE_ADJUSTMENT_TAG(BOOTHILL_MUSIC_ADJ, 1, RES_M(1), 75000, DISC_LOGADJ, "MUSIC_ADJ")
+	DISCRETE_ADJUSTMENT_TAG(BOOTHILL_MUSIC_ADJ, RES_M(1), 75000, DISC_LOGADJ, "MUSIC_ADJ")
 
 	/************************************************
      * Tone generator
@@ -796,7 +796,7 @@ DISCRETE_SOUND_END
 
 MACHINE_DRIVER_START( boothill_audio )
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(boothill)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
@@ -942,8 +942,8 @@ static DISCRETE_SOUND_START(checkmat)
 	/* This is needed because the original controls are infinite, but the UI only gives 100 steps. */
 	/* Also real variable resistors never hit 0 ohms.  There is always some resistance. */
 	/* R309 mostly just increases the Boom clipping, making it sound bassier. */
-	DISCRETE_ADJUSTMENT_TAG(CHECKMAT_R309, 1, RES_K(100), 1000, DISC_LOGADJ, "R309")
-	DISCRETE_ADJUSTMENT_TAG(CHECKMAT_R411, 1, RES_M(1), 1000, DISC_LOGADJ, "R411")
+	DISCRETE_ADJUSTMENT_TAG(CHECKMAT_R309, RES_K(100), 1000, DISC_LOGADJ, "R309")
+	DISCRETE_ADJUSTMENT_TAG(CHECKMAT_R411, RES_M(1), 1000, DISC_LOGADJ, "R411")
 
 	/************************************************
      * Boom Sound
@@ -1033,7 +1033,7 @@ DISCRETE_SOUND_END
 
 MACHINE_DRIVER_START( checkmat_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(checkmat)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.4)
 MACHINE_DRIVER_END
@@ -1218,7 +1218,7 @@ static DISCRETE_SOUND_START(desertgu)
 	/* The low value of the pot is set to 75000.  A real 1M pot will never go to 0 anyways. */
 	/* This will give the control more apparent volume range. */
 	/* The music way overpowers the rest of the sounds anyways. */
-	DISCRETE_ADJUSTMENT_TAG(DESERTGU_MUSIC_ADJ, 1, RES_M(1), 75000, DISC_LOGADJ, "MUSIC_ADJ")
+	DISCRETE_ADJUSTMENT_TAG(DESERTGU_MUSIC_ADJ, RES_M(1), 75000, DISC_LOGADJ, "MUSIC_ADJ")
 
 	/************************************************
      * Tone generator
@@ -1272,7 +1272,7 @@ DISCRETE_SOUND_END
 
 MACHINE_DRIVER_START( desertgu_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(desertgu)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.8)
 MACHINE_DRIVER_END
@@ -1513,7 +1513,7 @@ static DISCRETE_SOUND_START(dplay)
 	/* The low value of the pot is set to 1000.  A real 1M pot will never go to 0 anyways. */
 	/* This will give the control more apparent volume range. */
 	/* The music way overpowers the rest of the sounds anyways. */
-	DISCRETE_ADJUSTMENT_TAG(DPLAY_MUSIC_ADJ, 1, RES_M(1), 1000, DISC_LOGADJ, "MUSIC_ADJ")
+	DISCRETE_ADJUSTMENT_TAG(DPLAY_MUSIC_ADJ, RES_M(1), 1000, DISC_LOGADJ, "MUSIC_ADJ")
 
 	/************************************************
      * Music and Tone Generator
@@ -1566,7 +1566,7 @@ DISCRETE_SOUND_END
 
 MACHINE_DRIVER_START( dplay_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(dplay)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.8)
 MACHINE_DRIVER_END
@@ -1606,7 +1606,7 @@ static const char *const gmissile_sample_names[] =
 };
 
 
-static const struct Samplesinterface gmissile_samples_interface =
+static const samples_interface gmissile_samples_interface =
 {
 	1,	/* 1 channel */
 	gmissile_sample_names
@@ -1618,11 +1618,11 @@ MACHINE_DRIVER_START( gmissile_audio )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples1", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(gmissile_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.9)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples2", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(gmissile_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.9)
 MACHINE_DRIVER_END
@@ -1704,7 +1704,7 @@ static const char *const m4_sample_names[] =
 };
 
 
-static const struct Samplesinterface m4_samples_interface =
+static const samples_interface m4_samples_interface =
 {
 	2,	/* 2 channels */
 	m4_sample_names
@@ -1716,11 +1716,11 @@ MACHINE_DRIVER_START( m4_audio )
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples1", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(m4_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples2", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(m4_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1)
 MACHINE_DRIVER_END
@@ -1942,7 +1942,7 @@ static DISCRETE_SOUND_START(clowns)
 	/* The low value of the pot is set to 7000.  A real 1M pot will never go to 0 anyways. */
 	/* This will give the control more apparent volume range. */
 	/* The music way overpowers the rest of the sounds anyways. */
-	DISCRETE_ADJUSTMENT_TAG(CLOWNS_MUSIC_ADJ, 1, RES_M(1), 7000, DISC_LOGADJ, "MUSIC_ADJ")
+	DISCRETE_ADJUSTMENT_TAG(CLOWNS_MUSIC_ADJ, RES_M(1), 7000, DISC_LOGADJ, "MUSIC_ADJ")
 
 	/************************************************
      * Tone generator
@@ -1992,7 +1992,7 @@ static const char *const clowns_sample_names[] =
 	0
 };
 
-static const struct Samplesinterface clowns_samples_interface =
+static const samples_interface clowns_samples_interface =
 {
 	1,	/* 1 channel */
 	clowns_sample_names
@@ -2004,11 +2004,11 @@ MACHINE_DRIVER_START( clowns_audio )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(clowns_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.70)
 
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(clowns)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -2144,7 +2144,7 @@ DISCRETE_SOUND_END
 
 MACHINE_DRIVER_START( dogpatch_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(dogpatch)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.3)
 MACHINE_DRIVER_END
@@ -2177,7 +2177,7 @@ WRITE8_HANDLER( dogpatch_audio_w )
  *  Apr 2007, D.R.
  *************************************/
 
-static const struct SN76477interface spcenctr_sn76477_interface =
+static const sn76477_interface spcenctr_sn76477_interface =
 {
 	0,				/*  4 noise_res (N/C)        */
 	0,				/*  5 filter_res (N/C)       */
@@ -2687,11 +2687,11 @@ DISCRETE_SOUND_END
 MACHINE_DRIVER_START( spcenctr_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SN76477, 0)
+	MDRV_SOUND_ADD("sn", SN76477, 0)
 	MDRV_SOUND_CONFIG(spcenctr_sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(spcenctr)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.45)
 MACHINE_DRIVER_END
@@ -2737,7 +2737,7 @@ WRITE8_HANDLER( spcenctr_audio_3_w )
 
 	discrete_sound_w(machine, SPCENCTR_BONUS_EN, (data >> 4) & 0x01);
 
-	SN76477_enable_w(0, (data >> 5) & 0x01);	/* saucer sound */
+	sn76477_enable_w(0, (data >> 5) & 0x01);	/* saucer sound */
 
 	/* D6 and D7 are not connected */
 }
@@ -2759,7 +2759,7 @@ static const char *const phantom2_sample_names[] =
 };
 
 
-static const struct Samplesinterface phantom2_samples_interface =
+static const samples_interface phantom2_samples_interface =
 {
 	2,	/* 2 channels */
 	phantom2_sample_names
@@ -2770,7 +2770,7 @@ MACHINE_DRIVER_START( phantom2_audio )
 	MDRV_SOUND_START(samples)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(phantom2_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1)
 MACHINE_DRIVER_END
@@ -2898,7 +2898,7 @@ DISCRETE_SOUND_END
 MACHINE_DRIVER_START( bowler_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(bowler)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1)
 MACHINE_DRIVER_END
@@ -2993,7 +2993,7 @@ WRITE8_HANDLER( bowler_audio_6_w )
  *
  *************************************/
 
-static const struct SN76477interface invaders_sn76477_interface =
+static const sn76477_interface invaders_sn76477_interface =
 {
 	0,			/*  4 noise_res (N/C)        */
 	0,			/*  5 filter_res (N/C)       */
@@ -3038,7 +3038,7 @@ static const char *const invaders_sample_names[] =
 };
 
 
-static const struct Samplesinterface invaders_samples_interface =
+static const samples_interface invaders_samples_interface =
 {
 	6,	/* 6 channels */
 	invaders_sample_names
@@ -3051,11 +3051,11 @@ MACHINE_DRIVER_START( invaders_samples_audio )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SN76477, 0)
+	MDRV_SOUND_ADD("sn", SN76477, 0)
 	MDRV_SOUND_CONFIG(invaders_sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(invaders_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -3628,11 +3628,11 @@ DISCRETE_SOUND_END
 MACHINE_DRIVER_START( invaders_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SN76477, 0)
+	MDRV_SOUND_ADD("sn", SN76477, 0)
 	MDRV_SOUND_CONFIG(invaders_sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(invaders)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 MACHINE_DRIVER_END
@@ -3640,7 +3640,7 @@ MACHINE_DRIVER_END
 
 WRITE8_HANDLER( invaders_audio_1_w )
 {
-	SN76477_enable_w(0, (~data >> 0) & 0x01);	/* saucer sound */
+	sn76477_enable_w(0, (~data >> 0) & 0x01);	/* saucer sound */
 
 	discrete_sound_w(machine, INVADERS_NODE(INVADERS_MISSILE_EN, 1), data & 0x02);
 	discrete_sound_w(machine, INVADERS_NODE(INVADERS_EXPLOSION_EN, 1), data & 0x04);
@@ -3784,7 +3784,7 @@ DISCRETE_SOUND_END
 
 MACHINE_DRIVER_START( blueshrk_audio )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(blueshrk)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -3816,7 +3816,7 @@ WRITE8_HANDLER( blueshrk_audio_w )
  *
  *************************************/
 
-static const struct SN76477interface invad2ct_p1_sn76477_interface =
+static const sn76477_interface invad2ct_p1_sn76477_interface =
 {
 	0,			/*  4 noise_res (N/C)        */
 	0,			/*  5 filter_res (N/C)       */
@@ -3844,7 +3844,7 @@ static const struct SN76477interface invad2ct_p1_sn76477_interface =
 };
 
 
-static const struct SN76477interface invad2ct_p2_sn76477_interface =
+static const sn76477_interface invad2ct_p2_sn76477_interface =
 {
 	0,			  /*  4 noise_res (N/C)        */
 	0,			  /*  5 filter_res (N/C)       */
@@ -4003,16 +4003,16 @@ DISCRETE_SOUND_END
 MACHINE_DRIVER_START( invad2ct_audio )
 	MDRV_SPEAKER_STANDARD_STEREO("#1", "#2")
 
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(invad2ct)
 	MDRV_SOUND_ROUTE(0, "#1", 0.5)
 	MDRV_SOUND_ROUTE(1, "#2", 0.5)
 
-	MDRV_SOUND_ADD(SN76477, 0)
+	MDRV_SOUND_ADD("sn1", SN76477, 0)
 	MDRV_SOUND_CONFIG(invad2ct_p1_sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "#1", 0.3)
 
-	MDRV_SOUND_ADD(SN76477, 0)
+	MDRV_SOUND_ADD("sn2", SN76477, 0)
 	MDRV_SOUND_CONFIG(invad2ct_p2_sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "#2", 0.3)
 MACHINE_DRIVER_END
@@ -4020,7 +4020,7 @@ MACHINE_DRIVER_END
 
 WRITE8_HANDLER( invad2ct_audio_1_w )
 {
-	SN76477_enable_w(0, (~data >> 0) & 0x01);	/* saucer sound */
+	sn76477_enable_w(0, (~data >> 0) & 0x01);	/* saucer sound */
 
 	discrete_sound_w(machine, INVADERS_NODE(INVADERS_MISSILE_EN, 1), data & 0x02);
 	discrete_sound_w(machine, INVADERS_NODE(INVADERS_EXPLOSION_EN, 1), data & 0x04);
@@ -4044,7 +4044,7 @@ WRITE8_HANDLER( invad2ct_audio_2_w )
 
 WRITE8_HANDLER( invad2ct_audio_3_w )
 {
-	SN76477_enable_w(1, (~data >> 0) & 0x01);	/* saucer sound */
+	sn76477_enable_w(1, (~data >> 0) & 0x01);	/* saucer sound */
 
 	discrete_sound_w(machine, INVADERS_NODE(INVADERS_MISSILE_EN, 2), data & 0x02);
 	discrete_sound_w(machine, INVADERS_NODE(INVADERS_EXPLOSION_EN, 2), data & 0x04);

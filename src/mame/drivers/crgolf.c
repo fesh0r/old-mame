@@ -20,6 +20,9 @@ WHO AM I?      (In place of "ARIES ELECA")
 1984JULY1 V-1  (In place of "1984JAN15 V-0")
 1984 COPYRIGHT BY WHO
 
+2008-08
+Dip locations and factory settings verified with manual
+
 ****************************************************************************
 
     Memory map (TBA)
@@ -59,7 +62,7 @@ static WRITE8_HANDLER( rom_bank_select_w )
 static MACHINE_START( crgolf )
 {
 	/* configure the banking */
-	memory_configure_bank(1, 0, 16, memory_region(machine, REGION_CPU1) + 0x10000, 0x2000);
+	memory_configure_bank(1, 0, 16, memory_region(machine, "main") + 0x10000, 0x2000);
 	memory_set_bank(1, 0);
 
 	/* register for save states */
@@ -176,10 +179,10 @@ static void vck_callback(running_machine *machine, int data)
 	/* only play back if we have data remaining */
 	if (sample_count != 0xff)
 	{
-		UINT8 data = memory_region(machine, REGION_SOUND1)[sample_offset >> 1];
+		UINT8 data = memory_region(machine, "adpcm")[sample_offset >> 1];
 
 		/* write the next nibble and advance */
-		MSM5205_data_w(0, (data >> (4 * (~sample_offset & 1))) & 0x0f);
+		msm5205_data_w(0, (data >> (4 * (~sample_offset & 1))) & 0x0f);
 		sample_offset++;
 
 		/* every 256 clocks, we decrement the length */
@@ -189,7 +192,7 @@ static void vck_callback(running_machine *machine, int data)
 
 			/* if we hit 0xff, automatically turn off playback */
 			if (sample_count == 0xff)
-				MSM5205_reset_w(0, 1);
+				msm5205_reset_w(0, 1);
 		}
 	}
 }
@@ -201,7 +204,7 @@ static WRITE8_HANDLER( crgolfhi_sample_w )
 	{
 		/* offset 0 holds the MSM5205 in reset */
 		case 0:
-			MSM5205_reset_w(0, 1);
+			msm5205_reset_w(0, 1);
 			break;
 
 		/* offset 1 is the length/256 nibbles */
@@ -216,7 +219,7 @@ static WRITE8_HANDLER( crgolfhi_sample_w )
 
 		/* offset 3 turns on playback */
 		case 3:
-			MSM5205_reset_w(0, 0);
+			msm5205_reset_w(0, 0);
 			break;
 	}
 }
@@ -254,8 +257,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0xc000, 0xc000) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xc001, 0xc001) AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0xc002, 0xc002) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xe000, 0xe000) AM_READWRITE(switch_input_r, switch_input_select_w)
 	AM_RANGE(0xe001, 0xe001) AM_READWRITE(analog_input_r, unknown_w)
@@ -271,12 +274,12 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( crgolf )
-	PORT_START_TAG("IN0")	/* CREDIT */
+	PORT_START("IN0")	/* CREDIT */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE1 )
 	PORT_BIT( 0xfc, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")	/* SELECT */
+	PORT_START("IN1")	/* SELECT */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START2 )
@@ -284,7 +287,7 @@ static INPUT_PORTS_START( crgolf )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_START4 )
 	PORT_BIT( 0xe0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("P1")	/* PLAY1 */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON6 ) PORT_PLAYER(1)			/* club select */
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)			/* backward address */
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(1)			/* forward address */
@@ -294,7 +297,7 @@ static INPUT_PORTS_START( crgolf )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)	/* direction right */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)			/* shot switch */
 
-	PORT_START_TAG("P2")	/* PLAY2 */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON6 ) PORT_COCKTAIL		/* club select */
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_COCKTAIL		/* backward address */
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_COCKTAIL		/* forward address */
@@ -304,37 +307,37 @@ static INPUT_PORTS_START( crgolf )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL	/* direction right */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL		/* shot switch */
 
-	PORT_START_TAG("DSW")	/* DIPSW */
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Difficulty ))
+	PORT_START("DSW")
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW:2")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Hard ) )
-	PORT_DIPNAME( 0x06, 0x04, "Half-Round Play" )
+	PORT_DIPNAME( 0x06, 0x04, "Half-Round Play" ) PORT_DIPLOCATION("SW:1,4")
 	PORT_DIPSETTING(    0x00, "4 Coins" )
 	PORT_DIPSETTING(    0x02, "5 Coins" )
 	PORT_DIPSETTING(    0x04, "6 Coins" )
 	PORT_DIPSETTING(    0x06, "10 Coins" )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Cabinet ))
-	PORT_DIPSETTING(    0x08, DEF_STR( Upright ))
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ))
-	PORT_DIPNAME( 0x10, 0x00, "Clear High Scores" )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ))
-	PORT_DIPSETTING(    0x10, DEF_STR( On ))
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Coinage ))
-	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ))
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ))
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
-	PORT_SERVICE( 0x80, IP_ACTIVE_HIGH )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW:3")
+	PORT_DIPSETTING(    0x08, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x10, 0x00, "Clear High Scores" ) PORT_DIPLOCATION("SW:6")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW:5")
+	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+	PORT_DIPUNUSED_DIPLOC( 0x40, 0x00, "SW:8" )
+	PORT_SERVICE_DIPLOC( 0x80, IP_ACTIVE_HIGH, "SW:7" )
 
-	PORT_START_TAG("UNUSED0")
+	PORT_START("UNUSED0")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("UNUSED1")
+	PORT_START("UNUSED1")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("STICK0")
+	PORT_START("STICK0")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(70) PORT_KEYDELTA(16) PORT_REVERSE
 
-	PORT_START_TAG("STICK1")
+	PORT_START("STICK1")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(70) PORT_KEYDELTA(16) PORT_REVERSE PORT_COCKTAIL
 INPUT_PORTS_END
 
@@ -346,7 +349,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct MSM5205interface msm5205_intf =
+static const msm5205_interface msm5205_intf =
 {
 	vck_callback,
 	MSM5205_S64_4B
@@ -363,11 +366,11 @@ static const struct MSM5205interface msm5205_intf =
 static MACHINE_DRIVER_START( crgolf )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,MASTER_CLOCK/3/2)
+	MDRV_CPU_ADD("main", Z80,MASTER_CLOCK/3/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80,MASTER_CLOCK/3/2)
+	MDRV_CPU_ADD("audio", Z80,MASTER_CLOCK/3/2)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -379,7 +382,7 @@ static MACHINE_DRIVER_START( crgolf )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910, MASTER_CLOCK/3/2/2)
+	MDRV_SOUND_ADD("ay", AY8910, MASTER_CLOCK/3/2/2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -387,7 +390,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( crgolfhi )
 	MDRV_IMPORT_FROM(crgolf)
 
-	MDRV_SOUND_ADD(MSM5205, 384000)
+	MDRV_SOUND_ADD("msm", MSM5205, 384000)
 	MDRV_SOUND_CONFIG(msm5205_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -401,7 +404,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( crgolf ) // 834-5419-04
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
+	ROM_REGION( 0x30000, "main", 0 )
 	ROM_LOAD( "crwnc1.1c",  0x00000, 0x2000, CRC(3246e405) SHA1(f6018029317ac96df5866ca6a2bb2135edbd7e77) )
 	ROM_LOAD( "crwna1.1a",  0x02000, 0x2000, CRC(b9a936e2) SHA1(cebf67d9c42627fbb39648674012a6cf8cb287b5) )
 	ROM_LOAD( "epr5880.6b", 0x10000, 0x2000, CRC(4d6d8dad) SHA1(1530f81ad0097eadc75884ff8690b60b85ae451b) )
@@ -415,21 +418,21 @@ ROM_START( crgolf ) // 834-5419-04
 	ROM_LOAD( "epr5884.6k", 0x2c000, 0x2000, CRC(eb455966) SHA1(14278b598ac1d4007d5357cb40899c92a052417f) )
 	ROM_LOAD( "epr5889.5k", 0x2e000, 0x2000, CRC(88357391) SHA1(afdb5ed6555adf60bd64808413fc72fa5c67b6ec) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "epr6198.1f",  0x0000, 0x1000, CRC(388c33d6) SHA1(42fd19c4b4ec7538d6c437552efb258bf2dcebc0) )
 	ROM_LOAD( "epr5892.1e",  0x2000, 0x2000, CRC(608dc2e2) SHA1(d906537cffd3e055f52f37a0490b3bb63107b2f9) )
 	ROM_LOAD( "epr5891a.1d", 0x4000, 0x2000, CRC(f353b585) SHA1(f09dcd0240131f872ceef5ddc9c89ab2fc92d117) )
 	ROM_LOAD( "epr5890a.1c", 0x6000, 0x2000, CRC(b737c2e8) SHA1(8596abbdff74300230b5ec5bf8acfe222eb3414f) )
 
-	ROM_REGION( 0x0020,  REGION_PROMS, 0 )
+	ROM_REGION( 0x0020,  "proms", 0 )
 	ROM_LOAD( "pr5877.1s", 0x0000, 0x0020, CRC(f880b95d) SHA1(5ad0ee39e2b9befaf3895ec635d5865b7b1e562b) )
 
-	ROM_REGION( 0x0200, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0200, "plds", ROMREGION_DISPOSE )
 	ROM_LOAD( "pal16l8.3e",  0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 ROM_START( crgolfa ) // 834-5419-03
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
+	ROM_REGION( 0x30000, "main", 0 )
 	ROM_LOAD( "epr6143.1c", 0x00000, 0x2000, CRC(4b301360) SHA1(2a7dd4876f4448b4b59b6dd02e55eb2d0126b777) )
 	ROM_LOAD( "epr6142.1a", 0x02000, 0x2000, CRC(8fc5e67f) SHA1(6563db94c55cfc7d2270daccaab57fc7b422b9f9) )
 	ROM_LOAD( "epr5880.6b", 0x10000, 0x2000, CRC(4d6d8dad) SHA1(1530f81ad0097eadc75884ff8690b60b85ae451b) )
@@ -443,22 +446,22 @@ ROM_START( crgolfa ) // 834-5419-03
 	ROM_LOAD( "epr5884.6k", 0x2c000, 0x2000, CRC(eb455966) SHA1(14278b598ac1d4007d5357cb40899c92a052417f) )
 	ROM_LOAD( "epr5889.5k", 0x2e000, 0x2000, CRC(88357391) SHA1(afdb5ed6555adf60bd64808413fc72fa5c67b6ec) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "epr6144.1f",  0x0000, 0x1000, CRC(3fdc8cd6) SHA1(01d118d56a0e363af66a36ba583c4cbce86ee1d1) )
 	ROM_LOAD( "epr5892.1e",  0x2000, 0x2000, CRC(608dc2e2) SHA1(d906537cffd3e055f52f37a0490b3bb63107b2f9) )
 	ROM_LOAD( "epr5891a.1d", 0x4000, 0x2000, CRC(f353b585) SHA1(f09dcd0240131f872ceef5ddc9c89ab2fc92d117) )
 	ROM_LOAD( "epr5890a.1c", 0x6000, 0x2000, CRC(b737c2e8) SHA1(8596abbdff74300230b5ec5bf8acfe222eb3414f) )
 
-	ROM_REGION( 0x0020,  REGION_PROMS, 0 )
+	ROM_REGION( 0x0020,  "proms", 0 )
 	ROM_LOAD( "pr5877.1s", 0x0000, 0x0020, CRC(f880b95d) SHA1(5ad0ee39e2b9befaf3895ec635d5865b7b1e562b) )
 
-	ROM_REGION( 0x0200, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0200, "plds", ROMREGION_DISPOSE )
 	ROM_LOAD( "pal16l8.3e",  0x0000, 0x0104, NO_DUMP ) /* PAL is read protected */
 ROM_END
 
 
 ROM_START( crgolfb )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
+	ROM_REGION( 0x30000, "main", 0 )
 	ROM_LOAD( "epr5879b.1c", 0x00000, 0x2000, CRC(927be359) SHA1(d534f7e3ef4ced8eea882ae2b8425df4c5842833) )
 	ROM_LOAD( "epr5878.1a",  0x02000, 0x2000, CRC(65fd0fa0) SHA1(de95ff95c9f981cd9eadf8b028ee5373bc69007b) )
 	ROM_LOAD( "epr5880.6b",  0x10000, 0x2000, CRC(4d6d8dad) SHA1(1530f81ad0097eadc75884ff8690b60b85ae451b) )
@@ -472,19 +475,19 @@ ROM_START( crgolfb )
 	ROM_LOAD( "epr5884.6k",  0x2c000, 0x2000, CRC(eb455966) SHA1(14278b598ac1d4007d5357cb40899c92a052417f) )
 	ROM_LOAD( "epr5889.5k",  0x2e000, 0x2000, CRC(88357391) SHA1(afdb5ed6555adf60bd64808413fc72fa5c67b6ec) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "epr5893c.1f", 0x0000, 0x1000, CRC(5011646d) SHA1(1bbf83107396d69c17580d4b1b38d93f741a608f) )
 	ROM_LOAD( "epr5892.1e",  0x2000, 0x2000, CRC(608dc2e2) SHA1(d906537cffd3e055f52f37a0490b3bb63107b2f9) )
 	ROM_LOAD( "epr5891a.1d", 0x4000, 0x2000, CRC(f353b585) SHA1(f09dcd0240131f872ceef5ddc9c89ab2fc92d117) )
 	ROM_LOAD( "epr5890a.1c", 0x6000, 0x2000, CRC(b737c2e8) SHA1(8596abbdff74300230b5ec5bf8acfe222eb3414f) )
 
-	ROM_REGION( 0x0020,  REGION_PROMS, 0 )
+	ROM_REGION( 0x0020,  "proms", 0 )
 	ROM_LOAD( "pr5877.1s",   0x0000, 0x0020, CRC(f880b95d) SHA1(5ad0ee39e2b9befaf3895ec635d5865b7b1e562b) )
 ROM_END
 
 
 ROM_START( crgolfc )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
+	ROM_REGION( 0x30000, "main", 0 )
 	ROM_LOAD( "15.1a",      0x00000, 0x2000, CRC(e6194356) SHA1(78eec53a0658b552e6a8af109d9c9754e4ddadcb) )
 	ROM_LOAD( "16.1c",      0x02000, 0x2000, CRC(f50412e2) SHA1(5a50fb1edfc26072e921447bd157fe996f707e05) )
 	ROM_LOAD( "cg.1",       0x10000, 0x2000, CRC(ad7d537a) SHA1(deff74074a8b16ea91a0fa72d97ec36336c87b97) ) //  1.6a
@@ -498,19 +501,19 @@ ROM_START( crgolfc )
 	ROM_LOAD( "epr5884.6k", 0x2c000, 0x2000, CRC(eb455966) SHA1(14278b598ac1d4007d5357cb40899c92a052417f) ) //  5.6e
 	ROM_LOAD( "epr5889.5k", 0x2e000, 0x2000, CRC(88357391) SHA1(afdb5ed6555adf60bd64808413fc72fa5c67b6ec) ) // 10.5e
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "11.1e",       0x0000, 0x1000, CRC(53295a1a) SHA1(ec6c4df9f32e4b3ffe48e823d90a9e6a671e6027) )
 	ROM_LOAD( "epr5892.1e",  0x2000, 0x2000, CRC(608dc2e2) SHA1(d906537cffd3e055f52f37a0490b3bb63107b2f9) ) // 12.1d
 	ROM_LOAD( "epr5891a.1d", 0x4000, 0x2000, CRC(f353b585) SHA1(f09dcd0240131f872ceef5ddc9c89ab2fc92d117) ) // 13.1c
 	ROM_LOAD( "epr5890a.1c", 0x6000, 0x2000, CRC(b737c2e8) SHA1(8596abbdff74300230b5ec5bf8acfe222eb3414f) ) // 14.1b
 
-	ROM_REGION( 0x0020,  REGION_PROMS, 0 )
+	ROM_REGION( 0x0020,  "proms", 0 )
 	ROM_LOAD( "pr5877.1s", 0x0000, 0x0020, CRC(f880b95d) SHA1(5ad0ee39e2b9befaf3895ec635d5865b7b1e562b) )
 ROM_END
 
 
 ROM_START( crgolfbt )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
+	ROM_REGION( 0x30000, "main", 0 )
 	ROM_LOAD( "epr5879b.1c", 0x00000, 0x2000, CRC(927be359) SHA1(d534f7e3ef4ced8eea882ae2b8425df4c5842833) )
 	ROM_LOAD( "epr5878.1a",  0x02000, 0x2000, CRC(65fd0fa0) SHA1(de95ff95c9f981cd9eadf8b028ee5373bc69007b) )
 	ROM_LOAD( "cg.1",        0x10000, 0x2000, CRC(ad7d537a) SHA1(deff74074a8b16ea91a0fa72d97ec36336c87b97) )
@@ -524,19 +527,19 @@ ROM_START( crgolfbt )
 	ROM_LOAD( "epr5884.6k",  0x2c000, 0x2000, CRC(eb455966) SHA1(14278b598ac1d4007d5357cb40899c92a052417f) ) // cg.5
 	ROM_LOAD( "epr5889.5k",  0x2e000, 0x2000, CRC(88357391) SHA1(afdb5ed6555adf60bd64808413fc72fa5c67b6ec) ) // cg.10
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "cg.14",       0x0000, 0x1000, CRC(07156cd9) SHA1(8907cf9228d6de117b24969d4e039cee330f9b1e) )
 	ROM_LOAD( "epr5892.1e",  0x2000, 0x2000, CRC(608dc2e2) SHA1(d906537cffd3e055f52f37a0490b3bb63107b2f9) ) // cg.13
 	ROM_LOAD( "epr5891a.1d", 0x4000, 0x2000, CRC(f353b585) SHA1(f09dcd0240131f872ceef5ddc9c89ab2fc92d117) ) // cg.12
 	ROM_LOAD( "epr5890a.1c", 0x6000, 0x2000, CRC(b737c2e8) SHA1(8596abbdff74300230b5ec5bf8acfe222eb3414f) ) // cg.11
 
-	ROM_REGION( 0x0020,  REGION_PROMS, 0 )
+	ROM_REGION( 0x0020,  "proms", 0 )
 	ROM_LOAD( "pr5877.1s",   0x0000, 0x0020, CRC(f880b95d) SHA1(5ad0ee39e2b9befaf3895ec635d5865b7b1e562b) )
 ROM_END
 
 
 ROM_START( crgolfhi )
-	ROM_REGION( 0x30000, REGION_CPU1, 0 )
+	ROM_REGION( 0x30000, "main", 0 )
 	ROM_LOAD( "cpu.c1",  0x00000, 0x2000, CRC(8b101085) SHA1(a59c369be3e7e645d8b20032998a778a2056b7d7) )
 	ROM_LOAD( "cpu.a1",  0x02000, 0x2000, CRC(f48a8ee8) SHA1(cc07c7258caf251e9cb52f12be779cb02fca0b0a) )
 	ROM_LOAD( "main.b6", 0x10000, 0x2000, CRC(5b0336c6) SHA1(86e2c197f23a2f2f7666448b74611150ca15a2af) )
@@ -554,16 +557,16 @@ ROM_START( crgolfhi )
 	ROM_LOAD( "main.j6", 0x28000, 0x2000, CRC(22db8cce) SHA1(cd646830129bfdd2f5f10c8f6732e76f8a15b74f) )
 	ROM_LOAD( "main.j5", 0x2a000, 0x2000, CRC(f757de30) SHA1(38330f10051735683f41ed425900b9f0f9ee01be) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "main.f1",  0x0000, 0x2000, CRC(e7c471de) SHA1(b953807bc714496363ca33ad0fc11a2d30aa7b7e) )
 
-	ROM_REGION( 0x8000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x8000, "adpcm", 0 )
 	ROM_LOAD( "sub.r1", 0x0000, 0x2000, CRC(9be85e38) SHA1(a108fe812d0518e7bef32fd76998c0c70b70723e) )
 	ROM_LOAD( "sub.r2", 0x2000, 0x2000, CRC(d65b8e3a) SHA1(de6acffbe2d7078f0598857a6a3b2179e5c82a34) )
 	ROM_LOAD( "sub.r3", 0x4000, 0x2000, CRC(65967250) SHA1(7620560ea57b8e5d259ea8881fb8d8ca46228014) )
 	ROM_LOAD( "sub.r4", 0x6000, 0x2000, CRC(d3716776) SHA1(7e38437d255c5f28aac24f0943c10fc1ce998b60) )
 
-	ROM_REGION( 0x0020,  REGION_PROMS, 0 )
+	ROM_REGION( 0x0020,  "proms", 0 )
 	ROM_LOAD( "prom.s1", 0x0000, 0x0020, CRC(014427df) SHA1(85a5e660f9667e032b80152bbde351007e5c88df) )
 ROM_END
 

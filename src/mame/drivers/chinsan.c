@@ -73,7 +73,7 @@ static VIDEO_UPDATE(chinsan)
 
 static MACHINE_RESET( chinsan )
 {
-	memory_configure_bank(1, 0, 4, memory_region(machine, REGION_CPU1) + 0x10000, 0x4000);
+	memory_configure_bank(1, 0, 4, memory_region(machine, "main") + 0x10000, 0x4000);
 }
 
 
@@ -94,7 +94,7 @@ static WRITE8_HANDLER( ym_port_w2 )
 }
 
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -197,14 +197,14 @@ static ADDRESS_MAP_START( chinsan_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_WRITE(chinsan_port00_w)
 	AM_RANGE(0x01, 0x01) AM_READ(chinsan_input_port_0_r)
 	AM_RANGE(0x02, 0x02) AM_READ(chinsan_input_port_1_r)
-	AM_RANGE(0x10, 0x10) AM_READ(YM2203_status_port_0_r) AM_WRITE(YM2203_control_port_0_w)
-	AM_RANGE(0x11, 0x11) AM_READ(YM2203_read_port_0_r) AM_WRITE(YM2203_write_port_0_w)
+	AM_RANGE(0x10, 0x10) AM_READ(ym2203_status_port_0_r) AM_WRITE(ym2203_control_port_0_w)
+	AM_RANGE(0x11, 0x11) AM_READ(ym2203_read_port_0_r) AM_WRITE(ym2203_write_port_0_w)
 	AM_RANGE(0x30, 0x30) AM_WRITE(ctrl_w)	// ROM bank + unknown stuff (input mutliplex?)
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( chinsan )
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, "DSW1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -230,7 +230,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, "DSW2" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -257,7 +257,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 
-	PORT_START_TAG("MAHJONG_P1_1")
+	PORT_START("MAHJONG_P1_1")
 	PORT_DIPNAME( 0x01, 0x01, "1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -282,7 +282,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) // adds coins?, but maybe its the service switch?
 
 
-	PORT_START_TAG("MAHJONG_P1_2")
+	PORT_START("MAHJONG_P1_2")
 	PORT_DIPNAME( 0x01, 0x01, "1-2" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -308,7 +308,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("MAHJONG_P1_3")
+	PORT_START("MAHJONG_P1_3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_PON )
@@ -318,7 +318,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 
-	PORT_START_TAG("MAHJONG_P1_4")
+	PORT_START("MAHJONG_P1_4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_RON )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_CHI )
@@ -328,7 +328,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 
-	PORT_START_TAG("MAHJONG_P1_5")
+	PORT_START("MAHJONG_P1_5")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_REACH )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_N )
@@ -338,7 +338,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 
-	PORT_START_TAG("MAHJONG_P1_6")
+	PORT_START("MAHJONG_P1_6")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_KAN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_M )
@@ -348,7 +348,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 
-	PORT_START_TAG("MAHJONG_P2_1")
+	PORT_START("MAHJONG_P2_1")
 	PORT_DIPNAME( 0x01, 0x01, "2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -374,7 +374,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("MAHJONG_P2_2")
+	PORT_START("MAHJONG_P2_2")
 	PORT_DIPNAME( 0x01, 0x01, "2-2" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -400,7 +400,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("MAHJONG_P2_3")
+	PORT_START("MAHJONG_P2_3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_PON ) PORT_PLAYER(2)
@@ -410,7 +410,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 
-	PORT_START_TAG("MAHJONG_P2_4")
+	PORT_START("MAHJONG_P2_4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_RON ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_CHI ) PORT_PLAYER(2)
@@ -420,7 +420,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 
-	PORT_START_TAG("MAHJONG_P2_5")
+	PORT_START("MAHJONG_P2_5")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_REACH ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_N ) PORT_PLAYER(2)
@@ -430,7 +430,7 @@ static INPUT_PORTS_START( chinsan )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unused?
 
-	PORT_START_TAG("MAHJONG_P2_6")
+	PORT_START("MAHJONG_P2_6")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_KAN ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_M ) PORT_PLAYER(2)
@@ -455,13 +455,13 @@ static const gfx_layout tiles8x8_layout =
 };
 
 static GFXDECODE_START( chinsan )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout, 0, 32 )
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 0, 32 )
 GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( chinsan )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,10000000/2)		 /* ? MHz */
+	MDRV_CPU_ADD("main", Z80,10000000/2)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(chinsan_map,0)
 	MDRV_CPU_IO_MAP(chinsan_io,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -485,8 +485,8 @@ static MACHINE_DRIVER_START( chinsan )
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 1500000) /* ? Mhz */
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym", YM2203, 1500000) /* ? Mhz */
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.15)
 	MDRV_SOUND_ROUTE(1, "mono", 0.15)
 	MDRV_SOUND_ROUTE(2, "mono", 0.15)
@@ -496,26 +496,26 @@ MACHINE_DRIVER_END
 
 
 ROM_START( chinsan )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 ) /* encrypted code / data */
+	ROM_REGION( 0x20000, "main", 0 ) /* encrypted code / data */
 	ROM_LOAD( "mm00.7d", 0x00000, 0x08000, CRC(f7a4414f) SHA1(f65223b2928f610ab97fda2f2c008806cf2420e5) )
 	ROM_CONTINUE(        0x00000, 0x08000 )	// first half is blank
 	ROM_LOAD( "mm01.8d", 0x10000, 0x10000, CRC(c69ddbf5) SHA1(9533365c1761b113174d53a2e23ce6a7baca7dfe) )
 
-	ROM_REGION( 0x2000, REGION_USER1, 0 ) /* MC8123 key */
+	ROM_REGION( 0x2000, "user1", 0 ) /* MC8123 key */
 	ROM_LOAD( "317-5012.key",  0x0000, 0x2000, CRC(2ecfb132) SHA1(3110ef82080dd7d908cc6bf34c6643f187f90b29) )
 
-	ROM_REGION( 0x30000, REGION_GFX1, 0 )
+	ROM_REGION( 0x30000, "gfx1", 0 )
 	ROM_LOAD( "mm20.7k", 0x00000, 0x10000, CRC(54efb409) SHA1(333adadd7f3dc3393dbe334303bae544b3d26c00) )
 	ROM_LOAD( "mm21.8k", 0x10000, 0x10000, CRC(25f6c827) SHA1(add72a3cfa2f24105e36d0464c2db6a6bedd4139) )
 	ROM_LOAD( "mm22.9k", 0x20000, 0x10000, CRC(6092f6e1) SHA1(32f53027dc954e314d7c5d04ff53f17358bbcf77) )
 
-	ROM_REGION( 0x10000, REGION_SOUND1, 0 ) /* M5205 samples */
+	ROM_REGION( 0x10000, "adpcm", 0 ) /* M5205 samples */
 	ROM_LOAD( "mm40.13d", 0x00000, 0x10000, CRC(a408b8f7) SHA1(60a2644922cb60c0a1a3409761c7e50924360313) )
 
-	ROM_REGION( 0x20, REGION_USER2, 0 )
+	ROM_REGION( 0x20, "user2", 0 )
 	ROM_LOAD( "mm60.2c", 0x000, 0x020, CRC(88477178) SHA1(03c1c9e3e88a5ae9970cb4b872ad4b6e4d77a6da) )
 
-	ROM_REGION( 0x300, REGION_USER3, 0 )
+	ROM_REGION( 0x300, "user3", 0 )
 	ROM_LOAD( "mm61.9m",  0x000, 0x100, CRC(57024262) SHA1(e084e6baa3c529217f6f8e37c9dd5f0687ba2fc4) ) // b
 	ROM_LOAD( "mm62.9n",  0x100, 0x100, CRC(b5a1dbe5) SHA1(770a791c061ce422f860bb8d32f82bbbf9b4d12a) ) // g
 	ROM_LOAD( "mm63.10n", 0x200, 0x100, CRC(b65e3567) SHA1(f146af51dfaa5b4bf44c4e27f1a0292f8fd07ce9) ) // r
@@ -526,9 +526,9 @@ static DRIVER_INIT( chinsan )
 {
 
 	int i;
-	UINT8 *src = memory_region( machine, REGION_USER3 );
+	UINT8 *src = memory_region( machine, "user3" );
 
-	mc8123_decrypt_rom(machine, 0, memory_region(machine, REGION_USER1), 1, 4);
+	mc8123_decrypt_rom(machine, "main", "user1", 1, 4);
 
 	for (i=0;i<0x100;i++)
 	{

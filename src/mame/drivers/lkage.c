@@ -71,12 +71,12 @@ static ADDRESS_MAP_START( lkage, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf061, 0xf061) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xf062, 0xf062) AM_READ(lkage_mcu_r) AM_WRITE(lkage_mcu_w)
 	AM_RANGE(0xf063, 0xf063) AM_WRITE(SMH_NOP) /* pulsed; nmi on sound cpu? */
-	AM_RANGE(0xf080, 0xf080) AM_READ(input_port_0_r) /* DSW1 */
-	AM_RANGE(0xf081, 0xf081) AM_READ(input_port_1_r) /* DSW2 (coinage) */
-	AM_RANGE(0xf082, 0xf082) AM_READ(input_port_2_r) /* DSW3 */
-	AM_RANGE(0xf083, 0xf083) AM_READ(input_port_3_r) /* start, insert coin, tilt */
-	AM_RANGE(0xf084, 0xf084) AM_READ(input_port_4_r) /* P1 controls */
-	AM_RANGE(0xf086, 0xf086) AM_READ(input_port_5_r) /* P2 controls */
+	AM_RANGE(0xf080, 0xf080) AM_READ_PORT("DSW1")
+	AM_RANGE(0xf081, 0xf081) AM_READ_PORT("DSW2")
+	AM_RANGE(0xf082, 0xf082) AM_READ_PORT("DSW3")
+	AM_RANGE(0xf083, 0xf083) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0xf084, 0xf084) AM_READ_PORT("P1")
+	AM_RANGE(0xf086, 0xf086) AM_READ_PORT("P2")
 	AM_RANGE(0xf087, 0xf087) AM_READ(lkage_mcu_status_r)
 	AM_RANGE(0xf0a0, 0xf0a3) AM_READ(SMH_RAM) AM_WRITE(SMH_RAM) /* unknown */
 	AM_RANGE(0xf0c0, 0xf0c5) AM_READ(SMH_RAM) AM_WRITE(SMH_RAM) AM_BASE(&lkage_scroll)
@@ -87,7 +87,7 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( port_fetch_r )
 {
-	return memory_region(machine, REGION_USER1)[offset];
+	return memory_region(machine, "user1")[offset];
 }
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
@@ -122,8 +122,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x9000, 0x9000) AM_READ(YM2203_status_port_0_r)
-	AM_RANGE(0xa000, 0xa000) AM_READ(YM2203_status_port_1_r)
+	AM_RANGE(0x9000, 0x9000) AM_READ(ym2203_status_port_0_r)
+	AM_RANGE(0xa000, 0xa000) AM_READ(ym2203_status_port_1_r)
 	AM_RANGE(0xb000, 0xb000) AM_READ(soundlatch_r)
 	AM_RANGE(0xb001, 0xb001) AM_READ(SMH_NOP)	/* ??? */
 	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_ROM)	/* space for diagnostic ROM? */
@@ -132,10 +132,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(YM2203_control_port_0_w)
-	AM_RANGE(0x9001, 0x9001) AM_WRITE(YM2203_write_port_0_w)
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(YM2203_control_port_1_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(YM2203_write_port_1_w)
+	AM_RANGE(0x9000, 0x9000) AM_WRITE(ym2203_control_port_0_w)
+	AM_RANGE(0x9001, 0x9001) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0xa000, 0xa000) AM_WRITE(ym2203_control_port_1_w)
+	AM_RANGE(0xa001, 0xa001) AM_WRITE(ym2203_write_port_1_w)
 	AM_RANGE(0xb000, 0xb000) AM_WRITE(SMH_NOP)	/* ??? */
 	AM_RANGE(0xb001, 0xb001) AM_WRITE(lkage_sh_nmi_enable_w)
 	AM_RANGE(0xb002, 0xb002) AM_WRITE(lkage_sh_nmi_disable_w)
@@ -145,7 +145,7 @@ ADDRESS_MAP_END
 /***************************************************************************/
 
 static INPUT_PORTS_START( lkage )
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x03, "30000 100000" ) /* unverified */
 	PORT_DIPSETTING(    0x02, "30000 70000" ) /* unverified */
@@ -169,7 +169,7 @@ static INPUT_PORTS_START( lkage )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x0f, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x0f, DEF_STR( 9C_1C ) )
 	PORT_DIPSETTING(    0x0e, DEF_STR( 8C_1C ) )
@@ -205,7 +205,7 @@ static INPUT_PORTS_START( lkage )
 	PORT_DIPSETTING(    0x60, DEF_STR( 1C_7C ) )
 	PORT_DIPSETTING(    0x70, DEF_STR( 1C_8C ) )
 
-	PORT_START_TAG("DSW3")
+	PORT_START("DSW3")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -230,7 +230,7 @@ static INPUT_PORTS_START( lkage )
 	PORT_DIPSETTING(    0x80, "A and B" )
 	PORT_DIPSETTING(    0x00, "A only" )
 
-	PORT_START_TAG("SERVICE")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN3 )
@@ -240,7 +240,7 @@ static INPUT_PORTS_START( lkage )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -250,7 +250,7 @@ static INPUT_PORTS_START( lkage )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
@@ -286,8 +286,8 @@ static const gfx_layout sprite_layout =
 };
 
 static GFXDECODE_START( lkage )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, tile_layout,  /*128*/0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, sprite_layout,  0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, tile_layout,  /*128*/0, 64 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, sprite_layout,  0, 16 )
 GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int irq)
@@ -295,7 +295,7 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -307,15 +307,15 @@ static const struct YM2203interface ym2203_interface =
 
 static MACHINE_DRIVER_START( lkage )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,6000000)
+	MDRV_CPU_ADD("main", Z80,6000000)
 	MDRV_CPU_PROGRAM_MAP(lkage,0)
 	MDRV_CPU_IO_MAP(readport,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 6000000)
+	MDRV_CPU_ADD("audio", Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 								/* IRQs are triggered by the YM2203 */
-	MDRV_CPU_ADD(M68705,4000000)	/* ??? */
+	MDRV_CPU_ADD("mcu", M68705,4000000)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(m68705_readmem,m68705_writemem)
 
 	/* video hardware */
@@ -335,14 +335,14 @@ static MACHINE_DRIVER_START( lkage )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 4000000)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym1", YM2203, 4000000)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.15)
 	MDRV_SOUND_ROUTE(1, "mono", 0.15)
 	MDRV_SOUND_ROUTE(2, "mono", 0.15)
 	MDRV_SOUND_ROUTE(3, "mono", 0.40)
 
-	MDRV_SOUND_ADD(YM2203, 4000000)
+	MDRV_SOUND_ADD("ym2", YM2203, 4000000)
 	MDRV_SOUND_ROUTE(0, "mono", 0.15)
 	MDRV_SOUND_ROUTE(1, "mono", 0.15)
 	MDRV_SOUND_ROUTE(2, "mono", 0.15)
@@ -352,12 +352,12 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( lkageb )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,6000000)
+	MDRV_CPU_ADD("main", Z80,6000000)
 	MDRV_CPU_PROGRAM_MAP(lkage,0)
 	MDRV_CPU_IO_MAP(readport,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 6000000)
+	MDRV_CPU_ADD("audio", Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 								/* IRQs are triggered by the YM2203 */
 
@@ -378,14 +378,14 @@ static MACHINE_DRIVER_START( lkageb )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 4000000)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym1", YM2203, 4000000)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.15)
 	MDRV_SOUND_ROUTE(1, "mono", 0.15)
 	MDRV_SOUND_ROUTE(2, "mono", 0.15)
 	MDRV_SOUND_ROUTE(3, "mono", 0.40)
 
-	MDRV_SOUND_ADD(YM2203, 4000000)
+	MDRV_SOUND_ADD("ym2", YM2203, 4000000)
 	MDRV_SOUND_ROUTE(0, "mono", 0.15)
 	MDRV_SOUND_ROUTE(1, "mono", 0.15)
 	MDRV_SOUND_ROUTE(2, "mono", 0.15)
@@ -394,29 +394,29 @@ MACHINE_DRIVER_END
 
 
 ROM_START( lkage )
-	ROM_REGION( 0x14000, REGION_CPU1, 0 ) /* Z80 code (main CPU) */
+	ROM_REGION( 0x14000, "main", 0 ) /* Z80 code (main CPU) */
 	ROM_LOAD( "a54-01-2.37", 0x0000, 0x8000, CRC(60fd9734) SHA1(33b444b887d80acb3a63ca4534db65c4d8147712) )
 	ROM_LOAD( "a54-02-2.38", 0x8000, 0x8000, CRC(878a25ce) SHA1(6228a12774e116e333c3563ee6e20c0c70db514b) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code (sound CPU) */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 code (sound CPU) */
 	ROM_LOAD( "a54-04.54",   0x0000, 0x8000, CRC(541faf9a) SHA1(b142ff3bd198f700697ec06ea92db3109ab5818e) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* 68705 MCU code */
+	ROM_REGION( 0x10000, "mcu", 0 ) /* 68705 MCU code */
 	ROM_LOAD( "a54-09.53",   0x0000, 0x0800, CRC(0e8b8846) SHA1(a4a105462b0127229bb7edfadd2e581c7e40f1cc) )
 
-	ROM_REGION( 0x4000, REGION_USER1, 0 ) /* data */
+	ROM_REGION( 0x4000, "user1", 0 ) /* data */
 	ROM_LOAD( "a54-03.51",   0x0000, 0x4000, CRC(493e76d8) SHA1(13c6160edd94ba2801fd89bb33bcae3a1e3454ff) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a54-05-1.84", 0x0000, 0x4000, CRC(0033c06a) SHA1(89964503fc338817c6511fd15942741996b7037a) )
 	ROM_LOAD( "a54-06-1.85", 0x4000, 0x4000, CRC(9f04d9ad) SHA1(3b9a4d30348fd02e5c8ae94655548bd4a02dd65d) )
 	ROM_LOAD( "a54-07-1.86", 0x8000, 0x4000, CRC(b20561a4) SHA1(0d6d83dfae79ea133e37704ca47426b4c978fb36) )
 	ROM_LOAD( "a54-08-1.87", 0xc000, 0x4000, CRC(3ff3b230) SHA1(ffcd964efb0af32b5d7a70305dfda615ea95acbe) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "a54-10.2",    0x0000, 0x0200, CRC(17dfbd14) SHA1(f8f0b6dfedd4ba108dad43ccc7697ef4ab9cbf86) )	/* unknown */
 
-	ROM_REGION( 0x0800, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0800, "plds", ROMREGION_DISPOSE )
 	ROM_LOAD( "pal16l8-a54-11.34",  0x0000, 0x0104, CRC(56232113) SHA1(4cdc6732aa3e7fbe8df51966a1295253711ecc8f) )
 	ROM_LOAD( "pal16l8-a54-12.76",  0x0200, 0x0104, CRC(e57c3c89) SHA1(a23f91da254055bb990e8bb730564c40b5725f78) )
 	ROM_LOAD( "pal16l8a-a54-13.27", 0x0400, 0x0104, CRC(c9b1938e) SHA1(2fd1adc4bde8f07cf4b6314d56b48bb3d7144cc3) )
@@ -424,29 +424,29 @@ ROM_START( lkage )
 ROM_END
 
 ROM_START( lkageo )
-	ROM_REGION( 0x14000, REGION_CPU1, 0 ) /* Z80 code (main CPU) */
+	ROM_REGION( 0x14000, "main", 0 ) /* Z80 code (main CPU) */
 	ROM_LOAD( "a54-01-1.37", 0x0000, 0x8000, CRC(973da9c5) SHA1(ad3b5d6a329b784e47be563c6f8dc628f32ba0a5) )
 	ROM_LOAD( "a54-02-1.38", 0x8000, 0x8000, CRC(27b509da) SHA1(c623950bd7dd2b5699ca948e3731455964106b89) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code (sound CPU) */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 code (sound CPU) */
 	ROM_LOAD( "a54-04.54",   0x0000, 0x8000, CRC(541faf9a) SHA1(b142ff3bd198f700697ec06ea92db3109ab5818e) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* 68705 MCU code */
+	ROM_REGION( 0x10000, "mcu", 0 ) /* 68705 MCU code */
 	ROM_LOAD( "a54-09.53",   0x0000, 0x0800, CRC(0e8b8846) SHA1(a4a105462b0127229bb7edfadd2e581c7e40f1cc) )
 
-	ROM_REGION( 0x4000, REGION_USER1, 0 ) /* data */
+	ROM_REGION( 0x4000, "user1", 0 ) /* data */
 	ROM_LOAD( "a54-03.51",   0x0000, 0x4000, CRC(493e76d8) SHA1(13c6160edd94ba2801fd89bb33bcae3a1e3454ff) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a54-05-1.84", 0x0000, 0x4000, CRC(0033c06a) SHA1(89964503fc338817c6511fd15942741996b7037a) )
 	ROM_LOAD( "a54-06-1.85", 0x4000, 0x4000, CRC(9f04d9ad) SHA1(3b9a4d30348fd02e5c8ae94655548bd4a02dd65d) )
 	ROM_LOAD( "a54-07-1.86", 0x8000, 0x4000, CRC(b20561a4) SHA1(0d6d83dfae79ea133e37704ca47426b4c978fb36) )
 	ROM_LOAD( "a54-08-1.87", 0xc000, 0x4000, CRC(3ff3b230) SHA1(ffcd964efb0af32b5d7a70305dfda615ea95acbe) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "a54-10.2",    0x0000, 0x0200, CRC(17dfbd14) SHA1(f8f0b6dfedd4ba108dad43ccc7697ef4ab9cbf86) )	/* unknown */
 
-	ROM_REGION( 0x0800, REGION_PLDS, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0800, "plds", ROMREGION_DISPOSE )
 	ROM_LOAD( "pal16l8-a54-11.34",  0x0000, 0x0104, CRC(56232113) SHA1(4cdc6732aa3e7fbe8df51966a1295253711ecc8f) )
 	ROM_LOAD( "pal16l8-a54-12.76",  0x0200, 0x0104, CRC(e57c3c89) SHA1(a23f91da254055bb990e8bb730564c40b5725f78) )
 	ROM_LOAD( "pal16l8a-a54-13.27", 0x0400, 0x0104, CRC(c9b1938e) SHA1(2fd1adc4bde8f07cf4b6314d56b48bb3d7144cc3) )
@@ -454,68 +454,68 @@ ROM_START( lkageo )
 ROM_END
 
 ROM_START( lkageb )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code (main CPU) */
+	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code (main CPU) */
 	ROM_LOAD( "ic37_1",      0x0000, 0x8000, CRC(05694f7b) SHA1(08a3796d6cf04d64db52ed8208a51084c420e10a) )
 	ROM_LOAD( "ic38_2",      0x8000, 0x8000, CRC(22efe29e) SHA1(f7a29d54081ca7509e822ad8823ec977bccc4a40) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code (sound CPU) */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 code (sound CPU) */
 	ROM_LOAD( "a54-04.54",   0x0000, 0x8000, CRC(541faf9a) SHA1(b142ff3bd198f700697ec06ea92db3109ab5818e) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* 68705 MCU code */
+	ROM_REGION( 0x10000, "cpu2", 0 ) /* 68705 MCU code */
 	ROM_LOAD( "mcu",   0x0000, 0x0800, NO_DUMP )
 
-	ROM_REGION( 0x4000, REGION_USER1, 0 ) /* data */
+	ROM_REGION( 0x4000, "user1", 0 ) /* data */
 	ROM_LOAD( "a54-03.51",   0x0000, 0x4000, CRC(493e76d8) SHA1(13c6160edd94ba2801fd89bb33bcae3a1e3454ff) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "ic93_5",      0x0000, 0x4000, CRC(76753e52) SHA1(13f61969d59b055a5ab40237148e091d7cabe190) )
 	ROM_LOAD( "ic94_6",      0x4000, 0x4000, CRC(f33c015c) SHA1(756326daab255d3a36d97e51ee141b9f7157f12e) )
 	ROM_LOAD( "ic95_7",      0x8000, 0x4000, CRC(0e02c2e8) SHA1(1d8a817ba66cf26a4fe51ae00874c0fe6e7cebe3) )
 	ROM_LOAD( "ic96_8",      0xc000, 0x4000, CRC(4ef5f073) SHA1(dfd234542b28cff74692a1c381772da01e8bb4a7) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "a54-10.2",    0x0000, 0x0200, CRC(17dfbd14) SHA1(f8f0b6dfedd4ba108dad43ccc7697ef4ab9cbf86) )	/* unknown */
 ROM_END
 
 ROM_START( lkageb2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code (main CPU) */
+	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code (main CPU) */
 	ROM_LOAD( "lok.a",       0x0000, 0x8000, CRC(866df793) SHA1(44a9a773d7bbfc5f9d53f56682438ef8b23ecbd6) )
 	ROM_LOAD( "lok.b",       0x8000, 0x8000, CRC(fba9400f) SHA1(fedcb9b717feaeec31afda098f0ac2744df6c7be) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code (sound CPU) */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 code (sound CPU) */
 	ROM_LOAD( "a54-04.54",   0x0000, 0x8000, CRC(541faf9a) SHA1(b142ff3bd198f700697ec06ea92db3109ab5818e) )
 
-	ROM_REGION( 0x4000, REGION_USER1, 0 ) /* data */
+	ROM_REGION( 0x4000, "user1", 0 ) /* data */
 	ROM_LOAD( "a54-03.51",   0x0000, 0x4000, CRC(493e76d8) SHA1(13c6160edd94ba2801fd89bb33bcae3a1e3454ff) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "ic93_5",      0x0000, 0x4000, CRC(76753e52) SHA1(13f61969d59b055a5ab40237148e091d7cabe190) )
 	ROM_LOAD( "ic94_6",      0x4000, 0x4000, CRC(f33c015c) SHA1(756326daab255d3a36d97e51ee141b9f7157f12e) )
 	ROM_LOAD( "ic95_7",      0x8000, 0x4000, CRC(0e02c2e8) SHA1(1d8a817ba66cf26a4fe51ae00874c0fe6e7cebe3) )
 	ROM_LOAD( "ic96_8",      0xc000, 0x4000, CRC(4ef5f073) SHA1(dfd234542b28cff74692a1c381772da01e8bb4a7) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "a54-10.2",    0x0000, 0x0200, CRC(17dfbd14) SHA1(f8f0b6dfedd4ba108dad43ccc7697ef4ab9cbf86) )	/* unknown */
 ROM_END
 
 ROM_START( lkageb3 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* Z80 code (main CPU) */
+	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code (main CPU) */
 	ROM_LOAD( "z1.bin",      0x0000, 0x8000, CRC(60cac488) SHA1(b61df14159f37143b1faed22d77fc7be31602022) )
 	ROM_LOAD( "z2.bin",      0x8000, 0x8000, CRC(22c95f17) SHA1(8ca438d508a36918778651adf599cf45a7c4a5d7) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code (sound CPU) */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 code (sound CPU) */
 	ROM_LOAD( "a54-04.54",   0x0000, 0x8000, CRC(541faf9a) SHA1(b142ff3bd198f700697ec06ea92db3109ab5818e) )
 
-	ROM_REGION( 0x4000, REGION_USER1, 0 ) /* data */
+	ROM_REGION( 0x4000, "user1", 0 ) /* data */
 	ROM_LOAD( "a54-03.51",   0x0000, 0x4000, CRC(493e76d8) SHA1(13c6160edd94ba2801fd89bb33bcae3a1e3454ff) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "ic93_5",      0x0000, 0x4000, CRC(76753e52) SHA1(13f61969d59b055a5ab40237148e091d7cabe190) )
 	ROM_LOAD( "ic94_6",      0x4000, 0x4000, CRC(f33c015c) SHA1(756326daab255d3a36d97e51ee141b9f7157f12e) )
 	ROM_LOAD( "ic95_7",      0x8000, 0x4000, CRC(0e02c2e8) SHA1(1d8a817ba66cf26a4fe51ae00874c0fe6e7cebe3) )
 	ROM_LOAD( "ic96_8",      0xc000, 0x4000, CRC(4ef5f073) SHA1(dfd234542b28cff74692a1c381772da01e8bb4a7) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "a54-10.2",    0x0000, 0x0200, CRC(17dfbd14) SHA1(f8f0b6dfedd4ba108dad43ccc7697ef4ab9cbf86) )	/* unknown */
 ROM_END
 

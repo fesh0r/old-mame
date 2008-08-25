@@ -17,16 +17,16 @@ static INT16 *samplebuf;	/* buffer to decode samples at run time */
 static void cclimber_sh_start(void)
 {
 	samplebuf = 0;
-	if (memory_region(Machine, REGION_SOUND1))
-		samplebuf = auto_malloc(sizeof(*samplebuf)*2*memory_region_length(Machine, REGION_SOUND1));
+	if (memory_region(Machine, "samples"))
+		samplebuf = auto_malloc(sizeof(*samplebuf)*2*memory_region_length(Machine, "samples"));
 }
 
 
 static void cclimber_play_sample(int start,int freq,int volume)
 {
 	int len;
-	int romlen = memory_region_length(Machine, REGION_SOUND1);
-	const UINT8 *rom = memory_region(Machine, REGION_SOUND1);
+	int romlen = memory_region_length(Machine, "samples");
+	const UINT8 *rom = memory_region(Machine, "samples");
 
 
 	if (!rom) return;
@@ -77,7 +77,7 @@ WRITE8_HANDLER( cclimber_sample_trigger_w )
 }
 
 
-const struct AY8910interface cclimber_ay8910_interface =
+const ay8910_interface cclimber_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -87,7 +87,7 @@ const struct AY8910interface cclimber_ay8910_interface =
 	NULL
 };
 
-const struct Samplesinterface cclimber_samples_interface =
+const samples_interface cclimber_samples_interface =
 {
 	1,
 	NULL,

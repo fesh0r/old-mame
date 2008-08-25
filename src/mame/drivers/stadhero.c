@@ -81,10 +81,10 @@ static WRITE8_HANDLER( YM3812_w )
 {
 	switch (offset) {
 	case 0:
-		YM3812_control_port_0_w(machine,0,data);
+		ym3812_control_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM3812_write_port_0_w(machine,0,data);
+		ym3812_write_port_0_w(machine,0,data);
 		break;
 	}
 }
@@ -93,10 +93,10 @@ static WRITE8_HANDLER( YM2203_w )
 {
 	switch (offset) {
 	case 0:
-		YM2203_control_port_0_w(machine,0,data);
+		ym2203_control_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM2203_write_port_0_w(machine,0,data);
+		ym2203_write_port_0_w(machine,0,data);
 		break;
 	}
 }
@@ -106,14 +106,14 @@ static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x0801) AM_WRITE(YM2203_w)
 	AM_RANGE(0x1000, 0x1001) AM_WRITE(YM3812_w)
 	AM_RANGE(0x3000, 0x3000) AM_READ(soundlatch_r)
-	AM_RANGE(0x3800, 0x3800) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
+	AM_RANGE(0x3800, 0x3800) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
 static INPUT_PORTS_START( stadhero )
-	PORT_START_TAG("P1")	/* 0x30c001 : Player 1 controls */
+	PORT_START("P1")	/* 0x30c001 : Player 1 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  ) PORT_8WAY PORT_PLAYER(1)
@@ -123,7 +123,7 @@ static INPUT_PORTS_START( stadhero )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("P2")	/* 0x30c000 : Player 2 controls */
+	PORT_START("P2")	/* 0x30c000 : Player 2 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  ) PORT_8WAY PORT_PLAYER(2)
@@ -133,7 +133,7 @@ static INPUT_PORTS_START( stadhero )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("COIN")	/* 0x30c002 & 0x30c003 : Credits, start buttons */
+	PORT_START("COIN")	/* 0x30c002 & 0x30c003 : Credits, start buttons */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )            /* related to music/sound */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )            /* related to music/sound */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )            /* related to music/sound */
@@ -143,7 +143,7 @@ static INPUT_PORTS_START( stadhero )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START_TAG("DSW1")	/* 0x30c005 : Dip switch bank 1 */
+	PORT_START("DSW1")	/* 0x30c005 : Dip switch bank 1 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
@@ -163,7 +163,7 @@ static INPUT_PORTS_START( stadhero )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPUNUSED( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("DSW2")	/* 0x30c004 : Dip switch bank 2 */
+	PORT_START("DSW2")	/* 0x30c004 : Dip switch bank 2 */
 	PORT_DIPNAME( 0x03, 0x03, "Time (1P Vs CPU)" )          /* Table at 0x0014f6 */
 	PORT_DIPSETTING(    0x02, "600" )
 	PORT_DIPSETTING(    0x03, "500" )
@@ -223,9 +223,9 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( stadhero )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,     0, 16 )	/* Characters 8x8 */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tile_3bpp,    512, 16 )	/* Tiles 16x16 */
-	GFXDECODE_ENTRY( REGION_GFX3, 0, spritelayout, 256, 16 )	/* Sprites 16x16 */
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,     0, 16 )	/* Characters 8x8 */
+	GFXDECODE_ENTRY( "gfx2", 0, tile_3bpp,    512, 16 )	/* Tiles 16x16 */
+	GFXDECODE_ENTRY( "gfx3", 0, spritelayout, 256, 16 )	/* Sprites 16x16 */
 GFXDECODE_END
 
 /******************************************************************************/
@@ -235,7 +235,7 @@ static void irqhandler(running_machine *machine, int linestate)
 	cpunum_set_input_line(machine, 1,0,linestate);
 }
 
-static const struct YM3812interface ym3812_interface =
+static const ym3812_interface ym3812_config =
 {
 	irqhandler
 };
@@ -245,12 +245,11 @@ static const struct YM3812interface ym3812_interface =
 static MACHINE_DRIVER_START( stadhero )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 10000000)
+	MDRV_CPU_ADD("main", M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)/* VBL */
 
-	MDRV_CPU_ADD(M6502, 1500000)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", M6502, 1500000)
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 
 	/* video hardware */
@@ -270,41 +269,41 @@ static MACHINE_DRIVER_START( stadhero )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 1500000)
+	MDRV_SOUND_ADD("ym1", YM2203, 1500000)
 	MDRV_SOUND_ROUTE(0, "mono", 0.95)
 	MDRV_SOUND_ROUTE(1, "mono", 0.95)
 	MDRV_SOUND_ROUTE(2, "mono", 0.95)
 	MDRV_SOUND_ROUTE(3, "mono", 0.40)
 
-	MDRV_SOUND_ADD(YM3812, 3000000)
-	MDRV_SOUND_CONFIG(ym3812_interface)
+	MDRV_SOUND_ADD("ym2", YM3812, 3000000)
+	MDRV_SOUND_CONFIG(ym3812_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MDRV_SOUND_ADD(OKIM6295, 1023924)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, 1023924)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 
 /******************************************************************************/
 
 ROM_START( stadhero )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )	/* 6*64k for 68000 code */
+	ROM_REGION( 0x20000, "main", 0 )	/* 6*64k for 68000 code */
 	ROM_LOAD16_BYTE( "ef15.bin",  0x00000, 0x10000, CRC(bbba364e) SHA1(552096102f402085596635f02096462c6b8e13a7) )
 	ROM_LOAD16_BYTE( "ef13.bin",  0x00001, 0x10000, CRC(97c6717a) SHA1(6c81260f49a59f70c71f520e51330a6833828684) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 6502 Sound */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 6502 Sound */
 	ROM_LOAD( "ef18.bin",  0x8000, 0x8000, CRC(20fd9668) SHA1(058e34a0ebfc372aaa9230c2bc9164ee2e85e217) )
 
-	ROM_REGION( 0x18000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "ef08.bin",     0x000000, 0x10000, CRC(e84752fe) SHA1(9af2140ddbb44be793ab5b39787bac27f5b1c1f2) )	/* chars */
 	ROM_LOAD( "ef09.bin",     0x010000, 0x08000, CRC(2ade874d) SHA1(5c884535214438a4ea79fd262700a346bc12ad81) )
 
-	ROM_REGION( 0x30000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x30000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "ef10.bin",     0x000000, 0x10000, CRC(dca3d599) SHA1(2b97a70065f3065e7fbb54fb53cb120d9e5013b3) )	/* tiles */
 	ROM_LOAD( "ef11.bin",     0x010000, 0x10000, CRC(af563e96) SHA1(c88eaff4a1ea133d708f4511bb1dbc99ef066eed) )
 	ROM_LOAD( "ef12.bin",     0x020000, 0x10000, CRC(9a1bf51c) SHA1(e733c193b305496878551fc6eefc21587ba75c82) )
 
-	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "ef00.bin",     0x000000, 0x10000, CRC(94ed257c) SHA1(caa4a4c8bf3b34d2288e117cfc704cca4c6f913b) )	/* sprites */
 	ROM_LOAD( "ef01.bin",     0x010000, 0x10000, CRC(6eb9a721) SHA1(0f9dce614e67e57612e3a4ce187f0f9c12b78281) )
 	ROM_LOAD( "ef02.bin",     0x020000, 0x10000, CRC(850cb771) SHA1(ccb54036191674d76965270a5831fba3e62f47c0) )
@@ -314,7 +313,7 @@ ROM_START( stadhero )
 	ROM_LOAD( "ef06.bin",     0x060000, 0x10000, CRC(9f47848f) SHA1(e23337684c8999483cbd11d3d953b06c34f13069) )
 	ROM_LOAD( "ef07.bin",     0x070000, 0x10000, CRC(8859f655) SHA1(b3d69c5808b3ba7347ddb7f9693499903e9bfe6b) )
 
-	ROM_REGION( 0x10000, REGION_SOUND1, 0 )	/* ADPCM samples */
+	ROM_REGION( 0x10000, "oki", 0 )	/* ADPCM samples */
 	ROM_LOAD( "ef17.bin",  0x0000, 0x10000, CRC(07c78358) SHA1(ce82b429eec0193fd9665b717336756a514db144) )
 ROM_END
 

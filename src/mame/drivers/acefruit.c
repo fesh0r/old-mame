@@ -256,14 +256,14 @@ static ADDRESS_MAP_START( acefruit_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x20ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x4000, 0x43ff) AM_RAM AM_BASE(&videoram)
 	AM_RANGE(0x4400, 0x47ff) AM_RAM_WRITE(acefruit_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0x8000, 0x8000) AM_READ(input_port_0_r)
-	AM_RANGE(0x8001, 0x8001) AM_READ(input_port_1_r)
-	AM_RANGE(0x8002, 0x8002) AM_READ(input_port_2_r)
-	AM_RANGE(0x8003, 0x8003) AM_READ(input_port_3_r)
-	AM_RANGE(0x8004, 0x8004) AM_READ(input_port_4_r)
-	AM_RANGE(0x8005, 0x8005) AM_READ(input_port_5_r)
-	AM_RANGE(0x8006, 0x8006) AM_READ(input_port_6_r)
-	AM_RANGE(0x8007, 0x8007) AM_READ(input_port_7_r)
+	AM_RANGE(0x8000, 0x8000) AM_READ_PORT("IN0")
+	AM_RANGE(0x8001, 0x8001) AM_READ_PORT("IN1")
+	AM_RANGE(0x8002, 0x8002) AM_READ_PORT("IN2")
+	AM_RANGE(0x8003, 0x8003) AM_READ_PORT("IN3")
+	AM_RANGE(0x8004, 0x8004) AM_READ_PORT("IN4")
+	AM_RANGE(0x8005, 0x8005) AM_READ_PORT("IN5")
+	AM_RANGE(0x8006, 0x8006) AM_READ_PORT("IN6")
+	AM_RANGE(0x8007, 0x8007) AM_READ_PORT("IN7")
 	AM_RANGE(0x6000, 0x6005) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0xa000, 0xa001) AM_WRITE(acefruit_lamp_w)
 	AM_RANGE(0xa002, 0xa003) AM_WRITE(acefruit_coin_w)
@@ -279,14 +279,14 @@ static ADDRESS_MAP_START( acefruit_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( sidewndr )
-	PORT_START_TAG("IN0")	// 0
+	PORT_START("IN0")	// 0
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME( "Stop Nudge/Nudge Up or Down" )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME( "Gamble" )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )              /* "Cash in" */
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_VBLANK ) /* active low or high?? */
 	PORT_BIT( 0xd8, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")	// 1
+	PORT_START("IN1")	// 1
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME( "Sidewind" )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME( "Collect" )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )              /* "Cash in" */
@@ -295,21 +295,21 @@ static INPUT_PORTS_START( sidewndr )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")	// 2
+	PORT_START("IN2")	// 2
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME( "Cancel/Clear" )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_NAME( "Refill" ) PORT_TOGGLE
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )              /* "Token in" - also "Refill" when "Refill" mode ON */
 	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(sidewndr_payout_r, (void *)0x01)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN3")	// 3
+	PORT_START("IN3")	// 3
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_NAME( "Hold/Nudge 1" )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME( "Accountancy System" ) PORT_TOGGLE
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN4 )              /* "50P in" */
 	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(sidewndr_payout_r, (void *)0x02)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN4")	// 4
+	PORT_START("IN4")	// 4
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_NAME( "Hold/Nudge 2" )
 	PORT_DIPNAME( 0x02, 0x00, "Allow Clear Data" )          /* in "Accountancy System" mode */
 	PORT_DIPSETTING(    0x02, DEF_STR( No ) )
@@ -322,12 +322,12 @@ static INPUT_PORTS_START( sidewndr )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN5")	// 5
+	PORT_START("IN5")	// 5
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON9 ) PORT_NAME( "Hold/Nudge 3" )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE2 ) PORT_NAME( "Test Program" ) PORT_TOGGLE
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN6")	// 6
+	PORT_START("IN6")	// 6
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON10 ) PORT_NAME( "Hold/Nudge 4" )
 	/* I don't know exactly what this bit is supposed to do :(
        I only found that when bit is LOW, no data is updated
@@ -339,14 +339,14 @@ static INPUT_PORTS_START( sidewndr )
 	PORT_DIPSETTING(    0x02, DEF_STR( On ) )
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN7")	// 7
+	PORT_START("IN7")	// 7
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )             /* next in "Accountancy System" mode */
 	PORT_DIPNAME( 0x02, 0x00, "Clear Credits on Reset" )    /* also affects rolls */
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("PAYOUT")	// fake port to handle settings via multiple input ports
+	PORT_START("PAYOUT")	// fake port to handle settings via multiple input ports
 	PORT_DIPNAME( 0x03, 0x00, "Payout %" )
 	PORT_DIPSETTING(    0x00, "74%" )
 	PORT_DIPSETTING(    0x02, "78%" )
@@ -399,14 +399,14 @@ INPUT_PORTS_END
 
 /* I've only mapped the known inputs after comparaison with 'spellbnd' and the ones known to do something */
 static INPUT_PORTS_START( starspnr )
-	PORT_START_TAG("IN0")	// 0
+	PORT_START("IN0")	// 0
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME( "Gamble" )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )
 	/* tested at 0xef77 after IN5 bit 1 and before IN2 bit 2 - after coins are tested - table at 0xefa5 (3 bytes) */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_VBLANK ) /* active low or high?? */
 
-	PORT_START_TAG("IN1")	// 1
+	PORT_START("IN1")	// 1
 	/* tested at 0xe77c - call from 0x012c */
 	/* tested at 0xeffb after IN6 bit 2 - invalid code after 0xf000 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -415,7 +415,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0xeed7 with IN1 bit 3 - before coins are tested - table at 0xef55 (4 * 3 bytes) */
 	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_coinage_r, (void *)0x08) /* to be confirmed */
 
-	PORT_START_TAG("IN2")	// 2
+	PORT_START("IN2")	// 2
 	/* tested at 0xe83c */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	/* tested at 0xe5ab - after "Collect" and "Gamble" buttons */
@@ -427,7 +427,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0x1b0f */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN3")	// 3
+	PORT_START("IN3")	// 3
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_NAME( "Hold 1" )
 	/* tested at 0xe8ea and 0xecbe */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -436,7 +436,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0x0178 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN4")	// 4
+	PORT_START("IN4")	// 4
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_NAME( "Hold 2" )
 	/* tested at 0x064e */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -445,7 +445,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0xeed7 with IN1 bit 3 - before coins are tested - table at 0xef55 (4 * 3 bytes) */
 	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_coinage_r, (void *)0x04) /* to be confirmed */
 
-	PORT_START_TAG("IN5")	// 5
+	PORT_START("IN5")	// 5
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON9 ) PORT_NAME( "Hold 3" )
 	/* tested at 0xef68 before IN1 bit 3 and before IN2 bit 2 - after coins are tested - table at 0xefa2 (3 bytes) */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -456,7 +456,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0xe312 and 0xe377 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN6")	// 6
+	PORT_START("IN6")	// 6
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON10 ) PORT_NAME( "Hold 4" )
 	/* tested at 0xee42, 0xee5e and 0xeff5 before IN1 bit 0 - invalid code after 0xf000 */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -465,7 +465,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0xe8dd and 0xec1c */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN7")	// 7
+	PORT_START("IN7")	// 7
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_DIPNAME( 0x02, 0x00, "Clear Credits on Reset" )
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
@@ -477,7 +477,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0xec2a */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("COINAGE")	// fake port to handle settings via multiple input ports
+	PORT_START("COINAGE")	// fake port to handle settings via multiple input ports
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_4C ) )
@@ -489,7 +489,7 @@ static INPUT_PORTS_START( starspnr )
 	PORT_DIPSETTING(    0x08, "1 Coin/10 Credits" )
 	PORT_DIPSETTING(    0x0c, "1 Coin/25 Credits" )
 
-	PORT_START_TAG("PAYOUT")	// fake port to handle settings via multiple input ports
+	PORT_START("PAYOUT")	// fake port to handle settings via multiple input ports
 	PORT_DIPNAME( 0x07, 0x07, "Payout %" )
 	PORT_DIPSETTING(    0x00, "30%" )
 	PORT_DIPSETTING(    0x01, "40%" )
@@ -538,14 +538,14 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( acefruit )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, spritelayout, 0, 1 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x1800, charlayout, 8, 4 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, spritelayout, 0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0x1800, charlayout, 8, 4 )
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( acefruit )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 2500000) /* 2.5MHz */
+	MDRV_CPU_ADD("main", Z80, 2500000) /* 2.5MHz */
 	MDRV_CPU_PROGRAM_MAP(acefruit_map,0)
 	MDRV_CPU_IO_MAP(acefruit_io,0)
 	MDRV_GFXDECODE(acefruit)
@@ -571,7 +571,7 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( sidewndr )
 {
-	UINT8 *ROM = memory_region( machine, REGION_CPU1 );
+	UINT8 *ROM = memory_region( machine, "main" );
 	/* replace "ret nc" ( 0xd0 ) with "di" */
 	ROM[ 0 ] = 0xf3;
 	/* this is either a bad dump or the cpu core should set the carry flag on reset */
@@ -584,13 +584,13 @@ static DRIVER_INIT( sidewndr )
 ***************************************************************************/
 
 ROM_START( sidewndr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "2_h09.bin",    0x000000, 0x000800, BAD_DUMP CRC(141f3b0c) SHA1(1704feba950fe7aa939b9ed54c37264d10527d11) )
 	ROM_LOAD( "2_h10.bin",    0x000800, 0x000800, CRC(36a2d4af) SHA1(2388e22245497240e5721895d94d2ccd1f579eff) )
 	ROM_LOAD( "2_h11.bin",    0x001000, 0x000800, CRC(e2932643) SHA1(e1c0cd5d0cd332519432cbefa8718362a6cd1ccc) )
 	ROM_LOAD( "2_h12.bin",    0x001800, 0x000800, CRC(26af0b1f) SHA1(36f0e54982688b9d5a24a6986a847ac69ee0a355) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )	/* 8k for graphics */
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )	/* 8k for graphics */
 	ROM_LOAD( "2_h05.bin",    0x000000, 0x000800, CRC(64b64cff) SHA1(c11f2bd2af68ae7f104b711deb7f6509fdbaeb8f) )
 	ROM_LOAD( "2_h06.bin",    0x000800, 0x000800, CRC(6b96a586) SHA1(6d5ab8fefe37ca4dbc5057ebf31f12b33dbdf5c0) )
 	ROM_LOAD( "2_h07.bin",    0x001000, 0x000800, CRC(3a8e68a2) SHA1(2ffe07360f57f0f11ecf326f00905747d9b66811) )
@@ -598,13 +598,13 @@ ROM_START( sidewndr )
 ROM_END
 
 ROM_START( spellbnd )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "h9.bin",       0x000000, 0x000800, CRC(9919fcfa) SHA1(04167b12ee9e60ef891893a305a35d3f2eccb0bb) )
 	ROM_LOAD( "h10.bin",      0x000800, 0x000800, CRC(90502d00) SHA1(3bdd859d9146df2eb97b4517c446182569a55a46) )
 	ROM_LOAD( "h11.bin",      0x001000, 0x000800, CRC(7375166c) SHA1(f05b01941423fd36e0a5d3aa913a594e4e7aa5d4) )
 	ROM_LOAD( "h12.bin",      0x001800, 0x000800, CRC(4546c68c) SHA1(92104e2005fc772ea9f70451d9d674f95d3f0ba9) )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )	/* 8k for graphics */
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )	/* 8k for graphics */
 	ROM_LOAD( "h5.bin",       0x000000, 0x000800, CRC(198da32c) SHA1(bf6c4ddcda0503095d310e08057dd88154952ef4) )
 	ROM_LOAD( "h6.bin",       0x000800, 0x000800, CRC(e777130f) SHA1(3421c6f399e5ec749f1908f6b4ebff7761c6c5d9) )
 	ROM_LOAD( "h7.bin",       0x001000, 0x000800, CRC(bfed5b8f) SHA1(f95074e8809297eec67da9d7e33ae1dd1c5eabc0) )
@@ -661,7 +661,7 @@ Notes:
 */
 
 ROM_START( starspnr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "h9.h9",        0x00e000, 0x0800, CRC(083068aa) SHA1(160a5f3bf33d0a53354f98295cd67022762928b6) )
 	ROM_CONTINUE(             0x000000, 0x0800 )
 	ROM_LOAD( "h10.h10",      0x00e800, 0x0800, CRC(a0a96e55) SHA1(de4dc0da5a1f358085817690cc6bdc8d94a849f8) )
@@ -671,13 +671,13 @@ ROM_START( starspnr )
 	ROM_LOAD( "h12.h12",      0x00f800, 0x0800, CRC(8571f3f5) SHA1(e8b60a604a4a0368b6063b15b328c68f351cb740) ) /* bad dump ? nothing of interest 0xf800-0xffff */
 	ROM_CONTINUE(             0x001800, 0x0800 )
 
-	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE ) /* 8k for graphics */
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE ) /* 8k for graphics */
 	ROM_LOAD( "5.h5",         0x000000, 0x000800, CRC(df49876f) SHA1(68077304f096491baeddc1d6b4dc62f90de71903) )
 	ROM_LOAD( "6.h6",         0x000800, 0x000800, CRC(d992e2f6) SHA1(7841efec7d81689c82b8da501cce743436e7e8d4) )
 	ROM_LOAD( "7.h7",         0x001000, 0x000800, CRC(d5a40e88) SHA1(5cac8d85123720cdbb8b4630b14a27cf0ceef33f) )
 	ROM_LOAD( "8.h8",         0x001800, 0x000800, CRC(0dd38c3c) SHA1(4da0cd00c76d3be2164f141ccd8c72dd9578ee61) )
 
-	ROM_REGION( 0x300, REGION_PROMS, 0 )
+	ROM_REGION( 0x300, "proms", 0 )
 	ROM_LOAD( "16-1-101.b9",  0x0000, 0x0100, NO_DUMP )
 	ROM_LOAD( "16-1-101.b10", 0x0100, 0x0100, NO_DUMP )
 	ROM_LOAD( "16-1-101.b11", 0x0200, 0x0100, NO_DUMP )

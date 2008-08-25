@@ -197,7 +197,7 @@ static const char *const astrob_sample_names[] =
 };
 
 
-static const struct Samplesinterface astrob_samples_interface =
+static const samples_interface astrob_samples_interface =
 {
 	11,
 	astrob_sample_names
@@ -209,7 +209,7 @@ MACHINE_DRIVER_START( astrob_sound_board )
 	MDRV_SOUND_START(astrob)
 
 	/* sound hardware */
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(astrob_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -339,7 +339,7 @@ WRITE8_HANDLER( astrob_sound_w )
  *************************************/
 
 static SOUND_START( 005 );
-static void *sega005_custom_start(int clock, const struct CustomSound_interface *config);
+static void *sega005_custom_start(int clock, const custom_sound_interface *config);
 static void sega005_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
 static TIMER_CALLBACK( sega005_auto_timer );
 
@@ -412,14 +412,14 @@ static const char *const sega005_sample_names[] =
 };
 
 
-static const struct Samplesinterface sega005_samples_interface =
+static const samples_interface sega005_samples_interface =
 {
 	7,
 	sega005_sample_names
 };
 
 
-static const struct CustomSound_interface sega005_custom_interface =
+static const custom_sound_interface sega005_custom_interface =
 {
 	sega005_custom_start
 };
@@ -444,11 +444,11 @@ MACHINE_DRIVER_START( 005_sound_board )
 	/* sound hardware */
 	MDRV_SOUND_START(005)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(sega005_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("005", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(sega005_custom_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -510,7 +510,7 @@ WRITE8_HANDLER( sega005_sound_a_w )
 
 INLINE void sega005_update_sound_data(running_machine *machine)
 {
-	UINT8 newval = memory_region(machine, REGION_SOUND1)[sound_addr];
+	UINT8 newval = memory_region(machine, "005")[sound_addr];
 	UINT8 diff = newval ^ sound_data;
 
 	//mame_printf_debug("  [%03X] = %02X\n", sound_addr, newval);
@@ -576,7 +576,7 @@ WRITE8_HANDLER( sega005_sound_b_w )
  *
  *************************************/
 
-static void *sega005_custom_start(int clock, const struct CustomSound_interface *config)
+static void *sega005_custom_start(int clock, const custom_sound_interface *config)
 {
 	/* create the stream */
 	sega005_stream = stream_create(0, 1, SEGA005_COUNTER_FREQ, NULL, sega005_stream_update);
@@ -594,7 +594,7 @@ static void *sega005_custom_start(int clock, const struct CustomSound_interface 
 
 static void sega005_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
 {
-	const UINT8 *sound_prom = memory_region(Machine, REGION_PROMS);
+	const UINT8 *sound_prom = memory_region(Machine, "proms");
 	int i;
 
 	/* no implementation yet */
@@ -653,7 +653,7 @@ static const char *const spaceod_sample_names[] =
 };
 
 
-static const struct Samplesinterface spaceod_samples_interface =
+static const samples_interface spaceod_samples_interface =
 {
 	11,
 	spaceod_sample_names
@@ -665,7 +665,7 @@ MACHINE_DRIVER_START( spaceod_sound_board )
 	/* sound hardware */
 	MDRV_SOUND_START(spaceod)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(spaceod_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -778,14 +778,14 @@ static const char *const monsterb_sample_names[] =
 };
 
 
-static const struct Samplesinterface monsterb_samples_interface =
+static const samples_interface monsterb_samples_interface =
 {
 	2,
 	monsterb_sample_names
 };
 
 
-static const struct TMS36XXinterface monsterb_tms3617_interface =
+static const tms36xx_interface monsterb_tms3617_interface =
 {
 	TMS3617,
 	{0.5,0.5,0.5,0.5,0.5,0.5}  /* decay times of voices */
@@ -807,7 +807,7 @@ static ADDRESS_MAP_START( monsterb_7751_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(I8039_t1, I8039_t1) AM_READ(n7751_t1_r)
 	AM_RANGE(I8039_p2, I8039_p2) AM_READ(n7751_command_r)
 	AM_RANGE(I8039_bus, I8039_bus) AM_READ(n7751_rom_r)
-	AM_RANGE(I8039_p1, I8039_p1) AM_WRITE(DAC_0_data_w)
+	AM_RANGE(I8039_p1, I8039_p1) AM_WRITE(dac_0_data_w)
 	AM_RANGE(I8039_p2, I8039_p2) AM_WRITE(n7751_busy_w)
 	AM_RANGE(I8039_p4, I8039_p6) AM_WRITE(n7751_rom_offset_w)
 	AM_RANGE(I8039_p7, I8039_p7) AM_WRITE(n7751_rom_select_w)
@@ -838,22 +838,22 @@ MACHINE_DRIVER_START( monsterb_sound_board )
 	MDRV_DEVICE_CONFIG( monsterb_ppi_intf )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(N7751, 6000000)
+	MDRV_CPU_ADD("audio", N7751, 6000000)
 	MDRV_CPU_PROGRAM_MAP(monsterb_7751_map,0)
 	MDRV_CPU_IO_MAP(monsterb_7751_portmap,0)
 
 	/* sound hardware */
 	MDRV_SOUND_START(monsterb)
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(monsterb_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(TMS36XX, 247)
+	MDRV_SOUND_ADD("music", TMS36XX, 247)
 	MDRV_SOUND_CONFIG(monsterb_tms3617_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -889,7 +889,7 @@ static WRITE8_HANDLER( monsterb_sound_a_w )
 	tms36xx_note_w(0, 0, data & 15);
 
 	/* Top four data lines address an 82S123 ROM that enables/disables voices */
-	enable_val = memory_region(machine, REGION_SOUND2)[(data & 0xF0) >> 4];
+	enable_val = memory_region(machine, "prom")[(data & 0xF0) >> 4];
 	tms3617_enable_w(0, enable_val >> 2);
 }
 
@@ -957,7 +957,7 @@ static WRITE8_HANDLER( n7751_rom_offset_w )
 static WRITE8_HANDLER( n7751_rom_select_w )
 {
 	/* P7 - ROM selects */
-	int numroms = memory_region_length(machine, REGION_SOUND1) / 0x1000;
+	int numroms = memory_region_length(machine, "n7751") / 0x1000;
 	sound_addr &= 0xfff;
 	if (!(data & 0x01) && numroms >= 1) sound_addr |= 0x0000;
 	if (!(data & 0x02) && numroms >= 2) sound_addr |= 0x1000;
@@ -969,7 +969,7 @@ static WRITE8_HANDLER( n7751_rom_select_w )
 static READ8_HANDLER( n7751_rom_r )
 {
 	/* read from BUS */
-	return memory_region(machine, REGION_SOUND1)[sound_addr];
+	return memory_region(machine, "n7751")[sound_addr];
 }
 
 

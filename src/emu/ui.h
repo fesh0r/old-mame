@@ -24,7 +24,8 @@
 ***************************************************************************/
 
 /* preferred font height; use ui_get_line_height() to get actual height */
-#define UI_TARGET_FONT_HEIGHT	(1.0f / 25.0f)
+#define UI_TARGET_FONT_ROWS		(25)
+#define UI_TARGET_FONT_HEIGHT	(1.0f / (float)UI_TARGET_FONT_ROWS)
 #define UI_MAX_FONT_HEIGHT		(1.0f / 15.0f)
 
 /* width of lines drawn in the UI */
@@ -136,6 +137,6 @@ int ui_is_menu_active(void);
 int ui_is_slider_active(void);
 
 /* print the game info string into a buffer */
-int sprintf_game_info(running_machine *machine, char *buffer);
+astring *game_info_astring(running_machine *machine, astring *string);
 
 #endif	/* __USRINTRF_H__ */

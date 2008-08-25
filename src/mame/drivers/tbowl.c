@@ -48,7 +48,7 @@ note: check this, its borrowed from tecmo.c / wc90.c at the moment and could wel
 static WRITE8_HANDLER( tbowlb_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 
 
 	bankaddress = 0x10000 + ((data & 0xf8) << 8);
@@ -58,7 +58,7 @@ static WRITE8_HANDLER( tbowlb_bankswitch_w )
 static WRITE8_HANDLER( tbowlc_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, "sub");
 
 
 	bankaddress = 0x10000 + ((data & 0xf8) << 8);
@@ -101,42 +101,30 @@ static WRITE8_HANDLER( tbowl_sound_command_w )
 
 /* Board B */
 
-static ADDRESS_MAP_START( readmem_6206B, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x8000, 0x9fff) AM_READ(SMH_RAM) /* RAM 1 */
-	AM_RANGE(0xa000, 0xbfff) AM_READ(SMH_RAM) /* RAM 1 */
-	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_RAM)
-	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_BANK1) /* Banked ROM */
-	AM_RANGE(0xf800, 0xfbff) AM_READ(shared_r) /* RAM 2 */
-	AM_RANGE(0xfc00, 0xfc00) AM_READ(input_port_0_r) // Player 1 inputs
-	AM_RANGE(0xfc01, 0xfc01) AM_READ(input_port_1_r) // Player 2 inputs
-	AM_RANGE(0xfc02, 0xfc02) AM_READ(input_port_2_r) // Player 3 inputs
-	AM_RANGE(0xfc03, 0xfc03) AM_READ(input_port_3_r) // Player 4 inputs
-//  AM_RANGE(0xfc06, 0xfc06) AM_READ(dummy_r) // Read During NMI
-	AM_RANGE(0xfc07, 0xfc07) AM_READ(input_port_4_r) // System inputs
-	AM_RANGE(0xfc08, 0xfc08) AM_READ(input_port_5_r) // DSW1
-	AM_RANGE(0xfc09, 0xfc09) AM_READ(input_port_6_r) // DSW2
-	AM_RANGE(0xfc0a, 0xfc0a) AM_READ(input_port_7_r) // DSW3
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem_6206B, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x8000, 0x9fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xa000, 0xbfff) AM_WRITE(tbowl_bg2videoram_w) AM_BASE(&tbowl_bg2videoram)
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(tbowl_bgvideoram_w) AM_BASE(&tbowl_bgvideoram)
-	AM_RANGE(0xe000, 0xefff) AM_WRITE(tbowl_txvideoram_w) AM_BASE(&tbowl_txvideoram)
-//  AM_RANGE(0xf000, 0xf000) AM_WRITE(unknown_write)* written during start-up, not again */
-	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xf800, 0xfbff) AM_WRITE(shared_w) AM_BASE(&shared_ram) /* check */
-	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(tbowlb_bankswitch_w)
+static ADDRESS_MAP_START( 6206B_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x9fff) AM_RAM
+	AM_RANGE(0xa000, 0xbfff) AM_RAM_WRITE(tbowl_bg2videoram_w) AM_BASE(&tbowl_bg2videoram)
+	AM_RANGE(0xc000, 0xdfff) AM_RAM_WRITE(tbowl_bgvideoram_w) AM_BASE(&tbowl_bgvideoram)
+	AM_RANGE(0xe000, 0xefff) AM_RAM_WRITE(tbowl_txvideoram_w) AM_BASE(&tbowl_txvideoram)
+//  AM_RANGE(0xf000, 0xf000) AM_WRITE(unknown_write) * written during start-up, not again */
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_BANK1, SMH_ROM)
+	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(shared_r, shared_w) AM_BASE(&shared_ram) /* check */
+	AM_RANGE(0xfc00, 0xfc00) AM_READWRITE(input_port_0_r, tbowlb_bankswitch_w)	/* Player 1 inputs */
+	AM_RANGE(0xfc01, 0xfc01) AM_READ(input_port_1_r) /* Player 2 inputs */
 //  AM_RANGE(0xfc01, 0xfc01) AM_WRITE(unknown_write) /* written during start-up, not again */
+	AM_RANGE(0xfc02, 0xfc02) AM_READ(input_port_2_r) /* Player 3 inputs */
 //  AM_RANGE(0xfc02, 0xfc02) AM_WRITE(unknown_write) /* written during start-up, not again */
-	AM_RANGE(0xfc03, 0xfc03) AM_WRITE(tbowl_coin_counter_w)
-	AM_RANGE(0xfc0d, 0xfc0d) AM_WRITE(tbowl_sound_command_w) /* not sure, used quite a bit */
+	AM_RANGE(0xfc03, 0xfc03) AM_READWRITE(input_port_3_r, tbowl_coin_counter_w)	/* Player 4 inputs */
 //  AM_RANGE(0xfc05, 0xfc05) AM_WRITE(unknown_write) /* no idea */
+//  AM_RANGE(0xfc06, 0xfc06) AM_READ(dummy_r)        /* Read During NMI */
+	AM_RANGE(0xfc07, 0xfc07) AM_READ(input_port_4_r) /* System inputs */
+	AM_RANGE(0xfc08, 0xfc08) AM_READ(input_port_5_r) /* DSW1 */
 //  AM_RANGE(0xfc08, 0xfc08) AM_WRITE(unknown_write) /* hardly used .. */
+	AM_RANGE(0xfc09, 0xfc09) AM_READ(input_port_6_r) /* DSW2 */
+	AM_RANGE(0xfc0a, 0xfc0a) AM_READ(input_port_7_r) /* DSW3 */
 //  AM_RANGE(0xfc0a, 0xfc0a) AM_WRITE(unknown_write) /* hardly used .. */
+	AM_RANGE(0xfc0d, 0xfc0d) AM_WRITE(tbowl_sound_command_w) /* not sure, used quite a bit */
 	AM_RANGE(0xfc10, 0xfc10) AM_WRITE(tbowl_bg2xscroll_lo)
 	AM_RANGE(0xfc11, 0xfc11) AM_WRITE(tbowl_bg2xscroll_hi)
 	AM_RANGE(0xfc12, 0xfc12) AM_WRITE(tbowl_bg2yscroll_lo)
@@ -154,21 +142,14 @@ static WRITE8_HANDLER ( tbowl_trigger_nmi )
 	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static ADDRESS_MAP_START( readmem_6206C, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+static ADDRESS_MAP_START( 6206C_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_RAM) /* not read? */
-	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_BANK2) /* Banked ROM */
-	AM_RANGE(0xf800, 0xfbff) AM_READ(shared_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem_6206C, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xd7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITE(SMH_RAM) AM_BASE(&tbowl_spriteram)
-	AM_RANGE(0xe000, 0xefff) AM_WRITE(paletteram_xxxxBBBBRRRRGGGG_be_w) AM_BASE(&paletteram) // 2x palettes, one for each monitor?
-	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xf800, 0xfbff) AM_WRITE(shared_w)
+	AM_RANGE(0xe000, 0xefff) AM_RAM_WRITE(paletteram_xxxxBBBBRRRRGGGG_be_w) AM_BASE(&paletteram) // 2x palettes, one for each monitor?
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_BANK2, SMH_ROM)
+	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(shared_r, shared_w)
 	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(tbowlc_bankswitch_w)
 	AM_RANGE(0xfc01, 0xfc01) AM_WRITE(SMH_NOP) /* ? */
 	AM_RANGE(0xfc02, 0xfc02) AM_WRITE(tbowl_trigger_nmi) /* ? */
@@ -183,7 +164,7 @@ static int adpcm_pos[2],adpcm_end[2];
 static WRITE8_HANDLER( tbowl_adpcm_start_w )
 {
 	adpcm_pos[offset & 1] = data << 8;
-	MSM5205_reset_w(offset & 1,0);
+	msm5205_reset_w(offset & 1,0);
 }
 
 static WRITE8_HANDLER( tbowl_adpcm_end_w )
@@ -193,7 +174,7 @@ static WRITE8_HANDLER( tbowl_adpcm_end_w )
 
 static WRITE8_HANDLER( tbowl_adpcm_vol_w )
 {
-	MSM5205_set_volume(offset & 1, (data & 0x7f) * 100 / 0x7f);
+	msm5205_set_volume(offset & 1, (data & 0x7f) * 100 / 0x7f);
 }
 
 static void tbowl_adpcm_int(running_machine *machine, int num)
@@ -201,40 +182,35 @@ static void tbowl_adpcm_int(running_machine *machine, int num)
 	static int adpcm_data[2] = { -1, -1 };
 
 	if (adpcm_pos[num] >= adpcm_end[num] ||
-				adpcm_pos[num] >= memory_region_length(machine, REGION_SOUND1)/2)
-		MSM5205_reset_w(num,1);
+				adpcm_pos[num] >= memory_region_length(machine, "adpcm")/2)
+		msm5205_reset_w(num,1);
 	else if (adpcm_data[num] != -1)
 	{
-		MSM5205_data_w(num,adpcm_data[num] & 0x0f);
+		msm5205_data_w(num,adpcm_data[num] & 0x0f);
 		adpcm_data[num] = -1;
 	}
 	else
 	{
-		UINT8 *ROM = memory_region(machine, REGION_SOUND1) + 0x10000 * num;
+		UINT8 *ROM = memory_region(machine, "adpcm") + 0x10000 * num;
 
 		adpcm_data[num] = ROM[adpcm_pos[num]++];
-		MSM5205_data_w(num,adpcm_data[num] >> 4);
+		msm5205_data_w(num,adpcm_data[num] >> 4);
 	}
 }
 
-static ADDRESS_MAP_START( readmem_6206A, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe010, 0xe010) AM_READ(soundlatch_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem_6206A, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(YM3812_control_port_0_w)
-	AM_RANGE(0xd001, 0xd001) AM_WRITE(YM3812_write_port_0_w)
-	AM_RANGE(0xd800, 0xd800) AM_WRITE(YM3812_control_port_1_w)
-	AM_RANGE(0xd801, 0xd801) AM_WRITE(YM3812_write_port_1_w)
+static ADDRESS_MAP_START( 6206A_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0xc000, 0xc7ff) AM_RAM
+	AM_RANGE(0xd000, 0xd000) AM_WRITE(ym3812_control_port_0_w)
+	AM_RANGE(0xd001, 0xd001) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0xd800, 0xd800) AM_WRITE(ym3812_control_port_1_w)
+	AM_RANGE(0xd801, 0xd801) AM_WRITE(ym3812_write_port_1_w)
 	AM_RANGE(0xe000, 0xe001) AM_WRITE(tbowl_adpcm_end_w)
 	AM_RANGE(0xe002, 0xe003) AM_WRITE(tbowl_adpcm_start_w)
 	AM_RANGE(0xe004, 0xe005) AM_WRITE(tbowl_adpcm_vol_w)
 	AM_RANGE(0xe006, 0xe006) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xe007, 0xe007) AM_WRITE(SMH_NOP)	/* NMI acknowledge */
+	AM_RANGE(0xe010, 0xe010) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 /*** Input Ports
@@ -295,29 +271,29 @@ bits 0 and 1 ? I'll try to have another look when the sprites stuff is finished.
 
 
 static INPUT_PORTS_START( tbowl )
-	PORT_START	/* player 1 inputs (0xfc00) */
+	PORT_START("P1")	/* player 1 inputs (0xfc00) */
 	TBOWL_PLAYER_INPUT(1)
 
-	PORT_START	/* player 2 inputs (0xfc01) */
+	PORT_START("P2")	/* player 2 inputs (0xfc01) */
 	TBOWL_PLAYER_INPUT(2)
 
-	PORT_START	/* player 3 inputs (0xfc02) */
+	PORT_START("P3")	/* player 3 inputs (0xfc02) */
 	TBOWL_PLAYER_INPUT(3)
 
-	PORT_START	/* player 4 inputs (0xfc03) */
+	PORT_START("P4")	/* player 4 inputs (0xfc03) */
 	TBOWL_PLAYER_INPUT(4)
 
-	PORT_START	/* system inputs (0xfc07 -> 0x80f9) */
+	PORT_START("SYSTEM")	/* system inputs (0xfc07 -> 0x80f9) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN4 )
-	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Service (General)") PORT_CODE(KEYCODE_F1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Service (General)") PORT_CODE(KEYCODE_F1)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* DSW1 (0xfc08 -> 0xffb4) */
+	PORT_START("DSW1")	/* DSW1 (0xfc08 -> 0xffb4) */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING (   0x00, DEF_STR( 8C_1C ) )
 	PORT_DIPSETTING (   0x01, DEF_STR( 7C_1C ) )
@@ -361,7 +337,7 @@ static INPUT_PORTS_START( tbowl )
 	PORT_DIPSETTING (   0xf0, "0:25" )
 //  PORT_DIPSETTING (   0xf8, "1:00" )
 
-	PORT_START	/* DSW2 (0xfc09 -> 0xffb5) */
+	PORT_START("DSW2")	/* DSW2 (0xfc09 -> 0xffb5) */
 	PORT_DIPNAME( 0x03, 0x03, "Difficulty (unused ?)" )	// To be checked again
 	PORT_DIPSETTING (   0x00, "0x00" )
 	PORT_DIPSETTING (   0x01, "0x01" )
@@ -384,7 +360,7 @@ static INPUT_PORTS_START( tbowl )
 	PORT_DIPSETTING (   0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING (   0x80, DEF_STR( On ) )
 
-	PORT_START	/* DSW3 (0xfc0a -> 0xffb6) */
+	PORT_START("DSW3")	/* DSW3 (0xfc0a -> 0xffb6) */
 	PORT_DIPNAME( 0x03, 0x03, "Time (Quarter)" )
 	PORT_DIPSETTING (   0x00, "8:00" )
 	PORT_DIPSETTING (   0x01, "5:00" )
@@ -401,29 +377,29 @@ INPUT_PORTS_END
 /* same as 'tbowl', but different "Quarter Time" Dip Switch
    ("3:00" and "4:00" are inverted) */
 static INPUT_PORTS_START( tbowlj )
-	PORT_START	/* player 1 inputs (0xfc00) */
+	PORT_START("P1")	/* player 1 inputs (0xfc00) */
 	TBOWL_PLAYER_INPUT(1)
 
-	PORT_START	/* player 2 inputs (0xfc01) */
+	PORT_START("P2")	/* player 2 inputs (0xfc01) */
 	TBOWL_PLAYER_INPUT(2)
 
-	PORT_START	/* player 3 inputs (0xfc02) */
+	PORT_START("P3")	/* player 3 inputs (0xfc02) */
 	TBOWL_PLAYER_INPUT(3)
 
-	PORT_START	/* player 4 inputs (0xfc03) */
+	PORT_START("P4")	/* player 4 inputs (0xfc03) */
 	TBOWL_PLAYER_INPUT(4)
 
-	PORT_START	/* system inputs (0xfc07 -> 0x80f9) */
+	PORT_START("SYSTEM")	/* system inputs (0xfc07 -> 0x80f9) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN4 )
-	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Service (General)") PORT_CODE(KEYCODE_F1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Service (General)") PORT_CODE(KEYCODE_F1)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* DSW1 (0xfc08 -> 0xffb4) */
+	PORT_START("DSW1")	/* DSW1 (0xfc08 -> 0xffb4) */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING (   0x00, DEF_STR( 8C_1C ) )
 	PORT_DIPSETTING (   0x01, DEF_STR( 7C_1C ) )
@@ -467,7 +443,7 @@ static INPUT_PORTS_START( tbowlj )
 	PORT_DIPSETTING (   0xf0, "0:25" )
 //  PORT_DIPSETTING (   0xf8, "1:00" )
 
-	PORT_START	/* DSW2 (0xfc09 -> 0xffb5) */
+	PORT_START("DSW2")	/* DSW2 (0xfc09 -> 0xffb5) */
 	PORT_DIPNAME( 0x03, 0x03, "Difficulty (unused ?)" )	// To be checked again
 	PORT_DIPSETTING (   0x00, "0x00" )
 	PORT_DIPSETTING (   0x01, "0x01" )
@@ -490,7 +466,7 @@ static INPUT_PORTS_START( tbowlj )
 	PORT_DIPSETTING (   0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING (   0x80, DEF_STR( On ) )
 
-	PORT_START	/* DSW3 (0xfc0a -> 0xffb6) */
+	PORT_START("DSW3")	/* DSW3 (0xfc0a -> 0xffb6) */
 	PORT_DIPNAME( 0x03, 0x03, "Time (Quarter)" )
 	PORT_DIPSETTING (   0x00, "8:00" )
 	PORT_DIPSETTING (   0x01, "5:00" )
@@ -544,10 +520,10 @@ static const gfx_layout sprite8layout =
 };
 
 static GFXDECODE_START( tbowl )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   256, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, bgtilelayout, 768, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, bgtilelayout, 512, 16 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, sprite8layout, 0,   16 )
+	GFXDECODE_ENTRY( "characters", 0, charlayout,   256, 16 )
+	GFXDECODE_ENTRY( "bg_tiles", 0, bgtilelayout, 768, 16 )
+	GFXDECODE_ENTRY( "bg_tiles", 0, bgtilelayout, 512, 16 )
+	GFXDECODE_ENTRY( "sprites", 0, sprite8layout, 0,   16 )
 
 GFXDECODE_END
 
@@ -560,12 +536,12 @@ static void irqhandler(running_machine *machine, int linestate)
 	cpunum_set_input_line(machine, 2,0,linestate);
 }
 
-static const struct YM3526interface ym3812_interface =
+static const ym3526_interface ym3526_config =
 {
 	irqhandler
 };
 
-static const struct MSM5205interface msm5205_interface =
+static const msm5205_interface msm5205_config =
 {
 	tbowl_adpcm_int,	/* interrupt function */
 	MSM5205_S48_4B		/* 8KHz               */
@@ -586,19 +562,18 @@ The game is displayed on 2 monitors
 static MACHINE_DRIVER_START( tbowl )
 
 	/* CPU on Board '6206B' */
-	MDRV_CPU_ADD(Z80, 8000000) /* NEC D70008AC-8 (Z80 Clone) */
-	MDRV_CPU_PROGRAM_MAP(readmem_6206B,writemem_6206B)
+	MDRV_CPU_ADD("main", Z80, 8000000) /* NEC D70008AC-8 (Z80 Clone) */
+	MDRV_CPU_PROGRAM_MAP(6206B_map,0)
 	MDRV_CPU_VBLANK_INT("left", irq0_line_hold)
 
 	/* CPU on Board '6206C' */
-	MDRV_CPU_ADD(Z80, 8000000) /* NEC D70008AC-8 (Z80 Clone) */
-	MDRV_CPU_PROGRAM_MAP(readmem_6206C,writemem_6206C)
+	MDRV_CPU_ADD("sub", Z80, 8000000) /* NEC D70008AC-8 (Z80 Clone) */
+	MDRV_CPU_PROGRAM_MAP(6206C_map,0)
 	MDRV_CPU_VBLANK_INT("left", irq0_line_hold)
 
 	/* CPU on Board '6206A' */
-	MDRV_CPU_ADD(Z80, 4000000) /* Actual Z80 */
-	/* audio CPU */
-	MDRV_CPU_PROGRAM_MAP(readmem_6206A,writemem_6206A)
+	MDRV_CPU_ADD("audio", Z80, 4000000) /* Actual Z80 */
+	MDRV_CPU_PROGRAM_MAP(6206A_map,0)
 
 	MDRV_INTERLEAVE(100)
 
@@ -627,20 +602,20 @@ static MACHINE_DRIVER_START( tbowl )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, 4000000)
-	MDRV_SOUND_CONFIG(ym3812_interface)
+	MDRV_SOUND_ADD("ym1", YM3812, 4000000)
+	MDRV_SOUND_CONFIG(ym3526_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MDRV_SOUND_ADD(YM3812, 4000000)
+	MDRV_SOUND_ADD("ym2", YM3812, 4000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* something for the samples? */
-	MDRV_SOUND_ADD(MSM5205, 384000)
-	MDRV_SOUND_CONFIG(msm5205_interface)
+	MDRV_SOUND_ADD("msm1", MSM5205, 384000)
+	MDRV_SOUND_CONFIG(msm5205_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(MSM5205, 384000)
-	MDRV_SOUND_CONFIG(msm5205_interface)
+	MDRV_SOUND_ADD("msm2", MSM5205, 384000)
+	MDRV_SOUND_CONFIG(msm5205_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
@@ -718,22 +693,22 @@ this fails its rom check so I assume its corrupt
 
 
 ROM_START( tbowl )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 ) /* NEC D70008AC-8 (Z80 Clone) */
+	ROM_REGION( 0x20000, "main", 0 ) /* NEC D70008AC-8 (Z80 Clone) */
 	ROM_LOAD( "4.11b",	    0x00000, 0x08000, CRC(db8a4f5d) SHA1(730dee040c18ed8736c07a7de0b986f667b0f2f5) )
 	ROM_LOAD( "6206b.5",	0x10000, 0x10000, CRC(133c5c11) SHA1(7d4e76db3505ccf033d0d9b8d21feaf09b76dcc4) )
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 ) /* NEC D70008AC-8 (Z80 Clone) */
+	ROM_REGION( 0x20000, "sub", 0 ) /* NEC D70008AC-8 (Z80 Clone) */
 	ROM_LOAD( "6206c.24",	0x00000, 0x10000, CRC(040c8138) SHA1(f6fea192bf2ef0a3f0876133c761488184f54f50) )
 	ROM_LOAD( "6206c.25",	0x10000, 0x10000, CRC(92c3cef5) SHA1(75883663b309bf46be544114c6e9086ab222300d) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* Z80 */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 */
 	ROM_LOAD( "6206a.1",	0x00000, 0x08000, CRC(4370207b) SHA1(2c929b571c86d35e646870644751e86bd16b5e22) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE ) /* 8x8 Characters inc. Alphanumerics */
+	ROM_REGION( 0x10000, "characters", ROMREGION_DISPOSE ) /* 8x8 Characters inc. Alphanumerics */
 	ROM_LOAD16_BYTE( "14.13l",	    0x00000, 0x08000, CRC(f9cf60b9) SHA1(0a79ed29f82ac7bd08062f922f79e439c194f30a) )
 	ROM_LOAD16_BYTE( "15.15l",	    0x00001, 0x08000, CRC(a23f6c53) SHA1(0bb64894a27f41d74117ec492aafd52bc5b16ca4) )
 
-	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE ) /* BG GFX */
+	ROM_REGION( 0x80000, "bg_tiles", ROMREGION_DISPOSE ) /* BG GFX */
 	ROM_LOAD16_BYTE( "6206b.6",	    0x40001, 0x10000, CRC(b9615ffa) SHA1(813896387291f5325ed7e4058347fe35c0d7b839) )
 	ROM_LOAD16_BYTE( "6206b.8",	    0x40000, 0x10000, CRC(6389c719) SHA1(8043907d6f5b37228c09f05bbf12b4b9bb9bc130) )
 	ROM_LOAD16_BYTE( "6206b.7",	    0x00001, 0x10000, CRC(d139c397) SHA1(4093220e6bddb95d0af445944bead7a064b64c39) )
@@ -743,7 +718,7 @@ ROM_START( tbowl )
 	ROM_LOAD16_BYTE( "6206b.11",    0x20001, 0x10000, CRC(06bf07bb) SHA1(9f12a39b8832bff2ffd84b7e6c1ddb2855ff924b) )
 	ROM_LOAD16_BYTE( "6206b.13",    0x20000, 0x10000, CRC(4ad72c16) SHA1(554474987349b5b11e181ee8a2d1308777b030c1) )
 
-	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE ) /* SPR GFX */
+	ROM_REGION( 0x80000, "sprites", ROMREGION_DISPOSE ) /* SPR GFX */
 	ROM_LOAD16_BYTE( "6206c.16",	0x60001, 0x10000, CRC(1a2fb925) SHA1(bc96ee87372826d5bee2b4d2aefde4c47b9ee80a) )
 	ROM_LOAD16_BYTE( "6206c.20",	0x60000, 0x10000, CRC(70bb38a3) SHA1(5145b246f7720dd0359b97be35aa027af07cb6da) )
 	ROM_LOAD16_BYTE( "6206c.17",	0x40001, 0x10000, CRC(de16bc10) SHA1(88e2452c7caf44cd541c27fc56c99703f3330bd7) )
@@ -753,28 +728,28 @@ ROM_START( tbowl )
 	ROM_LOAD16_BYTE( "6206c.19",	0x00001, 0x10000, CRC(71795604) SHA1(57ef4f14dfe1829d5dddeba81bf2f7354d971d27) )
 	ROM_LOAD16_BYTE( "6206c.23",	0x00000, 0x10000, CRC(97fba168) SHA1(107de19614d57453a37462e1a4d499d14633d50b) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x20000, "adpcm", 0 )
 	ROM_LOAD( "6206a.3",	0x00000, 0x10000, CRC(3aa24744) SHA1(06de3f9a2431777218cc67f59230fddbfa01cf2d) )
 	ROM_LOAD( "6206a.2",	0x10000, 0x10000, CRC(1e9e5936) SHA1(60370d1de28b1c5ffeff7843702aaddb19ff1f58) )
 ROM_END
 
 ROM_START( tbowlj )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 ) /* NEC D70008AC-8 (Z80 Clone) */
+	ROM_REGION( 0x20000, "main", 0 ) /* NEC D70008AC-8 (Z80 Clone) */
 	ROM_LOAD( "6206b.4",	0x00000, 0x08000, CRC(7ed3eff7) SHA1(4a17f2838e9bbed8b1638783c62d07d1074e2b35) )
 	ROM_LOAD( "6206b.5",	0x10000, 0x10000, CRC(133c5c11) SHA1(7d4e76db3505ccf033d0d9b8d21feaf09b76dcc4) )
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 ) /* NEC D70008AC-8 (Z80 Clone) */
+	ROM_REGION( 0x20000, "sub", 0 ) /* NEC D70008AC-8 (Z80 Clone) */
 	ROM_LOAD( "6206c.24",	0x00000, 0x10000, CRC(040c8138) SHA1(f6fea192bf2ef0a3f0876133c761488184f54f50) )
 	ROM_LOAD( "6206c.25",	0x10000, 0x10000, CRC(92c3cef5) SHA1(75883663b309bf46be544114c6e9086ab222300d) )
 
-	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* Z80 */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 */
 	ROM_LOAD( "6206a.1",	0x00000, 0x08000, CRC(4370207b) SHA1(2c929b571c86d35e646870644751e86bd16b5e22) )
 
-	ROM_REGION( 0x10000, REGION_GFX1, ROMREGION_DISPOSE ) /* 8x8 Characters inc. Alphanumerics */
+	ROM_REGION( 0x10000, "characters", ROMREGION_DISPOSE ) /* 8x8 Characters inc. Alphanumerics */
 	ROM_LOAD16_BYTE( "6206b.14",	0x00000, 0x08000, CRC(cf99d0bf) SHA1(d1f23e23c2ebd26e2ffe8b23a02d86e4d32c6f11) )
 	ROM_LOAD16_BYTE( "6206b.15",	0x00001, 0x08000, CRC(d69248cf) SHA1(4dad6a3fdc36b2fe625df0a43fd9e82d1dfd2af6) )
 
-	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE ) /* BG GFX */
+	ROM_REGION( 0x80000, "bg_tiles", ROMREGION_DISPOSE ) /* BG GFX */
 	ROM_LOAD16_BYTE( "6206b.6",	    0x40001, 0x10000, CRC(b9615ffa) SHA1(813896387291f5325ed7e4058347fe35c0d7b839) )
 	ROM_LOAD16_BYTE( "6206b.8",	    0x40000, 0x10000, CRC(6389c719) SHA1(8043907d6f5b37228c09f05bbf12b4b9bb9bc130) )
 	ROM_LOAD16_BYTE( "6206b.7",	    0x00001, 0x10000, CRC(d139c397) SHA1(4093220e6bddb95d0af445944bead7a064b64c39) )
@@ -784,7 +759,7 @@ ROM_START( tbowlj )
 	ROM_LOAD16_BYTE( "6206b.11",    0x20001, 0x10000, CRC(06bf07bb) SHA1(9f12a39b8832bff2ffd84b7e6c1ddb2855ff924b) )
 	ROM_LOAD16_BYTE( "6206b.13",    0x20000, 0x10000, CRC(4ad72c16) SHA1(554474987349b5b11e181ee8a2d1308777b030c1) )
 
-	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE ) /* SPR GFX */
+	ROM_REGION( 0x80000, "sprites", ROMREGION_DISPOSE ) /* SPR GFX */
 	ROM_LOAD16_BYTE( "6206c.16",	0x60001, 0x10000, CRC(1a2fb925) SHA1(bc96ee87372826d5bee2b4d2aefde4c47b9ee80a) )
 	ROM_LOAD16_BYTE( "6206c.20",	0x60000, 0x10000, CRC(70bb38a3) SHA1(5145b246f7720dd0359b97be35aa027af07cb6da) )
 	ROM_LOAD16_BYTE( "6206c.17",	0x40001, 0x10000, CRC(de16bc10) SHA1(88e2452c7caf44cd541c27fc56c99703f3330bd7) )
@@ -794,7 +769,7 @@ ROM_START( tbowlj )
 	ROM_LOAD16_BYTE( "6206c.19",	0x00001, 0x10000, CRC(71795604) SHA1(57ef4f14dfe1829d5dddeba81bf2f7354d971d27) )
 	ROM_LOAD16_BYTE( "6206c.23",	0x00000, 0x10000, CRC(97fba168) SHA1(107de19614d57453a37462e1a4d499d14633d50b) )
 
-	ROM_REGION( 0x20000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x20000, "adpcm", 0 )
 	ROM_LOAD( "6206a.3",	0x00000, 0x10000, CRC(3aa24744) SHA1(06de3f9a2431777218cc67f59230fddbfa01cf2d) )
 	ROM_LOAD( "6206a.2",	0x10000, 0x10000, CRC(1e9e5936) SHA1(60370d1de28b1c5ffeff7843702aaddb19ff1f58) )
 ROM_END

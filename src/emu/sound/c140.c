@@ -120,7 +120,7 @@ static void init_voice( VOICE *v )
 	v->sample_end=0;
 	v->sample_loop=0;
 }
-READ8_HANDLER( C140_r )
+READ8_HANDLER( c140_r )
 {
 	struct c140_info *info = sndti_token(SOUND_C140, 0);
 	offset&=0x1ff;
@@ -185,7 +185,7 @@ static long find_sample(struct c140_info *info, long adrs, long bank, int voice)
 
 	return (newadr);
 }
-WRITE8_HANDLER( C140_w )
+WRITE8_HANDLER( c140_w )
 {
 	struct c140_info *info = sndti_token(SOUND_C140, 0);
 	stream_update(info->stream);
@@ -247,7 +247,7 @@ WRITE8_HANDLER( C140_w )
 	}
 }
 
-void C140_set_base(int which, void *base)
+void c140_set_base(int which, void *base)
 {
 	struct c140_info *info = sndti_token(SOUND_C140, 0);
 	info->pRom = base;
@@ -455,9 +455,9 @@ static void update_stereo(void *param, stream_sample_t **inputs, stream_sample_t
 	}
 }
 
-static void *c140_start(int sndindex, int clock, const void *config)
+static void *c140_start(const char *tag, int sndindex, int clock, const void *config)
 {
-	const struct C140interface *intf = config;
+	const c140_interface *intf = config;
 	struct c140_info *info;
 
 	info = auto_malloc(sizeof(*info));
@@ -469,8 +469,7 @@ static void *c140_start(int sndindex, int clock, const void *config)
 
 	info->stream = stream_create(0,2,info->sample_rate,info,update_stereo);
 
-	if (intf->region)
-		info->pRom=memory_region(Machine, intf->region);
+	info->pRom=memory_region(Machine, tag);
 
 	/* make decompress pcm table */		//2000.06.26 CAB
 	{
@@ -483,7 +482,7 @@ static void *c140_start(int sndindex, int clock, const void *config)
 		}
 	}
 
-	memset(info->REG,0,0x200 );
+	memset(info->REG,0,sizeof(info->REG));
 	{
 		int i;
 		for(i=0;i<MAX_VOICE;i++) init_voice( &info->voi[i] );

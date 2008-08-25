@@ -300,11 +300,11 @@ static WRITE8_HANDLER( lazercmd_hardware_w )
 			DAC_data=(data&0x80)^((data&0x40)<<1)^((data&0x20)<<2)^((data&0x10)<<3);
 			if (DAC_data)
 			{
-				DAC_data_w(0, 0xff);
+				dac_data_w(0, 0xff);
 			}
 			else
 			{
-				DAC_data_w(0, 0);
+				dac_data_w(0, 0);
 			}
 			break;
 		case 1: /* marker Y position */
@@ -331,11 +331,11 @@ static WRITE8_HANDLER( medlanes_hardware_w )
 			DAC_data=((data&0x20)<<2)^((data&0x10)<<3);
 			if (DAC_data)
 			{
-				DAC_data_w(0, 0xff);
+				dac_data_w(0, 0xff);
 			}
 			else
 			{
-				DAC_data_w(0, 0);
+				dac_data_w(0, 0);
 			}
 			break;
 		case 1: /* marker Y position */
@@ -362,11 +362,11 @@ static WRITE8_HANDLER( bbonk_hardware_w )
 			DAC_data=((data&0x20)<<2)^((data&0x10)<<3);
 			if (DAC_data)
 			{
-				DAC_data_w(0, 0xff);
+				dac_data_w(0, 0xff);
 			}
 			else
 			{
-				DAC_data_w(0, 0);
+				dac_data_w(0, 0);
 			}
 			break;
 		case 3: /* D4 clears coin detected and D0 toggles on attract mode */
@@ -451,21 +451,21 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( lazercmd )
-	PORT_START_TAG("IN0")		/* IN0 player 1 controls */
+	PORT_START("IN0")		/* IN0 player 1 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")		/* IN1 player 2 controls */
+	PORT_START("IN1")		/* IN1 player 2 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW")		/* IN2 dip switch */
+	PORT_START("DSW")		/* IN2 dip switch */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Game_Time ) )
 	PORT_DIPSETTING(	0x00, "60 seconds" )
 	PORT_DIPSETTING(	0x01, "90 seconds" )
@@ -482,7 +482,7 @@ static INPUT_PORTS_START( lazercmd )
 //  PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 //  PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START_TAG("IN2")		/* IN3 coinage & start */
+	PORT_START("IN2")		/* IN3 coinage & start */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( 1C_1C ) )
@@ -491,7 +491,7 @@ static INPUT_PORTS_START( lazercmd )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("IN3")		/* IN4 player 1 + 2 buttons */
+	PORT_START("IN3")		/* IN4 player 1 + 2 buttons */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -500,19 +500,19 @@ static INPUT_PORTS_START( lazercmd )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( medlanes )
-	PORT_START_TAG("IN0")		/* IN0 player 1 controls */
+	PORT_START("IN0")		/* IN0 player 1 controls */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")		/* IN1 player 1 controls */
+	PORT_START("IN1")		/* IN1 player 1 controls */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Hook Left") PORT_CODE(KEYCODE_Z)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Hook Right") PORT_CODE(KEYCODE_X)
 	PORT_BIT( 0xfc, IP_ACTIVE_LOW, IPT_UNUSED)
 
-	PORT_START_TAG("DSW")		/* IN2 dip switch */
+	PORT_START("DSW")		/* IN2 dip switch */
 	PORT_DIPNAME( 0x01, 0x01, "Game Timer" )
 	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( On ) )
@@ -530,7 +530,7 @@ static INPUT_PORTS_START( medlanes )
 //  PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 //  PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START_TAG("IN2")		/* IN3 coinage & start */
+	PORT_START("IN2")		/* IN3 coinage & start */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( 1C_1C ) )
@@ -538,26 +538,26 @@ static INPUT_PORTS_START( medlanes )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0xf4, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("IN3")		/* IN4 not used */
+	PORT_START("IN3")		/* IN4 not used */
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( bbonk )
-	PORT_START_TAG("IN0")		/* IN0 player 1 controls */
+	PORT_START("IN0")		/* IN0 player 1 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("IN1")		/* IN1 player 2 controls */
+	PORT_START("IN1")		/* IN1 player 2 controls */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW")		/* IN2 dip switch */
+	PORT_START("DSW")		/* IN2 dip switch */
 	PORT_DIPNAME( 0x03, 0x02, "Games to win" )
 	PORT_DIPSETTING(	0x02, "2" )
 	PORT_DIPSETTING(	0x03, "3" )
@@ -572,7 +572,7 @@ static INPUT_PORTS_START( bbonk )
 //  PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 //  PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START_TAG("IN2")		/* IN3 coinage & start */
+	PORT_START("IN2")		/* IN3 coinage & start */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( 1C_1C ) )
@@ -580,7 +580,7 @@ static INPUT_PORTS_START( bbonk )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0xf4, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("IN3")		/* IN4 not used */
+	PORT_START("IN3")		/* IN4 not used */
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -597,7 +597,7 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( lazercmd )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout, 0, 2 )
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0, 2 )
 GFXDECODE_END
 
 static PALETTE_INIT( lazercmd )
@@ -614,7 +614,7 @@ static PALETTE_INIT( lazercmd )
 static MACHINE_DRIVER_START( lazercmd )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(S2650,8064000/12)				/* 672 kHz? */
+	MDRV_CPU_ADD("main", S2650,8064000/12)				/* 672 kHz? */
 /*          Main Clock is 8MHz divided by 12
             but memory and IO access is only possible
             within the line and frame blanking period
@@ -641,7 +641,7 @@ static MACHINE_DRIVER_START( lazercmd )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -649,7 +649,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( medlanes )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(S2650,8064000/12)				/* 672 kHz? */
+	MDRV_CPU_ADD("main", S2650,8064000/12)				/* 672 kHz? */
 /*          Main Clock is 8MHz divided by 12
             but memory and IO access is only possible
             within the line and frame blanking period
@@ -676,7 +676,7 @@ static MACHINE_DRIVER_START( medlanes )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -684,7 +684,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( bbonk )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(S2650,8064000/12)				/* 672 kHz? */
+	MDRV_CPU_ADD("main", S2650,8064000/12)				/* 672 kHz? */
 /*          Main Clock is 8MHz divided by 12
             but memory and IO access is only possible
             within the line and frame blanking period
@@ -711,7 +711,7 @@ static MACHINE_DRIVER_START( bbonk )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -722,7 +722,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( lazercmd )
-	ROM_REGION( 0x0c00, REGION_CPU1, ROMREGION_INVERT )			   /* 32K cpu, 4K for ROM/RAM */
+	ROM_REGION( 0x0c00, "main", ROMREGION_INVERT )			   /* 32K cpu, 4K for ROM/RAM */
 	ROM_LOAD_NIB_HIGH( "lc.e5",        0x0000, 0x0400, CRC(56dc7a40) SHA1(1324d5d6a44d7314723a0b5745d89f8e27f49d25) )
 	ROM_LOAD_NIB_LOW(  "lc.f5",        0x0000, 0x0400, CRC(fc5b38a4) SHA1(bff670d7b78c6b9324d2bf4b2d8a4f9dbfe82158) )
 	ROM_LOAD_NIB_HIGH( "lc.e6",        0x0400, 0x0400, CRC(b1ef0aa2) SHA1(3edeaa4d4f4e18536066898284d430a1ac00512e) )
@@ -730,12 +730,12 @@ ROM_START( lazercmd )
 	ROM_LOAD_NIB_HIGH( "lc.e7",        0x0800, 0x0400, CRC(8e6ffc97) SHA1(d5243ce88585db91573b6586d3d47d13b5b473c8) )
 	ROM_LOAD_NIB_LOW(  "lc.f7",        0x0800, 0x0400, CRC(9ec3534d) SHA1(98f15c5828ad2743bf205f71b8e69abd4db78a58) )
 
-	ROM_REGION( 0x0c00, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0c00, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "lc.b8",        0x0a00, 0x0200, CRC(6d708edd) SHA1(85a45a292eb7bca288b06a118658bf754f828a92) )
 ROM_END
 
 ROM_START( medlanes )
-	ROM_REGION( 0x1800, REGION_CPU1, ROMREGION_INVERT )	   /* 32K cpu, 4K for ROM/RAM */
+	ROM_REGION( 0x1800, "main", ROMREGION_INVERT )	   /* 32K cpu, 4K for ROM/RAM */
 	ROM_LOAD_NIB_HIGH( "medlanes.2a", 0x0000, 0x0400, CRC(9c77566a) SHA1(60e1820012b47da8b86d54f00b6f60d2d0123745) )
 	ROM_LOAD_NIB_LOW(  "medlanes.3a", 0x0000, 0x0400, CRC(22bc56a6) SHA1(7444170c19274d9d889df61796e6f61af2361f3e) )
 	ROM_LOAD_NIB_HIGH( "medlanes.2b", 0x0400, 0x0400, CRC(7841b1a9) SHA1(80621d30995dad42ae44c62494922ca8b75415cf) )
@@ -747,19 +747,19 @@ ROM_START( medlanes )
 	ROM_LOAD_NIB_HIGH( "medlanes.1b", 0x1400, 0x0400, CRC(1d451630) SHA1(bf9de3096e98685355c906ab7e1dc2628dce79d6) )
 	ROM_LOAD_NIB_LOW(  "medlanes.4b", 0x1400, 0x0400, CRC(a4abb5db) SHA1(a20da872b0f7d6b16b9551233af4269db9d1b55f) )
 
-	ROM_REGION( 0x0c00, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0c00, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "medlanes.8b", 0x0a00, 0x0200, CRC(44e5de8f) SHA1(fc797fa137f0c11a15caf9c0013aac668fd69a3c) )
 ROM_END
 
 
 ROM_START( bbonk )
-	ROM_REGION( 0x0c00, REGION_CPU1, ROMREGION_INVERT )			   /* 32K cpu, 4K for ROM/RAM */
+	ROM_REGION( 0x0c00, "main", ROMREGION_INVERT )			   /* 32K cpu, 4K for ROM/RAM */
 	ROM_LOAD_NIB_HIGH( "bbonk.e5",     0x0000, 0x0400, CRC(d032baa0) SHA1(09cba16f6a2b7d8a8c501db639bd5eeefb63dc0f) )
 	ROM_LOAD_NIB_LOW(  "bbonk.f5",     0x0000, 0x0400, CRC(748e8c7f) SHA1(99e4e182ee41c246e31f656411a9f09d7b617f92) )
 	ROM_LOAD_NIB_HIGH( "bbonk.e6",     0x0400, 0x0400, CRC(71df0e25) SHA1(c2f78490816add1296923861a89df15be9822fed) )
 	ROM_LOAD_NIB_LOW(  "bbonk.f6",     0x0400, 0x0400, CRC(5ce183ed) SHA1(7c78dfa463a37605e8423104426af2f5906fae24) )
 
-	ROM_REGION( 0x0c00, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0c00, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "bbonk.b8",     0x0a00, 0x0200, CRC(5ac34260) SHA1(7c2b1e378d2b9fed27117f9adab1381507f5d554) )
 ROM_END
 
@@ -767,7 +767,7 @@ ROM_END
 static DRIVER_INIT( lazercmd )
 {
 int i, y;
-UINT8 *gfx = memory_region(machine, REGION_GFX1);
+UINT8 *gfx = memory_region(machine, "gfx1");
 
 /******************************************************************
  * To show the maze bit #6 and #7 of the video ram are used.
@@ -796,7 +796,7 @@ UINT8 *gfx = memory_region(machine, REGION_GFX1);
 static DRIVER_INIT( medlanes )
 {
 int i, y;
-UINT8 *gfx = memory_region(machine, REGION_GFX1);
+UINT8 *gfx = memory_region(machine, "gfx1");
 
 /******************************************************************
  * To show the maze bit #6 and #7 of the video ram are used.
@@ -825,7 +825,7 @@ UINT8 *gfx = memory_region(machine, REGION_GFX1);
 static DRIVER_INIT( bbonk )
 {
 int i, y;
-UINT8 *gfx = memory_region(machine, REGION_GFX1);
+UINT8 *gfx = memory_region(machine, "gfx1");
 
 /******************************************************************
  * To show the maze bit #6 and #7 of the video ram are used.

@@ -74,7 +74,7 @@ static DISCRETE_SOUND_START(frogs)
 	DISCRETE_INPUT_NOT(FROGS_CAPTURE_EN)
 	DISCRETE_INPUT_NOT(FROGS_SPLASH_EN)
 
-	DISCRETE_ADJUSTMENT_TAG(FROGS_R93, 1, RES_M(1), RES_K(10), DISC_LOGADJ, "R93")
+	DISCRETE_ADJUSTMENT_TAG(FROGS_R93, RES_M(1), RES_K(10), DISC_LOGADJ, "R93")
 
 	DISCRETE_555_MSTABLE(NODE_30, 1, FROGS_TONGUE_EN, RES_K(100), CAP_U(1), &frogsZip555m)
 
@@ -113,7 +113,7 @@ static const char *const frogs_sample_names[] =
 	0
 };
 
-static const struct Samplesinterface frogs_samples_interface =
+static const samples_interface frogs_samples_interface =
 {
 	5,	/* 5 channels */
 	frogs_sample_names
@@ -121,11 +121,11 @@ static const struct Samplesinterface frogs_samples_interface =
 
 
 MACHINE_DRIVER_START( frogs_audio )
-	MDRV_SOUND_ADD(SAMPLES, 0)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(frogs_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35)
 
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(frogs)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -443,7 +443,7 @@ DISCRETE_SOUND_END
 
 MACHINE_DRIVER_START( headon_audio )
 
-	MDRV_SOUND_ADD(DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(headon)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END

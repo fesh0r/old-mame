@@ -488,33 +488,15 @@ static DRIVER_INIT( vshoot )
 	namcoc7x_on_driver_init(machine);
 } /* vshoot */
 
-static void
-ShuffleDataROMs( running_machine *machine )
-{
-	size_t len = memory_region_length(machine, REGION_USER1)/4;
-	UINT8 *pMem8 = (UINT8 *)memory_region( machine, REGION_USER1 );
-	UINT32 *pMem32 = (UINT32 *)pMem8;
-	int i;
-
-	for( i=0; i<len; i++ )
-	{
-		pMem32[i] = (pMem8[0]<<16)|(pMem8[1]<<24)|(pMem8[2]<<0)|(pMem8[3]<<8);
-		pMem8+=4;
-	}
-	memory_set_bankptr( 1, pMem32 );
-}
-
 static DRIVER_INIT( machbrkr )
 {
 	namcos2_gametype = NAMCONB2_MACH_BREAKERS;
-	ShuffleDataROMs(machine);
 	namcoc7x_on_driver_init(machine);
 }
 
 static DRIVER_INIT( outfxies )
 {
 	namcos2_gametype = NAMCONB2_OUTFOXIES;
-	ShuffleDataROMs(machine);
 	namcoc7x_on_driver_init(machine);
 }
 
@@ -726,7 +708,7 @@ static ADDRESS_MAP_START( namconb2_am, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x1c0000, 0x1cffff) AM_READ(SMH_RAM) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x1e4000, 0x1e4003) AM_READWRITE(randgen_r,srand_w)
 	AM_RANGE(0x200000, 0x2fffff) AM_READ(SMH_RAM) AM_WRITE(sharedram_w) AM_BASE(&namconb1_workram32) /* shared with MCU */
-	AM_RANGE(0x400000, 0x4fffff) AM_READ(SMH_BANK1)/* data ROMs */
+	AM_RANGE(0x400000, 0x4fffff) AM_ROM AM_REGION("user1", 0)
 	AM_RANGE(0x600000, 0x61ffff) AM_READWRITE(namco_obj32_r,namco_obj32_w)
 	AM_RANGE(0x620000, 0x620007) AM_READWRITE(namco_spritepos32_r,namco_spritepos32_w)
 	AM_RANGE(0x640000, 0x64000f) AM_READ(SMH_RAM) AM_WRITE(SMH_RAM) /* unknown xy offset */
@@ -745,10 +727,8 @@ ADDRESS_MAP_END /* namconb2_readmem */
 
 #define MASTER_CLOCK_HZ 48384000
 
-NAMCO_C7X_HARDWARE
-
 static MACHINE_DRIVER_START( namconb1 )
-	MDRV_CPU_ADD(M68EC020,MASTER_CLOCK_HZ/2)
+	MDRV_CPU_ADD("main", M68EC020,MASTER_CLOCK_HZ/2)
 	MDRV_CPU_PROGRAM_MAP(namconb1_am,0)
 	MDRV_CPU_VBLANK_INT("main", namconb1_interrupt)
 
@@ -772,7 +752,7 @@ static MACHINE_DRIVER_START( namconb1 )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( namconb2 )
-	MDRV_CPU_ADD(M68EC020,MASTER_CLOCK_HZ/2)
+	MDRV_CPU_ADD("main", M68EC020,MASTER_CLOCK_HZ/2)
 	MDRV_CPU_PROGRAM_MAP(namconb2_am,0)
 	MDRV_CPU_VBLANK_INT("main", namconb2_interrupt)
 
@@ -798,15 +778,15 @@ MACHINE_DRIVER_END
 /***************************************************************/
 
 ROM_START( ptblank )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "gn2mprlb.15b", 0x00002, 0x80000, CRC(fe2d9425) SHA1(51b166a629cbb522720d63720558816b496b6b76) )
 	ROM_LOAD32_WORD( "gn2mprub.13b", 0x00000, 0x80000, CRC(3bf4985a) SHA1(f559e0d5f55d23d886fe61bd7d5ca556acc7f87c) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "gn1-spr0.bin", 0, 0x20000, CRC(6836ba38) SHA1(6ea17ea4bbb59be108e8887acd7871409580732f) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "gn1-voi0.bin", 0, 0x200000, CRC(05477eb7) SHA1(f2eaacb5dbac06c37c56b9b131230c9cf6602221) )
 
 	ROM_REGION( 0x800000, NAMCONB1_SPRITEGFXREGION, ROMREGION_DISPOSE )
@@ -826,15 +806,15 @@ ROM_START( ptblank )
 ROM_END
 
 ROM_START( gunbulet )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "gn1-mprl.bin", 0x00002, 0x80000, CRC(f99e309e) SHA1(3fe0ddf756e6849f8effc7672456cbe32f65c98a) )
 	ROM_LOAD32_WORD( "gn1-mpru.bin", 0x00000, 0x80000, CRC(72a4db07) SHA1(8c5e1e51cd961b311d03f7b21f36a5bd5e8e9104) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "gn1-spr0.bin", 0, 0x20000, CRC(6836ba38) SHA1(6ea17ea4bbb59be108e8887acd7871409580732f) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "gn1-voi0.bin", 0, 0x200000, CRC(05477eb7) SHA1(f2eaacb5dbac06c37c56b9b131230c9cf6602221) )
 
 	ROM_REGION( 0x800000, NAMCONB1_SPRITEGFXREGION, ROMREGION_DISPOSE )
@@ -854,15 +834,15 @@ ROM_START( gunbulet )
 ROM_END
 
 ROM_START( nebulray )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "nr2-mpru.13b", 0x00000, 0x80000, CRC(049b97cb) SHA1(0e344b29a4d4bdc854fa9849589772df2eeb0a05) )
 	ROM_LOAD32_WORD( "nr2-mprl.15b", 0x00002, 0x80000, CRC(0431b6d4) SHA1(54c96e8ac9e753956c31bdef79d390f1c20e10ff) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "nr1-spr0", 0, 0x20000, CRC(1cc2b44b) SHA1(161f4ed39fabe89d7ee1d539f8b9f08cd0ff3111) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "nr1-voi0", 0, 0x200000, CRC(332d5e26) SHA1(9daddac3fbe0709e25ed8e0b456bac15bfae20d7) )
 
 	ROM_REGION( 0x1000000, NAMCONB1_SPRITEGFXREGION, ROMREGION_DISPOSE )
@@ -884,20 +864,20 @@ ROM_START( nebulray )
 	ROM_REGION( 0x80000, NAMCONB1_TILEMASKREGION, 0 )
 	ROM_LOAD( "nr1-sha0", 0, 0x80000,CRC(ca667e13) SHA1(685032603224cb81bcb85361921477caec570d5e) )
 
-	ROM_REGION( 0x20, REGION_PROMS, 0 ) /* custom key data? */
+	ROM_REGION( 0x20, "proms", 0 ) /* custom key data? */
 	ROM_LOAD( "c366.bin", 0, 0x20, CRC(8c96f31d) SHA1(d186859cfc19a63266084372080d0a5bee687ae2) )
 ROM_END
 
 ROM_START( nebulryj )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "nr1-mpru", 0x00000, 0x80000, CRC(42ef71f9) SHA1(20e3cb63e1fde293c60c404b378d901d635c4b79) )
 	ROM_LOAD32_WORD( "nr1-mprl", 0x00002, 0x80000, CRC(fae5f62c) SHA1(143d716abbc834aac6270db3bbb89ec71ea3804d) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "nr1-spr0", 0, 0x20000, CRC(1cc2b44b) SHA1(161f4ed39fabe89d7ee1d539f8b9f08cd0ff3111) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "nr1-voi0", 0, 0x200000, CRC(332d5e26) SHA1(9daddac3fbe0709e25ed8e0b456bac15bfae20d7) )
 
 	ROM_REGION( 0x1000000, NAMCONB1_SPRITEGFXREGION, ROMREGION_DISPOSE )
@@ -919,20 +899,20 @@ ROM_START( nebulryj )
 	ROM_REGION( 0x80000, NAMCONB1_TILEMASKREGION, 0 )
 	ROM_LOAD( "nr1-sha0", 0, 0x80000,CRC(ca667e13) SHA1(685032603224cb81bcb85361921477caec570d5e) )
 
-	ROM_REGION( 0x20, REGION_PROMS, 0 ) /* custom key data? */
+	ROM_REGION( 0x20, "proms", 0 ) /* custom key data? */
 	ROM_LOAD( "c366.bin", 0, 0x20, CRC(8c96f31d) SHA1(d186859cfc19a63266084372080d0a5bee687ae2) )
 ROM_END
 
 ROM_START( gslgr94u )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "gse2mprl.bin", 0x00002, 0x80000, CRC(a514349c) SHA1(1f7ec81cd6193410d2f01e6f0f84878561fc8035) )
 	ROM_LOAD32_WORD( "gse2mpru.bin", 0x00000, 0x80000, CRC(b6afd238) SHA1(438a3411ac8ce3d22d5da8c0800738cb8d2994a9) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "gse2spr0.bin", 0, 0x20000, CRC(17e87cfc) SHA1(9cbeadb6dfcb736e8c80eab344f70fc2f58469d6) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "gse-voi0.bin", 0, 0x200000, CRC(d3480574) SHA1(0c468ed060769b36b7e41cf4919cb6d8691d64f6) )
 
 	ROM_REGION( 0x400000, NAMCONB1_SPRITEGFXREGION, ROMREGION_DISPOSE )
@@ -949,16 +929,142 @@ ROM_START( gslgr94u )
 	ROM_LOAD( "gse-sha0.bin", 0, 0x80000, CRC(6b2beabb) SHA1(815f7aef44735584edd4a9ca7e672471d07f225e) )
 ROM_END
 
+
+/*
+Great Sluggers (Japan)
+Namco, 1993
+
+This game runs on Namco NB-1 hardware.
+
+PCB Layout
+----------
+NB-1 MAIN PCB                                  MEMEXT OBJ2 PCB
+8634961101 (8634963101)                    8635901201 (8635901301)
+|------------------------------------------------------|---------|
+|                            62256       62256         |         |
+|LA4705 VOL M5M5178          62256       62256         |GS1OBJ-0 |
+|           M5M5178                              C347  |         |
+| 4558      M5M5178          62256       62256         |         |
+|                            62256       62256         |         |
+| LC78815    C116   156                                |         |
+|JP3                62256    62256       62256         |         |
+|              145  62256    62256       62256         |GS1OBJ-1 |
+|   GS1SHA-0                                           |         |
+|J  JP2                      62256       62256     C355|---------|
+|A                           62256       62256          62256    |
+|M             123                                      62256    |
+|M                                                    JP12       |
+|A                                   %3  JP11                    |
+|              JP5  GS1CHR-0   GS1CHR-2  JP10   137   187   M3771|
+|   GS1VOI-0   JP6  GS1CHR-1   GS1CHR-3      48.384MHz           |
+|                                                                |
+|              C352                                              |
+|SW1   75                                                        |
+|                                                                |
+|   TC551001                   %1                                |
+|                      KM28C16         GS1MPRU      JP9          |
+|   TC551001   PAL2                %2  GS1MPRL                   |
+|   JP1                         JP7    JP8                       |
+|   GS1SPR0    PAL1     C329                      68EC020        |
+|                                                                |
+|----------------------------------------------------------------|
+Notes:
+
+CLOCKs
+------
+MASTER clock : 48.384 MHz
+68020 clock  : 24.192MHz (MASTER / 2)
+HSYNC        : 15.75kHz
+VSYNC        : 59.7Hz
+
+DIPs
+----
+SW1: 2 position, both are OFF. Position 1 toggles TEST mode, position 2 is freeze.
+
+RAM
+---
+TC551001AFL x 2  (SOP32, 128k x8 SRAM)
+62256       x 20 (SOP28, 32k  x8 SRAM)
+M5M5178     x 3  (SOP28, 8k   x8 SRAM)
+
+NAMCO CUSTOM CHIPS
+------------------
+75       (QFP80, M37702 in disguise; sound CPU with internal BIOS)
+123      (QFP80)
+137      (NDIP28)
+145      (QFP80)
+156      (QFP64)
+187      (QFP120)
+C116     (QFP64)
+C329     (QFP100)
+C347     (QFP80)
+C351     (QFP160)
+C352     (QFP100)
+C355     (QFP160)
+
+OTHER
+-----
+KM28C16  2K x8 EEPROM (DIP24)
+%1       Unpopulated KEYCUS socket
+%2       Unpopulated DATA ROM socket
+%3       Unpopulated position for 28MHz OSC
+
+PALs
+----
+PAL1 PALCE16V8 (NAMCO CODE = NB1-1)
+PAL2 PAL16L8   (NAMCO CODE = NB1-2)
+
+JUMPERs
+-------
+JP1      4M  O-O O  1M    Config jumper for ROM size, 4M = 27C4096, 1M = 27C1024
+JP2      4M  O-O O  1M    Config jumper for ROM size, 4M = 27C4096, 1M = 27C1024
+JP3          O-O          (2 pins shorted, hardwired on PCB)
+JP5     /1M  O-O O  1M    Config jumper for ROM size (hardwired on PCB)
+JP6      8M  O-O O  /8M   Config jumper for ROM size (hardwired on PCB)
+JP7      4M  O-O O  1M    Config jumper for ROM size (hardwired on PCB), 4M = 27C4096, 1M = 27C1024
+JP8      4M  O-O O  1M    Config jumper for ROM size (hardwired on PCB), 4M = 27C4096, 1M = 27C1024
+JP9     CON  O-O O  COFF  (hardwired on PCB)
+JP10    24M  O-O O  28M   Config jumper for 28MHz OSC (hardwired on PCB)
+JP11    24M  O-O O  12M   Config jumper for 28MHz OSC (hardwired on PCB)
+JP12    F32  O O-O  355   (hardwired on PCB)
+
+ROMs, MAIN PCB
+--------------
+Filename /      PCB       ROM
+ROM Label       Label     Type
+------------------------------------------------------------------------------
+GS1MPRU.13B     PRGU      27C240        \ Main program
+GS1MPRL.15B     PRGL      27C240        /
+GS1SPR0.5B      SPRG      27C240        Sound program, linked to 75, C351 and C352
+GS1VOI-0.5J     VOICE     16M MASK      Sound voices
+GS1CHR-0.8J     CHR0      8M MASK       Character
+GS1CHR-1.9J     CHR1      8M MASK       Character
+GS1CHR-2.10J    CHR2      8M MASK       Character
+GS1CHR-3.11J    CHR3      8M MASK       Character
+GS1SHA-0.5M     SHAPE     4M MASK       Shape
+
+ROMs, MEMEXT OBJ2 PCB  (All ROMs surface mounted)
+---------------------
+Filename /      PCB       ROM
+ROM Label       Label     Type
+----------------------------------------
+GS1OBJ-0.IC1    OBJL      16M MASK SOP44
+GS1OBJ-1.IC2    OBJU      16M MASK SOP44
+
+Note! All ROMs are different to the Great Sluggers '94 set.
+
+*/
+
 ROM_START( gslugrsj )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "gs1mprl.15b", 0x00002, 0x80000, CRC(1e6c3626) SHA1(56abe21884fd87df10996db19c49ce14214d4b73) )
 	ROM_LOAD32_WORD( "gs1mpru.13b", 0x00000, 0x80000, CRC(ef355179) SHA1(0ab0ef4301a318681bb5827d35734a0732b35484) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "gs1spr0.5b", 0, 0x80000, CRC(561ea20f) SHA1(adac6b77effc3a82079a9b228bafca0fcef72ba5) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "gs1voi-0.5j", 0, 0x200000, CRC(6f8262aa) SHA1(beea98d9f8b927a572eb0bfcf678e9d6e40fc68d) )
 
 	ROM_REGION( 0x400000, NAMCONB1_SPRITEGFXREGION, ROMREGION_DISPOSE )
@@ -976,15 +1082,15 @@ ROM_START( gslugrsj )
 ROM_END
 
 ROM_START( sws95 )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "ss51mprl.bin", 0x00002, 0x80000, CRC(c9e0107d) SHA1(0f10582416023a86ea1ef2679f3f06016c086e08) )
 	ROM_LOAD32_WORD( "ss51mpru.bin", 0x00000, 0x80000, CRC(0d93d261) SHA1(5edef26e2c86dbc09727d910af92747d022e4fed) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "ss51spr0.bin", 0, 0x80000, CRC(71cb12f5) SHA1(6e13bd16a5ba14d6e47a21875db3663ada3c06a5) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "ss51voi0.bin", 0, 0x200000, CRC(2740ec72) SHA1(9694a7378ea72771d2b1d43db6d74ed347ba27d3) )
 
 
@@ -1003,15 +1109,15 @@ ROM_START( sws95 )
 ROM_END
 
 ROM_START( sws96 )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "ss61mprl.bin", 0x00002, 0x80000, CRC(06f55e73) SHA1(6be26f8a2ef600bf07c580f210d7b265ac464002) )
 	ROM_LOAD32_WORD( "ss61mpru.bin", 0x00000, 0x80000, CRC(0abdbb83) SHA1(67e8b712291f9bcf2c3a52fbc451fad54679cab8) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "ss61spr0.bin", 0, 0x80000, CRC(71cb12f5) SHA1(6e13bd16a5ba14d6e47a21875db3663ada3c06a5) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "ss61voi0.bin", 0, 0x200000, CRC(2740ec72) SHA1(9694a7378ea72771d2b1d43db6d74ed347ba27d3) )
 
 	ROM_REGION( 0x400000, NAMCONB1_SPRITEGFXREGION, ROMREGION_DISPOSE )
@@ -1029,15 +1135,15 @@ ROM_START( sws96 )
 ROM_END
 
 ROM_START( sws97 )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "ss71mprl.bin", 0x00002, 0x80000, CRC(bd60b50e) SHA1(9e00bacd506182ab2af2c0efdd5cc401b3e46485) )
 	ROM_LOAD32_WORD( "ss71mpru.bin", 0x00000, 0x80000, CRC(3444f5a8) SHA1(8d0f35b3ba8f65dbc67c3b2d273833227a8b8b2a) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "ss71spr0.bin", 0, 0x80000, CRC(71cb12f5) SHA1(6e13bd16a5ba14d6e47a21875db3663ada3c06a5) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "ss71voi0.bin", 0, 0x200000, CRC(2740ec72) SHA1(9694a7378ea72771d2b1d43db6d74ed347ba27d3) )
 
 	ROM_REGION( 0x400000, NAMCONB1_SPRITEGFXREGION, ROMREGION_DISPOSE )
@@ -1055,15 +1161,15 @@ ROM_START( sws97 )
 ROM_END
 
 ROM_START( vshoot )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "vsj1mprl.15b", 0x00002, 0x80000, CRC(83a60d92) SHA1(c3db0c79f772a79418914353a3d6ecc4883ea54e) )
 	ROM_LOAD32_WORD( "vsj1mpru.13b", 0x00000, 0x80000, CRC(c63eb92d) SHA1(f93bd4b91daee645677955020dc8df14dc9bfd27) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "vsj1spr0.5b", 0, 0x80000, CRC(b0c71aa6) SHA1(a94fae02b46a645ff728d2f98827c85ff155892b) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "vsjvoi-0.5j", 0, 0x200000, CRC(0528c9ed) SHA1(52b67978fdeb97b77065575774a7ddeb49fe1d81) )
 
 	ROM_REGION( 0x800000, NAMCONB1_SPRITEGFXREGION, ROMREGION_DISPOSE )
@@ -1082,16 +1188,174 @@ ROM_START( vshoot )
 	ROM_LOAD( "vsjsha-0.5m", 0, 0x80000, CRC(78335ea4) SHA1(d4b9f179b1b456a866354ea308664c036de6414d) )
 ROM_END
 
+/*
+
+The Outfoxies
+Namco, 1994
+
+This game runs on Namco NB-2 hardware.
+
+
+Main Board
+----------
+
+NB-2 MAIN PCB       8639960102  (8639970102)
+|------------------------------------------------------------------------|
+||----------------------------------------------------------------------||
+||  J103                     J104                            J105       ||
+||VOL CY7C185                                                           ||
+||458 CY7C185     156      123      C384  C384  C384    LH52250    C355 ||
+||JP5 CY7C185                                      JP11 LH52250         ||
+||LA4705                                                                ||
+||LC78815  C116  LH52250    OU1SHAS.12S            OU1SHAR.18S          ||
+||               LH52250        JP8                    JP10             ||
+|| JP4                                                                  ||
+||                                                                      ||
+||--------------------NB-2-MASK-ROM-PCB-(ON-TOP)------------------------||
+|J                                                                       |
+|    JP3                                                                 |
+|A   JP2            145                            PAL1      187         |
+|      OU1VOI0.6N   VSYNC                  LH52250                       |
+|M                  HSYNC                  LH52250                       |
+|      C352                       169      LH52250    TC511632 (x4)      |
+|M            137  48.384MHz               LH52250                       |
+|                                                                        |
+|A SW1  75                                                               |
+|                         JP7                         TC511632 (x4)      |
+|                       PAL3      C383                                   |
+|          C382                                                          |
+| M5M1008            OU2MPRU.11D        JP9               BR28C16  C390  |
+| M5M1008  PAL2      OU2MPRL.11C   68EC020     C385                      |
+| OU1SPR0.5B                 JP6                            OU1DAT1.20B  |
+|        JP1                                                             |
+|                                                           OU1DAT0.20A  |
+|------------------------------------------------------------------------|
+
+ROM Board
+---------
+
+NB-2 MASK ROM PCB   8639969800  (8639979800)
+-------------------------------------------------------------------------|
+|   J103                     J104                            J105        |
+|OU1SCR0.1D  OU1ROT0.3D                                                  |
+|                                                                        |
+|            OU1ROT1.3C  OU1OBJ0L.4C OU1OBJ3L.6C OU1OBJ0U.8C OU1OBJ3U.9C |
+|                                                                        |
+|            OU1ROT2.3B  OU1OBJ1L.4B OU1OBJ4L.6B OU1OBJ1U.8B OU1OBJ4U.9B |
+|                                                                        |
+|                        OU1OBJ2L.4A             OU1OBJ2U.8A             |
+|------------------------------------------------------------------------|
+
+Notes:
+
+CLOCKs
+------
+MASTER clock 48.384 MHz
+68020 clock: 24.192MHz (MASTER / 2)
+HSYNC: 15.75kHz
+VSYNC: 59.7Hz
+
+DIPs
+----
+SW1: 2 position, both are OFF. Position 1 toggles TEST mode, position 2 is freeze.
+
+RAM
+---
+TC511632FL  x 8 (SOP40, 32k x16)
+M5M51008AFP x 2 (SOP32, 128k x8)
+LH52250AN   x 8 (SOP28, 32k x8)
+CY7C185     x 3 (SOP28, 8k x8)
+
+NAMCO CUSTOM CHIPS
+------------------
+75       (QFP80)
+123      (QFP80)
+137      (NDIP28)
+145      (QFP80)
+156      (QFP64)
+169      (QFP120)
+187      (QFP120)
+C116     (QFP64)
+C352     (QFP100)
+C355     (QFP160)
+C382     (QFP120)
+C383     (QFP100)
+C384 x 3 (QFP48)
+C385     (QFP144)
+C390     (DIP32, KEYCUS)
+
+OTHER
+-----
+BR28C16 (DIP24, EEPROM)
+2 gold pins labelled HSYNC & VSYNC, connected to Namco custom chip 145
+3 connectors for ROM PCB, labelled J103 (SCROLL), J104 (ROTATE), J105 (OBJECT)
+
+PALs
+----
+PAL1 PALCE16V8 (NAMCO CODE = NB2-1, PCB says "MIXER")
+PAL2 PAL16L8   (NAMCO CODE = NB1-2, PCB says "DEC75")  (note! PAL is NB1-2)
+PAL3 PAL16L8   (NAMCO CODE = NB2-2, PCB says "SIZE")
+
+JUMPERs
+-------
+JP1     4M   O-O O   1M    Config jumper for ROM size, 4M = 27C4002, 1M = 27C1024
+JP2     A20  O O-O   GND   Config jumper for ROM size, GND = 16M, A20 = 32M
+JP3     A20  O O-O   GND   Config jumper for ROM size, GND = 16M, A20 = 32M
+JP4          O-O           (2 pins shorted, hardwired on PCB)
+JP5     1    O O O   L     (hardwired on PCB, not shorted)
+JP6     1M   O O-O   4M    Config jumper for ROM size, 1M = 27C1024, 4M = 27C240
+JP7          O O-O   /WDR  (hardwired on PCB)
+JP8     GND  O-O O   A20   Config jumper for ROM size, GND = 16M, A20 = 32M
+JP9     CON  O-O O   COFF  (hardwired on PCB)
+JP10    GND  O-O O   A20   Config jumper for ROM size, GND = 16M, A20 = 32M
+JP11    355  O O-O   F32   (hardwired on PCB)
+
+ROMs, Main PCB
+--------------
+Filename /      PCB       ROM
+ROM Label       Label     Type
+------------------------------------------------------------------------------
+ou1dat0.20a     DATA0     27C4002       Shared Data
+ou1dat1.20b     DATA1     27C4002       Shared Data
+ou2mprl.11c     PRGL      27C4002       \ Main program
+ou2mpru.11d     PRGU      27C4002       /
+ou1spr0.5b      SPRG      27C240        Sound program, linked to C352 and C382
+ou1voi0.6n      VOICE0    MB8316200B    Sound voices
+ou1shas.12s     SHAPE-S   16M MASK      Shape
+ou1shar.18s     SHAPE-R   16M MASK      Shape
+
+ROMs, MASK ROM PCB (All ROMs surface mounted)
+------------------
+Filename /      PCB       ROM
+ROM Label       Label     Type
+------------------------------------------------
+ou1scr0.1d      SCR0      MB8316200B (16M SOP44)
+ou1rot0.3d      ROT0      MB8316200B (16M SOP44)
+ou1rot1.3c      ROT1      MB8316200B (16M SOP44)
+ou1rot2.3b      ROT2      MB8316200B (16M SOP44)
+ou1obj0l.4c     OBJ0L     MB8316200B (16M SOP44)
+ou1obj1l.4b     OBJ1L     MB8316200B (16M SOP44)
+ou1obj2l.4a     OBJ2L     MB8316200B (16M SOP44)
+ou1obj3l.6c     OBJ3L     MB8316200B (16M SOP44)
+ou1obj4l.6b     OBJ4L     MB8316200B (16M SOP44)
+ou1obj0u.8c     OBJ0U     MB8316200B (16M SOP44)
+ou1obj1u.8b     OBJ1U     MB8316200B (16M SOP44)
+ou1obj2u.8a     OBJ2U     MB8316200B (16M SOP44)
+ou1obj3u.9c     OBJ3U     MB8316200B (16M SOP44)
+ou1obj4u.9b     OBJ4U     MB8316200B (16M SOP44)
+
+*/
+
 ROM_START( outfxies )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "ou2mprl.11c", 0x00002, 0x80000, CRC(f414a32e) SHA1(9733ab087cfde1b8fb5b676d8a2eb5325ebdbb56) )
 	ROM_LOAD32_WORD( "ou2mpru.11d", 0x00000, 0x80000, CRC(ab5083fb) SHA1(cb2e7a4838c2b80057edb83ea63116bccb1394d3) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "ou1spr0.5b", 0, 0x80000, CRC(60cee566) SHA1(2f3b96793816d90011586e0f9f71c58b636b6d4c) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "ou1voi0.6n", 0, 0x200000, CRC(2d8fb271) SHA1(bde9d45979728f5a2cd8ec89f5f81bf16b694cc2) )
 
 	ROM_REGION( 0x200000, NAMCONB1_TILEMASKREGION, 0 )
@@ -1120,21 +1384,21 @@ ROM_START( outfxies )
 	ROM_REGION( 0x200000, NAMCONB1_TILEGFXREGION, ROMREGION_DISPOSE )
 	ROM_LOAD( "ou1-scr0", 0x000000, 0x200000, CRC(b3b3f2e9) SHA1(541bd7e9ba12aff4ec4033bd9c6bb19476acb3c4) )
 
-	ROM_REGION( 0x100000, REGION_USER1, 0 )
-	ROM_LOAD( "ou1dat0.20a", 0x00000, 0x80000, CRC(1a49aead) SHA1(df243aff1a6fb5bcf4d5d883c5af2374a4aff477) )
-	ROM_LOAD( "ou1dat1.20b", 0x80000, 0x80000, CRC(63bb119d) SHA1(d4c2820243b84c3f5cdf7f9e66bb50f53d0efed2) )
+	ROM_REGION32_BE( 0x100000, "user1", 0 )
+	ROM_LOAD16_WORD_SWAP( "ou1dat0.20a", 0x00000, 0x80000, CRC(1a49aead) SHA1(df243aff1a6fb5bcf4d5d883c5af2374a4aff477) )
+	ROM_LOAD16_WORD_SWAP( "ou1dat1.20b", 0x80000, 0x80000, CRC(63bb119d) SHA1(d4c2820243b84c3f5cdf7f9e66bb50f53d0efed2) )
 ROM_END
 
 ROM_START( outfxesj )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "ou1-mprl.11c", 0x00002, 0x80000, CRC(d3b9e530) SHA1(3f5fe5eea817a23dfe42e76f32912ce94d4c49c9) )
 	ROM_LOAD32_WORD( "ou1-mpru.11d", 0x00000, 0x80000, CRC(d98308fb) SHA1(fdefeebf56464a20e3aaefd88df4eee9f7b5c4f3) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "ou1spr0.5b", 0, 0x80000, CRC(60cee566) SHA1(2f3b96793816d90011586e0f9f71c58b636b6d4c) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x200000, "c352", 0 )
 	ROM_LOAD( "ou1voi0.6n", 0, 0x200000, CRC(2d8fb271) SHA1(bde9d45979728f5a2cd8ec89f5f81bf16b694cc2) )
 
 	ROM_REGION( 0x200000, NAMCONB1_TILEMASKREGION, 0 )
@@ -1163,22 +1427,22 @@ ROM_START( outfxesj )
 	ROM_REGION( 0x200000, NAMCONB1_TILEGFXREGION, ROMREGION_DISPOSE )
 	ROM_LOAD( "ou1-scr0", 0x000000, 0x200000, CRC(b3b3f2e9) SHA1(541bd7e9ba12aff4ec4033bd9c6bb19476acb3c4) )
 
-	ROM_REGION( 0x100000, REGION_USER1, 0 )
-	ROM_LOAD( "ou1dat0.20a", 0x00000, 0x80000, CRC(1a49aead) SHA1(df243aff1a6fb5bcf4d5d883c5af2374a4aff477) )
-	ROM_LOAD( "ou1dat1.20b", 0x80000, 0x80000, CRC(63bb119d) SHA1(d4c2820243b84c3f5cdf7f9e66bb50f53d0efed2) )
+	ROM_REGION32_BE( 0x100000, "user1", 0 )
+	ROM_LOAD16_WORD_SWAP( "ou1dat0.20a", 0x00000, 0x80000, CRC(1a49aead) SHA1(df243aff1a6fb5bcf4d5d883c5af2374a4aff477) )
+	ROM_LOAD16_WORD_SWAP( "ou1dat1.20b", 0x80000, 0x80000, CRC(63bb119d) SHA1(d4c2820243b84c3f5cdf7f9e66bb50f53d0efed2) )
 ROM_END
 
 
 ROM_START( machbrkr )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* main program */
+	ROM_REGION( 0x100000, "main", 0 ) /* main program */
 	ROM_LOAD32_WORD( "mb1_mprl.11c", 0x00002, 0x80000, CRC(86cf0644) SHA1(07eeadda1d94c9be2f882edb6f2eb0b98292e500) )
 	ROM_LOAD32_WORD( "mb1_mpru.11d", 0x00000, 0x80000, CRC(fb1ff916) SHA1(e0ba96c1f26a60f87d8050e582e164d91e132183) )
 
-	ROM_REGION16_LE( 0x100000, REGION_USER4, 0 ) /* sound data and MCU BIOS */
+	ROM_REGION16_LE( 0x100000, "user4", 0 ) /* sound data and MCU BIOS */
 	ROM_LOAD( "mb1_spr0.5b", 0, 0x80000, CRC(d10f6272) SHA1(cb99e06e050dbf86998ea51ef2ca130b2acfb2f6) )
 	NAMCO_C7X_BIOS
 
-	ROM_REGION( 0x1000000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x1000000, "c352", 0 )
 	ROM_LOAD( "mb1_voi0.6n", 0x000000, 0x200000, CRC(d363ca3b) SHA1(71650b66ca3eb00f6ad7d3f1df0f37210b77b942) )
 	ROM_RELOAD( 0x400000, 0x200000)
 	ROM_LOAD( "mb1_voi1.6p", 0x800000, 0x200000, CRC(7e1c2603) SHA1(533098a54fb897931f1d75be9e69a5c047e4c446) )
@@ -1211,18 +1475,18 @@ ROM_START( machbrkr )
 	ROM_LOAD( "mb1_scr1.1c", 0x200000, 0x200000, CRC(fb2b1939) SHA1(bf9d7b93205e7012aa86693f3d2ba8f4d729bc97) )
 	ROM_LOAD( "mb1_scr2.1b", 0x400000, 0x200000, CRC(0e6097a5) SHA1(b6c64b3e34ba913138b6b7c3d99d2be4f3ceda08) )
 
-	ROM_REGION( 0x100000, REGION_USER1, 0 )
-	ROM_LOAD( "mb1_dat0.20a", 0x00000, 0x80000, CRC(fb2e3cd1) SHA1(019b1d645a07619036522f42e0b9a537f39b6b93) )
+	ROM_REGION32_BE( 0x100000, "user1", 0 )
+	ROM_LOAD16_WORD_SWAP( "mb1_dat0.20a", 0x00000, 0x80000, CRC(fb2e3cd1) SHA1(019b1d645a07619036522f42e0b9a537f39b6b93) )
 ROM_END
 
 /***************************************************************/
 
 static INPUT_PORTS_START( gunbulet )
-	PORT_START_TAG("COIN")
+	PORT_START("COIN")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x00, "DSW2 (Unused)" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -1232,31 +1496,31 @@ static INPUT_PORTS_START( gunbulet )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SERVICE1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED ) /* C75 status */
 
-	PORT_START_TAG("P1")
+	PORT_START("P1")
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START1 )
 
-	PORT_START_TAG("P2")
+	PORT_START("P2")
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START2 )
 
-	PORT_START_TAG("LIGHT0_X")
+	PORT_START("LIGHT0_X")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(4)
-	PORT_START_TAG("LIGHT0_Y")
+	PORT_START("LIGHT0_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(4)
-	PORT_START_TAG("LIGHT1_X")
+	PORT_START("LIGHT1_X")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(4) PORT_PLAYER(2)
-	PORT_START_TAG("LIGHT1_Y")
+	PORT_START("LIGHT1_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(4) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 #ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START( machbrkr )
-	PORT_START_TAG("COIN")
+	PORT_START("COIN")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x00, "Freeze Screen" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -1278,25 +1542,25 @@ static INPUT_PORTS_START( machbrkr )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED ) /* C75 status */
 
-	PORT_START_TAG("P1")
+	PORT_START("P1")
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) // self test: up
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2 ) // self test: enter
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 ) // self test: down
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START1 )
 
-	PORT_START_TAG("P2")
+	PORT_START("P2")
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START2 )
 
-	PORT_START_TAG("P3")
+	PORT_START("P3")
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(3)
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(3)
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(3)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START3 )
 
-	PORT_START_TAG("P4")
+	PORT_START("P4")
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(4)
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(4)
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(4)
@@ -1305,11 +1569,11 @@ INPUT_PORTS_END
 #endif
 
 static INPUT_PORTS_START( outfxies )
-	PORT_START_TAG("COIN")
+	PORT_START("COIN")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x00, "Freeze Screen" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -1331,7 +1595,7 @@ static INPUT_PORTS_START( outfxies )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED ) /* C75 status */
 
-	PORT_START_TAG("P1")
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -1341,7 +1605,7 @@ static INPUT_PORTS_START( outfxies )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START1 )
 
-	PORT_START_TAG("P2")
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -1353,11 +1617,11 @@ static INPUT_PORTS_START( outfxies )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( namconb1 )
-	PORT_START_TAG("COIN")
+	PORT_START("COIN")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x01, 0x00, "DSW2 (Unused)" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -1379,7 +1643,7 @@ static INPUT_PORTS_START( namconb1 )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED ) /* C75 status */
 
-	PORT_START_TAG("P1")
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -1389,7 +1653,7 @@ static INPUT_PORTS_START( namconb1 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START1 )
 
-	PORT_START_TAG("P2")
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -1413,6 +1677,6 @@ GAME( 1997, sws97,    0,        namconb1, namconb1, sws97,    ROT0,  "Namco", "S
 GAME( 1994, vshoot,   0,        namconb1, namconb1, vshoot,   ROT0,  "Namco", "J-League Soccer V-Shoot", GAME_IMPERFECT_SOUND )
 
 /*     YEAR, NAME,     PARENT,   MACHINE,  INPUT,    INIT,     MNTR,  COMPANY, FULLNAME,   FLAGS */
-GAME( 1994, outfxies, 0,	 namconb2, outfxies, outfxies, ROT0, "Namco", "Outfoxies", GAME_IMPERFECT_SOUND )
+GAME( 1994, outfxies, 0,		namconb2, outfxies, outfxies, ROT0, "Namco", "Outfoxies", GAME_IMPERFECT_SOUND )
 GAME( 1994, outfxesj, outfxies, namconb2, outfxies, outfxies, ROT0, "Namco", "Outfoxies (Japan)", GAME_IMPERFECT_SOUND )
-GAME( 1995, machbrkr, 0,	 namconb2, namconb1, machbrkr, ROT0, "Namco", "Mach Breakers - Numan Athletics 2 (Japan)", GAME_IMPERFECT_SOUND )
+GAME( 1995, machbrkr, 0,		namconb2, namconb1, machbrkr, ROT0, "Namco", "Mach Breakers - Numan Athletics 2 (Japan)", GAME_IMPERFECT_SOUND )

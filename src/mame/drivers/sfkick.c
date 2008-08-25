@@ -40,7 +40,7 @@ ADDRESS_MAP_END
 #endif
 
 static INPUT_PORTS_START( sfkick )
-    PORT_START
+    PORT_START("IN0")
     PORT_DIPNAME(   0x01, 0x01, DEF_STR( Unknown ) )
     PORT_DIPSETTING(      0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(      0x00, DEF_STR( On ) )
@@ -80,11 +80,11 @@ static VIDEO_UPDATE( sfkick )
 
 static MACHINE_DRIVER_START( sfkick )
 
-	MDRV_CPU_ADD(Z80,8000000) // ?
+	MDRV_CPU_ADD("main", Z80,8000000) // ?
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 //  MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	//MDRV_CPU_ADD(Z80,8000000) // ?
+	//MDRV_CPU_ADD("sub", Z80,8000000) // ?
 	//MDRV_CPU_PROGRAM_MAP(readmem2,writemem2)
 //  MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -117,7 +117,7 @@ X1: 21.47727 MHz
 */
 
 ROM_START( sfkick )
-	ROM_REGION( 0x8000*7, REGION_CPU1, 0 ) /* no attempt has been made to map these roms */
+	ROM_REGION( 0x8000*7, "main", 0 ) /* no attempt has been made to map these roms */
 	ROM_LOAD( "sfkick1.c5", 0x00000, 0x8000, CRC(2f5e3b7a) SHA1(d2ff566b415ab10c0681fa1eb221a56e3c137ecf) )
 	ROM_LOAD( "sfkick2.a7", 0x08000, 0x8000, CRC(1dcaec5e) SHA1(7e063d46fb6606df2d772866cc55f207035b98c4) )
 	ROM_LOAD( "sfkick3.c7", 0x10000, 0x8000, CRC(639d3cf2) SHA1(950fd28058d32e4532eb6e99454dcaef092a955e) )
@@ -143,7 +143,7 @@ There is also an UM82C55A-PC
 */
 
 ROM_START( spinkick )
-	ROM_REGION( 0x8000*7, REGION_CPU1, 0 ) /* no attempt has been made to map these roms */
+	ROM_REGION( 0x8000*7, "main", 0 ) /* no attempt has been made to map these roms */
 	ROM_LOAD( "spinkick.r1", 0x00000, 0x8000, CRC(2f5e3b7a) SHA1(d2ff566b415ab10c0681fa1eb221a56e3c137ecf) )
 	ROM_LOAD( "spinkick.r2", 0x08000, 0x8000, CRC(1dcaec5e) SHA1(7e063d46fb6606df2d772866cc55f207035b98c4) )
 	ROM_LOAD( "spinkick.r3", 0x10000, 0x8000, CRC(e86a194a) SHA1(19a02375ec463e795770403c3e948d754919458b) ) // only this rom differs

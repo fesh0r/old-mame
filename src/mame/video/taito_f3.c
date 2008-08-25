@@ -236,45 +236,47 @@ struct F3config
 	int name;
 	int extend;
 	int sprite_lag;
+	int sprite_bpp;
+	int tile_bpp;
 };
 
 static const struct F3config *f3_game_config;
 
 static const struct F3config f3_config_table[] =
 {
-	/* Name    Extend  Sprite Lag */
-	{ RINGRAGE,  0,       2 },
-	{ ARABIANM,  0,       2 },
-	{ RIDINGF,   1,       1 },
-	{ GSEEKER,   0,       1 },
-	{ TRSTAR,    1,       0 },
-	{ GUNLOCK,   1,       2 },
-	{ TWINQIX,   1,       1 },
-	{ SCFINALS,  0,       1 },
-	{ LIGHTBR,   1,       2 },
-	{ KAISERKN,  0,       2 },
-	{ DARIUSG,   0,       2 },
-	{ BUBSYMPH,  1,       1 },
-	{ SPCINVDX,  1,       1 },
-	{ QTHEATER,  1,       1 },
-	{ HTHERO95,  0,       1 },
-	{ SPCINV95,  0,       1 },
-	{ EACTION2,  1,       2 },
-	{ QUIZHUHU,  1,       1 },
-	{ PBOBBLE2,  0,       1 },
-	{ GEKIRIDO,  0,       1 },
-	{ KTIGER2,   0,       0 },
-	{ BUBBLEM,   1,       1 },
-	{ CLEOPATR,  0,       1 },
-	{ PBOBBLE3,  0,       1 },
-	{ ARKRETRN,  1,       1 },
-	{ KIRAMEKI,  0,       1 },
-	{ PUCHICAR,  1,       1 },
-	{ PBOBBLE4,  0,       1 },
-	{ POPNPOP,   1,       1 },
-	{ LANDMAKR,  1,       1 },
-	{ RECALH,    1,       1 },
-	{ COMMANDW,  1,       1 },
+	/* Name    Extend  Lag   Bpp */
+	{ RINGRAGE,  0,     2,   5, 6 },
+	{ ARABIANM,  0,     2,   5, 5 },	/* sprites 1200-120F contain 6bpp pixels but this seems to be a data error */
+	{ RIDINGF,   1,     1,   4, 4 },
+	{ GSEEKER,   0,     1,   4, 4 },
+	{ COMMANDW,  1,     1,   5, 5 },
+	{ SCFINALS,  0,     1,   5, 5 },
+	{ TRSTAR,    1,     0,   5, 5 },
+	{ GUNLOCK,   1,     2,   5, 5 },
+	{ LIGHTBR,   1,     2,   5, 5 },
+	{ KAISERKN,  0,     2,   5, 5 },
+	{ DARIUSG,   0,     2,   5, 5 },
+	{ BUBSYMPH,  1,     1,   5, 5 },
+	{ SPCINVDX,  1,     1,   4, 4 },
+	{ HTHERO95,  0,     1,   6, 6 },
+	{ QTHEATER,  1,     1,   4, 4 },
+	{ EACTION2,  1,     2,   5, 5 },
+	{ RECALH,    1,     1,   4, 4 },
+	{ SPCINV95,  0,     1,   5, 5 },
+	{ TWINQIX,   1,     1,   4, 6 },
+	{ QUIZHUHU,  1,     1,   6, 6 },
+	{ PBOBBLE2,  0,     1,   4, 6 },
+	{ GEKIRIDO,  0,     1,   5, 5 },
+	{ KTIGER2,   0,     0,   4, 4 },
+	{ BUBBLEM,   1,     1,   4, 5 },
+	{ CLEOPATR,  0,     1,   4, 6 },
+	{ PBOBBLE3,  0,     1,   4, 6 },
+	{ ARKRETRN,  1,     1,   5, 6 },
+	{ KIRAMEKI,  0,     1,   5, 6 },
+	{ PUCHICAR,  1,     1,   5, 6 },
+	{ PBOBBLE4,  0,     1,   4, 6 },
+	{ POPNPOP,   1,     1,   6, 6 },
+	{ LANDMAKR,  1,     1,   5, 6 },
 	{0}
 };
 
@@ -291,7 +293,7 @@ static struct tempsprite *spritelist;
 static const struct tempsprite *sprite_end;
 
 static void get_sprite_info(running_machine *machine, const UINT32 *spriteram32_ptr);
-static int sprite_lag=1;
+static int sprite_lag;
 static UINT8 sprite_pri_usage=0;
 
 struct f3_playfield_line_inf
@@ -346,21 +348,68 @@ pri_alp_bitmap
 1--- ----    alpha level b b000
 1111 1111    opaque pixel
 */
-static int f3_alpha_level_2as=127;
-static int f3_alpha_level_2ad=127;
-static int f3_alpha_level_3as=127;
-static int f3_alpha_level_3ad=127;
-static int f3_alpha_level_2bs=127;
-static int f3_alpha_level_2bd=127;
-static int f3_alpha_level_3bs=127;
-static int f3_alpha_level_3bd=127;
+static int f3_alpha_level_2as;
+static int f3_alpha_level_2ad;
+static int f3_alpha_level_3as;
+static int f3_alpha_level_3ad;
+static int f3_alpha_level_2bs;
+static int f3_alpha_level_2bd;
+static int f3_alpha_level_3bs;
+static int f3_alpha_level_3bd;
+static int alpha_level_last;
 
 static void init_alpha_blend_func(void);
 
-static int width_mask=0x1ff;
-static int twidth_mask=0x1f,twidth_mask_bit=5;
+static int width_mask;
+static int twidth_mask;
+static int twidth_mask_bit;
+
 static UINT8 *tile_opaque_sp;
 static UINT8 *tile_opaque_pf;
+
+
+static UINT8 add_sat[256][256];
+
+static int alpha_s_1_1;
+static int alpha_s_1_2;
+static int alpha_s_1_4;
+static int alpha_s_1_5;
+static int alpha_s_1_6;
+static int alpha_s_1_8;
+static int alpha_s_1_9;
+static int alpha_s_1_a;
+
+static int alpha_s_2a_0;
+static int alpha_s_2a_4;
+static int alpha_s_2a_8;
+
+static int alpha_s_2b_0;
+static int alpha_s_2b_4;
+static int alpha_s_2b_8;
+
+static int alpha_s_3a_0;
+static int alpha_s_3a_1;
+static int alpha_s_3a_2;
+
+static int alpha_s_3b_0;
+static int alpha_s_3b_1;
+static int alpha_s_3b_2;
+
+static UINT32 dval;
+static UINT8 pval;
+static UINT8 tval;
+static UINT8 pdest_2a;
+static UINT8 pdest_2b;
+static int tr_2a;
+static int tr_2b;
+static UINT8 pdest_3a;
+static UINT8 pdest_3b;
+static int tr_3a;
+static int tr_3b;
+
+static int (*dpix_n[8][16])(UINT32 s_pix);
+static int (**dpix_lp[5])(UINT32 s_pix);
+static int (**dpix_sp[9])(UINT32 s_pix);
 
 
 /******************************************************************************/
@@ -443,11 +492,16 @@ INLINE void get_tile_info(running_machine *machine, tile_data *tileinfo, int til
 {
 	UINT32 tile=gfx_base[tile_index];
 	UINT8 abtype=(tile>>(16+9))&0x1f;
+	int color_mask;
+
+	// if tiles use more than 4bpp, the bottom bits of the color code must be masked out.
+	// This fixes (at least) the rain in round 6 of Arabian Magic.
+	color_mask = ~((1 << (f3_game_config->tile_bpp - 4)) - 1);
 
 	SET_TILE_INFO(
 			1,
 			tile&0xffff,
-			(tile>>16)&0x1ff,
+			(tile>>16) & 0x1ff & color_mask,
 			TILE_FLIPYX( tile >> 30 ));
 	tileinfo->category =  abtype&1;		/* alpha blending type */
 }
@@ -546,6 +600,25 @@ VIDEO_START( f3 )
 	const struct F3config *pCFG=&f3_config_table[0];
 	int tile, width, height;
 
+	f3_alpha_level_2as=127;
+	f3_alpha_level_2ad=127;
+	f3_alpha_level_3as=127;
+	f3_alpha_level_3ad=127;
+	f3_alpha_level_2bs=127;
+	f3_alpha_level_2bd=127;
+	f3_alpha_level_3bs=127;
+	f3_alpha_level_3bd=127;
+	alpha_level_last = -1;
+
+	pdest_2a = 0x10;
+	pdest_2b = 0x20;
+	tr_2a = 0;
+	tr_2b = 1;
+	pdest_3a = 0x40;
+	pdest_3b = 0x80;
+	tr_3a = 0;
+	tr_3b = 1;
+
 	spritelist=0;
 	spriteram32_buffered=0;
 	pivot_dirty=0;
@@ -617,9 +690,13 @@ VIDEO_START( f3 )
 	tilemap_set_transparent_pen(vram_layer,0);
 	tilemap_set_transparent_pen(pixel_layer,0);
 
-	/* Palettes have 4 bpp indexes despite up to 6 bpp data */
+	// Palettes have 4 bpp indexes despite up to 6 bpp data. The unused
+	// top bits in the gfx data are cleared later.
 	machine->gfx[1]->color_granularity=16;
 	machine->gfx[2]->color_granularity=16;
+
+	assert(f3_game_config->tile_bpp >= 4 && f3_game_config->tile_bpp <= 6);
+	assert(f3_game_config->sprite_bpp >= 4 && f3_game_config->sprite_bpp <= 6);
 
 	flipscreen = 0;
 	memset(spriteram32_buffered,0,spriteram_size);
@@ -642,6 +719,7 @@ VIDEO_START( f3 )
 	{
 		const gfx_element *sprite_gfx = machine->gfx[2];
 		int c;
+		int bpp_mask = (1 << f3_game_config->sprite_bpp) - 1;
 
 		for (c = 0;c < sprite_gfx->total_elements;c++)
 		{
@@ -652,6 +730,9 @@ VIDEO_START( f3 )
 			{
 				for (x = 0;x < sprite_gfx->width;x++)
 				{
+					// clear unused top bits from gfx data
+					dp[x] &= bpp_mask;
+
 					if(!dp[x]) chk_trans_or_opa|=2;
 					else	   chk_trans_or_opa|=1;
 				}
@@ -666,6 +747,7 @@ VIDEO_START( f3 )
 	{
 		const gfx_element *pf_gfx = machine->gfx[1];
 		int c;
+		int bpp_mask = (1 << f3_game_config->tile_bpp) - 1;
 
 		for (c = 0;c < pf_gfx->total_elements;c++)
 		{
@@ -676,6 +758,9 @@ VIDEO_START( f3 )
 			{
 				for (x = 0;x < pf_gfx->width;x++)
 				{
+					// clear unused top bits from gfx data
+					dp[x] &= bpp_mask;
+
 					if(!dp[x]) chk_trans_or_opa|=2;
 					else	   chk_trans_or_opa|=1;
 				}
@@ -816,49 +901,6 @@ WRITE32_HANDLER( f3_palette_24bit_w )
 }
 
 /******************************************************************************/
-
-static UINT8 add_sat[256][256];
-
-static int alpha_s_1_1;
-static int alpha_s_1_2;
-static int alpha_s_1_4;
-static int alpha_s_1_5;
-static int alpha_s_1_6;
-static int alpha_s_1_8;
-static int alpha_s_1_9;
-static int alpha_s_1_a;
-
-static int alpha_s_2a_0;
-static int alpha_s_2a_4;
-static int alpha_s_2a_8;
-
-static int alpha_s_2b_0;
-static int alpha_s_2b_4;
-static int alpha_s_2b_8;
-
-static int alpha_s_3a_0;
-static int alpha_s_3a_1;
-static int alpha_s_3a_2;
-
-static int alpha_s_3b_0;
-static int alpha_s_3b_1;
-static int alpha_s_3b_2;
-
-static UINT32 dval;
-static UINT8 pval;
-static UINT8 tval;
-static UINT8 pdest_2a = 0x10;
-static UINT8 pdest_2b = 0x20;
-static int tr_2a = 0;
-static int tr_2b = 1;
-static UINT8 pdest_3a = 0x40;
-static UINT8 pdest_3b = 0x80;
-static int tr_3a = 0;
-static int tr_3b = 1;
-
-static int (*dpix_n[8][16])(UINT32 s_pix);
-static int (**dpix_lp[5])(UINT32 s_pix);
-static int (**dpix_sp[9])(UINT32 s_pix);
 
 /*============================================================================*/
 
@@ -2194,7 +2236,6 @@ static void scanline_draw(running_machine *machine, bitmap_t *bitmap, const rect
 
 	while(1)
 	{
-		static int alpha_level_last=-1;
 		int pos;
 		int pri[5],alpha_mode[5],alpha_mode_flag[5],alpha_level;
 		UINT16 sprite_alpha;
@@ -3157,9 +3198,15 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 {
 	const struct tempsprite *sprite_ptr;
 	const gfx_element *sprite_gfx = machine->gfx[2];
+	int color_mask;
 
 	sprite_ptr = sprite_end;
 	sprite_pri_usage=0;
+
+	// if sprites use more than 4bpp, the bottom bits of the color code must be masked out.
+	// This fixes (at least) stage 1 battle ships and attract mode explosions in Ray Force.
+	color_mask = ~((1 << (f3_game_config->sprite_bpp - 4)) - 1);
+
 	while (sprite_ptr != spritelist)
 	{
 		int pri;
@@ -3172,7 +3219,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			f3_drawgfx(machine,
 					bitmap,sprite_gfx,
 					sprite_ptr->code,
-					sprite_ptr->color,
+					sprite_ptr->color & color_mask,
 					sprite_ptr->flipx,sprite_ptr->flipy,
 					sprite_ptr->x,sprite_ptr->y,
 					cliprect,
@@ -3181,7 +3228,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			f3_drawgfxzoom(machine,
 					bitmap,sprite_gfx,
 					sprite_ptr->code,
-					sprite_ptr->color,
+					sprite_ptr->color & color_mask,
 					sprite_ptr->flipx,sprite_ptr->flipy,
 					sprite_ptr->x,sprite_ptr->y,
 					cliprect,

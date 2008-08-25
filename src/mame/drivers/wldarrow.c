@@ -129,25 +129,25 @@ static WRITE8_HANDLER( counter_w )
 
 static WRITE8_HANDLER( wldarrow_dac_1_w )
 {
-	DAC_data_w(0, 0x00);
+	dac_data_w(0, 0x00);
 }
 
 
 static WRITE8_HANDLER( wldarrow_dac_2_w )
 {
-	DAC_data_w(0, 0x55);
+	dac_data_w(0, 0x55);
 }
 
 
 static WRITE8_HANDLER( wldarrow_dac_3_w )
 {
-	DAC_data_w(0, 0xaa);
+	dac_data_w(0, 0xaa);
 }
 
 
 static WRITE8_HANDLER( wldarrow_dac_4_w )
 {
-	DAC_data_w(0, 0xff);
+	dac_data_w(0, 0xff);
 }
 
 
@@ -183,7 +183,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( wldarrow )
-	PORT_START
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
 	PORT_DIPNAME( 0x04, 0x00, "Monitor" )
@@ -205,7 +205,7 @@ static INPUT_PORTS_START( wldarrow )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("BITSW")
 	PORT_DIPNAME( 0x01, 0x00, "Bit Switch 1" ) PORT_DIPLOCATION("BITSWITCH:1") PORT_CODE(KEYCODE_1_PAD) PORT_TOGGLE
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -231,7 +231,7 @@ static INPUT_PORTS_START( wldarrow )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME("Stop Reel 3") /* Skill Stop only? */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("Stop Reel 2") /* Skill Stop only? */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Stop Reel 1") /* Skill Stop only? */
@@ -247,14 +247,14 @@ static INPUT_PORTS_START( wldarrow )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("IN3")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED)
 
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( mdrawpkr )
-	PORT_START
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
 	PORT_DIPNAME( 0x04, 0x04, "0-2" )
@@ -276,7 +276,7 @@ static INPUT_PORTS_START( mdrawpkr )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("BITSW")
 	PORT_DIPNAME( 0x01, 0x00, "Bit Switch 1" ) PORT_DIPLOCATION("BITSWITCH:1") PORT_CODE(KEYCODE_1_PAD) PORT_TOGGLE
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -302,7 +302,7 @@ static INPUT_PORTS_START( mdrawpkr )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("IN2")
 	PORT_DIPNAME( 0x01, 0x01, "2-0" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -328,7 +328,7 @@ static INPUT_PORTS_START( mdrawpkr )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("IN3")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED)
 
 INPUT_PORTS_END
@@ -344,7 +344,7 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( wldarrow )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(8080, 2000000)
+	MDRV_CPU_ADD("main", 8080, 2000000)
 	MDRV_CPU_PROGRAM_MAP(wldarrow_map,0)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -361,7 +361,7 @@ static MACHINE_DRIVER_START( wldarrow )
 
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 MACHINE_DRIVER_END
@@ -375,7 +375,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( wldarrow )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "a1-v48.8k", 0x0000, 0x0800, CRC(05dd8056) SHA1(556ca28d090cbf1855618ba40fc631523bdfadd5) )
 	ROM_LOAD( "a2-v48.7k", 0x0800, 0x0800, CRC(37df3acf) SHA1(a7f7f54af533dd8231bb20c526c053dd99e74863) )
 	ROM_LOAD( "a3-v48.6k", 0x1000, 0x0800, CRC(1295cee2) SHA1(61b260eb907ee4bbf1460277d09e3205c1f6d8a0) )
@@ -433,7 +433,7 @@ Dumper notes:
 */
 
 ROM_START( mdrawpkr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "tms2516.k8", 0x0000, 0x0800, CRC(2e5fc31e) SHA1(5ea01298051bc51250f67305ac8a65b0b94c120f) )
 	ROM_LOAD( "tms2516.k7", 0x0800, 0x0800, CRC(baaf874e) SHA1(b7bb476ef873102979ad3252d19a26ee3a31d933) )
 	ROM_LOAD( "tms2516.k6", 0x1000, 0x0800, CRC(a0e13c41) SHA1(17f78f91dae64c39f1a39a0b99a081af1d3bed47) )
@@ -453,7 +453,7 @@ ROM_END
 static DRIVER_INIT( wldarrow )
 {
 	offs_t i;
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 
 	for (i = 0; i < 0x3000; i++)
 		rom[i] ^= 0xff;

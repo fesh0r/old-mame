@@ -37,7 +37,7 @@ INLINE void ATTR_PRINTF(2,3) verboselog( int n_level, const char *s_fmt, ... )
 
 struct psxinfo
 {
-	const struct PSXSPUinterface *intf;
+	const psx_spu_interface *intf;
 
 	UINT32 *g_p_n_psxram;
 	UINT16 m_n_mainvolumeleft;
@@ -249,7 +249,7 @@ static void spu_write( UINT32 n_address, INT32 n_size )
 	}
 }
 
-static void *psxspu_start(int sndindex, int clock, const void *config)
+static void *psxspu_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	struct psxinfo *chip;
 	int n_effect;

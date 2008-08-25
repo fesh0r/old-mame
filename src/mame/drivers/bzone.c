@@ -191,7 +191,12 @@
     Left and Center same, right different denomination  | On |Off |    |    |
     Right and Center same, left differnnt denomination  |Off | On |    |    |
     All different denominations                         |Off |Off |    |    |
-                                                    ---------------------
+                                                        ---------------------
+
+
+    2008-07
+    Dip locations added from the notes above (factory settings for bzone
+    from the manual).
 
 ***************************************************************************/
 
@@ -206,9 +211,6 @@
 #include "bzone.h"
 
 #include "bzone.lh"
-
-#define IN0_3KHZ (1<<7)
-#define IN0_VG_HALT (1<<6)
 
 #define MASTER_CLOCK (12096000)
 #define CLOCK_3KHZ  (MASTER_CLOCK / 4096)
@@ -264,23 +266,9 @@ static INTERRUPT_GEN( bzone_interrupt )
  *
  *************************************/
 
-READ8_HANDLER( bzone_IN0_r )
+static CUSTOM_INPUT( clock_r )
 {
-	int res;
-
-	res = input_port_read(machine, "IN0");
-
-	if (activecpu_gettotalcycles() & 0x100)
-		res |= IN0_3KHZ;
-	else
-		res &= ~IN0_3KHZ;
-
-	if (avgdvg_done())
-		res |= IN0_VG_HALT;
-	else
-		res &= ~IN0_VG_HALT;
-
-	return res;
+	return (cpunum_gettotalcycles(0) & 0x100) ? 1 : 0;
 }
 
 
@@ -313,9 +301,9 @@ static READ8_HANDLER( redbaron_joy_r )
 static ADDRESS_MAP_START( bzone_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
-	AM_RANGE(0x0800, 0x0800) AM_READ(bzone_IN0_r)    /* IN0 */
-	AM_RANGE(0x0a00, 0x0a00) AM_READ(input_port_1_r)	/* DSW1 */
-	AM_RANGE(0x0c00, 0x0c00) AM_READ(input_port_2_r)	/* DSW2 */
+	AM_RANGE(0x0800, 0x0800) AM_READ_PORT("IN0")
+	AM_RANGE(0x0a00, 0x0a00) AM_READ_PORT("DSW0")
+	AM_RANGE(0x0c00, 0x0c00) AM_READ_PORT("DSW1")
 	AM_RANGE(0x1000, 0x1000) AM_WRITE(bzone_coin_counter_w)
 	AM_RANGE(0x1200, 0x1200) AM_WRITE(avgdvg_go_w)
 	AM_RANGE(0x1400, 0x1400) AM_WRITE(watchdog_reset_w)
@@ -326,31 +314,31 @@ static ADDRESS_MAP_START( bzone_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1820, 0x182f) AM_READWRITE(pokey1_r, pokey1_w)
 	AM_RANGE(0x1840, 0x1840) AM_WRITE(bzone_sounds_w)
 	AM_RANGE(0x1860, 0x187f) AM_WRITE(mb_go_w)
-	AM_RANGE(0x2000, 0x2fff) AM_RAM AM_BASE(&vectorram) AM_SIZE(&vectorram_size) AM_REGION(REGION_CPU1, 0x2000)
+	AM_RANGE(0x2000, 0x2fff) AM_RAM AM_BASE(&vectorram) AM_SIZE(&vectorram_size) AM_REGION("main", 0x2000)
 	AM_RANGE(0x3000, 0x7fff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( redbaron_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
-	AM_RANGE(0x0800, 0x0800) AM_READ(bzone_IN0_r)    /* IN0 */
-	AM_RANGE(0x0a00, 0x0a00) AM_READ(input_port_1_r)	/* DSW1 */
-	AM_RANGE(0x0c00, 0x0c00) AM_READ(input_port_2_r)	/* DSW2 */
-	AM_RANGE(0x1000, 0x1000) AM_WRITE(SMH_NOP)			/* coin out */
+	AM_RANGE(0x0800, 0x0800) AM_READ_PORT("IN0")
+	AM_RANGE(0x0a00, 0x0a00) AM_READ_PORT("DSW0")
+	AM_RANGE(0x0c00, 0x0c00) AM_READ_PORT("DSW1")
+	AM_RANGE(0x1000, 0x1000) AM_WRITE(SMH_NOP)		/* coin out */
 	AM_RANGE(0x1200, 0x1200) AM_WRITE(avgdvg_go_w)
 	AM_RANGE(0x1400, 0x1400) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x1600, 0x1600) AM_WRITE(avgdvg_reset_w)
 	AM_RANGE(0x1800, 0x1800) AM_READ(mb_status_r)
-	AM_RANGE(0x1802, 0x1802) AM_READ(input_port_4_r)	/* IN4 */
+	AM_RANGE(0x1802, 0x1802) AM_READ_PORT("IN4")
 	AM_RANGE(0x1804, 0x1804) AM_READ(mb_lo_r)
 	AM_RANGE(0x1806, 0x1806) AM_READ(mb_hi_r)
 	AM_RANGE(0x1808, 0x1808) AM_WRITE(redbaron_sounds_w)	/* and select joystick pot also */
-	AM_RANGE(0x180a, 0x180a) AM_WRITE(SMH_NOP)			/* sound reset, yet todo */
+	AM_RANGE(0x180a, 0x180a) AM_WRITE(SMH_NOP)				/* sound reset, yet todo */
 	AM_RANGE(0x180c, 0x180c) AM_WRITE(atari_vg_earom_ctrl_w)
 	AM_RANGE(0x1810, 0x181f) AM_READWRITE(pokey1_r, pokey1_w)
 	AM_RANGE(0x1820, 0x185f) AM_READWRITE(atari_vg_earom_r, atari_vg_earom_w)
 	AM_RANGE(0x1860, 0x187f) AM_WRITE(mb_go_w)
-	AM_RANGE(0x2000, 0x2fff) AM_RAM AM_BASE(&vectorram) AM_SIZE(&vectorram_size) AM_REGION(REGION_CPU1, 0x2000)
+	AM_RANGE(0x2000, 0x2fff) AM_RAM AM_BASE(&vectorram) AM_SIZE(&vectorram_size) AM_REGION("main", 0x2000)
 	AM_RANGE(0x3000, 0x7fff) AM_ROM
 ADDRESS_MAP_END
 
@@ -363,72 +351,70 @@ ADDRESS_MAP_END
  *************************************/
 
 #define BZONEIN0\
-	PORT_START_TAG("IN0")\
-	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )\
-	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )\
-	PORT_BIT ( 0x0c, IP_ACTIVE_LOW, IPT_UNUSED )\
+	PORT_START("IN0")\
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )\
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )\
+	PORT_BIT( 0x0c, IP_ACTIVE_LOW, IPT_UNUSED )\
 	PORT_SERVICE( 0x10, IP_ACTIVE_LOW )\
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Diagnostic Step") PORT_CODE(KEYCODE_F1)\
  	/* bit 6 is the VG HALT bit. We set it to "low" */\
 	/* per default (busy vector processor). */\
- 	/* handled by bzone_IN0_r() */\
-	PORT_BIT ( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL )\
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(avgdvg_done_r, NULL)\
 	/* bit 7 is tied to a 3kHz clock */\
- 	/* handled by bzone_IN0_r() */\
-  	PORT_BIT ( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(clock_r, NULL)
 
 
 #define BZONEDSW0\
-	PORT_START_TAG("DSW0")\
-	PORT_DIPNAME(0x03, 0x01, DEF_STR( Lives ) )\
-	PORT_DIPSETTING (  0x00, "2" )\
-	PORT_DIPSETTING (  0x01, "3" )\
-	PORT_DIPSETTING (  0x02, "4" )\
-	PORT_DIPSETTING (  0x03, "5" )\
-	PORT_DIPNAME(0x0c, 0x04, "Missile appears at" )\
-	PORT_DIPSETTING (  0x00, "5000" )\
-	PORT_DIPSETTING (  0x04, "10000" )\
-	PORT_DIPSETTING (  0x08, "20000" )\
-	PORT_DIPSETTING (  0x0c, "30000" )\
-	PORT_DIPNAME(0x30, 0x10, DEF_STR( Bonus_Life ) )\
-	PORT_DIPSETTING (  0x10, "15k and 100k" )\
-	PORT_DIPSETTING (  0x20, "20k and 100k" )\
-	PORT_DIPSETTING (  0x30, "50k and 100k" )\
-	PORT_DIPSETTING (  0x00, DEF_STR( None ) )\
-	PORT_DIPNAME(0xc0, 0x00, DEF_STR( Language ) )\
-	PORT_DIPSETTING (  0x00, DEF_STR( English ))\
-	PORT_DIPSETTING (  0x40, DEF_STR( German ))\
-	PORT_DIPSETTING (  0x80, DEF_STR( French ))\
-  	PORT_DIPSETTING (  0xc0, DEF_STR( Spanish ))
+	PORT_START("DSW0")\
+	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ) ) PORT_DIPLOCATION("M10:1,2")\
+	PORT_DIPSETTING(	0x00, "2" )\
+	PORT_DIPSETTING(	0x01, "3" )\
+	PORT_DIPSETTING(	0x02, "4" )\
+	PORT_DIPSETTING(	0x03, "5" )\
+	PORT_DIPNAME( 0x0c, 0x04, "Missile appears at" ) PORT_DIPLOCATION("M10:3,4")\
+	PORT_DIPSETTING(	0x00, "5000" )\
+	PORT_DIPSETTING(	0x04, "10000" )\
+	PORT_DIPSETTING(	0x08, "20000" )\
+	PORT_DIPSETTING(	0x0c, "30000" )\
+	PORT_DIPNAME( 0x30, 0x10, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("M10:5,6")\
+	PORT_DIPSETTING(	0x10, "15k and 100k" )\
+	PORT_DIPSETTING(	0x20, "20k and 100k" )\
+	PORT_DIPSETTING(	0x30, "50k and 100k" )\
+	PORT_DIPSETTING(	0x00, DEF_STR( None ) )\
+	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Language ) ) PORT_DIPLOCATION("M10:7,8")\
+	PORT_DIPSETTING(	0x00, DEF_STR( English ))\
+	PORT_DIPSETTING(	0x40, DEF_STR( German ))\
+	PORT_DIPSETTING(	0x80, DEF_STR( French ))\
+  	PORT_DIPSETTING(	0xc0, DEF_STR( Spanish ))
 
 #define BZONEDSW1\
-	PORT_START_TAG("DSW1")\
-	PORT_DIPNAME(0x03, 0x02, DEF_STR( Coinage ) )\
-	PORT_DIPSETTING (  0x03, DEF_STR( 2C_1C ) )\
-	PORT_DIPSETTING (  0x02, DEF_STR( 1C_1C ) )\
-	PORT_DIPSETTING (  0x01, DEF_STR( 1C_2C ) )\
-	PORT_DIPSETTING (  0x00, DEF_STR( Free_Play ) )\
-	PORT_DIPNAME(0x0c, 0x00, DEF_STR( Coin_B ) )\
-	PORT_DIPSETTING (  0x00, "*1" )\
-	PORT_DIPSETTING (  0x04, "*4" )\
-	PORT_DIPSETTING (  0x08, "*5" )\
-	PORT_DIPSETTING (  0x0c, "*6" )\
-	PORT_DIPNAME(0x10, 0x00, DEF_STR( Coin_A ) )\
-	PORT_DIPSETTING (  0x00, "*1" )\
-	PORT_DIPSETTING (  0x10, "*2" )\
-	PORT_DIPNAME(0xe0, 0x00, "Bonus Coins" )\
-	PORT_DIPSETTING (  0x00, DEF_STR( None ) )\
-	PORT_DIPSETTING (  0x20, "3 credits/2 coins" )\
-	PORT_DIPSETTING (  0x40, "5 credits/4 coins" )\
-	PORT_DIPSETTING (  0x60, "6 credits/4 coins" )\
-  	PORT_DIPSETTING (  0x80, "6 credits/5 coins" )
+	PORT_START("DSW1")\
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) ) PORT_DIPLOCATION("P10:1,2")\
+	PORT_DIPSETTING(	0x03, DEF_STR( 2C_1C ) )\
+	PORT_DIPSETTING(	0x02, DEF_STR( 1C_1C ) )\
+	PORT_DIPSETTING(	0x01, DEF_STR( 1C_2C ) )\
+	PORT_DIPSETTING(	0x00, DEF_STR( Free_Play ) )\
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("P10:3,4")\
+	PORT_DIPSETTING(	0x00, "*1" )\
+	PORT_DIPSETTING(	0x04, "*4" )\
+	PORT_DIPSETTING(	0x08, "*5" )\
+	PORT_DIPSETTING(	0x0c, "*6" )\
+	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("P10:5")\
+	PORT_DIPSETTING(	0x00, "*1" )\
+	PORT_DIPSETTING(	0x10, "*2" )\
+	PORT_DIPNAME( 0xe0, 0x00, "Bonus Coins" ) PORT_DIPLOCATION("P10:6,7,8")\
+	PORT_DIPSETTING(	0x00, DEF_STR( None ) )\
+	PORT_DIPSETTING(	0x20, "3 credits/2 coins" )\
+	PORT_DIPSETTING(	0x40, "5 credits/4 coins" )\
+	PORT_DIPSETTING(	0x60, "6 credits/4 coins" )\
+  	PORT_DIPSETTING(	0x80, "6 credits/5 coins" )
 
 static INPUT_PORTS_START( bzone )
-BZONEIN0
-BZONEDSW0
-BZONEDSW1
+	BZONEIN0
+	BZONEDSW0
+	BZONEDSW1
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
   	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICKRIGHT_DOWN ) PORT_2WAY
   	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICKRIGHT_UP ) PORT_2WAY
   	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICKLEFT_DOWN ) PORT_2WAY
@@ -441,70 +427,71 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( redbaron )
-BZONEIN0
-	PORT_START_TAG("DSW0")
-	/* See the table above if you are really interested */
-	PORT_DIPNAME(0xff, 0xfd, DEF_STR( Coinage ) )
-	PORT_DIPSETTING (  0xfd, DEF_STR( Normal ) )
+	BZONEIN0
 
-	PORT_START_TAG("DSW1")
-	PORT_DIPNAME(0x03, 0x03, DEF_STR( Language ) )
-	PORT_DIPSETTING (  0x00, DEF_STR( German ) )
-	PORT_DIPSETTING (  0x01, DEF_STR( French ) )
-	PORT_DIPSETTING (  0x02, DEF_STR( Spanish ) )
-	PORT_DIPSETTING (  0x03, DEF_STR( English ) )
-	PORT_DIPNAME(0x0c, 0x04, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING (  0x0c, "2k 10k 30k" )
-	PORT_DIPSETTING (  0x08, "4k 15k 40k" )
-	PORT_DIPSETTING (  0x04, "6k 20k 50k" )
-	PORT_DIPSETTING (  0x00, DEF_STR( None ) )
-	PORT_DIPNAME(0x30, 0x20, DEF_STR( Lives ) )
-	PORT_DIPSETTING (  0x30, "2" )
-	PORT_DIPSETTING (  0x20, "3" )
-	PORT_DIPSETTING (  0x10, "4" )
-	PORT_DIPSETTING (  0x00, "5" )
-	PORT_DIPNAME(0x40, 0x40, "One Play Minimum" )
-	PORT_DIPSETTING (  0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING (  0x00, DEF_STR( On ) )
-	PORT_DIPNAME(0x80, 0x80, "Self Adjust Diff" )
-	PORT_DIPSETTING (  0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING (  0x00, DEF_STR( On ) )
+	PORT_START("DSW0")
+	/* See the table above if you are really interested */
+	PORT_DIPNAME( 0xff, 0xfd, DEF_STR( Coinage ) ) PORT_DIPLOCATION("M10:1,2,3,4,5,6,7,8")
+	PORT_DIPSETTING(	0xfd, DEF_STR( Normal ) )
+
+	PORT_START("DSW1")
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Language ) ) PORT_DIPLOCATION("P10:1,2")
+	PORT_DIPSETTING(	0x00, DEF_STR( German ) )
+	PORT_DIPSETTING(	0x01, DEF_STR( French ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Spanish ) )
+	PORT_DIPSETTING(	0x03, DEF_STR( English ) )
+	PORT_DIPNAME( 0x0c, 0x04, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("P10:3,4")
+	PORT_DIPSETTING(	0x0c, "2k 10k 30k" )
+	PORT_DIPSETTING(	0x08, "4k 15k 40k" )
+	PORT_DIPSETTING(	0x04, "6k 20k 50k" )
+	PORT_DIPSETTING(	0x00, DEF_STR( None ) )
+	PORT_DIPNAME( 0x30, 0x20, DEF_STR( Lives ) ) PORT_DIPLOCATION("P10:5,6")
+	PORT_DIPSETTING(	0x30, "2" )
+	PORT_DIPSETTING(	0x20, "3" )
+	PORT_DIPSETTING(	0x10, "4" )
+	PORT_DIPSETTING(	0x00, "5" )
+	PORT_DIPNAME( 0x40, 0x40, "One Play Minimum" ) PORT_DIPLOCATION("P10:7")
+	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, "Self Adjust Diff" ) PORT_DIPLOCATION("P10:8")
+	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
 	/* IN3 - the real machine reads either the X or Y axis from this port */
 	/* Instead, we use the two fake 5 & 6 ports and bank-switch the proper */
 	/* value based on the lsb of the byte written to the sound port */
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY
 
-	PORT_START_TAG("IN4")	/* Misc controls */
+	PORT_START("IN4")	/* Misc controls */
 	PORT_BIT( 0x3f, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 
 	/* These 2 are fake - they are bank-switched from reads to IN3 */
 	/* Red Baron doesn't seem to use the full 0-255 range. */
-	PORT_START_TAG("FAKE1")	/* IN5 */
+	PORT_START("FAKE1")	/* IN5 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(64,192) PORT_SENSITIVITY(25) PORT_KEYDELTA(10)
 
-	PORT_START_TAG("FAKE2")	/* IN6 */
+	PORT_START("FAKE2")	/* IN6 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(64,192) PORT_SENSITIVITY(25) PORT_KEYDELTA(10)
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( bradley )
-BZONEIN0
-BZONEDSW0
-BZONEDSW1
+	BZONEIN0
+	BZONEDSW0
+	BZONEDSW1
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_BIT( 0x1f, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("1808")
+	PORT_START("1808")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Armor Piercing (Single Shot)") PORT_CODE(KEYCODE_A)
@@ -514,20 +501,20 @@ BZONEDSW1
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_NAME("Armor Piercing (High Rate)") PORT_CODE(KEYCODE_D)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_NAME("High Explosive (High Rate)") PORT_CODE(KEYCODE_C)
 
-	PORT_START_TAG("1809")
+	PORT_START("1809")
 	PORT_BIT( 0x03, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON9 ) PORT_NAME("Select TOW Missiles") PORT_CODE(KEYCODE_T)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_NAME("7.62 mm Machine Gun") PORT_CODE(KEYCODE_V)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON10 ) PORT_NAME("Magnification Toggle") PORT_CODE(KEYCODE_M) PORT_TOGGLE
 	PORT_BIT( 0xe0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("AN0")	/* analog 0 = turret rotation */
+	PORT_START("AN0")	/* analog 0 = turret rotation */
 	PORT_BIT( 0xff, 0x88, IPT_AD_STICK_X ) PORT_MINMAX(0x48,0xc8) PORT_SENSITIVITY(25) PORT_KEYDELTA(10)
 
-	PORT_START_TAG("AN1")	/* analog 1 = turret elevation */
+	PORT_START("AN1")	/* analog 1 = turret elevation */
 	PORT_BIT( 0xff, 0x86, IPT_AD_STICK_Y ) PORT_MINMAX(0x46,0xc6) PORT_SENSITIVITY(25) PORT_KEYDELTA(10)
 
-	PORT_START_TAG("AN2")	/* analog 2 = shell firing range hack removed, now uses Z */
+	PORT_START("AN2")	/* analog 2 = shell firing range hack removed, now uses Z */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Z ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(25) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_REVERSE
 INPUT_PORTS_END
 
@@ -539,27 +526,27 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct POKEYinterface bzone_pokey_interface =
+static const pokey_interface bzone_pokey_interface =
 {
 	{ 0 },
 	input_port_3_r
 };
 
 
-static const struct CustomSound_interface bzone_custom_interface =
+static const custom_sound_interface bzone_custom_interface =
 {
 	bzone_sh_start
 };
 
 
-static const struct POKEYinterface redbaron_pokey_interface =
+static const pokey_interface redbaron_pokey_interface =
 {
 	{ 0 },
 	redbaron_joy_r
 };
 
 
-static const struct CustomSound_interface redbaron_custom_interface =
+static const custom_sound_interface redbaron_custom_interface =
 {
 	redbaron_sh_start
 };
@@ -575,7 +562,7 @@ static const struct CustomSound_interface redbaron_custom_interface =
 static MACHINE_DRIVER_START( bzone )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M6502, MASTER_CLOCK / 8)
+	MDRV_CPU_ADD("main", M6502, MASTER_CLOCK / 8)
 	MDRV_CPU_PROGRAM_MAP(bzone_map,0)
 	MDRV_CPU_PERIODIC_INT(bzone_interrupt, (double)MASTER_CLOCK / 4096 / 12)
 
@@ -593,11 +580,11 @@ static MACHINE_DRIVER_START( bzone )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("pokey",  POKEY, MASTER_CLOCK / 8)
+	MDRV_SOUND_ADD("pokey",  POKEY, MASTER_CLOCK / 8)
 	MDRV_SOUND_CONFIG(bzone_pokey_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD_TAG("custom", CUSTOM, 0)
+	MDRV_SOUND_ADD("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(bzone_custom_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -653,7 +640,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( bzone )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "036414.01",  0x5000, 0x0800, CRC(efbc3fa0) SHA1(6d284fab34b09dde8aa0df7088711d4723f07970) )
 	ROM_LOAD( "036413.01",  0x5800, 0x0800, CRC(5d9d9111) SHA1(42638cff53a9791a0f18d316f62a0ea8eea4e194) )
 	ROM_LOAD( "036412.01",  0x6000, 0x0800, CRC(ab55cbd2) SHA1(6bbb8316d9f8588ea0893932f9174788292b8edc) )
@@ -664,12 +651,12 @@ ROM_START( bzone )
 	ROM_LOAD( "036422.01",  0x3000, 0x0800, CRC(7414177b) SHA1(147d97a3b475e738ce00b1a7909bbd787ad06eda) )
 	ROM_LOAD( "036421.01",  0x3800, 0x0800, CRC(8ea8f939) SHA1(b71e0ab0e220c3e64dc2b094c701fb1a960b64e4) )
 	/* AVG PROM */
-	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "036498-01.k7",	0x0000, 0x0100, CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 	/* Mathbox PROMs */
-	ROM_REGION( 0x20, REGION_USER2, 0 )
+	ROM_REGION( 0x20, "user2", 0 )
 	ROM_LOAD( "036174.01",   0x0000, 0x0020, CRC(8b04f921) SHA1(317b3397482f13b2d1bc21f296d3b3f9a118787b) )
-	ROM_REGION32_BE( 0x400, REGION_USER3, 0 )
+	ROM_REGION32_BE( 0x400, "user3", 0 )
 	ROMX_LOAD( "036175.01", 0, 0x100, CRC(2af82e87) SHA1(3816835a9ccf99a76d246adf204989d9261bb065), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(3))
 	ROMX_LOAD( "036176.01", 0, 0x100, CRC(b31f6e24) SHA1(ce5f8ca34d06a5cfa0076b47400e61e0130ffe74), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(3))
 	ROMX_LOAD( "036177.01", 1, 0x100, CRC(8119b847) SHA1(c4fbaedd4ce1ad6a4128cbe902b297743edb606a), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(3))
@@ -680,7 +667,7 @@ ROM_END
 
 
 ROM_START( bzone2 )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "036414a.01", 0x5000, 0x0800, CRC(13de36d5) SHA1(40e356ddc5c042bc1ce0b71f51e8b6de72daf1e4) )
 	ROM_LOAD( "036413.01",  0x5800, 0x0800, CRC(5d9d9111) SHA1(42638cff53a9791a0f18d316f62a0ea8eea4e194) )
 	ROM_LOAD( "036412.01",  0x6000, 0x0800, CRC(ab55cbd2) SHA1(6bbb8316d9f8588ea0893932f9174788292b8edc) )
@@ -691,12 +678,12 @@ ROM_START( bzone2 )
 	ROM_LOAD( "036422.01",  0x3000, 0x0800, CRC(7414177b) SHA1(147d97a3b475e738ce00b1a7909bbd787ad06eda) )
 	ROM_LOAD( "036421.01",  0x3800, 0x0800, CRC(8ea8f939) SHA1(b71e0ab0e220c3e64dc2b094c701fb1a960b64e4) )
 	/* AVG PROM */
-	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "036498-01.k7",	0x0000, 0x0100, CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 	/* Mathbox PROMs */
-	ROM_REGION( 0x20, REGION_USER2, 0 )
+	ROM_REGION( 0x20, "user2", 0 )
 	ROM_LOAD( "036174.01",	 0x0000, 0x0020, CRC(8b04f921) SHA1(317b3397482f13b2d1bc21f296d3b3f9a118787b) )
-	ROM_REGION32_BE( 0x400, REGION_USER3, 0 )
+	ROM_REGION32_BE( 0x400, "user3", 0 )
 	ROMX_LOAD( "036175.01", 0, 0x100, CRC(2af82e87) SHA1(3816835a9ccf99a76d246adf204989d9261bb065), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(3))
 	ROMX_LOAD( "036176.01", 0, 0x100, CRC(b31f6e24) SHA1(ce5f8ca34d06a5cfa0076b47400e61e0130ffe74), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(3))
 	ROMX_LOAD( "036177.01", 1, 0x100, CRC(8119b847) SHA1(c4fbaedd4ce1ad6a4128cbe902b297743edb606a), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(3))
@@ -707,7 +694,7 @@ ROM_END
 
 
 ROM_START( bzonec ) /* cocktail version */
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "bz1g4800",   0x4800, 0x0800, CRC(e228dd64) SHA1(247c788b4ccadf6c1e9201ad4f31d55c0036ff0f) )
 	ROM_LOAD( "bz1f5000",   0x5000, 0x0800, CRC(dddfac9a) SHA1(e6f2761902e1ffafba437a1117e9ba40f116087d) )
 	ROM_LOAD( "bz1e5800",   0x5800, 0x0800, CRC(7e00e823) SHA1(008e491a8074dac16e56c3aedec32d4b340158ce) )
@@ -719,12 +706,12 @@ ROM_START( bzonec ) /* cocktail version */
 	ROM_LOAD( "036422.01",  0x3000, 0x0800, CRC(7414177b) SHA1(147d97a3b475e738ce00b1a7909bbd787ad06eda) )	// bz3a3000
 	ROM_LOAD( "bz3b3800",   0x3800, 0x0800, CRC(76cf57f6) SHA1(1b8f3fcd664ed04ce60d94fdf27e56b20d52bdbd) )
 	/* AVG PROM */
-	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "036498-01.k7",	0x0000, 0x0100, CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 	/* Mathbox PROMs */
-	ROM_REGION( 0x20, REGION_USER2, 0 )
+	ROM_REGION( 0x20, "user2", 0 )
 	ROM_LOAD( "036174.01",	 0x0000, 0x0020, CRC(8b04f921) SHA1(317b3397482f13b2d1bc21f296d3b3f9a118787b) )
-	ROM_REGION32_BE( 0x400, REGION_USER3, 0 )
+	ROM_REGION32_BE( 0x400, "user3", 0 )
 	ROMX_LOAD( "036175.01", 0, 0x100, CRC(2af82e87) SHA1(3816835a9ccf99a76d246adf204989d9261bb065), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(3))
 	ROMX_LOAD( "036176.01", 0, 0x100, CRC(b31f6e24) SHA1(ce5f8ca34d06a5cfa0076b47400e61e0130ffe74), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(3))
 	ROMX_LOAD( "036177.01", 1, 0x100, CRC(8119b847) SHA1(c4fbaedd4ce1ad6a4128cbe902b297743edb606a), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(3))
@@ -735,7 +722,7 @@ ROM_END
 
 
 ROM_START( bradley )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "btc1.bin",   0x4000, 0x0800, CRC(0bb8e049) SHA1(158517ff9a4e8ae7270ccf7eab87bf77427a4a8c) )
 	ROM_LOAD( "btd1.bin",   0x4800, 0x0800, CRC(9e0566d4) SHA1(f14aa5c3d14136c5e9a317004f82d44a8d5d6815) )
 	ROM_LOAD( "bte1.bin",   0x5000, 0x0800, CRC(64ee6a42) SHA1(33d0713ed2a1f4c1c443dce1f053321f2c279293) )
@@ -748,12 +735,12 @@ ROM_START( bradley )
 	ROM_LOAD( "btb3.bin",   0x3000, 0x0800, CRC(88206304) SHA1(6a2e2ff35a929acf460f244db7968f3978b1d239) )
 	ROM_LOAD( "bta3.bin",   0x3800, 0x0800, CRC(d669d796) SHA1(ad606882320cd13612c7962d4718680fe5a35dd3) )
 	/* AVG PROM */
-	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "036498-01.k7",	0x0000, 0x0100, CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 	/* Mathbox PROMs */
-	ROM_REGION( 0x20, REGION_USER2, 0 )
+	ROM_REGION( 0x20, "user2", 0 )
 	ROM_LOAD( "036174.01",	 0x0000, 0x0020, CRC(8b04f921) SHA1(317b3397482f13b2d1bc21f296d3b3f9a118787b) )
-	ROM_REGION32_BE( 0x400, REGION_USER3, 0 )
+	ROM_REGION32_BE( 0x400, "user3", 0 )
 	ROMX_LOAD( "036175.01", 0, 0x100, CRC(2af82e87) SHA1(3816835a9ccf99a76d246adf204989d9261bb065), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(3))
 	ROMX_LOAD( "036176.01", 0, 0x100, CRC(b31f6e24) SHA1(ce5f8ca34d06a5cfa0076b47400e61e0130ffe74), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(3))
 	ROMX_LOAD( "036177.01", 1, 0x100, CRC(8119b847) SHA1(c4fbaedd4ce1ad6a4128cbe902b297743edb606a), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(3))
@@ -764,7 +751,7 @@ ROM_END
 
 
 ROM_START( redbaron )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "037587.01",  0x4800, 0x0800, CRC(60f23983) SHA1(7a9e5380bf49bf50a2d8ab0e0bd1ba3ac8efde24) )
 	ROM_CONTINUE(           0x5800, 0x0800 )
 	ROM_LOAD( "037000.01e", 0x5000, 0x0800, CRC(69bed808) SHA1(27d99efc74113cdcbbf021734b8a5a5fdb78c04c) )
@@ -776,12 +763,12 @@ ROM_START( redbaron )
 	ROM_LOAD( "037006.01e", 0x3000, 0x0800, CRC(9fcffea0) SHA1(69b76655ee75742fcaa0f39a4a1cf3aa58088343) )
 	ROM_LOAD( "037007.01e", 0x3800, 0x0800, CRC(60250ede) SHA1(9c48952bd69863bee0c6dce09f3613149e0151ef) )
 	/* AVG PROM */
-	ROM_REGION( 0x100, REGION_USER1, 0 )
+	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "036408-01.k7",	0x0000, 0x0100, BAD_DUMP CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 	/* Mathbox PROMs */
-	ROM_REGION( 0x20, REGION_USER2, 0 )
+	ROM_REGION( 0x20, "user2", 0 )
 	ROM_LOAD( "036174.01",	 0x0000, 0x0020, CRC(8b04f921) SHA1(317b3397482f13b2d1bc21f296d3b3f9a118787b) )
-	ROM_REGION32_BE( 0x400, REGION_USER3, 0 )
+	ROM_REGION32_BE( 0x400, "user3", 0 )
 	ROMX_LOAD( "036175.01", 0, 0x100, CRC(2af82e87) SHA1(3816835a9ccf99a76d246adf204989d9261bb065), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(3))
 	ROMX_LOAD( "036176.01", 0, 0x100, CRC(b31f6e24) SHA1(ce5f8ca34d06a5cfa0076b47400e61e0130ffe74), ROM_NIBBLE | ROM_SHIFT_NIBBLE_HI | ROM_SKIP(3))
 	ROMX_LOAD( "036177.01", 1, 0x100, CRC(8119b847) SHA1(c4fbaedd4ce1ad6a4128cbe902b297743edb606a), ROM_NIBBLE | ROM_SHIFT_NIBBLE_LO | ROM_SKIP(3))
@@ -818,8 +805,8 @@ static DRIVER_INIT( bradley )
 	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x400, 0x7ff, 0, 0, SMH_BANK1, SMH_BANK1);
 	memory_set_bankptr(1, auto_malloc(0x400));
 
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1808, 0x1808, 0, 0, input_port_4_r);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1809, 0x1809, 0, 0, input_port_5_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1808, 0x1808, 0, 0, input_port_read_handler8(machine->portconfig, "1808"));
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1809, 0x1809, 0, 0, input_port_read_handler8(machine->portconfig, "1809"));
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x180a, 0x180a, 0, 0, analog_data_r);
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1848, 0x1850, 0, 0, analog_select_w);
 }

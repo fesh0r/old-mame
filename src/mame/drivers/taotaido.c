@@ -135,7 +135,7 @@ static WRITE8_HANDLER( pending_command_clear_w )
 
 static WRITE8_HANDLER( taotaido_sh_bankswitch_w )
 {
-	UINT8 *rom = memory_region(machine, REGION_CPU2) + 0x10000;
+	UINT8 *rom = memory_region(machine, "audio") + 0x10000;
 
 	memory_set_bankptr(1,rom + (data & 0x03) * 0x8000);
 }
@@ -148,10 +148,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_port_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(YM2610_status_port_0_A_r, YM2610_control_port_0_A_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(YM2610_data_port_0_A_w)
-	AM_RANGE(0x02, 0x02) AM_READWRITE(YM2610_status_port_0_B_r, YM2610_control_port_0_B_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(YM2610_data_port_0_B_w)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(ym2610_status_port_0_a_r, ym2610_control_port_0_a_w)
+	AM_RANGE(0x01, 0x01) AM_WRITE(ym2610_data_port_0_a_w)
+	AM_RANGE(0x02, 0x02) AM_READWRITE(ym2610_status_port_0_b_r, ym2610_control_port_0_b_w)
+	AM_RANGE(0x03, 0x03) AM_WRITE(ym2610_data_port_0_b_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(taotaido_sh_bankswitch_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(pending_command_clear_w)
 	AM_RANGE(0x0c, 0x0c) AM_READ(soundlatch_r)
@@ -159,7 +159,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( taotaido )
-	PORT_START_TAG("IN0")	/* Player 1 controls (0xffff81.b) */
+	PORT_START("IN0")	/* Player 1 controls (0xffff81.b) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -173,7 +173,7 @@ static INPUT_PORTS_START( taotaido )
 #endif
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")	/* Player 2 controls (0xffff83.b) */
+	PORT_START("IN1")	/* Player 2 controls (0xffff83.b) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -187,7 +187,7 @@ static INPUT_PORTS_START( taotaido )
 #endif
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")	/* System inputs (0xffff85.b) */
+	PORT_START("IN2")	/* System inputs (0xffff85.b) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )	// see notes
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -201,7 +201,7 @@ static INPUT_PORTS_START( taotaido )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )	// see notes - SERVICE in "test mode"
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )	// VBLANK ? The game freezes when ON
 
-	PORT_START_TAG("DSW0")	/* DSW A (0xffff87.b -> !0xfe2f6c.w or !0xfe30d0) */
+	PORT_START("DSW0")	/* DSW A (0xffff87.b -> !0xfe2f6c.w or !0xfe30d0) */
 	PORT_DIPNAME( 0x01, 0x01, "Coin Slot" )
 	PORT_DIPSETTING(    0x01, "Same" )
 	PORT_DIPSETTING(    0x00, "Individual" )
@@ -221,7 +221,7 @@ static INPUT_PORTS_START( taotaido )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW1")	/* DSW B (0xffff89.b -> !0xfe73c2.w or !0xfe751c.w) */
+	PORT_START("DSW1")	/* DSW B (0xffff89.b -> !0xfe73c2.w or !0xfe751c.w) */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )	// check code at 0x0963e2 or 0x845e2
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -238,7 +238,7 @@ static INPUT_PORTS_START( taotaido )
 	PORT_DIPUNUSED( 0x40, IP_ACTIVE_LOW )
 	PORT_DIPUNUSED( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("DSW2")	/* DSW C (0xffff8b.b -> !0xfe2f94.w or !0xfe30f8.w) */
+	PORT_START("DSW2")	/* DSW C (0xffff8b.b -> !0xfe2f94.w or !0xfe30f8.w) */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )	// doesn't seem to be demo sounds
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -252,7 +252,7 @@ static INPUT_PORTS_START( taotaido )
 	PORT_DIPUNUSED( 0x40, IP_ACTIVE_LOW )
 	PORT_DIPUNUSED( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("JP0")	/* Jumpers (0xffff8f.b) */
+	PORT_START("JP0")	/* Jumpers (0xffff8f.b) */
 	PORT_DIPNAME( 0x0f, 0x08, "Country" )
 	PORT_DIPSETTING(    0x00, "US" )				// also (c) Mc O'River Inc
 	PORT_DIPSETTING(    0x01, DEF_STR( Japan ) )
@@ -267,7 +267,7 @@ static INPUT_PORTS_START( taotaido )
 
 #if TAOTAIDO_SHOW_ALL_INPUTS
 	/* These inputs are only to fit the test mode - leftover from another game ? */
-	PORT_START_TAG("IN3")	/* Player 3 inputs (0xffffa1.b) */
+	PORT_START("IN3")	/* Player 3 inputs (0xffffa1.b) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
@@ -277,7 +277,7 @@ static INPUT_PORTS_START( taotaido )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN4")	/* Player 4 inputs (0xffffa3.b) */
+	PORT_START("IN4")	/* Player 4 inputs (0xffffa3.b) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(4)
@@ -314,8 +314,8 @@ static const gfx_layout taotaido_layout =
 };
 
 static GFXDECODE_START( taotaido )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, taotaido_layout,  0x000, 256  ) /* sprites */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, taotaido_layout,  0x300, 256  ) /* bg tiles */
+	GFXDECODE_ENTRY( "gfx1", 0, taotaido_layout,  0x000, 256  ) /* sprites */
+	GFXDECODE_ENTRY( "gfx2", 0, taotaido_layout,  0x300, 256  ) /* bg tiles */
 GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int irq)
@@ -323,20 +323,17 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2610interface ym2610_interface =
+static const ym2610_interface ym2610_config =
 {
-	irqhandler,
-	REGION_SOUND1,
-	REGION_SOUND2
+	irqhandler
 };
 
 static MACHINE_DRIVER_START( taotaido )
-	MDRV_CPU_ADD(M68000, 32000000/2)
+	MDRV_CPU_ADD("main", M68000, 32000000/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
-	/* audio CPU */
-	MDRV_CPU_ADD(Z80,20000000/4) // ??
+	MDRV_CPU_ADD("audio", Z80,20000000/4) // ??
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_port_map,0)
 								/* IRQs are triggered by the YM2610 */
@@ -359,8 +356,8 @@ static MACHINE_DRIVER_START( taotaido )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2610, 8000000)
-	MDRV_SOUND_CONFIG(ym2610_interface)
+	MDRV_SOUND_ADD("ym", YM2610, 8000000)
+	MDRV_SOUND_CONFIG(ym2610_config)
 	MDRV_SOUND_ROUTE(0, "left",  0.25)
 	MDRV_SOUND_ROUTE(0, "right", 0.25)
 	MDRV_SOUND_ROUTE(1, "left",  1.0)
@@ -369,50 +366,50 @@ MACHINE_DRIVER_END
 
 
 ROM_START( taotaido )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_WORD_SWAP( "1-u90.bin", 0x00000, 0x80000, CRC(a3ee30da) SHA1(920a83ce9192bf785bffdc041e280f1a420de4c9) )
 	ROM_LOAD16_WORD_SWAP( "2-u91.bin", 0x80000, 0x80000, CRC(30b7e4fb) SHA1(15e1f6d252c736fdee33b691a0a1a45f0307bffb) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 ) /* z80 Code */
+	ROM_REGION( 0x30000, "audio", 0 ) /* z80 Code */
 	ROM_LOAD( "3-u113.bin", 0x000000, 0x20000, CRC(a167c4e4) SHA1(d32184e7040935cd440d4d82c66491b710ec87a8) )
 	ROM_RELOAD ( 0x10000, 0x20000 )
 
-	ROM_REGION( 0x100000, REGION_SOUND1, 0 ) /* sound samples */
+	ROM_REGION( 0x100000, "ym.deltat", 0 ) /* sound samples */
 	ROM_LOAD( "u104.bin",     0x000000, 0x100000, CRC(e89387a9) SHA1(1deeee056af367d1a5aa0722dd3d6c68a82d0489) )
 
-	ROM_REGION( 0x200000, REGION_SOUND2, 0 ) /* sound samples */
+	ROM_REGION( 0x200000, "ym", 0 ) /* sound samples */
 	ROM_LOAD( "u127.bin",     0x00000, 0x200000, CRC(0cf0cb23) SHA1(a87e7159db2fa0d50446cbf45ec9fbf585b8f396) )
 
-	ROM_REGION( 0x600000, REGION_GFX1, 0 ) /* Sprites */
+	ROM_REGION( 0x600000, "gfx1", 0 ) /* Sprites */
 	ROM_LOAD( "u86.bin", 0x000000, 0x200000, CRC(908e251e) SHA1(5a135787f3263bfb195f8fd1e814c580d840531f) )
 	ROM_LOAD( "u87.bin", 0x200000, 0x200000, CRC(c4290ba6) SHA1(4132ffad4668f1dd3f708f009e18435e7dd60120) )
 	ROM_LOAD( "u88.bin", 0x400000, 0x200000, CRC(407d9aeb) SHA1(d532c7b80f6c192dba86542fb6eb3ef24fbbbdb9) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, 0 ) /* BG Tiles */
+	ROM_REGION( 0x200000, "gfx2", 0 ) /* BG Tiles */
 	ROM_LOAD( "u15.bin", 0x000000, 0x200000, CRC(e95823e9) SHA1(362583944ad4fdde4f9e29928cf34376c7ad931f) )
 ROM_END
 
 ROM_START( taotaida )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
 	ROM_LOAD16_WORD_SWAP( "tt0-u90.bin", 0x00000, 0x80000, CRC(69d4cca7) SHA1(f1aba74fef8fe4271d19763f428fc0e2674d08b3) )
 	ROM_LOAD16_WORD_SWAP( "tt1-u91.bin", 0x80000, 0x80000, CRC(41025469) SHA1(fa3a424ca3ecb513f418e436e4191ff76f6a0de1) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 ) /* z80 Code */
+	ROM_REGION( 0x30000, "audio", 0 ) /* z80 Code */
 	ROM_LOAD( "3-u113.bin", 0x000000, 0x20000, CRC(a167c4e4) SHA1(d32184e7040935cd440d4d82c66491b710ec87a8) )
 	ROM_RELOAD ( 0x10000, 0x20000 )
 
-	ROM_REGION( 0x100000, REGION_SOUND1, 0 ) /* sound samples */
+	ROM_REGION( 0x100000, "ym.deltat", 0 ) /* sound samples */
 	ROM_LOAD( "u104.bin",     0x000000, 0x100000, CRC(e89387a9) SHA1(1deeee056af367d1a5aa0722dd3d6c68a82d0489) )
 
-	ROM_REGION( 0x200000, REGION_SOUND2, 0 ) /* sound samples */
+	ROM_REGION( 0x200000, "ym", 0 ) /* sound samples */
 	ROM_LOAD( "u127.bin",     0x00000, 0x200000, CRC(0cf0cb23) SHA1(a87e7159db2fa0d50446cbf45ec9fbf585b8f396) )
 
-	ROM_REGION( 0x600000, REGION_GFX1, 0 ) /* Sprites */
+	ROM_REGION( 0x600000, "gfx1", 0 ) /* Sprites */
 	ROM_LOAD( "u86.bin", 0x000000, 0x200000, CRC(908e251e) SHA1(5a135787f3263bfb195f8fd1e814c580d840531f) )
 	ROM_LOAD( "u87.bin", 0x200000, 0x200000, CRC(c4290ba6) SHA1(4132ffad4668f1dd3f708f009e18435e7dd60120) )
 	ROM_LOAD( "u88.bin", 0x400000, 0x200000, CRC(407d9aeb) SHA1(d532c7b80f6c192dba86542fb6eb3ef24fbbbdb9) )
 
-	ROM_REGION( 0x200000, REGION_GFX2, 0 ) /* BG Tiles */
+	ROM_REGION( 0x200000, "gfx2", 0 ) /* BG Tiles */
 	ROM_LOAD( "u15.bin", 0x000000, 0x200000, CRC(e95823e9) SHA1(362583944ad4fdde4f9e29928cf34376c7ad931f) )
 ROM_END
 

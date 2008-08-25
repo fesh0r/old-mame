@@ -94,7 +94,7 @@ static INTERRUPT_GEN( xxmissio_interrupt_s )
 
 static MACHINE_START( xxmissio )
 {
-	memory_configure_bank(1, 0, 8, memory_region(machine, REGION_USER1), 0x4000);
+	memory_configure_bank(1, 0, 8, memory_region(machine, "user1"), 0x4000);
 	memory_set_bank(1, 0);
 }
 
@@ -103,10 +103,10 @@ static MACHINE_START( xxmissio )
 static ADDRESS_MAP_START( map1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 
-	AM_RANGE(0x8000, 0x8000) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
-	AM_RANGE(0x8002, 0x8002) AM_READWRITE(YM2203_status_port_1_r, YM2203_control_port_1_w)
-	AM_RANGE(0x8003, 0x8003) AM_READWRITE(YM2203_read_port_1_r, YM2203_write_port_1_w)
+	AM_RANGE(0x8000, 0x8000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
+	AM_RANGE(0x8001, 0x8001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
+	AM_RANGE(0x8002, 0x8002) AM_READWRITE(ym2203_status_port_1_r, ym2203_control_port_1_w)
+	AM_RANGE(0x8003, 0x8003) AM_READWRITE(ym2203_read_port_1_r, ym2203_write_port_1_w)
 
 	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r)
 	AM_RANGE(0xa001, 0xa001) AM_READ(input_port_1_r)
@@ -129,10 +129,10 @@ static ADDRESS_MAP_START( map2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1)
 
-	AM_RANGE(0x8000, 0x8000) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
-	AM_RANGE(0x8002, 0x8002) AM_READWRITE(YM2203_status_port_1_r, YM2203_control_port_1_w)
-	AM_RANGE(0x8003, 0x8003) AM_READWRITE(YM2203_read_port_1_r, YM2203_write_port_1_w)
+	AM_RANGE(0x8000, 0x8000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
+	AM_RANGE(0x8001, 0x8001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
+	AM_RANGE(0x8002, 0x8002) AM_READWRITE(ym2203_status_port_1_r, ym2203_control_port_1_w)
+	AM_RANGE(0x8003, 0x8003) AM_READWRITE(ym2203_read_port_1_r, ym2203_write_port_1_w)
 	AM_RANGE(0x8006, 0x8006) AM_WRITE(xxmissio_bank_sel_w)
 
 	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r)
@@ -155,7 +155,7 @@ ADDRESS_MAP_END
 /****************************************************************************/
 
 static INPUT_PORTS_START( xxmissio )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -165,7 +165,7 @@ static INPUT_PORTS_START( xxmissio )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
@@ -175,7 +175,7 @@ static INPUT_PORTS_START( xxmissio )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
@@ -198,7 +198,7 @@ static INPUT_PORTS_START( xxmissio )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x01, "2" )
 	PORT_DIPSETTING(    0x03, "3" )
@@ -222,7 +222,7 @@ static INPUT_PORTS_START( xxmissio )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 INPUT_PORTS_END
 
@@ -266,14 +266,14 @@ static const gfx_layout bglayout =
 };
 
 static GFXDECODE_START( xxmissio )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, charlayout,   256,  8 ) /* FG */
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, spritelayout,   0,  8 ) /* sprite */
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0000, bglayout,     512, 16 ) /* BG */
+	GFXDECODE_ENTRY( "gfx1", 0x0000, charlayout,   256,  8 ) /* FG */
+	GFXDECODE_ENTRY( "gfx1", 0x0000, spritelayout,   0,  8 ) /* sprite */
+	GFXDECODE_ENTRY( "gfx2", 0x0000, bglayout,     512, 16 ) /* BG */
 GFXDECODE_END
 
 /****************************************************************************/
 
-static const struct YM2203interface ym2203_interface_1 =
+static const ym2203_interface ym2203_interface_1 =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -286,7 +286,7 @@ static const struct YM2203interface ym2203_interface_1 =
 	NULL
 };
 
-static const struct YM2203interface ym2203_interface_2 =
+static const ym2203_interface ym2203_interface_2 =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -302,11 +302,11 @@ static const struct YM2203interface ym2203_interface_2 =
 static MACHINE_DRIVER_START( xxmissio )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,12000000/4)	/* 3.0MHz */
+	MDRV_CPU_ADD("main", Z80,12000000/4)	/* 3.0MHz */
 	MDRV_CPU_PROGRAM_MAP(map1,0)
 	MDRV_CPU_VBLANK_INT("main", xxmissio_interrupt_m)
 
-	MDRV_CPU_ADD(Z80,12000000/4)	/* 3.0MHz */
+	MDRV_CPU_ADD("sub", Z80,12000000/4)	/* 3.0MHz */
 	MDRV_CPU_PROGRAM_MAP(map2,0)
 	MDRV_CPU_VBLANK_INT_HACK(xxmissio_interrupt_s,2)
 
@@ -331,14 +331,14 @@ static MACHINE_DRIVER_START( xxmissio )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 12000000/8)
+	MDRV_SOUND_ADD("ym1", YM2203, 12000000/8)
 	MDRV_SOUND_CONFIG(ym2203_interface_1)
 	MDRV_SOUND_ROUTE(0, "mono", 0.15)
 	MDRV_SOUND_ROUTE(1, "mono", 0.15)
 	MDRV_SOUND_ROUTE(2, "mono", 0.15)
 	MDRV_SOUND_ROUTE(3, "mono", 0.40)
 
-	MDRV_SOUND_ADD(YM2203, 12000000/8)
+	MDRV_SOUND_ADD("ym2", YM2203, 12000000/8)
 	MDRV_SOUND_CONFIG(ym2203_interface_2)
 	MDRV_SOUND_ROUTE(0, "mono", 0.15)
 	MDRV_SOUND_ROUTE(1, "mono", 0.15)
@@ -349,24 +349,24 @@ MACHINE_DRIVER_END
 /****************************************************************************/
 
 ROM_START( xxmissio )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* CPU1 */
+	ROM_REGION( 0x10000, "main", 0 ) /* CPU1 */
 	ROM_LOAD( "xx1.4l", 0x0000,  0x8000, CRC(86e07709) SHA1(7bfb7540b6509f07a6388ca2da6b3892f5b1df74) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* CPU2 */
+	ROM_REGION( 0x10000, "sub", 0 ) /* CPU2 */
 	ROM_LOAD( "xx2.4b", 0x0000,  0x4000, CRC(13fa7049) SHA1(e8974d9f271a966611b523496ba8cd910e227a23) )
 
-	ROM_REGION( 0x18000, REGION_USER1, 0 ) /* BANK */
+	ROM_REGION( 0x18000, "user1", 0 ) /* BANK */
 	ROM_LOAD( "xx3.6a", 0x00000,  0x8000, CRC(16fdacab) SHA1(2158ca9b14c52bc1cd5ef0f4c0180f0519224403) )
 	ROM_LOAD( "xx4.6b", 0x08000,  0x8000, CRC(274bd4d2) SHA1(2ddf9b953584e26f221b1c86181d827bdc3dc81b) )
 	ROM_LOAD( "xx5.6d", 0x10000,  0x8000, CRC(c5f35535) SHA1(6812b70beb73fc80cf20d2d51f747952ed106887) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE ) /* FG/sprites */
+	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE ) /* FG/sprites */
 	ROM_LOAD16_BYTE( "xx6.8j", 0x00001, 0x8000, CRC(dc954d01) SHA1(73ecbbc859da9db9fead91cd03bb90e5779916e2) )
 	ROM_LOAD16_BYTE( "xx8.8f", 0x00000, 0x8000, CRC(a9587cc6) SHA1(5fbcb88505f89c4d8a2a228489612ff66fc5d3af) )
 	ROM_LOAD16_BYTE( "xx7.8h", 0x10001, 0x8000, CRC(abe9cd68) SHA1(f3ce9b40e3d9cdc9b77a43f9d5d0411338d88833) )
 	ROM_LOAD16_BYTE( "xx9.8e", 0x10000, 0x8000, CRC(854e0e5f) SHA1(b01d6a735b175c2f7ac3fc4053702c9da62c6a4e) )
 
-	ROM_REGION( 0x10000, REGION_GFX2, ROMREGION_DISPOSE ) /* BG */
+	ROM_REGION( 0x10000, "gfx2", ROMREGION_DISPOSE ) /* BG */
 	ROM_LOAD16_BYTE( "xx10.4c", 0x0000,  0x8000, CRC(d27d7834) SHA1(60c24dc2ab7e2a33da4002f1f07eaf7898cf387f) )
 	ROM_LOAD16_BYTE( "xx11.4b", 0x0001,  0x8000, CRC(d9dd827c) SHA1(aea3a5abd871adf7f75ad4d6cc57eff0833135c7) )
 ROM_END

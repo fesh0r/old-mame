@@ -23,7 +23,7 @@ static void update_sound_68k_interrupts(running_machine *machine);
 void cyberbal_sound_reset(running_machine *machine)
 {
 	/* reset the sound system */
-	bank_base = &memory_region(machine, REGION_CPU2)[0x10000];
+	bank_base = &memory_region(machine, "audio")[0x10000];
 	memory_set_bankptr(8, &bank_base[0x0000]);
 	fast_68k_int = io_68k_int = 0;
 	sound_data_from_68k = sound_data_from_6502 = 0;
@@ -155,7 +155,7 @@ WRITE16_HANDLER( cyberbal_sound_68k_w )
 
 WRITE16_HANDLER( cyberbal_sound_68k_dac_w )
 {
-	DAC_data_16_w((offset >> 3) & 1, (((data >> 3) & 0x800) | ((data >> 2) & 0x7ff)) << 4);
+	dac_data_16_w((offset >> 3) & 1, (((data >> 3) & 0x800) | ((data >> 2) & 0x7ff)) << 4);
 
 	if (fast_68k_int)
 	{

@@ -23,14 +23,14 @@ static int bg1_bank = 0, bg2_bank = 0;
 
 static TILE_GET_INFO( get_bg1_tile_info )
 {
-	UINT8 *region = memory_region(machine, REGION_GFX3) + 0x200000 + 0x80000 * bg1_bank;
+	UINT8 *region = memory_region(machine, "gfx3") + 0x200000 + 0x80000 * bg1_bank;
 	int code = region[tile_index*2] + (region[tile_index*2+1] << 8);
 	SET_TILE_INFO(2, code, 0, 0);
 }
 
 static TILE_GET_INFO( get_bg2_tile_info )
 {
-	UINT8 *region = memory_region(machine, REGION_GFX2) + 0x200000 + 0x80000 * bg2_bank;
+	UINT8 *region = memory_region(machine, "gfx2") + 0x200000 + 0x80000 * bg2_bank;
 	int code = region[tile_index*2] + (region[tile_index*2+1] << 8);
 	SET_TILE_INFO(1, code, 0, 0);
 }
@@ -98,7 +98,7 @@ static VIDEO_UPDATE( cultures )
 
 static WRITE8_HANDLER( cpu_bankswitch_w )
 {
-	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x4000 * (data & 0xf));
+	memory_set_bankptr(1, memory_region(machine, "main") + 0x4000 * (data & 0xf));
 	video_enable = ~data & 0x20;
 }
 
@@ -116,8 +116,8 @@ static WRITE8_HANDLER( misc_w )
 	if(old_bank != new_bank)
 	{
 		// oki banking
-		UINT8 *src = memory_region(machine, REGION_SOUND1) + 0x40000 + 0x20000 * new_bank;
-		UINT8 *dst = memory_region(machine, REGION_SOUND1) + 0x20000;
+		UINT8 *src = memory_region(machine, "oki") + 0x40000 + 0x20000 * new_bank;
+		UINT8 *dst = memory_region(machine, "oki") + 0x20000;
 		memcpy(dst, src, 0x20000);
 
 		old_bank = new_bank;
@@ -164,27 +164,27 @@ static ADDRESS_MAP_START( cultures_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x80, 0x80) AM_WRITE(cpu_bankswitch_w)
 	AM_RANGE(0x90, 0x90) AM_WRITE(misc_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(bg_bank_w)
-	AM_RANGE(0xc0, 0xc0) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
-	AM_RANGE(0xd0, 0xd0) AM_READ(input_port_0_r)
-	AM_RANGE(0xd1, 0xd1) AM_READ(input_port_1_r)
-	AM_RANGE(0xd2, 0xd2) AM_READ(input_port_2_r)
-	AM_RANGE(0xd3, 0xd3) AM_READ(input_port_3_r)
-	AM_RANGE(0xe0, 0xe0) AM_READ(input_port_4_r)
-	AM_RANGE(0xe1, 0xe1) AM_READ(input_port_5_r)
-	AM_RANGE(0xe2, 0xe2) AM_READ(input_port_6_r)
-	AM_RANGE(0xe3, 0xe3) AM_READ(input_port_7_r)
-	AM_RANGE(0xe4, 0xe4) AM_READ(input_port_8_r)
-	AM_RANGE(0xe5, 0xe5) AM_READ(input_port_9_r)
-	AM_RANGE(0xf0, 0xf0) AM_READ(input_port_10_r)
-	AM_RANGE(0xf1, 0xf1) AM_READ(input_port_11_r)
-	AM_RANGE(0xf2, 0xf2) AM_READ(input_port_12_r)
-	AM_RANGE(0xf3, 0xf3) AM_READ(input_port_13_r)
-	AM_RANGE(0xf7, 0xf7) AM_READ(input_port_14_r)
+	AM_RANGE(0xc0, 0xc0) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
+	AM_RANGE(0xd0, 0xd0) AM_READ_PORT("SW1_A")
+	AM_RANGE(0xd1, 0xd1) AM_READ_PORT("SW1_B")
+	AM_RANGE(0xd2, 0xd2) AM_READ_PORT("SW2_A")
+	AM_RANGE(0xd3, 0xd3) AM_READ_PORT("SW2_B")
+	AM_RANGE(0xe0, 0xe0) AM_READ_PORT("KEY0")
+	AM_RANGE(0xe1, 0xe1) AM_READ_PORT("KEY1")
+	AM_RANGE(0xe2, 0xe2) AM_READ_PORT("KEY2")
+	AM_RANGE(0xe3, 0xe3) AM_READ_PORT("KEY3")
+	AM_RANGE(0xe4, 0xe4) AM_READ_PORT("KEY4")
+	AM_RANGE(0xe5, 0xe5) AM_READ_PORT("START")
+	AM_RANGE(0xf0, 0xf0) AM_READ_PORT("UNUSED1")
+	AM_RANGE(0xf1, 0xf1) AM_READ_PORT("UNUSED2")
+	AM_RANGE(0xf2, 0xf2) AM_READ_PORT("UNUSED3")
+	AM_RANGE(0xf3, 0xf3) AM_READ_PORT("UNUSED4")
+	AM_RANGE(0xf7, 0xf7) AM_READ_PORT("COINS")
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( cultures )
-	PORT_START
+	PORT_START("SW1_A")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:1,2,3")
 	PORT_DIPSETTING(    0x00, "10 Coins / 1 Credit" )
 	PORT_DIPSETTING(    0x01, DEF_STR( 5C_1C ) )
@@ -199,7 +199,7 @@ static INPUT_PORTS_START( cultures )
 	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("SW1_B")
 	PORT_DIPNAME( 0x01, 0x01, "Auto Mode After Reach" ) PORT_DIPLOCATION("SW1:5")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
@@ -214,7 +214,7 @@ static INPUT_PORTS_START( cultures )
 	PORT_DIPSETTING(    0x00, "Cleared" )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("SW2_A")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Hard ) )
@@ -228,70 +228,68 @@ static INPUT_PORTS_START( cultures )
 	PORT_DIPSETTING(    0x08, DEF_STR( Yes ) )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("SW2_B")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Allow_Continue ) ) PORT_DIPLOCATION("SW2:5")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x02, 0x02, "Machihai Display" ) PORT_DIPLOCATION("SW2:6")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW2:7") // "always off"
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x04, 0x04, "SW2:7" ) // "always off"
 	PORT_SERVICE_DIPLOC( 0x08, IP_ACTIVE_LOW, "SW2:8" )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START //5
+	PORT_START("KEY0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_A )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_B )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_C )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_D )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("KEY1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_E )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_F )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_G )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_H )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("KEY2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_I )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_J )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_K )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_L )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("KEY3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_M )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_N )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_CHI )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_PON )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("KEY4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_KAN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_REACH )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_RON )
 	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("START")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0xfe, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("UNUSED1")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("UNUSED2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("UNUSED3")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("UNUSED4")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("COINS")
 	PORT_BIT( 0x1f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE2 ) // "Test"
@@ -313,9 +311,9 @@ static const gfx_layout gfxlayout =
 };
 
 static GFXDECODE_START( culture )
-	GFXDECODE_ENTRY(REGION_GFX1, 0, gfxlayout, 0, 1 )
-	GFXDECODE_ENTRY(REGION_GFX2, 0, gfxlayout, 0, 1 )
-	GFXDECODE_ENTRY(REGION_GFX3, 0, gfxlayout, 0, 1 )
+	GFXDECODE_ENTRY("gfx1", 0, gfxlayout, 0, 1 )
+	GFXDECODE_ENTRY("gfx2", 0, gfxlayout, 0, 1 )
+	GFXDECODE_ENTRY("gfx3", 0, gfxlayout, 0, 1 )
 GFXDECODE_END
 
 //WRONG!
@@ -357,7 +355,7 @@ static INTERRUPT_GEN( cultures_interrupt )
 static MACHINE_DRIVER_START( cultures )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, MCLK/2) /* 8.000 MHz */
+	MDRV_CPU_ADD("main", Z80, MCLK/2) /* 8.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(cultures_map,0)
 	MDRV_CPU_IO_MAP(cultures_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", cultures_interrupt)
@@ -381,8 +379,8 @@ static MACHINE_DRIVER_START( cultures )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, (MCLK/1024)*132)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, (MCLK/1024)*132)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END
 
@@ -427,24 +425,24 @@ P custom      custom
 */
 
 ROM_START( cultures )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 )
+	ROM_REGION( 0x40000, "main", 0 )
 	ROM_LOAD( "ma01.u12",     0x000000, 0x040000, CRC(f57417b3) SHA1(9a2a50222f54e5da9bc5c66863b8be16e33b171f) )
 
-	ROM_REGION( 0x300000, REGION_GFX1, 0 )
+	ROM_REGION( 0x300000, "gfx1", 0 )
 	ROM_LOAD( "bg0c.u45",     0x000000, 0x200000, CRC(ad2e1263) SHA1(b28a3d82aaa0421a7b4df837814147b109e7d1a5) )
 	ROM_LOAD( "bg0c2.u46",    0x200000, 0x100000, CRC(97c71c09) SHA1(ffbcee1d9cb39d0824f3aa652c3a24579113cf2e) )
 
-	ROM_REGION( 0x400000, REGION_GFX2, ROMREGION_ERASE00 )
+	ROM_REGION( 0x400000, "gfx2", ROMREGION_ERASE00 )
 	ROM_LOAD( "bg1c.u80",     0x000000, 0x200000, CRC(9ab99bd9) SHA1(bce41b6f5d83c8262ba8d37b2dfcd5d7a5e7ace7) )
 	ROM_LOAD( "bg2t.u79",     0x200000, 0x100000, CRC(0610a79f) SHA1(9fc6b2e5c573ed682b2f7fa462c8f42ff99da5ba) )
 	/* 0x300000 - 0x3fffff empty */
 
-	ROM_REGION( 0x400000, REGION_GFX3, ROMREGION_ERASE00 )
+	ROM_REGION( 0x400000, "gfx3", ROMREGION_ERASE00 )
 	ROM_LOAD( "bg2c.u68",     0x000000, 0x200000, CRC(fa598644) SHA1(532249e456c34f18a787d5a028df82f2170f604d) )
 	ROM_LOAD( "bg1t.u67",     0x200000, 0x100000, CRC(d2e594ee) SHA1(a84b5ab62dec1867d433ccaeb1381e7593958cf0) )
 	/* 0x300000 - 0x3fffff empty */
 
-	ROM_REGION( 0x240000, REGION_SOUND1, 0 )
+	ROM_REGION( 0x240000, "oki", 0 )
 	ROM_LOAD( "pcm.u87",      0x040000, 0x200000, CRC(84206475) SHA1(d1423bd5c7425e121fb4e7845cf57801e9afa7b3) )
 	ROM_RELOAD(               0x000000, 0x020000 )
 ROM_END

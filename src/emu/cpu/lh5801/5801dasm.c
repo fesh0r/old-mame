@@ -24,7 +24,8 @@
 
 #include "lh5801.h"
 
-typedef enum {
+typedef enum
+{
 	Imp,
 	Reg,
 	Vec, // imm byte (vector at 0xffxx)
@@ -45,7 +46,8 @@ typedef enum {
 	RelM
 } Adr;
 
-typedef enum {
+typedef enum
+{
 	RegNone,
 	A,
 	XL, XH, X,
@@ -58,7 +60,12 @@ static const char *const RegNames[]= {
 	0, "A", "XL", "XH", "X", "YL", "YH", "Y", "UL", "UH", "U", "P", "S"
 };
 
-typedef enum {
+#if defined(SEC)
+#undef SEC
+#endif
+
+typedef enum
+{
 	ILL, ILL2, PREFD, NOP,
 
 	LDA, STA, LDI, LDX, STX,

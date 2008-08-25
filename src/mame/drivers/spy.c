@@ -153,7 +153,7 @@ this is the data written to internal ram on startup:
 
 static WRITE8_HANDLER( bankswitch_w )
 {
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 	int offs;
 
 	/* bit 0 = RAM bank? */
@@ -342,10 +342,10 @@ static WRITE8_HANDLER( sound_bank_w )
 
 	bank_A = (data >> 0) & 0x03;
 	bank_B = (data >> 2) & 0x03;
-	K007232_set_bank(0,bank_A,bank_B);
+	k007232_set_bank(0,bank_A,bank_B);
 	bank_A = (data >> 4) & 0x03;
 	bank_B = (data >> 6) & 0x03;
-	K007232_set_bank(1,bank_A,bank_B);
+	k007232_set_bank(1,bank_A,bank_B);
 }
 
 
@@ -379,9 +379,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( spy_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xa000, 0xa00d) AM_READ(K007232_read_port_0_r)
-	AM_RANGE(0xb000, 0xb00d) AM_READ(K007232_read_port_1_r)
-	AM_RANGE(0xc000, 0xc000) AM_READ(YM3812_status_port_0_r)
+	AM_RANGE(0xa000, 0xa00d) AM_READ(k007232_read_port_0_r)
+	AM_RANGE(0xb000, 0xb00d) AM_READ(k007232_read_port_1_r)
+	AM_RANGE(0xc000, 0xc000) AM_READ(ym3812_status_port_0_r)
 	AM_RANGE(0xd000, 0xd000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
@@ -389,16 +389,16 @@ static ADDRESS_MAP_START( spy_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(sound_bank_w)
-	AM_RANGE(0xa000, 0xa00d) AM_WRITE(K007232_write_port_0_w)
-	AM_RANGE(0xb000, 0xb00d) AM_WRITE(K007232_write_port_1_w)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(YM3812_control_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(YM3812_write_port_0_w)
+	AM_RANGE(0xa000, 0xa00d) AM_WRITE(k007232_write_port_0_w)
+	AM_RANGE(0xb000, 0xb00d) AM_WRITE(k007232_write_port_1_w)
+	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym3812_control_port_0_w)
+	AM_RANGE(0xc001, 0xc001) AM_WRITE(ym3812_write_port_0_w)
 ADDRESS_MAP_END
 
 
 
 static INPUT_PORTS_START( spy )
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -408,7 +408,7 @@ static INPUT_PORTS_START( spy )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* button 3 */
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -418,7 +418,7 @@ static INPUT_PORTS_START( spy )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* button 3 */
 
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
@@ -454,7 +454,7 @@ static INPUT_PORTS_START( spy )
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
 //  PORT_DIPSETTING(    0x00, "Invalid" )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x03, "2" )
 	PORT_DIPSETTING(    0x02, "3" )
@@ -477,7 +477,7 @@ static INPUT_PORTS_START( spy )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -498,25 +498,23 @@ INPUT_PORTS_END
 
 static void volume_callback0(int v)
 {
-	K007232_set_volume(0,0,(v >> 4) * 0x11,0);
-	K007232_set_volume(0,1,0,(v & 0x0f) * 0x11);
+	k007232_set_volume(0,0,(v >> 4) * 0x11,0);
+	k007232_set_volume(0,1,0,(v & 0x0f) * 0x11);
 }
 
 static void volume_callback1(int v)
 {
-	K007232_set_volume(1,0,(v >> 4) * 0x11,0);
-	K007232_set_volume(1,1,0,(v & 0x0f) * 0x11);
+	k007232_set_volume(1,0,(v >> 4) * 0x11,0);
+	k007232_set_volume(1,1,0,(v & 0x0f) * 0x11);
 }
 
-static const struct K007232_interface k007232_interface_1 =
+static const k007232_interface k007232_interface_1 =
 {
-	REGION_SOUND1,
 	volume_callback0
 };
 
-static const struct K007232_interface k007232_interface_2 =
+static const k007232_interface k007232_interface_2 =
 {
-	REGION_SOUND2,
 	volume_callback1
 };
 
@@ -526,7 +524,7 @@ static void irqhandler(running_machine *machine, int linestate)
 	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, linestate);
 }
 
-static const struct YM3812interface ym3812_interface =
+static const ym3812_interface ym3812_config =
 {
 	irqhandler
 };
@@ -536,12 +534,11 @@ static const struct YM3812interface ym3812_interface =
 static MACHINE_DRIVER_START( spy )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, 3000000) /* ? */
+	MDRV_CPU_ADD("main", M6809, 3000000) /* ? */
 	MDRV_CPU_PROGRAM_MAP(spy_readmem,spy_writemem)
 	MDRV_CPU_VBLANK_INT("main", spy_interrupt)
 
-	MDRV_CPU_ADD(Z80, 3579545)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 3579545)
 	MDRV_CPU_PROGRAM_MAP(spy_sound_readmem,spy_sound_writemem)
 								/* nmi by the sound chip */
 
@@ -563,16 +560,16 @@ static MACHINE_DRIVER_START( spy )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, 3579545)
-	MDRV_SOUND_CONFIG(ym3812_interface)
+	MDRV_SOUND_ADD("ym", YM3812, 3579545)
+	MDRV_SOUND_CONFIG(ym3812_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(K007232, 3579545)
+	MDRV_SOUND_ADD("konami1", K007232, 3579545)
 	MDRV_SOUND_CONFIG(k007232_interface_1)
 	MDRV_SOUND_ROUTE(0, "mono", 0.20)
 	MDRV_SOUND_ROUTE(1, "mono", 0.20)
 
-	MDRV_SOUND_ADD(K007232, 3579545)
+	MDRV_SOUND_ADD("konami2", K007232, 3579545)
 	MDRV_SOUND_CONFIG(k007232_interface_2)
 	MDRV_SOUND_ROUTE(0, "mono", 0.20)
 	MDRV_SOUND_ROUTE(1, "mono", 0.20)
@@ -586,56 +583,56 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( spy )
-	ROM_REGION( 0x29000, REGION_CPU1, 0 ) /* code + banked roms + space for banked ram */
+	ROM_REGION( 0x29000, "main", 0 ) /* code + banked roms + space for banked ram */
 	ROM_LOAD( "857n03.bin",   0x10000, 0x10000, CRC(97993b38) SHA1(0afd561bc85fcbfe30f2d16807424ceec7188ce7) )
 	ROM_LOAD( "857n02.bin",   0x20000, 0x08000, CRC(31a97efe) SHA1(6c9ec3954e4d16634bf95835b8b404d3a6ef6e24) )
 	ROM_CONTINUE(             0x08000, 0x08000 )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 code */
 	ROM_LOAD( "857d01.bin",   0x0000, 0x8000, CRC(aad4210f) SHA1(bb40b8673939b5ce51012606da86b4dcbfc52a57) )
 
-	ROM_REGION( 0x080000, REGION_GFX1, 0 ) /* graphics ( dont dispose as the program can read them, 0 ) */
+	ROM_REGION( 0x080000, "gfx1", 0 ) /* graphics ( dont dispose as the program can read them, 0 ) */
 	ROM_LOAD( "857b09.bin",   0x00000, 0x40000, CRC(b8780966) SHA1(6c255f1e4d1398fa9010a1ae0f5172dc524df109) )	/* characters */
 	ROM_LOAD( "857b08.bin",   0x40000, 0x40000, CRC(3e4d8d50) SHA1(70f45a725bf1e9d15285ffb6b280945f7ce7faf0) )
 
-	ROM_REGION( 0x100000, REGION_GFX2, 0 ) /* graphics ( dont dispose as the program can read them, 0 ) */
+	ROM_REGION( 0x100000, "gfx2", 0 ) /* graphics ( dont dispose as the program can read them, 0 ) */
 	ROM_LOAD( "857b06.bin",   0x00000, 0x80000, CRC(7b515fb1) SHA1(3830649d47964940023760b76e2bf94bb9163f23) )	/* sprites */
 	ROM_LOAD( "857b05.bin",   0x80000, 0x80000, CRC(27b0f73b) SHA1(6b6a3da11c3005e3a62e6280818c18ae2ea31800) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "857a10.bin",   0x0000, 0x0100, CRC(32758507) SHA1(c21f89ad253502968a755fb0d23da98319f9cd93) )	/* priority encoder (not used) */
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 ) /* samples for 007232 #0 */
+	ROM_REGION( 0x40000, "konami1", 0 ) /* samples for 007232 #0 */
 	ROM_LOAD( "857b07.bin",   0x00000, 0x40000, CRC(ce3512d4) SHA1(1e7c3feabfc3ac89056982b76de39e283cf5894d) )
 
-	ROM_REGION( 0x40000, REGION_SOUND2, 0 ) /* samples for 007232 #1 */
+	ROM_REGION( 0x40000, "konami2", 0 ) /* samples for 007232 #1 */
 	ROM_LOAD( "857b04.bin",   0x00000, 0x40000, CRC(20b83c13) SHA1(63062f1c0a9adbbced3d3d73682a2cd1217bee7d) )
 ROM_END
 
 ROM_START( spyu )
-	ROM_REGION( 0x29000, REGION_CPU1, 0 ) /* code + banked roms + space for banked ram */
+	ROM_REGION( 0x29000, "main", 0 ) /* code + banked roms + space for banked ram */
 	ROM_LOAD( "857m03.bin",   0x10000, 0x10000, CRC(3bd87fa4) SHA1(257371ef31c8adcdc04f46e989b7a2f3531c2ab1) )
 	ROM_LOAD( "857m02.bin",   0x20000, 0x08000, CRC(306cc659) SHA1(91d150b8d320bf19c12bc46103ffdffacf4387c3) )
 	ROM_CONTINUE(             0x08000, 0x08000 )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 code */
 	ROM_LOAD( "857d01.bin",   0x0000, 0x8000, CRC(aad4210f) SHA1(bb40b8673939b5ce51012606da86b4dcbfc52a57) )
 
-	ROM_REGION( 0x080000, REGION_GFX1, 0 ) /* graphics ( dont dispose as the program can read them, 0 ) */
+	ROM_REGION( 0x080000, "gfx1", 0 ) /* graphics ( dont dispose as the program can read them, 0 ) */
 	ROM_LOAD( "857b09.bin",   0x00000, 0x40000, CRC(b8780966) SHA1(6c255f1e4d1398fa9010a1ae0f5172dc524df109) )	/* characters */
 	ROM_LOAD( "857b08.bin",   0x40000, 0x40000, CRC(3e4d8d50) SHA1(70f45a725bf1e9d15285ffb6b280945f7ce7faf0) )
 
-	ROM_REGION( 0x100000, REGION_GFX2, 0 ) /* graphics ( dont dispose as the program can read them, 0 ) */
+	ROM_REGION( 0x100000, "gfx2", 0 ) /* graphics ( dont dispose as the program can read them, 0 ) */
 	ROM_LOAD( "857b06.bin",   0x00000, 0x80000, CRC(7b515fb1) SHA1(3830649d47964940023760b76e2bf94bb9163f23) )	/* sprites */
 	ROM_LOAD( "857b05.bin",   0x80000, 0x80000, CRC(27b0f73b) SHA1(6b6a3da11c3005e3a62e6280818c18ae2ea31800) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "857a10.bin",   0x0000, 0x0100, CRC(32758507) SHA1(c21f89ad253502968a755fb0d23da98319f9cd93) )	/* priority encoder (not used) */
 
-	ROM_REGION( 0x40000, REGION_SOUND1, 0 ) /* samples for 007232 #0 */
+	ROM_REGION( 0x40000, "konami1", 0 ) /* samples for 007232 #0 */
 	ROM_LOAD( "857b07.bin",   0x00000, 0x40000, CRC(ce3512d4) SHA1(1e7c3feabfc3ac89056982b76de39e283cf5894d) )
 
-	ROM_REGION( 0x40000, REGION_SOUND2, 0 ) /* samples for 007232 #1 */
+	ROM_REGION( 0x40000, "konami2", 0 ) /* samples for 007232 #1 */
 	ROM_LOAD( "857b04.bin",   0x00000, 0x40000, CRC(20b83c13) SHA1(63062f1c0a9adbbced3d3d73682a2cd1217bee7d) )
 ROM_END
 
@@ -643,14 +640,14 @@ ROM_END
 
 static void gfx_untangle(void)
 {
-	konami_rom_deinterleave_2(REGION_GFX1);
-	konami_rom_deinterleave_2(REGION_GFX2);
+	konami_rom_deinterleave_2("gfx1");
+	konami_rom_deinterleave_2("gfx2");
 }
 
 static DRIVER_INIT( spy )
 {
-	paletteram = &memory_region(machine, REGION_CPU1)[0x28000];
-	pmcram =     &memory_region(machine, REGION_CPU1)[0x28800];
+	paletteram = &memory_region(machine, "main")[0x28000];
+	pmcram =     &memory_region(machine, "main")[0x28800];
 	gfx_untangle();
 }
 

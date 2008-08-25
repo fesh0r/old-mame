@@ -68,11 +68,11 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x2002, 0x2002) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0x2003, 0x2003) AM_WRITE(AY8910_control_port_1_w)
-	AM_RANGE(0x2004, 0x2004) AM_WRITE(DAC_0_data_w)
+	AM_RANGE(0x2000, 0x2000) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x2001, 0x2001) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x2002, 0x2002) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x2003, 0x2003) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x2004, 0x2004) AM_WRITE(dac_0_data_w)
 	AM_RANGE(0x2005, 0x2005) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x2007, 0x2007) AM_READ(soundlatch_r)
 	AM_RANGE(0x4000, 0xffff) AM_READ(SMH_ROM)
@@ -98,7 +98,7 @@ static INTERRUPT_GEN( tagteam_interrupt )
 }
 
 #define TAGTEAM_PLAYERS\
-	PORT_START_TAG("IN0")\
+	PORT_START("IN0")\
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY\
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY\
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY\
@@ -107,7 +107,7 @@ static INTERRUPT_GEN( tagteam_interrupt )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )\
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )\
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )\
-	PORT_START_TAG("IN1")\
+	PORT_START("IN1")\
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL\
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL\
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL\
@@ -120,7 +120,7 @@ static INTERRUPT_GEN( tagteam_interrupt )
 static INPUT_PORTS_START( bigprowr )
 	TAGTEAM_PLAYERS
 
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -141,7 +141,7 @@ static INPUT_PORTS_START( bigprowr )
 	PORT_DIPSETTING(    0x60, DEF_STR( Cocktail ) )			// "Cocktail, Dual Controls"
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK  )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
@@ -171,7 +171,7 @@ INPUT_PORTS_END
 /* Same as 'bigprowr', but additional "Coin Mode" Dip Switch */
 static INPUT_PORTS_START( tagteam )
 	TAGTEAM_PLAYERS
-	PORT_START_TAG("DSW1")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -194,7 +194,7 @@ static INPUT_PORTS_START( tagteam )
 	PORT_DIPSETTING(    0x60, DEF_STR( Cocktail ) )			// "Cocktail, Dual Controls"
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK  )
 
-	PORT_START_TAG("DSW2")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
@@ -245,8 +245,8 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( tagteam )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0, 4 ) /* chars */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, spritelayout, 0, 4 ) /* sprites */
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,   0, 4 ) /* chars */
+	GFXDECODE_ENTRY( "gfx1", 0, spritelayout, 0, 4 ) /* sprites */
 GFXDECODE_END
 
 
@@ -254,12 +254,11 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( tagteam )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502, 1500000)	/* 1.5 MHz ?? */
+	MDRV_CPU_ADD("main", M6502, 1500000)	/* 1.5 MHz ?? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", tagteam_interrupt)
 
-	MDRV_CPU_ADD(M6502, 975000)
-	/* audio CPU */  /* 975 kHz ?? */
+	MDRV_CPU_ADD("audio", M6502, 975000)  /* 975 kHz ?? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16)   /* IRQs are triggered by the main CPU */
 
@@ -281,26 +280,26 @@ static MACHINE_DRIVER_START( tagteam )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay1", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD("ay2", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
 
 ROM_START( bigprowr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "bf00-1.20",    0x08000, 0x2000, CRC(8aba32c9) SHA1(9228082a8251feaf25849311c3de63ca42cf659e) )
 	ROM_LOAD( "bf01.33",      0x0a000, 0x2000, CRC(0a41f3ae) SHA1(1b82cd864f0bd7f16f961fec0b88307996abb166) )
 	ROM_LOAD( "bf02.34",      0x0c000, 0x2000, CRC(a28b0a0e) SHA1(50b40048a3e2efb2afb7acfb4efde6dbc25fc009) )
 	ROM_LOAD( "bf03.46",      0x0e000, 0x2000, CRC(d4cf7ec7) SHA1(cfabe40adb05f6239c3e2f002a78efb50150d27d) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for audio code */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for audio code */
 	ROM_LOAD( "bf4.8",        0x04000, 0x2000, CRC(0558e1d8) SHA1(317011c0e3a9d5f73c67d044c1fab315ff8049fb) )
 	ROM_LOAD( "bf5.7",        0x06000, 0x2000, CRC(c1073f24) SHA1(0337c259c10fae3067e5e0e0acf54e6d0891b29f) )
 	ROM_LOAD( "bf6.6",        0x08000, 0x2000, CRC(208cd081) SHA1(e5f6379e7f7bc80cdea12de7e0a2bb232bb16b5a) )
@@ -308,7 +307,7 @@ ROM_START( bigprowr )
 	ROM_LOAD( "bf8.2",        0x0c000, 0x2000, CRC(eafe8056) SHA1(4a2d1c903e4acee962aeb0f0f18333252790f686) )
 	ROM_LOAD( "bf9.1",        0x0e000, 0x2000, CRC(d589ce1b) SHA1(c2aca1cc6867d4d6d6e02ac29a4c53c667bf6d89) )
 
-	ROM_REGION( 0x12000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x12000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "bf10.89",      0x00000, 0x2000, CRC(b1868746) SHA1(a3eff1b00f9ac2512d6ca81f9223723642d4f06a) )
 	ROM_LOAD( "bf11.94",      0x02000, 0x2000, CRC(c3fe99c1) SHA1(beb3056b37f26a52f3c0907868054b3cc3c4e3ea) )
 	ROM_LOAD( "bf12.103",     0x04000, 0x2000, CRC(c8717a46) SHA1(6de0238071aacb443234d9a7ef250ddfaa9dd1a8) )
@@ -319,19 +318,19 @@ ROM_START( bigprowr )
 	ROM_LOAD( "bf17.96",      0x0e000, 0x2000, CRC(ccf42380) SHA1(6a8958201125c1b13b1354c98adc573dbea64d56) )
 	ROM_LOAD( "bf18.107",     0x10000, 0x2000, CRC(fd6f006d) SHA1(ad100ac8c0fed24f922a2cc908c88b4fced07eb0) )
 
-	ROM_REGION( 0x0040, REGION_PROMS, 0 )
+	ROM_REGION( 0x0040, "proms", 0 )
 	ROM_LOAD( "fko.8",        0x0000, 0x0020, CRC(b6ee1483) SHA1(b2ea7be533e29da6cd7302532da2eb0410490e6a) )
 	ROM_LOAD( "fjo.25",       0x0020, 0x0020, CRC(24da2b63) SHA1(4db7e1ff1b9fd5ae4098cd7ca66cf1fa2574501a) ) /* What is this prom for? */
 ROM_END
 
 ROM_START( tagteam )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "prowbf0.bin",  0x08000, 0x2000, CRC(6ec3afae) SHA1(8ae11cb41a72bda053ce8b79c383503da5324cd1) )
 	ROM_LOAD( "prowbf1.bin",  0x0a000, 0x2000, CRC(b8fdd176) SHA1(afa8e890ac54101eef0274c8aabe25d188085a18) )
 	ROM_LOAD( "prowbf2.bin",  0x0c000, 0x2000, CRC(3d33a923) SHA1(e6402290fca72f4fa3a76e37957b9d4f5b4aeddb) )
 	ROM_LOAD( "prowbf3.bin",  0x0e000, 0x2000, CRC(518475d2) SHA1(b26bb0bb658bfd5ac24ee8ebb7fc11a79917aeda) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for audio code */
+	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for audio code */
 	ROM_LOAD( "bf4.8",        0x04000, 0x2000, CRC(0558e1d8) SHA1(317011c0e3a9d5f73c67d044c1fab315ff8049fb) )
 	ROM_LOAD( "bf5.7",        0x06000, 0x2000, CRC(c1073f24) SHA1(0337c259c10fae3067e5e0e0acf54e6d0891b29f) )
 	ROM_LOAD( "bf6.6",        0x08000, 0x2000, CRC(208cd081) SHA1(e5f6379e7f7bc80cdea12de7e0a2bb232bb16b5a) )
@@ -339,7 +338,7 @@ ROM_START( tagteam )
 	ROM_LOAD( "bf8.2",        0x0c000, 0x2000, CRC(eafe8056) SHA1(4a2d1c903e4acee962aeb0f0f18333252790f686) )
 	ROM_LOAD( "bf9.1",        0x0e000, 0x2000, CRC(d589ce1b) SHA1(c2aca1cc6867d4d6d6e02ac29a4c53c667bf6d89) )
 
-	ROM_REGION( 0x12000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x12000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "prowbf10.bin", 0x00000, 0x2000, CRC(48165902) SHA1(3145fc83f17712b460a08b882677cfcac08fc272) )
 	ROM_LOAD( "bf11.94",      0x02000, 0x2000, CRC(c3fe99c1) SHA1(beb3056b37f26a52f3c0907868054b3cc3c4e3ea) )
 	ROM_LOAD( "prowbf12.bin", 0x04000, 0x2000, CRC(69de1ea2) SHA1(7b696c74e29c0bae33b386da463365e7e796c6a0) )
@@ -350,7 +349,7 @@ ROM_START( tagteam )
 	ROM_LOAD( "bf17.96",      0x0e000, 0x2000, CRC(ccf42380) SHA1(6a8958201125c1b13b1354c98adc573dbea64d56) )
 	ROM_LOAD( "prowbf18.bin", 0x10000, 0x2000, CRC(e73a4bba) SHA1(6dbc2d741ebf8fcce9144cfe6fe6f35acd25ceef) )
 
-	ROM_REGION( 0x0040, REGION_PROMS, 0 )
+	ROM_REGION( 0x0040, "proms", 0 )
 	ROM_LOAD( "fko.8",        0x0000, 0x0020, CRC(b6ee1483) SHA1(b2ea7be533e29da6cd7302532da2eb0410490e6a) )
 	ROM_LOAD( "fjo.25",       0x0020, 0x0020, CRC(24da2b63) SHA1(4db7e1ff1b9fd5ae4098cd7ca66cf1fa2574501a) ) /* What is this prom for? */
 ROM_END

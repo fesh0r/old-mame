@@ -40,8 +40,8 @@ INLINE void get_crosshair_xy(running_machine *machine, int player, int *x, int *
 	int width = visarea->max_x + 1 - visarea->min_x;
 	int height = visarea->max_y + 1 - visarea->min_y;
 
-	*x = ((input_port_read(machine, gunnames[player * 2]) & 0xff) * width) / 255;
-	*y = ((input_port_read(machine, gunnames[1 + player * 2]) & 0xff) * height) / 255;
+	*x = ((input_port_read_safe(machine, gunnames[player * 2], 0x00) & 0xff) * width) / 255;
+	*y = ((input_port_read_safe(machine, gunnames[1 + player * 2], 0x00) & 0xff) * height) / 255;
 }
 
 
@@ -94,8 +94,8 @@ VIDEO_START( lethalj )
 	screenram = auto_malloc(BLITTER_DEST_WIDTH * BLITTER_DEST_HEIGHT * sizeof(screenram[0]));
 
 	/* predetermine blitter info */
-	blitter_base = (UINT16 *)memory_region(machine, REGION_GFX1);
-	blitter_rows = memory_region_length(machine, REGION_GFX1) / (2*BLITTER_SOURCE_WIDTH);
+	blitter_base = (UINT16 *)memory_region(machine, "gfx1");
+	blitter_rows = memory_region_length(machine, "gfx1") / (2*BLITTER_SOURCE_WIDTH);
 }
 
 

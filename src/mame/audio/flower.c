@@ -155,7 +155,7 @@ static void flower_update_mono(void *param, stream_sample_t **inputs, stream_sam
 
 
 
-void * flower_sh_start(int clock, const struct CustomSound_interface *config)
+void * flower_sh_start(int clock, const custom_sound_interface *config)
 {
 	sound_channel *voice;
 	int i;
@@ -175,8 +175,8 @@ void * flower_sh_start(int clock, const struct CustomSound_interface *config)
 	num_voices = 8;
 	last_channel = channel_list + num_voices;
 
-	sound_rom1 = memory_region(Machine, REGION_SOUND1);
-	sound_rom2 = memory_region(Machine, REGION_SOUND2);
+	sound_rom1 = memory_region(Machine, "sound1");
+	sound_rom2 = memory_region(Machine, "sound2");
 
 	/* start with sound enabled, many games don't have a sound enable register */
 	sound_enable = 1;

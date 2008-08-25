@@ -68,7 +68,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( carpolo )
-	PORT_START_TAG("IN0")		/* IN0 */
+	PORT_START("IN0")		/* IN0 */
 	PORT_BIT (0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT (0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT (0x04, IP_ACTIVE_HIGH, IPT_COIN3 )
@@ -77,7 +77,7 @@ static INPUT_PORTS_START( carpolo )
 
 	/* the value read from here is used directly,
        the result is calculated by 60/value */
-	PORT_START_TAG("IN1")		/* IN1 */
+	PORT_START("IN1")		/* IN1 */
 	PORT_BIT (0x03, IP_ACTIVE_HIGH, IPT_UNUSED )	/* the lowest 2 bits of the counter */
 	PORT_DIPNAME( 0xfc, 0x3c, "Game Sec/Real Sec" )
 	PORT_DIPSETTING(	0x00, "0.23 (Longest)" )
@@ -144,19 +144,19 @@ static INPUT_PORTS_START( carpolo )
 	PORT_DIPSETTING(	0x08, "7.50" )
 	PORT_DIPSETTING(	0x04, "15.00 (Shortest)" )
 
-	PORT_START_TAG("DIAL0")		/* IN2 */
+	PORT_START("DIAL0")		/* IN2 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START_TAG("DIAL1")		/* IN3 */
+	PORT_START("DIAL1")		/* IN3 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(2)
 
-	PORT_START_TAG("DIAL2")		/* IN4 */
+	PORT_START("DIAL2")		/* IN4 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(3)
 
-	PORT_START_TAG("DIAL3")		/* IN5 */
+	PORT_START("DIAL3")		/* IN5 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(4)
 
-	PORT_START_TAG("PEDALS")	/* IN6 - accelerator pedals */
+	PORT_START("PEDALS")	/* IN6 - accelerator pedals */
 	PORT_BIT (0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT (0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT (0x04, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -166,7 +166,7 @@ static INPUT_PORTS_START( carpolo )
 	PORT_BIT (0x40, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(4)
 	PORT_BIT (0x80, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(4)
 
-	PORT_START_TAG("IN2")		/* IN7 - forward/reverse */
+	PORT_START("IN2")		/* IN7 - forward/reverse */
 	PORT_BIT (0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
 	PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
@@ -221,9 +221,9 @@ static const gfx_layout alphalayout =
 };
 
 static GFXDECODE_START( carpolo )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, spritelayout, 0,         12 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, goallayout,   12*2,      2 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, alphalayout,  12*2+2*16, 4 )
+	GFXDECODE_ENTRY( "gfx1", 0, spritelayout, 0,         12 )
+	GFXDECODE_ENTRY( "gfx2", 0, goallayout,   12*2,      2 )
+	GFXDECODE_ENTRY( "gfx3", 0, alphalayout,  12*2+2*16, 4 )
 GFXDECODE_END
 
 
@@ -236,7 +236,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( carpolo )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6502,11289000/12)		/* 940.75 kHz */
+	MDRV_CPU_ADD("main", M6502,11289000/12)		/* 940.75 kHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT("main", carpolo_timer_interrupt)	/* this not strictly VBLANK,
                                                        but it's supposed to happen 60
@@ -270,7 +270,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( carpolo )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "4000.6c",   0xf000, 0x0200, CRC(9d2e75a5) SHA1(c249d0b31de452738516f04a7bc3fb472d54f79d) )
 	ROM_LOAD( "4001.6d",   0xf200, 0x0200, CRC(69fb3768) SHA1(5fcc0807e560de0d73f8bab6943f3cad5ee324c9) )
 	ROM_LOAD( "4002.6h",   0xf400, 0x0200, CRC(5db179c7) SHA1(83615cdc1e3d8930cbdafbd0d327e1d6611faefd) )
@@ -280,24 +280,24 @@ ROM_START( carpolo )
 	ROM_LOAD( "4006.6l",   0xfc00, 0x0200, CRC(8479c350) SHA1(391c737947498aad4d478639cbbc72181d680fce) )
 	ROM_LOAD( "4007a.6n",  0xfe00, 0x0200, CRC(c6a619de) SHA1(c1b650a0126791fa733f89d9e9bdeeb605486a2c) )
 
-	ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE )	/* sprites */
+	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE )	/* sprites */
 	ROM_LOAD( "1024.10w",  0x0000, 0x0100, CRC(eedacc7e) SHA1(d89628f013039ca387cafe22180de71e1553cffc) )
 	ROM_LOAD( "1023.10v",  0x0100, 0x0100, CRC(45df6c74) SHA1(a986b62b4c263c5d217bae0d51e74197f5288180) )
 	ROM_LOAD( "1022.10u",  0x0200, 0x0100, CRC(00868768) SHA1(2388e428db300a1e0005cccb9165ec604518033d) )
 	ROM_LOAD( "1021.10t",  0x0300, 0x0100, CRC(a508af9c) SHA1(219ba776d8cccf6726519aff17e37f2a6a85d0d1) )
 
-	ROM_REGION( 0x0100, REGION_GFX2, ROMREGION_DISPOSE )	/* goal */
+	ROM_REGION( 0x0100, "gfx2", ROMREGION_DISPOSE )	/* goal */
 	ROM_LOAD( "1020.6v",   0x0000, 0x0100, CRC(5e89fbcd) SHA1(6be171168924cd8aa94ff5e1994faecb6f303bd9) )
 
-	ROM_REGION( 0x0200, REGION_GFX3, ROMREGION_DISPOSE )	/* alpha */
+	ROM_REGION( 0x0200, "gfx3", ROMREGION_DISPOSE )	/* alpha */
 	ROM_LOAD( "2513.4l",   0x0000, 0x0200, BAD_DUMP CRC(f80d8889) SHA1(ca573543dcce1221459d5693c476cef14bfac4f4)  )	/* MIA - stolen from Night Driver */
 
-	ROM_REGION( 0x0060, REGION_PROMS, 0 )
+	ROM_REGION( 0x0060, "proms", 0 )
 	ROM_LOAD( "328.5u",    0x0000, 0x0020, CRC(f295e0fc) SHA1(974a0481e0c6d5c0b6f0129653d8ed87880916e0) )		/* color PROM */
 	ROM_LOAD( "325.6t",    0x0020, 0x0020, CRC(b8b44022) SHA1(29fe6159c8d239c322296cef68ad59bcf290f246) )		/* horizontal timing */
 	ROM_LOAD( "326.6w",    0x0040, 0x0020, CRC(628ae3d1) SHA1(e6d43d2b5e8ec4b8c1adf6f29c2c9a43ab67ff50) )		/* vertical timing */
 
-	ROM_REGION( 0x0020, REGION_USER1, 0 )
+	ROM_REGION( 0x0020, "user1", 0 )
 	ROM_LOAD( "327.10s",   0x0000, 0x0020, CRC(e047d24d) SHA1(2ea7afc8d97c906295bf2af929e0515f6c34137f) )		/* sprite image map */
 ROM_END
 
@@ -316,8 +316,8 @@ static DRIVER_INIT( carpolo )
 
 
 	/* invert gfx PROM since the bits are active LO */
-	ROM = memory_region(machine, REGION_GFX2);
-	len = memory_region_length(machine, REGION_GFX2);
+	ROM = memory_region(machine, "gfx2");
+	len = memory_region_length(machine, "gfx2");
 	for (i = 0;i < len; i++)
 		ROM[i] ^= 0x0f;
 }

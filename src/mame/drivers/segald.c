@@ -30,7 +30,7 @@ static UINT8* color_RAM;
 static UINT8* fix_RAM;
 static UINT8* out_RAM;
 
-static laserdisc_info *discinfo;
+static const device_config *laserdisc;
 static UINT8 ldv1000_input_latch;
 static UINT8 ldv1000_output_latch;
 
@@ -80,14 +80,15 @@ static void astron_draw_sprites(bitmap_t *bitmap, const rectangle *cliprect)
 
 static VIDEO_UPDATE( astron )
 {
+	render_container_set_palette_alpha(render_container_get_screen(screen), 0, 0x00);
+
 	fillbitmap(bitmap, 0, cliprect);
 
 	astron_draw_characters(screen->machine, bitmap, cliprect);
 	astron_draw_sprites(bitmap, cliprect);
 
 	/* display disc information */
-	if (discinfo != NULL)
-		popmessage("%s", laserdisc_describe_state(discinfo));
+	popmessage("%s", laserdisc_describe_state(laserdisc));
 
 	return 0;
 }
@@ -99,7 +100,7 @@ static VIDEO_UPDATE( astron )
 static READ8_HANDLER( astron_DISC_read )
 {
 	if (nmi_enable)
-		ldv1000_input_latch = laserdisc_data_r(discinfo);
+		ldv1000_input_latch = laserdisc_data_r(laserdisc);
 
 	logerror("DISC read   (0x%04x) @ 0x%04x [0x%x]\n", ldv1000_input_latch, offset, activecpu_get_pc());
 
@@ -133,7 +134,7 @@ static WRITE8_HANDLER( astron_DISC_write )
 	ldv1000_output_latch = data;
 
 	if (nmi_enable)
-		laserdisc_data_w(discinfo, ldv1000_output_latch);
+		laserdisc_data_w(laserdisc, ldv1000_output_latch);
 }
 
 static WRITE8_HANDLER( astron_OUT_write )
@@ -242,7 +243,7 @@ ADDRESS_MAP_END
 
 /* PORTS */
 static INPUT_PORTS_START( astron )
-	PORT_START_TAG("DSWA")
+	PORT_START("DSWA")
 	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:4,3,2,1")
 	PORT_DIPSETTING(    0xe0, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( 3C_1C ) )
@@ -278,7 +279,7 @@ static INPUT_PORTS_START( astron )
 	PORT_DIPSETTING(    0x0d, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 1C_6C ) )
 
-	PORT_START_TAG("DSWB")
+	PORT_START("DSWB")
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
@@ -302,7 +303,7 @@ static INPUT_PORTS_START( astron )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )                                           /* SW0 = nonJAMMA pin 15 = coin1 & coin2 (?) */
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )                                          /* SW1 = nonJAMMA pin S  = unused (maybe coin2?) */
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("TEST") PORT_CODE(KEYCODE_F1) /* SW2 = nonJAMMA pin T  = test switch */
@@ -312,7 +313,7 @@ static INPUT_PORTS_START( astron )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("CONTINUE")                   /* SW6 = nonJAMMA pin 18 = continue */
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )                                          /* SW7 = nonJAMMA pin 19 = unused? */
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )								  /* SW8  = nonJAMMA pin 9  = right */
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  								  /* SW9  = nonJAMMA pin 10 = left */
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    								  /* SW10 = nonJAMMA pin 11 = up */
@@ -323,26 +324,28 @@ static INPUT_PORTS_START( astron )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )         								  /* SW15 = nonJAMMA pin W  = unused? */
 INPUT_PORTS_END
 
-static MACHINE_START( astron )
-{
-	discinfo = laserdisc_init(machine, LASERDISC_TYPE_LDV1000, get_disk_handle(0), 0);
-}
-
 static INTERRUPT_GEN( vblank_callback_astron )
 {
-	laserdisc_vsync(discinfo);
+	laserdisc_vsync(laserdisc);
 }
 
 static GFXDECODE_START( segald )
-    GFXDECODE_ENTRY( REGION_GFX1, 0, gfx_8x8x1,  0, 1 )		/* CHARACTERS */
+    GFXDECODE_ENTRY( "gfx1", 0, gfx_8x8x1,  0, 1 )		/* CHARACTERS */
 	/* SPRITES are apparently non-uniform in width - not straightforward to decode */
 GFXDECODE_END
 
 
+static MACHINE_START( astron )
+{
+	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
+}
+
+
 /* DRIVER */
 static MACHINE_DRIVER_START( astron )
-/*  main cpu */
-	MDRV_CPU_ADD(Z80, SCHEMATIC_CLOCK/4)
+
+	/* main cpu */
+	MDRV_CPU_ADD("main", Z80, SCHEMATIC_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(mainmem,0)
 	MDRV_CPU_IO_MAP(mainport,0)
 	MDRV_CPU_VBLANK_INT("main", vblank_callback_astron)
@@ -350,210 +353,231 @@ static MACHINE_DRIVER_START( astron )
 
 	MDRV_MACHINE_START(astron)
 
-/*  video */
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000)
+	MDRV_LASERDISC_OVERLAY(astron, 256, 256, BITMAP_FORMAT_INDEXED16)
 
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	/* video hardware */
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_INDEXED16)
 
 	MDRV_GFXDECODE(segald)
 	MDRV_PALETTE_LENGTH(256)
-	MDRV_VIDEO_UPDATE(astron)
 
+	/* sound hardare */
+	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+
+	MDRV_SOUND_ADD("laserdisc", CUSTOM, 0)
+	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
+	MDRV_SOUND_ROUTE(0, "left", 1.0)
+	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( astron )
 	/* Last two ROMs are banked at 0x8000 */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "5473c", 0x0000, 0x4000, CRC(0f24baaa) SHA1(54fa344ad86c469f976ce469e39b2a4286da5f50) )
 	ROM_LOAD( "5474a", 0x4000, 0x4000, CRC(5d44603d) SHA1(e229ff14255a5a0d1e156745664d31418b36893c) )
 	ROM_LOAD( "5284",  0x8000, 0x4000, CRC(eec6db27) SHA1(f4c72d9d4137244c0a0b7a1b8f7fb0e7b032b1c4) )
 	ROM_LOAD( "5285",  0xc000, 0x4000, CRC(820e154e) SHA1(574c69a7ef07c31396e9b5669a093a1db6f7cc6f) )
 
 	/* Characters */
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "5280", 0x0000, 0x0800, CRC(583af1ff) SHA1(64259e955a04ee44d716870864f86011a709f2db) )
 	ROM_LOAD( "5281", 0x0800, 0x0800, CRC(7b5c820c) SHA1(ddac82cea4d795011bd48d15bc6e2a0ee864429f) )
 
 	/* Sprites */
-	ROM_REGION( 0x10000, REGION_GFX2, 0 )
+	ROM_REGION( 0x10000, "gfx2", 0 )
 	ROM_LOAD( "5286", 0x0000, 0x4000, CRC(8eb1c28e) SHA1(2867d62c9844c3ad2676f9a0ad1597baa54762fa) )
 	ROM_LOAD( "5338", 0x8000, 0x4000, CRC(94ca5f9a) SHA1(4ab4ed06b70611739f45e207e9f1c7714b9a34e8) )
 
 	/* Color lookup PROM */
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "5279", 0x000,  0x200,  CRC(8716aeb5) SHA1(9a8bf599d025d039b12bc616850386f280b4df11) )
 
 	/* Currently unused PROMs */
- 	ROM_REGION( 0x1000, REGION_USER1, 0 )
+ 	ROM_REGION( 0x1000, "user1", 0 )
 	ROM_LOAD( "pr-5278.bin", 0x000, 0x100, CRC(e81613da) SHA1(fc32141f7c0c8c0c1ed623636af3862a4ef0e940) )
 	ROM_LOAD( "pr-5277.bin", 0x100, 0x100, CRC(bf2c33ab) SHA1(4a83b3e9b74b900621e8f42edf94cc04b791cdd0) )
 	ROM_LOAD( "pr-5276.bin", 0x200, 0x20,  CRC(91267e8a) SHA1(ae5bd8efea5322c4d9986d06680a781392f9a642) )
 	ROM_LOAD( "pr-5275.bin", 0x220, 0x20,  CRC(0c872a9b) SHA1(eaabce5d867a4e896bd356abc94429f9a4eec372) )
+
+	DISK_REGION( "laserdisc" )
+	DISK_IMAGE_READONLY( "astron", 0, NO_DUMP )
 ROM_END
 
 ROM_START( astronp )
 	/* Last two ROMs are banked at 0x8000 */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "5282", 0x0000, 0x4000, CRC(fd0dcfc9) SHA1(d797269f53f8a9e30b4d59d4f4f6e9858c133bbe) )
 	ROM_LOAD( "5283", 0x4000, 0x4000, CRC(a3746393) SHA1(97864967073f0425555748535d1aa68459bacfb2) )
 	ROM_LOAD( "5284", 0x8000, 0x4000, CRC(eec6db27) SHA1(f4c72d9d4137244c0a0b7a1b8f7fb0e7b032b1c4) )
 	ROM_LOAD( "5285", 0xc000, 0x4000, CRC(820e154e) SHA1(574c69a7ef07c31396e9b5669a093a1db6f7cc6f) )
 
 	/* Characters */
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "5280", 0x0000, 0x0800, CRC(583af1ff) SHA1(64259e955a04ee44d716870864f86011a709f2db) )
 	ROM_LOAD( "5281", 0x0800, 0x0800, CRC(7b5c820c) SHA1(ddac82cea4d795011bd48d15bc6e2a0ee864429f) )
 
 	/* Sprites */
-	ROM_REGION( 0x10000, REGION_GFX2, 0 )
+	ROM_REGION( 0x10000, "gfx2", 0 )
 	ROM_LOAD( "5286", 0x0000, 0x4000, CRC(8eb1c28e) SHA1(2867d62c9844c3ad2676f9a0ad1597baa54762fa) )
 	ROM_LOAD( "5338", 0x8000, 0x4000, CRC(94ca5f9a) SHA1(4ab4ed06b70611739f45e207e9f1c7714b9a34e8) )
 
 	/* Color lookup PROM */
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "5279", 0x000,  0x200,  CRC(8716aeb5) SHA1(9a8bf599d025d039b12bc616850386f280b4df11) )
 
 	/* Currently unused PROMs */
- 	ROM_REGION( 0x1000, REGION_USER1, 0 )
+ 	ROM_REGION( 0x1000, "user1", 0 )
 	ROM_LOAD( "pr-5278.bin", 0x000, 0x100, CRC(e81613da) SHA1(fc32141f7c0c8c0c1ed623636af3862a4ef0e940) )
 	ROM_LOAD( "pr-5277.bin", 0x100, 0x100, CRC(bf2c33ab) SHA1(4a83b3e9b74b900621e8f42edf94cc04b791cdd0) )
 	ROM_LOAD( "pr-5276.bin", 0x200, 0x20,  CRC(91267e8a) SHA1(ae5bd8efea5322c4d9986d06680a781392f9a642) )
 	ROM_LOAD( "pr-5275.bin", 0x220, 0x20,  CRC(0c872a9b) SHA1(eaabce5d867a4e896bd356abc94429f9a4eec372) )
+
+	DISK_REGION( "laserdisc" )
+	DISK_IMAGE_READONLY( "astron", 0, NO_DUMP )
 ROM_END
 
 ROM_START( galaxyr )
 	/* Last two ROMs are banked at 0x8000 */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "gr5633.bin", 0x0000, 0x4000, CRC(398f6b23) SHA1(10f4bac2face29c2fb2422b70ba1b100acd0e968) )
 	ROM_LOAD( "gr5634.bin", 0x4000, 0x4000, CRC(2c5be1b7) SHA1(03375729aa00fece8b938fd1672a700157a7f710) )
 	ROM_LOAD( "gr5592.bin", 0x8000, 0x4000, CRC(d13715f8) SHA1(72e2570a1fa437faac0c52e24f801020b6e5a110) )
 	ROM_LOAD( "gr5593.bin", 0xc000, 0x4000, CRC(b0a557aa) SHA1(5baacbaa25cdc0ee414bafe24d50a256631601aa) )
 
 	/* Characters */
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "5280", 0x0000, 0x0800, CRC(583af1ff) SHA1(64259e955a04ee44d716870864f86011a709f2db) )
 	ROM_LOAD( "5281", 0x0800, 0x0800, CRC(7b5c820c) SHA1(ddac82cea4d795011bd48d15bc6e2a0ee864429f) )
 
 	/* Sprites */
-	ROM_REGION( 0x10000, REGION_GFX2, 0 )
+	ROM_REGION( 0x10000, "gfx2", 0 )
 	ROM_LOAD( "gr5594.bin", 0x0000, 0x4000, CRC(4403ef5a) SHA1(f8c879ea22cc48bc06608ff7bad3408378ef5162) )
 	ROM_LOAD( "gr5611.bin", 0x4000, 0x4000, CRC(b16bdfe4) SHA1(565725189d0b124f8de148f343e67a177ca056f6) )
 	ROM_LOAD( "gr5595.bin", 0x8000, 0x4000, CRC(ccbaec4f) SHA1(b6750543a0875e7cdc71ecb06575783b7e0ba457) )
 	ROM_LOAD( "gr5612.bin", 0xc000, 0x4000, CRC(e312d080) SHA1(24eea718aa1914b87145da9990cb833b9621576c) )
 
 	/* Color lookup PROM */
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "5279", 0x000,  0x200,  CRC(8716aeb5) SHA1(9a8bf599d025d039b12bc616850386f280b4df11) )
 
 	/* Currently unused PROMs */
- 	ROM_REGION( 0x1000, REGION_USER1, 0 )
+ 	ROM_REGION( 0x1000, "user1", 0 )
 	ROM_LOAD( "pr-5278.bin", 0x000, 0x100, CRC(e81613da) SHA1(fc32141f7c0c8c0c1ed623636af3862a4ef0e940) )
 	ROM_LOAD( "pr-5277.bin", 0x100, 0x100, CRC(bf2c33ab) SHA1(4a83b3e9b74b900621e8f42edf94cc04b791cdd0) )
 	ROM_LOAD( "pr-5276.bin", 0x200, 0x20,  CRC(91267e8a) SHA1(ae5bd8efea5322c4d9986d06680a781392f9a642) )
 	ROM_LOAD( "pr-5275.bin", 0x220, 0x20,  CRC(0c872a9b) SHA1(eaabce5d867a4e896bd356abc94429f9a4eec372) )
+
+	DISK_REGION( "laserdisc" )
+	DISK_IMAGE_READONLY( "galaxyr", 0, NO_DUMP )
 ROM_END
 
 ROM_START( galaxyrp )
 	/* Last two ROMs are banked at 0x8000 */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "epr-5613.bin", 0x0000, 0x4000, CRC(6617e702) SHA1(9de760d0e5a654a6abaa1a8cd7b038638d61f523) )
 	ROM_LOAD( "epr-5614.bin", 0x4000, 0x4000, CRC(73ad8932) SHA1(ab0ff5e14bb58aa1f874fd135f1a8bd96de3f25e) )
 	ROM_LOAD( "gr5592.bin",   0x8000, 0x4000, CRC(d13715f8) SHA1(72e2570a1fa437faac0c52e24f801020b6e5a110) )
 	ROM_LOAD( "gr5593.bin",   0xc000, 0x4000, CRC(b0a557aa) SHA1(5baacbaa25cdc0ee414bafe24d50a256631601aa) )
 
 	/* Characters */
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "5280", 0x0000, 0x0800, CRC(583af1ff) SHA1(64259e955a04ee44d716870864f86011a709f2db) )
 	ROM_LOAD( "5281", 0x0800, 0x0800, CRC(7b5c820c) SHA1(ddac82cea4d795011bd48d15bc6e2a0ee864429f) )
 
 	/* Sprites */
-	ROM_REGION( 0x10000, REGION_GFX2, 0 )
+	ROM_REGION( 0x10000, "gfx2", 0 )
 	ROM_LOAD( "gr5594.bin", 0x0000, 0x4000, CRC(4403ef5a) SHA1(f8c879ea22cc48bc06608ff7bad3408378ef5162) )
 	ROM_LOAD( "gr5611.bin", 0x4000, 0x4000, CRC(b16bdfe4) SHA1(565725189d0b124f8de148f343e67a177ca056f6) )
 	ROM_LOAD( "gr5595.bin", 0x8000, 0x4000, CRC(ccbaec4f) SHA1(b6750543a0875e7cdc71ecb06575783b7e0ba457) )
 	ROM_LOAD( "gr5612.bin", 0xc000, 0x4000, CRC(e312d080) SHA1(24eea718aa1914b87145da9990cb833b9621576c) )
 
 	/* Color lookup PROM */
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "5279", 0x000,  0x200,  CRC(8716aeb5) SHA1(9a8bf599d025d039b12bc616850386f280b4df11) )
 
 	/* Currently unused PROMs */
- 	ROM_REGION( 0x1000, REGION_USER1, 0 )
+ 	ROM_REGION( 0x1000, "user1", 0 )
 	ROM_LOAD( "pr-5278.bin", 0x000, 0x100, CRC(e81613da) SHA1(fc32141f7c0c8c0c1ed623636af3862a4ef0e940) )
 	ROM_LOAD( "pr-5277.bin", 0x100, 0x100, CRC(bf2c33ab) SHA1(4a83b3e9b74b900621e8f42edf94cc04b791cdd0) )
 	ROM_LOAD( "pr-5276.bin", 0x200, 0x20,  CRC(91267e8a) SHA1(ae5bd8efea5322c4d9986d06680a781392f9a642) )
 	ROM_LOAD( "pr-5275.bin", 0x220, 0x20,  CRC(0c872a9b) SHA1(eaabce5d867a4e896bd356abc94429f9a4eec372) )
+
+	DISK_REGION( "laserdisc" )
+	DISK_IMAGE_READONLY( "galaxyr", 0, NO_DUMP )
 ROM_END
 
 ROM_START( sblazerp )
 	/* Last two ROMs are banked at 0x8000 */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "epr-5590.bin", 0x0000, 0x4000, CRC(c06e41bb) SHA1(b2d47f04fe1a81040bbb07bdcb8930107d350e38) )
 	ROM_LOAD( "epr-5591.bin", 0x4000, 0x4000, CRC(b179d18c) SHA1(eccad49cfbff1101677b66c19c5d79d41b11b72e) )
 	ROM_LOAD( "gr5592.bin",   0x8000, 0x4000, CRC(d13715f8) SHA1(72e2570a1fa437faac0c52e24f801020b6e5a110) )
 	ROM_LOAD( "gr5593.bin",   0xc000, 0x4000, CRC(b0a557aa) SHA1(5baacbaa25cdc0ee414bafe24d50a256631601aa) )
 
 	/* Characters */
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "5280", 0x0000, 0x0800, CRC(583af1ff) SHA1(64259e955a04ee44d716870864f86011a709f2db) )
 	ROM_LOAD( "5281", 0x0800, 0x0800, CRC(7b5c820c) SHA1(ddac82cea4d795011bd48d15bc6e2a0ee864429f) )
 
 	/* Sprites */
-	ROM_REGION( 0x10000, REGION_GFX2, 0 )
+	ROM_REGION( 0x10000, "gfx2", 0 )
 	ROM_LOAD( "gr5594.bin", 0x0000, 0x4000, CRC(4403ef5a) SHA1(f8c879ea22cc48bc06608ff7bad3408378ef5162) )
 	ROM_LOAD( "gr5611.bin", 0x4000, 0x4000, CRC(b16bdfe4) SHA1(565725189d0b124f8de148f343e67a177ca056f6) )
 	ROM_LOAD( "gr5595.bin", 0x8000, 0x4000, CRC(ccbaec4f) SHA1(b6750543a0875e7cdc71ecb06575783b7e0ba457) )
 	ROM_LOAD( "gr5612.bin", 0xc000, 0x4000, CRC(e312d080) SHA1(24eea718aa1914b87145da9990cb833b9621576c) )
 
 	/* Color lookup PROM */
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "5279", 0x000,  0x200,  CRC(8716aeb5) SHA1(9a8bf599d025d039b12bc616850386f280b4df11) )
 
 	/* Currently unused PROMs */
- 	ROM_REGION( 0x1000, REGION_USER1, 0 )
+ 	ROM_REGION( 0x1000, "user1", 0 )
 	ROM_LOAD( "pr-5278.bin", 0x000, 0x100, CRC(e81613da) SHA1(fc32141f7c0c8c0c1ed623636af3862a4ef0e940) )
 	ROM_LOAD( "pr-5277.bin", 0x100, 0x100, CRC(bf2c33ab) SHA1(4a83b3e9b74b900621e8f42edf94cc04b791cdd0) )
 	ROM_LOAD( "pr-5276.bin", 0x200, 0x20,  CRC(91267e8a) SHA1(ae5bd8efea5322c4d9986d06680a781392f9a642) )
 	ROM_LOAD( "pr-5275.bin", 0x220, 0x20,  CRC(0c872a9b) SHA1(eaabce5d867a4e896bd356abc94429f9a4eec372) )
+
+	DISK_REGION( "laserdisc" )
+	DISK_IMAGE_READONLY( "sblazer", 0, NO_DUMP )
 ROM_END
 
 ROM_START( cobraseg )
 	/* Banked ROMs aren't present */
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "ic-1.bin", 0x0000, 0x4000, CRC(079783c7) SHA1(69f7821d94d62c8981a3879d8718d984c960ed25) )
 	ROM_LOAD( "ic-2.bin", 0x4000, 0x2000, CRC(40c0b825) SHA1(1bac33b90b5a9d4ea528c2e69ded2009f9d69285) )
 
 	/* Characters */
-	ROM_REGION( 0x1000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "ic-11.bin", 0x0000, 0x0800, CRC(5a2e8f4e) SHA1(839d7cbb7dac1d5bca388ff8e9e2f4f6e1a5ce43) )
 	ROM_LOAD( "ic-12.bin", 0x0800, 0x0800, CRC(4b89d7ed) SHA1(33894bc3d3f9817a018288e750d02e0f9deeeda3) )
 
 	/* Sprites */
-	ROM_REGION( 0x10000, REGION_GFX2, 0 )
+	ROM_REGION( 0x10000, "gfx2", 0 )
 	ROM_LOAD( "ic-7.bin", 0x0000, 0x2000, CRC(9e12b19c) SHA1(a05accb44981288f62ff7da0c75dc972bb6d0754) )
 	ROM_LOAD( "ic-8.bin", 0x8000, 0x2000, CRC(201041c0) SHA1(d7eb1da02184d2330211eb1f2114dffc39dc6ffe) )
 
 	/* Color lookup PROM */
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "ic-13.bin", 0x000,  0x200,  CRC(3547a14c) SHA1(5b8e3ddac0f6fda940b69343fdce7d5caead7a35) )
 
 	/* Currently unused PROMs */
- 	ROM_REGION( 0x1000, REGION_USER1, 0 )
+ 	ROM_REGION( 0x1000, "user1", 0 )
 	ROM_LOAD( "pr-5278.bin", 0x000, 0x100, CRC(e81613da) SHA1(fc32141f7c0c8c0c1ed623636af3862a4ef0e940) )
 	ROM_LOAD( "pr-5277.bin", 0x100, 0x100, CRC(bf2c33ab) SHA1(4a83b3e9b74b900621e8f42edf94cc04b791cdd0) )
 	ROM_LOAD( "pr-5276.bin", 0x200, 0x20,  CRC(91267e8a) SHA1(ae5bd8efea5322c4d9986d06680a781392f9a642) )
 	ROM_LOAD( "pr-5275.bin", 0x220, 0x20,  CRC(0c872a9b) SHA1(eaabce5d867a4e896bd356abc94429f9a4eec372) )
+
+	DISK_REGION( "laserdisc" )
+	DISK_IMAGE_READONLY( "cobracom", 0, NO_DUMP )
 ROM_END
 
 
 static DRIVER_INIT( astron )
 {
-	UINT8 *ROM = memory_region(machine, REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, "main");
 	memory_configure_bank(1, 0, 2, &ROM[0x8000], 0x4000);
 }
 

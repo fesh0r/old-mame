@@ -76,6 +76,7 @@ EMUOBJS = \
 	$(EMUOBJ)/timer.o \
 	$(EMUOBJ)/ui.o \
 	$(EMUOBJ)/uigfx.o \
+	$(EMUOBJ)/uiinput.o \
 	$(EMUOBJ)/uimenu.o \
 	$(EMUOBJ)/validity.o \
 	$(EMUOBJ)/video.o \

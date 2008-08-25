@@ -182,9 +182,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( jongkyo_portmap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	// R 01 keyboard
-	AM_RANGE(0x01, 0x01) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(AY8910_control_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x02, 0x02) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x03, 0x03) AM_WRITE(ay8910_control_port_0_w)
 
 	AM_RANGE(0x10, 0x10) AM_READ_PORT("DSW")
 	AM_RANGE(0x11, 0x11) AM_READ_PORT("IN0") AM_WRITE(keyboard_select_w)
@@ -230,7 +230,7 @@ Bonus credit  |50    |                   |    |    |    |on
 
 
 static INPUT_PORTS_START( jongkyo )
-	PORT_START_TAG("0")
+	PORT_START("0")
     PORT_DIPNAME( 0x01, 0x01, "0" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -256,7 +256,7 @@ static INPUT_PORTS_START( jongkyo )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("1")
+	PORT_START("1")
     PORT_DIPNAME( 0x01, 0x01, "1" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -282,7 +282,7 @@ static INPUT_PORTS_START( jongkyo )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("2")
+	PORT_START("2")
     PORT_DIPNAME( 0x01, 0x01, "2" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -308,7 +308,7 @@ static INPUT_PORTS_START( jongkyo )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("3")
+	PORT_START("3")
     PORT_DIPNAME( 0x01, 0x01, "3" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -334,7 +334,7 @@ static INPUT_PORTS_START( jongkyo )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("4")
+	PORT_START("4")
     PORT_DIPNAME( 0x01, 0x01, "4" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -360,7 +360,7 @@ static INPUT_PORTS_START( jongkyo )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("5")
+	PORT_START("5")
     PORT_DIPNAME( 0x01, 0x01, "5" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -386,7 +386,7 @@ static INPUT_PORTS_START( jongkyo )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("6")
+	PORT_START("6")
     PORT_DIPNAME( 0x01, 0x01, "6" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -412,7 +412,7 @@ static INPUT_PORTS_START( jongkyo )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("7")
+	PORT_START("7")
     PORT_DIPNAME( 0x01, 0x01, "7" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -438,7 +438,7 @@ static INPUT_PORTS_START( jongkyo )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("8")
+	PORT_START("8")
     PORT_DIPNAME( 0x01, 0x01, "8" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -464,7 +464,7 @@ static INPUT_PORTS_START( jongkyo )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("9")
+	PORT_START("9")
     PORT_DIPNAME( 0x01, 0x01, "9")
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -490,7 +490,7 @@ static INPUT_PORTS_START( jongkyo )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("10")
+	PORT_START("10")
     PORT_DIPNAME( 0x01, 0x01, "10" )
     PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -516,7 +516,7 @@ static INPUT_PORTS_START( jongkyo )
     PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
     PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_DIPNAME( 0x01, 0x00, "Note" )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
@@ -529,7 +529,7 @@ static INPUT_PORTS_START( jongkyo )
 	PORT_SERVICE( 0x08, IP_ACTIVE_HIGH )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x0f, 0x0f, "Payout Rate" ) PORT_DIPLOCATION("SW:1,2,3,4")
 	PORT_DIPSETTING(    0x00, "50%" )
 	PORT_DIPSETTING(    0x01, "53%" )
@@ -565,7 +565,7 @@ INPUT_PORTS_END
 static PALETTE_INIT(jongkyo)
 {
 	int i;
-	UINT8* proms = memory_region(machine, REGION_PROMS);
+	UINT8* proms = memory_region(machine, "proms");
 	for (i=0;i<0x40;i++)
 	{
 		int data = proms[i];
@@ -579,7 +579,7 @@ static PALETTE_INIT(jongkyo)
 	}
 }
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -591,7 +591,7 @@ static const struct AY8910interface ay8910_interface =
 
 static MACHINE_DRIVER_START( jongkyo )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,JONGKYO_CLOCK/4)
+	MDRV_CPU_ADD("main", Z80,JONGKYO_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(jongkyo_memmap,0)
 	MDRV_CPU_IO_MAP(jongkyo_portmap,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -611,21 +611,21 @@ static MACHINE_DRIVER_START( jongkyo )
 	MDRV_VIDEO_UPDATE(jongkyo)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910, JONGKYO_CLOCK/8)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, JONGKYO_CLOCK/8)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.33)
 MACHINE_DRIVER_END
 
 
 ROM_START( jongkyo )
-	ROM_REGION( 0x9000, REGION_CPU1, 0 )
+	ROM_REGION( 0x9000, "main", 0 )
 	ROM_LOAD( "epr-6258", 0x00000, 0x02000, CRC(fb8b7bcc) SHA1(8ece7c2c82c237b4b51829d412b2109b96ccd0e7) )
 	ROM_LOAD( "epr-6259", 0x02000, 0x02000, CRC(e46cde5d) SHA1(1cbe1677cfb3fa9f76ad90d5b1446ce9cefee6b7) )
 	ROM_LOAD( "epr-6260", 0x04000, 0x02000, CRC(369a5365) SHA1(037a2971a59ab339595b333cbdfd4cbb104de2be) )
 	ROM_LOAD( "epr-6262", 0x06000, 0x01000, CRC(ecf50f34) SHA1(ecfa1a9360d8fbcbed457d46e53bae77f6d78c1d) )
 	ROM_LOAD( "epr-6261", 0x07000, 0x02000, CRC(9c475ae1) SHA1(b993c2636dafed9f80fa87e71921c3c85c039e45) )	// banked at 6c00-6fff
 
-	ROM_REGION( 0x300, REGION_PROMS, 0 )
+	ROM_REGION( 0x300, "proms", 0 )
 	/* colours */
 	ROM_LOAD( "pr-6263.6j", 0x00000, 0x00020, CRC(468134d9) SHA1(bb633929df17e448882ee80613fc1dfac3c35d7a) )
 	ROM_LOAD( "pr-6264.0h", 0x00020, 0x00020, CRC(46014727) SHA1(eec451f292ee319fa6bfbbf223aaa12b231692c1) )
@@ -639,7 +639,7 @@ ROM_END
 static DRIVER_INIT( jongkyo )
 {
 	int i;
-	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *rom = memory_region(machine, "main");
 
 	/* first of all, do a simple bitswap */
 	for (i = 0x6000; i < 0x9000; ++i)
@@ -648,7 +648,7 @@ static DRIVER_INIT( jongkyo )
 	}
 
 	/* then do the standard Sega decryption */
-	jongkyo_decode(machine);
+	jongkyo_decode(machine, "main");
 
 	videoram2 = auto_malloc(0x4000);
 	state_save_register_global_pointer(videoram2, 0x4000);

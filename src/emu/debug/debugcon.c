@@ -329,7 +329,7 @@ static CMDERR internal_parse_command(const char *original_command, int execute)
 		if (isexpr && paramcount == 1)
 		{
 			UINT64 expresult;
-			EXPRERR exprerr = expression_evaluate(command_start, debug_get_cpu_info(cpu_getactivecpu())->symtable, &expresult);
+			EXPRERR exprerr = expression_evaluate(command_start, debug_get_cpu_info(cpu_getactivecpu())->symtable, &debug_expression_callbacks, &expresult);
 			if (exprerr != EXPRERR_NONE)
 				return MAKE_CMDERR_EXPRESSION_ERROR(EXPRERR_ERROR_OFFSET(exprerr));
 		}
@@ -468,6 +468,22 @@ void CLIB_DECL debug_console_printf(const char *format, ...)
 	vsprintf(giant_string_buffer, format, arg);
 	va_end(arg);
 
+	text_buffer_print(console_textbuf, giant_string_buffer);
+
+	/* force an update of any console views */
+	debug_view_update_type(DVT_CONSOLE);
+}
+
+
+/*-------------------------------------------------
+    debug_console_vprintf - printfs the given
+    arguments using the format to the debug
+    console
+-------------------------------------------------*/
+
+void CLIB_DECL debug_console_vprintf(const char *format, va_list args)
+{
+	vsprintf(giant_string_buffer, format, args);
 	text_buffer_print(console_textbuf, giant_string_buffer);
 
 	/* force an update of any console views */

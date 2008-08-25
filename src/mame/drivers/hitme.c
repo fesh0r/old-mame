@@ -269,7 +269,7 @@ static const gfx_layout hitme_charlayout =
 };
 
 static GFXDECODE_START( hitme )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, hitme_charlayout, 0, 2  )
+	GFXDECODE_ENTRY( "gfx1", 0, hitme_charlayout, 0, 2  )
 GFXDECODE_END
 
 
@@ -285,7 +285,7 @@ static const gfx_layout barricad_charlayout =
 };
 
 static GFXDECODE_START( barricad )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, barricad_charlayout,   0, 1  )
+	GFXDECODE_ENTRY( "gfx1", 0, barricad_charlayout,   0, 1  )
 GFXDECODE_END
 
 
@@ -300,7 +300,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( hitme )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(8080, 8945000/16)
+	MDRV_CPU_ADD("main", 8080, 8945000/16)
 	MDRV_CPU_PROGRAM_MAP(hitme_map,0)
 	MDRV_CPU_IO_MAP(hitme_portmap,0)
 
@@ -321,7 +321,7 @@ static MACHINE_DRIVER_START( hitme )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(hitme)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -358,7 +358,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 static INPUT_PORTS_START( hitme )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )					/* Start button */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )					/* Always high */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SPECIAL )				/* Hblank */
@@ -368,7 +368,7 @@ static INPUT_PORTS_START( hitme )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)	/* P1 Bet button */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL )				/* Time out counter (*TO) */
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )					/* Always high */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )					/* Aux 2 dipswitch - Unused */
@@ -378,7 +378,7 @@ static INPUT_PORTS_START( hitme )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)	/* P2 Bet button */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL )				/* Time out counter (*TO) */
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_DIPNAME( 0x01, 0x00, "Extra Hand On Natural" )			/* Aux 1 dipswitch */
 	PORT_DIPSETTING(    0x00, DEF_STR ( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR ( On )  )
@@ -390,7 +390,7 @@ static INPUT_PORTS_START( hitme )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)	/* P3 Bet button */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL )				/* Time out counter (*TO) */
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )				/* Time out counter (TOC1) */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )					/* Always high */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )					/* Aux 2 dipswitch - Unused*/
@@ -400,7 +400,7 @@ static INPUT_PORTS_START( hitme )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)	/* P4 Bet button */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL )				/* Time out counter (*TO) */
 
-	PORT_START_TAG("IN4")
+	PORT_START("IN4")
 	PORT_DIPNAME( 0x07, 0x07, "Number of Chips" )
 	PORT_DIPSETTING(    0x00, "5 Chips" )
 	PORT_DIPSETTING(    0x01, "10 Chips" )
@@ -412,7 +412,7 @@ static INPUT_PORTS_START( hitme )
 	PORT_DIPSETTING(    0x07, "40 Chips" )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("IN5")
+	PORT_START("IN5")
 	PORT_DIPNAME( 0x07, 0x00, "Number of Hands" )
 	PORT_DIPSETTING(    0x00, "5 Hands" )
 	PORT_DIPSETTING(    0x01, "10 Hands" )
@@ -425,17 +425,17 @@ static INPUT_PORTS_START( hitme )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	/* this is actually a variable resistor */
-	PORT_START_TAG("R3")
+	PORT_START("R3")
 	PORT_ADJUSTER(30, "Game Speed")
 
 	/* this is actually a variable resistor */
-	PORT_START_TAG("WIDTH")
+	PORT_START("WIDTH")
 	PORT_ADJUSTER(50, "Card Width")
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( barricad )
-	PORT_START_TAG("IN0")
+	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )							/* Start button */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )							/* Always high */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SPECIAL )						/* Hblank */
@@ -445,7 +445,7 @@ static INPUT_PORTS_START( barricad )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP  ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL )						/* Time out counter (*TO) */
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )							/* Always high */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )							/* Aux 2 dipswitch - Unused */
@@ -455,7 +455,7 @@ static INPUT_PORTS_START( barricad )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP  ) PORT_PLAYER(3)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL )						/* Time out counter (*TO) */
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )						/* ??? */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )							/* Always high */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SPECIAL )						/* Hblank */
@@ -465,7 +465,7 @@ static INPUT_PORTS_START( barricad )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP  ) PORT_PLAYER(4)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL )						/* Time out counter (*TO) */
 
-	PORT_START_TAG("IN3")
+	PORT_START("IN3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )						/* Time out counter (TOC1) */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )						/* Always high */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )						/* Aux 2 dipswitch - Unused*/
@@ -480,7 +480,7 @@ static INPUT_PORTS_START( barricad )
         same dipswitch as hitme's chips, and speed is hitme's hands. The flyer
       says 1-7 points per games, but it really can go to 8. */
 
-	PORT_START_TAG("IN4")
+	PORT_START("IN4")
 	PORT_DIPNAME( 0x07, 0x07, "Points Per Game" )
 	PORT_DIPSETTING(    0x00, "1 Point" )
 	PORT_DIPSETTING(    0x01, "2 Points" )
@@ -494,7 +494,7 @@ static INPUT_PORTS_START( barricad )
 	/* These are like lives, you lose a point if you crash. The last person with
         points wins the game. */
 
-	PORT_START_TAG("IN5")
+	PORT_START("IN5")
 	PORT_DIPNAME( 0x07, 0x00, "Game Speed" )
 	PORT_DIPSETTING(    0x00, "Fast Fast" )
 	PORT_DIPSETTING(    0x01, "7" )
@@ -506,7 +506,7 @@ static INPUT_PORTS_START( barricad )
 	PORT_DIPSETTING(    0x07, "Slow Slow" )
 
 	/* this is actually a variable resistor */
-	PORT_START_TAG("R3")
+	PORT_START("R3")
 	PORT_ADJUSTER(30, "Tone")
 INPUT_PORTS_END
 
@@ -519,49 +519,49 @@ INPUT_PORTS_END
  *************************************/
 
 ROM_START( hitme )
-	ROM_REGION( 0x2000, REGION_CPU1, ROMREGION_INVERT )
+	ROM_REGION( 0x2000, "main", ROMREGION_INVERT )
 	ROM_LOAD( "hm0.b7", 0x0000, 0x0200, CRC(6c48c50f) SHA1(42dc7c3461687e5be4393cc21d695bc84ae4f5dc) )
 	ROM_LOAD( "hm2.c7", 0x0200, 0x0200, CRC(25d47ba4) SHA1(6f3bb4ca6918dc07f37d0c0c7fe5ec53aa7171a5) )
 	ROM_LOAD( "hm4.d7", 0x0400, 0x0200, CRC(f8bfda8d) SHA1(48bbc106f8d80d6c1ad1a2c1575ce7d6452fbe9d) )
 	ROM_LOAD( "hm6.e7", 0x0600, 0x0200, CRC(8aa87118) SHA1(aca395a4f6a1981cd89ca99e05935d72adcb69ca) )
 
-	ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_ERASE00 )
+	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE | ROMREGION_ERASE00 )
     ROM_LOAD( "hmcg.h7", 0x0000, 0x0200, CRC(818f5fbe) SHA1(e2b3349e51ba57d14f3388ba93891bc6274b7a14) )
 ROM_END
 
 
 ROM_START( mblkjack )
-	ROM_REGION( 0x2000, REGION_CPU1, ROMREGION_INVERT )
+	ROM_REGION( 0x2000, "main", ROMREGION_INVERT )
 	ROM_LOAD( "mirco1.bin", 0x0000, 0x0200, CRC(aa796ad7) SHA1(2908bdb4ab17a2f5bc4da2f957906bf2b57afa50) )
 	ROM_LOAD( "hm2.c7", 0x0200, 0x0200, CRC(25d47ba4) SHA1(6f3bb4ca6918dc07f37d0c0c7fe5ec53aa7171a5) )
 	ROM_LOAD( "hm4.d7", 0x0400, 0x0200, CRC(f8bfda8d) SHA1(48bbc106f8d80d6c1ad1a2c1575ce7d6452fbe9d) )
 	ROM_LOAD( "hm6.e7", 0x0600, 0x0200, CRC(8aa87118) SHA1(aca395a4f6a1981cd89ca99e05935d72adcb69ca) )
 
-	ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE | ROMREGION_ERASE00 )
+	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE | ROMREGION_ERASE00 )
     ROM_LOAD( "hmcg.h7", 0x0000, 0x0200, CRC(818f5fbe) SHA1(e2b3349e51ba57d14f3388ba93891bc6274b7a14) )
 ROM_END
 
 
 ROM_START( barricad )
-   ROM_REGION( 0x2000, REGION_CPU1, ROMREGION_INVERT )
+   ROM_REGION( 0x2000, "main", ROMREGION_INVERT )
    ROM_LOAD( "550806.7b",   0x0000, 0x0200, CRC(ea7f5da7) SHA1(c0ad37a0ffdb0500e8adc8fb9c4369e461307f84) )
    ROM_LOAD( "550807.7c",   0x0200, 0x0200, CRC(0afef174) SHA1(2a7be988262b855bc81a1b0036fa9f2481d4d53b) )
    ROM_LOAD( "550808.7d",   0x0400, 0x0200, CRC(6e02d260) SHA1(8a1640a1d56cbc34f74f07bc15e77db63635e8f5) )
    ROM_LOAD( "550809.7e",   0x0600, 0x0200, CRC(d834a63f) SHA1(ffb631cc4f51a670c7cd30df1c79bf51301d9e9a) )
 
-   ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE )
+   ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE )
    ROM_LOAD( "550805.7h",   0x0000, 0x0200, CRC(35197599) SHA1(3c49af89b1bc1d495e1d6265ff3feaf33c56facb) )
 ROM_END
 
 
 ROM_START( brickyrd )
-   ROM_REGION( 0x2000, REGION_CPU1, ROMREGION_INVERT )
+   ROM_REGION( 0x2000, "main", ROMREGION_INVERT )
    ROM_LOAD( "550806.7b",   0x0000, 0x0200, CRC(ea7f5da7) SHA1(c0ad37a0ffdb0500e8adc8fb9c4369e461307f84) )
    ROM_LOAD( "barricad.7c", 0x0200, 0x0200, CRC(94e1d1c0) SHA1(f6e6f9a783867c3602ba8cff6a18c47c5df987a4) )
    ROM_LOAD( "550808.7d",   0x0400, 0x0200, CRC(6e02d260) SHA1(8a1640a1d56cbc34f74f07bc15e77db63635e8f5) )
    ROM_LOAD( "barricad.7e", 0x0600, 0x0200, CRC(2b1d914f) SHA1(f1a6631949a7c62f5de39d58821e1be36b98629e) )
 
-   ROM_REGION( 0x0400, REGION_GFX1, ROMREGION_DISPOSE )
+   ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE )
    ROM_LOAD( "barricad.7h", 0x0000, 0x0200, CRC(c676fd22) SHA1(c37bf92f5a146a93bd977b2a05485addc00ab066) )
 ROM_END
 

@@ -82,67 +82,12 @@ Side 2 = 0x8F7DDD (or 0x880000 | ( 0x77 << 12 ) | 0x0DDD)
 #define CLIFF_ENABLE_SND_1	NODE_01
 #define CLIFF_ENABLE_SND_2	NODE_02
 
-static laserdisc_info *discinfo = NULL;
+static const device_config *laserdisc;
 
 static int port_bank = 0;
 static int phillips_code = 0;
 
-static render_texture *video_texture;
-static render_texture *overlay_texture;
-static bitmap_t *last_video_bitmap;
-
 static emu_timer *irq_timer;
-
-/********************************************************/
-
-static void video_cleanup(running_machine *machine)
-{
-	if (video_texture != NULL)
-		render_texture_free(video_texture);
-	if (overlay_texture != NULL)
-		render_texture_free(overlay_texture);
-	laserdisc_exit(discinfo);
-}
-
-static VIDEO_UPDATE( cliff )
-{
-	/* update the TMS9928A video */
-	VIDEO_UPDATE_CALL(tms9928a);
-
-	if (discinfo != NULL)
-	{
-		bitmap_t *vidbitmap;
-		rectangle fixedvis = *TMS9928A_get_visarea();
-		fixedvis.max_x++;
-		fixedvis.max_y++;
-
-		laserdisc_get_video(discinfo, &vidbitmap);
-
-		/* first lay down the video data */
-		if (video_texture == NULL)
-			video_texture = render_texture_alloc(NULL, NULL);
-		if (vidbitmap != last_video_bitmap)
-			render_texture_set_bitmap(video_texture, vidbitmap, NULL, 0, TEXFORMAT_YUY16);
-
-		last_video_bitmap = vidbitmap;
-
-		/* then overlay the TMS9928A video */
-		if (overlay_texture == NULL)
-			overlay_texture = render_texture_alloc(NULL, NULL);
-		render_texture_set_bitmap(overlay_texture, bitmap, &fixedvis, 0, TEXFORMAT_PALETTEA16);
-
-		/* add both quads to the screen */
-		render_container_empty(render_container_get_screen(screen));
-		render_screen_add_quad(screen, 0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(0xff,0xff,0xff,0xff), video_texture, PRIMFLAG_BLENDMODE(BLENDMODE_NONE) | PRIMFLAG_SCREENTEX(1));
-		render_screen_add_quad(screen, 0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(0xff,0xff,0xff,0xff), overlay_texture, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA) | PRIMFLAG_SCREENTEX(1));
-	}
-
-	/* display disc information */
-	if (discinfo != NULL)
-		popmessage("%s", laserdisc_describe_state(discinfo));
-
-	return 0;
-}
 
 /********************************************************/
 
@@ -175,7 +120,7 @@ static READ8_HANDLER( cliff_port_r )
 
 static READ8_HANDLER( cliff_phillips_code_r )
 {
-	if ( discinfo != NULL )
+	if ( laserdisc != NULL )
 	{
 		return ( phillips_code >> (8*offset) ) & 0xff;
 	}
@@ -219,7 +164,7 @@ static WRITE8_HANDLER( cliff_irqack_w )
 
 static WRITE8_HANDLER( cliff_ldwire_w )
 {
-	laserdisc_line_w(discinfo,LASERDISC_LINE_CONTROL,(data&1) ? ASSERT_LINE : CLEAR_LINE );
+	laserdisc_line_w(laserdisc,LASERDISC_LINE_CONTROL,(data&1) ? ASSERT_LINE : CLEAR_LINE );
 }
 
 
@@ -228,7 +173,7 @@ static WRITE8_HANDLER( cliff_ldwire_w )
 static INTERRUPT_GEN( cliff_vsync )
 {
 	/* clock the laserdisc and video chip every 60Hz */
-	laserdisc_vsync(discinfo);
+	laserdisc_vsync(laserdisc);
 	TMS9928A_interrupt(machine);
 }
 
@@ -239,12 +184,12 @@ static TIMER_CALLBACK( cliff_irq_callback )
 	switch (param)
 	{
 		case 17:
-			phillips_code = laserdisc_get_field_code(discinfo, LASERDISC_CODE_LINE17);
+			phillips_code = laserdisc_get_field_code(laserdisc, LASERDISC_CODE_LINE17);
 			param = 18;
 			break;
 
 		case 18:
-			phillips_code = laserdisc_get_field_code(discinfo, LASERDISC_CODE_LINE18);
+			phillips_code = laserdisc_get_field_code(laserdisc, LASERDISC_CODE_LINE18);
 			param = 17;
 			break;
 	}
@@ -265,7 +210,7 @@ static void vdp_interrupt (running_machine *machine, int state)
 
 static MACHINE_START( cliffhgr )
 {
-	discinfo = laserdisc_init(machine, LASERDISC_TYPE_PR8210, get_disk_handle(0), 0);
+	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
 	irq_timer = timer_alloc(cliff_irq_callback, NULL);
 }
 
@@ -311,12 +256,12 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( cliffhgr )
-	PORT_START_TAG("BANK0")
+	PORT_START("BANK0")
 	PORT_BIT ( 0x3F, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_SERVICE2 )	/* SW2 on CPU PCB */
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )	/* SW1 on CPU PCB */
 
-	PORT_START_TAG("BANK1")
+	PORT_START("BANK1")
 	PORT_DIPNAME( 0xc0, 0xc0, "Should Have Hint" )		PORT_DIPLOCATION("E11:7,8")
 	PORT_DIPSETTING(    0xc0, "Never" )
 	PORT_DIPSETTING(    0x80, "After 1st Player Mistake" )
@@ -340,7 +285,7 @@ static INPUT_PORTS_START( cliffhgr )
 	PORT_DIPSETTING(    0x01, "5" )
 	PORT_DIPSETTING(    0x00, "6" )
 
-	PORT_START_TAG("BANK2")
+	PORT_START("BANK2")
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )		PORT_DIPLOCATION("F11:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -365,7 +310,7 @@ static INPUT_PORTS_START( cliffhgr )
 	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
 
-	PORT_START_TAG("BANK3")
+	PORT_START("BANK3")
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Allow_Continue ) )	PORT_DIPLOCATION("G11:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -391,7 +336,7 @@ static INPUT_PORTS_START( cliffhgr )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("BANK4")
+	PORT_START("BANK4")
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )		PORT_DIPLOCATION("H11:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -422,7 +367,7 @@ static INPUT_PORTS_START( cliffhgr )
 	PORT_DIPSETTING(    0x01, "14" )
 	PORT_DIPSETTING(    0x00, "15 (Hardest)" )
 
-	PORT_START_TAG("BANK5")
+	PORT_START("BANK5")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
@@ -432,7 +377,7 @@ static INPUT_PORTS_START( cliffhgr )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_TILT )
 
-	PORT_START_TAG("BANK6")
+	PORT_START("BANK6")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
@@ -441,12 +386,12 @@ static INPUT_PORTS_START( cliffhgr )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( cliffhga )
-	PORT_START_TAG("BANK0")
+	PORT_START("BANK0")
 	PORT_BIT ( 0x3F, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_SERVICE2 )	/* SW2 on CPU PCB */
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )	/* SW1 on CPU PCB */
 
-	PORT_START_TAG("BANK1")
+	PORT_START("BANK1")
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )		PORT_DIPLOCATION("E11:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -471,7 +416,7 @@ static INPUT_PORTS_START( cliffhga )
 	PORT_DIPSETTING(    0x01, "5" )
 	PORT_DIPSETTING(    0x00, "6" )
 
-	PORT_START_TAG("BANK2")
+	PORT_START("BANK2")
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )		PORT_DIPLOCATION("F11:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -496,7 +441,7 @@ static INPUT_PORTS_START( cliffhga )
 //  PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 
-	PORT_START_TAG("BANK3")
+	PORT_START("BANK3")
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )		PORT_DIPLOCATION("G11:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -522,7 +467,7 @@ static INPUT_PORTS_START( cliffhga )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("BANK4")
+	PORT_START("BANK4")
 	PORT_DIPNAME( 0xf0, 0xf0, "Hint Difficulty" )		PORT_DIPLOCATION("H11:5,6,7,8")
 	PORT_DIPSETTING(    0xf0, "0 (Most Hints)" )
 	PORT_DIPSETTING(    0xe0, "1" )
@@ -558,7 +503,7 @@ static INPUT_PORTS_START( cliffhga )
 	PORT_DIPSETTING(    0x01, "14" )
 	PORT_DIPSETTING(    0x00, "15 (Hardest)" )
 
-	PORT_START_TAG("BANK5")
+	PORT_START("BANK5")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
@@ -568,7 +513,7 @@ static INPUT_PORTS_START( cliffhga )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_TILT )
 
-	PORT_START_TAG("BANK6")
+	PORT_START("BANK6")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
@@ -577,12 +522,12 @@ static INPUT_PORTS_START( cliffhga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( goaltogo )
-	PORT_START_TAG("BANK0")
+	PORT_START("BANK0")
 	PORT_BIT ( 0x3F, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_SERVICE2 )	/* SW2 on CPU PCB */
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )	/* SW1 on CPU PCB */
 
-	PORT_START_TAG("BANK1")
+	PORT_START("BANK1")
 	PORT_DIPNAME( 0x80, 0x80, "Should Have Hint" )		PORT_DIPLOCATION("E11:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -608,7 +553,7 @@ static INPUT_PORTS_START( goaltogo )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("BANK2")
+	PORT_START("BANK2")
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )		PORT_DIPLOCATION("F11:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -633,7 +578,7 @@ static INPUT_PORTS_START( goaltogo )
 	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
 
-	PORT_START_TAG("BANK3")
+	PORT_START("BANK3")
 	PORT_DIPNAME( 0x80, 0x00, "Display Diagram Before Play" )	PORT_DIPLOCATION("G11:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -659,7 +604,7 @@ static INPUT_PORTS_START( goaltogo )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("BANK4")
+	PORT_START("BANK4")
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )		PORT_DIPLOCATION("H11:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -690,7 +635,7 @@ static INPUT_PORTS_START( goaltogo )
 	PORT_DIPSETTING(    0x01, "14" )
 	PORT_DIPSETTING(    0x00, "15 (Hardest)" )
 
-	PORT_START_TAG("BANK5")
+	PORT_START("BANK5")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
@@ -700,7 +645,7 @@ static INPUT_PORTS_START( goaltogo )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_TILT )
 
-	PORT_START_TAG("BANK6")
+	PORT_START("BANK6")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
@@ -736,7 +681,7 @@ extern const discrete_sound_block cliffhgr_discrete_interface[];
 
 static MACHINE_DRIVER_START( cliffhgr )
 
-	MDRV_CPU_ADD(Z80, 4000000)       /* 4MHz */
+	MDRV_CPU_ADD("main", Z80, 4000000)       /* 4MHz */
 	MDRV_CPU_PROGRAM_MAP(mainmem,0)
 	MDRV_CPU_IO_MAP(mainport,0)
 	MDRV_CPU_VBLANK_INT("main", cliff_vsync)
@@ -746,26 +691,26 @@ static MACHINE_DRIVER_START( cliffhgr )
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_PR8210)
+	MDRV_LASERDISC_OVERLAY(tms9928a, 15+32*8+15, 27+24*8+24, BITMAP_FORMAT_INDEXED16)
+	MDRV_LASERDISC_OVERLAY_CLIP(15-12, 15+32*8+12-1, 27-9, 27+24*8+9-1)
+
 	/* start with the TMS9928a video configuration */
 	MDRV_IMPORT_FROM(tms9928a)
 
 	/* override video rendering and raw screen info */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_SELF_RENDER)
-	MDRV_VIDEO_UPDATE(cliff)
-	MDRV_SCREEN_MODIFY("main")
-	MDRV_SCREEN_RAW_PARAMS(13500000, 858, 0, 720, 262.5, 21, 262.5)
+	MDRV_SCREEN_REMOVE("main")
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_INDEXED16)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	/* laserdisc audio */
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD("laserdisc", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
-	/* discrete sounds */
-	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(cliffhgr)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 MACHINE_DRIVER_END
@@ -779,37 +724,37 @@ MACHINE_DRIVER_END
 *************************************/
 
 ROM_START( cliffhgr )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cliff_u1.bin",	0x0000, 0x2000, CRC(a86ec38f) SHA1(bfca1b1c084f5b7b1e0ccb2f3616ecea1340f04c) )
 	ROM_LOAD( "cliff_u2.bin",	0x2000, 0x2000, CRC(b8d33b6b) SHA1(02778f87a78199129c758a8fb0629b9ba74cab99) )
 	ROM_LOAD( "cliff_u3.bin",	0x4000, 0x2000, CRC(75a64cd2) SHA1(18fe4d8885b59ec8b8c28b5d7141a27164c982ac) )
 	ROM_LOAD( "cliff_u4.bin",	0x6000, 0x2000, CRC(906b2af1) SHA1(65fadd2fec90f47c91ac4928f342c79ab8bc6ef0) )
 	ROM_LOAD( "cliff_u5.bin",	0x8000, 0x2000, CRC(5922e710) SHA1(10637baba4d16dc333aeb0ab88ee251f44e1a115) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "laserdisc" )
 	DISK_IMAGE_READONLY( "cliffhgr", 0, NO_DUMP )
 ROM_END
 
 ROM_START( cliffhga )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cliff_alt_0.bin",	0x0000, 0x2000, CRC(27caa67c) SHA1(70d8270766b8712d4250b1a23489007d59eb262f) )
 	ROM_LOAD( "cliff_alt_1.bin",	0x2000, 0x2000, CRC(6e5f1515) SHA1(1c4116f4f5910857408826d73c630abbf1434119) )
 	ROM_LOAD( "cliff_alt_2.bin",	0x4000, 0x2000, CRC(045f895d) SHA1(364e259a9630d87ca917c7a9dc1a94d6f0d0eba5) )
 	ROM_LOAD( "cliff_alt_3.bin",	0x6000, 0x2000, CRC(54cdb4a1) SHA1(6b1d73aec029af4a88ca2f883b4ed706d153592d) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "laserdisc" )
 	DISK_IMAGE_READONLY( "cliffhgr", 0, NO_DUMP )
 ROM_END
 
 ROM_START( goaltogo )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "gtg.rm0",	0x0000, 0x2000, CRC(d8efddea) SHA1(69a076fed60ebabad3032d8c10804f57a0904327) )
 	ROM_LOAD( "gtg.rm1",	0x2000, 0x2000, CRC(69953d38) SHA1(2a51aa785a4576db8b046e128bbfc1b3949d7bf7) )
 	ROM_LOAD( "gtg.rm2",	0x4000, 0x2000, CRC(b043e205) SHA1(8992c0e294f59bd9331fb3a50a0dfd8d5c194fa3) )
 	ROM_LOAD( "gtg.rm3",	0x6000, 0x2000, CRC(ec305f5e) SHA1(e205fac699db4ca28a87f56f89cc6cf185ad540d) )
 	ROM_LOAD( "gtg.rm4",	0x8000, 0x2000, CRC(9e4c8aa2) SHA1(002c0940d3890141f85f98f854fd30cc1e340d45) )
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "laserdisc" )
 	DISK_IMAGE_READONLY( "goaltog1", 0, NO_DUMP )
 ROM_END
 
@@ -823,13 +768,7 @@ ROM_END
 
 static DRIVER_INIT( cliff )
 {
-	video_texture = NULL;
-	overlay_texture = NULL;
-	last_video_bitmap = NULL;
-
 	TMS9928A_configure(&tms9928a_interface);
-
-	add_exit_callback(machine, video_cleanup);
 }
 
 

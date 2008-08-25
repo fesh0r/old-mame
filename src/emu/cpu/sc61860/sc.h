@@ -15,7 +15,8 @@
 #define F0 94
 #define C 95
 
-enum {
+enum
+{
 	SC61860_PC=1, SC61860_DP,
 	SC61860_P, SC61860_Q, SC61860_R,
 	SC61860_CARRY,
@@ -31,4 +32,3 @@ enum {
 };
 
 #define PEEK_OP(pc) cpu_readop(pc)
-#define PEEK_NIBBLE(adr) cpu_readmem_16(adr)

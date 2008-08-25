@@ -333,7 +333,7 @@ VIDEO_UPDATE( welltris );
 
 static WRITE8_HANDLER( welltris_sh_bankswitch_w )
 {
-	UINT8 *rom = memory_region(machine, REGION_CPU2) + 0x10000;
+	UINT8 *rom = memory_region(machine, "audio") + 0x10000;
 
 	memory_set_bankptr(1,rom + (data & 0x03) * 0x8000);
 }
@@ -353,7 +353,7 @@ static WRITE16_HANDLER( sound_command_w )
 
 static READ16_HANDLER( in0_r )
 {
-	return input_port_read_indexed(machine, 0) | (pending_command ? 0x80 : 0);
+	return input_port_read(machine, "SYSTEM") | (pending_command ? 0x80 : 0);
 }
 
 static WRITE8_HANDLER( pending_command_clear_w )
@@ -367,44 +367,44 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x17ffff) AM_ROM
 	AM_RANGE(0x800000, 0x81ffff) AM_RAM AM_BASE(&welltris_pixelram)	/* Graph_1 & 2*/
 	AM_RANGE(0xff8000, 0xffbfff) AM_RAM								/* work */
-	AM_RANGE(0xffc000, 0xffc3ff) AM_RAM_WRITE(welltris_spriteram_w) AM_BASE(&welltris_spriteram)				/* Sprite */
+	AM_RANGE(0xffc000, 0xffc3ff) AM_RAM_WRITE(welltris_spriteram_w) AM_BASE(&welltris_spriteram)			/* Sprite */
 	AM_RANGE(0xffd000, 0xffdfff) AM_RAM_WRITE(welltris_charvideoram_w) AM_BASE(&welltris_charvideoram)		/* Char */
 	AM_RANGE(0xffe000, 0xffefff) AM_RAM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)	/* Palette */
-	AM_RANGE(0xfff000, 0xfff001) AM_READ(input_port_1_word_r)	/* Bottom Controls */
+	AM_RANGE(0xfff000, 0xfff001) AM_READ_PORT("P1")					/* Bottom Controls */
 	AM_RANGE(0xfff000, 0xfff001) AM_WRITE(welltris_palette_bank_w)
-	AM_RANGE(0xfff002, 0xfff003) AM_READ(input_port_2_word_r)	/* Top Controls */
+	AM_RANGE(0xfff002, 0xfff003) AM_READ_PORT("P2")					/* Top Controls */
 	AM_RANGE(0xfff002, 0xfff003) AM_WRITE(welltris_gfxbank_w)
-	AM_RANGE(0xfff004, 0xfff005) AM_READ(input_port_3_word_r)	/* Left Side Ctrls */
+	AM_RANGE(0xfff004, 0xfff005) AM_READ_PORT("P3")					/* Left Side Ctrls */
 	AM_RANGE(0xfff004, 0xfff007) AM_WRITE(welltris_scrollreg_w)
-	AM_RANGE(0xfff006, 0xfff007) AM_READ(input_port_4_word_r)	/* Right Side Ctrls */
-	AM_RANGE(0xfff008, 0xfff009) AM_READ(in0_r)					/* Coinage, Start Buttons, pending sound command etc. */  /* Bit 5 Tested at start of irq 1 */
+	AM_RANGE(0xfff006, 0xfff007) AM_READ_PORT("P4")					/* Right Side Ctrls */
+	AM_RANGE(0xfff008, 0xfff009) AM_READ(in0_r)						/* Coinage, Start Buttons, pending sound command etc. */  /* Bit 5 Tested at start of irq 1 */
 	AM_RANGE(0xfff008, 0xfff009) AM_WRITE(sound_command_w)
-	AM_RANGE(0xfff00a, 0xfff00b) AM_READ(input_port_5_word_r)	/* P3+P4 Coin + Start Buttons */
-	AM_RANGE(0xfff00c, 0xfff00d) AM_READ(input_port_6_word_r)	/* DSW0 Coinage */
-	AM_RANGE(0xfff00c, 0xfff00d) AM_WRITE(SMH_NOP)			/* ?? */
-	AM_RANGE(0xfff00e, 0xfff00f) AM_READ(input_port_7_word_r)	/* DSW1 Game Options */
-	AM_RANGE(0xfff00e, 0xfff00f) AM_WRITE(SMH_NOP)			/* ?? */
+	AM_RANGE(0xfff00a, 0xfff00b) AM_READ_PORT("EXTRA")				/* P3+P4 Coin + Start Buttons */
+	AM_RANGE(0xfff00c, 0xfff00d) AM_READ_PORT("DSW1")				/* DSW1 Coinage */
+	AM_RANGE(0xfff00c, 0xfff00d) AM_WRITE(SMH_NOP)					/* ?? */
+	AM_RANGE(0xfff00e, 0xfff00f) AM_READ_PORT("DSW2")				/* DSW2 Game Options */
+	AM_RANGE(0xfff00e, 0xfff00f) AM_WRITE(SMH_NOP)					/* ?? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x77ff) AM_ROM
 	AM_RANGE(0x7800, 0x7fff) AM_RAM
-	AM_RANGE(0x8000, 0xffff) AM_ROM AM_READ(SMH_BANK1)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_BANK1)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_port_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(welltris_sh_bankswitch_w)
-	AM_RANGE(0x08, 0x08) AM_READWRITE(YM2610_status_port_0_A_r,YM2610_control_port_0_A_w)
-	AM_RANGE(0x09, 0x09) AM_WRITE(YM2610_data_port_0_A_w)
-	AM_RANGE(0x0a, 0x0a) AM_READWRITE(YM2610_status_port_0_B_r,YM2610_control_port_0_B_w)
-	AM_RANGE(0x0b, 0x0b) AM_WRITE(YM2610_data_port_0_B_w)
+	AM_RANGE(0x08, 0x08) AM_READWRITE(ym2610_status_port_0_a_r,ym2610_control_port_0_a_w)
+	AM_RANGE(0x09, 0x09) AM_WRITE(ym2610_data_port_0_a_w)
+	AM_RANGE(0x0a, 0x0a) AM_READWRITE(ym2610_status_port_0_b_r,ym2610_control_port_0_b_w)
+	AM_RANGE(0x0b, 0x0b) AM_WRITE(ym2610_data_port_0_b_w)
 	AM_RANGE(0x10, 0x10) AM_READ(soundlatch_r)
 	AM_RANGE(0x18, 0x18) AM_WRITE(pending_command_clear_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( welltris )
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -414,7 +414,7 @@ static INPUT_PORTS_START( welltris )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )	/* Service (adds a coin) */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* pending sound command */
 
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -424,7 +424,7 @@ static INPUT_PORTS_START( welltris )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -437,7 +437,7 @@ static INPUT_PORTS_START( welltris )
 #if WELLTRIS_4P_HACK
 	/* These can actually be read in the test mode even if they're not used by the game without patching the code
        might be useful if a real 4 player version ever turns up if it was ever produced */
-	PORT_START
+	PORT_START("P3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
@@ -447,7 +447,7 @@ static INPUT_PORTS_START( welltris )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("P4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(4)
@@ -457,7 +457,7 @@ static INPUT_PORTS_START( welltris )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 #else
-	PORT_START
+	PORT_START("P3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -467,7 +467,7 @@ static INPUT_PORTS_START( welltris )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("P4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -478,7 +478,7 @@ static INPUT_PORTS_START( welltris )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 #endif
 
-	PORT_START
+	PORT_START("EXTRA")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN4 )
 #if WELLTRIS_4P_HACK
@@ -493,7 +493,7 @@ static INPUT_PORTS_START( welltris )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x000f, 0x000f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0006, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(      0x0007, DEF_STR( 4C_1C ) )
@@ -529,7 +529,7 @@ static INPUT_PORTS_START( welltris )
 	PORT_DIPSETTING(      0x00b0, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(      0x00a0, DEF_STR( 1C_6C ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( Easy ) )
 	PORT_DIPSETTING(      0x0003, DEF_STR( Normal ) )
@@ -564,7 +564,7 @@ static INPUT_PORTS_START( welltris )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( quiz18k )
-	PORT_START
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -574,7 +574,7 @@ static INPUT_PORTS_START( quiz18k )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* pending sound command */
 
-	PORT_START
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
@@ -584,7 +584,7 @@ static INPUT_PORTS_START( quiz18k )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
@@ -594,16 +594,16 @@ static INPUT_PORTS_START( quiz18k )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("P3")
 	PORT_BIT (0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("P4")
 	PORT_BIT (0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("EXTRA")
 	PORT_BIT (0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -629,7 +629,7 @@ static INPUT_PORTS_START( quiz18k )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) ) /* Flip Screen Not Currently Supported */
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -681,8 +681,8 @@ static const gfx_layout welltris_spritelayout =
 };
 
 static GFXDECODE_START( welltris )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, welltris_charlayout,   16* 0, 4*16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, welltris_spritelayout, 16*96, 2*16 )
+	GFXDECODE_ENTRY( "gfx1", 0, welltris_charlayout,   16* 0, 4*16 )
+	GFXDECODE_ENTRY( "gfx2", 0, welltris_spritelayout, 16*96, 2*16 )
 GFXDECODE_END
 
 
@@ -692,11 +692,9 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2610interface ym2610_interface =
+static const ym2610_interface ym2610_config =
 {
-	irqhandler,
-	REGION_SOUND1,
-	REGION_SOUND2
+	irqhandler
 };
 
 
@@ -705,7 +703,7 @@ static DRIVER_INIT( welltris )
 {
 #if WELLTRIS_4P_HACK
 	/* A Hack which shows 4 player mode in code which is disabled */
-	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, "main");
 	RAM[0xB91C/2] = 0x4e71;
 	RAM[0xB91E/2] = 0x4e71;
 #endif
@@ -721,12 +719,11 @@ static DRIVER_INIT( quiz18k )
 static MACHINE_DRIVER_START( welltris )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000,20000000/2)	/* 10 MHz */
+	MDRV_CPU_ADD("main", M68000,20000000/2)	/* 10 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
-	/* audio CPU */
-	MDRV_CPU_ADD(Z80,8000000/2)		/* 4 MHz ??? */
+	MDRV_CPU_ADD("audio", Z80,8000000/2)		/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_port_map,0)	/* IRQs are triggered by the YM2610 */
 
@@ -747,8 +744,8 @@ static MACHINE_DRIVER_START( welltris )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2610, 8000000)
-	MDRV_SOUND_CONFIG(ym2610_interface)
+	MDRV_SOUND_ADD("ym", YM2610, 8000000)
+	MDRV_SOUND_CONFIG(ym2610_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.25)
 	MDRV_SOUND_ROUTE(1, "mono", 0.75)
 	MDRV_SOUND_ROUTE(2, "mono", 0.75)
@@ -766,84 +763,84 @@ MACHINE_DRIVER_END
 
 
 ROM_START( welltris )
-	ROM_REGION( 0x180000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x180000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "j2u.8", 0x000000, 0x20000, BAD_DUMP CRC(00a382a4) SHA1(b6a7e1b360e3cefc582983c8dff6aa28a7c77124) )
 	ROM_LOAD16_BYTE( "j1u.7", 0x000001, 0x20000, BAD_DUMP CRC(abcb008b) SHA1(c71ed431cbd8aea0b4396029203a7b735a8fdac3) )
 	/* Space */
 	ROM_LOAD16_BYTE( "lh532j10.10", 0x100000, 0x40000, CRC(1187c665) SHA1(c6c55016e46805694348b386e521a3ef1a443621) )
 	ROM_LOAD16_BYTE( "lh532j11.9",  0x100001, 0x40000, CRC(18eda9e5) SHA1(c01d1dc6bfde29797918490947c89440b58d5372) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )	/* 64k for the audio CPU + banks */
+	ROM_REGION( 0x30000, "audio", 0 )	/* 64k for the audio CPU + banks */
 	ROM_LOAD( "3.144", 0x00000, 0x20000, CRC(ae8f763e) SHA1(255419e02189c2e156c1fbcb0cd4aedd14ed8ffa) )
 	ROM_RELOAD(        0x10000, 0x20000 )
 
-	ROM_REGION( 0x0a0000, REGION_GFX1, ROMREGION_DISPOSE ) /* CHAR Tiles */
+	ROM_REGION( 0x0a0000, "gfx1", ROMREGION_DISPOSE ) /* CHAR Tiles */
 	ROM_LOAD( "lh534j12.77", 0x000000, 0x80000, CRC(b61a8b74) SHA1(e17f7355375bdc166ef8131f7de9dbda5453f570) )
 
-	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE ) /* SPRITE Tiles */
+	ROM_REGION( 0x80000, "gfx2", ROMREGION_DISPOSE ) /* SPRITE Tiles */
 	ROM_LOAD( "046.93", 0x000000, 0x40000, CRC(31d96d77) SHA1(5613ef9e9e38406b4e64fc8983ea50b57613923e) )
 	ROM_LOAD( "048.94", 0x040000, 0x40000, CRC(bb4643da) SHA1(38d54f8c3dba09b528df05d748ab5bdf5d028453) )
 
-	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* sound samples */
+	ROM_REGION( 0x080000, "ym.deltat", 0 ) /* sound samples */
 	ROM_LOAD( "lh534j11.126", 0x00000, 0x80000, CRC(bf85fb0d) SHA1(358f91bbff2d3260f83b5a0422c0d985d1735cef) )
 
-	ROM_REGION( 0x100000, REGION_SOUND2, 0 ) /* sound samples */
+	ROM_REGION( 0x100000, "ym", 0 ) /* sound samples */
 	ROM_LOAD( "lh534j09.123", 0x00000, 0x80000, CRC(6c2ce9a5) SHA1(a4011ecfb505191c9934ba374933cd11b331d55a) )
 	ROM_LOAD( "lh534j10.124", 0x80000, 0x80000, CRC(e3682221) SHA1(3e1cda07cf451955dc473eabe007854e5148ae27) )
 ROM_END
 
 ROM_START( welltrij )
-	ROM_REGION( 0x180000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x180000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "j2.8", 0x000000, 0x20000, CRC(68ec5691) SHA1(8615415c5c98aa9caa0878a8251da7985f050f94) )
 	ROM_LOAD16_BYTE( "j1.7", 0x000001, 0x20000, CRC(1598ea2c) SHA1(e9150c3ab9b5c0eb9a5fee3e071358f92a005078) )
 	/* Space */
 	ROM_LOAD16_BYTE( "lh532j10.10", 0x100000, 0x40000, CRC(1187c665) SHA1(c6c55016e46805694348b386e521a3ef1a443621) )
 	ROM_LOAD16_BYTE( "lh532j11.9",  0x100001, 0x40000, CRC(18eda9e5) SHA1(c01d1dc6bfde29797918490947c89440b58d5372) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )	/* 64k for the audio CPU + banks */
+	ROM_REGION( 0x30000, "audio", 0 )	/* 64k for the audio CPU + banks */
 	ROM_LOAD( "3.144", 0x00000, 0x20000, CRC(ae8f763e) SHA1(255419e02189c2e156c1fbcb0cd4aedd14ed8ffa) )
 	ROM_RELOAD(        0x10000, 0x20000 )
 
-	ROM_REGION( 0x0a0000, REGION_GFX1, ROMREGION_DISPOSE ) /* CHAR Tiles */
+	ROM_REGION( 0x0a0000, "gfx1", ROMREGION_DISPOSE ) /* CHAR Tiles */
 	ROM_LOAD( "lh534j12.77", 0x000000, 0x80000, CRC(b61a8b74) SHA1(e17f7355375bdc166ef8131f7de9dbda5453f570) )
 
-	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE ) /* SPRITE Tiles */
+	ROM_REGION( 0x80000, "gfx2", ROMREGION_DISPOSE ) /* SPRITE Tiles */
 	ROM_LOAD( "046.93", 0x000000, 0x40000, CRC(31d96d77) SHA1(5613ef9e9e38406b4e64fc8983ea50b57613923e) )
 	ROM_LOAD( "048.94", 0x040000, 0x40000, CRC(bb4643da) SHA1(38d54f8c3dba09b528df05d748ab5bdf5d028453) )
 
-	ROM_REGION( 0x080000, REGION_SOUND1, 0 ) /* sound samples */
+	ROM_REGION( 0x080000, "ym.deltat", 0 ) /* sound samples */
 	ROM_LOAD( "lh534j11.126", 0x00000, 0x80000, CRC(bf85fb0d) SHA1(358f91bbff2d3260f83b5a0422c0d985d1735cef) )
 
-	ROM_REGION( 0x100000, REGION_SOUND2, 0 ) /* sound samples */
+	ROM_REGION( 0x100000, "ym", 0 ) /* sound samples */
 	ROM_LOAD( "lh534j09.123", 0x00000, 0x80000, CRC(6c2ce9a5) SHA1(a4011ecfb505191c9934ba374933cd11b331d55a) )
 	ROM_LOAD( "lh534j10.124", 0x80000, 0x80000, CRC(e3682221) SHA1(3e1cda07cf451955dc473eabe007854e5148ae27) )
 ROM_END
 
 ROM_START( quiz18k )
-	ROM_REGION( 0x180000, REGION_CPU1, 0 )	/* 68000 code */
+	ROM_REGION( 0x180000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "1-ic8.bin", 0x000000, 0x20000, CRC(10a64336) SHA1(d63c0752385e1d66b09a7197e267dcd0e5e93be8) )
 	ROM_LOAD16_BYTE( "2-ic7.bin", 0x000001, 0x20000, CRC(8b21b431) SHA1(278238ab4a5d11577c5ab3c7462b429f510a1d50) )
 	/* Space */
 	ROM_LOAD16_BYTE( "ic10.bin", 0x100000, 0x40000, CRC(501453a3) SHA1(d127f417f1c52333e478ac397fbe8a2f223b1ce7) )
 	ROM_LOAD16_BYTE( "ic9.bin",  0x100001, 0x40000, CRC(99b6840f) SHA1(8409a33c64729066bfed6e49dcd84f30906274cb) )
 
-	ROM_REGION( 0x30000, REGION_CPU2, 0 )	/* 64k for the audio CPU + banks */
+	ROM_REGION( 0x30000, "audio", 0 )	/* 64k for the audio CPU + banks */
 	ROM_LOAD( "3-ic144.bin", 0x00000, 0x20000, CRC(72d372e3) SHA1(d077e34947de1050b68d76506cc8926b06a94a76) )
 	ROM_RELOAD(              0x10000, 0x20000 )
 
-	ROM_REGION( 0x180000, REGION_GFX1, ROMREGION_DISPOSE ) /* CHAR Tiles */
+	ROM_REGION( 0x180000, "gfx1", ROMREGION_DISPOSE ) /* CHAR Tiles */
 	ROM_LOAD( "ic77.bin", 0x000000, 0x80000, CRC(af3b6fd1) SHA1(d22f7cf62a94ae3a2dcb0236630e9ac88d5e528b) )
 	ROM_LOAD( "ic78.bin", 0x080000, 0x80000, CRC(44bbdef3) SHA1(cd91eaf98602ef3448f49c8287591aa845afb874) )
 	ROM_LOAD( "ic79.bin", 0x100000, 0x80000, CRC(d721e169) SHA1(33ec819c4e7b4dbab41756af9eca857107d96c8b) )
 
-	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE ) /* SPRITE Tiles */
+	ROM_REGION( 0x100000, "gfx2", ROMREGION_DISPOSE ) /* SPRITE Tiles */
 	ROM_LOAD( "ic93.bin", 0x000000, 0x80000, CRC(4d387c5e) SHA1(e77aea06b9b2dc8ada5618aaf83bb80f63670363) )
 	ROM_LOAD( "ic94.bin", 0x080000, 0x80000, CRC(6be2f164) SHA1(6a3ca63d6238d587a50718d2a6c76f01932c76c3) )
 
-	ROM_REGION( 0x040000, REGION_SOUND1, 0 ) /* sound samples */
+	ROM_REGION( 0x040000, "ym.deltat", 0 ) /* sound samples */
 	ROM_LOAD( "ic126.bin", 0x00000, 0x40000, CRC(7a92fbc9) SHA1(c13be1e84fc8e74c85d25d3357e078bc9e264682) )
 
-	ROM_REGION( 0x140000, REGION_SOUND2, 0 ) /* sound samples */
+	ROM_REGION( 0x140000, "ym", 0 ) /* sound samples */
 	ROM_LOAD( "ic123.bin", 0x00000, 0x80000, CRC(ee4995cf) SHA1(1b47938ddc87709f8d118b86fe62602972c77ced) )
 	ROM_LOAD( "ic124.bin", 0x80000, 0x40000, CRC(076f58c3) SHA1(bd78f39b85b2697e733896705355e21b8d2a141d) )
 ROM_END

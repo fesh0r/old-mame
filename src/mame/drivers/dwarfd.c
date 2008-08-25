@@ -365,22 +365,22 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x01, 0x01) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(AY8910_control_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x02, 0x02) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x03, 0x03) AM_WRITE(ay8910_control_port_0_w)
 
 	AM_RANGE(0x20, 0x20) AM_READWRITE(i8275_preg_r, i8275_preg_w)
 	AM_RANGE(0x21, 0x21) AM_READWRITE(i8275_sreg_r, i8275_creg_w)
 	AM_RANGE(0x40, 0x40) AM_WRITENOP // unknown
 	AM_RANGE(0x60, 0x60) AM_WRITE(output1_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(output2_w)
-	AM_RANGE(0xc0, 0xc0) AM_READ(input_port_0_r)
-	AM_RANGE(0xc1, 0xc1) AM_READ(input_port_1_r)
+	AM_RANGE(0xc0, 0xc0) AM_READ_PORT("DSW1")
+	AM_RANGE(0xc1, 0xc1) AM_READ_PORT("DSW2")
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( dwarfd )
-	PORT_START	/* 8bit */
+	PORT_START("DSW1")	/* 8bit */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -406,7 +406,7 @@ static INPUT_PORTS_START( dwarfd )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* 8bit */
+	PORT_START("DSW2")	/* 8bit */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -432,7 +432,7 @@ static INPUT_PORTS_START( dwarfd )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN1")
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Zap 1") PORT_CODE(KEYCODE_Z) //z1 zap 1
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Zap 2") PORT_CODE(KEYCODE_X) //z2 zap 2
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Zap 3") PORT_CODE(KEYCODE_C) //z3 zap 3
@@ -443,7 +443,7 @@ static INPUT_PORTS_START( dwarfd )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SERVICE1 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Bet x2") PORT_CODE(KEYCODE_D) //x2 bet x2
 
-	PORT_START_TAG("IN2")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN3 )
@@ -452,7 +452,6 @@ static INPUT_PORTS_START( dwarfd )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Replace") PORT_CODE(KEYCODE_F) //rp replace
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Take") PORT_CODE(KEYCODE_G) //tk take
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Unzap") PORT_CODE(KEYCODE_N) //uz unzap
-
 INPUT_PORTS_END
 
 
@@ -649,11 +648,11 @@ static const gfx_layout tiles8x8_layout =
 */
 
 static GFXDECODE_START( dwarfd )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles8x8_layout, 0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles8x8_layout0, 0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles8x8_layout1, 0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles8x8_layout2, 0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tiles8x8_layout3, 0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, tiles8x8_layout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, tiles8x8_layout0, 0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, tiles8x8_layout1, 0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, tiles8x8_layout2, 0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, tiles8x8_layout3, 0, 16 )
 GFXDECODE_END
 
 static PALETTE_INIT(dwarfd)
@@ -675,7 +674,7 @@ static PALETTE_INIT(dwarfd)
 	palette_set_color(machine, 6, MAKE_RGB(255, 0, 0));
 }
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -689,7 +688,7 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( dwarfd )
 	/* basic machine hardware */
 	/* FIXME: The 8085A had a max clock of 6MHz, internally divided by 2! */
-	MDRV_CPU_ADD(8085A, 10595000/3*2)        /* ? MHz */
+	MDRV_CPU_ADD("main", 8085A, 10595000/3*2)        /* ? MHz */
 
 	MDRV_CPU_PROGRAM_MAP(mem_map, 0)
 	MDRV_CPU_IO_MAP(io_map, 0)
@@ -712,28 +711,28 @@ static MACHINE_DRIVER_START( dwarfd )
 	MDRV_VIDEO_UPDATE(dwarfd)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910, 1500000)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, 1500000)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 ROM_START( dwarfd )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "9l_pd_50-3196_m5l2732k.bin", 0x0000, 0x1000, CRC(34e942ae) SHA1(d4f0ee7f29e1c1a93b4b30b950023dbf60596100) )
 	ROM_LOAD( "9k_pd_50-3193_hn462732g.bin",0x1000, 0x1000, CRC(78f0c260) SHA1(d6c3b8b3ef4ce99a811e291f1396a47106683df9) )
 	ROM_LOAD( "9j_pd_50-3192_mbm2732.bin",  0x2000, 0x1000, CRC(9c66ee6e) SHA1(49c20fa276508b3c7b0134909295ae04ee46890f) )
 	ROM_LOAD( "9h_pd_50-3375_2732.bin",     0x3000, 0x1000, CRC(daf5551d) SHA1(933e3453c9e74ca6695137c9f6b1abc1569ad019) )
 
-	ROM_REGION( 0x4000, REGION_GFX1, 0 )
+	ROM_REGION( 0x4000, "gfx1", 0 )
 	ROM_LOAD16_BYTE( "6a_pd_50_1991_2732.bin"      ,0x0000, 0x1000, CRC(6da494bc) SHA1(0323eaa5f81e3b8561225ccdd4654c9a11f2167c) )
 	ROM_LOAD16_BYTE( "6b_pd_50-1992_tms2732ajl.bin",0x2000, 0x1000, CRC(69208e1a) SHA1(8706f8f0d2dfeba5cebc71985ea46a67de13bc7d) )
 	ROM_LOAD16_BYTE( "6c_pd_50-1993_tms2732ajl.bin",0x0001, 0x1000, CRC(cd8e5e54) SHA1(0961739d72d80e0ac00e6cbf9643bcebfe74830d) )
 	ROM_LOAD16_BYTE( "6d_pd_50-1994_tms2732ajl.bin",0x2001, 0x1000, CRC(ef52b88c) SHA1(3405152da3194a71f6dac6492f275c746e781ee7) )
 
-	ROM_REGION( 0x4000*2, REGION_GFX2, 0 )
+	ROM_REGION( 0x4000*2, "gfx2", 0 )
 	ROM_FILL(0,  0x4000*2, 0)
 
-	ROM_REGION( 0x40, REGION_PROMS, 0 )
+	ROM_REGION( 0x40, "proms", 0 )
 	/* ??? colors */
 	ROM_LOAD( "3a_50-1381_63s080n.bin",0x00, 0x20, CRC(451d0a72) SHA1(9ff6e2c5bd2b57bd607cb33e60e7ed25bea164b3) )
 	/* memory map */
@@ -746,8 +745,8 @@ static DRIVER_INIT(dwarfd)
 	UINT8 *src, *dst;
 
 	/* expand gfx roms */
-	src    = memory_region       ( machine, REGION_GFX1 );
-	dst    = memory_region       ( machine, REGION_GFX2 );
+	src    = memory_region       ( machine, "gfx1" );
+	dst    = memory_region       ( machine, "gfx2" );
 	for (i=0;i<0x4000;i++)
 	{
 		UINT8 dat;
@@ -759,7 +758,7 @@ static DRIVER_INIT(dwarfd)
 	}
 
 	/* use low bit as 'interpolation' bit */
-	src    = memory_region       ( machine, REGION_GFX2 );
+	src    = memory_region       ( machine, "gfx2" );
 	for (i=0;i<0x8000;i++)
 	{
 		if (src[i]&0x10)

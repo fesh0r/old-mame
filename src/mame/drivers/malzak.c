@@ -34,6 +34,32 @@
   '4' and pressing button 1 three times.  Then the POT is set to position
   '1' to go back to the game.
 
+  Guru Notes:
+  This board looks like an early proto, it's hand etched, with
+  a ton of wire mods. I'm told the game is kind of like Scramble.
+  It's probably _ultra_ rare too.
+
+  The board looks like pure crap actually, with lot's of resistors
+  jumpering tracks and a partial harness that is wired directly to
+  the logic chips which has been *ruthlessly* chopped off!
+
+  Here's what I can see.....
+
+  EPROMs (x5, dumped, MALZAK.1 by itself, the other 4 grouped together)
+  S 8039 2650AI (DIP 40)
+  S 8051 2636N (DIP 40)
+  S 8112 2636N (DIP 40)
+  5101 (SRAM, x3)
+  6MHz Xtal
+  2114 (SRAM, x4)
+  SAA 5020 (DIP 24)
+  SAA 5050 (DIP 28)
+  SN76477 (x2, DIP28)
+  INS/DP8212N P8212 (x2, DIP 24)
+  plenty of logic chips, resistors, caps etc
+
+  Note: There's no PALs or PROMs
+
 */
 
 #include "driver.h"
@@ -65,7 +91,7 @@ static READ8_HANDLER( fake_VRLE_r )
 
 static READ8_HANDLER( bank_r )
 {
-	UINT8* bank = memory_region(machine, REGION_USER2);
+	UINT8* bank = memory_region(machine, "user2");
 
 	return bank[offset + (malzak_bank1 * 0x0400)];
 }
@@ -192,7 +218,7 @@ static INPUT_PORTS_START( malzak )
 	/* Malzak has an 8-way stick
        and only one button (firing and bomb dropping on the same button) */
 
-	PORT_START_TAG("IN0")		/* I/O port 0x80 */
+	PORT_START("IN0")		/* I/O port 0x80 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
@@ -202,10 +228,10 @@ static INPUT_PORTS_START( malzak )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    )
 
-    PORT_START_TAG("POT")
+    PORT_START("POT")
     /* No POT switch on Malzak as far as I know */
 
-	PORT_START_TAG("SENSE")		/* SENSE */
+	PORT_START("SENSE")		/* SENSE */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
 INPUT_PORTS_END
@@ -215,7 +241,7 @@ static INPUT_PORTS_START( malzak2 )
 	/* Same as Malzak, but with additional POT switch, and
        possibly a reset button too. */
 
-	PORT_START_TAG("IN0")		/* I/O port 0x80 */
+	PORT_START("IN0")		/* I/O port 0x80 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
@@ -225,14 +251,14 @@ static INPUT_PORTS_START( malzak2 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP    )
 
-    PORT_START_TAG("POT")		/* Fake DIP switch to handle the POT switch */
+    PORT_START("POT")		/* Fake DIP switch to handle the POT switch */
 	PORT_DIPNAME( 0x03, 0x00, "POT switch position" )
 	PORT_DIPSETTING( 0x00, "1" )  // Normal play
 	PORT_DIPSETTING( 0x01, "2" )
 	PORT_DIPSETTING( 0x02, "3" )
 	PORT_DIPSETTING( 0x03, "4" )  // Change settings
 
-	PORT_START_TAG("SENSE")		/* SENSE */
+	PORT_START("SENSE")		/* SENSE */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
 INPUT_PORTS_END
@@ -290,10 +316,10 @@ static const gfx_layout saa5050_lolayout =
 
 
 static GFXDECODE_START( malzak )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, charlayout,         0,  16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0000, saa5050_charlayout, 0, 128 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0000, saa5050_hilayout,   0, 128 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0000, saa5050_lolayout,   0, 128 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, charlayout,         0,  16 )
+	GFXDECODE_ENTRY( "gfx2", 0x0000, saa5050_charlayout, 0, 128 )
+	GFXDECODE_ENTRY( "gfx2", 0x0000, saa5050_hilayout,   0, 128 )
+	GFXDECODE_ENTRY( "gfx2", 0x0000, saa5050_lolayout,   0, 128 )
 GFXDECODE_END
 
 
@@ -309,7 +335,7 @@ static PALETTE_INIT( malzak )
 }
 
 
-static const struct SN76477interface sn76477_intf =
+static const sn76477_interface sn76477_intf =
 {
 	0,	/* N/C */		/*  4  noise_res         */
 	0,	/* N/C */		/*  5  filter_res        */
@@ -340,7 +366,7 @@ static const struct SN76477interface sn76477_intf =
 static MACHINE_DRIVER_START( malzak )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", S2650, 3800000/4)
+	MDRV_CPU_ADD("main", S2650, 3800000/4)
 	MDRV_CPU_PROGRAM_MAP(malzak_map,0)
 	MDRV_CPU_IO_MAP(malzak_io_map,0)
 
@@ -364,11 +390,11 @@ static MACHINE_DRIVER_START( malzak )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SN76477, 0)
+	MDRV_SOUND_ADD("sn1", SN76477, 0)
 	MDRV_SOUND_CONFIG(sn76477_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(SN76477, 0)
+	MDRV_SOUND_ADD("sn2", SN76477, 0)
 	MDRV_SOUND_CONFIG(sn76477_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -383,7 +409,7 @@ static MACHINE_DRIVER_START( malzak2 )
 MACHINE_DRIVER_END
 
 ROM_START( malzak )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "malzak.5",     0x0000, 0x0800, CRC(75355c98) SHA1(7036ed5d9ee38585b1a6bc204d410d5fb5ddd81f) )
 	ROM_CONTINUE( 0x2000, 0x0800 )
 	ROM_LOAD( "malzak.4",     0x0800, 0x0400, CRC(744c81e3) SHA1(c08d6df3cf2808a5f99d8247fc19a59be88121a9) )
@@ -392,19 +418,19 @@ ROM_START( malzak )
 	ROM_LOAD( "malzak.3",     0x4400, 0x0800, CRC(b947229e) SHA1(37b88b5aa91a483fcfe60a9bdd67a66f6378c487) )
 
 	// Screen data
-	ROM_REGION(0x0800, REGION_USER2, 0)
+	ROM_REGION(0x0800, "user2", 0)
 	ROM_LOAD( "malzak.2",     0x0000, 0x0800, CRC(2a12ad67) SHA1(f89a50b62311a170004c061abd8dedc3ebd84748) )
 
-	ROM_REGION( 0x0800, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0800, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "malzak.1",     0x0000, 0x0800, CRC(74d5ff7b) SHA1(cae326370dc83b86542f9d070e2dc91b1b833356) )
 
-	ROM_REGION(0x01000, REGION_GFX2,0) // SAA5050 internal character ROM
+	ROM_REGION(0x01000, "gfx2",0) // SAA5050 internal character ROM
 	ROM_LOAD("p2000.chr", 0x0140, 0x08c0, BAD_DUMP CRC(78c17e3e) SHA1(4e1c59dc484505de1dc0b1ba7e5f70a54b0d4ccc) )
 
 ROM_END
 
 ROM_START( malzak2 )
-	ROM_REGION( 0x8000, REGION_CPU1, 0 )
+	ROM_REGION( 0x8000, "main", 0 )
 	ROM_LOAD( "malz1a.bin",   0x000000, 0x000800, CRC(5c3cb14c) SHA1(2d3b5703cb9a47e34aa593f0e8d42d4e67c167d9) )
 	ROM_CONTINUE( 0x2000, 0x0800 )
 
@@ -416,13 +442,13 @@ ROM_START( malzak2 )
 	ROM_LOAD( "malz3c.bin",     0x4400, 0x0800, CRC(54d6a02e) SHA1(80c550d74da770689fe451cb0ee8e550a63b1b96) )
 
 	// Screen data
-	ROM_REGION(0x0800, REGION_USER2, 0)
+	ROM_REGION(0x0800, "user2", 0)
 	ROM_LOAD( "malz4d.bin",     0x0000, 0x0800, CRC(5c6ca415) SHA1(e7571519ac7911507d2c1cf975a7663f41321cb9) )
 
-	ROM_REGION( 0x0800, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x0800, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "malzak.1",     0x0000, 0x0800, CRC(74d5ff7b) SHA1(cae326370dc83b86542f9d070e2dc91b1b833356) )
 
-	ROM_REGION(0x01000, REGION_GFX2,0) // SAA5050 internal character ROM
+	ROM_REGION(0x01000, "gfx2",0) // SAA5050 internal character ROM
 	ROM_LOAD("p2000.chr", 0x0140, 0x08c0, BAD_DUMP CRC(78c17e3e) SHA1(4e1c59dc484505de1dc0b1ba7e5f70a54b0d4ccc) )
 
 ROM_END

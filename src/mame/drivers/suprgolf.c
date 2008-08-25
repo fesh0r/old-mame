@@ -31,15 +31,16 @@ static TILE_GET_INFO( get_tile_info )
 		0);
 }
 
-/*
+#ifdef UNUSED_FUNCTION
 static READ8_HANDLER( rom_bank_select_r )
 {
     return suprgolf_rom_bank;
 }
-*/
+#endif
+
 static WRITE8_HANDLER( rom_bank_select_w )
 {
-	UINT8 *region_base = memory_region(machine, REGION_USER1);
+	UINT8 *region_base = memory_region(machine, "user1");
 
 	suprgolf_rom_bank = data;
 
@@ -49,7 +50,7 @@ static WRITE8_HANDLER( rom_bank_select_w )
 
 static WRITE8_HANDLER( rom2_bank_select_w )
 {
-	UINT8 *region_base = memory_region(machine, REGION_USER2);
+	UINT8 *region_base = memory_region(machine, "user2");
 	mame_printf_debug("ROM_BANK 0x4000 - %X @%X\n",data,activecpu_get_previouspc());
 	memory_set_bankptr(1, region_base + (data&0x3f ) * 0x4000);
 }
@@ -103,12 +104,12 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x05, 0x05) AM_READ(input_port_4_r) AM_WRITE(rom_bank_select_w)
 	AM_RANGE(0x06, 0x06) AM_READ(suprgolf_random) // game locks up or crashes? if this doesn't return right values?
 
-	AM_RANGE(0x08, 0x08) AM_READ(YM2203_status_port_0_r) AM_WRITE(YM2203_control_port_0_w)
-	AM_RANGE(0x09, 0x09) AM_READ(YM2203_read_port_0_r) AM_WRITE(YM2203_write_port_0_w)
+	AM_RANGE(0x08, 0x08) AM_READ(ym2203_status_port_0_r) AM_WRITE(ym2203_control_port_0_w)
+	AM_RANGE(0x09, 0x09) AM_READ(ym2203_read_port_0_r) AM_WRITE(ym2203_write_port_0_w)
  ADDRESS_MAP_END
 
 static INPUT_PORTS_START( suprgolf )
-	PORT_START	/* PLAY1 */
+	PORT_START("P1")	/* PLAY1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -118,7 +119,7 @@ static INPUT_PORTS_START( suprgolf )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)			/* CNT */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)			/* SEL */
 
-	PORT_START	/* PLAY2 */
+	PORT_START("P2")	/* PLAY2 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -128,8 +129,7 @@ static INPUT_PORTS_START( suprgolf )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)			/* CNT */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)			/* SEL */
 
-
-	PORT_START	/* 8bit */
+	PORT_START("IN2")	/* 8bit */
 	PORT_DIPNAME( 0x01, 0x01, "2" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -155,7 +155,7 @@ static INPUT_PORTS_START( suprgolf )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* 8bit */
+	PORT_START("SYSTEM")	/* 8bit */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )               			/* 1P */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)			/* POW */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )  	                	/* 1P */
@@ -169,7 +169,7 @@ static INPUT_PORTS_START( suprgolf )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START	/* 8bit */
+	PORT_START("IN4")	/* 8bit */
 	PORT_DIPNAME( 0x01, 0x01, "4" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -195,7 +195,7 @@ static INPUT_PORTS_START( suprgolf )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* 8bit */
+	PORT_START("DSW0")	/* 8bit */
 	PORT_DIPNAME( 0x01, 0x01, "DSW0" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -221,7 +221,7 @@ static INPUT_PORTS_START( suprgolf )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* 8bit */
+	PORT_START("DSW1")	/* 8bit */
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x02, 0x02, "DSW1" )
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
@@ -261,7 +261,7 @@ static void irqhandler(running_machine *machine, int irq)
 //  cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2203interface ym2203_interface =
+static const ym2203_interface ym2203_config =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
@@ -285,13 +285,13 @@ static const gfx_layout gfxlayout =
 };
 
 static GFXDECODE_START( suprgolf )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, gfxlayout,   0, 32 )
+	GFXDECODE_ENTRY( "gfx1", 0, gfxlayout,   0, 32 )
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( suprgolf )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,4000000)
+	MDRV_CPU_ADD("main", Z80,4000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -315,8 +315,8 @@ static MACHINE_DRIVER_START( suprgolf )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 3000000)
-	MDRV_SOUND_CONFIG(ym2203_interface)
+	MDRV_SOUND_ADD("ym", YM2203, 3000000)
+	MDRV_SOUND_CONFIG(ym2203_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -350,10 +350,10 @@ CG23     7F         "
 */
 
 ROM_START( suprgolf )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "cg24.6k",0x000000, 0x08000, CRC(de548044) SHA1(f96b4cfcfca4dffabfaf205eb903cbc70972626b) )
 
-	ROM_REGION( 0x100000, REGION_USER1, ROMREGION_ERASEFF )
+	ROM_REGION( 0x100000, "user1", ROMREGION_ERASEFF )
 	ROM_LOAD( "cg1.6j", 0x000000, 0x10000, CRC(ee545c71) SHA1(8ee459a85e52257d3f9a2aa7263b641aad87bafd) )
 	ROM_LOAD( "cg2.6g", 0x010000, 0x10000, CRC(a2ed2159) SHA1(5e13b6c4eaba8146a4c6c2ff24197f3ffca29b92) )
 	ROM_LOAD( "cg3.6f", 0x020000, 0x10000, CRC(4543334d) SHA1(7ee268ed6d02c78db8c222418313593df37cde4b) )
@@ -367,13 +367,13 @@ ROM_START( suprgolf )
 	/* no 5c? */
 	ROM_LOAD( "cg11.5a",0x0b0000, 0x10000, CRC(cfec1a0f) SHA1(c09ece059cb3c456b66c016c6fab3139d3f61c6a) )
 
-	ROM_REGION( 0x100000, REGION_USER2, ROMREGION_ERASEFF )
+	ROM_REGION( 0x100000, "user2", ROMREGION_ERASEFF )
 	ROM_LOAD( "cg20.7k",0x000000, 0x10000, CRC(1e3fa2fd) SHA1(4771b90e40ebfbae4a98ff7ce6db50f635232597) )
 	ROM_LOAD( "cg21.7j",0x010000, 0x10000, CRC(0323a2cd) SHA1(d7d4b35ad451acb2fa3d117bb0ae2f8fbd883f17) )
 	ROM_LOAD( "cg22.7g",0x020000, 0x10000, CRC(83bcbefd) SHA1(77f29cfd1583d2506e95b8513cb9f87569c31821) )
 	ROM_LOAD( "cg23.7f",0x030000, 0x10000, CRC(50191b4d) SHA1(8f74cba2a2b5fd2a03eaf13a6d6b39af8833a4ab) )
 
-	ROM_REGION( 0x70000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x70000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "cg18.3k",0x60000, 0x10000, CRC(36edd88e) SHA1(374c95721198a88831d6f7e0b71d05e2f8465271) )
 	ROM_LOAD( "cg17.5f",0x50000, 0x10000, CRC(d27f87b5) SHA1(5b2927e89615589540e3853593aeff517584b6a0))
 	ROM_LOAD( "cg16.5g",0x40000, 0x10000, CRC(0498aa2e) SHA1(988965c3a584dac17ad8c7e504fa1f1e49775611) )

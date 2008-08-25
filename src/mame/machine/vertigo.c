@@ -48,15 +48,12 @@ const struct pit8253_config vertigo_pit8254_config =
 	{
 		{
 			240000,
-			v_irq4_w,
-			NULL
+			v_irq4_w
 		}, {
 			240000,
-			v_irq3_w,
-			NULL
+			v_irq3_w
 		}, {
 			240000,
-			NULL,
 			NULL
 		}
 	}
@@ -123,10 +120,12 @@ static PIT8253_OUTPUT_CHANGED( v_irq3_w )
 
 READ16_HANDLER( vertigo_io_convert )
 {
+	static const char *adcnames[] = { "P1X", "P1Y", "PADDLE" };
+
 	if (offset > 2)
 		adc_result = 0;
 	else
-		adc_result = input_port_read_indexed(machine, offset);
+		adc_result = input_port_read(machine, adcnames[offset]);
 
 	update_irq_encoder(INPUT_LINE_IRQ2, ASSERT_LINE);
 	return 0;

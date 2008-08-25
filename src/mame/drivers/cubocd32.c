@@ -126,68 +126,63 @@ static void cd32_cia_0_portb_w(UINT8 data)
 	logerror("%06x:CIA0_portb_w(%02x)\n", activecpu_get_pc(), data);
 }
 
-static READ32_HANDLER( dipswitch_r )
-{
-	return input_port_read(machine, "DIPSW1");
-}
-
 static ADDRESS_MAP_START( cd32_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x1fffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram32) AM_SIZE(&amiga_chip_ram_size)
-	AM_RANGE(0x800000, 0x800003) AM_READ( dipswitch_r )
+	AM_RANGE(0x800000, 0x800003) AM_READ_PORT("DIPSW1")
 	AM_RANGE(0xb80000, 0xb8003f) AM_READWRITE(amiga_akiko32_r, amiga_akiko32_w)
 	AM_RANGE(0xbfa000, 0xbfa003) AM_WRITE(aga_overlay_w)
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE16(amiga_cia_r, amiga_cia_w, 0xffffffff)
 	AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE16(amiga_custom_r, amiga_custom_w, 0xffffffff) AM_BASE((UINT32**)&amiga_custom_regs)
-	AM_RANGE(0xe00000, 0xe7ffff) AM_ROM AM_REGION(REGION_USER1, 0x80000)	/* CD32 Extended ROM */
+	AM_RANGE(0xe00000, 0xe7ffff) AM_ROM AM_REGION("user1", 0x80000)	/* CD32 Extended ROM */
 	AM_RANGE(0xa00000, 0xf7ffff) AM_NOP
-	AM_RANGE(0xf80000, 0xffffff) AM_ROM AM_REGION(REGION_USER1, 0x0)		/* Kickstart */
+	AM_RANGE(0xf80000, 0xffffff) AM_ROM AM_REGION("user1", 0x0)		/* Kickstart */
 ADDRESS_MAP_END
 
 
 
 static INPUT_PORTS_START( cd32 )
-	PORT_START_TAG("CIA0PORTA")
+	PORT_START("CIA0PORTA")
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_SPECIAL )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 
-	PORT_START_TAG("CIA0PORTB")
+	PORT_START("CIA0PORTB")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("JOY0DAT")
+	PORT_START("JOY0DAT")
 	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(amiga_joystick_convert, "P1JOY")
 	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("JOY1DAT")
+	PORT_START("JOY1DAT")
 	PORT_BIT( 0x0303, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(amiga_joystick_convert, "P2JOY")
 	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("POTGO")
+	PORT_START("POTGO")
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0xaaff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("P1JOY")
+	PORT_START("P1JOY")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 
-	PORT_START_TAG("P2JOY")
+	PORT_START("P2JOY")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 
-	PORT_START_TAG("COINS")
+	PORT_START("COINS")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )
 
-	PORT_START_TAG("DIPSW1")
+	PORT_START("DIPSW1")
 	PORT_DIPNAME( 0x01, 0x01, "DSW1 1" )
 	PORT_DIPSETTING(    0x01, "Reset" )
 	PORT_DIPSETTING(    0x00, "Set" )
@@ -218,7 +213,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct CustomSound_interface amiga_custom_interface =
+static const custom_sound_interface amiga_custom_interface =
 {
 	amiga_sh_start
 };
@@ -227,7 +222,7 @@ static const struct CustomSound_interface amiga_custom_interface =
 static MACHINE_DRIVER_START( cd32 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68EC020, AMIGA_68EC020_PAL_CLOCK) /* 14.3 Mhz */
+	MDRV_CPU_ADD("main", M68EC020, AMIGA_68EC020_PAL_CLOCK) /* 14.3 Mhz */
 	MDRV_CPU_PROGRAM_MAP(cd32_map,0)
 
 	MDRV_MACHINE_RESET(amiga)
@@ -252,14 +247,14 @@ static MACHINE_DRIVER_START( cd32 )
 	/* sound hardware */
     MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-    MDRV_SOUND_ADD(CUSTOM, 3579545)
+    MDRV_SOUND_ADD("amiga", CUSTOM, 3579545)
     MDRV_SOUND_CONFIG(amiga_custom_interface)
     MDRV_SOUND_ROUTE(0, "left", 0.25)
     MDRV_SOUND_ROUTE(1, "right", 0.25)
     MDRV_SOUND_ROUTE(2, "right", 0.25)
     MDRV_SOUND_ROUTE(3, "left", 0.25)
 
-    MDRV_SOUND_ADD( CDDA, 0 )
+    MDRV_SOUND_ADD( "cdda", CDDA, 0 )
 	MDRV_SOUND_ROUTE( 0, "left", 0.50 )
 	MDRV_SOUND_ROUTE( 1, "right", 0.50 )
 MACHINE_DRIVER_END
@@ -269,7 +264,7 @@ MACHINE_DRIVER_END
 #define ROM_LOAD16_WORD_BIOS(bios,name,offset,length,hash)     ROMX_LOAD(name, offset, length, hash, ROM_BIOS(bios+1))
 
 #define CD32_BIOS \
-	ROM_REGION32_BE(0x100000, REGION_USER1, 0 ) \
+	ROM_REGION32_BE(0x100000, "user1", 0 ) \
 	ROM_SYSTEM_BIOS(0, "cd32", "Kickstart v3.1 rev 40.60 with CD32 Extended-ROM" ) \
 	ROM_LOAD16_WORD_BIOS(0, "391640-03.u6a", 0x000000, 0x100000, CRC(d3837ae4) SHA1(06807db3181637455f4d46582d9972afec8956d9) ) \
 
@@ -281,42 +276,42 @@ ROM_END
 ROM_START( cndypuzl )
 	CD32_BIOS
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "cndypuzl", 0, SHA1(21093753a1875dc4fb97f23232ed3d8776b48c06) MD5(dcb6cdd7d81d5468c1290a3baf4265cb) )
 ROM_END
 
 ROM_START( haremchl )
 	CD32_BIOS
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "haremchl", 0, SHA1(4d5df2b64b376e8d0574100110f3471d3190765c) MD5(00adbd944c05747e9445446306f904be) )
 ROM_END
 
 ROM_START( lsrquiz )
 	CD32_BIOS
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "lsrquiz", 0, SHA1(4250c94ab77504104005229b28f24cfabe7c9e48) MD5(12a94f573fe5d218db510166b86fdda5) )
 ROM_END
 
 ROM_START( lsrquiz2 )
 	CD32_BIOS
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "lsrquiz2", 0, SHA1(ea92df0e53bf36bb86d99ad19fca21c6129e61d7) MD5(df63c32aca815f6c97889e08c10b77bc) )
 ROM_END
 
 ROM_START( mgprem11 )
 	CD32_BIOS
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "mgprem11", 0, SHA1(a8a32d10148ba968b57b8186fdf4d4cd378fb0d5) MD5(e0e4d00c6f981c19a1d20d5e7090b0db) )
 ROM_END
 
 ROM_START( lasstixx )
 	CD32_BIOS
 
-	DISK_REGION( REGION_DISKS )
+	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "lasstixx", 0, SHA1(29c2525d43a696da54648caffac9952cec85fd37) MD5(6242dd8a3c0b15ef9eafb930b7a7e87f) )
 ROM_END
 
@@ -343,7 +338,7 @@ static DRIVER_INIT( cd32 )
 
 	/* set up memory */
 	memory_configure_bank(1, 0, 1, amiga_chip_ram32, 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_USER1), 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, "user1"), 0);
 
 	/* intialize akiko */
 	amiga_akiko_init(machine);

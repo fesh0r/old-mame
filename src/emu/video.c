@@ -339,7 +339,7 @@ void video_init(running_machine *machine)
 
 	/* call the PALETTE_INIT function */
 	if (machine->config->init_palette != NULL)
-		(*machine->config->init_palette)(machine, memory_region(machine, REGION_PROMS));
+		(*machine->config->init_palette)(machine, memory_region(machine, "proms"));
 
 	/* actually decode the graphics */
 	if (machine->config->gfxdecodeinfo != NULL)
@@ -476,7 +476,7 @@ static void allocate_graphics(running_machine *machine, const gfx_decode_entry *
 	int i;
 
 	/* loop over all elements */
-	for (i = 0; i < MAX_GFX_ELEMENTS && gfxdecodeinfo[i].memory_region != -1; i++)
+	for (i = 0; i < MAX_GFX_ELEMENTS && gfxdecodeinfo[i].gfxlayout != NULL; i++)
 	{
 		int region_length = 8 * memory_region_length(machine, gfxdecodeinfo[i].memory_region);
 		int xscale = (gfxdecodeinfo[i].xscale == 0) ? 1 : gfxdecodeinfo[i].xscale;
@@ -610,7 +610,7 @@ static void decode_graphics(running_machine *machine, const gfx_decode_entry *gf
 		if (machine->gfx[i] != NULL)
 		{
 			/* if we have a valid region, decode it now */
-			if (gfxdecodeinfo[i].memory_region > REGION_INVALID)
+			if (gfxdecodeinfo[i].memory_region != NULL)
 			{
 				UINT8 *region_base = memory_region(machine, gfxdecodeinfo[i].memory_region);
 				gfx_element *gfx = machine->gfx[i];
@@ -1182,6 +1182,7 @@ static DEVICE_START( video_screen )
 	const device_config *screen = device;
 	char unique_tag[40];
 	screen_state *state = get_safe_token(screen);
+	render_container_user_settings settings;
 	render_container *container;
 	screen_config *config;
 
@@ -1216,14 +1217,16 @@ static DEVICE_START( video_screen )
 	state->scanline0_timer = timer_alloc(scanline0_callback, (void *)screen);
 
 	/* configure the default cliparea */
+	render_container_get_user_settings(container, &settings);
 	if (config->xoffset != 0)
-		render_container_set_xoffset(container, config->xoffset);
+		settings.xoffset = config->xoffset;
 	if (config->yoffset != 0)
-		render_container_set_yoffset(container, config->yoffset);
+		settings.yoffset = config->yoffset;
 	if (config->xscale != 0)
-		render_container_set_xscale(container, config->xscale);
+		settings.xscale = config->xscale;
 	if (config->yscale != 0)
-		render_container_set_yscale(container, config->yscale);
+		settings.yscale = config->yscale;
+	render_container_set_user_settings(container, &settings);
 
 	/* allocate a timer to generate per-scanline updates */
 	if (screen->machine->config->video_attributes & VIDEO_UPDATE_SCANLINE)

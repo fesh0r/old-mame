@@ -43,6 +43,9 @@ The test routine is at F000
 
 Sound: YM2203 and YM3526 driven by 6809.  Sound added by Bryan McPhail, 1/4/98.
 
+2008-07
+Dip locations verified with manual for brkthru (US conv. kit) and darwin
+
 ***************************************************************************/
 
 #include "driver.h"
@@ -102,10 +105,10 @@ static ADDRESS_MAP_START( brkthru_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM_WRITE(brkthru_bgram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x1000, 0x10ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x1100, 0x17ff) AM_RAM
-	AM_RANGE(0x1800, 0x1800) AM_READ(input_port_0_r)	/* player controls, player start */
-	AM_RANGE(0x1801, 0x1801) AM_READ(input_port_1_r)	/* cocktail player controls */
-	AM_RANGE(0x1802, 0x1802) AM_READ(input_port_3_r)	/* DSW 0 */
-	AM_RANGE(0x1803, 0x1803) AM_READ(input_port_2_r)	/* coin input & DSW */
+	AM_RANGE(0x1800, 0x1800) AM_READ_PORT("P1")
+	AM_RANGE(0x1801, 0x1801) AM_READ_PORT("P2")
+	AM_RANGE(0x1802, 0x1802) AM_READ_PORT("DSW1")
+	AM_RANGE(0x1803, 0x1803) AM_READ_PORT("DSW2/COIN")
 	AM_RANGE(0x1800, 0x1801) AM_WRITE(brkthru_1800_w)	/* bg scroll and color, ROM bank selection, flip screen */
 	AM_RANGE(0x1802, 0x1802) AM_WRITE(brkthru_soundlatch_w)
 	AM_RANGE(0x1803, 0x1803) AM_WRITE(brkthru_1803_w)	/* NMI enable, + ? */
@@ -121,10 +124,10 @@ static ADDRESS_MAP_START( darwin_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1c00, 0x1fff) AM_RAM_WRITE(brkthru_bgram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x0000, 0x00ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x0100, 0x01ff) AM_WRITE(SMH_NOP) /*tidyup, nothing realy here?*/
-	AM_RANGE(0x0800, 0x0800) AM_READ(input_port_0_r)	/* player controls, player start */
-	AM_RANGE(0x0801, 0x0801) AM_READ(input_port_1_r)	/* cocktail player controls */
-	AM_RANGE(0x0802, 0x0802) AM_READ(input_port_3_r)	/* DSW 0 */
-	AM_RANGE(0x0803, 0x0803) AM_READ(input_port_2_r)	/* coin input & DSW */
+	AM_RANGE(0x0800, 0x0800) AM_READ_PORT("P1")
+	AM_RANGE(0x0801, 0x0801) AM_READ_PORT("P2")
+	AM_RANGE(0x0802, 0x0802) AM_READ_PORT("DSW1")
+	AM_RANGE(0x0803, 0x0803) AM_READ_PORT("DSW2/COIN")
 	AM_RANGE(0x0800, 0x0801) AM_WRITE(brkthru_1800_w)     /* bg scroll and color, ROM bank selection, flip screen */
 	AM_RANGE(0x0802, 0x0802) AM_WRITE(brkthru_soundlatch_w)
 	AM_RANGE(0x0803, 0x0803) AM_WRITE(darwin_0803_w)     /* NMI enable, + ? */
@@ -135,177 +138,126 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(YM3526_control_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_WRITE(YM3526_write_port_0_w)
+	AM_RANGE(0x2000, 0x2000) AM_WRITE(ym3526_control_port_0_w)
+	AM_RANGE(0x2001, 0x2001) AM_WRITE(ym3526_write_port_0_w)
 	AM_RANGE(0x4000, 0x4000) AM_READ(soundlatch_r)
-	AM_RANGE(0x6000, 0x6000) AM_READ(YM2203_status_port_0_r)
-	AM_RANGE(0x6000, 0x6000) AM_WRITE(YM2203_control_port_0_w)
-	AM_RANGE(0x6001, 0x6001) AM_WRITE(YM2203_write_port_0_w)
+	AM_RANGE(0x6000, 0x6000) AM_READ(ym2203_status_port_0_r)
+	AM_RANGE(0x6000, 0x6000) AM_WRITE(ym2203_control_port_0_w)
+	AM_RANGE(0x6001, 0x6001) AM_WRITE(ym2203_write_port_0_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 
 
-#define COMMON_IN0\
-	PORT_START_TAG("IN0")\
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )\
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )\
+static INPUT_PORTS_START( brkthru )
+	PORT_START("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-#define COMMON_IN1\
-	PORT_START_TAG("IN1")\
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL\
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )\
+	PORT_START("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )	/* used only by the self test */
 
-static INPUT_PORTS_START( brkthru )
-	COMMON_IN0
-	COMMON_IN1
-
-	PORT_START_TAG("IN2")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x02, "2" )
-	PORT_DIPSETTING(    0x03, "3" )
-	PORT_DIPSETTING(    0x01, "5" )
-	PORT_DIPSETTING(    0x00, "99 (Cheat)")
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x00, "20000 Points Only" )
-	PORT_DIPSETTING(    0x04, "10000/20000 Points" )
-	PORT_DIPSETTING(    0x0c, "20000/30000 Points" )
-	PORT_DIPSETTING(    0x08, "20000/40000 Points" )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Allow_Continue ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Yes ) )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)	/* Manual says Picture Flip=On, Normal=Off */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_CHANGED(coin_inserted, 0)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_CHANGED(coin_inserted, 0)
-
-	PORT_START_TAG("DSW0")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
+	PORT_START("DSW1")
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:1,2")
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("SW1:3,4")
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x10, 0x10, "Enemy Vehicles" )
+	PORT_DIPNAME( 0x10, 0x10, "Enemy Vehicles" ) PORT_DIPLOCATION("SW1:5")
 	PORT_DIPSETTING(    0x10, "Slow" )
 	PORT_DIPSETTING(    0x00, "Fast" )
-	PORT_DIPNAME( 0x20, 0x20, "Enemy Bullets" )
+	PORT_DIPNAME( 0x20, 0x20, "Enemy Bullets" ) PORT_DIPLOCATION("SW1:6")
 	PORT_DIPSETTING(    0x20, "Slow" )
 	PORT_DIPSETTING(    0x00, "Fast" )
-	PORT_DIPNAME( 0x40, 0x00, "Control Panel" )
-	PORT_DIPSETTING( 0x40, "1 Player" )
-	PORT_DIPSETTING( 0x00, "2 Players" )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING( 0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING( 0x80, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x40, 0x00, "Control Panel" ) PORT_DIPLOCATION("SW1:7")
+	PORT_DIPSETTING(	0x40, "1 Player" )
+	PORT_DIPSETTING(	0x00, "2 Players" )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW1:8")
+	PORT_DIPSETTING(	0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(	0x80, DEF_STR( Cocktail ) )
+
+	PORT_START("DSW2/COIN")
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW2:1,2")
+	PORT_DIPSETTING(    0x02, "2" )
+	PORT_DIPSETTING(    0x03, "3" )
+	PORT_DIPSETTING(    0x01, "5" )
+	PORT_DIPSETTING(    0x00, "99 (Cheat)")
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW2:3,4")
+	PORT_DIPSETTING(    0x00, "20000 Points Only" )
+	PORT_DIPSETTING(    0x04, "10000/20000 Points" )
+	PORT_DIPSETTING(    0x0c, "20000/30000 Points" )
+	PORT_DIPSETTING(    0x08, "20000/40000 Points" )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Allow_Continue ) ) PORT_DIPLOCATION("SW2:5")	/* Manual says ALWAYS OFF */
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Yes ) )
+	/* According to the manual, bit 5 should control Flip Screen */
+//  PORT_DIPNAME( 0x20, 0x20, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW2:6")
+//  PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+//  PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	/* SW2:7,8 ALWAYS OFF according to the manual  */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_CHANGED(coin_inserted, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( brkthruj )
-	COMMON_IN0
-	COMMON_IN1
+	PORT_INCLUDE( brkthru )
 
-	PORT_START_TAG("IN2")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x02, "2" )
-	PORT_DIPSETTING(    0x03, "3" )
-	PORT_DIPSETTING(    0x01, "5" )
-	PORT_DIPSETTING(    0x00, "99 (Cheat)")
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x00, "20000 Points Only" )
-	PORT_DIPSETTING(    0x04, "10000/20000 Points" )
-	PORT_DIPSETTING(    0x0c, "20000/30000 Points" )
-	PORT_DIPSETTING(    0x08, "20000/40000 Points" )
-	PORT_SERVICE( 0x10, IP_ACTIVE_LOW )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)	/* Manual says Pitcure Flip=On, Normal=Off */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_CHANGED(coin_inserted, 0)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_CHANGED(coin_inserted, 0)
-
-	PORT_START_TAG("DSW0")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x10, 0x10, "Enemy Vehicles" )
-	PORT_DIPSETTING(    0x10, "Slow" )
-	PORT_DIPSETTING(    0x00, "Fast" )
-	PORT_DIPNAME( 0x20, 0x20, "Enemy Bullets" )
-	PORT_DIPSETTING(    0x20, "Slow" )
-	PORT_DIPSETTING(    0x00, "Fast" )
-	PORT_DIPNAME( 0x40, 0x00, "Control Panel" )
-	PORT_DIPSETTING( 0x40, "1 Player" )
-	PORT_DIPSETTING( 0x00, "2 Players" )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING( 0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING( 0x80, DEF_STR( Cocktail ) )
+	PORT_MODIFY("DSW2/COIN")
+	PORT_SERVICE_DIPLOC( 0x10, IP_ACTIVE_LOW, "SW2:5" )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( darwin )
-	COMMON_IN0
-	COMMON_IN1
+	PORT_INCLUDE( brkthru )
 
-	PORT_START_TAG("IN2")	/* modified by Shingo Suzuki 1999/11/02 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) )
+	PORT_MODIFY("DSW1")
+	PORT_DIPUNKNOWN_DIPLOC( 0x10, 0x10, "SW1:5" )	/* Manual says must be OFF */
+	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW1:6")
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:7")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x80, 0x80, "SW1:8" )	/* Manual says must be OFF */
+
+	PORT_MODIFY("DSW2/COIN")	/* modified by Shingo Suzuki 1999/11/02 */
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x01, "3" )
 	PORT_DIPSETTING(    0x00, "5" )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Bonus_Life ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW2:2")
 	PORT_DIPSETTING(    0x02, "20k, 50k and every 50k" )
 	PORT_DIPSETTING(    0x00, "30k, 80k and every 80k" )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:3,4")
 	PORT_DIPSETTING(    0x0c, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Medium ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
-//  PORT_DIPNAME( 0x20, 0x20, DEF_STR( Flip_Screen ) )
+	/* According to the manual, bit 5 should control Flip Screen */
+//  PORT_DIPNAME( 0x20, 0x20, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW2:6")
 //  PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 //  PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	/* SW2:5,7,8 ALWAYS OFF according to the manual  */
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_CHANGED(coin_inserted, 0)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_CHANGED(coin_inserted, 0)
-
-	PORT_START_TAG("DSW0")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
 
@@ -360,16 +312,16 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( brkthru )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x00000, charlayout,   0x00,  1 )	/* use colors 0x00-0x07 */
-	GFXDECODE_ENTRY( REGION_GFX2, 0x00000, tilelayout1,  0x80, 16 )	/* use colors 0x80-0xff */
-	GFXDECODE_ENTRY( REGION_GFX2, 0x01000, tilelayout2,  0x80, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x08000, tilelayout1,  0x80, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x09000, tilelayout2,  0x80, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x10000, tilelayout1,  0x80, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x11000, tilelayout2,  0x80, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x18000, tilelayout1,  0x80, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x19000, tilelayout2,  0x80, 16 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0x00000, spritelayout, 0x40,  8 )	/* use colors 0x40-0x7f */
+	GFXDECODE_ENTRY( "gfx1", 0x00000, charlayout,   0x00,  1 )	/* use colors 0x00-0x07 */
+	GFXDECODE_ENTRY( "gfx2", 0x00000, tilelayout1,  0x80, 16 )	/* use colors 0x80-0xff */
+	GFXDECODE_ENTRY( "gfx2", 0x01000, tilelayout2,  0x80, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0x08000, tilelayout1,  0x80, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0x09000, tilelayout2,  0x80, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0x10000, tilelayout1,  0x80, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0x11000, tilelayout2,  0x80, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0x18000, tilelayout1,  0x80, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0x19000, tilelayout2,  0x80, 16 )
+	GFXDECODE_ENTRY( "gfx3", 0x00000, spritelayout, 0x40,  8 )	/* use colors 0x40-0x7f */
 GFXDECODE_END
 
 /* handler called by the 3812 emulator when the internal timers cause an IRQ */
@@ -378,7 +330,7 @@ static void irqhandler(running_machine *machine, int linestate)
 	cpunum_set_input_line(machine, 1,M6809_IRQ_LINE,linestate);
 }
 
-static const struct YM3526interface ym3526_interface =
+static const ym3526_interface ym3526_config =
 {
 	irqhandler
 };
@@ -388,11 +340,11 @@ static const struct YM3526interface ym3526_interface =
 static MACHINE_DRIVER_START( brkthru )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, MASTER_CLOCK/8)        /* 1.5 MHz ? */
+	MDRV_CPU_ADD("main", M6809, MASTER_CLOCK/8)        /* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(brkthru_map,0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
-	MDRV_CPU_ADD(M6809, MASTER_CLOCK/8)		/* 1.5 MHz ? */
+	MDRV_CPU_ADD("audio", M6809, MASTER_CLOCK/8)		/* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	/* video hardware */
@@ -411,14 +363,14 @@ static MACHINE_DRIVER_START( brkthru )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, MASTER_CLOCK/8)
+	MDRV_SOUND_ADD("ym1", YM2203, MASTER_CLOCK/8)
 	MDRV_SOUND_ROUTE(0, "mono", 0.10)
 	MDRV_SOUND_ROUTE(1, "mono", 0.10)
 	MDRV_SOUND_ROUTE(2, "mono", 0.10)
 	MDRV_SOUND_ROUTE(3, "mono", 0.50)
 
-	MDRV_SOUND_ADD(YM3526, MASTER_CLOCK/4)
-	MDRV_SOUND_CONFIG(ym3526_interface)
+	MDRV_SOUND_ADD("ym2", YM3526, MASTER_CLOCK/4)
+	MDRV_SOUND_CONFIG(ym3526_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -426,11 +378,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( darwin )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, MASTER_CLOCK/8)        /* 1.5 MHz ? */
+	MDRV_CPU_ADD("main", M6809, MASTER_CLOCK/8)        /* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(darwin_map,0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
-	MDRV_CPU_ADD(M6809, MASTER_CLOCK/8)		/* 1.5 MHz ? */
+	MDRV_CPU_ADD("audio", M6809, MASTER_CLOCK/8)		/* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	/* video hardware */
@@ -460,14 +412,14 @@ static MACHINE_DRIVER_START( darwin )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, MASTER_CLOCK/8)
+	MDRV_SOUND_ADD("ym1", YM2203, MASTER_CLOCK/8)
 	MDRV_SOUND_ROUTE(0, "mono", 0.10)
 	MDRV_SOUND_ROUTE(1, "mono", 0.10)
 	MDRV_SOUND_ROUTE(2, "mono", 0.10)
 	MDRV_SOUND_ROUTE(3, "mono", 0.50)
 
-	MDRV_SOUND_ADD(YM3526, MASTER_CLOCK/4)
-	MDRV_SOUND_CONFIG(ym3526_interface)
+	MDRV_SOUND_ADD("ym2", YM3526, MASTER_CLOCK/4)
+	MDRV_SOUND_CONFIG(ym3526_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -480,16 +432,16 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( brkthru )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )     /* 64k for main CPU + 64k for banked ROMs */
+	ROM_REGION( 0x20000, "main", 0 )     /* 64k for main CPU + 64k for banked ROMs */
 	ROM_LOAD( "brkthru.1",    0x04000, 0x4000, CRC(cfb4265f) SHA1(4cd748fa06fd2727de1694196912d605672d4883) )
 	ROM_LOAD( "brkthru.2",    0x08000, 0x8000, CRC(fa8246d9) SHA1(d6da03b2a3d8a83411191351ee110b89352a3ead) )
 	ROM_LOAD( "brkthru.4",    0x10000, 0x8000, CRC(8cabf252) SHA1(45e8847b2e6b278989f67e0b27b827a9b3b92581) )
 	ROM_LOAD( "brkthru.3",    0x18000, 0x8000, CRC(2f2c40c2) SHA1(fcb78941453520a3a07f272127dae7c2cc1999ea) )
 
-	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "brkthru.12",   0x00000, 0x2000, CRC(58c0b29b) SHA1(9dc075f8afae7e8fe164a9fe325e9948cdc7e4bb) )	/* characters */
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	/* background */
 	/* we do a lot of scatter loading here, to place the data in a format */
 	/* which can be decoded by MAME's standard functions */
@@ -506,30 +458,30 @@ ROM_START( brkthru )
 	ROM_CONTINUE(             0x1c000, 0x1000 )				/* bitplane 3 for bank 7,8 */
 	ROM_CONTINUE(             0x1e000, 0x1000 )
 
-	ROM_REGION( 0x18000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x18000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "brkthru.9",    0x00000, 0x8000, CRC(f54e50a7) SHA1(eccf4d859c26944271ec6586644b4730a72851fd) )	/* sprites */
 	ROM_LOAD( "brkthru.10",   0x08000, 0x8000, CRC(fd156945) SHA1(a0575a4164217e63317886176ab7e59d255fc771) )
 	ROM_LOAD( "brkthru.11",   0x10000, 0x8000, CRC(c152a99b) SHA1(f96133aa01219eda357b9e906bd9577dbfe359c0) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "brkthru.13",   0x0000, 0x0100, CRC(aae44269) SHA1(7c66aeb93577104109d264ee8b848254256c81eb) ) /* red and green component */
 	ROM_LOAD( "brkthru.14",   0x0100, 0x0100, CRC(f2d4822a) SHA1(f535e91b87ff01f2a73662856fd3f72907ca62e9) ) /* blue component */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "brkthru.5",    0x8000, 0x8000, CRC(c309435f) SHA1(82914004c2b169a7c31aa49af83a699ebbc7b33f) )
 ROM_END
 
 ROM_START( brkthruj )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )     /* 64k for main CPU + 64k for banked ROMs */
+	ROM_REGION( 0x20000, "main", 0 )     /* 64k for main CPU + 64k for banked ROMs */
 	ROM_LOAD( "1",            0x04000, 0x4000, CRC(09bd60ee) SHA1(9591a4c89bb69d5615a5d6b29c47e6b17350c007) )
 	ROM_LOAD( "2",            0x08000, 0x8000, CRC(f2b2cd1c) SHA1(dafccc74310876bc1c88de7f3c86f93ed8a0eb62) )
 	ROM_LOAD( "4",            0x10000, 0x8000, CRC(b42b3359) SHA1(c1da550e0f7cc52721802c7c0f2770ef0087e28b) )
 	ROM_LOAD( "brkthru.3",    0x18000, 0x8000, CRC(2f2c40c2) SHA1(fcb78941453520a3a07f272127dae7c2cc1999ea) )
 
-	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "12",   0x00000, 0x2000, CRC(3d9a7003) SHA1(2e5de982eb75ac75312fb29bb4cb2ed12ec0fd56) )	/* characters */
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	/* background */
 	/* we do a lot of scatter loading here, to place the data in a format */
 	/* which can be decoded by MAME's standard functions */
@@ -546,31 +498,31 @@ ROM_START( brkthruj )
 	ROM_CONTINUE(             0x1c000, 0x1000 )				/* bitplane 3 for bank 7,8 */
 	ROM_CONTINUE(             0x1e000, 0x1000 )
 
-	ROM_REGION( 0x18000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x18000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "brkthru.9",    0x00000, 0x8000, CRC(f54e50a7) SHA1(eccf4d859c26944271ec6586644b4730a72851fd) )	/* sprites */
 	ROM_LOAD( "brkthru.10",   0x08000, 0x8000, CRC(fd156945) SHA1(a0575a4164217e63317886176ab7e59d255fc771) )
 	ROM_LOAD( "brkthru.11",   0x10000, 0x8000, CRC(c152a99b) SHA1(f96133aa01219eda357b9e906bd9577dbfe359c0) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "brkthru.13",   0x0000, 0x0100, CRC(aae44269) SHA1(7c66aeb93577104109d264ee8b848254256c81eb) ) /* red and green component */
 	ROM_LOAD( "brkthru.14",   0x0100, 0x0100, CRC(f2d4822a) SHA1(f535e91b87ff01f2a73662856fd3f72907ca62e9) ) /* blue component */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "brkthru.5",    0x8000, 0x8000, CRC(c309435f) SHA1(82914004c2b169a7c31aa49af83a699ebbc7b33f) )
 ROM_END
 
 /* bootleg, changed prg rom fails test, probably just the japanese version modified to have english title */
 ROM_START( forcebrk )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )     /* 64k for main CPU + 64k for banked ROMs */
+	ROM_REGION( 0x20000, "main", 0 )     /* 64k for main CPU + 64k for banked ROMs */
 	ROM_LOAD( "1",            0x04000, 0x4000, CRC(09bd60ee) SHA1(9591a4c89bb69d5615a5d6b29c47e6b17350c007) )
 	ROM_LOAD( "2",            0x08000, 0x8000, CRC(f2b2cd1c) SHA1(dafccc74310876bc1c88de7f3c86f93ed8a0eb62) )
 	ROM_LOAD( "forcebrk4",    0x10000, 0x8000, CRC(b4838c19) SHA1(b32f183ee042872a6eb6689aab219108d37829e4) )
 	ROM_LOAD( "brkthru.3",    0x18000, 0x8000, CRC(2f2c40c2) SHA1(fcb78941453520a3a07f272127dae7c2cc1999ea) )
 
-	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "12",           0x00000, 0x2000, CRC(3d9a7003) SHA1(2e5de982eb75ac75312fb29bb4cb2ed12ec0fd56) )	/* characters */
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	/* background */
 	/* we do a lot of scatter loading here, to place the data in a format */
 	/* which can be decoded by MAME's standard functions */
@@ -587,30 +539,30 @@ ROM_START( forcebrk )
 	ROM_CONTINUE(             0x1c000, 0x1000 )				/* bitplane 3 for bank 7,8 */
 	ROM_CONTINUE(             0x1e000, 0x1000 )
 
-	ROM_REGION( 0x18000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x18000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "brkthru.9",    0x00000, 0x8000, CRC(f54e50a7) SHA1(eccf4d859c26944271ec6586644b4730a72851fd) )	/* sprites */
 	ROM_LOAD( "brkthru.10",   0x08000, 0x8000, CRC(fd156945) SHA1(a0575a4164217e63317886176ab7e59d255fc771) )
 	ROM_LOAD( "brkthru.11",   0x10000, 0x8000, CRC(c152a99b) SHA1(f96133aa01219eda357b9e906bd9577dbfe359c0) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "brkthru.13",   0x0000, 0x0100, CRC(aae44269) SHA1(7c66aeb93577104109d264ee8b848254256c81eb) ) /* red and green component */
 	ROM_LOAD( "brkthru.14",   0x0100, 0x0100, CRC(f2d4822a) SHA1(f535e91b87ff01f2a73662856fd3f72907ca62e9) ) /* blue component */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "brkthru.5",    0x8000, 0x8000, CRC(c309435f) SHA1(82914004c2b169a7c31aa49af83a699ebbc7b33f) )
 ROM_END
 
 ROM_START( darwin )
-	ROM_REGION( 0x20000, REGION_CPU1, 0 )     /* 64k for main CPU + 64k for banked ROMs */
+	ROM_REGION( 0x20000, "main", 0 )     /* 64k for main CPU + 64k for banked ROMs */
 	ROM_LOAD( "darw_04.rom",  0x04000, 0x4000, CRC(0eabf21c) SHA1(ccad6b30fe9361e8a21b8aaf8116aa85f9e6bb19) )
 	ROM_LOAD( "darw_05.rom",  0x08000, 0x8000, CRC(e771f864) SHA1(8ba9f97c6abf035ceaf9f5505495708506f1b0c5) )
 	ROM_LOAD( "darw_07.rom",  0x10000, 0x8000, CRC(97ac052c) SHA1(8baa117472d46b99e5946f095b869de9b5c48f9a) )
 	ROM_LOAD( "darw_06.rom",  0x18000, 0x8000, CRC(2a9fb208) SHA1(f04a5502600e49e2494a87ec65a44a2843441d37) )
 
-	ROM_REGION( 0x02000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "darw_09.rom",  0x00000, 0x2000, CRC(067b4cf5) SHA1(fc752bb72e4850b71565afd1df0cbb4f732f131c) )   /* characters */
 
-	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE )
 	/* background */
 	/* we do a lot of scatter loading here, to place the data in a format */
 	/* which can be decoded by MAME's standard functions */
@@ -627,16 +579,16 @@ ROM_START( darwin )
 	ROM_CONTINUE(             0x1c000, 0x1000 )				/* bitplane 3 for bank 7,8 */
 	ROM_CONTINUE(             0x1e000, 0x1000 )
 
-	ROM_REGION( 0x18000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x18000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "darw_10.rom",  0x00000, 0x8000, CRC(487a014c) SHA1(c9543df8115088b02019e76a6473ecc5f645a836) )	/* sprites */
 	ROM_LOAD( "darw_11.rom",  0x08000, 0x8000, CRC(548ce2d1) SHA1(3b1757c70346ab4ee19ec85e7ae5137f8ccf446f) )
 	ROM_LOAD( "darw_12.rom",  0x10000, 0x8000, CRC(faba5fef) SHA1(848da4d4888f0218b737f1dc9b62944f68349a43) )
 
-	ROM_REGION( 0x0200, REGION_PROMS, 0 )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "df.12",   0x0000, 0x0100, CRC(89b952ef) SHA1(77dc4020a2e25f81fae1182d58993cf09d13af00) ) /* red and green component */
 	ROM_LOAD( "df.13",   0x0100, 0x0100, CRC(d595e91d) SHA1(5e9793f6602455c79afdc855cd13183a7f48ab1e) ) /* blue component */
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "darw_08.rom",  0x8000, 0x8000, CRC(6b580d58) SHA1(a70aebc6b4a291b4adddbb41d092b2682fc2d421) )
 ROM_END
 

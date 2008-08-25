@@ -667,9 +667,10 @@ static void ymf278b_init(YMF278BChip *chip, UINT8 *rom, void (*cb)(running_machi
 	mix = auto_malloc(44100*2*sizeof(*mix));
 }
 
-static void *ymf278b_start(int sndindex, int clock, const void *config)
+static void *ymf278b_start(const char *tag, int sndindex, int clock, const void *config)
 {
-	const struct YMF278B_interface *intf;
+	static const ymf278b_interface defintrf = { 0 };
+	const ymf278b_interface *intf;
 	int i;
 	YMF278BChip *chip;
 
@@ -677,9 +678,9 @@ static void *ymf278b_start(int sndindex, int clock, const void *config)
 	memset(chip, 0, sizeof(*chip));
 	chip->index = sndindex;
 
-	intf = config;
+	intf = (config != NULL) ? config : &defintrf;
 
-	ymf278b_init(chip, memory_region(Machine, intf->region), intf->irq_callback, clock);
+	ymf278b_init(chip, memory_region(Machine, tag), intf->irq_callback, clock);
 	chip->stream = stream_create(0, 2, clock/768, chip, ymf278b_pcm_update);
 
 	// Volume table, 1 = -0.375dB, 8 = -3dB, 256 = -96dB
@@ -704,83 +705,83 @@ static void *ymf278b_start(int sndindex, int clock, const void *config)
 }
 
 
-READ8_HANDLER( YMF278B_status_port_0_r )
+READ8_HANDLER( ymf278b_status_port_0_r )
 {
 	return ymf278b_status_port_r(0);
 }
 
-READ8_HANDLER( YMF278B_data_port_0_r )
+READ8_HANDLER( ymf278b_data_port_0_r )
 {
 	return ymf278b_data_port_r(0);
 }
 
-WRITE8_HANDLER( YMF278B_control_port_0_A_w )
+WRITE8_HANDLER( ymf278b_control_port_0_a_w )
 {
 	ymf278b_control_port_A_w(0, data);
 }
 
-WRITE8_HANDLER( YMF278B_data_port_0_A_w )
+WRITE8_HANDLER( ymf278b_data_port_0_a_w )
 {
 	ymf278b_data_port_A_w(machine, 0, data);
 }
 
-WRITE8_HANDLER( YMF278B_control_port_0_B_w )
+WRITE8_HANDLER( ymf278b_control_port_0_b_w )
 {
 	ymf278b_control_port_B_w(0, data);
 }
 
-WRITE8_HANDLER( YMF278B_data_port_0_B_w )
+WRITE8_HANDLER( ymf278b_data_port_0_b_w )
 {
 	ymf278b_data_port_B_w(0, data);
 }
 
-WRITE8_HANDLER( YMF278B_control_port_0_C_w )
+WRITE8_HANDLER( ymf278b_control_port_0_c_w )
 {
 	ymf278b_control_port_C_w(0, data);
 }
 
-WRITE8_HANDLER( YMF278B_data_port_0_C_w )
+WRITE8_HANDLER( ymf278b_data_port_0_c_w )
 {
 	ymf278b_data_port_C_w(0, data);
 }
 
 
-READ8_HANDLER( YMF278B_status_port_1_r )
+READ8_HANDLER( ymf278b_status_port_1_r )
 {
 	return ymf278b_status_port_r(1);
 }
 
-READ8_HANDLER( YMF278B_data_port_1_r )
+READ8_HANDLER( ymf278b_data_port_1_r )
 {
 	return ymf278b_data_port_r(1);
 }
 
-WRITE8_HANDLER( YMF278B_control_port_1_A_w )
+WRITE8_HANDLER( ymf278b_control_port_1_a_w )
 {
 	ymf278b_control_port_A_w(1, data);
 }
 
-WRITE8_HANDLER( YMF278B_data_port_1_A_w )
+WRITE8_HANDLER( ymf278b_data_port_1_a_w )
 {
 	ymf278b_data_port_A_w(machine, 1, data);
 }
 
-WRITE8_HANDLER( YMF278B_control_port_1_B_w )
+WRITE8_HANDLER( ymf278b_control_port_1_b_w )
 {
 	ymf278b_control_port_B_w(1, data);
 }
 
-WRITE8_HANDLER( YMF278B_data_port_1_B_w )
+WRITE8_HANDLER( ymf278b_data_port_1_b_w )
 {
 	ymf278b_data_port_B_w(1, data);
 }
 
-WRITE8_HANDLER( YMF278B_control_port_1_C_w )
+WRITE8_HANDLER( ymf278b_control_port_1_c_w )
 {
 	ymf278b_control_port_C_w(1, data);
 }
 
-WRITE8_HANDLER( YMF278B_data_port_1_C_w )
+WRITE8_HANDLER( ymf278b_data_port_1_c_w )
 {
 	ymf278b_data_port_C_w(1, data);
 }

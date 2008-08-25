@@ -45,7 +45,7 @@ Registers per channel:
 #define LOG_SOUND(x) do { if (VERBOSE_SOUND) logerror x; } while (0)
 #define LOG_READ_WRITES(x) do { if (VERBOSE_READ_WRITES) logerror x; } while (0)
 
-//#define LOG_WAVE  1
+#define LOG_WAVE  0
 //#define ALT_MIX
 
 #define GAELCO_NUM_CHANNELS 	0x07
@@ -76,9 +76,7 @@ struct GAELCOSND
 	INT16 volume_table[VOLUME_LEVELS][256];
 };
 
-#ifdef LOG_WAVE
-void *	wavraw;					/* raw waveform */
-#endif
+static void *	wavraw;					/* raw waveform */
 
 /*============================================================================
                         CG-1V/GAE1 Sound Update
@@ -182,9 +180,8 @@ static void gaelco_update(void *param, stream_sample_t **inputs, stream_sample_t
 		buffer[1][j] = output_r;
 	}
 
-#ifdef LOG_WAVE
-	wav_add_data_16lr(wavraw, buffer[0], buffer[1], length);
-#endif
+	if (wavraw)
+		wav_add_data_32lr(wavraw, buffer[0], buffer[1], length, 0);
 }
 
 /*============================================================================
@@ -246,10 +243,10 @@ WRITE16_HANDLER( gaelcosnd_w )
                         CG-1V/GAE1 Init
   ============================================================================*/
 
-static void *gaelcosnd_start(sound_type sndtype, int sndindex, int clock, const void *config)
+static void *gaelcosnd_start(sound_type sndtype, const char *tag, int sndindex, int clock, const void *config)
 {
 	int j, vol;
-	const struct gaelcosnd_interface *intf = config;
+	const gaelcosnd_interface *intf = config;
 
 	struct GAELCOSND *info;
 	info = auto_malloc(sizeof(*info));
@@ -262,7 +259,9 @@ static void *gaelcosnd_start(sound_type sndtype, int sndindex, int clock, const 
 		info->banks[j] = intf->banks[j];
 	}
 	info->stream = stream_create(0, 2, 8000, info, gaelco_update);
-	info->snd_data = (UINT8 *)memory_region(Machine, intf->region);
+	info->snd_data = (UINT8 *)memory_region(Machine, intf->gfxregion);
+	if (info->snd_data == NULL)
+		info->snd_data = (UINT8 *)memory_region(Machine, tag);
 
 	/* init volume table */
 	for (vol = 0; vol < VOLUME_LEVELS; vol++){
@@ -271,29 +270,28 @@ static void *gaelcosnd_start(sound_type sndtype, int sndindex, int clock, const 
 		}
 	}
 
-#ifdef LOG_WAVE
-	wavraw = wav_open("gae1_snd.wav", 8000, 2);
-#endif
+	if (LOG_WAVE)
+		wavraw = wav_open("gae1_snd.wav", 8000, 2);
 
 	return info;
 }
 
-static void *gaelco_gae1_start(int sndindex, int clock, const void *config)
+static void *gaelco_gae1_start(const char *tag, int sndindex, int clock, const void *config)
 {
-	return gaelcosnd_start(SOUND_GAELCO_GAE1, sndindex, clock, config);
+	return gaelcosnd_start(SOUND_GAELCO_GAE1, tag, sndindex, clock, config);
 }
 
-static void *gaelco_cg1v_start(int sndindex, int clock, const void *config)
+static void *gaelco_cg1v_start(const char *tag, int sndindex, int clock, const void *config)
 {
-	return gaelcosnd_start(SOUND_GAELCO_CG1V, sndindex, clock, config);
+	return gaelcosnd_start(SOUND_GAELCO_CG1V, tag, sndindex, clock, config);
 }
 
 
 static void gaelco_stop(void *chip)
 {
-#ifdef LOG_WAVE
-	wav_close(wavraw);
-#endif
+	if (wavraw)
+		wav_close(wavraw);
+	wavraw = NULL;
 }
 
 

@@ -131,7 +131,7 @@ static void fir_filter(INT32 *input, INT16 *output, int count);
  *
  *************************************/
 
-static void *exidy440_sh_start(int clock, const struct CustomSound_interface *config)
+static void *exidy440_sh_start(int clock, const custom_sound_interface *config)
 {
 	int i, length;
 
@@ -164,7 +164,7 @@ static void *exidy440_sh_start(int clock, const struct CustomSound_interface *co
 	stream = stream_create(0, 2, clock, NULL, channel_update);
 
 	/* allocate the sample cache */
-	length = memory_region_length(Machine, REGION_SOUND1) * 16 + MAX_CACHE_ENTRIES * sizeof(sound_cache_entry);
+	length = memory_region_length(Machine, "cvsd") * 16 + MAX_CACHE_ENTRIES * sizeof(sound_cache_entry);
 	sound_cache = auto_malloc(length);
 
 	/* determine the hard end of the cache and reset */
@@ -653,7 +653,7 @@ static INT16 *find_or_add_to_sound_cache(int address, int length, int bits, int 
 		if (current->address == address && current->length == length && current->bits == bits && current->frequency == frequency)
 			return current->data;
 
-	return add_to_sound_cache(&memory_region(Machine, REGION_SOUND1)[address], address, length, bits, frequency);
+	return add_to_sound_cache(&memory_region(Machine, "cvsd")[address], address, length, bits, frequency);
 }
 
 
@@ -914,7 +914,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static const struct CustomSound_interface custom_interface =
+static const custom_sound_interface custom_interface =
 {
 	exidy440_sh_start,
 	exidy440_sh_stop
@@ -930,26 +930,26 @@ static const struct CustomSound_interface custom_interface =
 
 MACHINE_DRIVER_START( exidy440_audio )
 
-	MDRV_CPU_ADD(M6809, EXIDY440_AUDIO_CLOCK)
+	MDRV_CPU_ADD("audio", M6809, EXIDY440_AUDIO_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(exidy440_audio_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(CUSTOM, EXIDY440_MASTER_CLOCK/256)
+	MDRV_SOUND_ADD("custom", CUSTOM, EXIDY440_MASTER_CLOCK/256)
 	MDRV_SOUND_CONFIG(custom_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
-//  MDRV_SOUND_ADD(MC3418, EXIDY440_MC3418_CLOCK)
+//  MDRV_SOUND_ADD("cvsd1", MC3418, EXIDY440_MC3418_CLOCK)
 //  MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 
-//  MDRV_SOUND_ADD(MC3418, EXIDY440_MC3418_CLOCK)
+//  MDRV_SOUND_ADD("cvsd2", MC3418, EXIDY440_MC3418_CLOCK)
 //  MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 
-//  MDRV_SOUND_ADD(MC3417, EXIDY440_MC3417_CLOCK)
+//  MDRV_SOUND_ADD("cvsd3", MC3417, EXIDY440_MC3417_CLOCK)
 //  MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
 
-//  MDRV_SOUND_ADD(MC3417, EXIDY440_MC3417_CLOCK)
+//  MDRV_SOUND_ADD("cvsd4", MC3417, EXIDY440_MC3417_CLOCK)
 //  MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END

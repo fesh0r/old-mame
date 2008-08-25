@@ -6,16 +6,28 @@
  *
  *****************************************************************************/
 
-#ifndef _SH2_COMMON_H_
-#define _SH2_COMMON_H_
+#pragma once
 
-typedef struct
+#ifndef __SH2COMN_H__
+#define __SH2COMN_H__
+
+#define USE_SH2DRC
+
+#ifdef USE_SH2DRC
+#include "cpu/drcfe.h"
+#include "cpu/drcuml.h"
+#include "cpu/drcumlsh.h"
+#endif
+
+typedef struct _irq_entry irq_entry;
+struct _irq_entry
 {
 	int irq_vector;
 	int irq_priority;
-} irq_entry;
+};
 
-enum {
+enum
+{
 	ICF  = 0x00800000,
 	OCFA = 0x00080000,
 	OCFB = 0x00040000,
@@ -34,6 +46,19 @@ enum {
 
 #define Rn	((opcode>>8)&15)
 #define Rm	((opcode>>4)&15)
+
+#define CPU_TYPE_SH1	(0)
+#define CPU_TYPE_SH2	(1)
+
+#define REGFLAG_R(n)                                        (1 << (n))
+
+/* register flags 1 */
+#define REGFLAG_PR						(1 << 0)
+#define REGFLAG_MACL						(1 << 1)
+#define REGFLAG_MACH						(1 << 2)
+#define REGFLAG_GBR						(1 << 3)
+#define REGFLAG_VBR						(1 << 4)
+#define REGFLAG_SR						(1 << 5)
 
 #define CHECK_PENDING_IRQ(message)				\
 do {											\
@@ -73,8 +98,17 @@ typedef struct
 	UINT32	cpu_off;
 	UINT32	dvsr, dvdnth, dvdntl, dvcr;
 	UINT32	pending_irq;
-	UINT32    test_irq;
+	UINT32	test_irq;
+	UINT32	pending_nmi;
+	INT32  irqline;
+	UINT32	evec;				// exception vector for DRC
+	UINT32  irqsr;				// IRQ-time old SR for DRC
+	UINT32 target;				// target for jmp/jsr/etc so the delay slot can't kill it
 	irq_entry     irq_queue[16];
+
+	int pcfsel;	     			// last pcflush entry set
+	int maxpcfsel;				// highest valid pcflush entry
+	UINT32 pcflushes[16];			// pcflush entries
 
 	INT8	irq_line_state[17];
 	int 	(*irq_callback)(int irqline);
@@ -93,18 +127,51 @@ typedef struct
 	emu_timer *dma_timer[2];
 	int     dma_timer_active[2];
 
-	int     is_slave, cpu_number;
+	int     is_slave, cpu_number, cpu_type;
 
 	void	(*ftcsr_read_callback)(UINT32 data);
+
+#ifdef USE_SH2DRC
+	drccache *			cache;			       	/* pointer to the DRC code cache */
+	drcuml_state *		drcuml;					/* DRC UML generator state */
+	drcfe_state *		drcfe;					/* pointer to the DRC front-end state */
+	UINT32				drcoptions;			/* configurable DRC options */
+
+	int				icount;
+
+	/* internal stuff */
+	UINT8				cache_dirty;		    	/* true if we need to flush the cache */
+
+	/* parameters for subroutines */
+	UINT64				numcycles;		    	/* return value from gettotalcycles */
+	UINT32				arg0;			    	/* print_debug argument 1 */
+	UINT32				arg1;			    	/* print_debug argument 2 */
+	UINT32				irq;				/* irq we're taking */
+
+	/* register mappings */
+	drcuml_parameter	regmap[16];		     		/* parameter to register mappings for all 16 integer registers */
+
+	drcuml_codehandle *	entry;			    		/* entry point */
+	drcuml_codehandle *	read8;					/* read byte */
+	drcuml_codehandle *	write8;					/* write byte */
+	drcuml_codehandle *	read16;					/* read half */
+	drcuml_codehandle *	write16;		    		/* write half */
+	drcuml_codehandle *	read32;					/* read word */
+	drcuml_codehandle *	write32;		    		/* write word */
+
+	drcuml_codehandle *	interrupt;				/* interrupt */
+	drcuml_codehandle *	nocode;					/* nocode */
+	drcuml_codehandle *	out_of_cycles;				/* out of cycles exception handler */
+#endif
 } SH2;
 
 TIMER_CALLBACK( sh2_timer_callback );
 TIMER_CALLBACK( sh2_dmac_callback );
 
-void sh2_common_init(int index, int clock, const void *config, int (*irqcallback)(int));
+void sh2_common_init(int alloc, int index, int clock, const void *config, int (*irqcallback)(int));
 void sh2_recalc_irq(void);
 void sh2_set_irq_line(int irqline, int state);
 void sh2_set_frt_input(int cpunum, int state);
 void sh2_exception(const char *message, int irqline);
 
-#endif
+#endif /* __SH2COMN_H__ */

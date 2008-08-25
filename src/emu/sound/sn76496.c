@@ -127,11 +127,11 @@ static void SN76496Write(int chip,int data)
 
 
 
-WRITE8_HANDLER( SN76496_0_w ) {	SN76496Write(0,data); }
-WRITE8_HANDLER( SN76496_1_w ) {	SN76496Write(1,data); }
-WRITE8_HANDLER( SN76496_2_w ) {	SN76496Write(2,data); }
-WRITE8_HANDLER( SN76496_3_w ) {	SN76496Write(3,data); }
-WRITE8_HANDLER( SN76496_4_w ) {	SN76496Write(4,data); }
+WRITE8_HANDLER( sn76496_0_w ) {	SN76496Write(0,data); }
+WRITE8_HANDLER( sn76496_1_w ) {	SN76496Write(1,data); }
+WRITE8_HANDLER( sn76496_2_w ) {	SN76496Write(2,data); }
+WRITE8_HANDLER( sn76496_3_w ) {	SN76496Write(3,data); }
+WRITE8_HANDLER( sn76496_4_w ) {	SN76496Write(4,data); }
 
 
 static void SN76496Update(void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length)
@@ -343,32 +343,32 @@ static void *generic_start(int sndindex, int clock, int feedbackmask, int noiset
 }
 
 
-static void *sn76489_start(int sndindex, int clock, const void *config)
+static void *sn76489_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	return generic_start(sndindex, clock, 0x4000, 0x03, TRUE);
 }
 
-static void *sn76489a_start(int sndindex, int clock, const void *config)
+static void *sn76489a_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	return generic_start(sndindex, clock, 0x8000, 0x06, FALSE);
 }
 
-static void *sn76494_start(int sndindex, int clock, const void *config)
+static void *sn76494_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	return generic_start(sndindex, clock, 0x8000, 0x06, FALSE);
 }
 
-static void *sn76496_start(int sndindex, int clock, const void *config)
+static void *sn76496_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	return generic_start(sndindex, clock, 0x8000, 0x06, FALSE);
 }
 
-static void *gamegear_start(int sndindex, int clock, const void *config)
+static void *gamegear_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	return generic_start(sndindex, clock, 0x8000, 0x09, FALSE);
 }
 
-static void *smsiii_start(int sndindex, int clock, const void *config)
+static void *smsiii_start(const char *tag, int sndindex, int clock, const void *config)
 {
 	return generic_start(sndindex, clock, 0x8000, 0x09, FALSE);
 }

@@ -69,42 +69,42 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( starcrus )
-		PORT_START	/* player 1 */
-		PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY /* ccw */
-		PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) /* engine */
-		PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY /* cw */
-        PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
-        PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON3 ) /* torpedo */
-        PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-        PORT_BIT (0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) /* phaser */
-        PORT_BIT (0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_START("P1")	/* player 1 */
+	PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY /* ccw */
+	PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) /* engine */
+	PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY /* cw */
+	PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON3 ) /* torpedo */
+	PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT (0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) /* phaser */
+	PORT_BIT (0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-        PORT_START  /* player 2 */
-        PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(2) /* ccw */
-        PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) /* engine */
-        PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(2) /* cw */
-        PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
-        PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2) /* torpedo */
-        PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-        PORT_BIT (0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) /* phaser */
-        PORT_BIT (0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_START("P2")  /* player 2 */
+	PORT_BIT (0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_PLAYER(2) /* ccw */
+	PORT_BIT (0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) /* engine */
+	PORT_BIT (0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_PLAYER(2) /* cw */
+	PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2) /* torpedo */
+	PORT_BIT (0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT (0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) /* phaser */
+	PORT_BIT (0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-		PORT_START
-        PORT_DIPNAME ( 0x03, 0x02, DEF_STR( Game_Time ) )
-        PORT_DIPSETTING ( 0x03, "60 secs" )
-        PORT_DIPSETTING ( 0x02, "90 secs" )
-        PORT_DIPSETTING ( 0x01, "120 secs" )
-        PORT_DIPSETTING ( 0x00, "150 secs" )
-        PORT_DIPNAME ( 0x04, 0x00, DEF_STR( Coinage ))
-        PORT_DIPSETTING ( 0x04, DEF_STR( 2C_1C ))
-        PORT_DIPSETTING ( 0x00, DEF_STR( 1C_1C ))
-        PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_COIN2 )
-        PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_COIN1 )
-        PORT_DIPNAME ( 0x20, 0x20, "Mode" )
-        PORT_DIPSETTING ( 0x20, DEF_STR( Standard ) )
-        PORT_DIPSETTING ( 0x00, DEF_STR( Alternate ) )
-        PORT_BIT (0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-        PORT_BIT (0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_START("DSW")
+	PORT_DIPNAME ( 0x03, 0x02, DEF_STR( Game_Time ) )
+	PORT_DIPSETTING ( 0x03, "60 secs" )
+	PORT_DIPSETTING ( 0x02, "90 secs" )
+	PORT_DIPSETTING ( 0x01, "120 secs" )
+	PORT_DIPSETTING ( 0x00, "150 secs" )
+	PORT_DIPNAME ( 0x04, 0x00, DEF_STR( Coinage ))
+	PORT_DIPSETTING ( 0x04, DEF_STR( 2C_1C ))
+	PORT_DIPSETTING ( 0x00, DEF_STR( 1C_1C ))
+	PORT_BIT (0x08, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT (0x10, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_DIPNAME ( 0x20, 0x20, "Mode" )
+	PORT_DIPSETTING ( 0x20, DEF_STR( Standard ) )
+	PORT_DIPSETTING ( 0x00, DEF_STR( Alternate ) )
+	PORT_BIT (0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT (0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
 
@@ -135,18 +135,18 @@ static const gfx_layout spritelayout2 =
 };
 
 static GFXDECODE_START( starcrus )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, spritelayout1, 0, 1 )
-    GFXDECODE_ENTRY( REGION_GFX1, 0x0040, spritelayout1, 0, 1 )
-    GFXDECODE_ENTRY( REGION_GFX1, 0x0080, spritelayout1, 0, 1 )
-    GFXDECODE_ENTRY( REGION_GFX1, 0x00c0, spritelayout1, 0, 1 )
-    GFXDECODE_ENTRY( REGION_GFX2, 0x0000, spritelayout1, 0, 1 )
-    GFXDECODE_ENTRY( REGION_GFX2, 0x0040, spritelayout1, 0, 1 )
-    GFXDECODE_ENTRY( REGION_GFX2, 0x0080, spritelayout1, 0, 1 )
-    GFXDECODE_ENTRY( REGION_GFX2, 0x00c0, spritelayout1, 0, 1 )
-    GFXDECODE_ENTRY( REGION_GFX3, 0x0000, spritelayout2, 0, 1 )
-    GFXDECODE_ENTRY( REGION_GFX3, 0x0100, spritelayout2, 0, 1 )
-    GFXDECODE_ENTRY( REGION_GFX3, 0x0200, spritelayout2, 0, 1 )
-    GFXDECODE_ENTRY( REGION_GFX3, 0x0300, spritelayout2, 0, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, spritelayout1, 0, 1 )
+    GFXDECODE_ENTRY( "gfx1", 0x0040, spritelayout1, 0, 1 )
+    GFXDECODE_ENTRY( "gfx1", 0x0080, spritelayout1, 0, 1 )
+    GFXDECODE_ENTRY( "gfx1", 0x00c0, spritelayout1, 0, 1 )
+    GFXDECODE_ENTRY( "gfx2", 0x0000, spritelayout1, 0, 1 )
+    GFXDECODE_ENTRY( "gfx2", 0x0040, spritelayout1, 0, 1 )
+    GFXDECODE_ENTRY( "gfx2", 0x0080, spritelayout1, 0, 1 )
+    GFXDECODE_ENTRY( "gfx2", 0x00c0, spritelayout1, 0, 1 )
+    GFXDECODE_ENTRY( "gfx3", 0x0000, spritelayout2, 0, 1 )
+    GFXDECODE_ENTRY( "gfx3", 0x0100, spritelayout2, 0, 1 )
+    GFXDECODE_ENTRY( "gfx3", 0x0200, spritelayout2, 0, 1 )
+    GFXDECODE_ENTRY( "gfx3", 0x0300, spritelayout2, 0, 1 )
 GFXDECODE_END
 
 
@@ -160,7 +160,7 @@ static const char *const starcrus_sample_names[] =
     0
 };
 
-static const struct Samplesinterface samples_interface =
+static const samples_interface starcrus_samples_interface =
 {
     4,	/* 4 channels */
 	starcrus_sample_names
@@ -170,7 +170,7 @@ static const struct Samplesinterface samples_interface =
 static MACHINE_DRIVER_START( starcrus )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(8080,9750000/9)  /* 8224 chip is a divide by 9 */
+	MDRV_CPU_ADD("main", 8080,9750000/9)  /* 8224 chip is a divide by 9 */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -193,8 +193,8 @@ static MACHINE_DRIVER_START( starcrus )
     /* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(SAMPLES, 0)
-	MDRV_SOUND_CONFIG(samples_interface)
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
+	MDRV_SOUND_CONFIG(starcrus_samples_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -205,7 +205,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( starcrus )
-    ROM_REGION( 0x10000, REGION_CPU1, 0 )  /* code */
+    ROM_REGION( 0x10000, "main", 0 )  /* code */
 	ROM_LOAD( "starcrus.j1",   0x0000, 0x0200, CRC(0ee60a50) SHA1(7419e7cb4c589da53d4a10ad129373502682464e) )
 	ROM_LOAD( "starcrus.k1",   0x0200, 0x0200, CRC(a7bc3bc4) SHA1(0e38076e921856608b1dd712687bef1c2522b4b8) )
 	ROM_LOAD( "starcrus.l1",   0x0400, 0x0200, CRC(10d233ec) SHA1(8933cf9fc51716a9e8f75a4444e7d7070cf5834d) )
@@ -215,13 +215,13 @@ ROM_START( starcrus )
 	ROM_LOAD( "starcrus.r1",   0x0c00, 0x0200, CRC(010cdcfe) SHA1(ae76f1739b468e2987ce949470b36f1a873e061d) )
 	ROM_LOAD( "starcrus.s1",   0x0e00, 0x0200, CRC(da4e276b) SHA1(3298f7cb259803f118a47292cbb413df253ef74d) )
 
-    ROM_REGION( 0x0200, REGION_GFX1, ROMREGION_DISPOSE )
+    ROM_REGION( 0x0200, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "starcrus.e6",   0x0000, 0x0200, CRC(54887a25) SHA1(562bf85cd063c2cc0a2f803095aaa6138dfb5bff) )
 
-    ROM_REGION( 0x0200, REGION_GFX2, ROMREGION_DISPOSE )
+    ROM_REGION( 0x0200, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "starcrus.l2",   0x0000, 0x0200, CRC(54887a25) SHA1(562bf85cd063c2cc0a2f803095aaa6138dfb5bff) )
 
-    ROM_REGION( 0x0400, REGION_GFX3, ROMREGION_DISPOSE )
+    ROM_REGION( 0x0400, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "starcrus.j4",   0x0000, 0x0200, CRC(25f15ae1) SHA1(7528edaa01ad5a167191c7e72394cb6009db1b27) )
 	ROM_LOAD( "starcrus.g5",   0x0200, 0x0200, CRC(73b27f6e) SHA1(4a6cf9244556a2c2647d594c7a19fe1a374a57e6) )
 ROM_END

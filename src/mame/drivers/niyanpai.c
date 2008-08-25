@@ -43,11 +43,11 @@ Memo:
 
 #define SIGNED_DAC	0		// 0:unsigned DAC, 1:signed DAC
 #if SIGNED_DAC
-#define DAC_0_WRITE	DAC_0_signed_data_w
-#define DAC_1_WRITE	DAC_1_signed_data_w
+#define DAC_0_WRITE	dac_0_signed_data_w
+#define DAC_1_WRITE	dac_1_signed_data_w
 #else
-#define DAC_0_WRITE	DAC_0_data_w
-#define DAC_1_WRITE	DAC_1_data_w
+#define DAC_0_WRITE	dac_0_data_w
+#define DAC_1_WRITE	dac_1_data_w
 #endif
 
 
@@ -78,7 +78,7 @@ static int musobana_outcoin_flag;
 
 static void niyanpai_soundbank_w(running_machine *machine, int data)
 {
-	UINT8 *SNDROM = memory_region(machine, REGION_CPU2);
+	UINT8 *SNDROM = memory_region(machine, "audio");
 
 	memory_set_bankptr(1, &SNDROM[0x08000 + (0x8000 * (data & 0x03))]);
 }
@@ -220,8 +220,8 @@ static MACHINE_RESET( niyanpai )
 
 static DRIVER_INIT( niyanpai )
 {
-	UINT8 *MAINROM = memory_region(machine, REGION_CPU1);
-	UINT8 *SNDROM = memory_region(machine, REGION_CPU2);
+	UINT8 *MAINROM = memory_region(machine, "main");
+	UINT8 *SNDROM = memory_region(machine, "audio");
 
 	// main program patch (USR0 -> IRQ LEVEL1)
 	MAINROM[(25 * 4) + 0] = MAINROM[(64 * 4) + 0];
@@ -532,13 +532,13 @@ static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x56, 0x56) AM_WRITE(tmpz84c011_0_dir_pc_w)
 	AM_RANGE(0x34, 0x34) AM_WRITE(tmpz84c011_0_dir_pd_w)
 	AM_RANGE(0x44, 0x44) AM_WRITE(tmpz84c011_0_dir_pe_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(YM3812_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(YM3812_write_port_0_w)
+	AM_RANGE(0x80, 0x80) AM_WRITE(ym3812_control_port_0_w)
+	AM_RANGE(0x81, 0x81) AM_WRITE(ym3812_write_port_0_w)
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( niyanpai )
-	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
+	PORT_START("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -562,7 +562,7 @@ static INPUT_PORTS_START( niyanpai )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
+	PORT_START("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x00, "Nudity" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -571,7 +571,7 @@ static INPUT_PORTS_START( niyanpai )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
+	PORT_START("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )			// COIN1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )			// CREDIT CLEAR
@@ -581,7 +581,7 @@ static INPUT_PORTS_START( niyanpai )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )		// ?
  	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )					// TEST
 
-	PORT_START_TAG("P1")	/* (3) PLAYER-1 */
+	PORT_START("P1")	/* (3) PLAYER-1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -591,7 +591,7 @@ static INPUT_PORTS_START( niyanpai )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("P2")	/* (4) PLAYER-2 */
+	PORT_START("P2")	/* (4) PLAYER-2 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
@@ -606,7 +606,7 @@ static INPUT_PORTS_START( musobana )
 
 	// I don't have manual for this game.
 
-	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
+	PORT_START("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, "Game Out" )
 	PORT_DIPSETTING(    0x03, "90% (Easy)" )
 	PORT_DIPSETTING(    0x02, "80%" )
@@ -630,7 +630,7 @@ static INPUT_PORTS_START( musobana )
 	PORT_DIPSETTING(    0x80, "Medal Type" )
 	PORT_DIPSETTING(    0x00, "Credit Type" )
 
-	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
+	PORT_START("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x03, 0x03, "Bet Min" )
 	PORT_DIPSETTING(    0x03, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -654,7 +654,7 @@ static INPUT_PORTS_START( musobana )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
+	PORT_START("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )			// COIN1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )			// CREDIT CLEAR
@@ -671,7 +671,7 @@ static INPUT_PORTS_START( 4psimasy )
 
 	// I don't have manual for this game.
 
-	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
+	PORT_START("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -697,7 +697,7 @@ static INPUT_PORTS_START( 4psimasy )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
+	PORT_START("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -723,7 +723,7 @@ static INPUT_PORTS_START( 4psimasy )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
+	PORT_START("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )			// COIN1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )			// CREDIT CLEAR
@@ -740,7 +740,7 @@ static INPUT_PORTS_START( mhhonban )
 
 	// I don't have manual for this game.
 
-	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
+	PORT_START("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -766,7 +766,7 @@ static INPUT_PORTS_START( mhhonban )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
+	PORT_START("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -792,7 +792,7 @@ static INPUT_PORTS_START( mhhonban )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
+	PORT_START("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )			// COIN1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )			// CREDIT CLEAR
@@ -821,13 +821,12 @@ static const struct z80_irq_daisy_chain daisy_chain_sound[] =
 static MACHINE_DRIVER_START( niyanpai )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M68000, 12288000/2)	/* TMP68301, 6.144 MHz */
+	MDRV_CPU_ADD("main", M68000, 12288000/2)	/* TMP68301, 6.144 MHz */
 	MDRV_CPU_PROGRAM_MAP(niyanpai_readmem,niyanpai_writemem)
 	MDRV_CPU_VBLANK_INT("main", niyanpai_interrupt)
 
-	MDRV_CPU_ADD(Z80, 8000000/1)					/* TMPZ84C011, 8.00 MHz */
+	MDRV_CPU_ADD("audio", Z80, 8000000/1)					/* TMPZ84C011, 8.00 MHz */
 	MDRV_CPU_CONFIG(daisy_chain_sound)
-	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem, sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport, sound_writeport)
 
@@ -850,13 +849,13 @@ static MACHINE_DRIVER_START( niyanpai )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, 4000000)
+	MDRV_SOUND_ADD("ym", YM3812, 4000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.70)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac1", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD(DAC, 0)
+	MDRV_SOUND_ADD("dac2", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 MACHINE_DRIVER_END
 
@@ -878,14 +877,14 @@ MACHINE_DRIVER_END
 
 
 ROM_START( niyanpai )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* TMP68301 main program */
+	ROM_REGION( 0x40000, "main", 0 ) /* TMP68301 main program */
 	ROM_LOAD16_BYTE( "npai_01.bin", 0x00000, 0x20000, CRC(a904e8a1) SHA1(77865d7b48cac96af1e3cac4a702f7de4b5ee82b) )
 	ROM_LOAD16_BYTE( "npai_02.bin", 0x00001, 0x20000, CRC(244f9d6f) SHA1(afde18f32c4879a66c0707671d783c21c54cffa4) )
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 ) /* TMPZ84C011 sound program */
+	ROM_REGION( 0x20000, "audio", 0 ) /* TMPZ84C011 sound program */
 	ROM_LOAD( "npai_03.bin", 0x000000, 0x20000, CRC(d154306b) SHA1(3375568a6d387d850b8996b8bad3d0220de13993) )
 
-	ROM_REGION( 0x400000, REGION_GFX1, 0 ) /* gfx */
+	ROM_REGION( 0x400000, "gfx1", 0 ) /* gfx */
 	ROM_LOAD( "npai_04.bin", 0x000000, 0x80000, CRC(bec845b5) SHA1(2b00b4fd0bdda84cdc08933e593afdd91dde8d07) )
 	ROM_LOAD( "npai_05.bin", 0x080000, 0x80000, CRC(3300ce07) SHA1(dc2eeb804aaf0aeb6cfee1844260ea24c3164bd9) )
 	ROM_LOAD( "npai_06.bin", 0x100000, 0x80000, CRC(448e4e39) SHA1(63ca27f76a23235d3538d7f6c18dcc309e0f1f1c) )
@@ -897,14 +896,14 @@ ROM_START( niyanpai )
 ROM_END
 
 ROM_START( musobana )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* TMP68301 main program */
+	ROM_REGION( 0x40000, "main", 0 ) /* TMP68301 main program */
 	ROM_LOAD16_BYTE( "1.209", 0x00000, 0x20000, CRC(574929a1) SHA1(70ea96c3aa8a3512176b719de0928470541d85cb) )
 	ROM_LOAD16_BYTE( "2.208", 0x00001, 0x20000, CRC(12734fda) SHA1(46241efe4266ad6426eb31db757ae4852c70c25d) )
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 ) /* TMPZ84C011 sound program */
+	ROM_REGION( 0x20000, "audio", 0 ) /* TMPZ84C011 sound program */
 	ROM_LOAD( "3.804",  0x000000, 0x20000, CRC(0be8f2ce) SHA1(c1ee8907c03f615fbc42654a3c37387714761560) )
 
-	ROM_REGION( 0x500000, REGION_GFX1, 0 ) /* gfx */
+	ROM_REGION( 0x500000, "gfx1", 0 ) /* gfx */
 	ROM_LOAD( "4.102",  0x000000, 0x80000, CRC(1b5dcff8) SHA1(afc44d8a381e1f6059e8e29d415799f863ba8528) )
 	ROM_LOAD( "5.103",  0x080000, 0x80000, CRC(dd69b24a) SHA1(2d1986f2b24877cfb4df9c32d76e4c4aada11420) )
 	ROM_LOAD( "6.104",  0x100000, 0x80000, CRC(e898f3a2) SHA1(4d5002105b3a20f962a0f31c7703e16fcd4970aa) )
@@ -918,14 +917,14 @@ ROM_START( musobana )
 ROM_END
 
 ROM_START( 4psimasy )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* TMP68301 main program */
+	ROM_REGION( 0x40000, "main", 0 ) /* TMP68301 main program */
 	ROM_LOAD16_BYTE( "1.209", 0x00000, 0x20000, CRC(28dda353) SHA1(3d4738189a7b8b8b0434b3e58550572c3ce74b42) )
 	ROM_LOAD16_BYTE( "2.208", 0x00001, 0x20000, CRC(3679c9fb) SHA1(74a940c3c95723680a63a281f194ef4bbe3dc58a) )
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 ) /* TMPZ84C011 sound program */
+	ROM_REGION( 0x20000, "audio", 0 ) /* TMPZ84C011 sound program */
 	ROM_LOAD( "3.804",  0x000000, 0x20000, CRC(bd644726) SHA1(1f8e12a081657d6e1dd9c896056d1ffd977dfe95) )
 
-	ROM_REGION( 0x400000, REGION_GFX1, 0 ) /* gfx */
+	ROM_REGION( 0x400000, "gfx1", 0 ) /* gfx */
 	ROM_LOAD( "4.102",  0x000000, 0x80000, CRC(66c96d20) SHA1(2e8c6876c52fdc9afda4c29c84568942e3fe7fb8) )
 	ROM_LOAD( "5.103",  0x080000, 0x80000, CRC(d8787e7d) SHA1(85a69f69da25159e0f7f75370ffaa3b8cb754eb0) )
 	ROM_LOAD( "6.104",  0x100000, 0x80000, CRC(ad68defc) SHA1(fe6e0fd88dfbb20e13efb8ab80bc41c19963e6d7) )
@@ -937,14 +936,14 @@ ROM_START( 4psimasy )
 ROM_END
 
 ROM_START( mhhonban )
-	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* TMP68301 main program */
+	ROM_REGION( 0x40000, "main", 0 ) /* TMP68301 main program */
 	ROM_LOAD16_BYTE( "u209.bin", 0x00000, 0x20000, CRC(121c861f) SHA1(70a6b695998904dccb8791ea5d9acbf7484bd812) )
 	ROM_LOAD16_BYTE( "u208.bin", 0x00001, 0x20000, CRC(d6712d0b) SHA1(a384c8f508ec6885bccb989d150cfd7f36a6898d) )
 
-	ROM_REGION( 0x20000, REGION_CPU2, 0 ) /* TMPZ84C011 sound program */
+	ROM_REGION( 0x20000, "audio", 0 ) /* TMPZ84C011 sound program */
 	ROM_LOAD( "u804.bin",  0x000000, 0x20000, CRC(48407507) SHA1(afd24d16d487fd2b6548d967e2f1ae122e2633a2) )
 
-	ROM_REGION( 0x300000, REGION_GFX1, 0 ) /* gfx */
+	ROM_REGION( 0x300000, "gfx1", 0 ) /* gfx */
 	ROM_LOAD( "u102.bin",  0x000000, 0x80000, CRC(385b51aa) SHA1(445e365e762e60d6189d84608459f7d18fff859f) )
 	ROM_LOAD( "u103.bin",  0x080000, 0x80000, CRC(1b85c6f4) SHA1(f8417b2526a8b51e52117d7d2690ce70af5e90fa) )
 	ROM_LOAD( "u104.bin",  0x100000, 0x80000, CRC(0f091b1d) SHA1(f53425524a22ab0be241dc4303be7e1403989f3a) )

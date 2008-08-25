@@ -91,7 +91,7 @@ static READ16_HANDLER( ioc_r )
 
 		case 0x50:
 		case 0x51:
-			return OKIM6295_status_0_r(machine,0)<<8;
+			return okim6295_status_0_r(machine,0)<<8;
 			break;
 
 	}
@@ -149,7 +149,7 @@ static WRITE16_HANDLER( ioc_w )
 		// OKIM6295
 		case 0x50:
 		case 0x51:
-			OKIM6295_data_0_w(machine, 0, data>>8);
+			okim6295_data_0_w(machine, 0, data>>8);
 			break;
 
 		// MSM6585 ADPCM - mini emulation
@@ -231,7 +231,7 @@ ADDRESS_MAP_END
 ***********************************************************/
 
 static INPUT_PORTS_START( gcpinbal )
-	PORT_START_TAG("DSW")	/* DSW */
+	PORT_START("DSW")	/* DSW */
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( Easy ) )
 	PORT_DIPSETTING(      0x0003, DEF_STR( Normal ) )
@@ -278,7 +278,7 @@ static INPUT_PORTS_START( gcpinbal )
 	PORT_DIPSETTING(      0x8000, "4" )
 	PORT_DIPSETTING(      0x4000, "5" )
 
-	PORT_START_TAG("IN0")	/* IN0 */
+	PORT_START("IN0")	/* IN0 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -296,7 +296,7 @@ static INPUT_PORTS_START( gcpinbal )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_PLAYER(1)	// Tilt left
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN1")	/* IN1 */
+	PORT_START("IN1")	/* IN1 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -356,9 +356,9 @@ static const gfx_layout tilelayout =
 };
 
 static GFXDECODE_START( gcpinbal )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, tilelayout,       0, 256 )	/* sprites & playfield */
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,       0, 256 )	/* sprites & playfield */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, char_8x8_layout,  0, 256 )	/* sprites & playfield */
+	GFXDECODE_ENTRY( "gfx3", 0, tilelayout,       0, 256 )	/* sprites & playfield */
+	GFXDECODE_ENTRY( "gfx1", 0, charlayout,       0, 256 )	/* sprites & playfield */
+	GFXDECODE_ENTRY( "gfx2", 0, char_8x8_layout,  0, 256 )	/* sprites & playfield */
 GFXDECODE_END
 
 
@@ -366,7 +366,7 @@ GFXDECODE_END
                             (SOUND)
 **************************************************************/
 
-static const struct MSM5205interface msm5205_interface =
+static const msm5205_interface msm5205_config =
 {
 	NULL,				/* VCK function */
 	MSM5205_S48_4B		/* 8 kHz */
@@ -379,7 +379,7 @@ static const struct MSM5205interface msm5205_interface =
 static MACHINE_DRIVER_START( gcpinbal )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M68000, 32000000/2)	/* 16 MHz ? */
+	MDRV_CPU_ADD("main", M68000, 32000000/2)	/* 16 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(gcpinbal_readmem,gcpinbal_writemem)
 	MDRV_CPU_VBLANK_INT("main", gcpinbal_interrupt)
 
@@ -400,12 +400,12 @@ static MACHINE_DRIVER_START( gcpinbal )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1056000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(MSM5205, 384000)
-	MDRV_SOUND_CONFIG(msm5205_interface)
+	MDRV_SOUND_ADD("msm", MSM5205, 384000)
+	MDRV_SOUND_CONFIG(msm5205_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -416,26 +416,26 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( gcpinbal )
-	ROM_REGION( 0x200000, REGION_CPU1, 0 )     /* 512k for 68000 program */
+	ROM_REGION( 0x200000, "main", 0 )     /* 512k for 68000 program */
 	ROM_LOAD16_WORD_SWAP( "u43.2",  0x000000, 0x80000, CRC(d174bd7f) SHA1(0e6c17265e1400de941e3e2ca3be835aaaff6695) )
 	ROM_FILL            ( 0x80000,  0x080000, 0x0 )
 	ROM_LOAD16_WORD_SWAP( "u45.3",  0x100000, 0x80000, CRC(0511ad56) SHA1(e0602ece514126ce719ebc9de6649ebe907be904) )
 	ROM_LOAD16_WORD_SWAP( "u46.4",  0x180000, 0x80000, CRC(e0f3a1b4) SHA1(761dddf374a92c1a1e4a211ead215d5be461a082) )
 
-	ROM_REGION( 0x200000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "u1",      0x000000, 0x100000, CRC(afa459bb) SHA1(7a7c64bcb80d71b8cf3fdd3209ef109997b6417c) )	/* BG0 (16 x 16) */
 	ROM_LOAD( "u6",      0x100000, 0x100000, CRC(c3f024e5) SHA1(d197e2b715b154fc64ff9a61f8c6df111d6fd446) )
 
-	ROM_REGION( 0x020000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x020000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "u10.1",   0x000000, 0x020000, CRC(79321550) SHA1(61f1b772ed8cf95bfee9df8394b0c3ff727e8702) )	/* FG0 (8 x 8) */
 
-	ROM_REGION( 0x200000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x200000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "u13",     0x000000, 0x200000, CRC(62f3952f) SHA1(7dc9ccb753d46b6aaa791bcbf6e18e6d872f6b79) )	/* Sprites (16 x 16) */
 
-	ROM_REGION( 0x080000, REGION_SOUND1, 0 )	/* M6295 acc to Raine */
+	ROM_REGION( 0x080000, "oki", 0 )	/* M6295 acc to Raine */
 	ROM_LOAD( "u55",   0x000000, 0x080000, CRC(b3063351) SHA1(825e63e8a824d67d235178897528e5b0b41e4485) )
 
-	ROM_REGION( 0x200000, REGION_SOUND2, 0 )	/* M6585 acc to Raine */
+	ROM_REGION( 0x200000, "msm", 0 )	/* M6585 acc to Raine */
 	ROM_LOAD( "u56",   0x000000, 0x200000, CRC(092b2c0f) SHA1(2ec1904e473ddddb50dbeaa0b561642064d45336) )
 ROM_END
 

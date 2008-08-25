@@ -490,7 +490,7 @@ static READ8_HANDLER( turbo_8279_r )
 		{
 			/* read sensor RAM */
 			case 0x40:
-				result = ~input_port_read_indexed(machine, 1);  /* DSW 1 - inverted! */
+				result = ~input_port_read(machine, "DSW1");  /* DSW 1 - inverted! */
 				break;
 
 			/* read display RAM */
@@ -625,7 +625,7 @@ static READ8_HANDLER( turbo_collision_r )
 {
 	turbo_state *state = machine->driver_data;
 	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
-	return input_port_read_indexed(machine, 3) | (state->turbo_collision & 15);
+	return input_port_read(machine, "DSW3") | (state->turbo_collision & 15);
 }
 
 
@@ -640,14 +640,14 @@ static WRITE8_HANDLER( turbo_collision_clear_w )
 static READ8_HANDLER( turbo_analog_r )
 {
 	turbo_state *state = machine->driver_data;
-	return input_port_read_indexed(machine, 4) - state->turbo_last_analog;
+	return input_port_read(machine, "DIAL") - state->turbo_last_analog;
 }
 
 
 static WRITE8_HANDLER( turbo_analog_reset_w )
 {
 	turbo_state *state = machine->driver_data;
-	state->turbo_last_analog = input_port_read_indexed(machine, 4);
+	state->turbo_last_analog = input_port_read(machine, "DIAL");
 }
 
 
@@ -686,8 +686,8 @@ static READ8_HANDLER( buckrog_cpu2_command_r )
 
 static READ8_HANDLER( buckrog_port_2_r )
 {
-	int inp1 = input_port_read_indexed(machine, 2);
-	int inp2 = input_port_read_indexed(machine, 3);
+	int inp1 = input_port_read(machine, "DSW1");
+	int inp2 = input_port_read(machine, "DSW2");
 
 	return  (((inp2 >> 6) & 1) << 7) |
 			(((inp2 >> 4) & 1) << 6) |
@@ -702,8 +702,8 @@ static READ8_HANDLER( buckrog_port_2_r )
 
 static READ8_HANDLER( buckrog_port_3_r )
 {
-	int inp1 = input_port_read_indexed(machine, 2);
-	int inp2 = input_port_read_indexed(machine, 3);
+	int inp1 = input_port_read(machine, "DSW1");
+	int inp2 = input_port_read(machine, "DSW2");
 
 	return  (((inp2 >> 7) & 1) << 7) |
 			(((inp2 >> 5) & 1) << 6) |
@@ -751,7 +751,7 @@ static ADDRESS_MAP_START( turbo_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xfa00, 0xfa03) AM_MIRROR(0x00fc) AM_DEVREADWRITE(PPI8255, "ppi8255_2", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xfb00, 0xfb03) AM_MIRROR(0x00fc) AM_DEVREADWRITE(PPI8255, "ppi8255_3", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xfc00, 0xfc01) AM_MIRROR(0x00fe) AM_READWRITE(turbo_8279_r, turbo_8279_w)
-	AM_RANGE(0xfd00, 0xfdff) AM_READ(input_port_0_r)
+	AM_RANGE(0xfd00, 0xfdff) AM_READ_PORT("INPUT")
 	AM_RANGE(0xfe00, 0xfeff) AM_READ(turbo_collision_r)
 ADDRESS_MAP_END
 
@@ -767,10 +767,10 @@ static ADDRESS_MAP_START( subroc3d_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x9fff) AM_ROM
 	AM_RANGE(0xa000, 0xa3ff) AM_RAM AM_BASE_MEMBER(turbo_state, sprite_position)	// CONT RAM
 	AM_RANGE(0xa400, 0xa7ff) AM_RAM AM_BASE_MEMBER(turbo_state, spriteram)			// CONT RAM
-	AM_RANGE(0xa800, 0xa800) AM_MIRROR(0x07fc) AM_READ(input_port_0_r)				// INPUT 253
-	AM_RANGE(0xa801, 0xa801) AM_MIRROR(0x07fc) AM_READ(input_port_1_r)				// INPUT 253
-	AM_RANGE(0xa802, 0xa802) AM_MIRROR(0x07fc) AM_READ(input_port_2_r)				// INPUT 253
-	AM_RANGE(0xa803, 0xa803) AM_MIRROR(0x07fc) AM_READ(input_port_3_r)				// INPUT 253
+	AM_RANGE(0xa800, 0xa800) AM_MIRROR(0x07fc) AM_READ_PORT("IN0")					// INPUT 253
+	AM_RANGE(0xa801, 0xa801) AM_MIRROR(0x07fc) AM_READ_PORT("IN1")					// INPUT 253
+	AM_RANGE(0xa802, 0xa802) AM_MIRROR(0x07fc) AM_READ_PORT("DSW2")					// INPUT 253
+	AM_RANGE(0xa803, 0xa803) AM_MIRROR(0x07fc) AM_READ_PORT("DSW3")					// INPUT 253
 	AM_RANGE(0xb000, 0xb7ff) AM_RAM 												// SCRATCH
 	AM_RANGE(0xb800, 0xbfff) 														// HANDLE CL
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM_WRITE(turbo_videoram_w) AM_BASE_MEMBER(turbo_state, videoram)	// FIX PAGE
@@ -796,8 +796,8 @@ static ADDRESS_MAP_START( buckrog_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd800, 0xd801) AM_MIRROR(0x07fe) AM_READWRITE(turbo_8279_r, turbo_8279_w)			// 8279
 	AM_RANGE(0xe000, 0xe3ff) AM_RAM AM_BASE_MEMBER(turbo_state, sprite_position)				// CONT RAM
 	AM_RANGE(0xe400, 0xe7ff) AM_RAM AM_BASE_MEMBER(turbo_state, spriteram)						// CONT RAM
-	AM_RANGE(0xe800, 0xe800) AM_MIRROR(0x07fc) AM_READ(input_port_0_r)							// INPUT
-	AM_RANGE(0xe801, 0xe801) AM_MIRROR(0x07fc) AM_READ(input_port_1_r)
+	AM_RANGE(0xe800, 0xe800) AM_MIRROR(0x07fc) AM_READ_PORT("IN0")								// INPUT
+	AM_RANGE(0xe801, 0xe801) AM_MIRROR(0x07fc) AM_READ_PORT("IN1")
 	AM_RANGE(0xe802, 0xe802) AM_MIRROR(0x07fc) AM_READ(buckrog_port_2_r)
 	AM_RANGE(0xe803, 0xe803) AM_MIRROR(0x07fc) AM_READ(buckrog_port_3_r)
 	AM_RANGE(0xf000, 0xf000)
@@ -826,7 +826,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( turbo )
-	PORT_START		/* IN0 */
+	PORT_START("INPUT")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )				/* ACCEL B */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )				/* ACCEL A */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_TOGGLE	/* SHIFT */
@@ -836,7 +836,7 @@ static INPUT_PORTS_START( turbo )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START	/* DSW 1 */
+	PORT_START("DSW1")	/* DSW 1 */
 	PORT_DIPNAME( 0x03, 0x03, "Car On Extended Play" ) PORT_DIPLOCATION("SW1:1,2")
 	PORT_DIPSETTING(    0x00, "1" )
 	PORT_DIPSETTING(    0x01, "2" )
@@ -861,7 +861,7 @@ static INPUT_PORTS_START( turbo )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* DSW 2 */
+	PORT_START("DSW2")	/* DSW 2 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Game_Time ) ) PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(    0x00, "60 seconds" )
 	PORT_DIPSETTING(    0x01, "70 seconds" )
@@ -886,7 +886,7 @@ static INPUT_PORTS_START( turbo )
 	PORT_DIPSETTING(	0x40, DEF_STR( 1C_3C ))
 	PORT_DIPSETTING(	0x60, DEF_STR( 1C_6C ))
 
-	PORT_START	/* Collision and DSW 3 */
+	PORT_START("DSW3")	/* Collision and DSW 3 */
 	PORT_BIT( 0x0f,     0x00, IPT_SPECIAL )	/* Merged with collision bits */
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW3:1")
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
@@ -901,25 +901,25 @@ static INPUT_PORTS_START( turbo )
 	PORT_DIPSETTING(	0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(	0x00, "Cockpit")
 
-	PORT_START		/* IN0 */
+	PORT_START("DIAL")	/* IN0 */
 	PORT_BIT( 0xff, 0, IPT_DIAL ) PORT_SENSITIVITY(10) PORT_KEYDELTA(30)
 
 	/* this is actually a variable resistor */
-	PORT_START_TAG("VR1")
+	PORT_START("VR1")
 	PORT_ADJUSTER(31, "Sprite scale offset")
 
 	/* this is actually a variable resistor */
-	PORT_START_TAG("VR2")
+	PORT_START("VR2")
 	PORT_ADJUSTER(91, "Sprite scale gain")
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( subroc3d )
-	PORT_START
+	PORT_START("IN0")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 
-	PORT_START
+	PORT_START("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -929,7 +929,7 @@ static INPUT_PORTS_START( subroc3d )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START  /* DSW 2 */
+	PORT_START("DSW2")  /* DSW 2 */
 	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Coin_A )) PORT_DIPLOCATION("SW2:1,2,3")
 	PORT_DIPSETTING(    0x07, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 4C_1C ) )
@@ -954,7 +954,7 @@ static INPUT_PORTS_START( subroc3d )
 	PORT_DIPSETTING(    0x80, "4" )
 	PORT_DIPSETTING(    0xc0, "5" )
 
-	PORT_START  /* DSW 3 */
+	PORT_START("DSW3")  /* DSW 3 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW3:1,2")
 	PORT_DIPSETTING(    0x00, "20000" )
 	PORT_DIPSETTING(    0x01, "40000" )
@@ -979,19 +979,19 @@ static INPUT_PORTS_START( subroc3d )
 	PORT_DIPSETTING(    0x00, "Endless" )
 	PORT_DIPSETTING(    0x80, DEF_STR( Normal ) )
 
-	PORT_START  /* DSW 1 */					/* Unused */
+	PORT_START("DSW1")  /* DSW 1 */					/* Unused */
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( buckrog )
-	PORT_START
+	PORT_START("IN0")
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON3 ) // Accel Hi
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) // Accel Lo
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 
-	PORT_START /* Inputs */
+	PORT_START("IN1")	/* Inputs */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -1001,7 +1001,7 @@ static INPUT_PORTS_START( buckrog )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START  /* DSW 1 */
+	PORT_START("DSW1")  /* DSW 1 */
 	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Coin_A )) PORT_DIPLOCATION("SW1:1,2,3")
 	PORT_DIPSETTING(    0x07, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 4C_1C ) )
@@ -1027,8 +1027,7 @@ static INPUT_PORTS_START( buckrog )
 	PORT_DIPSETTING( 0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
 
-
-	PORT_START  /* DSW 2 */
+	PORT_START("DSW2")  /* DSW 2 */
 	PORT_DIPNAME( 0x01, 0x00, "Collisions" ) PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1063,7 +1062,7 @@ INPUT_PORTS_END
  *************************************/
 
 static GFXDECODE_START( turbo )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, gfx_8x8x2_planar, 0, 64 )
+	GFXDECODE_ENTRY( "gfx2", 0, gfx_8x8x2_planar, 0, 64 )
 GFXDECODE_END
 
 
@@ -1078,7 +1077,7 @@ static MACHINE_DRIVER_START( turbo )
 	MDRV_DRIVER_DATA(turbo_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, MASTER_CLOCK/4)
+	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(turbo_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -1116,7 +1115,7 @@ static MACHINE_DRIVER_START( subroc3d )
 	MDRV_DRIVER_DATA(turbo_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, MASTER_CLOCK/4)
+	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(subroc3d_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
@@ -1147,11 +1146,11 @@ static MACHINE_DRIVER_START( buckrog )
 	MDRV_DRIVER_DATA(turbo_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, MASTER_CLOCK/4)
+	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(buckrog_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, MASTER_CLOCK/4)
+	MDRV_CPU_ADD("sub", Z80, MASTER_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(buckrog_cpu2_map,0)
 	MDRV_CPU_IO_MAP(buckrog_cpu2_portmap,0)
 
@@ -1189,12 +1188,12 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( turbo )
-	ROM_REGION( 0x6000, REGION_CPU1, 0 )
+	ROM_REGION( 0x6000, "main", 0 )
 	ROM_LOAD( "epr-1513.cpu-ic76",  0x0000, 0x2000, CRC(0326adfc) SHA1(d9f06f0bc78667fa58c4b8ab3a3897d0dd0bdfbf) )
 	ROM_LOAD( "epr-1514.cpu-ic89",  0x2000, 0x2000, CRC(25af63b0) SHA1(9af4b3da83a4cef79b7dd0e9061132c499872c1c) )
 	ROM_LOAD( "epr-1515.cpu-ic103", 0x4000, 0x2000, CRC(059c1c36) SHA1(ba870e6f45ff15aa148b2c2f213c879144aaacf0) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, 0 )	/* sprite data */
+	ROM_REGION( 0x20000, "gfx1", 0 )	/* sprite data */
 	ROM_LOAD( "epr-1246.prom-ic84", 0x00000, 0x2000, CRC(555bfe9a) SHA1(1e56385475eeff044dcd9b44a154991d3efe995e) )	/* level 0 */
 	ROM_RELOAD(                     0x02000, 0x2000 )
 	ROM_LOAD( "epr-1247.prom-ic86", 0x04000, 0x2000, CRC(c8c5e4d5) SHA1(da70297340ddea0cd7fe04f2d94ea65f8202d0e5) )	/* level 1 */
@@ -1212,11 +1211,11 @@ ROM_START( turbo )
 	ROM_LOAD( "epr-1257.prom-ic34", 0x1c000, 0x2000, CRC(4ca984ce) SHA1(99f294fb203f23929b44baa2dd1825c67dde08a1) )	/* level 7 */
 	ROM_LOAD( "epr-1258.prom-ic49", 0x1e000, 0x2000, CRC(aee6e05e) SHA1(99b9b1ec996746ddf713ed38192f350f1f32a847) )
 
-	ROM_REGION( 0x1000, REGION_GFX2, ROMREGION_DISPOSE )	/* foreground data */
+	ROM_REGION( 0x1000, "gfx2", ROMREGION_DISPOSE )	/* foreground data */
 	ROM_LOAD( "epr-1244.cpu-ic111", 0x0000, 0x0800, CRC(17f67424) SHA1(6126562510f1509f3487faaa3b9d7470ab600a2c) )
 	ROM_LOAD( "epr-1245.cpu-ic122", 0x0800, 0x0800, CRC(2ba0b46b) SHA1(5d4d4f19ad7a911c7b37db190a420faf665546b4) )
 
-	ROM_REGION( 0x4800, REGION_GFX3, 0 )	/* road data */
+	ROM_REGION( 0x4800, "gfx3", 0 )	/* road data */
 	ROM_LOAD( "epr-1125.cpu-ic1",   0x0000, 0x0800, CRC(65b5d44b) SHA1(bbdd5db013c9d876e9666f17c48569c7531bfc08) )
 	ROM_LOAD( "epr-1126.cpu-ic2",   0x0800, 0x0800, CRC(685ace1b) SHA1(99c8d36ac910169b27676d18c894433c2ba44853) )
 	ROM_LOAD( "epr-1127.cpu-ic13",  0x1000, 0x0800, CRC(9233c9ca) SHA1(cbf9a0f564d8ace1ccd701c1769dbc001d465851) )
@@ -1227,7 +1226,7 @@ ROM_START( turbo )
 	ROM_LOAD( "epr-1242.cpu-ic42",  0x3800, 0x0800, CRC(04866769) SHA1(1f9c0d53766fdaf8de57d3df05f291c2ca3dc5fb) )
 	ROM_LOAD( "epr-1243.cpu-ic74",  0x4000, 0x0800, CRC(29854c48) SHA1(cab89bc30f83d9746931ddf6f95a6d0c8a517e5d) )
 
-	ROM_REGION( 0x1020, REGION_PROMS, 0 )	/* various PROMs */
+	ROM_REGION( 0x1020, "proms", 0 )	/* various PROMs */
 	ROM_LOAD( "pr-1114.prom-ic13",  0x0000, 0x0020, CRC(78aded46) SHA1(c78afe804f8b8e837b0c502de5b8715a41fb92b9) )	/* road red/green color table */
 	ROM_LOAD( "pr-1115.prom-ic18",  0x0020, 0x0020, CRC(5394092c) SHA1(129ff61104979ff6a3c3af8bf81c04ae9b133c9e) )	/* road collision/enable */
 	ROM_LOAD( "pr-1116.prom-ic20",  0x0040, 0x0020, CRC(3956767d) SHA1(073aaf57175526660fcf7af2e16e7f1d1aaba9a9) )	/* collision detection */
@@ -1243,12 +1242,12 @@ ROM_END
 
 
 ROM_START( turboa )
-	ROM_REGION( 0x6000, REGION_CPU1, 0 )
+	ROM_REGION( 0x6000, "main", 0 )
 	ROM_LOAD( "epr-1262.cpu-ic76",  0x0000, 0x2000, CRC(1951b83a) SHA1(31933676140db66281b7ca016a1b42cb985f44dd) )
 	ROM_LOAD( "epr-1263.cpu-ic89",  0x2000, 0x2000, CRC(45e01608) SHA1(0a9812714c41904bef7a8777b4aae63b5a1dd633) )
 	ROM_LOAD( "epr-1264.cpu-ic103", 0x4000, 0x2000, CRC(1802f6c7) SHA1(5c575821d849d955059868b3dd3167b4bef9a8c4) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, 0 )	/* sprite data */
+	ROM_REGION( 0x20000, "gfx1", 0 )	/* sprite data */
 	ROM_LOAD( "epr-1246.prom-ic84", 0x00000, 0x2000, CRC(555bfe9a) SHA1(1e56385475eeff044dcd9b44a154991d3efe995e) )	/* level 0 */
 	ROM_RELOAD(                     0x02000, 0x2000 )
 	ROM_LOAD( "epr-1247.prom-ic86", 0x04000, 0x2000, CRC(c8c5e4d5) SHA1(da70297340ddea0cd7fe04f2d94ea65f8202d0e5) )	/* level 1 */
@@ -1266,11 +1265,11 @@ ROM_START( turboa )
 	ROM_LOAD( "epr-1257.prom-ic34", 0x1c000, 0x2000, CRC(4ca984ce) SHA1(99f294fb203f23929b44baa2dd1825c67dde08a1) )	/* level 7 */
 	ROM_LOAD( "epr-1258.prom-ic49", 0x1e000, 0x2000, CRC(aee6e05e) SHA1(99b9b1ec996746ddf713ed38192f350f1f32a847) )
 
-	ROM_REGION( 0x1000, REGION_GFX2, ROMREGION_DISPOSE )	/* foreground data */
+	ROM_REGION( 0x1000, "gfx2", ROMREGION_DISPOSE )	/* foreground data */
 	ROM_LOAD( "epr-1244.cpu-ic111", 0x0000, 0x0800, CRC(17f67424) SHA1(6126562510f1509f3487faaa3b9d7470ab600a2c) )
 	ROM_LOAD( "epr-1245.cpu-ic122", 0x0800, 0x0800, CRC(2ba0b46b) SHA1(5d4d4f19ad7a911c7b37db190a420faf665546b4) )
 
-	ROM_REGION( 0x4800, REGION_GFX3, 0 )	/* road data */
+	ROM_REGION( 0x4800, "gfx3", 0 )	/* road data */
 	ROM_LOAD( "epr-1125.cpu-ic1",   0x0000, 0x0800, CRC(65b5d44b) SHA1(bbdd5db013c9d876e9666f17c48569c7531bfc08) )
 	ROM_LOAD( "epr-1126.cpu-ic2",   0x0800, 0x0800, CRC(685ace1b) SHA1(99c8d36ac910169b27676d18c894433c2ba44853) )
 	ROM_LOAD( "epr-1127.cpu-ic13",  0x1000, 0x0800, CRC(9233c9ca) SHA1(cbf9a0f564d8ace1ccd701c1769dbc001d465851) )
@@ -1281,7 +1280,7 @@ ROM_START( turboa )
 	ROM_LOAD( "epr-1242.cpu-ic42",  0x3800, 0x0800, CRC(04866769) SHA1(1f9c0d53766fdaf8de57d3df05f291c2ca3dc5fb) )
 	ROM_LOAD( "epr-1243.cpu-ic74",  0x4000, 0x0800, CRC(29854c48) SHA1(cab89bc30f83d9746931ddf6f95a6d0c8a517e5d) )
 
-	ROM_REGION( 0x1020, REGION_PROMS, 0 )	/* various PROMs */
+	ROM_REGION( 0x1020, "proms", 0 )	/* various PROMs */
 	ROM_LOAD( "pr-1114.prom-ic13",  0x0000, 0x0020, CRC(78aded46) SHA1(c78afe804f8b8e837b0c502de5b8715a41fb92b9) )	/* road red/green color table */
 	ROM_LOAD( "pr-1115.prom-ic18",  0x0020, 0x0020, CRC(5394092c) SHA1(129ff61104979ff6a3c3af8bf81c04ae9b133c9e) )	/* road collision/enable */
 	ROM_LOAD( "pr-1116.prom-ic20",  0x0040, 0x0020, CRC(3956767d) SHA1(073aaf57175526660fcf7af2e16e7f1d1aaba9a9) )	/* collision detection */
@@ -1297,12 +1296,12 @@ ROM_END
 
 
 ROM_START( turbob )
-	ROM_REGION( 0x6000, REGION_CPU1, 0 )
+	ROM_REGION( 0x6000, "main", 0 )
 	ROM_LOAD( "epr-1363.cpu-ic76",  0x0000, 0x2000, CRC(5c110fb6) SHA1(fdcdf488bd112db12aa22c4b7e9f34004185d4ce) )
 	ROM_LOAD( "epr-1364.cpu-ic89",  0x2000, 0x2000, CRC(6a341693) SHA1(428927c4a14bf82225875012c255d25dcffaf2ab) )
 	ROM_LOAD( "epr-1365.cpu-ic103", 0x4000, 0x2000, CRC(3b6b0dc8) SHA1(3ebfa3f9fabd444ee105591acb6984b6b3523725) )
 
-	ROM_REGION( 0x20000, REGION_GFX1, 0 ) /* sprite data */
+	ROM_REGION( 0x20000, "gfx1", 0 ) /* sprite data */
 	ROM_LOAD( "epr-1246.prom-ic84", 0x00000, 0x2000, CRC(555bfe9a) SHA1(1e56385475eeff044dcd9b44a154991d3efe995e) )	/* level 0 */
 	ROM_RELOAD(                     0x02000, 0x2000 )
 	ROM_LOAD( "epr-1247.prom-ic86", 0x04000, 0x2000, CRC(c8c5e4d5) SHA1(da70297340ddea0cd7fe04f2d94ea65f8202d0e5) )	/* level 1 */
@@ -1320,11 +1319,11 @@ ROM_START( turbob )
 	ROM_LOAD( "epr-1257.prom-ic34", 0x1c000, 0x2000, CRC(4ca984ce) SHA1(99f294fb203f23929b44baa2dd1825c67dde08a1) )	/* level 7 */
 	ROM_LOAD( "epr-1258.prom-ic49", 0x1e000, 0x2000, CRC(aee6e05e) SHA1(99b9b1ec996746ddf713ed38192f350f1f32a847) )
 
-	ROM_REGION( 0x1000, REGION_GFX2, ROMREGION_DISPOSE )	/* foreground data */
+	ROM_REGION( 0x1000, "gfx2", ROMREGION_DISPOSE )	/* foreground data */
 	ROM_LOAD( "epr-1244.cpu-ic111", 0x0000, 0x0800, CRC(17f67424) SHA1(6126562510f1509f3487faaa3b9d7470ab600a2c) )
 	ROM_LOAD( "epr-1245.cpu-ic122", 0x0800, 0x0800, CRC(2ba0b46b) SHA1(5d4d4f19ad7a911c7b37db190a420faf665546b4) )
 
-	ROM_REGION( 0x4800, REGION_GFX3, 0 )	/* road data */
+	ROM_REGION( 0x4800, "gfx3", 0 )	/* road data */
 	ROM_LOAD( "epr-1125.cpu-ic1",   0x0000, 0x0800, CRC(65b5d44b) SHA1(bbdd5db013c9d876e9666f17c48569c7531bfc08) )
 	ROM_LOAD( "epr-1126.cpu-ic2",   0x0800, 0x0800, CRC(685ace1b) SHA1(99c8d36ac910169b27676d18c894433c2ba44853) )
 	ROM_LOAD( "epr-1127.cpu-ic13",  0x1000, 0x0800, CRC(9233c9ca) SHA1(cbf9a0f564d8ace1ccd701c1769dbc001d465851) )
@@ -1335,7 +1334,7 @@ ROM_START( turbob )
 	ROM_LOAD( "epr-1242.cpu-ic42",  0x3800, 0x0800, CRC(04866769) SHA1(1f9c0d53766fdaf8de57d3df05f291c2ca3dc5fb) )
 	ROM_LOAD( "epr-1243.cpu-ic74",  0x4000, 0x0800, CRC(29854c48) SHA1(cab89bc30f83d9746931ddf6f95a6d0c8a517e5d) )
 
-	ROM_REGION( 0x1020, REGION_PROMS, 0 )	/* various PROMs */
+	ROM_REGION( 0x1020, "proms", 0 )	/* various PROMs */
 	ROM_LOAD( "pr-1114.prom-ic13",  0x0000, 0x0020, CRC(78aded46) SHA1(c78afe804f8b8e837b0c502de5b8715a41fb92b9) )	/* road red/green color table */
 	ROM_LOAD( "pr-1115.prom-ic18",  0x0020, 0x0020, CRC(5394092c) SHA1(129ff61104979ff6a3c3af8bf81c04ae9b133c9e) )	/* road collision/enable */
 	ROM_LOAD( "pr-1116.prom-ic20",  0x0040, 0x0020, CRC(3956767d) SHA1(073aaf57175526660fcf7af2e16e7f1d1aaba9a9) )	/* collision detection */
@@ -1351,12 +1350,12 @@ ROM_END
 
 
 ROM_START( subroc3d )
-	ROM_REGION( 0xa000, REGION_CPU1, 0 )
+	ROM_REGION( 0xa000, "main", 0 )
 	ROM_LOAD( "epr-1614a.cpu-ic88", 0x0000, 0x2000, CRC(0ed856b4) SHA1(c2f48170365a53bff312ca20df5b74466de6349a) )
 	ROM_LOAD( "epr-1615.cpu-ic87",  0x2000, 0x2000, CRC(6281eb2e) SHA1(591d7f184f51f33fb583c916eddacf4581d612d7) )
 	ROM_LOAD( "epr-1616.cpu-ic86",  0x4000, 0x2000, CRC(cc7b0c9b) SHA1(0b44c9a2421a51bdc16a2b590f24fbbfb47ef86f) )
 
-	ROM_REGION( 0x40000, REGION_GFX1, 0 )	/* sprite data */
+	ROM_REGION( 0x40000, "gfx1", 0 )	/* sprite data */
 	ROM_LOAD( "epr-1417.prom-ic29",  0x00000, 0x2000, CRC(2aaff4e0) SHA1(4b4e4f65d63fb9648108c5f01248ffcb3b4bc54f) )	/* level 0 */
 	ROM_LOAD( "epr-1418.prom-ic30",  0x02000, 0x2000, CRC(41ff0f15) SHA1(c441c5368a3faf2544d617e1ceb5cb8eac23017d) )
 	ROM_LOAD( "epr-1419.prom-ic55",  0x08000, 0x2000, CRC(37ac818c) SHA1(26b15f410c6a6dcde498e20cece973d5ba23b0de) )	/* level 1 */
@@ -1382,11 +1381,11 @@ ROM_START( subroc3d )
 	ROM_LOAD( "epr-1440.prom-ic40",  0x3c000, 0x2000, CRC(3a0e659c) SHA1(51e64b2417cf3b599aa9ecc84457462a5dca2a61) )
 	ROM_LOAD( "epr-1439.prom-ic39",  0x3e000, 0x2000, CRC(3d051668) SHA1(aa4f6152235f07ad39019c46dfacf69d70a7fdcc) )
 
-	ROM_REGION( 0x01000, REGION_GFX2, ROMREGION_DISPOSE )	/* foreground data */
+	ROM_REGION( 0x01000, "gfx2", ROMREGION_DISPOSE )	/* foreground data */
 	ROM_LOAD( "epr-1618.cpu-ic82",  0x0000, 0x0800, CRC(a25fea71) SHA1(283efee3951d081119d756114f9f49c2996de5f2) )
 	ROM_LOAD( "epr-1617.cpu-ic83",  0x0800, 0x0800, CRC(f70c678e) SHA1(1fabf0011fa4fefd29daf18d4ed6b2cbec14e7b7) )
 
-	ROM_REGION( 0x0a00, REGION_PROMS, 0 )	/* various PROMs */
+	ROM_REGION( 0x0a00, "proms", 0 )	/* various PROMs */
 	ROM_LOAD( "pr-1419.cpu-ic108", 0x00000, 0x0200, CRC(2cfa2a3f) SHA1(7e2ed2f4ef3324c41da153828c7976e7ba91af7c) )  /* color prom */
 	ROM_LOAD( "pr-1620.cpu-ic62",  0x00200, 0x0100, CRC(0ab7ef09) SHA1(b89f8889e2c1220b381e1d6ecc4105cb4152e350) )  /* char color palette */
 	ROM_LOAD( "pr-1449.cpu-ic5",   0x00300, 0x0200, CRC(5eb9ff47) SHA1(b8b1e7cfb8aa380663684df6090c48c7c57a6d50) )  /* sprite Y scaling */
@@ -1398,14 +1397,14 @@ ROM_END
 
 
 ROM_START( buckrog )
-	ROM_REGION( 0xc000, REGION_CPU1, 0 )
+	ROM_REGION( 0xc000, "main", 0 )
 	ROM_LOAD( "cpu-ic3", 0x0000, 0x4000, CRC(f0055e97) SHA1(f6ee2afd6fef710949087d1cb04cbc242d1fa9f5) )	/* encrypted */
 	ROM_LOAD( "cpu-ic4", 0x4000, 0x4000, CRC(7d084c39) SHA1(ef2c0a2a59e14d9e196fd3837139fc5acf0f63be) )	/* encrypted */
 
-	ROM_REGION( 0x2000, REGION_CPU2, 0 )
+	ROM_REGION( 0x2000, "sub", 0 )
 	ROM_LOAD( "epr-5200.cpu-ic66", 0x0000, 0x1000, CRC(0d58b154) SHA1(9f3951eb7ea1fa9ff914738462e4b4f755d60802) )
 
-	ROM_REGION( 0x40000, REGION_GFX1, 0 ) /* sprite data */
+	ROM_REGION( 0x40000, "gfx1", 0 ) /* sprite data */
 	ROM_LOAD( "epr-5216.prom-ic100", 0x00000, 0x2000, CRC(8155bd73) SHA1(b6814f03eafe16457655598685b4827456b86335) )	/* level 0 */
 	ROM_LOAD( "epr-5213.prom-ic84",  0x08000, 0x2000, CRC(fd78dda4) SHA1(4328b5782cbe692765eac43a8eba40bdf2e41921) )	/* level 1 */
 	ROM_LOAD( "prom-ic68",           0x10000, 0x4000, CRC(2a194270) SHA1(8d4e444bd8a4e2fa32099787849e6c02cffe49b0) )	/* level 2 */
@@ -1418,14 +1417,14 @@ ROM_START( buckrog )
 	ROM_LOAD( "prom-ic91",           0x38000, 0x4000, CRC(221f4ced) SHA1(07498c9105c4c4589b19c2bc36abafb176de7bda) )	/* level 7 */
 	ROM_LOAD( "epr-5238.prom-ic90",  0x3c000, 0x2000, CRC(7aff0886) SHA1(09ed9fa973257bb23b488e02ef9e02d867e4c366) )
 
-	ROM_REGION( 0x01000, REGION_GFX2, ROMREGION_DISPOSE )	/* foreground data */
+	ROM_REGION( 0x01000, "gfx2", ROMREGION_DISPOSE )	/* foreground data */
 	ROM_LOAD( "epr-5201.cpu-ic102",  0x0000, 0x0800, CRC(7f21b0a4) SHA1(b6d784031ffecb36863ae1d81eeaaf8f76ab83df) )
 	ROM_LOAD( "epr-5202.cpu-ic103",  0x0800, 0x0800, CRC(43f3e5a7) SHA1(2714943b6720311c5d226db3b6fe95d072677793) )
 
-	ROM_REGION( 0x2000, REGION_GFX3, 0 )	/* background color data */
+	ROM_REGION( 0x2000, "gfx3", 0 )	/* background color data */
 	ROM_LOAD( "epr-5203.cpu-ic91", 0x0000, 0x2000, CRC(631f5b65) SHA1(ce8b23cf97f7e08a13f426964ef140a20a884335) )
 
-	ROM_REGION( 0x0b00, REGION_PROMS, 0 )	/* various PROMs */
+	ROM_REGION( 0x0b00, "proms", 0 )	/* various PROMs */
 	ROM_LOAD( "pr-5194.cpu-ic39", 0x0000, 0x0020, CRC(bc88cced) SHA1(5055362710c0f58823c05fb4c0e0eec638b91e3d) )  /* char layer X shift */
 	ROM_LOAD( "pr-5195.cpu-ic53", 0x0020, 0x0020, CRC(181c6d23) SHA1(4749b205cbaa513ee65a644946235d2cfe275648) )  /* sprite state machine */
 	ROM_LOAD( "pr-5196.cpu-ic10", 0x0100, 0x0200, CRC(04204bcf) SHA1(5636eb184463ac58fcfd20012d13d14fb0769124) )  /* sprite Y scaling */
@@ -1436,14 +1435,14 @@ ROM_END
 
 
 ROM_START( buckrogn )
-	ROM_REGION( 0xc000, REGION_CPU1, 0 )
+	ROM_REGION( 0xc000, "main", 0 )
 	ROM_LOAD( "cpu-ic3", 0x0000, 0x4000, CRC(7f1910af) SHA1(22d37750282676d8fd1f602e928c174f823245c9) )
 	ROM_LOAD( "cpu-ic4", 0x4000, 0x4000, CRC(5ecd393b) SHA1(d069f12326644f2c685e516d91d33b97ec162c56) )
 
-	ROM_REGION( 0x2000, REGION_CPU2, 0 )
+	ROM_REGION( 0x2000, "sub", 0 )
 	ROM_LOAD( "epr-5200.cpu-ic66", 0x0000, 0x1000, CRC(0d58b154) SHA1(9f3951eb7ea1fa9ff914738462e4b4f755d60802) )
 
-	ROM_REGION( 0x40000, REGION_GFX1, 0 ) /* sprite data */
+	ROM_REGION( 0x40000, "gfx1", 0 ) /* sprite data */
 	ROM_LOAD( "epr-5216.prom-ic100",  0x00000, 0x2000, CRC(8155bd73) SHA1(b6814f03eafe16457655598685b4827456b86335) )	/* level 0 */
 	ROM_LOAD( "epr-5213.prom-ic84",   0x08000, 0x2000, CRC(fd78dda4) SHA1(4328b5782cbe692765eac43a8eba40bdf2e41921) )	/* level 1 */
 	ROM_LOAD( "prom-ic68",            0x10000, 0x4000, CRC(2a194270) SHA1(8d4e444bd8a4e2fa32099787849e6c02cffe49b0) )	/* level 2 */
@@ -1456,14 +1455,14 @@ ROM_START( buckrogn )
 	ROM_LOAD( "prom-ic91",            0x38000, 0x4000, CRC(221f4ced) SHA1(07498c9105c4c4589b19c2bc36abafb176de7bda) )	/* level 7 */
 	ROM_LOAD( "epr-5238.prom-ic90",   0x3c000, 0x2000, CRC(7aff0886) SHA1(09ed9fa973257bb23b488e02ef9e02d867e4c366) )
 
-	ROM_REGION( 0x01000, REGION_GFX2, ROMREGION_DISPOSE )	/* foreground data */
+	ROM_REGION( 0x01000, "gfx2", ROMREGION_DISPOSE )	/* foreground data */
 	ROM_LOAD( "epr-5201.cpu-ic102",  0x0000, 0x0800, CRC(7f21b0a4) SHA1(b6d784031ffecb36863ae1d81eeaaf8f76ab83df) )
 	ROM_LOAD( "epr-5202.cpu-ic103",  0x0800, 0x0800, CRC(43f3e5a7) SHA1(2714943b6720311c5d226db3b6fe95d072677793) )
 
-	ROM_REGION( 0x2000, REGION_GFX3, 0 )	/* background color data */
+	ROM_REGION( 0x2000, "gfx3", 0 )	/* background color data */
 	ROM_LOAD( "epr-5203.cpu-ic91", 0x0000, 0x2000, CRC(631f5b65) SHA1(ce8b23cf97f7e08a13f426964ef140a20a884335) )
 
-	ROM_REGION( 0x0b00, REGION_PROMS, 0 )	/* various PROMs */
+	ROM_REGION( 0x0b00, "proms", 0 )	/* various PROMs */
 	ROM_LOAD( "pr-5194.cpu-ic39", 0x0000, 0x0020, CRC(bc88cced) SHA1(5055362710c0f58823c05fb4c0e0eec638b91e3d) )  /* char layer X shift */
 	ROM_LOAD( "pr-5195.cpu-ic53", 0x0020, 0x0020, CRC(181c6d23) SHA1(4749b205cbaa513ee65a644946235d2cfe275648) )  /* sprite state machine */
 	ROM_LOAD( "pr-5196.cpu-ic10", 0x0100, 0x0200, CRC(04204bcf) SHA1(5636eb184463ac58fcfd20012d13d14fb0769124) )  /* sprite Y scaling */
@@ -1473,15 +1472,149 @@ ROM_START( buckrogn )
 ROM_END
 
 
+/*
+Buck Rogers Zoom 909 (early version of Buck Rogers Planet of Zoom)
+Sega, 1982
+
+PCB Layouts
+-----------
+
+Top
+---
+834-5122 (Sound Board)
+|------------------------------------------------------|
+|                                                      |
+|             4066  555     LM324  LM324  LM324        |
+|                                                      |
+| 7404  7407  4066  555 555 MB4391                     |
+|                                                      |
+| 40175 40175 7438  7439    MB4391 MB4391 LM324        |
+|                                                      |
+| 53323   53323  IR3702     IR3702 LM324  LM324  P138MM|
+|                                                5837N |
+| 53323   53323  53323      IR3702                     |
+|                                           LA4460 VOL |
+|------------------------------------------------------|
+Notes:
+      All IC's shown.
+
+
+Middle
+------
+834-5120  171-5011  CPU BOARD  (sticker 834-5142)
+|------------------------------------------------------|
+|D8279    D8255  EPR-5200  Z80   20MHz    SEGA         |
+|    PR-5199     6116                     315-5014     |
+|                                                      |
+|    EPR-5203  8264                                    |
+|              8264                       6116         |
+|              8264                          EPR-5217B |
+|                                                      |
+|                                         *  EPR-5218B |
+|2                                                     |
+|2    PR-5198                                          |
+|W                                                     |
+|A                                              2148   |
+|Y         6116                                        |
+|                                               2148   |
+|                          PR-5195  PR-5194            |
+|               PR-5197                         2148   |
+|      EPR-5201                                        |
+|                                               2148   |
+|      EPR-5202                                        |
+|                                                      |
+| DSW2  DSW1                                   PR-5196 |
+|                                                      |
+| D8255                                                |
+|                                                      |
+|------------------------------------------------------|
+Notes:
+      6116          : 2K  x8 SRAM
+      8264          : 64K x4 DRAM
+      2148          : 1K  x4 SRAM
+      Z80 clock     : 5.000MHz
+      315-5014 clock: measured 3.766MHz to 3.815MHz on pin6; moving slowly!? (NOTE! This is an encrypted Z80)
+      VSync         : 60Hz
+      VCO voltage   : 1.43 Volts
+                      Note! This is guessed to make the sprites a reasonable size. A shot of the title screen
+                      after coinup from a real machine would help to fix the real voltage and give the correct
+                      sprite sizes. Note in MAME the Buck Rogers title isn't centered because of the guessed
+                      voltage, though I'm sure it's very close.
+                      Is it like that on the real machine?
+
+      Label           ROM Type
+      EPR-5200.66     2732
+      EPR-5201.102    2716
+      EPR-5202.103    2716
+      EPR-5203.91     2764
+      EPR-5217B.3     27128
+      EPR-5218B.4     27128
+      PR-5194.39      TBP18S030 (compatible with 82S123)
+      PR-5195.53      TBP18S030 (compatible with 82S123)
+      PR-5196.10      TBP28S46N (compatible with 82S141)
+      PR-5197.78      TBP28S46N (compatible with 82S141)
+      PR-5198.93      TBP28S46N (compatible with 82S141)
+      PR-5199.95      82S181
+      *               Empty socket
+
+
+Bottom
+------
+(sticker 834-5151)  171-5012  ROM BOARD
+|------------------------------------------------------|
+|                                                      |
+|                                                      |
+| EPR-5214  EPR-5211  EPR-5208      *                  |
+|                                                      |
+| EPR-5215  EPR-5212  EPR-5209  EPR-5206               |
+|                                                      |
+|                                                      |
+|                                                      |
+|                                                      |
+|                                          NEC         |
+|                                          uPC624      |
+|                                                      |
+|                                               NEC    |
+|                                               C159A  |
+|                                                      |
+|                                          TL084  TL084|
+|                                                      |
+|                                                 4066 |
+|                                                 4066 |
+| EPR-5216  EPR-5213  EPR-5231  EPR-5207               |
+|                                                75365 |
+|    *          *         *         *            75365 |
+|                                                      |
+|                                                      |
+|------------------------------------------------------|
+Notes:
+      Label          ROM Type
+      EPR-5206.43    27128
+      EPR-5207.52    27128
+      EPR-5208.58    2764
+      EPR-5209.59    27128
+      EPR-5211.74    2764
+      EPR-5212.75    27128
+      EPR-5213.84    2764
+      EPR-5214.90    2764
+      EPR-5215.91    27128
+      EPR-5216.100   2764
+      EPR-5231.68    27128
+      *              Empty socket
+
+      Note! On my PCB, ROMs 58 and 74 match. It could be
+      wrong, but the PCB appears to work perfectly.
+*/
+
 ROM_START( zoom909 )
-	ROM_REGION( 0xc000, REGION_CPU1, 0 )
+	ROM_REGION( 0xc000, "main", 0 )
 	ROM_LOAD( "epr-5217b.cpu-ic3",  0x0000, 0x4000, CRC(1b56e7dd) SHA1(ccf638c318ebce754ac9628271d2064e05ced35c) )	/* encrypted */
 	ROM_LOAD( "epr-5218b.cpu-ic4",  0x4000, 0x4000, CRC(77dfd911) SHA1(cc1d4aac863b2d6b52eff7de2b8233be21aac3c9) )	/* encrypted */
 
-	ROM_REGION( 0x2000, REGION_CPU2, 0 )
+	ROM_REGION( 0x2000, "sub", 0 )
 	ROM_LOAD( "epr-5200.cpu-ic66",  0x0000, 0x1000, CRC(0d58b154) SHA1(9f3951eb7ea1fa9ff914738462e4b4f755d60802) )
 
-	ROM_REGION( 0x40000, REGION_GFX1, 0 ) /* sprite data */
+	ROM_REGION( 0x40000, "gfx1", 0 ) /* sprite data */
 	ROM_LOAD( "epr-5216.prom-ic100", 0x00000, 0x2000, CRC(8155bd73) SHA1(b6814f03eafe16457655598685b4827456b86335) )	/* level 0 */
 	ROM_LOAD( "epr-5213.prom-ic84",  0x08000, 0x2000, CRC(fd78dda4) SHA1(4328b5782cbe692765eac43a8eba40bdf2e41921) )	/* level 1 */
 	ROM_LOAD( "epr-5231.prom-ic68",  0x10000, 0x4000, CRC(f00385fc) SHA1(88f64159fdd9b0b8b6a26e7c52da74189f529eb4) )	/* level 2 */
@@ -1494,14 +1627,14 @@ ROM_START( zoom909 )
 	ROM_LOAD( "epr-5215.prom-ic91",  0x38000, 0x4000, CRC(f5dacc53) SHA1(fe536d16ccb249c26a046f60dc804f5d3be430dc) )	/* level 7 */
 	ROM_LOAD( "epr-5214.prom-ic90",  0x3c000, 0x2000, CRC(68306dd6) SHA1(63644e38b36512d93464280d73344c97d9ec1f78) )
 
-	ROM_REGION( 0x01000, REGION_GFX2, ROMREGION_DISPOSE )	/* foreground data */
+	ROM_REGION( 0x01000, "gfx2", ROMREGION_DISPOSE )	/* foreground data */
 	ROM_LOAD( "epr-5201.cpu-ic102", 0x0000, 0x0800, CRC(7f21b0a4) SHA1(b6d784031ffecb36863ae1d81eeaaf8f76ab83df) )
 	ROM_LOAD( "epr-5202.cpu-ic103", 0x0800, 0x0800, CRC(43f3e5a7) SHA1(2714943b6720311c5d226db3b6fe95d072677793) )
 
-	ROM_REGION( 0x2000, REGION_GFX3, 0 )	/* background color data */
+	ROM_REGION( 0x2000, "gfx3", 0 )	/* background color data */
 	ROM_LOAD( "epr-5203.cpu-ic91",  0x0000, 0x2000, CRC(631f5b65) SHA1(ce8b23cf97f7e08a13f426964ef140a20a884335) )
 
-	ROM_REGION( 0x0b00, REGION_PROMS, 0 )	/* various PROMs */
+	ROM_REGION( 0x0b00, "proms", 0 )	/* various PROMs */
 	ROM_LOAD( "pr-5194.cpu-ic39", 0x0000, 0x0020, CRC(bc88cced) SHA1(5055362710c0f58823c05fb4c0e0eec638b91e3d) )  /* char layer X shift */
 	ROM_LOAD( "pr-5195.cpu-ic53", 0x0020, 0x0020, CRC(181c6d23) SHA1(4749b205cbaa513ee65a644946235d2cfe275648) )  /* sprite state machine */
 	ROM_LOAD( "pr-5196.cpu-ic10", 0x0100, 0x0200, CRC(04204bcf) SHA1(5636eb184463ac58fcfd20012d13d14fb0769124) )  /* sprite Y scaling */
@@ -1604,7 +1737,7 @@ static void turbo_rom_decode(running_machine *machine)
 		2,1,2,1	 /* 0x5000-0x5fff */
 	};
 
-	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, "main");
 	int offs, i, j;
 	UINT8 src;
 
@@ -1634,7 +1767,7 @@ static DRIVER_INIT( turbo_enc )
 
 static DRIVER_INIT( buckrog_enc )
 {
-	buckrog_decode(machine);
+	buckrog_decode(machine, "main");
 }
 
 

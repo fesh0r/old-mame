@@ -15,7 +15,9 @@
 #define __CHD_H__
 
 #include "osdcore.h"
+#include "bitmap.h"
 #include "corefile.h"
+#include "avcomp.h"
 
 
 /***************************************************************************
@@ -108,8 +110,8 @@
 #define CHDCOMPRESSION_AV			3
 
 /* A/V codec configuration parameters */
-#define AV_CODEC_COMPRESS_CONFIG	0
-#define AV_CODEC_DECOMPRESS_CONFIG	1
+#define AV_CODEC_COMPRESS_CONFIG	1
+#define AV_CODEC_DECOMPRESS_CONFIG	2
 
 /* metadata parameters */
 #define CHDMETATAG_WILDCARD			0
@@ -126,7 +128,7 @@
 
 /* standard A/V metadata */
 #define AV_METADATA_TAG				0x41564156	/* 'AVAV' */
-#define AV_METADATA_FORMAT			"FPS:%d.%06d WIDTH:%d HEIGHT:%d INTERLACED:%d CHANNELS:%d SAMPLERATE:%d META:%d"
+#define AV_METADATA_FORMAT			"FPS:%d.%06d WIDTH:%d HEIGHT:%d INTERLACED:%d CHANNELS:%d SAMPLERATE:%d"
 
 /* CHD open values */
 #define CHD_OPEN_READ				1
@@ -180,35 +182,23 @@ typedef struct _chd_file chd_file;
 typedef struct _chd_header chd_header;
 struct _chd_header
 {
-	UINT32	length;						/* length of header data */
-	UINT32	version;					/* drive format version */
-	UINT32	flags;						/* flags field */
-	UINT32	compression;				/* compression type */
-	UINT32	hunkbytes;					/* number of bytes per hunk */
-	UINT32	totalhunks;					/* total # of hunks represented */
-	UINT64	logicalbytes;				/* logical size of the data */
-	UINT64	metaoffset;					/* offset in file of first metadata */
-	UINT8	md5[CHD_MD5_BYTES];			/* MD5 checksum of raw data */
-	UINT8	parentmd5[CHD_MD5_BYTES];	/* MD5 checksum of parent file */
-	UINT8	sha1[CHD_SHA1_BYTES];		/* SHA1 checksum of raw data */
-	UINT8	parentsha1[CHD_SHA1_BYTES];	/* SHA1 checksum of parent file */
+	UINT32		length;						/* length of header data */
+	UINT32		version;					/* drive format version */
+	UINT32		flags;						/* flags field */
+	UINT32		compression;				/* compression type */
+	UINT32		hunkbytes;					/* number of bytes per hunk */
+	UINT32		totalhunks;					/* total # of hunks represented */
+	UINT64		logicalbytes;				/* logical size of the data */
+	UINT64		metaoffset;					/* offset in file of first metadata */
+	UINT8		md5[CHD_MD5_BYTES];			/* MD5 checksum of raw data */
+	UINT8		parentmd5[CHD_MD5_BYTES];	/* MD5 checksum of parent file */
+	UINT8		sha1[CHD_SHA1_BYTES];		/* SHA1 checksum of raw data */
+	UINT8		parentsha1[CHD_SHA1_BYTES];	/* SHA1 checksum of parent file */
 
-	UINT32	obsolete_cylinders;			/* obsolete field -- do not use! */
-	UINT32	obsolete_sectors;			/* obsolete field -- do not use! */
-	UINT32	obsolete_heads;				/* obsolete field -- do not use! */
-	UINT32	obsolete_hunksize;			/* obsolete field -- do not use! */
-};
-
-
-/* A/V codec decompression configuration */
-typedef struct _av_codec_decompress_config av_codec_decompress_config;
-struct _av_codec_decompress_config
-{
-	UINT32	decode_mask;				/* decoding mask */
-	UINT8 *	video_buffer;				/* pointer to alternate video buffer */
-	UINT32	video_stride;				/* bytes between rows in video buffer */
-	UINT32	video_xor;					/* XOR to apply to bytes in video buffer */
-	UINT32	audio_xor;					/* XOR to apply to bytes in audio buffer */
+	UINT32		obsolete_cylinders;			/* obsolete field -- do not use! */
+	UINT32		obsolete_sectors;			/* obsolete field -- do not use! */
+	UINT32		obsolete_heads;				/* obsolete field -- do not use! */
+	UINT32		obsolete_hunksize;			/* obsolete field -- do not use! */
 };
 
 
@@ -237,6 +227,9 @@ void chd_close(chd_file *chd);
 
 /* return the associated core_file */
 core_file *chd_core_file(chd_file *chd);
+
+/* return an error string for the given CHD error */
+const char *chd_error_string(chd_error err);
 
 
 

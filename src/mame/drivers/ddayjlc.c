@@ -58,10 +58,10 @@ static INT32 char_bank = 0;
 static tilemap *bg_tilemap;
 static UINT8 *bgram;
 static UINT8 *mainram;
-static INT32 bgadr=0;
+static INT32 bgadr = 0;
 
-static INT32 sound_nmi_enable=0;
-static INT32 main_nmi_enable=0;
+static INT32 sound_nmi_enable = 0;
+static INT32 main_nmi_enable = 0;
 
 static INT32 e00x_l[4];
 static INT32 e00x_d[4][2];
@@ -103,22 +103,22 @@ static UINT8 protAdr;
 
 */
 
-static const UINT8 protData[0x10]=
+static const UINT8 protData[0x10] =
 {
-	0x40,0x40,0x40,0x40,
-	0x40,0x00,0x40,0x00,
-	0x40,0x40,0x40,0x00,
-	0x60,0x20,0x00,0x60
+	0x02, 0x02, 0x02, 0x02,
+	0x02, 0x00, 0x02, 0x00,
+	0x02, 0x02, 0x02, 0x00,
+	0x03, 0x01, 0x00, 0x03
 };
 
-static READ8_HANDLER(prot_r)
+static CUSTOM_INPUT( prot_r )
 {
-	return (input_port_read(machine, "IN1") & 0x1f)|protData[protAdr];
+	return protData[protAdr];
 }
 
-static WRITE8_HANDLER(prot_w)
+static WRITE8_HANDLER( prot_w )
 {
-	protAdr=(protAdr&(~(1<<offset)))|((data&1)<<offset);
+	protAdr = (protAdr & (~(1<<offset))) | ((data & 1)<<offset);
 }
 
 static WRITE8_HANDLER( char_bank_w )
@@ -129,10 +129,10 @@ static WRITE8_HANDLER( char_bank_w )
 static WRITE8_HANDLER( ddayjlc_bgram_w )
 {
 	if(!offset)
-		tilemap_set_scrollx(bg_tilemap,0,data+8);
+		tilemap_set_scrollx(bg_tilemap, 0, data + 8);
 
 	bgram[offset] = data;
-	tilemap_mark_tile_dirty(bg_tilemap,offset&0x3ff);
+	tilemap_mark_tile_dirty(bg_tilemap, offset & 0x3ff);
 }
 
 static WRITE8_HANDLER( ddayjlc_videoram_w )
@@ -143,63 +143,64 @@ static WRITE8_HANDLER( ddayjlc_videoram_w )
 
 static WRITE8_HANDLER(sound_nmi_w)
 {
-	sound_nmi_enable=data;
+	sound_nmi_enable = data;
 }
 
 static WRITE8_HANDLER(main_nmi_w)
 {
-	main_nmi_enable=data;
+	main_nmi_enable = data;
 }
 
-static WRITE8_HANDLER(bg0_w)
+static WRITE8_HANDLER( bg0_w )
 {
-	bgadr=(bgadr&0xfe)|(data&1);
+	bgadr = (bgadr & 0xfe) | (data & 1);
 }
 
-static WRITE8_HANDLER(bg1_w)
+static WRITE8_HANDLER( bg1_w )
 {
-	bgadr=(bgadr&0xfd)|((data&1)<<1);
+	bgadr = (bgadr & 0xfd) | ((data & 1)<<1);
 }
 
 static WRITE8_HANDLER(bg2_w)
 {
-	bgadr=(bgadr&0xfb)|((data&1)<<2);
-	if(bgadr>2)	bgadr=0;
-	memory_set_bankptr( 1, memory_region(machine, REGION_USER1)+bgadr*0x4000 );
+	bgadr = (bgadr & 0xfb) | ((data & 1)<<2);
+	if(bgadr > 2)
+		bgadr = 0;
+	memory_set_bankptr( 1, memory_region(machine, "user1") + bgadr * 0x4000 );
 }
 
 static WRITE8_HANDLER( sound_w )
 {
 	soundlatch_w(machine,offset,data);
-	cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
+	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff);
 }
 
 static WRITE8_HANDLER( i8257_CH0_w )
 {
-	e00x_d[offset][e00x_l[offset]]=data;
-	e00x_l[offset]^=1;
+	e00x_d[offset][e00x_l[offset]] = data;
+	e00x_l[offset] ^= 1;
 }
 
 static WRITE8_HANDLER( i8257_LMSR_w )
 {
 	if(!data)
 	{
-		INT32 src=e00x_d[0][1]*256+e00x_d[0][0];
-		INT32 dst=e00x_d[2][1]*256+e00x_d[2][0];
-		INT32 size=(e00x_d[1][1]*256+e00x_d[1][0])&0x3ff;
+		INT32 src = e00x_d[0][1] * 256 + e00x_d[0][0];
+		INT32 dst = e00x_d[2][1] * 256 + e00x_d[2][0];
+		INT32 size = (e00x_d[1][1] * 256 + e00x_d[1][0]) & 0x3ff;
 		INT32 i;
 
 		size++; //??
 
-		for(i=0;i<size;i++)
+		for(i = 0; i < size; i++)
 		{
 			program_write_byte(dst++, program_read_byte(src++));
 		}
 
-		e00x_l[0]=0;
-		e00x_l[1]=0;
-		e00x_l[2]=0;
-		e00x_l[3]=0;
+		e00x_l[0] = 0;
+		e00x_l[1] = 0;
+		e00x_l[2] = 0;
+		e00x_l[3] = 0;
 	}
 }
 
@@ -222,8 +223,8 @@ static ADDRESS_MAP_START( main_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf086, 0xf086) AM_WRITE(bg2_w)
 	AM_RANGE(0xf101, 0xf101) AM_WRITE(main_nmi_w)
 	AM_RANGE(0xf102, 0xf105) AM_WRITE(prot_w)
-	AM_RANGE(0xf000, 0xf000) AM_READ_PORT("IN0")
-	AM_RANGE(0xf100, 0xf100) AM_READ(prot_r)
+	AM_RANGE(0xf000, 0xf000) AM_READ_PORT("INPUTS")
+	AM_RANGE(0xf100, 0xf100) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0xf180, 0xf180) AM_READ_PORT("DSW1")
 	AM_RANGE(0xf200, 0xf200) AM_READ_PORT("DSW2")
 ADDRESS_MAP_END
@@ -234,15 +235,15 @@ static ADDRESS_MAP_START( sound_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x23ff) AM_RAM
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(sound_nmi_w)
 
-	AM_RANGE(0x3000, 0x3000) AM_READ(AY8910_read_port_0_r) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x5000, 0x5000) AM_READ(AY8910_read_port_1_r) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0x6000, 0x6000) AM_WRITE(AY8910_control_port_1_w)
+	AM_RANGE(0x3000, 0x3000) AM_READ(ay8910_read_port_0_r) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x4000, 0x4000) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x5000, 0x5000) AM_READ(ay8910_read_port_1_r) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x6000, 0x6000) AM_WRITE(ay8910_control_port_1_w)
 
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( ddayjlc )
-	PORT_START_TAG("IN0")
+	PORT_START("INPUTS")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -252,17 +253,16 @@ static INPUT_PORTS_START( ddayjlc )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_PLAYER(1)
 
-	PORT_START_TAG("IN1")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_SERVICE1 )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x60, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(prot_r, NULL)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW1")	/* DIPSW-1 */
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
@@ -287,7 +287,7 @@ static INPUT_PORTS_START( ddayjlc )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW2")	/* DIPSW-2 */
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )
@@ -300,7 +300,6 @@ static INPUT_PORTS_START( ddayjlc )
 	PORT_DIPNAME( 0xf8, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0xf8, DEF_STR( On ) )
-
 INPUT_PORTS_END
 
 static const gfx_layout charlayout =
@@ -326,9 +325,9 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( ddayjlc )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, spritelayout,   0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout,     0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, charlayout,     0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, spritelayout,   0, 16 )
+	GFXDECODE_ENTRY( "gfx2", 0, charlayout,     0, 16 )
+	GFXDECODE_ENTRY( "gfx3", 0, charlayout,     0, 16 )
 
 GFXDECODE_END
 
@@ -378,7 +377,7 @@ static VIDEO_UPDATE( ddayjlc )
 	return 0;
 }
 
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -401,12 +400,11 @@ static INTERRUPT_GEN( ddayjlc_snd_interrupt )
 }
 
 static MACHINE_DRIVER_START( ddayjlc )
-	MDRV_CPU_ADD(Z80,12000000/3)
+	MDRV_CPU_ADD("main", Z80,12000000/3)
 	MDRV_CPU_PROGRAM_MAP(main_cpu,0)
 	MDRV_CPU_VBLANK_INT("main", ddayjlc_interrupt)
 
-	MDRV_CPU_ADD(Z80, 12000000/4)
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 12000000/4)
 	MDRV_CPU_PROGRAM_MAP(sound_cpu,0)
 	MDRV_CPU_VBLANK_INT("main", ddayjlc_snd_interrupt)
 
@@ -428,40 +426,40 @@ static MACHINE_DRIVER_START( ddayjlc )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 12000000/6)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay1", AY8910, 12000000/6)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD(AY8910, 12000000/6)
+	MDRV_SOUND_ADD("ay2", AY8910, 12000000/6)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( ddayjlc )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "1",  0x0000, 0x2000, CRC(dbfb8772) SHA1(1fbc9726d0cd1f8781ced2f8233107b65b9bdb1a) )
 	ROM_LOAD( "2",  0x2000, 0x2000, CRC(f40ea53e) SHA1(234ef686d3e9fe12aceada7098c4cc53e56eb1a3) )
 	ROM_LOAD( "3",  0x4000, 0x2000, CRC(0780ef60) SHA1(9247af38acbaea0f78892fc50081b2400abbdc1f) )
 	ROM_LOAD( "4",  0x6000, 0x2000, CRC(75991a24) SHA1(175f505da6eb80479a70181d6aed01130f6a64cc) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "11", 0x0000, 0x2000, CRC(fe4de019) SHA1(16c5402e1a79756f8227d7e99dd94c5896c57444) )
 
-	ROM_REGION( 0x8000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "16", 0x0000, 0x2000, CRC(a167fe9a) SHA1(f2770d93ee5ae4eb9b3bcb052e14e36f53eec707) )
 	ROM_LOAD( "17", 0x2000, 0x2000, CRC(13ffe662) SHA1(2ea7855a14a4b8429751bae2e670e77608f93406) )
 	ROM_LOAD( "18", 0x4000, 0x2000, CRC(debe6531) SHA1(34b3b70a1872527266c664b2a82014d028a4ff1e) )
 	ROM_LOAD( "19", 0x6000, 0x2000, CRC(5816f947) SHA1(2236bed3e82980d3e7de3749aef0fbab042086e6) )
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "14", 0x0000, 0x1000, CRC(2c0e9bbe) SHA1(e34ab774d2eb17ddf51af513dbcaa0c51f8dcbf7) )
 	ROM_LOAD( "15", 0x1000, 0x1000, CRC(a6eeaa50) SHA1(052cd3e906ca028e6f55d0caa1e1386482684cbf) )
 
-	ROM_REGION( 0x2000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "12", 0x0000, 0x1000, CRC(7f7afe80) SHA1(e8a549b8a8985c61d3ba452e348414146f2bc77e) )
 	ROM_LOAD( "13", 0x1000, 0x1000, CRC(f169b93f) SHA1(fb0617162542d688503fc6618dd430308e259455) )
 
-	ROM_REGION( 0xc0000, REGION_USER1, 0 )
+	ROM_REGION( 0xc0000, "user1", 0 )
 	ROM_LOAD( "5",  0x00000, 0x2000, CRC(299b05f2) SHA1(3c1804bccb514bada4bed68a6af08db63a8f1b19) )
 	ROM_LOAD( "6",  0x02000, 0x2000, CRC(38ae2616) SHA1(62c96f32532f0d7e2cf1606a303d81ebb4aada7d) )
 	ROM_LOAD( "7",  0x04000, 0x2000, CRC(4210f6ef) SHA1(525d8413afabf97cf1d04ee9a3c3d980b91bde65) )
@@ -469,7 +467,7 @@ ROM_START( ddayjlc )
 	ROM_LOAD( "9",  0x08000, 0x2000, CRC(ccb82f09) SHA1(37c23f13aa0728bae82dba9e2858a8d81fa8afa5) )
 	ROM_LOAD( "10", 0x0a000, 0x2000, CRC(5452aba1) SHA1(03ef47161d0ab047c8675d6ffd3b7acf81f74721) )
 
-	ROM_REGION( 0x0400, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, "proms", 0 )
 	ROM_LOAD( "prom1",  0x00000, 0x0100, NO_DUMP )
 	ROM_LOAD( "prom2",  0x00100, 0x0100, NO_DUMP )
 	ROM_LOAD( "prom3",  0x00200, 0x0100, NO_DUMP )
@@ -478,30 +476,30 @@ ROM_START( ddayjlc )
 ROM_END
 
 ROM_START( ddayjlca )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "1a", 0x0000, 0x2000, CRC(d8e4f3d4) SHA1(78b30b4896a7f718975b1502c6253819bceee922) )
 	ROM_LOAD( "2",  0x2000, 0x2000, CRC(f40ea53e) SHA1(234ef686d3e9fe12aceada7098c4cc53e56eb1a3) )
 	ROM_LOAD( "3",  0x4000, 0x2000, CRC(0780ef60) SHA1(9247af38acbaea0f78892fc50081b2400abbdc1f) )
 	ROM_LOAD( "4",  0x6000, 0x2000, CRC(75991a24) SHA1(175f505da6eb80479a70181d6aed01130f6a64cc) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "11", 0x0000, 0x2000, CRC(fe4de019) SHA1(16c5402e1a79756f8227d7e99dd94c5896c57444) )
 
-	ROM_REGION( 0x8000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "16", 0x0000, 0x2000, CRC(a167fe9a) SHA1(f2770d93ee5ae4eb9b3bcb052e14e36f53eec707) )
 	ROM_LOAD( "17", 0x2000, 0x2000, CRC(13ffe662) SHA1(2ea7855a14a4b8429751bae2e670e77608f93406) )
 	ROM_LOAD( "18", 0x4000, 0x2000, CRC(debe6531) SHA1(34b3b70a1872527266c664b2a82014d028a4ff1e) )
 	ROM_LOAD( "19", 0x6000, 0x2000, CRC(5816f947) SHA1(2236bed3e82980d3e7de3749aef0fbab042086e6) )
 
-	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "14", 0x0000, 0x1000, CRC(2c0e9bbe) SHA1(e34ab774d2eb17ddf51af513dbcaa0c51f8dcbf7) )
 	ROM_LOAD( "15", 0x1000, 0x1000, CRC(a6eeaa50) SHA1(052cd3e906ca028e6f55d0caa1e1386482684cbf) )
 
-	ROM_REGION( 0x2000, REGION_GFX3, ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "12", 0x0000, 0x1000, CRC(7f7afe80) SHA1(e8a549b8a8985c61d3ba452e348414146f2bc77e) )
 	ROM_LOAD( "13", 0x1000, 0x1000, CRC(f169b93f) SHA1(fb0617162542d688503fc6618dd430308e259455) )
 
-	ROM_REGION( 0xc0000, REGION_USER1, 0 )
+	ROM_REGION( 0xc0000, "user1", 0 )
 	ROM_LOAD( "5",  0x00000, 0x2000, CRC(299b05f2) SHA1(3c1804bccb514bada4bed68a6af08db63a8f1b19) )
 	ROM_LOAD( "6",  0x02000, 0x2000, CRC(38ae2616) SHA1(62c96f32532f0d7e2cf1606a303d81ebb4aada7d) )
 	ROM_LOAD( "7",  0x04000, 0x2000, CRC(4210f6ef) SHA1(525d8413afabf97cf1d04ee9a3c3d980b91bde65) )
@@ -509,7 +507,7 @@ ROM_START( ddayjlca )
 	ROM_LOAD( "9",  0x08000, 0x2000, CRC(ccb82f09) SHA1(37c23f13aa0728bae82dba9e2858a8d81fa8afa5) )
 	ROM_LOAD( "10", 0x0a000, 0x2000, CRC(5452aba1) SHA1(03ef47161d0ab047c8675d6ffd3b7acf81f74721) )
 
-	ROM_REGION( 0x0400, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, "proms", 0 )
 	ROM_LOAD( "prom1",  0x00000, 0x0100, NO_DUMP )
 	ROM_LOAD( "prom2",  0x00100, 0x0100, NO_DUMP )
 	ROM_LOAD( "prom3",  0x00200, 0x0100, NO_DUMP )
@@ -559,8 +557,8 @@ static DRIVER_INIT( ddayjlc )
 		UINT8 *src, *dst, *temp;
 		temp = malloc_or_die(0x10000);
 		src = temp;
-		dst = memory_region(machine, REGION_GFX1);
-		length = memory_region_length(machine, REGION_GFX1);
+		dst = memory_region(machine, "gfx1");
+		length = memory_region_length(machine, "gfx1");
 		memcpy(src, dst, length);
 		newadr=0;
 		oldaddr=0;
@@ -574,7 +572,7 @@ static DRIVER_INIT( ddayjlc )
 		free(temp);
 	}
 
-	memory_set_bankptr( 1, memory_region(machine, REGION_USER1) );
+	memory_set_bankptr( 1, memory_region(machine, "user1") );
 
 }
 

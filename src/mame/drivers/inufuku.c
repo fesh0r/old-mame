@@ -120,7 +120,7 @@ static WRITE8_HANDLER( pending_command_clear_w )
 
 static WRITE8_HANDLER( inufuku_soundrombank_w )
 {
-	UINT8 *ROM = memory_region(machine, REGION_CPU2) + 0x10000;
+	UINT8 *ROM = memory_region(machine, "audio") + 0x10000;
 
 	memory_set_bankptr(1, ROM + (data & 0x03) * 0x8000);
 }
@@ -150,17 +150,11 @@ static DRIVER_INIT( inufuku )
 
 ******************************************************************************/
 
-static READ16_HANDLER( inufuku_eeprom_r )
+static CUSTOM_INPUT( soundflag_r )
 {
-	UINT16 soundflag;
-	UINT16 eeprom;
-	UINT16 inputport;
+	UINT16 soundflag = pending_command ? 0 : 1;
 
-	soundflag = pending_command ? 0x0000 : 0x0080;	// bit7
-	eeprom = (eeprom_read_bit() & 1) << 6;			// bit6
-	inputport = input_port_read(machine, "IN1") & 0xff3f;	// bit5-0
-
-	return (soundflag | eeprom | inputport);
+	return soundflag;
 }
 
 static WRITE16_HANDLER( inufuku_eeprom_w )
@@ -185,12 +179,12 @@ static WRITE16_HANDLER( inufuku_eeprom_w )
 static ADDRESS_MAP_START( inufuku_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)				// main rom
 
-	AM_RANGE(0x180000, 0x180001) AM_READ(input_port_0_word_r)
-	AM_RANGE(0x180002, 0x180003) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x180004, 0x180005) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x180006, 0x180007) AM_READ(input_port_3_word_r)
-	AM_RANGE(0x180008, 0x180009) AM_READ(inufuku_eeprom_r)		// eeprom + input_port_4_word_r
-	AM_RANGE(0x18000a, 0x18000b) AM_READ(input_port_5_word_r)
+	AM_RANGE(0x180000, 0x180001) AM_READ_PORT("P1")
+	AM_RANGE(0x180002, 0x180003) AM_READ_PORT("P2")
+	AM_RANGE(0x180004, 0x180005) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x180006, 0x180007) AM_READ_PORT("P4")
+	AM_RANGE(0x180008, 0x180009) AM_READ_PORT("EXTRA")
+	AM_RANGE(0x18000a, 0x18000b) AM_READ_PORT("P3")
 
 	AM_RANGE(0x300000, 0x301fff) AM_READ(SMH_RAM)				// palette ram
 	AM_RANGE(0x400000, 0x401fff) AM_READ(inufuku_bg_videoram_r)	// bg ram
@@ -246,19 +240,19 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( inufuku_readport_sound, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_r)
-	AM_RANGE(0x08, 0x08) AM_READ(YM2610_status_port_0_A_r)
-	AM_RANGE(0x09, 0x09) AM_READ(YM2610_read_port_0_r)
-	AM_RANGE(0x0a, 0x0a) AM_READ(YM2610_status_port_0_B_r)
+	AM_RANGE(0x08, 0x08) AM_READ(ym2610_status_port_0_a_r)
+	AM_RANGE(0x09, 0x09) AM_READ(ym2610_read_port_0_r)
+	AM_RANGE(0x0a, 0x0a) AM_READ(ym2610_status_port_0_b_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( inufuku_writeport_sound, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(inufuku_soundrombank_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(pending_command_clear_w)
-	AM_RANGE(0x08, 0x08) AM_WRITE(YM2610_control_port_0_A_w)
-	AM_RANGE(0x09, 0x09) AM_WRITE(YM2610_data_port_0_A_w)
-	AM_RANGE(0x0a, 0x0a) AM_WRITE(YM2610_control_port_0_B_w)
-	AM_RANGE(0x0b, 0x0b) AM_WRITE(YM2610_data_port_0_B_w)
+	AM_RANGE(0x08, 0x08) AM_WRITE(ym2610_control_port_0_a_w)
+	AM_RANGE(0x09, 0x09) AM_WRITE(ym2610_data_port_0_a_w)
+	AM_RANGE(0x0a, 0x0a) AM_WRITE(ym2610_control_port_0_b_w)
+	AM_RANGE(0x0b, 0x0b) AM_WRITE(ym2610_data_port_0_b_w)
 ADDRESS_MAP_END
 
 
@@ -269,7 +263,7 @@ ADDRESS_MAP_END
 ******************************************************************************/
 
 static INPUT_PORTS_START( inufuku )
-	PORT_START_TAG("P1")	// 0
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
@@ -279,7 +273,7 @@ static INPUT_PORTS_START( inufuku )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
 
-	PORT_START_TAG("P2")	// 1
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
@@ -289,7 +283,7 @@ static INPUT_PORTS_START( inufuku )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
 
-	PORT_START_TAG("IN0")	// 2
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -299,7 +293,7 @@ static INPUT_PORTS_START( inufuku )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("P4")	// 3
+	PORT_START("P4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(4)
@@ -309,7 +303,7 @@ static INPUT_PORTS_START( inufuku )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(4)
 
-	PORT_START_TAG("IN1")	// 4
+	PORT_START("EXTRA")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN4 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )
@@ -318,10 +312,10 @@ static INPUT_PORTS_START( inufuku )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	// pending sound command
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(soundflag_r, NULL)	// pending sound command
 
-	PORT_START_TAG("P3")	// 5
+	PORT_START("P3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(3)
@@ -364,9 +358,9 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( inufuku )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout,    0, 256*16 )	// bg
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tilelayout,    0, 256*16 )	// text
-	GFXDECODE_ENTRY( REGION_GFX3, 0, spritelayout,  0, 256*16 )	// sprite
+	GFXDECODE_ENTRY( "gfx1", 0, tilelayout,    0, 256*16 )	// bg
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayout,    0, 256*16 )	// text
+	GFXDECODE_ENTRY( "gfx3", 0, spritelayout,  0, 256*16 )	// sprite
 GFXDECODE_END
 
 
@@ -381,11 +375,9 @@ static void irqhandler(running_machine *machine, int irq)
 	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const struct YM2610interface ym2610_interface =
+static const ym2610_interface ym2610_config =
 {
-	irqhandler,
-	0,
-	REGION_SOUND1
+	irqhandler
 };
 
 
@@ -398,12 +390,11 @@ static const struct YM2610interface ym2610_interface =
 static MACHINE_DRIVER_START( inufuku )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 32000000/2)	/* 16.00 MHz */
+	MDRV_CPU_ADD("main", M68000, 32000000/2)	/* 16.00 MHz */
 	MDRV_CPU_PROGRAM_MAP(inufuku_readmem, inufuku_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
-	MDRV_CPU_ADD(Z80, 32000000/4)		/* 8.00 MHz */
-	/* audio CPU */
+	MDRV_CPU_ADD("audio", Z80, 32000000/4)		/* 8.00 MHz */
 	MDRV_CPU_PROGRAM_MAP(inufuku_readmem_sound, inufuku_writemem_sound)
 	MDRV_CPU_IO_MAP(inufuku_readport_sound, inufuku_writeport_sound)
 								/* IRQs are triggered by the YM2610 */
@@ -428,8 +419,8 @@ static MACHINE_DRIVER_START( inufuku )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2610, 32000000/4)
-	MDRV_SOUND_CONFIG(ym2610_interface)
+	MDRV_SOUND_ADD("ym", YM2610, 32000000/4)
+	MDRV_SOUND_CONFIG(ym2610_config)
 	MDRV_SOUND_ROUTE(0, "mono", 0.50)
 	MDRV_SOUND_ROUTE(1, "mono", 0.75)
 	MDRV_SOUND_ROUTE(2, "mono", 0.75)
@@ -443,27 +434,27 @@ MACHINE_DRIVER_END
 ******************************************************************************/
 
 ROM_START( inufuku )
-	ROM_REGION( 0x1000000, REGION_CPU1, 0 )	// main cpu + data
+	ROM_REGION( 0x1000000, "main", 0 )	// main cpu + data
 	ROM_LOAD16_WORD_SWAP( "u147.bin",     0x0000000, 0x080000, CRC(ab72398c) SHA1(f5dc266ffa936ea6528b46a34113f5e2f8141d71) )
 	ROM_LOAD16_WORD_SWAP( "u146.bin",     0x0080000, 0x080000, CRC(e05e9bd4) SHA1(af0fdf31c2bdf851bf15c9de725dcbbb58464d54) )
 	ROM_LOAD16_WORD_SWAP( "lhmn5l28.148", 0x0800000, 0x400000, CRC(802d17e7) SHA1(43b26efea65fd051c094d19784cb977ced39a1a0) )
 
-	ROM_REGION( 0x0030000, REGION_CPU2, 0 )	// sound cpu
+	ROM_REGION( 0x0030000, "audio", 0 )	// sound cpu
 	ROM_LOAD( "u107.bin", 0x0000000, 0x020000, CRC(1744ef90) SHA1(e019f4ca83e21aa25710cc0ca40ffe765c7486c9) )
 	ROM_RELOAD( 0x010000, 0x020000 )
 
-	ROM_REGION( 0x0400000, REGION_GFX1, ROMREGION_DISPOSE )	// bg
+	ROM_REGION( 0x0400000, "gfx1", ROMREGION_DISPOSE )	// bg
 	ROM_LOAD16_WORD_SWAP( "lhmn5ku8.u40", 0x0000000, 0x400000, CRC(8cbca80a) SHA1(063e9be97f5a1f021f8326f2994b51f9af5e1eaf) )
 
-	ROM_REGION( 0x0400000, REGION_GFX2, ROMREGION_DISPOSE )	// text
+	ROM_REGION( 0x0400000, "gfx2", ROMREGION_DISPOSE )	// text
 	ROM_LOAD16_WORD_SWAP( "lhmn5ku7.u8",  0x0000000, 0x400000, CRC(a6c0f07f) SHA1(971803d1933d8296767d8766ea9f04dcd6ab065c) )
 
-	ROM_REGION( 0x0c00000, REGION_GFX3, ROMREGION_DISPOSE )	// sprite
+	ROM_REGION( 0x0c00000, "gfx3", ROMREGION_DISPOSE )	// sprite
 	ROM_LOAD16_WORD_SWAP( "lhmn5kub.u34", 0x0000000, 0x400000, CRC(7753a7b6) SHA1(a2e8747ce83ea5a57e2fe62f2452de355d7f48b6) )
 	ROM_LOAD16_WORD_SWAP( "lhmn5kua.u36", 0x0400000, 0x400000, CRC(1ac4402a) SHA1(c15acc6fce4fe0b54e92d14c31a1bd78acf2c8fc) )
 	ROM_LOAD16_WORD_SWAP( "lhmn5ku9.u38", 0x0800000, 0x400000, CRC(e4e9b1b6) SHA1(4d4ad85fbe6a442d4f8cafad748bcae4af6245b7) )
 
-	ROM_REGION( 0x0400000, REGION_SOUND1, 0 )	// adpcm data
+	ROM_REGION( 0x0400000, "ym", 0 )	// adpcm data
 	ROM_LOAD( "lhmn5ku6.u53", 0x0000000, 0x400000, CRC(b320c5c9) SHA1(7c99da2d85597a3c008ed61a3aa5f47ad36186ec) )
 ROM_END
 

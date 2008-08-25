@@ -65,25 +65,25 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
-	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
-	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
-	AM_RANGE(0x03, 0x03) AM_READ(input_port_3_r)
-	AM_RANGE(0x04, 0x04) AM_READ(input_port_4_r)
-	AM_RANGE(0x05, 0x05) AM_READ(input_port_5_r)
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0")
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN2")
+	AM_RANGE(0x03, 0x03) AM_READ_PORT("IN3")
+	AM_RANGE(0x04, 0x04) AM_READ_PORT("IN4")
+	AM_RANGE(0x05, 0x05) AM_READ_PORT("IN5")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP) // ?
 
-	AM_RANGE(0x08, 0x08) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x09, 0x09) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0x08, 0x08) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x09, 0x09) AM_WRITE(ay8910_write_port_0_w)
 ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( carrera )
-	PORT_START_TAG("IN0")	/* Port 0 */
+	PORT_START("IN0")	/* Port 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_JOYSTICK_UP )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_JOYSTICK_LEFT  )
@@ -100,7 +100,7 @@ static INPUT_PORTS_START( carrera )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN1")	/* Port 1 */
+	PORT_START("IN1")	/* Port 1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	/* unused / unknown inputs, not dips */
@@ -124,7 +124,7 @@ static INPUT_PORTS_START( carrera )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	/* I suspect the 4 below are the 4xDSWs */
-	PORT_START_TAG("IN2")	/* Port 2 */
+	PORT_START("IN2")	/* Port 2 */
 	PORT_DIPNAME( 0x01, 0x01, "2" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -150,7 +150,7 @@ static INPUT_PORTS_START( carrera )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN3")	/* Port 3 */
+	PORT_START("IN3")	/* Port 3 */
 	PORT_DIPNAME( 0x01, 0x01, "3" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -176,7 +176,7 @@ static INPUT_PORTS_START( carrera )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN4")	/* Port 4 */
+	PORT_START("IN4")	/* Port 4 */
 	PORT_DIPNAME( 0x01, 0x01, "4" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -202,7 +202,7 @@ static INPUT_PORTS_START( carrera )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN5")	/* Port 5 */
+	PORT_START("IN5")	/* Port 5 */
 	PORT_DIPNAME( 0x01, 0x01, "5" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -241,7 +241,7 @@ static const gfx_layout tiles8x8_layout =
 };
 
 static GFXDECODE_START( carrera )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tiles8x8_layout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 0, 16 )
 GFXDECODE_END
 
 static VIDEO_UPDATE(carrera)
@@ -269,7 +269,7 @@ static READ8_HANDLER( unknown_r )
 }
 
 /* these are set as input, but I have no idea which input port it uses is for the AY */
-static const struct AY8910interface ay8910_interface =
+static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
@@ -282,7 +282,7 @@ static const struct AY8910interface ay8910_interface =
 static PALETTE_INIT(carrera)
 {
 	int x;
-	UINT8 *src = memory_region ( machine, REGION_PROMS );
+	UINT8 *src = memory_region ( machine, "proms" );
 
 	for (x=0;x<32;x++)
 		palette_set_color_rgb(machine, x, pal3bit(src[x] >> 0), pal3bit(src[x] >> 3), pal2bit(src[x] >> 6));
@@ -290,7 +290,7 @@ static PALETTE_INIT(carrera)
 
 static MACHINE_DRIVER_START( carrera )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,MASTER_CLOCK/6)
+	MDRV_CPU_ADD("main", Z80,MASTER_CLOCK/6)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
@@ -314,8 +314,8 @@ static MACHINE_DRIVER_START( carrera )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, MASTER_CLOCK/12)
-	MDRV_SOUND_CONFIG(ay8910_interface)
+	MDRV_SOUND_ADD("ay", AY8910, MASTER_CLOCK/12)
+	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
@@ -324,17 +324,17 @@ MACHINE_DRIVER_END
 
 
 ROM_START( carrera )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "27512.ic22", 0x00000, 0x10000, CRC(2385b9c8) SHA1(12d4397779e074096fbb23b114985f104366b79c) )
 
-	ROM_REGION( 0x50000, REGION_GFX1, 0 )
+	ROM_REGION( 0x50000, "gfx1", 0 )
 	ROM_LOAD( "27512.ic1", 0x00000, 0x10000, CRC(a16e914e) SHA1(09f2271f193a7bffd62ef6e428ecbf9aa1154860) )
 	ROM_LOAD( "27512.ic2", 0x10000, 0x10000, CRC(147036a5) SHA1(34b4818fe61c5b13220b0a2001987b68b655b2cb) )
 	ROM_LOAD( "27512.ic3", 0x20000, 0x10000, CRC(920eee0e) SHA1(85e6d5292b751c57c64d17858bd00292356599e3) )
 	ROM_LOAD( "27512.ic4", 0x30000, 0x10000, CRC(97433f36) SHA1(39f3c6b76ad540693682832aba6e4fc400ca3753) )
 	ROM_LOAD( "27512.ic5", 0x40000, 0x10000, CRC(ffa75920) SHA1(aa5619f5aabcdfa250bb24bcad101a8c512a1776) )
 
-	ROM_REGION( 0x20, REGION_PROMS, 0 )
+	ROM_REGION( 0x20, "proms", 0 )
 	ROM_LOAD( "82s123.ic39", 0x00, 0x20, CRC(af16359f) SHA1(1ff5c9d7807e52be09c0ded56fb68a47e41b3fcf) )
 ROM_END
 

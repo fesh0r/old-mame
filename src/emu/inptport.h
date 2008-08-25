@@ -66,7 +66,11 @@ enum
 {
 	PORTCOND_ALWAYS = 0,
 	PORTCOND_EQUALS,
-	PORTCOND_NOTEQUALS
+	PORTCOND_NOTEQUALS,
+	PORTCOND_GREATERTHAN,
+	PORTCOND_NOTGREATERTHAN,
+	PORTCOND_LESSTHAN,
+	PORTCOND_NOTLESSTHAN
 };
 
 
@@ -326,7 +330,6 @@ enum
 	INPUT_TOKEN_END,
 	INPUT_TOKEN_INCLUDE,
 	INPUT_TOKEN_START,
-	INPUT_TOKEN_START_TAG,
 	INPUT_TOKEN_MODIFY,
 	INPUT_TOKEN_FIELD,
 	INPUT_TOKEN_SPECIAL_ONOFF,
@@ -702,13 +705,9 @@ struct _inp_header
 	TOKEN_UINT32_PACK1(INPUT_TOKEN_INCLUDE, 8), \
 	TOKEN_PTR(tokenptr, &ipt_##_name[0]),
 
-/* start of a new input port */
-#define PORT_START \
-	TOKEN_UINT32_PACK1(INPUT_TOKEN_START, 8),
-
 /* start of a new input port (with included tag) */
-#define PORT_START_TAG(_tag) \
-	TOKEN_UINT32_PACK1(INPUT_TOKEN_START_TAG, 8), \
+#define PORT_START(_tag) \
+	TOKEN_UINT32_PACK1(INPUT_TOKEN_START, 8), \
 	TOKEN_STRING(_tag),
 
 /* modify an existing port */
@@ -988,21 +987,20 @@ void input_field_get_user_settings(const input_field_config *field, input_field_
 /* modify the current settings for the given input field */
 void input_field_set_user_settings(const input_field_config *field, const input_field_user_settings *settings);
 
+/* return the expanded setting name for a field */
+const char *input_field_setting_name(const input_field_config *field);
+
+/* return TRUE if the given field has a "previous" setting */
+int input_field_has_previous_setting(const input_field_config *field);
+
 /* select the previous item for a DIP switch or configuration field */
 void input_field_select_previous_setting(const input_field_config *field);
 
+/* return TRUE if the given field has a "next" setting */
+int input_field_has_next_setting(const input_field_config *field);
+
 /* select the next item for a DIP switch or configuration field */
 void input_field_select_next_setting(const input_field_config *field);
-
-
-/* ----- user interface sequence reading ----- */
-
-/* return TRUE if a key down for the given user interface sequence is detected */
-int input_ui_pressed(running_machine *machine, int code);
-
-/* return TRUE if a key down for the given user interface sequence is detected, or if
-   autorepeat at the given speed is triggered */
-int input_ui_pressed_repeat(running_machine *machine, int code, int speed);
 
 
 
@@ -1016,9 +1014,6 @@ input_port_value input_port_read(running_machine *machine, const char *tag);
 
 /* return the value of an input port specified by tag, or a default value if the port does not exist */
 input_port_value input_port_read_safe(running_machine *machine, const char *tag, input_port_value defvalue);
-
-/* return the value of an input port specified by index */
-input_port_value input_port_read_indexed(running_machine *machine, int portnum);
 
 /* return the extracted crosshair values for the given player */
 int input_port_get_crosshair_position(running_machine *machine, int player, float *x, float *y);
