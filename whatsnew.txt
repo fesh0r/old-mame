@@ -1,3 +1,54 @@
+0.128
+-----
+
+
+MAMETesters Bugs Fixed
+----------------------
+- 02539: [Crash/Freeze] phrcraze, phrcrazs: [debug] Access Violation 
+         (Couriersud)
+- 02531: [Sound] mshuttle, mshuttlj, mshutlj2: Moon shuttle speech 
+         wrong (Corrado Tomaselli)
+
+
+
+Source Changes
+--------------
+Connected firefox audio enables and improved volume balance so you
+can hear the speech chip. Also fixed speech chip frequency. 
+[Aaron Giles, Philip Bennett]
+
+marked Hacha Mecha Fighter (nmk16.c) BG rom as a bad dump.
+[David Haywood]
+
+Improved the poker41 and pulltabs button-lamps layouts to look more 
+realistic. [Roberto Fresca]
+
+Fixed the colors of Yumefuda. Added two new palette functions in 
+generic.c: paletteram_xRRRRRGGGGGBBBBB_split1_w() and 
+paletteram_xRRRRRGGGGGBBBBB_split2_w() (used by Yumefuda).
+[Angelo Salese]
+
+Added function to get the status of CA2 on the 6821 PIA emulator.
+[Phill Harvey-Smith]
+
+Added new tool ldresample to assist in resynchronizing audio tracks in 
+a CHD with frames. Currently still WIP but useful if you know what 
+you're doing. [Aaron Giles]
+
+
+
+New games added or promoted from NOT_WORKING status
+---------------------------------------------------
+Good [David Haywood, Angelo Salese]
+
+
+
+New clones added
+----------------
+Giga Wing (Brazil 990222) [Luis]
+
+
+
 0.127u8
 -------
 
