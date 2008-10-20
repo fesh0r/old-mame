@@ -254,6 +254,13 @@ static GFXDECODE_START( mz700 )
 GFXDECODE_END
 
 
+static const cassette_config mz700_cassette_config =
+{
+	mz700_cassette_formats,
+	NULL,
+	CASSETTE_PLAY
+};
+
 
 static MACHINE_DRIVER_START(mz700)
 	/* basic machine hardware */
@@ -284,10 +291,12 @@ static MACHINE_DRIVER_START(mz700)
 	MDRV_VIDEO_UPDATE(mz700)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("wave", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	MDRV_CASSETTE_ADD( "cassette", mz700_cassette_config )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(mz800)
@@ -319,10 +328,12 @@ static MACHINE_DRIVER_START(mz800)
 	MDRV_VIDEO_UPDATE(mz700)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("wave", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	MDRV_CASSETTE_ADD( "cassette", mz700_cassette_config )
 MACHINE_DRIVER_END
 
 
@@ -344,34 +355,16 @@ ROM_END
 ROM_START(mz800)
 	ROM_REGION(0x18000,"main",0)
 		ROM_LOAD("mz800h.rom",  0x10000, 0x2000, BAD_DUMP CRC(0c281675) SHA1(0adb6201f114f96f06a50de07d1c1ca2bcb4cf43))
-	ROM_REGION(0x10000,"user1",0)
+	ROM_REGION(0x10000,"user1", ROMREGION_ERASEFF)
 		/* RAMDISK */
     ROM_REGION(0x01000,"gfx1",0)
 		ROM_LOAD("mz700fon.int",0x00000, 0x1000, CRC(42b9e8fb) SHA1(5128ad179a702f8e0bd9910a58bad8fbe4c20167))
 ROM_END
 
-static void mz700_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) mz700_cassette_formats; break;
-
-		default:										cassette_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(mz700)
-	CONFIG_DEVICE(mz700_cassette_getinfo)
-SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY      FULLNAME */
-COMP( 1982, mz700,	  0,		0,		mz700,	  mz700,	mz700,	mz700,	"Sharp",     "MZ-700" , 0)
-COMP( 1982, mz700j,   mz700,	0,		mz700,	  mz700,	mz700,	mz700,	"Sharp",     "MZ-700 (Japan)" , 0)
-COMP( 1982, mz800,	  mz700,	0,		mz800,	  mz700,	mz800,	mz700,	"Sharp",     "MZ-800" , GAME_NOT_WORKING )
+COMP( 1982, mz700,	  0,		0,		mz700,	  mz700,	mz700,	0,		"Sharp",     "MZ-700" , 0)
+COMP( 1982, mz700j,   mz700,	0,		mz700,	  mz700,	mz700,	0,		"Sharp",     "MZ-700 (Japan)" , 0)
+COMP( 1982, mz800,	  mz700,	0,		mz800,	  mz700,	mz800,	0,		"Sharp",     "MZ-800" , GAME_NOT_WORKING )
 
 

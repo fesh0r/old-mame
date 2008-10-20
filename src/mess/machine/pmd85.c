@@ -27,7 +27,7 @@ static UINT8 pmd853_memory_mapping = 0x01;
 static void (*pmd85_update_memory)(running_machine *);
 
 enum {PMD85_LED_1, PMD85_LED_2, PMD85_LED_3};
-enum {PMD85_1, PMD85_2, PMD85_2A, PMD85_2B, PMD85_3, ALFA, MATO};
+enum {PMD85_1, PMD85_2, PMD85_2A, PMD85_2B, PMD85_3, ALFA, MATO, C2717};
 
 static UINT8 pmd85_model;
 
@@ -196,6 +196,26 @@ static void mato_update_memory(running_machine *machine)
 	}
 }
 
+static void c2717_update_memory(running_machine *machine)
+{
+	UINT8 *mem = memory_region(machine, "main");
+	if (pmd85_startup_mem_map)
+	{
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
+
+		memory_set_bankptr(1, mem + 0x010000);
+		memory_set_bankptr(2, mess_ram + 0x4000);
+		memory_set_bankptr(3, mem + 0x010000);
+		memory_set_bankptr(4, mess_ram + 0xc000);
+	}
+	else
+	{
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
+		memory_set_bankptr(1, mess_ram);
+		memory_set_bankptr(2, mess_ram + 0x4000);
+	}
+}
+
 /*******************************************************************************
 
 	Motherboard 8255 (PMD-85.1, PMD-85.2, PMD-85.3, Didaktik Alfa)
@@ -204,35 +224,35 @@ static void mato_update_memory(running_machine *machine)
 
 *******************************************************************************/
 
-static  READ8_HANDLER ( pmd85_ppi_0_porta_r )
+static  READ8_DEVICE_HANDLER ( pmd85_ppi_0_porta_r )
 {
 	return 0xff;
 }
 
-static  READ8_HANDLER ( pmd85_ppi_0_portb_r )
+static  READ8_DEVICE_HANDLER ( pmd85_ppi_0_portb_r )
 {
 	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
 										"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15" };
 
-	return input_port_read(machine, keynames[(pmd85_ppi_port_outputs[0][0] & 0x0f)]) & input_port_read(machine, "KEY15");
+	return input_port_read(device->machine, keynames[(pmd85_ppi_port_outputs[0][0] & 0x0f)]) & input_port_read(device->machine, "KEY15");
 }
 
-static  READ8_HANDLER ( pmd85_ppi_0_portc_r )
+static  READ8_DEVICE_HANDLER ( pmd85_ppi_0_portc_r )
 {
 	return 0xff;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_0_porta_w )
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_0_porta_w )
 {
 	pmd85_ppi_port_outputs[0][0] = data;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_0_portb_w )
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_0_portb_w )
 {
 	pmd85_ppi_port_outputs[0][1] = data;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_0_portc_w )
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_0_portc_w )
 {
 	pmd85_ppi_port_outputs[0][2] = data;
 	set_led_status(PMD85_LED_2, (data & 0x08) ? 1 : 0);
@@ -247,7 +267,7 @@ static WRITE8_HANDLER ( pmd85_ppi_0_portc_w )
 
 *******************************************************************************/
 
-static  READ8_HANDLER ( mato_ppi_0_portb_r )
+static  READ8_DEVICE_HANDLER ( mato_ppi_0_portb_r )
 {
 	int i;
 	UINT8 data = 0xff;
@@ -256,17 +276,17 @@ static  READ8_HANDLER ( mato_ppi_0_portb_r )
 	for (i = 0; i < 8; i++)
 	{
 		if (!(pmd85_ppi_port_outputs[0][0] & (1 << i)))
-			data &= input_port_read(machine, keynames[i]);
+			data &= input_port_read(device->machine, keynames[i]);
 	}
 	return data;
 }
 
-static  READ8_HANDLER ( mato_ppi_0_portc_r )
+static  READ8_DEVICE_HANDLER ( mato_ppi_0_portc_r )
 {
-	return input_port_read(machine, "KEY8") | 0x8f;
+	return input_port_read(device->machine, "KEY8") | 0x8f;
 }
 
-static WRITE8_HANDLER ( mato_ppi_0_portc_w )
+static WRITE8_DEVICE_HANDLER ( mato_ppi_0_portc_w )
 {
 	pmd85_ppi_port_outputs[0][2] = data;
 	set_led_status(PMD85_LED_2, (data & 0x08) ? 1 : 0);
@@ -281,32 +301,32 @@ static WRITE8_HANDLER ( mato_ppi_0_portc_w )
 
 *******************************************************************************/
 
-static  READ8_HANDLER ( pmd85_ppi_1_porta_r )
+static READ8_DEVICE_HANDLER ( pmd85_ppi_1_porta_r )
 {
 	return 0xff;
 }
 
-static  READ8_HANDLER ( pmd85_ppi_1_portb_r )
+static READ8_DEVICE_HANDLER ( pmd85_ppi_1_portb_r )
 {
 	return 0xff;
 }
 
-static  READ8_HANDLER ( pmd85_ppi_1_portc_r )
+static READ8_DEVICE_HANDLER ( pmd85_ppi_1_portc_r )
 {
 	return 0xff;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_1_porta_w )
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_1_porta_w )
 {
 	pmd85_ppi_port_outputs[1][0] = data;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_1_portb_w )
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_1_portb_w )
 {
 	pmd85_ppi_port_outputs[1][1] = data;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_1_portc_w )
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_1_portc_w )
 {
 	pmd85_ppi_port_outputs[1][2] = data;
 }
@@ -323,32 +343,32 @@ static WRITE8_HANDLER ( pmd85_ppi_1_portc_w )
 
 *******************************************************************************/
 
-static  READ8_HANDLER ( pmd85_ppi_2_porta_r )
+static READ8_DEVICE_HANDLER ( pmd85_ppi_2_porta_r )
 {
 	return 0xff;
 }
 
-static  READ8_HANDLER ( pmd85_ppi_2_portb_r )
+static READ8_DEVICE_HANDLER ( pmd85_ppi_2_portb_r )
 {
 	return 0xff;
 }
 
-static  READ8_HANDLER ( pmd85_ppi_2_portc_r )
+static READ8_DEVICE_HANDLER ( pmd85_ppi_2_portc_r )
 {
 	return 0xff;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_2_porta_w )
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_2_porta_w )
 {
 	pmd85_ppi_port_outputs[2][0] = data;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_2_portb_w )
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_2_portb_w )
 {
 	pmd85_ppi_port_outputs[2][1] = data;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_2_portc_w )
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_2_portc_w )
 {
 	pmd85_ppi_port_outputs[2][2] = data;
 }
@@ -415,32 +435,32 @@ const struct pit8253_config pmd85_pit8253_interface =
 
 *******************************************************************************/
 
-static  READ8_HANDLER ( pmd85_ppi_3_porta_r )
+static READ8_DEVICE_HANDLER ( pmd85_ppi_3_porta_r )
 {
-	return memory_region(machine, "user1")[pmd85_ppi_port_outputs[3][1]|(pmd85_ppi_port_outputs[3][2]<<8)];
+	return memory_region(device->machine, "user1")[pmd85_ppi_port_outputs[3][1]|(pmd85_ppi_port_outputs[3][2]<<8)];
 }
 
-static  READ8_HANDLER ( pmd85_ppi_3_portb_r )
-{
-	return 0xff;
-}
-
-static  READ8_HANDLER ( pmd85_ppi_3_portc_r )
+static READ8_DEVICE_HANDLER ( pmd85_ppi_3_portb_r )
 {
 	return 0xff;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_3_porta_w )
+static READ8_DEVICE_HANDLER ( pmd85_ppi_3_portc_r )
+{
+	return 0xff;
+}
+
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_3_porta_w )
 {
 	pmd85_ppi_port_outputs[3][0] = data;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_3_portb_w )
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_3_portb_w )
 {
 	pmd85_ppi_port_outputs[3][1] = data;
 }
 
-static WRITE8_HANDLER ( pmd85_ppi_3_portc_w )
+static WRITE8_DEVICE_HANDLER ( pmd85_ppi_3_portc_w )
 {
 	pmd85_ppi_port_outputs[3][2] = data;
 }
@@ -490,6 +510,7 @@ static WRITE8_HANDLER ( pmd85_ppi_3_portc_w )
 					case PMD85_1:
 					case PMD85_2:
 					case PMD85_2A:
+					case C2717:
 					case PMD85_3:
 						if (pmd85_rom_module_present)
 						{
@@ -563,6 +584,7 @@ WRITE8_HANDLER ( pmd85_io_w )
 					case PMD85_1:
 					case PMD85_2:
 					case PMD85_2A:
+					case C2717:
 					case PMD85_3:
 						if (pmd85_rom_module_present)
 						{
@@ -753,19 +775,19 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 	if (!(input_port_read(machine, "DSW0") & 0x02))	/* V.24 / Tape Switch */
 	{
 		/* tape reading */
-		if (cassette_get_state(image_from_devtype_and_index(IO_CASSETTE, 0))&CASSETTE_PLAY)
+		if (cassette_get_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ))&CASSETTE_PLAY)
 		{
 			switch (pmd85_model)
 			{
 				case PMD85_1:
 					if (clk_level_tape)
 					{
-						previous_level = (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.038) ? 1 : 0;
+						previous_level = (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0.038) ? 1 : 0;
 						clk_level_tape = 0;
 					}
 					else
 					{
-						current_level = (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.038) ? 1 : 0;
+						current_level = (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0.038) ? 1 : 0;
 
 						if (previous_level!=current_level)
 						{
@@ -781,6 +803,7 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 					return;
 				case PMD85_2:
 				case PMD85_2A:
+				case C2717:
 				case PMD85_3:
 				case ALFA:
 					/* not hardware data decoding */
@@ -789,11 +812,11 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 		}
 
 		/* tape writing */
-		if (cassette_get_state(image_from_devtype_and_index(IO_CASSETTE, 0))&CASSETTE_RECORD)
+		if (cassette_get_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ))&CASSETTE_RECORD)
 		{
 			data = get_in_data_bit(pmd85_cassette_serial_connection.input_state);
 			data ^= clk_level_tape;
-			cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0), data&0x01 ? 1 : -1);
+			cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), data&0x01 ? 1 : -1);
 
 			if (!clk_level_tape)
 				msm8251_transmit_clock();
@@ -811,17 +834,20 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 	}
 }
 
+static TIMER_CALLBACK( pmd_reset )
+{
+	mame_schedule_soft_reset(machine);
+}
+
 static OPBASE_HANDLER(pmd85_opbaseoverride)
 {
 	if (input_port_read(machine, "RESET") & 0x01) 
-		mame_schedule_soft_reset(machine);
+		timer_set(ATTOTIME_IN_USEC(10), NULL, 0, pmd_reset);
 	return address;
 }
 
 static void pmd85_common_driver_init (running_machine *machine)
 {
-	memory_set_opbase_handler(0, pmd85_opbaseoverride);
-
 	msm8251_init(&pmd85_msm8251_interface);
 
 	pmd85_cassette_timer = timer_alloc(pmd85_cassette_timer_callback, NULL);
@@ -865,9 +891,14 @@ DRIVER_INIT ( mato )
 {
 	pmd85_model = MATO;
 	pmd85_update_memory = mato_update_memory;
-	memory_set_opbase_handler(0, pmd85_opbaseoverride);
 }
 
+DRIVER_INIT ( c2717 )
+{
+	pmd85_model = C2717;
+	pmd85_update_memory = c2717_update_memory;
+	pmd85_common_driver_init(machine);
+}
 
 static TIMER_CALLBACK( setup_pit8253_gates ) {
 	device_config *pit8253 = (device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8253, "pit8253" );
@@ -886,6 +917,7 @@ MACHINE_RESET( pmd85 )
 		case PMD85_1:
 		case PMD85_2A:
 		case PMD85_3:
+	  case C2717:
 			pmd85_rom_module_present = (input_port_read(machine, "DSW0") & 0x01) ? 1 : 0;
 			break;
 		case ALFA:
@@ -904,6 +936,7 @@ MACHINE_RESET( pmd85 )
 		case PMD85_1:
 		case PMD85_2A:
 		case PMD85_3:
+		case C2717:
 		case ALFA:
 			msm8251_reset();
 			break;
@@ -912,4 +945,6 @@ MACHINE_RESET( pmd85 )
 	}
 
 	timer_set( attotime_zero, NULL, 0, setup_pit8253_gates );
+
+	memory_set_opbase_handler(0, pmd85_opbaseoverride);	
 }

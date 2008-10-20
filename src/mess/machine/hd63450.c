@@ -27,6 +27,7 @@ DEVICE_START(hd63450)
 		dmac->reg[x].niv = 0x0f;  // defaults?
 		dmac->reg[x].eiv = 0x0f;
 	}
+	return DEVICE_START_OK;
 }
 
 int hd63450_read(const device_config* device, int offset, UINT16 mem_mask)
@@ -201,7 +202,7 @@ void dma_transfer_start(const device_config* device, int channel, int dir)
 	dmac->reg[channel].csr &= ~0x30;  // Reset Error and Normal termination bits
 	if(dmac->reg[channel].btc > 0)
 	{
-		dmac->reg[channel].mar = program_read_word(dmac->reg[channel].bar) << 8;
+		dmac->reg[channel].mar = program_read_word(dmac->reg[channel].bar) << 16;
 		dmac->reg[channel].mar |= program_read_word(dmac->reg[channel].bar+2);
 		dmac->reg[channel].mtc = program_read_word(dmac->reg[channel].bar+4);
 		dmac->reg[channel].btc--;
@@ -369,7 +370,7 @@ void hd63450_single_transfer(const device_config* device, int x)
 				{
 					dmac->reg[x].btc--;
 					dmac->reg[x].bar+=6;
-					dmac->reg[x].mar = program_read_word(dmac->reg[x].bar) << 8;
+					dmac->reg[x].mar = program_read_word(dmac->reg[x].bar) << 16;
 					dmac->reg[x].mar |= program_read_word(dmac->reg[x].bar+2);
 					dmac->reg[x].mtc = program_read_word(dmac->reg[x].bar+4);
 					return;

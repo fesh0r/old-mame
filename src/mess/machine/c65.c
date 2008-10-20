@@ -11,16 +11,24 @@
 #include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
-
-#define VERBOSE_DBG 1
-#include "includes/cbm.h"
-#include "includes/cbmserb.h"
-#include "includes/vc1541.h"
 #include "video/vic4567.h"
+
+#include "includes/cbmserb.h"
+#include "includes/cbmdrive.h"
 
 #include "includes/c65.h"
 #include "includes/c64.h"
 
+#define VERBOSE_LEVEL 0
+#define DBG_LOG(N,M,A) \
+	{ \
+		if(VERBOSE_LEVEL >= N) \
+		{ \
+			if( M ) \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+			logerror A; \
+		} \
+	}
 
 static int c65_charset_select=0;
 
@@ -777,7 +785,9 @@ static void c65_common_driver_init (running_machine *machine)
 	memory_set_bankptr(14, c64_memory + 0x0c000);
 	memory_set_bankptr(15, c64_memory + 0x0e000);
 
+	/* C65 had no datasette port */
 	c64_tape_on = 0;
+
 	/*memset(c64_memory+0x40000, 0, 0x800000-0x40000); */
 
 	{
@@ -814,6 +824,7 @@ MACHINE_START( c65 )
 	/* clear upper memory */
 	memset(mess_ram + 128*1024, 0xff, mess_ram_size -  128*1024);
 
+	serial_config(machine, &sim_drive_interface);
 	cbm_serial_reset_write (0);
 	cbm_drive_0_config (SERIAL, 10);
 	cbm_drive_1_config (SERIAL, 11);
@@ -821,9 +832,6 @@ MACHINE_START( c65 )
 	c64_vicaddr = c64_memory;
 
 	c64mode = 0;
-
-	c64_rom_recognition ();
-	c64_rom_load(machine);
 
 	c65_bankswitch_interface(0xff);
 	c65_bankswitch (machine);

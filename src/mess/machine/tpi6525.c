@@ -74,10 +74,20 @@
 #include <ctype.h>
 #include "driver.h"
 
-#define VERBOSE_DBG 1
-#include "includes/cbm.h"
-
 #include "tpi6525.h"
+
+
+#define VERBOSE_LEVEL 0
+#define DBG_LOG(N,M,A) \
+	{ \
+		if(VERBOSE_LEVEL >= N) \
+		{ \
+			if( M ) \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+			logerror A; \
+		} \
+	}
+
 
 TPI6525 tpi6525[4]={
 	{ 0 },

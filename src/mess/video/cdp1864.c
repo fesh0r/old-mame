@@ -1,18 +1,25 @@
+/*
+
+    TODO:
+
+	- interlace mode
+	- PAL output, currently using RGB
+    - connect to sound system when possible
+	- cpu synchronization
+
+		SC1 and SC0 are used to provide CDP1864C-to-CPU synchronization for a jitter-free display.
+		During every horizontal sync the CDP1864C samples SC0 and SC1 for SC0 = 1 and SC1 = 0
+		(CDP1800 execute state). Detection of a fetch cycle causes the CDP1864C to skip cycles to
+		attain synchronization. (i.e. picture moves 8 pixels to the right)
+
+*/
+
 #include "driver.h"
 #include "sndintrf.h"
 #include "streams.h"
 #include "cpu/cdp1802/cdp1802.h"
 #include "sound/beep.h"
 #include "video/cdp1864.h"
-
-/*
-
-    TODO:
-
-	- interlace mode
-    - connect to sound system when possible
-
-*/
 
 #define CDP1864_DEFAULT_LATCH	0x35
 
@@ -192,7 +199,7 @@ void cdp1864_aoe_w(const device_config *device, int level)
 {
 	cdp1864_t *cdp1864 = get_safe_token(device);
 
-	if (level == 0)
+	if (!level)
 	{
 		cdp1864->latch = CDP1864_DEFAULT_LATCH;
 	}
@@ -243,18 +250,25 @@ WRITE8_DEVICE_HANDLER( cdp1864_tone_latch_w )
 	cdp1864_t *cdp1864 = get_safe_token(device);
 
 	cdp1864->latch = data;
-	beep_set_frequency(0, CDP1864_CLK_FREQ / 8 / 4 / (data + 1) / 2); // TODO: remove this
+	beep_set_frequency(0, CDP1864_CLOCK / 8 / 4 / (data + 1) / 2); // TODO: remove this
 }
 
 /* DMA Write */
 
-void cdp1864_dma_w(const device_config *device, UINT8 data, int rdata, int gdata, int bdata)
+void cdp1864_dma_w(const device_config *device, UINT8 data, int color_on, int rdata, int gdata, int bdata)
 {
 	cdp1864_t *cdp1864 = get_safe_token(device);
 
 	int sx = video_screen_get_hpos(cdp1864->screen) + 4;
 	int y = video_screen_get_vpos(cdp1864->screen);
 	int x;
+
+	if (color_on == CLEAR_LINE)
+	{
+		rdata = 1;
+		gdata = 1;
+		bdata = 1;
+	}
 
 	for (x = 0; x < 8; x++)
 	{
@@ -385,6 +399,7 @@ static DEVICE_START( cdp1864 )
 	state_save_register_item(unique_tag, 0, cdp1864->incr);
 
 	state_save_register_bitmap(unique_tag, 0, "cdp1864->bitmap", cdp1864->bitmap);
+	return DEVICE_START_OK;
 }
 
 static DEVICE_RESET( cdp1864 )

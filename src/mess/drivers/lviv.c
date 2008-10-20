@@ -290,17 +290,13 @@ Timings:
 
 /* I/O ports */
 
-static ADDRESS_MAP_START( lviv_readport , ADDRESS_SPACE_IO, 8)
-	AM_RANGE( 0x00, 0xff) AM_READ( lviv_io_r )
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( lviv_writeport , ADDRESS_SPACE_IO, 8)
-	AM_RANGE( 0x00, 0xff) AM_WRITE( lviv_io_w )
+static ADDRESS_MAP_START(io_map, ADDRESS_SPACE_IO, 8)
+	AM_RANGE(0x00, 0xff) AM_READWRITE(lviv_io_r,lviv_io_w)
 ADDRESS_MAP_END
 
 /* memory w/r functions */
 
-static ADDRESS_MAP_START( lviv_mem , ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START(lviv_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1, SMH_BANK1)
 	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK2, SMH_BANK2)
 	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK3, SMH_BANK3)
@@ -416,13 +412,20 @@ static INPUT_PORTS_START (lviv)
 INPUT_PORTS_END
 
 
+static const cassette_config lviv_cassette_config =
+{
+	lviv_lvt_format,
+	NULL,
+	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED
+};
+
 
 /* machine definition */
 static MACHINE_DRIVER_START( lviv )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", 8080, 2500000)
 	MDRV_CPU_PROGRAM_MAP(lviv_mem, 0)
-	MDRV_CPU_IO_MAP(lviv_readport, lviv_writeport)
+	MDRV_CPU_IO_MAP(io_map, 0)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( lviv )
@@ -449,33 +452,17 @@ static MACHINE_DRIVER_START( lviv )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("wave", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* snapshot */
 	MDRV_SNAPSHOT_ADD(lviv, "sav", 0)
+
+	MDRV_CASSETTE_ADD( "cassette", lviv_cassette_config )
 MACHINE_DRIVER_END
 
-
-static void lviv_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) lviv_lvt_format; break;
-
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
-
-		default:										cassette_device_getinfo(devclass, state, info); break;
-	}
-}
 
 ROM_START(lviv)
 	ROM_REGION(0x14000,"main",0)
@@ -489,8 +476,6 @@ ROM_END
 
 static SYSTEM_CONFIG_START(lviv)
 	CONFIG_RAM_DEFAULT(64 * 1024)
-	/* 9-Oct-2003 - Changed to lvt because lv? is an invalid file extension */
-	CONFIG_DEVICE(lviv_cassette_getinfo)
 SYSTEM_CONFIG_END
 
 

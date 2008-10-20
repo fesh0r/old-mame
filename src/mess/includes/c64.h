@@ -45,9 +45,7 @@ void c64_common_init_machine (running_machine *machine);
 
 MACHINE_START( c64 );
 INTERRUPT_GEN( c64_frame_interrupt );
-
-void c64_rom_load(running_machine *machine);
-void c64_rom_recognition (void);
+TIMER_CALLBACK( c64_tape_timer );
 
 /* private area */
 READ8_HANDLER(c64_ioarea_r);
@@ -55,7 +53,6 @@ WRITE8_HANDLER(c64_ioarea_w);
 
 WRITE8_HANDLER ( c64_write_io );
 READ8_HANDLER ( c64_read_io );
-WRITE8_HANDLER ( c64_tape_read );
 int c64_paddle_read (int which);
 void c64_vic_interrupt (int level);
 
@@ -69,5 +66,7 @@ extern UINT8 *c64_vicaddr, *c128_vicaddr;
 extern UINT8 c64_game, c64_exrom;
 extern const cia6526_interface c64_cia0, c64_cia1;
 
+void c64_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
+void ultimax_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
 
 #endif /* C64_H_ */

@@ -52,9 +52,9 @@ static void atom_via_irq_func(running_machine *machine, int state)
 	}
 }
 
-static const device_config *cassette_device_image(void)
+static const device_config *cassette_device_image(running_machine *machine)
 {
-	return image_from_devtype_and_index(IO_CASSETTE, 0);
+	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
 }
 
 static const device_config *printer_image(running_machine *machine)
@@ -215,7 +215,7 @@ static TIMER_CALLBACK(atom_timer_callback)
 		result = (~(B & atom_8255_portc)) & 0x01;
 
 		/* tape output */
-		cassette_output(cassette_device_image(), (result & 0x01) ? -1.0 : +1.0);
+		cassette_output(cassette_device_image(machine), (result & 0x01) ? -1.0 : +1.0);
 	}
 }
 
@@ -347,13 +347,13 @@ DEVICE_IMAGE_LOAD( atom_floppy )
 }
 
 
- READ8_HANDLER (atom_8255_porta_r )
+READ8_DEVICE_HANDLER (atom_8255_porta_r )
 {
 	/* logerror("8255: Read port a\n"); */
 	return (atom_8255_porta);
 }
 
- READ8_HANDLER ( atom_8255_portb_r )
+READ8_DEVICE_HANDLER ( atom_8255_portb_r )
 {
 	int row;
 	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", 
@@ -362,15 +362,15 @@ DEVICE_IMAGE_LOAD( atom_floppy )
 	row = atom_8255_porta & 0x0f;
 	/* logerror("8255: Read port b: %02X %02X\n", input_port_read(machine, port), 
 									input_port_read(machine, "KEY10") & 0xc0); */
-	return ((input_port_read(machine, keynames[row]) & 0x3f) | (input_port_read(machine, "KEY10") & 0xc0));
+	return ((input_port_read(device->machine, keynames[row]) & 0x3f) | (input_port_read(device->machine, "KEY10") & 0xc0));
 }
 
-READ8_HANDLER ( atom_8255_portc_r )
+READ8_DEVICE_HANDLER ( atom_8255_portc_r )
 {
 	atom_8255_portc &= 0x0f;
 
 	/* cassette input */
-	if (cassette_input(cassette_device_image()) > 0.0)
+	if (cassette_input(cassette_device_image(device->machine)) > 0.0)
 	{
 		atom_8255_portc |= (1<<5);
 	}
@@ -382,7 +382,7 @@ READ8_HANDLER ( atom_8255_portc_r )
 	}
 
 	atom_8255_portc |= (m6847_get_field_sync() ? 0x00 : 0x80);
-	atom_8255_portc |= (input_port_read(machine, "KEY11") & 0x40);
+	atom_8255_portc |= (input_port_read(device->machine, "KEY11") & 0x40);
 	/* logerror("8255: Read port c (%02X)\n",atom_8255.atom_8255_portc); */
 	return (atom_8255_portc);
 }
@@ -401,17 +401,17 @@ READ8_HANDLER ( atom_8255_portc_r )
 
 */
 
-WRITE8_HANDLER ( atom_8255_porta_w )
+WRITE8_DEVICE_HANDLER ( atom_8255_porta_w )
 {
 	atom_8255_porta = data;
 }
 
-WRITE8_HANDLER ( atom_8255_portb_w )
+WRITE8_DEVICE_HANDLER ( atom_8255_portb_w )
 {
 	atom_8255_portb = data;
 }
 
-WRITE8_HANDLER (atom_8255_portc_w)
+WRITE8_DEVICE_HANDLER (atom_8255_portc_w)
 {
 	atom_8255_portc = data;
 	speaker_level_w(0, (data & 0x04) >> 2);
@@ -419,7 +419,7 @@ WRITE8_HANDLER (atom_8255_portc_w)
 
 
 /* KT- I've assumed that the atom 8271 is linked in exactly the same way as on the bbc */
- READ8_HANDLER(atom_8271_r)
+READ8_HANDLER(atom_8271_r)
 {
 	switch (offset)
 	{

@@ -25,7 +25,6 @@
 #include "mslegacy.h"
 #include "strconv.h"
 #include "utils.h"
-#include "tapedlg.h"
 #include "artworkx.h"
 #include "debug/debugcpu.h"
 #include "inptport.h"
@@ -61,8 +60,6 @@ extern void win_timer_enable(int enabled);
 
 #define MAX_JOYSTICKS				(8)
 
-#define USE_TAPEDLG	0
-
 enum
 {
 	DEVOPTION_OPEN,
@@ -72,12 +69,8 @@ enum
 	DEVOPTION_CASSETTE_STOPPAUSE,
 	DEVOPTION_CASSETTE_PLAY,
 	DEVOPTION_CASSETTE_RECORD,
-#if USE_TAPEDLG
-	DEVOPTION_CASSETTE_DIALOG,
-#else
 	DEVOPTION_CASSETTE_REWIND,
 	DEVOPTION_CASSETTE_FASTFORWARD,
-#endif
 	DEVOPTION_MAX
 };
 
@@ -111,6 +104,87 @@ static int joystick_menu_setup;
 static char state_filename[MAX_PATH];
 
 static int add_filter_entry(char *dest, size_t dest_len, const char *description, const char *extensions);
+
+
+//============================================================
+//	input_item_from_serial_number
+//============================================================
+
+static int input_item_from_serial_number(running_machine *machine, int serial_number,
+	const input_port_config **port, const input_field_config **field, const input_setting_config **setting)
+{
+	int i;
+	const input_port_config *this_port = NULL;
+	const input_field_config *this_field = NULL;
+	const input_setting_config *this_setting = NULL;
+
+	i = 0;
+	for (this_port = machine->portconfig; (i != serial_number) && (this_port != NULL); this_port = this_port->next)
+	{
+		i++;
+		for (this_field = this_port->fieldlist; (i != serial_number) && (this_field != NULL); this_field = this_field->next)
+		{
+			i++;
+			for (this_setting = this_field->settinglist; (i != serial_number) && (this_setting != NULL); this_setting = this_setting->next)
+			{
+				i++;
+			}
+		}
+	}
+
+	if (this_setting != NULL)
+		this_field = this_setting->field;
+	if (this_field != NULL)
+		this_port = this_field->port;
+
+	if (port != NULL)
+		*port = this_port;
+	if (field != NULL)
+		*field = this_field;
+	if (setting != NULL)
+		*setting = this_setting;
+	return (i == serial_number);
+}
+
+
+
+//============================================================
+//	serial_number_from_input_item
+//============================================================
+
+static int serial_number_from_input_item(running_machine *machine, const input_port_config *port,
+	const input_field_config *field, const input_setting_config *setting)
+{
+	int i;
+	const input_port_config *this_port;
+	const input_field_config *this_field;
+	const input_setting_config *this_setting;
+
+	i = 0;
+	for (this_port = machine->portconfig; this_port != NULL; this_port = this_port->next)
+	{
+		if ((port == this_port) && (field == NULL) && (setting == NULL))
+			return i;
+
+		i++;
+		for (this_field = this_port->fieldlist; this_field != NULL; this_field = this_field->next)
+		{
+			if ((port == this_port) && (field == this_field) && (setting == NULL))
+				return i;
+
+			i++;
+			for (this_setting = this_field->settinglist; this_setting != NULL; this_setting = this_setting->next)
+			{
+				if ((port == this_port) && (field == this_field) && (setting == this_setting))
+					return i;
+
+				i++;
+			}
+		}
+	}
+	return -1;
+}
+
 
 
 //============================================================
@@ -298,6 +372,8 @@ static void customize_switches(running_machine *machine, HWND wnd, int title_str
 	const input_field_config *field;
 	const input_setting_config *setting;
 	const char *switch_name = NULL;
+	input_field_user_settings settings;
+
 	UINT32 type;
 
 	dlg = win_dialog_init(ui_getstring(title_string_num), NULL);
@@ -313,7 +389,10 @@ static void customize_switches(running_machine *machine, HWND wnd, int title_str
 			if (type == ipt_name)
 			{
 				switch_name = input_field_name(field);
-				if (win_dialog_add_combobox(dlg, switch_name, field->defvalue, storeval_inputport, (void *) field))
+
+				input_field_get_user_settings(field, &settings);
+
+				if (win_dialog_add_combobox(dlg, switch_name, settings.value, storeval_inputport, (void *) field))
 					goto done;
 
 				for (setting = field->settinglist; setting != NULL; setting = setting->next)
@@ -900,7 +979,6 @@ static void change_device(HWND wnd, const device_config *device, int is_save)
 	}
 
 	// use image directory, if it is there
-	get_devicedirectory(info.type);
 	initial_dir = image_working_directory(device);
 
 	// add custom dialog elements, if appropriate
@@ -1116,7 +1194,8 @@ static void setup_joystick_menu(running_machine *machine, HMENU menu_bar)
 {
 	int joystick_count = 0;
 	HMENU joystick_menu;
-	int i, j;
+	int i;
+	UINT command;
 	HMENU submenu = NULL;
 	const input_port_config *port;
 	const input_field_config *field;
@@ -1144,7 +1223,6 @@ static void setup_joystick_menu(running_machine *machine, HMENU menu_bar)
 	if (use_input_categories)
 	{
 		// using input categories
-		i = 0;
 		for (port = machine->portconfig; port != NULL; port = port->next)
 		{
 			for (field = port->fieldlist; field != NULL; field = field->next)
@@ -1156,19 +1234,19 @@ static void setup_joystick_menu(running_machine *machine, HMENU menu_bar)
 						return;
 
 					// append all of the category settings
-					j = 0;
 					for (setting = field->settinglist; setting != NULL; setting = setting->next)
 					{
-						append_menu_utf8(submenu, MF_STRING, ID_INPUT_0 + j++, setting->name);
+						command = ID_INPUT_0 + serial_number_from_input_item(machine, port, field, setting);
+						append_menu_utf8(submenu, MF_STRING, command, setting->name);
 					}
 
 					// tack on the final items and the menu item
+					command = ID_INPUT_0 + serial_number_from_input_item(machine, port, field, NULL);
 					AppendMenu(submenu, MF_SEPARATOR, 0, NULL);
-					AppendMenu(submenu, MF_STRING, ID_INPUT_0 + i, TEXT("&Configure..."));
+					AppendMenu(submenu, MF_STRING, command, TEXT("&Configure..."));
 					append_menu_utf8(joystick_menu, MF_STRING | MF_POPUP, (UINT_PTR) submenu, field->name);
 					child_count++;
 				}
-				i++;
 			}
 		}
 	}
@@ -1180,7 +1258,7 @@ static void setup_joystick_menu(running_machine *machine, HMENU menu_bar)
 #endif
 		if (joystick_count > 0)
 		{
-			for(i = 0; i < joystick_count; i++)
+			for (i = 0; i < joystick_count; i++)
 			{
 				snprintf(buf, sizeof(buf) / sizeof(buf[0]), "Joystick %i", i + 1);
 				append_menu_utf8(joystick_menu, MF_STRING, ID_JOYSTICK_0 + i, buf);
@@ -1256,6 +1334,8 @@ static void prepare_menus(running_machine *machine, HWND wnd)
 	win_window_info *window = (win_window_info *)ptr;
 	const char *view_name;
 	int view_index;
+	UINT command;
+	input_field_user_settings settings;
 
 	menu_bar = GetMenu(wnd);
 	if (!menu_bar)
@@ -1340,9 +1420,12 @@ static void prepare_menus(running_machine *machine, HWND wnd)
 			{
 				if (field->type == IPT_CATEGORY)
 				{
-					i = 0;
+					input_field_get_user_settings(field, &settings);
 					for (setting = field->settinglist; setting != NULL; setting = setting->next)
-						set_command_state(menu_bar, ID_INPUT_0 + i++, (setting->value == field->defvalue) ? MFS_CHECKED : MFS_ENABLED);
+					{
+						command = ID_INPUT_0 + serial_number_from_input_item(machine, port, field, setting);
+						set_command_state(menu_bar, command, (setting->value == settings.value) ? MFS_CHECKED : MFS_ENABLED);
+					}
 				}
 			}
 		}
@@ -1396,7 +1479,7 @@ static void prepare_menus(running_machine *machine, HWND wnd)
 		append_menu_uistring(sub_menu, flags_for_exists,	new_item + DEVOPTION_CLOSE,	UI_unmount);
 
 #if HAS_WAVE
-		if ((info.type == IO_CASSETTE) && !strcmp(info.file_extensions, "wav"))
+		if ((img->type == CASSETTE) && !strcmp(info.file_extensions, "wav"))
 		{
 			cassette_state state;
 			state = image_exists(img) ? (cassette_get_state(img) & CASSETTE_MASK_UISTATE) : CASSETTE_STOPPED;
@@ -1404,12 +1487,8 @@ static void prepare_menus(running_machine *machine, HWND wnd)
 			append_menu_uistring(sub_menu, flags_for_exists	| ((state == CASSETTE_STOPPED)	? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_STOPPAUSE,	UI_pauseorstop);
 			append_menu_uistring(sub_menu, flags_for_exists	| ((state == CASSETTE_PLAY)		? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_PLAY,			UI_play);
 			append_menu_uistring(sub_menu, flags_for_writing	| ((state == CASSETTE_RECORD)	? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_RECORD,		UI_record);
-#if USE_TAPEDLG
-			append_menu_uistring(sub_menu, flags_for_exists,														new_item + DEVOPTION_CASSETTE_DIALOG,		UI_tapecontrol);
-#else
 			append_menu_uistring(sub_menu, flags_for_exists,														new_item + DEVOPTION_CASSETTE_REWIND,		UI_rewind);
 			append_menu_uistring(sub_menu, flags_for_exists,														new_item + DEVOPTION_CASSETTE_FASTFORWARD,	UI_fastforward);
-#endif
 		}
 #endif /* HAS_WAVE */
 		s = image_exists(img) ? image_filename(img) : ui_getstring(UI_emptyslot);
@@ -1517,11 +1596,11 @@ static void device_command(HWND wnd, const device_config *img, int devoption)
 			break;
 
 		default:
-			switch(image_devtype(img))
-			{
 #if HAS_WAVE
-				case IO_CASSETTE:
-					switch(devoption) {
+			if (img->type == CASSETTE)
+			{
+				switch(devoption)
+				{
 					case DEVOPTION_CASSETTE_STOPPAUSE:
 						cassette_change_state(img, CASSETTE_STOPPED, CASSETTE_MASK_UISTATE);
 						break;
@@ -1534,11 +1613,6 @@ static void device_command(HWND wnd, const device_config *img, int devoption)
 						cassette_change_state(img, CASSETTE_RECORD, CASSETTE_MASK_UISTATE);
 						break;
 
-#if USE_TAPEDLG
-					case DEVOPTION_CASSETTE_DIALOG:
-						tapedialog_show(wnd, image_index_in_device(img));
-						break;
-#else
 					case DEVOPTION_CASSETTE_REWIND:
 						cassette_seek(img, -1.0, SEEK_CUR);
 						break;
@@ -1546,14 +1620,10 @@ static void device_command(HWND wnd, const device_config *img, int devoption)
 					case DEVOPTION_CASSETTE_FASTFORWARD:
 						cassette_seek(img, +1.0, SEEK_CUR);
 						break;
-#endif
 				}
-				break;
+			}
 #endif /* HAS_WAVE */
-
-			default:
-				break;
-		}
+			break;
 	}
 }
 
@@ -1678,16 +1748,15 @@ static int pause_for_command(UINT command)
 static int invoke_command(running_machine *machine, HWND wnd, UINT command)
 {
 	int handled = 1;
-	int dev_command, i;
+	int dev_command;
 	const device_config *img;
-	int port_count;
 	UINT16 category;
 	const char *section;
-	const input_port_config *port;
 	const input_field_config *field;
 	const input_setting_config *setting;
 	LONG_PTR ptr = GetWindowLongPtr(wnd, GWLP_USERDATA);
 	win_window_info *window = (win_window_info *)ptr;
+	input_field_user_settings settings;
 
 	// pause while invoking certain commands
 	if (pause_for_command(command))
@@ -1766,7 +1835,7 @@ static int invoke_command(running_machine *machine, HWND wnd, UINT command)
 #endif // HAS_PROFILER
 
 		case ID_OPTIONS_DEBUGGER:
-			debug_cpu_halt_on_next_instruction(machine, "User-initiated break\n");
+			debug_cpu_halt_on_next_instruction(machine, -1, "User-initiated break\n");
 			break;
 
 		case ID_OPTIONS_CONFIGURATION:
@@ -1846,16 +1915,6 @@ static int invoke_command(running_machine *machine, HWND wnd, UINT command)
 			break;
 
 		default:
-			// quickly come up with a port count, so we can upper bound commands
-			// near ID_INPUT_0
-			port_count = 0;
-			field = NULL;
-			for (port = machine->portconfig; port != NULL; port = port->next)
-			{
-				for (field = port->fieldlist; field != NULL; field = field->next)
-					port_count++;
-			}
-
 			if ((command >= ID_FRAMESKIP_0) && (command < ID_FRAMESKIP_0 + frameskip_level_count()))
 			{
 				// change frameskip
@@ -1877,45 +1936,36 @@ static int invoke_command(running_machine *machine, HWND wnd, UINT command)
 				// render views
 				render_target_set_view(window->target, command - ID_VIDEO_VIEW_0);
 			}
-			else if ((command >= ID_INPUT_0) && (command < ID_INPUT_0 + port_count))
+			else if (input_item_from_serial_number(machine, command - ID_INPUT_0, NULL, &field, &setting))
 			{
-				// customize categorized input
-				i = command - ID_INPUT_0;
-				for (port = machine->portconfig; (i > 0) && (port != NULL); port = port->next)
+				if ((field != NULL) && (field->type == IPT_CATEGORY) && (setting != NULL))
 				{
-					for (field = port->fieldlist; (i > 0) && (field != NULL); field = field->next)
-						;
+					// change the input type for this category
+					input_field_get_user_settings(field, &settings);
+					settings.value = setting->value;
+					input_field_set_user_settings(field, &settings);
 				}
-
-				switch(field->type)
+				else if ((field != NULL) && (field->type == IPT_CATEGORY) && (setting == NULL))
 				{
-					case IPT_CATEGORY:
-						// customize the input type
-						category = 0;
-						section = NULL;
-						for (setting = field->settinglist; setting != NULL; setting = setting->next)
+					// customize the input type
+					input_field_get_user_settings(field, &settings);
+					category = 0;
+					section = NULL;
+
+					for (setting = field->settinglist; setting != NULL; setting = setting->next)
+					{
+						if (settings.value == setting->value)
 						{
-							if (field->defvalue == setting->value)
-							{
-								//category = in[i].category;
-								//section = in[i].name;
-							}
+							category = setting->category;
+							section = setting->name;
 						}
-						customize_categorizedinput(machine, wnd, section, category);
-						break;
-
-//					case IPT_CATEGORY_SETTING:
-//						// change the input type for this category
-//						setting = in->default_value;
-//						while((in->type) != IPT_CATEGORY_NAME)
-//							in--;
-//						in->default_value = setting;
-//						break;
-
-					default:
-						// should never happen
-						handled = 0;
-						break;
+					}
+					customize_categorizedinput(machine, wnd, section, category);
+				}
+				else
+				{
+					// should never happen
+					handled = 0;
 				}
 			}
 			else

@@ -46,6 +46,24 @@ struct _tape_control_menu_state
 ***************************************************************************/
 
 /*-------------------------------------------------
+    cassette_count - returns the number of cassette
+    devices in the machine
+-------------------------------------------------*/
+
+INLINE int cassette_count( running_machine *machine )
+{
+	int count = 0;
+	const device_config *device = device_list_first( machine->config->devicelist, CASSETTE );
+
+	while ( device )
+	{
+		count++;
+		device = device_list_next ( device, CASSETTE );
+	}
+	return count;
+}
+
+/*-------------------------------------------------
     tapecontrol_gettime - returns a textual
 	representation of the time
 -------------------------------------------------*/
@@ -81,11 +99,21 @@ static void menu_tape_control_populate(running_machine *machine, ui_menu *menu, 
 {
 	astring *timepos = astring_alloc();
 	cassette_state state;
+	int count = cassette_count(machine);
+	UINT32 flags = 0;
+
+	if( count > 0 )
+	{
+		if( menustate->index == (count-1) )
+			flags |= MENU_FLAG_LEFT_ARROW;
+		else
+			flags |= MENU_FLAG_RIGHT_ARROW;
+	}
 
 	if (image_exists(menustate->device))
 	{
 		/* name of tape */
-		ui_menu_item_append(menu, image_typename_id(menustate->device), image_filename(menustate->device), 0, NULL);
+		ui_menu_item_append(menu, image_typename_id(menustate->device), image_filename(menustate->device), flags, NULL);
 
 		/* state */
 		tapecontrol_gettime(timepos, menustate->device, NULL, NULL);
@@ -120,7 +148,7 @@ static void menu_tape_control_populate(running_machine *machine, ui_menu *menu, 
 	else
 	{
 		/* no tape loaded */
-		ui_menu_item_append(menu, ui_getstring(UI_notapeimageloaded), NULL, 0, NULL);
+		ui_menu_item_append(menu, ui_getstring(UI_notapeimageloaded), NULL, flags, NULL);
 	}
 
 	if (timepos != NULL)
@@ -132,7 +160,7 @@ static void menu_tape_control_populate(running_machine *machine, ui_menu *menu, 
     menu_tape_control - main tape control menu
 -------------------------------------------------*/
 
-void menu_tape_control(running_machine *machine, ui_menu *menu, void *parameter, void *state)
+void ui_mess_menu_tape_control(running_machine *machine, ui_menu *menu, void *parameter, void *state)
 {
 	tape_control_menu_state *menustate;
 	const ui_menu_event *event;
@@ -145,16 +173,24 @@ void menu_tape_control(running_machine *machine, ui_menu *menu, void *parameter,
 	/* do we have to load the device? */
 	if (menustate->device == NULL)
 	{
-		menustate->device = image_from_devtype_and_index(IO_CASSETTE, menustate->index);
+		int index = menustate->index;
+		const device_config *device = device_list_first( machine->config->devicelist, CASSETTE );
+
+		while ( index > 0 && device )
+		{
+			device = device_list_next ( device, CASSETTE );
+			index--;
+		}
+		menustate->device = device;
 		ui_menu_reset(menu, 0);
 	}
 
-	/* if the menu isn't built, populate now */
-	if (!ui_menu_populated(menu))
-		menu_tape_control_populate(machine, menu, state);
+	/* rebuild the menu - we have to do this so that the counter updates */
+	ui_menu_reset(menu, UI_MENU_RESET_REMEMBER_POSITION);
+	menu_tape_control_populate(machine, menu, state);
 
 	/* process the menu */
-	event = ui_menu_process(menu, 0);
+	event = ui_menu_process(machine, menu, 0);
 	if (event != NULL)
 	{
 		switch(event->iptkey)
@@ -164,13 +200,13 @@ void menu_tape_control(running_machine *machine, ui_menu *menu, void *parameter,
 				if (menustate->index > 0)
 					menustate->index--;
 				else
-					menustate->index = device_count(machine, IO_CASSETTE) - 1;
+					menustate->index = cassette_count(machine) - 1;
 				menustate->device = NULL;
 				break;
 
 			case IPT_UI_RIGHT:
 				/* right arrow - rotate right through cassette devices */
-				if (menustate->index < device_count(machine, IO_CASSETTE) - 1)
+				if (menustate->index < cassette_count(machine) - 1)
 					menustate->index++;
 				else
 					menustate->index = 0;

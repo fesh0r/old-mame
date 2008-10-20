@@ -14,18 +14,28 @@
 #include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
+#include "deprecat.h"
 
-#define VERBOSE_DBG 1
-#include "includes/cbm.h"
 #include "includes/cbmserb.h"
 #include "includes/vc1541.h"
-#include "includes/vc20tape.h"
 #include "video/vic6567.h"
 #include "video/vdc8563.h"
 
 #include "includes/c128.h"
 #include "includes/c64.h"
 
+#include "devices/cassette.h"
+
+#define VERBOSE_LEVEL 0
+#define DBG_LOG(N,M,A) \
+	{ \
+		if(VERBOSE_LEVEL >= N) \
+		{ \
+			if( M ) \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+			logerror A; \
+		} \
+	}
 
 /*
  two cpus share 1 memory system, only 1 cpu can run
@@ -57,6 +67,8 @@ static int c64mode = 0, c128_write_io;
 
 static int c128_ram_bottom, c128_ram_top;
 static UINT8 *c128_ram;
+
+static UINT8 c64_port_data;
 
 static void c128_set_m8502_read_handler(running_machine *machine, UINT16 start, UINT16 end, read8_machine_func rh)
 {
@@ -144,12 +156,12 @@ static READ8_HANDLER( c128_read_io )
 		return c64_colorram[offset & 0x3ff];
 	else if (offset == 0xc00)
 		{
-			cia_set_port_mask_value(0, 0, input_port_read(machine, "DSW0") & 0x0100 ? c64_keyline[8] : c64_keyline[9] );
+			cia_set_port_mask_value(0, 0, input_port_read(machine, "CTRLSEL") & 0x80 ? c64_keyline[8] : c64_keyline[9] );
 			return cia_0_r(machine, offset);
 		}
 	else if (offset == 0xc01)
 		{
-			cia_set_port_mask_value(0, 1, input_port_read(machine, "DSW0") & 0x0100 ? c64_keyline[9] : c64_keyline[8] );
+			cia_set_port_mask_value(0, 1, input_port_read(machine, "CTRLSEL") & 0x80 ? c64_keyline[9] : c64_keyline[8] );
 			return cia_0_r(machine, offset);
 		}
 	else if (offset < 0xd00)
@@ -291,8 +303,8 @@ static void c128_bankswitch_z80 (running_machine *machine)
 #if 1
 	 memory_set_bankptr(10, c128_z80);
 	 memory_set_bankptr(11, c128_ram + 0x1000);
-	 if ( (( (input_port_read(machine, "CFG") & 0x300) == 0x100 ) && (MMU_RAM_ADDR >= 0x40000))
-		  || (( (input_port_read(machine, "CFG") & 0x300) == 0x000) && (MMU_RAM_ADDR >= 0x20000)) )
+	 if ( (( (input_port_read(machine, "SPECIAL") & 0x06) == 0x02 ) && (MMU_RAM_ADDR >= 0x40000))
+		  || (( (input_port_read(machine, "SPECIAL") & 0x06) == 0x00) && (MMU_RAM_ADDR >= 0x20000)) )
 		 c128_ram = NULL;
 #else
 	 if (MMU_BOTTOM)
@@ -358,8 +370,8 @@ static void c128_bankswitch_z80 (running_machine *machine)
 		memory_set_bankptr(9, c64_memory + 0xff05); 
 	 }
 
-	 if ( (( (input_port_read(machine, "CFG") & 0x300) == 0x100 ) && (MMU_RAM_ADDR >= 0x40000))
-		  || (( (input_port_read(machine, "CFG") & 0x300) == 0x000) && (MMU_RAM_ADDR >= 0x20000)) )
+	 if ( (( (input_port_read(machine, "SPECIAL") & 0x06) == 0x02 ) && (MMU_RAM_ADDR >= 0x40000))
+		  || (( (input_port_read(machine, "SPECIAL") & 0x06) == 0x00) && (MMU_RAM_ADDR >= 0x20000)) )
 		 c128_ram = NULL;
 #endif
 }
@@ -525,8 +537,8 @@ static void c128_bankswitch_128 (running_machine *machine, int reset)
 			memory_set_bankptr(16, c128_external_function + 0x3f05);
 		}
 
-		if ( (( (input_port_read(machine, "CFG") & 0x300) == 0x100 ) && (MMU_RAM_ADDR >= 0x40000))
-				|| (( (input_port_read(machine, "CFG") & 0x300) == 0x000) && (MMU_RAM_ADDR >= 0x20000)) )
+		if ( (( (input_port_read(machine, "SPECIAL") & 0x06) == 0x02 ) && (MMU_RAM_ADDR >= 0x40000))
+				|| (( (input_port_read(machine, "SPECIAL") & 0x06) == 0x00) && (MMU_RAM_ADDR >= 0x20000)) )
 			c128_ram = NULL;
 	}
 }
@@ -540,9 +552,9 @@ static void c128_bankswitch (running_machine *machine, int reset)
 		{
 			DBG_LOG (1, "switching to z80",
 						("active %d\n",cpu_getactivecpu()) );
-			memory_set_context(0);
+			memory_set_context(machine, 0);
 			c128_bankswitch_z80(machine);
-			memory_set_context(1);
+			memory_set_context(machine, 1);
 			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, CLEAR_LINE);
 			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 		}
@@ -550,9 +562,9 @@ static void c128_bankswitch (running_machine *machine, int reset)
 		{
 			DBG_LOG (1, "switching to m6502",
 						("active %d\n",cpu_getactivecpu()) );
-			memory_set_context(1);
+			memory_set_context(machine, 1);
 			c128_bankswitch_128(machine, reset);
-			memory_set_context(0);
+			memory_set_context(machine, 0);
 			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, ASSERT_LINE);
 			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
 
@@ -649,9 +661,9 @@ READ8_HANDLER( c128_mmu8722_port_r )
 		break;
 	case 0xb:
 		/* hinybble number of 64 kb memory blocks */
-		if ((input_port_read(machine, "CFG") & 0x300) == 0x100)			// 256KB RAM
+		if ((input_port_read(machine, "SPECIAL") & 0x06) == 0x02)			// 256KB RAM
 			data = 0x4f;
-		else if ((input_port_read(machine, "CFG") & 0x300) == 0x200)	//	1MB
+		else if ((input_port_read(machine, "SPECIAL") & 0x06) == 0x04)	//	1MB
 			data = 0xf;
 		else 
 			data = 0x2f;
@@ -793,15 +805,92 @@ static int c128_dma_read_color (int offset)
 		return c64_colorram[(offset & 0x3ff)|((c64_port6510&0x3)<<10)] & 0xf;
 }
 
+/* 2008-09-01
+	We need here the m6510 port handlers from c64, otherwise c128_common_driver_init
+	seems unable to use correctly the timer.
+	This will be probably fixed in a future clean up.
+*/
+
+static emu_timer *datasette_timer;
+
+static void c128_m6510_port_write(UINT8 direction, UINT8 data)
+{
+	running_machine *machine = Machine;
+
+	/* if line is marked as input then keep current value */
+	data = (c64_port_data & ~direction) | (data & direction);
+
+	/* resistors make P0,P1,P2 go high when respective line is changed to input */
+	if (!(direction & 0x04)) 
+		data |= 0x04;
+
+	if (!(direction & 0x02))
+		data |= 0x02;
+
+	if (!(direction & 0x01))
+		data |= 0x01;
+
+	c64_port_data = data;
+
+	if (c64_tape_on)
+	{
+		if (direction & 0x08) 
+		{
+			cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), (data & 0x08) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
+		}
+
+		if (direction & 0x20)
+		{
+			if(!(data & 0x20))
+			{
+				cassette_change_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+				timer_adjust_periodic(datasette_timer, attotime_zero, 0, ATTOTIME_IN_HZ(44100));
+			}
+			else
+			{
+				cassette_change_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ),CASSETTE_MOTOR_DISABLED ,CASSETTE_MASK_MOTOR);
+				timer_reset(datasette_timer, attotime_never);
+			}
+		}
+	}
+
+	c128_bankswitch_64 (Machine, 0);
+
+	c64_memory[0x000] = program_read_byte( 0 );
+	c64_memory[0x001] = program_read_byte( 1 );
+}
+
+static UINT8 c128_m6510_port_read(UINT8 direction)
+{
+	running_machine *machine = Machine;
+	UINT8 data = c64_port_data;
+
+	if ((cassette_get_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
+		data &= ~0x10;
+	else
+		data |=  0x10;
+
+	if (input_port_read(machine, "SPECIAL") & 0x20)		/* Check Caps Lock */
+	{
+		data &= ~0x40;
+	} else {
+		data |=  0x40;
+	}
+
+	return data;
+}
+
 static void c128_common_driver_init(running_machine *machine)
 {
 	UINT8 *gfx=memory_region(machine, "gfx1");
 	UINT8 *ram = memory_region(machine, "main");
 	int i;
 
+	cia6526_interface cia_intf[2];
+
 	/* configure the M6510 port */
-	cpunum_set_info_fct(1, CPUINFO_PTR_M6510_PORTREAD, (genf *) c64_m6510_port_read);
-	cpunum_set_info_fct(1, CPUINFO_PTR_M6510_PORTWRITE, (genf *) c64_m6510_port_write);
+	cpunum_set_info_fct(1, CPUINFO_PTR_M6510_PORTREAD, (genf *) c128_m6510_port_read);
+	cpunum_set_info_fct(1, CPUINFO_PTR_M6510_PORTWRITE, (genf *) c128_m6510_port_write);
 
 	c64_memory = ram;
 
@@ -821,22 +910,22 @@ static void c128_common_driver_init(running_machine *machine)
 	for (i=0; i<0x100; i++)
 		gfx[i]=i;
 
-	vc20_tape_open (c64_tape_read);
+	if (c64_tape_on)
+		datasette_timer = timer_alloc(c64_tape_timer, NULL);
 
-	{
-		cia6526_interface cia_intf[2];
-		cia_intf[0] = c64_cia0;
-		cia_intf[1] = c64_cia1;
-		cia_intf[0].tod_clock = c64_pal ? 50 : 60;
-		cia_intf[1].tod_clock = c64_pal ? 50 : 60;
+	/* CIA initialization */
+	cia_intf[0] = c64_cia0;
+	cia_intf[1] = c64_cia1;
+	cia_intf[0].tod_clock = c64_pal ? 50 : 60;
+	cia_intf[1].tod_clock = c64_pal ? 50 : 60;
 
-		cia_config(machine, 0, &cia_intf[0]);
-		cia_config(machine, 1, &cia_intf[1]);
-	}
+	cia_config(machine, 0, &cia_intf[0]);
+	cia_config(machine, 1, &cia_intf[1]);
 }
 
 DRIVER_INIT( c128 )
 {
+	c64_tape_on = 1;
 	c128_common_driver_init(machine);
 	vic6567_init (1, c64_pal,
 				  c128_dma_read, c128_dma_read_color, c64_vic_interrupt);
@@ -847,6 +936,7 @@ DRIVER_INIT( c128 )
 
 DRIVER_INIT( c128pal )
 {
+	c64_tape_on = 1;
 	c64_pal = 1;
 	c128_common_driver_init(machine);
 	vic6567_init (1, c64_pal,
@@ -856,15 +946,25 @@ DRIVER_INIT( c128pal )
 	vdc8563_set_rastering(0);
 }
 
+DRIVER_INIT( c128d )
+{
+	DRIVER_INIT_CALL( c128 );
+//	drive_config (type_1541, 0, 0, 1, 8);
+}
+
+DRIVER_INIT( c128dpal )
+{
+	DRIVER_INIT_CALL( c128d );
+//	drive_config (type_1541, 0, 0, 1, 8);
+}
+
+
 MACHINE_RESET( c128 )
 {
 	c64_common_init_machine(machine);
 	c128_vicaddr = c64_vicaddr = c64_memory;
 
 	sndti_reset(SOUND_SID6581, 0);
-
-	c64_rom_recognition ();
-	c64_rom_load(machine);
 
 	c64mode = 0;
 	c128_mmu8722_reset (machine);

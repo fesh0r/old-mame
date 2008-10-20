@@ -32,7 +32,7 @@
 #ifndef __CDP1864__
 #define __CDP1864__
 
-#define CDP1864_CLK_FREQ		1750000.0
+#define CDP1864_CLOCK	XTAL_1_75MHz
 
 #define CDP1864_VISIBLE_COLUMNS	64
 #define CDP1864_VISIBLE_LINES	192
@@ -121,7 +121,7 @@ WRITE8_DEVICE_HANDLER( cdp1864_tone_latch_w );
 void cdp1864_aoe_w(const device_config *device, int level);
 
 /* DMA write */
-void cdp1864_dma_w(const device_config *device, UINT8 data, int rdata, int gdata, int bdata);
+void cdp1864_dma_w(const device_config *device, UINT8 data, int color_on, int rdata, int gdata, int bdata);
 
 /* screen update */
 void cdp1864_update(const device_config *device, bitmap_t *bitmap, const rectangle *cliprect);

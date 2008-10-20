@@ -21,33 +21,15 @@
 
 /* step 1: declare all external references */
 #define DRIVER(NAME) extern const game_driver driver_##NAME;
-#define TESTDRIVER(NAME) extern const game_driver driver_##NAME;
 #include "messdriv.c"
 
 /* step 2: define the drivers[] array */
 #undef DRIVER
-#undef TESTDRIVER
 #define DRIVER(NAME) &driver_##NAME,
-#ifdef MESS_DEBUG
-#define TESTDRIVER(NAME) &driver_##NAME,
-#else
-#define TESTDRIVER(NAME)
-#endif
 const game_driver * const drivers[] =
 {
 #include "messdriv.c"
   0             /* end of array */
-};
-
-/* step 2: define the test_drivers[] array */
-#undef DRIVER
-#undef TESTDRIVER
-#define DRIVER(NAME)
-#define TESTDRIVER(NAME) &driver_##NAME,
-const game_driver *const test_drivers[] =
-{
-#include "messdriv.c"
-	0	/* end of array */
 };
 
 #else /* DRIVER_RECURSIVE */
@@ -99,10 +81,11 @@ const game_driver *const test_drivers[] =
 	/* SEGA */
 	DRIVER( sg1000 )	/* Sega SG-1000 (Japan)								*/
 	DRIVER( sg1000m2 )	/* Sega SG-1000 Mark II (Japan)						*/
-//	DRIVER( omv )		/* Tsukuda Original Othello Multivision				*/
 	DRIVER( sc3000 )	/* Sega SC-3000 (Japan)								*/
 	DRIVER( sc3000h )	/* Sega SC-3000H (Japan)							*/
 	DRIVER( sf7000 )	/* Sega SC-3000 w/ SF-7000 (Japan)					*/
+//	DRIVER( omv1000 )	/* Tsukuda Original Othello Multivision	FG-1000		*/
+//	DRIVER( omv2000 )	/* Tsukuda Original Othello Multivision	FG-2000		*/
 
 	DRIVER( gamegear )	/* Sega GameGear									*/
 	DRIVER( gamegeaj )	/* Sega GameGear (Japan)							*/
@@ -119,7 +102,7 @@ const game_driver *const test_drivers[] =
 	DRIVER( genesis )	/* 1989 Sega Genesis (USA)							*/
 	DRIVER( gensvp )	/* 1993 Sega Genesis (USA w/SVP chip)				*/
 	DRIVER( megadriv )	/* 1990 Sega Mega Drive (Europe)					*/
-	DRIVER( picoe )		/* 1994 Sega Pico (Europe)							*/
+	DRIVER( pico )		/* 1994 Sega Pico (Europe)							*/
 	DRIVER( picou )		/* 1994 Sega Pico (USA)								*/
 	DRIVER( picoj )		/* 1993 Sega Pico (Japan)							*/
 
@@ -139,9 +122,14 @@ const game_driver *const test_drivers[] =
 	DRIVER( astrocdw )	/* Bally Astrocade (white case)						*/
 
 	/* RCA */
-	DRIVER( vip )		/* 1977 Cosmac VIP									*/
+	DRIVER( vip )		/* 1977 Cosmac VIP VP-711							*/
+	DRIVER( vp111 )		/* 1977 Cosmac VIP VP-111							*/
 	DRIVER( studio2 )	/* 1977 Studio II									*/
-TESTDRIVER( m9016tc )	/* 1978 Mustang 9016 Telespiel Computer				*/
+//	DRIVER( visicom )
+//	DRIVER( mpt02s )
+//	DRIVER( mpt02h )
+//	DRIVER( mtc9016 )	/* 1978 Mustang 9016 Telespiel Computer				*/ 
+//	DRIVER( shmc1200 )
 
 	/* FAIRCHILD */
 	DRIVER( channelf )	/* Fairchild Channel F VES - 1976					*/
@@ -162,7 +150,7 @@ TESTDRIVER( m9016tc )	/* 1978 Mustang 9016 Telespiel Computer				*/
 	DRIVER( pcfx)		/* PC-FX NEC 1994									*/
 
 	DRIVER( arcadia )	/* Emerson Arcadia 2001								*/
-TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
+	DRIVER( vcg )		/* Palladium Video-Computer-Game					*/
 
 	/* GCE */
 	DRIVER( vectrex )	/* General Consumer Electric Vectrex - 1982-1984	*/
@@ -218,7 +206,7 @@ TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
 	DRIVER( bbcm)		/* 198? BBC Master									*/
 	DRIVER( bbcbc )		/* 1985 BBC Bridge Companion						*/
 	DRIVER( electron )	/* 1983 Acorn Electron								*/
-TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
+//	DRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
 
 	/* CAMBRIDGE COMPUTERS */
 	DRIVER( z88 )		/*													*/
@@ -227,6 +215,7 @@ TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
 	DRIVER( cpc464 )	/* Amstrad (Schneider in Germany) 1984				*/
 	DRIVER( cpc664 )	/* Amstrad (Schneider in Germany) 1985				*/
 	DRIVER( cpc6128 )	/* Amstrad (Schneider in Germany) 1985				*/
+	DRIVER( cpc6128s )	/* Amstrad (Schneider in Germany) 1985				*/
 	DRIVER( cpc6128f )	/* Amstrad (Schneider in Germany) 1985 (AZERTY)		*/
 	DRIVER( cpc464p )	/* Amstrad CPC464  Plus - 1990						*/
 	DRIVER( cpc6128p )	/* Amstrad CPC6128 Plus - 1990						*/
@@ -263,7 +252,7 @@ TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
 	DRIVER( ace100 )	/* ??? 1982 Franklin Ace 100						*/
 	DRIVER( laser128 )	/* ??? 1987 Laser 128								*/
 	DRIVER( las128ex )	/* ??? 1987 Laser 128 EX							*/
-TESTDRIVER( las3000 )	/* ??? 1983 Laser 3000								*/
+	DRIVER( las3000 )	/* ??? 1983 Laser 3000								*/
 
 /*
  * Lisa 				 January			 1983
@@ -316,62 +305,100 @@ XL/XE 16kB OS roms
 	DRIVER( sym1 )		/* Synertek SYM-1									*/
 	DRIVER( aim65 )		/* Rockwell AIM65									*/
 
-	DRIVER( pet )		/* PET2001/CBM20xx Series (Basic 1)					*/
-	DRIVER( cbm30 )		/* Commodore 30xx (Basic 2)							*/
-	DRIVER( cbm30b )	/* Commodore 30xx (Basic 2) (business keyboard)		*/
-	DRIVER( cbm40 )		/* Commodore 40xx FAT (CRTC) 60Hz					*/
-	DRIVER( cbm40pal )	/* Commodore 40xx FAT (CRTC) 50Hz					*/
-	DRIVER( cbm40b )	/* Commodore 40xx THIN (business keyboard)			*/
-	DRIVER( cbm80 )		/* Commodore 80xx 60Hz								*/
-	DRIVER( cbm80pal )	/* Commodore 80xx 50Hz								*/
-	DRIVER( cbm80ger )	/* Commodore 80xx German (50Hz)						*/
-	DRIVER( cbm80swe )	/* Commodore 80xx Swedish (50Hz)					*/
-	DRIVER( superpet )	/* Commodore SP9000/MMF9000 (50Hz)					*/
-TESTDRIVER( mmf9000 )	/* Commodore MMF9000 Swedish						*/
+	DRIVER( pet2001 )	/* PET 2001											*/
+	DRIVER( pet2001n )	/* PET 2001-N										*/
+	DRIVER( pet2001b )	/* PET 2001-B										*/
+	DRIVER( cbm30 )		/* CBM 30xx											*/
+	DRIVER( cbm30b )	/* CBM 30xx (Business keyboard)						*/
+	DRIVER( cbm30nor )	/* CBM 30xx (Norway, Business keyboard)				*/
+	DRIVER( pet40on )	/* PET 40xx (Basic 4, no CRTC, Normal keyboard)		*/
+	DRIVER( pet40ob )	/* PET 40xx (Basic 4, no CRTC, Business keyboard)	*/
+	DRIVER( pet40n )	/* PET 40xx (Basic 4, CRTC 60Hz, 40 columns)		*/
+	DRIVER( pet40b )	/* PET 40xx (Basic 4, CRTC 60Hz, 80 columns)		*/
+	DRIVER( cbm40o )	/* CBM 40xx (Basic 4, no CRTC, Normal keyboard)		*/
+	DRIVER( cbm40ob )	/* CBM 40xx (Basic 4, no CRTC, Business keyboard)	*/
+	DRIVER( cbm40n )	/* CBM 40xx (Basic 4, CRTC 50Hz, 40 columns)		*/
+	DRIVER( cbm40b )	/* CBM 40xx (Basic 4, CRTC 50Hz, 80 columns)		*/
+	DRIVER( pet80 )		/* PET 80xx (Basic 4, CRTC 60Hz, 80 columns)		*/
+	DRIVER( cbm80 )		/* CBM 80xx (Basic 4, CRTC 50Hz, 80 columns)		*/
+	DRIVER( cbm80ger )	/* CBM 80xx (Germany, Basic 4, CRTC 50Hz, 80 cols)	*/
+	DRIVER( cbm80hun )	/* CBM 80xx (Hungary, Basic 4, CRTC 50Hz, 80 cols)	*/
+	DRIVER( cbm80swe )	/* CBM 80xx (Sweden, Basic 4, CRTC 50Hz, 80 cols)	*/
+	DRIVER( cbm8296 )	/* CBM 8296 (Basic 4, CRTC 50Hz, 80 columns)		*/
+	DRIVER( cbm8296d )	/* CBM 8296D										*/
+	DRIVER( superpet )	/* SuperPET											*/
+	DRIVER( sp9000 )	/* CBM SP9000 / MiniMainFrame 9000					*/
+	DRIVER( mmf9000s )	/* MiniMainFrame 9000 (Sweden)						*/
 
-	DRIVER( vic20 )		/* Commodore Vic-20 NTSC							*/
-	DRIVER( vic1001 )	/* Commodore VIC-1001 (VIC20 Japan)					*/
-	DRIVER( vc20 )		/* Commodore Vic-20 PAL								*/
-	DRIVER( vic20swe )	/* Commodore Vic-20 Sweden							*/
-TESTDRIVER( vic20v )	/* Commodore Vic-20 NTSC, VC1540					*/
-TESTDRIVER( vc20v )		/* Commodore Vic-20 PAL, VC1541						*/
-	DRIVER( vic20i )	/* Commodore Vic-20 IEEE488 Interface				*/
+	DRIVER( vic1001 )	/* Commodore VIC-1001 (Japan)						*/
+	DRIVER( vic20 )		/* Commodore VIC 20 (NTSC)							*/
+	DRIVER( vic20cr )	/* Commodore VIC 20CR (NTSC)						*/
+	DRIVER( vic20i )	/* Commodore VIC 20 (NTSC, IEEE488 Interface)		*/
+	DRIVER( vic20v )	/* Commodore VIC 20 (NTSC, VC1540)					*/
+	DRIVER( vic20pal )	/* Commodore VIC 20 (PAL)							*/
+	DRIVER( vic20crp )	/* Commodore VIC 20CR (PAL)							*/
+	DRIVER( vic20plv )	/* Commodore VIC 20 (PAL, VC1541)					*/
+	DRIVER( vc20 )		/* Commodore VIC 20 (PAL, Germany)					*/
+	DRIVER( vc20v )		/* Commodore VIC 20 (PAL, VC1541)					*/
+	DRIVER( vic20swe )	/* Commodore VIC 20 (Swedish Expanson Kit)			*/
 
-	DRIVER( max )		/* Max (Japan)/Ultimax (US)/VC10 (German)			*/
-	DRIVER( c64 )		/* Commodore 64 - NTSC								*/
-	DRIVER( c64pal )	/* Commodore 64 - PAL								*/
-	DRIVER( vic64s )	/* Commodore VIC64S (Swedish)						*/
-	DRIVER( cbm4064 )	/* Commodore CBM4064								*/
-TESTDRIVER( sx64 )		/* Commodore SX 64 - PAL							*/
-TESTDRIVER( vip64 )		/* Commodore VIP64 (SX64, PAL, Swedish)				*/
-TESTDRIVER( dx64 )		/* Commodore DX 64 - PROTOTPYE, PAL					*/
+	DRIVER( max )		/* Commodore Max Machine (Japan)					*/
+	DRIVER( c64 )		/* Commodore 64 (NTSC)								*/
+	DRIVER( c64pal )	/* Commodore 64 (PAL)								*/
+	DRIVER( c64jpn )	/* Commodore 64 (Japan)								*/
+	DRIVER( c64swe )	/* Commodore 64 (Sweden)							*/
+	DRIVER( vic64s )	/* Commodore VIC 64S (Sweden)						*/
+	DRIVER( pet64 )		/* Commodore PET 64									*/
+	DRIVER( cbm4064 )	/* Commodore CBM 4064								*/
+	DRIVER( edu64 )		/* Commodore Educator 64							*/
+	DRIVER( sx64 )		/* Commodore SX-64 Executive Machine (PAL)			*/
+	DRIVER( vip64 )		/* Commodore VIP64 (SX64, PAL, Swedish)				*/
+//	DRIVER( dx64 )		/* Commodore DX-64 - Prototype						*/
+	DRIVER( c64c )		/* Commodore 64C (NTSC)								*/
+	DRIVER( c64cpal )	/* Commodore 64C (PAL)								*/
+	DRIVER( c64g )		/* Commodore 64G (PAL)								*/
 	DRIVER( c64gs )		/* Commodore 64 Games System						*/
 
-	DRIVER( cbm500 )	/* Commodore 500/P128-40							*/
-	DRIVER( cbm610 )	/* Commodore 610/B128LP								*/
-	DRIVER( cbm620 )	/* Commodore 620/B256LP								*/
-	DRIVER( cbm620hu )	/* Commodore 620/B256LP Hungarian					*/
-	DRIVER( cbm710 )	/* Commodore 710/B128HP								*/
-	DRIVER( cbm720 )	/* Commodore 720/B256HP								*/
-	DRIVER( cbm720se )	/* Commodore 720/B256HP Swedish/Finnish				*/
+	DRIVER( b500 )		/* Commodore B500									*/
+	DRIVER( b128 )		/* Commodore B128									*/
+	DRIVER( b256 )		/* Commodore B256									*/
+	DRIVER( cbm610 )	/* Commodore CBM 610								*/
+	DRIVER( cbm620 )	/* Commodore CBM 620								*/
+	DRIVER( cbm620hu )	/* Commodore CBM 620 (Hungary)						*/
+	DRIVER( b128hp )	/* Commodore B128HP									*/
+	DRIVER( b256hp )	/* Commodore B256HP									*/
+	DRIVER( bx256hp )	/* Commodore BX256HP								*/
+	DRIVER( cbm710 )	/* Commodore CBM 710								*/
+	DRIVER( cbm720 )	/* Commodore CBM 720								*/
+	DRIVER( cbm720se )	/* Commodore CBM 720 (Sweden / Finland)				*/
+	DRIVER( p500 )		/* Commodore P500 (proto, a.k.a. C128-40, PET-II)	*/
 
 	DRIVER( c16 )		/* Commodore 16										*/
-	DRIVER( c16hun )	/* Commodore 16 Novotrade (Hungarian Character Set)	*/
 	DRIVER( c16c )		/* Commodore 16  c1551								*/
-TESTDRIVER( c16v )		/* Commodore 16  vc1541								*/
-	DRIVER( plus4 )		/* Commodore +4  c1551								*/
-	DRIVER( plus4c )	/* Commodore +4  vc1541								*/
-TESTDRIVER( plus4v )	/* Commodore +4										*/
-	DRIVER( c364 )		/* Commodore 364 - Prototype						*/
+	DRIVER( c16v )		/* Commodore 16  vc1541								*/
+	DRIVER( c16hun )	/* Commodore 16 Novotrade (Hungarian Character Set)	*/
+	DRIVER( c116 )		/* Commodore 116									*/
+	DRIVER( c116c )		/* Commodore 116  c1551								*/
+	DRIVER( c116v )		/* Commodore 116  vc1541							*/
+	DRIVER( plus4 )		/* Commodore +4										*/
+	DRIVER( plus4c )	/* Commodore +4  c1551								*/
+	DRIVER( plus4v )	/* Commodore +4  vc1541								*/
+	DRIVER( c232 )		/* Commodore 232 - Prototype						*/
+	DRIVER( c264 )		/* Commodore 264 - Prototype						*/
+	DRIVER( c364 )		/* Commodore V364 - Prototype						*/
 
 	DRIVER( c128 )		/* Commodore 128 - NTSC								*/
-	DRIVER( c128ger )	/* Commodore 128 - PAL (german)						*/
-	DRIVER( c128fra )	/* Commodore 128 - PAL (french)						*/
-	DRIVER( c128ita )	/* Commodore 128 - PAL (italian)					*/
-	DRIVER( c128swe )	/* Commodore 128 - PAL (swedish)					*/
-	DRIVER( c128nor )	/* Commodore 128 - PAL (norwegian)					*/
-TESTDRIVER( c128d )		/* Commodore 128D - NTSC							*/
-TESTDRIVER( c128dita )	/* Commodore 128D - PAL (italian) cost reduced set	*/
+	DRIVER( c128cr )	/* Commodore 128CR - NTSC (proto?)					*/
+	DRIVER( c128fin )	/* Commodore 128 - PAL (Finnish)					*/
+	DRIVER( c128fra )	/* Commodore 128 - PAL (French)						*/
+	DRIVER( c128ger )	/* Commodore 128 - PAL (German)						*/
+	DRIVER( c128nor )	/* Commodore 128 - PAL (Norwegian)					*/
+	DRIVER( c128d )		/* Commodore 128D - PAL								*/
+	DRIVER( c128dpr )	/* Commodore 128D - NTSC (proto)					*/
+	DRIVER( c128dcr )	/* Commodore 128DCR - NTSC							*/
+	DRIVER( c128drde )	/* Commodore 128DCR - PAL (German)					*/
+	DRIVER( c128drit )	/* Commodore 128DCR - PAL (Italian)					*/
+	DRIVER( c128drsw )	/* Commodore 128DCR - PAL (Swedish)					*/
 
 	DRIVER( a500n )		/* Commodore Amiga 500 - NTSC						*/
 	DRIVER( a500p )		/* Commodore Amiga 500 - PAL						*/
@@ -388,21 +415,21 @@ TESTDRIVER( c128dita )	/* Commodore 128D - PAL (italian) cost reduced set	*/
 	DRIVER( pcmda )		/* 1987 PC with MDA									*/
 	DRIVER( pcherc )	/* 1987 PC with Hercules (for testing hercules)		*/
 	DRIVER( pc )		/* 1987 PC with CGA									*/
-TESTDRIVER( bondwell )	/* 1985	Bondwell (CGA)								*/
+	DRIVER( bondwell )	/* 1985	Bondwell (CGA)								*/
 	DRIVER( europc )	/* 1988	Schneider Euro PC (CGA or Hercules)			*/
 
 	/* pc junior */
 	DRIVER( ibmpcjr )	/* 1984 IBM PC Jr									*/
 	DRIVER( t1000hx )	/* 1987 Tandy 1000HX (similiar to PCJr)				*/
-TESTDRIVER( t1000sx )	/* 1987 Tandy 1000SX (similiar to PCJr)				*/
+	DRIVER( t1000sx )	/* 1987 Tandy 1000SX (similiar to PCJr)				*/
 
 	/* xt */
 	DRIVER( ibm5160 )	/* 1982	IBM XT 5160									*/
 	DRIVER( ibm5162 )	/* 1986 IBM XT 5162 (XT w/80286)					*/
 	DRIVER( pc200 )		/* 1988 Sinclair PC200								*/
 	DRIVER( pc20 )		/* 1988 Amstrad PC20								*/
-TESTDRIVER( ppc512 )	/* 1987 Amstrad PPC512								*/
-TESTDRIVER( ppc640 )	/* 1987 Amstrad PPC640								*/
+	DRIVER( ppc512 )	/* 1987 Amstrad PPC512								*/
+	DRIVER( ppc640 )	/* 1987 Amstrad PPC640								*/
 	DRIVER( pc1512 )	/* 1986 Amstrad PC1512 v1 (CGA compatible)			*/
 	DRIVER( pc1512v2 )	/* 1986 Amstrad PC1512 v2 (CGA compatible)			*/
 	DRIVER( pc1640 )	/* 1987 Amstrad PC1640 (EGA compatible)				*/
@@ -412,10 +439,10 @@ TESTDRIVER( ppc640 )	/* 1987 Amstrad PPC640								*/
 	/* at */
 	DRIVER( ibm5170 )	/* 1984 IBM PC/AT 5170, original 6 Mhz model		*/
 	DRIVER( ibm5170a )	/* 1985	IBM PC/AT 5170, enhanced 8 Mhz model		*/
-TESTDRIVER( i8530286 )	/* 1988 IBM PS2 Model 30 286 (VGA)					*/
+	DRIVER( i8530286 )	/* 1988 IBM PS2 Model 30 286 (VGA)					*/
 	DRIVER( at )		/* 1987 AMI Bios and Diagnostics					*/
 	DRIVER( atvga )		/* 19?? AT VGA										*/
-TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
+	DRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 	DRIVER( at386 )		/* 19?? IBM AT 386									*/
 	DRIVER( at486 )		/* 19?? IBM AT 486									*/
 	DRIVER( at586 )		/* 19?? AT 586										*/
@@ -431,19 +458,24 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 	DRIVER( pow3000 )	/* Creon Enterprises - Power 3000					*/
 	DRIVER( lambda )	/* Lambda 8300										*/
 
-	DRIVER( spectrum )	/* 1982 ZX Spectrum									*/
+	DRIVER( spectrum )/* 1982 ZX Spectrum									*/
+	DRIVER( spec80k ) /* 1987 ZX Spectrum 80k							*/
+	DRIVER( specide ) /* 1995 ZX Spectrum IDE							*/
 	DRIVER( inves )		/* 1986 Inves Spectrum 48K+							*/
 	DRIVER( tk90x )		/* 1985 TK90x Color Computer						*/
 	DRIVER( tk95 )		/* 1986 TK95 Color Computer							*/
 	DRIVER( tc2048 )	/* 198? TC2048										*/
 	DRIVER( ts2068 )	/* 1983 TS2068										*/
-	DRIVER( uk2086 )	/* 1986 UK2086										*/
+	DRIVER( uk2086 )	/* 1986 UK2086										*/  
 
-	DRIVER( spec128 )	/* 1986 ZX Spectrum 128								*/
+	DRIVER( spec128 )	  /* 1986 ZX Spectrum 128								*/
 	DRIVER( specpls2 )	/* 1986 ZX Spectrum +2								*/
-	DRIVER( specpl2a )	/* 1987 ZX Spectrum +2a								*/
+	DRIVER( specpl2a )	/* 1987 ZX Spectrum +2a								*/	
 	DRIVER( specpls3 )	/* 1987 ZX Spectrum +3								*/
 	DRIVER( specpl3e )	/* 2000 ZX Spectrum +3e								*/
+	DRIVER( sp3e8bit )	/* 2002 ZX Spectrum +3e	8bit IDE			*/
+	DRIVER( sp3ezcf )  	/* 2002 ZX Spectrum +3e	ZXCF   				*/
+	DRIVER( sp3eata )  	/* 2002 ZX Spectrum +3e	ZXATASP  			*/	
 	DRIVER( scorpion )
 	DRIVER( pentagon )
 
@@ -456,6 +488,8 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 	DRIVER( ql_se )		/* 1984 Sinclair QL	(Sweden)						*/
 	DRIVER( ql_dk )		/* 1984 Sinclair QL	(Denmark)						*/
 	DRIVER( ql_gr )		/* 1984 Sinclair QL	(Greece)						*/
+//	DRIVER( tonto )
+//	DRIVER( megaopd )
 
 	/* SHARP */
 	DRIVER( pc1251 )	/* Pocket Computer 1251								*/
@@ -468,7 +502,7 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 
 	DRIVER( mz700 )		/* 1982 Sharp MZ700									*/
 	DRIVER( mz700j )	/* 1982 Sharp MZ700 Japan							*/
-TESTDRIVER( mz800 )		/* 1982 Sharp MZ800									*/
+	DRIVER( mz800 )		/* 1982 Sharp MZ800									*/
 
 	DRIVER( x68000 )	/* Sharp X68000 (1987)								*/
 
@@ -484,8 +518,8 @@ TESTDRIVER( mz800 )		/* 1982 Sharp MZ800									*/
 	DRIVER( 990189 )	/* 1978 TM 990/189									*/
 	DRIVER( 990189v )	/* 1980 TM 990/189 with Color Video Board			*/
 
-TESTDRIVER( ti99_224 )	/* 1983 TI 99/2 (24kb ROMs)							*/
-TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 (32kb ROMs)							*/
+	DRIVER( ti99_224 )	/* 1983 TI 99/2 (24kb ROMs)							*/
+	DRIVER( ti99_232 )	/* 1983 TI 99/2 (32kb ROMs)							*/
 	DRIVER( ti99_4 )	/* 1979 TI-99/4										*/
 	DRIVER( ti99_4e )	/* 1980 TI-99/4 with 50Hz video						*/
 	DRIVER( ti99_4a )	/* 1981 TI-99/4A									*/
@@ -497,7 +531,7 @@ TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 (32kb ROMs)							*/
 	DRIVER( tutor)		/* 1983? Tomy Tutor									*/
 	DRIVER( geneve )	/* 1987? Myarc Geneve 9640							*/
 	DRIVER( genmod )	/* 199?? Myarc Geneve 9640							*/
-TESTDRIVER( ti99_4p )	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
+	DRIVER( ti99_4p )	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
 
 	DRIVER( avigo )		/*													*/
 
@@ -508,9 +542,9 @@ TESTDRIVER( ti99_4p )	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
 	DRIVER( ti83 )		/* 1996 TI-83 (Z80 6 MHz)							*/
 	DRIVER( ti86 )		/* 1997 TI-86 (Z80 6 MHz)							*/
 	DRIVER( ti83p )		/* 1999 TI-83 Plus (Z80 6 MHz)						*/
-//TESTDRIVER( ti83pse )	/* 2001 TI-83 Plus Silver Edition					*/
-//TESTDRIVER( ti84p )	/* 2004 TI-84 Plus									*/
-//TESTDRIVER( ti84pse )	/* 2004 TI-84 Plus Silver Edition					*/
+//	DRIVER( ti83pse )	/* 2001 TI-83 Plus Silver Edition					*/
+//	DRIVER( ti84p )		/* 2004 TI-84 Plus									*/
+//	DRIVER( ti84pse )	/* 2004 TI-84 Plus Silver Edition					*/
 
 	/* NEC */
 	DRIVER( pc88srl )	/* PC-8801mkIISR(Low res display, VSYNC 15KHz)		*/
@@ -529,7 +563,7 @@ TESTDRIVER( ti99_4p )	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
 
 	/* Tatung */
 	DRIVER( einstein )
-TESTDRIVER( einstei2 )
+	DRIVER( einstei2 )
 
 	/* INTELLIGENT SOFTWARE */
 	DRIVER( ep128 )		/* Enterprise 128 k									*/
@@ -541,7 +575,7 @@ TESTDRIVER( einstei2 )
 	/* KC compact is partial CPC compatible */
 	DRIVER( kc85_4 )	/* VEB KC 85/4										*/
 	DRIVER( kc85_3 )	/* VEB KC 85/3										*/
-TESTDRIVER( kc85_4d )	/* VEB KC 85/4 with disk interface					*/
+	DRIVER( kc85_4d )	/* VEB KC 85/4 with disk interface					*/
 
 	/* MICROBEE SYSTEMS */
 	DRIVER( mbee )		/* Microbee 16 Standard or Plus						*/
@@ -557,6 +591,9 @@ TESTDRIVER( kc85_4d )	/* VEB KC 85/4 with disk interface					*/
 	DRIVER( lnw80 )		/* LNW Research LNW-80								*/
 	DRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy				*/
 	DRIVER( trs80m4 )
+	DRIVER( ht1080z ) /* Hradstechnika Szvetkezet HT-1080Z */
+	DRIVER( ht1080z2 ) /* Hradstechnika Szvetkezet HT-1080Z Series II */
+	DRIVER( ht108064 ) /* Hradstechnika Szvetkezet HT-1080Z/64 */
 
 	DRIVER( coco )		/* Color Computer									*/
 	DRIVER( cocoe )		/* Color Computer (Extended BASIC 1.0)				*/
@@ -610,7 +647,7 @@ TESTDRIVER( kc85_4d )	/* VEB KC 85/4 with disk interface					*/
 	DRIVER( p2000t )	/* 1980 P2000T										*/
 	DRIVER( p2000m )	/* 1980 P2000M										*/
 	DRIVER( videopac )	/* 1979 Videopac G7000/C52							*/
-TESTDRIVER( g7400 )		/* 1983 Videopac Plus G7400							*/
+	DRIVER( g7400 )		/* 1983 Videopac Plus G7400							*/
 
 	/* COMPUKIT */
 	DRIVER( uk101 )		/* 1979 UK101										*/
@@ -620,43 +657,92 @@ TESTDRIVER( g7400 )		/* 1983 Videopac Plus G7400							*/
 
 	/* ASCII & MICROSOFT */
 	DRIVER( msx )		/* 1983 MSX 										*/
-	DRIVER( cf2000 )	/* 1983 MSX Japan									*/
-	DRIVER( cf1200 )	/* 1984 MSX Japan									*/
-	DRIVER( cf2700 )	/* 1984 MSX Japan									*/
-	DRIVER( cf3000 )	/* 1984 MSX Japan									*/
-	DRIVER( cf3300 )	/* 1985 MSX Japan									*/
-	DRIVER( fs4000 )	/* 1985 MSX Japan									*/
-	DRIVER( fs1300 )	/* 1985 MSX Japan									*/
-	DRIVER( hb201 )		/* 1985 MSX Japan									*/
+	DRIVER( ax170 )
+	DRIVER( canonv10 )
+	DRIVER( canonv20 )
 	DRIVER( dpc100 )	/* 1984 MSX Korea									*/
 	DRIVER( dpc180 )	/* 1984 MSX Korea									*/
 	DRIVER( dpc200 )	/* 1984 MSX Korea									*/
-	DRIVER( hb75d )		/* 1983 MSX Germany									*/
-	DRIVER( hb75p )		/* 1983 MSX											*/
-	DRIVER( hb501p )	/* 1984 MSX											*/
-	DRIVER( hb201p )	/* 1985 MSX											*/
-	DRIVER( svi738 )	/* 1985 MSX											*/
-	DRIVER( hotbit11 )	/* 1985 MSX Brazil									*/
-	DRIVER( hotbit12 )	/* 1985 MSX	Brazil									*/
-	DRIVER( hx10 )		/* 1984 MSX											*/
-	DRIVER( vg8020 )	/* 1985 MSX											*/
+	DRIVER( gsfc200 )
 	DRIVER( expert10 )	/* 1983 MSX Brazil									*/
 	DRIVER( expert11 )	/* 1984 MSX Brazil									*/
+	DRIVER( expert13 )	/* 1984 MSX Brazil									*/
 	DRIVER( expertdp )	/* 1985 MSX Brazil									*/
+	DRIVER( expertpl )	/* 1984 MSX Brazil									*/
+	DRIVER( jvchc7gb )
+	DRIVER( mlf80 )
+	DRIVER( mlfx1 )
+	DRIVER( cf1200 )	/* 1984 MSX Japan									*/
+	DRIVER( cf2000 )	/* 1983 MSX Japan									*/
+	DRIVER( cf2700 )	/* 1984 MSX Japan									*/
+	DRIVER( cf3000 )	/* 1984 MSX Japan									*/
+	DRIVER( cf3300 )	/* 1985 MSX Japan									*/
+	DRIVER( fs1300 )	/* 1985 MSX Japan									*/
+	DRIVER( fs4000 )	/* 1985 MSX Japan									*/
+	DRIVER( nms801 )
+	DRIVER( vg802000 )
+	DRIVER( vg802020 )	/* 1985 MSX											*/
+	DRIVER( piopx7 )	
+	DRIVER( mpc100 )
+	DRIVER( hotbit11 )	/* 1985 MSX Brazil									*/
+	DRIVER( hotbit12 )	/* 1985 MSX	Brazil									*/
+	DRIVER( hotbi13b )	/* 1985 MSX	Brazil									*/
+	DRIVER( hotbi13p )	/* 1985 MSX	Brazil									*/
+	DRIVER( hotbit20 )	/* 1986 MSX2 Brazil									*/
+	DRIVER( hb201 )		/* 1985 MSX Japan									*/
+	DRIVER( hb201p )	/* 1985 MSX											*/
+	DRIVER( hb501p )	/* 1984 MSX											*/
+	DRIVER( hb55d )		/* 1983 MSX Germany									*/
+	DRIVER( hb55p )		/* 1983 MSX											*/
+	DRIVER( hb75d )		/* 1983 MSX Germany									*/
+	DRIVER( hb75p )		/* 1983 MSX											*/
+	DRIVER( svi728 )	/* 1985 MSX											*/
+	DRIVER( svi738 )	/* 1985 MSX											*/
+	DRIVER( svi738sw )	/* 1985 MSX											*/
+	DRIVER( tadpc200 )
+	DRIVER( tadpc20a )
+	DRIVER( hx10 )		/* 1984 MSX											*/
+	DRIVER( hx10s )		/* 1984 MSX											*/
+	DRIVER( hx20 )		/* 1984 MSX											*/
+	DRIVER( cx5m )
+	DRIVER( cx5m128 )
+	DRIVER( cx5m2 )	
+	DRIVER( yis303 )
+	DRIVER( yis503 )
+	DRIVER( yis503ii )
+	DRIVER( yis503m )
+	DRIVER( yc64 )
+	
+	
 	DRIVER( msx2 )		/* 1985 MSX2										*/
+	DRIVER( ax350 )
+	DRIVER( ax370 )
 	DRIVER( hbf9p )		/* 1985 MSX2										*/
+	DRIVER( hbf9s )		/* 1985 MSX2										*/
 	DRIVER( hbf500p )	/* 1985 MSX2										*/
 	DRIVER( hbf700d )	/* 1985 MSX2 Germany								*/
+	DRIVER( hbf700f )	/* 1985 MSX2 						*/
 	DRIVER( hbf700p )	/* 1985 MSX2										*/
 	DRIVER( hbf700s )	/* 1985 MSX2 Spain									*/
+	DRIVER( hbg900ap )	/* 1986 MSX2										*/
 	DRIVER( hbg900p )	/* 1986 MSX2										*/
 	DRIVER( nms8220 )	/* 1986 MSX2										*/
 	DRIVER( nms8220a )	/* 1986 MSX2										*/
+	DRIVER( vg8230 )	/* 1986 MSX2										*/
 	DRIVER( vg8235 )	/* 1986 MSX2										*/
+	DRIVER( vg8235f)	/* 1986 MSX2										*/
+	DRIVER( vg8240)	/* 1986 MSX2										*/
 	DRIVER( nms8245 )	/* 1986 MSX2										*/
+	DRIVER( nms8245f)	/* 1986 MSX2										*/
 	DRIVER( nms8250 )	/* 1986 MSX2										*/
 	DRIVER( nms8255 )	/* 1986 MSX2										*/
 	DRIVER( nms8280 )	/* 1986 MSX2										*/
+	DRIVER( nms8280g)	/* 1986 MSX2										*/
+	DRIVER( tpc310)	  /* 1986 MSX2										*/
+	DRIVER( hx23)	    /* 1986 MSX2										*/
+	DRIVER( hx23f)	  /* 1986 MSX2										*/
+	DRIVER( cx7m)	    /* 1986 MSX2										*/
+	DRIVER( cx7m128)	/* 1986 MSX2										*/
 	DRIVER( fs5500 )	/* 1985 MSX2 Japan									*/
 	DRIVER( fs4500 )	/* 1986 MSX2 Japan									*/
 	DRIVER( fs4700 )	/* 1986 MSX2 Japan									*/
@@ -676,8 +762,11 @@ TESTDRIVER( g7400 )		/* 1983 Videopac Plus G7400							*/
 	DRIVER( hbf1xdm2 )	/* 1988 MSX2 Japan									*/
 	DRIVER( phc23 )		/* 1986 MSX2 Japan									*/
 	DRIVER( cpc300 )	/* 1986 MSX2 Korea									*/
+	DRIVER( cpc300e )	/* 1986 MSX2 Korea									*/
 	DRIVER( cpc400 )	/* 1986 MSX2 Korea									*/
 	DRIVER( cpc400s )	/* 1986 MSX2 Korea									*/
+	DRIVER( expert20 )/* 1986 MSX2 Korea									*/
+	
 	DRIVER( msx2p )		/* 1988 MSX2+ Japan									*/
 	DRIVER( fsa1fx )	/* 1988 MSX2+ Japan									*/
 	DRIVER( fsa1wx )	/* 1988 MSX2+ Japan									*/
@@ -694,12 +783,11 @@ TESTDRIVER( g7400 )		/* 1983 Videopac Plus G7400							*/
 	DRIVER( nascom1 )	/* 1978 Nascom 1									*/
 	DRIVER( nascom2 )	/* 1979 Nascom 2									*/
 
-
 	/* MILES GORDON TECHNOLOGY */
 	DRIVER( samcoupe )	/* 1989 Sam Coupe									*/
 
 	/* MOTOROLA */
-TESTDRIVER( mekd2 )		/* 1977 Motorola Evaluation Kit						*/
+	DRIVER( mekd2 )		/* 1977 Motorola Evaluation Kit						*/
 
 	/* DEC */
 	DRIVER( pdp1 )		/* 1961 DEC PDP1									*/
@@ -738,18 +826,22 @@ TESTDRIVER( mekd2 )		/* 1977 Motorola Evaluation Kit						*/
 
 	/* Statny */
 	DRIVER( mato )		/* Mato (PMD-85.2 clone)							*/
-
+	
+	/* Zbrojovka Brno */
+	DRIVER( c2717 )		/* Consul 2717 (PMD-85.2 clone)				*/
+	
 	/* Microkey */
 	DRIVER( primoa32 )	/* Primo A-32										*/
 	DRIVER( primoa48 )	/* Primo A-48										*/
 	DRIVER( primoa64 )	/* Primo A-64										*/
-TESTDRIVER( primob32 )	/* Primo B-32										*/
-TESTDRIVER( primob48 )	/* Primo B-48										*/
+	DRIVER( primob32 )	/* Primo B-32										*/
+	DRIVER( primob48 )	/* Primo B-48										*/
 	DRIVER( primob64 )	/* Primo B-64										*/
+	DRIVER( primoc64 )	/* Primo C-64										*/
 
 	/* Team Concepts */
 	/* CPU not known, else should be easy, look into drivers/comquest.c */
-TESTDRIVER( comquest )	/* Comquest Plus German								*/
+	DRIVER( comquest )	/* Comquest Plus German								*/
 
 	/* Hewlett Packard */
 	DRIVER( hp48s )		/* HP48 S */
@@ -789,14 +881,14 @@ TESTDRIVER( comquest )	/* Comquest Plus German								*/
 	DRIVER(mpf1b)		/* 1979 Multitech Micro Professor 1B				*/
 
 	/* Telercas Oy */
-TESTDRIVER(tmc1800)
+//	DRIVER(tmc1800)
 	DRIVER(tmc2000)
-TESTDRIVER(tmc2000e)
-TESTDRIVER(tmc600s1)
+	DRIVER(tmc2000e)
+//	DRIVER(tmc600s1)
 	DRIVER(tmc600s2)
 
 	/* OSCOM Oy */
-TESTDRIVER(osc1000b)
+//	DRIVER(osc1000b)
 	DRIVER(oscnano)
 
 	/* MIT */
@@ -833,9 +925,9 @@ TESTDRIVER(osc1000b)
 	DRIVER( pro128 )	/* 1986 Olivetti Prodest PC 128						*/
 
 	/* Cybiko, Inc. */
-TESTDRIVER( cybikov1 )	/* Cybiko Wireless Intertainment System - Classic V1 */
-TESTDRIVER( cybikov2 )	/* Cybiko Wireless Intertainment System - Classic V2 */
-TESTDRIVER( cybikoxt )	/* Cybiko Wireless Intertainment System - Xtreme     */
+	DRIVER( cybikov1 )	/* Cybiko Wireless Intertainment System - Classic V1 */
+	DRIVER( cybikov2 )	/* Cybiko Wireless Intertainment System - Classic V2 */
+	DRIVER( cybikoxt )	/* Cybiko Wireless Intertainment System - Xtreme     */
 
 	/* Dick Smith */
 	DRIVER( super80 )
@@ -871,7 +963,9 @@ TESTDRIVER( cybikoxt )	/* Cybiko Wireless Intertainment System - Xtreme     */
 	DRIVER( orion128 )
 	DRIVER( orionms )
 	DRIVER( orionz80 )
+	DRIVER( orionide )
 	DRIVER( orionzms )
+	DRIVER( orionidm )
 	DRIVER( orionpro )
 
 	/* BK */
@@ -896,23 +990,90 @@ TESTDRIVER( cybikoxt )	/* Cybiko Wireless Intertainment System - Xtreme     */
 	DRIVER( mikrosha )
 	DRIVER( partner )
 
+  /* Homelab */  
+	DRIVER (homelab2)
+	DRIVER (homelab3)
+	DRIVER (homelab4)
+	
+	/* Irisha */
+	DRIVER (irisha)
+	
+	/* PK-8020 */
+	DRIVER (korvet)
+
+	/* Vector-06c */
+	DRIVER (vector06)
+
+	/* Robotron 1715 */
+	DRIVER (rt1715)
+	DRIVER (rt1715w)
+
+	/* PP-01 */
+	DRIVER (pp01)
+
+	/* Ondra */
+	DRIVER (ondrat)
+	DRIVER (ondrav)
+
+	/* SAPI-1 */
+	DRIVER (sapi1)
+
+  /* Spectrum clones */
+  	
+  /* ICE-Felix */
+  DRIVER( hc85 )    /* 1985 HC-85										  */
+  DRIVER( hc90 )    /* 1990 HC-90										  */
+  DRIVER( hc91 )    /* 1991 HC-91										  */
+  DRIVER( hc128 )   /* 1991 HC-128									  */
+  DRIVER( hc2000 )  /* 1992 HC-2000									  */
+  
+  DRIVER( cip03 )   /* 1988 CIP-03										  */
+  DRIVER( jet )     /* 1990 JET										  */
+  
+  /* Didaktik Skalica */
+  DRIVER( dgama87)  /* 1987 Didaktik Gama 87          */
+  DRIVER( dgama88)  /* 1988 Didaktik Gama 88          */
+  DRIVER( dgama89)  /* 1989 Didaktik Gama 89          */
+  DRIVER( didakt90) /* 1990 Didaktik Skalica 90       */
+  DRIVER( didakm91) /* 1991 Didaktik M 91             */
+  DRIVER( didaktk)  /* 1992 Didaktik Kompakt          */
+  DRIVER( didakm93) /* 1993 Didaktik M 93             */
+
+	DRIVER( mistrum ) /* 1988 Mistrum										*/
+	
+  /* Russian clones */
+
+  DRIVER( blitz )     /* 1990 Blic                     */
+  DRIVER( byte )      /* 1990 Byte                     */
+  DRIVER( orizon )    /* 199? Orizon-Micro             */
+  DRIVER( quorum48 )  /* 1993 Kvorum 48K               */
+  DRIVER( magic6 )    /* 1993 Magic 6                  */
+  DRIVER( compani1 )  /* 1990 Kompanion 1              */
+
+	/* Kramer */
+	DRIVER(kramermc) /* 1987 Kramer MC				*/
+	
 	/* Bondwell */
 	DRIVER( bw2 )
 
 	/* Exeltel */
 	DRIVER( exl100 )
-TESTDRIVER( exeltel )
+//	DRIVER( exeltel )
 
 	/* Comx World Operations Ltd */
 	DRIVER( comx35p )
 	DRIVER( comx35n )
-TESTDRIVER( comxpl80 )
+//	DRIVER( comxpl80 )
 
 	/* Grundy Business Systems Ltd */
 	DRIVER( newbrain )
 	DRIVER( newbraim )
 	DRIVER( newbraia )
 	DRIVER( newbraiv )
+
+	/* Votrax */
+//	DRIVER( votrtnt ) /* Votrax Type-N-Talk */
+	DRIVER( votrpss ) /* Votrax Personal Speech System */
 
 /****************Games*******************************************************/
 	/* Computer Electronic */
@@ -933,10 +1094,10 @@ TESTDRIVER( comxpl80 )
 	DRIVER( dallas )		/* Dallas										*/
 	DRIVER( dallas16 )		/* Dallas										*/
 	DRIVER( dallas32 )		/* Dallas										*/
-TESTDRIVER( roma )			/* Roma											*/
+	DRIVER( roma )			/* Roma											*/
 	DRIVER( roma32 )		/* Roma											*/
 
 /*********** Misc ***********************************************************/
-TESTDRIVER( ex800 )
+	DRIVER( ex800 )
 
 #endif /* DRIVER_RECURSIVE */

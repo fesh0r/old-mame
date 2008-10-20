@@ -12,6 +12,7 @@
 #include "uimess.h"
 #include "uiinput.h"
 #include "input.h"
+#include "devices/cassette.h"
 
 
 /***************************************************************************
@@ -297,11 +298,11 @@ static astring *image_info_astring(running_machine *machine, astring *string)
 
 
 /*-------------------------------------------------
-    ui_menu_image_info - menu that shows info on
-	all loaded images
+    ui_mess_menu_image_info - menu that shows info
+	on all loaded images
 -------------------------------------------------*/
 
-void ui_menu_image_info(running_machine *machine, ui_menu *menu, void *parameter, void *state)
+void ui_mess_menu_image_info(running_machine *machine, ui_menu *menu, void *parameter, void *state)
 {
 	/* if the menu isn't built, populate now */
 	if (!ui_menu_populated(menu))
@@ -312,7 +313,7 @@ void ui_menu_image_info(running_machine *machine, ui_menu *menu, void *parameter
 	}
 
 	/* process the menu */
-	ui_menu_process(menu, 0);
+	ui_menu_process(machine, menu, 0);
 }
 
 
@@ -387,4 +388,72 @@ int ui_mess_get_use_natural_keyboard(running_machine *machine)
 void ui_mess_set_use_natural_keyboard(running_machine *machine, int use_natural_keyboard)
 {
 	machine->ui_mess_data->use_natural_keyboard = use_natural_keyboard;
+}
+
+
+
+/*-------------------------------------------------
+    ui_mess_menu_keyboard_mode - menu that 	
+-------------------------------------------------*/
+
+void ui_mess_menu_keyboard_mode(running_machine *machine, ui_menu *menu, void *parameter, void *state)
+{
+	const ui_menu_event *event;
+	int natural = ui_mess_get_use_natural_keyboard(machine);
+	
+	/* if the menu isn't built, populate now */
+	if (!ui_menu_populated(menu))
+	{
+		ui_menu_item_append(menu, "Keyboard Mode:", natural ? "Natural" : "Emulated", natural ? MENU_FLAG_LEFT_ARROW : MENU_FLAG_RIGHT_ARROW, NULL);
+	}
+
+	/* process the menu */
+	event = ui_menu_process(machine, menu, 0);
+
+	if (event != NULL)
+	{
+		if (event->iptkey == IPT_UI_LEFT || event->iptkey == IPT_UI_RIGHT) {
+			ui_mess_set_use_natural_keyboard(machine, natural ^ TRUE);
+			ui_menu_reset(menu, UI_MENU_RESET_REMEMBER_REF);
+		}
+	}		
+}
+
+
+
+/*-------------------------------------------------
+    ui_mess_menu_keyboard_mode - populate MESS-specific menus 	
+-------------------------------------------------*/
+
+void ui_mess_main_menu_populate(running_machine *machine, ui_menu *menu)
+{
+	const input_field_config *field;
+	const input_port_config *port;
+	int has_keyboard = FALSE;
+
+	/* scan the input port array to see what options we need to enable */
+	for (port = machine->portconfig; port != NULL; port = port->next)
+	{
+		for (field = port->fieldlist; field != NULL; field = field->next)
+		{
+			if (field->type == IPT_KEYBOARD)
+				has_keyboard = TRUE;			
+		}
+	}
+
+  	/* add image info menu */
+	ui_menu_item_append(menu, "Image Information", NULL, 0, ui_mess_menu_image_info);
+
+  	/* add image info menu */
+	ui_menu_item_append(menu, "File Manager", NULL, 0, ui_mess_menu_file_manager);
+
+#if HAS_WAVE
+  	/* add tape control menu */
+	if (device_list_first(machine->config->devicelist, CASSETTE))
+		ui_menu_item_append(menu, "Tape Control", NULL, 0, ui_mess_menu_tape_control);
+#endif /* HAS_WAVE */
+
+  	/* add keyboard mode menu */
+  	if (has_keyboard && inputx_can_post(machine))
+		ui_menu_item_append(menu, "Keyboard Mode", NULL, 0, ui_mess_menu_keyboard_mode);
 }

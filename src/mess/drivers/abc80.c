@@ -9,9 +9,9 @@ PCB Layout
   SW1   |-----|  |------------------------|                                  |-----|
 |-------|-----|--|------------------------|--------------------------------------------|
 |                                                             CN3       CN4            |
-|                                                                                      |
+|                                                    7912                              |
 |            MC1488                                                                    |
-|   MC1489                                                                             |
+|   MC1489                                           7812                              |
 |            LS245                     8205                                            |
 |                                                   |-------|                          |
 |   |-----CN6-----|   LS241   LS241    8205   LS32  |SN76477| LS04    LM339            |
@@ -45,6 +45,7 @@ Notes:
     74S263  - Texas Instruments SN74S263N Row Output Character Generator
     MC1488  - Texas Instruments MC1488 Quadruple Line Driver
     MC1489  - Texas Instruments MC1489 Quadruple Line Receiver
+	8205	- ?
     CN1     - RS-232 connector
     CN2     - ABC bus connector (DIN 41612)
     CN3     - video connector
@@ -61,13 +62,12 @@ Notes:
 
     TODO:
 
+	- memory bank switching using ABC80/13 PROM
 	- proper keyboard controller emulation
-	- hook up PIO correctly using port A read and irq callback
 	- get BASIC v1 dump
 	- MyAB 80-column card
 	- GeJo 80-column card
 	- Mikrodatorn 64K expansion
-    - cassette
     - floppy
     - printer
     - IEC
@@ -90,31 +90,30 @@ Notes:
 #include "devices/cassette.h"
 #include "devices/printer.h"
 
-static emu_timer *abc80_keyboard_timer;
-
-static const device_config *cassette_device_image(void)
+static const device_config *cassette_device_image(running_machine *machine)
 {
-	return image_from_devtype_and_index(IO_CASSETTE, 0);
+	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
 }
 
 /* Read/Write Handlers */
 
-// Sound
-
-/*
-  Bit Name     Description
-   0  SYSENA   1 On, 0 Off (inverted)
-   1  EXTVCO   00 High freq, 01 Low freq
-   2  VCOSEL   10 SLF cntrl, 11 SLF ctrl
-   3  MIXSELB  000 VCO, 001 Noise, 010 SLF
-   4  MIXSELA  011 VCO+Noise, 100 SLF+Noise, 101 SLF+VCO
-   5  MIXSELC  110 SLF+VCO+Noise, 111 Quiet
-   6  ENVSEL2  00 VCO, 01 Rakt igenom
-   7  ENVSEL1  10 Monovippa, 11 VCO alt.pol.
-*/
-
 static WRITE8_HANDLER( abc80_sound_w )
 {
+	/*
+
+		Bit Name     Description
+
+		0  SYSENA   1 On, 0 Off (inverted)
+		1  EXTVCO   00 High freq, 01 Low freq
+		2  VCOSEL   10 SLF cntrl, 11 SLF ctrl
+		3  MIXSELB  000 VCO, 001 Noise, 010 SLF
+		4  MIXSELA  011 VCO+Noise, 100 SLF+Noise, 101 SLF+VCO
+		5  MIXSELC  110 SLF+VCO+Noise, 111 Quiet
+		6  ENVSEL2  00 VCO, 01 Rakt igenom
+		7  ENVSEL1  10 Monovippa, 11 VCO alt.pol.
+
+	*/
+
 	sn76477_enable_w(0, ~data & 0x01);
 
 	sn76477_vco_voltage_w(0, (data & 0x02) ? 2.5 : 0);
@@ -128,13 +127,11 @@ static WRITE8_HANDLER( abc80_sound_w )
 	sn76477_envelope_1_w(0, (data & 0x80) ? 1 : 0);
 }
 
-// Keyboard
-
-static int keylatch;
+/* Keyboard HACK */
 
 static const UINT8 abc80_keycodes[7*4][8] =
 {
-	// unshift
+	/* unshifted */
 	{ 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38 },
 	{ 0x39, 0x30, 0x2B, 0x60, 0x3C, 0x71, 0x77, 0x65 },
 	{ 0x72, 0x74, 0x79, 0x75, 0x69, 0x6F, 0x70, 0x7D },
@@ -143,7 +140,7 @@ static const UINT8 abc80_keycodes[7*4][8] =
 	{ 0x78, 0x63, 0x76, 0x62, 0x6E, 0x6D, 0x2C, 0x2E },
 	{ 0x2D, 0x09, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00 },
 
-	// shift
+	/* shift */
 	{ 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x2f, 0x28 },
 	{ 0x29, 0x3d, 0x3f, 0x40, 0x3e, 0x51, 0x57, 0x45 },
 	{ 0x52, 0x54, 0x59, 0x55, 0x49, 0x4f, 0x50, 0x5d },
@@ -152,7 +149,7 @@ static const UINT8 abc80_keycodes[7*4][8] =
 	{ 0x58, 0x43, 0x56, 0x42, 0x4e, 0x4d, 0x3b, 0x3a },
 	{ 0x5f, 0x09, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00 },
 
-	// control
+	/* control */
 	{ 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38 },
 	{ 0x39, 0x30, 0x2b, 0x00, 0x7f, 0x11, 0x17, 0x05 },
 	{ 0x12, 0x14, 0x19, 0x15, 0x09, 0x0f, 0x10, 0x1d },
@@ -161,7 +158,7 @@ static const UINT8 abc80_keycodes[7*4][8] =
 	{ 0x18, 0x03, 0x16, 0x02, 0x0e, 0x0d, 0x2c, 0x2e },
 	{ 0x2d, 0x09, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00 },
 
-	// control-shift
+	/* control-shift */
 	{ 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x2f, 0x28 },
 	{ 0x29, 0x3d, 0x3f, 0x00, 0x7f, 0x11, 0x17, 0x05 },
 	{ 0x12, 0x14, 0x19, 0x15, 0x09, 0x1f, 0x00, 0x1d },
@@ -173,85 +170,48 @@ static const UINT8 abc80_keycodes[7*4][8] =
 
 static void abc80_keyboard_scan(running_machine *machine)
 {
-	UINT8 keycode = 0;
-	UINT8 data;
-	int table = 0, row, col;
-	static const char *keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6" };
+	abc80_state *state = machine->driver_data;
 
-	// shift, upper case
+	static const char *keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6" };
+	int table = 0, row, col;
+
 	if (input_port_read(machine, "ROW7") & 0x07)
 	{
+		/* shift, upper case */
 		table |= 0x01;
 	}
 
-	// ctrl
 	if (input_port_read(machine, "ROW7") & 0x08)
 	{
+		/* ctrl */
 		table |= 0x02;
 	}
 
+	/* clear key strobe */
+	state->key_strobe = 0;
+
+	/* scan keyboard */
 	for (row = 0; row < 7; row++)
 	{
-		data = input_port_read(machine, keynames[row]);
+		UINT8 data = input_port_read(machine, keynames[row]);
 
-		if (data != 0)
+		for (col = 0; col < 8; col++)
 		{
-			UINT8 ibit = 1;
-
-			for (col = 0; col < 8; col++)
+			if (BIT(data, col)) 
 			{
-				if (data & ibit) keycode = abc80_keycodes[row + (table * 7)][col];
-				ibit <<= 1;
+				/* latch key data */
+				state->key_data = abc80_keycodes[row + (table * 7)][col];
+
+				/* set key strobe */
+				state->key_strobe = 1;
 			}
 		}
 	}
-
-	if (keycode)
-		z80pio_p_w( 0, 0, keycode | 0x80 );
-	else
-		z80pio_p_w( 0, 0, 0 );
-
-	if (keycode != keylatch) program_write_byte(0xfdf5, 0x80);
-
-	keylatch = keycode;
 }
 
-// PIO
-
-static READ8_HANDLER( abc80_pio_r )
+static TIMER_DEVICE_CALLBACK( abc80_keyboard_tick )
 {
-	switch (offset)
-	{
-	case 0:
-		return z80pio_d_r(0, 0);
-	case 1:
-		return z80pio_c_r(0, 0);
-	case 2:
-		return z80pio_d_r(0, 1);
-	case 3:
-		return z80pio_c_r(0, 1);
-	}
-
-	return 0xff;
-}
-
-static WRITE8_HANDLER( abc80_pio_w )
-{
-	switch (offset)
-	{
-	case 0:
-		z80pio_d_w(0, 0, data);
-		break;
-	case 1:
-		z80pio_c_w(0, 0, data);
-		break;
-	case 2:
-		z80pio_d_w(0, 1, data);
-		break;
-	case 3:
-		z80pio_c_w(0, 1, data);
-		break;
-	}
+	abc80_keyboard_scan(timer->machine);
 }
 
 /* Memory Maps */
@@ -261,6 +221,7 @@ static ADDRESS_MAP_START( abc80_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x6000, 0x6fff) AM_ROM
 	AM_RANGE(0x7000, 0x73ff) AM_ROM
+	AM_RANGE(0x7400, 0x77ff) AM_RAM // 80 column videoram
 	AM_RANGE(0x7800, 0x7bff) AM_ROM
 	AM_RANGE(0x7c00, 0x7fff) AM_RAM AM_BASE(&videoram)
 	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(1)
@@ -275,7 +236,7 @@ static ADDRESS_MAP_START( abc80_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x02, 0x05) AM_WRITE(abcbus_command_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(abc80_sound_w)
 	AM_RANGE(0x07, 0x07) AM_READ(abcbus_reset_r)
-	AM_RANGE(0x38, 0x3b) AM_READWRITE(abc80_pio_r, abc80_pio_w)
+	AM_RANGE(0x38, 0x3b) AM_DEVREADWRITE(Z80PIO, Z80PIO_TAG, z80pio_alt_r, z80pio_alt_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -362,26 +323,6 @@ static INPUT_PORTS_START( abc80 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
-/* Graphics Layout */
-
-static const gfx_layout charlayout_abc80 =
-{
-	6, 10,
-	128,
-	1,
-	{ 0 },
-	{ 0, 1, 2, 3, 4, 5 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8 },
-	10*8
-};
-
-/* Graphics Decode Information */
-
-static GFXDECODE_START( abc80 )
-	GFXDECODE_ENTRY( "chargen", 0, charlayout_abc80, 0, 2 )		// normal characters
-	GFXDECODE_ENTRY( "chargen", 0x500, charlayout_abc80, 0, 2 )	// graphics characters
-GFXDECODE_END
-
 /* Sound Interface */
 
 static const sn76477_interface abc80_sn76477_interface =
@@ -411,47 +352,48 @@ static INTERRUPT_GEN( abc80_nmi_interrupt )
 	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
-/* Machine Initialization */
+/* Z80 PIO Interface */
 
-static const struct z80_irq_daisy_chain abc80_daisy_chain[] =
+static TIMER_DEVICE_CALLBACK( z80pio_astb_tick )
 {
-	{ z80pio_reset, z80pio_irq_state, z80pio_irq_ack, z80pio_irq_reti, 0 },
-	{ 0, 0, 0, 0, -1 }
-};
+	abc80_state *state = timer->machine->driver_data;
 
-static TIMER_CALLBACK( abc80_keyboard_tick )
-{
-	abc80_keyboard_scan(machine);
+	/* toggle ASTB every other video line */
+	state->z80pio_astb = !state->z80pio_astb;
+
+	z80pio_astb_w(state->z80pio, state->z80pio_astb);
 }
 
-#ifdef UNUSED_FUNCTION
-static void abc80_pio_interrupt(running_machine *machine, int state)
+static Z80PIO_ON_INT_CHANGED( abc80_pio_interrupt )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, state);
+	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ0, state);
 }
 
-static READ8_HANDLER( abc80_pio_port_a_r )
+static READ8_DEVICE_HANDLER( abc80_pio_port_a_r )
 {
 	/*
 
-		PIO Channel A
+		PIO Port A
 
-		0  R    Keyboard Data
-		1  R    Keyboard Data
-		2  R    Keyboard Data
-		3  R    Keyboard Data
-		4  R    Keyboard Data
-		5  R    Keyboard Data
-		6  R    Keyboard Data
-		7  R    Keyboard Strobe
+		bit		description
+
+		0		keyboard data
+		1		keyboard data
+		2		keyboard data
+		3		keyboard data
+		4		keyboard data
+		5		keyboard data
+		6		keyboard data
+		7		keyboard strobe
 
 	*/
 
-	return keylatch;
-}
-#endif
+	abc80_state *state = device->machine->driver_data;
 
-static READ8_HANDLER( abc80_pio_port_b_r )
+	return (state->key_strobe << 7) | state->key_data;
+};
+
+static READ8_DEVICE_HANDLER( abc80_pio_port_b_r )
 {
 	/*
 
@@ -468,12 +410,13 @@ static READ8_HANDLER( abc80_pio_port_b_r )
 
 	*/
 
-	UINT8 data = (cassette_input(cassette_device_image()) > +1.0) ? 0x80 : 0;
+	/* cassette data */
+	UINT8 data = (cassette_input(cassette_device_image(device->machine)) > +1.0) ? 0x80 : 0;
 
 	return data;
 };
 
-static WRITE8_HANDLER( abc80_pio_port_b_w )
+static WRITE8_DEVICE_HANDLER( abc80_pio_port_b_w )
 {
 	/*
 
@@ -490,15 +433,19 @@ static WRITE8_HANDLER( abc80_pio_port_b_w )
 
 	*/
 
-	cassette_change_state(cassette_device_image(), BIT(data, 5) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+	/* cassette motor */
+	cassette_change_state(cassette_device_image(device->machine), BIT(data, 5) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 
-	cassette_output(cassette_device_image(), BIT(data, 7) ? -1.0 : +1.0);
+	/* cassette data */
+	cassette_output(cassette_device_image(device->machine), BIT(data, 6) ? -1.0 : +1.0);
 };
 
-static const z80pio_interface abc80_pio_intf =
+static Z80PIO_INTERFACE( abc80_pio_intf )
 {
-	NULL,						/* callback when change interrupt status */
-	NULL,						/* port A read callback */
+	Z80_TAG,					/* CPU */
+	0,							/* clock (get from main CPU) */
+	abc80_pio_interrupt,		/* callback when change interrupt status */
+	abc80_pio_port_a_r,			/* port A read callback */
 	abc80_pio_port_b_r,			/* port B read callback */
 	NULL,						/* port A write callback */
 	abc80_pio_port_b_w,			/* port B write callback */
@@ -506,8 +453,18 @@ static const z80pio_interface abc80_pio_intf =
 	NULL						/* portB ready active callback */
 };
 
+static const z80_daisy_chain abc80_daisy_chain[] =
+{
+	{ Z80PIO, Z80PIO_TAG },
+	{ NULL }
+};
+
+/* Machine Initialization */
+
 static MACHINE_START( abc80 )
 {
+	abc80_state *state = machine->driver_data;
+
 	/* configure RAM expansion */
 
 	memory_configure_bank(1, 0, 1, mess_ram, 0);
@@ -524,103 +481,133 @@ static MACHINE_START( abc80 )
 		break;
 	}
 
+	/* find devices */
+
+	state->z80pio = devtag_get_device(machine, Z80PIO, Z80PIO_TAG);
+
 	/* register for state saving */
 
-	state_save_register_global(keylatch);
-
-	/* initialize the PIO */
-
-	z80pio_init(0, &abc80_pio_intf);
-
-	/* allocate the keyboard scan timer */
-
-	abc80_keyboard_timer = timer_alloc(abc80_keyboard_tick, NULL);
-	timer_adjust_periodic(abc80_keyboard_timer, attotime_zero, 0, ATTOTIME_IN_USEC(2500));
+	state_save_register_global(state->key_data);
+	state_save_register_global(state->key_strobe);
+	state_save_register_global(state->z80pio_astb);
 }
 
 /* Machine Drivers */
 
 static MACHINE_DRIVER_START( abc80 )
+	MDRV_DRIVER_DATA(abc80_state)
 
-	// basic machine hardware
-
-	MDRV_CPU_ADD("main", Z80, ABC80_XTAL/2/2)	// 2.9952 MHz
-	MDRV_CPU_CONFIG(abc80_daisy_chain)
+	/* basic machine hardware */
+	MDRV_CPU_ADD(Z80_TAG, Z80, ABC80_XTAL/2/2)	// 2.9952 MHz
 	MDRV_CPU_PROGRAM_MAP(abc80_map, 0)
 	MDRV_CPU_IO_MAP(abc80_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", abc80_nmi_interrupt)
+	MDRV_CPU_CONFIG(abc80_daisy_chain)
+	MDRV_CPU_VBLANK_INT(SCREEN_TAG, abc80_nmi_interrupt)
 
 	MDRV_MACHINE_START(abc80)
 
-	// video hardware
+	/* keyboard */
+	MDRV_TIMER_ADD_PERIODIC("keyboard", abc80_keyboard_tick, USEC(2500))
 
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_GFXDECODE(abc80)
-	MDRV_PALETTE_LENGTH(4)
+	/* Z80PIO */
+	MDRV_TIMER_ADD_SCANLINE("pio_astb", z80pio_astb_tick, SCREEN_TAG, 0, 1)
+	MDRV_Z80PIO_ADD(Z80PIO_TAG, abc80_pio_intf)
 
-	MDRV_PALETTE_INIT(abc80)
-	MDRV_VIDEO_START(abc80)
-	MDRV_VIDEO_UPDATE(abc80)
+	/* video hardware */
+	MDRV_IMPORT_FROM(abc80_video)
 
-	MDRV_SCREEN_RAW_PARAMS(ABC80_XTAL/2, ABC80_HTOTAL, ABC80_HBEND, ABC80_HBSTART, ABC80_VTOTAL, ABC80_VBEND, ABC80_VBSTART)
-
-	// sound hardware
-
+	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("sn76477", SN76477, 0)
 	MDRV_SOUND_CONFIG(abc80_sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	// printer device
+	/* printer */
 	MDRV_DEVICE_ADD("printer", PRINTER)
+
+	/* cassette */
+	MDRV_CASSETTE_ADD("cassette", default_cassette_config)
 MACHINE_DRIVER_END
 
 /* ROMs */
 
 ROM_START( abc80 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, Z80_TAG, 0 )
 	ROM_LOAD( "za3508.a2", 0x0000, 0x1000, CRC(e2afbf48) SHA1(9883396edd334835a844dcaa792d29599a8c67b9) )
 	ROM_LOAD( "za3509.a3", 0x1000, 0x1000, CRC(d224412a) SHA1(30968054bba7c2aecb4d54864b75a446c1b8fdb1) )
 	ROM_LOAD( "za3506.a4", 0x2000, 0x1000, CRC(1502ba5b) SHA1(5df45909c2c4296e5701c6c99dfaa9b10b3a729b) )
 	ROM_LOAD( "za3507.a5", 0x3000, 0x1000, CRC(bc8860b7) SHA1(28b6cf7f5a4f81e017c2af091c3719657f981710) )
-	
 	ROM_SYSTEM_BIOS( 0, "default", "No DOS" )
-	ROM_SYSTEM_BIOS( 1, "abcdos", "ABC-DOS" )
+	ROM_SYSTEM_BIOS( 1, "abcdos", "ABC-DOS" ) // Scandia Metric FD2
 	ROMX_LOAD("abcdos",    0x6000, 0x1000, CRC(2cb2192f) SHA1(a6b3a9587714f8db807c05bee6c71c0684363744), ROM_BIOS(2) )
-	ROM_SYSTEM_BIOS( 2, "abcdosdd", "ABC-DOS DD" )
+	ROM_SYSTEM_BIOS( 2, "abcdosdd", "ABC-DOS DD" ) // ABC 830
 	ROMX_LOAD("abcdosdd",  0x6000, 0x1000, CRC(36db4c15) SHA1(ae462633f3a9c142bb029beb14749a84681377fa), ROM_BIOS(3) )
-	ROM_SYSTEM_BIOS( 3, "udf20", "UDF-DOS v.20" )
-	ROMX_LOAD("udfdos20",  0x6000, 0x1000, CRC(69b09c0b) SHA1(403997a06cf6495b8fa13dc74eff6a64ef7aa53e), ROM_BIOS(4) )
-	
+	ROM_SYSTEM_BIOS( 3, "ufd20", "UFD-DOS v.20" ) // ABC 830
+	ROMX_LOAD("ufddos20",  0x6000, 0x1000, CRC(69b09c0b) SHA1(403997a06cf6495b8fa13dc74eff6a64ef7aa53e), ROM_BIOS(4) )
 	ROM_LOAD( "iec",	   0x7000, 0x0400, NO_DUMP )
 	ROM_LOAD( "printer",   0x7800, 0x0400, NO_DUMP )
 
+	ROM_REGION( 0x10000, "keyboard", 0 )
+	ROM_LOAD( "keyboard.rom", 0x0000, 0x1000, NO_DUMP )
+
+	ROM_REGION( 0x0a00, "chargen", ROMREGION_DISPOSE )
+	ROM_LOAD( "sn74s263.h2", 0x0000, 0x0a00, BAD_DUMP CRC(9e064e91) SHA1(354783c8f2865f73dc55918c9810c66f3aca751f) ) // created by hand
+
+	ROM_REGION( 0x400, "hsync", 0 )
+	ROM_LOAD( "abc80_11.k5", 0x0000, 0x0080, NO_DUMP ) // "64 40029-01" 82S129 256x4 horizontal sync
+
+	ROM_REGION( 0x400, "vsync", 0 )
+	ROM_LOAD( "abc80_21.k2", 0x0000, 0x0100, NO_DUMP ) // "64 40030-01" 82S131 512x4 vertical sync
+
+	ROM_REGION( 0x400, "attr", 0 )
+	ROM_LOAD( "abc80_12.j3", 0x0000, 0x0080, NO_DUMP ) // "64 40056-01" 82S129 256x4 attribute
+
+	ROM_REGION( 0x400, "line", 0 )
+	ROM_LOAD( "abc80_22.k1", 0x0000, 0x0100, NO_DUMP ) // "64 40058-01" 82S131 512x4 chargen 74S263 row address
+
+	ROM_REGION( 0x400, "mmu", 0 )
+	ROM_LOAD( "abc80_13.e7", 0x0000, 0x0080, NO_DUMP ) // "64 40057-01" 82S129 256x4 address decoder
+ROM_END
+
+ROM_START( abc80h )
+	ROM_REGION( 0x10000, Z80_TAG, 0 )
+	ROM_LOAD( "za3508.a2", 0x0000, 0x1000, CRC(e2afbf48) SHA1(9883396edd334835a844dcaa792d29599a8c67b9) )
+	ROM_LOAD( "za3509.a3", 0x1000, 0x1000, CRC(d224412a) SHA1(30968054bba7c2aecb4d54864b75a446c1b8fdb1) )
+	ROM_LOAD( "za3506.a4", 0x2000, 0x1000, CRC(1502ba5b) SHA1(5df45909c2c4296e5701c6c99dfaa9b10b3a729b) )
+	ROM_LOAD( "za3507.a5", 0x3000, 0x1000, CRC(bc8860b7) SHA1(28b6cf7f5a4f81e017c2af091c3719657f981710) )
+	ROM_SYSTEM_BIOS( 0, "default", "No DOS" )
+	ROM_SYSTEM_BIOS( 1, "abcdos", "ABC-DOS" ) // Scandia Metric FD2
+	ROMX_LOAD("abcdos",    0x6000, 0x1000, CRC(2cb2192f) SHA1(a6b3a9587714f8db807c05bee6c71c0684363744), ROM_BIOS(2) )
+	ROM_SYSTEM_BIOS( 2, "abcdosdd", "ABC-DOS DD" ) // ABC 830
+	ROMX_LOAD("abcdosdd",  0x6000, 0x1000, CRC(36db4c15) SHA1(ae462633f3a9c142bb029beb14749a84681377fa), ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS( 3, "ufd20", "UFD-DOS v.20" ) // ABC 830
+	ROMX_LOAD("ufddos20",  0x6000, 0x1000, CRC(69b09c0b) SHA1(403997a06cf6495b8fa13dc74eff6a64ef7aa53e), ROM_BIOS(4) )
+	ROM_LOAD( "iec",	   0x7000, 0x0400, NO_DUMP )
+	ROM_LOAD( "printer",   0x7800, 0x0400, NO_DUMP )
+
+	ROM_REGION( 0x10000, "keyboard", 0 )
+	ROM_LOAD( "keyboard.rom", 0x0000, 0x1000, NO_DUMP )
+
 	ROM_REGION( 0x0a00, "chargen", ROMREGION_DISPOSE )
 	ROM_LOAD( "sn74s262.h2", 0x0000, 0x0a00, NO_DUMP ) // UK charset
-	ROM_LOAD( "sn74s263.h2", 0x0000, 0x0a00, CRC(9e064e91) SHA1(354783c8f2865f73dc55918c9810c66f3aca751f) )
 
-	ROM_REGION( 0x400, "proms", 0 )
-	ROM_LOAD( "abc80_13.e7", 0x0000, 0x0080, NO_DUMP ) // 82S129 256x4 address decoder
-	ROM_LOAD( "abc80_11.k5", 0x0080, 0x0080, NO_DUMP ) // 82S129 256x4 horizontal sync
-	ROM_LOAD( "abc80_12.j3", 0x0100, 0x0080, NO_DUMP ) // 82S129 256x4 chargen 74S263 column address
-	ROM_LOAD( "abc80_21.k2", 0x0180, 0x0100, NO_DUMP ) // 82S131 512x4 vertical sync, videoram
-	ROM_LOAD( "abc80_22.k1", 0x0280, 0x0100, NO_DUMP ) // 82S131 512x4 chargen 74S263 row address
+	ROM_REGION( 0x400, "hsync", 0 )
+	ROM_LOAD( "abc80_11.k5", 0x0000, 0x0080, NO_DUMP ) // "64 40029-01" 82S129 256x4 horizontal sync
+
+	ROM_REGION( 0x400, "vsync", 0 )
+	ROM_LOAD( "abc80_21.k2", 0x0000, 0x0100, NO_DUMP ) // "64 40030-01" 82S131 512x4 vertical sync
+
+	ROM_REGION( 0x400, "attr", 0 )
+	ROM_LOAD( "abc80_12.j3", 0x0000, 0x0080, NO_DUMP ) // "64 40056-01" 82S129 256x4 attribute
+
+	ROM_REGION( 0x400, "line", 0 )
+	ROM_LOAD( "abc80_22.k1", 0x0000, 0x0100, NO_DUMP ) // "64 40058-01" 82S131 512x4 chargen row address
+
+	ROM_REGION( 0x400, "mmu", 0 )
+	ROM_LOAD( "abc80_13.e7", 0x0000, 0x0080, NO_DUMP ) // "64 40057-01" 82S129 256x4 address decoder
 ROM_END
 
 /* System Configuration */
-
-static void abc80_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	// cassette
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										cassette_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static void abc80_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -628,13 +615,13 @@ static void abc80_floppy_getinfo(const mess_device_class *devclass, UINT32 state
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:					info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(abc_floppy); break;
+		case MESS_DEVINFO_PTR_LOAD:						info->load = DEVICE_IMAGE_LOAD_NAME(abc_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:			strcpy(info->s = device_temp_str(), "dsk"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}
@@ -643,11 +630,11 @@ static void abc80_floppy_getinfo(const mess_device_class *devclass, UINT32 state
 static SYSTEM_CONFIG_START( abc80 )
 	CONFIG_RAM_DEFAULT(16 * 1024)
 	CONFIG_RAM		  (32 * 1024)
-	CONFIG_DEVICE(abc80_cassette_getinfo)
 	CONFIG_DEVICE(abc80_floppy_getinfo)
 SYSTEM_CONFIG_END
 
 /* Drivers */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY             FULLNAME    FLAGS */
-COMP( 1978, abc80,  0,      0,      abc80,  abc80,  0,      abc80,  "Luxor Datorer AB", "ABC 80",   GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY								FULLNAME					FLAGS */
+COMP( 1978, abc80,  0,      0,      abc80,  abc80,  0,      abc80,  "Luxor Datorer AB",					"ABC 80 (Sweden, Finland)",	GAME_SUPPORTS_SAVE )
+COMP( 1978, abc80h, abc80,  0,      abc80,  abc80,  0,      abc80,  "Budapesti Radiotechnikai Gyar",	"ABC 80 (Hungary)",			GAME_SUPPORTS_SAVE )

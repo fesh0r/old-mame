@@ -27,7 +27,6 @@
 #include "machine/centroni.h"
 #include "devices/printer.h"
 #include "machine/z80ctc.h"
-#include "machine/z80pio.h"
 #include "machine/z80sio.h"
 #include "machine/8255ppi.h"
 #include "devices/cartslot.h"
@@ -93,9 +92,9 @@ static  READ8_HANDLER(fd5_data_r)
 
 	LOG(("fd5 0x010 r: %02x %04x\n",fd5_databus,activecpu_get_pc()));
 
-	ppi8255_set_portC((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x50);
-	ppi8255_set_portC((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x10);
-	ppi8255_set_portC((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x50);
+	ppi8255_set_port_c((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x50);
+	ppi8255_set_port_c((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x10);
+	ppi8255_set_port_c((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x50);
 
 	return fd5_databus;
 }
@@ -107,9 +106,9 @@ static WRITE8_HANDLER(fd5_data_w)
 	fd5_databus = data;
 
 	/* set stb on data write */
-	ppi8255_set_portC((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x50);
-	ppi8255_set_portC((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x40);
-	ppi8255_set_portC((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x50);
+	ppi8255_set_port_c((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x50);
+	ppi8255_set_port_c((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x40);
+	ppi8255_set_port_c((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x50);
 
 	cpu_yield();
 }
@@ -142,19 +141,14 @@ static WRITE8_HANDLER(fd5_tc_w)
 /* 0x030 fd5 reads from this port to communicate with m5 */
 /* 0x040 */
 /* 0x050 */
-static ADDRESS_MAP_START( readport_sord_fd5 , ADDRESS_SPACE_IO, 8)
-	AM_RANGE( 0x000, 0x000) AM_READ( nec765_status_r)
-	AM_RANGE( 0x001, 0x001) AM_READ( nec765_data_r)
-	AM_RANGE( 0x010, 0x010) AM_READ( fd5_data_r)
-	AM_RANGE( 0x030, 0x030) AM_READ( fd5_communication_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writeport_sord_fd5 , ADDRESS_SPACE_IO, 8)
-	AM_RANGE( 0x001, 0x001) AM_WRITE( nec765_data_w)
-	AM_RANGE( 0x010, 0x010) AM_WRITE( fd5_data_w)
-	AM_RANGE( 0x020, 0x020) AM_WRITE( fd5_communication_w)
-	AM_RANGE( 0x040, 0x040) AM_WRITE( fd5_drive_control_w)
-	AM_RANGE( 0x050, 0x050) AM_WRITE( fd5_tc_w)
+static ADDRESS_MAP_START(sord_fd5_io, ADDRESS_SPACE_IO, 8)
+	AM_RANGE(0x000, 0x000) AM_READ(nec765_status_r)
+	AM_RANGE(0x001, 0x001) AM_READWRITE(nec765_data_r, nec765_data_w)
+	AM_RANGE(0x010, 0x010) AM_READWRITE(fd5_data_r, fd5_data_w)
+	AM_RANGE(0x020, 0x020) AM_WRITE(fd5_communication_w)
+	AM_RANGE(0x030, 0x030) AM_READ(fd5_communication_r)
+	AM_RANGE(0x040, 0x040) AM_WRITE(fd5_drive_control_w)
+	AM_RANGE(0x050, 0x050) AM_WRITE(fd5_tc_w)
 ADDRESS_MAP_END
 
 /* nec765 data request is connected to interrupt of z80 inside fd5 interface */
@@ -187,26 +181,26 @@ static MACHINE_RESET( sord_m5_fd5 )
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1), FLOPPY_DRIVE_SS_40);
 	sord_fd5_init(machine);
 	MACHINE_RESET_CALL(sord_m5);
-	ppi8255_set_portC((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x50);
+	ppi8255_set_port_c((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x50);
 }
 
 
-static const device_config *cassette_device_image(void)
+static const device_config *cassette_device_image(running_machine *machine)
 {
-	return image_from_devtype_and_index(IO_CASSETTE, 0);
+	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
 }
 
 /*********************************************************************************************/
 /* PI-5 */
 
-static  READ8_HANDLER(sord_ppi_porta_r)
+static READ8_DEVICE_HANDLER(sord_ppi_porta_r)
 {
 	cpu_yield();
 
 	return fd5_databus;
 }
 
-static  READ8_HANDLER(sord_ppi_portb_r)
+static READ8_DEVICE_HANDLER(sord_ppi_portb_r)
 {
 	cpu_yield();
 
@@ -215,7 +209,7 @@ static  READ8_HANDLER(sord_ppi_portb_r)
 	return 0x0ff;
 }
 
-static  READ8_HANDLER(sord_ppi_portc_r)
+static READ8_DEVICE_HANDLER(sord_ppi_portc_r)
 {
 	cpu_yield();
 
@@ -246,14 +240,14 @@ static  READ8_HANDLER(sord_ppi_portc_r)
 			);
 }
 
-static WRITE8_HANDLER(sord_ppi_porta_w)
+static WRITE8_DEVICE_HANDLER(sord_ppi_porta_w)
 {
 	cpu_yield();
 
 	fd5_databus = data;
 }
 
-static WRITE8_HANDLER(sord_ppi_portb_w)
+static WRITE8_DEVICE_HANDLER(sord_ppi_portb_w)
 {
 	cpu_yield();
 
@@ -263,8 +257,8 @@ static WRITE8_HANDLER(sord_ppi_portb_w)
 
 	if (data==0x0f0)
 	{
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpunum_set_input_line(device->machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpunum_set_input_line(device->machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 	}
 	LOG(("m5 write to pi5 port b: %02x %04x\n",data,activecpu_get_pc()));
 }
@@ -275,7 +269,7 @@ static WRITE8_HANDLER(sord_ppi_portb_w)
 /* C,H,N */
 
 
-static WRITE8_HANDLER(sord_ppi_portc_w)
+static WRITE8_DEVICE_HANDLER(sord_ppi_portc_w)
 {
 	obfa = (data & 0x80) ? 1 : 0;
 	intra = (data & 0x08) ? 1 : 0;
@@ -298,14 +292,15 @@ static const ppi8255_interface sord_ppi8255_interface =
 /*********************************************************************************************/
 
 
-static void sord_m5_ctc_interrupt(running_machine *machine, int state)
+static void sord_m5_ctc_interrupt(const device_config *device, int state)
 {
 	//logerror("interrupting ctc %02x\r\n ",state);
-	cpunum_set_input_line(machine, 0, 0, state);
+	cpunum_set_input_line(device->machine, 0, 0, state);
 }
 
-static z80ctc_interface	sord_m5_ctc_intf =
+static const z80ctc_interface	sord_m5_ctc_intf =
 {
+	"main",
 	3800000,
 	0,
 	sord_m5_ctc_interrupt,
@@ -331,22 +326,22 @@ ADDRESS_MAP_END
 
 
 
-static READ8_HANDLER(sord_ctc_r)
+static READ8_DEVICE_HANDLER(sord_ctc_r)
 {
 	unsigned char data;
 
-	data = z80ctc_0_r(machine, offset & 0x03);
+	data = z80ctc_r(device, offset & 0x03);
 
 	logerror("sord ctc r: %04x %02x\n",(offset & 0x03), data);
 
 	return data;
 }
 
-static WRITE8_HANDLER(sord_ctc_w)
+static WRITE8_DEVICE_HANDLER(sord_ctc_w)
 {
 	logerror("sord ctc w: %04x %02x\n",(offset & 0x03), data);
 
-	z80ctc_0_w(machine, offset & 0x03, data);
+	z80ctc_w(device, offset & 0x03, data);
 }
 
 static  READ8_HANDLER(sord_sys_r)
@@ -357,7 +352,7 @@ static  READ8_HANDLER(sord_sys_r)
 	data = 0;
 
 	/* cassette read */
-	if (cassette_input(cassette_device_image()) >=0)
+	if (cassette_input(cassette_device_image(machine)) >=0)
 		data |=(1<<0);
 
 	printer_handshake = centronics_read_handshake(0);
@@ -395,12 +390,12 @@ static WRITE8_HANDLER(sord_sys_w)
 
 	/* cassette remote */
 	cassette_change_state(
-		cassette_device_image(),
+		cassette_device_image(machine),
 		(data & 0x02) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
 		CASSETTE_MASK_MOTOR);
 
 	/* cassette data */
-	cassette_output(cassette_device_image(), (data & (1<<0)) ? -1.0 : 1.0);
+	cassette_output(cassette_device_image(machine), (data & (1<<0)) ? -1.0 : 1.0);
 
 	/* assumption: select is tied low */
 	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
@@ -417,7 +412,7 @@ static WRITE8_HANDLER(sord_printer_w)
 
 static ADDRESS_MAP_START( sord_m5_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x0f)					AM_READWRITE(sord_ctc_r,			sord_ctc_w)
+	AM_RANGE(0x00, 0x0f)					AM_DEVREADWRITE(Z80CTC, "z80ctc", sord_ctc_r,			sord_ctc_w)
 	AM_RANGE(0x10, 0x10) AM_MIRROR(0x0e)	AM_READWRITE(TMS9928A_vram_r,		TMS9928A_vram_w)
 	AM_RANGE(0x11, 0x11) AM_MIRROR(0x0e)	AM_READWRITE(TMS9928A_register_r,	TMS9928A_register_w)
 	AM_RANGE(0x20, 0x2f)					AM_WRITE(							sn76496_0_w)
@@ -428,7 +423,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( srdm5fd5_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x0f)					AM_READWRITE(sord_ctc_r,			sord_ctc_w)
+	AM_RANGE(0x00, 0x0f)					AM_DEVREADWRITE(Z80CTC, "z80ctc", sord_ctc_r,			sord_ctc_w)
 	AM_RANGE(0x10, 0x10) AM_MIRROR(0x0e)	AM_READWRITE(TMS9928A_vram_r,		TMS9928A_vram_w)
 	AM_RANGE(0x11, 0x11) AM_MIRROR(0x0e)	AM_READWRITE(TMS9928A_register_r,	TMS9928A_register_w)
 	AM_RANGE(0x20, 0x2f)					AM_WRITE(							sn76496_0_w)
@@ -452,8 +447,8 @@ static void sordm5_video_interrupt_callback(running_machine *machine, int state)
 {
 	if (state)
 	{
-		z80ctc_0_trg3_w(machine, 0, 1);
-		z80ctc_0_trg3_w(machine, 0, 0);
+		z80ctc_trg3_w(device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), 0, 1);
+		z80ctc_trg3_w(device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), 0, 0);
 	}
 }
 
@@ -472,11 +467,8 @@ static MACHINE_START( sord_m5 )
 
 static MACHINE_RESET( sord_m5 )
 {
-	z80ctc_init(0, &sord_m5_ctc_intf);
-
 //  cassette_timer = timer_pulse(TIME_IN_HZ(11025), NULL, 0, cassette_timer_callback);
 	TMS9928A_reset ();
-	z80ctc_reset(0);
 
 	/* should be done in a special callback to work properly! */
 	memory_set_bankptr(1, memory_region(machine, "user1"));
@@ -609,10 +601,10 @@ static INPUT_PORTS_START(sord_m5)
 INPUT_PORTS_END
 
 
-static const struct z80_irq_daisy_chain sord_m5_daisy_chain[] =
+static const z80_daisy_chain sord_m5_daisy_chain[] =
 {
-	{z80ctc_reset, z80ctc_irq_state, z80ctc_irq_ack, z80ctc_irq_reti, 0},
-	{0,0,0,0,-1}
+	{ Z80CTC, "z80ctc" },
+	{ NULL }
 };
 
 
@@ -622,6 +614,13 @@ static INTERRUPT_GEN( sord_interrupt )
 	if (TMS9928A_interrupt(machine))
 		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
+
+static const cassette_config sordm5_cassette_config =
+{
+	sordm5_cassette_formats,
+	NULL,
+	CASSETTE_PLAY
+};
 
 static MACHINE_DRIVER_START( sord_m5 )
 	/* basic machine hardware */
@@ -638,6 +637,8 @@ static MACHINE_DRIVER_START( sord_m5 )
 	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
 	MDRV_DEVICE_CONFIG( sord_ppi8255_interface )
 
+	MDRV_Z80CTC_ADD( "z80ctc", sord_m5_ctc_intf )
+
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
 	MDRV_SCREEN_MODIFY("main")
@@ -651,6 +652,8 @@ static MACHINE_DRIVER_START( sord_m5 )
 
 	/* printer */
 	MDRV_DEVICE_ADD("printer", PRINTER)
+
+	MDRV_CASSETTE_ADD( "cassette", sordm5_cassette_config )
 MACHINE_DRIVER_END
 
 
@@ -662,7 +665,7 @@ static MACHINE_DRIVER_START( sord_m5_fd5 )
 
 	MDRV_CPU_ADD("floppy", Z80, 3800000)
 	MDRV_CPU_PROGRAM_MAP(sord_fd5_mem, 0)
-	MDRV_CPU_IO_MAP(readport_sord_fd5,writeport_sord_fd5)
+	MDRV_CPU_IO_MAP(sord_fd5_io, 0)
 
 	MDRV_INTERLEAVE(20)
 	MDRV_MACHINE_RESET( sord_m5_fd5 )
@@ -701,24 +704,9 @@ static FLOPPY_OPTIONS_START( sordm5 )
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static void sordm5_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) sordm5_cassette_formats; break;
-
-		default:										cassette_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static SYSTEM_CONFIG_START(sordm5)
 	CONFIG_RAM_DEFAULT(64 * 1024)
-	CONFIG_DEVICE(sordm5_cassette_getinfo)
 	CONFIG_DEVICE(cartslot_device_getinfo)
 SYSTEM_CONFIG_END
 

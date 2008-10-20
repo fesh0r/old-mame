@@ -28,15 +28,6 @@
 #include "devices/basicdsk.h"
 
 
-/* pio is last in chain and therefore has highest priority */
-
-static const struct z80_irq_daisy_chain kc85_daisy_chain[] =
-{
-	{z80pio_reset, z80ctc_irq_state, z80ctc_irq_ack, z80ctc_irq_reti, 0},
-	{z80ctc_reset, z80ctc_irq_state, z80ctc_irq_ack, z80ctc_irq_reti, 0},
-	{0,0,0,0,-1}
-};
-
 static READ8_HANDLER(kc85_4_port_r)
 {
 	int port;
@@ -67,7 +58,7 @@ static READ8_HANDLER(kc85_4_port_r)
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			return kc85_ctc_r(machine, port-0x08c);
+			return kc85_ctc_r(device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), port-0x08c);
 
 	}
 
@@ -111,7 +102,7 @@ static WRITE8_HANDLER(kc85_4_port_w)
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			kc85_ctc_w(machine, port-0x08c, data);
+			kc85_ctc_w(device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), port-0x08c, data);
 			return;
 	}
 
@@ -163,7 +154,7 @@ static READ8_HANDLER(kc85_3_port_r)
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			return kc85_ctc_r(machine, port-0x08c);
+			return kc85_ctc_r(device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), port-0x08c);
 	}
 
 	logerror("unhandled port r: %04x\n",offset);
@@ -196,7 +187,7 @@ static WRITE8_HANDLER(kc85_3_port_w)
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			kc85_ctc_w(machine, port-0x08c, data);
+			kc85_ctc_w(device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), port-0x08c, data);
 			return;
 	}
 
@@ -211,13 +202,131 @@ ADDRESS_MAP_END
 
 
 
+/* this is a fake keyboard layout. The keys are converted into codes 
+which are transmitted by the keyboard to the base-unit. key code can 
+be calculated as (line*8)+bit_index */
+
+/* 2008-05 FP:
+Small note about natural keyboard: currently,
+- "Brk" is mapped to 'Esc'
+- "Stop" is mapped to 'Pause'
+- "Clr" is mapped to 'Backspace'             */
+
 static INPUT_PORTS_START( kc85 )
-	KC_KEYBOARD
+	/* start of keyboard scan-codes */
+	/* codes 0-7 */
+	PORT_START("KEY0")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_W)			PORT_CHAR('w') PORT_CHAR('W')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_A)			PORT_CHAR('a') PORT_CHAR('A')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2)			PORT_CHAR('2') PORT_CHAR('"')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_LEFT)		PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F12)			PORT_CHAR(UCHAR_MAMEKEY(HOME))
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS)		PORT_CHAR('-') PORT_CHAR('=')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F2)			PORT_CHAR(UCHAR_MAMEKEY(F2))
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Z)			PORT_CHAR('y') PORT_CHAR('Y')
+	/* codes 8-15 */
+	PORT_START("KEY1")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_E)			PORT_CHAR('e') PORT_CHAR('E')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_S)			PORT_CHAR('s') PORT_CHAR('S')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3)			PORT_CHAR('3') PORT_CHAR('#')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_OPENBRACE)	PORT_CHAR('^') PORT_CHAR(0x00AC)
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Clr") PORT_CODE(KEYCODE_F11) PORT_CHAR(8)
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS)		PORT_CHAR(':') PORT_CHAR('*')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F3)			PORT_CHAR(UCHAR_MAMEKEY(F3))
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_X)			PORT_CHAR('x') PORT_CHAR('X')
+	/* codes 16-23 */
+	PORT_START("KEY2")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_T)			PORT_CHAR('t') PORT_CHAR('T')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F)			PORT_CHAR('f') PORT_CHAR('F')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5)			PORT_CHAR('5') PORT_CHAR('%')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_P)			PORT_CHAR('p') PORT_CHAR('P')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Del") PORT_CODE(KEYCODE_F10) PORT_CHAR(UCHAR_MAMEKEY(DEL))
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0)			PORT_CHAR('0') PORT_CHAR('@')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F5)			PORT_CHAR(UCHAR_MAMEKEY(F5))
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_V)			PORT_CHAR('v') PORT_CHAR('V')
+	/* codes 24-31 */
+	PORT_START("KEY3")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_U)			PORT_CHAR('u') PORT_CHAR('U')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_H)			PORT_CHAR('h') PORT_CHAR('H')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7)			PORT_CHAR('7') PORT_CHAR('\'')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_O)			PORT_CHAR('o') PORT_CHAR('O')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Ins") PORT_CODE(KEYCODE_F9) PORT_CHAR(UCHAR_MAMEKEY(INSERT))
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_9)			PORT_CHAR('9') PORT_CHAR(')')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Brk") PORT_CODE(KEYCODE_F7) PORT_CHAR(UCHAR_MAMEKEY(ESC))
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_N)			PORT_CHAR('n') PORT_CHAR('N')
+	/* codes 32-39 */
+	PORT_START("KEY4")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_I)			PORT_CHAR('i') PORT_CHAR('I')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_J)			PORT_CHAR('j') PORT_CHAR('J')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8)			PORT_CHAR('8') PORT_CHAR('(')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SPACE)		PORT_CHAR(' ')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_K)			PORT_CHAR('k') PORT_CHAR('K')
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA)		PORT_CHAR(',') PORT_CHAR('<')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Stop") PORT_CODE(KEYCODE_F8) PORT_CHAR(UCHAR_MAMEKEY(PAUSE))
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_M)			PORT_CHAR('m') PORT_CHAR('M')
+	/* codes 40-47 */
+	PORT_START("KEY5")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Y)			PORT_CHAR('z') PORT_CHAR('Z')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_G)			PORT_CHAR('g') PORT_CHAR('G')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6)			PORT_CHAR('6') PORT_CHAR('&')
+	PORT_BIT(0x08, 0x00, IPT_UNUSED)
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_L)			PORT_CHAR('l') PORT_CHAR('L')
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP)		PORT_CHAR('.') PORT_CHAR('>')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F6)			PORT_CHAR(UCHAR_MAMEKEY(F6))
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_B)			PORT_CHAR('b') PORT_CHAR('B')
+	/* codes 48-56 */
+	PORT_START("KEY6")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_R)			PORT_CHAR('r') PORT_CHAR('R')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_D)			PORT_CHAR('d') PORT_CHAR('D')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4)			PORT_CHAR('4') PORT_CHAR('$')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE)		PORT_CHAR('-') PORT_CHAR('|')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COLON)		PORT_CHAR('+') PORT_CHAR(';')
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SLASH)		PORT_CHAR('/') PORT_CHAR('?')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F4)			PORT_CHAR(UCHAR_MAMEKEY(F4))
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_C)			PORT_CHAR('c') PORT_CHAR('C')
+	/* codes 56-63 */
+	PORT_START("KEY7")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q)			PORT_CHAR('q') PORT_CHAR('Q')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Shift Lock") PORT_CODE(KEYCODE_CAPSLOCK) PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1)			PORT_CHAR('1') PORT_CHAR('!')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_DOWN)		PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_UP)			PORT_CHAR(UCHAR_MAMEKEY(UP))
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_RIGHT)		PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F1)			PORT_CHAR(UCHAR_MAMEKEY(F1))
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_ENTER)		PORT_CHAR(13)
+	/* end of keyboard scan-codes */
+	PORT_START("SHIFT")
+	/* has a single shift key. Mapped here to left and right shift. */
+	/* shift is connected to the transmit chip inside the keyboard and affects bit 0 */
+	/* of the scan-code sent directly */
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
 INPUT_PORTS_END
+
+
+/* pio is last in chain and therefore has highest priority */
+
+static const z80_daisy_chain kc85_daisy_chain[] =
+{
+	{ Z80PIO, "z80pio" },
+	{ Z80CTC, "z80ctc" },
+	{ NULL }
+};
 
 
 /********************/
 /** DISC INTERFACE **/
+
+static const z80ctc_interface kc85_disc_ctc_intf =
+{
+	"main",			/* cpu */
+	0,				/* timer clock */
+	0,				/* timer disablers */
+	NULL,			/* interrupt callback */
+	NULL,			/* ZC/TO0 callback */
+	NULL,			/* ZC/TO1 callback */
+	NULL			/* ZC/TO2 callback */
+};
+
 
 static ADDRESS_MAP_START(kc85_disc_hw_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0ffff) AM_RAM
@@ -230,13 +339,15 @@ static ADDRESS_MAP_START(kc85_disc_hw_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0f4, 0x0f5) AM_READ(kc85_disc_hw_input_gate_r)
 	/*{0x0f6, 0x0f7, SMH_NOP},*/		/* for controller */
 	AM_RANGE(0x0f8, 0x0f9) AM_WRITE( kc85_disc_hw_terminal_count_w) /* terminal count */
-	AM_RANGE(0x0fc, 0x0ff) AM_READWRITE(kc85_disk_hw_ctc_r, kc85_disk_hw_ctc_w)
+	AM_RANGE(0x0fc, 0x0ff) AM_DEVREADWRITE(Z80CTC, "z80ctc_1", kc85_disk_hw_ctc_r, kc85_disk_hw_ctc_w)
 ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( cpu_kc_disc )
 	MDRV_CPU_ADD("disc", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(kc85_disc_hw_mem, 0)
 	MDRV_CPU_IO_MAP(kc85_disc_hw_io, 0)
+
+	MDRV_Z80CTC_ADD( "z80ctc_1", kc85_disc_ctc_intf )
 MACHINE_DRIVER_END
 
 
@@ -250,6 +361,9 @@ static MACHINE_DRIVER_START( kc85_3 )
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( kc85_3 )
+
+	MDRV_Z80PIO_ADD( "z80pio", kc85_pio_intf )
+	MDRV_Z80CTC_ADD( "z80ctc", kc85_ctc_intf )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -266,13 +380,15 @@ static MACHINE_DRIVER_START( kc85_3 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("wave", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
 	MDRV_QUICKLOAD_ADD(kc, "kcc", 0)
+
+	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 MACHINE_DRIVER_END
 
 
@@ -313,7 +429,7 @@ ROM_START(kc85_4d)
     ROM_LOAD("caos__c0.854", 0x12000, 0x1000, CRC(57d9ab02) SHA1(774fc2496a59b77c7c392eb5aa46420e7722797e))
     ROM_LOAD("caos__e0.854", 0x13000, 0x2000, CRC(d64cd50b) SHA1(809cde2d189c1976d838e3e614468705183de800))
 
-	ROM_REGION(0x010000, "disc",0)
+	ROM_REGION(0x010000, "disc", ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START(kc85_3)
@@ -323,21 +439,9 @@ ROM_START(kc85_3)
 	ROM_LOAD("caos__e0.853", 0x12000, 0x2000, CRC(52bc2199) SHA1(207d3e1c4ebf82ac7553ed0a0850b627b9796d4b))
 ROM_END
 
-static void kc85_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										cassette_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static SYSTEM_CONFIG_START(kc85)
 	CONFIG_RAM_DEFAULT		(64 * 1024)
-	CONFIG_DEVICE(kc85_cassette_getinfo)
 SYSTEM_CONFIG_END
 
 static void kc85d_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)

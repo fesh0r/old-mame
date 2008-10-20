@@ -8,7 +8,6 @@
 #include "hash.h"
 
 
-
 /***************************************************************************
     CONSTANTS
 ***************************************************************************/
@@ -90,7 +89,11 @@ static void init_nes_core (running_machine *machine)
 	{
 		case 20:
 			nes.slow_banking = 0;
-			nes_fds.data = auto_malloc( 0x8000 );
+			/* If we are loading a disk we have already filled nes_fds.data and we don't want to overwrite it, 
+			if we are loading a cart image identified as mapper 20 (probably wrong mapper...) we need to alloc 
+			memory for the bank 2 pointer */
+			if (nes_fds.data == NULL)
+				nes_fds.data = auto_malloc( 0x8000 );
 			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4030, 0x403f, 0, 0, fds_r);
 			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xdfff, 0, 0, SMH_BANK2);
 			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, SMH_BANK1);
@@ -197,102 +200,103 @@ static void nes_machine_stop(running_machine *machine)
 
 
 
-static int zapper_hit_pixel(running_machine *machine, const nes_input *input)
-{
-	UINT16 pix = 0;
-	rgb_t col;
-	UINT8 r, g, b;
-
-	if (nes_zapper_hack)
-		pix = *BITMAP_ADDR16(nes_zapper_hack, input->i2, input->i1);
-
-	col = palette_get_color(machine, pix);
-	r = (UINT8) (col >> 16);
-	g = (UINT8) (col >> 8);
-	b = (UINT8) (col >> 0);
-
-	return (((UINT16) r) + ((UINT16) g) + ((UINT16) b)) >= 240*3;
-}
-
-
-
  READ8_HANDLER ( nes_IN0_r )
 {
-	int cfg;
-	int retVal;
+	int ret;
 
 	/* Some games expect bit 6 to be set because the last entry on the data bus shows up */
 	/* in the unused upper 3 bits, so typically a read from $4016 leaves 0x40 there. */
-	retVal = 0x40;
+	ret = 0x40;
 
-	retVal |= ((in_0.i0 >> in_0.shift) & 0x01);
+	ret |= ((in_0.i0 >> in_0.shift) & 0x01);
 
-	/* Check the configuration to see what's connected */
-	cfg = input_port_read(machine, "CONTROLLERS");
-
-	if (((cfg & 0x000f) == 0x0002) || ((cfg & 0x000f) == 0x0003))
+	/* zapper */
+	if ((input_port_read(machine, "CTRLSEL") & 0x000f) == 0x0002)
 	{
-		/* If button 1 is pressed, indicate the light gun trigger is pressed */
-		retVal |= ((in_0.i0 & 0x01) << 4);
+		int x = in_0.i1;	/* read Zapper x-position */
+		int y = in_0.i2;	/* read Zapper y-position */
+		UINT32 pix, color_base;
 
-		/* Look at the screen and see if the cursor is over a bright pixel */
-		if (zapper_hit_pixel(machine, &in_0))
-			retVal &= ~0x08; /* sprite hit */
+		/* get the pixel at the gun position */
+		pix = ppu2c0x_get_pixel( 0, x, y );
+
+		/* get the color base from the ppu */
+		color_base = ppu2c0x_get_colorbase( 0 );
+
+		/* look at the screen and see if the cursor is over a bright pixel */
+		if ( ( pix == color_base + 0x20 ) || ( pix == color_base + 0x30 ) ||
+			 ( pix == color_base + 0x33 ) || ( pix == color_base + 0x34 ) )
+		{
+			ret &= ~0x08; /* sprite hit */
+		}
 		else
-			retVal |= 0x08;  /* no sprite hit */
+			ret |= 0x08;  /* no sprite hit */
+
+		/* If button 1 is pressed, indicate the light gun trigger is pressed */
+		ret |= ((in_0.i0 & 0x01) << 4);
 	}
 
 	if (LOG_JOY)
-		logerror ("joy 0 read, val: %02x, pc: %04x, bits read: %d, chan0: %08x\n", retVal, activecpu_get_pc(), in_0.shift, in_0.i0);
+		logerror ("joy 0 read, val: %02x, pc: %04x, bits read: %d, chan0: %08x\n", ret, activecpu_get_pc(), in_0.shift, in_0.i0);
 
-	in_0.shift ++;
-	return retVal;
+	in_0.shift++;
+	return ret;
 }
 
  READ8_HANDLER ( nes_IN1_r )
 {
-	int cfg;
-	int retVal;
+	int ret;
 
 	/* Some games expect bit 6 to be set because the last entry on the data bus shows up */
 	/* in the unused upper 3 bits, so typically a read from $4017 leaves 0x40 there. */
-	retVal = 0x40;
+	ret = 0x40;
 
 	/* Handle data line 0's serial output */
-	retVal |= ((in_1.i0 >> in_1.shift) & 0x01);
+	ret |= ((in_1.i0 >> in_1.shift) & 0x01);
 
-	/* Check the fake dip to see what's connected */
-	cfg = input_port_read(machine, "CONTROLLERS");
-
-	if (((cfg & 0x00f0) == 0x0020) || ((cfg & 0x00f0) == 0x0030))
+	/* zapper */
+	if ((input_port_read(machine, "CTRLSEL") & 0x00f0) == 0x0030)
 	{
-		/* zapper */
-		/* If button 1 is pressed, indicate the light gun trigger is pressed */
-		retVal |= ((in_1.i0 & 0x01) << 4);
+		int x = in_1.i1;	/* read Zapper x-position */
+		int y = in_1.i2;	/* read Zapper y-position */
+		UINT32 pix, color_base;
 
-		/* Look at the screen and see if the cursor is over a bright pixel */
-		if (zapper_hit_pixel(machine, &in_1))
-			retVal &= ~0x08; /* sprite hit */
+		/* get the pixel at the gun position */
+		pix = ppu2c0x_get_pixel( 0, x, y );
+
+		/* get the color base from the ppu */
+		color_base = ppu2c0x_get_colorbase( 0 );
+
+		/* look at the screen and see if the cursor is over a bright pixel */
+		if ( ( pix == color_base + 0x20 ) || ( pix == color_base + 0x30 ) ||
+			 ( pix == color_base + 0x33 ) || ( pix == color_base + 0x34 ) )
+		{
+			ret &= ~0x08; /* sprite hit */
+		}
 		else
-			retVal |= 0x08;  /* no sprite hit */
+			ret |= 0x08;  /* no sprite hit */
+
+		/* If button 1 is pressed, indicate the light gun trigger is pressed */
+		ret |= ((in_1.i0 & 0x01) << 4);
 	}
-	else if ((cfg & 0x00f0) == 0x0040)
+
+	/* arkanoid dial */
+	else if ((input_port_read(machine, "CTRLSEL") & 0x00f0) == 0x0040)
 	{
-		/* arkanoid dial */
 		/* Handle data line 2's serial output */
-		retVal |= ((in_1.i2 >> in_1.shift) & 0x01) << 3;
+		ret |= ((in_1.i2 >> in_1.shift) & 0x01) << 3;
 
 		/* Handle data line 3's serial output - bits are reversed */
 		/* NPW 27-Nov-2007 - there is no third subscript! commenting out */
-		/* retVal |= ((in_1[3] >> in_1.shift) & 0x01) << 4; */
-		/* retVal |= ((in_1[3] << in_1.shift) & 0x80) >> 3; */
+		/* ret |= ((in_1[3] >> in_1.shift) & 0x01) << 4; */
+		/* ret |= ((in_1[3] << in_1.shift) & 0x80) >> 3; */
 	}
 
 	if (LOG_JOY)
-		logerror ("joy 1 read, val: %02x, pc: %04x, bits read: %d, chan0: %08x\n", retVal, activecpu_get_pc(), in_1.shift, in_1.i0);
+		logerror ("joy 1 read, val: %02x, pc: %04x, bits read: %d, chan0: %08x\n", ret, activecpu_get_pc(), in_1.shift, in_1.i0);
 
-	in_1.shift ++;
-	return retVal;
+	in_1.shift++;
+	return ret;
 }
 
 
@@ -339,6 +343,30 @@ static void nes_read_input_device(running_machine *machine, int cfg, nes_input *
 }
 
 
+static TIMER_CALLBACK( lightgun_tick )
+{
+	if ((input_port_read(machine, "CTRLSEL") & 0x000f) == 0x0002)
+	{
+		/* enable lightpen crosshair */
+		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_ALL);
+	}
+	else
+	{
+		/* disable lightpen crosshair */
+		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_NONE);
+	}
+
+	if ((input_port_read(machine, "CTRLSEL") & 0x00f0) == 0x0030)
+	{
+		/* enable lightpen crosshair */
+		crosshair_set_screen(machine, 1, CROSSHAIR_SCREEN_ALL);
+	}
+	else
+	{
+		/* disable lightpen crosshair */
+		crosshair_set_screen(machine, 1, CROSSHAIR_SCREEN_NONE);
+	}
+}
 
 WRITE8_HANDLER ( nes_IN0_w )
 {
@@ -355,8 +383,11 @@ WRITE8_HANDLER ( nes_IN0_w )
 	in_0.shift = 0;
 	in_1.shift = 0;
 
+	/* Check if lightgun has been chosen as input: if so, enable crosshair */
+	timer_set(attotime_zero, NULL, 0, lightgun_tick);
+
 	/* Check the configuration to see what's connected */
-	cfg = input_port_read(machine, "CONTROLLERS");
+	cfg = input_port_read(machine, "CTRLSEL");
 
 	/* Read the input devices */
 	nes_read_input_device(machine, cfg >>  0, &in_0, 0,  TRUE, -1);
@@ -378,10 +409,10 @@ WRITE8_HANDLER ( nes_IN1_w )
 
 
 
-DEVICE_IMAGE_LOAD(nes_cart)
+DEVICE_IMAGE_LOAD( nes_cart )
 {
 	const char *mapinfo;
-	int mapint1=0,mapint2=0,mapint3=0,mapint4=0,goodcrcinfo = 0;
+	int mapint1 = 0, mapint2 = 0, mapint3 = 0, mapint4 = 0, goodcrcinfo = 0;
 	char magic[4];
 	char skank[8];
 	int local_options = 0;
@@ -392,12 +423,14 @@ DEVICE_IMAGE_LOAD(nes_cart)
 	memset(magic, '\0', sizeof(magic));
 	image_fread(image, magic, 4);
 
-	if ((magic[0] != 'N') ||
-		(magic[1] != 'E') ||
-		(magic[2] != 'S'))
-		goto bad;
+	if ((magic[0] != 'N') || (magic[1] != 'E') || (magic[2] != 'S'))
+	{
+		logerror("BAD section hit during LOAD ROM.\n");
+		return INIT_FAIL;
+	}
 
 	mapinfo = image_extrainfo(image);
+
 	if (mapinfo)
 	{
 		if (4 == sscanf(mapinfo,"%d %d %d %d",&mapint1,&mapint2,&mapint3,&mapint4))
@@ -408,14 +441,17 @@ DEVICE_IMAGE_LOAD(nes_cart)
 			nes.chr_chunks = mapint4;
 			logerror("NES.CRC info: %d %d %d %d\n",mapint1,mapint2,mapint3,mapint4);
 			goodcrcinfo = 1;
-		} else
+		} 
+		else
 		{
 			logerror("NES: [%s], Invalid mapinfo found\n",mapinfo);
 		}
-	} else
+	} 
+	else
 	{
 		logerror("NES: No extrainfo found\n");
 	}
+
 	if (!goodcrcinfo)
 	{
 		// image_extrainfo() resets the file position back to start.
@@ -468,7 +504,7 @@ DEVICE_IMAGE_LOAD(nes_cart)
 	memory_region_free (image->machine, "gfx1");
 
 	/* Allocate them again with the proper size */
-	memory_region_alloc(image->machine, "main", 0x10000 + (nes.prg_chunks+1) * 0x4000,0);
+	memory_region_alloc(image->machine, "main", 0x10000 + (nes.prg_chunks + 1) * 0x4000,0);
 	if (nes.chr_chunks)
 		memory_region_alloc(image->machine, "gfx1", nes.chr_chunks * 0x2000,0);
 
@@ -516,7 +552,7 @@ DEVICE_IMAGE_LOAD(nes_cart)
 
 	logerror("**\n");
 	logerror("Mapper: %d\n", nes.mapper);
-	logerror("PRG chunks: %02x, size: %06x\n", nes.prg_chunks, 0x4000*nes.prg_chunks);
+	logerror("PRG chunks: %02x, size: %06x\n", nes.prg_chunks, 0x4000 * nes.prg_chunks);
 
 	/* Read in any chr chunks */
 	if (nes.chr_chunks > 0)
@@ -526,7 +562,7 @@ DEVICE_IMAGE_LOAD(nes_cart)
 			logerror("Warning: VROM has been found in VRAM-based mapper. Either the mapper is set wrong or the ROM image is incorrect.\n");
 	}
 
-	logerror("CHR chunks: %02x, size: %06x\n", nes.chr_chunks, 0x4000*nes.chr_chunks);
+	logerror("CHR chunks: %02x, size: %06x\n", nes.chr_chunks, 0x4000 * nes.chr_chunks);
 	logerror("**\n");
 
 	/* Attempt to load a battery file for this ROM. If successful, we */
@@ -535,10 +571,6 @@ DEVICE_IMAGE_LOAD(nes_cart)
 		image_battery_load(image, battery_data, BATTERY_SIZE);
 
 	return INIT_PASS;
-
-bad:
-	logerror("BAD section hit during LOAD ROM.\n");
-	return INIT_FAIL;
 }
 
 
@@ -565,6 +597,7 @@ DEVICE_START(nes_disk)
 
 	nes_fds.sides = 0;
 	nes_fds.data = NULL;
+	return DEVICE_START_OK;
 }
 
 
@@ -574,9 +607,7 @@ DEVICE_IMAGE_LOAD(nes_disk)
 
 	/* See if it has a  redundant header on it */
 	image_fread(image, magic, 4);
-	if ((magic[0] == 'F') &&
-		(magic[1] == 'D') &&
-		(magic[2] == 'S'))
+	if ((magic[0] == 'F') && (magic[1] == 'D') && (magic[2] == 'S'))
 	{
 		/* Skip past the redundant header */
 		image_fseek (image, 0x10, SEEK_SET);
@@ -592,7 +623,7 @@ DEVICE_IMAGE_LOAD(nes_disk)
 		nes_fds.data = image_realloc(image, nes_fds.data, nes_fds.sides * 65500);
 		if (!nes_fds.data)
 			return INIT_FAIL;
-		image_fread (image, nes_fds.data + ((nes_fds.sides-1) * 65500), 65500);
+		image_fread (image, nes_fds.data + ((nes_fds.sides - 1) * 65500), 65500);
 	}
 
 	logerror("Number of sides: %d\n", nes_fds.sides);

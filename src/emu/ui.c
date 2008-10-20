@@ -12,6 +12,7 @@
 #include "driver.h"
 #include "osdepend.h"
 #include "video/vector.h"
+#include "machine/laserdsc.h"
 #include "profiler.h"
 #include "cheat.h"
 #include "render.h"
@@ -135,6 +136,7 @@ static INT32 slider_overyoffset(running_machine *machine, void *arg, astring *st
 static INT32 slider_flicker(running_machine *machine, void *arg, astring *string, INT32 newval);
 static INT32 slider_beam(running_machine *machine, void *arg, astring *string, INT32 newval);
 static char *slider_get_screen_desc(const device_config *screen);
+static char *slider_get_laserdisc_desc(const device_config *screen);
 #ifdef MAME_DEBUG
 static INT32 slider_crossscale(running_machine *machine, void *arg, astring *string, INT32 newval);
 static INT32 slider_crossoffset(running_machine *machine, void *arg, astring *string, INT32 newval);
@@ -1419,9 +1421,8 @@ static slider_state *slider_alloc(const char *title, INT32 minval, INT32 defval,
 
 static slider_state *slider_init(running_machine *machine)
 {
-	int numscreens = video_screen_count(machine->config);
-	const input_port_config *port;
 	const input_field_config *field;
+	const input_port_config *port;
 	const device_config *device;
 	slider_state *listhead = NULL;
 	slider_state **tailptr = &listhead;
@@ -1472,13 +1473,12 @@ static slider_state *slider_init(running_machine *machine)
 	/* add screen parameters */
 	for (device = video_screen_first(machine->config); device != NULL; device = video_screen_next(device))
 	{
-		const device_config *screen = device_list_find_by_index(machine->config->devicelist, VIDEO_SCREEN, item);
-		const screen_config *scrconfig = screen->inline_config;
+		const screen_config *scrconfig = device->inline_config;
 		int defxscale = floor(scrconfig->xscale * 1000.0f + 0.5f);
 		int defyscale = floor(scrconfig->yscale * 1000.0f + 0.5f);
 		int defxoffset = floor(scrconfig->xoffset * 1000.0f + 0.5f);
 		int defyoffset = floor(scrconfig->yoffset * 1000.0f + 0.5f);
-		void *param = (void *)screen;
+		void *param = (void *)device;
 
 		/* add refresh rate tweaker */
 		if (options_get_bool(mame_options(), OPTION_CHEAT))
@@ -1950,7 +1950,7 @@ static INT32 slider_beam(running_machine *machine, void *arg, astring *string, I
 
 /*-------------------------------------------------
     slider_get_screen_desc - returns the
-    description for a given screen index
+    description for a given screen
 -------------------------------------------------*/
 
 static char *slider_get_screen_desc(const device_config *screen)
@@ -1962,6 +1962,25 @@ static char *slider_get_screen_desc(const device_config *screen)
 		sprintf(descbuf, "Screen '%s'", screen->tag);
 	else
 		strcpy(descbuf, "Screen");
+
+	return descbuf;
+}
+
+
+/*-------------------------------------------------
+    slider_get_laserdisc_desc - returns the
+    description for a given laseridsc
+-------------------------------------------------*/
+
+static char *slider_get_laserdisc_desc(const device_config *laserdisc)
+{
+	int ldcount = device_list_items(laserdisc->machine->config->devicelist, LASERDISC);
+	static char descbuf[256];
+
+	if (ldcount > 1)
+		sprintf(descbuf, "Laserdisc '%s'", laserdisc->tag);
+	else
+		strcpy(descbuf, "Laserdisc");
 
 	return descbuf;
 }

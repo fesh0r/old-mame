@@ -358,14 +358,22 @@ Video part
 #include "utils.h"
 #include "sound/custom.h"
 
-#define VERBOSE_DBG 0
-#include "includes/cbm.h"
 #include "includes/c16.h"
-#include "includes/vc20tape.h"
-#include "includes/cbmserb.h"
-#include "includes/vc1541.h"
 
 #include "ted7360.h"
+
+
+#define VERBOSE_LEVEL 0
+#define DBG_LOG(N,M,A) \
+	{ \
+		if(VERBOSE_LEVEL >= N) \
+		{ \
+			if( M ) \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+			logerror A; \
+		} \
+	}
+
 
 /*#define GFX */
 

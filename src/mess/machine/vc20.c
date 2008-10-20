@@ -17,16 +17,28 @@
 #include "image.h"
 #include "cpu/m6502/m6502.h"
 
-#define VERBOSE_DBG 0
-#include "includes/cbm.h"
 #include "machine/6522via.h"
+#include "video/vic6560.h"
 #include "includes/vc1541.h"
-#include "includes/vc20tape.h"
 #include "includes/cbmserb.h"
 #include "includes/cbmieeeb.h"
-#include "video/vic6560.h"
+#include "includes/cbmdrive.h"
 
 #include "includes/vc20.h"
+
+#include "devices/cassette.h"
+#include "devices/cartslot.h"
+
+#define VERBOSE_LEVEL 0
+#define DBG_LOG(N,M,A) \
+	{ \
+		if(VERBOSE_LEVEL >= N) \
+		{ \
+			if( M ) \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+			logerror A; \
+		} \
+	}
 
 static UINT8 keyboard[8] =
 {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -34,13 +46,17 @@ static UINT8 keyboard[8] =
 static int via1_portb, via1_porta, via0_ca2;
 static int serial_atn = 1, serial_clock = 1, serial_data = 1;
 
-static int ieee=0; /* ieee cartridge (interface and rom)*/
+static int has_vc1541 = 0;
+static int ieee = 0; /* ieee cartridge (interface and rom)*/
 static UINT8 *vc20_rom_2000;
 static UINT8 *vc20_rom_4000;
 static UINT8 *vc20_rom_6000;
 static UINT8 *vc20_rom_a000;
 
+static emu_timer *datasette_timer;
+
 UINT8 *vc20_memory_9400;
+
 
 /** via 0 addr 0x9110
  ca1 restore key (low)
@@ -63,7 +79,7 @@ static void vc20_via0_irq (running_machine *machine, int level)
 
 static READ8_HANDLER( vc20_via0_read_ca1 )
 {
-	return ! ( input_port_read(machine, "SPECIAL") & 0x02 );
+	return !( input_port_read(machine, "SPECIAL") & 0x02 );
 }
 
 static READ8_HANDLER( vc20_via0_read_ca2 )
@@ -74,40 +90,40 @@ static READ8_HANDLER( vc20_via0_read_ca2 )
 
 static WRITE8_HANDLER( vc20_via0_write_ca2 )
 {
-	via0_ca2 = data ? 1 : 0;
-	vc20_tape_motor (via0_ca2);
+	via0_ca2 = data ? 0 : 1;
+
+	if(via0_ca2)
+	{
+		cassette_change_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+		timer_adjust_periodic(datasette_timer, attotime_zero, 0, ATTOTIME_IN_HZ(44100));
+	}
+	else
+	{
+		cassette_change_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ),CASSETTE_MOTOR_DISABLED ,CASSETTE_MASK_MOTOR);
+		timer_reset(datasette_timer, attotime_never);
+	}
 }
 
 static  READ8_HANDLER( vc20_via0_read_porta )
 {
 	UINT8 value = 0xff;
 
-	if (input_port_read(machine, "CFG") & 0x80)		/* JOYSTICK */
-	{
-		if (input_port_read(machine, "JOY") & 0x10) /* JOY_BUTTON */
-			value&=~0x20;
-		if (input_port_read(machine, "JOY") & 4)	/* JOY_LEFT */
-			value&=~0x10;
-		if (input_port_read(machine, "JOY") & 2)	/* JOY_DOWN */
-			value&=~0x8;
-		if (input_port_read(machine, "JOY") & 1)	/* JOY_UP */
-			value&=~0x4;
-	}
-	if (input_port_read(machine, "CFG") & 0x40)		 /* PADDLE */
-	{
-		if (input_port_read(machine, "JOY") & 0x20)  /* PUDDLE1_BUTTON */
-			value&=~0x10;
-	}
+	value &= ~(input_port_read(machine, "JOY") & 0x3c);
+
 	/* to short to be recognized normally */
 	/* should be reduced to about 1 or 2 microseconds */
-	/*  if ((input_port_read(machine, "CFG") & 0x20 ) && (input_port_read(machine, "JOY") & 0x80) )  // i.e. LIGHTPEN_BUTTON
-		value&=~0x20; */
+	/*  if ((input_port_read(machine, "CTRLSEL") & 0x20 ) && (input_port_read(machine, "JOY") & 0x40) )  // i.e. LIGHTPEN_BUTTON
+		value &= ~0x20; */
 	if (!serial_clock || !cbm_serial_clock_read ())
-		value &= ~1;
+		value &= ~0x01;
 	if (!serial_data || !cbm_serial_data_read ())
-		value &= ~2;
-	if (!vc20_tape_switch ())
+		value &= ~0x02;
+
+	if ((cassette_get_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
 		value &= ~0x40;
+	else
+		value |=  0x40;
+
 	return value;
 }
 
@@ -166,7 +182,8 @@ static READ8_HANDLER( vc20_via1_read_porta )
 
 static  READ8_HANDLER( vc20_via1_read_ca1 )
 {
-	return vc20_tape_read ();
+	UINT8 data = (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > +0.0) ? 1 : 0;
+	return data;
 }
 
 static WRITE8_HANDLER( vc20_via1_write_ca2 )
@@ -178,114 +195,119 @@ static  READ8_HANDLER( vc20_via1_read_portb )
 {
 	UINT8 value = 0xff;
 
-    if (!(via1_porta&0x80)) {
-	UINT8 t=0xff;
-	if (!(keyboard[7]&0x80)) t&=~0x80;
-	if (!(keyboard[6]&0x80)) t&=~0x40;
-	if (!(keyboard[5]&0x80)) t&=~0x20;
-	if (!(keyboard[4]&0x80)) t&=~0x10;
-	if (!(keyboard[3]&0x80)) t&=~0x08;
-	if (!(keyboard[2]&0x80)) t&=~0x04;
-	if (!(keyboard[1]&0x80)) t&=~0x02;
-	if (!(keyboard[0]&0x80)) t&=~0x01;
-	value &=t;
-    }
-    if (!(via1_porta&0x40)) {
-	UINT8 t=0xff;
-	if (!(keyboard[7]&0x40)) t&=~0x80;
-	if (!(keyboard[6]&0x40)) t&=~0x40;
-	if (!(keyboard[5]&0x40)) t&=~0x20;
-	if (!(keyboard[4]&0x40)) t&=~0x10;
-	if (!(keyboard[3]&0x40)) t&=~0x08;
-	if (!(keyboard[2]&0x40)) t&=~0x04;
-	if (!(keyboard[1]&0x40)) t&=~0x02;
-	if (!(keyboard[0]&0x40)) t&=~0x01;
-	value &=t;
-    }
-    if (!(via1_porta&0x20)) {
-	UINT8 t=0xff;
-	if (!(keyboard[7]&0x20)) t&=~0x80;
-	if (!(keyboard[6]&0x20)) t&=~0x40;
-	if (!(keyboard[5]&0x20)) t&=~0x20;
-	if (!(keyboard[4]&0x20)) t&=~0x10;
-	if (!(keyboard[3]&0x20)) t&=~0x08;
-	if (!(keyboard[2]&0x20)) t&=~0x04;
-	if (!(keyboard[1]&0x20)) t&=~0x02;
-	if (!(keyboard[0]&0x20)) t&=~0x01;
-	value &=t;
-    }
-    if (!(via1_porta&0x10)) {
-	UINT8 t=0xff;
-	if (!(keyboard[7]&0x10)) t&=~0x80;
-	if (!(keyboard[6]&0x10)) t&=~0x40;
-	if (!(keyboard[5]&0x10)) t&=~0x20;
-	if (!(keyboard[4]&0x10)) t&=~0x10;
-	if (!(keyboard[3]&0x10)) t&=~0x08;
-	if (!(keyboard[2]&0x10)) t&=~0x04;
-	if (!(keyboard[1]&0x10)) t&=~0x02;
-	if (!(keyboard[0]&0x10)) t&=~0x01;
-	value &=t;
-    }
-    if (!(via1_porta&0x08)) {
-	UINT8 t=0xff;
-	if (!(keyboard[7]&0x08)) t&=~0x80;
-	if (!(keyboard[6]&0x08)) t&=~0x40;
-	if (!(keyboard[5]&0x08)) t&=~0x20;
-	if (!(keyboard[4]&0x08)) t&=~0x10;
-	if (!(keyboard[3]&0x08)) t&=~0x08;
-	if (!(keyboard[2]&0x08)) t&=~0x04;
-	if (!(keyboard[1]&0x08)) t&=~0x02;
-	if (!(keyboard[0]&0x08)) t&=~0x01;
-	value &=t;
-    }
-    if (!(via1_porta&0x04)) {
-	UINT8 t=0xff;
-	if (!(keyboard[7]&0x04)) t&=~0x80;
-	if (!(keyboard[6]&0x04)) t&=~0x40;
-	if (!(keyboard[5]&0x04)) t&=~0x20;
-	if (!(keyboard[4]&0x04)) t&=~0x10;
-	if (!(keyboard[3]&0x04)) t&=~0x08;
-	if (!(keyboard[2]&0x04)) t&=~0x04;
-	if (!(keyboard[1]&0x04)) t&=~0x02;
-	if (!(keyboard[0]&0x04)) t&=~0x01;
-	value &=t;
-    }
-    if (!(via1_porta&0x02)) {
-	UINT8 t=0xff;
-	if (!(keyboard[7]&0x02)) t&=~0x80;
-	if (!(keyboard[6]&0x02)) t&=~0x40;
-	if (!(keyboard[5]&0x02)) t&=~0x20;
-	if (!(keyboard[4]&0x02)) t&=~0x10;
-	if (!(keyboard[3]&0x02)) t&=~0x08;
-	if (!(keyboard[2]&0x02)) t&=~0x04;
-	if (!(keyboard[1]&0x02)) t&=~0x02;
-	if (!(keyboard[0]&0x02)) t&=~0x01;
-	value &=t;
-    }
-    if (!(via1_porta&0x01)) {
-	UINT8 t=0xff;
-	if (!(keyboard[7]&0x01)) t&=~0x80;
-	if (!(keyboard[6]&0x01)) t&=~0x40;
-	if (!(keyboard[5]&0x01)) t&=~0x20;
-	if (!(keyboard[4]&0x01)) t&=~0x10;
-	if (!(keyboard[3]&0x01)) t&=~0x08;
-	if (!(keyboard[2]&0x01)) t&=~0x04;
-	if (!(keyboard[1]&0x01)) t&=~0x02;
-	if (!(keyboard[0]&0x01)) t&=~0x01;
-	value &=t;
+	if (!(via1_porta & 0x80)) 
+	{
+		UINT8 t = 0xff;
+		if (!(keyboard[7] & 0x80)) t &= ~0x80;
+		if (!(keyboard[6] & 0x80)) t &= ~0x40;
+		if (!(keyboard[5] & 0x80)) t &= ~0x20;
+		if (!(keyboard[4] & 0x80)) t &= ~0x10;
+		if (!(keyboard[3] & 0x80)) t &= ~0x08;
+		if (!(keyboard[2] & 0x80)) t &= ~0x04;
+		if (!(keyboard[1] & 0x80)) t &= ~0x02;
+		if (!(keyboard[0] & 0x80)) t &= ~0x01;
+		value &= t;
     }
 
-	if (input_port_read(machine, "CFG") & 0x80)		/* JOYSTICK */
+	if (!(via1_porta & 0x40)) 
 	{
-		if (input_port_read(machine, "JOY") & 8) 	/* JOY_RIGHT */
-			value &= ~0x80;
-	}
-	
-	if (input_port_read(machine, "CFG") & 0x40) 	/* PADDLE */
+		UINT8 t = 0xff;
+		if (!(keyboard[7] & 0x40)) t &= ~0x80;
+		if (!(keyboard[6] & 0x40)) t &= ~0x40;
+		if (!(keyboard[5] & 0x40)) t &= ~0x20;
+		if (!(keyboard[4] & 0x40)) t &= ~0x10;
+		if (!(keyboard[3] & 0x40)) t &= ~0x08;
+		if (!(keyboard[2] & 0x40)) t &= ~0x04;
+		if (!(keyboard[1] & 0x40)) t &= ~0x02;
+		if (!(keyboard[0] & 0x40)) t &= ~0x01;
+		value &= t;
+    }
+
+	if (!(via1_porta & 0x20)) 
 	{
-		if (input_port_read(machine, "JOY") & 0x40)  /* PUDDLE2_BUTTON */
-			value &= ~0x80;
-	}
+		UINT8 t = 0xff;
+		if (!(keyboard[7] & 0x20)) t &= ~0x80;
+		if (!(keyboard[6] & 0x20)) t &= ~0x40;
+		if (!(keyboard[5] & 0x20)) t &= ~0x20;
+		if (!(keyboard[4] & 0x20)) t &= ~0x10;
+		if (!(keyboard[3] & 0x20)) t &= ~0x08;
+		if (!(keyboard[2] & 0x20)) t &= ~0x04;
+		if (!(keyboard[1] & 0x20)) t &= ~0x02;
+		if (!(keyboard[0] & 0x20)) t &= ~0x01;
+		value &= t;
+    }
+
+	if (!(via1_porta & 0x10)) 
+	{
+		UINT8 t = 0xff;
+		if (!(keyboard[7] & 0x10)) t &= ~0x80;
+		if (!(keyboard[6] & 0x10)) t &= ~0x40;
+		if (!(keyboard[5] & 0x10)) t &= ~0x20;
+		if (!(keyboard[4] & 0x10)) t &= ~0x10;
+		if (!(keyboard[3] & 0x10)) t &= ~0x08;
+		if (!(keyboard[2] & 0x10)) t &= ~0x04;
+		if (!(keyboard[1] & 0x10)) t &= ~0x02;
+		if (!(keyboard[0] & 0x10)) t &= ~0x01;
+		value &= t;
+    }
+
+	if (!(via1_porta & 0x08)) 
+	{
+		UINT8 t = 0xff;
+		if (!(keyboard[7] & 0x08)) t &= ~0x80;
+		if (!(keyboard[6] & 0x08)) t &= ~0x40;
+		if (!(keyboard[5] & 0x08)) t &= ~0x20;
+		if (!(keyboard[4] & 0x08)) t &= ~0x10;
+		if (!(keyboard[3] & 0x08)) t &= ~0x08;
+		if (!(keyboard[2] & 0x08)) t &= ~0x04;
+		if (!(keyboard[1] & 0x08)) t &= ~0x02;
+		if (!(keyboard[0] & 0x08)) t &= ~0x01;
+		value &= t;
+    }
+
+	if (!(via1_porta & 0x04)) 
+	{
+		UINT8 t = 0xff;
+		if (!(keyboard[7] & 0x04)) t &= ~0x80;
+		if (!(keyboard[6] & 0x04)) t &= ~0x40;
+		if (!(keyboard[5] & 0x04)) t &= ~0x20;
+		if (!(keyboard[4] & 0x04)) t &= ~0x10;
+		if (!(keyboard[3] & 0x04)) t &= ~0x08;
+		if (!(keyboard[2] & 0x04)) t &= ~0x04;
+		if (!(keyboard[1] & 0x04)) t &= ~0x02;
+		if (!(keyboard[0] & 0x04)) t &= ~0x01;
+		value &= t;
+    }
+
+	if (!(via1_porta & 0x02)) 
+	{
+		UINT8 t = 0xff;
+		if (!(keyboard[7] & 0x02)) t &= ~0x80;
+		if (!(keyboard[6] & 0x02)) t &= ~0x40;
+		if (!(keyboard[5] & 0x02)) t &= ~0x20;
+		if (!(keyboard[4] & 0x02)) t &= ~0x10;
+		if (!(keyboard[3] & 0x02)) t &= ~0x08;
+		if (!(keyboard[2] & 0x02)) t &= ~0x04;
+		if (!(keyboard[1] & 0x02)) t &= ~0x02;
+		if (!(keyboard[0] & 0x02)) t &= ~0x01;
+		value &= t;
+    }
+
+	if (!(via1_porta & 0x01)) 
+	{
+		UINT8 t = 0xff;
+		if (!(keyboard[7] & 0x01)) t &= ~0x80;
+		if (!(keyboard[6] & 0x01)) t &= ~0x40;
+		if (!(keyboard[5] & 0x01)) t &= ~0x20;
+		if (!(keyboard[4] & 0x01)) t &= ~0x10;
+		if (!(keyboard[3] & 0x01)) t &= ~0x08;
+		if (!(keyboard[2] & 0x01)) t &= ~0x04;
+		if (!(keyboard[1] & 0x01)) t &= ~0x02;
+		if (!(keyboard[0] & 0x01)) t &= ~0x01;
+		value &= t;
+    }
+
+	value &= ~(input_port_read(machine, "JOY") & 0x80);
 
 	return value;
 }
@@ -299,7 +321,7 @@ static WRITE8_HANDLER( vc20_via1_write_porta )
 static WRITE8_HANDLER( vc20_via1_write_portb )
 {
 /*  logerror("via1_write_portb: $%02X\n", data); */
-	vc20_tape_write (data & 8 ? 1 : 0);
+	cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), (data & 0x08) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
 	via1_portb = data;
 }
 
@@ -327,20 +349,20 @@ static WRITE8_HANDLER( vc20_via1_write_cb2 )
  */
 static  READ8_HANDLER( vc20_via4_read_portb )
 {
-	UINT8 data=0;
-	if (cbm_ieee_eoi_r()) data|=8;
-	if (cbm_ieee_dav_r()) data|=0x10;
-	if (cbm_ieee_nrfd_r()) data|=0x20;
-	if (cbm_ieee_ndac_r()) data|=0x40;
-	if (cbm_ieee_atn_r()) data|=0x80;
+	UINT8 data = 0;
+	if (cbm_ieee_eoi_r()) data |= 0x08;
+	if (cbm_ieee_dav_r()) data |= 0x10;
+	if (cbm_ieee_nrfd_r()) data |= 0x20;
+	if (cbm_ieee_ndac_r()) data |= 0x40;
+	if (cbm_ieee_atn_r()) data |= 0x80;
 	return data;
 }
 
 static WRITE8_HANDLER( vc20_via4_write_portb )
 {
-	cbm_ieee_dav_w(0,data&1);
-	cbm_ieee_nrfd_w(0,data&2);
-	cbm_ieee_ndac_w(0,data&4);
+	cbm_ieee_dav_w(0, data & 0x01);
+	cbm_ieee_nrfd_w(0, data & 0x02);
+	cbm_ieee_ndac_w(0, data & 0x04);
 }
 
 /* ieee 6522 number 2 (via5)
@@ -352,7 +374,7 @@ static WRITE8_HANDLER( vc20_via4_write_portb )
 */
 static WRITE8_HANDLER( vc20_via5_write_porta )
 {
-	cbm_ieee_data_w(0,data);
+	cbm_ieee_data_w(0, data);
 }
 
 static  READ8_HANDLER( vc20_via5_read_portb )
@@ -362,7 +384,7 @@ static  READ8_HANDLER( vc20_via5_read_portb )
 
 static WRITE8_HANDLER( vc20_via5_write_ca2 )
 {
-	cbm_ieee_atn_w(0,data);
+	cbm_ieee_atn_w(0, data);
 }
 
 static  READ8_HANDLER( vc20_via5_read_cb1 )
@@ -372,7 +394,7 @@ static  READ8_HANDLER( vc20_via5_read_cb1 )
 
 static WRITE8_HANDLER( vc20_via5_write_cb2 )
 {
-	cbm_ieee_eoi_w(0,data);
+	cbm_ieee_eoi_w(0, data);
 }
 
 static const struct via6522_interface via0 =
@@ -456,33 +478,42 @@ int vic6560_dma_read (int offset)
 	return program_read_byte(VIC6560ADDR2VC20ADDR (offset));
 }
 
-WRITE8_HANDLER( vc20_0400_w ) {
-	if ( mess_ram_size >= 8 * 1024 ) {
+WRITE8_HANDLER( vc20_0400_w ) 
+{
+	if ( mess_ram_size >= 8 * 1024 ) 
+	{
 		mess_ram[ 0x0400 + offset ] = data;
 	}
 }
 
-WRITE8_HANDLER( vc20_2000_w ) {
-	if ( ( mess_ram_size >= 16 * 1024 ) && vc20_rom_2000 == NULL ) {
+WRITE8_HANDLER( vc20_2000_w ) 
+{
+	if ( ( mess_ram_size >= 16 * 1024 ) && vc20_rom_2000 == NULL ) 
+	{
 		mess_ram[ 0x2000 + offset ] = data;
 	}
 }
 
-WRITE8_HANDLER( vc20_4000_w ) {
-	if ( ( mess_ram_size >= 24 * 1024 ) && vc20_rom_4000 == NULL ) {
+WRITE8_HANDLER( vc20_4000_w ) 
+{
+	if ( ( mess_ram_size >= 24 * 1024 ) && vc20_rom_4000 == NULL ) 
+	{
 		mess_ram[ 0x4000 + offset ] = data;
 	}
 }
 
-WRITE8_HANDLER( vc20_6000_w ) {
-	if ( ( mess_ram_size >= 32 * 1024 ) && vc20_rom_6000 == NULL ) {
+WRITE8_HANDLER( vc20_6000_w ) 
+{
+	if ( ( mess_ram_size >= 32 * 1024 ) && vc20_rom_6000 == NULL ) 
+	{
 		mess_ram[ 0x6000 + offset ] = data;
 	}
 }
 
+
 static void vc20_memory_init(running_machine *machine)
 {
-	static int inited=0;
+	static int inited = 0;
 	UINT8 *memory = memory_region (machine, "main");
 
 	if (inited) return;
@@ -492,57 +523,49 @@ static void vc20_memory_init(running_machine *machine)
 	   2114 1kbx4 ram at non used color ram area 0x9400 */
 
 	memset(memory, 0, 0x400);
-	memset(memory+0x1000, 0, 0x1000);
+	memset(memory + 0x1000, 0, 0x1000);
 
-	memory[0x288]=0xff;// makes ae's graphics look correctly
-	memory[0xd]=0xff; // for moneywars
-	memory[0x1046]=0xff; // for jelly monsters, cosmic cruncher;
+	memory[0x288]  = 0xff;		// makes ae's graphics look correctly
+	memory[0xd]    = 0xff;		// for moneywars
+	memory[0x1046] = 0xff;		// for jelly monsters, cosmic cruncher;
 
 #if 0
 	/* 2114 poweron ? 64 x 0xff, 64x 0, and so on */
 	for (i = 0; i < 0x400; i += 0x40)
 	{
 		memset (memory + i, i & 0x40 ? 0 : 0xff, 0x40);
-		memset (memory+0x9400 + i, 0xf0 | (i & 0x40 ? 0 : 0xf), 0x40);
+		memset (memory + 0x9400 + i, 0xf0 | (i & 0x40 ? 0 : 0xf), 0x40);
 	}
 	// this would be the straight forward memory init for
 	// non cost reduced vic20 (2114 rams)
-	for (i=0x1000;i<0x2000;i+=0x40) memset(memory+i,i&0x40?0:0xff,0x40);
+	for (i = 0x1000; i < 0x2000; i += 0x40) 
+		memset(memory + i, i & 0x40 ? 0 : 0xff, 0x40);
 #endif
 
 	/* clears ieee cartrige rom */
 	/* memset (memory + 0xa000, 0xff, 0x2000); */
 
-	inited=1;
+	inited = 1;
+}
+
+
+static TIMER_CALLBACK( vic20_tape_timer )
+{
+	UINT8 data = (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > +0.0) ? 1 : 0;
+	via_1_ca1_w(machine, 0, data);
 }
 
 static void vc20_common_driver_init (running_machine *machine)
 {
-#ifdef VC1541
-	VC1541_CONFIG vc1541= { 1, 8 };
-#endif
 	vc20_memory_init(machine);
 
-	vc20_tape_open (via_1_ca1_w);
+	datasette_timer = timer_alloc(vic20_tape_timer, NULL);
 
-#ifdef VC1541
-	vc1541_config (0, 0, &vc1541);
-#endif
+	if (has_vc1541)
+		drive_config (type_1541, 0, 0, 1, 8);
+
 	via_config (0, &via0);
 	via_config (1, &via1);
-
-	/* Set up memory banks */
-	memory_set_bankptr( 1, ( ( mess_ram_size >=  8 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x0400 );
-	memory_set_bankptr( 2, vc20_rom_2000 ? vc20_rom_2000 : ( ( ( mess_ram_size >= 16 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x2000 ) );
-	memory_set_bankptr( 3, vc20_rom_4000 ? vc20_rom_4000 : ( ( ( mess_ram_size >= 24 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x4000 ) );
-	memory_set_bankptr( 4, vc20_rom_6000 ? vc20_rom_6000 : ( ( ( mess_ram_size >= 32 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x6000 ) );
-	memory_set_bankptr( 5, vc20_rom_a000 ? vc20_rom_a000 : ( memory_region(machine, "main") + 0xa000 ) );
-}
-
-/* currently not used, but when time comes */
-void vc20_driver_shutdown (void)
-{
-	vc20_tape_close ();
 }
 
 DRIVER_INIT( vc20 )
@@ -559,12 +582,26 @@ DRIVER_INIT( vic20 )
 
 DRIVER_INIT( vic1001 )
 {
-	DRIVER_INIT_CALL(vic20);
+	DRIVER_INIT_CALL( vic20 );
+}
+
+DRIVER_INIT( vc20v )
+{
+	has_vc1541 = 1;
+	vc20_common_driver_init (machine);
+	vic6561_init (vic6560_dma_read, vic6560_dma_read_color);
+}
+
+DRIVER_INIT( vic20v )
+{
+	has_vc1541 = 1;
+	vc20_common_driver_init (machine);
+	vic6560_init (vic6560_dma_read, vic6560_dma_read_color);
 }
 
 DRIVER_INIT( vic20i )
 {
-	ieee=1;
+	ieee = 1;
 	vc20_common_driver_init (machine);
 	vic6560_init (vic6560_dma_read, vic6560_dma_read_color);
 	via_config (4, &via4);
@@ -572,157 +609,57 @@ DRIVER_INIT( vic20i )
 	cbm_ieee_open();
 }
 
-MACHINE_RESET( vc20 )
+MACHINE_RESET( vic20 )
 {
-	cbm_serial_reset_write (0);
-#ifdef VC1541
-	vc1541_reset ();
-#endif
-	if (ieee) {
-		cbm_drive_0_config (IEEE, 8);
-		cbm_drive_1_config (IEEE, 9);
-	} else {
-		cbm_drive_0_config (SERIAL, 8);
-		cbm_drive_1_config (SERIAL, 9);
+	if (has_vc1541)
+	{
+		serial_config(machine, &fake_drive_interface);
+		drive_reset ();
 	}
+	else
+	{
+		serial_config(machine, &sim_drive_interface);
+		cbm_serial_reset_write (0);
+
+		if (ieee) 
+		{
+			cbm_drive_0_config (IEEE, 8);
+			cbm_drive_1_config (IEEE, 9);
+		} 
+		else 
+		{
+			cbm_drive_0_config (SERIAL, 8);
+			cbm_drive_1_config (SERIAL, 9);
+		}
+	}
+
 	via_reset ();
-	via_0_ca1_w(machine, 0, vc20_via0_read_ca1(machine, 0) );
+	via_0_ca1_w(machine, 0, vc20_via0_read_ca1(machine, 0));
+
+	/* Set up memory banks */
+	memory_set_bankptr( 1, ( ( mess_ram_size >=  8 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x0400 );
+	memory_set_bankptr( 2, vc20_rom_2000 ? vc20_rom_2000 : ( ( ( mess_ram_size >= 16 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x2000 ) );
+	memory_set_bankptr( 3, vc20_rom_4000 ? vc20_rom_4000 : ( ( ( mess_ram_size >= 24 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x4000 ) );
+	memory_set_bankptr( 4, vc20_rom_6000 ? vc20_rom_6000 : ( ( ( mess_ram_size >= 32 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x6000 ) );
+	memory_set_bankptr( 5, vc20_rom_a000 ? vc20_rom_a000 : ( memory_region(machine, "main") + 0xa000 ) );
 }
 
-static int vc20_rom_id(const device_config *image)
+
+static TIMER_CALLBACK( lightpen_tick )
 {
-	static const unsigned char magic[] =
-	{0x41, 0x30, 0x20, 0xc3, 0xc2, 0xcd};	/* A0 CBM at 0xa004 (module offset 4) */
-	unsigned char buffer[sizeof (magic)];
-	const char *cp;
-	int retval;
-
-	logerror("vc20_rom_id %s\n", image_filename(image));
-
-	retval = 0;
-
-	image_fseek (image, 4, SEEK_SET);
-	image_fread (image, buffer, sizeof (magic));
-
-	if (!memcmp (buffer, magic, sizeof (magic)))
-		retval = 1;
-
-	cp = image_filetype(image);
-	if (cp)
+	if ((input_port_read(machine, "CTRLSEL") & 0xf0) == 0x20)
 	{
-		if ((mame_stricmp (cp, "a0") == 0)
-			|| (mame_stricmp (cp, "20") == 0)
-			|| (mame_stricmp (cp, "40") == 0)
-			|| (mame_stricmp (cp, "60") == 0)
-			|| (mame_stricmp (cp, "bin") == 0)
-			|| (mame_stricmp (cp, "rom") == 0)
-			|| (mame_stricmp (cp, "prg") == 0))
-			retval = 1;
+		/* enable lightpen crosshair */
+		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_ALL);
 	}
-
-		if (retval)
-			logerror("rom %s recognized\n", image_filename(image));
-		else
-			logerror("rom %s not recognized\n", image_filename(image));
-
-	return retval;
+	else
+	{
+		/* disable lightpen crosshair */
+		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_NONE);
+	}
 }
 
-DEVICE_START(vc20_rom)
-{
-	vc20_memory_init(device->machine);
-	vc20_rom_2000 = NULL;
-	vc20_rom_4000 = NULL;
-	vc20_rom_6000 = NULL;
-	vc20_rom_a000 = NULL;
-}
-
-DEVICE_IMAGE_LOAD(vc20_rom)
-{
-	int size, read_;
-	const char *cp;
-	int addr = 0;
-
-	if (!vc20_rom_id(image))
-		return 1;
-	image_fseek(image, 0, SEEK_SET);
-
-	size = image_length(image);
-
-	cp = image_filetype(image);
-	if (cp)
-	{
-		if ((cp[0] != 0) && (cp[1] == '0') && (cp[2] == 0))
-		{
-			switch (toupper (cp[0]))
-			{
-			case 'A':
-				addr = 0xa000;
-				break;
-			case '2':
-				addr = 0x2000;
-				break;
-			case '4':
-				addr = 0x4000;
-				break;
-			case '6':
-				addr = 0x6000;
-				break;
-			}
-		}
-		else
-		{
-			if (mame_stricmp (cp, "prg") == 0)
-			{
-				unsigned short in;
-
-				image_fread(image, &in, 2);
-				in = LITTLE_ENDIANIZE_INT16(in);
-				logerror("rom prg %.4x\n", in);
-				addr = in;
-				size -= 2;
-			}
-		}
-	}
-	if (addr == 0)
-	{
-		if (size == 0x4000)
-		{							   /* I think rom at 0x4000 */
-			addr = 0x4000;
-		}
-		else
-		{
-			addr = 0xa000;
-		}
-	}
-
-	logerror("loading rom %s at %.4x size:%.4x\n",image_filename(image), addr, size);
-	read_ = image_fread(image, memory_region_alloc( image->machine, "user1", ( size & 0x1FFF ) ? ( size + 0x2000 ) : size, 0 ), size);
-	if (read_ != size)
-		return 1;
-
-	/* Perform banking for the cartridge */
-	switch( addr ) {
-	case 0x2000:
-		vc20_rom_2000 = memory_region(image->machine,  "user1" );
-		break;
-	case 0x4000:
-		vc20_rom_4000 = memory_region(image->machine,  "user1" );
-		if ( size > 0x2000 ) {
-			vc20_rom_6000 = memory_region(image->machine,  "user1" ) + 0x2000;
-		}
-		break;
-	case 0x6000:
-		vc20_rom_6000 = memory_region(image->machine,  "user1" );
-		break;
-	case 0xa000:
-		vc20_rom_a000 = memory_region(image->machine,  "user1" );
-		break;
-	}
-	return 0;
-}
-
-INTERRUPT_GEN( vc20_frame_interrupt )
+INTERRUPT_GEN( vic20_frame_interrupt )
 {
 	via_0_ca1_w(machine, 0, vc20_via0_read_ca1 (machine, 0));
 	keyboard[0] = input_port_read(machine, "ROW0");
@@ -734,8 +671,123 @@ INTERRUPT_GEN( vc20_frame_interrupt )
 	keyboard[6] = input_port_read(machine, "ROW6");
 	keyboard[7] = input_port_read(machine, "ROW7");
 
-	vc20_tape_config (input_port_read(machine, "CFG") & 0x08, input_port_read(machine, "CFG") & 0x04);	/* DATASSETTE, DATASSETTE_TONE */
-	vc20_tape_buttons (input_port_read(machine, "DEVS") & 4, input_port_read(machine, "DEVS") & 2, input_port_read(machine, "DEVS") & 1);	/* DATASSETTE_PLAY, DATASSETTE_RECORD, DATASSETTE_STOP */
+	/* check if lightpen has been chosen as input: if so, enable crosshair */
+	timer_set(attotime_zero, NULL, 0, lightpen_tick);
+
+	set_led_status (1, input_port_read(machine, "SPECIAL") & 0x01 ? 1 : 0);		/* Shift Lock */
+}
+
+
+/***********************************************
+
+	VIC20 Cartridges
+
+***********************************************/
+
+DEVICE_START(vic20_cart)
+{
+	vc20_memory_init(device->machine);
+	vc20_rom_2000 = NULL;
+	vc20_rom_4000 = NULL;
+	vc20_rom_6000 = NULL;
+	vc20_rom_a000 = NULL;
+	return DEVICE_START_OK;
+}
+
+DEVICE_IMAGE_LOAD(vic20_cart)
+{
+	int size = image_length(image), test;
+	const char *filetype;
+	const char *tag;
+	int address = 0;
+
+	static const unsigned char magic[] = {0x41, 0x30, 0x20, 0xc3, 0xc2, 0xcd};	/* A0 CBM at 0xa004 (module offset 4) */
+	unsigned char buffer[sizeof (magic)];
+
+	image_fseek (image, 4, SEEK_SET);
+	image_fread (image, buffer, sizeof (magic));
+	image_fseek (image, 0, SEEK_SET);
+
+	/* Check if our cart has the magic string, and set its loading address according to its size */
+	if (!memcmp (buffer, magic, sizeof (magic)))
+		address = (size == 0x4000) ? 0x4000 : 0xa000;
+
+	/* Give a loading address to non .bin / non .rom carts as well */
+	/* We support .a0, .20, .40 and .60 files */
+	filetype = image_filetype(image);
+
+	if (!mame_stricmp (filetype, "a0"))
+		address = 0xa000;
+
+	else if (!mame_stricmp (filetype, "20"))
+		address = 0x2000;
+
+	else if (!mame_stricmp (filetype, "40"))
+		address = 0x4000;
+
+	else if (!mame_stricmp (filetype, "60"))
+		address = 0x6000;
+
+	/* As a last try, give a reasonable loading address also to .bin/.rom without the magic string */		
+	else if (!address)
+	{
+		logerror("Cart %s does not contain the magic string: it may be loaded at the wrong memory address!\n", image_filename(image));
+		address = (size == 0x4000) ? 0x4000 : 0xa000;
+	}
+
+	/* Decide the memory region we will load the cart in, to avoid problems when multiple carts need to be loaded */
+	tag = (image_index_in_device(image)) ? "user2" : "user1";
+
+	logerror("Loading cart %s at %.4x size:%.4x\n", image_filename(image), address, size);
 	
-	set_led_status (1, input_port_read(machine, "SPECIAL") & 0x01 ? 1 : 0);		/*KB_CAPSLOCK_FLAG */
+	/* Finally load the cart */
+	test = image_fread(image, memory_region_alloc( image->machine, tag, ( size & 0x1FFF ) ? ( size + 0x2000 ) : size, 0 ), size);
+
+	if (test != size)
+		return INIT_FAIL;
+
+	/* Perform banking for the cartridge, based on the prescribed address */
+	switch( address ) 
+	{
+		case 0x2000:
+			vc20_rom_2000 = memory_region(image->machine, tag);
+			break;
+
+		case 0x4000:
+			vc20_rom_4000 = memory_region(image->machine, tag);
+			if ( size > 0x2000 ) 
+			{
+				vc20_rom_6000 = memory_region(image->machine, tag) + 0x2000;
+			}
+			break;
+
+		case 0x6000:
+			vc20_rom_6000 = memory_region(image->machine, tag);
+			break;
+
+		case 0xa000:
+			vc20_rom_a000 = memory_region(image->machine, tag);
+			break;
+	}
+
+	return INIT_PASS;
+}
+
+
+void vic20_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
+{
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case MESS_DEVINFO_INT_COUNT:						info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case MESS_DEVINFO_PTR_START:						info->start = DEVICE_START_NAME(vic20_cart); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(vic20_cart); break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom,bin,a0,20,40,60"); break;
+
+		default:											cartslot_device_getinfo(devclass, state, info); break;
+	}
 }

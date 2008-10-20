@@ -9,305 +9,189 @@
 ***************************************************************************/
 
 /*
-------------------------------------
-c128    commodore c128 (ntsc version)
-c128ger commodore c128 german (pal version)
-------------------------------------
-(preliminary version)
 
-if the game runs to fast with the ntsc version, try the pal version!
-flickering affects in one video version, try the other video version
+2008 - Driver Updates 
+---------------------
 
-c128
- hardware emulation mode for c64
-  displayed over din/tv connector only
-  c64 cartridges
-  c64 userport
-  only the c64 standard keys available
- country support (keyboard, character rom, kernel (keyboard polling))
-  character rom german
-  character rom french, belgium, italian
-  editor, kernel for german
-  editor, kernel for swedish
-  editor, kernel for finish
-  editor, kernel for norwegian
-  editor, kernel for french
-  editor, kernel for italian
- enhanced keyboard
- m8502 processor (additional port pin)
- additional vdc videochip for 80 column modes with own connector (rgbi)
-  16k byte ram for this chip
- 128 kbyte ram, 64 kbyte rom, 8k byte charrom, 2k byte static colorram
-  (1 mbyte ram possible)
- sid6581 soundchip
- c64 expansion port with some additional pins
- z80 cpu for CPM mode
-c128d
- c1571 floppy drive build in
- 64kb vdc ram
- sid8580 sound chip
-c128cr/c128dcr
- cost reduced
- only modified for cheaper production (newer rams, ...)
+(most of the informations are taken from http://www.zimmers.net/cbmpics/ )
 
-state
------
-uses c64 emulation for c64 mode
-so only notes for the additional subsystems here
 
-rasterline based video system
- no cpu holding
- imperfect scrolling support (when 40 columns or 25 lines)
- lightpen support not finished
- rasterline not finished
-vdc emulation
- dirtybuffered video system
- text mode
-  only standard 8x8 characters supported
- graphic mode not tested
- lightpen not supported
- scrolling not supported
-z80 emulation
- floppy simulation not enough for booting CPM
- so simplified z80 memory management not tested
-no cpu clock doubling
-no internal function rom
-c64 mode
- differences to real c64???
-no sound
-cia6526's look in machine/cia6526.c
-keyboard
-gameport a
- paddles 1,2
- joystick 1
- 2 button joystick/mouse joystick emulation
- no mouse
- lightpen (not finished)
-gameport b
- paddles 3,4
- joystick 2
- 2 button joystick/mouse joystick emulation
- no mouse
-simple tape support
- (not working, cia timing, cpu timing?)
-serial bus
- simple disk drives
- no printer or other devices
-expansion modules
- no c128 modules
-expansion modules c64
- rom cartridges (exrom)
- ultimax rom cartridges (game)
- c64 cartridges (only standard rom cartridges)
- no other rom cartridges (bankswitching logic in it, switching exrom, game)
- no ieee488 support
- no cpm cartridge
- no speech cartridge (no circuit diagram found)
- no fm sound cartridge
- no other expansion modules
-no userport
- no rs232/v.24 interface
-quickloader
+[CBM systems which belong to this driver]
 
-Keys
-----
-Some PC-Keyboards does not behave well when special two or more keys are
-pressed at the same time
-(with my keyboard printscreen clears the pressed pause key!)
+* Commodore 128 (1985)
 
-shift-cbm switches between upper-only and normal character set
-(when wrong characters on screen this can help)
-run (shift-stop) loads pogram from type and starts it
-esc-x switch between two videosystems
+CPU: CSG 8502 (1 or 2 Mhz), Z80 (~3 Mhz)
+RAM: 128 kilobytes
+ROM: 72 kilobytes expandable
+Video: MOS 8564 "VIC-IIE", MOS 8563 "VDC" CTRC (40/80 columns text; Palette of 16 
+	colors; Hires modes 320 x 200, 640 x 200, 16k of dedicated VDC RAM)
+Sound: MOS 8580 "SID" (3 voice stereo synthesizer/digital sound 
+	capabilities)
+Ports: MOS 6526 CIA x2 (2 Joystick/Mouse ports; CBM Serial port; CBM 
+	Datasette port; parallel programmable "User" port; CBM Monitor port;
+	C64 expansion port; Warm reset switch; Keyboard port; Power switch)
+Keyboard: Full-sized 93 key QWERTY (14 key numeric keypad; 8 programmable 
+	function keys + HELP; 4 direction 4-key cursor-pad)
 
-additional keys (to c64) are in c64mode not useable
+Upgrade kits were sold to upgrade the VDC RAM to 64k using a passthrough board
+that the VDC sat in.
 
-Lightpen
---------
-Paddle 5 x-axe
-Paddle 6 y-axe
 
-Tape
-----
-(DAC 1 volume in noise volume)
-loading of wav, prg and prg files in zip archiv
-commandline -cassette image
-wav:
- 8 or 16(not tested) bit, mono, 125000 Hz minimum
- has the same problems like an original tape drive (tone head must
- be adjusted to get working(no load error,...) wav-files)
-zip:
- must be placed in current directory
- prg's are played in the order of the files in zip file
+* Commodore 128CR (prototype from June, 1986)
 
-use LOAD or LOAD"" or LOAD"",1 for loading of normal programs
-use LOAD"",1,1 for loading programs to their special address
+  Basically, a C128 in a redesigned board to reduce production costs. It's
+not clear when it's been produced, nor if it has ever been produced on 
+large scale. Its BIOS is an intermediate revision between rev. 0 and rev. 1
+in the main C128.
+A picture of the PCB can be found here:
+http://www.zimmers.net/anonftp/pub/cbm/schematics/computers/c128/c128cr.jpg
 
-several programs relies on more features
-(loading other file types, writing, ...)
+Appears to be functionally identical to the original c128, has 16k VDC ram, and a
+?prototype? VDC labeled 2568R1X. Has 6526A-1 CIAs, 8721R3 and 8722R2 gate
+arrays, 8580R5 sid, and 8502R0 processor.
 
-Discs
------
-only file load from drive 8 and 9 implemented
- loads file from rom directory (*.prg,*.p00) (must NOT be specified on commandline)
- or file from d64 image (here also directory LOAD"$",8 supported)
-use LOAD"filename",8
-or LOAD"filename",8,1 (for loading machine language programs at their address)
-for loading
-type RUN or the appropriate sys call to start them
 
-several programs rely on more features
-(loading other file types, writing, ...)
+* Commodore 128D (1985)
 
-most games rely on starting own programs in the floppy drive
-(and therefor cpu level emulation is needed)
+  Designed in the US, but only sold in Europe, it is a C128 in a desktop 
+case, with built-in 1571 disk drive (upgraded with a special software to
+discourage pirating software). Some NTSC prototypes exist.
 
-Roms
-----
-.prg
-.crt
-.80 .90 .a0 .b0 .e0 .f0
-files with boot-sign in it
-  recogniced as roms
+CPU: CSG 8502 (1 or 2 Mhz), Z80 (~3 Mhz), 6502 (co-processor for disk
+	drive)
+RAM: 128 kilobytes
+ROM: 72 kilobytes expandable
+Video: MOS 8564 "VIC-IIE", MOS 8563 "VDC" CTRC (40/80 columns text; Palette of 16 
+	colors; Hires modes 320 x 200, 640 x 200, 64k of dedicated VDC RAM)
+Sound: MOS 8580 "SID" (3 voice stereo synthesizer/digital sound 
+	capabilities)
+Ports: MOS 6526 CIA x2 (2 Joystick/Mouse ports; CBM Serial port; CBM 
+	Datasette port; parallel programmable "User" port; CBM Monitor port;
+	C64 expansion port; Warm reset switch; Keyboard port; Power switch)
+Keyboard: Full-sized 93 key QWERTY (14 key numeric keypad; 8 programmable 
+	function keys + HELP; 4 direction 4-key cursor-pad)
+Additional Hardware: Internal 1571 disk drive (Double sided/Double Density 
+	360k; capable of reading GCR and MFM formats)
 
-.prg files loaded at address in its first two bytes
-.?0 files to address specified in extension
-.crt roms to addresses in crt file
 
-Quickloader
------------
-.prg and .p00 files supported
-loads program into memory and sets program end pointer
-(works with most programs)
-program ready to get started with RUN
-loads first rom when you press quickload key (numeric slash)
+* Commodore 128DCR (1986)
 
-c64 mode
---------
-hold down commodore key while reseting or turning on
-type go64 at the c128 command mode
+  Basically, a C128D in a redesigned board to reduce production costs. It's
+the only model sold in the US, but it's quite possible that it came later 
+in Europe as well (being cheaper to produce).
 
-cpm mode
---------
-cpm disk must be inserted in device 8
-turn on computer
-or
-type boot at the c128 command mode
 
-when problems start with -log and look into error.log file
+* Commodore "128D/81" (198?)
 
-rom dumping
------------
+  NTSC prototype for an improved version of C128D, featuring a built-in 1581
+disk drive in place of the 1571 used in C128D / C128DCR. The prototype has no
+given name, so C128D/81 is just a reasonable way to indicate it. The case is
+from a PAL C128D and the board is a heavily modified PAL board with hand 
+soldered connections to make it NTSC.
 
-Dumping of the roms from the running machine:
-in the monitor program
-s "drive:name",device,start,end
 
-s "0:basic",8,f4000,fc000
-s "0:editor",8,fc000,fd000
-s "0:kernel",8,ee000,f0000
-s "0:char128",8,ed000,ee000
+[TO DO]
 
-*z80bios missing (funet says only 1 version!?)
-I don't know, maybe there is a cpm utility allowing saving
-the memory area 0-0xfff of bank 0.
-(I don't want to develope (and cant test) this short complicated
-program)
+* C64 Mode
 
-*c64basic and kernel (only 1 version!?)
-in c64 mode
-poke43,0:poke44,160:poke45,0:poke46,192:save"0:basic64",8
+  See [TO DO] in drivers/c64.c for the missing features.
 
-in c64 mode
-for i=0 to 8191:poke 32*256+i, peek(224*256+i): next
-poke43,0:poke44,32:poke45,0:poke46,64:save"0:kernel64",8
 
-*c64 charset (swedish version or original c64 version)
-in c128 mode
-monitor
-a 2000 sei
-lda #33
-sta 1
-ldy #0
-sty fa
-sty fc
-lda #c0
-sta fd
-lda #d0
-sta fb
-ldx #10
-lda (fa),y
-sta (fc),y
-iny
-bne 2015
-inc fb
-inc fd
-dex
-bne 2015
-lda #37
-sta 1
-cli
-rts
-(additional enter to end assembler input)
-x (to leave monitor)
-go64 (answer with y)
-sys 32*256
-poke 43,0:poke44,192:poke45,0:poke46,208:save"0:char64",8
+* C/PM Mode
 
-or in c64 mode
-load the program in the attachment
-load"savechar64",8,1
-sys 32*256
-poke 43,0:poke44,192:poke45,0:poke46,208:save"0:char64",8
+  It should work if you put the CP/M disk in drive 8 and enter BOOT. Better
+disk emulation would be of help, anyway.
 
-c128d floppy disk bios:
-I think you have to download a program
-copying the bios to puffers.
-Then you could read this buffer into the computer, or write
-these buffers to disk.
+* C128 Mode
 
-Transportation to your pc:
-1571 writing to mfm encoded disketts (in cpm mode only, or use program)
- maybe the IBM CPM-86 formats are like the standard DOS formats.
- but using dd may create images known by some other emulators.
-1581 writes mfm encoded:
- can one of these drives to a format know by linux?
-Some years ago I build a simple adapter pc/parport to vc1541
- floppy disk drive.
+  Various missing features (e.g. no cpu clock doubling; no internal function 
+rom; serial bus doesn't support printer or other devices; no C128 cart 
+expansions are supported; no userport; no rs232/v.24 interface)
 
-Dumping roms with epromer
--------------------------
-c128
-U18       (read compatible 2764?) 8kB c64 character rom, c128 character rom
-U32 23128 (read compatible 27128?) 16kB c64 Basic, c64 Kernel
-U33 23128 (read compatible 27128?) 16kB c128 Basic at 0x4000
-U34 23128 (read compatible 27128?) 16kB c128 Basic at 0x8000
-U35 23128 (read compatible 27128?) 16kB c128 Editor, Z80Bios, C128 Kernel
-c128 cost reduced
-U18       (read compatible 2764?) 8kB c64 character rom, c128 character rom
-U32 23256 (read compatible 27256?) 32kB c64 Basic, c64 Kernel, c128 Editor, Z80Bios, C128 Kernel
-U34 23256 (read compatible 27256?) 32kB C128 Basic
-c128dcr
-as c128 cr
-U102 23256 (read compatible 27256?) 32kB 1571 system rom
+* Informations / BIOS / Supported Sets:
 
+- Was C128D using rev. 1 BIOS in 4 ROMs? I guessed so because the board has the
+same desing as a C128, and later C128DCR still used rev. 1 BIOS (only contained 
+in two ROMs)
+
+- Is it possible to track down and dump properly C128 PAL BIOSes? Current sets
+are mostly tagged as bad dumps because obtained by extracting the content in 
+pieces. I'd like to have confirmation that the common parts are really the same
+before removing the flag.
+
+- PAL BIOSes are from C128? C128D? or C128DCR? Were there differences in the 
+contents between them, except for being splitted in 2 or 4 parts? Were all 
+versions sold in each country? Right now we choose to support the following sets
+(more to be added if BIOS content confirmed):
+
++ German, Italian and Swedish dumps are known to come from a C128DCR. Therefore,
+we support c128drde, c128drit and c128drsw.
+
++ We also have a dump of the German C128, therefore we support the c128ger, even
+if it's not clear which BASIC version it was shipped with. We assumed the older 
+kernal to be shipped with rev. 0 and the newer with rev. 1. 
+
++ The Finnish, French and Norwegian dumps came with no notes (or these have been 
+lost). Therefore we support only the c128 for these, i.e. c128fin, c128fre and 
+c128nor.
+
++ Character ROM for Belgium, Italy and French was the same (I/F/B on the label,
+and indeed it turned out to be the same on both the Italian and French C128)
+
+- Also, the italian C128DCR was found with a rev. 0 BASIC on it. Were both rev. 0
+and rev. 1 used in the CR version? When did Commodore switch between the two?
+
+[Notes about dumping BIOS]
+
+Dumping roms with eeprom reader
+-------------------------------
+
+c128 / c128d
+
+	U18       (read compatible 2764?) 8kB c64 character rom, c128 character rom
+	U32 23128 (read compatible 27128?) 16kB c64 Basic, c64 Kernel
+	U33 23128 (read compatible 27128?) 16kB c128 Basic at 0x4000
+	U34 23128 (read compatible 27128?) 16kB c128 Basic at 0x8000
+	U35	23128 (read compatible 27128?) 16kB c128 Editor, Z80BIOS, c128 Kernel
+
+c128cr / c128dcr
+
+	U18       (read compatible 2764?) 8kB c64 character rom, c128 character rom
+	U32 23256 (read compatible 27256?) 32kB c64 Basic + Kernel, c128 Editor, Z80BIOS, c128 Kernel
+	U34 23256 (read compatible 27256?) 32kB c128 Basic
+
+c128d / c128dcr also need:
+
+	U102 23256 (read compatible 27256?) 32kB 1571 system rom
+
+
+It would be also possible to dump the BIOS in monitor, but it would be preferable 
+to use an EEPROM reader, in order to obtain a dump of the whole content.
 */
 
-#include "driver.h"
-#include "includes/c128.h"
-#include "includes/c64.h"
 
+#include "driver.h"
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
 
-#define VERBOSE_DBG 0
-#include "includes/cbm.h"
 #include "machine/cbmipt.h"
 #include "video/vic6567.h"
 #include "video/vdc8563.h"
-#include "includes/cbmserb.h"
 #include "includes/vc1541.h"
-#include "includes/vc20tape.h"
+
+/* devices config */
+#include "includes/cbm.h"
+#include "includes/cbmdrive.h"
+
+#include "includes/c128.h"
+#include "includes/c64.h"
+
+
+/*************************************
+ *
+ *  Main CPU memory handlers
+ *
+ *************************************/
 
 
 /* shares ram with m8502
@@ -423,7 +307,7 @@ static INPUT_PORTS_START( c128 )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_ESC)				PORT_CHAR(UCHAR_MAMEKEY(ESC))
 
 	PORT_START( "KP2" )
-	PORT_DIPNAME( 0x80, 0x00, "NO SCROLL (switch)") PORT_CODE(KEYCODE_F9)
+	PORT_DIPNAME( 0x80, 0x00, "No Scroll (switch)") PORT_CODE(KEYCODE_F9)
 	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( On ) )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_RIGHT) 			PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
@@ -436,11 +320,7 @@ static INPUT_PORTS_START( c128 )
 	
 	PORT_INCLUDE( c128_special )			/* SPECIAL */
 
-	PORT_INCLUDE( c64_controls )			/* JOY0, JOY1, PADDLE0 -> PADDLE3, TRACKX, TRACKY, TRACKIPT */
-
-	PORT_INCLUDE( c64_control_cfg )			/* DSW */
-
-	PORT_INCLUDE( c128_config )				/* CFG */
+	PORT_INCLUDE( c64_controls )			/* CTRLSEL, JOY0, JOY1, PADDLE0 -> PADDLE3, TRACKX, TRACKY, LIGHTX, LIGHTY, OTHER */
 INPUT_PORTS_END
 
 
@@ -450,11 +330,14 @@ static INPUT_PORTS_START( c128ger )
 	PORT_MODIFY( "ROW1" )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Z  { Y }") PORT_CODE(KEYCODE_Z)					PORT_CHAR('Z')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("3  #  { 3  Paragraph }") PORT_CODE(KEYCODE_3)		PORT_CHAR('3') PORT_CHAR('#')
+
 	PORT_MODIFY( "ROW3" )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Y  { Z }") PORT_CODE(KEYCODE_Y)					PORT_CHAR('Y')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("7  '  { 7  / }") PORT_CODE(KEYCODE_7)				PORT_CHAR('7') PORT_CHAR('\'')
+
 	PORT_MODIFY( "ROW4" )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("0  { = }") PORT_CODE(KEYCODE_0)					PORT_CHAR('0')
+
 	PORT_MODIFY( "ROW5" )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME(",  <  { ; }") PORT_CODE(KEYCODE_COMMA)			PORT_CHAR(',') PORT_CHAR('<')
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Paragraph  \xE2\x86\x91  { \xc3\xbc }") PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR(0x00A7) PORT_CHAR(0x2191)
@@ -462,6 +345,7 @@ static INPUT_PORTS_START( c128ger )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME(".  >  { : }") PORT_CODE(KEYCODE_STOP)				PORT_CHAR('.') PORT_CHAR('>')
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("-  { '  ` }") PORT_CODE(KEYCODE_EQUALS)			PORT_CHAR('-')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("+  { \xc3\x9f ? }") PORT_CODE(KEYCODE_MINUS)		PORT_CHAR('+')
+
 	PORT_MODIFY( "ROW6" )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("/  ?  { -  _ }") PORT_CODE(KEYCODE_SLASH)					PORT_CHAR('/') PORT_CHAR('?')
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Sum  Pi  { ] \\ }") PORT_CODE(KEYCODE_DEL)				PORT_CHAR(0x03A3) PORT_CHAR(0x03C0)
@@ -469,13 +353,14 @@ static INPUT_PORTS_START( c128ger )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME(";  ]  { \xc3\xb6 }") PORT_CODE(KEYCODE_QUOTE)				PORT_CHAR(';') PORT_CHAR(']')
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("*  `  { +  * }") PORT_CODE(KEYCODE_CLOSEBRACE)			PORT_CHAR('*') PORT_CHAR('`')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\\  { [  \xE2\x86\x91 }") PORT_CODE(KEYCODE_BACKSLASH2)	PORT_CHAR('\\')
+
 	PORT_MODIFY( "ROW7" )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("_  { <  > }") PORT_CODE(KEYCODE_TILDE)					PORT_CHAR('_')
 
 	PORT_MODIFY( "SPECIAL" )
-	PORT_DIPNAME( 0x20, 0x00, "ASCII DIN (switch)")
-	PORT_DIPSETTING(	0x00, "ASCII")
-	PORT_DIPSETTING(	0x20, "DIN")
+	PORT_DIPNAME( 0x20, 0x00, "ASCII DIN (switch)" )
+	PORT_DIPSETTING(	0x00, "ASCII" )
+	PORT_DIPSETTING(	0x20, "DIN" )
 INPUT_PORTS_END
 
 
@@ -488,17 +373,21 @@ static INPUT_PORTS_START( c128fra )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("A  { Q }") PORT_CODE(KEYCODE_A)				PORT_CHAR('A')
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("W  { Z }") PORT_CODE(KEYCODE_W)				PORT_CHAR('W')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("3  #  { \"  3 }") PORT_CODE(KEYCODE_3)		PORT_CHAR('3') PORT_CHAR('#')
+
 	PORT_MODIFY( "ROW2" )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("6  &  { Paragraph  6 }") PORT_CODE(KEYCODE_6)	PORT_CHAR('6') PORT_CHAR('&')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("5  %  { (  5 }") PORT_CODE(KEYCODE_5)			PORT_CHAR('5') PORT_CHAR('%')
+
 	PORT_MODIFY( "ROW3" )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("8  (  { !  8 }") PORT_CODE(KEYCODE_8)			PORT_CHAR('8') PORT_CHAR('(')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("7  '  { \xc3\xa8  7 }") PORT_CODE(KEYCODE_7)	PORT_CHAR('7') PORT_CHAR('\'')
+
 	PORT_MODIFY( "ROW4" )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("K  Large-  { \\ }") PORT_CODE(KEYCODE_K)		PORT_CHAR('K')
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("M  Large-/  { ,  ? }") PORT_CODE(KEYCODE_M)	PORT_CHAR('M')
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("0  { \xc3\xa0  0 }") PORT_CODE(KEYCODE_0)		PORT_CHAR('0')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("9  )  { \xc3\xa7  9 }") PORT_CODE(KEYCODE_9)	PORT_CHAR('9') PORT_CHAR(')')
+
 	PORT_MODIFY( "ROW5" )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME(",  <  { ;  . }") PORT_CODE(KEYCODE_COMMA)						PORT_CHAR(',') PORT_CHAR('<')
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("@  \xc3\xbb  { ^  \xc2\xa8 }") PORT_CODE(KEYCODE_OPENBRACE)	PORT_CHAR('@') PORT_CHAR(0x00FB)
@@ -506,6 +395,7 @@ static INPUT_PORTS_START( c128fra )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME(".  >  { :  / }") PORT_CODE(KEYCODE_STOP)						PORT_CHAR('.') PORT_CHAR('>')
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("-  \xc2\xb0  { -  _ }") PORT_CODE(KEYCODE_EQUALS)				PORT_CHAR('-') PORT_CHAR('\xB0')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("+  \xc3\xab  { )  \xc2\xb0 }") PORT_CODE(KEYCODE_MINUS)		PORT_CHAR('+') PORT_CHAR(0x00EB)
+
 	PORT_MODIFY( "ROW6" )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("/  ?  { =  + }") PORT_CODE(KEYCODE_SLASH)						PORT_CHAR('/') PORT_CHAR('?')
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x91  Pi  { *  ] }") PORT_CODE(KEYCODE_DEL)			PORT_CHAR(0x2191) PORT_CHAR(0x03C0)
@@ -513,6 +403,7 @@ static INPUT_PORTS_START( c128fra )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME(";  ]  { M  Large-/ }") PORT_CODE(KEYCODE_QUOTE)				PORT_CHAR(';') PORT_CHAR(']')
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("*  `  { $  [ }") PORT_CODE(KEYCODE_CLOSEBRACE)				PORT_CHAR('*') PORT_CHAR('`')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\\  { @  # }") PORT_CODE(KEYCODE_BACKSLASH)					PORT_CHAR('\\')
+
 	PORT_MODIFY( "ROW7" )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Q  { A }") PORT_CODE(KEYCODE_Q)				PORT_CHAR('Q')
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("2  \"  { \xc3\xa9  2 }") PORT_CODE(KEYCODE_2)	PORT_CHAR('2') PORT_CHAR('\"')
@@ -520,9 +411,9 @@ static INPUT_PORTS_START( c128fra )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("1  !  { &  1 }") PORT_CODE(KEYCODE_1)			PORT_CHAR('1') PORT_CHAR('!')
 
 	PORT_MODIFY( "SPECIAL" )
-	PORT_DIPNAME( 0x20, 0x00, "ASCII ?French? (switch)")
-	PORT_DIPSETTING(	0x00, "ASCII")
-	PORT_DIPSETTING(	0x20, "?French?")
+	PORT_DIPNAME( 0x20, 0x00, "ASCII ?French? (switch)" )
+	PORT_DIPSETTING(	0x00, "ASCII" )
+	PORT_DIPSETTING(	0x20, "?French?" )
 INPUT_PORTS_END
 
 
@@ -534,16 +425,20 @@ static INPUT_PORTS_START( c128ita )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("4  $  { '  4 }") PORT_CODE(KEYCODE_4)					PORT_CHAR('4') PORT_CHAR('$')
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("W  { Z }") PORT_CODE(KEYCODE_W)						PORT_CHAR('W')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("3  #  { \"  3 }") PORT_CODE(KEYCODE_3)				PORT_CHAR('3') PORT_CHAR('#')
+
 	PORT_MODIFY( "ROW2" )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("6  &  { _  6 }") PORT_CODE(KEYCODE_6)					PORT_CHAR('6') PORT_CHAR('&')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("5  %  { (  5 }") PORT_CODE(KEYCODE_5)					PORT_CHAR('5') PORT_CHAR('%')
+
 	PORT_MODIFY( "ROW3" )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("8  (  { &  8 }") PORT_CODE(KEYCODE_8)					PORT_CHAR('8') PORT_CHAR('(')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("7  '  { \xc3\xa8  7 }") PORT_CODE(KEYCODE_7)			PORT_CHAR('7') PORT_CHAR('\'')
+
 	PORT_MODIFY( "ROW4" )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("M  Large-/  { ,  ? }") PORT_CODE(KEYCODE_M)			PORT_CHAR('M')
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("0  { \xc3\xa0  0 }") PORT_CODE(KEYCODE_0)				PORT_CHAR('0')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("9  )  { \xc3\xa7  9 }") PORT_CODE(KEYCODE_9)			PORT_CHAR('9') PORT_CHAR(')')
+
 	PORT_MODIFY( "ROW5" )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME(",  <   { ;  . }") PORT_CODE(KEYCODE_COMMA)			PORT_CHAR(',') PORT_CHAR('<')
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("@  \xc3\xbb  { \xc3\xac  = }") PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('@') PORT_CHAR(0x00FB)
@@ -551,6 +446,7 @@ static INPUT_PORTS_START( c128ita )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME(".  >  { :  / }") PORT_CODE(KEYCODE_STOP)				PORT_CHAR('.') PORT_CHAR('>')
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("-  \xc2\xb0  { -  + }") PORT_CODE(KEYCODE_EQUALS)		PORT_CHAR('-') PORT_CHAR('\xb0')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("+  \xc3\xab  { )  \xc2\xb0 }") PORT_CODE(KEYCODE_MINUS) PORT_CHAR('+') PORT_CHAR(0x00EB)
+
 	PORT_MODIFY( "ROW6" )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("/  ?  { \xc3\xb2  ! }") PORT_CODE(KEYCODE_SLASH)		PORT_CHAR('/') PORT_CHAR('?')
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x91  Pi  { *  ] }") PORT_CODE(KEYCODE_DEL)	PORT_CHAR(0x2191) PORT_CHAR(0x03C0)
@@ -558,15 +454,16 @@ static INPUT_PORTS_START( c128ita )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME(";  ]  { M }") PORT_CODE(KEYCODE_QUOTE)				PORT_CHAR(';') PORT_CHAR(']')
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("*  `  { $  [ }") PORT_CODE(KEYCODE_CLOSEBRACE)		PORT_CHAR('*') PORT_CHAR('`')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\\  { @  # }") PORT_CODE(KEYCODE_BACKSLASH2)			PORT_CHAR('\\')
+
 	PORT_MODIFY( "ROW7" )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("2  \"  { \xc3\xa9  2 }") PORT_CODE(KEYCODE_2)			PORT_CHAR('2') PORT_CHAR('"')
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("_  { <  > }") PORT_CODE(KEYCODE_TILDE)				PORT_CHAR('_')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("1  !  { \xc2\xa3  1 }") PORT_CODE(KEYCODE_1)			PORT_CHAR('1') PORT_CHAR('!')
 
 	PORT_MODIFY( "SPECIAL" )
-	PORT_DIPNAME( 0x20, 0x00, "ASCII Italian (switch)")
-	PORT_DIPSETTING( 0x00, "ASCII")
-	PORT_DIPSETTING( 0x20, DEF_STR( Italian ))
+	PORT_DIPNAME( 0x20, 0x00, "ASCII Italian (switch)" )
+	PORT_DIPSETTING( 0x00, "ASCII" )
+	PORT_DIPSETTING( 0x20, DEF_STR( Italian ) )
 INPUT_PORTS_END
 
 
@@ -575,27 +472,37 @@ static INPUT_PORTS_START( c128swe )
 
 	PORT_MODIFY( "ROW1" )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("3  #  { 3  Paragraph }") PORT_CODE(KEYCODE_3)		PORT_CHAR('3') PORT_CHAR('#')
+
 	PORT_MODIFY( "ROW3" )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("7  '  { 7  / }") PORT_CODE(KEYCODE_7)				PORT_CHAR('7') PORT_CHAR('\'')
+
 	PORT_MODIFY( "ROW5" )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("]  { \xc3\xa2 }") PORT_CODE(KEYCODE_OPENBRACE)	PORT_CHAR(']')
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("[  { \xc3\xa4 }") PORT_CODE(KEYCODE_COLON)		PORT_CHAR('[')
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_EQUALS)									PORT_CHAR('=')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS)										PORT_CHAR('-')
+
 	PORT_MODIFY( "ROW6" )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME(";  +") PORT_CODE(KEYCODE_BACKSLASH)				PORT_CHAR(';') PORT_CHAR('+')
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("\xc2\xa3  { \xc3\xb6 }") PORT_CODE(KEYCODE_QUOTE)	PORT_CHAR('\xA3')
     PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("@") PORT_CODE(KEYCODE_CLOSEBRACE)					PORT_CHAR('@')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME(":  *") PORT_CODE(KEYCODE_BACKSLASH2)				PORT_CHAR(':') PORT_CHAR('*')
+
 	PORT_MODIFY( "ROW7" )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("_  { <  > }") PORT_CODE(KEYCODE_TILDE)			PORT_CHAR('_')
 
 	PORT_MODIFY( "SPECIAL" )
-	PORT_DIPNAME( 0x20, 0x00, "ASCII Swedish/Finnish (switch)")
-	PORT_DIPSETTING( 0x00, "ASCII")
-	PORT_DIPSETTING( 0x20, "Swedish/Finnish")
+	PORT_DIPNAME( 0x20, 0x00, "ASCII Swedish/Finnish (switch)" )
+	PORT_DIPSETTING( 0x00, "ASCII" )
+	PORT_DIPSETTING( 0x20, "Swedish/Finnish" )
 INPUT_PORTS_END
 
+
+/*************************************
+ *
+ *  Graphics definitions
+ *
+ *************************************/
 
 
 static PALETTE_INIT( c128 )
@@ -644,194 +551,14 @@ static GFXDECODE_START( c128 )
 	GFXDECODE_ENTRY( "gfx2", 0x0000, c128graphic_charlayout, 0, 0x100 )
 GFXDECODE_END
 
-#if 0
-/* usa first 318018-02 318019-02 318020-03 rev 0*/
 
-/* usa mid 318018-03 318019-03 318020-04 */
 
-/* usa last 318018-04 318019-04 318020-05 rev 1*/
-/* usa dcr 318022-02 318023-02, same as usa last */
+/*************************************
+ *
+ *  Sound definitions
+ *
+ *************************************/
 
-/* between rev0 and rev1 252343-03+252343-04 */
-
-	 ROM_LOAD ("basic-4000.318018-02.bin", 0x100000, 0x4000, CRC(2ee6e2fa))
-	 ROM_LOAD ("basic-8000.318019-02.bin", 0x104000, 0x4000, CRC(d551fce0))
-     /* same as above, but in one chip */
-     ROM_LOAD ("basic.318022-01.bin", 0x100000, 0x8000, CRC(e857df90))
-
-	/* maybe 318018-03+318019-03 */
-	 ROM_LOAD ("basic.252343-03.bin", 0x100000, 0x8000, CRC(bc07ed87))
-
-	/* 1986 final upgrade */
-	 ROM_LOAD ("basic-4000.318018-04.bin", 0x100000, 0x4000, CRC(9f9c355b))
-	 ROM_LOAD ("basic-8000.318019-04.bin", 0x104000, 0x4000, CRC(6e2c91a7))
-     /* same as above, but in one chip */
-	 ROM_LOAD ("basic.318022-02.bin", 0x100000, 0x8000, CRC(af1ae1e8))
-
-	 ROM_LOAD ("64c.251913-01.bin", 0x108000, 0x4000, CRC(0010ec31))
-
-	 /* editor, z80 bios, c128kernel */
-	 ROM_LOAD ("kernal.318020-03.bin", 0x10c000, 0x4000, CRC(1e94bb02))
-	 ROM_LOAD ("kernal.318020-05.bin", 0x10c000, 0x4000, CRC(ba456b8e))
-	 ROM_LOAD ("kernal.german.315078-01.bin", 0x10c000, 0x4000, CRC(a51e2168))
-	 ROM_LOAD ("kernal.german.315078-02.bin", 0x10c000, 0x4000, CRC(b275bb2e))
-	 /* 0x3e086a24 z80bios 0xca5e1179*/
-	 ROM_LOAD ("french.bin", 0x10c000, 0x4000, CRC(2df282b8))
-	 /* 0x71002a97 z80bios 0x167b8364*/
-	 ROM_LOAD ("finnish1.bin", 0x10c000, 0x4000, CRC(d3ecea84))
-	 /* 0xb7ff5efe z80bios 0x5ce42fc8 */
-	 ROM_LOAD ("finnish2.bin", 0x10c000, 0x4000, CRC(9526fac4))
-	/* 0x8df58148 z80bios 0x7b0d2140 */
-	 ROM_LOAD ("italian.bin", 0x10c000, 0x4000, CRC(74d6b084))
-	 /* 0x84c55911 z80bios 0x3ba48012 */
-	 ROM_LOAD ("norwegian.bin", 0x10c000, 0x4000, CRC(a5406848))
-
-	 /* c64 basic, c64 kernel, editor, z80 bios, c128kernel */
-	/* 252913-01+318020-05 */
-	 ROM_LOAD ("complete.318023-02.bin", 0x100000, 0x8000, CRC(eedc120a))
-	/* 252913-01+0x98f2a2ed maybe 318020-04*/
-	 ROM_LOAD ("complete.252343-04.bin", 0x108000, 0x8000, CRC(cc6bdb69))
-	/* 251913-01+0xbff7550b */
-	 ROM_LOAD ("complete.german.318077-01.bin", 0x108000, 0x8000, CRC(eb6e2c8f))
-     /* chip label says Ker.Sw/Fi  */
-	/* 901226.01+ 0xf10c2c25 +0x1cf7f729 */
-	 ROM_LOAD ("complete.swedish.318034-01.bin", 0x108000, 0x8000, CRC(cb4e1719))
-
-	 ROM_LOAD ("characters.390059-01.bin", 0x120000, 0x2000, CRC(6aaaafe6))
-	 ROM_LOAD ("characters.german.315079-01.bin", 0x120000, 0x2000, CRC(fe5a2db1))
-	 /* chip label says I/F/B (belgium, italian, french)  characters */
-     /* italian and french verified to be the same*/
-	 ROM_LOAD ("characters.french.325167-01.bin", 0x120000, 0x2000, CRC(bad36b88))
-
-	 /* only parts of system roms, so not found in any c128 variant */
-	 ROM_LOAD ("editor.finnish1.bin", 0x10c000, 0x1000, CRC(71002a97))
-	 ROM_LOAD ("editor.finnish2.bin", 0x10c000, 0x1000, CRC(b7ff5efe))
-	 ROM_LOAD ("editor.french.bin", 0x10c000, 0x1000, CRC(3e086a24))
-	 ROM_LOAD ("editor.italian.bin", 0x10c000, 0x1000, CRC(8df58148))
-	 ROM_LOAD ("editor.norwegian.bin", 0x10c000, 0x1000, CRC(84c55911))
-
-	 ROM_LOAD ("kernalpart.finnish1.bin", 0x10e000, 0x2000, CRC(167b8364))
-	 ROM_LOAD ("kernalpart.finnish2.bin", 0x10e000, 0x2000, CRC(5ce42fc8))
-	 ROM_LOAD ("kernalpart.french.bin", 0x10e000, 0x2000, CRC(ca5e1179))
-	 ROM_LOAD ("kernalpart.italian.bin", 0x10e000, 0x2000, CRC(7b0d2140))
-	 ROM_LOAD ("kernalpart.norwegian.bin", 0x10e000, 0x2000, CRC(3ba48012))
-
-	 ROM_LOAD ("z80bios.bin", 0x10d000, 0x1000, CRC(c38d83c6))
-
-	 /* function rom in internal socket */
-	 ROM_LOAD("super_chip.bin", 0x110000, 0x8000, CRC(a66f73c5))
-#endif
-
-ROM_START (c128)
-	ROM_REGION (0x132800, "main", 0)
-	ROM_LOAD ("318018.04", 0x100000, 0x4000, CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441))
-	ROM_LOAD ("318019.04", 0x104000, 0x4000, CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0))
-	ROM_LOAD ("251913.01", 0x108000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88))
-	ROM_LOAD ("318020.05", 0x10c000, 0x4000, CRC(ba456b8e) SHA1(ceb6e1a1bf7e08eb9cbc651afa29e26adccf38ab))
-	ROM_LOAD ("390059.01", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f))
-	ROM_REGION (0x10000, "m8502", ROMREGION_ERASEFF)
-	ROM_REGION (0x2000, "gfx1", ROMREGION_ERASEFF)
-	ROM_REGION (0x100, "gfx2", ROMREGION_ERASEFF)
-ROM_END
-
-ROM_START (c128d)
-	ROM_REGION (0x132800, "main", 0)
-	ROM_LOAD ("318022.02", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816))
-	ROM_LOAD ("318023.02", 0x108000, 0x8000, CRC(eedc120a) SHA1(f98c5a986b532c78bb68df9ec6dbcf876913b99f))
-	ROM_LOAD ("390059.01", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f))
-	ROM_REGION (0x10000, "m8502", ROMREGION_ERASEFF)
-	C1571_ROM("cpu_vc1540")
-	ROM_REGION (0x2000, "gfx1", ROMREGION_ERASEFF)
-	ROM_REGION (0x100, "gfx2", ROMREGION_ERASEFF)
-ROM_END
-
-// submitted as cost reduced set!
-ROM_START (c128dita)
-	ROM_REGION (0x132800, "main", 0)
-	ROM_LOAD ("318022.02", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816))
-
-    // in a cost reduced set this should be 1 rom
-	ROM_LOAD ("251913.01", 0x108000, 0x4000, CRC(0010ec31))
-//  ROM_LOAD ("901226.01", 0x108000, 0x2000, CRC(f833d117))
-//  ROM_LOAD( "kern128d.ita", 0x10a000, 0x2000, CRC(f1098d37 ))
-	ROM_LOAD ("318079.01", 0x10c000, 0x4000, CRC(66673e8b))
-
-    ROM_LOAD ("325167.01", 0x120000, 0x2000, CRC(bad36b88)) // taken from funet
-    // normally 1 rom
-//    ROM_LOAD ("325167.01b", 0x120000, 0x1000, CRC(ec4272ee)) //standard c64 901226.01
-//    ROM_LOAD ("325167.01b", 0x121000, 0x1000, CRC(2bc73556)) // bad dump
-
-	ROM_REGION (0x10000, "m8502", ROMREGION_ERASEFF)
-    // not included in submission
-//  C1571_ROM("cpu_vc1540")
-	ROM_REGION (0x2000, "gfx1", ROMREGION_ERASEFF)
-	ROM_REGION (0x100, "gfx2", ROMREGION_ERASEFF)
-ROM_END
-
-ROM_START (c128ger)
-	 /* c128d german */
-	ROM_REGION (0x132800, "main", 0)
-	ROM_LOAD ("318022.02", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816))
-	ROM_LOAD ("318077.01", 0x108000, 0x8000, CRC(eb6e2c8f) SHA1(6b3d891fedabb5335f388a5d2a71378472ea60f4))
-	ROM_LOAD ("315079.01", 0x120000, 0x2000, CRC(fe5a2db1) SHA1(638f8aff51c2ac4f99a55b12c4f8c985ef4bebd3))
-	ROM_REGION (0x10000, "m8502", ROMREGION_ERASEFF)
-	ROM_REGION (0x2000, "gfx1", ROMREGION_ERASEFF)
-	ROM_REGION (0x100, "gfx2", ROMREGION_ERASEFF)
-ROM_END
-
-ROM_START (c128fra)
-	ROM_REGION (0x132800, "main", 0)
-	ROM_LOAD ("318018.04", 0x100000, 0x4000, CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441))
-	ROM_LOAD ("318019.04", 0x104000, 0x4000, CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0))
-	ROM_LOAD ("251913.01", 0x108000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88))
-#if 1
-	ROM_LOAD ("french.bin", 0x10c000, 0x4000, CRC(2df282b8) SHA1(a0680d04db3232fa9f58598e5c9f09c4fe94f601))
-#else
-	ROM_LOAD ("editor.french.bin", 0x10c000, 0x1000, CRC(3e086a24))
-	ROM_LOAD ("z80bios.bin", 0x10d000, 0x1000, CRC(c38d83c6))
-	ROM_LOAD ("kernalpart.french.bin", 0x10e000, 0x2000, CRC(ca5e1179))
-#endif
-	ROM_LOAD ("325167.01", 0x120000, 0x2000, CRC(bad36b88) SHA1(9119b27a1bf885fa4c76fff5d858c74c194dd2b8))
-	ROM_REGION (0x10000, "m8502", ROMREGION_ERASEFF)
-	ROM_REGION (0x2000, "gfx1", ROMREGION_ERASEFF)
-	ROM_REGION (0x100, "gfx2", ROMREGION_ERASEFF)
-ROM_END
-
-ROM_START (c128ita)
-	ROM_REGION (0x132800, "main", 0)
-	/* original 318022-01 */
-	ROM_LOAD ("318018.04", 0x100000, 0x4000, CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441))
-	ROM_LOAD ("318019.04", 0x104000, 0x4000, CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0))
-	ROM_LOAD ("251913.01", 0x108000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88))
-	ROM_LOAD ("italian.bin", 0x10c000, 0x4000, CRC(74d6b084) SHA1(592a626eb2b5372596ac374d3505c3ce78dd040f))
-	ROM_LOAD ("325167.01", 0x120000, 0x2000, CRC(bad36b88) SHA1(9119b27a1bf885fa4c76fff5d858c74c194dd2b8))
-	ROM_REGION (0x10000, "m8502", ROMREGION_ERASEFF)
-	ROM_REGION (0x2000, "gfx1", ROMREGION_ERASEFF)
-	ROM_REGION (0x100, "gfx2", ROMREGION_ERASEFF)
-ROM_END
-
-ROM_START (c128swe)
-	ROM_REGION (0x132800, "main", 0)
-	ROM_LOAD ("318022.02", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816))
-	ROM_LOAD ("318034.01", 0x108000, 0x8000, CRC(cb4e1719) SHA1(9b0a0cef56d00035c611e07170f051ee5e63aa3a))
-	ROM_LOAD ("325181.01", 0x120000, 0x2000, CRC(7a70d9b8) SHA1(aca3f7321ee7e6152f1f0afad646ae41964de4fb))
-	ROM_REGION (0x10000, "m8502", ROMREGION_ERASEFF)
-	ROM_REGION (0x2000, "gfx1", ROMREGION_ERASEFF)
-	ROM_REGION (0x100, "gfx2", ROMREGION_ERASEFF)
-ROM_END
-
-ROM_START (c128nor)
-	ROM_REGION (0x132800, "main", 0)
-	ROM_LOAD ("318018.04", 0x100000, 0x4000, BAD_DUMP CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441))
-	ROM_LOAD ("318019.04", 0x104000, 0x4000, BAD_DUMP CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0))
-	ROM_LOAD ("251913.01", 0x108000, 0x4000, BAD_DUMP CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88))
-	ROM_LOAD ("nor.bin", 0x10c000, 0x4000, BAD_DUMP CRC(a5406848) SHA1(00fe2fd610a812121befab1e7238fa882c0f8257))
-	/* standard c64, vic20 based norwegian */
-	ROM_LOAD ("char.nor", 0x120000, 0x2000, BAD_DUMP CRC(ba95c625) SHA1(5a87faa457979e7b6f434251a9e32f4483b337b3))
-	ROM_REGION (0x10000, "m8502", ROMREGION_ERASEFF)
-	ROM_REGION (0x2000, "gfx1", ROMREGION_ERASEFF)
-	ROM_REGION (0x100, "gfx2", ROMREGION_ERASEFF)
-ROM_END
 
 static const sid6581_interface c128_sound_interface =
 {
@@ -840,18 +567,25 @@ static const sid6581_interface c128_sound_interface =
 
 
 
+/*************************************
+ *
+ *  Machine driver
+ *
+ *************************************/
+
+
 static MACHINE_DRIVER_START( c128 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", Z80, VIC6567_CLOCK)
 	MDRV_CPU_PROGRAM_MAP( c128_z80_mem, 0 )
 	MDRV_CPU_IO_MAP( c128_z80_io, 0 )
 	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
-	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC2_HRETRACERATE)
+	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
 
 	MDRV_CPU_ADD("m8502", M8502, VIC6567_CLOCK)
 	MDRV_CPU_PROGRAM_MAP( c128_mem, 0 )
 	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
-	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC2_HRETRACERATE)
+	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
 
 	MDRV_INTERLEAVE(0)
 
@@ -862,8 +596,9 @@ static MACHINE_DRIVER_START( c128 )
 	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(656, 216)
-	MDRV_SCREEN_VISIBLE_AREA(0, 656 - 1, 0, 216 - 1)
+	MDRV_SCREEN_SIZE(VIC6567_COLUMNS * 2, VIC6567_LINES)
+	MDRV_SCREEN_VISIBLE_AREA(VIC6567_STARTVISIBLECOLUMNS , (VIC6567_STARTVISIBLECOLUMNS + VIC6567_VISIBLECOLUMNS - 1) * 2, VIC6567_STARTVISIBLELINES, VIC6567_STARTVISIBLELINES + VIC6567_VISIBLELINES - 1)
+
 	MDRV_GFXDECODE( c128 )
 	MDRV_PALETTE_LENGTH((sizeof (vic2_palette) +sizeof(vdc8563_palette))/ sizeof (vic2_palette[0]) / 3 )
 	MDRV_PALETTE_INIT( c128 )
@@ -881,12 +616,14 @@ static MACHINE_DRIVER_START( c128 )
 
 	/* devices */
 	MDRV_QUICKLOAD_ADD(cbm_c64, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+
+	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( c128d )
 	MDRV_IMPORT_FROM( c128 )
-	MDRV_IMPORT_FROM( cpu_c1571 )
+//	MDRV_IMPORT_FROM( cpu_c1571 )
 MACHINE_DRIVER_END
 
 
@@ -896,41 +633,258 @@ static MACHINE_DRIVER_START( c128pal )
 	MDRV_CPU_REPLACE( "m8502", M8502, VIC6569_CLOCK )
 	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
+	MDRV_SCREEN_SIZE(VIC6569_COLUMNS * 2, VIC6569_LINES)
+	MDRV_SCREEN_VISIBLE_AREA(VIC6569_STARTVISIBLECOLUMNS, (VIC6569_STARTVISIBLECOLUMNS + VIC6569_VISIBLECOLUMNS - 1) * 2, VIC6569_STARTVISIBLELINES, VIC6569_STARTVISIBLELINES + VIC6569_VISIBLELINES - 1)
 
 	/* sound hardware */
 	MDRV_SOUND_REPLACE("sid6581", SID6581, VIC6569_CLOCK)
 	MDRV_SOUND_CONFIG(c128_sound_interface)
 MACHINE_DRIVER_END
 
-static void c128_cbmcartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	switch(state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,80"); break;
+static MACHINE_DRIVER_START( c128dpal )
+	MDRV_IMPORT_FROM( c128pal )
+//	MDRV_IMPORT_FROM( cpu_c1571 )
+MACHINE_DRIVER_END
 
-		default:										cbmcartslot_device_getinfo(devclass, state, info); break;
-	}
-}
+
+
+/*************************************
+ *
+ *  ROM definition(s)
+ *
+ *************************************/
+
+
+ROM_START( c128 )
+	ROM_REGION( 0x132800, "main", 0 )
+	ROM_SYSTEM_BIOS( 0, "default", "rev. 1" )
+	ROMX_LOAD( "318018-04.bin", 0x100000, 0x4000, CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441), ROM_BIOS(1) )			// BASIC lo
+	ROMX_LOAD( "318019-04.bin", 0x104000, 0x4000, CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0), ROM_BIOS(1) )			// BASIC hi
+	ROMX_LOAD( "318020-05.bin", 0x10c000, 0x4000, CRC(ba456b8e) SHA1(ceb6e1a1bf7e08eb9cbc651afa29e26adccf38ab), ROM_BIOS(1) )			// Kernal
+	ROM_SYSTEM_BIOS( 1, "rev0", "rev. 0" )
+	ROMX_LOAD( "318018-02.bin", 0x100000, 0x4000, CRC(2ee6e2fa) SHA1(60e1491e1d5782e3cf109f518eb73427609badc6), ROM_BIOS(2) )			// BASIC lo
+	ROMX_LOAD( "318019-02.bin", 0x104000, 0x4000, CRC(d551fce0) SHA1(4d223883e866645328f86a904b221464682edc4f), ROM_BIOS(2) )			// BASIC hi
+	ROMX_LOAD( "318020-03.bin", 0x10c000, 0x4000, CRC(1e94bb02) SHA1(e80ffbafae068cc0e42698ec5c5c39af46ac612a), ROM_BIOS(2) )			// Kernal
+
+	ROM_LOAD( "251913-01.bin", 0x108000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88) )		// C64 OS ROM
+	ROM_LOAD( "390059-01.bin", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f) )		// Character
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+
+ROM_START( c128cr )
+	/* C128CR prototype, owned by Bo Zimmers
+	   PCB markings: "COMMODORE 128CR REV.3 // PCB NO.252270" and "PCB ASSY NO.250783"
+           Sticker on rom cart shield: "C128CR  No.2 // ENG. SAMPLE // Jun/9/'86   KNT"
+	   3 ROMs (combined basic, combined c64/kernal, plain character rom)
+	   6526A-1 CIAs
+	   ?prototype? 2568R1X VDC w/ 1186 datecode
+	*/
+	ROM_REGION( 0x132800, "main", 0 )
+	ROM_LOAD( "252343-03.u34", 0x100000, 0x8000, CRC(bc07ed87) SHA1(0eec437994a3f2212343a712847213a8a39f4a7b) )			// BASIC lo + hi, "252343-03 // U34" 
+	ROM_LOAD( "252343-04.u32", 0x108000, 0x8000, CRC(cc6bdb69) SHA1(36286b2e8bea79f7767639fd85e12c5447c7041b) )			// C64 OS ROM + Kernal, "252343-04 // US // U32" 
+	ROM_LOAD( "390059-01.u18", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f) )			// Character, "MOS // (C)1985 CBM // 390059-01 // M468613 8547H"
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+
+/* See notes at the top of the driver about PAL dumps */
+
+ROM_START( c128ger )
+	ROM_REGION( 0x132800, "main", 0 )
+	ROM_SYSTEM_BIOS( 0, "default", "rev. 1" )
+	ROMX_LOAD( "318018-04.bin", 0x100000, 0x4000, CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441), ROM_BIOS(1) )			// BASIC lo
+	ROMX_LOAD( "318019-04.bin", 0x104000, 0x4000, CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0), ROM_BIOS(1) )			// BASIC hi
+	ROMX_LOAD( "315078-02.bin", 0x10c000, 0x4000, CRC(b275bb2e) SHA1(78ac5dcdd840b092ba1ee6d19b33af079613291f), ROM_BIOS(1) )			// Kernal
+	ROM_SYSTEM_BIOS( 1, "rev0", "rev. 0" )
+	ROMX_LOAD( "318018-02.bin", 0x100000, 0x4000, CRC(2ee6e2fa) SHA1(60e1491e1d5782e3cf109f518eb73427609badc6), ROM_BIOS(2) )			// BASIC lo
+	ROMX_LOAD( "318019-02.bin", 0x104000, 0x4000, CRC(d551fce0) SHA1(4d223883e866645328f86a904b221464682edc4f), ROM_BIOS(2) )			// BASIC hi
+	ROMX_LOAD( "315078-01.bin", 0x10c000, 0x4000, CRC(a51e2168) SHA1(bcf82a89a8fc5d086bec2ff3bcbdecc8af2be3af), ROM_BIOS(2) )			// Kernal
+
+	ROM_LOAD( "251913-01.bin", 0x108000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88) )		// C64 OS ROM
+	ROM_LOAD( "390059-01.bin", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f) )		// Character
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+ROM_START( c128fin )
+	ROM_REGION( 0x132800, "main", 0 )
+	ROM_LOAD( "318018-04.bin", 0x100000, 0x4000, BAD_DUMP CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441) )			// BASIC lo
+	ROM_LOAD( "318019-04.bin", 0x104000, 0x4000, BAD_DUMP CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0) )			// BASIC hi
+	ROM_LOAD( "251913-01.bin", 0x108000, 0x4000, BAD_DUMP CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88) )			// C64 OS ROM
+	ROM_SYSTEM_BIOS( 0, "fin1", "set 1" )
+	ROMX_LOAD( "editor.finnish1.bin", 0x10c000, 0x1000, BAD_DUMP CRC(71002a97) SHA1(e0771493503225d309e51239249e8d92da55ca37), ROM_BIOS(1) )
+	ROMX_LOAD( "kernalpart.finnish1.bin", 0x10e000, 0x2000, BAD_DUMP CRC(167b8364) SHA1(2e51c562ef5ae6aa4cd333c560afed0c34902e28), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "fin2", "set 2" )
+	ROMX_LOAD( "editor.finnish2.bin", 0x10c000, 0x1000, BAD_DUMP CRC(b7ff5efe) SHA1(a1f574d010e2d0c754444258709818ec76667cc4), ROM_BIOS(2) )
+	ROMX_LOAD( "kernalpart.finnish2.bin", 0x10e000, 0x2000, BAD_DUMP CRC(5ce42fc8) SHA1(0ec2bf1c185d26da7f62f88c6e24de7b16d78fe5), ROM_BIOS(2) )
+
+	ROM_LOAD( "z80bios.bin", 0x10d000, 0x1000, BAD_DUMP CRC(c38d83c6) SHA1(38662a024f1de2f4417a5f9df4898a9985503e06) )
+	/* Swedish character set while waiting for a real dump */
+	ROM_LOAD( "325181-01.bin", 0x120000, 0x2000, BAD_DUMP CRC(7a70d9b8) SHA1(aca3f7321ee7e6152f1f0afad646ae41964de4fb) )
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+ROM_START( c128fra )
+	ROM_REGION( 0x132800, "main", 0 )
+	ROM_LOAD( "318018-04.bin", 0x100000, 0x4000, BAD_DUMP CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441) )			// BASIC lo
+	ROM_LOAD( "318019-04.bin", 0x104000, 0x4000, BAD_DUMP CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0) )			// BASIC hi
+	ROM_LOAD( "251913-01.bin", 0x108000, 0x4000, BAD_DUMP CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88) )			// C64 OS ROM
+	ROM_LOAD( "editor.french.bin", 0x10c000, 0x1000, BAD_DUMP CRC(3e086a24) SHA1(0a2f67455166f8dac101f8f8564a1c0364cb456a) )
+	ROM_LOAD( "z80bios.bin", 0x10d000, 0x1000, BAD_DUMP CRC(c38d83c6) SHA1(38662a024f1de2f4417a5f9df4898a9985503e06) )
+	ROM_LOAD( "kernalpart.french.bin", 0x10e000, 0x2000, BAD_DUMP CRC(ca5e1179) SHA1(d234a031caf59a0f66871f2babe1644783e66cf7) )
+	ROM_LOAD( "325167-01.bin", 0x120000, 0x2000, BAD_DUMP CRC(bad36b88) SHA1(9119b27a1bf885fa4c76fff5d858c74c194dd2b8) )
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+
+ROM_START( c128nor )
+	ROM_REGION( 0x132800, "main", 0 )
+	ROM_LOAD( "318018-04.bin", 0x100000, 0x4000, BAD_DUMP CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441) )			// BASIC lo
+	ROM_LOAD( "318019-04.bin", 0x104000, 0x4000, BAD_DUMP CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0) )			// BASIC hi
+	ROM_LOAD( "251913-01.bin", 0x108000, 0x4000, BAD_DUMP CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88) )			// C64 OS ROM
+	ROM_LOAD( "editor.norwegian.bin", 0x10c000, 0x1000, BAD_DUMP CRC(84c55911) SHA1(22f6c5f40d4e895ea51e8432b30c219eacb75778) )
+	ROM_LOAD( "z80bios.bin", 0x10d000, 0x1000, BAD_DUMP CRC(c38d83c6) SHA1(38662a024f1de2f4417a5f9df4898a9985503e06) )
+	ROM_LOAD( "kernalpart.norwegian.bin", 0x10e000, 0x2000, BAD_DUMP CRC(3ba48012) SHA1(21a90256a3572a890f8027a085d851bf818b0dda) )
+	/* standard vic20 based norwegian */
+	ROM_LOAD( "char.nor", 0x120000, 0x2000, BAD_DUMP CRC(ba95c625) SHA1(5a87faa457979e7b6f434251a9e32f4483b337b3) )
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+
+/* C128D Board is basically the same as C128 + a second board for the disk drive */
+ROM_START( c128d )
+	ROM_REGION( 0x132800, "main", 0 )
+	ROM_LOAD( "318018-04.bin", 0x100000, 0x4000, CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441) )			// BASIC lo
+	ROM_LOAD( "318019-04.bin", 0x104000, 0x4000, CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0) )			// BASIC hi
+	ROM_LOAD( "251913-01.bin", 0x108000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88) )			// C64 OS ROM
+	ROM_LOAD( "318020-05.bin", 0x10c000, 0x4000, CRC(ba456b8e) SHA1(ceb6e1a1bf7e08eb9cbc651afa29e26adccf38ab) )			// Kernal
+	ROM_LOAD( "390059-01.bin", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f) )
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	C1571_ROM("cpu_vc1540")
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+#define rom_c128dpr		rom_c128d
+
+/* This BIOS is exactly the same as C128 rev. 1, but on two ROMs only */
+ROM_START( c128dcr )
+	ROM_REGION( 0x132800, "main", 0 )
+	ROM_LOAD( "318022-02.bin", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816) )			// BASIC lo + hi
+	ROM_LOAD( "318023-02.bin", 0x108000, 0x8000, CRC(eedc120a) SHA1(f98c5a986b532c78bb68df9ec6dbcf876913b99f) )			// C64 OS ROM + Kernal
+	ROM_LOAD( "390059-01.bin", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f) )			// Character
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	C1571_ROM("cpu_vc1540")
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+
+/* See notes at the top of the driver about PAL dumps */
+
+ROM_START( c128drde )
+	ROM_REGION( 0x132800, "main", 0 )
+	ROM_LOAD( "318022-02.bin", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816) )			// BASIC lo + hi
+	ROM_LOAD( "318077-01.bin", 0x108000, 0x8000, CRC(eb6e2c8f) SHA1(6b3d891fedabb5335f388a5d2a71378472ea60f4) )			// C64 OS ROM + Kernal Ger
+	ROM_LOAD( "315079-01.bin", 0x120000, 0x2000, CRC(fe5a2db1) SHA1(638f8aff51c2ac4f99a55b12c4f8c985ef4bebd3) )
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	C1571_ROM("cpu_vc1540")
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+
+ROM_START( c128drsw )
+	ROM_REGION( 0x132800, "main", 0 )
+	ROM_LOAD( "318022-02.bin", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816) )			// BASIC lo + hi
+	ROM_LOAD( "318034-01.bin", 0x108000, 0x8000, CRC(cb4e1719) SHA1(9b0a0cef56d00035c611e07170f051ee5e63aa3a) )			// C64 OS ROM + Kernal Sw/Fi
+	ROM_LOAD( "325181-01.bin", 0x120000, 0x2000, CRC(7a70d9b8) SHA1(aca3f7321ee7e6152f1f0afad646ae41964de4fb) )
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	C1571_ROM("cpu_vc1540")
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+
+ROM_START( c128drit )
+	ROM_REGION( 0x132800, "main", 0 )
+	ROM_LOAD( "318022-01.bin", 0x100000, 0x8000, CRC(e857df90) SHA1(5c2d7bbda2c3f9a926bd76ad19dc0c8c733c41cd) )			// BASIC lo + hi - based on BASIC rev.0
+	ROM_LOAD( "251913-01.bin", 0x108000, 0x4000, BAD_DUMP CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88) )			// C64 OS ROM
+	ROM_LOAD( "editor.italian.bin", 0x10c000, 0x1000, BAD_DUMP CRC(8df58148) SHA1(39add4c0adda7a64f68a09ae8742599091228017) )
+	ROM_LOAD( "z80bios.bin", 0x10d000, 0x1000, BAD_DUMP CRC(c38d83c6) SHA1(38662a024f1de2f4417a5f9df4898a9985503e06) )
+	ROM_LOAD( "kernalpart.italian.bin", 0x10e000, 0x2000, BAD_DUMP CRC(7b0d2140) SHA1(f5d604d89daedb47a1abe4b0aa41ea762829e71e) )
+	ROM_LOAD( "325167-01.bin", 0x120000, 0x2000, BAD_DUMP CRC(bad36b88) SHA1(9119b27a1bf885fa4c76fff5d858c74c194dd2b8) )
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	C1571_ROM("cpu_vc1540")
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+
+
+/*************************************
+ *
+ *  System configuration(s)
+ *
+ *************************************/
+
 
 static SYSTEM_CONFIG_START(c128)
-	CONFIG_DEVICE(c128_cbmcartslot_getinfo)
+	CONFIG_DEVICE(c64_cartslot_getinfo)
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(c128d)
+	CONFIG_DEVICE(c64_cartslot_getinfo)
 	CONFIG_DEVICE(c1571_device_getinfo)
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG  COMPANY   FULLNAME */
-COMP (1985, c128,		0,		0,		c128,		c128,		c128,		c128,	"Commodore Business Machines Co.","Commodore 128 NTSC", 0)
-COMP (1985, c128ger,	c128,	0,		c128pal,	c128ger,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 German (PAL)", 0)
-COMP (1985, c128fra,	c128,	0,		c128pal,	c128fra,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 French (PAL)", 0)
-COMP (1985, c128ita,	c128,	0,		c128pal,	c128ita,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 Italian (PAL)", 0)
-COMP (1985, c128swe,	c128,	0,		c128pal,	c128swe,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 Swedish (PAL)", 0)
-/* other countries spanish, belgium, norwegian */
-/* please leave the following as testdriver */
-COMP (1985, c128nor,	c128,	0,		c128pal,	c128ita,	c128pal,	c128,	"Commodore Business Machines Co.","Commodore 128 Norwegian (PAL)", GAME_NOT_WORKING)
-COMP (1985, c128d,		c128,	0,		c128d,		c128,		c128,		c128d,	"Commodore Business Machines Co.","Commodore 128D NTSC", GAME_NOT_WORKING)
-//COMP(1985,c128dita,   c128,   0,      c128d,      c128,       c128,       c128d,  "Commodore Business Machines Co.","Commodore 128D Italian (PAL)", GAME_NOT_WORKING)
-COMP (1985, c128dita,	c128,	0,		c128pal,	c128ita,	c128pal,	c128d,	"Commodore Business Machines Co.","Commodore 128D Italian (PAL)", GAME_NOT_WORKING)
+
+/***************************************************************************
+
+  Game driver(s)
+
+***************************************************************************/
+
+/*    YEAR  NAME     PARENT COMPAT MACHINE   INPUT    INIT      CONFIG COMPANY                             FULLNAME            FLAGS */
+
+COMP( 1985, c128,      0,     0,   c128,     c128,    c128,     c128,  "Commodore Business Machines Co.", "Commodore 128 NTSC", 0)
+COMP( 1985, c128cr,    c128,  0,   c128,     c128,    c128,     c128,  "Commodore Business Machines Co.", "Commodore 128CR (NTSC, proto?)", 0)
+
+COMP( 1985, c128fin,   c128,  0,   c128pal,  c128swe, c128pal,  c128,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Finland)", 0)
+COMP( 1985, c128fra,   c128,  0,   c128pal,  c128fra, c128pal,  c128,  "Commodore Business Machines Co.", "Commodore 128 (PAL, France)", 0)
+COMP( 1985, c128ger,   c128,  0,   c128pal,  c128ger, c128pal,  c128,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Germany)", 0)
+COMP( 1985, c128nor,   c128,  0,   c128pal,  c128ita, c128pal,  c128,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Norway)", 0)
+/* other countries spain, belgium, ... */
+
+COMP( 1985, c128dpr,   c128,  0,   c128d,    c128,    c128d,    c128d, "Commodore Business Machines Co.", "Commodore 128D (NTSC, proto)", GAME_NOT_WORKING)
+COMP( 1985, c128d,     c128,  0,   c128dpal, c128,    c128dpal, c128d, "Commodore Business Machines Co.", "Commodore 128D PAL", GAME_NOT_WORKING)
+
+COMP( 1986, c128dcr,   c128,  0,   c128d,    c128,    c128d,    c128d, "Commodore Business Machines Co.", "Commodore 128DCR NTSC", GAME_NOT_WORKING)
+COMP( 1986, c128drde,  c128,  0,   c128dpal, c128ger, c128dpal, c128d, "Commodore Business Machines Co.", "Commodore 128DCR (PAL, Germany)", GAME_NOT_WORKING)
+COMP( 1986, c128drit,  c128,  0,   c128dpal, c128ita, c128dpal, c128d, "Commodore Business Machines Co.", "Commodore 128DCR (PAL, Italy)", GAME_NOT_WORKING)
+COMP( 1986, c128drsw,  c128,  0,   c128dpal, c128swe, c128dpal, c128d, "Commodore Business Machines Co.", "Commodore 128DCR (PAL, Sweden)", GAME_NOT_WORKING)
+//COMP( 1986, c128d81,   c128,  0,   c128d,    c128,    c128d,    c128d, "Commodore Business Machines Co.", "Commodore "128D/81" NTSC", GAME_NOT_WORKING) // no floppy drive emulation makes this useless atm

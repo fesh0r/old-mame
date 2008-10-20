@@ -189,7 +189,7 @@ WRITE8_HANDLER(spectrum_port_fe_w)
 	if ((Changed & (1<<3))!=0)
 	{
 		/* write cassette data */
-		cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0), (data & (1<<3)) ? -1.0 : +1.0);
+		cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), (data & (1<<3)) ? -1.0 : +1.0);
 	}
 
 	PreviousFE = data;
@@ -260,7 +260,7 @@ READ8_HANDLER(spectrum_port_fe_r)
 	data |= (0xe0); /* Set bits 5-7 - as reset above */
 
 	/* cassette input from wav */
-	if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.0038 )
+	if (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0.0038 )
 	{
 		data &= ~0x40;
 	}
@@ -446,6 +446,13 @@ static INTERRUPT_GEN( spec_interrupt )
 	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
+static const cassette_config spectrum_cassette_config =
+{
+	tzx_cassette_formats,
+	NULL,
+	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
+};
+
 MACHINE_DRIVER_START( spectrum )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", Z80, 3500000)        /* 3.5 Mhz */
@@ -473,7 +480,7 @@ MACHINE_DRIVER_START( spectrum )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("wave", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
@@ -481,6 +488,8 @@ MACHINE_DRIVER_START( spectrum )
 	/* devices */
 	MDRV_SNAPSHOT_ADD(spectrum, "sna,z80,sp", 0)
 	MDRV_QUICKLOAD_ADD(spectrum, "scr", 0)
+
+	MDRV_CASSETTE_ADD( "cassette", spectrum_cassette_config )
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -491,20 +500,56 @@ MACHINE_DRIVER_END
 
 ROM_START(spectrum)
 	ROM_REGION(0x10000,"main",0)
-	ROM_SYSTEM_BIOS(0, "spectrum", "ZX Spectrum")
+	ROM_SYSTEM_BIOS(0, "en", "English")
 	ROMX_LOAD("spectrum.rom", 0x0000, 0x4000, CRC(ddee531f) SHA1(5ea7c2b824672e914525d1d5c419d71b84a426a2), ROM_BIOS(1))
-	ROM_SYSTEM_BIOS(1, "specbusy", "BusySoft Upgrade v1.18")
-	ROMX_LOAD("48-busy.rom", 0x0000, 0x4000, CRC(1511cddb) SHA1(ab3c36daad4325c1d3b907b6dc9a14af483d14ec), ROM_BIOS(2))
-	ROM_SYSTEM_BIOS(2, "specpsch", "Maly's Psycho Upgrade")
-	ROMX_LOAD("48-psych.rom", 0x0000, 0x4000, CRC(cd60b589) SHA1(0853e25857d51dd41b20a6dbc8e80f028c5befaa), ROM_BIOS(3))
-	ROM_SYSTEM_BIOS(3, "specgrot", "De Groot's Upgrade")
-	ROMX_LOAD("48-groot.rom", 0x0000, 0x4000, CRC(abf18c45) SHA1(51165cde68e218512d3145467074bc7e786bf307), ROM_BIOS(4))
-	ROM_SYSTEM_BIOS(4, "specimc", "Collier's Upgrade")
-	ROMX_LOAD("48-imc.rom", 0x0000, 0x4000, CRC(d1be99ee) SHA1(dee814271c4d51de257d88128acdb324fb1d1d0d), ROM_BIOS(5))
-	ROM_SYSTEM_BIOS(5, "speclec", "LEC Upgrade")
-	ROMX_LOAD("80-lec.rom", 0x0000, 0x4000, CRC(5b5c92b1) SHA1(bb7a77d66e95d2e28ebb610e543c065e0d428619), ROM_BIOS(6))
-	ROM_SYSTEM_BIOS(6, "specpls4", "ZX Spectrum +4")
-	ROMX_LOAD("plus4.rom",0x0000,0x4000, CRC(7e0f47cb) SHA1(c103e89ef58e6ade0c01cea0247b332623bd9a30), ROM_BIOS(7))
+	ROM_SYSTEM_BIOS(1, "sp", "Spanish")
+	ROMX_LOAD("48e.rom", 0x0000, 0x4000, CRC(f051746e) SHA1(9e535e2e24231ccb65e33d107f6d0ceb23e99477), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(2, "bsrom118", "BusySoft Upgrade v1.18")
+	ROMX_LOAD("bsrom118.rom", 0x0000, 0x4000, CRC(1511cddb) SHA1(ab3c36daad4325c1d3b907b6dc9a14af483d14ec), ROM_BIOS(3))
+	ROM_SYSTEM_BIOS(3, "bsrom140", "BusySoft Upgrade v1.40")
+	ROMX_LOAD("bsrom140.rom", 0x0000, 0x4000, CRC(07017c6d) SHA1(2ee2dbe6ab96b60d7af1d6cb763b299374c21776), ROM_BIOS(4))
+	ROM_SYSTEM_BIOS(4, "groot", "De Groot's Upgrade")
+	ROMX_LOAD("groot.rom", 0x0000, 0x4000, CRC(abf18c45) SHA1(51165cde68e218512d3145467074bc7e786bf307), ROM_BIOS(5))
+	ROM_SYSTEM_BIOS(5, "48turbo", "48 Turbo")
+	ROMX_LOAD("48turbo.rom", 0x0000, 0x4000, CRC(56189781) SHA1(e62a431b0938af414b7ab8b1349a18b3c4407f70), ROM_BIOS(6))
+	ROM_SYSTEM_BIOS(6, "psycho", "Maly's Psycho Upgrade")
+	ROMX_LOAD("psycho.rom", 0x0000, 0x4000, CRC(cd60b589) SHA1(0853e25857d51dd41b20a6dbc8e80f028c5befaa), ROM_BIOS(7))
+	ROM_SYSTEM_BIOS(7, "turbo23", "Turbo 2.3")
+	ROMX_LOAD("turbo2_3.rom", 0x0000, 0x4000, CRC(fd3b0413) SHA1(84ea64af06adaf05e68abe1d69454b4fc6888505), ROM_BIOS(8))
+	ROM_SYSTEM_BIOS(8, "turbo44", "Turbo 4.4")
+	ROMX_LOAD("turbo4_4.rom", 0x0000, 0x4000, CRC(338b6e87) SHA1(21ad93ffe41a4458704c866cca2754f066f6a560), ROM_BIOS(9))
+	ROM_SYSTEM_BIOS(9, "imc", "Ian Collier's Upgrade")
+	ROMX_LOAD("imc.rom", 0x0000, 0x4000, CRC(d1be99ee) SHA1(dee814271c4d51de257d88128acdb324fb1d1d0d), ROM_BIOS(10))
+	ROM_SYSTEM_BIOS(10, "plus4", "ZX Spectrum +4")
+	ROMX_LOAD("plus4.rom",0x0000,0x4000, CRC(7e0f47cb) SHA1(c103e89ef58e6ade0c01cea0247b332623bd9a30), ROM_BIOS(11))
+	ROM_SYSTEM_BIOS(11, "deutch", "German unofficial (Andrew Owen)")
+	ROMX_LOAD("deutch.rom",0x0000,0x4000, CRC(1a9190f4) SHA1(795c20324311dd5a56300e6e4ec49b0a694ac0b3), ROM_BIOS(12))
+	ROM_SYSTEM_BIOS(12, "hdt", "HDT-ISO HEX-DEC-TEXT")
+	ROMX_LOAD("hdt-iso.rom",0x0000,0x4000, CRC(b81c570c) SHA1(2a9745ba3b369a84c4913c98ede66ec87cb8aec1), ROM_BIOS(13))
+	ROM_SYSTEM_BIOS(13, "sc", "The Sea Change Minimal ROM V1.78")
+	ROMX_LOAD("sc01.rom",0x0000,0x4000, CRC(73b4057a) SHA1(c58ff44a28db47400f09ed362ca0527591218136), ROM_BIOS(14))
+	ROM_SYSTEM_BIOS(14, "gosh", "GOSH Wonderful ZX Spectrum ROM V1.32")
+	ROMX_LOAD("gw03.rom",0x0000,0x4000, CRC(5585d7c2) SHA1(a701c3d4b698f7d2be537dc6f79e06e4dbc95929), ROM_BIOS(15))
+	ROM_SYSTEM_BIOS(15, "1986es", "1986ES Snapshot")
+	ROMX_LOAD("1986es.rom",0x0000,0x4000, CRC(9e0fdaaa) SHA1(f9d23f25640c51bcaa63e21ed5dd66bb2d5f63d4), ROM_BIOS(16))
+	ROM_SYSTEM_BIOS(16, "jgh", "JGH ROM V0.74 (C) J.G.Harston")
+	ROMX_LOAD("jgh.rom",0x0000,0x4000, CRC(7224138e) SHA1(d7f02ed66455f1c08ac0c864c7038a92a88ba94a), ROM_BIOS(17))
+	ROM_SYSTEM_BIOS(17, "iso22", "ISO ROM V2.2")
+	ROMX_LOAD("isomoje.rom",0x0000,0x4000, CRC(62ab3640) SHA1(04adbdb1380d6ccd4ab26ddd61b9ccbba462a60f), ROM_BIOS(18))
+	ROM_SYSTEM_BIOS(18, "iso8", "ISO ROM 8")
+	ROMX_LOAD("iso8bm.rom",0x0000,0x4000, CRC(43e9c2fd) SHA1(5752e6f789769475711b91e0a75911fa5232c767), ROM_BIOS(19))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(specide)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("zxide.rom", 0x0000, 0x4000, CRC(bd48db54) SHA1(54c2aa958902b5395c260770a0b25c7ba5685de9))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(spec80k)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("80-lec.rom", 0x0000, 0x4000, CRC(5b5c92b1) SHA1(bb7a77d66e95d2e28ebb610e543c065e0d428619))
 	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
@@ -526,30 +571,161 @@ ROM_START(inves)
 	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-static void spectrum_common_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:				info->i = 1; break;
-		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:	info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED; break;
-		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:		info->p = (void *)tzx_cassette_formats; break;
-		default:					cassette_device_getinfo(devclass, state, info); break;
-	}
-}
+/* Romanian clones */
+ROM_START(hc85)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("hc85.rom",0x0000,0x4000, CRC(3ab60fb5) SHA1(a4189db0bcdf8b39ed782b398828efb408fc4817))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
 
-SYSTEM_CONFIG_START(spectrum_common)
-	CONFIG_DEVICE(spectrum_common_cassette_getinfo)
-SYSTEM_CONFIG_END
+ROM_START(hc90)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("hc90.rom",0x0000,0x4000, CRC(78c14d9a) SHA1(25ef81905bed90497a749770170c24632efb2039))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(hc91)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("hc91.rom",0x0000,0x4000, CRC(8bf53761) SHA1(967d5179ba2823e9c8dd9ddfb0430465aaddb554))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(cip03)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("cip03.rom",0x0000,0x4000, CRC(c7d0cd3c) SHA1(811055b44fc74076137e2bf8db206b2a70287cc2))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(jet)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("jet.rom",0x0000,0x4000, CRC(e56a7d11) SHA1(e76be9ee71bae6aa1c2ff969276fb599ed68cb50))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+/* Czechoslovakian clones*/
+
+/* TODO: need to add memory handling for 80K RAM */
+
+ROM_START(dgama87)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("dgama87.rom",0x0000,0x4000, CRC(43104909) SHA1(f62d1f3f35fda467cae468e890995614f6ec2357))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(dgama88)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("dgama88.rom",0x0000,0x4000, CRC(4ec7e078) SHA1(09a91f85e82efa7f974d1b88c69636a02063d563))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(dgama89)
+	ROM_REGION(0x10000,"main",0)
+	ROM_SYSTEM_BIOS(0, "default", "Original")
+	ROMX_LOAD("dgama89.rom",0x0000,0x4000, CRC(45c29401) SHA1(8466a9da0169666210ccff5d43376d70bae0ae9b), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "g81", "Gama 81")
+	ROMX_LOAD("g81.rom",0x0000,0x4000, CRC(c169a63b) SHA1(71652005c2e7a4301caa7e95ae989b69cb5a6a0d), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(2, "iso", "ISO")
+	ROMX_LOAD("iso.rom",0x0000,0x4000, CRC(2ee3a992) SHA1(2e39995dd032036d33a6dd88a38b750057bca19d), ROM_BIOS(3))
+	ROM_SYSTEM_BIOS(3, "isopolak", "ISO Polak")
+	ROMX_LOAD("isopolak.rom",0x0000,0x4000, CRC(5e3f1f66) SHA1(61713117c944fc6afcb96c647bdba5ad36fd6a4b), ROM_BIOS(4))	
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(didakt90)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("didakt90.rom",0x0000,0x4000, CRC(76f2db1e) SHA1(daee355a8ee58bc406873c1dd81eecb6161dd4bd))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(didakm91)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("didakm91.rom",0x0000,0x4000, CRC(beab69b8) SHA1(71d4d1a05fb936f616bcb05c3a276f79343ecd4d))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(didaktk)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("didaktk.rom",0x0000,0x4000, CRC(8ec8a625) SHA1(cba35517d33a5c97e3d9110f12a417c6c5cdeca8))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(didakm93)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("didakm93.rom",0x0000,0x4000, CRC(ec274b1b) SHA1(a3470d8d1a996ee2a1ffff8bd8044da6e907e07e))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(mistrum)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("mistrum.rom",0x0000,0x4000, CRC(d496103e) SHA1(cca1c5b059dc3a29ca4282e8621e34a65efaa1a3))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+/* Russian clones */
+
+ROM_START(blitz)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("blitz.rom",0x0000,0x4000, CRC(91e535a8) SHA1(14f09d45dc3803cbdb05c33adb28eb12dbad9dd0))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(byte)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("byte.rom",0x0000,0x4000, CRC(c13ba473) SHA1(99f40727185abbb2413f218d69df021ae2e99e45))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(orizon)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("orizon.rom",0x0000,0x4000, CRC(ed4d9787) SHA1(3e8b29862e06be03344393c320a64a109fd9aff5))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(quorum48)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("quorum48.rom",0x0000,0x4000, CRC(48085b0e) SHA1(8e01581643f7bdfa773f68207a6437911b631e53))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(magic6)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("magic6.rom",0x0000,0x4000, CRC(cb63ae06) SHA1(533ad1f50534e6bdeec50eb5a9a4976c3d010dc7))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(compani1)
+	ROM_REGION(0x10000,"main",0)
+	ROM_LOAD("compani1.rom",0x0000,0x4000, CRC(bcfa6068) SHA1(40074b55c91a947698598e9d6ac5b8495e8cc840))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
 
 SYSTEM_CONFIG_START(spectrum)
-	CONFIG_IMPORT_FROM(spectrum_common)
 	CONFIG_DEVICE(cartslot_device_getinfo)
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY     FULLNAME */
 COMP( 1982, spectrum, 0,        0,		spectrum,		spectrum,	0,		spectrum,	"Sinclair Research",	"ZX Spectrum" , 0)
+COMP( 1987, spec80k,  spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"",	"ZX Spectrum 80K" , GAME_COMPUTER_MODIFIED)
+COMP( 1995, specide,  spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"",	"ZX Spectrum IDE" , GAME_COMPUTER_MODIFIED)
 COMP( 1986, inves,    spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Investronica",	"Inves Spectrum 48K+" , 0)
 COMP( 1985, tk90x,    spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Micro Digital",	"TK-90x Color Computer" , 0)
 COMP( 1986, tk95,     spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Micro Digital",	"TK-95 Color Computer" , 0)
+COMP( 1985, hc85,     spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"ICE-Felix",	"HC-85" , 0)
+COMP( 1990, hc90,     spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"ICE-Felix",	"HC-90" , 0)
+COMP( 1991, hc91,     spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"ICE-Felix",	"HC-91" , 0)
+COMP( 1988, cip03,    spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Electronica",	"CIP-03" , 0)
+COMP( 1990, jet,      spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Electromagnetica",	"JET" , 0)
+COMP( 1987, dgama87,  spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Didaktik Skalica",	"Didaktik Gama 87" , 0)
+COMP( 1988, dgama88,  spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Didaktik Skalica",	"Didaktik Gama 88" , 0)
+COMP( 1989, dgama89,  spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Didaktik Skalica",	"Didaktik Gama 89" , 0)
+COMP( 1990, didakt90, spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Didaktik Skalica",	"Didaktik 90" , 0)
+COMP( 1991, didakm91, spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Didaktik Skalica",	"Didaktik M 91" , 0)
+COMP( 1992, didaktk,  spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Didaktik Skalica",	"Didaktik Kompakt" , 0)
+COMP( 1993, didakm93, spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Didaktik Skalica",	"Didaktik M 93" , 0)
+COMP( 1988, mistrum,  spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"Amaterske RADIO",	"Mistrum" , 0)
+COMP( 1990, blitz,    spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"",	"Blic" , 0)
+COMP( 1990, byte,     spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"",	"Byte" , 0)
+COMP( 199?, orizon,   spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"",	"Orizon-Micro" , 0)
+COMP( 1993, quorum48, spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"",	"Kvorum 48K" , 0)
+COMP( 1993, magic6, 	spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"",	"Magic 6" , 0)
+COMP( 1990, compani1, spectrum, 0,		spectrum,		spectrum,	0,		spectrum,	"",	"Kompanion 1" , 0)

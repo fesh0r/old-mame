@@ -179,20 +179,12 @@ I/O ports
 
 /* I/O ports */
 
-static ADDRESS_MAP_START( pmd85_readport , ADDRESS_SPACE_IO, 8)
-	AM_RANGE( 0x00, 0xff) AM_READ( pmd85_io_r )
+static ADDRESS_MAP_START( pmd85_io_map, ADDRESS_SPACE_IO, 8)
+	AM_RANGE( 0x00, 0xff) AM_READWRITE( pmd85_io_r, pmd85_io_w )
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pmd85_writeport , ADDRESS_SPACE_IO, 8)
-	AM_RANGE( 0x00, 0xff) AM_WRITE( pmd85_io_w )
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( mato_readport , ADDRESS_SPACE_IO, 8)
-	AM_RANGE( 0x00, 0xff) AM_READ( mato_io_r )
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( mato_writeport , ADDRESS_SPACE_IO, 8)
-	AM_RANGE( 0x00, 0xff) AM_WRITE( mato_io_w )
+static ADDRESS_MAP_START( mato_io_map, ADDRESS_SPACE_IO, 8)
+	AM_RANGE( 0x00, 0xff) AM_READWRITE( mato_io_r, mato_io_w )
 ADDRESS_MAP_END
 
 /* memory w/r functions */
@@ -246,6 +238,13 @@ static ADDRESS_MAP_START( alfa_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mato_mem , ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1, SMH_BANK1)
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK2, SMH_BANK2)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK3, SMH_ROM)
+	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK4, SMH_BANK4)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( c2717_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1, SMH_BANK1)
 	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK2, SMH_BANK2)
 	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK3, SMH_ROM)
@@ -524,12 +523,27 @@ INPUT_PORTS_END
 
 
 
+static const struct CassetteOptions pmd85_cassette_options =
+{
+	1,		/* channels */
+	16,		/* bits per sample */
+	7200	/* sample frequency */
+};
+
+static const cassette_config pmd85_cassette_config =
+{
+	pmd85_pmd_format,
+	&pmd85_cassette_options,
+	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED
+};
+
+
 /* machine definition */
 static MACHINE_DRIVER_START( pmd85 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", 8080, 2000000)		/* 2.048MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(pmd85_mem, 0)
-	MDRV_CPU_IO_MAP(pmd85_readport, pmd85_writeport)
+	MDRV_CPU_IO_MAP(pmd85_io_map, 0)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( pmd85 )
@@ -552,8 +566,10 @@ static MACHINE_DRIVER_START( pmd85 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("wave", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	MDRV_CASSETTE_ADD( "cassette", pmd85_cassette_config )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( pmd851 )
@@ -604,12 +620,19 @@ static MACHINE_DRIVER_START( mato )
 	MDRV_IMPORT_FROM( pmd85 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(mato_mem, 0)
-	MDRV_CPU_IO_MAP(mato_readport, mato_writeport)
+	MDRV_CPU_IO_MAP(mato_io_map, 0)
 
 	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
 	MDRV_DEVICE_CONFIG( mato_ppi8255_interface )
 
 MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( c2717 )
+	MDRV_IMPORT_FROM( pmd851 )
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_PROGRAM_MAP(c2717_mem, 0)
+MACHINE_DRIVER_END
+
 
 ROM_START(pmd851)
 	ROM_REGION(0x11000,"main",0)
@@ -656,39 +679,28 @@ ROM_START(mato)
 	ROM_REGION(0x14000,"main",0)
 	ROM_SYSTEM_BIOS(0, "default", "BASIC")
 	ROMX_LOAD("mato.bin",  0x10000, 0x4000, CRC(574110a6) SHA1(4ff2cd4b07a1a700c55f92e5b381c04f758fb461), ROM_BIOS(1))
-	ROM_SYSTEM_BIOS(1, "games", "Games")
-	ROMX_LOAD("matoh.bin", 0x10000, 0x4000, CRC(ca25880d) SHA1(38ce0b6a26d48a09fdf96863c3eaf3705aca2590), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(1, "ru", "Russian")
+	ROMX_LOAD("mato-ru.rom",  0x10000, 0x4000, CRC(44b68be4) SHA1(0d9ea9a9380e2af011a2f0b64c534dd0eb0a1fac), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(2, "lan", "BASIC LAN")
+	ROMX_LOAD("mato-lan.rom",  0x10000, 0x4000, CRC(422cddde) SHA1(2a3dacf8e3e7637109c9d267f589a00881e9a5f4), ROM_BIOS(3))
+	ROM_SYSTEM_BIOS(3, "games", "Games v1")
+	ROMX_LOAD("matoh.bin", 0x10000, 0x4000, CRC(ca25880d) SHA1(38ce0b6a26d48a09fdf96863c3eaf3705aca2590), ROM_BIOS(4))
+	ROM_SYSTEM_BIOS(4, "gamesen", "Games v2 EN")
+	ROMX_LOAD("matogmen.rom", 0x10000, 0x4000, CRC(47e039c8) SHA1(6cc73a6b58921b33691d2751dee28428456eb222), ROM_BIOS(5))
+	ROM_SYSTEM_BIOS(5, "gamessk", "Games v2 SK")
+	ROMX_LOAD("matogmsk.rom", 0x10000, 0x4000, CRC(d0c9b1e7) SHA1(9e7289d971a957bf161c317e5fa76db3289ee23c), ROM_BIOS(6))
+	ROM_SYSTEM_BIOS(6, "games3", "Games v3")
+	ROMX_LOAD("matogm3.rom", 0x10000, 0x4000, CRC(9352f2c1) SHA1(b3e45c56d2800c69a0bb02febda6fa715f1afbc3), ROM_BIOS(7))
+ROM_END
+
+ROM_START(c2717)
+	ROM_REGION(0x14000,"main",0)
+	ROM_LOAD("c2717.rom", 0x10000, 0x4000, CRC(da1703b1) SHA1(9fb93e6cae8b551064c7175bf3b4e3113429ce73))
 ROM_END
 
 
-static const struct CassetteOptions pmd85_cassette_options = {
-	1,		/* channels */
-	16,		/* bits per sample */
-	7200		/* sample frequency */
-};
-
-static void pmd85_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) pmd85_pmd_format; break;
-		case MESS_DEVINFO_PTR_CASSETTE_OPTIONS:				info->p = (void *) &pmd85_cassette_options; break;
-
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
-
-		default:										cassette_device_getinfo(devclass, state, info); break;
-	}
-}
-
 static SYSTEM_CONFIG_START(pmd85)
 	CONFIG_RAM_DEFAULT(64 * 1024)
-	CONFIG_DEVICE(pmd85_cassette_getinfo)
 SYSTEM_CONFIG_END
 
 
@@ -700,3 +712,4 @@ COMP( 1985, pmd852b, pmd851, 0,		pmd852a, pmd85, pmd852a,  pmd85, "Tesla", "PMD-
 COMP( 1988, pmd853,  pmd851, 0,		pmd853,  pmd85, pmd853,   pmd85, "Tesla", "PMD-85.3" , 0)
 COMP( 1986, alfa,    pmd851, 0,		alfa,    alfa,  alfa,     pmd85, "Didaktik", "Alfa" , 0)
 COMP( 1985, mato,    pmd851, 0,		mato,    mato,  mato,     pmd85, "Statny", "Mato" , 0)
+COMP( 1989, c2717,   pmd851, 0,		c2717,   pmd85, c2717,    pmd85, "Zbrojovka Brno", "Consul 2717" , 0)

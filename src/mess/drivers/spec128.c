@@ -319,10 +319,32 @@ ROM_START(specpls2)
 	ROM_SYSTEM_BIOS( 1, "fr", "French" )
 	ROMX_LOAD("plus2fr0.rom",0x10000,0x4000, CRC(c684c535) SHA1(56684c4c85a616e726a50707483b9a42d8e724ed), ROM_BIOS(2))
 	ROMX_LOAD("plus2fr1.rom",0x14000,0x4000, CRC(f5e509c5) SHA1(7e398f62689c9d90a36d3a101351ec9987207308), ROM_BIOS(2))
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 	ROM_SYSTEM_BIOS( 2, "sp", "Spanish" )
 	ROMX_LOAD("plus2sp0.rom",0x10000,0x4000, CRC(e807d06e) SHA1(8259241b28ff85441f1bedc2bee53445767c51c5), ROM_BIOS(3))
 	ROMX_LOAD("plus2sp1.rom",0x14000,0x4000, CRC(41981d4b) SHA1(ec0d5a158842d20601b4fbeaefc6668db979d0e1), ROM_BIOS(3))
+	ROM_SYSTEM_BIOS( 3, "ao", "ZX Spectrum +2c (Andrew Owen)" )
+	ROMX_LOAD("plus2c-0.rom",0x10000,0x4000, CRC(bfddf748) SHA1(3eba870bcb2c5efa906f2ca3febe960fc35d66bb), ROM_BIOS(4))
+	ROMX_LOAD("plus2c-1.rom",0x14000,0x4000, CRC(fd8552b6) SHA1(5ffcf79f2154ba2cf42cc1d9cb4be93cb5043e73), ROM_BIOS(4))	
+	ROM_SYSTEM_BIOS( 4, "namco", "ZX Spectrum +2c (Namco)" )
+	ROMX_LOAD("pl2namco.rom",0x10000,0x8000, CRC(72a54e75) SHA1(311400157df689450dadc3620f4c4afa960b05ad), ROM_BIOS(5))
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(hc128)
+	ROM_REGION(0x18000,"main",0)
+	ROM_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5))
+	ROM_LOAD("hc128.rom",  0x14000,0x4000, CRC(0241e960) SHA1(cea0d14391b9e571460a816088a1c00ecb24afa3))	
+	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(hc2000)
+	ROM_REGION(0x18000,"main",0)
+	ROM_SYSTEM_BIOS( 0, "v1", "Version 1" )
+	ROMX_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5), ROM_BIOS(1))
+	ROMX_LOAD("hc2000.v1",  0x14000,0x4000, CRC(453c1a5a) SHA1(f8139fc38478691cf44944dc83fd6e70b0f002fb), ROM_BIOS(1))	
+	ROM_SYSTEM_BIOS( 1, "v2", "Version 2" )
+	ROMX_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5), ROM_BIOS(2))
+	ROMX_LOAD("hc2000.v2",  0x14000,0x4000, CRC(65d90464) SHA1(5e2096e6460ff2120c8ada97579fdf82c1199c09), ROM_BIOS(2))
 	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
@@ -332,5 +354,7 @@ static SYSTEM_CONFIG_START(spec128)
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY     FULLNAME */
-COMP( 1986, spec128,  0,		0,		spectrum_128,	spectrum,	0,		spec128,	"Sinclair Research",    "ZX Spectrum 128" , 0 )
-COMP( 1986, specpls2, spec128,  0,		spectrum_128,	spectrum,	0,		spec128,	"Amstrad plc",          "ZX Spectrum +2" , 0 )
+COMP( 1986, spec128,  0,		   0,		spectrum_128,	spectrum,	0,		spec128,	"Sinclair Research",    "ZX Spectrum 128" , 0 )
+COMP( 1986, specpls2, spec128, 0,		spectrum_128,	spectrum,	0,		spec128,	"Amstrad plc",          "ZX Spectrum +2" , 0 )
+COMP( 1991, hc128,    spec128, 0,		spectrum_128, spectrum,	0,		spec128,	"ICE-Felix",	"HC-128" , 0)
+COMP( 1992, hc2000,   spec128, 0,		spectrum_128,	spectrum,	0,		spec128,	"ICE-Felix",	"HC-2000" , GAME_NOT_WORKING)

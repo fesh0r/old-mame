@@ -16,6 +16,18 @@
  *            Separate stic & video better, get rid of *2 for kbd comp
  *          Add better runtime cart loading
  *          Switch to tilemap system
+ *		Add IntelliVoice Support
+ * Note from kevtris about IntelliVoice Hookup:
+<kevtris> the intv uses a special chip
+<kevtris> called the SPB640
+<kevtris> it is really cool and lame at the same time
+<kevtris> it holds 64 10 bit words, which it simply serializes and sends to the SP0256
+<kevtris> the SP0256-012 just blindly jumps to 02000h or something when you try to play one of the samples
+<kevtris> the SPB640 sits at 2000h and when it sees that address come up, it will send out the 640 bits to the '256
+<kevtris> this means you cannot use any gotos/gosubs in your speech data, but that is OK
+<kevtris> it's just a single serial stream.  the intv simply watches the buffer state and refills it periodically.  there's enough buffer to keep it full for 1 frame
+<kevtris> that's about it
+<kevtris> the samples are stored in the game ROMs, and are easy to extract
  *
  ************************************************************************/
 
@@ -478,7 +490,7 @@ static void intvkbd_cartslot_getinfo(const mess_device_class *devclass, UINT32 s
 		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(intvkbd_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "int,rom,bin"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "int,rom,bin,itv"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}

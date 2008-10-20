@@ -322,9 +322,9 @@ MACHINE_RESET( msx2 )
 	msx_ch_reset_core (machine);
 }
 
-static WRITE8_HANDLER ( msx_ppi_port_a_w );
-static WRITE8_HANDLER ( msx_ppi_port_c_w );
-static READ8_HANDLER (msx_ppi_port_b_r );
+static WRITE8_DEVICE_HANDLER ( msx_ppi_port_a_w );
+static WRITE8_DEVICE_HANDLER ( msx_ppi_port_c_w );
+static READ8_DEVICE_HANDLER (msx_ppi_port_b_r );
 
 const ppi8255_interface msx_ppi8255_interface =
 {
@@ -438,9 +438,9 @@ WRITE8_HANDLER ( msx_psg_w )
 		ay8910_control_port_0_w (machine, offset, data);
 }
 
-static const device_config *cassette_device_image(void)
+static const device_config *cassette_device_image(running_machine *machine)
 {
-	return image_from_devtype_and_index(IO_CASSETTE, 0);
+	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
 }
 
 static const device_config *printer_image(running_machine *machine)
@@ -452,7 +452,7 @@ READ8_HANDLER ( msx_psg_port_a_r )
 {
 	int data, inp;
 
-	data = (cassette_input(cassette_device_image()) > 0.0038 ? 0x80 : 0);
+	data = (cassette_input(cassette_device_image(machine)) > 0.0038 ? 0x80 : 0);
 
 	if ( (msx1.psg_b ^ input_port_read(machine, "DSW") ) & 0x40)
 		{
@@ -691,16 +691,16 @@ DEVICE_IMAGE_LOAD( msx_floppy )
 ** The PPI functions
 */
 
-static WRITE8_HANDLER ( msx_ppi_port_a_w )
+static WRITE8_DEVICE_HANDLER ( msx_ppi_port_a_w )
 {
 	msx1.primary_slot = data;
 
 	if (VERBOSE)
 		logerror ("write to primary slot select: %02x\n", msx1.primary_slot);
-	msx_memory_map_all (machine);
+	msx_memory_map_all (device->machine);
 }
 
-static WRITE8_HANDLER ( msx_ppi_port_c_w )
+static WRITE8_DEVICE_HANDLER ( msx_ppi_port_c_w )
 {
 	static int old_val = 0xff;
 
@@ -714,28 +714,28 @@ static WRITE8_HANDLER ( msx_ppi_port_c_w )
 
 	/* cassette motor on/off */
 	if ( (old_val ^ data) & 0x10)
-		cassette_change_state(cassette_device_image(),
+		cassette_change_state(cassette_device_image(device->machine),
 						(data & 0x10) ? CASSETTE_MOTOR_DISABLED :
 										CASSETTE_MOTOR_ENABLED,
 						CASSETTE_MASK_MOTOR);
 
 	/* cassette signal write */
 	if ( (old_val ^ data) & 0x20)
-		cassette_output(cassette_device_image(), (data & 0x20) ? -1.0 : 1.0);
+		cassette_output(cassette_device_image(device->machine), (data & 0x20) ? -1.0 : 1.0);
 
 	old_val = data;
 }
 
-static READ8_HANDLER( msx_ppi_port_b_r )
+static READ8_DEVICE_HANDLER( msx_ppi_port_b_r )
 {
 	UINT8 result = 0xff;
 	int row, data;
 	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5" };
 
-	row = ppi8255_r( (device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 2) & 0x0f;
+	row = ppi8255_r(device, 2) & 0x0f;
 	if (row <= 10)
 	{
-		data = input_port_read(machine, keynames[row / 2]);
+		data = input_port_read(device->machine, keynames[row / 2]);
 
 		if (row & 1)
 			data >>= 8;
@@ -828,7 +828,7 @@ void msx_memory_init (running_machine *machine)
 					option = 0x10000;
 					size = 0x10000;
 					mem = memory_region(machine, "main") + option;
-					if (memory_region_length(machine, "main") > size && mem[0] == 'A' && mem[1] == 'B') {
+					if (memory_region_length(machine, "main") >= size + option && mem[0] == 'A' && mem[1] == 'B') {
 						slot = &msx_slot_list[SLOT_FMPAC];
 					}
 					else {

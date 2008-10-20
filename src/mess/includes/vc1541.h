@@ -9,37 +9,54 @@
 #ifndef VC1541_H_
 #define VC1541_H_
 
-typedef struct {
-	int cpunr;
-	int devicenr;
-} VC1541_CONFIG;
-
-
 /*----------- defined in machine/vc1541.c -----------*/
 
-DEVICE_IMAGE_LOAD(vc1541);
-DEVICE_IMAGE_UNLOAD(vc1541);
-
-int vc1541_config(int id, int mode, VC1541_CONFIG*config);
-void vc1541_reset(void);
-void vc1541_drive_status(char *text, int size);
-
-typedef struct {
-	int cpunr;
-} C1551_CONFIG;
-
-int c1551_config(int id, int mode, C1551_CONFIG*config);
-#define c1551_reset vc1541_reset
-
-enum
-{
-	DEVINFO_PTR_VC1541_CONFIG = MESS_DEVINFO_PTR_DEV_SPECIFIC
+/* we currently have preliminary support for 1541 & 1551 only */
+enum { 
+type_1541 = 0,
+type_1541ii,
+type_1551,
+type_1570,
+type_1571,
+type_1571cr,
+type_1581,
+type_2031,
+type_2040,
+type_3040,
+type_4040,
+type_1001,
+type_8050,
+type_8250,
 };
 
+enum { 
+format_d64 = 0,			/* 1541 image, 35 tracks */
+format_d64_err,			/* 1541 image, 35 tracks + error table */
+format_d64_40t,			/* 1541 image, 40 tracks */
+format_d64_40t_err,		/* 1541 image, 40 tracks + error table */
+format_d67,				/* 2040 image, 35 tracks DOS1 format */
+format_d71,				/* 1571 image, 70 tracks */
+format_d71_err,			/* 1571 image, 70 tracks + error table */
+format_d81,				/* 1581 image, 80 tracks */
+format_d80,				/* 8050 image, 77 tracks */
+format_d82,				/* 8250 image, 154 tracks (read as 77?) */
+format_g64,				/* 1541 image in GCR format */
+};
+
+
+int drive_config(int type, int id, int mode, int cpunr, int devicenr);
+void drive_reset(void);
+
 void vc1541_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
-void c2031_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
 void c1551_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
 void c1571_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
+/* the ones below are still not used in any drivers */
+void c1581_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
+void c2031_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
+void c2040_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
+void c8050_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
+void c8250_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
+
 
 MACHINE_DRIVER_EXTERN( cpu_vc1540 );
 MACHINE_DRIVER_EXTERN( cpu_vc1541 );
@@ -150,20 +167,20 @@ MACHINE_DRIVER_EXTERN( cpu_c1571 );
 	ROM_LOAD("",  0xc000, 0x4000, CRC())
 #endif
 
-/* serial bus vc20/c64/c16/vc1541 and some printer */
 
-#ifdef VC1541
-#define cbm_serial_reset_write(level)   vc1541_serial_reset_write(0,level)
-#define cbm_serial_atn_read()           vc1541_serial_atn_read(0)
-#define cbm_serial_atn_write(level)     vc1541_serial_atn_write(Machine, 0,level)
-#define cbm_serial_data_read()          vc1541_serial_data_read(0)
-#define cbm_serial_data_write(level)    vc1541_serial_data_write(0,level)
-#define cbm_serial_clock_read()         vc1541_serial_clock_read(0)
-#define cbm_serial_clock_write(level)   vc1541_serial_clock_write(0,level)
-#define cbm_serial_request_read()       vc1541_serial_request_read(0)
-#define cbm_serial_request_write(level) vc1541_serial_request_write(0,level)
-#endif
+/* IEC interface for c16 with c1551 */
 
+/* To be passed directly to the drivers */
+void c1551x_0_write_data (int data);
+int c1551x_0_read_data (void);
+void c1551x_0_write_handshake (int data);
+int c1551x_0_read_handshake (void);
+int c1551x_0_read_status (void);
+
+
+/* serial bus for vic20, c64 & c16 with vc1541 and some printer */
+
+/* To be passed to serial bus emulation */
 void vc1541_serial_reset_write(int which,int level);
 int vc1541_serial_atn_read(int which);
 void vc1541_serial_atn_write(running_machine *machine, int which,int level);
@@ -173,12 +190,6 @@ int vc1541_serial_clock_read(int which);
 void vc1541_serial_clock_write(int which,int level);
 int vc1541_serial_request_read(int which);
 void vc1541_serial_request_write(int which,int level);
-
-void c1551x_0_write_data (int data);
-int c1551x_0_read_data (void);
-void c1551x_0_write_handshake (int data);
-int c1551x_0_read_handshake (void);
-int c1551x_0_read_status (void);
 
 
 #endif /* VC1541_H_ */

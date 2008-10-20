@@ -11,9 +11,19 @@
 #include "streams.h"
 #include "deprecat.h"
 
-#define VERBOSE_DBG 0
-#include "includes/cbm.h"
 #include "video/vic6560.h"
+
+
+#define VERBOSE_LEVEL 0
+#define DBG_LOG(N,M,A) \
+	{ \
+		if(VERBOSE_LEVEL >= N) \
+		{ \
+			if( M ) \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+			logerror A; \
+		} \
+	}
 
 
 /*

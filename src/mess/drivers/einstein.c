@@ -108,6 +108,8 @@ static int einstein_int_mask = 0;
 
 static int einstein_ctc_trigger = 0;
 
+static const device_config *einstein_z80pio;
+
 /* KEYBOARD */
 static int einstein_keyboard_line = 0;
 static int einstein_keyboard_data = 0x0ff;
@@ -325,11 +327,13 @@ static WRITE8_HANDLER(einstein_80col_w)
 
 static TIMER_CALLBACK(einstein_ctc_trigger_callback)
 {
+	const device_config *device = ptr;
+
 	einstein_ctc_trigger^=1;
 
 	/* channel 0 and 1 have a 2Mhz input clock for triggering */
-	z80ctc_0_trg0_w(machine, 0, einstein_ctc_trigger);
-	z80ctc_0_trg1_w(machine, 0, einstein_ctc_trigger);
+	z80ctc_trg0_w(device, 0, einstein_ctc_trigger);
+	z80ctc_trg1_w(device, 0, einstein_ctc_trigger);
 }
 
 /* refresh keyboard data. It is refreshed when the keyboard line is written */
@@ -401,46 +405,47 @@ static TIMER_CALLBACK(einstein_keyboard_timer_callback)
 
 
 /* interrupt state callback for ctc */
-static void einstein_ctc_interrupt(running_machine *machine, int state)
+static void einstein_ctc_interrupt(const device_config *device, int state)
 {
 	logerror("ctc irq state: %02x\n",state);
-	cpunum_set_input_line(machine, 0, 1, state);
+	cpunum_set_input_line(device->machine, 0, 1, state);
 }
 
-static void einstein_pio_interrupt(running_machine *machine, int state)
+static Z80PIO_ON_INT_CHANGED( einstein_pio_interrupt )
 {
 	logerror("pio irq state: %02x\n",state);
-	cpunum_set_input_line(machine, 0, 3, state);
+	cpunum_set_input_line(device->machine, 0, 3, state);
 }
 
-static WRITE8_HANDLER(einstein_serial_transmit_clock)
+static WRITE8_DEVICE_HANDLER(einstein_serial_transmit_clock)
 {
 	msm8251_transmit_clock();
 }
 
-static WRITE8_HANDLER(einstein_serial_receive_clock)
+static WRITE8_DEVICE_HANDLER(einstein_serial_receive_clock)
 {
 	msm8251_receive_clock();
 }
 
 static z80ctc_interface	einstein_ctc_intf =
 {
+	"main",
 	EINSTEIN_SYSTEM_CLOCK,
 	0,
 	einstein_ctc_interrupt,
 	einstein_serial_transmit_clock,
 	einstein_serial_receive_clock,
-    z80ctc_0_trg3_w
+    z80ctc_trg3_w
 };
 
-static void einstein_pio_ardy(int data)
+static Z80PIO_ON_ARDY_CHANGED( einstein_pio_ardy )
 {
 	int handshake;
 
 	handshake = 0;
 
 	/* strobe is inverted state of ardy */
-	if (data!=0)
+	if (state != 0)
 		handshake = CENTRONICS_STROBE;
 
 	/* ardy is connected to strobe */
@@ -448,33 +453,83 @@ static void einstein_pio_ardy(int data)
 	centronics_write_handshake(0, handshake, CENTRONICS_STROBE);
 }
 
-static const z80pio_interface einstein_pio_intf =
+static WRITE8_DEVICE_HANDLER( einstein_pio_port_a_w )
 {
+	centronics_write_data(0,data);
+}
+
+
+static Z80PIO_INTERFACE( einstein_pio_intf )
+{
+	"main",
+	0,
 	einstein_pio_interrupt,
 	NULL,
 	NULL,
-	NULL,
+	einstein_pio_port_a_w,
 	NULL,
 	einstein_pio_ardy,
 	NULL
 };
 
-/* not required for this interrupt source */
-static void einstein_keyboard_int_reset(int which)
-{
-	einstein_int_mask &= ~EINSTEIN_KEY_INT;
 
-	einstein_update_interrupts(Machine);
+/****************************************************************
+	Einstein specific keyboard daisy chain code
+****************************************************************/
+
+static int einstein_daisy_irq_state(const device_config *device)
+{
+	return 0xFF;
 }
 
 
-/* not required for this interrupt source */
-static void einstein_adc_int_reset(int which)
+static void einstein_daisy_irq_reti(const device_config *device)
 {
-	einstein_int_mask &= ~EINSTEIN_ADC_INT;
-
-	einstein_update_interrupts(Machine);
 }
+
+
+static DEVICE_START( einstein_daisy )
+{
+	return DEVICE_START_OK;
+}
+
+
+static DEVICE_RESET( einstein_daisy )
+{
+}
+
+
+static DEVICE_SET_INFO( einstein_daisy )
+{
+}
+
+
+static DEVICE_GET_INFO( einstein_daisy )
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TOKEN_BYTES:					info->i = 4;											break;
+		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;											break;
+		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;						break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_FCT_SET_INFO:						info->set_info = DEVICE_SET_INFO_NAME(einstein_daisy);	break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(einstein_daisy);		break;
+		case DEVINFO_FCT_STOP:							/* Nothing */											break;
+		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(einstein_daisy);		break;
+		case DEVINFO_FCT_IRQ_STATE:						info->f = (genf *)einstein_daisy_irq_state;				break;
+		case DEVINFO_FCT_IRQ_RETI:						info->f = (genf *)einstein_daisy_irq_reti;				break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME:							info->s = "Einstein daisy";								break;
+		case DEVINFO_STR_FAMILY:						info->s = "Z80";										break;
+		case DEVINFO_STR_VERSION:						info->s = "1.0";										break;
+		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;										break;
+		case DEVINFO_STR_CREDITS:						info->s = "Copyright the MESS Team";					break;
+	}
+}
+
 
 #ifdef UNUSED_FUNCTION
 /* not required for this interrupt source */
@@ -484,57 +539,32 @@ static void einstein_fire_int_reset(int which)
 
 	einstein_update_interrupts(Machine);
 }
-#endif
 
-static int einstein_keyboard_interrupt(int which)
-{
-	logerror("keyboard int routine in daisy chain\n");
 
-	/* return vector */
-	return 0x0ff;
-}
-
-static int einstein_adc_interrupt(int which)
-{
-	logerror("adc int routine in daisy chain\n");
-	/* return vector */
-	return 0x0ff;
-}
-
-#ifdef UNUSED_FUNCTION
 static int einstein_fire_interrupt(int which)
 {
 	logerror("fire int routine in daisy chain\n");
 	/* return vector */
 	return 0x0ff;
 }
-#endif
 
-/* reti has no effect on this interrupt */
-static void einstein_keyboard_reti(int which)
-{
-}
 
-/* reti has no effect on this interrupt */
-static void einstein_adc_reti(int which)
-{
-}
-
-#ifdef UNUSED_FUNCTION
 /* reti has no effect on this interrupt */
 static void einstein_fire_reti(int which)
 {
 }
 #endif
 
-static const struct z80_irq_daisy_chain einstein_daisy_chain[] =
+static const z80_daisy_chain einstein_daisy_chain[] =
 {
-	{einstein_keyboard_int_reset, einstein_keyboard_interrupt, 0, einstein_keyboard_reti, 0},
-    {z80ctc_reset, z80ctc_irq_state, z80ctc_irq_ack, z80ctc_irq_reti, 0},
-	{einstein_adc_int_reset,einstein_adc_interrupt, 0, einstein_adc_reti, 0},
-	{z80pio_reset, z80pio_irq_state, z80pio_irq_ack, z80pio_irq_reti, 0},
+	{ DEVICE_GET_INFO_NAME( einstein_daisy ), "keyboard_daisy" },
+//	{einstein_keyboard_int_reset, einstein_keyboard_interrupt, 0, einstein_keyboard_reti, 0},
+	{ Z80CTC, "z80ctc" },
+	{ DEVICE_GET_INFO_NAME( einstein_daisy ), "adc_daisy" },
+//	{einstein_adc_int_reset,einstein_adc_interrupt, 0, einstein_adc_reti, 0},
+	{ Z80PIO, "z80pio" },
 //  {einstein_fire_int_reset,einstein_fire_interrupt, einstein_fire_reti, 0},
-    {0,0,0,0,-1}
+	{ NULL }
 };
 
 static  READ8_HANDLER(einstein_vdp_r)
@@ -637,53 +667,28 @@ static WRITE8_HANDLER(einstein_pio_w)
 {
 	logerror("pio w: %04x %02x\n",offset,data);
 
-	if ((offset & 0x01)==0)
-	{
-		switch ((offset>>1) & 0x01)
-		{
-			/* port A */
-			case 0:
-			{
-				/* printer is connected to port A */
-				centronics_write_data(0,data);
-			}
-			break;
-
-			default:
-				break;
-		}
-
-		z80pio_d_w( 0, (offset>>1) & 0x01,data);
-		return;
-	}
-
-	z80pio_c_w( 0, (offset>>1) & 0x01,data);
+	z80pio_w( einstein_z80pio, offset, data );
 }
 
 static  READ8_HANDLER(einstein_pio_r)
 {
 	logerror("pio r: %04x\n",offset);
 
-	if ((offset & 0x01)==0)
-	{
-		return z80pio_d_r( 0, (offset>>1) & 0x01);
-	}
-
-	return z80pio_c_r( 0, (offset>>1) & 0x01);
+	return z80pio_r( einstein_z80pio, offset );
 }
 
-static  READ8_HANDLER(einstein_ctc_r)
+static  READ8_DEVICE_HANDLER(einstein_ctc_r)
 {
 	logerror("ctc r: %04x\n",offset);
 
-	return z80ctc_0_r(machine, offset & 0x03);
+	return z80ctc_r(device, offset & 0x03);
 }
 
-static WRITE8_HANDLER(einstein_ctc_w)
+static WRITE8_DEVICE_HANDLER(einstein_ctc_w)
 {
 	logerror("ctc w: %04x %02x\n",offset,data);
 
-	z80ctc_0_w(machine, offset & 0x03,data);
+	z80ctc_w(device, offset & 0x03,data);
 }
 
 static WRITE8_HANDLER(einstein_serial_w)
@@ -1016,7 +1021,7 @@ static READ8_HANDLER(einstein2_port_r)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			return einstein_ctc_r(machine, offset);
+			return einstein_ctc_r( device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), offset);
 		case 0x30:
 		case 0x31:
 		case 0x32:
@@ -1120,7 +1125,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			einstein_ctc_w(machine, offset,data);
+			einstein_ctc_w( device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), offset,data);
 			return;
 		case 0x30:
 		case 0x31:
@@ -1209,7 +1214,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			return einstein_ctc_r(machine, offset);
+			return einstein_ctc_r( device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), offset);
 		case 0x30:
 		case 0x31:
 		case 0x32:
@@ -1296,7 +1301,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			einstein_ctc_w(machine, offset,data);
+			einstein_ctc_w( device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), offset,data);
 			return;
 		case 0x30:
 		case 0x31:
@@ -1368,11 +1373,11 @@ static void einstein_printer_handshake_in(int number, int data, int mask)
 		if (data & CENTRONICS_ACKNOWLEDGE)
 		{
 			/* /ack into /astb */
-			z80pio_astb_w(0, 0);
+			z80pio_astb_w( einstein_z80pio, 0);
 		}
 		else
 		{
-			z80pio_astb_w(0, 1);
+			z80pio_astb_w( einstein_z80pio, 1);
 		}
 	}
 }
@@ -1425,6 +1430,8 @@ static MACHINE_START( einstein )
 {
 	TMS9928A_configure(&tms9928a_interface);
 	wd17xx_init(machine, WD_TYPE_177X, NULL, NULL);
+
+	einstein_z80pio = device_list_find_by_tag( machine->config->devicelist, Z80PIO, "z80pio" );
 }
 
 static MACHINE_RESET( einstein )
@@ -1433,12 +1440,7 @@ static MACHINE_RESET( einstein )
 	memory_set_bankptr(3, mess_ram);
 	memory_set_bankptr(4, mess_ram+0x02000);
 
-	z80ctc_init(0, &einstein_ctc_intf);
-	z80pio_init(0, &einstein_pio_intf);
 	msm8251_init(&einstein_msm8251_intf);
-
-	z80ctc_reset(0);
-	z80pio_reset(0);
 
 	TMS9928A_reset ();
 
@@ -1462,7 +1464,7 @@ static MACHINE_RESET( einstein )
 
 	/* the input to channel 0 and 1 of the ctc is a 2mhz clock */
 	einstein_ctc_trigger = 0;
-	timer_pulse(ATTOTIME_IN_HZ(2000000), NULL, 0, einstein_ctc_trigger_callback);
+	timer_pulse(ATTOTIME_IN_HZ(2000000), (void *)device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), 0, einstein_ctc_trigger_callback);
 
 	centronics_config(0, einstein_cent_config);
 	/* assumption: select is tied low */
@@ -1726,6 +1728,11 @@ static MACHINE_DRIVER_START( einstein )
 
 	MDRV_MACHINE_START( einstein )
 	MDRV_MACHINE_RESET( einstein )
+
+	MDRV_Z80PIO_ADD( "z80pio", einstein_pio_intf )
+	MDRV_Z80CTC_ADD( "z80ctc", einstein_ctc_intf )
+	MDRV_DEVICE_ADD( "keyboard_daisy", DEVICE_GET_INFO_NAME( einstein_daisy ) )
+	MDRV_DEVICE_ADD( "adc_daisy", DEVICE_GET_INFO_NAME( einstein_daisy ) )
 
     /* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)

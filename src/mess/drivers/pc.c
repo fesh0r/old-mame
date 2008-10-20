@@ -1432,6 +1432,13 @@ static MACHINE_DRIVER_START( pcherc )
 	MDRV_IMPORT_FROM( pc_hdc )
 MACHINE_DRIVER_END
 
+static const cassette_config ibm5150_cassette_config =
+{
+	cassette_default_formats,
+	NULL,
+	CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
+};
+
 static MACHINE_DRIVER_START( ibm5150 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", I8088, XTAL_14_31818MHz/3)
@@ -1492,6 +1499,8 @@ static MACHINE_DRIVER_START( ibm5150 )
 
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
+
+	MDRV_CASSETTE_ADD( "cassette", ibm5150_cassette_config )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( pccga )
@@ -1948,6 +1957,8 @@ static MACHINE_DRIVER_START( ibmpcjr )
 	MDRV_DEVICE_ADD("printer", PRINTER)
 	MDRV_DEVICE_ADD("printer2", PRINTER)
 	MDRV_DEVICE_ADD("printer3", PRINTER)
+
+	MDRV_CASSETTE_ADD( "cassette", ibm5150_cassette_config )
 MACHINE_DRIVER_END
 
 #if 0
@@ -2002,7 +2013,7 @@ MACHINE_DRIVER_END
        serves 2 controllers? 0x320-3, 0x324-7, dma 3, irq5
        movable, works at 0xee000 */
 	/* western digital 06/28/89 */
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 
 	/* lcs 6210d asic i2.1 09/01/1988 */
 	/* problematic, currently showing menu and calls int21 (hangs)! */
@@ -2011,11 +2022,16 @@ MACHINE_DRIVER_END
 
 ROM_START( ibm5150 )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC Expansion ROM C8000-C9FFF */
-//	ROM_LOAD("600963.u12", 0xc8000, 0x02000, CRC(f3daf85f) SHA1(3bd29538832d3084cbddeec92593988772755283))	/* Tandon/Western Digital Fixed Disk Adapter 600963-001__TYPE_5.U12.2764.bin */
-//	ROM_LOAD("62x0822.12d", 0xc8000, 0x02000, CRC(4cdd2193) SHA1(fe8f88333b5e13e170bf637a9a0090383dee454d))	/* Xebec Fixed Disk Adapter 62X0822__(M)_AMI_8621MAB__S68B364-P__(C)IBM_CORP_1982,1985__PHILIPPINES.12D.2364.bin */
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
+//	ROM_LOAD("600963.u12", 0xc8000, 0x02000, CRC(f3daf85f) SHA1(3bd29538832d3084cbddeec92593988772755283))	/* Tandon/Western Digital Fixed Disk Adapter 600963-001__TYPE_5.U12.2764.bin - Meant for an IBM PC or XT which lacked bios support for HDDs */
 
-	/* IBM PC 5150 (rev 3: 1501-476 10/27/82) 5-screw case w/1501981 CGA Card, ROM Basic 1.1 */
+	/* Xebec 1210 and 1220 Z80-based ST409/ST412 MFM controllers */
+//	ROM_LOAD("5000059.12d", 0xc8000, 0x02000, CRC(03e0ee9a) SHA1(6691be4f6a8d690c696ad8b259708d3e7e87ad89))	/* Xebec 1210 IBM OEM Fixed Disk Adapter - Revision 1, supplied with rev1 and rev2 XT, and PC/3270. supports 4 hdd types, selectable by jumpers (which on the older XTs were usually soldered to one setting) */
+//	ROM_LOAD("62x0822.12d", 0xc8000, 0x02000, CRC(4cdd2193) SHA1(fe8f88333b5e13e170bf637a9a0090383dee454d))	/* Xebec 1210 IBM OEM Fixed Disk Adapter 62X0822__(M)_AMI_8621MAB__S68B364-P__(C)IBM_CORP_1982,1985__PHILIPPINES.12D.2364.bin - Revision 2, supplied with rev3 and rev4 XT. supports 4 hdd types, selectable by jumpers (which unlike the older XTs, were changable without requiring soldering )*/
+//	ROM_LOAD("unknown.12d", 0xc8000, 0x02000, NO_DUMP )	/* Xebec 1210 Non-IBM/Retail Fixed Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
+//	ROM_LOAD("unknown.???", 0xc8000, 0x02000, NO_DUMP )	/* Xebec 1220 Non-IBM/Retail Fixed Disk Adapter plus Floppy Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
+
+	/* IBM PC 5150 (rev 3: 1501-476 10/27/82) 5-screw case 64-256k MB w/1501981 CGA Card, ROM Basic 1.1 */
 	ROM_SYSTEM_BIOS( 0, "default", "IBM PC 5150 1501471 10/27/82" )
 	ROMX_LOAD("5000019.u29", 0xf6000, 0x2000, CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(1))		/* ROM Basic 1.1 F6000-F7FFF; IBM P/N: 5000019, FRU: 6359109 */
 	ROMX_LOAD("5000021.u30", 0xf8000, 0x2000, CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(1))		/* ROM Basic 1.1 F8000-F9FFF; IBM P/N: 5000021, FRU: 6359111 */
@@ -2023,16 +2039,16 @@ ROM_START( ibm5150 )
 	ROMX_LOAD("5000023.u32", 0xfc000, 0x2000, CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(1))		/* ROM Basic 1.1 FC000-FDFFF; IBM P/N: 5000023, FRU: 6359113 */
 	ROMX_LOAD("1501476.u33", 0xfe000, 0x2000, CRC(e88792b3) SHA1(40fce6a94dda4328a8b608c7ae2f39d1dc688af4), ROM_BIOS(1))
 
-	/* IBM PC 5150 (rev 1: 04/24/81) 2-screw case w/MDA Card, ROM Basic 1.0 */
+	/* IBM PC 5150 (rev 1: 04/24/81) 2-screw case 16-64k MB w/MDA Card, ROM Basic 1.0 */
 	/* ROM Basic 1.0 had a bug: Doing ".1 / 10" would result in the wrong answer. May have been fixed in 1.1 */
-	ROM_SYSTEM_BIOS( 1, "rev1", "IBM PC 5150 ??????? 02/24/81" )
+	ROM_SYSTEM_BIOS( 1, "rev1", "IBM PC 5150 5700051 04/24/81" )
 	ROMX_LOAD("5700019.u29", 0xf6000, 0x2000, CRC(b59e8f6c) SHA1(7a5db95370194c73b7921f2d69267268c69d2511), ROM_BIOS(2))		/* ROM Basic 1.0 F6000-F7FFF */
 	ROMX_LOAD("5700027.u30", 0xf8000, 0x2000, CRC(bfff99b8) SHA1(ca2f126ba69c1613b7b5a4137d8d8cf1db36a8e6), ROM_BIOS(2))		/* ROM Basic 1.0 F8000-F9FFF */
 	ROMX_LOAD("5700035.u31", 0xfa000, 0x2000, CRC(9fe4ec11) SHA1(89af8138185938c3da3386f97d3b0549a51de5ef), ROM_BIOS(2))		/* ROM Basic 1.0 FA000-FBFFF */
 	ROMX_LOAD("5700043.u32", 0xfc000, 0x2000, CRC(ea2794e6) SHA1(22fe58bc853ffd393d5e2f98defda7456924b04f), ROM_BIOS(2))		/* ROM Basic 1.0 FC000-FDFFF */
 	ROMX_LOAD("5700051.u33", 0xfe000, 0x2000, NO_DUMP, ROM_BIOS(2))
 
-	/* IBM PC 5150 (rev 2: 10/19/81) 2-screw case w/MDA Card, ROM Basic 1.0 */
+	/* IBM PC 5150 (rev 2: 10/19/81) 2-screw case, 16-64k MB w/MDA Card, ROM Basic 1.0 */
 	ROM_SYSTEM_BIOS( 2, "rev2", "IBM PC 5150 5700671 10/19/81" )
 	ROMX_LOAD("5700019.u29", 0xf6000, 0x2000, CRC(b59e8f6c) SHA1(7a5db95370194c73b7921f2d69267268c69d2511), ROM_BIOS(3))		/* ROM Basic 1.0 F6000-F7FFF */
 	ROMX_LOAD("5700027.u30", 0xf8000, 0x2000, CRC(bfff99b8) SHA1(ca2f126ba69c1613b7b5a4137d8d8cf1db36a8e6), ROM_BIOS(3))		/* ROM Basic 1.0 F8000-F9FFF */
@@ -2040,9 +2056,10 @@ ROM_START( ibm5150 )
 	ROMX_LOAD("5700043.u32", 0xfc000, 0x2000, CRC(ea2794e6) SHA1(22fe58bc853ffd393d5e2f98defda7456924b04f), ROM_BIOS(3))		/* ROM Basic 1.0 FC000-FDFFF */
 	ROMX_LOAD("5700671.u33", 0xfe000, 0x2000, CRC(b7d4ec46) SHA1(bdb06f846c4768f39eeff7e16b6dbff8cd2117d2), ROM_BIOS(3))
 
-	/* Z80 on the Xebec Hard Disk Controller */
+	/* Z80 on the Xebec 1210 and 1220 Hard Disk Controllers */
 //	ROM_REGION(0x10000, "cpu1", 0)
-//	ROM_LOAD("104839re.12a", 0x0000, 0x1000, CRC(3ad32fcc) SHA1(0127fa520aaee91285cb46a640ed835b4554e4b3))	/* Xebec Hard Disk Controller 104839RE__COPYRIGHT__XEBEC_1986.12A.2732.bin */
+//	ROM_LOAD("104839re.12a", 0x0000, 0x1000, CRC(3ad32fcc) SHA1(0127fa520aaee91285cb46a640ed835b4554e4b3))	/* Xebec 1210 IBM OEM Hard Disk Controller, silkscreened "104839RE // COPYRIGHT // XEBEC 1986" - Common for both XEBEC 1210 IBM OEM revisions */
+//	/* Other versions probably exist for the non-IBM/Retail 1210 and the 1220 */
 
 	/* Character rom */
 	ROM_REGION(0x2000,"gfx1", 0)
@@ -2053,9 +2070,10 @@ ROM_START( ibm5150 )
 	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
+#ifdef UNUSED_DEFINITION
 ROM_START( ibmpca )
 	ROM_REGION(0x100000,"main",0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	/* WDC Expansion ROM C8000-C9FFF */
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	ROM_LOAD("basicc11.f6", 0xf6000, 0x2000, CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9))
 	ROM_LOAD("basicc11.f8", 0xf8000, 0x2000, CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731))
 	ROM_LOAD("basicc11.fa", 0xfa000, 0x2000, CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74))
@@ -2066,10 +2084,11 @@ ROM_START( ibmpca )
 	ROM_REGION(0x2000,"gfx1", 0)
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
 ROM_END
+#endif
 
 ROM_START( bondwell )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) // taken from other machine
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */ // taken from other machine
 	ROM_LOAD("bondwell.bin", 0xfe000, 0x2000, CRC(d435a405) SHA1(a57c705d1144c7b61940b6f5c05d785c272fc9bb))
 
 	/* Character rom */
@@ -2079,7 +2098,7 @@ ROM_END
 
 ROM_START( pcmda )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	/* WDC Expansion ROM C8000-C9FFF */
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad) SHA1(a641b505bbac97b8775f91fe9b83d9afdf4d038f))
 	ROM_REGION(0x08100,"gfx1", 0)
 	ROM_LOAD("mda.rom",     0x00000, 0x02000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) // taken from original IBM MDA
@@ -2087,7 +2106,7 @@ ROM_END
 
 ROM_START( pcherc )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	/* WDC Expansion ROM C8000-C9FFF */
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad) SHA1(a641b505bbac97b8775f91fe9b83d9afdf4d038f))
 	ROM_REGION(0x1000,"gfx1", 0)
 	ROM_LOAD("um2301.bin",  0x00000, 0x1000, CRC(0827bdac) SHA1(15f1aceeee8b31f0d860ff420643e3c7f29b5ffc))
@@ -2096,7 +2115,7 @@ ROM_END
 
 ROM_START( pc )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	/* WDC Expansion ROM C8000-C9FFF */
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 //	ROM_LOAD("xthdd.rom",  0xc8000, 0x02000, CRC(a96317da))
 	ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad) SHA1(a641b505bbac97b8775f91fe9b83d9afdf4d038f))
 
@@ -2125,7 +2144,7 @@ ROM_END
 #ifdef UNUSED_DEFINITION
 ROM_START( t1000 )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */	// not sure about this one
 	// partlist says it has 1 128kbyte rom
 	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
 	ROM_SYSTEM_BIOS( 0, "v010000", "v010000" )
@@ -2139,7 +2158,7 @@ ROM_END
 
 ROM_START( t1000a )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */	// not sure about this one
 	// partlist says it has 1 128kbyte rom
 	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
 	ROM_LOAD("v010100.f0", 0xf0000, 0x10000, CRC(b6760881) SHA1(8275e4c48ac09cf36685db227434ca438aebe0b9))
@@ -2150,7 +2169,7 @@ ROM_END
 
 ROM_START( t1000ex )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */	// not sure about this one
 	// partlist says it has 1 128kbyte rom
 	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
 	ROM_LOAD("v010200.f0", 0xf0000, 0x10000, CRC(0e016ecf) SHA1(2f5ac8921b7cba56b02122ef772f5f11bbf6d8a2))
@@ -2162,7 +2181,7 @@ ROM_END
 
 ROM_START( t1000hx )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	// partlist says it has 1 128kbyte rom
 	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))
 	ROM_LOAD("v020000.f0", 0xf0000, 0x10000, CRC(d37a1d5f) SHA1(5ec031c31a7967cc3fd53a535d81833e4a1c385e))
@@ -2174,7 +2193,7 @@ ROM_END
 #ifdef UNUSED_DEFINITION
 ROM_START( t1000sl )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */	// not sure about this one
 	// partlist says it has 1 128kbyte rom
 	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
 	ROM_SYSTEM_BIOS( 0, "v010400", "v010400" )
@@ -2192,7 +2211,7 @@ ROM_END
 
 ROM_START( t1000sl2 )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */	// not sure about this one
 	// partlist says it has 1 128kbyte rom
 	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
 	ROM_LOAD("v010404.f0", 0xf0000, 0x10000, NO_DUMP )
@@ -2204,7 +2223,7 @@ ROM_END
 
 ROM_START( t1000sx )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */	// not sure about this one
 	// partlist says it has 1 128kbyte rom
 	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
 	ROM_LOAD("v010200.f0", 0xf0000, 0x10000, CRC(0e016ecf) SHA1(2f5ac8921b7cba56b02122ef772f5f11bbf6d8a2))
@@ -2216,7 +2235,7 @@ ROM_END
 #ifdef UNUSED_DEFINITION
 ROM_START( t1000rl )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */	// not sure about this one
 	// partlist says it has 1 128kbyte rom
 	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
 	ROM_SYSTEM_BIOS( 0, "v020000", "v020000" )
@@ -2231,16 +2250,39 @@ ROM_END
 
 ROM_START( ibm5160 )
 	ROM_REGION16_LE(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 //	ROM_LOAD("600963.u12", 0xc8000, 0x02000, CRC(f3daf85f) SHA1(3bd29538832d3084cbddeec92593988772755283))  /* Tandon/Western Digital Fixed Disk Adapter 600963-001__TYPE_5.U12.2764.bin */
+
+	/* PC/3270 has a 3270 keyboard controller card, plus a rom on that card to tell the pc how to run it.
+		* Unlike the much more complex keyboard controller used in the AT/3270, this one only has one rom, 
+		  a motorola made "(M)1503828 // XE // 8434A XM // SC81155P" custom (an MCU?; the more complicated 
+		  3270/AT keyboard card uses this same exact chip), an 8254, and some logic chips.
+		  Thanks to high resolution pictures provided by John Elliott, I can see that the location of the
+                  chips is unlabeled (except for by absolute pin position on the back), and there are no pals or proms.
+		* The board is stickered "2683114 // 874999 // 8446 SU" on the front.
+		* The board has a single DE-9 connector where the keyboard dongle connects to.
+		* The keyboard dongle has two connectors on it: a DIN-5 connector which connects to the Motherboard's
+		  keyboard port, plus an RJ45-lookalike socket which the 3270 keyboard connects to. 
+		* The rom is mapped very strangely to avoid hitting the hard disk controller:
+		  The first 0x800 bytes appear at C0000-C07FF, and the last 0x1800 bytes appear at 0xCA000-CB7FF
+	*/
+//	ROM_LOAD("6323581.bin", 0xc0000, 0x00800, CRC(cf323cbd) SHA1(93c1ef2ede02772a46dab075c32e179faa045f81))
+//	ROM_LOAD("6323581.bin", 0xca000, 0x01800, CRC(cf323cbd) SHA1(93c1ef2ede02772a46dab075c32e179faa045f81) ROM_SKIP(0x800))
+
+	/* Xebec 1210 and 1220 Z80-based ST409/ST412 MFM controllers */
+//	ROM_LOAD("5000059.12d", 0xc8000, 0x02000, CRC(03e0ee9a) SHA1(6691be4f6a8d690c696ad8b259708d3e7e87ad89))	/* Xebec 1210 IBM OEM Fixed Disk Adapter - Revision 1, supplied with rev1 and rev2 XT, and PC/3270. supports 4 hdd types, selectable by jumpers (which on the older XTs were usually soldered to one setting) */
+//	ROM_LOAD("62x0822.12d", 0xc8000, 0x02000, CRC(4cdd2193) SHA1(fe8f88333b5e13e170bf637a9a0090383dee454d))	/* Xebec 1210 IBM OEM Fixed Disk Adapter 62X0822__(M)_AMI_8621MAB__S68B364-P__(C)IBM_CORP_1982,1985__PHILIPPINES.12D.2364.bin - Revision 2, supplied with rev3 and rev4 XT. supports 4 hdd types, selectable by jumpers (which unlike the older XTs, were changable without requiring soldering )*/
+//	ROM_LOAD("unknown.12d", 0xc8000, 0x02000, NO_DUMP )	/* Xebec 1210 Non-IBM/Retail Fixed Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
+//	ROM_LOAD("unknown.???", 0xc8000, 0x02000, NO_DUMP )	/* Xebec 1220 Non-IBM/Retail Fixed Disk Adapter plus Floppy Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
+
 
 	ROM_SYSTEM_BIOS( 0, "rev1", "IBM XT 5160 08/16/82" )	/* ROM at u18 marked as BAD_DUMP for now, as current dump, while likely correct, was regenerated from a number of smaller dumps, and needs a proper redump. */
 	ROMX_LOAD("5000027.u19", 0xf0000, 0x8000, CRC(fc982309) SHA1(2aa781a698a21c332398d9bc8503d4f580df0a05), ROM_BIOS(1) )
-	ROMX_LOAD("5000026.u18", 0xf8000, 0x8000, BAD_DUMP CRC(3c9b0ac3) SHA1(271c9f4cef5029a1560075550b67c3395db09fef), ROM_BIOS(1) )
+	ROMX_LOAD("5000026.u18", 0xf8000, 0x8000, BAD_DUMP CRC(3c9b0ac3) SHA1(271c9f4cef5029a1560075550b67c3395db09fef), ROM_BIOS(1) ) /* This is probably a good dump, and works fine, but as it was manually regenerated based on a partial dump, it needs to be reverified. It's a very rare rom revision and may have only appeared on prototypes. */
 
-	ROM_SYSTEM_BIOS( 1, "rev2", "IBM XT 5160 11/08/82" )	/* Same as PC 5155 BIOS and 3270-PC BIOS */
-	ROMX_LOAD("5000027.u19", 0xf0000, 0x8000, CRC(fc982309) SHA1(2aa781a698a21c332398d9bc8503d4f580df0a05), ROM_BIOS(2) ) /* MK37050N-4 */
-	ROMX_LOAD("1501512.u18", 0xf8000, 0x8000, CRC(79522c3d) SHA1(6bac726d8d033491d52507278aa388ec04cf8b7e), ROM_BIOS(2) ) /* MK38036N-25 */
+	ROM_SYSTEM_BIOS( 1, "rev2", "IBM XT 5160 11/08/82" )	/* Same as PC 5155 BIOS and PC/3270 BIOS */
+	ROMX_LOAD("5000027.u19", 0xf0000, 0x8000, CRC(fc982309) SHA1(2aa781a698a21c332398d9bc8503d4f580df0a05), ROM_BIOS(2) ) /* silkscreen "MK37050N-4 // 5000027" - FRU: 6359116 - Contents repeat 4 times */
+	ROMX_LOAD("1501512.u18", 0xf8000, 0x8000, CRC(79522c3d) SHA1(6bac726d8d033491d52507278aa388ec04cf8b7e), ROM_BIOS(2) ) /* silkscreen "MK38036N-25 // 1501512" */
 
 	ROM_SYSTEM_BIOS( 2, "rev3", "IBM XT 5160 01/10/86" )    /* Has enhanced keyboard support and a 3.5" drive */
 	ROMX_LOAD("62x0854.u19", 0xf0000, 0x8000, CRC(b5fb0e83) SHA1(937b43759ffd472da4fb0fe775b3842f5fb4c3b3), ROM_BIOS(3) )
@@ -2257,23 +2299,81 @@ ROM_START( ibm5160 )
 //	ROMX_LOAD("basicc11.fc", 0xfc000, 0x2000, BAD_DUMP CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(5) )
 //	ROMX_LOAD("xtdiag.bin", 0xfe000, 0x2000, CRC(4e89a4d8) SHA1(39a28fb2fe9f1aeea24ed2c0255cebca76e37ed7), ROM_BIOS(5) )
 
-	/* Character rom */
+	/* CGA Character rom */
 	ROM_REGION(0x2000,"gfx1", 0)
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
+
+	/* Z80 on the Xebec 1210 and 1220 Hard Disk Controllers */
+//	ROM_REGION(0x10000, "cpu1", 0)
+//	ROM_LOAD("104839re.12a", 0x0000, 0x1000, CRC(3ad32fcc) SHA1(0127fa520aaee91285cb46a640ed835b4554e4b3))	/* Xebec 1210 IBM OEM Hard Disk Controller, silkscreened "104839RE // COPYRIGHT // XEBEC 1986" - Common for both XEBEC 1210 IBM OEM editions */
+//	/* Other versions probably exist for the non-IBM/Retail 1210 and the 1220 */
+
+
+	/* PC/3270 and AT/3270 have a set of two (optionally 3) 3270PGC programmable graphics controller cards on them which
+           have 2 extra roms, plus a number of custom chips and at least one MCU.
+	   Information on these three boards plus the keyboard interface can be found at:
+	   http://www.seasip.info/VintagePC/5271.html
+		*** The descriptions below are based on the cards from the AT/3270, which are slightly
+		    different from the PC/3270 cards. Changes between the PC/3270 and AT/3270 video cards are
+		    listed:
+		    1. The card lip edge is changed on the APA and PS cards to allow them to be placed
+		       in a 16-bit ISA slot.
+		    2. The Main Display board is exactly the same PCB (hence cannot be placed in a 16-bit
+		       ISA slot), but the socket to the left of the 8255 is now populated, and has a lot of
+		       rework wires connected to various places on the PCB.
+		    3. The APA board was completely redone, and no longer has an 8254 (though it does have an
+		       empty socket) and has ?twice as much memory on it? (not sure about this). The APA
+		       board also now connects to both main board connectors 1 and 3, instead of only
+		       connector 1.
+		    4. The PS board has been minorly redone to allow clearance for a 16-bit ISA connector,
+		       but no other significant chip changes were made. The connector 3 still exists on the
+		       board but is unpopulated. Connector 2 still connects to the Main display board as
+		       before.
+
+		** The Main Display Board (with one 48-pin custom, 3 40 pin customs at least one of which is
+		   an MCU, four 2016BP-10 srams, an 8254 and an 8255 on it, two crystals (16.257MHz and
+		   21.676MHz) plus two mask roms ) is stickered "61X6579 // 983623 // 6390 SU" on the front.
+		*  The pcb is trace-marked "6320987" on both the front and back.
+		*  The card has a DE-9 connector on it for a monitor.
+		*  The customs are marked:
+		   "1503192 // TC15G008P-0009 // JAPAN       8549A" (40 pins, at U52)
+		   "1503193 // TC15G008AP-0020 // JAPAN       8610A" (48 pins, at U29)
+		   "(M)1503194 // XE KGA005 // 8616N XM // SC81156P" (40 pins, at U36, likely an MCU)
+		   "S8613 // SCN2672B // C4N40 A // CP3303" (40 pins, at U24, also possibly an MCU)
+
+		** The All Points Addressable (Frame buffer?) card (with 2 48-pin customs on it which are
+		   probably gate arrays and not MCUs, an empty socket (28 pins, U46), an Intel Id2147H-3,
+		   a bank of twelve 16k*4-bit inmos ims2620p-15 DRAMs (tms4416 equivalent), and an Intel
+		   D2147K 4096*1 byte SRAM) is stickered
+		   "6487836 // A24969 // 6400 SU" on the back.
+		*  The pcb is trace-marked "EC 999040" on the back, and silkscreened "RC 2682819" on the front
+		*  The customs are marked:
+		   "6323259 // TC15G008AP-0028 // JAPAN       8606A" (48 pins, at U67)
+		   "6323260 // TC15G022AP-0018 // JAPAN       8606A" (48 pins, at U45)
+
+		** The optional Programmable Symbol Card (with an AMD AM9128-10PC, and six tms4416-15NL DRAMS,
+		   and a fleet of discrete logic chips, but no roms, pals, or proms) is stickered 
+		   "6347750 // A24866 // 6285 SU" on the front.
+		*  The PCB is trace-marked "PROGAMMABLE SYMBOL P/N 6347751 // ASSY. NO. 6347750" on the front,
+		   and trace-marked "|||CIM0286 ECA2466 // 94V-O" on the back.
+	*/
+//	ROM_REGION(0x4000,"gfx2", 0)
+//      ROM_LOAD("1504161.u11", 0x00000, 0x2000, CRC(d9246cf5) SHA1(2eaed495893a4e6649b04d10dada7b5ef4abd140)) /* silkscreen: "AMI 8613MAJ // 9591-041 // S2364B // 1504161 // PHILIPPINES" - Purpose: Pixels 0 thru 7 of built-in 3270 terminal font*/
+//      ROM_LOAD("1504162.u26", 0x02000, 0x2000, CRC(59e1dc32) SHA1(337b5cced203345a5acfb02532d6b5f526902ee7)) /* silkscreen: "AMI 8607MAH // 9591-042 // S2364B // 1504162 // PHILIPPINES" - Purpose: Pixel 8 of built-in 3270 terminal font*/
 ROM_END
 
 
 ROM_START( xtvga )
 	ROM_REGION(0x100000,"main", 0)
 	ROM_LOAD("et4000.bin", 0xc0000, 0x8000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad) SHA1(a641b505bbac97b8775f91fe9b83d9afdf4d038f))
 ROM_END
 
 ROM_START( pc200 )
 //    ROM_REGION(0x100000,"main", 0)
 	ROM_REGION16_LE(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	// special bios at 0xe0000 !?
 	ROM_LOAD16_BYTE("pc20v2.0", 0xfc001, 0x2000, CRC(41302eb8) SHA1(8b4b2afea543b96b45d6a30365281decc15f2932)) // v2
 	ROM_LOAD16_BYTE("pc20v2.1", 0xfc000, 0x2000, CRC(71b84616) SHA1(4135102a491b25fc659d70b957e07649f3eacf24)) // v2
@@ -2285,7 +2385,7 @@ ROM_END
 ROM_START( pc20 )
 //    ROM_REGION(0x100000,"main", 0)
 	ROM_REGION16_LE(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 
 	// special bios at 0xe0000 !?
 	// This is probably referring to a check for the Amstrad RP5-2 diagnostic
@@ -2301,7 +2401,7 @@ ROM_END
 ROM_START( ppc512 )
 //    ROM_REGION(0x100000,"main", 0)
 	ROM_REGION16_LE(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	// special bios at 0xe0000 !?
 	ROM_LOAD16_BYTE("40107.v1", 0xfc001, 0x2000, CRC(4e37e769) SHA1(88be3d3375ec3b0a7041dbcea225b197e50d4bfe)) // v1.9
 	ROM_LOAD16_BYTE("40108.v1", 0xfc000, 0x2000, CRC(4f0302d9) SHA1(e4d69ca98c3b98f3705a2902b16746360043f039)) // v1.9
@@ -2313,7 +2413,7 @@ ROM_END
 ROM_START( ppc640 )
 //    ROM_REGION(0x100000,"main", 0)
 	ROM_REGION16_LE(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	// special bios at 0xe0000 !?
 	ROM_LOAD16_BYTE("40107.v2", 0xfc001, 0x2000, CRC(0785b63e) SHA1(4dbde6b9e9500298bb6241a8daefd85927f1ad28)) // v2.1
 	ROM_LOAD16_BYTE("40108.v2", 0xfc000, 0x2000, CRC(5351cf8c) SHA1(b4dbf11b39378ab4afd2107d3fe54a99fffdedeb)) // v2.1
@@ -2325,7 +2425,7 @@ ROM_END
 ROM_START( pc1512 )
 //    ROM_REGION(0x100000,"main", 0)
 	ROM_REGION16_LE(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	ROM_LOAD16_BYTE("40044.v1", 0xfc001, 0x2000, CRC(668fcc94) SHA1(74002f5cc542df442eec9e2e7a18db3598d8c482)) // v1
 	ROM_LOAD16_BYTE("40043.v1", 0xfc000, 0x2000, CRC(f72f1582) SHA1(7781d4717917262805d514b331ba113b1e05a247)) // v1
 	ROM_REGION(0x08100,"gfx1", 0)
@@ -2335,7 +2435,7 @@ ROM_END
 ROM_START( pc1512v2 )
 //    ROM_REGION(0x100000,"main", 0)
 	ROM_REGION16_LE(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	ROM_LOAD16_BYTE("40043.v2", 0xfc001, 0x2000, CRC(d2d4d2de) SHA1(c376fd1ad23025081ae16c7949e88eea7f56e1bb)) // v2
 	ROM_LOAD16_BYTE("40044.v2", 0xfc000, 0x2000, CRC(1aec54fa) SHA1(b12fd73cfc35a240ed6da4dcc4b6c9910be611e0)) // v2
 	ROM_REGION(0x08100,"gfx1", 0)
@@ -2346,7 +2446,7 @@ ROM_START( pc1640 )
 //    ROM_REGION(0x100000,"main", 0)
 	ROM_REGION16_LE(0x100000,"main", 0)
 	ROM_LOAD("40100", 0xc0000, 0x8000, CRC(d2d1f1ae) SHA1(98302006ee38a17c09bd75504cc18c0649174e33)) // this bios seams to be made for the amstrad pc
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	ROM_LOAD16_BYTE("40043.v3", 0xfc001, 0x2000, CRC(e40a1513) SHA1(447eff2057e682e51b1c7593cb6fad0e53879fa8)) // v3
 	ROM_LOAD16_BYTE("40044.v3", 0xfc000, 0x2000, CRC(f1c074f3) SHA1(a055ea7e933d137623c22fe24004e870653c7952))
 	ROM_REGION(0x08100,"gfx1", 0)
@@ -2355,22 +2455,12 @@ ROM_END
 
 ROM_START( dgone )
 	ROM_REGION(0x100000,"main", 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	ROM_LOAD( "dgone.bin",  0xf8000, 0x08000, CRC(2c38c86e) SHA1(c0f85a000d1d13cd354965689e925d677822549e))
 
 	ROM_REGION(0x08100, "gfx1", 0)
 	ROM_LOAD("cga.chr", 0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
-
-
-static void ibmpc_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info) {
-	switch( state ) {
-	case MESS_DEVINFO_INT_COUNT:						info->i = 1; break;
-	case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED; break;
-
-	default:											cassette_device_getinfo(devclass, state, info); break;
-	}
-}
 
 
 static void ibmpc_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
@@ -2409,7 +2499,6 @@ static void pcjr_cartslot_getinfo(const mess_device_class *devclass, UINT32 stat
 
 static SYSTEM_CONFIG_START(ibm5150)
 	CONFIG_RAM_DEFAULT( 640 * 1024 )
-	CONFIG_DEVICE(ibmpc_cassette_getinfo)
 	CONFIG_DEVICE(ibmpc_floppy_getinfo)
 SYSTEM_CONFIG_END
 
@@ -2422,7 +2511,6 @@ SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(pcjr)
 	CONFIG_RAM_DEFAULT( 640 * 1024 )
-	CONFIG_DEVICE(ibmpc_cassette_getinfo)
 	CONFIG_DEVICE(ibmpc_floppy_getinfo)
 	CONFIG_DEVICE(pcjr_cartslot_getinfo)
 SYSTEM_CONFIG_END
@@ -2443,14 +2531,14 @@ COMP(  1988,	europc,		ibm5150,	0,	europc,     europc,		europc,     ibm5160, "Sch
 // pcjr (better graphics, better sound)
 COMP(  1983,	ibmpcjr,	ibm5150,	0,	ibmpcjr,    tandy1t,	pcjr,       pcjr,    "International Business Machines",  "IBM PC Jr", GAME_NOT_WORKING|GAME_IMPERFECT_COLORS )
 COMP(  1987,	t1000hx,	ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,	ibm5160, "Tandy Radio Shack",  "Tandy 1000HX", 0)
-COMP(  1987,	t1000sx,	ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,	ibm5160, "Tandy Radio Shack",  "Tandy 1000SX", 0)
+COMP(  1987,	t1000sx,	ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,	ibm5160, "Tandy Radio Shack",  "Tandy 1000SX", GAME_NOT_WORKING)
 
 // xt class (pc but 8086)
 COMP(  1982,	ibm5160,	ibm5150,	0,	ibm5160,    xtcga,		pccga,		ibm5160, "International Business Machines",  "IBM XT 5160" , 0)
 COMP(  1988,	pc200,		ibm5150,	0,	pc200,		pc200,		pc200,		ibm5160, "Sinclair Research",  "PC200 Professional Series", GAME_NOT_WORKING)
 COMP(  1988,	pc20,		ibm5150,	0,	pc200,		pc200,		pc200,		ibm5160, "Amstrad plc",  "Amstrad PC20" , GAME_NOT_WORKING)
-COMP(  1987,	ppc512,		ibm5150,	0,	pc200,		pc200,		pc200,		ibm5160, "Amstrad plc",  "Amstrad PPC512", 0)
-COMP(  1987,	ppc640,		ibm5150,	0,	pc200,		pc200,		pc200,		ibm5160, "Amstrad plc",  "Amstrad PPC640", 0)
+COMP(  1987,	ppc512,		ibm5150,	0,	pc200,		pc200,		pc200,		ibm5160, "Amstrad plc",  "Amstrad PPC512", GAME_NOT_WORKING)
+COMP(  1987,	ppc640,		ibm5150,	0,	pc200,		pc200,		pc200,		ibm5160, "Amstrad plc",  "Amstrad PPC640", GAME_NOT_WORKING)
 COMP(  1986,	pc1512,		ibm5150,	0,	pc1512,     pc1512,		pc1512,		ibm5160, "Amstrad plc",  "Amstrad PC1512 (version 1)", GAME_NOT_WORKING)
 COMP(  198?,	pc1512v2,	ibm5150,	0,	pc1512,     pc1512,		pc1512,		ibm5160, "Amstrad plc",  "Amstrad PC1512 (version 2)", GAME_NOT_WORKING)
 COMP(  1987,	pc1640,		ibm5150,	0,	pc1640,     pc1640,		pc1640,		ibm5160, "Amstrad plc",  "Amstrad PC1640 / PC6400 (US)", GAME_NOT_WORKING )

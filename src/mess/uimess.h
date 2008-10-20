@@ -36,13 +36,13 @@ int ui_mess_handler_ingame(running_machine *machine);
 int ui_mess_use_new_ui(running_machine *machine);
 
 /* image info screen */
-void ui_menu_image_info(running_machine *machine, ui_menu *menu, void *parameter, void *state);
+void ui_mess_menu_image_info(running_machine *machine, ui_menu *menu, void *parameter, void *state);
 
 /* file manager */
-void menu_file_manager(running_machine *machine, ui_menu *menu, void *parameter, void *state);
+void ui_mess_menu_file_manager(running_machine *machine, ui_menu *menu, void *parameter, void *state);
 
 /* tape control */
-void menu_tape_control(running_machine *machine, ui_menu *menu, void *parameter, void *state);
+void ui_mess_menu_tape_control(running_machine *machine, ui_menu *menu, void *parameter, void *state);
 astring *tapecontrol_gettime(astring *dest, const device_config *device, int *curpos, int *endpos);
 
 /* paste */
@@ -56,5 +56,11 @@ int ui_mess_get_use_natural_keyboard(running_machine *machine);
 
 /* specifies whether the natural keyboard is active */
 void ui_mess_set_use_natural_keyboard(running_machine *machine, int use_natural_keyboard);
+
+/* keyboard mode menu */
+void ui_mess_menu_keyboard_mode(running_machine *machine, ui_menu *menu, void *parameter, void *state);
+
+/* populate MESS-specific menus */
+void ui_mess_main_menu_populate(running_machine *machine, ui_menu *menu);
 
 #endif /* __UIMESS_H__ */

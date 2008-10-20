@@ -41,9 +41,9 @@
 #define SCREEN_TAG "main"
 #define CDP1864_TAG "cdp1864"
 
-static const device_config *cassette_device_image(void)
+static const device_config *cassette_device_image(running_machine *machine)
 {
-	return image_from_devtype_and_index(IO_CASSETTE, 0);
+	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
 }
 
 /* Read/Write Handlers */
@@ -152,7 +152,7 @@ static CDP1864_ON_EFX_CHANGED( tmc2000e_efx_w )
 static CDP1864_INTERFACE( tmc2000e_cdp1864_intf )
 {
 	SCREEN_TAG,
-	CDP1864_CLK_FREQ,
+	XTAL_1_75MHz,
 	CDP1864_INTERLACED,
 	tmc2000e_int_w,
 	tmc2000e_dmao_w,
@@ -204,7 +204,7 @@ static CDP1802_EF_READ( tmc2000e_ef_r )
 
 	// tape in
 
-	if (cassette_input(cassette_device_image()) > +1.0) flags -= EF2;
+	if (cassette_input(cassette_device_image(machine)) > +1.0) flags -= EF2;
 	
 	// keyboard
 
@@ -227,7 +227,7 @@ static CDP1802_Q_WRITE( tmc2000e_q_w )
 
 	// tape out
 
-	cassette_output(cassette_device_image(), level ? -1.0 : +1.0);
+	cassette_output(cassette_device_image(machine), level ? -1.0 : +1.0);
 
 	// floppy control (FDC-6)
 }
@@ -242,7 +242,7 @@ static CDP1802_DMA_WRITE( tmc2000e_dma_w )
 	int gdata = BIT(color, 0);
 	int bdata = BIT(color, 1);
 
-	cdp1864_dma_w(cdp1864, data, rdata, gdata, bdata);
+	cdp1864_dma_w(cdp1864, data, ASSERT_LINE, rdata, gdata, bdata);
 }
 
 static CDP1802_INTERFACE( tmc2000e_config )
@@ -274,6 +274,13 @@ static MACHINE_RESET( tmc2000e )
 
 /* Machine Drivers */
 
+static const cassette_config tmc2000_cassette_config =
+{
+	cassette_default_formats,
+	NULL,
+	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED
+};
+
 static MACHINE_DRIVER_START( tmc2000e )
 	// basic system hardware
 
@@ -289,7 +296,7 @@ static MACHINE_DRIVER_START( tmc2000e )
 
 	MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16) 
-	MDRV_SCREEN_RAW_PARAMS(CDP1864_CLK_FREQ, CDP1864_SCREEN_WIDTH, CDP1864_HBLANK_END, CDP1864_HBLANK_START, CDP1864_TOTAL_SCANLINES, CDP1864_SCANLINE_VBLANK_END, CDP1864_SCANLINE_VBLANK_START)
+	MDRV_SCREEN_RAW_PARAMS(XTAL_1_75MHz, CDP1864_SCREEN_WIDTH, CDP1864_HBLANK_END, CDP1864_HBLANK_START, CDP1864_TOTAL_SCANLINES, CDP1864_SCANLINE_VBLANK_END, CDP1864_SCANLINE_VBLANK_START)
 
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_VIDEO_UPDATE(tmc2000e)
@@ -305,6 +312,8 @@ static MACHINE_DRIVER_START( tmc2000e )
 
 	/* printer */
 	MDRV_DEVICE_ADD("printer", PRINTER)
+
+	MDRV_CASSETTE_ADD( "cassette", tmc2000_cassette_config )
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -318,19 +327,6 @@ ROM_START( tmc2000e )
 ROM_END
 
 /* System Configuration */
-
-static void tmc2000e_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:					info->i = 1; break;
-		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:	info->i = CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED; break;
-
-		default:										cassette_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static void tmc2000e_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -353,7 +349,6 @@ static void tmc2000e_floppy_getinfo(const mess_device_class *devclass, UINT32 st
 static SYSTEM_CONFIG_START( tmc2000e )
 	CONFIG_RAM_DEFAULT	( 8 * 1024)
 	CONFIG_RAM			(40 * 1024)
-	CONFIG_DEVICE(tmc2000e_cassette_getinfo)
 	CONFIG_DEVICE(tmc2000e_floppy_getinfo)
 SYSTEM_CONFIG_END
 

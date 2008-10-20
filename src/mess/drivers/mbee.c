@@ -55,6 +55,12 @@
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
 #include "devices/z80bin.h"
+#include "sound/speaker.h"
+
+static const device_config *cassette_device_image(running_machine *machine)
+{
+	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+}
 
 static QUICKLOAD_LOAD( mbee );
 static Z80BIN_EXECUTE( mbee );
@@ -94,7 +100,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(mbee_ports, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_READWRITE(mbee_pio_r, mbee_pio_w)
+	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE(Z80PIO, "z80pio", z80pio_alt_r, z80pio_alt_w)
 	AM_RANGE(0x0b, 0x0b) AM_MIRROR(0x10) AM_READWRITE(mbee_video_bank_r, mbee_video_bank_w)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0x10) AM_READWRITE(m6545_status_r, m6545_index_w)
 	AM_RANGE(0x0d, 0x0d) AM_MIRROR(0x10) AM_READWRITE(m6545_data_r, m6545_data_w)
@@ -103,7 +109,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(mbeeic_ports, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_READWRITE(mbee_pio_r, mbee_pio_w)
+	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE(Z80PIO, "z80pio", z80pio_alt_r, z80pio_alt_w)
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0x10) AM_READWRITE(mbee_pcg_color_latch_r, mbee_pcg_color_latch_w)
 	// AM_RANGE(0x09, 0x09) AM_MIRROR(0x10)  Listed as "Colour Wait Off" or "USART 2651" but doesn't appear in the schematics
 	AM_RANGE(0x0a, 0x0a) AM_MIRROR(0x10) AM_READWRITE(mbee_color_bank_r, mbee_color_bank_w)
@@ -279,13 +285,81 @@ static PALETTE_INIT( mbeeic )
 			colortable_entry_set_value(machine->colortable, (((i<<5)|r)<<1)|1, r|64);
 }
 
-static const struct z80_irq_daisy_chain mbee_daisy_chain[] =
+
+static int mbee_vsync;
+
+static Z80PIO_ON_INT_CHANGED( pio_interrupt )
 {
-	{ z80pio_reset, z80pio_irq_state, z80pio_irq_ack, z80pio_irq_reti, 0 }, /* PIO number 0 */
-	{ 0, 0, 0, 0, -1}      /* end mark */
+	cpunum_set_input_line(device->machine, 0, 0, state);
+}
+
+static READ8_DEVICE_HANDLER( pio_port_b_r )
+{
+	/* PIO B data bits
+	 * 0	cassette data (input)
+	 * 1	cassette data (output)
+	 * 2	rs232 clock or DTR line
+	 * 3	rs232 CTS line (0: clear to send)
+	 * 4	rs232 input (0: mark)
+	 * 5	rs232 output (1: mark)
+	 * 6	speaker
+	 * 7	network interrupt
+	 */
+
+	UINT8 data = 0;
+
+	if (cassette_input(cassette_device_image(device->machine)) > 0.03)
+		data |= 0x01;
+
+	data |= mbee_vsync << 7;
+
+	if (mbee_vsync) mbee_vsync = 0;
+
+	return data;
 };
 
+static WRITE8_DEVICE_HANDLER( pio_port_b_w )
+{
+	/* PIO B data bits
+	 * 0	cassette data (input)
+	 * 1	cassette data (output)
+	 * 2	rs232 clock or DTR line
+	 * 3	rs232 CTS line (0: clear to send)
+	 * 4	rs232 input (0: mark)
+	 * 5	rs232 output (1: mark)
+	 * 6	speaker
+	 * 7	network interrupt
+	 */
 
+	cassette_output(cassette_device_image(device->machine), (data & 0x02) ? -1.0 : +1.0);
+
+	speaker_level_w(0, (data & 0x40) ? 1 : 0);
+};
+
+static const z80pio_interface mbee_z80pio_intf =
+{
+	"main",
+	0,
+	pio_interrupt,	/* callback when change interrupt status */
+	NULL,
+	pio_port_b_r,
+	NULL,
+	pio_port_b_w,
+	NULL,
+	NULL
+};
+
+static const z80_daisy_chain mbee_daisy_chain[] =
+{
+	{ Z80PIO, "z80pio" },
+	{ NULL }
+};
+
+static INTERRUPT_GEN( mbee_interrupt )
+{
+	/* once per frame, pulse the PIO B bit 7 */
+	mbee_vsync = 1;
+}
 
 static MACHINE_DRIVER_START( mbee )
 	/* basic machine hardware */
@@ -296,6 +370,8 @@ static MACHINE_DRIVER_START( mbee )
 	MDRV_CPU_VBLANK_INT("main", mbee_interrupt)
 
 	MDRV_MACHINE_RESET( mbee )
+
+	MDRV_Z80PIO_ADD( "z80pio", mbee_z80pio_intf )
 
 	MDRV_GFXDECODE(mbee)
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -312,7 +388,7 @@ static MACHINE_DRIVER_START( mbee )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("wave", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
@@ -320,6 +396,8 @@ static MACHINE_DRIVER_START( mbee )
 	/* devices */
 	MDRV_QUICKLOAD_ADD(mbee, "mwb,com", 2)
 	MDRV_Z80BIN_QUICKLOAD_ADD(mbee, 2)
+
+	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 MACHINE_DRIVER_END
 
 
@@ -333,6 +411,8 @@ static MACHINE_DRIVER_START( mbeeic )
 
 	MDRV_MACHINE_RESET( mbee )
 	MDRV_MACHINE_START( mbee )
+
+	MDRV_Z80PIO_ADD( "z80pio", mbee_z80pio_intf )
 
 	MDRV_GFXDECODE(mbeeic)
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -349,7 +429,7 @@ static MACHINE_DRIVER_START( mbeeic )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("wave", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
@@ -357,6 +437,8 @@ static MACHINE_DRIVER_START( mbeeic )
 	/* devices */
 	MDRV_QUICKLOAD_ADD(mbee, "mwb,com", 2)
 	MDRV_Z80BIN_QUICKLOAD_ADD(mbee, 2)
+
+	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 MACHINE_DRIVER_END
 
 
@@ -526,18 +608,6 @@ static QUICKLOAD_LOAD( mbee )
 }
 
 
-static void mbee_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:		info->i = 1; break;
-
-		default:				cassette_device_getinfo(devclass, state, info); break;
-	}
-}
-
 static void mbee_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
@@ -576,12 +646,10 @@ static void mbee_floppy_getinfo(const mess_device_class *devclass, UINT32 state,
 
 
 static SYSTEM_CONFIG_START(mbee)
-	CONFIG_DEVICE(mbee_cassette_getinfo)
 	CONFIG_DEVICE(mbee_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(mbeeic)
-	CONFIG_DEVICE(mbee_cassette_getinfo)
 	CONFIG_DEVICE(mbee_cartslot_getinfo)
 	CONFIG_DEVICE(mbee_floppy_getinfo)
 SYSTEM_CONFIG_END

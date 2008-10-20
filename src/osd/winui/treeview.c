@@ -1134,6 +1134,7 @@ void CreateDumpingFolders(int parent_index)
 	const rom_entry *region, *rom;
 	const char *name;
 	const game_driver *gamedrv;
+	machine_config *config;
 
 	// create our two subfolders
 	LPTREEFOLDER lpBad, lpNo;
@@ -1167,26 +1168,34 @@ void CreateDumpingFolders(int parent_index)
 
 	for (jj = 0; jj < nGames; jj++)
 	{
+		const rom_source *source;
 		gamedrv = drivers[jj];
 
 		if (!gamedrv->rom) 
 			continue;
 		bBadDump = FALSE;
 		bNoDump = FALSE;
-		for (region = rom_first_region(gamedrv); region; region = rom_next_region(region))
+		/* Allocate machine config */
+		config = machine_config_alloc(gamedrv->machine_config);
+		for (source = rom_first_source(gamedrv, config); source != NULL; source = rom_next_source(gamedrv, config, source))
 		{
-			for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
+			for (region = rom_first_region(gamedrv,source); region; region = rom_next_region(region))
 			{
-				if (ROMREGION_ISROMDATA(region) || ROMREGION_ISDISKDATA(region) )
+				for (rom = rom_first_file(region); rom; rom = rom_next_file(rom))
 				{
-					name = ROM_GETNAME(rom);
-					if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_BAD_DUMP))				
-						bBadDump = TRUE;
-					if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_NO_DUMP))				
-						bNoDump = TRUE;
+					if (ROMREGION_ISROMDATA(region) || ROMREGION_ISDISKDATA(region) )
+					{
+						name = ROM_GETNAME(rom);
+						if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_BAD_DUMP))				
+							bBadDump = TRUE;
+						if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_NO_DUMP))				
+							bNoDump = TRUE;
+					}
 				}
 			}
 		}
+		/* Free the structure */
+		machine_config_free(config);
 		if (bBadDump)
 		{
 			AddGame(lpBad,jj);

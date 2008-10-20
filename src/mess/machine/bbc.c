@@ -418,6 +418,19 @@ WRITE8_HANDLER ( bbcm_ACCCON_write )
 		memory_set_bankptr( 2, memory_region( machine, "main" ) + 0x3000 );
 	}
 
+	/* ACCCON_TST controls paging of rom reads in the 0xFC00-0xFEFF reigon */
+	/* if 0 the I/O is paged for both reads and writes */
+	/* if 1 the the ROM is paged in for reads but writes still go to I/O   */
+	if (ACCCON_TST)
+	{
+		memory_set_bankptr( 8, memory_region(machine, "user1")+0x43c00); 
+		memory_install_read_handler(machine, 0, ADDRESS_SPACE_PROGRAM,0xFC00,0xFEFF,0,0,8);
+	}
+	else
+	{
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,0xFC00,0xFEFF,0,0,bbcm_r);
+	}
+
 }
 
 
@@ -558,10 +571,11 @@ READ8_HANDLER ( bbcm_r )
 {
 long myo;
 
-	if ( ACCCON_TST )
-	{
-		return memory_region(machine, "user1")[offset+0x43c00];
-	};
+	/* Now handled in bbcm_ACCCON_write PHS - 2008-10-11 */
+//	if ( ACCCON_TST )
+//	{
+//		return memory_region(machine, "user1")[offset+0x43c00];
+//	};
 
 	if ((offset>=0x000) && (offset<=0x0ff)) /* FRED */
 	{
@@ -1407,7 +1421,7 @@ static TIMER_CALLBACK(bbc_tape_timer_cb)
 {
 
 	double dev_val;
-	dev_val=cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0));
+	dev_val=cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ));
 
 	// look for rising edges on the cassette wave
 	if (((dev_val>=0.0) && (last_dev_val<0.0)) || ((dev_val<0.0) && (last_dev_val>=0.0)))
@@ -1463,14 +1477,14 @@ static TIMER_CALLBACK(bbc_tape_timer_cb)
 
 }
 
-static void BBC_Cassette_motor(unsigned char status)
+static void BBC_Cassette_motor(running_machine *machine, unsigned char status)
 {
 	if (status)
 	{
-		cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0),CASSETTE_MOTOR_ENABLED ,CASSETTE_MASK_MOTOR);
+		cassette_change_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ),CASSETTE_MOTOR_ENABLED ,CASSETTE_MASK_MOTOR);
 		timer_adjust_periodic(bbc_tape_timer, attotime_zero, 0, ATTOTIME_IN_HZ(44100));
 	} else {
-		cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+		cassette_change_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ),CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 		timer_reset(bbc_tape_timer, attotime_never);
 		MC6850_Reset(wav_len);
 		len0=0;
@@ -1485,7 +1499,7 @@ static void BBC_Cassette_motor(unsigned char status)
 
 WRITE8_HANDLER ( BBC_SerialULA_w )
 {
-	BBC_Cassette_motor((data & 0x80) >> 7);
+	BBC_Cassette_motor(machine, (data & 0x80) >> 7);
 }
 
 
@@ -2249,6 +2263,10 @@ MACHINE_START( bbcm )
 
 	/* bank 5 is the paged ROMs     from 9000 to bfff */
 	memory_configure_bank(5, 0, 16, memory_region(machine, "user1")+0x01000, 1<<14);
+
+	/* Set ROM/IO bank to point to rom */
+	memory_set_bankptr( 8, memory_region(machine, "user1")+0x43c00); 
+	memory_install_read_handler(machine, 0, ADDRESS_SPACE_PROGRAM,0xFC00,0xFEFF,0,0,8);
 
 	via_config(0, &bbcb_system_via);
 	via_set_clock(0,1000000);

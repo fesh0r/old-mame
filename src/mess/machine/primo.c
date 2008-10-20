@@ -16,6 +16,7 @@
 /* Components */
 #include "cpu/z80/z80.h"
 #include "includes/cbmserb.h"
+#include "includes/cbmdrive.h"
 #include "sound/speaker.h"
 
 /* Devices */
@@ -91,7 +92,7 @@ READ8_HANDLER( primo_be_1_r )
 	// bit 3 - I3 (external bus)
 
 	// bit 2 - cassette
-	data |= (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) < 0.1) ? 0x04 : 0x00;
+	data |= (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) < 0.1) ? 0x04 : 0x00;
 
 	// bit 1 - reset button
 	data |= (input_port_read(machine, "RESET")) ? 0x02 : 0x00;
@@ -155,14 +156,14 @@ WRITE8_HANDLER( primo_ki_1_w )
 	switch (data & 0x03)
 	{
 		case 0:
-			cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0), -1.0);
+			cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), -1.0);
 			break;
 		case 1:
 		case 2:
-			cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0), 0.0);
+			cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), 0.0);
 			break;
 		case 3:
-			cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0), 1.0);
+			cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), 1.0);
 			break;
 	}
 }
@@ -256,6 +257,7 @@ MACHINE_RESET( primob )
 {
 	primo_common_machine_init(machine);
 
+	serial_config(machine, &sim_drive_interface);	
 	cbm_serial_reset_write (0);
 	cbm_drive_0_config (SERIAL, 8);
 	cbm_drive_1_config (SERIAL, 9);

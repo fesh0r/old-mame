@@ -4,12 +4,27 @@
 #include <string.h>
 #include "driver.h"
 
-#define VERBOSE_DBG 1				   /* general debug messages */
-#include "includes/cbm.h"
 #include "includes/cbmserb.h"
 #include "includes/cbmieeeb.h"
 
 #include "includes/cbmdrive.h"
+
+#define VERBOSE_LEVEL 0
+#define DBG_LOG(N,M,A) \
+	{ \
+		if(VERBOSE_LEVEL >= N) \
+		{ \
+			if( M ) \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+			logerror A; \
+		} \
+	}
+
+/***********************************************
+
+	D64 images handling
+
+***********************************************/
 
 /* tracks 1 to 35
  * sectors number from 0
@@ -43,7 +58,7 @@
 
 #define D64_MAX_TRACKS 35
 
-const int d64_sectors_per_track[] =
+static const int d64_sectors_per_track[] =
 {
 	21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21,
 	19, 19, 19, 19, 19, 19, 19,
@@ -64,7 +79,7 @@ void cbm_drive_open_helper (void)
 }
 
 /* calculates offset to beginning of d64 file for sector beginning */
-int d64_tracksector2offset (int track, int sector)
+static int d64_tracksector2offset (int track, int sector)
 {
 	return d64_offset[track - 1] + sector * 256;
 }
@@ -119,189 +134,189 @@ static int d64_find (CBM_Drive * drive, unsigned char *name)
 }
 
 /* reads file into buffer */
-static void d64_readprg (CBM_Drive * c1551, int pos)
+static void d64_readprg (CBM_Drive * drive, int pos)
 {
 	int i;
 
 	for (i = 0; i < 16; i++)
-		c1551->filename[i] = toupper (c1551->image[pos + i + 3]);
+		drive->filename[i] = toupper (drive->image[pos + i + 3]);
 
-	c1551->filename[i] = 0;
+	drive->filename[i] = 0;
 
-	pos = d64_tracksector2offset (c1551->image[pos + 1], c1551->image[pos + 2]);
+	pos = d64_tracksector2offset (drive->image[pos + 1], drive->image[pos + 2]);
 
 	i = pos;
-	c1551->size = 0;
-	while (c1551->image[i] != 0)
+	drive->size = 0;
+	while (drive->image[i] != 0)
 	{
-		c1551->size += 254;
-		i = d64_tracksector2offset (c1551->image[i], c1551->image[i + 1]);
+		drive->size += 254;
+		i = d64_tracksector2offset (drive->image[i], drive->image[i + 1]);
 	}
-	c1551->size += c1551->image[i + 1];
+	drive->size += drive->image[i + 1];
 
-	DBG_LOG (3, "d64 readprg", ("size %d\n", c1551->size));
+	DBG_LOG (3, "d64 readprg", ("size %d\n", drive->size));
 
-	c1551->buffer = (UINT8*)realloc (c1551->buffer, c1551->size);
-	if (!c1551->buffer)
+	drive->buffer = (UINT8*)realloc (drive->buffer, drive->size);
+	if (!drive->buffer)
 		fatalerror("out of memory %s %d\n", __FILE__, __LINE__);
 
-	c1551->size--;
+	drive->size--;
 
 	DBG_LOG (3, "d64 readprg", ("track: %d sector: %d\n",
-								c1551->image[pos + 1],
-								c1551->image[pos + 2]));
+								drive->image[pos + 1],
+								drive->image[pos + 2]));
 
-	for (i = 0; i < c1551->size; i += 254)
+	for (i = 0; i < drive->size; i += 254)
 	{
-		if (i + 254 < c1551->size)
+		if (i + 254 < drive->size)
 		{							   /* not last sector */
-			memcpy (c1551->buffer + i, c1551->image + pos + 2, 254);
-			pos = d64_tracksector2offset (c1551->image[pos + 0],
-									  c1551->image[pos + 1]);
+			memcpy (drive->buffer + i, drive->image + pos + 2, 254);
+			pos = d64_tracksector2offset (drive->image[pos + 0],
+									  drive->image[pos + 1]);
 			DBG_LOG (3, "d64 readprg", ("track: %d sector: %d\n",
-										c1551->image[pos],
-										c1551->image[pos + 1]));
+										drive->image[pos],
+										drive->image[pos + 1]));
 		}
 		else
 		{
-			memcpy (c1551->buffer + i, c1551->image + pos + 2, c1551->size - i);
+			memcpy (drive->buffer + i, drive->image + pos + 2, drive->size - i);
 		}
 	}
 }
 
 /* reads sector into buffer */
-static void d64_read_sector (CBM_Drive * c1551, int track, int sector)
+static void d64_read_sector (CBM_Drive * drive, int track, int sector)
 {
 	int pos;
 
-	snprintf (c1551->filename, sizeof (c1551->filename),
+	snprintf (drive->filename, sizeof (drive->filename),
 			  "track %d sector %d", track, sector);
 
 	pos = d64_tracksector2offset (track, sector);
 
-	c1551->buffer = (UINT8*)realloc (c1551->buffer,256);
-	if (!c1551->buffer)
+	drive->buffer = (UINT8*)realloc (drive->buffer,256);
+	if (!drive->buffer)
 		fatalerror("out of memory %s %d\n", __FILE__, __LINE__);
 
 	logerror("d64 read track %d sector %d\n", track, sector);
 
-	memcpy (c1551->buffer, c1551->image + pos, 256);
-	c1551->size = 256;
-	c1551->pos = 0;
+	memcpy (drive->buffer, drive->image + pos, 256);
+	drive->size = 256;
+	drive->pos = 0;
 }
 
 /* reads directory into buffer */
-static void d64_read_directory (CBM_Drive * c1551)
+static void d64_read_directory (CBM_Drive * drive)
 {
 	int pos, track, sector, i, j, blocksfree, addr = 0x0101/*0x1001*/;
 
-	c1551->buffer = (UINT8*)realloc (c1551->buffer, 8 * 18 * 25);
-	if (!c1551->buffer)
+	drive->buffer = (UINT8*)realloc (drive->buffer, 8 * 18 * 25);
+	if (!drive->buffer)
 		fatalerror("out of memory %s %d\n", __FILE__, __LINE__);
 
-	c1551->size = 0;
+	drive->size = 0;
 
 	pos = d64_tracksector2offset (18, 0);
-	track = c1551->image[pos];
-	sector = c1551->image[pos + 1];
+	track = drive->image[pos];
+	sector = drive->image[pos + 1];
 
 	blocksfree = 0;
 	for (j = 1, i = 4; j <= 35; j++, i += 4)
 	{
-		blocksfree += c1551->image[pos + i];
+		blocksfree += drive->image[pos + i];
 	}
-	c1551->buffer[c1551->size++] = addr & 0xff;
-	c1551->buffer[c1551->size++] = addr >> 8;
+	drive->buffer[drive->size++] = addr & 0xff;
+	drive->buffer[drive->size++] = addr >> 8;
 	addr += 29;
-	c1551->buffer[c1551->size++] = addr & 0xff;
-	c1551->buffer[c1551->size++] = addr >> 8;
-	c1551->buffer[c1551->size++] = 0;
-	c1551->buffer[c1551->size++] = 0;
-	c1551->buffer[c1551->size++] = '\"';
+	drive->buffer[drive->size++] = addr & 0xff;
+	drive->buffer[drive->size++] = addr >> 8;
+	drive->buffer[drive->size++] = 0;
+	drive->buffer[drive->size++] = 0;
+	drive->buffer[drive->size++] = '\"';
 	for (j = 0; j < 16; j++)
-		c1551->buffer[c1551->size++] = c1551->image[pos + 0x90 + j];
-/*memcpy(c1551->buffer+c1551->size,c1551->image+pos+0x90, 16);c1551->size+=16; */
-	c1551->buffer[c1551->size++] = '\"';
-	c1551->buffer[c1551->size++] = ' ';
-	c1551->buffer[c1551->size++] = c1551->image[pos + 162];
-	c1551->buffer[c1551->size++] = c1551->image[pos + 163];
-	c1551->buffer[c1551->size++] = ' ';
-	c1551->buffer[c1551->size++] = c1551->image[pos + 165];
-	c1551->buffer[c1551->size++] = c1551->image[pos + 166];
-	c1551->buffer[c1551->size++] = 0;
+		drive->buffer[drive->size++] = drive->image[pos + 0x90 + j];
+/*memcpy(drive->buffer+drive->size,drive->image+pos+0x90, 16);drive->size+=16; */
+	drive->buffer[drive->size++] = '\"';
+	drive->buffer[drive->size++] = ' ';
+	drive->buffer[drive->size++] = drive->image[pos + 162];
+	drive->buffer[drive->size++] = drive->image[pos + 163];
+	drive->buffer[drive->size++] = ' ';
+	drive->buffer[drive->size++] = drive->image[pos + 165];
+	drive->buffer[drive->size++] = drive->image[pos + 166];
+	drive->buffer[drive->size++] = 0;
 
 	while ((track >= 1) && (track <= 35))
 	{
 		pos = d64_tracksector2offset (track, sector);
 		for (i = 2; i < 256; i += 32)
 		{
-			if (c1551->image[pos + i] & 0x80)
+			if (drive->image[pos + i] & 0x80)
 			{
-				int len, blocks = c1551->image[pos + i + 28]
-				+ 256 * c1551->image[pos + i + 29];
+				int len, blocks = drive->image[pos + i + 28]
+				+ 256 * drive->image[pos + i + 29];
 				char dummy[10];
 
 				sprintf (dummy, "%d", blocks);
 				len = strlen (dummy);
 				addr += 29 - len;
-				c1551->buffer[c1551->size++] = addr & 0xff;
-				c1551->buffer[c1551->size++] = addr >> 8;
-				c1551->buffer[c1551->size++] = c1551->image[pos + i + 28];
-				c1551->buffer[c1551->size++] = c1551->image[pos + i + 29];
+				drive->buffer[drive->size++] = addr & 0xff;
+				drive->buffer[drive->size++] = addr >> 8;
+				drive->buffer[drive->size++] = drive->image[pos + i + 28];
+				drive->buffer[drive->size++] = drive->image[pos + i + 29];
 				for (j = 4; j > len; j--)
-					c1551->buffer[c1551->size++] = ' ';
-				c1551->buffer[c1551->size++] = '\"';
+					drive->buffer[drive->size++] = ' ';
+				drive->buffer[drive->size++] = '\"';
 				for (j = 0; j < 16; j++)
-					c1551->buffer[c1551->size++] = c1551->image[pos + i + 3 + j];
-				c1551->buffer[c1551->size++] = '\"';
-				c1551->buffer[c1551->size++] = ' ';
-				switch (c1551->image[pos + i] & 0x3f)
+					drive->buffer[drive->size++] = drive->image[pos + i + 3 + j];
+				drive->buffer[drive->size++] = '\"';
+				drive->buffer[drive->size++] = ' ';
+				switch (drive->image[pos + i] & 0x3f)
 				{
 				case 0:
-					c1551->buffer[c1551->size++] = 'D';
-					c1551->buffer[c1551->size++] = 'E';
-					c1551->buffer[c1551->size++] = 'L';
+					drive->buffer[drive->size++] = 'D';
+					drive->buffer[drive->size++] = 'E';
+					drive->buffer[drive->size++] = 'L';
 					break;
 				case 1:
-					c1551->buffer[c1551->size++] = 'S';
-					c1551->buffer[c1551->size++] = 'E';
-					c1551->buffer[c1551->size++] = 'Q';
+					drive->buffer[drive->size++] = 'S';
+					drive->buffer[drive->size++] = 'E';
+					drive->buffer[drive->size++] = 'Q';
 					break;
 				case 2:
-					c1551->buffer[c1551->size++] = 'P';
-					c1551->buffer[c1551->size++] = 'R';
-					c1551->buffer[c1551->size++] = 'G';
+					drive->buffer[drive->size++] = 'P';
+					drive->buffer[drive->size++] = 'R';
+					drive->buffer[drive->size++] = 'G';
 					break;
 				case 3:
-					c1551->buffer[c1551->size++] = 'U';
-					c1551->buffer[c1551->size++] = 'S';
-					c1551->buffer[c1551->size++] = 'R';
+					drive->buffer[drive->size++] = 'U';
+					drive->buffer[drive->size++] = 'S';
+					drive->buffer[drive->size++] = 'R';
 					break;
 				case 4:
-					c1551->buffer[c1551->size++] = 'R';
-					c1551->buffer[c1551->size++] = 'E';
-					c1551->buffer[c1551->size++] = 'L';
+					drive->buffer[drive->size++] = 'R';
+					drive->buffer[drive->size++] = 'E';
+					drive->buffer[drive->size++] = 'L';
 					break;
 				}
-				c1551->buffer[c1551->size++] = 0;
+				drive->buffer[drive->size++] = 0;
 			}
 		}
-		track = c1551->image[pos];
-		sector = c1551->image[pos + 1];
+		track = drive->image[pos];
+		sector = drive->image[pos + 1];
 	}
 	addr += 14;
-	c1551->buffer[c1551->size++] = addr & 0xff;
-	c1551->buffer[c1551->size++] = addr >> 8;
-	c1551->buffer[c1551->size++] = blocksfree & 0xff;
-	c1551->buffer[c1551->size++] = blocksfree >> 8;
-	memcpy (c1551->buffer + c1551->size, "BLOCKS FREE", 11);
-	c1551->size += 11;
-	c1551->buffer[c1551->size++] = 0;
+	drive->buffer[drive->size++] = addr & 0xff;
+	drive->buffer[drive->size++] = addr >> 8;
+	drive->buffer[drive->size++] = blocksfree & 0xff;
+	drive->buffer[drive->size++] = blocksfree >> 8;
+	memcpy (drive->buffer + drive->size, "BLOCKS FREE", 11);
+	drive->size += 11;
+	drive->buffer[drive->size++] = 0;
 
-	strcpy (c1551->filename, "$");
+	strcpy (drive->filename, "$");
 }
 
-static int c1551_d64_command (CBM_Drive * c1551, unsigned char *name)
+static int d64_command (CBM_Drive * drive, unsigned char *name)
 {
 	int pos;
 
@@ -309,15 +324,15 @@ static int c1551_d64_command (CBM_Drive * c1551, unsigned char *name)
 
 	if (mame_stricmp ((char *) name, (char *) "$") == 0)
 	{
-		d64_read_directory (c1551);
+		d64_read_directory (drive);
 	}
 	else
 	{
-		if ((pos = d64_find (c1551, name)) == -1)
+		if ((pos = d64_find (drive, name)) == -1)
 		{
 			return 1;
 		}
-		d64_readprg (c1551, pos);
+		d64_readprg (drive, pos);
 	}
 	return 0;
 }
@@ -425,7 +440,7 @@ static void cbm_command (CBM_Drive * drive)
 		if (drive->drive == D64_IMAGE)
 		{
 			if ((type == 'P') || (type == 'S'))
-				rc = c1551_d64_command (drive, name);
+				rc = d64_command (drive, name);
 		}
 		if (!rc)
 		{
@@ -486,6 +501,14 @@ static void cbm_command (CBM_Drive * drive)
 	drive->cmdpos = 0;
 }
 
+
+/***********************************************
+
+	Drive state update
+
+***********************************************/
+
+
  /*
   * 0x55 begin of command
   *
@@ -503,229 +526,229 @@ static void cbm_command (CBM_Drive * drive)
   * status 3 for file not found
   * or filedata ended with status 3
   */
-void c1551_state (CBM_Drive * c1551)
+void c1551_state (CBM_Drive * drive)
 {
 	static int oldstate;
 
-	oldstate = c1551->i.iec.state;
+	oldstate = drive->i.iec.state;
 
-	switch (c1551->i.iec.state)
+	switch (drive->i.iec.state)
 	{
 	case -1:						   /* currently neccessary for correct init */
-		if (c1551->i.iec.handshakein)
+		if (drive->i.iec.handshakein)
 		{
-			c1551->i.iec.state++;
+			drive->i.iec.state++;
 		}
 		break;
 	case 0:
-		if (c1551->i.iec.datain == 0x55)
+		if (drive->i.iec.datain == 0x55)
 		{
-			c1551->i.iec.status = 0;
-			c1551->i.iec.state++;
+			drive->i.iec.status = 0;
+			drive->i.iec.state++;
 		}
 		break;
 	case 1:
-		if (c1551->i.iec.datain != 0x55)
+		if (drive->i.iec.datain != 0x55)
 		{
-			c1551->i.iec.state = 10;
+			drive->i.iec.state = 10;
 		}
 		break;
 	case 10:
-		if (c1551->i.iec.datain != 0)
+		if (drive->i.iec.datain != 0)
 		{
-			c1551->i.iec.handshakeout = 0;
-			if (c1551->i.iec.datain == 0x84)
+			drive->i.iec.handshakeout = 0;
+			if (drive->i.iec.datain == 0x84)
 			{
-				c1551->i.iec.state = 20;
-				if (c1551->pos + 1 == c1551->size)
-					c1551->i.iec.status = 3;
+				drive->i.iec.state = 20;
+				if (drive->pos + 1 == drive->size)
+					drive->i.iec.status = 3;
 			}
-			else if (c1551->i.iec.datain == 0x83)
+			else if (drive->i.iec.datain == 0x83)
 			{
-				c1551->i.iec.state = 40;
+				drive->i.iec.state = 40;
 			}
 			else
 			{
-				c1551->i.iec.status = 0;
-				c1551->i.iec.state++;
+				drive->i.iec.status = 0;
+				drive->i.iec.state++;
 			}
 		}
 		break;
 	case 11:
-		if (!c1551->i.iec.handshakein)
+		if (!drive->i.iec.handshakein)
 		{
-			c1551->i.iec.state++;
-			DBG_LOG(1,"c1551",("taken data %.2x\n",c1551->i.iec.datain));
-			if (c1551->cmdpos < sizeof (c1551->cmdbuffer))
-				c1551->cmdbuffer[c1551->cmdpos++] = c1551->i.iec.datain;
-			if ((c1551->i.iec.datain == 0x3f) || (c1551->i.iec.datain == 0x5f))
+			drive->i.iec.state++;
+			DBG_LOG(1,"c1551",("taken data %.2x\n",drive->i.iec.datain));
+			if (drive->cmdpos < sizeof (drive->cmdbuffer))
+				drive->cmdbuffer[drive->cmdpos++] = drive->i.iec.datain;
+			if ((drive->i.iec.datain == 0x3f) || (drive->i.iec.datain == 0x5f))
 			{
-				cbm_command (c1551);
-				c1551->i.iec.state = 30;
+				cbm_command (drive);
+				drive->i.iec.state = 30;
 			}
-			else if (((c1551->i.iec.datain & 0xf0) == 0x60))
+			else if (((drive->i.iec.datain & 0xf0) == 0x60))
 			{
-				cbm_command (c1551);
-				if (c1551->state == READING)
+				cbm_command (drive);
+				if (drive->state == READING)
 				{
 				}
-				else if (c1551->state == WRITING)
+				else if (drive->state == WRITING)
 				{
 				}
 				else
-					c1551->i.iec.status = 3;
+					drive->i.iec.status = 3;
 			}
-			c1551->i.iec.handshakeout = 1;
+			drive->i.iec.handshakeout = 1;
 		}
 		break;
 	case 12:
-		if (c1551->i.iec.datain == 0)
+		if (drive->i.iec.datain == 0)
 		{
-			c1551->i.iec.state++;
+			drive->i.iec.state++;
 		}
 		break;
 	case 13:
-		if (c1551->i.iec.handshakein)
+		if (drive->i.iec.handshakein)
 		{
-			c1551->i.iec.state = 10;
+			drive->i.iec.state = 10;
 		}
 		break;
 
 	case 20:						   /* reading data */
-		if (!c1551->i.iec.handshakein)
+		if (!drive->i.iec.handshakein)
 		{
-			c1551->i.iec.handshakeout = 1;
-			if (c1551->state == READING)
-				c1551->i.iec.dataout = c1551->buffer[c1551->pos++];
-			c1551->i.iec.state++;
+			drive->i.iec.handshakeout = 1;
+			if (drive->state == READING)
+				drive->i.iec.dataout = drive->buffer[drive->pos++];
+			drive->i.iec.state++;
 		}
 		break;
 	case 21:						   /* reading data */
-		if (c1551->i.iec.handshakein)
+		if (drive->i.iec.handshakein)
 		{
-			c1551->i.iec.handshakeout = 0;
-			c1551->i.iec.state++;
+			drive->i.iec.handshakeout = 0;
+			drive->i.iec.state++;
 		}
 		break;
 	case 22:
-		if (c1551->i.iec.datain == 0)
+		if (drive->i.iec.datain == 0)
 		{
-			c1551->i.iec.state++;
+			drive->i.iec.state++;
 		}
 		break;
 	case 23:
-		if (!c1551->i.iec.handshakein)
+		if (!drive->i.iec.handshakein)
 		{
-			c1551->i.iec.handshakeout = 1;
-			if (c1551->state == READING)
-				c1551->i.iec.state = 10;
+			drive->i.iec.handshakeout = 1;
+			if (drive->state == READING)
+				drive->i.iec.state = 10;
 			else
-				c1551->i.iec.state = 0;
+				drive->i.iec.state = 0;
 		}
 		break;
 
 	case 30:						   /* end of command */
-		if (c1551->i.iec.datain == 0)
+		if (drive->i.iec.datain == 0)
 		{
-			c1551->i.iec.state++;
+			drive->i.iec.state++;
 		}
 		break;
 	case 31:
-		if (c1551->i.iec.handshakein)
+		if (drive->i.iec.handshakein)
 		{
-			c1551->i.iec.state = 0;
+			drive->i.iec.state = 0;
 		}
 		break;
 
 	case 40:						   /* simple write */
-		if (!c1551->i.iec.handshakein)
+		if (!drive->i.iec.handshakein)
 		{
-			c1551->i.iec.state++;
-			if ((c1551->state == 0) || (c1551->state == OPEN))
+			drive->i.iec.state++;
+			if ((drive->state == 0) || (drive->state == OPEN))
 			{
 				DBG_LOG (1, "c1551", ("taken data %.2x\n",
-									  c1551->i.iec.datain));
-				if (c1551->cmdpos < sizeof (c1551->cmdbuffer))
-					c1551->cmdbuffer[c1551->cmdpos++] = c1551->i.iec.datain;
+									  drive->i.iec.datain));
+				if (drive->cmdpos < sizeof (drive->cmdbuffer))
+					drive->cmdbuffer[drive->cmdpos++] = drive->i.iec.datain;
 			}
-			else if (c1551->state == WRITING)
+			else if (drive->state == WRITING)
 			{
-				DBG_LOG (1, "c1551", ("written data %.2x\n", c1551->i.iec.datain));
+				DBG_LOG (1, "c1551", ("written data %.2x\n", drive->i.iec.datain));
 			}
-			c1551->i.iec.handshakeout = 1;
+			drive->i.iec.handshakeout = 1;
 		}
 		break;
 	case 41:
-		if (c1551->i.iec.datain == 0)
+		if (drive->i.iec.datain == 0)
 		{
-			c1551->i.iec.state++;
+			drive->i.iec.state++;
 		}
 		break;
 	case 42:
-		if (c1551->i.iec.handshakein)
+		if (drive->i.iec.handshakein)
 		{
-			c1551->i.iec.state = 10;
+			drive->i.iec.state = 10;
 		}
 		break;
 	}
 
-	if (oldstate != c1551->i.iec.state)
-		if (VERBOSE_DBG >= 1) logerror("state %d->%d %d\n", oldstate, c1551->i.iec.state, c1551->state);
+	if (oldstate != drive->i.iec.state)
+		if (VERBOSE_LEVEL >= 1) logerror("state %d->%d %d\n", oldstate, drive->i.iec.state, drive->state);
 }
 
-static int vc1541_time_greater(CBM_Drive * vc1541, attotime threshold)
+static int vc1541_time_greater(CBM_Drive * drive, attotime threshold)
 {
 	return attotime_compare(
-		attotime_sub(timer_get_time (), vc1541->i.serial.time),
+		attotime_sub(timer_get_time (), drive->i.serial.time),
 		threshold) > 0;
 }
 
-void vc1541_state (CBM_Drive * vc1541)
+void vc1541_state (CBM_Drive * drive)
 {
-	int oldstate = vc1541->i.serial.state;
+	int oldstate = drive->i.serial.state;
 
-	switch (vc1541->i.serial.state)
+	switch (drive->i.serial.state)
 	{
 	case 0:
 		if (!cbm_serial.atn[0] && !cbm_serial.clock[0])
 		{
-			vc1541->i.serial.data = 0;
-			vc1541->i.serial.state = 2;
+			drive->i.serial.data = 0;
+			drive->i.serial.state = 2;
 			break;
 		}
-		if (!cbm_serial.clock[0] && vc1541->i.serial.forme)
+		if (!cbm_serial.clock[0] && drive->i.serial.forme)
 		{
-			vc1541->i.serial.data = 0;
-			vc1541->i.serial.state++;
+			drive->i.serial.data = 0;
+			drive->i.serial.state++;
 			break;
 		}
 		break;
 	case 1:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state++;
+			drive->i.serial.state++;
 			break;
 		}
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.broadcast = 0;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.state = 100;
-			vc1541->i.serial.last = 0;
-			vc1541->i.serial.value = 0;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.broadcast = 0;
+			drive->i.serial.data = 1;
+			drive->i.serial.state = 100;
+			drive->i.serial.last = 0;
+			drive->i.serial.value = 0;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 2:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.broadcast = 1;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.state = 100;
-			vc1541->i.serial.last = 0;
-			vc1541->i.serial.value = 0;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.broadcast = 1;
+			drive->i.serial.data = 1;
+			drive->i.serial.state = 100;
+			drive->i.serial.last = 0;
+			drive->i.serial.value = 0;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
@@ -733,7 +756,7 @@ void vc1541_state (CBM_Drive * vc1541)
 	case 100:
 		if (!cbm_serial.clock[0])
 		{
-			vc1541->i.serial.state++;
+			drive->i.serial.state++;
 			break;
 		}
 		break;
@@ -745,133 +768,133 @@ void vc1541_state (CBM_Drive * vc1541)
 	case 112:
 	case 114:
 		if (!cbm_serial.clock[0])
-			vc1541->i.serial.state++;
+			drive->i.serial.state++;
 		break;
 	case 101:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.value |= cbm_serial.data[0] ? 1 : 0;
-			vc1541->i.serial.state++;
+			drive->i.serial.value |= cbm_serial.data[0] ? 1 : 0;
+			drive->i.serial.state++;
 		}
 		break;
 	case 103:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.value |= cbm_serial.data[0] ? 2 : 0;
-			vc1541->i.serial.state++;
+			drive->i.serial.value |= cbm_serial.data[0] ? 2 : 0;
+			drive->i.serial.state++;
 		}
 		break;
 	case 105:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.value |= cbm_serial.data[0] ? 4 : 0;
-			vc1541->i.serial.state++;
+			drive->i.serial.value |= cbm_serial.data[0] ? 4 : 0;
+			drive->i.serial.state++;
 		}
 		break;
 	case 107:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.value |= cbm_serial.data[0] ? 8 : 0;
-			vc1541->i.serial.state++;
+			drive->i.serial.value |= cbm_serial.data[0] ? 8 : 0;
+			drive->i.serial.state++;
 		}
 		break;
 	case 109:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.value |= cbm_serial.data[0] ? 0x10 : 0;
-			vc1541->i.serial.state++;
+			drive->i.serial.value |= cbm_serial.data[0] ? 0x10 : 0;
+			drive->i.serial.state++;
 		}
 		break;
 	case 111:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.value |= cbm_serial.data[0] ? 0x20 : 0;
-			vc1541->i.serial.state++;
+			drive->i.serial.value |= cbm_serial.data[0] ? 0x20 : 0;
+			drive->i.serial.state++;
 		}
 		break;
 	case 113:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.value |= cbm_serial.data[0] ? 0x40 : 0;
-			vc1541->i.serial.state++;
+			drive->i.serial.value |= cbm_serial.data[0] ? 0x40 : 0;
+			drive->i.serial.state++;
 		}
 		break;
 	case 115:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.value |= cbm_serial.data[0] ? 0x80 : 0;
-			if (vc1541->i.serial.broadcast
-				&& (((vc1541->i.serial.value & 0xf0) == 0x20)
-					|| ((vc1541->i.serial.value & 0xf0) == 0x40)))
+			drive->i.serial.value |= cbm_serial.data[0] ? 0x80 : 0;
+			if (drive->i.serial.broadcast
+				&& (((drive->i.serial.value & 0xf0) == 0x20)
+					|| ((drive->i.serial.value & 0xf0) == 0x40)))
 			{
-				vc1541->i.serial.forme = (vc1541->i.serial.value & 0xf)
-					== vc1541->i.serial.device;
-				if (!vc1541->i.serial.forme)
+				drive->i.serial.forme = (drive->i.serial.value & 0xf)
+					== drive->i.serial.device;
+				if (!drive->i.serial.forme)
 				{
-					vc1541->i.serial.state = 160;
+					drive->i.serial.state = 160;
 					break;
 				}
 			}
-			if (vc1541->i.serial.forme)
+			if (drive->i.serial.forme)
 			{
-				if (vc1541->cmdpos < sizeof (vc1541->cmdbuffer))
-					vc1541->cmdbuffer[vc1541->cmdpos++] = vc1541->i.serial.value;
+				if (drive->cmdpos < sizeof (drive->cmdbuffer))
+					drive->cmdbuffer[drive->cmdpos++] = drive->i.serial.value;
 				DBG_LOG (1, "serial read", ("%s %s %.2x\n",
-							vc1541->i.serial.broadcast ? "broad" : "",
-							vc1541->i.serial.last ? "last" : "",
-											vc1541->i.serial.value));
+							drive->i.serial.broadcast ? "broad" : "",
+							drive->i.serial.last ? "last" : "",
+											drive->i.serial.value));
 			}
-			vc1541->i.serial.state++;
+			drive->i.serial.state++;
 		}
 		break;
 	case 116:
 		if (!cbm_serial.clock[0])
 		{
-			if (vc1541->i.serial.last)
-				vc1541->i.serial.state = 130;
+			if (drive->i.serial.last)
+				drive->i.serial.state = 130;
 			else
-				vc1541->i.serial.state++;
-			if (vc1541->i.serial.broadcast &&
-				((vc1541->i.serial.value == 0x3f) || (vc1541->i.serial.value == 0x5f)
-				 || ((vc1541->i.serial.value & 0xf0) == 0x60)))
+				drive->i.serial.state++;
+			if (drive->i.serial.broadcast &&
+				((drive->i.serial.value == 0x3f) || (drive->i.serial.value == 0x5f)
+				 || ((drive->i.serial.value & 0xf0) == 0x60)))
 			{
-				cbm_command (vc1541);
+				cbm_command (drive);
 			}
-			vc1541->i.serial.time = timer_get_time ();
-			vc1541->i.serial.data = 0;
+			drive->i.serial.time = timer_get_time ();
+			drive->i.serial.data = 0;
 			break;
 		}
 		break;
 	case 117:
-		if (vc1541->i.serial.forme && ((vc1541->i.serial.value & 0xf0) == 0x60)
-			&& vc1541->i.serial.broadcast && cbm_serial.atn[0])
+		if (drive->i.serial.forme && ((drive->i.serial.value & 0xf0) == 0x60)
+			&& drive->i.serial.broadcast && cbm_serial.atn[0])
 		{
-			if (vc1541->state == READING)
+			if (drive->state == READING)
 			{
-				vc1541->i.serial.state = 200;
+				drive->i.serial.state = 200;
 				break;
 			}
-			else if (vc1541->state != WRITING)
+			else if (drive->state != WRITING)
 			{
-				vc1541->i.serial.state = 150;
+				drive->i.serial.state = 150;
 				break;
 			}
 		}
-		if (((vc1541->i.serial.value == 0x3f)
-			 || (vc1541->i.serial.value == 0x5f))
-			&& vc1541->i.serial.broadcast && cbm_serial.atn[0])
+		if (((drive->i.serial.value == 0x3f)
+			 || (drive->i.serial.value == 0x5f))
+			&& drive->i.serial.broadcast && cbm_serial.atn[0])
 		{
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.state = 140;
+			drive->i.serial.data = 1;
+			drive->i.serial.state = 140;
 			break;
 		}
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.time = timer_get_time ();
-			vc1541->i.serial.broadcast = !cbm_serial.atn[0];
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.value = 0;
-			vc1541->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
+			drive->i.serial.broadcast = !cbm_serial.atn[0];
+			drive->i.serial.data = 1;
+			drive->i.serial.value = 0;
+			drive->i.serial.state++;
 			break;
 		}
 		break;
@@ -880,35 +903,35 @@ void vc1541_state (CBM_Drive * vc1541)
 	case 118:
 		if (!cbm_serial.clock[0])
 		{
-			vc1541->i.serial.value = 0;
-			vc1541->i.serial.state = 101;
-			vc1541->i.serial.data = 1;
+			drive->i.serial.value = 0;
+			drive->i.serial.state = 101;
+			drive->i.serial.data = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(200)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(200)))
 		{
-			vc1541->i.serial.data = 0;
-			vc1541->i.serial.last = 1;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.data = 0;
+			drive->i.serial.last = 1;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 119:
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(60)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(60)))
 		{
-			vc1541->i.serial.value = 0;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.state = 100;
+			drive->i.serial.value = 0;
+			drive->i.serial.data = 1;
+			drive->i.serial.state = 100;
 			break;
 		}
 		break;
 
 	case 130:						   /* last byte of talk */
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(60)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(60)))
 		{
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.state = 0;
+			drive->i.serial.data = 1;
+			drive->i.serial.state = 0;
 			break;
 		}
 		break;
@@ -916,54 +939,54 @@ void vc1541_state (CBM_Drive * vc1541)
 	case 131:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.state = 0;
+			drive->i.serial.state = 0;
 		}
 		break;
 
 	case 140:						   /* end of talk */
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.state = 0;
+			drive->i.serial.state = 0;
 		}
 		break;
 
 	case 150:						   /* file not found */
 		if (cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 151:
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(1000)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(1000)))
 		{
-			vc1541->i.serial.state++;
-			vc1541->i.serial.clock = 0;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.state++;
+			drive->i.serial.clock = 0;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 152:
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(50)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(50)))
 		{
-			vc1541->i.serial.state++;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state++;
+			drive->i.serial.clock = 1;
 			break;
 		}
 		break;
 	case 153:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.state = 0;
+			drive->i.serial.state = 0;
 		}
 		break;
 
 	case 160:						   /* not for me */
 		if (cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 0;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.state = 0;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
@@ -971,18 +994,18 @@ void vc1541_state (CBM_Drive * vc1541)
 	case 200:
 		if (cbm_serial.clock[0])
 		{
-			vc1541->i.serial.state++;
-			vc1541->i.serial.clock = 0;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.state++;
+			drive->i.serial.clock = 0;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 201:
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(80)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(80)))
 		{
-			vc1541->i.serial.clock = 1;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.state = 300;
+			drive->i.serial.clock = 1;
+			drive->i.serial.data = 1;
+			drive->i.serial.state = 300;
 			break;
 		}
 		break;
@@ -990,34 +1013,34 @@ void vc1541_state (CBM_Drive * vc1541)
 	case 300:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
 		if (cbm_serial.data[0])
 		{
-			vc1541->i.serial.value = vc1541->buffer[vc1541->pos];
-			vc1541->i.serial.clock = 0;
-			vc1541->i.serial.data = (vc1541->i.serial.value & 1) ? 1 : 0;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.value = drive->buffer[drive->pos];
+			drive->i.serial.clock = 0;
+			drive->i.serial.data = (drive->i.serial.value & 1) ? 1 : 0;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 301:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(40)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(40)))
 		{
-			vc1541->i.serial.clock = 1;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.clock = 1;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
@@ -1030,263 +1053,263 @@ void vc1541_state (CBM_Drive * vc1541)
 	case 315:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(20)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(20)))
 		{
-			vc1541->i.serial.clock = 1;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.clock = 1;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 302:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(20)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(20)))
 		{
-			vc1541->i.serial.data = vc1541->i.serial.value & 2 ? 1 : 0;
-			vc1541->i.serial.clock = 0;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.data = drive->i.serial.value & 2 ? 1 : 0;
+			drive->i.serial.clock = 0;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 304:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(20)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(20)))
 		{
-			vc1541->i.serial.data = vc1541->i.serial.value & 4 ? 1 : 0;
-			vc1541->i.serial.clock = 0;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.data = drive->i.serial.value & 4 ? 1 : 0;
+			drive->i.serial.clock = 0;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 306:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(20)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(20)))
 		{
-			vc1541->i.serial.data = vc1541->i.serial.value & 8 ? 1 : 0;
-			vc1541->i.serial.clock = 0;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.data = drive->i.serial.value & 8 ? 1 : 0;
+			drive->i.serial.clock = 0;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 308:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(20)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(20)))
 		{
-			vc1541->i.serial.data = vc1541->i.serial.value & 0x10 ? 1 : 0;
-			vc1541->i.serial.clock = 0;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.data = drive->i.serial.value & 0x10 ? 1 : 0;
+			drive->i.serial.clock = 0;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 310:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(20)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(20)))
 		{
-			vc1541->i.serial.data = vc1541->i.serial.value & 0x20 ? 1 : 0;
-			vc1541->i.serial.clock = 0;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.data = drive->i.serial.value & 0x20 ? 1 : 0;
+			drive->i.serial.clock = 0;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 312:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(20)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(20)))
 		{
-			vc1541->i.serial.data = vc1541->i.serial.value & 0x40 ? 1 : 0;
-			vc1541->i.serial.clock = 0;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.data = drive->i.serial.value & 0x40 ? 1 : 0;
+			drive->i.serial.clock = 0;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 314:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(20)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(20)))
 		{
-			vc1541->i.serial.data = vc1541->i.serial.value & 0x80 ? 1 : 0;
-			vc1541->i.serial.clock = 0;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.data = drive->i.serial.value & 0x80 ? 1 : 0;
+			drive->i.serial.clock = 0;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 316:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(20)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(20)))
 		{
-			DBG_LOG (1, "vc1541", ("%.2x written\n", vc1541->i.serial.value));
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 0;
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			DBG_LOG (1, "vc1541", ("%.2x written\n", drive->i.serial.value));
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 0;
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 317:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
 		if (!cbm_serial.data[0])
 		{
-			vc1541->i.serial.state++;
-			vc1541->i.serial.time = timer_get_time ();
+			drive->i.serial.state++;
+			drive->i.serial.time = timer_get_time ();
 			break;
 		}
 		break;
 	case 318:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541->pos + 1 == vc1541->size)
+		if (drive->pos + 1 == drive->size)
 		{
-			vc1541->i.serial.clock = 1;
-			vc1541->i.serial.state = 0;
+			drive->i.serial.clock = 1;
+			drive->i.serial.state = 0;
 			break;
 		}
-		if (vc1541->pos + 2 == vc1541->size)
+		if (drive->pos + 2 == drive->size)
 		{
-			vc1541->pos++;
-			vc1541->i.serial.state = 320;
+			drive->pos++;
+			drive->i.serial.state = 320;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(100)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(100)))
 		{
-			vc1541->pos++;
-			vc1541->i.serial.clock = 1;
-			vc1541->i.serial.state = 300;
+			drive->pos++;
+			drive->i.serial.clock = 1;
+			drive->i.serial.state = 300;
 			break;
 		}
 		break;
 	case 320:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
-		if (vc1541_time_greater(vc1541, ATTOTIME_IN_USEC(100)))
+		if (vc1541_time_greater(drive, ATTOTIME_IN_USEC(100)))
 		{
-			vc1541->i.serial.clock = 1;
-			vc1541->i.serial.state++;
+			drive->i.serial.clock = 1;
+			drive->i.serial.state++;
 			break;
 		}
 		break;
 	case 321:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
 		if (cbm_serial.data[0])
 		{
-			vc1541->i.serial.state++;
+			drive->i.serial.state++;
 		}
 		break;
 	case 322:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
 		if (!cbm_serial.data[0])
 		{
-			vc1541->i.serial.state++;
+			drive->i.serial.state++;
 		}
 		break;
 	case 323:
 		if (!cbm_serial.atn[0])
 		{
-			vc1541->i.serial.state = 330;
-			vc1541->i.serial.data = 1;
-			vc1541->i.serial.clock = 1;
+			drive->i.serial.state = 330;
+			drive->i.serial.data = 1;
+			drive->i.serial.clock = 1;
 			break;
 		}
 		if (cbm_serial.data[0])
 		{
-			vc1541->i.serial.state = 300;
+			drive->i.serial.state = 300;
 		}
 		break;
 	case 330:						   /* computer breaks receiving */
-		vc1541->i.serial.state = 0;
+		drive->i.serial.state = 0;
 		break;
 	}
 
-	if (oldstate != vc1541->i.serial.state)
-		if (VERBOSE_DBG >= 1) logerror("%d state %d->%d %d %s %s %s\n",
-				 vc1541->i.serial.device,
+	if (oldstate != drive->i.serial.state)
+		if (VERBOSE_LEVEL >= 1) logerror("%d state %d->%d %d %s %s %s\n",
+				 drive->i.serial.device,
 				 oldstate,
-				 vc1541->i.serial.state, vc1541->state,
+				 drive->i.serial.state, drive->state,
 				 cbm_serial.atn[0] ? "ATN" : "atn",
 				 cbm_serial.clock[0] ? "CLOCK" : "clock",
 				 cbm_serial.data[0] ? "DATA" : "data");
@@ -1438,9 +1461,313 @@ void c2031_state(CBM_Drive *drive)
 	}
 
 	if (oldstate != drive->i.ieee.state)
-		if (VERBOSE_DBG >= 1) logerror("%d state %d->%d %d\n",
+		if (VERBOSE_LEVEL >= 1) logerror("%d state %d->%d %d\n",
 				 drive->i.ieee.device,
 				 oldstate,
 				 drive->i.ieee.state, drive->state
 				 );
+}
+
+/***********************************************
+
+	Drive handling
+
+***********************************************/
+
+void drive_reset_write (CBM_Drive * drive, int level);
+
+CBM_Drive cbm_drive[2];
+
+CBM_Serial cbm_serial;
+
+/* must be called before other functions */
+static void cbm_drive_open (void)
+{
+	int i;
+
+	memset(cbm_drive, 0, sizeof(cbm_drive));
+	memset(&cbm_serial, 0, sizeof(cbm_serial));
+
+	cbm_drive_open_helper ();
+
+	cbm_serial.count = 0;
+	for (i = 0; i < sizeof (cbm_serial.atn) / sizeof (int); i++)
+
+	{
+		cbm_serial.atn[i] =
+			cbm_serial.data[i] =
+			cbm_serial.clock[i] = 1;
+	}
+}
+
+static void cbm_drive_close (void)
+{
+	int i;
+
+	cbm_serial.count = 0;
+	for (i = 0; i < sizeof (cbm_drive) / sizeof (CBM_Drive); i++)
+	{
+		cbm_drive[i].interface = 0;
+		
+		if( cbm_drive[i].buffer ) {
+			free(cbm_drive[i].buffer);
+			cbm_drive[i].buffer = NULL;
+		}
+
+		if (cbm_drive[i].drive == D64_IMAGE)
+			cbm_drive[i].image = NULL;
+		cbm_drive[i].drive = 0;
+	}
+}
+
+
+
+static void cbm_drive_config (CBM_Drive * drive, int interface, int serialnr)
+{
+	int i;
+
+	if (interface==SERIAL)
+		drive->i.serial.device=serialnr;
+
+	if (interface==IEEE)
+		drive->i.ieee.device=serialnr;
+
+	if (drive->interface == interface)
+		return;
+
+	if (drive->interface == SERIAL)
+	{
+		for (i = 0; (i < cbm_serial.count) && (cbm_serial.drives[i] != drive); i++) ;
+		for (; i + 1 < cbm_serial.count; i++)
+			cbm_serial.drives[i] = cbm_serial.drives[i + 1];
+		cbm_serial.count--;
+	}
+
+	drive->interface = interface;
+
+	if (drive->interface == IEC)
+	{
+		drive->i.iec.handshakein =
+			drive->i.iec.handshakeout = 0;
+		drive->i.iec.status = 0;
+		drive->i.iec.dataout = drive->i.iec.datain = 0xff;
+		drive->i.iec.state = 0;
+	}
+	else if (drive->interface == SERIAL)
+	{
+		cbm_serial.drives[cbm_serial.count++] = drive;
+		drive_reset_write(drive, 0);
+	}
+}
+
+void cbm_drive_0_config (int interface, int serialnr)
+{
+	cbm_drive_config (cbm_drive, interface, serialnr);
+}
+void cbm_drive_1_config (int interface, int serialnr)
+{
+	cbm_drive_config (cbm_drive + 1, interface, serialnr);
+}
+
+
+void drive_reset_write (CBM_Drive * drive, int level)
+{
+	if (level == 0)
+	{
+		drive->i.serial.data =
+			drive->i.serial.clock =
+			drive->i.serial.atn = 1;
+		drive->i.serial.state = 0;
+	}
+}
+
+
+/**************************************
+
+	C1551 handlers
+
+**************************************/
+
+
+static void c1551_write_data (CBM_Drive * drive, int data)
+{
+	drive->i.iec.datain = data;
+	c1551_state (drive);
+}
+
+static int c1551_read_data (CBM_Drive * drive)
+{
+	c1551_state (drive);
+	return drive->i.iec.dataout;
+}
+
+static void c1551_write_handshake (CBM_Drive * drive, int data)
+{
+	drive->i.iec.handshakein = data&0x40?1:0;
+	c1551_state (drive);
+}
+
+static int c1551_read_handshake (CBM_Drive * drive)
+{
+	c1551_state (drive);
+	return drive->i.iec.handshakeout?0x80:0;
+}
+
+static int c1551_read_status (CBM_Drive * drive)
+{
+	c1551_state (drive);
+	return drive->i.iec.status;
+}
+
+void c1551_0_write_data (int data)
+{
+	c1551_write_data (cbm_drive, data);
+}
+int c1551_0_read_data (void)
+{
+	return c1551_read_data (cbm_drive);
+}
+void c1551_0_write_handshake (int data)
+{
+	c1551_write_handshake (cbm_drive, data);
+}
+int c1551_0_read_handshake (void)
+{
+	return c1551_read_handshake (cbm_drive);
+}
+int c1551_0_read_status (void)
+{
+	return c1551_read_status (cbm_drive);
+}
+
+void c1551_1_write_data (int data)
+{
+	c1551_write_data (cbm_drive + 1, data);
+}
+int c1551_1_read_data (void)
+{
+	return c1551_read_data (cbm_drive + 1);
+}
+void c1551_1_write_handshake (int data)
+{
+	c1551_write_handshake (cbm_drive + 1, data);
+}
+int c1551_1_read_handshake (void)
+{
+	return c1551_read_handshake (cbm_drive + 1);
+}
+int c1551_1_read_status (void)
+{
+	return c1551_read_status (cbm_drive + 1);
+}
+
+/**************************************
+
+	VC1541
+
+**************************************/
+
+int vc1541_atn_read (CBM_Drive * drive)
+{
+	vc1541_state (drive);
+	return drive->i.serial.atn;
+}
+
+int vc1541_data_read (CBM_Drive * drive)
+{
+	vc1541_state (drive);
+	return drive->i.serial.data;
+}
+
+int vc1541_clock_read (CBM_Drive * drive)
+{
+	vc1541_state (drive);
+	return drive->i.serial.clock;
+}
+
+void vc1541_data_write (CBM_Drive * drive, int level)
+{
+	vc1541_state (drive);
+}
+
+void vc1541_clock_write (CBM_Drive * drive, int level)
+{
+	vc1541_state (drive);
+}
+
+void vc1541_atn_write (CBM_Drive * drive, int level)
+{
+	vc1541_state (drive);
+}
+
+
+/**************************************
+
+	Device configurations
+
+**************************************/
+
+
+static DEVICE_START( cbm_drive )
+{
+	int id = image_index_in_device(device);
+	if (id == 0)
+		cbm_drive_open();	/* boy these C64 drivers are butt ugly */
+	return DEVICE_START_OK;
+}
+
+static DEVICE_STOP( cbm_drive )
+{
+	int id = image_index_in_device(device);
+	if (id == 0)
+		cbm_drive_close();	/* boy these C64 drivers are butt ugly */
+}
+
+
+
+/* open an d64 image */
+static DEVICE_IMAGE_LOAD( cbm_drive )
+{
+	int id = image_index_in_device(image);
+
+	cbm_drive[id].drive = 0;
+	cbm_drive[id].image = NULL;
+
+	cbm_drive[id].image = image_ptr(image);
+	if (!cbm_drive[id].image)
+		return INIT_FAIL;
+
+	cbm_drive[id].drive = D64_IMAGE;
+	return 0;
+}
+
+static DEVICE_IMAGE_UNLOAD( cbm_drive )
+{
+	int id = image_index_in_device(image);
+
+	cbm_drive[id].drive = 0;
+	cbm_drive[id].image = NULL;
+}
+
+
+void cbmfloppy_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
+{
+	switch(state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:					info->i = 0; break;
+		case MESS_DEVINFO_INT_CREATABLE:					info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:						info->i = 2; break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case MESS_DEVINFO_PTR_START:						info->start = DEVICE_START_NAME(cbm_drive); break;
+		case MESS_DEVINFO_PTR_STOP:							info->stop = DEVICE_STOP_NAME(cbm_drive); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(cbm_drive); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(cbm_drive); break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "d64"); break;
+	}
 }

@@ -8,54 +8,16 @@
 #define CBM_H_
 
 #include "devices/snapquik.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "devices/cassette.h"
 
 
-/* must be defined until some driver init problems are solved */
-#define NEW_GAMEDRIVER
+/* global header file for c16, c64, c65, c128, vc20 */
 
+/***********************************************
 
-/*----------- defined in machine/cbm.c -----------*/
+	CBM Quickloads
 
-/* global header file for
- * vc20
- * c16
- * c64
- * c128
- * c65*/
-
-void cbmcartslot_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
-
-/**************************************************************************
- * Logging
- * call the XXX_LOG with XXX_LOG("info",("%fmt\n",args));
- * where "info" can also be 0 to append .."%fmt",args to a line.
- **************************************************************************/
-#define LOG(LEVEL,N,M,A)  \
-        { \
-	  if(LEVEL>=N) { \
-	    if( M ) \
-              logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()), (char*)M );\
-	    logerror A; \
-	  } \
-        }
-
-/* debugging level here for all on or off */
-#if 1
-# ifdef VERBOSE_DBG
-#  undef VERBOSE_DBG
-# endif
-# if 1
-#  define VERBOSE_DBG 0
-# else
-#  define VERBOSE_DBG 1
-# endif
-#endif
-
-#define DBG_LOG(n,m,a) LOG(VERBOSE_DBG,n,m,a)
+***********************************************/
 
 QUICKLOAD_LOAD( cbm_pet1 );
 QUICKLOAD_LOAD( cbm_pet );
@@ -63,23 +25,29 @@ QUICKLOAD_LOAD( cbm_c16 );
 QUICKLOAD_LOAD( cbm_c64 );
 QUICKLOAD_LOAD( cbm_vc20 );
 QUICKLOAD_LOAD( cbmb );
-QUICKLOAD_LOAD( cbm500 );
+QUICKLOAD_LOAD( p500 );
 QUICKLOAD_LOAD( cbm_c65 );
 
 #define CBM_QUICKLOAD_DELAY_SECONDS 3
 
-typedef struct {
+
+/***********************************************
+
+	CBM Cartridges
+
+***********************************************/
+
+
 #define CBM_ROM_ADDR_UNKNOWN 0
 #define CBM_ROM_ADDR_LO -1
 #define CBM_ROM_ADDR_HI -2
-	int addr, size;
+
+typedef struct {
+	int addr, size /*, bank*/;	// mi serve prob questo per implementare il corretto caricamento delle cart tipo >0!
 	UINT8 *chip;
 } CBM_ROM;
 
 
-extern INT8 cbm_c64_game;
-extern INT8 cbm_c64_exrom;
-extern CBM_ROM cbm_rom[0x20];
 
 /* prg file format
  * sfx file format
@@ -96,8 +64,13 @@ extern CBM_ROM cbm_rom[0x20];
  * 0x001c data */
 
 
-#ifdef __cplusplus
-}
-#endif
+/***********************************************
+
+	CBM Datasette Tapes
+
+***********************************************/
+
+extern const cassette_config cbm_cassette_config;
+
 
 #endif /* CBM_H_ */

@@ -24,9 +24,6 @@ enum
 	UI_centerspeed,
 	UI_reverse,
 	UI_sensitivity,
-	UI_lefthilight,
-	UI_righthilight,
-	UI_returntomain,
 
 	UI_last_mame_entry,
 	UI_keyb1 = UI_last_mame_entry,
@@ -36,10 +33,6 @@ enum
 	UI_keyb5,
 	UI_keyb6,
 	UI_keyb7,
-
-	UI_imageinfo,
-	UI_filemanager,
-	UI_tapecontrol,
 
 	UI_notapeimageloaded,
 	UI_recording,

@@ -9,6 +9,7 @@
 
 #include "driver.h"
 #include "includes/sym1.h"
+#include "includes/cbm.h"
 
 /* M6502 CPU */
 #include "cpu/m6502/m6502.h"
@@ -106,13 +107,13 @@ static UINT8 sym1_riot_b_r(const device_config *device, UINT8 olddata)
 
 	/* determine column */
 	if ( ((riot_port_a ^ 0xff) & (input_port_read(device->machine, "ROW-1") ^ 0xff)) & 0x7f )
-		data &= ~1;
+		data &= ~0x01;
 
 	if ( ((riot_port_a ^ 0xff) & (input_port_read(device->machine, "ROW-2") ^ 0xff)) & 0x3f )
-		data &= ~2;
+		data &= ~0x02;
 
 	if ( ((riot_port_a ^ 0xff) & (input_port_read(device->machine, "ROW-3") ^ 0xff)) & 0x1f )
-		data &= ~4;
+		data &= ~0x04;
 
 	data &= ~0x80; // else hangs 8b02
 
@@ -200,13 +201,13 @@ static WRITE8_HANDLER( sym1_via2_a_w )
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa600, 0xa67f, 0, 0,
 		((input_port_read(machine, "WP") & 0x01) && !(data & 0x01)) ? SMH_NOP : SMH_BANK5);
 
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,	0x0400, 0x07ff, 0, 0,
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0x07ff, 0, 0,
 		((input_port_read(machine, "WP") & 0x02) && !(data & 0x02)) ? SMH_NOP : SMH_BANK2);
 
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,	0x0800, 0x0bff, 0, 0,
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0bff, 0, 0,
 		((input_port_read(machine, "WP") & 0x04) && !(data & 0x04)) ? SMH_NOP : SMH_BANK3);
 
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,	0x0c00, 0x0fff, 0, 0,
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0c00, 0x0fff, 0, 0,
 		((input_port_read(machine, "WP") & 0x08) && !(data & 0x08)) ? SMH_NOP : SMH_BANK4);
 }
 

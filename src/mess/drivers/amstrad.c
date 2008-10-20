@@ -285,16 +285,16 @@ static void update_psg(running_machine *machine)
 }
 
 /* Read/Write 8255 PPI port A (connected to AY-3-8912 databus) */
-static READ8_HANDLER ( amstrad_ppi_porta_r )
+static READ8_DEVICE_HANDLER ( amstrad_ppi_porta_r )
 {
-	update_psg(machine);
+	update_psg(device->machine);
 	return ppi_port_inputs[amstrad_ppi_PortA];
 }
 
-static WRITE8_HANDLER ( amstrad_ppi_porta_w )
+static WRITE8_DEVICE_HANDLER ( amstrad_ppi_porta_w )
 {
 	ppi_port_outputs[amstrad_ppi_PortA] = data;
-	update_psg(machine);
+	update_psg(device->machine);
 }
 
 /* - Read PPI Port B -
@@ -322,20 +322,20 @@ Note:
   On the CPC this can be used by a expansion device to report it's presence. "1" = device connected, "0" = device not connected. This is not always used by all expansion devices.
 */
 
-static READ8_HANDLER (amstrad_ppi_portb_r)
+static READ8_DEVICE_HANDLER (amstrad_ppi_portb_r)
 {
 	int data = 0;
 /* Set b7 with cassette tape input */
 	if(amstrad_system_type != SYSTEM_GX4000)
 	{
-		if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.03) {
+		if (cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" )) > 0.03) {
 			data |= (1<<7);
 		}
 	}
 /* Set b6 with Parallel/Printer port ready */
 	if(amstrad_system_type != SYSTEM_GX4000)
 	{
-		if (printer_is_ready(printer_device(machine))==0 ) {
+		if (printer_is_ready(printer_device(device->machine))==0 ) {
 			data |= (1<<6);
 		}
 	}
@@ -371,7 +371,7 @@ Bit Description  Usage
 /* previous_ppi_portc_w value */
 static int previous_ppi_portc_w;
 
-static WRITE8_HANDLER ( amstrad_ppi_portc_w )
+static WRITE8_DEVICE_HANDLER ( amstrad_ppi_portc_w )
 {
 	int changed_data;
 
@@ -388,13 +388,13 @@ static WRITE8_HANDLER ( amstrad_ppi_portc_w )
 	aleste_rtc_function = data & 0x07;
 
 /* Perform PSG function */
-	update_psg(machine);
+	update_psg(device->machine);
 
 /* b5 Cassette Write data */
 	if(amstrad_system_type != SYSTEM_GX4000)
 	{
 		if ((changed_data & 0x20) != 0) {
-			cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0),
+			cassette_output(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ),
 				((data & 0x20) ? -1.0 : +1.0));
 		}
 	}
@@ -403,7 +403,7 @@ static WRITE8_HANDLER ( amstrad_ppi_portc_w )
 	if(amstrad_system_type != SYSTEM_GX4000)
 	{
 		if ((changed_data & 0x10) != 0) {
-			cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0),
+			cassette_change_state(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ),
 				((data & 0x10) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED),
 				CASSETTE_MASK_MOTOR);
 		}
@@ -1808,7 +1808,7 @@ static IRQ_CALLBACK(amstrad_cpu_acknowledge_int)
 	{
 		logerror("IRQ: Not cleared, IRQ was called by DMA [%i]\n",amstrad_plus_irq_cause);
 		amstrad_plus_asic_ram[0x2c0f] &= ~0x80;  // not a raster interrupt, so this bit is reset
-		return (amstrad_plus_asic_ram[0x2805] & 0xf8) + amstrad_plus_irq_cause;
+		return (amstrad_plus_asic_ram[0x2805] & 0xf8) | amstrad_plus_irq_cause;
 	}
 	cpunum_set_input_line(machine, 0,0, CLEAR_LINE);
 	amstrad_CRTC_HS_Counter &= 0x1F;
@@ -1821,7 +1821,7 @@ static IRQ_CALLBACK(amstrad_cpu_acknowledge_int)
 			amstrad_plus_asic_ram[0x2c0f] &= ~0x80;
 			amstrad_plus_asic_ram[0x2c0f] &= (0x40 >> amstrad_plus_irq_cause/2);
 		}
-		return (amstrad_plus_asic_ram[0x2805] & 0xf8) + amstrad_plus_irq_cause;
+		return (amstrad_plus_asic_ram[0x2805] & 0xf8) | amstrad_plus_irq_cause;
 	}
 	return 0xFF;
 }
@@ -2135,6 +2135,8 @@ static MACHINE_RESET( plus )
 	amstrad_plus_asic_ram[0x2805] = 0x01;  // interrupt vector is undefined at startup, except that bit 0 is always 1.
 	AmstradCPC_GA_SetRamConfiguration(machine);
 	amstrad_plus_setsplitline(0,0);
+	amstrad_GateArray_write(machine, 0x081); // Epyx World of Sports requires upper ROM to be enabled by default
+	
 	//  multiface_init();
 }
 
@@ -2185,6 +2187,7 @@ static MACHINE_RESET( gx4000 )
 	amstrad_plus_asic_ram[0x2805] = 0x01;  // interrupt vector is undefined at startup, except that bit 0 is always 1.
 	AmstradCPC_GA_SetRamConfiguration(machine);
 	amstrad_plus_setsplitline(0,0);
+	amstrad_GateArray_write(machine, 0x081); // Epyx World of Sports requires upper ROM to be enabled by default
 	//  multiface_init();
 }
 
@@ -2304,9 +2307,9 @@ static READ8_HANDLER ( amstrad_psg_porta_read )
 static INPUT_PORTS_START( amstrad_keyboard )
 	/* keyboard row 0 */
 	PORT_START("keyboard_row_0")
-	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x87\xA7")          PORT_CODE(KEYCODE_UP)         PORT_CHAR(UCHAR_MAMEKEY(UP))
-	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x87\xA8")          PORT_CODE(KEYCODE_RIGHT)      PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x87\xA9")          PORT_CODE(KEYCODE_DOWN)       PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x91")          PORT_CODE(KEYCODE_UP)         PORT_CHAR(UCHAR_MAMEKEY(UP))
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x92")          PORT_CODE(KEYCODE_RIGHT)      PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x93")          PORT_CODE(KEYCODE_DOWN)       PORT_CHAR(UCHAR_MAMEKEY(DOWN))
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad 9")              PORT_CODE(KEYCODE_9_PAD)      PORT_CHAR(UCHAR_MAMEKEY(9_PAD))
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad 6")              PORT_CODE(KEYCODE_6_PAD)      PORT_CHAR(UCHAR_MAMEKEY(6_PAD))
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad 3")              PORT_CODE(KEYCODE_3_PAD)      PORT_CHAR(UCHAR_MAMEKEY(3_PAD))
@@ -2315,7 +2318,7 @@ static INPUT_PORTS_START( amstrad_keyboard )
 
 	/* keyboard line 1 */
 	PORT_START("keyboard_row_1")
-	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x87\xA6")          PORT_CODE(KEYCODE_LEFT)       PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x90")          PORT_CODE(KEYCODE_LEFT)       PORT_CHAR(UCHAR_MAMEKEY(LEFT))
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Copy")                  PORT_CODE(KEYCODE_END)        PORT_CHAR(UCHAR_MAMEKEY(END))
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad 7")              PORT_CODE(KEYCODE_7_PAD)      PORT_CHAR(UCHAR_MAMEKEY(7_PAD))
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad 8")              PORT_CODE(KEYCODE_8_PAD)      PORT_CHAR(UCHAR_MAMEKEY(8_PAD))
@@ -2626,6 +2629,27 @@ static INPUT_PORTS_START( cpc6128f )
 	PORT_INCLUDE(crtc_links)
 INPUT_PORTS_END
 
+static INPUT_PORTS_START( cpc6128s )
+	PORT_INCLUDE(cpc6128)
+
+	PORT_MODIFY("keyboard_row_2")
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\x9C")              PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR(0x00DC)
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\x89")              PORT_CODE(KEYCODE_BACKSLASH)  PORT_CHAR(0x00E9)
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)									   PORT_CODE(KEYCODE_RCONTROL)   PORT_CHAR('/') PORT_CHAR('?')
+
+	PORT_MODIFY("keyboard_row_3")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD)									   PORT_CODE(KEYCODE_EQUALS)     PORT_CHAR('+') PORT_CHAR('*')
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_MINUS)      PORT_CHAR('-') PORT_CHAR('=')
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\x85")			   PORT_CODE(KEYCODE_OPENBRACE)	 PORT_CHAR(0x00C5)
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\x84")			   PORT_CODE(KEYCODE_QUOTE)		 PORT_CHAR(0x00C4)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\xC3\x96")			   PORT_CODE(KEYCODE_COLON)		 PORT_CHAR(0x00D6)
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_SLASH)      PORT_CHAR('<') PORT_CHAR('>')
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_STOP)       PORT_CHAR('.') PORT_CHAR(':')
+	
+	PORT_MODIFY("keyboard_row_4")
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD)                                    PORT_CODE(KEYCODE_COMMA)      PORT_CHAR(',') PORT_CHAR(';')
+INPUT_PORTS_END
+
 /*
  * The BIOS of the KC Compact would be able to recognize the keypresses
  * generated by F5-F9. Unfortunately these keys are not present on the
@@ -2905,6 +2929,14 @@ speed of 3.8Mhz */
   This is the reason why the displayed area is not the same as the visible area.
  */
 
+static const cassette_config amstrad_cassette_config =
+{
+	cdt_cassette_formats,
+	NULL,
+	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED
+};
+
+
 static MACHINE_DRIVER_START( amstrad )
 	/* Machine hardware */
 	MDRV_CPU_ADD("main", Z80, 4000000)
@@ -2935,7 +2967,7 @@ static MACHINE_DRIVER_START( amstrad )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("tape", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("ay", AY8912, 1000000)
 	MDRV_SOUND_CONFIG(ay8912_interface)
@@ -2946,6 +2978,8 @@ static MACHINE_DRIVER_START( amstrad )
 
 	/* snapshot */
 	MDRV_SNAPSHOT_ADD(amstrad, "sna", 0)
+
+	MDRV_CASSETTE_ADD( "cassette", amstrad_cassette_config )
 MACHINE_DRIVER_END
 
 
@@ -2978,7 +3012,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( gx4000 )
 	MDRV_IMPORT_FROM(amstrad)
-	MDRV_SOUND_REMOVE("tape")
+	MDRV_SOUND_REMOVE("cassette")
 	MDRV_GFXDECODE(asic_sprite)
 	MDRV_MACHINE_START(plus)
 	MDRV_MACHINE_RESET(gx4000)
@@ -2992,6 +3026,8 @@ static MACHINE_DRIVER_START( gx4000 )
 
 	/* printer not present in the gx4000 */
 	MDRV_DEVICE_REMOVE("printer", PRINTER)
+
+	MDRV_CASSETTE_REMOVE( "cassette" )
 MACHINE_DRIVER_END
 
 
@@ -3038,6 +3074,19 @@ ROM_START( cpc6128f )
 
 	/* load the os to offset 0x01000 from memory base */
 	ROM_LOAD("cpc6128f.rom", 0x10000, 0x8000, CRC(1574923b) SHA1(200d59076dfef36db061d6d7d21d80021cab1237))
+	ROM_LOAD("cpcados.rom",  0x18000, 0x4000, CRC(1fe22ecd) SHA1(39102c8e9cb55fcc0b9b62098780ed4a3cb6a4bb))
+
+	/* optional Multiface hardware */
+	ROM_LOAD_OPTIONAL("multface.rom", 0x01c000, 0x2000, CRC(f36086de) SHA1(1431ec628d38f000715545dd2186b684c5fe5a6f))
+ROM_END
+
+
+ROM_START( cpc6128s )
+	/* this defines the total memory size (128kb))- 64k ram, 16k OS, 16k BASIC, 16k DOS +16k*/
+	ROM_REGION(0x020000, "main", 0)
+
+	/* load the os to offset 0x01000 from memory base */
+	ROM_LOAD("cpc6128s.rom", 0x10000, 0x8000, CRC(588b5540) SHA1(6765a91a42fed68a807325bf62a728e5ac5d622f))
 	ROM_LOAD("cpcados.rom",  0x18000, 0x4000, CRC(1fe22ecd) SHA1(39102c8e9cb55fcc0b9b62098780ed4a3cb6a4bb))
 
 	/* optional Multiface hardware */
@@ -3128,21 +3177,6 @@ static void cpc6128_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 }
 
 
-static void cpc6128_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
-		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *)cdt_cassette_formats; break;
-
-		default:										cassette_device_getinfo(devclass, state, info); break;
-	}
-}
-
-
 static void cpcplus_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
@@ -3181,7 +3215,6 @@ static void aleste_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 static SYSTEM_CONFIG_START( cpc6128 )
 	CONFIG_RAM_DEFAULT(128 * 1024)
 	CONFIG_DEVICE(cpc6128_floppy_getinfo)
-	CONFIG_DEVICE(cpc6128_cassette_getinfo)
 SYSTEM_CONFIG_END
 
 
@@ -3199,7 +3232,6 @@ SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START( aleste )
 	CONFIG_DEVICE(aleste_floppy_getinfo)
-	CONFIG_DEVICE(cpc6128_cassette_getinfo)
 	CONFIG_RAM_DEFAULT(2048 * 1024)  // has 2048k RAM
 SYSTEM_CONFIG_END
 
@@ -3216,6 +3248,7 @@ COMP( 1984, cpc464,   0,        0,      amstrad, cpc464,   0,       cpc6128, "Am
 COMP( 1985, cpc664,   cpc464,   0,      amstrad, cpc664,   0,       cpc6128, "Amstrad plc",         "Amstrad CPC664",                            0 )
 COMP( 1985, cpc6128,  cpc464,   0,      amstrad, cpc6128,  0,       cpc6128, "Amstrad plc",         "Amstrad CPC6128",                           0 )
 COMP( 1985, cpc6128f, cpc464,   0,      amstrad, cpc6128f, 0,       cpc6128, "Amstrad plc",         "Amstrad CPC6128 (France, AZERTY Keyboard)", 0 )
+COMP( 1985, cpc6128s, cpc464,   0,      amstrad, cpc6128s, 0,       cpc6128, "Amstrad plc",         "Amstrad CPC6128 (Sweden/Finland)",			 0 )
 COMP( 1990, cpc464p,  0,        0,      cpcplus, plus,     0,       cpcplus, "Amstrad plc",         "Amstrad CPC464+",                           0 )
 COMP( 1990, cpc6128p, 0,        0,      cpcplus, plus,     0,       cpcplus, "Amstrad plc",         "Amstrad CPC6128+",                          0 )
 CONS( 1990, gx4000,   0,        0,      gx4000,  gx4000,   0,       gx4000,  "Amstrad plc",         "Amstrad GX4000",                            0 )

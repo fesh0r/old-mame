@@ -79,6 +79,14 @@ ADDRESS_MAP_END
 INPUT_PORTS_EXTERN( radio86 );
 INPUT_PORTS_EXTERN( ms7007 );
 
+static const cassette_config orion_cassette_config =
+{
+	rko_cassette_formats,
+	NULL,
+	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
+};
+
+
 /* Machine driver */
 static MACHINE_DRIVER_START( orion128 )
     MDRV_CPU_ADD("main", 8080, 2000000)
@@ -110,8 +118,10 @@ static MACHINE_DRIVER_START( orion128 )
     MDRV_VIDEO_UPDATE(orion128)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("wave", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+
+	MDRV_CASSETTE_ADD( "cassette", orion_cassette_config )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( orion128ms )
@@ -163,11 +173,13 @@ static MACHINE_DRIVER_START( orionz80 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ADD("wave", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("ay8912", AY8912, 1773400)
 	MDRV_SOUND_CONFIG(orionz80_ay_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	MDRV_CASSETTE_ADD( "cassette", orion_cassette_config )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( orionz80ms )
@@ -209,26 +221,15 @@ static MACHINE_DRIVER_START( orionpro )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ADD("wave", WAVE, 0)
+	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("ay8912", AY8912, 1773400)
 	MDRV_SOUND_CONFIG(orionz80_ay_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	MDRV_CASSETTE_ADD( "cassette", orion_cassette_config )
 MACHINE_DRIVER_END
 
-static void orion_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:				info->i = 1; break;
-		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:	info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED; break;
-		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:		info->p = (void *)rko_cassette_formats; break;
-
-		default:					cassette_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static void orion_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -251,21 +252,18 @@ static void orion_floppy_getinfo(const mess_device_class *devclass, UINT32 state
 static SYSTEM_CONFIG_START(orion128)
 	CONFIG_RAM_DEFAULT(256 * 1024)
 	CONFIG_DEVICE(cartslot_device_getinfo)
-	CONFIG_DEVICE(orion_cassette_getinfo);
 	CONFIG_DEVICE(orion_floppy_getinfo);
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(orionz80)
 	CONFIG_RAM_DEFAULT(512 * 1024)
 	CONFIG_DEVICE(cartslot_device_getinfo)
-	CONFIG_DEVICE(orion_cassette_getinfo);
 	CONFIG_DEVICE(orion_floppy_getinfo);
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(orionpro)
 	CONFIG_RAM_DEFAULT(512 * 1024)
 	CONFIG_DEVICE(cartslot_device_getinfo)
-	CONFIG_DEVICE(orion_cassette_getinfo);
 	CONFIG_DEVICE(orion_floppy_getinfo);
 SYSTEM_CONFIG_END
 
@@ -301,6 +299,12 @@ ROM_START( orionz80 )
     ROM_CART_LOAD(0, "bin", 0x10000, 0x10000, ROM_FILL_FF | ROM_OPTIONAL)
 ROM_END
 
+ROM_START( orionide )
+    ROM_REGION( 0x30000, "main", ROMREGION_ERASEFF )
+    ROM_LOAD( "m35zrkh.bin", 0x0f800, 0x0800, CRC(b7745f28) SHA1(c3bd3e662db7ec56ecbab54bf6b3a4c26200d0bb) )
+    ROM_CART_LOAD(0, "bin", 0x10000, 0x10000, ROM_FILL_FF | ROM_OPTIONAL)
+ROM_END
+
 ROM_START( orionzms )
     ROM_REGION( 0x30000, "main", ROMREGION_ERASEFF )
     ROM_SYSTEM_BIOS( 0, "m32zms", "Version 3.2 zms" )
@@ -309,6 +313,12 @@ ROM_START( orionzms )
     ROMX_LOAD( "m34zms.bin",  0x0f800, 0x0800, CRC(0f87a80b) SHA1(ab1121092e61268d8162ed8a7d4fd081016a409a), ROM_BIOS(2) )
     ROM_SYSTEM_BIOS( 2, "m35zmsd", "Version 3.5 zmsd" )
     ROMX_LOAD( "m35zmsd.bin", 0x0f800, 0x0800, CRC(f714ff37) SHA1(fbe9514adb3384aff146cbedd4fede37ce9591e1), ROM_BIOS(3) )
+    ROM_CART_LOAD(0, "bin", 0x10000, 0x10000, ROM_FILL_FF | ROM_OPTIONAL)
+ROM_END
+
+ROM_START( orionidm )
+    ROM_REGION( 0x30000, "main", ROMREGION_ERASEFF )
+    ROM_LOAD( "m35zmsh.bin", 0x0f800, 0x0800, CRC(01e66df4) SHA1(8c785a3c32fe3eacda73ec79157b41a6e4b63ba8) )
     ROM_CART_LOAD(0, "bin", 0x10000, 0x10000, ROM_FILL_FF | ROM_OPTIONAL)
 ROM_END
 
@@ -332,5 +342,7 @@ ROM_END
 COMP( 1990, orion128, 	 0,  		0,		orion128, 	radio86, 	orion128, orion128,  "", 					 "Orion 128",	 0)
 COMP( 1990, orionms, 	 orion128, 	0,		orion128ms,	ms7007, 	orion128, orion128,  "", 					 "Orion 128 (MS7007)",	 0)
 COMP( 1990, orionz80, 	 orion128, 	0,		orionz80, 	radio86,	orion128, orionz80,  "", 					 "Orion 128 + Z80 Card II",	 0)
+COMP( 1990, orionide, 	 orion128, 	0,		orionz80, 	radio86,	orion128, orionz80,  "", 					 "Orion 128 + Z80 Card II + IDE",	 0)
 COMP( 1990, orionzms, 	 orion128, 	0,		orionz80ms,	ms7007, 	orion128, orionz80,  "", 					 "Orion 128 + Z80 Card II (MS7007)",	 0)
+COMP( 1990, orionidm, 	 orion128, 	0,		orionz80ms,	ms7007, 	orion128, orionz80,  "", 					 "Orion 128 + Z80 Card II + IDE (MS7007)",	 0)
 COMP( 1994, orionpro, 	 orion128, 	0,		orionpro, 	radio86, 	orion128, orionpro,  "", 					 "Orion Pro",	 0)

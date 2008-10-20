@@ -87,6 +87,8 @@ Not emulated:
 
 /* Devices */
 #include "devices/basicdsk.h"
+#include "devices/cassette.h"
+#include "formats/trs_cas.h"
 
 
 #define FW	TRS80_FONT_W
@@ -342,6 +344,23 @@ static GFXDECODE_START( trs80 )
 	GFXDECODE_ENTRY( "gfx1", 0, trs80_charlayout, 0, 1 )
 GFXDECODE_END
 
+static const gfx_layout ht1080z_charlayout =
+{
+	6,12,			/* 6 x 12 characters */
+	128,			/* 128 characters */
+	1,				/* 1 bits per pixel */
+	{ 0 },			/* no bitplanes; 1 bit per pixel */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5 },
+	/* y offsets */
+	{  0*8, 1*8, 2*8, 3*8, 4*8, 5*8,
+	   6*8, 7*8, 8*8, 9*8,10*8,11*8 },
+	8*16		   /* every char takes FH bytes */
+};
+
+static GFXDECODE_START( ht1080z )
+	GFXDECODE_ENTRY( "gfx1", 0, ht1080z_charlayout, 0, 1 )
+GFXDECODE_END
 
 static const INT16 speaker_levels[3] = {0.0*32767,0.46*32767,0.85*32767};
 
@@ -351,6 +370,12 @@ static const speaker_interface trs80_speaker_interface =
 	speaker_levels	/* optional: level lookup table */
 };
 
+static const cassette_config trs80l2_cassette_config =
+{
+	trs80l2_cassette_formats,
+	NULL,
+	CASSETTE_PLAY
+};
 
 static MACHINE_DRIVER_START( level1 )
 	/* basic machine hardware */
@@ -385,6 +410,8 @@ static MACHINE_DRIVER_START( level1 )
 
 	/* devices */
 	MDRV_QUICKLOAD_ADD(trs80_cmd, "cmd", 0.5)
+
+	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 MACHINE_DRIVER_END
 
 
@@ -393,6 +420,8 @@ static MACHINE_DRIVER_START( model1 )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP( mem_model1, 0 )
 	MDRV_CPU_IO_MAP( io_model1, 0 )
+
+	MDRV_CASSETTE_MODIFY( "cassette", trs80l2_cassette_config )
 MACHINE_DRIVER_END
 
 
@@ -402,6 +431,18 @@ static MACHINE_DRIVER_START( model3 )
 	MDRV_CPU_PROGRAM_MAP( mem_model3, 0 )
 	MDRV_CPU_IO_MAP( io_model3, 0 )
 	MDRV_CPU_VBLANK_INT_HACK(trs80_frame_interrupt, 2)
+
+	MDRV_CASSETTE_MODIFY( "cassette", trs80l2_cassette_config )
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( ht1080z )
+	MDRV_IMPORT_FROM( model1 )
+	MDRV_GFXDECODE( ht1080z )
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( ht108064 )
+	MDRV_IMPORT_FROM( model3 )
+	MDRV_GFXDECODE( ht1080z )
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -474,30 +515,27 @@ ROM_START(trs80m4)
 	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, CRC(0033f2b9) SHA1(0d2cd4197d54e2e872b515bbfdaa98efe502eda7))
 ROM_END
 
-static void trs80_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cassette */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+ROM_START(ht1080z)
+	ROM_REGION(0x10000, "main",0)
+	ROM_LOAD("ht1080z.rom", 0x0000, 0x3000, CRC(2bfef8f7) SHA1(7a350925fd05c20a3c95118c1ae56040c621be8f))
+	ROM_REGION(0x00800, "gfx1",0)
+	ROM_LOAD("ht1080-1.chr", 0x0000, 0x0800, CRC(e8c59d4f) SHA1(a15f30a543e53d3e30927a2e5b766fcf80f0ae31))
+ROM_END
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(trs80_cas); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(trs80_cas); break;
+ROM_START(ht1080z2)
+	ROM_REGION(0x10000, "main",0)
+	ROM_LOAD("ht1080z.rom", 0x0000, 0x3000, CRC(2bfef8f7) SHA1(7a350925fd05c20a3c95118c1ae56040c621be8f))
+	ROM_REGION(0x00800, "gfx1",0)
+	ROM_LOAD("ht1080-2.chr", 0x0000, 0x0800, CRC(6728f0ab) SHA1(1ba949f8596f1976546f99a3fdcd3beb7aded2c5))
+ROM_END
 
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cas"); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(trs80)
-	CONFIG_DEVICE(trs80_cassette_getinfo)
-SYSTEM_CONFIG_END
+ROM_START(ht108064)
+	ROM_REGION(0x10000, "main",0)
+	ROM_LOAD("ht1080z.64", 0x0000, 0x3000, CRC(48985a30) SHA1(e84cf3121f9e0bb9e1b01b095f7a9581dcfaaae4))
+	ROM_LOAD("ht1080z.ext", 0x3000, 0x0800, CRC(fc12bd28) SHA1(0da93a311f99ec7a1e77486afe800a937778e73b))
+	ROM_REGION(0x00800, "gfx1",0)
+	ROM_LOAD("ht1080-3.chr", 0x0000, 0x0800, CRC(e76b73a4) SHA1(6361ee9667bf59d50059d09b0baf8672fdb2e8af))
+ROM_END
 
 
 static void trs8012_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
@@ -519,15 +557,17 @@ static void trs8012_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 }
 
 static SYSTEM_CONFIG_START(trs8012)
-	CONFIG_IMPORT_FROM(trs80)
 	CONFIG_DEVICE(trs8012_floppy_getinfo)
 SYSTEM_CONFIG_END
 
 
-/*    YEAR  NAME      PARENT     COMPAT         MACHINE   INPUT  INIT  CONFIG   COMPANY  FULLNAME */
-COMP( 1977, trs80,    0,	     0,		level1,   trs80, trs80,    trs80,	"Tandy Radio Shack",  "TRS-80 Model I (Level I Basic)" , 0)
+/*    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT  INIT  CONFIG   COMPANY  FULLNAME */
+COMP( 1977, trs80,    0,	     0,		level1,   trs80, trs80,    0,		"Tandy Radio Shack",  "TRS-80 Model I (Level I Basic)" , 0)
 COMP( 1978, trs80l2,  trs80,	 0,		model1,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (Level II Basic)" , 0)
 COMP( 1980, sys80,    trs80,	 0,		model1,   trs80, trs80,    trs8012,	"EACA Computers Ltd.","System-80" , 0)
 COMP( 1981, lnw80,    trs80,	 0,		model1,   trs80, lnw80,    trs8012,	"LNW Research","LNW-80", 0 )
 COMP( 1980, trs80m3,  trs80,	 0,		model3,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model III", 0 )
 COMP( 1980, trs80m4,  trs80,	 0,		model3,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model 4", 0 )
+COMP( 1983, ht1080z,  trs80,	 0,		ht1080z,  trs80, ht1080z,  trs8012,	"Hiradastechnika Szovetkezet",  "HT-1080Z Series I" , 0)
+COMP( 1984, ht1080z2, trs80,	 0,		ht1080z,  trs80, ht1080z,  trs8012,	"Hiradastechnika Szovetkezet",  "HT-1080Z Series II" , 0)
+COMP( 1985, ht108064, trs80,	 0,		ht108064, trs80, ht108064, trs8012,	"Hiradastechnika Szovetkezet",  "HT-1080Z/64" , 0)

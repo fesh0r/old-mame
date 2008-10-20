@@ -261,7 +261,9 @@ static ADDRESS_MAP_START(bbcm_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xc000, 0xdfff) AM_READWRITE(SMH_BANK7		, memorybm7_w		)	/*    c000-dfff                 OS ROM or 8K of RAM       HAZEL */
 	AM_RANGE(0xe000, 0xfbff) AM_ROM AM_REGION("user1", 0x42000)				/*    e000-fbff                 OS ROM                          */
 
-	AM_RANGE(0xfc00, 0xfeff) AM_READWRITE(bbcm_r			, bbcm_w			)   /*    this is now processed directly because it can be ROM or hardware */
+	AM_RANGE(0xfc00, 0xfeff) AM_READWRITE(SMH_BANK8			, bbcm_w			)   /*    this is now processed directly because it can be ROM or hardware */
+
+	//AM_RANGE(0xfc00, 0xfeff) AM_READWRITE(bbcm_r			, bbcm_w			)   /*    this is now processed directly because it can be ROM or hardware */
 	/*
     AM_RANGE(0xfc00, 0xfdff) AM_READWRITE(SMH_BANK2        , SMH_ROM          )       fc00-fdff                   FRED & JIM Pages
 
@@ -659,8 +661,16 @@ ROM_START(bbcm)
 	ROM_REGION(0x10000,"main",ROMREGION_ERASEFF) /* ROM MEMORY */
 
 	ROM_REGION(0x44000,"user1",0) /* ROM */
-	ROM_LOAD("mos+3.50.rom",0x40000, 0x4000, CRC(141027b9) SHA1(85211b5bc7c7a269952d2b063b7ec0e1f0196803))
-	ROM_CONTINUE(           0x24000, 0x1c000)
+
+	ROM_SYSTEM_BIOS( 0, "mos350", "Enhanced MOS 3.50" )
+	ROMX_LOAD("mos+3.50.rom",0x20000, 0x20000, CRC(141027b9) SHA1(85211b5bc7c7a269952d2b063b7ec0e1f0196803),ROM_BIOS(1))
+	
+	ROM_SYSTEM_BIOS( 1, "mos320", "Original MOS 3.20" )
+	ROMX_LOAD("mos3.20.rom",0x20000, 0x20000, CRC(0cfad2ce) SHA1(0275719aa7746dd3b627f95ccc4362b564063a5e),ROM_BIOS(2))
+
+	/* Move loaded roms into place */
+	ROM_COPY("user1",0x20000,0x40000,0x4000)
+	ROM_FILL(0x20000,0x4000,0xFFFF)
 
 	/* 00000 rom 0   Cartridge */
 	/* 04000 rom 1   Cartridge */
@@ -700,6 +710,14 @@ static INTERRUPT_GEN( bbcb_vsync )
 //};
 
 
+static const cassette_config bbc_cassette_config =
+{
+	bbc_cassette_formats,
+	NULL,
+	CASSETTE_PLAY
+};
+
+
 static MACHINE_DRIVER_START( bbca )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", M6502, 2000000)        /* 2.00Mhz */
@@ -729,6 +747,8 @@ static MACHINE_DRIVER_START( bbca )
 	MDRV_SOUND_ADD("sn76489", SN76489, 4000000)	/* 4 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 //  MDRV_SOUND_ADD("tms5220", TMS5220, tms5220_interface)
+
+	MDRV_CASSETTE_ADD( "cassette", bbc_cassette_config )
 MACHINE_DRIVER_END
 
 
@@ -796,6 +816,8 @@ static MACHINE_DRIVER_START( bbcm )
 
 	/* printer */
 	MDRV_DEVICE_ADD("printer", PRINTER)
+
+	MDRV_CASSETTE_ADD( "cassette", bbc_cassette_config )
 MACHINE_DRIVER_END
 
 static void bbc_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
@@ -834,35 +856,16 @@ static void bbc_floppy_getinfo(const mess_device_class *devclass, UINT32 state, 
 	}
 }
 
-static void bbc_cassette_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info ) {
-	switch( state ) {
-	case MESS_DEVINFO_INT_COUNT:
-		info->i = 1;
-		break;
-	case MESS_DEVINFO_PTR_CASSETTE_FORMATS:
-		info->p = (void *)bbc_cassette_formats;
-		break;
-	default:
-		cassette_device_getinfo( devclass, state, info );
-		break;
-	}
-}
-
-static SYSTEM_CONFIG_START(bbca)
-	CONFIG_DEVICE(bbc_cassette_getinfo)
-SYSTEM_CONFIG_END
-
 
 static SYSTEM_CONFIG_START(bbc)
 	CONFIG_DEVICE(bbc_cartslot_getinfo)
 	CONFIG_DEVICE(bbc_floppy_getinfo)
-	CONFIG_DEVICE(bbc_cassette_getinfo)
 SYSTEM_CONFIG_END
 
 
 
 /*     YEAR  NAME      PARENT    COMPAT MACHINE   INPUT  INIT      CONFIG   COMPANY  FULLNAME */
-COMP ( 1981, bbca,	   0,		 0,		bbca,     bbca,   bbc,     bbca,	"Acorn","BBC Micro Model A" , 0)
+COMP ( 1981, bbca,	   0,		 0,		bbca,     bbca,   bbc,     0,		"Acorn","BBC Micro Model A" , 0)
 COMP ( 1981, bbcb,     bbca,	 0,		bbcb,     bbca,   bbc,	   bbc,		"Acorn","BBC Micro Model B" , 0)
 COMP ( 1985, bbcbp,    bbca,	 0,		bbcbp,    bbca,   bbc,     bbc,		"Acorn","BBC Micro Model B+ 64K" , 0)
 COMP ( 1985, bbcbp128, bbca,     0,		bbcbp128, bbca,   bbc,     bbc,		"Acorn","BBC Micro Model B+ 128k" , 0)
