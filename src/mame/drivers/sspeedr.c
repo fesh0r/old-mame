@@ -108,19 +108,14 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
-	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
-	AM_RANGE(0x03, 0x03) AM_READ(input_port_2_r)
-	AM_RANGE(0x04, 0x04) AM_READ(input_port_3_r)
-ADDRESS_MAP_END
-
-
-static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0")
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
 	AM_RANGE(0x00, 0x01) AM_WRITE(sspeedr_sound_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(sspeedr_lamp_w)
+	AM_RANGE(0x03, 0x03) AM_READ_PORT("DSW")
+	AM_RANGE(0x04, 0x04) AM_READ_PORT("IN2")
 	AM_RANGE(0x04, 0x05) AM_WRITE(sspeedr_time_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(sspeedr_driver_horz_w)
@@ -160,7 +155,7 @@ static INPUT_PORTS_START( sspeedr )
 	PORT_START("IN1")
 	/* The gas pedal is adjusted physically so the encoder is at position 2 when the pedal is not pressed. */
 	/* It also only uses half of the encoder. */
-	PORT_BIT( 0x1f, 0x00, IPT_POSITIONAL ) PORT_POSITIONS(30) PORT_REMAP_TABLE(sspeedr_controller_table + 2) PORT_SENSITIVITY(25) PORT_KEYDELTA(20)
+	PORT_BIT( 0x1f, 0x00, IPT_POSITIONAL_V ) PORT_POSITIONS(30) PORT_REMAP_TABLE(sspeedr_controller_table + 2) PORT_SENSITIVITY(25) PORT_KEYDELTA(20)
 
 	PORT_START("DSW")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coinage ) )
@@ -181,12 +176,11 @@ static INPUT_PORTS_START( sspeedr )
 	PORT_DIPSETTING(    0xA0, "RAM/ROM Test" )
 	PORT_DIPSETTING(    0xE0, "Accelerator Adjustment" )
 
-	PORT_START("IN3")
-	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_TOGGLE /* gear shift lever */
-	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
-
+	PORT_START("IN2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_TOGGLE /* gear shift lever */
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 INPUT_PORTS_END
 
 
@@ -221,7 +215,7 @@ static MACHINE_DRIVER_START( sspeedr )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", Z80, 19968000 / 8)
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
-	MDRV_CPU_IO_MAP(readport, writeport)
+	MDRV_CPU_IO_MAP(io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	/* video hardware */
@@ -261,3 +255,4 @@ ROM_END
 
 
 GAMEL( 1979, sspeedr, 0, sspeedr, sspeedr, 0, ROT270, "Midway", "Super Speed Race", GAME_NO_SOUND, layout_sspeedr )
+

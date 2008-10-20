@@ -83,6 +83,7 @@ static int init_eeprom_count;
 static INT32 cur_sound_region, xexex_strip0x1a;
 static int suspension_active, resume_trigger;
 static emu_timer *dmadelay_timer;
+static int frame;
 
 
 static const eeprom_interface eeprom_intf =
@@ -147,8 +148,6 @@ static WRITE16_HANDLER( K053247_scattered_word_w )
 
 static void xexex_objdma(running_machine *machine, int limiter)
 {
-	static int frame = -1;
-
 	int counter, num_inactive;
 	UINT16 *src, *dst;
 
@@ -207,7 +206,7 @@ static READ16_HANDLER( control1_r )
 	/* bit 0 is EEPROM data */
 	/* bit 1 is EEPROM ready */
 	/* bit 3 is service button */
-	res = eeprom_read_bit() | input_port_read(machine, "EEPROM");
+	res = input_port_read(machine, "EEPROM");
 
 	if (init_eeprom_count)
 	{
@@ -417,7 +416,7 @@ static INPUT_PORTS_START( xexex )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("EEPROM")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* EEPROM data */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)	/* EEPROM data */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL )	/* EEPROM ready (always 1) */
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_SERVICE_NO_TOGGLE( 0x08, IP_ACTIVE_LOW )
@@ -602,8 +601,11 @@ ROM_END
 
 static MACHINE_RESET( xexex )
 {
+	cur_control2 = 0;
 	cur_sound_region = 0;
 	suspension_active = 0;
+	resume_trigger = 0;
+	frame = -1;
 	k054539_init_flags(0, K054539_REVERSE_STEREO);
 }
 
@@ -620,6 +622,7 @@ static MACHINE_START( xexex )
 	state_save_register_postload(machine, xexex_postload, NULL);
 
 	resume_trigger = 1000;
+	init_eeprom_count = 0;
 
 	dmadelay_timer = timer_alloc(dmaend_callback, NULL);
 }

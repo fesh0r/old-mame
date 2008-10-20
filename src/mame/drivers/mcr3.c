@@ -320,8 +320,10 @@ static WRITE8_HANDLER( powerdrv_op6_w )
 
 static READ8_HANDLER( stargrds_ip0_r )
 {
-	UINT8 result = input_port_read(machine, input_mux ? "MONO.IP0.ALT" : "MONO.IP0");
-	return result | ((soundsgood_status_r(machine, 0) << 4) & 0x10);
+	UINT8 result = input_port_read(machine, "MONO.IP0");
+	if (input_mux)
+		result = (result & ~0x0a) | (input_port_read(machine, "MONO.IP0.ALT") & 0x0a);
+	return (result & ~0x10) | ((soundsgood_status_r(machine, 0) << 4) & 0x10);
 }
 
 
@@ -470,7 +472,7 @@ static ADDRESS_MAP_START( mcrmono_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x04, 0x04) AM_MIRROR(0x78) AM_READ_PORT("MONO.IP4")
 	AM_RANGE(0x05, 0x05) AM_MIRROR(0x78) AM_WRITE(mcrmono_control_port_w)
 	AM_RANGE(0x07, 0x07) AM_MIRROR(0x78) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xf0, 0xf3) AM_MIRROR(0x0c) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
+	AM_RANGE(0xf0, 0xf3) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80CTC, "ctc", z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
 
 
@@ -500,7 +502,7 @@ static ADDRESS_MAP_START( spyhunt_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x84, 0x86) AM_WRITE(mcr_scroll_value_w)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0xe8, 0xe8) AM_WRITE(SMH_NOP)
-	AM_RANGE(0xf0, 0xf3) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
+	AM_RANGE(0xf0, 0xf3) AM_DEVREADWRITE(Z80CTC, "ctc", z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
 
 
@@ -848,14 +850,11 @@ static INPUT_PORTS_START( stargrds )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_RIGHT ) PORT_PLAYER(3)
 
 	PORT_START("MONO.IP0.ALT")	/* IN0 (muxed) */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )		/* same as MONO.IN0 */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN3 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )		/* same as MONO.IN0 */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START3 )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* status from Sounds Good board */
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_TILT )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE )
-	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
+	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_UNUSED )		/* same as MONO.IN0 */
 INPUT_PORTS_END
 
 
@@ -1055,6 +1054,8 @@ static MACHINE_DRIVER_START( mcr3_base )
 	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/4)
 	MDRV_CPU_CONFIG(mcr_daisy_chain)
 	MDRV_CPU_VBLANK_INT_HACK(mcr_interrupt,2)
+
+	MDRV_Z80CTC_ADD("ctc", mcr_ctc_intf)
 
 	MDRV_WATCHDOG_VBLANK_INIT(16)
 	MDRV_MACHINE_START(mcr)

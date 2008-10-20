@@ -202,6 +202,9 @@ typedef struct _address_map_entry address_map_entry;
 struct _address_map_entry
 {
 	address_map_entry *		next;				/* pointer to the next entry */
+	astring *				read_devtag_string;	/* string used to hold derived names */
+	astring *				write_devtag_string;/* string used to hold derived names */
+	astring *				region_string;		/* string used to hold derived names */
 
 	offs_t					addrstart;			/* start address */
 	offs_t					addrend;			/* end address */
@@ -833,7 +836,7 @@ extern const char *const address_space_names[ADDRESS_SPACES];
 void memory_init(running_machine *machine);
 
 /* set the current memory context */
-void memory_set_context(int activecpu);
+void memory_set_context(running_machine *machine, int activecpu);
 
 /* get a pointer to the set of memory accessor functions based on the address space,
    databus width, and endianness */
@@ -870,7 +873,7 @@ void memory_set_opbase(offs_t byteaddress);
 /* return a base pointer to memory */
 void *		memory_get_read_ptr(int cpunum, int spacenum, offs_t byteaddress);
 void *		memory_get_write_ptr(int cpunum, int spacenum, offs_t byteaddress);
-void *		memory_get_op_ptr(int cpunum, offs_t byteaddress, int arg);
+void *		memory_get_op_ptr(running_machine *machine, int cpunum, offs_t byteaddress, int arg);
 
 /* memory banking */
 void		memory_configure_bank(int banknum, int startentry, int numentries, void *base, offs_t stride);

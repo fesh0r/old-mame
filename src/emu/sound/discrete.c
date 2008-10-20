@@ -241,8 +241,8 @@ static const discrete_module module_list[] =
 	{ DST_RCDISC3     ,"DST_RCDISC3"     , 1 ,sizeof(struct dst_rcdisc_context)      ,dst_rcdisc3_reset     ,dst_rcdisc3_step     },
 	{ DST_RCDISC4     ,"DST_RCDISC4"     , 1 ,sizeof(struct dst_rcdisc4_context)     ,dst_rcdisc4_reset     ,dst_rcdisc4_step     },
 	{ DST_RCDISC5     ,"DST_RCDISC5"     , 1 ,sizeof(struct dst_rcdisc_context)      ,dst_rcdisc5_reset     ,dst_rcdisc5_step     },
-	{ DST_RCINTEGRATE ,"DST_RCINTEGRATE" , 1 ,sizeof(struct dst_rcdisc_context)      ,dst_rcintegrate_reset ,dst_rcintegrate_step },
-	{ DST_RCDISC_MOD  ,"DST_RCDISC_MOD"  , 1 ,sizeof(struct dst_rcdisc_context)      ,dst_rcdisc_mod_reset  ,dst_rcdisc_mod_step  },
+	{ DST_RCINTEGRATE ,"DST_RCINTEGRATE" , 1 ,sizeof(struct dst_rcintegrate_context) ,dst_rcintegrate_reset ,dst_rcintegrate_step },
+	{ DST_RCDISC_MOD  ,"DST_RCDISC_MOD"  , 1 ,sizeof(struct dst_rcdisc_mod_context)  ,dst_rcdisc_mod_reset  ,dst_rcdisc_mod_step  },
 	{ DST_RCFILTER    ,"DST_RCFILTER"    , 1 ,sizeof(struct dst_rcfilter_context)    ,dst_rcfilter_reset    ,dst_rcfilter_step    },
 	{ DST_RCFILTER_SW ,"DST_RCFILTER_SW" , 1 ,sizeof(struct dst_rcfilter_sw_context) ,dst_rcfilter_sw_reset ,dst_rcfilter_sw_step },
 	/* For testing - seem to be buggered.  Use versions not ending in N. */
@@ -307,8 +307,10 @@ static void *discrete_start(const char *tag, int sndindex, int clock, const void
 
 	/* create the logfile */
 	sprintf(name, "discrete%d.log", info->sndindex);
-	if (DISCRETE_DEBUGLOG && !discrete_current_context->disclogfile)
-		discrete_current_context->disclogfile = fopen(name, "w");
+	if (DISCRETE_DEBUGLOG && !info->disclogfile)
+		info->disclogfile = fopen(name, "w");
+
+	discrete_current_context = info;
 
 	/* first pass through the nodes: sanity check, fill in the indexed_nodes, and make a total count */
 	discrete_log("discrete_start() - Doing node list sanity check");
@@ -329,8 +331,6 @@ static void *discrete_start(const char *tag, int sndindex, int clock, const void
 		/* make sure this is a main node */
 		if (NODE_CHILD_NODE_NUM(intf[info->node_count].node) > 0)
 			fatalerror("discrete_start() - Child node number on NODE_%02d", NODE_INDEX(intf[info->node_count].node) );
-
-
 	}
 	info->node_count++;
 	discrete_log("discrete_start() - Sanity check counted %d nodes", info->node_count);
@@ -357,6 +357,8 @@ static void *discrete_start(const char *tag, int sndindex, int clock, const void
 	setup_output_nodes(info);
 
 	setup_disc_logs(info);
+
+	discrete_current_context = NULL;
 	return info;
 }
 
@@ -414,9 +416,9 @@ static void discrete_stop(void *chip)
 	if (DISCRETE_DEBUGLOG)
 	{
 		/* close the debug log */
-	    if (discrete_current_context->disclogfile)
-	    	fclose(discrete_current_context->disclogfile);
-		discrete_current_context->disclogfile = NULL;
+	    if (info->disclogfile)
+	    	fclose(info->disclogfile);
+		info->disclogfile = NULL;
 	}
 }
 
@@ -449,6 +451,9 @@ static void discrete_reset(void *chip)
 		/* otherwise, just step it */
 		else if (node->module.step)
 			(*node->module.step)(node);
+
+		/* and register save state */
+		state_save_register_item_array("discrete", nodenum, node->output);
 	}
 
 	discrete_current_context = NULL;
@@ -663,6 +668,7 @@ static void init_nodes(discrete_info *info, discrete_sound_block *block_list)
 			node->context = NULL;
 			info->discrete_input_streams++;
 		}
+
 	}
 
 	/* if no outputs, give an error */
@@ -698,13 +704,23 @@ static void find_input_nodes(discrete_info *info, discrete_sound_block *block_li
 			{
 				node_description *node_ref = info->indexed_node[NODE_INDEX(inputnode)];
 				if (!node_ref)
-					fatalerror("discrete_start - Node NODE_%02d referenced a non existent node NODE_%02d", NODE_INDEX(node->node), NODE_INDEX(inputnode));
+					fatalerror("discrete_start - NODE_%02d referenced a non existent node NODE_%02d", NODE_INDEX(node->node), NODE_INDEX(inputnode));
 
 				if (NODE_CHILD_NODE_NUM(inputnode) >= node_ref->module.num_output)
-					fatalerror("discrete_start - Node NODE_%02d referenced non existent output %d on node NODE_%02d", NODE_INDEX(node->node), NODE_CHILD_NODE_NUM(inputnode), NODE_INDEX(inputnode));
+					fatalerror("discrete_start - NODE_%02d referenced non existent output %d on node NODE_%02d", NODE_INDEX(node->node), NODE_CHILD_NODE_NUM(inputnode), NODE_INDEX(inputnode));
 
-				node->input[inputnum] = &(node_ref->output[NODE_CHILD_NODE_NUM(inputnode)]);	// Link referenced node out to input
-				node->input_is_node |= 1 << inputnum;			// Bit flag if input is node
+				node->input[inputnum] = &(node_ref->output[NODE_CHILD_NODE_NUM(inputnode)]);	/* Link referenced node out to input */
+				node->input_is_node |= 1 << inputnum;			/* Bit flag if input is node */
+			}
+			else
+			{
+				/* warn if trying to use a node for an input that can only be static */
+				if IS_VALUE_A_NODE(block->initial[inputnum])
+				{
+					discrete_log("Warning - discrete_start - NODE_%02d trying to use a node on static input %d",  NODE_INDEX(node->node), inputnum);
+					/* also report it in the error log so it is not missed */
+					logerror("Warning - discrete_start - NODE_%02d trying to use a node on static input %d",  NODE_INDEX(node->node), inputnum);
+				}
 			}
 		}
 	}

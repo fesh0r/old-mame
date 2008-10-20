@@ -127,8 +127,8 @@ static ADDRESS_MAP_START( pass_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x200000, 0x200fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x210000, 0x213fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x220000, 0x2203ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x230100, 0x230101) AM_READ(input_port_0_word_r)
-	AM_RANGE(0x230200, 0x230201) AM_READ(input_port_1_word_r)
+	AM_RANGE(0x230100, 0x230101) AM_READ_PORT("DSW")
+	AM_RANGE(0x230200, 0x230201) AM_READ_PORT("INPUTS")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pass_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -152,25 +152,18 @@ static ADDRESS_MAP_START( pass_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pass_sound_readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( pass_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch_r)
-	AM_RANGE(0x70, 0x70) AM_READ(ym2203_status_port_0_r)
-	AM_RANGE(0x71, 0x71) AM_READ(ym2203_read_port_0_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( pass_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x70, 0x70) AM_WRITE(ym2203_control_port_0_w)
-	AM_RANGE(0x71, 0x71) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0x70, 0x70) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
+	AM_RANGE(0x71, 0x71) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(okim6295_data_0_w)
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(soundlatch_clear_w)
 ADDRESS_MAP_END
 
-
 /* todo : work out function of unknown but used dsw */
 static INPUT_PORTS_START( pass )
-	PORT_START("DSW")	/* DSW */
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x0001, 0x0001, "Unknown SW 0-0" )	// USED ! Check code at 0x0046ea
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -277,7 +270,7 @@ static MACHINE_DRIVER_START( pass )
 
 	MDRV_CPU_ADD("audio", Z80, 14318180/4 )
 	MDRV_CPU_PROGRAM_MAP(pass_sound_readmem,pass_sound_writemem)
-	MDRV_CPU_IO_MAP(pass_sound_readport,pass_sound_writeport)
+	MDRV_CPU_IO_MAP(pass_sound_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
@@ -330,3 +323,4 @@ ROM_END
 
 
 GAME( 1992, pass, 0, pass, pass, 0, ROT0, "Oksan", "Pass", 0)
+

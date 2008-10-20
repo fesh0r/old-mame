@@ -604,7 +604,7 @@ WRITE8_HANDLER( balsente_m6850_sound_w )
 INTERRUPT_GEN( balsente_update_analog_inputs )
 {
 	int i;
-	static const char *analog[] = { "AN0", "AN1", "AN2", "AN3" };
+	static const char *const analog[] = { "AN0", "AN1", "AN2", "AN3" };
 
 	/* the analog input system helpfully scales the value read by the percentage of time */
 	/* into the current frame we are; unfortunately, this is bad for us, since the analog */
@@ -1120,9 +1120,9 @@ WRITE8_HANDLER( balsente_register_addr_w )
  *
  *************************************/
 
-READ8_HANDLER( nstocker_port2_r )
+CUSTOM_INPUT( nstocker_bits_r )
 {
-	return (input_port_read(machine, "IN0") & 0xf0) | nstocker_bits;
+	return nstocker_bits;
 }
 
 

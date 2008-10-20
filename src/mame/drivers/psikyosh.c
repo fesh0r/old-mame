@@ -48,7 +48,7 @@ To Do:
 
   - see notes in video file -
 
-  Sol Divid's music is not correct, related to sh-2 timers.
+  Daraku is missing some screen blend effects
 
 
 *-----------------------------------*
@@ -403,7 +403,7 @@ static READ32_HANDLER( psh_eeprom_r )
 {
 	if (ACCESSING_BITS_24_31)
 	{
-		return ((eeprom_read_bit() << 28) | (input_port_read(machine, "IN4") << 24)); /* EEPROM | Region */
+		return input_port_read(machine, "JP4");
 	}
 
 	logerror("Unk EEPROM read mask %x\n", mem_mask);
@@ -413,12 +413,17 @@ static READ32_HANDLER( psh_eeprom_r )
 
 static INTERRUPT_GEN(psikyosh_interrupt)
 {
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, ASSERT_LINE);
 }
 
-static READ32_HANDLER(io32_r)
+// VBL handler writes 0x00 on entry, 0xc0 on exit
+// bit 0 controls game speed on readback, mechanism is a little weird
+static WRITE32_HANDLER( psikyosh_irqctrl_w )
 {
-	return ((input_port_read(machine, "IN0") << 24) | (input_port_read(machine, "IN1") << 16) | (input_port_read(machine, "IN2") << 8) | (input_port_read(machine, "IN3") << 0));
+	if (!(data & 0x00c00000))
+	{
+		cpunum_set_input_line(machine, 0, 4, CLEAR_LINE);
+	}
 }
 
 static WRITE32_HANDLER( paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_w )
@@ -518,7 +523,7 @@ static ADDRESS_MAP_START( ps3v1_readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x0305ffdc, 0x0305ffdf) AM_READ(SMH_NOP) // also writes to this address - might be vblank reads?
 	AM_RANGE(0x0305ffe0, 0x0305ffff) AM_READ(SMH_RAM) //  video registers
 	AM_RANGE(0x05000000, 0x05000003) AM_READ(psh_ymf_fm_r) // read YMF status
-	AM_RANGE(0x05800000, 0x05800003) AM_READ(io32_r)
+	AM_RANGE(0x05800000, 0x05800003) AM_READ_PORT("INPUTS")
 	AM_RANGE(0x05800004, 0x05800007) AM_READ(psh_eeprom_r)
 	AM_RANGE(0x06000000, 0x060fffff) AM_READ(SMH_RAM) // main RAM (1 meg)
 
@@ -536,7 +541,7 @@ static ADDRESS_MAP_START( ps3v1_writemem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x03004000, 0x0300ffff) AM_WRITE(SMH_RAM) AM_BASE(&psikyosh_bgram) // backgrounds
 	AM_RANGE(0x03040000, 0x03044fff) AM_WRITE(paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_w) AM_BASE(&paletteram32) // palette..
 	AM_RANGE(0x03050000, 0x030501ff) AM_WRITE(SMH_RAM) AM_BASE(&psikyosh_zoomram) // a gradient sometimes ...
-	AM_RANGE(0x0305ffdc, 0x0305ffdf) AM_WRITE(SMH_RAM) // also reads from this address
+	AM_RANGE(0x0305ffdc, 0x0305ffdf) AM_WRITE(psikyosh_irqctrl_w)
 	AM_RANGE(0x0305ffe0, 0x0305ffff) AM_WRITE(psikyosh_vidregs_w) AM_BASE(&psikyosh_vidregs) //  video registers
 	AM_RANGE(0x05000000, 0x05000003) AM_WRITE(psh_ymf_fm_w) // first 2 OPL4 register banks
 	AM_RANGE(0x05000004, 0x05000007) AM_WRITE(psh_ymf_pcm_w) // third OPL4 register bank
@@ -546,8 +551,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ps5_readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x000fffff) AM_READ(SMH_ROM) // program ROM (1 meg)
-	AM_RANGE(0x03000000, 0x03000003) AM_READ(io32_r)
-	AM_RANGE(0x03000004, 0x03000007) AM_READ(psh_eeprom_r)
+	AM_RANGE(0x03000000, 0x03000003) AM_READ_PORT("INPUTS")
+	AM_RANGE(0x03000004, 0x03000007) AM_READ_PORT("JP4")
 	AM_RANGE(0x03100000, 0x03100003) AM_READ(psh_ymf_fm_r)
 	AM_RANGE(0x04000000, 0x04003fff) AM_READ(SMH_RAM)	// sprites
 	AM_RANGE(0x04004000, 0x0400ffff) AM_READ(SMH_RAM)
@@ -573,7 +578,7 @@ static ADDRESS_MAP_START( ps5_writemem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x04004000, 0x0400ffff) AM_WRITE(SMH_RAM) AM_BASE(&psikyosh_bgram) // backgrounds
 	AM_RANGE(0x04040000, 0x04044fff) AM_WRITE(paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x04050000, 0x040501ff) AM_WRITE(SMH_RAM) AM_BASE(&psikyosh_zoomram)
-	AM_RANGE(0x0405ffdc, 0x0405ffdf) AM_WRITE(SMH_RAM) // also reads from this address
+	AM_RANGE(0x0405ffdc, 0x0405ffdf) AM_WRITE(psikyosh_irqctrl_w)
 	AM_RANGE(0x0405ffe0, 0x0405ffff) AM_WRITE(psikyosh_vidregs_w) AM_BASE(&psikyosh_vidregs) // video registers
 	AM_RANGE(0x05000000, 0x0507ffff) AM_WRITE(SMH_ROM) // data ROM
 	AM_RANGE(0x06000000, 0x060fffff) AM_WRITE(SMH_RAM) AM_BASE(&psh_ram)
@@ -648,189 +653,164 @@ static MACHINE_DRIVER_START( psikyo5_240 )
 MACHINE_DRIVER_END
 #endif
 
+static INPUT_PORTS_START( common )
+	PORT_START("INPUTS")
+	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x00000008, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x00000010, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_SERVICE_NO_TOGGLE( 0x00000020, IP_ACTIVE_LOW )
+	PORT_DIPNAME( 0x00000040, 0x00000040, "Debug" )		/* Debug stuff. Resets EEPROM? */
+	PORT_DIPSETTING(          0x00000040, DEF_STR( Off ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( On ) )
+	PORT_BIT( 0x00000080, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x00000100, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x00000200, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x00000400, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x00000800, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x00001000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x00002000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x00004000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x00008000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-#define UNUSED_PORT \
-	PORT_START("IN2")/* not read? */ \
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
+	PORT_BIT( 0x00040000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x00080000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x00100000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
+	PORT_BIT( 0x00200000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
+	PORT_BIT( 0x00400000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
+	PORT_BIT( 0x00800000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+	PORT_BIT( 0x01000000, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x02000000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_BIT( 0x04000000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x08000000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x10000000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT( 0x20000000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+	PORT_BIT( 0x40000000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT( 0x80000000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+INPUT_PORTS_END
 
-#define PORT_COIN( debug ) \
-	PORT_START("IN3") /* System inputs */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1    ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2    ) \
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN  ) \
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN  ) \
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE1 ) \
-	PORT_SERVICE_NO_TOGGLE(0x20, IP_ACTIVE_LOW) \
-	PORT_DIPNAME( 0x40, debug, "Debug" ) /* Must be high for dragnblz, low for others (Resets EEPROM?). Debug stuff */ \
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) ) \
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN  )
-
-#define PSIKYOSH_PORT_PLAYER( player, start, button1, button2, button3 ) \
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, start ) \
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, button3 ) PORT_PLAYER(player) \
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, button2 ) PORT_PLAYER(player) \
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, button1 ) PORT_PLAYER(player) \
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  ) PORT_PLAYER(player) \
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(player) \
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  ) PORT_PLAYER(player) \
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    ) PORT_PLAYER(player)
 
 static INPUT_PORTS_START( s1945ii )
-	PORT_START("IN0")
-	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
-	PORT_START("IN1")
-	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
+	PORT_INCLUDE( common )
 
-	UNUSED_PORT
-	PORT_COIN( 0x40 )
+	PORT_MODIFY("INPUTS")
+	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* No button 3 */
+	PORT_BIT( 0x02000000, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* No button 3 */
 
-	PORT_START("IN4")	/* jumper pads on the PCB */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Region ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( World ) )
+	PORT_START("JP4")	/* jumper pads on the PCB */
+	PORT_DIPNAME( 0x01000000, 0x01000000, DEF_STR( Region ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( Japan ) )
+	PORT_DIPSETTING(          0x01000000, DEF_STR( World ) )
+	PORT_BIT( 0x10000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( soldivid )
-	PORT_START("IN0")
-	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START("IN1")
-	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
+	PORT_INCLUDE( common )
 
-	UNUSED_PORT
-	PORT_COIN( 0x40 )
-
-	PORT_START("IN4")	/* jumper pads on the PCB */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Region ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( World ) )
+	PORT_START("JP4")	/* jumper pads on the PCB */
+	PORT_DIPNAME( 0x01000000, 0x01000000, DEF_STR( Region ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( Japan ) )
+	PORT_DIPSETTING(          0x01000000, DEF_STR( World ) )
+	PORT_BIT( 0x10000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( daraku )
-	PORT_START("IN0")
-	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
-	PORT_START("IN1")
-	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
+	PORT_INCLUDE( common )
 
-	PORT_START("IN2")  /* more controls */
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN                      )
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNKNOWN                      )
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_UNKNOWN                      )
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNKNOWN                      )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_MODIFY("INPUTS")
+	PORT_BIT( 0x00000400, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
+	PORT_BIT( 0x00000800, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
+	PORT_BIT( 0x00004000, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
+	PORT_BIT( 0x00008000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* No button 3 here */
+	PORT_BIT( 0x02000000, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* No button 3 here */
 
-	PORT_COIN( 0x40 )
-
-	PORT_START("IN4")	/* jumper pads on the PCB */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Region ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( World ) ) /* Title screen is different, English is default now */
+	PORT_START("JP4")	/* jumper pads on the PCB */
+	PORT_DIPNAME( 0x01000000, 0x01000000, DEF_STR( Region ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( Japan ) )
+	PORT_DIPSETTING(          0x01000000, DEF_STR( World ) ) /* Title screen is different, English is default now */
+	PORT_BIT( 0x10000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( sbomberb )
-	PORT_START("IN0")
-	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
-	PORT_START("IN1")
-	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN )
+	PORT_INCLUDE( common )
+	/* If Debug is HIGH then you can perform rom test, but EEPROM resets? */
 
-	UNUSED_PORT
-	PORT_COIN( 0x40 ) /* If HIGH then you can perform rom test, but EEPROM resets? */
+	PORT_MODIFY("INPUTS")
+	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* No button 3 */
+	PORT_BIT( 0x02000000, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* No button 3 */
 
-	PORT_START("IN4")	/* jumper pads on the PCB */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Region ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( World ) )
+	PORT_START("JP4")	/* jumper pads on the PCB */
+	PORT_DIPNAME( 0x01000000, 0x01000000, DEF_STR( Region ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( Japan ) )
+	PORT_DIPSETTING(          0x01000000, DEF_STR( World ) )
+	PORT_BIT( 0x10000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( gunbird2 ) /* Different Region */
-	PORT_START("IN0")
-	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START("IN1")
-	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
+	PORT_INCLUDE( common )
+	/* If Debug is HIGH then you can perform rom test, but EEPROM resets */
 
-	UNUSED_PORT
-	PORT_COIN( 0x40 ) /* If HIGH then you can perform rom test, but EEPROM resets */
-
-	PORT_START("IN4")	/* jumper pads on the PCB */
-	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Region ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
-	PORT_DIPSETTING(    0x01, "International Ver A." )
-	PORT_DIPSETTING(    0x02, "International Ver B." )
+	PORT_START("JP4")	/* jumper pads on the PCB */
+	PORT_DIPNAME( 0x03000000, 0x02000000, DEF_STR( Region ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( Japan ) )
+	PORT_DIPSETTING(          0x01000000, "International Ver A." )
+	PORT_DIPSETTING(          0x02000000, "International Ver B." )
+	PORT_BIT( 0x10000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( s1945iii ) /* Different Region again */
-	PORT_START("IN0")
-	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START("IN1")
-	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
+	PORT_INCLUDE( common )
+	/* If Debug is HIGH then you can perform rom test, EEPROM doesn't reset */
 
-	UNUSED_PORT
-	PORT_COIN( 0x40 ) /* If HIGH then you can perform rom test, EEPROM doesn't reset */
-
-	PORT_START("IN4")	/* IN4 jumper pads on the PCB */
-	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Region ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
-	PORT_DIPSETTING(    0x02, "International Ver A." )
-	PORT_DIPSETTING(    0x01, "International Ver B." )
+	PORT_START("JP4")	/* jumper pads on the PCB */
+	PORT_DIPNAME( 0x03000000, 0x01000000, DEF_STR( Region ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( Japan ) )
+	PORT_DIPSETTING(          0x02000000, "International Ver A." )
+	PORT_DIPSETTING(          0x01000000, "International Ver B." )
+	PORT_BIT( 0x10000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( dragnblz ) /* Security requires bit high */
-	PORT_START("IN0")
-	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START("IN1")
-	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
+	PORT_INCLUDE( common )
 
-	UNUSED_PORT
+	PORT_MODIFY("INPUTS")
+	PORT_DIPNAME( 0x00000040, 0x00000000, "Debug" )		/* Must be HIGH (Or Security Error), so can perform test */
+	PORT_DIPSETTING(          0x00000040, DEF_STR( Off ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( On ) )
 
-	PORT_COIN( 0 ) /* Must be HIGH (Or Security Error), so can perform test */
-
-	PORT_START("IN4")	/* jumper pads on the PCB */
-	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Region ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
-	PORT_DIPSETTING(    0x02, "International Ver A." )
-	PORT_DIPSETTING(    0x01, "International Ver B." )
+	PORT_START("JP4")	/* jumper pads on the PCB */
+	PORT_DIPNAME( 0x03000000, 0x01000000, DEF_STR( Region ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( Japan ) )
+	PORT_DIPSETTING(          0x02000000, "International Ver A." )
+	PORT_DIPSETTING(          0x01000000, "International Ver B." )
+	PORT_BIT( 0x10000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( gnbarich ) /* Same as S1945iii except only one button */
-	PORT_START("IN0")
-	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START("IN1")
-	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
+	PORT_INCLUDE( common )
+	/* If Debug is HIGH then you can perform rom test, but EEPROM resets? */
 
-	UNUSED_PORT
-	PORT_COIN( 0x40 ) /* If HIGH then you can perform rom test, but EEPROM resets? */
-
-	PORT_START("IN4")/* jumper pads on the PCB */
-	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Region ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
-	PORT_DIPSETTING(    0x02, "International Ver A." )
-	PORT_DIPSETTING(    0x01, "International Ver B." )
+	PORT_START("JP4")	/* jumper pads on the PCB */
+	PORT_DIPNAME( 0x03000000, 0x01000000, DEF_STR( Region ) )
+	PORT_DIPSETTING(          0x00000000, DEF_STR( Japan ) )
+	PORT_DIPSETTING(          0x02000000, "International Ver A." )
+	PORT_DIPSETTING(          0x01000000, "International Ver B." )
+	PORT_BIT( 0x10000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mjgtaste ) /* This will need the Mahjong inputs */
-	PORT_START("IN0")
-	PSIKYOSH_PORT_PLAYER( 1, IPT_START1, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
-	PORT_START("IN1")
-	PSIKYOSH_PORT_PLAYER( 2, IPT_START2, IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3 )
+	PORT_INCLUDE( common )
 
-	UNUSED_PORT
-	PORT_COIN( 0x40 )
-
-	PORT_START("IN4")	/* jumper pads on the PCB */
-//  PORT_DIPNAME( 0x03, 0x01, DEF_STR( Region ) )
-//  PORT_DIPSETTING(    0x00, DEF_STR( Japan ) )
-//  PORT_DIPSETTING(    0x02, "International Ver A." )
-//  PORT_DIPSETTING(    0x01, "International Ver B." )
+	PORT_START("JP4")	/* jumper pads on the PCB */
+//  PORT_DIPNAME( 0x03000000, 0x01000000, DEF_STR( Region ) )
+//  PORT_DIPSETTING(          0x00000000, DEF_STR( Japan ) )
+//  PORT_DIPSETTING(          0x02000000, "International Ver A." )
+//  PORT_DIPSETTING(          0x01000000, "International Ver B." )
+	PORT_BIT( 0x10000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 INPUT_PORTS_END
 
 
@@ -1077,6 +1057,75 @@ ROM_START( mjgtaste )
 	ROM_REGION( 0x800000, "ymf", 0 ) /* Samples - Not Dumped */
 	ROM_LOAD( "snd0.u52", 0x000000, 0x400000, CRC(0179f018) SHA1(16ae63e021230356777342ed902e02407a1a1b82) )
 ROM_END
+
+
+/*
+
+// the following (currently unsupported) roms are known to exist on the PS5v2 PCB
+ROM_START( tgm2 )
+    ROM_REGION( 0x100000, "main", 0)
+    ROM_LOAD32_WORD_SWAP( "2.u21",   0x000000, 0x080000, CRC(b19f6c31) SHA1(c58346c575db71262aebc3993743cb031c41e4af) )
+    ROM_LOAD32_WORD_SWAP( "1.u22",   0x000002, 0x080000, CRC(c521bf24) SHA1(0ee5b9f74b6b8bcc01b2270c53f30d99e877ed64) )
+
+    ROM_REGION( 0x3000000, "gfx1", ROMTEST_GFX )
+    // Lower positions not populated
+    ROM_LOAD32_WORD( "81ts_3l.u6",   0x0c00000, 0x200000, CRC(d77cff9c) SHA1(93ee48c350110ebf9a80cca95c599c90a523147d) )
+    ROM_LOAD32_WORD( "82ts_3h.u14",  0x0c00002, 0x200000, CRC(f012b583) SHA1(907e1c93cbfa6a0285f96c53f5ccb63e313053d7) )
+    ROM_LOAD32_WORD( "83ts_4l.u7",   0x1000000, 0x200000, CRC(078cafc3) SHA1(26e47c8f0aaa461e69e9f40ee61ce4b4cc480776) )
+    ROM_LOAD32_WORD( "84ts_4h.u15",  0x1000002, 0x200000, CRC(1f91446b) SHA1(81b43156c6a0f4e63dcc9e7c1e9dd54bcba38240) )
+    ROM_LOAD32_WORD( "85ts_5l.u8",   0x1400000, 0x200000, CRC(40fbd259) SHA1(6b8cbfc6232e04785fd232158b3f4d56fadb0c7d) )
+    ROM_LOAD32_WORD( "86ts_5h.u16",  0x1400002, 0x200000, CRC(186c935f) SHA1(0cab30c2ec4df3dc35b4c9de63d29bd0bc99afdb) )
+    ROM_LOAD32_WORD( "87ts_6l.u1",   0x1800000, 0x200000, CRC(c17dc48a) SHA1(4399bfc253fb1cd4ef1081d7350c73df3a0f7441) )
+    ROM_LOAD32_WORD( "88ts_6h.u2",   0x1800002, 0x200000, CRC(e4dba5da) SHA1(24db1e19f4df94ba3a22fba59e4fd065921db1c5) )
+    ROM_LOAD32_WORD( "89ts_7l.u19",  0x1c00000, 0x200000, CRC(dab1b2c5) SHA1(114fd7717b97cdfd605ab7e2a354190c41ba4a82) )
+    ROM_LOAD32_WORD( "90ts_7h.u20",  0x1c00002, 0x200000, CRC(aae696b3) SHA1(9ac27365719c1700f647911dc324a0e2aacea172) )
+    ROM_LOAD32_WORD( "91ts_8l.u28",  0x2000000, 0x200000, CRC(e953ace1) SHA1(c6cdfd807a7a84b86378c3585aeb7c0cb066f8a1) )
+    ROM_LOAD32_WORD( "92ts_8h.u29",  0x2000002, 0x200000, CRC(9da3b976) SHA1(ce1e4eb93760749200ede45703412868ca29a5e7) )
+    ROM_LOAD32_WORD( "93ts_9l.u41",  0x2400000, 0x200000, CRC(233087fe) SHA1(c4adb307ce11ef558fd23b299ce7f458de581446) )
+    ROM_LOAD32_WORD( "94ts_9h.u42",  0x2400002, 0x200000, CRC(9da831c7) SHA1(42698697aa85df088745b2d37ec89b01adce700f) )
+    ROM_LOAD32_WORD( "95ts_10l.u58", 0x2800000, 0x200000, CRC(303a5240) SHA1(5816d1922e85bc27a2a13cdd183d9e67c7ddb2e1) )
+    ROM_LOAD32_WORD( "96ts_10h.u59", 0x2800002, 0x200000, CRC(2240ebf6) SHA1(b61f93a18dd9d94fb57d95745d4df2e41a0371ff) )
+
+    ROM_REGION( 0x800000, "ymf", 0 ) // Samples
+    ROM_LOAD( "97ts_snd.u52", 0x000000, 0x400000, CRC(9155eca6) SHA1(f0b4f68462d8a465c39815d3b7fd9818788132ae) )
+
+    ROM_REGION( 0x100, "user1", 0 ) // Default Eeprom (contains scores etc.)
+    // might need byteswapping to reprogram actual chip
+    ROM_LOAD( "tgm2.default.nv", 0x000, 0x100, CRC(50e2348c) SHA1(d17d2739c97a1d93a95dcc9f11feb1f6f228729e) )
+ROM_END
+
+ROM_START( tgm2p )
+    ROM_REGION( 0x100000, "main", 0)
+    ROM_LOAD32_WORD_SWAP( "2b.u21",   0x000000, 0x080000, CRC(38bc626c) SHA1(783e8413b11f1fa08d331b09ef4ed63f62b87ead) )
+    ROM_LOAD32_WORD_SWAP( "1b.u22",   0x000002, 0x080000, CRC(7599fb19) SHA1(3f7e81756470c173cc17a7e7dee91437571fd0c3) )
+
+    ROM_REGION( 0x3000000, "gfx1", ROMTEST_GFX )
+    // Lower positions not populated
+    ROM_LOAD32_WORD( "81ts_3l.u6",   0x0c00000, 0x200000, CRC(d77cff9c) SHA1(93ee48c350110ebf9a80cca95c599c90a523147d) )
+    ROM_LOAD32_WORD( "82ts_3h.u14",  0x0c00002, 0x200000, CRC(f012b583) SHA1(907e1c93cbfa6a0285f96c53f5ccb63e313053d7) )
+    ROM_LOAD32_WORD( "83ts_4l.u7",   0x1000000, 0x200000, CRC(078cafc3) SHA1(26e47c8f0aaa461e69e9f40ee61ce4b4cc480776) )
+    ROM_LOAD32_WORD( "84ts_4h.u15",  0x1000002, 0x200000, CRC(1f91446b) SHA1(81b43156c6a0f4e63dcc9e7c1e9dd54bcba38240) )
+    ROM_LOAD32_WORD( "85ts_5l.u8",   0x1400000, 0x200000, CRC(40fbd259) SHA1(6b8cbfc6232e04785fd232158b3f4d56fadb0c7d) )
+    ROM_LOAD32_WORD( "86ts_5h.u16",  0x1400002, 0x200000, CRC(186c935f) SHA1(0cab30c2ec4df3dc35b4c9de63d29bd0bc99afdb) )
+    ROM_LOAD32_WORD( "87ts_6l.u1",   0x1800000, 0x200000, CRC(c17dc48a) SHA1(4399bfc253fb1cd4ef1081d7350c73df3a0f7441) )
+    ROM_LOAD32_WORD( "88ts_6h.u2",   0x1800002, 0x200000, CRC(e4dba5da) SHA1(24db1e19f4df94ba3a22fba59e4fd065921db1c5) )
+    ROM_LOAD32_WORD( "89ts_7l.u19",  0x1c00000, 0x200000, CRC(dab1b2c5) SHA1(114fd7717b97cdfd605ab7e2a354190c41ba4a82) )
+    ROM_LOAD32_WORD( "90ts_7h.u20",  0x1c00002, 0x200000, CRC(aae696b3) SHA1(9ac27365719c1700f647911dc324a0e2aacea172) )
+    ROM_LOAD32_WORD( "91ts_8l.u28",  0x2000000, 0x200000, CRC(e953ace1) SHA1(c6cdfd807a7a84b86378c3585aeb7c0cb066f8a1) )
+    ROM_LOAD32_WORD( "92ts_8h.u29",  0x2000002, 0x200000, CRC(9da3b976) SHA1(ce1e4eb93760749200ede45703412868ca29a5e7) )
+    ROM_LOAD32_WORD( "93ts_9l.u41",  0x2400000, 0x200000, CRC(233087fe) SHA1(c4adb307ce11ef558fd23b299ce7f458de581446) )
+    ROM_LOAD32_WORD( "94ts_9h.u42",  0x2400002, 0x200000, CRC(9da831c7) SHA1(42698697aa85df088745b2d37ec89b01adce700f) )
+    ROM_LOAD32_WORD( "95ts_10l.u58", 0x2800000, 0x200000, CRC(303a5240) SHA1(5816d1922e85bc27a2a13cdd183d9e67c7ddb2e1) )
+    ROM_LOAD32_WORD( "96ts_10h.u59", 0x2800002, 0x200000, CRC(2240ebf6) SHA1(b61f93a18dd9d94fb57d95745d4df2e41a0371ff) )
+
+    ROM_REGION( 0x800000, "ymf", 0 ) // Samples
+    ROM_LOAD( "97ts_snd.u52", 0x000000, 0x400000, CRC(9155eca6) SHA1(f0b4f68462d8a465c39815d3b7fd9818788132ae) )
+
+    ROM_REGION( 0x100, "user1", 0 ) // Default Eeprom (contains scores etc.)
+    // might need byteswapping to reprogram actual chip/
+    ROM_LOAD( "tgm2p.default.nv", 0x000, 0x100, CRC(b2328b40) SHA1(e6cda4d6f4e91b9f78d2ca84a5eee6c3bd03fe02) )
+ROM_END
+*/
 
 /* are these right? should i fake the counter return?
    'speedups / idle skipping isn't needed for 'hotgmck, hgkairak'
@@ -1352,7 +1401,7 @@ static DRIVER_INIT( mjgtaste )
 /*     YEAR  NAME      PARENT    MACHINE    INPUT     INIT      MONITOR COMPANY   FULLNAME FLAGS */
 
 /* ps3-v1 */
-GAME( 1997, soldivid, 0,        psikyo3v1,   soldivid, soldivid, ROT0,   "Psikyo", "Sol Divide - The Sword Of Darkness", GAME_IMPERFECT_SOUND ) // Music Tempo
+GAME( 1997, soldivid, 0,        psikyo3v1,   soldivid, soldivid, ROT0,   "Psikyo", "Sol Divide - The Sword Of Darkness", GAME_IMPERFECT_SOUND ) // Music missing since SH2 DRC added
 GAME( 1997, s1945ii,  0,        psikyo3v1,   s1945ii,  s1945ii,  ROT270, "Psikyo", "Strikers 1945 II", GAME_IMPERFECT_GRAPHICS ) // linescroll/zoom
 GAME( 1998, daraku,   0,        psikyo3v1,   daraku,   daraku,   ROT0,   "Psikyo", "Daraku Tenshi - The Fallen Angels", 0 )
 GAME( 1998, sbomberb, 0,        psikyo3v1,   sbomberb, sbomberb, ROT270, "Psikyo", "Space Bomber (ver. B)", 0 )

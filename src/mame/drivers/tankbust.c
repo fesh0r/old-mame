@@ -184,10 +184,10 @@ static READ8_HANDLER( read_from_unmapped_memory )
 }
 #endif
 
-static int variable_data=0x11;
+static UINT8 variable_data;
 static READ8_HANDLER( some_changing_input )
 {
-	variable_data = (variable_data+8) & 0xff;
+	variable_data += 8;
 	return variable_data;
 }
 
@@ -200,9 +200,9 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(tankbust_txtram_r, tankbust_txtram_w) AM_BASE(&tankbust_txtram)
 	AM_RANGE(0xd800, 0xd8ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xe000, 0xe007) AM_READWRITE(debug_output_area_r, tankbust_e0xx_w)
-	AM_RANGE(0xe800, 0xe800) AM_READWRITE(input_port_0_r, tankbust_yscroll_w)
-	AM_RANGE(0xe801, 0xe801) AM_READ(input_port_1_r)
-	AM_RANGE(0xe802, 0xe802) AM_READ(input_port_2_r)
+	AM_RANGE(0xe800, 0xe800) AM_READ_PORT("INPUTS") AM_WRITE(tankbust_yscroll_w)
+	AM_RANGE(0xe801, 0xe801) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0xe802, 0xe802) AM_READ_PORT("DSW")
 	AM_RANGE(0xe801, 0xe802) AM_WRITE(tankbust_xscroll_w)
 	AM_RANGE(0xe803, 0xe803) AM_READWRITE(some_changing_input, tankbust_soundlatch_w)	/*unknown. Game expects this to change so this is not player input */
 	AM_RANGE(0xe804, 0xe804) AM_WRITE(SMH_NOP)	/* watchdog ? ; written in long-lasting loops */
@@ -233,7 +233,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( tankbust )
-	PORT_START("INPUTS")	/* IN0 */
+	PORT_START("INPUTS")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
@@ -243,7 +243,7 @@ static INPUT_PORTS_START( tankbust )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START("SYSTEM")	/* IN1 */
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -253,7 +253,7 @@ static INPUT_PORTS_START( tankbust )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START("DSW")	/* DSW */
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(	0x03, DEF_STR( Easy ) )
 	PORT_DIPSETTING(	0x02, DEF_STR( Hard ) )
@@ -333,6 +333,12 @@ static const ay8910_interface ay8910_config =
 	NULL
 };
 
+static MACHINE_RESET( tankbust )
+{
+	variable_data = 0x11;
+}
+
+
 static MACHINE_DRIVER_START( tankbust )
 
 	/* basic machine hardware */
@@ -346,7 +352,7 @@ static MACHINE_DRIVER_START( tankbust )
 
 	MDRV_INTERLEAVE(100)
 
-//MDRV_MACHINE_RESET( ... )
+	MDRV_MACHINE_RESET( tankbust )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

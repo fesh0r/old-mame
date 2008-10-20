@@ -35,7 +35,7 @@
 #define FDC_LOG(x) do { if (LOG_FDC_COMMANDS) mame_printf_debug x; } while(0)
 
 
-enum
+enum int_levels
 {
 	INT_UNKNOWN1     = 1,
 	INT_UNKNOWN2     = 2,
@@ -44,7 +44,7 @@ enum
 	INT_TMS34061     = 5,
 	INT_FLOPPYCTRL   = 6,
 	INT_WATCHDOG_INT = 7,
-} int_levels;
+};
 
 
 /*************************************
@@ -272,7 +272,7 @@ static emu_timer *fdc_timer;
 #define DISK_TRACK_SIZE		(DISK_SECTOR_SIZE * DISK_SECTORS)
 #define DISK_SIDE_SIZE		(DISK_TRACK_SIZE * DISK_TRACKS)
 
-enum
+enum wd1770_status
 {
 	BUSY			 = 1 << 0,
 	DATA_REQUEST	 = 1 << 1,
@@ -285,7 +285,7 @@ enum
 	SPIN_UP			 = 1 << 5,
 	WRITE_PROTECT	 = 1 << 6,
 	MOTOR_ON		 = 1 << 7
-} wd1770_status;
+};
 
 
 static TIMER_CALLBACK( fdc_data_callback )
@@ -540,7 +540,7 @@ static READ16_HANDLER( wd1770_r )
 
 static READ16_HANDLER( io_r )
 {
-	static const char *portnames[] = { "IN0", "IN1", "IN2" };
+	static const char *const portnames[] = { "IN0", "IN1", "IN2" };
 
 	switch (offset)
 	{
@@ -735,7 +735,7 @@ INPUT_PORTS_END
  static MACHINE_START( guab )
 {
 	fdc_timer = timer_alloc(fdc_data_callback, NULL);
-	ptm6840_config(0, &ptm_intf);
+	ptm6840_config(machine, 0, &ptm_intf);
 }
 
 static MACHINE_RESET( guab )

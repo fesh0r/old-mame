@@ -11,12 +11,9 @@ Notes:
 
 TODO:
 -Correct Bankswitch emulation.Obviously I'm not happy with the current implementation...
-
 -Finish controls.
-
--Custom RAM emulation.
-
--Fix the colors.
+-"Custom RAM" emulation might be a simple protection issue.
+-Need a proper screenshot of the real thing for the colors but I think they are accurate.
 
 ============================================================================================
 Code disassembling
@@ -57,6 +54,12 @@ Code disassembling
 #include "sound/ay8910.h"
 
 static tilemap *bg_tilemap;
+static UINT8 mux_data;
+static int bank;
+static UINT8 *cus_ram;
+static UINT8 prot_lock;
+
+
 
 static TILE_GET_INFO( y_get_bg_tile_info )
 {
@@ -114,9 +117,6 @@ static WRITE8_HANDLER( yumefuda_cram_w )
 	tilemap_mark_tile_dirty(bg_tilemap,offset);
 }
 
-static UINT8 *cus_ram;
-static UINT8 prot_lock;
-
 /*Custom RAM (Protection)*/
 static READ8_HANDLER( custom_ram_r )
 {
@@ -155,8 +155,6 @@ static READ8_HANDLER( eeprom_r )
 	return ((~eeprom_read_bit() & 0x01)<<6) | (0xff & ~0x40);
 }
 
-static UINT8 mux_data;
-
 static READ8_HANDLER( mux_r )
 {
 	switch(mux_data)
@@ -175,8 +173,6 @@ static READ8_HANDLER( mux_r )
 
 static WRITE8_HANDLER( mux_w )
 {
-	static int bank=-1;
-
 	int new_bank = (data&0xc0)>>6;
 
 	//0x10000 service mode
@@ -195,7 +191,6 @@ static WRITE8_HANDLER( mux_w )
 	mux_data = data & ~0xc0;
 }
 
-
 /***************************************************************************************/
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -204,7 +199,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa7fc, 0xa7fc) AM_WRITE(prot_lock_w)
 	AM_RANGE(0xa7ff, 0xa7ff) AM_WRITE(eeprom_w)
 	AM_RANGE(0xaf80, 0xafff) AM_READWRITE(custom_ram_r, custom_ram_w) AM_BASE(&cus_ram) /*260d - 2626*/
-	AM_RANGE(0xb000, 0xb0ff) AM_RAM_WRITE(paletteram_RRRGGGBB_w) AM_BASE(&paletteram) /*Wrong format*/
+	AM_RANGE(0xb000, 0xb07f) AM_RAM_WRITE(paletteram_xRRRRRGGGGGBBBBB_split1_w) AM_BASE(&paletteram) /*Custom Format*/
+	AM_RANGE(0xb080, 0xb0ff) AM_RAM_WRITE(paletteram_xRRRRRGGGGGBBBBB_split2_w) AM_BASE(&paletteram_2) /*Custom Format*/
 	AM_RANGE(0xc000, 0xc3ff) AM_RAM_WRITE(yumefuda_vram_w) AM_BASE(&videoram)
 	AM_RANGE(0xd000, 0xd3ff) AM_RAM_WRITE(yumefuda_cram_w) AM_BASE(&colorram)
 	AM_RANGE(0xe000, 0xffff) AM_RAM
@@ -220,6 +216,13 @@ static ADDRESS_MAP_START( port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(port_c0_w) /*watchdog write?*/
 ADDRESS_MAP_END
 
+static MACHINE_RESET( yumefuda )
+{
+	mux_data = 0;
+	bank = -1;
+	prot_lock = 0;
+}
+
 static MACHINE_DRIVER_START( yumefuda )
 
 	/* basic machine hardware */
@@ -228,6 +231,7 @@ static MACHINE_DRIVER_START( yumefuda )
 	MDRV_CPU_IO_MAP(port_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
+	MDRV_MACHINE_RESET(yumefuda)
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
@@ -239,7 +243,7 @@ static MACHINE_DRIVER_START( yumefuda )
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 0, 32*8-1)
 
 	MDRV_GFXDECODE( yumefuda )
-	MDRV_PALETTE_LENGTH(0x100)
+	MDRV_PALETTE_LENGTH(0x80)
 
 	MDRV_VIDEO_START( yumefuda )
 	MDRV_VIDEO_UPDATE( yumefuda )
@@ -432,4 +436,4 @@ ROM_START( yumefuda )
 	ROM_LOAD("zg001003.u3", 0xc000, 0x4000, CRC(5822ff27) SHA1(d40fa0790de3c912f770ef8f610bd8c42bc3500f))
 ROM_END
 
-GAME( 198?, yumefuda, 0, yumefuda, yumefuda, 0, ROT0, "Alba", "(Medal) Yumefuda [BET]", GAME_NOT_WORKING | GAME_WRONG_COLORS )
+GAME( 198?, yumefuda, 0, yumefuda, yumefuda, 0, ROT0, "Alba", "(Medal) Yumefuda [BET]", GAME_NOT_WORKING )

@@ -219,25 +219,12 @@ MACHINE_RESET( harddriv )
 
 static void hd68k_update_interrupts(running_machine *machine)
 {
-	int newstate = 0;
-
-	if (msp_irq_state)
-		newstate = 1;
-	if (adsp_irq_state)
-		newstate = 2;
-	if (gsp_irq_state)
-		newstate = 3;
-	if (atarigen_sound_int_state)	/* /LINKIRQ on STUN Runner */
-		newstate = 4;
-	if (irq_state)
-		newstate = 5;
-	if (duart_irq_state)
-		newstate = 6;
-
-	if (newstate)
-		cpunum_set_input_line(machine, hdcpu_main, newstate, ASSERT_LINE);
-	else
-		cpunum_set_input_line(machine, hdcpu_main, 7, CLEAR_LINE);
+	cpunum_set_input_line(machine, hdcpu_main, 1, msp_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, hdcpu_main, 2, adsp_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, hdcpu_main, 3, gsp_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, hdcpu_main, 4, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);	/* /LINKIRQ on STUN Runner */
+	cpunum_set_input_line(machine, hdcpu_main, 5, irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, hdcpu_main, 6, duart_irq_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -445,8 +432,8 @@ READ16_HANDLER( hd68k_sound_reset_r )
 
 WRITE16_HANDLER( hd68k_adc_control_w )
 {
-	static const char *adc8names[] = { "8BADC0", "8BADC1", "8BADC2", "8BADC3", "8BADC4", "8BADC5", "8BADC6", "8BADC7" };
-	static const char *adc12names[] = { "12BADC0", "12BADC1", "12BADC2", "12BADC3" };
+	static const char *const adc8names[] = { "8BADC0", "8BADC1", "8BADC2", "8BADC3", "8BADC4", "8BADC5", "8BADC6", "8BADC7" };
+	static const char *const adc12names[] = { "12BADC0", "12BADC1", "12BADC2", "12BADC3" };
 
 	COMBINE_DATA(&adc_control);
 

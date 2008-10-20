@@ -69,9 +69,9 @@ if (!((data >> 4) & 1)) mame_printf_debug("/TRIG4\n");
  *
  *************************************/
 
-WRITE8_HANDLER( turbo_sound_a_w )
+WRITE8_DEVICE_HANDLER( turbo_sound_a_w )
 {
-	turbo_state *state = machine->driver_data;
+	turbo_state *state = device->machine->driver_data;
 	UINT8 diff = data ^ state->sound_state[0];
 	state->sound_state[0] = data;
 
@@ -117,9 +117,9 @@ WRITE8_HANDLER( turbo_sound_a_w )
 }
 
 
-WRITE8_HANDLER( turbo_sound_b_w )
+WRITE8_DEVICE_HANDLER( turbo_sound_b_w )
 {
-	turbo_state *state = machine->driver_data;
+	turbo_state *state = device->machine->driver_data;
 	UINT8 diff = data ^ state->sound_state[1];
 	state->sound_state[1] = data;
 
@@ -139,9 +139,9 @@ WRITE8_HANDLER( turbo_sound_b_w )
 }
 
 
-WRITE8_HANDLER( turbo_sound_c_w )
+WRITE8_DEVICE_HANDLER( turbo_sound_c_w )
 {
-	turbo_state *state = machine->driver_data;
+	turbo_state *state = device->machine->driver_data;
 
 	/* OSEL1-2 */
 	state->turbo_osel = (state->turbo_osel & 1) | ((data & 3) << 1);
@@ -289,9 +289,9 @@ MACHINE_DRIVER_END
  *
  *************************************/
 
-WRITE8_HANDLER( subroc3d_sound_a_w )
+WRITE8_DEVICE_HANDLER( subroc3d_sound_a_w )
 {
-	turbo_state *state = machine->driver_data;
+	turbo_state *state = device->machine->driver_data;
 	state->sound_state[0] = data;
 
 	/* DIS0-3 contained in bits 0-3 */
@@ -319,9 +319,9 @@ INLINE void subroc3d_update_volume(int leftchan, UINT8 dis, UINT8 dir)
 }
 
 
-WRITE8_HANDLER( subroc3d_sound_b_w )
+WRITE8_DEVICE_HANDLER( subroc3d_sound_b_w )
 {
-	turbo_state *state = machine->driver_data;
+	turbo_state *state = device->machine->driver_data;
 	UINT8 diff = data ^ state->sound_state[1];
 	state->sound_state[1] = data;
 
@@ -374,9 +374,9 @@ WRITE8_HANDLER( subroc3d_sound_b_w )
 }
 
 
-WRITE8_HANDLER( subroc3d_sound_c_w )
+WRITE8_DEVICE_HANDLER( subroc3d_sound_c_w )
 {
-	turbo_state *state = machine->driver_data;
+	turbo_state *state = device->machine->driver_data;
 	UINT8 diff = data ^ state->sound_state[2];
 	state->sound_state[2] = data;
 
@@ -498,9 +498,9 @@ static void buckrog_update_samples(turbo_state *state)
 }
 
 
-WRITE8_HANDLER( buckrog_sound_a_w )
+WRITE8_DEVICE_HANDLER( buckrog_sound_a_w )
 {
-	turbo_state *state = machine->driver_data;
+	turbo_state *state = device->machine->driver_data;
 	UINT8 diff = data ^ state->sound_state[0];
 	state->sound_state[0] = data;
 
@@ -523,9 +523,9 @@ WRITE8_HANDLER( buckrog_sound_a_w )
 }
 
 
-WRITE8_HANDLER( buckrog_sound_b_w )
+WRITE8_DEVICE_HANDLER( buckrog_sound_b_w )
 {
-	turbo_state *state = machine->driver_data;
+	turbo_state *state = device->machine->driver_data;
 	UINT8 diff = data ^ state->sound_state[1];
 	state->sound_state[1] = data;
 
@@ -664,14 +664,14 @@ DISCRETE_SOUND_START(turbo)
 	// which clocks a 74393 dual 4-bit counter, clocked on the falling edge
 	DISCRETE_COUNTER(NODE_51,1,0,NODE_50,15,1,0,DISC_CLK_ON_F_EDGE)
 	// the high bit of this counter
-	DISCRETE_TRANSFORM2(NODE_52,1,NODE_51,8,"01/")
+	DISCRETE_TRANSFORM2(NODE_52,NODE_51,8,"01/")
 	// clocks the other half of the 74393
 	DISCRETE_COUNTER(NODE_53,1,0,NODE_52,15,1,0,DISC_CLK_ON_F_EDGE)
 
 	// trig1 triggers a LS123 retriggerable multivibrator
 	DISCRETE_ONESHOT(NODE_60,TURBO_TRIG1_INV,5.0,(0.33e-9)*47*1e6, DISC_ONESHOT_FEDGE|DISC_ONESHOT_RETRIG|DISC_OUT_ACTIVE_HIGH)
 	// which interacts with bit 0 of the second counter
-	DISCRETE_TRANSFORM2(NODE_61,1,NODE_53,1,"01&")
+	DISCRETE_TRANSFORM2(NODE_61,NODE_53,1,"01&")
 	// via a NAND
 	DISCRETE_LOGIC_NAND(NODE_62,1,NODE_60,NODE_61)
 
@@ -683,14 +683,14 @@ DISCRETE_SOUND_START(turbo)
 	// trig3 triggers a LS123 retriggerable multivibrator
 	DISCRETE_ONESHOT(NODE_70,TURBO_TRIG3_INV,5.0,(0.33e-9)*47*33e6,DISC_ONESHOT_FEDGE|DISC_ONESHOT_RETRIG|DISC_OUT_ACTIVE_HIGH)
 	// which interacts with bit 2 of the first counter
-	DISCRETE_TRANSFORM3(NODE_71,1,NODE_51,4,1,"01/2&")
+	DISCRETE_TRANSFORM3(NODE_71,NODE_51,4,1,"01/2&")
 	// via a NAND
 	DISCRETE_LOGIC_NAND(NODE_72,1,NODE_70,NODE_71)
 
 	// trig4 triggers a LS123 retriggerable multivibrator
 	DISCRETE_ONESHOT(NODE_75,TURBO_TRIG4_INV,5.0,(0.33e-9)*47*10e6,DISC_ONESHOT_FEDGE|DISC_ONESHOT_RETRIG|DISC_OUT_ACTIVE_HIGH)
 	// which interacts with bit 1 of the first counter
-	DISCRETE_TRANSFORM3(NODE_76,1,NODE_51,2,1,"01/2&")
+	DISCRETE_TRANSFORM3(NODE_76,NODE_51,2,1,"01/2&")
 	// via a NAND
 	DISCRETE_LOGIC_NAND(NODE_77,1,NODE_75,NODE_76)
 

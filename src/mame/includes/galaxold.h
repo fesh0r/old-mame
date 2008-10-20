@@ -136,28 +136,21 @@ WRITE8_HANDLER( kingball_sound1_w );
 WRITE8_HANDLER( kingball_sound2_w );
 
 WRITE8_HANDLER( _4in1_bank_w );
-READ8_HANDLER( _4in1_input_port_1_r );
-READ8_HANDLER( _4in1_input_port_2_r );
+CUSTOM_INPUT( _4in1_fake_port_r );
 
 WRITE8_HANDLER( zigzag_sillyprotection_w );
 
 INTERRUPT_GEN( hunchbks_vh_interrupt );
 INTERRUPT_GEN( gmgalax_vh_interrupt );
 
-READ8_HANDLER( gmgalax_input_port_0_r );
-READ8_HANDLER( gmgalax_input_port_1_r );
-READ8_HANDLER( gmgalax_input_port_2_r );
-
 
 /*----------- defined in machine/scramble.c -----------*/
 
-extern const ppi8255_interface scramble_ppi_ppi8255_intf[2];
-extern const ppi8255_interface stratgyx_ppi8255_intf[2];
-extern const ppi8255_interface darkplnt_ppi8255_intf[2];
-extern const ppi8255_interface scramble_ppi8255_intf[2];
-extern const ppi8255_interface ckongs_ppi8255_intf[2];
-extern const ppi8255_interface mars_ppi8255_intf[2];
-extern const ppi8255_interface mrkougar_ppi8255_intf[2];
+extern const ppi8255_interface scramble_ppi_0_intf;
+extern const ppi8255_interface scramble_ppi_1_intf;
+extern const ppi8255_interface stratgyx_ppi_1_intf;
+extern const ppi8255_interface scramble_protection_ppi_1_intf;
+extern const ppi8255_interface mrkougar_ppi_1_intf;
 
 
 DRIVER_INIT( scramble_ppi );
@@ -200,6 +193,8 @@ READ8_HANDLER( triplep_pap_r );
 READ8_HANDLER( hunchbks_mirror_r );
 WRITE8_HANDLER( hunchbks_mirror_w );
 
+CUSTOM_INPUT( darkplnt_custom_r );
+
 
 /*----------- defined in audio/scramble.c -----------*/
 
@@ -214,9 +209,9 @@ READ8_HANDLER( frogger_portB_r );
 
 READ8_HANDLER( hotshock_soundlatch_r );
 
-WRITE8_HANDLER( scramble_sh_irqtrigger_w );
+WRITE8_DEVICE_HANDLER( scramble_sh_irqtrigger_w );
 WRITE8_HANDLER( sfx_sh_irqtrigger_w );
-WRITE8_HANDLER( mrkougar_sh_irqtrigger_w );
+WRITE8_DEVICE_HANDLER( mrkougar_sh_irqtrigger_w );
 WRITE8_HANDLER( froggrmc_sh_irqtrigger_w );
 WRITE8_HANDLER( hotshock_sh_irqtrigger_w );
 

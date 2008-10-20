@@ -51,17 +51,8 @@ static UINT16 *sloop_base;
 
 static void update_interrupts(running_machine *machine)
 {
-	int newstate = 0;
-
-	if (atarigen_video_int_state)
-		newstate = 4;
-	if (atarigen_sound_int_state)
-		newstate = 5;
-
-	if (newstate)
-		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
-	else
-		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 4, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 5, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -93,7 +84,7 @@ static READ16_HANDLER( special_port2_r )
 
 static WRITE16_HANDLER( a2d_select_w )
 {
-	static const char *portnames[] = { "A2D0", "A2D1" };
+	static const char *const portnames[] = { "A2D0", "A2D1" };
 
 	analog_data = input_port_read(machine, portnames[offset != 0]);
 }

@@ -137,24 +137,17 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xffff) AM_WRITE(SMH_ROM)	/* banked ROM */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x07, 0x07) AM_WRITE(speedspn_global_display_w)
-	AM_RANGE(0x12, 0x12) AM_WRITE(speedspn_banked_rom_change)
-	AM_RANGE(0x13, 0x13) AM_WRITE(speedspn_sound_w)
+	AM_RANGE(0x10, 0x10) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x11, 0x11) AM_READ_PORT("P1")
+	AM_RANGE(0x12, 0x12) AM_READ_PORT("P2") AM_WRITE(speedspn_banked_rom_change)
+	AM_RANGE(0x13, 0x13) AM_READ_PORT("DSW1") AM_WRITE(speedspn_sound_w)
+	AM_RANGE(0x14, 0x14) AM_READ_PORT("DSW2")
+	AM_RANGE(0x16, 0x16) AM_READ(speedspn_irq_ack_r) // @@@ could be watchdog, value is discarded
 	AM_RANGE(0x17, 0x17) AM_WRITE(speedspn_banked_vidram_change)
 ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x10, 0x10) AM_READ(input_port_0_r) // inputs
-	AM_RANGE(0x11, 0x11) AM_READ(input_port_1_r) // inputs
-	AM_RANGE(0x12, 0x12) AM_READ(input_port_2_r) // inputs
-	AM_RANGE(0x13, 0x13) AM_READ(input_port_3_r)
-	AM_RANGE(0x14, 0x14) AM_READ(input_port_4_r) // inputs
-	AM_RANGE(0x16, 0x16) AM_READ(speedspn_irq_ack_r) // @@@ could be watchdog, value is discarded
-ADDRESS_MAP_END
-
 
 /* sound cpu */
 
@@ -185,7 +178,7 @@ static INPUT_PORTS_START( speedspn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START("P1") /* Player 1 Inputs */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
@@ -195,7 +188,7 @@ static INPUT_PORTS_START( speedspn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 
-	PORT_START("P2") /* Player 2 Inputs */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
@@ -205,7 +198,7 @@ static INPUT_PORTS_START( speedspn )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 
-	PORT_START("DSW1") /* Dips */
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 5C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 4C_1C ) )
@@ -241,7 +234,7 @@ static INPUT_PORTS_START( speedspn )
 	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
 
-	PORT_START("DSW2") /* Dips */
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, "World Cup" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -304,7 +297,7 @@ static MACHINE_DRIVER_START( speedspn )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main",Z80,6000000)		 /* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_IO_MAP(readport, writeport)
+	MDRV_CPU_IO_MAP(io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD("audio", Z80,6000000)		 /* 6 MHz */
@@ -374,3 +367,4 @@ ROM_END
 /*** GAME DRIVERS ************************************************************/
 
 GAME( 1994, speedspn, 0, speedspn, speedspn, 0, ROT180, "TCH", "Speed Spin", GAME_IMPERFECT_GRAPHICS )
+

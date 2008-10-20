@@ -121,7 +121,7 @@ static const rgb_t crosshair_colors[] =
 ***************************************************************************/
 
 static void crosshair_exit(running_machine *machine);
-static void animate(const device_config *device, int vblank_state);
+static void animate(const device_config *device, void *param, int vblank_state);
 
 
 /***************************************************************************
@@ -170,7 +170,7 @@ static void create_bitmap(int player)
 
 		/* create a texture to reference the bitmap */
 		global.texture[player] = render_texture_alloc(render_texture_hq_scale, NULL);
-		render_texture_set_bitmap(global.texture[player], global.bitmap[player], NULL, 0, TEXFORMAT_ARGB32);
+		render_texture_set_bitmap(global.texture[player], global.bitmap[player], NULL, TEXFORMAT_ARGB32, NULL);
 	}
 }
 
@@ -212,7 +212,7 @@ void crosshair_init(running_machine *machine)
 
 	/* register the animation callback */
 	if (machine->primary_screen != NULL)
-		video_screen_register_vblank_callback(machine->primary_screen, animate);
+		video_screen_register_vblank_callback(machine->primary_screen, animate, NULL);
 }
 
 
@@ -272,7 +272,7 @@ void crosshair_toggle(running_machine *machine)
     animate - animates the crosshair once a frame
 -------------------------------------------------*/
 
-static void animate(const device_config *device, int vblank_state)
+static void animate(const device_config *device, void *param, int vblank_state)
 {
 	int player;
 

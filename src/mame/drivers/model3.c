@@ -1115,7 +1115,7 @@ static READ64_HANDLER( model3_ctrl_r )
 		case 7:
 			if (ACCESSING_BITS_24_31)		/* ADC Data read */
 			{
-				static const char *adcnames[] = { "AN0", "AN1", "AN2", "AN3", "AN4", "AN5", "AN6", "AN7" };
+				static const char *const adcnames[] = { "AN0", "AN1", "AN2", "AN3", "AN4", "AN5", "AN6", "AN7" };
 				UINT8 adc_data = input_port_read_safe(machine, adcnames[adc_channel], 0);
 				adc_channel++;
 				adc_channel &= 0x7;
@@ -4269,8 +4269,10 @@ static void scsp_irq(running_machine *machine, int irq)
  	if (irq > 0)
 	{
 		scsp_last_line = irq;
-		cpunum_set_input_line(machine, 1, irq, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, irq, ASSERT_LINE);
 	}
+	else
+		cpunum_set_input_line(machine, 1, -irq, CLEAR_LINE);
 }
 
 static const scsp_interface scsp_config =

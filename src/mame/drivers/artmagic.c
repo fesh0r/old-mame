@@ -57,17 +57,8 @@ static void (*protection_handler)(running_machine *);
 
 static void update_irq_state(running_machine *machine)
 {
-	int irq_lines = 0;
-
-	if (tms_irq)
-		irq_lines |= 4;
-	if (hack_irq)
-		irq_lines |= 5;
-
-	if (irq_lines)
-		cpunum_set_input_line(machine, 0, irq_lines, ASSERT_LINE);
-	else
-		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 4, tms_irq  ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 5, hack_irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -138,6 +129,12 @@ static WRITE16_HANDLER( control_w )
  *
  *************************************/
 
+static TIMER_CALLBACK( irq_off )
+{
+	hack_irq = 0;
+	update_irq_state(machine);
+}
+
 static READ16_HANDLER( ultennis_hack_r )
 {
 	/* IRQ5 points to: jsr (a5); rte */
@@ -145,8 +142,7 @@ static READ16_HANDLER( ultennis_hack_r )
 	{
 		hack_irq = 1;
 		update_irq_state(machine);
-		hack_irq = 0;
-		update_irq_state(machine);
+		timer_set(ATTOTIME_IN_USEC(1), NULL, 0, irq_off);
 	}
 	return input_port_read(machine, "300000");
 }

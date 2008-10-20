@@ -10,6 +10,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 
 
 
@@ -50,11 +51,15 @@ void v35_get_info(UINT32 state, cpuinfo *info);
 void v60_get_info(UINT32 state, cpuinfo *info);
 void v70_get_info(UINT32 state, cpuinfo *info);
 void i8035_get_info(UINT32 state, cpuinfo *info);
-void i8039_get_info(UINT32 state, cpuinfo *info);
+void i8041_get_info(UINT32 state, cpuinfo *info);
 void i8048_get_info(UINT32 state, cpuinfo *info);
+void i8648_get_info(UINT32 state, cpuinfo *info);
+void i8748_get_info(UINT32 state, cpuinfo *info);
+void mb8884_get_info(UINT32 state, cpuinfo *info);
+void i8039_get_info(UINT32 state, cpuinfo *info);
+void i8049_get_info(UINT32 state, cpuinfo *info);
 void i8749_get_info(UINT32 state, cpuinfo *info);
 void n7751_get_info(UINT32 state, cpuinfo *info);
-void mb8884_get_info(UINT32 state, cpuinfo *info);
 void m58715_get_info(UINT32 state, cpuinfo *info);
 void i8x41_get_info(UINT32 state, cpuinfo *info);
 void i8051_get_info(UINT32 state, cpuinfo *info);
@@ -377,20 +382,32 @@ static const struct
 #if (HAS_I8035)
 	{ CPU_I8035, i8035_get_info },
 #endif
-#if (HAS_I8039)
-	{ CPU_I8039, i8039_get_info },
+#if (HAS_I8041)
+	{ CPU_I8041, i8041_get_info },
 #endif
 #if (HAS_I8048)
 	{ CPU_I8048, i8048_get_info },
 #endif
-#if (HAS_I8749)
-	{ CPU_I8749, i8749_get_info },
+#if (HAS_I8648)
+	{ CPU_I8648, i8648_get_info },
+#endif
+#if (HAS_I8748)
+	{ CPU_I8748, i8748_get_info },
+#endif
+#if (HAS_MB8884)
+	{ CPU_MB8884, mb8884_get_info },
 #endif
 #if (HAS_N7751)
 	{ CPU_N7751, n7751_get_info },
 #endif
-#if (HAS_MB8884)
-	{ CPU_MB8884, mb8884_get_info },
+#if (HAS_I8039)
+	{ CPU_I8039, i8039_get_info },
+#endif
+#if (HAS_I8049)
+	{ CPU_I8049, i8049_get_info },
+#endif
+#if (HAS_I8749)
+	{ CPU_I8749, i8749_get_info },
 #endif
 #if (HAS_M58715)
 	{ CPU_M58715, m58715_get_info },
@@ -894,7 +911,7 @@ static int temp_string_pool_index;
  *
  *************************************/
 
-INLINE void set_cpu_context(int cpunum)
+INLINE void set_cpu_context(running_machine *machine, int cpunum)
 {
 	int newfamily = cpu[cpunum].family;
 	int oldcontext = cpu_active_context[newfamily];
@@ -905,7 +922,7 @@ INLINE void set_cpu_context(int cpunum)
 
 	/* swap memory spaces */
 	activecpu = cpunum;
-	memory_set_context(cpunum);
+	memory_set_context(machine, cpunum);
 
 	/* if the new CPU's context is not swapped in, do it now */
 	if (oldcontext != cpunum)
@@ -930,7 +947,7 @@ void cpuintrf_push_context(int cpunum)
 
 	/* do the rest only if this isn't the activecpu */
 	if (cpunum != activecpu && cpunum != -1)
-		set_cpu_context(cpunum);
+		set_cpu_context(Machine, cpunum);
 
 	/* this is now the active CPU */
 	activecpu = cpunum;
@@ -944,7 +961,7 @@ void cpuintrf_pop_context(void)
 
 	/* do the rest only if this isn't the activecpu */
 	if (cpunum != activecpu && cpunum != -1)
-		set_cpu_context(cpunum);
+		set_cpu_context(Machine, cpunum);
 
 	/* this is now the active CPU */
 	activecpu = cpunum;

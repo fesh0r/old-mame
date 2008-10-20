@@ -136,13 +136,10 @@ DRIVER_INIT( armwrest );
 
 
 
-static READ8_HANDLER( punchout_input_3_r )
+static CUSTOM_INPUT( punchout_vlm5030_busy_r )
 {
-	int data = input_port_read(machine, "DSW1");
-	/* bit 4 is busy pin level */
-	if( vlm5030_bsy() ) data &= ~0x10;
-	else data |= 0x10;
-	return data;
+	/* bit 4 of DSW1 is busy pin level */
+	return (vlm5030_bsy()) ? 0x00 : 0x01;
 }
 
 static WRITE8_HANDLER( punchout_speech_reset_w )
@@ -168,7 +165,7 @@ static WRITE8_HANDLER( punchout_2a03_reset_w )
 		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 }
 
-static int prot_mode_sel = -1; /* Mode selector */
+static int prot_mode_sel; /* Mode selector */
 static int prot_mem[16];
 
 static READ8_HANDLER( spunchout_prot_r ) {
@@ -424,34 +421,16 @@ static ADDRESS_MAP_START( armwrest_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0")
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
-	AM_RANGE(0x02, 0x02) AM_READ_PORT("DSW2")
-	AM_RANGE(0x03, 0x03) AM_READ(punchout_input_3_r)
-
-	/* protection ports - Super Punchout only (move to install handler?) */
-	AM_RANGE(0x07, 0x07) AM_READ(spunchout_prot_0_r)
-	AM_RANGE(0x17, 0x17) AM_READ(spunchout_prot_1_r)
-	AM_RANGE(0x27, 0x27) AM_READ(spunchout_prot_2_r)
-	AM_RANGE(0x37, 0x37) AM_READ(spunchout_prot_3_r)
-	AM_RANGE(0x57, 0x57) AM_READ(spunchout_prot_5_r)
-	AM_RANGE(0x67, 0x67) AM_READ(spunchout_prot_6_r)
-	AM_RANGE(0x97, 0x97) AM_READ(spunchout_prot_9_r)
-	AM_RANGE(0xa7, 0xa7) AM_READ(spunchout_prot_a_r)
-	AM_RANGE(0xb7, 0xb7) AM_READ(spunchout_prot_b_r)
-	AM_RANGE(0xc7, 0xc7) AM_READ(spunchout_prot_c_r)
-	/* AM_RANGE(0xf7, 0xf7) AM_READ(spunchout_prot_f_r) */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x01) AM_WRITE(SMH_NOP)	/* the 2A03 #1 is not present */
-	AM_RANGE(0x02, 0x02) AM_WRITE(soundlatch_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(soundlatch2_w)
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("DSW2") AM_WRITE(soundlatch_w)
+	AM_RANGE(0x03, 0x03) AM_READ_PORT("DSW1") AM_WRITE(soundlatch2_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(vlm5030_data_w)	/* VLM5030 */
 	AM_RANGE(0x05, 0x05) AM_WRITE(SMH_NOP)	/* unused */
+	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x08, 0x08) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x09, 0x09) AM_WRITE(SMH_NOP)	/* watchdog reset, seldom used because 08 clears the watchdog as well */
 	AM_RANGE(0x0a, 0x0a) AM_WRITE(SMH_NOP)	/* ?? */
@@ -461,19 +440,20 @@ static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0e, 0x0e) AM_WRITE(punchout_speech_vcu_w)	/* VLM5030 */
 	AM_RANGE(0x0f, 0x0f) AM_WRITE(SMH_NOP)	/* enable NVRAM ? */
 
-	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)
-
-	/* protection ports */
-	AM_RANGE(0x07, 0x07) AM_WRITE(spunchout_prot_0_w)
-	AM_RANGE(0x17, 0x17) AM_WRITE(spunchout_prot_1_w)
-	AM_RANGE(0x27, 0x27) AM_WRITE(spunchout_prot_2_w)
-	AM_RANGE(0x37, 0x37) AM_WRITE(spunchout_prot_3_w)
-	AM_RANGE(0x57, 0x57) AM_WRITE(spunchout_prot_5_w)
-	AM_RANGE(0x67, 0x67) AM_WRITE(spunchout_prot_6_w)
-	AM_RANGE(0xa7, 0xa7) AM_WRITE(spunchout_prot_a_w)
-	AM_RANGE(0xb7, 0xb7) AM_WRITE(spunchout_prot_b_w)
+	/* protection ports - Super Punchout only (move to install handler?) */
+	AM_RANGE(0x07, 0x07) AM_READWRITE(spunchout_prot_0_r, spunchout_prot_0_w)
+	AM_RANGE(0x17, 0x17) AM_READWRITE(spunchout_prot_1_r, spunchout_prot_1_w)
+	AM_RANGE(0x27, 0x27) AM_READWRITE(spunchout_prot_2_r, spunchout_prot_2_w)
+	AM_RANGE(0x37, 0x37) AM_READWRITE(spunchout_prot_3_r, spunchout_prot_3_w)
+	AM_RANGE(0x57, 0x57) AM_READWRITE(spunchout_prot_5_r, spunchout_prot_5_w)
+	AM_RANGE(0x67, 0x67) AM_READWRITE(spunchout_prot_6_r, spunchout_prot_6_w)
+	AM_RANGE(0x97, 0x97) AM_READ(spunchout_prot_9_r)
+	AM_RANGE(0xa7, 0xa7) AM_READWRITE(spunchout_prot_a_r, spunchout_prot_a_w)
+	AM_RANGE(0xb7, 0xb7) AM_READWRITE(spunchout_prot_b_r, spunchout_prot_b_w)
+	AM_RANGE(0xc7, 0xc7) AM_READ(spunchout_prot_c_r)
 	AM_RANGE(0xd7, 0xd7) AM_WRITE(spunchout_prot_d_w)
 	AM_RANGE(0xf7, 0xf7) AM_WRITE(spunchout_prot_f_w)
+	/* AM_RANGE(0xf7, 0xf7) AM_READ(spunchout_prot_f_r) */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -551,7 +531,7 @@ static INPUT_PORTS_START( punchout )
 	PORT_DIPSETTING(    0x0a, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(    0x07, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x0f, DEF_STR( Free_Play ) )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )		/* VLM5030 busy signal */
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(punchout_vlm5030_busy_r, NULL)	/* VLM5030 busy signal */
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_DIPUNUSED_DIPLOC( 0x40, 0x00, "R18:!1" )		/* Not documented, R18 resistor */
 	PORT_DIPNAME( 0x80, 0x00, "Copyright" )				PORT_DIPLOCATION("R19:!1") /* Not documented, R19 resistor */
@@ -638,6 +618,7 @@ static INPUT_PORTS_START( armwrest )
 	PORT_DIPSETTING(    0x0d, "d" )
 	PORT_DIPSETTING(    0x0e, "e" )
 	PORT_DIPSETTING(    0x0f, "f" )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(punchout_vlm5030_busy_r, NULL)	/* VLM5030 busy signal */
 	PORT_DIPNAME( 0x40, 0x00, "Coin Slots" )			PORT_DIPLOCATION("R18:!1") /* R18 resistor */
 	PORT_DIPSETTING(    0x40, "1" )
 	PORT_DIPSETTING(    0x00, "2" )
@@ -688,19 +669,26 @@ static const nes_interface nes_config =
 	"audio"
 };
 
+static MACHINE_RESET( punchout )
+{
+	prot_mode_sel = -1;
+	memset(prot_mem, 0, sizeof(prot_mem));
+}
+
 
 static MACHINE_DRIVER_START( punchout )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", Z80, 8000000/2)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(punchout_map,0)
-	MDRV_CPU_IO_MAP(readport,writeport)
+	MDRV_CPU_IO_MAP(io_map,0)
 	MDRV_CPU_VBLANK_INT("top", nmi_line_pulse)
 
 	MDRV_CPU_ADD("audio", N2A03, N2A03_DEFAULTCLOCK)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_VBLANK_INT("top", nmi_line_pulse)
 
+	MDRV_MACHINE_RESET(punchout)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
@@ -1128,3 +1116,4 @@ GAME( 1984, punchita, punchout, punchout, punchout, spnchout, ROT0, "bootleg",  
 GAME( 1984, spnchout, 0,        punchout, spnchout, spnchout, ROT0, "Nintendo", "Super Punch-Out!!", 0 )
 GAME( 1984, spnchotj, spnchout, punchout, spnchout, spnchotj, ROT0, "Nintendo", "Super Punch-Out!! (Japan)", 0 )
 GAME( 1985, armwrest, 0,        armwrest, armwrest, armwrest, ROT0, "Nintendo", "Arm Wrestling", 0 )
+

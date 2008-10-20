@@ -105,7 +105,7 @@ void namco_15xx_get_info(void *token, UINT32 state, sndinfo *info);
 void namco_cus30_get_info(void *token, UINT32 state, sndinfo *info);
 void namco_52xx_get_info(void *token, UINT32 state, sndinfo *info);
 void namco_63701x_get_info(void *token, UINT32 state, sndinfo *info);
-void namcona_get_info(void *token, UINT32 state, sndinfo *info);
+void snkwave_get_info(void *token, UINT32 state, sndinfo *info);
 void tms36xx_get_info(void *token, UINT32 state, sndinfo *info);
 void tms3615_get_info(void *token, UINT32 state, sndinfo *info);
 void tms5100_get_info(void *token, UINT32 state, sndinfo *info);
@@ -288,8 +288,8 @@ static const struct
 #if (HAS_NAMCO_63701X)
 	{ SOUND_NAMCO_63701X, namco_63701x_get_info },
 #endif
-#if (HAS_NAMCONA)
-	{ SOUND_NAMCONA, namcona_get_info },
+#if (HAS_SNKWAVE)
+	{ SOUND_SNKWAVE, snkwave_get_info },
 #endif
 #if (HAS_TMS36XX)
 	{ SOUND_TMS36XX, tms36xx_get_info },

@@ -300,21 +300,15 @@ static WRITE8_HANDLER( coin_count_w )
  *
  *************************************/
 
-static READ8_HANDLER( sindbadm_portb_r )
+static WRITE8_DEVICE_HANDLER( sindbadm_soundport_w )
 {
-	return input_port_read(machine, "FC");
-}
-
-
-static WRITE8_HANDLER( sindbadm_soundport_w )
-{
-	soundlatch_w(machine,0,data);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(device->machine,0,data);
+	cpunum_set_input_line(device->machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(50));
 }
 
 
-static WRITE8_HANDLER( sindbadm_misc_w )
+static WRITE8_DEVICE_HANDLER( sindbadm_misc_w )
 {
 	coin_counter_w(0, data & 0x02);
 //  mame_printf_debug("Unknown = %02X\n", data);
@@ -344,7 +338,7 @@ static WRITE8_HANDLER( sindbadm_SN76496_1_w )
 static const ppi8255_interface sindbadm_ppi_intf =
 {
 	NULL,
-	sindbadm_portb_r,
+	DEVICE8_PORT("FC"),
 	NULL,
 	sindbadm_soundport_w,
 	NULL,
@@ -954,8 +948,7 @@ static MACHINE_DRIVER_START( sindbadm )
 	MDRV_CPU_IO_MAP(sindbadm_portmap,0)
 	MDRV_CPU_VBLANK_INT("main", sindbadm_vblank_start)
 
-	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-	MDRV_DEVICE_CONFIG( sindbadm_ppi_intf )
+	MDRV_PPI8255_ADD( "ppi8255", sindbadm_ppi_intf )
 
 	/* video hardware */
 	MDRV_GFXDECODE(monsterb)
@@ -1406,14 +1399,14 @@ ROM_END
  *
  *************************************/
 
-static void monsterb_expand_gfx(const char *region)
+static void monsterb_expand_gfx(running_machine *machine, const char *region)
 {
 	UINT8 *temp, *dest;
 	int i;
 
 	/* expand the background ROMs; A11/A12 of each ROM is independently controlled via */
 	/* banking */
-	dest = memory_region(Machine, region);
+	dest = memory_region(machine, region);
 	temp = malloc_or_die(0x4000);
 	memcpy(temp, dest, 0x4000);
 
@@ -1488,7 +1481,7 @@ static DRIVER_INIT( monsterb )
 
 	/* configure video */
 	segag80r_background_pcb = G80_BACKGROUND_MONSTERB;
-	monsterb_expand_gfx("gfx1");
+	monsterb_expand_gfx(machine, "gfx1");
 
 	/* install background board handlers */
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xb8, 0xbd, 0, 0, monsterb_back_port_w);
@@ -1504,7 +1497,7 @@ static DRIVER_INIT( monster2 )
 
 	/* configure video */
 	segag80r_background_pcb = G80_BACKGROUND_PIGNEWT;
-	monsterb_expand_gfx("gfx1");
+	monsterb_expand_gfx(machine, "gfx1");
 
 	/* install background board handlers */
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xb4, 0xb5, 0, 0, pignewt_back_color_w);
@@ -1520,7 +1513,7 @@ static DRIVER_INIT( pignewt )
 
 	/* configure video */
 	segag80r_background_pcb = G80_BACKGROUND_PIGNEWT;
-	monsterb_expand_gfx("gfx1");
+	monsterb_expand_gfx(machine, "gfx1");
 
 	/* install background board handlers */
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xb4, 0xb5, 0, 0, pignewt_back_color_w);

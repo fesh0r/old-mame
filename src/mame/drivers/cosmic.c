@@ -358,12 +358,9 @@ static ADDRESS_MAP_START( cosmicg_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( cosmicg_readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( cosmicg_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READ(cosmicg_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( cosmicg_writeport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x15) AM_WRITE(cosmicg_output_w)
 	AM_RANGE(0x16, 0x17) AM_WRITE(cosmic_color_register_w)
 ADDRESS_MAP_END
@@ -967,7 +964,7 @@ static MACHINE_DRIVER_START( cosmicg )
             fed to the tms9904 or tms9980.  Also, I have never heard of a tms9900/9980 operating under
             1.5MHz.  So, if someone can check this... */
 	MDRV_CPU_PROGRAM_MAP(cosmicg_readmem,cosmicg_writemem)
-	MDRV_CPU_IO_MAP(cosmicg_readport,cosmicg_writeport)
+	MDRV_CPU_IO_MAP(cosmicg_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", cosmicg_interrupt)
 
 	/* video hardware */
@@ -1422,3 +1419,4 @@ GAME( 1980, panich,   panic,   panic,    panic,    0,       ROT270, "Universal",
 GAME( 1980, panicger, panic,   panic,    panic,    0,       ROT270, "Universal (ADP Automaten license)", "Space Panic (German)", 0 )
 GAME( 1980, devzone,  0,       devzone,  devzone,  devzone, ROT270, "Universal", "Devil Zone", GAME_IMPERFECT_SOUND )
 GAME( 1980, devzone2, devzone, devzone,  devzone2, devzone, ROT270, "Universal", "Devil Zone (easier)", GAME_IMPERFECT_SOUND )
+

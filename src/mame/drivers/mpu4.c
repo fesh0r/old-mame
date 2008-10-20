@@ -401,8 +401,8 @@ static void mpu4_stepper_reset(void)
 	int pattern = 0,reel;
 	for (reel = 0; reel < 6; reel++)
 	{
-		Stepper_reset_position(reel);
-		if (Stepper_optic_state(reel)) pattern |= 1<<reel;
+		stepper_reset_position(reel);
+		if (stepper_optic_state(reel)) pattern |= 1<<reel;
 	}
 	optic_pattern = pattern;
 }
@@ -480,7 +480,7 @@ static READ8_HANDLER( bankswitch_r )
 /* IC2 6840 PTM handler */
 static WRITE8_HANDLER( ic2_o1_callback )
 {
-	ptm6840_set_c2(0,data);
+	ptm6840_set_c2(machine,0,data);
 
 	/* copy output value to IC2 c2
     this output is the clock for timer2 */
@@ -492,7 +492,7 @@ static WRITE8_HANDLER( ic2_o2_callback )
 	pia_set_input_ca1(0, data); /* copy output value to IC3 ca1 */
 
 	/* the output from timer2 is the input clock for timer3 */
-	ptm6840_set_c3(   0, data);
+	ptm6840_set_c3(   machine, 0, data);
 }
 
 
@@ -501,7 +501,7 @@ static WRITE8_HANDLER( ic2_o3_callback )
 	/* the output from timer3 is used as a square wave for the alarm output
     and as an external clock source for timer 1! */
 
-	ptm6840_set_c1(   0, data);
+	ptm6840_set_c1(    machine, 0, data);
 }
 
 
@@ -806,15 +806,15 @@ static const pia6821_interface pia_ic5_intf =
 static WRITE8_HANDLER( pia_ic6_portb_w )
 {
 	LOG(("%04x IC6 PIA Port B Set to %2x (Reel A and B)\n", activecpu_get_previouspc(),data));
-	Stepper_update(0, data & 0x0F );
-	Stepper_update(1, (data>>4) & 0x0F );
+	stepper_update(0, data & 0x0F );
+	stepper_update(1, (data>>4) & 0x0F );
 
 /*  if ( pia_get_output_cb2(1)) */
 	{
-		if ( Stepper_optic_state(0) ) optic_pattern |=  0x01;
+		if ( stepper_optic_state(0) ) optic_pattern |=  0x01;
 		else                          optic_pattern &= ~0x01;
 
-		if ( Stepper_optic_state(1) ) optic_pattern |=  0x02;
+		if ( stepper_optic_state(1) ) optic_pattern |=  0x02;
 		else                          optic_pattern &= ~0x02;
 	}
 	draw_reel((0));
@@ -869,14 +869,14 @@ static const pia6821_interface pia_ic6_intf =
 static WRITE8_HANDLER( pia_ic7_porta_w )
 {
 	LOG(("%04x IC7 PIA Port A Set to %2x (Reel C and D)\n", activecpu_get_previouspc(),data));
-	Stepper_update(2, data & 0x0F );
-	Stepper_update(3, (data >> 4)& 0x0F );
+	stepper_update(2, data & 0x0F );
+	stepper_update(3, (data >> 4)& 0x0F );
 
 /*  if ( pia_get_output_cb2(1)) */
 	{
-		if ( Stepper_optic_state(2) ) optic_pattern |=  0x04;
+		if ( stepper_optic_state(2) ) optic_pattern |=  0x04;
 		else                          optic_pattern &= ~0x04;
-		if ( Stepper_optic_state(3) ) optic_pattern |=  0x08;
+		if ( stepper_optic_state(3) ) optic_pattern |=  0x08;
 		else                          optic_pattern &= ~0x08;
 	}
 	draw_reel((2));
@@ -949,7 +949,7 @@ static const pia6821_interface pia_ic7_intf =
 /* IC8, Inputs, TRIACS, alpha clock */
 static READ8_HANDLER( pia_ic8_porta_r )
 {
-	static const char *portnames[] = { "ORANGE1", "ORANGE2", "BLACK1", "BLACK2", "ORANGE1", "ORANGE2", "DIL1", "DIL2" };
+	static const char *const portnames[] = { "ORANGE1", "ORANGE2", "BLACK1", "BLACK2", "ORANGE1", "ORANGE2", "DIL1", "DIL2" };
 
 	LOG_IC8(("%04x IC8 PIA Read of Port A (MUX input data)\n", activecpu_get_previouspc()));
 /* The orange inputs are polled twice as often as the black ones, for reasons of efficiency.
@@ -1229,9 +1229,16 @@ static INPUT_PORTS_START( connect4 )
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_COIN4) PORT_NAME("100p")PORT_IMPULSE(5)
 INPUT_PORTS_END
 
+static const stepper_interface barcrest_reel_interface =
+{
+	BARCREST_48STEP_REEL,
+	0,
+	8,
+	0x00
+};
 
 /* Common configurations */
-static void mpu4_config_common(void)
+static void mpu4_config_common(running_machine *machine)
 {
 	pia_config(0,&pia_ic3_intf);
 	pia_config(1,&pia_ic4_intf);
@@ -1242,12 +1249,12 @@ static void mpu4_config_common(void)
 
 	ic24_timer = timer_alloc(ic24_timeout, NULL);
 	/* setup 6840ptm */
-	ptm6840_config(0, &ptm_ic2_intf );
+	ptm6840_config(machine, 0, &ptm_ic2_intf );
 }
 
 static MACHINE_START( mpu4mod2 )
 {
-	mpu4_config_common();
+	mpu4_config_common(machine);
 	pia_reset();
 
 	serial_card_connected=0;
@@ -1257,10 +1264,10 @@ static MACHINE_START( mpu4mod2 )
 	Mechmtr_init(8);
 
 	/* setup 4 reels */
-	Stepper_init(0, BARCREST_48STEP_REEL);
-	Stepper_init(1, BARCREST_48STEP_REEL);
-	Stepper_init(2, BARCREST_48STEP_REEL);
-	Stepper_init(3, BARCREST_48STEP_REEL);
+	stepper_config(0, &barcrest_reel_interface);
+	stepper_config(1, &barcrest_reel_interface);
+	stepper_config(2, &barcrest_reel_interface);
+	stepper_config(3, &barcrest_reel_interface);
 
 	/* setup the standard oki MSC1937 display */
 	ROC10937_init(0, MSC1937,0);
@@ -1414,10 +1421,10 @@ static MACHINE_DRIVER_START( mpu4mod2 )
 	MDRV_CPU_ADD("main", M6809, MPU4_MASTER_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(mod2_memmap,0)
 
-	MDRV_TIMER_ADD_PERIODIC("50HZ",gen_50hz, HZ(100))
+	MDRV_TIMER_ADD_PERIODIC("50hz",gen_50hz, HZ(100))
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("AY8913",AY8913, MPU4_MASTER_CLOCK/4)
+	MDRV_SOUND_ADD("ay8913",AY8913, MPU4_MASTER_CLOCK/4)
 	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 

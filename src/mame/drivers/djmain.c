@@ -287,7 +287,7 @@ static READ32_HANDLER( v_rom_r )
 static READ32_HANDLER( turntable_r )
 {
 	UINT32 result = 0;
-	static const char *ttnames[] = { "TT1", "TT2" };
+	static const char *const ttnames[] = { "TT1", "TT2" };
 
 	if (ACCESSING_BITS_8_15)
 	{
@@ -783,7 +783,7 @@ static INPUT_PORTS_START( popn1 )
 	PORT_DIPNAME( 0x10000000, 0x10000000, "All Song Mode" )		/* DSW 3-2 */
 	PORT_DIPSETTING(          0x10000000, DEF_STR( Off ) )
 	PORT_DIPSETTING(          0x00000000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02000000, 0x02000000, "Enable"RAVE\"" )		/* DSW 3-5 */
+	PORT_DIPNAME( 0x02000000, 0x02000000, "Enable\"RAVE\"" )		/* DSW 3-5 */
 	PORT_DIPSETTING(          0x02000000, DEF_STR( Off ) )
 	PORT_DIPSETTING(          0x00000000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x01000000, 0x01000000, "Bonus Track" )		/* DSW 3-6 */

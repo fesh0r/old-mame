@@ -97,14 +97,10 @@ VIDEO_START( senjyo );
 VIDEO_UPDATE( senjyo );
 extern int is_senjyo, senjyo_scrollhack;
 
+/* in audio/senjyo.c */
+extern const z80_daisy_chain senjyo_daisy_chain[];
+extern const z80pio_interface senjyo_pio_intf;
 void senjyo_sh_start(void);
-
-WRITE8_HANDLER( senjyo_sh_0_w );
-WRITE8_HANDLER( senjyo_sh_1_w );
-WRITE8_HANDLER( senjyo_sh_2_w );
-
-WRITE8_HANDLER( starforc_pio_w );
-READ8_HANDLER( starforc_pio_r );
 
 WRITE8_HANDLER( senjyo_volume_w );
 
@@ -166,11 +162,11 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa800, 0xafff) AM_READ(SMH_RAM)
 	AM_RANGE(0xb000, 0xb7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xb800, 0xbbff) AM_READ(SMH_RAM)
-	AM_RANGE(0xd000, 0xd000) AM_READ(input_port_0_r)	/* player 1 input */
-	AM_RANGE(0xd001, 0xd001) AM_READ(input_port_1_r)	/* player 2 input */
-	AM_RANGE(0xd002, 0xd002) AM_READ(input_port_2_r)	/* coin */
-	AM_RANGE(0xd004, 0xd004) AM_READ(input_port_3_r)	/* DSW1 */
-	AM_RANGE(0xd005, 0xd005) AM_READ(input_port_4_r)	/* DSW2 */
+	AM_RANGE(0xd000, 0xd000) AM_READ_PORT("P1")
+	AM_RANGE(0xd001, 0xd001) AM_READ_PORT("P2")
+	AM_RANGE(0xd002, 0xd002) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0xd004, 0xd004) AM_READ_PORT("DSW1")
+	AM_RANGE(0xd005, 0xd005) AM_READ_PORT("DSW2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -199,7 +195,7 @@ AM_RANGE(0x9e00, 0x9e3f) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xb000, 0xb7ff) AM_WRITE(senjyo_bg1videoram_w) AM_BASE(&senjyo_bg1videoram)
 	AM_RANGE(0xb800, 0xbbff) AM_WRITE(SMH_RAM) AM_BASE(&senjyo_radarram)
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(flip_screen_w)
-	AM_RANGE(0xd004, 0xd004) AM_WRITE(z80pioA_0_p_w)
+	AM_RANGE(0xd004, 0xd004) AM_DEVWRITE(Z80PIO, "z80pio", z80pio_p_w)
 ADDRESS_MAP_END
 
 
@@ -257,7 +253,7 @@ static ADDRESS_MAP_START( starforb_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb000, 0xb7ff) AM_WRITE(senjyo_bg1videoram_w) AM_BASE(&senjyo_bg1videoram)
 	AM_RANGE(0xb800, 0xbbff) AM_WRITE(SMH_RAM) AM_BASE(&senjyo_radarram)
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(flip_screen_w)
-	AM_RANGE(0xd004, 0xd004) AM_WRITE(z80pioA_0_p_w)
+	AM_RANGE(0xd004, 0xd004) AM_DEVWRITE(Z80PIO, "z80pio", z80pio_p_w)
 
 	/* these aren't used / written, left here to make sure memory is allocated */
 	AM_RANGE(0xfe00, 0xfe1f) AM_WRITE(SMH_RAM) AM_BASE(&senjyo_fgscroll)
@@ -288,36 +284,29 @@ static ADDRESS_MAP_START( starforb_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
-static WRITE8_HANDLER( pio_w )
+static WRITE8_DEVICE_HANDLER( pio_w )
 {
 	if (offset & 1)
-		z80pio_c_w(0, (offset >> 1) & 1, data);
+		z80pio_c_w(device, (offset >> 1) & 1, data);
 	else
-		z80pio_d_w(0, (offset >> 1) & 1, data);
+		z80pio_d_w(device, (offset >> 1) & 1, data);
 }
 
-static READ8_HANDLER( pio_r )
+static READ8_DEVICE_HANDLER( pio_r )
 {
-	return (offset & 1) ? z80pio_c_r(0, (offset >> 1) & 1) : z80pio_d_r(0, (offset >> 1) & 1);
+	return (offset & 1) ? z80pio_c_r(device, (offset >> 1) & 1) : z80pio_d_r(device, (offset >> 1) & 1);
 }
 
-static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x03) AM_READ(pio_r)
-	AM_RANGE(0x08, 0x0b) AM_READ(z80ctc_0_r)
+	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE(Z80PIO, "z80pio", pio_r, pio_w)
+	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE(Z80CTC, "z80ctc", z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x03) AM_WRITE(pio_w)
-	AM_RANGE(0x08, 0x0b) AM_WRITE(z80ctc_0_w)
-ADDRESS_MAP_END
-
 
 
 
 static INPUT_PORTS_START( senjyo )
-	PORT_START("P1")	/* IN0 */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -327,7 +316,7 @@ static INPUT_PORTS_START( senjyo )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START("P2")	/* IN1 */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
@@ -337,7 +326,7 @@ static INPUT_PORTS_START( senjyo )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START("SYSTEM")	/* IN2 */
+	PORT_START("SYSTEM")
 	/* coin input for both must be active between 2 and 9 frames to be consistently recognized */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(2)
@@ -348,7 +337,7 @@ static INPUT_PORTS_START( senjyo )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START("DSW1")	/* DSW0 */
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_2C ) )
@@ -371,7 +360,7 @@ static INPUT_PORTS_START( senjyo )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START("DSW2")	/* DSW1 */
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -398,7 +387,7 @@ static INPUT_PORTS_START( senjyo )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( starforc )
-	PORT_START("P1")	/* IN0 */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -408,7 +397,7 @@ static INPUT_PORTS_START( starforc )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START("P2")	/* IN1 */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
@@ -418,7 +407,7 @@ static INPUT_PORTS_START( starforc )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START("SYSTEM")	/* IN2 */
+	PORT_START("SYSTEM")
 	/* coin input for both must be active between 2 and 9 frames to be consistently recognized */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(2)
@@ -429,7 +418,7 @@ static INPUT_PORTS_START( starforc )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START("DSW1")	/* DSW0 */
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -452,7 +441,7 @@ static INPUT_PORTS_START( starforc )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START("DSW2")	/* DSW1 */
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x00, "50k, 200k and 500k" )
 	PORT_DIPSETTING(    0x01, "100k, 300k and 800k" )
@@ -479,7 +468,7 @@ static INPUT_PORTS_START( starforc )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( baluba )
-	PORT_START("P1")	/* IN0 */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -489,7 +478,7 @@ static INPUT_PORTS_START( baluba )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START("P2")	/* IN1 */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
@@ -499,7 +488,7 @@ static INPUT_PORTS_START( baluba )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START("SYSTEM")	/* IN2 */
+	PORT_START("SYSTEM")
 	/* coin input for both must be active between 2 and 9 frames to be consistently recognized */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(2)
@@ -510,7 +499,7 @@ static INPUT_PORTS_START( baluba )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START("DSW1")	/* DSW0 */
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -533,7 +522,7 @@ static INPUT_PORTS_START( baluba )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START("DSW2")	/* DSW1 */
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x00, "30k, 100k and 200k" )
 	PORT_DIPSETTING(    0x01, "50k, 200k and 500k" )
@@ -626,15 +615,6 @@ GFXDECODE_END
 
 
 
-static const struct z80_irq_daisy_chain daisy_chain[] =
-{
-	{ z80ctc_reset, z80ctc_irq_state, z80ctc_irq_ack, z80ctc_irq_reti , 0 }, /* device 0 = CTC_0 , high priority */
-	{ z80pio_reset, z80pio_irq_state, z80pio_irq_ack, z80pio_irq_reti , 0 }, /* device 1 = PIO_0 , low  priority */
-	{ 0,0,0,0,-1} 	   /* end mark */
-};
-
-
-
 static const samples_interface senjyo_samples_interface =
 {
 	1,
@@ -643,6 +623,7 @@ static const samples_interface senjyo_samples_interface =
 };
 
 
+extern const z80ctc_interface senjyo_ctc_intf;
 
 static MACHINE_DRIVER_START( senjyo )
 
@@ -652,11 +633,14 @@ static MACHINE_DRIVER_START( senjyo )
 	MDRV_CPU_VBLANK_INT("main", senjyo_interrupt)
 
 	MDRV_CPU_ADD("sub", Z80, 2000000)	/* 2 MHz? */
-	MDRV_CPU_CONFIG(daisy_chain)
+	MDRV_CPU_CONFIG(senjyo_daisy_chain)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
+	MDRV_CPU_IO_MAP(sound_io_map,0)
 
 	MDRV_MACHINE_RESET(senjyo)
+
+	MDRV_Z80PIO_ADD( "z80pio", senjyo_pio_intf )
+	MDRV_Z80CTC_ADD( "z80ctc", senjyo_ctc_intf )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -986,12 +970,12 @@ ROM_START( baluba )
 ROM_END
 
 
-DRIVER_INIT( starforc )
+static DRIVER_INIT( starforc )
 {
 	is_senjyo = 0;
 	senjyo_scrollhack = 1;
 }
-DRIVER_INIT( starfore )
+static DRIVER_INIT( starfore )
 {
 	/* encrypted CPU */
 	suprloco_decode(machine, "main");
@@ -1000,7 +984,7 @@ DRIVER_INIT( starfore )
 	senjyo_scrollhack = 0;
 }
 
-DRIVER_INIT( starfora )
+static DRIVER_INIT( starfora )
 {
 	/* encrypted CPU */
 	yamato_decode(machine, "main");
@@ -1009,7 +993,7 @@ DRIVER_INIT( starfora )
 	senjyo_scrollhack = 1;
 }
 
-DRIVER_INIT( senjyo )
+static DRIVER_INIT( senjyo )
 {
 	is_senjyo = 1;
 	senjyo_scrollhack = 0;
@@ -1023,3 +1007,4 @@ GAME( 1984, starforb, starforc, starforb,starforc, starfore, ROT90, "[Tehkan] (b
 GAME( 1984, starfora, starforc, senjyo,  starforc, starfora, ROT90, "Tehkan", "Star Force (encrypted, set 2)", 0 )
 GAME( 1985, megaforc, starforc, senjyo,  starforc, starforc, ROT90, "Tehkan (Video Ware license)", "Mega Force", 0 )
 GAME( 1986, baluba,   0,        senjyo,  baluba,   starforc, ROT90, "Able Corp, Ltd.", "Baluba-louk no Densetsu", GAME_IMPERFECT_COLORS )
+

@@ -77,6 +77,7 @@ Notes:
 
 static UINT16 *bitmap0, *bitmap1, *wram;
 static int vbuffer = 0;
+static int old_bank;
 
 static WRITE16_HANDLER( pasha2_misc_w )
 {
@@ -84,7 +85,6 @@ static WRITE16_HANDLER( pasha2_misc_w )
 	{
 		if(data & 0x0800)
 		{
-			static int old_bank = -1;
 			int bank = data & 0xf000;
 
 			if(bank != old_bank)
@@ -234,9 +234,9 @@ static ADDRESS_MAP_START( pasha2_io, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE(0x08, 0x0b) AM_READNOP //sound status?
 	AM_RANGE(0x18, 0x1b) AM_READNOP //sound status?
 	AM_RANGE(0x20, 0x23) AM_WRITE(pasha2_lamps_w)
-	AM_RANGE(0x40, 0x43) AM_READ(input_port_0_word_r)
-	AM_RANGE(0x60, 0x63) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x80, 0x83) AM_READ(input_port_2_word_r)
+	AM_RANGE(0x40, 0x43) AM_READ_PORT("COINS")
+	AM_RANGE(0x60, 0x63) AM_READ_PORT("DSW")
+	AM_RANGE(0x80, 0x83) AM_READ_PORT("INPUTS")
 	AM_RANGE(0xa0, 0xa3) AM_WRITENOP //soundlatch?
 	AM_RANGE(0xc0, 0xc3) AM_WRITE(pasha2_misc_w)
 	AM_RANGE(0xe0, 0xe3) AM_READWRITE(oki_0_r, oki_0_w)
@@ -386,12 +386,19 @@ static VIDEO_UPDATE( pasha2 )
 	return 0;
 }
 
+static MACHINE_RESET( pasha2 )
+{
+	old_bank = -1;
+	vbuffer = 0;
+}
+
 static MACHINE_DRIVER_START( pasha2 )
 	MDRV_CPU_ADD("main", E116XT, 20000000*4)		/* 4x internal multiplier */
 	MDRV_CPU_PROGRAM_MAP(pasha2_map,0)
 	MDRV_CPU_IO_MAP(pasha2_io,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
+	MDRV_MACHINE_RESET(pasha2)
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */

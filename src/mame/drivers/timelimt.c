@@ -52,6 +52,7 @@ static WRITE8_HANDLER( sound_reset_w )
 		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE );
 }
 
+/***************************************************************************/
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)		/* rom */
@@ -59,9 +60,9 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8800, 0x8bff) AM_READ(SMH_RAM)		/* video ram */
 	AM_RANGE(0x9000, 0x97ff) AM_READ(SMH_RAM)		/* background ram */
 	AM_RANGE(0x9800, 0x98ff) AM_READ(SMH_RAM)		/* sprite ram */
-	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r)/* input port */
-	AM_RANGE(0xa800, 0xa800) AM_READ(input_port_1_r)/* input port */
-	AM_RANGE(0xb000, 0xb000) AM_READ(input_port_2_r)/* DSW */
+	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("INPUTS")
+	AM_RANGE(0xa800, 0xa800) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0xb000, 0xb000) AM_READ_PORT("DSW")
 	AM_RANGE(0xb800, 0xb800) AM_READ(SMH_NOP)		/* NMI ack? */
 ADDRESS_MAP_END
 
@@ -81,7 +82,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc804, 0xc804) AM_WRITE(SMH_NOP)		/* ???? not used */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(watchdog_reset_r)
 ADDRESS_MAP_END
@@ -96,25 +97,21 @@ static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3800, 0x3bff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( readport_sound, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x8c, 0x8d) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x8e, 0x8f) AM_READ(ay8910_read_port_1_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writeport_sound, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(soundlatch_clear_w)
 	AM_RANGE(0x8c, 0x8c) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x8c, 0x8d) AM_READ(ay8910_read_port_0_r)
 	AM_RANGE(0x8d, 0x8d) AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0x8e, 0x8e) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x8e, 0x8f) AM_READ(ay8910_read_port_1_r)
 	AM_RANGE(0x8f, 0x8f) AM_WRITE(ay8910_write_port_1_w)
 ADDRESS_MAP_END
 
 /***************************************************************************/
 
 static INPUT_PORTS_START( timelimt )
-	PORT_START("IN0")
+	PORT_START("INPUTS")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY
@@ -124,7 +121,7 @@ static INPUT_PORTS_START( timelimt )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* probably unused */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* probably unused */
 
-	PORT_START("IN1")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
@@ -134,7 +131,7 @@ static INPUT_PORTS_START( timelimt )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* probably unused */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* probably unused */
 
-	PORT_START("DSW1")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x07, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -159,7 +156,7 @@ static INPUT_PORTS_START( timelimt )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( progress )
-	PORT_START("IN0")
+	PORT_START("INPUTS")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
@@ -169,7 +166,7 @@ static INPUT_PORTS_START( progress )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* probably unused */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON3 )
 
-	PORT_START("IN1")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
@@ -179,7 +176,7 @@ static INPUT_PORTS_START( progress )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* probably unused */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* probably unused */
 
-	PORT_START("DSW1")
+	PORT_START("DSW")
 	PORT_DIPNAME( 0x07, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -265,12 +262,12 @@ static MACHINE_DRIVER_START( timelimt )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", Z80, 5000000)	/* 5.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_IO_MAP(readport,0)
+	MDRV_CPU_IO_MAP(io_map,0)
 	MDRV_CPU_VBLANK_INT("main", timelimt_irq)
 
 	MDRV_CPU_ADD("audio", Z80,18432000/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
-	MDRV_CPU_IO_MAP(readport_sound,writeport_sound)
+	MDRV_CPU_IO_MAP(sound_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* ? */
 
 	MDRV_INTERLEAVE(50)
@@ -380,3 +377,4 @@ ROM_END
 
 GAME( 1983, timelimt, 0, timelimt, timelimt, 0, ROT90, "Chuo Co. Ltd", "Time Limit", GAME_IMPERFECT_COLORS )
 GAME( 1984, progress, 0, progress, progress, 0, ROT90, "Chuo Co. Ltd", "Progress", 0 )
+

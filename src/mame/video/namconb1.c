@@ -4,6 +4,7 @@
 #include "namconb1.h"
 #include "namcoic.h"
 #include "namcos2.h"
+#include "audio/namcoc7x.h"
 
 static UINT32 tilemap_tile_bank[4];
 
@@ -101,67 +102,10 @@ static void namconb1_install_palette(running_machine *machine)
 	}
 } /* namconb1_install_palette */
 
-/**
- * MCU simulation.  It manages coinage, input ports, and presumably
- * communication with the sound CPU.
- */
-static void
-handle_mcu( running_machine *machine )
-{
-	static int toggle;
-	static UINT16 credits;
-	static int old_coin_state;
-	static int old_p1;
-	static int old_p2;
-	static int old_p3;
-	static int old_p4;
-	int new_coin_state = input_port_read(machine, "COIN") & 0x3;	/* coin1,2 */
-	unsigned dsw = input_port_read(machine, "DSW")<<16;
-	unsigned p1 = input_port_read(machine, "P1");
-	unsigned p2 = input_port_read(machine, "P2");
-	unsigned p3;
-	unsigned p4;
-	toggle = !toggle;
-	if( toggle ) dsw &= ~(0x80<<16);
-	if( namcos2_gametype == NAMCONB2_MACH_BREAKERS )
-	{
-		p3 = input_port_read_safe(machine, "P3", 0);
-		p4 = input_port_read_safe(machine, "P4", 0);
-	}
-	else
-	{
-		p3 = 0;
-		p4 = 0;
-	}
-
-	p1 = (p1&(~old_p1))|(p1<<8);
-	p2 = (p2&(~old_p2))|(p2<<8);
-	p3 = (p3&(~old_p3))|(p3<<8);
-	p4 = (p4&(~old_p4))|(p4<<8);
-
-	old_p1 = p1;
-	old_p2 = p2;
-	old_p3 = p3;
-	old_p4 = p4;
-
-	namconb1_workram32[0x6000/4] = dsw|p1;
-	namconb1_workram32[0x6004/4] = (p2<<16)|p3;
-	namconb1_workram32[0x6008/4] = p4<<16;
-
-	if( new_coin_state && !old_coin_state )
-	{
-		credits++;
-	}
-	old_coin_state = new_coin_state;
-	namconb1_workram32[0x601e/4] &= 0xffff0000;
-	namconb1_workram32[0x601e/4] |= credits;
-} /* handle_mcu */
-
 static void
 video_update_common(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int bROZ )
 {
 	int pri;
-	handle_mcu(machine);
 	namconb1_install_palette(machine);
 
 	if( bROZ )

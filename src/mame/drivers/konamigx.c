@@ -873,16 +873,19 @@ static double adc0834_callback( int input )
 
 static READ32_HANDLER( le2_gun_H_r )
 {
-	int p1x = input_port_read(machine, "LIGHT0_X")*287/0xff+22;
-	int p2x = input_port_read(machine, "LIGHT1_X")*287/0xff+22;
+	int p1x = input_port_read(machine, "LIGHT0_X")*290/0xff+20;
+	int p2x = input_port_read(machine, "LIGHT1_X")*290/0xff+20;
 
 	return (p1x<<16)|p2x;
 }
 
 static READ32_HANDLER( le2_gun_V_r )
 {
-	int p1y = input_port_read(machine, "LIGHT0_Y")*223/0xff+1;
-	int p2y = input_port_read(machine, "LIGHT1_Y")*223/0xff+1;
+	int p1y = input_port_read(machine, "LIGHT0_Y")*224/0xff;
+	int p2y = input_port_read(machine, "LIGHT1_Y")*224/0xff;
+
+	// make "off the bottom" reload too
+	if (p1y >= 0xdf) p1y = 0;
 
 	return (p1y<<16)|p2y;
 }
@@ -939,7 +942,7 @@ static READ32_HANDLER( type3_sync_r )
 	return sync_frame;
 }
 
-static int last_prot_op = -1, last_prot_clk;
+static int last_prot_op, last_prot_clk;
 
 /*
     Run and Gun 2, Rushing Heroes, Winning Spike, and Vs. Net Soccer contain a XILINX FPGA that serves as security.
@@ -3353,8 +3356,8 @@ static DRIVER_INIT(konamigx)
 			switch (gameDefs[i].special)
 	{
 				case 1:	// LE2 guns
-		memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd44000, 0xd44003, 0, 0, le2_gun_H_r );
-		memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd44004, 0xd44007, 0, 0, le2_gun_V_r );
+					memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd44000, 0xd44003, 0, 0, le2_gun_H_r );
+					memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd44004, 0xd44007, 0, 0, le2_gun_V_r );
 					break;
 
 				case 2:	// tkmmpzdm hack

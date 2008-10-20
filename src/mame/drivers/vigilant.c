@@ -82,11 +82,11 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( vigilant_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(input_port_0_r, m72_sound_command_byte_w)	/* SD */
-	AM_RANGE(0x01, 0x01) AM_READWRITE(input_port_1_r, vigilant_out2_w) 			/* OUT2 */
-	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
-	AM_RANGE(0x03, 0x03) AM_READ(input_port_3_r)
-	AM_RANGE(0x04, 0x04) AM_READWRITE(input_port_4_r, vigilant_bank_select_w)	/* PBANK */
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0") AM_WRITE(m72_sound_command_byte_w)	/* SD */
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1") AM_WRITE(vigilant_out2_w) 			/* OUT2 */
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN2")
+	AM_RANGE(0x03, 0x03) AM_READ_PORT("DSW1")
+	AM_RANGE(0x04, 0x04) AM_READ_PORT("DSW2") AM_WRITE(vigilant_bank_select_w)	/* PBANK */
 	AM_RANGE(0x80, 0x81) AM_WRITE(vigilant_horiz_scroll_w) 		/* HSPL, HSPH */
 	AM_RANGE(0x82, 0x83) AM_WRITE(vigilant_rear_horiz_scroll_w) /* RHSPL, RHSPH */
 	AM_RANGE(0x84, 0x84) AM_WRITE(vigilant_rear_color_w) 		/* RCOD */
@@ -103,11 +103,11 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kikcubic_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(input_port_3_r, kikcubic_coin_w)	/* also flip screen, and...? */
-	AM_RANGE(0x01, 0x01) AM_READ(input_port_4_r)
-	AM_RANGE(0x02, 0x02) AM_READ(input_port_0_r)
-	AM_RANGE(0x03, 0x03) AM_READ(input_port_1_r)
-	AM_RANGE(0x04, 0x04) AM_READWRITE(input_port_2_r, vigilant_bank_select_w)
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("DSW1") AM_WRITE(kikcubic_coin_w)	/* also flip screen, and...? */
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("DSW2")
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN0")
+	AM_RANGE(0x03, 0x03) AM_READ_PORT("IN1")
+	AM_RANGE(0x04, 0x04) AM_READ_PORT("IN2") AM_WRITE(vigilant_bank_select_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(m72_sound_command_byte_w)
 //  AM_RANGE(0x07, 0x07) AM_WRITE(SMH_NOP) /* ?? */
 ADDRESS_MAP_END
@@ -169,7 +169,7 @@ static INPUT_PORTS_START( vigilant )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 
-	PORT_START("DSW0")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(	0x02, "2" )
 	PORT_DIPSETTING(	0x03, "3" )
@@ -200,7 +200,7 @@ static INPUT_PORTS_START( vigilant )
 	PORT_DIPSETTING(	0x50, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( Free_Play ) )
 
-	PORT_START("DSW1")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -260,7 +260,7 @@ static INPUT_PORTS_START( kikcubic )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 
-	PORT_START("DSW0")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Medium ) )
@@ -290,7 +290,7 @@ static INPUT_PORTS_START( kikcubic )
 //  PORT_DIPSETTING(    0x80, "Undefined" )
 //  PORT_DIPSETTING(    0x90, "Undefined" )
 
-	PORT_START("DSW1")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -343,7 +343,7 @@ static INPUT_PORTS_START( buccanrs )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 
-	PORT_START("DSW0")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(	0x04, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(	0x07, DEF_STR( 3C_1C ) )
@@ -371,7 +371,7 @@ static INPUT_PORTS_START( buccanrs )
 	PORT_DIPSETTING(	0xc0, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(	0xb0, DEF_STR( 1C_5C ) )
 
-	PORT_START("DSW1")
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -534,7 +534,7 @@ static MACHINE_DRIVER_START( vigilant )
 	MDRV_CPU_IO_MAP(vigilant_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 3579645)		   /* 3.579645 MHz */
+	MDRV_CPU_ADD("sound", Z80, 3579645)		   /* 3.579645 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,128)	/* clocked by V1 */
@@ -577,7 +577,7 @@ static MACHINE_DRIVER_START( buccanrs )
 	MDRV_CPU_IO_MAP(vigilant_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 18432000/6)		   /* 3.072000 MHz */
+	MDRV_CPU_ADD("sound", Z80, 18432000/6)		   /* 3.072000 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(buccanrs_sound_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,128)	/* clocked by V1 */
@@ -636,7 +636,7 @@ static MACHINE_DRIVER_START( kikcubic )
 	MDRV_CPU_IO_MAP(kikcubic_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 3579645)		   /* 3.579645 MHz */
+	MDRV_CPU_ADD("sound", Z80, 3579645)		   /* 3.579645 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,128)	/* clocked by V1 */
@@ -685,7 +685,7 @@ ROM_START( vigilant )
 	ROM_LOAD( "j07_c04.bin",  0x10000, 0x10000, CRC(e0159105) SHA1(da6d74ec075863c67c0ce21b07a54029d138f688) )
 	/* 0x20000-0x2ffff empty */
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for sound */
+	ROM_REGION( 0x10000, "sound", 0 ) /* 64k for sound */
 	ROM_LOAD( "g05_c02.bin",  0x00000, 0x10000, CRC(10582b2d) SHA1(6e7e5f07c49b347b427572efeb180c89f49bf2c7) )
 
 	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE )
@@ -722,7 +722,7 @@ ROM_START( vigilntu )
 	ROM_LOAD( "a-8l",  0x10000, 0x10000, CRC(7f95799b) SHA1(a371671c3c26976314aaac4e410bff0f13a8a085) )
 	/* 0x20000-0x2ffff empty */
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for sound */
+	ROM_REGION( 0x10000, "sound", 0 ) /* 64k for sound */
 	ROM_LOAD( "g05_c02.bin",  0x00000, 0x10000, CRC(10582b2d) SHA1(6e7e5f07c49b347b427572efeb180c89f49bf2c7) )
 
 	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE )
@@ -759,7 +759,7 @@ ROM_START( vigilntj )
 	ROM_LOAD( "vg_a-8l.rom",  0x10000, 0x10000, CRC(3b12b1d8) SHA1(2f9207f8d8ec41ea1b8f5bf3c69a97d1d09f6c3f) )
 	/* 0x20000-0x2ffff empty */
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for sound */
+	ROM_REGION( 0x10000, "sound", 0 ) /* 64k for sound */
 	ROM_LOAD( "g05_c02.bin",  0x00000, 0x10000, CRC(10582b2d) SHA1(6e7e5f07c49b347b427572efeb180c89f49bf2c7) )
 
 	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE )
@@ -796,7 +796,7 @@ ROM_START( kikcubic )
 	ROM_LOAD( "mqj-b0",       0x10000, 0x10000, CRC(d9bcf4cd) SHA1(f1f1cb8609343dae8637f115e5c96fd88a00f5eb) )
 	ROM_LOAD( "mqj-b1",       0x20000, 0x10000, CRC(54a0abe1) SHA1(0fb1d050c1e299394609214c903bcf4cf11329ff) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for sound */
+	ROM_REGION( 0x10000, "sound", 0 ) /* 64k for sound */
 	ROM_LOAD( "mqj-sp",       0x00000, 0x10000, CRC(bbcf3582) SHA1(4a5b9d4161b26e3ca400573fa78268893e42d5db) )
 
 	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE )
@@ -823,7 +823,7 @@ ROM_START( kikcubib )
 	ROM_LOAD( "5.bin",        0x20000, 0x08000, CRC(a5a6bffd) SHA1(372452c8c9b2c65307434af19eddcb60e7cd0fa3) )
 	ROM_RELOAD(				  0x28000, 0x08000 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for sound */
+	ROM_REGION( 0x10000, "sound", 0 ) /* 64k for sound */
 	ROM_LOAD( "mqj-sp",       0x00000, 0x10000, CRC(bbcf3582) SHA1(4a5b9d4161b26e3ca400573fa78268893e42d5db) ) /* 2.bin */
 
 	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE )
@@ -854,7 +854,7 @@ ROM_START( buccanrs )
 	ROM_LOAD( "11.u58",  0x00000, 0x10000, CRC(bf1d7e6f) SHA1(55dcf993515b57c3eb1fab98097a2171df3e38ed) ) // both halves are identical (correct for rom type on this board tho)
 	ROM_LOAD( "12.u25",  0x10000, 0x10000, CRC(87303ba8) SHA1(49a25393e853b9adf7df00a6f9c38a526a02ea4e) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for sound */
+	ROM_REGION( 0x10000, "sound", 0 ) /* 64k for sound */
 	ROM_LOAD( "1.u128",  0x00000, 0x10000, CRC(eb65f8c3) SHA1(82566becb630ce92303905dc0c5bef9e80e9caad) )
 
 	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE )
@@ -893,7 +893,7 @@ ROM_START( buccanra )
 	ROM_LOAD( "bc-011",  0x00000, 0x08000, CRC(6b657ef1) SHA1(a3356654d4b04177af23b39e924cc5ad64930bb6) )
 	ROM_LOAD( "12.u25",  0x10000, 0x10000, CRC(87303ba8) SHA1(49a25393e853b9adf7df00a6f9c38a526a02ea4e) ) // not from this set, hopefully its only a data rom
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for sound */
+	ROM_REGION( 0x10000, "sound", 0 ) /* 64k for sound */
 	ROM_LOAD( "1.u128",  0x00000, 0x10000, CRC(eb65f8c3) SHA1(82566becb630ce92303905dc0c5bef9e80e9caad) )
 
 	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE )

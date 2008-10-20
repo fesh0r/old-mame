@@ -16,7 +16,7 @@ TODO:
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/z80/z80.h"
-#include "cpu/i8039/i8039.h"
+#include "cpu/mcs48/mcs48.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 
@@ -140,12 +140,12 @@ static ADDRESS_MAP_START( pandoras_readmem_b, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_RAM) AM_SHARE(1)/* Work RAM (Shared with CPU A) */
 	AM_RANGE(0x1000, 0x13ff) AM_READ(SMH_RAM) AM_SHARE(2) 		/* Color RAM (shared with CPU A) */
 	AM_RANGE(0x1400, 0x17ff) AM_READ(SMH_RAM) AM_SHARE(3) 	/* Video RAM (shared with CPU A) */
-	AM_RANGE(0x1800, 0x1800) AM_READ(input_port_0_r)			/* DIPSW #1 */
-	AM_RANGE(0x1a00, 0x1a00) AM_READ(input_port_3_r)			/* COINSW */
-	AM_RANGE(0x1a01, 0x1a01) AM_READ(input_port_4_r)			/* 1P inputs */
-	AM_RANGE(0x1a02, 0x1a02) AM_READ(input_port_5_r)			/* 2P inputs */
-	AM_RANGE(0x1a03, 0x1a03) AM_READ(input_port_2_r)			/* DIPSW #3 */
-	AM_RANGE(0x1c00, 0x1c00) AM_READ(input_port_1_r)			/* DISPW #2 */
+	AM_RANGE(0x1800, 0x1800) AM_READ_PORT("DSW1")
+	AM_RANGE(0x1a00, 0x1a00) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x1a01, 0x1a01) AM_READ_PORT("P1")
+	AM_RANGE(0x1a02, 0x1a02) AM_READ_PORT("P2")
+	AM_RANGE(0x1a03, 0x1a03) AM_READ_PORT("DSW3")
+	AM_RANGE(0x1c00, 0x1c00) AM_READ_PORT("DSW2")
 //  AM_RANGE(0x1e00, 0x1e00) AM_READ(SMH_NOP)              /* ??? seems to be important */
 	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM) AM_SHARE(4)	/* Shared RAM with the CPU A */
 	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_ROM)				/* ROM */
@@ -186,13 +186,10 @@ static ADDRESS_MAP_START( i8039_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( i8039_readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( i8039_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0xff) AM_READ(soundlatch2_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( i8039_writeport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(I8039_p1, I8039_p1) AM_WRITE(dac_0_data_w)
-	AM_RANGE(I8039_p2, I8039_p2) AM_WRITE(i8039_irqen_and_status_w)
+	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_WRITE(dac_0_data_w)
+	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_WRITE(i8039_irqen_and_status_w)
 ADDRESS_MAP_END
 
 
@@ -203,7 +200,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( pandoras )
-	PORT_START("DSW1")	/* DSW #1 */
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
@@ -239,7 +236,7 @@ static INPUT_PORTS_START( pandoras )
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
 //  PORT_DIPSETTING(    0x00, "Invalid" )
 
-	PORT_START("DSW2")	/* DSW #2 */
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x03, "3" )
 	PORT_DIPSETTING(    0x02, "4" )
@@ -262,7 +259,7 @@ static INPUT_PORTS_START( pandoras )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START("DSw3")	/* DSW #3 */
+	PORT_START("DSW3")
 	PORT_DIPNAME( 0x01, 0x01, "Freeze" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -288,7 +285,7 @@ static INPUT_PORTS_START( pandoras )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START("SYSTEM")	/* COINSW */
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -297,7 +294,7 @@ static INPUT_PORTS_START( pandoras )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START("P1")	/* PLAYER 1 INPUTS */
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -305,7 +302,7 @@ static INPUT_PORTS_START( pandoras )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START("P2")	/* PLAYER 2 INPUTS */
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
@@ -393,7 +390,7 @@ static MACHINE_DRIVER_START( pandoras )
 
 	MDRV_CPU_ADD("mcu", I8039,14318000/2)
 	MDRV_CPU_PROGRAM_MAP(i8039_readmem,i8039_writemem)
-	MDRV_CPU_IO_MAP(i8039_readport,i8039_writeport)
+	MDRV_CPU_IO_MAP(i8039_io_map,0)
 
 	MDRV_INTERLEAVE(50)	/* slices per frame */
 
@@ -466,3 +463,4 @@ ROM_END
 
 
 GAME( 1984, pandoras, 0, pandoras, pandoras, 0, ROT90, "Konami/Interlogic", "Pandora's Palace", 0 )
+

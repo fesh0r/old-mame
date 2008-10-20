@@ -18,6 +18,7 @@
 
 /* General Bootleg Functions - used by more than 1 game */
 
+
 void neogeo_bootleg_cx_decrypt( running_machine *machine )
 {
 	int i;
@@ -33,6 +34,7 @@ void neogeo_bootleg_cx_decrypt( running_machine *machine )
 
 	free( buf );
 }
+
 
 void neogeo_bootleg_sx_decrypt( running_machine *machine, int value )
 {
@@ -62,9 +64,9 @@ void neogeo_bootleg_sx_decrypt( running_machine *machine, int value )
 
 /* The King of Gladiator (The King of Fighters '97 bootleg) */
 
-/* the protection patching here may be incomplete */
 
-// Thanks to Razoola for the info
+/* The protection patching here may be incomplete
+   Thanks to Razoola for the info */
 
 void kog_px_decrypt( running_machine *machine )
 {
@@ -127,7 +129,9 @@ void kog_px_decrypt( running_machine *machine )
 
 }
 
-/* Kof 10th Anniversary (bootleg of King of Fighters 2002 */
+
+/* The King of Fighters 10th Anniversary (The King of Fighters 2002 bootleg) */
+
 
 /* this uses RAM based tiles for the text layer, however the implementation
   is incomplete, at the moment the S data is copied from the program rom on
@@ -135,12 +139,12 @@ void kog_px_decrypt( running_machine *machine )
 
 static UINT16 kof10thExtraRAMB[0x01000];
 
-static void kof10thBankswitch(UINT16 nBank)
+static void kof10thBankswitch(running_machine *machine, UINT16 nBank)
 {
 	UINT32 bank = 0x100000 + ((nBank & 7) << 20);
 	if (bank >= 0x700000)
 		bank = 0x100000;
-	neogeo_set_main_cpu_bank_address(bank);
+	neogeo_set_main_cpu_bank_address(machine, bank);
 }
 
 static READ16_HANDLER( kof10th_RAMB_r )
@@ -163,7 +167,7 @@ static WRITE16_HANDLER( kof10th_bankswitch_w )
 {
 	if (offset >= 0x5F000) {
 		if (offset == 0x5FFF8) { // Standard bankswitch
-			kof10thBankswitch(data);
+			kof10thBankswitch(machine, data);
 		} else if (offset == 0x5FFFC && kof10thExtraRAMB[0xFFC] != data) { // Special bankswitch
 			UINT8 *src = memory_region( machine, "main" );
 			memcpy (src + 0x10000,  src + ((data & 1) ? 0x810000 : 0x710000), 0xcffff);
@@ -204,12 +208,16 @@ void decrypt_kof10th(running_machine *machine)
 	((UINT16*)src)[0x8bf8/2] = 0xf980;
 }
 
+
+/* The King of Fighters 10th Anniversary Extra Plus (The King of Fighters 2002 bootleg) */
+
+
 void decrypt_kf10thep(running_machine *machine)
 {
 	int i;
 	UINT16 *rom = (UINT16*)memory_region(machine, "main");
 	UINT8  *src = memory_region(machine, "main");
-	UINT16 *buf = (UINT16*)memory_region(machine, "audioencrypted");
+	UINT16 *buf = (UINT16*)memory_region(machine, "audiocrypt");
 	UINT8 *srom = (UINT8*)memory_region(machine, "fixed");
 	UINT8 *sbuf = malloc_or_die(0x20000);
 
@@ -240,6 +248,10 @@ void decrypt_kf10thep(running_machine *machine)
 	memcpy(srom,sbuf,0x20000);
 	free(sbuf);
 }
+
+
+/* The King of Fighters 10th Anniversary 2005 Unique (The King of Fighters 2002 bootleg) */
+
 
 static void kf2k5uni_px_decrypt( running_machine *machine )
 {
@@ -286,7 +298,9 @@ void decrypt_kf2k5uni( running_machine *machine )
 	kf2k5uni_mx_decrypt(machine);
 }
 
-/* Kof2002 Magic Plus */
+
+/* The King of Fighters 2002 Magic Plus (bootleg) */
+
 
 void kf2k2mp_decrypt( running_machine *machine )
 {
@@ -309,7 +323,8 @@ void kf2k2mp_decrypt( running_machine *machine )
 	free(dst);
 }
 
-/* Kof2002 Magic Plus 2 */
+
+/* The King of Fighters 2002 Magic Plus II (bootleg) */
 
 
 void kof2km2_px_decrypt( running_machine *machine )
@@ -327,6 +342,7 @@ void kof2km2_px_decrypt( running_machine *machine )
 
 
 /* Crouching Tiger Hidden Dragon 2003 (bootleg of King of Fighters 2001) */
+
 
 /* descrambling information from razoola */
 static void cthd2003_neogeo_gfx_address_fix_do(running_machine *machine, int start, int end, int bit3shift, int bit2shift, int bit1shift, int bit0shift)
@@ -421,7 +437,7 @@ static WRITE16_HANDLER ( cthd2003_bankswitch_w )
 	if (offset == 0)
 	{
 		bankaddress = 0x100000 + cthd2003_banks[data&7]*0x100000;
-		neogeo_set_main_cpu_bank_address(bankaddress);
+		neogeo_set_main_cpu_bank_address(machine, bankaddress);
 	}
 }
 
@@ -466,7 +482,9 @@ void patch_cthd2003( running_machine *machine )
  	mem16[0x9943e/2] = 0xdd03;
 }
 
+
 /* Crouching Tiger Hidden Dragon 2003 Super Plus (bootleg of King of Fighters 2001) */
+
 
 static void ct2k3sp_sx_decrypt( running_machine *machine )
 {
@@ -514,7 +532,9 @@ void decrypt_ct2k3sp( running_machine *machine )
 	cthd2003_c(machine, 0);
 }
 
+
 /* Crouching Tiger Hidden Dragon 2003 Super Plus alternate (bootleg of King of Fighters 2001) */
+
 
 void decrypt_ct2k3sa( running_machine *machine )
 {
@@ -570,7 +590,9 @@ void patch_ct2k3sa( running_machine *machine )
  	mem16[0x9943e/2] = 0xdd03;
 }
 
+
 /* King of Fighters Special Edition 2004 (bootleg of King of Fighters 2002) */
+
 
 void decrypt_kof2k4se_68k( running_machine *machine )
 {
@@ -587,7 +609,9 @@ void decrypt_kof2k4se_68k( running_machine *machine )
 			free(dst);
 }
 
-/* Lans2004 (bootleg of Shock Troopers 2) */
+
+/* Lansquenet 2004 (Shock Troopers - 2nd Squad bootleg) */
+
 
 void lans2004_vx_decrypt( running_machine *machine )
 {
@@ -634,6 +658,10 @@ void lans2004_decrypt_68k( running_machine *machine )
 	rom[0xBBE42/2] = 0x6002;
 }
 
+
+/* Metal Slug 5 Plus (bootleg) */
+
+
 static READ16_HANDLER( mslug5_prot_r )
 {
 	logerror("PC %06x: access protected\n",activecpu_get_pc());
@@ -647,7 +675,7 @@ static WRITE16_HANDLER ( ms5plus_bankswitch_w )
 	if ((offset == 0)&&(data == 0xa0))
 	{
 		bankaddress=0xa0;
-		neogeo_set_main_cpu_bank_address(bankaddress);
+		neogeo_set_main_cpu_bank_address(machine, bankaddress);
 		logerror("offset: %06x PC %06x: set banking %04x\n\n",offset,activecpu_get_pc(),bankaddress);
 	}
 	else if(offset == 2)
@@ -655,7 +683,7 @@ static WRITE16_HANDLER ( ms5plus_bankswitch_w )
 		data=data>>4;
 		//data=data&7;
 		bankaddress=data*0x100000;
-		neogeo_set_main_cpu_bank_address(bankaddress);
+		neogeo_set_main_cpu_bank_address(machine, bankaddress);
 		logerror("offset: %06x PC %06x: set banking %04x\n\n",offset,activecpu_get_pc(),bankaddress);
 	}
 }
@@ -666,6 +694,8 @@ void install_ms5plus_protection(running_machine *machine)
 	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM,0x2ffff0, 0x2fffff,0, 0, mslug5_prot_r, ms5plus_bankswitch_w);
 }
 
+
+/* SNK vs. CAPCOM SVC CHAOS (bootleg) */
 
 
 void svcboot_px_decrypt( running_machine *machine )
@@ -688,8 +718,6 @@ void svcboot_px_decrypt( running_machine *machine )
 	}
 	free( dst );
 }
-
-
 
 void svcboot_cx_decrypt( running_machine *machine )
 {
@@ -724,6 +752,8 @@ void svcboot_cx_decrypt( running_machine *machine )
 }
 
 
+/* SNK vs. CAPCOM SVC CHAOS Plus (bootleg set 1) */
+
 
 void svcplus_px_decrypt( running_machine *machine )
 {
@@ -751,8 +781,6 @@ void svcplus_px_decrypt( running_machine *machine )
 	free( dst );
 }
 
-
-
 void svcplus_px_hack( running_machine *machine )
 {
 	/* patched by the protection chip? */
@@ -766,6 +794,10 @@ void svcplus_px_hack( running_machine *machine )
 	src[ 0x0f8016 ] = 0xc1;
 	src[ 0x0f802c ] = 0x16;
 }
+
+
+/* SNK vs. CAPCOM SVC CHAOS Plus (bootleg set 2) */
+
 
 void svcplusa_px_decrypt( running_machine *machine )
 {
@@ -783,6 +815,8 @@ void svcplusa_px_decrypt( running_machine *machine )
 	free( dst );
 }
 
+
+/* SNK vs. CAPCOM SVC CHAOS Super Plus (bootleg) */
 
 
 void svcsplus_px_decrypt( running_machine *machine )
@@ -807,8 +841,6 @@ void svcsplus_px_decrypt( running_machine *machine )
 	free( dst );
 }
 
-
-
 void svcsplus_px_hack( running_machine *machine )
 {
 	/* patched by the protection chip? */
@@ -832,17 +864,14 @@ static WRITE16_HANDLER( mv0_bankswitch_w )
 {
     UINT32 bankaddress = (mv0_bank_ram[ 0 ] >> 8) + (mv0_bank_ram[ 1 ] << 8) + 0x100000;
 	COMBINE_DATA( &mv0_bank_ram[ offset ] );
-    neogeo_set_main_cpu_bank_address( bankaddress );
+    neogeo_set_main_cpu_bank_address( machine, bankaddress );
 }
 #endif
 
-/* I think the code for the kof2003 bootlegs is wrong, they don't work */
 
-/***************************************************************************
- kof2003b
-****************************************************************************/
+/* The King of Fighters 2003 (bootleg set 1) */
 
-/* kof2003 bootleg init info */
+
 static UINT16 kof2003_tbl[4096];
 
 static READ16_HANDLER( kof2003_r)
@@ -862,7 +891,7 @@ static WRITE16_HANDLER( kof2003_w )
 		cr[BYTE_XOR_LE(0x1ff0)] =  0xa0;
 		cr[BYTE_XOR_LE(0x1ff1)] &= 0xfe;
 		cr[BYTE_XOR_LE(0x1ff3)] &= 0x7f;
-		neogeo_set_main_cpu_bank_address(address+0x100000);
+		neogeo_set_main_cpu_bank_address(machine, address+0x100000);
 
 		mem[BYTE_XOR_LE(0x58196)] = prt;
 	}
@@ -879,13 +908,13 @@ static WRITE16_HANDLER( kof2003p_w )
 
 		cr[BYTE_XOR_LE(0x1ff0)] &= 0xfe;
 		cr[BYTE_XOR_LE(0x1ff3)] &= 0x7f;
-		neogeo_set_main_cpu_bank_address(address+0x100000);
+		neogeo_set_main_cpu_bank_address(machine, address+0x100000);
 
 		mem[BYTE_XOR_LE(0x58196)] = prt;
 	}
 }
 
-void kof2003b_px_decrypt( running_machine *machine )
+void kf2k3bl_px_decrypt( running_machine *machine )
 {
 	int i;
 	static const UINT8 sec[] = {
@@ -903,17 +932,16 @@ void kof2003b_px_decrypt( running_machine *machine )
     free( buf );
 }
 
-void kof2003b_install_protection(running_machine *machine)
+void kf2k3bl_install_protection(running_machine *machine)
 {
     memory_install_readwrite16_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0x2fe000, 0x2fffff, 0, 0, kof2003_r, kof2003_w );
 }
 
 
-/***************************************************************************
- kof2k3pl
-***************************************************************************/
+/* The King of Fighters 2004 Plus / Hero (The King of Fighters 2003 bootleg) */
 
-void kof2k3pl_px_decrypt( running_machine *machine )
+
+void kf2k3pl_px_decrypt( running_machine *machine )
 {
 	UINT16*tmp = malloc_or_die(0x100000);
 	UINT16*rom = (UINT16*)memory_region( machine, "main" );
@@ -938,12 +966,10 @@ void kf2k3pl_install_protection(running_machine *machine)
 }
 
 
-/***************************************************************************
- kof2k3up
-***************************************************************************/
+/* The King of Fighters 2004 Ultra Plus (The King of Fighters 2003 bootleg) */
 
 
-void kof2k3up_px_decrypt( running_machine *machine )
+void kf2k3upl_px_decrypt( running_machine *machine )
 {
 	{
 		UINT8 *src = memory_region(machine, "main");
@@ -965,14 +991,16 @@ void kof2k3up_px_decrypt( running_machine *machine )
 	}
 }
 
-void kof2k3up_install_protection(running_machine *machine)
+void kf2k3upl_install_protection(running_machine *machine)
 {
     memory_install_readwrite16_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0x2fe000, 0x2fffff, 0, 0, kof2003_r, kof2003_w );
 }
 
-/* samsho5bl */
 
-void samsh5bl_px_decrypt( running_machine *machine )
+/* Samurai Shodown V / Samurai Spirits Zero (bootleg) */
+
+
+void samsho5b_px_decrypt( running_machine *machine )
 {
 	int px_size = memory_region_length( machine, "main" );
 	UINT8 *rom = memory_region( machine, "main" );
@@ -998,4 +1026,62 @@ void samsh5bl_px_decrypt( running_machine *machine )
 	free( buf );
 }
 
+
+void samsho5b_vx_decrypt( running_machine *machine )
+{
+	int vx_size = memory_region_length( machine, "ym" );
+	UINT8 *rom = memory_region( machine, "ym" );
+	int i;
+
+	for( i = 0; i < vx_size; i++ )
+		rom[ i ] = BITSWAP8( rom[ i ], 0, 1, 5, 4, 3, 2, 6, 7 );
+}
+
+
+/* Matrimelee / Shin Gouketsuji Ichizoku Toukon (bootleg) */
+
+
+#define MATRIMBLZ80( i ) ( i^(BITSWAP8(i&0x3,4,3,1,2,0,7,6,5)<<8) )
+
+void matrimbl_decrypt( running_machine *machine )
+{
+	/* decrypt Z80 */
+	UINT8 *rom = memory_region( machine, "audio" )+0x10000;
+	UINT8 *buf = malloc_or_die( 0x20000 );
+	int i, j=0;
+	memcpy( buf, rom, 0x20000 );
+	for( i=0x00000; i<0x20000; i++ )
+	{
+		if ( i&0x10000 )
+		{
+			if ( i&0x800 )
+			{
+				j=MATRIMBLZ80( i );
+				j=j^0x10000;
+			}
+			else
+			{
+				j=MATRIMBLZ80(( i^0x01 ));
+			}
+		}
+		else
+		{
+			if ( i&0x800 )
+			{
+				j=MATRIMBLZ80(( i^0x01 ));
+				j=j^0x10000;
+			}
+			else
+			{
+				j=MATRIMBLZ80( i );
+			}
+		}
+		rom[ j ]=buf[ i ];
+	}
+	free( buf );
+	memcpy( rom-0x10000, rom, 0x10000 );
+
+	/* decrypt gfx */
+	cthd2003_c( machine, 0);
+}
 

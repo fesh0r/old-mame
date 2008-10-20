@@ -107,7 +107,7 @@ static WRITE8_HANDLER( cliff_port_bank_w )
 
 static READ8_HANDLER( cliff_port_r )
 {
-	static const char *banknames[] = { "BANK0", "BANK1", "BANK2", "BANK3", "BANK4", "BANK5", "BANK6" };
+	static const char *const banknames[] = { "BANK0", "BANK1", "BANK2", "BANK3", "BANK4", "BANK5", "BANK6" };
 
 	if ( port_bank < 7 )
 	{
@@ -147,20 +147,21 @@ static WRITE8_HANDLER( cliff_sound_overlay_w )
 	int overlay = ( data & 0x10 ) ? 1 : 0;
 
 	/* configure pen 0 and 1 as transparent in the renderer and use it as the compositing color */
-	render_container_set_palette_alpha(render_container_get_screen(machine->primary_screen), 0, overlay ? 0x00 : 0xff );
-	render_container_set_palette_alpha(render_container_get_screen(machine->primary_screen), 1, overlay ? 0x00 : 0xff );
+	if (overlay)
+	{
+		palette_set_color(machine, 0, palette_get_color(machine, 0) & MAKE_ARGB(0,255,255,255));
+		palette_set_color(machine, 1, palette_get_color(machine, 1) & MAKE_ARGB(0,255,255,255));
+	}
+	else
+	{
+		palette_set_color(machine, 0, palette_get_color(machine, 0) | MAKE_ARGB(255,0,0,0));
+		palette_set_color(machine, 1, palette_get_color(machine, 1) | MAKE_ARGB(255,0,0,0));
+	}
 
 	/* audio */
 	discrete_sound_w(machine, CLIFF_ENABLE_SND_1, sound&1);
 	discrete_sound_w(machine, CLIFF_ENABLE_SND_2, (sound>>1)&1);
 }
-
-#ifdef UNUSED_FUNCTION
-static WRITE8_HANDLER( cliff_irqack_w )
-{
-	phillips_code = 0;
-}
-#endif
 
 static WRITE8_HANDLER( cliff_ldwire_w )
 {
@@ -172,8 +173,7 @@ static WRITE8_HANDLER( cliff_ldwire_w )
 
 static INTERRUPT_GEN( cliff_vsync )
 {
-	/* clock the laserdisc and video chip every 60Hz */
-	laserdisc_vsync(laserdisc);
+	/* clock the video chip every 60Hz */
 	TMS9928A_interrupt(machine);
 }
 
@@ -691,7 +691,7 @@ static MACHINE_DRIVER_START( cliffhgr )
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_LASERDISC_ADD("laserdisc", PIONEER_PR8210)
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_PR8210, "main", "ldsound")
 	MDRV_LASERDISC_OVERLAY(tms9928a, 15+32*8+15, 27+24*8+24, BITMAP_FORMAT_INDEXED16)
 	MDRV_LASERDISC_OVERLAY_CLIP(15-12, 15+32*8+12-1, 27-9, 27+24*8+9-1)
 
@@ -705,7 +705,7 @@ static MACHINE_DRIVER_START( cliffhgr )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD("laserdisc", CUSTOM, 0)
+	MDRV_SOUND_ADD("ldsound", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)

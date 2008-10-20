@@ -38,7 +38,7 @@ static emu_timer *frogs_croak_timer;
 
 static const discrete_555_desc frogsZip555m =
 {
-	DISC_555_TRIGGER_IS_LOGIC | DISC_555_OUT_DC | DISC_555_OUT_CAP,
+	DISC_555_OUT_CAP | DISC_555_OUT_DC | DISC_555_TRIGGER_IS_LOGIC,
 	12,		// B+ voltage of 555
 	DEFAULT_555_VALUES
 };
@@ -48,7 +48,6 @@ static const discrete_555_cc_desc frogsZip555cc =
 	DISC_555_OUT_CAP | DISC_555_OUT_DC,
 	12,		// B+ voltage of 555
 	DEFAULT_555_VALUES,
-	12,		// B+ voltage of the Constant Current source
 	0.6		// Q13 Vbe
 };
 
@@ -91,7 +90,7 @@ static DISCRETE_SOUND_START(frogs)
      * of the output stage on the charge stage.  So I added some values
      * to get a similar waveshape to the breadboarded circuit.
      */
-	DISCRETE_TRANSFORM5(NODE_31, 1, 12, NODE_30, .5, RES_K(22)/RES_K(39), 0, "012-P4>*3*-")
+	DISCRETE_TRANSFORM5(NODE_31, 12, NODE_30, .5, RES_K(22)/RES_K(39), 0, "012-P4>*3*-")
 
 	DISCRETE_555_CC(NODE_32, 1, NODE_31, RES_K(1.1), CAP_U(0.14), 0, RES_K(100), 500, &frogsZip555cc)
 
@@ -220,53 +219,62 @@ WRITE8_HANDLER( frogs_audio_w )
 
 
 static const discrete_mixer_desc headon_mixer =
-	{DISC_MIXER_IS_RESISTOR,
-		{RES_K(130), RES_K(130), RES_K(100), RES_K(100), RES_K(100), RES_K(10)},   // 130 = 390/3, Bonus Res is dummy
-		{0,0,0,0,0},	// no variable resistors
-		{0,0,0,0,CAP_N(470),0},
-		0, RES_K(100),
-		0,
-		CAP_U(1),		// not in schematics, used to suppress DC
-		0, 1};
+{
+	DISC_MIXER_IS_RESISTOR,
+	{RES_K(130), RES_K(130), RES_K(100), RES_K(100), RES_K(100), RES_K(10)},   // 130 = 390/3, Bonus Res is dummy
+	{0,0,0,0,0},	// no variable resistors
+	{0,0,0,0,CAP_N(470),0},
+	0, RES_K(100),
+	0,
+	CAP_U(1),		// not in schematics, used to suppress DC
+	0, 1
+};
 
 static const discrete_mixer_desc headon_crash_mixer =
-	{DISC_MIXER_IS_OP_AMP,
-		{RES_K(50), RES_K(10)},   // Resistors, in fact variable resistors (100k)
-		{0,0,0,0,0},	// no variable resistors
-		{CAP_N(100),CAP_U(1)},
-		0, RES_K(100),
-		0,
-		CAP_U(1)*0,		// not in schematics, used to suppress DC
-		0, 1};
+{
+	DISC_MIXER_IS_OP_AMP,
+	{RES_K(50), RES_K(10)},   // Resistors, in fact variable resistors (100k)
+	{0,0,0,0,0},	// no variable resistors
+	{CAP_N(100),CAP_U(1)},
+	0, RES_K(100),
+	0,
+	CAP_U(1)*0,		// not in schematics, used to suppress DC
+	0, 1
+};
 
 static const discrete_inverter_osc_desc headon_inverter_osc_1 =
-	{DEFAULT_CD40XX_VALUES(12),
+{
+	DEFAULT_CD40XX_VALUES(12),
 	DISC_OSC_INVERTER_IS_TYPE4
-	};
+};
 
 static const discrete_inverter_osc_desc headon_inverter_osc_2 =
-	{DEFAULT_CD40XX_VALUES(12),
+{
+	DEFAULT_CD40XX_VALUES(12),
 	DISC_OSC_INVERTER_IS_TYPE5 | DISC_OSC_INVERTER_OUT_IS_LOGIC
-	};
+};
 
 static const discrete_555_desc headon_555_bonus =
-	{DISC_555_OUT_DC | DISC_555_OUT_ENERGY,
-		12,
-		12-0.5,12*0.66,12*0.33
-	};
+{
+	DISC_555_OUT_ENERGY | DISC_555_OUT_DC,
+	12,
+	DEFAULT_555_CHARGE,
+	12.0-0.5
+};
 
 static const discrete_555_desc headon_555_crash =
-	{DISC_555_OUT_DC | DISC_555_TRIGGER_IS_LOGIC,
-		12,
-		12-0.5,12*0.66,12*0.33
-	};
+{
+	DISC_555_OUT_SQW | DISC_555_OUT_DC | DISC_555_TRIGGER_IS_LOGIC,
+	12,
+	DEFAULT_555_CHARGE,
+	12.0-0.5
+};
 
 static const discrete_555_cc_desc headon_555cc =
 {
-	DISC_555_OUT_DC,
+	DISC_555_OUT_SQW | DISC_555_OUT_DC,
 	12,		// B+ voltage of 555
 	DEFAULT_555_VALUES,
-	12,		// B+ voltage of the Constant Current source
 	0.6		// Q16, Q10 Vbe
 };
 
@@ -274,15 +282,15 @@ static const discrete_555_cc_desc headon_555cc =
 /*
  * From : http://www.vego.nl/8/08/03/08_08_03.htm
  *
- * - voeding: -7 V, clock-frequentie: 2.267 Hz
- *- voeding: -8 V, clock-frequentie: 8.731 Hz
- *- voeding: -9 V, clock-frequentie: 16,38 kHz
- *- voeding: -10 V, clock-frequentie: 23,53 kHz
- *- voeding: -11 V, clock-frequentie: 32,56 kHz
- *- voeding: -12 V, clock-frequentie: 38,34 kHz
- *- voeding: -13 V, clock-frequentie: 40,00 kHz
- *- voeding: -14 V, clock-frequentie: 37,80 kHz
- *- voeding: -15 V, clock-frequentie: 33,17 kHz
+ *- voeding:  -7 V, clock-frequency:  2.267 Hz
+ *- voeding:  -8 V, clock-frequency:  8.731 Hz
+ *- voeding:  -9 V, clock-frequency: 16,38 kHz
+ *- voeding: -10 V, clock-frequency: 23,53 kHz
+ *- voeding: -11 V, clock-frequency: 32,56 kHz
+ *- voeding: -12 V, clock-frequency: 38,34 kHz
+ *- voeding: -13 V, clock-frequency: 40,00 kHz
+ *- voeding: -14 V, clock-frequency: 37,80 kHz
+ *- voeding: -15 V, clock-frequency: 33,17 kHz
  *
  *  However all other mame sources say 100kHz.
  */
@@ -305,9 +313,10 @@ static const discrete_lfsr_desc mm5837_lfsr =
 };
 
 static const discrete_op_amp_filt_info headon_sallen_key_info =
-	{ RES_K(15), RES_K(15), 0, 0, 0,
-	  CAP_N(470), CAP_N(47), 0
-	};
+{
+	RES_K(15), RES_K(15), 0, 0, 0,
+	CAP_N(470), CAP_N(47), 0
+};
 
 static DISCRETE_SOUND_START(headon)
 	/************************************************
@@ -342,7 +351,7 @@ static DISCRETE_SOUND_START(headon)
     DISCRETE_COUNTER(NODE_26, 1, 0, NODE_25, 1, DISC_COUNT_UP, 0, DISC_CLK_ON_R_EDGE) //divide by 2
     DISCRETE_COUNTER(NODE_27, 1, 0, NODE_25, 3, DISC_COUNT_UP, 0, DISC_CLK_ON_R_EDGE) //divide by 4
     DISCRETE_COUNTER(NODE_28, 1, 0, NODE_25, 2, DISC_COUNT_UP, 0, DISC_CLK_ON_R_EDGE) //divide by 3
-	DISCRETE_TRANSFORM5(NODE_29,1,NODE_26,NODE_27,NODE_28,1,2,"13>24=+0+")
+	DISCRETE_TRANSFORM5(NODE_29,NODE_26,NODE_27,NODE_28,1,2,"13>24=+0+")
 	DISCRETE_MULTIPLY(HEADON_PLAYER_CAR_OUT, 1, NODE_29, 12 / 3)
 
 	/************************************************
@@ -361,7 +370,7 @@ static DISCRETE_SOUND_START(headon)
     DISCRETE_COUNTER(NODE_36, 1, 0, NODE_35, 1, DISC_COUNT_UP, 0, DISC_CLK_ON_R_EDGE) //divide by 2
     DISCRETE_COUNTER(NODE_37, 1, 0, NODE_35, 3, DISC_COUNT_UP, 0, DISC_CLK_ON_R_EDGE) //divide by 4
     DISCRETE_COUNTER(NODE_38, 1, 0, NODE_35, 2, DISC_COUNT_UP, 0, DISC_CLK_ON_R_EDGE) //divide by 3
-	DISCRETE_TRANSFORM5(NODE_39,1,NODE_36,NODE_37,NODE_38,1,2,"13>24=+0+")
+	DISCRETE_TRANSFORM5(NODE_39,NODE_36,NODE_37,NODE_38,1,2,"13>24=+0+")
 	DISCRETE_MULTIPLY(HEADON_COMP_CAR_OUT, 1, NODE_39, 12 / 3)
 
 	/************************************************
@@ -397,7 +406,7 @@ static DISCRETE_SOUND_START(headon)
      * This is not emulated exactly. We will just use 200k for R1.
      *
      */
-	DISCRETE_TRANSFORM3(NODE_74,1,NODE_73,200000,165000,"102*-")
+	DISCRETE_TRANSFORM3(NODE_74,NODE_73,200000,165000,"102*-")
 	DISCRETE_555_ASTABLE(NODE_75, 1, NODE_74, RES_K(100), CAP_N(10), &headon_555_bonus)
 	DISCRETE_MULTIPLY(HEADON_BONUS_OUT,1,NODE_75,HEADON_BONUS_EN)
 
@@ -426,7 +435,7 @@ static DISCRETE_SOUND_START(headon)
 	DISCRETE_SALLEN_KEY_FILTER(NODE_88, 1, NODE_87, DISC_SALLEN_KEY_LOW_PASS, &headon_sallen_key_info)
 
 	DISCRETE_MIXER2(NODE_95, 1, NODE_85, NODE_88, &headon_crash_mixer)
-	DISCRETE_TRANSFORM2(HEADON_CRASH_OUT, 1, NODE_95, 12, "01/")
+	DISCRETE_TRANSFORM2(HEADON_CRASH_OUT, NODE_95, 12, "01/")
 
 	/************************************************
      * Mixer Stage
@@ -538,7 +547,7 @@ DISCRETE_SOUND_START(brdrline)
 		OPTIONS)
 	DISCRETE_COUNTER(NODE_21, 1, 1, NODE_20,MAX,DIR,INIT0, DISC_CLK_BY_COUNT)
 	DISCRETE_COUNTER(NODE_22, 1, 1, NODE_20,MAX,DIR,INIT0, DISC_CLK_BY_COUNT)
-	DISCRETE_TRANSFORM3(NODE,ENAB,INP0,INP1,INP2,FUNCT)
+	DISCRETE_TRANSFORM3(NODE,INP0,INP1,INP2,FUNCT)
 	DISCRETE_DAC_R1(NODE,ENAB,DATA,VDATA,LADDER)
 
 	/************************************************

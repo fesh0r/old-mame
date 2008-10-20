@@ -44,23 +44,9 @@ static UINT16 *sync_data;
 
 static void update_interrupts(running_machine *machine)
 {
-	int newstate = 0;
-	int newstate2 = 0;
-
-	if (atarigen_video_int_state)
-		newstate |= 4, newstate2 |= 4;
-	if (atarigen_sound_int_state)
-		newstate |= 6;
-
-	if (newstate)
-		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
-	else
-		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
-
-	if (newstate2)
-		cpunum_set_input_line(machine, 1, newstate2, ASSERT_LINE);
-	else
-		cpunum_set_input_line(machine, 1, 7, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 4, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 4, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 6, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -103,7 +89,7 @@ static READ16_HANDLER( special_port1_r )
 static READ16_HANDLER( adc_r )
 {
 	static int last_offset;
-	static const char *adcnames[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
+	static const char *const adcnames[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
 	int result = input_port_read(machine, adcnames[last_offset & 3]);
 
 	last_offset = offset;

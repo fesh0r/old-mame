@@ -82,6 +82,10 @@ static UINT8 *vga_vram,*work_ram;
 static UINT8 video_regs[0x19];
 static UINT8 *vga_mode;
 static UINT8 hv_blank;
+
+static int bank;
+static int lastvalue;
+
 /*Add here Video regs defines...*/
 
 
@@ -328,8 +332,6 @@ static WRITE8_HANDLER( disk_iobank_w )
     sets the selected rom that appears in $C0000-$CFFFF
 
 */
-	static int bank = -1;
-	static int lastvalue = -1;
 	int newbank = 0;
 
 	printf("bank %d set to %02X\n", offset,data);
@@ -418,7 +420,7 @@ static WRITE8_HANDLER( drive_selection_w )
 static UINT8 port_b_data;
 static UINT8 wss1_data,wss2_data;
 
-static READ8_HANDLER( port_a_r )
+static READ8_DEVICE_HANDLER( port_a_r )
 {
 	if(!(port_b_data & 0x80))//???
 	{
@@ -434,40 +436,40 @@ static READ8_HANDLER( port_a_r )
 	}
 	else//keyboard emulation
 	{
-		cpunum_set_input_line(machine, 0,1,PULSE_LINE);
+		cpunum_set_input_line(device->machine, 0,1,PULSE_LINE);
 		return 0x00;//Keyboard is disconnected
 		//return 0xaa;//Keyboard code
 	}
 }
 
-static READ8_HANDLER( port_b_r )
+static READ8_DEVICE_HANDLER( port_b_r )
 {
 	return port_b_data;
 }
 
-static READ8_HANDLER( port_c_r )
+static READ8_DEVICE_HANDLER( port_c_r )
 {
 	return wss2_data;//???
 }
 
-static WRITE8_HANDLER( port_b_w )
+static WRITE8_DEVICE_HANDLER( port_b_w )
 {
 	port_b_data = data;
 }
 
-static WRITE8_HANDLER( wss_1_w )
+static WRITE8_DEVICE_HANDLER( wss_1_w )
 {
 	wss1_data = data;
 }
 
-static WRITE8_HANDLER( wss_2_w )
+static WRITE8_DEVICE_HANDLER( wss_2_w )
 {
 	wss2_data = data;
 }
 
-static WRITE8_HANDLER( sys_reset_w )
+static WRITE8_DEVICE_HANDLER( sys_reset_w )
 {
-	cpunum_set_input_line(machine, 0,INPUT_LINE_RESET,PULSE_LINE);
+	cpunum_set_input_line(device->machine, 0,INPUT_LINE_RESET,PULSE_LINE);
 }
 
 
@@ -732,20 +734,26 @@ static INTERRUPT_GEN( filetto_irq )
 }
 
 
+static MACHINE_RESET( filetto )
+{
+	bank = -1;
+	lastvalue = -1;
+	hv_blank = 0;
+}
+
 static MACHINE_DRIVER_START( filetto )
 	MDRV_CPU_ADD("main", I8088, 8000000)
 	MDRV_CPU_PROGRAM_MAP(filetto_map,0)
 	MDRV_CPU_IO_MAP(filetto_io,0)
 	MDRV_CPU_VBLANK_INT_HACK(filetto_irq,200)
 
+	MDRV_MACHINE_RESET( filetto )
+
 	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
 	MDRV_DEVICE_CONFIG( pc_pit8253_config )
 
-	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
-	MDRV_DEVICE_CONFIG( filetto_ppi8255_intf[0] )
-
-	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( filetto_ppi8255_intf[1] )
+	MDRV_PPI8255_ADD( "ppi8255_0", filetto_ppi8255_intf[0] )
+	MDRV_PPI8255_ADD( "ppi8255_1", filetto_ppi8255_intf[1] )
 
 	MDRV_GFXDECODE(filetto)
 

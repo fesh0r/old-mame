@@ -309,7 +309,7 @@ static CUSTOM_INPUT( adcdo_r )
 static READ8_HANDLER( sysreg_r )
 {
 	UINT32 r = 0;
-	static const char *portnames[] = { "IN0", "IN1", "IN2", "IN3" };
+	static const char *const portnames[] = { "IN0", "IN1", "IN2", "IN3" };
 
 	switch (offset)
 	{
@@ -598,7 +598,7 @@ static INPUT_PORTS_START( midnrun )
 
 	PORT_START("IN2")
 	PORT_BIT( 0x7f, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(adcdo_r, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(adcdo_r, NULL)
 
 	PORT_START("IN3")
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
@@ -642,7 +642,7 @@ static INPUT_PORTS_START( windheat )
 
 	PORT_START("IN2")
 	PORT_BIT( 0x7f, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(adcdo_r, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(adcdo_r, NULL)
 
 	PORT_START("IN3")
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
@@ -686,7 +686,7 @@ static INPUT_PORTS_START( jetwave )
 
 	PORT_START("IN2")
 	PORT_BIT( 0x7f, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(adcdo_r, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(adcdo_r, NULL)
 
 	PORT_START("IN3")
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
@@ -830,12 +830,16 @@ MACHINE_DRIVER_END
 
 /*****************************************************************************/
 
+static TIMER_CALLBACK( irq_off )
+{
+	cpunum_set_input_line(machine, 1, param, CLEAR_LINE);
+}
+
 static void sound_irq_callback(running_machine *machine, int irq)
 {
-	if (irq == 0)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ1, PULSE_LINE);
-	else
-		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ2, PULSE_LINE);
+	int line = (irq == 0) ? INPUT_LINE_IRQ1 : INPUT_LINE_IRQ2;
+	cpunum_set_input_line(machine, 1, line, ASSERT_LINE);
+	timer_set(ATTOTIME_IN_USEC(1), NULL, line, irq_off);
 }
 
 static void init_zr107(running_machine *machine)

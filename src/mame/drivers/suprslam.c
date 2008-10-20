@@ -142,11 +142,11 @@ static ADDRESS_MAP_START( suprslam_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff0000, 0xff1fff) AM_READ(SMH_RAM)
 	AM_RANGE(0xff8000, 0xff8fff) AM_READ(SMH_RAM)
 	AM_RANGE(0xffa000, 0xffafff) AM_READ(SMH_RAM)
-	AM_RANGE(0xfff000, 0xfff001) AM_READ(input_port_0_word_r)
-	AM_RANGE(0xfff002, 0xfff003) AM_READ(input_port_1_word_r)
-	AM_RANGE(0xfff004, 0xfff005) AM_READ(input_port_2_word_r)
-	AM_RANGE(0xfff006, 0xfff007) AM_READ(input_port_3_word_r)
-	AM_RANGE(0xfff008, 0xfff009) AM_READ(input_port_4_word_r)
+	AM_RANGE(0xfff000, 0xfff001) AM_READ_PORT("P1")
+	AM_RANGE(0xfff002, 0xfff003) AM_READ_PORT("P2")
+	AM_RANGE(0xfff004, 0xfff005) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0xfff006, 0xfff007) AM_READ_PORT("DSW1")
+	AM_RANGE(0xfff008, 0xfff009) AM_READ_PORT("DSW2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( suprslam_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -176,28 +176,20 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( suprslam_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_r)
-	AM_RANGE(0x08, 0x08) AM_READ(ym2610_status_port_0_a_r)
-	AM_RANGE(0x0a, 0x0a) AM_READ(ym2610_status_port_0_b_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( suprslam_sound_writeport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( suprslam_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(suprslam_sh_bankswitch_w)
-	AM_RANGE(0x04, 0x04) AM_WRITE(pending_command_clear_w)
-	AM_RANGE(0x08, 0x08) AM_WRITE(ym2610_control_port_0_a_w)
+	AM_RANGE(0x04, 0x04) AM_READWRITE(soundlatch_r, pending_command_clear_w)
+	AM_RANGE(0x08, 0x08) AM_READWRITE(ym2610_status_port_0_a_r, ym2610_control_port_0_a_w)
 	AM_RANGE(0x09, 0x09) AM_WRITE(ym2610_data_port_0_a_w)
-	AM_RANGE(0x0a, 0x0a) AM_WRITE(ym2610_control_port_0_b_w)
+	AM_RANGE(0x0a, 0x0a) AM_READWRITE(ym2610_status_port_0_b_r, ym2610_control_port_0_b_w)
 	AM_RANGE(0x0b, 0x0b) AM_WRITE(ym2610_data_port_0_b_w)
 ADDRESS_MAP_END
 
 /*** INPUT PORTS *************************************************************/
 
 static INPUT_PORTS_START( suprslam )
-
-	PORT_START("P1")      /* IN1 */
+	PORT_START("P1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -207,7 +199,7 @@ static INPUT_PORTS_START( suprslam )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
 
-	PORT_START("P2")      /* IN1 */
+	PORT_START("P2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -217,7 +209,7 @@ static INPUT_PORTS_START( suprslam )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
 
-	PORT_START("SYSTEM")		/* IN0 */
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_COIN3 )				// Only in "test mode"
@@ -227,7 +219,7 @@ static INPUT_PORTS_START( suprslam )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_SERVICE1 )
 
-	PORT_START("DSW1")	/* DSW */
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x0001, 0x0001, "Coin Slots" )
 	PORT_DIPSETTING(      0x0001, "Common" )
 	PORT_DIPSETTING(      0x0000, "Separate" )
@@ -253,7 +245,7 @@ static INPUT_PORTS_START( suprslam )
 	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START("DSW2")	/* DSW */
+	PORT_START("DSW2")
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( Easy ) )
 	PORT_DIPSETTING(      0x0003, DEF_STR( Normal ) )
@@ -330,7 +322,7 @@ static MACHINE_DRIVER_START( suprslam )
 
 	MDRV_CPU_ADD("audio", Z80,8000000/2)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_IO_MAP(suprslam_sound_readport,suprslam_sound_writeport)
+	MDRV_CPU_IO_MAP(suprslam_sound_io_map,0)
 
 	MDRV_GFXDECODE(suprslam)
 
@@ -392,4 +384,5 @@ ROM_END
 /*** GAME DRIVERS ************************************************************/
 
 GAME( 1995, suprslam, 0, suprslam, suprslam, 0, ROT0, "Banpresto / Toei Animation", "Super Slams", GAME_IMPERFECT_GRAPHICS )
+
 

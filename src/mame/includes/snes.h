@@ -38,10 +38,12 @@
 #define SNES_SCR_HEIGHT_PAL	274		/* ??? */
 #define SNES_VTOTAL_NTSC	262		/* Maximum number of lines for NTSC systems */
 #define SNES_VTOTAL_PAL		312		/* Maximum number of lines for PAL systems */
-#define SNES_HTOTAL		341		/* Maximum number pixels per line (incl. hblank) */
+#define SNES_HTOTAL			341		/* Maximum number pixels per line (incl. hblank) */
 #define SNES_DMA_BASE		0x4300	/* Base DMA register address */
 #define SNES_MODE_20		0x1		/* Lo-ROM cart */
 #define SNES_MODE_21		0x2		/* Hi-ROM cart */
+#define SNES_MODE_22		0x4		/* Extended Lo-ROM cart - SDD-1 */
+#define SNES_MODE_25		0x8		/* Extended Hi-ROM cart */
 #define SNES_NTSC			0x00
 #define SNES_PAL			0x10
 #define SNES_VRAM_SIZE		0x20000	/* 128kb of video ram */
@@ -349,6 +351,29 @@
 #define DSP_FIR_C6		0x6F
 #define DSP_FIR_C7		0x7F
 
+/* Special chips, checked at init and used in memory handlers */
+enum
+{
+HAS_NONE = 0,
+HAS_DSP1,
+HAS_DSP2,
+HAS_DSP3,
+HAS_DSP4,
+HAS_SUPERFX,
+HAS_SA1,
+HAS_SDD1,
+HAS_OBC1,
+HAS_RTC,
+HAS_Z80GB,
+HAS_C4,
+HAS_ST010,
+HAS_ST011,
+HAS_ST018,
+HAS_SPC7110,
+HAS_SPC7110_RTC,
+HAS_UNK
+};
+
 /*----------- defined in machine/snes.c -----------*/
 
 extern DRIVER_INIT( snes );
@@ -357,21 +382,25 @@ extern DRIVER_INIT( snes_hirom );
 extern MACHINE_START( snes );
 extern MACHINE_RESET( snes );
 
+extern READ8_HANDLER( snes_r_io );
+extern WRITE8_HANDLER( snes_w_io );
+
 extern READ8_HANDLER( snes_r_bank1 );
 extern READ8_HANDLER( snes_r_bank2 );
 extern READ8_HANDLER( snes_r_bank3 );
 extern READ8_HANDLER( snes_r_bank4 );
+extern READ8_HANDLER( snes_r_bank5 );
 extern READ8_HANDLER( snes_r_bank6 );
-extern READ8_HANDLER( snes_r_io );
-extern READ8_HANDLER( snes_r_sram );
+extern READ8_HANDLER( snes_r_bank7 );
 extern WRITE8_HANDLER( snes_w_bank1 );
 extern WRITE8_HANDLER( snes_w_bank2 );
+extern WRITE8_HANDLER( snes_w_bank3 );
 extern WRITE8_HANDLER( snes_w_bank4 );
+extern WRITE8_HANDLER( snes_w_bank5 );
 extern WRITE8_HANDLER( snes_w_bank6 );
-extern WRITE8_HANDLER( snes_w_io );
-extern WRITE8_HANDLER( snes_w_sram );
+extern WRITE8_HANDLER( snes_w_bank7 );
 
-extern int snes_validate_infoblock( UINT8 *infoblock, UINT16 offset );
+extern UINT8 has_addon_chip;
 
 extern void snes_gdma( UINT8 channels );
 extern void snes_hdma_init(void);
@@ -408,6 +437,8 @@ struct SNES_PPU_STRUCT
 	{
 		UINT8 address_low;
 		UINT8 address_high;
+		UINT8 saved_address_low;
+		UINT8 saved_address_high;
 		UINT16 address;
 		UINT16 priority_rotation;
 		UINT8 size[2];

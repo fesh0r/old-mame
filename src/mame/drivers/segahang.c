@@ -50,11 +50,12 @@ static void (*i8751_vblank_hook)(running_machine *machine);
  *
  *************************************/
 
-static WRITE8_HANDLER( video_lamps_w );
-static WRITE8_HANDLER( tilemap_sound_w );
-static WRITE8_HANDLER( sub_control_adc_w );
+static WRITE8_DEVICE_HANDLER( sound_latch_w );
+static WRITE8_DEVICE_HANDLER( video_lamps_w );
+static WRITE8_DEVICE_HANDLER( tilemap_sound_w );
+static WRITE8_DEVICE_HANDLER( sub_control_adc_w );
 
-static READ8_HANDLER( adc_status_r );
+static READ8_DEVICE_HANDLER( adc_status_r );
 
 
 
@@ -70,7 +71,7 @@ static const ppi8255_interface hangon_ppi_intf[2] =
 		NULL,
 		NULL,
 		NULL,
-		soundlatch_w,
+		sound_latch_w,
 		video_lamps_w,
 		tilemap_sound_w
 	},
@@ -145,7 +146,7 @@ static INTERRUPT_GEN( hangon_irq )
 
 static TIMER_CALLBACK( delayed_ppi8255_w )
 {
-	ppi8255_w(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), param >> 8, param & 0xff);
+	ppi8255_w(devtag_get_device(machine, PPI8255, "ppi8255_0"), param >> 8, param & 0xff);
 }
 
 
@@ -154,20 +155,20 @@ static READ16_HANDLER( hangon_io_r )
 	switch (offset & 0x3020/2)
 	{
 		case 0x0000/2: /* PPI @ 4B */
-			return ppi8255_r(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), offset & 3);
+			return ppi8255_r(devtag_get_device(machine, PPI8255, "ppi8255_0"), offset & 3);
 
 		case 0x1000/2: /* Input ports and DIP switches */
 		{
-			static const char *sysports[] = { "SERVICE", "COINAGE", "DSW", "UNKNOWN" };
+			static const char *const sysports[] = { "SERVICE", "COINAGE", "DSW", "UNKNOWN" };
 			return input_port_read(machine, sysports[offset & 3]);
 		}
 
 		case 0x3000/2: /* PPI @ 4C */
-			return ppi8255_r(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 3);
+			return ppi8255_r(devtag_get_device(machine, PPI8255, "ppi8255_1"), offset & 3);
 
 		case 0x3020/2: /* ADC0804 data output */
 		{
-			static const char *adcports[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
+			static const char *const adcports[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
 			return input_port_read_safe(machine, adcports[adc_select], 0);
 		}
 	}
@@ -189,7 +190,7 @@ static WRITE16_HANDLER( hangon_io_w )
 				return;
 
 			case 0x3000/2: /* PPI @ 4C */
-				ppi8255_w(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 3, data & 0xff);
+				ppi8255_w(devtag_get_device(machine, PPI8255, "ppi8255_1"), offset & 3, data & 0xff);
 				return;
 
 			case 0x3020/2: /* ADC0804 */
@@ -205,21 +206,21 @@ static READ16_HANDLER( sharrier_io_r )
 	switch (offset & 0x0030/2)
 	{
 		case 0x0000/2:
-			return ppi8255_r(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), offset & 3);
+			return ppi8255_r(devtag_get_device(machine, PPI8255, "ppi8255_0"), offset & 3);
 
 		case 0x0010/2: /* Input ports and DIP switches */
 		{
-			static const char *sysports[] = { "SERVICE", "UNKNOWN", "COINAGE", "DSW" };
+			static const char *const sysports[] = { "SERVICE", "UNKNOWN", "COINAGE", "DSW" };
 			return input_port_read(machine, sysports[offset & 3]);
 		}
 
 		case 0x0020/2: /* PPI @ 4C */
 			if (offset == 2) return 0;
-			return ppi8255_r(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 3);
+			return ppi8255_r(devtag_get_device(machine, PPI8255, "ppi8255_1"), offset & 3);
 
 		case 0x0030/2: /* ADC0804 data output */
 		{
-			static const char *adcports[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
+			static const char *const adcports[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
 			return input_port_read_safe(machine, adcports[adc_select], 0);
 		}
 	}
@@ -241,7 +242,7 @@ static WRITE16_HANDLER( sharrier_io_w )
 				return;
 
 			case 0x0020/2: /* PPI @ 4C */
-				ppi8255_w(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 3, data & 0xff);
+				ppi8255_w(devtag_get_device(machine, PPI8255, "ppi8255_1"), offset & 3, data & 0xff);
 				return;
 
 			case 0x0030/2: /* ADC0804 */
@@ -259,7 +260,13 @@ static WRITE16_HANDLER( sharrier_io_w )
  *
  *************************************/
 
-static WRITE8_HANDLER( video_lamps_w )
+static WRITE8_DEVICE_HANDLER( sound_latch_w )
+{
+	soundlatch_w(device->machine, offset, data);
+}
+
+
+static WRITE8_DEVICE_HANDLER( video_lamps_w )
 {
 	/* Port B : Miscellaneous outputs */
 	/* D7 : FLIPC (1= flip screen, 0= normal orientation) */
@@ -272,7 +279,7 @@ static WRITE8_HANDLER( video_lamps_w )
 	segaic16_tilemap_set_flip(0, data & 0x80);
 	segaic16_sprites_set_flip(0, data & 0x80);
 	segaic16_sprites_set_shadow(0, ~data & 0x40);
-	segaic16_set_display_enable(machine, data & 0x10);
+	segaic16_set_display_enable(device->machine, data & 0x10);
 	set_led_status(1, data & 0x08);
 	set_led_status(0, data & 0x04);
 	coin_counter_w(1, data & 0x02);
@@ -280,7 +287,7 @@ static WRITE8_HANDLER( video_lamps_w )
 }
 
 
-static WRITE8_HANDLER( tilemap_sound_w )
+static WRITE8_DEVICE_HANDLER( tilemap_sound_w )
 {
 	/* Port C : Tilemap origin and audio mute */
 	/* D7 : Port A handshaking signal /OBF */
@@ -291,26 +298,26 @@ static WRITE8_HANDLER( tilemap_sound_w )
 	/* D2 : SCONT1 - Tilemap origin bit 1 */
 	/* D1 : SCONT0 - Tilemap origin bit 0 */
 	/* D0 : MUTE (1= audio on, 0= audio off) */
-	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(device->machine, 2, INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 	segaic16_tilemap_set_colscroll(0, ~data & 0x04);
 	segaic16_tilemap_set_rowscroll(0, ~data & 0x02);
 	sound_global_enable(data & 0x01);
 }
 
 
-static WRITE8_HANDLER( sub_control_adc_w )
+static WRITE8_DEVICE_HANDLER( sub_control_adc_w )
 {
 	/* Port A : S.CPU control and ADC channel select */
 	/* D6 : INTR line on second CPU */
 	/* D5 : RESET line on second CPU */
 	/* D3-D2 : ADC_SELECT */
-	cpunum_set_input_line(machine, 1, 4, (data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(device->machine, 1, 4, (data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(device->machine, 1, INPUT_LINE_RESET, (data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
 	adc_select = (data >> 2) & 3;
 }
 
 
-static READ8_HANDLER( adc_status_r )
+static READ8_DEVICE_HANDLER( adc_status_r )
 {
 	/* D7 = 0 (left open) */
 	/* D6 = /INTR of ADC0804 */
@@ -365,7 +372,7 @@ static void sound_irq(running_machine *machine, int irq)
 static READ8_HANDLER( sound_data_r )
 {
 	/* assert ACK */
-	ppi8255_set_portC(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), 0x00);
+	ppi8255_set_port_c(devtag_get_device(machine, PPI8255, "ppi8255_0"), 0x00);
 	return soundlatch_r(machine, offset);
 }
 
@@ -880,11 +887,8 @@ static MACHINE_DRIVER_START( hangon_base )
 	MDRV_MACHINE_RESET(hangon)
 	MDRV_INTERLEAVE(100)
 
-	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
-	MDRV_DEVICE_CONFIG( hangon_ppi_intf[0] )
-
-	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( hangon_ppi_intf[1] )
+	MDRV_PPI8255_ADD( "ppi8255_0", hangon_ppi_intf[0] )
+	MDRV_PPI8255_ADD( "ppi8255_1", hangon_ppi_intf[1] )
 
 	/* video hardware */
 	MDRV_GFXDECODE(segahang)
@@ -1400,7 +1404,7 @@ ROM_END
  **************************************************************************************************************************
  **************************************************************************************************************************
     Enduro Racer
-    CPU: FD1089A (317-0013A)
+    CPU: FD1089B (317-0013A)
     YM2151 sound board
 
      ASSY CPU BD 837-6001-01
@@ -1472,11 +1476,14 @@ ROM_START( enduror )
 
 	ROM_REGION( 0x2000, "proms", 0 ) /* zoom table */
 	ROM_LOAD( "epr-6844.ic123", 0x0000, 0x2000, CRC(e3ec7bd6) SHA1(feec0fe664e16fac0fde61cf64b401b9b0575323) )
+
+	ROM_REGION( 0x2000, "fd1089b", 0 ) /* decryption key */
+	ROM_LOAD( "317-0013a.key", 0x0000, 0x2000, CRC(295e6737) SHA1(2eff36f1f24db1154cf970d4c9fd481ae4f9a57c) )
 ROM_END
 
 /**************************************************************************************************************************
     Enduro Racer
-    CPU: FD1089A (317-0013A)
+    CPU: FD1089B (317-0013A)
     YM2203 sound board
 
      ASSY CPU BD 837-6001-01
@@ -1549,6 +1556,9 @@ ROM_START( enduror1 )
 
 	ROM_REGION( 0x2000, "proms", 0 ) /* zoom table */
 	ROM_LOAD( "epr-6844.ic123", 0x0000, 0x2000, CRC(e3ec7bd6) SHA1(feec0fe664e16fac0fde61cf64b401b9b0575323) )
+
+	ROM_REGION( 0x2000, "fd1089b", 0 ) /* decryption key */
+	ROM_LOAD( "317-0013a.key", 0x0000, 0x2000, CRC(295e6737) SHA1(2eff36f1f24db1154cf970d4c9fd481ae4f9a57c) )
 ROM_END
 
 /**************************************************************************************************************************
@@ -1723,7 +1733,7 @@ static DRIVER_INIT( sharrier )
 static DRIVER_INIT( enduror )
 {
 	hangon_generic_init();
-	fd1089_decrypt_0013A(machine);
+	fd1089b_decrypt(machine);
 }
 
 

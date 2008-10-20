@@ -72,9 +72,9 @@ static ADDRESS_MAP_START( turpins_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9400, 0x97ff) AM_READ(galaxold_videoram_r)
 	AM_RANGE(0x9800, 0x98ff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r)
-	AM_RANGE(0xa001, 0xa001) AM_READ(input_port_1_r)
-	AM_RANGE(0xa002, 0xa002) AM_READ(input_port_2_r)
+	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("IN0")
+	AM_RANGE(0xa001, 0xa001) AM_READ_PORT("IN1")
+	AM_RANGE(0xa002, 0xa002) AM_READ_PORT("IN2")
 
 	AM_RANGE(0xb800, 0xb800) AM_READ(watchdog_reset_r)
 //  AM_RANGE(0x8100, 0x8103) AM_READ(ppi8255_0_r)
@@ -110,10 +110,10 @@ static ADDRESS_MAP_START( explorer_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5000, 0x50ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x5100, 0x51ff) AM_READ(SMH_NOP)	/* test mode mirror? */
 	AM_RANGE(0x7000, 0x7000) AM_READ(watchdog_reset_r)
-	AM_RANGE(0x8000, 0x8000) AM_READ(input_port_0_r)
-	AM_RANGE(0x8001, 0x8001) AM_READ(input_port_1_r)
-	AM_RANGE(0x8002, 0x8002) AM_READ(input_port_2_r)
-	AM_RANGE(0x8003, 0x8003) AM_READ(input_port_3_r)
+	AM_RANGE(0x8000, 0x8000) AM_READ_PORT("IN0")
+	AM_RANGE(0x8001, 0x8001) AM_READ_PORT("IN1")
+	AM_RANGE(0x8002, 0x8002) AM_READ_PORT("IN2")
+	AM_RANGE(0x8003, 0x8003) AM_READ_PORT("IN3")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( explorer_writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -262,10 +262,10 @@ static ADDRESS_MAP_START( hotshock_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x4bff) AM_READ(SMH_RAM)
 	AM_RANGE(0x4c00, 0x4fff) AM_READ(galaxold_videoram_r)
 	AM_RANGE(0x5000, 0x50ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x8000, 0x8000) AM_READ(input_port_0_r)
-	AM_RANGE(0x8001, 0x8001) AM_READ(input_port_1_r)
-	AM_RANGE(0x8002, 0x8002) AM_READ(input_port_2_r)
-	AM_RANGE(0x8003, 0x8003) AM_READ(input_port_3_r)
+	AM_RANGE(0x8000, 0x8000) AM_READ_PORT("IN0")
+	AM_RANGE(0x8001, 0x8001) AM_READ_PORT("IN1")
+	AM_RANGE(0x8002, 0x8002) AM_READ_PORT("IN2")
+	AM_RANGE(0x8003, 0x8003) AM_READ_PORT("IN3")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hotshock_writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -400,39 +400,27 @@ static ADDRESS_MAP_START( ad2083_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(hotshock_sh_irqtrigger_w)
 	AM_RANGE(0x7000, 0x7000) AM_READ(watchdog_reset_r)
-	AM_RANGE(0x8000, 0x8000) AM_READ(input_port_0_r)
-	AM_RANGE(0x8001, 0x8001) AM_READ(input_port_1_r)
-	AM_RANGE(0x8002, 0x8002) AM_READ(input_port_2_r)
-	AM_RANGE(0x8003, 0x8003) AM_READ(input_port_3_r)
+	AM_RANGE(0x8000, 0x8000) AM_READ_PORT("IN0")
+	AM_RANGE(0x8001, 0x8001) AM_READ_PORT("IN1")
+	AM_RANGE(0x8002, 0x8002) AM_READ_PORT("IN2")
+	AM_RANGE(0x8003, 0x8003) AM_READ_PORT("IN3")
 	AM_RANGE(0xa000, 0xdfff) AM_ROM
 	AM_RANGE(0xe800, 0xebff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( triplep_readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( triplep_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x01, 0x01) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x00, 0x00) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_READWRITE(ay8910_read_port_0_r, ay8910_control_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_READ(triplep_pip_r)
 	AM_RANGE(0x03, 0x03) AM_READ(triplep_pap_r)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( triplep_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ay8910_control_port_0_w)
-ADDRESS_MAP_END
-
-
-static ADDRESS_MAP_START( hotshock_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x20, 0x20) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x40, 0x40) AM_READ(ay8910_read_port_1_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( hotshock_sound_writeport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( hotshock_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10, 0x10) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x20, 0x20) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x40, 0x40) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x20, 0x20) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
+	AM_RANGE(0x40, 0x40) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(ay8910_control_port_1_w)
 ADDRESS_MAP_END
 
@@ -471,7 +459,7 @@ static READ8_HANDLER( hncholms_prot_r )
 
 static ADDRESS_MAP_START( hunchbks_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READ(hncholms_prot_r)
-    AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(input_port_3_r)
+    AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ_PORT("SENSE")
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( scramble )
@@ -933,6 +921,15 @@ static INPUT_PORTS_START( triplep )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
+
+/* ckongs coinage DIPs are spread accross two input ports */
+static CUSTOM_INPUT( ckongs_coinage_r )
+{
+	int bit_mask = (FPTR)param;
+	return (input_port_read(field->port->machine, "FAKE") & bit_mask) ? 0x01 : 0x00;
+}
+
+
 static INPUT_PORTS_START( ckongs )
 	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
@@ -945,15 +942,8 @@ static INPUT_PORTS_START( ckongs )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
 	PORT_START("IN1")
-	/* the coinage dip switch is spread across bits 0/1 of port 1 and bit 3 of port 2. */
-	/* To handle that, we swap bits 0/1 of port 1 and bits 1/2 of port 2 - this is handled */
-	/* by ckongs_input_port_N_r() */
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x02, "3" )
-	PORT_DIPSETTING(    0x00, "4" )
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(ckongs_coinage_r, (void *)0x01)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(ckongs_coinage_r, (void *)0x02)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* probably unused */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
@@ -962,23 +952,29 @@ static INPUT_PORTS_START( ckongs )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
 	PORT_START("IN2")
-	/* the coinage dip switch is spread across bits 0/1 of port 1 and bit 3 of port 2. */
-	/* To handle that, we swap bits 0/1 of port 1 and bits 1/2 of port 2 - this is handled */
-	/* by ckongs_input_port_N_r() */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
-	PORT_DIPNAME( 0x0e, 0x0e, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 5C_1C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x0a, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x0e, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x06, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_4C ) )
+	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Lives ) )
+	PORT_DIPSETTING(    0x04, "3" )
+	PORT_DIPSETTING(    0x00, "4" )
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(ckongs_coinage_r, (void *)0x04)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* probably unused */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* probably unused */
+
+	PORT_START("FAKE")
+	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 5C_1C ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(    0x05, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x07, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x06, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x03, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( 1C_4C ) )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mars )
@@ -1837,20 +1833,13 @@ static ADDRESS_MAP_START( scramble_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9000, 0x9fff) AM_WRITE(scramble_filter_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( scramble_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x20, 0x20) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x80, 0x80) AM_READ(ay8910_read_port_1_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( scramble_sound_writeport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( scramble_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10, 0x10) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x20, 0x20) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x20, 0x20) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x80, 0x80) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
 ADDRESS_MAP_END
-
 
 static MACHINE_DRIVER_START( scramble )
 
@@ -1860,15 +1849,12 @@ static MACHINE_DRIVER_START( scramble )
 
 	MDRV_CPU_ADD("audio", Z80, 14318000/8)	/* 1.78975 MHz */
 	MDRV_CPU_PROGRAM_MAP(scramble_sound_readmem,scramble_sound_writemem)
-	MDRV_CPU_IO_MAP(scramble_sound_readport,scramble_sound_writeport)
+	MDRV_CPU_IO_MAP(scramble_sound_io_map,0)
 
 	MDRV_MACHINE_RESET(scramble)
 
-	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
-	MDRV_DEVICE_CONFIG( scramble_ppi_ppi8255_intf[0] )
-
-	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( scramble_ppi_ppi8255_intf[1] )
+	MDRV_PPI8255_ADD( "ppi8255_0", scramble_ppi_0_intf )
+	MDRV_PPI8255_ADD( "ppi8255_1", scramble_ppi_1_intf )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1964,12 +1950,6 @@ static MACHINE_DRIVER_START( mars )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(mars_readmem,mars_writemem)
 
-	MDRV_DEVICE_MODIFY( "ppi8255_0", PPI8255 )
-	MDRV_DEVICE_CONFIG( mars_ppi8255_intf[0] )
-
-	MDRV_DEVICE_MODIFY( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( mars_ppi8255_intf[1] )
-
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(32+64+2+0)	/* 32 for characters, 64 for stars, 2 for bullets, 0/1 for background */
 	MDRV_PALETTE_INIT(galaxold)
@@ -1995,12 +1975,6 @@ static MACHINE_DRIVER_START( newsin7 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(newsin7_readmem,newsin7_writemem)
 
-	MDRV_DEVICE_MODIFY( "ppi8255_0", PPI8255 )
-	MDRV_DEVICE_CONFIG( mars_ppi8255_intf[0] )
-
-	MDRV_DEVICE_MODIFY( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( mars_ppi8255_intf[1] )
-
 	/* video hardware */
 	MDRV_GFXDECODE(newsin7)
 	MDRV_PALETTE_LENGTH(32+64+2+0)	/* 32 for characters, 64 for stars, 2 for bullets, 0/1 for background */
@@ -2015,11 +1989,7 @@ static MACHINE_DRIVER_START( mrkougar )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(mars_readmem,mrkougar_writemem)
 
-	MDRV_DEVICE_MODIFY( "ppi8255_0", PPI8255 )
-	MDRV_DEVICE_CONFIG( mrkougar_ppi8255_intf[0] )
-
-	MDRV_DEVICE_MODIFY( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( mrkougar_ppi8255_intf[1] )
+	MDRV_PPI8255_RECONFIG( "ppi8255_1", mrkougar_ppi_1_intf )
 
 	/* video hardware */
 	MDRV_GFXDECODE(mrkougar)
@@ -2034,11 +2004,7 @@ static MACHINE_DRIVER_START( mrkougb )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(mars_readmem,mrkougar_writemem)
 
-	MDRV_DEVICE_MODIFY( "ppi8255_0", PPI8255 )
-	MDRV_DEVICE_CONFIG( mrkougar_ppi8255_intf[0] )
-
-	MDRV_DEVICE_MODIFY( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( mrkougar_ppi8255_intf[1] )
+	MDRV_PPI8255_RECONFIG( "ppi8255_1", mrkougar_ppi_1_intf )
 
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(32+64+2+0)	/* 32 for characters, 64 for stars, 2 for bullets, 0/1 for background */
@@ -2051,12 +2017,6 @@ static MACHINE_DRIVER_START( ckongs )
 	MDRV_IMPORT_FROM(scramble)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(ckongs_readmem,ckongs_writemem)
-
-	MDRV_DEVICE_MODIFY( "ppi8255_0", PPI8255 )
-	MDRV_DEVICE_CONFIG( ckongs_ppi8255_intf[0] )
-
-	MDRV_DEVICE_MODIFY( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( ckongs_ppi8255_intf[1] )
 
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(32+64+2+0)	/* 32 for characters, 64 for stars, 2 for bullets, 0/1 for background */
@@ -2071,11 +2031,11 @@ static MACHINE_DRIVER_START( hotshock )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(hotshock_readmem,hotshock_writemem)
 
-	MDRV_DEVICE_REMOVE( "ppi8255_0", PPI8255 )
-	MDRV_DEVICE_REMOVE( "ppi8255_1", PPI8255 )
+	MDRV_PPI8255_REMOVE( "ppi8255_0" )
+	MDRV_PPI8255_REMOVE( "ppi8255_1" )
 
 	MDRV_CPU_MODIFY("audio")
-	MDRV_CPU_IO_MAP(hotshock_sound_readport,hotshock_sound_writeport)
+	MDRV_CPU_IO_MAP(hotshock_sound_io_map,0)
 
 	MDRV_MACHINE_RESET(galaxold)
 
@@ -2125,7 +2085,7 @@ static MACHINE_DRIVER_START( triplep )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(scramble)
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_IO_MAP(triplep_readport,triplep_writeport)
+	MDRV_CPU_IO_MAP(triplep_io_map,0)
 
 	MDRV_CPU_REMOVE("audio")
 
@@ -2919,7 +2879,7 @@ ROM_START( ad2083 )
 	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "prom-am27s19dc.1m", 0x0000, 0x0020, CRC(2759aebd) SHA1(644fd2c95ca49cbbc0ee1b88ca2563451ddd4fe0) )
 
-	ROM_REGION( 0x0020, "tms5110_ctrl", 0 ) /* data to program TMS5110 speech chip 3x Reset 1x speak */
+	ROM_REGION( 0x0020, "5110ctrl", 0 ) /* data to program TMS5110 speech chip 3x Reset 1x speak */
 	ROM_LOAD( "prom-sn74s188.8a",  0x0000, 0x0020, BAD_DUMP CRC(c58a4f6a) SHA1(35ef244b3e94032df2610aa594ea5670b91e1449) )
 ROM_END
 
@@ -2991,3 +2951,4 @@ GAME( 1983, cavelon,  0,        cavelon,  cavelon,  cavelon,      ROT90, "Jetsof
 GAME( 198?, mimonscr, mimonkey, mimonscr, mimonscr, mimonscr,     ROT90, "bootleg", "Mighty Monkey (bootleg on Scramble hardware)", GAME_SUPPORTS_SAVE )
 GAME( 1983, ad2083,   0,        ad2083,   ad2083,   ad2083,       ROT90, "Midcoin", "A. D. 2083", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE)
 GAME( 1981, turpins,  turtles,  turpins,  turpins,  0,		      ROT90, "[Sega] (bootleg)", "Turpin (bootleg on Scramble hardware)", GAME_NO_SOUND | GAME_SUPPORTS_SAVE ) // haven't hooked up the sound CPU yet
+

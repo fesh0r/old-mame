@@ -42,14 +42,8 @@ static VIDEO_UPDATE( esh )
 {
 	int charx, chary;
 
-	render_container_set_palette_alpha(render_container_get_screen(screen), 0, 0x00);
-
 	/* clear */
 	fillbitmap(bitmap, 0, cliprect);
-
-	/* display disc information */
-	if (ld_video_visible)
-		popmessage("%s", laserdisc_describe_state(laserdisc));
 
 	/* Draw tiles */
 	for (charx = 0; charx < 32; charx++)
@@ -243,6 +237,9 @@ static PALETTE_INIT( esh )
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
+
+	/* make color 0 transparent */
+	palette_set_color(machine, 0, MAKE_ARGB(0,0,0,0));
 }
 
 static const gfx_layout esh_gfx_layout =
@@ -270,8 +267,6 @@ static INTERRUPT_GEN( vblank_callback_esh )
 	// IRQ
 	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, irq_stop);
-
-	laserdisc_vsync(laserdisc);
 }
 
 static MACHINE_START( esh )
@@ -293,7 +288,7 @@ static MACHINE_DRIVER_START( esh )
 
 	MDRV_MACHINE_START(esh)
 
-	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000)
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000, "main", "ldsound")
 	MDRV_LASERDISC_OVERLAY(esh, 256, 256, BITMAP_FORMAT_INDEXED16)
 
 	/* video hardware */
@@ -307,7 +302,7 @@ static MACHINE_DRIVER_START( esh )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD("laserdisc", CUSTOM, 0)
+	MDRV_SOUND_ADD("ldsound", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)

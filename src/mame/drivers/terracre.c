@@ -146,7 +146,7 @@ static const UINT16 mHoreKidProtData[] =
 
 static READ16_HANDLER( horekid_IN2_r )
 {
-	int data = input_port_read(machine, "IN1");
+	int data = input_port_read(machine, "IN2");
 
 	if (!(data & 0x40))		// FAKE button 3 for "Debug Mode"
 	{
@@ -211,10 +211,10 @@ static ADDRESS_MAP_START( terracre_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x020000, 0x0201ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x020200, 0x021fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x023000, 0x023fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x024000, 0x024001) AM_READ(input_port_0_word_r)
-	AM_RANGE(0x024002, 0x024003) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x024004, 0x024005) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x024006, 0x024007) AM_READ(input_port_3_word_r)
+	AM_RANGE(0x024000, 0x024001) AM_READ_PORT("P1")
+	AM_RANGE(0x024002, 0x024003) AM_READ_PORT("P2")
+	AM_RANGE(0x024004, 0x024005) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x024006, 0x024007) AM_READ_PORT("DSW")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( terracre_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -233,10 +233,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( amazon_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x01ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x040000, 0x040fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x044000, 0x044001) AM_READ(input_port_0_word_r)
-	AM_RANGE(0x044002, 0x044003) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x044004, 0x044005) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x044006, 0x044007) AM_READ(input_port_3_word_r)
+	AM_RANGE(0x044000, 0x044001) AM_READ_PORT("IN0")
+	AM_RANGE(0x044002, 0x044003) AM_READ_PORT("IN1")
+	AM_RANGE(0x044004, 0x044005) AM_READ_PORT("IN2")
+	AM_RANGE(0x044006, 0x044007) AM_READ_PORT("IN3")
 	AM_RANGE(0x070000, 0x070001) AM_READ(amazon_protection_r)
 ADDRESS_MAP_END
 
@@ -263,31 +263,28 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
-
-static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_clear_r)
-	AM_RANGE(0x06, 0x06) AM_READ(soundlatch_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sound_writeport_3526, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( sound_3526_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(ym3526_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(ym3526_write_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(dac_0_signed_data_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(dac_1_signed_data_w)
+	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_clear_r)
+	AM_RANGE(0x06, 0x06) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sound_writeport_2203, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( sound_2203_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(ym2203_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(ym2203_write_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(dac_0_signed_data_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(dac_1_signed_data_w)
+	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_clear_r)
+	AM_RANGE(0x06, 0x06) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( terracre )
-	PORT_START("IN0")
+	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -297,7 +294,7 @@ static INPUT_PORTS_START( terracre )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START("IN1")
+	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
@@ -307,7 +304,7 @@ static INPUT_PORTS_START( terracre )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START("IN2")
+	PORT_START("SYSTEM")
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -391,7 +388,7 @@ static INPUT_PORTS_START( amazon )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START("DSW")
+	PORT_START("IN3")
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Lives ) )
 	PORT_DIPSETTING(      0x0003, "3" )
 	PORT_DIPSETTING(      0x0002, "4" )
@@ -435,7 +432,7 @@ static INPUT_PORTS_START( amazon )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( horekid )
-	PORT_START("DSW")
+	PORT_START("IN0")
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Lives ) )
 	PORT_DIPSETTING(      0x0003, "3" )
 	PORT_DIPSETTING(      0x0002, "4" )
@@ -477,17 +474,17 @@ static INPUT_PORTS_START( horekid )
 //  PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )      // duplicated setting
 //  PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )      // duplicated setting
 
-	PORT_START("IN0")
+	PORT_START("IN1")
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_SERVICE_NO_TOGGLE(0x2000, IP_ACTIVE_LOW)
+	PORT_SERVICE_NO_TOGGLE( 0x2000, IP_ACTIVE_LOW)
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START("IN1")
+	PORT_START("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -497,7 +494,7 @@ static INPUT_PORTS_START( horekid )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME ("P2 Buttons 1+2 (Debug Cheat)") 	// fake button for "Debug Mode" (see read handler)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START("IN2")
+	PORT_START("IN3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -568,7 +565,7 @@ static MACHINE_DRIVER_START( amazon )
 
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz???? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_IO_MAP(sound_readport,sound_writeport_3526)
+	MDRV_CPU_IO_MAP(sound_3526_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,128)	/* ??? */
 
 	MDRV_MACHINE_START(amazon)
@@ -607,7 +604,7 @@ static MACHINE_DRIVER_START( ym3526 )
 
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz???? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_IO_MAP(sound_readport,sound_writeport_3526)
+	MDRV_CPU_IO_MAP(sound_3526_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,128)	/* ??? */
 
 
@@ -644,7 +641,7 @@ static MACHINE_DRIVER_START( ym2203 )
 
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz???? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_IO_MAP(sound_readport,sound_writeport_2203)
+	MDRV_CPU_IO_MAP(sound_2203_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,128)	/* ??? */
 
 
@@ -1034,3 +1031,4 @@ GAME( 1986, amatelas, amazon,   amazon,  amazon,   amatelas, ROT270,  "Nichibuts
 GAME( 1987, horekid,  0,        amazon,  horekid,  horekid,  ROT270,  "Nichibutsu", "Kid no Hore Hore Daisakusen", GAME_SUPPORTS_SAVE )
 GAME( 1987, horekidb, horekid,  amazon,  horekid,  horekid,  ROT270,  "bootleg", "Kid no Hore Hore Daisakusen (bootleg)", GAME_SUPPORTS_SAVE )
 GAME( 1987, boobhack, horekid,  amazon,  horekid,  horekid,  ROT270,  "bootleg", "Booby Kids (Italian manufactured graphic hack / bootleg of Kid no Hore Hore Daisakusen (bootleg))", GAME_SUPPORTS_SAVE )
+

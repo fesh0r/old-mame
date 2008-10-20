@@ -554,17 +554,8 @@ void itech8_update_interrupts(running_machine *machine, int periodic, int tms340
 	/* handle the 68000 case */
 	else
 	{
-		int level = 0;
-
-		/* determine which level is active */
-		if (blitter_int) level = 2;
-		if (periodic_int) level = 3;
-
-		/* update it */
-		if (level)
-			cpunum_set_input_line(machine, 0, level, ASSERT_LINE);
-		else
-			cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 2, blitter_int ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 3, periodic_int ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -576,11 +567,17 @@ void itech8_update_interrupts(running_machine *machine, int periodic, int tms340
  *
  *************************************/
 
+static TIMER_CALLBACK( irq_off )
+{
+	itech8_update_interrupts(machine, 0, -1, -1);
+}
+
+
 static INTERRUPT_GEN( generate_nmi )
 {
 	/* signal the NMI */
 	itech8_update_interrupts(machine, 1, -1, -1);
-	itech8_update_interrupts(machine, 0, -1, -1);
+	timer_set(ATTOTIME_IN_USEC(1), NULL, 0, irq_off);
 
 	if (FULL_LOGGING) logerror("------------ VBLANK (%d) --------------\n", video_screen_get_vpos(machine->primary_screen));
 }

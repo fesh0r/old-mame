@@ -257,41 +257,25 @@ static ADDRESS_MAP_START( gigas_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xfc03, 0xfc03) AM_WRITE(sn76496_3_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( gigas_readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( gigas_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ(spinner_r)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(spinner_r, spinner_select_w)
 	AM_RANGE(0x01, 0x01) AM_READ(SMH_NOP) //unused dip 3
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( gigas_writeport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( oigas_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(spinner_select_w)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( oigas_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ(spinner_r)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(spinner_r, spinner_select_w)
 	AM_RANGE(0x01, 0x01) AM_READ(SMH_NOP) //unused dip 3
 	AM_RANGE(0x02, 0x02) AM_READ(oigas_2_r)
 	AM_RANGE(0x03, 0x03) AM_READ(oigas_3_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( oigas_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(spinner_select_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(oigas_5_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( freekckb_readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( freekckb_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xff, 0xff) AM_READ(freekick_ff_r)
+	AM_RANGE(0xff, 0xff) AM_READWRITE(freekick_ff_r, freekick_ff_w)
 ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( freekckb_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xff, 0xff) AM_WRITE(freekick_ff_w)
-ADDRESS_MAP_END
-
 
 
 /*************************************
@@ -566,19 +550,19 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static WRITE8_HANDLER( snd_rom_addr_l_w )
+static WRITE8_DEVICE_HANDLER( snd_rom_addr_l_w )
 {
 	romaddr = (romaddr & 0xff00) | data;
 }
 
-static WRITE8_HANDLER( snd_rom_addr_h_w )
+static WRITE8_DEVICE_HANDLER( snd_rom_addr_h_w )
 {
 	romaddr = (romaddr & 0x00ff) | (data << 8);
 }
 
-static READ8_HANDLER( snd_rom_r )
+static READ8_DEVICE_HANDLER( snd_rom_r )
 {
-	return memory_region(machine, "user1")[romaddr & 0x7fff];
+	return memory_region(device->machine, "user1")[romaddr & 0x7fff];
 }
 
 static const ppi8255_interface ppi8255_intf[2] =
@@ -592,9 +576,9 @@ static const ppi8255_interface ppi8255_intf[2] =
 		NULL							/* Port C write */
 	},
 	{
-		input_port_0_r,					/* Port A read */
-		input_port_1_r,					/* Port B read */
-		input_port_2_r,					/* Port C read */
+		DEVICE8_PORT("DSW1"),			/* Port A read */
+		DEVICE8_PORT("DSW2"),			/* Port B read */
+		DEVICE8_PORT("DSW3"),			/* Port C read */
 		NULL,							/* Port A write */
 		NULL,							/* Port B write */
 		NULL							/* Port C write */
@@ -695,13 +679,10 @@ static MACHINE_DRIVER_START( freekckb )
 
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(freekckb_readmem,freekckb_writemem)
-	MDRV_CPU_IO_MAP(freekckb_readport,freekckb_writeport)
+	MDRV_CPU_IO_MAP(freekckb_io_map,0)
 
-	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
-	MDRV_DEVICE_CONFIG( ppi8255_intf[0] )
-
-	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( ppi8255_intf[1] )
+	MDRV_PPI8255_ADD( "ppi8255_0", ppi8255_intf[0] )
+	MDRV_PPI8255_ADD( "ppi8255_1", ppi8255_intf[1] )
 
 	MDRV_VIDEO_UPDATE(freekick)
 MACHINE_DRIVER_END
@@ -711,7 +692,7 @@ static MACHINE_DRIVER_START( gigas )
 
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(gigas_readmem,gigas_writemem)
-	MDRV_CPU_IO_MAP(gigas_readport,gigas_writeport)
+	MDRV_CPU_IO_MAP(gigas_io_map,0)
 
 	MDRV_VIDEO_UPDATE(gigas)
 MACHINE_DRIVER_END
@@ -719,7 +700,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( oigas )
 	MDRV_IMPORT_FROM(gigas)
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_IO_MAP(oigas_readport,oigas_writeport)
+	MDRV_CPU_IO_MAP(oigas_io_map,0)
 MACHINE_DRIVER_END
 
 
@@ -1098,3 +1079,4 @@ GAME( 1987, freekcb2, freekick, freekckb, freekck,  0,        ROT270, "bootleg",
 GAME( 1988, countrun, 0,        freekckb, countrun, 0,        ROT0,   "Nihon System (Sega license)", "Counter Run", GAME_NOT_WORKING )
 GAME( 1988, countrnb, countrun, freekckb, countrun, 0,        ROT0,   "bootleg", "Counter Run (bootleg set 1)", 0 )
 GAME( 1988, countrb2, countrun, freekckb, countrun, 0,        ROT0,   "bootleg", "Counter Run (bootleg set 2)", GAME_NOT_WORKING )
+

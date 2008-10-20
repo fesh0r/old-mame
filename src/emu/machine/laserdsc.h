@@ -29,6 +29,7 @@ enum
 	LASERDISC_TYPE_PIONEER_PR8210,			/* Pioneer PR-8210 / LD-V1100 */
 	LASERDISC_TYPE_SIMUTREK_SPECIAL,		/* Pioneer PR-8210 with mods */
 	LASERDISC_TYPE_PIONEER_LDV1000,			/* Pioneer LD-V1000 */
+	LASERDISC_TYPE_PHILLIPS_22VP931,		/* Phillips 22VP931 */
 	LASERDISC_TYPE_PHILLIPS_22VP932,		/* Phillips 22VP932 (PAL) */
 	LASERDISC_TYPE_SONY_LDP1450				/* Sony LDP-1450 */
 };
@@ -36,7 +37,8 @@ enum
 /* laserdisc control lines */
 #define LASERDISC_LINE_ENTER		0			/* "ENTER" key/line */
 #define LASERDISC_LINE_CONTROL		1			/* "CONTROL" line */
-#define LASERDISC_INPUT_LINES		2
+#define LASERDISC_LINE_RESET		2			/* "RESET" line */
+#define LASERDISC_INPUT_LINES		3
 
 /* laserdisc status lines */
 #define LASERDISC_LINE_READY		0			/* "READY" line */
@@ -46,11 +48,11 @@ enum
 #define LASERDISC_OUTPUT_LINES		4
 
 /* laserdisc field codes */
-#define LASERDISC_CODE_WHITE_FLAG	0			/* boolean white flag */
-#define LASERDISC_CODE_LINE16		1			/* 24-bit line 16 code */
-#define LASERDISC_CODE_LINE17		2			/* 24-bit line 17 code */
-#define LASERDISC_CODE_LINE18		3			/* 24-bit line 18 code */
-#define LASERDISC_CODE_LINE1718		4			/* 24-bit best of line 17/18 code */
+#define LASERDISC_CODE_WHITE_FLAG	11			/* boolean white flag */
+#define LASERDISC_CODE_LINE16		16			/* 24-bit line 16 code */
+#define LASERDISC_CODE_LINE17		17			/* 24-bit line 17 code */
+#define LASERDISC_CODE_LINE18		18			/* 24-bit line 18 code */
+#define LASERDISC_CODE_LINE1718		1718		/* 24-bit best of line 17/18 code */
 
 /* device configuration */
 enum
@@ -66,13 +68,14 @@ enum
 
 typedef void (*laserdisc_audio_func)(const device_config *device, int samplerate, int samples, const INT16 *ch0, const INT16 *ch1);
 
+typedef void (*vp931_data_ready_func)(const device_config *device, int state);
+
 typedef struct _laserdisc_config laserdisc_config;
 struct _laserdisc_config
 {
 	UINT32					type;
 	laserdisc_audio_func	audio;
-
-	/* rendering information */
+	const char *			sound;
 	const char *			screen;
 
 	/* overlay information */
@@ -89,15 +92,14 @@ struct _laserdisc_config
     DEVICE CONFIGURATION MACROS
 ***************************************************************************/
 
-#define MDRV_LASERDISC_ADD(_tag, _type) \
+#define MDRV_LASERDISC_ADD(_tag, _type, _screen, _sound) \
 	MDRV_DEVICE_ADD(_tag, LASERDISC) \
-	MDRV_DEVICE_CONFIG_DATA32(laserdisc_config, type, LASERDISC_TYPE_##_type)
+	MDRV_DEVICE_CONFIG_DATA32(laserdisc_config, type, LASERDISC_TYPE_##_type) \
+	MDRV_DEVICE_CONFIG_DATAPTR(laserdisc_config, screen, _screen) \
+	MDRV_DEVICE_CONFIG_DATAPTR(laserdisc_config, sound, _sound) \
 
 #define MDRV_LASERDISC_AUDIO(_func) \
 	MDRV_DEVICE_CONFIG_DATAPTR(laserdisc_config, audio, _func)
-
-#define MDRV_LASERDISC_SCREEN(_tag) \
-	MDRV_DEVICE_CONFIG_DATAPTR(laserdisc_config, screen, _tag)
 
 #define MDRV_LASERDISC_OVERLAY(_update, _width, _height, _format) \
 	MDRV_DEVICE_CONFIG_DATAPTR(laserdisc_config, overupdate, video_update_##_update) \
@@ -130,7 +132,7 @@ struct _laserdisc_config
 	\
 	MDRV_SCREEN_ADD(_tag, RASTER) \
 	MDRV_SCREEN_FORMAT(_overlayformat) \
-	MDRV_SCREEN_RAW_PARAMS(XTAL_14_31818MHz*2, 910, 0, 704, 525, 0, 480) \
+	MDRV_SCREEN_RAW_PARAMS(XTAL_14_31818MHz*2, 910, 0, 704, 525, 44, 524) \
 
 /* not correct yet; fix me... */
 #define MDRV_LASERDISC_SCREEN_ADD_PAL(_tag, _format) \
@@ -158,17 +160,11 @@ extern const custom_sound_interface laserdisc_custom_interface;
 
 /* ----- core control and status ----- */
 
-/* call this once per field (i.e., 59.94 times/second for NTSC) */
-void laserdisc_vsync(const device_config *device);
-
-/* return a textual description of the current state (for debugging) */
-const char *laserdisc_describe_state(const device_config *device);
-
-/* get a bitmap for the current frame (and the frame number) */
-UINT32 laserdisc_get_video(const device_config *device, bitmap_t **bitmap);
+/* get a bitmap for the current frame; return TRUE if valid or FALSE if video off */
+int laserdisc_get_video(const device_config *device, bitmap_t **bitmap);
 
 /* return the raw philips or white flag codes */
-UINT32 laserdisc_get_field_code(const device_config *device, UINT8 code);
+UINT32 laserdisc_get_field_code(const device_config *device, UINT32 code);
 
 
 
@@ -193,11 +189,11 @@ UINT8 laserdisc_line_r(const device_config *device, UINT8 line);
 /* specify the "slow" speed of the Pioneer PR-7820 */
 void pr7820_set_slow_speed(const device_config *device, double frame_rate_scaler);
 
+/* set a callback for data ready on the Phillips 22VP931 */
+void vp931_set_data_ready_callback(const device_config *device, vp931_data_ready_func callback);
+
 /* control the audio squelch of the Simutrek modified players */
 void simutrek_set_audio_squelch(const device_config *device, int state);
-
-/* set the callback */
-void simutrek_set_cmd_ack_callback(const device_config *device, void (*callback)(void));
 
 
 

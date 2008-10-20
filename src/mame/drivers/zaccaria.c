@@ -54,7 +54,7 @@ VIDEO_UPDATE( zaccaria );
 
 static int dsw;
 
-static WRITE8_HANDLER( zaccaria_dsw_sel_w )
+static WRITE8_DEVICE_HANDLER( zaccaria_dsw_sel_w )
 {
 	switch (data & 0xf0)
 	{
@@ -78,7 +78,7 @@ static WRITE8_HANDLER( zaccaria_dsw_sel_w )
 
 static READ8_HANDLER( zaccaria_dsw_r )
 {
-	static const char *dswnames[] = { "IN0", "DSW0", "DSW1" };
+	static const char *const dswnames[] = { "IN0", "DSW0", "DSW1" };
 
 	return input_port_read(machine, dswnames[dsw]);
 }
@@ -104,7 +104,7 @@ static WRITE8_HANDLER( ay8910_port0a_w )
 static void zaccaria_irq0a(running_machine *machine, int state) { cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE); }
 static void zaccaria_irq0b(running_machine *machine, int state) { cpunum_set_input_line(machine, 1,0,state ? ASSERT_LINE : CLEAR_LINE); }
 
-static int active_8910,port0a,acs;
+static int active_8910, port0a, acs;
 
 static READ8_HANDLER( zaccaria_port0a_r )
 {
@@ -233,9 +233,9 @@ static const pia6821_interface pia_1_intf =
 
 static const ppi8255_interface ppi8255_intf =
 {
-	input_port_3_r,					/* Port A read */
-	input_port_4_r,					/* Port B read */
-	input_port_5_r,					/* Port C read */
+	DEVICE8_PORT("P1"),				/* Port A read */
+	DEVICE8_PORT("P2"),				/* Port B read */
+	DEVICE8_PORT("SYSTEM"),			/* Port C read */
 	NULL,							/* Port A write */
 	NULL,							/* Port B write */
 	zaccaria_dsw_sel_w, 			/* Port C write */
@@ -299,7 +299,7 @@ static READ8_HANDLER( zaccaria_prot2_r )
 	switch (offset)
 	{
 		case 0:
-			return (input_port_read(machine, "COINS") & 0x07) | (acs & 0x08);   /* bits 4 and 5 must be 0 in Jack Rabbit */
+			return input_port_read(machine, "COINS");   /* bits 4 and 5 must be 0 in Jack Rabbit */
 
 		case 2:
 			return 0x10;    /* Jack Rabbit */
@@ -367,6 +367,10 @@ static ADDRESS_MAP_START( sound_map_2, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
+static CUSTOM_INPUT( acs_r )
+{
+	return (acs & 0x08) ? 1 : 0;
+}
 
 static INPUT_PORTS_START( monymony )
 	PORT_START("IN0")
@@ -473,7 +477,7 @@ static INPUT_PORTS_START( monymony )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* "ACS" - from pin 13 of a PIA on the sound board */
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(acs_r, NULL)	/* "ACS" - from pin 13 of a PIA on the sound board */
 	/* other bits come from a protection device */
 INPUT_PORTS_END
 
@@ -576,8 +580,7 @@ static MACHINE_DRIVER_START( zaccaria )
 	MDRV_MACHINE_START(zaccaria)
 	MDRV_MACHINE_RESET(zaccaria)
 
-	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-	MDRV_DEVICE_CONFIG( ppi8255_intf )
+	MDRV_PPI8255_ADD( "ppi8255", ppi8255_intf )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

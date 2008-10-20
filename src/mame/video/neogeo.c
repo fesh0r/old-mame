@@ -35,6 +35,7 @@ static emu_timer *auto_animation_timer;
 
 static emu_timer *sprite_line_timer;
 
+static const UINT8 *region_zoomy;
 
 
 /*************************************
@@ -413,7 +414,7 @@ INLINE int sprite_on_scanline(int scanline, int y, int rows)
 }
 
 
-static void draw_sprites(running_machine *machine, bitmap_t *bitmap, int scanline)
+static void draw_sprites(bitmap_t *bitmap, int scanline)
 {
 	int sprite_index;
 	int max_sprite_index;
@@ -504,7 +505,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, int scanlin
 				}
 			}
 
-			sprite_y_and_tile = memory_region(machine, "zoomy")[(zoom_y << 8) | zoom_line];
+			sprite_y_and_tile = region_zoomy[(zoom_y << 8) | zoom_line];
 			sprite_y = sprite_y_and_tile & 0x0f;
 			tile = sprite_y_and_tile >> 4;
 
@@ -649,12 +650,8 @@ static void parse_sprites(int scanline)
 	}
 
 	/* fill the rest of the sprite list with 0, including one extra entry */
-	for (; active_sprite_count <= MAX_SPRITES_PER_LINE ; active_sprite_count++)
-	{
-		*sprite_list = 0;
-
-		sprite_list++;
-	}
+	memset(sprite_list, 0,
+	       sizeof(sprite_list[0]) * (MAX_SPRITES_PER_LINE - active_sprite_count + 1));
 }
 
 
@@ -902,6 +899,8 @@ VIDEO_START( neogeo )
 	state_save_register_global(auto_animation_frame_counter);
 
 	state_save_register_postload(machine, regenerate_pens, NULL);
+
+	region_zoomy = memory_region(machine, "zoomy");
 }
 
 
@@ -931,7 +930,7 @@ VIDEO_UPDATE( neogeo )
 	/* fill with background color first */
 	fillbitmap(bitmap, pens[0x0fff], cliprect);
 
-	draw_sprites(screen->machine, bitmap, cliprect->min_y);
+	draw_sprites(bitmap, cliprect->min_y);
 
 	draw_fixed_layer(screen->machine, bitmap, cliprect->min_y);
 

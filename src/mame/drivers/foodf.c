@@ -114,17 +114,9 @@ static READ16_HANDLER( nvram_r )
 
 static void update_interrupts(running_machine *machine)
 {
-	int newstate = 0;
-
-	if (atarigen_scanline_int_state)
-		newstate |= 1;
-	if (atarigen_video_int_state)
-		newstate |= 2;
-
-	if (newstate)
-		cpunum_set_input_line(machine, 0, newstate, ASSERT_LINE);
-	else
-		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 1, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 2, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 3, atarigen_scanline_int_state && atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -202,7 +194,7 @@ static WRITE16_HANDLER( digital_w )
 
 static READ16_HANDLER( analog_r )
 {
-	static const char *portnames[] = { "STICK0_X", "STICK1_X", "STICK0_Y", "STICK1_Y" };
+	static const char *const portnames[] = { "STICK0_X", "STICK1_X", "STICK0_Y", "STICK1_Y" };
 
 	return input_port_read(machine, portnames[whichport]);
 }

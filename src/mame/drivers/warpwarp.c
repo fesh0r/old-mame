@@ -144,7 +144,7 @@ static int handle_joystick;
 static READ8_HANDLER( geebee_in_r )
 {
 	int res;
-	static const char *portnames[] = { "SW0", "SW1", "DSW2", "PLACEHOLDER" };	// "IN1" & "IN2" are read separately when offset==3
+	static const char *const portnames[] = { "SW0", "SW1", "DSW2", "PLACEHOLDER" };	// "IN1" & "IN2" are read separately when offset==3
 
 	offset &= 3;
 	res = input_port_read_safe(machine, portnames[offset], 0);
@@ -198,7 +198,8 @@ static WRITE8_HANDLER( geebee_out7_w )
 			coin_counter_w(0,data & 1);
 			break;
 		case 4:
-			coin_lockout_global_w(~data & 1);
+			if (strcmp(machine->gamedrv->name, "geebeeb"))
+				coin_lockout_global_w(~data & 1);
 			break;
 		case 5:
 			if( geebee_bgw != (data & 1) )
@@ -357,20 +358,23 @@ static INPUT_PORTS_START( geebee )
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail) )
-	PORT_DIPNAME( 0x32, 0x10, "Lives/Bonus Life" )
-	PORT_DIPSETTING(    0x10, "3/40k 80k" )
-	PORT_DIPSETTING(    0x20, "3/70k 140k" )
-	PORT_DIPSETTING(    0x30, "3/100k 200k" )
-	PORT_DIPSETTING(    0x00, "3/None" )
-	PORT_DIPSETTING(    0x12, "5/60k 120k" )
-	PORT_DIPSETTING(    0x22, "5/100k 200k" )
-	PORT_DIPSETTING(    0x32, "5/150k 300k" )
-	PORT_DIPSETTING(    0x02, "5/None" )
+	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Lives ) )
+	PORT_DIPSETTING(	0x00, "3" )
+	PORT_DIPSETTING(	0x02, "5" )
 	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( Free_Play ) )
+	PORT_DIPNAME( 0x30, 0x10, "Replay" )		// awards 1 credit
+	PORT_DIPSETTING(    0x10, "40k 80k" )		PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x20, "70k 140k" )		PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x30, "100k 200k" )		PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) )	PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x10, "60k 120k" )		PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
+	PORT_DIPSETTING(    0x20, "100k 200k" )		PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
+	PORT_DIPSETTING(    0x30, "150k 300k" )		PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) )	PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("IN1")
@@ -378,6 +382,21 @@ static INPUT_PORTS_START( geebee )
 
 	PORT_START("IN2")	/* Cocktail */
 	PORT_BIT( 0xff, 0x58, IPT_PADDLE ) PORT_MINMAX(0x10,0xa0) PORT_SENSITIVITY(30) PORT_KEYDELTA(15) PORT_CENTERDELTA(0) PORT_REVERSE PORT_COCKTAIL
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( geebeeb )
+	PORT_INCLUDE( geebee )
+
+	PORT_MODIFY("DSW2")
+	PORT_DIPNAME( 0x30, 0x10, "Replay" )		// awards 1 credit
+	PORT_DIPSETTING(    0x10, "40k" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x20, "70k" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x30, "100k" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) )	PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x10, "60k" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
+	PORT_DIPSETTING(    0x20, "100k" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
+	PORT_DIPSETTING(    0x30, "150k" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) )	PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( navarone )
@@ -397,15 +416,18 @@ static INPUT_PORTS_START( navarone )
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail) )
-	PORT_DIPNAME( 0x0e, 0x06, "Lives/Bonus Life" )
-	PORT_DIPSETTING(	0x04, "2/5000" )
-	PORT_DIPSETTING(	0x08, "2/6000" )
-	PORT_DIPSETTING(	0x0c, "2/7000" )
-	PORT_DIPSETTING(	0x00, "2/None" )
-	PORT_DIPSETTING(	0x06, "3/6000" )
-	PORT_DIPSETTING(	0x0a, "3/7000" )
-	PORT_DIPSETTING(	0x0e, "3/8000" )
-	PORT_DIPSETTING(	0x02, "3/None" )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Lives ) )
+	PORT_DIPSETTING(	0x00, "2" )
+	PORT_DIPSETTING(	0x02, "3" )
+	PORT_DIPNAME( 0x0c, 0x04, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x04, "5000" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x08, "6000" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x0c, "7000" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) )	PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x04, "6000" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
+	PORT_DIPSETTING(    0x08, "7000" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
+	PORT_DIPSETTING(    0x0c, "8000" )			PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) )	PORT_CONDITION("DSW2", 0x02, PORTCOND_EQUALS, 0x02)
 	PORT_DIPNAME( 0x30, 0x10, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(	0x30, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( 1C_1C ) )
@@ -630,19 +652,15 @@ static INPUT_PORTS_START( warpwarp )
 	PORT_DIPSETTING(	0x04, "3" )
 	PORT_DIPSETTING(	0x08, "4" )
 	PORT_DIPSETTING(	0x0c, "5" )
-	/* Bonus Lives when "Lives" Dip Switch is set to "2", "3" or "4" */
 	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(	0x00, "8000 30000" )
-	PORT_DIPSETTING(	0x10, "10000 40000" )
-	PORT_DIPSETTING(	0x20, "15000 60000" )
-	PORT_DIPSETTING(	0x30, DEF_STR( None ) )
-	/* Bonus Lives when "Lives" Dip Switch is set to "5"
-    PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x00, "30000" )
-    PORT_DIPSETTING(    0x10, "40000" )
-    PORT_DIPSETTING(    0x20, "60000" )
-    PORT_DIPSETTING(    0x30, DEF_STR( None ) )
-    */
+	PORT_DIPSETTING(	0x00, "8k 30k 30k+" )	PORT_CONDITION("DSW1", 0x0c, PORTCOND_NOTEQUALS, 0x0c)
+	PORT_DIPSETTING(	0x10, "10k 40k 40k+" )	PORT_CONDITION("DSW1", 0x0c, PORTCOND_NOTEQUALS, 0x0c)
+	PORT_DIPSETTING(	0x20, "15k 60k 60k+" )	PORT_CONDITION("DSW1", 0x0c, PORTCOND_NOTEQUALS, 0x0c)
+	PORT_DIPSETTING(	0x30, DEF_STR( None ) )	PORT_CONDITION("DSW1", 0x0c, PORTCOND_NOTEQUALS, 0x0c)
+    PORT_DIPSETTING(    0x00, "30k" )			PORT_CONDITION("DSW1", 0x0c, PORTCOND_EQUALS, 0x0c)
+    PORT_DIPSETTING(    0x10, "40k" )			PORT_CONDITION("DSW1", 0x0c, PORTCOND_EQUALS, 0x0c)
+    PORT_DIPSETTING(    0x20, "60k" )			PORT_CONDITION("DSW1", 0x0c, PORTCOND_EQUALS, 0x0c)
+    PORT_DIPSETTING(    0x30, DEF_STR( None ) )	PORT_CONDITION("DSW1", 0x0c, PORTCOND_EQUALS, 0x0c)
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -807,6 +825,7 @@ ROM_START( geebee )
 
 	ROM_REGION( 0x800, "gfx1", 0 )
 	ROM_LOAD( "geebee.3a",    0x0000, 0x0400, CRC(f257b21b) SHA1(c788fd923438f1bffbff9ff3cd4c5c8b547c0c14) )
+	ROM_RELOAD(               0x0400, 0x0400 )
 ROM_END
 
 ROM_START( geebeeb )
@@ -818,6 +837,7 @@ ROM_START( geebeeb )
 
 	ROM_REGION( 0x800, "gfx1", 0 )
 	ROM_LOAD( "geebee.3a",    0x0000, 0x0400, CRC(f257b21b) SHA1(c788fd923438f1bffbff9ff3cd4c5c8b547c0c14) )
+	ROM_RELOAD(               0x0400, 0x0400 )
 ROM_END
 
 ROM_START( geebeeg )
@@ -825,7 +845,8 @@ ROM_START( geebeeg )
 	ROM_LOAD( "geebee.1k",    0x0000, 0x1000, CRC(8a5577e0) SHA1(356d33e19c6b4f519816ee4b65ff9b59d6c1b565) )
 
 	ROM_REGION( 0x800, "gfx1", 0 )
-	ROM_LOAD( "geebee.3a",    0x0000, 0x0400, CRC(f257b21b) SHA1(c788fd923438f1bffbff9ff3cd4c5c8b547c0c14) )
+	ROM_LOAD( "geebeeg.3a",   0x0000, 0x0400, CRC(a45932ba) SHA1(48f70742c42a9377f31fac3a1e43123751e57656) )
+	ROM_RELOAD(               0x0400, 0x0400 )
 ROM_END
 
 ROM_START( navarone )
@@ -990,7 +1011,7 @@ static DRIVER_INIT( warpwarp )
 
 /* B & W games */
 GAMEL(1978, geebee,   0,        geebee,   geebee,   geebee,   ROT90, "Namco", "Gee Bee", 0, layout_geebee )
-GAMEL(1978, geebeeb,  geebee,   geebee,   geebee,   geebee,   ROT90, "[Namco] (F.lli Bertolino license)", "Gee Bee (F.lli Bertolino license)", 0, layout_geebee )
+GAMEL(1978, geebeeb,  geebee,   geebee,   geebeeb,  geebee,   ROT90, "[Namco] (F.lli Bertolino license)", "Gee Bee (F.lli Bertolino license)", 0, layout_geebee )
 GAMEL(1978, geebeeg,  geebee,   geebee,   geebee,   geebee,   ROT90, "[Namco] (Gremlin license)", "Gee Bee (Gremlin)", 0, layout_geebee )
 GAME( 1980, navarone, 0,        navarone, navarone, navarone, ROT90, "Namco", "Navarone", GAME_IMPERFECT_SOUND )
 GAME( 1980, kaitei,   0,        navarone, kaitei,   kaitei,   ROT90, "Namco", "Kaitei Takara Sagashi", 0 )

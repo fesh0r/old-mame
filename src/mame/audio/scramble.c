@@ -80,7 +80,7 @@ READ8_HANDLER( frogger_portB_r )
 }
 
 
-WRITE8_HANDLER( scramble_sh_irqtrigger_w )
+WRITE8_DEVICE_HANDLER( scramble_sh_irqtrigger_w )
 {
 	/* the complement of bit 3 is connected to the flip-flop's clock */
 	TTL7474_clock_w(2, ~data & 0x08);
@@ -97,7 +97,7 @@ WRITE8_HANDLER( sfx_sh_irqtrigger_w )
 	TTL7474_update(3);
 }
 
-WRITE8_HANDLER( mrkougar_sh_irqtrigger_w )
+WRITE8_DEVICE_HANDLER( mrkougar_sh_irqtrigger_w )
 {
 	/* the complement of bit 3 is connected to the flip-flop's clock */
 	TTL7474_clock_w(2, ~data & 0x08);
@@ -309,7 +309,7 @@ static TIMER_CALLBACK( ad2083_step )
      * static const int prom[16] = {0x00, 0x00, 0x02, 0x00, 0x00, 0x02, 0x00, 0x00,
      *              0x02, 0x00, 0x40, 0x00, 0x04, 0x06, 0x04, 0x84 };
      */
-	UINT8 *prom = memory_region(machine, "tms5110_ctrl");
+	UINT8 *prom = memory_region(machine, "5110ctrl");
 	UINT8 ctrl;
 
 	if (param == 0)

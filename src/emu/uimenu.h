@@ -35,6 +35,7 @@
 /* flags to pass to ui_menu_process */
 #define UI_MENU_PROCESS_NOKEYS		1
 #define UI_MENU_PROCESS_LR_REPEAT	2
+#define UI_MENU_PROCESS_CUSTOM_ONLY	4
 
 /* options for ui_menu_reset */
 enum _ui_menu_reset_options
@@ -102,7 +103,7 @@ int ui_menu_populated(ui_menu *menu);
 void ui_menu_item_append(ui_menu *menu, const char *text, const char *subtext, UINT32 flags, void *ref);
 
 /* process a menu, drawing it and returning any interesting events */
-const ui_menu_event *ui_menu_process(ui_menu *menu, UINT32 flags);
+const ui_menu_event *ui_menu_process(running_machine *machine, ui_menu *menu, UINT32 flags);
 
 /* configure the menu for custom rendering */
 void ui_menu_set_custom_render(ui_menu *menu, ui_menu_custom_func custom, float top, float bottom);
@@ -142,8 +143,11 @@ void ui_menu_stack_pop(running_machine *machine);
 /* master handler */
 UINT32 ui_menu_ui_handler(running_machine *machine, UINT32 state);
 
+/* slider handler */
+UINT32 ui_slider_ui_handler(running_machine *machine, UINT32 state);
+
 /* force game select menu */
-void ui_menu_force_game_select(void);
+void ui_menu_force_game_select(running_machine *machine);
 int ui_menu_is_force_game_select(void);
 
 

@@ -202,7 +202,7 @@ static INPUT_PORTS_START ( megaplay )
     PORT_DIPSETTING( 0x01, "1 coin/1 credit - 2 coins/3 credits" )
     PORT_DIPSETTING( 0x00, DEF_STR( Free_Play ) )
 
-	PORT_DIPNAME( 0xf0, 0xf0, "Coin slot 2" ) PORT_DIPLOCATION("SW2:1,2,3,4")\
+	PORT_DIPNAME( 0xf0, 0xf0, "Coin slot 2" ) PORT_DIPLOCATION("SW2:1,2,3,4")
     PORT_DIPSETTING( 0x70, DEF_STR( 4C_1C ) )
     PORT_DIPSETTING( 0x80, DEF_STR( 3C_1C ) )
     PORT_DIPSETTING( 0x90, DEF_STR( 2C_1C ) )
@@ -561,7 +561,7 @@ static WRITE16_HANDLER ( OLD_megaplay_genesis_io_w )
 
 static READ8_HANDLER( bank_r )
 {
-	UINT8* bank = memory_region(machine, "megaplay_bios");
+	UINT8* bank = memory_region(machine, "mpbios");
 	UINT8* game = memory_region(machine, "main");
 
 	if(game_banksel == 0x142) // Genesis I/O
@@ -750,20 +750,15 @@ static WRITE8_HANDLER (megaplay_bios_port_be_bf_w)
 	}
 }
 
-static ADDRESS_MAP_START( megaplay_bios_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-//  AM_RANGE(0xdc, 0xdc) AM_READ(megatech_bios_port_dc_r)  // player inputs
-//  AM_RANGE(0xdd, 0xdd) AM_READ(megatech_bios_port_dd_r)  // other player 2 inputs
-	AM_RANGE(0xbe, 0xbf) AM_READ(megaplay_bios_port_be_bf_r)			/* VDP */
-ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( megaplay_bios_writeport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( megaplay_bios_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 //  AM_RANGE(0x3f, 0x3f) AM_WRITE(megatech_bios_port_ctrl_w)
 	AM_RANGE(0x7f, 0x7f) AM_WRITE(sn76496_1_w)	/* SN76489 */
-	AM_RANGE(0xbe, 0xbf) AM_WRITE(megaplay_bios_port_be_bf_w)			/* VDP */
+//  AM_RANGE(0xdc, 0xdc) AM_READ(megatech_bios_port_dc_r)  // player inputs
+//  AM_RANGE(0xdd, 0xdd) AM_READ(megatech_bios_port_dd_r)  // other player 2 inputs
+	AM_RANGE(0xbe, 0xbf) AM_READWRITE(megaplay_bios_port_be_bf_r, megaplay_bios_port_be_bf_w)	/* VDP */
 ADDRESS_MAP_END
-
 
 /* in video/segasyse.c */
 VIDEO_START( megaplay_normal );
@@ -794,9 +789,9 @@ static MACHINE_DRIVER_START( mpnew )
 
 	/* The Megaplay has an extra BIOS cpu which drives an SMS VDP
        which includes an SN76496 for sound */
-	MDRV_CPU_ADD("megaplay_bios", Z80, MASTER_CLOCK / 15) /* ?? */
+	MDRV_CPU_ADD("mpbios", Z80, MASTER_CLOCK / 15) /* ?? */
 	MDRV_CPU_PROGRAM_MAP(megaplay_bios_readmem, megaplay_bios_writemem)
-	MDRV_CPU_IO_MAP(megaplay_bios_readport,megaplay_bios_writeport)
+	MDRV_CPU_IO_MAP(megaplay_bios_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(megaplay_bios_irq, 262)
 
 	MDRV_INTERLEAVE(100)
@@ -827,7 +822,7 @@ ROM_START( megaplay )
 
 	ROM_REGION( 0x8000, "user1", ROMREGION_ERASEFF )
 
-	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+	ROM_REGION( 0x28000, "mpbios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
@@ -840,7 +835,7 @@ ROM_START( mp_sonic ) /* Sonic */
 	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "ep15175-01.ic3", 0x000000, 0x08000, CRC(99246889) SHA1(184aa3b7fdedcf578c5e34edb7ed44f57f832258) )
 
-	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+	ROM_REGION( 0x28000, "mpbios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
@@ -856,7 +851,7 @@ ROM_START( mp_col3 ) /* Columns 3 */
 	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "1.ic3", 0x000000, 0x08000,  CRC(dac9bf91) SHA1(0117972a7181f8aaf942a259cc8764b821031253) )
 
-	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+	ROM_REGION( 0x28000, "mpbios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
@@ -869,7 +864,7 @@ ROM_START( mp_gaxe2 ) /* Golden Axe 2 */
 	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "ep15175-02b.ic3", 0x000000, 0x08000, CRC(3039b653) SHA1(b19874c74d0fc0cca1169f62e5e74f0e8ca83679) ) // 15175-02b.ic3
 
-	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+	ROM_REGION( 0x28000, "mpbios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
@@ -882,7 +877,7 @@ ROM_START( mp_gslam ) /* Grand Slam */
 	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "epr-15175-03.ic3", 0x000000, 0x08000, CRC(70ea1aec) SHA1(0d9d82a1f8aa51d02707f7b343e7cfb6591efccd) ) // 15175-02b.ic3
 
-	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+	ROM_REGION( 0x28000, "mpbios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
@@ -896,7 +891,7 @@ ROM_START( mp_twc ) /* Tecmo World Cup */
  	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "ep15175-04.ic3", 0x000000, 0x08000, CRC(faf7c030) SHA1(16ef405335b4d3ecb0b7d97b088dafc4278d4726) )
 
- 	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+ 	ROM_REGION( 0x28000, "mpbios", 0 ) /* Bios */
  	MEGAPLAY_BIOS
 ROM_END
 
@@ -908,7 +903,7 @@ ROM_START( mp_sor2 ) /* Streets of Rage 2 */
 	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "epr-15175-05.ic2", 0x000000, 0x08000, CRC(1df5347c) SHA1(faced2e875e1914392f61577b5256d006eebeef9) )
 
-	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+	ROM_REGION( 0x28000, "mpbios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
@@ -920,7 +915,7 @@ ROM_START( mp_bio ) /* Bio Hazard Battle */
 	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "epr-15175-06.ic2", 0x000000, 0x08000, CRC(1ef64e41) SHA1(13984b714b014ea41963b70de74a5358ed223bc5) )
 
-	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+	ROM_REGION( 0x28000, "mpbios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
@@ -932,7 +927,7 @@ ROM_START( mp_soni2 ) /* Sonic The Hedgehog 2 */
 	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "epr-15175-07.ic1", 0x000000, 0x08000, CRC(bb5f67f0) SHA1(33b7a5d14015a5fcf41976a8f648f8f48ce9bb03) )
 
-	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+	ROM_REGION( 0x28000, "mpbios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
@@ -944,7 +939,7 @@ ROM_START( mp_mazin ) /* Mazin Wars */
 	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "epr-15175-11.ic2", 0x000000, 0x08000, CRC(bb651120) SHA1(81cb736f2732373e260dde162249c1d29a3489c3) )
 
-	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+	ROM_REGION( 0x28000, "mpbios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
@@ -956,14 +951,14 @@ ROM_START( mp_shnb3 ) /* Shinobi 3 */
 	ROM_REGION( 0x8000, "user1", 0 ) /* Game Instructions */
 	ROM_LOAD( "epr-15175-09.ic2", 0x000000, 0x08000, CRC(6254e45a) SHA1(8667922a6eade03c964ce224f7fa39ba871c60a4) )
 
-	ROM_REGION( 0x28000, "megaplay_bios", 0 ) /* Bios */
+	ROM_REGION( 0x28000, "mpbios", 0 ) /* Bios */
 	MEGAPLAY_BIOS
 ROM_END
 
 
 static void megplay_stat(running_machine *machine)
 {
-	UINT8 *src = memory_region(machine, "megaplay_bios");
+	UINT8 *src = memory_region(machine, "mpbios");
 	UINT8 *instruction_rom = memory_region(machine, "user1");
 	UINT8 *game_rom = memory_region(machine, "main");
 	int offs;
@@ -1079,3 +1074,4 @@ system16.com lists 'Streets of Rage' but this seems unlikely, there are no gaps 
 the numbering prior to 'Streets of Rage 2'
 
 */
+

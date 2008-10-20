@@ -563,6 +563,12 @@ static INPUT_PORTS_START( stocker )
 	PORT_INCLUDE( sentetst )
 
 	PORT_MODIFY("SWH")
+	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )		PORT_DIPLOCATION("H1:1,2")
+	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
+
 	PORT_DIPNAME( 0x1c, 0x00, "Bonus Coins" )		PORT_DIPLOCATION("H1:3,4,5")
 	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
 	PORT_DIPSETTING(    0x04, "2 Coins = 1 Bonus" )
@@ -844,6 +850,9 @@ static INPUT_PORTS_START( nstocker )
 	PORT_DIPSETTING(    0x01, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
 	PORT_DIPUNUSED_DIPLOC( 0x40, 0x40, "G1:7" )
+
+	PORT_MODIFY("IN0")
+	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(nstocker_bits_r, NULL)
 
 	/* cheese alert -- we have to map this to player 2 so that it doesn't interfere with
        the crosshair controls */
@@ -1948,7 +1957,6 @@ static DRIVER_INIT( nametune )
 }
 static DRIVER_INIT( nstocker )
 {
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9902, 0x9902, 0, 0, nstocker_port2_r);
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9f00, 0x9f00, 0, 0, balsente_rombank2_select_w);
 	expand_roms(machine, EXPAND_NONE | SWAP_HALVES); balsente_shooter = 1; balsente_adc_shift = 1;
 }

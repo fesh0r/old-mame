@@ -1973,7 +1973,7 @@ static UINT32 chardma_source;
 static UINT32 chardma_other;
 
 //static UINT8* current_table;
-static UINT32 current_table_address = -1;
+static UINT32 current_table_address;
 
 static int cps3_rle_length = 0;
 
@@ -2459,6 +2459,8 @@ static MACHINE_START( cps3 )
 
 static MACHINE_RESET( cps3 )
 {
+	current_table_address = -1;
+
 	if (cps3_use_fastboot)
 	{
 		fastboot_timer = timer_alloc(fastboot_timer_callback, NULL);
@@ -2668,12 +2670,18 @@ static MACHINE_DRIVER_START( cps3 )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(59.633333)	/* just a guess for now, based on previous games */
-										/* however Mantis bug 2110 suggests it may be slightly different */
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_SIZE(512*2, 224*2)
-	MDRV_SCREEN_VISIBLE_AREA(0, (384*1)-1, 0, 223/*511*/)
+	MDRV_SCREEN_RAW_PARAMS(XTAL_60MHz/8, 486, 0, 384, 259, 0, 224)
+/*
+    Measured clocks:
+        V = 59.5992Hz
+        H = 15.4335kHz
+        H/V = 258.955 ~ 259 lines
+
+    Possible video clocks:
+        60MHz       / 15.4335kHz = 3887.647 / 8 = 485.956 ~ 486 -> likely
+         42.9545MHz / 15.4445kHz = 2781.217 / 6 = 463.536 -> unlikely
+*/
 
 	MDRV_MACHINE_START(cps3)
 	MDRV_MACHINE_RESET(cps3)

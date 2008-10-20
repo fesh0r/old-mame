@@ -15,7 +15,6 @@
 #include "rendfont.h"
 #include "rendutil.h"
 #include "uigfx.h"
-#include "deprecat.h"
 
 
 
@@ -84,13 +83,13 @@ static void palette_handler(running_machine *machine, ui_gfx_state *state);
 
 /* graphics set handling */
 static void gfxset_handle_keys(running_machine *machine, ui_gfx_state *state, int xcells, int ycells);
-static void gfxset_draw_item(const gfx_element *gfx, int index, bitmap_t *bitmap, int dstx, int dsty, int color, int rotate);
-static void gfxset_update_bitmap(ui_gfx_state *state, int xcells, int ycells, gfx_element *gfx);
+static void gfxset_draw_item(running_machine *machine, const gfx_element *gfx, int index, bitmap_t *bitmap, int dstx, int dsty, int color, int rotate);
+static void gfxset_update_bitmap(running_machine *machine, ui_gfx_state *state, int xcells, int ycells, gfx_element *gfx);
 static void gfxset_handler(running_machine *machine, ui_gfx_state *state);
 
 /* tilemap handling */
 static void tilemap_handle_keys(running_machine *machine, ui_gfx_state *state, int viswidth, int visheight);
-static void tilemap_update_bitmap(ui_gfx_state *state, int width, int height);
+static void tilemap_update_bitmap(running_machine *machine, ui_gfx_state *state, int width, int height);
 static void tilemap_handler(running_machine *machine, ui_gfx_state *state);
 
 
@@ -570,7 +569,7 @@ static void gfxset_handler(running_machine *machine, ui_gfx_state *state)
 		}
 
 	/* update the bitmap */
-	gfxset_update_bitmap(state, xcells, ycells, gfx);
+	gfxset_update_bitmap(machine, state, xcells, ycells, gfx);
 
 	/* add the final quad */
 	render_ui_add_quad(boxbounds.x0 + 6.0f * chwidth, boxbounds.y0 + 3.5f * chheight,
@@ -681,7 +680,7 @@ static void gfxset_handle_keys(running_machine *machine, ui_gfx_state *state, in
     graphics view bitmap
 -------------------------------------------------*/
 
-static void gfxset_update_bitmap(ui_gfx_state *state, int xcells, int ycells, gfx_element *gfx)
+static void gfxset_update_bitmap(running_machine *machine, ui_gfx_state *state, int xcells, int ycells, gfx_element *gfx)
 {
 	int set = state->gfxset.set;
 	int cellxpix, cellypix;
@@ -703,7 +702,7 @@ static void gfxset_update_bitmap(ui_gfx_state *state, int xcells, int ycells, gf
 		/* allocate new stuff */
 		state->bitmap = bitmap_alloc(cellxpix * xcells, cellypix * ycells, BITMAP_FORMAT_ARGB32);
 		state->texture = render_texture_alloc(NULL, NULL);
-		render_texture_set_bitmap(state->texture, state->bitmap, NULL, 0, TEXFORMAT_ARGB32);
+		render_texture_set_bitmap(state->texture, state->bitmap, NULL, TEXFORMAT_ARGB32, NULL);
 
 		/* force a redraw */
 		state->bitmap_dirty = TRUE;
@@ -737,7 +736,7 @@ static void gfxset_update_bitmap(ui_gfx_state *state, int xcells, int ycells, gf
 
 					/* only render if there is data */
 					if (index < gfx->total_elements)
-						gfxset_draw_item(gfx, index, state->bitmap, cellbounds.min_x, cellbounds.min_y, state->gfxset.color[set], state->gfxset.rotate[set]);
+						gfxset_draw_item(machine, gfx, index, state->bitmap, cellbounds.min_x, cellbounds.min_y, state->gfxset.color[set], state->gfxset.rotate[set]);
 
 					/* otherwise, fill with transparency */
 					else
@@ -751,7 +750,7 @@ static void gfxset_update_bitmap(ui_gfx_state *state, int xcells, int ycells, gf
 		}
 
 		/* reset the texture to force an update */
-		render_texture_set_bitmap(state->texture, state->bitmap, NULL, 0, TEXFORMAT_ARGB32);
+		render_texture_set_bitmap(state->texture, state->bitmap, NULL, TEXFORMAT_ARGB32, NULL);
 		state->bitmap_dirty = FALSE;
 	}
 }
@@ -762,7 +761,7 @@ static void gfxset_update_bitmap(ui_gfx_state *state, int xcells, int ycells, gf
     the view
 -------------------------------------------------*/
 
-static void gfxset_draw_item(const gfx_element *gfx, int index, bitmap_t *bitmap, int dstx, int dsty, int color, int rotate)
+static void gfxset_draw_item(running_machine *machine, const gfx_element *gfx, int index, bitmap_t *bitmap, int dstx, int dsty, int color, int rotate)
 {
 	static const pen_t default_palette[] =
 	{
@@ -771,7 +770,7 @@ static void gfxset_draw_item(const gfx_element *gfx, int index, bitmap_t *bitmap
 	};
 	int width = (rotate & ORIENTATION_SWAP_XY) ? gfx->height : gfx->width;
 	int height = (rotate & ORIENTATION_SWAP_XY) ? gfx->width : gfx->height;
-	const rgb_t *palette = (Machine->config->total_colors != 0) ? palette_entry_list_raw(Machine->palette) : NULL;
+	const rgb_t *palette = (machine->config->total_colors != 0) ? palette_entry_list_raw(machine->palette) : NULL;
 	UINT32 rowpixels = bitmap->rowpixels;
 	UINT32 palette_mask = ~0;
 	int x, y;
@@ -931,7 +930,7 @@ static void tilemap_handler(running_machine *machine, ui_gfx_state *state)
 	}
 
 	/* update the bitmap */
-	tilemap_update_bitmap(state, mapboxwidth / pixelscale, mapboxheight / pixelscale);
+	tilemap_update_bitmap(machine, state, mapboxwidth / pixelscale, mapboxheight / pixelscale);
 
 	/* add the final quad */
 	render_ui_add_quad(mapboxbounds.x0, mapboxbounds.y0,
@@ -1032,18 +1031,19 @@ static void tilemap_handle_keys(running_machine *machine, ui_gfx_state *state, i
     for the tilemap view
 -------------------------------------------------*/
 
-static void tilemap_update_bitmap(ui_gfx_state *state, int width, int height)
+static void tilemap_update_bitmap(running_machine *machine, ui_gfx_state *state, int width, int height)
 {
-	bitmap_format screen_format = video_screen_get_format(Machine->primary_screen);
+	bitmap_format screen_format = video_screen_get_format(machine->primary_screen);
+	palette_t *palette = NULL;
 	int screen_texformat;
 
 	/* convert the screen format to a texture format */
 	switch (screen_format)
 	{
-		case BITMAP_FORMAT_INDEXED16:	screen_texformat = TEXFORMAT_PALETTE16;		break;
-		case BITMAP_FORMAT_RGB15:		screen_texformat = TEXFORMAT_RGB15;			break;
-		case BITMAP_FORMAT_RGB32:		screen_texformat = TEXFORMAT_RGB32;			break;
-		default:						fatalerror("Invalid bitmap format!");		break;
+		case BITMAP_FORMAT_INDEXED16:	screen_texformat = TEXFORMAT_PALETTE16;	palette = machine->palette;	break;
+		case BITMAP_FORMAT_RGB15:		screen_texformat = TEXFORMAT_RGB15;		palette = NULL;				break;
+		case BITMAP_FORMAT_RGB32:		screen_texformat = TEXFORMAT_RGB32;		palette = NULL;				break;
+		default:						fatalerror("Invalid bitmap format!");								break;
 	}
 
 	/* swap the coordinates back if they were talking about a rotated surface */
@@ -1062,7 +1062,7 @@ static void tilemap_update_bitmap(ui_gfx_state *state, int width, int height)
 		/* allocate new stuff */
 		state->bitmap = bitmap_alloc(width, height, screen_format);
 		state->texture = render_texture_alloc(NULL, NULL);
-		render_texture_set_bitmap(state->texture, state->bitmap, NULL, 0, screen_texformat);
+		render_texture_set_bitmap(state->texture, state->bitmap, NULL, screen_texformat, palette);
 
 		/* force a redraw */
 		state->bitmap_dirty = TRUE;
@@ -1074,7 +1074,7 @@ static void tilemap_update_bitmap(ui_gfx_state *state, int width, int height)
 		tilemap_draw_by_index(state->bitmap, state->tilemap.which, state->tilemap.xoffs, state->tilemap.yoffs);
 
 		/* reset the texture to force an update */
-		render_texture_set_bitmap(state->texture, state->bitmap, NULL, 0, screen_texformat);
+		render_texture_set_bitmap(state->texture, state->bitmap, NULL, screen_texformat, palette);
 		state->bitmap_dirty = FALSE;
 	}
 }

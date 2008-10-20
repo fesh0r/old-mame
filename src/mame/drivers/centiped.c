@@ -509,8 +509,8 @@ static WRITE8_HANDLER( irq_ack_w )
 INLINE int read_trackball(running_machine *machine, int idx, int switch_port)
 {
 	UINT8 newpos;
-	static const char *portnames[] = { "IN0", "IN1", "IN2" };
-	static const char *tracknames[] = { "TRACK0_X", "TRACK0_Y", "TRACK1_X", "TRACK1_Y" };
+	static const char *const portnames[] = { "IN0", "IN1", "IN2" };
+	static const char *const tracknames[] = { "TRACK0_X", "TRACK0_Y", "TRACK1_X", "TRACK1_Y" };
 
 	/* adjust idx if we're cocktail flipped */
 	if (centiped_flipscreen)
@@ -585,7 +585,7 @@ static WRITE8_HANDLER( control_select_w )
 
 static READ8_HANDLER( mazeinv_input_r )
 {
-	static const char *sticknames[] = { "STICK0", "STICK1", "STICK2", "STICK3" };
+	static const char *const sticknames[] = { "STICK0", "STICK1", "STICK2", "STICK3" };
 
 	return input_port_read(machine, sticknames[control_select]);
 }
@@ -931,7 +931,7 @@ static INPUT_PORTS_START( centiped )
 	PORT_DIPNAME( 0x10, 0x00, "Left Coin" )	PORT_DIPLOCATION("N8:5")
 	PORT_DIPSETTING(    0x00, "*1" )
 	PORT_DIPSETTING(    0x10, "*2" )
-	PORT_DIPNAME( 0xe0, 0x00, "Bonus Coins" ) PORT_DIPLOCATION("N8:6,7,8")		\
+	PORT_DIPNAME( 0xe0, 0x00, "Bonus Coins" ) PORT_DIPLOCATION("N8:6,7,8")
 	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
 	PORT_DIPSETTING(    0x20, "3 credits/2 coins" )
 	PORT_DIPSETTING(    0x40, "5 credits/4 coins" )
@@ -1589,7 +1589,7 @@ static MACHINE_DRIVER_START( centiped )
 	MDRV_NVRAM_HANDLER(atari_vg)
 
 	/* timer */
-	MDRV_TIMER_ADD_SCANLINE("32V", generate_interrupt, "main", 0, 16)
+	MDRV_TIMER_ADD_SCANLINE("32v", generate_interrupt, "main", 0, 16)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1633,7 +1633,7 @@ static MACHINE_DRIVER_START( centipdb )
 	/* sound hardware */
 	MDRV_SOUND_REPLACE("pokey", AY8910, 12096000/8)
 	MDRV_SOUND_CONFIG(centipdb_ay8910_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 10.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 2.0)
 MACHINE_DRIVER_END
 
 
@@ -1646,7 +1646,7 @@ static MACHINE_DRIVER_START( magworm )
 	/* sound hardware */
 	MDRV_SOUND_REPLACE("pokey", AY8910, 12096000/8)
 	MDRV_SOUND_CONFIG(centipdb_ay8910_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 15.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 2.0)
 MACHINE_DRIVER_END
 
 

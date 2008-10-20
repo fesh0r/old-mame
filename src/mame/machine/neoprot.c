@@ -3,7 +3,7 @@
     Neo-Geo hardware protection devices
 
     unknown devices
-        ssideki, fatfury2, fatfury3, kof98, mslugx
+        ssideki, fatfury2, kof98 (some versions), mslugx
 
     SMA chip
         kof99, garou, garouo, mslug3, kof2002
@@ -110,10 +110,11 @@ void fatfury2_install_protection(running_machine *machine)
 }
 
 
-
 /************************ King of Fighters 98*******************
   The encrypted set has a rom overlay feature, checked at
-  various points in the game
+  various points in the game.
+  Special board is used: NEO-MVS PROGSF1 (1998.6.17)
+  The board has a ALTERA (EPM7128SQC100-15) chip which is tied to 242-P1
 ***************************************************************/
 
 static WRITE16_HANDLER ( kof98_prot_w )
@@ -149,9 +150,11 @@ void install_kof98_protection(running_machine *machine)
 }
 
 
-
 /************************ Metal Slug X *************************
   todo: emulate, not patch!
+  Special board is used: NEO-MVS PROGEOP (1999.2.2)
+  The board has a ALTERA (EPM7128SQC100-15) chip which is tied to 250-P1
+  Also found on this special board is a QFP144 labeled with 0103
 ***************************************************************/
 
 void mslugx_install_protection(running_machine *machine)
@@ -213,7 +216,7 @@ static WRITE16_HANDLER( kof99_bankswitch_w )
 
 	bankaddress = 0x100000 + bankoffset[data];
 
-	neogeo_set_main_cpu_bank_address(bankaddress);
+	neogeo_set_main_cpu_bank_address(machine, bankaddress);
 }
 
 
@@ -250,7 +253,7 @@ static WRITE16_HANDLER( garou_bankswitch_w )
 
 	bankaddress = 0x100000 + bankoffset[data];
 
-	neogeo_set_main_cpu_bank_address(bankaddress);
+	neogeo_set_main_cpu_bank_address(machine, bankaddress);
 }
 
 
@@ -289,7 +292,7 @@ static WRITE16_HANDLER( garouo_bankswitch_w )
 
 	bankaddress = 0x100000 + bankoffset[data];
 
-	neogeo_set_main_cpu_bank_address(bankaddress);
+	neogeo_set_main_cpu_bank_address(machine, bankaddress);
 }
 
 
@@ -325,7 +328,7 @@ static WRITE16_HANDLER( mslug3_bankswitch_w )
 
 	bankaddress = 0x100000 + bankoffset[data];
 
-	neogeo_set_main_cpu_bank_address(bankaddress);
+	neogeo_set_main_cpu_bank_address(machine, bankaddress);
 }
 
 
@@ -357,7 +360,7 @@ static WRITE16_HANDLER( kof2000_bankswitch_w )
 
 	bankaddress = 0x100000 + bankoffset[data];
 
-	neogeo_set_main_cpu_bank_address(bankaddress);
+	neogeo_set_main_cpu_bank_address(machine, bankaddress);
 }
 
 
@@ -490,14 +493,14 @@ static void pvc_prot2( void ) // on writes to e8/e9/ea/eb
 }
 
 
-static void pvc_write_bankswitch( void )
+static void pvc_write_bankswitch( running_machine *machine )
 {
 	UINT32 bankaddress;
 	bankaddress = ((pvc_cartridge_ram[0xff8]>>8)|(pvc_cartridge_ram[0xff9]<<8));
 	*(((UINT8 *)pvc_cartridge_ram) + BYTE_XOR_LE(0x1ff0)) = 0xa0;
 	*(((UINT8 *)pvc_cartridge_ram) + BYTE_XOR_LE(0x1ff1)) &= 0xfe;
 	*(((UINT8 *)pvc_cartridge_ram) + BYTE_XOR_LE(0x1ff3)) &= 0x7f;
-	neogeo_set_main_cpu_bank_address(bankaddress+0x100000);
+	neogeo_set_main_cpu_bank_address(machine, bankaddress+0x100000);
 }
 
 
@@ -512,7 +515,7 @@ static WRITE16_HANDLER( pvc_prot_w )
 	COMBINE_DATA( &pvc_cartridge_ram[ offset ] );
 	if (offset == 0xff0)pvc_prot1();
 	else if(offset >= 0xff4 && offset <= 0xff5)pvc_prot2();
-	else if(offset >= 0xff8)pvc_write_bankswitch();
+	else if(offset >= 0xff8)pvc_write_bankswitch(machine);
 }
 
 

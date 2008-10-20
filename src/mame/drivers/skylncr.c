@@ -156,7 +156,7 @@ static ADDRESS_MAP_START( mem_map_skylncr, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9800, 0x9fff) AM_READWRITE( SMH_RAM, skylncr_videoram2_w ) AM_BASE( &skylncr_videoram2 )
 	AM_RANGE(0xa000, 0xa7ff) AM_READWRITE( SMH_RAM, skylncr_colorram2_w ) AM_BASE( &skylncr_colorram2 )
 
-AM_RANGE(0xaa55, 0xaa55) AM_READ( ret_ff )
+	AM_RANGE(0xaa55, 0xaa55) AM_READ( ret_ff )
 
 	AM_RANGE(0xb000, 0xb7ff) AM_RAM
 
@@ -173,12 +173,12 @@ static WRITE8_HANDLER( skylncr_coin_w )
 static ADDRESS_MAP_START( io_map_skylncr, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 
-	AM_RANGE(0x00, 0x00) AM_READ( input_port_0_r )
-	AM_RANGE(0x01, 0x01) AM_READ( input_port_1_r )
-	AM_RANGE(0x02, 0x02) AM_READ( input_port_2_r )
-	AM_RANGE(0x10, 0x10) AM_READ( input_port_3_r )
-	AM_RANGE(0x11, 0x11) AM_READ( input_port_4_r )
-	AM_RANGE(0x12, 0x12) AM_READ( input_port_5_r )
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("BUTTONS")
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("DSW1")
+	AM_RANGE(0x10, 0x10) AM_READ_PORT("DSW2")
+	AM_RANGE(0x11, 0x11) AM_READ_PORT("COIN1")
+	AM_RANGE(0x12, 0x12) AM_READ_PORT("COIN2")
 
 	AM_RANGE(0x20, 0x20) AM_WRITE( skylncr_coin_w )
 
@@ -255,15 +255,83 @@ static const gfx_layout layout8x32x8_rot =
 	8*32*8/2
 };
 
+static const gfx_layout mz_layout8x8x8 =
+{
+	8,8,
+	RGN_FRAC(1,2),
+	8,
+	{ STEP8(0,1) },
+	{
+		8*0,8*1,
+		RGN_FRAC(1,2)+8*0,RGN_FRAC(1,2)+8*1,
+		8*2,8*3,
+		RGN_FRAC(1,2)+8*2,RGN_FRAC(1,2)+8*3
+	},
+	{ STEP8(0,8*4) },
+	8*8*4
+};
+
+static const gfx_layout mz_layout8x32x8 =
+{
+	8,32,
+	RGN_FRAC(1,2),
+	8,
+	{ STEP8(0,1) },
+	{ 8*0,8*1,8*2,8*3,8*4,8*5,8*6,8*7 },
+	{
+	 RGN_FRAC(1,2)+8*8*0, RGN_FRAC(0,2)+8*8*0,
+	 RGN_FRAC(1,2)+8*8*1, RGN_FRAC(0,2)+8*8*1,
+	 RGN_FRAC(1,2)+8*8*2, RGN_FRAC(0,2)+8*8*2,
+	 RGN_FRAC(1,2)+8*8*3, RGN_FRAC(0,2)+8*8*3,
+	 RGN_FRAC(1,2)+8*8*4, RGN_FRAC(0,2)+8*8*4,
+	 RGN_FRAC(1,2)+8*8*5, RGN_FRAC(0,2)+8*8*5,
+	 RGN_FRAC(1,2)+8*8*6, RGN_FRAC(0,2)+8*8*6,
+	 RGN_FRAC(1,2)+8*8*7, RGN_FRAC(0,2)+8*8*7,
+	 RGN_FRAC(1,2)+8*8*8, RGN_FRAC(0,2)+8*8*8,
+	 RGN_FRAC(1,2)+8*8*9, RGN_FRAC(0,2)+8*8*9,
+	 RGN_FRAC(1,2)+8*8*10,RGN_FRAC(0,2)+8*8*10,
+	 RGN_FRAC(1,2)+8*8*11,RGN_FRAC(0,2)+8*8*11,
+	 RGN_FRAC(1,2)+8*8*12,RGN_FRAC(0,2)+8*8*12,
+	 RGN_FRAC(1,2)+8*8*13,RGN_FRAC(0,2)+8*8*13,
+	 RGN_FRAC(1,2)+8*8*14,RGN_FRAC(0,2)+8*8*14,
+	 RGN_FRAC(1,2)+8*8*15,RGN_FRAC(0,2)+8*8*15
+	},
+	8*16*8
+};
+
+static const gfx_layout mz_layout8x32x8_rot =
+{
+	8,32,
+	RGN_FRAC(1,2),
+	8,
+	{ STEP8(0,1) },
+	{
+		8*0, 8*1,
+		RGN_FRAC(1,2)+8*0, RGN_FRAC(1,2)+8*1,
+		8*2, 8*3,
+		RGN_FRAC(1,2)+8*2, RGN_FRAC(1,2)+8*3
+	},
+	{
+		STEP16(0,8*4),
+		STEP16(16*8*4,8*4)
+	},
+	8*32*8/2
+};
+
 static GFXDECODE_START( skylncr )
-	GFXDECODE_ENTRY( "gfx1", 0, layout8x8x8,			0, 2 )
+	GFXDECODE_ENTRY( "gfx1", 0, layout8x8x8,		0, 2 )
 	GFXDECODE_ENTRY( "gfx2", 0, layout8x32x8_rot,	0, 2 )
 	GFXDECODE_ENTRY( "gfx2", 0, layout8x32x8,		0, 2 )
 GFXDECODE_END
 
-static INPUT_PORTS_START( skylncr )
+static GFXDECODE_START( madzoo )
+	GFXDECODE_ENTRY( "gfx1", 0, mz_layout8x8x8,			0, 2 )
+	GFXDECODE_ENTRY( "gfx2", 0, mz_layout8x32x8_rot,	0, 2 )
+	GFXDECODE_ENTRY( "gfx2", 0, mz_layout8x32x8,		0, 2 )
+GFXDECODE_END
 
-	PORT_START("SYSTEM")	// IN0 - $0 "PORT0 A"
+static INPUT_PORTS_START( skylncr )
+	PORT_START("SYSTEM")	/* $0 "PORT0 A" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3)
@@ -273,7 +341,7 @@ static INPUT_PORTS_START( skylncr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE3)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE4)
 
-	PORT_START("BUTTONS")	// IN1 - $1 "PORT0 B"
+	PORT_START("BUTTONS")	/* $1 "PORT0 B" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3)
@@ -283,7 +351,7 @@ static INPUT_PORTS_START( skylncr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4) PORT_PLAYER(2)
 
-	PORT_START("DSW1")	// IN2 - $2 "DSW1"
+	PORT_START("DSW1")	/* $2 "DSW1" */
 	PORT_DIPNAME( 0x01, 0x01, "DSW1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -309,7 +377,7 @@ static INPUT_PORTS_START( skylncr )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START("DSW2")	// IN3 - $10 "DSW2"
+	PORT_START("DSW2")	/* $10 "DSW2" */
 	PORT_DIPNAME( 0x01, 0x01, "DSW2" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -335,7 +403,7 @@ static INPUT_PORTS_START( skylncr )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START("COIN1")	// IN4 - $11 "PORT1 B"
+	PORT_START("COIN1")	/* $11 "PORT1 B" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1   ) PORT_IMPULSE(5)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -345,7 +413,7 @@ static INPUT_PORTS_START( skylncr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START("COIN2")	// IN5 - $12 "PORT1 C"
+	PORT_START("COIN2")	/* $12 "PORT1 C" */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -355,7 +423,7 @@ static INPUT_PORTS_START( skylncr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START("DSW4")	// IN6 - AY8910 port A
+	PORT_START("DSW4")	/* AY8910 port A */
 	PORT_DIPNAME( 0x01, 0x01, "DSW4" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -381,7 +449,7 @@ static INPUT_PORTS_START( skylncr )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START("DSW3")	// IN7 - AY8910 port B
+	PORT_START("DSW3")	/* AY8910 port B */
 	PORT_DIPNAME( 0x01, 0x01, "DSW3" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -455,7 +523,17 @@ static MACHINE_DRIVER_START( skylncr )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( madzoo )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(skylncr)
+
+	/* video hardware */
+	MDRV_GFXDECODE(madzoo)
+MACHINE_DRIVER_END
+
 /*
+
 Sky Lancer PCB Layout
 ---------------------
 
@@ -484,12 +562,6 @@ Notes:
       WF19054 = AY-3-8910 @ 1.5MHz [12/8]
 */
 
-static DRIVER_INIT( skylncr )
-{
-	paletteram   = auto_malloc(0x100*3);
-	paletteram_2 = auto_malloc(0x100*3);
-}
-
 ROM_START( skylncr )
 	ROM_REGION( 0x80000, "main", 0 )
 	ROM_LOAD( "27512.u35",  0x00000, 0x10000, CRC(98b1c9fe) SHA1(9ca1706d25038a078fb07ba5c2e6681ed468bc88) )
@@ -501,4 +573,64 @@ ROM_START( skylncr )
 	ROM_LOAD( "574200.u33", 0x00000, 0x80000, CRC(19b25221) SHA1(2f32d337125a9fd0bc7f50713b05e564fd4f81b2) )
 ROM_END
 
+/*
+
+Mad Zoo PCB Layout
+------------------
+
+|-----|  |------|  |---------------------------|
+|     |--|      |--|ROM.U29           ROM.U52  |
+|                                              |
+| DSW3(8)           ROM.U31           ROM.U54  |
+|    KC89C72                                   |
+| DSW4(8)           ROM.U33           ROM.U56  |
+|_                                             |
+  |       PAL       ROM.U35           ROM.U58  |
+  |                     |-------|              |
+ _|                     |LATTICE|         6116 |
+|             12MHz     |1016   |              |
+|                       |       |         6116 |
+|       8255            |-------|              |
+|                                         6116 |
+| DSW1(8)  DSW2(8)                             |
+|       8255   PAL  ROM.U9                6116 |
+|                                              |
+|    6264      Z80  6116                  6116 |
+|_   6264                          PAL  BATTERY|
+  |--------------------------------------------|
+Notes:
+      Z80 @ 3.0MHz [12/4]
+      KC89C72 = AY-3-8910 @ 1.5MHz [12/8]
+*/
+
+ROM_START( madzoo )
+	ROM_REGION( 0x80000, "main", 0 )
+	ROM_LOAD( "27512.u9",  0x00000, 0x10000, CRC(98b1c9fe) SHA1(9ca1706d25038a078fb07ba5c2e6681ed468bc88) )
+
+	ROM_REGION( 0x80000, "gfx1", 0 )
+	ROM_LOAD( "27c301.u29", 0x00000, 0x20000, CRC(4d58ab1d) SHA1(a6c9a855de6c7c502deea6afe2061dbbc6a1dfce) )
+	ROM_LOAD( "27c301.u31", 0x20000, 0x20000, CRC(511a8d19) SHA1(d49cc025b7b44a1f364b843dbe215fd2aa1e8986) )
+	ROM_LOAD( "27c301.u33", 0x40000, 0x20000, CRC(63e7ec89) SHA1(5184c164c356976325c7ad715d0f32a16bd44061) )
+	ROM_LOAD( "27c301.u35", 0x60000, 0x20000, CRC(a1ef51d1) SHA1(76508de6ab9effd1c8e27753403f161da073014c) )
+
+	ROM_REGION( 0x80000, "gfx2", 0 )
+	ROM_LOAD( "27c301.u52", 0x00000, 0x20000, CRC(00cd5c9d) SHA1(68c2ffdba4018bcb03fe8a96c4a269d3ec7379d8) )
+	ROM_LOAD( "27c301.u54", 0x20000, 0x20000, CRC(9bd8af17) SHA1(5f32523ea797821205c5bb0f3c53c09ca784555b) )
+	ROM_LOAD( "27c301.u56", 0x40000, 0x20000, CRC(d73278a6) SHA1(2865659d80c76d73f19b178748cf67d792cd6a84) )
+	ROM_LOAD( "27c301.u58", 0x60000, 0x20000, CRC(895b2dac) SHA1(2a6dfec2a18a63f0cc4344506653ab7b14c31a59) )
+ROM_END
+
+
+static DRIVER_INIT( skylncr )
+{
+	paletteram   = auto_malloc(0x100*3);
+	paletteram_2 = auto_malloc(0x100*3);
+}
+
+
+/*****************************************************
+                   Game Drivers
+*****************************************************/
+
 GAME( 1995, skylncr, 0, skylncr, skylncr, skylncr, ROT0, "Bordun International", "Sky Lancer (Bordun International)", GAME_NOT_WORKING )
+GAME( 1995, madzoo,  0, madzoo,  skylncr, skylncr, ROT0, "Bordun International", "Mad Zoo",                           GAME_NOT_WORKING )

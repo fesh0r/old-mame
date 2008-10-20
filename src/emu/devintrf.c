@@ -107,8 +107,11 @@ device_config *device_list_add(device_config **listheadptr, device_type type, co
 	device->class = devtype_get_info_int(type, DEVINFO_INT_CLASS);
 	device->static_config = NULL;
 	device->inline_config = (configlen == 0) ? NULL : (device->tag + strlen(tag) + 1);
+	device->started = FALSE;
 	device->token = NULL;
 	device->machine = NULL;
+	device->region = NULL;
+	device->regionbytes = 0;
 	strcpy(device->tag, tag);
 
 	/* reset the inline_config to 0 */
@@ -131,6 +134,10 @@ device_config *device_list_add(device_config **listheadptr, device_type type, co
 	info.reset = NULL;
 	(*type)(NULL, DEVINFO_FCT_RESET, &info);
 	device->reset = info.reset;
+
+	info.nvram = NULL;
+	(*type)(NULL, DEVINFO_FCT_NVRAM, &info);
+	device->nvram = info.nvram;
 
 	/* link us to the end and return */
 	*devptr = device;
@@ -165,6 +172,44 @@ void device_list_remove(device_config **listheadptr, device_type type, const cha
 
 	/* free the device object */
 	free(device);
+}
+
+
+/*-------------------------------------------------
+    device_build_tag - build a tag that combines
+    the device's name and the given tag
+-------------------------------------------------*/
+
+const char *device_build_tag(astring *dest, const char *devicetag, const char *tag)
+{
+	if (devicetag != NULL)
+	{
+		astring_cpyc(dest, devicetag);
+		astring_catc(dest, ":");
+		astring_catc(dest, tag);
+	}
+	else
+		astring_cpyc(dest, tag);
+	return astring_c(dest);
+}
+
+
+/*-------------------------------------------------
+    device_inherit_tag - build a tag with the same
+    device prefix as the source tag
+-------------------------------------------------*/
+
+const char *device_inherit_tag(astring *dest, const char *sourcetag, const char *tag)
+{
+	const char *divider = strrchr(sourcetag, ':');
+	if (divider != NULL)
+	{
+		astring_cpych(dest, sourcetag, divider + 1 - sourcetag);
+		astring_catc(dest, tag);
+	}
+	else
+		astring_cpyc(dest, tag);
+	return astring_c(dest);
 }
 
 
@@ -446,6 +491,8 @@ const device_config *device_list_class_find_by_index(const device_config *listhe
 void device_list_start(running_machine *machine)
 {
 	device_config *device;
+	int numstarted = 0;
+	int devcount = 0;
 
 	assert(machine != NULL);
 
@@ -453,14 +500,17 @@ void device_list_start(running_machine *machine)
 	add_reset_callback(machine, device_list_reset);
 	add_exit_callback(machine, device_list_stop);
 
-	/* iterate over devices and start them */
+	/* iterate over devices and allocate memory for them */
 	for (device = (device_config *)machine->config->devicelist; device != NULL; device = device->next)
 	{
 		UINT32 tokenlen;
 
+		assert(!device->started);
 		assert(device->token == NULL);
 		assert(device->type != NULL);
 		assert(device->start != NULL);
+
+		devcount++;
 
 		/* get the size of the token data */
 		tokenlen = (UINT32)devtype_get_info_int(device->type, DEVINFO_INT_TOKEN_BYTES);
@@ -475,9 +525,25 @@ void device_list_start(running_machine *machine)
 		device->machine = machine;
 		device->region = memory_region(machine, device->tag);
 		device->regionbytes = memory_region_length(machine, device->tag);
+	}
 
-		/* call the start function */
-		(*device->start)(device);
+	/* iterate until we've started everything */
+	while (numstarted < devcount)
+	{
+		int prevstarted = numstarted;
+		numstarted = 0;
+
+		/* iterate over devices and start them */
+		for (device = (device_config *)machine->config->devicelist; device != NULL; device = device->next)
+		{
+			if (!device->started && (*device->start)(device) == DEVICE_START_OK)
+				device->started = TRUE;
+			numstarted += device->started;
+		}
+
+		/* if we didn't start anything new, we're in trouble */
+		if (numstarted == prevstarted)
+			fatalerror("Circular dependency in device startup; unable to start %d/%d devices\n", devcount - numstarted, devcount);
 	}
 }
 
@@ -591,6 +657,26 @@ void *devtag_get_token(running_machine *machine, device_type type, const char *t
 
 
 /*-------------------------------------------------
+    devtag_get_device - return the device associated
+    with a tag
+-------------------------------------------------*/
+
+const device_config *devtag_get_device(running_machine *machine, device_type type, const char *tag)
+{
+	const device_config *device;
+
+	assert(machine != NULL);
+	assert(type != NULL);
+	assert(tag != NULL);
+
+	device = device_list_find_by_tag(machine->config->devicelist, type, tag);
+	if (device == NULL)
+		fatalerror("devtag_get_device failed to find device: type=%s tag=%s\n", devtype_name(type), tag);
+	return device;
+}
+
+
+/*-------------------------------------------------
     devtag_get_static_config - return a pointer to
     the static configuration for a device based on
     type and tag
@@ -679,7 +765,6 @@ void *device_get_info_ptr(const device_config *device, UINT32 state)
 	deviceinfo info;
 
 	assert(device != NULL);
-	assert(device->token != NULL);
 	assert(device->type != NULL);
 	assert(state >= DEVINFO_PTR_FIRST && state <= DEVINFO_PTR_LAST);
 
@@ -752,7 +837,6 @@ const char *device_get_info_string(const device_config *device, UINT32 state)
 	deviceinfo info;
 
 	assert(device != NULL);
-	assert(device->token != NULL);
 	assert(device->type != NULL);
 	assert(state >= DEVINFO_STR_FIRST && state <= DEVINFO_STR_LAST);
 

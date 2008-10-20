@@ -247,31 +247,18 @@ VIDEO_UPDATE( othunder );
                 INTERRUPTS
 ***********************************************************/
 
-static int vblank_irq, ad_irq, last_irq_level;
+static int vblank_irq, ad_irq;
 
 static MACHINE_RESET( othunder )
 {
 	vblank_irq = 0;
 	ad_irq = 0;
-	last_irq_level = 0;
 }
 
 static void update_irq(running_machine *machine)
 {
-	int curr_level;
-
-	if (ad_irq)
-		curr_level = 6;
-	else if (vblank_irq)
-		curr_level = 5;
-	else
-		curr_level = 0;
-
-	if (curr_level != last_irq_level)
-	{
-		cpunum_set_input_line(machine, 0,curr_level,curr_level ? ASSERT_LINE : CLEAR_LINE);
-		last_irq_level = curr_level;
-	}
+	cpunum_set_input_line(machine, 0, 6, ad_irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 5, vblank_irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE16_HANDLER( irq_ack_w )
@@ -433,7 +420,7 @@ static WRITE16_HANDLER( othunder_lightgun_w )
             SOUND
 *****************************************/
 
-static INT32 banknum = -1;
+static INT32 banknum;
 
 static void reset_sound_region(running_machine *machine)
 {
@@ -447,6 +434,7 @@ static STATE_POSTLOAD( othunder_postload )
 
 static MACHINE_START( othunder )
 {
+	banknum = -1;
 	state_save_register_global(banknum);
 	state_save_register_postload(machine, othunder_postload, NULL);
 }

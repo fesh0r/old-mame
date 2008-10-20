@@ -356,8 +356,8 @@ send data to them, although obviously there's no response. */
 
 		for ( i = 0; i < 6; i++)
 		{
-			Stepper_reset_position(i);
-			if ( Stepper_optic_state(i) ) pattern |= 1<<i;
+			stepper_reset_position(i);
+			if ( stepper_optic_state(i) ) pattern |= 1<<i;
 		}
 
 		optic_pattern = pattern;
@@ -567,12 +567,12 @@ static WRITE8_HANDLER( reel34_w )
 {
 	reel34_latch = data;
 
-	if ( Stepper_update(2, data   ) ) reel_changed |= 0x04;
-	if ( Stepper_update(3, data>>4) ) reel_changed |= 0x08;
+	if ( stepper_update(2, data   ) ) reel_changed |= 0x04;
+	if ( stepper_update(3, data>>4) ) reel_changed |= 0x08;
 
-	if ( Stepper_optic_state(2) ) optic_pattern |=  0x04;
+	if ( stepper_optic_state(2) ) optic_pattern |=  0x04;
 	else                          optic_pattern &= ~0x04;
-	if ( Stepper_optic_state(3) ) optic_pattern |=  0x08;
+	if ( stepper_optic_state(3) ) optic_pattern |=  0x08;
 	else                          optic_pattern &= ~0x08;
 
 	draw_reel((2));
@@ -585,12 +585,12 @@ static WRITE8_HANDLER( reel56_w )
 {
 	reel56_latch = data;
 
-	if ( Stepper_update(4, data   ) ) reel_changed |= 0x10;
-	if ( Stepper_update(5, data>>4) ) reel_changed |= 0x20;
+	if ( stepper_update(4, data   ) ) reel_changed |= 0x10;
+	if ( stepper_update(5, data>>4) ) reel_changed |= 0x20;
 
-	if ( Stepper_optic_state(4) ) optic_pattern |=  0x10;
+	if ( stepper_optic_state(4) ) optic_pattern |=  0x10;
 	else                          optic_pattern &= ~0x10;
-	if ( Stepper_optic_state(5) ) optic_pattern |=  0x20;
+	if ( stepper_optic_state(5) ) optic_pattern |=  0x20;
 	else                          optic_pattern &= ~0x20;
 
 	draw_reel((4));
@@ -647,7 +647,7 @@ static WRITE8_HANDLER( mux_output_w )
 static READ8_HANDLER( mux_input_r )
 {
 	int result = 0xFF,t1,t2;
-	static const char *port[] = { "STROBE0", "STROBE1", "STROBE2", "STROBE3", "STROBE4", "STROBE5", "STROBE6", "STROBE7", "STROBE8", "STROBE9", "STROBE10", "STROBE11" };
+	static const char *const port[] = { "STROBE0", "STROBE1", "STROBE2", "STROBE3", "STROBE4", "STROBE5", "STROBE6", "STROBE7", "STROBE8", "STROBE9", "STROBE10", "STROBE11" };
 
 	if (offset < 8)
 	{
@@ -2228,7 +2228,7 @@ static MACHINE_DRIVER_START( scorpion2_vid )
 	MDRV_NVRAM_HANDLER(bfm_sc2)
 	MDRV_DEFAULT_LAYOUT(layout_bfm_sc2)
 
-	MDRV_SCREEN_ADD("ADDER", RASTER)
+	MDRV_SCREEN_ADD("adder", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 400, 280)
 	MDRV_SCREEN_VISIBLE_AREA(  0, 400-1, 0, 280-1)
@@ -2244,7 +2244,7 @@ static MACHINE_DRIVER_START( scorpion2_vid )
 
 	MDRV_CPU_ADD("adder2", M6809, MASTER_CLOCK/4 )	// adder2 board 6809 CPU at 2 Mhz
 	MDRV_CPU_PROGRAM_MAP(adder2_memmap,0)				// setup adder2 board memorymap
-	MDRV_CPU_VBLANK_INT("ADDER", adder2_vbl)			// board has a VBL IRQ
+	MDRV_CPU_VBLANK_INT("adder", adder2_vbl)			// board has a VBL IRQ
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("upd", UPD7759, UPD7759_STANDARD_CLOCK)

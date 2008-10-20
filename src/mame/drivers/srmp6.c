@@ -92,7 +92,7 @@ static const gfx_layout tiles8x8_layout =
 	8*64
 };
 
-static void update_palette(void)
+static void update_palette(running_machine *machine)
 {
 	INT8 r, g ,b;
 	int brg = brightness - 0x60;
@@ -120,7 +120,7 @@ static void update_palette(void)
 			b += ((0x1F - b) * brg) >> 5;
 			if(b > 0x1F) b = 0x1F;
 		}
-		palette_set_color(Machine, i, MAKE_RGB(r << 3, g << 3, b << 3));
+		palette_set_color(machine, i, MAKE_RGB(r << 3, g << 3, b << 3));
 	}
 }
 
@@ -147,14 +147,14 @@ static VIDEO_START(srmp6)
 
 /* Debug code */
 #ifdef UNUSED_FUNCTION
-static void srmp6_decode_charram(void)
+static void srmp6_decode_charram(running_machine *machine)
 {
 	if(input_code_pressed_once(KEYCODE_Z))
 	{
 		int i;
 		for (i=0;i<(0x100000*16)/0x40;i++)
 		{
-			decodechar(Machine->gfx[0], i, (UINT8*)tileram);
+			decodechar(machine->gfx[0], i, (UINT8*)tileram);
 			dirty_tileram[i] = 0;
 		}
 	}
@@ -182,7 +182,7 @@ static VIDEO_UPDATE(srmp6)
 
 #if 0
 	/* debug */
-	srmp6_decode_charram();
+	srmp6_decode_charram(screen->machine);
 
 
 
@@ -350,7 +350,7 @@ static WRITE16_HANDLER( video_regs_w )
 			data = (!data)?0x60:(data == 0x5e)?0x60:data;
 			if(brightness != data) {
 				brightness = data;
-				update_palette();
+				update_palette(machine);
 			}
 			break;
 
@@ -546,8 +546,8 @@ static WRITE16_HANDLER(paletteram_w)
 static ADDRESS_MAP_START( srmp6, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 	AM_RANGE(0x200000, 0x23ffff) AM_RAM					// work RAM
-	AM_RANGE(0x600000, 0x7fffff) AM_READ(SMH_BANK1)	// banked ROM (used by ROM check)
-	AM_RANGE(0x800000, 0x9fffff) AM_ROM AM_REGION("nile", 0)
+	AM_RANGE(0x600000, 0x7fffff) AM_READ(SMH_BANK1)		// banked ROM (used by ROM check)
+	AM_RANGE(0x800000, 0x9fffff) AM_ROM AM_REGION("user1", 0)
 
 	AM_RANGE(0x300000, 0x300005) AM_READWRITE(srmp6_inputs_r, srmp6_input_select_w)		// inputs
 	AM_RANGE(0x480000, 0x480fff) AM_RAM_WRITE(paletteram_w) AM_BASE(&paletteram16)

@@ -49,6 +49,7 @@ static UINT8 nmi_enable;
 static UINT8 start_lamp;
 static UINT8 ldp_read_latch;
 static UINT8 ldp_write_latch;
+static UINT8 brake_gas;
 
 static UINT8* tile_RAM;
 static UINT8* sprite_RAM;
@@ -203,15 +204,10 @@ static void gpworld_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 
 static VIDEO_UPDATE( gpworld )
 {
-	render_container_set_palette_alpha(render_container_get_screen(screen), 0, 0x00);
-
 	fillbitmap(bitmap, 0, cliprect);
 
 	gpworld_draw_tiles(screen->machine, bitmap, cliprect);
 	gpworld_draw_sprites(screen->machine, bitmap, cliprect);
-
-	/* display disc information */
-	popmessage("%s", laserdisc_describe_state(laserdisc));
 
 	return 0;
 }
@@ -230,6 +226,15 @@ static READ8_HANDLER( ldp_read )
 	return ldp_read_latch;
 }
 
+static READ8_HANDLER( pedal_in )
+{
+	if (brake_gas)
+		return 	input_port_read(machine, "INACCEL");
+
+	return 	input_port_read(machine, "INBRAKE");
+
+}
+
 /* WRITES */
 static WRITE8_HANDLER( ldp_write )
 {
@@ -240,15 +245,20 @@ static WRITE8_HANDLER( misc_io_write )
 {
 	start_lamp = (data & 0x04) >> 1;
 	nmi_enable = (data & 0x40) >> 6;
-/*  dunno      = (data & 0x80) >> 7; */
+	/*  dunno      = (data & 0x80) >> 7; */ //coin counter???
 
 	logerror("NMI : %x (0x%x)\n", nmi_enable, data);
+}
+
+static WRITE8_HANDLER( brake_gas_write )
+{
+	brake_gas = data & 0x01;
 }
 
 static WRITE8_HANDLER( palette_write )
 {
 	/* This is all just a (bad) guess */
-	int pal_index, r, g, b;
+	int pal_index, r, g, b, a;
 
 	palette_RAM[offset] = data;
 
@@ -258,11 +268,11 @@ static WRITE8_HANDLER( palette_write )
 	b = (palette_RAM[pal_index]   & 0xf0) << 0;
 	g = (palette_RAM[pal_index]   & 0x0f) << 4;
 	r = (palette_RAM[pal_index+1] & 0x0f) << 4;
-	/* int dunno = (palette_RAM[pal_index+1] & 0x80) >> 7; */
+	a = (palette_RAM[pal_index+1] & 0x80) ? 0 : 255;	/* guess */
 
 	/* logerror("PAL WRITE index : %x  rgb : %d %d %d (real %x) at %x\n", pal_index, r,g,b, data, offset); */
 
-	palette_set_color(machine, pal_index, MAKE_RGB(r, g, b));
+	palette_set_color(machine, pal_index, MAKE_ARGB(a, r, g, b));
 }
 
 /* PROGRAM MAP */
@@ -273,10 +283,10 @@ static ADDRESS_MAP_START( mainmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000,0xd7ff) AM_RAM AM_BASE(&tile_RAM)
 	AM_RANGE(0xd800,0xd800) AM_READWRITE(ldp_read,ldp_write)
 /*  AM_RANGE(0xd801,0xd801) AM_READ(???) */
-	AM_RANGE(0xda00,0xda00) AM_READ_PORT("INWHEEL")
+	AM_RANGE(0xda00,0xda00) AM_READ_PORT("INWHEEL")	//8255 here....
 /*  AM_RANGE(0xda01,0xda01) AM_WRITE(???) */					/* These inputs are interesting - there are writes and reads all over these addr's */
-/*  AM_RANGE(0xda02,0xda02) AM_READ_PORT("???") */				/* Reads here during the input test. */
-	AM_RANGE(0xda20,0xda20) AM_READ_PORT("INACCEL")				/* Seems to control both the brake and accel at once - maybe tied to 0xda02? Or to the writes here... */
+	AM_RANGE(0xda02,0xda02) AM_WRITE(brake_gas_write)				/*bit 0 select gas/brake input */
+	AM_RANGE(0xda20,0xda20) AM_READ(pedal_in)
 
 	AM_RANGE(0xe000,0xffff) AM_RAM								/* Potentially not all work RAM? */
 ADDRESS_MAP_END
@@ -325,8 +335,11 @@ static INPUT_PORTS_START( gpworld )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME( "STRONG LEFT" ) PORT_CODE( KEYCODE_E )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME( "FIERCE LEFT" ) PORT_CODE( KEYCODE_W )
 
-	PORT_START("INACCEL")	/* both accelerator & brake right now :P */
+	PORT_START("INACCEL")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(30) PORT_KEYDELTA(10) PORT_PLAYER(1)
+
+	PORT_START("INBRAKE")
+	PORT_BIT( 0xff, 0x00, IPT_PEDAL2 ) PORT_SENSITIVITY(30) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
 	PORT_START("DSW1")
 	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:1,2,3,4")
@@ -408,8 +421,6 @@ static INTERRUPT_GEN( vblank_callback_gpworld )
 	/* The time the IRQ line stays high is set just long enough to happen after the NMI - hacky? */
 	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 	timer_set(ATTOTIME_IN_USEC(100), NULL, 0, irq_stop);
-
-	laserdisc_vsync(laserdisc);
 }
 
 static const gfx_layout gpworld_tile_layout =
@@ -438,7 +449,7 @@ static MACHINE_DRIVER_START( gpworld )
 
 	MDRV_MACHINE_START(gpworld)
 
-	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000)
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000, "main", "ldsound")
 	MDRV_LASERDISC_OVERLAY(gpworld, 512, 256, BITMAP_FORMAT_INDEXED16)
 
 	/* video hardware */
@@ -450,7 +461,7 @@ static MACHINE_DRIVER_START( gpworld )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD("laserdisc", CUSTOM, 0)
+	MDRV_SOUND_ADD("ldsound", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
@@ -497,6 +508,7 @@ static DRIVER_INIT( gpworld )
 {
 	nmi_enable = 0;
 	start_lamp = 0;
+	brake_gas = 0;
 	ldp_write_latch = ldp_read_latch = 0;
 }
 

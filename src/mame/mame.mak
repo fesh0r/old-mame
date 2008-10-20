@@ -68,11 +68,15 @@ CPUS += V35
 CPUS += V60
 CPUS += V70
 CPUS += I8035
-CPUS += I8039
+CPUS += I8041
 CPUS += I8048
+CPUS += I8648
+CPUS += I8748
+CPUS += MB8884
+CPUS += I8039
+CPUS += I8049
 CPUS += I8749
 CPUS += N7751
-CPUS += MB8884
 CPUS += M58715
 CPUS += I8X41
 CPUS += I8051
@@ -259,7 +263,7 @@ SOUNDS += NAMCO_15XX
 SOUNDS += NAMCO_CUS30
 SOUNDS += NAMCO_52XX
 SOUNDS += NAMCO_63701X
-SOUNDS += NAMCONA
+SOUNDS += SNKWAVE
 SOUNDS += C140
 SOUNDS += C352
 SOUNDS += TMS36XX
@@ -497,6 +501,7 @@ $(MAMEOBJ)/atari.a: \
 	$(DRIVERS)/destroyr.o $(VIDEO)/destroyr.o \
 	$(DRIVERS)/dragrace.o $(AUDIO)/dragrace.o $(VIDEO)/dragrace.o \
 	$(DRIVERS)/eprom.o $(VIDEO)/eprom.o \
+	$(DRIVERS)/firefox.o \
 	$(DRIVERS)/firetrk.o $(AUDIO)/firetrk.o $(VIDEO)/firetrk.o \
 	$(DRIVERS)/flyball.o $(VIDEO)/flyball.o \
 	$(DRIVERS)/foodf.o $(VIDEO)/foodf.o \
@@ -526,7 +531,7 @@ $(MAMEOBJ)/atari.a: \
 	$(DRIVERS)/sprint2.o $(AUDIO)/sprint2.o $(VIDEO)/sprint2.o \
 	$(DRIVERS)/sprint4.o $(VIDEO)/sprint4.o $(AUDIO)/sprint4.o \
 	$(DRIVERS)/sprint8.o $(VIDEO)/sprint8.o \
-	$(DRIVERS)/starshp1.o $(VIDEO)/starshp1.o \
+	$(DRIVERS)/starshp1.o $(AUDIO)/starshp1.o $(VIDEO)/starshp1.o \
 	$(DRIVERS)/starwars.o $(MACHINE)/starwars.o $(AUDIO)/starwars.o \
 	$(DRIVERS)/subs.o $(MACHINE)/subs.o $(AUDIO)/subs.o $(VIDEO)/subs.o \
 	$(DRIVERS)/tank8.o $(AUDIO)/tank8.o $(VIDEO)/tank8.o \
@@ -623,6 +628,7 @@ $(MAMEOBJ)/dataeast.a: \
 	$(DRIVERS)/boogwing.o $(VIDEO)/boogwing.o \
 	$(DRIVERS)/brkthru.o $(VIDEO)/brkthru.o \
 	$(DRIVERS)/btime.o $(MACHINE)/btime.o $(VIDEO)/btime.o \
+	$(DRIVERS)/chanbara.o \
 	$(DRIVERS)/bwing.o $(VIDEO)/bwing.o \
 	$(DRIVERS)/cbuster.o $(VIDEO)/cbuster.o \
 	$(DRIVERS)/cninja.o $(VIDEO)/cninja.o \
@@ -742,7 +748,7 @@ $(MAMEOBJ)/gameplan.a: \
 $(MAMEOBJ)/gametron.a: \
 	$(DRIVERS)/gotya.o $(AUDIO)/gotya.o $(VIDEO)/gotya.o \
 	$(DRIVERS)/sbugger.o $(VIDEO)/sbugger.o \
-	$(DRIVERS)/gatron.o \
+	$(DRIVERS)/gatron.o $(VIDEO)/gatron.o \
 
 $(MAMEOBJ)/gottlieb.a: \
 	$(DRIVERS)/exterm.o $(VIDEO)/exterm.o \
@@ -798,6 +804,7 @@ $(MAMEOBJ)/itech.a: \
 $(MAMEOBJ)/jaleco.a: \
 	$(DRIVERS)/aeroboto.o $(VIDEO)/aeroboto.o \
 	$(DRIVERS)/argus.o $(VIDEO)/argus.o \
+	$(VIDEO)/jalblend.o \
 	$(DRIVERS)/bestleag.o \
 	$(DRIVERS)/bigstrkb.o $(VIDEO)/bigstrkb.o \
 	$(DRIVERS)/blueprnt.o $(VIDEO)/blueprnt.o \
@@ -1259,16 +1266,12 @@ $(MAMEOBJ)/sigma.a: \
 $(MAMEOBJ)/snk.a: \
 	$(DRIVERS)/bbusters.o $(VIDEO)/bbusters.o \
 	$(DRIVERS)/dmndrby.o \
-	$(DRIVERS)/hal21.o \
 	$(DRIVERS)/hng64.o $(VIDEO)/hng64.o \
-	$(DRIVERS)/jcross.o $(VIDEO)/jcross.o \
 	$(DRIVERS)/lasso.o $(VIDEO)/lasso.o \
 	$(DRIVERS)/mainsnk.o $(VIDEO)/mainsnk.o \
-	$(DRIVERS)/marvins.o $(VIDEO)/marvins.o \
 	$(DRIVERS)/munchmo.o $(VIDEO)/munchmo.o \
 	$(DRIVERS)/prehisle.o $(VIDEO)/prehisle.o \
 	$(DRIVERS)/rockola.o $(AUDIO)/rockola.o $(VIDEO)/rockola.o \
-	$(DRIVERS)/sgladiat.o \
 	$(DRIVERS)/snk.o $(VIDEO)/snk.o \
 	$(DRIVERS)/snk68.o $(VIDEO)/snk68.o \
 
@@ -1653,6 +1656,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/usgames.o $(VIDEO)/usgames.o \
 	$(DRIVERS)/vamphalf.o \
 	$(DRIVERS)/vcombat.o \
+	$(DRIVERS)/videopkr.o \
 	$(DRIVERS)/vroulet.o \
 	$(DRIVERS)/wldarrow.o \
 	$(DRIVERS)/xyonix.o $(VIDEO)/xyonix.o \
@@ -1711,9 +1715,16 @@ $(DRIVERS)/firebeat.o:	$(LAYOUT)/firebeat.lh
 
 $(DRIVERS)/funworld.o:	$(LAYOUT)/funworld.lh
 
+$(DRIVERS)/galaxi.o:	$(LAYOUT)/galaxi.lh
+
+$(DRIVERS)/gatron.o:	$(LAYOUT)/poker41.lh \
+						$(LAYOUT)/pulltabs.lh
+
 $(DRIVERS)/lazercmd.o:	$(LAYOUT)/lazercmd.lh
 
 $(DRIVERS)/lucky74.o:	$(LAYOUT)/lucky74.lh
+
+$(DRIVERS)/magic10.o:	$(LAYOUT)/sgsafari.lh
 
 $(DRIVERS)/maxaflex.o:	$(LAYOUT)/maxaflex.lh
 
@@ -1748,6 +1759,10 @@ $(DRIVERS)/qix.o:		$(LAYOUT)/elecyoyo.lh
 
 $(DRIVERS)/sbrkout.o:	$(LAYOUT)/sbrkout.lh
 
+$(DRIVERS)/sderby.o:	$(LAYOUT)/sderby.lh \
+						$(LAYOUT)/spacewin.lh \
+						$(LAYOUT)/pmroulet.lh \
+
 $(DRIVERS)/snookr10.o:	$(LAYOUT)/snookr10.lh
 
 $(DRIVERS)/sspeedr.o:	$(LAYOUT)/sspeedr.lh
@@ -1765,6 +1780,13 @@ $(DRIVERS)/turbo.o:		$(LAYOUT)/turbo.lh \
 						$(LAYOUT)/buckrog.lh
 
 $(DRIVERS)/videopin.o:	$(LAYOUT)/videopin.lh
+
+$(DRIVERS)/videopkr.o:	$(LAYOUT)/videopkr.lh \
+						$(LAYOUT)/blckjack.lh \
+						$(LAYOUT)/videodad.lh \
+						$(LAYOUT)/videocba.lh \
+						$(LAYOUT)/babypkr.lh \
+						$(LAYOUT)/babydad.lh
 
 $(DRIVERS)/warpwarp.o:	$(LAYOUT)/geebee.lh \
 						$(LAYOUT)/sos.lh

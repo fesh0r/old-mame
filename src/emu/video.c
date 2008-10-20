@@ -79,6 +79,7 @@ struct _screen_state
 
 	/* screen specific VBLANK callbacks */
 	vblank_state_changed_func vblank_callback[MAX_VBLANK_CALLBACKS]; /* the array of callbacks */
+	void *					vblank_callback_param[MAX_VBLANK_CALLBACKS]; /* array of parameters */
 };
 
 
@@ -269,7 +270,7 @@ INLINE int effective_frameskip(void)
 INLINE int effective_throttle(running_machine *machine)
 {
 	/* if we're paused, or if the UI is active, we always throttle */
-	if (mame_is_paused(machine) || ui_is_menu_active() || ui_is_slider_active())
+	if (mame_is_paused(machine) || ui_is_menu_active())
 		return TRUE;
 
 	/* if we're fast forwarding, we don't throttle */
@@ -355,7 +356,7 @@ void video_init(running_machine *machine)
 	/* the native target is hard-coded to our internal layout and has all options disabled */
 	if (global.snap_native)
 	{
-		global.snap_target = render_target_alloc(layout_snap, RENDER_CREATE_SINGLE_FILE | RENDER_CREATE_HIDDEN);
+		global.snap_target = render_target_alloc(machine, layout_snap, RENDER_CREATE_SINGLE_FILE | RENDER_CREATE_HIDDEN);
 		assert(global.snap_target != NULL);
 		render_target_set_layer_config(global.snap_target, 0);
 	}
@@ -363,7 +364,7 @@ void video_init(running_machine *machine)
 	/* other targets select the specified view and turn off effects */
 	else
 	{
-		global.snap_target = render_target_alloc(NULL, RENDER_CREATE_HIDDEN);
+		global.snap_target = render_target_alloc(machine, NULL, RENDER_CREATE_HIDDEN);
 		assert(global.snap_target != NULL);
 		render_target_set_view(global.snap_target, video_get_view_for_target(machine, global.snap_target, viewname, 0, 1));
 		render_target_set_layer_config(global.snap_target, render_target_get_layer_config(global.snap_target) & ~LAYER_CONFIG_ENABLE_SCREEN_OVERLAY);
@@ -721,6 +722,7 @@ static void realloc_screen_bitmaps(const device_config *screen)
 		if (state->width > curwidth || state->height > curheight)
 		{
 			bitmap_format screen_format = config->format;
+			palette_t *palette;
 
 			/* free what we have currently */
 			if (state->texture[0] != NULL)
@@ -739,10 +741,10 @@ static void realloc_screen_bitmaps(const device_config *screen)
 			/* choose the texture format - convert the screen format to a texture format */
 			switch (screen_format)
 			{
-				case BITMAP_FORMAT_INDEXED16:	state->texture_format = TEXFORMAT_PALETTE16;		break;
-				case BITMAP_FORMAT_RGB15:		state->texture_format = TEXFORMAT_RGB15;			break;
-				case BITMAP_FORMAT_RGB32:		state->texture_format = TEXFORMAT_RGB32;			break;
-				default:						fatalerror("Invalid bitmap format!");	break;
+				case BITMAP_FORMAT_INDEXED16:	state->texture_format = TEXFORMAT_PALETTE16;	palette = screen->machine->palette;	break;
+				case BITMAP_FORMAT_RGB15:		state->texture_format = TEXFORMAT_RGB15;		palette = NULL;						break;
+				case BITMAP_FORMAT_RGB32:		state->texture_format = TEXFORMAT_RGB32;		palette = NULL;						break;
+				default:						fatalerror("Invalid bitmap format!");												break;
 			}
 
 			/* allocate bitmaps */
@@ -753,9 +755,9 @@ static void realloc_screen_bitmaps(const device_config *screen)
 
 			/* allocate textures */
 			state->texture[0] = render_texture_alloc(NULL, NULL);
-			render_texture_set_bitmap(state->texture[0], state->bitmap[0], &state->visarea, 0, state->texture_format);
+			render_texture_set_bitmap(state->texture[0], state->bitmap[0], &state->visarea, state->texture_format, palette);
 			state->texture[1] = render_texture_alloc(NULL, NULL);
-			render_texture_set_bitmap(state->texture[1], state->bitmap[1], &state->visarea, 0, state->texture_format);
+			render_texture_set_bitmap(state->texture[1], state->bitmap[1], &state->visarea, state->texture_format, palette);
 		}
 	}
 }
@@ -1140,10 +1142,10 @@ UINT64 video_screen_get_frame_number(const device_config *screen)
     VBLANK callback for a specific screen
 -------------------------------------------------*/
 
-void video_screen_register_vblank_callback(const device_config *screen, vblank_state_changed_func vblank_callback)
+void video_screen_register_vblank_callback(const device_config *screen, vblank_state_changed_func vblank_callback, void *param)
 {
-	int i, found;
 	screen_state *state = get_safe_token(screen);
+	int i, found;
 
 	/* validate arguments */
 	assert(vblank_callback != NULL);
@@ -1164,7 +1166,10 @@ void video_screen_register_vblank_callback(const device_config *screen, vblank_s
 
 	/* if not found, register and increment count */
 	if (!found)
+	{
 		state->vblank_callback[i] = vblank_callback;
+		state->vblank_callback_param[i] = param;
+	}
 }
 
 
@@ -1264,6 +1269,8 @@ static DEVICE_START( video_screen )
 	state_save_register_item(unique_tag, 0, state->vblank_end_time.attoseconds);
 	state_save_register_item(unique_tag, 0, state->frame_number);
 	state_save_register_postload(device->machine, video_screen_postload, (void *)device);
+
+	return DEVICE_START_OK;
 }
 
 
@@ -1366,7 +1373,7 @@ static TIMER_CALLBACK( vblank_begin_callback )
 
 	/* call the screen specific callbacks */
 	for (i = 0; state->vblank_callback[i] != NULL; i++)
-		(*state->vblank_callback[i])(screen, TRUE);
+		(*state->vblank_callback[i])(screen, state->vblank_callback_param[i], TRUE);
 
 	/* if this is the primary screen and we need to update now */
 	if (screen == machine->primary_screen && !(machine->config->video_attributes & VIDEO_UPDATE_AFTER_VBLANK))
@@ -1396,7 +1403,7 @@ static TIMER_CALLBACK( vblank_end_callback )
 
 	/* call the screen specific callbacks */
 	for (i = 0; state->vblank_callback[i] != NULL; i++)
-		(*state->vblank_callback[i])(screen, FALSE);
+		(*state->vblank_callback[i])(screen, state->vblank_callback_param[i], FALSE);
 
 	/* if this is the primary screen and we need to update now */
 	if (screen == machine->primary_screen && (machine->config->video_attributes & VIDEO_UPDATE_AFTER_VBLANK))
@@ -1566,9 +1573,11 @@ static int finish_screen_updates(running_machine *machine)
 				{
 					bitmap_t *bitmap = state->bitmap[state->curbitmap];
 					rectangle fixedvis = *video_screen_get_visible_area(screen);
+					palette_t *palette = (state->texture_format == TEXFORMAT_PALETTE16) ? machine->palette : NULL;
+
 					fixedvis.max_x++;
 					fixedvis.max_y++;
-					render_texture_set_bitmap(state->texture[state->curbitmap], bitmap, &fixedvis, 0, state->texture_format);
+					render_texture_set_bitmap(state->texture[state->curbitmap], bitmap, &fixedvis, state->texture_format, palette);
 					state->curtexture = state->curbitmap;
 					state->curbitmap = 1 - state->curbitmap;
 				}
@@ -2069,17 +2078,20 @@ static void update_refresh_speed(running_machine *machine)
 				if (screen->token != NULL)
 				{
 					screen_state *state = get_safe_token(screen);
-					min_frame_period = MIN(min_frame_period, state->frame_period);
+					if (state->frame_period != 0)
+						min_frame_period = MIN(min_frame_period, state->frame_period);
 				}
 
 			/* compute a target speed as an integral percentage */
-			target_speed = floor(minrefresh * 100.0 / ATTOSECONDS_TO_HZ(min_frame_period));
+			/* note that we lop 0.25Hz off of the minrefresh when doing the computation to allow for
+               the fact that most refresh rates are not accurate to 10 digits... */
+			target_speed = floor((minrefresh - 0.25f) * 100.0 / ATTOSECONDS_TO_HZ(min_frame_period));
 			target_speed = MIN(target_speed, original_speed);
 
 			/* if we changed, log that verbosely */
 			if (target_speed != global.speed)
 			{
-				mame_printf_verbose("Adjusting target speed to %d%%\n", target_speed);
+				mame_printf_verbose("Adjusting target speed to %d%% (hw=%.2fHz, game=%.2fHz, adjusted=%.2fHz)\n", target_speed, minrefresh, ATTOSECONDS_TO_HZ(min_frame_period), ATTOSECONDS_TO_HZ(min_frame_period * 100 / target_speed));
 				global.speed = target_speed;
 			}
 		}
@@ -2531,8 +2543,8 @@ void video_avi_begin_recording(running_machine *machine, const char *name)
 	info.video_depth = 24;
 
 	info.audio_format = 0;
-	info.audio_timescale = 1;
-	info.audio_sampletime = machine->sample_rate;
+	info.audio_timescale = machine->sample_rate;
+	info.audio_sampletime = 1;
 	info.audio_numsamples = 0;
 	info.audio_channels = 2;
 	info.audio_samplebits = 16;

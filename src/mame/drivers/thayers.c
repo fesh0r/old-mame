@@ -29,9 +29,9 @@ static int cop_data_latch_enable;
 static UINT8 cop_l;
 static UINT8 cop_cmd_latch;
 
-static int timer_int = 1;
-static int data_rdy_int = 1;
-static int ssi_data_request = 1;
+static int timer_int;
+static int data_rdy_int;
+static int ssi_data_request;
 
 static int cart_present;
 static int pr7820_enter;
@@ -650,8 +650,8 @@ static INPUT_PORTS_START( thayers )
 	PORT_START("COIN")
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(laserdisc_enter_r, 0 )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(laserdisc_ready_r, 0 )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(laserdisc_enter_r, NULL)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(laserdisc_ready_r, NULL)
 
 	PORT_START("R0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "2" ) PORT_CODE( KEYCODE_F2 )
@@ -724,13 +724,27 @@ static MACHINE_START( thayers )
 
 static MACHINE_RESET( thayers )
 {
-	int newtype = (input_port_read(machine, "DSWB") & 0x18) ? LASERDISC_TYPE_PIONEER_LDV1000 : LASERDISC_TYPE_PIONEER_PR7820;
-	device_set_info_int(laserdisc, LDINFO_INT_TYPE, newtype);
-}
+	int newtype;
 
-static INTERRUPT_GEN( vblank_callback_thayers )
-{
-	laserdisc_vsync(laserdisc);
+	laserdisc_data = 0;
+
+	rx_bit = 0;
+	keylatch = 0;
+
+	cop_data_latch = 0;
+	cop_data_latch_enable = 0;
+	cop_l = 0;
+	cop_cmd_latch = 0;
+
+	timer_int = 1;
+	data_rdy_int = 1;
+	ssi_data_request = 1;
+
+	cart_present = 0;
+	pr7820_enter = 0;
+
+	newtype = (input_port_read(machine, "DSWB") & 0x18) ? LASERDISC_TYPE_PIONEER_LDV1000 : LASERDISC_TYPE_PIONEER_PR7820;
+	device_set_info_int(laserdisc, LDINFO_INT_TYPE, newtype);
 }
 
 /* COP400 Interface */
@@ -749,7 +763,6 @@ static MACHINE_DRIVER_START( thayers )
 	MDRV_CPU_ADD("main", Z80, XTAL_4MHz)
 	MDRV_CPU_PROGRAM_MAP(thayers_map, 0)
 	MDRV_CPU_IO_MAP(thayers_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", vblank_callback_thayers)
 
 	MDRV_CPU_ADD("mcu", COP421, XTAL_4MHz/2) // COP421L-PCA/N
 	MDRV_CPU_PROGRAM_MAP(thayers_cop_map, 0)
@@ -759,7 +772,7 @@ static MACHINE_DRIVER_START( thayers )
 	MDRV_MACHINE_START(thayers)
 	MDRV_MACHINE_RESET(thayers)
 
-	MDRV_LASERDISC_ADD("laserdisc", PIONEER_PR7820)
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_PR7820, "main", "ldsound")
 
 	/* video hardware */
 	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_RGB32)
@@ -767,7 +780,13 @@ static MACHINE_DRIVER_START( thayers )
 	MDRV_PALETTE_LENGTH(256)
 
 	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 	// SSI 263 @ 2MHz
+
+	MDRV_SOUND_ADD("ldsound", CUSTOM, 0)
+	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
+	MDRV_SOUND_ROUTE(0, "left", 1.0)
+	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
 /* ROMs */

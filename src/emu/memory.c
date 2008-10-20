@@ -367,13 +367,13 @@ const char *const address_space_names[ADDRESS_SPACES] = { "program", "data", "I/
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static void address_map_detokenize(address_map *map, const game_driver *driver, const addrmap_token *tokens);
+static void address_map_detokenize(address_map *map, const game_driver *driver, const char *cputag, const addrmap_token *tokens);
 
 static void memory_init_cpudata(running_machine *machine);
 static void memory_init_preflight(running_machine *machine);
 static void memory_init_populate(running_machine *machine);
-static void space_map_range_private(addrspace_data *space, read_or_write readorwrite, int handlerbits, int handlerunitmask, offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, genf *handler, void *object, const char *handler_name);
-static void space_map_range(addrspace_data *space, read_or_write readorwrite, int handlerbits, int handlerunitmask, offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, genf *handler, void *object, const char *handler_name);
+static void space_map_range_private(running_machine *machine, addrspace_data *space, read_or_write readorwrite, int handlerbits, int handlerunitmask, offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, genf *handler, void *object, const char *handler_name);
+static void space_map_range(running_machine *machine, addrspace_data *space, read_or_write readorwrite, int handlerbits, int handlerunitmask, offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, genf *handler, void *object, const char *handler_name);
 static void bank_assign_static(int banknum, int cpunum, int spacenum, read_or_write readorwrite, offs_t bytestart, offs_t byteend);
 static genf *bank_assign_dynamic(int cpunum, int spacenum, read_or_write readorwrite, offs_t bytestart, offs_t byteend);
 static UINT8 table_assign_handler(handler_data *table, void *object, genf *handler, const char *handler_name, offs_t bytestart, offs_t byteend, offs_t bytemask);
@@ -779,7 +779,7 @@ static void memory_exit(running_machine *machine)
     memory_set_context - set the memory context
 -------------------------------------------------*/
 
-void memory_set_context(int activecpu)
+void memory_set_context(running_machine *machine, int activecpu)
 {
 	addrspace_data *space;
 
@@ -796,8 +796,8 @@ void memory_set_context(int activecpu)
 	/* program address space */
 	space = &cpudata[activecpu].space[ADDRESS_SPACE_PROGRAM];
 	active_address_space[ADDRESS_SPACE_PROGRAM].bytemask = space->bytemask;
-	active_address_space[ADDRESS_SPACE_PROGRAM].readlookup = ((Machine->debug_flags & DEBUG_FLAG_WPR_PROGRAM) != 0) ? wptable : space->read.table;
-	active_address_space[ADDRESS_SPACE_PROGRAM].writelookup = ((Machine->debug_flags & DEBUG_FLAG_WPW_PROGRAM) != 0) ? wptable : space->write.table;
+	active_address_space[ADDRESS_SPACE_PROGRAM].readlookup = ((machine->debug_flags & DEBUG_FLAG_WPR_PROGRAM) != 0) ? wptable : space->read.table;
+	active_address_space[ADDRESS_SPACE_PROGRAM].writelookup = ((machine->debug_flags & DEBUG_FLAG_WPW_PROGRAM) != 0) ? wptable : space->write.table;
 	active_address_space[ADDRESS_SPACE_PROGRAM].readhandlers = space->read.handlers;
 	active_address_space[ADDRESS_SPACE_PROGRAM].writehandlers = space->write.handlers;
 	active_address_space[ADDRESS_SPACE_PROGRAM].accessors = space->accessors;
@@ -807,8 +807,8 @@ void memory_set_context(int activecpu)
 	{
 		space = &cpudata[activecpu].space[ADDRESS_SPACE_DATA];
 		active_address_space[ADDRESS_SPACE_DATA].bytemask = space->bytemask;
-		active_address_space[ADDRESS_SPACE_DATA].readlookup = ((Machine->debug_flags & DEBUG_FLAG_WPR_DATA) != 0) ? wptable : space->read.table;
-		active_address_space[ADDRESS_SPACE_DATA].writelookup = ((Machine->debug_flags & DEBUG_FLAG_WPW_DATA) != 0) ? wptable : space->write.table;
+		active_address_space[ADDRESS_SPACE_DATA].readlookup = ((machine->debug_flags & DEBUG_FLAG_WPR_DATA) != 0) ? wptable : space->read.table;
+		active_address_space[ADDRESS_SPACE_DATA].writelookup = ((machine->debug_flags & DEBUG_FLAG_WPW_DATA) != 0) ? wptable : space->write.table;
 		active_address_space[ADDRESS_SPACE_DATA].readhandlers = space->read.handlers;
 		active_address_space[ADDRESS_SPACE_DATA].writehandlers = space->write.handlers;
 		active_address_space[ADDRESS_SPACE_DATA].accessors = space->accessors;
@@ -819,8 +819,8 @@ void memory_set_context(int activecpu)
 	{
 		space = &cpudata[activecpu].space[ADDRESS_SPACE_IO];
 		active_address_space[ADDRESS_SPACE_IO].bytemask = space->bytemask;
-		active_address_space[ADDRESS_SPACE_IO].readlookup = ((Machine->debug_flags & DEBUG_FLAG_WPR_IO) != 0) ? wptable : space->read.table;
-		active_address_space[ADDRESS_SPACE_IO].writelookup = ((Machine->debug_flags & DEBUG_FLAG_WPW_IO) != 0) ? wptable : space->write.table;
+		active_address_space[ADDRESS_SPACE_IO].readlookup = ((machine->debug_flags & DEBUG_FLAG_WPR_IO) != 0) ? wptable : space->read.table;
+		active_address_space[ADDRESS_SPACE_IO].writelookup = ((machine->debug_flags & DEBUG_FLAG_WPW_IO) != 0) ? wptable : space->write.table;
 		active_address_space[ADDRESS_SPACE_IO].readhandlers = space->read.handlers;
 		active_address_space[ADDRESS_SPACE_IO].writehandlers = space->write.handlers;
 		active_address_space[ADDRESS_SPACE_IO].accessors = space->accessors;
@@ -854,6 +854,7 @@ const data_accessors *memory_get_accessors(int spacenum, int databits, int endia
 
 address_map *address_map_alloc(const machine_config *config, const game_driver *driver, int cpunum, int spacenum)
 {
+	const char *cputag = config->cpu[cpunum].tag;
 	int cputype = config->cpu[cpunum].type;
 	const addrmap_token *internal_map = (const addrmap_token *)cputype_get_info_ptr(cputype, CPUINFO_PTR_INTERNAL_MEMORY_MAP + spacenum);
 	address_map *map;
@@ -861,15 +862,15 @@ address_map *address_map_alloc(const machine_config *config, const game_driver *
 	map = malloc_or_die(sizeof(*map));
 	memset(map, 0, sizeof(*map));
 
-	/* start by constructing the internal CPU map */
+	/* append the internal CPU map (first so it takes priority) */
 	if (internal_map != NULL)
-		address_map_detokenize(map, driver, internal_map);
+		address_map_detokenize(map, driver, cputag, internal_map);
 
 	/* construct the standard map */
 	if (config->cpu[cpunum].address_map[spacenum][0] != NULL)
-		address_map_detokenize(map, driver, config->cpu[cpunum].address_map[spacenum][0]);
+		address_map_detokenize(map, driver, cputag, config->cpu[cpunum].address_map[spacenum][0]);
 	if (config->cpu[cpunum].address_map[spacenum][1] != NULL)
-		address_map_detokenize(map, driver, config->cpu[cpunum].address_map[spacenum][1]);
+		address_map_detokenize(map, driver, cputag, config->cpu[cpunum].address_map[spacenum][1]);
 
 	return map;
 }
@@ -887,6 +888,12 @@ void address_map_free(address_map *map)
 	{
 		address_map_entry *entry = map->entrylist;
 		map->entrylist = entry->next;
+		if (entry->read_devtag_string != NULL)
+			astring_free(entry->read_devtag_string);
+		if (entry->write_devtag_string != NULL)
+			astring_free(entry->write_devtag_string);
+		if (entry->region_string != NULL)
+			astring_free(entry->region_string);
 		free(entry);
 	}
 
@@ -928,7 +935,7 @@ const address_map *memory_get_address_map(int cpunum, int spacenum)
 		fatalerror("%s: %s AM_RANGE(0x%x, 0x%x) setting %s already set!\n", driver->source_file, driver->name, entry->addrstart, entry->addrend, #field); \
 	} while (0)
 
-static void address_map_detokenize(address_map *map, const game_driver *driver, const addrmap_token *tokens)
+static void address_map_detokenize(address_map *map, const game_driver *driver, const char *cputag, const addrmap_token *tokens)
 {
 	address_map_entry **entryptr;
 	address_map_entry *entry;
@@ -967,7 +974,7 @@ static void address_map_detokenize(address_map *map, const game_driver *driver, 
 
 			/* including */
 			case ADDRMAP_TOKEN_INCLUDE:
-				address_map_detokenize(map, driver, TOKEN_GET_PTR(tokens, tokenptr));
+				address_map_detokenize(map, driver, cputag, TOKEN_GET_PTR(tokens, tokenptr));
 				for (entryptr = &map->entrylist; *entryptr != NULL; entryptr = &(*entryptr)->next) ;
 				entry = NULL;
 				break;
@@ -1030,7 +1037,9 @@ static void address_map_detokenize(address_map *map, const game_driver *driver, 
 				entry->read = TOKEN_GET_PTR(tokens, read);
 				entry->read_name = TOKEN_GET_STRING(tokens);
 				entry->read_devtype = TOKEN_GET_PTR(tokens, devtype);
-				entry->read_devtag = TOKEN_GET_STRING(tokens);
+				if (entry->read_devtag_string == NULL)
+					entry->read_devtag_string = astring_alloc();
+				entry->read_devtag = device_inherit_tag(entry->read_devtag_string, cputag, TOKEN_GET_STRING(tokens));
 				break;
 
 			case ADDRMAP_TOKEN_DEVICE_WRITE:
@@ -1040,7 +1049,9 @@ static void address_map_detokenize(address_map *map, const game_driver *driver, 
 				entry->write = TOKEN_GET_PTR(tokens, write);
 				entry->write_name = TOKEN_GET_STRING(tokens);
 				entry->write_devtype = TOKEN_GET_PTR(tokens, devtype);
-				entry->write_devtag = TOKEN_GET_STRING(tokens);
+				if (entry->write_devtag_string == NULL)
+					entry->write_devtag_string = astring_alloc();
+				entry->write_devtag = device_inherit_tag(entry->write_devtag_string, cputag, TOKEN_GET_STRING(tokens));
 				break;
 
 			case ADDRMAP_TOKEN_READ_PORT:
@@ -1052,7 +1063,9 @@ static void address_map_detokenize(address_map *map, const game_driver *driver, 
 				check_entry_field(region);
 				TOKEN_UNGET_UINT32(tokens);
 				TOKEN_GET_UINT64_UNPACK2(tokens, entrytype, 8, entry->rgnoffs, 32);
-				entry->region = TOKEN_GET_STRING(tokens);
+				if (entry->region_string == NULL)
+					entry->region_string = astring_alloc();
+				entry->region = device_inherit_tag(entry->region_string, cputag, TOKEN_GET_STRING(tokens));
 				break;
 
 			case ADDRMAP_TOKEN_SHARE:
@@ -1288,7 +1301,7 @@ void *memory_get_write_ptr(int cpunum, int spacenum, offs_t byteaddress)
     CPU and offset
 -------------------------------------------------*/
 
-void *memory_get_op_ptr(int cpunum, offs_t byteaddress, int arg)
+void *memory_get_op_ptr(running_machine *machine, int cpunum, offs_t byteaddress, int arg)
 {
 	addrspace_data *space = &cpudata[cpunum].space[ADDRESS_SPACE_PROGRAM];
 	offs_t byteoffset;
@@ -1302,7 +1315,7 @@ void *memory_get_op_ptr(int cpunum, offs_t byteaddress, int arg)
 		opbase_data saved_opbase = opbase;
 
 		/* query the handler */
-		offs_t new_byteaddress = (*cpudata[cpunum].opbase_handler)(Machine, byteaddress, &opbase);
+		offs_t new_byteaddress = (*cpudata[cpunum].opbase_handler)(machine, byteaddress, &opbase);
 
 		/* if it returns ~0, we use whatever data the handler set */
 		if (new_byteaddress == ~0)
@@ -1502,9 +1515,9 @@ void *_memory_install_handler(running_machine *machine, int cpunum, int spacenum
 	if (rhandler >= STATIC_COUNT || whandler >= STATIC_COUNT)
 		fatalerror("fatal: can only use static banks with memory_install_handler()");
 	if (rhandler != 0)
-		space_map_range(space, ROW_READ, space->dbits, 0, addrstart, addrend, addrmask, addrmirror, (genf *)(FPTR)rhandler, machine, rhandler_name);
+		space_map_range(machine, space, ROW_READ, space->dbits, 0, addrstart, addrend, addrmask, addrmirror, (genf *)(FPTR)rhandler, machine, rhandler_name);
 	if (whandler != 0)
-		space_map_range(space, ROW_WRITE, space->dbits, 0, addrstart, addrend, addrmask, addrmirror, (genf *)(FPTR)whandler, machine, whandler_name);
+		space_map_range(machine, space, ROW_WRITE, space->dbits, 0, addrstart, addrend, addrmask, addrmirror, (genf *)(FPTR)whandler, machine, whandler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, ADDR2BYTE(space, addrstart));
 }
@@ -1513,9 +1526,9 @@ UINT8 *_memory_install_handler8(running_machine *machine, int cpunum, int spacen
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if (rhandler != NULL)
-		space_map_range(space, ROW_READ, 8, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, machine, rhandler_name);
+		space_map_range(machine, space, ROW_READ, 8, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, machine, rhandler_name);
 	if (whandler != NULL)
-		space_map_range(space, ROW_WRITE, 8, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, machine, whandler_name);
+		space_map_range(machine, space, ROW_WRITE, 8, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, machine, whandler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, ADDR2BYTE(space, addrstart));
 }
@@ -1524,9 +1537,9 @@ UINT16 *_memory_install_handler16(running_machine *machine, int cpunum, int spac
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if (rhandler != NULL)
-		space_map_range(space, ROW_READ, 16, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, machine, rhandler_name);
+		space_map_range(machine, space, ROW_READ, 16, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, machine, rhandler_name);
 	if (whandler != NULL)
-		space_map_range(space, ROW_WRITE, 16, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, machine, whandler_name);
+		space_map_range(machine, space, ROW_WRITE, 16, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, machine, whandler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, ADDR2BYTE(space, addrstart));
 }
@@ -1535,9 +1548,9 @@ UINT32 *_memory_install_handler32(running_machine *machine, int cpunum, int spac
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if (rhandler != NULL)
-		space_map_range(space, ROW_READ, 32, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, machine, rhandler_name);
+		space_map_range(machine, space, ROW_READ, 32, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, machine, rhandler_name);
 	if (whandler != NULL)
-		space_map_range(space, ROW_WRITE, 32, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, machine, whandler_name);
+		space_map_range(machine, space, ROW_WRITE, 32, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, machine, whandler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, ADDR2BYTE(space, addrstart));
 }
@@ -1546,9 +1559,9 @@ UINT64 *_memory_install_handler64(running_machine *machine, int cpunum, int spac
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if (rhandler != NULL)
-		space_map_range(space, ROW_READ, 64, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, machine, rhandler_name);
+		space_map_range(machine, space, ROW_READ, 64, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, machine, rhandler_name);
 	if (whandler != NULL)
-		space_map_range(space, ROW_WRITE, 64, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, machine, whandler_name);
+		space_map_range(machine, space, ROW_WRITE, 64, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, machine, whandler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, ADDR2BYTE(space, addrstart));
 }
@@ -1566,9 +1579,9 @@ void *_memory_install_device_handler(const device_config *device, int cpunum, in
 	if (rhandler >= STATIC_COUNT || whandler >= STATIC_COUNT)
 		fatalerror("fatal: can only use static banks with memory_install_device_handler()");
 	if (rhandler != 0)
-		space_map_range(space, ROW_READ, space->dbits, 0, addrstart, addrend, addrmask, addrmirror, (genf *)(FPTR)rhandler, (void *)device, rhandler_name);
+		space_map_range(device->machine, space, ROW_READ, space->dbits, 0, addrstart, addrend, addrmask, addrmirror, (genf *)(FPTR)rhandler, (void *)device, rhandler_name);
 	if (whandler != 0)
-		space_map_range(space, ROW_WRITE, space->dbits, 0, addrstart, addrend, addrmask, addrmirror, (genf *)(FPTR)whandler, (void *)device, whandler_name);
+		space_map_range(device->machine, space, ROW_WRITE, space->dbits, 0, addrstart, addrend, addrmask, addrmirror, (genf *)(FPTR)whandler, (void *)device, whandler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, ADDR2BYTE(space, addrstart));
 }
@@ -1577,9 +1590,9 @@ UINT8 *_memory_install_device_handler8(const device_config *device, int cpunum, 
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if (rhandler != NULL)
-		space_map_range(space, ROW_READ, 8, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, (void *)device, rhandler_name);
+		space_map_range(device->machine, space, ROW_READ, 8, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, (void *)device, rhandler_name);
 	if (whandler != NULL)
-		space_map_range(space, ROW_WRITE, 8, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
+		space_map_range(device->machine, space, ROW_WRITE, 8, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, ADDR2BYTE(space, addrstart));
 }
@@ -1588,9 +1601,9 @@ UINT16 *_memory_install_device_handler16(const device_config *device, int cpunum
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if (rhandler != NULL)
-		space_map_range(space, ROW_READ, 16, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, (void *)device, rhandler_name);
+		space_map_range(device->machine, space, ROW_READ, 16, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, (void *)device, rhandler_name);
 	if (whandler != NULL)
-		space_map_range(space, ROW_WRITE, 16, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
+		space_map_range(device->machine, space, ROW_WRITE, 16, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, ADDR2BYTE(space, addrstart));
 }
@@ -1599,9 +1612,9 @@ UINT32 *_memory_install_device_handler32(const device_config *device, int cpunum
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if (rhandler != NULL)
-		space_map_range(space, ROW_READ, 32, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, (void *)device, rhandler_name);
+		space_map_range(device->machine, space, ROW_READ, 32, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, (void *)device, rhandler_name);
 	if (whandler != NULL)
-		space_map_range(space, ROW_WRITE, 32, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
+		space_map_range(device->machine, space, ROW_WRITE, 32, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, ADDR2BYTE(space, addrstart));
 }
@@ -1610,9 +1623,9 @@ UINT64 *_memory_install_device_handler64(const device_config *device, int cpunum
 {
 	addrspace_data *space = &cpudata[cpunum].space[spacenum];
 	if (rhandler != NULL)
-		space_map_range(space, ROW_READ, 64, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, (void *)device, rhandler_name);
+		space_map_range(device->machine, space, ROW_READ, 64, 0, addrstart, addrend, addrmask, addrmirror, (genf *)rhandler, (void *)device, rhandler_name);
 	if (whandler != NULL)
-		space_map_range(space, ROW_WRITE, 64, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
+		space_map_range(device->machine, space, ROW_WRITE, 64, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
 	mem_dump();
 	return memory_find_base(cpunum, spacenum, ADDR2BYTE(space, addrstart));
 }
@@ -1675,7 +1688,9 @@ static void memory_init_cpudata(running_machine *machine)
 			for (entrynum = 0; entrynum < ENTRY_COUNT; entrynum++)
 			{
 				space->read.handlers[entrynum].handler.generic = get_static_handler(space->dbits, 0, spacenum, entrynum);
+				space->read.handlers[entrynum].object = machine;
 				space->write.handlers[entrynum].handler.generic = get_static_handler(space->dbits, 1, spacenum, entrynum);
+				space->write.handlers[entrynum].object = machine;
 			}
 
 			/* make sure we fix up the mask for the unmap and watchpoint handlers */
@@ -1856,7 +1871,7 @@ static void memory_init_populate(running_machine *machine)
 								if (object == NULL)
 									fatalerror("Unidentified object in memory map: type=%s tag=%s\n", devtype_name(entry->read_devtype), entry->read_devtag);
 							}
-							space_map_range_private(space, ROW_READ, bits, entry->read_mask, entry->addrstart, entry->addrend, entry->addrmask, entry->addrmirror, rhandler.generic, object, entry->read_name);
+							space_map_range_private(machine, space, ROW_READ, bits, entry->read_mask, entry->addrstart, entry->addrend, entry->addrmask, entry->addrmirror, rhandler.generic, object, entry->read_name);
 						}
 
 						/* install the write handler if present */
@@ -1870,7 +1885,7 @@ static void memory_init_populate(running_machine *machine)
 								if (object == NULL)
 									fatalerror("Unidentified object in memory map: type=%s tag=%s\n", devtype_name(entry->write_devtype), entry->write_devtag);
 							}
-							space_map_range_private(space, ROW_WRITE, bits, entry->write_mask, entry->addrstart, entry->addrend, entry->addrmask, entry->addrmirror, whandler.generic, object, entry->write_name);
+							space_map_range_private(machine, space, ROW_WRITE, bits, entry->write_mask, entry->addrstart, entry->addrend, entry->addrmask, entry->addrmirror, whandler.generic, object, entry->write_name);
 						}
 					}
 				}
@@ -1885,7 +1900,7 @@ static void memory_init_populate(running_machine *machine)
     banks to dynamically assigned banks
 -------------------------------------------------*/
 
-static void space_map_range_private(addrspace_data *space, read_or_write readorwrite, int handlerbits, int handlerunitmask, offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, genf *handler, void *object, const char *handler_name)
+static void space_map_range_private(running_machine *machine, addrspace_data *space, read_or_write readorwrite, int handlerbits, int handlerunitmask, offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, genf *handler, void *object, const char *handler_name)
 {
 	/* translate ROM to RAM/UNMAP here */
 	if (HANDLER_IS_ROM(handler))
@@ -1909,7 +1924,7 @@ static void space_map_range_private(addrspace_data *space, read_or_write readorw
 	}
 
 	/* then do a normal installation */
-	space_map_range(space, readorwrite, handlerbits, handlerunitmask, addrstart, addrend, addrmask, addrmirror, handler, object, handler_name);
+	space_map_range(machine, space, readorwrite, handlerbits, handlerunitmask, addrstart, addrend, addrmask, addrmirror, handler, object, handler_name);
 }
 
 
@@ -1919,7 +1934,7 @@ static void space_map_range_private(addrspace_data *space, read_or_write readorw
     space
 -------------------------------------------------*/
 
-static void space_map_range(addrspace_data *space, read_or_write readorwrite, int handlerbits, int handlerunitmask, offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, genf *handler, void *object, const char *handler_name)
+static void space_map_range(running_machine *machine, addrspace_data *space, read_or_write readorwrite, int handlerbits, int handlerunitmask, offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, genf *handler, void *object, const char *handler_name)
 {
 	table_data *tabledata = (readorwrite == ROW_WRITE) ? &space->write : &space->read;
 	offs_t bytestart, byteend, bytemask, bytemirror;
@@ -1960,7 +1975,7 @@ static void space_map_range(addrspace_data *space, read_or_write readorwrite, in
 
 	/* if this is being installed to a live CPU, update the context */
 	if (space->cpunum == cur_context)
-		memory_set_context(cur_context);
+		memory_set_context(machine, cur_context);
 }
 
 
@@ -2602,8 +2617,8 @@ static void *allocate_memory_block(running_machine *machine, int cpunum, int spa
 	/* register for saving, but only if we're not part of a memory region */
 	for (region = memory_region_next(machine, NULL); region != NULL; region = memory_region_next(machine, region))
 	{
-		UINT8 *region_base = memory_region(Machine, region);
-		UINT32 region_length = memory_region_length(Machine, region);
+		UINT8 *region_base = memory_region(machine, region);
+		UINT32 region_length = memory_region_length(machine, region);
 		if (region_base != NULL && region_length != 0 && (UINT8 *)memory >= region_base && ((UINT8 *)memory + (byteend - bytestart + 1)) < region_base + region_length)
 		{
 			VPRINTF(("skipping save of this memory block as it is covered by a memory region\n"));
@@ -3003,107 +3018,107 @@ static WRITE64_HANDLER( mwh64_nop )        {  }
     watchpoint memory handlers
 -------------------------------------------------*/
 
-INLINE UINT8 watchpoint_read8(int spacenum, offs_t address)
+INLINE UINT8 watchpoint_read8(running_machine *machine, int spacenum, offs_t address)
 {
 	UINT8 result;
-	debug_cpu_memory_read_hook(Machine, cur_context, spacenum, address, 0xff);
+	debug_cpu_memory_read_hook(machine, cur_context, spacenum, address, 0xff);
 	active_address_space[spacenum].readlookup = cpudata[cur_context].space[spacenum].read.table;
 	result = read_byte_generic(spacenum, address);
 	active_address_space[spacenum].readlookup = wptable;
 	return result;
 }
 
-INLINE UINT16 watchpoint_read16(int spacenum, offs_t address, UINT16 mem_mask)
+INLINE UINT16 watchpoint_read16(running_machine *machine, int spacenum, offs_t address, UINT16 mem_mask)
 {
 	UINT16 result;
-	debug_cpu_memory_read_hook(Machine, cur_context, spacenum, address << 1, mem_mask);
+	debug_cpu_memory_read_hook(machine, cur_context, spacenum, address << 1, mem_mask);
 	active_address_space[spacenum].readlookup = cpudata[cur_context].space[spacenum].read.table;
 	result = read_word_generic(spacenum, address << 1, mem_mask);
 	active_address_space[spacenum].readlookup = wptable;
 	return result;
 }
 
-INLINE UINT32 watchpoint_read32(int spacenum, offs_t address, UINT32 mem_mask)
+INLINE UINT32 watchpoint_read32(running_machine *machine, int spacenum, offs_t address, UINT32 mem_mask)
 {
 	UINT32 result;
-	debug_cpu_memory_read_hook(Machine, cur_context, spacenum, address << 2, mem_mask);
+	debug_cpu_memory_read_hook(machine, cur_context, spacenum, address << 2, mem_mask);
 	active_address_space[spacenum].readlookup = cpudata[cur_context].space[spacenum].read.table;
 	result = read_dword_generic(spacenum, address << 2, mem_mask);
 	active_address_space[spacenum].readlookup = wptable;
 	return result;
 }
 
-INLINE UINT64 watchpoint_read64(int spacenum, offs_t address, UINT64 mem_mask)
+INLINE UINT64 watchpoint_read64(running_machine *machine, int spacenum, offs_t address, UINT64 mem_mask)
 {
 	UINT64 result;
-	debug_cpu_memory_read_hook(Machine, cur_context, spacenum, address << 3, mem_mask);
+	debug_cpu_memory_read_hook(machine, cur_context, spacenum, address << 3, mem_mask);
 	active_address_space[spacenum].readlookup = cpudata[cur_context].space[spacenum].read.table;
 	result = read_qword_generic(spacenum, address << 3, mem_mask);
 	active_address_space[spacenum].readlookup = wptable;
 	return result;
 }
 
-INLINE void watchpoint_write8(int spacenum, offs_t address, UINT8 data)
+INLINE void watchpoint_write8(running_machine *machine, int spacenum, offs_t address, UINT8 data)
 {
-	debug_cpu_memory_write_hook(Machine, cur_context, spacenum, address, data, 0xff);
+	debug_cpu_memory_write_hook(machine, cur_context, spacenum, address, data, 0xff);
 	active_address_space[spacenum].writelookup = cpudata[cur_context].space[spacenum].write.table;
 	write_byte_generic(spacenum, address, data);
 	active_address_space[spacenum].writelookup = wptable;
 }
 
-INLINE void watchpoint_write16(int spacenum, offs_t address, UINT16 data, UINT16 mem_mask)
+INLINE void watchpoint_write16(running_machine *machine, int spacenum, offs_t address, UINT16 data, UINT16 mem_mask)
 {
-	debug_cpu_memory_write_hook(Machine, cur_context, spacenum, address << 1, data, mem_mask);
+	debug_cpu_memory_write_hook(machine, cur_context, spacenum, address << 1, data, mem_mask);
 	active_address_space[spacenum].writelookup = cpudata[cur_context].space[spacenum].write.table;
 	write_word_generic(spacenum, address << 1, data, mem_mask);
 	active_address_space[spacenum].writelookup = wptable;
 }
 
-INLINE void watchpoint_write32(int spacenum, offs_t address, UINT32 data, UINT32 mem_mask)
+INLINE void watchpoint_write32(running_machine *machine, int spacenum, offs_t address, UINT32 data, UINT32 mem_mask)
 {
-	debug_cpu_memory_write_hook(Machine, cur_context, spacenum, address << 2, data, mem_mask);
+	debug_cpu_memory_write_hook(machine, cur_context, spacenum, address << 2, data, mem_mask);
 	active_address_space[spacenum].writelookup = cpudata[cur_context].space[spacenum].write.table;
 	write_dword_generic(spacenum, address << 2, data, mem_mask);
 	active_address_space[spacenum].writelookup = wptable;
 }
 
-INLINE void watchpoint_write64(int spacenum, offs_t address, UINT64 data, UINT64 mem_mask)
+INLINE void watchpoint_write64(running_machine *machine, int spacenum, offs_t address, UINT64 data, UINT64 mem_mask)
 {
-	debug_cpu_memory_write_hook(Machine, cur_context, spacenum, address << 3, data, mem_mask);
+	debug_cpu_memory_write_hook(machine, cur_context, spacenum, address << 3, data, mem_mask);
 	active_address_space[spacenum].writelookup = cpudata[cur_context].space[spacenum].write.table;
 	write_qword_generic(spacenum, address << 3, data, mem_mask);
 	active_address_space[spacenum].writelookup = wptable;
 }
 
-static READ8_HANDLER( mrh8_watchpoint_program )    { return watchpoint_read8 (ADDRESS_SPACE_PROGRAM, offset);           }
-static READ16_HANDLER( mrh16_watchpoint_program )  { return watchpoint_read16(ADDRESS_SPACE_PROGRAM, offset, mem_mask); }
-static READ32_HANDLER( mrh32_watchpoint_program )  { return watchpoint_read32(ADDRESS_SPACE_PROGRAM, offset, mem_mask); }
-static READ64_HANDLER( mrh64_watchpoint_program )  { return watchpoint_read64(ADDRESS_SPACE_PROGRAM, offset, mem_mask); }
+static READ8_HANDLER( mrh8_watchpoint_program )    { return watchpoint_read8 (machine, ADDRESS_SPACE_PROGRAM, offset);           }
+static READ16_HANDLER( mrh16_watchpoint_program )  { return watchpoint_read16(machine, ADDRESS_SPACE_PROGRAM, offset, mem_mask); }
+static READ32_HANDLER( mrh32_watchpoint_program )  { return watchpoint_read32(machine, ADDRESS_SPACE_PROGRAM, offset, mem_mask); }
+static READ64_HANDLER( mrh64_watchpoint_program )  { return watchpoint_read64(machine, ADDRESS_SPACE_PROGRAM, offset, mem_mask); }
 
-static WRITE8_HANDLER( mwh8_watchpoint_program )   { watchpoint_write8 (ADDRESS_SPACE_PROGRAM, offset, data);           }
-static WRITE16_HANDLER( mwh16_watchpoint_program ) { watchpoint_write16(ADDRESS_SPACE_PROGRAM, offset, data, mem_mask); }
-static WRITE32_HANDLER( mwh32_watchpoint_program ) { watchpoint_write32(ADDRESS_SPACE_PROGRAM, offset, data, mem_mask); }
-static WRITE64_HANDLER( mwh64_watchpoint_program ) { watchpoint_write64(ADDRESS_SPACE_PROGRAM, offset, data, mem_mask); }
+static WRITE8_HANDLER( mwh8_watchpoint_program )   { watchpoint_write8 (machine, ADDRESS_SPACE_PROGRAM, offset, data);           }
+static WRITE16_HANDLER( mwh16_watchpoint_program ) { watchpoint_write16(machine, ADDRESS_SPACE_PROGRAM, offset, data, mem_mask); }
+static WRITE32_HANDLER( mwh32_watchpoint_program ) { watchpoint_write32(machine, ADDRESS_SPACE_PROGRAM, offset, data, mem_mask); }
+static WRITE64_HANDLER( mwh64_watchpoint_program ) { watchpoint_write64(machine, ADDRESS_SPACE_PROGRAM, offset, data, mem_mask); }
 
-static READ8_HANDLER( mrh8_watchpoint_data )       { return watchpoint_read8 (ADDRESS_SPACE_DATA, offset);           }
-static READ16_HANDLER( mrh16_watchpoint_data )     { return watchpoint_read16(ADDRESS_SPACE_DATA, offset, mem_mask); }
-static READ32_HANDLER( mrh32_watchpoint_data )     { return watchpoint_read32(ADDRESS_SPACE_DATA, offset, mem_mask); }
-static READ64_HANDLER( mrh64_watchpoint_data )     { return watchpoint_read64(ADDRESS_SPACE_DATA, offset, mem_mask); }
+static READ8_HANDLER( mrh8_watchpoint_data )       { return watchpoint_read8 (machine, ADDRESS_SPACE_DATA, offset);           }
+static READ16_HANDLER( mrh16_watchpoint_data )     { return watchpoint_read16(machine, ADDRESS_SPACE_DATA, offset, mem_mask); }
+static READ32_HANDLER( mrh32_watchpoint_data )     { return watchpoint_read32(machine, ADDRESS_SPACE_DATA, offset, mem_mask); }
+static READ64_HANDLER( mrh64_watchpoint_data )     { return watchpoint_read64(machine, ADDRESS_SPACE_DATA, offset, mem_mask); }
 
-static WRITE8_HANDLER( mwh8_watchpoint_data )      { watchpoint_write8 (ADDRESS_SPACE_DATA, offset, data);           }
-static WRITE16_HANDLER( mwh16_watchpoint_data )    { watchpoint_write16(ADDRESS_SPACE_DATA, offset, data, mem_mask); }
-static WRITE32_HANDLER( mwh32_watchpoint_data )    { watchpoint_write32(ADDRESS_SPACE_DATA, offset, data, mem_mask); }
-static WRITE64_HANDLER( mwh64_watchpoint_data )    { watchpoint_write64(ADDRESS_SPACE_DATA, offset, data, mem_mask); }
+static WRITE8_HANDLER( mwh8_watchpoint_data )      { watchpoint_write8 (machine, ADDRESS_SPACE_DATA, offset, data);           }
+static WRITE16_HANDLER( mwh16_watchpoint_data )    { watchpoint_write16(machine, ADDRESS_SPACE_DATA, offset, data, mem_mask); }
+static WRITE32_HANDLER( mwh32_watchpoint_data )    { watchpoint_write32(machine, ADDRESS_SPACE_DATA, offset, data, mem_mask); }
+static WRITE64_HANDLER( mwh64_watchpoint_data )    { watchpoint_write64(machine, ADDRESS_SPACE_DATA, offset, data, mem_mask); }
 
-static READ8_HANDLER( mrh8_watchpoint_io )         { return watchpoint_read8 (ADDRESS_SPACE_IO, offset);           }
-static READ16_HANDLER( mrh16_watchpoint_io )       { return watchpoint_read16(ADDRESS_SPACE_IO, offset, mem_mask); }
-static READ32_HANDLER( mrh32_watchpoint_io )       { return watchpoint_read32(ADDRESS_SPACE_IO, offset, mem_mask); }
-static READ64_HANDLER( mrh64_watchpoint_io )       { return watchpoint_read64(ADDRESS_SPACE_IO, offset, mem_mask); }
+static READ8_HANDLER( mrh8_watchpoint_io )         { return watchpoint_read8 (machine, ADDRESS_SPACE_IO, offset);           }
+static READ16_HANDLER( mrh16_watchpoint_io )       { return watchpoint_read16(machine, ADDRESS_SPACE_IO, offset, mem_mask); }
+static READ32_HANDLER( mrh32_watchpoint_io )       { return watchpoint_read32(machine, ADDRESS_SPACE_IO, offset, mem_mask); }
+static READ64_HANDLER( mrh64_watchpoint_io )       { return watchpoint_read64(machine, ADDRESS_SPACE_IO, offset, mem_mask); }
 
-static WRITE8_HANDLER( mwh8_watchpoint_io )        { watchpoint_write8 (ADDRESS_SPACE_IO, offset, data);           }
-static WRITE16_HANDLER( mwh16_watchpoint_io )      { watchpoint_write16(ADDRESS_SPACE_IO, offset, data, mem_mask); }
-static WRITE32_HANDLER( mwh32_watchpoint_io )      { watchpoint_write32(ADDRESS_SPACE_IO, offset, data, mem_mask); }
-static WRITE64_HANDLER( mwh64_watchpoint_io )      { watchpoint_write64(ADDRESS_SPACE_IO, offset, data, mem_mask); }
+static WRITE8_HANDLER( mwh8_watchpoint_io )        { watchpoint_write8 (machine, ADDRESS_SPACE_IO, offset, data);           }
+static WRITE16_HANDLER( mwh16_watchpoint_io )      { watchpoint_write16(machine, ADDRESS_SPACE_IO, offset, data, mem_mask); }
+static WRITE32_HANDLER( mwh32_watchpoint_io )      { watchpoint_write32(machine, ADDRESS_SPACE_IO, offset, data, mem_mask); }
+static WRITE64_HANDLER( mwh64_watchpoint_io )      { watchpoint_write64(machine, ADDRESS_SPACE_IO, offset, data, mem_mask); }
 
 
 /*-------------------------------------------------

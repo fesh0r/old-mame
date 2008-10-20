@@ -80,7 +80,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "neogeo.h"
 #include "machine/pd4990a.h"
 #include "cpu/z80/z80.h"
@@ -200,18 +199,9 @@ void neogeo_set_display_counter_lsb(running_machine *machine, UINT16 data)
 
 static void update_interrupts(running_machine *machine)
 {
-	int level = 0;
-
-	/* determine which interrupt is active - order implies priority */
-	if (vblank_interrupt_pending) level = 1;
-	if (display_position_interrupt_pending) level = 2;
-	if (irq3_pending) level = 3;
-
-	/* either set or clear the appropriate lines */
-	if (level)
-		cpunum_set_input_line(machine, 0, level, ASSERT_LINE);
-	else
-		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 1, vblank_interrupt_pending ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 2, display_position_interrupt_pending ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 3, irq3_pending ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -634,13 +624,13 @@ static void _set_main_cpu_bank_address(running_machine *machine)
 }
 
 
-void neogeo_set_main_cpu_bank_address(UINT32 bank_address)
+void neogeo_set_main_cpu_bank_address(running_machine *machine, UINT32 bank_address)
 {
 	if (LOG_MAIN_CPU_BANKING) logerror("MAIN CPU PC %06x: neogeo_set_main_cpu_bank_address %06x\n", safe_activecpu_get_pc(), bank_address);
 
 	main_cpu_bank_address = bank_address;
 
-	_set_main_cpu_bank_address(Machine);
+	_set_main_cpu_bank_address(machine);
 }
 
 
@@ -661,7 +651,7 @@ static WRITE16_HANDLER( main_cpu_bank_select_w )
 			bank_address = 0x100000;
 		}
 
-		neogeo_set_main_cpu_bank_address(bank_address);
+		neogeo_set_main_cpu_bank_address(machine, bank_address);
 	}
 }
 
@@ -674,9 +664,9 @@ static void main_cpu_banking_init(running_machine *machine)
 
 	/* set initial main CPU bank */
 	if (memory_region_length(machine, "main") > 0x100000)
-		neogeo_set_main_cpu_bank_address(0x100000);
+		neogeo_set_main_cpu_bank_address(machine, 0x100000);
 	else
-		neogeo_set_main_cpu_bank_address(0x000000);
+		neogeo_set_main_cpu_bank_address(machine, 0x000000);
 }
 
 
@@ -1161,7 +1151,7 @@ static ym2610_interface ym2610_config =
 
 
 #define STANDARD_IN1														\
-	PORT_START("IN1")													\
+	PORT_START("IN1")														\
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )							\
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)		\
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)		\
@@ -1174,30 +1164,30 @@ static ym2610_interface ym2610_config =
 
 
 #define STANDARD_IN2																				\
-	PORT_START("IN2")																			\
+	PORT_START("IN2")																				\
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )													\
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )   												\
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Next Game") PORT_CODE(KEYCODE_7)		\
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_START2 )   												\
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Previous Game") PORT_CODE(KEYCODE_8)	\
-	PORT_BIT( 0x7000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_memcard_status, 0)				\
+	PORT_BIT( 0x7000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_memcard_status, NULL)			\
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 
 #define STANDARD_IN3																				\
-	PORT_START("IN3")																			\
+	PORT_START("IN3")																				\
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )													\
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )													\
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )													\
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* having this ACTIVE_HIGH causes you to start with 2 credits using USA bios roms */	\
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* having this ACTIVE_HIGH causes you to start with 2 credits using USA bios roms */	\
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_SPECIAL ) /* what is this? */ 								\
-	PORT_BIT( 0x00c0, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_calendar_status, 0)				\
-	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_audio_result, 0)
+	PORT_BIT( 0x00c0, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_calendar_status, NULL)			\
+	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_audio_result, NULL)
 
 
 #define STANDARD_IN4																			\
-	PORT_START("IN4")																		\
+	PORT_START("IN4")																			\
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_UNKNOWN )												\
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_UNKNOWN )												\
 	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_UNKNOWN )												\

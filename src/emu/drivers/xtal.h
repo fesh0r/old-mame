@@ -54,6 +54,7 @@ enum
 	XTAL_3_6864MHz  	= 3686400,		/* CPS3 */
 	XTAL_4MHz    		= 4000000,
 	XTAL_4_224MHz   	= 4224000,		/* Used to drive OKI M6295 chips, usually with /4 divider */
+	XTAL_4_41MHz		= 4410000,		/* Pioneer PR-8210 ldplayer */
 	XTAL_4_43361MHz		= 4433610,		/* Cidelsa Draco */
 	XTAL_4_433619MHz	= 4433619,		/* PAL color subcarrier */
 	XTAL_4_9152MHz   	= 4915200,
@@ -64,6 +65,7 @@ enum
 	XTAL_7MHz    		= 7000000,		/* Jaleco Mega System PCBs */
 	XTAL_7_15909MHz   	= 7159090,		/* Blood Bros */
 	XTAL_7_3728MHz   	= 7372800,
+	XTAL_7_8643MHz 		= 7864300,		/* Used on InterFlip games as video clock */
 	XTAL_8MHz    		= 8000000,		/* Extremely common, used on 100's of PCBs */
 	XTAL_8_664MHz		= 8664000,		/* Touchmaster */
 	XTAL_9_987MHz		= 9987000,		/* Crazy Balloon */
@@ -84,6 +86,7 @@ enum
 	XTAL_13_3MHz  		= 13300000,		/* BMC bowling */
 	XTAL_13_33056MHz 	= 13330560,		/* Taito L */
 	XTAL_13_4MHz		= 13400000,		/* TNK3, Ikari Warriors h/w */
+	XTAL_13_4952MHz		= 13495200,		/* Used on Shadow Force pcb and maybe other Technos pcbs? */
 	XTAL_14MHz   		= 14000000,
 	XTAL_14_31818MHz  	= 14318180,		/* Extremely common, used on 100's of PCBs */
 	XTAL_14_705882MHz  	= 14705882,		/* Aleck64 */

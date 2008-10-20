@@ -236,7 +236,7 @@ static READ16_HANDLER( syvalion_input_bypass_r )
 }
 
 
-static INT32 banknum = -1;
+static INT32 banknum;
 
 static void reset_sound_region(running_machine *machine)
 {
@@ -546,15 +546,15 @@ static const gfx_layout charlayout =
 
 
 static GFXDECODE_START( syvalion )
-	GFXDECODE_ENTRY( "gfx1", 0, tilelayout, 0,     32*16 )
+	GFXDECODE_ENTRY( "gfx1", 0, tilelayout, 0,     32 )
 GFXDECODE_END
 
 static GFXDECODE_START( recordbr )
-	GFXDECODE_ENTRY( "gfx1", 0, tilelayout, 0,     32*16 )
+	GFXDECODE_ENTRY( "gfx1", 0, tilelayout, 0,     32 )
 GFXDECODE_END
 
 static GFXDECODE_START( dleague )
-	GFXDECODE_ENTRY( "gfx1", 0, tilelayout, 0,     32*16 )
+	GFXDECODE_ENTRY( "gfx1", 0, tilelayout, 0,     32 )
 	GFXDECODE_ENTRY( "gfx2", 0, charlayout, 32*16, 16    )	// seems to be bogus...?
 GFXDECODE_END
 
@@ -562,6 +562,11 @@ GFXDECODE_END
 static STATE_POSTLOAD( taitoh_postload )
 {
 	reset_sound_region(machine);
+}
+
+static MACHINE_RESET( taitoh )
+{
+	banknum = -1;
 }
 
 static MACHINE_START( taitoh )
@@ -582,6 +587,7 @@ static MACHINE_DRIVER_START( syvalion )
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_START(taitoh)
+	MDRV_MACHINE_RESET(taitoh)
 
 	MDRV_INTERLEAVE(10)
 
@@ -621,6 +627,7 @@ static MACHINE_DRIVER_START( recordbr )
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_START(taitoh)
+	MDRV_MACHINE_RESET(taitoh)
 
 	MDRV_INTERLEAVE(10)
 
@@ -660,6 +667,7 @@ static MACHINE_DRIVER_START( dleague )
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_START(taitoh)
+	MDRV_MACHINE_RESET(taitoh)
 
 	MDRV_INTERLEAVE(10)
 

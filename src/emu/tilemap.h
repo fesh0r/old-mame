@@ -131,6 +131,9 @@
             * setting a global palette offset via
                 tilemap_set_palette_offset()
 
+            * setting a global pen data offset via
+                tilemap_set_pen_data_offset()
+
     3. In your memory write handlers for the tile memory, anytime tile
         data is modified, you need to mark the tile dirty so that it is
         re-rendered with the new data the next time the tilemap is drawn.
@@ -387,12 +390,13 @@ typedef struct _tilemap tilemap;
 typedef struct _tile_data tile_data;
 struct _tile_data
 {
-	const UINT8 *	pen_data;		/* required */
-	const UINT8 *	mask_data;		/* required */
+	const UINT8*	pen_data;		/* required */
+	const UINT8*	mask_data;		/* required */
 	pen_t			palette_base;	/* defaults to 0 */
-	UINT8 			category;		/* defaults to 0; range from 0..15 */
+	UINT8			category;		/* defaults to 0; range from 0..15 */
 	UINT8			group;			/* defaults to 0; range from 0..TILEMAP_NUM_GROUPS */
-	UINT8 			flags;			/* defaults to 0; one or more of TILE_* flags above */
+	UINT8			flags;			/* defaults to 0; one or more of TILE_* flags above */
+	UINT8			pen_mask;		/* defaults to 0xff; mask to apply to pen_data while rendering the tile */
 };
 
 
@@ -432,11 +436,16 @@ tilemap *tilemap_create(tile_get_info_func tile_get_info, tilemap_mapper_func ma
 /* specify a parameter to be passed into the tile_get_info callback */
 void tilemap_set_user_data(tilemap *tmap, void *user_data);
 
-/* specify an offset to be added to each pixel before looking up the palette
+/* specify an offset to be added to each pixel before looking up the palette.
  * The offset only applies at final rendering time (e.g., tilemap_draw())
  * It does not apply to the cached pixmap, which is provided by tilemap_get_pixmap().
  */
 void tilemap_set_palette_offset(tilemap *tmap, UINT32 offset);
+
+/* specify an offset to be added to pen_data while rendering tiles.
+ * This will automatically mark all tiles dirty if the offset changes.
+ */
+void tilemap_set_pen_data_offset(tilemap *tmap, UINT32 offset);
 
 /* set an enable flag for the tilemap; if 0, requests to draw the tilemap are ignored */
 void tilemap_set_enable(tilemap *tmap, int enable);

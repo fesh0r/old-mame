@@ -155,23 +155,17 @@ static ADDRESS_MAP_START( fuuki16_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM		)	// Banked ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( fuuki16_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x11, 0x11) AM_READ(soundlatch_r				)	// From Main CPU
-	AM_RANGE(0x50, 0x50) AM_READ(ym3812_status_port_0_r		)	// YM3812
-	AM_RANGE(0x60, 0x60) AM_READ(okim6295_status_0_r		)	// M6295
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( fuuki16_sound_writeport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( fuuki16_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(fuuki16_sound_rombank_w 	)	// ROM Bank
-	AM_RANGE(0x11, 0x11) AM_WRITE(SMH_NOP					)	// ? To Main CPU
+	AM_RANGE(0x11, 0x11) AM_READWRITE(soundlatch_r, SMH_NOP	)	// From Main CPU / ? To Main CPU ?
 	AM_RANGE(0x20, 0x20) AM_WRITE(fuuki16_oki_banking_w		)	// Oki Banking
 	AM_RANGE(0x30, 0x30) AM_WRITE(SMH_NOP					)	// ? In the NMI routine
 	AM_RANGE(0x40, 0x40) AM_WRITE(ym2203_control_port_0_w	)	// YM2203
 	AM_RANGE(0x41, 0x41) AM_WRITE(ym2203_write_port_0_w		)
-	AM_RANGE(0x50, 0x50) AM_WRITE(ym3812_control_port_0_w	)	// YM3812
+	AM_RANGE(0x50, 0x50) AM_READWRITE(ym3812_status_port_0_r, ym3812_control_port_0_w)	// YM3812
 	AM_RANGE(0x51, 0x51) AM_WRITE(ym3812_write_port_0_w		)
+	AM_RANGE(0x60, 0x60) AM_READ(okim6295_status_0_r		)	// M6295
 	AM_RANGE(0x61, 0x61) AM_WRITE(okim6295_data_0_w			)	// M6295
 ADDRESS_MAP_END
 
@@ -431,23 +425,31 @@ static const ym3812_interface fuuki16_ym3812_intf =
             also used for water effects and titlescreen linescroll on gogomile
 */
 
+static TIMER_CALLBACK( irq_off )
+{
+	cpunum_set_input_line(machine, 0, param, CLEAR_LINE);
+}
+
 static TIMER_CALLBACK( level_1_interrupt_callback )
 {
-	cpunum_set_input_line(machine, 0, 1, PULSE_LINE);
+	cpunum_set_input_line(machine, 0, 1, ASSERT_LINE);
+	timer_set(ATTOTIME_IN_USEC(1), NULL, 1, irq_off);
 	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 248, 0), NULL, 0, level_1_interrupt_callback);
 }
 
 
 static TIMER_CALLBACK( vblank_interrupt_callback )
 {
-	cpunum_set_input_line(machine, 0, 3, PULSE_LINE);	// VBlank IRQ
+	cpunum_set_input_line(machine, 0, 3, ASSERT_LINE);	// VBlank IRQ
+	timer_set(ATTOTIME_IN_USEC(1), NULL, 3, irq_off);
 	timer_set(video_screen_get_time_until_vblank_start(machine->primary_screen), NULL, 0, vblank_interrupt_callback);
 }
 
 
 static TIMER_CALLBACK( raster_interrupt_callback )
 {
-	cpunum_set_input_line(machine, 0, 5, PULSE_LINE);	// Raster Line IRQ
+	cpunum_set_input_line(machine, 0, 5, ASSERT_LINE);	// Raster Line IRQ
+	timer_set(ATTOTIME_IN_USEC(1), NULL, 5, irq_off);
 	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 	timer_adjust_oneshot(raster_interrupt_timer, video_screen_get_frame_period(machine->primary_screen), 0);
 }
@@ -477,7 +479,7 @@ static MACHINE_DRIVER_START( fuuki16 )
 
 	MDRV_CPU_ADD("audio", Z80, 3000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(fuuki16_sound_readmem,fuuki16_sound_writemem)
-	MDRV_CPU_IO_MAP(fuuki16_sound_readport,fuuki16_sound_writeport)
+	MDRV_CPU_IO_MAP(fuuki16_sound_io_map,0)
 
 	MDRV_MACHINE_START(fuuki16)
 	MDRV_MACHINE_RESET(fuuki16)
@@ -653,7 +655,6 @@ Mitsubishi M60067-0901FP 452100 (208pin PQFP, GA1)
 ***************************************************************************/
 
 ROM_START( pbancho )
-
 	ROM_REGION( 0x100000, "main", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "rom2.no1", 0x000000, 0x080000, CRC(1b4fd178) SHA1(02cf3d2554b29cd253470d68ea959738f3b98dbe) )	// 1xxxxxxxxxxxxxxxxxx = 0xFF
 	ROM_LOAD16_BYTE( "rom1.no2", 0x000001, 0x080000, CRC(9cf510a5) SHA1(08e79b5bbd1c011c32f82dd15fba42d7898861be) )	// 1xxxxxxxxxxxxxxxxxx = 0xFF
@@ -677,7 +678,6 @@ ROM_START( pbancho )
 
 	ROM_REGION( 0x040000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "rom25.no3", 0x000000, 0x040000, CRC(a7bfb5ea) SHA1(61937eae4f8855bc09c494aff52d76d41dc3b76a) )
-
 ROM_END
 
 
@@ -692,3 +692,4 @@ ROM_END
 GAME( 1995, gogomile, 0,        fuuki16, gogomile, 0, ROT0, "Fuuki", "Go Go! Mile Smile", 0 )
 GAME( 1995, gogomilj, gogomile, fuuki16, gogomilj, 0, ROT0, "Fuuki", "Susume! Mile Smile (Japan)", 0 )
 GAME( 1996, pbancho,  0,        fuuki16, pbancho,  0, ROT0, "Fuuki", "Gyakuten!! Puzzle Bancho (Japan)", 0)
+

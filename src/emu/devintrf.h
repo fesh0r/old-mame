@@ -37,6 +37,15 @@ enum _device_class
 typedef enum _device_class device_class;
 
 
+/* device start results */
+enum _device_start_err
+{
+	DEVICE_START_OK = 0,				/* everything is fine */
+	DEVICE_START_MISSING_DEPENDENCY		/* at least one device we depend on is not yet started */
+};
+typedef enum _device_start_err device_start_err;
+
+
 /* useful in device_list functions for scanning through all devices */
 #define DEVICE_TYPE_WILDCARD			NULL
 
@@ -58,6 +67,7 @@ enum
 	DEVINFO_PTR_FIRST = 0x10000,
 
 		DEVINFO_PTR_ROM_REGION = DEVINFO_PTR_FIRST,		/* R/O: pointer to device-specific ROM region */
+		DEVINFO_PTR_MACHINE_CONFIG,						/* R/O: pointer to device-specific machine config */
 
 	DEVINFO_PTR_DEVICE_SPECIFIC = 0x18000,				/* R/W: device-specific values start here */
 	DEVINFO_PTR_LAST = 0x1ffff,
@@ -70,6 +80,7 @@ enum
 		DEVINFO_FCT_STOP,								/* R/O: device_stop_func */
 		DEVINFO_FCT_RESET,								/* R/O: device_reset_func */
 		DEVINFO_FCT_VALIDITY_CHECK,						/* R/O: device_validity_check_func */
+		DEVINFO_FCT_NVRAM,								/* R/O: device_nvram_func */
 
 	DEVINFO_FCT_DEVICE_SPECIFIC = 0x28000,				/* R/W: device-specific values start here */
 	DEVINFO_FCT_LAST = 0x2ffff,
@@ -102,7 +113,7 @@ enum
 #define DEVICE_SET_INFO_CALL(name)	DEVICE_SET_INFO_NAME(name)(device, state, info)
 
 #define DEVICE_START_NAME(name)		device_start_##name
-#define DEVICE_START(name)			void DEVICE_START_NAME(name)(const device_config *device)
+#define DEVICE_START(name)			device_start_err DEVICE_START_NAME(name)(const device_config *device)
 #define DEVICE_START_CALL(name)		DEVICE_START_NAME(name)(device)
 
 #define DEVICE_STOP_NAME(name)		device_stop_##name
@@ -112,6 +123,10 @@ enum
 #define DEVICE_RESET_NAME(name)		device_reset_##name
 #define DEVICE_RESET(name)			void DEVICE_RESET_NAME(name)(const device_config *device)
 #define DEVICE_RESET_CALL(name)		DEVICE_RESET_NAME(name)(device)
+
+#define DEVICE_NVRAM_NAME(name)		device_NVRAM_##name
+#define DEVICE_NVRAM(name)			void DEVICE_NVRAM_NAME(name)(const device_config *device, mame_file *file, int read_or_write)
+#define DEVICE_NVRAM_CALL(name)		DEVICE_NVRAM_NAME(name)(device, file, read_or_write)
 
 #define DEVICE_VALIDITY_CHECK_NAME(name)	device_validity_check_##name
 #define DEVICE_VALIDITY_CHECK(name)			int DEVICE_VALIDITY_CHECK_NAME(name)(const game_driver *driver, const device_config *device)
@@ -131,9 +146,10 @@ typedef struct _device_config device_config;
 /* device interface function types */
 typedef void (*device_get_info_func)(const device_config *device, UINT32 state, deviceinfo *info);
 typedef void (*device_set_info_func)(const device_config *device, UINT32 state, const deviceinfo *info);
-typedef void (*device_start_func)(const device_config *device);
+typedef device_start_err (*device_start_func)(const device_config *device);
 typedef void (*device_stop_func)(const device_config *device);
 typedef void (*device_reset_func)(const device_config *device);
+typedef void (*device_nvram_func)(const device_config *device, mame_file *file, int read_or_write);
 typedef int (*device_validity_check_func)(const game_driver *driver, const device_config *device);
 
 
@@ -154,7 +170,9 @@ union _deviceinfo
 	device_stop_func		stop;					/* DEVINFO_FCT_STOP */
 	device_reset_func		reset;					/* DEVINFO_FCT_RESET */
 	device_validity_check_func validity_check;		/* DEVINFO_FCT_VALIDITY_CHECK */
+	device_nvram_func		nvram;					/* DEVINFO_FCT_NVRAM */
 	const rom_entry *		romregion;				/* DEVINFO_PTR_ROM_REGION */
+	const union _machine_config_token *machine_config;/* DEVINFO_PTR_MACHINE_CONFIG */
 };
 
 
@@ -168,10 +186,12 @@ struct _device_config
 	device_start_func		start;					/* quick pointer to start callback */
 	device_stop_func		stop;					/* quick pointer to stop callback */
 	device_reset_func		reset;					/* quick pointer to reset callback */
+	device_nvram_func		nvram;					/* quick pointer to nvram callback */
 	const void *			static_config;			/* static device configuration */
 	void *					inline_config;			/* inline device configuration */
 
-	/* these four fields are only valid if the device is live */
+	/* these fields are only valid if the device is live */
+	UINT8					started;				/* TRUE if the start function has succeeded */
 	void *					token;					/* token if device is live */
 	running_machine *		machine;				/* machine if device is live */
 	UINT8 *					region;					/* pointer to region with the device's tag, or NULL */
@@ -194,6 +214,12 @@ device_config *device_list_add(device_config **listheadptr, device_type type, co
 
 /* remove a device from a device list */
 void device_list_remove(device_config **listheadptr, device_type type, const char *tag);
+
+/* build a tag that combines the device's name and the given tag */
+const char *device_build_tag(astring *dest, const char *devicetag, const char *tag);
+
+/* build a tag with the same device prefix as the source tag*/
+const char *device_inherit_tag(astring *dest, const char *sourcetag, const char *tag);
 
 
 
@@ -253,6 +279,9 @@ void devtag_reset(running_machine *machine, device_type type, const char *tag);
 
 
 /* ----- device information getters ----- */
+
+/* return the device associated with a tag */
+const device_config *devtag_get_device(running_machine *machine, device_type type, const char *tag);
 
 /* return the token associated with an allocated device */
 void *devtag_get_token(running_machine *machine, device_type type, const char *tag);

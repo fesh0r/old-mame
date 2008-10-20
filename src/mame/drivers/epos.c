@@ -90,51 +90,38 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ_PORT("DSW")
-	AM_RANGE(0x01, 0x01) AM_READ_PORT("SYSTEM")
-	AM_RANGE(0x02, 0x02) AM_READ_PORT("INPUTS")
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("DSW") AM_WRITE(watchdog_reset_w)
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("SYSTEM") AM_WRITE(epos_port_1_w)
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("INPUTS") AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0x03, 0x03) AM_READ_PORT("UNK")
-ADDRESS_MAP_END
-
-
-static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(epos_port_1_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(ay8910_control_port_0_w)
 ADDRESS_MAP_END
 
-
-static ADDRESS_MAP_START( dealer_readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( dealer_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x10, 0x13) AM_DEVREAD(PPI8255, "ppi8255", ppi8255_r)
-	AM_RANGE(0x38, 0x38) AM_READ_PORT("DSW")
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( dealer_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x10, 0x13) AM_DEVWRITE(PPI8255, "ppi8255", ppi8255_w)
+	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
 	AM_RANGE(0x20, 0x24) AM_WRITE(dealer_decrypt_rom)
+	AM_RANGE(0x38, 0x38) AM_READ_PORT("DSW")
 //  AM_RANGE(0x40, 0x40) AM_WRITE(watchdog_reset_w)
 ADDRESS_MAP_END
+
 
 /*
    ROMs U01-U03 are checked with the same code in a loop.
    There's a separate ROM check for banked U04 at 30F3.
    It looks like dealer/revenger uses ppi8255 to control bankswitching.
 */
-static WRITE8_HANDLER( write_prtc )
+static WRITE8_DEVICE_HANDLER( write_prtc )
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(device->machine, "main");
 	memory_set_bankptr(2, rom + 0x6000 + (0x1000 * (data & 1)));
 }
 
 static const ppi8255_interface ppi8255_intf =
 {
-	input_port_2_r,	/* Port A read */
+	DEVICE8_PORT("INPUTS"),		/* Port A read */
 	NULL,			/* Port B read */
 	NULL,			/* Port C read */
 	NULL,			/* Port A write */
@@ -154,27 +141,31 @@ static const ppi8255_interface ppi8255_intf =
 
 static INPUT_PORTS_START( megadon )
 	PORT_START("DSW")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Coinage ) )
+
+// There are odd port mappings (old=new)
+// 02=10, 04=40, 08=02, 10=20, 20=04, 40=08
+
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x02, 0x00, "Fuel Consumption" )
-	PORT_DIPSETTING(    0x00, "Slow" )
-	PORT_DIPSETTING(    0x02, "Fast" )
-	PORT_DIPNAME( 0x04, 0x00, "Rotation" )
-	PORT_DIPSETTING(    0x04, "Slow" )
-	PORT_DIPSETTING(    0x00, "Fast" )
-	PORT_DIPNAME( 0x08, 0x08, "ERG" )
-	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
-	PORT_DIPNAME( 0x20, 0x20, "Enemy Fire Rate" )
-	PORT_DIPSETTING(    0x20, "Slow" )
-	PORT_DIPSETTING(    0x00, "Fast" )
-	PORT_DIPNAME( 0x50, 0x00, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x50, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW1:2,3")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x10, "4" )
 	PORT_DIPSETTING(    0x40, "5" )
 	PORT_DIPSETTING(    0x50, "6" )
-	PORT_DIPNAME( 0x80, 0x00, "Game Mode" )
+	PORT_DIPNAME( 0x02, 0x00, "Fuel Consumption" ) PORT_DIPLOCATION("SW1:4")
+	PORT_DIPSETTING(    0x00, "Slow" )
+	PORT_DIPSETTING(    0x02, "Fast" )
+	PORT_DIPNAME( 0x20, 0x20, "Enemy Fire Rate" ) PORT_DIPLOCATION("SW1:5")
+	PORT_DIPSETTING(    0x20, "Slow" )
+	PORT_DIPSETTING(    0x00, "Fast" )
+	PORT_DIPNAME( 0x04, 0x00, "Rotation" ) PORT_DIPLOCATION("SW1:6")
+	PORT_DIPSETTING(    0x04, "Slow" )
+	PORT_DIPSETTING(    0x00, "Fast" )
+	PORT_DIPNAME( 0x08, 0x08, "ERG" ) PORT_DIPLOCATION("SW1:7")
+	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
+	PORT_DIPNAME( 0x80, 0x00, "Game Mode" ) PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(    0x00, "Arcade" )
 	PORT_DIPSETTING(    0x80, "Contest" )
 
@@ -202,10 +193,19 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( suprglob )
 	PORT_START("DSW")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Coinage ) )
+
+// There are odd port mappings (old=new)
+// 02=10, 04=40, 08=20, 10=02, 20=04, 40=08
+
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x26, 0x00, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x50, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW1:2,3")
+	PORT_DIPSETTING(    0x00, "3" )
+	PORT_DIPSETTING(    0x10, "4" )
+	PORT_DIPSETTING(    0x40, "5" )
+	PORT_DIPSETTING(    0x50, "6" )
+	PORT_DIPNAME( 0x26, 0x00, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:4,5,6")
 	PORT_DIPSETTING(    0x00, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
 	PORT_DIPSETTING(    0x20, "3" )
@@ -214,15 +214,10 @@ static INPUT_PORTS_START( suprglob )
 	PORT_DIPSETTING(    0x06, "6" )
 	PORT_DIPSETTING(    0x24, "7" )
 	PORT_DIPSETTING(    0x26, "8" )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Bonus_Life ) )
+	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW1:7")
 	PORT_DIPSETTING(    0x00, "10000 + Difficulty * 10000" )
 	PORT_DIPSETTING(    0x08, "90000 + Difficulty * 10000" )
-	PORT_DIPNAME( 0x50, 0x00, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x00, "3" )
-	PORT_DIPSETTING(    0x10, "4" )
-	PORT_DIPSETTING(    0x40, "5" )
-	PORT_DIPSETTING(    0x50, "6" )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
@@ -253,15 +248,24 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( igmo )
 	PORT_START("DSW")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Coinage ) )
+
+// There are odd port mappings (old=new)
+// 02=10, 04=40, 08=20, 10=02, 20=04, 40=08
+
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x22, 0x00, DEF_STR( Bonus_Life ) )
+	PORT_DIPNAME( 0x50, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW1:2,3")
+	PORT_DIPSETTING(    0x00, "3" )
+	PORT_DIPSETTING(    0x10, "4" )
+	PORT_DIPSETTING(    0x40, "5" )
+	PORT_DIPSETTING(    0x50, "6" )
+	PORT_DIPNAME( 0x22, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW1:4,5")
 	PORT_DIPSETTING(    0x00, "20000" )
 	PORT_DIPSETTING(    0x02, "40000" )
 	PORT_DIPSETTING(    0x20, "60000" )
 	PORT_DIPSETTING(    0x22, "80000" )
-	PORT_DIPNAME( 0x8c, 0x00, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x8c, 0x00, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:6,7,8")
 	PORT_DIPSETTING(    0x00, "1" )
 	PORT_DIPSETTING(    0x04, "2" )
 	PORT_DIPSETTING(    0x08, "3" )
@@ -270,11 +274,6 @@ static INPUT_PORTS_START( igmo )
 	PORT_DIPSETTING(    0x84, "6" )
 	PORT_DIPSETTING(    0x88, "7" )
 	PORT_DIPSETTING(    0x8c, "8" )
-	PORT_DIPNAME( 0x50, 0x00, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x00, "3" )
-	PORT_DIPSETTING(    0x10, "4" )
-	PORT_DIPSETTING(    0x40, "5" )
-	PORT_DIPSETTING(    0x50, "6" )
 
 	PORT_START("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
@@ -300,30 +299,53 @@ static INPUT_PORTS_START( igmo )
 INPUT_PORTS_END
 
 
+static INPUT_PORTS_START( catapult )
+	PORT_INCLUDE(igmo)
+        PORT_MODIFY("DSW")
+
+// There are odd port mappings (old=new)
+// 02=08, 04=20, 08=40, 10=02, 20=10, 40=04
+
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:1")
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( 1C_2C ) )
+	PORT_DIPNAME( 0x50, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW1:2,3")
+	PORT_DIPSETTING(    0x00, "3" )
+	PORT_DIPSETTING(    0x10, "4" )
+	PORT_DIPSETTING(    0x40, "5" )
+	PORT_DIPSETTING(    0x50, "6" )
+	PORT_DIPNAME( 0x22, 0x00, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:4,5")
+	PORT_DIPSETTING(    0x00, "1" )
+	PORT_DIPSETTING(    0x02, "2" )
+	PORT_DIPSETTING(    0x20, "3" )
+	PORT_DIPSETTING(    0x22, "4" )
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW1:6,7")
+	PORT_DIPSETTING(    0x00, "20000" )
+	PORT_DIPSETTING(    0x04, "40000" )
+	PORT_DIPSETTING(    0x08, "60000" )
+	PORT_DIPSETTING(    0x0c, "80000" )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+INPUT_PORTS_END
+
+
 static INPUT_PORTS_START( dealer )
 	PORT_START("DSW")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) )
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Free_Play ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Free_Play ) ) PORT_DIPLOCATION("SW1:2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Cabinet ) )
+	PORT_DIPUNUSED_DIPLOC( 0x0004, 0x0004, "SW1:4" )
+	PORT_DIPUNUSED_DIPLOC( 0x0008, 0x0008, "SW1:5" )
+	PORT_DIPUNUSED_DIPLOC( 0x0010, 0x0010, "SW1:6" )
+	PORT_DIPUNUSED_DIPLOC( 0x0020, 0x0020, "SW1:7" )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW1:7")
 	PORT_DIPSETTING(    0x40, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Flip_Screen ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
@@ -360,7 +382,7 @@ static MACHINE_DRIVER_START( epos )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", Z80, 11000000/4)	/* 2.75 MHz (see notes) */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_IO_MAP(readport,writeport)
+	MDRV_CPU_IO_MAP(io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
@@ -384,11 +406,10 @@ static MACHINE_DRIVER_START( dealer )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", Z80, 11000000/4)	/* 2.75 MHz (see notes) */
 	MDRV_CPU_PROGRAM_MAP(dealer_readmem,dealer_writemem)
-	MDRV_CPU_IO_MAP(dealer_readport,dealer_writeport)
+	MDRV_CPU_IO_MAP(dealer_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-	MDRV_DEVICE_CONFIG( ppi8255_intf )
+	MDRV_PPI8255_ADD( "ppi8255", ppi8255_intf )
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(epos)
@@ -625,7 +646,7 @@ static DRIVER_INIT( dealer )
  *************************************/
 
 GAME( 1982, megadon,  0,        epos,   megadon,  0,	     ROT270, "Epos Corporation (Photar Industries license)", "Megadon", 0 )
-GAME( 1982, catapult, 0,        epos,   igmo,     0,	     ROT270, "Epos Corporation", "Catapult", GAME_NOT_WORKING) /* bad rom, hold f2 for test mode */
+GAME( 1982, catapult, 0,        epos,   catapult, 0,	     ROT270, "Epos Corporation", "Catapult", GAME_NOT_WORKING) /* bad rom, hold f2 for test mode */
 GAME( 1983, suprglob, 0,        epos,   suprglob, 0,	     ROT270, "Epos Corporation", "Super Glob", 0 )
 GAME( 1983, theglob,  suprglob, epos,   suprglob, 0,	     ROT270, "Epos Corporation", "The Glob", 0 )
 GAME( 1983, theglob2, suprglob, epos,   suprglob, 0,	     ROT270, "Epos Corporation", "The Glob (earlier)", 0 )
@@ -633,3 +654,4 @@ GAME( 1983, theglob3, suprglob, epos,   suprglob, 0,	     ROT270, "Epos Corporat
 GAME( 1984, igmo,     0,        epos,   igmo,     0,	     ROT270, "Epos Corporation", "IGMO", GAME_WRONG_COLORS )
 GAME( 1984, dealer,   0,        dealer, dealer,   dealer,   ROT270, "Epos Corporation", "The Dealer", GAME_WRONG_COLORS )
 GAME( 1984, revenger, 0,        dealer, dealer,   dealer,   ROT270, "Epos Corporation", "Revenger", GAME_NOT_WORKING )
+

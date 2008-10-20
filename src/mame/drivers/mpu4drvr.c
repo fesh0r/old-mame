@@ -271,26 +271,9 @@ static MACHINE_RESET( mpu4_vid )
 
 static void update_mpu68_interrupts(running_machine *machine)
 {
-	int newstate = 0;
-
-	if (m6840_irq_state)
-		newstate = 1;
-	if (m6850_irq_state)
-		newstate = 2;
-	if (scn2674_irq_state)
-		newstate = 3;
-
-	/* set the new state of the IRQ lines */
-	if (newstate)
-	{
-		LOGSTUFF(("68k IRQ, %x\n", newstate));
-		cpunum_set_input_line(machine, 1, newstate, ASSERT_LINE);
-	}
-	else
-	{
-		LOGSTUFF(("68k IRQ Clear, %x\n", newstate));
-		cpunum_set_input_line(machine, 1, 7, CLEAR_LINE);
-	}
+	cpunum_set_input_line(machine, 1, 1, m6840_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 2, m6850_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 3, scn2674_irq_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* Communications with 6809 board */
@@ -346,7 +329,7 @@ static void cpu1_ptm_irq(running_machine *machine, int state)
 
 static WRITE8_HANDLER( vid_o1_callback )
 {
-	ptm6840_set_c2(   1, data); /* this output is the clock for timer2 */
+	ptm6840_set_c2(   machine, 1, data); /* this output is the clock for timer2 */
 
 	if (data)
 	{
@@ -360,13 +343,13 @@ static WRITE8_HANDLER( vid_o1_callback )
 
 static WRITE8_HANDLER( vid_o2_callback )
 {
-	ptm6840_set_c3(   1, data); /* this output is the clock for timer3 */
+	ptm6840_set_c3(   machine, 1, data); /* this output is the clock for timer3 */
 }
 
 
 static WRITE8_HANDLER( vid_o3_callback )
 {
-	ptm6840_set_c1(   1, data); /* this output is the clock for timer1 */
+	ptm6840_set_c1(   machine, 1, data); /* this output is the clock for timer1 */
 }
 
 
@@ -685,7 +668,7 @@ static UINT8 scn2674_gfx_enabled;
 static UINT8 scn2674_display_enabled;
 static UINT8 scn2674_cursor_enabled;
 
-static void scn2674_write_command(UINT8 data)
+static void scn2674_write_command(running_machine *machine, UINT8 data)
 {
 	UINT8 oprand;
 	int i;
@@ -794,7 +777,7 @@ static void scn2674_write_command(UINT8 data)
 		{
 			scn2674_irq_state = 1;
 		}
-		update_mpu68_interrupts(Machine);
+		update_mpu68_interrupts(machine);
 	}
 	if ((data&0xe0)==0x80)
 	{
@@ -820,7 +803,7 @@ static void scn2674_write_command(UINT8 data)
 				scn2674_irq_state = 1;
 			}
 		}
-		update_mpu68_interrupts(Machine);
+		update_mpu68_interrupts(machine);
 
 	}
 
@@ -845,7 +828,7 @@ static void scn2674_write_command(UINT8 data)
 				scn2674_irq_state = 1;
 			}
 		}
-		update_mpu68_interrupts(Machine);
+		update_mpu68_interrupts(machine);
 	}
 
 	/* Delayed Commands */
@@ -979,7 +962,7 @@ static WRITE16_HANDLER( mpu4_vid_scn2674_w )
 			break;
 
 		case 1:
-			scn2674_write_command(data);
+			scn2674_write_command(machine, data);
 			break;
 
 		case 2: scn2674_screen1_l = data; break;
@@ -1366,10 +1349,10 @@ static INTERRUPT_GEN(mpu4_vid_irq)
 /* machine start (called only once) */
 MACHINE_START( mpu4_vid )
 {
-	mpu4_config_common();
+	mpu4_config_common(machine);
 	pia_reset();
 
-	ptm6840_config(1, &ptm_vid_intf );
+	ptm6840_config(machine, 1, &ptm_vid_intf );
 
 	/* setup communications */
 	serial_card_connected=1;
@@ -1381,10 +1364,10 @@ MACHINE_START( mpu4_vid )
 
 	/* setup 4 reels (for hybrid machines) */
 
-	Stepper_init(0, BARCREST_48STEP_REEL);
-	Stepper_init(1, BARCREST_48STEP_REEL);
-	Stepper_init(2, BARCREST_48STEP_REEL);
-	Stepper_init(3, BARCREST_48STEP_REEL);
+	stepper_config(0, &barcrest_reel_interface);
+	stepper_config(1, &barcrest_reel_interface);
+	stepper_config(2, &barcrest_reel_interface);
+	stepper_config(3, &barcrest_reel_interface);
 
 	/* setup the standard oki MSC1937 display */
 
@@ -1672,7 +1655,7 @@ ADDRESS_MAP_END
 static MACHINE_DRIVER_START( mpu4_vid )
 	MDRV_CPU_ADD("main", M6809, MPU4_MASTER_CLOCK/4 )
 	MDRV_CPU_PROGRAM_MAP(mpu4_6809_map,0)
-	MDRV_TIMER_ADD_PERIODIC("50HZ",gen_50hz, HZ(100))
+	MDRV_TIMER_ADD_PERIODIC("50hz",gen_50hz, HZ(100))
 
 	MDRV_NVRAM_HANDLER(generic_0fill)				/* confirm */
 
@@ -1697,7 +1680,7 @@ static MACHINE_DRIVER_START( mpu4_vid )
 	MDRV_PALETTE_LENGTH(16)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("AY8913",AY8913, MPU4_MASTER_CLOCK/4)
+	MDRV_SOUND_ADD("ay8913",AY8913, MPU4_MASTER_CLOCK/4)
 	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
@@ -1721,10 +1704,10 @@ static MACHINE_DRIVER_START( dealem )
 	MDRV_CPU_ADD("main", M6809, MPU4_MASTER_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(dealem_memmap,0)
 
-	MDRV_TIMER_ADD_PERIODIC("50HZ",gen_50hz, HZ(100))
+	MDRV_TIMER_ADD_PERIODIC("50hz",gen_50hz, HZ(100))
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("AY8913",AY8913, MPU4_MASTER_CLOCK/4)
+	MDRV_SOUND_ADD("ay8913",AY8913, MPU4_MASTER_CLOCK/4)
 	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 

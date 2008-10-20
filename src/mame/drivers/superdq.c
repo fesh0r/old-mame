@@ -48,12 +48,7 @@ static VIDEO_START( superdq )
 
 static VIDEO_UPDATE( superdq )
 {
-	render_container_set_palette_alpha(render_container_get_screen(screen), 0, 0x00);
-
 	tilemap_draw(bitmap,cliprect,superdq_tilemap,0,0);
-
-	/* display disc information */
-	popmessage("%s", laserdisc_describe_state(laserdisc));
 
 	return 0;
 }
@@ -114,8 +109,6 @@ static MACHINE_RESET( superdq )
 
 static INTERRUPT_GEN( superdq_vblank )
 {
-	laserdisc_vsync(laserdisc);
-
 	/* status is read when the STATUS line from the laserdisc
        toggles (600usec after the vblank). We could set up a
        timer to do that, but this works as well */
@@ -147,8 +140,14 @@ static WRITE8_HANDLER( superdq_io_w )
 
 	superdq_color_bank = ( data & 2 ) ? 1 : 0;
 
-	for( i = 0; i < sizeof( black_color_entries ); i++ )
-		render_container_set_palette_alpha(render_container_get_screen(machine->primary_screen), black_color_entries[i], (data&0x80) ? 0x00 : 0xff );
+	for( i = 0; i < ARRAY_LENGTH( black_color_entries ); i++ )
+	{
+		int index = black_color_entries[i];
+		if (data & 0x80)
+			palette_set_color(machine, index, palette_get_color(machine, index) & MAKE_ARGB(0,255,255,255));
+		else
+			palette_set_color(machine, index, palette_get_color(machine, index) | MAKE_ARGB(255,0,0,0));
+	}
 
 	/*
         bit 5 = DISP1?
@@ -308,7 +307,7 @@ static MACHINE_DRIVER_START( superdq )
 	MDRV_MACHINE_START(superdq)
 	MDRV_MACHINE_RESET(superdq)
 
-	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000)
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000, "main", "ldsound")
 	MDRV_LASERDISC_OVERLAY(superdq, 256, 256, BITMAP_FORMAT_INDEXED16)
 
 	/* video hardware */
@@ -326,7 +325,7 @@ static MACHINE_DRIVER_START( superdq )
 	MDRV_SOUND_ADD("sn", SN76496, MASTER_CLOCK/8)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.8)
 
-	MDRV_SOUND_ADD("laserdisc", CUSTOM, 0)
+	MDRV_SOUND_ADD("ldsound", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)

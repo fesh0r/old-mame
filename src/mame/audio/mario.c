@@ -1,5 +1,5 @@
 #include "driver.h"
-#include "cpu/i8039/i8039.h"
+#include "cpu/mcs48/mcs48.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
 #include "sound/discrete.h"
@@ -23,7 +23,12 @@
 #define I8035_P1_R(M) (soundlatch3_r(M,0))
 #define I8035_P2_R(M) (soundlatch4_r(M,0))
 #define I8035_P1_W(M,D) soundlatch3_w(M,0,D)
-#define I8035_P2_W(M,D) soundlatch4_w(M,0,D)
+
+#if (USE_8039)
+#define I8035_P2_W(M,D) do { soundlatch4_w(M,0,D); } while (0)
+#else
+#define I8035_P2_W(M,D) do { set_ea(M, ((D) & 0x20) ? 0 : 1);  soundlatch4_w(M,0,D); } while (0)
+#endif
 
 #define I8035_P1_W_AH(M,B,D) I8035_P1_W(M,ACTIVEHIGH_PORT_BIT(I8035_P1_R(M),B,(D)))
 #define I8035_P2_W_AH(M,B,D) I8035_P2_W(M,ACTIVEHIGH_PORT_BIT(I8035_P2_R(M),B,(D)))
@@ -117,8 +122,8 @@
 #define DISCRETE_LS123_INV(_N, _T, _R, _C) \
 	DISCRETE_ONESHOTR(_N, 0, _T, TTL_HIGH, (0.25 * (_R) * (_C) * (1.0+700./(_R))), DISC_ONESHOT_RETRIG | DISC_ONESHOT_REDGE | DISC_OUT_ACTIVE_LOW)
 
-#define DISCRETE_BITSET(_N, _N1, _B) DISCRETE_TRANSFORM3(_N, 1, _N1, 1 << ((_B)-1), 0, "01&2>")
-#define DISCRETE_ENERGY_NAND(_N, _E, _N1, _N2) DISCRETE_TRANSFORM3(_N, _E, _N1, _N2, 1, "201*-")
+#define DISCRETE_BITSET(_N, _N1, _B) DISCRETE_TRANSFORM3(_N, _N1, 1 << ((_B)-1), 0, "01&2>")
+#define DISCRETE_ENERGY_NAND(_N, _E, _N1, _N2) DISCRETE_TRANSFORM3(_N, _N1, _N2, 1, "201*-")
 
 
 static const discrete_mixer_desc mario_mixer_desc =
@@ -187,13 +192,13 @@ static DISCRETE_SOUND_START(mario)
 	DISCRETE_BITSET(NODE_104, NODE_100, 12) //LS157 3B
 
 	DISCRETE_LS123(NODE_110, DS_SOUND7_INV, MR_R61, MR_C41)
-	DISCRETE_TRANSFORM2(NODE_111, 1, TTL_HIGH, NODE_110, "01-")
+	DISCRETE_TRANSFORM2(NODE_111, TTL_HIGH, NODE_110, "01-")
 	DISCRETE_RCFILTER(NODE_112, 1, NODE_111, MR_R65, MR_C44)
 	DISCRETE_74LS624(NODE_113, 1, NODE_112, VSS, MR_C40, DISC_LS624_OUT_LOGIC)
 
 	DISCRETE_LOGIC_XOR(NODE_115, 1, NODE_102, NODE_113)
 
-	DISCRETE_TRANSFORM2(NODE_116,1, NODE_104, TTL_HIGH, "0!1*")
+	DISCRETE_TRANSFORM2(NODE_116, NODE_104, TTL_HIGH, "0!1*")
 	DISCRETE_RCFILTER(NODE_117, 1, NODE_116, MR_R64, MR_C43)
 	DISCRETE_74LS624(NODE_118, 1, NODE_117, VSS, MR_C39, DISC_LS624_OUT_COUNT_F)
 
@@ -229,6 +234,21 @@ DISCRETE_SOUND_END
 
 /****************************************************************
  *
+ * EA / Banking
+ *
+ ****************************************************************/
+
+static void set_ea(running_machine *machine, int ea)
+{
+	mario_state	*state = machine->driver_data;
+	//printf("ea: %d\n", ea);
+	//cputag_set_input_line(machine, "audio", MCS48_INPUT_EA, (ea) ? ASSERT_LINE : CLEAR_LINE);
+	if (state->eabank != 0)
+		memory_set_bank(state->eabank, ea);
+}
+
+/****************************************************************
+ *
  * Initialization
  *
  ****************************************************************/
@@ -236,19 +256,33 @@ DISCRETE_SOUND_END
 static SOUND_START( mario )
 {
 	mario_state	*state = machine->driver_data;
+	int audiocpu = mame_find_cpu_index(machine, "audio");
 #if USE_8039
 	UINT8 *SND = memory_region(machine, "audio");
 
-	SND[1] = 0x01;
+	SND[0x1001] = 0x01;
 #endif
 
-	state_save_register_global(state->last);
+	state->eabank = 0;
+	if (audiocpu != -1 && machine->config->cpu[audiocpu].type != CPU_Z80)
+	{
+		state->eabank = 1;
+		memory_install_read8_handler(machine, audiocpu, ADDRESS_SPACE_PROGRAM, 0x000, 0x7ff, 0, 0, SMH_BANK1);
+		memory_configure_bank(1, 0, 1, memory_region(machine, "audio"), 0);
+	    memory_configure_bank(1, 1, 1, memory_region(machine, "audio") + 0x1000, 0x800);
+	}
+
+    state_save_register_global(state->last);
 	state_save_register_global(state->portT);
 }
 
 static SOUND_RESET( mario )
 {
 	mario_state	*state = machine->driver_data;
+
+#if USE_8039
+    set_ea(machine, 1);
+#endif
 
 	soundlatch_clear_w(machine,0,0);
 	soundlatch2_clear_w(machine,0,0);
@@ -284,16 +318,6 @@ static READ8_HANDLER( mario_sh_t0_r )
 static READ8_HANDLER( mario_sh_t1_r )
 {
 	return I8035_T_R(machine,1);
-}
-
-static READ8_HANDLER( mario_sh_ea_r )
-{
-#if USE_8039
-	return 1;
-#else
-	int p2 = (I8035_P2_R(machine) >> 5) & 1;
-	return p2 ^ 1;
-#endif
 }
 
 static READ8_HANDLER( mario_sh_tune_r )
@@ -336,7 +360,7 @@ WRITE8_HANDLER( masao_sh_irqtrigger_w )
 	if (state->last == 1 && data == 0)
 	{
 		/* setting bit 0 high then low triggers IRQ on the sound CPU */
-		cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
+		cputag_set_input_line_and_vector(machine, "audio",0,HOLD_LINE,0xff);
 	}
 
 	state->last = data;
@@ -368,9 +392,9 @@ WRITE8_HANDLER( mario_sh3_w )
 	{
 		case 0: /* death */
 			if (data)
-				cpunum_set_input_line(machine, 1,0,ASSERT_LINE);
+				cputag_set_input_line(machine, "audio",0,ASSERT_LINE);
 			else
-				cpunum_set_input_line(machine, 1,0,CLEAR_LINE);
+				cputag_set_input_line(machine, "audio",0,CLEAR_LINE);
 			break;
 		case 1: /* get coin */
 			I8035_T_W_AH(machine,0,data & 1);
@@ -403,16 +427,16 @@ WRITE8_HANDLER( mario_sh3_w )
  *************************************/
 
 static ADDRESS_MAP_START( mario_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_ROM
+	AM_RANGE(0x0000, 0x07ff) AM_ROMBANK(1) AM_REGION("audio", 0)
+	AM_RANGE(0x0800, 0x0fff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mario_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0xff) AM_READWRITE(mario_sh_tune_r, mario_sh_sound_w)
-	AM_RANGE(I8039_p1, I8039_p1) AM_READWRITE(mario_sh_p1_r, mario_sh_p1_w)
-	AM_RANGE(I8039_p2, I8039_p2) AM_READWRITE(mario_sh_p2_r, mario_sh_p2_w)
-	AM_RANGE(I8039_t0, I8039_t0) AM_READ(mario_sh_t0_r)
-	AM_RANGE(I8039_t1, I8039_t1) AM_READ(mario_sh_t1_r)
-	AM_RANGE(I8039_ea, I8039_ea) AM_READ(mario_sh_ea_r)	/* only for documentation purposes right now */
+	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_READWRITE(mario_sh_p1_r, mario_sh_p1_w)
+	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_READWRITE(mario_sh_p2_r, mario_sh_p2_w)
+	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_READ(mario_sh_t0_r)
+	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_READ(mario_sh_t1_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( masao_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
