@@ -42,7 +42,6 @@ EMUOBJS = \
 	$(EMUOBJ)/clifront.o \
 	$(EMUOBJ)/config.o \
 	$(EMUOBJ)/cpuexec.o \
-	$(EMUOBJ)/cpuintrf.o \
 	$(EMUOBJ)/crsshair.o \
 	$(EMUOBJ)/debugger.o \
 	$(EMUOBJ)/devintrf.o \
@@ -133,7 +132,9 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/ds2401.o \
 	$(EMUMACHINE)/ds2404.o \
 	$(EMUMACHINE)/eeprom.o \
+	$(EMUMACHINE)/f3853.o \
 	$(EMUMACHINE)/generic.o \
+	$(EMUMACHINE)/i8243.o \
 	$(EMUMACHINE)/i2cmem.o \
  	$(EMUMACHINE)/idectrl.o \
  	$(EMUMACHINE)/intelfsh.o \
