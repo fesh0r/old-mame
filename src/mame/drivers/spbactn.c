@@ -126,6 +126,8 @@ cpu #0 (PC=00001A1A): unmapped memory word write to 00090030 = 00F7 & 00FF
 *******************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
@@ -138,8 +140,8 @@ static WRITE16_HANDLER( soundcommand_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,offset,data & 0xff);
-		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+		soundlatch_w(space,offset,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 	}
 }
 
@@ -343,7 +345,7 @@ GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(machine, 1,0,linestate);
+	cpu_set_input_line(machine->cpu[1],0,linestate);
 }
 
 static const ym3812_interface ym3812_config =

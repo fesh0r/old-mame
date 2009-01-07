@@ -27,7 +27,6 @@ Revisions:
 *********************************************************/
 #include <math.h>
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "iremga20.h"
 
@@ -56,7 +55,7 @@ struct IremGA20_chip_def
 	struct IremGA20_channel_def channel[4];
 };
 
-static void IremGA20_update( void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length )
+static STREAM_UPDATE( IremGA20_update )
 {
 	struct IremGA20_chip_def *chip = param;
 	UINT32 rate[4], pos[4], frac[4], end[4], vol[4], play[4];
@@ -75,12 +74,12 @@ static void IremGA20_update( void *param, stream_sample_t **inputs, stream_sampl
 		play[i] = chip->channel[i].play;
 	}
 
-	i = length;
+	i = samples;
 	pSamples = chip->rom;
-	outL = buffer[0];
-	outR = buffer[1];
+	outL = outputs[0];
+	outR = outputs[1];
 
-	for (i = 0; i < length; i++)
+	for (i = 0; i < samples; i++)
 	{
 		sampleout = 0;
 
@@ -206,9 +205,8 @@ READ16_HANDLER( irem_ga20_r )
 	return 0;
 }
 
-static void iremga20_reset( void *_chip )
+static void iremga20_reset(struct IremGA20_chip_def *chip)
 {
-	struct IremGA20_chip_def *chip = _chip;
 	int i;
 
 	for( i = 0; i < 4; i++ ) {
@@ -226,7 +224,12 @@ static void iremga20_reset( void *_chip )
 }
 
 
-static void *iremga20_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_RESET( iremga20 )
+{
+	iremga20_reset(device->token);
+}
+
+static SND_START( iremga20 )
 {
 	struct IremGA20_chip_def *chip;
 	int i;
@@ -235,30 +238,28 @@ static void *iremga20_start(const char *tag, int sndindex, int clock, const void
 	memset(chip, 0, sizeof(*chip));
 
 	/* Initialize our chip structure */
-	chip->rom = memory_region(Machine, tag);
-	chip->rom_size = memory_region_length(Machine, tag);
+	chip->rom = device->region;
+	chip->rom_size = device->regionbytes;
 
 	iremga20_reset(chip);
 
 	for ( i = 0; i < 0x40; i++ )
 		chip->regs[i] = 0;
 
-	chip->stream = stream_create( 0, 2, clock/4, chip, IremGA20_update );
+	chip->stream = stream_create( device, 0, 2, clock/4, chip, IremGA20_update );
 
-	state_save_register_item_array("irem_ga20", sndindex, chip->regs);
+	state_save_register_device_item_array(device, sndindex, chip->regs);
 	for (i = 0; i < 4; i++)
 	{
-		char buf[20];
-		sprintf(buf, "irem_ga20.ch%d", i);
-		state_save_register_item(buf, sndindex, chip->channel[i].rate);
-		state_save_register_item(buf, sndindex, chip->channel[i].size);
-		state_save_register_item(buf, sndindex, chip->channel[i].start);
-		state_save_register_item(buf, sndindex, chip->channel[i].pos);
-		state_save_register_item(buf, sndindex, chip->channel[i].end);
-		state_save_register_item(buf, sndindex, chip->channel[i].volume);
-		state_save_register_item(buf, sndindex, chip->channel[i].pan);
-		state_save_register_item(buf, sndindex, chip->channel[i].effect);
-		state_save_register_item(buf, sndindex, chip->channel[i].play);
+		state_save_register_device_item(device, i, chip->channel[i].rate);
+		state_save_register_device_item(device, i, chip->channel[i].size);
+		state_save_register_device_item(device, i, chip->channel[i].start);
+		state_save_register_device_item(device, i, chip->channel[i].pos);
+		state_save_register_device_item(device, i, chip->channel[i].end);
+		state_save_register_device_item(device, i, chip->channel[i].volume);
+		state_save_register_device_item(device, i, chip->channel[i].pan);
+		state_save_register_device_item(device, i, chip->channel[i].effect);
+		state_save_register_device_item(device, i, chip->channel[i].play);
 	}
 
 	return chip;
@@ -271,7 +272,7 @@ static void *iremga20_start(const char *tag, int sndindex, int clock, const void
  * Generic get_info
  **************************************************************************/
 
-static void iremga20_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( iremga20 )
 {
 	switch (state)
 	{
@@ -280,24 +281,24 @@ static void iremga20_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void iremga20_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( iremga20 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = iremga20_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = iremga20_start;			break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							info->reset = iremga20_reset;			break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( iremga20 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( iremga20 );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( iremga20 );		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "Irem GA20";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Irem custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "Irem GA20");					break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Irem custom");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

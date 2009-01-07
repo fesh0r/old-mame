@@ -13,6 +13,7 @@
 
 #include "cpuintrf.h"
 #include "ppc.h"
+#include "timer.h"
 #include "cpu/vtlb.h"
 
 
@@ -80,22 +81,22 @@ typedef enum _powerpc_flavor powerpc_flavor;
 /* exception types */
 enum
 {
-	EXCEPTION_RESET		= 1,
-	EXCEPTION_MACHCHECK	= 2,
-	EXCEPTION_DSI		= 3,		/* PPCCAP_OEA */
-	EXCEPTION_PROTECTION= 3,		/* PPCCAP_4XX */
-	EXCEPTION_ISI		= 4,
-	EXCEPTION_EI		= 5,
-	EXCEPTION_ALIGN		= 6,
-	EXCEPTION_PROGRAM	= 7,
-	EXCEPTION_NOFPU		= 8,
-	EXCEPTION_DECREMENT	= 9,
-	EXCEPTION_SYSCALL	= 12,
-	EXCEPTION_TRACE		= 13,
-	EXCEPTION_FPASSIST	= 14,
-	EXCEPTION_ITLBMISS	= 16,		/* PPCCAP_603_MMU */
-	EXCEPTION_DTLBMISSL	= 17,		/* PPCCAP_603_MMU */
-	EXCEPTION_DTLBMISSS	= 18,		/* PPCCAP_603_MMU */
+	EXCEPTION_RESET			= 1,
+	EXCEPTION_MACHCHECK		= 2,
+	EXCEPTION_DSI			= 3,		/* PPCCAP_OEA */
+	EXCEPTION_PROTECTION	= 3,		/* PPCCAP_4XX */
+	EXCEPTION_ISI			= 4,
+	EXCEPTION_EI			= 5,
+	EXCEPTION_ALIGN			= 6,
+	EXCEPTION_PROGRAM		= 7,
+	EXCEPTION_NOFPU			= 8,
+	EXCEPTION_DECREMENT		= 9,
+	EXCEPTION_SYSCALL		= 12,
+	EXCEPTION_TRACE			= 13,
+	EXCEPTION_FPASSIST		= 14,
+	EXCEPTION_ITLBMISS		= 16,		/* PPCCAP_603_MMU */
+	EXCEPTION_DTLBMISSL		= 17,		/* PPCCAP_603_MMU */
+	EXCEPTION_DTLBMISSS		= 18,		/* PPCCAP_603_MMU */
 	EXCEPTION_COUNT
 };
 
@@ -551,8 +552,9 @@ struct _powerpc_state
 	UINT32			mmu603_r[4];
 
 	/* internal stuff */
-	int				cpunum;
-	int 			(*irq_callback)(int irqline);
+	cpu_irq_callback irq_callback;
+	const device_config *device;
+	const address_space *program;
 	UINT32			irq_pending;
 	UINT32			system_clock;
 	UINT32			cpu_clock;
@@ -570,12 +572,11 @@ struct _powerpc_state
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-void ppccom_init(powerpc_state *ppc, powerpc_flavor flavor, UINT8 cap, int tb_divisor, int index, int clock, const powerpc_config *config, int (*irqcallback)(int));
+void ppccom_init(powerpc_state *ppc, powerpc_flavor flavor, UINT8 cap, int tb_divisor, const device_config *device, cpu_irq_callback irqcallback);
 void ppccom_exit(powerpc_state *ppc);
 
 void ppccom_reset(powerpc_state *ppc);
 offs_t ppccom_dasm(powerpc_state *ppc, char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-void ppccom_update_cycle_counting(powerpc_state *ppc);
 
 int ppccom_translate_address(powerpc_state *ppc, int space, int intention, offs_t *address);
 

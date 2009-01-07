@@ -54,7 +54,7 @@ VIDEO_START( ultratnk )
 {
 	helper = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
-	playfield = tilemap_create(ultratnk_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	playfield = tilemap_create(machine, ultratnk_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 }
 
 
@@ -96,6 +96,7 @@ VIDEO_EOF( ultratnk )
 {
 	int i;
 	UINT16 BG = colortable_entry_get_value(machine->colortable, 0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 
 	/* check for sprite-playfield collisions */
 
@@ -140,8 +141,8 @@ VIDEO_EOF( ultratnk )
 
 	/* update sound status */
 
-	discrete_sound_w(machine, ULTRATNK_MOTOR_DATA_1, videoram[0x391] & 15);
-	discrete_sound_w(machine, ULTRATNK_MOTOR_DATA_2, videoram[0x393] & 15);
+	discrete_sound_w(space, ULTRATNK_MOTOR_DATA_1, videoram[0x391] & 15);
+	discrete_sound_w(space, ULTRATNK_MOTOR_DATA_2, videoram[0x393] & 15);
 }
 
 

@@ -135,23 +135,25 @@ WRITE32_HANDLER( silkroad_fgram3_w )
 
 
 
+static int enable1, enable2, enable3;
+
 VIDEO_START(silkroad)
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,16,16,64, 64);
+	enable1 = enable2 = enable3 = 1;
+
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,16,16,64, 64);
 		tilemap_set_transparent_pen(fg_tilemap,0);
 
-	fg2_tilemap = tilemap_create(get_fg2_tile_info,tilemap_scan_rows,16,16,64, 64);
+	fg2_tilemap = tilemap_create(machine, get_fg2_tile_info,tilemap_scan_rows,16,16,64, 64);
 		tilemap_set_transparent_pen(fg2_tilemap,0);
 
-	fg3_tilemap = tilemap_create(get_fg3_tile_info,tilemap_scan_rows,16,16,64, 64);
+	fg3_tilemap = tilemap_create(machine, get_fg3_tile_info,tilemap_scan_rows,16,16,64, 64);
 		tilemap_set_transparent_pen(fg3_tilemap,0);
 }
 
-static int enable1=1,enable2=1,enable3=1;
-
 VIDEO_UPDATE(silkroad)
 {
-	fillbitmap(bitmap,0x7c0,cliprect);
+	bitmap_fill(bitmap,cliprect,0x7c0);
 
 	tilemap_set_scrollx( fg_tilemap, 0, ((silkroad_regs[0] & 0xffff0000) >> 16) );
 	tilemap_set_scrolly( fg_tilemap, 0, (silkroad_regs[0] & 0x0000ffff) >> 0 );

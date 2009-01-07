@@ -38,7 +38,6 @@
 
 #include "drcuml.h"
 #include "drcumlsh.h"
-#include "deprecat.h"
 #include "eminline.h"
 #include "mame.h"
 #include <stdarg.h>
@@ -137,6 +136,7 @@ struct _drcuml_symbol
 /* structure describing UML generation state */
 struct _drcuml_state
 {
+	const device_config *	device;				/* CPU device we are associated with */
 	drccache *				cache;				/* pointer to the codegen cache */
 	drcuml_block *			blocklist;			/* list of active blocks */
 	const drcbe_interface *	beintf;				/* backend interface pointer */
@@ -322,7 +322,7 @@ static void validate_backend(drcuml_state *drcuml);
 static void bevalidate_iterate_over_params(drcuml_state *drcuml, drcuml_codehandle **handles, const bevalidate_test *test, drcuml_parameter *paramlist, int pnum);
 static void bevalidate_iterate_over_flags(drcuml_state *drcuml, drcuml_codehandle **handles, const bevalidate_test *test, drcuml_parameter *paramlist);
 static void bevalidate_execute(drcuml_state *drcuml, drcuml_codehandle **handles, const bevalidate_test *test, const drcuml_parameter *paramlist, UINT8 flagmask);
-static void bevalidate_initialize_random_state(drcuml_block *block, drcuml_machine_state *state);
+static void bevalidate_initialize_random_state(drcuml_state *drcuml, drcuml_block *block, drcuml_machine_state *state);
 static int bevalidate_populate_state(drcuml_block *block, drcuml_machine_state *state, const bevalidate_test *test, const drcuml_parameter *paramlist, drcuml_parameter *params, UINT64 *parammem);
 static int bevalidate_verify_state(drcuml_state *drcuml, const drcuml_machine_state *istate, drcuml_machine_state *state, const bevalidate_test *test, UINT32 flags, const drcuml_parameter *params, const drcuml_instruction *testinst, drccodeptr codestart, drccodeptr codeend, UINT8 flagmask);
 
@@ -539,7 +539,7 @@ INLINE void convert_to_mov_param(drcuml_instruction *inst, int pnum)
     generator and initialize the back-end
 -------------------------------------------------*/
 
-drcuml_state *drcuml_alloc(drccache *cache, UINT32 flags, int modes, int addrbits, int ignorebits)
+drcuml_state *drcuml_alloc(const device_config *device, drccache *cache, UINT32 flags, int modes, int addrbits, int ignorebits)
 {
 	drcuml_state *drcuml;
 	int opnum;
@@ -551,6 +551,7 @@ drcuml_state *drcuml_alloc(drccache *cache, UINT32 flags, int modes, int addrbit
 	memset(drcuml, 0, sizeof(*drcuml));
 
 	/* initialize the state */
+	drcuml->device = device;
 	drcuml->cache = cache;
 	drcuml->beintf = (flags & DRCUML_OPTION_USE_C) ? &drcbe_c_be_interface : &NATIVE_DRC;
 	drcuml->symtailptr = &drcuml->symlist;
@@ -560,7 +561,7 @@ drcuml_state *drcuml_alloc(drccache *cache, UINT32 flags, int modes, int addrbit
 		drcuml->umllog = fopen("drcuml.asm", "w");
 
 	/* allocate the back-end */
-	drcuml->bestate = (*drcuml->beintf->be_alloc)(drcuml, cache, flags, modes, addrbits, ignorebits);
+	drcuml->bestate = (*drcuml->beintf->be_alloc)(drcuml, cache, device, flags, modes, addrbits, ignorebits);
 	if (drcuml->bestate == NULL)
 	{
 		drcuml_free(drcuml);
@@ -2186,7 +2187,7 @@ static void bevalidate_execute(drcuml_state *drcuml, drcuml_codehandle **handles
 	UML_HANDLE(block, handles[0]);
 
 	/* set up a random initial state */
-	bevalidate_initialize_random_state(block, &istate);
+	bevalidate_initialize_random_state(drcuml, block, &istate);
 
 	/* then populate the state with the parameters */
 	numparams = bevalidate_populate_state(block, &istate, test, paramlist, params, parammem);
@@ -2241,32 +2242,33 @@ static void bevalidate_execute(drcuml_state *drcuml, drcuml_codehandle **handles
     initialize the machine state to randomness
 -------------------------------------------------*/
 
-static void bevalidate_initialize_random_state(drcuml_block *block, drcuml_machine_state *state)
+static void bevalidate_initialize_random_state(drcuml_state *drcuml, drcuml_block *block, drcuml_machine_state *state)
 {
+	running_machine *machine = drcuml->device->machine;
 	int regnum;
 
 	/* initialize core state to random values */
-	state->fmod = mame_rand(Machine) & 0x03;
-	state->flags = mame_rand(Machine) & 0x1f;
-	state->exp = mame_rand(Machine);
+	state->fmod = mame_rand(machine) & 0x03;
+	state->flags = mame_rand(machine) & 0x1f;
+	state->exp = mame_rand(machine);
 
 	/* initialize integer registers to random values */
 	for (regnum = 0; regnum < ARRAY_LENGTH(state->r); regnum++)
 	{
-		state->r[regnum].w.h = mame_rand(Machine);
-		state->r[regnum].w.l = mame_rand(Machine);
+		state->r[regnum].w.h = mame_rand(machine);
+		state->r[regnum].w.l = mame_rand(machine);
 	}
 
 	/* initialize float registers to random values */
 	for (regnum = 0; regnum < ARRAY_LENGTH(state->f); regnum++)
 	{
-		*(UINT32 *)&state->f[regnum].s.h = mame_rand(Machine);
-		*(UINT32 *)&state->f[regnum].s.l = mame_rand(Machine);
+		*(UINT32 *)&state->f[regnum].s.h = mame_rand(machine);
+		*(UINT32 *)&state->f[regnum].s.l = mame_rand(machine);
 	}
 
 	/* initialize map variables to random values */
 	for (regnum = 0; regnum < DRCUML_MAPVAR_END - DRCUML_MAPVAR_M0; regnum++)
-		UML_MAPVAR(block, MVAR(regnum), mame_rand(Machine));
+		UML_MAPVAR(block, MVAR(regnum), mame_rand(machine));
 }
 
 

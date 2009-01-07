@@ -108,36 +108,36 @@ MACHINE_RESET( m72_sound )
 {
 	setvector_callback(machine, NULL, VECTOR_INIT);
 
-	state_save_register_global(irqvector);
-	state_save_register_global(sample_addr);
+	state_save_register_global(machine, irqvector);
+	state_save_register_global(machine, sample_addr);
 }
 
 void m72_ym2151_irq_handler(running_machine *machine, int irq)
 {
 	if (irq)
-		timer_call_after_resynch(NULL, YM2151_ASSERT,setvector_callback);
+		timer_call_after_resynch(machine, NULL, YM2151_ASSERT,setvector_callback);
 	else
-		timer_call_after_resynch(NULL, YM2151_CLEAR,setvector_callback);
+		timer_call_after_resynch(machine, NULL, YM2151_CLEAR,setvector_callback);
 }
 
 WRITE16_HANDLER( m72_sound_command_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,offset,data);
-		timer_call_after_resynch(NULL, Z80_ASSERT,setvector_callback);
+		soundlatch_w(space,offset,data);
+		timer_call_after_resynch(space->machine, NULL, Z80_ASSERT,setvector_callback);
 	}
 }
 
 WRITE8_HANDLER( m72_sound_command_byte_w )
 {
-	soundlatch_w(machine,offset,data);
-	timer_call_after_resynch(NULL, Z80_ASSERT,setvector_callback);
+	soundlatch_w(space,offset,data);
+	timer_call_after_resynch(space->machine, NULL, Z80_ASSERT,setvector_callback);
 }
 
 WRITE8_HANDLER( m72_sound_irq_ack_w )
 {
-	timer_call_after_resynch(NULL, Z80_CLEAR,setvector_callback);
+	timer_call_after_resynch(space->machine, NULL, Z80_CLEAR,setvector_callback);
 }
 
 
@@ -197,11 +197,11 @@ WRITE8_HANDLER( poundfor_sample_addr_w )
 
 READ8_HANDLER( m72_sample_r )
 {
-	return memory_region(machine, "samples")[sample_addr];
+	return memory_region(space->machine, "samples")[sample_addr];
 }
 
 WRITE8_HANDLER( m72_sample_w )
 {
 	dac_signed_data_w(0,data);
-	sample_addr = (sample_addr + 1) & (memory_region_length(machine, "samples") - 1);
+	sample_addr = (sample_addr + 1) & (memory_region_length(space->machine, "samples") - 1);
 }

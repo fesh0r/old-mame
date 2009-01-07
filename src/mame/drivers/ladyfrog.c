@@ -47,6 +47,7 @@ Notes:
 #define ladyfrog_scr_size 0
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/msm5232.h"
@@ -86,19 +87,19 @@ static WRITE8_HANDLER( to_main_w )
 
 static WRITE8_HANDLER( sound_cpu_reset_w )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data&1 )? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data&1 )? ASSERT_LINE : CLEAR_LINE);
 }
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	if (sound_nmi_enable) cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+	if (sound_nmi_enable) cpu_set_input_line(machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 	else pending_nmi = 1;
 }
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(machine,0,data);
-	timer_call_after_resynch(NULL, data,nmi_callback);
+	soundlatch_w(space,0,data);
+	timer_call_after_resynch(space->machine, NULL, data,nmi_callback);
 }
 
 static WRITE8_HANDLER( nmi_disable_w )
@@ -111,7 +112,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{
-		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+		cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -289,7 +290,7 @@ static MACHINE_DRIVER_START( ladyfrog )
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
 	/* video hardware */
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 
 	MDRV_SCREEN_ADD("main", RASTER)

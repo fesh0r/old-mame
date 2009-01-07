@@ -82,7 +82,7 @@ VIDEO_START( blstroid )
 	};
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows,  16,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(machine, get_playfield_tile_info, tilemap_scan_rows,  16,8, 64,64);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
@@ -98,15 +98,17 @@ VIDEO_START( blstroid )
 
 static TIMER_CALLBACK( irq_off )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
 	/* clear the interrupt */
-	atarigen_scanline_int_ack_w(machine, 0, 0, 0xffff);
+	atarigen_scanline_int_ack_w(space, 0, 0, 0xffff);
 }
 
 
 static TIMER_CALLBACK( irq_on )
 {
 	/* generate the interrupt */
-	atarigen_scanline_int_gen(machine, 0);
+	atarigen_scanline_int_gen(machine->cpu[0]);
 	atarigen_update_interrupts(machine);
 }
 
@@ -135,8 +137,8 @@ void blstroid_scanline_update(const device_config *screen, int scanline)
 			period_on  = video_screen_get_time_until_pos(screen, vpos + 7, width * 0.9);
 			period_off = video_screen_get_time_until_pos(screen, vpos + 8, width * 0.9);
 
-			timer_set(period_on, NULL,  0, irq_on);
-			timer_set(period_off, NULL, 0, irq_off);
+			timer_set(screen->machine, period_on, NULL,  0, irq_on);
+			timer_set(screen->machine, period_off, NULL, 0, irq_off);
 		}
 }
 

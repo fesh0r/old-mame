@@ -9,7 +9,7 @@ int taxidrvr_bghide;
 static int spritectrl[9];
 
 
-WRITE8_HANDLER( taxidrvr_spritectrl_w )
+WRITE8_DEVICE_HANDLER( taxidrvr_spritectrl_w )
 {
 	spritectrl[offset] = data;
 }
@@ -24,7 +24,7 @@ VIDEO_UPDATE( taxidrvr )
 
 	if (taxidrvr_bghide)
 	{
-		fillbitmap(bitmap,0,cliprect);
+		bitmap_fill(bitmap,cliprect,0);
 
 
 		/* kludge to fix scroll after death */

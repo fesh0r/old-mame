@@ -109,16 +109,16 @@ VIDEO_START( fuuki32 )
 	buffered_spriteram32   = auto_malloc(spriteram_size);
 	buffered_spriteram32_2 = auto_malloc(spriteram_size);
 
-	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0, tilemap_scan_rows,
 								 16, 16, 64,32);
 
-	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1, tilemap_scan_rows,
 								 16, 16, 64,32);
 
-	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
+	tilemap_2 = tilemap_create(	machine, get_tile_info_2, tilemap_scan_rows,
 								  8,  8, 64,32);
 
-	tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
+	tilemap_3 = tilemap_create(	machine, get_tile_info_3, tilemap_scan_rows,
 								  8,  8, 64,32);
 
 	tilemap_set_transparent_pen(tilemap_0,0xff);	// 8 bits
@@ -211,7 +211,7 @@ static void draw_sprites(const device_config *screen, bitmap_t *bitmap, const re
 		sx = (sx & 0x1ff) - (sx & 0x200);
 		sy = (sy & 0x1ff) - (sy & 0x200);
 
-		if (flip_screen_get())
+		if (flip_screen_get(screen->machine))
 		{	flipx = !flipx;		sx = max_x - sx - xnum * 16;
 			flipy = !flipy;		sy = max_y - sy - ynum * 16;	}
 
@@ -341,12 +341,12 @@ VIDEO_UPDATE( fuuki32 )
 	tm_middle = pri_table[ (fuuki32_priority[0]>>16) & 0x0f ][1];
 	tm_back   = pri_table[ (fuuki32_priority[0]>>16) & 0x0f ][2];
 
-	flip_screen_set((fuuki32_vregs[0x1e/4]&0x0000ffff) & 1);
+	flip_screen_set(screen->machine, (fuuki32_vregs[0x1e/4]&0x0000ffff) & 1);
 
 	/* Layers scrolling */
 
-	scrolly_offs = ((fuuki32_vregs[0xc/4]&0xffff0000)>>16) - (flip_screen_get() ? 0x103 : 0x1f3);
-	scrollx_offs =  (fuuki32_vregs[0xc/4]&0x0000ffff) - (flip_screen_get() ? 0x2c7 : 0x3f6);
+	scrolly_offs = ((fuuki32_vregs[0xc/4]&0xffff0000)>>16) - (flip_screen_get(screen->machine) ? 0x103 : 0x1f3);
+	scrollx_offs =  (fuuki32_vregs[0xc/4]&0x0000ffff) - (flip_screen_get(screen->machine) ? 0x2c7 : 0x3f6);
 
 	layer0_scrolly = ((fuuki32_vregs[0x0/4]&0xffff0000)>>16) + scrolly_offs;
 	layer0_scrollx = ((fuuki32_vregs[0x0/4]&0x0000ffff)) + scrollx_offs;
@@ -367,8 +367,8 @@ VIDEO_UPDATE( fuuki32 )
 	tilemap_set_scrolly(tilemap_3, 0, layer2_scrolly);
 
 	/* The bg colour is the last pen i.e. 0x1fff */
-	fillbitmap(bitmap,(0x800*4)-1,cliprect);
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,(0x800*4)-1);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	fuuki32_draw_layer(bitmap,cliprect, tm_back,   0, 1);
 	fuuki32_draw_layer(bitmap,cliprect, tm_middle, 0, 2);

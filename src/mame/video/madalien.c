@@ -142,18 +142,18 @@ static VIDEO_START( madalien )
 		16, 16, 32, 32
 	};
 
-	tilemap_fg = tilemap_create(get_tile_info_FG, tilemap_scan_cols_flip_x, 8, 8, 32, 32);
+	tilemap_fg = tilemap_create(machine, get_tile_info_FG, tilemap_scan_cols_flip_x, 8, 8, 32, 32);
 	tilemap_set_transparent_pen(tilemap_fg, 0);
 	tilemap_set_scrolldx(tilemap_fg, 0, 0x50);
 	tilemap_set_scrolldy(tilemap_fg, 0, 0x20);
 
 	for (i = 0; i < 4; i++)
 	{
-		tilemap_edge1[i] = tilemap_create(get_tile_info_BG_1, scan_functions[i], 16, 16, tilemap_cols[i], 8);
+		tilemap_edge1[i] = tilemap_create(machine, get_tile_info_BG_1, scan_functions[i], 16, 16, tilemap_cols[i], 8);
 		tilemap_set_scrolldx(tilemap_edge1[i], 0, 0x50);
 		tilemap_set_scrolldy(tilemap_edge1[i], 0, 0x20);
 
-		tilemap_edge2[i] = tilemap_create(get_tile_info_BG_2, scan_functions[i], 16, 16, tilemap_cols[i], 8);
+		tilemap_edge2[i] = tilemap_create(machine, get_tile_info_BG_2, scan_functions[i], 16, 16, tilemap_cols[i], 8);
 		tilemap_set_scrolldx(tilemap_edge2[i], 0, 0x50);
 		tilemap_set_scrolldy(tilemap_edge2[i], 0, video_screen_get_height(machine->primary_screen) - 256);
 	}
@@ -264,7 +264,7 @@ static VIDEO_UPDATE( madalien )
 	// mode 3 - transition from A to B
 	int scroll_mode = *madalien_scroll & 3;
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 	draw_edges(bitmap, cliprect, flip, scroll_mode);
 	draw_foreground(screen->machine, bitmap, cliprect, flip);
 
@@ -379,7 +379,6 @@ GFXDECODE_END
 static const mc6845_interface mc6845_intf =
 {
 	"main",				/* screen we are acting on */
-	PIXEL_CLOCK / 8,  /* the clock of the chip  */
 	8,                /* number of pixels per video memory address */
 	NULL,             /* before pixel update callback */
 	NULL,             /* row update callback */
@@ -401,6 +400,5 @@ MACHINE_DRIVER_START( madalien_video )
 	MDRV_VIDEO_START(madalien)
 	MDRV_VIDEO_UPDATE(madalien)
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
-	MDRV_DEVICE_CONFIG(mc6845_intf)
+	MDRV_MC6845_ADD("crtc", MC6845, PIXEL_CLOCK / 8, mc6845_intf)
 MACHINE_DRIVER_END

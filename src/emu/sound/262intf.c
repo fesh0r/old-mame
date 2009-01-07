@@ -6,7 +6,6 @@
 
 ***************************************************************************/
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "262intf.h"
 #include "ymf262.h"
@@ -18,6 +17,7 @@ struct ymf262_info
 	emu_timer *	timer[2];
 	void *			chip;
 	const ymf262_interface *intf;
+	const device_config *device;
 };
 
 
@@ -26,7 +26,7 @@ struct ymf262_info
 static void IRQHandler_262(void *param,int irq)
 {
 	struct ymf262_info *info = param;
-	if (info->intf->handler) (info->intf->handler)(Machine, irq);
+	if (info->intf->handler) (info->intf->handler)(info->device->machine, irq);
 }
 
 static TIMER_CALLBACK( timer_callback_262_0 )
@@ -54,10 +54,10 @@ static void timer_handler_262(void *param,int timer, attotime period)
 	}
 }
 
-static void ymf262_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **buffers, int length)
+static STREAM_UPDATE( ymf262_stream_update )
 {
 	struct ymf262_info *info = param;
-	ymf262_update_one(info->chip, buffers, length);
+	ymf262_update_one(info->chip, outputs, samples);
 }
 
 static void _stream_update(void *param, int interval)
@@ -67,7 +67,7 @@ static void _stream_update(void *param, int interval)
 }
 
 
-static void *ymf262_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( ymf262 )
 {
 	static const ymf262_interface dummy = { 0 };
 	struct ymf262_info *info;
@@ -77,35 +77,36 @@ static void *ymf262_start(const char *tag, int sndindex, int clock, const void *
 	memset(info, 0, sizeof(*info));
 
 	info->intf = config ? config : &dummy;
+	info->device = device;
 
 	/* stream system initialize */
-	info->chip = ymf262_init(clock,rate);
+	info->chip = ymf262_init(device,clock,rate);
 	if (info->chip == NULL)
 		return NULL;
 
-	info->stream = stream_create(0,4,rate,info,ymf262_stream_update);
+	info->stream = stream_create(device,0,4,rate,info,ymf262_stream_update);
 
 	/* YMF262 setup */
 	ymf262_set_timer_handler (info->chip, timer_handler_262, info);
 	ymf262_set_irq_handler   (info->chip, IRQHandler_262, info);
 	ymf262_set_update_handler(info->chip, _stream_update, info);
 
-	info->timer[0] = timer_alloc(timer_callback_262_0, info);
-	info->timer[1] = timer_alloc(timer_callback_262_1, info);
+	info->timer[0] = timer_alloc(device->machine, timer_callback_262_0, info);
+	info->timer[1] = timer_alloc(device->machine, timer_callback_262_1, info);
 
 	return info;
 }
 
-static void ymf262_stop(void *token)
+static SND_STOP( ymf262 )
 {
-	struct ymf262_info *info = token;
+	struct ymf262_info *info = device->token;
 	ymf262_shutdown(info->chip);
 }
 
 /* reset */
-static void ymf262_reset(void *token)
+static SND_RESET( ymf262 )
 {
-	struct ymf262_info *info = token;
+	struct ymf262_info *info = device->token;
 	ymf262_reset_chip(info->chip);
 }
 
@@ -158,7 +159,7 @@ WRITE8_HANDLER( ymf262_data_b_1_w ) {
  * Generic get_info
  **************************************************************************/
 
-static void ymf262_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( ymf262 )
 {
 	switch (state)
 	{
@@ -167,24 +168,24 @@ static void ymf262_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void ymf262_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( ymf262 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = ymf262_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = ymf262_start;				break;
-		case SNDINFO_PTR_STOP:							info->stop = ymf262_stop;				break;
-		case SNDINFO_PTR_RESET:							info->reset = ymf262_reset;				break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( ymf262 );		break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ymf262 );				break;
+		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( ymf262 );				break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( ymf262 );				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "YMF262";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Yamaha FM";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "YMF262");							break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Yamaha FM");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");								break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);							break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

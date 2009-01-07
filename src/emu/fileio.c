@@ -384,6 +384,18 @@ void mame_fclose(mame_file *file)
 }
 
 
+/*-------------------------------------------------
+    mame_fcompress - enable/disable streaming file
+    compression via zlib; level is 0 to disable
+    compression, or up to 9 for max compression
+-------------------------------------------------*/
+
+file_error mame_fcompress(mame_file *file, int level)
+{
+	return core_fcompress(file->file, level);
+}
+
+
 
 /***************************************************************************
     FILE POSITIONING
@@ -603,7 +615,6 @@ int CLIB_DECL mame_fprintf(mame_file *file, const char *fmt, ...)
 /***************************************************************************
     FILE ENUMERATION
 ***************************************************************************/
-
 
 /*-------------------------------------------------
     mame_openpath - open a search path (multiple

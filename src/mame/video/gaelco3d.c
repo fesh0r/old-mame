@@ -7,7 +7,6 @@
 **************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "eminline.h"
 #include "gaelco3d.h"
 #include "cpu/tms32031/tms32031.h"
@@ -77,7 +76,7 @@ VIDEO_START( gaelco3d )
 {
 	int width, height;
 
-	poly = poly_alloc(2000, sizeof(poly_extra_data), 0);
+	poly = poly_alloc(machine, 2000, sizeof(poly_extra_data), 0);
 	add_exit_callback(machine, gaelco3d_exit);
 
 	screenbits = video_screen_auto_bitmap_alloc(machine->primary_screen);
@@ -91,15 +90,15 @@ VIDEO_START( gaelco3d )
 
 	/* save states */
 
-	state_save_register_global_pointer(palette, 32768);
-	state_save_register_global_pointer(polydata_buffer, MAX_POLYDATA);
-	state_save_register_global(polydata_count);
+	state_save_register_global_pointer(machine, palette, 32768);
+	state_save_register_global_pointer(machine, polydata_buffer, MAX_POLYDATA);
+	state_save_register_global(machine, polydata_count);
 
-	state_save_register_global(polygons);
-	state_save_register_global(lastscan);
+	state_save_register_global(machine, polygons);
+	state_save_register_global(machine, lastscan);
 
-	state_save_register_bitmap("video", 0, "screenbits", screenbits);
-	state_save_register_bitmap("video", 0, "zbuffer", zbuffer);
+	state_save_register_global_bitmap(machine, screenbits);
+	state_save_register_global_bitmap(machine, zbuffer);
 }
 
 
@@ -373,15 +372,15 @@ static void render_alphablend(void *destbase, INT32 scanline, const poly_extent 
  *
  *************************************/
 
-void gaelco3d_render(void)
+void gaelco3d_render(const device_config *screen)
 {
 	/* wait for any queued stuff to complete */
 	poly_wait(poly, "Time to render");
 
 #if DISPLAY_STATS
 {
-	int scan = video_screen_get_vpos(machine->primary_screen);
-	popmessage("Polys = %4d  Timeleft = %3d", polygons, (lastscan < scan) ? (scan - lastscan) : (scan + (lastscan - video_screen_get_visible_area(Machine->primary_screen)->max_y)));
+	int scan = video_screen_get_vpos(screen);
+	popmessage("Polys = %4d  Timeleft = %3d", polygons, (lastscan < scan) ? (scan - lastscan) : (scan + (lastscan - video_screen_get_visible_area(screen)->max_y)));
 }
 #endif
 
@@ -410,14 +409,14 @@ WRITE32_HANDLER( gaelco3d_render_w )
 	{
 		if (polydata_count >= 18 && (polydata_count % 2) == 1 && IS_POLYEND(polydata_buffer[polydata_count - 2]))
 		{
-			render_poly(machine->primary_screen, &polydata_buffer[0]);
+			render_poly(space->machine->primary_screen, &polydata_buffer[0]);
 			polydata_count = 0;
 		}
 		video_changed = TRUE;
 	}
 
 #if DISPLAY_STATS
-	lastscan = video_screen_get_vpos(machine->primary_screen);
+	lastscan = video_screen_get_vpos(space->machine->primary_screen);
 #endif
 }
 

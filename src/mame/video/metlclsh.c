@@ -37,12 +37,12 @@ WRITE8_HANDLER( metlclsh_rambank_w )
 	if (data & 1)
 	{
 		metlclsh_write_mask = 0;
-		memory_set_bankptr(1, metlclsh_bgram);
+		memory_set_bankptr(space->machine, 1, metlclsh_bgram);
 	}
 	else
 	{
 		metlclsh_write_mask = 1 << (data >> 1);
-		memory_set_bankptr(1, metlclsh_otherram);
+		memory_set_bankptr(space->machine, 1, metlclsh_otherram);
 	}
 }
 
@@ -144,8 +144,8 @@ VIDEO_START( metlclsh )
 {
 	metlclsh_otherram = auto_malloc(0x800);	// banked ram
 
-	bg_tilemap = tilemap_create(get_bg_tile_info,metlclsh_bgtilemap_scan,16,16,32,16);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,metlclsh_bgtilemap_scan,16,16,32,16);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen( bg_tilemap, 0 );
 	tilemap_set_transparent_pen( fg_tilemap, 0 );
@@ -194,7 +194,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		if (sx < -7) sx += 256;
 		sy	=	240 - spriteram[offs+2];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;	flipx = !flipx;
 			sy = 240 - sy;	flipy = !flipy;		if (sizey)	sy+=16;
@@ -237,13 +237,13 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 
 VIDEO_UPDATE( metlclsh )
 {
-	fillbitmap(bitmap,0x10,cliprect);
+	bitmap_fill(bitmap,cliprect,0x10);
 
 	tilemap_draw(bitmap,cliprect,fg_tilemap,1,0);	// low priority tiles of foreground
 	if (metlclsh_scrollx[0] & 0x08)					// background (if enabled)
 	{
 		/* The background seems to be always flipped along x */
-		tilemap_set_flip(bg_tilemap, (flip_screen_get() ? (TILEMAP_FLIPX|TILEMAP_FLIPY) : 0) ^ TILEMAP_FLIPX);
+		tilemap_set_flip(bg_tilemap, (flip_screen_get(screen->machine) ? (TILEMAP_FLIPX|TILEMAP_FLIPY) : 0) ^ TILEMAP_FLIPX);
 		tilemap_set_scrollx(bg_tilemap, 0,metlclsh_scrollx[1] + ((metlclsh_scrollx[0]&0x02)<<7) );
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	}

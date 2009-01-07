@@ -158,9 +158,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( contra )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     8,8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,     8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,     8,8,32,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows,     8,8,32,32);
 
 	private_spriteram = auto_malloc(0x800);
 	private_spriteram_2 = auto_malloc(0x800);
@@ -236,7 +236,7 @@ WRITE8_HANDLER( contra_K007121_ctrl_0_w )
 	if (offset == 7)
 		tilemap_set_flip(fg_tilemap,(data & 0x08) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
-	K007121_ctrl_0_w(machine,offset,data);
+	K007121_ctrl_0_w(space,offset,data);
 }
 
 WRITE8_HANDLER( contra_K007121_ctrl_1_w )
@@ -256,7 +256,7 @@ WRITE8_HANDLER( contra_K007121_ctrl_1_w )
 	if (offset == 7)
 		tilemap_set_flip(bg_tilemap,(data & 0x08) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
-	K007121_ctrl_1_w(machine,offset,data);
+	K007121_ctrl_1_w(space,offset,data);
 }
 
 

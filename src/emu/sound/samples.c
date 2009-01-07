@@ -1,6 +1,5 @@
 #include "driver.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "samples.h"
 
 
@@ -20,6 +19,7 @@ struct sample_channel
 
 struct samples_info
 {
+	const device_config *device;
 	int			numchannels;	/* how many channels */
 	struct sample_channel *channel;/* array of channels */
 	struct loaded_samples *samples;/* array of samples */
@@ -261,7 +261,7 @@ void sample_start_n(int num,int channel,int samplenum,int loop)
 	chan->pos = 0;
 	chan->frac = 0;
 	chan->basefreq = sample->frequency;
-	chan->step = ((INT64)chan->basefreq << FRAC_BITS) / Machine->sample_rate;
+	chan->step = ((INT64)chan->basefreq << FRAC_BITS) / info->device->machine->sample_rate;
 	chan->loop = loop;
 }
 
@@ -290,7 +290,7 @@ void sample_start_raw_n(int num,int channel,const INT16 *sampledata,int samples,
 	chan->pos = 0;
 	chan->frac = 0;
 	chan->basefreq = frequency;
-	chan->step = ((INT64)chan->basefreq << FRAC_BITS) / Machine->sample_rate;
+	chan->step = ((INT64)chan->basefreq << FRAC_BITS) / info->device->machine->sample_rate;
 	chan->loop = loop;
 }
 
@@ -312,7 +312,7 @@ void sample_set_freq_n(int num,int channel,int freq)
 	/* force an update before we start */
 	stream_update(chan->stream);
 
-	chan->step = ((INT64)freq << FRAC_BITS) / Machine->sample_rate;
+	chan->step = ((INT64)freq << FRAC_BITS) / info->device->machine->sample_rate;
 }
 
 void sample_set_freq(int channel,int freq)
@@ -442,10 +442,10 @@ int sample_loaded(int samplenum)
 }
 
 
-static void sample_update_sound(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( sample_update_sound )
 {
 	struct sample_channel *chan = param;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
 	if (chan->source && !chan->paused)
 	{
@@ -456,7 +456,7 @@ static void sample_update_sound(void *param, stream_sample_t **inputs, stream_sa
 		const INT16 *sample = chan->source;
 		UINT32 sample_length = chan->source_length;
 
-		while (length--)
+		while (samples--)
 		{
 			/* do a linear interp on the sample */
 			INT32 sample1 = sample[pos];
@@ -478,8 +478,8 @@ static void sample_update_sound(void *param, stream_sample_t **inputs, stream_sa
 				{
 					chan->source = NULL;
 					chan->source_num = -1;
-					if (length > 0)
-						memset(buffer, 0, length * sizeof(*buffer));
+					if (samples > 0)
+						memset(buffer, 0, samples * sizeof(*buffer));
 					break;
 				}
 			}
@@ -490,7 +490,7 @@ static void sample_update_sound(void *param, stream_sample_t **inputs, stream_sa
 		chan->frac = frac;
 	}
 	else
-		memset(buffer, 0, length * sizeof(*buffer));
+		memset(buffer, 0, samples * sizeof(*buffer));
 }
 
 
@@ -529,7 +529,7 @@ static STATE_POSTLOAD( samples_postload )
 }
 
 
-static void *samples_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( samples )
 {
 	int i;
 	const samples_interface *intf = config;
@@ -537,19 +537,20 @@ static void *samples_start(const char *tag, int sndindex, int clock, const void 
 
 	info = auto_malloc(sizeof(*info));
 	memset(info, 0, sizeof(*info));
+	info->device = device;
 	sndintrf_register_token(info);
 
 	/* read audio samples */
 	if (intf->samplenames)
-		info->samples = readsamples(intf->samplenames,Machine->gamedrv->name);
+		info->samples = readsamples(intf->samplenames,device->machine->gamedrv->name);
 
 	/* allocate channels */
 	info->numchannels = intf->channels;
-    assert(info->numchannels < MAX_CHANNELS);
+	assert(info->numchannels < MAX_CHANNELS);
 	info->channel = auto_malloc(sizeof(*info->channel) * info->numchannels);
 	for (i = 0; i < info->numchannels; i++)
 	{
-	    info->channel[i].stream = stream_create(0, 1, Machine->sample_rate, &info->channel[i], sample_update_sound);
+	    info->channel[i].stream = stream_create(device, 0, 1, device->machine->sample_rate, &info->channel[i], sample_update_sound);
 
 		info->channel[i].source = NULL;
 		info->channel[i].source_num = -1;
@@ -558,19 +559,19 @@ static void *samples_start(const char *tag, int sndindex, int clock, const void 
 		info->channel[i].paused = 0;
 
 		/* register with the save state system */
-        state_save_register_item("samples", sndindex * MAX_CHANNELS + i, info->channel[i].source_length);
-        state_save_register_item("samples", sndindex * MAX_CHANNELS + i, info->channel[i].source_num);
-        state_save_register_item("samples", sndindex * MAX_CHANNELS + i, info->channel[i].pos);
-        state_save_register_item("samples", sndindex * MAX_CHANNELS + i, info->channel[i].frac);
-        state_save_register_item("samples", sndindex * MAX_CHANNELS + i, info->channel[i].step);
-        state_save_register_item("samples", sndindex * MAX_CHANNELS + i, info->channel[i].loop);
-        state_save_register_item("samples", sndindex * MAX_CHANNELS + i, info->channel[i].paused);
+        state_save_register_device_item(device, i, info->channel[i].source_length);
+        state_save_register_device_item(device, i, info->channel[i].source_num);
+        state_save_register_device_item(device, i, info->channel[i].pos);
+        state_save_register_device_item(device, i, info->channel[i].frac);
+        state_save_register_device_item(device, i, info->channel[i].step);
+        state_save_register_device_item(device, i, info->channel[i].loop);
+        state_save_register_device_item(device, i, info->channel[i].paused);
 	}
-	state_save_register_postload(Machine, samples_postload, info);
+	state_save_register_postload(device->machine, samples_postload, info);
 
 	/* initialize any custom handlers */
 	if (intf->start)
-		(*intf->start)();
+		(*intf->start)(device);
 
 	return info;
 }
@@ -581,7 +582,7 @@ static void *samples_start(const char *tag, int sndindex, int clock, const void 
  * Generic get_info
  **************************************************************************/
 
-static void samples_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( samples )
 {
 	switch (state)
 	{
@@ -590,24 +591,24 @@ static void samples_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void samples_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( samples )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-        case SNDINFO_PTR_SET_INFO:                      info->set_info = samples_set_info;      break;
-        case SNDINFO_PTR_START:                         info->start = samples_start;            break;
-        case SNDINFO_PTR_STOP:                          /* Nothing */                           break;
-        case SNDINFO_PTR_RESET:                         /* Nothing */                           break;
+        case SNDINFO_PTR_SET_INFO:                      info->set_info = SND_SET_INFO_NAME( samples );	break;
+        case SNDINFO_PTR_START:                         info->start = SND_START_NAME( samples );		break;
+        case SNDINFO_PTR_STOP:                          /* Nothing */                           		break;
+        case SNDINFO_PTR_RESET:                         /* Nothing */                           		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-        case SNDINFO_STR_NAME:                          info->s = "Samples";                    break;
-        case SNDINFO_STR_CORE_FAMILY:                   info->s = "Big Hack";                   break;
-        case SNDINFO_STR_CORE_VERSION:                  info->s = "1.1";                        break;
-        case SNDINFO_STR_CORE_FILE:                     info->s = __FILE__;                     break;
-        case SNDINFO_STR_CORE_CREDITS:                  info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+        case SNDINFO_STR_NAME:                          strcpy(info->s, "Samples");                    	break;
+        case SNDINFO_STR_CORE_FAMILY:                   strcpy(info->s, "Big Hack");                   	break;
+        case SNDINFO_STR_CORE_VERSION:                  strcpy(info->s, "1.1");                        	break;
+        case SNDINFO_STR_CORE_FILE:                     strcpy(info->s, __FILE__);                     		break;
+        case SNDINFO_STR_CORE_CREDITS:                  strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

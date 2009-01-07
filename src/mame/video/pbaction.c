@@ -41,14 +41,14 @@ WRITE8_HANDLER( pbaction_colorram2_w )
 WRITE8_HANDLER( pbaction_scroll_w )
 {
 	scroll = data - 3;
-	if (flip_screen_get()) scroll = -scroll;
+	if (flip_screen_get(space->machine)) scroll = -scroll;
 	tilemap_set_scrollx(bg_tilemap, 0, scroll);
 	tilemap_set_scrollx(fg_tilemap, 0, scroll);
 }
 
 WRITE8_HANDLER( pbaction_flipscreen_w )
 {
-	flip_screen_set(data & 0x01);
+	flip_screen_set(space->machine, data & 0x01);
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
@@ -73,10 +73,10 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( pbaction )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
@@ -100,7 +100,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			sy = 241-spriteram[offs+2];
 		flipx = spriteram[offs+1] & 0x40;
 		flipy =	spriteram[offs+1] & 0x80;
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			if (spriteram[offs] & 0x80)
 			{
@@ -120,7 +120,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 				spriteram[offs],
 				spriteram[offs + 1] & 0x0f,
 				flipx,flipy,
-				sx + (flip_screen_get() ? scroll : -scroll), sy,
+				sx + (flip_screen_get(machine) ? scroll : -scroll), sy,
 				cliprect,TRANSPARENCY_PEN,0);
 	}
 }

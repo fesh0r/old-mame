@@ -136,16 +136,11 @@ Stephh's notes (based on the games M68000 code and some tests) :
 ******************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/2610intf.h"
+#include "includes/mcatadv.h"
 
-VIDEO_UPDATE( mcatadv );
-VIDEO_START( mcatadv );
-VIDEO_EOF( mcatadv );
-VIDEO_UPDATE( nost );
-VIDEO_START( nost );
-
-WRITE16_HANDLER( mcatadv_videoram1_w );
-WRITE16_HANDLER( mcatadv_videoram2_w );
 UINT16* mcatadv_videoram1, *mcatadv_videoram2;
 UINT16* mcatadv_scroll, *mcatadv_scroll2;
 UINT16* mcatadv_vidregs;
@@ -155,8 +150,8 @@ UINT16* mcatadv_vidregs;
 
 static WRITE16_HANDLER( mcat_soundlatch_w )
 {
-	soundlatch_w(machine, 0, data);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(space, 0, data);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 #if 0 // mcat only.. install read handler?
@@ -174,7 +169,7 @@ static WRITE16_HANDLER( mcat_coin_w )
 
 static READ16_HANDLER( mcat_wd_r )
 {
-	watchdog_reset_r(machine,0);
+	watchdog_reset_r(space,0);
 	return 0xc00;
 }
 
@@ -233,9 +228,9 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER ( mcatadv_sound_bw_w )
 {
-	UINT8 *rom = memory_region(machine, "sound") + 0x10000;
+	UINT8 *rom = memory_region(space->machine, "sound") + 0x10000;
 
-	memory_set_bankptr(1,rom + data * 0x4000);
+	memory_set_bankptr(space->machine, 1,rom + data * 0x4000);
 }
 
 
@@ -467,7 +462,7 @@ GFXDECODE_END
 /* Stolen from Psikyo.c */
 static void sound_irq( running_machine *machine, int irq )
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 static const ym2610_interface mcatadv_ym2610_interface =
 {
@@ -497,7 +492,7 @@ static MACHINE_DRIVER_START( mcatadv )
 	MDRV_GFXDECODE(mcatadv)
 	MDRV_PALETTE_LENGTH(0x2000/2)
 
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_SEC(3))	/* a guess, and certainly wrong */
+	MDRV_WATCHDOG_TIME_INIT(SEC(3))	/* a guess, and certainly wrong */
 
 	MDRV_VIDEO_START(mcatadv)
 	MDRV_VIDEO_EOF(mcatadv) // Buffer Spriteram
@@ -527,7 +522,7 @@ static DRIVER_INIT( mcatadv )
 {
 	UINT8 *z80rom = memory_region(machine, "sound") + 0x10000;
 
-	memory_set_bankptr(1, z80rom + 0x4000);
+	memory_set_bankptr(machine, 1, z80rom + 0x4000);
 }
 
 

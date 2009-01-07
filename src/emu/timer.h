@@ -33,13 +33,10 @@ enum
 };
 
 
+
 /***************************************************************************
     MACROS
 ***************************************************************************/
-
-/* convert cycles on a given CPU to/from attotime */
-#define ATTOTIME_TO_CYCLES(cpu,t)		((t).seconds * cycles_per_second[cpu] + (t).attoseconds / attoseconds_per_cycle[cpu])
-#define ATTOTIME_IN_CYCLES(c,cpu)		(attotime_make((c) / cycles_per_second[cpu], (c) * attoseconds_per_cycle[cpu]))
 
 /* macro for the RC time constant on a 74LS123 with C > 1000pF */
 /* R is in ohms, C is in farads */
@@ -53,10 +50,10 @@ enum
 #define PERIOD_OF_555_ASTABLE(r1,r2,c)		ATTOTIME_IN_NSEC(PERIOD_OF_555_ASTABLE_NSEC(r1,r2,c))
 
 /* macros that map all allocations to provide file/line/functions to the callee */
-#define timer_alloc(c,ptr)				_timer_alloc_internal(c, ptr, __FILE__, __LINE__, #c)
-#define timer_pulse(e,ptr,p,c)			_timer_pulse_internal(e, ptr, p, c, __FILE__, __LINE__, #c)
-#define timer_set(d,ptr,p,c)			_timer_set_internal(d, ptr, p, c, __FILE__, __LINE__, #c)
-#define timer_call_after_resynch(ptr,p,c) _timer_set_internal(attotime_zero, ptr, p, c, __FILE__, __LINE__, #c)
+#define timer_alloc(m,c,ptr)			_timer_alloc_internal(m, c, ptr, __FILE__, __LINE__, #c)
+#define timer_pulse(m,e,ptr,p,c)		_timer_pulse_internal(m, e, ptr, p, c, __FILE__, __LINE__, #c)
+#define timer_set(m,d,ptr,p,c)			_timer_set_internal(m, d, ptr, p, c, __FILE__, __LINE__, #c)
+#define timer_call_after_resynch(m,ptr,p,c) _timer_set_internal(m, attotime_zero, ptr, p, c, __FILE__, __LINE__, #c)
 
 /* macros for a timer callback functions */
 #define TIMER_CALLBACK(name)			void name(running_machine *machine, void *ptr, int param)
@@ -101,24 +98,33 @@ struct _timer_config
 typedef struct _emu_timer emu_timer;
 
 
+typedef struct _timer_execution_state timer_execution_state;
+struct _timer_execution_state
+{
+	attotime				nextfire;		/* time that the head of the timer list will fire */
+	attotime				basetime;		/* global basetime; everything moves forward from here */
+	attoseconds_t			curquantum;		/* current quantum of execution */
+};
+
+
 
 /***************************************************************************
     TIMER DEVICE CONFIGURATION MACROS
 ***************************************************************************/
 
 #define MDRV_TIMER_ADD(_tag, _callback) \
-	MDRV_DEVICE_ADD(_tag, TIMER) \
+	MDRV_DEVICE_ADD(_tag, TIMER, 0) \
 	MDRV_DEVICE_CONFIG_DATA32(timer_config, type, TIMER_TYPE_GENERIC) \
 	MDRV_DEVICE_CONFIG_DATAPTR(timer_config, callback, _callback) \
 
 #define MDRV_TIMER_ADD_PERIODIC(_tag, _callback, _period) \
-	MDRV_DEVICE_ADD(_tag, TIMER) \
+	MDRV_DEVICE_ADD(_tag, TIMER, 0) \
 	MDRV_DEVICE_CONFIG_DATA32(timer_config, type, TIMER_TYPE_PERIODIC) \
 	MDRV_DEVICE_CONFIG_DATAPTR(timer_config, callback, _callback) \
 	MDRV_DEVICE_CONFIG_DATA64(timer_config, period, UINT64_ATTOTIME_IN_##_period)
 
 #define MDRV_TIMER_ADD_SCANLINE(_tag, _callback, _screen, _first_vpos, _increment) \
-	MDRV_DEVICE_ADD(_tag, TIMER) \
+	MDRV_DEVICE_ADD(_tag, TIMER, 0) \
 	MDRV_DEVICE_CONFIG_DATA32(timer_config, type, TIMER_TYPE_SCANLINE) \
 	MDRV_DEVICE_CONFIG_DATAPTR(timer_config, callback, _callback) \
 	MDRV_DEVICE_CONFIG_DATAPTR(timer_config, screen, _screen) \
@@ -146,16 +152,6 @@ typedef struct _emu_timer emu_timer;
 
 
 /***************************************************************************
-    GLOBAL VARIABLES
-***************************************************************************/
-
-/* arrays containing mappings between CPU cycle times and timer values */
-extern attoseconds_t attoseconds_per_cycle[];
-extern UINT32 cycles_per_second[];
-
-
-
-/***************************************************************************
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
@@ -172,25 +168,31 @@ void timer_destructor(void *ptr, size_t size);
 
 /* ----- scheduling helpers ----- */
 
-/* return the time when the next timer will fire */
-attotime timer_next_fire_time(void);
+/* return a pointer to the execution state */
+timer_execution_state *timer_get_execution_state(running_machine *machine);
 
-/* adjust the global time; this is also where we fire the timers */
-void timer_set_global_time(running_machine *machine, attotime newbase);
+/* execute timers and update scheduling quanta */
+void timer_execute_timers(running_machine *machine);
+
+/* add a scheduling quantum; the smallest active one is the one that is in use */
+void timer_add_scheduling_quantum(running_machine *machine, attoseconds_t quantum, attotime duration);
+
+/* control the minimum useful quantum (used by cpuexec only) */
+void timer_set_minimum_quantum(running_machine *machine, attoseconds_t quantum);
 
 
 
 /* ----- save/restore helpers ----- */
 
 /* count the number of anonymous (non-saveable) timers */
-int timer_count_anonymous(void);
+int timer_count_anonymous(running_machine *machine);
 
 
 
 /* ----- core timer management ----- */
 
 /* allocate a permament timer that isn't primed yet */
-emu_timer *_timer_alloc_internal(timer_fired_func callback, void *param, const char *file, int line, const char *func);
+emu_timer *_timer_alloc_internal(running_machine *machine, timer_fired_func callback, void *param, const char *file, int line, const char *func);
 
 /* adjust the time when this timer will fire and disable any periodic firings */
 void timer_adjust_oneshot(emu_timer *which, attotime duration, INT32 param);
@@ -205,10 +207,10 @@ void timer_device_adjust_periodic(const device_config *timer, attotime start_del
 /* ----- anonymous timer management ----- */
 
 /* allocate a one-shot timer, which calls the callback after the given duration */
-void _timer_set_internal(attotime druation, void *ptr, INT32 param, timer_fired_func callback, const char *file, int line, const char *func);
+void _timer_set_internal(running_machine *machine, attotime druation, void *ptr, INT32 param, timer_fired_func callback, const char *file, int line, const char *func);
 
 /* allocate a pulse timer, which repeatedly calls the callback using the given period */
-void _timer_pulse_internal(attotime period, void *ptr, INT32 param, timer_fired_func callback, const char *file, int line, const char *func);
+void _timer_pulse_internal(running_machine *machine, attotime period, void *ptr, INT32 param, timer_fired_func callback, const char *file, int line, const char *func);
 
 
 
@@ -255,7 +257,7 @@ attotime timer_timeleft(emu_timer *which);
 attotime timer_device_timeleft(const device_config *timer);
 
 /* return the current time */
-attotime timer_get_time(void);
+attotime timer_get_time(running_machine *machine);
 
 /* return the time when this timer started counting */
 attotime timer_starttime(emu_timer *which);

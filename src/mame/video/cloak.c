@@ -103,7 +103,7 @@ static void set_current_bitmap_videoram_pointer(void)
 
 WRITE8_HANDLER( cloak_clearbmp_w )
 {
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 	bitmap_videoram_selected = data & 0x01;
 	set_current_bitmap_videoram_pointer();
 
@@ -126,7 +126,7 @@ static void adjust_xy(int offset)
 
 READ8_HANDLER( graph_processor_r )
 {
-	UINT8 ret = current_bitmap_videoram_accessed[(bitmap_videoram_address_y << 8) | bitmap_videoram_address_x];
+	UINT8 ret = current_bitmap_videoram_displayed[(bitmap_videoram_address_y << 8) | bitmap_videoram_address_x];
 
 	adjust_xy(offset);
 
@@ -155,7 +155,7 @@ WRITE8_HANDLER( cloak_videoram_w )
 
 WRITE8_HANDLER( cloak_flipscreen_w )
 {
-	flip_screen_set(data & 0x80);
+	flip_screen_set(space->machine, data & 0x80);
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
@@ -172,7 +172,7 @@ static STATE_POSTLOAD( cloak_postload )
 
 VIDEO_START( cloak )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 
 	bitmap_videoram1 = auto_malloc(256*256);
 	bitmap_videoram2 = auto_malloc(256*256);
@@ -180,12 +180,12 @@ VIDEO_START( cloak )
 
 	set_current_bitmap_videoram_pointer();
 
-	state_save_register_global(bitmap_videoram_address_x);
-	state_save_register_global(bitmap_videoram_address_y);
-	state_save_register_global(bitmap_videoram_selected);
-	state_save_register_global_pointer(bitmap_videoram1, 256*256);
-	state_save_register_global_pointer(bitmap_videoram2, 256*256);
-	state_save_register_global_pointer(palette_ram, NUM_PENS);
+	state_save_register_global(machine, bitmap_videoram_address_x);
+	state_save_register_global(machine, bitmap_videoram_address_y);
+	state_save_register_global(machine, bitmap_videoram_selected);
+	state_save_register_global_pointer(machine, bitmap_videoram1, 256*256);
+	state_save_register_global_pointer(machine, bitmap_videoram2, 256*256);
+	state_save_register_global_pointer(machine, palette_ram, NUM_PENS);
 	state_save_register_postload(machine, cloak_postload, NULL);
 }
 
@@ -215,7 +215,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int sx = spriteram[offs + 192];
 		int sy = 240 - spriteram[offs];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx -= 9;
 			sy = 240 - sy;

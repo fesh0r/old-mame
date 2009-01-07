@@ -15,7 +15,7 @@ WRITE16_HANDLER( dynduke_paletteram_w )
 
 	COMBINE_DATA(&paletteram16[offset]);
 	color=paletteram16[offset];
-	palette_set_color_rgb(machine,offset,pal4bit(color >> 0),pal4bit(color >> 4),pal4bit(color >> 8));
+	palette_set_color_rgb(space->machine,offset,pal4bit(color >> 0),pal4bit(color >> 4),pal4bit(color >> 8));
 }
 
 WRITE16_HANDLER( dynduke_background_w )
@@ -80,9 +80,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( dynduke )
 {
-	bg_layer = tilemap_create(get_bg_tile_info,tilemap_scan_cols,      16,16,32,32);
-	fg_layer = tilemap_create(get_fg_tile_info,tilemap_scan_cols,16,16,32,32);
-	tx_layer = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	bg_layer = tilemap_create(machine, get_bg_tile_info,tilemap_scan_cols,      16,16,32,32);
+	fg_layer = tilemap_create(machine, get_fg_tile_info,tilemap_scan_cols,16,16,32,32);
+	tx_layer = tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(fg_layer,15);
 	tilemap_set_transparent_pen(tx_layer,15);
@@ -127,7 +127,7 @@ WRITE16_HANDLER( dynduke_control_w )
 		if (data&0x4) txt_enable = 0; else txt_enable = 1;
 		if (data&0x8) sprite_enable=0; else sprite_enable=1;
 
-		flip_screen_set(data & 0x40);
+		flip_screen_set(space->machine, data & 0x40);
 	}
 }
 
@@ -154,7 +154,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		sprite = buffered_spriteram16[offs+1];
 		sprite &= 0x3fff;
 
-		if (flip_screen_get()) {
+		if (flip_screen_get(machine)) {
 			x=240-x;
 			y=240-y;
 			if (fx) fx=0; else fx=1;
@@ -178,7 +178,7 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, const re
 	/* if we're disabled, don't draw */
 	if (!back_enable)
 	{
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(machine));
 		return;
 	}
 
@@ -244,5 +244,7 @@ VIDEO_UPDATE( dynduke )
 
 VIDEO_EOF( dynduke )
 {
-	buffer_spriteram16_w(machine,0,0,0xffff); // Could be a memory location instead
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram16_w(space,0,0,0xffff); // Could be a memory location instead
 }

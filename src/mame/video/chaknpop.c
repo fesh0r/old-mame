@@ -84,7 +84,7 @@ static void set_vram_bank(running_machine *machine)
 	else
 		bankaddress = 0x10000;
 
-	memory_set_bankptr(STATIC_BANK1, &RAM[bankaddress]);	 /* Select 2 banks of 16k */
+	memory_set_bankptr(machine, STATIC_BANK1, &RAM[bankaddress]);	 /* Select 2 banks of 16k */
 }
 
 
@@ -106,7 +106,7 @@ WRITE8_HANDLER( chaknpop_gfxmode_w )
 		int all_dirty = 0;
 
 		gfxmode = data;
-		set_vram_bank(machine);
+		set_vram_bank(space->machine);
 
 		if (flip_x != (gfxmode & GFX_FLIP_X))
 		{
@@ -184,7 +184,7 @@ VIDEO_START( chaknpop )
 	UINT8 *RAM = memory_region(machine, "main");
 
 	/*                          info                       offset             type             w   h  col row */
-	tx_tilemap = tilemap_create(chaknpop_get_tx_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
+	tx_tilemap = tilemap_create(machine, chaknpop_get_tx_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
 
 	vram1 = &RAM[0x10000];
 	vram2 = &RAM[0x12000];
@@ -194,13 +194,13 @@ VIDEO_START( chaknpop )
 	set_vram_bank(machine);
 	tx_tilemap_mark_all_dirty();
 
-	state_save_register_global(gfxmode);
-	state_save_register_global_pointer(vram1, 0x2000);
-	state_save_register_global_pointer(vram2, 0x2000);
-	state_save_register_global_pointer(vram3, 0x2000);
-	state_save_register_global_pointer(vram4, 0x2000);
-	state_save_register_global(flip_x);
-	state_save_register_global(flip_y);
+	state_save_register_global(machine, gfxmode);
+	state_save_register_global_pointer(machine, vram1, 0x2000);
+	state_save_register_global_pointer(machine, vram2, 0x2000);
+	state_save_register_global_pointer(machine, vram3, 0x2000);
+	state_save_register_global_pointer(machine, vram4, 0x2000);
+	state_save_register_global(machine, flip_x);
+	state_save_register_global(machine, flip_y);
 
 	state_save_register_postload(machine, chaknpop_postload, NULL);
 }

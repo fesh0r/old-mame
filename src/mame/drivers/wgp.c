@@ -394,6 +394,7 @@ Stephh's notes (based on the game M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "taitoipt.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
@@ -437,7 +438,7 @@ static void parse_control(running_machine *machine)
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
        if cpu B is disabled !! */
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
 
 	/* bit 1 is "vibration" acc. to test mode */
 }
@@ -448,9 +449,9 @@ static WRITE16_HANDLER( cpua_ctrl_w )	/* assumes Z80 sandwiched between 68Ks */
 		data = data >> 8;	/* for Wgp */
 	cpua_ctrl = data;
 
-	parse_control(machine);
+	parse_control(space->machine);
 
-	logerror("CPU #0 PC %06x: write %04x to cpu control\n",activecpu_get_pc(),data);
+	logerror("CPU #0 PC %06x: write %04x to cpu control\n",cpu_get_pc(space->cpu),data);
 }
 
 
@@ -463,20 +464,20 @@ static WRITE16_HANDLER( cpua_ctrl_w )	/* assumes Z80 sandwiched between 68Ks */
 #ifdef UNUSED_FUNCTION
 static TIMER_CALLBACK( wgp_interrupt4 )
 {
-    cpunum_set_input_line(machine, 0,4,HOLD_LINE);
+    cpu_set_input_line(machine->cpu[0],4,HOLD_LINE);
 }
 #endif
 
 static TIMER_CALLBACK( wgp_interrupt6 )
 {
-	cpunum_set_input_line(machine, 0,6,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],6,HOLD_LINE);
 }
 
 /* 68000 B */
 
 static TIMER_CALLBACK( wgp_cpub_interrupt6 )
 {
-	cpunum_set_input_line(machine, 2,6,HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
+	cpu_set_input_line(machine->cpu[2],6,HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
 }
 
 
@@ -488,8 +489,8 @@ static TIMER_CALLBACK( wgp_cpub_interrupt6 )
 
 static INTERRUPT_GEN( wgp_cpub_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL, 0, wgp_cpub_interrupt6);
-	cpunum_set_input_line(machine, 2, 4, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,200000-500), NULL, 0, wgp_cpub_interrupt6);
+	cpu_set_input_line(device, 4, HOLD_LINE);
 }
 
 
@@ -499,7 +500,7 @@ static INTERRUPT_GEN( wgp_cpub_interrupt )
 
 static READ16_HANDLER( lan_status_r )
 {
-	logerror("CPU #2 PC %06x: warning - read lan status\n",activecpu_get_pc());
+	logerror("CPU #2 PC %06x: warning - read lan status\n",cpu_get_pc(space->cpu));
 
 	return  (0x4 << 8);	/* CPUB expects this in code at $104d0 (Wgp) */
 }
@@ -526,7 +527,7 @@ static WRITE16_HANDLER( rotate_port_w )
 	{
 		case 0x00:
 		{
-//logerror("CPU #0 PC %06x: warning - port %04x write %04x\n",activecpu_get_pc(),port_sel,data);
+//logerror("CPU #0 PC %06x: warning - port %04x write %04x\n",cpu_get_pc(space->cpu),port_sel,data);
 
 			wgp_rotate_ctrl[port_sel] = data;
 			return;
@@ -547,12 +548,12 @@ static WRITE16_HANDLER( rotate_port_w )
 static READ16_HANDLER( wgp_adinput_r )
 {
 	int steer = 0x40;
-	int fake = input_port_read_safe(machine, FAKE_PORT_TAG, 0x00);
+	int fake = input_port_read_safe(space->machine, FAKE_PORT_TAG, 0x00);
 
 	if (!(fake & 0x10))	/* Analogue steer (the real control method) */
 	{
 		/* Reduce span to 0x80 */
-		steer = (input_port_read_safe(machine, STEER_PORT_TAG, 0x00) * 0x80) / 0x100;
+		steer = (input_port_read_safe(space->machine, STEER_PORT_TAG, 0x00) * 0x80) / 0x100;
 	}
 	else	/* Digital steer */
 	{
@@ -597,10 +598,10 @@ static READ16_HANDLER( wgp_adinput_r )
 		}
 
 		case 0x05:
-			return input_port_read_safe(machine, UNKNOWN_PORT_TAG, 0x00);	/* unknown */
+			return input_port_read_safe(space->machine, UNKNOWN_PORT_TAG, 0x00);	/* unknown */
 	}
 
-logerror("CPU #0 PC %06x: warning - read unmapped a/d input offset %06x\n",activecpu_get_pc(),offset);
+logerror("CPU #0 PC %06x: warning - read unmapped a/d input offset %06x\n",cpu_get_pc(space->cpu),offset);
 
 	return 0xff;
 }
@@ -611,7 +612,7 @@ static WRITE16_HANDLER( wgp_adinput_w )
        hardware has got the next a/d conversion ready. We set a token
        delay of 10000 cycles although our inputs are always ready. */
 
-	timer_set(ATTOTIME_IN_CYCLES(10000,0), NULL, 0, wgp_interrupt6);
+	timer_set(space->machine, cpu_clocks_to_attotime(space->cpu,10000), NULL, 0, wgp_interrupt6);
 }
 
 
@@ -623,27 +624,27 @@ static INT32 banknum;
 
 static void reset_sound_region(running_machine *machine)	/* assumes Z80 sandwiched between the 68Ks */
 {
-	memory_set_bankptr( 10, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr(machine,  10, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	banknum = (data - 1) & 7;
-	reset_sound_region(machine);
+	reset_sound_region(space->machine);
 }
 
 static WRITE16_HANDLER( wgp_sound_w )
 {
 	if (offset == 0)
-		taitosound_port_w (machine, 0, data & 0xff);
+		taitosound_port_w (space, 0, data & 0xff);
 	else if (offset == 1)
-		taitosound_comm_w (machine, 0, data & 0xff);
+		taitosound_comm_w (space, 0, data & 0xff);
 }
 
 static READ16_HANDLER( wgp_sound_r )
 {
 	if (offset == 1)
-		return ((taitosound_comm_r (machine, 0) & 0xff));
+		return ((taitosound_comm_r (space, 0) & 0xff));
 	else return 0;
 }
 
@@ -915,7 +916,7 @@ GFXDECODE_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(running_machine *machine, int irq)	// assumes Z80 sandwiched between 68Ks
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -947,8 +948,8 @@ static MACHINE_RESET( wgp )
 
 static MACHINE_START( wgp )
 {
-	state_save_register_global(cpua_ctrl);
-	state_save_register_global(banknum);
+	state_save_register_global(machine, cpua_ctrl);
+	state_save_register_global(machine, banknum);
 	state_save_register_postload(machine, wgp_postload, NULL);
 }
 
@@ -969,7 +970,7 @@ static MACHINE_DRIVER_START( wgp )
 	MDRV_MACHINE_START(wgp)
 	MDRV_MACHINE_RESET(wgp)
 
-	MDRV_INTERLEAVE(250)
+	MDRV_QUANTUM_TIME(HZ(30000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1000,7 +1001,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( wgp2 )
 	MDRV_IMPORT_FROM(wgp)
 
-	MDRV_INTERLEAVE(200)
+	MDRV_QUANTUM_TIME(HZ(12000))
 	/* video hardware */
 	MDRV_VIDEO_START(wgp2)
 MACHINE_DRIVER_END

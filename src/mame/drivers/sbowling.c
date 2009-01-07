@@ -38,6 +38,7 @@ PROMs : NEC B406 (1kx4) x2
 ***********************************************************/
 
 #include "driver.h"
+#include "cpu/i8085/i8085.h"
 #include "deprecat.h"
 #include "cpu/mcs48/mcs48.h"
 #include "video/resnet.h"
@@ -60,9 +61,9 @@ static TILE_GET_INFO( get_sb_tile_info )
 	SET_TILE_INFO(0, tileno, 0, 0);
 }
 
-static void plot_pixel_sbw(int x, int y, int col)
+static void plot_pixel_sbw(int x, int y, int col, int flip)
 {
-	if (flip_screen_get())
+	if (flip)
 	{
 		y = 255-y;
 		x = 247-x;
@@ -72,6 +73,7 @@ static void plot_pixel_sbw(int x, int y, int col)
 
 static WRITE8_HANDLER( sbw_videoram_w )
 {
+	int flip = flip_screen_get(space->machine);
 	int x,y,i,v1,v2;
 
 	videoram[offset] = data;
@@ -86,7 +88,7 @@ static WRITE8_HANDLER( sbw_videoram_w )
 
 	for(i = 0; i < 8; i++)
 	{
-		plot_pixel_sbw(x++, y, color_prom_address | ( ((v1&1)*0x20) | ((v2&1)*0x40) ) );
+		plot_pixel_sbw(x++, y, color_prom_address | ( ((v1&1)*0x20) | ((v2&1)*0x40) ), flip);
 		v1 >>= 1;
 		v2 >>= 1;
 	}
@@ -94,7 +96,7 @@ static WRITE8_HANDLER( sbw_videoram_w )
 
 static VIDEO_UPDATE(sbowling)
 {
-	fillbitmap(bitmap,0x18,cliprect);
+	bitmap_fill(bitmap,cliprect,0x18);
 	tilemap_draw(bitmap,cliprect,sb_tilemap,0,0);
 	copybitmap_trans(bitmap,tmpbitmap,0,0,0,0,cliprect, color_prom_address);
 	return 0;
@@ -103,7 +105,7 @@ static VIDEO_UPDATE(sbowling)
 static VIDEO_START(sbowling)
 {
 	tmpbitmap = auto_bitmap_alloc(32*8,32*8,video_screen_get_format(machine->primary_screen));
-	sb_tilemap = tilemap_create(get_sb_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	sb_tilemap = tilemap_create(machine, get_sb_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 }
 
 static WRITE8_HANDLER( pix_shift_w )
@@ -133,9 +135,9 @@ static READ8_HANDLER( pix_data_r )
 
 static INTERRUPT_GEN( sbw_interrupt )
 {
-	int vector = video_screen_get_vblank(machine->primary_screen) ? 0xcf : 0xd7;	/* RST 08h/10h */
+	int vector = video_screen_get_vblank(device->machine->primary_screen) ? 0xcf : 0xd7;	/* RST 08h/10h */
 
-	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, vector);
+	cpu_set_input_line_and_vector(device, 0, HOLD_LINE, vector);
 }
 
 static WRITE8_HANDLER (system_w)
@@ -147,13 +149,13 @@ static WRITE8_HANDLER (system_w)
         -----x-- 1 ?
         ----x--- flip screen/controls
     */
-	flip_screen_set(data&1);
+	flip_screen_set(space->machine, data&1);
 
 	if((sbw_system^data)&1)
 	{
 		int offs;
 		for (offs = 0;offs < videoram_size; offs++)
-			sbw_videoram_w(machine, offs, videoram[offs]);
+			sbw_videoram_w(space, offs, videoram[offs]);
 	}
 	sbw_system = data;
 }
@@ -177,9 +179,9 @@ static WRITE8_HANDLER(graph_control_w)
 static READ8_HANDLER (controls_r)
 {
 	if(sbw_system & 2)
-		return input_port_read(machine, "TRACKY");
+		return input_port_read(space->machine, "TRACKY");
 	else
-		return input_port_read(machine, "TRACKX");
+		return input_port_read(space->machine, "TRACKX");
 }
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )

@@ -3,18 +3,11 @@
 // layer priority register not fully understood
 
 #include "driver.h"
+#include "includes/drgnmst.h"
 
-extern UINT16 *drgnmst_vidregs;
-
-extern UINT16 *drgnmst_fg_videoram;
 static tilemap *drgnmst_fg_tilemap;
-extern UINT16 *drgnmst_bg_videoram;
 static tilemap *drgnmst_bg_tilemap;
-extern UINT16 *drgnmst_md_videoram;
 static tilemap *drgnmst_md_tilemap;
-
-extern UINT16 *drgnmst_rowscrollram;
-extern UINT16 *drgnmst_vidregs2;
 
 
 static TILE_GET_INFO( get_drgnmst_fg_tile_info )
@@ -133,13 +126,13 @@ static TILEMAP_MAPPER( drgnmst_bg_tilemap_scan_cols )
 
 VIDEO_START(drgnmst)
 {
-	drgnmst_fg_tilemap = tilemap_create(get_drgnmst_fg_tile_info,drgnmst_fg_tilemap_scan_cols,      8, 8, 64,64);
+	drgnmst_fg_tilemap = tilemap_create(machine, get_drgnmst_fg_tile_info,drgnmst_fg_tilemap_scan_cols,      8, 8, 64,64);
 	tilemap_set_transparent_pen(drgnmst_fg_tilemap,15);
 
-	drgnmst_md_tilemap = tilemap_create(get_drgnmst_md_tile_info,drgnmst_md_tilemap_scan_cols,      16, 16, 64,64);
+	drgnmst_md_tilemap = tilemap_create(machine, get_drgnmst_md_tile_info,drgnmst_md_tilemap_scan_cols,      16, 16, 64,64);
 	tilemap_set_transparent_pen(drgnmst_md_tilemap,15);
 
-	drgnmst_bg_tilemap = tilemap_create(get_drgnmst_bg_tile_info,drgnmst_bg_tilemap_scan_cols,      32, 32, 64,64);
+	drgnmst_bg_tilemap = tilemap_create(machine, get_drgnmst_bg_tile_info,drgnmst_bg_tilemap_scan_cols,      32, 32, 64,64);
 	tilemap_set_transparent_pen(drgnmst_bg_tilemap,15);
 
 	// do the other tilemaps have rowscroll too? probably not ..

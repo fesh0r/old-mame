@@ -53,15 +53,15 @@ VIDEO_START( btoads )
 	vram_fg_draw = (UINT8 *)btoads_vram_fg0;
 	vram_fg_display = (UINT8 *)btoads_vram_fg1;
 
-	state_save_register_global(xscroll0);
-	state_save_register_global(xscroll1);
-	state_save_register_global(yscroll0);
-	state_save_register_global(yscroll1);
-	state_save_register_global(screen_control);
+	state_save_register_global(machine, xscroll0);
+	state_save_register_global(machine, xscroll1);
+	state_save_register_global(machine, yscroll0);
+	state_save_register_global(machine, yscroll1);
+	state_save_register_global(machine, screen_control);
 
-	state_save_register_global(sprite_source_offs);
-	state_save_register_global(sprite_dest_offs);
-	state_save_register_global(misc_control);
+	state_save_register_global(machine, sprite_source_offs);
+	state_save_register_global(machine, sprite_dest_offs);
+	state_save_register_global(machine, misc_control);
 }
 
 
@@ -77,7 +77,7 @@ WRITE16_HANDLER( btoads_misc_control_w )
 	COMBINE_DATA(&misc_control);
 
 	/* bit 3 controls sound reset line */
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (misc_control & 8) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (misc_control & 8) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -86,9 +86,9 @@ WRITE16_HANDLER( btoads_display_control_w )
 	if (ACCESSING_BITS_8_15)
 	{
 		/* allow multiple changes during display */
-		int scanline = video_screen_get_vpos(machine->primary_screen);
+		int scanline = video_screen_get_vpos(space->machine->primary_screen);
 		if (scanline > 0)
-			video_screen_update_partial(machine->primary_screen, scanline - 1);
+			video_screen_update_partial(space->machine->primary_screen, scanline - 1);
 
 		/* bit 15 controls which page is rendered and which page is displayed */
 		if (data & 0x8000)
@@ -118,7 +118,7 @@ WRITE16_HANDLER( btoads_display_control_w )
 WRITE16_HANDLER( btoads_scroll0_w )
 {
 	/* allow multiple changes during display */
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 
 	/* upper bits are Y scroll, lower bits are X scroll */
 	if (ACCESSING_BITS_8_15)
@@ -131,7 +131,7 @@ WRITE16_HANDLER( btoads_scroll0_w )
 WRITE16_HANDLER( btoads_scroll1_w )
 {
 	/* allow multiple changes during display */
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 
 	/* upper bits are Y scroll, lower bits are X scroll */
 	if (ACCESSING_BITS_8_15)
@@ -150,13 +150,13 @@ WRITE16_HANDLER( btoads_scroll1_w )
 
 WRITE16_HANDLER( btoads_paletteram_w )
 {
-	tlc34076_lsb_w(machine, offset/2, data, mem_mask);
+	tlc34076_lsb_w(space, offset/2, data, mem_mask);
 }
 
 
 READ16_HANDLER( btoads_paletteram_r )
 {
-	return tlc34076_lsb_r(machine, offset/2, mem_mask);
+	return tlc34076_lsb_r(space, offset/2, mem_mask);
 }
 
 
@@ -284,7 +284,7 @@ static void render_sprite_row(UINT16 *sprite_source, UINT32 address)
  *
  *************************************/
 
-void btoads_to_shiftreg(UINT32 address, UINT16 *shiftreg)
+void btoads_to_shiftreg(const address_space *space, UINT32 address, UINT16 *shiftreg)
 {
 	address &= ~0x40000000;
 
@@ -307,11 +307,11 @@ void btoads_to_shiftreg(UINT32 address, UINT16 *shiftreg)
 	}
 
 	else
-		logerror("%08X:btoads_to_shiftreg(%08X)\n", activecpu_get_pc(), address);
+		logerror("%s:btoads_to_shiftreg(%08X)\n", cpuexec_describe_context(space->machine), address);
 }
 
 
-void btoads_from_shiftreg(UINT32 address, UINT16 *shiftreg)
+void btoads_from_shiftreg(const address_space *space, UINT32 address, UINT16 *shiftreg)
 {
 	address &= ~0x40000000;
 
@@ -332,7 +332,7 @@ void btoads_from_shiftreg(UINT32 address, UINT16 *shiftreg)
 		render_sprite_row(shiftreg, address);
 
 	else
-		logerror("%08X:btoads_from_shiftreg(%08X)\n", activecpu_get_pc(), address);
+		logerror("%s:btoads_from_shiftreg(%08X)\n", cpuexec_describe_context(space->machine), address);
 }
 
 

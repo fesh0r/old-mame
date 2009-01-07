@@ -95,6 +95,7 @@ p2 ink doesn't always light up in test mode
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 
 static bitmap_t *tile, *obj1, *obj2;
 static tilemap *tx_tilemap;
@@ -133,7 +134,7 @@ static READ8_HANDLER( marinedt_port1_r )
 //might need to be reversed for cocktail stuff
 
 	/* x/y multiplexed */
-	return input_port_read(machine, ((marinedt_pf & 0x08)>>3) ? "TRACKY" : "TRACKX");
+	return input_port_read(space->machine, ((marinedt_pf & 0x08)>>3) ? "TRACKY" : "TRACKX");
 }
 
 static READ8_HANDLER( marinedt_coll_r )
@@ -157,7 +158,7 @@ static READ8_HANDLER( marinedt_obj1_x_r )
 	//xxxx---- unknown
 	//----xxxx x pos in tile ram
 
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 if(RAM[0x430e]) --cx; else ++cx;
 //figure out why inc/dec based on 430e?
 	return cx | (cxh<<4);
@@ -265,7 +266,7 @@ static WRITE8_HANDLER( marinedt_pf_w )
 
 //if(data&0xf0)
 //  logerror("pf:%02x %d\n",marinedt_pf);
-//logerror("pd:%02x %d\n",marinedt_pd, video_screen_get_frame_number(machine->primary_screen));
+//logerror("pd:%02x %d\n",marinedt_pd, video_screen_get_frame_number(space->machine->primary_screen));
 
 }
 
@@ -441,7 +442,7 @@ static TILE_GET_INFO( get_tile_info )
 
 static VIDEO_START( marinedt )
 {
-	tx_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, 8, 8,32,32);
+	tx_tilemap = tilemap_create(machine, get_tile_info, tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap, 0);
 	tilemap_set_scrolldx(tx_tilemap, 0, 4*8);
@@ -470,10 +471,10 @@ static VIDEO_UPDATE( marinedt )
 {
 	int sx, sy;
 
-	fillbitmap(tile, 0, NULL);
+	bitmap_fill(tile, NULL, 0);
 	tilemap_draw(tile, cliprect, tx_tilemap, 0, 0);
 
-	fillbitmap(obj1, 0, NULL);
+	bitmap_fill(obj1, NULL, 0);
 	drawgfx(obj1, screen->machine->gfx[1],
 			OBJ_CODE(marinedt_obj1_a),
 			OBJ_COLOR(marinedt_obj1_a),
@@ -481,7 +482,7 @@ static VIDEO_UPDATE( marinedt )
 			0, 0,
 			NULL, TRANSPARENCY_PEN, 0);
 
-	fillbitmap(obj2, 0, NULL);
+	bitmap_fill(obj2, NULL, 0);
 	drawgfx(obj2, screen->machine->gfx[2],
 			OBJ_CODE(marinedt_obj2_a),
 			OBJ_COLOR(marinedt_obj2_a),
@@ -489,7 +490,7 @@ static VIDEO_UPDATE( marinedt )
 			0, 0,
 			NULL, TRANSPARENCY_PEN, 0);
 
-	fillbitmap(bitmap, 0, NULL);
+	bitmap_fill(bitmap, NULL, 0);
 
 	if (marinedt_pd & 0x02)
 		copybitmap_trans(bitmap, obj2, 0, 0, OBJ_X(marinedt_obj2_x), OBJ_Y(marinedt_obj2_y), cliprect, 0);

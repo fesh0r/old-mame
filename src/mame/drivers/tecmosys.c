@@ -182,9 +182,10 @@ ae500w07.ad1 - M6295 Samples (23c4001)
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
 #include "tecmosys.h"
-#include "cpu/m68000/m68k.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 #include "sound/262intf.h"
 #include "sound/ymz280b.h"
@@ -288,7 +289,7 @@ static READ16_HANDLER( sound_r )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		return soundlatch2_r( machine,  0 );
+		return soundlatch2_r( space,  0 );
 	}
 
 	return 0;
@@ -298,8 +299,8 @@ static WRITE16_HANDLER( sound_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,0x00,data & 0xff);
-		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+		soundlatch_w(space,0x00,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 	}
 }
 
@@ -330,12 +331,12 @@ static WRITE16_HANDLER( unk880000_w )
 			break;
 
 		case 0x22/2:
-			watchdog_reset( machine );
-			//logerror( "watchdog_w( %06x, %04x ) @ %06x\n", (offset * 2)+0x880000, data, activecpu_get_pc() );
+			watchdog_reset( space->machine );
+			//logerror( "watchdog_w( %06x, %04x ) @ %06x\n", (offset * 2)+0x880000, data, cpu_get_pc(space->cpu) );
 			break;
 
 		default:
-			logerror( "unk880000_w( %06x, %04x ) @ %06x\n", (offset * 2)+0x880000, data, activecpu_get_pc() );
+			logerror( "unk880000_w( %06x, %04x ) @ %06x\n", (offset * 2)+0x880000, data, cpu_get_pc(space->cpu) );
 			break;
 	}
 }
@@ -344,14 +345,14 @@ static READ16_HANDLER( unk880000_r )
 {
 	//UINT16 ret = tecmosys_880000regs[offset];
 
-	logerror( "unk880000_r( %06x ) @ %06x = %04x\n", (offset * 2 ) +0x880000, activecpu_get_pc(), tecmosys_880000regs[offset] );
+	logerror( "unk880000_r( %06x ) @ %06x = %04x\n", (offset * 2 ) +0x880000, cpu_get_pc(space->cpu), tecmosys_880000regs[offset] );
 
 	/* this code allows scroll regs to be updated, but tkdensho at least resets perodically */
 
 	switch( offset )
 	{
 		case 0:
-			if ( video_screen_get_vpos(machine->primary_screen) >= 240) return 0;
+			if ( video_screen_get_vpos(space->machine->primary_screen) >= 240) return 0;
 			else return 1;
 
 		default:
@@ -407,7 +408,7 @@ INLINE void set_color_555(running_machine *machine, pen_t color, int rshift, int
 static WRITE16_HANDLER( tilemap_paletteram16_xGGGGGRRRRRBBBBB_word_w )
 {
 	COMBINE_DATA(&tilemap_paletteram16[offset]);
-	set_color_555(machine, offset+0x4000, 5, 10, 0, tilemap_paletteram16[offset]);
+	set_color_555(space->machine, offset+0x4000, 5, 10, 0, tilemap_paletteram16[offset]);
 }
 
 static WRITE16_HANDLER( bg0_tilemap_lineram_w )
@@ -539,14 +540,14 @@ GFXDECODE_END
 
 static WRITE8_HANDLER( deroon_bankswitch_w )
 {
-	memory_set_bankptr( 1, memory_region(machine, "audio") + ((data-2) & 0x0f) * 0x4000 + 0x10000 );
+	memory_set_bankptr(space->machine,  1, memory_region(space->machine, "audio") + ((data-2) & 0x0f) * 0x4000 + 0x10000 );
 }
 
 static WRITE8_HANDLER( tecmosys_oki_bank_w )
 {
 	UINT8 upperbank = (data & 0x30) >> 4;
 	UINT8 lowerbank = (data & 0x03) >> 0;
-	UINT8* region = memory_region(machine, "oki");
+	UINT8* region = memory_region(space->machine, "oki");
 
 	memcpy( region+0x00000, region+0x80000 + lowerbank * 0x20000, 0x20000  );
 	memcpy( region+0x20000, region+0x80000 + upperbank * 0x20000, 0x20000  );
@@ -582,25 +583,25 @@ ADDRESS_MAP_END
 static VIDEO_START(deroon)
 {
 	sprite_bitmap = auto_bitmap_alloc(320,240,BITMAP_FORMAT_INDEXED16);
-	fillbitmap(sprite_bitmap, 0x4000, NULL);
+	bitmap_fill(sprite_bitmap, NULL, 0x4000);
 
 	tmp_tilemap_composebitmap = auto_bitmap_alloc(320,240,BITMAP_FORMAT_INDEXED16);
 	tmp_tilemap_renderbitmap = auto_bitmap_alloc(320,240,BITMAP_FORMAT_INDEXED16);
 
-	fillbitmap(tmp_tilemap_composebitmap, 0x0000, NULL);
-	fillbitmap(tmp_tilemap_renderbitmap, 0x0000, NULL);
+	bitmap_fill(tmp_tilemap_composebitmap, NULL, 0x0000);
+	bitmap_fill(tmp_tilemap_renderbitmap, NULL, 0x0000);
 
 
-	txt_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32*2,32*2);
+	txt_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_rows,8,8,32*2,32*2);
 	tilemap_set_transparent_pen(txt_tilemap,0);
 
-	bg0tilemap = tilemap_create(get_bg0tile_info,tilemap_scan_rows,16,16,32,32);
+	bg0tilemap = tilemap_create(machine, get_bg0tile_info,tilemap_scan_rows,16,16,32,32);
 	tilemap_set_transparent_pen(bg0tilemap,0);
 
-	bg1tilemap = tilemap_create(get_bg1tile_info,tilemap_scan_rows,16,16,32,32);
+	bg1tilemap = tilemap_create(machine, get_bg1tile_info,tilemap_scan_rows,16,16,32,32);
 	tilemap_set_transparent_pen(bg1tilemap,0);
 
-	bg2tilemap = tilemap_create(get_bg2tile_info,tilemap_scan_rows,16,16,32,32);
+	bg2tilemap = tilemap_create(machine, get_bg2tile_info,tilemap_scan_rows,16,16,32,32);
 	tilemap_set_transparent_pen(bg2tilemap,0);
 
 }
@@ -611,7 +612,7 @@ static void tecmosys_render_sprites_to_bitmap(running_machine *machine, bitmap_t
 	int i;
 
 	/* render sprites (with priority information) to temp bitmap */
-	fillbitmap(sprite_bitmap, 0x0000, NULL);
+	bitmap_fill(sprite_bitmap, NULL, 0x0000);
 	/* there are multiple spritelists in here, to allow for buffering */
 	for (i=(tecmosys_spritelist*0x4000)/2;i<((tecmosys_spritelist+1)*0x4000)/2;i+=8)
 	{
@@ -795,7 +796,7 @@ static void tecmosys_do_final_mix(running_machine *machine, bitmap_t* bitmap)
 static VIDEO_UPDATE(deroon)
 {
 
-	fillbitmap(bitmap,screen->machine->pens[0x4000],cliprect);
+	bitmap_fill(bitmap,cliprect,screen->machine->pens[0x4000]);
 
 
 	tilemap_set_scrolly( bg0tilemap, 0, tecmosys_c80000regs[1]+16);
@@ -807,21 +808,21 @@ static VIDEO_UPDATE(deroon)
 	tilemap_set_scrolly( bg2tilemap, 0, tecmosys_b00000regs[1]+17);
 	tilemap_set_scrollx( bg2tilemap, 0, tecmosys_b00000regs[0]+106);
 
-	fillbitmap(tmp_tilemap_composebitmap,0,cliprect);
+	bitmap_fill(tmp_tilemap_composebitmap,cliprect,0);
 
-	fillbitmap(tmp_tilemap_renderbitmap,0,cliprect);
+	bitmap_fill(tmp_tilemap_renderbitmap,cliprect,0);
 	tilemap_draw(tmp_tilemap_renderbitmap,cliprect,bg0tilemap,0,0);
 	tecmosys_tilemap_copy_to_compose(0x0000);
 
-	fillbitmap(tmp_tilemap_renderbitmap,0,cliprect);
+	bitmap_fill(tmp_tilemap_renderbitmap,cliprect,0);
 	tilemap_draw(tmp_tilemap_renderbitmap,cliprect,bg1tilemap,0,0);
 	tecmosys_tilemap_copy_to_compose(0x4000);
 
-	fillbitmap(tmp_tilemap_renderbitmap,0,cliprect);
+	bitmap_fill(tmp_tilemap_renderbitmap,cliprect,0);
 	tilemap_draw(tmp_tilemap_renderbitmap,cliprect,bg2tilemap,0,0);
 	tecmosys_tilemap_copy_to_compose(0x8000);
 
-	fillbitmap(tmp_tilemap_renderbitmap,0,cliprect);
+	bitmap_fill(tmp_tilemap_renderbitmap,cliprect,0);
 	tilemap_draw(tmp_tilemap_renderbitmap,cliprect,txt_tilemap,0,0);
 	tecmosys_tilemap_copy_to_compose(0xc000);
 
@@ -891,7 +892,7 @@ static VIDEO_UPDATE(deroon)
 static void sound_irq(running_machine *machine, int irq)
 {
 	/* IRQ */
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ymf262_interface tecmosys_ymf262_interface =

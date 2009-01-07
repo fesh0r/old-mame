@@ -22,10 +22,9 @@
 /*====================================================================*/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/tms34010/tms34010.h"
-#include "cpu/tms34010/34010ops.h"
-#include "cpu/i8051/i8051.h"
+#include "cpu/mcs51/mcs51.h"
 #include "sound/2151intf.h"
 #include "sound/upd7759.h"
 #include "sound/dac.h"
@@ -106,22 +105,28 @@ enum{   RX=0,TX,STATUS,SYN1,SYN2,DLE,MODE1,MODE2,COMMAND
 
 
 /* Probably wrong and a bit crap */
-static int data_to_i8031(void)
+static int data_to_i8031(const device_config *device)
 {
-     mame_printf_debug("68k sent data: %x\n",M68681.TBB);
-     return M68681.TBB;
+	mame_printf_debug("68k sent data: %x\n",M68681.TBB);
+    M68681.SRB |=0x0400;                   // Data has been sent - TX ready for more.
+    // Write to sound board
+    if(M68681.IMR & 0x1000)
+    {
+    	cpu_set_input_line_and_vector(device->machine->cpu[0],3, HOLD_LINE, M68681.IVR);         // Generate an interrupt, if allowed.
+    }
+	return M68681.TBB;
 }
 
-static void data_from_i8031(int data)
+static void data_from_i8031(const device_config *device, int data)
 {
-     M68681.RBB  = data<<8;                         // Put into receive buffer.
-     M68681.SRB |= 0x0100;                          // Set Receiver B ready.
-     if(M68681.IMR & 0x1000)
-     {
-     	cpunum_set_input_line_and_vector(Machine, 0,3, HOLD_LINE, M68681.IVR);    // Generate a receiver interrupt.
-     	mame_printf_debug("INTERRUPT!!!\n");
-     }
-   mame_printf_debug("8031 sent data: %x\n",data);
+	M68681.RBB  = data<<8;                         // Put into receive buffer.
+	M68681.SRB |= 0x0100;                          // Set Receiver B ready.
+	if(M68681.IMR & 0x1000)
+	{
+		cpu_set_input_line_and_vector(device->machine->cpu[0],3, HOLD_LINE, M68681.IVR);    // Generate a receiver interrupt.
+		mame_printf_debug("INTERRUPT!!!\n");
+	}
+	mame_printf_debug("8031 sent data: %x\n",data);
 }
 
 
@@ -133,7 +138,7 @@ static void changecolor_BBBBBRRRRRGGGGGG(running_machine *machine,pen_t color,in
 static WRITE16_HANDLER( paletteram16_BBBBBRRRRRGGGGGG_word_w )
 {
 	COMBINE_DATA(&paletteram16[offset]);
-	changecolor_BBBBBRRRRRGGGGGG(machine,offset,paletteram16[offset]);
+	changecolor_BBBBBRRRRRGGGGGG(space->machine,offset,paletteram16[offset]);
 }
 
 
@@ -164,8 +169,8 @@ static void micro3d_scanline_update(const device_config *screen, bitmap_t *bitma
 
 static MACHINE_RESET( micro3d )
 {
-        i8051_set_serial_tx_callback(data_from_i8031);
-        i8051_set_serial_rx_callback(data_to_i8031);
+        i8051_set_serial_tx_callback(machine->cpu[2], data_from_i8031);
+        i8051_set_serial_rx_callback(machine->cpu[2], data_to_i8031);
         ti_uart[STATUS]=1;
         M68681.SRA=0x0500;
         M68681.SRB=0x0500;
@@ -205,14 +210,15 @@ static DRIVER_INIT( f15se )
 
 static DRIVER_INIT( f15se21 )
 {
+#if 1
        UINT16 *rom = (UINT16 *)memory_region(machine, "main");
-
        rom[0x2A8B3]=0x6006;                          //055166: 6606                     bne     5516e -> bra
        rom[0x2A8BF]=0x4E71;                          //05517E: 6704                     beq     55184 -> nop
        rom[0x28AD1]=0x4E71;                          //0515A2: 67F8                     beq     5159c -> nop
        rom[0x28A9E]=0x4E71;
        rom[0x28ABD]=0x4E71;
        rom[0x28C3B]=0x4E71;
+#endif
 }
 
 static INPUT_PORTS_START( stankatk )
@@ -390,14 +396,14 @@ static INPUT_PORTS_START( f15se )
 INPUT_PORTS_END
 
 
-static void tms_interrupt(int state)
+static void tms_interrupt(const device_config *device, int state)
 {
-   m68901_int_gen(Machine, GPIP4);
+   m68901_int_gen(device->machine, GPIP4);
 }
 
 static INTERRUPT_GEN( micro3d_vblank )
 {
-   m68901_int_gen(machine, GPIP7);
+   m68901_int_gen(device->machine, GPIP7);
 }
 
 
@@ -405,28 +411,28 @@ static INTERRUPT_GEN( micro3d_vblank )
 
 static TIMER_CALLBACK( timera_int )
 {
-//      timer_set(attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), ((m68901_base[0xf]>>8) & 0xff) * 200),0,timera_int);     // Set the timer again.
-        timer_set(ATTOTIME_IN_USEC(1000), NULL,0,timera_int);     // Set the timer again.
+//      timer_set(machine, attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), ((m68901_base[0xf]>>8) & 0xff) * 200),0,timera_int);     // Set the timer again.
+        timer_set(machine, ATTOTIME_IN_USEC(1000), NULL,0,timera_int);     // Set the timer again.
         m68901_int_gen(machine, TMRA);           // Fire an interrupt.
 }
 
 #ifdef UNUSED_FUNCTION
 static TIMER_CALLBACK( timerb_int )
 {
-        timer_set(attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), ((m68901_base[0x10]>>8) & 0xff) * 200),0,timera_int);
+        timer_set(machine, attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), ((m68901_base[0x10]>>8) & 0xff) * 200),0,timera_int);
         m68901_int_gen(machine, TMRB);           // Fire an interrupt.
 }
 
 static TIMER_CALLBACK( timerc_int )
 {
-        timer_set(attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), ((m68901_base[0x11]>>8) & 0xff) * 200),0,timera_int);
+        timer_set(machine, attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), ((m68901_base[0x11]>>8) & 0xff) * 200),0,timera_int);
         m68901_int_gen(machine, TMRC);           // Fire an interrupt.
 }
 #endif
 
 static TIMER_CALLBACK( timerd_int )
 {
-        timer_set(ATTOTIME_IN_USEC(250), NULL,0,timerd_int);
+        timer_set(machine, ATTOTIME_IN_USEC(250), NULL,0,timerd_int);
         m68901_int_gen(machine, TMRD);           // Fire an interrupt.
 }
 
@@ -451,7 +457,7 @@ int bit=1 << (source-8*(int)(source/8));
 
        if(m68901_base[IMASK_REG] & (bit<<8))              // If interrupt is not masked by MFD, trigger a 68k INT
        {
-                cpunum_set_input_line(machine, 0,4, HOLD_LINE);
+                cpu_set_input_line(machine->cpu[0],4, HOLD_LINE);
             //    logerror("M68901 interrupt %d serviced.\n",source);
        }
 }
@@ -473,26 +479,24 @@ switch(offset)
                       break;
 
         case 0x0f:    mame_printf_debug("Timer A Data:%4x\n",value);                                                       // Timer A Data Register
-                     timer_set(ATTOTIME_IN_USEC(1000), NULL,0,timera_int);
+                     timer_set(space->machine, ATTOTIME_IN_USEC(1000), NULL,0,timera_int);
                       break;
 
         case 0x10:    mame_printf_debug("Timer B Data:%4x\n",value);                                                           // Timer B Data Register
-//                    timer_set(attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), value * 200),0,timerb_int);
+//                    timer_set(space->machine, attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), value * 200),0,timerb_int);
                       break;
 
         case 0x11:    mame_printf_debug("Timer C Data:%4x\n",value);                                                        // Timer C Data Register
-//                    timer_set(attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), value * 200),0,timerc_int);
+//                    timer_set(space->machine, attotime_mul(ATTOTIME_IN_HZ(M68901_CLK), value * 200),0,timerc_int);
                       break;
 
         case 0x12:    mame_printf_debug("Timer D Data:%4x\n",value);
-                      timer_set(ATTOTIME_IN_USEC(500), NULL,0,timerd_int);                 // Timer D Data Register
+                      timer_set(space->machine, ATTOTIME_IN_USEC(500), NULL,0,timerd_int);                 // Timer D Data Register
                       break;
 
 }
 
 }
-
-
 
 /* I should really re-write all this. */
 
@@ -513,7 +517,7 @@ switch(offset)
 
       case 0x03:        M68681.TBA = value;                   // Fill transmit buffer
                         M68681.SRA |=0x0400;                  // Data has been sent - TX ready for more.
-                        if(M68681.IMR & 1)   cpunum_set_input_line_and_vector(machine, 0,3, HOLD_LINE, M68681.IVR);         // Generate an interrupt, if allowed.
+                        if(M68681.IMR & 1)   cpu_set_input_line_and_vector(space->machine->cpu[0],3, HOLD_LINE, M68681.IVR);         // Generate an interrupt, if allowed.
 
 #if HOST_MONITOR_DISPLAY
                         mame_printf_debug("%c",value);                    // Port A - Monitor
@@ -537,14 +541,19 @@ switch(offset)
       case 0x0a:        break;
 
       case 0x0b:        M68681.TBB = value;                   //  Fill transmit buffer
+#if 0
                         M68681.SRB |=0x0400;                   // Data has been sent - TX ready for more.
                         // Write to sound board
                         if(M68681.IMR & 0x1000)
                         {
-                        	cpunum_set_input_line_and_vector(machine, 0,3, HOLD_LINE, M68681.IVR);         // Generate an interrupt, if allowed.
+                        	cpu_set_input_line_and_vector(space->machine->cpu[0],3, HOLD_LINE, M68681.IVR);         // Generate an interrupt, if allowed.
                         }
-                        cpunum_set_input_line(machine, 2, I8051_RX_LINE, ASSERT_LINE);                      // Generate 8031 interrupt
-                        mame_printf_debug("Sound board TX: %4X at PC=%4X\n",value,activecpu_get_pc());
+                        cpu_set_input_line(space->machine->cpu[2], MCS51_RX_LINE, ASSERT_LINE);                      // Generate 8031 interrupt
+                        mame_printf_debug("Sound board TX: %4X at PC=%4X\n",value,cpu_get_pc(space->cpu));
+#endif
+                        M68681.SRB &=~0x0400;                   // Data has been sent - TX ready for more.
+                        cpu_set_input_line(space->machine->cpu[2], MCS51_RX_LINE, ASSERT_LINE);                      // Generate 8031 interrupt
+                        mame_printf_debug("Sound board TX: %4X at PC=%4X\n",value,cpu_get_pc(space->cpu));
                         break;
 
       case 0x0c:        //mame_printf_debug("IVR: %d",value);
@@ -557,7 +566,7 @@ switch(offset)
                         if(value & 0x20)
                         {
 //                              cpunum_set_reset_line(2 CLEAR_LINE);
-                              logerror("8031 running at:%x (val=%x).\n",activecpu_get_pc(),value);
+                              logerror("8031 running at:%x (val=%x).\n",cpu_get_pc(space->cpu),value);
                         }
                         break;
 
@@ -565,7 +574,7 @@ switch(offset)
                         if(value & 0x20)
                         {
 //                              cpunum_set_reset_line(2, ASSERT_LINE);
-                              logerror("8031 reset at:%x (val=%x).\n",activecpu_get_pc(),value);
+                              logerror("8031 reset at:%x (val=%x).\n",cpu_get_pc(space->cpu),value);
                         }
                         break;
 
@@ -588,7 +597,8 @@ switch(offset)
         case 0x09:     return M68681.SRB;                              // Status Register B
 
         case 0x0b:     mame_printf_debug("\nHost received: %x\n",M68681.RBB);
-                       M68681.SRB^=0x0100;                             // No longer have data.
+        				M68681.SRB^=0x0100;                             // No longer have data.
+        				//M68681.SRB &= ~0x0100;                             // No longer have data.
                        return M68681.RBB;
                                                                        // RX B - Monitor Port
 }
@@ -707,12 +717,12 @@ static WRITE16_HANDLER( mystery3_w )
 
 static READ16_HANDLER( tms_host_r )
 {
-	return tms34010_host_r(1, offset);
+	return tms34010_host_r(space->machine->cpu[1], offset);
 }
 
 static WRITE16_HANDLER( tms_host_w )
 {
-	tms34010_host_w(1, offset, data);
+	tms34010_host_w(space->machine->cpu[1], offset, data);
 }
 
 #ifdef UNUSED_FUNCTION
@@ -786,36 +796,36 @@ ADDRESS_MAP_END
 /* P1.7 = SELFTEST I         P3.7                                     */
 /*====================================================================*/
 
+static UINT8 port_latch[4];
 static WRITE8_HANDLER(sound_io_w)
 {
-
-switch(offset)
-{
-        case 0x01:  break;
-        case 0x03:  //if(data & 0x4) speech_bank=0;
-
-                    if(data & 0x10)
-                    {
-                    	upd7759_0_reset_w(machine,0,0);
-                    }
-                    else
-                    {
-                    	upd7759_0_reset_w(machine,0,1);
-                    }
-                    break;
-}
+	port_latch[offset] = data;
+	switch(offset)
+	{
+        case 0x01:
+        	break;
+        case 0x03:
+        	upd7759_set_bank_base(0, (data & 0x4) ? 0x20000 : 0);
+        	upd7759_0_reset_w(space,0,(data & 0x10) ? 0 : 1);
+	}
 }
 
 static READ8_HANDLER(sound_io_r)
 {
+	switch(offset)
+	{
+	        case 0x01:  return (port_latch[offset] & 0x7f) | input_port_read_safe(space->machine, "SOUND", 0);		/* Test push switch */
+	        case 0x03:  return (port_latch[offset] & 0xf7) | (upd7759_0_busy_r(space,0) ? 0x08 : 0);
+	        default:    return 0;
+	}
 
-switch(offset)
-{
-        case 0x01:  return input_port_read_safe(machine, "SOUND", 0);		/* Test push switch */
-        case 0x03:  return (int)(upd7759_0_busy_r(machine,0))<<3;
-        default:    return 0;
 }
 
+static WRITE8_HANDLER( upd7759_port_start_w)
+{
+	upd7759_0_start_w(space, offset, 0);
+	upd7759_0_port_w(space, offset, data);
+	upd7759_0_start_w(space, offset, 1);
 }
 
 static ADDRESS_MAP_START( soundmem_prg, ADDRESS_SPACE_PROGRAM, 8 )
@@ -825,19 +835,16 @@ ADDRESS_MAP_END
 
 /* FFXX - 00XX    */
 
-static ADDRESS_MAP_START( soundmem_data, ADDRESS_SPACE_DATA, 8 )
+static ADDRESS_MAP_START( soundmem_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM                                  /* 2Kb RAM */
 	AM_RANGE(0xfd00, 0xfd00) AM_WRITE(ym2151_register_port_0_w)
 	AM_RANGE(0xfd01, 0xfd01) AM_READWRITE(ym2151_status_port_0_r,ym2151_data_port_0_w)
-	AM_RANGE(0xfe00, 0xfe00) AM_WRITE(upd7759_0_port_w)
+	AM_RANGE(0xfe00, 0xfe00) AM_WRITE(upd7759_port_start_w)
 	AM_RANGE(0xff00, 0xff00) AM_WRITE(dac_0_data_w)   /* DAC A - used for S&H, special effects? */
 	AM_RANGE(0xff01, 0xff01) AM_WRITE(dac_1_data_w)   /* DAC B - 'SPEECH' */
+	/* ports */
+	AM_RANGE(MCS51_PORT_P0, MCS51_PORT_P3) AM_READWRITE(sound_io_r,sound_io_w)
 ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( soundmem_io, ADDRESS_SPACE_IO, 8 )
-         AM_RANGE(0x00, 0xff) AM_READWRITE(sound_io_r,sound_io_w)
-ADDRESS_MAP_END
-
 
 
 static const tms34010_config vgb_config =
@@ -864,11 +871,10 @@ static MACHINE_DRIVER_START( micro3d )
 
 	MDRV_CPU_ADD("audio", I8051, 11059000)
 	MDRV_CPU_PROGRAM_MAP(soundmem_prg,0)
-	MDRV_CPU_DATA_MAP(soundmem_data,0)
 	MDRV_CPU_IO_MAP(soundmem_io,0)
 
 	MDRV_MACHINE_RESET(micro3d)
-	MDRV_INTERLEAVE(50)
+	MDRV_QUANTUM_TIME(HZ(3000))
 
 	MDRV_PALETTE_LENGTH(32768)
 

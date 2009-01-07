@@ -150,6 +150,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6809/m6809.h"
 #include "machine/namcoio.h"
 #include "sound/namco.h"
 #include "sound/samples.h"
@@ -162,14 +163,14 @@ TODO:
 
 ***************************************************************************/
 
-static READ8_HANDLER( in0_l )	{ return input_port_read(machine, "IN0"); }			// P1 joystick
-static READ8_HANDLER( in0_h )	{ return input_port_read(machine, "IN0") >> 4; }	// P2 joystick
-static READ8_HANDLER( in1_l )	{ return input_port_read(machine, "IN1"); }			// fire and start buttons
-static READ8_HANDLER( in1_h )	{ return input_port_read(machine, "IN1") >> 4; }	// coins
-static READ8_HANDLER( dipA_l )	{ return input_port_read(machine, "DSW0"); }		// dips A
-static READ8_HANDLER( dipA_h )	{ return input_port_read(machine, "DSW0") >> 4; }	// dips A
-static READ8_HANDLER( dipB_l )	{ return input_port_read(machine, "DSW1"); }		// dips B
-static READ8_HANDLER( dipB_h )	{ return input_port_read(machine, "DSW1") >> 4; }	// dips B
+static READ8_HANDLER( in0_l )	{ return input_port_read(space->machine, "IN0"); }			// P1 joystick
+static READ8_HANDLER( in0_h )	{ return input_port_read(space->machine, "IN0") >> 4; }	// P2 joystick
+static READ8_HANDLER( in1_l )	{ return input_port_read(space->machine, "IN1"); }			// fire and start buttons
+static READ8_HANDLER( in1_h )	{ return input_port_read(space->machine, "IN1") >> 4; }	// coins
+static READ8_HANDLER( dipA_l )	{ return input_port_read(space->machine, "DSW0"); }		// dips A
+static READ8_HANDLER( dipA_h )	{ return input_port_read(space->machine, "DSW0") >> 4; }	// dips A
+static READ8_HANDLER( dipB_l )	{ return input_port_read(space->machine, "DSW1"); }		// dips B
+static READ8_HANDLER( dipB_h )	{ return input_port_read(space->machine, "DSW1") >> 4; }	// dips B
 static WRITE8_HANDLER( out_lamps0 )
 {
 	set_led_status(0,data & 1);
@@ -206,22 +207,22 @@ static void unpack_gfx(running_machine *machine);
 static DRIVER_INIT( 56_58 )
 {
 	unpack_gfx(machine);
-	namcoio_init(0, NAMCOIO_56XX, &intf0);
-	namcoio_init(1, NAMCOIO_58XX, &intf1);
+	namcoio_init(machine, 0, NAMCOIO_56XX, &intf0);
+	namcoio_init(machine, 1, NAMCOIO_58XX, &intf1);
 }
 
 static DRIVER_INIT( 56_58l )
 {
 	unpack_gfx(machine);
-	namcoio_init(0, NAMCOIO_56XX, &intf0_lamps);
-	namcoio_init(1, NAMCOIO_58XX, &intf1);
+	namcoio_init(machine, 0, NAMCOIO_56XX, &intf0_lamps);
+	namcoio_init(machine, 1, NAMCOIO_58XX, &intf1);
 }
 
 static DRIVER_INIT( 58_56 )
 {
 	unpack_gfx(machine);
-	namcoio_init(0, NAMCOIO_58XX, &intf0);
-	namcoio_init(1, NAMCOIO_56XX, &intf1);
+	namcoio_init(machine, 0, NAMCOIO_58XX, &intf0);
+	namcoio_init(machine, 1, NAMCOIO_56XX, &intf1);
 }
 
 
@@ -246,7 +247,7 @@ static READ8_HANDLER( gaplus_snd_sharedram_r )
 static WRITE8_HANDLER( gaplus_snd_sharedram_w )
 {
 	if (offset < 0x40)
-		namco_15xx_w(machine,offset,data);
+		namco_15xx_w(space,offset,data);
 	else
 		namco_soundregs[offset] = data;
 }
@@ -255,39 +256,39 @@ static WRITE8_HANDLER( gaplus_snd_sharedram_w )
 static WRITE8_HANDLER( gaplus_irq_1_ctrl_w )
 {
 	int bit = !BIT(offset,11);
-	cpu_interrupt_enable(0,bit);
+	cpu_interrupt_enable(space->machine->cpu[0],bit);
 	if (!bit)
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( gaplus_irq_3_ctrl_w )
 {
 	int bit = !BIT(offset,13);
-	cpu_interrupt_enable(2,bit);
+	cpu_interrupt_enable(space->machine->cpu[2],bit);
 	if (!bit)
-		cpunum_set_input_line(machine, 2, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[2], 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( gaplus_irq_2_ctrl_w )
 {
 	int bit = offset & 1;
-	cpu_interrupt_enable(1,bit);
+	cpu_interrupt_enable(space->machine->cpu[1],bit);
 	if (!bit)
-		cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( gaplus_sreset_w )
 {
 	int bit = !BIT(offset,11);
-    cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
-    cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+    cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+    cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 	mappy_sound_enable(bit);
 }
 
 static WRITE8_HANDLER( gaplus_freset_w )
 {
 	int bit = !BIT(offset,11);
-logerror("%04x: freset %d\n",activecpu_get_pc(),bit);
+logerror("%04x: freset %d\n",cpu_get_pc(space->cpu),bit);
 	namcoio_set_reset_line(0, bit ? CLEAR_LINE : ASSERT_LINE);
 	namcoio_set_reset_line(1, bit ? CLEAR_LINE : ASSERT_LINE);
 }
@@ -295,17 +296,17 @@ logerror("%04x: freset %d\n",activecpu_get_pc(),bit);
 static MACHINE_RESET( gaplus )
 {
 	/* on reset, VINTON is reset, while the other flags don't seem to be affected */
-	cpu_interrupt_enable(1,0);
-	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+	cpu_interrupt_enable(machine->cpu[1],0);
+	cpu_set_input_line(machine->cpu[1], 0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( gaplus_interrupt_1 )
 {
-	irq0_line_assert(machine, cpunum);	// this also checks if irq is enabled - IMPORTANT!
-						// so don't replace with cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+	irq0_line_assert(device);	// this also checks if irq is enabled - IMPORTANT!
+						// so don't replace with cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 
-	namcoio_set_irq_line(0,PULSE_LINE);
-	namcoio_set_irq_line(1,PULSE_LINE);
+	namcoio_set_irq_line(device->machine,0,PULSE_LINE);
+	namcoio_set_irq_line(device->machine,1,PULSE_LINE);
 }
 
 
@@ -552,7 +553,7 @@ static MACHINE_DRIVER_START( gaplus )
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu3,writemem_cpu3)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_INTERLEAVE(100)	/* a high value to ensure proper synchronization of the CPUs */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* a high value to ensure proper synchronization of the CPUs */
 	MDRV_MACHINE_RESET(gaplus)
 
 	/* video hardware */

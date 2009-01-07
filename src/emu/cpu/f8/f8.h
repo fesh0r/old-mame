@@ -47,7 +47,8 @@ enum
 #define F8_INT_NONE  0
 #define F8_INT_INTR  1
 
-void f8_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( f8 );
+#define CPU_F8 CPU_GET_INFO_NAME( f8 )
 
 #ifdef __cplusplus
 }

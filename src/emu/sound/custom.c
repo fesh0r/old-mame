@@ -10,7 +10,7 @@ struct custom_info
 
 
 
-static void *custom_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( custom )
 {
 	struct custom_info *info;
 
@@ -21,7 +21,7 @@ static void *custom_start(const char *tag, int sndindex, int clock, const void *
 	info->intf = config;
 	if (info->intf->start)
 	{
-		info->token = (*info->intf->start)(clock, config);
+		info->token = (*info->intf->start)(device, clock, config);
 		if (!info->token)
 			return NULL;
 	}
@@ -30,19 +30,19 @@ static void *custom_start(const char *tag, int sndindex, int clock, const void *
 }
 
 
-static void custom_stop(void *token)
+static SND_STOP( custom )
 {
-	struct custom_info *info = token;
+	struct custom_info *info = device->token;
 	if (info->intf->stop)
-		(*info->intf->stop)(info->token);
+		(*info->intf->stop)(device, info->token);
 }
 
 
-static void custom_reset(void *token)
+static SND_RESET( custom )
 {
-	struct custom_info *info = token;
+	struct custom_info *info = device->token;
 	if (info->intf->reset)
-		(*info->intf->reset)(info->token);
+		(*info->intf->reset)(device, info->token);
 }
 
 
@@ -58,7 +58,7 @@ void *custom_get_token(int index)
  * Generic get_info
  **************************************************************************/
 
-static void custom_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( custom )
 {
 	switch (state)
 	{
@@ -67,24 +67,24 @@ static void custom_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void custom_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( custom )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = custom_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = custom_start;				break;
-		case SNDINFO_PTR_STOP:							info->stop = custom_stop;				break;
-		case SNDINFO_PTR_RESET:							info->reset = custom_reset;				break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( custom );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( custom );			break;
+		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( custom );			break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( custom );			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "Custom";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "None";						break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "Custom");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "None");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

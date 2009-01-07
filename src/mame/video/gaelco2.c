@@ -241,7 +241,7 @@ WRITE16_HANDLER( gaelco2_palette_w )
 	b = pal5bit(b);
 
 	/* update game palette */
-	palette_set_color(machine, 4096*0 + offset, MAKE_RGB(r, g, b));
+	palette_set_color(space->machine, 4096*0 + offset, MAKE_RGB(r, g, b));
 
 	/* update shadow/highligh palettes */
 	for (i = 1; i < 16; i++){
@@ -253,7 +253,7 @@ WRITE16_HANDLER( gaelco2_palette_w )
 		auxg = ADJUST_COLOR(g + pen_color_adjust[i]);
 		auxb = ADJUST_COLOR(b + pen_color_adjust[i]);
 
-		palette_set_color(machine, 4096*i + offset, MAKE_RGB(auxr, auxg, auxb));
+		palette_set_color(space->machine, 4096*i + offset, MAKE_RGB(auxr, auxg, auxb));
 	}
 }
 
@@ -268,8 +268,8 @@ VIDEO_START( gaelco2 )
 	gaelco2_videoram = spriteram16;
 
 	/* create tilemaps */
-	pant[0] = tilemap_create(get_tile_info_gaelco2_screen0,tilemap_scan_rows,16,16,64,32);
-	pant[1] = tilemap_create(get_tile_info_gaelco2_screen1,tilemap_scan_rows,16,16,64,32);
+	pant[0] = tilemap_create(machine, get_tile_info_gaelco2_screen0,tilemap_scan_rows,16,16,64,32);
+	pant[1] = tilemap_create(machine, get_tile_info_gaelco2_screen1,tilemap_scan_rows,16,16,64,32);
 
 	/* set tilemap properties */
 	tilemap_set_transparent_pen(pant[0],0);
@@ -288,8 +288,8 @@ VIDEO_START( gaelco2_dual )
 	gaelco2_videoram = spriteram16;
 
 	/* create tilemaps */
-	pant[0] = tilemap_create(get_tile_info_gaelco2_screen0_dual,tilemap_scan_rows,16,16,64,32);
-	pant[1] = tilemap_create(get_tile_info_gaelco2_screen1_dual,tilemap_scan_rows,16,16,64,32);
+	pant[0] = tilemap_create(machine, get_tile_info_gaelco2_screen0_dual,tilemap_scan_rows,16,16,64,32);
+	pant[1] = tilemap_create(machine, get_tile_info_gaelco2_screen1_dual,tilemap_scan_rows,16,16,64,32);
 
 	/* set tilemap properties */
 	tilemap_set_transparent_pen(pant[0],0);
@@ -456,7 +456,7 @@ VIDEO_UPDATE( gaelco2 )
 	}
 
 	/* draw screen */
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, pant[1], 0, 0);
 	tilemap_draw(bitmap, cliprect, pant[0], 0, 0);
@@ -488,7 +488,7 @@ VIDEO_UPDATE( gaelco2_dual )
 	}
 
 	/* draw screen */
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	if (screen == right_screen)
 	{
@@ -509,6 +509,8 @@ VIDEO_UPDATE( gaelco2_dual )
 
 VIDEO_EOF( gaelco2 )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
 	/* sprites are one frame ahead */
-	buffer_spriteram16_w(machine, 0, 0, 0xffff);
+	buffer_spriteram16_w(space, 0, 0, 0xffff);
 }

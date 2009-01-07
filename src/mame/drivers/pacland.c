@@ -173,6 +173,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6809/m6809.h"
 #include "cpu/m6800/m6800.h"
 #include "sound/namco.h"
 
@@ -193,15 +194,15 @@ VIDEO_UPDATE( pacland );
 static WRITE8_HANDLER( pacland_subreset_w )
 {
 	int bit = !BIT(offset,11);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( pacland_flipscreen_w )
 {
 	int bit = !BIT(offset,11);
-	/* can't use flip_screen_set() because the visible area is asymmetrical */
-	flip_screen_set_no_update(bit);
-	tilemap_set_flip(ALL_TILEMAPS,flip_screen_get() ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
+	/* can't use flip_screen_set(space->machine, ) because the visible area is asymmetrical */
+	flip_screen_set_no_update(space->machine, bit);
+	tilemap_set_flip(ALL_TILEMAPS,flip_screen_get(space->machine) ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 }
 
 
@@ -210,8 +211,8 @@ static READ8_HANDLER( pacland_input_r )
 	int shift = 4 * (offset & 1);
 	int port = offset & 2;
 	static const char *const portnames[] = { "DSWA", "DSWB", "IN0", "IN1" };
-	int r = (input_port_read(machine, portnames[port]) << shift) & 0xf0;
-	r |= (input_port_read(machine, portnames[port+1]) >> (4-shift)) & 0x0f;
+	int r = (input_port_read(space->machine, portnames[port]) << shift) & 0xf0;
+	r |= (input_port_read(space->machine, portnames[port+1]) >> (4-shift)) & 0x0f;
 
 	return r;
 }
@@ -232,17 +233,17 @@ static WRITE8_HANDLER( pacland_led_w )
 static WRITE8_HANDLER( pacland_irq_1_ctrl_w )
 {
 	int bit = !BIT(offset,11);
-	cpu_interrupt_enable(0,bit);
+	cpu_interrupt_enable(space->machine->cpu[0],bit);
 	if (!bit)
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( pacland_irq_2_ctrl_w )
 {
 	int bit = !BIT(offset,13);
-	cpu_interrupt_enable(1,bit);
+	cpu_interrupt_enable(space->machine->cpu[1],bit);
 	if (!bit)
-		cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 }
 
 
@@ -422,7 +423,7 @@ static MACHINE_DRIVER_START( pacland )
 	MDRV_CPU_IO_MAP(mcu_port_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_INTERLEAVE(100)	/* we need heavy synching between the MCU and the CPU */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* we need heavy synching between the MCU and the CPU */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

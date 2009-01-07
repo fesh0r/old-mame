@@ -14,7 +14,6 @@ silence compression: '00 nn' must be replaced by nn+1 times '80'.
 ***************************************************************************/
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "n63701x.h"
 
@@ -46,14 +45,14 @@ struct namco_63701x
 static const int vol_table[4] = { 26, 84, 200, 258 };
 
 
-static void namco_63701x_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( namco_63701x_update )
 {
 	struct namco_63701x *chip = param;
 	int ch;
 
 	for (ch = 0;ch < 2;ch++)
 	{
-		stream_sample_t *buf = buffer[ch];
+		stream_sample_t *buf = outputs[ch];
 		voice *v = &chip->voices[ch];
 
 		if (v->playing)
@@ -63,7 +62,7 @@ static void namco_63701x_update(void *param, stream_sample_t **inputs, stream_sa
 			int vol = vol_table[v->volume];
 			int p;
 
-			for (p = 0;p < length;p++)
+			for (p = 0;p < samples;p++)
 			{
 				if (v->silence_counter)
 				{
@@ -95,21 +94,21 @@ static void namco_63701x_update(void *param, stream_sample_t **inputs, stream_sa
 			v->position = pos;
 		}
 		else
-			memset(buf, 0, length * sizeof(*buf));
+			memset(buf, 0, samples * sizeof(*buf));
 	}
 }
 
 
-static void *namco_63701x_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( namco_63701x )
 {
 	struct namco_63701x *chip;
 
 	chip = auto_malloc(sizeof(*chip));
 	memset(chip, 0, sizeof(*chip));
 
-	chip->rom = memory_region(Machine, tag);
+	chip->rom = device->region;
 
-	chip->stream = stream_create(0, 2, clock/1000, chip, namco_63701x_update);
+	chip->stream = stream_create(device, 0, 2, clock/1000, chip, namco_63701x_update);
 
 	return chip;
 }
@@ -160,7 +159,7 @@ void namco_63701x_write(int offset, int data)
  * Generic get_info
  **************************************************************************/
 
-static void namco_63701x_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( namco_63701x )
 {
 	switch (state)
 	{
@@ -169,24 +168,24 @@ static void namco_63701x_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void namco_63701x_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( namco_63701x )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = namco_63701x_set_info;	break;
-		case SNDINFO_PTR_START:							info->start = namco_63701x_start;		break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( namco_63701x );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( namco_63701x );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */										break;
+		case SNDINFO_PTR_RESET:							/* Nothing */										break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "Namco 63701X";				break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Namco custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "Namco 63701X");					break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Namco custom");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");								break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);							break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

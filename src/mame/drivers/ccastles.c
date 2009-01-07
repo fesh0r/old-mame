@@ -120,6 +120,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "sound/pokey.h"
 #include "ccastles.h"
 
@@ -173,7 +174,7 @@ static TIMER_CALLBACK( clock_irq )
 	/* assert the IRQ if not already asserted */
 	if (!irq_state)
 	{
-		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 		irq_state = 1;
 	}
 
@@ -229,10 +230,10 @@ static MACHINE_START( ccastles )
 	video_screen_configure(machine->primary_screen, 320, 256, &visarea, HZ_TO_ATTOSECONDS(PIXEL_CLOCK) * VTOTAL * HTOTAL);
 
 	/* configure the ROM banking */
-	memory_configure_bank(1, 0, 2, memory_region(machine, "main") + 0xa000, 0x6000);
+	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, "main") + 0xa000, 0x6000);
 
 	/* create a timer for IRQs and set up the first callback */
-	irq_timer = timer_alloc(clock_irq, NULL);
+	irq_timer = timer_alloc(machine, clock_irq, NULL);
 	irq_state = 0;
 	schedule_next_irq(machine, 0);
 
@@ -240,15 +241,15 @@ static MACHINE_START( ccastles )
 	generic_nvram = auto_malloc(generic_nvram_size);
 
 	/* setup for save states */
-	state_save_register_global(irq_state);
-	state_save_register_global_array(nvram_store);
-	state_save_register_global_pointer(generic_nvram, generic_nvram_size);
+	state_save_register_global(machine, irq_state);
+	state_save_register_global_array(machine, nvram_store);
+	state_save_register_global_pointer(machine, generic_nvram, generic_nvram_size);
 }
 
 
 static MACHINE_RESET( ccastles )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 	irq_state = 0;
 }
 
@@ -264,7 +265,7 @@ static WRITE8_HANDLER( irq_ack_w )
 {
 	if (irq_state)
 	{
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 		irq_state = 0;
 	}
 }
@@ -284,7 +285,7 @@ static WRITE8_HANDLER( ccounter_w )
 
 static WRITE8_HANDLER( bankswitch_w )
 {
-	memory_set_bank(1, data & 1);
+	memory_set_bank(space->machine, 1, data & 1);
 }
 
 
@@ -292,7 +293,7 @@ static READ8_HANDLER( leta_r )
 {
 	static const char *const letanames[] = { "LETA0", "LETA1", "LETA2", "LETA3" };
 
-	return input_port_read(machine, letanames[offset]);
+	return input_port_read(space->machine, letanames[offset]);
 }
 
 

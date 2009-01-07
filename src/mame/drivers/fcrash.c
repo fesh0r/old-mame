@@ -33,7 +33,8 @@ from 2.bin to 9.bin program eproms
 */
 
 #include "driver.h"
-#include "cpu/m68000/m68kmame.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "cps1.h"
 #include "sound/2203intf.h"
 #include "sound/msm5205.h"
@@ -46,33 +47,33 @@ static WRITE16_HANDLER( fcrash_soundlatch_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,0,data & 0xff);
-		cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+		soundlatch_w(space,0,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
 	}
 }
 
 static WRITE8_HANDLER( fcrash_snd_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, "sound");
+	UINT8 *RAM = memory_region(space->machine, "sound");
 	int bankaddr;
 
 	sndti_set_output_gain(SOUND_MSM5205, 0, 0, (data & 0x08) ? 0.0 : 1.0);
 	sndti_set_output_gain(SOUND_MSM5205, 1, 0, (data & 0x10) ? 0.0 : 1.0);
 
 	bankaddr = ((data & 7) * 0x4000);
-	memory_set_bankptr(1,&RAM[0x10000 + bankaddr]);
+	memory_set_bankptr(space->machine, 1,&RAM[0x10000 + bankaddr]);
 }
 
-static void m5205_int1(running_machine *machine, int data)
+static void m5205_int1(const device_config *device)
 {
 	msm5205_data_w(0, sample_buffer1 & 0x0F);
 	sample_buffer1 >>= 4;
 	sample_select1 ^= 1;
 	if (sample_select1 == 0)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static void m5205_int2(running_machine *machine, int data)
+static void m5205_int2(const device_config *device)
 {
 	msm5205_data_w(1, sample_buffer2 & 0x0F);
 	sample_buffer2 >>= 4;
@@ -210,7 +211,7 @@ static VIDEO_UPDATE( fcrash )
 	int videocontrol=cps1_cps_a_regs[0x22/2];
 
 
-	flip_screen_set(videocontrol & 0x8000);
+	flip_screen_set(screen->machine, videocontrol & 0x8000);
 
  	layercontrol = cps1_cps_b_regs[0x20/2];
 
@@ -254,9 +255,9 @@ static VIDEO_UPDATE( fcrash )
 	tilemap_set_enable(cps1_bg_tilemap[2],1);
 
 	/* Blank screen */
-	fillbitmap(bitmap,0xbff,cliprect);
+	bitmap_fill(bitmap,cliprect,0xbff);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 	l0 = (layercontrol >> 0x06) & 03;
 	l1 = (layercontrol >> 0x08) & 03;
 	l2 = (layercontrol >> 0x0a) & 03;
@@ -281,7 +282,7 @@ static VIDEO_UPDATE( kodb )
 	int videocontrol=cps1_cps_a_regs[0x22/2];
 
 
-	flip_screen_set(videocontrol & 0x8000);
+	flip_screen_set(screen->machine, videocontrol & 0x8000);
 
  	layercontrol = cps1_cps_b_regs[0x20/2];
 
@@ -325,9 +326,9 @@ static VIDEO_UPDATE( kodb )
 	tilemap_set_enable(cps1_bg_tilemap[2],1);
 
 	/* Blank screen */
-	fillbitmap(bitmap,0xbff,cliprect);
+	bitmap_fill(bitmap,cliprect,0xbff);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 	l0 = (layercontrol >> 0x06) & 03;
 	l1 = (layercontrol >> 0x08) & 03;
 	l2 = (layercontrol >> 0x0a) & 03;

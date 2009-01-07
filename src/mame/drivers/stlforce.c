@@ -68,6 +68,7 @@ TO DO :
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/eeprom.h"
 #include "sound/okim6295.h"
 
@@ -221,7 +222,7 @@ static NVRAM_HANDLER( stlforce )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_interface_93C46);
+		eeprom_init(machine, &eeprom_interface_93C46);
 		if (file)
 		{
 			eeprom_load(file);

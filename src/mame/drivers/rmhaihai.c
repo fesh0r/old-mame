@@ -29,6 +29,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/msm5205.h"
 
@@ -58,7 +59,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( rmhaihai )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		8, 8, 64, 32);
 }
 
@@ -76,8 +77,8 @@ static READ8_HANDLER( keyboard_r )
 {
 	static const char *const keynames[] = { "KEY0", "KEY1" };
 
-	logerror("%04x: keyboard_r\n",activecpu_get_pc());
-	switch(activecpu_get_pc())
+	logerror("%04x: keyboard_r\n",cpu_get_pc(space->cpu));
+	switch(cpu_get_pc(space->cpu))
 	{
 		/* read keyboard */
 		case 0x0aba:	// rmhaihai, rmhaisei
@@ -89,9 +90,9 @@ static READ8_HANDLER( keyboard_r )
 
 			for (i = 0; i < 31; i++)
 			{
-				if (input_port_read(machine, keynames[i/16]) & (1 << (i & 15))) return i+1;
+				if (input_port_read(space->machine, keynames[i/16]) & (1 << (i & 15))) return i+1;
 			}
-			if (input_port_read(machine, "KEY1") & 0x8000) return 0x80;	// coin
+			if (input_port_read(space->machine, "KEY1") & 0x8000) return 0x80;	// coin
 			return 0;
 		}
 		case 0x5c7b:	// rmhaihai, rmhaisei, rmhaijin
@@ -124,13 +125,13 @@ static READ8_HANDLER( keyboard_r )
 
 static WRITE8_HANDLER( keyboard_w )
 {
-logerror("%04x: keyboard_w %02x\n",activecpu_get_pc(),data);
+logerror("%04x: keyboard_w %02x\n",cpu_get_pc(space->cpu),data);
 	keyboard_cmd = data;
 }
 
 static READ8_HANDLER( samples_r )
 {
-	return memory_region(machine, "adpcm")[offset];
+	return memory_region(space->machine, "adpcm")[offset];
 }
 
 static WRITE8_HANDLER( adpcm_w )
@@ -142,7 +143,7 @@ static WRITE8_HANDLER( adpcm_w )
 
 static WRITE8_HANDLER( ctrl_w )
 {
-	flip_screen_set(data & 0x01);
+	flip_screen_set(space->machine, data & 0x01);
 
 	// (data & 0x02) is switched on and off in service mode
 
@@ -156,16 +157,16 @@ static WRITE8_HANDLER( ctrl_w )
 
 static WRITE8_HANDLER( themj_rombank_w )
 {
-	UINT8 *rom = memory_region(machine, "main") + 0x10000;
+	UINT8 *rom = memory_region(space->machine, "main") + 0x10000;
 	int bank = data & 0x03;
 logerror("banksw %d\n",bank);
-	memory_set_bankptr(1, rom + bank*0x4000);
-	memory_set_bankptr(2, rom + bank*0x4000 + 0x2000);
+	memory_set_bankptr(space->machine, 1, rom + bank*0x4000);
+	memory_set_bankptr(space->machine, 2, rom + bank*0x4000 + 0x2000);
 }
 
 static MACHINE_RESET( themj )
 {
-	themj_rombank_w(machine,0,0);
+	themj_rombank_w(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO),0,0);
 }
 
 

@@ -49,7 +49,7 @@ UINT16 *blmbycar_vram_1, *blmbycar_scroll_1;
 WRITE16_HANDLER( blmbycar_palette_w )
 {
 	data = COMBINE_DATA(&paletteram16[offset]);
-	palette_set_color_rgb( machine, offset, pal4bit(data >> 4), pal4bit(data >> 0), pal4bit(data >> 8));
+	palette_set_color_rgb( space->machine, offset, pal4bit(data >> 4), pal4bit(data >> 0), pal4bit(data >> 8));
 }
 
 
@@ -125,10 +125,10 @@ WRITE16_HANDLER( blmbycar_vram_1_w )
 
 VIDEO_START( blmbycar )
 {
-	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0, tilemap_scan_rows,
 								 16,16, DIM_NX, DIM_NY );
 
-	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1, tilemap_scan_rows,
 								 16,16, DIM_NX, DIM_NY );
 
 		tilemap_set_scroll_rows(tilemap_0,1);
@@ -242,13 +242,13 @@ if (input_code_pressed(KEYCODE_Z))
 }
 #endif
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	if (layers_ctrl&1)
 		for (i = 0; i <= 1; i++)
 			tilemap_draw(bitmap, cliprect, tilemap_0, i, i);
 	else
-		fillbitmap(bitmap,0,cliprect);
+		bitmap_fill(bitmap,cliprect,0);
 
 	if (layers_ctrl&2)
 		for (i = 0; i <= 1; i++)

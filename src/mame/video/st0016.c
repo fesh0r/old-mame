@@ -21,8 +21,6 @@ static int st0016_ramgfx;
 
 //super eagle shot
 static bitmap_t *speglsht_bitmap;
-extern UINT32 *speglsht_framebuffer;
-extern UINT32  speglsht_videoreg;
 
 static const gfx_layout charlayout =
 {
@@ -105,8 +103,8 @@ WRITE8_HANDLER (st0016_palette_ram_w)
 	st0016_paletteram[ST0016_PAL_BANK_SIZE*st0016_pal_bank+offset]=data;
 	val=st0016_paletteram[color*2]+(st0016_paletteram[color*2+1]<<8);
 	if(!color)
-		palette_set_color_rgb(machine,UNUSED_PEN,pal5bit(val >> 0),pal5bit(val >> 5),pal5bit(val >> 10)); /* same as color 0 - bg ? */
-	palette_set_color_rgb(machine,color,pal5bit(val >> 0),pal5bit(val >> 5),pal5bit(val >> 10));
+		palette_set_color_rgb(space->machine,UNUSED_PEN,pal5bit(val >> 0),pal5bit(val >> 5),pal5bit(val >> 10)); /* same as color 0 - bg ? */
+	palette_set_color_rgb(space->machine,color,pal5bit(val >> 0),pal5bit(val >> 5),pal5bit(val >> 10));
 }
 
 READ8_HANDLER(st0016_character_ram_r)
@@ -144,7 +142,7 @@ READ8_HANDLER(st0016_vregs_r)
 	{
 		case 0:
 		case 1:
-			return mame_rand(machine);
+			return mame_rand(space->machine);
 	}
 
 	return st0016_vregs[offset];
@@ -191,14 +189,14 @@ WRITE8_HANDLER(st0016_vregs_w)
 		UINT32 srcadr=(st0016_vregs[0xa0]|(st0016_vregs[0xa1]<<8)|(st0016_vregs[0xa2]<<16))<<1;
 		UINT32 dstadr=(st0016_vregs[0xa3]|(st0016_vregs[0xa4]<<8)|(st0016_vregs[0xa5]<<16))<<1;
 		UINT32 length=((st0016_vregs[0xa6]|(st0016_vregs[0xa7]<<8)|((st0016_vregs[0xa8]&0x1f)<<16))+1)<<1;
-		UINT32 srclen = (memory_region_length(machine, "main")-0x10000);
-		UINT8 *mem = memory_region(machine, "main");
+		UINT32 srclen = (memory_region_length(space->machine, "main")-0x10000);
+		UINT8 *mem = memory_region(space->machine, "main");
 		while(length>0)
 		{
 			if( srcadr < srclen && (dstadr < ST0016_MAX_CHAR_BANK*ST0016_CHAR_BANK_SIZE))
 			{
 				st0016_char_bank=dstadr>>5;
-				st0016_character_ram_w(machine,dstadr&0x1f,mem[0x10000+srcadr]);
+				st0016_character_ram_w(space,dstadr&0x1f,mem[0x10000+srcadr]);
 				srcadr++;
 				dstadr++;
 				length--;
@@ -207,7 +205,7 @@ WRITE8_HANDLER(st0016_vregs_w)
 			{
 				/* samples ? sound dma ? */
 				// speaglsht:  unknown DMA copy : src - 2B6740, dst - 4400, len - 1E400
-				logerror("unknown DMA copy : src - %X, dst - %X, len - %X, PC - %X\n",srcadr,dstadr,length,activecpu_get_previouspc());
+				logerror("unknown DMA copy : src - %X, dst - %X, len - %X, PC - %X\n",srcadr,dstadr,length,cpu_get_previouspc(space->cpu));
 				break;
 			}
 		}
@@ -428,22 +426,24 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 static STATE_POSTLOAD( st0016_postload )
 {
-	st0016_rom_bank_w(machine,0,st0016_rom_bank);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	st0016_rom_bank_w(space,0,st0016_rom_bank);
 	memset(chardirty, 1, ST0016_MAX_CHAR_BANK);
 }
 
 
 void st0016_save_init(running_machine *machine)
 {
-	state_save_register_global(st0016_spr_bank);
-	state_save_register_global(st0016_spr2_bank);
-	state_save_register_global(st0016_pal_bank);
-	state_save_register_global(st0016_char_bank);
-	state_save_register_global(st0016_rom_bank);
-	state_save_register_global_array(st0016_vregs);
-	state_save_register_global_pointer(st0016_charram, ST0016_MAX_CHAR_BANK*ST0016_CHAR_BANK_SIZE);
-	state_save_register_global_pointer(st0016_paletteram, ST0016_MAX_PAL_BANK*ST0016_PAL_BANK_SIZE);
-	state_save_register_global_pointer(st0016_spriteram, ST0016_MAX_SPR_BANK*ST0016_SPR_BANK_SIZE);
+	state_save_register_global(machine, st0016_spr_bank);
+	state_save_register_global(machine, st0016_spr2_bank);
+	state_save_register_global(machine, st0016_pal_bank);
+	state_save_register_global(machine, st0016_char_bank);
+	state_save_register_global(machine, st0016_rom_bank);
+	state_save_register_global_array(machine, st0016_vregs);
+	state_save_register_global_pointer(machine, st0016_charram, ST0016_MAX_CHAR_BANK*ST0016_CHAR_BANK_SIZE);
+	state_save_register_global_pointer(machine, st0016_paletteram, ST0016_MAX_PAL_BANK*ST0016_PAL_BANK_SIZE);
+	state_save_register_global_pointer(machine, st0016_spriteram, ST0016_MAX_SPR_BANK*ST0016_SPR_BANK_SIZE);
 	state_save_register_postload(machine, st0016_postload, NULL);
 }
 
@@ -463,7 +463,7 @@ VIDEO_START( st0016 )
 	assert(gfx_index != MAX_GFX_ELEMENTS);
 
 	/* create the char set (gfx will then be updated dynamically from RAM) */
-	machine->gfx[gfx_index] = allocgfx(&charlayout);
+	machine->gfx[gfx_index] = allocgfx(machine, &charlayout);
 	chardirty = auto_malloc(ST0016_MAX_CHAR_BANK);
 	memset(chardirty, 1, ST0016_MAX_CHAR_BANK);
 
@@ -649,7 +649,7 @@ VIDEO_UPDATE( st0016 )
 		//super eagle shot
 		int x,y,dy;
 
-		fillbitmap(speglsht_bitmap,0,NULL);
+		bitmap_fill(speglsht_bitmap,NULL,0);
 		dy=(speglsht_videoreg&0x20)?(256*512):0; //visible frame
 
 		for(y=0;y<256;y++)
@@ -690,7 +690,7 @@ VIDEO_UPDATE( st0016 )
 			}
 		}
 
-		fillbitmap(bitmap,UNUSED_PEN,cliprect);
+		bitmap_fill(bitmap,cliprect,UNUSED_PEN);
 		draw_bgmap(screen->machine, bitmap,cliprect,0);
  		draw_sprites(screen->machine, bitmap,cliprect);
 		draw_bgmap(screen->machine, bitmap,cliprect,1);

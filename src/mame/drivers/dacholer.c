@@ -19,6 +19,7 @@ Mods by Tomasz Slanina (2008.06.12):
 ******************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/dac.h"
 #include "sound/msm5205.h"
 #include "sound/ay8910.h"
@@ -54,7 +55,7 @@ static WRITE8_HANDLER( bg_bank_w )
 		tilemap_mark_all_tiles_dirty(bg_tilemap);
 	}
 
-	flip_screen_set(data & 0xc); // probably one bit for flipx and one for flipy
+	flip_screen_set(space->machine, data & 0xc); // probably one bit for flipx and one for flipy
 
 }
 
@@ -69,8 +70,8 @@ static WRITE8_HANDLER( coins_w )
 
 static WRITE8_HANDLER(snd_w)
 {
-	soundlatch_w(machine,offset,data);
-	cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+	soundlatch_w(space,offset,data);
+	cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -295,8 +296,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 static VIDEO_START( dacholer )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,8,8,32,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
@@ -316,7 +317,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		sx = (spriteram[offs+3] - 128) + 256 * (attr & 0x01);
 		sy = 248 - spriteram[offs];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -375,11 +376,11 @@ static INTERRUPT_GEN( sound_irq )
 {
 	if(music_interrupt_enable == 1)
 	{
-		cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0x30);
+		cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0x30);
 	}
 }
 
-static INTERRUPT_GEN(adpcm_int)
+static void adpcm_int(const device_config *device)
 {
 	if(snd_interrupt_enable == 1 || (snd_interrupt_enable ==0 && msm_toggle==1))
 	{
@@ -388,7 +389,7 @@ static INTERRUPT_GEN(adpcm_int)
 		msm_toggle^=1;
 		if (msm_toggle==0)
 		{
-			cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0x38);
+			cpu_set_input_line_and_vector(device->machine->cpu[1], 0, HOLD_LINE, 0x38);
 		}
 	}
 }

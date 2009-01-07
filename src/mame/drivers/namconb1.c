@@ -270,6 +270,7 @@ GFX:                Custom 145     ( 80 pin PQFP)
                     Custom 169     (120 pin PQFP)
 */
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "namconb1.h"
 #include "namcos2.h"
@@ -297,7 +298,7 @@ static TIMER_CALLBACK( namconb1_TriggerPOSIRQ )
 
 	video_screen_update_partial(machine->primary_screen, param);
 	pos_irq_active = 1;
-	cpunum_set_input_line(machine, 0, namconb_cpureg[0x02] & 0xf, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], namconb_cpureg[0x02] & 0xf, ASSERT_LINE);
 }
 
 static INTERRUPT_GEN( namconb1_interrupt )
@@ -339,7 +340,7 @@ static INTERRUPT_GEN( namconb1_interrupt )
 	int scanline = (paletteram32[0x1808/4]&0xffff)-32;
 
 	if((!vblank_irq_active) && (namconb_cpureg[0x04] & 0xf0)) {
-		cpunum_set_input_line(machine, 0, namconb_cpureg[0x04] & 0xf, ASSERT_LINE);
+		cpu_set_input_line(device, namconb_cpureg[0x04] & 0xf, ASSERT_LINE);
 		vblank_irq_active = 1;
 	}
 
@@ -349,23 +350,23 @@ static INTERRUPT_GEN( namconb1_interrupt )
 	}
 	if( scanline < NAMCONB1_VBSTART )
 	{
-		timer_set( video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, namconb1_TriggerPOSIRQ );
+		timer_set( device->machine, video_screen_get_time_until_pos(device->machine->primary_screen, scanline, 0), NULL, scanline, namconb1_TriggerPOSIRQ );
 	}
 } /* namconb1_interrupt */
 
 static INTERRUPT_GEN( mcu_interrupt )
 {
-	if (cpu_getiloops() == 0)
+	if (cpu_getiloops(device) == 0)
 	{
-		cpunum_set_input_line(machine, 1, M37710_LINE_IRQ0, HOLD_LINE);
+		cpu_set_input_line(device, M37710_LINE_IRQ0, HOLD_LINE);
 	}
-	else if (cpu_getiloops() == 1)
+	else if (cpu_getiloops(device) == 1)
 	{
-		cpunum_set_input_line(machine, 1, M37710_LINE_IRQ2, HOLD_LINE);
+		cpu_set_input_line(device, M37710_LINE_IRQ2, HOLD_LINE);
 	}
 	else
 	{
- 		cpunum_set_input_line(machine, 1, M37710_LINE_ADC, HOLD_LINE);
+ 		cpu_set_input_line(device, M37710_LINE_ADC, HOLD_LINE);
 	}
 }
 
@@ -373,7 +374,7 @@ static TIMER_CALLBACK( namconb2_TriggerPOSIRQ )
 {
 	video_screen_update_partial(machine->primary_screen, param);
 	pos_irq_active = 1;
-	cpunum_set_input_line(machine, 0, namconb_cpureg[0x02], ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], namconb_cpureg[0x02], ASSERT_LINE);
 }
 
 static INTERRUPT_GEN( namconb2_interrupt )
@@ -410,7 +411,7 @@ static INTERRUPT_GEN( namconb2_interrupt )
 	int scanline = (paletteram32[0x1808/4]&0xffff)-32;
 
 	if((!vblank_irq_active) && namconb_cpureg[0x00]) {
-		cpunum_set_input_line(machine, 0, namconb_cpureg[0x00], ASSERT_LINE);
+		cpu_set_input_line(device, namconb_cpureg[0x00], ASSERT_LINE);
 		vblank_irq_active = 1;
 	}
 
@@ -418,7 +419,7 @@ static INTERRUPT_GEN( namconb2_interrupt )
 		scanline = 0;
 
 	if( scanline < NAMCONB1_VBSTART )
-		timer_set( video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, namconb2_TriggerPOSIRQ );
+		timer_set( device->machine, video_screen_get_time_until_pos(device->machine->primary_screen, scanline, 0), NULL, scanline, namconb2_TriggerPOSIRQ );
 } /* namconb2_interrupt */
 
 static void namconb1_cpureg8_w(running_machine *machine, int reg, UINT8 data)
@@ -428,9 +429,9 @@ static void namconb1_cpureg8_w(running_machine *machine, int reg, UINT8 data)
 	switch(reg) {
 	case 0x02: // POS IRQ level/enable
 		if(pos_irq_active && (((prev & 0xf) != (data & 0xf)) || !(data & 0xf0))) {
-			cpunum_set_input_line(machine, 0, prev & 0xf, CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[0], prev & 0xf, CLEAR_LINE);
 			if(data & 0xf0)
-				cpunum_set_input_line(machine, 0, data & 0xf, ASSERT_LINE);
+				cpu_set_input_line(machine->cpu[0], data & 0xf, ASSERT_LINE);
 			else
 				pos_irq_active = 0;
 		}
@@ -438,9 +439,9 @@ static void namconb1_cpureg8_w(running_machine *machine, int reg, UINT8 data)
 
 	case 0x04: // VBLANK IRQ level/enable
 		if(vblank_irq_active && (((prev & 0xf) != (data & 0xf)) || !(data & 0xf0))) {
-			cpunum_set_input_line(machine, 0, prev & 0xf, CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[0], prev & 0xf, CLEAR_LINE);
 			if(data & 0xf0)
-				cpunum_set_input_line(machine, 0, data & 0xf, ASSERT_LINE);
+				cpu_set_input_line(machine->cpu[0], data & 0xf, ASSERT_LINE);
 			else
 				vblank_irq_active = 0;
 		}
@@ -448,14 +449,14 @@ static void namconb1_cpureg8_w(running_machine *machine, int reg, UINT8 data)
 
 	case 0x07: // POS ack
 		if(pos_irq_active) {
-			cpunum_set_input_line(machine, 0, namconb_cpureg[0x02] & 0xf, CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[0], namconb_cpureg[0x02] & 0xf, CLEAR_LINE);
 			pos_irq_active = 0;
 		}
 		break;
 
 	case 0x09: // VBLANK ack
 		if(vblank_irq_active) {
-			cpunum_set_input_line(machine, 0, namconb_cpureg[0x04] & 0xf, CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[0], namconb_cpureg[0x04] & 0xf, CLEAR_LINE);
 			vblank_irq_active = 0;
 		}
 		break;
@@ -465,11 +466,11 @@ static void namconb1_cpureg8_w(running_machine *machine, int reg, UINT8 data)
 
 	case 0x18: // C75 Control
 		if(data & 1) {
-			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 		} else
-			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
 		break;
 	}
 }
@@ -477,13 +478,13 @@ static void namconb1_cpureg8_w(running_machine *machine, int reg, UINT8 data)
 static WRITE32_HANDLER( namconb1_cpureg_w )
 {
 	if(mem_mask & 0xff000000)
-		namconb1_cpureg8_w(machine, offset*4, data >> 24);
+		namconb1_cpureg8_w(space->machine, offset*4, data >> 24);
 	if(mem_mask & 0x00ff0000)
-		namconb1_cpureg8_w(machine, offset*4+1, data >> 16);
+		namconb1_cpureg8_w(space->machine, offset*4+1, data >> 16);
 	if(mem_mask & 0x0000ff00)
-		namconb1_cpureg8_w(machine, offset*4+2, data >> 8);
+		namconb1_cpureg8_w(space->machine, offset*4+2, data >> 8);
 	if(mem_mask & 0x000000ff)
-		namconb1_cpureg8_w(machine, offset*4+3, data);
+		namconb1_cpureg8_w(space->machine, offset*4+3, data);
 }
 
 
@@ -494,9 +495,9 @@ static void namconb2_cpureg8_w(running_machine *machine, int reg, UINT8 data)
 	switch(reg) {
 	case 0x00: // VBLANK IRQ level
 		if(vblank_irq_active && (prev != data)) {
-			cpunum_set_input_line(machine, 0, prev, CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[0], prev, CLEAR_LINE);
 			if(data)
-				cpunum_set_input_line(machine, 0, data, ASSERT_LINE);
+				cpu_set_input_line(machine->cpu[0], data, ASSERT_LINE);
 			else
 				vblank_irq_active = 0;
 		}
@@ -504,9 +505,9 @@ static void namconb2_cpureg8_w(running_machine *machine, int reg, UINT8 data)
 
 	case 0x02: // POS IRQ level
 		if(pos_irq_active && (prev != data)) {
-			cpunum_set_input_line(machine, 0, prev, CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[0], prev, CLEAR_LINE);
 			if(data)
-				cpunum_set_input_line(machine, 0, data, ASSERT_LINE);
+				cpu_set_input_line(machine->cpu[0], data, ASSERT_LINE);
 			else
 				pos_irq_active = 0;
 		}
@@ -514,14 +515,14 @@ static void namconb2_cpureg8_w(running_machine *machine, int reg, UINT8 data)
 
 	case 0x04: // VBLANK ack
 		if(vblank_irq_active) {
-			cpunum_set_input_line(machine, 0, namconb_cpureg[0x00], CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[0], namconb_cpureg[0x00], CLEAR_LINE);
 			vblank_irq_active = 0;
 		}
 		break;
 
 	case 0x06: // POS ack
 		if(pos_irq_active) {
-			cpunum_set_input_line(machine, 0, namconb_cpureg[0x02], CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[0], namconb_cpureg[0x02], CLEAR_LINE);
 			pos_irq_active = 0;
 		}
 		break;
@@ -531,11 +532,11 @@ static void namconb2_cpureg8_w(running_machine *machine, int reg, UINT8 data)
 
 	case 0x16: // C75 Control
 		if(data & 1) {
-			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 		} else {
-			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
 		}
 		break;
 	}
@@ -544,13 +545,13 @@ static void namconb2_cpureg8_w(running_machine *machine, int reg, UINT8 data)
 static WRITE32_HANDLER( namconb2_cpureg_w )
 {
 	if(mem_mask & 0xff000000)
-		namconb2_cpureg8_w(machine, offset*4, data >> 24);
+		namconb2_cpureg8_w(space->machine, offset*4, data >> 24);
 	if(mem_mask & 0x00ff0000)
-		namconb2_cpureg8_w(machine, offset*4+1, data >> 16);
+		namconb2_cpureg8_w(space->machine, offset*4+1, data >> 16);
 	if(mem_mask & 0x0000ff00)
-		namconb2_cpureg8_w(machine, offset*4+2, data >> 8);
+		namconb2_cpureg8_w(space->machine, offset*4+2, data >> 8);
 	if(mem_mask & 0x000000ff)
-		namconb2_cpureg8_w(machine, offset*4+3, data);
+		namconb2_cpureg8_w(space->machine, offset*4+3, data);
 }
 
 static READ32_HANDLER(namconb_cpureg_r)
@@ -662,7 +663,7 @@ static READ32_HANDLER( custom_key_r )
 
 	do
 	{ /* pick a random number, but don't pick the same twice in a row */
-		count = mame_rand(machine);
+		count = mame_rand(space->machine);
 	} while( count==old_count );
 
 	switch( namcos2_gametype )
@@ -730,7 +731,7 @@ static READ32_HANDLER( custom_key_r )
 		break; /* no protection? */
 	}
 
-	logerror( "custom_key_r(%d); pc=%08x\n", offset, activecpu_get_pc() );
+	logerror( "custom_key_r(%d); pc=%08x\n", offset, cpu_get_pc(space->cpu) );
 	return 0;
 } /* custom_key_r */
 
@@ -801,10 +802,10 @@ static READ32_HANDLER( gunbulet_gun_r )
 
 	switch( offset )
 	{
-	case 0: case 1: result = (UINT8)(0x0f + input_port_read(machine, "LIGHT1_Y") * 224/255); break; /* Y (p2) */
-	case 2: case 3: result = (UINT8)(0x26 + input_port_read(machine, "LIGHT1_X") * 288/314); break; /* X (p2) */
-	case 4: case 5: result = (UINT8)(0x0f + input_port_read(machine, "LIGHT0_Y") * 224/255); break; /* Y (p1) */
-	case 6: case 7: result = (UINT8)(0x26 + input_port_read(machine, "LIGHT0_X") * 288/314); break; /* X (p1) */
+	case 0: case 1: result = (UINT8)(0x0f + input_port_read(space->machine, "LIGHT1_Y") * 224/255); break; /* Y (p2) */
+	case 2: case 3: result = (UINT8)(0x26 + input_port_read(space->machine, "LIGHT1_X") * 288/314); break; /* X (p2) */
+	case 4: case 5: result = (UINT8)(0x0f + input_port_read(space->machine, "LIGHT0_Y") * 224/255); break; /* Y (p1) */
+	case 6: case 7: result = (UINT8)(0x26 + input_port_read(space->machine, "LIGHT0_X") * 288/314); break; /* X (p1) */
 	}
 	return result<<24;
 } /* gunbulet_gun_r */
@@ -812,7 +813,7 @@ static READ32_HANDLER( gunbulet_gun_r )
 static
 READ32_HANDLER( randgen_r )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 } /* randgen_r */
 
 static
@@ -893,7 +894,7 @@ static WRITE16_HANDLER( nbmcu_shared_w )
 	// C74 BIOS has a very short window on the CPU sync signal, so immediately let the '020 at it
 	if ((offset == 0x6000/2) && (data & 0x80))
 	{
-		cpu_spinuntil_time(ATTOTIME_IN_CYCLES(300, 1));
+		cpu_spinuntil_time(space->cpu, cpu_clocks_to_attotime(space->cpu, 300));	// was 300
 	}
 }
 
@@ -921,19 +922,19 @@ static READ8_HANDLER( port7_r )
 	switch (nbx_port6 & 0xf0)
 	{
 		case 0x00:
-			return input_port_read_safe(machine, "P4", 0xff);
+			return input_port_read_safe(space->machine, "P4", 0xff);
 			break;
 
 		case 0x20:
-			return input_port_read(machine, "MISC");
+			return input_port_read(space->machine, "MISC");
 			break;
 
 		case 0x40:
-			return input_port_read(machine, "P1");
+			return input_port_read(space->machine, "P1");
 			break;
 
 		case 0x60:
-			return input_port_read(machine, "P2");
+			return input_port_read(space->machine, "P2");
 			break;
 
 		default:
@@ -948,42 +949,42 @@ static READ8_HANDLER( port7_r )
 // register full scale, so it works...
 static READ8_HANDLER(dac7_r)		// bit 7
 {
-	return input_port_read_safe(machine, "P3", 0xff)&0x80;
+	return input_port_read_safe(space->machine, "P3", 0xff)&0x80;
 }
 
 static READ8_HANDLER(dac6_r)		// bit 3
 {
-	return (input_port_read_safe(machine, "P3", 0xff)<<1)&0x80;
+	return (input_port_read_safe(space->machine, "P3", 0xff)<<1)&0x80;
 }
 
 static READ8_HANDLER(dac5_r)		// bit 2
 {
-	return (input_port_read_safe(machine, "P3", 0xff)<<2)&0x80;
+	return (input_port_read_safe(space->machine, "P3", 0xff)<<2)&0x80;
 }
 
 static READ8_HANDLER(dac4_r)		// bit 1
 {
-	return (input_port_read_safe(machine, "P3", 0xff)<<3)&0x80;
+	return (input_port_read_safe(space->machine, "P3", 0xff)<<3)&0x80;
 }
 
 static READ8_HANDLER(dac3_r)		// bit 0
 {
-	return (input_port_read_safe(machine, "P3", 0xff)<<4)&0x80;
+	return (input_port_read_safe(space->machine, "P3", 0xff)<<4)&0x80;
 }
 
 static READ8_HANDLER(dac2_r)		// bit 4
 {
-	return (input_port_read_safe(machine, "P3", 0xff)<<5)&0x80;
+	return (input_port_read_safe(space->machine, "P3", 0xff)<<5)&0x80;
 }
 
 static READ8_HANDLER(dac1_r)		// bit 5
 {
-	return (input_port_read_safe(machine, "P3", 0xff)<<6)&0x80;
+	return (input_port_read_safe(space->machine, "P3", 0xff)<<6)&0x80;
 }
 
 static READ8_HANDLER(dac0_r)		// bit 6
 {
-	return (input_port_read_safe(machine, "P3", 0xff)<<7)&0x80;
+	return (input_port_read_safe(space->machine, "P3", 0xff)<<7)&0x80;
 }
 
 static ADDRESS_MAP_START( namcoc75_io, ADDRESS_SPACE_IO, 8 )
@@ -1074,7 +1075,7 @@ ROM_START( ptblank )
 	ROM_LOAD32_WORD( "gn2mprlb.15b", 0x00002, 0x80000, CRC(fe2d9425) SHA1(51b166a629cbb522720d63720558816b496b6b76) )
 	ROM_LOAD32_WORD( "gn2mprub.13b", 0x00000, 0x80000, CRC(3bf4985a) SHA1(f559e0d5f55d23d886fe61bd7d5ca556acc7f87c) )
 
-	ROM_REGION( 0x4000, "c75", 0 ) /* C75 program */
+	ROM_REGION16_LE( 0x4000, "c75", 0 ) /* C75 program */
 	ROM_LOAD( "c75.bin", 0, 0x4000, CRC(42f539a5) SHA1(3103e5a0a2867620309fd4fe478a2be0effbeff8) )
 
 	ROM_REGION16_LE( 0x80000, "c75data", 0 ) /* sound data */
@@ -1104,7 +1105,7 @@ ROM_START( gunbulet )
 	ROM_LOAD32_WORD( "gn1-mprl.bin", 0x00002, 0x80000, CRC(f99e309e) SHA1(3fe0ddf756e6849f8effc7672456cbe32f65c98a) )
 	ROM_LOAD32_WORD( "gn1-mpru.bin", 0x00000, 0x80000, CRC(72a4db07) SHA1(8c5e1e51cd961b311d03f7b21f36a5bd5e8e9104) )
 
-	ROM_REGION( 0x4000, "c75", 0 ) /* C75 program */
+	ROM_REGION16_LE( 0x4000, "c75", 0 ) /* C75 program */
 	ROM_LOAD( "c75.bin", 0, 0x4000, CRC(42f539a5) SHA1(3103e5a0a2867620309fd4fe478a2be0effbeff8) )
 
 	ROM_REGION16_LE( 0x80000, "c75data", 0 ) /* sound data */
@@ -1134,7 +1135,7 @@ ROM_START( nebulray )
 	ROM_LOAD32_WORD( "nr2-mpru.13b", 0x00000, 0x80000, CRC(049b97cb) SHA1(0e344b29a4d4bdc854fa9849589772df2eeb0a05) )
 	ROM_LOAD32_WORD( "nr2-mprl.15b", 0x00002, 0x80000, CRC(0431b6d4) SHA1(54c96e8ac9e753956c31bdef79d390f1c20e10ff) )
 
-	ROM_REGION( 0x4000, "c75", 0 ) /* C75 program */
+	ROM_REGION16_LE( 0x4000, "c75", 0 ) /* C75 program */
 	ROM_LOAD( "c75.bin", 0, 0x4000, CRC(42f539a5) SHA1(3103e5a0a2867620309fd4fe478a2be0effbeff8) )
 
 	ROM_REGION16_LE( 0x80000, "c75data", 0 ) /* sound data */
@@ -1171,7 +1172,7 @@ ROM_START( nebulryj )
 	ROM_LOAD32_WORD( "nr1-mpru", 0x00000, 0x80000, CRC(42ef71f9) SHA1(20e3cb63e1fde293c60c404b378d901d635c4b79) )
 	ROM_LOAD32_WORD( "nr1-mprl", 0x00002, 0x80000, CRC(fae5f62c) SHA1(143d716abbc834aac6270db3bbb89ec71ea3804d) )
 
-	ROM_REGION( 0x4000, "c75", 0 ) /* C75 program */
+	ROM_REGION16_LE( 0x4000, "c75", 0 ) /* C75 program */
 	ROM_LOAD( "c75.bin", 0, 0x4000, CRC(42f539a5) SHA1(3103e5a0a2867620309fd4fe478a2be0effbeff8) )
 
 	ROM_REGION16_LE( 0x80000, "c75data", 0 ) /* sound data */
@@ -1208,7 +1209,7 @@ ROM_START( gslgr94u )
 	ROM_LOAD32_WORD( "gse2mprl.bin", 0x00002, 0x80000, CRC(a514349c) SHA1(1f7ec81cd6193410d2f01e6f0f84878561fc8035) )
 	ROM_LOAD32_WORD( "gse2mpru.bin", 0x00000, 0x80000, CRC(b6afd238) SHA1(438a3411ac8ce3d22d5da8c0800738cb8d2994a9) )
 
-	ROM_REGION( 0x4000, "c75", 0 ) /* C75 program */
+	ROM_REGION16_LE( 0x4000, "c75", 0 ) /* C75 program */
 	ROM_LOAD( "c75.bin", 0, 0x4000, CRC(42f539a5) SHA1(3103e5a0a2867620309fd4fe478a2be0effbeff8) )
 
 	ROM_REGION16_LE( 0x80000, "c75data", 0 ) /* sound data */
@@ -1362,7 +1363,7 @@ ROM_START( gslugrsj )
 	ROM_LOAD32_WORD( "gs1mprl.15b", 0x00002, 0x80000, CRC(1e6c3626) SHA1(56abe21884fd87df10996db19c49ce14214d4b73) )
 	ROM_LOAD32_WORD( "gs1mpru.13b", 0x00000, 0x80000, CRC(ef355179) SHA1(0ab0ef4301a318681bb5827d35734a0732b35484) )
 
-	ROM_REGION( 0x4000, "c75", 0 ) /* C75 program */
+	ROM_REGION16_LE( 0x4000, "c75", 0 ) /* C75 program */
 	ROM_LOAD( "c75.bin", 0, 0x4000, CRC(42f539a5) SHA1(3103e5a0a2867620309fd4fe478a2be0effbeff8) )
 
 	ROM_REGION16_LE( 0x80000, "c75data", 0 ) /* sound data */
@@ -1390,7 +1391,7 @@ ROM_START( sws95 )
 	ROM_LOAD32_WORD( "ss51mprl.bin", 0x00002, 0x80000, CRC(c9e0107d) SHA1(0f10582416023a86ea1ef2679f3f06016c086e08) )
 	ROM_LOAD32_WORD( "ss51mpru.bin", 0x00000, 0x80000, CRC(0d93d261) SHA1(5edef26e2c86dbc09727d910af92747d022e4fed) )
 
-	ROM_REGION( 0x4000, "c75", 0 ) /* C75 program */
+	ROM_REGION16_LE( 0x4000, "c75", 0 ) /* C75 program */
 	ROM_LOAD( "c75.bin", 0, 0x4000, CRC(42f539a5) SHA1(3103e5a0a2867620309fd4fe478a2be0effbeff8) )
 
 	ROM_REGION16_LE( 0x80000, "c75data", 0 ) /* sound data */
@@ -1419,7 +1420,7 @@ ROM_START( sws96 )
 	ROM_LOAD32_WORD( "ss61mprl.bin", 0x00002, 0x80000, CRC(06f55e73) SHA1(6be26f8a2ef600bf07c580f210d7b265ac464002) )
 	ROM_LOAD32_WORD( "ss61mpru.bin", 0x00000, 0x80000, CRC(0abdbb83) SHA1(67e8b712291f9bcf2c3a52fbc451fad54679cab8) )
 
-	ROM_REGION( 0x4000, "c75", 0 ) /* C75 program */
+	ROM_REGION16_LE( 0x4000, "c75", 0 ) /* C75 program */
 	ROM_LOAD( "c75.bin", 0, 0x4000, CRC(42f539a5) SHA1(3103e5a0a2867620309fd4fe478a2be0effbeff8) )
 
 	ROM_REGION16_LE( 0x80000, "c75data", 0 ) /* sound data */
@@ -1447,7 +1448,7 @@ ROM_START( sws97 )
 	ROM_LOAD32_WORD( "ss71mprl.bin", 0x00002, 0x80000, CRC(bd60b50e) SHA1(9e00bacd506182ab2af2c0efdd5cc401b3e46485) )
 	ROM_LOAD32_WORD( "ss71mpru.bin", 0x00000, 0x80000, CRC(3444f5a8) SHA1(8d0f35b3ba8f65dbc67c3b2d273833227a8b8b2a) )
 
-	ROM_REGION( 0x4000, "c75", 0 ) /* C75 program */
+	ROM_REGION16_LE( 0x4000, "c75", 0 ) /* C75 program */
 	ROM_LOAD( "c75.bin", 0, 0x4000, CRC(42f539a5) SHA1(3103e5a0a2867620309fd4fe478a2be0effbeff8) )
 
 	ROM_REGION16_LE( 0x80000, "c75data", 0 ) /* sound data */
@@ -1475,7 +1476,7 @@ ROM_START( vshoot )
 	ROM_LOAD32_WORD( "vsj1mprl.15b", 0x00002, 0x80000, CRC(83a60d92) SHA1(c3db0c79f772a79418914353a3d6ecc4883ea54e) )
 	ROM_LOAD32_WORD( "vsj1mpru.13b", 0x00000, 0x80000, CRC(c63eb92d) SHA1(f93bd4b91daee645677955020dc8df14dc9bfd27) )
 
-	ROM_REGION( 0x4000, "c75", 0 ) /* C75 program */
+	ROM_REGION16_LE( 0x4000, "c75", 0 ) /* C75 program */
 	ROM_LOAD( "c75.bin", 0, 0x4000, CRC(42f539a5) SHA1(3103e5a0a2867620309fd4fe478a2be0effbeff8) )
 
 	ROM_REGION16_LE( 0x80000, "c75data", 0 ) /* sound data */

@@ -12,9 +12,8 @@
 
 UINT8 *goldstar_video1, *goldstar_video2, *goldstar_video3;
 size_t goldstar_video_size;
-UINT8 *goldstar_scroll1, *goldstar_scroll2, *goldstar_scroll3;
+UINT8 *goldstar_reel1_scroll, *goldstar_reel2_scroll, *goldstar_reel3_scroll;
 
-static bitmap_t *tmpbitmap1, *tmpbitmap2, *tmpbitmap3, *tmpbitmap4;
 static int bgcolor;
 
 
@@ -24,17 +23,139 @@ static int bgcolor;
   Start the video hardware emulation.
 
 ***************************************************************************/
-VIDEO_START( goldstar )
-{
-//        int i;
 
-	/* the background area is half as high as the screen */
-	tmpbitmap1 = video_screen_auto_bitmap_alloc(machine->primary_screen);
-	tmpbitmap2 = video_screen_auto_bitmap_alloc(machine->primary_screen);
-	tmpbitmap3 = video_screen_auto_bitmap_alloc(machine->primary_screen);
-	tmpbitmap4 = video_screen_auto_bitmap_alloc(machine->primary_screen);
+static tilemap *goldstar_fg_tilemap;
+
+
+WRITE8_HANDLER( goldstar_fg_vidram_w )
+{
+	videoram[offset] = data;
+	tilemap_mark_tile_dirty(goldstar_fg_tilemap,offset);
 }
 
+WRITE8_HANDLER( goldstar_fg_atrram_w )
+{
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(goldstar_fg_tilemap,offset);
+}
+
+static TILE_GET_INFO( get_goldstar_fg_tile_info )
+{
+	int code = videoram[tile_index];
+	int attr = colorram[tile_index];
+
+	SET_TILE_INFO(
+			0,
+			code | (attr & 0xf0)<<4,
+			attr&0x0f,
+			0);
+}
+
+// colour / high tile bits are swapped around
+static TILE_GET_INFO( get_cherrym_fg_tile_info )
+{
+	int code = videoram[tile_index];
+	int attr = colorram[tile_index];
+
+	SET_TILE_INFO(
+			0,
+			code | (attr & 0x0f)<<8,
+			(attr&0xf0)>>4,
+			0);
+}
+
+
+
+static tilemap *goldstar_reel1_tilemap;
+UINT8 *goldstar_reel1_ram;
+
+WRITE8_HANDLER( goldstar_reel1_ram_w )
+{
+	goldstar_reel1_ram[offset] = data;
+	tilemap_mark_tile_dirty(goldstar_reel1_tilemap,offset);
+}
+
+static TILE_GET_INFO( get_goldstar_reel1_tile_info )
+{
+	int code = goldstar_reel1_ram[tile_index];
+
+	SET_TILE_INFO(
+			1,
+			code,
+			bgcolor,
+			0);
+}
+
+
+static tilemap *goldstar_reel2_tilemap;
+UINT8 *goldstar_reel2_ram;
+
+WRITE8_HANDLER( goldstar_reel2_ram_w )
+{
+	goldstar_reel2_ram[offset] = data;
+	tilemap_mark_tile_dirty(goldstar_reel2_tilemap,offset);
+}
+
+static TILE_GET_INFO( get_goldstar_reel2_tile_info )
+{
+	int code = goldstar_reel2_ram[tile_index];
+
+	SET_TILE_INFO(
+			1,
+			code,
+			bgcolor,
+			0);
+}
+
+static tilemap *goldstar_reel3_tilemap;
+UINT8 *goldstar_reel3_ram;
+
+WRITE8_HANDLER( goldstar_reel3_ram_w )
+{
+	goldstar_reel3_ram[offset] = data;
+	tilemap_mark_tile_dirty(goldstar_reel3_tilemap,offset);
+}
+
+static TILE_GET_INFO( get_goldstar_reel3_tile_info )
+{
+	int code = goldstar_reel3_ram[tile_index];
+
+	SET_TILE_INFO(
+			1,
+			code,
+			bgcolor,
+			0);
+}
+
+
+
+VIDEO_START( goldstar )
+{
+	goldstar_reel1_tilemap = tilemap_create(machine,get_goldstar_reel1_tile_info,tilemap_scan_rows,8,32, 64, 8);
+	goldstar_reel2_tilemap = tilemap_create(machine,get_goldstar_reel2_tile_info,tilemap_scan_rows,8,32, 64, 8);
+	goldstar_reel3_tilemap = tilemap_create(machine,get_goldstar_reel3_tile_info,tilemap_scan_rows,8,32, 64, 8);
+
+	tilemap_set_scroll_cols(goldstar_reel1_tilemap, 64);
+	tilemap_set_scroll_cols(goldstar_reel2_tilemap, 64);
+	tilemap_set_scroll_cols(goldstar_reel3_tilemap, 64);
+
+	goldstar_fg_tilemap = tilemap_create(machine,get_goldstar_fg_tile_info,tilemap_scan_rows,8,8, 64, 32);
+	tilemap_set_transparent_pen(goldstar_fg_tilemap,0);
+}
+
+VIDEO_START( cherrym )
+{
+	goldstar_reel1_tilemap = tilemap_create(machine,get_goldstar_reel1_tile_info,tilemap_scan_rows,8,32, 64, 8);
+	goldstar_reel2_tilemap = tilemap_create(machine,get_goldstar_reel2_tile_info,tilemap_scan_rows,8,32, 64, 8);
+	goldstar_reel3_tilemap = tilemap_create(machine,get_goldstar_reel3_tile_info,tilemap_scan_rows,8,32, 64, 8);
+
+	tilemap_set_scroll_cols(goldstar_reel1_tilemap, 64);
+	tilemap_set_scroll_cols(goldstar_reel2_tilemap, 64);
+	tilemap_set_scroll_cols(goldstar_reel3_tilemap, 64);
+
+	goldstar_fg_tilemap = tilemap_create(machine,get_cherrym_fg_tile_info,tilemap_scan_rows,8,8, 64, 32);
+	tilemap_set_transparent_pen(goldstar_fg_tilemap,0);
+}
 
 
 
@@ -47,84 +168,30 @@ WRITE8_HANDLER( goldstar_fa00_w )
 }
 
 
-
-static const rectangle visible1 = { 14*8, (14+48)*8-1,  4*8,  (4+7)*8-1 };
-static const rectangle visible2 = { 14*8, (14+48)*8-1, 12*8, (12+7)*8-1 };
-static const rectangle visible3 = { 14*8, (14+48)*8-1, 20*8, (20+7)*8-1 };
+// are these hardcoded, or registers?
+static const rectangle visible1 = { 0*8, (14+48)*8-1,  4*8,  (4+7)*8-1 };
+static const rectangle visible2 = { 0*8, (14+48)*8-1, 12*8, (12+7)*8-1 };
+static const rectangle visible3 = { 0*8, (14+48)*8-1, 20*8, (20+7)*8-1 };
 
 
 VIDEO_UPDATE( goldstar )
 {
-	int offs;
+	int i;
 
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
-	for (offs = videoram_size - 1;offs >= 0;offs--)
+	for (i= 0;i < 64;i++)
 	{
-		int sx,sy;
-
-
-		sx = offs % 64;
-		sy = offs / 64;
-
-		drawgfx(tmpbitmap4,screen->machine->gfx[0],
-				videoram[offs] + ((colorram[offs] & 0xf0) << 4),
-				colorram[offs] & 0x0f,
-				0,0,
-				8*sx,8*sy,
-				0,TRANSPARENCY_NONE,0);
+		tilemap_set_scrolly(goldstar_reel1_tilemap, i, goldstar_reel1_scroll[i]);
+		tilemap_set_scrolly(goldstar_reel2_tilemap, i, goldstar_reel2_scroll[i]);
+		tilemap_set_scrolly(goldstar_reel3_tilemap, i, goldstar_reel3_scroll[i]);
 	}
 
-	copybitmap(bitmap,tmpbitmap4,0,0,0,0,cliprect);
+	tilemap_draw(bitmap,&visible1,goldstar_reel1_tilemap,0,0);
+	tilemap_draw(bitmap,&visible2,goldstar_reel2_tilemap,0,0);
+	tilemap_draw(bitmap,&visible3,goldstar_reel3_tilemap,0,0);
 
+	tilemap_draw(bitmap,cliprect,goldstar_fg_tilemap,0,0);
 
-	for (offs = goldstar_video_size - 1;offs >= 0;offs--)
-	{
-		int sx = offs % 64;
-		int sy = offs / 64;
-
-
-		drawgfx(tmpbitmap1,screen->machine->gfx[1],
-				goldstar_video1[offs],
-				bgcolor,
-				0,0,
-				sx*8,sy*32,
-				0,TRANSPARENCY_NONE,0);
-
-		drawgfx(tmpbitmap2,screen->machine->gfx[1],
-				goldstar_video2[offs],
-				bgcolor,
-				0,0,
-				sx*8,sy*32,
-				0,TRANSPARENCY_NONE,0);
-
-		drawgfx(tmpbitmap3,screen->machine->gfx[1],
-				goldstar_video3[offs],
-				bgcolor,
-				0,0,
-				sx*8,sy*32,
-				0,TRANSPARENCY_NONE,0);
-	}
-
-	{
-		int i,scrolly[64];
-
-		for (i= 0;i < 64;i++)
-			scrolly[i] = -goldstar_scroll1[i];
-
-		copyscrollbitmap(bitmap,tmpbitmap1,0,0,64,scrolly,&visible1);
-		copybitmap_trans(bitmap,tmpbitmap4,0,0,0,0,&visible1,0);
-
-		for (i= 0;i < 64;i++)
-			scrolly[i] = -goldstar_scroll2[i];
-
-		copyscrollbitmap(bitmap,tmpbitmap2,0,0,64,scrolly,&visible2);
-		copybitmap_trans(bitmap,tmpbitmap4,0,0,0,0,&visible2,0);
-
-		for (i= 0;i < 64;i++)
-			scrolly[i] = -goldstar_scroll3[i];
-
-		copyscrollbitmap(bitmap,tmpbitmap3,0,0,64,scrolly,&visible3);
-		copybitmap_trans(bitmap,tmpbitmap4,0,0,0,0,&visible3,0);
-	}
 	return 0;
 }

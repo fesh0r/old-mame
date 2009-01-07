@@ -12,7 +12,6 @@
 **************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "avgdvg.h"
 #include "video/vector.h"
 
@@ -69,6 +68,8 @@ typedef struct _vgvector
 
 typedef struct _vgdata
 {
+	running_machine *machine;
+
 	UINT16 pc;
 	UINT8 sp;
 	UINT16 dvx;
@@ -167,14 +168,14 @@ static void avg_apply_flipping(int *x, int *y)
  *
  *************************************/
 
-static void vg_flush (void)
+static void vg_flush (running_machine *machine)
 {
 	int i;
 
 	for (i = 0; i < nvect; i++)
 	{
 		if (vectbuf[i].status == VGVECTOR)
-			vector_add_point(vectbuf[i].x, vectbuf[i].y, vectbuf[i].color, vectbuf[i].intensity);
+			vector_add_point(machine, vectbuf[i].x, vectbuf[i].y, vectbuf[i].color, vectbuf[i].intensity);
 
 		if (vectbuf[i].status == VGCLIP)
 			vector_add_clip(vectbuf[i].x, vectbuf[i].y, vectbuf[i].arg1, vectbuf[i].arg2);
@@ -475,7 +476,7 @@ static void mhavoc_data(vgdata *vg)
 
 	if (vg->pc & 0x2000)
 	{
-		bank = &memory_region(Machine, "alpha")[0x18000];
+		bank = &memory_region(vg->machine, "alpha")[0x18000];
 		vg->data = bank[(vg->map << 13) | ((vg->pc ^ 1) & 0x1fff)];
 	}
 	else
@@ -751,7 +752,7 @@ static int avg_common_strobe2(vgdata *vg)
                  */
 
 				vector_clear_list();
-				vg_flush();
+				vg_flush(vg->machine);
 			}
 		}
 		else
@@ -804,7 +805,7 @@ static int mhavoc_strobe2(vgdata *vg)
 					| ((vg->dvy >> 1) & 2)
 					| ((vg->dvy << 1) & 4)
 					| ((vg->dvy << 2) & 8)
-					| ((mame_rand(Machine) & 0x7) << 4);
+					| ((mame_rand(vg->machine) & 0x7) << 4);
 			}
 			else
 			{
@@ -1240,7 +1241,7 @@ WRITE8_HANDLER( avgdvg_go_w )
          */
 		vector_clear_list();
 	}
-	vg_flush();
+	vg_flush(space->machine);
 
 	vgc->vggo(vg);
 	vg_set_halt(0);
@@ -1249,7 +1250,7 @@ WRITE8_HANDLER( avgdvg_go_w )
 
 WRITE16_HANDLER( avgdvg_go_word_w )
 {
-	avgdvg_go_w(machine, offset, data);
+	avgdvg_go_w(space, offset, data);
 }
 
 
@@ -1267,12 +1268,12 @@ WRITE8_HANDLER( avgdvg_reset_w )
 
 WRITE16_HANDLER( avgdvg_reset_word_w )
 {
-	avgdvg_reset_w (machine,0,0);
+	avgdvg_reset_w (space,0,0);
 }
 
 MACHINE_RESET( avgdvg )
 {
-	avgdvg_reset_w (machine,0,0);
+	avgdvg_reset_w (cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),0,0);
 }
 
 
@@ -1415,44 +1416,47 @@ static const vgconf avg_quantum =
  *
  ************************************/
 
-static void register_state (void)
+static void register_state (running_machine *machine)
 {
-	state_save_register_item("AVG", 0, vg->pc);
-	state_save_register_item("AVG", 0, vg->sp);
-	state_save_register_item("AVG", 0, vg->dvx);
-	state_save_register_item("AVG", 0, vg->dvy);
-	state_save_register_item("AVG", 0, vg->dvy12);
-	state_save_register_item("AVG", 0, vg->timer);
-	state_save_register_item_array("AVG", 0, vg->stack);
-	state_save_register_item("AVG", 0, vg->data);
-	state_save_register_item("AVG", 0, vg->state_latch);
-	state_save_register_item("AVG", 0, vg->int_latch);
-	state_save_register_item("AVG", 0, vg->scale);
-	state_save_register_item("AVG", 0, vg->bin_scale);
-	state_save_register_item("AVG", 0, vg->intensity);
-	state_save_register_item("AVG", 0, vg->color);
-	state_save_register_item("AVG", 0, vg->enspkl);
-	state_save_register_item("AVG", 0, vg->spkl_shift);
-	state_save_register_item("AVG", 0, vg->map);
-	state_save_register_item("AVG", 0, vg->hst);
-	state_save_register_item("AVG", 0, vg->lst);
-	state_save_register_item("AVG", 0, vg->izblank);
-	state_save_register_item("AVG", 0, vg->op);
-	state_save_register_item("AVG", 0, vg->halt);
-	state_save_register_item("AVG", 0, vg->sync_halt);
-	state_save_register_item("AVG", 0, vg->xdac_xor);
-	state_save_register_item("AVG", 0, vg->ydac_xor);
-	state_save_register_item("AVG", 0, vg->xpos);
-	state_save_register_item("AVG", 0, vg->ypos);
-	state_save_register_item("AVG", 0, vg->clipx_min);
-	state_save_register_item("AVG", 0, vg->clipy_min);
-	state_save_register_item("AVG", 0, vg->clipx_max);
-	state_save_register_item("AVG", 0, vg->clipy_max);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->pc);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->sp);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->dvx);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->dvy);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->dvy12);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->timer);
+	state_save_register_item_array(machine, "AVG", NULL, 0, vg->stack);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->data);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->state_latch);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->int_latch);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->scale);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->bin_scale);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->intensity);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->color);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->enspkl);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->spkl_shift);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->map);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->hst);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->lst);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->izblank);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->op);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->halt);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->sync_halt);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->xdac_xor);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->ydac_xor);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->xpos);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->ypos);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->clipx_min);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->clipy_min);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->clipx_max);
+	state_save_register_item(machine, "AVG", NULL, 0, vg->clipy_max);
 }
 
 static VIDEO_START( avg_common )
 {
 	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
+
+	vg = &vgd;
+	vg->machine = machine;
 
 	xmin = visarea->min_x;
 	ymin = visarea->min_y;
@@ -1464,8 +1468,8 @@ static VIDEO_START( avg_common )
 
 	flip_x = flip_y = 0;
 
-	vg_halt_timer = timer_alloc(vg_set_halt_callback, NULL);
-	vg_run_timer = timer_alloc(run_state_machine, NULL);
+	vg_halt_timer = timer_alloc(machine, vg_set_halt_callback, NULL);
+	vg_run_timer = timer_alloc(machine, run_state_machine, NULL);
 
 	/*
      * The x and y DACs use 10 bit of the counter values which are in
@@ -1475,7 +1479,7 @@ static VIDEO_START( avg_common )
 	vg->xdac_xor = 0x200;
 	vg->ydac_xor = 0x200;
 
-	register_state ();
+	register_state (machine);
 	VIDEO_START_CALL(vector);
 }
 
@@ -1485,56 +1489,51 @@ VIDEO_START( dvg )
 
 	vgc = &dvg_default;
 	vg = &vgd;
+	vg->machine = machine;
 
 	xmin = visarea->min_x;
 	ymin = visarea->min_y;
 
-	vg_halt_timer = timer_alloc(vg_set_halt_callback, NULL);
-	vg_run_timer = timer_alloc(run_state_machine, NULL);
+	vg_halt_timer = timer_alloc(machine, vg_set_halt_callback, NULL);
+	vg_run_timer = timer_alloc(machine, run_state_machine, NULL);
 
-	register_state ();
+	register_state (machine);
 	VIDEO_START_CALL(vector);
 }
 
 VIDEO_START( avg )
 {
 	vgc = &avg_default;
-	vg = &vgd;
 	VIDEO_START_CALL(avg_common);
 }
 
 VIDEO_START( avg_starwars )
 {
 	vgc = &avg_starwars;
-	vg = &vgd;
 	VIDEO_START_CALL(avg_common);
 }
 
 VIDEO_START( avg_tempest )
 {
 	vgc = &avg_tempest;
-	vg = &vgd;
 	VIDEO_START_CALL(avg_common);
 }
 
 VIDEO_START( avg_mhavoc )
 {
 	vgc = &avg_mhavoc;
-	vg = &vgd;
 	VIDEO_START_CALL(avg_common);
 }
 
 VIDEO_START( avg_bzone )
 {
 	vgc = &avg_bzone;
-	vg = &vgd;
 	VIDEO_START_CALL(avg_common);
 }
 
 VIDEO_START( avg_quantum )
 {
 	vgc = &avg_quantum;
-	vg = &vgd;
 	VIDEO_START_CALL(avg_common);
 }
 

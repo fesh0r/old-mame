@@ -15,7 +15,6 @@
 
 #include <math.h>
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "c352.h"
 
@@ -326,26 +325,26 @@ static void c352_mix_one_channel(struct c352_info *info, unsigned long ch, long 
 }
 
 
-static void c352_update(void *param, stream_sample_t **inputs, stream_sample_t **buf, int sample_count)
+static STREAM_UPDATE( c352_update )
 {
 	struct c352_info *info = param;
 	int i, j;
-	stream_sample_t *bufferl = buf[0];
-	stream_sample_t *bufferr = buf[1];
-	stream_sample_t *bufferl2 = buf[2];
-	stream_sample_t *bufferr2 = buf[3];
+	stream_sample_t *bufferl = outputs[0];
+	stream_sample_t *bufferr = outputs[1];
+	stream_sample_t *bufferl2 = outputs[2];
+	stream_sample_t *bufferr2 = outputs[3];
 
-	for(i = 0 ; i < sample_count ; i++)
+	for(i = 0 ; i < samples ; i++)
 	{
 	       info->channel_l[i] = info->channel_r[i] = info->channel_l2[i] = info->channel_r2[i] = 0;
 	}
 
 	for (j = 0 ; j < 32 ; j++)
 	{
-		c352_mix_one_channel(info, j, sample_count);
+		c352_mix_one_channel(info, j, samples);
 	}
 
-	for(i = 0 ; i < sample_count ; i++)
+	for(i = 0 ; i < samples ; i++)
 	{
 		*bufferl++ = (short) (info->channel_l[i] >>3);
 		*bufferr++ = (short) (info->channel_r[i] >>3);
@@ -482,7 +481,7 @@ static void c352_write_reg16(struct c352_info *info, unsigned long address, unsi
 	}
 }
 
-static void c352_init(struct c352_info *info, int sndindex)
+static void c352_init(struct c352_info *info, const device_config *device)
 {
 	int i;
 	double x_max = 32752.0;
@@ -511,45 +510,41 @@ static void c352_init(struct c352_info *info, int sndindex)
 	// register save state info
 	for (i = 0; i < 32; i++)
 	{
-		char cname[32];
-
-		sprintf(cname, "C352 v %02d", i);
-
-		state_save_register_item(cname, sndindex, info->c352_ch[i].vol_l);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].vol_r);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].vol_l2);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].vol_r2);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].bank);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].noise);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].noisebuf);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].noisecnt);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].pitch);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].start_addr);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].end_addr);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].repeat_addr);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].flag);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].start);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].repeat);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].current_addr);
-		state_save_register_item(cname, sndindex, info->c352_ch[i].pos);
+		state_save_register_device_item(device, i, info->c352_ch[i].vol_l);
+		state_save_register_device_item(device, i, info->c352_ch[i].vol_r);
+		state_save_register_device_item(device, i, info->c352_ch[i].vol_l2);
+		state_save_register_device_item(device, i, info->c352_ch[i].vol_r2);
+		state_save_register_device_item(device, i, info->c352_ch[i].bank);
+		state_save_register_device_item(device, i, info->c352_ch[i].noise);
+		state_save_register_device_item(device, i, info->c352_ch[i].noisebuf);
+		state_save_register_device_item(device, i, info->c352_ch[i].noisecnt);
+		state_save_register_device_item(device, i, info->c352_ch[i].pitch);
+		state_save_register_device_item(device, i, info->c352_ch[i].start_addr);
+		state_save_register_device_item(device, i, info->c352_ch[i].end_addr);
+		state_save_register_device_item(device, i, info->c352_ch[i].repeat_addr);
+		state_save_register_device_item(device, i, info->c352_ch[i].flag);
+		state_save_register_device_item(device, i, info->c352_ch[i].start);
+		state_save_register_device_item(device, i, info->c352_ch[i].repeat);
+		state_save_register_device_item(device, i, info->c352_ch[i].current_addr);
+		state_save_register_device_item(device, i, info->c352_ch[i].pos);
 	}
 }
 
-static void *c352_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( c352 )
 {
 	struct c352_info *info;
 
 	info = auto_malloc(sizeof(*info));
 	memset(info, 0, sizeof(*info));
 
-	info->c352_rom_samples = memory_region(Machine, tag);
-	info->c352_rom_length = memory_region_length(Machine, tag);
+	info->c352_rom_samples = device->region;
+	info->c352_rom_length = device->regionbytes;
 
 	info->sample_rate_base = clock / 192;
 
-	info->stream = stream_create(0, 4, info->sample_rate_base, info, c352_update);
+	info->stream = stream_create(device, 0, 4, info->sample_rate_base, info, c352_update);
 
-	c352_init(info, sndindex);
+	c352_init(info, device);
 
 	return info;
 }
@@ -582,7 +577,7 @@ WRITE16_HANDLER( c352_0_w )
  * Generic get_info
  **************************************************************************/
 
-static void c352_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( c352 )
 {
 	switch (state)
 	{
@@ -591,24 +586,24 @@ static void c352_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void c352_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( c352 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = c352_set_info;			break;
-		case SNDINFO_PTR_START:							info->start = c352_start;				break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( c352 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( c352 );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */								break;
+		case SNDINFO_PTR_RESET:							/* nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "C352";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Namco PCM";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.1";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "C352");					break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Namco PCM");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.1");						break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);					break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

@@ -71,20 +71,20 @@ VIDEO_UPDATE( funystrp );
 static WRITE16_HANDLER( splash_sh_irqtrigger_w )
 {
 	if (ACCESSING_BITS_0_7){
-		soundlatch_w(machine,0,data & 0xff);
-		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
+		soundlatch_w(space,0,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
 	}
 }
 
 static WRITE16_HANDLER( roldf_sh_irqtrigger_w )
 {
 	if (ACCESSING_BITS_0_7){
-		soundlatch_w(machine,0,data & 0xff);
-		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
+		soundlatch_w(space,0,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
 	}
 
 	// give the z80 time to see it
-	cpu_spinuntil_time(ATTOTIME_IN_USEC(40));
+	cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(40));
 }
 
 static ADDRESS_MAP_START( splash_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -143,7 +143,7 @@ static WRITE8_HANDLER( splash_adpcm_data_w ){
 	adpcm_data = data;
 }
 
-static void splash_msm5205_int(running_machine *machine, int data)
+static void splash_msm5205_int(const device_config *device)
 {
 	msm5205_data_w(0,adpcm_data >> 4);
 	adpcm_data = (adpcm_data << 4) & 0xf0;

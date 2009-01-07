@@ -56,6 +56,7 @@ Added Dip locations according to manual.
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "copsnrob.h"
 #include "copsnrob.lh"
 
@@ -85,7 +86,7 @@ static UINT8 misc = 0;
 
 static READ8_HANDLER( copsnrob_misc_r )
 {
-	return misc | (input_port_read(machine, "IN0") & 0x80);
+	return misc | (input_port_read(space->machine, "IN0") & 0x80);
 }
 
 static WRITE8_HANDLER( copsnrob_misc_w )

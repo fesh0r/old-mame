@@ -194,6 +194,7 @@ Dip location verified from manual for: cclimber, guzzler, swimmer
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/segacrpt.h"
 #include "sound/ay8910.h"
 #include "sound/samples.h"
@@ -209,8 +210,8 @@ static UINT8 toprollr_rombank;
 
 static WRITE8_HANDLER( swimmer_sh_soundlatch_w )
 {
-	soundlatch_w(machine,offset,data);
-	cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
+	soundlatch_w(space,offset,data);
+	cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
 }
 
 
@@ -241,13 +242,13 @@ static WRITE8_HANDLER(toprollr_rombank_w)
 	toprollr_rombank |= (data & 1) << offset;
 
 	if (toprollr_rombank < 3)
-		memory_set_bank(1, toprollr_rombank);
+		memory_set_bank(space->machine, 1, toprollr_rombank);
 }
 
 
 static TIMER_CALLBACK( disable_interrupts )
 {
-	cpu_interrupt_enable(0,0);
+	cpu_interrupt_enable(machine->cpu[0],0);
 }
 
 
@@ -257,7 +258,7 @@ static MACHINE_RESET( cclimber )
 
 	/* we must do this on a timer in order to have it take effect */
 	/* otherwise, the reset process will override our changes */
-	timer_call_after_resynch(NULL, 0, disable_interrupts);
+	timer_call_after_resynch(machine, NULL, 0, disable_interrupts);
 
 	toprollr_rombank = 0;
 }
@@ -1910,7 +1911,7 @@ static DRIVER_INIT( yamato )
 
 static DRIVER_INIT( toprollr )
 {
-	toprollr_decode(machine,"user1");
+	toprollr_decode(machine, "main", "user1");
 }
 
 

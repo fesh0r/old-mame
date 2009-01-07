@@ -24,7 +24,6 @@ added external port callback, and functions to set the volume of the channels
 
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "k007232.h"
 #include <math.h>
@@ -217,13 +216,13 @@ static void KDAC_A_make_fncode( struct kdacApcm *info ){
 /*    Konami PCM update                         */
 /************************************************/
 
-static void KDAC_A_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int buffer_len)
+static STREAM_UPDATE( KDAC_A_update )
 {
   struct kdacApcm *info = param;
   int i;
 
-  memset(buffer[0],0,buffer_len * sizeof(*buffer[0]));
-  memset(buffer[1],0,buffer_len * sizeof(*buffer[1]));
+  memset(outputs[0],0,samples * sizeof(*outputs[0]));
+  memset(outputs[1],0,samples * sizeof(*outputs[1]));
 
   for( i = 0; i < KDAC_A_PCM_MAX; i++ )
     {
@@ -243,7 +242,7 @@ static void KDAC_A_update(void *param, stream_sample_t **inputs, stream_sample_t
 	  volB = (volB + cen) < 0x1fe ? (volB + cen) : 0x1fe;
 #endif
 
-	  for( j = 0; j < buffer_len; j++ )
+	  for( j = 0; j < samples; j++ )
 	    {
 	      old_addr = addr;
 	      addr = info->start[i] + ((info->addr[i]>>BASE_SHIFT)&0x000fffff);
@@ -283,8 +282,8 @@ static void KDAC_A_update(void *param, stream_sample_t **inputs, stream_sample_t
 
 	      out = (info->pcmbuf[i][addr] & 0x7f) - 0x40;
 
-	      buffer[0][j] += out * volA;
-	      buffer[1][j] += out * volB;
+	      outputs[0][j] += out * volA;
+	      outputs[1][j] += out * volB;
 	    }
 	}
     }
@@ -294,7 +293,7 @@ static void KDAC_A_update(void *param, stream_sample_t **inputs, stream_sample_t
 /************************************************/
 /*    Konami PCM start                          */
 /************************************************/
-static void *k007232_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( k007232 )
 {
 	static const k007232_interface defintrf = { 0 };
 	int i;
@@ -307,9 +306,9 @@ static void *k007232_start(const char *tag, int sndindex, int clock, const void 
 
 	/* Set up the chips */
 
-	info->pcmbuf[0] = (unsigned char *)memory_region(Machine, tag);
-	info->pcmbuf[1] = (unsigned char *)memory_region(Machine, tag);
-	info->pcmlimit  = (unsigned int)memory_region_length(Machine, tag);
+	info->pcmbuf[0] = device->region;
+	info->pcmbuf[1] = device->region;
+	info->pcmlimit  = device->regionbytes;
 
 	info->clock = clock;
 
@@ -327,7 +326,7 @@ static void *k007232_start(const char *tag, int sndindex, int clock, const void 
 
 	for( i = 0; i < 0x10; i++ )  info->wreg[i] = 0;
 
-	info->stream = stream_create(0,2,clock/128,info,KDAC_A_update);
+	info->stream = stream_create(device,0,2,clock/128,info,KDAC_A_update);
 
 	KDAC_A_make_fncode(info);
 
@@ -479,7 +478,7 @@ void k007232_set_bank( int chip, int chABank, int chBBank )
  * Generic get_info
  **************************************************************************/
 
-static void k007232_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( k007232 )
 {
 	switch (state)
 	{
@@ -488,24 +487,24 @@ static void k007232_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void k007232_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( k007232 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = k007232_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = k007232_start;			break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( k007232 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( k007232 );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							/* nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "K007232";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Konami custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "K007232");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Konami custom");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

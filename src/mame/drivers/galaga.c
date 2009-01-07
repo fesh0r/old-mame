@@ -695,6 +695,8 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/mb88xx/mb88xx.h"
 #include "machine/atari_vg.h"
 #include "machine/namcoio.h"
 #include "machine/namco50.h"
@@ -706,6 +708,7 @@ TODO:
 #include "audio/namco54.h"
 #include "nam_cust.h"
 
+#define MASTER_CLOCK (XTAL_18_432MHz)
 
 
 static emu_timer *cpu3_interrupt_timer;
@@ -716,20 +719,20 @@ static READ8_HANDLER( bosco_dsw_r )
 {
 	int bit0,bit1;
 
-	bit0 = (input_port_read(machine, "DSWB") >> offset) & 1;
-	bit1 = (input_port_read(machine, "DSWA") >> offset) & 1;
+	bit0 = (input_port_read(space->machine, "DSWB") >> offset) & 1;
+	bit1 = (input_port_read(space->machine, "DSWA") >> offset) & 1;
 
 	return bit0 | (bit1 << 1);
 }
 
 static WRITE8_HANDLER( galaga_flip_screen_w )
 {
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 }
 
 static WRITE8_HANDLER( bosco_flip_screen_w )
 {
-	flip_screen_set(~data & 1);
+	flip_screen_set(space->machine, ~data & 1);
 }
 
 
@@ -740,24 +743,24 @@ static WRITE8_HANDLER( bosco_latch_w )
 	switch (offset)
 	{
 		case 0x00:	/* IRQ1 */
-			cpu_interrupt_enable(0,bit);
+			cpu_interrupt_enable(space->machine->cpu[0],bit);
 			if (!bit)
-				cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+				cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 			break;
 
 		case 0x01:	/* IRQ2 */
-			cpu_interrupt_enable(1,bit);
+			cpu_interrupt_enable(space->machine->cpu[1],bit);
 			if (!bit)
-				cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+				cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 			break;
 
 		case 0x02:	/* NMION */
-			cpu_interrupt_enable(2,!bit);
+			cpu_interrupt_enable(space->machine->cpu[2],!bit);
 			break;
 
 		case 0x03:	/* RESET */
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
-			cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 0x04:	/* n.c. */
@@ -771,14 +774,14 @@ static WRITE8_HANDLER( bosco_latch_w )
 }
 
 
-static READ8_HANDLER( in0_l )	{ return input_port_read(machine, "IN0"); }		// fire and start buttons
-static READ8_HANDLER( in0_h )	{ return input_port_read(machine, "IN0") >> 4; }	// coins
-static READ8_HANDLER( in1_l )	{ return input_port_read(machine, "IN1"); }		// P1 joystick
-static READ8_HANDLER( in1_h )	{ return input_port_read(machine, "IN1") >> 4; }	// P2 joystick
-static READ8_HANDLER( dipA_l )	{ return input_port_read(machine, "DSWA"); }		// dips A
-static READ8_HANDLER( dipA_h )	{ return input_port_read(machine, "DSWA") >> 4; }	// dips A
-static READ8_HANDLER( dipB_l )	{ return input_port_read(machine, "DSWB"); }		// dips B
-static READ8_HANDLER( dipB_h )	{ return input_port_read(machine, "DSWB") >> 4; }	// dips B
+static READ8_HANDLER( in0_l )	{ return input_port_read(space->machine, "IN0"); }		// fire and start buttons
+static READ8_HANDLER( in0_h )	{ return input_port_read(space->machine, "IN0") >> 4; }	// coins
+static READ8_HANDLER( in1_l )	{ return input_port_read(space->machine, "IN1"); }		// P1 joystick
+static READ8_HANDLER( in1_h )	{ return input_port_read(space->machine, "IN1") >> 4; }	// P2 joystick
+static READ8_HANDLER( dipA_l )	{ return input_port_read(space->machine, "DSWA"); }		// dips A
+static READ8_HANDLER( dipA_h )	{ return input_port_read(space->machine, "DSWA") >> 4; }	// dips A
+static READ8_HANDLER( dipB_l )	{ return input_port_read(space->machine, "DSWB"); }		// dips B
+static READ8_HANDLER( dipB_h )	{ return input_port_read(space->machine, "DSWB") >> 4; }	// dips B
 static WRITE8_HANDLER( out_0 )
 {
 	set_led_status(1,data & 1);
@@ -807,7 +810,7 @@ static TIMER_CALLBACK( cpu3_interrupt_callback )
 {
 	int scanline = param;
 
-	nmi_line_pulse(machine, 2);
+	nmi_line_pulse(machine->cpu[2]);
 
 	scanline = scanline + 128;
 	if (scanline >= 272)
@@ -821,25 +824,31 @@ static TIMER_CALLBACK( cpu3_interrupt_callback )
 static MACHINE_START( galaga )
 {
 	/* create the interrupt timer */
-	cpu3_interrupt_timer = timer_alloc(cpu3_interrupt_callback, NULL);
+	cpu3_interrupt_timer = timer_alloc(machine, cpu3_interrupt_callback, NULL);
 }
 
-
-static MACHINE_RESET( bosco )
+static void bosco_latch_reset(running_machine *machine)
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	int i;
 
 	/* Reset all latches */
 	for (i = 0;i < 8;i++)
-		bosco_latch_w(machine,i,0);
+		bosco_latch_w(space,i,0);
+}
 
-	namco_06xx_init(0, 0,
+static MACHINE_RESET( bosco )
+{
+	/* Reset all latches */
+	bosco_latch_reset(machine);
+
+	namco_06xx_init(machine, 0, 0,
 		NAMCOIO_51XX, &intf0,
 		NAMCOIO_NONE, NULL,
 		NAMCOIO_50XX, NULL,
 		NAMCOIO_54XX, NULL);
 
-	namco_06xx_init(1, 1,
+	namco_06xx_init(machine, 1, 1,
 		NAMCOIO_50XX_2, NULL,
 		NAMCOIO_52XX, NULL,
 		NAMCOIO_NONE, NULL,
@@ -850,13 +859,10 @@ static MACHINE_RESET( bosco )
 
 static MACHINE_RESET( galaga )
 {
-	int i;
-
 	/* Reset all latches */
-	for (i = 0;i < 8;i++)
-		bosco_latch_w(machine,i,0);
+	bosco_latch_reset(machine);
 
-	namco_06xx_init(0, 0,
+	namco_06xx_init(machine, 0, 0,
 		NAMCOIO_51XX, &intf0,
 		NAMCOIO_NONE, NULL,
 		NAMCOIO_NONE, NULL,
@@ -867,13 +873,10 @@ static MACHINE_RESET( galaga )
 
 static MACHINE_RESET( xevious )
 {
-	int i;
-
 	/* Reset all latches */
-	for (i = 0;i < 8;i++)
-		bosco_latch_w(machine,i,0);
+	bosco_latch_reset(machine);
 
-	namco_06xx_init(0, 0,
+	namco_06xx_init(machine, 0, 0,
 		NAMCOIO_51XX, &intf0,
 		NAMCOIO_NONE, NULL,
 		NAMCOIO_50XX, NULL,
@@ -884,26 +887,20 @@ static MACHINE_RESET( xevious )
 
 static MACHINE_RESET( battles )
 {
-	int i;
-
 	/* Reset all latches */
-	for (i = 0;i < 8;i++)
-		bosco_latch_w(machine,i,0);
+	bosco_latch_reset(machine);
 
-	battles_customio_init();
+	battles_customio_init(machine);
 
 	timer_adjust_oneshot(cpu3_interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, 64, 0), 64);
 }
 
 static MACHINE_RESET( digdug )
 {
-	int i;
-
 	/* Reset all latches */
-	for (i = 0;i < 8;i++)
-		bosco_latch_w(machine,i,0);
+	bosco_latch_reset(machine);
 
-	namco_06xx_init(0, 0,
+	namco_06xx_init(machine, 0, 0,
 		NAMCOIO_51XX, &intf0,
 		NAMCOIO_53XX_DIGDUG, &intf1,
 		NAMCOIO_NONE, NULL,
@@ -996,45 +993,25 @@ ADDRESS_MAP_END
 
 /* bootleg 4th CPU replacing the 5xXX chips */
 static ADDRESS_MAP_START( readmem4_galaga, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x1000, 0x107f) AM_READ(SMH_RAM)
+	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(SMH_ROM, SMH_ROM)
+	AM_RANGE(0x1000, 0x107f) AM_READWRITE(SMH_RAM, SMH_RAM)
 ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem4_galaga, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x1000, 0x107f) AM_WRITE(SMH_RAM)
-ADDRESS_MAP_END
-
 
 static ADDRESS_MAP_START( readmem4_battles, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x4000, 0x4003) AM_READ(battles_input_port_r)
-	AM_RANGE(0x6000, 0x6000) AM_READ(battles_customio3_r)
-	AM_RANGE(0x7000, 0x7000) AM_READ(battles_customio_data3_r)
-	AM_RANGE(0x8000, 0x80ff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem4_battles, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x4001, 0x4001) AM_WRITE(battles_CPU4_coin_w)
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(battles_noise_sound_w)
-	AM_RANGE(0x6000, 0x6000) AM_WRITE(battles_customio3_w)
-	AM_RANGE(0x7000, 0x7000) AM_WRITE(battles_customio_data3_w)
-	AM_RANGE(0x8000, 0x80ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x6000, 0x6000) AM_READWRITE(battles_customio3_r, battles_customio3_w)
+	AM_RANGE(0x7000, 0x7000) AM_READWRITE(battles_customio_data3_r, battles_customio_data3_w)
+	AM_RANGE(0x8000, 0x80ff) AM_READWRITE(SMH_RAM, SMH_RAM)
 ADDRESS_MAP_END
-
 
 static ADDRESS_MAP_START( readmem4_dzigzag, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x1000, 0x107f) AM_READ(SMH_RAM)
+	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(SMH_ROM, SMH_ROM)
+	AM_RANGE(0x1000, 0x107f) AM_READWRITE(SMH_RAM, SMH_RAM)
 	AM_RANGE(0x4000, 0x4007) AM_READ(SMH_RAM)	// dip switches? bits 0 & 1 used
 ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem4_dzigzag, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x1000, 0x107f) AM_WRITE(SMH_RAM)
-ADDRESS_MAP_END
-
 
 
 static INPUT_PORTS_START( bosco )
@@ -1645,34 +1622,34 @@ static const samples_interface battles_samples_interface =
 static MACHINE_DRIVER_START( bosco )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(bosco_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_CPU_ADD("sub", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("sub", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(bosco_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_CPU_ADD("sub2", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("sub2", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(bosco_map,0)
 
-	MDRV_CPU_ADD(CPUTAG_50XX, MB8842, 18432000/12/6)	/* 1.536 MHz, internally divided by 6 */
+	MDRV_CPU_ADD(CPUTAG_50XX, MB8842, MASTER_CLOCK/12/6)	/* 1.536 MHz, internally divided by 6 */
 	MDRV_CPU_PROGRAM_MAP(namco_50xx_map_program,0)
 	MDRV_CPU_DATA_MAP(namco_50xx_map_data,0)
 	MDRV_CPU_IO_MAP(namco_50xx_map_io,0)
 
-	MDRV_CPU_ADD(CPUTAG_50XX_2, MB8842, 18432000/12/6)	/* 1.536 MHz, internally divided by 6 */
+	MDRV_CPU_ADD(CPUTAG_50XX_2, MB8842, MASTER_CLOCK/12/6)	/* 1.536 MHz, internally divided by 6 */
 	MDRV_CPU_PROGRAM_MAP(namco_50xx_2_map_program,0)
 	MDRV_CPU_DATA_MAP(namco_50xx_2_map_data,0)
 	MDRV_CPU_IO_MAP(namco_50xx_2_map_io,0)
 
-	MDRV_CPU_ADD(CPUTAG_54XX, MB8844, 18432000/12/6)	/* 1.536 MHz, internally divided by 6 */
+	MDRV_CPU_ADD(CPUTAG_54XX, MB8844, MASTER_CLOCK/12/6)	/* 1.536 MHz, internally divided by 6 */
 	MDRV_CPU_PROGRAM_MAP(namco_54xx_map_program,0)
 	MDRV_CPU_DATA_MAP(namco_54xx_map_data,0)
 	MDRV_CPU_IO_MAP(namco_54xx_map_io,0)
 
 	MDRV_WATCHDOG_VBLANK_INIT(8)
-	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_START(galaga)
 	MDRV_MACHINE_RESET(bosco)
@@ -1696,11 +1673,11 @@ static MACHINE_DRIVER_START( bosco )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("namco", NAMCO, 18432000/6/32)
+	MDRV_SOUND_ADD("namco", NAMCO, MASTER_CLOCK/6/32)
 	MDRV_SOUND_CONFIG(namco_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90 * 10.0 / 16.0)
 
-	MDRV_SOUND_ADD("namco2", NAMCO_52XX, 18432000/12)	/* 1.536 MHz */
+	MDRV_SOUND_ADD("namco2", NAMCO_52XX, MASTER_CLOCK/12)	/* 1.536 MHz */
 	MDRV_SOUND_CONFIG(namco_52xx_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90)
 
@@ -1714,24 +1691,24 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( galaga )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(galaga_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_CPU_ADD("sub", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("sub", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(galaga_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_CPU_ADD("sub2", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("sub2", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(galaga_map,0)
 
-	MDRV_CPU_ADD(CPUTAG_54XX, MB8844, 18432000/12/6)	/* 1.536 MHz, internally divided by 6 */
+	MDRV_CPU_ADD(CPUTAG_54XX, MB8844, MASTER_CLOCK/12/6)	/* 1.536 MHz, internally divided by 6 */
 	MDRV_CPU_PROGRAM_MAP(namco_54xx_map_program,0)
 	MDRV_CPU_DATA_MAP(namco_54xx_map_data,0)
 	MDRV_CPU_IO_MAP(namco_54xx_map_io,0)
 
 	MDRV_WATCHDOG_VBLANK_INIT(8)
-	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_START(galaga)
 	MDRV_MACHINE_RESET(galaga)
@@ -1755,7 +1732,7 @@ static MACHINE_DRIVER_START( galaga )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("namco", NAMCO, 18432000/6/32)
+	MDRV_SOUND_ADD("namco", NAMCO, MASTER_CLOCK/6/32)
 	MDRV_SOUND_CONFIG(namco_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90 * 10.0 / 16.0)
 
@@ -1772,8 +1749,8 @@ static MACHINE_DRIVER_START( galagab )
 
 	MDRV_CPU_REMOVE(CPUTAG_54XX)
 
-	MDRV_CPU_ADD("sub3", Z80, 18432000/6)	/* 3.072 MHz */
-	MDRV_CPU_PROGRAM_MAP(readmem4_galaga,writemem4_galaga)
+	MDRV_CPU_ADD("sub3", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
+	MDRV_CPU_PROGRAM_MAP(readmem4_galaga,0)
 
 	/* sound hardware */
 	MDRV_SOUND_REMOVE("discrete")
@@ -1783,29 +1760,29 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( xevious )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(xevious_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_CPU_ADD("sub", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("sub", Z80,MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(xevious_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_CPU_ADD("sub2", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("sub2", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(xevious_map,0)
 
-	MDRV_CPU_ADD(CPUTAG_50XX, MB8842, 18432000/12/6)	/* 1.536 MHz, internally divided by 6 */
+	MDRV_CPU_ADD(CPUTAG_50XX, MB8842, MASTER_CLOCK/12/6)	/* 1.536 MHz, internally divided by 6 */
 	MDRV_CPU_PROGRAM_MAP(namco_50xx_map_program,0)
 	MDRV_CPU_DATA_MAP(namco_50xx_map_data,0)
 	MDRV_CPU_IO_MAP(namco_50xx_map_io,0)
 
-	MDRV_CPU_ADD(CPUTAG_54XX, MB8844, 18432000/12/6)	/* 1.536 MHz, internally divided by 6 */
+	MDRV_CPU_ADD(CPUTAG_54XX, MB8844, MASTER_CLOCK/12/6)	/* 1.536 MHz, internally divided by 6 */
 	MDRV_CPU_PROGRAM_MAP(namco_54xx_map_program,0)
 	MDRV_CPU_DATA_MAP(namco_54xx_map_data,0)
 	MDRV_CPU_IO_MAP(namco_54xx_map_io,0)
 
 	MDRV_WATCHDOG_VBLANK_INIT(8)
-	MDRV_INTERLEAVE(1000)	/* 1000 CPU slices per frame - an high value to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(60000))	/* 1000 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_START(galaga)
 	MDRV_MACHINE_RESET(xevious)
@@ -1828,7 +1805,7 @@ static MACHINE_DRIVER_START( xevious )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("namco", NAMCO, 18432000/6/32)
+	MDRV_SOUND_ADD("namco", NAMCO, MASTER_CLOCK/6/32)
 	MDRV_SOUND_CONFIG(namco_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90 * 10.0 / 16.0)
 
@@ -1846,8 +1823,8 @@ static MACHINE_DRIVER_START( battles )
 	MDRV_CPU_REMOVE(CPUTAG_50XX)
 	MDRV_CPU_REMOVE(CPUTAG_54XX)
 
-	MDRV_CPU_ADD("sub3", Z80, 18432000/6)	/* 3.072 MHz */
-	MDRV_CPU_PROGRAM_MAP(readmem4_battles,writemem4_battles)
+	MDRV_CPU_ADD("sub3", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
+	MDRV_CPU_PROGRAM_MAP(readmem4_battles,0)
 	MDRV_CPU_VBLANK_INT("main", battles_interrupt_4)
 
 	MDRV_MACHINE_RESET(battles)
@@ -1867,18 +1844,18 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( digdug )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(digdug_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_CPU_ADD("sub", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("sub", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(digdug_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_CPU_ADD("sub2", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("sub2", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(digdug_map,0)
 
-	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_START(galaga)
 	MDRV_MACHINE_RESET(digdug)
@@ -1902,7 +1879,7 @@ static MACHINE_DRIVER_START( digdug )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("namco", NAMCO, 18432000/6/32)
+	MDRV_SOUND_ADD("namco", NAMCO, MASTER_CLOCK/6/32)
 	MDRV_SOUND_CONFIG(namco_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90 * 10.0 / 16.0)
 MACHINE_DRIVER_END
@@ -1912,8 +1889,8 @@ static MACHINE_DRIVER_START( dzigzag )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(digdug)
 
-	MDRV_CPU_ADD("sub3", Z80, 18432000/6)	/* 3.072 MHz */
-	MDRV_CPU_PROGRAM_MAP(readmem4_dzigzag,writemem4_dzigzag)
+	MDRV_CPU_ADD("sub3", Z80, MASTER_CLOCK/6)	/* 3.072 MHz */
+	MDRV_CPU_PROGRAM_MAP(readmem4_dzigzag,0)
 MACHINE_DRIVER_END
 
 
@@ -1927,6 +1904,12 @@ MACHINE_DRIVER_END
 /**********************************************************************************************
   Bosconian & clones
 **********************************************************************************************/
+/*
+
+Bosconian
+Namco/Midway, 1981
+
+*/
 
 #define BOSCO_CUSTOMS \
 	ROM_REGION_NAMCO_50XX( CPUTAG_50XX ) \
@@ -2059,6 +2042,13 @@ ROM_START( boscoo2 )
 	ROM_LOAD( "5100.5l",      0x2000, 0x1000, CRC(17ac9511) SHA1(266f3fae90d2fe38d109096d352863a52b379899) )
 ROM_END
 
+/*
+    Bosconian - Midway Version
+
+    CPU/Sound Board: A084-91412-B550
+    Video Board:     A084-91413-B550
+*/
+
 ROM_START( boscomd )
 	ROM_REGION( 0x10000, "main", 0 )	/* 64k for code for the first CPU  */
 	ROM_LOAD( "3n",       0x0000, 0x1000, CRC(441b501a) SHA1(7b4921ff40b3c56950fd32aa0ec5563b02a00929) )
@@ -2098,6 +2088,9 @@ ROM_START( boscomd )
 	ROM_LOAD( "4900.5n",      0x0000, 0x1000, CRC(09acc978) SHA1(2b264aaeb6eba70ad91593413dca733990e5467b) )
 	ROM_LOAD( "5000.5m",      0x1000, 0x1000, CRC(e571e959) SHA1(9c81d7bec73bc605f7dd9a089171b0f34c4bb09a) )
 	ROM_LOAD( "5100.5l",      0x2000, 0x1000, CRC(17ac9511) SHA1(266f3fae90d2fe38d109096d352863a52b379899) )
+
+    ROM_REGION( 0x0001, "pal_vidbd", 0 ) /* PAL located on the video board */
+    ROM_LOAD( "0066-005xx-xxqx.5a", 0x00000, 0x00001, NO_DUMP ) /* According to the manual it's a PAL. What type is unknown. */
 ROM_END
 
 ROM_START( boscomdo )
@@ -2139,6 +2132,9 @@ ROM_START( boscomdo )
 	ROM_LOAD( "4900.5n",      0x0000, 0x1000, CRC(09acc978) SHA1(2b264aaeb6eba70ad91593413dca733990e5467b) )
 	ROM_LOAD( "5000.5m",      0x1000, 0x1000, CRC(e571e959) SHA1(9c81d7bec73bc605f7dd9a089171b0f34c4bb09a) )
 	ROM_LOAD( "5100.5l",      0x2000, 0x1000, CRC(17ac9511) SHA1(266f3fae90d2fe38d109096d352863a52b379899) )
+
+    ROM_REGION( 0x0001, "pal_vidbd", 0 ) /* PAL located on the video board */
+    ROM_LOAD( "0066-005xx-xxqx.5a", 0x00000, 0x00001, NO_DUMP ) /* According to the manual it's a PAL. What type is unknown. */
 ROM_END
 
 /**********************************************************************************************
@@ -2548,6 +2544,12 @@ ROM_END
 	ROM_REGION_NAMCO_54XX( CPUTAG_54XX ) \
 	ROM_REGION_NAMCO_51XX( "51xx" ) \
 
+/*
+    Xevious - Namco Version
+
+    Single/Dual Board?
+*/
+
 ROM_START( xevious )
 	ROM_REGION( 0x10000, "main", 0 )	/* 64k for the first CPU */
 	ROM_LOAD( "xvi_1.3p",     0x0000, 0x1000, CRC(09964dda) SHA1(4882b25b0938a903f3a367455ba788a30759b5b0) )
@@ -2598,6 +2600,13 @@ ROM_START( xevious )
 	ROM_LOAD( "xvi_1bpr.5n",  0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )	/* timing - not used */
 ROM_END
 
+/*
+    Xevious - Atari Version
+
+    CPU/Sound Board: A039785
+    Video Board:     A039787
+*/
+
 ROM_START( xeviousa )
 	ROM_REGION( 0x10000, "main", 0 )	/* 64k for the first CPU */
 	ROM_LOAD( "xea-1m-a.bin", 0x0000, 0x2000, CRC(8c2b50ec) SHA1(f770873b711d838556dde67a8aac8a7f572fcc5b) )
@@ -2639,6 +2648,9 @@ ROM_START( xeviousa )
 	ROM_LOAD( "xvi_6bpr.4f",  0x0500, 0x0200, CRC(3a7599f0) SHA1(a4bdf58c190ca16fc7b976c97f41087a61fdb8b8) ) /* bg tiles lookup table high bits */
 	ROM_LOAD( "xvi_4bpr.3l",  0x0700, 0x0200, CRC(fd8b9d91) SHA1(87ddf0b9d723aabb422d6d416aa9ec6bc246bf34) ) /* sprite lookup table low bits */
 	ROM_LOAD( "xvi_5bpr.3m",  0x0900, 0x0200, CRC(bf906d82) SHA1(776168a73d3b9f0ce05610acc8a623deae0a572b) ) /* sprite lookup table high bits */
+
+    ROM_REGION( 0x0001, "pals_vidbd", 0) /* PAL's located on the video board */
+    ROM_LOAD( "137294-001.1f", 0x0000, 0x0001, NO_DUMP ) /* N82S153N */
 
 	ROM_REGION( 0x0200, "namco", 0 )	/* sound PROMs */
 	ROM_LOAD( "xvi_2bpr.7n",  0x0000, 0x0100, CRC(550f06bc) SHA1(816a0fafa0b084ac11ae1af70a5186539376fc2a) )
@@ -2686,6 +2698,9 @@ ROM_START( xeviousb )
 	ROM_LOAD( "xvi_6bpr.4f",  0x0500, 0x0200, CRC(3a7599f0) SHA1(a4bdf58c190ca16fc7b976c97f41087a61fdb8b8) ) /* bg tiles lookup table high bits */
 	ROM_LOAD( "xvi_4bpr.3l",  0x0700, 0x0200, CRC(fd8b9d91) SHA1(87ddf0b9d723aabb422d6d416aa9ec6bc246bf34) ) /* sprite lookup table low bits */
 	ROM_LOAD( "xvi_5bpr.3m",  0x0900, 0x0200, CRC(bf906d82) SHA1(776168a73d3b9f0ce05610acc8a623deae0a572b) ) /* sprite lookup table high bits */
+
+    ROM_REGION( 0x0001, "pals_vidbd", 0) /* PAL's located on the video board */
+    ROM_LOAD( "137294-001.1f", 0x0000, 0x0001, NO_DUMP ) /* N82S153N */
 
 	ROM_REGION( 0x0200, "namco", 0 )	/* sound PROMs */
 	ROM_LOAD( "xvi_2bpr.7n",  0x0000, 0x0100, CRC(550f06bc) SHA1(816a0fafa0b084ac11ae1af70a5186539376fc2a) )
@@ -2737,10 +2752,19 @@ ROM_START( xeviousc )
 	ROM_LOAD( "xvi_4bpr.3l",  0x0700, 0x0200, CRC(fd8b9d91) SHA1(87ddf0b9d723aabb422d6d416aa9ec6bc246bf34) ) /* sprite lookup table low bits */
 	ROM_LOAD( "xvi_5bpr.3m",  0x0900, 0x0200, CRC(bf906d82) SHA1(776168a73d3b9f0ce05610acc8a623deae0a572b) ) /* sprite lookup table high bits */
 
+    ROM_REGION( 0x0001, "pals_vidbd", 0) /* PAL's located on the video board */
+    ROM_LOAD( "137294-001.1f", 0x0000, 0x0001, NO_DUMP ) /* N82S153N */
+
 	ROM_REGION( 0x0200, "namco", 0 )	/* sound PROMs */
 	ROM_LOAD( "xvi_2bpr.7n",  0x0000, 0x0100, CRC(550f06bc) SHA1(816a0fafa0b084ac11ae1af70a5186539376fc2a) )
 	ROM_LOAD( "xvi_1bpr.5n",  0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )	/* timing - not used */
 ROM_END
+
+/*
+    Xevious Bootleg
+
+    Single/Dual Board?
+*/
 
 ROM_START( xevios )
 	ROM_REGION( 0x10000, "main", 0 )	/* 64k for the first CPU */
@@ -2987,6 +3011,25 @@ ROM_START( digdugb )
 	ROM_LOAD( "136007.109",   0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )	/* timing - not used */
 ROM_END
 
+/*
+    Dig Dug - Atari Version
+
+    There are two revisions of the board and the placement of the components
+    are different between the two versions.
+
+    Revision A:
+        * The letter "A" is silkscreened in the A10 corner of the board.
+        * The 1st, 2nd and 3rd edition TM-203 and SP-203 manuals cover this board.
+
+    Revision B:
+        * The letter "B" is silkscreened in the P12 corner (on right side of
+          the edge connector).
+        * Also, the three Z80's are located on the opposite side of the edge connector and
+          they are stacked in a column.  (The Z80's are oriented vertically instead of
+          horizontal as the other chips are.)
+        * The 4th edition TM-203 and SP-203 manuals cover this board.
+*/
+
 ROM_START( digdugat )
 	ROM_REGION( 0x10000, "main", 0 )	/* 64k for code for the first CPU  */
 	ROM_LOAD( "136007.201",   0x0000, 0x1000, CRC(23d0b1a4) SHA1(a118d55e03a9ccf069f37c7bac2c9044dccd1f5e) )
@@ -3068,6 +3111,10 @@ ROM_START( digduga1 )
 	ROM_LOAD( "136007.110",   0x0000, 0x0100, CRC(7a2815b4) SHA1(085ada18c498fdb18ecedef0ea8fe9217edb7b46) )
 	ROM_LOAD( "136007.109",   0x0100, 0x0100, CRC(77245b66) SHA1(0c4d0bee858b97632411c440bea6948a74759746) )	/* timing - not used */
 ROM_END
+
+/*
+    Zig Zag (Dig Dug bootleg)
+*/
 
 ROM_START( dzigzag )
 	ROM_REGION( 0x10000, "main", 0 )	/* 64k for code for the first CPU  */
@@ -3230,7 +3277,7 @@ static DRIVER_INIT (gatsbee)
 	DRIVER_INIT_CALL(galaga);
 
 	/* Gatsbee has a larger character ROM, we need a handler for banking */
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1000, 0, 0, gatsbee_bank_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1000, 0x1000, 0, 0, gatsbee_bank_w);
 }
 
 
@@ -3271,8 +3318,8 @@ static DRIVER_INIT( xevios )
 static DRIVER_INIT( battles )
 {
 	/* replace the Namco I/O handlers with interface to the 4th CPU */
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x7000, 0x700f, 0, 0, battles_customio_data0_r, battles_customio_data0_w );
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x7100, 0x7100, 0, 0, battles_customio0_r, battles_customio0_w );
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x7000, 0x700f, 0, 0, battles_customio_data0_r, battles_customio_data0_w );
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x7100, 0x7100, 0, 0, battles_customio0_r, battles_customio0_w );
 
 	DRIVER_INIT_CALL(xevious);
 }
@@ -3302,7 +3349,7 @@ GAME( 1982, digdug,   0,       digdug,  digdug,   0,       ROT90, "Namco", "Dig 
 GAME( 1982, digdugb,  digdug,  digdug,  digdug,   0,       ROT90, "Namco", "Dig Dug (rev 1)", GAME_SUPPORTS_SAVE )
 GAME( 1982, digdugat, digdug,  digdug,  digdug,   0,       ROT90, "[Namco] (Atari license)", "Dig Dug (Atari, rev 2)", GAME_SUPPORTS_SAVE )
 GAME( 1982, digduga1, digdug,  digdug,  digdug,   0,       ROT90, "[Namco] (Atari license)", "Dig Dug (Atari, rev 1)", GAME_SUPPORTS_SAVE )
-GAME( 1982, digsid,   digdug,  digdug, digdug,    0,       ROT90, "Namco [Sidam license]", "Dig Dug (manufactured by Sidam)", GAME_SUPPORTS_SAVE )
+GAME( 1982, digsid,   digdug,  digdug,  digdug,   0,       ROT90, "Namco [Sidam license]", "Dig Dug (manufactured by Sidam)", GAME_SUPPORTS_SAVE )
 
 /* Bootlegs with replacement I/O chips */
 

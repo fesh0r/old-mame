@@ -3,7 +3,6 @@
     Sound handler
 ****************************************************************************/
 #include "driver.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "sound/filter.h"
 #include "machine/rescap.h"
@@ -47,7 +46,7 @@ static const double r_filt_total = 1.0 / (1.0/RES_K(4.7) + 1.0/RES_K(7.5) + 1.0/
 /************************************/
 /* Stream updater                   */
 /************************************/
-static void engine_sound_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length)
+static STREAM_UPDATE( engine_sound_update )
 {
 	static UINT32 current_position;
 	UINT32 step, clock, slot;
@@ -59,21 +58,21 @@ static void engine_sound_update(void *param, stream_sample_t **inputs, stream_sa
 	/* if we're not enabled, just fill with 0 */
 	if (!sample_enable)
 	{
-		memset(buffer, 0, length * sizeof(*buffer));
+		memset(buffer, 0, samples * sizeof(*buffer));
 		return;
 	}
 
 	/* determine the effective clock rate */
-	clock = (cpunum_get_clock(0) / 16) * ((sample_msb + 1) * 64 + sample_lsb + 1) / (64*64);
+	clock = (cpu_get_clock(device->machine->cpu[0]) / 16) * ((sample_msb + 1) * 64 + sample_lsb + 1) / (64*64);
 	step = (clock << 12) / OUTPUT_RATE;
 
 	/* determine the volume */
 	slot = (sample_msb >> 3) & 7;
 	volume = volume_table[slot];
-	base = &memory_region(Machine, "engine")[slot * 0x800];
+	base = &memory_region(device->machine, "engine")[slot * 0x800];
 
 	/* fill in the sample */
-	while (length--)
+	while (samples--)
 	{
 		filter_engine[0].x0 = (3.4 / 255 * base[(current_position >> 12) & 0x7ff] - 2) * volume;
 		filter_engine[1].x0 = filter_engine[0].x0;
@@ -100,20 +99,20 @@ static void engine_sound_update(void *param, stream_sample_t **inputs, stream_sa
 /************************************/
 /* Sound handler start              */
 /************************************/
-void *polepos_sh_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( polepos_sh_start )
 {
-	stream = stream_create(0, 1, OUTPUT_RATE, NULL, engine_sound_update);
+	stream = stream_create(device, 0, 1, OUTPUT_RATE, NULL, engine_sound_update);
 	sample_msb = sample_lsb = 0;
 	sample_enable = 0;
 
 	/* setup the filters */
-	filter_opamp_m_bandpass_setup(RES_K(220), RES_K(33), RES_K(390), CAP_U(.01),  CAP_U(.01),
+	filter_opamp_m_bandpass_setup(device, RES_K(220), RES_K(33), RES_K(390), CAP_U(.01),  CAP_U(.01),
 									&filter_engine[0]);
-	filter_opamp_m_bandpass_setup(RES_K(150), RES_K(22), RES_K(330), CAP_U(.0047),  CAP_U(.0047),
+	filter_opamp_m_bandpass_setup(device, RES_K(150), RES_K(22), RES_K(330), CAP_U(.0047),  CAP_U(.0047),
 									&filter_engine[1]);
 	/* Filter 3 is a little different.  Because of the input capacitor, it is
      * a high pass filter. */
-	filter2_setup(FILTER_HIGHPASS, 950, Q_TO_DAMP(.707), 1,
+	filter2_setup(device, FILTER_HIGHPASS, 950, Q_TO_DAMP(.707), 1,
 									&filter_engine[2]);
 
 	return auto_malloc(1);
@@ -122,7 +121,7 @@ void *polepos_sh_start(int clock, const custom_sound_interface *config)
 /************************************/
 /* Sound handler reset              */
 /************************************/
-void polepos_sh_reset(void *token)
+CUSTOM_RESET( polepos_sh_reset )
 {
 	int loop;
 	for (loop = 0; loop < 3; loop++) filter2_reset(&filter_engine[loop]);

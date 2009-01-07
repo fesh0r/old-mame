@@ -5,9 +5,9 @@
 *************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/rescap.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6821pia.h"
 #include "machine/6532riot.h"
@@ -114,7 +114,7 @@ static double freq_to_step;
 
 static void update_irq_state(running_machine *machine, /* unused */ int state)
 {
-	cpunum_set_input_line(machine, 1, M6502_IRQ_LINE, (pia_get_irq_b(1) | riot_irq_state) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], M6502_IRQ_LINE, (pia_get_irq_b(1) | riot_irq_state) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -218,17 +218,56 @@ INLINE int sh6840_update_noise(int clocks)
 
 /*************************************
  *
+ *  6840 state saving
+ *
+ *************************************/
+
+static void sh6840_register_state_globals(running_machine *machine)
+{
+    state_save_register_global_array(machine, sh6840_volume);
+    state_save_register_global(machine, sh6840_MSB);
+    state_save_register_global(machine, sh6840_LFSR_oldxor);
+    state_save_register_global(machine, sh6840_LFSR_0);
+    state_save_register_global(machine, sh6840_LFSR_1);
+    state_save_register_global(machine, sh6840_LFSR_2);
+    state_save_register_global(machine, sh6840_LFSR_3);
+    state_save_register_global(machine, sh6840_clock_count);
+    state_save_register_global(machine, exidy_sfxctrl);
+    state_save_register_global(machine, sh6840_timer[0].cr);
+    state_save_register_global(machine, sh6840_timer[0].state);
+    state_save_register_global(machine, sh6840_timer[0].leftovers);
+    state_save_register_global(machine, sh6840_timer[0].timer);
+    state_save_register_global(machine, sh6840_timer[0].clocks);
+    state_save_register_global(machine, sh6840_timer[0].counter.w);
+    state_save_register_global(machine, sh6840_timer[1].cr);
+    state_save_register_global(machine, sh6840_timer[1].state);
+    state_save_register_global(machine, sh6840_timer[1].leftovers);
+    state_save_register_global(machine, sh6840_timer[1].timer);
+    state_save_register_global(machine, sh6840_timer[1].clocks);
+    state_save_register_global(machine, sh6840_timer[1].counter.w);
+    state_save_register_global(machine, sh6840_timer[2].cr);
+    state_save_register_global(machine, sh6840_timer[2].state);
+    state_save_register_global(machine, sh6840_timer[2].leftovers);
+    state_save_register_global(machine, sh6840_timer[2].timer);
+    state_save_register_global(machine, sh6840_timer[2].clocks);
+    state_save_register_global(machine, sh6840_timer[2].counter.w);
+}
+
+
+
+/*************************************
+ *
  *  Core sound generation
  *
  *************************************/
 
-static void exidy_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length)
+static STREAM_UPDATE( exidy_stream_update )
 {
 	int noisy = ((sh6840_timer[0].cr & sh6840_timer[1].cr & sh6840_timer[2].cr & 0x02) == 0);
 	stream_sample_t *buffer = outputs[0];
 
 	/* loop over samples */
-	while (length--)
+	while (samples--)
 	{
 		struct sh6840_timer_channel *t;
 		struct sh8253_timer_channel *c;
@@ -338,21 +377,28 @@ static void exidy_stream_update(void *param, stream_sample_t **inputs, stream_sa
  *
  *************************************/
 
-void *exidy_sh6840_sh_start(int clock, const custom_sound_interface *config)
+static void *common_sh_start(const device_config *device, int clock, const custom_sound_interface *config)
 {
 	int sample_rate = SH8253_CLOCK;
 
 	sh6840_clocks_per_sample = (int)((double)SH6840_CLOCK / (double)sample_rate * (double)(1 << 24));
 
 	/* allocate the stream */
-	exidy_stream = stream_create(0, 1, sample_rate, NULL, exidy_stream_update);
+	exidy_stream = stream_create(device, 0, 1, sample_rate, NULL, exidy_stream_update);
 
+    sh6840_register_state_globals(device->machine);
+
+	return auto_malloc(1);
+}
+
+CUSTOM_START( exidy_sh6840_sh_start )
+{
 	/* indicate no additional hardware */
 	has_sh8253  = FALSE;
 	has_tms5220 = FALSE;
 	has_mc3417 = FALSE;
 
-	return auto_malloc(1);
+	return common_sh_start(device, clock, config);
 }
 
 
@@ -363,7 +409,7 @@ void *exidy_sh6840_sh_start(int clock, const custom_sound_interface *config)
  *
  *************************************/
 
-void exidy_sh6840_sh_reset(void *token)
+static void common_sh_reset(void *token)
 {
 	/* 6840 */
 	memset(sh6840_timer, 0, sizeof(sh6840_timer));
@@ -371,6 +417,7 @@ void exidy_sh6840_sh_reset(void *token)
 	sh6840_volume[0] = 0;
 	sh6840_volume[1] = 0;
 	sh6840_volume[2] = 0;
+    sh6840_clock_count = 0;
 	exidy_sfxctrl = 0;
 
 	/* LFSR */
@@ -379,6 +426,11 @@ void exidy_sh6840_sh_reset(void *token)
 	sh6840_LFSR_1 = 0xffffffff;
 	sh6840_LFSR_2 = 0xffffffff;
 	sh6840_LFSR_3 = 0xffffffff;
+}
+
+CUSTOM_RESET( exidy_sh6840_sh_reset )
+{
+	common_sh_reset(token);
 }
 
 
@@ -399,23 +451,24 @@ static void r6532_irq(const device_config *device, int state)
 static void r6532_porta_w(const device_config *device, UINT8 newdata, UINT8 olddata)
 {
 	if (has_mc3417)
-		cpunum_set_input_line(device->machine, 2, INPUT_LINE_RESET, (newdata & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[2], INPUT_LINE_RESET, (newdata & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
 static void r6532_portb_w(const device_config *device, UINT8 newdata, UINT8 olddata)
 {
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	if (has_tms5220)
 	{
 		if ((olddata & 0x01) && !(newdata & 0x01))
 		{
-			riot6532_porta_in_set(riot, tms5220_status_r(device->machine, 0), 0xff);
-			logerror("(%f)%04X:TMS5220 status read = %02X\n", attotime_to_double(timer_get_time()), activecpu_get_previouspc(), tms5220_status_r(device->machine, 0));
+			riot6532_porta_in_set(riot, tms5220_status_r(space, 0), 0xff);
+			logerror("(%f)%s:TMS5220 status read = %02X\n", attotime_to_double(timer_get_time(device->machine)), cpuexec_describe_context(device->machine), tms5220_status_r(space, 0));
 		}
 		if ((olddata & 0x02) && !(newdata & 0x02))
 		{
-			logerror("(%f)%04X:TMS5220 data write = %02X\n", attotime_to_double(timer_get_time()), activecpu_get_previouspc(), riot6532_porta_out_get(riot));
-			tms5220_data_w(device->machine, 0, riot6532_porta_out_get(riot));
+			logerror("(%f)%s:TMS5220 data write = %02X\n", attotime_to_double(timer_get_time(device->machine)), cpuexec_describe_context(device->machine), riot6532_porta_out_get(riot));
+			tms5220_data_w(space, 0, riot6532_porta_out_get(riot));
 		}
 	}
 }
@@ -445,6 +498,31 @@ static const riot6532_interface r6532_interface =
 
 
 
+/*************************************
+ *
+ *  8253 state saving
+ *
+ *************************************/
+
+
+static void sh8253_register_state_globals(running_machine *machine)
+{
+    state_save_register_global(machine, sh8253_timer[0].clstate);
+    state_save_register_global(machine, sh8253_timer[0].enable);
+    state_save_register_global(machine, sh8253_timer[0].count);
+    state_save_register_global(machine, sh8253_timer[0].step);
+    state_save_register_global(machine, sh8253_timer[0].fraction);
+    state_save_register_global(machine, sh8253_timer[1].clstate);
+    state_save_register_global(machine, sh8253_timer[1].enable);
+    state_save_register_global(machine, sh8253_timer[1].count);
+    state_save_register_global(machine, sh8253_timer[1].step);
+    state_save_register_global(machine, sh8253_timer[1].fraction);
+    state_save_register_global(machine, sh8253_timer[2].clstate);
+    state_save_register_global(machine, sh8253_timer[2].enable);
+    state_save_register_global(machine, sh8253_timer[2].count);
+    state_save_register_global(machine, sh8253_timer[2].step);
+    state_save_register_global(machine, sh8253_timer[2].fraction);
+}
 
 /*************************************
  *
@@ -505,7 +583,7 @@ static READ8_HANDLER( exidy_sh8253_r )
 
 static READ8_HANDLER( exidy_sh6840_r )
 {
-	logerror("%04X:exidy_sh6840_r - unexpected read", activecpu_get_pc());
+	logerror("%04X:exidy_sh6840_r - unexpected read", cpu_get_pc(space->cpu));
 	return 0;
 }
 
@@ -625,13 +703,14 @@ static const pia6821_interface venture_pia_1_intf =
 };
 
 
-static void *venture_common_sh_start(int clock, const custom_sound_interface *config, int _has_tms5220)
+static void *venture_common_sh_start(const device_config *device, int clock, const custom_sound_interface *config, int _has_tms5220)
 {
+	running_machine *machine = device->machine;
 	int i;
 
-	void *ret = exidy_sh6840_sh_start(clock, config);
+	void *ret = common_sh_start(device, clock, config);
 
-	riot = device_list_find_by_tag(Machine->config->devicelist, RIOT6532, "riot");
+	riot = device_list_find_by_tag(machine->config->devicelist, RIOT6532, "riot");
 
 	has_sh8253  = TRUE;
 	has_tms5220 = _has_tms5220;
@@ -640,29 +719,33 @@ static void *venture_common_sh_start(int clock, const custom_sound_interface *co
 	has_mc3417 = FALSE;
 	for (i = 0; i < MAX_SOUND; i++)
 	{
-		if (Machine->config->sound[i].type == SOUND_MC3417)
+		if (machine->config->sound[i].type == SOUND_MC3417)
 			has_mc3417 = TRUE;
 	}
 
 	/* 8253 */
 	freq_to_step = (double)(1 << 24) / (double)SH8253_CLOCK;
 
+    state_save_register_global(machine, riot_irq_state);
+    sh8253_register_state_globals(device->machine);
+
 	return ret;
 }
 
 
-static void *venture_sh_start(int clock, const custom_sound_interface *config)
+static CUSTOM_START( venture_sh_start )
 {
-	pia_config(0, &venture_pia_0_intf);
-	pia_config(1, &venture_pia_1_intf);
+	running_machine *machine = device->machine;
+	pia_config(machine, 0, &venture_pia_0_intf);
+	pia_config(machine, 1, &venture_pia_1_intf);
 
-	return venture_common_sh_start(clock, config, FALSE);
+	return venture_common_sh_start(device, clock, config, FALSE);
 }
 
 
-static void venture_sh_reset(void *token)
+static CUSTOM_RESET( venture_sh_reset )
 {
-	exidy_sh6840_sh_reset(token);
+	common_sh_reset(token);
 
 	/* PIA */
 	pia_reset();
@@ -788,7 +871,7 @@ READ8_HANDLER( victory_sound_response_r )
 {
 	UINT8 ret = pia_get_output_b(1);
 
-	if (VICTORY_LOG_SOUND) logerror("%04X:!!!! Sound response read = %02X\n", activecpu_get_previouspc(), ret);
+	if (VICTORY_LOG_SOUND) logerror("%04X:!!!! Sound response read = %02X\n", cpu_get_previouspc(space->cpu), ret);
 
 	pia_set_input_cb1(1, 0);
 
@@ -800,7 +883,7 @@ READ8_HANDLER( victory_sound_status_r )
 {
 	UINT8 ret = (pia_get_input_ca1(1) << 7) | (pia_get_input_cb1(1) << 6);
 
-	if (VICTORY_LOG_SOUND) logerror("%04X:!!!! Sound status read = %02X\n", activecpu_get_previouspc(), ret);
+	if (VICTORY_LOG_SOUND) logerror("%04X:!!!! Sound status read = %02X\n", cpu_get_previouspc(space->cpu), ret);
 
 	return ret;
 }
@@ -814,15 +897,15 @@ static TIMER_CALLBACK( delayed_command_w )
 
 WRITE8_HANDLER( victory_sound_command_w )
 {
-	if (VICTORY_LOG_SOUND) logerror("%04X:!!!! Sound command = %02X\n", activecpu_get_previouspc(), data);
+	if (VICTORY_LOG_SOUND) logerror("%04X:!!!! Sound command = %02X\n", cpu_get_previouspc(space->cpu), data);
 
-	timer_call_after_resynch(NULL, data, delayed_command_w);
+	timer_call_after_resynch(space->machine, NULL, data, delayed_command_w);
 }
 
 
 static WRITE8_HANDLER( victory_sound_irq_clear_w )
 {
-	if (VICTORY_LOG_SOUND) logerror("%04X:!!!! Sound IRQ clear = %02X\n", activecpu_get_previouspc(), data);
+	if (VICTORY_LOG_SOUND) logerror("%04X:!!!! Sound IRQ clear = %02X\n", cpu_get_previouspc(space->cpu), data);
 
 	if (!data) pia_set_input_ca1(1, 1);
 }
@@ -830,7 +913,7 @@ static WRITE8_HANDLER( victory_sound_irq_clear_w )
 
 static WRITE8_HANDLER( victory_main_ack_w )
 {
-	if (VICTORY_LOG_SOUND) logerror("%04X:!!!! Sound Main ACK W = %02X\n", activecpu_get_previouspc(), data);
+	if (VICTORY_LOG_SOUND) logerror("%04X:!!!! Sound Main ACK W = %02X\n", cpu_get_previouspc(space->cpu), data);
 
 	if (victory_sound_response_ack_clk && !data)
 		pia_set_input_cb1(1, 1);
@@ -847,19 +930,23 @@ static const pia6821_interface victory_pia_e5_intf =
 };
 
 
-static void *victory_sh_start(int clock, const custom_sound_interface *config)
+static CUSTOM_START( victory_sh_start )
 {
-	pia_config(1, &victory_pia_e5_intf);
+	running_machine *machine = device->machine;
+	pia_config(machine, 1, &victory_pia_e5_intf);
 
-	state_save_register_global(victory_sound_response_ack_clk);
+	state_save_register_global(machine, victory_sound_response_ack_clk);
 
-	return venture_common_sh_start(clock, config, TRUE);
+	return venture_common_sh_start(device, clock, config, TRUE);
 }
 
 
-static void victory_sh_reset(void *token)
+static CUSTOM_RESET( victory_sh_reset )
 {
-	venture_sh_reset(token);
+	common_sh_reset(token);
+	pia_reset();
+	device_reset(riot);
+	memset(sh8253_timer, 0, sizeof(sh8253_timer));
 
 	/* the flip-flop @ F4 is reset */
 	victory_sound_response_ack_clk = 0;

@@ -72,7 +72,7 @@ WRITE16_HANDLER (system24temp_sys16_paletteram1_w)
 	r |= r >> 5;
 	g |= g >> 5;
 	b |= b >> 5;
-	set_color(machine, offset, r, g, b, data & 0x8000);
+	set_color(space->machine, offset, r, g, b, data & 0x8000);
 }
 
 // - System 24
@@ -156,10 +156,10 @@ void sys24_tile_vh_start(running_machine *machine, UINT16 tile_mask)
 
 	sys24_char_dirtymap = auto_malloc(SYS24_TILES);
 
-	sys24_tile_layer[0] = tilemap_create(sys24_tile_info_0s, tilemap_scan_rows,  8, 8, 64, 64);
-	sys24_tile_layer[1] = tilemap_create(sys24_tile_info_0w, tilemap_scan_rows,  8, 8, 64, 64);
-	sys24_tile_layer[2] = tilemap_create(sys24_tile_info_1s, tilemap_scan_rows,  8, 8, 64, 64);
-	sys24_tile_layer[3] = tilemap_create(sys24_tile_info_1w, tilemap_scan_rows,  8, 8, 64, 64);
+	sys24_tile_layer[0] = tilemap_create(machine, sys24_tile_info_0s, tilemap_scan_rows,  8, 8, 64, 64);
+	sys24_tile_layer[1] = tilemap_create(machine, sys24_tile_info_0w, tilemap_scan_rows,  8, 8, 64, 64);
+	sys24_tile_layer[2] = tilemap_create(machine, sys24_tile_info_1s, tilemap_scan_rows,  8, 8, 64, 64);
+	sys24_tile_layer[3] = tilemap_create(machine, sys24_tile_info_1w, tilemap_scan_rows,  8, 8, 64, 64);
 
 	tilemap_set_transparent_pen(sys24_tile_layer[0], 0);
 	tilemap_set_transparent_pen(sys24_tile_layer[1], 0);
@@ -171,12 +171,12 @@ void sys24_tile_vh_start(running_machine *machine, UINT16 tile_mask)
 	memset(sys24_char_dirtymap, 1, SYS24_TILES);
 	sys24_char_dirty = 1;
 
-	machine->gfx[sys24_char_gfx_index] = allocgfx(&sys24_char_layout);
+	machine->gfx[sys24_char_gfx_index] = allocgfx(machine, &sys24_char_layout);
 
 	machine->gfx[sys24_char_gfx_index]->total_colors = machine->config->total_colors / 16;
 
-	state_save_register_global_pointer(sys24_tile_ram, 0x10000/2);
-	state_save_register_global_pointer(sys24_char_ram, 0x80000/2);
+	state_save_register_global_pointer(machine, sys24_tile_ram, 0x10000/2);
+	state_save_register_global_pointer(machine, sys24_char_ram, 0x80000/2);
 	state_save_register_postload(machine, sys24_tile_dirtyall, NULL);
 }
 
@@ -611,35 +611,35 @@ WRITE16_HANDLER(sys24_char_w)
 
 READ32_HANDLER(sys24_tile32_r)
 {
-	return sys24_tile_r(machine, offset*2, mem_mask&0xffff) | sys24_tile_r(machine, (offset*2)+1, mem_mask>>16)<<16;
+	return sys24_tile_r(space, offset*2, mem_mask&0xffff) | sys24_tile_r(space, (offset*2)+1, mem_mask>>16)<<16;
 }
 
 READ32_HANDLER(sys24_char32_r)
 {
-	return sys24_char_r(machine, offset*2, mem_mask&0xffff) | sys24_char_r(machine, (offset*2)+1, mem_mask>>16)<<16;
+	return sys24_char_r(space, offset*2, mem_mask&0xffff) | sys24_char_r(space, (offset*2)+1, mem_mask>>16)<<16;
 }
 
 WRITE32_HANDLER(sys24_tile32_w)
 {
-	sys24_tile_w(machine, offset*2, data&0xffff, mem_mask&0xffff);
-	sys24_tile_w(machine, (offset*2)+1, data>>16, mem_mask>>16);
+	sys24_tile_w(space, offset*2, data&0xffff, mem_mask&0xffff);
+	sys24_tile_w(space, (offset*2)+1, data>>16, mem_mask>>16);
 }
 
 WRITE32_HANDLER(sys24_char32_w)
 {
-	sys24_char_w(machine,offset*2, data&0xffff, mem_mask&0xffff);
-	sys24_char_w(machine,(offset*2)+1, data>>16, mem_mask>>16);
+	sys24_char_w(space,offset*2, data&0xffff, mem_mask&0xffff);
+	sys24_char_w(space,(offset*2)+1, data>>16, mem_mask>>16);
 }
 
 // - System 24
 
 static UINT16 *sys24_sprite_ram;
 
-void sys24_sprite_vh_start(void)
+void sys24_sprite_vh_start(running_machine *machine)
 {
 	sys24_sprite_ram = auto_malloc(0x40000);
 
-	state_save_register_global_pointer(sys24_sprite_ram, 0x40000/2);
+	state_save_register_global_pointer(machine, sys24_sprite_ram, 0x40000/2);
 	//  kc = 0;
 }
 
@@ -877,10 +877,10 @@ READ16_HANDLER(sys24_sprite_r)
 
 static UINT16 sys24_mixer_reg[0x10];
 
-void sys24_mixer_vh_start(void)
+void sys24_mixer_vh_start(running_machine *machine)
 {
 	memset(sys24_mixer_reg, 0, sizeof(sys24_mixer_reg));
-	state_save_register_global_array(sys24_mixer_reg);
+	state_save_register_global_array(machine, sys24_mixer_reg);
 }
 
 WRITE16_HANDLER (sys24_mixer_w)

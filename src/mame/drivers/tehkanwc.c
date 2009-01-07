@@ -2,11 +2,7 @@
 
   fixed gridiron079gre (shared access to spriteram was broken)
 
-  This driver is antiquated.. the LED drawing in the video file is one giant
-  hack, we should change it to use the artwork system, not hack it to draw
-  characters from the gfx roms onscreen..
-
-  The inputs also seem to be a hacky mess (although there was reportedly a
+  The inputs seem to be a hacky mess (although there was reportedly a
   hardware joystick hack for tehkanwc via plugin logic subboard, is this
   attempting to simulate it?
 
@@ -28,8 +24,6 @@ robbiex@rocketmail.com
 TODO:
 - dip switches and input ports for Gridiron and Tee'd Off
 
-NOTES:
-- Samples MUST be on Memory Region 4
 
 Additional notes (Steph 2002.01.14)
 
@@ -98,7 +92,7 @@ TO DO :
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/msm5205.h"
-
+#include "gridiron.lh"
 
 extern UINT8 *tehkanwc_videoram2;
 
@@ -119,9 +113,9 @@ extern VIDEO_UPDATE( tehkanwc );
 static WRITE8_HANDLER( sub_cpu_halt_w )
 {
 	if (data)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 	else
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 
@@ -132,54 +126,54 @@ static READ8_HANDLER( tehkanwc_track_0_r )
 {
 	int joy;
 
-	joy = input_port_read(machine, "FAKE") >> (2 * offset);
+	joy = input_port_read(space->machine, "FAKE") >> (2 * offset);
 	if (joy & 1) return -63;
 	if (joy & 2) return 63;
-	return input_port_read(machine, offset ? "P1Y" : "P1X") - track0[offset];
+	return input_port_read(space->machine, offset ? "P1Y" : "P1X") - track0[offset];
 }
 
 static READ8_HANDLER( tehkanwc_track_1_r )
 {
 	int joy;
 
-	joy = input_port_read(machine, "FAKE") >> (4 + 2 * offset);
+	joy = input_port_read(space->machine, "FAKE") >> (4 + 2 * offset);
 	if (joy & 1) return -63;
 	if (joy & 2) return 63;
-	return input_port_read(machine, offset ? "P2Y" : "P2X") - track1[offset];
+	return input_port_read(space->machine, offset ? "P2Y" : "P2X") - track1[offset];
 }
 
 static WRITE8_HANDLER( tehkanwc_track_0_reset_w )
 {
 	/* reset the trackball counters */
-	track0[offset] = input_port_read(machine, offset ? "P1Y" : "P1X") + data;
+	track0[offset] = input_port_read(space->machine, offset ? "P1Y" : "P1X") + data;
 }
 
 static WRITE8_HANDLER( tehkanwc_track_1_reset_w )
 {
 	/* reset the trackball counters */
-	track1[offset] = input_port_read(machine, offset ? "P2Y" : "P2X") + data;
+	track1[offset] = input_port_read(space->machine, offset ? "P2Y" : "P2X") + data;
 }
 
 
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(machine,offset,data);
-	cpunum_set_input_line(machine, 2,INPUT_LINE_NMI,PULSE_LINE);
+	soundlatch_w(space,offset,data);
+	cpu_set_input_line(space->machine->cpu[2],INPUT_LINE_NMI,PULSE_LINE);
 }
 
 static TIMER_CALLBACK( reset_callback )
 {
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, PULSE_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( sound_answer_w )
 {
-	soundlatch2_w(machine,0,data);
+	soundlatch2_w(space,0,data);
 
 	/* in Gridiron, the sound CPU goes in a tight loop after the self test, */
 	/* probably waiting to be reset by a watchdog */
-	if (activecpu_get_pc() == 0x08bc) timer_set(ATTOTIME_IN_SEC(1), NULL,0,reset_callback);
+	if (cpu_get_pc(space->cpu) == 0x08bc) timer_set(space->machine, ATTOTIME_IN_SEC(1), NULL,0,reset_callback);
 }
 
 
@@ -212,11 +206,11 @@ static WRITE8_HANDLER( msm_reset_w )
 	msm5205_reset_w(0,data ? 0 : 1);
 }
 
-static void tehkanwc_adpcm_int(running_machine *machine, int data)
+static void tehkanwc_adpcm_int(const device_config *device)
 {
 	static int toggle;
 
-	UINT8 *SAMPLES = memory_region(machine, "adpcm");
+	UINT8 *SAMPLES = memory_region(device->machine, "adpcm");
 	int msm_data = SAMPLES[msm_data_offs & 0x7fff];
 
 	if (toggle == 0)
@@ -677,7 +671,7 @@ static MACHINE_DRIVER_START( tehkanwc )
 	MDRV_CPU_IO_MAP(sound_port,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - seems enough to keep the CPUs in sync */
+	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - seems enough to keep the CPUs in sync */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -900,5 +894,5 @@ ROM_END
 
 GAME( 1985, tehkanwc, 0,        tehkanwc, tehkanwc, 0,        ROT0,  "Tehkan", "Tehkan World Cup (set 1)", 0 )
 GAME( 1985, tehkanwb, tehkanwc, tehkanwc, tehkanwc, 0,        ROT0,  "Tehkan", "Tehkan World Cup (set 2, bootleg?)", 0 )
-GAME( 1985, gridiron, 0,        tehkanwc, gridiron, 0,        ROT0,  "Tehkan", "Gridiron Fight", 0 )
+GAMEL( 1985, gridiron, 0,        tehkanwc, gridiron, 0,        ROT0,  "Tehkan", "Gridiron Fight", 0, layout_gridiron )
 GAME( 1986, teedoff,  0,        tehkanwc, teedoff,  teedoff,  ROT90, "Tecmo", "Tee'd Off (Japan)", 0 )

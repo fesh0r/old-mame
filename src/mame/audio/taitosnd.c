@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "taitosnd.h"
 
@@ -41,11 +40,11 @@ typedef struct TC0140SYT
 static struct TC0140SYT tc0140syt;
 
 
-static void Interrupt_Controller(void)
+static void Interrupt_Controller(running_machine *machine)
 {
 	if ( tc0140syt.nmi_req && tc0140syt.nmi_enabled )
 	{
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE );
+		cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE );
 		tc0140syt.nmi_req = 0;
 	}
 }
@@ -95,15 +94,15 @@ WRITE8_HANDLER( taitosound_comm_w )
 
 		case 0x04:		// port status
 //#ifdef REPORT_DATA_FLOW
-			//logerror("taitosnd: Master issued control value %02x (PC = %08x) \n",data, activecpu_get_pc() );
+			//logerror("taitosnd: Master issued control value %02x (PC = %08x) \n",data, cpu_get_pc(space->cpu) );
 //#endif
 			/* this does a hi-lo transition to reset the sound cpu */
 			if (data)
-				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+				cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 			else
 			{
-				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
-                cpu_spin(); /* otherwise no sound in driftout */
+				cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
+                cpu_spin(space->cpu); /* otherwise no sound in driftout */
             }
 			break;
 
@@ -176,7 +175,7 @@ WRITE8_HANDLER( taitosound_slave_comm_w )
 			tc0140syt.masterdata[tc0140syt.submode ++] = data;
 			tc0140syt.status |= TC0140SYT_PORT01_FULL_MASTER;
 			//logerror("taitosnd: Slave cpu sends 0/1 : %01x%01x\n",tc0140syt.masterdata[1],tc0140syt.masterdata[0]);
-			cpu_spin(); /* writing should take longer than emulated, so spin */
+			cpu_spin(space->cpu); /* writing should take longer than emulated, so spin */
 			break;
 
 		case 0x02:		// mode #2
@@ -188,7 +187,7 @@ WRITE8_HANDLER( taitosound_slave_comm_w )
 			tc0140syt.masterdata[tc0140syt.submode ++] = data;
 			tc0140syt.status |= TC0140SYT_PORT23_FULL_MASTER;
 			//logerror("taitosnd: Slave cpu sends 2/3 : %01x%01x\n",tc0140syt.masterdata[3],tc0140syt.masterdata[2]);
-			cpu_spin(); /* writing should take longer than emulated, so spin */
+			cpu_spin(space->cpu); /* writing should take longer than emulated, so spin */
 			break;
 
 		case 0x04:		// port status
@@ -208,7 +207,7 @@ WRITE8_HANDLER( taitosound_slave_comm_w )
 			logerror("tc0140syt: Slave cpu written in mode [%02x] data[%02x]\n",tc0140syt.submode, data & 0xff);
 	}
 
-	Interrupt_Controller();
+	Interrupt_Controller(space->machine);
 
 }
 
@@ -224,7 +223,7 @@ READ8_HANDLER( taitosound_slave_comm_r )
 			break;
 
 		case 0x01:		// mode #1
-			//logerror("taitosnd: Slave cpu receives 0/1 : %01x%01x PC=%4x\n", tc0140syt.slavedata[1],tc0140syt.slavedata[0],activecpu_get_pc());
+			//logerror("taitosnd: Slave cpu receives 0/1 : %01x%01x PC=%4x\n", tc0140syt.slavedata[1],tc0140syt.slavedata[0],cpu_get_pc(space->cpu));
 			tc0140syt.status &= ~TC0140SYT_PORT01_FULL;
 			res = tc0140syt.slavedata[tc0140syt.submode ++];
 			break;
@@ -250,7 +249,7 @@ READ8_HANDLER( taitosound_slave_comm_r )
 			res = 0;
 	}
 
-	Interrupt_Controller();
+	Interrupt_Controller(space->machine);
 
     return res;
 }
@@ -266,31 +265,31 @@ READ8_HANDLER( taitosound_slave_comm_r )
 WRITE16_HANDLER( taitosound_port16_lsb_w )
 {
 	if (ACCESSING_BITS_0_7)
-		taitosound_port_w(machine,0,data & 0xff);
+		taitosound_port_w(space,0,data & 0xff);
 }
 WRITE16_HANDLER( taitosound_comm16_lsb_w )
 {
 	if (ACCESSING_BITS_0_7)
-		taitosound_comm_w(machine,0,data & 0xff);
+		taitosound_comm_w(space,0,data & 0xff);
 }
 READ16_HANDLER( taitosound_comm16_lsb_r )
 {
-	return taitosound_comm_r(machine,0);
+	return taitosound_comm_r(space,0);
 }
 
 
 WRITE16_HANDLER( taitosound_port16_msb_w )
 {
 	if (ACCESSING_BITS_8_15)
-		taitosound_port_w(machine,0,data >> 8);
+		taitosound_port_w(space,0,data >> 8);
 }
 WRITE16_HANDLER( taitosound_comm16_msb_w )
 {
 	if (ACCESSING_BITS_8_15)
-		taitosound_comm_w(machine,0,data >> 8);
+		taitosound_comm_w(space,0,data >> 8);
 }
 READ16_HANDLER( taitosound_comm16_msb_r )
 {
-	return taitosound_comm_r(machine,0) << 8;
+	return taitosound_comm_r(space,0) << 8;
 }
 

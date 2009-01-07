@@ -128,8 +128,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( hcastle )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan,8,8,64,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan,     8,8,64,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan,     8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
@@ -177,7 +177,7 @@ WRITE8_HANDLER( hcastle_pf1_control_w )
 	{
 		tilemap_set_flip(fg_tilemap, (data & 0x08) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 	}
-	K007121_ctrl_0_w(machine,offset,data);
+	K007121_ctrl_0_w(space,offset,data);
 }
 
 WRITE8_HANDLER( hcastle_pf2_control_w )
@@ -193,7 +193,7 @@ WRITE8_HANDLER( hcastle_pf2_control_w )
 	{
 		tilemap_set_flip(bg_tilemap, (data & 0x08) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 	}
-	K007121_ctrl_1_w(machine,offset,data);
+	K007121_ctrl_1_w(space,offset,data);
 }
 
 /*****************************************************************************/

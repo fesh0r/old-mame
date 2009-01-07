@@ -177,6 +177,7 @@ VBlank duration: 1/VSYNC * (16/256) = 1017.6 us
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/i86/i86.h"
 #include "machine/6532riot.h"
 #include "machine/laserdsc.h"
 #include "sound/ay8910.h"
@@ -249,41 +250,41 @@ static WRITE8_HANDLER( laserdisc_command_w );
 static MACHINE_START( gottlieb )
 {
 	/* register for save states */
-	state_save_register_global(joystick_select);
-	state_save_register_global_array(track);
+	state_save_register_global(machine, joystick_select);
+	state_save_register_global_array(machine, track);
 
 	/* see if we have a laserdisc */
 	laserdisc = device_list_first(machine->config->devicelist, LASERDISC);
 	if (laserdisc != NULL)
 	{
 		/* attach to the I/O ports */
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x05805, 0x05807, 0, 0x07f8, laserdisc_status_r);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x05805, 0x05805, 0, 0x07f8, laserdisc_command_w);	/* command for the player */
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x05806, 0x05806, 0, 0x07f8, laserdisc_select_w);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x05805, 0x05807, 0, 0x07f8, laserdisc_status_r);
+		memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x05805, 0x05805, 0, 0x07f8, laserdisc_command_w);	/* command for the player */
+		memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x05806, 0x05806, 0, 0x07f8, laserdisc_select_w);
 
 		/* allocate a timer for serial transmission, and one for philips code processing */
-		laserdisc_bit_timer = timer_alloc(laserdisc_bit_callback, NULL);
-		laserdisc_philips_timer = timer_alloc(laserdisc_philips_callback, NULL);
+		laserdisc_bit_timer = timer_alloc(machine, laserdisc_bit_callback, NULL);
+		laserdisc_philips_timer = timer_alloc(machine, laserdisc_philips_callback, NULL);
 
 		/* create some audio RAM */
 		laserdisc_audio_buffer = auto_malloc(AUDIORAM_SIZE);
 		laserdisc_status = 0x38;
 
 		/* more save state registration */
-		state_save_register_global(laserdisc_select);
-		state_save_register_global(laserdisc_status);
-		state_save_register_global(laserdisc_philips_code);
+		state_save_register_global(machine, laserdisc_select);
+		state_save_register_global(machine, laserdisc_status);
+		state_save_register_global(machine, laserdisc_philips_code);
 
-		state_save_register_global_pointer(laserdisc_audio_buffer, AUDIORAM_SIZE);
-		state_save_register_global(laserdisc_audio_address);
-		state_save_register_global_array(laserdisc_last_samples);
-		state_save_register_global(laserdisc_last_time.seconds);
-		state_save_register_global(laserdisc_last_time.attoseconds);
-		state_save_register_global(laserdisc_last_clock.seconds);
-		state_save_register_global(laserdisc_last_clock.attoseconds);
-		state_save_register_global(laserdisc_zero_seen);
-		state_save_register_global(laserdisc_audio_bits);
-		state_save_register_global(laserdisc_audio_bit_count);
+		state_save_register_global_pointer(machine, laserdisc_audio_buffer, AUDIORAM_SIZE);
+		state_save_register_global(machine, laserdisc_audio_address);
+		state_save_register_global_array(machine, laserdisc_last_samples);
+		state_save_register_global(machine, laserdisc_last_time.seconds);
+		state_save_register_global(machine, laserdisc_last_time.attoseconds);
+		state_save_register_global(machine, laserdisc_last_clock.seconds);
+		state_save_register_global(machine, laserdisc_last_clock.attoseconds);
+		state_save_register_global(machine, laserdisc_zero_seen);
+		state_save_register_global(machine, laserdisc_audio_bits);
+		state_save_register_global(machine, laserdisc_audio_bit_count);
 	}
 }
 
@@ -315,8 +316,8 @@ static CUSTOM_INPUT( analog_delta_r )
 static WRITE8_HANDLER( gottlieb_analog_reset_w )
 {
 	/* reset the trackball counters */
-	track[0] = input_port_read_safe(machine, "TRACKX", 0);
-	track[1] = input_port_read_safe(machine, "TRACKY", 0);
+	track[0] = input_port_read_safe(space->machine, "TRACKX", 0);
+	track[1] = input_port_read_safe(space->machine, "TRACKY", 0);
 }
 
 
@@ -338,9 +339,9 @@ static WRITE8_HANDLER( general_output_w )
 {
 	/* bits 0-3 control video features, and are different for laserdisc games */
 	if (laserdisc == NULL)
-		gottlieb_video_control_w(machine, offset, data);
+		gottlieb_video_control_w(space, offset, data);
 	else
-		gottlieb_laserdisc_video_control_w(machine, offset, data);
+		gottlieb_laserdisc_video_control_w(space, offset, data);
 
 	/* bit 4 controls the coin meter */
 	coin_counter_w(0, data & 0x10);
@@ -356,7 +357,7 @@ static WRITE8_HANDLER( general_output_w )
 
 static WRITE8_HANDLER( reactor_output_w )
 {
-	general_output_w(machine, offset, data & ~0xe0);
+	general_output_w(space, offset, data & ~0xe0);
 	set_led_status(0, data & 0x20);
 	set_led_status(1, data & 0x40);
 	set_led_status(2, data & 0x80);
@@ -365,7 +366,7 @@ static WRITE8_HANDLER( reactor_output_w )
 
 static WRITE8_HANDLER( stooges_output_w )
 {
-	general_output_w(machine, offset, data & ~0x60);
+	general_output_w(space, offset, data & ~0x60);
 	joystick_select = (data >> 5) & 0x03;
 }
 
@@ -470,7 +471,7 @@ static TIMER_CALLBACK( laserdisc_bit_callback )
 
 	/* assert the line and set a timer for deassertion */
    	laserdisc_line_w(laserdisc, LASERDISC_LINE_CONTROL, ASSERT_LINE);
-	timer_set(attotime_mul(LASERDISC_CLOCK, 10), NULL, 0, laserdisc_bit_off_callback);
+	timer_set(machine, attotime_mul(LASERDISC_CLOCK, 10), NULL, 0, laserdisc_bit_off_callback);
 
 	/* determine how long for the next command; there is a 555 timer with a
        variable resistor controlling the timing of the pulses. Nominally, the
@@ -664,15 +665,15 @@ static void laserdisc_audio_process(const device_config *device, int samplerate,
 
 static TIMER_CALLBACK( nmi_clear )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 
 static INTERRUPT_GEN( gottlieb_interrupt )
 {
 	/* assert the NMI and set a timer to clear it at the first visible line */
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, nmi_clear);
+	cpu_set_input_line(device, INPUT_LINE_NMI, ASSERT_LINE);
+	timer_set(device->machine, video_screen_get_time_until_pos(device->machine->primary_screen, 0, 0), NULL, 0, nmi_clear);
 
 	/* if we have a laserdisc, update it */
 	if (laserdisc != NULL)
@@ -2380,7 +2381,7 @@ ROM_START( mach3 )
 	ROM_LOAD( "mach3fg0.bin", 0x6000, 0x2000, CRC(0bae12a5) SHA1(7bc0b82ccab0e4498a7a2a9dc85f03125f25826e) )
 
 	DISK_REGION( "laserdisc" )
-	DISK_IMAGE_READONLY( "mach3", 0, NO_DUMP )
+	DISK_IMAGE_READONLY( "mach3", 0, MD5(591ba5ad458a051249eb4fcfa79e7c19) SHA1(8e4ef0110832a7b7bf6dbeceb395682c1e7f8ed6) )
 ROM_END
 
 
@@ -2434,7 +2435,7 @@ ROM_START( usvsthem )
 	ROM_LOAD( "usvs.fg0",     0xc000, 0x4000, CRC(7734e53f) SHA1(c1307596ba098c98e741f3c00686b514587e1d0a) )
 
 	DISK_REGION( "laserdisc" )
-	DISK_IMAGE_READONLY( "usvsthem", 0, NO_DUMP )
+	DISK_IMAGE_READONLY( "usvsthem", 0, MD5(e19bd2f819de35222a41ef676a8add98) SHA1(2018dd0dce6df51a83c9300f04c43c114341d52a) )
 ROM_END
 
 
@@ -2541,7 +2542,7 @@ static DRIVER_INIT( romtiles )
 static DRIVER_INIT( stooges )
 {
 	DRIVER_INIT_CALL(ramtiles);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x05803, 0x05803, 0, 0x07f8, stooges_output_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x05803, 0x05803, 0, 0x07f8, stooges_output_w);
 }
 
 
@@ -2580,9 +2581,9 @@ GAME( 1984, curvebal, 0,        gottlieb1, curvebal, romtiles, ROT270, "Mylstar"
 
 /* games using rev 2 sound board */
 GAME( 1983, screwloo, 0,        gottlieb2, screwloo, romtiles, ROT0,   "Mylstar", "Screw Loose (prototype)", 0 )
-GAME( 1983, mach3,    0,        g2laser,   mach3,    romtiles, ROT0,   "Mylstar", "M.A.C.H. 3", GAME_NOT_WORKING )
+GAME( 1983, mach3,    0,        g2laser,   mach3,    romtiles, ROT0,   "Mylstar", "M.A.C.H. 3", 0 )
 GAME( 1984, cobram3,  0,        g2laser,   mach3,    romtiles, ROT0,   "Data East","Cobra Command (M.A.C.H. 3 hardware)", GAME_NOT_WORKING )
-GAME( 1984, usvsthem, 0,        g2laser,   usvsthem, romtiles, ROT0,   "Mylstar", "Us vs. Them", GAME_NOT_WORKING )
+GAME( 1984, usvsthem, 0,        g2laser,   usvsthem, romtiles, ROT0,   "Mylstar", "Us vs. Them", 0 )
 GAME( 1984, 3stooges, 0,        gottlieb2, 3stooges, stooges,  ROT0,   "Mylstar", "The Three Stooges In Brides Is Brides", 0 )
 GAME( 1984, vidvince, 0,        gottlieb2, vidvince, vidvince, ROT0,   "Mylstar", "Video Vince and the Game Factory (prototype)", GAME_IMPERFECT_GRAPHICS ) // sprite wrapping issues
 GAME( 1984, wizwarz,  0,        gottlieb2, wizwarz,  romtiles, ROT0,   "Mylstar", "Wiz Warz (prototype)", 0 )

@@ -131,10 +131,10 @@ static TILE_GET_INFO( get_text_tile_info )
 
 VIDEO_START( dcon )
 {
-	background_layer = tilemap_create(get_back_tile_info,tilemap_scan_rows,     16,16,32,32);
-	foreground_layer = tilemap_create(get_fore_tile_info,tilemap_scan_rows,16,16,32,32);
-	midground_layer =  tilemap_create(get_mid_tile_info, tilemap_scan_rows,16,16,32,32);
-	text_layer =       tilemap_create(get_text_tile_info,tilemap_scan_rows,  8,8,64,32);
+	background_layer = tilemap_create(machine, get_back_tile_info,tilemap_scan_rows,     16,16,32,32);
+	foreground_layer = tilemap_create(machine, get_fore_tile_info,tilemap_scan_rows,16,16,32,32);
+	midground_layer =  tilemap_create(machine, get_mid_tile_info, tilemap_scan_rows,16,16,32,32);
+	text_layer =       tilemap_create(machine, get_text_tile_info,tilemap_scan_rows,  8,8,64,32);
 
 	tilemap_set_transparent_pen(midground_layer,15);
 	tilemap_set_transparent_pen(foreground_layer,15);
@@ -269,7 +269,7 @@ static void draw_sprites(running_machine* machine, bitmap_t *bitmap,const rectan
 
 VIDEO_UPDATE( dcon )
 {
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	/* Setup the tilemaps */
 	tilemap_set_scrollx( background_layer,0, dcon_scroll_ram[0] );
@@ -282,7 +282,7 @@ VIDEO_UPDATE( dcon )
 	if ((dcon_enable&1)!=1)
 		tilemap_draw(bitmap,cliprect,background_layer,0,0);
 	else
-		fillbitmap(bitmap,15,cliprect); /* Should always be black, not pen 15 */
+		bitmap_fill(bitmap,cliprect,15); /* Should always be black, not pen 15 */
 
 	tilemap_draw(bitmap,cliprect,midground_layer,0,1);
 	tilemap_draw(bitmap,cliprect,foreground_layer,0,2);
@@ -296,7 +296,7 @@ VIDEO_UPDATE( sdgndmps )
 {
 	static int last_gfx_bank=0;
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	/* Gfx banking */
 	if (last_gfx_bank!=dcon_gfx_bank_select)
@@ -318,7 +318,7 @@ VIDEO_UPDATE( sdgndmps )
 	if ((dcon_enable&1)!=1)
 		tilemap_draw(bitmap,cliprect,background_layer,0,0);
 	else
-		fillbitmap(bitmap,15,cliprect); /* Should always be black, not pen 15 */
+		bitmap_fill(bitmap,cliprect,15); /* Should always be black, not pen 15 */
 
 	tilemap_draw(bitmap,cliprect,midground_layer,0,1);
 	tilemap_draw(bitmap,cliprect,foreground_layer,0,2);

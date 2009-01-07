@@ -4,13 +4,12 @@
 
 ***************************************************************************/
 
-#include "state.h"
 #include "scsidev.h"
 #include "cdrom.h"
 #include "sound/cdda.h"
+#include "state.h"
 #ifdef MESS
 #include "devices/chd_cd.h"
-#include "deprecat.h"
 #endif
 #include "scsicd.h"
 
@@ -673,8 +672,8 @@ static void scsicd_write_data( SCSIInstance *scsiInstance, UINT8 *data, int data
 
 static void scsicd_alloc_instance( SCSIInstance *scsiInstance, const char *diskregion )
 {
+	running_machine *machine = scsiInstance->machine;
 	SCSICd *our_this = SCSIThis( &SCSIClassCDROM, scsiInstance );
-	char tag[256];
 
 	our_this->lba = 0;
 	our_this->blocks = 0;
@@ -684,19 +683,17 @@ static void scsicd_alloc_instance( SCSIInstance *scsiInstance, const char *diskr
 	our_this->cur_subblock = 0;
 	our_this->play_err_flag = 0;
 
-	state_save_combine_module_and_tag(tag, "scsicd", diskregion);
-
-	state_save_register_item( tag, 0, our_this->lba );
-	state_save_register_item( tag, 0, our_this->blocks );
-	state_save_register_item( tag, 0, our_this->last_lba );
-	state_save_register_item( tag, 0, our_this->bytes_per_sector );
-	state_save_register_item( tag, 0, our_this->num_subblocks );
-	state_save_register_item( tag, 0, our_this->cur_subblock );
-	state_save_register_item( tag, 0, our_this->play_err_flag );
+	state_save_register_item( machine, "scsicd", diskregion, 0, our_this->lba );
+	state_save_register_item( machine, "scsicd", diskregion, 0, our_this->blocks );
+	state_save_register_item( machine, "scsicd", diskregion, 0, our_this->last_lba );
+	state_save_register_item( machine, "scsicd", diskregion, 0, our_this->bytes_per_sector );
+	state_save_register_item( machine, "scsicd", diskregion, 0, our_this->num_subblocks );
+	state_save_register_item( machine, "scsicd", diskregion, 0, our_this->cur_subblock );
+	state_save_register_item( machine, "scsicd", diskregion, 0, our_this->play_err_flag );
 
 #ifdef MESS
 	/* TODO: get rid of this ifdef MESS section */
-	our_this->cdrom = mess_cd_get_cdrom_file( device_list_find_by_tag( Machine->config->devicelist, CDROM, diskregion ) );
+	our_this->cdrom = mess_cd_get_cdrom_file( device_list_find_by_tag( machine->config->devicelist, CDROM, diskregion ) );
 #else
 	our_this->cdrom = cdrom_open(get_disk_handle( diskregion ));
 

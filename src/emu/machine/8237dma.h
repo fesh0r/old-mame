@@ -24,7 +24,7 @@ typedef void  (*dma8237_out_eop_func)(const device_config *device, int state);
 struct dma8237_interface
 {
 	/* CPU to halt when DMA is active */
-	int cpunum;
+	const char *cputag;
 
 	/* speed of DMA accesses (per byte) */
 	double bus_speed;
@@ -40,6 +40,15 @@ struct dma8237_interface
 	/* function to call when DMA completes */
 	dma8237_out_eop_func		out_eop_func;
 };
+
+
+/***************************************************************************
+    DEVICE CONFIGURATION MACROS
+***************************************************************************/
+
+#define MDRV_DMA8237_ADD(_tag, _intrf) \
+	MDRV_DEVICE_ADD(_tag, DMA8237, 0) \
+	MDRV_DEVICE_CONFIG(_intrf)
 
 
 /* device interface */

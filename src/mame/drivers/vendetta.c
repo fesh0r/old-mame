@@ -87,7 +87,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 #include "video/konamiic.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "machine/eeprom.h"
@@ -96,7 +96,7 @@ Notes:
 
 /* prototypes */
 static MACHINE_RESET( vendetta );
-static void vendetta_banking( int lines );
+static KONAMI_SETLINES_CALLBACK( vendetta_banking );
 static void vendetta_video_banking( running_machine *machine, int select );
 
 VIDEO_START( vendetta );
@@ -130,7 +130,7 @@ static NVRAM_HANDLER( vendetta )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_intf);
+		eeprom_init(machine, &eeprom_intf);
 
 		if (file)
 		{
@@ -148,7 +148,7 @@ static READ8_HANDLER( vendetta_eeprom_r )
 
 	res |= 0x02;	//konami_eeprom_ack() << 5;     /* add the ack */
 
-	res |= input_port_read(machine, "EEPROM") & 0x0d;	/* test switch */
+	res |= input_port_read(space->machine, "EEPROM") & 0x0d;	/* test switch */
 
 	if (init_eeprom_count)
 	{
@@ -181,20 +181,25 @@ static WRITE8_HANDLER( vendetta_eeprom_w )
 
 	irq_enabled = ( data >> 6 ) & 1;
 
-	vendetta_video_banking( machine, data & 1 );
+	vendetta_video_banking( space->machine, data & 1 );
 }
 
 /********************************************/
 
-static READ8_HANDLER( vendetta_K052109_r ) { return K052109_r( machine, offset + 0x2000 ); }
+static READ8_HANDLER( vendetta_K052109_r )
+{
+	return K052109_r( space, offset + 0x2000 );
+}
 //static WRITE8_HANDLER( vendetta_K052109_w ) { K052109_w( machine, offset + 0x2000, data ); }
-static WRITE8_HANDLER( vendetta_K052109_w ) {
+static WRITE8_HANDLER( vendetta_K052109_w )
+{
 	// *************************************************************************************
 	// *  Escape Kids uses 052109's mirrored Tilemap ROM bank selector, but only during    *
 	// *  Tilemap MASK-ROM Test       (0x1d80<->0x3d80, 0x1e00<->0x3e00, 0x1f00<->0x3f00)  *
 	// *************************************************************************************
-	if ( ( offset == 0x1d80 ) || ( offset == 0x1e00 ) || ( offset == 0x1f00 ) )		K052109_w( machine, offset, data );
-	K052109_w( machine, offset + 0x2000, data );
+	if ( ( offset == 0x1d80 ) || ( offset == 0x1e00 ) || ( offset == 0x1f00 ) )
+		K052109_w( space, offset, data );
+	K052109_w( space, offset + 0x2000, data );
 }
 
 static offs_t video_banking_base;
@@ -203,14 +208,14 @@ static void vendetta_video_banking( running_machine *machine, int select )
 {
 	if ( select & 1 )
 	{
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, video_banking_base + 0x2000, video_banking_base + 0x2fff, 0, 0, SMH_BANK4, paletteram_xBBBBBGGGGGRRRRR_be_w );
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, video_banking_base + 0x0000, video_banking_base + 0x0fff, 0, 0, K053247_r, K053247_w );
-		memory_set_bankptr(4, paletteram);
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), video_banking_base + 0x2000, video_banking_base + 0x2fff, 0, 0, SMH_BANK4, paletteram_xBBBBBGGGGGRRRRR_be_w );
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), video_banking_base + 0x0000, video_banking_base + 0x0fff, 0, 0, K053247_r, K053247_w );
+		memory_set_bankptr(machine, 4, paletteram);
 	}
 	else
 	{
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, video_banking_base + 0x2000, video_banking_base + 0x2fff, 0, 0, vendetta_K052109_r, vendetta_K052109_w );
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, video_banking_base + 0x0000, video_banking_base + 0x0fff, 0, 0, K052109_r, K052109_w );
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), video_banking_base + 0x2000, video_banking_base + 0x2fff, 0, 0, vendetta_K052109_r, vendetta_K052109_w );
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), video_banking_base + 0x0000, video_banking_base + 0x0fff, 0, 0, K052109_r, K052109_w );
 	}
 }
 
@@ -233,30 +238,30 @@ static WRITE8_HANDLER( vendetta_5fe0_w )
 
 static TIMER_CALLBACK( z80_nmi_callback )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE );
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE );
 }
 
 static WRITE8_HANDLER( z80_arm_nmi_w )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE );
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE );
 
-	timer_set( ATTOTIME_IN_USEC( 25 ), NULL, 0, z80_nmi_callback );
+	timer_set( space->machine, ATTOTIME_IN_USEC( 25 ), NULL, 0, z80_nmi_callback );
 }
 
 static WRITE8_HANDLER( z80_irq_w )
 {
-	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff );
+	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff );
 }
 
 static READ8_HANDLER( vendetta_sound_interrupt_r )
 {
-	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff );
+	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff );
 	return 0x00;
 }
 
 static READ8_HANDLER( vendetta_sound_r )
 {
-	return k053260_0_r(machine, 2 + offset);
+	return k053260_0_r(space, 2 + offset);
 }
 
 /********************************************/
@@ -392,7 +397,7 @@ static INPUT_PORTS_START( vendet4p )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("EEPROM")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_CUSTOM(eeprom_bit_r, NULL)	/* EEPROM data */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN ) PORT_CUSTOM(eeprom_bit_r, NULL)	/* EEPROM data */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* EEPROM ready */
 	PORT_SERVICE_NO_TOGGLE(0x04, IP_ACTIVE_LOW)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK ) /* not really vblank, object related. Its timed, otherwise sprites flicker */
@@ -471,7 +476,7 @@ static INPUT_PORTS_START( esckids )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("EEPROM")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_CUSTOM(eeprom_bit_r, NULL)	/* EEPROM data */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN ) PORT_CUSTOM(eeprom_bit_r, NULL)	/* EEPROM data */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* EEPROM ready */
 	PORT_SERVICE_NO_TOGGLE(0x04, IP_ACTIVE_LOW)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK ) /* not really vblank, object related. Its timed, otherwise sprites flicker */
@@ -517,7 +522,7 @@ INPUT_PORTS_END
 static INTERRUPT_GEN( vendetta_irq )
 {
 	if (irq_enabled)
-		cpunum_set_input_line(machine, 0, KONAMI_IRQ_LINE, HOLD_LINE);
+		cpu_set_input_line(device, KONAMI_IRQ_LINE, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( vendetta )
@@ -770,27 +775,27 @@ ROM_END
 
 ***************************************************************************/
 
-static void vendetta_banking( int lines )
+static KONAMI_SETLINES_CALLBACK( vendetta_banking )
 {
-	UINT8 *RAM = memory_region(Machine, "main");
+	UINT8 *RAM = memory_region(device->machine, "main");
 
 	if ( lines >= 0x1c )
 	{
-		logerror("PC = %04x : Unknown bank selected %02x\n", activecpu_get_pc(), lines );
+		logerror("PC = %04x : Unknown bank selected %02x\n", cpu_get_pc(device), lines );
 	}
 	else
-		memory_set_bankptr( 1, &RAM[ 0x10000 + ( lines * 0x2000 ) ] );
+		memory_set_bankptr(device->machine,  1, &RAM[ 0x10000 + ( lines * 0x2000 ) ] );
 }
 
 static MACHINE_RESET( vendetta )
 {
-	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)vendetta_banking);
+	konami_configure_set_lines(machine->cpu[0], vendetta_banking);
 
 	paletteram = &memory_region(machine, "main")[0x48000];
 	irq_enabled = 0;
 
 	/* init banks */
-	memory_set_bankptr( 1, &memory_region(machine, "main")[0x10000] );
+	memory_set_bankptr(machine,  1, &memory_region(machine, "main")[0x10000] );
 	vendetta_video_banking( machine, 0 );
 }
 
@@ -798,15 +803,15 @@ static MACHINE_RESET( vendetta )
 static DRIVER_INIT( vendetta )
 {
 	video_banking_base = 0x4000;
-	konami_rom_deinterleave_2("gfx1");
-	konami_rom_deinterleave_4("gfx2");
+	konami_rom_deinterleave_2(machine, "gfx1");
+	konami_rom_deinterleave_4(machine, "gfx2");
 }
 
 static DRIVER_INIT( esckids )
 {
 	video_banking_base = 0x2000;
-	konami_rom_deinterleave_2("gfx1");
-	konami_rom_deinterleave_4("gfx2");
+	konami_rom_deinterleave_2(machine, "gfx1");
+	konami_rom_deinterleave_4(machine, "gfx2");
 }
 
 

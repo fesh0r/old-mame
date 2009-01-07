@@ -17,6 +17,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "machine/6821pia.h"
 #include "carpolo.h"
 
@@ -322,4 +323,4 @@ static DRIVER_INIT( carpolo )
 		ROM[i] ^= 0x0f;
 }
 
-GAME( 1977, carpolo, 0, carpolo, carpolo, carpolo, ROT0, "Exidy", "Car Polo", GAME_NO_SOUND)
+GAME( 1977, carpolo, 0, carpolo, carpolo, carpolo, ROT0, "Exidy", "Car Polo", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )

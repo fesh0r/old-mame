@@ -42,13 +42,12 @@
     Known issues/to-do's:
         * Is Astro Fighter supposed to have a blue background???
         * Analog sound in all games
-        * Verify DIPs for clones
-        * Figure out unknown DIPs for Space Fighter Mark II (set 2)
 
 ****************************************************************************/
 
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "astrof.h"
 
 
@@ -87,7 +86,7 @@ static UINT16 abattle_count;
 
 static READ8_HANDLER( irq_clear_r )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 
 	return 0;
 }
@@ -95,7 +94,7 @@ static READ8_HANDLER( irq_clear_r )
 
 static TIMER_DEVICE_CALLBACK( irq_callback )
 {
-	cpunum_set_input_line(timer->machine, 0, 0, ASSERT_LINE);
+	cpu_set_input_line(timer->machine->cpu[0], 0, ASSERT_LINE);
 }
 
 
@@ -109,7 +108,7 @@ static TIMER_DEVICE_CALLBACK( irq_callback )
 static INPUT_CHANGED( coin_inserted )
 {
 	/* coin insertion causes an NMI */
-	cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
 	coin_counter_w(0, newval);
 }
 
@@ -117,7 +116,7 @@ static INPUT_CHANGED( coin_inserted )
 static INPUT_CHANGED( service_coin_inserted )
 {
 	/* service coin insertion causes an NMI */
-	cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -175,7 +174,7 @@ static VIDEO_START( astrof )
 {
 	/* allocate the color RAM -- half the size of the video RAM as A0 is not connected */
 	astrof_colorram = auto_malloc(astrof_videoram_size / 2);
-	state_save_register_global_pointer(astrof_colorram, astrof_videoram_size / 2);
+	state_save_register_global_pointer(machine, astrof_colorram, astrof_videoram_size / 2);
 }
 
 
@@ -242,7 +241,7 @@ static WRITE8_HANDLER( tomahawk_videoram_w )
 
 static WRITE8_HANDLER( video_control_1_w )
 {
-	flipscreen = ((data >> 0) & 0x01) & input_port_read(machine, "CAB");
+	flipscreen = ((data >> 0) & 0x01) & input_port_read(space->machine, "CAB");
 
 	/* this ties to the CLR pin of the shift registers */
 	screen_off = (data & 0x02) ? TRUE : FALSE;
@@ -250,7 +249,7 @@ static WRITE8_HANDLER( video_control_1_w )
 	/* D2 - not connected in the schematics, but at one point Astro Fighter sets it to 1 */
 	/* D3-D7 - not connected */
 
-	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+	video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 }
 
 
@@ -271,7 +270,7 @@ static void astrof_set_video_control_2(UINT8 data)
 static WRITE8_HANDLER( astrof_video_control_2_w )
 {
 	astrof_set_video_control_2(data);
-	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+	video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 }
 
 
@@ -289,7 +288,7 @@ static void spfghmk2_set_video_control_2(UINT8 data)
 static WRITE8_HANDLER( spfghmk2_video_control_2_w )
 {
 	spfghmk2_set_video_control_2(data);
-	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+	video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 }
 
 
@@ -306,7 +305,7 @@ static void tomahawk_set_video_control_2(UINT8 data)
 static WRITE8_HANDLER( tomahawk_video_control_2_w )
 {
 	tomahawk_set_video_control_2(data);
-	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+	video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 }
 
 
@@ -388,7 +387,7 @@ static VIDEO_UPDATE( tomahawk )
 static READ8_HANDLER( shoot_r )
 {
 	/* not really sure about this */
-	return mame_rand(machine) & 8;
+	return mame_rand(space->machine) & 8;
 }
 
 
@@ -428,10 +427,10 @@ static MACHINE_START( astrof )
 	astrof_set_video_control_2(0xff);
 
 	/* register for state saving */
-	state_save_register_global(red_on);
-	state_save_register_global(flipscreen);
-	state_save_register_global(screen_off);
-	state_save_register_global(astrof_palette_bank);
+	state_save_register_global(machine, red_on);
+	state_save_register_global(machine, flipscreen);
+	state_save_register_global(machine, screen_off);
+	state_save_register_global(machine, astrof_palette_bank);
 
 	MACHINE_START_CALL(astrof_audio);
 }
@@ -440,7 +439,7 @@ static MACHINE_START( astrof )
 static MACHINE_START( abattle )
 {
 	/* register for state saving */
-	state_save_register_global(abattle_count);
+	state_save_register_global(machine, abattle_count);
 
 	MACHINE_START_CALL(astrof);
 }
@@ -455,9 +454,9 @@ static MACHINE_START( spfghmk2 )
 	red_on = FALSE;
 
 	/* register for state saving */
-	state_save_register_global(flipscreen);
-	state_save_register_global(screen_off);
-	state_save_register_global(astrof_palette_bank);
+	state_save_register_global(machine, flipscreen);
+	state_save_register_global(machine, screen_off);
+	state_save_register_global(machine, astrof_palette_bank);
 }
 
 
@@ -467,9 +466,9 @@ static MACHINE_START( tomahawk )
 	tomahawk_set_video_control_2(0xff);
 
 	/* register for state saving */
-	state_save_register_global(red_on);
-	state_save_register_global(flipscreen);
-	state_save_register_global(screen_off);
+	state_save_register_global(machine, red_on);
+	state_save_register_global(machine, flipscreen);
+	state_save_register_global(machine, screen_off);
 }
 
 
@@ -567,39 +566,39 @@ static INPUT_PORTS_START( astrof )
 
 	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_2WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_2WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("DSW")
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW:1,2")
+	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )            PORT_DIPLOCATION("SW:1,2")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
 	PORT_DIPSETTING(    0x02, "5" )
 	PORT_DIPSETTING(    0x03, "6" )
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW:3,4")
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) )          PORT_DIPLOCATION("SW:3,4")
 	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
-  /*PORT_DIPSETTING(    0x0c, DEF_STR( 2C_1C ) )*/
+//  PORT_DIPSETTING(    0x0c, DEF_STR( 2C_1C ) )            /* duplicate settings */
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW:5,6")
-	PORT_DIPSETTING(    0x00, "3000" )
-	PORT_DIPSETTING(    0x10, "5000" )
-	PORT_DIPSETTING(    0x20, "7000" )
+	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) )       PORT_DIPLOCATION("SW:5,6")    /* table at 0xf6b2 */
+	PORT_DIPSETTING(    0x00, "5000" )
+	PORT_DIPSETTING(    0x10, "7000" )
+	PORT_DIPSETTING(    0x20, "10000" )
 	PORT_DIPSETTING(    0x30, DEF_STR( None ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW:7")
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Difficulty ) )       PORT_DIPLOCATION("SW:7")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Hard ) )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 
 	PORT_START("CAB")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )          PORT_DIPLOCATION("SW:8")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -610,7 +609,7 @@ static INPUT_PORTS_START( astrof )
 	PORT_BIT( 0xfc, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
-
+/* same as 'astrof', but inputs are ACTIVE_HIGH instead of ACTIVE_LOW */
 static INPUT_PORTS_START( abattle )
 	PORT_START("IN")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
@@ -620,39 +619,39 @@ static INPUT_PORTS_START( abattle )
 
 	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )  PORT_2WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )  PORT_2WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("DSW")
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW:1,2")
+	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )            PORT_DIPLOCATION("SW:1,2")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
 	PORT_DIPSETTING(    0x02, "5" )
 	PORT_DIPSETTING(    0x03, "6" )
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW:3,4")
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) )          PORT_DIPLOCATION("SW:3,4")
 	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
-  /*PORT_DIPSETTING(    0x0c, DEF_STR( 2C_1C ) )*/
+//  PORT_DIPSETTING(    0x0c, DEF_STR( 2C_1C ) )            /* duplicate settings */
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW:5,6")
+	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) )       PORT_DIPLOCATION("SW:5,6")    /* table at 0xf87a */
 	PORT_DIPSETTING(    0x00, "5000" )
 	PORT_DIPSETTING(    0x10, "7000" )
 	PORT_DIPSETTING(    0x20, "10000" )
 	PORT_DIPSETTING(    0x30, DEF_STR( None ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW:7")
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Difficulty ) )       PORT_DIPLOCATION("SW:7")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Hard ) )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 
 	PORT_START("CAB")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )          PORT_DIPLOCATION("SW:8")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -673,40 +672,36 @@ static INPUT_PORTS_START( spfghmk2 )
 
 	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_2WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_2WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("DSW")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW:1")	/* most likely not used */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW:2")
+	PORT_DIPUNUSED_DIPLOC( 0x01, 0x00, "SW:1" )
+	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Lives ) )            PORT_DIPLOCATION("SW:2")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x02, "5" )
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW:3,4")
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) )          PORT_DIPLOCATION("SW:3,4")
 	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
-  /*PORT_DIPSETTING(    0x0c, DEF_STR( 2C_1C ) )*/
+//  PORT_DIPSETTING(    0x0c, DEF_STR( 2C_1C ) )            /* duplicate settings */
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW:5,6")
+	PORT_DIPNAME( 0x30, 0x00, "Free Credit" )               PORT_DIPLOCATION("SW:5,6")    /* table at 0xfa58 */
 	PORT_DIPSETTING(    0x00, "1500" )
 	PORT_DIPSETTING(    0x10, "2000" )
 	PORT_DIPSETTING(    0x20, "2500" )
 	PORT_DIPSETTING(    0x30, "3000" )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW:7")	/* most likely not used */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x40, 0x00, "SW:7" )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 
 	PORT_START("CAB")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )          PORT_DIPLOCATION("SW:8")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -717,7 +712,6 @@ static INPUT_PORTS_START( spfghmk2 )
 	PORT_BIT( 0xfc, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
-
 static INPUT_PORTS_START( spfgmk22 )
 	PORT_START("IN")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
@@ -727,7 +721,7 @@ static INPUT_PORTS_START( spfgmk22 )
 
 	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_2WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
@@ -738,29 +732,29 @@ static INPUT_PORTS_START( spfgmk22 )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("DSW")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW:1")	/* used */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW:2")
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Difficulty ) )       PORT_DIPLOCATION("SW:1")
+	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Hard ) )
+	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Lives ) )            PORT_DIPLOCATION("SW:2")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x02, "5" )
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW:3,4")
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) )          PORT_DIPLOCATION("SW:3,4")
 	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
-  /*PORT_DIPSETTING(    0x0c, DEF_STR( 2C_1C ) )*/
+//  PORT_DIPSETTING(    0x0c, DEF_STR( 2C_1C ) )            /* duplicate settings */
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW:5,6")
+	PORT_DIPNAME( 0x30, 0x00, "Free Credit" )               PORT_DIPLOCATION("SW:5,6")    /* table at 0xf9f8 */
 	PORT_DIPSETTING(    0x00, "2000" )
 	PORT_DIPSETTING(    0x10, "3000" )
 	PORT_DIPSETTING(    0x20, "4000" )
 	PORT_DIPSETTING(    0x30, "5000" )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW:7")	/* used */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x00, "Kill Saucer after Invaders" ) PORT_DIPLOCATION("SW:7")
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Yes ) )              /* if saucer lands, game is over */
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 
 	PORT_START("CAB")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )          PORT_DIPLOCATION("SW:8")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -781,43 +775,43 @@ static INPUT_PORTS_START( tomahawk )
 
 	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_4WAY
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_4WAY
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_4WAY
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0xe0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_4WAY PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_4WAY PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_4WAY PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0xe0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
   	PORT_START("DSW")
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW:1,2")
+	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )            PORT_DIPLOCATION("SW:1,2")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
 	PORT_DIPSETTING(    0x02, "5" )
 	PORT_DIPSETTING(    0x03, "6" )
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW:3,4")
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) )          PORT_DIPLOCATION("SW:3,4")
 	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
-  /*PORT_DIPSETTING(    0x0c, DEF_STR( 2C_1C ) )*/
+//  PORT_DIPSETTING(    0x0c, DEF_STR( 2C_1C ) )            /* duplicate settings */
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW:5,6")
+	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) )       PORT_DIPLOCATION("SW:5,6")    /* table at 0xf428 */
 	PORT_DIPSETTING(    0x00, "5000" )
 	PORT_DIPSETTING(    0x10, "7000" )
 	PORT_DIPSETTING(    0x20, "10000" )
 	PORT_DIPSETTING(    0x30, DEF_STR( None ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW:7")
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Difficulty ) )       PORT_DIPLOCATION("SW:7")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Hard ) )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 
 	PORT_START("CAB")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW:8")
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )          PORT_DIPLOCATION("SW:8")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -826,6 +820,18 @@ static INPUT_PORTS_START( tomahawk )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_CHANGED(service_coin_inserted, 0)
 	PORT_BIT( 0xfc, IP_ACTIVE_HIGH, IPT_UNUSED )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( tomahaw1 )
+	PORT_INCLUDE( tomahawk )
+
+	PORT_MODIFY("DSW")
+	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Bonus_Life ) )       PORT_DIPLOCATION("SW:5,6")    /* table at 0xf3c8 */
+	PORT_DIPSETTING(    0x00, "3000" )
+	PORT_DIPSETTING(    0x10, "5000" )
+	PORT_DIPSETTING(    0x20, "7000" )
+	PORT_DIPSETTING(    0x30, DEF_STR( None ) )
+	PORT_DIPUNUSED_DIPLOC( 0x40, 0x00, "SW:7" )
 INPUT_PORTS_END
 
 
@@ -1185,8 +1191,8 @@ static DRIVER_INIT( abattle )
 		rom[i] = prom[rom[i]];
 
 	/* set up protection handlers */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa003, 0xa003, 0, 0, shoot_r);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa004, 0xa004, 0, 0, abattle_coin_prot_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa003, 0xa003, 0, 0, shoot_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa004, 0xa004, 0, 0, abattle_coin_prot_r);
 }
 
 
@@ -1199,8 +1205,8 @@ static DRIVER_INIT( afire )
 		rom[i] = ~rom[i];
 
 	/* set up protection handlers */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa003, 0xa003, 0, 0, shoot_r);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa004, 0xa004, 0, 0, afire_coin_prot_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa003, 0xa003, 0, 0, shoot_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa004, 0xa004, 0, 0, afire_coin_prot_r);
 }
 
 
@@ -1213,8 +1219,8 @@ static DRIVER_INIT( sstarbtl )
 		rom[i] = ~rom[i];
 
 	/* set up protection handlers */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa003, 0xa003, 0, 0, shoot_r);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa004, 0xa004, 0, 0, abattle_coin_prot_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa003, 0xa003, 0, 0, shoot_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa004, 0xa004, 0, 0, abattle_coin_prot_r);
 }
 
 
@@ -1237,4 +1243,4 @@ GAME( 1979, sstarbtl, astrof,   abattle,  abattle,  sstarbtl,ROT90, "bootleg",  
 GAME( 1979, spfghmk2, 0,        spfghmk2, spfghmk2, 0,       ROT90, "Data East",   "Space Fighter Mark II (set 1)", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
 GAME( 1979, spfgmk22, spfghmk2, spfghmk2, spfgmk22, 0,       ROT90, "Data East",   "Space Fighter Mark II (set 2)", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
 GAME( 1980, tomahawk, 0,        tomahawk, tomahawk, 0,       ROT90, "Data East",   "Tomahawk 777 (rev 5)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
-GAME( 1980, tomahaw1, tomahawk, tomahawk, tomahawk, 0,       ROT90, "Data East",   "Tomahawk 777 (rev 1)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1980, tomahaw1, tomahawk, tomahawk, tomahaw1, 0,       ROT90, "Data East",   "Tomahawk 777 (rev 1)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

@@ -309,51 +309,19 @@ Stephh's notes (based on the games M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/h6280/h6280.h"
 #include "decocrpt.h"
 #include "sound/2151intf.h"
 #include "sound/3812intf.h"
 #include "sound/okim6295.h"
+#include "includes/tumbleb.h"
 
 #define TUMBLEP_HACK	0
 #define FNCYWLD_HACK	0
 
-VIDEO_START( tumblepb );
-VIDEO_START( fncywld );
-VIDEO_START( jumppop );
-VIDEO_START( sdfight );
-VIDEO_UPDATE( tumblep );
-VIDEO_UPDATE( tumblepb );
-VIDEO_UPDATE( jumpkids );
-VIDEO_UPDATE( fncywld );
-VIDEO_UPDATE( jumppop );
-VIDEO_UPDATE( semicom );
-VIDEO_UPDATE( semicom_altoffsets );
-VIDEO_UPDATE( bcstory );
-VIDEO_UPDATE(semibase );
-VIDEO_START( suprtrio );
-VIDEO_UPDATE( suprtrio );
-VIDEO_START( pangpang );
-VIDEO_UPDATE( pangpang );
-VIDEO_UPDATE( sdfight );
-
-
-
-WRITE16_HANDLER( tumblepb_pf1_data_w );
-WRITE16_HANDLER( tumblepb_pf2_data_w );
-WRITE16_HANDLER( fncywld_pf1_data_w );
-WRITE16_HANDLER( fncywld_pf2_data_w );
-WRITE16_HANDLER( tumblepb_control_0_w );
 static WRITE16_HANDLER( semicom_soundcmd_w );
-WRITE16_HANDLER( pangpang_pf1_data_w );
-WRITE16_HANDLER( pangpang_pf2_data_w );
-
-extern WRITE16_HANDLER( bcstory_tilebank_w );
-extern WRITE16_HANDLER( suprtrio_tilebank_w );
-extern WRITE16_HANDLER( chokchok_tilebank_w );
-extern WRITE16_HANDLER( wlstar_tilebank_w );
-
-extern UINT16 *tumblepb_pf1_data,*tumblepb_pf2_data;
 static UINT16* tumblepb_mainram;
 UINT16* jumppop_control;
 UINT16* suprtrio_control;
@@ -364,12 +332,12 @@ static WRITE16_HANDLER( tumblepb_oki_w )
 {
 	if (mem_mask==0xffff)
 	{
-		okim6295_data_0_w(machine,0,data&0xff);
+		okim6295_data_0_w(space,0,data&0xff);
 		//printf("tumbleb_oki_w %04x %04x\n",data,mem_mask);
 	}
 	else
 	{
-		okim6295_data_0_w(machine,0,(data>>8)&0xff);
+		okim6295_data_0_w(space,0,(data>>8)&0xff);
 		//printf("tumbleb_oki_w %04x %04x\n",data,mem_mask);
 	}
     /* STUFF IN OTHER BYTE TOO..*/
@@ -383,15 +351,15 @@ static READ16_HANDLER( tumblepb_prot_r )
 #ifdef UNUSED_FUNCTION
 static WRITE16_HANDLER( tumblepb_sound_w )
 {
-	soundlatch_w(machine,0,data & 0xff);
-	cpunum_set_input_line(machine, 1,0,HOLD_LINE);
+	soundlatch_w(space,0,data & 0xff);
+	cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
 }
 #endif
 
 static WRITE16_HANDLER( jumppop_sound_w )
 {
-	soundlatch_w(machine,0,data & 0xff);
-	cpunum_set_input_line(machine, 1, 0, ASSERT_LINE );
+	soundlatch_w(space,0,data & 0xff);
+	cpu_set_input_line(space->machine->cpu[1], 0, ASSERT_LINE );
 }
 
 /******************************************************************************/
@@ -401,11 +369,11 @@ static READ16_HANDLER( tumblepopb_controls_r )
  	switch (offset<<1)
 	{
 		case 0:
-			return input_port_read(machine, "PLAYERS");
+			return input_port_read(space->machine, "PLAYERS");
 		case 2:
-			return input_port_read(machine, "DSW");
+			return input_port_read(space->machine, "DSW");
 		case 8:
-			return input_port_read(machine, "SYSTEM");
+			return input_port_read(space->machine, "SYSTEM");
 		case 10: /* ? */
 		case 12:
         	return 0;
@@ -488,16 +456,16 @@ static int tumblep_music_command;
 static int tumblep_music_bank;
 static int tumbleb2_music_is_playing;
 
-static void tumbleb2_playmusic(running_machine *machine)
+static void tumbleb2_playmusic(const address_space *space)
 {
-	int status = okim6295_status_0_r(machine,0);
+	int status = okim6295_status_0_r(space,0);
 
 	if (tumbleb2_music_is_playing)
 	{
 		if ((status&0x08)==0x00)
 		{
-			okim6295_data_0_w(machine,0,0x80|tumblep_music_command);
-			okim6295_data_0_w(machine,0,0x00|0x82);
+			okim6295_data_0_w(space,0,0x80|tumblep_music_command);
+			okim6295_data_0_w(space,0,0x00|0x82);
 		}
 	}
 }
@@ -505,8 +473,8 @@ static void tumbleb2_playmusic(running_machine *machine)
 
 static INTERRUPT_GEN( tumbleb2_interrupt )
 {
-	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
-	tumbleb2_playmusic(machine);
+	cpu_set_input_line(device, 6, HOLD_LINE);
+	tumbleb2_playmusic(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM));
 }
 
 static const int tumbleb_sound_lookup[256] = {
@@ -536,24 +504,24 @@ static void tumbleb2_set_music_bank(running_machine *machine, int bank)
 	memcpy(&oki[0x38000], &oki[0x80000+0x38000+0x8000*bank],0x8000);
 }
 
-static void tumbleb2_play_sound (running_machine *machine, int data)
+static void tumbleb2_play_sound (const address_space *space, int data)
 {
-	int status = okim6295_status_0_r(machine,0);
+	int status = okim6295_status_0_r(space,0);
 
 	if ((status&0x01)==0x00)
 	{
-		okim6295_data_0_w(machine,0,0x80|data);
-		okim6295_data_0_w(machine,0,0x00|0x12);
+		okim6295_data_0_w(space,0,0x80|data);
+		okim6295_data_0_w(space,0,0x00|0x12);
 	}
 	else if ((status&0x02)==0x00)
 	{
-		okim6295_data_0_w(machine,0,0x80|data);
-		okim6295_data_0_w(machine,0,0x00|0x22);
+		okim6295_data_0_w(space,0,0x80|data);
+		okim6295_data_0_w(space,0,0x00|0x22);
 	}
 	else if ((status&0x04)==0x00)
 	{
-		okim6295_data_0_w(machine,0,0x80|data);
-		okim6295_data_0_w(machine,0,0x00|0x42);
+		okim6295_data_0_w(space,0,0x80|data);
+		okim6295_data_0_w(space,0,0x00|0x42);
 	}
 }
 
@@ -569,15 +537,15 @@ static void tumbleb2_play_sound (running_machine *machine, int data)
 // bank 7 = how to play?
 // bank 8 = boss???
 
-static void process_tumbleb2_music_command(running_machine *machine, int data)
+static void process_tumbleb2_music_command(const address_space *space, int data)
 {
-	int status = okim6295_status_0_r(machine,0);
+	int status = okim6295_status_0_r(space,0);
 
 	if (data == 1) // stop?
 	{
 		if ((status&0x08)==0x08)
 		{
-			okim6295_data_0_w(machine,0,0x40);		/* Stop playing music */
+			okim6295_data_0_w(space,0,0x40);		/* Stop playing music */
 			tumbleb2_music_is_playing = 0;
 		}
 	}
@@ -586,7 +554,7 @@ static void process_tumbleb2_music_command(running_machine *machine, int data)
 		if (tumbleb2_music_is_playing != data)
 		{
 			tumbleb2_music_is_playing = data;
-			okim6295_data_0_w(machine,0,0x40); // stop the current music
+			okim6295_data_0_w(space,0,0x40); // stop the current music
 			switch (data)
 			{
 				case 0x04: // map screen
@@ -659,8 +627,8 @@ static void process_tumbleb2_music_command(running_machine *machine, int data)
 					tumblep_music_command = 0x38;
 					break;
 			}
-			tumbleb2_set_music_bank(machine, tumblep_music_bank);
-			tumbleb2_playmusic(machine);
+			tumbleb2_set_music_bank(space->machine, tumblep_music_bank);
+			tumbleb2_playmusic(space);
 
 		}
 
@@ -682,11 +650,11 @@ static WRITE16_HANDLER(tumbleb2_soundmcu_w)
 	}
 	else if (sound == -2)
 	{
-		process_tumbleb2_music_command(machine, data);
+		process_tumbleb2_music_command(space, data);
 	}
 	else
 	{
-		tumbleb2_play_sound(machine, sound);
+		tumbleb2_play_sound(space, sound);
 	}
 }
 
@@ -745,7 +713,7 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( semibase_unknown_r )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 static ADDRESS_MAP_START( htchctch_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
@@ -783,8 +751,8 @@ ADDRESS_MAP_END
 
 static WRITE16_HANDLER( jumpkids_sound_w )
 {
-	soundlatch_w(machine,0,data & 0xff);
-	cpunum_set_input_line(machine, 1,0,HOLD_LINE);
+	soundlatch_w(space,0,data & 0xff);
+	cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
 }
 
 
@@ -836,17 +804,17 @@ static WRITE16_HANDLER( semicom_soundcmd_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,0,data & 0xff);
+		soundlatch_w(space,0,data & 0xff);
 		// needed for Super Trio which reads the sound with polling
-//      cpu_spinuntil_time(ATTOTIME_IN_USEC(100));
-		cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(20));
+//      cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(100));
+		cpuexec_boost_interleave(space->machine, attotime_zero, ATTOTIME_IN_USEC(20));
 
 	}
 }
 
 static WRITE8_HANDLER( oki_sound_bank_w )
 {
-	UINT8 *oki = memory_region(machine, "oki");
+	UINT8 *oki = memory_region(space->machine, "oki");
 	memcpy(&oki[0x30000], &oki[(data * 0x10000) + 0x40000], 0x10000);
 }
 
@@ -863,7 +831,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER(jumppop_z80_bank_w)
 {
-	memory_set_bankptr(1, memory_region(machine, "audio") + 0x10000 + (0x4000 * data));
+	memory_set_bankptr(space->machine, 1, memory_region(space->machine, "audio") + 0x10000 + (0x4000 * data));
 }
 
 static ADDRESS_MAP_START( jumppop_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -874,8 +842,8 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER(jumppop_z80latch_r)
 {
-	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
-	return soundlatch_r(machine, 0);
+	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+	return soundlatch_r(space, 0);
 }
 
 static ADDRESS_MAP_START( jumppop_sound_io_map, ADDRESS_SPACE_IO, 8 )
@@ -912,8 +880,8 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( jumpkids_oki_bank_w )
 {
-	UINT8* sound1 = memory_region(machine, "oki");
-	UINT8* sound2 = memory_region(machine, "oki2");
+	UINT8* sound1 = memory_region(space->machine, "oki");
+	UINT8* sound2 = memory_region(space->machine, "oki2");
 	int bank = data & 0x03;
 
 	memcpy (sound1+0x20000, sound2+bank*0x20000, 0x20000);
@@ -2161,7 +2129,7 @@ MACHINE_DRIVER_END
 
 static void semicom_irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -3330,7 +3298,7 @@ static DRIVER_INIT( tumbleb2 )
 	tumblepb_patch_code(machine, 0x000132);
 	#endif
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x100001, 0, 0, tumbleb2_soundmcu_w );
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x100000, 0x100001, 0, 0, tumbleb2_soundmcu_w );
 
 }
 
@@ -3362,16 +3330,16 @@ static DRIVER_INIT( fncywld )
 static READ16_HANDLER( bcstory_1a0_read )
 {
 
-	//mame_printf_debug("bcstory_io %06x\n",activecpu_get_pc());
+	//mame_printf_debug("bcstory_io %06x\n",cpu_get_pc(space->cpu));
 
-	if (activecpu_get_pc()==0x0560) return 0x1a0;
-	else return input_port_read(machine, "SYSTEM");
+	if (cpu_get_pc(space->cpu)==0x0560) return 0x1a0;
+	else return input_port_read(space->machine, "SYSTEM");
 }
 
 static DRIVER_INIT ( bcstory )
 {
 	tumblepb_gfx1_rearrange(machine);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x180008, 0x180009, 0, 0, bcstory_1a0_read ); // io should be here??
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x180008, 0x180009, 0, 0, bcstory_1a0_read ); // io should be here??
 }
 
 
@@ -3612,7 +3580,7 @@ static DRIVER_INIT( htchctch )
 
 	HCROM[0x1e228/2] = 0x4e75;
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x140000, 0x1407ff, 0, 0, SMH_NOP ); // kill palette writes as the interrupt code we don't have controls them
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x140000, 0x1407ff, 0, 0, SMH_NOP ); // kill palette writes as the interrupt code we don't have controls them
 
 
 	{
@@ -3678,10 +3646,10 @@ static DRIVER_INIT( chokchok )
 	DRIVER_INIT_CALL(htchctch);
 
 	/* different palette format, closer to tumblep -- is this controlled by a register? the palette was right with the hatch catch trojan */
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x140000, 0x140fff, 0, 0, paletteram16_xxxxBBBBGGGGRRRR_word_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x140000, 0x140fff, 0, 0, paletteram16_xxxxBBBBGGGGRRRR_word_w);
 
 	/* slightly different banking */
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x100002, 0x100003, 0, 0, chokchok_tilebank_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x100002, 0x100003, 0, 0, chokchok_tilebank_w);
 }
 
 static DRIVER_INIT( wlstar )
@@ -3689,7 +3657,7 @@ static DRIVER_INIT( wlstar )
 	DRIVER_INIT_CALL(htchctch);
 
 	/* slightly different banking */
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x100002, 0x100003, 0, 0, wlstar_tilebank_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x100002, 0x100003, 0, 0, wlstar_tilebank_w);
 }
 
 static DRIVER_INIT ( dquizgo )

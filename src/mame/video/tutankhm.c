@@ -69,9 +69,9 @@ static void get_pens(pen_t *pens)
 
 VIDEO_START( tutankhm )
 {
-	state_save_register_global_array(junofrst_blitterdata);
-	state_save_register_global(tutankhm_flip_screen_x);
-	state_save_register_global(tutankhm_flip_screen_y);
+	state_save_register_global_array(machine, junofrst_blitterdata);
+	state_save_register_global(machine, tutankhm_flip_screen_x);
+	state_save_register_global(machine, tutankhm_flip_screen_y);
 }
 
 
@@ -137,7 +137,7 @@ WRITE8_HANDLER( junofrst_blitter_w )
 	if (offset == 3)
 	{
 		int i;
-		UINT8 *gfx_rom = memory_region(machine, "gfx1");
+		UINT8 *gfx_rom = memory_region(space->machine, "gfx1");
 
 		offs_t src = ((junofrst_blitterdata[2] << 8) | junofrst_blitterdata[3]) & 0xfffc;
 		offs_t dest = (junofrst_blitterdata[0] << 8) | junofrst_blitterdata[1];

@@ -25,10 +25,10 @@ struct _VR0Chip
 
 static void VR0_RenderAudio(struct _VR0Chip *VR0, int nsamples,stream_sample_t *l,stream_sample_t *r);
 
-static void VR0_Update(void *param, stream_sample_t **inputs, stream_sample_t **buf, int samples)
+static STREAM_UPDATE( VR0_Update )
 {
 	struct _VR0Chip *VR0 = param;
-	VR0_RenderAudio(VR0, samples,buf[0],buf[1]);
+	VR0_RenderAudio(VR0, samples,outputs[0],outputs[1]);
 }
 
 //Correct table thanks to Evoga
@@ -78,8 +78,8 @@ static const unsigned short ULawTo16[]=
 #define ENVVOL(chan)	(VR0->SOUNDREGS[(0x20/4)*chan+0x04/4]&0xffffff)
 
 /*
-#define GETSOUNDREG16(Chan,Offs) program_read_word_32le(VR0->Intf.reg_base+0x20*Chan+Offs)
-#define GETSOUNDREG32(Chan,Offs) program_read_dword_32le(VR0->Intf.reg_base+0x20*Chan+Offs)
+#define GETSOUNDREG16(Chan,Offs) memory_read_word_32le(space,VR0->Intf.reg_base+0x20*Chan+Offs)
+#define GETSOUNDREG32(Chan,Offs) memory_read_dword_32le(space,VR0->Intf.reg_base+0x20*Chan+Offs)
 
 #define CURSADDR(chan)  GETSOUNDREG32(chan,0x00)
 #define DSADDR(chan)    GETSOUNDREG16(chan,0x08)
@@ -94,7 +94,7 @@ void vr0_snd_set_areas(UINT32 *texture,UINT32 *frame)
 	VR0->FBBase=frame;
 }
 
-static void *vrender0_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( vrender0 )
 {
 	const vr0_interface *intf;
 	struct _VR0Chip *VR0;
@@ -107,7 +107,7 @@ static void *vrender0_start(const char *tag, int sndindex, int clock, const void
 	memcpy(&(VR0->Intf),intf,sizeof(vr0_interface));
 	memset(VR0->SOUNDREGS,0,sizeof(VR0->SOUNDREGS));
 
-	VR0->stream = stream_create(0, 2, 44100, VR0, VR0_Update);
+	VR0->stream = stream_create(device, 0, 2, 44100, VR0, VR0_Update);
 
 	return VR0;
 }
@@ -242,7 +242,7 @@ static void VR0_RenderAudio(struct _VR0Chip *VR0, int nsamples,stream_sample_t *
  * Generic get_info
  **************************************************************************/
 
-static void vrender0_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( vrender0 )
 {
 	switch (state)
 	{
@@ -251,24 +251,24 @@ static void vrender0_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void vrender0_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( vrender0 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = vrender0_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = vrender0_start;			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( vrender0 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( vrender0 );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "VRender0";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "???";						break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "VRender0");					break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "???");							break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

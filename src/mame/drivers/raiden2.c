@@ -136,6 +136,7 @@ Current Problem(s) - in order of priority
 */
 
 #include "driver.h"
+#include "cpu/nec/nec.h"
 #include "cpu/z80/z80.h"
 #include "audio/seibu.h"
 #include "machine/eeprom.h"
@@ -341,10 +342,10 @@ static void set_scroll(tilemap *tm, int plane)
 
 static VIDEO_START( raiden2 )
 {
-	text_layer       = tilemap_create(get_text_tile_info, tilemap_scan_rows,  8, 8, 64,32 );
-	background_layer = tilemap_create(get_back_tile_info, tilemap_scan_rows, 16,16, 32,32 );
-	midground_layer  = tilemap_create(get_mid_tile_info,  tilemap_scan_rows, 16,16, 32,32 );
-	foreground_layer = tilemap_create(get_fore_tile_info, tilemap_scan_rows, 16,16, 32,32 );
+	text_layer       = tilemap_create(machine, get_text_tile_info, tilemap_scan_rows,  8, 8, 64,32 );
+	background_layer = tilemap_create(machine, get_back_tile_info, tilemap_scan_rows, 16,16, 32,32 );
+	midground_layer  = tilemap_create(machine, get_mid_tile_info,  tilemap_scan_rows, 16,16, 32,32 );
+	foreground_layer = tilemap_create(machine, get_fore_tile_info, tilemap_scan_rows, 16,16, 32,32 );
 
 	tilemap_set_transparent_pen(midground_layer, 15);
 	tilemap_set_transparent_pen(foreground_layer, 15);
@@ -537,7 +538,7 @@ static VIDEO_UPDATE ( raiden2 )
 #endif
 #endif
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	if (!input_code_pressed(KEYCODE_Q))
 		tilemap_draw(bitmap, cliprect, background_layer, 0, 0);
@@ -566,7 +567,7 @@ static VIDEO_UPDATE ( raiden2 )
 static INTERRUPT_GEN( raiden2_interrupt )
 {
 
-	cpunum_set_input_line_and_vector(machine, cpunum, 0, HOLD_LINE, 0xc0/4);	/* VBL */
+	cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xc0/4);	/* VBL */
 	logerror("VSYNC\n");
 }
 
@@ -682,18 +683,18 @@ WRITE16_HANDLER(sprcpt_flags_2_w)
 // XXX
 // write only: 4c0 4c1 500 501 502 503
 
-static UINT16 handle_io_r(int offset)
+static UINT16 handle_io_r(const address_space *space, int offset)
 {
-	logerror("io_r %04x, %04x (%x)\n", offset*2, mainram[offset], activecpu_get_pc());
+	logerror("io_r %04x, %04x (%x)\n", offset*2, mainram[offset], cpu_get_pc(space->cpu));
 	return mainram[offset];
 }
 
-static void handle_io_w(int offset, UINT16 data, UINT16 mem_mask)
+static void handle_io_w(const address_space *space, int offset, UINT16 data, UINT16 mem_mask)
 {
 	COMBINE_DATA(&mainram[offset]);
 	switch(offset) {
 	default:
-		logerror("io_w %04x, %04x & %04x (%x)\n", offset*2, data, mem_mask, activecpu_get_pc());
+		logerror("io_w %04x, %04x & %04x (%x)\n", offset*2, data, mem_mask, cpu_get_pc(space->cpu));
 	}
 }
 
@@ -702,7 +703,7 @@ static READ16_HANDLER(any_r)
 	c_r[offset]++;
 
 	if(offset >= 0x400/2 && offset < 0x800/2)
-		return handle_io_r(offset);
+		return handle_io_r(space, offset);
 
 	return mainram[offset];
 }
@@ -711,22 +712,22 @@ static WRITE16_HANDLER(any_w)
 {
 	int show = 0;
 	if(offset >= 0x400/2 && offset < 0x800/2)
-		handle_io_w(offset, data, mem_mask);
+		handle_io_w(space, offset, data, mem_mask);
 
 	c_w[offset]++;
-	//  logerror("mainram_w %04x, %02x (%x)\n", offset, data, activecpu_get_pc());
+	//  logerror("mainram_w %04x, %02x (%x)\n", offset, data, cpu_get_pc(space->cpu));
 	if(mainram[offset] != data && offset >= 0x400 && offset < 0x800) {
 		if(0 &&
 		   offset != 0x4c0/2 && offset != 0x500/2 &&
 		   offset != 0x444/2 && offset != 0x6de/2 && offset != 0x47e/2 &&
 		   offset != 0x4a0/2 && offset != 0x620/2 && offset != 0x6c6/2 &&
 		   offset != 0x628/2 && offset != 0x62a/2)
-			logerror("mainram_w %04x, %04x & %04x (%x)\n", offset*2, data, mem_mask, activecpu_get_pc());
+			logerror("mainram_w %04x, %04x & %04x (%x)\n", offset*2, data, mem_mask, cpu_get_pc(space->cpu));
 	}
 
 	if(0 && c_w[offset]>1000 && !c_r[offset]) {
 		if(offset != 0x4c0/2 && (offset<0x500/2 || offset > 0x503/2))
-			logerror("mainram_w %04x, %04x & %04x [%d.%d] (%x)\n", offset*2, data, mem_mask, c_w[offset], c_r[offset], activecpu_get_pc());
+			logerror("mainram_w %04x, %04x & %04x [%d.%d] (%x)\n", offset*2, data, mem_mask, c_w[offset], c_r[offset], cpu_get_pc(space->cpu));
 	}
 
 	//  if(offset == 0x471 || (offset >= 0xb146 && offset < 0xb156))
@@ -737,10 +738,10 @@ static WRITE16_HANDLER(any_w)
 	//  show = offset == 0x704 || offset == 0x710 || offset == 0x71c;
 
 	if(show)
-		logerror("mainram_w %04x, %04x & %04x (%x)\n", offset*2, data, mem_mask, activecpu_get_pc());
+		logerror("mainram_w %04x, %04x & %04x (%x)\n", offset*2, data, mem_mask, cpu_get_pc(space->cpu));
 
 	//  if(offset == 0x700)
-	//      cpu_setbank(2, memory_region(machine, "user1")+0x20000*data);
+	//      cpu_setbank(2, memory_region(space->machine, "user1")+0x20000*data);
 
 	COMBINE_DATA(&mainram[offset]);
 }
@@ -749,7 +750,7 @@ static WRITE16_HANDLER(w1x)
 {
 	COMBINE_DATA(&w1ram[offset]);
 	if(0 && offset < 0x800/2)
-		logerror("w1x %05x, %04x & %04x (%05x)\n", offset*2+0x10000, data, mem_mask, activecpu_get_pc());
+		logerror("w1x %05x, %04x & %04x (%05x)\n", offset*2+0x10000, data, mem_mask, cpu_get_pc(space->cpu));
 }
 
 #ifdef UNUSED_FUNCTION
@@ -1826,19 +1827,92 @@ ROM_START( r2dx_v33 )
 	ROM_LOAD( "copx_d3.357",   0x00000, 0x20000, CRC(fa2cf3ad) SHA1(13eee40704d3333874b6e3da9ee7d969c6dc662a) )
 ROM_END
 
+/*
+
+X Se Dae Quiz
+Seibu/Dream Island, 1995
+
+This game runs on a Zero Team PCB
+
+PCB Layout
+ZERO TEAM-V2 SEIBU KAIHATSU INC.
+|----------------------------------------|
+|LA4460 YM2151 M6295 9  Z80    Y         |
+|HB-46A1 YM3014 SEI150 8                 |
+|VOL      6116     6116  28.6362MHz 6116 |
+|                  6116   SEI251    6116 |
+|J HB-2                            62256 |
+|A                  OBJ-2  OBJ-1   62256 |
+|M                                 62256 |
+|M      SW1(8) PAL    1      3     62256 |
+|A             PAL    4      2  SEI1000  |
+|   SW2(8)     6264                      |
+|          PAL 6264          X           |
+|   SW3(8)       SEI0200  5    D71011    |
+|         7     BG-1      6         V30  |
+|----------------------------------------|
+Notes:
+      PCB is identical to standard Zero Team PCB
+      with the following differences....
+      1. X - location for COPX ROM, not populated
+      2. Y - location for battery, not populated
+      3. NEC V30 and NEC D71011 are located on a sub board and
+         the surface-mounted V30 (UPD70116) is not populated
+      4. ROM7 is located in a 8M-DIP42 to 4M-DIP40 adapter and is a 27C4002 EPROM
+      5. ROM8 has the top 4 pins hanging out of the DIP28 socket and is a 27C1001
+         EPROM. Pins 30,31 & 32 are tied together and pin 2 is tied to the SEI150
+         with a wire.
+*/
+
+ROM_START( xsedae )
+	ROM_REGION( 0x200000, "user1", 0 ) /* v30 main cpu */
+	ROM_LOAD32_BYTE("1.u024",   0x000000, 0x40000, CRC(185437f9) SHA1(e46950b6a549d11dc57105dd7d9cb512a8ecbe70) )
+	ROM_LOAD32_BYTE("3.u023",   0x000002, 0x40000, CRC(293fd6c1) SHA1(8b1a231f4bedbf9c0f347330e13fdf092b9888b4) )
+	ROM_LOAD32_BYTE("2.u025",   0x000001, 0x40000, CRC(a2b052df) SHA1(e8bf9ab3d5d4e601ea9386e1f2d4e017b025407e) )
+	ROM_LOAD32_BYTE("4.u026",   0x000003, 0x40000, CRC(5adf20bf) SHA1(42a0bb5a460c656675b2c432c043fc61a9049276) )
+
+	ROM_REGION( 0x40000, "user2", ROMREGION_ERASEFF )	/* COPDX */
+	/* Not populated */
+
+	ROM_REGION( 0x20000, "audio", 0 ) /* 64k code for sound Z80 */
+	ROM_LOAD( "8.u1110",  0x000000, 0x20000, CRC(2dc2f81a) SHA1(0f6605042e0e295b4256b43dbdf5d53daebe1a9a) )
+
+	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE ) /* chars */
+	ROM_LOAD16_BYTE( "5.u077",	0x000000,	0x010000, CRC(478deced) SHA1(88cd72cb76bbc1c4255c3dfae4b9a10af9b050b2) )
+ 	ROM_LOAD16_BYTE( "6.u072",	0x000001,	0x010000, CRC(a788402d) SHA1(8a1ac4760cf75cd2e32c1d15f36ad15cce3d411b) )
+
+ 	ROM_REGION( 0x400000, "gfx2", ROMREGION_DISPOSE ) /* background gfx */
+ 	ROM_LOAD( "bg-1.u075",   0x000000, 0x100000, CRC(ac087560) SHA1(b6473b20c55ec090961cfc46a024b3c5b707ec25) )
+ 	ROM_LOAD( "7.u0714",     0x100000, 0x080000, CRC(296105dc) SHA1(c2b80d681646f504b03c2dde13e37b1d820f82d2) )
+
+ 	ROM_REGION( 0x800000, "gfx3", ROMREGION_DISPOSE ) /* sprite gfx (not encrypted) */
+ 	ROM_LOAD32_WORD( "obj-1.u0811",  0x000000, 0x100000, CRC(e65f1b4e) SHA1(b04be9af41ce868e64071715252c4ff228891cf0) )
+ 	ROM_LOAD32_WORD( "obj-2.u082",   0x000002, 0x100000, CRC(e753e7ad) SHA1(643ab39ac1b7df686a16b1ed6fdcb686720ca8e8) )
+
+ 	ROM_REGION( 0x100000, "oki1", 0 )	/* ADPCM samples */
+ 	ROM_LOAD( "9.u105", 0x00000, 0x40000, CRC(a7a0c5f9) SHA1(7882681ac152642aa4f859071f195842068b214b) )
+
+ 	ROM_REGION( 0x100000, "oki2", ROMREGION_ERASEFF )	/* ADPCM samples */
+ROM_END
 
 static DRIVER_INIT (raiden2)
 {
 	/* wrong , there must be some banking this just stops it crashing */
 	UINT8 *RAM = memory_region(machine, "user1");
 
-	memory_set_bankptr(1,&RAM[0x100000]);
-	memory_set_bankptr(2,&RAM[0x040000]);
+	memory_set_bankptr(machine, 1,&RAM[0x100000]);
+	memory_set_bankptr(machine, 2,&RAM[0x040000]);
 
 	raiden2_decrypt_sprites(machine);
 }
 
-
+static DRIVER_INIT (xsedae)
+{
+	/* wrong , there must be some banking this just stops it crashing */
+	UINT8 *RAM = memory_region(machine, "user1");
+	memory_set_bankptr(machine, 1,&RAM[0x100000]);
+	memory_set_bankptr(machine, 2,&RAM[0x040000]);
+}
 
 
 static const UINT8 r2_v33_default_eeprom_type1[32] =
@@ -1853,7 +1927,7 @@ static NVRAM_HANDLER( rdx_v33 )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_interface_93C46);
+		eeprom_init(machine, &eeprom_interface_93C46);
 
 		if (file) eeprom_load(file);
 		else
@@ -1882,7 +1956,7 @@ static WRITE16_HANDLER( rdx_v33_eeprom_w )
 
 static READ16_HANDLER( rdx_v33_eeprom_r )
 {
-	return input_port_read(machine, "SYSTEM");
+	return input_port_read(space->machine, "SYSTEM");
 }
 
 
@@ -1916,16 +1990,16 @@ static WRITE16_HANDLER( mcu_prog_offs_w )
 
 static READ16_HANDLER( r2_playerin_r )
 {
-	return input_port_read(machine, "INPUT");
+	return input_port_read(space->machine, "INPUT");
 }
 static READ16_HANDLER( rdx_v33_oki_r )
 {
-	return okim6295_status_0_r(machine,0);
+	return okim6295_status_0_r(space,0);
 }
 
 static WRITE16_HANDLER( rdx_v33_oki_w )
 {
-	if (ACCESSING_BITS_0_7) okim6295_data_0_w(machine, 0, data & 0x00ff);
+	if (ACCESSING_BITS_0_7) okim6295_data_0_w(space, 0, data & 0x00ff);
 	if (ACCESSING_BITS_8_15) logerror("rdx_v33_oki_w MSB %04x\n",data);
 }
 
@@ -2049,7 +2123,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( rdx_v33_interrupt )
 {
-	cpunum_set_input_line_and_vector(machine, cpu_getactivecpu(), 0, HOLD_LINE, 0xc0/4);	/* VBL */
+	cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xc0/4);	/* VBL */
 	logerror("VSYNC\n");
 }
 
@@ -2095,20 +2169,20 @@ MACHINE_DRIVER_END
 static DRIVER_INIT(rdx_v33)
 {
 	UINT8 *prg = memory_region(machine, "main");
-	memory_set_bankptr(1,&prg[0x020000]);
-	memory_set_bankptr(2,&prg[0x030000]);
-	memory_set_bankptr(3,&prg[0x040000]);
-	memory_set_bankptr(4,&prg[0x050000]);
-	memory_set_bankptr(5,&prg[0x060000]);
-	memory_set_bankptr(6,&prg[0x070000]);
-	memory_set_bankptr(7,&prg[0x080000]);
-	memory_set_bankptr(8,&prg[0x090000]);
-	memory_set_bankptr(9,&prg[0x0a0000]);
-	memory_set_bankptr(10,&prg[0x0b0000]);
-	memory_set_bankptr(11,&prg[0x0c0000]);
-	memory_set_bankptr(12,&prg[0x0d0000]);
-	memory_set_bankptr(13,&prg[0x0e0000]);
-	memory_set_bankptr(14,&prg[0x0f0000]);
+	memory_set_bankptr(machine, 1,&prg[0x020000]);
+	memory_set_bankptr(machine, 2,&prg[0x030000]);
+	memory_set_bankptr(machine, 3,&prg[0x040000]);
+	memory_set_bankptr(machine, 4,&prg[0x050000]);
+	memory_set_bankptr(machine, 5,&prg[0x060000]);
+	memory_set_bankptr(machine, 6,&prg[0x070000]);
+	memory_set_bankptr(machine, 7,&prg[0x080000]);
+	memory_set_bankptr(machine, 8,&prg[0x090000]);
+	memory_set_bankptr(machine, 9,&prg[0x0a0000]);
+	memory_set_bankptr(machine, 10,&prg[0x0b0000]);
+	memory_set_bankptr(machine, 11,&prg[0x0c0000]);
+	memory_set_bankptr(machine, 12,&prg[0x0d0000]);
+	memory_set_bankptr(machine, 13,&prg[0x0e0000]);
+	memory_set_bankptr(machine, 14,&prg[0x0f0000]);
 
 	raiden2_decrypt_sprites(machine);
 }
@@ -2131,6 +2205,7 @@ GAME( 1993, zeroteam, 0,       raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaih
 GAME( 1993, zeroteaa, zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team (set 2)", GAME_NOT_WORKING|GAME_NO_SOUND)
 GAME( 1993, zeroteab, zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team (set 3)", GAME_NOT_WORKING|GAME_NO_SOUND)
 GAME( 1993, zerotsel, zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team Selection", GAME_NOT_WORKING|GAME_NO_SOUND)
+GAME( 1995, xsedae,   0,       raiden2,  raiden2,  xsedae,   ROT0,   "Dream Island",   "X Se Dae Quiz", GAME_NOT_WORKING|GAME_NO_SOUND)
 
 // 'V33 system type_b' - uses V33 CPU, COPX-D3 external protection rom, but still has the proper sound system
 GAME( 1993, nzerotea, zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "New Zero Team", GAME_NOT_WORKING|GAME_NO_SOUND) // this uses a v33 and COPD3

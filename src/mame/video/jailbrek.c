@@ -61,7 +61,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( jailbrek )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		 8, 8, 64, 32);
 	tilemap_set_scrolldx(bg_tilemap, 0, 396 - 256);
 }
@@ -80,7 +80,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int sx = spriteram[i + 2] - ((attr & 0x80) << 1);
 		int sy = spriteram[i + 3];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;

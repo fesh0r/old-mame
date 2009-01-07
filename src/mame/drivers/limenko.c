@@ -24,8 +24,10 @@
 */
 
 #include "driver.h"
+#include "cpu/e132xs/e132xs.h"
 #include "machine/eeprom.h"
 #include "sound/okim6295.h"
+#include "cpu/mcs51/mcs51.h"
 
 static tilemap *bg_tilemap, *md_tilemap, *fg_tilemap;
 static UINT32 *bg_videoram, *md_videoram, *fg_videoram, *limenko_videoreg;
@@ -66,13 +68,13 @@ static WRITE32_HANDLER( limenko_paletteram_w )
 	if(ACCESSING_BITS_0_15)
 	{
 		paldata = paletteram32[offset] & 0x7fff;
-		palette_set_color_rgb(machine, offset * 2 + 1, pal5bit(paldata >> 0), pal5bit(paldata >> 5), pal5bit(paldata >> 10));
+		palette_set_color_rgb(space->machine, offset * 2 + 1, pal5bit(paldata >> 0), pal5bit(paldata >> 5), pal5bit(paldata >> 10));
 	}
 
 	if(ACCESSING_BITS_16_31)
 	{
 		paldata = (paletteram32[offset] >> 16) & 0x7fff;
-		palette_set_color_rgb(machine, offset * 2 + 0, pal5bit(paldata >> 0), pal5bit(paldata >> 5), pal5bit(paldata >> 10));
+		palette_set_color_rgb(space->machine, offset * 2 + 0, pal5bit(paldata >> 0), pal5bit(paldata >> 5), pal5bit(paldata >> 10));
 	}
 }
 
@@ -96,7 +98,7 @@ static WRITE32_HANDLER( fg_videoram_w )
 
 static WRITE32_HANDLER( spotty_soundlatch_w )
 {
-	soundlatch_w(machine, 0, (data >> 16) & 0xff);
+	soundlatch_w(space, 0, (data >> 16) & 0xff);
 }
 
 static CUSTOM_INPUT( spriteram_bit_r )
@@ -112,8 +114,8 @@ static WRITE32_HANDLER( spriteram_buffer_w )
 	clip.min_y = 0;
 	clip.max_y = 239;
 
-	fillbitmap(sprites_bitmap_pri,0,&clip);
-	fillbitmap(sprites_bitmap,0,&clip);
+	bitmap_fill(sprites_bitmap_pri,&clip,0);
+	bitmap_fill(sprites_bitmap,&clip,0);
 
 	// toggle spriterams location in the memory map
 	spriteram_bit ^= 1;
@@ -121,12 +123,12 @@ static WRITE32_HANDLER( spriteram_buffer_w )
 	if(spriteram_bit)
 	{
 		// draw the sprites to the frame buffer
-		draw_sprites(machine,spriteram32_2,&clip,prev_sprites_count);
+		draw_sprites(space->machine,spriteram32_2,&clip,prev_sprites_count);
 	}
 	else
 	{
 		// draw the sprites to the frame buffer
-		draw_sprites(machine,spriteram32,&clip,prev_sprites_count);
+		draw_sprites(space->machine,spriteram32,&clip,prev_sprites_count);
 	}
 
 	// buffer the next number of sprites to draw
@@ -188,10 +190,6 @@ static ADDRESS_MAP_START( spotty_io_map, ADDRESS_SPACE_IO, 32 )
 	AM_RANGE(0x5000, 0x5003) AM_WRITE(spotty_soundlatch_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( spotty_sound_prg_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_ROM
-ADDRESS_MAP_END
-
 static UINT8 spotty_sound_cmd=0;
 static WRITE8_HANDLER( spotty_sound_cmd_w )
 {
@@ -208,14 +206,14 @@ static READ8_HANDLER( spotty_sound_r )
 	// check spotty_sound_cmd bits...
 
 	if(spotty_sound_cmd == 0xf7)
-		return soundlatch_r(machine,0);
+		return soundlatch_r(space,0);
 	else
-		return okim6295_status_0_r(machine,0);
+		return okim6295_status_0_r(space,0);
 }
 
 static ADDRESS_MAP_START( spotty_sound_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0001, 0x0001) AM_READWRITE(spotty_sound_r, okim6295_data_0_w) //? sound latch and ?
-	AM_RANGE(0x0003, 0x0003) AM_READWRITE(spotty_sound_cmd_r, spotty_sound_cmd_w) //not sure about anything...
+	AM_RANGE(MCS51_PORT_P1, MCS51_PORT_P1) AM_READWRITE(spotty_sound_r, okim6295_data_0_w) //? sound latch and ?
+	AM_RANGE(MCS51_PORT_P3, MCS51_PORT_P3) AM_READWRITE(spotty_sound_cmd_r, spotty_sound_cmd_w) //not sure about anything...
 ADDRESS_MAP_END
 
 /*****************************************************************************************************
@@ -383,6 +381,7 @@ static void draw_sprites(running_machine *machine, UINT32 *sprites, const rectan
 		gfxdata	= base_gfx + 64 * code;
 
 		/* prepare GfxElement on the fly */
+		gfx.machine = machine;
 		gfx.width = width;
 		gfx.height = height;
 		gfx.total_elements = 1;
@@ -437,9 +436,9 @@ static void copy_sprites(running_machine *machine, bitmap_t *bitmap, bitmap_t *s
 
 static VIDEO_START( limenko )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,128,64);
-	md_tilemap = tilemap_create(get_md_tile_info,tilemap_scan_rows,8,8,128,64);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,128,64);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,8,8,128,64);
+	md_tilemap = tilemap_create(machine, get_md_tile_info,tilemap_scan_rows,8,8,128,64);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,128,64);
 
 	tilemap_set_transparent_pen(md_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -452,7 +451,7 @@ static VIDEO_UPDATE( limenko )
 {
 	// limenko_videoreg[4] ???? It always has this value: 0xffeffff8 (2 signed bytes? values: -17 and -8 ?)
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_set_enable(bg_tilemap, limenko_videoreg[0] & 4);
 	tilemap_set_enable(md_tilemap, limenko_videoreg[0] & 2);
@@ -673,9 +672,7 @@ static MACHINE_DRIVER_START( spotty )
 	MDRV_CPU_IO_MAP(spotty_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", I8051, 4000000)	/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(spotty_sound_prg_map, 0)
-	MDRV_CPU_DATA_MAP(0, 0)
+	MDRV_CPU_ADD("audio", AT89C4051, 4000000)	/* 4 MHz */
 	MDRV_CPU_IO_MAP(spotty_sound_io_map,0)
 
 	MDRV_NVRAM_HANDLER(93C46)
@@ -972,9 +969,9 @@ ROM_END
 
 static READ32_HANDLER( dynabomb_speedup_r )
 {
-	if(activecpu_get_pc() == 0xc25b8)
+	if(cpu_get_pc(space->cpu) == 0xc25b8)
 	{
-		activecpu_eat_cycles(50);
+		cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return mainram[0xe2784/4];
@@ -982,9 +979,9 @@ static READ32_HANDLER( dynabomb_speedup_r )
 
 static READ32_HANDLER( legendoh_speedup_r )
 {
-	if(activecpu_get_pc() == 0x23e32)
+	if(cpu_get_pc(space->cpu) == 0x23e32)
 	{
-		activecpu_eat_cycles(50);
+		cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return mainram[0x32ab0/4];
@@ -992,9 +989,9 @@ static READ32_HANDLER( legendoh_speedup_r )
 
 static READ32_HANDLER( sb2003_speedup_r )
 {
-	if(activecpu_get_pc() == 0x26da4)
+	if(cpu_get_pc(space->cpu) == 0x26da4)
 	{
-		activecpu_eat_cycles(50);
+		cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return mainram[0x135800/4];
@@ -1002,9 +999,9 @@ static READ32_HANDLER( sb2003_speedup_r )
 
 static READ32_HANDLER( spotty_speedup_r )
 {
-	if(activecpu_get_pc() == 0x8560)
+	if(cpu_get_pc(space->cpu) == 0x8560)
 	{
-		activecpu_eat_cycles(50);
+		cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return mainram[0x6626c/4];
@@ -1012,21 +1009,21 @@ static READ32_HANDLER( spotty_speedup_r )
 
 static DRIVER_INIT( dynabomb )
 {
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe2784, 0xe2787, 0, 0, dynabomb_speedup_r );
+	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe2784, 0xe2787, 0, 0, dynabomb_speedup_r );
 
 	spriteram_bit = 1;
 }
 
 static DRIVER_INIT( legendoh )
 {
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x32ab0, 0x32ab3, 0, 0, legendoh_speedup_r );
+	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x32ab0, 0x32ab3, 0, 0, legendoh_speedup_r );
 
 	spriteram_bit = 1;
 }
 
 static DRIVER_INIT( sb2003 )
 {
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x135800, 0x135803, 0, 0, sb2003_speedup_r );
+	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x135800, 0x135803, 0, 0, sb2003_speedup_r );
 
 	spriteram_bit = 1;
 }
@@ -1046,7 +1043,7 @@ static DRIVER_INIT( spotty )
 		dst[x+2] = (src[x+1]&0x0f) >> 0;
 	}
 
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6626c, 0x6626f, 0, 0, spotty_speedup_r );
+	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x6626c, 0x6626f, 0, 0, spotty_speedup_r );
 
 	spriteram_bit = 1;
 }

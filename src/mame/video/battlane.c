@@ -50,7 +50,7 @@ WRITE8_HANDLER( battlane_palette_w )
 	bit2 = (~data >> 7) & 0x01;
 	b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-	palette_set_color(machine, offset, MAKE_RGB(r, g, b));
+	palette_set_color(space->machine, offset, MAKE_RGB(r, g, b));
 }
 
 WRITE8_HANDLER( battlane_scrollx_w )
@@ -143,7 +143,7 @@ static TILEMAP_MAPPER( battlane_tilemap_scan_rows_2x2 )
 ***************************************************************************/
 VIDEO_START( battlane )
 {
-	bg_tilemap = tilemap_create(get_tile_info_bg, battlane_tilemap_scan_rows_2x2,
+	bg_tilemap = tilemap_create(machine, get_tile_info_bg, battlane_tilemap_scan_rows_2x2,
 		 16, 16, 32, 32);
 
 	screen_bitmap = auto_bitmap_alloc(32 * 8, 32 * 8, BITMAP_FORMAT_INDEXED8);
@@ -182,7 +182,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			flipx = attr & 0x04;
 			flipy = attr & 0x02;
 
-			if (!flip_screen_get())
+			if (!flip_screen_get(machine))
             {
 				sx = 240 - sx;
 				sy = 240 - sy;
@@ -226,7 +226,7 @@ static void draw_fg_bitmap(running_machine *machine, bitmap_t *bitmap )
 
 			if (data)
 			{
-				if (flip_screen_get())
+				if (flip_screen_get(machine))
 					*BITMAP_ADDR16(bitmap, 255 - y, 255 - x) = data;
 				else
 					*BITMAP_ADDR16(bitmap, y, x) = data;

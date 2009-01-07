@@ -22,8 +22,9 @@ static TILE_GET_INFO( ttl_get_tile_info )
 {
 	int attr, code;
 
-	code = ttl_vram[tile_index]&0xff;
-	attr = 0;
+	code = ttl_vram[tile_index]&0xfff;
+
+	attr = ttl_vram[tile_index]>>12;	// palette in all 4 bits?
 
 	SET_TILE_INFO(ttl_gfx_index, code, attr, 0);
 }
@@ -43,6 +44,11 @@ WRITE32_HANDLER( polygonet_ttl_ram_w )
 
 	tilemap_mark_tile_dirty(ttl_tilemap, offset*2);
 	tilemap_mark_tile_dirty(ttl_tilemap, offset*2+1);
+}
+
+static TILEMAP_MAPPER( plygonet_scan )
+{
+	return row * num_cols + (col^1);
 }
 
 VIDEO_START( polygonet )
@@ -66,23 +72,23 @@ VIDEO_START( polygonet )
 	assert(ttl_gfx_index != MAX_GFX_ELEMENTS);
 
 	// decode the ttl layer's gfx
-	machine->gfx[ttl_gfx_index] = allocgfx(&charlayout);
+	machine->gfx[ttl_gfx_index] = allocgfx(machine, &charlayout);
 	decodegfx(machine->gfx[ttl_gfx_index], memory_region(machine, "gfx1"), 0, machine->gfx[ttl_gfx_index]->total_elements);
 
 	machine->gfx[ttl_gfx_index]->total_colors = machine->config->total_colors / 16;
 
 	// create the tilemap
-	ttl_tilemap = tilemap_create(ttl_get_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
+	ttl_tilemap = tilemap_create(machine, ttl_get_tile_info, plygonet_scan,  8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(ttl_tilemap, 0);
 
-	state_save_register_global_array(ttl_vram);
+	state_save_register_global_array(machine, ttl_vram);
 }
 
 VIDEO_UPDATE( polygonet )
 {
-	fillbitmap(priority_bitmap, 0, NULL);
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(priority_bitmap, NULL, 0);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	tilemap_draw(bitmap, cliprect, ttl_tilemap, 0, 1<<0);
 	return 0;

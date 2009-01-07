@@ -40,6 +40,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 #include "galaxi.lh"
 
@@ -108,12 +109,12 @@ static WRITE16_HANDLER( galaxi_fg_w )
 
 static VIDEO_START(galaxi)
 {
-	bg1_tmap = tilemap_create( get_bg1_tile_info, tilemap_scan_rows, 16,16, 0x20,0x10 );
-	bg2_tmap = tilemap_create( get_bg2_tile_info, tilemap_scan_rows, 16,16, 0x20,0x10 );
-	bg3_tmap = tilemap_create( get_bg3_tile_info, tilemap_scan_rows, 16,16, 0x20,0x10 );
-	bg4_tmap = tilemap_create( get_bg4_tile_info, tilemap_scan_rows, 16,16, 0x20,0x10 );
+	bg1_tmap = tilemap_create( machine, get_bg1_tile_info, tilemap_scan_rows, 16,16, 0x20,0x10 );
+	bg2_tmap = tilemap_create( machine, get_bg2_tile_info, tilemap_scan_rows, 16,16, 0x20,0x10 );
+	bg3_tmap = tilemap_create( machine, get_bg3_tile_info, tilemap_scan_rows, 16,16, 0x20,0x10 );
+	bg4_tmap = tilemap_create( machine, get_bg4_tile_info, tilemap_scan_rows, 16,16, 0x20,0x10 );
 
-	fg_tmap  = tilemap_create( get_fg_tile_info, tilemap_scan_rows, 8,8,   0x40,0x20 );
+	fg_tmap  = tilemap_create( machine, get_fg_tile_info, tilemap_scan_rows, 8,8,   0x40,0x20 );
 
 	tilemap_set_transparent_pen(bg1_tmap, 0);
 	tilemap_set_transparent_pen(bg2_tmap, 0);
@@ -143,7 +144,7 @@ static VIDEO_UPDATE(galaxi)
 #endif
 
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect, bg1_tmap,  TILEMAP_DRAW_OPAQUE, 0);
-	else					fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	else					bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 	if (layers_ctrl & 2)	tilemap_draw(bitmap,cliprect, bg2_tmap,  0, 0);
 	if (layers_ctrl & 4)	tilemap_draw(bitmap,cliprect, bg3_tmap,  0, 0);
 	if (layers_ctrl & 8)	tilemap_draw(bitmap,cliprect, bg4_tmap,  0, 0);

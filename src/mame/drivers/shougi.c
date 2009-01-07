@@ -82,6 +82,7 @@ PROM  : Type MB7051
 
 
 #include "driver.h"
+#include "cpu/alph8201/alph8201.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "video/resnet.h"
@@ -214,19 +215,19 @@ static WRITE8_HANDLER ( cpu_shared_ctrl_main_w )
 
 static WRITE8_HANDLER( shougi_watchdog_reset_w )
 {
-	watchdog_reset_w(machine,0,data);
+	watchdog_reset_w(space,0,data);
 }
 
 static WRITE8_HANDLER( shougi_mcu_halt_off_w )
 {
 	/* logerror("mcu HALT OFF"); */
-	cpunum_set_input_line(machine, 2, INPUT_LINE_HALT, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_HALT, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( shougi_mcu_halt_on_w )
 {
 	/* logerror("mcu HALT ON"); */
-	cpunum_set_input_line(machine, 2, INPUT_LINE_HALT,ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_HALT,ASSERT_LINE);
 }
 
 
@@ -237,8 +238,8 @@ static WRITE8_HANDLER( nmi_disable_and_clear_line_w )
 	nmi_enabled = 0; /* disable NMIs */
 
 	/* NMI lines are tied together on both CPUs and connected to the LS74 /Q output */
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( nmi_enable_w )
@@ -251,8 +252,8 @@ static INTERRUPT_GEN( shougi_vblank_nmi )
 	if ( nmi_enabled == 1 )
 	{
 		/* NMI lines are tied together on both CPUs and connected to the LS74 /Q output */
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_NMI, ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
 	}
 }
 
@@ -387,7 +388,7 @@ static MACHINE_DRIVER_START( shougi )
 	MDRV_CPU_ADD("mcu", ALPHA8201, 10000000/4/8)
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 	MDRV_WATCHDOG_VBLANK_INIT(16)	// assuming it's the same as champbas
 
 	/* video hardware */

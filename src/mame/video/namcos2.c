@@ -209,7 +209,7 @@ WRITE16_HANDLER( namcos2_68k_roz_ram_w )
 	tilemap_mark_tile_dirty(tilemap_roz,offset);
 //      if( input_code_pressed(KEYCODE_Q) )
 //      {
-//          debugger_break(machine);
+//          debugger_break(space->machine);
 //      }
 }
 
@@ -320,8 +320,8 @@ READ16_HANDLER( namcos2_sprite_ram_r )
 
 VIDEO_START( namcos2 )
 {
-	namco_tilemap_init(2,memory_region(machine, "gfx4"),TilemapCB);
-	tilemap_roz = tilemap_create(get_tile_info_roz,tilemap_scan_rows,8,8,256,256);
+	namco_tilemap_init(machine,2,memory_region(machine, "gfx4"),TilemapCB);
+	tilemap_roz = tilemap_create(machine, get_tile_info_roz,tilemap_scan_rows,8,8,256,256);
 	tilemap_set_transparent_pen(tilemap_roz,0xff);
 	DrawSpriteInit(machine);
 }
@@ -346,7 +346,7 @@ VIDEO_UPDATE( namcos2_default )
 	int pri;
 
 	UpdatePalette(screen->machine);
-	fillbitmap( bitmap, get_black_pen(screen->machine), cliprect );
+	bitmap_fill( bitmap, cliprect , get_black_pen(screen->machine));
 	ApplyClip( &clip, cliprect );
 
 	/* HACK: enable ROZ layer only if it has priority > 0 */
@@ -372,7 +372,7 @@ VIDEO_UPDATE( namcos2_default )
 
 VIDEO_START( finallap )
 {
-	namco_tilemap_init(2,memory_region(machine, "gfx4"),TilemapCB);
+	namco_tilemap_init(machine,2,memory_region(machine, "gfx4"),TilemapCB);
 	DrawSpriteInit(machine);
 	namco_road_init(machine, 3);
 }
@@ -383,7 +383,7 @@ VIDEO_UPDATE( finallap )
 	int pri;
 
 	UpdatePalette(screen->machine);
-	fillbitmap( bitmap, get_black_pen(screen->machine), cliprect );
+	bitmap_fill( bitmap, cliprect , get_black_pen(screen->machine));
 	ApplyClip( &clip, cliprect );
 
 	for( pri=0; pri<16; pri++ )
@@ -402,11 +402,11 @@ VIDEO_UPDATE( finallap )
 
 VIDEO_START( luckywld )
 {
-	namco_tilemap_init(2,memory_region(machine, "gfx4"),TilemapCB);
+	namco_tilemap_init(machine,2,memory_region(machine, "gfx4"),TilemapCB);
 	namco_obj_init( 0, 0x0, NULL );
 	if( namcos2_gametype==NAMCOS2_LUCKY_AND_WILD )
 	{
-		namco_roz_init( 1, "gfx5" );
+		namco_roz_init( machine, 1, "gfx5" );
 	}
 	if( namcos2_gametype!=NAMCOS2_STEEL_GUNNER_2 )
 	{
@@ -420,7 +420,7 @@ VIDEO_UPDATE( luckywld )
 	int pri;
 
 	UpdatePalette(screen->machine);
-	fillbitmap( bitmap, get_black_pen(screen->machine), cliprect );
+	bitmap_fill( bitmap, cliprect , get_black_pen(screen->machine));
 	ApplyClip( &clip, cliprect );
 
 	for( pri=0; pri<16; pri++ )
@@ -443,7 +443,7 @@ VIDEO_UPDATE( luckywld )
 
 VIDEO_START( sgunner )
 {
-	namco_tilemap_init(2,memory_region(machine, "gfx4"),TilemapCB);
+	namco_tilemap_init(machine,2,memory_region(machine, "gfx4"),TilemapCB);
 	namco_obj_init( 0, 0x0, NULL );
 }
 
@@ -453,7 +453,7 @@ VIDEO_UPDATE( sgunner )
 	int pri;
 
 	UpdatePalette(screen->machine);
-	fillbitmap( bitmap, get_black_pen(screen->machine), cliprect );
+	bitmap_fill( bitmap, cliprect , get_black_pen(screen->machine));
 	ApplyClip( &clip, cliprect );
 
 	for( pri=0; pri<8; pri++ )
@@ -469,8 +469,8 @@ VIDEO_UPDATE( sgunner )
 
 VIDEO_START( metlhawk )
 {
-	namco_tilemap_init(2,memory_region(machine, "gfx4"),TilemapCB);
-	namco_roz_init( 1, "gfx5" );
+	namco_tilemap_init(machine,2,memory_region(machine, "gfx4"),TilemapCB);
+	namco_roz_init( machine, 1, "gfx5" );
 }
 
 VIDEO_UPDATE( metlhawk )
@@ -479,7 +479,7 @@ VIDEO_UPDATE( metlhawk )
 	int pri;
 
 	UpdatePalette(screen->machine);
-	fillbitmap( bitmap, get_black_pen(screen->machine), cliprect );
+	bitmap_fill( bitmap, cliprect , get_black_pen(screen->machine));
 	ApplyClip( &clip, cliprect );
 
 	for( pri=0; pri<16; pri++ )

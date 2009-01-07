@@ -116,12 +116,13 @@ Dip locations verified for:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "cpu/mcs48/mcs48.h"
 #include "sound/ay8910.h"
 #include "sound/samples.h"
 
-extern void fghtbskt_sh_start(void);
-extern WRITE8_HANDLER( fghtbskt_samples_w );
+SAMPLES_START( fghtbskt_sh_start );
+WRITE8_HANDLER( fghtbskt_samples_w );
 
 static UINT8 *m63_videoram2, *m63_scrollram;
 static int pal_bank, fg_flag, sy_offset;
@@ -215,17 +216,17 @@ static WRITE8_HANDLER( m63_palbank_w )
 
 static WRITE8_HANDLER( m63_flipscreen_w )
 {
-	if (flip_screen_get() != (~data & 0x01))
+	if (flip_screen_get(space->machine) != (~data & 0x01))
 	{
-		flip_screen_set(~data & 0x01);
+		flip_screen_set(space->machine, ~data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
 
 static WRITE8_HANDLER( fghtbskt_flipscreen_w )
 {
-	flip_screen_set(data);
-	fg_flag = flip_screen_get() ? TILE_FLIPX : 0;
+	flip_screen_set(space->machine, data);
+	fg_flag = flip_screen_get(space->machine) ? TILE_FLIPX : 0;
 }
 
 
@@ -247,10 +248,10 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 static VIDEO_START( m63 )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		8, 8, 32, 32);
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,
 		8, 8, 32, 32);
 
 	tilemap_set_scroll_cols(bg_tilemap, 32);
@@ -272,7 +273,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int sx = spriteram[offs + 3];
 		int sy = sy_offset - spriteram[offs];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = sy_offset - sy;
@@ -322,8 +323,8 @@ static WRITE8_HANDLER( coin_w )
 
 static WRITE8_HANDLER( snd_irq_w )
 {
-	cpunum_set_input_line(machine, 1, 0, ASSERT_LINE);
-	timer_call_after_resynch(NULL, 0, NULL);
+	cpu_set_input_line(space->machine->cpu[1], 0, ASSERT_LINE);
+	timer_call_after_resynch(space->machine, NULL, 0, NULL);
 }
 
 static WRITE8_HANDLER( snddata_w )
@@ -331,13 +332,13 @@ static WRITE8_HANDLER( snddata_w )
 	int num_ays = (sndti_exists(SOUND_AY8910, 1)) ? 2 : 1;
 
 	if ((p2 & 0xf0) == 0xe0)
-		ay8910_control_port_0_w(machine,0,offset);
+		ay8910_control_port_0_w(space,0,offset);
 	else if ((p2 & 0xf0) == 0xa0)
-		ay8910_write_port_0_w(machine,0,offset);
+		ay8910_write_port_0_w(space,0,offset);
 	else if (num_ays == 2 && (p1 & 0xe0) == 0x60)
-		ay8910_control_port_1_w(machine,0,offset);
+		ay8910_control_port_1_w(space,0,offset);
 	else if (num_ays == 2 && (p1 & 0xe0) == 0x40)
-		 ay8910_write_port_1_w(machine,0,offset);
+		 ay8910_write_port_1_w(space,0,offset);
 	else if ((p2 & 0xf0) == 0x70 )
 		sound_status=offset;
 }
@@ -352,7 +353,7 @@ static WRITE8_HANDLER( p2_w )
 	p2 = data;
 	if((p2&0xf0)==0x50)
 	{
-		cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 	}
 }
 
@@ -375,8 +376,8 @@ static READ8_HANDLER( snddata_r )
 {
 	switch(p2&0xf0)
 	{
-		case 0x60:	return soundlatch_r(machine,0); ;
-		case 0x70:	return memory_region(machine, "user1")[((p1&0x1f)<<8)|offset];
+		case 0x60:	return soundlatch_r(space,0); ;
+		case 0x70:	return memory_region(space->machine, "user1")[((p1&0x1f)<<8)|offset];
 	}
 	return 0xff;
 }
@@ -629,7 +630,7 @@ static const samples_interface fghtbskt_samples_interface =
 	fghtbskt_sh_start
 };
 
-static void snd_irq(running_machine *machine, int num)
+static INTERRUPT_GEN( snd_irq )
 {
 	sound_irq = 1;
 }

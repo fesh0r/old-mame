@@ -299,6 +299,7 @@ Donkey Kong Junior Notes
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "cpu/s2650/s2650.h"
 #include "cpu/m6502/m6502.h"
 #include "includes/dkong.h"
@@ -338,18 +339,17 @@ static WRITE8_DEVICE_HANDLER( p8257_ctl_w );
 
 static const z80dma_interface dk3_dma =
 {
-	0,
-	CLOCK_1H,
+	"main",
 
 	dk_dma_read_byte,
 	dk_dma_write_byte,
-	0, 0, 0, 0
+	0, 0, 0, 0,
+	NULL
 };
 
 static const dma8257_interface dk_dma =
 {
-	0,
-	CLOCK_1H,
+	"main",
 
 	dk_dma_read_byte,
 	dk_dma_write_byte,
@@ -361,8 +361,7 @@ static const dma8257_interface dk_dma =
 
 static const dma8257_interface hb_dma =
 {
-	0,
-	CLOCK_1H,
+	"main",
 
 	hb_dma_read_byte,
 	hb_dma_write_byte,
@@ -380,7 +379,7 @@ static const dma8257_interface hb_dma =
 
 static INTERRUPT_GEN( s2650_interrupt )
 {
-	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0x03);
+	cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0x03);
 }
 
 /*************************************
@@ -395,8 +394,8 @@ static MACHINE_START( dkong2b )
 
 	state->hardware_type = HARDWARE_TKG04;
 
-	state_save_register_global(state->decrypt_counter);
-	state_save_register_global(state->dma_latch);
+	state_save_register_global(machine, state->decrypt_counter);
+	state_save_register_global(machine, state->dma_latch);
 
 }
 
@@ -416,7 +415,7 @@ static MACHINE_START( s2650 )
 
 	state->hunchloopback = 0;
 
-	state_save_register_global(state->hunchloopback);
+	state_save_register_global(machine, state->hunchloopback);
 
 	if (strcmp(game_name,"herbiedk") == 0) state->protect_type = DK2650_HERBIEDK;
 	else if (strcmp(game_name,"hunchbkd") == 0) state->protect_type = DK2650_HUNCHBKD;
@@ -468,9 +467,9 @@ static MACHINE_RESET( strtheat )
 	MACHINE_RESET_CALL(dkong);
 
 	/* The initial state of the counter is 0x08 */
-	memory_configure_bank(1, 0, 4, &ROM[0x10000], 0x4000);
+	memory_configure_bank(machine, 1, 0, 4, &ROM[0x10000], 0x4000);
 	state->decrypt_counter = 0x08;
-	memory_set_bank(1, 0);
+	memory_set_bank(machine, 1, 0);
 }
 
 static MACHINE_RESET( drakton )
@@ -481,9 +480,9 @@ static MACHINE_RESET( drakton )
 	MACHINE_RESET_CALL(dkong);
 
 	/* The initial state of the counter is 0x09 */
-	memory_configure_bank(1, 0, 4, &ROM[0x10000], 0x4000);
+	memory_configure_bank(machine, 1, 0, 4, &ROM[0x10000], 0x4000);
 	state->decrypt_counter = 0x09;
-	memory_set_bank(1, 1);
+	memory_set_bank(machine, 1, 1);
 }
 
 
@@ -495,43 +494,34 @@ static MACHINE_RESET( drakton )
 
 static READ8_DEVICE_HANDLER( dk_dma_read_byte )
 {
-	UINT8 result;
-
-	cpuintrf_push_context(0);
-	result = program_read_byte(offset);
-	cpuintrf_pop_context();
-
-	return result;
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	return memory_read_byte(space, offset);
 }
 
 static WRITE8_DEVICE_HANDLER( dk_dma_write_byte )
 {
-	cpuintrf_push_context(0);
-	program_write_byte(offset, data);
-	cpuintrf_pop_context();
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	memory_write_byte(space, offset, data);
 }
 
 static READ8_DEVICE_HANDLER( hb_dma_read_byte )
 {
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	dkong_state *state = device->machine->driver_data;
 	int	  bucket = state->rev_map[(offset>>10) & 0x1ff];
 	int   addr;
-	UINT8 data;
 
 	if (bucket<0)
 		fatalerror("hb_dma_read_byte - unmapped access for 0x%02x - bucket 0x%02x\n", offset, bucket);
 
 	addr = ((bucket<<7) & 0x7c00) | (offset & 0x3ff);
 
-	cpuintrf_push_context(0);
-	data = program_read_byte(addr);
-	cpuintrf_pop_context();
-
-	return data;
+	return memory_read_byte(space, addr);
 }
 
 static WRITE8_DEVICE_HANDLER( hb_dma_write_byte )
 {
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	dkong_state *state = device->machine->driver_data;
 	int	  bucket = state->rev_map[(offset>>10) & 0x1ff];
 	int   addr;
@@ -541,9 +531,7 @@ static WRITE8_DEVICE_HANDLER( hb_dma_write_byte )
 
 	addr = ((bucket<<7) & 0x7c00) | (offset & 0x3ff);
 
-	cpuintrf_push_context(0);
-	program_write_byte(addr, data);
-	cpuintrf_pop_context();
+	memory_write_byte(space, addr, data);
 }
 
 static READ8_DEVICE_HANDLER( p8257_ctl_r )
@@ -579,12 +567,12 @@ static WRITE8_DEVICE_HANDLER( p8257_drq_w )
 static READ8_HANDLER( dkong_in2_r )
 {
 	/* mcu status (sound feedback) is inverted bit4 from port B (8039) */
-	const device_config *devvp2 = devtag_get_device(machine, LATCH8, "virtual_p2");
+	const device_config *devvp2 = devtag_get_device(space->machine, LATCH8, "virtual_p2");
 	UINT8 mcustatus = latch8_bit4_q_r(devvp2, 0);
 
 	UINT8 r;
 
-	r = (input_port_read(machine, "IN2") & 0xBF) | (mcustatus << 6);
+	r = (input_port_read(space->machine, "IN2") & 0xBF) | (mcustatus << 6);
 	coin_counter_w(offset, r >> 7);
 	if (r & 0x10)
 		r = (r & ~0x10) | 0x80; /* service ==> coin */
@@ -597,7 +585,7 @@ static READ8_HANDLER( dkongjr_in2_r )
 
 	UINT8 r;
 
-	r = (input_port_read(machine, "IN2") & 0xBF) | 0x40;
+	r = (input_port_read(space->machine, "IN2") & 0xBF) | 0x40;
 	coin_counter_w(offset, r >> 7);
 	if (r & 0x10)
 		r = (r & ~0x10) | 0x80; /* service ==> coin */
@@ -606,19 +594,19 @@ static READ8_HANDLER( dkongjr_in2_r )
 
 static READ8_HANDLER( s2650_mirror_r )
 {
-	return program_read_byte(0x1000+offset);
+	return memory_read_byte(space, 0x1000+offset);
 }
 
 
 static WRITE8_HANDLER( s2650_mirror_w )
 {
-	program_write_byte(0x1000+offset,data);
+	memory_write_byte(space, 0x1000+offset, data);
 }
 
 
 static READ8_HANDLER( epos_decrypt_rom )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 
 	if (offset & 0x01)
 	{
@@ -633,10 +621,10 @@ static READ8_HANDLER( epos_decrypt_rom )
 
 	switch(state->decrypt_counter)
 	{
-		case 0x08:	memory_set_bank(1, 0);		break;
-		case 0x09:	memory_set_bank(1, 1);		break;
-		case 0x0A:	memory_set_bank(1, 2);		break;
-		case 0x0B:	memory_set_bank(1, 3);		break;
+		case 0x08:	memory_set_bank(space->machine, 1, 0);		break;
+		case 0x09:	memory_set_bank(space->machine, 1, 1);		break;
+		case 0x0A:	memory_set_bank(space->machine, 1, 2);		break;
+		case 0x0B:	memory_set_bank(space->machine, 1, 3);		break;
 		default:
 			logerror("Invalid counter = %02X\n",state->decrypt_counter);
 			break;
@@ -648,9 +636,9 @@ static READ8_HANDLER( epos_decrypt_rom )
 
 static WRITE8_HANDLER( s2650_data_w )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 #if DEBUG_PROTECTION
-	logerror("write : pc = %04x, loopback = %02x\n",activecpu_get_pc(), data);
+	logerror("write : pc = %04x, loopback = %02x\n",cpu_get_pc(space->cpu), data);
 #endif
 
 	state->hunchloopback = data;
@@ -658,12 +646,12 @@ static WRITE8_HANDLER( s2650_data_w )
 
 static READ8_HANDLER( s2650_port0_r )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 #if DEBUG_PROTECTION
-	logerror("port 0 : pc = %04x, loopback = %02x\n",activecpu_get_pc(), state->hunchloopback);
+	logerror("port 0 : pc = %04x, loopback = %02x\n",cpu_get_pc(space->cpu), state->hunchloopback);
 #endif
 
-	switch (COMBINE_TYPE_PC(state->protect_type, activecpu_get_pc()))
+	switch (COMBINE_TYPE_PC(state->protect_type, cpu_get_pc(space->cpu)))
 	{
 		case COMBINE_TYPE_PC(DK2650_HUNCHBKD, 0x00e9):  return 0xff;
 		case COMBINE_TYPE_PC(DK2650_HUNCHBKD, 0x0114):  return 0xfb; //fb
@@ -679,18 +667,18 @@ static READ8_HANDLER( s2650_port0_r )
 		case DK2650_SHOOTGAL:  return 0x00;
 		case DK2650_SPCLFORC:  return 0x00;
 	}
-	fatalerror("Unhandled read from port 0 : pc = %4x\n",activecpu_get_pc());
+	fatalerror("Unhandled read from port 0 : pc = %4x\n",cpu_get_pc(space->cpu));
 }
 
 
 static READ8_HANDLER( s2650_port1_r )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 #if DEBUG_PROTECTION
-	logerror("port 1 : pc = %04x, loopback = %02x\n",activecpu_get_pc(), state->hunchloopback);
+	logerror("port 1 : pc = %04x, loopback = %02x\n",cpu_get_pc(space->cpu), state->hunchloopback);
 #endif
 
-	switch (COMBINE_TYPE_PC(state->protect_type, activecpu_get_pc()))
+	switch (COMBINE_TYPE_PC(state->protect_type, cpu_get_pc(space->cpu)))
 	{
 		case COMBINE_TYPE_PC(DK2650_EIGHTACT, 0x0021):  return 0x00;
 		case COMBINE_TYPE_PC(DK2650_HERBIEDK, 0x002b):  return 0x00;
@@ -703,7 +691,7 @@ static READ8_HANDLER( s2650_port1_r )
 		case DK2650_EIGHTACT:  return 1;
 		case DK2650_HERBIEDK:  return 1;
 	}
-	fatalerror("Unhandled read from port 1 : pc = %4x\n",activecpu_get_pc());
+	fatalerror("Unhandled read from port 1 : pc = %4x\n",cpu_get_pc(space->cpu));
 }
 
 
@@ -711,42 +699,42 @@ static WRITE8_HANDLER( dkong3_2a03_reset_w )
 {
 	if (data & 1)
 	{
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
-		cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, CLEAR_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
-		cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
 	}
 }
 
 static READ8_HANDLER( strtheat_inputport_0_r )
 {
-	if(input_port_read(machine, "DSW0") & 0x40)
+	if(input_port_read(space->machine, "DSW0") & 0x40)
 	{
 		/* Joystick inputs */
-		return input_port_read(machine, "IN0");
+		return input_port_read(space->machine, "IN0");
 	}
 	else
 	{
 		/* Steering Wheel inputs */
-		return (input_port_read(machine, "IN0") & ~3) | (input_port_read(machine, "IN4") & 3);
+		return (input_port_read(space->machine, "IN0") & ~3) | (input_port_read(space->machine, "IN4") & 3);
 	}
 }
 
 
 static READ8_HANDLER( strtheat_inputport_1_r )
 {
-	if(input_port_read(machine, "DSW0") & 0x40)
+	if(input_port_read(space->machine, "DSW0") & 0x40)
 	{
 		/* Joystick inputs */
-		return input_port_read(machine, "IN1");
+		return input_port_read(space->machine, "IN1");
 	}
 	else
 	{
 		/* Steering Wheel inputs */
-		return (input_port_read(machine, "IN1") & ~3) | (input_port_read(machine, "IN5") & 3);
+		return (input_port_read(space->machine, "IN1") & ~3) | (input_port_read(space->machine, "IN5") & 3);
 	}
 }
 
@@ -1585,8 +1573,7 @@ static MACHINE_DRIVER_START( dkong_base )
 	MDRV_MACHINE_START(dkong2b)
 	MDRV_MACHINE_RESET(dkong)
 
-	MDRV_DEVICE_ADD("dma8257", DMA8257)
-	MDRV_DEVICE_CONFIG(dk_dma)
+	MDRV_DMA8257_ADD("dma8257", CLOCK_1H, dk_dma)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1654,8 +1641,7 @@ static MACHINE_DRIVER_START( dkong3 )
 
 	MDRV_MACHINE_START(dkong3)
 
-	MDRV_DEVICE_ADD("z80dma", Z80DMA)
-	MDRV_DEVICE_CONFIG(dk3_dma)
+	MDRV_Z80DMA_ADD("z80dma", CLOCK_1H, dk3_dma)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1995,7 +1981,35 @@ ROM_START( dkongjo1 )
 	ROM_LOAD( "c-2k.bpr",     0x0000, 0x0100, CRC(e273ede5) SHA1(b50ec9e1837c00c20fb2a4369ec7dd0358321127) ) /* palette low 4 bits (inverted) */
 	ROM_LOAD( "c-2j.bpr",     0x0100, 0x0100, CRC(d6412358) SHA1(f9c872da2fe8e800574ae3bf483fb3ccacc92eb3) ) /* palette high 4 bits (inverted) */
 	ROM_LOAD( "v-5e.bpr",     0x0200, 0x0100, CRC(b869b8f5) SHA1(c2bdccbf2654b64ea55cd589fd21323a9178a660) ) /* character color codes on a per-column basis */
+ROM_END
 
+ROM_START( dkongf ) /* Donkey Kong Foundry (hack) from Jeff's Romhack */
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "dk_f.5et",  0x0000, 0x1000, CRC(00b7efaf) SHA1(97ed5930eb5d0cb98a9008b1d329ba7f3b8b8dbf) )
+	ROM_LOAD( "dk_f.5ct",  0x1000, 0x1000, CRC(88af9b69) SHA1(c5621dd8198c333b3fa32fdece60ee5a3d8b2276) )
+	ROM_LOAD( "dk_f.5bt",  0x2000, 0x1000, CRC(de74ad91) SHA1(c80227361bdbc565e9f5764e6364b52d40ca778a) )
+	ROM_LOAD( "dk_f.5at",  0x3000, 0x1000, CRC(6a6bd420) SHA1(f012e2d21d906a2993af9cf8b2912ea6c928e94b) )
+	/* space for diagnostic ROM */
+
+	ROM_REGION( 0x1800, "sound", 0 )	/* sound */
+	ROM_LOAD( "s_3i_b.bin",   0x0000, 0x0800, CRC(45a4ed06) SHA1(144d24464c1f9f01894eb12f846952290e6e32ef) )
+	ROM_RELOAD(               0x0800, 0x0800 )
+	ROM_LOAD( "s_3j_b.bin",   0x1000, 0x0800, CRC(4743fe92) SHA1(6c82b57637c0212a580591397e6a5a1718f19fd2) )
+
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD( "v_5h_b.bin",   0x0000, 0x0800, CRC(12c8c95d) SHA1(a57ff5a231c45252a63b354137c920a1379b70a3) )
+	ROM_LOAD( "v_3pt.bin",    0x0800, 0x0800, CRC(15e9c5e9) SHA1(976eb1e18c74018193a35aa86cff482ebfc5cc4e) )
+
+	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
+	ROM_LOAD( "l_4m_b.bin",   0x0000, 0x0800, CRC(59f8054d) SHA1(793dba9bf5a5fe76328acdfb90815c243d2a65f1) )
+	ROM_LOAD( "l_4n_b.bin",   0x0800, 0x0800, CRC(672e4714) SHA1(92e5d379f4838ac1fa44d448ce7d142dae42102f) )
+	ROM_LOAD( "l_4r_b.bin",   0x1000, 0x0800, CRC(feaa59ee) SHA1(ecf95db5a20098804fc8bd59232c66e2e0ed3db4) )
+	ROM_LOAD( "l_4s_b.bin",   0x1800, 0x0800, CRC(20f2ef7e) SHA1(3bc482a38bf579033f50082748ee95205b0f673d) )
+
+	ROM_REGION( 0x0300, "proms", 0 )
+	ROM_LOAD( "c-2k.bpr",     0x0000, 0x0100, CRC(e273ede5) SHA1(b50ec9e1837c00c20fb2a4369ec7dd0358321127) ) /* palette low 4 bits (inverted) */
+	ROM_LOAD( "c-2j.bpr",     0x0100, 0x0100, CRC(d6412358) SHA1(f9c872da2fe8e800574ae3bf483fb3ccacc92eb3) ) /* palette high 4 bits (inverted) */
+	ROM_LOAD( "v-5e.bpr",     0x0200, 0x0100, CRC(b869b8f5) SHA1(c2bdccbf2654b64ea55cd589fd21323a9178a660) ) /* character color codes on a per-column basis */
 ROM_END
 
 ROM_START( dkongjr )
@@ -2877,7 +2891,7 @@ static DRIVER_INIT( drakton )
 			{7,1,4,0,3,6,2,5},
 	};
 
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1 );
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0, SMH_BANK1 );
 
 	/* While the PAL supports up to 16 decryption methods, only four
         are actually used in the PAL.  Therefore, we'll take a little
@@ -2899,7 +2913,7 @@ static DRIVER_INIT( strtheat )
 			{6,3,4,1,0,7,2,5},
 	};
 
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1 );
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0, SMH_BANK1 );
 
 	/* While the PAL supports up to 16 decryption methods, only four
         are actually used in the PAL.  Therefore, we'll take a little
@@ -2910,8 +2924,8 @@ static DRIVER_INIT( strtheat )
 	drakton_decrypt_rom(machine, 0x88, 0x1c000, bs[3]);
 
 	/* custom handlers supporting Joystick or Steering Wheel */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x7c00, 0x7c00, 0, 0, strtheat_inputport_0_r);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x7c80, 0x7c80, 0, 0, strtheat_inputport_1_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x7c00, 0x7c00, 0, 0, strtheat_inputport_0_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x7c80, 0x7c80, 0, 0, strtheat_inputport_1_r);
 }
 
 /*************************************
@@ -2928,6 +2942,7 @@ GAME( 1981, dkongo,   dkong,    dkong2b,  dkong,          0,  ROT90, "Nintendo",
 GAME( 1981, dkongjp,  dkong,    dkong2b,  dkong,          0,  ROT90, "Nintendo", "Donkey Kong (Japan set 1)", GAME_SUPPORTS_SAVE )
 GAME( 1981, dkongjo,  dkong,    dkong2b,  dkong,          0,  ROT90, "Nintendo", "Donkey Kong (Japan set 2)", GAME_SUPPORTS_SAVE )
 GAME( 1981, dkongjo1, dkong,    dkong2b,  dkong,          0,  ROT90, "Nintendo", "Donkey Kong (Japan set 3) (bad dump?)", GAME_SUPPORTS_SAVE )
+GAME( 1981, dkongf,   dkong,    dkong2b,  dkong,          0,  ROT90, "hack", "Donkey Kong Foundry (hack)", GAME_SUPPORTS_SAVE ) /* from Jeff's Romhack */
 
 GAME( 1982, dkongjr,  0,        dkongjr,  dkongjr,        0,  ROT90, "Nintendo of America", "Donkey Kong Junior (US)", GAME_SUPPORTS_SAVE )
 GAME( 1982, dkongjrj, dkongjr,  dkongjr,  dkongjr,        0,  ROT90, "Nintendo", "Donkey Kong Jr. (Japan)", GAME_SUPPORTS_SAVE )
@@ -2945,7 +2960,7 @@ GAME( 1983, pestplce, mario,	pestplce, pestplce,       0,  ROT180, "bootleg", "P
 /* 2650 based */
 GAME( 1984, herbiedk, huncholy, s2650,    herbiedk,       0,  ROT90, "CVS", "Herbie at the Olympics (DK conversion)", GAME_SUPPORTS_SAVE )
 GAME( 1983, hunchbkd, hunchbak, s2650,    hunchbkd,       0,  ROT90, "Century Electronics", "Hunchback (DK conversion)", GAME_SUPPORTS_SAVE )
-GAME( 1984, sbdk,	  superbik,	s2650,    sbdk,		      0,  ROT90, "Century Electronics", "Super Bike (DK conversion)", GAME_SUPPORTS_SAVE )
+GAME( 1984, sbdk,     superbik, s2650,    sbdk,           0,  ROT90, "Century Electronics", "Super Bike (DK conversion)", GAME_SUPPORTS_SAVE )
 GAME( 1984, herodk,   hero,     s2650,    herodk,    herodk,  ROT90, "Seatongrove Ltd (Crown license)", "Hero in the Castle of Doom (DK conversion)", GAME_SUPPORTS_SAVE )
 GAME( 1984, herodku,  hero,     s2650,    herodk,         0,  ROT90, "Seatongrove Ltd (Crown license)", "Hero in the Castle of Doom (DK conversion not encrypted)", GAME_SUPPORTS_SAVE )
 GAME( 1984, 8ballact, 0,    	s2650,    8ballact,       0,  ROT90, "Seatongrove Ltd (Magic Eletronics USA licence)", "Eight Ball Action (DK conversion)", GAME_SUPPORTS_SAVE )

@@ -41,6 +41,7 @@ Verify Color PROM resistor values (Last 8 colors)
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/i8085/i8085.h"
 #include "stactics.h"
 #include "stactics.lh"
 
@@ -64,7 +65,7 @@ static CUSTOM_INPUT( get_motor_not_ready )
 
 static READ8_HANDLER( vert_pos_r )
 {
-	stactics_state *state = machine->driver_data;
+	stactics_state *state = space->machine->driver_data;
 
     return 0x70 - state->vert_pos;
 }
@@ -72,7 +73,7 @@ static READ8_HANDLER( vert_pos_r )
 
 static READ8_HANDLER( horiz_pos_r )
 {
-	stactics_state *state = machine->driver_data;
+	stactics_state *state = space->machine->driver_data;
 
     return state->horiz_pos + 0x88;
 }
@@ -155,11 +156,11 @@ static WRITE8_HANDLER( stactics_coin_lockout_w )
 
 static INTERRUPT_GEN( stactics_interrupt )
 {
-	stactics_state *state = machine->driver_data;
+	stactics_state *state = device->machine->driver_data;
 
-	move_motor(machine, state);
+	move_motor(device->machine, state);
 
-    cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+    cpu_set_input_line(device, 0, HOLD_LINE);
 }
 
 

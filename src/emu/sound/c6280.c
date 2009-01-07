@@ -55,7 +55,6 @@
 
 #include "sndintrf.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "c6280.h"
 
 typedef struct {
@@ -72,6 +71,7 @@ typedef struct {
 
 typedef struct {
 	sound_stream *stream;
+	const device_config *device;
     UINT8 select;
     UINT8 balance;
     UINT8 lfo_frequency;
@@ -85,13 +85,8 @@ typedef struct {
 /* only needed for io_buffer */
 #include "cpu/h6280/h6280.h"
 
-/* Local function prototypes */
-static void c6280_init(c6280_t *p, double clk, double rate);
-static void c6280_write(c6280_t *p, int offset, int data);
-static void c6280_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length);
 
-
-static void c6280_init(c6280_t *p, double clk, double rate)
+static void c6280_init(const device_config *device, c6280_t *p, double clk, double rate)
 {
     int i;
     double step;
@@ -101,6 +96,8 @@ static void c6280_init(c6280_t *p, double clk, double rate)
 
     /* Clear context */
     memset(p, 0, sizeof(c6280_t));
+
+    p->device = device;
 
     /* Make waveform frequency table */
     for(i = 0; i < 4096; i += 1)
@@ -211,7 +208,7 @@ static void c6280_write(c6280_t *p, int offset, int data)
 }
 
 
-static void c6280_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( c6280_update )
 {
     static const int scale_tab[] = {
         0x00, 0x03, 0x05, 0x07, 0x09, 0x0B, 0x0D, 0x0F,
@@ -229,10 +226,10 @@ static void c6280_update(void *param, stream_sample_t **inputs, stream_sample_t 
     rmal = scale_tab[rmal];
 
     /* Clear buffer */
-    for(i = 0; i < length; i++)
+    for(i = 0; i < samples; i++)
     {
-        buffer[0][i] = 0;
-        buffer[1][i] = 0;
+        outputs[0][i] = 0;
+        outputs[1][i] = 0;
     }
 
     for(ch = 0; ch < 6; ch++)
@@ -262,34 +259,34 @@ static void c6280_update(void *param, stream_sample_t **inputs, stream_sample_t 
             {
                 /* Noise mode */
                 UINT32 step = p->noise_freq_tab[(p->channel[ch].noise_control & 0x1F) ^ 0x1F];
-                for(i = 0; i < length; i += 1)
+                for(i = 0; i < samples; i += 1)
                 {
                     static int data = 0;
                     p->channel[ch].noise_counter += step;
                     if(p->channel[ch].noise_counter >= 0x800)
                     {
-                        data = (mame_rand(Machine) & 1) ? 0x1F : 0;
+                        data = (mame_rand(p->device->machine) & 1) ? 0x1F : 0;
                     }
                     p->channel[ch].noise_counter &= 0x7FF;
-                    buffer[0][i] += (INT16)(vll * (data - 16));
-                    buffer[1][i] += (INT16)(vlr * (data - 16));
+                    outputs[0][i] += (INT16)(vll * (data - 16));
+                    outputs[1][i] += (INT16)(vlr * (data - 16));
                 }
             }
             else
             if(p->channel[ch].control & 0x40)
             {
                 /* DDA mode */
-                for(i = 0; i < length; i++)
+                for(i = 0; i < samples; i++)
                 {
-                    buffer[0][i] += (INT16)(vll * (p->channel[ch].dda - 16));
-                    buffer[1][i] += (INT16)(vlr * (p->channel[ch].dda - 16));
+                    outputs[0][i] += (INT16)(vll * (p->channel[ch].dda - 16));
+                    outputs[1][i] += (INT16)(vlr * (p->channel[ch].dda - 16));
                 }
             }
             else
             {
                 /* Waveform mode */
                 UINT32 step = p->wave_freq_tab[p->channel[ch].frequency];
-                for(i = 0; i < length; i += 1)
+                for(i = 0; i < samples; i += 1)
                 {
                     int offset;
                     INT16 data;
@@ -297,8 +294,8 @@ static void c6280_update(void *param, stream_sample_t **inputs, stream_sample_t 
                     p->channel[ch].counter += step;
                     p->channel[ch].counter &= 0x1FFFF;
                     data = p->channel[ch].waveform[offset];
-                    buffer[0][i] += (INT16)(vll * (data - 16));
-                    buffer[1][i] += (INT16)(vlr * (data - 16));
+                    outputs[0][i] += (INT16)(vll * (data - 16));
+                    outputs[1][i] += (INT16)(vlr * (data - 16));
                 }
             }
         }
@@ -310,7 +307,7 @@ static void c6280_update(void *param, stream_sample_t **inputs, stream_sample_t 
 /* MAME specific code                                                       */
 /*--------------------------------------------------------------------------*/
 
-static void *c6280_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( c6280 )
 {
     int rate = clock/16;
     c6280_t *info;
@@ -318,18 +315,18 @@ static void *c6280_start(const char *tag, int sndindex, int clock, const void *c
     info = auto_malloc(sizeof(*info));
     memset(info, 0, sizeof(*info));
 
-   /* Initialize PSG emulator */
-   c6280_init(info, clock, rate);
+    /* Initialize PSG emulator */
+    c6280_init(device, info, clock, rate);
 
-   /* Create stereo stream */
-   info->stream = stream_create(0, 2, rate, info, c6280_update);
+    /* Create stereo stream */
+    info->stream = stream_create(device, 0, 2, rate, info, c6280_update);
 
     return info;
 }
 
-READ8_HANDLER(  c6280_r) { return h6280io_get_buffer();}
-WRITE8_HANDLER( c6280_0_w ) {  h6280io_set_buffer(data); c6280_write(sndti_token(SOUND_C6280, 0),offset,data); }
-WRITE8_HANDLER( c6280_1_w ) {  h6280io_set_buffer(data); c6280_write(sndti_token(SOUND_C6280, 1),offset,data); }
+READ8_HANDLER( c6280_r ) { return h6280io_get_buffer((device_config*)space->cpu); }
+WRITE8_HANDLER( c6280_0_w ) {  h6280io_set_buffer((device_config*)space->cpu, data); c6280_write(sndti_token(SOUND_C6280, 0),offset,data); }
+WRITE8_HANDLER( c6280_1_w ) {  h6280io_set_buffer((device_config*)space->cpu, data); c6280_write(sndti_token(SOUND_C6280, 1),offset,data); }
 
 
 
@@ -337,7 +334,7 @@ WRITE8_HANDLER( c6280_1_w ) {  h6280io_set_buffer(data); c6280_write(sndti_token
  * Generic get_info
  **************************************************************************/
 
-static void c6280_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( c6280 )
 {
 	switch (state)
 	{
@@ -346,24 +343,24 @@ static void c6280_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void c6280_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( c6280 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = c6280_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = c6280_start;				break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( c6280 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( c6280 );			break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							/* nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "HuC6280";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "????";						break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "HuC6280");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "????");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

@@ -56,6 +56,25 @@ PALETTE_INIT( gridlee )
 
 /*************************************
  *
+ *  Video system restart
+ *
+ *************************************/
+
+static STATE_POSTLOAD( expand_pixels )
+{
+    int offset = 0;
+
+    for(offset = 0; offset < 0x77ff; offset++)
+    {
+        local_videoram[offset * 2 + 0] = videoram[offset] >> 4;
+        local_videoram[offset * 2 + 1] = videoram[offset] & 15;
+    }
+}
+
+
+
+/*************************************
+ *
  *  Video system start
  *
  *************************************/
@@ -68,6 +87,10 @@ VIDEO_START( gridlee )
 
 	/* reset the palette */
 	palettebank_vis = 0;
+
+    state_save_register_global(machine, gridlee_cocktail_flip);
+    state_save_register_global(machine, palettebank_vis);
+    state_save_register_postload(machine, expand_pixels, NULL);
 }
 
 
@@ -111,7 +134,7 @@ WRITE8_HANDLER( gridlee_videoram_w )
 WRITE8_HANDLER( gridlee_palette_select_w )
 {
 	/* update the scanline palette */
-	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen) - 1 + BALSENTE_VBEND);
+	video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen) - 1 + BALSENTE_VBEND);
 	palettebank_vis = data & 0x3f;
 }
 

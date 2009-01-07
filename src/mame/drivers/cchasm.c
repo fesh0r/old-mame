@@ -13,6 +13,8 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "video/vector.h"
 #include "machine/6840ptm.h"
 #include "machine/z80ctc.h"
@@ -59,7 +61,7 @@ ADDRESS_MAP_END
 
 static void cchasm_6840_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 0, 4, state?ASSERT_LINE:CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, state?ASSERT_LINE:CLEAR_LINE);
 }
 static const ptm6840_interface cchasm_6840_intf =
 {
@@ -161,7 +163,7 @@ static MACHINE_DRIVER_START( cchasm )
 	MDRV_CPU_PROGRAM_MAP(sound_memmap,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 
-	MDRV_Z80CTC_ADD("ctc", cchasm_ctc_intf)
+	MDRV_Z80CTC_ADD("ctc", 3584229 /* same as "audio" */, cchasm_ctc_intf)
 
 	MDRV_MACHINE_START(cchasm)
 

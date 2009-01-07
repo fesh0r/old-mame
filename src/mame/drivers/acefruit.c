@@ -26,7 +26,7 @@ static void acefruit_update_irq(running_machine *machine, int vpos )
 		switch( color )
 		{
 		case 0x0c:
-			cpunum_set_input_line(machine, 0, 0, HOLD_LINE );
+			cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE );
 			break;
 		}
 	}
@@ -48,12 +48,12 @@ static TIMER_CALLBACK( acefruit_refresh )
 
 static VIDEO_START( acefruit )
 {
-	acefruit_refresh_timer = timer_alloc( acefruit_refresh , NULL);
+	acefruit_refresh_timer = timer_alloc(machine, acefruit_refresh, NULL);
 }
 
 static INTERRUPT_GEN( acefruit_vblank )
 {
-	cpunum_set_input_line(machine, 0, 0, HOLD_LINE );
+	cpu_set_input_line(device, 0, HOLD_LINE );
 	timer_adjust_oneshot( acefruit_refresh_timer, attotime_zero, 0 );
 }
 

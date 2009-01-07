@@ -60,16 +60,16 @@ static VIDEO_START(backfire)
 	deco16_pf34_control = auto_malloc(0x10);
 
 	/* and register the allocated ram so that save states still work */
-	state_save_register_global_pointer(deco16_pf1_data, 0x2000/2);
-	state_save_register_global_pointer(deco16_pf2_data, 0x2000/2);
-	state_save_register_global_pointer(deco16_pf3_data, 0x2000/2);
-	state_save_register_global_pointer(deco16_pf4_data, 0x2000/2);
-	state_save_register_global_pointer(deco16_pf1_rowscroll, 0x800/2);
-	state_save_register_global_pointer(deco16_pf2_rowscroll, 0x800/2);
-	state_save_register_global_pointer(deco16_pf3_rowscroll, 0x800/2);
-	state_save_register_global_pointer(deco16_pf4_rowscroll, 0x800/2);
-	state_save_register_global_pointer(deco16_pf12_control, 0x10/2);
-	state_save_register_global_pointer(deco16_pf34_control, 0x10/2);
+	state_save_register_global_pointer(machine, deco16_pf1_data, 0x2000/2);
+	state_save_register_global_pointer(machine, deco16_pf2_data, 0x2000/2);
+	state_save_register_global_pointer(machine, deco16_pf3_data, 0x2000/2);
+	state_save_register_global_pointer(machine, deco16_pf4_data, 0x2000/2);
+	state_save_register_global_pointer(machine, deco16_pf1_rowscroll, 0x800/2);
+	state_save_register_global_pointer(machine, deco16_pf2_rowscroll, 0x800/2);
+	state_save_register_global_pointer(machine, deco16_pf3_rowscroll, 0x800/2);
+	state_save_register_global_pointer(machine, deco16_pf4_rowscroll, 0x800/2);
+	state_save_register_global_pointer(machine, deco16_pf12_control, 0x10/2);
+	state_save_register_global_pointer(machine, deco16_pf34_control, 0x10/2);
 
 	deco16_2_video_init(machine, 0);
 
@@ -91,7 +91,7 @@ static void draw_sprites(running_machine *machine,bitmap_t *bitmap,const rectang
 {
 	int offs;
 
-	flip_screen_set_no_update(1);
+	flip_screen_set_no_update(machine, 1);
 
 	for (offs = (0x1400/4)-4;offs >= 0;offs -= 4) // 0x1400 for charlien
 	{
@@ -141,7 +141,7 @@ static void draw_sprites(running_machine *machine,bitmap_t *bitmap,const rectang
 			inc = 1;
 		}
 
-		if (flip_screen_x_get())
+		if (flip_screen_x_get(machine))
 		{
 			y=240-y;
 			x=304-x;
@@ -181,19 +181,19 @@ static VIDEO_UPDATE(backfire)
 	if (screen == left_screen)
 	{
 
-		fillbitmap(priority_bitmap,0,NULL);
-		fillbitmap(bitmap,0x100,cliprect);
+		bitmap_fill(priority_bitmap,NULL,0);
+		bitmap_fill(bitmap,cliprect,0x100);
 
 		if (backfire_left_priority[0] == 0)
 		{
-			deco16_tilemap_3_draw(bitmap,cliprect,0,1);
-			deco16_tilemap_1_draw(bitmap,cliprect,0,2);
+			deco16_tilemap_3_draw(screen,bitmap,cliprect,0,1);
+			deco16_tilemap_1_draw(screen,bitmap,cliprect,0,2);
 			draw_sprites(screen->machine,bitmap,cliprect,backfire_spriteram32_1,3);
 		}
 		else if (backfire_left_priority[0] == 2)
 		{
-			deco16_tilemap_1_draw(bitmap,cliprect,0,2);
-			deco16_tilemap_3_draw(bitmap,cliprect,0,4);
+			deco16_tilemap_1_draw(screen,bitmap,cliprect,0,2);
+			deco16_tilemap_3_draw(screen,bitmap,cliprect,0,4);
 			draw_sprites(screen->machine,bitmap,cliprect,backfire_spriteram32_1,3);
 		}
 		else
@@ -201,19 +201,19 @@ static VIDEO_UPDATE(backfire)
 	}
 	else if (screen == right_screen)
 	{
-		fillbitmap(priority_bitmap,0,NULL);
-		fillbitmap(bitmap,0x500,cliprect);
+		bitmap_fill(priority_bitmap,NULL,0);
+		bitmap_fill(bitmap,cliprect,0x500);
 
 		if (backfire_right_priority[0] == 0)
 		{
-			deco16_tilemap_4_draw(bitmap,cliprect,0,1);
-			deco16_tilemap_2_draw(bitmap,cliprect,0,2);
+			deco16_tilemap_4_draw(screen,bitmap,cliprect,0,1);
+			deco16_tilemap_2_draw(screen,bitmap,cliprect,0,2);
 			draw_sprites(screen->machine,bitmap,cliprect,backfire_spriteram32_2,4);
 		}
 		else if (backfire_right_priority[0] == 2)
 		{
-			deco16_tilemap_2_draw(bitmap,cliprect,0,2);
-			deco16_tilemap_4_draw(bitmap,cliprect,0,4);
+			deco16_tilemap_2_draw(screen,bitmap,cliprect,0,2);
+			deco16_tilemap_4_draw(screen,bitmap,cliprect,0,4);
 			draw_sprites(screen->machine,bitmap,cliprect,backfire_spriteram32_2,4);
 		}
 		else
@@ -227,30 +227,30 @@ static VIDEO_UPDATE(backfire)
 static READ32_HANDLER(backfire_eeprom_r)
 {
 	/* some kind of screen indicator?  checked by backfira set before it will boot */
-	int backfire_screen = mame_rand(machine)&1;
-	return ((eeprom_read_bit()<<24) | input_port_read(machine, "IN0")
-			| ((input_port_read(machine, "IN2") & ~0x40) <<16)
-			| ((input_port_read(machine, "IN3") &  0x40) <<16)) ^  (backfire_screen << 26) ;
+	int backfire_screen = mame_rand(space->machine)&1;
+	return ((eeprom_read_bit()<<24) | input_port_read(space->machine, "IN0")
+			| ((input_port_read(space->machine, "IN2") & ~0x40) <<16)
+			| ((input_port_read(space->machine, "IN3") &  0x40) <<16)) ^  (backfire_screen << 26) ;
 }
 
 static READ32_HANDLER(backfire_control2_r)
 {
-//  logerror("%08x:Read eprom %08x (%08x)\n",activecpu_get_pc(),offset<<1,mem_mask);
-	return (eeprom_read_bit()<<24) | input_port_read(machine, "IN1") | (input_port_read(machine, "IN1")<<16);
+//  logerror("%08x:Read eprom %08x (%08x)\n",cpu_get_pc(space->cpu),offset<<1,mem_mask);
+	return (eeprom_read_bit()<<24) | input_port_read(space->machine, "IN1") | (input_port_read(space->machine, "IN1")<<16);
 }
 
 #ifdef UNUSED_FUNCTION
 static READ32_HANDLER(backfire_control3_r)
 {
-//  logerror("%08x:Read eprom %08x (%08x)\n",activecpu_get_pc(),offset<<1,mem_mask);
-	return (eeprom_read_bit()<<24) | input_port_read(machine, "IN2") | (input_port_read(machine, "IN2")<<16);
+//  logerror("%08x:Read eprom %08x (%08x)\n",cpu_get_pc(space->cpu),offset<<1,mem_mask);
+	return (eeprom_read_bit()<<24) | input_port_read(space->machine, "IN2") | (input_port_read(space->machine, "IN2")<<16);
 }
 #endif
 
 
 static WRITE32_HANDLER(backfire_eeprom_w)
 {
-	logerror("%08x:write eprom %08x (%08x) %08x\n",activecpu_get_pc(),offset<<1,mem_mask,data);
+	logerror("%08x:write eprom %08x (%08x) %08x\n",cpu_get_pc(space->cpu),offset<<1,mem_mask,data);
 	if (ACCESSING_BITS_0_7) {
 		eeprom_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
 		eeprom_write_bit(data & 0x1);
@@ -262,21 +262,21 @@ static WRITE32_HANDLER(backfire_eeprom_w)
 static WRITE32_HANDLER(wcvol95_nonbuffered_palette_w)
 {
 	COMBINE_DATA(&paletteram32[offset]);
-	palette_set_color_rgb(machine,offset,pal5bit(paletteram32[offset] >> 0),pal5bit(paletteram32[offset] >> 5),pal5bit(paletteram32[offset] >> 10));
+	palette_set_color_rgb(space->machine,offset,pal5bit(paletteram32[offset] >> 0),pal5bit(paletteram32[offset] >> 5),pal5bit(paletteram32[offset] >> 10));
 }
 
 
 static READ32_HANDLER( deco156_snd_r )
 {
-	return ymz280b_status_0_r(machine, 0);
+	return ymz280b_status_0_r(space, 0);
 }
 
 static WRITE32_HANDLER( deco156_snd_w )
 {
 	if (offset)
-		ymz280b_data_0_w(machine, 0, data);
+		ymz280b_data_0_w(space, 0, data);
 	else
-		ymz280b_register_0_w(machine, 0, data);
+		ymz280b_register_0_w(space, 0, data);
 }
 
 /* map 32-bit writes to 16-bit */
@@ -297,25 +297,25 @@ static READ32_HANDLER( backfire_pf1_data_r ) {	return deco16_pf1_data[offset]^0x
 static READ32_HANDLER( backfire_pf2_data_r ) {	return deco16_pf2_data[offset]^0xffff0000; }
 static READ32_HANDLER( backfire_pf3_data_r ) {	return deco16_pf3_data[offset]^0xffff0000; }
 static READ32_HANDLER( backfire_pf4_data_r ) {	return deco16_pf4_data[offset]^0xffff0000; }
-static WRITE32_HANDLER( backfire_pf1_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf1_data_w(machine,offset,data,mem_mask); }
-static WRITE32_HANDLER( backfire_pf2_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf2_data_w(machine,offset,data,mem_mask); }
-static WRITE32_HANDLER( backfire_pf3_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf3_data_w(machine,offset,data,mem_mask); }
-static WRITE32_HANDLER( backfire_pf4_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf4_data_w(machine,offset,data,mem_mask); }
+static WRITE32_HANDLER( backfire_pf1_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf1_data_w(space,offset,data,mem_mask); }
+static WRITE32_HANDLER( backfire_pf2_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf2_data_w(space,offset,data,mem_mask); }
+static WRITE32_HANDLER( backfire_pf3_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf3_data_w(space,offset,data,mem_mask); }
+static WRITE32_HANDLER( backfire_pf4_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf4_data_w(space,offset,data,mem_mask); }
 
 #ifdef UNUSED_FUNCTION
 READ32_HANDLER( backfire_unknown_wheel_r )
 {
-	return input_port_read(machine, "PADDLE0");
+	return input_port_read(space->machine, "PADDLE0");
 }
 
 READ32_HANDLER( backfire_wheel1_r )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 READ32_HANDLER( backfire_wheel2_r )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 #endif
 
@@ -471,7 +471,7 @@ static const ymz280b_interface ymz280b_intf =
 
 static INTERRUPT_GEN( deco32_vbl_interrupt )
 {
-	cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, HOLD_LINE);
+	cpu_set_input_line(device, ARM_IRQ_LINE, HOLD_LINE);
 }
 
 
@@ -666,10 +666,10 @@ static void descramble_sound( running_machine *machine )
 
 static READ32_HANDLER( backfire_speedup_r )
 {
-//  mame_printf_debug( "%08x\n",activecpu_get_pc());
+//  mame_printf_debug( "%08x\n",cpu_get_pc(space->cpu));
 
-	if (activecpu_get_pc()==0xce44)  cpu_spinuntil_time(ATTOTIME_IN_USEC(400)); // backfire
-	if (activecpu_get_pc()==0xcee4)  cpu_spinuntil_time(ATTOTIME_IN_USEC(400)); // backfira
+	if (cpu_get_pc(space->cpu)==0xce44)  cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(400)); // backfire
+	if (cpu_get_pc(space->cpu)==0xcee4)  cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(400)); // backfira
 
 	return backfire_mainram[0x18/4];
 }
@@ -680,9 +680,9 @@ static DRIVER_INIT( backfire )
 	deco56_decrypt_gfx(machine, "gfx1"); /* 141 */
 	deco56_decrypt_gfx(machine, "gfx2"); /* 141 */
 	deco156_decrypt(machine);
-	cpunum_set_clockscale(machine, 0, 4.0f); /* core timings aren't accurate */
+	cpu_set_clockscale(machine->cpu[0], 4.0f); /* core timings aren't accurate */
 	descramble_sound(machine);
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0170018, 0x017001b, 0, 0, backfire_speedup_r );
+	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0170018, 0x017001b, 0, 0, backfire_speedup_r );
 }
 
 GAME( 1995, backfire, 0,        backfire,      backfire, backfire, ROT0, "Data East Corporation", "Backfire! (set 1)", 0 )

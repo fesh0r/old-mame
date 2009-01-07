@@ -61,19 +61,19 @@ static WRITE8_HANDLER( ctrl_w )
 {
 	nmi_enable = data & 0x01;
 	irq_enable = data & 0x02;
-	flip_screen_set(data & 0x08);
+	flip_screen_set(space->machine, data & 0x08);
 }
 
 static INTERRUPT_GEN( jb_interrupt )
 {
 	if (irq_enable)
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(device, 0, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( jb_interrupt_nmi )
 {
 	if (nmi_enable)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -244,8 +244,8 @@ GFXDECODE_END
 
 static MACHINE_START( jailbrek )
 {
-	state_save_register_global(irq_enable);
-	state_save_register_global(nmi_enable);
+	state_save_register_global(machine, irq_enable);
+	state_save_register_global(machine, nmi_enable);
 }
 
 static MACHINE_DRIVER_START( jailbrek )

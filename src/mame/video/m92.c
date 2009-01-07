@@ -93,15 +93,15 @@ WRITE16_HANDLER( m92_spritecontrol_w )
 	/* Sprite buffer - the data written doesn't matter (confirmed by several games) */
 	if (offset==4)
 	{
-			buffer_spriteram16_w(machine,0,0,0xffff);
+			buffer_spriteram16_w(space,0,0,0xffff);
 		m92_sprite_buffer_busy = 0;
 
 		/* Pixel clock is 26.6666 MHz, we have 0x800 bytes, or 0x400 words
            to copy from spriteram to the buffer.  It seems safe to assume 1
            word can be copied per clock.*/
-		timer_set(attotime_mul(ATTOTIME_IN_HZ(26666000), 0x400), NULL, 0, spritebuffer_callback);
+		timer_set(space->machine, attotime_mul(ATTOTIME_IN_HZ(26666000), 0x400), NULL, 0, spritebuffer_callback);
 	}
-//  logerror("%04x: m92_spritecontrol_w %08x %08x\n",activecpu_get_pc(),offset,data);
+//  logerror("%04x: m92_spritecontrol_w %08x %08x\n",cpu_get_pc(space->cpu),offset,data);
 }
 
 WRITE16_HANDLER( m92_videocontrol_w )
@@ -124,7 +124,7 @@ WRITE16_HANDLER( m92_videocontrol_w )
 		/* Access to upper palette bank */
 		m92_palette_bank = (data >> 1) & 1;
 	}
-//  logerror("%04x: m92_videocontrol_w %d = %02x\n",activecpu_get_pc(),offset,data);
+//  logerror("%04x: m92_videocontrol_w %d = %02x\n",cpu_get_pc(space->cpu),offset,data);
 }
 
 READ16_HANDLER( m92_paletteram_r )
@@ -134,7 +134,7 @@ READ16_HANDLER( m92_paletteram_r )
 
 WRITE16_HANDLER( m92_paletteram_w )
 {
-	paletteram16_xBBBBBGGGGGRRRRR_word_w(machine, offset + 0x400 * m92_palette_bank, data, mem_mask);
+	paletteram16_xBBBBBGGGGGRRRRR_word_w(space, offset + 0x400 * m92_palette_bank, data, mem_mask);
 }
 
 /*****************************************************************************/
@@ -250,8 +250,8 @@ VIDEO_START( m92 )
 		pf_layer_info *layer = &pf_layer[laynum];
 
 		/* allocate two tilemaps per layer, one normal, one wide */
-		layer->tmap = tilemap_create(get_pf_tile_info, tilemap_scan_rows,  8,8, 64,64);
-		layer->wide_tmap = tilemap_create(get_pf_tile_info, tilemap_scan_rows,  8,8, 128,64);
+		layer->tmap = tilemap_create(machine, get_pf_tile_info, tilemap_scan_rows,  8,8, 64,64);
+		layer->wide_tmap = tilemap_create(machine, get_pf_tile_info, tilemap_scan_rows,  8,8, 128,64);
 
 		/* set the user data for each one to point to the layer */
 		tilemap_set_user_data(layer->tmap, &pf_layer[laynum]);
@@ -275,8 +275,8 @@ VIDEO_START( m92 )
 		tilemap_set_transmask(layer->tmap, 2, 0x0001, (laynum == 2) ? 0xfffe : 0xffff);
 		tilemap_set_transmask(layer->wide_tmap, 2, 0x0001, (laynum == 2) ? 0xfffe : 0xffff);
 
-		state_save_register_item("layer", laynum, layer->vram_base);
-		state_save_register_item_array("layer", laynum, layer->control);
+		state_save_register_item(machine, "layer", NULL, laynum, layer->vram_base);
+		state_save_register_item_array(machine, "layer", NULL, laynum, layer->control);
 	}
 
 	paletteram16 = auto_malloc(0x1000);
@@ -284,14 +284,14 @@ VIDEO_START( m92 )
 	memset(spriteram16,0,0x800);
 	memset(buffered_spriteram16,0,0x800);
 
-	state_save_register_global_array(pf_master_control);
+	state_save_register_global_array(machine, pf_master_control);
 
-	state_save_register_global(m92_sprite_list);
-	state_save_register_global(m92_raster_irq_position);
-	state_save_register_global(m92_sprite_buffer_busy);
-	state_save_register_global(m92_palette_bank);
+	state_save_register_global(machine, m92_sprite_list);
+	state_save_register_global(machine, m92_raster_irq_position);
+	state_save_register_global(machine, m92_sprite_buffer_busy);
+	state_save_register_global(machine, m92_palette_bank);
 
-	state_save_register_global_pointer(paletteram16, 0x1000);
+	state_save_register_global_pointer(machine, paletteram16, 0x1000);
 }
 
 /*****************************************************************************/
@@ -339,7 +339,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 				x &= 0x1ff;
 				for (i=0; i<y_multi; i++)
 				{
-					if (flip_screen_get()) {
+					if (flip_screen_get(machine)) {
 						pdrawgfx(bitmap,machine->gfx[1],
 								sprite + s_ptr,
 								colour,
@@ -430,7 +430,7 @@ static void m92_update_scroll_positions(void)
 
 static void m92_screenrefresh(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	if ((~pf_master_control[2] >> 4) & 1)
 	{
@@ -440,7 +440,7 @@ static void m92_screenrefresh(running_machine *machine, bitmap_t *bitmap,const r
 		tilemap_draw(bitmap, cliprect, pf_layer[2].tmap,      TILEMAP_DRAW_LAYER0, 1);
 	}
 	else
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, pf_layer[1].wide_tmap, TILEMAP_DRAW_LAYER1, 0);
 	tilemap_draw(bitmap, cliprect, pf_layer[1].tmap,      TILEMAP_DRAW_LAYER1, 0);
@@ -463,8 +463,8 @@ VIDEO_UPDATE( m92 )
 
 	/* Flipscreen appears hardwired to the dipswitch - strange */
 	if (input_port_read(screen->machine, "DSW") & 0x100)
-		flip_screen_set(0);
+		flip_screen_set(screen->machine, 0);
 	else
-		flip_screen_set(1);
+		flip_screen_set(screen->machine, 1);
 	return 0;
 }

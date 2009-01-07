@@ -1,5 +1,6 @@
 #include "driver.h"
 #include "video/konamiic.h"
+#include "includes/xmen.h"
 
 
 static int layer_colorbase[3],sprite_colorbase,bg_colorbase;
@@ -116,9 +117,9 @@ VIDEO_UPDATE( xmen )
 
 	sortlayers(layer,layerpri);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 	/* note the '+1' in the background color!!! */
-	fillbitmap(bitmap,16 * bg_colorbase+1,cliprect);
+	bitmap_fill(bitmap,cliprect,16 * bg_colorbase+1);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[layer[0]],0,1);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[layer[1]],0,2);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[layer[2]],0,4);
@@ -127,14 +128,6 @@ VIDEO_UPDATE( xmen )
 	K053247_sprites_draw(screen->machine, bitmap,cliprect);
 	return 0;
 }
-
-extern UINT16 xmen_current_frame;
-extern UINT16*xmen6p_spriteramleft;
-extern UINT16*xmen6p_spriteramright;
-extern UINT16*xmen6p_tilemapleft;
-extern UINT16*xmen6p_tilemapright;
-extern WRITE8_HANDLER( K052109_w );
-
 
 
 VIDEO_UPDATE( xmen6p )
@@ -169,6 +162,7 @@ VIDEO_UPDATE( xmen6p )
 /* my lefts and rights are mixed up in several places.. */
 VIDEO_EOF( xmen6p )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	int layer[3];
 	bitmap_t * renderbitmap;
 	rectangle cliprect;
@@ -203,7 +197,7 @@ VIDEO_EOF( xmen6p )
 		for (offset=0;offset<(0xc000/2);offset++)
 		{
 //          K052109_lsb_w
-			K052109_w(machine,offset,xmen6p_tilemapright[offset]&0x00ff);
+			K052109_w(space,offset,xmen6p_tilemapright[offset]&0x00ff);
 		}
 
 
@@ -222,7 +216,7 @@ VIDEO_EOF( xmen6p )
 		for (offset=0;offset<(0xc000/2);offset++)
 		{
 //          K052109_lsb_w
-			K052109_w(machine,offset,xmen6p_tilemapleft[offset]&0x00ff);
+			K052109_w(space,offset,xmen6p_tilemapleft[offset]&0x00ff);
 		}
 
 
@@ -249,9 +243,9 @@ VIDEO_EOF( xmen6p )
 
 	sortlayers(layer,layerpri);
 
-	fillbitmap(priority_bitmap,0,&cliprect);
+	bitmap_fill(priority_bitmap,&cliprect,0);
 	/* note the '+1' in the background color!!! */
-	fillbitmap(renderbitmap,16 * bg_colorbase+1,&cliprect);
+	bitmap_fill(renderbitmap,&cliprect,16 * bg_colorbase+1);
 	tilemap_draw(renderbitmap,&cliprect,K052109_tilemap[layer[0]],0,1);
 	tilemap_draw(renderbitmap,&cliprect,K052109_tilemap[layer[1]],0,2);
 	tilemap_draw(renderbitmap,&cliprect,K052109_tilemap[layer[2]],0,4);

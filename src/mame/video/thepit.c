@@ -103,7 +103,7 @@ PALETTE_INIT( suprmous )
 		UINT8 g = BITSWAP8(color_prom[i + 0x20], 7, 6, 0, 1, 2, 3, 4, 5) & 0x1f;
 		UINT8 b = BITSWAP8(color_prom[i + 0x00], 0, 1, 2, 3, 4, 5, 6, 7) & 0x1f;
 
-		palette_set_color_rgb(machine, i + 8, pal5bit(r), pal5bit(g), pal5bit(b));
+		palette_set_color_rgb(machine, i, pal5bit(r), pal5bit(g), pal5bit(b));
 	}
 
 	/* allocate primary colors for the background and foreground
@@ -147,9 +147,9 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( thepit )
 {
-	thepit_solid_tilemap = tilemap_create(solid_get_tile_info,tilemap_scan_rows,8,8,32,32);
+	thepit_solid_tilemap = tilemap_create(machine, solid_get_tile_info,tilemap_scan_rows,8,8,32,32);
 
-	thepit_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
+	thepit_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_rows,8,8,32,32);
 	tilemap_set_transparent_pen(thepit_tilemap, 0);
 
 	tilemap_set_scroll_cols(thepit_solid_tilemap, 32);
@@ -233,11 +233,11 @@ READ8_HANDLER( thepit_input_port_0_r )
        horizontal flip switch. (This is how the real PCB does it) */
 	if (thepit_flip_screen_x)
 	{
-		return input_port_read(machine, "IN2");
+		return input_port_read(space->machine, "IN2");
 	}
 	else
 	{
-		return input_port_read(machine, "IN0");
+		return input_port_read(space->machine, "IN0");
 	}
 }
 

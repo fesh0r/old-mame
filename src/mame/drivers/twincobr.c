@@ -188,6 +188,7 @@ Shark   Zame
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/tms32010/tms32010.h"
 #include "twincobr.h"
@@ -690,7 +691,7 @@ GFXDECODE_END
 /* handler called by the 3812 emulator when the internal timers cause an IRQ */
 static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(machine, 1,0,linestate);
+	cpu_set_input_line(machine->cpu[1],0,linestate);
 }
 
 static const ym3812_interface ym3812_config =
@@ -716,7 +717,7 @@ static MACHINE_DRIVER_START( twincobr )
 	/* Data Map is internal to the CPU */
 	MDRV_CPU_IO_MAP(DSP_io_map, 0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_RESET(twincobr)	/* Reset fshark bootleg 8741 MCU data */
 

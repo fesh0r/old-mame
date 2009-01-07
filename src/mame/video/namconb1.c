@@ -149,7 +149,7 @@ VIDEO_UPDATE( namconb1 )
 	if( clip.max_x > cliprect->max_x ){ clip.max_x = cliprect->max_x; }
 	if( clip.max_y > cliprect->max_y ){ clip.max_y = cliprect->max_y; }
 
-	fillbitmap( bitmap, get_black_pen(screen->machine), cliprect );
+	bitmap_fill( bitmap, cliprect , get_black_pen(screen->machine));
 
 	video_update_common( screen->machine, bitmap, &clip, 0 );
 
@@ -165,7 +165,7 @@ NB1objcode2tile( int code )
 
 VIDEO_START( namconb1 )
 {
-	namco_tilemap_init( NAMCONB1_TILEGFX, memory_region(machine, NAMCONB1_TILEMASKREGION), NB1TilemapCB );
+	namco_tilemap_init( machine, NAMCONB1_TILEGFX, memory_region(machine, NAMCONB1_TILEMASKREGION), NB1TilemapCB );
 	namco_obj_init(NAMCONB1_SPRITEGFX,0x0,NB1objcode2tile);
 } /* namconb1 */
 
@@ -188,7 +188,7 @@ VIDEO_UPDATE( namconb2 )
 	if( clip.max_x > cliprect->max_x ){ clip.max_x = cliprect->max_x; }
 	if( clip.max_y > cliprect->max_y ){ clip.max_y = cliprect->max_y; }
 
-	fillbitmap( bitmap, get_black_pen(screen->machine), cliprect );
+	bitmap_fill( bitmap, cliprect , get_black_pen(screen->machine));
 
 	if( memcmp(tilemap_tile_bank,namconb1_tilebank32,sizeof(tilemap_tile_bank))!=0 )
 	{
@@ -227,7 +227,7 @@ NB2objcode2tile( int code )
 
 VIDEO_START( namconb2 )
 {
-	namco_tilemap_init(NAMCONB1_TILEGFX, memory_region(machine, NAMCONB1_TILEMASKREGION), NB2TilemapCB );
+	namco_tilemap_init(machine, NAMCONB1_TILEGFX, memory_region(machine, NAMCONB1_TILEMASKREGION), NB2TilemapCB );
 	namco_obj_init(NAMCONB1_SPRITEGFX,0x0,NB2objcode2tile);
-	namco_roz_init(NAMCONB1_ROTGFX,NAMCONB1_ROTMASKREGION);
+	namco_roz_init(machine, NAMCONB1_ROTGFX,NAMCONB1_ROTMASKREGION);
 } /* namconb2_vh_start */

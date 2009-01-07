@@ -105,6 +105,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "spacefb.h"
 #include "cpu/mcs48/mcs48.h"
 #include "sound/dac.h"
@@ -127,7 +128,7 @@ static TIMER_CALLBACK( interrupt_callback )
 	/* compute vector and set the interrupt line */
 	int vpos = video_screen_get_vpos(machine->primary_screen);
 	UINT8 vector = 0xc7 | ((vpos & 0x40) >> 2) | ((~vpos & 0x40) >> 3);
-	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, vector);
+	cpu_set_input_line_and_vector(machine->cpu[0], 0, HOLD_LINE, vector);
 
 	/* set up for next interrupt */
 	if (vpos == SPACEFB_INT_TRIGGER_COUNT_1)
@@ -139,9 +140,9 @@ static TIMER_CALLBACK( interrupt_callback )
 }
 
 
-static void create_interrupt_timer(void)
+static void create_interrupt_timer(running_machine *machine)
 {
-	interrupt_timer = timer_alloc(interrupt_callback, NULL);
+	interrupt_timer = timer_alloc(machine, interrupt_callback, NULL);
 }
 
 
@@ -160,7 +161,7 @@ static void start_interrupt_timer(running_machine *machine)
 
 static MACHINE_START( spacefb )
 {
-	create_interrupt_timer();
+	create_interrupt_timer(machine);
 }
 
 
@@ -173,10 +174,11 @@ static MACHINE_START( spacefb )
 
 static MACHINE_RESET( spacefb )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO);
 	/* the 3 output ports are cleared on reset */
-	spacefb_port_0_w(machine, 0, 0);
-	spacefb_port_1_w(machine, 0, 0);
-	spacefb_port_2_w(machine, 0, 0);
+	spacefb_port_0_w(space, 0, 0);
+	spacefb_port_1_w(space, 0, 0);
+	spacefb_port_2_w(space, 0, 0);
 
 	start_interrupt_timer(machine);
 }
@@ -337,7 +339,7 @@ static MACHINE_DRIVER_START( spacefb )
 	MDRV_CPU_PROGRAM_MAP(spacefb_audio_map,0)
 	MDRV_CPU_IO_MAP(spacefb_audio_io_map,0)
 
-	MDRV_INTERLEAVE(3)
+	MDRV_QUANTUM_TIME(HZ(180))
 
 	MDRV_MACHINE_START(spacefb)
 	MDRV_MACHINE_RESET(spacefb)

@@ -12,7 +12,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "machine/7474.h"
 #include "sound/flt_rc.h"
@@ -47,7 +46,7 @@ static const int scramble_timer[10] =
 
 READ8_HANDLER( scramble_portB_r )
 {
-	return scramble_timer[(activecpu_gettotalcycles()/512) % 10];
+	return scramble_timer[(cpu_get_total_cycles(space->cpu)/512) % 10];
 }
 
 
@@ -76,7 +75,7 @@ static const int frogger_timer[10] =
 
 READ8_HANDLER( frogger_portB_r )
 {
-	return frogger_timer[(activecpu_gettotalcycles()/512) % 10];
+	return frogger_timer[(cpu_get_total_cycles(space->cpu)/512) % 10];
 }
 
 
@@ -84,7 +83,7 @@ WRITE8_DEVICE_HANDLER( scramble_sh_irqtrigger_w )
 {
 	/* the complement of bit 3 is connected to the flip-flop's clock */
 	TTL7474_clock_w(2, ~data & 0x08);
-	TTL7474_update(2);
+	TTL7474_update(device->machine, 2);
 
 	/* bit 4 is sound disable */
 	sound_global_enable(~data & 0x10);
@@ -94,21 +93,21 @@ WRITE8_HANDLER( sfx_sh_irqtrigger_w )
 {
 	/* bit 1 is connected to the flip-flop's clock */
 	TTL7474_clock_w(3, data & 0x01);
-	TTL7474_update(3);
+	TTL7474_update(space->machine, 3);
 }
 
 WRITE8_DEVICE_HANDLER( mrkougar_sh_irqtrigger_w )
 {
 	/* the complement of bit 3 is connected to the flip-flop's clock */
 	TTL7474_clock_w(2, ~data & 0x08);
-	TTL7474_update(2);
+	TTL7474_update(device->machine, 2);
 }
 
 WRITE8_HANDLER( froggrmc_sh_irqtrigger_w )
 {
 	/* the complement of bit 0 is connected to the flip-flop's clock */
 	TTL7474_clock_w(2, ~data & 0x01);
-	TTL7474_update(2);
+	TTL7474_update(space->machine, 2);
 }
 
 
@@ -118,10 +117,10 @@ static IRQ_CALLBACK(scramble_sh_irq_callback)
        we need to pulse the CLR line because MAME's core never clears this
        line, only asserts it */
 	TTL7474_clear_w(2, 0);
-	TTL7474_update(2);
+	TTL7474_update(device->machine, 2);
 
 	TTL7474_clear_w(2, 1);
-	TTL7474_update(2);
+	TTL7474_update(device->machine, 2);
 
 	return 0xff;
 }
@@ -132,38 +131,38 @@ static IRQ_CALLBACK(sfx_sh_irq_callback)
        we need to pulse the CLR line because MAME's core never clears this
        line, only asserts it */
 	TTL7474_clear_w(3, 0);
-	TTL7474_update(3);
+	TTL7474_update(device->machine, 3);
 
 	TTL7474_clear_w(3, 1);
-	TTL7474_update(3);
+	TTL7474_update(device->machine, 3);
 
 	return 0xff;
 }
 
 
-static void scramble_sh_7474_callback(void)
+static void scramble_sh_7474_callback(running_machine *machine)
 {
 	/* the Q bar is connected to the Z80's INT line.  But since INT is complemented, */
 	/* we need to complement Q bar */
-	cpunum_set_input_line(Machine, 1, 0, !TTL7474_output_comp_r(2) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 0, !TTL7474_output_comp_r(2) ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static void sfx_sh_7474_callback(void)
+static void sfx_sh_7474_callback(running_machine *machine)
 {
 	/* the Q bar is connected to the Z80's INT line.  But since INT is complemented, */
 	/* we need to complement Q bar */
-	cpunum_set_input_line(Machine, 2, 0, !TTL7474_output_comp_r(3) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[2], 0, !TTL7474_output_comp_r(3) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 WRITE8_HANDLER( hotshock_sh_irqtrigger_w )
 {
-	cpunum_set_input_line(machine, 1, 0, ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[1], 0, ASSERT_LINE);
 }
 
 READ8_HANDLER( hotshock_soundlatch_r )
 {
-	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
-	return soundlatch_r(machine,0);
+	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+	return soundlatch_r(space,0);
 }
 
 static void filter_w(int chip, int channel, int data)
@@ -209,21 +208,21 @@ static const struct TTL7474_interface sfx_sh_7474_intf =
 };
 
 
-void scramble_sh_init(void)
+void scramble_sh_init(running_machine *machine)
 {
-	cpunum_set_irq_callback(1, scramble_sh_irq_callback);
+	cpu_set_irq_callback(machine->cpu[1], scramble_sh_irq_callback);
 
-	TTL7474_config(2, &scramble_sh_7474_intf);
+	TTL7474_config(machine, 2, &scramble_sh_7474_intf);
 
 	/* PR is always 0, D is always 1 */
 	TTL7474_d_w(2, 1);
 }
 
-void sfx_sh_init(void)
+void sfx_sh_init(running_machine *machine)
 {
-	cpunum_set_irq_callback(2, sfx_sh_irq_callback);
+	cpu_set_irq_callback(machine->cpu[2], sfx_sh_irq_callback);
 
-	TTL7474_config(3, &sfx_sh_7474_intf);
+	TTL7474_config(machine, 3, &sfx_sh_7474_intf);
 
 	/* PR is always 0, D is always 1 */
 	TTL7474_d_w(3, 1);
@@ -301,6 +300,8 @@ static UINT8 speech_cnt;
 
 static TIMER_CALLBACK( ad2083_step )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
 	/* only 16 bytes needed ... The original dump is bad. This
      * is what is needed to get speech to work. The prom data has
      * been updated and marked as BAD_DUMP. The information below
@@ -327,16 +328,16 @@ static TIMER_CALLBACK( ad2083_step )
 	if (ctrl & 0x40)
 		speech_rom_address = 0;
 
-	tms5110_ctl_w(machine, 0, ctrl & 0x04 ? TMS5110_CMD_SPEAK : TMS5110_CMD_RESET);
-	tms5110_pdc_w(machine, 0, ctrl & 0x02 ? 0 : 1);
+	tms5110_ctl_w(space, 0, ctrl & 0x04 ? TMS5110_CMD_SPEAK : TMS5110_CMD_RESET);
+	tms5110_pdc_w(space, 0, ctrl & 0x02 ? 0 : 1);
 
 	if (!(ctrl & 0x80))
-		timer_set(ATTOTIME_IN_HZ(AD2083_TMS5110_CLOCK / 2),NULL,1,ad2083_step);
+		timer_set(machine, ATTOTIME_IN_HZ(AD2083_TMS5110_CLOCK / 2),NULL,1,ad2083_step);
 }
 
-static int ad2083_speech_rom_read_bit(void)
+static int ad2083_speech_rom_read_bit(const device_config *device)
 {
-	UINT8 *ROM = memory_region(Machine, "tms5110");
+	UINT8 *ROM = memory_region(device->machine, "tms5110");
 	int bit;
 
 	speech_rom_address %= 4096;
@@ -369,7 +370,7 @@ static WRITE8_HANDLER( ad2083_tms5110_ctrl_w )
 			speech_rom_address_hi = 0x0000;
 			break;
 	}
-	timer_set(attotime_zero,NULL,0,ad2083_step);
+	timer_set(space->machine, attotime_zero,NULL,0,ad2083_step);
 }
 
 static const tms5110_interface ad2083_tms5110_interface =
@@ -419,10 +420,10 @@ static SOUND_START( ad2083 )
 	speech_rom_bit = 0;
 	speech_cnt = 0x10;
 
-	state_save_register_global(speech_rom_address);
-	state_save_register_global(speech_rom_address_hi);
-	state_save_register_global(speech_rom_bit);
-	state_save_register_global(speech_cnt);
+	state_save_register_global(machine, speech_rom_address);
+	state_save_register_global(machine, speech_rom_address_hi);
+	state_save_register_global(machine, speech_rom_bit);
+	state_save_register_global(machine, speech_cnt);
 }
 
 MACHINE_DRIVER_START( ad2083_audio )

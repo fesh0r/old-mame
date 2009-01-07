@@ -43,16 +43,16 @@ static WRITE8_HANDLER( bogeyman_8910_control_w )
 	static int last;
 
 	// bit 0 is flipscreen
-	flip_screen_set(data & 0x01);
+	flip_screen_set(space->machine, data & 0x01);
 
 	// bit 5 goes to 8910 #0 BDIR pin
 	if ((last & 0x20) == 0x20 && (data & 0x20) == 0x00)
 	{
 		// bit 4 goes to the 8910 #0 BC1 pin
 		if (last & 0x10)
-			ay8910_control_port_0_w(machine,0,psg_latch);
+			ay8910_control_port_0_w(space,0,psg_latch);
 		else
-			ay8910_write_port_0_w(machine,0,psg_latch);
+			ay8910_write_port_0_w(space,0,psg_latch);
 	}
 
 	// bit 7 goes to 8910 #1 BDIR pin
@@ -60,9 +60,9 @@ static WRITE8_HANDLER( bogeyman_8910_control_w )
 	{
 		// bit 6 goes to the 8910 #1 BC1 pin
 		if (last & 0x40)
-			ay8910_control_port_1_w(machine,0,psg_latch);
+			ay8910_control_port_1_w(space,0,psg_latch);
 		else
-			ay8910_write_port_1_w(machine,0,psg_latch);
+			ay8910_write_port_1_w(space,0,psg_latch);
 	}
 
 	last = data;

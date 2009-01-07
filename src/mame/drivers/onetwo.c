@@ -40,6 +40,7 @@ Note: this is quite clearly a 'Korean bootleg' of Shisensho - Joshiryo-Hen / Mat
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
@@ -64,22 +65,22 @@ static WRITE8_HANDLER( onetwo_fgram_w )
 
 static WRITE8_HANDLER( onetwo_cpubank_w )
 {
-	UINT8 *RAM = memory_region(machine, "main") + 0x10000;
+	UINT8 *RAM = memory_region(space->machine, "main") + 0x10000;
 
-	memory_set_bankptr(1,&RAM[data * 0x4000]);
+	memory_set_bankptr(space->machine, 1,&RAM[data * 0x4000]);
 }
 
 static WRITE8_HANDLER( onetwo_coin_counters_w )
 {
-	watchdog_reset(machine);
+	watchdog_reset(space->machine);
 	coin_counter_w(0, data & 0x02);
 	coin_counter_w(1, data & 0x04);
 }
 
 static WRITE8_HANDLER( onetwo_soundlatch_w )
 {
-	soundlatch_w(machine, 0, data);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(space, 0, data);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static void setColor(running_machine *machine, int offset)
@@ -94,13 +95,13 @@ static void setColor(running_machine *machine, int offset)
 static WRITE8_HANDLER(palette1_w)
 {
 	paletteram[offset]=data;
-	setColor(machine, offset);
+	setColor(space->machine, offset);
 }
 
 static WRITE8_HANDLER(palette2_w)
 {
 	paletteram_2[offset]=data;
-	setColor(machine, offset);
+	setColor(space->machine, offset);
 }
 
 /* Main CPU */
@@ -254,7 +255,7 @@ GFXDECODE_END
 
 static VIDEO_START( onetwo )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,64,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,64,32);
 }
 
 static VIDEO_UPDATE( onetwo )
@@ -265,7 +266,7 @@ static VIDEO_UPDATE( onetwo )
 
 static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(machine, 1,0,linestate);
+	cpu_set_input_line(machine->cpu[1],0,linestate);
 }
 
 static const ym3812_interface ym3812_config =

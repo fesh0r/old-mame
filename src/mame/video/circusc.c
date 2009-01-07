@@ -127,7 +127,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( circusc )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_scroll_cols(bg_tilemap,32);
 }
@@ -154,7 +154,7 @@ WRITE8_HANDLER( circusc_colorram_w )
 
 WRITE8_HANDLER( circusc_flipscreen_w )
 {
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 }
 
 
@@ -185,7 +185,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int flipx = sr[offs + 1] & 0x40;
 		int flipy = sr[offs + 1] & 0x80;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -212,7 +212,7 @@ VIDEO_UPDATE( circusc )
 	for (i = 10;i < 32;i++)
 		tilemap_set_scrolly(bg_tilemap,i,*circusc_scroll);
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,1,0);
 	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);

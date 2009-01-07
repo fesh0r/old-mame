@@ -424,9 +424,9 @@ static TILE_GET_INFO( get_tile_info )
     int color = galaga_videoram[tile_index + 0x400] & 0x3f;
 	SET_TILE_INFO(
 			0,
-			(galaga_videoram[tile_index] & 0x7f) | (flip_screen_get() ? 0x80 : 0) | (galaga_gfxbank << 8),
+			(galaga_videoram[tile_index] & 0x7f) | (flip_screen_get(machine) ? 0x80 : 0) | (galaga_gfxbank << 8),
 			color,
-			flip_screen_get() ? TILE_FLIPX : 0);
+			flip_screen_get(machine) ? TILE_FLIPX : 0);
 	tileinfo->group = color;
 }
 
@@ -440,7 +440,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( galaga )
 {
-	tx_tilemap = tilemap_create(get_tile_info,tilemap_scan,8,8,36,28);
+	tx_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan,8,8,36,28);
 	colortable_configure_tilemap_groups(machine->colortable, tx_tilemap, machine->gfx[0], 0x1f);
 
 	galaga_gfxbank = 0;
@@ -450,10 +450,10 @@ VIDEO_START( galaga )
 	spriteram_3 = galaga_ram3 + 0x380;
 
 
-	state_save_register_global_array(galaga_starcontrol);
-	state_save_register_global(stars_scrollx);
-	state_save_register_global(stars_scrolly);
-	state_save_register_global(galaga_gfxbank);
+	state_save_register_global_array(machine, galaga_starcontrol);
+	state_save_register_global(machine, stars_scrollx);
+	state_save_register_global(machine, stars_scrolly);
+	state_save_register_global(machine, galaga_gfxbank);
 }
 
 
@@ -519,7 +519,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		sy -= 16 * sizey;
 		sy = (sy & 0xff) - 32;	// fix wraparound
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			flipx ^= 1;
 			flipy ^= 1;
@@ -581,7 +581,7 @@ static void draw_stars(bitmap_t *bitmap, const rectangle *cliprect )
 
 VIDEO_UPDATE( galaga )
 {
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 	draw_stars(bitmap,cliprect);
 	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);

@@ -205,7 +205,7 @@ static int ds1204_r(void)
 	return ds1204.out_bit;
 };
 
-static void ds1204_init(const UINT8* key, const UINT8* nvram)
+static void ds1204_init(running_machine *machine, const UINT8* key, const UINT8* nvram)
 {
 	memset(&ds1204, 0, sizeof(ds1204));
 	if (key)
@@ -213,11 +213,11 @@ static void ds1204_init(const UINT8* key, const UINT8* nvram)
 	if (nvram)
 		memcpy(ds1204.nvram, nvram, sizeof(ds1204.nvram));
 
-	state_save_register_item("ds1204", 0, ds1204.state);
-	state_save_register_item("ds1204", 0, ds1204.read_ptr);
-	state_save_register_item("ds1204", 0, ds1204.last_clk);
-	state_save_register_item("ds1204", 0, ds1204.out_bit);
-	state_save_register_item_array("ds1204", 0, ds1204.command);
+	state_save_register_item(machine, "ds1204", NULL, 0, ds1204.state);
+	state_save_register_item(machine, "ds1204", NULL, 0, ds1204.read_ptr);
+	state_save_register_item(machine, "ds1204", NULL, 0, ds1204.last_clk);
+	state_save_register_item(machine, "ds1204", NULL, 0, ds1204.out_bit);
+	state_save_register_item_array(machine, "ds1204", NULL, 0, ds1204.command);
 };
 
 /*************************************
@@ -231,9 +231,9 @@ static void pc16650d_tx_callback(int channel, int count, UINT8* data)
 	microtouch_rx(count, data);
 };
 
-static void meritm_microtouch_tx_callback(UINT8 data)
+static void meritm_microtouch_tx_callback(running_machine *machine, UINT8 data)
 {
-	pc16552d_rx_data(Machine, 0, 0, data);
+	pc16552d_rx_data(machine, 0, 0, data);
 };
 
 /*************************************
@@ -241,7 +241,7 @@ static void meritm_microtouch_tx_callback(UINT8 data)
  *  Microtouch touch coordinate transformation
  *
  *************************************/
-static int meritm_touch_coord_transform(int *touch_x, int *touch_y)
+static int meritm_touch_coord_transform(running_machine *machine, int *touch_x, int *touch_y)
 {
 	int xscr = (int)((double)(*touch_x)/0x4000*544);
 	int yscr = (int)((double)(*touch_y)/0x4000*480);
@@ -281,11 +281,11 @@ static INTERRUPT_GEN( meritm_interrupt )
 {
 	v9938_set_sprite_limit(0, 0);
 	v9938_set_resolution(0, RENDER_HIGH);
-	v9938_interrupt(0);
+	v9938_interrupt(device->machine, 0);
 
 	v9938_set_sprite_limit(1, 0);
 	v9938_set_resolution(1, RENDER_HIGH);
-	v9938_interrupt(1);
+	v9938_interrupt(device->machine, 1);
 }
 
 static void meritm_vdp0_interrupt(running_machine *machine, int i)
@@ -318,8 +318,12 @@ static void meritm_vdp1_interrupt(running_machine *machine, int i)
 	}
 }
 
+static int layer0_enabled, layer1_enabled;
+
 static VIDEO_START( meritm )
 {
+	layer0_enabled = layer1_enabled = 1;
+
 	vdp0_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 	v9938_init (machine, 0, machine->primary_screen, vdp0_bitmap, MODEL_V9938, 0x20000, meritm_vdp0_interrupt);
 	v9938_reset(0);
@@ -328,15 +332,13 @@ static VIDEO_START( meritm )
 	v9938_init (machine, 1, machine->primary_screen, vdp1_bitmap, MODEL_V9938, 0x20000, meritm_vdp1_interrupt);
 	v9938_reset(1);
 
-	state_save_register_global(meritm_vint);
-	state_save_register_global(meritm_interrupt_vdp0_state);
-	state_save_register_global(meritm_interrupt_vdp1_state);
-	state_save_register_global_bitmap(vdp0_bitmap);
-	state_save_register_global_bitmap(vdp1_bitmap);
+	state_save_register_global(machine, meritm_vint);
+	state_save_register_global(machine, meritm_interrupt_vdp0_state);
+	state_save_register_global(machine, meritm_interrupt_vdp1_state);
+	state_save_register_global_bitmap(machine, vdp0_bitmap);
+	state_save_register_global_bitmap(machine, vdp1_bitmap);
 
 }
-
-static int layer0_enabled = 1, layer1_enabled = 1;
 
 static VIDEO_UPDATE( meritm )
 {
@@ -351,7 +353,7 @@ static VIDEO_UPDATE( meritm )
 		popmessage("Layer 1 %sabled",layer1_enabled ? "en" : "dis");
 	}
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	if ( layer0_enabled )
 	{
@@ -374,20 +376,20 @@ static VIDEO_UPDATE( meritm )
 static int meritm_bank;
 static int meritm_psd_a15;
 
-static void meritm_crt250_switch_banks( void )
+static void meritm_crt250_switch_banks( running_machine *machine )
 {
 	int rombank = (meritm_bank & 0x07) ^ 0x07;
 
 	//logerror( "CRT250: Switching banks: rom = %0x (bank = %x)\n", rombank, meritm_bank );
-	memory_set_bank(1, rombank );
+	memory_set_bank(machine, 1, rombank );
 };
 
 static WRITE8_HANDLER(meritm_crt250_bank_w)
 {
-	meritm_crt250_switch_banks();
+	meritm_crt250_switch_banks(space->machine);
 };
 
-static void meritm_switch_banks( void )
+static void meritm_switch_banks( running_machine *machine )
 {
 	int rambank = (meritm_psd_a15 >> 2) & 0x3;
 	int rombank = (((meritm_bank >> 3) & 0x3) << 5) |
@@ -396,21 +398,21 @@ static void meritm_switch_banks( void )
 			  (meritm_psd_a15 & 0x1);
 
 	//logerror( "Switching banks: rom = %0x (bank = %x), ram = %0x\n", rombank, meritm_bank, rambank);
-	memory_set_bank(1, rombank );
-	memory_set_bank(2, rombank | 0x01);
-	memory_set_bank(3, rambank);
+	memory_set_bank(machine, 1, rombank );
+	memory_set_bank(machine, 2, rombank | 0x01);
+	memory_set_bank(machine, 3, rambank);
 };
 
 static WRITE8_HANDLER(meritm_psd_a15_w)
 {
 	meritm_psd_a15 = data;
-	//logerror( "Writing PSD_A15 with %02x at PC=%04X\n", data, activecpu_get_pc() );
-	meritm_switch_banks();
+	//logerror( "Writing PSD_A15 with %02x at PC=%04X\n", data, cpu_get_pc(space->cpu) );
+	meritm_switch_banks(space->machine);
 };
 
 static WRITE8_HANDLER(meritm_bank_w)
 {
-	meritm_switch_banks();
+	meritm_switch_banks(space->machine);
 };
 
 /*************************************
@@ -444,7 +446,7 @@ static WRITE8_HANDLER(meritm_crt250_questions_bank_w)
 		return;
 	}
 
-	dst = memory_region(machine, "main") + 0x70000 + 2;
+	dst = memory_region(space->machine, "main") + 0x70000 + 2;
 
 	if (data == 0)
 	{
@@ -473,7 +475,7 @@ static WRITE8_HANDLER(meritm_crt250_questions_bank_w)
 			default: logerror( "meritm_crt250_questions_bank_w: unknown data = %02x\n", data ); return;
 		}
 		logerror( "Reading question byte at %06X\n", questions_address | questions_loword_address);
-		*dst = memory_region(machine, "user1")[questions_address | questions_loword_address];
+		*dst = memory_region(space->machine, "user1")[questions_address | questions_loword_address];
 	}
 };
 
@@ -516,7 +518,7 @@ static READ8_HANDLER(meritm_ds1644_r)
 	{
 		//logerror( "Reading RTC, reg = %x\n", offset);
 
-		mame_get_current_datetime(machine, &systime);
+		mame_get_current_datetime(space->machine, &systime);
 		meritm_ram[0x7ff9] = binary_to_BCD(systime.local_time.second);
 		meritm_ram[0x7ffa] = binary_to_BCD(systime.local_time.minute);
 		meritm_ram[0x7ffb] = binary_to_BCD(systime.local_time.hour);
@@ -723,7 +725,7 @@ static const ppi8255_interface crt250_ppi8255_intf =
 
 static READ8_HANDLER(meritm_ay8930_port_a_r)
 {
-	return input_port_read_safe(machine, "DSW", 0);
+	return input_port_read_safe(space->machine, "DSW", 0);
 };
 
 static WRITE8_HANDLER(meritm_ay8930_port_b_w)
@@ -750,13 +752,13 @@ static const ay8910_interface ay8910_config =
 static void meritm_audio_pio_interrupt(const device_config *device, int state)
 {
 	//logerror( "PIO(0) interrupt line: %d, V = %d, H = %d\n", state, video_screen_get_vpos(0), video_screen_get_hpos(0) );
-	cpunum_set_input_line(device->machine, 0, 0, state);
+	cpu_set_input_line(device->machine->cpu[0], 0, state);
 }
 
 static void meritm_io_pio_interrupt(const device_config *device, int state)
 {
 	//logerror( "PIO(1) interrupt line: %d, V = %d, H = %d\n", state, video_screen_get_vpos(0), video_screen_get_hpos(0) );
-	cpunum_set_input_line(device->machine, 0, 0, state);
+	cpu_set_input_line(device->machine->cpu[0], 0, state);
 }
 
 
@@ -821,13 +823,6 @@ static const z80pio_interface meritm_io_pio_intf =
 	0
 };
 
-#ifdef UNUSED_FUNCTION
-static void meritm_pio1_portb_input_changed_callback(void *param, UINT32 oldval, UINT32 newval)
-{
-    z80pio_p_w(Machine, 1, 1, (UINT8)newval);
-}
-#endif
-
 static const z80_daisy_chain meritm_daisy_chain[] =
 {
 	{ Z80PIO, "z80pio_1" },
@@ -839,42 +834,41 @@ static MACHINE_START(merit_common)
 {
 	meritm_z80pio[0] = devtag_get_device( machine, Z80PIO, "z80pio_0" );
 	meritm_z80pio[1] = devtag_get_device( machine, Z80PIO, "z80pio_1" );
-	//input_port_set_changed_callback(port_tag_to_index("PIO1_PORTB"), 0xff, meritm_pio1_portb_input_changed_callback, NULL);
 
 };
 
 static MACHINE_START(meritm_crt250)
 {
-	memory_configure_bank(1, 0, 8, memory_region(machine, "main"), 0x10000);
+	memory_configure_bank(machine, 1, 0, 8, memory_region(machine, "main"), 0x10000);
 	meritm_bank = 0xff;
-	meritm_crt250_switch_banks();
-	machine_start_merit_common(machine);
-	state_save_register_global(meritm_bank);
+	meritm_crt250_switch_banks(machine);
+	MACHINE_START_CALL(merit_common);
+	state_save_register_global(machine, meritm_bank);
 
 };
 
 static MACHINE_START(meritm_crt250_questions)
 {
-	machine_start_meritm_crt250(machine);
-	state_save_register_global(questions_loword_address);
+	MACHINE_START_CALL(meritm_crt250);
+	state_save_register_global(machine, questions_loword_address);
 };
 
 static MACHINE_START(meritm_crt260)
 {
 	meritm_ram = auto_malloc( 0x8000 );
 	memset( meritm_ram, 0x8000, 0x00 );
-	memory_configure_bank(1, 0, 128, memory_region(machine, "main"), 0x8000);
-	memory_configure_bank(2, 0, 128, memory_region(machine, "main"), 0x8000);
-	memory_configure_bank(3, 0, 4, meritm_ram, 0x2000);
+	memory_configure_bank(machine, 1, 0, 128, memory_region(machine, "main"), 0x8000);
+	memory_configure_bank(machine, 2, 0, 128, memory_region(machine, "main"), 0x8000);
+	memory_configure_bank(machine, 3, 0, 4, meritm_ram, 0x2000);
 	meritm_bank = 0xff;
 	meritm_psd_a15 = 0;
-	meritm_switch_banks();
-	machine_start_merit_common(machine);
-	pc16552d_init(0, UART_CLK, NULL, pc16650d_tx_callback);
-	microtouch_init(meritm_microtouch_tx_callback, meritm_touch_coord_transform);
-	state_save_register_global(meritm_bank);
-	state_save_register_global(meritm_psd_a15);
-	state_save_register_global_pointer(meritm_ram, 0x8000);
+	meritm_switch_banks(machine);
+	MACHINE_START_CALL(merit_common);
+	pc16552d_init(machine, 0, UART_CLK, NULL, pc16650d_tx_callback);
+	microtouch_init(machine, meritm_microtouch_tx_callback, meritm_touch_coord_transform);
+	state_save_register_global(machine, meritm_bank);
+	state_save_register_global(machine, meritm_psd_a15);
+	state_save_register_global_pointer(machine, meritm_ram, 0x8000);
 };
 
 static NVRAM_HANDLER(meritm_crt260)
@@ -951,7 +945,7 @@ static MACHINE_DRIVER_START(meritm_crt260)
 
 	MDRV_PPI8255_RECONFIG( "ppi8255", crt260_ppi8255_intf )
 
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_MSEC(1200))	// DS1232, TD connected to VCC
+	MDRV_WATCHDOG_TIME_INIT(MSEC(1200))	// DS1232, TD connected to VCC
 	MDRV_MACHINE_START(meritm_crt260)
 
 	MDRV_NVRAM_HANDLER(meritm_crt260)
@@ -1279,6 +1273,9 @@ ROM_START( megat4sn ) /* Dallas DS1204V security key at U5 labeled 9255-40-01 U5
 	ROM_LOAD( "9255-41-07_u38-r0g", 0x300000, 0x80000,  CRC(71eac4d4) SHA1(73b9ed876f0af94bbd88503921a2b4f26bcfd397) ) /* Location U38, 02/11/1997 11:59:41 - New Jersey version */
 	ROM_RELOAD(                     0x380000, 0x80000)
 
+	ROM_REGION( 0x8000, "user1", 0 ) // nvram
+	ROM_LOAD( "megat4sn.nv",  0x0000, 0x8000, CRC(1ac8de52) SHA1(d4e7e455f581d7c5192209995af1b98d7802e50f) )
+
 	ROM_REGION( 0x1000, "user2", 0 ) // PALs
 	ROM_LOAD( "sc3943.u20",     0x000, 0x117, CRC(5a72fe78) SHA1(4b1a36904eb7048518507fe14bdade5c2589dbd7) )
 	ROM_LOAD( "sc3944-0a.u19",  0x000, 0x2dd, CRC(4cc46c5e) SHA1(0bab970df1539ce905f43603ad13171b05449a01) )
@@ -1365,7 +1362,7 @@ static DRIVER_INIT(megat3)
 	static const UINT8 megat3_ds1204_nvram[16] =
 		{ 0x51, 0xa1, 0xc0, 0x7c, 0x27, 0x6e, 0x51, 0xb9, 0xa5, 0xb2, 0x27, 0x0c, 0xb9, 0x88, 0x82, 0x2c };
 
-	ds1204_init(megat3_ds1204_key, megat3_ds1204_nvram);
+	ds1204_init(machine, megat3_ds1204_key, megat3_ds1204_nvram);
 
 };
 
@@ -1377,9 +1374,9 @@ static DRIVER_INIT(megat3te)
 	static const UINT8 megat3_ds1204_nvram[16] =
 		{ 0x99, 0x53, 0xfc, 0x29, 0x3a, 0x95, 0x8b, 0x58, 0xca, 0xca, 0x00, 0xc2, 0x30, 0x62, 0x0b, 0x96 };
 
-	ds1204_init(megat3_ds1204_key, megat3_ds1204_nvram);
+	ds1204_init(machine, megat3_ds1204_key, megat3_ds1204_nvram);
 
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfff8, 0xffff, 0, 0, meritm_ds1644_r, meritm_ds1644_w );
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfff8, 0xffff, 0, 0, meritm_ds1644_r, meritm_ds1644_w );
 
 };
 
@@ -1388,7 +1385,7 @@ static DRIVER_INIT(megat4)
 	static const UINT8 megat4_ds1204_nvram[16] =
 		{ 0xe3, 0x08, 0x39, 0xd8, 0x4c, 0xbb, 0xc4, 0xf8, 0xf0, 0xe2, 0xd8, 0x77, 0xa8, 0x3d, 0x95, 0x02 };
 
-	ds1204_init(0, megat4_ds1204_nvram);
+	ds1204_init(machine, 0, megat4_ds1204_nvram);
 }
 
 static DRIVER_INIT(megat4te)
@@ -1396,9 +1393,9 @@ static DRIVER_INIT(megat4te)
 	static const UINT8 megat4te_ds1204_nvram[16] =
 		{ 0x05, 0x21, 0x96, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00 };
 
-	ds1204_init(0, megat4te_ds1204_nvram);
+	ds1204_init(machine, 0, megat4te_ds1204_nvram);
 
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfff8, 0xffff, 0, 0, meritm_ds1644_r, meritm_ds1644_w );
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfff8, 0xffff, 0, 0, meritm_ds1644_r, meritm_ds1644_w );
 
 };
 
@@ -1407,7 +1404,7 @@ static DRIVER_INIT(megat5)
 	static const UINT8 megat5_ds1204_nvram[16] =
 		{ 0x06, 0x23, 0x97, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00 };
 
-	ds1204_init(0, megat5_ds1204_nvram);
+	ds1204_init(machine, 0, megat5_ds1204_nvram);
 
 }
 
@@ -1416,7 +1413,7 @@ static DRIVER_INIT(megat6)
 	static const UINT8 megat6_ds1204_nvram[16] =
 		{ 0x07, 0x15, 0x98, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00 };
 
-	ds1204_init(0, megat6_ds1204_nvram);
+	ds1204_init(machine, 0, megat6_ds1204_nvram);
 
 }
 
@@ -1436,7 +1433,7 @@ GAME( 1995, megat3nj,  megat3, meritm_crt260, meritm_crt260, megat3,   ROT0, "Me
 GAME( 1996, megat3te,  megat3, meritm_crt260, meritm_crt260, megat3te, ROT0, "Merit", "Megatouch III Tournament Edition (9255-30-01 ROE, Standard version)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1996, megat4,    0,      meritm_crt260, meritm_crt260, megat4,   ROT0, "Merit", "Megatouch IV (9255-40-01 ROE, Standard version)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1996, megat4a,   megat4, meritm_crt260, meritm_crt260, megat4,   ROT0, "Merit", "Megatouch IV (9255-40-01 ROD, Standard version)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1996, megat4sn,  megat4, meritm_crt260, meritm_crt260, megat4,   ROT0, "Merit", "Super Megatouch IV (9255-41-07 ROG, New Jersey version)", GAME_IMPERFECT_GRAPHICS|GAME_NOT_WORKING )
+GAME( 1996, megat4sn,  megat4, meritm_crt260, meritm_crt260, megat4,   ROT0, "Merit", "Super Megatouch IV (9255-41-07 ROG, New Jersey version)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1996, megat4te,  megat4, meritm_crt260, meritm_crt260, megat4te, ROT0, "Merit", "Megatouch IV Tournament Edition (9255-50-01 ROD, Standard version)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1997, megat5,    0,      meritm_crt260, meritm_crt260, megat5,   ROT0, "Merit", "Megatouch 5 (9255-60-01 ROC, Standard version)", GAME_IMPERFECT_GRAPHICS|GAME_NOT_WORKING )
 GAME( 1998, megat5nj,  megat5, meritm_crt260, meritm_crt260, megat5,   ROT0, "Merit", "Megatouch 5 (9255-60-07 RON, New Jersey version)", GAME_IMPERFECT_GRAPHICS )

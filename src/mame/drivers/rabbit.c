@@ -81,6 +81,7 @@ Custom: Imagetek 15000 (2ch video & 2ch sound)
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "machine/eeprom.h"
 
@@ -224,7 +225,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 	UINT32 *source = (rabbit_spriteram+ (todraw*2))-2;
 	UINT32 *finish = rabbit_spriteram;
 
-//  fillbitmap(rabbit_sprite_bitmap, 0x0, &rabbit_sprite_clip); // sloooow
+//  bitmap_fill(rabbit_sprite_bitmap, &rabbit_sprite_clip, 0x0); // sloooow
 
 	while( source>=finish )
 	{
@@ -347,10 +348,10 @@ static VIDEO_START(rabbit)
 	memset(rabbit_tilemap_ram[2], 0, 0x20000);
 	memset(rabbit_tilemap_ram[3], 0, 0x20000);
 
-	rabbit_tilemap[0] = tilemap_create(get_rabbit_tilemap0_tile_info,tilemap_scan_rows,16, 16, 128,32);
-	rabbit_tilemap[1] = tilemap_create(get_rabbit_tilemap1_tile_info,tilemap_scan_rows,16, 16, 128,32);
-	rabbit_tilemap[2] = tilemap_create(get_rabbit_tilemap2_tile_info,tilemap_scan_rows,16, 16, 128,32);
-	rabbit_tilemap[3] = tilemap_create(get_rabbit_tilemap3_tile_info,tilemap_scan_rows, 8,  8, 128,32);
+	rabbit_tilemap[0] = tilemap_create(machine, get_rabbit_tilemap0_tile_info,tilemap_scan_rows,16, 16, 128,32);
+	rabbit_tilemap[1] = tilemap_create(machine, get_rabbit_tilemap1_tile_info,tilemap_scan_rows,16, 16, 128,32);
+	rabbit_tilemap[2] = tilemap_create(machine, get_rabbit_tilemap2_tile_info,tilemap_scan_rows,16, 16, 128,32);
+	rabbit_tilemap[3] = tilemap_create(machine, get_rabbit_tilemap3_tile_info,tilemap_scan_rows, 8,  8, 128,32);
 	tilemap_set_transparent_pen(rabbit_tilemap[0],0x0);
 	tilemap_set_transparent_pen(rabbit_tilemap[1],0x0);
 	tilemap_set_transparent_pen(rabbit_tilemap[2],0x0);
@@ -411,7 +412,7 @@ static VIDEO_UPDATE(rabbit)
 {
 	int prilevel;
 
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 //  popmessage("%08x %08x", rabbit_viewregs0[0], rabbit_viewregs0[1]);
 //  popmessage("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[0][0],rabbit_tilemap_regs[0][1],rabbit_tilemap_regs[0][2],rabbit_tilemap_regs[0][3],rabbit_tilemap_regs[0][4],rabbit_tilemap_regs[0][5]);
@@ -454,7 +455,7 @@ static WRITE32_HANDLER( rabbit_paletteram_dword_w )
 	r = ((paletteram32[offset] & 0x0000ff00) >>8);
 	g = ((paletteram32[offset] & 0x00ff0000) >>16);
 
-	palette_set_color(machine,offset^0xff,MAKE_RGB(r,g,b));
+	palette_set_color(space->machine,offset^0xff,MAKE_RGB(r,g,b));
 }
 
 static READ32_HANDLER( rabbit_tilemap0_r )
@@ -479,7 +480,7 @@ static READ32_HANDLER( rabbit_tilemap3_r )
 
 static READ32_HANDLER( randomrabbits )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 static ADDRESS_MAP_START( rabbit_readmem, ADDRESS_SPACE_PROGRAM, 32 )
@@ -502,13 +503,13 @@ ADDRESS_MAP_END
 /* rom bank is used when testing roms, not currently hooked up */
 static WRITE32_HANDLER ( rabbit_rombank_w )
 {
-	UINT8 *dataroms = memory_region(machine, "gfx1");
+	UINT8 *dataroms = memory_region(space->machine, "gfx1");
 	int bank;
 //  mame_printf_debug("rabbit rombank %08x\n",data&0x3ff);
 	bank = data & 0x3ff;
 
-//  memory_set_bankptr(1,&dataroms[0x40000*(bank&0x3ff)]);
-	memory_set_bankptr(1,&dataroms[0]);
+//  memory_set_bankptr(space->machine, 1,&dataroms[0x40000*(bank&0x3ff)]);
+	memory_set_bankptr(space->machine, 1,&dataroms[0]);
 }
 
 /*
@@ -592,7 +593,7 @@ if (VERBOSE_AUDIO_LOG)
 
 static TIMER_CALLBACK( rabbit_blit_done )
 {
-	cpunum_set_input_line(machine, 0, rabbit_bltirqlevel, HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0], rabbit_bltirqlevel, HOLD_LINE);
 }
 
 static void rabbit_do_blit(running_machine *machine)
@@ -639,7 +640,7 @@ static void rabbit_do_blit(running_machine *machine)
 				if (!blt_amount)
 				{
 					if(BLITLOG) mame_printf_debug("end of blit list\n");
-					timer_set(ATTOTIME_IN_USEC(500), NULL,0,rabbit_blit_done);
+					timer_set(machine, ATTOTIME_IN_USEC(500), NULL,0,rabbit_blit_done);
 					return;
 				}
 
@@ -696,7 +697,7 @@ static WRITE32_HANDLER( rabbit_blitter_w )
 
 	if (offset == 0x0c/4)
 	{
-		rabbit_do_blit(machine);
+		rabbit_do_blit(space->machine);
 	}
 }
 
@@ -774,7 +775,7 @@ static WRITE32_HANDLER( tmmjprd_paletteram_dword_w )
 	r = ((paletteram32[offset] & 0x0000ff00) >>8);
 	g = ((paletteram32[offset] & 0x00ff0000) >>16);
 
-	palette_set_color(machine,(offset^0xff)+0x2000,MAKE_RGB(r,g,b));
+	palette_set_color(space->machine,(offset^0xff)+0x2000,MAKE_RGB(r,g,b));
 }
 
 
@@ -1031,7 +1032,7 @@ static INTERRUPT_GEN( rabbit_interrupts )
 {
 	int intlevel = 0;
 
-	int line = 262 - cpu_getiloops();
+	int line = 262 - cpu_getiloops(device);
 
 	if(line==262)
 	{
@@ -1042,7 +1043,7 @@ static INTERRUPT_GEN( rabbit_interrupts )
 		return;
 	}
 
-	cpunum_set_input_line(machine, 0, intlevel, HOLD_LINE);
+	cpu_set_input_line(device, intlevel, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( rabbit )
@@ -1116,10 +1117,10 @@ static VIDEO_START(tmmjprd)
 	memset(rabbit_tilemap_ram[2], 0, 0x20000);
 	memset(rabbit_tilemap_ram[3], 0, 0x20000);
 
-	rabbit_tilemap[0] = tilemap_create(get_tmmjprd_tilemap0_tile_info,tilemap_scan_rows, 8, 8, 64, 64);
-	rabbit_tilemap[1] = tilemap_create(get_tmmjprd_tilemap1_tile_info,tilemap_scan_rows,16, 16, 64, 64);
-	rabbit_tilemap[2] = tilemap_create(get_tmmjprd_tilemap2_tile_info,tilemap_scan_rows,16, 16, 64, 64);
-	rabbit_tilemap[3] = tilemap_create(get_tmmjprd_tilemap3_tile_info,tilemap_scan_rows,16, 16, 64, 64);
+	rabbit_tilemap[0] = tilemap_create(machine, get_tmmjprd_tilemap0_tile_info,tilemap_scan_rows, 8, 8, 64, 64);
+	rabbit_tilemap[1] = tilemap_create(machine, get_tmmjprd_tilemap1_tile_info,tilemap_scan_rows,16, 16, 64, 64);
+	rabbit_tilemap[2] = tilemap_create(machine, get_tmmjprd_tilemap2_tile_info,tilemap_scan_rows,16, 16, 64, 64);
+	rabbit_tilemap[3] = tilemap_create(machine, get_tmmjprd_tilemap3_tile_info,tilemap_scan_rows,16, 16, 64, 64);
 	tilemap_set_transparent_pen(rabbit_tilemap[0],0x0);
 	tilemap_set_transparent_pen(rabbit_tilemap[1],0x0);
 	tilemap_set_transparent_pen(rabbit_tilemap[2],0x0);
@@ -1152,7 +1153,7 @@ static VIDEO_UPDATE( tmmjprd )
 
 //  popmessage("%08x %08x %08x %08x %08x", rabbit_viewregs10[0],rabbit_viewregs10[1],rabbit_viewregs10[2],rabbit_viewregs10[3],rabbit_viewregs10[4]);
 
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 	tilemap_draw(bitmap,cliprect,rabbit_tilemap[3],0,0);
 	tilemap_draw(bitmap,cliprect,rabbit_tilemap[1],0,0); //same as 3?
 	tilemap_draw(bitmap,cliprect,rabbit_tilemap[2],0,0);
@@ -1165,12 +1166,12 @@ static INTERRUPT_GEN( tmmjprd_interrupt )
 {
 	int intlevel = 0;
 
-	if (cpu_getiloops()==0)
+	if (cpu_getiloops(device)==0)
 		intlevel = 5;
 	else
 		intlevel = 3;
 
-	cpunum_set_input_line(machine, 0, intlevel, HOLD_LINE);
+	cpu_set_input_line(device, intlevel, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( tmmjprd )

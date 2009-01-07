@@ -11,6 +11,8 @@
 #ifndef __SH2COMN_H__
 #define __SH2COMN_H__
 
+#include "timer.h"
+
 #define USE_SH2DRC
 
 #ifdef USE_SH2DRC
@@ -81,7 +83,7 @@ do {											\
 	if (sh2->pending_irq & (1 << 15)) irq = 15;	\
 	if ((sh2->internal_irq_level != -1) && (sh2->internal_irq_level > irq)) irq = sh2->internal_irq_level; \
 	if (irq >= 0)								\
-		sh2_exception(message,irq); 			\
+		sh2_exception(sh2,message,irq);			\
 } while(0)
 
 typedef struct
@@ -111,7 +113,10 @@ typedef struct
 	UINT32 pcflushes[16];			// pcflush entries
 
 	INT8	irq_line_state[17];
-	int 	(*irq_callback)(int irqline);
+	cpu_irq_callback irq_callback;
+	const device_config *device;
+	const address_space *program;
+	const address_space *internal;
 	UINT32	*m;
 	INT8  nmi_line_state;
 
@@ -127,7 +132,8 @@ typedef struct
 	emu_timer *dma_timer[2];
 	int     dma_timer_active[2];
 
-	int     is_slave, cpu_number, cpu_type;
+	int     is_slave, cpu_type;
+	int  (*dma_callback_kludge)(UINT32 src, UINT32 dst, UINT32 data, int size);
 
 	void	(*ftcsr_read_callback)(UINT32 data);
 
@@ -168,10 +174,10 @@ typedef struct
 TIMER_CALLBACK( sh2_timer_callback );
 TIMER_CALLBACK( sh2_dmac_callback );
 
-void sh2_common_init(int alloc, int index, int clock, const void *config, int (*irqcallback)(int));
-void sh2_recalc_irq(void);
-void sh2_set_irq_line(int irqline, int state);
-void sh2_set_frt_input(int cpunum, int state);
-void sh2_exception(const char *message, int irqline);
+void sh2_common_init(SH2 *sh2, const device_config *device, cpu_irq_callback irqcallback);
+void sh2_recalc_irq(SH2 *sh2);
+void sh2_set_irq_line(SH2 *sh2, int irqline, int state);
+void sh2_set_frt_input(const device_config *device, int state);
+void sh2_exception(SH2 *sh2, const char *message, int irqline);
 
 #endif /* __SH2COMN_H__ */

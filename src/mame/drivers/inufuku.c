@@ -72,10 +72,8 @@ TODO:
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
 #include "sound/2610intf.h"
+#include "includes/inufuku.h"
 
-
-VIDEO_UPDATE( inufuku );
-VIDEO_START( inufuku );
 
 UINT16 *inufuku_bg_videoram;
 UINT16 *inufuku_bg_rasterram;
@@ -84,14 +82,6 @@ UINT16 *inufuku_spriteram1;
 UINT16 *inufuku_spriteram2;
 size_t inufuku_spriteram1_size;
 static UINT16 pending_command;
-
-WRITE16_HANDLER( inufuku_paletteram_w );
-READ16_HANDLER( inufuku_bg_videoram_r );
-WRITE16_HANDLER( inufuku_bg_videoram_w );
-READ16_HANDLER( inufuku_text_videoram_r );
-WRITE16_HANDLER( inufuku_text_videoram_w );
-WRITE16_HANDLER( inufuku_palettereg_w );
-WRITE16_HANDLER( inufuku_scrollreg_w );
 
 
 /******************************************************************************
@@ -108,8 +98,8 @@ static WRITE16_HANDLER( inufuku_soundcommand_w )
 		if (data == 0x08) return;
 
 		pending_command = 1;
-		soundlatch_w(machine, 0, data & 0xff);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(space, 0, data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -120,9 +110,9 @@ static WRITE8_HANDLER( pending_command_clear_w )
 
 static WRITE8_HANDLER( inufuku_soundrombank_w )
 {
-	UINT8 *ROM = memory_region(machine, "audio") + 0x10000;
+	UINT8 *ROM = memory_region(space->machine, "audio") + 0x10000;
 
-	memory_set_bankptr(1, ROM + (data & 0x03) * 0x8000);
+	memory_set_bankptr(space->machine, 1, ROM + (data & 0x03) * 0x8000);
 }
 
 
@@ -139,8 +129,9 @@ static MACHINE_RESET( inufuku )
 
 static DRIVER_INIT( inufuku )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	pending_command = 1;
-	inufuku_soundrombank_w(machine, 0, 0);
+	inufuku_soundrombank_w(space, 0, 0);
 }
 
 
@@ -363,7 +354,7 @@ GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =

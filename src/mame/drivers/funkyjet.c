@@ -88,6 +88,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/h6280/h6280.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
@@ -299,7 +300,7 @@ GFXDECODE_END
 
 static void sound_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 1,1,state); /* IRQ 2 */
+	cpu_set_input_line(machine->cpu[1],1,state); /* IRQ 2 */
 }
 
 static const ym2151_interface ym2151_config =

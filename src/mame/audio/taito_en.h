@@ -1,3 +1,4 @@
+#include "cpu/m68000/m68000.h"
 #include "sound/es5506.h"
 
 READ16_HANDLER(f3_68000_share_r);
@@ -8,7 +9,7 @@ READ16_HANDLER(es5510_dsp_r);
 WRITE16_HANDLER(es5510_dsp_w);
 WRITE16_HANDLER(f3_volume_w);
 WRITE16_HANDLER(f3_es5505_bank_w);
-void f3_68681_reset(void);
+void f3_68681_reset(running_machine *machine);
 
 void taito_f3_soundsystem_reset(running_machine *machine);
 

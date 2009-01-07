@@ -31,10 +31,10 @@
 /*----------- defined in drivers/neogeo.c -----------*/
 
 void neogeo_set_display_position_interrupt_control(UINT16 data);
-void neogeo_set_display_counter_msb(UINT16 data);
-void neogeo_set_display_counter_lsb(running_machine *machine, UINT16 data);
+void neogeo_set_display_counter_msb(const address_space *space, UINT16 data);
+void neogeo_set_display_counter_lsb(const address_space *space, UINT16 data);
 void neogeo_acknowledge_interrupt(running_machine *machine, UINT16 data);
-void neogeo_set_main_cpu_bank_address(running_machine *machine, UINT32 bank_address);
+void neogeo_set_main_cpu_bank_address(const address_space *space, UINT32 bank_address);
 READ16_HANDLER( neogeo_unmapped_r );
 
 
@@ -93,8 +93,9 @@ void decrypt_kof10th(running_machine *machine);
 void decrypt_kf10thep(running_machine *machine);
 void decrypt_kf2k5uni(running_machine *machine);
 void neogeo_bootleg_sx_decrypt(running_machine *machine, int value);
+void kof2002b_gfx_decrypt(running_machine *machine, UINT8 *src, int size);
 void kf2k2mp_decrypt(running_machine *machine);
-void kof2km2_px_decrypt(running_machine *machine);
+void kf2k2mp2_px_decrypt(running_machine *machine);
 void decrypt_cthd2003(running_machine *machine);
 void patch_cthd2003(running_machine *machine);
 void decrypt_ct2k3sp(running_machine *machine);

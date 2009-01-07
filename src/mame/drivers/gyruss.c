@@ -13,12 +13,12 @@ a200-a27f /
 memory mapped ports:
 
 read:
-c080      IN0
+c080      IN0  (system inputs)
 c0a0      IN1
 c0c0      IN2
-c0e0      DSW0
-c000      DSW1
-c100      DSW2
+c0e0      DSW1
+c000      DSW2
+c100      DSW3
 
 write:
 a000-a1ff  Odd frame spriteram
@@ -56,6 +56,8 @@ and 1 SFX channel controlled by an 8039:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m6809/m6809.h"
 #include "machine/konami1.h"
 #include "cpu/mcs48/mcs48.h"
 #include "sound/ay8910.h"
@@ -96,21 +98,21 @@ static const int gyruss_timer[10] =
 
 static READ8_HANDLER( gyruss_portA_r )
 {
-	return gyruss_timer[(activecpu_gettotalcycles()/1024) % 10];
+	return gyruss_timer[(cputag_get_total_cycles(space->machine, "audio") / 1024) % 10];
 }
 
 
 static WRITE8_HANDLER( gyruss_dac_w )
 {
-	discrete_sound_w(machine, NODE(16), data);
+	discrete_sound_w(space, NODE(16), data);
 }
 
 static WRITE8_HANDLER( gyruss_irq_clear_w )
 {
-	cputag_set_input_line(machine, "audio2", 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audio2", 0, CLEAR_LINE);
 }
 
-static void filter_w(running_machine *machine, int chip, int data)
+static void filter_w(const address_space *space, int chip, int data)
 {
 	int i;
 
@@ -119,31 +121,31 @@ static void filter_w(running_machine *machine, int chip, int data)
 	{
 		/* low bit: 47000pF = 0.047uF */
 		/* high bit: 220000pF = 0.22uF */
-		discrete_sound_w(machine, NODE(3 * chip + i + 21), data & 3);
+		discrete_sound_w(space, NODE(3 * chip + i + 21), data & 3);
 		data >>= 2;
 	}
 }
 
 static WRITE8_HANDLER( gyruss_filter0_w )
 {
-	filter_w(machine, 0,data);
+	filter_w(space, 0,data);
 }
 
 static WRITE8_HANDLER( gyruss_filter1_w )
 {
-	filter_w(machine, 1,data);
+	filter_w(space, 1,data);
 }
 
 
 static WRITE8_HANDLER( gyruss_sh_irqtrigger_w )
 {
 	/* writing to this register triggers IRQ on the sound CPU */
-	cputag_set_input_line_and_vector(machine, "audio", 0, HOLD_LINE, 0xff);
+	cputag_set_input_line_and_vector(space->machine, "audio", 0, HOLD_LINE, 0xff);
 }
 
 static WRITE8_HANDLER( gyruss_i8039_irq_w )
 {
-	cputag_set_input_line(machine, "audio2", 0, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "audio2", 0, ASSERT_LINE);
 }
 
 
@@ -221,43 +223,27 @@ static INPUT_PORTS_START( gyruss )
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_2WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_2WAY
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_2WAY
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_2WAY
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_2WAY
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* 1p shoot 2 - unused */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* 2p shoot 3 - unused */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_COCKTAIL
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_2WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_2WAY PORT_COCKTAIL
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_2WAY PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_2WAY PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_2WAY PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* 2p shoot 2 - unused */
-	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START("DSW1")
-	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x50, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( 3C_2C ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 4C_3C ) )
-	PORT_DIPSETTING(    0xf0, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( 3C_4C ) )
-	PORT_DIPSETTING(    0x70, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0xe0, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x60, DEF_STR( 2C_5C ) )
-	PORT_DIPSETTING(    0xd0, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
-	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_6C ) )
-	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
+	PORT_START("DSW1")   /* 8P Dip Switch */
+	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )           PORT_DIPLOCATION("SW1:1,2,3,4")
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
@@ -274,20 +260,37 @@ static INPUT_PORTS_START( gyruss )
 	PORT_DIPSETTING(    0x0a, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x09, DEF_STR( 1C_7C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
+	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_B ) )           PORT_DIPLOCATION("SW1:5,6,7,8")
+	PORT_DIPSETTING(    0x20, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(    0x50, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( 3C_2C ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( 4C_3C ) )
+	PORT_DIPSETTING(    0xf0, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x30, DEF_STR( 3C_4C ) )
+	PORT_DIPSETTING(    0x70, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(    0xe0, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x60, DEF_STR( 2C_5C ) )
+	PORT_DIPSETTING(    0xd0, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
+	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_6C ) )
+	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
 
-	PORT_START("DSW2")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
+	PORT_START("DSW2")   /* 8P Dip Switch */
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )            PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(    0x03, "3" )
 	PORT_DIPSETTING(    0x02, "4" )
 	PORT_DIPSETTING(    0x01, "5" )
 	PORT_DIPSETTING(    0x00, "255 (Cheat)")
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Cabinet ) )          PORT_DIPLOCATION("SW2:3")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x08, "30000 60000" )
-	PORT_DIPSETTING(    0x00, "40000 70000" )
-	PORT_DIPNAME( 0x70, 0x70, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Bonus_Life ) )       PORT_DIPLOCATION("SW2:4")     /* tables at 0x1653 (15 bytes) or 0x4bf3 (13 bytes) */
+	PORT_DIPSETTING(    0x08, "30k 90k 60k+" )              /* last bonus life at 810k : max. 14 bonus lives */
+	PORT_DIPSETTING(    0x00, "40k 110k 70k+" )             /* last bonus life at 810k : max. 12 bonus lives */
+	PORT_DIPNAME( 0x70, 0x30, DEF_STR( Difficulty ) )       PORT_DIPLOCATION("SW2:5,6,7")
 	PORT_DIPSETTING(    0x70, "1 (Easiest)" )
 	PORT_DIPSETTING(    0x60, "2" )
 	PORT_DIPSETTING(    0x50, "3" )
@@ -296,26 +299,32 @@ static INPUT_PORTS_START( gyruss )
 	PORT_DIPSETTING(    0x20, "6" )
 	PORT_DIPSETTING(    0x10, "7" )
 	PORT_DIPSETTING(    0x00, "8 (Hardest)" )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )      PORT_DIPLOCATION("SW2:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START("DSW3")
-	PORT_DIPNAME( 0x01, 0x00, "Demo Music" )
+	PORT_START("DSW3")   /* 1P Dip Switch */
+	PORT_DIPNAME( 0x01, 0x00, "Demo Music" )                PORT_DIPLOCATION("SW3:1")
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	/* other bits probably unused */
 INPUT_PORTS_END
 
-/* This is identical to gyruss except for the bonus that has different
-   values */
 static INPUT_PORTS_START( gyrussce )
 	PORT_INCLUDE( gyruss )
 
-	PORT_MODIFY("DSW1")
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x08, "50000 70000" )
-	PORT_DIPSETTING(    0x00, "60000 80000" )
+	PORT_MODIFY("DSW2")
+	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Bonus_Life ) )       PORT_DIPLOCATION("SW2:3")     /* tables at 0x1653 (15 bytes) or 0x4bf3 (13 bytes) */
+	PORT_DIPSETTING(    0x08, "50k 120k 70k+" )             /* last bonus life at 960k : max. 14 bonus lives */
+	PORT_DIPSETTING(    0x00, "60k 140k 80k+" )             /* last bonus life at 940k : max. 12 bonus lives */
+	PORT_DIPNAME( 0x70, 0x20, DEF_STR( Difficulty ) )       PORT_DIPLOCATION("SW2:5,6,7") /* "Difficult" default setting according to Centuri manual */
+	PORT_DIPSETTING(    0x70, "1 (Easiest)" )
+	PORT_DIPSETTING(    0x60, "2" )
+	PORT_DIPSETTING(    0x50, "3" )
+	PORT_DIPSETTING(    0x40, "4" )
+	PORT_DIPSETTING(    0x30, "5 (Average)" )
+	PORT_DIPSETTING(    0x20, "6" )
+	PORT_DIPSETTING(    0x10, "7" )
+	PORT_DIPSETTING(    0x00, "8 (Hardest)" )
 INPUT_PORTS_END
 
 
@@ -512,7 +521,7 @@ static MACHINE_DRIVER_START( gyruss )
 	MDRV_CPU_PROGRAM_MAP(audio_cpu2_map,0)
 	MDRV_CPU_IO_MAP(audio_cpu2_io_map,0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -682,6 +691,6 @@ static DRIVER_INIT( gyruss )
 }
 
 
-GAME( 1983, gyruss,   0,      gyruss, gyruss,   gyruss, ROT90, "Konami", "Gyruss (Konami)", GAME_SUPPORTS_SAVE )
-GAME( 1983, gyrussce, gyruss, gyruss, gyrussce, gyruss, ROT90, "Konami (Centuri license)", "Gyruss (Centuri)", GAME_SUPPORTS_SAVE )
-GAME( 1983, venus,    gyruss, gyruss, gyrussce, gyruss, ROT90, "bootleg", "Venus", GAME_SUPPORTS_SAVE )
+GAME( 1983, gyruss,   0,        gyruss,   gyruss,   gyruss, ROT90, "Konami", "Gyruss (Konami)", GAME_SUPPORTS_SAVE )
+GAME( 1983, gyrussce, gyruss,   gyruss,   gyrussce, gyruss, ROT90, "Konami (Centuri license)", "Gyruss (Centuri)", GAME_SUPPORTS_SAVE )
+GAME( 1983, venus,    gyruss,   gyruss,   gyruss,   gyruss, ROT90, "bootleg", "Venus", GAME_SUPPORTS_SAVE )

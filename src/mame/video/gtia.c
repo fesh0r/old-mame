@@ -78,67 +78,67 @@ void gtia_init(running_machine *machine, const gtia_interface *intf)
 
 static void gtia_state(running_machine *machine)
 {
-	state_save_register_global(gtia.r.m0pf);
-	state_save_register_global(gtia.r.m1pf);
-	state_save_register_global(gtia.r.m2pf);
-	state_save_register_global(gtia.r.m3pf);
-	state_save_register_global(gtia.r.p0pf);
-	state_save_register_global(gtia.r.p1pf);
-	state_save_register_global(gtia.r.p2pf);
-	state_save_register_global(gtia.r.p3pf);
-	state_save_register_global(gtia.r.m0pl);
-	state_save_register_global(gtia.r.m1pl);
-	state_save_register_global(gtia.r.m2pl);
-	state_save_register_global(gtia.r.m3pl);
-	state_save_register_global(gtia.r.p0pl);
-	state_save_register_global(gtia.r.p1pl);
-	state_save_register_global(gtia.r.p2pl);
-	state_save_register_global(gtia.r.p3pl);
-	state_save_register_global_array(gtia.r.but);
-	state_save_register_global(gtia.r.pal);
-	state_save_register_global(gtia.r.gtia15);
-	state_save_register_global(gtia.r.gtia16);
-	state_save_register_global(gtia.r.gtia17);
-	state_save_register_global(gtia.r.gtia18);
-	state_save_register_global(gtia.r.gtia19);
-	state_save_register_global(gtia.r.gtia1a);
-	state_save_register_global(gtia.r.gtia1b);
-	state_save_register_global(gtia.r.gtia1c);
-	state_save_register_global(gtia.r.gtia1d);
-	state_save_register_global(gtia.r.gtia1e);
-	state_save_register_global(gtia.r.cons);
-	state_save_register_global(gtia.w.hposp0);
-	state_save_register_global(gtia.w.hposp1);
-	state_save_register_global(gtia.w.hposp2);
-	state_save_register_global(gtia.w.hposp3);
-	state_save_register_global(gtia.w.hposm0);
-	state_save_register_global(gtia.w.hposm1);
-	state_save_register_global(gtia.w.hposm2);
-	state_save_register_global(gtia.w.hposm3);
-	state_save_register_global(gtia.w.sizep0);
-	state_save_register_global(gtia.w.sizep1);
-	state_save_register_global(gtia.w.sizep2);
-	state_save_register_global(gtia.w.sizep3);
-	state_save_register_global(gtia.w.sizem);
-	state_save_register_global_array(gtia.w.grafp0);
-	state_save_register_global_array(gtia.w.grafp1);
-	state_save_register_global_array(gtia.w.grafp2);
-	state_save_register_global_array(gtia.w.grafp3);
-	state_save_register_global_array(gtia.w.grafm);
-	state_save_register_global(gtia.w.colpm0);
-	state_save_register_global(gtia.w.colpm1);
-	state_save_register_global(gtia.w.colpm2);
-	state_save_register_global(gtia.w.colpm3);
-	state_save_register_global(gtia.w.colpf0);
-	state_save_register_global(gtia.w.colpf1);
-	state_save_register_global(gtia.w.colpf2);
-	state_save_register_global(gtia.w.colpf3);
-	state_save_register_global(gtia.w.colbk);
-	state_save_register_global(gtia.w.prior);
-	state_save_register_global(gtia.w.vdelay);
-	state_save_register_global(gtia.w.gractl);
-	state_save_register_global(gtia.w.hitclr);
-	state_save_register_global(gtia.w.cons);
+	state_save_register_global(machine, gtia.r.m0pf);
+	state_save_register_global(machine, gtia.r.m1pf);
+	state_save_register_global(machine, gtia.r.m2pf);
+	state_save_register_global(machine, gtia.r.m3pf);
+	state_save_register_global(machine, gtia.r.p0pf);
+	state_save_register_global(machine, gtia.r.p1pf);
+	state_save_register_global(machine, gtia.r.p2pf);
+	state_save_register_global(machine, gtia.r.p3pf);
+	state_save_register_global(machine, gtia.r.m0pl);
+	state_save_register_global(machine, gtia.r.m1pl);
+	state_save_register_global(machine, gtia.r.m2pl);
+	state_save_register_global(machine, gtia.r.m3pl);
+	state_save_register_global(machine, gtia.r.p0pl);
+	state_save_register_global(machine, gtia.r.p1pl);
+	state_save_register_global(machine, gtia.r.p2pl);
+	state_save_register_global(machine, gtia.r.p3pl);
+	state_save_register_global_array(machine, gtia.r.but);
+	state_save_register_global(machine, gtia.r.pal);
+	state_save_register_global(machine, gtia.r.gtia15);
+	state_save_register_global(machine, gtia.r.gtia16);
+	state_save_register_global(machine, gtia.r.gtia17);
+	state_save_register_global(machine, gtia.r.gtia18);
+	state_save_register_global(machine, gtia.r.gtia19);
+	state_save_register_global(machine, gtia.r.gtia1a);
+	state_save_register_global(machine, gtia.r.gtia1b);
+	state_save_register_global(machine, gtia.r.gtia1c);
+	state_save_register_global(machine, gtia.r.gtia1d);
+	state_save_register_global(machine, gtia.r.gtia1e);
+	state_save_register_global(machine, gtia.r.cons);
+	state_save_register_global(machine, gtia.w.hposp0);
+	state_save_register_global(machine, gtia.w.hposp1);
+	state_save_register_global(machine, gtia.w.hposp2);
+	state_save_register_global(machine, gtia.w.hposp3);
+	state_save_register_global(machine, gtia.w.hposm0);
+	state_save_register_global(machine, gtia.w.hposm1);
+	state_save_register_global(machine, gtia.w.hposm2);
+	state_save_register_global(machine, gtia.w.hposm3);
+	state_save_register_global(machine, gtia.w.sizep0);
+	state_save_register_global(machine, gtia.w.sizep1);
+	state_save_register_global(machine, gtia.w.sizep2);
+	state_save_register_global(machine, gtia.w.sizep3);
+	state_save_register_global(machine, gtia.w.sizem);
+	state_save_register_global_array(machine, gtia.w.grafp0);
+	state_save_register_global_array(machine, gtia.w.grafp1);
+	state_save_register_global_array(machine, gtia.w.grafp2);
+	state_save_register_global_array(machine, gtia.w.grafp3);
+	state_save_register_global_array(machine, gtia.w.grafm);
+	state_save_register_global(machine, gtia.w.colpm0);
+	state_save_register_global(machine, gtia.w.colpm1);
+	state_save_register_global(machine, gtia.w.colpm2);
+	state_save_register_global(machine, gtia.w.colpm3);
+	state_save_register_global(machine, gtia.w.colpf0);
+	state_save_register_global(machine, gtia.w.colpf1);
+	state_save_register_global(machine, gtia.w.colpf2);
+	state_save_register_global(machine, gtia.w.colpf3);
+	state_save_register_global(machine, gtia.w.colbk);
+	state_save_register_global(machine, gtia.w.prior);
+	state_save_register_global(machine, gtia.w.vdelay);
+	state_save_register_global(machine, gtia.w.gractl);
+	state_save_register_global(machine, gtia.w.hitclr);
+	state_save_register_global(machine, gtia.w.cons);
 	state_save_register_postload(machine, gtia_state_postload, NULL);
 }
 
@@ -154,9 +154,11 @@ static int is_ntsc(running_machine *machine)
 static void gtia_reset(running_machine *machine)
 {
 	int i;
-    /* reset the GTIA read/write/helper registers */
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	/* reset the GTIA read/write/helper registers */
 	for (i = 0; i < 32; i++)
-		atari_gtia_w(machine,i,0);
+		atari_gtia_w(space,i,0);
     memset(&gtia.r, 0, sizeof(gtia.r));
 	if (is_ntsc(machine))
 		gtia.r.pal = 0xff;
@@ -225,7 +227,7 @@ READ8_HANDLER( atari_gtia_r )
 		case 30: return gtia.r.gtia1e;
 
 		case 31:
-			gtia.r.cons = gtia.intf.console_read ? (gtia.intf.console_read() & 0x0F) : 0x00;
+			gtia.r.cons = gtia.intf.console_read ? (gtia.intf.console_read(space) & 0x0F) : 0x00;
 			return gtia.r.cons;
     }
     return 0xff;
@@ -750,7 +752,7 @@ WRITE8_HANDLER( atari_gtia_w )
 			break;
 		gtia.w.cons  = data;
 		if (gtia.intf.console_write)
-			gtia.intf.console_write(gtia.w.cons);
+			gtia.intf.console_write(space, gtia.w.cons);
 		break;
     }
 }
@@ -1066,21 +1068,21 @@ void gtia_render(VIDEO *video)
  ***************************************************************/
 #define GTIA1(s) COPY4(dst, antic.pf_gtia1[video->data[s]])
 
-void gtia_mode_1_32(VIDEO *video)
+ANTIC_RENDERER( gtia_mode_1_32 )
 {
-	PREPARE_GFXG1(32);
+	PREPARE_GFXG1(space, 32);
 	REP32(GTIA1);
 	POST_GFX(32);
 }
-void gtia_mode_1_40(VIDEO *video)
+ANTIC_RENDERER( gtia_mode_1_40 )
 {
-	PREPARE_GFXG1(40);
+	PREPARE_GFXG1(space, 40);
 	REP40(GTIA1);
 	POST_GFX(40);
 }
-void gtia_mode_1_48(VIDEO *video)
+ANTIC_RENDERER( gtia_mode_1_48 )
 {
-	PREPARE_GFXG1(48);
+	PREPARE_GFXG1(space, 48);
 	REP48(GTIA1);
 	POST_GFX(48);
 }
@@ -1090,21 +1092,21 @@ void gtia_mode_1_48(VIDEO *video)
  ***************************************************************/
 #define GTIA2(s) COPY4(dst, antic.pf_gtia2[video->data[s]])
 
-void gtia_mode_2_32(VIDEO *video)
+ANTIC_RENDERER( gtia_mode_2_32 )
 {
-	PREPARE_GFXG2(32);
+	PREPARE_GFXG2(space, 32);
 	REP32(GTIA2);
 	POST_GFX(32);
 }
-void gtia_mode_2_40(VIDEO *video)
+ANTIC_RENDERER( gtia_mode_2_40 )
 {
-	PREPARE_GFXG2(40);
+	PREPARE_GFXG2(space, 40);
 	REP40(GTIA2);
 	POST_GFX(40);
 }
-void gtia_mode_2_48(VIDEO *video)
+ANTIC_RENDERER( gtia_mode_2_48 )
 {
-	PREPARE_GFXG2(48);
+	PREPARE_GFXG2(space, 48);
 	REP48(GTIA2);
 	POST_GFX(48);
 }
@@ -1114,21 +1116,21 @@ void gtia_mode_2_48(VIDEO *video)
  ***************************************************************/
 #define GTIA3(s) COPY4(dst, antic.pf_gtia3[video->data[s]])
 
-void gtia_mode_3_32(VIDEO *video)
+ANTIC_RENDERER( gtia_mode_3_32 )
 {
-	PREPARE_GFXG3(32);
+	PREPARE_GFXG3(space, 32);
 	REP32(GTIA3);
 	POST_GFX(32);
 }
-void gtia_mode_3_40(VIDEO *video)
+ANTIC_RENDERER( gtia_mode_3_40 )
 {
-	PREPARE_GFXG3(40);
+	PREPARE_GFXG3(space, 40);
 	REP40(GTIA3);
 	POST_GFX(40);
 }
-void gtia_mode_3_48(VIDEO *video)
+ANTIC_RENDERER( gtia_mode_3_48 )
 {
-	PREPARE_GFXG3(48);
+	PREPARE_GFXG3(space, 48);
 	REP48(GTIA3);
 	POST_GFX(48);
 }

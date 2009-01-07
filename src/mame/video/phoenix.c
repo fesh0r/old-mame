@@ -181,16 +181,16 @@ VIDEO_START( phoenix )
 	videoram_pg[0] = auto_malloc(0x1000);
 	videoram_pg[1] = auto_malloc(0x1000);
 
-	memory_configure_bank(1, 0, 1, videoram_pg[0], 0);
-	memory_configure_bank(1, 1, 1, videoram_pg[1], 0);
-	memory_set_bank(1, 0);
+	memory_configure_bank(machine, 1, 0, 1, videoram_pg[0], 0);
+	memory_configure_bank(machine, 1, 1, 1, videoram_pg[1], 0);
+	memory_set_bank(machine, 1, 0);
 
     videoram_pg_index = 0;
 	palette_bank = 0;
 	cocktail_mode = 0;
 
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     8,8,32,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,     8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
@@ -199,11 +199,11 @@ VIDEO_START( phoenix )
 	tilemap_set_scrolldy(fg_tilemap, 0, (VTOTAL - VBSTART));
 	tilemap_set_scrolldy(bg_tilemap, 0, (VTOTAL - VBSTART));
 
-	state_save_register_global_pointer(videoram_pg[0], 0x1000);
-	state_save_register_global_pointer(videoram_pg[1], 0x1000);
-	state_save_register_global(videoram_pg_index);
-	state_save_register_global(palette_bank);
-	state_save_register_global(cocktail_mode);
+	state_save_register_global_pointer(machine, videoram_pg[0], 0x1000);
+	state_save_register_global_pointer(machine, videoram_pg[1], 0x1000);
+	state_save_register_global(machine, videoram_pg_index);
+	state_save_register_global(machine, palette_bank);
+	state_save_register_global(machine, cocktail_mode);
 
 	/* some more candidates */
 	pleiads_protection_question = 0;
@@ -213,11 +213,11 @@ VIDEO_START( phoenix )
 	survival_input_latches[0] = 0;
 	survival_input_latches[1] = 0;
 
-	state_save_register_global(pleiads_protection_question);
-	state_save_register_global(survival_protection_value);
-	state_save_register_global(survival_sid_value);
-	state_save_register_global(survival_input_readc);
-	state_save_register_global_array(survival_input_latches);
+	state_save_register_global(machine, pleiads_protection_question);
+	state_save_register_global(machine, survival_protection_value);
+	state_save_register_global(machine, survival_sid_value);
+	state_save_register_global(machine, survival_input_readc);
+	state_save_register_global_array(machine, survival_input_latches);
 
 }
 
@@ -229,7 +229,7 @@ VIDEO_START( phoenix )
 
 WRITE8_HANDLER( phoenix_videoram_w )
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(space->machine, "main");
 
 	videoram_pg[videoram_pg_index][offset] = data;
 
@@ -252,9 +252,9 @@ WRITE8_HANDLER( phoenix_videoreg_w )
 	{
 		/* set memory bank */
 		videoram_pg_index = data & 1;
-		memory_set_bank(1, videoram_pg_index);
+		memory_set_bank(space->machine, 1, videoram_pg_index);
 
-		cocktail_mode = videoram_pg_index && (input_port_read(machine, "CAB") & 0x01);
+		cocktail_mode = videoram_pg_index && (input_port_read(space->machine, "CAB") & 0x01);
 
 		tilemap_set_flip(ALL_TILEMAPS, cocktail_mode ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -275,9 +275,9 @@ WRITE8_HANDLER( pleiads_videoreg_w )
 	{
 		/* set memory bank */
 		videoram_pg_index = data & 1;
-		memory_set_bank(1, videoram_pg_index);
+		memory_set_bank(space->machine, 1, videoram_pg_index);
 
-		cocktail_mode = videoram_pg_index && (input_port_read(machine, "CAB") & 0x01);
+		cocktail_mode = videoram_pg_index && (input_port_read(space->machine, "CAB") & 0x01);
 
 		tilemap_set_flip(ALL_TILEMAPS, cocktail_mode ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -300,7 +300,7 @@ WRITE8_HANDLER( pleiads_videoreg_w )
 	pleiads_protection_question = data & 0xfc;
 
 	/* send two bits to sound control C (not sure if they are there) */
-	pleiads_sound_control_c_w(machine, offset, data);
+	pleiads_sound_control_c_w(space, offset, data);
 }
 
 
@@ -334,7 +334,7 @@ CUSTOM_INPUT( pleiads_protection_r )
 		return 1;
 		break;
 	default:
-		logerror("Unknown protection question %02X at %04X\n", pleiads_protection_question, safe_activecpu_get_pc());
+		logerror("%s:Unknown protection question %02X\n", cpuexec_describe_context(field->port->machine), pleiads_protection_question);
 		return 0;
 	}
 }
@@ -370,7 +370,7 @@ CUSTOM_INPUT( pleiads_protection_r )
 #define REMAP_JS(js) ((ret & 0xf) | ( (js & 0xf)  << 4))
 READ8_HANDLER( survival_input_port_0_r )
 {
-	UINT8 ret = ~input_port_read(machine, "IN0");
+	UINT8 ret = ~input_port_read(space->machine, "IN0");
 
 	if( survival_input_readc++ == 2 )
 	{
@@ -437,7 +437,7 @@ READ8_HANDLER( survival_protection_r )
 	return survival_protection_value;
 }
 
-int survival_sid_callback( void )
+int survival_sid_callback( const device_config *device )
 {
 	return survival_sid_value;
 }

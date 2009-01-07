@@ -48,7 +48,7 @@
 struct _ldplayer_data
 {
 	/* low-level emulation data */
-	int					cpunum;					/* CPU index of the 8049 */
+	const device_config *cpu;					/* CPU index of the 8049 */
 	const device_config *tracktimer;			/* timer device */
 	vp931_data_ready_func data_ready_cb; 		/* data ready callback */
 
@@ -102,6 +102,7 @@ static TIMER_DEVICE_CALLBACK( track_timer );
 static WRITE8_HANDLER( output0_w );
 static WRITE8_HANDLER( output1_w );
 static WRITE8_HANDLER( lcd_w );
+static READ8_HANDLER( unknown_r );
 static READ8_HANDLER( keypad_r );
 static READ8_HANDLER( datic_r );
 static READ8_HANDLER( from_controller_r );
@@ -116,28 +117,12 @@ static READ8_HANDLER( t1_r );
 
 
 /***************************************************************************
-    INLINE FUNCTIONS
-***************************************************************************/
-
-/*-------------------------------------------------
-    find_vp931 - find our device; assumes there
-    is only one
--------------------------------------------------*/
-
-INLINE laserdisc_state *find_vp931(running_machine *machine)
-{
-	return ldcore_get_safe_token(device_list_first(machine->config->devicelist, LASERDISC));
-}
-
-
-
-/***************************************************************************
     22VP931 ROM AND MACHINE INTERFACES
 ***************************************************************************/
 
 static ADDRESS_MAP_START( vp931_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0xcf) AM_READWRITE(keypad_r, output0_w)
-	AM_RANGE(0x10, 0x10) AM_MIRROR(0xcf) AM_WRITE(output1_w)
+	AM_RANGE(0x10, 0x10) AM_MIRROR(0xcf) AM_READWRITE(unknown_r, output1_w)
 	AM_RANGE(0x20, 0x20) AM_MIRROR(0xcf) AM_READWRITE(datic_r, lcd_w)
 	AM_RANGE(0x30, 0x30) AM_MIRROR(0xcf) AM_READWRITE(from_controller_r, to_controller_w)
 	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_READWRITE(port1_r, port1_w)
@@ -229,8 +214,8 @@ static void vp931_init(laserdisc_state *ld)
 	player->data_ready_cb = cbsave;
 
 	/* find our devices */
-	player->cpunum = mame_find_cpu_index(ld->device->machine, device_build_tag(tempstring, ld->device->tag, "vp931"));
-	player->tracktimer = devtag_get_device(ld->device->machine, TIMER, device_build_tag(tempstring, ld->device->tag, "tracktimer"));
+	player->cpu = cputag_get_cpu(ld->device->machine, device_build_tag(tempstring, ld->device, "vp931"));
+	player->tracktimer = devtag_get_device(ld->device->machine, TIMER, device_build_tag(tempstring, ld->device, "tracktimer"));
 	timer_device_set_ptr(player->tracktimer, ld);
 	astring_free(tempstring);
 }
@@ -248,7 +233,7 @@ static void vp931_vsync(laserdisc_state *ld, const vbi_metadata *vbi, int fieldn
 
 	/* set the ERP signal to 1 to indicate start of frame, and set a timer to turn it off */
 	ld->player->daticerp = 1;
-	timer_set(video_screen_get_time_until_pos(ld->screen, 15*2, 0), ld, 0, erp_off);
+	timer_set(ld->device->machine, video_screen_get_time_until_pos(ld->screen, 15*2, 0), ld, 0, erp_off);
 }
 
 
@@ -260,7 +245,7 @@ static void vp931_vsync(laserdisc_state *ld, const vbi_metadata *vbi, int fieldn
 static INT32 vp931_update(laserdisc_state *ld, const vbi_metadata *vbi, int fieldnum, attotime curtime)
 {
 	/* set the first VBI timer to go at the start of line 16 */
-	timer_set(video_screen_get_time_until_pos(ld->screen, 16*2, 0), ld, LASERDISC_CODE_LINE16 << 2, vbi_data_fetch);
+	timer_set(ld->device->machine, video_screen_get_time_until_pos(ld->screen, 16*2, 0), ld, LASERDISC_CODE_LINE16 << 2, vbi_data_fetch);
 
 	/* play forward by default */
 	return fieldnum;
@@ -275,7 +260,7 @@ static INT32 vp931_update(laserdisc_state *ld, const vbi_metadata *vbi, int fiel
 static void vp931_data_w(laserdisc_state *ld, UINT8 prev, UINT8 data)
 {
 	/* set a timer to synchronize execution before sending the data */
-	timer_call_after_resynch(ld, data, deferred_data_w);
+	timer_call_after_resynch(ld->device->machine, ld, data, deferred_data_w);
 }
 
 
@@ -297,7 +282,7 @@ static UINT8 vp931_data_r(laserdisc_state *ld)
 	}
 
 	/* also boost interleave for 4 scanlines to ensure proper communications */
-	cpu_boost_interleave(attotime_zero, attotime_mul(video_screen_get_scan_period(ld->screen), 4));
+	cpuexec_boost_interleave(ld->device->machine, attotime_zero, attotime_mul(video_screen_get_scan_period(ld->screen), 4));
 	return player->tocontroller;
 }
 
@@ -349,8 +334,8 @@ static TIMER_CALLBACK( vbi_data_fetch )
 	/* at the start of each line, signal an interrupt and use a timer to turn it off */
 	if (which == 0)
 	{
-		cpunum_set_input_line(machine, player->cpunum, MCS48_INPUT_IRQ, ASSERT_LINE);
-		timer_set(ATTOTIME_IN_NSEC(5580), ld, 0, irq_off);
+		cpu_set_input_line(player->cpu, MCS48_INPUT_IRQ, ASSERT_LINE);
+		timer_set(machine, ATTOTIME_IN_NSEC(5580), ld, 0, irq_off);
 	}
 
 	/* clock the data strobe on each subsequent callback */
@@ -358,7 +343,7 @@ static TIMER_CALLBACK( vbi_data_fetch )
 	{
 		player->daticval = code >> (8 * (3 - which));
 		player->datastrobe = 1;
-		timer_set(ATTOTIME_IN_NSEC(5000), ld, 0, datastrobe_off);
+		timer_set(machine, ATTOTIME_IN_NSEC(5000), ld, 0, datastrobe_off);
 	}
 
 	/* determine the next bit to fetch and reprime ourself */
@@ -368,7 +353,7 @@ static TIMER_CALLBACK( vbi_data_fetch )
 		line++;
 	}
 	if (line <= LASERDISC_CODE_LINE18 + 1)
-		timer_set(video_screen_get_time_until_pos(ld->screen, line*2, which * 2 * video_screen_get_width(ld->screen) / 4), ld, (line << 2) | which, vbi_data_fetch);
+		timer_set(machine, video_screen_get_time_until_pos(ld->screen, line*2, which * 2 * video_screen_get_width(ld->screen) / 4), ld, (line << 2) | which, vbi_data_fetch);
 }
 
 
@@ -405,7 +390,7 @@ static TIMER_CALLBACK( deferred_data_w )
 static TIMER_CALLBACK( irq_off )
 {
 	laserdisc_state *ld = ptr;
-	cpunum_set_input_line(machine, ld->player->cpunum, MCS48_INPUT_IRQ, CLEAR_LINE);
+	cpu_set_input_line(ld->player->cpu, MCS48_INPUT_IRQ, CLEAR_LINE);
 }
 
 
@@ -458,7 +443,7 @@ static TIMER_DEVICE_CALLBACK( track_timer )
 
 static WRITE8_HANDLER( output0_w )
 {
-	laserdisc_state *ld = find_vp931(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	ldplayer_data *player = ld->player;
 
 	/*
@@ -474,7 +459,7 @@ static WRITE8_HANDLER( output0_w )
 
 	if (LOG_PORTS && (player->out0 ^ data) & 0xff)
 	{
-		printf("%03X:out0:", activecpu_get_pc());
+		printf("%03X:out0:", cpu_get_pc(space->cpu));
 		if ( (data & 0x80)) printf(" ???");
 		if ( (data & 0x40)) printf(" LED1");
 		if ( (data & 0x20)) printf(" LED2");
@@ -499,7 +484,7 @@ static WRITE8_HANDLER( output0_w )
 
 static WRITE8_HANDLER( output1_w )
 {
-	laserdisc_state *ld = find_vp931(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	ldplayer_data *player = ld->player;
 	INT32 speed = 0;
 
@@ -516,7 +501,7 @@ static WRITE8_HANDLER( output1_w )
 
 	if (LOG_PORTS && (player->out1 ^ data) & 0x08)
 	{
-		mame_printf_debug("%03X:out1:", activecpu_get_pc());
+		mame_printf_debug("%03X:out1:", cpu_get_pc(space->cpu));
 		if (!(data & 0x08)) mame_printf_debug(" SMS");
 		mame_printf_debug("\n");
 		player->out1 = data;
@@ -553,6 +538,17 @@ static WRITE8_HANDLER( lcd_w )
 
 
 /*-------------------------------------------------
+    unknown_r - unknown input port
+-------------------------------------------------*/
+
+static READ8_HANDLER( unknown_r )
+{
+	/* only bit $80 is checked and its effects are minor */
+	return 0x00;
+}
+
+
+/*-------------------------------------------------
     keypad_r - vestigial keypad/button controls
 -------------------------------------------------*/
 
@@ -580,7 +576,7 @@ static READ8_HANDLER( keypad_r )
 
 static READ8_HANDLER( datic_r )
 {
-	laserdisc_state *ld = find_vp931(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	return ld->player->daticval;
 }
 
@@ -592,7 +588,7 @@ static READ8_HANDLER( datic_r )
 
 static READ8_HANDLER( from_controller_r )
 {
-	laserdisc_state *ld = find_vp931(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	ldplayer_data *player = ld->player;
 
 	/* clear the pending flag and return the data */
@@ -608,7 +604,7 @@ static READ8_HANDLER( from_controller_r )
 
 static WRITE8_HANDLER( to_controller_w )
 {
-	laserdisc_state *ld = find_vp931(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	ldplayer_data *player = ld->player;
 
 	/* set the pending flag and stash the data */
@@ -620,7 +616,7 @@ static WRITE8_HANDLER( to_controller_w )
 		(*player->data_ready_cb)(ld->device, TRUE);
 
 	/* also boost interleave for 4 scanlines to ensure proper communications */
-	cpu_boost_interleave(attotime_zero, attotime_mul(video_screen_get_scan_period(ld->screen), 4));
+	cpuexec_boost_interleave(ld->device->machine, attotime_zero, attotime_mul(video_screen_get_scan_period(ld->screen), 4));
 }
 
 
@@ -630,7 +626,7 @@ static WRITE8_HANDLER( to_controller_w )
 
 static READ8_HANDLER( port1_r )
 {
-	laserdisc_state *ld = find_vp931(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	ldplayer_data *player = ld->player;
 	UINT8 result = 0x00;
 
@@ -653,7 +649,7 @@ static READ8_HANDLER( port1_r )
 
 static WRITE8_HANDLER( port1_w )
 {
-	laserdisc_state *ld = find_vp931(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	ldplayer_data *player = ld->player;
 
 	/*
@@ -666,7 +662,7 @@ static WRITE8_HANDLER( port1_w )
 
 	if (LOG_PORTS && (player->port1 ^ data) & 0x1f)
 	{
-		printf("%03X:port1:", activecpu_get_pc());
+		printf("%03X:port1:", cpu_get_pc(space->cpu));
 		if (!(data & 0x10)) printf(" SPEED");
 		if (!(data & 0x08)) printf(" TIMENABLE");
 		if (!(data & 0x04)) printf(" REV");
@@ -727,7 +723,7 @@ static WRITE8_HANDLER( port1_w )
 
 static READ8_HANDLER( port2_r )
 {
-	laserdisc_state *ld = find_vp931(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	ldplayer_data *player = ld->player;
 	UINT8 result = 0x00;
 
@@ -766,7 +762,7 @@ static WRITE8_HANDLER( port2_w )
 
 static READ8_HANDLER( t0_r )
 {
-	laserdisc_state *ld = find_vp931(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	return ld->player->datastrobe;
 }
 
@@ -779,6 +775,6 @@ static READ8_HANDLER( t0_r )
 
 static READ8_HANDLER( t1_r )
 {
-	laserdisc_state *ld = find_vp931(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	return ld->player->trackstate;
 }

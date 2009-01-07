@@ -138,11 +138,14 @@ Notes:
 *******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
+
+#define MASTER_CLOCK		XTAL_20MHz
+#define CPU_CLOCK			MASTER_CLOCK / 2
+#define PIXEL_CLOCK		MASTER_CLOCK / 4
 
 /* in (video/wwfsstar.c) */
 VIDEO_START( wwfsstar );
@@ -157,7 +160,7 @@ static WRITE16_HANDLER( wwfsstar_flipscreen_w );
 static WRITE16_HANDLER ( wwfsstar_soundwrite );
 static WRITE16_HANDLER ( wwfsstar_scrollwrite );
 
-static int vblank;
+static int vblank = 0;
 
 /*******************************************************************************
  Memory Maps
@@ -216,22 +219,22 @@ static WRITE16_HANDLER ( wwfsstar_scrollwrite )
 
 static WRITE16_HANDLER ( wwfsstar_soundwrite )
 {
-	soundlatch_w(machine,1,data & 0xff);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE );
+	soundlatch_w(space,1,data & 0xff);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE );
 }
 
 static WRITE16_HANDLER( wwfsstar_flipscreen_w )
 {
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 }
 
 static WRITE16_HANDLER( wwfsstar_irqack_w )
 {
-	if(offset == 0)
-		cpunum_set_input_line(machine, 0, 6, CLEAR_LINE);
+	if (offset == 0)
+		cpu_set_input_line(space->machine->cpu[0], 6, CLEAR_LINE);
 
 	else
-		cpunum_set_input_line(machine, 0, 5, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 5, CLEAR_LINE);
 }
 
 /*
@@ -247,32 +250,34 @@ static WRITE16_HANDLER( wwfsstar_irqack_w )
     A hack is required: raise the vblank bit a scanline early.
 */
 
-static INTERRUPT_GEN( wwfsstars_interrupt )
+static TIMER_DEVICE_CALLBACK( wwfsstar_scanline )
 {
-	int scanline = 271 - cpu_getiloops();
+	int scanline = param;
 
-	/* Vblank is lowered on scanline 0 (8) */
+	/* Vblank is lowered on scanline 0 */
 	if (scanline == 0)
 	{
 		vblank = 0;
 	}
 	/* Hack */
-	else if (scanline==239)
+	else if (scanline == (240-1))		/* -1 is an hack needed to avoid deadlocks */
 	{
 		vblank = 1;
 	}
-	/* Vblank is raised on scanline 240 (248) */
-	else if (scanline==240)
-	{
-		video_screen_update_partial(machine->primary_screen, scanline);
-		cpunum_set_input_line(machine, 0, 6, ASSERT_LINE);
-	}
 
 	/* An interrupt is generated every 16 scanlines */
-	if (scanline%16 == 0)
+	if (scanline % 16 == 0)
 	{
-		video_screen_update_partial(machine->primary_screen, scanline);
-		cpunum_set_input_line(machine, 0, 5, ASSERT_LINE);
+		if (scanline > 0)
+			video_screen_update_partial(timer->machine->primary_screen, scanline - 1);
+		cpu_set_input_line(timer->machine->cpu[0], 5, ASSERT_LINE);
+	}
+
+	/* Vblank is raised on scanline 240 */
+	if (scanline == 240)
+	{
+		video_screen_update_partial(timer->machine->primary_screen, scanline - 1);
+		cpu_set_input_line(timer->machine->cpu[0], 6, ASSERT_LINE);
 	}
 }
 
@@ -417,7 +422,7 @@ GFXDECODE_END
 
 static void wwfsstar_ymirq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
+	cpu_set_input_line(machine->cpu[1], 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
 static const ym2151_interface ym2151_config =
@@ -432,20 +437,17 @@ static const ym2151_interface ym2151_config =
 static MACHINE_DRIVER_START( wwfsstar )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 10000000)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT_HACK(wwfsstars_interrupt,272)
+	MDRV_CPU_ADD("main", M68000, CPU_CLOCK)
+	MDRV_CPU_PROGRAM_MAP(main_map, 0)
+	MDRV_TIMER_ADD_SCANLINE("scantimer", wwfsstar_scanline, "main", 0, 1)
 
-	MDRV_CPU_ADD("audio", Z80, 3579545)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_ADD("audio", Z80, XTAL_3_579545MHz)
+	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(57.44)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 320, 0, 256, 272, 8, 248)	/* HTOTAL and VTOTAL are guessed */
 
 	MDRV_GFXDECODE(wwfsstar)
 	MDRV_PALETTE_LENGTH(384)
@@ -456,13 +458,13 @@ static MACHINE_DRIVER_START( wwfsstar )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD("ym", YM2151, 3579545)
+	MDRV_SOUND_ADD("ym", YM2151, XTAL_3_579545MHz)
 	MDRV_SOUND_CONFIG(ym2151_config)
 	MDRV_SOUND_ROUTE(0, "left", 0.45)
 	MDRV_SOUND_ROUTE(1, "right", 0.45)
 
-	MDRV_SOUND_ADD("oki", OKIM6295, 1122000)
-	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD("oki", OKIM6295, XTAL_1_056MHz)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.47)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.47)
 MACHINE_DRIVER_END

@@ -33,20 +33,9 @@ struct t11_setup
 };
 
 
-extern void t11_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( t11 );
+#define CPU_T11 CPU_GET_INFO_NAME( t11 )
 
-/****************************************************************************/
-/* Read a byte from given memory location                                   */
-/****************************************************************************/
-#define T11_RDMEM(A) ((unsigned)program_read_byte_16le(A))
-#define T11_RDMEM_WORD(A) ((unsigned)program_read_word_16le(A))
-
-/****************************************************************************/
-/* Write a byte to given memory location                                    */
-/****************************************************************************/
-#define T11_WRMEM(A,V) (program_write_byte_16le(A,V))
-#define T11_WRMEM_WORD(A,V) (program_write_word_16le(A,V))
-
-offs_t t11_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+CPU_DISASSEMBLE( t11 );
 
 #endif /* __T11_H__ */

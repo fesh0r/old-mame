@@ -283,21 +283,21 @@ PALETTE_INIT( spelunk2 )
 
 
 
-static void register_savestate(void)
+static void register_savestate(running_machine *machine)
 {
-	state_save_register_global(flipscreen);
-	state_save_register_global(kidniki_background_bank);
-	state_save_register_global(m62_background_hscroll);
-	state_save_register_global(m62_background_vscroll);
-	state_save_register_global(kidniki_text_vscroll);
-	state_save_register_global(spelunkr_palbank);
-	state_save_register_global_pointer(irem_textram, irem_textram_size);
+	state_save_register_global(machine, flipscreen);
+	state_save_register_global(machine, kidniki_background_bank);
+	state_save_register_global(machine, m62_background_hscroll);
+	state_save_register_global(machine, m62_background_vscroll);
+	state_save_register_global(machine, kidniki_text_vscroll);
+	state_save_register_global(machine, spelunkr_palbank);
+	state_save_register_global_pointer(machine, irem_textram, irem_textram_size);
 }
 
 WRITE8_HANDLER( m62_flipscreen_w )
 {
 	/* screen flip is handled both by software and hardware */
-	data ^= ~input_port_read(machine, "DSW2") & 1;
+	data ^= ~input_port_read(space->machine, "DSW2") & 1;
 
 	flipscreen = data & 0x01;
 	if (flipscreen)
@@ -401,14 +401,14 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 	}
 }
 
-static void m62_start( tile_get_info_func tile_get_info, int rows, int cols, int x1, int y1, int x2, int y2 )
+static void m62_start( running_machine *machine, tile_get_info_func tile_get_info, int rows, int cols, int x1, int y1, int x2, int y2 )
 {
-	m62_background = tilemap_create( tile_get_info, tilemap_scan_rows,  x1, y1, x2, y2 );
+	m62_background = tilemap_create( machine, tile_get_info, tilemap_scan_rows,  x1, y1, x2, y2 );
 
 	m62_background_hscroll = 0;
 	m62_background_vscroll = 0;
 
-	register_savestate();
+	register_savestate(machine);
 
 	if( rows != 0 )
 	{
@@ -420,9 +420,9 @@ static void m62_start( tile_get_info_func tile_get_info, int rows, int cols, int
 	}
 }
 
-static void m62_textlayer( tile_get_info_func tile_get_info, int rows, int cols, int x1, int y1, int x2, int y2 )
+static void m62_textlayer( running_machine *machine, tile_get_info_func tile_get_info, int rows, int cols, int x1, int y1, int x2, int y2 )
 {
-	m62_foreground = tilemap_create( tile_get_info, tilemap_scan_rows,  x1, y1, x2, y2 );
+	m62_foreground = tilemap_create( machine, tile_get_info, tilemap_scan_rows,  x1, y1, x2, y2 );
 
 	if( rows != 0 )
 	{
@@ -467,7 +467,7 @@ static TILE_GET_INFO( get_kungfum_bg_tile_info )
 
 VIDEO_START( kungfum )
 {
-	m62_start( get_kungfum_bg_tile_info, 32, 0, 8, 8, 64, 32 );
+	m62_start( machine, get_kungfum_bg_tile_info, 32, 0, 8, 8, 64, 32 );
 }
 
 VIDEO_UPDATE( kungfum )
@@ -514,7 +514,7 @@ static TILE_GET_INFO( get_ldrun_bg_tile_info )
 
 VIDEO_START( ldrun )
 {
-	m62_start( get_ldrun_bg_tile_info, 1, 1, 8, 8, 64, 32 );
+	m62_start( machine, get_ldrun_bg_tile_info, 1, 1, 8, 8, 64, 32 );
 	tilemap_set_transmask(m62_background,0,0xffff,0x0000);	/* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(m62_background,1,0x0001,0xfffe);	/* split type 1 has pen 0 transparent in front half */
 }
@@ -556,7 +556,7 @@ static TILE_GET_INFO( get_ldrun2_bg_tile_info )
 
 VIDEO_START( ldrun2 )
 {
-	m62_start( get_ldrun2_bg_tile_info, 1, 1, 8, 8, 64, 32 );
+	m62_start( machine, get_ldrun2_bg_tile_info, 1, 1, 8, 8, 64, 32 );
 	tilemap_set_transmask(m62_background,0,0xffff,0x0000);	/* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(m62_background,1,0x0001,0xfffe);	/* split type 1 has pen 0 transparent in front half */
 }
@@ -578,11 +578,11 @@ VIDEO_UPDATE( ldrun3 )
 
 		my_cliprect.min_y = 0*8;
 		my_cliprect.max_y = 1*8-1;
-		fillbitmap(bitmap,get_black_pen(screen->machine),&my_cliprect);
+		bitmap_fill(bitmap,&my_cliprect,get_black_pen(screen->machine));
 
 		my_cliprect.min_y = 31*8;
 		my_cliprect.max_y = 32*8-1;
-		fillbitmap(bitmap,get_black_pen(screen->machine),&my_cliprect);
+		bitmap_fill(bitmap,&my_cliprect,get_black_pen(screen->machine));
 	}
 
 	return 0;
@@ -623,8 +623,8 @@ static TILE_GET_INFO( get_battroad_fg_tile_info )
 
 VIDEO_START( battroad )
 {
-	m62_start( get_battroad_bg_tile_info, 1, 1, 8, 8, 64, 32 );
-	m62_textlayer( get_battroad_fg_tile_info, 1, 1, 8, 8, 32, 32 );
+	m62_start( machine, get_battroad_bg_tile_info, 1, 1, 8, 8, 64, 32 );
+	m62_textlayer( machine, get_battroad_fg_tile_info, 1, 1, 8, 8, 32, 32 );
 	tilemap_set_transmask(m62_background,0,0xffff,0x0000);	/* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(m62_background,1,0x0001,0xfffe);	/* split type 1 has pen 0 transparent in front half */
 }
@@ -659,7 +659,7 @@ static TILE_GET_INFO( get_ldrun4_bg_tile_info )
 
 VIDEO_START( ldrun4 )
 {
-	m62_start( get_ldrun4_bg_tile_info, 1, 0, 8, 8, 64, 32 );
+	m62_start( machine, get_ldrun4_bg_tile_info, 1, 0, 8, 8, 64, 32 );
 }
 
 VIDEO_UPDATE( ldrun4 )
@@ -698,8 +698,8 @@ static TILE_GET_INFO( get_lotlot_fg_tile_info )
 
 VIDEO_START( lotlot )
 {
-	m62_start( get_lotlot_bg_tile_info, 1, 1, 12, 10, 32, 64 );
-	m62_textlayer( get_lotlot_fg_tile_info, 1, 1, 12, 10, 32, 64 );
+	m62_start( machine, get_lotlot_bg_tile_info, 1, 1, 12, 10, 32, 64 );
+	m62_textlayer( machine, get_lotlot_fg_tile_info, 1, 1, 12, 10, 32, 64 );
 }
 
 VIDEO_UPDATE( lotlot )
@@ -757,7 +757,7 @@ static TILE_GET_INFO( get_kidniki_fg_tile_info )
 
 VIDEO_START( kidniki )
 {
-	m62_background = tilemap_create( get_kidniki_bg_tile_info, tilemap_scan_rows,  8, 8, 64, 32 );
+	m62_background = tilemap_create( machine, get_kidniki_bg_tile_info, tilemap_scan_rows,  8, 8, 64, 32 );
 
 	m62_background_hscroll = 0;
 	m62_background_vscroll = 0;
@@ -765,9 +765,9 @@ VIDEO_START( kidniki )
 	tilemap_set_transmask(m62_background,0,0xffff,0x0000);	/* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(m62_background,1,0x0001,0xfffe);	/* split type 1 has pen 0 transparent in front half */
 
-	register_savestate();
+	register_savestate(machine);
 
-	m62_textlayer( get_kidniki_fg_tile_info, 1, 1, 12, 8, 32, 64 );
+	m62_textlayer( machine, get_kidniki_fg_tile_info, 1, 1, 12, 8, 32, 64 );
 }
 
 VIDEO_UPDATE( kidniki )
@@ -816,8 +816,8 @@ if (color&0xe0) popmessage("fg tilemap %x %x",tile_index,color&0xe0);
 
 VIDEO_START( spelunkr )
 {
-	m62_start( get_spelunkr_bg_tile_info, 1, 1, 8, 8, 64, 64 );
-	m62_textlayer( get_spelunkr_fg_tile_info, 1, 1, 12, 8, 32, 32 );
+	m62_start( machine, get_spelunkr_bg_tile_info, 1, 1, 8, 8, 64, 64 );
+	m62_textlayer( machine, get_spelunkr_fg_tile_info, 1, 1, 12, 8, 32, 32 );
 }
 
 VIDEO_UPDATE( spelunkr )
@@ -837,8 +837,8 @@ VIDEO_UPDATE( spelunkr )
 
 WRITE8_HANDLER( spelunk2_gfxport_w )
 {
-	m62_hscroll_high_w(machine,0,(data&2)>>1);
-	m62_vscroll_high_w(machine,0,(data&1));
+	m62_hscroll_high_w(space,0,(data&2)>>1);
+	m62_vscroll_high_w(space,0,(data&1));
 	if (spelunkr_palbank != ((data & 0x0c) >> 2))
 	{
 		spelunkr_palbank = (data & 0x0c) >> 2;
@@ -858,8 +858,8 @@ static TILE_GET_INFO( get_spelunk2_bg_tile_info )
 
 VIDEO_START( spelunk2 )
 {
-	m62_start( get_spelunk2_bg_tile_info, 1, 1, 8, 8, 64, 64 );
-	m62_textlayer( get_spelunkr_fg_tile_info, 1, 1, 12, 8, 32, 32 );
+	m62_start( machine, get_spelunk2_bg_tile_info, 1, 1, 8, 8, 64, 64 );
+	m62_textlayer( machine, get_spelunkr_fg_tile_info, 1, 1, 12, 8, 32, 32 );
 }
 
 VIDEO_UPDATE( spelunk2 )
@@ -905,8 +905,8 @@ static TILE_GET_INFO( get_youjyudn_fg_tile_info )
 
 VIDEO_START( youjyudn )
 {
-	m62_start( get_youjyudn_bg_tile_info, 1, 0, 8, 16, 64, 16 );
-	m62_textlayer( get_youjyudn_fg_tile_info, 1, 1, 12, 8, 32, 32 );
+	m62_start( machine, get_youjyudn_bg_tile_info, 1, 0, 8, 16, 64, 16 );
+	m62_textlayer( machine, get_youjyudn_fg_tile_info, 1, 1, 12, 8, 32, 32 );
 	tilemap_set_transmask(m62_background,0,0xffff,0x0000);	/* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(m62_background,1,0x0001,0xfffe);	/* split type 1 has pen 0 transparent in front half */
 }
@@ -950,7 +950,7 @@ static TILE_GET_INFO( get_horizon_bg_tile_info )
 
 VIDEO_START( horizon )
 {
-	m62_start( get_horizon_bg_tile_info, 32, 0, 8, 8, 64, 32 );
+	m62_start( machine, get_horizon_bg_tile_info, 32, 0, 8, 8, 64, 32 );
 	tilemap_set_transmask(m62_background,0,0xffff,0x0000);	/* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(m62_background,1,0x0001,0xfffe);	/* split type 1 has pen 0 transparent in front half */
 }

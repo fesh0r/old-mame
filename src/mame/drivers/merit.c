@@ -10,6 +10,7 @@
   TODO:
   - add flipscreen according to schematics
   - pitboss: dip switches
+  - casino5: seems to have 0x2000 ram, with 0x2000, will keep resetting.
   - general - add named output notifiers
 
 Notes: it's important that "user1" is 0xa0000 bytes with empty space filled
@@ -30,9 +31,16 @@ Notes: it's important that "user1" is 0xa0000 bytes with empty space filled
        4 categories, but they only use 3 categories.
 
        ---------------------------------------------------------------------------
+
+       The Couples: Year is uncertain,title screen says "1988"
+       PCB marking (set 2) and (set 3) says "230188"
+       service mode says "6221-51 U5-0 12/02/86"
+
+       ---------------------------------------------------------------------------
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/8255ppi.h"
 #include "sound/ay8910.h"
 #include "video/mc6845.h"
@@ -58,22 +66,24 @@ static int extra_video_bank_bit;
 static int question_address;
 static int decryption_key;
 
+static UINT8 *backup_ram;
+
 static MACHINE_START(merit)
 {
 	question_address = 0;
 	ram_palette = auto_malloc(RAM_PALETTE_SIZE);
 
-	state_save_register_global_pointer(ram_palette, RAM_PALETTE_SIZE);
-	state_save_register_global(lscnblk);
-	state_save_register_global(extra_video_bank_bit);
-	state_save_register_global(question_address);
-	state_save_register_global(decryption_key);
+	state_save_register_global_pointer(machine, ram_palette, RAM_PALETTE_SIZE);
+	state_save_register_global(machine, lscnblk);
+	state_save_register_global(machine, extra_video_bank_bit);
+	state_save_register_global(machine, question_address);
+	state_save_register_global(machine, decryption_key);
 }
 
 
 static READ8_HANDLER( questions_r )
 {
-	UINT8 *questions = memory_region(machine, "user1");
+	UINT8 *questions = memory_region(space->machine, "user1");
 	int address;
 
 	switch(question_address >> 16)
@@ -155,7 +165,7 @@ static WRITE8_HANDLER( palette_w )
 {
 	int co;
 
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 	data &= 0x0f;
 
 	co = ((ram_attr[offset] & 0x7F) << 3) | (offset & 0x07);
@@ -231,21 +241,20 @@ static MC6845_UPDATE_ROW( update_row )
 }
 
 
-MC6845_ON_HSYNC_CHANGED(hsync_changed)
+static MC6845_ON_HSYNC_CHANGED(hsync_changed)
 {
 	/* update any video up to the current scanline */
 	video_screen_update_now(device->machine->primary_screen);
 }
 
-MC6845_ON_VSYNC_CHANGED(vsync_changed)
+static MC6845_ON_VSYNC_CHANGED(vsync_changed)
 {
-	cpunum_set_input_line(device->machine, 0, 0, vsync ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], 0, vsync ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const mc6845_interface mc6845_intf =
 {
 	"main",					/* screen we are acting on */
-	CRTC_CLOCK, 			/* the clock (pin 21) of the chip */
 	8,						/* number of pixels per video memory address */
 	begin_update,			/* before pixel update callback */
 	update_row,				/* row update callback */
@@ -280,12 +289,25 @@ static WRITE8_HANDLER( led2_w )
 
 static WRITE8_DEVICE_HANDLER( misc_w )
 {
-	flip_screen_set(~data & 0x10);
+	flip_screen_set(device->machine, ~data & 0x10);
 	extra_video_bank_bit = (data & 2) << 8;
 	lscnblk = (data >> 3) & 1;
 
 	/* other bits unknown */
 }
+
+static WRITE8_DEVICE_HANDLER( misc_couple_w )
+{
+	flip_screen_set(device->machine, ~data & 0x10);
+	extra_video_bank_bit = (data & 2) << 8;
+	lscnblk = (data >> 3) & 1;
+
+	/* other bits unknown */
+
+	/*kludge to avoid jumps on ram area in The Couples*/
+	backup_ram[0x1011] = 0xc9; //ret
+}
+
 
 static ADDRESS_MAP_START( pitboss_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_ROM
@@ -303,7 +325,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bigappg_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_ROM
-	AM_RANGE(0xa000, 0xafff) AM_RAM
+	AM_RANGE(0xa000, 0xbfff) AM_RAM
 	AM_RANGE(0xc004, 0xc007) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xc008, 0xc00b) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
@@ -313,6 +335,10 @@ static ADDRESS_MAP_START( bigappg_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(palette_r, palette_w)
 ADDRESS_MAP_END
 
+/* Address decoding is done by prom u13 on crt200a hardware. It decodes
+ * the following addr lines: 2,3,9,13,14,15 ==> E20C
+ * ==> mirror 1DF3 & ~effective_addr_lines
+ * */
 
 static ADDRESS_MAP_START( trvwhiz_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
@@ -320,10 +346,10 @@ static ADDRESS_MAP_START( trvwhiz_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5400, 0x54ff) AM_WRITE(low_offset_w)
 	AM_RANGE(0x5800, 0x58ff) AM_WRITE(med_offset_w)
 	AM_RANGE(0x6000, 0x67ff) AM_RAM
-	AM_RANGE(0xa000, 0xa003) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
-	AM_RANGE(0xc000, 0xc003) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
-	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0xe001, 0xe001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0xa000, 0xa003) AM_MIRROR(0x1df0) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xc000, 0xc003) AM_MIRROR(0x1df0) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xe000, 0xe000) AM_MIRROR(0x05f0) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xe001, 0xe001) AM_MIRROR(0x05f0) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE(&ram_attr)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(&ram_video)
 	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(palette_r, palette_w)
@@ -338,60 +364,72 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( phrcraze_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xa000, 0xbfff) AM_RAM
-	AM_RANGE(0xc008, 0xc00b) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
-	AM_RANGE(0xc00c, 0xc00f) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xc008, 0xc00b) AM_MIRROR(0x1df0) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xc00c, 0xc00f) AM_MIRROR(0x1df0) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xce00, 0xceff) AM_READWRITE(questions_r, high_offset_w)
 	AM_RANGE(0xd600, 0xd6ff) AM_WRITE(low_offset_w)
 	AM_RANGE(0xda00, 0xdaff) AM_WRITE(med_offset_w)
-	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0xe001, 0xe001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0xe000, 0xe000) AM_MIRROR(0x05f0) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xe001, 0xe001) AM_MIRROR(0x05f0) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE(&ram_attr)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(&ram_video)
 	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(palette_r, palette_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( phrcraze_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0xc004, 0xc004) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xc104, 0xc104) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0xc004, 0xc004) AM_MIRROR(0x1cf3) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xc104, 0xc104) AM_MIRROR(0x1cf3) AM_WRITE(ay8910_write_port_0_w)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( tictac_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x9fff) AM_RAM
-	AM_RANGE(0xc004, 0xc007) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
-	AM_RANGE(0xc008, 0xc00b) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xc004, 0xc007) AM_MIRROR(0x1df0) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xc008, 0xc00b) AM_MIRROR(0x1df0) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xce00, 0xceff) AM_READWRITE(questions_r, high_offset_w)
 	AM_RANGE(0xd600, 0xd6ff) AM_WRITE(low_offset_w)
 	AM_RANGE(0xda00, 0xdaff) AM_WRITE(med_offset_w)
-	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0xe001, 0xe001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0xe000, 0xe000) AM_MIRROR(0x05f0) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xe001, 0xe001) AM_MIRROR(0x05f0) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE(&ram_attr)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(&ram_video)
 	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(palette_r, palette_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tictac_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0xc00c, 0xc00c) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xc10c, 0xc10c) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0xc00c, 0xc00c) AM_MIRROR(0x1cf3) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xc10c, 0xc10c) AM_MIRROR(0x1cf3) AM_WRITE(ay8910_write_port_0_w)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( trvwhziv_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xa000, 0xbfff) AM_RAM
-	AM_RANGE(0xc004, 0xc007) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
-	AM_RANGE(0xc008, 0xc00b) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xc004, 0xc007) AM_MIRROR(0x1df0) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xc008, 0xc00b) AM_MIRROR(0x1df0) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xce00, 0xceff) AM_READWRITE(questions_r, high_offset_w)
 	AM_RANGE(0xd600, 0xd6ff) AM_WRITE(low_offset_w)
 	AM_RANGE(0xda00, 0xdaff) AM_WRITE(med_offset_w)
+	AM_RANGE(0xe000, 0xe000) AM_MIRROR(0x05f0) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xe001, 0xe001) AM_MIRROR(0x05f0) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE(&ram_attr)
+	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(&ram_video)
+	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(palette_r, palette_w)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( couple_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x9fff) AM_ROMBANK(1)
+	AM_RANGE(0xa000, 0xbfff) AM_RAM AM_BASE(&backup_ram)
+	AM_RANGE(0xc004, 0xc007) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xc008, 0xc00b) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
 	AM_RANGE(0xe001, 0xe001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE(&ram_attr)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(&ram_video)
 	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(palette_r, palette_w)
 ADDRESS_MAP_END
-
 
 
 /* in service mode:
@@ -839,6 +877,106 @@ static INPUT_PORTS_START( bigappg )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
+static INPUT_PORTS_START( couple )
+	PORT_START("IN0")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
+
+	PORT_START("DSW")
+	PORT_DIPNAME( 0x01, 0x00, "Number of Attempts" )
+	PORT_DIPSETTING(    0x01, "99" )
+	PORT_DIPSETTING(    0x00, "9" )
+	PORT_DIPNAME( 0x02, 0x02, "Tries Per Coin" )
+	PORT_DIPSETTING(    0x02, "3" )
+	PORT_DIPSETTING(    0x00, "2" )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coinage ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
+/*2 Coins for 2 Credits?I think this is an invalid setting,it doesn't even work correctly*/
+/*  PORT_DIPSETTING(    0x00, DEF_STR( 2C_2C ) ) */
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
+	PORT_DIPNAME( 0x20, 0x00, "Sound" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, "Clear RAM" )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_START("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_START("IN2")
+	PORT_DIPNAME( 0x01, 0x01, "3" )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+INPUT_PORTS_END
+
+/*Different DSWs*/
+static INPUT_PORTS_START( couplep )
+	PORT_INCLUDE( couple )
+
+	PORT_MODIFY("DSW")
+	PORT_DIPNAME( 0x40, 0x40, "Bonus Play" )
+	PORT_DIPSETTING(    0x40, "at 150.000" )
+	PORT_DIPSETTING(    0x00, "at 200.000" )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+INPUT_PORTS_END
+
+
 static VIDEO_UPDATE( merit )
 {
 	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
@@ -867,6 +1005,26 @@ static const ppi8255_interface ppi8255_intf[2] =
 	}
 };
 
+static const ppi8255_interface ppi8255_couple_intf[2] =
+{
+	{
+		DEVICE8_PORT("IN0"),		/* Port A read */
+		DEVICE8_PORT("IN1"),		/* Port B read */
+		DEVICE8_PORT("IN2"),		/* Port C read */
+		NULL,						/* Port A write */
+		NULL,						/* Port B write */
+		NULL						/* Port C write */
+	},
+	{
+		DEVICE8_PORT("DSW"),		/* Port A read */
+		NULL,						/* Port B read */
+		NULL,						/* Port C read */
+		NULL,						/* Port A write */
+		led1_w,						/* Port B write */
+		misc_couple_w				/* Port C write */
+	}
+};
+
 static const ay8910_interface merit_ay8912_interface =
 {
 	AY8910_LEGACY_OUTPUT,
@@ -891,8 +1049,7 @@ static MACHINE_DRIVER_START( pitboss )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 512, 0, 512, 256, 0, 256)	/* temporary, CRTC will configure screen */
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
-	MDRV_DEVICE_CONFIG(mc6845_intf)
+	MDRV_MC6845_ADD("crtc", MC6845, CRTC_CLOCK, mc6845_intf)
 
 	MDRV_VIDEO_UPDATE(merit)
 
@@ -944,6 +1101,19 @@ static MACHINE_DRIVER_START( trvwhziv )
 	MDRV_CPU_IO_MAP(tictac_io_map,0)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( couple )
+	MDRV_IMPORT_FROM(pitboss)
+
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_PROGRAM_MAP(couple_map,0)
+	MDRV_CPU_IO_MAP(tictac_io_map,0)
+
+	MDRV_DEVICE_MODIFY("ppi8255_0", PPI8255)
+	MDRV_DEVICE_CONFIG( ppi8255_couple_intf[0])
+	MDRV_DEVICE_MODIFY("ppi8255_1", PPI8255)
+	MDRV_DEVICE_CONFIG( ppi8255_couple_intf[1])
+MACHINE_DRIVER_END
+
 
 ROM_START( pitboss )
 	ROM_REGION( 0x10000, "main", 0 )
@@ -958,6 +1128,21 @@ ROM_START( pitboss )
 
 	ROM_REGION( 0x2000, "gfx2", 0 )
 	ROM_LOAD( "u40.rom",   0x0000, 0x2000, CRC(52298162) SHA1(79aa6c4ab6bec6450d882615e64f61cfef934153) )
+ROM_END
+
+ROM_START( pitbossa )
+ 	ROM_REGION( 0x10000, "main", 0 )
+ 	ROM_LOAD( "m4a1.u5",   0x0000, 0x2000, CRC(f5284472) SHA1(9170b90d06caa382be29feb2f6e80993bba1e07e) )
+ 	ROM_LOAD( "m4a1.u6",   0x2000, 0x2000, CRC(dd8df5fe) SHA1(dab8c1077058263729b2589dd9bf9989ad53be1c) )
+ 	ROM_LOAD( "m4a1.u7",   0x4000, 0x2000, CRC(5fa5d436) SHA1(9f3fd81eae7f378268f3b4af8fd299ffb97d7fb6) )
+
+ 	ROM_REGION( 0x6000, "gfx1", 0 )
+ 	ROM_LOAD( "chr2.u39",  0x0000, 0x2000, CRC(f9613e7b) SHA1(1e8cafe142a235d65b43c7e46a79ed4f6272b61c) )
+ 	ROM_LOAD( "chr2.u38",  0x2000, 0x2000, CRC(7af28902) SHA1(04f685389958d581aaf2c86940d1b8b8cec05d7a) )
+	ROM_LOAD( "chr2.u37",  0x4000, 0x2000, CRC(ea6f0c59) SHA1(f2c0ff99518c2cec3eb1b4042fa3754a702c0e34) )
+
+	ROM_REGION( 0x2000, "gfx2", 0 )
+	ROM_LOAD( "chr2.u40",  0x0000, 0x2000, CRC(40c94dce) SHA1(86611e3a1048b2a3fffcc0110811656a2d0fc4a5) )
 ROM_END
 
 ROM_START( casino5 )
@@ -1029,6 +1214,26 @@ ROM_START( trvwzha )
 	ROM_LOAD( "trivia2.spo",  0x28000, 0x8000, CRC(ee9263b3) SHA1(1644ab01f17e3af1e193e509d64dcbb243d3eb80) )
 ROM_END
 
+/* question board only - this contained a variety of roms from the 'trvwzh' and 'trvwzha' sets
+  as well as 2 unique general knowledge ones */
+ROM_START( trvwzhb )
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "trivia.u5",    0x0000, 0x2000, CRC(731fd5b1) SHA1(1074780321029446da0e6765b9e036b06b067a48) )
+	ROM_LOAD( "trivia.u6",    0x2000, 0x2000, CRC(af6886c0) SHA1(48005b921d7ce33ffc0ba160be82053a26382a9d) )
+
+	ROM_REGION( 0x6000, "gfx1", 0 )
+	ROM_LOAD( "trivia.u39",   0x0000, 0x2000, CRC(f8a5f5fb) SHA1(a511e1a2b5e887ef00dc919e9e664ccec2d36cfa) )
+	ROM_LOAD( "trivia.u38",   0x2000, 0x2000, CRC(27621e52) SHA1(a7e88d329e2e774fef9bd8c5cefb4d8f1cfcba4c) )
+	ROM_LOAD( "trivia.u37",   0x4000, 0x2000, CRC(f739b5dc) SHA1(fbf469b7f4cab50e06ec2def9344e3b9801a275e) )
+
+	ROM_REGION( 0x2000, "gfx2", 0 )
+	ROM_LOAD( "trivia.u40",   0x0000, 0x2000, CRC(cea7319f) SHA1(663cd18a4699dfd5ad1d3357094eff247e9b4a47) )
+
+	ROM_REGION( 0xa0000, "user1", ROMREGION_ERASEFF ) /* questions */
+	ROM_LOAD( "merit2_6.1",   0x08000, 0x8000, CRC(8a4bcde3) SHA1(528ae9d3ff0b98201f89fd6b93a712cd7f0e9ab4) ) // 0xxxxxxxxxxxxxx = 0x00
+	ROM_LOAD( "merit2_6.2",   0x18000, 0x8000, CRC(ded7e124) SHA1(7e6e04ae79dceba70d83ccfde4f9d0ccc0737c78) )
+ROM_END
+
 ROM_START( trvwzv )
 	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "u5.bin",       0x0000, 0x2000, CRC(fd3531ac) SHA1(d11573df65676e704b28cc2d99fb004b48a358a4) )
@@ -1096,6 +1301,26 @@ ROM_START( trvwz2 )
 	ROM_LOAD( "sex-101.02a",  0x98000, 0x8000, CRC(2596091b) SHA1(7fbb9c2c3f74e12714513928c8cf3769bf29fc8b) )
 ROM_END
 
+/* questions only - this dump contained a variety of questions from the 'trvwz2' ones above,
+ and 2 unique roms, which are Sex Trivia */
+ROM_START( trvwz2a )
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "u5_0e",        0x0000, 0x2000, CRC(97b8d320) SHA1(573945531113d8aae9418ba1e9a2063052227029) )
+	ROM_LOAD( "u6_0e",        0x2000, 0x2000, CRC(2e86288d) SHA1(62c7024d8dfebed9bb05ea91302efe5d18cb7d2a) )
+
+	ROM_REGION( 0x6000, "gfx1", 0 )
+	ROM_LOAD( "u39",          0x0000, 0x2000, CRC(b9d9a80e) SHA1(55b6a0d09f8619df93ba936e083835c859a557df) )
+	ROM_LOAD( "u38",          0x2000, 0x2000, CRC(8348083e) SHA1(260a4c1ae043e7ceac65a8818c23940d32275879) )
+	ROM_LOAD( "u37",          0x4000, 0x2000, CRC(b4d3c9f4) SHA1(dda99549306519c147d275d8c6af672e80a96b67) )
+
+	ROM_REGION( 0x2000, "gfx2", 0 )
+	ROM_LOAD( "u40a",         0x0000, 0x2000, CRC(fbfae092) SHA1(b8569819952a5c805f11b6854d64b3ae9c857f97) )
+
+	ROM_REGION( 0xa0000, "user1", ROMREGION_ERASEFF ) /* questions */
+	ROM_LOAD( "merit2_4.0",  0x08000, 0x8000, CRC(069b59a3) SHA1(e3d75edd3a9271df73bf51f409f066547025abbe) ) // Sex Trivia
+	ROM_LOAD( "merit2_4.1",  0x18000, 0x8000, CRC(938d319f) SHA1(5b5841692666c31f2c09cb318f7e106942fffea7) ) // Sex Trivia
+ROM_END
+
 ROM_START( trvwz3h )
 	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "u5",           0x0000, 0x2000, CRC(ad4ab519) SHA1(80e99f4e5542115e34074b41bbc69906e01a408f) )
@@ -1147,6 +1372,34 @@ ROM_START( trvwz3v )
 	ROM_LOAD( "0",     0x98000, 0x8000, CRC(b395cd97) SHA1(a42c7c1687eaba64a725888cd6413568cc90b010) )
 ROM_END
 
+ROM_START( trvwz3ha )
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "merit6.u5",           0x0000, 0x2000, CRC(e0a07f06) SHA1(02cde0fc4a62d108ecd3e2f7704b9166c31707f2) )
+	ROM_LOAD( "merit6.u6",           0x2000, 0x2000, CRC(223482d6) SHA1(4d9dbce7505b98ccd8e2b55f6f86a59b213d72a1) )
+
+	ROM_REGION( 0x6000, "gfx1", 0 )
+	ROM_LOAD( "merit6.u39",          0x0000, 0x2000, CRC(f8a5f5fb) SHA1(a511e1a2b5e887ef00dc919e9e664ccec2d36cfa) )
+	ROM_LOAD( "merit6.u38",          0x2000, 0x2000, CRC(27621e52) SHA1(a7e88d329e2e774fef9bd8c5cefb4d8f1cfcba4c) )
+	ROM_LOAD( "merit6.u37",          0x4000, 0x2000, CRC(f739b5dc) SHA1(fbf469b7f4cab50e06ec2def9344e3b9801a275e) )
+
+	ROM_REGION( 0x2000, "gfx2", 0 )
+	ROM_LOAD( "merit6.u40",          0x0000, 0x2000, CRC(e829473f) SHA1(ba754d9377d955b409970494e1a14dbe1d359ee5) )
+
+	ROM_REGION( 0xa0000, "user1", ROMREGION_ERASEFF ) /* questions */
+	ROM_LOAD( "merit6.9",           0x08000, 0x8000, CRC(974dca96) SHA1(eb4a745c84307a1bbb220659877f97c28cd515ac) )
+	ROM_LOAD( "merit6.8",           0x18000, 0x8000, CRC(503115a1) SHA1(5e6630191465b3d2a590fab08b4f47f7408ecc44) )
+	ROM_LOAD( "merit6.6",           0x28000, 0x8000, CRC(0e4fe73d) SHA1(9aee22a5837637ec5e360b72e71555942df1d26f) )
+	ROM_LOAD( "merit6.5",           0x38000, 0x8000, CRC(f56c0935) SHA1(8e16133ad90829bbc0e0f2e9ee9c26e9d0c5057e) )
+	ROM_LOAD( "merit6.7",           0x48000, 0x8000, CRC(057f6676) SHA1(a93a7a76fc8b8263568a50b00a57f3abe76c9aa3) )
+	ROM_LOAD( "merit6.0",           0x58000, 0x8000, CRC(1fa46b86) SHA1(16d54d0932fe342399faf303eafa3c0b7ba2e202) )
+	ROM_LOAD( "merit6.3",           0x68000, 0x8000, CRC(b395cd97) SHA1(a42c7c1687eaba64a725888cd6413568cc90b010) )
+	ROM_LOAD( "merit6.2",           0x78000, 0x8000, CRC(b064876b) SHA1(588300fb6603f334de41a9685b1fcf8c642b5c16) )
+
+	ROM_REGION( 0x8000, "misc", 0 )
+	ROM_LOAD( "merit6.u13",         0x00000, 0x1f3, CRC(686d2ad0) SHA1(7aad0a1ed09942528eceaf4d7a5e1fd7601aeac7) )
+	ROM_LOAD( "merit6.1",           0x00000, 0x8000, CRC(77a2a734) SHA1(7ba662d275b7914c9dcc9532116086e091e6cf88) ) // should be a question rom, but doesn't work, bad, or from a different game?
+ROM_END
+
 ROM_START( trvwz4 )
 	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "u5.bin",       0x0000, 0x8000, CRC(bc23a1ab) SHA1(b9601f316e373c568c5b208de417617094046559) )
@@ -1170,6 +1423,25 @@ ROM_START( trvwz4 )
 	ROM_LOAD( "sex_4_2.bin",  0x78000, 0x8000, CRC(5f148bc9) SHA1(2fd2cf819c2f395dcffad59857b3533fe3cce60b) )
 	ROM_LOAD( "spo_4_1.bin",  0x88000, 0x8000, CRC(5fe0c6a3) SHA1(17bdb5262ce4edf5f022f075537f6161e1397b46) )
 	ROM_LOAD( "spo_4_2.bin",  0x98000, 0x8000, CRC(3f3390e0) SHA1(50bd7b79268438584bb0f497ab0055b4d4864590) )
+ROM_END
+
+/* only the question board was dumped, but it contained a selection
+  of roms from the above 'trvwz4' set, and one additional one which is Sex Trivia III
+*/
+ROM_START( trvwz4a )
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "u5.bin",       0x0000, 0x8000, CRC(bc23a1ab) SHA1(b9601f316e373c568c5b208de417617094046559) )
+
+	ROM_REGION( 0x6000, "gfx1", 0 )
+	ROM_LOAD( "u39.bin",      0x0000, 0x2000, CRC(b9d9a80e) SHA1(55b6a0d09f8619df93ba936e083835c859a557df) )
+	ROM_LOAD( "u38.bin",      0x2000, 0x2000, CRC(8348083e) SHA1(260a4c1ae043e7ceac65a8818c23940d32275879) )
+	ROM_LOAD( "u37.bin",      0x4000, 0x2000, CRC(b4d3c9f4) SHA1(dda99549306519c147d275d8c6af672e80a96b67) )
+
+	ROM_REGION( 0x2000, "gfx2", 0 )
+	ROM_LOAD( "u40.bin",      0x0000, 0x2000, CRC(fbfae092) SHA1(b8569819952a5c805f11b6854d64b3ae9c857f97) )
+
+	ROM_REGION( 0xa0000, "user1", ROMREGION_ERASEFF ) /* questions */
+	ROM_LOAD( "merit2_5.0",  0x08000, 0x8000, CRC(e07d139f) SHA1(e364dcc628719c1bcdc119bdb2f3c98b5538c411) ) // sex trivia III
 ROM_END
 
 /*
@@ -1243,6 +1515,31 @@ ROM_START( phrcraze )
 	ROM_LOAD( "phrz.6",       0x50000, 0x8000, CRC(48e24f17) SHA1(f50c85505f6ab2360f0885494001f174224f8575) )
 ROM_END
 
+ROM_START( phrcraza )
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "merit5.u5",      0x00000, 0x8000, CRC(d04c7657) SHA1(0b59fbf553eb5b68544ee2f94cf8106ab30ff1ed) )
+
+	ROM_REGION( 0x18000, "gfx1", 0 )
+	ROM_LOAD( "merit5.u37",       0x00000, 0x8000, CRC(237e221a) SHA1(7aa69375c2b9a9e73e0e4ed207bf595368b2deb2) )
+	ROM_LOAD( "merit5.u38",       0x08000, 0x8000, CRC(bfa78b67) SHA1(1b51c0e00240f798fe717624e706cb15700bc2f9) )
+	ROM_LOAD( "merit5.u39",       0x10000, 0x8000, CRC(9ce22cb3) SHA1(b653afb8f13decd993e434aaad69a6e09ab65f83) )
+
+	ROM_REGION( 0x08000, "gfx2", 0 )
+	ROM_LOAD( "merit5.u40",       0x00000, 0x8000, CRC(17dcddd4) SHA1(51682bdbfb67cd0ccf20b97e8fa12d72f0fe82ed) )
+
+	ROM_REGION( 0xa0000, "user1", ROMREGION_ERASEFF ) /* questions */
+	ROM_LOAD( "merit2_0.0",     0x00000, 0x8000, CRC(7ef3bca7) SHA1(f25cd01f996882a500e1a800d924759cd1de255d) )
+	ROM_LOAD( "merit2_0.1",     0x10000, 0x8000, CRC(ed7604b8) SHA1(b1e841b50b8ef6ae95fafac1c34b6d0337a05d18) )
+	ROM_LOAD( "merit2_0.2",     0x20000, 0x8000, CRC(423eecd6) SHA1(ca8d181ccba05acba8ebc57f20e0542eda00c917) )
+	ROM_LOAD( "merit2_0.3",     0x30000, 0x8000, CRC(05dd3900) SHA1(bb13a3c5f84771c450fa88560cc74c5a1be1b876) )
+	ROM_LOAD( "merit2_0.4",     0x40000, 0x8000, CRC(c5980f24) SHA1(a3b665c74aaa704ffa382f95adac70c7c46fb446) )
+	ROM_LOAD( "merit2_0.5",     0x50000, 0x8000, CRC(7cb395a9) SHA1(48b3ac524e6ae23f885b9b767e77930a89a81f5f) )
+	ROM_LOAD( "merit2_0.6",     0x60000, 0x8000, CRC(effc811b) SHA1(2479539965ed541be417bbe48a5e66a58a6294aa) )
+	ROM_LOAD( "merit2_0.7",     0x70000, 0x8000, CRC(c4c7dcee) SHA1(81d879df3da0fbe1cf2247d92b3853104a99689d) )
+	ROM_LOAD( "merit2_0.8",     0x80000, 0x8000, CRC(527b3025) SHA1(36dc129d2276909643e90ae3810c8341076fd88c) )
+	ROM_LOAD( "merit2_0.9",     0x90000, 0x8000, CRC(367f1dfa) SHA1(01d69004c365acefb0e52ac12593a3874c16ab9d) )
+ROM_END
+
 ROM_START( phrcrazs )
 	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "u5.bin",       0x00000, 0x8000, CRC(6122b5bb) SHA1(9952b14334287a992eefefbdc887b9a9215304ef) )
@@ -1286,7 +1583,61 @@ ROM_START( dodge )
     /* socket at position u40 is unpopulated */
 ROM_END
 
+ROM_START( couple )
+	ROM_REGION( 0x20000, "main", 0 )
+	ROM_LOAD( "1.1d",  0x00000, 0x8000, CRC(bc70337a) SHA1(ffc484bc3965f0780d3fa5d8801af27a7164a417) )
+	ROM_LOAD( "2.1e",  0x10000, 0x8000, CRC(17372a93) SHA1(e0f0980003473555c2543d98d1494f82afa49f1a) )
 
+	ROM_REGION( 0x18000, "gfx1", 0 )
+	ROM_LOAD( "3.9c",  0x00000, 0x8000, CRC(f017399a) SHA1(baf4c1bea6a12b1d4c8838552503fbdb81378411) )
+	ROM_LOAD( "4.9d",  0x08000, 0x8000, CRC(66da76c1) SHA1(8cdcec008d0d51704544069246e9eabb5d5958ea) )
+	ROM_LOAD( "5.10c", 0x10000, 0x8000, CRC(fc22bcf4) SHA1(cf3f6872965cb264d56d3a0b5ab998541b9af4ef) )
+
+	ROM_REGION( 0x08000, "gfx2", 0 )
+	ROM_LOAD( "6.10d", 0x00000, 0x8000, CRC(a6a9a73d) SHA1(f3cb1d434d730f6e00f48079eaf8b88f57779fa0) )
+
+	ROM_REGION( 0x0800, "proms", 0 )
+	ROM_LOAD( "7.7a",  0x00000, 0x0800, CRC(6c36361e) SHA1(7a018eecf3d8b7cf8845dcfcf8067feb292933b2) )	/*video timing?*/
+ROM_END
+
+/*f205v's dump,same except for the first z80 rom,first noticeable differences are that
+it doesn't jump to the backup ram area and it gives an extra play if you reach a certain
+amount of points (there is a dip switch to select the trigger: 150.000 or 200.000*/
+ROM_START( couplep )
+	ROM_REGION( 0x20000, "main", 0 )
+	ROM_LOAD( "1.1d",  0x00000, 0x8000, CRC(4601ace6) SHA1(a824ceebf8b9ce77ef2c8e92636e4261f2ae0420) )
+	ROM_LOAD( "2.1e",  0x10000, 0x8000, CRC(17372a93) SHA1(e0f0980003473555c2543d98d1494f82afa49f1a) )
+
+	ROM_REGION( 0x18000, "gfx1", 0 )
+	ROM_LOAD( "3.9c",  0x00000, 0x8000, CRC(f017399a) SHA1(baf4c1bea6a12b1d4c8838552503fbdb81378411) )
+	ROM_LOAD( "4.9d",  0x08000, 0x8000, CRC(66da76c1) SHA1(8cdcec008d0d51704544069246e9eabb5d5958ea) )
+	ROM_LOAD( "5.10c", 0x10000, 0x8000, CRC(fc22bcf4) SHA1(cf3f6872965cb264d56d3a0b5ab998541b9af4ef) )
+
+	ROM_REGION( 0x08000, "gfx2", 0 )
+	ROM_LOAD( "6.10d", 0x00000, 0x8000, CRC(a6a9a73d) SHA1(f3cb1d434d730f6e00f48079eaf8b88f57779fa0) )
+
+	ROM_REGION( 0x0800, "proms", 0 )
+	ROM_LOAD( "7.7a",  0x00000, 0x0800, CRC(6c36361e) SHA1(7a018eecf3d8b7cf8845dcfcf8067feb292933b2) )	/*video timing?*/
+ROM_END
+
+/*f205v's dump,this one looks like an intermediate release between set1 and set2;
+it has same dips as set1, but remaining machine code is the same as set2*/
+ROM_START( couplei )
+	ROM_REGION( 0x20000, "main", 0 )
+	ROM_LOAD( "1.1d",  0x00000, 0x8000, CRC(760fa29e) SHA1(a37a1562028d9615adff3d2ef88e0156354c720a) )
+	ROM_LOAD( "2.1e",  0x10000, 0x8000, CRC(17372a93) SHA1(e0f0980003473555c2543d98d1494f82afa49f1a) )
+
+	ROM_REGION( 0x18000, "gfx1", 0 )
+	ROM_LOAD( "3.9c",  0x00000, 0x8000, CRC(f017399a) SHA1(baf4c1bea6a12b1d4c8838552503fbdb81378411) )
+	ROM_LOAD( "4.9d",  0x08000, 0x8000, CRC(66da76c1) SHA1(8cdcec008d0d51704544069246e9eabb5d5958ea) )
+	ROM_LOAD( "5.10c", 0x10000, 0x8000, CRC(fc22bcf4) SHA1(cf3f6872965cb264d56d3a0b5ab998541b9af4ef) )
+
+	ROM_REGION( 0x08000, "gfx2", 0 )
+	ROM_LOAD( "6.10d", 0x00000, 0x8000, CRC(a6a9a73d) SHA1(f3cb1d434d730f6e00f48079eaf8b88f57779fa0) )
+
+	ROM_REGION( 0x0800, "proms", 0 )
+	ROM_LOAD( "7.7a",  0x00000, 0x0800, CRC(6c36361e) SHA1(7a018eecf3d8b7cf8845dcfcf8067feb292933b2) )	/*video timing?*/
+ROM_END
 
 static DRIVER_INIT( key_0 )
 {
@@ -1313,18 +1664,62 @@ static DRIVER_INIT( key_7 )
 	decryption_key = 7;
 }
 
-GAME( 1983, pitboss,  0,       pitboss,  pitboss,  0,      ROT0,  "Merit", "Pit Boss",                                    GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+static DRIVER_INIT( couple )
+{
+	UINT8 *ROM = memory_region(machine, "main");
+
+	#if 0 //quick rom compare test
+	{
+		static int i,r;
+		r = 0;
+		for(i=0;i<0x2000;i++)
+		{
+			if(ROM[0x14000+i] == ROM[0x16000+i])
+				r++;
+		}
+		mame_printf_debug("%02x (in HEX) identical bytes (no offset done)\n",r);
+	}
+	#endif
+
+	/*The banked rom isn't a *real* banking,it's just a strange rom hook-up,the 2nd
+      and the 3rd halves are 100% identical(!),unless it's an error of TWO different
+      dumpers it's just the way it is,a.k.a. it's an "hardware" banking.
+      update 20060118 by f205v: now we have 3 dumps from 3 different boards and they
+      all behave the same...*/
+	memory_set_bankptr(machine, 1,ROM + 0x10000 + (0x2000 * 2));
+}
+
+GAME( 1983, pitboss,  0,       pitboss,  pitboss,  0,      ROT0,  "Merit", "Pit Boss (Set 1)",                            GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1983, pitbossa, pitboss, pitboss,  pitboss,  0,      ROT0,  "Merit", "Pit Boss (Set 2)",                            GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+
 GAME( 1983, casino5,  0,       pitboss,  pitboss,  0,      ROT0,  "Merit", "Casino 5",                                    GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
-GAME( 1985, trvwzh,   0,       trvwhiz,  trivia,   key_0,  ROT0,  "Merit", "Trivia ? Whiz (Horizontal - Question set 1)", GAME_SUPPORTS_SAVE )
-GAME( 1985, trvwzha,  trvwzh,  trvwhiz,  trivia,   key_0,  ROT0,  "Merit", "Trivia ? Whiz (Horizontal - Question set 2)", GAME_SUPPORTS_SAVE )
-GAME( 1985, trvwzv,   0,       trvwhiz,  trivia,   key_0,  ROT90, "Merit", "Trivia ? Whiz (Vertical - Question set 1)",   GAME_SUPPORTS_SAVE )
-GAME( 1985, trvwzva,  trvwzv,  trvwhiz,  trivia,   key_0,  ROT90, "Merit", "Trivia ? Whiz (Vertical - Question set 2)",   GAME_SUPPORTS_SAVE )
-GAME( 1985, trvwz2,   0,       trvwhiz,  trivia,   key_2,  ROT90, "Merit", "Trivia ? Whiz (Edition 2)",                   GAME_SUPPORTS_SAVE )
-GAME( 1985, trvwz3h,  0,       trvwhiz,  trivia,   key_0,  ROT0,  "Merit", "Trivia ? Whiz (Edition 3 - Horizontal)",      GAME_SUPPORTS_SAVE )
-GAME( 1985, trvwz3v,  0,       trvwhiz,  trivia,   key_0,  ROT90, "Merit", "Trivia ? Whiz (Edition 3 - Vertical)",        GAME_SUPPORTS_SAVE )
-GAME( 1985, trvwz4,   0,       trvwhziv, trvwhziv, key_5,  ROT90, "Merit", "Trivia ? Whiz (Edition 4)",                   GAME_SUPPORTS_SAVE )
+
+GAME( 1985, trvwzh,   0,       trvwhiz,  trivia,   key_0,  ROT0,  "Merit", "Trivia ? Whiz (Horizontal) (question set 1)", GAME_SUPPORTS_SAVE )
+GAME( 1985, trvwzha,  trvwzh,  trvwhiz,  trivia,   key_0,  ROT0,  "Merit", "Trivia ? Whiz (Horizontal) (question set 2)", GAME_SUPPORTS_SAVE )
+GAME( 1985, trvwzhb,  trvwzh,  trvwhiz,  trivia,   key_0,  ROT0,  "Merit", "Trivia ? Whiz (Horizontal) (question set 3)", GAME_SUPPORTS_SAVE )
+GAME( 1985, trvwzv,   trvwzh,  trvwhiz,  trivia,   key_0,  ROT90, "Merit", "Trivia ? Whiz (Vertical) (question set 1)",   GAME_SUPPORTS_SAVE )
+GAME( 1985, trvwzva,  trvwzh,  trvwhiz,  trivia,   key_0,  ROT90, "Merit", "Trivia ? Whiz (Vertical) (question set 2)",   GAME_SUPPORTS_SAVE )
+
+GAME( 1985, trvwz2,   0,       trvwhiz,  trivia,   key_2,  ROT90, "Merit", "Trivia ? Whiz (Edition 2) (question set 1)",  GAME_SUPPORTS_SAVE )
+GAME( 1985, trvwz2a,  trvwz2,  trvwhiz,  trivia,   key_2,  ROT90, "Merit", "Trivia ? Whiz (Edition 2) (question set 2)",  GAME_SUPPORTS_SAVE )
+
+GAME( 1985, trvwz3h,  0,       trvwhiz,  trivia,   key_0,  ROT0,  "Merit", "Trivia ? Whiz (Edition 3 - Horizontal) (set 1)",GAME_SUPPORTS_SAVE )
+GAME( 1985, trvwz3ha, trvwz3h, trvwhiz,  trivia,   key_0,  ROT0,  "Merit", "Trivia ? Whiz (Edition 3 - Horizontal) (set 2)",GAME_SUPPORTS_SAVE )
+GAME( 1985, trvwz3v,  trvwz3h, trvwhiz,  trivia,   key_0,  ROT90, "Merit", "Trivia ? Whiz (Edition 3 - Vertical)",        GAME_SUPPORTS_SAVE )
+
+GAME( 1985, trvwz4,   0,       trvwhziv, trvwhziv, key_5,  ROT90, "Merit", "Trivia ? Whiz (Edition 4) (question set 1)",  GAME_SUPPORTS_SAVE )
+GAME( 1985, trvwz4a,  trvwz4,  trvwhziv, trvwhziv, key_5,  ROT90, "Merit", "Trivia ? Whiz (Edition 4) (question set 2)",  GAME_SUPPORTS_SAVE )
+
 GAME( 1985, tictac,   0,       tictac,   tictac,   key_4,  ROT0,  "Merit", "Tic Tac Trivia",                              GAME_SUPPORTS_SAVE )
-GAME( 1986, phrcraze, 0,       phrcraze, phrcraze, key_7,  ROT0,  "Merit", "Phraze Craze",                                GAME_SUPPORTS_SAVE )
-GAME( 1986, phrcrazs, 0,       phrcraze, phrcrazs, key_7,  ROT90, "Merit", "Phraze Craze (Sex Kit)",                      GAME_SUPPORTS_SAVE )
+
+GAME( 1986, phrcraze, 0,       phrcraze, phrcraze, key_7,  ROT0,  "Merit", "Phraze Craze (set 1)",      	   	          GAME_SUPPORTS_SAVE )
+GAME( 1986, phrcraza, phrcraze,phrcraze, phrcraze, key_7,  ROT0,  "Merit", "Phraze Craze (set 2)",          		      GAME_SUPPORTS_SAVE )
+GAME( 1986, phrcrazs, phrcraze,phrcraze, phrcrazs, key_7,  ROT90, "Merit", "Phraze Craze (Sex Kit)",                      GAME_SUPPORTS_SAVE )
+
 GAME( 1986, bigappg,  0,       bigappg,  bigappg,  0,      ROT0,  "Merit", "Big Apple Games ?",                           GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
+
 GAME( 1986, dodge,    0,       bigappg,  bigappg,  0,      ROT0,  "Merit", "Dodge City",                                  GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
+
+GAME( 1988, couple,   0,       couple,   couple,   couple, ROT0,  "Merit", "The Couples (Set 1)",                         GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )
+GAME( 1988, couplep,  couple,  couple,   couplep,  couple, ROT0,  "Merit", "The Couples (Set 2)",                         GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )
+GAME( 1988, couplei,  couple,  couple,   couple,   couple, ROT0,  "Merit", "The Couples (Set 3)",                         GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )

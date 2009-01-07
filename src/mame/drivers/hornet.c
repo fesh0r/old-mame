@@ -308,6 +308,7 @@
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/powerpc/ppc.h"
 #include "cpu/sharc/sharc.h"
 #include "machine/eeprom.h"
@@ -434,13 +435,13 @@ static int K037122_vh_start(running_machine *machine, int chip)
 
 	if (chip == 0)
 	{
-		K037122_layer[chip][0] = tilemap_create(K037122_0_tile_info_layer0, tilemap_scan_rows, 8, 8, 256, 64);
-		K037122_layer[chip][1] = tilemap_create(K037122_0_tile_info_layer1, tilemap_scan_rows, 8, 8, 128, 64);
+		K037122_layer[chip][0] = tilemap_create(machine, K037122_0_tile_info_layer0, tilemap_scan_rows, 8, 8, 256, 64);
+		K037122_layer[chip][1] = tilemap_create(machine, K037122_0_tile_info_layer1, tilemap_scan_rows, 8, 8, 128, 64);
 	}
 	else
 	{
-		K037122_layer[chip][0] = tilemap_create(K037122_1_tile_info_layer0, tilemap_scan_rows, 8, 8, 256, 64);
-		K037122_layer[chip][1] = tilemap_create(K037122_1_tile_info_layer1, tilemap_scan_rows, 8, 8, 128, 64);
+		K037122_layer[chip][0] = tilemap_create(machine, K037122_1_tile_info_layer0, tilemap_scan_rows, 8, 8, 256, 64);
+		K037122_layer[chip][1] = tilemap_create(machine, K037122_1_tile_info_layer1, tilemap_scan_rows, 8, 8, 128, 64);
 	}
 
 	tilemap_set_transparent_pen(K037122_layer[chip][0], 0);
@@ -451,14 +452,14 @@ static int K037122_vh_start(running_machine *machine, int chip)
 	memset(K037122_dirty_map[chip], 0, K037122_NUM_TILES);
 	memset(K037122_reg[chip], 0, 0x400);
 
-	machine->gfx[K037122_gfx_index[chip]] = allocgfx(&K037122_char_layout);
+	machine->gfx[K037122_gfx_index[chip]] = allocgfx(machine, &K037122_char_layout);
 	decodegfx(machine->gfx[K037122_gfx_index[chip]], (UINT8*)K037122_char_ram[chip], 0, machine->gfx[K037122_gfx_index[chip]]->total_elements);
 
 	machine->gfx[K037122_gfx_index[chip]]->total_colors = machine->config->total_colors / 16;
 
-	state_save_register_item_pointer("K037122", chip, K037122_reg[chip], 0x400/sizeof(K037122_reg[chip][0]));
-	state_save_register_item_pointer("K037122", chip, K037122_char_ram[chip], 0x200000/sizeof(K037122_char_ram[chip][0]));
-	state_save_register_item_pointer("K037122", chip, K037122_tile_ram[chip], 0x20000/sizeof(K037122_tile_ram[chip][0]));
+	state_save_register_item_pointer(machine, "K037122", NULL, chip, K037122_reg[chip], 0x400/sizeof(K037122_reg[chip][0]));
+	state_save_register_item_pointer(machine, "K037122", NULL, chip, K037122_char_ram[chip], 0x200000/sizeof(K037122_char_ram[chip][0]));
+	state_save_register_item_pointer(machine, "K037122", NULL, chip, K037122_tile_ram[chip], 0x20000/sizeof(K037122_tile_ram[chip][0]));
 	state_save_register_postload(machine, K037122_postload, (void *)(FPTR)chip);
 
 	return 0;
@@ -532,14 +533,14 @@ static WRITE32_HANDLER(K037122_sram_w)
 		}
 		else if (offset >= 0x18000/4)
 		{
-			update_palette_color(machine, chip, 0x18000, offset - (0x18000/4));
+			update_palette_color(space->machine, chip, 0x18000, offset - (0x18000/4));
 		}
 	}
 	else
 	{
 		if (offset < 0x8000/4)
 		{
-			update_palette_color(machine, chip, 0, offset);
+			update_palette_color(space->machine, chip, 0, offset);
 		}
 		else if (offset >= 0x8000/4 && offset < 0x18000/4)
 		{
@@ -602,12 +603,12 @@ static WRITE32_HANDLER(K037122_reg_w)
 
 static void voodoo_vblank_0(const device_config *device, int param)
 {
-	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
+	cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
 static void voodoo_vblank_1(const device_config *device, int param)
 {
-	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
+	cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_IRQ1, ASSERT_LINE);
 }
 
 static VIDEO_START( hornet )
@@ -674,7 +675,7 @@ static READ8_HANDLER( sysreg_r )
 		case 0:	/* I/O port 0 */
 		case 1:	/* I/O port 1 */
 		case 2:	/* I/O port 2 */
-			r = input_port_read(machine, portnames[offset]);
+			r = input_port_read(space->machine, portnames[offset]);
 			break;
 
 		case 3:	/* I/O port 3 */
@@ -691,7 +692,7 @@ static READ8_HANDLER( sysreg_r )
 			break;
 
 		case 4:	/* I/O port 4 - DIP switches */
-			r = input_port_read(machine, "DSW");
+			r = input_port_read(space->machine, "DSW");
 			break;
 	}
 	return r;
@@ -741,7 +742,7 @@ static WRITE8_HANDLER( sysreg_w )
                 0x02 = ADDI (ADC DI)
                 0x01 = ADDSCLK (ADC SCLK)
             */
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 			mame_printf_debug("System register 1 = %02X\n", data);
 			break;
 
@@ -764,7 +765,7 @@ static WRITE8_HANDLER( sysreg_w )
                 0x80 = WDTCLK
             */
 			if (data & 0x80)
-				watchdog_reset(machine);
+				watchdog_reset(space->machine);
 			break;
 
 		case 7:	/* CG Control Register */
@@ -776,9 +777,9 @@ static WRITE8_HANDLER( sysreg_w )
                 0x01 = EXRGB
             */
 			if (data & 0x80)
-				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
+				cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ1, CLEAR_LINE);
 			if (data & 0x40)
-				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
+				cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ0, CLEAR_LINE);
 			set_cgboard_id((data >> 4) & 3);
 			break;
 	}
@@ -794,9 +795,9 @@ static WRITE32_HANDLER( comm1_w )
 static WRITE32_HANDLER( comm_rombank_w )
 {
 	int bank = data >> 24;
-	UINT8 *usr3 = memory_region(machine, "user3");
+	UINT8 *usr3 = memory_region(space->machine, "user3");
 	if (usr3 != NULL)
-		memory_set_bank(1, bank & 0x7f);
+		memory_set_bank(space->machine, 1, bank & 0x7f);
 }
 
 static READ32_HANDLER( comm0_unk_r )
@@ -1006,19 +1007,19 @@ static MACHINE_START( hornet )
 	memset(jvs_sdata, 0, 1024);
 
 	/* set conservative DRC options */
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_END, 0x003fffff);
-	cpunum_set_info_ptr(0, CPUINFO_PTR_PPC_FASTRAM_BASE, workram);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_END, 0x003fffff);
+	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_PPC_FASTRAM_BASE, workram);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
 
-	state_save_register_global(led_reg0);
-	state_save_register_global(led_reg1);
-	state_save_register_global_pointer(jvs_sdata, 1024);
-	state_save_register_global(jvs_sdata_ptr);
+	state_save_register_global(machine, led_reg0);
+	state_save_register_global(machine, led_reg1);
+	state_save_register_global_pointer(machine, jvs_sdata, 1024);
+	state_save_register_global(machine, jvs_sdata_ptr);
 }
 
 static MACHINE_RESET( hornet )
@@ -1027,25 +1028,20 @@ static MACHINE_RESET( hornet )
 	UINT8 *usr5 = memory_region(machine, "user5");
 	if (usr3 != NULL)
 	{
-		memory_configure_bank(1, 0, memory_region_length(machine, "user3") / 0x40000, usr3, 0x40000);
-		memory_set_bank(1, 0);
+		memory_configure_bank(machine, 1, 0, memory_region_length(machine, "user3") / 0x40000, usr3, 0x40000);
+		memory_set_bank(machine, 1, 0);
 	}
 
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
 
 	if (usr5)
-		memory_set_bankptr(5, usr5);
+		memory_set_bankptr(machine, 5, usr5);
 }
 
 static NVRAM_HANDLER( hornet )
 {
 	NVRAM_HANDLER_CALL(93C46);
 }
-
-static const timekeeper_config timekeeper_intf =
-{
-	"m48t58"
-};
 
 static MACHINE_DRIVER_START( hornet )
 
@@ -1060,7 +1056,7 @@ static MACHINE_DRIVER_START( hornet )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc0_map, 0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_START( hornet )
 	MDRV_MACHINE_RESET( hornet )
@@ -1068,6 +1064,7 @@ static MACHINE_DRIVER_START( hornet )
 	MDRV_NVRAM_HANDLER( hornet )
 
 	MDRV_3DFX_VOODOO_1_ADD("voodoo0", STD_VOODOO_1_CLOCK, 2, "main")
+	MDRV_3DFX_VOODOO_CPU("dsp")
 	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 4)
 	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_0)
 
@@ -1089,8 +1086,7 @@ static MACHINE_DRIVER_START( hornet )
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
-	MDRV_DEVICE_ADD( "m48t58", M48T58 )
-	MDRV_DEVICE_CONFIG( timekeeper_intf )
+	MDRV_M48T58_ADD( "m48t58" )
 MACHINE_DRIVER_END
 
 static MACHINE_RESET( hornet_2board )
@@ -1100,14 +1096,14 @@ static MACHINE_RESET( hornet_2board )
 
 	if (usr3 != NULL)
 	{
-		memory_configure_bank(1, 0, memory_region_length(machine, "user3") / 0x40000, usr3, 0x40000);
-		memory_set_bank(1, 0);
+		memory_configure_bank(machine, 1, 0, memory_region_length(machine, "user3") / 0x40000, usr3, 0x40000);
+		memory_set_bank(machine, 1, 0);
 	}
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
-	cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[3], INPUT_LINE_RESET, ASSERT_LINE);
 
 	if (usr5)
-		memory_set_bankptr(5, usr5);
+		memory_set_bankptr(machine, 5, usr5);
 }
 
 static MACHINE_DRIVER_START( hornet_2board )
@@ -1125,10 +1121,12 @@ static MACHINE_DRIVER_START( hornet_2board )
 
 	MDRV_3DFX_VOODOO_REMOVE("voodoo0")
 	MDRV_3DFX_VOODOO_1_ADD("voodoo0", STD_VOODOO_1_CLOCK, 2, "left")
+	MDRV_3DFX_VOODOO_CPU("dsp")
 	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 4)
 	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_0)
 
 	MDRV_3DFX_VOODOO_1_ADD("voodoo1", STD_VOODOO_1_CLOCK, 2, "right")
+	MDRV_3DFX_VOODOO_CPU("dsp2")
 	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 4)
 	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_1)
 
@@ -1155,11 +1153,13 @@ static MACHINE_DRIVER_START( hornet_2board_v2 )
 
 	MDRV_3DFX_VOODOO_REMOVE("voodoo0")
 	MDRV_3DFX_VOODOO_2_ADD("voodoo0", STD_VOODOO_2_CLOCK, 2, "left")
+	MDRV_3DFX_VOODOO_CPU("dsp")
 	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 4)
 	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_0)
 
 	MDRV_3DFX_VOODOO_REMOVE("voodoo1")
 	MDRV_3DFX_VOODOO_2_ADD("voodoo1", STD_VOODOO_2_CLOCK, 2, "right")
+	MDRV_3DFX_VOODOO_CPU("dsp2")
 	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 4)
 	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_1)
 MACHINE_DRIVER_END
@@ -1167,9 +1167,9 @@ MACHINE_DRIVER_END
 
 /*****************************************************************************/
 
-static void jamma_jvs_cmd_exec(void);
+static void jamma_jvs_cmd_exec(running_machine *machine);
 
-static void jamma_jvs_w(UINT8 data)
+static void jamma_jvs_w(const device_config *device, UINT8 data)
 {
 	if (jvs_sdata_ptr == 0 && data != 0xe0)
 		return;
@@ -1177,10 +1177,10 @@ static void jamma_jvs_w(UINT8 data)
 	jvs_sdata_ptr++;
 
 	if (jvs_sdata_ptr >= 3 && jvs_sdata_ptr >= 3 + jvs_sdata[2])
-		jamma_jvs_cmd_exec();
+		jamma_jvs_cmd_exec(device->machine);
 }
 
-static int jvs_encode_data(UINT8 *in, int length)
+static int jvs_encode_data(running_machine *machine, UINT8 *in, int length)
 {
 	int inptr = 0;
 	int sum = 0;
@@ -1191,19 +1191,19 @@ static int jvs_encode_data(UINT8 *in, int length)
 		if (b == 0xe0)
 		{
 			sum += 0xd0 + 0xdf;
-			ppc4xx_spu_receive_byte(0, 0xd0);
-			ppc4xx_spu_receive_byte(0, 0xdf);
+			ppc4xx_spu_receive_byte(machine->cpu[0], 0xd0);
+			ppc4xx_spu_receive_byte(machine->cpu[0], 0xdf);
 		}
 		else if (b == 0xd0)
 		{
 			sum += 0xd0 + 0xcf;
-			ppc4xx_spu_receive_byte(0, 0xd0);
-			ppc4xx_spu_receive_byte(0, 0xcf);
+			ppc4xx_spu_receive_byte(machine->cpu[0], 0xd0);
+			ppc4xx_spu_receive_byte(machine->cpu[0], 0xcf);
 		}
 		else
 		{
 			sum += b;
-			ppc4xx_spu_receive_byte(0, b);
+			ppc4xx_spu_receive_byte(machine->cpu[0], b);
 		}
 	}
 	return sum;
@@ -1231,7 +1231,7 @@ static int jvs_decode_data(UINT8 *in, UINT8 *out, int length)
 	return outptr;
 }
 
-static void jamma_jvs_cmd_exec(void)
+static void jamma_jvs_cmd_exec(running_machine *machine)
 {
 	UINT8 sync, node, byte_num;
 	UINT8 data[1024], rdata[1024];
@@ -1292,11 +1292,11 @@ static void jamma_jvs_cmd_exec(void)
 
 	// write jvs return data
 	sum = 0x00 + (rdata_ptr+1);
-	ppc4xx_spu_receive_byte(0, 0xe0);			// sync
-	ppc4xx_spu_receive_byte(0, 0x00);			// node
-	ppc4xx_spu_receive_byte(0, rdata_ptr+1);	// num of bytes
-	sum += jvs_encode_data(rdata, rdata_ptr);
-	ppc4xx_spu_receive_byte(0, sum - 1);		// checksum
+	ppc4xx_spu_receive_byte(machine->cpu[0], 0xe0);			// sync
+	ppc4xx_spu_receive_byte(machine->cpu[0], 0x00);			// node
+	ppc4xx_spu_receive_byte(machine->cpu[0], rdata_ptr+1);	// num of bytes
+	sum += jvs_encode_data(machine, rdata, rdata_ptr);
+	ppc4xx_spu_receive_byte(machine->cpu[0], sum - 1);		// checksum
 
 	jvs_sdata_ptr = 0;
 }
@@ -1306,54 +1306,54 @@ static void jamma_jvs_cmd_exec(void)
 
 static TIMER_CALLBACK( irq_off )
 {
-	cpunum_set_input_line(machine, 1, param, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], param, CLEAR_LINE);
 }
 
 static void sound_irq_callback(running_machine *machine, int irq)
 {
 	int line = (irq == 0) ? INPUT_LINE_IRQ1 : INPUT_LINE_IRQ2;
-	cpunum_set_input_line(machine, 1, line, ASSERT_LINE);
-	timer_set(ATTOTIME_IN_USEC(1), NULL, line, irq_off);
+	cpu_set_input_line(machine->cpu[1], line, ASSERT_LINE);
+	timer_set(machine, ATTOTIME_IN_USEC(1), NULL, line, irq_off);
 }
 
 static DRIVER_INIT(hornet)
 {
-	init_konami_cgboard(1, CGBOARD_TYPE_HORNET);
-	set_cgboard_texture_bank(0, 5, memory_region(machine, "user5"));
+	init_konami_cgboard(machine, 1, CGBOARD_TYPE_HORNET);
+	set_cgboard_texture_bank(machine, 0, 5, memory_region(machine, "user5"));
 
-	K056800_init(sound_irq_callback);
-	K033906_init();
+	K056800_init(machine, sound_irq_callback);
+	K033906_init(machine);
 
 	led_reg0 = led_reg1 = 0x7f;
 
-	ppc4xx_spu_set_tx_handler(0, jamma_jvs_w);
+	ppc4xx_spu_set_tx_handler(machine->cpu[0], jamma_jvs_w);
 }
 
 static DRIVER_INIT(hornet_2board)
 {
-	init_konami_cgboard(2, CGBOARD_TYPE_HORNET);
-	set_cgboard_texture_bank(0, 5, memory_region(machine, "user5"));
-	set_cgboard_texture_bank(1, 6, memory_region(machine, "user5"));
+	init_konami_cgboard(machine, 2, CGBOARD_TYPE_HORNET);
+	set_cgboard_texture_bank(machine, 0, 5, memory_region(machine, "user5"));
+	set_cgboard_texture_bank(machine, 1, 6, memory_region(machine, "user5"));
 
-	K056800_init(sound_irq_callback);
-	K033906_init();
+	K056800_init(machine, sound_irq_callback);
+	K033906_init(machine);
 
 	led_reg0 = led_reg1 = 0x7f;
 
-	ppc4xx_spu_set_tx_handler(0, jamma_jvs_w);
+	ppc4xx_spu_set_tx_handler(machine->cpu[0], jamma_jvs_w);
 }
 
 /*****************************************************************************/
 
 ROM_START(sscope)
 	ROM_REGION32_BE(0x400000, "user1", 0)	/* PowerPC program */
-	ROM_LOAD16_WORD_SWAP("ss1-1.27p", 0x200000, 0x200000, CRC(3b6bb075) SHA1(babc134c3a20c7cdcaa735d5f1fd5cab38667a14))
+	ROM_LOAD16_WORD_SWAP("ss1-1.27p", 0x200000, 0x200000, CRC(3b6bb075) SHA1(babc134c3a20c7cdcaa735d5f1fd5cab38667a14) )
 	ROM_RELOAD(0x000000, 0x200000)
 
 	ROM_REGION32_BE(0x800000, "user2", ROMREGION_ERASE00)	/* Data roms */
 
 	ROM_REGION(0x80000, "audio", 0)		/* 68K Program */
-	ROM_LOAD16_WORD_SWAP("ss1-1.7s", 0x000000, 0x80000, CRC(2805ea1d) SHA1(2556a51ee98cb8f59bf081e916c69a24532196f1))
+	ROM_LOAD16_WORD_SWAP("ss1-1.7s", 0x000000, 0x80000, CRC(2805ea1d) SHA1(2556a51ee98cb8f59bf081e916c69a24532196f1) )
 
 	ROM_REGION(0x1000000, "user5", 0)		/* CG Board texture roms */
 	ROM_LOAD32_WORD( "ss1-3.u32",    0x000000, 0x400000, CRC(335793e1) SHA1(d582b53c3853abd59bc728f619a30c27cfc9497c) )
@@ -1369,13 +1369,13 @@ ROM_END
 
 ROM_START(sscopea)
 	ROM_REGION32_BE(0x400000, "user1", 0)	/* PowerPC program */
-	ROM_LOAD16_WORD_SWAP("830_a01.bin", 0x200000, 0x200000, CRC(39e353f1) SHA1(569b06969ae7a690f6d6e63cc3b5336061663a37))
+	ROM_LOAD16_WORD_SWAP("830_a01.bin", 0x200000, 0x200000, CRC(39e353f1) SHA1(569b06969ae7a690f6d6e63cc3b5336061663a37) )
 	ROM_RELOAD(0x000000, 0x200000)
 
 	ROM_REGION32_BE(0x800000, "user2", ROMREGION_ERASE00)	/* Data roms */
 
 	ROM_REGION(0x80000, "audio", 0)		/* 68K Program */
-	ROM_LOAD16_WORD_SWAP("ss1-1.7s", 0x000000, 0x80000, CRC(2805ea1d) SHA1(2556a51ee98cb8f59bf081e916c69a24532196f1))
+	ROM_LOAD16_WORD_SWAP("ss1-1.7s", 0x000000, 0x80000, CRC(2805ea1d) SHA1(2556a51ee98cb8f59bf081e916c69a24532196f1) )
 
 	ROM_REGION(0x1000000, "user5", 0)		/* CG Board texture roms */
 	ROM_LOAD32_WORD( "ss1-3.u32",    0x000000, 0x400000, CRC(335793e1) SHA1(d582b53c3853abd59bc728f619a30c27cfc9497c) )
@@ -1391,20 +1391,20 @@ ROM_END
 
 ROM_START(sscope2)
 	ROM_REGION32_BE(0x400000, "user1", 0)	/* PowerPC program */
-	ROM_LOAD16_WORD_SWAP("931d01.bin", 0x200000, 0x200000, CRC(4065fde6) SHA1(84f2dedc3e8f61651b22c0a21433a64993e1b9e2))
+	ROM_LOAD16_WORD_SWAP("931d01.bin", 0x200000, 0x200000, CRC(4065fde6) SHA1(84f2dedc3e8f61651b22c0a21433a64993e1b9e2) )
 	ROM_RELOAD(0x000000, 0x200000)
 
 	ROM_REGION32_BE(0x800000, "user2", 0)	/* Data roms */
-	ROM_LOAD32_WORD_SWAP("931a04.bin", 0x000000, 0x200000, CRC(4f5917e6) SHA1(a63a107f1d6d9756e4ab0965d72ea446f0692814))
+	ROM_LOAD32_WORD_SWAP("931a04.bin", 0x000000, 0x200000, CRC(4f5917e6) SHA1(a63a107f1d6d9756e4ab0965d72ea446f0692814) )
 
 	ROM_REGION32_BE(0x800000, "user3", 0)	/* Comm board roms */
-	ROM_LOAD("931a19.bin", 0x000000, 0x400000, BAD_DUMP CRC(8e8bb6af) SHA1(1bb399f7897fbcbe6852fda3215052b2810437d8))
-	ROM_LOAD("931a20.bin", 0x400000, 0x400000, BAD_DUMP CRC(a14a7887) SHA1(daf0cbaf83e59680a0d3c4d66fcc48d02c9723d1))
+	ROM_LOAD("931a19.bin", 0x000000, 0x400000, CRC(8b25a6f1) SHA1(41f9c2046a6aae1e9f5f3ffa3e0ffb15eba46211) )
+	ROM_LOAD("931a20.bin", 0x400000, 0x400000, CRC(ecf665f6) SHA1(5a73e87435560a7bb2d0f9be7fba12254b18708d) )
 
 	ROM_REGION(0x800000, "user5", ROMREGION_ERASE00)	/* CG Board texture roms */
 
 	ROM_REGION(0x80000, "audio", 0)		/* 68K Program */
-	ROM_LOAD16_WORD_SWAP("931a08.bin", 0x000000, 0x80000, CRC(1597d604) SHA1(a1eab4d25907930b59ea558b484c3b6ddcb9303c))
+	ROM_LOAD16_WORD_SWAP("931a08.bin", 0x000000, 0x80000, CRC(1597d604) SHA1(a1eab4d25907930b59ea558b484c3b6ddcb9303c) )
 
 	ROM_REGION(0xc00000, "rf", 0)		/* PCM sample roms */
 	ROM_LOAD( "931a09.bin",   0x000000, 0x400000, CRC(694c354c) SHA1(42f54254a5959e1b341f2801f1ad032c4ed6f329) )

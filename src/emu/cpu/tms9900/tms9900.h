@@ -46,21 +46,28 @@ enum
 	TMS9900_R12, TMS9900_R13, TMS9900_R14, TMS9900_R15
 };
 
+typedef void (*ti99xx_idle_func)(const device_config *device, int state);
+typedef void (*ti99xx_rset_func)(const device_config *device);
+typedef void (*ti99xx_lrex_func)(const device_config *device);
+typedef void (*ti99xx_ckon_ckof_func)(const device_config *device, int state);
+typedef void (*ti99xx_error_interrupt_func)(const device_config *device, int state);
+
 #if (HAS_TI990_10)
 
-extern void ti990_10_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( ti990_10 );
+#define CPU_TI990_10 CPU_GET_INFO_NAME( ti990_10 )
 
 /*
     structure with the parameters ti990_10_reset wants.
 */
+
 typedef struct ti990_10reset_param
 {
-	void (*idle_callback)(int state);
-	void (*rset_callback)(void);
-	void (*lrex_callback)(void);
-	void (*ckon_ckof_callback)(int state);
-
-	void (*error_interrupt_callback)(int state);
+	ti99xx_idle_func	idle_callback;
+	ti99xx_rset_func	rset_callback;
+	ti99xx_lrex_func	lrex_callback;
+	ti99xx_ckon_ckof_func	ckon_ckof_callback;
+	ti99xx_error_interrupt_func	error_interrupt_callback;
 } ti990_10reset_param;
 
 /* accessor for the internal ROM */
@@ -77,77 +84,83 @@ extern WRITE8_HANDLER(ti990_10_eir_cru_w);
 
 #if (HAS_TMS9900)
 
-extern void tms9900_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( tms9900 );
+#define CPU_TMS9900 CPU_GET_INFO_NAME( tms9900 )
 
 /*
     structure with optional parameters for tms9900_reset.
 */
 typedef struct tms9900reset_param
 {
-	void (*idle_callback)(int state);
+	ti99xx_idle_func	idle_callback;
 } tms9900reset_param;
 
 #endif
 
 #if (HAS_TMS9940)
 
-extern void tms9940_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( tms9940 );
+#define CPU_TMS9940 CPU_GET_INFO_NAME( tms9940 )
 
 /*
     structure with optional parameters for tms9940_reset.
 */
 typedef struct tms9940reset_param
 {
-	void (*idle_callback)(int state);
+	ti99xx_idle_func	idle_callback;
 } tms9940reset_param;
 
 #endif
 
 #if (HAS_TMS9980)
 
-extern void tms9980a_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( tms9980a );
+#define CPU_TMS9980 CPU_GET_INFO_NAME( tms9980a )
 
 /*
     structure with optional parameters for tms9980a_reset.
 */
 typedef struct tms9980areset_param
 {
-	void (*idle_callback)(int state);
+	ti99xx_idle_func	idle_callback;
 } tms9980areset_param;
 
 #endif
 
 #if (HAS_TMS9985)
 
-extern void tms9985_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( tms9985 );
+#define CPU_TMS9986 CPU_GET_INFO_NAME( tms9985 )
 
 /*
     structure with optional parameters for tms9985_reset.
 */
 typedef struct tms9985reset_param
 {
-	void (*idle_callback)(int state);
+	ti99xx_idle_func	idle_callback;
 } tms9985reset_param;
 
 #endif
 
 #if (HAS_TMS9989)
 
-extern void tms9989_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( tms9989 );
+#define CPU_TMS9989 CPU_GET_INFO_NAME( tms9989 )
 
 /*
     structure with optional parameters for tms9989_reset.
 */
 typedef struct tms9989reset_param
 {
-	void (*idle_callback)(int state);
+	ti99xx_idle_func	idle_callback;
 } tms9989reset_param;
 
 #endif
 
 #if (HAS_TMS9995)
 
-extern void tms9995_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( tms9995 );
+#define CPU_TMS9995 CPU_GET_INFO_NAME( tms9995 )
 
 /*
   structure with the parameters tms9995_reset wants.
@@ -158,7 +171,7 @@ typedef struct tms9995reset_param
        memory access */
 	int auto_wait_state;
 
-	void (*idle_callback)(int state);
+	ti99xx_idle_func	idle_callback;
 
 	/* on the tms9995-mp9537, internal RAM and decrementer register are
         disabled.  This chip is used by the ti99/8 so that internal RAM does
@@ -177,42 +190,45 @@ extern WRITE8_HANDLER(tms9995_internal2_w);
 
 #if (HAS_TMS99000)
 
-extern void tms99000_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( tms99000 );
+#define CPU_TMS99000 CPU_GET_INFO_NAME( tms99000 )
 
 /*
     structure with optional parameters for tms99000_reset.
 */
 typedef struct tms99000reset_param
 {
-	void (*idle_callback)(int state);
+	ti99xx_idle_func	idle_callback;
 } tms99000reset_param;
 
 #endif
 
 #if (HAS_TMS99105A)
 
-extern void tms99105a_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( tms99105a );
+#define CPU_TMS99105A CPU_GET_INFO_NAME( tms99105a )
 
 /*
     structure with optional parameters for tms99105a_reset.
 */
 typedef struct tms99105areset_param
 {
-	void (*idle_callback)(int state);
+	ti99xx_idle_func	idle_callback;
 } tms99105areset_param;
 
 #endif
 
 #if (HAS_TMS99110A)
 
-extern void tms99110a_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( tms99110a );
+#define CPU_TMS99110A CPU_GET_INFO_NAME( tms99110a )
 
 /*
     structure with optional parameters for tms99110a_reset.
 */
 typedef struct tms99110areset_param
 {
-	void (*idle_callback)(int state);
+	ti99xx_idle_func	idle_callback;
 } tms99110areset_param;
 
 #endif

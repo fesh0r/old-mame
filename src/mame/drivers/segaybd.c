@@ -10,6 +10,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "system16.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/segaic16.h"
@@ -66,18 +67,18 @@ static void yboard_generic_init(void)
 
 static void update_main_irqs(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 2, timer_irq_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 1, 2, timer_irq_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 2, 2, timer_irq_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 4, vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 1, 4, vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 2, 4, vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 6, timer_irq_state && vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 1, 6, timer_irq_state && vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 2, 6, timer_irq_state && vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 2, timer_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 2, timer_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[2], 2, timer_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 4, vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[2], 4, vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 6, timer_irq_state && vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 6, timer_irq_state && vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[2], 6, timer_irq_state && vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
 
 	if(timer_irq_state || vblank_irq_state)
-		cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(50));
+		cpuexec_boost_interleave(machine, attotime_zero, ATTOTIME_IN_USEC(50));
 }
 
 
@@ -174,13 +175,13 @@ static TIMER_CALLBACK( scanline_callback )
 
 static MACHINE_RESET( yboard )
 {
-    interrupt_timer = timer_alloc(scanline_callback, NULL);
+    interrupt_timer = timer_alloc(machine, scanline_callback, NULL);
     timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, 223, 0), 223);
 
-	state_save_register_global_array(misc_io_data);
-	state_save_register_global_array(analog_data);
-	state_save_register_global(vblank_irq_state);
-	state_save_register_global(timer_irq_state);
+	state_save_register_global_array(machine, misc_io_data);
+	state_save_register_global_array(machine, analog_data);
+	state_save_register_global(machine, vblank_irq_state);
+	state_save_register_global(machine, timer_irq_state);
 }
 
 
@@ -193,28 +194,30 @@ static MACHINE_RESET( yboard )
 
 static void sound_cpu_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 3, 0, state);
+	cpu_set_input_line(machine->cpu[3], 0, state);
 }
 
 
 static TIMER_CALLBACK( delayed_sound_data_w )
 {
-	soundlatch_w(machine, 0, param);
-	cpunum_set_input_line(machine, 3, INPUT_LINE_NMI, ASSERT_LINE);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	soundlatch_w(space, 0, param);
+	cpu_set_input_line(machine->cpu[3], INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 
 static WRITE16_HANDLER( sound_data_w )
 {
 	if (ACCESSING_BITS_0_7)
-		timer_call_after_resynch(NULL, data & 0xff, delayed_sound_data_w);
+		timer_call_after_resynch(space->machine, NULL, data & 0xff, delayed_sound_data_w);
 }
 
 
 static READ8_HANDLER( sound_data_r )
 {
-	cpunum_set_input_line(machine, 3, INPUT_LINE_NMI, CLEAR_LINE);
-	return soundlatch_r(machine,offset);
+	cpu_set_input_line(space->machine->cpu[3], INPUT_LINE_NMI, CLEAR_LINE);
+	return soundlatch_r(space,offset);
 }
 
 
@@ -246,7 +249,7 @@ static READ16_HANDLER( io_chip_r )
 				return misc_io_data[offset];
 
 			/* otherwise, return an input port */
-			return input_port_read(machine, portnames[offset]);
+			return input_port_read(space->machine, portnames[offset]);
 
 		/* 'SEGA' protection */
 		case 0x10/2:
@@ -303,11 +306,11 @@ static WRITE16_HANDLER( io_chip_w )
                 D2 = YRES
                 D1-D0 = ADC0-1
             */
-			segaic16_set_display_enable(machine, data & 0x80);
-			if (((old ^ data) & 0x20) && !(data & 0x20)) watchdog_reset_w(machine,0,0);
-			cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
-			cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
+			segaic16_set_display_enable(space->machine, data & 0x80);
+			if (((old ^ data) & 0x20) && !(data & 0x20)) watchdog_reset_w(space,0,0);
+			cpu_set_input_line(space->machine->cpu[3], INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, (data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
 			break;
 
 		/* mute */
@@ -347,7 +350,7 @@ static WRITE16_HANDLER( analog_w )
 {
 	static const char *const ports[] = { "ADC0", "ADC1", "ADC2", "ADC3", "ADC4", "ADC5", "ADC6" };
 	int selected = ((offset & 3) == 3) ? (3 + (misc_io_data[0x08/2] & 3)) : (offset & 3);
-	int value = input_port_read_safe(machine, ports[selected], 0xff);
+	int value = input_port_read_safe(space->machine, ports[selected], 0xff);
 	analog_data[offset & 3] = value;
 }
 
@@ -965,7 +968,7 @@ static MACHINE_DRIVER_START( yboard )
 
 	MDRV_MACHINE_RESET(yboard)
 	MDRV_NVRAM_HANDLER(yboard)
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

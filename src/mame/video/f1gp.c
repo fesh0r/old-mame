@@ -55,8 +55,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( f1gp )
 {
-	roz_tilemap = tilemap_create(f1gp_get_roz_tile_info,tilemap_scan_rows,16,16,64,64);
-	fg_tilemap =  tilemap_create(get_fg_tile_info,      tilemap_scan_rows, 8, 8,64,32);
+	roz_tilemap = tilemap_create(machine, f1gp_get_roz_tile_info,tilemap_scan_rows,16,16,64,64);
+	fg_tilemap =  tilemap_create(machine, get_fg_tile_info,      tilemap_scan_rows, 8, 8,64,32);
 
 	K053936_wraparound_enable(0, 1);
 	K053936_set_offset(0, -58, -2);
@@ -71,8 +71,8 @@ VIDEO_START( f1gp )
 
 VIDEO_START( f1gpb )
 {
-	roz_tilemap = tilemap_create(f1gp_get_roz_tile_info,tilemap_scan_rows,16,16,64,64);
-	fg_tilemap =  tilemap_create(get_fg_tile_info,      tilemap_scan_rows, 8, 8,64,32);
+	roz_tilemap = tilemap_create(machine, f1gp_get_roz_tile_info,tilemap_scan_rows,16,16,64,64);
+	fg_tilemap =  tilemap_create(machine, get_fg_tile_info,      tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0xff);
 
@@ -84,8 +84,8 @@ VIDEO_START( f1gpb )
 
 VIDEO_START( f1gp2 )
 {
-	roz_tilemap = tilemap_create(f1gp2_get_roz_tile_info,tilemap_scan_rows,16,16,64,64);
-	fg_tilemap =  tilemap_create(get_fg_tile_info,       tilemap_scan_rows, 8, 8,64,32);
+	roz_tilemap = tilemap_create(machine, f1gp2_get_roz_tile_info,tilemap_scan_rows,16,16,64,64);
+	fg_tilemap =  tilemap_create(machine, get_fg_tile_info,       tilemap_scan_rows, 8, 8,64,32);
 
 	K053936_wraparound_enable(0, 1);
 	K053936_set_offset(0, -48, -21);
@@ -350,7 +350,7 @@ VIDEO_UPDATE( f1gp )
 
 
 
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,0,0);
 
@@ -401,7 +401,7 @@ VIDEO_UPDATE( f1gpb )
 
 	tilemap_set_scrolly(fg_tilemap,0,f1gpb_fgregs[0] + 8);
 
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	tilemap_draw_roz(bitmap, cliprect, roz_tilemap,
 		startx << 13, starty << 13,
@@ -492,7 +492,7 @@ static void f1gp2_draw_sprites(running_machine *machine,bitmap_t *bitmap,const r
 VIDEO_UPDATE( f1gp2 )
 {
 	if (gfxctrl & 4)	/* blank screen */
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 	else
 	{
 		switch (gfxctrl & 3)

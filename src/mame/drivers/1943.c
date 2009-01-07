@@ -47,8 +47,8 @@ static READ8_HANDLER( c1943_protection_r )
         if a read from this address doesn't return the value it expects.
     */
 
-	int data = activecpu_get_reg(Z80_BC) >> 8;
-//  logerror("protection read, PC: %04x Result:%02x\n",activecpu_get_pc(),data);
+	int data = cpu_get_reg(space->cpu, Z80_BC) >> 8;
+//  logerror("protection read, PC: %04x Result:%02x\n",cpu_get_pc(space->cpu),data);
 	return data;
 }
 
@@ -458,6 +458,6 @@ ROM_END
 
 /* Game Drivers */
 
-GAME( 1987, 1943,     0,        1943,     1943,     0, ROT270, "Capcom", "1943: The Battle of Midway (US)", 0 )
-GAME( 1987, 1943j,    1943,     1943,     1943,     0, ROT270, "Capcom", "1943: Midway Kaisen (Japan)", 0 )
-GAME( 1987, 1943kai,  0,        1943,     1943,     0, ROT270, "Capcom", "1943 Kai: Midway Kaisen (Japan)", 0 )
+GAME( 1987, 1943,     0,        1943,     1943,     0, ROT270, "Capcom", "1943: The Battle of Midway (US)", GAME_SUPPORTS_SAVE )
+GAME( 1987, 1943j,    1943,     1943,     1943,     0, ROT270, "Capcom", "1943: Midway Kaisen (Japan)", GAME_SUPPORTS_SAVE )
+GAME( 1987, 1943kai,  0,        1943,     1943,     0, ROT270, "Capcom", "1943 Kai: Midway Kaisen (Japan)", GAME_SUPPORTS_SAVE )

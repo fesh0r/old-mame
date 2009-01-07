@@ -71,6 +71,7 @@
 
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 #include "sgsafari.lh"
 
@@ -104,7 +105,7 @@ static WRITE16_HANDLER( layer2_videoram_w )
 static WRITE16_HANDLER( paletteram_w )
 {
 	data = COMBINE_DATA(&paletteram16[offset]);
-	palette_set_color_rgb( machine, offset, pal4bit(data >> 4), pal4bit(data >> 0), pal4bit(data >> 8));
+	palette_set_color_rgb( space->machine, offset, pal4bit(data >> 4), pal4bit(data >> 0), pal4bit(data >> 8));
 }
 
 
@@ -144,9 +145,9 @@ static TILE_GET_INFO( get_layer2_tile_info )
 
 static VIDEO_START( magic10 )
 {
-	layer0_tilemap = tilemap_create(get_layer0_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
-	layer1_tilemap = tilemap_create(get_layer1_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
-	layer2_tilemap = tilemap_create(get_layer2_tile_info, tilemap_scan_rows, 8, 8, 64, 64);
+	layer0_tilemap = tilemap_create(machine, get_layer0_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
+	layer1_tilemap = tilemap_create(machine, get_layer1_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
+	layer2_tilemap = tilemap_create(machine, get_layer2_tile_info, tilemap_scan_rows, 8, 8, 64, 64);
 
 	tilemap_set_transparent_pen(layer1_tilemap, 0);
 	tilemap_set_transparent_pen(layer2_tilemap, 0);

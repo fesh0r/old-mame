@@ -202,8 +202,8 @@ static TILE_GET_INFO( tx_get_tile_info )
 
 VIDEO_START( polepos )
 {
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_cols,8,8,64,16);
-	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, bg_get_tile_info,tilemap_scan_cols,8,8,64,16);
+	tx_tilemap = tilemap_create(machine, tx_get_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	colortable_configure_tilemap_groups(machine->colortable, tx_tilemap, machine->gfx[0], 0x2f);
 }
@@ -515,18 +515,5 @@ VIDEO_UPDATE( polepos )
 	draw_road(screen->machine, bitmap);
 	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
-/* following code should be enabled only in a debug build */
-/* original arcade doesn't work in this way */
-#ifdef MAME_DEBUG
-	{
-		int in = input_port_read(screen->machine, "IN0");
-		static int lastin;
-
-		if ((in ^ lastin) & polepos_gear_bit)
-			popmessage((in & polepos_gear_bit) ? "LO" : "HI");
-
-		lastin = in;
-	}
-#endif
 	return 0;
 }

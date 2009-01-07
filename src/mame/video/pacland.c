@@ -203,10 +203,10 @@ VIDEO_START( pacland )
 	int color;
 
 	fg_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
-	fillbitmap(fg_bitmap, 0xffff, NULL);
+	bitmap_fill(fg_bitmap, NULL, 0xffff);
 
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,64,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,8,8,64,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_scroll_rows(fg_tilemap, 32);
 
@@ -224,9 +224,9 @@ VIDEO_START( pacland )
 	spriteram_2 = spriteram + 0x800;
 	spriteram_3 = spriteram_2 + 0x800;
 
-	state_save_register_global(palette_bank);
-	state_save_register_global(scroll0);
-	state_save_register_global(scroll1);
+	state_save_register_global(machine, palette_bank);
+	state_save_register_global(machine, scroll0);
+	state_save_register_global(machine, scroll1);
 }
 
 
@@ -262,17 +262,17 @@ WRITE8_HANDLER( pacland_scroll1_w )
 WRITE8_HANDLER( pacland_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 
 	bankaddress = 0x10000 + ((data & 0x07) << 13);
-	memory_set_bankptr(1,&RAM[bankaddress]);
+	memory_set_bankptr(space->machine, 1,&RAM[bankaddress]);
 
 //  pbc = data & 0x20;
 
 	if (palette_bank != ((data & 0x18) >> 3))
 	{
 		palette_bank = (data & 0x18) >> 3;
-		switch_palette(machine);
+		switch_palette(space->machine);
 	}
 }
 
@@ -309,7 +309,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		sprite &= ~sizex;
 		sprite &= ~(sizey << 1);
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			flipx ^= 1;
 			flipy ^= 1;
@@ -379,13 +379,13 @@ VIDEO_UPDATE( pacland )
 	int row;
 
 	for (row = 5; row < 29; row++)
-		tilemap_set_scrollx(fg_tilemap, row, flip_screen_get() ? scroll0-7 : scroll0);
-	tilemap_set_scrollx(bg_tilemap, 0, flip_screen_get() ? scroll1-4 : scroll1-3);
+		tilemap_set_scrollx(fg_tilemap, row, flip_screen_get(screen->machine) ? scroll0-7 : scroll0);
+	tilemap_set_scrollx(bg_tilemap, 0, flip_screen_get(screen->machine) ? scroll1-4 : scroll1-3);
 
 	/* draw high priority sprite pixels, setting priority bitmap to non-zero
        wherever there is a high-priority pixel; note that we draw to the bitmap
        which is safe because the bg_tilemap draw will overwrite everything */
-	fillbitmap(priority_bitmap, 0x00, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 0x00);
 	draw_sprites(screen->machine, bitmap, cliprect, 0);
 
 	/* draw background */

@@ -108,6 +108,7 @@ cc_p14.j2 8192 0xedc6a1eb M5L2764k
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "snk.h"
 #include "sound/ay8910.h"
 
@@ -126,13 +127,13 @@ static int sound_cpu_busy;
 static WRITE8_HANDLER( sound_command_w )
 {
 	sound_cpu_busy = 1;
-	soundlatch_w(machine, 0, data);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(space, 0, data);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static READ8_HANDLER( sound_command_r )
 {
-	return soundlatch_r(machine, 0);
+	return soundlatch_r(space, 0);
 }
 
 static READ8_HANDLER( sound_ack_r )

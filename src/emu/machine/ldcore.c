@@ -145,8 +145,8 @@ struct _sound_token
 static TIMER_CALLBACK( perform_player_update );
 static void read_track_data(laserdisc_state *ld);
 static void process_track_data(const device_config *device);
-static void *custom_start(int clock, const custom_sound_interface *config);
-static void custom_stream_callback(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
+static CUSTOM_START( custom_start );
+static STREAM_UPDATE( custom_stream_callback );
 static void configuration_load(running_machine *machine, int config_type, xml_data_node *parentnode);
 static void configuration_save(running_machine *machine, int config_type, xml_data_node *parentnode);
 
@@ -156,7 +156,7 @@ static void configuration_save(running_machine *machine, int config_type, xml_da
     GLOBAL VARIABLES
 ***************************************************************************/
 
-static const ldplayer_interface *player_interfaces[] =
+static const ldplayer_interface *const player_interfaces[] =
 {
 //  &pr7820_interface,
 	&pr8210_interface,
@@ -298,7 +298,7 @@ static void vblank_state_changed(const device_config *screen, void *param, int v
 	const device_config *device = param;
 	laserdisc_state *ld = get_safe_token(device);
 	ldcore_data *ldcore = ld->core;
-	attotime curtime = timer_get_time();
+	attotime curtime = timer_get_time(screen->machine);
 
 	/* update current track based on slider speed */
 	update_slider_pos(ldcore, curtime);
@@ -311,7 +311,7 @@ static void vblank_state_changed(const device_config *screen, void *param, int v
 			(*ldcore->intf.vsync)(ld, &ldcore->metadata[ldcore->fieldnum], ldcore->fieldnum, curtime);
 
 		/* set a timer to begin fetching the next frame just before the VBI data would be fetched */
-		timer_set(video_screen_get_time_until_pos(screen, 16*2, 0), ld, 0, perform_player_update);
+		timer_set(screen->machine, video_screen_get_time_until_pos(screen, 16*2, 0), ld, 0, perform_player_update);
 	}
 }
 
@@ -325,7 +325,7 @@ static TIMER_CALLBACK( perform_player_update )
 {
 	laserdisc_state *ld = ptr;
 	ldcore_data *ldcore = ld->core;
-	attotime curtime = timer_get_time();
+	attotime curtime = timer_get_time(machine);
 
 	/* wait for previous read and decode to finish */
 	process_track_data(ld->device);
@@ -556,7 +556,7 @@ void ldcore_set_slider_speed(laserdisc_state *ld, INT32 tracks_per_vsync)
 	ldcore_data *ldcore = ld->core;
 	attotime vsyncperiod = video_screen_get_frame_period(ld->screen);
 
-	update_slider_pos(ldcore, timer_get_time());
+	update_slider_pos(ldcore, timer_get_time(ld->device->machine));
 
 	/* if 0, set the time to 0 */
 	if (tracks_per_vsync == 0)
@@ -584,7 +584,7 @@ void ldcore_advance_slider(laserdisc_state *ld, INT32 numtracks)
 {
 	ldcore_data *ldcore = ld->core;
 
-	update_slider_pos(ldcore, timer_get_time());
+	update_slider_pos(ldcore, timer_get_time(ld->device->machine));
 	add_and_clamp_track(ldcore, numtracks);
 	if (LOG_SLIDER)
 		printf("Advance by %d\n", numtracks);
@@ -601,7 +601,7 @@ slider_position ldcore_get_slider_position(laserdisc_state *ld)
 	ldcore_data *ldcore = ld->core;
 
 	/* update the slider position first */
-	update_slider_pos(ldcore, timer_get_time());
+	update_slider_pos(ldcore, timer_get_time(ld->device->machine));
 
 	/* return the status */
 	if (ldcore->curtrack == 1)
@@ -943,10 +943,10 @@ static void process_track_data(const device_config *device)
     for laserdiscs
 -------------------------------------------------*/
 
-static void *custom_start(int clock, const custom_sound_interface *config)
+static CUSTOM_START( custom_start )
 {
 	sound_token *token = auto_malloc(sizeof(*token));
-	token->stream = stream_create(0, 2, 48000, token, custom_stream_callback);
+	token->stream = stream_create(device, 0, 2, 48000, token, custom_stream_callback);
 	token->ld = NULL;
 	return token;
 }
@@ -957,7 +957,7 @@ static void *custom_start(int clock, const custom_sound_interface *config)
     for laserdiscs
 -------------------------------------------------*/
 
-static void custom_stream_callback(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+static STREAM_UPDATE( custom_stream_callback )
 {
 	sound_token *token = param;
 	laserdisc_state *ld = token->ld;
@@ -1283,12 +1283,16 @@ void laserdisc_set_config(const device_config *device, const laserdisc_config *c
 
 static void init_disc(const device_config *device)
 {
+	const laserdisc_config *config = device->inline_config;
 	laserdisc_state *ld = get_safe_token(device);
 	ldcore_data *ldcore = ld->core;
 	chd_error err;
 
-	/* find the disc */
-	ldcore->disc = get_disk_handle(device->tag);
+	/* get a handle to the disc to play */
+	if (config->getdisc != NULL)
+		ldcore->disc = (*config->getdisc)(device);
+	else
+		ldcore->disc = get_disk_handle(device->tag);
 
 	/* set default parameters */
 	ldcore->width = 720;
@@ -1523,7 +1527,7 @@ static DEVICE_STOP( laserdisc )
 static DEVICE_RESET( laserdisc )
 {
 	laserdisc_state *ld = get_safe_token(device);
-	attotime curtime = timer_get_time();
+	attotime curtime = timer_get_time(device->machine);
 	ldcore_data *ldcore = ld->core;
 	int pltype, line;
 
@@ -1634,10 +1638,10 @@ DEVICE_GET_INFO( laserdisc )
 		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME(laserdisc);			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					info->s = (intf != NULL) ? intf->name : "Unknown Laserdisc Player";	break;
-		case DEVINFO_STR_FAMILY:				info->s = "Laserdisc Player";						break;
-		case DEVINFO_STR_VERSION:				info->s = "1.0";									break;
-		case DEVINFO_STR_SOURCE_FILE:			info->s = __FILE__;									break;
-		case DEVINFO_STR_CREDITS:				info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:					strcpy(info->s, (intf != NULL) ? intf->name : "Unknown Laserdisc Player");	break;
+		case DEVINFO_STR_FAMILY:				strcpy(info->s, "Laserdisc Player");				break;
+		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.0");								break;
+		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);							break;
+		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

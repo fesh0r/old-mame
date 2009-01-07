@@ -83,6 +83,7 @@
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "machine/z80ctc.h"
 #include "audio/mcr.h"
@@ -120,13 +121,13 @@ static INT8 maxrpm_p2_shift;
 
 static READ8_HANDLER( demoderm_ip1_r )
 {
-	return input_port_read(machine, input_mux ? "MONO.IP1.ALT" : "MONO.IP1");
+	return input_port_read(space->machine, input_mux ? "MONO.IP1.ALT" : "MONO.IP1");
 }
 
 
 static READ8_HANDLER( demoderm_ip2_r )
 {
-	return input_port_read(machine, input_mux ? "MONO.IP2.ALT" : "MONO.IP2");
+	return input_port_read(space->machine, input_mux ? "MONO.IP2.ALT" : "MONO.IP2");
 }
 
 
@@ -137,7 +138,7 @@ static WRITE8_HANDLER( demoderm_op6_w )
 	if (data & 0x40) input_mux = 1;
 
 	/* low 5 bits control the turbo CS */
-	turbocs_data_w(machine, offset, data);
+	turbocs_data_w(space, offset, data);
 }
 
 
@@ -157,8 +158,8 @@ static READ8_HANDLER( maxrpm_ip1_r )
 static READ8_HANDLER( maxrpm_ip2_r )
 {
 	static const UINT8 shift_bits[5] = { 0x00, 0x05, 0x06, 0x01, 0x02 };
-	UINT8 start = input_port_read(machine, "MONO.IP0");
-	UINT8 shift = input_port_read(machine, "SHIFT");
+	UINT8 start = input_port_read(space->machine, "MONO.IP0");
+	UINT8 shift = input_port_read(space->machine, "SHIFT");
 
 	/* reset on a start */
 	if (!(start & 0x08))
@@ -204,7 +205,7 @@ static WRITE8_HANDLER( maxrpm_op5_w )
 	maxrpm_adc_control = data & 0x0f;
 
 	/* remaining bits go to standard connections */
-	mcrmono_control_port_w(machine, offset, data);
+	mcrmono_control_port_w(space, offset, data);
 }
 
 
@@ -231,7 +232,7 @@ static WRITE8_HANDLER( maxrpm_op6_w )
 
 	/* when the read is toggled is when the ADC value is latched */
 	if (!(data & 0x80))
-		latched_input = input_port_read(machine, inputs[maxrpm_adc_select]);
+		latched_input = input_port_read(space->machine, inputs[maxrpm_adc_select]);
 
 	/* when both the write and the enable are low, it's a write to the ADC0844 */
 	/* unfortunately the behavior below doesn't match up with the inputs on the */
@@ -240,7 +241,7 @@ static WRITE8_HANDLER( maxrpm_op6_w )
 		maxrpm_adc_select = (maxrpm_adc_control >> 1) & 3;
 
 	/* low 5 bits control the turbo CS */
-	turbocs_data_w(machine, offset, data);
+	turbocs_data_w(space, offset, data);
 }
 
 
@@ -253,17 +254,17 @@ static WRITE8_HANDLER( maxrpm_op6_w )
 
 static READ8_HANDLER( rampage_ip4_r )
 {
-	return input_port_read(machine, "MONO.IP4") | (soundsgood_status_r(machine,0) << 7);
+	return input_port_read(space->machine, "MONO.IP4") | (soundsgood_status_r(space,0) << 7);
 }
 
 
 static WRITE8_HANDLER( rampage_op6_w )
 {
 	/* bit 5 controls reset of the Sounds Good board */
-	soundsgood_reset_w((~data >> 5) & 1);
+	soundsgood_reset_w(space->machine, (~data >> 5) & 1);
 
 	/* low 5 bits go directly to the Sounds Good board */
-	soundsgood_data_w(machine, offset, data);
+	soundsgood_data_w(space, offset, data);
 }
 
 
@@ -276,7 +277,7 @@ static WRITE8_HANDLER( rampage_op6_w )
 
 static READ8_HANDLER( powerdrv_ip2_r )
 {
-	return input_port_read(machine, "MONO.IP2") | (soundsgood_status_r(machine, 0) << 7);
+	return input_port_read(space->machine, "MONO.IP2") | (soundsgood_status_r(space, 0) << 7);
 }
 
 
@@ -297,17 +298,17 @@ static WRITE8_HANDLER( powerdrv_op5_w )
 	set_led_status(2, (data >> 1) & 1);
 
 	/* remaining bits go to standard connections */
-	mcrmono_control_port_w(machine, offset, data);
+	mcrmono_control_port_w(space, offset, data);
 }
 
 
 static WRITE8_HANDLER( powerdrv_op6_w )
 {
 	/* bit 5 controls reset of the Sounds Good board */
-	soundsgood_reset_w((~data >> 5) & 1);
+	soundsgood_reset_w(space->machine, (~data >> 5) & 1);
 
 	/* low 5 bits go directly to the Sounds Good board */
-	soundsgood_data_w(machine, offset, data);
+	soundsgood_data_w(space, offset, data);
 }
 
 
@@ -320,10 +321,10 @@ static WRITE8_HANDLER( powerdrv_op6_w )
 
 static READ8_HANDLER( stargrds_ip0_r )
 {
-	UINT8 result = input_port_read(machine, "MONO.IP0");
+	UINT8 result = input_port_read(space->machine, "MONO.IP0");
 	if (input_mux)
-		result = (result & ~0x0a) | (input_port_read(machine, "MONO.IP0.ALT") & 0x0a);
-	return (result & ~0x10) | ((soundsgood_status_r(machine, 0) << 4) & 0x10);
+		result = (result & ~0x0a) | (input_port_read(space->machine, "MONO.IP0.ALT") & 0x0a);
+	return (result & ~0x10) | ((soundsgood_status_r(space, 0) << 4) & 0x10);
 }
 
 
@@ -340,17 +341,17 @@ static WRITE8_HANDLER( stargrds_op5_w )
 	set_led_status(2, (data >> 4) & 1);
 
 	/* remaining bits go to standard connections */
-	mcrmono_control_port_w(machine, offset, data);
+	mcrmono_control_port_w(space, offset, data);
 }
 
 
 static WRITE8_HANDLER( stargrds_op6_w )
 {
 	/* bit 6 controls reset of the Sounds Good board */
-	soundsgood_reset_w((~data >> 6) & 1);
+	soundsgood_reset_w(space->machine, (~data >> 6) & 1);
 
 	/* unline the other games, the STROBE is in the high bit instead of the low bit */
-	soundsgood_data_w(machine, offset, (data << 1) | (data >> 7));
+	soundsgood_data_w(space, offset, (data << 1) | (data >> 7));
 }
 
 
@@ -363,14 +364,14 @@ static WRITE8_HANDLER( stargrds_op6_w )
 
 static READ8_HANDLER( spyhunt_ip1_r )
 {
-	return input_port_read(machine, "SSIO.IP1") | (csdeluxe_status_r(machine, 0) << 5);
+	return input_port_read(space->machine, "SSIO.IP1") | (csdeluxe_status_r(space, 0) << 5);
 }
 
 
 static READ8_HANDLER( spyhunt_ip2_r )
 {
 	/* multiplexed steering wheel/gas pedal */
-	return input_port_read(machine, input_mux ? "SSIO.IP2.ALT" : "SSIO.IP2");
+	return input_port_read(space->machine, input_mux ? "SSIO.IP2.ALT" : "SSIO.IP2");
 }
 
 
@@ -407,7 +408,7 @@ static WRITE8_HANDLER( spyhunt_op4_w )
 	last_op4 = data;
 
 	/* low 5 bits go to control the Chip Squeak Deluxe */
-	csdeluxe_data_w(machine, offset, data);
+	csdeluxe_data_w(space, offset, data);
 }
 
 
@@ -422,9 +423,9 @@ static READ8_HANDLER( turbotag_ip2_r )
 {
 	/* multiplexed steering wheel/gas pedal */
 	if (input_mux)
-		return input_port_read(machine, "SSIO.IP2.ALT");
+		return input_port_read(space->machine, "SSIO.IP2.ALT");
 
-	return input_port_read(machine, "SSIO.IP2") + 5 * (video_screen_get_frame_number(machine->primary_screen) & 1);
+	return input_port_read(space->machine, "SSIO.IP2") + 5 * (video_screen_get_frame_number(space->machine->primary_screen) & 1);
 }
 
 
@@ -435,7 +436,7 @@ static READ8_HANDLER( turbotag_kludge_r )
 	/* Unfortunately, the game refuses to start if any bad ROM is   */
 	/* found; to work around this, we catch the checksum byte read  */
 	/* and modify it to what we know we will be getting.            */
-	if (activecpu_get_previouspc() == 0xb29)
+	if (cpu_get_previouspc(space->cpu) == 0xb29)
 		return 0x82;
 	else
 		return 0x92;
@@ -1055,7 +1056,7 @@ static MACHINE_DRIVER_START( mcr3_base )
 	MDRV_CPU_CONFIG(mcr_daisy_chain)
 	MDRV_CPU_VBLANK_INT_HACK(mcr_interrupt,2)
 
-	MDRV_Z80CTC_ADD("ctc", mcr_ctc_intf)
+	MDRV_Z80CTC_ADD("ctc", MASTER_CLOCK/4 /* same as "main" */, mcr_ctc_intf)
 
 	MDRV_WATCHDOG_VBLANK_INIT(16)
 	MDRV_MACHINE_START(mcr)
@@ -1501,67 +1502,67 @@ static void mcr_common_init(running_machine *machine, int sound_board)
 {
 	mcr_sound_init(machine, sound_board);
 
-	state_save_register_global(input_mux);
-	state_save_register_global(latched_input);
-	state_save_register_global(last_op4);
+	state_save_register_global(machine, input_mux);
+	state_save_register_global(machine, latched_input);
+	state_save_register_global(machine, last_op4);
 }
 
 
 static DRIVER_INIT( demoderm )
 {
 	mcr_common_init(machine, MCR_TURBO_CHIP_SQUEAK);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x01, 0x01, 0, 0, demoderm_ip1_r);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x02, 0x02, 0, 0, demoderm_ip2_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, demoderm_op6_w);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x01, 0x01, 0, 0, demoderm_ip1_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x02, 0x02, 0, 0, demoderm_ip2_r);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x06, 0x06, 0, 0, demoderm_op6_w);
 }
 
 
 static DRIVER_INIT( sarge )
 {
 	mcr_common_init(machine, MCR_TURBO_CHIP_SQUEAK);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, turbocs_data_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x06, 0x06, 0, 0, turbocs_data_w);
 }
 
 
 static DRIVER_INIT( maxrpm )
 {
 	mcr_common_init(machine, MCR_TURBO_CHIP_SQUEAK);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x01, 0x01, 0, 0, maxrpm_ip1_r);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x02, 0x02, 0, 0, maxrpm_ip2_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, maxrpm_op5_w);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, maxrpm_op6_w);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x01, 0x01, 0, 0, maxrpm_ip1_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x02, 0x02, 0, 0, maxrpm_ip2_r);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x05, 0x05, 0, 0, maxrpm_op5_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x06, 0x06, 0, 0, maxrpm_op6_w);
 
-	state_save_register_global(maxrpm_adc_control);
-	state_save_register_global(maxrpm_adc_select);
-	state_save_register_global(maxrpm_last_shift);
-	state_save_register_global(maxrpm_p1_shift);
-	state_save_register_global(maxrpm_p2_shift);
+	state_save_register_global(machine, maxrpm_adc_control);
+	state_save_register_global(machine, maxrpm_adc_select);
+	state_save_register_global(machine, maxrpm_last_shift);
+	state_save_register_global(machine, maxrpm_p1_shift);
+	state_save_register_global(machine, maxrpm_p2_shift);
 }
 
 
 static DRIVER_INIT( rampage )
 {
 	mcr_common_init(machine, MCR_SOUNDS_GOOD);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x04, 0x04, 0, 0, rampage_ip4_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, rampage_op6_w);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x04, 0x04, 0, 0, rampage_ip4_r);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x06, 0x06, 0, 0, rampage_op6_w);
 }
 
 
 static DRIVER_INIT( powerdrv )
 {
 	mcr_common_init(machine, MCR_SOUNDS_GOOD);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x02, 0x02, 0, 0, powerdrv_ip2_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, powerdrv_op5_w);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, powerdrv_op6_w);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x02, 0x02, 0, 0, powerdrv_ip2_r);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x05, 0x05, 0, 0, powerdrv_op5_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x06, 0x06, 0, 0, powerdrv_op6_w);
 }
 
 
 static DRIVER_INIT( stargrds )
 {
 	mcr_common_init(machine, MCR_SOUNDS_GOOD);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x00, 0x00, 0, 0, stargrds_ip0_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x05, 0x05, 0, 0, stargrds_op5_w);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x06, 0x06, 0, 0, stargrds_op6_w);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x00, 0x00, 0, 0, stargrds_ip0_r);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x05, 0x05, 0, 0, stargrds_op5_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x06, 0x06, 0, 0, stargrds_op6_w);
 }
 
 
@@ -1597,10 +1598,10 @@ static DRIVER_INIT( turbotag )
 	spyhunt_scroll_offset = 88;
 
 	/* the SSIO Z80 doesn't have any program to execute */
-	cpunum_suspend(1, SUSPEND_REASON_DISABLE, 1);
+	cpu_suspend(machine->cpu[1], SUSPEND_REASON_DISABLE, 1);
 
 	/* kludge for bad ROM read */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0b53, 0x0b53, 0, 0, turbotag_kludge_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0b53, 0x0b53, 0, 0, turbotag_kludge_r);
 }
 
 

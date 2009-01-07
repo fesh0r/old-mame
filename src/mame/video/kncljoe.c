@@ -106,7 +106,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( kncljoe )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_scroll_rows(bg_tilemap,4);
 
@@ -157,7 +157,7 @@ WRITE8_HANDLER( kncljoe_control_w )
 	if (sprite_bank != i)
 	{
 		sprite_bank = i;
-		memset(memory_region(machine, "main")+0xf100, 0, 0x180);
+		memset(memory_region(space->machine, "main")+0xf100, 0, 0x180);
 	}
 }
 

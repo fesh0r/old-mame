@@ -255,9 +255,9 @@ static TIMER_CALLBACK( auto_animation_timer_callback )
 }
 
 
-static void create_auto_animation_timer(void)
+static void create_auto_animation_timer(running_machine *machine)
 {
-	auto_animation_timer = timer_alloc(auto_animation_timer_callback, NULL);
+	auto_animation_timer = timer_alloc(machine, auto_animation_timer_callback, NULL);
 }
 
 
@@ -673,9 +673,9 @@ static TIMER_CALLBACK( sprite_line_timer_callback )
 }
 
 
-static void create_sprite_line_timer(void)
+static void create_sprite_line_timer(running_machine *machine)
 {
-	sprite_line_timer = timer_alloc(sprite_line_timer_callback, NULL);
+	sprite_line_timer = timer_alloc(machine, sprite_line_timer_callback, NULL);
 }
 
 
@@ -783,16 +783,16 @@ static UINT16 get_video_control(running_machine *machine)
 
 	ret = (v_counter << 7) | (neogeo_get_auto_animation_counter() & 0x0007);
 
-	if (VERBOSE) logerror("PC %06x: video_control read (%04x)\n", activecpu_get_pc(), ret);
+	if (VERBOSE) logerror("%s: video_control read (%04x)\n", cpuexec_describe_context(machine), ret);
 
 	return ret;
 }
 
 
-static void set_video_control(UINT16 data)
+static void set_video_control(running_machine *machine, UINT16 data)
 {
 	/* this does much more than this, but I'm not sure exactly what */
-	if (VERBOSE) logerror("%06x: video control write %04x\n", activecpu_get_pc(), data);
+	if (VERBOSE) logerror("%s: video control write %04x\n", cpuexec_describe_context(machine), data);
 
 	set_auto_animation_speed(data >> 8);
 	set_auto_animation_disabled(data & 0x0008);
@@ -807,7 +807,7 @@ READ16_HANDLER( neogeo_video_register_r )
 
 	/* accessing the LSB only is not mapped */
 	if (mem_mask == 0x00ff)
-		ret = neogeo_unmapped_r(machine, 0, 0xffff) & 0x00ff;
+		ret = neogeo_unmapped_r(space, 0, 0xffff) & 0x00ff;
 	else
 	{
 		switch (offset)
@@ -816,7 +816,7 @@ READ16_HANDLER( neogeo_video_register_r )
 		case 0x00:
 		case 0x01: ret = get_videoram_data(); break;
 		case 0x02: ret = get_videoram_modulo(); break;
-		case 0x03: ret = get_video_control(machine); break;
+		case 0x03: ret = get_video_control(space->machine); break;
 		}
 	}
 
@@ -838,10 +838,10 @@ WRITE16_HANDLER( neogeo_video_register_w )
 		case 0x00: set_videoram_offset(data); break;
 		case 0x01: set_videoram_data(data); break;
 		case 0x02: set_videoram_modulo(data); break;
-		case 0x03: set_video_control(data); break;
-		case 0x04: neogeo_set_display_counter_msb(data); break;
-		case 0x05: neogeo_set_display_counter_lsb(machine, data); break;
-		case 0x06: neogeo_acknowledge_interrupt(machine, data); break;
+		case 0x03: set_video_control(space->machine, data); break;
+		case 0x04: neogeo_set_display_counter_msb(space, data); break;
+		case 0x05: neogeo_set_display_counter_lsb(space, data); break;
+		case 0x06: neogeo_acknowledge_interrupt(space->machine, data); break;
 		case 0x07: break; /* unknown, see get_video_control */
 		}
 	}
@@ -870,8 +870,8 @@ VIDEO_START( neogeo )
 	memset(neogeo_videoram,0x00, 0x20000);
 
 	compute_rgb_weights();
-	create_sprite_line_timer();
-	create_auto_animation_timer();
+	create_sprite_line_timer(machine);
+	create_auto_animation_timer(machine);
 	optimize_sprite_data(machine);
 
 	/* initialize values that are not modified on a reset */
@@ -884,19 +884,19 @@ VIDEO_START( neogeo )
 	auto_animation_frame_counter = 0;
 
 	/* register for state saving */
-	state_save_register_global_pointer(palettes[0], NUM_PENS);
-	state_save_register_global_pointer(palettes[1], NUM_PENS);
-	state_save_register_global_pointer(neogeo_videoram, 0x20000/2);
-	state_save_register_global(videoram_read_buffer);
-	state_save_register_global(videoram_modulo);
-	state_save_register_global(videoram_offset);
-	state_save_register_global(fixed_layer_source);
-	state_save_register_global(screen_dark);
-	state_save_register_global(palette_bank);
-	state_save_register_global(auto_animation_speed);
-	state_save_register_global(auto_animation_disabled);
-	state_save_register_global(auto_animation_counter);
-	state_save_register_global(auto_animation_frame_counter);
+	state_save_register_global_pointer(machine, palettes[0], NUM_PENS);
+	state_save_register_global_pointer(machine, palettes[1], NUM_PENS);
+	state_save_register_global_pointer(machine, neogeo_videoram, 0x20000/2);
+	state_save_register_global(machine, videoram_read_buffer);
+	state_save_register_global(machine, videoram_modulo);
+	state_save_register_global(machine, videoram_offset);
+	state_save_register_global(machine, fixed_layer_source);
+	state_save_register_global(machine, screen_dark);
+	state_save_register_global(machine, palette_bank);
+	state_save_register_global(machine, auto_animation_speed);
+	state_save_register_global(machine, auto_animation_disabled);
+	state_save_register_global(machine, auto_animation_counter);
+	state_save_register_global(machine, auto_animation_frame_counter);
 
 	state_save_register_postload(machine, regenerate_pens, NULL);
 
@@ -928,7 +928,7 @@ VIDEO_RESET( neogeo )
 VIDEO_UPDATE( neogeo )
 {
 	/* fill with background color first */
-	fillbitmap(bitmap, pens[0x0fff], cliprect);
+	bitmap_fill(bitmap, cliprect, pens[0x0fff]);
 
 	draw_sprites(bitmap, cliprect->min_y);
 

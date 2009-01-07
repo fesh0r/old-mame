@@ -93,17 +93,17 @@ WRITE8_HANDLER( deco16_io_w )
 				tilemap_mark_all_tiles_dirty(background_tilemap);
 			}
 			background_disable=data&0x4;
-			flip_screen_set(data&0x1);
+			flip_screen_set(space->machine, data&0x1);
 			break;
 		case 7: /* Background palette resistors? */
 			/* Todo */
 			break;
 		case 8: /* Irq ack */
-			cpunum_set_input_line(machine, 0,DECO16_IRQ_LINE,CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[0],DECO16_IRQ_LINE,CLEAR_LINE);
 			break;
 		case 9: /* Sound */
-			soundlatch_w(machine,0,data);
-			cpunum_set_input_line(machine, 1,M6502_IRQ_LINE,HOLD_LINE);
+			soundlatch_w(space,0,data);
+			cpu_set_input_line(space->machine->cpu[1],M6502_IRQ_LINE,HOLD_LINE);
 			break;
 	}
 }
@@ -118,16 +118,16 @@ WRITE8_HANDLER( liberate_videoram_w )
 
 VIDEO_START( prosoccr )
 {
-	background_tilemap = tilemap_create(get_back_tile_info,back_scan,16,16,32,32);
-	fix_tilemap = tilemap_create(get_fix_tile_info,fix_scan,8,8,32,32);
+	background_tilemap = tilemap_create(machine, get_back_tile_info,back_scan,16,16,32,32);
+	fix_tilemap = tilemap_create(machine, get_fix_tile_info,fix_scan,8,8,32,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
 }
 
 VIDEO_START( boomrang )
 {
-	background_tilemap = tilemap_create(get_back_tile_info,back_scan,16,16,32,32);
-	fix_tilemap = tilemap_create(get_fix_tile_info,fix_scan,8,8,32,32);
+	background_tilemap = tilemap_create(machine, get_back_tile_info,back_scan,16,16,32,32);
+	fix_tilemap = tilemap_create(machine, get_fix_tile_info,fix_scan,8,8,32,32);
 
 	tilemap_set_transmask(background_tilemap,0,0x0001,0x007e); /* Bottom 1 pen/Top 7 pens */
 	tilemap_set_transparent_pen(fix_tilemap,0);
@@ -135,8 +135,8 @@ VIDEO_START( boomrang )
 
 VIDEO_START( liberate )
 {
-	background_tilemap = tilemap_create(get_back_tile_info,back_scan,16,16,32,32);
-	fix_tilemap = tilemap_create(get_fix_tile_info,fix_scan,8,8,32,32);
+	background_tilemap = tilemap_create(machine, get_back_tile_info,back_scan,16,16,32,32);
+	fix_tilemap = tilemap_create(machine, get_fix_tile_info,fix_scan,8,8,32,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
 }
@@ -146,7 +146,7 @@ VIDEO_START( liberate )
 WRITE8_HANDLER( prosport_paletteram_w )
 {
 	/* RGB output is inverted */
-	paletteram_BBGGGRRR_w(machine,offset,~data);
+	paletteram_BBGGGRRR_w(space,offset,~data);
 }
 
 PALETTE_INIT( liberate )
@@ -214,7 +214,7 @@ static void liberate_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 
 		if (multi && fy==0) sy-=16;
 
-		if (flip_screen_get()) {
+		if (flip_screen_get(machine)) {
 			sy=240-sy;
 			sx=240-sx;
 			if (fy)
@@ -275,7 +275,7 @@ static void prosport_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 //      if (multi) sy-=16;
 		if (fy && multi) { code2=code; code++; }
 
-		if (flip_screen_get()) {
+		if (flip_screen_get(machine)) {
 			sy=240-sy;
 			sx=240-sx;
 			if (fx) fx=0; else fx=1;
@@ -331,7 +331,7 @@ static void boomrang_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 //      if (multi) sy-=16;
 		if (fy && multi) { code2=code; code++; }
 
-		if (flip_screen_get()) {
+		if (flip_screen_get(machine)) {
 			sy=240-sy;
 			sx=240-sx;
 			if (fx) fx=0; else fx=1;
@@ -366,7 +366,7 @@ VIDEO_UPDATE( prosoccr )
 	tilemap_set_scrollx(background_tilemap,0,-deco16_io_ram[0]);
 
 	if (background_disable)
-		fillbitmap(bitmap,32,cliprect);
+		bitmap_fill(bitmap,cliprect,32);
 	else
 		tilemap_draw(bitmap,cliprect,background_tilemap,0,0);
 	boomrang_draw_sprites(screen->machine,bitmap,cliprect,0);
@@ -378,7 +378,7 @@ VIDEO_UPDATE( prosport )
 {
 	int mx,my,tile,color,offs;
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	prosport_draw_sprites(screen->machine,bitmap,cliprect);
 
@@ -406,7 +406,7 @@ VIDEO_UPDATE( boomrang )
 	tilemap_set_scrollx(background_tilemap,0,-deco16_io_ram[0]);
 
 	if (background_disable)
-		fillbitmap(bitmap,32,cliprect);
+		bitmap_fill(bitmap,cliprect,32);
 	else
 		tilemap_draw(bitmap,cliprect,background_tilemap,TILEMAP_DRAW_LAYER1,0);
 
@@ -424,7 +424,7 @@ VIDEO_UPDATE( liberate )
 	tilemap_set_scrollx(background_tilemap,0,-deco16_io_ram[0]);
 
 	if (background_disable)
-		fillbitmap(bitmap,32,cliprect);
+		bitmap_fill(bitmap,cliprect,32);
 	else
 		tilemap_draw(bitmap,cliprect,background_tilemap,0,0);
 

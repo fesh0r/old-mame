@@ -101,11 +101,11 @@ static TILE_GET_INFO( get_tx_tile_info )
     Start the video hardware emulation.
 ***************************************************************************/
 
-static void twincobr_create_tilemaps(void)
+static void twincobr_create_tilemaps(running_machine *machine)
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
@@ -118,7 +118,7 @@ VIDEO_START( toaplan0 )
 	twincobr_bgvideoram_size = 0x2000;	/* banked two times 0x1000 */
 	twincobr_fgvideoram_size = 0x1000;
 
-	twincobr_create_tilemaps();
+	twincobr_create_tilemaps(machine);
 
 	twincobr_txvideoram16 = auto_malloc(twincobr_txvideoram_size*2);
 	memset(twincobr_txvideoram16,0,twincobr_txvideoram_size*2);
@@ -132,25 +132,25 @@ VIDEO_START( toaplan0 )
 	twincobr_display_on = 0;
 	twincobr_display(twincobr_display_on);
 
-	state_save_register_global_pointer(twincobr_txvideoram16, twincobr_txvideoram_size);
-	state_save_register_global_pointer(twincobr_fgvideoram16, twincobr_fgvideoram_size);
-	state_save_register_global_pointer(twincobr_bgvideoram16, twincobr_bgvideoram_size);
-	state_save_register_global(txoffs);
-	state_save_register_global(fgoffs);
-	state_save_register_global(bgoffs);
-	state_save_register_global(scroll_x);
-	state_save_register_global(scroll_y);
-	state_save_register_global(txscrollx);
-	state_save_register_global(fgscrollx);
-	state_save_register_global(bgscrollx);
-	state_save_register_global(txscrolly);
-	state_save_register_global(fgscrolly);
-	state_save_register_global(bgscrolly);
-	state_save_register_global(twincobr_display_on);
-	state_save_register_global(twincobr_fg_rom_bank);
-	state_save_register_global(twincobr_bg_ram_bank);
-	state_save_register_global(twincobr_flip_screen);
-	state_save_register_global(wardner_sprite_hack);
+	state_save_register_global_pointer(machine, twincobr_txvideoram16, twincobr_txvideoram_size);
+	state_save_register_global_pointer(machine, twincobr_fgvideoram16, twincobr_fgvideoram_size);
+	state_save_register_global_pointer(machine, twincobr_bgvideoram16, twincobr_bgvideoram_size);
+	state_save_register_global(machine, txoffs);
+	state_save_register_global(machine, fgoffs);
+	state_save_register_global(machine, bgoffs);
+	state_save_register_global(machine, scroll_x);
+	state_save_register_global(machine, scroll_y);
+	state_save_register_global(machine, txscrollx);
+	state_save_register_global(machine, fgscrollx);
+	state_save_register_global(machine, bgscrollx);
+	state_save_register_global(machine, txscrolly);
+	state_save_register_global(machine, fgscrolly);
+	state_save_register_global(machine, bgscrolly);
+	state_save_register_global(machine, twincobr_display_on);
+	state_save_register_global(machine, twincobr_fg_rom_bank);
+	state_save_register_global(machine, twincobr_bg_ram_bank);
+	state_save_register_global(machine, twincobr_flip_screen);
+	state_save_register_global(machine, wardner_sprite_hack);
 	state_save_register_postload(machine, twincobr_restore_screen, NULL);
 }
 
@@ -290,37 +290,37 @@ WRITE16_HANDLER( twincobr_exscroll_w )	/* Extra unused video layer */
 WRITE8_HANDLER( wardner_txlayer_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_txoffs_w(machine, offset / 2, data << shift, 0xff << shift);
+	twincobr_txoffs_w(space, offset / 2, data << shift, 0xff << shift);
 }
 
 WRITE8_HANDLER( wardner_bglayer_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_bgoffs_w(machine, offset / 2, data << shift, 0xff << shift);
+	twincobr_bgoffs_w(space, offset / 2, data << shift, 0xff << shift);
 }
 
 WRITE8_HANDLER( wardner_fglayer_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_fgoffs_w(machine, offset / 2, data << shift, 0xff << shift);
+	twincobr_fgoffs_w(space, offset / 2, data << shift, 0xff << shift);
 }
 
 WRITE8_HANDLER( wardner_txscroll_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_txscroll_w(machine, offset / 2, data << shift, 0xff << shift);
+	twincobr_txscroll_w(space, offset / 2, data << shift, 0xff << shift);
 }
 
 WRITE8_HANDLER( wardner_bgscroll_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_bgscroll_w(machine, offset / 2, data << shift, 0xff << shift);
+	twincobr_bgscroll_w(space, offset / 2, data << shift, 0xff << shift);
 }
 
 WRITE8_HANDLER( wardner_fgscroll_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_fgscroll_w(machine, offset / 2, data << shift, 0xff << shift);
+	twincobr_fgscroll_w(space, offset / 2, data << shift, 0xff << shift);
 }
 
 WRITE8_HANDLER( wardner_exscroll_w )	/* Extra unused video layer */
@@ -338,9 +338,9 @@ READ8_HANDLER( wardner_videoram_r )
 {
 	int shift = 8 * (offset & 1);
 	switch (offset/2) {
-		case 0: return twincobr_txram_r(machine,0,0xffff) >> shift; break;
-		case 1: return twincobr_bgram_r(machine,0,0xffff) >> shift; break;
-		case 2: return twincobr_fgram_r(machine,0,0xffff) >> shift; break;
+		case 0: return twincobr_txram_r(space,0,0xffff) >> shift; break;
+		case 1: return twincobr_bgram_r(space,0,0xffff) >> shift; break;
+		case 2: return twincobr_fgram_r(space,0,0xffff) >> shift; break;
 	}
 	return 0;
 }
@@ -349,9 +349,9 @@ WRITE8_HANDLER( wardner_videoram_w )
 {
 	int shift = 8 * (offset & 1);
 	switch (offset/2) {
-		case 0: twincobr_txram_w(machine,0,data << shift, 0xff << shift); break;
-		case 1: twincobr_bgram_w(machine,0,data << shift, 0xff << shift); break;
-		case 2: twincobr_fgram_w(machine,0,data << shift, 0xff << shift); break;
+		case 0: twincobr_txram_w(space,0,data << shift, 0xff << shift); break;
+		case 1: twincobr_bgram_w(space,0,data << shift, 0xff << shift); break;
+		case 2: twincobr_fgram_w(space,0,data << shift, 0xff << shift); break;
 	}
 }
 
@@ -500,7 +500,7 @@ VIDEO_UPDATE( toaplan0 )
 
 	if (wardner_sprite_hack) wardner_sprite_priority_hack();
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_OPAQUE,0);
 	draw_sprites(screen->machine, bitmap,cliprect,0x0400);
@@ -514,8 +514,10 @@ VIDEO_UPDATE( toaplan0 )
 
 VIDEO_EOF( toaplan0 )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
 	/* Spriteram is always 1 frame ahead, suggesting spriteram buffering.
         There are no CPU output registers that control this so we
         assume it happens automatically every frame, at the end of vblank */
-	buffer_spriteram16_w(machine,0,0,0xffff);
+	buffer_spriteram16_w(space,0,0,0xffff);
 }

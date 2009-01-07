@@ -45,7 +45,7 @@
 
 #include "driver.h"
 #include "streams.h"
-#include "deprecat.h"
+#include "profiler.h"
 
 
 
@@ -112,7 +112,7 @@ struct _stream_output
 struct _sound_stream
 {
 	/* linking information */
-	running_machine *	machine;				/* owning machine object */
+	const device_config *	device;				/* owning device */
 	sound_stream *		next;					/* next stream in the chain */
 	void *				tag;					/* tag (used for identification) */
 	int					index;					/* index for save states */
@@ -231,8 +231,8 @@ void streams_init(running_machine *machine, attoseconds_t update_attoseconds)
 	machine->streams_data = strdata;
 
 	/* register global states */
-	state_save_register_global(strdata->last_update.seconds);
-	state_save_register_global(strdata->last_update.attoseconds);
+	state_save_register_global(machine, strdata->last_update.seconds);
+	state_save_register_global(machine, strdata->last_update.attoseconds);
 }
 
 
@@ -256,7 +256,7 @@ void streams_set_tag(running_machine *machine, void *streamtag)
 void streams_update(running_machine *machine)
 {
 	streams_private *strdata = machine->streams_data;
-	attotime curtime = timer_get_time();
+	attotime curtime = timer_get_time(machine);
 	int second_tick = FALSE;
 	sound_stream *stream;
 
@@ -348,9 +348,10 @@ void streams_update(running_machine *machine)
     stream_create - create a new stream
 -------------------------------------------------*/
 
-sound_stream *stream_create(int inputs, int outputs, int sample_rate, void *param, stream_update_func callback)
+sound_stream *stream_create(const device_config *device, int inputs, int outputs, int sample_rate, void *param, stream_update_func callback)
 {
-	streams_private *strdata = Machine->streams_data;
+	running_machine *machine = device->machine;
+	streams_private *strdata = machine->streams_data;
 	int inputnum, outputnum;
 	sound_stream *stream;
 	char statetag[30];
@@ -362,7 +363,7 @@ sound_stream *stream_create(int inputs, int outputs, int sample_rate, void *para
 	VPRINTF(("stream_create(%d, %d, %d) => %p\n", inputs, outputs, sample_rate, stream));
 
 	/* fill in the data */
-	stream->machine = Machine;
+	stream->device = device;
 	stream->tag = strdata->current_tag;
 	stream->index = strdata->stream_index++;
 	stream->sample_rate = sample_rate;
@@ -372,9 +373,9 @@ sound_stream *stream_create(int inputs, int outputs, int sample_rate, void *para
 	stream->param = param;
 
 	/* create a unique tag for saving */
-	sprintf(statetag, "stream.%d", stream->index);
-	state_save_register_item(statetag, 0, stream->sample_rate);
-	state_save_register_postload(Machine, stream_postload, stream);
+	sprintf(statetag, "%d", stream->index);
+	state_save_register_item(machine, "stream", statetag, 0, stream->sample_rate);
+	state_save_register_postload(machine, stream_postload, stream);
 
 	/* allocate space for the inputs */
 	if (inputs > 0)
@@ -390,7 +391,7 @@ sound_stream *stream_create(int inputs, int outputs, int sample_rate, void *para
 	{
 		stream->input[inputnum].owner = stream;
 		stream->input[inputnum].gain = 0x100;
-		state_save_register_item(statetag, inputnum, stream->input[inputnum].gain);
+		state_save_register_item(machine, "stream", statetag, inputnum, stream->input[inputnum].gain);
 	}
 
 	/* allocate space for the outputs */
@@ -407,7 +408,7 @@ sound_stream *stream_create(int inputs, int outputs, int sample_rate, void *para
 	{
 		stream->output[outputnum].owner = stream;
 		stream->output[outputnum].gain = 0x100;
-		state_save_register_item(statetag, outputnum, stream->output[outputnum].gain);
+		state_save_register_item(machine, "stream", statetag, outputnum, stream->output[outputnum].gain);
 	}
 
 	/* hook us into the master stream list */
@@ -457,7 +458,7 @@ void stream_set_input(sound_stream *stream, int index, sound_stream *input_strea
 		input->source->dependents++;
 
 	/* update sample rates now that we know the input */
-	recompute_sample_rate_data(stream->machine->streams_data, stream);
+	recompute_sample_rate_data(stream->device->machine->streams_data, stream);
 }
 
 
@@ -468,13 +469,16 @@ void stream_set_input(sound_stream *stream, int index, sound_stream *input_strea
 
 void stream_update(sound_stream *stream)
 {
-	streams_private *strdata = stream->machine->streams_data;
-	INT32 update_sampindex = time_to_sampindex(strdata, stream, timer_get_time());
+	running_machine *machine = stream->device->machine;
+	streams_private *strdata = machine->streams_data;
+	INT32 update_sampindex = time_to_sampindex(strdata, stream, timer_get_time(machine));
 
 	/* generate samples to get us up to the appropriate time */
+	profiler_mark(PROFILER_SOUND);
 	assert(stream->output_sampindex - stream->output_base_sampindex >= 0);
 	assert(update_sampindex - stream->output_base_sampindex <= stream->output_bufalloc);
 	generate_samples(stream, update_sampindex - stream->output_sampindex);
+	profiler_mark(PROFILER_END);
 
 	/* remember this info for next time */
 	stream->output_sampindex = update_sampindex;
@@ -538,7 +542,7 @@ void stream_set_sample_rate(sound_stream *stream, int sample_rate)
 
 attotime stream_get_time(sound_stream *stream)
 {
-	streams_private *strdata = stream->machine->streams_data;
+	streams_private *strdata = stream->device->machine->streams_data;
 	attotime base = attotime_make(strdata->last_update.seconds, 0);
 	return attotime_add_attoseconds(base, stream->output_sampindex * stream->attoseconds_per_sample);
 }
@@ -808,7 +812,7 @@ static void generate_samples(sound_stream *stream, int samples)
 
 	/* run the callback */
 	VPRINTF(("  callback(%p, %d)\n", stream, samples));
-	(*stream->callback)(stream->param, stream->input_array, stream->output_array, samples);
+	(*stream->callback)(stream->device, stream->param, stream->input_array, stream->output_array, samples);
 	VPRINTF(("  callback done\n"));
 }
 

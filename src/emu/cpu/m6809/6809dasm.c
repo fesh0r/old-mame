@@ -362,18 +362,24 @@ static const char *const m6809_regs_te[16] =
 	"A", "B", "CC", "DP", "inv", "inv", "inv", "inv"
 };
 
-offs_t m6809_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
+CPU_DISASSEMBLE( m6809 )
 {
 	UINT8 opcode, mode, pb, pbm, reg;
 	const UINT8 *operandarray;
 	unsigned int ea, flags;
 	int numoperands, offset, indirect;
+	const m6809_config *configdata = device ? device->static_config : NULL;
+	int encrypt_only_first_byte = configdata ? configdata->encrypt_only_first_byte : 0;
 
 	int i, p = 0, page = 0, opcode_found = FALSE;
 
 	do
 	{
-		opcode = oprom[p++];
+		if (encrypt_only_first_byte)
+			opcode = page == 0 ? oprom[p++] :  opram[p++];
+		else
+			opcode = oprom[p++];
+
 		for (i = 0; i < m6809_numops[page]; i++)
 			if (m6809_pgpointers[page][i].opcode == opcode)
 				break;

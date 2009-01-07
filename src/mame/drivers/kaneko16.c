@@ -71,6 +71,8 @@ Dip locations verified from manual for:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "machine/eeprom.h"
 #include "includes/kaneko16.h"
@@ -238,7 +240,7 @@ static MACHINE_RESET( shogwarr )
 
 static READ16_HANDLER( kaneko16_rnd_r )
 {
-	return mame_rand(machine) & 0xffff;
+	return mame_rand(space->machine) & 0xffff;
 }
 
 static WRITE16_HANDLER( kaneko16_coin_lockout_w )
@@ -267,8 +269,8 @@ static WRITE16_HANDLER( kaneko16_soundlatch_w )
 {
 	if (ACCESSING_BITS_8_15)
 	{
-		soundlatch_w(machine, 0, (data & 0xff00) >> 8 );
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(space, 0, (data & 0xff00) >> 8 );
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -277,31 +279,31 @@ static WRITE16_HANDLER( kaneko16_soundlatch_w )
 static READ16_HANDLER( kaneko16_YM2149_0_r )
 {
 	/* Each 2149 register is mapped to a different address */
-	ay8910_control_port_0_w(machine,0,offset);
-	return ay8910_read_port_0_r(machine,0);
+	ay8910_control_port_0_w(space,0,offset);
+	return ay8910_read_port_0_r(space,0);
 }
 static READ16_HANDLER( kaneko16_YM2149_1_r )
 {
 	/* Each 2149 register is mapped to a different address */
-	ay8910_control_port_1_w(machine,0,offset);
-	return ay8910_read_port_1_r(machine,0);
+	ay8910_control_port_1_w(space,0,offset);
+	return ay8910_read_port_1_r(space,0);
 }
 
 static WRITE16_HANDLER( kaneko16_YM2149_0_w )
 {
 	/* Each 2149 register is mapped to a different address */
-	ay8910_control_port_0_w(machine,0,offset);
+	ay8910_control_port_0_w(space,0,offset);
 	/* The registers are mapped to odd addresses, except one! */
-	if (ACCESSING_BITS_0_7)	ay8910_write_port_0_w(machine,0, data       & 0xff);
-	else				ay8910_write_port_0_w(machine,0,(data >> 8) & 0xff);
+	if (ACCESSING_BITS_0_7)	ay8910_write_port_0_w(space,0, data       & 0xff);
+	else				ay8910_write_port_0_w(space,0,(data >> 8) & 0xff);
 }
 static WRITE16_HANDLER( kaneko16_YM2149_1_w )
 {
 	/* Each 2149 register is mapped to a different address */
-	ay8910_control_port_1_w(machine,0,offset);
+	ay8910_control_port_1_w(space,0,offset);
 	/* The registers are mapped to odd addresses, except one! */
-	if (ACCESSING_BITS_0_7)	ay8910_write_port_1_w(machine,0, data       & 0xff);
-	else				ay8910_write_port_1_w(machine,0,(data >> 8) & 0xff);
+	if (ACCESSING_BITS_0_7)	ay8910_write_port_1_w(space,0, data       & 0xff);
+	else				ay8910_write_port_1_w(space,0,(data >> 8) & 0xff);
 }
 
 
@@ -399,7 +401,7 @@ static WRITE16_HANDLER( bakubrkr_oki_bank_sw )
 {
 	if (ACCESSING_BITS_0_7) {
 		okim6295_set_bank_base(0, 0x40000 * (data & 0x7) );
-		logerror("PC:%06X  Selecting OKI bank %02X\n",activecpu_get_pc(),data&0xff);
+		logerror("PC:%06X  Selecting OKI bank %02X\n",cpu_get_pc(space->cpu),data&0xff);
 	}
 }
 
@@ -470,7 +472,7 @@ static WRITE16_HANDLER( bloodwar_oki_0_bank_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		okim6295_set_bank_base(0, 0x40000 * (data & 0xf) );
-//      logerror("CPU #0 PC %06X : OKI0  bank %08X\n",activecpu_get_pc(),data);
+//      logerror("CPU #0 PC %06X : OKI0  bank %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
@@ -479,7 +481,7 @@ static WRITE16_HANDLER( bloodwar_oki_1_bank_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		okim6295_set_bank_base(1, 0x40000 * data );
-//      logerror("CPU #0 PC %06X : OKI1  bank %08X\n",activecpu_get_pc(),data);
+//      logerror("CPU #0 PC %06X : OKI1  bank %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
@@ -540,7 +542,7 @@ static WRITE16_HANDLER( bonkadv_oki_0_bank_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		okim6295_set_bank_base(0, 0x40000 * (data & 0xF));
-		logerror("CPU #0 PC %06X : OKI0  bank %08X\n",activecpu_get_pc(),data);
+		logerror("CPU #0 PC %06X : OKI0  bank %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
@@ -549,7 +551,7 @@ static WRITE16_HANDLER( bonkadv_oki_1_bank_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		okim6295_set_bank_base(1, 0x40000 * data );
-		logerror("CPU #0 PC %06X : OKI1  bank %08X\n",activecpu_get_pc(),data);
+		logerror("CPU #0 PC %06X : OKI1  bank %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
@@ -599,14 +601,14 @@ ADDRESS_MAP_END
 static READ16_HANDLER( gtmr_wheel_r )
 {
 	// check 'Controls' dip switch
-	switch (input_port_read(machine, "DSW1") & 0x1000)
+	switch (input_port_read(space->machine, "DSW1") & 0x1000)
 	{
 		case 0x0000:	// 'Both Sides' = 270deg Wheel
-			return	(input_port_read(machine, "WHEEL0"));
+			return	(input_port_read(space->machine, "WHEEL0"));
 			break;
 
 		case 0x1000:	// '1P Side' = 360' Wheel
-			return	(input_port_read(machine, "WHEEL1"));
+			return	(input_port_read(space->machine, "WHEEL1"));
 			break;
 		default:
 			return	(0);
@@ -619,7 +621,7 @@ static WRITE16_HANDLER( gtmr_oki_0_bank_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		okim6295_set_bank_base(0, 0x40000 * (data & 0xF) );
-//      logerror("CPU #0 PC %06X : OKI0 bank %08X\n",activecpu_get_pc(),data);
+//      logerror("CPU #0 PC %06X : OKI0 bank %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
@@ -628,7 +630,7 @@ static WRITE16_HANDLER( gtmr_oki_1_bank_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		okim6295_set_bank_base(1, 0x40000 * (data & 0x1) );
-//      logerror("CPU #0 PC %06X : OKI1 bank %08X\n",activecpu_get_pc(),data);
+//      logerror("CPU #0 PC %06X : OKI1 bank %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
@@ -636,8 +638,8 @@ static WRITE16_HANDLER( gtmr_oki_0_data_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		okim6295_data_0_w(machine,0,data);
-//      logerror("CPU #0 PC %06X : OKI0 <- %08X\n",activecpu_get_pc(),data);
+		okim6295_data_0_w(space,0,data);
+//      logerror("CPU #0 PC %06X : OKI0 <- %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
@@ -645,8 +647,8 @@ static WRITE16_HANDLER( gtmr_oki_1_data_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		okim6295_data_1_w(machine,0,data);
-//      logerror("CPU #0 PC %06X : OKI1 <- %08X\n",activecpu_get_pc(),data);
+		okim6295_data_1_w(space,0,data);
+//      logerror("CPU #0 PC %06X : OKI1 <- %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
@@ -713,19 +715,19 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( gtmr2_wheel_r )
 {
-	switch (input_port_read(machine, "DSW1") & 0x1800)
+	switch (input_port_read(space->machine, "DSW1") & 0x1800)
 	{
 		case 0x0000:	// 270' A. Wheel
-			return	(input_port_read(machine, "WHEEL0"));
+			return	(input_port_read(space->machine, "WHEEL0"));
 			break;
 		case 0x1000:	// 270' D. Wheel
-			return	(input_port_read(machine, "WHEEL1") << 8);
+			return	(input_port_read(space->machine, "WHEEL1") << 8);
 			break;
 		case 0x0800:	// 360' Wheel
-			return	(input_port_read(machine, "WHEEL2") << 8);
+			return	(input_port_read(space->machine, "WHEEL2") << 8);
 			break;
 		default:
-			logerror("gtmr2_wheel_r : read at %06x with joystick\n", activecpu_get_pc());
+			logerror("gtmr2_wheel_r : read at %06x with joystick\n", cpu_get_pc(space->cpu));
 			return	(~0);
 			break;
 	}
@@ -733,7 +735,7 @@ static READ16_HANDLER( gtmr2_wheel_r )
 
 static READ16_HANDLER( gtmr2_IN1_r )
 {
-	return	(input_port_read(machine, "P2") & (input_port_read(machine, "FAKE") | ~0x7100));
+	return	(input_port_read(space->machine, "P2") & (input_port_read(space->machine, "FAKE") | ~0x7100));
 }
 
 static ADDRESS_MAP_START( gtmr2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1638,11 +1640,11 @@ GFXDECODE_END
 #define KANEKO16_INTERRUPTS_NUM	3
 static INTERRUPT_GEN( kaneko16_interrupt )
 {
-	switch ( cpu_getiloops() )
+	switch ( cpu_getiloops(device) )
 	{
-		case 2:  cpunum_set_input_line(machine, 0, 3, HOLD_LINE); break;
-		case 1:  cpunum_set_input_line(machine, 0, 4, HOLD_LINE); break;
-		case 0:  cpunum_set_input_line(machine, 0, 5, HOLD_LINE); break;
+		case 2:  cpu_set_input_line(device, 3, HOLD_LINE); break;
+		case 1:  cpu_set_input_line(device, 4, HOLD_LINE); break;
+		case 0:  cpu_set_input_line(device, 5, HOLD_LINE); break;
 	}
 }
 
@@ -1990,11 +1992,11 @@ MACHINE_DRIVER_END
 #define SHOGWARR_INTERRUPTS_NUM	3
 static INTERRUPT_GEN( shogwarr_interrupt )
 {
-	switch ( cpu_getiloops() )
+	switch ( cpu_getiloops(device) )
 	{
-		case 2:  cpunum_set_input_line(machine, 0, 2, HOLD_LINE); break;
-		case 1:  cpunum_set_input_line(machine, 0, 3, HOLD_LINE); break;
-//      case 0:  cpunum_set_input_line(machine, 0, 4, HOLD_LINE); break;
+		case 2:  cpu_set_input_line(device, 2, HOLD_LINE); break;
+		case 1:  cpu_set_input_line(device, 3, HOLD_LINE); break;
+//      case 0:  cpu_set_input_line(device, 4, HOLD_LINE); break;
 	}
 }
 
@@ -2504,8 +2506,8 @@ ROM_START( bloodwar )
 	ROM_LOAD16_BYTE( "pof3.514", 0x000000, 0x080000, CRC(0c93da15) SHA1(65b6b1b4acfc32c551ae4fbe6a13f7f2b8554dbf) )
 	ROM_LOAD16_BYTE( "p1f3.513", 0x000001, 0x080000, CRC(894ecbe5) SHA1(bf403d19e6315266114ac742a08cac903e7b54b5) )
 
- 	ROM_REGION( 0x020000, "cpu1", 0 )			/* MCU Code */
-	ROM_LOAD( "dox3.124",  0x000000, 0x020000, CRC(399f2005) SHA1(ff0370724770c35963953fd9596d9f808ba87d8f) )
+ 	ROM_REGION( 0x020000, "mcudata", 0 )			/* MCU Code */
+	ROM_LOAD16_WORD_SWAP( "dox3.124",  0x000000, 0x020000, CRC(399f2005) SHA1(ff0370724770c35963953fd9596d9f808ba87d8f) )
 
 	ROM_REGION( 0x1e00000, "gfx1", ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD       ( "2000201.8",   0x0000000, 0x200000, CRC(bba63025) SHA1(daec5285469ee953f6f838fe3cb3903524e9ac39) )
@@ -2640,8 +2642,8 @@ ROM_START( gtmr )
 	ROM_LOAD16_BYTE( "u2.bin", 0x000000, 0x080000, CRC(031799f7) SHA1(a59a9635002d139247828e3b74f6cf2fbdd5e569) )
 	ROM_LOAD16_BYTE( "u1.bin", 0x000001, 0x080000, CRC(6238790a) SHA1(a137fd581138804534f3193068f117611a982004) )
 
- 	ROM_REGION( 0x020000, "cpu1", 0 )			/* MCU Code */
-	ROM_LOAD( "mmd0x2.u124.bin",  0x000000, 0x020000, CRC(3d7cb329) SHA1(053106acde642a414fde0b01105fe6762b6a10f6) ) // from gtmra
+ 	ROM_REGION( 0x020000, "mcudata", 0 )			/* MCU Code */
+	ROM_LOAD16_WORD_SWAP( "mmd0x2.u124.bin",  0x000000, 0x020000, CRC(3d7cb329) SHA1(053106acde642a414fde0b01105fe6762b6a10f6) ) // from gtmra
 
 	ROM_REGION( 0x840000, "gfx1", ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "mm-200-402-s0.bin",  0x000000, 0x200000, CRC(c0ab3efc) SHA1(e6cd15480977b036234d91e6f3a6e21b7f0a3c3e) )
@@ -2669,8 +2671,8 @@ ROM_START( gtmra )
 	ROM_LOAD16_BYTE( "mmp0x2.u514.bin", 0x000000, 0x080000, CRC(ba4a77c8) SHA1(efb6ae0e7aa71ab0c5f486f799bf31edcec24e2b) )
 	ROM_LOAD16_BYTE( "mmp1x2.u513.bin", 0x000001, 0x080000, CRC(a2b9034e) SHA1(466bcb1bf7124eb15d23b25c4e1307b9706474ec) )
 
- 	ROM_REGION( 0x020000, "cpu1", 0 )			/* MCU Code */
-	ROM_LOAD( "mmd0x2.u124.bin",  0x000000, 0x020000, CRC(3d7cb329) SHA1(053106acde642a414fde0b01105fe6762b6a10f6) )
+ 	ROM_REGION( 0x020000, "mcudata", 0 )			/* MCU Code */
+	ROM_LOAD16_WORD_SWAP( "mmd0x2.u124.bin",  0x000000, 0x020000, CRC(3d7cb329) SHA1(053106acde642a414fde0b01105fe6762b6a10f6) )
 
 	ROM_REGION( 0x840000, "gfx1", ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "mm-200-402-s0.bin",  0x000000, 0x200000, CRC(c0ab3efc) SHA1(e6cd15480977b036234d91e6f3a6e21b7f0a3c3e) )
@@ -2705,8 +2707,10 @@ ROM_START( gtmre )
 	ROM_LOAD16_BYTE( "gmmu2.bin", 0x000000, 0x080000, CRC(36dc4aa9) SHA1(0aea4dc169d7aad2ea957a1de698d1fa12c71556) )
 	ROM_LOAD16_BYTE( "gmmu1.bin", 0x000001, 0x080000, CRC(8653c144) SHA1(a253a01327a9443337a55a13c063ea5096444c4c) )
 
- 	ROM_REGION( 0x020000, "cpu1", 0 )			/* MCU Code */
-	ROM_LOAD( "mcu_code.u12",  0x000000, 0x020000, NO_DUMP )
+ 	ROM_REGION( 0x020000, "mcudata", 0 )			/* MCU Code */
+	//ROM_LOAD16_WORD_SWAP( "mcu_code.u12",  0x000000, 0x020000, NO_DUMP )
+	// this rom has the right version string, so is probably correct
+	ROM_LOAD16_WORD_SWAP( "gtmrusa.u12",  0x000000, 0x020000, CRC(2e1a06ff) SHA1(475a7555653eefac84307492a385895b839cab0d) )
 
 	ROM_REGION( 0x800000, "gfx1", ROMREGION_DISPOSE )	/* Sprites */
 	/* fill the 0x700000-7fffff range first, with the second of the identical halves */
@@ -2742,8 +2746,8 @@ ROM_START( gtmrusa )
 	ROM_LOAD16_BYTE( "gtmrusa.u2", 0x000000, 0x080000, CRC(5be615c4) SHA1(c14d11a5bf6e025a65b932039165302ff407c4e1) )
 	ROM_LOAD16_BYTE( "gtmrusa.u1", 0x000001, 0x080000, CRC(ae853e4e) SHA1(31eaa73b0c5ddab1292f521ceec43b202653efe9) )
 
- 	ROM_REGION( 0x020000, "cpu1", 0 )			/* MCU Code? */
-	ROM_LOAD( "gtmrusa.u12",  0x000000, 0x020000, CRC(2e1a06ff) SHA1(475a7555653eefac84307492a385895b839cab0d) )
+ 	ROM_REGION( 0x020000, "mcudata", 0 )			/* MCU Code? */
+	ROM_LOAD16_WORD_SWAP( "gtmrusa.u12",  0x000000, 0x020000, CRC(2e1a06ff) SHA1(475a7555653eefac84307492a385895b839cab0d) )
 
 	ROM_REGION( 0x800000, "gfx1", ROMREGION_DISPOSE )	/* Sprites */
 	/* fill the 0x700000-7fffff range first, with the second of the identical halves */
@@ -2931,8 +2935,8 @@ ROM_START( gtmr2 )
 	ROM_LOAD16_BYTE( "m2p0x1a.u8",  0x000000, 0x080000, CRC(c29039fb) SHA1(a16e8863608353c2931e9d45359fbcec8f11ef9d) )
 	ROM_LOAD16_BYTE( "m2p1x1a.u7",  0x000001, 0x080000, CRC(8ef392c4) SHA1(06bd720d931911e32264183dd215ab70ad6d2961) )
 
- 	ROM_REGION( 0x020000, "cpu1", 0 )			/* MCU Code? */
-	ROM_LOAD( "m2d0x0.u31",        0x000000, 0x020000, CRC(2e1a06ff) SHA1(475a7555653eefac84307492a385895b839cab0d) )
+ 	ROM_REGION( 0x020000, "mcudata", 0 )			/* MCU Code? */
+	ROM_LOAD16_WORD_SWAP( "m2d0x0.u31",        0x000000, 0x020000, CRC(2e1a06ff) SHA1(475a7555653eefac84307492a385895b839cab0d) )
 
 	ROM_REGION( 0x800000, "gfx1", ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "m2-200-0.u49",      0x000000, 0x400000, CRC(93aafc53) SHA1(1d28b6e3bd61ce9c938fc5303aeabcdefa549852) )
@@ -2962,8 +2966,8 @@ ROM_START( gtmr2a )
 	ROM_LOAD16_BYTE( "m2p0x1.u8",  0x000000, 0x080000, CRC(525f6618) SHA1(da8008cc7768b4e8c0091aa3ea21752d0ca33691) )
 	ROM_LOAD16_BYTE( "m2p1x1.u7",  0x000001, 0x080000, CRC(914683e5) SHA1(dbb2140f7de86073647abc6e73ba739ea201dd30) )
 
- 	ROM_REGION( 0x020000, "cpu1", 0 )			/* MCU Code? */
-	ROM_LOAD( "m2d0x0.u31",        0x000000, 0x020000, CRC(2e1a06ff) SHA1(475a7555653eefac84307492a385895b839cab0d) )
+ 	ROM_REGION( 0x020000, "mcudata", 0 )			/* MCU Code? */
+	ROM_LOAD16_WORD_SWAP( "m2d0x0.u31",        0x000000, 0x020000, CRC(2e1a06ff) SHA1(475a7555653eefac84307492a385895b839cab0d) )
 
 	ROM_REGION( 0x800000, "gfx1", ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "m2-200-0.u49",      0x000000, 0x400000, CRC(93aafc53) SHA1(1d28b6e3bd61ce9c938fc5303aeabcdefa549852) )
@@ -2993,8 +2997,8 @@ ROM_START( gtmr2u )
 	ROM_LOAD16_BYTE( "m2p0a1.u8",  0x000000, 0x080000, CRC(813e1d5e) SHA1(602df02933dc7b77be311113af1d1edad2751cc9) )
 	ROM_LOAD16_BYTE( "m2p1a1.u7",  0x000001, 0x080000, CRC(bee63666) SHA1(07585a63f901f50f2a2314eb4dc4307e7028ded7) )
 
- 	ROM_REGION( 0x020000, "cpu1", 0 )			/* MCU Code? */
-	ROM_LOAD( "m2d0x0.u31",        0x000000, 0x020000, CRC(2e1a06ff) SHA1(475a7555653eefac84307492a385895b839cab0d) )
+ 	ROM_REGION( 0x020000, "mcudata", 0 )			/* MCU Code? */
+	ROM_LOAD16_WORD_SWAP( "m2d0x0.u31",        0x000000, 0x020000, CRC(2e1a06ff) SHA1(475a7555653eefac84307492a385895b839cab0d) )
 
 	ROM_REGION( 0x800000, "gfx1", ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "m2-200-0.u49",      0x000000, 0x400000, CRC(93aafc53) SHA1(1d28b6e3bd61ce9c938fc5303aeabcdefa549852) )
@@ -3496,14 +3500,14 @@ ROM_START( brapboys ) /* Single PCB, fully populated, no rom sub board */
 	ROM_LOAD( "rb-013.u68",  0x300000, 0x100000, CRC(28c37fe8) SHA1(e10dd1a810983077328b44e6e33ce2e899c506d2) )
 
 	ROM_REGION( 0x100000, "oki1", 0 )	/* Samples */
-	/* order is probably wrong, but until it does more we can't tell */
-	ROM_LOAD( "rb-003.101",  0x000000, 0x080000, CRC(2cac25d7) SHA1(0412c317bf650a93051b9304d23035efde0c026a) )
-	ROM_LOAD( "rb-000.u43",  0x080000, 0x040000, CRC(c7c848ac) SHA1(77754efd6efeac50a40dcd530de504090257d8b3) )
+	/* Upper 128kB of M6295 address region is bank-switched? */
+	ROM_LOAD( "rb-000.u43",  0x000000, 0x080000, CRC(58ad1a62) SHA1(1d2643b5f6eac22682972a88d284e00de3e3b223) )
+	ROM_LOAD( "rb-003.101",  0x080000, 0x080000, CRC(2cac25d7) SHA1(0412c317bf650a93051b9304d23035efde0c026a) )
 
-	ROM_REGION( 0x100000, "oki2", 0 )	/* Samples */
-	/* order is probably wrong, but until it does more we can't tell */
-	ROM_LOAD( "rb-001.u44",   0x000000, 0x080000, CRC(09c779e3) SHA1(c9c9bf939d58d329b87e0aa08ec3d35f7440d3c7) )
-	ROM_LOAD( "rb-002.u45",   0x080000, 0x080000, CRC(55de7003) SHA1(cc349fd8671926cafed4d86d1a5cb671e591c408) )
+	ROM_REGION( 0x200000, "oki2", 0 )	/* Samples */
+	/* Upper 128kB of M6295 address region is bank-switched? */
+	ROM_LOAD( "rb-001.u44",   0x000000, 0x100000, CRC(7cf774b3) SHA1(3fb0a5096ce9480f97e311439042eb8cbc26efb4) )
+	ROM_LOAD( "rb-002.u45",   0x100000, 0x100000, CRC(e4b30444) SHA1(be6756dce3721226e0b7f5d4d168008c31aeea8e) )
 ROM_END
 
 ROM_START( brapboyj ) /* The Japanese version has an extra rom??? and used a rom sub board */
@@ -3532,14 +3536,14 @@ ROM_START( brapboyj ) /* The Japanese version has an extra rom??? and used a rom
 	ROM_LOAD( "rb-013.u68",  0x300000, 0x100000, CRC(28c37fe8) SHA1(e10dd1a810983077328b44e6e33ce2e899c506d2) )
 
 	ROM_REGION( 0x100000, "oki1", 0 )	/* Samples */
-	/* order is probably wrong, but until it does more we can't tell */
-	ROM_LOAD( "rb-003.101",  0x000000, 0x080000, CRC(2cac25d7) SHA1(0412c317bf650a93051b9304d23035efde0c026a) )
-	ROM_LOAD( "rb-000.u43",  0x080000, 0x040000, CRC(c7c848ac) SHA1(77754efd6efeac50a40dcd530de504090257d8b3) )
+	/* Upper 128kB of M6295 address region is bank-switched? */
+	ROM_LOAD( "rb-000.u43",  0x000000, 0x080000, CRC(58ad1a62) SHA1(1d2643b5f6eac22682972a88d284e00de3e3b223) )
+	ROM_LOAD( "rb-003.101",  0x080000, 0x080000, CRC(2cac25d7) SHA1(0412c317bf650a93051b9304d23035efde0c026a) )
 
-	ROM_REGION( 0x100000, "oki2", 0 )	/* Samples */
-	/* order is probably wrong, but until it does more we can't tell */
-	ROM_LOAD( "rb-001.u44",   0x000000, 0x080000, CRC(09c779e3) SHA1(c9c9bf939d58d329b87e0aa08ec3d35f7440d3c7) )
-	ROM_LOAD( "rb-002.u45",   0x080000, 0x080000, CRC(55de7003) SHA1(cc349fd8671926cafed4d86d1a5cb671e591c408) )
+	ROM_REGION( 0x200000, "oki2", 0 )	/* Samples */
+	/* Upper 128kB of M6295 address region is bank-switched? */
+	ROM_LOAD( "rb-001.u44",   0x000000, 0x100000, CRC(7cf774b3) SHA1(3fb0a5096ce9480f97e311439042eb8cbc26efb4) )
+	ROM_LOAD( "rb-002.u45",   0x100000, 0x100000, CRC(e4b30444) SHA1(be6756dce3721226e0b7f5d4d168008c31aeea8e) )
 ROM_END
 
 /**********************************************************************
@@ -3597,8 +3601,8 @@ ROM_START( bonkadv )
 	ROM_LOAD16_BYTE( "prg.8",        0x000000, 0x080000, CRC(af2e60f8) SHA1(406f79e155d1244b84f8c89c25b37188e1b4f4a6) )
 	ROM_LOAD16_BYTE( "prg.7",        0x000001, 0x080000, CRC(a1cc6a78) SHA1(a9cea21a6a0dfd3b0952664681c057190aa27f8c) )
 
-	ROM_REGION( 0x020000, "cpu1", 0 )			/* MCU Code */
-	ROM_LOAD( "mcu.124",			 0x000000, 0x020000, CRC(9d4e2724) SHA1(9dd43703265e39f876877020a0ac3875de6faa8d) )
+	ROM_REGION( 0x020000, "mcudata", 0 )			/* MCU Code */
+	ROM_LOAD16_WORD_SWAP( "mcu.124",			 0x000000, 0x020000, CRC(9d4e2724) SHA1(9dd43703265e39f876877020a0ac3875de6faa8d) )
 
 	ROM_REGION( 0x500000, "gfx1", ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "pc100101.37",		 0x000000, 0x200000, CRC(c96e7c10) SHA1(607cc7745abc3ff820047e8a00060ece61646623) )
@@ -3622,6 +3626,18 @@ ROM_START( bonkadv )
 	ROM_LOAD( "pc603108.102",		 0x200000, 0x100000, CRC(58458985) SHA1(9a846d604ba901eb2a59d2b6cd9c42e3b43adb6a) )
 ROM_END
 
+static DRIVER_INIT( bloodwar )
+{
+	DRIVER_INIT_CALL(samplebank);
+	DRIVER_INIT_CALL(decrypt_toybox_rom);
+}
+
+static DRIVER_INIT( gtmr2 )
+{
+	DRIVER_INIT_CALL(samplebank);
+	DRIVER_INIT_CALL(decrypt_toybox_rom_alt);
+}
+
 /***************************************************************************
 
 
@@ -3640,15 +3656,15 @@ GAME( 1991, mgcrystj, mgcrystl, mgcrystl, mgcrystl, kaneko16,   ROT0,  "Kaneko (
 GAME( 1992, blazeon,  0,        blazeon,  blazeon,  kaneko16,   ROT0,  "Atlus",  "Blaze On (Japan)", 0 )
 GAME( 1992, explbrkr, 0,        bakubrkr, bakubrkr, kaneko16,   ROT90, "Kaneko", "Explosive Breaker", 0 )
 GAME( 1992, bakubrkr, explbrkr, bakubrkr, bakubrkr, kaneko16,   ROT90, "Kaneko", "Bakuretsu Breaker", 0 )
-GAME( 1994, bonkadv,  0,        bonkadv , bonkadv,  samplebank, ROT0,  "Kaneko", "B.C. Kid / Bonk's Adventure / Kyukyoku!! PC Genjin", 0 )
-GAME( 1994, bloodwar, 0,        bloodwar, bloodwar, samplebank, ROT0,  "Kaneko", "Blood Warrior", 0 )
-GAME( 1994, gtmr,     0,        gtmr,     gtmr,     samplebank, ROT0,  "Kaneko", "1000 Miglia: Great 1000 Miles Rally (94/07/18)", 0 )
-GAME( 1994, gtmra,    gtmr,     gtmr,     gtmr,     samplebank, ROT0,  "Kaneko", "1000 Miglia: Great 1000 Miles Rally (94/06/13)", 0 )
-GAME( 1994, gtmre,    gtmr,     gtmr,     gtmr,     samplebank, ROT0,  "Kaneko", "Great 1000 Miles Rally: Evolution Model!!! (94/09/06)", 0 )
-GAME( 1994, gtmrusa,  gtmr,     gtmr,     gtmr,     samplebank, ROT0,  "Kaneko", "Great 1000 Miles Rally: U.S.A Version! (94/09/06)", 0 ) // U.S.A version seems part of the title, rather than region
-GAME( 1995, gtmr2,    0,        gtmr2,    gtmr2,    samplebank, ROT0,  "Kaneko", "Mille Miglia 2: Great 1000 Miles Rally (95/05/24)", 0 )
-GAME( 1995, gtmr2a,   gtmr2,    gtmr2,    gtmr2,    samplebank, ROT0,  "Kaneko", "Mille Miglia 2: Great 1000 Miles Rally (95/04/04)", 0 )
-GAME( 1995, gtmr2u,   gtmr2,    gtmr2,    gtmr2,    samplebank, ROT0,  "Kaneko", "Great 1000 Miles Rally 2 USA (95/05/18)", 0 )
+GAME( 1994, bonkadv,  0,        bonkadv , bonkadv,  bloodwar, ROT0,  "Kaneko", "B.C. Kid / Bonk's Adventure / Kyukyoku!! PC Genjin", 0 )
+GAME( 1994, bloodwar, 0,        bloodwar, bloodwar, bloodwar, ROT0,  "Kaneko", "Blood Warrior", 0 )
+GAME( 1994, gtmr,     0,        gtmr,     gtmr,     bloodwar, ROT0,  "Kaneko", "1000 Miglia: Great 1000 Miles Rally (94/07/18)", 0 )
+GAME( 1994, gtmra,    gtmr,     gtmr,     gtmr,     bloodwar, ROT0,  "Kaneko", "1000 Miglia: Great 1000 Miles Rally (94/06/13)", 0 )
+GAME( 1994, gtmre,    gtmr,     gtmr,     gtmr,     gtmr2, ROT0,  "Kaneko", "Great 1000 Miles Rally: Evolution Model!!! (94/09/06)", 0 )
+GAME( 1994, gtmrusa,  gtmr,     gtmr,     gtmr,     gtmr2, ROT0,  "Kaneko", "Great 1000 Miles Rally: U.S.A Version! (94/09/06)", 0 ) // U.S.A version seems part of the title, rather than region
+GAME( 1995, gtmr2,    0,        gtmr2,    gtmr2,    gtmr2, ROT0,  "Kaneko", "Mille Miglia 2: Great 1000 Miles Rally (95/05/24)", 0 )
+GAME( 1995, gtmr2a,   gtmr2,    gtmr2,    gtmr2,    gtmr2, ROT0,  "Kaneko", "Mille Miglia 2: Great 1000 Miles Rally (95/04/04)", 0 )
+GAME( 1995, gtmr2u,   gtmr2,    gtmr2,    gtmr2,    gtmr2, ROT0,  "Kaneko", "Great 1000 Miles Rally 2 USA (95/05/18)", 0 )
 
 /* Non-working games (mainly due to protection) */
 

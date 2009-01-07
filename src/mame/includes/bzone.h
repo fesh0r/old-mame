@@ -10,14 +10,13 @@
 /*----------- defined in drivers/bzone.c -----------*/
 
 extern UINT8 rb_input_select;
-READ8_HANDLER( bzone_IN0_r );
 
 
 /*----------- defined in audio/bzone.c -----------*/
 
 WRITE8_HANDLER( bzone_sounds_w );
 
-void *bzone_sh_start(int clock, const custom_sound_interface *config);
+CUSTOM_START( bzone_sh_start );
 
 
 /*----------- defined in audio/redbaron.c -----------*/
@@ -25,4 +24,4 @@ void *bzone_sh_start(int clock, const custom_sound_interface *config);
 WRITE8_HANDLER( redbaron_sounds_w );
 WRITE8_HANDLER( redbaron_pokey_w );
 
-void *redbaron_sh_start(int clock, const custom_sound_interface *config);
+CUSTOM_START( redbaron_sh_start );

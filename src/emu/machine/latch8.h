@@ -29,7 +29,7 @@ struct _latch8_devread
 	device_type				type;
 	const char				*tag;
 	read8_device_func		devread_handler;
-	read8_machine_func		read_handler;
+	read8_space_func		read_handler;
 };
 
 typedef struct _latch8_config latch8_config;
@@ -49,7 +49,7 @@ struct _latch8_config
 
 /* add device */
 #define MDRV_LATCH8_ADD(_tag) \
-	MDRV_DEVICE_ADD(_tag, LATCH8)
+	MDRV_DEVICE_ADD(_tag, LATCH8, 0)
 
 /* Bit mask specifying bits to be masked *out* */
 #define MDRV_LATCH8_MASKOUT(_maskout) \

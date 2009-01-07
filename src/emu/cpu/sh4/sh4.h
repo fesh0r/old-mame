@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *   sh4.h
+ *   sh4->h
  *   Portable Hitachi SH-4 (SH7750 family) emulator interface
  *
  *   By R. Belmont, based on sh2.c by Juergen Buchmueller, Mariusz Wojcieszek,
@@ -62,8 +62,8 @@ enum
 
 enum
 {
-	CPUINFO_PTR_SH4_FTCSR_READ_CALLBACK = CPUINFO_PTR_CPU_SPECIFIC,
-	CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA,
+	CPUINFO_FCT_SH4_FTCSR_READ_CALLBACK = CPUINFO_FCT_CPU_SPECIFIC,
+	CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA = CPUINFO_PTR_CPU_SPECIFIC,
 };
 
 enum
@@ -101,7 +101,8 @@ struct sh4_ddt_dma
 	int mode;
 };
 
-extern void sh4_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( sh4 );
+#define CPU_SH4 CPU_GET_INFO_NAME( sh4 )
 
 WRITE32_HANDLER( sh4_internal_w );
 READ32_HANDLER( sh4_internal_r );

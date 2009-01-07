@@ -42,7 +42,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( aeroboto )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,64);
+	bg_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_rows,8,8,32,64);
 
 	tilemap_set_transparent_pen(bg_tilemap,0);
 
@@ -75,13 +75,13 @@ VIDEO_START( aeroboto )
 
 READ8_HANDLER( aeroboto_in0_r )
 {
-	return input_port_read(machine, flip_screen_get() ? "P2" : "P1");
+	return input_port_read(space->machine, flip_screen_get(space->machine) ? "P2" : "P1");
 }
 
 WRITE8_HANDLER( aeroboto_3000_w )
 {
 	/* bit 0 selects both flip screen and player1/player2 controls */
-	flip_screen_set(data & 0x01);
+	flip_screen_set(space->machine, data & 0x01);
 
 	/* bit 1 = char bank select */
 	if (aeroboto_charbank != ((data & 0x02) >> 1))
@@ -126,7 +126,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int x = spriteram[offs+3];
 		int y = 240 - spriteram[offs];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			x = 248 - x;
 			y = 240 - y;
@@ -135,7 +135,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		drawgfx(bitmap, machine->gfx[1],
 				spriteram[offs+1],
 				spriteram[offs+2] & 0x07,
-				flip_screen_get(), flip_screen_get(),
+				flip_screen_get(machine), flip_screen_get(machine),
 				((x + 8) & 0xff) - 8, y,
 				cliprect, TRANSPARENCY_PEN, 0);
 	}
@@ -159,7 +159,7 @@ VIDEO_UPDATE( aeroboto )
 		if (star_color < 0xd0) { star_color = 0xd0; sky_color = 0; }
 		star_color += 2;
 
-		fillbitmap(bitmap, sky_color, cliprect);
+		bitmap_fill(bitmap, cliprect, sky_color);
 
 		// actual scroll speed is unknown but it can be adjusted by changing the SCROLL_SPEED constant
 		sx += (char)(*aeroboto_starx - ox);
@@ -191,7 +191,7 @@ VIDEO_UPDATE( aeroboto )
 	{
 		sx = ox = *aeroboto_starx;
 		sy = oy = *aeroboto_stary;
-		fillbitmap(bitmap, sky_color, cliprect);
+		bitmap_fill(bitmap, cliprect, sky_color);
 	}
 
 	for (y = 0;y < 64; y++)

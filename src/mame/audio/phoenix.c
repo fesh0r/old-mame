@@ -10,7 +10,6 @@
 
 #include "driver.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "sound/custom.h"
 #include "sound/tms36xx.h"
 #include "phoenix.h"
@@ -205,12 +204,12 @@ INLINE int noise(int samplerate)
 	return sum;
 }
 
-static void phoenix_sound_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length)
+static STREAM_UPDATE( phoenix_sound_update )
 {
-	int samplerate = Machine->sample_rate;
+	int samplerate = device->machine->sample_rate;
 	stream_sample_t *buffer = outputs[0];
 
-	while( length-- > 0 )
+	while( samples-- > 0 )
 	{
 		int sum = 0;
 		sum = noise(samplerate) / 2;
@@ -389,7 +388,6 @@ DISCRETE_SOUND_START(phoenix)
 	/* - phoenix wing hit                           */
 	/************************************************/
 	DISCRETE_COMP_ADDER(NODE_30,				/* total capacitance of selected capacitors */
-						1,						/* ENAB */
 						PHOENIX_EFFECT_2_FREQ,	/* passed selection bits */
 						&phoenix_effect2_cap_sel)
 	/* Part of the frequency select also effects the gain */
@@ -480,8 +478,8 @@ DISCRETE_SOUND_END
 
 WRITE8_HANDLER( phoenix_sound_control_a_w )
 {
-	discrete_sound_w(machine, PHOENIX_EFFECT_2_DATA, data & 0x0f);
-	discrete_sound_w(machine, PHOENIX_EFFECT_2_FREQ, (data & 0x30) >> 4);
+	discrete_sound_w(space, PHOENIX_EFFECT_2_DATA, data & 0x0f);
+	discrete_sound_w(space, PHOENIX_EFFECT_2_FREQ, (data & 0x30) >> 4);
 #if 0
 	/* future handling of noise sounds */
 	discrete_sound_w(PHOENIX_EFFECT_3_EN  , data & 0x40);
@@ -498,31 +496,32 @@ SOUND_START( phoenix)
 	memset(&c25_state, 0, sizeof(c25_state));
 	memset(&noise_state, 0, sizeof(noise_state));
 
-	state_save_register_global(sound_latch_a);
-	state_save_register_global(c24_state.counter);
-	state_save_register_global(c24_state.level);
-	state_save_register_global(c25_state.counter);
-	state_save_register_global(c25_state.level);
-	state_save_register_global(noise_state.counter);
-	state_save_register_global(noise_state.polybit);
-	state_save_register_global(noise_state.polyoffs);
-	state_save_register_global(noise_state.lowpass_counter);
-	state_save_register_global(noise_state.lowpass_polybit);
+	state_save_register_global(machine, sound_latch_a);
+	state_save_register_global(machine, c24_state.counter);
+	state_save_register_global(machine, c24_state.level);
+	state_save_register_global(machine, c25_state.counter);
+	state_save_register_global(machine, c25_state.level);
+	state_save_register_global(machine, noise_state.counter);
+	state_save_register_global(machine, noise_state.polybit);
+	state_save_register_global(machine, noise_state.polyoffs);
+	state_save_register_global(machine, noise_state.lowpass_counter);
+	state_save_register_global(machine, noise_state.lowpass_polybit);
 
 }
 
 WRITE8_HANDLER( phoenix_sound_control_b_w )
 {
-	discrete_sound_w(machine, PHOENIX_EFFECT_1_DATA, data & 0x0f);
-	discrete_sound_w(machine, PHOENIX_EFFECT_1_FILT, data & 0x20);
-	discrete_sound_w(machine, PHOENIX_EFFECT_1_FREQ, data & 0x10);
+	discrete_sound_w(space, PHOENIX_EFFECT_1_DATA, data & 0x0f);
+	discrete_sound_w(space, PHOENIX_EFFECT_1_FILT, data & 0x20);
+	discrete_sound_w(space, PHOENIX_EFFECT_1_FREQ, data & 0x10);
 
 	/* update the tune that the MM6221AA is playing */
 	mm6221aa_tune_w(0, data >> 6);
 }
 
-void *phoenix_sh_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( phoenix_sh_start )
 {
+	running_machine *machine = device->machine;
 	int i, j;
 	UINT32 shiftreg;
 
@@ -543,9 +542,9 @@ void *phoenix_sh_start(int clock, const custom_sound_interface *config)
 		poly18[i] = bits;
 	}
 
-	channel = stream_create(0, 1, Machine->sample_rate, 0, phoenix_sound_update);
+	channel = stream_create(device, 0, 1, machine->sample_rate, 0, phoenix_sound_update);
 
-	state_save_register_global_pointer(poly18, (1ul << (18-5)) );
+	state_save_register_global_pointer(machine, poly18, (1ul << (18-5)) );
 
 	/* a dummy token */
 	return auto_malloc(1);

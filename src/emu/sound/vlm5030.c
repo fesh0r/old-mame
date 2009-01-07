@@ -75,7 +75,6 @@ chirp 12-..: vokume   0   : silent
 */
 #include "sndintrf.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "vlm5030.h"
 
 /* interpolator per frame   */
@@ -89,6 +88,7 @@ chirp 12-..: vokume   0   : silent
 
 struct vlm5030_info
 {
+	const device_config *device;
 	const vlm5030_interface *intf;
 
 	sound_stream * channel;
@@ -156,7 +156,7 @@ SPC SPB SPA
  0   0   1  fast      (01h)     : 20.2ms  (75%) : 30sample
  0   1   x  more fast (02h,03h) : 12.2ms  (50%) : 20sample
 */
-static const int VLM5030_speed_table[8] =
+static const int vlm5030_speed_table[8] =
 {
  IP_SIZE_NORMAL,
  IP_SIZE_FAST,
@@ -287,20 +287,20 @@ static int parse_frame (struct vlm5030_info *chip)
 }
 
 /* decode and buffering data */
-static void vlm5030_update_callback(void *param,stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( vlm5030_update_callback )
 {
 	struct vlm5030_info *chip = param;
 	int buf_count=0;
 	int interp_effect;
 	int i;
 	int u[11];
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
 	/* running */
 	if( chip->phase == PH_RUN || chip->phase == PH_STOP )
 	{
 		/* playing speech */
-		while (length > 0)
+		while (samples > 0)
 		{
 			int current_val;
 
@@ -369,7 +369,7 @@ static void vlm5030_update_callback(void *param,stream_sample_t **inputs, stream
 			}
 			else if (chip->old_pitch <= 1)
 			{	/* generate unvoiced samples here */
-				current_val = (mame_rand(Machine)&1) ? chip->current_energy : -chip->current_energy;
+				current_val = (mame_rand(chip->device->machine)&1) ? chip->current_energy : -chip->current_energy;
 			}
 			else
 			{
@@ -401,7 +401,7 @@ static void vlm5030_update_callback(void *param,stream_sample_t **inputs, stream
 			if (chip->pitch_count >= chip->current_pitch )
 				chip->pitch_count = 0;
 			/* size */
-			length--;
+			samples--;
 		}
 /*      return;*/
 	}
@@ -410,7 +410,7 @@ phase_stop:
 	switch( chip->phase )
 	{
 	case PH_SETUP:
-		if( chip->sample_count <= length)
+		if( chip->sample_count <= samples)
 		{
 			chip->sample_count = 0;
 			/* logerror("VLM5030 BSY=H\n" ); */
@@ -419,11 +419,11 @@ phase_stop:
 		}
 		else
 		{
-			chip->sample_count -= length;
+			chip->sample_count -= samples;
 		}
 		break;
 	case PH_END:
-		if( chip->sample_count <= length)
+		if( chip->sample_count <= samples)
 		{
 			chip->sample_count = 0;
 			/* logerror("VLM5030 BSY=L\n" ); */
@@ -432,25 +432,25 @@ phase_stop:
 		}
 		else
 		{
-			chip->sample_count -= length;
+			chip->sample_count -= samples;
 		}
 	}
 	/* silent buffering */
-	while (length > 0)
+	while (samples > 0)
 	{
 		buffer[buf_count++] = 0x00;
-		length--;
+		samples--;
 	}
 }
 
 /* realtime update */
-static void VLM5030_update(struct vlm5030_info *chip)
+static void vlm5030_update(struct vlm5030_info *chip)
 {
 	stream_update(chip->channel);
 }
 
 /* setup parameteroption when RST=H */
-static void VLM5030_setup_parameter(struct vlm5030_info *chip, UINT8 param)
+static void vlm5030_setup_parameter(struct vlm5030_info *chip, UINT8 param)
 {
 	/* latch parameter value */
 	chip->parameter = param;
@@ -464,7 +464,7 @@ static void VLM5030_setup_parameter(struct vlm5030_info *chip, UINT8 param)
 		chip->interp_step = 1; /* 2400bps : 4 interporator */
 
 	/* bit 3,4,5 : speed (frame size) */
-	chip->frame_size = VLM5030_speed_table[(param>>3) &7];
+	chip->frame_size = vlm5030_speed_table[(param>>3) &7];
 
 	/* bit 6,7 : low / high pitch */
 	if(param&0x80)	/* bit7=1 , high pitch */
@@ -476,14 +476,14 @@ static void VLM5030_setup_parameter(struct vlm5030_info *chip, UINT8 param)
 }
 
 
-static STATE_POSTLOAD( VLM5030_restore_state )
+static STATE_POSTLOAD( vlm5030_restore_state )
 {
 	struct vlm5030_info *chip = param;
 	int i;
 
 	int interp_effect = FR_SIZE - (chip->interp_count%FR_SIZE);
 	/* restore parameter data */
-	VLM5030_setup_parameter(chip, chip->parameter);
+	vlm5030_setup_parameter(chip, chip->parameter);
 
 	/* restore current energy,pitch & filter */
 	chip->current_energy = chip->old_energy + (chip->target_energy - chip->old_energy) * interp_effect / FR_SIZE;
@@ -494,7 +494,7 @@ static STATE_POSTLOAD( VLM5030_restore_state )
 }
 
 
-static void VLM5030_reset(struct vlm5030_info *chip)
+static void vlm5030_reset(struct vlm5030_info *chip)
 {
 	chip->phase = PH_RESET;
 	chip->address = 0;
@@ -512,8 +512,14 @@ static void VLM5030_reset(struct vlm5030_info *chip)
 	chip->interp_count = chip->sample_count = chip->pitch_count = 0;
 	memset(chip->x, 0, sizeof(chip->x));
 	/* reset parameters */
-	VLM5030_setup_parameter(chip, 0x00);
+	vlm5030_setup_parameter(chip, 0x00);
 }
+
+static SND_RESET( vlm5030 )
+{
+	vlm5030_reset(device->token);
+}
+
 
 /* set speech rom address */
 void vlm5030_set_rom(void *speech_rom)
@@ -526,7 +532,7 @@ void vlm5030_set_rom(void *speech_rom)
 int vlm5030_bsy(void)
 {
 	struct vlm5030_info *chip = sndti_token(SOUND_VLM5030, 0);
-	VLM5030_update(chip);
+	vlm5030_update(chip);
 	return chip->pin_BSY;
 }
 
@@ -546,7 +552,7 @@ void vlm5030_rst (int pin )
 		if( !pin )
 		{	/* H -> L : latch parameters */
 			chip->pin_RST = 0;
-			VLM5030_setup_parameter(chip, chip->latch_data);
+			vlm5030_setup_parameter(chip, chip->latch_data);
 		}
 	}
 	else
@@ -556,7 +562,7 @@ void vlm5030_rst (int pin )
 			chip->pin_RST = 1;
 			if( chip->pin_BSY )
 			{
-				VLM5030_reset(chip);
+				vlm5030_reset(chip);
 			}
 		}
 	}
@@ -608,7 +614,7 @@ if( chip->interp_step != 1)
 	popmessage("No %d %dBPS parameter",table/2,chip->interp_step*2400);
 #endif
 				}
-				VLM5030_update(chip);
+				vlm5030_update(chip);
 				/* logerror("VLM5030 %02X start adr=%04X\n",table/2,chip->address ); */
 				/* reset process status */
 				chip->sample_count = chip->frame_size;
@@ -631,7 +637,7 @@ if( chip->interp_step != 1)
 
 /* start VLM5030 with sound rom              */
 /* speech_rom == 0 -> use sampling data mode */
-static void *vlm5030_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( vlm5030 )
 {
 	const vlm5030_interface defintrf = { 0 };
 	int emulation_rate;
@@ -640,6 +646,7 @@ static void *vlm5030_start(const char *tag, int sndindex, int clock, const void 
 	chip = auto_malloc(sizeof(*chip));
 	memset(chip, 0, sizeof(*chip));
 
+	chip->device = device;
 	chip->intf = (config != NULL) ? config : &defintrf;
 
 	emulation_rate = clock / 440;
@@ -648,40 +655,40 @@ static void *vlm5030_start(const char *tag, int sndindex, int clock, const void 
 	chip->pin_RST = chip->pin_ST = chip->pin_VCU= 0;
 	chip->latch_data = 0;
 
-	VLM5030_reset(chip);
+	vlm5030_reset(chip);
 	chip->phase = PH_IDLE;
 
-	chip->rom = memory_region(Machine, tag);
+	chip->rom = device->region;
 	/* memory size */
 	if( chip->intf->memory_size == 0)
-		chip->address_mask = memory_region_length(Machine, tag)-1;
+		chip->address_mask = device->regionbytes-1;
 	else
 		chip->address_mask = chip->intf->memory_size-1;
 
-	chip->channel = stream_create(0, 1, emulation_rate,chip,vlm5030_update_callback);
+	chip->channel = stream_create(device, 0, 1, emulation_rate,chip,vlm5030_update_callback);
 
 	/* don't restore "UINT8 *chip->rom" when use vlm5030_set_rom() */
 
-	state_save_register_item(VLM_NAME,sndindex,chip->address);
-	state_save_register_item(VLM_NAME,sndindex,chip->pin_BSY);
-	state_save_register_item(VLM_NAME,sndindex,chip->pin_ST);
-	state_save_register_item(VLM_NAME,sndindex,chip->pin_VCU);
-	state_save_register_item(VLM_NAME,sndindex,chip->pin_RST);
-	state_save_register_item(VLM_NAME,sndindex,chip->latch_data);
-	state_save_register_item(VLM_NAME,sndindex,chip->vcu_addr_h);
-	state_save_register_item(VLM_NAME,sndindex,chip->parameter);
-	state_save_register_item(VLM_NAME,sndindex,chip->phase);
-	state_save_register_item(VLM_NAME,sndindex,chip->interp_count);
-	state_save_register_item(VLM_NAME,sndindex,chip->sample_count);
-	state_save_register_item(VLM_NAME,sndindex,chip->pitch_count);
-	state_save_register_item(VLM_NAME,sndindex,chip->old_energy);
-	state_save_register_item(VLM_NAME,sndindex,chip->old_pitch);
-	state_save_register_item_array(VLM_NAME,sndindex,chip->old_k);
-	state_save_register_item(VLM_NAME,sndindex,chip->target_energy);
-	state_save_register_item(VLM_NAME,sndindex,chip->target_pitch);
-	state_save_register_item_array(VLM_NAME,sndindex,chip->target_k);
-	state_save_register_item_array(VLM_NAME,sndindex,chip->x);
-	state_save_register_postload(Machine, VLM5030_restore_state, chip);
+	state_save_register_device_item(device,0,chip->address);
+	state_save_register_device_item(device,0,chip->pin_BSY);
+	state_save_register_device_item(device,0,chip->pin_ST);
+	state_save_register_device_item(device,0,chip->pin_VCU);
+	state_save_register_device_item(device,0,chip->pin_RST);
+	state_save_register_device_item(device,0,chip->latch_data);
+	state_save_register_device_item(device,0,chip->vcu_addr_h);
+	state_save_register_device_item(device,0,chip->parameter);
+	state_save_register_device_item(device,0,chip->phase);
+	state_save_register_device_item(device,0,chip->interp_count);
+	state_save_register_device_item(device,0,chip->sample_count);
+	state_save_register_device_item(device,0,chip->pitch_count);
+	state_save_register_device_item(device,0,chip->old_energy);
+	state_save_register_device_item(device,0,chip->old_pitch);
+	state_save_register_device_item_array(device,0,chip->old_k);
+	state_save_register_device_item(device,0,chip->target_energy);
+	state_save_register_device_item(device,0,chip->target_pitch);
+	state_save_register_device_item_array(device,0,chip->target_k);
+	state_save_register_device_item_array(device,0,chip->x);
+	state_save_register_postload(device->machine, vlm5030_restore_state, chip);
 
 	return chip;
 }
@@ -691,7 +698,7 @@ static void *vlm5030_start(const char *tag, int sndindex, int clock, const void 
  * Generic get_info
  **************************************************************************/
 
-static void vlm5030_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( vlm5030 )
 {
 	switch (state)
 	{
@@ -700,24 +707,24 @@ static void vlm5030_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void vlm5030_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( vlm5030 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = vlm5030_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = vlm5030_start;			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( vlm5030 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( vlm5030 );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( vlm5030 );		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "VLM5030";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "VLM speech";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "VLM5030");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "VLM speech");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

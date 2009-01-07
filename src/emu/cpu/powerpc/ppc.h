@@ -114,9 +114,7 @@ enum
 
 	CPUINFO_PTR_PPC_FASTRAM_BASE = CPUINFO_PTR_CPU_SPECIFIC,
 
-	CPUINFO_PTR_SPU_TX_HANDLER,
-
-	CPUINFO_PTR_CONTEXT			/* temporary */
+	CPUINFO_FCT_SPU_TX_HANDLER = CPUINFO_FCT_CPU_SPECIFIC
 };
 
 
@@ -136,7 +134,7 @@ enum
     STRUCTURES AND TYPEDEFS
 ***************************************************************************/
 
-typedef void (*ppc4xx_spu_tx_handler)(UINT8 data);
+typedef void (*ppc4xx_spu_tx_handler)(const device_config *device, UINT8 data);
 
 typedef struct _powerpc_config powerpc_config;
 struct _powerpc_config
@@ -150,41 +148,32 @@ struct _powerpc_config
     PUBLIC FUNCTIONS
 ***************************************************************************/
 
-#if (HAS_PPC403GA)
-void ppc403ga_get_info(UINT32 state, cpuinfo *info);
-#endif
+CPU_GET_INFO( ppc403ga );
+#define CPU_PPC403GA CPU_GET_INFO_NAME( ppc403ga )
 
-#if (HAS_PPC403GCX)
-void ppc403gcx_get_info(UINT32 state, cpuinfo *info);
-#endif
+CPU_GET_INFO( ppc403gcx );
+#define CPU_PPC403GCX CPU_GET_INFO_NAME( ppc403gcx )
 
-#if (HAS_PPC601)
-void ppc601_get_info(UINT32 state, cpuinfo *info);
-#endif
+CPU_GET_INFO( ppc601 );
+#define CPU_PPC601 CPU_GET_INFO_NAME( ppc601 )
 
-#if (HAS_PPC602)
-void ppc602_get_info(UINT32 state, cpuinfo *info);
-#endif
+CPU_GET_INFO( ppc602 );
+#define CPU_PPC602 CPU_GET_INFO_NAME( ppc602 )
 
-#if (HAS_PPC603)
-void ppc603_get_info(UINT32 state, cpuinfo *info);
-#endif
+CPU_GET_INFO( ppc603 );
+#define CPU_PPC603 CPU_GET_INFO_NAME( ppc603 )
 
-#if (HAS_PPC603E)
-void ppc603e_get_info(UINT32 state, cpuinfo *info);
-#endif
+CPU_GET_INFO( ppc603e );
+#define CPU_PPC603E CPU_GET_INFO_NAME( ppc603e )
 
-#if (HAS_PPC603R)
-void ppc603r_get_info(UINT32 state, cpuinfo *info);
-#endif
+CPU_GET_INFO( ppc603r );
+#define CPU_PPC603R CPU_GET_INFO_NAME( ppc603r )
 
-#if (HAS_PPC604)
-void ppc604_get_info(UINT32 state, cpuinfo *info);
-#endif
+CPU_GET_INFO( ppc604 );
+#define CPU_PPC604 CPU_GET_INFO_NAME( ppc604 )
 
-#if (HAS_MPC8240)
-void mpc8240_get_info(UINT32 state, cpuinfo *info);
-#endif
+CPU_GET_INFO( mpc8240 );
+#define CPU_MPC8240 CPU_GET_INFO_NAME( mpc8240 )
 
 
 
@@ -192,15 +181,15 @@ void mpc8240_get_info(UINT32 state, cpuinfo *info);
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE void ppc4xx_spu_set_tx_handler(int cpunum, ppc4xx_spu_tx_handler handler)
+INLINE void ppc4xx_spu_set_tx_handler(const device_config *cpu, ppc4xx_spu_tx_handler handler)
 {
-	cpunum_set_info_fct(cpunum, CPUINFO_PTR_SPU_TX_HANDLER, (genf *)handler);
+	device_set_info_fct(cpu, CPUINFO_FCT_SPU_TX_HANDLER, (genf *)handler);
 }
 
 
-INLINE void ppc4xx_spu_receive_byte(int cpunum, UINT8 byteval)
+INLINE void ppc4xx_spu_receive_byte(const device_config *cpu, UINT8 byteval)
 {
-	cpunum_set_info_int(cpunum, CPUINFO_INT_PPC_RX_DATA, byteval);
+	device_set_info_int(cpu, CPUINFO_INT_PPC_RX_DATA, byteval);
 }
 
 

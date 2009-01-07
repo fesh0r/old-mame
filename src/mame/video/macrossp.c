@@ -152,10 +152,10 @@ VIDEO_START(macrossp)
 	memset(spriteram_old,0,spriteram_size);
 	memset(spriteram_old2,0,spriteram_size);
 
-	macrossp_text_tilemap = tilemap_create(get_macrossp_text_tile_info,tilemap_scan_rows,16,16,64,64);
-	macrossp_scra_tilemap = tilemap_create(get_macrossp_scra_tile_info,tilemap_scan_rows,16,16,64,64);
-	macrossp_scrb_tilemap = tilemap_create(get_macrossp_scrb_tile_info,tilemap_scan_rows,16,16,64,64);
-	macrossp_scrc_tilemap = tilemap_create(get_macrossp_scrc_tile_info,tilemap_scan_rows,16,16,64,64);
+	macrossp_text_tilemap = tilemap_create(machine, get_macrossp_text_tile_info,tilemap_scan_rows,16,16,64,64);
+	macrossp_scra_tilemap = tilemap_create(machine, get_macrossp_scra_tile_info,tilemap_scan_rows,16,16,64,64);
+	macrossp_scrb_tilemap = tilemap_create(machine, get_macrossp_scrb_tile_info,tilemap_scan_rows,16,16,64,64);
+	macrossp_scrc_tilemap = tilemap_create(machine, get_macrossp_scrc_tile_info,tilemap_scan_rows,16,16,64,64);
 
 	tilemap_set_transparent_pen(macrossp_text_tilemap,0);
 	tilemap_set_transparent_pen(macrossp_scra_tilemap,0);
@@ -369,7 +369,7 @@ VIDEO_UPDATE(macrossp)
 	int layers[3],layerpri[3];
 
 
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	layers[0] = 0;
 	layerpri[0] = (macrossp_scra_videoregs[0] & 0x0000c000) >> 14;

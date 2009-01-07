@@ -26,6 +26,8 @@ To do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/8255ppi.h"
 #include "machine/eeprom.h"
 #include "sound/3812intf.h"
@@ -116,7 +118,7 @@ static WRITE8_DEVICE_HANDLER( lordgun_eeprom_w )
 	if (data & ~0xfd)
 	{
 //      popmessage("EE: %02x", data);
-		logerror("PC %06X - Unknown EEPROM bit written %02X\n",activecpu_get_pc(),data);
+		logerror("%s - Unknown EEPROM bit written %02X\n",cpuexec_describe_context(device->machine),data);
 	}
 
 	coin_counter_w(0, data & 0x01);
@@ -158,10 +160,10 @@ static READ16_HANDLER( lordgun_gun_1_y_r )		{ return lordgun_gun[1].hw_y; }
 
 static WRITE16_HANDLER( lordgun_soundlatch_w )
 {
-	if (ACCESSING_BITS_0_7)	soundlatch_w (machine, 0, (data >> 0) & 0xff);
-	if (ACCESSING_BITS_8_15)	soundlatch2_w(machine, 0, (data >> 8) & 0xff);
+	if (ACCESSING_BITS_0_7)	soundlatch_w (space, 0, (data >> 0) & 0xff);
+	if (ACCESSING_BITS_8_15)	soundlatch2_w(space, 0, (data >> 8) & 0xff);
 
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( lordgun_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -236,7 +238,7 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( lordgun_okibank_w )
 {
 	okim6295_set_bank_base(0, (data & 2) ? 0x40000 : 0);
-	if (data & ~3)	logerror("%04x: unknown okibank bits %02x\n", activecpu_get_pc(), data);
+	if (data & ~3)	logerror("%04x: unknown okibank bits %02x\n", cpu_get_pc(space->cpu), data);
 //  popmessage("OKI %x", data);
 }
 
@@ -423,7 +425,7 @@ static const ppi8255_interface ppi8255_intf[2] =
 
 static void soundirq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 1, 0, state);
+	cpu_set_input_line(machine->cpu[1], 0, state);
 }
 
 static const ym3812_interface lordgun_ym3812_interface =

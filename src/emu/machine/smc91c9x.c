@@ -377,7 +377,7 @@ READ16_DEVICE_HANDLER( smc91c9x_r )
 	}
 
 	if (LOG_ETHERNET && offset != EREG_BANK)
-		logerror("%08X:smc91c9x_r(%s) = %04X & %04X\n", activecpu_get_pc(), ethernet_regname[offset], result, mem_mask);
+		logerror("%s:smc91c9x_r(%s) = %04X & %04X\n", cpuexec_describe_context(device->machine), ethernet_regname[offset], result, mem_mask);
 	return result;
 }
 
@@ -402,7 +402,7 @@ WRITE16_DEVICE_HANDLER( smc91c9x_w )
 	COMBINE_DATA(&smc->reg[offset]);
 
 	if (LOG_ETHERNET && offset != 7)
-		logerror("%08X:smc91c9x_w(%s) = %04X & %04X\n", activecpu_get_pc(), ethernet_regname[offset], data, mem_mask);
+		logerror("%s:smc91c9x_w(%s) = %04X & %04X\n", cpuexec_describe_context(device->machine), ethernet_regname[offset], data, mem_mask);
 
 	/* handle it */
 	switch (offset)
@@ -512,7 +512,6 @@ static DEVICE_START( smc91c9x )
 {
 	const smc91c9x_config *config = device->inline_config;
 	smc91c9x_state *smc = get_safe_token(device);
-	char unique_tag[50];
 
 	/* validate some basic stuff */
 	assert(device != NULL);
@@ -525,20 +524,16 @@ static DEVICE_START( smc91c9x )
 	smc->device = device;
 	smc->irq_handler = config->interrupt;
 
-	/* create the name for save states */
-	assert(strlen(device->tag) < 30);
-	state_save_combine_module_and_tag(unique_tag, "smc91c9x", device->tag);
-
 	/* register ide states */
-	state_save_register_item_array(unique_tag, 0, smc->reg);
-	state_save_register_item_array(unique_tag, 0, smc->regmask);
-	state_save_register_item(unique_tag, 0, smc->irq_state);
-	state_save_register_item(unique_tag, 0, smc->alloc_count);
-	state_save_register_item(unique_tag, 0, smc->fifo_count);
-	state_save_register_item_array(unique_tag, 0, smc->rx);
-	state_save_register_item_array(unique_tag, 0, smc->tx);
-	state_save_register_item(unique_tag, 0, smc->sent);
-	state_save_register_item(unique_tag, 0, smc->recd);
+	state_save_register_device_item_array(device, 0, smc->reg);
+	state_save_register_device_item_array(device, 0, smc->regmask);
+	state_save_register_device_item(device, 0, smc->irq_state);
+	state_save_register_device_item(device, 0, smc->alloc_count);
+	state_save_register_device_item(device, 0, smc->fifo_count);
+	state_save_register_device_item_array(device, 0, smc->rx);
+	state_save_register_device_item_array(device, 0, smc->tx);
+	state_save_register_device_item(device, 0, smc->sent);
+	state_save_register_device_item(device, 0, smc->recd);
 
 	return DEVICE_START_OK;
 }
@@ -629,10 +624,10 @@ static DEVICE_GET_INFO( smc91c9x )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:					/* provided by subclasses */			break;
-		case DEVINFO_STR_FAMILY:				info->s = "SMC91C9X Ethernet Controller";break;
-		case DEVINFO_STR_VERSION:				info->s = "1.0";						break;
-		case DEVINFO_STR_SOURCE_FILE:			info->s = __FILE__;						break;
-		case DEVINFO_STR_CREDITS:				info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_FAMILY:				strcpy(info->s, "SMC91C9X Ethernet Controller");break;
+		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.0");					break;
+		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);				break;
+		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 
@@ -641,7 +636,7 @@ DEVICE_GET_INFO( smc91c94 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					info->s = "SMC91C94";					break;
+		case DEVINFO_STR_NAME:					strcpy(info->s, "SMC91C94");			break;
 		default:								DEVICE_GET_INFO_CALL(smc91c9x);			break;
 	}
 }
@@ -651,7 +646,7 @@ DEVICE_GET_INFO( smc91c96 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					info->s = "SMC91C96";					break;
+		case DEVINFO_STR_NAME:					strcpy(info->s, "SMC91C96");			break;
 		default:								DEVICE_GET_INFO_CALL(smc91c9x);			break;
 	}
 }

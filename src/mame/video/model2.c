@@ -86,19 +86,12 @@
 
 *********************************************************************************************************************************/
 #include "driver.h"
+#include "eminline.h"
 #include "video/segaic24.h"
 #include "video/poly.h"
-#include "eminline.h"
+#include "includes/model2.h"
 
 #define DEBUG 0
-
-extern UINT32 geo_read_start_address;
-extern UINT32 geo_write_start_address;
-extern UINT32 *model2_bufferram;
-extern UINT32 *model2_colorxlat;
-extern UINT32 *model2_textureram0;
-extern UINT32 *model2_textureram1;
-extern UINT32 *model2_lumaram;
 
 static poly_manager *poly;
 
@@ -2710,7 +2703,7 @@ VIDEO_START(model2)
 	sys24_tile_vh_start(machine, 0x3fff);
 	sys24_bitmap = bitmap_alloc(width, height+4, BITMAP_FORMAT_INDEXED16);
 
-	poly = poly_alloc(4000, sizeof(poly_extra_data), 0);
+	poly = poly_alloc(machine, 4000, sizeof(poly_extra_data), 0);
 	add_exit_callback(machine, model2_exit);
 
 	/* initialize the geometry engine */
@@ -2742,8 +2735,8 @@ VIDEO_UPDATE(model2)
 	logerror("--- frame ---\n");
 
 	sys24_tile_update(screen->machine);
-	fillbitmap(bitmap, screen->machine->pens[0], cliprect);
-	fillbitmap(sys24_bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, screen->machine->pens[0]);
+	bitmap_fill(sys24_bitmap, cliprect, 0);
 
 	sys24_tile_draw(screen->machine, sys24_bitmap, cliprect, 7, 0, 0);
 	sys24_tile_draw(screen->machine, sys24_bitmap, cliprect, 6, 0, 0);
@@ -2761,7 +2754,7 @@ VIDEO_UPDATE(model2)
 	/* have the rasterizer output the frame */
 	model2_3d_frame_end( bitmap, cliprect );
 
-	fillbitmap(sys24_bitmap, 0, cliprect);
+	bitmap_fill(sys24_bitmap, cliprect, 0);
 	sys24_tile_draw(screen->machine, sys24_bitmap, cliprect, 3, 0, 0);
 	sys24_tile_draw(screen->machine, sys24_bitmap, cliprect, 2, 0, 0);
 	sys24_tile_draw(screen->machine, sys24_bitmap, cliprect, 1, 0, 0);

@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "includes/dooyong.h"
 
 
 UINT8 *dooyong_txvideoram;
@@ -94,22 +95,22 @@ WRITE8_HANDLER( dooyong_fg2scroll8_w )
 
 WRITE16_HANDLER( dooyong_bgscroll16_w )
 {
-	if (ACCESSING_BITS_0_7) dooyong_bgscroll8_w(machine, offset, data & 0x00ff);
+	if (ACCESSING_BITS_0_7) dooyong_bgscroll8_w(space, offset, data & 0x00ff);
 }
 
 WRITE16_HANDLER( dooyong_bg2scroll16_w )
 {
-	if (ACCESSING_BITS_0_7) dooyong_bg2scroll8_w(machine, offset, data & 0x00ff);
+	if (ACCESSING_BITS_0_7) dooyong_bg2scroll8_w(space, offset, data & 0x00ff);
 }
 
 WRITE16_HANDLER( dooyong_fgscroll16_w )
 {
-	if (ACCESSING_BITS_0_7) dooyong_fgscroll8_w(machine, offset, data & 0x00ff);
+	if (ACCESSING_BITS_0_7) dooyong_fgscroll8_w(space, offset, data & 0x00ff);
 }
 
 WRITE16_HANDLER( dooyong_fg2scroll16_w )
 {
-	if (ACCESSING_BITS_0_7) dooyong_fg2scroll8_w(machine, offset, data & 0x00ff);
+	if (ACCESSING_BITS_0_7) dooyong_fg2scroll8_w(space, offset, data & 0x00ff);
 }
 
 
@@ -140,13 +141,13 @@ WRITE8_HANDLER( lastday_ctrl_w )
 	sprites_disabled = data & 0x10;
 
 	/* bit 6 is flip screen */
-	flip_screen_set(data & 0x40);
+	flip_screen_set(space->machine, data & 0x40);
 }
 
 WRITE8_HANDLER( pollux_ctrl_w )
 {
 	/* bit 0 is flip screen */
-	flip_screen_set(data & 0x01);
+	flip_screen_set(space->machine, data & 0x01);
 
 	/* bits 6 and 7 are coin counters */
 	coin_counter_w(0, data & 0x80);
@@ -162,23 +163,23 @@ WRITE8_HANDLER( pollux_ctrl_w )
 WRITE8_HANDLER( primella_ctrl_w )
 {
 	/* bits 0-2 select ROM bank */
-	memory_set_bank(1, data & 0x07);
+	memory_set_bank(space->machine, 1, data & 0x07);
 
 	/* bit 3 disables tx layer */
 	tx_pri = data & 0x08;
 
 	/* bit 4 flips screen */
-	flip_screen_set(data & 0x10);
+	flip_screen_set(space->machine, data & 0x10);
 
 	/* bit 5 used but unknown */
 
-//  logerror("%04x: bankswitch = %02x\n",activecpu_get_pc(),data&0xe0);
+//  logerror("%04x: bankswitch = %02x\n",cpu_get_pc(space->cpu),data&0xe0);
 }
 
 WRITE8_HANDLER( flytiger_ctrl_w )
 {
 	/* bit 0 is flip screen */
-	flip_screen_set(data & 0x01);
+	flip_screen_set(space->machine, data & 0x01);
 
 	/* bits 1, 2, 3 used but unknown */
 
@@ -191,7 +192,7 @@ WRITE16_HANDLER( rshark_ctrl_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0 flips screen */
-		flip_screen_set(data & 0x0001);
+		flip_screen_set(space->machine, data & 0x0001);
 
 		/* bit 4 changes tilemaps priority */
 		rshark_pri = data & 0x0010;
@@ -413,7 +414,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			}
 		}
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 498 - sx;
 			sy = 240 - (16 * height) - sy;
@@ -475,7 +476,7 @@ static void rshark_draw_sprites(running_machine *machine, bitmap_t *bitmap, cons
 			width = buffered_spriteram16[offs+1] & 0x000f;
 			height = (buffered_spriteram16[offs+1] & 0x00f0) >> 4;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 498 - (16 * width) - sx;
 				sy = 240 - (16 * height) - sy;
@@ -506,8 +507,8 @@ static void rshark_draw_sprites(running_machine *machine, bitmap_t *bitmap, cons
 
 VIDEO_UPDATE( lastday )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 1);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 2);
@@ -520,8 +521,8 @@ VIDEO_UPDATE( lastday )
 
 VIDEO_UPDATE( gulfstrm )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 1);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 2);
@@ -533,8 +534,8 @@ VIDEO_UPDATE( gulfstrm )
 
 VIDEO_UPDATE( pollux )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 1);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 2);
@@ -546,8 +547,8 @@ VIDEO_UPDATE( pollux )
 
 VIDEO_UPDATE( flytiger )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	if (flytiger_pri)
 	{
@@ -568,8 +569,8 @@ VIDEO_UPDATE( flytiger )
 
 VIDEO_UPDATE( bluehawk )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 1);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 2);
@@ -582,7 +583,7 @@ VIDEO_UPDATE( bluehawk )
 
 VIDEO_UPDATE( primella )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	if (tx_pri) tilemap_draw(bitmap, cliprect, tx_tilemap, 0, 0);
@@ -593,8 +594,8 @@ VIDEO_UPDATE( primella )
 
 VIDEO_UPDATE( rshark )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 1);
 	tilemap_draw(bitmap, cliprect, bg2_tilemap, 0, (rshark_pri ? 2 : 1));
@@ -607,8 +608,8 @@ VIDEO_UPDATE( rshark )
 
 VIDEO_UPDATE( popbingo )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 1);
 
@@ -629,11 +630,11 @@ VIDEO_START( lastday )
 	tx_tilemap_mode = 0;
 
 	/* Create tilemaps */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	tx_tilemap = tilemap_create(get_tx_tile_info, tilemap_scan_cols,
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info, tilemap_scan_cols,
 		 8, 8, 64, 32);
 
 	/* Configure tilemap transparency */
@@ -649,9 +650,9 @@ VIDEO_START( lastday )
 	memset(fg2scroll8, 0, 0x10);
 
 	/* Register for save/restore */
-	state_save_register_global_array(bgscroll8);
-	state_save_register_global_array(fgscroll8);
-	state_save_register_global(sprites_disabled);
+	state_save_register_global_array(machine, bgscroll8);
+	state_save_register_global_array(machine, fgscroll8);
+	state_save_register_global(machine, sprites_disabled);
 }
 
 VIDEO_START( gulfstrm )
@@ -666,11 +667,11 @@ VIDEO_START( gulfstrm )
 	tx_tilemap_mode = 0;
 
 	/* Create tilemaps */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	tx_tilemap = tilemap_create(get_tx_tile_info, tilemap_scan_cols,
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info, tilemap_scan_cols,
 		 8, 8, 64, 32);
 
 	/* Configure tilemap transparency */
@@ -686,8 +687,8 @@ VIDEO_START( gulfstrm )
 	memset(fg2scroll8, 0, 0x10);
 
 	/* Register for save/restore */
-	state_save_register_global_array(bgscroll8);
-	state_save_register_global_array(fgscroll8);
+	state_save_register_global_array(machine, bgscroll8);
+	state_save_register_global_array(machine, fgscroll8);
 }
 
 VIDEO_START( pollux )
@@ -702,11 +703,11 @@ VIDEO_START( pollux )
 	tx_tilemap_mode = 0;
 
 	/* Create tilemaps */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	tx_tilemap = tilemap_create(get_tx_tile_info, tilemap_scan_cols,
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info, tilemap_scan_cols,
 		 8, 8, 64, 32);
 
 	/* Configure tilemap transparency */
@@ -719,8 +720,8 @@ VIDEO_START( pollux )
 	memset(fg2scroll8, 0, 0x10);
 
 	/* Register for save/restore */
-	state_save_register_global_array(bgscroll8);
-	state_save_register_global_array(fgscroll8);
+	state_save_register_global_array(machine, bgscroll8);
+	state_save_register_global_array(machine, fgscroll8);
 }
 
 VIDEO_START( bluehawk )
@@ -738,13 +739,13 @@ VIDEO_START( bluehawk )
 	tx_tilemap_mode = 1;
 
 	/* Create tilemaps */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	fg2_tilemap = tilemap_create(get_fg2_tile_info, tilemap_scan_cols,
+	fg2_tilemap = tilemap_create(machine, get_fg2_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	tx_tilemap = tilemap_create(get_tx_tile_info, tilemap_scan_cols,
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info, tilemap_scan_cols,
 		 8, 8, 64, 32);
 
 	/* Configure tilemap transparency */
@@ -758,9 +759,9 @@ VIDEO_START( bluehawk )
 	memset(fg2scroll8, 0, 0x10);
 
 	/* Register for save/restore */
-	state_save_register_global_array(bgscroll8);
-	state_save_register_global_array(fgscroll8);
-	state_save_register_global_array(fg2scroll8);
+	state_save_register_global_array(machine, bgscroll8);
+	state_save_register_global_array(machine, fgscroll8);
+	state_save_register_global_array(machine, fg2scroll8);
 }
 
 VIDEO_START( flytiger )
@@ -775,11 +776,11 @@ VIDEO_START( flytiger )
 	tx_tilemap_mode = 0;
 
 	/* Create tilemaps */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	fg_tilemap = tilemap_create(flytiger_get_fg_tile_info, tilemap_scan_cols,
+	fg_tilemap = tilemap_create(machine, flytiger_get_fg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	tx_tilemap = tilemap_create(get_tx_tile_info, tilemap_scan_cols,
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info, tilemap_scan_cols,
 		 8, 8, 64, 32);
 
 	/* Configure tilemap transparency */
@@ -793,9 +794,9 @@ VIDEO_START( flytiger )
 	memset(fg2scroll8, 0, 0x10);
 
 	/* Register for save/restore */
-	state_save_register_global_array(bgscroll8);
-	state_save_register_global_array(fgscroll8);
-	state_save_register_global(flytiger_pri);
+	state_save_register_global_array(machine, bgscroll8);
+	state_save_register_global_array(machine, fgscroll8);
+	state_save_register_global(machine, flytiger_pri);
 }
 
 VIDEO_START( primella )
@@ -810,11 +811,11 @@ VIDEO_START( primella )
 	tx_tilemap_mode = 1;
 
 	/* Create tilemaps */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
-	tx_tilemap = tilemap_create(get_tx_tile_info, tilemap_scan_cols,
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info, tilemap_scan_cols,
 		 8, 8, 64, 32);
 
 	/* Configure tilemap transparency */
@@ -827,9 +828,9 @@ VIDEO_START( primella )
 	memset(fg2scroll8, 0, 0x10);
 
 	/* Register for save/restore */
-	state_save_register_global_array(bgscroll8);
-	state_save_register_global_array(fgscroll8);
-	state_save_register_global(tx_pri);
+	state_save_register_global_array(machine, bgscroll8);
+	state_save_register_global_array(machine, fgscroll8);
+	state_save_register_global(machine, tx_pri);
 }
 
 VIDEO_START( rshark )
@@ -849,13 +850,13 @@ VIDEO_START( rshark )
 	fg2_gfx = 1;
 
 	/* Create tilemaps */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,
 		 16, 16, 64, 32);
-	bg2_tilemap = tilemap_create(get_bg2_tile_info, tilemap_scan_cols,
+	bg2_tilemap = tilemap_create(machine, get_bg2_tile_info, tilemap_scan_cols,
 		 16, 16, 64, 32);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_cols,
 		 16, 16, 64, 32);
-	fg2_tilemap = tilemap_create(get_fg2_tile_info, tilemap_scan_cols,
+	fg2_tilemap = tilemap_create(machine, get_fg2_tile_info, tilemap_scan_cols,
 		 16, 16, 64, 32);
 
 	/* Configure tilemap transparency */
@@ -869,11 +870,11 @@ VIDEO_START( rshark )
 	memset(fg2scroll8, 0, 0x10);
 
 	/* Register for save/restore */
-	state_save_register_global_array(bgscroll8);
-	state_save_register_global_array(bg2scroll8);
-	state_save_register_global_array(fgscroll8);
-	state_save_register_global_array(fg2scroll8);
-	state_save_register_global(rshark_pri);
+	state_save_register_global_array(machine, bgscroll8);
+	state_save_register_global_array(machine, bg2scroll8);
+	state_save_register_global_array(machine, fgscroll8);
+	state_save_register_global_array(machine, fg2scroll8);
+	state_save_register_global(machine, rshark_pri);
 }
 
 VIDEO_START( popbingo )
@@ -883,7 +884,7 @@ VIDEO_START( popbingo )
 	bg_gfx = 1;
 
 	/* Create tilemaps */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,
 		 32, 32, 32, 8);
 	bg2_tilemap = fg_tilemap = fg2_tilemap = NULL;	/* Stop scroll handler from crashing on these */
 
@@ -893,20 +894,24 @@ VIDEO_START( popbingo )
 	memset(fg2scroll8, 0, 0x10);
 
 	/* Register for save/restore */
-	state_save_register_global_array(bgscroll8);
-	state_save_register_global_array(bg2scroll8);	// Not used atm
-	state_save_register_global_array(fgscroll8);	// Not used atm
-	state_save_register_global_array(fg2scroll8);	// Not used atm
-	state_save_register_global(rshark_pri);
+	state_save_register_global_array(machine, bgscroll8);
+	state_save_register_global_array(machine, bg2scroll8);	// Not used atm
+	state_save_register_global_array(machine, fgscroll8);	// Not used atm
+	state_save_register_global_array(machine, fg2scroll8);	// Not used atm
+	state_save_register_global(machine, rshark_pri);
 }
 
 
 VIDEO_EOF( dooyong )
 {
-	buffer_spriteram_w(machine, 0, 0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram_w(space, 0, 0);
 }
 
 VIDEO_EOF( rshark )
 {
-	buffer_spriteram16_w(machine, 0, 0, 0xffff);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram16_w(space, 0, 0, 0xffff);
 }

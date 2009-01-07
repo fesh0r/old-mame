@@ -21,7 +21,7 @@
 
 static CDP1802_MODE_READ( cidelsa_mode_r )
 {
-	cidelsa_state *state = machine->driver_data;
+	cidelsa_state *state = device->machine->driver_data;
 
 	return state->cdp1802_mode;
 }
@@ -35,12 +35,12 @@ static CDP1802_EF_READ( cidelsa_ef_r )
         EF4     Coin 1
     */
 
-	return input_port_read(machine, "EF");
+	return input_port_read(device->machine, "EF");
 }
 
 static CDP1802_Q_WRITE( cidelsa_q_w )
 {
-	cidelsa_state *state = machine->driver_data;
+	cidelsa_state *state = device->machine->driver_data;
 
 	state->cdp1802_q = level;
 }
@@ -72,12 +72,12 @@ static WRITE8_HANDLER( draco_sound_bankswitch_w )
 
 	int bank = BIT(data, 3);
 
-	memory_set_bank(1, bank);
+	memory_set_bank(space->machine, 1, bank);
 }
 
 static WRITE8_HANDLER( draco_sound_g_w )
 {
-	cidelsa_state *state = machine->driver_data;
+	cidelsa_state *state = space->machine->driver_data;
 
 	/*
 
@@ -93,36 +93,36 @@ static WRITE8_HANDLER( draco_sound_g_w )
 	switch (data)
 	{
 	case 0x01:
-		ay8910_write_port_0_w(machine, 0, state->draco_ay_latch);
+		ay8910_write_port_0_w(space, 0, state->draco_ay_latch);
 		break;
 
 	case 0x02:
-		state->draco_ay_latch = ay8910_read_port_0_r(machine, 0);
+		state->draco_ay_latch = ay8910_read_port_0_r(space, 0);
 		break;
 
 	case 0x03:
-		ay8910_control_port_0_w(machine, 0, state->draco_ay_latch);
+		ay8910_control_port_0_w(space, 0, state->draco_ay_latch);
 		break;
 	}
 }
 
 static READ8_HANDLER( draco_sound_in_r )
 {
-	cidelsa_state *state = machine->driver_data;
+	cidelsa_state *state = space->machine->driver_data;
 
 	return ~(state->draco_sound) & 0x07;
 }
 
 static READ8_HANDLER( draco_sound_ay8910_r )
 {
-	cidelsa_state *state = machine->driver_data;
+	cidelsa_state *state = space->machine->driver_data;
 
 	return state->draco_ay_latch;
 }
 
 static WRITE8_HANDLER( draco_sound_ay8910_w )
 {
-	cidelsa_state *state = machine->driver_data;
+	cidelsa_state *state = space->machine->driver_data;
 
 	state->draco_ay_latch = data;
 }
@@ -226,8 +226,6 @@ static CDP1852_DATA_WRITE( altair_out1_w )
 
 static CDP1852_DATA_WRITE( draco_out1_w )
 {
-	cidelsa_state *state = device->machine->driver_data;
-
 	/*
       bit   description
 
@@ -241,12 +239,13 @@ static CDP1852_DATA_WRITE( draco_out1_w )
         7   SONIDO C -> COP402 IN2
     */
 
+	cidelsa_state *state = device->machine->driver_data;
+
     state->draco_sound = (data & 0xe0) >> 5;
 }
 
 static CDP1852_INTERFACE( cidelsa_cdp1852_in0_intf )
 {
-	CDP1852_CLOCK_HIGH, // really tied to CDP1876 CMSEL (pin 32)
 	CDP1852_MODE_INPUT,
 	cidelsa_in0_r,
 	NULL,
@@ -255,7 +254,6 @@ static CDP1852_INTERFACE( cidelsa_cdp1852_in0_intf )
 
 static CDP1852_INTERFACE( cidelsa_cdp1852_in1_intf )
 {
-	CDP1852_CLOCK_HIGH,
 	CDP1852_MODE_INPUT,
 	cidelsa_in1_r,
 	NULL,
@@ -264,7 +262,6 @@ static CDP1852_INTERFACE( cidelsa_cdp1852_in1_intf )
 
 static CDP1852_INTERFACE( cidelsa_cdp1852_in2_intf )
 {
-	CDP1852_CLOCK_HIGH,
 	CDP1852_MODE_INPUT,
 	cidelsa_in2_r,
 	NULL,
@@ -273,7 +270,6 @@ static CDP1852_INTERFACE( cidelsa_cdp1852_in2_intf )
 
 static CDP1852_INTERFACE( altair_cdp1852_out1_intf )
 {
-	ALTAIR_CHR1 / 8, // CDP1802 TPB
 	CDP1852_MODE_OUTPUT,
 	NULL,
 	altair_out1_w,
@@ -282,7 +278,6 @@ static CDP1852_INTERFACE( altair_cdp1852_out1_intf )
 
 static CDP1852_INTERFACE( draco_cdp1852_out1_intf )
 {
-	ALTAIR_CHR1 / 8, // CDP1802 TPB
 	CDP1852_MODE_OUTPUT,
 	NULL,
 	draco_out1_w,
@@ -548,14 +543,14 @@ static MACHINE_START( cidelsa )
 {
 	cidelsa_state *state = machine->driver_data;
 
-	// reset the CPU
+	/* reset the CPU */
 
 	state->cdp1802_mode = CDP1802_MODE_RESET;
-	timer_set(ATTOTIME_IN_MSEC(200), NULL, 0, set_cpu_mode);
+	timer_set(machine, ATTOTIME_IN_MSEC(200), NULL, 0, set_cpu_mode);
 
-	// register save states
+	/* register for state saving */
 
-	state_save_register_global(state->cdp1802_mode);
+	state_save_register_global(machine, state->cdp1802_mode);
 }
 
 static MACHINE_START( draco )
@@ -564,22 +559,22 @@ static MACHINE_START( draco )
 
 	MACHINE_START_CALL( cidelsa );
 
-	// COP402 memory banking
+	/* setup COP402 memory banking */
 
-	memory_configure_bank(1, 0, 2, memory_region(machine, "audio"), 0x400);
-	memory_set_bank(1, 0);
+	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, "audio"), 0x400);
+	memory_set_bank(machine, 1, 0);
 
-	// register save states
+	/* register for state saving */
 
-	state_save_register_global(state->draco_sound);
-	state_save_register_global(state->draco_ay_latch);
+	state_save_register_global(machine, state->draco_sound);
+	state_save_register_global(machine, state->draco_ay_latch);
 }
 
 /* Machine Reset */
 
 static MACHINE_RESET( cidelsa )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
+	cputag_set_input_line(machine, MAIN_CPU_TAG, INPUT_LINE_RESET, PULSE_LINE);
 }
 
 /* Machine Drivers */
@@ -589,7 +584,7 @@ static MACHINE_DRIVER_START( destryer )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD("main", CDP1802, DESTRYER_CHR1)
+	MDRV_CPU_ADD(MAIN_CPU_TAG, CDP1802, DESTRYER_CHR1)
 	MDRV_CPU_PROGRAM_MAP(destryer_map, 0)
 	MDRV_CPU_IO_MAP(destryer_io_map, 0)
 	MDRV_CPU_CONFIG(cidelsa_cdp1802_config)
@@ -615,7 +610,7 @@ static MACHINE_DRIVER_START( destryea )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD("main", CDP1802, DESTRYER_CHR1)
+	MDRV_CPU_ADD(MAIN_CPU_TAG, CDP1802, DESTRYER_CHR1)
 	MDRV_CPU_PROGRAM_MAP(destryea_map, 0)
 	MDRV_CPU_IO_MAP(destryer_io_map, 0)
 	MDRV_CPU_CONFIG(cidelsa_cdp1802_config)
@@ -641,7 +636,7 @@ static MACHINE_DRIVER_START( altair )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD("main", CDP1802, ALTAIR_CHR1)
+	MDRV_CPU_ADD(MAIN_CPU_TAG, CDP1802, ALTAIR_CHR1)
 	MDRV_CPU_PROGRAM_MAP(altair_map, 0)
 	MDRV_CPU_IO_MAP(altair_io_map, 0)
 	MDRV_CPU_CONFIG(cidelsa_cdp1802_config)
@@ -651,17 +646,10 @@ static MACHINE_DRIVER_START( altair )
 
 	// input/output hardware
 
-	MDRV_DEVICE_ADD("ic23", CDP1852)
-	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in0_intf)
-
-	MDRV_DEVICE_ADD("ic24", CDP1852)
-	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in1_intf)
-
-	MDRV_DEVICE_ADD("ic25", CDP1852)
-	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in2_intf)
-
-	MDRV_DEVICE_ADD("ic26", CDP1852)
-	MDRV_DEVICE_CONFIG(altair_cdp1852_out1_intf)
+	MDRV_CDP1852_ADD("ic23", CDP1852_CLOCK_HIGH, cidelsa_cdp1852_in0_intf)	/* clock is really tied to CDP1876 CMSEL (pin 32) */
+	MDRV_CDP1852_ADD("ic24", CDP1852_CLOCK_HIGH, cidelsa_cdp1852_in1_intf)
+	MDRV_CDP1852_ADD("ic25", CDP1852_CLOCK_HIGH, cidelsa_cdp1852_in2_intf)
+	MDRV_CDP1852_ADD("ic26", ALTAIR_CHR1 / 8, altair_cdp1852_out1_intf)		/* clock is CDP1802 TPB */
 
 	// video hardware
 
@@ -680,7 +668,7 @@ static MACHINE_DRIVER_START( draco )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD("main", CDP1802, DRACO_CHR1)
+	MDRV_CPU_ADD(MAIN_CPU_TAG, CDP1802, DRACO_CHR1)
 	MDRV_CPU_PROGRAM_MAP(draco_map, 0)
 	MDRV_CPU_IO_MAP(draco_io_map, 0)
 	MDRV_CPU_CONFIG(cidelsa_cdp1802_config)
@@ -689,24 +677,17 @@ static MACHINE_DRIVER_START( draco )
 	MDRV_MACHINE_START(draco)
 	MDRV_MACHINE_RESET(cidelsa)
 
-	MDRV_CPU_ADD("audio", COP420, DRACO_SND_CHR1) // COP402N
+	MDRV_CPU_ADD("audio", COP402, DRACO_SND_CHR1) // COP402N
 	MDRV_CPU_PROGRAM_MAP(draco_sound_map, 0)
 	MDRV_CPU_IO_MAP(draco_sound_io_map, 0)
 	MDRV_CPU_CONFIG(draco_cop_intf)
 
 	// input/output hardware
 
-	MDRV_DEVICE_ADD("ic29", CDP1852)
-	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in0_intf)
-
-	MDRV_DEVICE_ADD("ic30", CDP1852)
-	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in1_intf)
-
-	MDRV_DEVICE_ADD("ic31", CDP1852)
-	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in2_intf)
-
-	MDRV_DEVICE_ADD("ic32", CDP1852)
-	MDRV_DEVICE_CONFIG(draco_cdp1852_out1_intf)
+	MDRV_CDP1852_ADD("ic29", CDP1852_CLOCK_HIGH, cidelsa_cdp1852_in0_intf)	/* clock is really tied to CDP1876 CMSEL (pin 32) */
+	MDRV_CDP1852_ADD("ic30", CDP1852_CLOCK_HIGH, cidelsa_cdp1852_in1_intf)
+	MDRV_CDP1852_ADD("ic31", CDP1852_CLOCK_HIGH, cidelsa_cdp1852_in2_intf)
+	MDRV_CDP1852_ADD("ic32", DRACO_CHR1 / 8, draco_cdp1852_out1_intf)		/* clock is CDP1802 TPB */
 
 	// video hardware
 
@@ -726,7 +707,7 @@ MACHINE_DRIVER_END
 /* ROMs */
 
 ROM_START( destryer )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, MAIN_CPU_TAG, 0 )
 	ROM_LOAD( "des a 2.ic4", 0x0000, 0x0800, CRC(63749870) SHA1(a8eee4509d7a52dcf33049de221d928da3632174) )
 	ROM_LOAD( "des b 2.ic5", 0x0800, 0x0800, CRC(60604f40) SHA1(32ca95c5b38b0f4992e04d77123d217f143ae084) )
 	ROM_LOAD( "des c 2.ic6", 0x1000, 0x0800, CRC(a7cdeb7b) SHA1(a5a7748967d4ca89fb09632e1f0130ef050dbd68) )
@@ -735,7 +716,7 @@ ROM_END
 
 // this was destroyer2.rom in standalone emu..
 ROM_START( destryea )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, MAIN_CPU_TAG, 0 )
 	ROM_LOAD( "destryea_1", 0x0000, 0x0800, CRC(421428e9) SHA1(0ac3a1e7f61125a1cd82145fa28cbc4b93505dc9) )
 	ROM_LOAD( "destryea_2", 0x0800, 0x0800, CRC(55dc8145) SHA1(a0066d3f3ac0ae56273485b74af90eeffea5e64e) )
 	ROM_LOAD( "destryea_3", 0x1000, 0x0800, CRC(5557bdf8) SHA1(37a9cbc5d25051d3bed7535c58aac937cd7c64e1) )
@@ -743,7 +724,7 @@ ROM_START( destryea )
 ROM_END
 
 ROM_START( altair )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, MAIN_CPU_TAG, 0 )
 	ROM_LOAD( "alt a 1.ic7",  0x0000, 0x0800, CRC(37c26c4e) SHA1(30df7efcf5bd12dafc1cb6e894fc18e7b76d3e61) )
 	ROM_LOAD( "alt b 1.ic8",  0x0800, 0x0800, CRC(76b814a4) SHA1(e8ab1d1cbcef974d929ef8edd10008f60052a607) )
 	ROM_LOAD( "alt c 1.ic9",  0x1000, 0x0800, CRC(2569ce44) SHA1(a09597d2f8f50fab9a09ed9a59c50a2bdcba47bb) )
@@ -753,7 +734,7 @@ ROM_START( altair )
 ROM_END
 
 ROM_START( draco )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, MAIN_CPU_TAG, 0 )
 	ROM_LOAD( "dra a 1.ic10", 0x0000, 0x0800, CRC(ca127984) SHA1(46721cf42b1c891f7c88bc063a2149dd3cefea74) )
 	ROM_LOAD( "dra b 1.ic11", 0x0800, 0x0800, CRC(e4936e28) SHA1(ddbbf769994d32a6bce75312306468a89033f0aa) )
 	ROM_LOAD( "dra c 1.ic12", 0x1000, 0x0800, CRC(94480f5d) SHA1(8f49ce0f086259371e999d097a502482c83c6e9e) )

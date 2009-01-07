@@ -41,8 +41,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START(mainsnk)
 {
-	tx_tilemap = tilemap_create(get_tx_tile_info, marvins_tx_scan_cols, 8, 8, 36, 28);
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,    8, 8, 32, 32);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info, marvins_tx_scan_cols, 8, 8, 36, 28);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,    8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(tx_tilemap,15);
 	tilemap_set_scrolldy(tx_tilemap, 8, 8);
@@ -56,18 +56,18 @@ WRITE8_HANDLER(mainsnk_c600_w)
 {
 	int bank;
 
-	flip_screen_set(~data & 0x80);
+	flip_screen_set(space->machine, ~data & 0x80);
 
 	tilemap_set_palette_offset(bg_tilemap, (data & 0x07) << 4);
 	tilemap_set_palette_offset(tx_tilemap, (data & 0x07) << 4);
 
 	bank = 0;
-	if (machine->gfx[0]->total_elements == 0x400)	// mainsnk
+	if (space->machine->gfx[0]->total_elements == 0x400)	// mainsnk
 		bank = ((data & 0x30) >> 4);
-	else if (machine->gfx[0]->total_elements == 0x800)	// canvas
+	else if (space->machine->gfx[0]->total_elements == 0x800)	// canvas
 		bank = ((data & 0x40) >> 6) | ((data & 0x30) >> 3);
 
-	tilemap_set_pen_data_offset(bg_tilemap, (bank << 8) * machine->gfx[0]->char_modulo);
+	tilemap_set_pen_data_offset(bg_tilemap, (bank << 8) * space->machine->gfx[0]->char_modulo);
 }
 
 WRITE8_HANDLER( mainsnk_fgram_w )
@@ -107,7 +107,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		sx = 288-16 - sx;
 		sy += 8;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 288-16 - sx;
 			sy = 224-16 - sy;

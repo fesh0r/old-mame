@@ -155,18 +155,18 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( m52 )
 {
-	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 	tilemap_set_scrolldx(bg_tilemap, 128 - 1, -1);
 	tilemap_set_scrolldy(bg_tilemap, 16, 16);
 	tilemap_set_scroll_rows(bg_tilemap, 4); /* only lines 192-256 scroll */
 
-	state_save_register_global(bg1xpos);
-	state_save_register_global(bg1ypos);
-	state_save_register_global(bg2xpos);
-	state_save_register_global(bg2ypos);
-	state_save_register_global(bgcontrol);
+	state_save_register_global(machine, bg1xpos);
+	state_save_register_global(machine, bg1ypos);
+	state_save_register_global(machine, bg2xpos);
+	state_save_register_global(machine, bg2ypos);
+	state_save_register_global(machine, bgcontrol);
 }
 
 
@@ -279,7 +279,7 @@ WRITE8_HANDLER( m52_bgcontrol_w )
 WRITE8_HANDLER( m52_flipscreen_w )
 {
 	/* screen flip is handled both by software and hardware */
-	flip_screen_set((data & 0x01) ^ (~input_port_read(machine, "DSW2") & 0x01));
+	flip_screen_set(space->machine, (data & 0x01) ^ (~input_port_read(space->machine, "DSW2") & 0x01));
 
 	coin_counter_w(0, data & 0x02);
 	coin_counter_w(1, data & 0x20);
@@ -287,7 +287,7 @@ WRITE8_HANDLER( m52_flipscreen_w )
 
 WRITE8_HANDLER( alpha1v_flipscreen_w )
 {
-	flip_screen_set(data & 0x01);
+	flip_screen_set(space->machine, data & 0x01);
 }
 
 
@@ -303,7 +303,7 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, const re
 	rectangle rect;
 	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
-	if (flip_screen_get())
+	if (flip_screen_get(machine))
 	{
 		xpos = 255 - xpos;
 		ypos = 255 - ypos - BGHEIGHT;
@@ -316,8 +316,8 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, const re
 
 	drawgfx(bitmap, machine->gfx[image],
 		0, 0,
-		flip_screen_get(),
-		flip_screen_get(),
+		flip_screen_get(machine),
+		flip_screen_get(machine),
 		xpos,
 		ypos,
 		cliprect,
@@ -325,8 +325,8 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, const re
 
 	drawgfx(bitmap, machine->gfx[image],
 		0, 0,
-		flip_screen_get(),
-		flip_screen_get(),
+		flip_screen_get(machine),
+		flip_screen_get(machine),
 		xpos - 256,
 		ypos,
 		cliprect,
@@ -335,7 +335,7 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, const re
 	rect.min_x = visarea->min_x;
 	rect.max_x = visarea->max_x;
 
-	if (flip_screen_get())
+	if (flip_screen_get(machine))
 	{
 		rect.min_y = ypos - BGHEIGHT;
 		rect.max_y = ypos - 1;
@@ -346,7 +346,7 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, const re
 		rect.max_y = ypos + 2 * BGHEIGHT - 1;
 	}
 
-	fillbitmap(bitmap, machine->gfx[image]->color_base + 3, &rect);
+	bitmap_fill(bitmap, &rect, machine->gfx[image]->color_base + 3);
 }
 
 
@@ -361,7 +361,7 @@ VIDEO_UPDATE( m52 )
 {
 	int offs;
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	if (!(bgcontrol & 0x20))
 	{
@@ -375,7 +375,7 @@ VIDEO_UPDATE( m52 )
 			draw_background(screen->machine, bitmap, cliprect, bg1xpos, bg1ypos, 4); /* cityscape */
 	}
 
-	tilemap_set_flip(bg_tilemap, flip_screen_get() ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
+	tilemap_set_flip(bg_tilemap, flip_screen_get(screen->machine) ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
@@ -399,7 +399,7 @@ VIDEO_UPDATE( m52 )
 			clip.min_y = 128, clip.max_y = 255;
 
 		/* adjust for flipping */
-		if (flip_screen_get())
+		if (flip_screen_get(screen->machine))
 		{
 			int temp = clip.min_y;
 			clip.min_y = 255 - clip.max_y;

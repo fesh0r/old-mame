@@ -102,14 +102,14 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 VIDEO_START(ksayakyu)
 {
-	ksayakyu_tilemap = tilemap_create(get_ksayakyu_tile_info,tilemap_scan_rows, 8, 8,32,32*8);
-	ksayakyu_textmap = tilemap_create(get_text_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	ksayakyu_tilemap = tilemap_create(machine, get_ksayakyu_tile_info,tilemap_scan_rows, 8, 8,32,32*8);
+	ksayakyu_textmap = tilemap_create(machine, get_text_tile_info,tilemap_scan_rows, 8, 8,32,32);
 	tilemap_set_transparent_pen(ksayakyu_textmap,0);
 }
 
 VIDEO_UPDATE(ksayakyu)
 {
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 	if(video_ctrl&1)
 		tilemap_draw(bitmap,cliprect,ksayakyu_tilemap,0,0);
 	draw_sprites(screen->machine,bitmap,cliprect);

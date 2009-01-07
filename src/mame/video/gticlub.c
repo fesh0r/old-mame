@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/sharc/sharc.h"
 #include "machine/konppc.h"
 #include "video/poly.h"
@@ -140,7 +139,7 @@ static void K001006_w(int chip, int offset, UINT32 data, UINT32 mem_mask)
 
 READ32_HANDLER(K001006_0_r)
 {
-	return K001006_r(machine, 0, offset, mem_mask);
+	return K001006_r(space->machine, 0, offset, mem_mask);
 }
 
 WRITE32_HANDLER(K001006_0_w)
@@ -150,7 +149,7 @@ WRITE32_HANDLER(K001006_0_w)
 
 READ32_HANDLER(K001006_1_r)
 {
-	return K001006_r(machine, 1, offset, mem_mask);
+	return K001006_r(space->machine, 1, offset, mem_mask);
 }
 
 WRITE32_HANDLER(K001006_1_w)
@@ -194,6 +193,8 @@ static poly_manager *poly;
 static poly_vertex prev_v[4];
 static int prev_poly_type;
 
+static UINT8 *gfxrom;
+
 
 void K001005_swap_buffers(running_machine *machine);
 
@@ -210,6 +211,8 @@ void K001005_init(running_machine *machine)
 	int height = video_screen_get_height(machine->primary_screen);
 	K001005_zbuffer = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED32);
 
+	gfxrom = memory_region(machine, "gfx1");
+
 	K001005_bitmap[0] = video_screen_auto_bitmap_alloc(machine->primary_screen);
 	K001005_bitmap[1] = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
@@ -222,7 +225,7 @@ void K001005_init(running_machine *machine)
 
 	K001005_3d_fifo = auto_malloc(0x10000 * sizeof(UINT32));
 
-	poly = poly_alloc(4000, sizeof(poly_extra_data), POLYFLAG_ALLOW_QUADS);
+	poly = poly_alloc(machine, 4000, sizeof(poly_extra_data), POLYFLAG_ALLOW_QUADS);
 	add_exit_callback(machine, K001005_exit);
 
 	for (i=0; i < 128; i++)
@@ -316,25 +319,19 @@ READ32_HANDLER( K001005_r )
 			{
 				if (K001005_fifo_read_ptr < 0x3ff)
 				{
-					//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, CLEAR_LINE);
-					cpuintrf_push_context(2);
-					sharc_set_flag_input(1, CLEAR_LINE);
-					cpuintrf_pop_context();
+					//cpu_set_input_line(space->machine->cpu[2], SHARC_INPUT_FLAG1, CLEAR_LINE);
+					sharc_set_flag_input(space->machine->cpu[2], 1, CLEAR_LINE);
 				}
 				else
 				{
-					//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
-					cpuintrf_push_context(2);
-					sharc_set_flag_input(1, ASSERT_LINE);
-					cpuintrf_pop_context();
+					//cpu_set_input_line(space->machine->cpu[2], SHARC_INPUT_FLAG1, ASSERT_LINE);
+					sharc_set_flag_input(space->machine->cpu[2], 1, ASSERT_LINE);
 				}
 			}
 			else
 			{
-				//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
-				cpuintrf_push_context(2);
-				sharc_set_flag_input(1, ASSERT_LINE);
-				cpuintrf_pop_context();
+				//cpu_set_input_line(space->machine->cpu[2], SHARC_INPUT_FLAG1, ASSERT_LINE);
+				sharc_set_flag_input(space->machine->cpu[2], 1, ASSERT_LINE);
 			}
 
 			K001005_fifo_read_ptr++;
@@ -359,7 +356,7 @@ READ32_HANDLER( K001005_r )
 			}
 
 		default:
-			mame_printf_debug("K001005_r: %08X, %08X at %08X\n", offset, mem_mask, activecpu_get_pc());
+			mame_printf_debug("K001005_r: %08X, %08X at %08X\n", offset, mem_mask, cpu_get_pc(space->cpu));
 			break;
 	}
 	return 0;
@@ -375,28 +372,22 @@ WRITE32_HANDLER( K001005_w )
 			{
 				if (K001005_fifo_write_ptr < 0x400)
 				{
-					//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
-					cpuintrf_push_context(2);
-					sharc_set_flag_input(1, ASSERT_LINE);
-					cpuintrf_pop_context();
+					//cpu_set_input_line(space->machine->cpu[2], SHARC_INPUT_FLAG1, ASSERT_LINE);
+					sharc_set_flag_input(space->machine->cpu[2], 1, ASSERT_LINE);
 				}
 				else
 				{
-					//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, CLEAR_LINE);
-					cpuintrf_push_context(2);
-					sharc_set_flag_input(1, CLEAR_LINE);
-					cpuintrf_pop_context();
+					//cpu_set_input_line(space->machine->cpu[2], SHARC_INPUT_FLAG1, CLEAR_LINE);
+					sharc_set_flag_input(space->machine->cpu[2], 1, CLEAR_LINE);
 				}
 			}
 			else
 			{
-				//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
-				cpuintrf_push_context(2);
-				sharc_set_flag_input(1, ASSERT_LINE);
-				cpuintrf_pop_context();
+				//cpu_set_input_line(space->machine->cpu[2], SHARC_INPUT_FLAG1, ASSERT_LINE);
+				sharc_set_flag_input(space->machine->cpu[2], 1, ASSERT_LINE);
 			}
 
-	    //  mame_printf_debug("K001005 FIFO write: %08X at %08X\n", data, activecpu_get_pc());
+	    //  mame_printf_debug("K001005 FIFO write: %08X at %08X\n", data, cpu_get_pc(space->cpu));
 			K001005_fifo[K001005_fifo_write_ptr] = data;
 			K001005_fifo_write_ptr++;
 			K001005_fifo_write_ptr &= 0x7ff;
@@ -404,16 +395,16 @@ WRITE32_HANDLER( K001005_w )
 			K001005_3d_fifo[K001005_3d_fifo_ptr++] = data;
 
 			// !!! HACK to get past the FIFO B test (GTI Club & Thunder Hurricane) !!!
-			if (activecpu_get_pc() == 0x201ee)
+			if (cpu_get_pc(space->cpu) == 0x201ee)
 			{
 				// This is used to make the SHARC timeout
-				cpu_spinuntil_trigger(10000);
+				cpu_spinuntil_trigger(space->cpu, 10000);
 			}
 			// !!! HACK to get past the FIFO B test (Winding Heat & Midnight Run) !!!
-			if (activecpu_get_pc() == 0x201e6)
+			if (cpu_get_pc(space->cpu) == 0x201e6)
 			{
 				// This is used to make the SHARC timeout
-				cpu_spinuntil_trigger(10000);
+				cpu_spinuntil_trigger(space->cpu, 10000);
 			}
 
 			break;
@@ -432,8 +423,8 @@ WRITE32_HANDLER( K001005_w )
 
 			if (data == 2 && K001005_3d_fifo_ptr > 0)
 			{
-				K001005_swap_buffers(machine);
-				render_polygons(machine);
+				K001005_swap_buffers(space->machine);
+				render_polygons(space->machine);
 				poly_wait(poly, "render_polygons");
 				K001005_3d_fifo_ptr = 0;
 			}
@@ -460,7 +451,7 @@ WRITE32_HANDLER( K001005_w )
 			break;
 
 		default:
-			//mame_printf_debug("K001005_w: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, activecpu_get_pc());
+			//mame_printf_debug("K001005_w: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, cpu_get_pc(space->cpu));
 			break;
 	}
 
@@ -498,7 +489,7 @@ static void draw_scanline_tex(void *dest, INT32 scanline, const poly_extent *ext
 {
 	const poly_extra_data *extra = extradata;
 	bitmap_t *destmap = dest;
-	UINT8 *texrom = memory_region(Machine, "gfx1") + (extra->texture_page * 0x40000);
+	UINT8 *texrom = gfxrom + (extra->texture_page * 0x40000);
 	int pal_chip = (extra->texture_palette & 0x8) ? 1 : 0;
 	int palette_index = (extra->texture_palette & 0x7) * 256;
 	float z = extent->param[0].start;
@@ -976,8 +967,8 @@ void K001005_swap_buffers(running_machine *machine)
 
 	//if (K001005_status == 2)
 	{
-		fillbitmap(K001005_bitmap[K001005_bitmap_page], machine->pens[0], &K001005_cliprect);
-		fillbitmap(K001005_zbuffer, 0xffffffff, &K001005_cliprect);
+		bitmap_fill(K001005_bitmap[K001005_bitmap_page], &K001005_cliprect, machine->pens[0]);
+		bitmap_fill(K001005_zbuffer, &K001005_cliprect, 0xffffffff);
 	}
 }
 
@@ -1058,10 +1049,8 @@ VIDEO_UPDATE( gticlub )
 	draw_7segment_led(bitmap, 3, 3, gticlub_led_reg0);
 	draw_7segment_led(bitmap, 9, 3, gticlub_led_reg1);
 
-	//cpunum_set_input_line(screen->machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
-	cpuintrf_push_context(2);
-	sharc_set_flag_input(1, ASSERT_LINE);
-	cpuintrf_pop_context();
+	//cpu_set_input_line(screen->machine->cpu[2], SHARC_INPUT_FLAG1, ASSERT_LINE);
+	sharc_set_flag_input(screen->machine->cpu[2], 1, ASSERT_LINE);
 	return 0;
 }
 

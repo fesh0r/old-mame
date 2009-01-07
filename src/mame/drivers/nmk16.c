@@ -46,23 +46,10 @@ TODO:
   Therefore, it might be another protection device, which sits in the middle
   between CPU and NMK004.
 - Protection is patched in several games.
-- In hachamf it seems that the protection device shares some RAM (fe000-fefff)
-  with the main CPU, and the main CPU fetches pointers from that shared RAM to
-  do important operations like reading the input ports. Some of them are easily
-  deduced checking for similarities in macross and bjtwin; however another
-  protection check involves (see the routine at 01429a) writing data to the
-  fe100-fe1ff range, and then jumping to subroutines in that range (most likely
-  function pointers since each one is only 0x10 bytes long), and heaven knows
-  what those should do.
-  On startup, hachamf does a RAM test, then copies some stuff and jumps to
-  RAM at 0xfef00, where it sits in a loop. We patch around that by replacing the
-  reset vector with the "real" one.
-  update: simulated this,see hachamf_mcu_shared_w() & tdragon_mcu_shared_w() for
-  more info about it.
-- Hacha Mecha Fighter bg graphics are completely wrong except at the title screen &
+- Hacha Mecha Fighter: mcu simulation *might* be wrong/incorrect (see notes).
+- Hacha Mecha Fighter: bg graphics are completely wrong except at the title screen &
   the level 7.Likely to be a rom issue,the game activates the bgbank
-  when it is on the above two cases.Also the bomb graphics are wrong when the game
-  is in japanese mode...
+  when it is on the above two cases.
 - Cocktail mode is supported, but tilemap.c has problems with asymmetrical
   visible areas.
 - Music timing in nouryoku is a little off.
@@ -72,6 +59,9 @@ TODO:
 - Input ports in Bio-ship Paladin, Strahl
 - Sound communication in Mustang might be incorrectly implemented
 - Incorrect OKI samples banking in Rapid Hero
+- Hacha Mecha Fighter: (BTANB) the bomb graphics are pretty weird when the game is in
+  japanese mode,but it's like this on the original game,it's just a japanese write for
+  "bomb" word (I presume)
 
 ----
 
@@ -152,6 +142,9 @@ Afega stands for "Art-Fiction Electronic Game"
 ********************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/tlcs90/tlcs90.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "audio/seibu.h"
 #include "sound/2203intf.h"
@@ -160,6 +153,7 @@ Afega stands for "Art-Fiction Electronic Game"
 #include "machine/nmk004.h"
 #include "machine/nmk112.h"
 #include "cpu/pic16c5x/pic16c5x.h"
+#include "includes/nmk16.h"
 
 
 /**********************************************************
@@ -200,66 +194,6 @@ static WRITE16_HANDLER( nmk16_mainram_strange_w )
 	}
 }
 
-extern UINT16 *nmk_bgvideoram,*nmk_fgvideoram,*nmk_txvideoram;
-extern UINT16 *gunnail_scrollram, *gunnail_scrollramy;
-
-READ16_HANDLER( nmk_bgvideoram_r );
-WRITE16_HANDLER( nmk_bgvideoram_w );
-READ16_HANDLER( nmk_fgvideoram_r );
-WRITE16_HANDLER( nmk_fgvideoram_w );
-READ16_HANDLER( nmk_txvideoram_r );
-WRITE16_HANDLER( nmk_txvideoram_w );
-WRITE16_HANDLER( nmk_scroll_w );
-WRITE16_HANDLER( nmk_scroll_2_w );
-WRITE16_HANDLER( nmk_scroll_3_w );
-WRITE16_HANDLER( nmk_flipscreen_w );
-WRITE16_HANDLER( nmk_tilebank_w );
-WRITE16_HANDLER( bioship_scroll_w );
-WRITE16_HANDLER( bioship_bank_w );
-WRITE16_HANDLER( mustang_scroll_w );
-WRITE16_HANDLER( bioshipbg_scroll_w );
-WRITE16_HANDLER( vandyke_scroll_w );
-WRITE16_HANDLER( manybloc_scroll_w );
-
-VIDEO_START( macross );
-VIDEO_UPDATE( manybloc );
-VIDEO_START( gunnail );
-VIDEO_START( macross2 );
-VIDEO_START( tdragon2 );
-VIDEO_START( bjtwin );
-VIDEO_START( bioship );
-VIDEO_START( strahl );
-VIDEO_UPDATE( bioship );
-VIDEO_UPDATE( strahl );
-VIDEO_UPDATE( macross );
-VIDEO_UPDATE( gunnail );
-VIDEO_UPDATE( bjtwin );
-VIDEO_UPDATE( tharrier );
-VIDEO_UPDATE( hachamf );
-VIDEO_UPDATE( tdragon );
-VIDEO_EOF( nmk );
-VIDEO_EOF( strahl );
-
-/* Variables defined in video: */
-
-extern UINT16 *afega_vram_0, *afega_scroll_0;
-extern UINT16 *afega_vram_1, *afega_scroll_1;
-
-/* Functions defined in video: */
-
-WRITE16_HANDLER( afega_vram_0_w );
-WRITE16_HANDLER( afega_vram_1_w );
-//WRITE16_HANDLER( afega_palette_w );
-
-VIDEO_START( afega );
-VIDEO_START( grdnstrm );
-VIDEO_START( firehawk );
-VIDEO_UPDATE( afega );
-VIDEO_UPDATE( redhawkb );
-VIDEO_UPDATE(redhawki );
-VIDEO_UPDATE( bubl2000 );
-VIDEO_UPDATE( firehawk );
-
 
 
 static MACHINE_RESET( nmk16 )
@@ -269,7 +203,7 @@ static MACHINE_RESET( nmk16 )
 
 static MACHINE_RESET( NMK004 )
 {
-	NMK004_init();
+	NMK004_init(machine);
 }
 
 static MACHINE_RESET( mustang_sound )
@@ -281,8 +215,8 @@ static WRITE16_HANDLER ( ssmissin_sound_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,0,data & 0xff);
-		cpunum_set_input_line(machine, 1,0, HOLD_LINE);
+		soundlatch_w(space,0,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1],0, HOLD_LINE);
 	}
 }
 
@@ -290,7 +224,7 @@ static WRITE16_HANDLER ( ssmissin_sound_w )
 
 static WRITE8_HANDLER ( ssmissin_soundbank_w )
 {
-	UINT8 *rom = memory_region(machine, "oki1");
+	UINT8 *rom = memory_region(space->machine, "oki1");
 	int bank;
 
 	bank = data & 0x3;
@@ -305,7 +239,7 @@ static WRITE8_HANDLER ( ssmissin_soundbank_w )
 
 static WRITE16_HANDLER( tharrier_mcu_control_w )
 {
-//  logerror("%04x: mcu_control_w %02x\n",activecpu_get_pc(),data);
+//  logerror("%04x: mcu_control_w %02x\n",cpu_get_pc(space->cpu),data);
 }
 
 static READ16_HANDLER( tharrier_mcu_r )
@@ -322,8 +256,8 @@ static READ16_HANDLER( tharrier_mcu_r )
 
 		int res;
 
-		if (activecpu_get_pc()==0x8aa) res = (nmk16_mainram[0x9064/2])|0x20; /* Task Force Harrier */
-		else if (activecpu_get_pc()==0x8ce) res = (nmk16_mainram[0x9064/2])|0x60; /* Task Force Harrier */
+		if (cpu_get_pc(space->cpu)==0x8aa) res = (nmk16_mainram[0x9064/2])|0x20; /* Task Force Harrier */
+		else if (cpu_get_pc(space->cpu)==0x8ce) res = (nmk16_mainram[0x9064/2])|0x60; /* Task Force Harrier */
 		else
 		{
 			res = to_main[prot_count++];
@@ -334,30 +268,32 @@ static READ16_HANDLER( tharrier_mcu_r )
 		return res << 8;
 	}
 	else
-		return ~input_port_read(machine, "IN1");
+		return ~input_port_read(space->machine, "IN1");
+}
+
+static WRITE16_HANDLER( macross2_sound_reset_w )
+{
+	/* PCB behaviour verified by Corrado Tomaselli at MAME Italia Forum:
+       every time music changes Z80 is resetted */
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE16_HANDLER( macross2_sound_command_w )
 {
 	if (ACCESSING_BITS_0_7)
-		soundlatch_w(machine,0,data & 0xff);
-}
-
-static READ16_HANDLER( macross2_sound_result_r )
-{
-	return soundlatch2_r(machine,0);
+		soundlatch_w(space,0,data & 0xff);
 }
 
 static WRITE8_HANDLER( macross2_sound_bank_w )
 {
-	UINT8 *rom = memory_region(machine, "audio") + 0x10000;
+	UINT8 *rom = memory_region(space->machine, "audio") + 0x10000;
 
-	memory_set_bankptr(1,rom + (data & 0x07) * 0x4000);
+	memory_set_bankptr(space->machine, 1,rom + (data & 0x07) * 0x4000);
 }
 
 static WRITE8_HANDLER( tharrier_oki6295_bankswitch_0_w )
 {
-	UINT8 *rom = memory_region(machine, "oki1");
+	UINT8 *rom = memory_region(space->machine, "oki1");
 
 	data &= 3;
 	if (data != 3)
@@ -366,7 +302,7 @@ static WRITE8_HANDLER( tharrier_oki6295_bankswitch_0_w )
 
 static WRITE8_HANDLER( tharrier_oki6295_bankswitch_1_w )
 {
-	UINT8 *rom = memory_region(machine, "oki2");
+	UINT8 *rom = memory_region(space->machine, "oki2");
 
 	data &= 3;
 	if (data != 3)
@@ -377,8 +313,8 @@ static WRITE16_HANDLER( afega_soundlatch_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,0,data&0xff);
-		cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+		soundlatch_w(space,0,data&0xff);
+		cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
 	}
 }
 
@@ -601,14 +537,15 @@ ADDRESS_MAP_END
 Thunder Dragon & Hacha Mecha Fighter shares some ram with the MCU,the job of the latter
 is to provide some jsr vectors used by the game for gameplay calculations.Also it has
 the job to give the vectors of where the inputs are to be read & to calculate the coin
-settings,the latter is in the video file to avoid sync problems.
+settings,the latter is in a TIMER_DEVICE_CALLBACK to avoid sync problems.
 To make a long story short,this MCU is an alternative version of the same protection
 used by the MJ-8956 games (there are even the same kind of error codes!(i.e the number
 printed on the up-left corner of the screen)...
 
 Note: I'm 100% sure of the Thunder Dragon vectors because I've compared it with the
 bootleg sets,I'm *not* 100% sure of the Hacha Mecha Fighter vectors because I don't have
-anything to compare,infact
+anything to compare and I don't know if for example an option should be there if you lose a
+life,but the game looks pretty much hard without it.
 
 ******************************************************************************************/
 
@@ -755,7 +692,6 @@ static WRITE16_HANDLER( hachamf_mainram_w )
 	}
 }
 
-
 static ADDRESS_MAP_START( hachamf_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	/* I/O Region */
@@ -833,6 +769,157 @@ static WRITE16_HANDLER( tdragon_mainram_w )
 	}
 }
 
+/*coin setting MCU simulation*/
+static void mcu_run(running_machine *machine, UINT8 dsw_setting)
+{
+	static UINT8 input_pressed;
+	static UINT16 coin_input;
+	UINT8 dsw[2];
+	static UINT8 start_helper = 0;
+	static UINT8 coin_count[2],coin_count_frac[2];
+	static UINT8 i;
+
+	/*Accept the start button but needs some m68k processing first,otherwise you can't start a play with 1 credit inserted*/
+	if(start_helper & 1 && nmk16_mainram[0x9000/2] & 0x0200) /*start 1 */
+	{
+		nmk16_mainram[0xef00/2]--;
+		start_helper = start_helper & 2;
+	}
+	if(start_helper & 2 && nmk16_mainram[0x9000/2] & 0x0100) /*start 2*/
+	{
+		nmk16_mainram[0xef00/2]--;
+		start_helper = start_helper & 1;
+	}
+
+	/*needed because of the uncompatibility of the dsw settings.*/
+	if(dsw_setting) // Thunder Dragon
+	{
+		dsw[0] = (input_port_read(machine, "DSW2") & 0x7);
+		dsw[1] = (input_port_read(machine, "DSW2") & 0x38) >> 3;
+		for(i=0;i<2;i++)
+		{
+			switch(dsw[i] & 7)
+			{
+				case 0: nmk16_mainram[0x9000/2]|=0x4000; break; //free play
+				case 1: coin_count_frac[i] = 1; coin_count[i] = 4; break;
+				case 2: coin_count_frac[i] = 1; coin_count[i] = 3; break;
+				case 3: coin_count_frac[i] = 1; coin_count[i] = 2; break;
+				case 4: coin_count_frac[i] = 4; coin_count[i] = 1; break;
+				case 5: coin_count_frac[i] = 3; coin_count[i] = 1; break;
+				case 6: coin_count_frac[i] = 2; coin_count[i] = 1; break;
+				case 7: coin_count_frac[i] = 1; coin_count[i] = 1; break;
+			}
+		}
+	}
+	else // Hacha Mecha Fighter
+	{
+		dsw[0] = (input_port_read(machine, "DSW1") & 0x0700) >> 8;
+		dsw[1] = (input_port_read(machine, "DSW1") & 0x3800) >> 11;
+		for(i=0;i<2;i++)
+		{
+			switch(dsw[i] & 7)
+			{
+				case 0: nmk16_mainram[0x9000/2]|=0x4000; break; //free play
+				case 1: coin_count_frac[i] = 4; coin_count[i] = 1; break;
+				case 2: coin_count_frac[i] = 3; coin_count[i] = 1; break;
+				case 3: coin_count_frac[i] = 2; coin_count[i] = 1; break;
+				case 4: coin_count_frac[i] = 1; coin_count[i] = 4; break;
+				case 5: coin_count_frac[i] = 1; coin_count[i] = 3; break;
+				case 6: coin_count_frac[i] = 1; coin_count[i] = 2; break;
+				case 7: coin_count_frac[i] = 1; coin_count[i] = 1; break;
+			}
+		}
+	}
+
+	/*read the coin port*/
+	coin_input = (~(input_port_read(machine, "IN0")));
+
+	if(coin_input & 0x01)//coin 1
+	{
+		if((input_pressed & 0x01) == 0)
+		{
+			if(coin_count_frac[0] != 1)
+			{
+				nmk16_mainram[0xef02/2]+=coin_count[0];
+				if(coin_count_frac[0] == nmk16_mainram[0xef02/2])
+				{
+					nmk16_mainram[0xef00/2]+=coin_count[0];
+					nmk16_mainram[0xef02/2] = 0;
+				}
+			}
+			else
+				nmk16_mainram[0xef00/2]+=coin_count[0];
+		}
+		input_pressed = (input_pressed & 0xfe) | 1;
+	}
+	else
+		input_pressed = (input_pressed & 0xfe);
+
+	if(coin_input & 0x02)//coin 2
+	{
+		if((input_pressed & 0x02) == 0)
+		{
+			if(coin_count_frac[1] != 1)
+			{
+				nmk16_mainram[0xef02/2]+=coin_count[1];
+				if(coin_count_frac[1] == nmk16_mainram[0xef02/2])
+				{
+					nmk16_mainram[0xef00/2]+=coin_count[1];
+					nmk16_mainram[0xef02/2] = 0;
+				}
+			}
+			else
+				nmk16_mainram[0xef00/2]+=coin_count[1];
+		}
+		input_pressed = (input_pressed & 0xfd) | 2;
+	}
+	else
+		input_pressed = (input_pressed & 0xfd);
+
+	if(coin_input & 0x04)//service 1
+	{
+		if((input_pressed & 0x04) == 0)
+			nmk16_mainram[0xef00/2]++;
+		input_pressed = (input_pressed & 0xfb) | 4;
+	}
+	else
+		input_pressed = (input_pressed & 0xfb);
+
+	/*The 0x9000 ram address is the status */
+	if(nmk16_mainram[0xef00/2] > 0 && nmk16_mainram[0x9000/2] & 0x8000) //enable start button
+	{
+		if(coin_input & 0x08)//start 1
+		{
+			if((input_pressed & 0x08) == 0 && (!(nmk16_mainram[0x9000/2] & 0x0200))) //start 1
+				start_helper = 1;
+
+			input_pressed = (input_pressed & 0xf7) | 8;
+		}
+		else
+			input_pressed = (input_pressed & 0xf7);
+
+		if(coin_input & 0x10)//start 2
+		{
+			/*Decrease two coins to let two players play with one start 2 button and two credits inserted at the insert coin screen.*/
+			if((input_pressed & 0x10) == 0 && (!(nmk16_mainram[0x9000/2] & 0x0100))) // start 2
+				start_helper = (nmk16_mainram[0x9000/2] == 0x8000) ? (3) : (2);
+
+			input_pressed = (input_pressed & 0xef) | 0x10;
+		}
+		else
+			input_pressed = (input_pressed & 0xef);
+	}
+}
+
+static TIMER_DEVICE_CALLBACK( tdragon_mcu_sim )
+{
+	mcu_run(timer->machine,1);
+}
+
+static TIMER_DEVICE_CALLBACK( hachamf_mcu_sim )
+{
+	mcu_run(timer->machine,0);
+}
 
 static ADDRESS_MAP_START( tdragon_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
@@ -1005,7 +1092,7 @@ static ADDRESS_MAP_START( macross2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100002, 0x100003) AM_READ_PORT("IN1")
 	AM_RANGE(0x100008, 0x100009) AM_READ_PORT("DSW1")
 	AM_RANGE(0x10000a, 0x10000b) AM_READ_PORT("DSW2")
-	AM_RANGE(0x10000e, 0x10000f) AM_READ(macross2_sound_result_r)	/* from Z80 */
+	AM_RANGE(0x10000e, 0x10000f) AM_READ(soundlatch2_word_r)	/* from Z80 */
 	AM_RANGE(0x120000, 0x1207ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x140000, 0x14ffff) AM_READ(nmk_bgvideoram_r)
 	AM_RANGE(0x170000, 0x170fff) AM_READ(nmk_txvideoram_r)
@@ -1016,7 +1103,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( macross2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100014, 0x100015) AM_WRITE(nmk_flipscreen_w)
-	AM_RANGE(0x100016, 0x100017) AM_WRITE(SMH_NOP)	/* IRQ eanble? */
+	AM_RANGE(0x100016, 0x100017) AM_WRITE(macross2_sound_reset_w)	/* Z80 reset */
 	AM_RANGE(0x100018, 0x100019) AM_WRITE(nmk_tilebank_w)
 	AM_RANGE(0x10001e, 0x10001f) AM_WRITE(macross2_sound_command_w)	/* to Z80 */
 	AM_RANGE(0x120000, 0x1207ff) AM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
@@ -1057,7 +1144,7 @@ static WRITE8_HANDLER( okibank_w )
 
 static WRITE8_HANDLER( raphero_sound_rombank_w )
 {
-	memory_set_bankptr(1,memory_region(machine, "audio") + 0x10000 + (data & 0x07) * 0x4000);
+	memory_set_bankptr(space->machine, 1,memory_region(space->machine, "audio") + 0x10000 + (data & 0x07) * 0x4000);
 }
 
 static ADDRESS_MAP_START( raphero_sound_mem_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -3488,7 +3575,7 @@ static const ym2203_interface ym2203_nmk004_interface =
 
 static void ym2203_irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -3503,8 +3590,8 @@ static const ym2203_interface ym2203_config =
 
 static INTERRUPT_GEN( nmk_interrupt )
 {
-	if (cpu_getiloops() == 0) cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
-	else cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
+	if (cpu_getiloops(device) == 0) cpu_set_input_line(device, 4, HOLD_LINE);
+	else cpu_set_input_line(device, 2, HOLD_LINE);
 }
 
 
@@ -3957,6 +4044,7 @@ static MACHINE_DRIVER_START( tdragon )
 	MDRV_VIDEO_START(macross)
 	MDRV_VIDEO_EOF(nmk)
 	MDRV_VIDEO_UPDATE(tdragon)
+	MDRV_TIMER_ADD_PERIODIC("coinsim", tdragon_mcu_sim, HZ(10000)) // not real, but for simulating the MCU
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -4083,6 +4171,7 @@ static MACHINE_DRIVER_START( hachamf )
 	MDRV_VIDEO_START(macross)
 	MDRV_VIDEO_EOF(nmk)
 	MDRV_VIDEO_UPDATE(hachamf)
+	MDRV_TIMER_ADD_PERIODIC("coinsim", hachamf_mcu_sim, HZ(10000)) // not real, but for simulating the MCU
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -4606,8 +4695,8 @@ static DRIVER_INIT( bjtwin )
 static READ16_HANDLER( vandykeb_r ) { return 0x0000; }
 static DRIVER_INIT (vandykeb)
 {
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x08000e, 0x08000f, 0, 0, vandykeb_r );
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x08001e, 0x08001f, 0, 0, SMH_NOP );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x08000e, 0x08000f, 0, 0, vandykeb_r );
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x08001e, 0x08001f, 0, 0, SMH_NOP );
 }
 
 
@@ -4687,10 +4776,10 @@ static WRITE16_HANDLER( twinactn_scroll1_w )
 static WRITE16_HANDLER( twinactn_flipscreen_w )
 {
 	if (ACCESSING_BITS_0_7)
-		flip_screen_set(data & 1);
+		flip_screen_set(space->machine, data & 1);
 
 	if (data & (~1))
-		logerror("%06x: unknown flip screen bit written %04x\n", activecpu_get_pc(), data);
+		logerror("%06x: unknown flip screen bit written %04x\n", cpu_get_pc(space->cpu), data);
 }
 #endif
 
@@ -4736,9 +4825,9 @@ static WRITE8_HANDLER( twinactn_oki_bank_w )
 	okim6295_set_bank_base(0, (data & 3) * 0x40000);
 
 	if (data & (~3))
-		logerror("%04x: invalid oki bank %02x\n", activecpu_get_pc(), data);
+		logerror("%04x: invalid oki bank %02x\n", cpu_get_pc(space->cpu), data);
 
-//  logerror("%04x: oki bank %02x\n", activecpu_get_pc(), data);
+//  logerror("%04x: oki bank %02x\n", cpu_get_pc(space->cpu), data);
 }
 
 static ADDRESS_MAP_START( twinactn_sound_cpu, ADDRESS_SPACE_PROGRAM, 8 )
@@ -4831,7 +4920,7 @@ GFXDECODE_END
 
 static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface afega_ym2151_intf =

@@ -32,6 +32,8 @@ dy_6.bin (near Z80)
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/i8085/i8085.h"
 #include "sound/ay8910.h"
 
 static tilemap *bg_tilemap,*top_tilemap;
@@ -60,8 +62,8 @@ static WRITE8_HANDLER( sound_control_w )
     D3 - /Reset
 
 */
-	if ((data &7)==7) ay8910_control_port_0_w(machine,0,ay_data);
-	if ((data &7)==6) ay8910_write_port_0_w(machine,0,ay_data);
+	if ((data &7)==7) ay8910_control_port_0_w(space,0,ay_data);
+	if ((data &7)==6) ay8910_write_port_0_w(space,0,ay_data);
 }
 
 
@@ -171,8 +173,8 @@ static TILE_GET_INFO( get_tile_info )
 static VIDEO_START( dynadice )
 {
 	/* pacman - style videoram layout */
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
-	top_tilemap = tilemap_create(get_tile_info,tilemap_scan_cols,8,8,2,32);
+	bg_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_rows,8,8,32,32);
+	top_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_cols,8,8,2,32);
 	tilemap_set_scrollx(bg_tilemap, 0, -16 );
 }
 

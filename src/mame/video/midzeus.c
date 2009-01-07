@@ -255,7 +255,7 @@ VIDEO_START( midzeus )
 		palette_set_color_rgb(machine, i, pal5bit(i >> 10), pal5bit(i >> 5), pal5bit(i >> 0));
 
 	/* initialize polygon engine */
-	poly = poly_alloc(10000, sizeof(poly_extra_data), POLYFLAG_ALLOW_QUADS);
+	poly = poly_alloc(machine, 10000, sizeof(poly_extra_data), POLYFLAG_ALLOW_QUADS);
 
 	/* we need to cleanup on exit */
 	add_exit_callback(machine, exit_handler);
@@ -263,19 +263,19 @@ VIDEO_START( midzeus )
 	zeus_renderbase = waveram[1];
 
 	/* state saving */
-	state_save_register_global_array(zeus_fifo);
-	state_save_register_global(zeus_fifo_words);
-	state_save_register_global_2d_array(zeus_matrix);
-	state_save_register_global_array(zeus_point);
-	state_save_register_global_array(zeus_light);
-	state_save_register_global(zeus_palbase);
-	state_save_register_global(zeus_objdata);
-	state_save_register_global(zeus_cliprect.min_x);
-	state_save_register_global(zeus_cliprect.max_x);
-	state_save_register_global(zeus_cliprect.min_y);
-	state_save_register_global(zeus_cliprect.max_y);
-	state_save_register_global_pointer(waveram[0], WAVERAM0_WIDTH * WAVERAM0_HEIGHT * 8 / sizeof(waveram[0][0]));
-	state_save_register_global_pointer(waveram[1], WAVERAM1_WIDTH * WAVERAM1_HEIGHT * 8 / sizeof(waveram[1][0]));
+	state_save_register_global_array(machine, zeus_fifo);
+	state_save_register_global(machine, zeus_fifo_words);
+	state_save_register_global_2d_array(machine, zeus_matrix);
+	state_save_register_global_array(machine, zeus_point);
+	state_save_register_global_array(machine, zeus_light);
+	state_save_register_global(machine, zeus_palbase);
+	state_save_register_global(machine, zeus_objdata);
+	state_save_register_global(machine, zeus_cliprect.min_x);
+	state_save_register_global(machine, zeus_cliprect.max_x);
+	state_save_register_global(machine, zeus_cliprect.min_y);
+	state_save_register_global(machine, zeus_cliprect.max_y);
+	state_save_register_global_pointer(machine, waveram[0], WAVERAM0_WIDTH * WAVERAM0_HEIGHT * 8 / sizeof(waveram[0][0]));
+	state_save_register_global_pointer(machine, waveram[1], WAVERAM1_WIDTH * WAVERAM1_HEIGHT * 8 / sizeof(waveram[1][0]));
 }
 
 
@@ -372,18 +372,18 @@ READ32_HANDLER( zeus_r )
 	switch (offset & ~1)
 	{
 		case 0xf0:
-			result = video_screen_get_hpos(machine->primary_screen);
+			result = video_screen_get_hpos(space->machine->primary_screen);
 			logit = 0;
 			break;
 
 		case 0xf2:
-			result = video_screen_get_vpos(machine->primary_screen);
+			result = video_screen_get_vpos(space->machine->primary_screen);
 			logit = 0;
 			break;
 
 		case 0xf4:
 			result = 6;
-			if (video_screen_get_vblank(machine->primary_screen))
+			if (video_screen_get_vblank(space->machine->primary_screen))
 				result |= 0x800;
 			logit = 0;
 			break;
@@ -405,11 +405,11 @@ READ32_HANDLER( zeus_r )
 		if (logit)
 		{
 			if (offset & 1)
-				logerror("%06X:zeus32_r(%02X) = %08X -- unexpected in 32-bit mode\n", activecpu_get_pc(), offset, result);
+				logerror("%06X:zeus32_r(%02X) = %08X -- unexpected in 32-bit mode\n", cpu_get_pc(space->cpu), offset, result);
 			else if (offset != 0xe0)
-				logerror("%06X:zeus32_r(%02X) = %08X\n", activecpu_get_pc(), offset, result);
+				logerror("%06X:zeus32_r(%02X) = %08X\n", cpu_get_pc(space->cpu), offset, result);
 			else
-				logerror("%06X:zeus32_r(%02X) = %08X\n", activecpu_get_pc(), offset, result);
+				logerror("%06X:zeus32_r(%02X) = %08X\n", cpu_get_pc(space->cpu), offset, result);
 		}
 	}
 
@@ -421,7 +421,7 @@ READ32_HANDLER( zeus_r )
 		else
 			result &= 0xffff;
 		if (logit)
-			logerror("%06X:zeus16_r(%02X) = %04X\n", activecpu_get_pc(), offset, result);
+			logerror("%06X:zeus16_r(%02X) = %04X\n", cpu_get_pc(space->cpu), offset, result);
 	}
 	return result;
 }
@@ -439,15 +439,15 @@ WRITE32_HANDLER( zeus_w )
 	int logit = zeus_enable_logging || ((offset < 0xb0 || offset > 0xb7) && (offset < 0xe0 || offset > 0xe1));
 
 	if (logit)
-		logerror("%06X:zeus_w", activecpu_get_pc());
+		logerror("%06X:zeus_w", cpu_get_pc(space->cpu));
 
 	/* 32-bit mode */
 	if (zeusbase[0x80] & 0x00020000)
-		zeus_register32_w(machine, offset, data, logit);
+		zeus_register32_w(space->machine, offset, data, logit);
 
 	/* 16-bit mode */
 	else
-		zeus_register16_w(machine, offset, data, logit);
+		zeus_register16_w(space->machine, offset, data, logit);
 }
 
 
@@ -655,9 +655,9 @@ static void zeus_register_update(running_machine *machine, offs_t offset)
                 we simply assert immediately if this is enabled. invasn needs this for proper
                 operations */
 			if (zeusbase[0x80] & 0x02000000)
-				cpunum_set_input_line(machine, 0, 2, ASSERT_LINE);
+				cpu_set_input_line(machine->cpu[0], 2, ASSERT_LINE);
 			else
-				cpunum_set_input_line(machine, 0, 2, CLEAR_LINE);
+				cpu_set_input_line(machine->cpu[0], 2, CLEAR_LINE);
 			break;
 
 		case 0x84:

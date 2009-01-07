@@ -14,6 +14,7 @@ Magic Sticks:
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/eeprom.h"
 #include "sound/okim6295.h"
 
@@ -48,7 +49,7 @@ static NVRAM_HANDLER( magicstk )
 	}
 	else
 	{
-		eeprom_init(&eeprom_intf);
+		eeprom_init(machine, &eeprom_intf);
 
 		if (file)
 			eeprom_load(file);
@@ -94,7 +95,7 @@ static WRITE16_HANDLER( oki_banking )
 	{
 		int addr = 0x40000 * ((data & 3) - 1);
 
-		if(addr < memory_region_length(machine, "oki"))
+		if(addr < memory_region_length(space->machine, "oki"))
 			okim6295_set_bank_base(0, addr);
 	}
 }
@@ -439,7 +440,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 
 static VIDEO_START( powerbal )
 {
-	bg_tilemap = tilemap_create(powerbal_get_bg_tile_info,tilemap_scan_rows,8, 8,64,32);
+	bg_tilemap = tilemap_create(machine, powerbal_get_bg_tile_info,tilemap_scan_rows,8, 8,64,32);
 
 	xoffset = -20;
 

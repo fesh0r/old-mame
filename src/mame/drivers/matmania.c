@@ -41,8 +41,8 @@ The driver has been updated accordingly.
 
 static WRITE8_HANDLER( matmania_sh_command_w )
 {
-	soundlatch_w(machine,offset,data);
-	cpunum_set_input_line(machine, 1,M6502_IRQ_LINE,HOLD_LINE);
+	soundlatch_w(space,offset,data);
+	cpu_set_input_line(space->machine->cpu[1],M6502_IRQ_LINE,HOLD_LINE);
 }
 
 static WRITE8_HANDLER( matmania_dac_w )
@@ -53,8 +53,8 @@ static WRITE8_HANDLER( matmania_dac_w )
 
 static WRITE8_HANDLER( maniach_sh_command_w )
 {
-	soundlatch_w(machine,offset,data);
-	cpunum_set_input_line(machine, 1,M6809_IRQ_LINE,HOLD_LINE);
+	soundlatch_w(space,offset,data);
+	cpu_set_input_line(space->machine->cpu[1],M6809_IRQ_LINE,HOLD_LINE);
 }
 
 
@@ -329,7 +329,7 @@ static MACHINE_DRIVER_START( matmania )
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,15)	/* ???? */
 								/* IRQs are caused by the main CPU */
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -364,7 +364,7 @@ MACHINE_DRIVER_END
 /* handler called by the 3526 emulator when the internal timers cause an IRQ */
 static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(machine, 1,1,linestate);
+	cpu_set_input_line(machine->cpu[1],1,linestate);
 }
 
 static const ym3526_interface ym3526_config =
@@ -386,7 +386,7 @@ static MACHINE_DRIVER_START( maniach )
 	MDRV_CPU_ADD("mcu", M68705, 1500000*2)	/* (don't know really how fast, but it doesn't need to even be this fast) */
 	MDRV_CPU_PROGRAM_MAP(mcu_readmem,mcu_writemem)
 
-	MDRV_INTERLEAVE(100)	/* 100 CPU slice per frame - high interleaving to sync main and mcu */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slice per frame - high interleaving to sync main and mcu */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

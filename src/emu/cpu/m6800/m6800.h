@@ -13,19 +13,98 @@ enum
 	M6800_WAI_STATE
 };
 
-#define M6800_WAI		8			/* set when WAI is waiting for an interrupt */
-#define M6800_SLP		0x10		/* HD63701 only */
-
-
-#define M6800_IRQ_LINE	0			/* IRQ line number */
-#define M6800_TIN_LINE	1			/* P20/Tin Input Capture line (eddge sense)     */
+enum
+{
+	M6800_IRQ_LINE = 0,				/* IRQ line number */
+	M6800_TIN_LINE					/* P20/Tin Input Capture line (eddge sense)     */
 									/* Active eddge is selecrable by internal reg.  */
 									/* raise eddge : CLEAR_LINE  -> ASSERT_LINE     */
 									/* fall  eddge : ASSERT_LINE -> CLEAR_LINE      */
 									/* it is usuali to use PULSE_LINE state         */
+};
 
-extern void m6800_get_info(UINT32 state, cpuinfo *info);
+#if (HAS_M6801||HAS_M6803||HAS_HD63701)
+/* By default, on a port write port bits which are not set as output in the DDR */
+/* are set to the value returned by a read from the same port. If you need to */
+/* know the DDR for e.g. port 1, do m6803_internal_registers_r(M6801_DDR1) */
 
+enum
+{
+	M6803_DDR1	= 0x00,
+	M6803_DDR2	= 0x01,
+	M6803_DDR3	= 0x04,
+	M6803_DDR4	= 0x05
+};
+
+enum
+{
+	M6803_PORT1 = 0x100,
+	M6803_PORT2,
+	M6803_PORT3,
+	M6803_PORT4
+};
+#endif
+
+CPU_GET_INFO( m6800 );
+#define CPU_M6800 CPU_GET_INFO_NAME( m6800 )
+
+#if (HAS_M6801)
+CPU_GET_INFO( m6801 );
+#define CPU_M6801 CPU_GET_INFO_NAME( m6801 )
+#endif
+
+#if (HAS_M6802)
+CPU_GET_INFO( m6802 );
+#define CPU_M6802 CPU_GET_INFO_NAME( m6802 )
+#endif
+
+#if (HAS_M6803)
+CPU_GET_INFO( m6803 );
+#define CPU_M6803 CPU_GET_INFO_NAME( m6803 )
+#endif
+
+#if (HAS_M6808)
+CPU_GET_INFO( m6808 );
+#define CPU_M6808 CPU_GET_INFO_NAME( m6808 )
+#endif
+
+#if (HAS_HD63701)
+CPU_GET_INFO( hd63701 );
+#define CPU_HD63701 CPU_GET_INFO_NAME( hd63701 )
+
+/* FIMXE: these should be replaced to use m6803 ones */
+#define HD63701_DDR1 M6803_DDR1
+#define HD63701_DDR2 M6803_DDR2
+#define HD63701_DDR3 M6803_DDR3
+#define HD63701_DDR4 M6803_DDR4
+
+#define HD63701_PORT1 M6803_PORT1
+#define HD63701_PORT2 M6803_PORT2
+#define HD63701_PORT3 M6803_PORT3
+#define HD63701_PORT4 M6803_PORT4
+
+READ8_HANDLER( hd63701_internal_registers_r );
+WRITE8_HANDLER( hd63701_internal_registers_w );
+
+#endif
+
+#if (HAS_NSC8105)
+CPU_GET_INFO( nsc8105 );
+#define CPU_NSC8105 CPU_GET_INFO_NAME( nsc8105 )
+#endif
+
+
+CPU_DISASSEMBLE( m6800 );
+CPU_DISASSEMBLE( m6801 );
+CPU_DISASSEMBLE( m6802 );
+CPU_DISASSEMBLE( m6803 );
+CPU_DISASSEMBLE( m6808 );
+CPU_DISASSEMBLE( hd63701 );
+CPU_DISASSEMBLE( nsc8105 );
+
+
+#if 0
+/* Wonder if we need it */
 /****************************************************************************
  * For now make the 6801 using the m6800 variables and functions
  ****************************************************************************/
@@ -43,7 +122,7 @@ extern void m6800_get_info(UINT32 state, cpuinfo *info);
 #define M6801_WAI					M6800_WAI
 #define M6801_IRQ_LINE				M6800_IRQ_LINE
 
-extern void m6801_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m6801 );
 #endif
 
 /****************************************************************************
@@ -63,7 +142,7 @@ extern void m6801_get_info(UINT32 state, cpuinfo *info);
 #define M6802_WAI					M6800_WAI
 #define M6802_IRQ_LINE				M6800_IRQ_LINE
 
-extern void m6802_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m6802 );
 #endif
 
 /****************************************************************************
@@ -84,7 +163,7 @@ extern void m6802_get_info(UINT32 state, cpuinfo *info);
 #define M6803_IRQ_LINE				M6800_IRQ_LINE
 #define M6803_TIN_LINE				M6800_TIN_LINE
 
-extern void m6803_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m6803 );
 #endif
 
 #if (HAS_M6801||HAS_M6803||HAS_HD63701)
@@ -120,7 +199,7 @@ extern void m6803_get_info(UINT32 state, cpuinfo *info);
 #define M6808_WAI                   M6800_WAI
 #define M6808_IRQ_LINE              M6800_IRQ_LINE
 
-extern void m6808_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m6808 );
 #endif
 
 /****************************************************************************
@@ -142,9 +221,7 @@ extern void m6808_get_info(UINT32 state, cpuinfo *info);
 #define HD63701_IRQ_LINE			 M6800_IRQ_LINE
 #define HD63701_TIN_LINE			 M6800_TIN_LINE
 
-extern void hd63701_get_info(UINT32 state, cpuinfo *info);
-
-void hd63701_trap_pc(void);
+extern CPU_GET_INFO( hd63701 );
 
 #define HD63701_DDR1 M6803_DDR1
 #define HD63701_DDR2 M6803_DDR2
@@ -179,47 +256,9 @@ WRITE8_HANDLER( hd63701_internal_registers_w );
 #define NSC8105_IRQ_LINE			 M6800_IRQ_LINE
 #define NSC8105_TIN_LINE			 M6800_TIN_LINE
 
-extern void nsc8105_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( nsc8105 );
 #endif
 
-/****************************************************************************/
-/* Read a byte from given memory location                                   */
-/****************************************************************************/
-/* ASG 971005 -- changed to program_read_byte_8/program_write_byte_8 */
-#define M6800_RDMEM(Addr) ((unsigned)program_read_byte_8be(Addr))
-
-/****************************************************************************/
-/* Write a byte to given memory location                                    */
-/****************************************************************************/
-#define M6800_WRMEM(Addr,Value) (program_write_byte_8be(Addr,Value))
-
-/****************************************************************************/
-/* M6800_RDOP() is identical to M6800_RDMEM() except it is used for reading */
-/* opcodes. In case of system with memory mapped I/O, this function can be  */
-/* used to greatly speed up emulation                                       */
-/****************************************************************************/
-#define M6800_RDOP(Addr) ((unsigned)cpu_readop(Addr))
-
-/****************************************************************************/
-/* M6800_RDOP_ARG() is identical to M6800_RDOP() but it's used for reading  */
-/* opcode arguments. This difference can be used to support systems that    */
-/* use different encoding mechanisms for opcodes and opcode arguments       */
-/****************************************************************************/
-#define M6800_RDOP_ARG(Addr) ((unsigned)cpu_readop_arg(Addr))
-
-#ifndef FALSE
-#    define FALSE 0
 #endif
-#ifndef TRUE
-#    define TRUE (!FALSE)
-#endif
-
-offs_t m6800_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-offs_t m6801_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-offs_t m6802_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-offs_t m6803_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-offs_t m6808_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-offs_t hd63701_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-offs_t nsc8105_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-
 #endif /* __M6800_H__ */
+

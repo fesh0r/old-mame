@@ -72,8 +72,8 @@ WRITE8_HANDLER( shootout_textram_w ){
 }
 
 VIDEO_START( shootout ){
-	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,32,32);
-	foreground = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	background = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,8,8,32,32);
+	foreground = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 		tilemap_set_transparent_pen( foreground, 0 );
 }
 
@@ -106,7 +106,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 				int flipx = (attributes & 0x04);
 				int flipy = 0;
 
-				if (flip_screen_get()) {
+				if (flip_screen_get(machine)) {
 					flipx = !flipx;
 					flipy = !flipy;
 				}
@@ -117,7 +117,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 					vx = sx;
 					vy = sy;
-					if (flip_screen_get()) {
+					if (flip_screen_get(machine)) {
 						vx = 240 - vx;
 						vy = 240 - vy;
 					}
@@ -136,7 +136,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 				vx = sx;
 				vy = sy;
-				if (flip_screen_get()) {
+				if (flip_screen_get(machine)) {
 					vx = 240 - vx;
 					vy = 240 - vy;
 				}
@@ -156,7 +156,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 VIDEO_UPDATE( shootout )
 {
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,background,0,0);
 	tilemap_draw(bitmap,cliprect,foreground,0,1);
@@ -166,7 +166,7 @@ VIDEO_UPDATE( shootout )
 
 VIDEO_UPDATE( shootouj )
 {
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,background,0,0);
 	tilemap_draw(bitmap,cliprect,foreground,0,1);

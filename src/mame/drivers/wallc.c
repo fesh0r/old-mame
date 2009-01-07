@@ -48,6 +48,7 @@ Thanks to HIGHWAYMAN for providing info on how to get to these epoxies
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "video/resnet.h"
 #include "sound/ay8910.h"
 
@@ -127,7 +128,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( wallc )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flip_y,	8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols_flip_y,	8, 8, 32, 32);
 }
 
 static VIDEO_UPDATE( wallc )

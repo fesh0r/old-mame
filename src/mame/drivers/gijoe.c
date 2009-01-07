@@ -37,6 +37,7 @@ Known Issues
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "video/konamiic.h"
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
@@ -63,21 +64,13 @@ static const eeprom_interface eeprom_intf =
 	"0100110000000" /* unlock command */
 };
 
-#if 0
-static void eeprom_init(void)
-{
-	eeprom_init(&eeprom_intf);
-	init_eeprom_count = 0;
-}
-#endif
-
 static NVRAM_HANDLER( gijoe )
 {
 	if (read_or_write)
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_intf);
+		eeprom_init(machine, &eeprom_intf);
 
 		if (file)
 		{
@@ -96,7 +89,7 @@ static READ16_HANDLER( control1_r )
 	/* bit 8  is EEPROM data */
 	/* bit 9  is EEPROM ready */
 	/* bit 11 is service button */
-	res = input_port_read(machine, "START");
+	res = input_port_read(space->machine, "START");
 
 	if (init_eeprom_count)
 	{
@@ -159,7 +152,7 @@ static void gijoe_objdma(void)
 static TIMER_CALLBACK( dmaend_callback )
 {
 	if (cur_control2 & 0x0020)
-		cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0], 6, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( gijoe_interrupt )
@@ -177,37 +170,37 @@ static INTERRUPT_GEN( gijoe_interrupt )
 
 	// trigger V-blank interrupt
 	if (cur_control2 & 0x0080)
-		cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
+		cpu_set_input_line(device, 5, HOLD_LINE);
 }
 
 static WRITE16_HANDLER( sound_cmd_w )
 {
 	if(ACCESSING_BITS_0_7) {
 		data &= 0xff;
-		soundlatch_w(machine, 0, data);
+		soundlatch_w(space, 0, data);
 	}
 }
 
 static WRITE16_HANDLER( sound_irq_w )
 {
-	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+	cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
 }
 
 static READ16_HANDLER( sound_status_r )
 {
-	return soundlatch2_r(machine,0);
+	return soundlatch2_r(space,0);
 }
 
 static void sound_nmi(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static MACHINE_START( gijoe )
 {
-	state_save_register_global(cur_control2);
+	state_save_register_global(machine, cur_control2);
 
-	dmadelay_timer = timer_alloc(dmaend_callback, NULL);
+	dmadelay_timer = timer_alloc(machine, dmaend_callback, NULL);
 }
 
 
@@ -454,8 +447,8 @@ ROM_END
 
 static DRIVER_INIT( gijoe )
 {
-	konami_rom_deinterleave_2("gfx1");
-	konami_rom_deinterleave_4("gfx2");
+	konami_rom_deinterleave_2(machine, "gfx1");
+	konami_rom_deinterleave_4(machine, "gfx2");
 }
 
 GAME( 1992, gijoe,  0,     gijoe, gijoe, gijoe, ROT0, "Konami", "GI Joe (World)", 0)

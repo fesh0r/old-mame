@@ -42,12 +42,12 @@ static VIDEO_START( wcvol95 )
 	paletteram16 =  auto_malloc(0x1000);
 
 	/* and register the allocated ram so that save states still work */
-	state_save_register_global_pointer(deco16_pf1_data, 0x2000/2);
-	state_save_register_global_pointer(deco16_pf2_data, 0x2000/2);
-	state_save_register_global_pointer(deco16_pf1_rowscroll, 0x800/2);
-	state_save_register_global_pointer(deco16_pf2_rowscroll, 0x800/2);
-	state_save_register_global_pointer(deco16_pf12_control, 0x10/2);
-	state_save_register_global_pointer(paletteram16, 0x1000/2);
+	state_save_register_global_pointer(machine, deco16_pf1_data, 0x2000/2);
+	state_save_register_global_pointer(machine, deco16_pf2_data, 0x2000/2);
+	state_save_register_global_pointer(machine, deco16_pf1_rowscroll, 0x800/2);
+	state_save_register_global_pointer(machine, deco16_pf2_rowscroll, 0x800/2);
+	state_save_register_global_pointer(machine, deco16_pf12_control, 0x10/2);
+	state_save_register_global_pointer(machine, paletteram16, 0x1000/2);
 
 	deco16_1_video_init(machine);
 
@@ -61,7 +61,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 {
 	int offs;
 
-	flip_screen_set_no_update(1);
+	flip_screen_set_no_update(machine, 1);
 
 	for (offs = (0x1400/4)-4;offs >= 0;offs -= 4) // 0x1400 for charlien
 	{
@@ -107,7 +107,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 			inc = 1;
 		}
 
-		if (flip_screen_x_get())
+		if (flip_screen_x_get(machine))
 		{
 			y=240-y;
 			x=304-x;
@@ -135,14 +135,14 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 
 static VIDEO_UPDATE( wcvol95 )
 {
-	fillbitmap(priority_bitmap,0,NULL);
-	fillbitmap(bitmap,0,NULL);
+	bitmap_fill(priority_bitmap,NULL,0);
+	bitmap_fill(bitmap,NULL,0);
 
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 
-	deco16_tilemap_2_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
+	deco16_tilemap_2_draw(screen,bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 	draw_sprites(screen->machine,bitmap,cliprect);
-	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
+	deco16_tilemap_1_draw(screen,bitmap,cliprect,0,0);
 	return 0;
 }
 
@@ -167,23 +167,23 @@ static WRITE32_HANDLER( hvysmsh_oki_0_bank_w )
 
 static READ32_HANDLER(hvysmsh_oki_0_r)
 {
-	return okim6295_status_0_r(machine, 0);
+	return okim6295_status_0_r(space, 0);
 }
 
 static WRITE32_HANDLER(hvysmsh_oki_0_w)
 {
 //  data & 0xff00 is written sometimes too. game bug or needed data?
-	okim6295_data_0_w(machine,0,data&0xff);
+	okim6295_data_0_w(space,0,data&0xff);
 }
 
 static READ32_HANDLER(hvysmsh_oki_1_r)
 {
-	return okim6295_status_1_r(machine, 0);
+	return okim6295_status_1_r(space, 0);
 }
 
 static WRITE32_HANDLER(hvysmsh_oki_1_w)
 {
-	okim6295_data_1_w(machine,0,data&0xff);
+	okim6295_data_1_w(space,0,data&0xff);
 }
 
 static WRITE32_HANDLER(wcvol95_eeprom_w)
@@ -198,21 +198,21 @@ static WRITE32_HANDLER(wcvol95_eeprom_w)
 static WRITE32_HANDLER(wcvol95_nonbuffered_palette_w)
 {
 	COMBINE_DATA(&paletteram32[offset]);
-	palette_set_color_rgb(machine,offset,pal5bit(paletteram32[offset] >> 0),pal5bit(paletteram32[offset] >> 5),pal5bit(paletteram32[offset] >> 10));
+	palette_set_color_rgb(space->machine,offset,pal5bit(paletteram32[offset] >> 0),pal5bit(paletteram32[offset] >> 5),pal5bit(paletteram32[offset] >> 10));
 }
 
 
 static READ32_HANDLER( deco156_snd_r )
 {
-	return ymz280b_status_0_r(machine, 0);
+	return ymz280b_status_0_r(space, 0);
 }
 
 static WRITE32_HANDLER( deco156_snd_w )
 {
 	if (offset)
-		ymz280b_data_0_w(machine, 0, data);
+		ymz280b_data_0_w(space, 0, data);
 	else
-		ymz280b_register_0_w(machine, 0, data);
+		ymz280b_register_0_w(space, 0, data);
 }
 
 /***************************************************************************/
@@ -224,8 +224,8 @@ static READ32_HANDLER ( wcvol95_pf12_control_r ) { return deco16_pf12_control[of
 static WRITE32_HANDLER( wcvol95_pf12_control_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; COMBINE_DATA(&deco16_pf12_control[offset]); }
 static READ32_HANDLER( wcvol95_pf1_data_r ) {	return deco16_pf1_data[offset]^0xffff0000; }
 static READ32_HANDLER( wcvol95_pf2_data_r ) {	return deco16_pf2_data[offset]^0xffff0000; }
-static WRITE32_HANDLER( wcvol95_pf1_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf1_data_w(machine,offset,data,mem_mask); }
-static WRITE32_HANDLER( wcvol95_pf2_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf2_data_w(machine,offset,data,mem_mask); }
+static WRITE32_HANDLER( wcvol95_pf1_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf1_data_w(space,offset,data,mem_mask); }
+static WRITE32_HANDLER( wcvol95_pf2_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf2_data_w(space,offset,data,mem_mask); }
 
 
 static ADDRESS_MAP_START( hvysmsh_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -402,7 +402,7 @@ static const ymz280b_interface ymz280b_intf =
 
 static INTERRUPT_GEN( deco32_vbl_interrupt )
 {
-	cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, HOLD_LINE);
+	cpu_set_input_line(device, ARM_IRQ_LINE, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( hvysmsh )

@@ -111,8 +111,9 @@ struct tms5110
 	UINT8  addr_bit;
 
 	/* external callback */
-	int (*M0_callback)(void);
+	int (*M0_callback)(const device_config *);
 	void (*set_load_address)(int);
+	const device_config *device;
 
 	/* these contain data describing the current and previous voice frames */
 	UINT16 old_energy;
@@ -176,54 +177,55 @@ void tms5110_set_variant(void *chip, int variant)
 	tms->variant = variant;
 }
 
-void *tms5110_create(int index, int variant)
+void *tms5110_create(const device_config *device, int variant)
 {
 	struct tms5110 *tms;
 
 	tms = malloc_or_die(sizeof(*tms));
 	memset(tms, 0, sizeof(*tms));
 
+	tms->device = device;
 	tms5110_set_variant(tms, variant);
 
-	state_save_register_item_array("tms5110", index, tms->fifo);
-	state_save_register_item("tms5110", index, tms->fifo_head);
-	state_save_register_item("tms5110", index, tms->fifo_tail);
-	state_save_register_item("tms5110", index, tms->fifo_count);
+	state_save_register_device_item_array(device, 0, tms->fifo);
+	state_save_register_device_item(device, 0, tms->fifo_head);
+	state_save_register_device_item(device, 0, tms->fifo_tail);
+	state_save_register_device_item(device, 0, tms->fifo_count);
 
-	state_save_register_item("tms5110", index, tms->PDC);
-	state_save_register_item("tms5110", index, tms->CTL_pins);
-	state_save_register_item("tms5110", index, tms->speaking_now);
-	state_save_register_item("tms5110", index, tms->speak_delay_frames);
-	state_save_register_item("tms5110", index, tms->talk_status);
+	state_save_register_device_item(device, 0, tms->PDC);
+	state_save_register_device_item(device, 0, tms->CTL_pins);
+	state_save_register_device_item(device, 0, tms->speaking_now);
+	state_save_register_device_item(device, 0, tms->speak_delay_frames);
+	state_save_register_device_item(device, 0, tms->talk_status);
 
-	state_save_register_item("tms5110", index, tms->old_energy);
-	state_save_register_item("tms5110", index, tms->old_pitch);
-	state_save_register_item_array("tms5110", index, tms->old_k);
+	state_save_register_device_item(device, 0, tms->old_energy);
+	state_save_register_device_item(device, 0, tms->old_pitch);
+	state_save_register_device_item_array(device, 0, tms->old_k);
 
-	state_save_register_item("tms5110", index, tms->new_energy);
-	state_save_register_item("tms5110", index, tms->new_pitch);
-	state_save_register_item_array("tms5110", index, tms->new_k);
+	state_save_register_device_item(device, 0, tms->new_energy);
+	state_save_register_device_item(device, 0, tms->new_pitch);
+	state_save_register_device_item_array(device, 0, tms->new_k);
 
-	state_save_register_item("tms5110", index, tms->current_energy);
-	state_save_register_item("tms5110", index, tms->current_pitch);
-	state_save_register_item_array("tms5110", index, tms->current_k);
+	state_save_register_device_item(device, 0, tms->current_energy);
+	state_save_register_device_item(device, 0, tms->current_pitch);
+	state_save_register_device_item_array(device, 0, tms->current_k);
 
-	state_save_register_item("tms5110", index, tms->target_energy);
-	state_save_register_item("tms5110", index, tms->target_pitch);
-	state_save_register_item_array("tms5110", index, tms->target_k);
+	state_save_register_device_item(device, 0, tms->target_energy);
+	state_save_register_device_item(device, 0, tms->target_pitch);
+	state_save_register_device_item_array(device, 0, tms->target_k);
 
-	state_save_register_item("tms5110", index, tms->interp_count);
-	state_save_register_item("tms5110", index, tms->sample_count);
-	state_save_register_item("tms5110", index, tms->pitch_count);
+	state_save_register_device_item(device, 0, tms->interp_count);
+	state_save_register_device_item(device, 0, tms->sample_count);
+	state_save_register_device_item(device, 0, tms->pitch_count);
 
-	state_save_register_item("tms5110", index, tms->next_is_address);
-	state_save_register_item("tms5110", index, tms->address);
-	state_save_register_item("tms5110", index, tms->schedule_dummy_read);
-	state_save_register_item("tms5110", index, tms->addr_bit);
+	state_save_register_device_item(device, 0, tms->next_is_address);
+	state_save_register_device_item(device, 0, tms->address);
+	state_save_register_device_item(device, 0, tms->schedule_dummy_read);
+	state_save_register_device_item(device, 0, tms->addr_bit);
 
-	state_save_register_item_array("tms5110", index, tms->x);
+	state_save_register_device_item_array(device, 0, tms->x);
 
-	state_save_register_item("tms5110", index, tms->RNG);
+	state_save_register_device_item(device, 0, tms->RNG);
 
 	return tms;
 }
@@ -280,7 +282,7 @@ void tms5110_reset_chip(void *chip)
 
 ******************************************************************************************/
 
-void tms5110_set_M0_callback(void *chip, int (*func)(void))
+void tms5110_set_M0_callback(void *chip, int (*func)(const device_config *))
 {
 	struct tms5110 *tms = chip;
 	tms->M0_callback = func;
@@ -347,7 +349,7 @@ int i;
 	{
 		if (tms->M0_callback)
 		{
-			int data = (*tms->M0_callback)();
+			int data = (*tms->M0_callback)(tms->device);
 			FIFO_data_write(tms, data);
 		}
 		else
@@ -361,7 +363,7 @@ static void perform_dummy_read(struct tms5110 *tms)
 	{
 		if (tms->M0_callback)
 		{
-			int data = (*tms->M0_callback)();
+			int data = (*tms->M0_callback)(tms->device);
 				if (DEBUG_5110) logerror("TMS5110 performing dummy read; value read = %1i\n", data&1);
 		}
 			else

@@ -26,7 +26,6 @@
 ***************************************************************************/
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "k005289.h"
 
@@ -88,16 +87,16 @@ static int make_mixer_table(struct k005289_info *info, int voices)
 
 
 /* generate sound to the mix buffer */
-static void K005289_update(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( K005289_update )
 {
 	struct k005289_info *info = param;
 	k005289_sound_channel *voice=info->channel_list;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 	short *mix;
 	int i,v,f;
 
 	/* zap the contents of the mixer buffer */
-	memset(info->mixer_buffer, 0, length * sizeof(INT16));
+	memset(info->mixer_buffer, 0, samples * sizeof(INT16));
 
 	v=voice[0].volume;
 	f=voice[0].frequency;
@@ -109,7 +108,7 @@ static void K005289_update(void *param, stream_sample_t **inputs, stream_sample_
 		mix = info->mixer_buffer;
 
 		/* add our contribution */
-		for (i = 0; i < length; i++)
+		for (i = 0; i < samples; i++)
 		{
 			int offs;
 
@@ -132,7 +131,7 @@ static void K005289_update(void *param, stream_sample_t **inputs, stream_sample_
 		mix = info->mixer_buffer;
 
 		/* add our contribution */
-		for (i = 0; i < length; i++)
+		for (i = 0; i < samples; i++)
 		{
 			int offs;
 
@@ -147,11 +146,11 @@ static void K005289_update(void *param, stream_sample_t **inputs, stream_sample_
 
 	/* mix it down */
 	mix = info->mixer_buffer;
-	for (i = 0; i < length; i++)
+	for (i = 0; i < samples; i++)
 		*buffer++ = info->mixer_lookup[*mix++];
 }
 
-static void *k005289_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( k005289 )
 {
 	k005289_sound_channel *voice;
 	struct k005289_info *info;
@@ -162,7 +161,7 @@ static void *k005289_start(const char *tag, int sndindex, int clock, const void 
 
 	/* get stream channels */
 	info->rate = clock/16;
-	info->stream = stream_create(0, 1, info->rate, info, K005289_update);
+	info->stream = stream_create(device, 0, 1, info->rate, info, K005289_update);
 	info->mclock = clock;
 
 	/* allocate a pair of buffers to mix into - 1 second's worth should be more than enough */
@@ -172,7 +171,7 @@ static void *k005289_start(const char *tag, int sndindex, int clock, const void 
 	if (make_mixer_table(info, 2))
 		return NULL;
 
-	info->sound_prom = memory_region(Machine, tag);
+	info->sound_prom = device->region;
 
 	/* reset all the voices */
 	voice[0].frequency = 0;
@@ -253,7 +252,7 @@ WRITE8_HANDLER( k005289_keylatch_B_w )
  * Generic get_info
  **************************************************************************/
 
-static void k005289_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( k005289 )
 {
 	switch (state)
 	{
@@ -262,24 +261,24 @@ static void k005289_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void k005289_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( k005289 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = k005289_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = k005289_start;			break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( k005289 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( k005289 );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							/* nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "K005289";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Konami custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "K005289");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Konami custom");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

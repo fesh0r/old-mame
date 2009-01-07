@@ -11,6 +11,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/ay8910.h"
 
@@ -67,9 +68,9 @@ static WRITE8_HANDLER( olibochu_colorram_w )
 
 static WRITE8_HANDLER( olibochu_flipscreen_w )
 {
-	if (flip_screen_get() != (data & 0x80))
+	if (flip_screen_get(space->machine) != (data & 0x80))
 	{
-		flip_screen_set(data & 0x80);
+		flip_screen_set(space->machine, data & 0x80);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 
@@ -88,7 +89,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( olibochu )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		8, 8, 32, 32);
 }
 
@@ -108,7 +109,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int sx = spriteram[offs+3];
 		int sy = ((spriteram[offs+2] + 8) & 0xff) - 8;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -136,7 +137,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int sx = spriteram_2[offs+3];
 		int sy = spriteram_2[offs+2];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 248 - sx;
 			sy = 248 - sy;
@@ -173,7 +174,7 @@ static WRITE8_HANDLER( sound_command_w )
 	for (c = 15;c >= 0;c--)
 		if (cmd & (1 << c)) break;
 
-	if (c >= 0) soundlatch_w(machine,0,15-c);
+	if (c >= 0) soundlatch_w(space,0,15-c);
 }
 
 
@@ -357,10 +358,10 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( olibochu_interrupt )
 {
-	if (cpu_getiloops() == 0)
-		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xcf);	/* RST 08h */
+	if (cpu_getiloops(device) == 0)
+		cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xcf);	/* RST 08h */
 	else
-		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xd7);	/* RST 10h */
+		cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xd7);	/* RST 10h */
 }
 
 static MACHINE_DRIVER_START( olibochu )

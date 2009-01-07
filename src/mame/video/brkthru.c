@@ -117,8 +117,8 @@ WRITE8_HANDLER( brkthru_fgram_w )
 
 VIDEO_START( brkthru )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,16,16,32,16);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_cols,16,16,32,16);
 
 	tilemap_set_transparent_pen( fg_tilemap, 0 );
 	tilemap_set_transparent_pen( bg_tilemap, 0 );
@@ -133,12 +133,12 @@ WRITE8_HANDLER( brkthru_1800_w )
 	else if (offset == 1)
 	{
 		int bankaddress;
-		UINT8 *RAM = memory_region(machine, "main");
+		UINT8 *RAM = memory_region(space->machine, "main");
 
 
 		/* bit 0-2 = ROM bank select */
 		bankaddress = 0x10000 + (data & 0x07) * 0x2000;
-		memory_set_bankptr(1,&RAM[bankaddress]);
+		memory_set_bankptr(space->machine, 1,&RAM[bankaddress]);
 
 		/* bit 3-5 = background tiles color code */
 		if (((data & 0x38) >> 2) != bgbasecolor)

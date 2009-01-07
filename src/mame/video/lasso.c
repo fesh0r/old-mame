@@ -178,34 +178,34 @@ static TILE_GET_INFO( pinbo_get_bg_tile_info )
 VIDEO_START( lasso )
 {
 	/* create tilemap */
-	bg_tilemap = tilemap_create(lasso_get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, lasso_get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 
 	/* register for saving */
-	state_save_register_global(gfxbank);
+	state_save_register_global(machine, gfxbank);
 }
 
 VIDEO_START( wwjgtin )
 {
 	/* create tilemaps */
-	bg_tilemap =    tilemap_create(lasso_get_bg_tile_info,      tilemap_scan_rows,  8,  8,  32, 32);
-	track_tilemap = tilemap_create(wwjgtin_get_track_tile_info, tilemap_scan_rows, 16, 16, 128, 64);
+	bg_tilemap =    tilemap_create(machine, lasso_get_bg_tile_info,      tilemap_scan_rows,  8,  8,  32, 32);
+	track_tilemap = tilemap_create(machine, wwjgtin_get_track_tile_info, tilemap_scan_rows, 16, 16, 128, 64);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 
 	/* register for saving */
-	state_save_register_global(gfxbank);
-	state_save_register_global(wwjgtin_track_enable);
+	state_save_register_global(machine, gfxbank);
+	state_save_register_global(machine, wwjgtin_track_enable);
 }
 
 VIDEO_START( pinbo )
 {
 	/* create tilemap */
-	bg_tilemap = tilemap_create(pinbo_get_bg_tile_info, tilemap_scan_rows, 8, 8,32,32);
+	bg_tilemap = tilemap_create(machine, pinbo_get_bg_tile_info, tilemap_scan_rows, 8, 8,32,32);
 
 	/* register for saving */
-	state_save_register_global(gfxbank);
+	state_save_register_global(machine, gfxbank);
 }
 
 
@@ -231,11 +231,11 @@ WRITE8_HANDLER( lasso_colorram_w )
 static WRITE8_HANDLER( lasso_flip_screen_w )
 {
 	/* don't know which is which, but they are always set together */
-	flip_screen_x_set(data & 0x01);
-	flip_screen_y_set( data & 0x02);
+	flip_screen_x_set(space->machine, data & 0x01);
+	flip_screen_y_set(space->machine,  data & 0x02);
 
-	tilemap_set_flip(ALL_TILEMAPS, (flip_screen_x_get() ? TILEMAP_FLIPX : 0) |
-								   (flip_screen_y_get() ? TILEMAP_FLIPY : 0));
+	tilemap_set_flip(ALL_TILEMAPS, (flip_screen_x_get(space->machine) ? TILEMAP_FLIPX : 0) |
+								   (flip_screen_y_get(space->machine) ? TILEMAP_FLIPY : 0));
 }
 
 
@@ -249,7 +249,7 @@ WRITE8_HANDLER( lasso_video_control_w )
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 
-	lasso_flip_screen_w(machine, offset, data);
+	lasso_flip_screen_w(space, offset, data);
 }
 
 WRITE8_HANDLER( wwjgtin_video_control_w )
@@ -263,7 +263,7 @@ WRITE8_HANDLER( wwjgtin_video_control_w )
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 
-	lasso_flip_screen_w(machine, offset, data);
+	lasso_flip_screen_w(space, offset, data);
 }
 
 WRITE8_HANDLER( pinbo_video_control_w )
@@ -271,7 +271,7 @@ WRITE8_HANDLER( pinbo_video_control_w )
 	/* no need to dirty the tilemap -- only the sprites use the global bank */
 	gfxbank = (data & 0x0c) >> 2;
 
-	lasso_flip_screen_w(machine, offset, data);
+	lasso_flip_screen_w(space, offset, data);
 }
 
 
@@ -309,13 +309,13 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		flipx = source[1] & 0x40;
 		flipy = source[1] & 0x80;
 
-		if (flip_screen_x_get())
+		if (flip_screen_x_get(machine))
 		{
 			sx = 240 - sx;
 			flipx = !flipx;
 		}
 
-		if (flip_screen_y_get())
+		if (flip_screen_y_get(machine))
 		{
 			flipy = !flipy;
 		}
@@ -340,7 +340,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 }
 
 
-static void draw_lasso(bitmap_t *bitmap, const rectangle *cliprect)
+static void draw_lasso(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	offs_t offs;
 	pen_t pen = 0x3f;
@@ -352,7 +352,7 @@ static void draw_lasso(bitmap_t *bitmap, const rectangle *cliprect)
 		UINT8 x;
 		UINT8 y = offs >> 5;
 
-		if (flip_screen_y_get())
+		if (flip_screen_y_get(machine))
 			y = ~y;
 
 		if ((y < cliprect->min_y) || (y > cliprect->max_y))
@@ -361,7 +361,7 @@ static void draw_lasso(bitmap_t *bitmap, const rectangle *cliprect)
 		x = (offs & 0x1f) << 3;
 		data = lasso_bitmap_ram[offs];
 
-		if (flip_screen_x_get())
+		if (flip_screen_x_get(machine))
 			x = ~x;
 
 		for (bit = 0; bit < 8; bit++)
@@ -369,7 +369,7 @@ static void draw_lasso(bitmap_t *bitmap, const rectangle *cliprect)
 			if ((data & 0x80) && (x >= cliprect->min_x) && (x <= cliprect->max_x))
 				*BITMAP_ADDR16(bitmap, y, x) = pen;
 
-			if (flip_screen_x_get())
+			if (flip_screen_x_get(machine))
 				x = x - 1;
 			else
 				x = x + 1;
@@ -383,10 +383,10 @@ static void draw_lasso(bitmap_t *bitmap, const rectangle *cliprect)
 VIDEO_UPDATE( lasso )
 {
 	palette_set_color(screen->machine, 0, get_color(*lasso_back_color));
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_lasso(bitmap, cliprect);
+	draw_lasso(screen->machine, bitmap, cliprect);
 	draw_sprites(screen->machine, bitmap, cliprect, 0);
 
 	return 0;
@@ -395,7 +395,7 @@ VIDEO_UPDATE( lasso )
 VIDEO_UPDATE( chameleo )
 {
 	palette_set_color(screen->machine, 0, get_color(*lasso_back_color));
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	draw_sprites(screen->machine, bitmap, cliprect, 0);
@@ -415,7 +415,7 @@ VIDEO_UPDATE( wwjgtin )
 	if (wwjgtin_track_enable)
 		tilemap_draw(bitmap, cliprect, track_tilemap, 0, 0);
 	else
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	draw_sprites(screen->machine, bitmap, cliprect, 1);	// reverse order
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);

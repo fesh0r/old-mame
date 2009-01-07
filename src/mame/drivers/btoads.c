@@ -7,6 +7,7 @@
 **************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "cpu/tms34010/tms34010.h"
 #include "video/tlc34076.h"
 #include "btoads.h"
@@ -42,11 +43,11 @@ static UINT8 sound_int_state;
 
 static MACHINE_START( btoads )
 {
-	state_save_register_global(main_to_sound_data);
-	state_save_register_global(main_to_sound_ready);
-	state_save_register_global(sound_to_main_data);
-	state_save_register_global(sound_to_main_ready);
-	state_save_register_global(sound_int_state);
+	state_save_register_global(machine, main_to_sound_data);
+	state_save_register_global(machine, main_to_sound_ready);
+	state_save_register_global(machine, sound_to_main_data);
+	state_save_register_global(machine, sound_to_main_ready);
+	state_save_register_global(machine, sound_int_state);
 }
 
 
@@ -67,17 +68,17 @@ static TIMER_CALLBACK( delayed_sound_w )
 {
 	main_to_sound_data = param;
 	main_to_sound_ready = 1;
-	cpu_triggerint(machine, 1);
+	cpu_triggerint(machine->cpu[1]);
 
 	/* use a timer to make long transfers faster */
-	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, 0);
+	timer_set(machine, ATTOTIME_IN_USEC(50), NULL, 0, 0);
 }
 
 
 static WRITE16_HANDLER( main_sound_w )
 {
 	if (ACCESSING_BITS_0_7)
-		timer_call_after_resynch(NULL, data & 0xff, delayed_sound_w);
+		timer_call_after_resynch(space->machine, NULL, data & 0xff, delayed_sound_w);
 }
 
 
@@ -128,8 +129,8 @@ static READ8_HANDLER( sound_ready_to_send_r )
 
 static READ8_HANDLER( sound_data_ready_r )
 {
-	if (activecpu_get_pc() == 0xd50 && !main_to_sound_ready)
-		cpu_spinuntil_int();
+	if (cpu_get_pc(space->cpu) == 0xd50 && !main_to_sound_ready)
+		cpu_spinuntil_int(space->cpu);
 	return main_to_sound_ready ? 0x00 : 0x80;
 }
 
@@ -148,7 +149,7 @@ static WRITE8_HANDLER( sound_int_state_w )
 		sndti_reset(SOUND_BSMT2000, 0);
 
 	/* also clears interrupts */
-	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 	sound_int_state = data;
 }
 
@@ -170,7 +171,7 @@ static WRITE8_HANDLER( bsmt2000_port_w )
 {
 	UINT16 reg = offset >> 8;
 	UINT16 val = ((offset & 0xff) << 8) | data;
-	bsmt2000_data_0_w(machine, reg, val, 0xffff);
+	bsmt2000_data_0_w(space, reg, val, 0xffff);
 }
 
 

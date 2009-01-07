@@ -8,6 +8,7 @@ Todo:
 */
 
 #include "driver.h"
+#include "cpu/v810/v810.h"
 #include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/st0016.h"
@@ -44,17 +45,17 @@ static READ8_HANDLER(mux_r)
         xxxx - input port #2
     xxxx     - dip switches (2x8 bits) (multiplexed)
 */
-	int retval = input_port_read(machine, "SYSTEM") & 0x0f;
+	int retval = input_port_read(space->machine, "SYSTEM") & 0x0f;
 	switch(mux_port & 0x30)
 	{
-		case 0x00: retval |= ((input_port_read(machine, "DSW1") & 1) << 4) | ((input_port_read(machine, "DSW1") & 0x10) << 1)
-								| ((input_port_read(machine, "DSW2") & 1) << 6) | ((input_port_read(machine, "DSW2") & 0x10) <<3); break;
-		case 0x10: retval |= ((input_port_read(machine, "DSW1") & 2) << 3) | ((input_port_read(machine, "DSW1") & 0x20)   )
-								| ((input_port_read(machine, "DSW2") & 2) << 5) | ((input_port_read(machine, "DSW2") & 0x20) <<2); break;
-		case 0x20: retval |= ((input_port_read(machine, "DSW1") & 4) << 2) | ((input_port_read(machine, "DSW1") & 0x40) >> 1)
-								| ((input_port_read(machine, "DSW2") & 4) << 4) | ((input_port_read(machine, "DSW2") & 0x40) <<1); break;
-		case 0x30: retval |= ((input_port_read(machine, "DSW1") & 8) << 1) | ((input_port_read(machine, "DSW1") & 0x80) >> 2)
-								| ((input_port_read(machine, "DSW2") & 8) << 3) | ((input_port_read(machine, "DSW2") & 0x80)    ); break;
+		case 0x00: retval |= ((input_port_read(space->machine, "DSW1") & 1) << 4) | ((input_port_read(space->machine, "DSW1") & 0x10) << 1)
+								| ((input_port_read(space->machine, "DSW2") & 1) << 6) | ((input_port_read(space->machine, "DSW2") & 0x10) <<3); break;
+		case 0x10: retval |= ((input_port_read(space->machine, "DSW1") & 2) << 3) | ((input_port_read(space->machine, "DSW1") & 0x20)   )
+								| ((input_port_read(space->machine, "DSW2") & 2) << 5) | ((input_port_read(space->machine, "DSW2") & 0x20) <<2); break;
+		case 0x20: retval |= ((input_port_read(space->machine, "DSW1") & 4) << 2) | ((input_port_read(space->machine, "DSW1") & 0x40) >> 1)
+								| ((input_port_read(space->machine, "DSW2") & 4) << 4) | ((input_port_read(space->machine, "DSW2") & 0x40) <<1); break;
+		case 0x30: retval |= ((input_port_read(space->machine, "DSW1") & 8) << 1) | ((input_port_read(space->machine, "DSW1") & 0x80) >> 2)
+								| ((input_port_read(space->machine, "DSW2") & 8) << 3) | ((input_port_read(space->machine, "DSW2") & 0x80)    ); break;
 	}
 	return retval;
 }
@@ -66,7 +67,7 @@ static WRITE8_HANDLER(mux_select_w)
 
 WRITE8_HANDLER(st0016_rom_bank_w)
 {
-	memory_set_bankptr( 1, memory_region(machine, "main") + (data* 0x4000) + 0x10000 );
+	memory_set_bankptr(space->machine,  1, memory_region(space->machine, "main") + (data* 0x4000) + 0x10000 );
 	st0016_rom_bank=data;
 }
 
@@ -110,7 +111,7 @@ static WRITE32_HANDLER(latch32_w)
 	if(!offset)
 		latches[2]|=1;
 	COMBINE_DATA(&latches[offset]);
-	timer_call_after_resynch(NULL, 0, NULL);
+	timer_call_after_resynch(space->machine, NULL, 0, NULL);
 }
 
 static READ8_HANDLER(latch8_r)
@@ -125,7 +126,7 @@ static WRITE8_HANDLER(latch8_w)
 	if(!offset)
 		latches[2]|=2;
 	latches[offset]=data;
-	timer_call_after_resynch(NULL, 0, NULL);
+	timer_call_after_resynch(space->machine, NULL, 0, NULL);
 }
 
 static ADDRESS_MAP_START( v810_mem,ADDRESS_SPACE_PROGRAM, 32 )
@@ -397,11 +398,11 @@ GFXDECODE_END
 
 static INTERRUPT_GEN(st0016_int)
 {
-	if(!cpu_getiloops())
-		cpunum_set_input_line(machine, 0,0,HOLD_LINE);
+	if(!cpu_getiloops(device))
+		cpu_set_input_line(device,0,HOLD_LINE);
 	else
-		if(activecpu_get_reg(Z80_IFF1)) /* dirty hack ... */
-			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE );
+		if(cpu_get_reg(device, Z80_IFF1)) /* dirty hack ... */
+			cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE );
 }
 
 extern UINT8 *st0016_charram;
@@ -452,7 +453,7 @@ static MACHINE_DRIVER_START( mayjinsn )
 	MDRV_CPU_IO_MAP(st0016_m2_io,0)
 	MDRV_CPU_ADD("sub", V810, 10000000)//25 Mhz ?
 	MDRV_CPU_PROGRAM_MAP(v810_mem,0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 MACHINE_DRIVER_END
 
 /*************************************
@@ -645,13 +646,13 @@ static DRIVER_INIT(nratechu)
 static DRIVER_INIT(mayjinsn)
 {
 	st0016_game=4|0x80;
-	memory_set_bankptr(2, memory_region(machine, "user1"));
+	memory_set_bankptr(machine, 2, memory_region(machine, "user1"));
 }
 
 static DRIVER_INIT(mayjisn2)
 {
 	st0016_game=4;
-	memory_set_bankptr(2, memory_region(machine, "user1"));
+	memory_set_bankptr(machine, 2, memory_region(machine, "user1"));
 }
 
 /*************************************

@@ -219,12 +219,12 @@ Hang Pilot (uses an unknown but similar video board)                12W         
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/eeprom.h"
 #include "cpu/powerpc/ppc.h"
 #include "cpu/sharc/sharc.h"
 #include "machine/konppc.h"
 #include "machine/konamiic.h"
-#include "machine/adc083x.h"
 #include "sound/rf5c400.h"
 #include "video/voodoo.h"
 #include "video/gticlub.h"
@@ -252,17 +252,17 @@ static WRITE32_HANDLER( paletteram32_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
 	data = paletteram32[offset];
-	palette_set_color_rgb(machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(space->machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 static void voodoo_vblank_0(const device_config *device, int param)
 {
-	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
+	cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
 static void voodoo_vblank_1(const device_config *device, int param)
 {
-	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
+	cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_IRQ1, ASSERT_LINE);
 }
 
 static VIDEO_START( hangplt )
@@ -274,7 +274,7 @@ static VIDEO_START( hangplt )
 
 static VIDEO_UPDATE( hangplt )
 {
-	fillbitmap(bitmap, screen->machine->pens[0], cliprect);
+	bitmap_fill(bitmap, cliprect, screen->machine->pens[0]);
 
 	if (strcmp(screen->tag, "left") == 0)
 	{
@@ -332,7 +332,7 @@ static void eeprom_handler(running_machine *machine, mame_file *file, int read_o
 	}
 	else
 	{
-		eeprom_init(&eeprom_intf);
+		eeprom_init(machine, &eeprom_intf);
 		if (file)
 		{
 			eeprom_load(file);
@@ -470,10 +470,10 @@ static READ8_HANDLER( sysreg_r )
 		case 0:
 		case 1:
 		case 3:
-			return input_port_read(machine, portnames[offset]);
+			return input_port_read(space->machine, portnames[offset]);
 
 		case 2:
-			return adc1038_sars_r(machine) << 7;
+			return adc1038_sars_r(space->machine) << 7;
 
 		case 4:
 		{
@@ -515,13 +515,13 @@ static WRITE8_HANDLER( sysreg_w )
 
 		case 4:
 			if (data & 0x80)	/* CG Board 1 IRQ Ack */
-				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
+				cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ1, CLEAR_LINE);
 
 			if (data & 0x40)	/* CG Board 0 IRQ Ack */
-				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
+				cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ0, CLEAR_LINE);
 
 			adc1038_di_w((data >> 0) & 1);
-			adc1038_clk_w(machine, (data >> 1) & 1);
+			adc1038_clk_w(space->machine, (data >> 1) & 1);
 
 			set_cgboard_id((data >> 4) & 0x3);
 			break;
@@ -539,14 +539,14 @@ READ8_HANDLER( K056230_r )
 		}
 	}
 
-//  mame_printf_debug("K056230_r: %d at %08X\n", offset, activecpu_get_pc());
+//  mame_printf_debug("K056230_r: %d at %08X\n", offset, cpu_get_pc(space->cpu));
 
 	return 0;
 }
 
 static TIMER_CALLBACK( network_irq_clear )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ2, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], INPUT_LINE_IRQ2, CLEAR_LINE);
 }
 
 WRITE8_HANDLER( K056230_w )
@@ -562,14 +562,14 @@ WRITE8_HANDLER( K056230_w )
 			if (data & 0x20)
 			{
 				// Thunder Hurricane breaks otherwise...
-				if (mame_stricmp(machine->gamedrv->name, "thunderh") != 0)
+				if (mame_stricmp(space->machine->gamedrv->name, "thunderh") != 0)
 				{
-					cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ2, ASSERT_LINE);
-					timer_set(ATTOTIME_IN_USEC(10), NULL, 0, network_irq_clear);
+					cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ2, ASSERT_LINE);
+					timer_set(space->machine, ATTOTIME_IN_USEC(10), NULL, 0, network_irq_clear);
 				}
 			}
 //          else
-//              cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ2, CLEAR_LINE);
+//              cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ2, CLEAR_LINE);
 			break;
 		}
 		case 2:		// Sub ID register
@@ -577,19 +577,19 @@ WRITE8_HANDLER( K056230_w )
 			break;
 		}
 	}
-//  mame_printf_debug("K056230_w: %d, %02X at %08X\n", offset, data, activecpu_get_pc());
+//  mame_printf_debug("K056230_w: %d, %02X at %08X\n", offset, data, cpu_get_pc(space->cpu));
 }
 
 UINT32 *lanc_ram;
 READ32_HANDLER( lanc_ram_r )
 {
-//  mame_printf_debug("LANC_RAM_r: %08X, %08X at %08X\n", offset, mem_mask, activecpu_get_pc());
+//  mame_printf_debug("LANC_RAM_r: %08X, %08X at %08X\n", offset, mem_mask, cpu_get_pc(space->cpu));
 	return lanc_ram[offset & 0x7ff];
 }
 
 WRITE32_HANDLER( lanc_ram_w )
 {
-//  mame_printf_debug("LANC_RAM_w: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, activecpu_get_pc());
+//  mame_printf_debug("LANC_RAM_w: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, cpu_get_pc(space->cpu));
 	COMBINE_DATA(lanc_ram + (offset & 0x7ff));
 }
 
@@ -598,14 +598,14 @@ WRITE32_HANDLER( lanc_ram_w )
 static MACHINE_START( gticlub )
 {
 	/* set conservative DRC options */
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_END, 0x000fffff);
-	cpunum_set_info_ptr(0, CPUINFO_PTR_PPC_FASTRAM_BASE, work_ram);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_END, 0x000fffff);
+	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_PPC_FASTRAM_BASE, work_ram);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
 }
 
 static ADDRESS_MAP_START( gticlub_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -896,7 +896,7 @@ INPUT_PORTS_END
 */
 static INTERRUPT_GEN( gticlub_vblank )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
+	cpu_set_input_line(device, INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
 
@@ -907,7 +907,7 @@ static const sharc_config sharc_cfg =
 
 static MACHINE_RESET( gticlub )
 {
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static MACHINE_DRIVER_START( gticlub )
@@ -924,7 +924,7 @@ static MACHINE_DRIVER_START( gticlub )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_NVRAM_HANDLER(gticlub)
 	MDRV_MACHINE_START(gticlub)
@@ -951,8 +951,8 @@ MACHINE_DRIVER_END
 
 static MACHINE_RESET( hangplt )
 {
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
-	cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[3], INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static MACHINE_DRIVER_START( hangplt )
@@ -972,18 +972,20 @@ static MACHINE_DRIVER_START( hangplt )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(hangplt_sharc1_map, 0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_NVRAM_HANDLER(gticlub)
 	MDRV_MACHINE_START(gticlub)
 	MDRV_MACHINE_RESET(hangplt)
 
 	MDRV_3DFX_VOODOO_1_ADD("voodoo0", STD_VOODOO_1_CLOCK, 2, "left")
+	MDRV_3DFX_VOODOO_CPU("dsp1")
 	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 2)
 	MDRV_3DFX_VOODOO_TMU_MEMORY(1, 2)
 	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_0)
 
 	MDRV_3DFX_VOODOO_1_ADD("voodoo1", STD_VOODOO_1_CLOCK, 2, "right")
+	MDRV_3DFX_VOODOO_CPU("dsp2")
 	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 2)
 	MDRV_3DFX_VOODOO_TMU_MEMORY(1, 2)
 	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_1)
@@ -1153,42 +1155,42 @@ ROM_END
 
 static TIMER_CALLBACK( irq_off )
 {
-	cpunum_set_input_line(machine, 1, param, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], param, CLEAR_LINE);
 }
 
 static void sound_irq_callback(running_machine *machine, int irq)
 {
 	int line = (irq == 0) ? INPUT_LINE_IRQ1 : INPUT_LINE_IRQ2;
-	cpunum_set_input_line(machine, 1, line, ASSERT_LINE);
-	timer_set(ATTOTIME_IN_USEC(1), NULL, line, irq_off);
+	cpu_set_input_line(machine->cpu[1], line, ASSERT_LINE);
+	timer_set(machine, ATTOTIME_IN_USEC(1), NULL, line, irq_off);
 }
 
 static DRIVER_INIT(gticlub)
 {
-	init_konami_cgboard(1, CGBOARD_TYPE_GTICLUB);
+	init_konami_cgboard(machine, 1, CGBOARD_TYPE_GTICLUB);
 
 	sharc_dataram_0 = auto_malloc(0x100000);
 	gticlub_led_reg0 = gticlub_led_reg1 = 0x7f;
 
 	K001005_preprocess_texture_data(memory_region(machine, "gfx1"), memory_region_length(machine, "gfx1"), 1);
 
-	K056800_init(sound_irq_callback);
+	K056800_init(machine, sound_irq_callback);
 
 	adc1038_init(machine);
 }
 
 static DRIVER_INIT(hangplt)
 {
-	init_konami_cgboard(2, CGBOARD_TYPE_HANGPLT);
-	set_cgboard_texture_bank(0, 5, memory_region(machine, "user5"));
-	set_cgboard_texture_bank(1, 6, memory_region(machine, "user5"));
+	init_konami_cgboard(machine, 2, CGBOARD_TYPE_HANGPLT);
+	set_cgboard_texture_bank(machine, 0, 5, memory_region(machine, "user5"));
+	set_cgboard_texture_bank(machine, 1, 6, memory_region(machine, "user5"));
 
 	sharc_dataram_0 = auto_malloc(0x100000);
 	sharc_dataram_1 = auto_malloc(0x100000);
 	gticlub_led_reg0 = gticlub_led_reg1 = 0x7f;
 
-	K056800_init(sound_irq_callback);
-	K033906_init();
+	K056800_init(machine, sound_irq_callback);
+	K033906_init(machine);
 
 	adc1038_init(machine);
 }

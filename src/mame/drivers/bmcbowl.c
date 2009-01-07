@@ -132,7 +132,7 @@ static VIDEO_UPDATE( bmcbowl )
 */
 
 	int x,y,z,pixdat;
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	z=0;
 	for (y=0;y<230;y++)
@@ -175,15 +175,15 @@ static VIDEO_UPDATE( bmcbowl )
 
 static READ16_HANDLER( bmc_random_read )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 static READ16_HANDLER( bmc_protection_r )
 {
-	switch(activecpu_get_previouspc())
+	switch(cpu_get_previouspc(space->cpu))
 	{
 		case 0xca68:
-			switch(activecpu_get_reg(M68K_D2))
+			switch(cpu_get_reg(space->cpu, M68K_D2))
 			{
 				case 0: 		 return 0x37<<8;
 				case 0x1013: return 0;
@@ -191,8 +191,8 @@ static READ16_HANDLER( bmc_protection_r )
 			}
 			break;
 	}
-	logerror("Protection read @ %X\n",activecpu_get_previouspc());
-	return mame_rand(machine);
+	logerror("Protection read @ %X\n",cpu_get_previouspc(space->cpu));
+	return mame_rand(space->machine);
 }
 
 static WRITE16_HANDLER( bmc_RAMDAC_offset_w )
@@ -203,7 +203,7 @@ static WRITE16_HANDLER( bmc_RAMDAC_offset_w )
 static WRITE16_HANDLER( bmc_RAMDAC_color_w )
 {
 		colorram[clr_offset]=data;
-		palette_set_color_rgb(machine,clr_offset/3,pal6bit(colorram[(clr_offset/3)*3]),pal6bit(colorram[(clr_offset/3)*3+1]),pal6bit(colorram[(clr_offset/3)*3+2]));
+		palette_set_color_rgb(space->machine,clr_offset/3,pal6bit(colorram[(clr_offset/3)*3]),pal6bit(colorram[(clr_offset/3)*3+1]),pal6bit(colorram[(clr_offset/3)*3+2]));
 		clr_offset=(clr_offset+1)%768;
 }
 
@@ -213,39 +213,41 @@ static WRITE16_HANDLER( scroll_w )
 }
 
 
-static READ16_HANDLER(via_r)
+static READ16_HANDLER(bmcbowl_via_r)
 {
-	return via_0_r(machine,offset);
+	const device_config *via_0 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
+	return via_r(via_0, offset);
 }
 
-static WRITE16_HANDLER(via_w)
+static WRITE16_HANDLER(bmcbowl_via_w)
 {
-	via_0_w(machine,offset,data);
+	const device_config *via_0 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
+	via_w(via_0, offset, data);
 }
 
-static READ8_HANDLER(via_b_in)
+static READ8_DEVICE_HANDLER(via_b_in)
 {
-	return input_port_read(machine, "IN3");
+	return input_port_read(device->machine, "IN3");
 }
 
 
-static WRITE8_HANDLER(via_a_out)
+static WRITE8_DEVICE_HANDLER(via_a_out)
 {
 	// related to video hw ? BG scroll ?
 }
 
-static WRITE8_HANDLER(via_b_out)
+static WRITE8_DEVICE_HANDLER(via_b_out)
 {
 	//used
 }
 
-static WRITE8_HANDLER(via_ca2_out)
+static WRITE8_DEVICE_HANDLER(via_ca2_out)
 {
 	//used
 }
 
 
-static void via_irq(running_machine *machine, int state)
+static void via_irq(const device_config *device, int state)
 {
 	//used
 }
@@ -333,7 +335,7 @@ static ADDRESS_MAP_START( bmcbowl_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x091000, 0x091001) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x091800, 0x091801) AM_WRITE(scroll_w)
 
-	AM_RANGE(0x092000, 0x09201f) AM_READWRITE(via_r,via_w)
+	AM_RANGE(0x092000, 0x09201f) AM_READWRITE(bmcbowl_via_r, bmcbowl_via_w)
 
 	AM_RANGE(0x093000, 0x093003) AM_WRITE(SMH_NOP)  // related to music
 	AM_RANGE(0x092800, 0x092801) AM_WRITE(ay8910_write_port_0_msb_w		)
@@ -446,10 +448,10 @@ static READ8_HANDLER(dips1_r)
 {
 	switch(bmc_input)
 	{
-			case 0x00:	return  input_port_read(machine, "IN1");
-			case 0x40:	return  input_port_read(machine, "IN2");
+			case 0x00:	return  input_port_read(space->machine, "IN1");
+			case 0x40:	return  input_port_read(space->machine, "IN2");
 	}
-	logerror("unknown input - %X (PC=%X)\n",bmc_input,activecpu_get_previouspc());
+	logerror("unknown input - %X (PC=%X)\n",bmc_input,cpu_get_previouspc(space->cpu));
 	return 0xff;
 }
 
@@ -471,7 +473,7 @@ static const ay8910_interface ay8910_config =
 };
 
 
-static const struct via6522_interface via_interface =
+static const via6522_interface via_interface =
 {
 	/*inputs : A/B         */ 0, via_b_in,
 	/*inputs : CA/B1,CA/B2 */ 0, 0, 0, 0,
@@ -482,15 +484,14 @@ static const struct via6522_interface via_interface =
 
 static MACHINE_RESET( bmcbowl )
 {
-	via_reset();
 }
 
 static INTERRUPT_GEN( bmc_interrupt )
 {
-	if (cpu_getiloops())
-		cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+	if (cpu_getiloops(device))
+		cpu_set_input_line(device, 4, HOLD_LINE);
 	else
-		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
+		cpu_set_input_line(device, 2, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( bmcbowl )
@@ -525,6 +526,9 @@ static MACHINE_DRIVER_START( bmcbowl )
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
+
+	/* via */
+	MDRV_VIA6522_ADD("via6522_0", 1000000, via_interface)
 MACHINE_DRIVER_END
 
 ROM_START( bmcbowl )
@@ -547,8 +551,6 @@ ROM_END
 
 static DRIVER_INIT(bmcbowl)
 {
-	via_config(0, &via_interface);
-	via_set_clock(0, 1000000);//1 MHz ?
 	colorram=auto_malloc(768);
 }
 

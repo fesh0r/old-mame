@@ -362,6 +362,7 @@
 #define MASTER_CLOCK	XTAL_16MHz
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "sound/okim6295.h"
 #include "snookr10.lh"
 
@@ -375,8 +376,8 @@ VIDEO_START( snookr10 );
 VIDEO_START( apple10 );
 VIDEO_UPDATE( snookr10 );
 
-int outportl, outporth;
-int bit0, bit1, bit2, bit3, bit4, bit5;
+static int outportl, outporth;
+static int bit0, bit1, bit2, bit3, bit4, bit5;
 
 /**********************
 * Read/Write Handlers *
@@ -399,7 +400,7 @@ static READ8_HANDLER( dsw_port_1_r )
     BIT 7 = Complement of DS1, bit 7
    ---------------------------------
 */
-return input_port_read(machine, "SW1");
+return input_port_read(space->machine, "SW1");
 }
 
 

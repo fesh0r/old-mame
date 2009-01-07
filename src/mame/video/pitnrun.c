@@ -178,8 +178,8 @@ PALETTE_INIT (pitnrun)
 
 VIDEO_START(pitnrun)
 {
-	fg = tilemap_create( get_tile_info1,tilemap_scan_rows,8,8,32,32 );
-	bg = tilemap_create( get_tile_info2,tilemap_scan_rows,8,8,32*4,32 );
+	fg = tilemap_create( machine, get_tile_info1,tilemap_scan_rows,8,8,32,32 );
+	bg = tilemap_create( machine, get_tile_info2,tilemap_scan_rows,8,8,32*4,32 );
 	tilemap_set_transparent_pen( fg, 0 );
 	tmp_bitmap[0] = auto_bitmap_alloc(128,128,video_screen_get_format(machine->primary_screen));
 	tmp_bitmap[1] = auto_bitmap_alloc(128,128,video_screen_get_format(machine->primary_screen));
@@ -202,12 +202,12 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		flipy = (spriteram[offs+1]&0x80)>>7;
 		flipx = (spriteram[offs+1]&0x40)>>6;
 
-		if (flip_screen_x_get())
+		if (flip_screen_x_get(machine))
 		{
 			sx = 256 - sx;
 			flipx = !flipx;
 		}
-		if (flip_screen_y_get())
+		if (flip_screen_y_get(machine))
 		{
 			sy = 240 - sy;
 			flipy = !flipy;
@@ -248,7 +248,7 @@ VIDEO_UPDATE( pitnrun )
 	}
 #endif
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	if(!(pitnrun_ha&4))
 		tilemap_draw(bitmap,cliprect,bg, 0,0);
@@ -257,10 +257,10 @@ VIDEO_UPDATE( pitnrun )
 		dx=128-pitnrun_h_heed+((pitnrun_ha&8)<<5)+3;
 		dy=128-pitnrun_v_heed+((pitnrun_ha&0x10)<<4);
 
-		if (flip_screen_x_get())
+		if (flip_screen_x_get(screen->machine))
 			dx=128-dx+16;
 
-		if (flip_screen_y_get())
+		if (flip_screen_y_get(screen->machine))
 			dy=128-dy;
 
 		myclip.min_x=dx;
@@ -281,7 +281,7 @@ VIDEO_UPDATE( pitnrun )
 	draw_sprites(screen->machine,bitmap,&myclip);
 
 	if(pitnrun_ha&4)
-		copybitmap_trans(bitmap,tmp_bitmap[pitnrun_ha&3],flip_screen_x_get(),flip_screen_y_get(),dx,dy,&myclip, 1);
+		copybitmap_trans(bitmap,tmp_bitmap[pitnrun_ha&3],flip_screen_x_get(screen->machine),flip_screen_y_get(screen->machine),dx,dy,&myclip, 1);
 	tilemap_draw(bitmap,cliprect,fg, 0,0);
 	return 0;
 }

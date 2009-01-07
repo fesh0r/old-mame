@@ -35,6 +35,8 @@ enum
 	PIC16C5x_PSCL
 };
 
+#define PIC16C5x_T0		0x10
+
 
 /****************************************************************************
  *  Function to configure the CONFIG register. This is actually hard-wired
@@ -42,94 +44,42 @@ enum
  *  the value if known (available in HEX dumps of the ROM).
  */
 
-void pic16c5x_config(int data);
-
-
-/****************************************************************************
- *  Read the state of the T0 Clock input signal
- */
-
-#define PIC16C5x_T0		0x10
-#define PIC16C5x_T0_In (io_read_byte_8le(PIC16C5x_T0))
-
-
-/****************************************************************************
- *  Input a word from given I/O port
- */
-
-#define PIC16C5x_In(Port) ((UINT8)io_read_byte_8le((Port)))
-
-
-/****************************************************************************
- *  Output a word to given I/O port
- */
-
-#define PIC16C5x_Out(Port,Value) (io_write_byte_8le((Port),Value))
-
-
-
-/****************************************************************************
- *  Read a word from given RAM memory location
- */
-
-#define PIC16C5x_RAM_RDMEM(A) ((UINT8)data_read_byte_8le(A))
-
-
-/****************************************************************************
- *  Write a word to given RAM memory location
- */
-
-#define PIC16C5x_RAM_WRMEM(A,V) (data_write_byte_8le(A,V))
-
-
-
-/****************************************************************************
- *  PIC16C5X_RDOP() is identical to PIC16C5X_RDMEM() except it is used for
- *  reading opcodes. In case of system with memory mapped I/O, this function
- *  can be used to greatly speed up emulation
- */
-
-#define PIC16C5x_RDOP(A) (cpu_readop16((A)<<1))
-
-
-/****************************************************************************
- *  PIC16C5X_RDOP_ARG() is identical to PIC16C5X_RDOP() except it is used
- *  for reading opcode arguments. This difference can be used to support systems
- *  that use different encoding mechanisms for opcodes and opcode arguments
- */
-
-#define PIC16C5x_RDOP_ARG(A) (cpu_readop_arg16((A)<<1))
-
+void pic16c5x_set_config(const device_config *cpu, int data);
 
 
 
 #if (HAS_PIC16C54)
-void pic16C54_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( pic16c54 );
+#define CPU_PIC16C54 CPU_GET_INFO_NAME( pic16c54 )
 #endif
 
 
 #if (HAS_PIC16C55)
-void pic16C55_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( pic16c55 );
+#define CPU_PIC16C55 CPU_GET_INFO_NAME( pic16c55 )
 #endif
 
 
 #if (HAS_PIC16C56)
-void pic16C56_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( pic16c56 );
+#define CPU_PIC16C56 CPU_GET_INFO_NAME( pic16c56 )
 #endif
 
 
 #if (HAS_PIC16C57)
-void pic16C57_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( pic16c57 );
+#define CPU_PIC16C57 CPU_GET_INFO_NAME( pic16c57 )
 #endif
 
 
 #if (HAS_PIC16C58)
-void pic16C58_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( pic16c58 );
+#define CPU_PIC16C58 CPU_GET_INFO_NAME( pic16c58 )
 #endif
 
 
 #if (HAS_PIC16C54) || (HAS_PIC16C55) || (HAS_PIC16C56) || (HAS_PIC16C57) || (HAS_PIC16C58)
-offs_t pic16C5x_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+CPU_DISASSEMBLE( pic16c5x );
 #endif
 
 

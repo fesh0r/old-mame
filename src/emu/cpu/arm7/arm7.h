@@ -38,6 +38,7 @@
 /****************************************************************************************************
  *  PUBLIC FUNCTIONS
  ***************************************************************************************************/
-extern void arm7_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( arm7 );
+#define CPU_ARM7 CPU_GET_INFO_NAME( arm7 )
 
 #endif /* __ARM7_H__ */

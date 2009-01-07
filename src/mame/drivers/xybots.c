@@ -18,6 +18,7 @@
 
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/atarigen.h"
 #include "audio/atarijsa.h"
 #include "xybots.h"
@@ -32,8 +33,8 @@
 
 static void update_interrupts(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 1, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 2, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 1, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 2, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -57,7 +58,7 @@ static READ16_HANDLER( special_port1_r )
 {
 	static int h256 = 0x0400;
 
-	int result = input_port_read(machine, "FFE200");
+	int result = input_port_read(space->machine, "FFE200");
 
 	if (atarigen_cpu_to_sound_ready) result ^= 0x0200;
 	result ^= h256 ^= 0x0400;
@@ -383,7 +384,7 @@ ROM_END
 static DRIVER_INIT( xybots )
 {
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(machine, 0, 0x008000, 0, 107);
+	atarigen_slapstic_init(machine->cpu[0], 0x008000, 0, 107);
 	atarijsa_init(machine, "FFE200", 0x0100);
 }
 

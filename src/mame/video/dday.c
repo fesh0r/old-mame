@@ -42,11 +42,11 @@ static TIMER_CALLBACK( countdown_timer_callback )
 		timer_value = 99;
 }
 
-static void start_countdown_timer(void)
+static void start_countdown_timer(running_machine *machine)
 {
 	timer_value = 0;
 
-	timer_pulse(ATTOTIME_IN_SEC(1), NULL, 0, countdown_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_SEC(1), NULL, 0, countdown_timer_callback);
 }
 
 
@@ -216,10 +216,10 @@ static TILE_GET_INFO( get_sl_tile_info )
 
 VIDEO_START( dday )
 {
-	bg_tilemap   = tilemap_create(get_bg_tile_info,  tilemap_scan_rows,8,8,32,32);
-	fg_tilemap   = tilemap_create(get_fg_tile_info,  tilemap_scan_rows,8,8,32,32);
-	text_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_rows,8,8,32,32);
-	sl_tilemap   = tilemap_create(get_sl_tile_info,  tilemap_scan_rows,8,8,32,32);
+	bg_tilemap   = tilemap_create(machine, get_bg_tile_info,  tilemap_scan_rows,8,8,32,32);
+	fg_tilemap   = tilemap_create(machine, get_fg_tile_info,  tilemap_scan_rows,8,8,32,32);
+	text_tilemap = tilemap_create(machine, get_text_tile_info,tilemap_scan_rows,8,8,32,32);
+	sl_tilemap   = tilemap_create(machine, get_sl_tile_info,  tilemap_scan_rows,8,8,32,32);
 
 	main_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
@@ -233,7 +233,7 @@ VIDEO_START( dday )
 	sl_enable = 0;
 	sl_image = 0;
 
-	start_countdown_timer();
+	start_countdown_timer(machine);
 }
 
 WRITE8_HANDLER( dday_bgvideoram_w )

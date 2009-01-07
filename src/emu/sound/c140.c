@@ -45,7 +45,6 @@ Unmapped registers:
 
 #include <math.h>
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "c140.h"
 
@@ -260,7 +259,7 @@ INLINE int limit(INT32 in)
 	return in;
 }
 
-static void update_stereo(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( update_stereo )
 {
 	struct c140_info *info = param;
 	int		i,j;
@@ -278,11 +277,11 @@ static void update_stereo(void *param, stream_sample_t **inputs, stream_sample_t
 
 	INT16	*lmix, *rmix;
 
-	if(length>info->sample_rate) length=info->sample_rate;
+	if(samples>info->sample_rate) samples=info->sample_rate;
 
 	/* zap the contents of the mixer buffer */
-	memset(info->mixer_buffer_left, 0, length * sizeof(INT16));
-	memset(info->mixer_buffer_right, 0, length * sizeof(INT16));
+	memset(info->mixer_buffer_left, 0, samples * sizeof(INT16));
+	memset(info->mixer_buffer_right, 0, samples * sizeof(INT16));
 
 	/* get the number of voices to update */
 	voicecnt = (info->banking_type == C140_TYPE_ASIC219) ? 16 : 24;
@@ -307,7 +306,7 @@ static void update_stereo(void *param, stream_sample_t **inputs, stream_sample_t
 			lvol=(vreg->volume_left*32)/MAX_VOICE; //32ch -> 24ch
 			rvol=(vreg->volume_right*32)/MAX_VOICE;
 
-			/* Set mixer buffer base pointers */
+			/* Set mixer outputs base pointers */
 			lmix = info->mixer_buffer_left;
 			rmix = info->mixer_buffer_right;
 
@@ -331,7 +330,7 @@ static void update_stereo(void *param, stream_sample_t **inputs, stream_sample_t
 			{
 				//compressed PCM (maybe correct...)
 				/* Loop for enough to fill sample buffer as requested */
-				for(j=0;j<length;j++)
+				for(j=0;j<samples;j++)
 				{
 					offset += delta;
 					cnt = (offset>>16)&0x7fff;
@@ -378,7 +377,7 @@ static void update_stereo(void *param, stream_sample_t **inputs, stream_sample_t
 			else
 			{
 				/* linear 8bit signed PCM */
-				for(j=0;j<length;j++)
+				for(j=0;j<samples;j++)
 				{
 					offset += delta;
 					cnt = (offset>>16)&0x7fff;
@@ -445,9 +444,9 @@ static void update_stereo(void *param, stream_sample_t **inputs, stream_sample_t
 	lmix = info->mixer_buffer_left;
 	rmix = info->mixer_buffer_right;
 	{
-		stream_sample_t *dest1 = buffer[0];
-		stream_sample_t *dest2 = buffer[1];
-		for (i = 0; i < length; i++)
+		stream_sample_t *dest1 = outputs[0];
+		stream_sample_t *dest2 = outputs[1];
+		for (i = 0; i < samples; i++)
 		{
 			*dest1++ = limit(8*(*lmix++));
 			*dest2++ = limit(8*(*rmix++));
@@ -455,7 +454,7 @@ static void update_stereo(void *param, stream_sample_t **inputs, stream_sample_t
 	}
 }
 
-static void *c140_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( c140 )
 {
 	const c140_interface *intf = config;
 	struct c140_info *info;
@@ -467,9 +466,9 @@ static void *c140_start(const char *tag, int sndindex, int clock, const void *co
 
 	info->banking_type = intf->banking_type;
 
-	info->stream = stream_create(0,2,info->sample_rate,info,update_stereo);
+	info->stream = stream_create(device,0,2,info->sample_rate,info,update_stereo);
 
-	info->pRom=memory_region(Machine, tag);
+	info->pRom=device->region;
 
 	/* make decompress pcm table */		//2000.06.26 CAB
 	{
@@ -501,7 +500,7 @@ static void *c140_start(const char *tag, int sndindex, int clock, const void *co
  * Generic get_info
  **************************************************************************/
 
-static void c140_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( c140 )
 {
 	switch (state)
 	{
@@ -510,24 +509,24 @@ static void c140_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void c140_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( c140 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = c140_set_info;			break;
-		case SNDINFO_PTR_START:							info->start = c140_start;				break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( c140 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( c140 );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */								break;
+		case SNDINFO_PTR_RESET:							/* nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "C140";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Namco PCM";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "C140");					break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Namco PCM");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");						break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);					break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

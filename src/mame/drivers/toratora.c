@@ -18,6 +18,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
 #include "machine/6821pia.h"
 #include "sound/sn76477.h"
 
@@ -37,8 +38,8 @@ static UINT8 clear_tv;
 
 static READ8_HANDLER( port_b_u3_r )
 {
-	logerror("%04x: read DIP\n",activecpu_get_pc());
-	return input_port_read(machine, "DSW");
+	logerror("%04x: read DIP\n",cpu_get_pc(space->cpu));
+	return input_port_read(space->machine, "DSW");
 }
 
 
@@ -121,7 +122,7 @@ static void main_cpu_irq(running_machine *machine, int state)
 	int combined_state = pia_get_irq_a(0) | pia_get_irq_b(0);
 
 logerror("GEN IRQ: %x\n", combined_state);
-	cpunum_set_input_line(machine, 0, 0, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -139,16 +140,16 @@ static UINT8 last = 0;
 	if (timer & 0x100) popmessage("watchdog!");
 
 
-	if (last != (input_port_read(machine, "INPUT") & 0x0f))
+	if (last != (input_port_read(device->machine, "INPUT") & 0x0f))
 	{
-		last = input_port_read(machine, "INPUT") & 0x0f;
-		cpunum_set_input_line(machine, 0, 0, PULSE_LINE);
+		last = input_port_read(device->machine, "INPUT") & 0x0f;
+		generic_pulse_irq_line(device, 0);
 	}
-	pia_set_input_a(0, input_port_read(machine, "INPUT") & 0x0f, 0);
+	pia_set_input_a(0, input_port_read(device->machine, "INPUT") & 0x0f, 0);
 
-	pia_set_input_ca1(0, input_port_read(machine, "INPUT") & 0x10);
+	pia_set_input_ca1(0, input_port_read(device->machine, "INPUT") & 0x10);
 
-	pia_set_input_ca2(0, input_port_read(machine, "INPUT") & 0x20);
+	pia_set_input_ca2(0, input_port_read(device->machine, "INPUT") & 0x20);
 }
 
 static READ8_HANDLER( timer_r )
@@ -303,9 +304,9 @@ static const pia6821_interface pia_u3_intf =
 
 static MACHINE_START( toratora )
 {
-	pia_config(0, &pia_u1_intf);
-	pia_config(1, &pia_u3_intf);
-	pia_config(2, &pia_u2_intf);
+	pia_config(machine, 0, &pia_u1_intf);
+	pia_config(machine, 1, &pia_u3_intf);
+	pia_config(machine, 2, &pia_u2_intf);
 }
 
 

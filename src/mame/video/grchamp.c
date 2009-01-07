@@ -54,21 +54,21 @@ PALETTE_INIT( grchamp )
 
 WRITE8_HANDLER( grchamp_left_w )
 {
-	grchamp_state *state = machine->driver_data;
+	grchamp_state *state = space->machine->driver_data;
 	state->leftram[offset] = data;
 	tilemap_mark_tile_dirty(state->left_tilemap, offset);
 }
 
 WRITE8_HANDLER( grchamp_center_w )
 {
-	grchamp_state *state = machine->driver_data;
+	grchamp_state *state = space->machine->driver_data;
 	state->centerram[offset] = data;
 	tilemap_mark_tile_dirty(state->center_tilemap, offset);
 }
 
 WRITE8_HANDLER( grchamp_right_w )
 {
-	grchamp_state *state = machine->driver_data;
+	grchamp_state *state = space->machine->driver_data;
 	state->rightram[offset] = data;
 	tilemap_mark_tile_dirty(state->right_tilemap, offset);
 }
@@ -110,10 +110,10 @@ VIDEO_START( grchamp )
 	state->work_bitmap = auto_bitmap_alloc(32,32,video_screen_get_format(machine->primary_screen));
 
 	/* allocate tilemaps for each of the three sections */
-	state->text_tilemap = tilemap_create(get_text_tile_info, tilemap_scan_rows,  8,8, 32,32);
-	state->left_tilemap = tilemap_create(get_left_tile_info, get_memory_offset,  8,8, 64,32);
-	state->right_tilemap = tilemap_create(get_right_tile_info, get_memory_offset,  8,8, 64,32);
-	state->center_tilemap = tilemap_create(get_center_tile_info, get_memory_offset,  8,8, 64,32);
+	state->text_tilemap = tilemap_create(machine, get_text_tile_info, tilemap_scan_rows,  8,8, 32,32);
+	state->left_tilemap = tilemap_create(machine, get_left_tile_info, get_memory_offset,  8,8, 64,32);
+	state->right_tilemap = tilemap_create(machine, get_right_tile_info, get_memory_offset,  8,8, 64,32);
+	state->center_tilemap = tilemap_create(machine, get_center_tile_info, get_memory_offset,  8,8, 64,32);
 }
 
 #if 0

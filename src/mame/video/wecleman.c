@@ -879,9 +879,9 @@ WRITE16_HANDLER( hotchase_paletteram16_SBGRBBBBGGGGRRRR_word_w )
 	g = ((newword >> 3) & 0x1E ) | ((newword >> 13) & 0x01);
 	b = ((newword >> 7) & 0x1E ) | ((newword >> 14) & 0x01);
 
-	palette_set_color_rgb(machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
+	palette_set_color_rgb(space->machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
 	r>>=1; g>>=1; b>>=1;
-	palette_set_color_rgb(machine, offset+0x800, pal5bit(r)/2, pal5bit(g)/2, pal5bit(b)/2);
+	palette_set_color_rgb(space->machine, offset+0x800, pal5bit(r)/2, pal5bit(g)/2, pal5bit(b)/2);
 }
 
 WRITE16_HANDLER( wecleman_paletteram16_SSSSBBBBGGGGRRRR_word_w )
@@ -890,7 +890,7 @@ WRITE16_HANDLER( wecleman_paletteram16_SSSSBBBBGGGGRRRR_word_w )
 
 	// the highest nibble has some unknown functions
 //  if (newword & 0xf000) logerror("MSN set on color %03x: %1x\n", offset, newword>>12);
-	palette_set_color_rgb(machine, offset, pal4bit(newword >> 0), pal4bit(newword >> 4), pal4bit(newword >> 8));
+	palette_set_color_rgb(space->machine, offset, pal4bit(newword >> 0), pal4bit(newword >> 4), pal4bit(newword >> 8));
 }
 
 
@@ -948,19 +948,19 @@ VIDEO_START( wecleman )
 
 	sprite_list = sprite_list_create(NUM_SPRITES);
 
-	bg_tilemap = tilemap_create(wecleman_get_bg_tile_info,
+	bg_tilemap = tilemap_create(machine, wecleman_get_bg_tile_info,
 								tilemap_scan_rows,
 									/* We draw part of the road below */
 								8,8,
 								PAGE_NX * 2, PAGE_NY * 2 );
 
-	fg_tilemap = tilemap_create(wecleman_get_fg_tile_info,
+	fg_tilemap = tilemap_create(machine, wecleman_get_fg_tile_info,
 								tilemap_scan_rows,
 
 								8,8,
 								PAGE_NX * 2, PAGE_NY * 2);
 
-	txt_tilemap = tilemap_create(wecleman_get_txt_tile_info,
+	txt_tilemap = tilemap_create(machine, wecleman_get_txt_tile_info,
 								 tilemap_scan_rows,
 
 								 8,8,
@@ -1084,7 +1084,7 @@ VIDEO_UPDATE ( wecleman )
 
 	get_sprite_info(screen->machine);
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	/* Draw the road (lines which have priority 0x02) */
 	if (video_on) wecleman_draw_road(screen->machine, bitmap, cliprect, 0x02);
@@ -1145,7 +1145,7 @@ VIDEO_UPDATE( hotchase )
 
 	get_sprite_info(screen->machine);
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	/* Draw the background */
 	if (video_on) K051316_zoom_draw_0(bitmap,cliprect, 0, 0);

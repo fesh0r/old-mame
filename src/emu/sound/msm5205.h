@@ -19,7 +19,7 @@
 typedef struct _msm5205_interface msm5205_interface;
 struct _msm5205_interface
 {
-	void (*vclk_callback)(running_machine *, int);   /* VCLK callback              */
+	void (*vclk_callback)(const device_config *);   /* VCLK callback              */
 	int select;       /* prescaler / bit width selector        */
 };
 
@@ -35,5 +35,7 @@ void msm5205_vclk_w (int num, int reset);
 void msm5205_playmode_w(int num,int _select);
 
 void msm5205_set_volume(int num,int volume);
+
+SND_GET_INFO( msm5205 );
 
 #endif /* __MSM5205_H__ */

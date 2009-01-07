@@ -38,6 +38,7 @@ to prevent disabling inputs.
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 static int inputcnt=0;
@@ -77,7 +78,7 @@ static READ8_HANDLER(input_r)
 
 	if(!inputcnt)
 	{
-		int key=input_port_read(machine, "IN1");
+		int key=input_port_read(space->machine, "IN1");
 		int keyval=0; //we must return 0 (0x2 in 2nd read) to clear 4 bit at $6600 and allow next read
 
 		if(key)
@@ -111,7 +112,7 @@ static READ8_HANDLER(io_r)
 {
 	if(!offset)
 	{
-			return input_port_read(machine, "IN0")^ioram[4]; //coin
+			return input_port_read(space->machine, "IN0")^ioram[4]; //coin
 	}
 	return 0;
 }
@@ -218,7 +219,7 @@ static PALETTE_INIT( koikoi ) //wrong
 
 static VIDEO_START(koikoi)
 {
-	koikoi_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
+	koikoi_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_rows,8,8,32,32);
 }
 
 static VIDEO_UPDATE(koikoi)

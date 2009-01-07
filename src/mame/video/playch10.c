@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "video/ppu2c0x.h"
 #include "includes/playch10.h"
 
@@ -58,9 +57,9 @@ PALETTE_INIT( playch10 )
 	ppu2c0x_init_palette(machine, 256 );
 }
 
-static void ppu_irq( int num, int *ppu_regs )
+static void ppu_irq( running_machine *machine, int num, int *ppu_regs )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE );
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE );
 	pc10_int_detect = 1;
 }
 
@@ -106,7 +105,7 @@ VIDEO_START( playch10 )
 	const UINT8 *bios = memory_region(machine, "main");
 	pc10_bios = (bios[3] == 0x2a) ? 1 : 2;
 
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
 	ppu2c0x_init(machine, &ppu_interface );
@@ -117,7 +116,7 @@ VIDEO_START( playch10_hboard )
 	const UINT8 *bios = memory_region(machine, "main");
 	pc10_bios = (bios[3] == 0x2a) ? 1 : 2;
 
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
 	ppu2c0x_init(machine, &ppu_interface_hboard );
@@ -148,7 +147,7 @@ VIDEO_UPDATE( playch10 )
 				/* render the ppu */
 				ppu2c0x_render( 0, bitmap, 0, 0, 0, 0 );
 			else
-				fillbitmap(bitmap, 0, cliprect);
+				bitmap_fill(bitmap, cliprect, 0);
 		}
 		else
 		{
@@ -157,7 +156,7 @@ VIDEO_UPDATE( playch10 )
 			if ( !pc10_sdcs )
 				tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 			else
-				fillbitmap(bitmap, 0, cliprect);
+				bitmap_fill(bitmap, cliprect, 0);
 		}
 	}
 	else	/* Single Monitor version */

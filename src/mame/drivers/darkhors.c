@@ -55,6 +55,7 @@ To do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "machine/eeprom.h"
 #include "sound/okim6295.h"
@@ -138,10 +139,10 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 static VIDEO_START( darkhors )
 {
-	darkhors_tmap			=	tilemap_create(	get_tile_info_0, tilemap_scan_rows,
+	darkhors_tmap			=	tilemap_create(	machine, get_tile_info_0, tilemap_scan_rows,
 												16,16, 0x40,0x40	);
 
-	darkhors_tmap2			=	tilemap_create(	get_tile_info_1, tilemap_scan_rows,
+	darkhors_tmap2			=	tilemap_create(	machine, get_tile_info_1, tilemap_scan_rows,
 												16,16, 0x40,0x40	);
 
 	tilemap_set_transparent_pen(darkhors_tmap, 0);
@@ -165,7 +166,7 @@ static VIDEO_UPDATE( darkhors )
 	}
 #endif
 
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	tilemap_set_scrollx(darkhors_tmap,0, (darkhors_tmapscroll[0] >> 16) - 5);
 	tilemap_set_scrolly(darkhors_tmap,0, (darkhors_tmapscroll[0] & 0xffff) - 0xff );
@@ -220,7 +221,7 @@ static NVRAM_HANDLER( darkhors )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_intf);
+		eeprom_init(machine, &eeprom_intf);
 
 		if (file) eeprom_load(file);
 		else
@@ -234,7 +235,7 @@ static NVRAM_HANDLER( darkhors )
 static WRITE32_HANDLER( darkhors_eeprom_w )
 {
 	if (data & ~0xff000000)
-		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %08X\n",activecpu_get_pc(),data);
+		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %08X\n",cpu_get_pc(space->cpu),data);
 
 	if ( ACCESSING_BITS_24_31 )
 	{
@@ -252,19 +253,19 @@ static WRITE32_HANDLER( darkhors_eeprom_w )
 static WRITE32_HANDLER( okim6295_data_0_msb32_w )
 {
 	if (ACCESSING_BITS_24_31)
-		okim6295_data_0_msb_w(machine, offset, data >> 16, mem_mask >> 16);
+		okim6295_data_0_msb_w(space, offset, data >> 16, mem_mask >> 16);
 }
 
 static READ32_HANDLER( okim6295_status_0_msb32_r )
 {
-	return okim6295_status_0_msb_r(machine, offset, mem_mask >> 16) << 16;
+	return okim6295_status_0_msb_r(space, offset, mem_mask >> 16) << 16;
 }
 
 static WRITE32_HANDLER( paletteram32_xBBBBBGGGGGRRRRR_dword_w )
 {
 	paletteram16 = (UINT16 *)paletteram32;
-	if (ACCESSING_BITS_16_31)	paletteram16_xBBBBBGGGGGRRRRR_word_w(machine, offset*2, data >> 16, mem_mask >> 16);
-	if (ACCESSING_BITS_0_15)	paletteram16_xBBBBBGGGGGRRRRR_word_w(machine, offset*2+1, data, mem_mask);
+	if (ACCESSING_BITS_16_31)	paletteram16_xBBBBBGGGGGRRRRR_word_w(space, offset*2, data >> 16, mem_mask >> 16);
+	if (ACCESSING_BITS_0_15)	paletteram16_xBBBBBGGGGGRRRRR_word_w(space, offset*2+1, data, mem_mask);
 }
 
 static UINT32 input_sel;
@@ -297,8 +298,8 @@ static READ32_HANDLER( darkhors_input_sel_r )
 	int bit_p2 = mask_to_bit((input_sel & 0xff000000) >> 24);
 	static const char *const portnames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
-	return	(input_port_read(machine, portnames[bit_p1]) & 0x00ffffff) |
-			(input_port_read(machine, portnames[bit_p2]) & 0xff000000) ;
+	return	(input_port_read(space->machine, portnames[bit_p1]) & 0x00ffffff) |
+			(input_port_read(space->machine, portnames[bit_p2]) & 0xff000000) ;
 }
 
 static WRITE32_HANDLER( darkhors_unk1_w )
@@ -584,11 +585,11 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( darkhors )
 {
-	switch (cpu_getiloops())
+	switch (cpu_getiloops(device))
 	{
-		case 0:	cpunum_set_input_line(machine, 0, 3, HOLD_LINE);	break;
-		case 1:	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);	break;
-		case 2:	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);	break;
+		case 0:	cpu_set_input_line(device, 3, HOLD_LINE);	break;
+		case 1:	cpu_set_input_line(device, 4, HOLD_LINE);	break;
+		case 2:	cpu_set_input_line(device, 5, HOLD_LINE);	break;
 	}
 }
 

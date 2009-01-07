@@ -30,6 +30,7 @@ Pleiads:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/tms36xx.h"
 #include "cpu/i8085/i8085.h"
 #include "sound/ay8910.h"
@@ -433,7 +434,7 @@ static const ay8910_interface survival_ay8910_interface =
 
 static MACHINE_RESET( phoenix )
 {
-	memory_set_bankptr(1, memory_region(machine, "main") + 0x4000);
+	memory_set_bankptr(machine, 1, memory_region(machine, "main") + 0x4000);
 }
 
 
@@ -503,10 +504,19 @@ MACHINE_DRIVER_END
 
 /* Same as Phoenix, but uses an AY8910 and an extra visible line (column) */
 
+static const i8085_config survival_i8085_config =
+{
+	NULL,					/* INTE changed callback */
+	NULL,					/* STATUS changed callback */
+	NULL,					/* SOD changed callback (8085A only) */
+	survival_sid_callback	/* SID changed callback (8085A only) */
+};
+
 static MACHINE_DRIVER_START( survival )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", 8085A, CPU_CLOCK)	/* 5.50 MHz */
+	MDRV_CPU_CONFIG(survival_i8085_config)
 	MDRV_CPU_PROGRAM_MAP(survival_memory_map, 0)
 
 	MDRV_MACHINE_RESET(phoenix)
@@ -1015,12 +1025,7 @@ ROM_END
 static DRIVER_INIT( condor )
 {
 	/* additional inputs for coinage */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x5000, 0, 0, input_port_read_handler8(machine->portconfig, "DSW1") );
-}
-
-static DRIVER_INIT( survival )
-{
-	cpunum_set_info_fct(0, CPUINFO_PTR_I8085_SID_CALLBACK, (void*)survival_sid_callback);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x5000, 0x5000, 0, 0, input_port_read_handler8(machine->portconfig, "DSW1") );
 }
 
 
@@ -1048,4 +1053,4 @@ GAME( 1981, pleiadbl, pleiads,  pleiads,  pleiads,  0,        ROT90, "bootleg", 
 GAME( 1981, pleiadce, pleiads,  pleiads,  pleiadce, 0,        ROT90, "Tehkan (Centuri license)", "Pleiads (Centuri)", GAME_IMPERFECT_COLORS )
 GAME( 1981, capitol,  pleiads,  phoenix,  capitol,  0,        ROT90, "Universal Video Spiel", "Capitol", GAME_IMPERFECT_COLORS )
 
-GAME( 1982, survival, 0,        survival, survival, survival, ROT90, "Rock-ola", "Survival", GAME_IMPERFECT_COLORS )
+GAME( 1982, survival, 0,        survival, survival, 0,        ROT90, "Rock-ola", "Survival", GAME_IMPERFECT_COLORS )

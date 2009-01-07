@@ -12,6 +12,7 @@ driver by David Haywood and few bits by Pierpaolo Prazzoli
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/2203intf.h"
 
 static int interrupt_scanline=192;
@@ -48,14 +49,14 @@ static WRITE16_HANDLER( pkscramble_YM2203_w )
 {
 	switch (offset)
 	{
-		case 0: ym2203_control_port_0_w(machine,0,data & 0xff);break;
-		case 1: ym2203_write_port_0_w(machine,0,data & 0xff);break;
+		case 0: ym2203_control_port_0_w(space,0,data & 0xff);break;
+		case 1: ym2203_write_port_0_w(space,0,data & 0xff);break;
 	}
 }
 
 static READ16_HANDLER( pkscramble_YM2203_r )
 {
-	return ym2203_status_port_0_r(machine,0);
+	return ym2203_status_port_0_r(space,0);
 }
 
 // input bit 0x20 in port1 should stay low until bit 0x20 is written here, then
@@ -86,7 +87,7 @@ static WRITE16_HANDLER( pkscramble_output_w )
 
 	if (!(out & 0x2000) && interrupt_line_active)
 	{
-	    cpunum_set_input_line(machine, 0, 1, CLEAR_LINE);
+	    cpu_set_input_line(space->machine->cpu[0], 1, CLEAR_LINE);
 		interrupt_line_active = 0;
 	}
 
@@ -210,14 +211,14 @@ static TIMER_CALLBACK( scanline_callback )
 	if (param==interrupt_scanline)
 	{
     	if (out&0x2000)
-    		cpunum_set_input_line(machine, 0, 1, ASSERT_LINE);
+    		cpu_set_input_line(machine->cpu[0], 1, ASSERT_LINE);
 		timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, param+1, 0), param+1);
 		interrupt_line_active = 1;
 	}
 	else
 	{
 		if (interrupt_line_active)
-	    	cpunum_set_input_line(machine, 0, 1, CLEAR_LINE);
+	    	cpu_set_input_line(machine->cpu[0], 1, CLEAR_LINE);
 		timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, interrupt_scanline, 0), interrupt_scanline);
 		interrupt_line_active = 0;
 	}
@@ -225,9 +226,9 @@ static TIMER_CALLBACK( scanline_callback )
 
 static VIDEO_START( pkscramble )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8,32,32);
-	md_tilemap = tilemap_create(get_md_tile_info, tilemap_scan_rows, 8, 8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8,32,32);
+	md_tilemap = tilemap_create(machine, get_md_tile_info, tilemap_scan_rows, 8, 8,32,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(md_tilemap,15);
 	tilemap_set_transparent_pen(fg_tilemap,15);
@@ -260,7 +261,7 @@ GFXDECODE_END
 static void irqhandler(running_machine *machine, int irq)
 {
 	if(out & 0x10)
-		cpunum_set_input_line(machine, 0,2,irq ? ASSERT_LINE : CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0],2,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -277,11 +278,11 @@ static MACHINE_RESET( pkscramble)
 {
 	out = 0;
 	interrupt_line_active=0;
-	scanline_timer = timer_alloc(scanline_callback, NULL);
+	scanline_timer = timer_alloc(machine, scanline_callback, NULL);
 	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, interrupt_scanline, 0), interrupt_scanline);
 
-	state_save_register_global(out);
-	state_save_register_global(interrupt_line_active);
+	state_save_register_global(machine, out);
+	state_save_register_global(machine, interrupt_line_active);
 }
 
 static MACHINE_DRIVER_START( pkscramble )

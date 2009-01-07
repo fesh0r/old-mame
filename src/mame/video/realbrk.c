@@ -36,7 +36,7 @@ WRITE16_HANDLER( realbrk_flipscreen_w )
 		coin_counter_w(0,	data & 0x0001);
 		coin_counter_w(1,	data & 0x0004);
 
-		flip_screen_set(	data & 0x0080);
+		flip_screen_set(space->machine, 	data & 0x0080);
 	}
 
 	if (ACCESSING_BITS_8_15)
@@ -153,11 +153,11 @@ WRITE16_HANDLER( realbrk_vram_2_w )
 VIDEO_START(realbrk)
 {
 	/* Backgrounds */
-	tilemap_0 = tilemap_create(get_tile_info_0, tilemap_scan_rows, 16, 16, 0x40, 0x20);
-	tilemap_1 = tilemap_create(get_tile_info_1, tilemap_scan_rows, 16, 16, 0x40, 0x20);
+	tilemap_0 = tilemap_create(machine, get_tile_info_0, tilemap_scan_rows, 16, 16, 0x40, 0x20);
+	tilemap_1 = tilemap_create(machine, get_tile_info_1, tilemap_scan_rows, 16, 16, 0x40, 0x20);
 
 	/* Text */
-	tilemap_2 = tilemap_create(get_tile_info_2, tilemap_scan_rows,  8,  8, 0x40, 0x20);
+	tilemap_2 = tilemap_create(machine, get_tile_info_2, tilemap_scan_rows,  8,  8, 0x40, 0x20);
 
 	tilemap_set_transparent_pen(tilemap_0,0);
 	tilemap_set_transparent_pen(tilemap_1,0);
@@ -262,8 +262,8 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		xdim	=		((zoom & 0x00ff) >> 0) << (16-6+4);
 		ydim	=		((zoom & 0xff00) >> 8) << (16-6+4);
 
-		if (flip_screen_x_get())	{	flipx = !flipx;		sx = (max_x << 16) - sx - xnum * xdim;	}
-		if (flip_screen_y_get())	{	flipy = !flipy;		sy = (max_y << 16) - sy - ynum * ydim;	}
+		if (flip_screen_x_get(machine))	{	flipx = !flipx;		sx = (max_x << 16) - sx - xnum * xdim;	}
+		if (flip_screen_y_get(machine))	{	flipy = !flipy;		sy = (max_y << 16) - sy - ynum * ydim;	}
 
 		if (flipx)	{ xstart = xnum-1;  xend = -1;    xinc = -1; }
 		else		{ xstart = 0;       xend = xnum;  xinc = +1; }
@@ -297,8 +297,8 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 				// buffer the tile and rotate it into bitmap
 				if( rot )
 				{
-					fillbitmap( tmpbitmap0, 0, &spritetile_clip );
-					fillbitmap( tmpbitmap1, 0, &spritetile_clip );
+					bitmap_fill( tmpbitmap0, &spritetile_clip , 0);
+					bitmap_fill( tmpbitmap1, &spritetile_clip , 0);
 					drawgfxzoom(	tmpbitmap0,machine->gfx[gfx],
 									code++,
 									color,
@@ -424,8 +424,8 @@ static void dai2kaku_draw_sprites(running_machine *machine, bitmap_t *bitmap,con
 		xdim	=		((zoom & 0x00ff) >> 0) << (16-6+4);
 		ydim	=		((zoom & 0xff00) >> 8) << (16-6+4);
 
-		if (flip_screen_x_get())	{	flipx = !flipx;		sx = (max_x << 16) - sx - xnum * xdim;	}
-		if (flip_screen_y_get())	{	flipy = !flipy;		sy = (max_y << 16) - sy - ynum * ydim;	}
+		if (flip_screen_x_get(machine))	{	flipx = !flipx;		sx = (max_x << 16) - sx - xnum * xdim;	}
+		if (flip_screen_y_get(machine))	{	flipy = !flipy;		sy = (max_y << 16) - sy - ynum * ydim;	}
 
 		if (flipx)	{ xstart = xnum-1;  xend = -1;    xinc = -1; }
 		else		{ xstart = 0;       xend = xnum;  xinc = +1; }
@@ -516,11 +516,11 @@ if ( input_code_pressed(KEYCODE_Z) )
 
 	if (disable_video)
 	{
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 		return 0;
 	}
 	else
-		fillbitmap(bitmap,realbrk_vregs[0xc/2] & 0x7fff,cliprect);
+		bitmap_fill(bitmap,cliprect,realbrk_vregs[0xc/2] & 0x7fff);
 
 	if (layers_ctrl & 2)	tilemap_draw(bitmap,cliprect,tilemap_1,0,0);
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect,tilemap_0,0,0);
@@ -584,11 +584,11 @@ if ( input_code_pressed(KEYCODE_Z) )
 
 	if (disable_video)
 	{
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 		return 0;
 	}
 	else
-		fillbitmap(bitmap,realbrk_vregs[0xc/2] & 0x7fff,cliprect);
+		bitmap_fill(bitmap,cliprect,realbrk_vregs[0xc/2] & 0x7fff);
 
 
 

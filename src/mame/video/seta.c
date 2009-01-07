@@ -207,6 +207,7 @@ static const struct x_offset game_offsets[] =
 	{ "triplfun", {  0,  0 }, { -1, -1 } },	// correct (test mode) flip screen not supported?
 	{ "wrofaero", {  0,  0 }, {  0,  0 } },	// unknown
 	{ "jjsquawk", {  1,  1 }, { -1, -1 } },	// correct (test mode)
+	{ "jjsquawb", {  1,  1 }, { -1, -1 } },	// correct (test mode)
 	{ "kamenrid", {  0,  0 }, { -2, -2 } },	// correct (map, banpresto logo)
 	{ "extdwnhl", {  0,  0 }, { -2, -2 } },	// correct (test grid, background images)
 	{ "sokonuke", {  0,  0 }, { -2, -2 } },	// correct (game selection, test grid)
@@ -278,7 +279,7 @@ WRITE16_HANDLER( seta_vregs_w )
         ---- ---- ---- ---0     Coin #0 Counter     */
 			if (ACCESSING_BITS_0_7)
 			{
-				seta_coin_lockout_w (machine, data & 0x0f);
+				seta_coin_lockout_w (space->machine, data & 0x0f);
 				if (sndti_exists(SOUND_X1_010, 0))
 					seta_sound_enable_w (data & 0x20);
 				coin_counter_w(0,data & 0x01);
@@ -304,8 +305,8 @@ WRITE16_HANDLER( seta_vregs_w )
 
 				if (new_bank != seta_samples_bank)
 				{
-					UINT8 *rom = memory_region(machine, "x1");
-					int samples_len = memory_region_length(machine, "x1");
+					UINT8 *rom = memory_region(space->machine, "x1");
+					int samples_len = memory_region_length(space->machine, "x1");
 					int addr;
 
 					seta_samples_bank = new_bank;
@@ -318,7 +319,7 @@ WRITE16_HANDLER( seta_vregs_w )
 						if ( (samples_len > 0x100000) && ((addr+0x40000) <= samples_len) )
 							memcpy(&rom[0xc0000],&rom[addr],0x40000);
 						else
-							logerror("PC %06X - Invalid samples bank %02X !\n", activecpu_get_pc(), new_bank);
+							logerror("PC %06X - Invalid samples bank %02X !\n", cpu_get_pc(space->cpu), new_bank);
 					}
 					else if (samples_len == 0x480000)	/* zombraid */
 					{
@@ -445,18 +446,18 @@ VIDEO_START( seta_2_layers )
        at any given time */
 
 	/* layer 0 */
-	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0, tilemap_scan_rows,
 								 16,16, 64,32 );
 
-	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1, tilemap_scan_rows,
 								 16,16, 64,32 );
 
 
 	/* layer 1 */
-	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
+	tilemap_2 = tilemap_create(	machine, get_tile_info_2, tilemap_scan_rows,
 								 16,16, 64,32 );
 
-	tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
+	tilemap_3 = tilemap_create(	machine, get_tile_info_3, tilemap_scan_rows,
 								 16,16, 64,32 );
 
 		tilemaps_flip = 0;
@@ -478,10 +479,10 @@ VIDEO_START( seta_1_layer )
        at any given time */
 
 	/* layer 0 */
-	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0, tilemap_scan_rows,
 								 16,16, 64,32 );
 
-	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1, tilemap_scan_rows,
 								 16,16, 64,32 );
 
 
@@ -504,10 +505,10 @@ VIDEO_START( twineagl_1_layer )
        at any given time */
 
 	/* layer 0 */
-	tilemap_0 = tilemap_create(	twineagl_get_tile_info_0, tilemap_scan_rows,
+	tilemap_0 = tilemap_create(	machine, twineagl_get_tile_info_0, tilemap_scan_rows,
 								 16,16, 64,32 );
 
-	tilemap_1 = tilemap_create(	twineagl_get_tile_info_1, tilemap_scan_rows,
+	tilemap_1 = tilemap_create(	machine, twineagl_get_tile_info_1, tilemap_scan_rows,
 								 16,16, 64,32 );
 
 
@@ -887,7 +888,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 VIDEO_UPDATE( seta_no_layers )
 {
 	set_pens(screen->machine);
-	fillbitmap(bitmap,0x1f0,cliprect);
+	bitmap_fill(bitmap,cliprect,0x1f0);
 	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
@@ -977,7 +978,7 @@ if (input_code_pressed(KEYCODE_Z))
 }
 #endif
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	if (order & 1)	// swap the layers?
 	{

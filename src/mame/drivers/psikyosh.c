@@ -339,7 +339,7 @@ static NVRAM_HANDLER(93C56)
 	}
 	else
 	{
-		eeprom_init(&eeprom_interface_93C56);
+		eeprom_init(machine, &eeprom_interface_93C56);
 		if (file)
 		{
 			eeprom_load(file);
@@ -373,13 +373,26 @@ static NVRAM_HANDLER(93C56)
  				if (use_factory_eeprom==eeprom_GNBARICH) /* Might as well do Gnbarich as well, otherwise the highscore is incorrect */
  					memcpy(eeprom_data+0xf0, gnbarich_eeprom, 0x10);
 
+				if (use_factory_eeprom==eeprom_USER1) /* load a default eeprom for TGM2 / TGM2+ as it requires more data initalized */
+					memcpy(eeprom_data, memory_region(machine, "user1"), 0x100);
+
  				if (use_factory_eeprom==eeprom_MJGTASTE) /* We don't emulate the Mahjong panel yet, so default it to joystick */
 				{
  					memcpy(eeprom_data+0x00, mjgtaste_eeprom, 0x10);
 					memcpy(eeprom_data+0xf0, mjgtaste_eeprom, 0x10);
 				}
 
+
+
 				eeprom_set_data(eeprom_data,0x100);
+			}
+			else if (memory_region(machine,"user1")) /* if there is an eeprom in the romdef, use that */
+ 			{
+				UINT8 eeprom_data[0x100];
+ 				printf("user1\n");
+ 				memcpy(eeprom_data, memory_region(machine,"user1"), 0x100);
+ 				eeprom_set_data(eeprom_data,0x100);
+
 			}
 		}
 	}
@@ -403,7 +416,7 @@ static READ32_HANDLER( psh_eeprom_r )
 {
 	if (ACCESSING_BITS_24_31)
 	{
-		return input_port_read(machine, "JP4");
+		return input_port_read(space->machine, "JP4");
 	}
 
 	logerror("Unk EEPROM read mask %x\n", mem_mask);
@@ -413,7 +426,7 @@ static READ32_HANDLER( psh_eeprom_r )
 
 static INTERRUPT_GEN(psikyosh_interrupt)
 {
-	cpunum_set_input_line(machine, 0, 4, ASSERT_LINE);
+	cpu_set_input_line(device, 4, ASSERT_LINE);
 }
 
 // VBL handler writes 0x00 on entry, 0xc0 on exit
@@ -422,7 +435,7 @@ static WRITE32_HANDLER( psikyosh_irqctrl_w )
 {
 	if (!(data & 0x00c00000))
 	{
-		cpunum_set_input_line(machine, 0, 4, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 4, CLEAR_LINE);
 	}
 }
 
@@ -435,7 +448,7 @@ static WRITE32_HANDLER( paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_w )
 	g = ((paletteram32[offset] & 0x00ff0000) >>16);
 	r = ((paletteram32[offset] & 0xff000000) >>24);
 
-	palette_set_color(machine,offset,MAKE_RGB(r,g,b));
+	palette_set_color(space->machine,offset,MAKE_RGB(r,g,b));
 }
 
 static WRITE32_HANDLER( psikyosh_vidregs_w )
@@ -447,8 +460,8 @@ static WRITE32_HANDLER( psikyosh_vidregs_w )
 	{
 		if (ACCESSING_BITS_0_15)	// Bank
 		{
-			UINT8 *ROM = memory_region(machine, "gfx1");
-			memory_set_bankptr(2,&ROM[0x20000 * (psikyosh_vidregs[offset]&0xfff)]); /* Bank comes from vidregs */
+			UINT8 *ROM = memory_region(space->machine, "gfx1");
+			memory_set_bankptr(space->machine, 2,&ROM[0x20000 * (psikyosh_vidregs[offset]&0xfff)]); /* Bank comes from vidregs */
 		}
 	}
 #endif
@@ -459,7 +472,7 @@ static UINT32 sample_offs = 0;
 
 static READ32_HANDLER( psh_sample_r ) /* Send sample data for test */
 {
-	UINT8 *ROM = memory_region(machine, "ymf");
+	UINT8 *ROM = memory_region(space->machine, "ymf");
 
 	return ROM[sample_offs++]<<16;
 }
@@ -467,29 +480,29 @@ static READ32_HANDLER( psh_sample_r ) /* Send sample data for test */
 
 static READ32_HANDLER( psh_ymf_fm_r )
 {
-	return ymf278b_status_port_0_r(machine,0)<<24; /* Also, bit 0 being high indicates not ready to send sample data for test */
+	return ymf278b_status_port_0_r(space,0)<<24; /* Also, bit 0 being high indicates not ready to send sample data for test */
 }
 
 static WRITE32_HANDLER( psh_ymf_fm_w )
 {
 	if (ACCESSING_BITS_24_31)	// FM bank 1 address (OPL2/OPL3 compatible)
 	{
-		ymf278b_control_port_0_a_w(machine, 0, data>>24);
+		ymf278b_control_port_0_a_w(space, 0, data>>24);
 	}
 
 	if (ACCESSING_BITS_16_23)	// FM bank 1 data
 	{
-		ymf278b_data_port_0_a_w(machine, 0, data>>16);
+		ymf278b_data_port_0_a_w(space, 0, data>>16);
 	}
 
 	if (ACCESSING_BITS_8_15)	// FM bank 2 address (OPL3/YMF 262 extended)
 	{
-		ymf278b_control_port_0_b_w(machine, 0, data>>8);
+		ymf278b_control_port_0_b_w(space, 0, data>>8);
 	}
 
 	if (ACCESSING_BITS_0_7)	// FM bank 2 data
 	{
-		ymf278b_data_port_0_b_w(machine, 0, data);
+		ymf278b_data_port_0_b_w(space, 0, data);
 	}
 }
 
@@ -497,7 +510,7 @@ static WRITE32_HANDLER( psh_ymf_pcm_w )
 {
 	if (ACCESSING_BITS_24_31)	// PCM address (OPL4/YMF 278B extended)
 	{
-		ymf278b_control_port_0_c_w(machine, 0, data>>24);
+		ymf278b_control_port_0_c_w(space, 0, data>>24);
 
 #if ROMTEST
 		if (data>>24 == 0x06)	// Reset Sample reading (They always write this code immediately before reading data)
@@ -509,7 +522,7 @@ static WRITE32_HANDLER( psh_ymf_pcm_w )
 
 	if (ACCESSING_BITS_16_23)	// PCM data
 	{
-		ymf278b_data_port_0_c_w(machine, 0, data>>16);
+		ymf278b_data_port_0_c_w(space, 0, data>>16);
 	}
 }
 
@@ -587,9 +600,9 @@ ADDRESS_MAP_END
 static void irqhandler(running_machine *machine, int linestate)
 {
 	if (linestate)
-		cpunum_set_input_line(machine, 0, 12, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], 12, ASSERT_LINE);
 	else
-		cpunum_set_input_line(machine, 0, 12, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], 12, CLEAR_LINE);
 }
 
 static const ymf278b_interface ymf278b_config =
@@ -639,7 +652,6 @@ static MACHINE_DRIVER_START( psikyo5 )
 	MDRV_CPU_PROGRAM_MAP(ps5_readmem,ps5_writemem)
 MACHINE_DRIVER_END
 
-#if 0
 static MACHINE_DRIVER_START( psikyo5_240 )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(psikyo3v1)
@@ -651,7 +663,6 @@ static MACHINE_DRIVER_START( psikyo5_240 )
 	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 40*8-1, 0, 30*8-1)
 MACHINE_DRIVER_END
-#endif
 
 static INPUT_PORTS_START( common )
 	PORT_START("INPUTS")
@@ -799,6 +810,17 @@ static INPUT_PORTS_START( gnbarich ) /* Same as S1945iii except only one button 
 	PORT_DIPSETTING(          0x00000000, DEF_STR( Japan ) )
 	PORT_DIPSETTING(          0x02000000, "International Ver A." )
 	PORT_DIPSETTING(          0x01000000, "International Ver B." )
+	PORT_BIT( 0x10000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( tgm2 )
+	PORT_INCLUDE( common )
+
+	PORT_START("JP4")	/* jumper pads on the PCB */
+//  PORT_DIPNAME( 0x03000000, 0x01000000, DEF_STR( Region ) )
+//  PORT_DIPSETTING(          0x00000000, DEF_STR( Japan ) )
+//  PORT_DIPSETTING(          0x02000000, "International Ver A." )
+//  PORT_DIPSETTING(          0x01000000, "International Ver B." )
 	PORT_BIT( 0x10000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 INPUT_PORTS_END
 
@@ -986,19 +1008,22 @@ ROM_START( dragnblz )
 	ROM_LOAD( "snd0.u52", 0x000000, 0x200000, CRC(7fd1b225) SHA1(6aa61021ada51393bbb34fd1aea00b8feccc8197) )
 ROM_END
 
-/* Most of the roms on this board are from Dragon Blaze and not used by the game, they're needed for the board to
-   work, but the content doesn't matter. */
+/*
+
+Starting with Gunbarich and including Mahjong G-Taste, Psikyo started to "recycle" left over Dragon Blaze PCBs.
+  Psikyo would replace some of the Dragon Blaze roms with the new game roms leaving many of the surface mounted
+  roms intact.  The new games don't use or access the left over roms, but the PCB needs the roms filled to function.
+
+  The hidden rom tests in Gunbarich and Mahjong G-Teste shows the games only uses the new game roms.
+
+*/
+
 ROM_START( gnbarich )
 	ROM_REGION( 0x100000, "main", 0)
 	ROM_LOAD32_WORD_SWAP( "2-prog_l.u21",   0x000000, 0x080000, CRC(c136cd9c) SHA1(ab66c4f5196a66a97dbb5832336a203421cf40fa) )
 	ROM_LOAD32_WORD_SWAP( "1-prog_h.u22",   0x000002, 0x080000, CRC(6588fc96) SHA1(3db29fcf17e8b2aee465319b557bd3e45bc966b2) )
 
 	ROM_REGION( 0x2c00000, "gfx1", ROMTEST_GFX )	/* Sprites */
-	/* Gunbarich doesn't actually use 1-5 and 10, they're on the board, but all the gfx are in 6-9
-       The game was an upgrade to Dragon Blaze, only some of the roms were replaced however it
-       appears the board needs to be fully populated to work correctly so the Dragon Blaze roms
-       were left on it.  After hooking up hidden rom test we can see only the 8 roms we load are
-       tested */
 //  ROM_LOAD32_WORD( "1l.u4",  0x0400000, 0x200000, CRC(c2eb565c) SHA1(07e41b36cc03a87f28d091754fdb0d1a7316a532) ) /* From Dragon Blaze */
 //  ROM_LOAD32_WORD( "1h.u12", 0x0400002, 0x200000, CRC(23cb46b7) SHA1(005b7cc40eea103688a64a72c219c7535970dbfb) ) /* From Dragon Blaze */
 //  ROM_LOAD32_WORD( "2l.u5",  0x0800000, 0x200000, CRC(bc256aea) SHA1(1f1d678e8a63513a95f296b8a07d2ea485d1e53f) ) /* From Dragon Blaze */
@@ -1024,14 +1049,11 @@ ROM_START( gnbarich )
 	ROM_LOAD( "snd0.u52", 0x000000, 0x200000, CRC(7b10436b) SHA1(c731fcce024e286a677ca10a91761c1ee06094a5) )
 ROM_END
 
-/* Most of the roms on this board are from Dragon Blaze and not used by the game, they're needed for the board to
-   work, but the content doesn't matter. */
 ROM_START( mjgtaste )
 	ROM_REGION( 0x100000, "main", 0)
 	ROM_LOAD32_WORD_SWAP( "2.u21",   0x000000, 0x080000, CRC(5f2041dc) SHA1(f3862ffdb8df0cf921ce1cb0236935731e7729a7) )
 	ROM_LOAD32_WORD_SWAP( "1.u22",   0x000002, 0x080000, CRC(f5ff7876) SHA1(4c909db9c97f29fd79df6dacd29762688701b973) )
 
-	/* exact number of gfx / sound roms may be incorrect */
 	ROM_REGION( 0x2c00000, "gfx1", ROMTEST_GFX | ROMREGION_ERASE00 )	/* Sprites */
 	ROM_LOAD32_WORD( "1l.u4",  0x0400000, 0x200000, CRC(30da42b1) SHA1(8485f2c0e7769b50b95d962afe14fa7ae74cd887) )
 	ROM_LOAD32_WORD( "1h.u12", 0x0400002, 0x200000, CRC(629c1d44) SHA1(61909091328bb7b6d3e6e0bff91e14c9b4b86c2c) )
@@ -1054,345 +1076,138 @@ ROM_START( mjgtaste )
 //  ROM_LOAD32_WORD( "10l.u58",0x2800000, 0x200000, CRC(a3f5c7f8) SHA1(d17478ca3e7ef46270f350ffa35d43acb05b1185) ) /* From Dragon Blaze */
 //  ROM_LOAD32_WORD( "10h.u59",0x2800002, 0x200000, CRC(30e304c4) SHA1(1d866276bfe7f7524306a880d225aaf11ac2e5dd) ) /* From Dragon Blaze */
 
-	ROM_REGION( 0x800000, "ymf", 0 ) /* Samples - Not Dumped */
+	ROM_REGION( 0x800000, "ymf", 0 ) /* Samples */
 	ROM_LOAD( "snd0.u52", 0x000000, 0x400000, CRC(0179f018) SHA1(16ae63e021230356777342ed902e02407a1a1b82) )
 ROM_END
 
-
-/*
-
-// the following (currently unsupported) roms are known to exist on the PS5v2 PCB
 ROM_START( tgm2 )
-    ROM_REGION( 0x100000, "main", 0)
-    ROM_LOAD32_WORD_SWAP( "2.u21",   0x000000, 0x080000, CRC(b19f6c31) SHA1(c58346c575db71262aebc3993743cb031c41e4af) )
-    ROM_LOAD32_WORD_SWAP( "1.u22",   0x000002, 0x080000, CRC(c521bf24) SHA1(0ee5b9f74b6b8bcc01b2270c53f30d99e877ed64) )
+	ROM_REGION( 0x100000, "main", 0)
+	ROM_LOAD32_WORD_SWAP( "2.u21",   0x000000, 0x080000, CRC(b19f6c31) SHA1(c58346c575db71262aebc3993743cb031c41e4af) )
+	ROM_LOAD32_WORD_SWAP( "1.u22",   0x000002, 0x080000, CRC(c521bf24) SHA1(0ee5b9f74b6b8bcc01b2270c53f30d99e877ed64) )
 
-    ROM_REGION( 0x3000000, "gfx1", ROMTEST_GFX )
-    // Lower positions not populated
-    ROM_LOAD32_WORD( "81ts_3l.u6",   0x0c00000, 0x200000, CRC(d77cff9c) SHA1(93ee48c350110ebf9a80cca95c599c90a523147d) )
-    ROM_LOAD32_WORD( "82ts_3h.u14",  0x0c00002, 0x200000, CRC(f012b583) SHA1(907e1c93cbfa6a0285f96c53f5ccb63e313053d7) )
-    ROM_LOAD32_WORD( "83ts_4l.u7",   0x1000000, 0x200000, CRC(078cafc3) SHA1(26e47c8f0aaa461e69e9f40ee61ce4b4cc480776) )
-    ROM_LOAD32_WORD( "84ts_4h.u15",  0x1000002, 0x200000, CRC(1f91446b) SHA1(81b43156c6a0f4e63dcc9e7c1e9dd54bcba38240) )
-    ROM_LOAD32_WORD( "85ts_5l.u8",   0x1400000, 0x200000, CRC(40fbd259) SHA1(6b8cbfc6232e04785fd232158b3f4d56fadb0c7d) )
-    ROM_LOAD32_WORD( "86ts_5h.u16",  0x1400002, 0x200000, CRC(186c935f) SHA1(0cab30c2ec4df3dc35b4c9de63d29bd0bc99afdb) )
-    ROM_LOAD32_WORD( "87ts_6l.u1",   0x1800000, 0x200000, CRC(c17dc48a) SHA1(4399bfc253fb1cd4ef1081d7350c73df3a0f7441) )
-    ROM_LOAD32_WORD( "88ts_6h.u2",   0x1800002, 0x200000, CRC(e4dba5da) SHA1(24db1e19f4df94ba3a22fba59e4fd065921db1c5) )
-    ROM_LOAD32_WORD( "89ts_7l.u19",  0x1c00000, 0x200000, CRC(dab1b2c5) SHA1(114fd7717b97cdfd605ab7e2a354190c41ba4a82) )
-    ROM_LOAD32_WORD( "90ts_7h.u20",  0x1c00002, 0x200000, CRC(aae696b3) SHA1(9ac27365719c1700f647911dc324a0e2aacea172) )
-    ROM_LOAD32_WORD( "91ts_8l.u28",  0x2000000, 0x200000, CRC(e953ace1) SHA1(c6cdfd807a7a84b86378c3585aeb7c0cb066f8a1) )
-    ROM_LOAD32_WORD( "92ts_8h.u29",  0x2000002, 0x200000, CRC(9da3b976) SHA1(ce1e4eb93760749200ede45703412868ca29a5e7) )
-    ROM_LOAD32_WORD( "93ts_9l.u41",  0x2400000, 0x200000, CRC(233087fe) SHA1(c4adb307ce11ef558fd23b299ce7f458de581446) )
-    ROM_LOAD32_WORD( "94ts_9h.u42",  0x2400002, 0x200000, CRC(9da831c7) SHA1(42698697aa85df088745b2d37ec89b01adce700f) )
-    ROM_LOAD32_WORD( "95ts_10l.u58", 0x2800000, 0x200000, CRC(303a5240) SHA1(5816d1922e85bc27a2a13cdd183d9e67c7ddb2e1) )
-    ROM_LOAD32_WORD( "96ts_10h.u59", 0x2800002, 0x200000, CRC(2240ebf6) SHA1(b61f93a18dd9d94fb57d95745d4df2e41a0371ff) )
+	ROM_REGION( 0x3000000, "gfx1", ROMTEST_GFX )	/* Sprites */
+	// Lower positions not populated
+	ROM_LOAD32_WORD( "81ts_3l.u6",   0x0c00000, 0x200000, CRC(d77cff9c) SHA1(93ee48c350110ebf9a80cca95c599c90a523147d) )
+	ROM_LOAD32_WORD( "82ts_3h.u14",  0x0c00002, 0x200000, CRC(f012b583) SHA1(907e1c93cbfa6a0285f96c53f5ccb63e313053d7) )
+	ROM_LOAD32_WORD( "83ts_4l.u7",   0x1000000, 0x200000, CRC(078cafc3) SHA1(26e47c8f0aaa461e69e9f40ee61ce4b4cc480776) )
+	ROM_LOAD32_WORD( "84ts_4h.u15",  0x1000002, 0x200000, CRC(1f91446b) SHA1(81b43156c6a0f4e63dcc9e7c1e9dd54bcba38240) )
+	ROM_LOAD32_WORD( "85ts_5l.u8",   0x1400000, 0x200000, CRC(40fbd259) SHA1(6b8cbfc6232e04785fd232158b3f4d56fadb0c7d) )
+	ROM_LOAD32_WORD( "86ts_5h.u16",  0x1400002, 0x200000, CRC(186c935f) SHA1(0cab30c2ec4df3dc35b4c9de63d29bd0bc99afdb) )
+	ROM_LOAD32_WORD( "87ts_6l.u1",   0x1800000, 0x200000, CRC(c17dc48a) SHA1(4399bfc253fb1cd4ef1081d7350c73df3a0f7441) )
+	ROM_LOAD32_WORD( "88ts_6h.u2",   0x1800002, 0x200000, CRC(e4dba5da) SHA1(24db1e19f4df94ba3a22fba59e4fd065921db1c5) )
+	ROM_LOAD32_WORD( "89ts_7l.u19",  0x1c00000, 0x200000, CRC(dab1b2c5) SHA1(114fd7717b97cdfd605ab7e2a354190c41ba4a82) )
+	ROM_LOAD32_WORD( "90ts_7h.u20",  0x1c00002, 0x200000, CRC(aae696b3) SHA1(9ac27365719c1700f647911dc324a0e2aacea172) )
+	ROM_LOAD32_WORD( "91ts_8l.u28",  0x2000000, 0x200000, CRC(e953ace1) SHA1(c6cdfd807a7a84b86378c3585aeb7c0cb066f8a1) )
+	ROM_LOAD32_WORD( "92ts_8h.u29",  0x2000002, 0x200000, CRC(9da3b976) SHA1(ce1e4eb93760749200ede45703412868ca29a5e7) )
+	ROM_LOAD32_WORD( "93ts_9l.u41",  0x2400000, 0x200000, CRC(233087fe) SHA1(c4adb307ce11ef558fd23b299ce7f458de581446) )
+	ROM_LOAD32_WORD( "94ts_9h.u42",  0x2400002, 0x200000, CRC(9da831c7) SHA1(42698697aa85df088745b2d37ec89b01adce700f) )
+	ROM_LOAD32_WORD( "95ts_10l.u58", 0x2800000, 0x200000, CRC(303a5240) SHA1(5816d1922e85bc27a2a13cdd183d9e67c7ddb2e1) )
+	ROM_LOAD32_WORD( "96ts_10h.u59", 0x2800002, 0x200000, CRC(2240ebf6) SHA1(b61f93a18dd9d94fb57d95745d4df2e41a0371ff) )
 
-    ROM_REGION( 0x800000, "ymf", 0 ) // Samples
-    ROM_LOAD( "97ts_snd.u52", 0x000000, 0x400000, CRC(9155eca6) SHA1(f0b4f68462d8a465c39815d3b7fd9818788132ae) )
+	ROM_REGION( 0x800000, "ymf", 0 ) /* Samples */
+	ROM_LOAD( "97ts_snd.u52", 0x000000, 0x400000, CRC(9155eca6) SHA1(f0b4f68462d8a465c39815d3b7fd9818788132ae) )
 
-    ROM_REGION( 0x100, "user1", 0 ) // Default Eeprom (contains scores etc.)
-    // might need byteswapping to reprogram actual chip
-    ROM_LOAD( "tgm2.default.nv", 0x000, 0x100, CRC(50e2348c) SHA1(d17d2739c97a1d93a95dcc9f11feb1f6f228729e) )
+	ROM_REGION( 0x100, "user1", 0 ) /* Default Eeprom (contains scores etc.) */
+	// might need byteswapping to reprogram actual chip
+	ROM_LOAD( "tgm2.default.nv", 0x000, 0x100, CRC(50e2348c) SHA1(d17d2739c97a1d93a95dcc9f11feb1f6f228729e) )
 ROM_END
 
 ROM_START( tgm2p )
-    ROM_REGION( 0x100000, "main", 0)
-    ROM_LOAD32_WORD_SWAP( "2b.u21",   0x000000, 0x080000, CRC(38bc626c) SHA1(783e8413b11f1fa08d331b09ef4ed63f62b87ead) )
-    ROM_LOAD32_WORD_SWAP( "1b.u22",   0x000002, 0x080000, CRC(7599fb19) SHA1(3f7e81756470c173cc17a7e7dee91437571fd0c3) )
+	ROM_REGION( 0x100000, "main", 0)
+	ROM_LOAD32_WORD_SWAP( "2b.u21",   0x000000, 0x080000, CRC(38bc626c) SHA1(783e8413b11f1fa08d331b09ef4ed63f62b87ead) )
+	ROM_LOAD32_WORD_SWAP( "1b.u22",   0x000002, 0x080000, CRC(7599fb19) SHA1(3f7e81756470c173cc17a7e7dee91437571fd0c3) )
 
-    ROM_REGION( 0x3000000, "gfx1", ROMTEST_GFX )
-    // Lower positions not populated
-    ROM_LOAD32_WORD( "81ts_3l.u6",   0x0c00000, 0x200000, CRC(d77cff9c) SHA1(93ee48c350110ebf9a80cca95c599c90a523147d) )
-    ROM_LOAD32_WORD( "82ts_3h.u14",  0x0c00002, 0x200000, CRC(f012b583) SHA1(907e1c93cbfa6a0285f96c53f5ccb63e313053d7) )
-    ROM_LOAD32_WORD( "83ts_4l.u7",   0x1000000, 0x200000, CRC(078cafc3) SHA1(26e47c8f0aaa461e69e9f40ee61ce4b4cc480776) )
-    ROM_LOAD32_WORD( "84ts_4h.u15",  0x1000002, 0x200000, CRC(1f91446b) SHA1(81b43156c6a0f4e63dcc9e7c1e9dd54bcba38240) )
-    ROM_LOAD32_WORD( "85ts_5l.u8",   0x1400000, 0x200000, CRC(40fbd259) SHA1(6b8cbfc6232e04785fd232158b3f4d56fadb0c7d) )
-    ROM_LOAD32_WORD( "86ts_5h.u16",  0x1400002, 0x200000, CRC(186c935f) SHA1(0cab30c2ec4df3dc35b4c9de63d29bd0bc99afdb) )
-    ROM_LOAD32_WORD( "87ts_6l.u1",   0x1800000, 0x200000, CRC(c17dc48a) SHA1(4399bfc253fb1cd4ef1081d7350c73df3a0f7441) )
-    ROM_LOAD32_WORD( "88ts_6h.u2",   0x1800002, 0x200000, CRC(e4dba5da) SHA1(24db1e19f4df94ba3a22fba59e4fd065921db1c5) )
-    ROM_LOAD32_WORD( "89ts_7l.u19",  0x1c00000, 0x200000, CRC(dab1b2c5) SHA1(114fd7717b97cdfd605ab7e2a354190c41ba4a82) )
-    ROM_LOAD32_WORD( "90ts_7h.u20",  0x1c00002, 0x200000, CRC(aae696b3) SHA1(9ac27365719c1700f647911dc324a0e2aacea172) )
-    ROM_LOAD32_WORD( "91ts_8l.u28",  0x2000000, 0x200000, CRC(e953ace1) SHA1(c6cdfd807a7a84b86378c3585aeb7c0cb066f8a1) )
-    ROM_LOAD32_WORD( "92ts_8h.u29",  0x2000002, 0x200000, CRC(9da3b976) SHA1(ce1e4eb93760749200ede45703412868ca29a5e7) )
-    ROM_LOAD32_WORD( "93ts_9l.u41",  0x2400000, 0x200000, CRC(233087fe) SHA1(c4adb307ce11ef558fd23b299ce7f458de581446) )
-    ROM_LOAD32_WORD( "94ts_9h.u42",  0x2400002, 0x200000, CRC(9da831c7) SHA1(42698697aa85df088745b2d37ec89b01adce700f) )
-    ROM_LOAD32_WORD( "95ts_10l.u58", 0x2800000, 0x200000, CRC(303a5240) SHA1(5816d1922e85bc27a2a13cdd183d9e67c7ddb2e1) )
-    ROM_LOAD32_WORD( "96ts_10h.u59", 0x2800002, 0x200000, CRC(2240ebf6) SHA1(b61f93a18dd9d94fb57d95745d4df2e41a0371ff) )
+	ROM_REGION( 0x3000000, "gfx1", ROMTEST_GFX )	/* Sprites */
+	// Lower positions not populated
+	ROM_LOAD32_WORD( "81ts_3l.u6",   0x0c00000, 0x200000, CRC(d77cff9c) SHA1(93ee48c350110ebf9a80cca95c599c90a523147d) )
+	ROM_LOAD32_WORD( "82ts_3h.u14",  0x0c00002, 0x200000, CRC(f012b583) SHA1(907e1c93cbfa6a0285f96c53f5ccb63e313053d7) )
+	ROM_LOAD32_WORD( "83ts_4l.u7",   0x1000000, 0x200000, CRC(078cafc3) SHA1(26e47c8f0aaa461e69e9f40ee61ce4b4cc480776) )
+	ROM_LOAD32_WORD( "84ts_4h.u15",  0x1000002, 0x200000, CRC(1f91446b) SHA1(81b43156c6a0f4e63dcc9e7c1e9dd54bcba38240) )
+	ROM_LOAD32_WORD( "85ts_5l.u8",   0x1400000, 0x200000, CRC(40fbd259) SHA1(6b8cbfc6232e04785fd232158b3f4d56fadb0c7d) )
+	ROM_LOAD32_WORD( "86ts_5h.u16",  0x1400002, 0x200000, CRC(186c935f) SHA1(0cab30c2ec4df3dc35b4c9de63d29bd0bc99afdb) )
+	ROM_LOAD32_WORD( "87ts_6l.u1",   0x1800000, 0x200000, CRC(c17dc48a) SHA1(4399bfc253fb1cd4ef1081d7350c73df3a0f7441) )
+	ROM_LOAD32_WORD( "88ts_6h.u2",   0x1800002, 0x200000, CRC(e4dba5da) SHA1(24db1e19f4df94ba3a22fba59e4fd065921db1c5) )
+	ROM_LOAD32_WORD( "89ts_7l.u19",  0x1c00000, 0x200000, CRC(dab1b2c5) SHA1(114fd7717b97cdfd605ab7e2a354190c41ba4a82) )
+	ROM_LOAD32_WORD( "90ts_7h.u20",  0x1c00002, 0x200000, CRC(aae696b3) SHA1(9ac27365719c1700f647911dc324a0e2aacea172) )
+	ROM_LOAD32_WORD( "91ts_8l.u28",  0x2000000, 0x200000, CRC(e953ace1) SHA1(c6cdfd807a7a84b86378c3585aeb7c0cb066f8a1) )
+	ROM_LOAD32_WORD( "92ts_8h.u29",  0x2000002, 0x200000, CRC(9da3b976) SHA1(ce1e4eb93760749200ede45703412868ca29a5e7) )
+	ROM_LOAD32_WORD( "93ts_9l.u41",  0x2400000, 0x200000, CRC(233087fe) SHA1(c4adb307ce11ef558fd23b299ce7f458de581446) )
+	ROM_LOAD32_WORD( "94ts_9h.u42",  0x2400002, 0x200000, CRC(9da831c7) SHA1(42698697aa85df088745b2d37ec89b01adce700f) )
+	ROM_LOAD32_WORD( "95ts_10l.u58", 0x2800000, 0x200000, CRC(303a5240) SHA1(5816d1922e85bc27a2a13cdd183d9e67c7ddb2e1) )
+	ROM_LOAD32_WORD( "96ts_10h.u59", 0x2800002, 0x200000, CRC(2240ebf6) SHA1(b61f93a18dd9d94fb57d95745d4df2e41a0371ff) )
 
-    ROM_REGION( 0x800000, "ymf", 0 ) // Samples
-    ROM_LOAD( "97ts_snd.u52", 0x000000, 0x400000, CRC(9155eca6) SHA1(f0b4f68462d8a465c39815d3b7fd9818788132ae) )
+	ROM_REGION( 0x800000, "ymf", 0 ) /* Samples */
+	ROM_LOAD( "97ts_snd.u52", 0x000000, 0x400000, CRC(9155eca6) SHA1(f0b4f68462d8a465c39815d3b7fd9818788132ae) )
 
-    ROM_REGION( 0x100, "user1", 0 ) // Default Eeprom (contains scores etc.)
-    // might need byteswapping to reprogram actual chip/
-    ROM_LOAD( "tgm2p.default.nv", 0x000, 0x100, CRC(b2328b40) SHA1(e6cda4d6f4e91b9f78d2ca84a5eee6c3bd03fe02) )
+	ROM_REGION( 0x100, "user1", 0 ) /* Default Eeprom (contains scores etc.) */
+	// might need byteswapping to reprogram actual chip
+	ROM_LOAD( "tgm2p.default.nv", 0x000, 0x100, CRC(b2328b40) SHA1(e6cda4d6f4e91b9f78d2ca84a5eee6c3bd03fe02) )
 ROM_END
-*/
 
-/* are these right? should i fake the counter return?
-   'speedups / idle skipping isn't needed for 'hotgmck, hgkairak'
-   as the core catches and skips the idle loops automatically'
-*/
-
-static READ32_HANDLER( soldivid_speedup_r )
-{
- /*
-PC  : 0001AE74: MOV.L   @R14,R1
-PC  : 0001AE76: ADD     #$01,R1
-PC  : 0001AE78: MOV.L   R1,@R14
-PC  : 0001AE7A: MOV.L   @($7C,PC),R3
-PC  : 0001AE7C: MOV.L   @R3,R0
-PC  : 0001AE7E: TST     R0,R0
-PC  : 0001AE80: BT      $0001AE74
-*/
-	if (activecpu_get_pc()==0x0001AFAA) cpu_spinuntil_int(); // Character Select + InGame
-	if (activecpu_get_pc()==0x0001AE74) cpu_spinuntil_int(); // Everything Else?
-
-	return psh_ram[0x00000C/4];
-}
-
-static READ32_HANDLER( s1945ii_speedup_r )
-{
-/*
-PC  : 0609FC68: MOV.L   @R13,R1  // R13 is 600000C  R1 is counter  (read from r13)
-PC  : 0609FC6A: ADD     #$01,R1  // add 1 to counter
-PC  : 0609FC6C: MOV.L   R1,@R13  // write it back
-PC  : 0609FC6E: MOV.L   @($3C,PC),R3 // 609fdac into r3
-PC  : 0609FC70: MOV.L   @R3,R0  // whats there into r0
-PC  : 0609FC72: TST     R0,R0 // test
-PC  : 0609FC74: BT      $0609FC68
-*/
-	if (activecpu_get_pc()==0x609FC68) cpu_spinuntil_int(); // Title Screens
-	if (activecpu_get_pc()==0x609FED2) cpu_spinuntil_int(); // In Game
-	if (activecpu_get_pc()==0x60A0170) cpu_spinuntil_int(); // Attract Demo
-
-	return psh_ram[0x00000C/4];
-}
-
-static READ32_HANDLER( daraku_speedup_r )
-{
-/*
-PC  : 00047618: MOV.L   @($BC,PC),R0
-PC  : 0004761A: MOV.L   @R0,R1
-PC  : 0004761C: ADD     #$01,R1
-PC  : 0004761E: MOV.L   R1,@R0
-PC  : 00047620: MOV.L   @($BC,PC),R3
-PC  : 00047622: MOV.L   @R3,R0
-PC  : 00047624: TST     R0,R0
-PC  : 00047626: BT      $00047618
-*/
-	if (activecpu_get_pc()==0x0004761a) cpu_spinuntil_int(); // title
-	if (activecpu_get_pc()==0x00047976) cpu_spinuntil_int(); // ingame
-
-	return psh_ram[0x00000C/4];
-}
-
-static READ32_HANDLER( sbomberb_speedup_r )
-{
-/*
-PC  : 060A10EC: MOV.L   @R13,R3
-PC  : 060A10EE: ADD     #$01,R3
-PC  : 060A10F0: MOV.L   R3,@R13
-PC  : 060A10F2: MOV.L   @($34,PC),R1
-PC  : 060A10F4: MOV.L   @R1,R2
-PC  : 060A10F6: TST     R2,R2
-PC  : 060A10F8: BT      $060A10EC
-*/
-	if (activecpu_get_pc()==0x060A10EC) cpu_spinuntil_int(); // title
-	if (activecpu_get_pc()==0x060A1658) cpu_spinuntil_int(); // attract
-	if (activecpu_get_pc()==0x060A1380) cpu_spinuntil_int(); // game
-
-	return psh_ram[0x00000C/4];
-}
-
-static READ32_HANDLER( gunbird2_speedup_r )
-{
-/*
-PC  : 06028972: MOV.L   @R14,R3   // r14 is 604000c on this one
-PC  : 06028974: MOV.L   @($D4,PC),R1
-PC  : 06028976: ADD     #$01,R3
-PC  : 06028978: MOV.L   R3,@R14
-PC  : 0602897A: MOV.L   @R1,R2
-PC  : 0602897C: TST     R2,R2
-PC  : 0602897E: BT      $06028972
-*/
-	if (activecpu_get_pc()==0x06028972) cpu_spinuntil_int();
-	if (activecpu_get_pc()==0x06028E62) cpu_spinuntil_int();
-	if (activecpu_get_pc()==0x06028BE4) cpu_spinuntil_int();
-
-	return psh_ram[0x04000C/4];
-}
-
-static READ32_HANDLER( s1945iii_speedup_r )
-{
-	if (activecpu_get_pc()==0x0602B462) cpu_spinuntil_int(); // start up text
-	if (activecpu_get_pc()==0x0602B6E0) cpu_spinuntil_int(); // intro attract
-	if (activecpu_get_pc()==0x0602BC1C) cpu_spinuntil_int(); // game attract
-	if (activecpu_get_pc()==0x0602B97A) cpu_spinuntil_int(); // game
-
-	return psh_ram[0x06000C/4];
-}
-
-
-static READ32_HANDLER( dragnblz_speedup_r )
-{
-	if (activecpu_get_pc()==0x0602743e) cpu_spinuntil_int(); // startup texts
-	if (activecpu_get_pc()==0x060276e4) cpu_spinuntil_int(); // attract intro
-	if (activecpu_get_pc()==0x06027C72) cpu_spinuntil_int(); // attract game
-	if (activecpu_get_pc()==0x060279A6) cpu_spinuntil_int(); // game
-
-	return psh_ram[0x006000C/4];
-}
-
-static READ32_HANDLER( gnbarich_speedup_r )
-{
-/*
-PC  :0602CAE6: MOV.L   @R14,R3 // R14 = 0x606000C
-PC  :0602CAE8: MOV.L   @($F4,PC),R1
-PC  :0602CAEA: ADD     #$01,R3
-PC  :0602CAEC: MOV.L   R3,@R14 // R14 = 0x606000C
-PC  :0602CAEE: MOV.L   @R1,R2
-PC  :0602CAF0: TST     R2,R2
-PC  :0602CAF2: BT      $0602CAE6
-*/
-
-	if (activecpu_get_pc()==0x0602CAE6) cpu_spinuntil_int(); // title logos
-	if (activecpu_get_pc()==0x0602CD86) cpu_spinuntil_int(); // attract intro
-	if (activecpu_get_pc()==0x0602D2ee) cpu_spinuntil_int(); // game attract
-	if (activecpu_get_pc()==0x0602D040) cpu_spinuntil_int(); // game play
-
-	return psh_ram[0x006000C/4];
-}
-
-static READ32_HANDLER( mjgtaste_speedup_r )
-{
-
-	if (activecpu_get_pc()==0x6031f02) {cpu_spinuntil_int();return psh_ram[0x006000C/4];} // title logos
-	if (activecpu_get_pc()==0x603214a) {cpu_spinuntil_int();return psh_ram[0x006000C/4];} // attract game
-
-//  mame_printf_debug("at %08x\n",activecpu_get_pc());
-
-	return psh_ram[0x006000C/4];
-}
 
 static DRIVER_INIT( soldivid )
 {
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x1afaa);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x1ae74);
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, soldivid_speedup_r );
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
 	use_factory_eeprom=eeprom_0;
 }
 
 static DRIVER_INIT( s1945ii )
 {
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x609fc68);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x609fed2);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60a0170);
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, s1945ii_speedup_r );
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
 	use_factory_eeprom=eeprom_DEFAULT;
 }
 
 static DRIVER_INIT( daraku )
 {
 	UINT8 *RAM = memory_region(machine, "main");
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x4761a);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x47976);
-	memory_set_bankptr(1,&RAM[0x100000]);
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, daraku_speedup_r );
+	memory_set_bankptr(machine, 1,&RAM[0x100000]);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
 	use_factory_eeprom=eeprom_DARAKU;
 }
 
 static DRIVER_INIT( sbomberb )
 {
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60a10ec);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60a1658);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60a1380);
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, sbomberb_speedup_r );
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
 	use_factory_eeprom=eeprom_DEFAULT;
 }
 
 static DRIVER_INIT( gunbird2 )
 {
 	UINT8 *RAM = memory_region(machine, "main");
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x6028972);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x6028e62);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x6028be4);
-	memory_set_bankptr(1,&RAM[0x100000]);
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x604000c, 0x604000f, 0, 0, gunbird2_speedup_r );
+	memory_set_bankptr(machine, 1,&RAM[0x100000]);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
 	use_factory_eeprom=eeprom_DEFAULT;
 }
 
 static DRIVER_INIT( s1945iii )
 {
 	UINT8 *RAM = memory_region(machine, "main");
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602b462);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602b6e0);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602bc1c);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 3);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602b97a);
-	memory_set_bankptr(1,&RAM[0x100000]);
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, s1945iii_speedup_r );
+	memory_set_bankptr(machine, 1,&RAM[0x100000]);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
 	use_factory_eeprom=eeprom_S1945III;
 }
 
 static DRIVER_INIT( dragnblz )
 {
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602743e);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60276e4);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x6027c72);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 3);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x60279a6);
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, dragnblz_speedup_r );
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
 	use_factory_eeprom=eeprom_DRAGNBLZ;
 }
 
 static DRIVER_INIT( gnbarich )
 {
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602cae6);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602cd86);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 2);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602d2ee);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 3);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x602d040);
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, gnbarich_speedup_r );
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
 	use_factory_eeprom=eeprom_GNBARICH;
+}
+
+static DRIVER_INIT( tgm2 )
+{
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
+	use_factory_eeprom=eeprom_USER1;
 }
 
 static DRIVER_INIT( mjgtaste )
 {
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x6031f02);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
-	cpunum_set_info_int(0, CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x603214a);
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, mjgtaste_speedup_r );
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
 	use_factory_eeprom=eeprom_MJGTASTE;
 	/* needs to install mahjong controls too (can select joystick in test mode tho) */
 }
@@ -1412,5 +1227,7 @@ GAME( 1999, s1945iii, 0,        psikyo5,     s1945iii, s1945iii, ROT270, "Psikyo
 
 /* ps5v2 */
 GAME( 2000, dragnblz, 0,        psikyo5,     dragnblz, dragnblz, ROT270, "Psikyo", "Dragon Blaze", 0 )
+GAME( 2000, tgm2,     0,        psikyo5_240, tgm2,     tgm2,     ROT0,   "Arika",  "Tetris the Absolute The Grand Master 2", 0 )
+GAME( 2000, tgm2p,    tgm2,     psikyo5_240, tgm2,     tgm2,     ROT0,   "Arika",  "Tetris the Absolute The Grand Master 2 Plus", 0 )
 GAME( 2001, gnbarich, 0,        psikyo5,     gnbarich, gnbarich, ROT270, "Psikyo", "Gunbarich", 0 )
 GAME( 2002, mjgtaste, 0,        psikyo5,     mjgtaste, mjgtaste, ROT0,   "Psikyo", "Mahjong G-Taste", 0 )

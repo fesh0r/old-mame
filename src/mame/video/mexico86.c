@@ -9,12 +9,12 @@ static int charbank;
 
 WRITE8_HANDLER( mexico86_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 
 	if ((data & 7) > 5)
 		popmessage( "Switching to invalid bank!" );
 
-	memory_set_bankptr(1, &RAM[0x10000 + 0x4000 * (data & 0x07)]);
+	memory_set_bankptr(space->machine, 1, &RAM[0x10000 + 0x4000 * (data & 0x07)]);
 
 	charbank = (data & 0x20) >> 5;
 }
@@ -32,7 +32,7 @@ VIDEO_UPDATE( mexico86 )
 	/* and sprites) are stored in the same memory region, and information on */
 	/* the background character columns is stored inthe area dd00-dd3f */
 
-	fillbitmap(bitmap,255,cliprect);
+	bitmap_fill(bitmap,cliprect,255);
 
 	sx = 0;
 /* the score display seems to be outside of the main objectram. */
@@ -109,7 +109,7 @@ VIDEO_UPDATE( kikikai )
 	int goffs,code,color,y;
 	int tx, ty;
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 	sx = 0;
 	for (offs=0; offs<mexico86_objectram_size; offs+=4)
 	{

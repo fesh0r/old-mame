@@ -8,6 +8,7 @@
 
 #include "driver.h"
 #include "machine/segacrpt.h"
+#include "includes/senjyo.h"
 
 UINT8 *senjyo_fgscroll;
 UINT8 *senjyo_scrollx1,*senjyo_scrolly1;
@@ -100,19 +101,19 @@ static TILE_GET_INFO( get_bg3_tile_info )
 
 VIDEO_START( senjyo )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	if (is_senjyo)
 	{
-		bg1_tilemap = tilemap_create(senjyo_bg1_tile_info,tilemap_scan_rows,16,16,16,32);
-		bg2_tilemap = tilemap_create(get_bg2_tile_info,   tilemap_scan_rows,16,16,16,48);	/* only 16x32 used by Star Force */
-		bg3_tilemap = tilemap_create(get_bg3_tile_info,   tilemap_scan_rows,16,16,16,56);	/* only 16x32 used by Star Force */
+		bg1_tilemap = tilemap_create(machine, senjyo_bg1_tile_info,tilemap_scan_rows,16,16,16,32);
+		bg2_tilemap = tilemap_create(machine, get_bg2_tile_info,   tilemap_scan_rows,16,16,16,48);	/* only 16x32 used by Star Force */
+		bg3_tilemap = tilemap_create(machine, get_bg3_tile_info,   tilemap_scan_rows,16,16,16,56);	/* only 16x32 used by Star Force */
 	}
 	else
 	{
-		bg1_tilemap = tilemap_create(starforc_bg1_tile_info,tilemap_scan_rows,16,16,16,32);
-		bg2_tilemap = tilemap_create(get_bg2_tile_info,     tilemap_scan_rows,16,16,16,32);	/* only 16x32 used by Star Force */
-		bg3_tilemap = tilemap_create(get_bg3_tile_info,     tilemap_scan_rows,16,16,16,32);	/* only 16x32 used by Star Force */
+		bg1_tilemap = tilemap_create(machine, starforc_bg1_tile_info,tilemap_scan_rows,16,16,16,32);
+		bg2_tilemap = tilemap_create(machine, get_bg2_tile_info,     tilemap_scan_rows,16,16,16,32);	/* only 16x32 used by Star Force */
+		bg3_tilemap = tilemap_create(machine, get_bg3_tile_info,     tilemap_scan_rows,16,16,16,32);	/* only 16x32 used by Star Force */
 	}
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -173,18 +174,18 @@ static void draw_bgbitmap(running_machine *machine, bitmap_t *bitmap,const recta
 
 
 	if (senjyo_bgstripes == 0xff)	/* off */
-		fillbitmap(bitmap,0,cliprect);
+		bitmap_fill(bitmap,cliprect,0);
 	else
 	{
 		pen = 0;
 		count = 0;
 		strwid = senjyo_bgstripes;
 		if (strwid == 0) strwid = 0x100;
-		if (flip_screen_get()) strwid ^= 0xff;
+		if (flip_screen_get(machine)) strwid ^= 0xff;
 
 		for (x = 0;x < 256;x++)
 		{
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 				for (y = 0;y < 256;y++)
 					*BITMAP_ADDR16(bitmap, y, 255 - x) = 384 + pen;
 			else
@@ -201,7 +202,7 @@ static void draw_bgbitmap(running_machine *machine, bitmap_t *bitmap,const recta
 	}
 }
 
-static void draw_radar(bitmap_t *bitmap,const rectangle *cliprect)
+static void draw_radar(running_machine *machine,bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs,x;
 
@@ -214,7 +215,7 @@ static void draw_radar(bitmap_t *bitmap,const rectangle *cliprect)
 				sx = (8 * (offs % 8) + x) + 256-64;
 				sy = ((offs & 0x1ff) / 8) + 96;
 
-				if (flip_screen_get())
+				if (flip_screen_get(machine))
 				{
 					sx = 255 - sx;
 					sy = 255 - sy;
@@ -249,7 +250,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 			flipx = spriteram[offs+1] & 0x40;
 			flipy = spriteram[offs+1] & 0x80;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				flipx = !flipx;
 				flipy = !flipy;
@@ -294,7 +295,7 @@ VIDEO_UPDATE( senjyo )
 
 		scrollx = senjyo_scrollx1[0];
 		scrolly = senjyo_scrolly1[0] + 256 * senjyo_scrolly1[1];
-		if (flip_screen_get())
+		if (flip_screen_get(screen->machine))
 			scrollx = -scrollx;
 		tilemap_set_scrollx(bg1_tilemap,0,scrollx);
 		tilemap_set_scrolly(bg1_tilemap,0,scrolly);
@@ -306,14 +307,14 @@ VIDEO_UPDATE( senjyo )
 			scrollx = senjyo_scrollx1[0];
 			scrolly = senjyo_scrolly1[0] + 256 * senjyo_scrolly1[1];
 		}
-		if (flip_screen_get())
+		if (flip_screen_get(screen->machine))
 			scrollx = -scrollx;
 		tilemap_set_scrollx(bg2_tilemap,0,scrollx);
 		tilemap_set_scrolly(bg2_tilemap,0,scrolly);
 
 		scrollx = senjyo_scrollx3[0];
 		scrolly = senjyo_scrolly3[0] + 256 * senjyo_scrolly3[1];
-		if (flip_screen_get())
+		if (flip_screen_get(screen->machine))
 			scrollx = -scrollx;
 		tilemap_set_scrollx(bg3_tilemap,0,scrollx);
 		tilemap_set_scrolly(bg3_tilemap,0,scrolly);
@@ -328,7 +329,7 @@ VIDEO_UPDATE( senjyo )
 	tilemap_draw(bitmap,cliprect,bg1_tilemap,0,0);
 	draw_sprites(screen->machine, bitmap,cliprect,3);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-	draw_radar(bitmap,cliprect);
+	draw_radar(screen->machine,bitmap,cliprect);
 
 #if 0
 {

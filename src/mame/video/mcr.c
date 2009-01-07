@@ -98,19 +98,19 @@ VIDEO_START( mcr )
 	switch (mcr_cpu_board)
 	{
 		case 90009:
-			bg_tilemap = tilemap_create(mcr_90009_get_tile_info, tilemap_scan_rows,  16,16, 32,30);
+			bg_tilemap = tilemap_create(machine, mcr_90009_get_tile_info, tilemap_scan_rows,  16,16, 32,30);
 			break;
 
 		case 90010:
-			bg_tilemap = tilemap_create(mcr_90010_get_tile_info, tilemap_scan_rows,  16,16, 32,30);
+			bg_tilemap = tilemap_create(machine, mcr_90010_get_tile_info, tilemap_scan_rows,  16,16, 32,30);
 			break;
 
 		case 91475:
-			bg_tilemap = tilemap_create(mcr_90010_get_tile_info, tilemap_scan_rows,  16,16, 32,30);
+			bg_tilemap = tilemap_create(machine, mcr_90010_get_tile_info, tilemap_scan_rows,  16,16, 32,30);
 			break;
 
 		case 91490:
-			bg_tilemap = tilemap_create(mcr_91490_get_tile_info, tilemap_scan_rows,  16,16, 32,30);
+			bg_tilemap = tilemap_create(machine, mcr_91490_get_tile_info, tilemap_scan_rows,  16,16, 32,30);
 			break;
 
 		default:
@@ -166,7 +166,7 @@ WRITE8_HANDLER( mcr_91490_paletteram_w )
 {
 	paletteram[offset] = data;
 	offset &= 0x7f;
-	mcr_set_color(machine, (offset / 2) & 0x3f, data | ((offset & 1) << 8));
+	mcr_set_color(space->machine, (offset / 2) & 0x3f, data | ((offset & 1) << 8));
 }
 
 
@@ -193,9 +193,9 @@ WRITE8_HANDLER( mcr_90010_videoram_w )
 	if ((offset & 0x780) == 0x780)
 	{
 		if (mcr_cpu_board != 91475)
-			mcr_set_color(machine, (offset / 2) & 0x3f, data | ((offset & 1) << 8));
+			mcr_set_color(space->machine, (offset / 2) & 0x3f, data | ((offset & 1) << 8));
 		else
-			journey_set_color(machine, (offset / 2) & 0x3f, data | ((offset & 1) << 8));
+			journey_set_color(space->machine, (offset / 2) & 0x3f, data | ((offset & 1) << 8));
 	}
 }
 
@@ -217,7 +217,7 @@ WRITE8_HANDLER( twotiger_videoram_w )
 
 	/* palette RAM is mapped into the upper 0x80 bytes here */
 	if ((effoffs & 0x780) == 0x780)
-		mcr_set_color(machine, ((offset & 0x400) >> 5) | ((offset >> 1) & 0x1f), data | ((offset & 1) << 8));
+		mcr_set_color(space->machine, ((offset & 0x400) >> 5) | ((offset >> 1) & 0x1f), data | ((offset & 1) << 8));
 }
 
 
@@ -389,7 +389,7 @@ VIDEO_UPDATE( mcr )
 	tilemap_set_flip(bg_tilemap, mcr_cocktail_flip ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 
 	/* draw the background */
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 0);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0x00);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 1, 0x10);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 2, 0x20);

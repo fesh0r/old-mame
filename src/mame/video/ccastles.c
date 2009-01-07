@@ -55,10 +55,10 @@ VIDEO_START( ccastles )
 	spritebitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	/* register for savestates */
-	state_save_register_global_array(video_control);
-	state_save_register_global_array(bitmode_addr);
-	state_save_register_global(hscroll);
-	state_save_register_global(vscroll);
+	state_save_register_global_array(machine, video_control);
+	state_save_register_global_array(machine, bitmode_addr);
+	state_save_register_global(machine, hscroll);
+	state_save_register_global(machine, vscroll);
 }
 
 
@@ -71,7 +71,7 @@ VIDEO_START( ccastles )
 
 WRITE8_HANDLER( ccastles_hscroll_w )
 {
-	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+	video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 	hscroll = data;
 }
 
@@ -124,7 +124,7 @@ WRITE8_HANDLER( ccastles_paletteram_w )
 	bit2 = (~b >> 2) & 0x01;
 	b = combine_3_weights(bweights, bit0, bit1, bit2);
 
-	palette_set_color(machine, offset & 0x1f, MAKE_RGB(r, g, b));
+	palette_set_color(space->machine, offset & 0x1f, MAKE_RGB(r, g, b));
 }
 
 
@@ -280,7 +280,7 @@ VIDEO_UPDATE( ccastles )
 	int x, y, offs;
 
 	/* draw the sprites */
-	fillbitmap(spritebitmap, 0x0f, cliprect);
+	bitmap_fill(spritebitmap, cliprect, 0x0f);
 	for (offs = 0; offs < 320/2; offs += 4)
 	{
 		int x = spriteaddr[offs+3];

@@ -305,6 +305,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/segacrpt.h"
 #include "machine/8255ppi.h"
 #include "audio/segasnd.h"
@@ -360,14 +361,14 @@ static INPUT_CHANGED( service_switch )
 {
 	/* pressing the service switch sends an NMI */
 	if (newval)
-		cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
 static INTERRUPT_GEN( vblank_int )
 {
 	if (int_enabled)
-		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+		cpu_set_input_line(device, 0, ASSERT_LINE);
 }
 
 
@@ -375,7 +376,7 @@ static WRITE8_HANDLER( int_enable_w )
 {
 	int_enabled = data & 1;
 	if (!int_enabled)
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 
@@ -389,16 +390,16 @@ static WRITE8_HANDLER( int_enable_w )
 static MACHINE_START( zaxxon )
 {
 	/* register for save states */
-	state_save_register_global(int_enabled);
-	state_save_register_global_array(coin_status);
-	state_save_register_global_array(coin_enable);
+	state_save_register_global(machine, int_enabled);
+	state_save_register_global_array(machine, coin_status);
+	state_save_register_global_array(machine, coin_enable);
 }
 
 
 static MACHINE_RESET( razmataz )
 {
 	/* the timer value is unknown, but this seems to work well */
-	sega_usb_reset(0x10);
+	sega_usb_reset(machine, 0x10);
 }
 
 
@@ -933,7 +934,12 @@ static const ppi8255_interface zaxxon_ppi_intf =
 };
 
 
-static READ8_DEVICE_HANDLER( sound_latch_r ) { return soundlatch_r(device->machine, offset); }
+static READ8_DEVICE_HANDLER( sound_latch_r )
+{
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	return soundlatch_r(space, offset);
+}
+
 
 static const ppi8255_interface congo_ppi_intf =
 {
@@ -1389,7 +1395,7 @@ ROM_END
  *
  *************************************/
 
-static void zaxxonb_decode(running_machine *machine, const char *region)
+static void zaxxonb_decode(running_machine *machine, const char *cputag)
 {
 /*
     the values vary, but the translation mask is always laid out like this:
@@ -1434,11 +1440,12 @@ static void zaxxonb_decode(running_machine *machine, const char *region)
 	};
 
 	int A;
-	UINT8 *rom = memory_region(machine, region);
-	int size = memory_region_length(machine, region);
+	const address_space *space = cputag_get_address_space(machine, cputag, ADDRESS_SPACE_PROGRAM);
+	UINT8 *rom = memory_region(machine, cputag);
+	int size = memory_region_length(machine, cputag);
 	UINT8 *decrypt = auto_malloc(size);
 
-	memory_set_decrypted_region(0, 0x0000, size - 1, decrypt);
+	memory_set_decrypted_region(space, 0x0000, size - 1, decrypt);
 
 	for (A = 0x0000; A < size; A++)
 	{
@@ -1496,19 +1503,19 @@ static DRIVER_INIT( razmataz )
 	nprinces_decode(machine, "main");
 
 	/* additional input ports are wired */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc004, 0xc004, 0, 0x18f3, input_port_read_handler8(machine->portconfig, "SW04"));
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc008, 0xc008, 0, 0x18f3, input_port_read_handler8(machine->portconfig, "SW08"));
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00c, 0xc00c, 0, 0x18f3, input_port_read_handler8(machine->portconfig, "SW0C"));
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc004, 0xc004, 0, 0x18f3, input_port_read_handler8(machine->portconfig, "SW04"));
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc008, 0xc008, 0, 0x18f3, input_port_read_handler8(machine->portconfig, "SW08"));
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc00c, 0xc00c, 0, 0x18f3, input_port_read_handler8(machine->portconfig, "SW0C"));
 
 	/* unknown behavior expected here */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc80a, 0xc80a, 0, 0, razmataz_counter_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc80a, 0xc80a, 0, 0, razmataz_counter_r);
 
 	/* connect the universal sound board */
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe03c, 0xe03c, 0, 0x1f00, sega_usb_status_r, sega_usb_data_w);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe03c, 0xe03c, 0, 0x1f00, sega_usb_status_r, sega_usb_data_w);
 
 	/* additional state saving */
-	state_save_register_global_array(razmataz_dial_pos);
-	state_save_register_global(razmataz_counter);
+	state_save_register_global_array(machine, razmataz_dial_pos);
+	state_save_register_global(machine, razmataz_counter);
 }
 
 
@@ -1517,7 +1524,7 @@ static DRIVER_INIT( ixion )
 	szaxxon_decode(machine, "main");
 
 	/* connect the universal sound board */
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe03c, 0xe03c, 0, 0x1f00, sega_usb_status_r, sega_usb_data_w);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe03c, 0xe03c, 0, 0x1f00, sega_usb_status_r, sega_usb_data_w);
 }
 
 

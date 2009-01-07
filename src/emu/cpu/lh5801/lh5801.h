@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *   lh5801.h
+ *   cpustate->h
  *   portable lh5801 emulator interface
  *
  *   Copyright Peter Trauner, all rights reserved.
@@ -66,16 +66,19 @@ pc 8bit
 #include "cpuintrf.h"
 
 
+typedef UINT8 (*lh5801_in_func)(const device_config *device);
+
 typedef struct _lh5801_cpu_core lh5801_cpu_core;
 struct _lh5801_cpu_core
 {
-	UINT8 (*in)(void);
+	lh5801_in_func	in;
 };
 
 #define LH5801_INT_NONE 0
 #define LH5801_IRQ 1
 
-void lh5801_get_info(UINT32 state, cpuinfo *info);
-extern offs_t lh5801_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+CPU_GET_INFO( lh5801 );
+#define CPU_LH5801 CPU_GET_INFO_NAME( lh5801 )
+extern CPU_DISASSEMBLE( lh5801 );
 
 #endif /* __LH5801_H__ */

@@ -53,6 +53,7 @@ L056-6    9A          "      "      VLI-8-4 7A         "
 */
 
 #include "driver.h"
+#include "cpu/tms9900/tms9900.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 #include "sound/5220intf.h"
@@ -176,7 +177,7 @@ static VIDEO_START( looping )
 {
 	looping_state *state = machine->driver_data;
 
-	state->bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, 8,8, 32,32);
+	state->bg_tilemap = tilemap_create(machine, get_tile_info, tilemap_scan_rows, 8,8, 32,32);
 
 	tilemap_set_scroll_cols(state->bg_tilemap, 0x20);
 }
@@ -191,23 +192,23 @@ static VIDEO_START( looping )
 
 static WRITE8_HANDLER( flip_screen_x_w )
 {
-	looping_state *state = machine->driver_data;
-	flip_screen_x_set(~data & 0x01);
-	tilemap_set_scrollx(state->bg_tilemap, 0, flip_screen_get() ? 128 : 0);
+	looping_state *state = space->machine->driver_data;
+	flip_screen_x_set(space->machine, ~data & 0x01);
+	tilemap_set_scrollx(state->bg_tilemap, 0, flip_screen_get(space->machine) ? 128 : 0);
 }
 
 
 static WRITE8_HANDLER( flip_screen_y_w )
 {
-	looping_state *state = machine->driver_data;
-	flip_screen_y_set(~data & 0x01);
-	tilemap_set_scrollx(state->bg_tilemap, 0, flip_screen_get() ? 128 : 0);
+	looping_state *state = space->machine->driver_data;
+	flip_screen_y_set(space->machine, ~data & 0x01);
+	tilemap_set_scrollx(state->bg_tilemap, 0, flip_screen_get(space->machine) ? 128 : 0);
 }
 
 
 static WRITE8_HANDLER( looping_videoram_w )
 {
-	looping_state *state = machine->driver_data;
+	looping_state *state = space->machine->driver_data;
 	state->videoram[offset] = data;
 	tilemap_mark_tile_dirty(state->bg_tilemap, offset);
 }
@@ -215,7 +216,7 @@ static WRITE8_HANDLER( looping_videoram_w )
 
 static WRITE8_HANDLER( looping_colorram_w )
 {
-	looping_state *state = machine->driver_data;
+	looping_state *state = space->machine->driver_data;
 	int i;
 
 	state->colorram[offset] = data;
@@ -256,13 +257,13 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int code  = source[1] & 0x3f;
 		int color = source[2];
 
-		if (flip_screen_x_get())
+		if (flip_screen_x_get(machine))
 		{
 			sx = 240 - sx;
 			flipx = !flipx;
 		}
 
-		if (flip_screen_y_get())
+		if (flip_screen_y_get(machine))
 		{
 			sy = 240 - sy;
 			flipy = !flipy;
@@ -293,7 +294,7 @@ static VIDEO_UPDATE( looping )
 static MACHINE_START( looping )
 {
 	looping_state *state = machine->driver_data;
-	state_save_register_global_array(state->sound);
+	state_save_register_global_array(machine, state->sound);
 }
 
 
@@ -306,41 +307,41 @@ static MACHINE_START( looping )
 
 static INTERRUPT_GEN( looping_interrupt )
 {
-	cpunum_set_input_line_and_vector(machine, 0, 0, ASSERT_LINE, 4);
+	cpu_set_input_line_and_vector(device, 0, ASSERT_LINE, 4);
 }
 
 
 static WRITE8_HANDLER( level2_irq_set )
 {
 	if (!(data & 1))
-		cpunum_set_input_line_and_vector(machine, 0, 0, ASSERT_LINE, 4);
+		cpu_set_input_line_and_vector(space->machine->cpu[0], 0, ASSERT_LINE, 4);
 }
 
 
 static WRITE8_HANDLER( main_irq_ack_w )
 {
 	if (data == 0)
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 
 static WRITE8_HANDLER( looping_souint_clr )
 {
 	if (data == 0)
-		cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 }
 
 
 static void looping_spcint(running_machine *machine, int state)
 {
-	cpunum_set_input_line_and_vector(machine, 1, 0, state, 6);
+	cpu_set_input_line_and_vector(machine->cpu[1], 0, state, 6);
 }
 
 
 static WRITE8_HANDLER( looping_soundlatch_w )
 {
-	soundlatch_w(machine, offset, data);
-	cpunum_set_input_line_and_vector(machine, 1, 0, ASSERT_LINE, 4);
+	soundlatch_w(space, offset, data);
+	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, ASSERT_LINE, 4);
 }
 
 
@@ -364,7 +365,7 @@ static WRITE8_HANDLER( looping_sound_sw )
         0007 = AFA
     */
 
-	looping_state *state = machine->driver_data;
+	looping_state *state = space->machine->driver_data;
 	state->sound[offset + 1] = data ^ 1;
 	dac_data_w(0, ((state->sound[2] << 7) + (state->sound[3] << 6)) * state->sound[7]);
 }
@@ -411,8 +412,8 @@ static int last;
 static WRITE8_HANDLER( out_0_w ) { mame_printf_debug("out0 = %02X\n", data); }
 static WRITE8_HANDLER( out_2_w ) { mame_printf_debug("out2 = %02X\n", data); }
 
-static READ8_HANDLER( adc_r )  { mame_printf_debug("%04X:ADC read\n", activecpu_get_pc()); return 0xff; }
-static WRITE8_HANDLER( adc_w ) { mame_printf_debug("%04X:ADC write = %02X\n", activecpu_get_pc(), data); }
+static READ8_HANDLER( adc_r )  { mame_printf_debug("%04X:ADC read\n", cpu_get_pc(space->cpu)); return 0xff; }
+static WRITE8_HANDLER( adc_w ) { mame_printf_debug("%04X:ADC write = %02X\n", cpu_get_pc(space->cpu), data); }
 
 static WRITE8_HANDLER( plr2_w )
 {
@@ -793,7 +794,7 @@ static DRIVER_INIT( looping )
 		rom[i] = BITSWAP8(rom[i], 0,1,2,3,4,5,6,7);
 
 	/* install protection handlers */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x7000, 0x7007, 0, 0, protection_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x7000, 0x7007, 0, 0, protection_r);
 }
 
 

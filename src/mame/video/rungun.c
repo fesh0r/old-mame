@@ -86,7 +86,7 @@ VIDEO_START(rng)
 	K053936_wraparound_enable(0, 0);
 	K053936_set_offset(0, 34, 9);
 
-	rng_936_tilemap = tilemap_create(get_rng_936_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
+	rng_936_tilemap = tilemap_create(machine, get_rng_936_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
 	tilemap_set_transparent_pen(rng_936_tilemap, 0);
 
 	/* find first empty slot to decode gfx */
@@ -97,25 +97,25 @@ VIDEO_START(rng)
 	assert(ttl_gfx_index != MAX_GFX_ELEMENTS);
 
 	// decode the ttl layer's gfx
-	machine->gfx[ttl_gfx_index] = allocgfx(&charlayout);
+	machine->gfx[ttl_gfx_index] = allocgfx(machine, &charlayout);
 	decodegfx(machine->gfx[ttl_gfx_index], memory_region(machine, "gfx3"), 0, machine->gfx[ttl_gfx_index]->total_elements);
 
 	machine->gfx[ttl_gfx_index]->total_colors = machine->config->total_colors / 16;
 
 	// create the tilemap
-	ttl_tilemap = tilemap_create(ttl_get_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
+	ttl_tilemap = tilemap_create(machine, ttl_get_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(ttl_tilemap, 0);
 
-	state_save_register_global_array(ttl_vram);
+	state_save_register_global_array(machine, ttl_vram);
 
 	sprite_colorbase = 0x20;
 }
 
 VIDEO_UPDATE(rng)
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	K053936_0_zoom_draw(bitmap, cliprect, rng_936_tilemap, 0, 0);
 

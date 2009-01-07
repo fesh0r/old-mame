@@ -59,7 +59,7 @@ static int tile_bank;
 
 WRITE16_HANDLER( powerins_flipscreen_w )
 {
-	if (ACCESSING_BITS_0_7)	flip_screen_set( data & 1 );
+	if (ACCESSING_BITS_0_7)	flip_screen_set(space->machine,  data & 1 );
 }
 
 WRITE16_HANDLER( powerins_tilebank_w )
@@ -95,7 +95,7 @@ WRITE16_HANDLER( powerins_paletteram16_w )
 	int g = ((newword >>  7) & 0x1E ) | ((newword >> 2) & 0x01);
 	int b = ((newword >>  3) & 0x1E ) | ((newword >> 1) & 0x01);
 
-	palette_set_color_rgb( machine,offset, pal5bit(r),pal5bit(g),pal5bit(b) );
+	palette_set_color_rgb( space->machine,offset, pal5bit(r),pal5bit(g),pal5bit(b) );
 }
 
 
@@ -197,13 +197,13 @@ WRITE16_HANDLER( powerins_vram_1_w )
 
 VIDEO_START( powerins )
 {
-	tilemap_0 = tilemap_create(	get_tile_info_0,
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0,
 								powerins_get_memory_offset_0,
 
 								16,16,
 								DIM_NX_0, DIM_NY_0 );
 
-	tilemap_1 = tilemap_create(	get_tile_info_1,
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1,
 								tilemap_scan_cols,
 
 								8,8,
@@ -298,7 +298,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 
 		/* Handle flip_screen. Apply a global offset of 32 pixels along x too */
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{	sx = screen_w - sx - dimx*16 - 32;	flipx = !flipx;
 			sy = screen_h - sy - dimy*16;		flipy = !flipy;
 			code += dimx*dimy-1;			inc = -1;	}
@@ -366,7 +366,7 @@ if (input_code_pressed(KEYCODE_Z))
 #endif
 
 	if (layers_ctrl&1)		tilemap_draw(bitmap,cliprect, tilemap_0, 0, 0);
-	else					fillbitmap(bitmap,0,cliprect);
+	else					bitmap_fill(bitmap,cliprect,0);
 	if (layers_ctrl&8)		draw_sprites(screen->machine,bitmap,cliprect);
 	if (layers_ctrl&2)		tilemap_draw(bitmap,cliprect, tilemap_1, 0, 0);
 	return 0;

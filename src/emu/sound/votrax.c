@@ -6,10 +6,9 @@
 
 **************************************************************************
 
-sh_votrax_start  - Start emulation, load samples from Votrax subdirectory
-sh_votrax_stop   - End emulation, free memory used for samples
+SND_START(votrax)- Start emulation, load samples from Votrax subdirectory
 votrax_w         - Write data to votrax port
-votrax_status    - Return busy status (-1 = busy)
+votrax_status_r  - Return busy status (-1 = busy)
 
 If you need to alter the base frequency (i.e. Qbert) then just alter
 the variable VotraxBaseFrequency, this is defaulted to 8000
@@ -18,12 +17,13 @@ the variable VotraxBaseFrequency, this is defaulted to 8000
 
 #include "sndintrf.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "samples.h"
+#include "votrax.h"
 
 
 struct votrax_info
 {
+	const device_config *device;
 	int		stream;
 	int		frequency;		/* Some games (Qbert) change this */
 	int 	volume;
@@ -59,10 +59,10 @@ static const char *const VotraxTable[65] =
  0
 };
 
-static void votrax_update_sound(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( votrax_update_sound )
 {
 	struct votrax_info *info = param;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
 	if (info->sample)
 	{
@@ -101,18 +101,19 @@ static void votrax_update_sound(void *param, stream_sample_t **inputs, stream_sa
 }
 
 
-static void *votrax_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( votrax )
 {
 	struct votrax_info *votrax;
 
 	votrax = auto_malloc(sizeof(*votrax));
 	memset(votrax, 0, sizeof(*votrax));
 
+	votrax->device = device;
 	votrax->samples = readsamples(VotraxTable,"votrax");
-    votrax->frequency = 8000;
-    votrax->volume = 230;
+	votrax->frequency = 8000;
+	votrax->volume = 230;
 
-    votrax->channel = stream_create(0, 1, Machine->sample_rate, votrax, votrax_update_sound);
+	votrax->channel = stream_create(device, 0, 1, device->machine->sample_rate, votrax, votrax_update_sound);
 
 	votrax->sample = NULL;
 	votrax->step = 0;
@@ -141,7 +142,7 @@ void votrax_w(int data)
 		info->sample = &info->samples->sample[Phoneme];
 		info->pos = 0;
 		info->frac = 0;
-		info->step = ((INT64)(info->sample->frequency + (256*Intonation)) << FRAC_BITS) / Machine->sample_rate;
+		info->step = ((INT64)(info->sample->frequency + (256*Intonation)) << FRAC_BITS) / info->device->machine->sample_rate;
 		stream_set_output_gain(info->channel, 0, (info->volume + (8*Intonation)*100/255) / 100.0);
 	}
 }
@@ -159,7 +160,7 @@ int votrax_status_r(void)
  * Generic get_info
  **************************************************************************/
 
-static void votrax_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( votrax )
 {
 	switch (state)
 	{
@@ -168,24 +169,24 @@ static void votrax_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void votrax_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( votrax )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = votrax_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = votrax_start;				break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( votrax );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( votrax );			break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "Votrax SC-01";				break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Votrax speech";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "Votrax SC-01");				break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Votrax speech");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

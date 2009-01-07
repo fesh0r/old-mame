@@ -125,7 +125,7 @@ static void set_palette(running_machine *machine, mystston_state *state)
 
 WRITE8_HANDLER( mystston_video_control_w )
 {
-	mystston_state *state = machine->driver_data;
+	mystston_state *state = space->machine->driver_data;
 
 	*state->video_control = data;
 
@@ -221,13 +221,13 @@ static VIDEO_START( mystston )
 {
 	mystston_state *state = machine->driver_data;
 
-	state->bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flip_x, 16, 16, 16, 32);
+	state->bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols_flip_x, 16, 16, 16, 32);
 
-	state->fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols_flip_x,  8,  8, 32, 32);
+	state->fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_cols_flip_x,  8,  8, 32, 32);
 	tilemap_set_transparent_pen(state->fg_tilemap, 0);
 
 	/* create the interrupt timer */
-	state->interrupt_timer = timer_alloc(interrupt_callback, NULL);
+	state->interrupt_timer = timer_alloc(machine, interrupt_callback, NULL);
 }
 
 

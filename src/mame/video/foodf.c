@@ -42,13 +42,13 @@ VIDEO_START( foodf )
 	static const int resistances[3] = { 1000, 470, 220 };
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols,  8,8, 32,32);
+	atarigen_playfield_tilemap = tilemap_create(machine, get_playfield_tile_info, tilemap_scan_cols,  8,8, 32,32);
 	tilemap_set_transparent_pen(atarigen_playfield_tilemap, 0);
 
 	/* adjust the playfield for the 8 pixel offset */
 	tilemap_set_scrollx(atarigen_playfield_tilemap, 0, -8);
 	playfield_flip = 0;
-	state_save_register_global(playfield_flip);
+	state_save_register_global(machine, playfield_flip);
 
 	/* compute the color output resistor weights */
 	compute_resistor_weights(0,	255, -1.0,
@@ -107,7 +107,7 @@ WRITE16_HANDLER( foodf_paletteram_w )
 	bit1 = (newword >> 7) & 0x01;
 	b = combine_2_weights(bweights, bit0, bit1);
 
-	palette_set_color(machine, offset, MAKE_RGB(r, g, b));
+	palette_set_color(space->machine, offset, MAKE_RGB(r, g, b));
 }
 
 
@@ -126,7 +126,7 @@ VIDEO_UPDATE( foodf )
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, TILEMAP_DRAW_OPAQUE, 0);
 
 	/* then draw the non-transparent parts with a priority of 1 */
-	fillbitmap(priority_bitmap, 0, 0);
+	bitmap_fill(priority_bitmap, 0, 0);
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 0, 1);
 
 	/* draw the motion objects front-to-back */

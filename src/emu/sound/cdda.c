@@ -32,18 +32,18 @@ static void get_audio_data(cdda_info *info, stream_sample_t *bufL, stream_sample
     cdda_update - stream update callback
 -------------------------------------------------*/
 
-static void cdda_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length)
+static STREAM_UPDATE( cdda_update )
 {
 	cdda_info *info = param;
-	get_audio_data(info, &outputs[0][0], &outputs[1][0], length);
+	get_audio_data(info, &outputs[0][0], &outputs[1][0], samples);
 }
 
 
 /*-------------------------------------------------
-    cdda_start - audio start callback
+    SND_START( cdda ) - audio start callback
 -------------------------------------------------*/
 
-static void *cdda_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( cdda )
 {
 	const struct CDDAinterface *intf;
 	cdda_info *info;
@@ -56,16 +56,16 @@ static void *cdda_start(const char *tag, int sndindex, int clock, const void *co
 
 	intf = config;
 
-	info->stream = stream_create(0, 2, 44100, info, cdda_update);
+	info->stream = stream_create(device, 0, 2, 44100, info, cdda_update);
 
-	state_save_register_item( "CDDA", sndindex, info->audio_playing );
-	state_save_register_item( "CDDA", sndindex, info->audio_pause );
-	state_save_register_item( "CDDA", sndindex, info->audio_ended_normally );
-	state_save_register_item( "CDDA", sndindex, info->audio_lba );
-	state_save_register_item( "CDDA", sndindex, info->audio_length );
-	state_save_register_item_pointer( "CDDA", sndindex, info->audio_cache, CD_MAX_SECTOR_DATA * MAX_SECTORS );
-	state_save_register_item( "CDDA", sndindex, info->audio_samples );
-	state_save_register_item( "CDDA", sndindex, info->audio_bptr );
+	state_save_register_device_item( device, 0, info->audio_playing );
+	state_save_register_device_item( device, 0, info->audio_pause );
+	state_save_register_device_item( device, 0, info->audio_ended_normally );
+	state_save_register_device_item( device, 0, info->audio_lba );
+	state_save_register_device_item( device, 0, info->audio_length );
+	state_save_register_device_item_pointer( device, 0, info->audio_cache, CD_MAX_SECTOR_DATA * MAX_SECTORS );
+	state_save_register_device_item( device, 0, info->audio_samples );
+	state_save_register_device_item( device, 0, info->audio_bptr );
 
 	return info;
 }
@@ -300,7 +300,7 @@ static void get_audio_data(cdda_info *info, stream_sample_t *bufL, stream_sample
  * Generic get_info
  **************************************************************************/
 
-static void cdda_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( cdda )
 {
 	switch (state)
 	{
@@ -309,24 +309,24 @@ static void cdda_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void cdda_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( cdda )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = cdda_set_info;			break;
-		case SNDINFO_PTR_START:							info->start = cdda_start;				break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( cdda );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( cdda );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */								break;
+		case SNDINFO_PTR_RESET:							/* nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "CD/DA";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "CD Audio";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "CD/DA");					break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "CD Audio");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");						break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);					break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

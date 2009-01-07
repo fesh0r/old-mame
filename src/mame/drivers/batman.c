@@ -18,6 +18,7 @@
 
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/atarigen.h"
 #include "audio/atarijsa.h"
 #include "batman.h"
@@ -42,8 +43,8 @@ static UINT16 latch_data;
 
 static void update_interrupts(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 4, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 6, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 6, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -55,7 +56,7 @@ static MACHINE_RESET( batman )
 	atarigen_scanline_timer_reset(machine->primary_screen, batman_scanline_update, 8);
 	atarijsa_reset();
 	atarigen_init_save_state(machine);
-	state_save_register_global(latch_data);
+	state_save_register_global(machine, latch_data);
 
 }
 
@@ -69,13 +70,13 @@ static MACHINE_RESET( batman )
 
 static READ16_HANDLER( batman_atarivc_r )
 {
-	return atarivc_r(machine->primary_screen, offset);
+	return atarivc_r(space->machine->primary_screen, offset);
 }
 
 
 static WRITE16_HANDLER( batman_atarivc_w )
 {
-	atarivc_w(machine->primary_screen, offset, data, mem_mask);
+	atarivc_w(space->machine->primary_screen, offset, data, mem_mask);
 }
 
 
@@ -88,7 +89,7 @@ static WRITE16_HANDLER( batman_atarivc_w )
 
 static READ16_HANDLER( special_port2_r )
 {
-	int result = input_port_read(machine, "260010");
+	int result = input_port_read(space->machine, "260010");
 	if (atarigen_sound_to_cpu_ready) result ^= 0x0010;
 	if (atarigen_cpu_to_sound_ready) result ^= 0x0020;
 	return result;
@@ -102,14 +103,14 @@ static WRITE16_HANDLER( latch_w )
 
 	/* bit 4 is connected to the /RESET pin on the 6502 */
 	if (latch_data & 0x0010)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 	else
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 
 	/* alpha bank is selected by the upper 4 bits */
 	if ((oldword ^ latch_data) & 0x7000)
 	{
-		video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+		video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 		tilemap_mark_all_tiles_dirty(atarigen_alpha_tilemap);
 		batman_alpha_tile_bank = (latch_data >> 12) & 7;
 	}

@@ -577,95 +577,78 @@ INLINE void taitoic_drawscanline(
 /* Note: various assumptions are made in these routines, typically that
    only CPU#0 is of interest. If in doubt, check the routine. */
 
-static int has_write_handler(int cpunum, write16_machine_func handler)
+static int has_write_handler(const device_config *cpu, write16_space_func handler)
 {
-	const address_map *map = memory_get_address_map(cpunum, ADDRESS_SPACE_PROGRAM);
-	const address_map_entry *entry;
-	for (entry = map->entrylist; entry != NULL; entry = entry->next)
-		if (entry->write.mhandler16 == handler)
-			return 1;
+	if (cpu != NULL)
+	{
+		const address_space *space = cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM);
+		const address_map_entry *entry;
+
+		if (space != NULL && space->map != NULL)
+			for (entry = space->map->entrylist; entry != NULL; entry = entry->next)
+				if (entry->write.shandler16 == handler)
+					return 1;
+	}
 
 	return 0;
 }
 
-int number_of_TC0100SCN(void)
+int TC0100SCN_count(running_machine *machine)
 {
-	int has_chip[3] = {0,0,0};
-
-	/* scan the memory handlers and see how many TC0100SCN are used */
-	if (has_write_handler(0, TC0100SCN_word_0_w) ||
-		has_write_handler(0, TC0100SCN_dual_screen_w) ||
-		has_write_handler(0, TC0100SCN_triple_screen_w))
-		has_chip[0] = 1;
-
-	if (has_write_handler(0, TC0100SCN_word_1_w))
-		has_chip[1] = 1;
-
-	if (has_write_handler(0, TC0100SCN_word_2_w))
-		has_chip[2] = 1;
+	int mask = (has_write_handler(machine->cpu[0], TC0100SCN_word_0_w) ||
+		has_write_handler(machine->cpu[0], TC0100SCN_dual_screen_w) ||
+		has_write_handler(machine->cpu[0], TC0100SCN_triple_screen_w)) ? 1 : 0;
+	mask |= has_write_handler(machine->cpu[0], TC0100SCN_word_1_w) << 1;
+	mask |= has_write_handler(machine->cpu[0], TC0100SCN_word_2_w) << 2;
 
 	/* Catch illegal configurations */
 	/* TODO: we should give an appropriate warning */
-
-	if (!has_chip[0] && (has_chip[1] || has_chip[2]))
-		return -1;
-
-	if (!has_chip[1] && has_chip[2])
-		return -1;
-
-	return (has_chip[0] + has_chip[1] + has_chip[2]);
+	assert_always(mask == 0 || mask == 1 || mask == 3 || mask == 7, "Invalid TC0110PCR configuration");
+	return BIT(mask,0) + BIT(mask,1) + BIT(mask,2);
 }
 
 
-int has_TC0110PCR(void)
+int TC0110PCR_mask(running_machine *machine)
 {
-	return	has_write_handler(0, TC0110PCR_word_w) ||
-			has_write_handler(0, TC0110PCR_step1_word_w) ||
-			has_write_handler(0, TC0110PCR_step1_rbswap_word_w) ||
-			has_write_handler(0, TC0110PCR_step1_4bpg_word_w);
+	int mask = (has_write_handler(machine->cpu[0], TC0110PCR_word_w) ||
+			has_write_handler(machine->cpu[0], TC0110PCR_step1_word_w) ||
+			has_write_handler(machine->cpu[0], TC0110PCR_step1_rbswap_word_w) ||
+			has_write_handler(machine->cpu[0], TC0110PCR_step1_4bpg_word_w)) ? 1 : 0;
+	mask |= has_write_handler(machine->cpu[0], TC0110PCR_step1_word_1_w) << 1;
+	mask |= has_write_handler(machine->cpu[0], TC0110PCR_step1_word_2_w) << 2;
+	return mask;
 }
 
-int has_second_TC0110PCR(void)
+int has_TC0150ROD(running_machine *machine)
 {
-	return	has_write_handler(0, TC0110PCR_step1_word_1_w);
-}
-
-int has_third_TC0110PCR(void)
-{
-	return	has_write_handler(0, TC0110PCR_step1_word_2_w);
-}
-
-
-int has_TC0150ROD(void)
-{
-	return	has_write_handler(0, TC0150ROD_word_w) ||
-			has_write_handler(1, TC0150ROD_word_w) ||
-			has_write_handler(2, TC0150ROD_word_w);
+	return	has_write_handler(machine->cpu[0], TC0150ROD_word_w) ||
+			has_write_handler(machine->cpu[1], TC0150ROD_word_w) ||
+			has_write_handler(machine->cpu[2], TC0150ROD_word_w);
 }
 
 
-int has_TC0280GRD(void)
+int has_TC0280GRD(running_machine *machine)
 {
-	return	has_write_handler(0, TC0280GRD_word_w);
+	return	has_write_handler(machine->cpu[0], TC0280GRD_word_w);
 }
 
 
-int has_TC0360PRI(void)
+int has_TC0360PRI(running_machine *machine)
 {
-	return	has_write_handler(0, TC0360PRI_halfword_w) ||
-			has_write_handler(0, TC0360PRI_halfword_swap_w);
+	return	has_write_handler(machine->cpu[0], TC0360PRI_halfword_w) ||
+			has_write_handler(machine->cpu[0], TC0360PRI_halfword_swap_w);
 }
 
 
-int has_TC0430GRW(void)
+int has_TC0430GRW(running_machine *machine)
 {
-	return	has_write_handler(0, TC0430GRW_word_w);
+	return	has_write_handler(machine->cpu[0], TC0430GRW_word_w);
 }
 
 
-int has_TC0480SCP(void)
+int has_TC0480SCP(running_machine *machine)
 {
-	return	has_write_handler(0, TC0480SCP_word_w);
+	return	has_write_handler(machine->cpu[0], TC0480SCP_word_w);
 }
 
 
@@ -798,13 +781,13 @@ void PC080SN_vh_start(running_machine *machine,int chips,int gfxnum,int x_offset
 
 		if (!PC080SN_dblwidth)	/* standard tilemaps */
 		{
-			PC080SN_tilemap[i][0] = tilemap_create(PC080SN_get_tile_info[i][0],tilemap_scan_rows,8,8,64,64);
-			PC080SN_tilemap[i][1] = tilemap_create(PC080SN_get_tile_info[i][1],tilemap_scan_rows,8,8,64,64);
+			PC080SN_tilemap[i][0] = tilemap_create(machine, PC080SN_get_tile_info[i][0],tilemap_scan_rows,8,8,64,64);
+			PC080SN_tilemap[i][1] = tilemap_create(machine, PC080SN_get_tile_info[i][1],tilemap_scan_rows,8,8,64,64);
 		}
 		else	/* double width tilemaps */
 		{
-			PC080SN_tilemap[i][0] = tilemap_create(PC080SN_get_tile_info[i][0],tilemap_scan_rows,8,8,128,64);
-			PC080SN_tilemap[i][1] = tilemap_create(PC080SN_get_tile_info[i][1],tilemap_scan_rows,8,8,128,64);
+			PC080SN_tilemap[i][0] = tilemap_create(machine, PC080SN_get_tile_info[i][0],tilemap_scan_rows,8,8,128,64);
+			PC080SN_tilemap[i][1] = tilemap_create(machine, PC080SN_get_tile_info[i][1],tilemap_scan_rows,8,8,128,64);
 		}
 
 		PC080SN_ram[i] = auto_malloc(PC080SN_RAM_SIZE);
@@ -815,8 +798,8 @@ void PC080SN_vh_start(running_machine *machine,int chips,int gfxnum,int x_offset
 		PC080SN_bgscroll_ram[i][1] = PC080SN_ram[i] + 0xc000 /2;
 		memset(PC080SN_ram[i],0,PC080SN_RAM_SIZE);
 
-		state_save_register_item_pointer("PC080SN", i, PC080SN_ram[i], PC080SN_RAM_SIZE/2);
-		state_save_register_item_array("PC080SN", i, PC080SN_ctrl[i]);
+		state_save_register_item_pointer(machine, "PC080SN", NULL, i, PC080SN_ram[i], PC080SN_RAM_SIZE/2);
+		state_save_register_item_array(machine, "PC080SN", NULL, i, PC080SN_ctrl[i]);
 		state_save_register_postload(machine, PC080SN_restore_scroll, (void *)(FPTR)i);
 
 		/* use the given gfx set for bg tiles */
@@ -1214,7 +1197,7 @@ static int PC090OJ_xoffs,PC090OJ_yoffs;
 
 
 
-void PC090OJ_vh_start(int gfxnum,int x_offset,int y_offset,int use_buffer)
+void PC090OJ_vh_start(running_machine *machine,int gfxnum,int x_offset,int y_offset,int use_buffer)
 {
 	/* use the given gfx set */
 	PC090OJ_gfxnum = gfxnum;
@@ -1230,9 +1213,9 @@ void PC090OJ_vh_start(int gfxnum,int x_offset,int y_offset,int use_buffer)
 	memset(PC090OJ_ram,0,PC090OJ_RAM_SIZE);
 	memset(PC090OJ_ram_buffered,0,PC090OJ_RAM_SIZE);
 
-	state_save_register_global_pointer(PC090OJ_ram, PC090OJ_RAM_SIZE/2);
-	state_save_register_global_pointer(PC090OJ_ram_buffered, PC090OJ_RAM_SIZE/2);
-	state_save_register_global(PC090OJ_ctrl);
+	state_save_register_global_pointer(machine, PC090OJ_ram, PC090OJ_RAM_SIZE/2);
+	state_save_register_global_pointer(machine, PC090OJ_ram_buffered, PC090OJ_RAM_SIZE/2);
+	state_save_register_global(machine, PC090OJ_ctrl);
 }
 
 READ16_HANDLER( PC090OJ_word_0_r )	// in case we find a game using 2...
@@ -1533,8 +1516,8 @@ void TC0080VCO_vh_start(running_machine *machine, int gfxnum,int has_fg0,int bg_
 	TC0080VCO_bg_flip_yoffs = bg_flip_yoffs;	/* usually -2 */
 	TC0080VCO_has_tx = has_fg0;	/* for debugging only */
 
-	TC0080VCO_tilemap[0] = tilemap_create(TC0080VCO_get_bg0_tile_info_0,tilemap_scan_rows,16,16,64,64);
-	TC0080VCO_tilemap[1] = tilemap_create(TC0080VCO_get_bg1_tile_info_0,tilemap_scan_rows,16,16,64,64);
+	TC0080VCO_tilemap[0] = tilemap_create(machine, TC0080VCO_get_bg0_tile_info_0,tilemap_scan_rows,16,16,64,64);
+	TC0080VCO_tilemap[1] = tilemap_create(machine, TC0080VCO_get_bg1_tile_info_0,tilemap_scan_rows,16,16,64,64);
 	TC0080VCO_ram = auto_malloc(TC0080VCO_RAM_SIZE);
 
 	memset( TC0080VCO_ram,0,TC0080VCO_RAM_SIZE );
@@ -1551,12 +1534,12 @@ void TC0080VCO_vh_start(running_machine *machine, int gfxnum,int has_fg0,int bg_
 	tilemap_set_scrolldy(TC0080VCO_tilemap[0],TC0080VCO_bg_yoffs,TC0080VCO_bg_flip_yoffs);
 	tilemap_set_scrolldy(TC0080VCO_tilemap[1],TC0080VCO_bg_yoffs,TC0080VCO_bg_flip_yoffs);
 
-	state_save_register_global_pointer(TC0080VCO_ram, TC0080VCO_RAM_SIZE/2);
-	state_save_register_global(TC0080VCO_has_tx);
+	state_save_register_global_pointer(machine, TC0080VCO_ram, TC0080VCO_RAM_SIZE/2);
+	state_save_register_global(machine, TC0080VCO_has_tx);
 
 	/* Perform extra initialisations for text layer */
 	{
-		TC0080VCO_tilemap[2] = tilemap_create(TC0080VCO_get_tx_tile_info,tilemap_scan_rows,8,8,64,64);
+		TC0080VCO_tilemap[2] = tilemap_create(machine, TC0080VCO_get_tx_tile_info,tilemap_scan_rows,8,8,64,64);
 		TC0080VCO_char_dirty = auto_malloc(TC0080VCO_TOTAL_CHARS);
 
 		TC0080VCO_dirty_chars();
@@ -1568,7 +1551,7 @@ void TC0080VCO_vh_start(running_machine *machine, int gfxnum,int has_fg0,int bg_
 		assert(gfx_index != MAX_GFX_ELEMENTS);
 
 		/* create the char set (gfx will then be updated dynamically from RAM) */
-		machine->gfx[gfx_index] = allocgfx(&TC0080VCO_charlayout);
+		machine->gfx[gfx_index] = allocgfx(machine, &TC0080VCO_charlayout);
 
 		/* set the color information */
 		machine->gfx[gfx_index]->total_colors = 64;	// is this correct ?
@@ -1691,7 +1674,7 @@ WRITE16_HANDLER( TC0080VCO_word_w )
 	else if (offset < 0x20800/2)	/* sprite ram */
 	{}
 	else if (offset < 0x20fff/2)
-		TC0080VCO_scrollram_w(machine,offset-(0x20800/2),TC0080VCO_ram[offset],mem_mask);
+		TC0080VCO_scrollram_w(space,offset-(0x20800/2),TC0080VCO_ram[offset],mem_mask);
 }
 
 
@@ -2302,14 +2285,14 @@ void TC0100SCN_vh_start(running_machine *machine, int chips,int gfxnum,int x_off
 			screen = machine->primary_screen;
 
 		/* Single width versions */
-		TC0100SCN_tilemap[i][0][0] = tilemap_create(TC0100SCN_get_tile_info[i][0],tilemap_scan_rows,8,8,64,64);
-		TC0100SCN_tilemap[i][1][0] = tilemap_create(TC0100SCN_get_tile_info[i][1],tilemap_scan_rows,8,8,64,64);
-		TC0100SCN_tilemap[i][2][0] = tilemap_create(TC0100SCN_get_tile_info[i][2],tilemap_scan_rows,8,8,64,64);
+		TC0100SCN_tilemap[i][0][0] = tilemap_create(machine, TC0100SCN_get_tile_info[i][0],tilemap_scan_rows,8,8,64,64);
+		TC0100SCN_tilemap[i][1][0] = tilemap_create(machine, TC0100SCN_get_tile_info[i][1],tilemap_scan_rows,8,8,64,64);
+		TC0100SCN_tilemap[i][2][0] = tilemap_create(machine, TC0100SCN_get_tile_info[i][2],tilemap_scan_rows,8,8,64,64);
 
 		/* Double width versions */
-		TC0100SCN_tilemap[i][0][1] = tilemap_create(TC0100SCN_get_tile_info[i][0],tilemap_scan_rows,8,8,128,64);
-		TC0100SCN_tilemap[i][1][1] = tilemap_create(TC0100SCN_get_tile_info[i][1],tilemap_scan_rows,8,8,128,64);
-		TC0100SCN_tilemap[i][2][1] = tilemap_create(TC0100SCN_get_tile_info[i][2],tilemap_scan_rows,8,8,128,32);
+		TC0100SCN_tilemap[i][0][1] = tilemap_create(machine, TC0100SCN_get_tile_info[i][0],tilemap_scan_rows,8,8,128,64);
+		TC0100SCN_tilemap[i][1][1] = tilemap_create(machine, TC0100SCN_get_tile_info[i][1],tilemap_scan_rows,8,8,128,64);
+		TC0100SCN_tilemap[i][2][1] = tilemap_create(machine, TC0100SCN_get_tile_info[i][2],tilemap_scan_rows,8,8,128,32);
 
 		/* Set up clipping for multi-TC0100SCN games. We assume
            this code won't ever affect single screen games:
@@ -2328,9 +2311,9 @@ void TC0100SCN_vh_start(running_machine *machine, int chips,int gfxnum,int x_off
 		memset(TC0100SCN_ram[i],0,TC0100SCN_RAM_SIZE);
 
 		{
-			state_save_register_item_pointer("TC0100SCN", i, TC0100SCN_ram[i], TC0100SCN_RAM_SIZE/2);
-			state_save_register_item_array("TC0100SCN", i, TC0100SCN_ctrl[i]);
-			state_save_register_item("TC0100SCN", i, TC0100SCN_dblwidth[i]);
+			state_save_register_item_pointer(machine, "TC0100SCN", NULL, i, TC0100SCN_ram[i], TC0100SCN_RAM_SIZE/2);
+			state_save_register_item_array(machine, "TC0100SCN", NULL, i, TC0100SCN_ctrl[i]);
+			state_save_register_item(machine, "TC0100SCN", NULL, i, TC0100SCN_dblwidth[i]);
 		}
 
 		state_save_register_postload(machine, TC0100SCN_postload, (void *)(FPTR)i);
@@ -2342,7 +2325,7 @@ void TC0100SCN_vh_start(running_machine *machine, int chips,int gfxnum,int x_off
 		assert(gfx_index != MAX_GFX_ELEMENTS);
 
 		/* create the char set (gfx will then be updated dynamically from RAM) */
-		machine->gfx[gfx_index] = allocgfx(&TC0100SCN_charlayout);
+		machine->gfx[gfx_index] = allocgfx(machine, &TC0100SCN_charlayout);
 
 		/* set the color information */
 		machine->gfx[gfx_index]->total_colors = 64;
@@ -2413,7 +2396,7 @@ void TC0100SCN_vh_start(running_machine *machine, int chips,int gfxnum,int x_off
 	}
 
 	TC0100SCN_gfxbank= 0;	/* Mjnquest uniquely banks tiles */
-	state_save_register_global(TC0100SCN_gfxbank);
+	state_save_register_global(machine, TC0100SCN_gfxbank);
 
 	TC0100SCN_bg_tilemask = 0xffff;	/* Mjnquest has 0x7fff tilemask */
 
@@ -2498,15 +2481,15 @@ WRITE16_HANDLER( TC0100SCN_word_2_w )
 
 WRITE16_HANDLER( TC0100SCN_dual_screen_w )
 {
-	TC0100SCN_word_0_w(machine,offset,data,mem_mask);
-	TC0100SCN_word_1_w(machine,offset,data,mem_mask);
+	TC0100SCN_word_0_w(space,offset,data,mem_mask);
+	TC0100SCN_word_1_w(space,offset,data,mem_mask);
 }
 
 WRITE16_HANDLER( TC0100SCN_triple_screen_w )
 {
-	TC0100SCN_word_0_w(machine,offset,data,mem_mask);
-	TC0100SCN_word_1_w(machine,offset,data,mem_mask);
-	TC0100SCN_word_2_w(machine,offset,data,mem_mask);
+	TC0100SCN_word_0_w(space,offset,data,mem_mask);
+	TC0100SCN_word_1_w(space,offset,data,mem_mask);
+	TC0100SCN_word_2_w(space,offset,data,mem_mask);
 }
 
 
@@ -2611,7 +2594,7 @@ WRITE16_HANDLER( TC0100SCN_ctrl_word_2_w )
 
 READ32_HANDLER( TC0100SCN_ctrl_long_r )
 {
-	return (TC0100SCN_ctrl_word_0_r(machine,offset*2,0xffff)<<16)|TC0100SCN_ctrl_word_0_r(machine,offset*2+1,0xffff);
+	return (TC0100SCN_ctrl_word_0_r(space,offset*2,0xffff)<<16)|TC0100SCN_ctrl_word_0_r(space,offset*2+1,0xffff);
 }
 
 WRITE32_HANDLER( TC0100SCN_ctrl_long_w )
@@ -2622,30 +2605,30 @@ WRITE32_HANDLER( TC0100SCN_ctrl_long_w )
 
 READ32_HANDLER( TC0100SCN_long_r )
 {
-	return (TC0100SCN_word_0_r(machine,offset*2,0xffff)<<16)|TC0100SCN_word_0_r(machine,offset*2+1,0xffff);
+	return (TC0100SCN_word_0_r(space,offset*2,0xffff)<<16)|TC0100SCN_word_0_r(space,offset*2+1,0xffff);
 }
 
 WRITE32_HANDLER( TC0100SCN_long_w )
 {
 	if (ACCESSING_BITS_16_31)
 	{
-		int oldword = TC0100SCN_word_0_r(machine,offset*2,0xffff);
+		int oldword = TC0100SCN_word_0_r(space,offset*2,0xffff);
 		int newword = data>>16;
 		if (!ACCESSING_BITS_16_23)
 			newword |= (oldword &0x00ff);
 		if (!ACCESSING_BITS_24_31)
 			newword |= (oldword &0xff00);
-		TC0100SCN_word_0_w(machine,offset*2,newword,0xffff);
+		TC0100SCN_word_0_w(space,offset*2,newword,0xffff);
 	}
 	if (ACCESSING_BITS_0_15)
 	{
-		int oldword = TC0100SCN_word_0_r(machine,(offset*2)+1,0xffff);
+		int oldword = TC0100SCN_word_0_r(space,(offset*2)+1,0xffff);
 		int newword = data&0xffff;
 		if (!ACCESSING_BITS_0_7)
 			newword |= (oldword &0x00ff);
 		if (!ACCESSING_BITS_8_15)
 			newword |= (oldword &0xff00);
-		TC0100SCN_word_0_w(machine,(offset*2)+1,newword,0xffff);
+		TC0100SCN_word_0_w(space,(offset*2)+1,newword,0xffff);
 	}
 }
 
@@ -2791,22 +2774,22 @@ static TILE_GET_INFO( TC0280GRD_get_tile_info )
 }
 
 
-void TC0280GRD_vh_start(int gfxnum)
+void TC0280GRD_vh_start(running_machine *machine, int gfxnum)
 {
 	TC0280GRD_ram = auto_malloc(TC0280GRD_RAM_SIZE);
-	TC0280GRD_tilemap = tilemap_create(TC0280GRD_get_tile_info,tilemap_scan_rows,8,8,64,64);
+	TC0280GRD_tilemap = tilemap_create(machine, TC0280GRD_get_tile_info,tilemap_scan_rows,8,8,64,64);
 
-	state_save_register_global_pointer(TC0280GRD_ram, TC0280GRD_RAM_SIZE/2);
-	state_save_register_global_array(TC0280GRD_ctrl);
+	state_save_register_global_pointer(machine, TC0280GRD_ram, TC0280GRD_RAM_SIZE/2);
+	state_save_register_global_array(machine, TC0280GRD_ctrl);
 
 	tilemap_set_transparent_pen(TC0280GRD_tilemap,0);
 
 	TC0280GRD_gfxnum = gfxnum;
 }
 
-void TC0430GRW_vh_start(int gfxnum)
+void TC0430GRW_vh_start(running_machine *machine, int gfxnum)
 {
-	TC0280GRD_vh_start(gfxnum);
+	TC0280GRD_vh_start(machine, gfxnum);
 }
 
 READ16_HANDLER( TC0280GRD_word_r )
@@ -2816,7 +2799,7 @@ READ16_HANDLER( TC0280GRD_word_r )
 
 READ16_HANDLER( TC0430GRW_word_r )
 {
-	return TC0280GRD_word_r(machine,offset,mem_mask);
+	return TC0280GRD_word_r(space,offset,mem_mask);
 }
 
 WRITE16_HANDLER( TC0280GRD_word_w )
@@ -2827,7 +2810,7 @@ WRITE16_HANDLER( TC0280GRD_word_w )
 
 WRITE16_HANDLER( TC0430GRW_word_w )
 {
-	TC0280GRD_word_w(machine,offset,data,mem_mask);
+	TC0280GRD_word_w(space,offset,data,mem_mask);
 }
 
 WRITE16_HANDLER( TC0280GRD_ctrl_word_w )
@@ -2837,7 +2820,7 @@ WRITE16_HANDLER( TC0280GRD_ctrl_word_w )
 
 WRITE16_HANDLER( TC0430GRW_ctrl_word_w )
 {
-	TC0280GRD_ctrl_word_w(machine,offset,data,mem_mask);
+	TC0280GRD_ctrl_word_w(space,offset,data,mem_mask);
 }
 
 void TC0280GRD_tilemap_update(int base_color)
@@ -2896,9 +2879,9 @@ void TC0430GRW_zoom_draw(bitmap_t *bitmap,const rectangle *cliprect,int xoffset,
 
 UINT8 TC0360PRI_regs[16];
 
-void TC0360PRI_vh_start(void)
+void TC0360PRI_vh_start(running_machine *machine)
 {
-	state_save_register_global_array(TC0360PRI_regs);
+	state_save_register_global_array(machine, TC0360PRI_regs);
 }
 
 WRITE8_HANDLER( TC0360PRI_w )
@@ -2920,12 +2903,12 @@ WRITE16_HANDLER( TC0360PRI_halfword_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		TC0360PRI_w(machine,offset,data & 0xff);
+		TC0360PRI_w(space,offset,data & 0xff);
 #if 0
 if (data & 0xff00)
-{ logerror("CPU #0 PC %06x: warning - write %02x to MSB of TC0360PRI address %02x\n",activecpu_get_pc(),data,offset); }
+{ logerror("CPU #0 PC %06x: warning - write %02x to MSB of TC0360PRI address %02x\n",cpu_get_pc(space->cpu),data,offset); }
 	else
-{ logerror("CPU #0 PC %06x: warning - write %02x to MSB of TC0360PRI address %02x\n",activecpu_get_pc(),data,offset); }
+{ logerror("CPU #0 PC %06x: warning - write %02x to MSB of TC0360PRI address %02x\n",cpu_get_pc(space->cpu),data,offset); }
 #endif
 	}
 }
@@ -2934,12 +2917,12 @@ WRITE16_HANDLER( TC0360PRI_halfword_swap_w )
 {
 	if (ACCESSING_BITS_8_15)
 	{
-		TC0360PRI_w(machine,offset,(data >> 8) & 0xff);
+		TC0360PRI_w(space,offset,(data >> 8) & 0xff);
 #if 0
 if (data & 0xff)
-{ logerror("CPU #0 PC %06x: warning - write %02x to LSB of TC0360PRI address %02x\n",activecpu_get_pc(),data,offset); }
+{ logerror("CPU #0 PC %06x: warning - write %02x to LSB of TC0360PRI address %02x\n",cpu_get_pc(space->cpu),data,offset); }
 	else
-{ logerror("CPU #0 PC %06x: warning - write %02x to LSB of TC0360PRI address %02x\n",activecpu_get_pc(),data,offset); }
+{ logerror("CPU #0 PC %06x: warning - write %02x to LSB of TC0360PRI address %02x\n",cpu_get_pc(space->cpu),data,offset); }
 #endif
 	}
 }
@@ -3179,18 +3162,18 @@ void TC0480SCP_vh_start(running_machine *machine, int gfxnum,int pixels,int x_of
 		TC0480SCP_dblwidth=0;
 
 		/* Single width versions */
-		TC0480SCP_tilemap[0][0] = tilemap_create(tc480_get_tile_info[0],tilemap_scan_rows,16,16,32,32);
-		TC0480SCP_tilemap[1][0] = tilemap_create(tc480_get_tile_info[1],tilemap_scan_rows,16,16,32,32);
-		TC0480SCP_tilemap[2][0] = tilemap_create(tc480_get_tile_info[2],tilemap_scan_rows,16,16,32,32);
-		TC0480SCP_tilemap[3][0] = tilemap_create(tc480_get_tile_info[3],tilemap_scan_rows,16,16,32,32);
-		TC0480SCP_tilemap[4][0] = tilemap_create(tc480_get_tile_info[4],tilemap_scan_rows,8,8,64,64);
+		TC0480SCP_tilemap[0][0] = tilemap_create(machine, tc480_get_tile_info[0],tilemap_scan_rows,16,16,32,32);
+		TC0480SCP_tilemap[1][0] = tilemap_create(machine, tc480_get_tile_info[1],tilemap_scan_rows,16,16,32,32);
+		TC0480SCP_tilemap[2][0] = tilemap_create(machine, tc480_get_tile_info[2],tilemap_scan_rows,16,16,32,32);
+		TC0480SCP_tilemap[3][0] = tilemap_create(machine, tc480_get_tile_info[3],tilemap_scan_rows,16,16,32,32);
+		TC0480SCP_tilemap[4][0] = tilemap_create(machine, tc480_get_tile_info[4],tilemap_scan_rows,8,8,64,64);
 
 		/* Double width versions */
-		TC0480SCP_tilemap[0][1] = tilemap_create(tc480_get_tile_info[0],tilemap_scan_rows,16,16,64,32);
-		TC0480SCP_tilemap[1][1] = tilemap_create(tc480_get_tile_info[1],tilemap_scan_rows,16,16,64,32);
-		TC0480SCP_tilemap[2][1] = tilemap_create(tc480_get_tile_info[2],tilemap_scan_rows,16,16,64,32);
-		TC0480SCP_tilemap[3][1] = tilemap_create(tc480_get_tile_info[3],tilemap_scan_rows,16,16,64,32);
-		TC0480SCP_tilemap[4][1] = tilemap_create(tc480_get_tile_info[4],tilemap_scan_rows,8,8,64,64);
+		TC0480SCP_tilemap[0][1] = tilemap_create(machine, tc480_get_tile_info[0],tilemap_scan_rows,16,16,64,32);
+		TC0480SCP_tilemap[1][1] = tilemap_create(machine, tc480_get_tile_info[1],tilemap_scan_rows,16,16,64,32);
+		TC0480SCP_tilemap[2][1] = tilemap_create(machine, tc480_get_tile_info[2],tilemap_scan_rows,16,16,64,32);
+		TC0480SCP_tilemap[3][1] = tilemap_create(machine, tc480_get_tile_info[3],tilemap_scan_rows,16,16,64,32);
+		TC0480SCP_tilemap[4][1] = tilemap_create(machine, tc480_get_tile_info[4],tilemap_scan_rows,8,8,64,64);
 
 		TC0480SCP_ram = auto_malloc(TC0480SCP_RAM_SIZE);
 		TC0480SCP_char_dirty = auto_malloc(TC0480SCP_TOTAL_CHARS);
@@ -3199,9 +3182,9 @@ void TC0480SCP_vh_start(running_machine *machine, int gfxnum,int pixels,int x_of
 		TC0480SCP_dirty_chars();
 		memset(TC0480SCP_ram,0,TC0480SCP_RAM_SIZE);
 
-		state_save_register_global_pointer(TC0480SCP_ram, TC0480SCP_RAM_SIZE/2);
-		state_save_register_global_array(TC0480SCP_ctrl);
-		state_save_register_global(TC0480SCP_dblwidth);
+		state_save_register_global_pointer(machine, TC0480SCP_ram, TC0480SCP_RAM_SIZE/2);
+		state_save_register_global_array(machine, TC0480SCP_ctrl);
+		state_save_register_global(machine, TC0480SCP_dblwidth);
 		state_save_register_postload(machine, TC0480SCP_postload, NULL);
 
 		/* find first empty slot to decode gfx */
@@ -3211,7 +3194,7 @@ void TC0480SCP_vh_start(running_machine *machine, int gfxnum,int pixels,int x_of
 		assert(gfx_index != MAX_GFX_ELEMENTS);
 
 		/* create the char set (gfx will then be updated dynamically from RAM) */
-		machine->gfx[gfx_index] = allocgfx(&TC0480SCP_charlayout);
+		machine->gfx[gfx_index] = allocgfx(machine, &TC0480SCP_charlayout);
 
 		/* set the color information */
 		machine->gfx[gfx_index]->total_colors = 64;
@@ -3280,43 +3263,43 @@ void TC0480SCP_vh_start(running_machine *machine, int gfxnum,int pixels,int x_of
 
 READ32_HANDLER( TC0480SCP_ctrl_long_r )
 {
-	return (TC0480SCP_ctrl_word_r(machine,offset*2,0xffff)<<16)|TC0480SCP_ctrl_word_r(machine,offset*2+1,0xffff);
+	return (TC0480SCP_ctrl_word_r(space,offset*2,0xffff)<<16)|TC0480SCP_ctrl_word_r(space,offset*2+1,0xffff);
 }
 
 /* TODO: byte access ? */
 
 WRITE32_HANDLER( TC0480SCP_ctrl_long_w )
 {
-	if (ACCESSING_BITS_16_31) TC0480SCP_ctrl_word_w(machine,offset*2,data>>16,mem_mask>>16);
-	if (ACCESSING_BITS_0_15) TC0480SCP_ctrl_word_w(machine,(offset*2)+1,data&0xffff,mem_mask&0xffff);
+	if (ACCESSING_BITS_16_31) TC0480SCP_ctrl_word_w(space,offset*2,data>>16,mem_mask>>16);
+	if (ACCESSING_BITS_0_15) TC0480SCP_ctrl_word_w(space,(offset*2)+1,data&0xffff,mem_mask&0xffff);
 }
 
 READ32_HANDLER( TC0480SCP_long_r )
 {
-	return (TC0480SCP_word_r(machine,offset*2,0xffff)<<16)|TC0480SCP_word_r(machine,offset*2+1,0xffff);
+	return (TC0480SCP_word_r(space,offset*2,0xffff)<<16)|TC0480SCP_word_r(space,offset*2+1,0xffff);
 }
 
 WRITE32_HANDLER( TC0480SCP_long_w )
 {
 	if (ACCESSING_BITS_16_31)
 	{
-		int oldword = TC0480SCP_word_r(machine,offset*2,0xffff);
+		int oldword = TC0480SCP_word_r(space,offset*2,0xffff);
 		int newword = data>>16;
 		if (!ACCESSING_BITS_16_23)
 			newword |= (oldword &0x00ff);
 		if (!ACCESSING_BITS_24_31)
 			newword |= (oldword &0xff00);
-		TC0480SCP_word_w(machine,offset*2,newword,0xffff);
+		TC0480SCP_word_w(space,offset*2,newword,0xffff);
 	}
 	if (ACCESSING_BITS_0_15)
 	{
-		int oldword = TC0480SCP_word_r(machine,(offset*2)+1,0xffff);
+		int oldword = TC0480SCP_word_r(space,(offset*2)+1,0xffff);
 		int newword = data&0xffff;
 		if (!ACCESSING_BITS_0_7)
 			newword |= (oldword &0x00ff);
 		if (!ACCESSING_BITS_8_15)
 			newword |= (oldword &0xff00);
-		TC0480SCP_word_w(machine,(offset*2)+1,newword,0xffff);
+		TC0480SCP_word_w(space,(offset*2)+1,newword,0xffff);
 	}
 }
 
@@ -3939,11 +3922,11 @@ WRITE16_HANDLER( TC0150ROD_word_w )
 	COMBINE_DATA(&TC0150ROD_ram[offset]);
 }
 
-void TC0150ROD_vh_start(void)
+void TC0150ROD_vh_start(running_machine *machine)
 {
 	TC0150ROD_ram = auto_malloc(TC0150ROD_RAM_SIZE);
 
-	state_save_register_global_pointer(TC0150ROD_ram, TC0150ROD_RAM_SIZE/2);
+	state_save_register_global_pointer(machine, TC0150ROD_ram, TC0150ROD_RAM_SIZE/2);
 }
 
 
@@ -4740,7 +4723,7 @@ void TC0110PCR_vh_start(running_machine *machine)
 {
 	TC0110PCR_ram[0] = auto_malloc(TC0110PCR_RAM_SIZE * sizeof(*TC0110PCR_ram[0]));
 
-	state_save_register_global_pointer(TC0110PCR_ram[0], TC0110PCR_RAM_SIZE);
+	state_save_register_global_pointer(machine, TC0110PCR_ram[0], TC0110PCR_RAM_SIZE);
 	state_save_register_postload(machine, TC0110PCR_restore_colors, (void *)0);
 
 	TC0110PCR_type = 0;	/* default, xBBBBBGGGGGRRRRR */
@@ -4750,7 +4733,7 @@ void TC0110PCR_1_vh_start(running_machine *machine)
 {
 	TC0110PCR_ram[1] = auto_malloc(TC0110PCR_RAM_SIZE * sizeof(*TC0110PCR_ram[1]));
 
-	state_save_register_global_pointer(TC0110PCR_ram[1], TC0110PCR_RAM_SIZE);
+	state_save_register_global_pointer(machine, TC0110PCR_ram[1], TC0110PCR_RAM_SIZE);
 	state_save_register_postload(machine, TC0110PCR_restore_colors, (void *)1);
 }
 
@@ -4758,7 +4741,7 @@ void TC0110PCR_2_vh_start(running_machine *machine)
 {
 	TC0110PCR_ram[2] = auto_malloc(TC0110PCR_RAM_SIZE * sizeof(*TC0110PCR_ram[2]));
 
-	state_save_register_global_pointer(TC0110PCR_ram[2], TC0110PCR_RAM_SIZE);
+	state_save_register_global_pointer(machine, TC0110PCR_ram[2], TC0110PCR_RAM_SIZE);
 	state_save_register_postload(machine, TC0110PCR_restore_colors, (void *)2);
 }
 
@@ -4770,7 +4753,7 @@ READ16_HANDLER( TC0110PCR_word_r )
 			return TC0110PCR_ram[0][(TC0110PCR_addr[0])];
 
 		default:
-logerror("PC %06x: warning - read TC0110PCR address %02x\n",activecpu_get_pc(),offset);
+logerror("PC %06x: warning - read TC0110PCR address %02x\n",cpu_get_pc(space->cpu),offset);
 			return 0xff;
 	}
 }
@@ -4783,7 +4766,7 @@ READ16_HANDLER( TC0110PCR_word_1_r )
 			return TC0110PCR_ram[1][(TC0110PCR_addr[1])];
 
 		default:
-logerror("PC %06x: warning - read second TC0110PCR address %02x\n",activecpu_get_pc(),offset);
+logerror("PC %06x: warning - read second TC0110PCR address %02x\n",cpu_get_pc(space->cpu),offset);
 			return 0xff;
 	}
 }
@@ -4796,7 +4779,7 @@ READ16_HANDLER( TC0110PCR_word_2_r )
 			return TC0110PCR_ram[2][(TC0110PCR_addr[2])];
 
 		default:
-logerror("PC %06x: warning - read third TC0110PCR address %02x\n",activecpu_get_pc(),offset);
+logerror("PC %06x: warning - read third TC0110PCR address %02x\n",cpu_get_pc(space->cpu),offset);
 			return 0xff;
 	}
 }
@@ -4814,12 +4797,12 @@ WRITE16_HANDLER( TC0110PCR_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color_rgb(machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(space->machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
 		default:
-logerror("PC %06x: warning - write %04x to TC0110PCR address %02x\n",activecpu_get_pc(),data,offset);
+logerror("PC %06x: warning - write %04x to TC0110PCR address %02x\n",cpu_get_pc(space->cpu),data,offset);
 			break;
 	}
 }
@@ -4836,12 +4819,12 @@ WRITE16_HANDLER( TC0110PCR_step1_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color_rgb(machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(space->machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
 		default:
-logerror("PC %06x: warning - write %04x to TC0110PCR address %02x\n",activecpu_get_pc(),data,offset);
+logerror("PC %06x: warning - write %04x to TC0110PCR address %02x\n",cpu_get_pc(space->cpu),data,offset);
 			break;
 	}
 }
@@ -4859,12 +4842,12 @@ WRITE16_HANDLER( TC0110PCR_step1_word_1_w )
 		{
 			TC0110PCR_ram[1][(TC0110PCR_addr[1])] = data & 0xffff;
 			/* change a color in the second color area (4096-8191) */
-			palette_set_color_rgb(machine,TC0110PCR_addr[1] + 4096,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(space->machine,TC0110PCR_addr[1] + 4096,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
 		default:
-logerror("PC %06x: warning - write %04x to second TC0110PCR offset %02x\n",activecpu_get_pc(),data,offset);
+logerror("PC %06x: warning - write %04x to second TC0110PCR offset %02x\n",cpu_get_pc(space->cpu),data,offset);
 			break;
 	}
 }
@@ -4882,12 +4865,12 @@ WRITE16_HANDLER( TC0110PCR_step1_word_2_w )
 		{
 			TC0110PCR_ram[2][(TC0110PCR_addr[2])] = data & 0xffff;
 			/* change a color in the second color area (8192-12288) */
-			palette_set_color_rgb(machine,TC0110PCR_addr[2] + 8192,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(space->machine,TC0110PCR_addr[2] + 8192,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
 		default:
-logerror("PC %06x: warning - write %04x to third TC0110PCR offset %02x\n",activecpu_get_pc(),data,offset);
+logerror("PC %06x: warning - write %04x to third TC0110PCR offset %02x\n",cpu_get_pc(space->cpu),data,offset);
 			break;
 	}
 }
@@ -4906,12 +4889,12 @@ WRITE16_HANDLER( TC0110PCR_step1_rbswap_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color_rgb(machine,TC0110PCR_addr[0],pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
+			palette_set_color_rgb(space->machine,TC0110PCR_addr[0],pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
 			break;
 		}
 
 		default:
-logerror("PC %06x: warning - write %04x to TC0110PCR offset %02x\n",activecpu_get_pc(),data,offset);
+logerror("PC %06x: warning - write %04x to TC0110PCR offset %02x\n",cpu_get_pc(space->cpu),data,offset);
 			break;
 	}
 }
@@ -4930,12 +4913,12 @@ WRITE16_HANDLER( TC0110PCR_step1_4bpg_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color_rgb(machine,TC0110PCR_addr[0],pal4bit(data >> 0),pal4bit(data >> 4),pal4bit(data >> 8));
+			palette_set_color_rgb(space->machine,TC0110PCR_addr[0],pal4bit(data >> 0),pal4bit(data >> 4),pal4bit(data >> 8));
 			break;
 		}
 
 		default:
-logerror("PC %06x: warning - write %04x to TC0110PCR address %02x\n",activecpu_get_pc(),data,offset);
+logerror("PC %06x: warning - write %04x to TC0110PCR address %02x\n",cpu_get_pc(space->cpu),data,offset);
 			break;
 	}
 }
@@ -4951,25 +4934,25 @@ READ8_HANDLER( TC0220IOC_r )
 	switch (offset)
 	{
 		case 0x00:	/* IN00-07 (DSA) */
-			return input_port_read(machine, "DSWA");
+			return input_port_read(space->machine, "DSWA");
 
 		case 0x01:	/* IN08-15 (DSB) */
-			return input_port_read(machine, "DSWB");
+			return input_port_read(space->machine, "DSWB");
 
 		case 0x02:	/* IN16-23 (1P) */
-			return input_port_read(machine, "IN0");
+			return input_port_read(space->machine, "IN0");
 
 		case 0x03:	/* IN24-31 (2P) */
-			return input_port_read(machine, "IN1");
+			return input_port_read(space->machine, "IN1");
 
 		case 0x04:	/* coin counters and lockout */
 			return TC0220IOC_regs[4];
 
 		case 0x07:	/* INB0-7 (coin) */
-			return input_port_read(machine, "IN2");
+			return input_port_read(space->machine, "IN2");
 
 		default:
-logerror("PC %06x: warning - read TC0220IOC address %02x\n",activecpu_get_pc(),offset);
+logerror("PC %06x: warning - read TC0220IOC address %02x\n",cpu_get_pc(space->cpu),offset);
 			return 0xff;
 	}
 }
@@ -4981,7 +4964,7 @@ WRITE8_HANDLER( TC0220IOC_w )
 	switch (offset)
 	{
 		case 0x00:
-			watchdog_reset(machine);
+			watchdog_reset(space->machine);
 			break;
 
 		case 0x04:	/* coin counters and lockout, hi nibble irrelevant */
@@ -4991,12 +4974,12 @@ WRITE8_HANDLER( TC0220IOC_w )
 			coin_counter_w(1,data & 0x08);
 
 //if (data &0xf0)
-//logerror("PC %06x: warning - write %02x to TC0220IOC address %02x\n",activecpu_get_pc(),data,offset);
+//logerror("PC %06x: warning - write %02x to TC0220IOC address %02x\n",cpu_get_pc(space->cpu),data,offset);
 
 			break;
 
 		default:
-logerror("PC %06x: warning - write %02x to TC0220IOC address %02x\n",activecpu_get_pc(),data,offset);
+logerror("PC %06x: warning - write %02x to TC0220IOC address %02x\n",cpu_get_pc(space->cpu),data,offset);
 			break;
 	}
 }
@@ -5013,91 +4996,91 @@ WRITE8_HANDLER( TC0220IOC_port_w )
 
 READ8_HANDLER( TC0220IOC_portreg_r )
 {
-	return TC0220IOC_r(machine, TC0220IOC_port);
+	return TC0220IOC_r(space, TC0220IOC_port);
 }
 
 WRITE8_HANDLER( TC0220IOC_portreg_w )
 {
-	TC0220IOC_w(machine, TC0220IOC_port, data);
+	TC0220IOC_w(space, TC0220IOC_port, data);
 }
 
 READ16_HANDLER( TC0220IOC_halfword_port_r )
 {
-	return TC0220IOC_port_r( machine, offset );
+	return TC0220IOC_port_r( space, offset );
 }
 
 WRITE16_HANDLER( TC0220IOC_halfword_port_w )
 {
 	if (ACCESSING_BITS_0_7)
-		TC0220IOC_port_w( machine, offset, data & 0xff );
+		TC0220IOC_port_w( space, offset, data & 0xff );
 }
 
 READ16_HANDLER( TC0220IOC_halfword_portreg_r )
 {
-	return TC0220IOC_portreg_r( machine, offset );
+	return TC0220IOC_portreg_r( space, offset );
 }
 
 WRITE16_HANDLER( TC0220IOC_halfword_portreg_w )
 {
 	if (ACCESSING_BITS_0_7)
-		TC0220IOC_portreg_w( machine, offset, data & 0xff );
+		TC0220IOC_portreg_w( space, offset, data & 0xff );
 }
 
 READ16_HANDLER( TC0220IOC_halfword_byteswap_port_r )
 {
-	return TC0220IOC_port_r( machine, offset ) << 8;
+	return TC0220IOC_port_r( space, offset ) << 8;
 }
 
 WRITE16_HANDLER( TC0220IOC_halfword_byteswap_port_w )
 {
 	if (ACCESSING_BITS_8_15)
-		TC0220IOC_port_w( machine, offset, (data>>8) & 0xff );
+		TC0220IOC_port_w( space, offset, (data>>8) & 0xff );
 }
 
 READ16_HANDLER( TC0220IOC_halfword_byteswap_portreg_r )
 {
-	return TC0220IOC_portreg_r( machine, offset )<<8;
+	return TC0220IOC_portreg_r( space, offset )<<8;
 }
 
 WRITE16_HANDLER( TC0220IOC_halfword_byteswap_portreg_w )
 {
 	if (ACCESSING_BITS_8_15)
-		TC0220IOC_portreg_w( machine, offset, (data>>8) & 0xff );
+		TC0220IOC_portreg_w( space, offset, (data>>8) & 0xff );
 }
 
 READ16_HANDLER( TC0220IOC_halfword_r )
 {
-	return TC0220IOC_r(machine,offset);
+	return TC0220IOC_r(space,offset);
 }
 
 WRITE16_HANDLER( TC0220IOC_halfword_w )
 {
 	if (ACCESSING_BITS_0_7)
-		TC0220IOC_w(machine,offset,data & 0xff);
+		TC0220IOC_w(space,offset,data & 0xff);
 	else
 	{
 		/* qtorimon writes here the coin counters - bug? */
-		TC0220IOC_w(machine,offset,(data >> 8) & 0xff);
+		TC0220IOC_w(space,offset,(data >> 8) & 0xff);
 
 		if (offset)		/* ainferno writes watchdog in msb */
-logerror("CPU #0 PC %06x: warning - write to MSB of TC0220IOC address %02x\n",activecpu_get_pc(),offset);
+logerror("CPU #0 PC %06x: warning - write to MSB of TC0220IOC address %02x\n",cpu_get_pc(space->cpu),offset);
 	}
 }
 
 READ16_HANDLER( TC0220IOC_halfword_byteswap_r )
 {
-	return TC0220IOC_halfword_r(machine,offset,mem_mask) << 8;
+	return TC0220IOC_halfword_r(space,offset,mem_mask) << 8;
 }
 
 WRITE16_HANDLER( TC0220IOC_halfword_byteswap_w )
 {
 	if (ACCESSING_BITS_8_15)
-		TC0220IOC_w(machine,offset,(data >> 8) & 0xff);
+		TC0220IOC_w(space,offset,(data >> 8) & 0xff);
 	else
 	{
-		TC0220IOC_w(machine,offset,data & 0xff);
+		TC0220IOC_w(space,offset,data & 0xff);
 
-logerror("CPU #0 PC %06x: warning - write to LSB of TC0220IOC address %02x\n",activecpu_get_pc(),offset);
+logerror("CPU #0 PC %06x: warning - write to LSB of TC0220IOC address %02x\n",cpu_get_pc(space->cpu),offset);
 	}
 }
 
@@ -5112,25 +5095,25 @@ READ8_HANDLER( TC0510NIO_r )
 	switch (offset)
 	{
 		case 0x00:	/* DSA */
-			return input_port_read(machine, "DSWA");
+			return input_port_read(space->machine, "DSWA");
 
 		case 0x01:	/* DSB */
-			return input_port_read(machine, "DSWB");
+			return input_port_read(space->machine, "DSWB");
 
 		case 0x02:	/* 1P */
-			return input_port_read(machine, "IN0");
+			return input_port_read(space->machine, "IN0");
 
 		case 0x03:	/* 2P */
-			return input_port_read(machine, "IN1");
+			return input_port_read(space->machine, "IN1");
 
 		case 0x04:	/* coin counters and lockout */
 			return TC0510NIO_regs[4];
 
 		case 0x07:	/* coin */
-			return input_port_read(machine, "IN2");
+			return input_port_read(space->machine, "IN2");
 
 		default:
-logerror("PC %06x: warning - read TC0510NIO address %02x\n",activecpu_get_pc(),offset);
+logerror("PC %06x: warning - read TC0510NIO address %02x\n",cpu_get_pc(space->cpu),offset);
 			return 0xff;
 	}
 }
@@ -5142,7 +5125,7 @@ WRITE8_HANDLER( TC0510NIO_w )
 	switch (offset)
 	{
 		case 0x00:
-			watchdog_reset(machine);
+			watchdog_reset(space->machine);
 			break;
 
 		case 0x04:	/* coin counters and lockout */
@@ -5153,36 +5136,36 @@ WRITE8_HANDLER( TC0510NIO_w )
 			break;
 
 		default:
-logerror("PC %06x: warning - write %02x to TC0510NIO address %02x\n",activecpu_get_pc(),data,offset);
+logerror("PC %06x: warning - write %02x to TC0510NIO address %02x\n",cpu_get_pc(space->cpu),data,offset);
 			break;
 	}
 }
 
 READ16_HANDLER( TC0510NIO_halfword_r )
 {
-	return TC0510NIO_r(machine,offset);
+	return TC0510NIO_r(space,offset);
 }
 
 WRITE16_HANDLER( TC0510NIO_halfword_w )
 {
 	if (ACCESSING_BITS_0_7)
-		TC0510NIO_w(machine,offset,data & 0xff);
+		TC0510NIO_w(space,offset,data & 0xff);
 	else
 	{
 		/* driftout writes the coin counters here - bug? */
-logerror("CPU #0 PC %06x: warning - write to MSB of TC0510NIO address %02x\n",activecpu_get_pc(),offset);
-		TC0510NIO_w(machine,offset,(data >> 8) & 0xff);
+logerror("CPU #0 PC %06x: warning - write to MSB of TC0510NIO address %02x\n",cpu_get_pc(space->cpu),offset);
+		TC0510NIO_w(space,offset,(data >> 8) & 0xff);
 	}
 }
 
 READ16_HANDLER( TC0510NIO_halfword_wordswap_r )
 {
-	return TC0510NIO_halfword_r(machine,offset ^ 1,mem_mask);
+	return TC0510NIO_halfword_r(space,offset ^ 1,mem_mask);
 }
 
 WRITE16_HANDLER( TC0510NIO_halfword_wordswap_w )
 {
-	TC0510NIO_halfword_w(machine,offset ^ 1,data,mem_mask);
+	TC0510NIO_halfword_w(space,offset ^ 1,data,mem_mask);
 }
 
 
@@ -5195,25 +5178,25 @@ READ8_HANDLER( TC0640FIO_r )
 	switch (offset)
 	{
 		case 0x00:	/* DSA */
-			return input_port_read(machine, "DSWA");
+			return input_port_read(space->machine, "DSWA");
 
 		case 0x01:	/* DSB */
-			return input_port_read(machine, "DSWB");
+			return input_port_read(space->machine, "DSWB");
 
 		case 0x02:	/* 1P */
-			return input_port_read(machine, "IN0");
+			return input_port_read(space->machine, "IN0");
 
 		case 0x03:	/* 2P */
-			return input_port_read(machine, "IN1");
+			return input_port_read(space->machine, "IN1");
 
 		case 0x04:	/* coin counters and lockout */
 			return TC0640FIO_regs[4];
 
 		case 0x07:	/* coin */
-			return input_port_read(machine, "IN2");
+			return input_port_read(space->machine, "IN2");
 
 		default:
-logerror("PC %06x: warning - read TC0640FIO address %02x\n",activecpu_get_pc(),offset);
+logerror("PC %06x: warning - read TC0640FIO address %02x\n",cpu_get_pc(space->cpu),offset);
 			return 0xff;
 	}
 }
@@ -5225,7 +5208,7 @@ WRITE8_HANDLER( TC0640FIO_w )
 	switch (offset)
 	{
 		case 0x00:
-			watchdog_reset(machine);
+			watchdog_reset(space->machine);
 			break;
 
 		case 0x04:	/* coin counters and lockout */
@@ -5236,40 +5219,40 @@ WRITE8_HANDLER( TC0640FIO_w )
 			break;
 
 		default:
-logerror("PC %06x: warning - write %02x to TC0640FIO address %02x\n",activecpu_get_pc(),data,offset);
+logerror("PC %06x: warning - write %02x to TC0640FIO address %02x\n",cpu_get_pc(space->cpu),data,offset);
 			break;
 	}
 }
 
 READ16_HANDLER( TC0640FIO_halfword_r )
 {
-	return TC0640FIO_r(machine,offset);
+	return TC0640FIO_r(space,offset);
 }
 
 WRITE16_HANDLER( TC0640FIO_halfword_w )
 {
 	if (ACCESSING_BITS_0_7)
-		TC0640FIO_w(machine,offset,data & 0xff);
+		TC0640FIO_w(space,offset,data & 0xff);
 	else
 	{
-		TC0640FIO_w(machine,offset,(data >> 8) & 0xff);
-logerror("CPU #0 PC %06x: warning - write to MSB of TC0640FIO address %02x\n",activecpu_get_pc(),offset);
+		TC0640FIO_w(space,offset,(data >> 8) & 0xff);
+logerror("CPU #0 PC %06x: warning - write to MSB of TC0640FIO address %02x\n",cpu_get_pc(space->cpu),offset);
 	}
 }
 
 READ16_HANDLER( TC0640FIO_halfword_byteswap_r )
 {
-	return TC0640FIO_halfword_r(machine,offset,mem_mask) << 8;
+	return TC0640FIO_halfword_r(space,offset,mem_mask) << 8;
 }
 
 WRITE16_HANDLER( TC0640FIO_halfword_byteswap_w )
 {
 	if (ACCESSING_BITS_8_15)
-		TC0640FIO_w(machine,offset,(data >> 8) & 0xff);
+		TC0640FIO_w(space,offset,(data >> 8) & 0xff);
 	else
 	{
-		TC0640FIO_w(machine,offset,data & 0xff);
-logerror("CPU #0 PC %06x: warning - write to LSB of TC0640FIO address %02x\n",activecpu_get_pc(),offset);
+		TC0640FIO_w(space,offset,data & 0xff);
+logerror("CPU #0 PC %06x: warning - write to LSB of TC0640FIO address %02x\n",cpu_get_pc(space->cpu),offset);
 	}
 }
 

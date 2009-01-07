@@ -13,7 +13,7 @@
 typedef struct _upd7759_interface upd7759_interface;
 struct _upd7759_interface
 {
-	void (*drqcallback)(int param);	/* drq callback (per chip, slave mode only) */
+	void (*drqcallback)(const device_config *device, int param);	/* drq callback (per chip, slave mode only) */
 };
 
 void upd7759_set_bank_base(int which, offs_t base);
@@ -28,5 +28,7 @@ WRITE8_HANDLER( upd7759_0_reset_w );
 WRITE8_HANDLER( upd7759_0_port_w );
 WRITE8_HANDLER( upd7759_0_start_w );
 READ8_HANDLER( upd7759_0_busy_r );
+
+SND_GET_INFO( upd7759 );
 
 #endif /* __UPD7759_H__ */

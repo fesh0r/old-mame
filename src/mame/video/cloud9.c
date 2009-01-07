@@ -39,7 +39,7 @@ VIDEO_START( cloud9 )
 
 	/* allocate second bank of videoram */
 	videoram = auto_malloc(0x8000);
-	memory_set_bankptr(1, videoram);
+	memory_set_bankptr(machine, 1, videoram);
 
 	/* get pointers to our PROMs */
 	syncprom = memory_region(machine, "proms") + 0x000;
@@ -56,9 +56,9 @@ VIDEO_START( cloud9 )
 	spritebitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	/* register for savestates */
-	state_save_register_global_pointer(videoram, 0x8000);
-	state_save_register_global_array(video_control);
-	state_save_register_global_array(bitmode_addr);
+	state_save_register_global_pointer(machine, videoram, 0x8000);
+	state_save_register_global_array(machine, video_control);
+	state_save_register_global_array(machine, bitmode_addr);
 }
 
 
@@ -111,7 +111,7 @@ WRITE8_HANDLER( cloud9_paletteram_w )
 	bit2 = (~b >> 2) & 0x01;
 	b = combine_3_weights(bweights, bit0, bit1, bit2);
 
-	palette_set_color(machine, offset & 0x3f, MAKE_RGB(r, g, b));
+	palette_set_color(space->machine, offset & 0x3f, MAKE_RGB(r, g, b));
 }
 
 
@@ -260,7 +260,7 @@ VIDEO_UPDATE( cloud9 )
 	int x, y, offs;
 
 	/* draw the sprites */
-	fillbitmap(spritebitmap, 0x00, cliprect);
+	bitmap_fill(spritebitmap, cliprect, 0x00);
 	for (offs = 0; offs < 0x20; offs++)
 		if (spriteaddr[offs + 0x00] != 0)
 		{

@@ -69,6 +69,7 @@ Versions known to exist but not dumped:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/eeprom.h"
 #include "machine/nmk112.h"
 #include "cpu/z80/z80.h"
@@ -77,8 +78,6 @@ Versions known to exist but not dumped:
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 #include "sound/ymz280b.h"
-
-extern UINT16 *cave_spriteram16_2;
 
 /***************************************************************************
 
@@ -100,9 +99,9 @@ static UINT8 agallet_vblank_irq;
 static void update_irq_state(running_machine *machine)
 {
 	if (vblank_irq || sound_irq || unknown_irq)
-		cpunum_set_input_line(machine, 0, irq_level, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], irq_level, ASSERT_LINE);
 	else
-		cpunum_set_input_line(machine, 0, irq_level, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], irq_level, CLEAR_LINE);
 }
 
 static TIMER_CALLBACK( cave_vblank_start )
@@ -126,8 +125,8 @@ static TIMER_CALLBACK( cave_vblank_end )
 /* Called once/frame to generate the VBLANK interrupt */
 static INTERRUPT_GEN( cave_interrupt )
 {
-	timer_set(ATTOTIME_IN_USEC(17376-time_vblank_irq), NULL, 0, cave_vblank_start);
-	timer_set(ATTOTIME_IN_USEC(17376-time_vblank_irq + 2000), NULL, 0, cave_vblank_end);
+	timer_set(device->machine, ATTOTIME_IN_USEC(17376-time_vblank_irq), NULL, 0, cave_vblank_start);
+	timer_set(device->machine, ATTOTIME_IN_USEC(17376-time_vblank_irq + 2000), NULL, 0, cave_vblank_end);
 }
 
 /* Called by the YMZ280B to set the IRQ state */
@@ -164,7 +163,7 @@ static READ16_HANDLER( cave_irq_cause_r )
 	if (offset == 4/2)	vblank_irq = 0;
 	if (offset == 6/2)	unknown_irq = 0;
 
-	update_irq_state(machine);
+	update_irq_state(space->machine);
 
 /*
     sailormn and agallet wait for bit 2 of $b80001 to go 1 -> 0.
@@ -223,23 +222,23 @@ static WRITE16_HANDLER( sound_cmd_w )
 {
 //  sound_flag1 = 1;
 //  sound_flag2 = 1;
-	soundlatch_word_w(machine,offset,data,mem_mask);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
-	cpu_spinuntil_time(ATTOTIME_IN_USEC(50));	// Allow the other cpu to reply
+	soundlatch_word_w(space,offset,data,mem_mask);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(50));	// Allow the other cpu to reply
 }
 
 /* Sound CPU: read the low 8 bits of the 16 bit sound latch */
 static READ8_HANDLER( soundlatch_lo_r )
 {
 //  sound_flag1 = 0;
-	return soundlatch_word_r(machine,offset,0x00ff) & 0xff;
+	return soundlatch_word_r(space,offset,0x00ff) & 0xff;
 }
 
 /* Sound CPU: read the high 8 bits of the 16 bit sound latch */
 static READ8_HANDLER( soundlatch_hi_r )
 {
 //  sound_flag2 = 0;
-	return soundlatch_word_r(machine,offset,0xff00) >> 8;
+	return soundlatch_word_r(space,offset,0xff00) >> 8;
 }
 
 /* Main CPU: read the latch written by the sound CPU (acknowledge) */
@@ -253,7 +252,7 @@ static READ16_HANDLER( soundlatch_ack_r )
 		return data;
 	}
 	else
-	{	logerror("CPU #1 - PC %04X: Sound Buffer 2 Underflow Error\n",activecpu_get_pc());
+	{	logerror("CPU #1 - PC %04X: Sound Buffer 2 Underflow Error\n",cpu_get_pc(space->cpu));
 		return 0xff;	}
 }
 
@@ -265,7 +264,7 @@ static WRITE8_HANDLER( soundlatch_ack_w )
 	if (soundbuf.len<32)
 		soundbuf.len++;
 	else
-		logerror("CPU #1 - PC %04X: Sound Buffer 2 Overflow Error\n",activecpu_get_pc());
+		logerror("CPU #1 - PC %04X: Sound Buffer 2 Overflow Error\n",cpu_get_pc(space->cpu));
 }
 
 
@@ -275,15 +274,15 @@ static WRITE16_HANDLER( cave_sound_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		if (offset)	ymz280b_data_0_w     (machine, offset, data & 0xff);
-		else		ymz280b_register_0_w (machine, offset, data & 0xff);
+		if (offset)	ymz280b_data_0_w     (space, offset, data & 0xff);
+		else		ymz280b_register_0_w (space, offset, data & 0xff);
 	}
 }
 
 /* Handles reads from the YMZ280B */
 static READ16_HANDLER( cave_sound_r )
 {
-	return ymz280b_status_0_r(machine,offset);
+	return ymz280b_status_0_r(space,offset);
 }
 
 
@@ -314,7 +313,7 @@ static int cave_region_byte;
 static WRITE16_HANDLER( cave_eeprom_msb_w )
 {
 	if (data & ~0xfe00)
-		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
+		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",cpu_get_pc(space->cpu),data);
 
 	if ( ACCESSING_BITS_8_15 )  // even address
 	{
@@ -337,7 +336,7 @@ static WRITE16_HANDLER( cave_eeprom_msb_w )
 static WRITE16_HANDLER( sailormn_eeprom_msb_w )
 {
 	sailormn_tilebank_w    ( data &  0x0100 );
-	cave_eeprom_msb_w(machine,offset,data & ~0x0100,mem_mask);
+	cave_eeprom_msb_w(space,offset,data & ~0x0100,mem_mask);
 }
 
 static WRITE16_HANDLER( hotdogst_eeprom_msb_w )
@@ -358,7 +357,7 @@ static WRITE16_HANDLER( hotdogst_eeprom_msb_w )
 static WRITE16_HANDLER( cave_eeprom_lsb_w )
 {
 	if (data & ~0x00ef)
-		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
+		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",cpu_get_pc(space->cpu),data);
 
 	if ( ACCESSING_BITS_0_7 )  // odd address
 	{
@@ -393,7 +392,7 @@ static WRITE16_HANDLER( gaia_coin_lsb_w )
 static WRITE16_HANDLER( metmqstr_eeprom_msb_w )
 {
 	if (data & ~0xff00)
-		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
+		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",cpu_get_pc(space->cpu),data);
 
 	if ( ACCESSING_BITS_8_15 )  // even address
 	{
@@ -420,7 +419,7 @@ static NVRAM_HANDLER( cave )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_interface_93C46);
+		eeprom_init(machine, &eeprom_interface_93C46);
 
 		if (file) eeprom_load(file);
 		else
@@ -451,7 +450,7 @@ static NVRAM_HANDLER( korokoro )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_interface_93C46_8bit);
+		eeprom_init(machine, &eeprom_interface_93C46_8bit);
 
 		if (file) eeprom_load(file);
 		else
@@ -565,7 +564,7 @@ static READ16_HANDLER( donpachi_videoregs_r )
 		case 0:
 		case 1:
 		case 2:
-		case 3:	return cave_irq_cause_r(machine,offset,0xffff);
+		case 3:	return cave_irq_cause_r(space,offset,0xffff);
 
 		default:	return 0x0000;
 	}
@@ -835,7 +834,7 @@ static WRITE16_HANDLER( korokoro_eeprom_msb_w )
 {
 	if (data & ~0x7000)
 	{
-		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
+		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",cpu_get_pc(space->cpu),data);
 		COMBINE_DATA( &leds[1] );
 		show_leds();
 	}
@@ -1059,18 +1058,18 @@ ADDRESS_MAP_END
 static READ16_HANDLER( sailormn_input0_r )
 {
 //  watchdog_reset16_r(0,0);    // written too rarely for mame.
-	return input_port_read(machine, "IN0");
+	return input_port_read(space->machine, "IN0");
 }
 
 static READ16_HANDLER( agallet_irq_cause_r )
 {
-	UINT16 irq_cause = cave_irq_cause_r(machine,offset,mem_mask);
+	UINT16 irq_cause = cave_irq_cause_r(space,offset,mem_mask);
 
 	if (offset == 0)
 	{
 // Speed hack for agallet
-		if ((activecpu_get_pc() == 0xcdca) && (irq_cause & 4))
-			cpu_spinuntil_int();
+		if ((cpu_get_pc(space->cpu) == 0xcdca) && (irq_cause & 4))
+			cpu_spinuntil_int(space->cpu);
 	}
 
 	return irq_cause;
@@ -1174,16 +1173,16 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( hotdogst_rombank_w )
 {
-	UINT8 *RAM = memory_region(machine, "audio");
+	UINT8 *RAM = memory_region(space->machine, "audio");
 	int bank = data & 0x0f;
-	if ( data & ~0x0f )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
+	if ( data & ~0x0f )	logerror("CPU #1 - PC %04X: Bank %02X\n",cpu_get_pc(space->cpu),data);
 	if (bank > 1)	bank+=2;
-	memory_set_bankptr(2, &RAM[ 0x4000 * bank ]);
+	memory_set_bankptr(space->machine, 2, &RAM[ 0x4000 * bank ]);
 }
 
 static WRITE8_HANDLER( hotdogst_okibank_w )
 {
-	UINT8 *RAM = memory_region(machine, "oki");
+	UINT8 *RAM = memory_region(space->machine, "oki");
 	int bank1 = (data >> 0) & 0x3;
 	int bank2 = (data >> 4) & 0x3;
 	memcpy(RAM + 0x20000 * 0, RAM + 0x40000 + 0x20000 * bank1, 0x20000);
@@ -1227,11 +1226,11 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( mazinger_rombank_w )
 {
-	UINT8 *RAM = memory_region(machine, "audio");
+	UINT8 *RAM = memory_region(space->machine, "audio");
 	int bank = data & 0x07;
-	if ( data & ~0x07 )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
+	if ( data & ~0x07 )	logerror("CPU #1 - PC %04X: Bank %02X\n",cpu_get_pc(space->cpu),data);
 	if (bank > 1)	bank+=2;
-	memory_set_bankptr(2, &RAM[ 0x4000 * bank ]);
+	memory_set_bankptr(space->machine, 2, &RAM[ 0x4000 * bank ]);
 }
 
 static ADDRESS_MAP_START( mazinger_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -1271,16 +1270,16 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( metmqstr_rombank_w )
 {
-	UINT8 *ROM = memory_region(machine, "audio");
+	UINT8 *ROM = memory_region(space->machine, "audio");
 	int bank = data & 0xf;
-	if ( bank != data )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
+	if ( bank != data )	logerror("CPU #1 - PC %04X: Bank %02X\n",cpu_get_pc(space->cpu),data);
 	if (bank >= 2)	bank += 2;
-	memory_set_bankptr(1, &ROM[ 0x4000 * bank ]);
+	memory_set_bankptr(space->machine, 1, &ROM[ 0x4000 * bank ]);
 }
 
 static WRITE8_HANDLER( metmqstr_okibank0_w )
 {
-	UINT8 *ROM = memory_region(machine, "oki1");
+	UINT8 *ROM = memory_region(space->machine, "oki1");
 	int bank1 = (data >> 0) & 0x7;
 	int bank2 = (data >> 4) & 0x7;
 	memcpy(ROM + 0x20000 * 0, ROM + 0x40000 + 0x20000 * bank1, 0x20000);
@@ -1289,7 +1288,7 @@ static WRITE8_HANDLER( metmqstr_okibank0_w )
 
 static WRITE8_HANDLER( metmqstr_okibank1_w )
 {
-	UINT8 *ROM = memory_region(machine, "oki2");
+	UINT8 *ROM = memory_region(space->machine, "oki2");
 	int bank1 = (data >> 0) & 0x7;
 	int bank2 = (data >> 4) & 0x7;
 	memcpy(ROM + 0x20000 * 0, ROM + 0x40000 + 0x20000 * bank1, 0x20000);
@@ -1334,11 +1333,11 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( pwrinst2_rombank_w )
 {
-	UINT8 *ROM = memory_region(machine, "audio");
+	UINT8 *ROM = memory_region(space->machine, "audio");
 	int bank = data & 0x07;
-	if ( data & ~0x07 )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
+	if ( data & ~0x07 )	logerror("CPU #1 - PC %04X: Bank %02X\n",cpu_get_pc(space->cpu),data);
 	if (bank > 2)	bank+=1;
-	memory_set_bankptr(1, &ROM[ 0x4000 * bank ]);
+	memory_set_bankptr(space->machine, 1, &ROM[ 0x4000 * bank ]);
 }
 
 static ADDRESS_MAP_START( pwrinst2_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -1392,16 +1391,16 @@ static WRITE8_HANDLER( mirror_ram_w )
 
 static WRITE8_HANDLER( sailormn_rombank_w )
 {
-	UINT8 *RAM = memory_region(machine, "audio");
+	UINT8 *RAM = memory_region(space->machine, "audio");
 	int bank = data & 0x1f;
-	if ( data & ~0x1f )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
+	if ( data & ~0x1f )	logerror("CPU #1 - PC %04X: Bank %02X\n",cpu_get_pc(space->cpu),data);
 	if (bank > 1)	bank+=2;
-	memory_set_bankptr(1, &RAM[ 0x4000 * bank ]);
+	memory_set_bankptr(space->machine, 1, &RAM[ 0x4000 * bank ]);
 }
 
 static WRITE8_HANDLER( sailormn_okibank0_w )
 {
-	UINT8 *RAM = memory_region(machine, "oki1");
+	UINT8 *RAM = memory_region(space->machine, "oki1");
 	int bank1 = (data >> 0) & 0xf;
 	int bank2 = (data >> 4) & 0xf;
 	memcpy(RAM + 0x20000 * 0, RAM + 0x40000 + 0x20000 * bank1, 0x20000);
@@ -1410,7 +1409,7 @@ static WRITE8_HANDLER( sailormn_okibank0_w )
 
 static WRITE8_HANDLER( sailormn_okibank1_w )
 {
-	UINT8 *RAM = memory_region(machine, "oki2");
+	UINT8 *RAM = memory_region(space->machine, "oki2");
 	int bank1 = (data >> 0) & 0xf;
 	int bank2 = (data >> 4) & 0xf;
 	memcpy(RAM + 0x20000 * 0, RAM + 0x40000 + 0x20000 * bank1, 0x20000);
@@ -1963,7 +1962,7 @@ static const ymz280b_interface ymz280b_intf =
 
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface ym2151_config =
@@ -2327,7 +2326,7 @@ static MACHINE_DRIVER_START( mazinger )
 	MDRV_CPU_PROGRAM_MAP(mazinger_sound_readmem,mazinger_sound_writemem)
 	MDRV_CPU_IO_MAP(mazinger_sound_readport,mazinger_sound_writeport)
 
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_SEC(3))	/* a guess, and certainly wrong */
+	MDRV_WATCHDOG_TIME_INIT(SEC(3))	/* a guess, and certainly wrong */
 
 	MDRV_MACHINE_RESET(cave)
 	MDRV_NVRAM_HANDLER(cave)
@@ -2383,7 +2382,7 @@ static MACHINE_DRIVER_START( metmqstr )
 	MDRV_CPU_PROGRAM_MAP(metmqstr_sound_readmem,metmqstr_sound_writemem)
 	MDRV_CPU_IO_MAP(metmqstr_sound_readport,metmqstr_sound_writeport)
 
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_SEC(3))	/* a guess, and certainly wrong */
+	MDRV_WATCHDOG_TIME_INIT(SEC(3))	/* a guess, and certainly wrong */
 
 	MDRV_MACHINE_RESET(cave)	/* start with the watchdog armed */
 	MDRV_NVRAM_HANDLER(cave)
@@ -2499,7 +2498,7 @@ static MACHINE_DRIVER_START( sailormn )
 	MDRV_CPU_PROGRAM_MAP(sailormn_sound_readmem,sailormn_sound_writemem)
 	MDRV_CPU_IO_MAP(sailormn_sound_readport,sailormn_sound_writeport)
 
-//  MDRV_INTERLEAVE(10)
+//  MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(cave)
 	MDRV_NVRAM_HANDLER(cave)
@@ -4110,7 +4109,7 @@ static DRIVER_INIT( agallet )
 	unpack_sprites(machine);
 
 //  Speed Hack
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb80000, 0xb80001, 0, 0, agallet_irq_cause_r);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xb80000, 0xb80001, 0, 0, agallet_irq_cause_r);
 }
 
 static DRIVER_INIT( dfeveron )
@@ -4248,7 +4247,7 @@ static DRIVER_INIT( mazinger )
 	time_vblank_irq = 2100;
 
 	/* setup extra ROM */
-	memory_set_bankptr(1,memory_region(machine, "user1"));
+	memory_set_bankptr(machine, 1,memory_region(machine, "user1"));
 }
 
 

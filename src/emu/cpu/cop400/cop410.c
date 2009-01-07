@@ -13,66 +13,24 @@
 
     TODO:
 
+    - COP413/COP414/COP415/COP405
+    - get rid of LBIOps/InstLen
     - run interrupt test suite
     - run production test suite
     - run microbus test suite
-    - remove LBIops
 
 */
 
 #include "driver.h"
 #include "cpuintrf.h"
 #include "debugger.h"
-#include "deprecat.h"
 #include "cop400.h"
-
-/* The opcode table now is a combination of cycle counts and function pointers */
-typedef struct {
-	unsigned cycles;
-	void (*function) (UINT8 opcode);
-}	s_opcode;
-
-#define UINT1	UINT8
-#define UINT4	UINT8
-#define UINT6	UINT8
-#define UINT9	UINT16
-
-typedef struct
-{
-	const cop400_interface *intf;
-
-	UINT9 	PC;
-	UINT9	PREVPC;
-	UINT4	A;
-	UINT6	B;
-	UINT1	C;
-	UINT4	EN;
-	UINT4	G;
-	UINT8	Q;
-	UINT9	SA, SB;
-	UINT4	SIO;
-	UINT1	SKL;
-	UINT8   skip, skipLBI;
-	UINT8	G_mask;
-	UINT8	D_mask;
-	UINT8	si;
-	int		microbus_int;
-	int		halt;
-} COP410_Regs;
-
-static COP410_Regs R;
-static int    cop410_ICount;
-
-static int InstLen[256];
-static int LBIops[256];
-
-static emu_timer *cop410_serial_timer;
 
 #include "410ops.c"
 
 /* Opcode Maps */
 
-static const s_opcode opcode_23_map[256]=
+static const s_opcode COP410_OPCODE_23_MAP[]=
 {
 	{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},
 	{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},
@@ -111,14 +69,14 @@ static const s_opcode opcode_23_map[256]=
 	{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	}
 };
 
-static void cop410_op23(UINT8 opcode)
+static void cop410_op23(cop400_state *cop400, UINT8 opcode)
 {
 	UINT8 opcode23 = ROM(PC++);
 
-	(*(opcode_23_map[opcode23].function))(opcode23);
+	(*(COP410_OPCODE_23_MAP[opcode23].function))(cop400, opcode23);
 }
 
-static const s_opcode opcode_33_map[256]=
+static const s_opcode COP410_OPCODE_33_MAP[]=
 {
 	{1, illegal 	},{1, skgbz0	},{1, illegal   },{1, skgbz2	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},
 	{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},
@@ -157,14 +115,14 @@ static const s_opcode opcode_33_map[256]=
 	{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	}
 };
 
-static void cop410_op33(UINT8 opcode)
+static void cop410_op33(cop400_state *cop400, UINT8 opcode)
 {
 	UINT8 opcode33 = ROM(PC++);
 
-	(*(opcode_33_map[opcode33].function))(opcode33);
+	(*(COP410_OPCODE_33_MAP[opcode33].function))(cop400, opcode33);
 }
 
-static const s_opcode opcode_map[256]=
+static const s_opcode COP410_OPCODE_MAP[]=
 {
 	{1, clra		},{1, skmbz0	},{1, xor		},{1, skmbz2		},{1, xis		},{1, ld		},{1, x			},{1, xds		},
 	{1, lbi			},{1, lbi		},{1, lbi		},{1, lbi			},{1, lbi		},{1, lbi		},{1, lbi		},{1, lbi		},
@@ -216,185 +174,183 @@ ADDRESS_MAP_END
 /****************************************************************************
  * Initialize emulation
  ****************************************************************************/
-static void cop410_init(int index, int clock, const void *config, int (*irqcallback)(int))
+static CPU_INIT( cop410 )
 {
+	cop400_state *cop400 = device->token;
 	int i;
 
-	memset(&R, 0, sizeof(R));
+	cop400->device = device;
+	cop400->intf = (cop400_interface *) device->static_config;
 
-	R.intf = (cop400_interface *) config;
+	/* get address spaces */
 
-	assert(R.intf != NULL);
+	cop400->program = memory_find_address_space(device, ADDRESS_SPACE_PROGRAM);
+	cop400->data = memory_find_address_space(device, ADDRESS_SPACE_DATA);
+	cop400->io = memory_find_address_space(device, ADDRESS_SPACE_IO);
 
 	/* set output pin masks */
 
-	R.G_mask = 0x0f;
-	R.D_mask = 0x0f;
+	cop400->g_mask = 0x0f;
+	cop400->d_mask = 0x0f;
 
 	/* set clock divider */
 
-	cpunum_set_info_int(index, CPUINFO_INT_CLOCK_DIVIDER, R.intf->cki);
+	device_set_info_int(device, CPUINFO_INT_CLOCK_DIVIDER, cop400->intf->cki);
 
 	/* allocate serial timer */
 
-	cop410_serial_timer = timer_alloc(cop410_serial_tick, NULL);
-	timer_adjust_periodic(cop410_serial_timer, attotime_zero, index, ATTOTIME_IN_HZ(clock));
+	cop400->serial_timer = timer_alloc(device->machine, cop400_serial_tick, cop400);
+	timer_adjust_periodic(cop400->serial_timer, attotime_zero, 0, ATTOTIME_IN_HZ(device->clock / 16));
 
 	/* initialize instruction length array */
 
-	for (i=0; i<256; i++) InstLen[i]=1;
+	for (i=0; i<256; i++) cop400->InstLen[i]=1;
 
-	InstLen[0x60] = InstLen[0x61] = InstLen[0x68] = InstLen[0x69] = InstLen[0x33] = InstLen[0x23] = 2;
+	cop400->InstLen[0x60] = cop400->InstLen[0x61] = cop400->InstLen[0x68] = cop400->InstLen[0x69] = cop400->InstLen[0x33] = cop400->InstLen[0x23] = 2;
 
 	/* initialize LBI opcode array */
 
-	for (i=0; i<256; i++) LBIops[i] = 0;
-	for (i=0x08; i<0x10; i++) LBIops[i] = 1;
-	for (i=0x18; i<0x20; i++) LBIops[i] = 1;
-	for (i=0x28; i<0x30; i++) LBIops[i] = 1;
-	for (i=0x38; i<0x40; i++) LBIops[i] = 1;
+	for (i=0; i<256; i++) cop400->LBIops[i] = 0;
+	for (i=0x08; i<0x10; i++) cop400->LBIops[i] = 1;
+	for (i=0x18; i<0x20; i++) cop400->LBIops[i] = 1;
+	for (i=0x28; i<0x30; i++) cop400->LBIops[i] = 1;
+	for (i=0x38; i<0x40; i++) cop400->LBIops[i] = 1;
 
 	/* register for state saving */
 
-	state_save_register_item("cop410", index, PC);
-	state_save_register_item("cop410", index, R.PREVPC);
-	state_save_register_item("cop410", index, A);
-	state_save_register_item("cop410", index, B);
-	state_save_register_item("cop410", index, C);
-	state_save_register_item("cop410", index, EN);
-	state_save_register_item("cop410", index, G);
-	state_save_register_item("cop410", index, Q);
-	state_save_register_item("cop410", index, SA);
-	state_save_register_item("cop410", index, SB);
-	state_save_register_item("cop410", index, SIO);
-	state_save_register_item("cop410", index, SKL);
-	state_save_register_item("cop410", index, skip);
-	state_save_register_item("cop410", index, skipLBI);
-	state_save_register_item("cop410", index, R.G_mask);
-	state_save_register_item("cop410", index, R.D_mask);
-	state_save_register_item("cop410", index, R.si);
-	state_save_register_item("cop410", index, R.microbus_int);
-	state_save_register_item("cop410", index, R.halt);
+	state_save_register_device_item(device, 0, cop400->pc);
+	state_save_register_device_item(device, 0, cop400->prevpc);
+	state_save_register_device_item(device, 0, cop400->a);
+	state_save_register_device_item(device, 0, cop400->b);
+	state_save_register_device_item(device, 0, cop400->c);
+	state_save_register_device_item(device, 0, cop400->en);
+	state_save_register_device_item(device, 0, cop400->g);
+	state_save_register_device_item(device, 0, cop400->q);
+	state_save_register_device_item(device, 0, cop400->sa);
+	state_save_register_device_item(device, 0, cop400->sb);
+	state_save_register_device_item(device, 0, cop400->sio);
+	state_save_register_device_item(device, 0, cop400->skl);
+	state_save_register_device_item(device, 0, cop400->skip);
+	state_save_register_device_item(device, 0, cop400->skip_lbi);
+	state_save_register_device_item(device, 0, cop400->g_mask);
+	state_save_register_device_item(device, 0, cop400->d_mask);
+	state_save_register_device_item(device, 0, cop400->si);
+	state_save_register_device_item(device, 0, cop400->microbus_int);
+	state_save_register_device_item(device, 0, cop400->halt);
 }
 
-static void cop411_init(int index, int clock, const void *config, int (*irqcallback)(int))
+static CPU_INIT( cop411 )
 {
-	cop410_init(index, clock, config, irqcallback);
+	cop400_state *cop400 = device->token;
+
+	CPU_INIT_CALL(cop410);
 
 	/* the COP411 is like the COP410, just with less output ports */
-	R.G_mask = 0x07;
-	R.D_mask = 0x03;
+	cop400->g_mask = 0x07;
+	cop400->d_mask = 0x03;
 }
 
 /****************************************************************************
  * Reset registers to their initial values
  ****************************************************************************/
-static void cop410_reset(void)
+static CPU_RESET( cop410 )
 {
+	cop400_state *cop400 = device->token;
+
 	PC = 0;
 	A = 0;
 	B = 0;
 	C = 0;
 	OUT_D(0);
 	EN = 0;
-	WRITE_G(0);
+	WRITE_G(cop400, 0);
+	SKL = 1;
 
-	R.halt = 0;
+	cop400->halt = 0;
 }
 
 /****************************************************************************
  * Execute cycles CPU cycles. Return number of cycles really executed
  ****************************************************************************/
-static int cop410_execute(int cycles)
+static CPU_EXECUTE( cop410 )
 {
+	cop400_state *cop400 = device->token;
+
 	UINT8 opcode;
 
-	cop410_ICount = cycles;
+	cop400->icount = cycles;
 
 	do
 	{
 		prevPC = PC;
 
-		debugger_instruction_hook(Machine, PC);
+		debugger_instruction_hook(device, PC);
 
-		if (R.intf->cko == COP400_CKO_HALT_IO_PORT)
+		if (cop400->intf->cko == COP400_CKO_HALT_IO_PORT)
 		{
-			R.halt = IN_CKO();
+			cop400->halt = IN_CKO();
 		}
 
-		if (R.halt) continue;
+		if (cop400->halt)
+		{
+			cop400->icount -= 1;
+			continue;
+		}
 
 		opcode = ROM(PC);
 
-		if (skipLBI == 1)
+		if (cop400->skip_lbi)
 		{
-			if (LBIops[opcode] == 0)
+			if (cop400->LBIops[opcode])
 			{
-				skipLBI = 0;
-			}
-			else {
-				cop410_ICount -= opcode_map[opcode].cycles;
+				cop400->icount -= COP410_OPCODE_MAP[opcode].cycles;
 
-				PC += InstLen[opcode];
+				PC += cop400->InstLen[opcode];
+			}
+			else
+			{
+				cop400->skip_lbi = 0;
 			}
 		}
 
-		if (skipLBI == 0)
+		if (!cop400->skip_lbi)
 		{
-			int inst_cycles = opcode_map[opcode].cycles;
+			int inst_cycles = COP410_OPCODE_MAP[opcode].cycles;
 			PC++;
-			(*(opcode_map[opcode].function))(opcode);
-			cop410_ICount -= inst_cycles;
+			(*(COP410_OPCODE_MAP[opcode].function))(cop400, opcode);
+			cop400->icount -= inst_cycles;
 
 			// skip next instruction?
 
-			if (skip == 1)
+			if (cop400->skip)
 			{
-				void *function = opcode_map[ROM(PC)].function;
+				void *function = COP410_OPCODE_MAP[ROM(PC)].function;
 
 				opcode = ROM(PC);
 
 				if ((function == lqid) || (function == jid))
 				{
-					cop410_ICount -= 1;
+					cop400->icount -= 1;
 				}
 				else
 				{
-					cop410_ICount -= opcode_map[opcode].cycles;
+					cop400->icount -= COP410_OPCODE_MAP[opcode].cycles;
 				}
-				PC += InstLen[opcode];
 
-				skip = 0;
+				PC += cop400->InstLen[opcode];
+
+				cop400->skip = 0;
 			}
 		}
-	} while (cop410_ICount > 0);
+	} while (cop400->icount > 0);
 
-	return cycles - cop410_ICount;
-}
-
-/****************************************************************************
- * Get all registers in given buffer
- ****************************************************************************/
-static void cop410_get_context (void *dst)
-{
-	if( dst )
-		*(COP410_Regs*)dst = R;
-}
-
-
-/****************************************************************************
- * Set all registers to given values
- ****************************************************************************/
-static void cop410_set_context (void *src)
-{
-	if( src )
-		R = *(COP410_Regs*)src;
+	return cycles - cop400->icount;
 }
 
 /**************************************************************************
  * Validity check
  **************************************************************************/
-static int cop410_validity_check(const game_driver *driver, const void *config)
+static CPU_VALIDITY_CHECK( cop410 )
 {
 	int error = FALSE;
 	const cop400_interface *intf = (const cop400_interface *) config;
@@ -412,8 +368,10 @@ static int cop410_validity_check(const game_driver *driver, const void *config)
  * Generic set_info
  **************************************************************************/
 
-static void cop410_set_info(UINT32 state, cpuinfo *info)
+static CPU_SET_INFO( cop410 )
 {
+	cop400_state *cop400 = device->token;
+
 	switch (state)
 	{
 		/* --- the following bits of info are set as 64-bit signed integers --- */
@@ -437,15 +395,17 @@ static void cop410_set_info(UINT32 state, cpuinfo *info)
  * Generic get_info
  **************************************************************************/
 
-void cop410_get_info(UINT32 state, cpuinfo *info)
+CPU_GET_INFO( cop410 )
 {
+	cop400_state *cop400 = (device != NULL) ? device->token : NULL;
+
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case CPUINFO_INT_CONTEXT_SIZE:					info->i = sizeof(R);					break;
+		case CPUINFO_INT_CONTEXT_SIZE:					info->i = sizeof(cop400_state);			break;
 		case CPUINFO_INT_INPUT_LINES:					info->i = 0;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
-		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_ENDIANNESS:					info->i = ENDIANNESS_LITTLE;					break;
 		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 16;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 1;							break;
@@ -453,15 +413,15 @@ void cop410_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1;							break;
 		case CPUINFO_INT_MAX_CYCLES:					info->i = 2;							break;
 
-		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 8;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_PROGRAM: info->i = 9;					break;
-		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_PROGRAM: info->i = 0;					break;
-		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_DATA:	info->i = 8;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_DATA: 	info->i = 8;	/* Really 6 */	break;
-		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_DATA: 	info->i = 0;					break;
-		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 8;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO: 		info->i = 9;					break;
-		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_IO: 		info->i = 0;					break;
+		case CPUINFO_INT_DATABUS_WIDTH_PROGRAM:	info->i = 8;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH_PROGRAM: info->i = 9;					break;
+		case CPUINFO_INT_ADDRBUS_SHIFT_PROGRAM: info->i = 0;					break;
+		case CPUINFO_INT_DATABUS_WIDTH_DATA:	info->i = 8;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH_DATA: 	info->i = 6;					break;
+		case CPUINFO_INT_ADDRBUS_SHIFT_DATA: 	info->i = 0;					break;
+		case CPUINFO_INT_DATABUS_WIDTH_IO:		info->i = 8;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH_IO: 		info->i = 9;					break;
+		case CPUINFO_INT_ADDRBUS_SHIFT_IO: 		info->i = 0;					break;
 
 		case CPUINFO_INT_INPUT_STATE + 0:				info->i = 0;						    break;
 
@@ -481,21 +441,19 @@ void cop410_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_REGISTER + COP400_SKL:			info->i = SKL;							break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case CPUINFO_PTR_SET_INFO:						info->setinfo = cop410_set_info;		break;
-		case CPUINFO_PTR_GET_CONTEXT:					info->getcontext = cop410_get_context;	break;
-		case CPUINFO_PTR_SET_CONTEXT:					info->setcontext = cop410_set_context;	break;
-		case CPUINFO_PTR_INIT:							info->init = cop410_init;				break;
-		case CPUINFO_PTR_RESET:							info->reset = cop410_reset;				break;
-		case CPUINFO_PTR_EXECUTE:						info->execute = cop410_execute;			break;
-		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = cop410_dasm;		break;
-		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &cop410_ICount;			break;
-		case CPUINFO_PTR_VALIDITY_CHECK:				info->validity_check = cop410_validity_check;	break;
+		case CPUINFO_FCT_SET_INFO:						info->setinfo = CPU_SET_INFO_NAME(cop410);		break;
+		case CPUINFO_FCT_INIT:							info->init = CPU_INIT_NAME(cop410);				break;
+		case CPUINFO_FCT_RESET:							info->reset = CPU_RESET_NAME(cop410);				break;
+		case CPUINFO_FCT_EXECUTE:						info->execute = CPU_EXECUTE_NAME(cop410);			break;
+		case CPUINFO_FCT_BURN:							info->burn = NULL;						break;
+		case CPUINFO_FCT_DISASSEMBLE:					info->disassemble = CPU_DISASSEMBLE_NAME(cop410);		break;
+		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &cop400->icount;			break;
+		case CPUINFO_FCT_VALIDITY_CHECK:				info->validity_check = CPU_VALIDITY_CHECK_NAME(cop410);	break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM:
-            info->internal_map8 = address_map_cop410_internal_rom;                              break;
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_DATA:
- 			info->internal_map8 = address_map_cop410_internal_ram;								break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP_PROGRAM:
+			info->internal_map8 = ADDRESS_MAP_NAME(cop410_internal_rom);                              break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP_DATA:
+ 			info->internal_map8 = ADDRESS_MAP_NAME(cop410_internal_ram);								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "COP410");				break;
@@ -522,24 +480,24 @@ void cop410_get_info(UINT32 state, cpuinfo *info)
 	}
 }
 
-void cop411_get_info(UINT32 state, cpuinfo *info)
+CPU_GET_INFO( cop411 )
 {
 	// COP411 is a 20-pin package version of the COP410, missing D2/D3/G3/CKO
 
 	switch (state)
 	{
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case CPUINFO_PTR_INIT:							info->init = cop411_init;				break;
+		case CPUINFO_FCT_INIT:							info->init = CPU_INIT_NAME(cop411);				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "COP411");				break;
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "National Semiconductor COPS"); break;
 
-		default: cop410_get_info(state, info); break;
+		default: CPU_GET_INFO_CALL(cop410); break;
 	}
 }
 
-void cop401_get_info(UINT32 state, cpuinfo *info)
+CPU_GET_INFO( cop401 )
 {
 	// COP401 is a ROMless version of the COP410
 
@@ -548,9 +506,9 @@ void cop401_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_NAME:							strcpy(info->s, "COP401");				break;
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "National Semiconductor COPS"); break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM:
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP_PROGRAM:
  			info->internal_map8 = NULL;															break;
 
-		default: cop410_get_info(state, info); break;
+		default: CPU_GET_INFO_CALL(cop410); break;
 	}
 }

@@ -34,11 +34,12 @@ enum
 };
 
 #define M6509_IRQ_LINE					M6502_IRQ_LINE
-/* use cpunum_set_input_line(machine, cpu, M6509_SET_OVERFLOW, level)
+/* use cpu_set_input_line(machine->cpu[cpu], M6509_SET_OVERFLOW, level)
    to change level of the so input line
    positiv edge sets overflow flag */
 #define M6509_SET_OVERFLOW 3
 
-void m6509_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( m6509 );
+#define CPU_M6509 CPU_GET_INFO_NAME( m6509 )
 
 #endif /* __M6509_H__ */

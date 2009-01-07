@@ -41,7 +41,6 @@ TI's naming has D7 as LSB and D0 as MSB and is in uppercase
 ***********************************************************************************************/
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "tms5220.h"
 
 
@@ -158,7 +157,8 @@ struct tms5220
        funny clipping/clamping logic, while the digital pin gives full 12? bit
        resolution of the output data.
      */
-    UINT8 digital_select;
+	UINT8 digital_select;
+	const device_config *device;
 };
 
 
@@ -175,60 +175,61 @@ static INT16 clip_and_wrap(INT16 cliptemp);
 #define DEBUG_5220	0
 
 
-void *tms5220_create(int index)
+void *tms5220_create(const device_config *device)
 {
 	struct tms5220 *tms;
 
 	tms = malloc_or_die(sizeof(*tms));
 	memset(tms, 0, sizeof(*tms));
 
-	state_save_register_item_array("tms5220", index, tms->fifo);
-	state_save_register_item("tms5220", index, tms->fifo_head);
-	state_save_register_item("tms5220", index, tms->fifo_tail);
-	state_save_register_item("tms5220", index, tms->fifo_count);
-	state_save_register_item("tms5220", index, tms->fifo_bits_taken);
+	tms->device = device;
+	state_save_register_device_item_array(device, 0, tms->fifo);
+	state_save_register_device_item(device, 0, tms->fifo_head);
+	state_save_register_device_item(device, 0, tms->fifo_tail);
+	state_save_register_device_item(device, 0, tms->fifo_count);
+	state_save_register_device_item(device, 0, tms->fifo_bits_taken);
 
-	state_save_register_item("tms5220", index, tms->tms5220_speaking);
-	state_save_register_item("tms5220", index, tms->speak_external);
-	state_save_register_item("tms5220", index, tms->talk_status);
-	state_save_register_item("tms5220", index, tms->first_frame);
-	state_save_register_item("tms5220", index, tms->last_frame);
-	state_save_register_item("tms5220", index, tms->buffer_low);
-	state_save_register_item("tms5220", index, tms->buffer_empty);
-	state_save_register_item("tms5220", index, tms->irq_pin);
+	state_save_register_device_item(device, 0, tms->tms5220_speaking);
+	state_save_register_device_item(device, 0, tms->speak_external);
+	state_save_register_device_item(device, 0, tms->talk_status);
+	state_save_register_device_item(device, 0, tms->first_frame);
+	state_save_register_device_item(device, 0, tms->last_frame);
+	state_save_register_device_item(device, 0, tms->buffer_low);
+	state_save_register_device_item(device, 0, tms->buffer_empty);
+	state_save_register_device_item(device, 0, tms->irq_pin);
 
-	state_save_register_item("tms5220", index, tms->old_energy);
-	state_save_register_item("tms5220", index, tms->old_pitch);
-	state_save_register_item_array("tms5220", index, tms->old_k);
+	state_save_register_device_item(device, 0, tms->old_energy);
+	state_save_register_device_item(device, 0, tms->old_pitch);
+	state_save_register_device_item_array(device, 0, tms->old_k);
 
-	state_save_register_item("tms5220", index, tms->new_energy);
-	state_save_register_item("tms5220", index, tms->new_pitch);
-	state_save_register_item_array("tms5220", index, tms->new_k);
+	state_save_register_device_item(device, 0, tms->new_energy);
+	state_save_register_device_item(device, 0, tms->new_pitch);
+	state_save_register_device_item_array(device, 0, tms->new_k);
 
-	state_save_register_item("tms5220", index, tms->current_energy);
-	state_save_register_item("tms5220", index, tms->current_pitch);
-	state_save_register_item_array("tms5220", index, tms->current_k);
+	state_save_register_device_item(device, 0, tms->current_energy);
+	state_save_register_device_item(device, 0, tms->current_pitch);
+	state_save_register_device_item_array(device, 0, tms->current_k);
 
-	state_save_register_item("tms5220", index, tms->target_energy);
-	state_save_register_item("tms5220", index, tms->target_pitch);
-	state_save_register_item_array("tms5220", index, tms->target_k);
+	state_save_register_device_item(device, 0, tms->target_energy);
+	state_save_register_device_item(device, 0, tms->target_pitch);
+	state_save_register_device_item_array(device, 0, tms->target_k);
 
-	state_save_register_item("tms5220", index, tms->previous_energy);
+	state_save_register_device_item(device, 0, tms->previous_energy);
 
-	state_save_register_item("tms5220", index, tms->interp_count);
-	state_save_register_item("tms5220", index, tms->sample_count);
-	state_save_register_item("tms5220", index, tms->pitch_count);
+	state_save_register_device_item(device, 0, tms->interp_count);
+	state_save_register_device_item(device, 0, tms->sample_count);
+	state_save_register_device_item(device, 0, tms->pitch_count);
 
-	state_save_register_item_array("tms5220", index, tms->u);
-	state_save_register_item_array("tms5220", index, tms->x);
+	state_save_register_device_item_array(device, 0, tms->u);
+	state_save_register_device_item_array(device, 0, tms->x);
 
-	state_save_register_item("tms5220", index, tms->RNG);
-	state_save_register_item("tms5220", index, tms->excitation_data);
+	state_save_register_device_item(device, 0, tms->RNG);
+	state_save_register_device_item(device, 0, tms->excitation_data);
 
-	state_save_register_item("tms5220", index, tms->schedule_dummy_read);
-	state_save_register_item("tms5220", index, tms->data_register);
-	state_save_register_item("tms5220", index, tms->RDB_flag);
-	state_save_register_item("tms5220", index, tms->digital_select);
+	state_save_register_device_item(device, 0, tms->schedule_dummy_read);
+	state_save_register_device_item(device, 0, tms->data_register);
+	state_save_register_device_item(device, 0, tms->RDB_flag);
+	state_save_register_device_item(device, 0, tms->digital_select);
 
 	return tms;
 }
@@ -256,7 +257,7 @@ void tms5220_reset_chip(void *chip)
 	/* initialize the chip state */
 	/* Note that we do not actually clear IRQ on start-up : IRQ is even raised if tms->buffer_empty or tms->buffer_low are 0 */
 	tms->tms5220_speaking = tms->speak_external = tms->talk_status = tms->first_frame = tms->last_frame = tms->irq_pin = 0;
-	if (tms->irq_func) tms->irq_func(Machine, 0);
+	if (tms->irq_func) tms->irq_func(tms->device->machine, 0);
 	tms->buffer_empty = tms->buffer_low = 1;
 
 	tms->RDB_flag = FALSE;
@@ -1193,6 +1194,6 @@ static void check_buffer_low(struct tms5220 *tms)
 static void set_interrupt_state(struct tms5220 *tms, int state)
 {
     if (tms->irq_func && state != tms->irq_pin)
-    	tms->irq_func(Machine, state);
+    	tms->irq_func(tms->device->machine, state);
     tms->irq_pin = state;
 }

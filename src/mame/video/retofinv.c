@@ -112,8 +112,8 @@ static TILE_GET_INFO( fg_get_tile_info )
 
 VIDEO_START( retofinv )
 {
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan,8,8,36,28);
-	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan,8,8,36,28);
+	bg_tilemap = tilemap_create(machine, bg_get_tile_info,tilemap_scan,8,8,36,28);
+	fg_tilemap = tilemap_create(machine, fg_get_tile_info,tilemap_scan,8,8,36,28);
 
 	colortable_configure_tilemap_groups(machine->colortable, fg_tilemap, machine->gfx[0], 0);
 
@@ -147,7 +147,7 @@ WRITE8_HANDLER( retofinv_gfx_ctrl_w )
 	switch (offset)
 	{
 		case 0:
-			flip_screen_set(data & 1);
+			flip_screen_set(space->machine, data & 1);
 			break;
 
 		case 1:
@@ -206,7 +206,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap)
 		sprite &= ~sizex;
 		sprite &= ~(sizey << 1);
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			flipx ^= 1;
 			flipy ^= 1;

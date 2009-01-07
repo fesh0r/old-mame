@@ -23,6 +23,7 @@ Todo:
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/laserdsc.h"
 
 /* From daphne */
@@ -43,7 +44,7 @@ static VIDEO_UPDATE( esh )
 	int charx, chary;
 
 	/* clear */
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	/* Draw tiles */
 	for (charx = 0; charx < 32; charx++)
@@ -129,9 +130,9 @@ static WRITE8_HANDLER(led_writes)
 static WRITE8_HANDLER(nmi_line_w)
 {
 	if (data == 0x00)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, ASSERT_LINE);
 	if (data == 0x01)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
 
 	if (data != 0x00 && data != 0x01)
 		logerror("NMI line got a weird value!\n");
@@ -259,14 +260,14 @@ GFXDECODE_END
 
 static TIMER_CALLBACK( irq_stop )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( vblank_callback_esh )
 {
 	// IRQ
-	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
-	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, irq_stop);
+	cpu_set_input_line(device, 0, ASSERT_LINE);
+	timer_set(device->machine, ATTOTIME_IN_USEC(50), NULL, 0, irq_stop);
 }
 
 static MACHINE_START( esh )

@@ -86,20 +86,20 @@ static void init_penmask(void)
 
 VIDEO_START( centiped )
 {
-	bg_tilemap = tilemap_create(centiped_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
+	bg_tilemap = tilemap_create(machine, centiped_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	init_penmask();
 
 	centiped_flipscreen = 0;
 
-	state_save_register_global(centiped_flipscreen);
-	state_save_register_global(bullsdrt_sprites_bank);
+	state_save_register_global(machine, centiped_flipscreen);
+	state_save_register_global(machine, bullsdrt_sprites_bank);
 }
 
 
 VIDEO_START( warlords )
 {
-	bg_tilemap = tilemap_create(warlords_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
+	bg_tilemap = tilemap_create(machine, warlords_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	centiped_flipscreen = 0;
 }
@@ -107,19 +107,19 @@ VIDEO_START( warlords )
 
 VIDEO_START( milliped )
 {
-	bg_tilemap = tilemap_create(milliped_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
+	bg_tilemap = tilemap_create(machine, milliped_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	init_penmask();
 
 	centiped_flipscreen = 0;
 
-	state_save_register_global(centiped_flipscreen);
+	state_save_register_global(machine, centiped_flipscreen);
 }
 
 
 VIDEO_START( bullsdrt )
 {
-	bg_tilemap = tilemap_create(bullsdrt_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
+	bg_tilemap = tilemap_create(machine, bullsdrt_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	init_penmask();
 
@@ -232,7 +232,7 @@ WRITE8_HANDLER( centiped_paletteram_w )
 
 		/* character colors, set directly */
 		if ((offset & 0x08) == 0)
-			palette_set_color(machine, offset & 0x03, color);
+			palette_set_color(space->machine, offset & 0x03, color);
 
 		/* sprite colors - set all the applicable ones */
 		else
@@ -244,13 +244,13 @@ WRITE8_HANDLER( centiped_paletteram_w )
 			for (i = 0; i < 0x100; i += 4)
 			{
 				if (offset == ((i >> 2) & 0x03))
-					palette_set_color(machine, i + 4 + 1, color);
+					palette_set_color(space->machine, i + 4 + 1, color);
 
 				if (offset == ((i >> 4) & 0x03))
-					palette_set_color(machine, i + 4 + 2, color);
+					palette_set_color(space->machine, i + 4 + 2, color);
 
 				if (offset == ((i >> 6) & 0x03))
-					palette_set_color(machine, i + 4 + 3, color);
+					palette_set_color(space->machine, i + 4 + 3, color);
 			}
 		}
 	}
@@ -387,7 +387,7 @@ WRITE8_HANDLER( milliped_paletteram_w )
 {
 	paletteram[offset] = data;
 
-	melliped_mazeinv_set_color(machine, offset, data);
+	melliped_mazeinv_set_color(space->machine, offset, data);
 }
 
 
@@ -396,7 +396,7 @@ WRITE8_HANDLER( mazeinv_paletteram_w )
 	paletteram[offset] = data;
 
 	/* the value passed in is a look-up index into the color PROM */
-	melliped_mazeinv_set_color(machine, offset, ~memory_region(machine, "proms")[~data & 0x0f]);
+	melliped_mazeinv_set_color(space->machine, offset, ~memory_region(space->machine, "proms")[~data & 0x0f]);
 }
 
 

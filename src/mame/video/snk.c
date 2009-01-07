@@ -222,9 +222,9 @@ VIDEO_START( marvins )
 {
 	VIDEO_START_CALL(snk_3bpp_shadow);
 
-	tx_tilemap = tilemap_create(marvins_get_tx_tile_info, marvins_tx_scan_cols, 8, 8, 36, 28);
-	fg_tilemap = tilemap_create(marvins_get_fg_tile_info, tilemap_scan_cols,    8, 8, 64, 32);
-	bg_tilemap = tilemap_create(marvins_get_bg_tile_info, tilemap_scan_cols,    8, 8, 64, 32);
+	tx_tilemap = tilemap_create(machine, marvins_get_tx_tile_info, marvins_tx_scan_cols, 8, 8, 36, 28);
+	fg_tilemap = tilemap_create(machine, marvins_get_fg_tile_info, tilemap_scan_cols,    8, 8, 64, 32);
+	bg_tilemap = tilemap_create(machine, marvins_get_bg_tile_info, tilemap_scan_cols,    8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(tx_tilemap,15);
 	tilemap_set_scrolldy(tx_tilemap, 8, 8);
@@ -241,8 +241,8 @@ VIDEO_START( jcross )
 {
 	VIDEO_START_CALL(snk_3bpp_shadow);
 
-	tx_tilemap = tilemap_create(marvins_get_tx_tile_info, marvins_tx_scan_cols, 8, 8, 36, 28);
-	bg_tilemap = tilemap_create(aso_get_bg_tile_info,     tilemap_scan_cols,    8, 8, 64, 64);
+	tx_tilemap = tilemap_create(machine, marvins_get_tx_tile_info, marvins_tx_scan_cols, 8, 8, 36, 28);
+	bg_tilemap = tilemap_create(machine, aso_get_bg_tile_info,     tilemap_scan_cols,    8, 8, 64, 64);
 
 	tilemap_set_transparent_pen(tx_tilemap, 15);
 	tilemap_set_scrolldy(tx_tilemap, 8, 8);
@@ -258,8 +258,8 @@ VIDEO_START( sgladiat )
 {
 	VIDEO_START_CALL(snk_3bpp_shadow);
 
-	tx_tilemap = tilemap_create(marvins_get_tx_tile_info, marvins_tx_scan_cols, 8, 8, 36, 28);
-	bg_tilemap = tilemap_create(aso_get_bg_tile_info,     tilemap_scan_cols,    8, 8, 64, 32);
+	tx_tilemap = tilemap_create(machine, marvins_get_tx_tile_info, marvins_tx_scan_cols, 8, 8, 36, 28);
+	bg_tilemap = tilemap_create(machine, aso_get_bg_tile_info,     tilemap_scan_cols,    8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(tx_tilemap, 15);
 	tilemap_set_scrolldy(tx_tilemap, 8, 8);
@@ -296,8 +296,8 @@ VIDEO_START( tnk3 )
 {
 	VIDEO_START_CALL(snk_3bpp_shadow);
 
-	tx_tilemap = tilemap_create(marvins_get_tx_tile_info, marvins_tx_scan_cols, 8, 8, 36, 28);
-	bg_tilemap = tilemap_create(tnk3_get_bg_tile_info,    tilemap_scan_cols,    8, 8, 64, 64);
+	tx_tilemap = tilemap_create(machine, marvins_get_tx_tile_info, marvins_tx_scan_cols, 8, 8, 36, 28);
+	bg_tilemap = tilemap_create(machine, tnk3_get_bg_tile_info,    tilemap_scan_cols,    8, 8, 64, 64);
 
 	tilemap_set_transparent_pen(tx_tilemap, 15);
 	tilemap_set_scrolldy(tx_tilemap, 8, 8);
@@ -313,8 +313,8 @@ VIDEO_START( ikari )
 {
 	VIDEO_START_CALL(snk_3bpp_shadow);
 
-	tx_tilemap = tilemap_create(ikari_get_tx_tile_info, marvins_tx_scan_cols,  8,  8, 36, 28);
-	bg_tilemap = tilemap_create(ikari_get_bg_tile_info, tilemap_scan_cols,    16, 16, 32, 32);
+	tx_tilemap = tilemap_create(machine, ikari_get_tx_tile_info, marvins_tx_scan_cols,  8,  8, 36, 28);
+	bg_tilemap = tilemap_create(machine, ikari_get_bg_tile_info, tilemap_scan_cols,    16, 16, 32, 32);
 
 	tilemap_set_transparent_pen(tx_tilemap, 15);
 	tilemap_set_scrolldy(tx_tilemap, 8, 8);
@@ -327,8 +327,8 @@ VIDEO_START( gwar )
 {
 	memset(empty_tile,0xf,sizeof(empty_tile));
 
-	tx_tilemap = tilemap_create(gwar_get_tx_tile_info, tilemap_scan_cols,  8,  8, 50, 32);
-	bg_tilemap = tilemap_create(gwar_get_bg_tile_info, tilemap_scan_cols, 16, 16, 32, 32);
+	tx_tilemap = tilemap_create(machine, gwar_get_tx_tile_info, tilemap_scan_cols,  8,  8, 50, 32);
+	bg_tilemap = tilemap_create(machine, gwar_get_bg_tile_info, tilemap_scan_cols, 16, 16, 32, 32);
 
 	tilemap_set_transparent_pen(tx_tilemap, 15);
 
@@ -424,14 +424,14 @@ WRITE8_HANDLER( marvins_palette_bank_w )
 
 WRITE8_HANDLER( marvins_flipscreen_w )
 {
-	flip_screen_set(data & 0x80);
+	flip_screen_set(space->machine, data & 0x80);
 
 	// other bits unknown
 }
 
 WRITE8_HANDLER( sgladiat_flipscreen_w )
 {
-	flip_screen_set(data & 0x80);
+	flip_screen_set(space->machine, data & 0x80);
 
 	tilemap_set_palette_offset(bg_tilemap, ((data & 0xf) ^ 8) << 4);
 
@@ -440,10 +440,10 @@ WRITE8_HANDLER( sgladiat_flipscreen_w )
 
 WRITE8_HANDLER( hal21_flipscreen_w )
 {
-	flip_screen_set(data & 0x80);
+	flip_screen_set(space->machine, data & 0x80);
 
 	tilemap_set_palette_offset(bg_tilemap, ((data & 0xf) ^ 8) << 4);
-	tilemap_set_pen_data_offset(bg_tilemap, ((data & 0x20) << 3) * machine->gfx[1]->char_modulo);
+	tilemap_set_pen_data_offset(bg_tilemap, ((data & 0x20) << 3) * space->machine->gfx[1]->char_modulo);
 
 	// other bits unknown
 }
@@ -483,7 +483,7 @@ WRITE8_HANDLER( aso_videoattrs_w )
         -------X    scrollx MSB (sprites)
     */
 
-	flip_screen_set(data & 0x20);
+	flip_screen_set(space->machine, data & 0x20);
 
 	bg_scrolly =   (bg_scrolly   & 0xff) | ((data & 0x10) << 4);
 	sp16_scrolly = (sp16_scrolly & 0xff) | ((data & 0x08) << 5);
@@ -505,9 +505,9 @@ WRITE8_HANDLER( tnk3_videoattrs_w )
         -------X    scrollx MSB (sprites)
     */
 
-	flip_screen_set(data & 0x80);
+	flip_screen_set(space->machine, data & 0x80);
 
-	tilemap_set_pen_data_offset(tx_tilemap, ((data & 0x40) << 2) * machine->gfx[0]->char_modulo);
+	tilemap_set_pen_data_offset(tx_tilemap, ((data & 0x40) << 2) * space->machine->gfx[0]->char_modulo);
 
 	bg_scrolly =   (bg_scrolly   & 0xff) | ((data & 0x10) << 4);
 	sp16_scrolly = (sp16_scrolly & 0xff) | ((data & 0x08) << 5);
@@ -518,7 +518,7 @@ WRITE8_HANDLER( tnk3_videoattrs_w )
 WRITE8_HANDLER( aso_bg_bank_w )
 {
 	tilemap_set_palette_offset(bg_tilemap, ((data & 0xf) ^ 8) << 4);
-	tilemap_set_pen_data_offset(bg_tilemap, ((data & 0x30) << 4) * machine->gfx[1]->char_modulo);
+	tilemap_set_pen_data_offset(bg_tilemap, ((data & 0x30) << 4) * space->machine->gfx[1]->char_modulo);
 }
 
 WRITE8_HANDLER( ikari_bg_scroll_msb_w )
@@ -549,18 +549,18 @@ if (data != 0x20 &&	// normal
 	popmessage("attrs %02x contact MAMEDEV", data);
 
 	tilemap_set_palette_offset(tx_tilemap, (data & 0x01) << 4);
-	tilemap_set_pen_data_offset(tx_tilemap, ((data & 0x10) << 4) * machine->gfx[0]->char_modulo);
+	tilemap_set_pen_data_offset(tx_tilemap, ((data & 0x10) << 4) * space->machine->gfx[0]->char_modulo);
 }
 
 WRITE8_HANDLER( gwar_tx_bank_w )
 {
 	tilemap_set_palette_offset(tx_tilemap, (data & 0xf) << 4);
-	tilemap_set_pen_data_offset(tx_tilemap, ((data & 0x30) << 4) * machine->gfx[0]->char_modulo);
+	tilemap_set_pen_data_offset(tx_tilemap, ((data & 0x30) << 4) * space->machine->gfx[0]->char_modulo);
 }
 
 WRITE8_HANDLER( gwar_videoattrs_w )
 {
-	flip_screen_set(data & 0x04);
+	flip_screen_set(space->machine, data & 0x04);
 
 	sp32_scrollx = (sp32_scrollx & 0xff) | ((data & 0x80) << 1);
 	sp16_scrollx = (sp16_scrollx & 0xff) | ((data & 0x40) << 2);
@@ -572,7 +572,7 @@ WRITE8_HANDLER( gwar_videoattrs_w )
 
 WRITE8_HANDLER( gwara_videoattrs_w )
 {
-	flip_screen_set(data & 0x10);
+	flip_screen_set(space->machine, data & 0x10);
 
 	bg_scrollx =   (bg_scrollx   & 0xff) | ((data & 0x02) << 7);
 	bg_scrolly =   (bg_scrolly   & 0xff) | ((data & 0x01) << 8);
@@ -597,10 +597,10 @@ WRITE8_HANDLER( tdfever_spriteram_w )
 	/*  partial updates avoid flickers in the fsoccer radar. */
 	if (offset < 0x80 && spriteram[offset] != data)
 	{
-		int vpos = video_screen_get_vpos(machine->primary_screen);
+		int vpos = video_screen_get_vpos(space->machine->primary_screen);
 
 		if (vpos > 0)
-			video_screen_update_partial(machine->primary_screen, vpos - 1);
+			video_screen_update_partial(space->machine->primary_screen, vpos - 1);
 	}
 
 	spriteram[offset] = data;
@@ -627,7 +627,7 @@ static void marvins_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 		int flipy = (attributes&0x20);
 		int flipx = 0;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 89 - 16 - sx;
 			sy = 262 - 16 - sy;
@@ -692,7 +692,7 @@ static void tnk3_draw_sprites(running_machine *machine, bitmap_t *bitmap, const 
 			yflip = attributes & 0x20;
 		}
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 89 - size - sx;	// this causes slight misalignment in tnk3 but is correct for athena and fitegolf
 			sy = 262 - size - sy;
@@ -825,7 +825,7 @@ static void tdfever_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 		if (hw_xflip)
 			sx = 495 - size - sx;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 495 - size - sx;
 			sy = 258 - size - sy;

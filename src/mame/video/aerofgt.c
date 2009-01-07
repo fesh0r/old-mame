@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "includes/aerofgt.h"
 
 
 UINT16 *aerofgt_rasterram;
@@ -96,7 +97,7 @@ static TILE_GET_INFO( get_bg2_tile_info )
 
 VIDEO_START( pspikes )
 {
-	bg1_tilemap = tilemap_create(get_pspikes_tile_info,tilemap_scan_rows,8,8,64,32);
+	bg1_tilemap = tilemap_create(machine, get_pspikes_tile_info,tilemap_scan_rows,8,8,64,32);
 	/* no bg2 in this game */
 
 	sprite_gfx = 1;
@@ -105,8 +106,8 @@ VIDEO_START( pspikes )
 
 VIDEO_START( karatblz )
 {
-	bg1_tilemap = tilemap_create(karatblz_bg1_tile_info,tilemap_scan_rows,     8,8,64,64);
-	bg2_tilemap = tilemap_create(karatblz_bg2_tile_info,tilemap_scan_rows,8,8,64,64);
+	bg1_tilemap = tilemap_create(machine, karatblz_bg1_tile_info,tilemap_scan_rows,     8,8,64,64);
+	bg2_tilemap = tilemap_create(machine, karatblz_bg2_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	tilemap_set_transparent_pen(bg2_tilemap,15);
 
@@ -119,8 +120,8 @@ VIDEO_START( spinlbrk )
 {
 	int i;
 
-	bg1_tilemap = tilemap_create(spinlbrk_bg1_tile_info,tilemap_scan_rows,     8,8,64,64);
-	bg2_tilemap = tilemap_create(karatblz_bg2_tile_info,tilemap_scan_rows,8,8,64,64);
+	bg1_tilemap = tilemap_create(machine, spinlbrk_bg1_tile_info,tilemap_scan_rows,     8,8,64,64);
+	bg2_tilemap = tilemap_create(machine, karatblz_bg2_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	tilemap_set_transparent_pen(bg2_tilemap,15);
 
@@ -144,8 +145,8 @@ VIDEO_START( spinlbrk )
 
 VIDEO_START( turbofrc )
 {
-	bg1_tilemap = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,     8,8,64,64);
-	bg2_tilemap = tilemap_create(get_bg2_tile_info,tilemap_scan_rows,8,8,64,64);
+	bg1_tilemap = tilemap_create(machine, get_bg1_tile_info,tilemap_scan_rows,     8,8,64,64);
+	bg2_tilemap = tilemap_create(machine, get_bg2_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	tilemap_set_transparent_pen(bg2_tilemap,15);
 
@@ -156,7 +157,7 @@ VIDEO_START( turbofrc )
 
 VIDEO_START( wbbc97 )
 {
-	bg1_tilemap = tilemap_create(get_pspikes_tile_info,tilemap_scan_rows,8,8,64,32);
+	bg1_tilemap = tilemap_create(machine, get_pspikes_tile_info,tilemap_scan_rows,8,8,64,32);
 	/* no bg2 in this game */
 
 	tilemap_set_transparent_pen(bg1_tilemap,15);
@@ -447,6 +448,81 @@ static void turbofrc_draw_sprites(running_machine *machine, bitmap_t *bitmap,con
 	}
 }
 
+static void spinlbrk_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int chip,int chip_disabled_pri)
+{
+	int attr_start,base,first;
+
+	base = chip * 0x0200;
+	first = 4 * aerofgt_spriteram3[0x1fe + base];
+
+	for (attr_start = base + 0x0200-8;attr_start >= first + base;attr_start -= 4)
+	{
+		int map_start;
+		int ox,oy,x,y,xsize,ysize,zoomx,zoomy,flipx,flipy,color,pri;
+// some other drivers still use this wrong table, they have to be upgraded
+//      int zoomtable[16] = { 0,7,14,20,25,30,34,38,42,46,49,52,54,57,59,61 };
+
+		if (!(aerofgt_spriteram3[attr_start + 2] & 0x0080)) continue;
+		pri = aerofgt_spriteram3[attr_start + 2] & 0x0010;
+		if ( chip_disabled_pri & !pri) continue;
+		if (!chip_disabled_pri & (pri>>4)) continue;
+		ox = aerofgt_spriteram3[attr_start + 1] & 0x01ff;
+		xsize = (aerofgt_spriteram3[attr_start + 2] & 0x0700) >> 8;
+		zoomx = (aerofgt_spriteram3[attr_start + 1] & 0xf000) >> 12;
+		oy = aerofgt_spriteram3[attr_start + 0] & 0x01ff;
+		ysize = (aerofgt_spriteram3[attr_start + 2] & 0x7000) >> 12;
+		zoomy = (aerofgt_spriteram3[attr_start + 0] & 0xf000) >> 12;
+		flipx = aerofgt_spriteram3[attr_start + 2] & 0x0800;
+		flipy = aerofgt_spriteram3[attr_start + 2] & 0x8000;
+		color = (aerofgt_spriteram3[attr_start + 2] & 0x000f) + 16 * spritepalettebank;
+
+		map_start = aerofgt_spriteram3[attr_start + 3];
+
+// aerofgt has this adjustment, but doing it here would break turbo force title screen
+//      ox += (xsize*zoomx+2)/4;
+//      oy += (ysize*zoomy+2)/4;
+
+		zoomx = 32 - zoomx;
+		zoomy = 32 - zoomy;
+
+		for (y = 0;y <= ysize;y++)
+		{
+			int sx,sy;
+
+			if (flipy) sy = ((oy + zoomy * (ysize - y)/2 + 16) & 0x1ff) - 16;
+			else sy = ((oy + zoomy * y / 2 + 16) & 0x1ff) - 16;
+
+			for (x = 0;x <= xsize;x++)
+			{
+				int code;
+
+				if (flipx) sx = ((ox + zoomx * (xsize - x) / 2 + 16) & 0x1ff) - 16;
+				else sx = ((ox + zoomx * x / 2 + 16) & 0x1ff) - 16;
+
+				if (chip == 0)
+					code = aerofgt_spriteram1[map_start % (aerofgt_spriteram1_size/2)];
+				else
+					code = aerofgt_spriteram2[map_start % (aerofgt_spriteram2_size/2)];
+
+				pdrawgfxzoom(bitmap,machine->gfx[sprite_gfx + chip],
+							 code,
+							 color,
+							 flipx,flipy,
+							 sx,sy,
+							 cliprect,TRANSPARENCY_PEN,15,
+							 zoomx << 11, zoomy << 11,
+							 pri ? 2 : 0);
+				map_start++;
+			}
+
+			if (xsize == 2) map_start += 1;
+			if (xsize == 4) map_start += 3;
+			if (xsize == 5) map_start += 2;
+			if (xsize == 6) map_start += 1;
+		}
+	}
+}
+
 static void aerfboo2_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int chip,int chip_disabled_pri)
 {
 	int attr_start,base,first;
@@ -638,7 +714,7 @@ static void aerfboot_draw_sprites(running_machine *machine, bitmap_t *bitmap,con
 				sx,sy,
 				cliprect,TRANSPARENCY_PEN,15,
 				zoomx << 11,zoomy << 11,
-				pri ? 0 : 0x2);
+				pri ? 0 : 2);
 
 	}
 
@@ -676,7 +752,7 @@ static void aerfboot_draw_sprites(running_machine *machine, bitmap_t *bitmap,con
 				sx,sy,
 				cliprect,TRANSPARENCY_PEN,15,
 				zoomx << 11,zoomy << 11,
-				pri ? 0 : 0x2);
+				pri ? 0 : 2);
 
 	}
 }
@@ -711,7 +787,7 @@ VIDEO_UPDATE( pspikes )
 		tilemap_set_scrollx(bg1_tilemap,(i + scrolly) & 0xff,aerofgt_rasterram[i]);
 	tilemap_set_scrolly(bg1_tilemap,0,scrolly);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,bg1_tilemap,0,0);
 	turbofrc_draw_sprites(screen->machine,bitmap,cliprect,0,-1);
@@ -782,7 +858,7 @@ VIDEO_UPDATE( karatblz )
 	tilemap_set_scrollx(bg2_tilemap,0,bg2scrollx-4);
 	tilemap_set_scrolly(bg2_tilemap,0,bg2scrolly);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,bg1_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,bg2_tilemap,0,0);
@@ -807,16 +883,16 @@ VIDEO_UPDATE( spinlbrk )
 	tilemap_set_scrollx(bg2_tilemap,0,bg2scrollx-4);
 //  tilemap_set_scrolly(bg2_tilemap,0,bg2scrolly);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,bg1_tilemap,0,0);
-	tilemap_draw(bitmap,cliprect,bg2_tilemap,0,0);
+	tilemap_draw(bitmap,cliprect,bg2_tilemap,0,1);
 
 	/* we use the priority buffer so sprites are drawn front to back */
-	turbofrc_draw_sprites(screen->machine,bitmap,cliprect,0,-1);
-	turbofrc_draw_sprites(screen->machine,bitmap,cliprect,0, 0);
-	turbofrc_draw_sprites(screen->machine,bitmap,cliprect,1, 0);
-	turbofrc_draw_sprites(screen->machine,bitmap,cliprect,1,-1);
+	spinlbrk_draw_sprites(screen->machine,bitmap,cliprect,0, 0);
+	spinlbrk_draw_sprites(screen->machine,bitmap,cliprect,0,-1);
+	spinlbrk_draw_sprites(screen->machine,bitmap,cliprect,1, 0);
+	spinlbrk_draw_sprites(screen->machine,bitmap,cliprect,1,-1);
 	return 0;
 }
 
@@ -833,7 +909,7 @@ VIDEO_UPDATE( turbofrc )
 	tilemap_set_scrollx(bg2_tilemap,0,bg2scrollx-7);
 	tilemap_set_scrolly(bg2_tilemap,0,bg2scrolly+2);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,bg1_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,bg2_tilemap,0,1);
@@ -853,7 +929,7 @@ VIDEO_UPDATE( aerofgt )
 	tilemap_set_scrollx(bg2_tilemap,0,aerofgt_rasterram[0x0200]-20);
 	tilemap_set_scrolly(bg2_tilemap,0,bg2scrolly);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,bg1_tilemap,0,0);
 
@@ -880,7 +956,7 @@ VIDEO_UPDATE( aerfboot )
 	tilemap_set_scrollx(bg2_tilemap,0,bg2scrollx+172);
 	tilemap_set_scrolly(bg2_tilemap,0,bg2scrolly+2);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,bg1_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,bg2_tilemap,0,1);
@@ -903,7 +979,7 @@ VIDEO_UPDATE( aerfboo2 )
 	tilemap_set_scrollx(bg2_tilemap,0,bg2scrollx-7);
 	tilemap_set_scrolly(bg2_tilemap,0,bg2scrolly+2);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,bg1_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,bg2_tilemap,0,1);
@@ -926,7 +1002,7 @@ VIDEO_UPDATE( wbbc97 )
 		tilemap_set_scrollx(bg1_tilemap,(i + scrolly) & 0xff,aerofgt_rasterram[i]);
 	tilemap_set_scrolly(bg1_tilemap,0,scrolly);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	if(wbbc97_bitmap_enable)
 	{

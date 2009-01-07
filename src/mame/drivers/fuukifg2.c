@@ -30,9 +30,13 @@ To Do:
 
 - The scroll values are generally wrong when flip screen is on and rasters are often incorrect
 
+- gogomile M6295 banking is incorrect (the story sequence should have speech)
+
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
 #include "sound/okim6295.h"
@@ -69,9 +73,9 @@ static WRITE16_HANDLER( fuuki16_vregs_w )
 	UINT16 new_data	=	COMBINE_DATA(&fuuki16_vregs[offset]);
 	if ((offset == 0x1c/2) && old_data != new_data)
 	{
-		const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
-		attotime period = video_screen_get_frame_period(machine->primary_screen);
-		timer_adjust_periodic(raster_interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, new_data, visarea->max_x + 1), 0, period);
+		const rectangle *visarea = video_screen_get_visible_area(space->machine->primary_screen);
+		attotime period = video_screen_get_frame_period(space->machine->primary_screen);
+		timer_adjust_periodic(raster_interrupt_timer, video_screen_get_time_until_pos(space->machine->primary_screen, new_data, visarea->max_x + 1), 0, period);
 	}
 }
 
@@ -79,10 +83,10 @@ static WRITE16_HANDLER( fuuki16_sound_command_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,0,data & 0xff);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
-//      cpu_spinuntil_time(ATTOTIME_IN_USEC(50));   // Allow the other CPU to reply
-		cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(50)); // Fixes glitching in rasters
+		soundlatch_w(space,0,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+//      cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(50));   // Allow the other CPU to reply
+		cpuexec_boost_interleave(space->machine, attotime_zero, ATTOTIME_IN_USEC(50)); // Fixes glitching in rasters
 	}
 }
 
@@ -128,9 +132,9 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( fuuki16_sound_rombank_w )
 {
 	if (data <= 2)
-		memory_set_bankptr(1, memory_region(machine, "audio") + 0x8000 * data + 0x10000);
+		memory_set_bankptr(space->machine, 1, memory_region(space->machine, "audio") + 0x8000 * data + 0x10000);
 	else
-	 	logerror("CPU #1 - PC %04X: unknown bank bits: %02X\n",activecpu_get_pc(),data);
+	 	logerror("CPU #1 - PC %04X: unknown bank bits: %02X\n",cpu_get_pc(space->cpu),data);
 }
 
 static WRITE8_HANDLER( fuuki16_oki_banking_w )
@@ -405,7 +409,7 @@ GFXDECODE_END
 
 static void soundirq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 1, 0, state);
+	cpu_set_input_line(machine->cpu[1], 0, state);
 }
 
 static const ym3812_interface fuuki16_ym3812_intf =
@@ -425,31 +429,23 @@ static const ym3812_interface fuuki16_ym3812_intf =
             also used for water effects and titlescreen linescroll on gogomile
 */
 
-static TIMER_CALLBACK( irq_off )
-{
-	cpunum_set_input_line(machine, 0, param, CLEAR_LINE);
-}
-
 static TIMER_CALLBACK( level_1_interrupt_callback )
 {
-	cpunum_set_input_line(machine, 0, 1, ASSERT_LINE);
-	timer_set(ATTOTIME_IN_USEC(1), NULL, 1, irq_off);
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 248, 0), NULL, 0, level_1_interrupt_callback);
+	cpu_set_input_line(machine->cpu[0], 1, HOLD_LINE);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 248, 0), NULL, 0, level_1_interrupt_callback);
 }
 
 
 static TIMER_CALLBACK( vblank_interrupt_callback )
 {
-	cpunum_set_input_line(machine, 0, 3, ASSERT_LINE);	// VBlank IRQ
-	timer_set(ATTOTIME_IN_USEC(1), NULL, 3, irq_off);
-	timer_set(video_screen_get_time_until_vblank_start(machine->primary_screen), NULL, 0, vblank_interrupt_callback);
+	cpu_set_input_line(machine->cpu[0], 3, HOLD_LINE);	// VBlank IRQ
+	timer_set(machine, video_screen_get_time_until_vblank_start(machine->primary_screen), NULL, 0, vblank_interrupt_callback);
 }
 
 
 static TIMER_CALLBACK( raster_interrupt_callback )
 {
-	cpunum_set_input_line(machine, 0, 5, ASSERT_LINE);	// Raster Line IRQ
-	timer_set(ATTOTIME_IN_USEC(1), NULL, 5, irq_off);
+	cpu_set_input_line(machine->cpu[0], 5, HOLD_LINE);	// Raster Line IRQ
 	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 	timer_adjust_oneshot(raster_interrupt_timer, video_screen_get_frame_period(machine->primary_screen), 0);
 }
@@ -457,7 +453,7 @@ static TIMER_CALLBACK( raster_interrupt_callback )
 
 static MACHINE_START( fuuki16 )
 {
-	raster_interrupt_timer = timer_alloc(raster_interrupt_callback, NULL);
+	raster_interrupt_timer = timer_alloc(machine, raster_interrupt_callback, NULL);
 }
 
 
@@ -465,8 +461,8 @@ static MACHINE_RESET( fuuki16 )
 {
 	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 248, 0), NULL, 0, level_1_interrupt_callback);
-	timer_set(video_screen_get_time_until_vblank_start(machine->primary_screen), NULL, 0, vblank_interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 248, 0), NULL, 0, level_1_interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_vblank_start(machine->primary_screen), NULL, 0, vblank_interrupt_callback);
 	timer_adjust_oneshot(raster_interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, visarea->max_x + 1), 0);
 }
 
@@ -689,7 +685,7 @@ ROM_END
 
 ***************************************************************************/
 
-GAME( 1995, gogomile, 0,        fuuki16, gogomile, 0, ROT0, "Fuuki", "Go Go! Mile Smile", 0 )
-GAME( 1995, gogomilj, gogomile, fuuki16, gogomilj, 0, ROT0, "Fuuki", "Susume! Mile Smile (Japan)", 0 )
+GAME( 1995, gogomile, 0,        fuuki16, gogomile, 0, ROT0, "Fuuki", "Go Go! Mile Smile", GAME_IMPERFECT_SOUND )
+GAME( 1995, gogomilj, gogomile, fuuki16, gogomilj, 0, ROT0, "Fuuki", "Susume! Mile Smile (Japan)", GAME_IMPERFECT_SOUND )
 GAME( 1996, pbancho,  0,        fuuki16, pbancho,  0, ROT0, "Fuuki", "Gyakuten!! Puzzle Bancho (Japan)", 0)
 

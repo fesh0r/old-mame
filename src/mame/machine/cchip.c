@@ -38,7 +38,7 @@ original board.
 ***************************************************************************/
 
 #include "driver.h"
-#include "includes/taito_f2.h"
+#include "includes/cchip.h"
 
 static UINT16 current_bank = 0;
 
@@ -65,8 +65,8 @@ static const UINT8 superman_code[40] =
 
 MACHINE_RESET( cchip1 )
 {
-	state_save_register_global(current_bank);
-	state_save_register_global(cc_port);
+	state_save_register_global(machine, current_bank);
+	state_save_register_global(machine, cc_port);
 }
 
 /*************************************
@@ -98,7 +98,7 @@ WRITE16_HANDLER( cchip1_ram_w )
 	}
 	else
 	{
-logerror("cchip1_w pc: %06x bank %02x offset %04x: %02x\n",activecpu_get_pc(),current_bank,offset,data);
+logerror("cchip1_w pc: %06x bank %02x offset %04x: %02x\n",cpu_get_pc(space->cpu),current_bank,offset,data);
 	}
 }
 
@@ -125,9 +125,9 @@ READ16_HANDLER( cchip1_ram_r )
 	{
 		switch (offset)
 		{
-		case 0x00: return input_port_read(machine, "IN0");    /* Player 1 controls + START1 */
-		case 0x01: return input_port_read(machine, "IN1");    /* Player 2 controls + START2 */
-		case 0x02: return input_port_read(machine, "IN2");    /* COINn + SERVICE1 + TILT */
+		case 0x00: return input_port_read(space->machine, "IN0");    /* Player 1 controls + START1 */
+		case 0x01: return input_port_read(space->machine, "IN1");    /* Player 2 controls + START2 */
+		case 0x02: return input_port_read(space->machine, "IN2");    /* COINn + SERVICE1 + TILT */
 		case 0x03: return cc_port;
 		}
 	}
@@ -163,7 +163,7 @@ UINT16 *cchip2_ram;
 
 WRITE16_HANDLER( cchip2_word_w )
 {
-    logerror("cchip2_w pc: %06x offset %04x: %02x\n", activecpu_get_pc(), offset, data);
+    logerror("cchip2_w pc: %06x offset %04x: %02x\n", cpu_get_pc(space->cpu), offset, data);
 
     COMBINE_DATA(&cchip2_ram[offset]);
 }

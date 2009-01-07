@@ -28,7 +28,7 @@
 /*****************************************************************************
     Changes
     20051129 Mariusz Wojcieszek
-    - introduced cpu_readop16() for opcode fetching
+    - introduced memory_decrypted_read_word() for opcode fetching
 
     20050813 Mariusz Wojcieszek
     - fixed 64 bit / 32 bit division in division unit
@@ -49,7 +49,6 @@
 
     20021020 O. Galibert
     - DMA implementation, lightly tested
-    - change_pc() crap fixed
     - delay slot in debugger fixed
     - add divide box mirrors
     - Nicola-ify the indentation
@@ -101,7 +100,6 @@
  *****************************************************************************/
 
 #include "debugger.h"
-#include "deprecat.h"
 #include "sh2.h"
 #include "sh2comn.h"
 
@@ -120,43 +118,43 @@ SH2 *sh2;
 INLINE UINT8 RB(offs_t A)
 {
 	if (A >= 0xe0000000)
-		return sh2_internal_r(Machine, (A & 0x1fc)>>2, 0xff << (((~A) & 3)*8)) >> (((~A) & 3)*8);
+		return sh2_internal_r(sh2->internal, (A & 0x1fc)>>2, 0xff << (((~A) & 3)*8)) >> (((~A) & 3)*8);
 
 	if (A >= 0xc0000000)
-		return program_read_byte_32be(A);
+		return memory_read_byte_32be(sh2->program, A);
 
 	if (A >= 0x40000000)
 		return 0xa5;
 
-	return program_read_byte_32be(A & AM);
+	return memory_read_byte_32be(sh2->program, A & AM);
 }
 
 INLINE UINT16 RW(offs_t A)
 {
 	if (A >= 0xe0000000)
-		return sh2_internal_r(Machine, (A & 0x1fc)>>2, 0xffff << (((~A) & 2)*8)) >> (((~A) & 2)*8);
+		return sh2_internal_r(sh2->internal, (A & 0x1fc)>>2, 0xffff << (((~A) & 2)*8)) >> (((~A) & 2)*8);
 
 	if (A >= 0xc0000000)
-		return program_read_word_32be(A);
+		return memory_read_word_32be(sh2->program, A);
 
 	if (A >= 0x40000000)
 		return 0xa5a5;
 
-	return program_read_word_32be(A & AM);
+	return memory_read_word_32be(sh2->program, A & AM);
 }
 
 INLINE UINT32 RL(offs_t A)
 {
 	if (A >= 0xe0000000)
-		return sh2_internal_r(Machine, (A & 0x1fc)>>2, 0xffffffff);
+		return sh2_internal_r(sh2->internal, (A & 0x1fc)>>2, 0xffffffff);
 
 	if (A >= 0xc0000000)
-		return program_read_dword_32be(A);
+		return memory_read_dword_32be(sh2->program, A);
 
 	if (A >= 0x40000000)
 		return 0xa5a5a5a5;
 
-  return program_read_dword_32be(A & AM);
+  return memory_read_dword_32be(sh2->program, A & AM);
 }
 
 INLINE void WB(offs_t A, UINT8 V)
@@ -164,60 +162,60 @@ INLINE void WB(offs_t A, UINT8 V)
 
 	if (A >= 0xe0000000)
 	{
-		sh2_internal_w(Machine, (A & 0x1fc)>>2, V << (((~A) & 3)*8), 0xff << (((~A) & 3)*8));
+		sh2_internal_w(sh2->internal, (A & 0x1fc)>>2, V << (((~A) & 3)*8), 0xff << (((~A) & 3)*8));
 		return;
 	}
 
 	if (A >= 0xc0000000)
 	{
-		program_write_byte_32be(A,V);
+		memory_write_byte_32be(sh2->program, A,V);
 		return;
 	}
 
 	if (A >= 0x40000000)
 		return;
 
-	program_write_byte_32be(A & AM,V);
+	memory_write_byte_32be(sh2->program, A & AM,V);
 }
 
 INLINE void WW(offs_t A, UINT16 V)
 {
 	if (A >= 0xe0000000)
 	{
-		sh2_internal_w(Machine, (A & 0x1fc)>>2, V << (((~A) & 2)*8), 0xffff << (((~A) & 2)*8));
+		sh2_internal_w(sh2->internal, (A & 0x1fc)>>2, V << (((~A) & 2)*8), 0xffff << (((~A) & 2)*8));
 		return;
 	}
 
 	if (A >= 0xc0000000)
 	{
-		program_write_word_32be(A,V);
+		memory_write_word_32be(sh2->program, A,V);
 		return;
 	}
 
 	if (A >= 0x40000000)
 		return;
 
-	program_write_word_32be(A & AM,V);
+	memory_write_word_32be(sh2->program, A & AM,V);
 }
 
 INLINE void WL(offs_t A, UINT32 V)
 {
 	if (A >= 0xe0000000)
 	{
-		sh2_internal_w(Machine, (A & 0x1fc)>>2, V, 0xffffffff);
+		sh2_internal_w(sh2->internal, (A & 0x1fc)>>2, V, 0xffffffff);
 		return;
 	}
 
 	if (A >= 0xc0000000)
 	{
-		program_write_dword_32be(A,V);
+		memory_write_dword_32be(sh2->program, A,V);
 		return;
 	}
 
 	if (A >= 0x40000000)
 		return;
 
-	program_write_dword_32be(A & AM,V);
+	memory_write_dword_32be(sh2->program, A & AM,V);
 }
 
 /*  code                 cycles  t-bit
@@ -334,7 +332,6 @@ INLINE void BF(UINT32 d)
 	{
 		INT32 disp = ((INT32)d << 24) >> 24;
 		sh2->pc = sh2->ea = sh2->pc + disp * 2 + 2;
-		change_pc(sh2->pc & AM);
 		sh2_icount -= 2;
 	}
 }
@@ -425,7 +422,6 @@ INLINE void BT(UINT32 d)
 	{
 		INT32 disp = ((INT32)d << 24) >> 24;
 		sh2->pc = sh2->ea = sh2->pc + disp * 2 + 2;
-		change_pc(sh2->pc & AM);
 		sh2_icount -= 2;
 	}
 }
@@ -1742,7 +1738,6 @@ INLINE void TRAPA(UINT32 i)
 	WL( sh2->r[15], sh2->pc );
 
 	sh2->pc = RL( sh2->ea );
-	change_pc(sh2->pc & AM);
 
 	sh2_icount -= 7;
 }
@@ -2137,17 +2132,15 @@ INLINE void op1111(UINT16 opcode)
  *  MAME CPU INTERFACE
  *****************************************************************************/
 
-static void sh2_reset(void)
+static CPU_RESET( sh2 )
 {
 	void *tsave, *tsaved0, *tsaved1;
 	UINT32 *m;
-	int cpunum;
 	int save_is_slave;
 
 	void (*f)(UINT32 data);
-	int (*save_irqcallback)(int);
+	cpu_irq_callback save_irqcallback;
 
-	cpunum = sh2->cpu_number;
 	m = sh2->m;
 	tsave = sh2->timer;
 	tsaved0 = sh2->dma_timer[0];
@@ -2156,22 +2149,25 @@ static void sh2_reset(void)
 	f = sh2->ftcsr_read_callback;
 	save_irqcallback = sh2->irq_callback;
 	save_is_slave = sh2->is_slave;
+	dma_callback_kludge = sh2->dma_callback_kludge;
+
 	memset(sh2, 0, sizeof(SH2));
+
+	sh2->dma_callback_kludge = dma_callback_kludge;
 	sh2->is_slave = save_is_slave;
 	sh2->ftcsr_read_callback = f;
 	sh2->irq_callback = save_irqcallback;
+	sh2->device = device;
 
 	sh2->timer = tsave;
 	sh2->dma_timer[0] = tsaved0;
 	sh2->dma_timer[1] = tsaved1;
-	sh2->cpu_number = cpunum;
 	sh2->m = m;
 	memset(sh2->m, 0, 0x200);
 
 	sh2->pc = RL(0);
 	sh2->r[15] = RL(4);
 	sh2->sr = I;
-	change_pc(sh2->pc & AM);
 
 	sh2->internal_irq_level = -1;
 }
@@ -2180,14 +2176,14 @@ static void sh2_reset(void)
     sh1_reset - reset the processor
 -------------------------------------------------*/
 
-static void sh1_reset(void)
+static CPU_RESET( sh1 )
 {
 	sh2_reset();
 	sh2->cpu_type = CPU_TYPE_SH1;
 }
 
 /* Execute cycles - returns number of cycles actually run */
-static int sh2_execute(int cycles)
+static CPU_EXECUTE( sh2 )
 {
 	sh2_icount = cycles;
 
@@ -2200,14 +2196,13 @@ static int sh2_execute(int cycles)
 
 		if (sh2->delay)
 		{
-			opcode = cpu_readop16(WORD_XOR_BE((UINT32)(sh2->delay & AM)));
-			change_pc(sh2->pc & AM);
+			opcode = memory_decrypted_read_word(sh2->program, WORD_XOR_BE((UINT32)(sh2->delay & AM)));
 			sh2->pc -= 2;
 		}
 		else
-			opcode = cpu_readop16(WORD_XOR_BE((UINT32)(sh2->pc & AM)));
+			opcode = memory_decrypted_read_word(sh2->program, WORD_XOR_BE((UINT32)(sh2->pc & AM)));
 
-		debugger_instruction_hook(Machine, sh2->pc);
+		debugger_instruction_hook(device, sh2->pc);
 
 		sh2->delay = 0;
 		sh2->pc += 2;
@@ -2244,62 +2239,48 @@ static int sh2_execute(int cycles)
 	return cycles - sh2_icount;
 }
 
-/* Get registers, return context size */
-static void sh2_get_context(void *dst)
-{
-	if( dst )
-		*(SH2 **)dst = sh2;
-}
-
-/* Set registers */
-static void sh2_set_context(void *src)
-{
-	if( src )
-		sh2 = *(SH2 **)src;
-}
-
-static offs_t sh2_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
+static CPU_DISASSEMBLE( sh2 )
 {
 	return DasmSH2( buffer, pc, (oprom[0] << 8) | oprom[1] );
 }
 
-static void sh2_init(int index, int clock, const void *config, int (*irqcallback)(int))
+static CPU_INIT( sh2 )
 {
 	/* allocate the core memory */
 	sh2 = auto_malloc(sizeof(SH2));
 	memset(sh2, 0, sizeof(SH2));
 
 	/* initialize the common core parts */
-	sh2_common_init(0, index, clock, config, irqcallback);
+	sh2_common_init(sh2, device, irqcallback);
 }
 
 /**************************************************************************
  * Generic set_info
  **************************************************************************/
 
-static void sh2_set_info(UINT32 state, cpuinfo *info)
+static CPU_SET_INFO( sh2 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are set as 64-bit signed integers --- */
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_VBLIN:	sh2_set_irq_line(SH2_INT_VBLIN, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_VBLOUT:	sh2_set_irq_line(SH2_INT_VBLOUT, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_HBLIN:	sh2_set_irq_line(SH2_INT_HBLIN, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_TIMER0:	sh2_set_irq_line(SH2_INT_TIMER0, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_TIMER1:	sh2_set_irq_line(SH2_INT_TIMER1, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_DSP:		sh2_set_irq_line(SH2_INT_DSP, info->i);		break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_SOUND:	sh2_set_irq_line(SH2_INT_SOUND, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_SMPC:	sh2_set_irq_line(SH2_INT_SMPC, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_PAD:		sh2_set_irq_line(SH2_INT_PAD, info->i);		break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_DMA2:	sh2_set_irq_line(SH2_INT_DMA2, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_DMA1:	sh2_set_irq_line(SH2_INT_DMA1, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_DMA0:	sh2_set_irq_line(SH2_INT_DMA0, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_DMAILL:	sh2_set_irq_line(SH2_INT_DMAILL, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_SPRITE:	sh2_set_irq_line(SH2_INT_SPRITE, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_14:		sh2_set_irq_line(SH2_INT_14, info->i);		break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_15:		sh2_set_irq_line(SH2_INT_15, info->i);		break;
-		case CPUINFO_INT_INPUT_STATE + SH2_INT_ABUS:	sh2_set_irq_line(SH2_INT_ABUS, info->i);	break;
-		case CPUINFO_INT_INPUT_STATE + INPUT_LINE_NMI:	sh2_set_irq_line(INPUT_LINE_NMI, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_VBLIN:	sh2_set_irq_line(sh2, SH2_INT_VBLIN, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_VBLOUT:	sh2_set_irq_line(sh2, SH2_INT_VBLOUT, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_HBLIN:	sh2_set_irq_line(sh2, SH2_INT_HBLIN, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_TIMER0:	sh2_set_irq_line(sh2, SH2_INT_TIMER0, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_TIMER1:	sh2_set_irq_line(sh2, SH2_INT_TIMER1, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_DSP:		sh2_set_irq_line(sh2, SH2_INT_DSP, info->i);		break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_SOUND:	sh2_set_irq_line(sh2, SH2_INT_SOUND, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_SMPC:	sh2_set_irq_line(sh2, SH2_INT_SMPC, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_PAD:		sh2_set_irq_line(sh2, SH2_INT_PAD, info->i);		break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_DMA2:	sh2_set_irq_line(sh2, SH2_INT_DMA2, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_DMA1:	sh2_set_irq_line(sh2, SH2_INT_DMA1, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_DMA0:	sh2_set_irq_line(sh2, SH2_INT_DMA0, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_DMAILL:	sh2_set_irq_line(sh2, SH2_INT_DMAILL, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_SPRITE:	sh2_set_irq_line(sh2, SH2_INT_SPRITE, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_14:		sh2_set_irq_line(sh2, SH2_INT_14, info->i);		break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_15:		sh2_set_irq_line(sh2, SH2_INT_15, info->i);		break;
+		case CPUINFO_INT_INPUT_STATE + SH2_INT_ABUS:	sh2_set_irq_line(sh2, SH2_INT_ABUS, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + INPUT_LINE_NMI:	sh2_set_irq_line(sh2, INPUT_LINE_NMI, info->i);	break;
 
 		case CPUINFO_INT_REGISTER + SH2_PC:
 		case CPUINFO_INT_PC:							sh2->pc = info->i; sh2->delay = 0;		break;
@@ -2328,10 +2309,10 @@ static void sh2_set_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_REGISTER + SH2_R15:			sh2->r[15] = info->i;					break;
 		case CPUINFO_INT_REGISTER + SH2_EA:				sh2->ea = info->i;						break;
 
-		case CPUINFO_INT_SH2_FRT_INPUT:					sh2_set_frt_input(cpu_getactivecpu(), info->i); break;
+		case CPUINFO_INT_SH2_FRT_INPUT:					sh2_set_frt_input(device, info->i); break;
 
 		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK:		sh2->ftcsr_read_callback = (void (*) (UINT32 ))info->f; break;
+		case CPUINFO_FCT_SH2_FTCSR_READ_CALLBACK:		sh2->ftcsr_read_callback = (void (*) (UINT32 ))info->f; break;
 	}
 }
 
@@ -2341,7 +2322,7 @@ static void sh2_set_info(UINT32 state, cpuinfo *info)
  * Generic get_info
  **************************************************************************/
 
-void sh2_get_info(UINT32 state, cpuinfo *info)
+CPU_GET_INFO( sh2 )
 {
 	switch (state)
 	{
@@ -2349,7 +2330,7 @@ void sh2_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_CONTEXT_SIZE:					info->i = sizeof(SH2);					break;
 		case CPUINFO_INT_INPUT_LINES:					info->i = 16;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
-		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_BE;					break;
+		case CPUINFO_INT_ENDIANNESS:					info->i = ENDIANNESS_BIG;					break;
 		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 2;							break;
@@ -2357,15 +2338,15 @@ void sh2_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1;							break;
 		case CPUINFO_INT_MAX_CYCLES:					info->i = 4;							break;
 
-		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 32;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_PROGRAM: info->i = 32;					break;
-		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_PROGRAM: info->i = 0;					break;
-		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_DATA:	info->i = 0;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_DATA: 	info->i = 0;					break;
-		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_DATA: 	info->i = 0;					break;
-		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 0;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO: 		info->i = 0;					break;
-		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_IO: 		info->i = 0;					break;
+		case CPUINFO_INT_DATABUS_WIDTH_PROGRAM:	info->i = 32;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH_PROGRAM: info->i = 32;					break;
+		case CPUINFO_INT_ADDRBUS_SHIFT_PROGRAM: info->i = 0;					break;
+		case CPUINFO_INT_DATABUS_WIDTH_DATA:	info->i = 0;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH_DATA: 	info->i = 0;					break;
+		case CPUINFO_INT_ADDRBUS_SHIFT_DATA: 	info->i = 0;					break;
+		case CPUINFO_INT_DATABUS_WIDTH_IO:		info->i = 0;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH_IO: 		info->i = 0;					break;
+		case CPUINFO_INT_ADDRBUS_SHIFT_IO: 		info->i = 0;					break;
 
 		case CPUINFO_INT_INPUT_STATE + SH2_INT_VBLIN:	info->i = sh2->irq_line_state[SH2_INT_VBLIN]; break;
 		case CPUINFO_INT_INPUT_STATE + SH2_INT_VBLOUT:	info->i = sh2->irq_line_state[SH2_INT_VBLOUT]; break;
@@ -2416,14 +2397,12 @@ void sh2_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_REGISTER + SH2_EA:				info->i = sh2->ea;						break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case CPUINFO_PTR_SET_INFO:						info->setinfo = sh2_set_info;			break;
-		case CPUINFO_PTR_GET_CONTEXT:					info->getcontext = sh2_get_context;		break;
-		case CPUINFO_PTR_SET_CONTEXT:					info->setcontext = sh2_set_context;		break;
-		case CPUINFO_PTR_INIT:							info->init = sh2_init;					break;
-		case CPUINFO_PTR_RESET:							info->reset = sh2_reset;				break;
-		case CPUINFO_PTR_EXECUTE:						info->execute = sh2_execute;			break;
-		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = sh2_dasm;			break;
+		case CPUINFO_FCT_SET_INFO:						info->setinfo = CPU_SET_INFO_NAME(sh2);			break;
+		case CPUINFO_FCT_INIT:							info->init = CPU_INIT_NAME(sh2);					break;
+		case CPUINFO_FCT_RESET:							info->reset = CPU_RESET_NAME(sh2);				break;
+		case CPUINFO_FCT_EXECUTE:						info->execute = CPU_EXECUTE_NAME(sh2);			break;
+		case CPUINFO_FCT_BURN:							info->burn = NULL;						break;
+		case CPUINFO_FCT_DISASSEMBLE:					info->disassemble = CPU_DISASSEMBLE_NAME(sh2);			break;
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &sh2_icount;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -2467,22 +2446,22 @@ void sh2_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_REGISTER + SH2_R15:			sprintf(info->s, "R15 :%08X", sh2->r[15]); break;
 		case CPUINFO_STR_REGISTER + SH2_EA:				sprintf(info->s, "EA  :%08X", sh2->ea);    break;
 
-		case CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK:		info->f = (genf*)sh2->ftcsr_read_callback; break;
+		case CPUINFO_FCT_SH2_FTCSR_READ_CALLBACK:		info->f = (genf*)sh2->ftcsr_read_callback; break;
 
 	}
 }
 
-void sh1_get_info(UINT32 state, cpuinfo *info)
+CPU_GET_INFO( sh1 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case CPUINFO_PTR_RESET:						info->reset = sh1_reset;				break;
+		case CPUINFO_FCT_RESET:						info->reset = CPU_RESET_NAME(sh1);				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:	    					strcpy(info->s, "SH-1");				break;
 
-		default:							sh2_get_info(state, info);			break;
+		default:							CPU_GET_INFO_CALL(sh2);			break;
 	}
 }
 

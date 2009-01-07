@@ -21,6 +21,7 @@
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 static UINT8 *skyarmy_videoram;
@@ -99,7 +100,7 @@ static PALETTE_INIT( skyarmy )
 
 static VIDEO_START( skyarmy )
 {
-        skyarmy_tilemap = tilemap_create(get_skyarmy_tile_info,tilemap_scan_rows,8,8,32,32);
+        skyarmy_tilemap = tilemap_create(machine, get_skyarmy_tile_info,tilemap_scan_rows,8,8,32,32);
         tilemap_set_scroll_cols(skyarmy_tilemap,32);
 }
 
@@ -143,7 +144,7 @@ static int skyarmy_nmi=0;
 
 static INTERRUPT_GEN( skyarmy_nmi_source )
 {
-	 if(skyarmy_nmi) cpunum_set_input_line(machine, 0,INPUT_LINE_NMI, PULSE_LINE)	;
+	 if(skyarmy_nmi) cpu_set_input_line(device,INPUT_LINE_NMI, PULSE_LINE)	;
 }
 
 

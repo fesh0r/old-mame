@@ -88,8 +88,8 @@ VIDEO_START( thoop2 )
 {
 	int i;
 
-	pant[0] = tilemap_create(get_tile_info_thoop2_screen0,tilemap_scan_rows,16,16,32,32);
-	pant[1] = tilemap_create(get_tile_info_thoop2_screen1,tilemap_scan_rows,16,16,32,32);
+	pant[0] = tilemap_create(machine, get_tile_info_thoop2_screen0,tilemap_scan_rows,16,16,32,32);
+	pant[1] = tilemap_create(machine, get_tile_info_thoop2_screen1,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transmask(pant[0],0,0xff01,0x00ff); /* pens 1-7 opaque, pens 0, 8-15 transparent */
 	tilemap_set_transmask(pant[1],0,0xff01,0x00ff); /* pens 1-7 opaque, pens 0, 8-15 transparent */
@@ -211,7 +211,7 @@ VIDEO_UPDATE( thoop2 )
 
 	thoop2_sort_sprites();
 
-	fillbitmap( bitmap, 0, cliprect );
+	bitmap_fill( bitmap, cliprect , 0);
 
 	tilemap_draw(bitmap,cliprect,pant[1],TILEMAP_DRAW_LAYER1 | 3,0);
 	tilemap_draw(bitmap,cliprect,pant[0],TILEMAP_DRAW_LAYER1 | 3,0);

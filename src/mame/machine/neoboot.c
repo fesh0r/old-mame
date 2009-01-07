@@ -139,12 +139,12 @@ void kog_px_decrypt( running_machine *machine )
 
 static UINT16 kof10thExtraRAMB[0x01000];
 
-static void kof10thBankswitch(running_machine *machine, UINT16 nBank)
+static void kof10thBankswitch(const address_space *space, UINT16 nBank)
 {
 	UINT32 bank = 0x100000 + ((nBank & 7) << 20);
 	if (bank >= 0x700000)
 		bank = 0x100000;
-	neogeo_set_main_cpu_bank_address(machine, bank);
+	neogeo_set_main_cpu_bank_address(space, bank);
 }
 
 static READ16_HANDLER( kof10th_RAMB_r )
@@ -155,10 +155,10 @@ static READ16_HANDLER( kof10th_RAMB_r )
 static WRITE16_HANDLER( kof10th_custom_w )
 {
 	if (!kof10thExtraRAMB[0xFFE]) { // Write to RAM bank A
-		UINT16 *prom = (UINT16*)memory_region( machine, "main" );
+		UINT16 *prom = (UINT16*)memory_region( space->machine, "main" );
 		COMBINE_DATA(&prom[(0xE0000/2) + (offset & 0xFFFF)]);
 	} else { // Write S data on-the-fly
-		UINT8 *srom = memory_region( machine, "fixed" );
+		UINT8 *srom = memory_region( space->machine, "fixed" );
 		srom[offset] = BITSWAP8(data,7,6,0,4,3,2,1,5);
 	}
 }
@@ -167,9 +167,9 @@ static WRITE16_HANDLER( kof10th_bankswitch_w )
 {
 	if (offset >= 0x5F000) {
 		if (offset == 0x5FFF8) { // Standard bankswitch
-			kof10thBankswitch(machine, data);
+			kof10thBankswitch(space, data);
 		} else if (offset == 0x5FFFC && kof10thExtraRAMB[0xFFC] != data) { // Special bankswitch
-			UINT8 *src = memory_region( machine, "main" );
+			UINT8 *src = memory_region( space->machine, "main" );
 			memcpy (src + 0x10000,  src + ((data & 1) ? 0x810000 : 0x710000), 0xcffff);
 		}
 		COMBINE_DATA(&kof10thExtraRAMB[offset & 0xFFF]);
@@ -178,9 +178,9 @@ static WRITE16_HANDLER( kof10th_bankswitch_w )
 
 void install_kof10th_protection ( running_machine *machine )
 {
-	memory_install_read16_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x2fe000, 0x2fffff, 0, 0, kof10th_RAMB_r);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x23ffff, 0, 0, kof10th_custom_w);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x240000, 0x2fffff, 0, 0, kof10th_bankswitch_w);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x2fe000, 0x2fffff, 0, 0, kof10th_RAMB_r);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x200000, 0x23ffff, 0, 0, kof10th_custom_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x240000, 0x2fffff, 0, 0, kof10th_bankswitch_w);
 }
 
 void decrypt_kof10th(running_machine *machine)
@@ -299,6 +299,43 @@ void decrypt_kf2k5uni( running_machine *machine )
 }
 
 
+/* The King of Fighters 2002 (bootleg) */
+
+
+// Thanks to IQ_132 for the info
+void kof2002b_gfx_decrypt(running_machine *machine, UINT8 *src, int size)
+{
+	int i, j;
+	int t[ 8 ][ 10 ] =
+	{
+		{ 0, 8, 7, 3, 4, 5, 6, 2, 1 },
+		{ 1, 0, 8, 4, 5, 3, 7, 6, 2 },
+		{ 2, 1, 0, 3, 4, 5, 8, 7, 6 },
+		{ 6, 2, 1, 5, 3, 4, 0, 8, 7 },
+		{ 7, 6, 2, 5, 3, 4, 1, 0, 8 },
+		{ 0, 1, 2, 3, 4, 5, 6, 7, 8 },
+		{ 2, 1, 0, 4, 5, 3, 6, 7, 8 },
+		{ 8, 0, 7, 3, 4, 5, 6, 2, 1 },
+	};
+
+	UINT8 *dst = malloc_or_die( 0x10000 );
+
+	for ( i = 0; i < size; i+=0x10000 )
+	{
+		memcpy( dst, src+i, 0x10000 );
+
+		for ( j = 0; j < 0x200; j++ )
+		{
+			int n = (( j % 0x40) / 8 );
+			int ofst = BITSWAP16(j, 15, 14, 13, 12, 11, 10, 9, t[n][0], t[n][1], t[n][2],
+								 t[n][3], t[n][4], t[n][5], t[n][6], t[n][7], t[n][8]);
+			memcpy( src+i+ofst*128, dst+j*128, 128 );
+		}
+	}
+	free( dst );
+}
+
+
 /* The King of Fighters 2002 Magic Plus (bootleg) */
 
 
@@ -327,7 +364,7 @@ void kf2k2mp_decrypt( running_machine *machine )
 /* The King of Fighters 2002 Magic Plus II (bootleg) */
 
 
-void kof2km2_px_decrypt( running_machine *machine )
+void kf2k2mp2_px_decrypt( running_machine *machine )
 {
 	UINT8 *src = memory_region(machine, "main");
 	UINT8 *dst = malloc_or_die(0x600000);
@@ -437,7 +474,7 @@ static WRITE16_HANDLER ( cthd2003_bankswitch_w )
 	if (offset == 0)
 	{
 		bankaddress = 0x100000 + cthd2003_banks[data&7]*0x100000;
-		neogeo_set_main_cpu_bank_address(machine, bankaddress);
+		neogeo_set_main_cpu_bank_address(space, bankaddress);
 	}
 }
 
@@ -448,7 +485,7 @@ void patch_cthd2003( running_machine *machine )
 	UINT16 *mem16 = (UINT16 *)memory_region(machine, "main");
 
 	/* special ROM banking handler */
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2ffff0, 0x2fffff, 0, 0, cthd2003_bankswitch_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x2ffff0, 0x2fffff, 0, 0, cthd2003_bankswitch_w);
 
 	// theres still a problem on the character select screen but it seems to be related to cpu core timing issues,
 	// overclocking the 68k prevents it.
@@ -649,6 +686,7 @@ void lans2004_decrypt_68k( running_machine *machine )
 		}
 	}
 
+	/* Patched by protection chip (Altera) ? */
 	rom[0x2D15C/2] = 0x000B;
 	rom[0x2D15E/2] = 0xBB00;
 	rom[0x2D1E4/2] = 0x6002;
@@ -664,34 +702,34 @@ void lans2004_decrypt_68k( running_machine *machine )
 
 static READ16_HANDLER( mslug5_prot_r )
 {
-	logerror("PC %06x: access protected\n",activecpu_get_pc());
+	logerror("PC %06x: access protected\n",cpu_get_pc(space->cpu));
 	return 0xa0;
 }
 
 static WRITE16_HANDLER ( ms5plus_bankswitch_w )
 {
 	int bankaddress;
-	logerror("offset: %06x PC %06x: set banking %04x\n",offset,activecpu_get_pc(),data);
+	logerror("offset: %06x PC %06x: set banking %04x\n",offset,cpu_get_pc(space->cpu),data);
 	if ((offset == 0)&&(data == 0xa0))
 	{
 		bankaddress=0xa0;
-		neogeo_set_main_cpu_bank_address(machine, bankaddress);
-		logerror("offset: %06x PC %06x: set banking %04x\n\n",offset,activecpu_get_pc(),bankaddress);
+		neogeo_set_main_cpu_bank_address(space, bankaddress);
+		logerror("offset: %06x PC %06x: set banking %04x\n\n",offset,cpu_get_pc(space->cpu),bankaddress);
 	}
 	else if(offset == 2)
 	{
 		data=data>>4;
 		//data=data&7;
 		bankaddress=data*0x100000;
-		neogeo_set_main_cpu_bank_address(machine, bankaddress);
-		logerror("offset: %06x PC %06x: set banking %04x\n\n",offset,activecpu_get_pc(),bankaddress);
+		neogeo_set_main_cpu_bank_address(space, bankaddress);
+		logerror("offset: %06x PC %06x: set banking %04x\n\n",offset,cpu_get_pc(space->cpu),bankaddress);
 	}
 }
 
 void install_ms5plus_protection(running_machine *machine)
 {
 	// special ROM banking handler / additional protection
-	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM,0x2ffff0, 0x2fffff,0, 0, mslug5_prot_r, ms5plus_bankswitch_w);
+	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),0x2ffff0, 0x2fffff,0, 0, mslug5_prot_r, ms5plus_bankswitch_w);
 }
 
 
@@ -864,7 +902,7 @@ static WRITE16_HANDLER( mv0_bankswitch_w )
 {
     UINT32 bankaddress = (mv0_bank_ram[ 0 ] >> 8) + (mv0_bank_ram[ 1 ] << 8) + 0x100000;
 	COMBINE_DATA( &mv0_bank_ram[ offset ] );
-    neogeo_set_main_cpu_bank_address( machine, bankaddress );
+    neogeo_set_main_cpu_bank_address( space, bankaddress );
 }
 #endif
 
@@ -886,12 +924,12 @@ static WRITE16_HANDLER( kof2003_w )
 		UINT8* cr = (UINT8 *)kof2003_tbl;
 		UINT32 address = (cr[BYTE_XOR_LE(0x1ff3)]<<16)|(cr[BYTE_XOR_LE(0x1ff2)]<<8)|cr[BYTE_XOR_LE(0x1ff1)];
 		UINT8 prt = cr[BYTE_XOR_LE(0x1ff2)];
-		UINT8* mem = (UINT8 *)memory_region(machine, "main");
+		UINT8* mem = (UINT8 *)memory_region(space->machine, "main");
 
 		cr[BYTE_XOR_LE(0x1ff0)] =  0xa0;
 		cr[BYTE_XOR_LE(0x1ff1)] &= 0xfe;
 		cr[BYTE_XOR_LE(0x1ff3)] &= 0x7f;
-		neogeo_set_main_cpu_bank_address(machine, address+0x100000);
+		neogeo_set_main_cpu_bank_address(space, address+0x100000);
 
 		mem[BYTE_XOR_LE(0x58196)] = prt;
 	}
@@ -904,11 +942,11 @@ static WRITE16_HANDLER( kof2003p_w )
 		UINT8* cr = (UINT8 *)kof2003_tbl;
 		UINT32 address = (cr[BYTE_XOR_LE(0x1ff3)]<<16)|(cr[BYTE_XOR_LE(0x1ff2)]<<8)|cr[BYTE_XOR_LE(0x1ff0)];
 		UINT8 prt = cr[BYTE_XOR_LE(0x1ff2)];
-		UINT8* mem = (UINT8 *)memory_region(machine, "main");
+		UINT8* mem = (UINT8 *)memory_region(space->machine, "main");
 
 		cr[BYTE_XOR_LE(0x1ff0)] &= 0xfe;
 		cr[BYTE_XOR_LE(0x1ff3)] &= 0x7f;
-		neogeo_set_main_cpu_bank_address(machine, address+0x100000);
+		neogeo_set_main_cpu_bank_address(space, address+0x100000);
 
 		mem[BYTE_XOR_LE(0x58196)] = prt;
 	}
@@ -934,7 +972,7 @@ void kf2k3bl_px_decrypt( running_machine *machine )
 
 void kf2k3bl_install_protection(running_machine *machine)
 {
-    memory_install_readwrite16_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0x2fe000, 0x2fffff, 0, 0, kof2003_r, kof2003_w );
+    memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x2fe000, 0x2fffff, 0, 0, kof2003_r, kof2003_w );
 }
 
 
@@ -962,7 +1000,7 @@ void kf2k3pl_px_decrypt( running_machine *machine )
 
 void kf2k3pl_install_protection(running_machine *machine)
 {
-    memory_install_readwrite16_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0x2fe000, 0x2fffff, 0, 0, kof2003_r, kof2003p_w );
+    memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x2fe000, 0x2fffff, 0, 0, kof2003_r, kof2003p_w );
 }
 
 
@@ -993,7 +1031,7 @@ void kf2k3upl_px_decrypt( running_machine *machine )
 
 void kf2k3upl_install_protection(running_machine *machine)
 {
-    memory_install_readwrite16_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0x2fe000, 0x2fffff, 0, 0, kof2003_r, kof2003_w );
+    memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x2fe000, 0x2fffff, 0, 0, kof2003_r, kof2003_w );
 }
 
 
@@ -1082,6 +1120,6 @@ void matrimbl_decrypt( running_machine *machine )
 	memcpy( rom-0x10000, rom, 0x10000 );
 
 	/* decrypt gfx */
-	cthd2003_c( machine, 0);
+	cthd2003_c( machine, 0 );
 }
 

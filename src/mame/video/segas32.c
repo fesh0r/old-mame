@@ -286,7 +286,7 @@ static void sprite_render_list(running_machine *machine);
  *
  *************************************/
 
-static void common_start(int multi32)
+static void common_start(running_machine *machine, int multi32)
 {
 	int tmap;
 
@@ -302,7 +302,7 @@ static void common_start(int multi32)
 	{
 		struct cache_entry *entry = auto_malloc(sizeof(struct cache_entry));
 
-		entry->tmap = tilemap_create(get_tile_info, tilemap_scan_rows,  16,16, 32,16);
+		entry->tmap = tilemap_create(machine, get_tile_info, tilemap_scan_rows,  16,16, 32,16);
 		entry->page = 0xff;
 		entry->bank = 0;
 		entry->next = cache_head;
@@ -332,13 +332,13 @@ static void common_start(int multi32)
 
 VIDEO_START( system32 )
 {
-	common_start(0);
+	common_start(machine, 0);
 }
 
 
 VIDEO_START( multi32 )
 {
-	common_start(1);
+	common_start(machine, 1);
 }
 
 
@@ -374,11 +374,11 @@ static TIMER_CALLBACK( update_sprites )
 }
 
 
-void system32_set_vblank(int state)
+void system32_set_vblank(running_machine *machine, int state)
 {
 	/* at the end of VBLANK is when automatic sprite rendering happens */
 	if (!state)
-		timer_set(ATTOTIME_IN_USEC(50), NULL, 1, update_sprites);
+		timer_set(machine, ATTOTIME_IN_USEC(50), NULL, 1, update_sprites);
 }
 
 
@@ -438,7 +438,7 @@ INLINE UINT16 common_paletteram_r(int which, offs_t offset)
 }
 
 
-static void common_paletteram_w(running_machine *machine, int which, offs_t offset, UINT16 data, UINT16 mem_mask)
+static void common_paletteram_w(const address_space *space, int which, offs_t offset, UINT16 data, UINT16 mem_mask)
 {
 	UINT16 value;
 	int convert;
@@ -456,7 +456,7 @@ static void common_paletteram_w(running_machine *machine, int which, offs_t offs
 	COMBINE_DATA(&value);
 	if (convert) value = xBGRBBBBGGGGRRRR_to_xBBBBBGGGGGRRRRR(value);
 	system32_paletteram[which][offset] = value;
-	update_color(machine, 0x4000*which + offset, value);
+	update_color(space->machine, 0x4000*which + offset, value);
 
 	/* if blending is enabled, writes go to both halves of palette RAM */
 	if (mixer_control[which][0x4e/2] & 0x0880)
@@ -469,7 +469,7 @@ static void common_paletteram_w(running_machine *machine, int which, offs_t offs
 		COMBINE_DATA(&value);
 		if (convert) value = xBGRBBBBGGGGRRRR_to_xBBBBBGGGGGRRRRR(value);
 		system32_paletteram[which][offset] = value;
-		update_color(machine, 0x4000*which + offset, value);
+		update_color(space->machine, 0x4000*which + offset, value);
 	}
 }
 
@@ -489,7 +489,7 @@ READ16_HANDLER( system32_paletteram_r )
 
 WRITE16_HANDLER( system32_paletteram_w )
 {
-	common_paletteram_w(machine, 0, offset, data, mem_mask);
+	common_paletteram_w(space, 0, offset, data, mem_mask);
 }
 
 
@@ -503,9 +503,9 @@ READ32_HANDLER( multi32_paletteram_0_r )
 WRITE32_HANDLER( multi32_paletteram_0_w )
 {
 	if (ACCESSING_BITS_0_15)
-		common_paletteram_w(machine, 0, offset*2+0, data, mem_mask);
+		common_paletteram_w(space, 0, offset*2+0, data, mem_mask);
 	if (ACCESSING_BITS_16_31)
-		common_paletteram_w(machine, 0, offset*2+1, data >> 16, mem_mask >> 16);
+		common_paletteram_w(space, 0, offset*2+1, data >> 16, mem_mask >> 16);
 }
 
 
@@ -519,9 +519,9 @@ READ32_HANDLER( multi32_paletteram_1_r )
 WRITE32_HANDLER( multi32_paletteram_1_w )
 {
 	if (ACCESSING_BITS_0_15)
-		common_paletteram_w(machine, 1, offset*2+0, data, mem_mask);
+		common_paletteram_w(space, 1, offset*2+0, data, mem_mask);
 	if (ACCESSING_BITS_16_31)
-		common_paletteram_w(machine, 1, offset*2+1, data >> 16, mem_mask >> 16);
+		common_paletteram_w(space, 1, offset*2+1, data >> 16, mem_mask >> 16);
 }
 
 
@@ -567,9 +567,9 @@ READ32_HANDLER( multi32_videoram_r )
 WRITE32_HANDLER( multi32_videoram_w )
 {
 	if (ACCESSING_BITS_0_15)
-		system32_videoram_w(machine, offset*2+0, data, mem_mask);
+		system32_videoram_w(space, offset*2+0, data, mem_mask);
 	if (ACCESSING_BITS_16_31)
-		system32_videoram_w(machine, offset*2+1, data >> 16, mem_mask >> 16);
+		system32_videoram_w(space, offset*2+1, data >> 16, mem_mask >> 16);
 }
 
 
@@ -647,17 +647,17 @@ WRITE16_HANDLER( system32_sprite_control_w )
 
 READ32_HANDLER( multi32_sprite_control_r )
 {
-	return system32_sprite_control_r(machine, offset*2+0, mem_mask) |
-	      (system32_sprite_control_r(machine, offset*2+1, mem_mask >> 16) << 16);
+	return system32_sprite_control_r(space, offset*2+0, mem_mask) |
+	      (system32_sprite_control_r(space, offset*2+1, mem_mask >> 16) << 16);
 }
 
 
 WRITE32_HANDLER( multi32_sprite_control_w )
 {
 	if (ACCESSING_BITS_0_15)
-		system32_sprite_control_w(machine, offset*2+0, data, mem_mask);
+		system32_sprite_control_w(space, offset*2+0, data, mem_mask);
 	if (ACCESSING_BITS_16_31)
-		system32_sprite_control_w(machine, offset*2+1, data >> 16, mem_mask >> 16);
+		system32_sprite_control_w(space, offset*2+1, data >> 16, mem_mask >> 16);
 }
 
 
@@ -1570,11 +1570,11 @@ static UINT8 update_tilemaps(const device_config *screen, const rectangle *clipr
 static void sprite_erase_buffer(void)
 {
 	/* erase the visible sprite buffer and clear the checksums */
-	fillbitmap(layer_data[MIXER_LAYER_SPRITES].bitmap, 0xffff, NULL);
+	bitmap_fill(layer_data[MIXER_LAYER_SPRITES].bitmap, NULL, 0xffff);
 
 	/* for multi32, erase the other buffer as well */
 	if (is_multi32)
-		fillbitmap(layer_data[MIXER_LAYER_MULTISPR].bitmap, 0xffff, NULL);
+		bitmap_fill(layer_data[MIXER_LAYER_MULTISPR].bitmap, NULL, 0xffff);
 }
 
 
@@ -2460,7 +2460,7 @@ VIDEO_UPDATE( system32 )
 	/* if the display is off, punt */
 	if (!system32_displayenable[0])
 	{
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 		return 0;
 	}
 
@@ -2640,7 +2640,7 @@ VIDEO_UPDATE( multi32 )
 	/* if the display is off, punt */
 	if (!system32_displayenable[(screen == left_screen) ? 0 : 1])
 	{
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 		return 0;
 	}
 

@@ -55,8 +55,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( gng )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,    16,16,32,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_cols,    16,16,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,3);
 
@@ -64,8 +64,8 @@ VIDEO_START( gng )
 	tilemap_set_transmask(bg_tilemap,1,0x41,0xbe); /* split type 1 has pens 0 and 6 transparent in front half */
 
 	/* register to save state */
-	state_save_register_global_array(scrollx);
-	state_save_register_global_array(scrolly);
+	state_save_register_global_array(machine, scrollx);
+	state_save_register_global_array(machine, scrolly);
 }
 
 
@@ -103,7 +103,7 @@ WRITE8_HANDLER( gng_bgscrolly_w )
 
 WRITE8_HANDLER( gng_flipscreen_w )
 {
-	flip_screen_set(~data & 1);
+	flip_screen_set(space->machine, ~data & 1);
 }
 
 
@@ -128,7 +128,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int flipx = attributes & 0x04;
 		int flipy = attributes & 0x08;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -156,5 +156,7 @@ VIDEO_UPDATE( gng )
 
 VIDEO_EOF( gng )
 {
-	buffer_spriteram_w(machine,0,0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram_w(space,0,0);
 }

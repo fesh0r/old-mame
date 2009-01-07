@@ -108,7 +108,6 @@
 typedef struct
 {
 	sound_stream * stream;			/* our stream */
-	int index;
 	void (*external)(int, int, short *);/* callback to generate external samples */
 	double vco_zero_freq;			/* frequency of VCO at 0.0V */
 	double filter_zero_freq;		/* frequency of filter at 0.0V */
@@ -132,6 +131,7 @@ typedef struct
 
 	double inv_sample_rate;
 	int sample_rate;
+	int index;
 
 	INT16 *mixer_buffer;
 	INT16 *external_buffer;
@@ -139,13 +139,13 @@ typedef struct
 
 
 /* generate sound to the mix buffer in mono */
-static void cem3394_update(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( cem3394_update )
 {
 	sound_chip *chip = param;
 	int int_volume = (chip->volume * chip->mixer_internal) / 256;
 	int ext_volume = (chip->volume * chip->mixer_external) / 256;
 	UINT32 step = chip->step, position, end_position = 0;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 	INT16 *mix, *ext;
 	int i;
 
@@ -160,7 +160,7 @@ static void cem3394_update(void *param, stream_sample_t **inputs, stream_sample_
 	/* bail if nothing's going on */
 	if (int_volume == 0 && ext_volume == 0)
 	{
-		memset(buffer, 0, sizeof(*buffer) * length);
+		memset(buffer, 0, sizeof(*buffer) * samples);
 		return;
 	}
 
@@ -171,7 +171,7 @@ static void cem3394_update(void *param, stream_sample_t **inputs, stream_sample_
 		INT16 last_ext = chip->last_ext;
 
 		/* fetch the external data */
-		(*chip->external)(chip->index, length, chip->external_buffer);
+		(*chip->external)(chip->index, samples, chip->external_buffer);
 
 		/* compute the modulation depth, and adjust fstep to the maximum frequency */
 		/* we lop off 13 bits of depth so that we can multiply by stepadjust, below, */
@@ -182,7 +182,7 @@ static void cem3394_update(void *param, stream_sample_t **inputs, stream_sample_
 
 		/* "apply" the filter: note this is pretty cheesy; it basically just downsamples the
            external sample to filter_freq by allowing only 2 transitions for every cycle */
-		for (i = 0, ext = chip->external_buffer, position = chip->position; i < length; i++, ext++)
+		for (i = 0, ext = chip->external_buffer, position = chip->position; i < samples; i++, ext++)
 		{
 			UINT32 newposition;
 			INT32 stepadjust;
@@ -224,7 +224,7 @@ static void cem3394_update(void *param, stream_sample_t **inputs, stream_sample_
 			/* if the width is wider than the step, we're guaranteed to hit it once per cycle */
 			if (pulse_width >= step)
 			{
-				for (i = 0, mix = chip->mixer_buffer, position = chip->position; i < length; i++, mix++)
+				for (i = 0, mix = chip->mixer_buffer, position = chip->position; i < samples; i++, mix++)
 				{
 					if (position < pulse_width)
 						*mix = 0x1932;
@@ -238,7 +238,7 @@ static void cem3394_update(void *param, stream_sample_t **inputs, stream_sample_
 			else
 			{
 				INT16 volume = 0x1932 * pulse_width / step;
-				for (i = 0, mix = chip->mixer_buffer, position = chip->position; i < length; i++, mix++)
+				for (i = 0, mix = chip->mixer_buffer, position = chip->position; i < samples; i++, mix++)
 				{
 					UINT32 newposition = position + step;
 					if ((newposition ^ position) & ~FRACTION_MASK)
@@ -253,13 +253,13 @@ static void cem3394_update(void *param, stream_sample_t **inputs, stream_sample_
 
 		/* otherwise, clear the mixing buffer */
 		else
-			memset(chip->mixer_buffer, 0, sizeof(INT16) * length);
+			memset(chip->mixer_buffer, 0, sizeof(INT16) * samples);
 
 		/* handle the sawtooth component; it maxes out at 0x2000, which is 27% larger */
 		/* than the pulse */
 		if (ENABLE_SAWTOOTH && (chip->wave_select & WAVE_SAWTOOTH))
 		{
-			for (i = 0, mix = chip->mixer_buffer, position = chip->position; i < length; i++, mix++)
+			for (i = 0, mix = chip->mixer_buffer, position = chip->position; i < samples; i++, mix++)
 			{
 				*mix += ((position >> (FRACTION_BITS - 14)) & 0x3fff) - 0x2000;
 				position += step;
@@ -272,7 +272,7 @@ static void cem3394_update(void *param, stream_sample_t **inputs, stream_sample_
 		/* a multiplication) */
 		if (ENABLE_TRIANGLE && (chip->wave_select & WAVE_TRIANGLE))
 		{
-			for (i = 0, mix = chip->mixer_buffer, position = chip->position; i < length; i++, mix++)
+			for (i = 0, mix = chip->mixer_buffer, position = chip->position; i < samples; i++, mix++)
 			{
 				INT16 value;
 				if (position & (1 << (FRACTION_BITS - 1)))
@@ -296,26 +296,26 @@ static void cem3394_update(void *param, stream_sample_t **inputs, stream_sample_
 		/* internal + external */
 		if (ext_volume != 0 && int_volume != 0)
 		{
-			for (i = 0; i < length; i++, mix++, ext++)
+			for (i = 0; i < samples; i++, mix++, ext++)
 				*buffer++ = (*mix * int_volume + *ext * ext_volume) / 128;
 		}
 		/* internal only */
 		else if (int_volume != 0)
 		{
-			for (i = 0; i < length; i++, mix++)
+			for (i = 0; i < samples; i++, mix++)
 				*buffer++ = *mix * int_volume / 128;
 		}
 		/* external only */
 		else
 		{
-			for (i = 0; i < length; i++, ext++)
+			for (i = 0; i < samples; i++, ext++)
 				*buffer++ = *ext * ext_volume / 128;
 		}
 	}
 }
 
 
-static void *cem3394_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( cem3394 )
 {
 	const cem3394_interface *intf = config;
 	sound_chip *chip;
@@ -329,7 +329,7 @@ static void *cem3394_start(const char *tag, int sndindex, int clock, const void 
 	chip->inv_sample_rate = 1.0 / (double)chip->sample_rate;
 
 	/* allocate stream channels, 1 per chip */
-	chip->stream = stream_create(0, 1, chip->sample_rate, chip, cem3394_update);
+	chip->stream = stream_create(device, 0, 1, chip->sample_rate, chip, cem3394_update);
 	chip->external = intf->external;
 	chip->vco_zero_freq = intf->vco_zero_freq;
 	chip->filter_zero_freq = intf->filter_zero_freq;
@@ -338,18 +338,18 @@ static void *cem3394_start(const char *tag, int sndindex, int clock, const void 
 	chip->mixer_buffer = auto_malloc(chip->sample_rate * sizeof(INT16));
 	chip->external_buffer = auto_malloc(chip->sample_rate * sizeof(INT16));
 
-	state_save_register_item_array("cem3394", sndindex, chip->values);
-	state_save_register_item("cem3394", sndindex, chip->wave_select);
-	state_save_register_item("cem3394", sndindex, chip->volume);
-	state_save_register_item("cem3394", sndindex, chip->mixer_internal);
-	state_save_register_item("cem3394", sndindex, chip->mixer_external);
-	state_save_register_item("cem3394", sndindex, chip->position);
-	state_save_register_item("cem3394", sndindex, chip->step);
-	state_save_register_item("cem3394", sndindex, chip->filter_position);
-	state_save_register_item("cem3394", sndindex, chip->filter_step);
-	state_save_register_item("cem3394", sndindex, chip->modulation_depth);
-	state_save_register_item("cem3394", sndindex, chip->last_ext);
-	state_save_register_item("cem3394", sndindex, chip->pulse_width);
+	state_save_register_device_item_array(device, 0, chip->values);
+	state_save_register_device_item(device, 0, chip->wave_select);
+	state_save_register_device_item(device, 0, chip->volume);
+	state_save_register_device_item(device, 0, chip->mixer_internal);
+	state_save_register_device_item(device, 0, chip->mixer_external);
+	state_save_register_device_item(device, 0, chip->position);
+	state_save_register_device_item(device, 0, chip->step);
+	state_save_register_device_item(device, 0, chip->filter_position);
+	state_save_register_device_item(device, 0, chip->filter_step);
+	state_save_register_device_item(device, 0, chip->modulation_depth);
+	state_save_register_device_item(device, 0, chip->last_ext);
+	state_save_register_device_item(device, 0, chip->pulse_width);
 
 	return chip;
 }
@@ -561,7 +561,7 @@ double cem3394_get_parameter(int chipnum, int input)
  * Generic get_info
  **************************************************************************/
 
-static void cem3394_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( cem3394 )
 {
 	switch (state)
 	{
@@ -570,24 +570,24 @@ static void cem3394_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void cem3394_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( cem3394 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = cem3394_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = cem3394_start;			break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( cem3394 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( cem3394 );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							/* nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "CEM3394";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Analog Synth";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "CEM3394");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Analog Synth");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

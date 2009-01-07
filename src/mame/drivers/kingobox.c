@@ -16,6 +16,7 @@ Main CPU:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 
@@ -60,21 +61,21 @@ static WRITE8_HANDLER( sprite_shared_w ) {
 }
 
 static WRITE8_HANDLER( video_interrupt_w ) {
-	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff );
+	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff );
 }
 
 static WRITE8_HANDLER( sprite_interrupt_w ) {
-	cpunum_set_input_line_and_vector(machine, 2, 0, HOLD_LINE, 0xff );
+	cpu_set_input_line_and_vector(space->machine->cpu[2], 0, HOLD_LINE, 0xff );
 }
 
 static WRITE8_HANDLER( scroll_interrupt_w ) {
-	sprite_interrupt_w( machine, offset, data );
+	sprite_interrupt_w( space, offset, data );
 	*kingofb_scroll_y = data;
 }
 
 static WRITE8_HANDLER( sound_command_w ) {
-	soundlatch_w( machine, 0, data );
-	cpunum_set_input_line_and_vector(machine, 3, 0, HOLD_LINE, 0xff );
+	soundlatch_w( space, 0, data );
+	cpu_set_input_line_and_vector(space->machine->cpu[3], 0, HOLD_LINE, 0xff );
 }
 
 
@@ -536,7 +537,7 @@ static const ay8910_interface ay8910_config =
 static INTERRUPT_GEN( kingofb_interrupt ) {
 
 	if ( kingofb_nmi_enable )
-		cpunum_set_input_line(machine, cpu_getactivecpu(), INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static MACHINE_DRIVER_START( kingofb )
@@ -559,7 +560,7 @@ static MACHINE_DRIVER_START( kingofb )
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 6000)	/* Hz */
 
-	MDRV_INTERLEAVE(100) /* We really need heavy synching among the processors */
+	MDRV_QUANTUM_TIME(HZ(6000)) /* We really need heavy synching among the processors */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -609,7 +610,7 @@ static MACHINE_DRIVER_START( ringking )
 	MDRV_CPU_IO_MAP(rk_sound_io_map,0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 6000)	/* Hz */
 
-	MDRV_INTERLEAVE(100) /* We really need heavy synching among the processors */
+	MDRV_QUANTUM_TIME(HZ(6000)) /* We really need heavy synching among the processors */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

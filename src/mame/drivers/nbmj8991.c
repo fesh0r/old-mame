@@ -29,11 +29,13 @@ Notes:
 ******************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "nb1413m3.h"
 #include "sound/ay8910.h"
 #include "sound/3812intf.h"
 #include "sound/dac.h"
+#include "includes/nbmj8991.h"
 
 
 #define SIGNED_DAC	0		// 0:unsigned DAC, 1:signed DAC
@@ -46,43 +48,31 @@ Notes:
 #endif
 
 
-extern VIDEO_UPDATE( nbmj8991_type1 );				// galkoku
-extern VIDEO_UPDATE( nbmj8991_type2 );				// pstadium
-extern VIDEO_START( nbmj8991 );						// pstadium
-
-extern WRITE8_HANDLER( nbmj8991_palette_type1_w );	// galkoku
-extern WRITE8_HANDLER( nbmj8991_palette_type2_w );	// galkaika
-extern WRITE8_HANDLER( nbmj8991_palette_type3_w );	// pstadium
-extern WRITE8_HANDLER( nbmj8991_blitter_w );
-extern READ8_HANDLER( nbmj8991_clut_r );
-extern WRITE8_HANDLER( nbmj8991_clut_w );
-
-
 static WRITE8_HANDLER( nbmj8991_soundbank_w )
 {
-	if (!(data & 0x80)) soundlatch_clear_w(machine, 0, 0);
-	memory_set_bank(1, data & 0x03);
+	if (!(data & 0x80)) soundlatch_clear_w(space, 0, 0);
+	memory_set_bank(space->machine, 1, data & 0x03);
 }
 
 static WRITE8_HANDLER( nbmj8991_sound_w )
 {
-	soundlatch_w(machine, 0, data);
+	soundlatch_w(space, 0, data);
 }
 
 static READ8_HANDLER( nbmj8991_sound_r )
 {
 	int data;
 
-	data = soundlatch_r(machine,0);
+	data = soundlatch_r(space,0);
 	return data;
 }
 
 static MACHINE_RESET( nbmj8991 )
 {
-	if (machine->config->cpu[1].type == CPU_Z80)
+	if (machine->cpu[1] != NULL && cpu_get_type(machine->cpu[1]) == CPU_Z80)
 	{
-		memory_configure_bank(1, 0, 4, memory_region(machine, "audio") + 0x8000, 0x8000);
-		memory_set_bank(1, 0);
+		memory_configure_bank(machine, 1, 0, 4, memory_region(machine, "audio") + 0x8000, 0x8000);
+		memory_set_bank(machine, 1, 0);
 	}
 	MACHINE_RESET_CALL(nb1413m3);
 }
@@ -2300,6 +2290,9 @@ ROM_START( av2mj1bb )
 	ROM_LOAD( "5.bin",      0x020000, 0x20000, CRC(0eff4bbf) SHA1(c1bfbab792ac4b8e26944d759f40059077326a57) )
 	ROM_LOAD( "6.bin",      0x040000, 0x20000, CRC(ac351796) SHA1(23aaf79034227febe13defe86a3d5051733cfd3e) )
 	ROM_LOAD( "mj-1802.9a", 0x180000, 0x80000, CRC(e6213f10) SHA1(377399e9cd20fc2055b680eb28d024824161b2ff) )
+
+	DISK_REGION( "vhs" ) /* Video Home System tape */
+	DISK_IMAGE_READONLY( "av2mj1bb", 0, NO_DUMP )
 ROM_END
 
 ROM_START( av2mj2rg )
@@ -2318,6 +2311,9 @@ ROM_START( av2mj2rg )
 	ROM_LOAD( "8.9j",       0x080000, 0x20000, CRC(637098a9) SHA1(f534308dd6300940df17b0b757a63b5861e43937) )
 	ROM_LOAD( "9.9k",       0x0a0000, 0x20000, CRC(6c06ca0d) SHA1(dee7023a906ce2709c4ef5d3bd33b9798dd56777) )
 	ROM_LOAD( "mj-1802.9a", 0x180000, 0x80000, CRC(e6213f10) SHA1(377399e9cd20fc2055b680eb28d024824161b2ff) )
+
+	DISK_REGION( "vhs" ) /* Video Home System tape */
+	DISK_IMAGE_READONLY( "av2mj2rg", 0, NO_DUMP )
 ROM_END
 
 

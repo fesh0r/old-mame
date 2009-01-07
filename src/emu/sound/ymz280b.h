@@ -15,8 +15,8 @@ typedef struct _ymz280b_interface ymz280b_interface;
 struct _ymz280b_interface
 {
 	void (*irq_callback)(running_machine *machine, int state);	/* irq callback */
-	read8_machine_func ext_read;			/* external RAM read */
-	write8_machine_func ext_write;		/* external RAM write */
+	read8_space_func ext_read;			/* external RAM read */
+	write8_space_func ext_write;		/* external RAM write */
 };
 
 READ8_HANDLER ( ymz280b_status_0_r );
@@ -42,5 +42,7 @@ WRITE16_HANDLER( ymz280b_register_1_lsb_w );
 WRITE16_HANDLER( ymz280b_register_1_msb_w );
 WRITE16_HANDLER( ymz280b_data_1_lsb_w );
 WRITE16_HANDLER( ymz280b_data_1_msb_w );
+
+SND_GET_INFO( ymz280b );
 
 #endif /* __YMZ280B_H__ */

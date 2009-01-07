@@ -9,6 +9,7 @@ Ikki (c) 1985 Sun Electronics
 *****************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/sn76496.h"
 
@@ -28,7 +29,7 @@ static READ8_HANDLER( ikki_e000_r )
 {
 /* bit1: interrupt type?, bit0: CPU2 busack? */
 
-	if (cpu_getiloops() == 0)
+	if (cpu_getiloops(space->cpu) == 0)
 		return 0;
 	return 2;
 }
@@ -201,7 +202,7 @@ static MACHINE_DRIVER_START( ikki )
 	MDRV_CPU_PROGRAM_MAP(ikki_cpu2,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

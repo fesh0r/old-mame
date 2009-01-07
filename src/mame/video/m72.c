@@ -107,22 +107,22 @@ static TILEMAP_MAPPER( majtitle_scan_rows )
 
 ***************************************************************************/
 
-static void register_savestate(void)
+static void register_savestate(running_machine *machine)
 {
-	state_save_register_global(m72_raster_irq_position);
-	state_save_register_global(video_off);
-	state_save_register_global(scrollx1);
-	state_save_register_global(scrolly1);
-	state_save_register_global(scrollx2);
-	state_save_register_global(scrolly2);
-	state_save_register_global_pointer(m72_spriteram, spriteram_size);
+	state_save_register_global(machine, m72_raster_irq_position);
+	state_save_register_global(machine, video_off);
+	state_save_register_global(machine, scrollx1);
+	state_save_register_global(machine, scrolly1);
+	state_save_register_global(machine, scrollx2);
+	state_save_register_global(machine, scrolly2);
+	state_save_register_global_pointer(machine, m72_spriteram, spriteram_size);
 }
 
 
 VIDEO_START( m72 )
 {
-	bg_tilemap = tilemap_create(m72_get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
-	fg_tilemap = tilemap_create(m72_get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
+	bg_tilemap = tilemap_create(machine, m72_get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
+	fg_tilemap = tilemap_create(machine, m72_get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -132,7 +132,8 @@ VIDEO_START( m72 )
 
 	tilemap_set_transmask(bg_tilemap,0,0xffff,0x0000);
 	tilemap_set_transmask(bg_tilemap,1,0x00ff,0xff00);
-	tilemap_set_transmask(bg_tilemap,2,0x0001,0xfffe);
+	//tilemap_set_transmask(bg_tilemap,2,0x0001,0xfffe);
+	tilemap_set_transmask(bg_tilemap,2,0x0007,0xfff8);
 
 	memset(m72_spriteram,0,spriteram_size);
 
@@ -142,13 +143,13 @@ VIDEO_START( m72 )
 	tilemap_set_scrolldx(bg_tilemap,0,0);
 	tilemap_set_scrolldy(bg_tilemap,-128,16);
 
-	register_savestate();
+	register_savestate(machine);
 }
 
 VIDEO_START( rtype2 )
 {
-	bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
-	fg_tilemap = tilemap_create(rtype2_get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
+	bg_tilemap = tilemap_create(machine, rtype2_get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
+	fg_tilemap = tilemap_create(machine, rtype2_get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -168,7 +169,7 @@ VIDEO_START( rtype2 )
 	tilemap_set_scrolldx(bg_tilemap,4,0);
 	tilemap_set_scrolldy(bg_tilemap,-128,16);
 
-	register_savestate();
+	register_savestate(machine);
 }
 
 VIDEO_START( poundfor )
@@ -185,9 +186,9 @@ VIDEO_START( majtitle )
 {
 // The tilemap can be 256x64, but seems to be used at 128x64 (scroll wraparound).
 // The layout ramains 256x64, the right half is just not displayed.
-//  bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,tilemap_scan_rows,8,8,256,64);
-	bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,majtitle_scan_rows,8,8,128,64);
-	fg_tilemap = tilemap_create(rtype2_get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
+//  bg_tilemap = tilemap_create(machine, rtype2_get_bg_tile_info,tilemap_scan_rows,8,8,256,64);
+	bg_tilemap = tilemap_create(machine, rtype2_get_bg_tile_info,majtitle_scan_rows,8,8,128,64);
+	fg_tilemap = tilemap_create(machine, rtype2_get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -207,13 +208,13 @@ VIDEO_START( majtitle )
 	tilemap_set_scrolldx(bg_tilemap,4,0);
 	tilemap_set_scrolldy(bg_tilemap,-128,16);
 
-	register_savestate();
+	register_savestate(machine);
 }
 
 VIDEO_START( hharry )
 {
-	bg_tilemap = tilemap_create(hharry_get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
-	fg_tilemap = tilemap_create(m72_get_fg_tile_info,   tilemap_scan_rows,8,8,64,64);
+	bg_tilemap = tilemap_create(machine, hharry_get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
+	fg_tilemap = tilemap_create(machine, m72_get_fg_tile_info,   tilemap_scan_rows,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -233,7 +234,7 @@ VIDEO_START( hharry )
 	tilemap_set_scrolldx(bg_tilemap,6,0);
 	tilemap_set_scrolldy(bg_tilemap,-128,16);
 
-	register_savestate();
+	register_savestate(machine);
 }
 
 
@@ -271,7 +272,7 @@ WRITE16_HANDLER( m72_palette1_w )
 
 	COMBINE_DATA(&paletteram16[offset]);
 	offset &= 0x0ff;
-	changecolor(machine,
+	changecolor(space->machine,
 			offset,
 			paletteram16[offset + 0x000],
 			paletteram16[offset + 0x200],
@@ -285,7 +286,7 @@ WRITE16_HANDLER( m72_palette2_w )
 
 	COMBINE_DATA(&paletteram16_2[offset]);
 	offset &= 0x0ff;
-	changecolor(machine,
+	changecolor(space->machine,
 			offset + 256,
 			paletteram16_2[offset + 0x000],
 			paletteram16_2[offset + 0x200],
@@ -347,16 +348,16 @@ WRITE16_HANDLER( m72_port02_w )
 		coin_counter_w(1,data & 0x02);
 
 		/* bit 2 is flip screen (handled both by software and hardware) */
-		flip_screen_set(((data & 0x04) >> 2) ^ ((~input_port_read(machine, "DSW") >> 8) & 1));
+		flip_screen_set(space->machine, ((data & 0x04) >> 2) ^ ((~input_port_read(space->machine, "DSW") >> 8) & 1));
 
 		/* bit 3 is display disable */
 		video_off = data & 0x08;
 
 		/* bit 4 resets sound CPU (active low) */
 		if (data & 0x10)
-			cputag_set_input_line(machine, "sound", INPUT_LINE_RESET, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "sound", INPUT_LINE_RESET, CLEAR_LINE);
 		else
-			cputag_set_input_line(machine, "sound", INPUT_LINE_RESET, ASSERT_LINE);
+			cputag_set_input_line(space->machine, "sound", INPUT_LINE_RESET, ASSERT_LINE);
 
 		/* bit 5 = "bank"? */
 	}
@@ -373,7 +374,7 @@ WRITE16_HANDLER( rtype2_port02_w )
 		coin_counter_w(1,data & 0x02);
 
 		/* bit 2 is flip screen (handled both by software and hardware) */
-		flip_screen_set(((data & 0x04) >> 2) ^ ((~input_port_read(machine, "DSW") >> 8) & 1));
+		flip_screen_set(space->machine, ((data & 0x04) >> 2) ^ ((~input_port_read(space->machine, "DSW") >> 8) & 1));
 
 		/* bit 3 is display disable */
 		video_off = data & 0x08;
@@ -423,7 +424,7 @@ static void m72_draw_sprites(running_machine *machine, bitmap_t *bitmap,const re
 		h = 1 << ((m72_spriteram[offs+2] & 0x3000) >> 12);
 		sy -= 16 * h;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 512 - 16*w - sx;
 			sy = 284 - 16*h - sy;
@@ -475,7 +476,7 @@ static void majtitle_draw_sprites(running_machine *machine, bitmap_t *bitmap,con
 		h = 1 << ((spriteram16_2[offs+2] & 0x3000) >> 12);
 		sy -= 16 * h;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 512 - 16*w - sx;
 			sy = 256 - 16*h - sy;
@@ -509,7 +510,7 @@ VIDEO_UPDATE( m72 )
 {
 	if (video_off)
 	{
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 		return 0;
 	}
 
@@ -534,7 +535,7 @@ VIDEO_UPDATE( majtitle )
 
 	if (video_off)
 	{
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 		return 0;
 	}
 

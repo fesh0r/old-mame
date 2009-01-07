@@ -50,69 +50,30 @@ Flying Tiger
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "sound/2203intf.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
-
-
-extern UINT8 *dooyong_txvideoram;
-
-WRITE8_HANDLER( dooyong_bgscroll8_w );
-WRITE8_HANDLER( dooyong_bg2scroll8_w );
-WRITE8_HANDLER( dooyong_fgscroll8_w );
-WRITE8_HANDLER( dooyong_fg2scroll8_w );
-
-WRITE16_HANDLER( dooyong_bgscroll16_w );
-WRITE16_HANDLER( dooyong_bg2scroll16_w );
-WRITE16_HANDLER( dooyong_fgscroll16_w );
-WRITE16_HANDLER( dooyong_fg2scroll16_w );
-
-WRITE8_HANDLER( dooyong_txvideoram8_w );
-
-WRITE8_HANDLER( lastday_ctrl_w );
-WRITE8_HANDLER( pollux_ctrl_w );
-WRITE8_HANDLER( primella_ctrl_w );
-WRITE8_HANDLER( flytiger_ctrl_w );
-WRITE16_HANDLER( rshark_ctrl_w );
-
-VIDEO_UPDATE( lastday );
-VIDEO_UPDATE( gulfstrm );
-VIDEO_UPDATE( pollux );
-VIDEO_UPDATE( bluehawk );
-VIDEO_UPDATE( flytiger );
-VIDEO_UPDATE( primella );
-VIDEO_UPDATE( rshark );
-VIDEO_UPDATE( popbingo );
-
-VIDEO_START( lastday );
-VIDEO_START( gulfstrm );
-VIDEO_START( pollux );
-VIDEO_START( bluehawk );
-VIDEO_START( flytiger );
-VIDEO_START( primella );
-VIDEO_START( rshark );
-VIDEO_START( popbingo );
-
-VIDEO_EOF( dooyong );
-VIDEO_EOF( rshark );
+#include "includes/dooyong.h"
 
 
 static WRITE8_HANDLER( lastday_bankswitch_w )
 {
-	memory_set_bank(1, data & 0x07);
+	memory_set_bank(space->machine, 1, data & 0x07);
 
 	if (data & 0xf8) popmessage("bankswitch %02x",data);
 }
 
 static MACHINE_START( lastday )
 {
-	memory_configure_bank(1, 0, 8, memory_region(machine, "main") + 0x10000, 0x4000);
+	memory_configure_bank(machine, 1, 0, 8, memory_region(machine, "main") + 0x10000, 0x4000);
 }
 
 static WRITE8_HANDLER( flip_screen_w )
 {
-	flip_screen_set(data);
+	flip_screen_set(space->machine, data);
 }
 
 /***************************************************************************
@@ -853,7 +814,7 @@ GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static READ8_HANDLER( unk_r )
@@ -1129,10 +1090,10 @@ MACHINE_DRIVER_END
 
 static INTERRUPT_GEN( rshark_interrupt )
 {
-	if (cpu_getiloops() == 0)
-		cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
+	if (cpu_getiloops(device) == 0)
+		cpu_set_input_line(device, 5, HOLD_LINE);
 	else
-		cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
+		cpu_set_input_line(device, 6, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( rshark )

@@ -95,6 +95,7 @@ val (hex):  27  20  22  04  26  00  20  20  00  07  00  00  80  00  00  00  ns  
 */
 
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
 #include "video/mc6845.h"
 
 static UINT8 *murogem_videoram;
@@ -171,7 +172,7 @@ static VIDEO_UPDATE(murogem)
 	int xx,yy,count;
 	count = 0x000;
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	for (yy=0;yy<32;yy++)
 	{
@@ -190,6 +191,18 @@ static VIDEO_UPDATE(murogem)
 
 	return 0;
 }
+
+static const mc6845_interface mc6845_intf =
+{
+	"main",		/* screen we are acting on */
+	8,			/* number of pixels per video memory address */
+	NULL,		/* before pixel update callback */
+	NULL,		/* row update callback */
+	NULL,		/* after pixel update callback */
+	NULL,		/* callback for display state changes */
+	NULL,		/* HSYNC callback */
+	NULL		/* VSYNC callback */
+};
 
 
 static MACHINE_DRIVER_START( murogem )
@@ -212,7 +225,7 @@ static MACHINE_DRIVER_START( murogem )
 	MDRV_PALETTE_INIT(murogem)
 	MDRV_VIDEO_UPDATE(murogem)
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_MC6845_ADD("crtc", MC6845, 750000, mc6845_intf) /* ? MHz */
 MACHINE_DRIVER_END
 
 

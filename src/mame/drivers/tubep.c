@@ -99,6 +99,7 @@ TP-S.1 TP-S.2 TP-S.3 TP-B.1  8212 TP-B.2 TP-B.3          TP-B.4
 
 
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
@@ -145,10 +146,10 @@ static WRITE8_HANDLER( tubep_LS259_w )
 				//screen_flip_w(offset,data&1); /* bit 0 = screen flip, active high */
 				break;
 		case 6:
-				tubep_background_romselect_w(machine,offset,data);	/* bit0 = 0->select roms: B1,B3,B5; bit0 = 1->select roms: B2,B4,B6 */
+				tubep_background_romselect_w(space,offset,data);	/* bit0 = 0->select roms: B1,B3,B5; bit0 = 1->select roms: B2,B4,B6 */
 				break;
 		case 7:
-				tubep_colorproms_A4_line_w(machine,offset,data);	/* bit0 = line A4 (color proms address) state */
+				tubep_colorproms_A4_line_w(space,offset,data);	/* bit0 = line A4 (color proms address) state */
 				break;
 		default:
 				break;
@@ -167,7 +168,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( main_cpu_irq_line_clear_w )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 	logerror("CPU#0 VBLANK int clear at scanline=%3i\n", curr_scanline);
 	return;
 }
@@ -203,7 +204,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( second_cpu_irq_line_clear_w )
 {
-	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 	logerror("CPU#1 VBLANK int clear at scanline=%3i\n", curr_scanline);
 	return;
 }
@@ -238,7 +239,7 @@ static READ8_HANDLER( tubep_soundlatch_r )
 
 static READ8_HANDLER( tubep_sound_irq_ack )
 {
-	cpunum_set_input_line(machine, 2, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[2], 0, CLEAR_LINE);
 	return 0;
 }
 
@@ -281,7 +282,7 @@ curr_scanline = scanline;//for debugging
 	if (scanline==240)
 	{
 		logerror("VBLANK CPU#0\n");
-		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 	}
 
 
@@ -290,7 +291,7 @@ curr_scanline = scanline;//for debugging
 	if (scanline==16)
 	{
 		logerror("/VBLANK CPU#1\n");
-		cpunum_set_input_line(machine, 1, 0, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[1], 0, ASSERT_LINE);
 	}
 
 
@@ -300,14 +301,14 @@ curr_scanline = scanline;//for debugging
 	{
 		logerror("/nmi CPU#3\n");
 		tubep_vblank_end(); /* switch buffered sprite RAM page */
-		cpunum_set_input_line(machine, 3, INPUT_LINE_NMI, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[3], INPUT_LINE_NMI, ASSERT_LINE);
 	}
 	/* CPU #3 MS2010-A NMI */
 	/* deactivates at the start of VBLANK signal which happens at the beginning of scanline number 240*/
 	if (scanline==240)
 	{
 		logerror("CPU#3 nmi clear\n");
-		cpunum_set_input_line(machine, 3, INPUT_LINE_NMI, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[3], INPUT_LINE_NMI, CLEAR_LINE);
 	}
 
 
@@ -315,7 +316,7 @@ curr_scanline = scanline;//for debugging
 	/* activates whenever line V6 from video part goes lo->hi that is when the scanline becomes 64 and 192 */
 	if ((scanline==64) || (scanline==192))
 	{
-		cpunum_set_input_line(machine, 2,0,ASSERT_LINE);	/* sound cpu interrupt (music tempo) */
+		cpu_set_input_line(machine->cpu[2],0,ASSERT_LINE);	/* sound cpu interrupt (music tempo) */
 	}
 
 
@@ -339,12 +340,12 @@ logerror("scanline=%3i scrgetvpos(0)=%3i\n",scanline,video_screen_get_vpos(machi
  *
  *************************************/
 
-static void tubep_setup_save_state(void)
+static void tubep_setup_save_state(running_machine *machine)
 {
 	/* Set up save state */
-	state_save_register_global(sound_latch);
-	state_save_register_global(ls74);
-	state_save_register_global(ls377);
+	state_save_register_global(machine, sound_latch);
+	state_save_register_global(machine, ls74);
+	state_save_register_global(machine, ls377);
 }
 
 
@@ -352,9 +353,9 @@ static void tubep_setup_save_state(void)
 static MACHINE_START( tubep )
 {
 	/* Create interrupt timer */
-	interrupt_timer = timer_alloc(tubep_scanline_callback, NULL);
+	interrupt_timer = timer_alloc(machine, tubep_scanline_callback, NULL);
 
-	tubep_setup_save_state();
+	tubep_setup_save_state(machine);
 }
 
 
@@ -408,7 +409,7 @@ static WRITE8_HANDLER( rjammer_LS259_w )
 static WRITE8_HANDLER( rjammer_soundlatch_w )
 {
 	sound_latch = data;
-	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, PULSE_LINE);
+	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -463,7 +464,7 @@ curr_scanline = scanline;//for debugging
 	if (scanline==240)
 	{
 		logerror("VBLANK CPU#0\n");
-		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 	}
 
 
@@ -472,7 +473,7 @@ curr_scanline = scanline;//for debugging
 	if (scanline==16)
 	{
 		logerror("/VBLANK CPU#1\n");
-		cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+		cpu_set_input_line(machine->cpu[1], 0, HOLD_LINE);
 	}
 
 
@@ -482,14 +483,14 @@ curr_scanline = scanline;//for debugging
 	{
 		logerror("/nmi CPU#3\n");
 		tubep_vblank_end(); /* switch buffered sprite RAM page */
-		cpunum_set_input_line(machine, 3, INPUT_LINE_NMI, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[3], INPUT_LINE_NMI, ASSERT_LINE);
 	}
 	/* CPU #3 MS2010-A NMI */
 	/* deactivates at the start of VBLANK signal which happens at the beginning of scanline number 240*/
 	if (scanline==240)
 	{
 		logerror("CPU#3 nmi clear\n");
-		cpunum_set_input_line(machine, 3, INPUT_LINE_NMI, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[3], INPUT_LINE_NMI, CLEAR_LINE);
 	}
 
 
@@ -497,7 +498,7 @@ curr_scanline = scanline;//for debugging
 	/* activates whenever line V6 from video part goes lo->hi that is when the scanline becomes 64 and 192 */
 	if ((scanline==64) || (scanline==192))
 	{
-		cpunum_set_input_line(machine, 2,0,ASSERT_LINE);	/* sound cpu interrupt (music tempo) */
+		cpu_set_input_line(machine->cpu[2],0,ASSERT_LINE);	/* sound cpu interrupt (music tempo) */
 	}
 
 
@@ -516,9 +517,9 @@ logerror("scanline=%3i scrgetvpos(0)=%3i\n",scanline,video_screen_get_vpos(machi
 static MACHINE_START( rjammer )
 {
 	/* Create interrupt timer */
-	interrupt_timer = timer_alloc(rjammer_scanline_callback, NULL);
+	interrupt_timer = timer_alloc(machine, rjammer_scanline_callback, NULL);
 
-	tubep_setup_save_state();
+	tubep_setup_save_state(machine);
 }
 
 static MACHINE_RESET( rjammer )
@@ -564,14 +565,14 @@ static WRITE8_HANDLER( rjammer_voice_frequency_select_w )
 }
 
 
-static void rjammer_adpcm_vck (running_machine *machine, int data)
+static void rjammer_adpcm_vck (const device_config *device)
 {
 	ls74 = (ls74+1) & 1;
 
 	if (ls74==1)
 	{
 		msm5205_data_w(0, (ls377>>0) & 15 );
-		cpunum_set_input_line(machine, 2, 0, ASSERT_LINE );
+		cpu_set_input_line(device->machine->cpu[2], 0, ASSERT_LINE );
 	}
 	else
 	{
@@ -593,7 +594,7 @@ static WRITE8_HANDLER( rjammer_voice_input_w )
             I do it here because this port (0x80) is first one accessed
             in the interrupt routine.
     */
-	cpunum_set_input_line(machine, 2, 0, CLEAR_LINE );
+	cpu_set_input_line(space->machine->cpu[2], 0, CLEAR_LINE );
 	return;
 }
 
@@ -917,7 +918,7 @@ static MACHINE_DRIVER_START( tubep )
 	MDRV_CPU_ADD("nsc",NSC8105,6000000)	/* 6 MHz Xtal - divided internally ??? */
 	MDRV_CPU_PROGRAM_MAP(nsc_map,0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_START(tubep)
 	MDRV_MACHINE_RESET(tubep)

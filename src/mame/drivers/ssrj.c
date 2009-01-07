@@ -30,6 +30,7 @@ HW info :
 ************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 extern UINT8 *ssrj_vram1,*ssrj_vram2,*ssrj_vram3,*ssrj_vram4,*ssrj_scrollram;
@@ -56,7 +57,7 @@ static MACHINE_RESET(ssrj)
 
 static READ8_HANDLER(ssrj_wheel_r)
 {
-	int port = input_port_read(machine, "IN1") - 0x80;
+	int port = input_port_read(space->machine, "IN1") - 0x80;
 	int retval = port-oldport;
 	oldport = port;
 	return retval;

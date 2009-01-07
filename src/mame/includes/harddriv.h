@@ -8,14 +8,14 @@
 
 /*----------- defined in machine/harddriv.c -----------*/
 
-extern INT8 hdcpu_main;
-extern INT8 hdcpu_gsp;
-extern INT8 hdcpu_msp;
-extern INT8 hdcpu_adsp;
-extern INT8 hdcpu_sound;
-extern INT8 hdcpu_sounddsp;
-extern INT8 hdcpu_jsa;
-extern INT8 hdcpu_dsp32;
+extern const device_config *hdcpu_main;
+extern const device_config *hdcpu_gsp;
+extern const device_config *hdcpu_msp;
+extern const device_config *hdcpu_adsp;
+extern const device_config *hdcpu_sound;
+extern const device_config *hdcpu_sounddsp;
+extern const device_config *hdcpu_jsa;
+extern const device_config *hdcpu_dsp32;
 
 extern UINT8 hd34010_host_access;
 extern UINT8 hddsk_pio_access;
@@ -55,8 +55,8 @@ MACHINE_RESET( harddriv );
 
 INTERRUPT_GEN( hd68k_irq_gen );
 WRITE16_HANDLER( hd68k_irq_ack_w );
-void hdgsp_irq_gen(int state);
-void hdmsp_irq_gen(int state);
+void hdgsp_irq_gen(const device_config *device, int state);
+void hdmsp_irq_gen(const device_config *device, int state);
 
 READ16_HANDLER( hd68k_gsp_io_r );
 WRITE16_HANDLER( hd68k_gsp_io_w );
@@ -128,7 +128,7 @@ READ16_HANDLER( hd68k_ds3_program_r );
 WRITE16_HANDLER( hd68k_ds3_program_w );
 
 /* DSK board */
-void hddsk_update_pif(UINT32 pins);
+void hddsk_update_pif(const device_config *device, UINT32 pins);
 WRITE16_HANDLER( hd68k_dsk_control_w );
 READ16_HANDLER( hd68k_dsk_ram_r );
 WRITE16_HANDLER( hd68k_dsk_ram_w );
@@ -224,8 +224,8 @@ extern UINT16 *hdgsp_paletteram_hi;
 extern size_t hdgsp_vram_size;
 
 VIDEO_START( harddriv );
-void hdgsp_write_to_shiftreg(UINT32 address, UINT16 *shiftreg);
-void hdgsp_read_from_shiftreg(UINT32 address, UINT16 *shiftreg);
+void hdgsp_write_to_shiftreg(const address_space *space, UINT32 address, UINT16 *shiftreg);
+void hdgsp_read_from_shiftreg(const address_space *space, UINT32 address, UINT16 *shiftreg);
 
 READ16_HANDLER( hdgsp_control_lo_r );
 WRITE16_HANDLER( hdgsp_control_lo_w );

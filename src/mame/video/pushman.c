@@ -49,8 +49,8 @@ static TILE_GET_INFO( get_text_tile_info )
 
 VIDEO_START( pushman )
 {
-	bg_tilemap = tilemap_create(get_back_tile_info,background_scan_rows,     32,32,128,64);
-	tx_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_rows,    8, 8, 32,32);
+	bg_tilemap = tilemap_create(machine, get_back_tile_info,background_scan_rows,     32,32,128,64);
+	tx_tilemap = tilemap_create(machine, get_text_tile_info,tilemap_scan_rows,    8, 8, 32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,3);
 }
@@ -99,7 +99,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		flipx=spriteram16[offs+1]&2;
 		flipy=spriteram16[offs+1]&1;	/* flip y untested */
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			x = 240 - x;
 			y = 240 - y;

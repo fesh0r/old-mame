@@ -30,7 +30,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/vector.h"
 #include "cpu/ccpu/ccpu.h"
 #include "cinemat.h"
@@ -61,9 +60,9 @@ static UINT8 mux_select;
 
 static MACHINE_START( cinemat )
 {
-	state_save_register_global(coin_detected);
-	state_save_register_global(coin_last_reset);
-	state_save_register_global(mux_select);
+	state_save_register_global(machine, coin_detected);
+	state_save_register_global(machine, coin_last_reset);
+	state_save_register_global(machine, mux_select);
 }
 
 
@@ -87,14 +86,14 @@ MACHINE_RESET( cinemat )
 
 static READ8_HANDLER( inputs_r )
 {
-	return (input_port_read(machine, "INPUTS") >> offset) & 1;
+	return (input_port_read(space->machine, "INPUTS") >> offset) & 1;
 }
 
 
 static READ8_HANDLER( switches_r )
 {
 	static const UINT8 switch_shuffle[8] = { 2,5,4,3,0,1,6,7 };
-	return (input_port_read(machine, "SWITCHES") >> switch_shuffle[offset]) & 1;
+	return (input_port_read(space->machine, "SWITCHES") >> switch_shuffle[offset]) & 1;
 }
 
 
@@ -138,7 +137,7 @@ static WRITE8_HANDLER( coin_reset_w )
 static WRITE8_HANDLER( mux_select_w )
 {
 	mux_select = data;
-	cinemat_sound_control_w(machine, 0x07, data);
+	cinemat_sound_control_w(space, 0x07, data);
 }
 
 
@@ -149,14 +148,14 @@ static WRITE8_HANDLER( mux_select_w )
  *
  *************************************/
 
-static UINT8 joystick_read(void)
+static UINT8 joystick_read(const device_config *device)
 {
-	if (mame_get_phase(Machine) != MAME_PHASE_RUNNING)
+	if (mame_get_phase(device->machine) != MAME_PHASE_RUNNING)
 		return 0;
 	else
 	{
-		int xval = (INT16)(cpunum_get_reg(0, CCPU_X) << 4) >> 4;
-		return (input_port_read_safe(Machine, mux_select ? "ANALOGX" : "ANALOGY", 0) - xval) < 0x800;
+		int xval = (INT16)(cpu_get_reg(device, CCPU_X) << 4) >> 4;
+		return (input_port_read_safe(device->machine, mux_select ? "ANALOGX" : "ANALOGY", 0) - xval) < 0x800;
 	}
 }
 
@@ -174,7 +173,7 @@ static READ8_HANDLER( speedfrk_wheel_r )
 	int delta_wheel;
 
     /* the shift register is cleared once per 'frame' */
-    delta_wheel = (INT8)input_port_read(machine, "WHEEL") / 8;
+    delta_wheel = (INT8)input_port_read(space->machine, "WHEEL") / 8;
     if (delta_wheel > 3)
         delta_wheel = 3;
     else if (delta_wheel < -3)
@@ -187,14 +186,14 @@ static READ8_HANDLER( speedfrk_wheel_r )
 static READ8_HANDLER( speedfrk_gear_r )
 {
 	static int gear = 0x0e;
-    int gearval = input_port_read(machine, "GEAR");
+    int gearval = input_port_read(space->machine, "GEAR");
 
 	/* check the fake gear input port and determine the bit settings for the gear */
 	if ((gearval & 0x0f) != 0x0f)
         gear = gearval & 0x0f;
 
 	/* add the start key into the mix -- note that it overlaps 4th gear */
-	if (!(input_port_read(machine, "INPUTS") & 0x80))
+	if (!(input_port_read(space->machine, "INPUTS") & 0x80))
         gear &= ~0x08;
 
 	return (gear >> offset) & 1;
@@ -240,9 +239,9 @@ static READ8_HANDLER( sundance_inputs_r )
 {
 	/* handle special keys first */
 	if (sundance_port_map[offset].portname)
-		return (input_port_read(machine, sundance_port_map[offset].portname) & sundance_port_map[offset].bitmask) ? 0 : 1;
+		return (input_port_read(space->machine, sundance_port_map[offset].portname) & sundance_port_map[offset].bitmask) ? 0 : 1;
 	else
-		return (input_port_read(machine, "INPUTS") >> offset) & 1;
+		return (input_port_read(space->machine, "INPUTS") >> offset) & 1;
 }
 
 
@@ -255,7 +254,7 @@ static READ8_HANDLER( sundance_inputs_r )
 
 static READ8_HANDLER( boxingb_dial_r )
 {
-	int value = input_port_read(machine, "DIAL");
+	int value = input_port_read(space->machine, "DIAL");
 	if (!mux_select) offset += 4;
 	return (value >> offset) & 1;
 }
@@ -270,8 +269,8 @@ static READ8_HANDLER( boxingb_dial_r )
 
 static READ8_HANDLER( qb3_frame_r )
 {
-	attotime next_update = video_screen_get_time_until_update(machine->primary_screen);
-	attotime frame_period = video_screen_get_frame_period(machine->primary_screen);
+	attotime next_update = video_screen_get_time_until_update(space->machine->primary_screen);
+	attotime frame_period = video_screen_get_frame_period(space->machine->primary_screen);
 	int percent = next_update.attoseconds / (frame_period.attoseconds / 100);
 
 	/* note this is just an approximation... */
@@ -281,7 +280,7 @@ static READ8_HANDLER( qb3_frame_r )
 
 static WRITE8_HANDLER( qb3_ram_bank_w )
 {
-	memory_set_bank(1, cpunum_get_reg(0, CCPU_P) & 3);
+	memory_set_bank(space->machine, 1, cpu_get_reg(space->machine->cpu[0], CCPU_P) & 3);
 }
 
 
@@ -1438,36 +1437,36 @@ ROM_END
 
 static DRIVER_INIT( speedfrk )
 {
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x00, 0x03, 0, 0, speedfrk_wheel_r);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x04, 0x06, 0, 0, speedfrk_gear_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x00, 0x03, 0, 0, speedfrk_wheel_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x04, 0x06, 0, 0, speedfrk_gear_r);
 }
 
 
 static DRIVER_INIT( sundance )
 {
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x00, 0x0f, 0, 0, sundance_inputs_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x00, 0x0f, 0, 0, sundance_inputs_r);
 }
 
 
 static DRIVER_INIT( tailg )
 {
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x07, 0x07, 0, 0, mux_select_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x07, 0x07, 0, 0, mux_select_w);
 }
 
 
 static DRIVER_INIT( boxingb )
 {
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x0c, 0x0f, 0, 0, boxingb_dial_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x07, 0x07, 0, 0, mux_select_w);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x0c, 0x0f, 0, 0, boxingb_dial_r);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x07, 0x07, 0, 0, mux_select_w);
 }
 
 
 static DRIVER_INIT( qb3 )
 {
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x0f, 0x0f, 0, 0, qb3_frame_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x00, 0x00, 0, 0, qb3_ram_bank_w);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x0f, 0x0f, 0, 0, qb3_frame_r);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x00, 0x00, 0, 0, qb3_ram_bank_w);
 
-	memory_configure_bank(1, 0, 4, rambase, 0x100*2);
+	memory_configure_bank(machine, 1, 0, 4, rambase, 0x100*2);
 }
 
 

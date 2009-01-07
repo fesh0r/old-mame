@@ -69,42 +69,11 @@ I/O read/write
 ***************************************************************************/
 
 #include "driver.h"
-#include "machine/z80ctc.h"
-#include "machine/z80pio.h"
+#include "cpu/z80/z80.h"
 #include "sound/sn76496.h"
 #include "sound/samples.h"
-#include "cpu/z80/z80daisy.h"
 #include "machine/segacrpt.h"
-
-
-
-extern UINT8 *senjyo_fgscroll;
-extern UINT8 *senjyo_scrollx1,*senjyo_scrolly1;
-extern UINT8 *senjyo_scrollx2,*senjyo_scrolly2;
-extern UINT8 *senjyo_scrollx3,*senjyo_scrolly3;
-extern UINT8 *senjyo_fgvideoram,*senjyo_fgcolorram;
-extern UINT8 *senjyo_bg1videoram,*senjyo_bg2videoram,*senjyo_bg3videoram;
-extern UINT8 *senjyo_radarram;
-extern UINT8 *senjyo_bgstripesram;
-WRITE8_HANDLER( senjyo_fgvideoram_w );
-WRITE8_HANDLER( senjyo_fgcolorram_w );
-WRITE8_HANDLER( senjyo_bg1videoram_w );
-WRITE8_HANDLER( senjyo_bg2videoram_w );
-WRITE8_HANDLER( senjyo_bg3videoram_w );
-WRITE8_HANDLER( senjyo_bgstripes_w );
-
-VIDEO_START( senjyo );
-VIDEO_UPDATE( senjyo );
-extern int is_senjyo, senjyo_scrollhack;
-
-/* in audio/senjyo.c */
-extern const z80_daisy_chain senjyo_daisy_chain[];
-extern const z80pio_interface senjyo_pio_intf;
-void senjyo_sh_start(void);
-
-WRITE8_HANDLER( senjyo_volume_w );
-
-
+#include "includes/senjyo.h"
 
 
 static int int_delay_kludge;
@@ -120,13 +89,13 @@ static MACHINE_RESET( senjyo )
 
 static INTERRUPT_GEN( senjyo_interrupt )
 {
-	if (int_delay_kludge == 0) cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+	if (int_delay_kludge == 0) cpu_set_input_line(device, 0, HOLD_LINE);
 	else int_delay_kludge--;
 }
 
 static WRITE8_HANDLER( flip_screen_w )
 {
-	flip_screen_set(data);
+	flip_screen_set(space->machine, data);
 }
 
 static WRITE8_HANDLER( paletteram_IIBBGGRR_w )
@@ -147,7 +116,7 @@ static WRITE8_HANDLER( paletteram_IIBBGGRR_w )
 	b = (data >> 2) & 0x0c;
 	if (b) b |= i;
 
-	palette_set_color_rgb(machine,offset,pal4bit(r),pal4bit(g),pal4bit(b));
+	palette_set_color_rgb(space->machine,offset,pal4bit(r),pal4bit(g),pal4bit(b));
 }
 
 
@@ -623,8 +592,6 @@ static const samples_interface senjyo_samples_interface =
 };
 
 
-extern const z80ctc_interface senjyo_ctc_intf;
-
 static MACHINE_DRIVER_START( senjyo )
 
 	/* basic machine hardware */
@@ -640,7 +607,7 @@ static MACHINE_DRIVER_START( senjyo )
 	MDRV_MACHINE_RESET(senjyo)
 
 	MDRV_Z80PIO_ADD( "z80pio", senjyo_pio_intf )
-	MDRV_Z80CTC_ADD( "z80ctc", senjyo_ctc_intf )
+	MDRV_Z80CTC_ADD( "z80ctc", 2000000 /* same as "sub" */, senjyo_ctc_intf )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

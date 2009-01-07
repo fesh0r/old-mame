@@ -140,7 +140,6 @@ Rowscroll style:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "deco16ic.h"
 #include "ui.h"
 
@@ -196,7 +195,7 @@ WRITE16_HANDLER( deco16_nonbuffered_palette_w )
 	g = (paletteram16[offset+1] >> 8) & 0xff;
 	r = (paletteram16[offset+1] >> 0) & 0xff;
 
-	palette_set_color(machine,offset/2,MAKE_RGB(r,g,b));
+	palette_set_color(space->machine,offset/2,MAKE_RGB(r,g,b));
 }
 
 WRITE16_HANDLER( deco16_buffered_palette_w )
@@ -207,7 +206,7 @@ WRITE16_HANDLER( deco16_buffered_palette_w )
 
 WRITE16_HANDLER( deco16_palette_dma_w )
 {
-	const int m=machine->config->total_colors;
+	const int m=space->machine->config->total_colors;
 	int r,g,b,i;
 
 	for (i=0; i<m; i++) {
@@ -218,7 +217,7 @@ WRITE16_HANDLER( deco16_palette_dma_w )
 			g = (paletteram16[i*2+1] >> 8) & 0xff;
 			r = (paletteram16[i*2+1] >> 0) & 0xff;
 
-			palette_set_color(machine,i,MAKE_RGB(r,g,b));
+			palette_set_color(space->machine,i,MAKE_RGB(r,g,b));
 		}
 	}
 }
@@ -523,22 +522,22 @@ static void deco16_video_init(running_machine *machine, int pf12_only, int split
 	int height = video_screen_get_height(machine->primary_screen);
 	sprite_priority_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED8 );
 
-	pf1_tilemap_16x16 =	tilemap_create(get_pf1_tile_info,   deco16_scan_rows, 16,16,64,32);
-	pf1_tilemap_8x8 =	tilemap_create(get_pf1_tile_info_b, tilemap_scan_rows,8,8,64,32);
+	pf1_tilemap_16x16 =	tilemap_create(machine, get_pf1_tile_info,   deco16_scan_rows, 16,16,64,32);
+	pf1_tilemap_8x8 =	tilemap_create(machine, get_pf1_tile_info_b, tilemap_scan_rows,8,8,64,32);
 
 	if (split)
-		pf2_tilemap_16x16 =	tilemap_create(get_pf2_tile_info,   deco16_scan_rows, 16,16,full_width ? 64 : 32,32);
+		pf2_tilemap_16x16 =	tilemap_create(machine, get_pf2_tile_info,   deco16_scan_rows, 16,16,full_width ? 64 : 32,32);
 	else
-		pf2_tilemap_16x16 =	tilemap_create(get_pf2_tile_info,   deco16_scan_rows, 16,16,full_width ? 64 : 32,32);
-	pf2_tilemap_8x8 =	tilemap_create(get_pf2_tile_info_b, tilemap_scan_rows,8,8,full_width ? 64 : 32,32);
+		pf2_tilemap_16x16 =	tilemap_create(machine, get_pf2_tile_info,   deco16_scan_rows, 16,16,full_width ? 64 : 32,32);
+	pf2_tilemap_8x8 =	tilemap_create(machine, get_pf2_tile_info_b, tilemap_scan_rows,8,8,full_width ? 64 : 32,32);
 
 	dirty_palette = auto_malloc(4096);
 	deco16_raster_display_list=auto_malloc(20 * 256);
 
 	if (!pf12_only)
 	{
-		pf4_tilemap_16x16 =	tilemap_create(get_pf4_tile_info,   deco16_scan_rows, 16,16,full_width ? 64 : 32,32);
-		pf3_tilemap_16x16 =	tilemap_create(get_pf3_tile_info,   deco16_scan_rows, 16,16,full_width ? 64 : 32,32);
+		pf4_tilemap_16x16 =	tilemap_create(machine, get_pf4_tile_info,   deco16_scan_rows, 16,16,full_width ? 64 : 32,32);
+		pf3_tilemap_16x16 =	tilemap_create(machine, get_pf3_tile_info,   deco16_scan_rows, 16,16,full_width ? 64 : 32,32);
 	}
 	else
 	{
@@ -832,7 +831,7 @@ void deco16_print_debug_info(bitmap_t *bitmap)
 void deco16_clear_sprite_priority_bitmap(void)
 {
 	if (sprite_priority_bitmap)
-		fillbitmap(sprite_priority_bitmap,0,NULL);
+		bitmap_fill(sprite_priority_bitmap,NULL,0);
 }
 
 /* A special pdrawgfx z-buffered sprite renderer that is needed to properly draw multiple sprite sources with alpha */
@@ -902,11 +901,11 @@ void deco16_pdrawgfx(running_machine *machine,
 
 /*****************************************************************************************/
 
-void deco16_tilemap_1_draw(bitmap_t *bitmap, const rectangle *cliprect, int flags, UINT32 priority)
+void deco16_tilemap_1_draw(const device_config *screen, bitmap_t *bitmap, const rectangle *cliprect, int flags, UINT32 priority)
 {
 	if (use_custom_pf1)
 	{
-		custom_tilemap_draw(Machine, bitmap,pf1_tilemap_8x8,pf1_tilemap_16x16,0,0,pf1_rowscroll_ptr,deco16_pf12_control[1], deco16_pf12_control[2], deco16_pf12_control[5]&0xff, deco16_pf12_control[6]&0xff, 0, 0, deco16_pf1_trans_mask, flags, priority);
+		custom_tilemap_draw(screen->machine, bitmap,pf1_tilemap_8x8,pf1_tilemap_16x16,0,0,pf1_rowscroll_ptr,deco16_pf12_control[1], deco16_pf12_control[2], deco16_pf12_control[5]&0xff, deco16_pf12_control[6]&0xff, 0, 0, deco16_pf1_trans_mask, flags, priority);
 	}
 	else
 	{
@@ -915,11 +914,11 @@ void deco16_tilemap_1_draw(bitmap_t *bitmap, const rectangle *cliprect, int flag
 	}
 }
 
-void deco16_tilemap_2_draw(bitmap_t *bitmap, const rectangle *cliprect, int flags, UINT32 priority)
+void deco16_tilemap_2_draw(const device_config *screen, bitmap_t *bitmap, const rectangle *cliprect, int flags, UINT32 priority)
 {
 	if (use_custom_pf2)
 	{
-		custom_tilemap_draw(Machine, bitmap,pf2_tilemap_8x8,pf2_tilemap_16x16,0,0,pf2_rowscroll_ptr,deco16_pf12_control[3], deco16_pf12_control[4], deco16_pf12_control[5]>>8, deco16_pf12_control[6]>>8, 0, 0, deco16_pf2_trans_mask, flags, priority);
+		custom_tilemap_draw(screen->machine, bitmap,pf2_tilemap_8x8,pf2_tilemap_16x16,0,0,pf2_rowscroll_ptr,deco16_pf12_control[3], deco16_pf12_control[4], deco16_pf12_control[5]>>8, deco16_pf12_control[6]>>8, 0, 0, deco16_pf2_trans_mask, flags, priority);
 	}
 	else
 	{
@@ -928,24 +927,24 @@ void deco16_tilemap_2_draw(bitmap_t *bitmap, const rectangle *cliprect, int flag
 	}
 }
 
-void deco16_tilemap_3_draw(bitmap_t *bitmap, const rectangle *cliprect, int flags, UINT32 priority)
+void deco16_tilemap_3_draw(const device_config *screen, bitmap_t *bitmap, const rectangle *cliprect, int flags, UINT32 priority)
 {
-	if (use_custom_pf3) custom_tilemap_draw(Machine, bitmap,0,pf3_tilemap_16x16,0,0,pf3_rowscroll_ptr,deco16_pf34_control[1], deco16_pf34_control[2], deco16_pf34_control[5]&0xff, deco16_pf34_control[6]&0xff, 0, 0, deco16_pf3_trans_mask, flags, priority);
+	if (use_custom_pf3) custom_tilemap_draw(screen->machine, bitmap,0,pf3_tilemap_16x16,0,0,pf3_rowscroll_ptr,deco16_pf34_control[1], deco16_pf34_control[2], deco16_pf34_control[5]&0xff, deco16_pf34_control[6]&0xff, 0, 0, deco16_pf3_trans_mask, flags, priority);
 	else if (pf3_tilemap_16x16) tilemap_draw(bitmap,cliprect,pf3_tilemap_16x16,flags,priority);
 }
 
-void deco16_tilemap_4_draw(bitmap_t *bitmap, const rectangle *cliprect, int flags, UINT32 priority)
+void deco16_tilemap_4_draw(const device_config *screen, bitmap_t *bitmap, const rectangle *cliprect, int flags, UINT32 priority)
 {
-	if (use_custom_pf4) custom_tilemap_draw(Machine, bitmap,0,pf4_tilemap_16x16,0,0,pf4_rowscroll_ptr,deco16_pf34_control[3], deco16_pf34_control[4], deco16_pf34_control[5]>>8, deco16_pf34_control[6]>>8, 0, 0, deco16_pf4_trans_mask, flags, priority);
+	if (use_custom_pf4) custom_tilemap_draw(screen->machine, bitmap,0,pf4_tilemap_16x16,0,0,pf4_rowscroll_ptr,deco16_pf34_control[3], deco16_pf34_control[4], deco16_pf34_control[5]>>8, deco16_pf34_control[6]>>8, 0, 0, deco16_pf4_trans_mask, flags, priority);
 	else if (pf4_tilemap_16x16) tilemap_draw(bitmap,cliprect,pf4_tilemap_16x16,flags,priority);
 }
 
 /*****************************************************************************************/
 
 // Combines the output of two 4BPP tilemaps into an 8BPP tilemap
-void deco16_tilemap_34_combine_draw(bitmap_t *bitmap, const rectangle *cliprect, int flags, UINT32 priority)
+void deco16_tilemap_34_combine_draw(const device_config *screen, bitmap_t *bitmap, const rectangle *cliprect, int flags, UINT32 priority)
 {
-	custom_tilemap_draw(Machine, bitmap,0,pf3_tilemap_16x16,0,pf4_tilemap_16x16,pf3_rowscroll_ptr,deco16_pf34_control[1], deco16_pf34_control[2], deco16_pf34_control[5]&0xff, deco16_pf34_control[6]&0xff, 0xf, 4, 0xff, flags, priority);
+	custom_tilemap_draw(screen->machine, bitmap,0,pf3_tilemap_16x16,0,pf4_tilemap_16x16,pf3_rowscroll_ptr,deco16_pf34_control[1], deco16_pf34_control[2], deco16_pf34_control[5]&0xff, deco16_pf34_control[6]&0xff, 0xf, 4, 0xff, flags, priority);
 }
 
 /*****************************************************************************************/

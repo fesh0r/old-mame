@@ -142,14 +142,9 @@ $(CPUOBJ)/alph8201/alph8201.o:	$(CPUSRC)/alph8201/alph8201.c \
 # Analog Devices ADSP21xx series
 #-------------------------------------------------
 
-CPUDEFS += -DHAS_ADSP2100=$(if $(filter ADSP2100,$(CPUS)),1,0)
-CPUDEFS += -DHAS_ADSP2101=$(if $(filter ADSP2101,$(CPUS)),1,0)
-CPUDEFS += -DHAS_ADSP2104=$(if $(filter ADSP2104,$(CPUS)),1,0)
-CPUDEFS += -DHAS_ADSP2105=$(if $(filter ADSP2105,$(CPUS)),1,0)
-CPUDEFS += -DHAS_ADSP2115=$(if $(filter ADSP2115,$(CPUS)),1,0)
-CPUDEFS += -DHAS_ADSP2181=$(if $(filter ADSP2181,$(CPUS)),1,0)
+CPUDEFS += -DHAS_ADSP21XX=$(if $(filter ADSP21XX,$(CPUS)),1,0)
 
-ifneq ($(filter ADSP2100 ADSP2101 ADSP2104 ADSP2105 ADSP2115 ADSP2181,$(CPUS)),)
+ifneq ($(filter ADSP21XX,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/adsp2100
 CPUOBJS += $(CPUOBJ)/adsp2100/adsp2100.o
 DBGOBJS += $(CPUOBJ)/adsp2100/2100dasm.o
@@ -271,6 +266,23 @@ $(CPUOBJ)/cubeqcpu/cubeqcpu.o:	$(CPUSRC)/cubeqcpu/cubeqcpu.c \
 
 
 #-------------------------------------------------
+# Entertainment Sciences AM29116-based RIP
+#-------------------------------------------------
+
+CPUDEFS += -DHAS_ESRIP=$(if $(filter ESRIP,$(CPUS)),1,0)
+
+ifneq ($(filter ESRIP,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/esrip
+CPUOBJS += $(CPUOBJ)/esrip/esrip.o
+#DBGOBJS += $(CPUOBJ)/esrip/esrip.o
+endif
+
+$(CPUOBJ)/esrip/esrip.o:	$(CPUSRC)/esrip/esrip.c \
+							$(CPUSRC)/esrip/esrip.h
+
+
+
+#-------------------------------------------------
 # RCA CDP1802
 #-------------------------------------------------
 
@@ -291,21 +303,36 @@ $(CPUOBJ)/cdp1802/cdp1802.o:	$(CPUSRC)/cdp1802/cdp1802.c \
 # National Semiconductor COP4xx
 #-------------------------------------------------
 
+CPUDEFS += -DHAS_COP401=$(if $(filter COP401,$(CPUS)),1,0)
 CPUDEFS += -DHAS_COP410=$(if $(filter COP410,$(CPUS)),1,0)
 CPUDEFS += -DHAS_COP411=$(if $(filter COP411,$(CPUS)),1,0)
+CPUDEFS += -DHAS_COP402=$(if $(filter COP402,$(CPUS)),1,0)
 CPUDEFS += -DHAS_COP420=$(if $(filter COP420,$(CPUS)),1,0)
 CPUDEFS += -DHAS_COP421=$(if $(filter COP421,$(CPUS)),1,0)
+CPUDEFS += -DHAS_COP422=$(if $(filter COP421,$(CPUS)),1,0)
+CPUDEFS += -DHAS_COP404=$(if $(filter COP404,$(CPUS)),1,0)
+CPUDEFS += -DHAS_COP424=$(if $(filter COP424,$(CPUS)),1,0)
+CPUDEFS += -DHAS_COP425=$(if $(filter COP425,$(CPUS)),1,0)
+CPUDEFS += -DHAS_COP426=$(if $(filter COP426,$(CPUS)),1,0)
+CPUDEFS += -DHAS_COP444=$(if $(filter COP444,$(CPUS)),1,0)
+CPUDEFS += -DHAS_COP445=$(if $(filter COP445,$(CPUS)),1,0)
 
-ifneq ($(filter COP410 COP411,$(CPUS)),)
+ifneq ($(filter COP401 COP410 COP411,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/cop400
 CPUOBJS += $(CPUOBJ)/cop400/cop410.o
 DBGOBJS += $(CPUOBJ)/cop400/cop410ds.o
 endif
 
-ifneq ($(filter COP420 COP421,$(CPUS)),)
+ifneq ($(filter COP402 COP420 COP421 COP422,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/cop400
 CPUOBJS += $(CPUOBJ)/cop400/cop420.o
 DBGOBJS += $(CPUOBJ)/cop400/cop420ds.o
+endif
+
+ifneq ($(filter COP404 COP424 COP425 COP426 COP444 COP445,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/cop400
+CPUOBJS += $(CPUOBJ)/cop400/cop440.o
+DBGOBJS += $(CPUOBJ)/cop400/cop440ds.o
 endif
 
 $(CPUOBJ)/cop400/cop410.o:	$(CPUSRC)/cop400/cop410.c \
@@ -317,6 +344,11 @@ $(CPUOBJ)/cop400/cop420.o:	$(CPUSRC)/cop400/cop420.c \
 							$(CPUSRC)/cop400/410ops.c \
 							$(CPUSRC)/cop400/420ops.c
 
+$(CPUOBJ)/cop400/cop440.o:	$(CPUSRC)/cop400/cop440.c \
+							$(CPUSRC)/cop400/cop400.h \
+							$(CPUSRC)/cop400/410ops.c \
+							$(CPUSRC)/cop400/420ops.c \
+							$(CPUSRC)/cop400/440ops.c
 
 
 #-------------------------------------------------
@@ -450,21 +482,21 @@ $(CPUOBJ)/hd6309/hd6309.o:	$(CPUSRC)/hd6309/hd6309.c \
 							$(CPUSRC)/hd6309/6309tbl.c
 
 
-
 #-------------------------------------------------
-# Hitachi H8/3002
+# Hitachi H8/30xx (16/32-bit H8/3xx series)
 #-------------------------------------------------
 
 CPUDEFS += -DHAS_H83002=$(if $(filter H83002,$(CPUS)),1,0)
 
 ifneq ($(filter H83002,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/h83002
-CPUOBJS += $(CPUOBJ)/h83002/h83002.o $(CPUOBJ)/h83002/h8periph.o
+CPUOBJS += $(CPUOBJ)/h83002/h8_16.o $(CPUOBJ)/h83002/h8periph.o
 DBGOBJS += $(CPUOBJ)/h83002/h8disasm.o
 endif
 
-$(CPUOBJ)/h83002/h83002.o:		$(CPUSRC)/h83002/h83002.c \
-								$(CPUSRC)/h83002/h83002.h \
+$(CPUOBJ)/h83002/h8_16.o:		$(CPUSRC)/h83002/h8_16.c \
+								$(CPUSRC)/h83002/h8.h \
+								$(CPUSRC)/h83002/h8ops.h \
 								$(CPUSRC)/h83002/h8priv.h
 
 $(CPUOBJ)/h83002/h8disasm.o: 	$(CPUSRC)/h83002/h8disasm.c
@@ -472,6 +504,28 @@ $(CPUOBJ)/h83002/h8disasm.o: 	$(CPUSRC)/h83002/h8disasm.c
 $(CPUOBJ)/h83002/h8periph.o:	$(CPUSRC)/h83002/h8periph.c \
 								$(CPUSRC)/h83002/h8priv.h
 
+
+#-------------------------------------------------
+# Hitachi H8/3334 (8/16-bit H8/3xx series)
+#-------------------------------------------------
+
+CPUDEFS += -DHAS_H83334=$(if $(filter H83334,$(CPUS)),1,0)
+
+ifneq ($(filter H83334,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/h83002
+CPUOBJS += $(CPUOBJ)/h83002/h8_8.o $(CPUOBJ)/h83002/h8periph.o
+DBGOBJS += $(CPUOBJ)/h83002/h8disasm.o
+endif
+
+$(CPUOBJ)/h83002/h8_8.o:		$(CPUSRC)/h83002/h8_8.c \
+								$(CPUSRC)/h83002/h8.h \
+								$(CPUSRC)/h83002/h8ops.h \
+								$(CPUSRC)/h83002/h8priv.h
+
+$(CPUOBJ)/h83002/h8disasm.o: 	$(CPUSRC)/h83002/h8disasm.c
+
+$(CPUOBJ)/h83002/h8periph.o:	$(CPUSRC)/h83002/h8periph.c \
+								$(CPUSRC)/h83002/h8priv.h
 
 #-------------------------------------------------
 # Hitachi SH1/SH2
@@ -585,10 +639,9 @@ $(CPUOBJ)/e132xs/e132xs.o:	$(CPUSRC)/e132xs/e132xs.c \
 # Intel 8080/8085A
 #-------------------------------------------------
 
-CPUDEFS += -DHAS_8080=$(if $(filter 8080,$(CPUS)),1,0)
-CPUDEFS += -DHAS_8085A=$(if $(filter 8085A,$(CPUS)),1,0)
+CPUDEFS += -DHAS_I8085=$(if $(filter I8085,$(CPUS)),1,0)
 
-ifneq ($(filter 8080 8085A,$(CPUS)),)
+ifneq ($(filter I8085,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/i8085
 CPUOBJS += $(CPUOBJ)/i8085/i8085.o
 DBGOBJS += $(CPUOBJ)/i8085/8085dasm.o
@@ -605,20 +658,9 @@ $(CPUOBJ)/i8085/i8085.o:	$(CPUSRC)/i8085/i8085.c \
 # Intel MCS-48 (8039 and derivatives)
 #-------------------------------------------------
 
-CPUDEFS += -DHAS_I8035=$(if $(filter I8035,$(CPUS)),1,0)
-CPUDEFS += -DHAS_I8041=$(if $(filter I8041,$(CPUS)),1,0)
-CPUDEFS += -DHAS_I8048=$(if $(filter I8048,$(CPUS)),1,0)
-CPUDEFS += -DHAS_I8648=$(if $(filter I8648,$(CPUS)),1,0)
-CPUDEFS += -DHAS_I8748=$(if $(filter I8748,$(CPUS)),1,0)
-CPUDEFS += -DHAS_MB8884=$(if $(filter MB8884,$(CPUS)),1,0)
+CPUDEFS += -DHAS_MCS48=$(if $(filter MCS48,$(CPUS)),1,0)
 
-CPUDEFS += -DHAS_I8039=$(if $(filter I8039,$(CPUS)),1,0)
-CPUDEFS += -DHAS_I8049=$(if $(filter I8049,$(CPUS)),1,0)
-CPUDEFS += -DHAS_I8749=$(if $(filter I8749,$(CPUS)),1,0)
-CPUDEFS += -DHAS_N7751=$(if $(filter N7751,$(CPUS)),1,0)
-CPUDEFS += -DHAS_M58715=$(if $(filter M58715,$(CPUS)),1,0)
-
-ifneq ($(filter I8035 I8041 I8048 I8648 I8748 MB8884 I8039 I8049 I8749 N7751 M58715,$(CPUS)),)
+ifneq ($(filter MCS48,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/mcs48
 CPUOBJS += $(CPUOBJ)/mcs48/mcs48.o
 DBGOBJS += $(CPUOBJ)/mcs48/mcs48dsm.o
@@ -630,56 +672,33 @@ $(CPUOBJ)/mcs48/mcs48.o:	$(CPUSRC)/mcs48/mcs48.c \
 
 
 #-------------------------------------------------
-# Intel 8x41
-#-------------------------------------------------
-
-CPUDEFS += -DHAS_I8X41=$(if $(filter I8X41,$(CPUS)),1,0)
-
-ifneq ($(filter I8X41,$(CPUS)),)
-OBJDIRS += $(CPUOBJ)/i8x41
-CPUOBJS += $(CPUOBJ)/i8x41/i8x41.o
-DBGOBJS += $(CPUOBJ)/i8x41/8x41dasm.o
-endif
-
-$(CPUOBJ)/i8x41/i8x41.o:	$(CPUSRC)/i8x41/i8x41.c \
-							$(CPUSRC)/i8x41/i8x41.h
-
-
-
-#-------------------------------------------------
 # Intel 8051 and derivatives
 #-------------------------------------------------
 
+CPUDEFS += -DHAS_I8031=$(if $(filter I8031,$(CPUS)),1,0)
+CPUDEFS += -DHAS_I8032=$(if $(filter I8032,$(CPUS)),1,0)
 CPUDEFS += -DHAS_I8051=$(if $(filter I8051,$(CPUS)),1,0)
 CPUDEFS += -DHAS_I8052=$(if $(filter I8052,$(CPUS)),1,0)
 CPUDEFS += -DHAS_I8751=$(if $(filter I8751,$(CPUS)),1,0)
 CPUDEFS += -DHAS_I8752=$(if $(filter I8752,$(CPUS)),1,0)
-
-ifneq ($(filter I8051 I8052 I8751 I8752,$(CPUS)),)
-OBJDIRS += $(CPUOBJ)/i8051
-CPUOBJS += $(CPUOBJ)/i8051/i8051.o
-DBGOBJS += $(CPUOBJ)/i8051/8051dasm.o
-endif
-
-$(CPUOBJ)/i8051/i8051.o:	$(CPUSRC)/i8051/i8051.c \
-							$(CPUSRC)/i8051/i8051.h \
-							$(CPUSRC)/i8051/i8051ops.c
-
-
-
-#-------------------------------------------------
-# DS5002FP
-#-------------------------------------------------
-
+CPUDEFS += -DHAS_I80C31=$(if $(filter I80C31,$(CPUS)),1,0)
+CPUDEFS += -DHAS_I80C32=$(if $(filter I80C32,$(CPUS)),1,0)
+CPUDEFS += -DHAS_I80C51=$(if $(filter I80C51,$(CPUS)),1,0)
+CPUDEFS += -DHAS_I80C52=$(if $(filter I80C52,$(CPUS)),1,0)
+CPUDEFS += -DHAS_I87C51=$(if $(filter I87C51,$(CPUS)),1,0)
+CPUDEFS += -DHAS_I87C52=$(if $(filter I87C52,$(CPUS)),1,0)
+CPUDEFS += -DHAS_AT89C4051=$(if $(filter AT89C4051,$(CPUS)),1,0)
 CPUDEFS += -DHAS_DS5002FP=$(if $(filter DS5002FP,$(CPUS)),1,0)
 
-ifneq ($(filter DS5002FP,$(CPUS)),)
-OBJDIRS += $(CPUOBJ)/ds5002fp
-CPUOBJS += $(CPUOBJ)/ds5002fp/ds5002fp.o
-DBGOBJS += $(CPUOBJ)/ds5002fp/ds5002fpdasm.o
+ifneq ($(filter DS5002FP I8031 I8032 I8051 I8052 I8751 I8752 I80C31 I80C32 I80C51 I80C52 I87C51 I87C52 AT89C4051,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/mcs51
+CPUOBJS += $(CPUOBJ)/mcs51/mcs51.o
+DBGOBJS += $(CPUOBJ)/mcs51/mcs51dasm.o
 endif
 
-
+$(CPUOBJ)/mcs51/mcs51.o:	$(CPUSRC)/mcs51/mcs51.c \
+							$(CPUSRC)/mcs51/mcs51.h \
+							$(CPUSRC)/mcs51/mcs51ops.c
 
 #-------------------------------------------------
 # Intel 80x86 series
@@ -716,26 +735,27 @@ DBGOBJS += $(CPUOBJ)/i386/i386dasm.o
 endif
 
 I86DEPS = \
-	$(CPUSRC)/i86/i86.h \
+	$(CPUSRC)/i86/i86priv.h \
 	$(CPUSRC)/i86/ea.h \
 	$(CPUSRC)/i86/host.h \
 	$(CPUSRC)/i86/modrm.h
 
 $(CPUOBJ)/i86/i86.o:	$(CPUSRC)/i86/i86.c \
+						$(CPUSRC)/i86/i86.h \
 						$(CPUSRC)/i86/instr86.c \
 						$(CPUSRC)/i86/instr186.c \
-						$(CPUSRC)/i86/i86intf.h \
-						$(CPUSRC)/i86/i186intf.h \
 						$(I86DEPS)
 
-$(CPUOBJ)/i86/i286.o:	$(CPUSRC)/i86/i86.c \
+$(CPUOBJ)/i86/i286.o:	$(CPUSRC)/i86/i286.c \
+						$(CPUSRC)/i86/i286.h \
+						$(CPUSRC)/i86/instr86.c \
+						$(CPUSRC)/i86/instr186.c \
 						$(CPUSRC)/i86/instr286.c \
-						$(CPUSRC)/i86/i286intf.h \
 						$(I86DEPS)
 
 $(CPUOBJ)/i386/i386.o:	$(CPUSRC)/i386/i386.c \
 						$(CPUSRC)/i386/i386.h \
-						$(CPUSRC)/i386/i386intf.h \
+						$(CPUSRC)/i386/i386priv.h \
 						$(CPUSRC)/i386/i386op16.c \
 						$(CPUSRC)/i386/i386op32.c \
 						$(CPUSRC)/i386/i386ops.c \
@@ -745,6 +765,22 @@ $(CPUOBJ)/i386/i386.o:	$(CPUSRC)/i386/i386.c \
 						$(CPUSRC)/i386/i386ops.h \
 						$(CPUSRC)/i386/cycles.h
 
+
+
+#-------------------------------------------------
+# Intel i860
+#-------------------------------------------------
+
+CPUDEFS += -DHAS_I860=$(if $(filter I860,$(CPUS)),1,0)
+
+ifneq ($(filter I860,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/i860
+CPUOBJS += $(CPUOBJ)/i860/i860.o
+DBGOBJS += $(CPUOBJ)/i860/i860dasm.o
+endif
+
+$(CPUOBJ)/i860/i860.o:	$(CPUSRC)/i860/i860.c \
+						$(CPUSRC)/i860/i860.h
 
 
 #-------------------------------------------------
@@ -1100,16 +1136,11 @@ $(CPUOBJ)/mc68hc11/mc68hc11.o:	$(CPUSRC)/mc68hc11/mc68hc11.c \
 # Motorola 68000 series
 #-------------------------------------------------
 
-CPUDEFS += -DHAS_M68000=$(if $(filter M68000,$(CPUS)),1,0)
-CPUDEFS += -DHAS_M68008=$(if $(filter M68008,$(CPUS)),1,0)
-CPUDEFS += -DHAS_M68010=$(if $(filter M68010,$(CPUS)),1,0)
-CPUDEFS += -DHAS_M68EC020=$(if $(filter M68EC020,$(CPUS)),1,0)
-CPUDEFS += -DHAS_M68020=$(if $(filter M68020,$(CPUS)),1,0)
-CPUDEFS += -DHAS_M68040=$(if $(filter M68040,$(CPUS)),1,0)
+CPUDEFS += -DHAS_M680X0=$(if $(filter M680X0,$(CPUS)),1,0)
 
-ifneq ($(filter M68000 M68008 M68010 M68EC020 M68020 M68040,$(CPUS)),)
+ifneq ($(filter M680X0,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/m68000
-CPUOBJS += $(CPUOBJ)/m68000/m68kcpu.o $(CPUOBJ)/m68000/m68kmame.o $(CPUOBJ)/m68000/m68kops.o
+CPUOBJS += $(CPUOBJ)/m68000/m68kcpu.o $(CPUOBJ)/m68000/m68kops.o
 DBGOBJS += $(CPUOBJ)/m68000/m68kdasm.o
 M68KMAKE = $(BUILDOUT)/m68kmake$(BUILD_EXE)
 endif
@@ -1141,9 +1172,6 @@ endif
 
 # rule to ensure we build the header before building the core CPU file
 $(CPUOBJ)/m68000/m68kcpu.o: 	$(CPUOBJ)/m68000/m68kops.c \
-								$(CPUSRC)/m68000/m68kcpu.h
-
-$(CPUOBJ)/m68000/m68kmame.o:	$(CPUSRC)/m68000/m68kmame.c \
 								$(CPUSRC)/m68000/m68kcpu.h
 
 
@@ -1187,17 +1215,9 @@ $(CPUOBJ)/pdp1/pdp1.o:	$(CPUSRC)/pdp1/pdp1.c \
 # Motorola PowerPC series
 #-------------------------------------------------
 
-CPUDEFS += -DHAS_PPC403GA=$(if $(filter PPC403GA,$(CPUS)),1,0)
-CPUDEFS += -DHAS_PPC403GCX=$(if $(filter PPC403GCX,$(CPUS)),1,0)
-CPUDEFS += -DHAS_PPC601=$(if $(filter PPC601,$(CPUS)),1,0)
-CPUDEFS += -DHAS_PPC602=$(if $(filter PPC602,$(CPUS)),1,0)
-CPUDEFS += -DHAS_PPC603=$(if $(filter PPC603,$(CPUS)),1,0)
-CPUDEFS += -DHAS_PPC603E=$(if $(filter PPC603E,$(CPUS)),1,0)
-CPUDEFS += -DHAS_PPC603R=$(if $(filter PPC603R,$(CPUS)),1,0)
-CPUDEFS += -DHAS_PPC604=$(if $(filter PPC604,$(CPUS)),1,0)
-CPUDEFS += -DHAS_MPC8240=$(if $(filter MPC8240,$(CPUS)),1,0)
+CPUDEFS += -DHAS_POWERPC=$(if $(filter POWERPC,$(CPUS)),1,0)
 
-ifneq ($(filter PPC403GA PPC403GCX PPC601 PPC602 PPC603 PPC603E PPC603R PPC604 MPC8240,$(CPUS)),)
+ifneq ($(filter POWERPC,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/powerpc
 CPUOBJS += $(CPUOBJ)/powerpc/ppccom.o $(CPUOBJ)/powerpc/ppcfe.o $(CPUOBJ)/powerpc/ppcdrc.o $(DRCOBJ)
 DBGOBJS += $(CPUOBJ)/powerpc/ppc_dasm.o
@@ -1243,11 +1263,11 @@ endif
 
 $(CPUOBJ)/nec/nec.o:	$(CPUSRC)/nec/nec.c \
 						$(CPUSRC)/nec/nec.h \
-						$(CPUSRC)/nec/necintrf.h \
 						$(CPUSRC)/nec/necea.h \
 						$(CPUSRC)/nec/nechost.h \
 						$(CPUSRC)/nec/necinstr.h \
-						$(CPUSRC)/nec/necmodrm.h
+						$(CPUSRC)/nec/necmodrm.h \
+						$(CPUSRC)/nec/necpriv.h
 
 $(CPUOBJ)/v30mz/v30mz.o:	$(CPUSRC)/v30mz/v30mz.c \
 							$(CPUSRC)/v30mz/v30mz.h \
@@ -1255,7 +1275,7 @@ $(CPUOBJ)/v30mz/v30mz.o:	$(CPUSRC)/v30mz/v30mz.c \
 							$(CPUSRC)/v30mz/necinstr.h \
 							$(CPUSRC)/v30mz/necea.h \
 							$(CPUSRC)/v30mz/nechost.h \
-							$(CPUSRC)/v30mz/necintrf.h
+							$(CPUSRC)/v30mz/nec.h
 
 
 
@@ -1469,7 +1489,7 @@ CPUDEFS += -DHAS_CXD8661R=$(if $(filter CXD8661R,$(CPUS)),1,0)
 ifneq ($(filter PSXCPU CXD8661R,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/mips
 CPUOBJS += $(CPUOBJ)/mips/psx.o
-DBGOBJS += $(CPUOBJ)/mips/mipsdasm.o
+DBGOBJS += $(CPUOBJ)/mips/psxdasm.o
 endif
 
 $(CPUOBJ)/mips/psx.o:	$(CPUSRC)/mips/psx.c \
@@ -1580,21 +1600,19 @@ $(CPUOBJ)/tms9900/ti990_10.o:	$(CPUSRC)/tms9900/ti990_10.c \
 # Texas Instruments TMS340x0 graphics controllers
 #-------------------------------------------------
 
-CPUDEFS += -DHAS_TMS34010=$(if $(filter TMS34010,$(CPUS)),1,0)
-CPUDEFS += -DHAS_TMS34020=$(if $(filter TMS34020,$(CPUS)),1,0)
+CPUDEFS += -DHAS_TMS340X0=$(if $(filter TMS340X0,$(CPUS)),1,0)
 
-ifneq ($(filter TMS34010 TMS34020,$(CPUS)),)
+ifneq ($(filter TMS340X0,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/tms34010
-CPUOBJS += $(CPUOBJ)/tms34010/tms34010.o $(CPUOBJ)/tms34010/34010fld.o
+CPUOBJS += $(CPUOBJ)/tms34010/tms34010.o
 DBGOBJS += $(CPUOBJ)/tms34010/34010dsm.o
 endif
-
-$(CPUOBJ)/tms34010/34010fld.o:  $(CPUSRC)/tms34010/34010fld.c
 
 $(CPUOBJ)/tms34010/tms34010.o:	$(CPUSRC)/tms34010/tms34010.c \
 								$(CPUSRC)/tms34010/tms34010.h \
 								$(CPUSRC)/tms34010/34010ops.c \
 								$(CPUSRC)/tms34010/34010gfx.c \
+								$(CPUSRC)/tms34010/34010fld.c \
 								$(CPUSRC)/tms34010/34010tbl.c
 
 

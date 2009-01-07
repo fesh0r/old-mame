@@ -70,6 +70,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/suna8.h"
 
 #define TILEMAPS 0
 
@@ -165,7 +166,7 @@ WRITE8_HANDLER( brickzn_banked_paletteram_w )
 			(((rgb & (1<<0x6))?1:0)<<2) |
 			(((rgb & (1<<0x7))?1:0)<<3);
 
-	palette_set_color_rgb(machine,offset/2,pal4bit(r),pal4bit(g),pal4bit(b));
+	palette_set_color_rgb(space->machine,offset/2,pal4bit(r),pal4bit(g),pal4bit(b));
 }
 
 
@@ -182,7 +183,7 @@ static void suna8_vh_start_common(int dim)
 	}
 
 #if TILEMAPS
-	bg_tilemap = tilemap_create(	get_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(	machine, get_tile_info, tilemap_scan_cols,
 
 								8,8,0x20*((suna8_text_dim > 0)?4:8),0x20);
 
@@ -317,7 +318,7 @@ static void draw_normal_sprites(running_machine *machine, bitmap_t *bitmap,const
 				if (flipx)	tile_flipx = !tile_flipx;
 				if (flipy)	tile_flipy = !tile_flipy;
 
-				if (flip_screen_get())
+				if (flip_screen_get(machine))
 				{	sx = max_x - sx;	tile_flipx = !tile_flipx;
 					sy = max_y - sy;	tile_flipy = !tile_flipy;	}
 
@@ -382,7 +383,7 @@ static void draw_text_sprites(running_machine *machine, bitmap_t *bitmap,const r
 				int sx		=	 x + tx * 8;
 				int sy		=	(y + real_ty * 8) & 0xff;
 
-				if (flip_screen_get())
+				if (flip_screen_get(machine))
 				{	sx = max_x - sx;	flipx = !flipx;
 					sy = max_y - sy;	flipy = !flipy;	}
 
@@ -409,7 +410,7 @@ static void draw_text_sprites(running_machine *machine, bitmap_t *bitmap,const r
 VIDEO_UPDATE( suna8 )
 {
 	/* see hardhead, hardhea2 test mode (press button 2 for both players) */
-	fillbitmap(bitmap,0xff,cliprect);
+	bitmap_fill(bitmap,cliprect,0xff);
 
 #ifdef MAME_DEBUG
 #if TILEMAPS

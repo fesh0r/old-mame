@@ -1,6 +1,7 @@
 #ifndef _SNES_H_
 #define _SNES_H_
 
+#include "streams.h"
 #include "sound/custom.h"
 
 /*
@@ -394,7 +395,6 @@ extern READ8_HANDLER( snes_r_bank6 );
 extern READ8_HANDLER( snes_r_bank7 );
 extern WRITE8_HANDLER( snes_w_bank1 );
 extern WRITE8_HANDLER( snes_w_bank2 );
-extern WRITE8_HANDLER( snes_w_bank3 );
 extern WRITE8_HANDLER( snes_w_bank4 );
 extern WRITE8_HANDLER( snes_w_bank5 );
 extern WRITE8_HANDLER( snes_w_bank6 );
@@ -402,9 +402,9 @@ extern WRITE8_HANDLER( snes_w_bank7 );
 
 extern UINT8 has_addon_chip;
 
-extern void snes_gdma( UINT8 channels );
+extern void snes_gdma( const address_space *space, UINT8 channels );
 extern void snes_hdma_init(void);
-extern void snes_hdma(void);
+extern void snes_hdma(const address_space *space);
 
 /* (PPU) Video related */
 extern UINT8  *snes_vram;			/* Video RAM (Should be 16-bit, but it's easier this way) */
@@ -493,8 +493,8 @@ extern WRITE8_HANDLER( spc_io_w );
 extern READ8_HANDLER( spc_ram_r );
 extern WRITE8_HANDLER( spc_ram_w );
 extern READ8_HANDLER( spc_ipl_r );
-extern void *snes_sh_start(int clock, const custom_sound_interface *config);
-extern void snes_sh_update( void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length );
+extern CUSTOM_START( snes_sh_start );
+extern STREAM_UPDATE( snes_sh_update );
 
 /* Stuff from OpenSPC 0.3.99 by Brad Martin */
 

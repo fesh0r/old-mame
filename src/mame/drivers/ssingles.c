@@ -22,6 +22,7 @@
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "video/mc6845.h"
 
@@ -86,7 +87,6 @@ static MC6845_UPDATE_ROW( update_row )
 static const mc6845_interface mc6845_intf =
 {
 		"main",
-		1000000, /* ? MHz */
 		8,
 		NULL,
 		update_row,
@@ -271,8 +271,7 @@ static MACHINE_DRIVER_START( ssingles )
 	MDRV_VIDEO_START(ssingles)
 	MDRV_VIDEO_UPDATE(ssingles)
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
-	MDRV_DEVICE_CONFIG(mc6845_intf)
+	MDRV_MC6845_ADD("crtc", MC6845, 1000000 /* ? MHz */, mc6845_intf)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -312,8 +311,8 @@ static DRIVER_INIT(ssingles)
 	ssingles_colorram=auto_malloc(VMEM_SIZE);
 	memset(ssingles_videoram,0,VMEM_SIZE);
 	memset(ssingles_colorram,0,VMEM_SIZE);
-	state_save_register_global_pointer(ssingles_videoram, VMEM_SIZE);
-	state_save_register_global_pointer(ssingles_colorram, VMEM_SIZE);
+	state_save_register_global_pointer(machine, ssingles_videoram, VMEM_SIZE);
+	state_save_register_global_pointer(machine, ssingles_colorram, VMEM_SIZE);
 }
 
 GAME ( 1983, ssingles, 0, ssingles, ssingles, ssingles, ROT90, "Ent. Ent. Ltd", "Swinging Singles", GAME_SUPPORTS_SAVE | GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND )

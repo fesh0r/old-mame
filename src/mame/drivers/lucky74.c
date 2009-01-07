@@ -667,6 +667,7 @@
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/sn76496.h"
 #include "sound/msm5205.h"
@@ -724,7 +725,7 @@ static WRITE8_HANDLER( ym2149_portb_w )
     bit 0 contains the screen orientation.
 */
 	ym2149_portb = data;
-	flip_screen_set(data & 0x01);
+	flip_screen_set(space->machine, data & 0x01);
 }
 
 static READ8_HANDLER( usart_8251_r )
@@ -808,7 +809,7 @@ static INTERRUPT_GEN( nmi_interrupt )
 {
 	if ((ym2149_portb & 0x10) == 0)	/* ym2149 portB bit 4 trigger the NMI */
 	{
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -1121,7 +1122,7 @@ static SOUND_START( lucky74 )
 	lucky74_adpcm_busy_line = 0x01;	/* free and ready */
 }
 
-static void lucky74_adpcm_int(running_machine *machine, int num)
+static void lucky74_adpcm_int(const device_config *device)
 {
 	if (lucky74_adpcm_reg[05] == 0x01)	/* register 0x05 (bit 0 activated), trigger the sample */
 	{
@@ -1143,7 +1144,7 @@ static void lucky74_adpcm_int(running_machine *machine, int num)
 		if (lucky74_adpcm_data == -1)
 		{
 			/* transferring 1st nibble */
-			lucky74_adpcm_data = memory_region(machine, "adpcm")[lucky74_adpcm_pos];
+			lucky74_adpcm_data = memory_region(device->machine, "adpcm")[lucky74_adpcm_pos];
 			lucky74_adpcm_pos = (lucky74_adpcm_pos + 1) & 0xffff;
 			msm5205_data_w(0, lucky74_adpcm_data >> 4);
 

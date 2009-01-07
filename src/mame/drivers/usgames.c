@@ -24,6 +24,7 @@ Sound: AY-3-8912
 */
 
 #include "driver.h"
+#include "cpu/m6809/m6809.h"
 #include "deprecat.h"
 #include "video/mc6845.h"
 #include "sound/ay8910.h"
@@ -41,12 +42,12 @@ extern UINT8 *usgames_videoram,*usgames_charram;
 
 static WRITE8_HANDLER( usgames_rombank_w )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 
 //  logerror ("BANK WRITE? -%02x-\n",data);
 //popmessage("%02x",data);
 
-	memory_set_bankptr( 1,&RAM[ 0x10000 + 0x4000 * data] );
+	memory_set_bankptr(space->machine,  1,&RAM[ 0x10000 + 0x4000 * data] );
 }
 
 static WRITE8_HANDLER( lamps1_w )
@@ -224,6 +225,18 @@ static GFXDECODE_START( usgames )
 GFXDECODE_END
 
 
+static const mc6845_interface mc6845_intf =
+{
+	"main",		/* screen we are acting on */
+	8,			/* number of pixels per video memory address */
+	NULL,		/* before pixel update callback */
+	NULL,		/* row update callback */
+	NULL,		/* after pixel update callback */
+	NULL,		/* callback for display state changes */
+	NULL,		/* HSYNC callback */
+	NULL		/* VSYNC callback */
+};
+
 
 static MACHINE_DRIVER_START( usg32 )
 
@@ -249,7 +262,7 @@ static MACHINE_DRIVER_START( usg32 )
 	MDRV_VIDEO_START(usgames)
 	MDRV_VIDEO_UPDATE(usgames)
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_MC6845_ADD("crtc", MC6845, XTAL_18MHz / 16, mc6845_intf)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

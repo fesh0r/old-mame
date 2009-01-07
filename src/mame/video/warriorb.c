@@ -8,17 +8,19 @@
 static void warriorb_core_vh_start(running_machine *machine, int x_offs,int multiscrn_xoffs)
 {
 	int chips;
+	int mask;
 
-	chips = number_of_TC0100SCN();
+	chips = TC0100SCN_count(machine);
 
 	assert_always(chips > 0, "erroneous TC0100SCN configuration");
 
 	TC0100SCN_vh_start(machine,chips,TC0100SCN_GFX_NUM,x_offs,0,0,0,0,0,multiscrn_xoffs);
 
-	if (has_TC0110PCR())
+	mask = TC0110PCR_mask(machine);
+	if (mask & 1)
 		TC0110PCR_vh_start(machine);
 
-	if (has_second_TC0110PCR())
+	if (mask & 2)
 		TC0110PCR_1_vh_start(machine);
 
 	/* Ensure palette from correct TC0110PCR used for each screen */
@@ -131,14 +133,14 @@ VIDEO_UPDATE( warriorb )
 	layer[2] = 2;
 
 	/* Clear priority bitmap */
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	/* chip 0 does tilemaps on the left, chip 1 does the ones on the right */
 	// draw bottom layer
 	nodraw  = TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,screen_number,layer[0],TILEMAP_DRAW_OPAQUE,0);	/* left */
 
 	/* Ensure screen blanked even when bottom layers not drawn due to disable bit */
-	if(nodraw) fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	if(nodraw) bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	// draw middle layer
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,screen_number,layer[1],0,1);

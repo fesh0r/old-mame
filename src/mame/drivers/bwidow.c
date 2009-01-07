@@ -217,6 +217,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "video/vector.h"
 #include "video/avgdvg.h"
 #include "machine/atari_vg.h"
@@ -258,9 +259,9 @@ static READ8_HANDLER( spacduel_IN3_r )
 	int res2;
 	int res3;
 
-	res1 = input_port_read(machine, "IN3");
-	res2 = input_port_read(machine, "IN4");
-	res3 = input_port_read_safe(machine, "DSW2", 0);
+	res1 = input_port_read(space->machine, "IN3");
+	res2 = input_port_read(space->machine, "IN4");
+	res3 = input_port_read_safe(space->machine, "DSW2", 0);
 	res = 0x00;
 
 	switch (offset & 0x07)
@@ -304,7 +305,7 @@ static READ8_HANDLER( spacduel_IN3_r )
 
 static CUSTOM_INPUT( clock_r )
 {
-	return (cpunum_gettotalcycles(0) & 0x100) ? 1 : 0;
+	return (cpu_get_total_cycles(field->port->machine->cpu[0]) & 0x100) ? 1 : 0;
 }
 
 
@@ -340,7 +341,7 @@ static WRITE8_HANDLER( bwidow_misc_w )
 
 static WRITE8_HANDLER( irq_ack_w )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 

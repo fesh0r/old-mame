@@ -7,6 +7,7 @@
 *************************************************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/okim6295.h"
 #include "sound/2203intf.h"
 
@@ -32,7 +33,7 @@ static TILE_GET_INFO( get_tile_info )
 
 static VIDEO_START( cowrace )
 {
-	tmap = tilemap_create(	get_tile_info, tilemap_scan_rows,
+	tmap = tilemap_create(	machine, get_tile_info, tilemap_scan_rows,
 							8,8, 0x20,0x20	);
 
 	tilemap_set_transparent_pen(tmap, 0);
@@ -40,7 +41,7 @@ static VIDEO_START( cowrace )
 
 static VIDEO_UPDATE( cowrace )
 {
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect, tmap, 0, 0);
 	return 0;
 }
@@ -49,7 +50,7 @@ static VIDEO_UPDATE( cowrace )
 static WRITE8_HANDLER( cowrace_soundlatch_w )
 {
 	soundlatch_w(0, data);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 #endif
 

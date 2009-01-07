@@ -168,13 +168,13 @@ static WRITE8_HANDLER( shdancbl_msm5205_data_w )
 	sample_buffer = data;
 }
 
-static void shdancbl_msm5205_callback(running_machine *machine, int data)
+static void shdancbl_msm5205_callback(const device_config *device)
 {
 	msm5205_data_w(0, sample_buffer & 0x0F);
 	sample_buffer >>= 4;
 	sample_select ^= 1;
 	if(sample_select == 0)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static const msm5205_interface shdancbl_msm5205_interface =
@@ -187,8 +187,8 @@ static UINT8* shdancbl_soundbank_ptr = NULL;		/* Pointer to currently selected p
 
 static WRITE16_HANDLER( sound_command_irq_w ){
 	if( ACCESSING_BITS_0_7 ){
-		soundlatch_w( machine,0,data&0xff );
-		cpunum_set_input_line(machine, 1, 0, HOLD_LINE );
+		soundlatch_w( space,0,data&0xff );
+		cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE );
 	}
 }
 
@@ -200,7 +200,7 @@ static READ8_HANDLER( shdancbl_soundbank_r )
 
 static WRITE8_HANDLER( shdancbl_bankctrl_w )
 {
-	UINT8 *mem = memory_region(machine, "sound");
+	UINT8 *mem = memory_region(space->machine, "sound");
 
 	switch(data)
 	{
@@ -218,7 +218,7 @@ static WRITE8_HANDLER( shdancbl_bankctrl_w )
 			break;
 		default:
 			shdancbl_soundbank_ptr = NULL;
-			logerror("Invalid bank setting %02X (%04X)\n", data, activecpu_get_pc());
+			logerror("Invalid bank setting %02X (%04X)\n", data, cpu_get_pc(space->cpu));
 			break;
 	}
 }
@@ -293,7 +293,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( sys18_soundbank_w )
 {
-	UINT8 *mem = memory_region(machine, "sound");
+	UINT8 *mem = memory_region(space->machine, "sound");
 	int rom = (data >> 6) & 3;
 	int bank = (data & 0x3f);
 	int mask = sys18_sound_info[rom*2+0];
@@ -321,8 +321,8 @@ ADDRESS_MAP_END
 
 static WRITE16_HANDLER( sound_command_nmi_w ){
 	if( ACCESSING_BITS_0_7 ){
-		soundlatch_w( machine,0,data&0xff );
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w( space,0,data&0xff );
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -473,14 +473,14 @@ static READ16_HANDLER( sys18_io_r )
 						if(io_reg[0x0F] & 0x01)
 							return io_reg[0x00];
 						else
-							return input_port_read(machine, "P1");
+							return input_port_read(space->machine, "P1");
 						break;
 
 					case 0x01: /* Port B - 2P controls */
 						if(io_reg[0x0F] & 0x02)
 							return io_reg[0x01];
 						else
-							return input_port_read(machine, "P2");
+							return input_port_read(space->machine, "P2");
 						break;
 
 					case 0x02: /* Port C - Bidirectional I/O port */
@@ -501,21 +501,21 @@ static READ16_HANDLER( sys18_io_r )
 						if(io_reg[0x0F] & 0x10)
 							return io_reg[0x04];
 						else
-							return input_port_read(machine, "SERVICE");
+							return input_port_read(space->machine, "SERVICE");
 						break;
 
 					case 0x05: /* Port F - DIP switch #1 */
 						if(io_reg[0x0F] & 0x20)
 							return io_reg[0x05];
 						else
-							return input_port_read(machine, "DSW1");
+							return input_port_read(space->machine, "DSW1");
 						break;
 
 					case 0x06: /* Port G - DIP switch #2 */
 						if(io_reg[0x0F] & 0x40)
 							return io_reg[0x06];
 						else
-							return input_port_read(machine, "P3");
+							return input_port_read(space->machine, "P3");
 						break;
 
 					case 0x07: /* Port H - Tile banking control */
@@ -545,11 +545,11 @@ static READ16_HANDLER( sys18_io_r )
 				return -1;
 
 			case 0x2000/2: /* Unused */
-				logerror("read video control latch %06X (%06X)\n", offset, activecpu_get_pc());
+				logerror("read video control latch %06X (%06X)\n", offset, cpu_get_pc(space->cpu));
 				return -1;
 
 			case 0x3000/2: /* Expansion connector */
-				logerror("read expansion area %06X (%06X)\n", offset, activecpu_get_pc());
+				logerror("read expansion area %06X (%06X)\n", offset, cpu_get_pc(space->cpu));
 				return -1;
 		}
 	}
@@ -617,11 +617,11 @@ static WRITE16_HANDLER( sys18_io_w )
 				break;
 
 			case 0x2000/2: /* Video control latch */
-				logerror("write video control latch %06X = %04X (%06X)\n", offset, data, activecpu_get_pc());
+				logerror("write video control latch %06X = %04X (%06X)\n", offset, data, cpu_get_pc(space->cpu));
 				break;
 
 			case 0x3000/2: /* Expansion connector */
-//              logerror("write expansion area %06X = %04X (%06X)\n", offset, data, activecpu_get_pc());
+//              logerror("write expansion area %06X = %04X (%06X)\n", offset, data, cpu_get_pc(space->cpu));
 				break;
 		}
 	}
@@ -738,7 +738,7 @@ static MACHINE_RESET( shdancbl )
 }
 
 static READ16_HANDLER( shdancbl_skip_r ){
-	if (activecpu_get_pc()==0x2f76) {cpu_spinuntil_int(); return 0xffff;}
+	if (cpu_get_pc(space->cpu)==0x2f76) {cpu_spinuntil_int(space->cpu); return 0xffff;}
 	return sys16_workingram[0];
 }
 
@@ -753,7 +753,7 @@ static DRIVER_INIT( shdancbl )
 		mem[i] ^= 0xFF;
 
 	MACHINE_RESET_CALL(sys16_onetime);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xffc000, 0xffc001, 0, 0, shdancbl_skip_r );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xffc000, 0xffc001, 0, 0, shdancbl_skip_r );
 
 	sys18_splittab_fg_x=&sys16_textram[0x0f80/2];
 	sys18_splittab_bg_x=&sys16_textram[0x0fc0/2];
@@ -771,7 +771,7 @@ static DRIVER_INIT( shdancbl )
 /***************************************************************************/
 
 static READ16_HANDLER( mwalkbl_skip_r ){
-	if (activecpu_get_pc()==0x308a) {cpu_spinuntil_int(); return 0xffff;}
+	if (cpu_get_pc(space->cpu)==0x308a) {cpu_spinuntil_int(space->cpu); return 0xffff;}
 	return sys16_workingram[0x202c/2];
 }
 
@@ -840,47 +840,50 @@ static void mwalkbl_update_proc( void ){
 }
 
 static MACHINE_RESET( mwalkbl ){
+	static const sys16_patch patch[] =
+	{
+		{ 0x70116, 0x4e },
+		{ 0x70117, 0x71 },
+
+		{ 0x0314a, 0x46 },
+		{ 0x0314b, 0x42 },
+		{ 0x0311b, 0x3f },
+
+		{ 0x70103, 0x00 },
+		{ 0x70109, 0x00 },
+		{ 0x07727, 0x00 },
+		{ 0x07729, 0x00 },
+		{ 0x0780d, 0x00 },
+		{ 0x0780f, 0x00 },
+		{ 0x07861, 0x00 },
+		{ 0x07863, 0x00 },
+		{ 0x07d47, 0x00 },
+		{ 0x07863, 0x00 },
+		{ 0x08533, 0x00 },
+		{ 0x08535, 0x00 },
+		{ 0x085bd, 0x00 },
+		{ 0x085bf, 0x00 },
+		{ 0x09a4b, 0x00 },
+		{ 0x09a4d, 0x00 },
+		{ 0x09b2f, 0x00 },
+		{ 0x09b31, 0x00 },
+		{ 0x0a05b, 0x00 },
+		{ 0x0a05d, 0x00 },
+		{ 0x0a23f, 0x00 },
+		{ 0x0a241, 0x00 },
+		{ 0x10159, 0x00 },
+		{ 0x1015b, 0x00 },
+		{ 0x109fb, 0x00 },
+		{ 0x109fd, 0x00 },
+
+		// * SEGA mark
+		{ 0x70212, 0x4e },
+		{ 0x70213, 0x71 }
+	};
+
+	sys16_patch_code(machine, patch, ARRAY_LENGTH(patch));
 	sys16_bg_priority_value=0x1000;
 	sys16_sprxoffset = -0x238;
-
-	sys16_patch_code( 0x70116, 0x4e);
-	sys16_patch_code( 0x70117, 0x71);
-
-	sys16_patch_code( 0x314a, 0x46);
-	sys16_patch_code( 0x314b, 0x42);
-
-	sys16_patch_code( 0x311b, 0x3f);
-
-	sys16_patch_code( 0x70103, 0x00);
-	sys16_patch_code( 0x70109, 0x00);
-	sys16_patch_code( 0x07727, 0x00);
-	sys16_patch_code( 0x07729, 0x00);
-	sys16_patch_code( 0x0780d, 0x00);
-	sys16_patch_code( 0x0780f, 0x00);
-	sys16_patch_code( 0x07861, 0x00);
-	sys16_patch_code( 0x07863, 0x00);
-	sys16_patch_code( 0x07d47, 0x00);
-	sys16_patch_code( 0x07863, 0x00);
-	sys16_patch_code( 0x08533, 0x00);
-	sys16_patch_code( 0x08535, 0x00);
-	sys16_patch_code( 0x085bd, 0x00);
-	sys16_patch_code( 0x085bf, 0x00);
-	sys16_patch_code( 0x09a4b, 0x00);
-	sys16_patch_code( 0x09a4d, 0x00);
-	sys16_patch_code( 0x09b2f, 0x00);
-	sys16_patch_code( 0x09b31, 0x00);
-	sys16_patch_code( 0x0a05b, 0x00);
-	sys16_patch_code( 0x0a05d, 0x00);
-	sys16_patch_code( 0x0a23f, 0x00);
-	sys16_patch_code( 0x0a241, 0x00);
-	sys16_patch_code( 0x10159, 0x00);
-	sys16_patch_code( 0x1015b, 0x00);
-	sys16_patch_code( 0x109fb, 0x00);
-	sys16_patch_code( 0x109fd, 0x00);
-
-	// * SEGA mark
-	sys16_patch_code( 0x70212, 0x4e);
-	sys16_patch_code( 0x70213, 0x71);
 
 	sys16_update_proc = mwalkbl_update_proc;
 }
@@ -989,68 +992,71 @@ static void astormbl_update_proc( void ){
 }
 
 static MACHINE_RESET( astormbl ){
+	static const sys16_patch patch[] =
+	{
+		{ 0x02D6E, 0x32 },
+		{ 0x02D6F, 0x3c },
+		{ 0x02D70, 0x80 },
+		{ 0x02D71, 0x00 },
+		{ 0x02D72, 0x33 },
+		{ 0x02D73, 0xc1 },
+		{ 0x02ea2, 0x30 },
+		{ 0x02ea3, 0x38 },
+		{ 0x02ea4, 0xec },
+		{ 0x02ea5, 0xf6 },
+		{ 0x02ea6, 0x30 },
+		{ 0x02ea7, 0x80 },
+		{ 0x02e5c, 0x30 },
+		{ 0x02e5d, 0x38 },
+		{ 0x02e5e, 0xec },
+		{ 0x02e5f, 0xe2 },
+		{ 0x02e60, 0xc0 },
+		{ 0x02e61, 0x7c },
+
+		{ 0x04cd8, 0x02 },
+		{ 0x04cec, 0x03 },
+		{ 0x2dc6c, 0xe9 },
+		{ 0x2dc64, 0x10 },
+		{ 0x2dc65, 0x10 },
+		{ 0x3a100, 0x10 },
+		{ 0x3a101, 0x13 },
+		{ 0x3a102, 0x90 },
+		{ 0x3a103, 0x2b },
+		{ 0x3a104, 0x00 },
+		{ 0x3a105, 0x01 },
+		{ 0x3a106, 0x0c },
+		{ 0x3a107, 0x00 },
+		{ 0x3a108, 0x00 },
+		{ 0x3a109, 0x01 },
+		{ 0x3a10a, 0x66 },
+		{ 0x3a10b, 0x06 },
+		{ 0x3a10c, 0x42 },
+		{ 0x3a10d, 0x40 },
+		{ 0x3a10e, 0x54 },
+		{ 0x3a10f, 0x8b },
+		{ 0x3a110, 0x60 },
+		{ 0x3a111, 0x02 },
+		{ 0x3a112, 0x30 },
+		{ 0x3a113, 0x1b },
+		{ 0x3a114, 0x34 },
+		{ 0x3a115, 0xc0 },
+		{ 0x3a116, 0x34 },
+		{ 0x3a117, 0xdb },
+		{ 0x3a118, 0x24 },
+		{ 0x3a119, 0xdb },
+		{ 0x3a11a, 0x24 },
+		{ 0x3a11b, 0xdb },
+		{ 0x3a11c, 0x4e },
+		{ 0x3a11d, 0x75 },
+		{ 0x0af8e, 0x66 },
+
+		/* fix missing credit text */
+		{ 0x03f9a, 0xec },
+		{ 0x03f9b, 0x36 }
+	};
+
+	sys16_patch_code(machine, patch, ARRAY_LENGTH(patch));
 	sys16_fgxoffset = sys16_bgxoffset = -9;
-
-	sys16_patch_code( 0x2D6E, 0x32 );
-	sys16_patch_code( 0x2D6F, 0x3c );
-	sys16_patch_code( 0x2D70, 0x80 );
-	sys16_patch_code( 0x2D71, 0x00 );
-	sys16_patch_code( 0x2D72, 0x33 );
-	sys16_patch_code( 0x2D73, 0xc1 );
-	sys16_patch_code( 0x2ea2, 0x30 );
-	sys16_patch_code( 0x2ea3, 0x38 );
-	sys16_patch_code( 0x2ea4, 0xec );
-	sys16_patch_code( 0x2ea5, 0xf6 );
-	sys16_patch_code( 0x2ea6, 0x30 );
-	sys16_patch_code( 0x2ea7, 0x80 );
-	sys16_patch_code( 0x2e5c, 0x30 );
-	sys16_patch_code( 0x2e5d, 0x38 );
-	sys16_patch_code( 0x2e5e, 0xec );
-	sys16_patch_code( 0x2e5f, 0xe2 );
-	sys16_patch_code( 0x2e60, 0xc0 );
-	sys16_patch_code( 0x2e61, 0x7c );
-
-	sys16_patch_code( 0x4cd8, 0x02 );
-	sys16_patch_code( 0x4cec, 0x03 );
-	sys16_patch_code( 0x2dc6c, 0xe9 );
-	sys16_patch_code( 0x2dc64, 0x10 );
-	sys16_patch_code( 0x2dc65, 0x10 );
-	sys16_patch_code( 0x3a100, 0x10 );
-	sys16_patch_code( 0x3a101, 0x13 );
-	sys16_patch_code( 0x3a102, 0x90 );
-	sys16_patch_code( 0x3a103, 0x2b );
-	sys16_patch_code( 0x3a104, 0x00 );
-	sys16_patch_code( 0x3a105, 0x01 );
-	sys16_patch_code( 0x3a106, 0x0c );
-	sys16_patch_code( 0x3a107, 0x00 );
-	sys16_patch_code( 0x3a108, 0x00 );
-	sys16_patch_code( 0x3a109, 0x01 );
-	sys16_patch_code( 0x3a10a, 0x66 );
-	sys16_patch_code( 0x3a10b, 0x06 );
-	sys16_patch_code( 0x3a10c, 0x42 );
-	sys16_patch_code( 0x3a10d, 0x40 );
-	sys16_patch_code( 0x3a10e, 0x54 );
-	sys16_patch_code( 0x3a10f, 0x8b );
-	sys16_patch_code( 0x3a110, 0x60 );
-	sys16_patch_code( 0x3a111, 0x02 );
-	sys16_patch_code( 0x3a112, 0x30 );
-	sys16_patch_code( 0x3a113, 0x1b );
-	sys16_patch_code( 0x3a114, 0x34 );
-	sys16_patch_code( 0x3a115, 0xc0 );
-	sys16_patch_code( 0x3a116, 0x34 );
-	sys16_patch_code( 0x3a117, 0xdb );
-	sys16_patch_code( 0x3a118, 0x24 );
-	sys16_patch_code( 0x3a119, 0xdb );
-	sys16_patch_code( 0x3a11a, 0x24 );
-	sys16_patch_code( 0x3a11b, 0xdb );
-	sys16_patch_code( 0x3a11c, 0x4e );
-	sys16_patch_code( 0x3a11d, 0x75 );
-	sys16_patch_code( 0xaf8e, 0x66 );
-
-	/* fix missing credit text */
-	sys16_patch_code( 0x3f9a, 0xec );
-	sys16_patch_code( 0x3f9b, 0x36 );
-
 	sys16_update_proc = astormbl_update_proc;
 }
 

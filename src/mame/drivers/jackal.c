@@ -86,13 +86,13 @@ static int irq_enable;
 
 static READ8_HANDLER( topgunbl_rotary_r )
 {
-	return (1 << (input_port_read(machine, offset ? "DIAL1" : "DIAL0") * 8 / 256)) ^ 0xff;
+	return (1 << (input_port_read(space->machine, offset ? "DIAL1" : "DIAL0") * 8 / 256)) ^ 0xff;
 }
 
 static WRITE8_HANDLER( jackal_flipscreen_w )
 {
 	irq_enable = data & 0x02;
-	flip_screen_set(data & 0x08);
+	flip_screen_set(space->machine, data & 0x08);
 }
 
 /* Memory Maps */
@@ -291,8 +291,8 @@ static INTERRUPT_GEN( jackal_interrupt )
 {
 	if (irq_enable)
 	{
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device, 0, HOLD_LINE);
+		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -307,7 +307,7 @@ static MACHINE_DRIVER_START( jackal )
 	MDRV_CPU_ADD("slave", M6809, MASTER_CLOCK/12) // verified on pcb
 	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_RESET(jackal)
 

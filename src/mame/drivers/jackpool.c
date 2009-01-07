@@ -9,6 +9,7 @@ Copyright (C) 1992 HI-TECH Software..Brisbane, QLD Australia
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "sound/okim6295.h"
 
@@ -142,9 +143,9 @@ static const gfx_layout tiles8x8_layout =
 
 static VIDEO_START(jackpool)
 {
-	jackpool_layer0_tilemap = tilemap_create(get_jackpool_layer0_tile_info,tilemap_scan_rows, 8, 8,64,32);
-	jackpool_layer1_tilemap = tilemap_create(get_jackpool_layer1_tile_info,tilemap_scan_rows, 8, 8,64,32);
-	jackpool_layer2_tilemap = tilemap_create(get_jackpool_layer2_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	jackpool_layer0_tilemap = tilemap_create(machine, get_jackpool_layer0_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	jackpool_layer1_tilemap = tilemap_create(machine, get_jackpool_layer1_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	jackpool_layer2_tilemap = tilemap_create(machine, get_jackpool_layer2_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(jackpool_layer0_tilemap,0);
 	tilemap_set_transparent_pen(jackpool_layer2_tilemap,0);
@@ -168,7 +169,7 @@ GFXDECODE_END
 /* verify */
 static INTERRUPT_GEN( jackpool_interrupt )
 {
-	cpunum_set_input_line(machine, 0, cpu_getiloops()+1, HOLD_LINE);	/* IRQs 3, 2, and 1 */
+	cpu_set_input_line(device, cpu_getiloops(device)+1, HOLD_LINE);	/* IRQs 3, 2, and 1 */
 }
 
 

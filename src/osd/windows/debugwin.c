@@ -23,10 +23,10 @@
 #include "debug/debugcon.h"
 #include "debug/debugcpu.h"
 #include "debugger.h"
-#include "deprecat.h"
 
 // MAMEOS headers
 #include "debugwin.h"
+#include "winmain.h"
 #include "window.h"
 #include "video.h"
 #include "input.h"
@@ -122,7 +122,6 @@ struct _debugview_info
 	HWND					wnd;
 	HWND					hscroll;
 	HWND					vscroll;
-	UINT8					is_textbuf;
 };
 
 
@@ -153,28 +152,9 @@ struct _debugwin_info
 	int						last_history;
 
 	HWND					otherwnd[MAX_OTHER_WND];
+
+	running_machine *		machine;
 };
-
-
-typedef struct _memorycombo_item memorycombo_item;
-struct _memorycombo_item
-{
-	memorycombo_item *		next;
-	TCHAR					name[256];
-	UINT8					cpunum;
-	UINT8					spacenum;
-	void *					base;
-	UINT32					length;
-	UINT8					offset_xor;
-	UINT8					little_endian;
-	UINT8					prefsize;
-};
-
-
-//============================================================
-//  GLOBAL VARIABLES
-//============================================================
-
 
 
 //============================================================
@@ -183,8 +163,7 @@ struct _memorycombo_item
 
 static debugwin_info *window_list;
 static debugwin_info *main_console;
-
-static memorycombo_item *memorycombo;
+static UINT32 main_console_regwidth;
 
 static UINT8 waiting_for_debugger;
 
@@ -196,24 +175,22 @@ static UINT32 debug_font_ascent;
 static UINT32 hscroll_height;
 static UINT32 vscroll_width;
 
-static DWORD last_debugger_update;
 
 
 //============================================================
 //  PROTOTYPES
 //============================================================
 
-static debugwin_info *debug_window_create(LPCSTR title, WNDPROC handler);
-static void debug_window_free(debugwin_info *info);
-static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam);
+static debugwin_info *debugwin_window_create(running_machine *machine, LPCSTR title, WNDPROC handler);
+static void debugwin_window_free(debugwin_info *info);
+static LRESULT CALLBACK debugwin_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam);
 
-static void debug_view_draw_contents(debugview_info *view, HDC dc);
-static debugview_info *debug_view_find(debug_view *view);
-static LRESULT CALLBACK debug_view_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam);
-static void debug_view_update(debug_view *view);
-static int debug_view_create(debugwin_info *info, int which, int type);
+static void debugwin_view_draw_contents(debugview_info *view, HDC dc);
+static LRESULT CALLBACK debugwin_view_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam);
+static void debugwin_view_update(debug_view *view, void *osdprivate);
+static int debugwin_view_create(debugwin_info *info, int which, int type);
 
-static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam);
+static LRESULT CALLBACK debugwin_edit_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam);
 
 //static void generic_create_window(int type);
 static void generic_recompute_children(debugwin_info *info);
@@ -224,19 +201,20 @@ static void memory_process_string(debugwin_info *info, const char *string);
 static void memory_update_menu(debugwin_info *info);
 static int memory_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lparam);
 static int memory_handle_key(debugwin_info *info, WPARAM wparam, LPARAM lparam);
+static void memory_update_caption(running_machine *machine, HWND wnd);
 
-static void disasm_create_window(void);
+static void disasm_create_window(running_machine *machine);
 static void disasm_recompute_children(debugwin_info *info);
 static void disasm_process_string(debugwin_info *info, const char *string);
 static void disasm_update_menu(debugwin_info *info);
 static int disasm_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lparam);
 static int disasm_handle_key(debugwin_info *info, WPARAM wparam, LPARAM lparam);
-static void disasm_update_caption(HWND wnd);
+static void disasm_update_caption(running_machine *machine, HWND wnd);
 
 static void console_create_window(running_machine *machine);
 static void console_recompute_children(debugwin_info *info);
 static void console_process_string(debugwin_info *info, const char *string);
-static void console_set_cpunum(running_machine *machine, int cpunum);
+static void console_set_cpu(const device_config *device);
 
 static HMENU create_standard_menubar(void);
 static int global_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lparam);
@@ -251,17 +229,17 @@ static void smart_show_all(BOOL show);
 //  osd_wait_for_debugger
 //============================================================
 
-void osd_wait_for_debugger(running_machine *machine, int firststop)
+void osd_wait_for_debugger(const device_config *device, int firststop)
 {
 	MSG message;
 
 	// create a console window
 	if (main_console == NULL)
-		console_create_window(machine);
+		console_create_window(device->machine);
 
 	// update the views in the console to reflect the current CPU
 	if (main_console != NULL)
-		console_set_cpunum(machine, cpu_getactivecpu());
+		console_set_cpu(device);
 
 	// when we are first stopped, adjust focus to us
 	if (firststop && main_console != NULL)
@@ -276,11 +254,10 @@ void osd_wait_for_debugger(running_machine *machine, int firststop)
 	smart_show_all(TRUE);
 
 	// run input polling to ensure that our status is in sync
-	wininput_poll(machine);
+	wininput_poll(device->machine);
 
 	// get and process messages
 	GetMessage(&message, NULL, 0, 0);
-	last_debugger_update = GetTickCount();
 
 	switch (message.message)
 	{
@@ -295,7 +272,7 @@ void osd_wait_for_debugger(running_machine *machine, int firststop)
 
 		// process everything else
 		default:
-			winwindow_dispatch_message(machine, &message);
+			winwindow_dispatch_message(device->machine, &message);
 			break;
 	}
 
@@ -309,9 +286,9 @@ void osd_wait_for_debugger(running_machine *machine, int firststop)
 //  debugwin_seq_pressed
 //============================================================
 
-static int debugwin_seq_pressed(void)
+static int debugwin_seq_pressed(running_machine *machine)
 {
-	const input_seq *seq = input_type_seq(Machine, IPT_UI_DEBUG_BREAK, 0, SEQ_TYPE_STANDARD);
+	const input_seq *seq = input_type_seq(machine, IPT_UI_DEBUG_BREAK, 0, SEQ_TYPE_STANDARD);
 	int result = FALSE;
 	int invert = FALSE;
 	int first = TRUE;
@@ -380,7 +357,7 @@ void debugwin_init_windows(void)
 		// initialize the description of the window class
 		wc.lpszClassName 	= TEXT("MAMEDebugWindow");
 		wc.hInstance 		= GetModuleHandle(NULL);
-		wc.lpfnWndProc		= debug_window_proc;
+		wc.lpfnWndProc		= debugwin_window_proc;
 		wc.hCursor			= LoadCursor(NULL, IDC_ARROW);
 		wc.hIcon			= LoadIcon(NULL, IDI_APPLICATION);
 		wc.lpszMenuName		= NULL;
@@ -395,7 +372,7 @@ void debugwin_init_windows(void)
 
 		// initialize the description of the view class
 		wc.lpszClassName 	= TEXT("MAMEDebugView");
-		wc.lpfnWndProc		= debug_view_proc;
+		wc.lpfnWndProc		= debugwin_view_proc;
 
 		// register the class; fail if we can't
 		if (!RegisterClass(&wc))
@@ -414,17 +391,29 @@ void debugwin_init_windows(void)
 
 		if (temp_dc != NULL)
 		{
-			// create a standard Lucida Console 8 font
-			debug_font = CreateFont(-MulDiv(8, GetDeviceCaps(temp_dc, LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, FALSE, FALSE, FALSE,
-						ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FF_DONTCARE, TEXT("Lucida Console"));
+			int size = options_get_int(mame_options(), WINOPTION_DEBUGGER_FONT_SIZE);
+			TCHAR *t_face;
+
+			// create a standard font
+			t_face = tstring_from_utf8(options_get_string(mame_options(), WINOPTION_DEBUGGER_FONT));
+			debug_font = CreateFont(-MulDiv(size, GetDeviceCaps(temp_dc, LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, FALSE, FALSE, FALSE,
+						ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FF_DONTCARE, t_face);
+			free(t_face);
+
+			// fall back to Lucida Console 8
 			if (debug_font == NULL)
-				fatalerror("Unable to create debug font");
+			{
+				debug_font = CreateFont(-MulDiv(8, GetDeviceCaps(temp_dc, LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, FALSE, FALSE, FALSE,
+							ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FF_DONTCARE, TEXT("Lucida Console"));
+				if (debug_font == NULL)
+					fatalerror("Unable to create debug font");
+			}
 
 			// get the metrics
 			old_font = SelectObject(temp_dc, debug_font);
 			if (GetTextMetrics(temp_dc, &metrics))
 			{
-				debug_font_width = metrics.tmMaxCharWidth;
+				debug_font_width = metrics.tmAveCharWidth;
 				debug_font_height = metrics.tmHeight;
 				debug_font_ascent = metrics.tmAscent + metrics.tmExternalLeading;
 			}
@@ -447,15 +436,11 @@ void debugwin_init_windows(void)
 void debugwin_destroy_windows(void)
 {
 	// loop over windows and free them
-	while (window_list)
-		DestroyWindow(window_list->wnd);
-
-	// free the combobox info
-	while (memorycombo)
+	while (window_list != NULL)
 	{
-		void *temp = memorycombo;
-		memorycombo = memorycombo->next;
-		free(temp);
+		// clear the view list because they will be freed by the core
+		memset(window_list->view, 0, sizeof(window_list->view));
+		DestroyWindow(window_list->wnd);
 	}
 
 	main_console = NULL;
@@ -472,7 +457,7 @@ void debugwin_show(int type)
 	debugwin_info *info;
 
 	// loop over windows and show/hide them
-	for (info = window_list; info; info = info->next)
+	for (info = window_list; info != NULL; info = info->next)
 		ShowWindow(info->wnd, type);
 }
 
@@ -488,15 +473,15 @@ void debugwin_update_during_game(running_machine *machine)
 	if (!winwindow_has_focus() && !debug_cpu_is_stopped(machine) && mame_get_phase(machine) == MAME_PHASE_RUNNING)
 	{
 		// see if the interrupt key is pressed and break if it is
-		if (debugwin_seq_pressed())
+		if (debugwin_seq_pressed(machine))
 		{
 			HWND focuswnd = GetFocus();
 			debugwin_info *info;
 
-			debug_cpu_halt_on_next_instruction(machine, -1, "User-initiated break\n");
+			debug_cpu_halt_on_next_instruction(debug_cpu_get_visible_cpu(machine), "User-initiated break\n");
 
 			// if we were focused on some window's edit box, reset it to default
-			for (info = window_list; info; info = info->next)
+			for (info = window_list; info != NULL; info = info->next)
 				if (focuswnd == info->editwnd)
 				{
 					SendMessage(focuswnd, WM_SETTEXT, (WPARAM)0, (LPARAM)info->edit_defstr);
@@ -509,10 +494,10 @@ void debugwin_update_during_game(running_machine *machine)
 
 
 //============================================================
-//  debug_window_create
+//  debugwin_window_create
 //============================================================
 
-static debugwin_info *debug_window_create(LPCSTR title, WNDPROC handler)
+static debugwin_info *debugwin_window_create(running_machine *machine, LPCSTR title, WNDPROC handler)
 {
 	debugwin_info *info = NULL;
 	RECT work_bounds;
@@ -540,6 +525,8 @@ static debugwin_info *debug_window_create(LPCSTR title, WNDPROC handler)
 	info->handle_key = global_handle_key;
 	strcpy(info->edit_defstr, "");
 
+	info->machine = machine;
+
 	// hook us in
 	info->next = window_list;
 	window_list = info;
@@ -556,28 +543,25 @@ cleanup:
 
 
 //============================================================
-//  debug_window_free
+//  debugwin_window_free
 //============================================================
 
-static void debug_window_free(debugwin_info *info)
+static void debugwin_window_free(debugwin_info *info)
 {
-	debugwin_info *prev, *curr;
+	debugwin_info **scanptr;
 	int viewnum;
 
 	// first unlink us from the list
-	for (curr = window_list, prev = NULL; curr; prev = curr, curr = curr->next)
-		if (curr == info)
+	for (scanptr = &window_list; *scanptr != NULL; scanptr = &(*scanptr)->next)
+		if (*scanptr == info)
 		{
-			if (prev)
-				prev->next = curr->next;
-			else
-				window_list = curr->next;
+			*scanptr = info->next;
 			break;
 		}
 
 	// free any views
-	for (viewnum = 0; viewnum < MAX_VIEWS; viewnum++)
-		if (info->view[viewnum].view)
+	for (viewnum = 0; viewnum < ARRAY_LENGTH(info->view); viewnum++)
+		if (info->view[viewnum].view != NULL)
 		{
 			debug_view_free(info->view[viewnum].view);
 			info->view[viewnum].view = NULL;
@@ -590,10 +574,10 @@ static void debug_window_free(debugwin_info *info)
 
 
 //============================================================
-//  debug_window_draw_contents
+//  debugwin_window_draw_contents
 //============================================================
 
-static void debug_window_draw_contents(debugwin_info *info, HDC dc)
+static void debugwin_window_draw_contents(debugwin_info *info, HDC dc)
 {
 	RECT bounds, parent;
 	int curview, curwnd;
@@ -647,10 +631,10 @@ static void debug_window_draw_contents(debugwin_info *info, HDC dc)
 
 
 //============================================================
-//  debug_window_proc
+//  debugwin_window_proc
 //============================================================
 
-static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
+static LRESULT CALLBACK debugwin_window_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	debugwin_info *info = (debugwin_info *)(FPTR)GetWindowLongPtr(wnd, GWLP_USERDATA);
 
@@ -673,7 +657,7 @@ static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam,
 		{
 			PAINTSTRUCT pstruct;
 			HDC dc = BeginPaint(wnd, &pstruct);
-			debug_window_draw_contents(info, dc);
+			debugwin_window_draw_contents(info, dc);
 			EndPaint(wnd, &pstruct);
 			break;
 		}
@@ -688,7 +672,7 @@ static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam,
 		case WM_CHAR:
 			if (info->ignore_char_lparam == (lparam >> 16))
 				info->ignore_char_lparam = 0;
-			else if (waiting_for_debugger || !debugwin_seq_pressed())
+			else if (waiting_for_debugger || !debugwin_seq_pressed(info->machine))
 				return DefWindowProc(wnd, message, wparam, lparam);
 			break;
 
@@ -713,8 +697,9 @@ static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam,
 		}
 
 		// sizing: recompute child window locations
+		case WM_SIZE:
 		case WM_SIZING:
-			if (info->recompute_children)
+			if (info->recompute_children != NULL)
 				(*info->recompute_children)(info);
 			InvalidateRect(wnd, NULL, FALSE);
 			break;
@@ -775,7 +760,7 @@ static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam,
 			if (main_console && main_console->wnd == wnd)
 			{
 				smart_show_all(FALSE);
-				debug_cpu_go(~0);
+				debug_cpu_go(info->machine, ~0);
 			}
 			else
 				DestroyWindow(wnd);
@@ -783,7 +768,7 @@ static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam,
 
 		// destroy: close down the window
 		case WM_NCDESTROY:
-			debug_window_free(info);
+			debugwin_window_free(info);
 			break;
 
 		// everything else: defaults
@@ -797,13 +782,12 @@ static LRESULT CALLBACK debug_window_proc(HWND wnd, UINT message, WPARAM wparam,
 
 
 //============================================================
-//  debug_view_create
+//  debugwin_view_create
 //============================================================
 
-static int debug_view_create(debugwin_info *info, int which, int type)
+static int debugwin_view_create(debugwin_info *info, int which, int type)
 {
 	debugview_info *view = &info->view[which];
-	void *callback = (void *)debug_view_update;
 
 	// set the owner
 	view->owner = info;
@@ -823,12 +807,10 @@ static int debug_view_create(debugwin_info *info, int which, int type)
 		goto cleanup;
 
 	// create the debug view
-	view->view = debug_view_alloc(type);
+	view->view = debug_view_alloc(info->machine, type, debugwin_view_update, view);
 	if (view->view == NULL)
 		goto cleanup;
 
-	// set the update handler
-	debug_view_set_property_fct(view->view, DVP_UPDATE_CALLBACK, callback);
 	return 1;
 
 cleanup:
@@ -846,10 +828,10 @@ cleanup:
 
 
 //============================================================
-//  debug_view_set_bounds
+//  debugwin_view_set_bounds
 //============================================================
 
-static void debug_view_set_bounds(debugview_info *info, HWND parent, const RECT *newbounds)
+static void debugwin_view_set_bounds(debugview_info *info, HWND parent, const RECT *newbounds)
 {
 	RECT bounds = *newbounds;
 
@@ -858,20 +840,20 @@ static void debug_view_set_bounds(debugview_info *info, HWND parent, const RECT 
 		smart_set_window_bounds(info->wnd, parent, &bounds);
 
 	// update
-	debug_view_update(info->view);
+	debugwin_view_update(info->view, info);
 }
 
 
 
 //============================================================
-//  debug_view_draw_contents
+//  debugwin_view_draw_contents
 //============================================================
 
-static void debug_view_draw_contents(debugview_info *view, HDC windc)
+static void debugwin_view_draw_contents(debugview_info *view, HDC windc)
 {
-	debug_view_char *viewdata;
+	const debug_view_char *viewdata = debug_view_get_chars(view->view);
+	debug_view_xy visarea = debug_view_get_visible_size(view->view);
 	HGDIOBJ oldfont, oldbitmap;
-	UINT32 visrows, viscols;
 	COLORREF oldfgcolor;
 	UINT32 col, row;
 	HBITMAP bitmap;
@@ -894,11 +876,6 @@ static void debug_view_draw_contents(debugview_info *view, HDC windc)
 	}
 	oldbitmap = SelectObject(dc, bitmap);
 
-	// first get the visible size from the view and a pointer to the data
-	visrows = debug_view_get_property_UINT32(view->view, DVP_VISIBLE_ROWS);
-	viscols = debug_view_get_property_UINT32(view->view, DVP_VISIBLE_COLS);
-	viewdata = debug_view_get_property_ptr(view->view, DVP_VIEW_DATA);
-
 	// set the font
 	oldfont = SelectObject(dc, debug_font);
 	oldfgcolor = GetTextColor(dc);
@@ -906,7 +883,7 @@ static void debug_view_draw_contents(debugview_info *view, HDC windc)
 	SetBkMode(dc, TRANSPARENT);
 
 	// iterate over rows and columns
-	for (row = 0; row < visrows; row++)
+	for (row = 0; row < visarea.y; row++)
 	{
 		int iter;
 
@@ -931,7 +908,7 @@ static void debug_view_draw_contents(debugview_info *view, HDC windc)
 				bgbrush = CreateSolidBrush(bgcolor);
 
 			// iterate over columns
-			for (col = 0; col < viscols; col++)
+			for (col = 0; col < visarea.x; col++)
 			{
 				// if the attribute changed, adjust the colors
 				if (viewdata[col].attrib != last_attrib)
@@ -1000,12 +977,12 @@ static void debug_view_draw_contents(debugview_info *view, HDC windc)
 		}
 
 		// advance viewdata
-		viewdata += viscols;
+		viewdata += visarea.x;
 	}
 
 	// erase anything beyond the bottom with white
 	GetClientRect(view->wnd, &client);
-	client.top = visrows * debug_font_height;
+	client.top = visarea.y * debug_font_height;
 	FillRect(dc, &client, (HBRUSH)GetStockObject(WHITE_BRUSH));
 
 	// reset the font
@@ -1025,154 +1002,115 @@ static void debug_view_draw_contents(debugview_info *view, HDC windc)
 
 
 //============================================================
-//  debug_view_update
+//  debugwin_view_update
 //============================================================
 
-static void debug_view_update(debug_view *view)
+static void debugwin_view_update(debug_view *view, void *osdprivate)
 {
-	debugview_info *info = debug_view_find(view);
+	debugview_info *info = osdprivate;
+	RECT bounds, vscroll_bounds, hscroll_bounds;
+	debug_view_xy totalsize, visiblesize, topleft;
+	int show_vscroll, show_hscroll;
+	SCROLLINFO scrollinfo;
 
-	// if we have a view window, process it
-	if (info && info->view)
+	assert(info->view == view);
+
+	// get the view window bounds
+	GetClientRect(info->wnd, &bounds);
+	visiblesize.x = (bounds.right - bounds.left) / debug_font_width;
+	visiblesize.y = (bounds.bottom - bounds.top) / debug_font_height;
+
+	// get the updated total rows/cols and left row/col
+	totalsize = debug_view_get_total_size(view);
+	topleft = debug_view_get_visible_position(view);
+
+	// determine if we need to show the scrollbars
+	show_vscroll = show_hscroll = FALSE;
+	if (totalsize.x > visiblesize.x && bounds.bottom >= hscroll_height)
 	{
-		RECT bounds, vscroll_bounds, hscroll_bounds;
-		int show_vscroll, show_hscroll;
-		UINT32 visible_rows, visible_cols;
-		UINT32 total_rows, total_cols;
-		UINT32 top_row, left_col;
-		SCROLLINFO scrollinfo;
+		bounds.bottom -= hscroll_height;
+		visiblesize.y = (bounds.bottom - bounds.top) / debug_font_height;
+		show_hscroll = TRUE;
+	}
+	if (totalsize.y > visiblesize.y && bounds.right >= vscroll_width)
+	{
+		bounds.right -= vscroll_width;
+		visiblesize.x = (bounds.right - bounds.left) / debug_font_width;
+		show_vscroll = TRUE;
+	}
+	if (!show_vscroll && totalsize.y > visiblesize.y && bounds.right >= vscroll_width)
+	{
+		bounds.right -= vscroll_width;
+		visiblesize.x = (bounds.right - bounds.left) / debug_font_width;
+		show_vscroll = TRUE;
+	}
 
-		// get the view window bounds
-		GetClientRect(info->wnd, &bounds);
-		visible_rows = (bounds.bottom - bounds.top) / debug_font_height;
-		visible_cols = (bounds.right - bounds.left) / debug_font_width;
+	// compute the bounds of the scrollbars
+	GetClientRect(info->wnd, &vscroll_bounds);
+	vscroll_bounds.left = vscroll_bounds.right - vscroll_width;
+	if (show_hscroll)
+		vscroll_bounds.bottom -= hscroll_height;
 
-		// get the updated total rows/cols and left row/col
-		total_rows = debug_view_get_property_UINT32(view, DVP_TOTAL_ROWS);
-		total_cols = debug_view_get_property_UINT32(view, DVP_TOTAL_COLS);
-		top_row = debug_view_get_property_UINT32(view, DVP_TOP_ROW);
-		left_col = debug_view_get_property_UINT32(view, DVP_LEFT_COL);
+	GetClientRect(info->wnd, &hscroll_bounds);
+	hscroll_bounds.top = hscroll_bounds.bottom - hscroll_height;
+	if (show_vscroll)
+		hscroll_bounds.right -= vscroll_width;
 
-		// determine if we need to show the scrollbars
-		show_vscroll = show_hscroll = 0;
-		if (total_rows > visible_rows && bounds.right >= vscroll_width)
-		{
-			bounds.right -= vscroll_width;
-			visible_cols = (bounds.right - bounds.left) / debug_font_width;
-			show_vscroll = TRUE;
-		}
-		if (total_cols > visible_cols && bounds.bottom >= hscroll_height)
-		{
-			bounds.bottom -= hscroll_height;
-			visible_rows = (bounds.bottom - bounds.top) / debug_font_height;
-			show_hscroll = TRUE;
-		}
-		if (!show_vscroll && total_rows > visible_rows && bounds.right >= vscroll_width)
-		{
-			bounds.right -= vscroll_width;
-			visible_cols = (bounds.right - bounds.left) / debug_font_width;
-			show_vscroll = TRUE;
-		}
+	// if we hid the scrollbars, make sure we reset the top/left corners
+	if (topleft.y + visiblesize.y > totalsize.y)
+		topleft.y = MAX(totalsize.y - visiblesize.y, 0);
+	if (topleft.x + visiblesize.x > totalsize.x)
+		topleft.x = MAX(totalsize.x - visiblesize.x, 0);
 
-		// compute the bounds of the scrollbars
-		GetClientRect(info->wnd, &vscroll_bounds);
-		vscroll_bounds.left = vscroll_bounds.right - vscroll_width;
-		if (show_hscroll)
-			vscroll_bounds.bottom -= hscroll_height;
+	// fill out the scroll info struct for the vertical scrollbar
+	scrollinfo.cbSize = sizeof(scrollinfo);
+	scrollinfo.fMask = SIF_PAGE | SIF_POS | SIF_RANGE;
+	scrollinfo.nMin = 0;
+	scrollinfo.nMax = totalsize.y - 1;
+	scrollinfo.nPage = visiblesize.y;
+	scrollinfo.nPos = topleft.y;
+	SetScrollInfo(info->vscroll, SB_CTL, &scrollinfo, TRUE);
 
-		GetClientRect(info->wnd, &hscroll_bounds);
-		hscroll_bounds.top = hscroll_bounds.bottom - hscroll_height;
+	// fill out the scroll info struct for the horizontal scrollbar
+	scrollinfo.cbSize = sizeof(scrollinfo);
+	scrollinfo.fMask = SIF_PAGE | SIF_POS | SIF_RANGE;
+	scrollinfo.nMin = 0;
+	scrollinfo.nMax = totalsize.x - 1;
+	scrollinfo.nPage = visiblesize.x;
+	scrollinfo.nPos = topleft.x;
+	SetScrollInfo(info->hscroll, SB_CTL, &scrollinfo, TRUE);
+
+	// update window info
+	visiblesize.y++;
+	visiblesize.x++;
+	debug_view_set_visible_size(view, visiblesize);
+	debug_view_set_visible_position(view, topleft);
+
+	// invalidate the bounds
+	InvalidateRect(info->wnd, NULL, FALSE);
+
+	// adjust the bounds of the scrollbars and show/hide them
+	if (info->vscroll)
+	{
 		if (show_vscroll)
-			hscroll_bounds.right -= vscroll_width;
-
-		// if we hid the scrollbars, make sure we reset the top/left corners
-		if (top_row + visible_rows > total_rows)
-			top_row = (total_rows > visible_rows) ? (total_rows - visible_rows) : 0;
-		if (left_col + visible_cols > total_cols)
-			left_col = (total_cols > visible_cols) ? (total_cols - visible_cols) : 0;
-
-		// fill out the scroll info struct for the vertical scrollbar
-		scrollinfo.cbSize = sizeof(scrollinfo);
-		scrollinfo.fMask = SIF_PAGE | SIF_POS | SIF_RANGE;
-		scrollinfo.nMin = 0;
-		scrollinfo.nMax = total_rows - 1;
-		scrollinfo.nPage = visible_rows;
-		scrollinfo.nPos = top_row;
-		SetScrollInfo(info->vscroll, SB_CTL, &scrollinfo, TRUE);
-
-		// fill out the scroll info struct for the horizontal scrollbar
-		scrollinfo.cbSize = sizeof(scrollinfo);
-		scrollinfo.fMask = SIF_PAGE | SIF_POS | SIF_RANGE;
-		scrollinfo.nMin = 0;
-		scrollinfo.nMax = total_cols - 1;
-		scrollinfo.nPage = visible_cols;
-		scrollinfo.nPos = left_col;
-		SetScrollInfo(info->hscroll, SB_CTL, &scrollinfo, TRUE);
-
-		// update window info
-		visible_rows++;
-		visible_cols++;
-		debug_view_set_property_UINT32(view, DVP_VISIBLE_ROWS, visible_rows);
-		debug_view_set_property_UINT32(view, DVP_VISIBLE_COLS, visible_cols);
-		debug_view_set_property_UINT32(view, DVP_TOP_ROW, top_row);
-		debug_view_set_property_UINT32(view, DVP_LEFT_COL, left_col);
-
-		// invalidate the bounds
-		InvalidateRect(info->wnd, NULL, FALSE);
-
-		// adjust the bounds of the scrollbars and show/hide them
-		if (info->vscroll)
-		{
-			if (show_vscroll)
-				smart_set_window_bounds(info->vscroll, info->wnd, &vscroll_bounds);
-			smart_show_window(info->vscroll, show_vscroll);
-		}
-		if (info->hscroll)
-		{
-			if (show_hscroll)
-				smart_set_window_bounds(info->hscroll, info->wnd, &hscroll_bounds);
-			smart_show_window(info->hscroll, show_hscroll);
-		}
-
-		// if we're in some tight busy loop, handle messages to keep ourselves alive
-/*      if (GetTickCount() - last_debugger_update > 1000)
-        {
-            MSG message;
-            while (PeekMessage(&message, NULL, 0, 0, PM_REMOVE))
-            {
-                TranslateMessage(&message);
-                DispatchMessage(&message);
-            }
-        }*/
+			smart_set_window_bounds(info->vscroll, info->wnd, &vscroll_bounds);
+		smart_show_window(info->vscroll, show_vscroll);
+	}
+	if (info->hscroll)
+	{
+		if (show_hscroll)
+			smart_set_window_bounds(info->hscroll, info->wnd, &hscroll_bounds);
+		smart_show_window(info->hscroll, show_hscroll);
 	}
 }
 
 
 
 //============================================================
-//  debug_view_find
+//  debugwin_view_process_scroll
 //============================================================
 
-static debugview_info *debug_view_find(debug_view *view)
-{
-	debugwin_info *info;
-	int curview;
-
-	// loop over windows and find the view
-	for (info = window_list; info; info = info->next)
-		for (curview = 0; curview < MAX_VIEWS; curview++)
-			if (info->view[curview].view == view)
-				return &info->view[curview];
-	return NULL;
-}
-
-
-
-//============================================================
-//  debug_view_process_scroll
-//============================================================
-
-static UINT32 debug_view_process_scroll(debugview_info *info, WORD type, HWND wnd)
+static UINT32 debugwin_view_process_scroll(debugview_info *info, WORD type, HWND wnd)
 {
 	SCROLLINFO scrollinfo;
 	INT32 maxval;
@@ -1232,20 +1170,16 @@ static UINT32 debug_view_process_scroll(debugview_info *info, WORD type, HWND wn
 	scrollinfo.nPos = result;
 	SetScrollInfo(wnd, SB_CTL, &scrollinfo, TRUE);
 
-	// note if we are at the bottom
-	if (wnd == info->vscroll && info->is_textbuf && result >= maxval - 1)
-		return (UINT32)-1;
-
 	return (UINT32)result;
 }
 
 
 
 //============================================================
-//  debug_view_prev_view
+//  debugwin_view_prev_view
 //============================================================
 
-static void debug_view_prev_view(debugwin_info *info, debugview_info *curview)
+static void debugwin_view_prev_view(debugwin_info *info, debugview_info *curview)
 {
 	int curindex = 1;
 	int numviews;
@@ -1275,7 +1209,7 @@ static void debug_view_prev_view(debugwin_info *info, debugview_info *curview)
 		}
 
 		// positive numbers mean a view
-		else if (curindex >= 0 && info->view[curindex].wnd != NULL && debug_view_get_property_UINT32(info->view[curindex].view, DVP_SUPPORTS_CURSOR))
+		else if (curindex >= 0 && info->view[curindex].wnd != NULL && debug_view_get_cursor_supported(info->view[curindex].view))
 		{
 			SetFocus(info->view[curindex].wnd);
 			break;
@@ -1286,10 +1220,10 @@ static void debug_view_prev_view(debugwin_info *info, debugview_info *curview)
 
 
 //============================================================
-//  debug_view_next_view
+//  debugwin_view_next_view
 //============================================================
 
-static void debug_view_next_view(debugwin_info *info, debugview_info *curview)
+static void debugwin_view_next_view(debugwin_info *info, debugview_info *curview)
 {
 	int curindex = -1;
 	int numviews;
@@ -1319,7 +1253,7 @@ static void debug_view_next_view(debugwin_info *info, debugview_info *curview)
 		}
 
 		// positive numbers mean a view
-		else if (curindex >= 0 && info->view[curindex].wnd != NULL && debug_view_get_property_UINT32(info->view[curindex].view, DVP_SUPPORTS_CURSOR))
+		else if (curindex >= 0 && info->view[curindex].wnd != NULL && debug_view_get_cursor_supported(info->view[curindex].view))
 		{
 			SetFocus(info->view[curindex].wnd);
 			InvalidateRect(info->view[curindex].wnd, NULL, FALSE);
@@ -1331,10 +1265,10 @@ static void debug_view_next_view(debugwin_info *info, debugview_info *curview)
 
 
 //============================================================
-//  debug_view_proc
+//  debugwin_view_proc
 //============================================================
 
-static LRESULT CALLBACK debug_view_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
+static LRESULT CALLBACK debugwin_view_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	debugview_info *info = (debugview_info *)(FPTR)GetWindowLongPtr(wnd, GWLP_USERDATA);
 
@@ -1354,7 +1288,7 @@ static LRESULT CALLBACK debug_view_proc(HWND wnd, UINT message, WPARAM wparam, L
 		{
 			PAINTSTRUCT pstruct;
 			HDC dc = BeginPaint(wnd, &pstruct);
-			debug_view_draw_contents(info, dc);
+			debugwin_view_draw_contents(info, dc);
 			EndPaint(wnd, &pstruct);
 			break;
 		}
@@ -1369,54 +1303,54 @@ static LRESULT CALLBACK debug_view_proc(HWND wnd, UINT message, WPARAM wparam, L
 				switch (wparam)
 				{
 					case VK_UP:
-						debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_UP);
+						debug_view_type_character(info->view, DCH_UP);
 						info->owner->ignore_char_lparam = lparam >> 16;
 						break;
 
 					case VK_DOWN:
-						debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_DOWN);
+						debug_view_type_character(info->view, DCH_DOWN);
 						info->owner->ignore_char_lparam = lparam >> 16;
 						break;
 
 					case VK_LEFT:
 						if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
-							debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_CTRLLEFT);
+							debug_view_type_character(info->view, DCH_CTRLLEFT);
 						else
-							debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_LEFT);
+							debug_view_type_character(info->view, DCH_LEFT);
 						info->owner->ignore_char_lparam = lparam >> 16;
 						break;
 
 					case VK_RIGHT:
 						if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
-							debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_CTRLRIGHT);
+							debug_view_type_character(info->view, DCH_CTRLRIGHT);
 						else
-							debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_RIGHT);
+							debug_view_type_character(info->view, DCH_RIGHT);
 						info->owner->ignore_char_lparam = lparam >> 16;
 						break;
 
 					case VK_PRIOR:
-						debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_PUP);
+						debug_view_type_character(info->view, DCH_PUP);
 						info->owner->ignore_char_lparam = lparam >> 16;
 						break;
 
 					case VK_NEXT:
-						debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_PDOWN);
+						debug_view_type_character(info->view, DCH_PDOWN);
 						info->owner->ignore_char_lparam = lparam >> 16;
 						break;
 
 					case VK_HOME:
 						if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
-							debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_CTRLHOME);
+							debug_view_type_character(info->view, DCH_CTRLHOME);
 						else
-							debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_HOME);
+							debug_view_type_character(info->view, DCH_HOME);
 						info->owner->ignore_char_lparam = lparam >> 16;
 						break;
 
 					case VK_END:
 						if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
-							debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_CTRLEND);
+							debug_view_type_character(info->view, DCH_CTRLEND);
 						else
-							debug_view_set_property_UINT32(info->view, DVP_CHARACTER, DCH_END);
+							debug_view_type_character(info->view, DCH_END);
 						info->owner->ignore_char_lparam = lparam >> 16;
 						break;
 
@@ -1428,9 +1362,9 @@ static LRESULT CALLBACK debug_view_proc(HWND wnd, UINT message, WPARAM wparam, L
 
 					case VK_TAB:
 						if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
-							debug_view_prev_view(info->owner, info);
+							debugwin_view_prev_view(info->owner, info);
 						else
-							debug_view_next_view(info->owner, info);
+							debugwin_view_next_view(info->owner, info);
 						info->owner->ignore_char_lparam = lparam >> 16;
 						break;
 				}
@@ -1443,10 +1377,10 @@ static LRESULT CALLBACK debug_view_proc(HWND wnd, UINT message, WPARAM wparam, L
 		{
 			if (info->owner->ignore_char_lparam == (lparam >> 16))
 				info->owner->ignore_char_lparam = 0;
-			else if (waiting_for_debugger || !debugwin_seq_pressed())
+			else if (waiting_for_debugger || !debugwin_seq_pressed(info->owner->machine))
 			{
-				if (wparam >= 32 && wparam < 127 && debug_view_get_property_UINT32(info->view, DVP_SUPPORTS_CURSOR))
-					debug_view_set_property_UINT32(info->view, DVP_CHARACTER, wparam);
+				if (wparam >= 32 && wparam < 127 && debug_view_get_cursor_supported(info->view))
+					debug_view_type_character(info->view, wparam);
 				else
 					return DefWindowProc(wnd, message, wparam, lparam);
 			}
@@ -1456,30 +1390,29 @@ static LRESULT CALLBACK debug_view_proc(HWND wnd, UINT message, WPARAM wparam, L
 		// gaining focus
 		case WM_SETFOCUS:
 		{
-			if (debug_view_get_property_UINT32(info->view, DVP_SUPPORTS_CURSOR))
-				debug_view_set_property_UINT32(info->view, DVP_CURSOR_VISIBLE, 1);
+			if (debug_view_get_cursor_supported(info->view))
+				debug_view_set_cursor_visible(info->view, TRUE);
 			break;
 		}
 
 		// losing focus
 		case WM_KILLFOCUS:
 		{
-			if (debug_view_get_property_UINT32(info->view, DVP_SUPPORTS_CURSOR))
-				debug_view_set_property_UINT32(info->view, DVP_CURSOR_VISIBLE, 0);
+			if (debug_view_get_cursor_supported(info->view))
+				debug_view_set_cursor_visible(info->view, FALSE);
 			break;
 		}
 
 		// mouse click
 		case WM_LBUTTONDOWN:
 		{
-			if (debug_view_get_property_UINT32(info->view, DVP_SUPPORTS_CURSOR))
+			if (debug_view_get_cursor_supported(info->view))
 			{
-				int x = GET_X_LPARAM(lparam) / debug_font_width;
-				int y = GET_Y_LPARAM(lparam) / debug_font_height;
-				debug_view_begin_update(info->view);
-				debug_view_set_property_UINT32(info->view, DVP_CURSOR_ROW, debug_view_get_property_UINT32(info->view, DVP_TOP_ROW) + y);
-				debug_view_set_property_UINT32(info->view, DVP_CURSOR_COL, debug_view_get_property_UINT32(info->view, DVP_LEFT_COL) + x);
-				debug_view_end_update(info->view);
+				debug_view_xy topleft = debug_view_get_visible_position(info->view);
+				debug_view_xy newpos;
+				newpos.x = topleft.x + GET_X_LPARAM(lparam) / debug_font_width;
+				newpos.y = topleft.y + GET_Y_LPARAM(lparam) / debug_font_height;
+				debug_view_set_cursor_position(info->view, newpos);
 				SetFocus(wnd);
 			}
  			break;
@@ -1488,19 +1421,20 @@ static LRESULT CALLBACK debug_view_proc(HWND wnd, UINT message, WPARAM wparam, L
 		// hscroll
 		case WM_HSCROLL:
 		{
-			UINT32 left_col = debug_view_process_scroll(info, LOWORD(wparam), (HWND)lparam);
-			debug_view_set_property_UINT32(info->view, DVP_LEFT_COL, left_col);
+			debug_view_xy topleft = debug_view_get_visible_position(info->view);
+			topleft.x = debugwin_view_process_scroll(info, LOWORD(wparam), (HWND)lparam);
+			debug_view_set_visible_position(info->view, topleft);
+			debug_view_flush_updates(info->owner->machine);
 			break;
 		}
 
 		// vscroll
 		case WM_VSCROLL:
 		{
-			UINT32 top_row = debug_view_process_scroll(info, LOWORD(wparam), (HWND)lparam);
-			if (info->is_textbuf)
-				debug_view_set_property_UINT32(info->view, DVP_TEXTBUF_LINE_LOCK, top_row);
-			else
-				debug_view_set_property_UINT32(info->view, DVP_TOP_ROW, top_row);
+			debug_view_xy topleft = debug_view_get_visible_position(info->view);
+			topleft.y = debugwin_view_process_scroll(info, LOWORD(wparam), (HWND)lparam);
+			debug_view_set_visible_position(info->view, topleft);
+			debug_view_flush_updates(info->owner->machine);
 			break;
 		}
 
@@ -1515,10 +1449,10 @@ static LRESULT CALLBACK debug_view_proc(HWND wnd, UINT message, WPARAM wparam, L
 
 
 //============================================================
-//  debug_edit_proc
+//  debugwin_edit_proc
 //============================================================
 
-static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
+static LRESULT CALLBACK debugwin_edit_proc(HWND wnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
 	debugwin_info *info = (debugwin_info *)(FPTR)GetWindowLongPtr(wnd, GWLP_USERDATA);
 	TCHAR buffer[MAX_EDIT_STRING];
@@ -1562,9 +1496,9 @@ static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, L
 
 				case VK_TAB:
 					if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
-						debug_view_prev_view(info, NULL);
+						debugwin_view_prev_view(info, NULL);
 					else
-						debug_view_next_view(info, NULL);
+						debugwin_view_next_view(info, NULL);
 					info->ignore_char_lparam = lparam >> 16;
 					break;
 
@@ -1583,7 +1517,7 @@ static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, L
 			// ignore chars associated with keys we've handled
 			if (info->ignore_char_lparam == (lparam >> 16))
 				info->ignore_char_lparam = 0;
-			else if (waiting_for_debugger || !debugwin_seq_pressed())
+			else if (waiting_for_debugger || !debugwin_seq_pressed(info->machine))
 			{
 				switch (wparam)
 				{
@@ -1650,15 +1584,15 @@ static LRESULT CALLBACK debug_edit_proc(HWND wnd, UINT message, WPARAM wparam, L
 //============================================================
 
 #ifdef UNUSED_FUNCTION
-static void generic_create_window(int type)
+static void generic_create_window(running_machine *machine, int type)
 {
 	debugwin_info *info;
 	char title[256];
 
 	// create the window
-	_snprintf(title, ARRAY_LENGTH(title), "Debug: %s [%s]", Machine->gamedrv->description, Machine->gamedrv->name);
-	info = debug_window_create(title, NULL);
-	if (info == NULL || !debug_view_create(info, 0, type))
+	_snprintf(title, ARRAY_LENGTH(title), "Debug: %s [%s]", machine->gamedrv->description, machine->gamedrv->name);
+	info = debugwin_window_create(machine, title, NULL);
+	if (info == NULL || !debugwin_view_create(info, 0, type))
 		return;
 
 	// set the child function
@@ -1681,16 +1615,13 @@ static void generic_create_window(int type)
 
 static void generic_recompute_children(debugwin_info *info)
 {
+	debug_view_xy totalsize = debug_view_get_total_size(info->view[0].view);
 	RECT parent;
 	RECT bounds;
-	UINT32 width;
-
-	// get the view width
-	width = debug_view_get_property_UINT32(info->view[0].view, DVP_TOTAL_COLS);
 
 	// compute a client rect
 	bounds.top = bounds.left = 0;
-	bounds.right = width * debug_font_width + vscroll_width + 2 * EDGE_WIDTH;
+	bounds.right = totalsize.x * debug_font_width + vscroll_width + 2 * EDGE_WIDTH;
 	bounds.bottom = 200;
 	AdjustWindowRectEx(&bounds, DEBUG_WINDOW_STYLE, FALSE, DEBUG_WINDOW_STYLE_EX);
 
@@ -1702,7 +1633,7 @@ static void generic_recompute_children(debugwin_info *info)
 
 	// view gets the remaining space
 	InflateRect(&parent, -EDGE_WIDTH, -EDGE_WIDTH);
-	debug_view_set_bounds(&info->view[0], info->wnd, &parent);
+	debugwin_view_set_bounds(&info->view[0], info->wnd, &parent);
 }
 
 
@@ -1713,27 +1644,26 @@ static void generic_recompute_children(debugwin_info *info)
 
 static void log_create_window(running_machine *machine)
 {
+	debug_view_xy totalsize;
 	debugwin_info *info;
 	char title[256];
-	UINT32 width;
 	RECT bounds;
 
 	// create the window
 	_snprintf(title, ARRAY_LENGTH(title), "Errorlog: %s [%s]", machine->gamedrv->description, machine->gamedrv->name);
-	info = debug_window_create(title, NULL);
-	if (info == NULL || !debug_view_create(info, 0, DVT_LOG))
+	info = debugwin_window_create(machine, title, NULL);
+	if (info == NULL || !debugwin_view_create(info, 0, DVT_LOG))
 		return;
-	info->view->is_textbuf = TRUE;
 
 	// set the child function
 	info->recompute_children = generic_recompute_children;
 
 	// get the view width
-	width = debug_view_get_property_UINT32(info->view[0].view, DVP_TOTAL_COLS);
+	totalsize = debug_view_get_total_size(info->view[0].view);
 
 	// compute a client rect
 	bounds.top = bounds.left = 0;
-	bounds.right = width * debug_font_width + vscroll_width + 2 * EDGE_WIDTH;
+	bounds.right = totalsize.x * debug_font_width + vscroll_width + 2 * EDGE_WIDTH;
 	bounds.bottom = 200;
 	AdjustWindowRectEx(&bounds, DEBUG_WINDOW_STYLE, FALSE, DEBUG_WINDOW_STYLE_EX);
 
@@ -1753,135 +1683,20 @@ static void log_create_window(running_machine *machine)
 
 
 //============================================================
-//  memory_determine_combo_items
-//============================================================
-
-static void memory_determine_combo_items(running_machine *machine)
-{
-	memorycombo_item **tail = &memorycombo;
-	UINT32 cpunum, spacenum;
-	const char *rgntag;
-	int itemnum;
-
-	// first add all the CPUs' address spaces
-	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
-	{
-		const debug_cpu_info *cpuinfo = debug_get_cpu_info(cpunum);
-		if (cpuinfo->valid)
-			for (spacenum = 0; spacenum < ADDRESS_SPACES; spacenum++)
-				if (cpuinfo->space[spacenum].databytes != 0)
-				{
-					memorycombo_item *ci = malloc_or_die(sizeof(*ci));
-					TCHAR *t_tag, *t_name, *t_space;
-
-					memset(ci, 0, sizeof(*ci));
-					ci->cpunum = cpunum;
-					ci->spacenum = spacenum;
-					ci->prefsize = MIN(cpuinfo->space[spacenum].databytes, 8);
-
-					t_tag = tstring_from_utf8(machine->config->cpu[cpunum].tag);
-					t_name = tstring_from_utf8(cpunum_name(cpunum));
-					t_space = tstring_from_utf8(address_space_names[spacenum]);
-					_sntprintf(ci->name, ARRAY_LENGTH(ci->name), TEXT("CPU #%d \"%s\" (%s) %s memory"), cpunum, t_tag, t_name, t_space);
-					free(t_space),
-					free(t_name);
-					free(t_tag);
-
-					*tail = ci;
-					tail = &ci->next;
-				}
-	}
-
-	// then add all the memory regions
-	for (rgntag = memory_region_next(machine, NULL); rgntag != NULL; rgntag = memory_region_next(machine, rgntag))
-	{
-		memorycombo_item *ci = malloc_or_die(sizeof(*ci));
-		UINT32 flags = memory_region_flags(machine, rgntag);
-		UINT8 little_endian = ((flags & ROMREGION_ENDIANMASK) == ROMREGION_LE);
-		UINT8 width = 1 << ((flags & ROMREGION_WIDTHMASK) >> 8);
-		TCHAR *t_tag;
-
-		memset(ci, 0, sizeof(*ci));
-		ci->base = memory_region(machine, rgntag);
-		ci->length = memory_region_length(machine, rgntag);
-		ci->prefsize = MIN(width, 8);
-		ci->offset_xor = width - 1;
-		ci->little_endian = little_endian;
-
-		t_tag = tstring_from_utf8(rgntag);
-		_sntprintf(ci->name, ARRAY_LENGTH(ci->name), TEXT("Region \"%s\""), t_tag);
-		free(t_tag);
-
-		*tail = ci;
-		tail = &ci->next;
-	}
-
-	// finally add all global array symbols
-	for (itemnum = 0; itemnum < 10000; itemnum++)
-	{
-		UINT32 valsize, valcount;
-		const char *name;
-		void *base;
-
-		/* stop when we run out of items */
-		name = state_save_get_indexed_item(itemnum, &base, &valsize, &valcount);
-		if (name == NULL)
-			break;
-
-		/* if this is a single-entry global, add it */
-		if (valcount > 1 && strstr(name, "/globals/"))
-		{
-			memorycombo_item *ci = malloc_or_die(sizeof(*ci));
-			TCHAR *t_name;
-
-			memset(ci, 0, sizeof(*ci));
-			ci->base = base;
-			ci->length = valcount * valsize;
-			ci->prefsize = MIN(valsize, 8);
-			ci->little_endian = TRUE;
-
-			t_name = tstring_from_utf8(name);
-			_tcscpy(ci->name, _tcsrchr(t_name, TEXT('/')) + 1);
-			free(t_name);
-
-			*tail = ci;
-			tail = &ci->next;
-		}
-	}
-}
-
-
-//============================================================
-//  memory_update_selection
-//============================================================
-
-static void memory_update_selection(debugwin_info *info, memorycombo_item *ci)
-{
-	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_CPUNUM, ci->cpunum);
-	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_SPACENUM, ci->spacenum);
-	debug_view_set_property_ptr(info->view[0].view, DVP_MEM_RAW_BASE, ci->base);
-	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_RAW_LENGTH, ci->length);
-	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_RAW_OFFSET_XOR, ci->offset_xor);
-	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_RAW_LITTLE_ENDIAN, ci->little_endian);
-	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK, ci->prefsize);
-	SetWindowText(info->wnd, ci->name);
-}
-
-
-//============================================================
 //  memory_create_window
 //============================================================
 
 static void memory_create_window(running_machine *machine)
 {
-	int curcpu = cpu_getactivecpu(), cursel = 0;
-	memorycombo_item *ci, *selci = NULL;
+	const device_config *curcpu = debug_cpu_get_visible_cpu(machine);
+	const memory_subview_item *subview;
 	debugwin_info *info;
 	HMENU optionsmenu;
+	int cursel = -1;
 
 	// create the window
-	info = debug_window_create("Memory", NULL);
-	if (info == NULL || !debug_view_create(info, 0, DVT_MEMORY))
+	info = debugwin_window_create(machine, "Memory", NULL);
+	if (info == NULL || !debugwin_view_create(info, 0, DVT_MEMORY))
 		return;
 
 	// set the handlers
@@ -1906,18 +1721,15 @@ static void memory_create_window(running_machine *machine)
 	AppendMenu(GetMenu(info->wnd), MF_ENABLED | MF_POPUP, (UINT_PTR)optionsmenu, TEXT("Options"));
 
 	// set up the view to track the initial expression
-	debug_view_begin_update(info->view[0].view);
-	debug_view_set_property_string(info->view[0].view, DVP_MEM_EXPRESSION, "0");
+	memory_view_set_expression(info->view[0].view, "0");
 	strcpy(info->edit_defstr, "0");
-	debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_TRACK_LIVE, 1);
-	debug_view_end_update(info->view[0].view);
 
 	// create an edit box and override its key handling
 	info->editwnd = CreateWindowEx(EDIT_BOX_STYLE_EX, TEXT("EDIT"), NULL, EDIT_BOX_STYLE,
 			0, 0, 100, 100, info->wnd, NULL, GetModuleHandle(NULL), NULL);
 	info->original_editproc = (void *)(FPTR)GetWindowLongPtr(info->editwnd, GWLP_WNDPROC);
 	SetWindowLongPtr(info->editwnd, GWLP_USERDATA, (LONG_PTR)info);
-	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (LONG_PTR)debug_edit_proc);
+	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (LONG_PTR)debugwin_edit_proc);
 	SendMessage(info->editwnd, WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
 	SendMessage(info->editwnd, WM_SETTEXT, (WPARAM)0, (LPARAM)TEXT("0"));
 	SendMessage(info->editwnd, EM_LIMITTEXT, (WPARAM)MAX_EDIT_STRING, (LPARAM)0);
@@ -1930,27 +1742,24 @@ static void memory_create_window(running_machine *machine)
 	SendMessage(info->otherwnd[0], WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
 
 	// populate the combobox
-	if (memorycombo == NULL)
-		memory_determine_combo_items(machine);
-	for (ci = memorycombo; ci; ci = ci->next)
+	for (subview = memory_view_get_subview_list(info->view[0].view); subview != NULL; subview = subview->next)
 	{
-		int item = SendMessage(info->otherwnd[0], CB_ADDSTRING, 0, (LPARAM)ci->name);
-		if (ci->base == NULL && ci->cpunum == curcpu && ci->spacenum == ADDRESS_SPACE_PROGRAM)
-		{
+		TCHAR *t_name = tstring_from_utf8(subview->name);
+		int item = SendMessage(info->otherwnd[0], CB_ADDSTRING, 0, (LPARAM)t_name);
+		free(t_name);
+		if (cursel == -1 && subview->space != NULL && subview->space->cpu == curcpu)
 			cursel = item;
-			selci = ci;
-		}
 	}
+	if (cursel == -1) cursel = 0;
 	SendMessage(info->otherwnd[0], CB_SETCURSEL, cursel, 0);
+	memory_view_set_subview(info->view[0].view, cursel);
 
 	// set the child functions
 	info->recompute_children = memory_recompute_children;
 	info->process_string = memory_process_string;
 
-	// set the CPUnum and spacenum properties
-	if (selci == NULL)
-		selci = memorycombo;
-	memory_update_selection(info, selci);
+	// set the caption
+	memory_update_caption(machine, info->wnd);
 
 	// recompute the children once to get the maxwidth
 	memory_recompute_children(info);
@@ -1972,16 +1781,13 @@ static void memory_create_window(running_machine *machine)
 
 static void memory_recompute_children(debugwin_info *info)
 {
+	debug_view_xy totalsize = debug_view_get_total_size(info->view[0].view);
 	RECT parent, memrect, editrect, comborect;
 	RECT bounds;
-	UINT32 width;
-
-	// get the view width
-	width = debug_view_get_property_UINT32(info->view[0].view, DVP_TOTAL_COLS);
 
 	// compute a client rect
 	bounds.top = bounds.left = 0;
-	bounds.right = width * debug_font_width + vscroll_width + 2 * EDGE_WIDTH;
+	bounds.right = totalsize.x * debug_font_width + vscroll_width + 2 * EDGE_WIDTH;
 	bounds.bottom = 200;
 	AdjustWindowRectEx(&bounds, DEBUG_WINDOW_STYLE, FALSE, DEBUG_WINDOW_STYLE_EX);
 
@@ -2010,7 +1816,7 @@ static void memory_recompute_children(debugwin_info *info)
 	memrect.right = parent.right - EDGE_WIDTH;
 
 	// set the bounds of things
-	debug_view_set_bounds(&info->view[0], info->wnd, &memrect);
+	debugwin_view_set_bounds(&info->view[0], info->wnd, &memrect);
 	smart_set_window_bounds(info->editwnd, info->wnd, &editrect);
 	smart_set_window_bounds(info->otherwnd[0], info->wnd, &comborect);
 }
@@ -2024,7 +1830,7 @@ static void memory_recompute_children(debugwin_info *info)
 static void memory_process_string(debugwin_info *info, const char *string)
 {
 	// set the string to the memory view
-	debug_view_set_property_string(info->view[0].view, DVP_MEM_EXPRESSION, string);
+	memory_view_set_expression(info->view[0].view, string);
 
 	// select everything in the edit text box
 	SendMessage(info->editwnd, EM_SETSEL, (WPARAM)0, (LPARAM)-1);
@@ -2041,13 +1847,13 @@ static void memory_process_string(debugwin_info *info, const char *string)
 
 static void memory_update_menu(debugwin_info *info)
 {
-	CheckMenuItem(GetMenu(info->wnd), ID_1_BYTE_CHUNKS, MF_BYCOMMAND | (debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK) == 1? MF_CHECKED : MF_UNCHECKED));
-	CheckMenuItem(GetMenu(info->wnd), ID_2_BYTE_CHUNKS, MF_BYCOMMAND | (debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK) == 2 ? MF_CHECKED : MF_UNCHECKED));
-	CheckMenuItem(GetMenu(info->wnd), ID_4_BYTE_CHUNKS, MF_BYCOMMAND | (debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK) == 4 ? MF_CHECKED : MF_UNCHECKED));
-	CheckMenuItem(GetMenu(info->wnd), ID_8_BYTE_CHUNKS, MF_BYCOMMAND | (debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK) == 8 ? MF_CHECKED : MF_UNCHECKED));
-	CheckMenuItem(GetMenu(info->wnd), ID_LOGICAL_ADDRESSES, MF_BYCOMMAND | (debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_NO_TRANSLATION) ? MF_UNCHECKED : MF_CHECKED));
-	CheckMenuItem(GetMenu(info->wnd), ID_PHYSICAL_ADDRESSES, MF_BYCOMMAND | (debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_NO_TRANSLATION) ? MF_CHECKED : MF_UNCHECKED));
-	CheckMenuItem(GetMenu(info->wnd), ID_REVERSE_VIEW, MF_BYCOMMAND | (debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_REVERSE_VIEW) ? MF_CHECKED : MF_UNCHECKED));
+	CheckMenuItem(GetMenu(info->wnd), ID_1_BYTE_CHUNKS, MF_BYCOMMAND | (memory_view_get_bytes_per_chunk(info->view[0].view) == 1 ? MF_CHECKED : MF_UNCHECKED));
+	CheckMenuItem(GetMenu(info->wnd), ID_2_BYTE_CHUNKS, MF_BYCOMMAND | (memory_view_get_bytes_per_chunk(info->view[0].view) == 2 ? MF_CHECKED : MF_UNCHECKED));
+	CheckMenuItem(GetMenu(info->wnd), ID_4_BYTE_CHUNKS, MF_BYCOMMAND | (memory_view_get_bytes_per_chunk(info->view[0].view) == 4 ? MF_CHECKED : MF_UNCHECKED));
+	CheckMenuItem(GetMenu(info->wnd), ID_8_BYTE_CHUNKS, MF_BYCOMMAND | (memory_view_get_bytes_per_chunk(info->view[0].view) == 8 ? MF_CHECKED : MF_UNCHECKED));
+	CheckMenuItem(GetMenu(info->wnd), ID_LOGICAL_ADDRESSES, MF_BYCOMMAND | (memory_view_get_physical(info->view[0].view) ? MF_UNCHECKED : MF_CHECKED));
+	CheckMenuItem(GetMenu(info->wnd), ID_PHYSICAL_ADDRESSES, MF_BYCOMMAND | (memory_view_get_physical(info->view[0].view) ? MF_CHECKED : MF_UNCHECKED));
+	CheckMenuItem(GetMenu(info->wnd), ID_REVERSE_VIEW, MF_BYCOMMAND | (memory_view_get_reverse(info->view[0].view) ? MF_CHECKED : MF_UNCHECKED));
 }
 
 
@@ -2066,15 +1872,8 @@ static int memory_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 			int sel = SendMessage((HWND)lparam, CB_GETCURSEL, 0, 0);
 			if (sel != CB_ERR)
 			{
-				// find the matching entry
-				memorycombo_item *ci;
-				for (ci = memorycombo; ci; ci = ci->next)
-					if (sel-- == 0)
-					{
-						debug_view_begin_update(info->view[0].view);
-						memory_update_selection(info, ci);
-						debug_view_end_update(info->view[0].view);
-					}
+				memory_view_set_subview(info->view[0].view, sel);
+				memory_update_caption(info->machine, info->wnd);
 
 				// reset the focus
 				SetFocus(info->focuswnd);
@@ -2088,57 +1887,39 @@ static int memory_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 			switch (LOWORD(wparam))
 			{
 				case ID_1_BYTE_CHUNKS:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK, 1);
-					debug_view_end_update(info->view[0].view);
+					memory_view_set_bytes_per_chunk(info->view[0].view, 1);
 					return 1;
 
 				case ID_2_BYTE_CHUNKS:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK, 2);
-					debug_view_end_update(info->view[0].view);
+					memory_view_set_bytes_per_chunk(info->view[0].view, 2);
 					return 1;
 
 				case ID_4_BYTE_CHUNKS:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK, 4);
-					debug_view_end_update(info->view[0].view);
+					memory_view_set_bytes_per_chunk(info->view[0].view, 4);
 					return 1;
 
 				case ID_8_BYTE_CHUNKS:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_BYTES_PER_CHUNK, 8);
-					debug_view_end_update(info->view[0].view);
+					memory_view_set_bytes_per_chunk(info->view[0].view, 8);
 					return 1;
 
 				case ID_LOGICAL_ADDRESSES:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_NO_TRANSLATION, FALSE);
-					debug_view_end_update(info->view[0].view);
+					memory_view_set_physical(info->view[0].view, FALSE);
 					return 1;
 
 				case ID_PHYSICAL_ADDRESSES:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_NO_TRANSLATION, TRUE);
-					debug_view_end_update(info->view[0].view);
+					memory_view_set_physical(info->view[0].view, TRUE);
 					return 1;
 
 				case ID_REVERSE_VIEW:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_REVERSE_VIEW, !debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_REVERSE_VIEW));
-					debug_view_end_update(info->view[0].view);
+					memory_view_set_reverse(info->view[0].view, !memory_view_get_reverse(info->view[0].view));
 					return 1;
 
 				case ID_INCREASE_MEM_WIDTH:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_WIDTH, debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_WIDTH) + 1);
-					debug_view_end_update(info->view[0].view);
+					memory_view_set_chunks_per_row(info->view[0].view, memory_view_get_chunks_per_row(info->view[0].view) + 1);
 					return 1;
 
 				case ID_DECREASE_MEM_WIDTH:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_MEM_WIDTH, debug_view_get_property_UINT32(info->view[0].view, DVP_MEM_WIDTH) - 1);
-					debug_view_end_update(info->view[0].view);
+					memory_view_set_chunks_per_row(info->view[0].view, memory_view_get_chunks_per_row(info->view[0].view) - 1);
 					return 1;
 			}
 			break;
@@ -2201,19 +1982,36 @@ static int memory_handle_key(debugwin_info *info, WPARAM wparam, LPARAM lparam)
 
 
 //============================================================
+//  memory_update_caption
+//============================================================
+
+static void memory_update_caption(running_machine *machine, HWND wnd)
+{
+	debugwin_info *info = (debugwin_info *)(FPTR)GetWindowLongPtr(wnd, GWLP_USERDATA);
+	const memory_subview_item *subview = memory_view_get_current_subview(info->view[0].view);
+	char title[256];
+
+	sprintf(title, "Memory: %s", subview->name);
+	win_set_window_text_utf8(wnd, title);
+}
+
+
+
+//============================================================
 //  disasm_create_window
 //============================================================
 
-static void disasm_create_window(void)
+static void disasm_create_window(running_machine *machine)
 {
-	int curcpu = cpu_getactivecpu(), cursel = 0;
+	const device_config *curcpu = debug_cpu_get_visible_cpu(machine);
+	const disasm_subview_item *subview;
 	debugwin_info *info;
 	HMENU optionsmenu;
-	UINT32 cpunum;
+	int cursel = 0;
 
 	// create the window
-	info = debug_window_create("Disassembly", NULL);
-	if (info == NULL || !debug_view_create(info, 0, DVT_DISASSEMBLY))
+	info = debugwin_window_create(machine, "Disassembly", NULL);
+	if (info == NULL || !debugwin_view_create(info, 0, DVT_DISASSEMBLY))
 		return;
 
 	// create the options menu
@@ -2232,18 +2030,15 @@ static void disasm_create_window(void)
 	info->update_menu = disasm_update_menu;
 
 	// set up the view to track the initial expression
-	debug_view_begin_update(info->view[0].view);
-	debug_view_set_property_string(info->view[0].view, DVP_DASM_EXPRESSION, "curpc");
+	disasm_view_set_expression(info->view[0].view, "curpc");
 	strcpy(info->edit_defstr, "curpc");
-	debug_view_set_property_UINT32(info->view[0].view, DVP_DASM_TRACK_LIVE, 1);
-	debug_view_end_update(info->view[0].view);
 
 	// create an edit box and override its key handling
 	info->editwnd = CreateWindowEx(EDIT_BOX_STYLE_EX, TEXT("EDIT"), NULL, EDIT_BOX_STYLE,
 			0, 0, 100, 100, info->wnd, NULL, GetModuleHandle(NULL), NULL);
 	info->original_editproc = (void *)(FPTR)GetWindowLongPtr(info->editwnd, GWLP_WNDPROC);
 	SetWindowLongPtr(info->editwnd, GWLP_USERDATA, (LONG_PTR)info);
-	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (LONG_PTR)debug_edit_proc);
+	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (LONG_PTR)debugwin_edit_proc);
 	SendMessage(info->editwnd, WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
 	SendMessage(info->editwnd, WM_SETTEXT, (WPARAM)0, (LPARAM)TEXT("curpc"));
 	SendMessage(info->editwnd, EM_LIMITTEXT, (WPARAM)MAX_EDIT_STRING, (LPARAM)0);
@@ -2251,40 +2046,28 @@ static void disasm_create_window(void)
 
 	// create a combo box
 	info->otherwnd[0] = CreateWindowEx(COMBO_BOX_STYLE_EX, TEXT("COMBOBOX"), NULL, COMBO_BOX_STYLE,
-			0, 0, 100, 100, info->wnd, NULL, GetModuleHandle(NULL), NULL);
+			0, 0, 100, 1000, info->wnd, NULL, GetModuleHandle(NULL), NULL);
 	SetWindowLongPtr(info->otherwnd[0], GWLP_USERDATA, (LONG_PTR)info);
 	SendMessage(info->otherwnd[0], WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
 
 	// populate the combobox
-	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
+	for (subview = disasm_view_get_subview_list(info->view[0].view); subview != NULL; subview = subview->next)
 	{
-		TCHAR* t_cpunum_name;
-		const debug_cpu_info *cpuinfo = debug_get_cpu_info(cpunum);
-		if (cpuinfo->valid)
-			if (cpuinfo->space[ADDRESS_SPACE_PROGRAM].databytes)
-			{
-				TCHAR name[100];
-				int item;
-				t_cpunum_name = tstring_from_utf8(cpunum_name(cpunum));
-				_sntprintf(name, ARRAY_LENGTH(name), TEXT("CPU #%d (%s)"), cpunum, t_cpunum_name);
-				free(t_cpunum_name);
-				t_cpunum_name = NULL;
-				item = SendMessage(info->otherwnd[0], CB_ADDSTRING, 0, (LPARAM)name);
-				if (cpunum == curcpu)
-					cursel = item;
-			}
+		TCHAR *t_name = tstring_from_utf8(subview->name);
+		int item = SendMessage(info->otherwnd[0], CB_ADDSTRING, 0, (LPARAM)t_name);
+		free(t_name);
+		if (cursel == 0 && subview->space->cpu == curcpu)
+			cursel = item;
 	}
 	SendMessage(info->otherwnd[0], CB_SETCURSEL, cursel, 0);
+	disasm_view_set_subview(info->view[0].view, cursel);
 
 	// set the child functions
 	info->recompute_children = disasm_recompute_children;
 	info->process_string = disasm_process_string;
 
-	// set the CPUnum and spacenum properties
-	debug_view_set_property_UINT32(info->view[0].view, DVP_DASM_CPUNUM, (curcpu == -1) ? 0 : curcpu);
-
 	// set the caption
-	disasm_update_caption(info->wnd);
+	disasm_update_caption(machine, info->wnd);
 
 	// recompute the children once to get the maxwidth
 	disasm_recompute_children(info);
@@ -2306,16 +2089,13 @@ static void disasm_create_window(void)
 
 static void disasm_recompute_children(debugwin_info *info)
 {
+	debug_view_xy totalsize = debug_view_get_total_size(info->view[0].view);
 	RECT parent, dasmrect, editrect, comborect;
 	RECT bounds;
-	UINT32 width;
-
-	// get the view width
-	width = debug_view_get_property_UINT32(info->view[0].view, DVP_TOTAL_COLS);
 
 	// compute a client rect
 	bounds.top = bounds.left = 0;
-	bounds.right = width * debug_font_width + vscroll_width + 2 * EDGE_WIDTH;
+	bounds.right = totalsize.x * debug_font_width + vscroll_width + 2 * EDGE_WIDTH;
 	bounds.bottom = 200;
 	AdjustWindowRectEx(&bounds, DEBUG_WINDOW_STYLE, FALSE, DEBUG_WINDOW_STYLE_EX);
 
@@ -2344,7 +2124,7 @@ static void disasm_recompute_children(debugwin_info *info)
 	dasmrect.right = parent.right - EDGE_WIDTH;
 
 	// set the bounds of things
-	debug_view_set_bounds(&info->view[0], info->wnd, &dasmrect);
+	debugwin_view_set_bounds(&info->view[0], info->wnd, &dasmrect);
 	smart_set_window_bounds(info->editwnd, info->wnd, &editrect);
 	smart_set_window_bounds(info->otherwnd[0], info->wnd, &comborect);
 }
@@ -2358,7 +2138,7 @@ static void disasm_recompute_children(debugwin_info *info)
 static void disasm_process_string(debugwin_info *info, const char *string)
 {
 	// set the string to the disasm view
-	debug_view_set_property_string(info->view[0].view, DVP_DASM_EXPRESSION, string);
+	disasm_view_set_expression(info->view[0].view, string);
 
 	// select everything in the edit text box
 	SendMessage(info->editwnd, EM_SETSEL, (WPARAM)0, (LPARAM)-1);
@@ -2375,10 +2155,10 @@ static void disasm_process_string(debugwin_info *info, const char *string)
 
 static void disasm_update_menu(debugwin_info *info)
 {
-	int rightcol = debug_view_get_property_UINT32(info->view[0].view, DVP_DASM_RIGHT_COLUMN);
-	CheckMenuItem(GetMenu(info->wnd), ID_SHOW_RAW, MF_BYCOMMAND | (rightcol == DVP_DASM_RIGHTCOL_RAW ? MF_CHECKED : MF_UNCHECKED));
-	CheckMenuItem(GetMenu(info->wnd), ID_SHOW_ENCRYPTED, MF_BYCOMMAND | (rightcol == DVP_DASM_RIGHTCOL_ENCRYPTED ? MF_CHECKED : MF_UNCHECKED));
-	CheckMenuItem(GetMenu(info->wnd), ID_SHOW_COMMENTS, MF_BYCOMMAND | (rightcol == DVP_DASM_RIGHTCOL_COMMENTS ? MF_CHECKED : MF_UNCHECKED));
+	disasm_right_column rightcol = disasm_view_get_right_column(info->view[0].view);
+	CheckMenuItem(GetMenu(info->wnd), ID_SHOW_RAW, MF_BYCOMMAND | (rightcol == DASM_RIGHTCOL_RAW ? MF_CHECKED : MF_UNCHECKED));
+	CheckMenuItem(GetMenu(info->wnd), ID_SHOW_ENCRYPTED, MF_BYCOMMAND | (rightcol == DASM_RIGHTCOL_ENCRYPTED ? MF_CHECKED : MF_UNCHECKED));
+	CheckMenuItem(GetMenu(info->wnd), ID_SHOW_COMMENTS, MF_BYCOMMAND | (rightcol == DASM_RIGHTCOL_COMMENTS ? MF_CHECKED : MF_UNCHECKED));
 }
 
 
@@ -2390,7 +2170,6 @@ static void disasm_update_menu(debugwin_info *info)
 static int disasm_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lparam)
 {
 	char command[64];
-	UINT32 active_address = 0x00;
 
 	switch (HIWORD(wparam))
 	{
@@ -2400,21 +2179,8 @@ static int disasm_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 			int sel = SendMessage((HWND)lparam, CB_GETCURSEL, 0, 0);
 			if (sel != CB_ERR)
 			{
-				// find the matching entry
-				UINT32 cpunum;
-				for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
-				{
-					const debug_cpu_info *cpuinfo = debug_get_cpu_info(cpunum);
-					if (cpuinfo->valid)
-						if (cpuinfo->space[ADDRESS_SPACE_PROGRAM].databytes)
-							if (sel-- == 0)
-							{
-								debug_view_begin_update(info->view[0].view);
-								debug_view_set_property_UINT32(info->view[0].view, DVP_DASM_CPUNUM, cpunum);
-								debug_view_end_update(info->view[0].view);
-								disasm_update_caption(info->wnd);
-							}
-				}
+				disasm_view_set_subview(info->view[0].view, sel);
+				disasm_update_caption(info->machine, info->wnd);
 
 				// reset the focus
 				SetFocus(info->focuswnd);
@@ -2428,73 +2194,59 @@ static int disasm_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 			switch (LOWORD(wparam))
 			{
 				case ID_SHOW_RAW:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_DASM_RIGHT_COLUMN, DVP_DASM_RIGHTCOL_RAW);
-					debug_view_end_update(info->view[0].view);
+					disasm_view_set_right_column(info->view[0].view, DASM_RIGHTCOL_RAW);
 					(*info->recompute_children)(info);
 					return 1;
 
 				case ID_SHOW_ENCRYPTED:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_DASM_RIGHT_COLUMN, DVP_DASM_RIGHTCOL_ENCRYPTED);
-					debug_view_end_update(info->view[0].view);
+					disasm_view_set_right_column(info->view[0].view, DASM_RIGHTCOL_ENCRYPTED);
 					(*info->recompute_children)(info);
 					return 1;
 
 				case ID_SHOW_COMMENTS:
-					debug_view_begin_update(info->view[0].view);
-					debug_view_set_property_UINT32(info->view[0].view, DVP_DASM_RIGHT_COLUMN, DVP_DASM_RIGHTCOL_COMMENTS);
-					debug_view_end_update(info->view[0].view);
+					disasm_view_set_right_column(info->view[0].view, DASM_RIGHTCOL_COMMENTS);
 					(*info->recompute_children)(info);
 					return 1;
 
 				case ID_RUN_TO_CURSOR:
-					if (debug_view_get_property_UINT32(info->view[0].view, DVP_CURSOR_VISIBLE))
+					if (debug_view_get_cursor_visible(info->view[0].view))
 					{
-						UINT32 cpu_num = 0;
-						debug_cpu_info *cpuinfo ;
-
-						/* for BYTE2ADDR */
-						cpu_num = debug_view_get_property_UINT32(info->view[0].view, DVP_DASM_CPUNUM);
-						cpuinfo = (debug_cpu_info *)debug_get_cpu_info(cpu_num);
-
-						active_address = debug_view_get_property_UINT32(info->view[0].view, DVP_DASM_ACTIVE_ADDRESS);
-						sprintf(command, "go %X", BYTE2ADDR(active_address, cpuinfo, ADDRESS_SPACE_PROGRAM));
-						debug_console_execute_command(Machine, command, 1);
+						const address_space *space = disasm_view_get_current_subview(info->view[0].view)->space;
+						if (debug_cpu_get_visible_cpu(info->machine) == space->cpu)
+						{
+							offs_t address = disasm_view_get_selected_address(info->view[0].view);
+							sprintf(command, "go %X", address);
+							debug_console_execute_command(info->machine, command, 1);
+						}
 					}
 					return 1;
 
 				case ID_TOGGLE_BREAKPOINT:
-					if (debug_view_get_property_UINT32(info->view[0].view, DVP_CURSOR_VISIBLE))
+					if (debug_view_get_cursor_visible(info->view[0].view))
 					{
-						UINT32 cpu_num = 0;
-						debug_cpu_info *cpuinfo ;
-						debug_cpu_breakpoint *bp;
-						INT8 bp_exists = 0;
-						UINT32 bp_num = 0;
-
-						/* what address are we dealing with? */
-						active_address = debug_view_get_property_UINT32(info->view[0].view, DVP_DASM_ACTIVE_ADDRESS);
-
-						/* is there already a breakpoint there? */
-						cpu_num = debug_view_get_property_UINT32(info->view[0].view, DVP_DASM_CPUNUM);
-						cpuinfo = (debug_cpu_info*)debug_get_cpu_info(cpu_num);
-
-						for (bp = cpuinfo->bplist; bp != NULL; bp = bp->next)
+						const address_space *space = disasm_view_get_current_subview(info->view[0].view)->space;
+						if (debug_cpu_get_visible_cpu(info->machine) == space->cpu)
 						{
-							if (BYTE2ADDR(active_address, cpuinfo, ADDRESS_SPACE_PROGRAM) == bp->address)
-							{
-								bp_exists = 1;
-								bp_num = bp->index;
-							}
-						}
+							offs_t address = disasm_view_get_selected_address(info->view[0].view);
+							cpu_debug_data *cpuinfo = cpu_get_debug_data(space->cpu);
+							debug_cpu_breakpoint *bp;
+							INT32 bpindex = -1;
 
-						/* Toggle */
-						if (!bp_exists)
-							sprintf(command, "bpset %X", BYTE2ADDR(active_address, cpuinfo, ADDRESS_SPACE_PROGRAM));
-						else
-							sprintf(command, "bpclear %X", bp_num);
-						debug_console_execute_command(Machine, command, 1);
+							/* first find an existing breakpoint at this address */
+							for (bp = cpuinfo->bplist; bp != NULL; bp = bp->next)
+								if (address == bp->address)
+								{
+									bpindex = bp->index;
+									break;
+								}
+
+							/* if it doesn't exist, add a new one */
+							if (bpindex == -1)
+								sprintf(command, "bpset %X", address);
+							else
+								sprintf(command, "bpclear %X", bpindex);
+							debug_console_execute_command(info->machine, command, 1);
+						}
 					}
 					return 1;
 			}
@@ -2541,7 +2293,7 @@ static int disasm_handle_key(debugwin_info *info, WPARAM wparam, LPARAM lparam)
 			return 1;
 
 		case VK_RETURN:
-			if (debug_view_get_property_UINT32(info->view[0].view, DVP_CURSOR_VISIBLE))
+			if (debug_view_get_cursor_visible(info->view[0].view))
 			{
 				SendMessage(info->wnd, WM_COMMAND, ID_STEP, 0);
 				return 1;
@@ -2558,17 +2310,13 @@ static int disasm_handle_key(debugwin_info *info, WPARAM wparam, LPARAM lparam)
 //  disasm_update_caption
 //============================================================
 
-static void disasm_update_caption(HWND wnd)
+static void disasm_update_caption(running_machine *machine, HWND wnd)
 {
 	debugwin_info *info = (debugwin_info *)(FPTR)GetWindowLongPtr(wnd, GWLP_USERDATA);
-	char title[100];
-	UINT32 cpunum;
+	const disasm_subview_item *subview = disasm_view_get_current_subview(info->view[0].view);
+	char title[256];
 
-	// get the properties
-	cpunum = debug_view_get_property_UINT32(info->view[0].view, DVP_DASM_CPUNUM);
-
-	// then update the caption
-	sprintf(title, "Disassembly: CPU #%d \"%s\" (%s)", cpunum, Machine->config->cpu[cpunum].tag, cpunum_name(cpunum));
+	sprintf(title, "Disassembly: %s", subview->name);
 	win_set_window_text_utf8(wnd, title);
 }
 
@@ -2580,25 +2328,26 @@ static void disasm_update_caption(HWND wnd)
 
 void console_create_window(running_machine *machine)
 {
+	const registers_subview_item *regsubview;
+	const disasm_subview_item *dasmsubview;
 	debugwin_info *info;
 	int bestwidth, bestheight;
 	RECT bounds, work_bounds;
 	HMENU optionsmenu;
-	UINT32 cpunum;
+	UINT32 conchars;
 
 	// create the window
-	info = debug_window_create("Debug", NULL);
+	info = debugwin_window_create(machine, "Debug", NULL);
 	if (info == NULL)
 		return;
 	main_console = info;
-	console_set_cpunum(machine, 0);
 
 	// create the views
-	if (!debug_view_create(info, 0, DVT_DISASSEMBLY))
+	if (!debugwin_view_create(info, 0, DVT_DISASSEMBLY))
 		goto cleanup;
-	if (!debug_view_create(info, 1, DVT_REGISTERS))
+	if (!debugwin_view_create(info, 1, DVT_REGISTERS))
 		goto cleanup;
-	if (!debug_view_create(info, 2, DVT_CONSOLE))
+	if (!debugwin_view_create(info, 2, DVT_CONSOLE))
 		goto cleanup;
 
 	// create the options menu
@@ -2615,21 +2364,15 @@ void console_create_window(running_machine *machine)
 	info->handle_command = disasm_handle_command;
 	info->handle_key = disasm_handle_key;
 
-	// lock us to the bottom of the console by default
-	info->view[2].is_textbuf = TRUE;
-
 	// set up the disassembly view to track the current pc
-	debug_view_begin_update(info->view[0].view);
-	debug_view_set_property_string(info->view[0].view, DVP_DASM_EXPRESSION, "curpc");
-	debug_view_set_property_UINT32(info->view[0].view, DVP_DASM_TRACK_LIVE, 1);
-	debug_view_end_update(info->view[0].view);
+	disasm_view_set_expression(info->view[0].view, "curpc");
 
 	// create an edit box and override its key handling
 	info->editwnd = CreateWindowEx(EDIT_BOX_STYLE_EX, TEXT("EDIT"), NULL, EDIT_BOX_STYLE,
 			0, 0, 100, 100, info->wnd, NULL, GetModuleHandle(NULL), NULL);
 	info->original_editproc = (void *)(FPTR)GetWindowLongPtr(info->editwnd, GWLP_WNDPROC);
 	SetWindowLongPtr(info->editwnd, GWLP_USERDATA, (LONG_PTR)info);
-	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (LONG_PTR)debug_edit_proc);
+	SetWindowLongPtr(info->editwnd, GWLP_WNDPROC, (LONG_PTR)debugwin_edit_proc);
 	SendMessage(info->editwnd, WM_SETFONT, (WPARAM)debug_font, (LPARAM)FALSE);
 	SendMessage(info->editwnd, EM_LIMITTEXT, (WPARAM)MAX_EDIT_STRING, (LPARAM)0);
 
@@ -2637,32 +2380,40 @@ void console_create_window(running_machine *machine)
 	info->recompute_children = console_recompute_children;
 	info->process_string = console_process_string;
 
-	// loop over all CPUs and compute the sizes
+	// loop over all register views and get the maximum size
+	main_console_regwidth = 0;
+	for (regsubview = registers_view_get_subview_list(info->view[1].view); regsubview != NULL; regsubview = regsubview->next)
+	{
+		UINT32 regchars;
+
+		// set the view and fetch the width
+		registers_view_set_subview(info->view[1].view, regsubview->index);
+		regchars = debug_view_get_total_size(info->view[1].view).x;
+
+		// track the maximum
+		main_console_regwidth = MAX(regchars, main_console_regwidth);
+	}
+
+	// determine the width of the console (this is fixed)
+	conchars = debug_view_get_total_size(info->view[2].view).x;
+
+	// loop over all CPUs and compute the width range based on dasm width
 	info->minwidth = 0;
 	info->maxwidth = 0;
-	for (cpunum = MAX_CPU - 1; (INT32)cpunum >= 0; cpunum--)
-		if (machine->config->cpu[cpunum].type != CPU_DUMMY)
-		{
-			UINT32 regchars, dischars, conchars;
-			UINT32 minwidth, maxwidth;
+	for (dasmsubview = disasm_view_get_subview_list(info->view[0].view); dasmsubview != NULL; dasmsubview = dasmsubview->next)
+	{
+		UINT32 minwidth, maxwidth, dischars;
 
-			// point all views to the new CPU number
-			debug_view_set_property_UINT32(info->view[0].view, DVP_DASM_CPUNUM, cpunum);
-			debug_view_set_property_UINT32(info->view[1].view, DVP_REGS_CPUNUM, cpunum);
+		// set the view and fetch the width
+		disasm_view_set_subview(info->view[0].view, dasmsubview->index);
+		dischars = debug_view_get_total_size(info->view[0].view).x;
 
-			// get the total width of all three children
-			dischars = debug_view_get_property_UINT32(info->view[0].view, DVP_TOTAL_COLS);
-			regchars = debug_view_get_property_UINT32(info->view[1].view, DVP_TOTAL_COLS);
-			conchars = debug_view_get_property_UINT32(info->view[2].view, DVP_TOTAL_COLS);
-
-			// compute the preferred width
-			minwidth = EDGE_WIDTH + regchars * debug_font_width + vscroll_width + 2 * EDGE_WIDTH + 100 + EDGE_WIDTH;
-			maxwidth = EDGE_WIDTH + regchars * debug_font_width + vscroll_width + 2 * EDGE_WIDTH + ((dischars > conchars) ? dischars : conchars) * debug_font_width + vscroll_width + EDGE_WIDTH;
-			if (minwidth > info->minwidth)
-				info->minwidth = minwidth;
-			if (maxwidth > info->maxwidth)
-				info->maxwidth = maxwidth;
-		}
+		// compute the preferred width
+		minwidth = EDGE_WIDTH + main_console_regwidth * debug_font_width + vscroll_width + 2 * EDGE_WIDTH + 100 + EDGE_WIDTH;
+		maxwidth = EDGE_WIDTH + main_console_regwidth * debug_font_width + vscroll_width + 2 * EDGE_WIDTH + MAX(dischars, conchars) * debug_font_width + vscroll_width + EDGE_WIDTH;
+		info->minwidth = MAX(info->minwidth, minwidth);
+		info->maxwidth = MAX(info->maxwidth, maxwidth);
+	}
 
 	// get the work bounds
 	SystemParametersInfo(SPI_GETWORKAREA, 0, &work_bounds, 0);
@@ -2687,7 +2438,7 @@ void console_create_window(running_machine *machine)
 				SWP_SHOWWINDOW);
 
 	// recompute the children
-	console_recompute_children(info);
+	console_set_cpu(debug_cpu_get_visible_cpu(machine));
 
 	// mark the edit box as the default focus and set it
 	info->focuswnd = info->editwnd;
@@ -2718,9 +2469,9 @@ static void console_recompute_children(debugwin_info *info)
 	GetClientRect(info->wnd, &parent);
 
 	// get the total width of all three children
-	dischars = debug_view_get_property_UINT32(info->view[0].view, DVP_TOTAL_COLS);
-	regchars = debug_view_get_property_UINT32(info->view[1].view, DVP_TOTAL_COLS);
-	conchars = debug_view_get_property_UINT32(info->view[2].view, DVP_TOTAL_COLS);
+	dischars = debug_view_get_total_size(info->view[0].view).x;
+	regchars = main_console_regwidth;
+	conchars = debug_view_get_total_size(info->view[2].view).x;
 
 	// registers always get their desired width, and span the entire height
 	regrect.top = parent.top + EDGE_WIDTH;
@@ -2746,9 +2497,9 @@ static void console_recompute_children(debugwin_info *info)
 	conrect.right = parent.right - EDGE_WIDTH;
 
 	// set the bounds of things
-	debug_view_set_bounds(&info->view[0], info->wnd, &disrect);
-	debug_view_set_bounds(&info->view[1], info->wnd, &regrect);
-	debug_view_set_bounds(&info->view[2], info->wnd, &conrect);
+	debugwin_view_set_bounds(&info->view[0], info->wnd, &disrect);
+	debugwin_view_set_bounds(&info->view[1], info->wnd, &regrect);
+	debugwin_view_set_bounds(&info->view[2], info->wnd, &conrect);
 	smart_set_window_bounds(info->editwnd, info->wnd, &editrect);
 }
 
@@ -2764,11 +2515,11 @@ static void console_process_string(debugwin_info *info, const char *string)
 
 	// an empty string is a single step
 	if (string[0] == 0)
-		debug_cpu_single_step(1);
+		debug_cpu_single_step(info->machine, 1);
 
 	// otherwise, just process the command
 	else
-		debug_console_execute_command(Machine, string, 1);
+		debug_console_execute_command(info->machine, string, 1);
 
 	// clear the edit text box
 	SendMessage(info->editwnd, WM_SETTEXT, 0, (LPARAM)&buffer);
@@ -2777,24 +2528,42 @@ static void console_process_string(debugwin_info *info, const char *string)
 
 
 //============================================================
-//  console_set_cpunum
+//  console_set_cpu
 //============================================================
 
-static void console_set_cpunum(running_machine *machine, int cpunum)
+static void console_set_cpu(const device_config *device)
 {
+	const registers_subview_item *regsubitem = NULL;
+	const disasm_subview_item *dasmsubitem;
 	char title[256], curtitle[256];
 
 	// first set all the views to the new cpu number
-	if (main_console->view[0].view)
-		debug_view_set_property_UINT32(main_console->view[0].view, DVP_DASM_CPUNUM, cpunum);
-	if (main_console->view[1].view)
-		debug_view_set_property_UINT32(main_console->view[1].view, DVP_REGS_CPUNUM, cpunum);
+	if (main_console->view[0].view != NULL)
+		for (dasmsubitem = disasm_view_get_subview_list(main_console->view[0].view); dasmsubitem != NULL; dasmsubitem = dasmsubitem->next)
+			if (dasmsubitem->space->cpu == device)
+			{
+				disasm_view_set_subview(main_console->view[0].view, dasmsubitem->index);
+				break;
+			}
+	if (main_console->view[1].view != NULL)
+		for (regsubitem = registers_view_get_subview_list(main_console->view[1].view); regsubitem != NULL; regsubitem = regsubitem->next)
+			if (regsubitem->device == device)
+			{
+				registers_view_set_subview(main_console->view[1].view, regsubitem->index);
+				break;
+			}
 
 	// then update the caption
-	snprintf(title, ARRAY_LENGTH(title), "Debug: %s - CPU #%d \"%s\" (%s)", machine->gamedrv->name, cpu_getactivecpu(), Machine->config->cpu[cpu_getactivecpu()].tag, activecpu_name());
-	win_get_window_text_utf8(main_console->wnd, curtitle, ARRAY_LENGTH(curtitle));
-	if (strcmp(title, curtitle))
-		win_set_window_text_utf8(main_console->wnd, title);
+	if (regsubitem != NULL)
+	{
+		snprintf(title, ARRAY_LENGTH(title), "Debug: %s - %s", device->machine->gamedrv->name, regsubitem->name);
+		win_get_window_text_utf8(main_console->wnd, curtitle, ARRAY_LENGTH(curtitle));
+		if (strcmp(title, curtitle) != 0)
+			win_set_window_text_utf8(main_console->wnd, title);
+	}
+
+	// and recompute the children
+	console_recompute_children(main_console);
 }
 
 
@@ -2853,58 +2622,60 @@ static int global_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 		switch (LOWORD(wparam))
 		{
 			case ID_NEW_MEMORY_WND:
-				memory_create_window(Machine);
+				memory_create_window(info->machine);
 				return 1;
 
 			case ID_NEW_DISASM_WND:
-				disasm_create_window();
+				disasm_create_window(info->machine);
 				return 1;
 
 			case ID_NEW_LOG_WND:
-				log_create_window(Machine);
+				log_create_window(info->machine);
 				return 1;
 
 			case ID_RUN_AND_HIDE:
 				smart_show_all(FALSE);
 			case ID_RUN:
-				debug_cpu_go(~0);
+				debug_cpu_go(info->machine, ~0);
 				return 1;
 
 			case ID_NEXT_CPU:
-				debug_cpu_next_cpu();
+				debug_cpu_next_cpu(info->machine);
 				return 1;
 
 			case ID_RUN_VBLANK:
-				debug_cpu_go_vblank();
+				debug_cpu_go_vblank(info->machine);
 				return 1;
 
 			case ID_RUN_IRQ:
-				debug_cpu_go_interrupt(-1);
+				debug_cpu_go_interrupt(info->machine, -1);
 				return 1;
 
 			case ID_STEP:
-				debug_cpu_single_step(1);
+				debug_cpu_single_step(info->machine, 1);
 				return 1;
 
 			case ID_STEP_OVER:
-				debug_cpu_single_step_over(1);
+				debug_cpu_single_step_over(info->machine, 1);
 				return 1;
 
 			case ID_STEP_OUT:
-				debug_cpu_single_step_out();
+				debug_cpu_single_step_out(info->machine);
 				return 1;
 
 			case ID_HARD_RESET:
-				mame_schedule_hard_reset(Machine);
+				mame_schedule_hard_reset(info->machine);
 				return 1;
 
 			case ID_SOFT_RESET:
-				mame_schedule_soft_reset(Machine);
-				debug_cpu_go(~0);
+				mame_schedule_soft_reset(info->machine);
+				debug_cpu_go(info->machine, ~0);
 				return 1;
 
 			case ID_EXIT:
-				mame_schedule_exit(Machine);
+				if (info->focuswnd != NULL)
+					SetFocus(info->focuswnd);
+				mame_schedule_exit(info->machine);
 				return 1;
 		}
 
@@ -2920,7 +2691,7 @@ static int global_handle_command(debugwin_info *info, WPARAM wparam, LPARAM lpar
 static int global_handle_key(debugwin_info *info, WPARAM wparam, LPARAM lparam)
 {
 	/* ignore any keys that are received while the debug key is down */
-	if (!waiting_for_debugger && debugwin_seq_pressed())
+	if (!waiting_for_debugger && debugwin_seq_pressed(info->machine))
 		return 1;
 
 	switch (wparam)
@@ -3062,6 +2833,6 @@ static void smart_show_all(BOOL show)
 	debugwin_info *info;
 	if (!show)
 		SetForegroundWindow(win_window_list->hwnd);
-	for (info = window_list; info; info = info->next)
+	for (info = window_list; info != NULL; info = info->next)
 		smart_show_window(info->wnd, show);
 }

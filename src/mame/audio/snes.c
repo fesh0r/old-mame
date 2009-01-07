@@ -27,7 +27,6 @@
 
 #include <math.h>
 #include "driver.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "includes/snes.h"
 
@@ -1135,12 +1134,13 @@ static TIMER_CALLBACK( snes_spc_timer  )
 	}
 }
 
-void *snes_sh_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( snes_sh_start )
 {
+	running_machine *machine = device->machine;
 	UINT8 ii;
 
 	/* put IPL image at the top of RAM */
-	memcpy(snes_ipl_region, memory_region(Machine, "user5"), 64);
+	memcpy(snes_ipl_region, memory_region(machine, "user5"), 64);
 
 	/* default to ROM visible */
 	spc_ram[0xf1] = 0x80;
@@ -1152,16 +1152,16 @@ void *snes_sh_start(int clock, const custom_sound_interface *config)
 		spc_port_out[ii] = 0;
 	}
 
-	channel = stream_create( 0, 2, 32000, NULL, snes_sh_update );
+	channel = stream_create( device, 0, 2, 32000, NULL, snes_sh_update );
 
 	/* Initialize the timers */
-	timers[0].timer = timer_alloc( snes_spc_timer , NULL);
+	timers[0].timer = timer_alloc(machine, snes_spc_timer , NULL);
 	timer_adjust_periodic( timers[0].timer, ATTOTIME_IN_HZ(8000), 0, ATTOTIME_IN_HZ(8000) );
 	timer_enable( timers[0].timer, 0 );
-	timers[1].timer = timer_alloc( snes_spc_timer , NULL);
+	timers[1].timer = timer_alloc(machine, snes_spc_timer , NULL);
 	timer_adjust_periodic( timers[1].timer, ATTOTIME_IN_HZ(8000), 1, ATTOTIME_IN_HZ(8000) );
 	timer_enable( timers[1].timer, 0 );
-	timers[2].timer = timer_alloc( snes_spc_timer , NULL);
+	timers[2].timer = timer_alloc(machine, snes_spc_timer , NULL);
 	timer_adjust_periodic( timers[2].timer, ATTOTIME_IN_HZ(64000), 2, ATTOTIME_IN_HZ(64000) );
 	timer_enable( timers[2].timer, 0 );
 
@@ -1170,12 +1170,12 @@ void *snes_sh_start(int clock, const custom_sound_interface *config)
 	return auto_malloc(1);
 }
 
-void snes_sh_update( void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length )
+STREAM_UPDATE( snes_sh_update )
 {
 	int i;
 	short mix[2];
 
-	for (i = 0; i < length; i++)
+	for (i = 0; i < samples; i++)
 	{
 		mix[0] = mix[1] = 0;
 		DSP_Update(mix);
@@ -1228,12 +1228,12 @@ READ8_HANDLER( spc_io_r )
 		case 0x2:		/* Register address */
 			return spc_ram[0xf2];
 		case 0x3:		/* Register data */
-			return snes_dsp_io_r( machine, spc_ram[0xf2] );
+			return snes_dsp_io_r( space, spc_ram[0xf2] );
 		case 0x4:		/* Port 0 */
 		case 0x5:		/* Port 1 */
 		case 0x6:		/* Port 2 */
 		case 0x7:		/* Port 3 */
-//          mame_printf_debug("SPC: rd %02x @ %d, PC=%x\n", spc_port_in[offset-4], offset-4, activecpu_get_pc());
+//          mame_printf_debug("SPC: rd %02x @ %d, PC=%x\n", spc_port_in[offset-4], offset-4, cpu_get_pc(space->cpu));
 			return spc_port_in[offset - 4];
 		case 0xA:		/* Timer 0 */
 		case 0xB:		/* Timer 1 */
@@ -1292,7 +1292,7 @@ WRITE8_HANDLER( spc_io_w )
 			{
 				if (data & 0x80)
 				{
-					memcpy(snes_ipl_region, memory_region(machine, "user5"), 64);
+					memcpy(snes_ipl_region, memory_region(space->machine, "user5"), 64);
 				}
 				else
 				{
@@ -1303,15 +1303,15 @@ WRITE8_HANDLER( spc_io_w )
 		case 0x2:		/* Register address */
 			break;
 		case 0x3:		/* Register data */
-			snes_dsp_io_w( machine, spc_ram[0xf2], data );
+			snes_dsp_io_w( space, spc_ram[0xf2], data );
 			break;
 		case 0x4:		/* Port 0 */
 		case 0x5:		/* Port 1 */
 		case 0x6:		/* Port 2 */
 		case 0x7:		/* Port 3 */
-//          mame_printf_debug("SPC: %02x to APU @ %d (PC=%x)\n", data, offset&3, activecpu_get_pc());
+//          mame_printf_debug("SPC: %02x to APU @ %d (PC=%x)\n", data, offset&3, cpu_get_pc(space->cpu));
 			spc_port_out[offset - 4] = data;
-			cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(20));
+			cpuexec_boost_interleave(space->machine, attotime_zero, ATTOTIME_IN_USEC(20));
 			break;
 		case 0xA:		/* Timer 0 */
 		case 0xB:		/* Timer 1 */

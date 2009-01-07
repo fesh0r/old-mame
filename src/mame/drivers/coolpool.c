@@ -25,8 +25,8 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/tms32010/tms32010.h"
 #include "cpu/tms34010/tms34010.h"
-#include "cpu/tms34010/34010ops.h"
 #include "cpu/tms32025/tms32025.h"
 #include "video/tlc34076.h"
 #include "sound/dac.h"
@@ -126,13 +126,13 @@ static void coolpool_scanline(const device_config *screen, bitmap_t *bitmap, int
  *
  *************************************/
 
-static void coolpool_to_shiftreg(UINT32 address, UINT16 *shiftreg)
+static void coolpool_to_shiftreg(const address_space *space, UINT32 address, UINT16 *shiftreg)
 {
 	memcpy(shiftreg, &vram_base[TOWORD(address) & ~TOWORD(0xfff)], TOBYTE(0x1000));
 }
 
 
-static void coolpool_from_shiftreg(UINT32 address, UINT16 *shiftreg)
+static void coolpool_from_shiftreg(const address_space *space, UINT32 address, UINT16 *shiftreg)
 {
 	memcpy(&vram_base[TOWORD(address) & ~TOWORD(0xfff)], shiftreg, TOBYTE(0x1000));
 }
@@ -148,7 +148,7 @@ static void coolpool_from_shiftreg(UINT32 address, UINT16 *shiftreg)
 static MACHINE_RESET( amerdart )
 {
 	nvram_write_enable = 0;
-	nvram_write_timer = timer_alloc(nvram_write_timeout, NULL);
+	nvram_write_timer = timer_alloc(machine, nvram_write_timeout, NULL);
 }
 
 
@@ -156,7 +156,7 @@ static MACHINE_RESET( coolpool )
 {
 	tlc34076_reset(6);
 	nvram_write_enable = 0;
-	nvram_write_timer = timer_alloc(nvram_write_timeout, NULL);
+	nvram_write_timer = timer_alloc(machine, nvram_write_timeout, NULL);
 }
 
 
@@ -201,8 +201,8 @@ static WRITE16_HANDLER( nvram_data_w )
 
 static WRITE16_HANDLER( nvram_thrash_data_w )
 {
-	nvram_data_w(machine, offset, data, mem_mask);
-	nvram_thrash_w(machine, offset, data, mem_mask);
+	nvram_data_w(space, offset, data, mem_mask);
+	nvram_thrash_w(space, offset, data, mem_mask);
 }
 
 
@@ -215,12 +215,12 @@ static WRITE16_HANDLER( nvram_thrash_data_w )
 
 static WRITE16_HANDLER( amerdart_misc_w )
 {
-	logerror("%08x:IOP_reset_w %04x\n",activecpu_get_pc(),data);
+	logerror("%08x:IOP_reset_w %04x\n",cpu_get_pc(space->cpu),data);
 
 	coin_counter_w(0, ~data & 0x0001);
 	coin_counter_w(1, ~data & 0x0002);
 
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
 
 	/* bits 10-15 are counted down over time */
 	if (data & 0x0400) amerdart_iop_echo = 1;
@@ -233,7 +233,7 @@ static TIMER_CALLBACK( amerdart_iop_response )
 	iop_answer = iop_cmd;
 	if (amerdart_iop_echo && iop_cmd != 0x19)
 	{
-		cpunum_set_input_line(machine, 0, 1, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], 1, ASSERT_LINE);
 		return;
 	}
 	amerdart_iop_echo = 0;
@@ -271,15 +271,15 @@ static TIMER_CALLBACK( amerdart_iop_response )
 			break;
 	}
 
-	cpunum_set_input_line(machine, 0, 1, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], 1, ASSERT_LINE);
 }
 
 
 static WRITE16_HANDLER( amerdart_iop_w )
 {
-	logerror("%08x:IOP write %04x\n", activecpu_get_pc(), data);
+	logerror("%08x:IOP write %04x\n", cpu_get_pc(space->cpu), data);
 	COMBINE_DATA(&iop_cmd);
-	timer_set(ATTOTIME_IN_USEC(100), NULL, 0, amerdart_iop_response);
+	timer_set(space->machine, ATTOTIME_IN_USEC(100), NULL, 0, amerdart_iop_response);
 }
 
 
@@ -292,12 +292,12 @@ static WRITE16_HANDLER( amerdart_iop_w )
 
 static WRITE16_HANDLER( coolpool_misc_w )
 {
-	logerror("%08x:IOP_reset_w %04x\n",activecpu_get_pc(),data);
+	logerror("%08x:IOP_reset_w %04x\n",cpu_get_pc(space->cpu),data);
 
 	coin_counter_w(0, ~data & 0x0001);
 	coin_counter_w(1, ~data & 0x0002);
 
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -313,24 +313,24 @@ static TIMER_CALLBACK( deferred_iop_w )
 {
 	iop_cmd = param;
 	cmd_pending = 1;
-	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);	/* ???  I have no idea who should generate this! */
+	cpu_set_input_line(machine->cpu[1], 0, HOLD_LINE);	/* ???  I have no idea who should generate this! */
 										/* the DSP polls the status bit so it isn't strictly */
 										/* necessary to also have an IRQ */
-	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(50));
+	cpuexec_boost_interleave(machine, attotime_zero, ATTOTIME_IN_USEC(50));
 }
 
 
 static WRITE16_HANDLER( coolpool_iop_w )
 {
-	logerror("%08x:IOP write %04x\n", activecpu_get_pc(), data);
-	timer_call_after_resynch(NULL, data, deferred_iop_w);
+	logerror("%08x:IOP write %04x\n", cpu_get_pc(space->cpu), data);
+	timer_call_after_resynch(space->machine, NULL, data, deferred_iop_w);
 }
 
 
 static READ16_HANDLER( coolpool_iop_r )
 {
-	logerror("%08x:IOP read %04x\n",activecpu_get_pc(),iop_answer);
-	cpunum_set_input_line(machine, 0, 1, CLEAR_LINE);
+	logerror("%08x:IOP read %04x\n",cpu_get_pc(space->cpu),iop_answer);
+	cpu_set_input_line(space->machine->cpu[0], 1, CLEAR_LINE);
 
 	return iop_answer;
 }
@@ -347,16 +347,16 @@ static READ16_HANDLER( coolpool_iop_r )
 static READ16_HANDLER( dsp_cmd_r )
 {
 	cmd_pending = 0;
-	logerror("%08x:IOP cmd_r %04x\n",activecpu_get_pc(),iop_cmd);
+	logerror("%08x:IOP cmd_r %04x\n",cpu_get_pc(space->cpu),iop_cmd);
 	return iop_cmd;
 }
 
 
 static WRITE16_HANDLER( dsp_answer_w )
 {
-	logerror("%08x:IOP answer %04x\n",activecpu_get_pc(),data);
+	logerror("%08x:IOP answer %04x\n",cpu_get_pc(space->cpu),data);
 	iop_answer = data;
-	cpunum_set_input_line(machine, 0, 1, ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[0], 1, ASSERT_LINE);
 }
 
 
@@ -381,8 +381,8 @@ static READ16_HANDLER( dsp_hold_line_r )
 
 static READ16_HANDLER( dsp_rom_r )
 {
-	UINT8 *rom = memory_region(machine, "user2");
-	return rom[iop_romaddr & (memory_region_length(machine, "user2") - 1)];
+	UINT8 *rom = memory_region(space->machine, "user2");
+	return rom[iop_romaddr & (memory_region_length(space->machine, "user2") - 1)];
 }
 
 
@@ -419,9 +419,9 @@ static READ16_HANDLER( coolpool_input_r )
 	static UINT8 oldx, oldy;
 	static UINT16 lastresult;
 
-	int result = (input_port_read(machine, "IN1") & 0x00ff) | (lastresult & 0xff00);
-	UINT8 newx = input_port_read(machine, "XAXIS");
-	UINT8 newy = input_port_read(machine, "YAXIS");
+	int result = (input_port_read(space->machine, "IN1") & 0x00ff) | (lastresult & 0xff00);
+	UINT8 newx = input_port_read(space->machine, "XAXIS");
+	UINT8 newy = input_port_read(space->machine, "YAXIS");
 	int dx = (INT8)(newx - oldx);
 	int dy = (INT8)(newy - oldy);
 
@@ -471,7 +471,7 @@ static READ16_HANDLER( coolpool_input_r )
 		}
 	}
 
-//  logerror("%08X:read port 7 (X=%02X Y=%02X oldX=%02X oldY=%02X res=%04X)\n", activecpu_get_pc(),
+//  logerror("%08X:read port 7 (X=%02X Y=%02X oldX=%02X oldY=%02X res=%04X)\n", cpu_get_pc(space->cpu),
 //      newx, newy, oldx, oldy, result);
 	lastresult = result;
 	return result;
@@ -924,6 +924,27 @@ ROM_START( 9ballsh3 )
 	ROM_LOAD( "u53",          0x80000, 0x80000, CRC(d401805d) SHA1(f4bcb2bdc45c3bc5ca423e518cdea8b3a7e8d60e) )
 ROM_END
 
+/* If you use the roms from the other set this will boot as 9 Ball Shootout Championship, it looks however like the TMS32026 data
+   should differ at least (the correct data in the bad dump is very different to the other dumps) */
+ROM_START( 9ballshc )
+	ROM_REGION16_LE( 0x80000, "user1", 0 )	/* 34010 code */
+	ROM_LOAD16_BYTE( "escape.112",  0x00000, 0x40000, CRC(7ba2749a) SHA1(e2ddc2600234dbebbb423f201cc4061fd0b9911a) )
+	ROM_LOAD16_BYTE( "escape.113",  0x00001, 0x40000, CRC(1e0f3c62) SHA1(3c24a38dcb553fd84b0b44a5a8d93a14435e22b0) )
+
+	ROM_REGION16_LE( 0x100000, "gfx1", 0 )	/* gfx data read by main CPU */
+	ROM_LOAD16_BYTE( "escape.110",  0x00000, 0x80000, BAD_DUMP CRC(1da8da18) SHA1(63455a7cccb21dc5afeb860e17527cd443f542eb) ) // xx1xxxxxxxxxxxxxxxx = 0x00
+	ROM_LOAD16_BYTE( "escape.111",  0x00001, 0x80000, BAD_DUMP CRC(65dea5e8) SHA1(291232dd19240b150e54a4ed300bcfd40bf5d1f2) ) // xx1xxxxxxxxxxxxxxxx = 0x00
+
+	ROM_REGION( 0x40000, "dsp", 0 )	/* TMS320C26 */
+	ROM_LOAD16_BYTE( "u34",          0x00000, 0x08000, CRC(dc1df70b) SHA1(e42fa7e34e50e0bd2aaeea5c55d750ed3286610d) )
+	ROM_LOAD16_BYTE( "u35",          0x00001, 0x08000, CRC(ac999431) SHA1(7e4c2dcaedcb7e7c67072a179e4b8488d2bbdac7) )
+
+	ROM_REGION( 0x100000, "user2", 0 )	/* TMS32026 data */
+	ROM_LOAD( "escape.54",          0x00000, 0x80000, BAD_DUMP CRC(28b4dec6) SHA1(10e47105abb48b572da38709128cba961299d88e) ) // xx1xxxxxxxxxxxxxxxx = 0x00
+	ROM_LOAD( "escape.53",          0x80000, 0x80000, CRC(28f4dd51) SHA1(67ea5bf3dacc17ef4fcc999e4ae0857759fac838) )
+ROM_END
+
+
 
 
 /*************************************
@@ -934,7 +955,7 @@ ROM_END
 
 static DRIVER_INIT( coolpool )
 {
-	memory_install_read16_handler(machine, 1, ADDRESS_SPACE_IO, 0x07, 0x07, 0, 0, coolpool_input_r);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0x07, 0x07, 0, 0, coolpool_input_r);
 }
 
 
@@ -993,3 +1014,4 @@ GAME( 1992, coolpool, 0,        coolpool, coolpool, coolpool, ROT0, "Catalina", 
 GAME( 1993, 9ballsht, 0,        9ballsht, 9ballsht, 9ballsht, ROT0, "E-Scape EnterMedia (Bundra license)", "9-Ball Shootout (set 1)", 0 )
 GAME( 1993, 9ballsh2, 9ballsht, 9ballsht, 9ballsht, 9ballsht, ROT0, "E-Scape EnterMedia (Bundra license)", "9-Ball Shootout (set 2)", 0 )
 GAME( 1993, 9ballsh3, 9ballsht, 9ballsht, 9ballsht, 9ballsht, ROT0, "E-Scape EnterMedia (Bundra license)", "9-Ball Shootout (set 3)", 0 )
+GAME( 1993, 9ballshc, 9ballsht, 9ballsht, 9ballsht, 9ballsht, ROT0, "E-Scape EnterMedia (Bundra license)", "9-Ball Shootout Championship", GAME_NOT_WORKING )

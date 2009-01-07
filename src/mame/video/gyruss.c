@@ -101,7 +101,7 @@ PALETTE_INIT( gyruss )
 
 WRITE8_HANDLER( gyruss_spriteram_w )
 {
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 	gyruss_spriteram[offset] = data;
 }
 
@@ -120,7 +120,7 @@ static TILE_GET_INFO( gyruss_get_tile_info )
 
 VIDEO_START( gyruss )
 {
-	gyruss_tilemap = tilemap_create(gyruss_get_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	gyruss_tilemap = tilemap_create(machine, gyruss_get_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_transmask(gyruss_tilemap, 0, 0x00, 0);	/* opaque */
 	tilemap_set_transmask(gyruss_tilemap, 1, 0x0f, 0);  /* transparent */
 }
@@ -130,7 +130,7 @@ VIDEO_START( gyruss )
 READ8_HANDLER( gyruss_scanline_r )
 {
 	/* reads 1V - 128V */
-	return video_screen_get_vpos(machine->primary_screen);
+	return video_screen_get_vpos(space->machine->primary_screen);
 }
 
 

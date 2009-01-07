@@ -39,6 +39,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
 
 #define VERBOSE_PROTECTION_LOG 0
@@ -77,8 +78,8 @@ static WRITE8_HANDLER( fg_ram_w )
 
 static VIDEO_START(quizpun2)
 {
-	bg_tmap = tilemap_create(	get_bg_tile_info, tilemap_scan_rows,	8,16, 0x20,0x20	);
-	fg_tmap = tilemap_create(	get_fg_tile_info, tilemap_scan_rows,	8,16, 0x20,0x20	);
+	bg_tmap = tilemap_create(	machine, get_bg_tile_info, tilemap_scan_rows,	8,16, 0x20,0x20	);
+	fg_tmap = tilemap_create(	machine, get_fg_tile_info, tilemap_scan_rows,	8,16, 0x20,0x20	);
 
 	tilemap_set_transparent_pen(bg_tmap, 0);
 	tilemap_set_transparent_pen(fg_tmap, 0);
@@ -99,9 +100,9 @@ static VIDEO_UPDATE(quizpun2)
 #endif
 
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect, bg_tmap,  TILEMAP_DRAW_OPAQUE, 0);
-	else					fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	else					bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
-fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 	if (layers_ctrl & 2)	tilemap_draw(bitmap,cliprect, fg_tmap, 0, 0);
 
 	return 0;
@@ -135,9 +136,9 @@ static MACHINE_RESET( quizpun2 )
 	prot.addr = 0;
 }
 
-static void log_protection( const char *warning )
+static void log_protection( const address_space *space, const char *warning )
 {
-	logerror("%04x: protection - %s (state %x, wait %x, param %02x, cmd %02x, addr %02x)\n", activecpu_get_pc(), warning,
+	logerror("%04x: protection - %s (state %x, wait %x, param %02x, cmd %02x, addr %02x)\n", cpu_get_pc(space->cpu), warning,
 		prot.state,
 		prot.wait_param,
 		prot.param,
@@ -174,25 +175,25 @@ static READ8_HANDLER( quizpun2_protection_r )
 					break;
 
 				default:
-					log_protection("unknown address");
+					log_protection(space, "unknown address");
 					ret = 0x2e59 >> ((prot.addr & 1) ? 0 : 8);	// return the address of: XOR A, RET
 			}
 			break;
 
 		case STATE_EEPROM_R:		// EEPROM read
 		{
-			UINT8 *eeprom = memory_region(machine, "eeprom");
+			UINT8 *eeprom = memory_region(space->machine, "eeprom");
 			ret = eeprom[prot.addr];
 			break;
 		}
 
 		default:
-			log_protection("unknown read");
+			log_protection(space, "unknown read");
 			ret = 0x00;
 	}
 
 #if VERBOSE_PROTECTION_LOG
-	log_protection("info READ");
+	log_protection(space, "info READ");
 #endif
 
 	prot.addr++;
@@ -206,7 +207,7 @@ static WRITE8_HANDLER( quizpun2_protection_w )
 	{
 		case STATE_EEPROM_W:
 		{
-			UINT8 *eeprom = memory_region(machine, "eeprom");
+			UINT8 *eeprom = memory_region(space->machine, "eeprom");
 			eeprom[prot.addr] = data;
 			prot.addr++;
 			if ((prot.addr % 8) == 0)
@@ -235,7 +236,7 @@ static WRITE8_HANDLER( quizpun2_protection_w )
 						prot.addr = 0;
 					}
 					else
-						log_protection("unknown command");
+						log_protection(space, "unknown command");
 				}
 				else if (prot.cmd >= 0x00 && prot.cmd <= 0x0f )
 				{
@@ -250,7 +251,7 @@ static WRITE8_HANDLER( quizpun2_protection_w )
 				else
 				{
 					prot.state = STATE_IDLE;
-					log_protection("unknown command");
+					log_protection(space, "unknown command");
 				}
 			}
 			else
@@ -262,7 +263,7 @@ static WRITE8_HANDLER( quizpun2_protection_w )
 	}
 
 #if VERBOSE_PROTECTION_LOG
-	log_protection("info WRITE");
+	log_protection(space, "info WRITE");
 #endif
 }
 
@@ -273,19 +274,19 @@ static WRITE8_HANDLER( quizpun2_protection_w )
 
 static WRITE8_HANDLER( quizpun2_rombank_w )
 {
-	UINT8 *ROM = memory_region(machine, "main");
-	memory_set_bankptr( 1, &ROM[ 0x10000 + 0x2000 * (data & 0x1f) ] );
+	UINT8 *ROM = memory_region(space->machine, "main");
+	memory_set_bankptr(space->machine,  1, &ROM[ 0x10000 + 0x2000 * (data & 0x1f) ] );
 }
 
 static WRITE8_HANDLER( quizpun2_irq_ack )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( quizpun2_soundlatch_w )
 {
-	soundlatch_w(machine, 0, data);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(space, 0, data);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( quizpun2_map, ADDRESS_SPACE_PROGRAM, 8 )

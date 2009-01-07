@@ -33,6 +33,8 @@ INLINE latch8_t *get_safe_token(const device_config *device) {
 
 static void update(const device_config *device, UINT8 new_val, UINT8 mask)
 {
+	/*  temporary hack until the discrete system is a device */
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	latch8_t *latch8 = get_safe_token(device);
 	UINT8 old_val = latch8->value;
 
@@ -44,7 +46,7 @@ static void update(const device_config *device, UINT8 new_val, UINT8 mask)
 		UINT8 changed = old_val ^ latch8->value;
 		for (i=0; i<8; i++)
 			if (((changed & (1<<i)) != 0) && latch8->intf->node_map[i] != 0)
-				discrete_sound_w(device->machine, latch8->intf->node_map[i] , (latch8->value >> i) & 1);
+				discrete_sound_w(space, latch8->intf->node_map[i] , (latch8->value >> i) & 1);
 	}
 }
 
@@ -82,13 +84,15 @@ READ8_DEVICE_HANDLER( latch8_r )
 	}
 	if (latch8->has_read)
 	{
+		/*  temporary hack until all relevant systems are devices */
+		const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 		int i;
 		for (i=0; i<8; i++)
 		{
 			if (latch8->intf->devread[i].read_handler != NULL)
 			{
 				res &= ~( 1 << i);
-				res |= ((latch8->intf->devread[i].read_handler(device->machine, 0) >> latch8->intf->devread[i].from_bit) & 0x01) << i;
+				res |= ((latch8->intf->devread[i].read_handler(space, 0) >> latch8->intf->devread[i].from_bit) & 0x01) << i;
 			}
 		}
 	}
@@ -103,7 +107,7 @@ WRITE8_DEVICE_HANDLER( latch8_w )
 	assert(offset == 0);
 
 	if (latch8->intf->nosync != 0xff)
-		timer_call_after_resynch((void *)device, (0xFF << 8) | data, latch8_timerproc);
+		timer_call_after_resynch(device->machine, (void *)device, (0xFF << 8) | data, latch8_timerproc);
 	else
 		update(device, data, 0xFF);
 }
@@ -163,7 +167,7 @@ INLINE void latch8_bitx_w(const device_config *device, int bit, offs_t offset, U
 	if (latch8->intf->nosync & mask)
 		update(device, masked_data, mask);
 	else
-		timer_call_after_resynch((void *) device, (mask << 8) | masked_data, latch8_timerproc);
+		timer_call_after_resynch(device->machine, (void *) device, (mask << 8) | masked_data, latch8_timerproc);
 }
 
 WRITE8_DEVICE_HANDLER( latch8_bit0_w ) { latch8_bitx_w(device, 0, offset, data); }
@@ -182,12 +186,9 @@ WRITE8_DEVICE_HANDLER( latch8_bit7_w ) { latch8_bitx_w(device, 0, offset, data);
 static DEVICE_START( latch8 )
 {
 	latch8_t *latch8 = get_safe_token(device);
-	char unique_tag[30];
 	int i;
 
 	/* validate arguments */
-	assert(strlen(device->tag) < 20);
-
 	latch8->intf = device->inline_config;
 
 	latch8->value = 0x0;
@@ -220,9 +221,7 @@ static DEVICE_START( latch8 )
 			latch8->has_read = 1;
 		}
 
-	state_save_combine_module_and_tag(unique_tag, "latch8", device->tag);
-
-	state_save_register_item(unique_tag, 0, latch8->value);
+	state_save_register_device_item(device, 0, latch8->value);
 
 	return DEVICE_START_OK;
 }
@@ -261,10 +260,10 @@ DEVICE_GET_INFO( latch8 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(latch8);break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "8 bit latch";				break;
-		case DEVINFO_STR_FAMILY:						info->s = "Latches";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";						break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;						break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "8 bit latch");			break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Latches");				break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");					break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);				break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

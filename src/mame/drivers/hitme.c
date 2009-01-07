@@ -15,8 +15,11 @@
 */
 
 #include "driver.h"
+#include "cpu/i8085/i8085.h"
 #include "hitme.h"
 #include "sound/discrete.h"
+
+#define MASTER_CLOCK (XTAL_8_945MHz) /* confirmed on schematic */
 
 static tilemap *hitme_tilemap;
 static attotime timeout_time;
@@ -55,13 +58,13 @@ static WRITE8_HANDLER( hitme_vidram_w )
 
 static VIDEO_START(hitme)
 {
-	hitme_tilemap = tilemap_create(get_hitme_tile_info,tilemap_scan_rows, 8,10, 40,19);
+	hitme_tilemap = tilemap_create(machine, get_hitme_tile_info,tilemap_scan_rows, 8,10, 40,19);
 }
 
 
 static VIDEO_START(barricad)
 {
-	hitme_tilemap = tilemap_create(get_hitme_tile_info,tilemap_scan_rows, 8,8, 32,24);
+	hitme_tilemap = tilemap_create(machine, get_hitme_tile_info,tilemap_scan_rows, 8,8, 32,24);
 }
 
 
@@ -131,7 +134,7 @@ static UINT8 read_port_and_t0(running_machine *machine, int port)
 	static const char *const portnames[] = { "IN0", "IN1", "IN2", "IN3" };
 
 	UINT8 val = input_port_read(machine, portnames[port]);
-	if (attotime_compare(timer_get_time(), timeout_time) > 0)
+	if (attotime_compare(timer_get_time(machine), timeout_time) > 0)
 		val ^= 0x80;
 	return val;
 }
@@ -148,25 +151,25 @@ static UINT8 read_port_and_t0_and_hblank(running_machine *machine, int port)
 
 static READ8_HANDLER( hitme_port_0_r )
 {
-	return read_port_and_t0_and_hblank(machine, 0);
+	return read_port_and_t0_and_hblank(space->machine, 0);
 }
 
 
 static READ8_HANDLER( hitme_port_1_r )
 {
-	return read_port_and_t0(machine, 1);
+	return read_port_and_t0(space->machine, 1);
 }
 
 
 static READ8_HANDLER( hitme_port_2_r )
 {
-	return read_port_and_t0_and_hblank(machine, 2);
+	return read_port_and_t0_and_hblank(space->machine, 2);
 }
 
 
 static READ8_HANDLER( hitme_port_3_r )
 {
-	return read_port_and_t0(machine, 3);
+	return read_port_and_t0(space->machine, 3);
 }
 
 
@@ -185,20 +188,20 @@ static WRITE8_HANDLER( output_port_0_w )
         In fact, it is very important that our timing calculation timeout AFTER the sound
         system's equivalent computation, or else we will hang notes.
     */
-	UINT8 raw_game_speed = input_port_read(machine, "R3");
+	UINT8 raw_game_speed = input_port_read(space->machine, "R3");
 	double resistance = raw_game_speed * 25000 / 100;
 	attotime duration = attotime_make(0, ATTOSECONDS_PER_SECOND * 0.45 * 6.8e-6 * resistance * (data+1));
-	timeout_time = attotime_add(timer_get_time(), duration);
+	timeout_time = attotime_add(timer_get_time(space->machine), duration);
 
-	discrete_sound_w(machine, HITME_DOWNCOUNT_VAL, data);
-	discrete_sound_w(machine, HITME_OUT0, 1);
+	discrete_sound_w(space, HITME_DOWNCOUNT_VAL, data);
+	discrete_sound_w(space, HITME_OUT0, 1);
 }
 
 
 static WRITE8_HANDLER( output_port_1_w )
 {
-	discrete_sound_w(machine, HITME_ENABLE_VAL, data);
-	discrete_sound_w(machine, HITME_OUT1, 1);
+	discrete_sound_w(space, HITME_ENABLE_VAL, data);
+	discrete_sound_w(space, HITME_OUT1, 1);
 }
 
 
@@ -300,7 +303,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( hitme )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", 8080, 8945000/16)
+	MDRV_CPU_ADD("main", 8080, MASTER_CLOCK/16)
 	MDRV_CPU_PROGRAM_MAP(hitme_map,0)
 	MDRV_CPU_IO_MAP(hitme_portmap,0)
 

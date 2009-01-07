@@ -140,7 +140,7 @@ WRITE8_HANDLER( c1943_colorram_w )
 WRITE8_HANDLER( c1943_c804_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 
 	/* bits 0 and 1 are coin counters */
 	coin_counter_w(0, data & 0x01);
@@ -148,12 +148,12 @@ WRITE8_HANDLER( c1943_c804_w )
 
 	/* bits 2, 3 and 4 select the ROM bank */
 	bankaddress = 0x10000 + (data & 0x1c) * 0x1000;
-	memory_set_bankptr(1, &RAM[bankaddress]);
+	memory_set_bankptr(space->machine, 1, &RAM[bankaddress]);
 
 	/* bit 5 resets the sound CPU - we ignore it */
 
 	/* bit 6 flips screen */
-	flip_screen_set(data & 0x40);
+	flip_screen_set(space->machine, data & 0x40);
 
 	/* bit 7 enables characters */
 	chon = data & 0x80;
@@ -209,17 +209,22 @@ static TILE_GET_INFO( c1943_get_fg_tile_info )
 
 VIDEO_START( 1943 )
 {
-	bg2_tilemap = tilemap_create(c1943_get_bg2_tile_info, tilemap_scan_cols,
+	bg2_tilemap = tilemap_create(machine, c1943_get_bg2_tile_info, tilemap_scan_cols,
 		 32, 32, 2048, 8);
 
-	bg_tilemap = tilemap_create(c1943_get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, c1943_get_bg_tile_info, tilemap_scan_cols,
 		 32, 32, 2048, 8);
 
-	fg_tilemap = tilemap_create(c1943_get_fg_tile_info, tilemap_scan_rows,
+	fg_tilemap = tilemap_create(machine, c1943_get_fg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[1], 0x0f);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
+
+    state_save_register_global(machine, chon);
+    state_save_register_global(machine, objon);
+    state_save_register_global(machine, sc1on);
+    state_save_register_global(machine, sc2on);
 }
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority)
@@ -234,7 +239,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int sx = spriteram[offs + 3] - ((attr & 0x10) << 4);
 		int sy = spriteram[offs + 2];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -245,7 +250,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		{
 			if (color != 0x0a && color != 0x0b)
 			{
-				drawgfx(bitmap, machine->gfx[3], code, color, flip_screen_get(), flip_screen_get(),
+				drawgfx(bitmap, machine->gfx[3], code, color, flip_screen_get(machine), flip_screen_get(machine),
 					sx, sy, cliprect, TRANSPARENCY_PEN, 0);
 			}
 		}
@@ -253,7 +258,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		{
 			if (color == 0x0a || color == 0x0b)
 			{
-				drawgfx(bitmap, machine->gfx[3], code, color, flip_screen_get(), flip_screen_get(),
+				drawgfx(bitmap, machine->gfx[3], code, color, flip_screen_get(machine), flip_screen_get(machine),
 					sx, sy, cliprect, TRANSPARENCY_PEN, 0);
 			}
 		}
@@ -269,7 +274,7 @@ VIDEO_UPDATE( 1943 )
 	if (sc2on)
 		tilemap_draw(bitmap, cliprect, bg2_tilemap, 0, 0);
 	else
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	if (objon) draw_sprites(screen->machine, bitmap, cliprect, 0);
 	if (sc1on) tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);

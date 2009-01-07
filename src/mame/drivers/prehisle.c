@@ -9,6 +9,8 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/upd7759.h"
 #include "sound/3812intf.h"
 
@@ -26,8 +28,8 @@ extern UINT16 *prehisle_bg_videoram16;
 
 static WRITE16_HANDLER( prehisle_sound16_w )
 {
-	soundlatch_w(machine, 0, data & 0xff);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(space, 0, data & 0xff);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /*******************************************************************************/
@@ -195,7 +197,7 @@ GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym3812_interface ym3812_config =

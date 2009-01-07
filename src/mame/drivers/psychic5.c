@@ -310,6 +310,7 @@ The first sprite data is located at f20b,then f21b and so on.
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/2203intf.h"
 
@@ -340,7 +341,7 @@ static UINT8 psychic5_bank_latch;
 static MACHINE_RESET( psychic5 )
 {
 	psychic5_bank_latch = 0xff;
-	flip_screen_set(0);
+	flip_screen_set(machine, 0);
 }
 
 /***************************************************************************
@@ -351,10 +352,10 @@ static MACHINE_RESET( psychic5 )
 
 static INTERRUPT_GEN( psychic5_interrupt )
 {
-	if (cpu_getiloops() == 0)
-		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xd7);		/* RST 10h */
+	if (cpu_getiloops(device) == 0)
+		cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xd7);		/* RST 10h */
 	else
-		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xcf);		/* RST 08h */
+		cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xcf);		/* RST 08h */
 }
 
 
@@ -371,27 +372,27 @@ static READ8_HANDLER( psychic5_bankselect_r )
 
 static WRITE8_HANDLER( psychic5_bankselect_w )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 	int bankaddress;
 
 	if (psychic5_bank_latch != data)
 	{
 		psychic5_bank_latch = data;
 		bankaddress = 0x10000 + ((data & 3) * 0x4000);
-		memory_set_bankptr(1,&RAM[bankaddress]);	 /* Select 4 banks of 16k */
+		memory_set_bankptr(space->machine, 1,&RAM[bankaddress]);	 /* Select 4 banks of 16k */
 	}
 }
 
 static WRITE8_HANDLER( bombsa_bankselect_w )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 	int bankaddress;
 
 	if (psychic5_bank_latch != data)
 	{
 		psychic5_bank_latch = data;
 		bankaddress = 0x10000 + ((data & 7) * 0x4000);
-		memory_set_bankptr(1, &RAM[bankaddress]);	 /* Select 8 banks of 16k */
+		memory_set_bankptr(space->machine, 1, &RAM[bankaddress]);	 /* Select 8 banks of 16k */
 	}
 }
 
@@ -403,7 +404,7 @@ static WRITE8_HANDLER( psychic5_coin_counter_w )
 	// bit 7 toggles flip screen
 	if (data & 0x80)
 	{
-		flip_screen_set(!flip_screen_get());
+		flip_screen_set(space->machine, !flip_screen_get(space->machine));
 	}
 }
 
@@ -412,7 +413,7 @@ static WRITE8_HANDLER( bombsa_flipscreen_w )
 	// bit 7 toggles flip screen
 	if (data & 0x80)
 	{
-		flip_screen_set(!flip_screen_get());
+		flip_screen_set(space->machine, !flip_screen_get(space->machine));
 	}
 }
 
@@ -667,7 +668,7 @@ GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -691,7 +692,7 @@ static MACHINE_DRIVER_START( psychic5 )
 	MDRV_CPU_PROGRAM_MAP(psychic5_sound_map,0)
 	MDRV_CPU_IO_MAP(psychic5_soundport_map,0)
 
-	MDRV_INTERLEAVE(10)      /* Allow time for 2nd cpu to interleave */
+	MDRV_QUANTUM_TIME(HZ(600))      /* Allow time for 2nd cpu to interleave */
 	MDRV_MACHINE_RESET(psychic5)
 
 	/* video hardware */
@@ -738,7 +739,7 @@ static MACHINE_DRIVER_START( bombsa )
 	MDRV_CPU_PROGRAM_MAP(bombsa_sound_map,0)
 	MDRV_CPU_IO_MAP(bombsa_soundport_map,0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 	MDRV_MACHINE_RESET(psychic5)
 
 	/* video hardware */

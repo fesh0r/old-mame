@@ -114,13 +114,13 @@ VIDEO_START( atarig1 )
 	atarigen_blend_gfx(machine, 0, 2, 0x0f, 0x10);
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows,  8,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(machine, get_playfield_tile_info, tilemap_scan_rows,  8,8, 64,64);
 
 	/* initialize the motion objects */
 	atarirle_init(machine, 0, atarig1_pitfight ? &modesc_pitfight : &modesc_hydra);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(machine, get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 
 	/* reset statics */
@@ -131,10 +131,10 @@ VIDEO_START( atarig1 )
 	playfield_yscroll = 0;
 
 	/* state saving */
-	state_save_register_global(current_control);
-	state_save_register_global(playfield_tile_bank);
-	state_save_register_global(playfield_xscroll);
-	state_save_register_global(playfield_yscroll);
+	state_save_register_global(machine, current_control);
+	state_save_register_global(machine, playfield_tile_bank);
+	state_save_register_global(machine, playfield_xscroll);
+	state_save_register_global(machine, playfield_yscroll);
 }
 
 
@@ -147,7 +147,7 @@ VIDEO_START( atarig1 )
 
 WRITE16_HANDLER( atarig1_mo_control_w )
 {
-	logerror("MOCONT = %d (scan = %d)\n", data, video_screen_get_vpos(machine->primary_screen));
+	logerror("MOCONT = %d (scan = %d)\n", data, video_screen_get_vpos(space->machine->primary_screen));
 
 	/* set the control value */
 	COMBINE_DATA(&current_control);

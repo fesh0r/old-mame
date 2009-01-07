@@ -23,10 +23,10 @@ static int xcenter, ycenter;
 
 static TIMER_CALLBACK( cchasm_refresh_end )
 {
-    cpunum_set_input_line (machine, 0, 2, ASSERT_LINE);
+    cpu_set_input_line (machine->cpu[0], 2, ASSERT_LINE);
 }
 
-static void cchasm_refresh (void)
+static void cchasm_refresh (running_machine *machine)
 {
 
 	int pc = 0;
@@ -79,7 +79,7 @@ static void cchasm_refresh (void)
         case LENGTH:
             if (move)
             {
-                vector_add_point (currentx, currenty, 0, 0);
+                vector_add_point (machine, currentx, currenty, 0, 0);
                 move = 0;
             }
 
@@ -89,7 +89,7 @@ static void cchasm_refresh (void)
             total_length += abs(data);
 
             if (color)
-                vector_add_point (currentx, currenty, color, 0xff);
+                vector_add_point (machine, currentx, currenty, color, 0xff);
             else
                 move = 1;
             break;
@@ -100,7 +100,7 @@ static void cchasm_refresh (void)
 		}
 	}
     /* Refresh processor runs with 6 MHz */
-    timer_set (attotime_mul(ATTOTIME_IN_HZ(6000000), total_length), NULL, 0, cchasm_refresh_end);
+    timer_set (machine, attotime_mul(ATTOTIME_IN_HZ(6000000), total_length), NULL, 0, cchasm_refresh_end);
 }
 
 
@@ -111,10 +111,10 @@ WRITE16_HANDLER( cchasm_refresh_control_w )
 		switch (data >> 8)
 		{
 		case 0x37:
-			cchasm_refresh();
+			cchasm_refresh(space->machine);
 			break;
 		case 0xf7:
-			cpunum_set_input_line (machine, 0, 2, CLEAR_LINE);
+			cpu_set_input_line (space->machine->cpu[0], 2, CLEAR_LINE);
 			break;
 		}
 	}

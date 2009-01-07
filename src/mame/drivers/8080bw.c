@@ -87,6 +87,8 @@
 /****************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
+#include "cpu/i8085/i8085.h"
 #include "deprecat.h"
 #include "8080bw.h"
 #include "mw8080bw.h"
@@ -1477,13 +1479,13 @@ INPUT_PORTS_END
 
 static READ8_HANDLER(indianbt_r)
 {
-	switch(activecpu_get_pc())
+	switch(cpu_get_pc(space->cpu))
 	{
 		case 0x5fed:	return 0x10;
 		case 0x5ffc:	return 0;
 	}
-	logerror("unknown port 0 read @ %x\n",activecpu_get_pc());
-	return mame_rand(machine);
+	logerror("unknown port 0 read @ %x\n",cpu_get_pc(space->cpu));
+	return mame_rand(space->machine);
 }
 
 static ADDRESS_MAP_START( indianbt_io_map, ADDRESS_SPACE_IO, 8 )

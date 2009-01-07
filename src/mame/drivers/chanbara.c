@@ -47,6 +47,7 @@ ToDo:
 ****************************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6809/m6809.h"
 #include "sound/2203intf.h"
 
 static tilemap *bg_tilemap;
@@ -111,8 +112,8 @@ static TILE_GET_INFO( get_bg2_tile_info )
 
 static VIDEO_START(chanbara )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,8, 8, 32, 32);
-	bg2_tilemap = tilemap_create(get_bg2_tile_info, tilemap_scan_rows,16, 16, 16, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,8, 8, 32, 32);
+	bg2_tilemap = tilemap_create(machine, get_bg2_tile_info, tilemap_scan_rows,16, 16, 16, 32);
 	tilemap_set_transparent_pen(bg_tilemap,0);
 }
 
@@ -163,7 +164,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 static UINT8 scroll;
 static UINT8 scrollhi;
 
-VIDEO_UPDATE( chanbara )
+static VIDEO_UPDATE( chanbara )
 {
 	tilemap_set_scrolly(bg2_tilemap,0,scroll | (scrollhi << 8));
 	tilemap_draw(bitmap, cliprect, bg2_tilemap, 0, 0);
@@ -304,7 +305,7 @@ static WRITE8_HANDLER(chanbara_ay_out_0_w)
 static WRITE8_HANDLER(chanbara_ay_out_1_w)
 {
 //  printf("chanbara_ay_out_1_w %02x\n",data);
-	memory_set_bankptr(1, memory_region(machine, "user1") + ((data&4)?0x4000:0x0000) );
+	memory_set_bankptr(space->machine, 1, memory_region(space->machine, "user1") + ((data&4)?0x4000:0x0000) );
 	scrollhi = data & 0x03;
 
 	//if (data&0xf8)    printf("chanbara_ay_out_1_w unused bits set %02x\n",data&0xf8);
@@ -312,7 +313,7 @@ static WRITE8_HANDLER(chanbara_ay_out_1_w)
 
 static void sound_irq(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(machine, 0,0,linestate);
+	cpu_set_input_line(machine->cpu[0],0,linestate);
 }
 
 

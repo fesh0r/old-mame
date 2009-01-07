@@ -61,8 +61,8 @@ static WRITE16_HANDLER( tecmo16_sound_command_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,0x00,data & 0xff);
-		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+		soundlatch_w(space,0x00,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 	}
 }
 
@@ -427,7 +427,7 @@ GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface ym2151_config =
@@ -447,7 +447,7 @@ static MACHINE_DRIVER_START( fstarfrc )
 	MDRV_CPU_ADD("audio", Z80,8000000/2)			/* 4MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 								/* NMIs are triggered by the main CPU */
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -487,7 +487,7 @@ static MACHINE_DRIVER_START( ginkun )
 	MDRV_CPU_ADD("audio", Z80,8000000/2)			/* 4MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 								/* NMIs are triggered by the main CPU */
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

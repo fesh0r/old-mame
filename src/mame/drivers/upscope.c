@@ -24,8 +24,9 @@
 **********************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/m68000/m68000.h"
 #include "includes/amiga.h"
+#include "machine/6526cia.h"
 
 
 
@@ -58,7 +59,7 @@ static UINT8 nvram_data_latch;
  *
  *************************************/
 
-static void upscope_reset(void)
+static void upscope_reset(running_machine *machine)
 {
 	prev_cia1_porta = 0xff;
 }
@@ -80,19 +81,19 @@ static void upscope_reset(void)
  *
  *************************************/
 
-static void upscope_cia_0_porta_w(UINT8 data)
+static void upscope_cia_0_porta_w(const device_config *device, UINT8 data)
 {
 	/* switch banks as appropriate */
-	memory_set_bank(1, data & 1);
+	memory_set_bank(device->machine, 1, data & 1);
 
 	/* swap the write handlers between ROM and bank 1 based on the bit */
 	if ((data & 1) == 0)
 		/* overlay disabled, map RAM on 0x000000 */
-		memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_BANK1);
+		memory_install_write16_handler(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x000000, 0x07ffff, 0, 0, SMH_BANK1);
 
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_UNMAP);
+		memory_install_write16_handler(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x000000, 0x07ffff, 0, 0, SMH_UNMAP);
 }
 
 
@@ -112,12 +113,12 @@ static void upscope_cia_0_porta_w(UINT8 data)
  *
  *************************************/
 
-static void upscope_cia_0_portb_w(UINT8 data)
+static void upscope_cia_0_portb_w(const device_config *device, UINT8 data)
 {
 	parallel_data = data;
 }
 
-static UINT8 upscope_cia_0_portb_r(void)
+static UINT8 upscope_cia_0_portb_r(const device_config *device)
 {
 	return nvram_data_latch;
 }
@@ -139,12 +140,12 @@ static UINT8 upscope_cia_0_portb_r(void)
  *
  *************************************/
 
-static UINT8 upscope_cia_1_porta_r(void)
+static UINT8 upscope_cia_1_porta_r(const device_config *device)
 {
 	return 0xf8 | (prev_cia1_porta & 0x07);
 }
 
-static void upscope_cia_1_porta_w(UINT8 data)
+static void upscope_cia_1_porta_w(const device_config *device, UINT8 data)
 {
 	/* on a low transition of POUT, we latch stuff for the NVRAM */
 	if ((prev_cia1_porta & 2) && !(data & 2))
@@ -210,7 +211,7 @@ static void upscope_cia_1_porta_w(UINT8 data)
 		if (data & 4)
 		{
 			if (LOG_IO) logerror("Internal register (%d) read\n", nvram_address_latch);
-			nvram_data_latch = (nvram_address_latch == 0) ? input_port_read(Machine, "IO0") : 0xff;
+			nvram_data_latch = (nvram_address_latch == 0) ? input_port_read(device->machine, "IO0") : 0xff;
 		}
 
 		/* if SEL == 0, we read NVRAM */
@@ -286,6 +287,26 @@ static const custom_sound_interface amiga_custom_interface =
  *
  *************************************/
 
+static const cia6526_interface cia_0_intf =
+{
+	amiga_cia_0_irq,										/* irq_func */
+	0,														/* tod_clock */
+	{
+		{ NULL, upscope_cia_0_porta_w },					/* port A */
+		{ upscope_cia_0_portb_r, upscope_cia_0_portb_w }	/* port B */
+	}
+};
+
+static const cia6526_interface cia_1_intf =
+{
+	amiga_cia_1_irq,										/* irq_func */
+	0,														/* tod_clock */
+	{
+		{ upscope_cia_1_porta_r, upscope_cia_1_porta_w, },	/* port A */
+		{ NULL, NULL }										/* port B */
+	}
+};
+
 static MACHINE_DRIVER_START( upscope )
 
 	/* basic machine hardware */
@@ -320,6 +341,10 @@ static MACHINE_DRIVER_START( upscope )
 	MDRV_SOUND_ROUTE(1, "left", 0.50)
 	MDRV_SOUND_ROUTE(2, "left", 0.50)
 	MDRV_SOUND_ROUTE(3, "right", 0.50)
+
+	/* cia */
+	MDRV_CIA8520_ADD("cia_0", AMIGA_68000_NTSC_CLOCK / 10, cia_0_intf)
+	MDRV_CIA8520_ADD("cia_1", AMIGA_68000_NTSC_CLOCK / 10, cia_1_intf)
 MACHINE_DRIVER_END
 
 
@@ -365,10 +390,6 @@ static DRIVER_INIT( upscope )
 	static const amiga_machine_interface upscope_intf =
 	{
 		ANGUS_CHIP_RAM_MASK,
-		NULL, upscope_cia_0_portb_r,
-		upscope_cia_0_porta_w, upscope_cia_0_portb_w,
-		upscope_cia_1_porta_r, NULL,
-		upscope_cia_1_porta_w, NULL,
 		NULL, NULL, NULL,
 		NULL, NULL, NULL,
 		NULL, upscope_reset,
@@ -382,8 +403,8 @@ static DRIVER_INIT( upscope )
 	generic_nvram = auto_malloc(generic_nvram_size);
 
 	/* set up memory */
-	memory_configure_bank(1, 0, 1, amiga_chip_ram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, "user1"), 0);
+	memory_configure_bank(machine, 1, 0, 1, amiga_chip_ram, 0);
+	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "user1"), 0);
 }
 
 

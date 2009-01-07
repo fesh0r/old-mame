@@ -73,7 +73,7 @@ static TILE_GET_INFO( get_nekkyoku_fg_tile_info ) { get_nekkyoku_tile_info(machi
  *
  *************************************/
 
-static void init_common(void)
+static void init_common(running_machine *machine)
 {
 	flipscreen_old = -1;
 
@@ -88,44 +88,44 @@ static void init_common(void)
 	tilemap_set_transparent_pen(fg_tilemap,15);
 
 	/* reset the timer */
-	crtc_timer = timer_alloc(crtc_interrupt_gen, NULL);
+	crtc_timer = timer_alloc(machine, crtc_interrupt_gen, NULL);
 
 	scrollx_ofs = 0x159;
 	scrolly_ofs = 0x10;
 
 	/* state save */
-	state_save_register_global(selected_videoram);
-	state_save_register_global_pointer(local_videoram[0], 0x1000 * 3);
-	state_save_register_global_pointer(local_videoram[1], 0x1000 * 3);
-	state_save_register_global(selected_paletteram);
-	state_save_register_global_array(scrollx);
-	state_save_register_global_array(scrolly);
-	state_save_register_global(gfxreg);
-	state_save_register_global(flipscreen);
-	state_save_register_global(flipscreen_old);
-	state_save_register_global(scrollx_ofs);
-	state_save_register_global(scrolly_ofs);
-	state_save_register_global(crtc_register);
-	state_save_register_global_array(crtc_data);
-	state_save_register_global_pointer(local_paletteram, 0x800 * 2);
+	state_save_register_global(machine, selected_videoram);
+	state_save_register_global_pointer(machine, local_videoram[0], 0x1000 * 3);
+	state_save_register_global_pointer(machine, local_videoram[1], 0x1000 * 3);
+	state_save_register_global(machine, selected_paletteram);
+	state_save_register_global_array(machine, scrollx);
+	state_save_register_global_array(machine, scrolly);
+	state_save_register_global(machine, gfxreg);
+	state_save_register_global(machine, flipscreen);
+	state_save_register_global(machine, flipscreen_old);
+	state_save_register_global(machine, scrollx_ofs);
+	state_save_register_global(machine, scrolly_ofs);
+	state_save_register_global(machine, crtc_register);
+	state_save_register_global_array(machine, crtc_data);
+	state_save_register_global_pointer(machine, local_paletteram, 0x800 * 2);
 }
 
 VIDEO_START( fromance )
 {
 	/* allocate tilemaps */
-	bg_tilemap = tilemap_create(get_fromance_bg_tile_info, tilemap_scan_rows,       8,4, 64,64);
-	fg_tilemap = tilemap_create(get_fromance_fg_tile_info, tilemap_scan_rows,  8,4, 64,64);
+	bg_tilemap = tilemap_create(machine, get_fromance_bg_tile_info, tilemap_scan_rows,       8,4, 64,64);
+	fg_tilemap = tilemap_create(machine, get_fromance_fg_tile_info, tilemap_scan_rows,  8,4, 64,64);
 
-	init_common();
+	init_common(machine);
 }
 
 VIDEO_START( nekkyoku )
 {
 	/* allocate tilemaps */
-	bg_tilemap = tilemap_create(get_nekkyoku_bg_tile_info, tilemap_scan_rows,       8,4, 64,64);
-	fg_tilemap = tilemap_create(get_nekkyoku_fg_tile_info, tilemap_scan_rows,  8,4, 64,64);
+	bg_tilemap = tilemap_create(machine, get_nekkyoku_bg_tile_info, tilemap_scan_rows,       8,4, 64,64);
+	fg_tilemap = tilemap_create(machine, get_nekkyoku_fg_tile_info, tilemap_scan_rows,  8,4, 64,64);
 
-	init_common();
+	init_common(machine);
 }
 
 VIDEO_START( pipedrm )
@@ -188,7 +188,7 @@ WRITE8_HANDLER( fromance_paletteram_w )
 
 	/* compute R,G,B */
 	palword = (local_paletteram[offset | 1] << 8) | local_paletteram[offset & ~1];
-	palette_set_color_rgb(machine, offset / 2, pal5bit(palword >> 10), pal5bit(palword >> 5), pal5bit(palword >> 0));
+	palette_set_color_rgb(space->machine, offset / 2, pal5bit(palword >> 10), pal5bit(palword >> 5), pal5bit(palword >> 0));
 }
 
 
@@ -269,7 +269,7 @@ WRITE8_HANDLER( fromance_scroll_w )
 
 static TIMER_CALLBACK( crtc_interrupt_gen )
 {
-	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+	cpu_set_input_line(machine->cpu[1], 0, HOLD_LINE);
 	if (param != 0)
 		timer_adjust_periodic(crtc_timer, attotime_div(video_screen_get_frame_period(machine->primary_screen), param), 0, attotime_div(video_screen_get_frame_period(machine->primary_screen), param));
 }
@@ -283,7 +283,7 @@ WRITE8_HANDLER( fromance_crtc_data_w )
 	{
 		/* only register we know about.... */
 		case 0x0b:
-			timer_adjust_oneshot(crtc_timer, video_screen_get_time_until_vblank_start(machine->primary_screen), (data > 0x80) ? 2 : 1);
+			timer_adjust_oneshot(crtc_timer, video_screen_get_time_until_vblank_start(space->machine->primary_screen), (data > 0x80) ? 2 : 1);
 			break;
 
 		default:

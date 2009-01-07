@@ -214,7 +214,7 @@ static tilemap *megasys1_tilemap[3][2][4];
 /* Variables defined in driver: */
 static int hardware_type_z;
 
-static void create_tilemaps(void);
+static void create_tilemaps(running_machine *machine);
 
 
 
@@ -223,7 +223,7 @@ static void create_tilemaps(void);
 #define SHOW_WRITE_ERROR(_format_,_offset_,_data_)\
 { \
 	popmessage(_format_,_offset_,_data_);\
-	logerror("CPU #0 PC %06X : Warning, ",activecpu_get_pc()); \
+	logerror("CPU #0 PC %06X : Warning, ",cpu_get_pc(space->cpu)); \
 	logerror(_format_,_offset_,_data_);\
 	logerror("\n");\
 }
@@ -232,7 +232,7 @@ static void create_tilemaps(void);
 
 #define SHOW_WRITE_ERROR(_format_,_offset_,_data_)\
 {\
-	logerror("CPU #0 PC %06X : Warning, ",activecpu_get_pc()); \
+	logerror("CPU #0 PC %06X : Warning, ",cpu_get_pc(space->cpu)); \
 	logerror(_format_,_offset_,_data_); \
 	logerror("\n");\
 }
@@ -247,7 +247,7 @@ VIDEO_START( megasys1 )
 
 	spriteram16 = &megasys1_ram[0x8000/2];
 
-	create_tilemaps();
+	create_tilemaps(machine);
 	megasys1_tmap[0] = megasys1_tilemap[0][0][0];
 	megasys1_tmap[1] = megasys1_tilemap[1][0][0];
 	megasys1_tmap[2] = megasys1_tilemap[2][0][0];
@@ -377,30 +377,30 @@ static TILE_GET_INFO( megasys1_get_scroll_tile_info_16x16 )
 	SET_TILE_INFO(tmap, (code & 0xfff) * megasys1_16x16_scroll_factor[tmap] + (tile_index & 3), code >> (16 - megasys1_bits_per_color_code), 0);
 }
 
-static void create_tilemaps(void)
+static void create_tilemaps(running_machine *machine)
 {
 	int layer, i;
 
 	for (layer = 0; layer < 3; layer++)
 	{
 		/* 16x16 tilemaps */
-		megasys1_tilemap[layer][0][0] = tilemap_create(megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
+		megasys1_tilemap[layer][0][0] = tilemap_create(machine, megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
 								 8,8, TILES_PER_PAGE_X * 16, TILES_PER_PAGE_Y * 2);
-		megasys1_tilemap[layer][0][1] = tilemap_create(megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
+		megasys1_tilemap[layer][0][1] = tilemap_create(machine, megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
 								 8,8, TILES_PER_PAGE_X * 8, TILES_PER_PAGE_Y * 4);
-		megasys1_tilemap[layer][0][2] = tilemap_create(megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
+		megasys1_tilemap[layer][0][2] = tilemap_create(machine, megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
 								 8,8, TILES_PER_PAGE_X * 4, TILES_PER_PAGE_Y * 8);
-		megasys1_tilemap[layer][0][3] = tilemap_create(megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
+		megasys1_tilemap[layer][0][3] = tilemap_create(machine, megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
 								 8,8, TILES_PER_PAGE_X * 2, TILES_PER_PAGE_Y * 16);
 
 		/* 8x8 tilemaps */
-		megasys1_tilemap[layer][1][0] = tilemap_create(megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
+		megasys1_tilemap[layer][1][0] = tilemap_create(machine, megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
 								 8,8, TILES_PER_PAGE_X * 8, TILES_PER_PAGE_Y * 1);
-		megasys1_tilemap[layer][1][1] = tilemap_create(megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
+		megasys1_tilemap[layer][1][1] = tilemap_create(machine, megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
 								 8,8, TILES_PER_PAGE_X * 4, TILES_PER_PAGE_Y * 2);
-		megasys1_tilemap[layer][1][2] = tilemap_create(megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
+		megasys1_tilemap[layer][1][2] = tilemap_create(machine, megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
 								 8,8, TILES_PER_PAGE_X * 4, TILES_PER_PAGE_Y * 2);
-		megasys1_tilemap[layer][1][3] = tilemap_create(megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
+		megasys1_tilemap[layer][1][3] = tilemap_create(machine, megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
 								 8,8, TILES_PER_PAGE_X * 2, TILES_PER_PAGE_Y * 4);
 
 		/* set user data and transparency */
@@ -449,13 +449,13 @@ WRITE16_HANDLER( megasys1_vregs_A_w )
 
 		case 0x300/2   :	megasys1_screen_flag = new_data;
 							if (new_data & 0x10)
-								cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+								cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 							else
-								cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+								cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 							break;
 
-		case 0x308/2   :	soundlatch_word_w(machine,0,new_data,0xffff);
-							cpunum_set_input_line(machine, 1,4,HOLD_LINE);
+		case 0x308/2   :	soundlatch_word_w(space,0,new_data,0xffff);
+							cpu_set_input_line(space->machine->cpu[1],4,HOLD_LINE);
 							break;
 
 		default		 :	SHOW_WRITE_ERROR("vreg %04X <- %04X",offset*2,data);
@@ -471,7 +471,7 @@ READ16_HANDLER( megasys1_vregs_C_r )
 {
 	switch (offset)
 	{
-		case 0x8000/2:	return soundlatch2_word_r(machine,0,0xffff);
+		case 0x8000/2:	return soundlatch2_word_r(space,0,0xffff);
 		default:		return megasys1_vregs[offset];
 	}
 }
@@ -500,14 +500,14 @@ WRITE16_HANDLER( megasys1_vregs_C_w )
 
 		case 0x2308/2   :	megasys1_screen_flag = new_data;
 							if (new_data & 0x10)
-								cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+								cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 							else
-								cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+								cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 							break;
 
 		case 0x8000/2   :	/* Cybattler reads sound latch on irq 2 */
-							soundlatch_word_w(machine,0,new_data,0xffff);
-							cpunum_set_input_line(machine, 1,2,HOLD_LINE);
+							soundlatch_word_w(space,0,new_data,0xffff);
+							cpu_set_input_line(space->machine->cpu[1],2,HOLD_LINE);
 							break;
 
 		default:		SHOW_WRITE_ERROR("vreg %04X <- %04X",offset*2,data);
@@ -974,7 +974,7 @@ VIDEO_UPDATE( megasys1 )
 		}
 	}
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	flag = TILEMAP_DRAW_OPAQUE;
 	primask = 0;
@@ -1000,7 +1000,7 @@ VIDEO_UPDATE( megasys1 )
 				if (flag != 0)
 				{
 					flag = 0;
-					fillbitmap(bitmap,0,cliprect);
+					bitmap_fill(bitmap,cliprect,0);
 				}
 
 				if (megasys1_sprite_flag & 0x100)	/* sprites are split */

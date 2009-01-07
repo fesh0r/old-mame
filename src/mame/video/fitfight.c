@@ -1,20 +1,11 @@
 /* Fit of Fighting Video Hardware */
 
 #include "driver.h"
+#include "includes/fitfight.h"
 
-extern UINT16 *fitfight_spriteram;
-extern UINT16 *fof_700000;
-extern UINT16 *fof_900000;
-extern UINT16 *fof_a00000;
-
-extern UINT16 *fof_bak_tileram;
 static tilemap *fof_bak_tilemap;
-extern UINT16 *fof_mid_tileram;
 static tilemap *fof_mid_tilemap;
-extern UINT16 *fof_txt_tileram;
 static tilemap *fof_txt_tilemap;
-
-extern char bbprot_kludge;
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int layer )
 {
@@ -103,13 +94,13 @@ WRITE16_HANDLER( fof_txt_tileram_w )
 
 VIDEO_START(fitfight)
 {
-	fof_bak_tilemap = tilemap_create(get_fof_bak_tile_info,tilemap_scan_cols,8,8,128, 32);
+	fof_bak_tilemap = tilemap_create(machine, get_fof_bak_tile_info,tilemap_scan_cols,8,8,128, 32);
 	/* opaque */
 
-	fof_mid_tilemap = tilemap_create(get_fof_mid_tile_info,tilemap_scan_cols,8,8,128, 32);
+	fof_mid_tilemap = tilemap_create(machine, get_fof_mid_tile_info,tilemap_scan_cols,8,8,128, 32);
 	tilemap_set_transparent_pen(fof_mid_tilemap,0);
 
-	fof_txt_tilemap = tilemap_create(get_fof_txt_tile_info,tilemap_scan_cols,8,8,128, 32);
+	fof_txt_tilemap = tilemap_create(machine, get_fof_txt_tile_info,tilemap_scan_cols,8,8,128, 32);
 	tilemap_set_transparent_pen(fof_txt_tilemap,0);
 }
 
@@ -123,7 +114,7 @@ VIDEO_UPDATE(fitfight)
 	vblank = (fof_700000[0] & 0x8000);
 
 	if (vblank > 0)
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 	else {
 //      if (input_code_pressed(KEYCODE_Q))
 //          scrollbak = ((fof_a00000[0]&0xff00) >> 5) - ((fof_700000[0] & 0x0038) >> 3);

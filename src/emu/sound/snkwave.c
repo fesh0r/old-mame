@@ -53,13 +53,13 @@ static void update_waveform(struct snkwave_sound *chip, unsigned int offset, UIN
 
 
 /* generate sound to the mix buffer */
-static void snkwave_update(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( snkwave_update )
 {
 	struct snkwave_sound *chip = param;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
 	/* zap the contents of the buffer */
-	memset(buffer, 0, length * sizeof(*buffer));
+	memset(buffer, 0, samples * sizeof(*buffer));
 
 	assert(chip->counter < 0x1000);
 	assert(chip->frequency < 0x1000);
@@ -69,7 +69,7 @@ static void snkwave_update(void *param, stream_sample_t **inputs, stream_sample_
 		return;
 
 	/* generate sound into buffer while updating the counter */
-	while (length-- > 0)
+	while (samples-- > 0)
 	{
 		int loops;
 		INT16 out = 0;
@@ -99,7 +99,7 @@ static void snkwave_update(void *param, stream_sample_t **inputs, stream_sample_
 }
 
 
-static void *snkwave_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( snkwave )
 {
 	struct snkwave_sound *chip;
 
@@ -115,7 +115,7 @@ static void *snkwave_start(const char *tag, int sndindex, int clock, const void 
 	chip->sample_rate = chip->external_clock >> CLOCK_SHIFT;
 
 	/* get stream channels */
-	chip->stream = stream_create(0, 1, chip->sample_rate, chip, snkwave_update);
+	chip->stream = stream_create(device, 0, 1, chip->sample_rate, chip, snkwave_update);
 
 	/* reset all the voices */
 	chip->frequency = 0;
@@ -123,10 +123,10 @@ static void *snkwave_start(const char *tag, int sndindex, int clock, const void 
 	chip->waveform_position = 0;
 
 	/* register with the save state system */
-	state_save_register_item("snkwave", sndindex, chip->frequency);
-	state_save_register_item("snkwave", sndindex, chip->counter);
-	state_save_register_item("snkwave", sndindex, chip->waveform_position);
-	state_save_register_item_pointer("snkwave", sndindex, chip->waveform, WAVEFORM_LENGTH);
+	state_save_register_device_item(device, 0, chip->frequency);
+	state_save_register_device_item(device, 0, chip->counter);
+	state_save_register_device_item(device, 0, chip->waveform_position);
+	state_save_register_device_item_pointer(device, 0, chip->waveform, WAVEFORM_LENGTH);
 
 	return chip;
 }
@@ -163,7 +163,7 @@ WRITE8_HANDLER( snkwave_w )
  * Generic get_info
  **************************************************************************/
 
-static void snkwave_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( snkwave )
 {
 	switch (state)
 	{
@@ -172,23 +172,23 @@ static void snkwave_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void snkwave_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( snkwave )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = snkwave_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = snkwave_start;			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( snkwave );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( snkwave );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "SNK Wave";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "SNK Wave";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "SNK Wave");					break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "SNK Wave");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

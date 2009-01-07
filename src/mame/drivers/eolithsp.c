@@ -17,15 +17,15 @@ static int eolith_speedup_resume_scanline;
 static int eolith_vblank = 0;
 static int eolith_scanline = 0;
 
-void eolith_speedup_read(void)
+void eolith_speedup_read(const address_space *space)
 {
 	/* for debug */
-//  if ((activecpu_get_pc()!=eolith_speedup_address) && (eolith_vblank!=1) )
-//      printf("%06x eolith speedup_read data %02x\n",activecpu_get_pc(), eolith_vblank);
+//  if ((cpu_get_pc(space->cpu)!=eolith_speedup_address) && (eolith_vblank!=1) )
+//      printf("%s:eolith speedup_read data %02x\n",cpuexec_describe_context(space->machine), eolith_vblank);
 
-	if (activecpu_get_pc()==eolith_speedup_address && eolith_vblank==0 && eolith_scanline < eolith_speedup_resume_scanline)
+	if (cpu_get_pc(space->cpu)==eolith_speedup_address && eolith_vblank==0 && eolith_scanline < eolith_speedup_resume_scanline)
 	{
-		cpu_spinuntil_trigger(1000);
+		cpu_spinuntil_trigger(space->cpu, 1000);
 	}
 
 }
@@ -78,7 +78,7 @@ void init_eolith_speedup(running_machine *machine)
 /* todo, use timers instead! */
 INTERRUPT_GEN( eolith_speedup )
 {
-	eolith_scanline = 261 -  cpu_getiloops();
+	eolith_scanline = 261 -  cpu_getiloops(device);
 
 	if (eolith_scanline==0)
 	{
@@ -87,7 +87,7 @@ INTERRUPT_GEN( eolith_speedup )
 
 	if (eolith_scanline==eolith_speedup_resume_scanline)
 	{
-		cpu_trigger(machine, 1000);
+		cpuexec_trigger(device->machine, 1000);
 	}
 
 	if (eolith_scanline==240)

@@ -80,18 +80,23 @@ enum
 
 enum
 {
-	CPUINFO_PTR_SH2_FTCSR_READ_CALLBACK = CPUINFO_PTR_CPU_SPECIFIC,
+	CPUINFO_FCT_SH2_FTCSR_READ_CALLBACK = CPUINFO_FCT_CPU_SPECIFIC,
 
-	CPUINFO_PTR_SH2_FASTRAM_BASE
+	CPUINFO_PTR_SH2_FASTRAM_BASE = CPUINFO_PTR_CPU_SPECIFIC
 };
 
 typedef struct _sh2_cpu_core sh2_cpu_core;
 struct _sh2_cpu_core
 {
   int is_slave;
+  int  (*dma_callback_kludge)(UINT32 src, UINT32 dst, UINT32 data, int size);
 };
 
-extern void sh2_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( sh1 );
+extern CPU_GET_INFO( sh2 );
+
+#define CPU_SH1 CPU_GET_INFO_NAME( sh1 )
+#define CPU_SH2 CPU_GET_INFO_NAME( sh2 )
 
 WRITE32_HANDLER( sh2_internal_w );
 READ32_HANDLER( sh2_internal_r );

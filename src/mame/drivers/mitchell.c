@@ -78,6 +78,7 @@ mw-9.rom = ST M27C1001 / GFX
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "machine/eeprom.h"
 #include "includes/cps1.h"
@@ -116,7 +117,7 @@ static UINT8 pang_port5_kludge = 0;
 
 static WRITE8_HANDLER( pang_bankswitch_w )
 {
-	memory_set_bank(1, data & 0x0f);
+	memory_set_bank(space->machine, 1, data & 0x0f);
 }
 
 
@@ -150,7 +151,7 @@ static NVRAM_HANDLER( mitchell )
 	}
 	else
 	{
-		eeprom_init(&eeprom_intf);
+		eeprom_init(machine, &eeprom_intf);
 
 		if (file)
 		{
@@ -175,13 +176,13 @@ static READ8_HANDLER( pang_port5_r )
 	/* bit 3 is checked before updating the palette so it really seems to be vblank. */
 	/* Many games require two interrupts per frame and for these bits to toggle, */
 	/* otherwise music doesn't work. */
-	if (cpu_getiloops() & 1) bit |= 0x01;
+	if (cpu_getiloops(space->cpu) & 1) bit |= 0x01;
 	else bit |= 0x08;
 
 		if (pang_port5_kludge)	/* hack... music doesn't work otherwise */
 			bit ^= 0x08;
 
-	return (input_port_read(machine, "DSW0") & 0x76) | bit;
+	return (input_port_read(space->machine, "DSW0") & 0x76) | bit;
 }
 
 static WRITE8_HANDLER( eeprom_cs_w )
@@ -219,7 +220,7 @@ static READ8_HANDLER( block_input_r )
 	{
 		int delta;
 
-		delta = (input_port_read(machine, dialnames[offset]) - dial[offset]) & 0xff;
+		delta = (input_port_read(space->machine, dialnames[offset]) - dial[offset]) & 0xff;
 		if (delta & 0x80)
 		{
 			delta = (-delta) & 0xff;
@@ -246,7 +247,7 @@ static READ8_HANDLER( block_input_r )
 	{
 		int res;
 
-		res = input_port_read(machine, portnames[offset]) & 0xf7;
+		res = input_port_read(space->machine, portnames[offset]) & 0xf7;
 		if (dir[offset]) res |= 0x08;
 
 		return res;
@@ -258,8 +259,8 @@ static WRITE8_HANDLER( block_dial_control_w )
 	if (data == 0x08)
 	{
 		/* reset the dial counters */
-		dial[0] = input_port_read(machine, "DIAL1");
-		dial[1] = input_port_read(machine, "DIAL2");
+		dial[0] = input_port_read(space->machine, "DIAL1");
+		dial[1] = input_port_read(space->machine, "DIAL2");
 	}
 	else if (data == 0x80)
 		dial_selected = 0;
@@ -280,7 +281,7 @@ static READ8_HANDLER( mahjong_input_r )
 			};
 
 	for (i = 0; i < 5; i++)
-		if (keymatrix & (0x80 >> i)) return input_port_read(machine, keynames[offset][i]);
+		if (keymatrix & (0x80 >> i)) return input_port_read(space->machine, keynames[offset][i]);
 
 	return 0xff;
 }
@@ -301,22 +302,22 @@ static READ8_HANDLER( input_r )
 	{
 		case 0:
 		default:
-			return input_port_read(machine, portnames[offset]);
+			return input_port_read(space->machine, portnames[offset]);
 			break;
 		case 1:		/* Mahjong games */
-			if (offset) return mahjong_input_r(machine, offset-1);
-			else return input_port_read(machine, "IN0");
+			if (offset) return mahjong_input_r(space, offset-1);
+			else return input_port_read(space->machine, "IN0");
 			break;
 		case 2:		/* Block Block - dial control */
-			if (offset) return block_input_r(machine, offset-1);
-			else return input_port_read(machine, "IN0");
+			if (offset) return block_input_r(space, offset-1);
+			else return input_port_read(space->machine, "IN0");
 			break;
 		case 3:		/* Super Pang - simulate START 1 press to initialize EEPROM */
-			if (offset || init_eeprom_count == 0) return input_port_read(machine, portnames[offset]);
+			if (offset || init_eeprom_count == 0) return input_port_read(space->machine, portnames[offset]);
 			else
 			{
 				init_eeprom_count--;
-				return input_port_read(machine, "IN0") & ~0x08;
+				return input_port_read(space->machine, "IN0") & ~0x08;
 			}
 			break;
 	}
@@ -329,13 +330,13 @@ static WRITE8_HANDLER( input_w )
 	{
 		case 0:
 		default:
-logerror("PC %04x: write %02x to port 01\n",activecpu_get_pc(),data);
+logerror("PC %04x: write %02x to port 01\n",cpu_get_pc(space->cpu),data);
 			break;
 		case 1:
-			mahjong_input_select_w(machine,offset,data);
+			mahjong_input_select_w(space,offset,data);
 			break;
 		case 2:
-			block_dial_control_w(machine,offset,data);
+			block_dial_control_w(space,offset,data);
 			break;
 	}
 }
@@ -472,8 +473,8 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER(mstworld_sound_w)
 {
-	soundlatch_w(machine,0,data);
-	cpunum_set_input_line(machine, 1,0,HOLD_LINE);
+	soundlatch_w(space,0,data);
+	cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
 }
 
 extern WRITE8_HANDLER( mstworld_gfxctrl_w );
@@ -1201,13 +1202,13 @@ GFXDECODE_END
 
 
 
-static void spangbl_adpcm_int(running_machine *machine, int data)
+static void spangbl_adpcm_int(const device_config *device)
 {
 	msm5205_data_w(0, sample_buffer & 0x0F);
 	sample_buffer >>= 4;
 	sample_select ^= 1;
 	if(sample_select == 0)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -1997,14 +1998,15 @@ ROM_END
 
 static void bootleg_decode(running_machine *machine)
 {
-	memory_set_decrypted_region(0, 0x0000, 0x7fff, memory_region(machine, "main") + 0x50000);
-	memory_configure_bank_decrypted(1, 0, 16, memory_region(machine, "main") + 0x60000, 0x4000);
+	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+	memory_set_decrypted_region(space, 0x0000, 0x7fff, memory_region(machine, "main") + 0x50000);
+	memory_configure_bank_decrypted(machine, 1, 0, 16, memory_region(machine, "main") + 0x60000, 0x4000);
 }
 
 
 static void configure_banks(running_machine *machine)
 {
-	memory_configure_bank(1, 0, 16, memory_region(machine, "main") + 0x10000, 0x4000);
+	memory_configure_bank(machine, 1, 0, 16, memory_region(machine, "main") + 0x10000, 0x4000);
 	pang_port5_kludge = 0;
 }
 

@@ -347,7 +347,7 @@ WRITE16_HANDLER( volfied_cchip_ram_w )
 	cchip_ram[(current_bank * 0x400) + offset]=data;
 
 //  if (offset!=0x8)
-//      logerror("%08x:  volfied c write %04x %04x\n", activecpu_get_pc(), offset,data);
+//      logerror("%08x:  volfied c write %04x %04x\n", cpu_get_pc(space->cpu), offset,data);
 
 	if (current_bank == 0)
 	{
@@ -393,12 +393,12 @@ WRITE16_HANDLER( volfied_cchip_ram_w )
 			// Palette request cmd - verified to take around 122242 68000 cycles to complete
 			if (current_cmd >= 0x1 && current_cmd < 0x12)
 			{
-				timer_set(ATTOTIME_IN_CYCLES(122242,0), NULL, 0, volfied_timer_callback);
+				timer_set(space->machine, cpu_clocks_to_attotime(space->cpu,122242), NULL, 0, volfied_timer_callback);
 			}
 			// Unknown cmd - verified to take around 105500 68000 cycles to complete
 			else if (current_cmd >= 0x81 && current_cmd < 0x92)
 			{
-				timer_set(ATTOTIME_IN_CYCLES(105500,0), NULL, 0, volfied_timer_callback);
+				timer_set(space->machine, cpu_clocks_to_attotime(space->cpu,105500), NULL, 0, volfied_timer_callback);
 			}
 			else
 			{
@@ -438,16 +438,16 @@ READ16_HANDLER( volfied_cchip_ram_r )
 	{
 		switch (offset)
 		{
-		case 0x03: return input_port_read(machine, "F00007");    /* STARTn + SERVICE1 */
-		case 0x04: return input_port_read(machine, "F00009");    /* COINn */
-		case 0x05: return input_port_read(machine, "F0000B");    /* Player controls + TILT */
-		case 0x06: return input_port_read(machine, "F0000D");    /* Player controls (cocktail) */
+		case 0x03: return input_port_read(space->machine, "F00007");    /* STARTn + SERVICE1 */
+		case 0x04: return input_port_read(space->machine, "F00009");    /* COINn */
+		case 0x05: return input_port_read(space->machine, "F0000B");    /* Player controls + TILT */
+		case 0x06: return input_port_read(space->machine, "F0000D");    /* Player controls (cocktail) */
 		case 0x08: return cc_port;
 		}
 	}
 
-//  if (activecpu_get_pc()!=0x15ca8 && activecpu_get_pc()!=0x15cd8 && activecpu_get_pc()!=0x15cde)
-//      logerror("%08x:  volfied c read %04x (bank %04x)\n", activecpu_get_pc(), offset, current_bank);
+//  if (cpu_get_pc(space->cpu)!=0x15ca8 && cpu_get_pc(space->cpu)!=0x15cd8 && cpu_get_pc(space->cpu)!=0x15cde)
+//      logerror("%08x:  volfied c read %04x (bank %04x)\n", cpu_get_pc(space->cpu), offset, current_bank);
 
 	/* Unknown */
 	if (current_bank == 2 && offset == 0x005)
@@ -484,13 +484,13 @@ READ16_HANDLER( volfied_cchip_ram_r )
  *
  *************************************/
 
-void volfied_cchip_init(void)
+void volfied_cchip_init(running_machine *machine)
 {
 	cchip_ram=auto_malloc(0x400 * 8);
 
-	state_save_register_global(current_bank);
-	state_save_register_global(current_cmd);
-	state_save_register_global(current_flag);
-	state_save_register_global(cc_port);
-	state_save_register_global_pointer(cchip_ram, 0x400 * 8);
+	state_save_register_global(machine, current_bank);
+	state_save_register_global(machine, current_cmd);
+	state_save_register_global(machine, current_flag);
+	state_save_register_global(machine, cc_port);
+	state_save_register_global_pointer(machine, cchip_ram, 0x400 * 8);
 }

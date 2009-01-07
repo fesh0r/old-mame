@@ -62,21 +62,21 @@ struct dmadac_channel_data
  *
  *************************************/
 
-static void dmadac_update(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( dmadac_update )
 {
 	struct dmadac_channel_data *ch = param;
-	stream_sample_t *output = _buffer[0];
+	stream_sample_t *output = outputs[0];
 	INT16 *source = ch->buffer;
 	UINT32 curout = ch->bufout;
 	UINT32 curin = ch->bufin;
 	int volume = ch->volume;
 
 	/* feed as much as we can */
-	while (curout != curin && length-- > 0)
+	while (curout != curin && samples-- > 0)
 		*output++ = (source[curout++ % BUFFER_SIZE] * volume) >> 8;
 
 	/* fill the rest with silence */
-	while (length-- > 0)
+	while (samples-- > 0)
 		*output++ = 0;
 
 	/* save the new output pointer */
@@ -91,7 +91,7 @@ static void dmadac_update(void *param, stream_sample_t **inputs, stream_sample_t
  *
  *************************************/
 
-static void *dmadac_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( dmadac )
 {
 	struct dmadac_channel_data *info;
 
@@ -106,15 +106,15 @@ static void *dmadac_start(const char *tag, int sndindex, int clock, const void *
 	info->volume = 0x100;
 
 	/* allocate a stream channel */
-	info->channel = stream_create(0, 1, DEFAULT_SAMPLE_RATE, info, dmadac_update);
+	info->channel = stream_create(device, 0, 1, DEFAULT_SAMPLE_RATE, info, dmadac_update);
 
 	/* register with the save state system */
-	state_save_register_item("dmadac", sndindex, info->bufin);
-	state_save_register_item("dmadac", sndindex, info->bufout);
-	state_save_register_item("dmadac", sndindex, info->volume);
-	state_save_register_item("dmadac", sndindex, info->enabled);
-	state_save_register_item("dmadac", sndindex, info->frequency);
-	state_save_register_item_pointer("dmadac", sndindex, info->buffer, BUFFER_SIZE);
+	state_save_register_device_item(device, 0, info->bufin);
+	state_save_register_device_item(device, 0, info->bufout);
+	state_save_register_device_item(device, 0, info->volume);
+	state_save_register_device_item(device, 0, info->enabled);
+	state_save_register_device_item(device, 0, info->frequency);
+	state_save_register_device_item_pointer(device, 0, info->buffer, BUFFER_SIZE);
 
 	return info;
 }
@@ -235,7 +235,7 @@ void dmadac_set_volume(UINT8 first_channel, UINT8 num_channels, UINT16 volume)
  * Generic get_info
  **************************************************************************/
 
-static void dmadac_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( dmadac )
 {
 	switch (state)
 	{
@@ -244,24 +244,24 @@ static void dmadac_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void dmadac_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( dmadac )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = dmadac_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = dmadac_start;				break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( dmadac );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( dmadac );			break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							/* nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "DMA-driven DAC";				break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "DAC";						break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "DMA-driven DAC");				break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "DAC");							break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

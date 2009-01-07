@@ -64,6 +64,7 @@ Dumping Notes:
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "render.h"
 #include "machine/laserdsc.h"
 
@@ -87,7 +88,7 @@ static VIDEO_UPDATE( lgp )
 	palette_set_color(screen->machine, 0, MAKE_ARGB(0,0,0,0));
 
 	/* clear */
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	/* Draw tiles */
 	for (charx = 0; charx < 32; charx++)
@@ -316,17 +317,17 @@ GFXDECODE_END
 
 static TIMER_CALLBACK( irq_stop )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( vblank_callback_lgp )
 {
 	// NMI
-	//cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+	//cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 
 	// IRQ
-	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
-	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, irq_stop);
+	cpu_set_input_line(device, 0, ASSERT_LINE);
+	timer_set(device->machine, ATTOTIME_IN_USEC(50), NULL, 0, irq_stop);
 }
 
 

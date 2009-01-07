@@ -166,7 +166,7 @@ VIDEO_START( model3 )
 {
 	int width, height;
 
-	poly = poly_alloc(4000, sizeof(poly_extra_data), 0);
+	poly = poly_alloc(machine, 4000, sizeof(poly_extra_data), 0);
 	add_exit_callback(machine, model3_exit);
 
 	width = video_screen_get_width(machine->primary_screen);
@@ -431,7 +431,7 @@ VIDEO_UPDATE( model3 )
 			debug_layer_disable ^= 0x10;
 	}
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	if (!(debug_layer_disable & 0x8))
 		draw_layer(bitmap, cliprect, 3, (model3_layer_enable >> 3) & 0x1);
@@ -442,8 +442,8 @@ VIDEO_UPDATE( model3 )
 	if( !(debug_layer_disable & 0x10) )
 	{
 //      if(real3d_display_list) {
-//          fillbitmap(zbuffer, 0, cliprect);
-//          fillbitmap(bitmap3d, 0x8000, cliprect);
+//          bitmap_fill(zbuffer, cliprect, 0);
+//          bitmap_fill(bitmap3d, cliprect, 0x8000);
 //          real3d_traverse_display_list();
 //      }
 		copybitmap_trans(bitmap, bitmap3d, 0, 0, 0, 0, cliprect, 0x8000);
@@ -504,7 +504,7 @@ WRITE64_HANDLER(model3_vid_reg_w)
 	{
 		case 0x00/8:	logerror("vid_reg0: %08X%08X\n", (UINT32)(data>>32),(UINT32)(data)); vid_reg0 = data; break;
 		case 0x08/8:	break;		/* ??? */
-		case 0x10/8:	model3_set_irq_line(machine, (data >> 56) & 0x0f, CLEAR_LINE); break;		/* VBL IRQ Ack */
+		case 0x10/8:	model3_set_irq_line(space->machine, (data >> 56) & 0x0f, CLEAR_LINE); break;		/* VBL IRQ Ack */
 
 		case 0x20/8:	model3_layer_enable = (data >> 52);	break;
 
@@ -820,70 +820,70 @@ void real3d_display_list_end(void)
 		};
 	}
 	texture_fifo_pos = 0;
-	fillbitmap(zbuffer, 0, NULL);
-	fillbitmap(bitmap3d, 0x8000, NULL);
+	bitmap_fill(zbuffer, NULL, 0);
+	bitmap_fill(bitmap3d, NULL, 0x8000);
 	real3d_traverse_display_list();
 //  real3d_display_list = 1;
 }
 
-void real3d_display_list1_dma(UINT32 src, UINT32 dst, int length, int byteswap)
+void real3d_display_list1_dma(const address_space *space, UINT32 src, UINT32 dst, int length, int byteswap)
 {
 	int i;
 	int d = (dst & 0xffffff) / 4;
 	for(i=0; i < length; i+=4) {
 		UINT32 w;
 		if (byteswap) {
-			w = BYTE_REVERSE32(program_read_dword_64le(src^4));
+			w = BYTE_REVERSE32(memory_read_dword(space, src^4));
 		} else {
-			w = program_read_dword_64le(src^4);
+			w = memory_read_dword(space, src^4);
 		}
 		display_list_ram[d++] = w;
 		src += 4;
 	}
 }
 
-void real3d_display_list2_dma(UINT32 src, UINT32 dst, int length, int byteswap)
+void real3d_display_list2_dma(const address_space *space, UINT32 src, UINT32 dst, int length, int byteswap)
 {
 	int i;
 	int d = (dst & 0xffffff) / 4;
 	for(i=0; i < length; i+=4) {
 		UINT32 w;
 		if (byteswap) {
-			w = BYTE_REVERSE32(program_read_dword_64le(src^4));
+			w = BYTE_REVERSE32(memory_read_dword(space, src^4));
 		} else {
-			w = program_read_dword_64le(src^4);
+			w = memory_read_dword(space, src^4);
 		}
 		culling_ram[d++] = w;
 		src += 4;
 	}
 }
 
-void real3d_vrom_texture_dma(UINT32 src, UINT32 dst, int length, int byteswap)
+void real3d_vrom_texture_dma(const address_space *space, UINT32 src, UINT32 dst, int length, int byteswap)
 {
 	if((dst & 0xff) == 0) {
 
 		UINT32 address, header;
 
 		if (byteswap) {
-			address = BYTE_REVERSE32(program_read_dword_64le((src+0)^4));
-			header = BYTE_REVERSE32(program_read_dword_64le((src+4)^4));
+			address = BYTE_REVERSE32(memory_read_dword(space, (src+0)^4));
+			header = BYTE_REVERSE32(memory_read_dword(space, (src+4)^4));
 		} else {
-			address = program_read_dword_64le((src+0)^4);
-			header = program_read_dword_64le((src+4)^4);
+			address = memory_read_dword(space, (src+0)^4);
+			header = memory_read_dword(space, (src+4)^4);
 		}
 		real3d_upload_texture(header, (UINT32*)&model3_vrom[address]);
 	}
 }
 
-void real3d_texture_fifo_dma(UINT32 src, int length, int byteswap)
+void real3d_texture_fifo_dma(const address_space *space, UINT32 src, int length, int byteswap)
 {
 	int i;
 	for(i=0; i < length; i+=4) {
 		UINT32 w;
 		if (byteswap) {
-			w = BYTE_REVERSE32(program_read_dword_64le(src^4));
+			w = BYTE_REVERSE32(memory_read_dword(space, src^4));
 		} else {
-			w = program_read_dword_64le(src^4);
+			w = memory_read_dword(space, src^4);
 		}
 		texture_fifo[texture_fifo_pos] = w;
 		texture_fifo_pos++;
@@ -891,16 +891,16 @@ void real3d_texture_fifo_dma(UINT32 src, int length, int byteswap)
 	}
 }
 
-void real3d_polygon_ram_dma(UINT32 src, UINT32 dst, int length, int byteswap)
+void real3d_polygon_ram_dma(const address_space *space, UINT32 src, UINT32 dst, int length, int byteswap)
 {
 	int i;
 	int d = (dst & 0xffffff) / 4;
 	for(i=0; i < length; i+=4) {
 		UINT32 w;
 		if (byteswap) {
-			w = BYTE_REVERSE32(program_read_dword_64le(src^4));
+			w = BYTE_REVERSE32(memory_read_dword(space, src^4));
 		} else {
-			w = program_read_dword_64le(src^4);
+			w = memory_read_dword(space, src^4);
 		}
 		polygon_ram[d++] = w;
 		src += 4;

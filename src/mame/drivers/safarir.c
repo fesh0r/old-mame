@@ -45,6 +45,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/i8085/i8085.h"
 
 
 static UINT8 *ram_1, *ram_2;
@@ -125,7 +126,8 @@ static PALETTE_INIT( safarir )
 static TILE_GET_INFO( get_bg_tile_info )
 {
 	int color;
-	UINT8 code = ram_r(machine,tile_index | 0x400);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	UINT8 code = ram_r(space,tile_index | 0x400);
 
 	/* this is wrong */
 	if (code & 0x80)
@@ -140,7 +142,9 @@ static TILE_GET_INFO( get_bg_tile_info )
 static TILE_GET_INFO( get_fg_tile_info )
 {
 	int color, flags;
-	UINT8 code = ram_r(machine,tile_index);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	UINT8 code = ram_r(space,tile_index);
 
 	if (code & 0x80)
 		color = 7;	/* white */
@@ -155,8 +159,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 static VIDEO_START( safarir )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
@@ -186,9 +190,9 @@ static MACHINE_START( safarir )
 	ram_2 = auto_malloc(ram_size);
 
 	/* setup for save states */
-	state_save_register_global_pointer(ram_1, ram_size);
-	state_save_register_global_pointer(ram_2, ram_size);
-	state_save_register_global(ram_bank);
+	state_save_register_global_pointer(machine, ram_1, ram_size);
+	state_save_register_global_pointer(machine, ram_2, ram_size);
+	state_save_register_global(machine, ram_bank);
 }
 
 

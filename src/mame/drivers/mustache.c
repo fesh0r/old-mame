@@ -28,6 +28,7 @@ YM2151:
 
 ***************************************************************************/
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "audio/seibu.h"	// for seibu_sound_decrypt on the MAIN cpu (not sound)
 #include "audio/t5182.h"
 
@@ -175,13 +176,13 @@ GFXDECODE_END
 
 static TIMER_CALLBACK( clear_irq_cb )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( assert_irq )
 {
-	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
-	timer_set(ATTOTIME_IN_CYCLES(14288, 0), NULL, 0, clear_irq_cb);
+	cpu_set_input_line(device, 0, ASSERT_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device, 14288), NULL, 0, clear_irq_cb);
        /* Timing here is an educated GUESS, Z80 /INT must stay high so the irq
           fires no less than TWICE per frame, else game doesn't work right.
       6000000 / 56.747 = 105732.4616 cycles per frame, we'll call it A

@@ -220,6 +220,8 @@ Stephh's notes (based on the games M68000 code and some tests) :
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
@@ -244,8 +246,8 @@ static WRITE16_HANDLER( nmg5_soundlatch_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,0,data & 0xff);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(space,0,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -798,8 +800,8 @@ static TILE_GET_INFO( bg_get_tile_info ) { get_tile_info(machine,tileinfo,tile_i
 
 static VIDEO_START( nmg5 )
 {
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,8,8,64,64);
-	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,8,8,64,64);
+	bg_tilemap = tilemap_create(machine, bg_get_tile_info,tilemap_scan_rows,8,8,64,64);
+	fg_tilemap = tilemap_create(machine, fg_get_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
@@ -958,7 +960,7 @@ GFXDECODE_END
 
 static void soundirq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 1, 0, state);
+	cpu_set_input_line(machine->cpu[1], 0, state);
 }
 
 static const ym3812_interface ym3812_intf =
@@ -968,9 +970,9 @@ static const ym3812_interface ym3812_intf =
 
 static MACHINE_START( nmg5 )
 {
-	state_save_register_global(gfx_bank);
-	state_save_register_global(priority_reg);
-	state_save_register_global(input_data);
+	state_save_register_global(machine, gfx_bank);
+	state_save_register_global(machine, priority_reg);
+	state_save_register_global(machine, input_data);
 }
 
 static MACHINE_RESET( nmg5 )

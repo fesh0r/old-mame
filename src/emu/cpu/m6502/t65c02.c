@@ -24,7 +24,7 @@
  *****************************************************************************/
 
 #undef	OP
-#define OP(nn) INLINE void m65c02_##nn(void)
+#define OP(nn) INLINE void m65c02_##nn(m6502_Regs *cpustate)
 
 /*****************************************************************************
  *****************************************************************************
@@ -204,7 +204,7 @@ OP(09) { int tmp; RD_IMM; ORA;                      } /* 2 ORA IMM */
 OP(29) { int tmp; RD_IMM; AND;                      } /* 2 AND IMM */
 OP(49) { int tmp; RD_IMM; EOR;                      } /* 2 EOR IMM */
 OP(69) { int tmp; RD_IMM; ADC_C02;                  } /* 2/3 ADC IMM */
-OP(89) { int tmp; RD_IMM; BIT;                      } /* 2 BIT IMM */
+OP(89) { int tmp; RD_IMM; BIT_IMM_C02;              } /* 2 BIT IMM */
 OP(a9) { int tmp; RD_IMM; LDA;                      } /* 2 LDA IMM */
 OP(c9) { int tmp; RD_IMM; CMP;                      } /* 2 CMP IMM */
 OP(e9) { int tmp; RD_IMM; SBC_C02;                  } /* 2/3 SBC IMM */
@@ -326,7 +326,7 @@ OP(bf) { int tmp; RD_ZPG; BBS(3);                   } /* 5-7 BBS3 ZPG */
 OP(df) { int tmp; RD_ZPG; BBS(5);                   } /* 5-7 BBS5 ZPG */
 OP(ff) { int tmp; RD_ZPG; BBS(7);                   } /* 5-7 BBS7 ZPG */
 
-static void (*const insn65c02[0x100])(void) = {
+static void (*const insn65c02[0x100])(m6502_Regs *cpustate) = {
 	m65c02_00,m65c02_01,m65c02_02,m65c02_03,m65c02_04,m65c02_05,m65c02_06,m65c02_07,
 	m65c02_08,m65c02_09,m65c02_0a,m65c02_0b,m65c02_0c,m65c02_0d,m65c02_0e,m65c02_0f,
 	m65c02_10,m65c02_11,m65c02_12,m65c02_13,m65c02_14,m65c02_15,m65c02_16,m65c02_17,
@@ -371,7 +371,7 @@ OP(7e_wdc) { int tmp; RD_ABX_P; RD_EA; ROR; WB_EA;      } /* 6 ROR ABX page pena
 OP(de_wdc) { int tmp; RD_ABX_P; RD_EA; DEC; WB_EA;      } /* 6 DEC ABX page penalty */
 OP(fe_wdc) { int tmp; RD_ABX_P; RD_EA; INC; WB_EA;      } /* 6 INC ABX page penalty */
 
-static void (*const insnwdc65c02[0x100])(void) = {
+static void (*const insnwdc65c02[0x100])(m6502_Regs *cpustate) = {
 	m65c02_00,m65c02_01,m65c02_02,m65c02_03,m65c02_04,m65c02_05,m65c02_06,m65c02_07,
 	m65c02_08,m65c02_09,m65c02_0a,m65c02_0b,m65c02_0c,m65c02_0d,m65c02_0e,m65c02_0f,
 	m65c02_10,m65c02_11,m65c02_12,m65c02_13,m65c02_14,m65c02_15,m65c02_16,m65c02_17,

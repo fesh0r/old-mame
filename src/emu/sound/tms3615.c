@@ -20,14 +20,14 @@ struct TMS3615 {
 	int enable; 			/* mask which tones to play */
 };
 
-static void tms3615_sound_update(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( tms3615_sound_update )
 {
 	struct TMS3615 *tms = param;
 	int samplerate = tms->samplerate;
-	stream_sample_t *buffer8 = _buffer[TMS3615_FOOTAGE_8];
-	stream_sample_t *buffer16 = _buffer[TMS3615_FOOTAGE_16];
+	stream_sample_t *buffer8 = outputs[TMS3615_FOOTAGE_8];
+	stream_sample_t *buffer16 = outputs[TMS3615_FOOTAGE_16];
 
-	while( length-- > 0 )
+	while( samples-- > 0 )
 	{
 		int sum8 = 0, sum16 = 0, tone = 0;
 
@@ -77,14 +77,14 @@ void tms3615_enable_w(int chip, int enable)
 	tms->enable = enable;
 }
 
-static void *tms3615_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( tms3615 )
 {
 	struct TMS3615 *tms;
 
 	tms = auto_malloc(sizeof(*tms));
 	memset(tms, 0, sizeof(*tms));
 
-	tms->channel = stream_create(0, 2, clock/8, tms, tms3615_sound_update);
+	tms->channel = stream_create(device, 0, 2, clock/8, tms, tms3615_sound_update);
 	tms->samplerate = clock/8;
 	tms->basefreq = clock;
 
@@ -95,7 +95,7 @@ static void *tms3615_start(const char *tag, int sndindex, int clock, const void 
  * Generic get_info
  **************************************************************************/
 
-static void tms3615_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( tms3615 )
 {
 	switch (state)
 	{
@@ -103,23 +103,23 @@ static void tms3615_set_info(void *token, UINT32 state, sndinfo *info)
 	}
 }
 
-void tms3615_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( tms3615 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = tms3615_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = tms3615_start;			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( tms3615 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( tms3615 );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "TMS3615";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "TI PSG";						break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "TMS3615");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "TI PSG");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

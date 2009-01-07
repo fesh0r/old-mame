@@ -44,8 +44,6 @@
    This special mode can be used to save memory in games that require several different
    handlings of the same ROM data (e.g. metro.c can use both 4bpp and 8bpp tiles, and both
    8x8 and 16x16; cps.c has 8x8, 16x16 and 32x32 tiles all fetched from the same ROMs).
-   Note, however, that performance will suffer in rotated games, since the gfx data will
-   not be prerotated and will rely on GFX_SWAPXY.
 */
 
 enum
@@ -73,9 +71,6 @@ enum
 /***************************************************************************
     MACROS
 ***************************************************************************/
-
-/* map old fillbitmap to new shared bitmap_fill code */
-#define fillbitmap(dest, pen, clip) bitmap_fill(dest, clip, pen)
 
 /* these macros describe gfx_layouts in terms of fractions of a region */
 /* they can be used for total, planeoffset, xoffset, yoffset */
@@ -142,6 +137,7 @@ struct _gfx_element
 	UINT8 *			gfxdata;			/* pixel data, 8bpp or 4bpp (if GFX_ELEMENT_PACKED) */
 	UINT32			line_modulo;		/* bytes between each row of data */
 	UINT32			char_modulo;		/* bytes between each element */
+	running_machine *	machine;		/* pointer to the owning machine */
 	gfx_layout		layout;				/* copy of the original layout */
 };
 
@@ -192,7 +188,7 @@ void drawgfx_init(running_machine *machine);
 
 
 void decodechar(gfx_element *gfx,int num,const unsigned char *src);
-gfx_element *allocgfx(const gfx_layout *gl);
+gfx_element *allocgfx(running_machine *machine, const gfx_layout *gl);
 void decodegfx(gfx_element *gfx, const UINT8 *src, UINT32 first, UINT32 count);
 void freegfx(gfx_element *gfx);
 

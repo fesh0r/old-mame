@@ -1,5 +1,6 @@
 #include "driver.h"
 #include "profiler.h"
+#include "includes/taito_b.h"
 
 UINT16 *taitob_scroll;
 UINT16 *TC0180VCU_ram;
@@ -160,9 +161,10 @@ WRITE16_HANDLER( hitice_pixel_scroll_w )
 static void hitice_clear_pixel_bitmap(running_machine *machine)
 {
 	int i;
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 
     for (i = 0;i < 0x40000;i++)
-		hitice_pixelram_w(machine,i,0,0xffff);
+		hitice_pixelram_w(space,i,0,0xffff);
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
@@ -207,9 +209,9 @@ static VIDEO_START( taitob_core )
 	framebuffer[1] = auto_bitmap_alloc(512,256, video_screen_get_format(machine->primary_screen));
 	pixel_bitmap = NULL;  /* only hitice needs this */
 
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     16,16,64,64);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,16,16,64,64);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,     16,16,64,64);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,16,16,64,64);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
@@ -219,18 +221,18 @@ static VIDEO_START( taitob_core )
 	tilemap_set_scrolldx(tx_tilemap,0,24*8);
 
 
-	state_save_register_global_array(bg_rambank);
-	state_save_register_global_array(fg_rambank);
-	state_save_register_global(tx_rambank);
+	state_save_register_global_array(machine, bg_rambank);
+	state_save_register_global_array(machine, fg_rambank);
+	state_save_register_global(machine, tx_rambank);
 
-	state_save_register_global_array(pixel_scroll);
-	state_save_register_global(framebuffer_page);
+	state_save_register_global_array(machine, pixel_scroll);
+	state_save_register_global(machine, framebuffer_page);
 
-	state_save_register_global(video_control);
-	state_save_register_global_array(TC0180VCU_ctrl);
+	state_save_register_global(machine, video_control);
+	state_save_register_global_array(machine, TC0180VCU_ctrl);
 
-	state_save_register_global_bitmap(framebuffer[0]);
-	state_save_register_global_bitmap(framebuffer[1]);
+	state_save_register_global_bitmap(machine, framebuffer[0]);
+	state_save_register_global_bitmap(machine, framebuffer[1]);
 }
 
 VIDEO_START( taitob_color_order0 )
@@ -279,7 +281,7 @@ VIDEO_START( hitice )
 
   pixel_bitmap = auto_bitmap_alloc(1024,512,video_screen_get_format(machine->primary_screen));
 
-  state_save_register_global_bitmap(pixel_bitmap);
+  state_save_register_global_bitmap(machine, pixel_bitmap);
 }
 
 VIDEO_RESET( hitice )
@@ -594,7 +596,7 @@ VIDEO_UPDATE( taitob )
 {
   if ((video_control & 0x20) == 0)
   {
-    fillbitmap(bitmap,0,cliprect);
+    bitmap_fill(bitmap,cliprect,0);
     return 0;
   }
 
@@ -625,7 +627,7 @@ VIDEO_UPDATE( taitob )
 VIDEO_EOF( taitob )
 {
   if (~video_control & 0x01)
-    fillbitmap(framebuffer[framebuffer_page],0,video_screen_get_visible_area(machine->primary_screen));
+    bitmap_fill(framebuffer[framebuffer_page],video_screen_get_visible_area(machine->primary_screen),0);
 
   if (~video_control & 0x80)
     framebuffer_page ^= 1;

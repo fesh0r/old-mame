@@ -108,31 +108,31 @@ PALETTE_INIT( spyhunt )
 VIDEO_START( mcr3 )
 {
 	/* initialize the background tilemap */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,  16,16, 32,30);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,  16,16, 32,30);
 }
 
 
 VIDEO_START( mcrmono )
 {
 	/* initialize the background tilemap */
-	bg_tilemap = tilemap_create(mcrmono_get_bg_tile_info, tilemap_scan_rows,  16,16, 32,30);
+	bg_tilemap = tilemap_create(machine, mcrmono_get_bg_tile_info, tilemap_scan_rows,  16,16, 32,30);
 }
 
 
 VIDEO_START( spyhunt )
 {
 	/* initialize the background tilemap */
-	bg_tilemap = tilemap_create(spyhunt_get_bg_tile_info, spyhunt_bg_scan,  64,32, 64,32);
+	bg_tilemap = tilemap_create(machine, spyhunt_get_bg_tile_info, spyhunt_bg_scan,  64,32, 64,32);
 
 	/* initialize the text tilemap */
-	alpha_tilemap = tilemap_create(spyhunt_get_alpha_tile_info, tilemap_scan_cols,  16,16, 32,32);
+	alpha_tilemap = tilemap_create(machine, spyhunt_get_alpha_tile_info, tilemap_scan_cols,  16,16, 32,32);
 	tilemap_set_transparent_pen(alpha_tilemap, 0);
 	tilemap_set_scrollx(alpha_tilemap, 0, 16);
 
-	state_save_register_global(spyhunt_sprite_color_mask);
-	state_save_register_global(spyhunt_scrollx);
-	state_save_register_global(spyhunt_scrolly);
-	state_save_register_global(spyhunt_scroll_offset);
+	state_save_register_global(machine, spyhunt_sprite_color_mask);
+	state_save_register_global(machine, spyhunt_scrollx);
+	state_save_register_global(machine, spyhunt_scrolly);
+	state_save_register_global(machine, spyhunt_scroll_offset);
 }
 
 
@@ -149,7 +149,7 @@ WRITE8_HANDLER( mcr3_paletteram_w )
 	offset &= 0x7f;
 
 	/* high bit of red comes from low bit of address */
-	palette_set_color_rgb(machine, offset / 2, pal3bit(((offset & 1) << 2) + (data >> 6)), pal3bit(data >> 0), pal3bit(data >> 3));
+	palette_set_color_rgb(space->machine, offset / 2, pal3bit(((offset & 1) << 2) + (data >> 6)), pal3bit(data >> 0), pal3bit(data >> 3));
 }
 
 
@@ -192,7 +192,7 @@ static void mcr3_update_sprites(running_machine *machine, bitmap_t *bitmap, cons
 {
 	int offs;
 
-	fillbitmap(priority_bitmap, 1, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 1);
 
 	/* loop over sprite RAM */
 	for (offs = spriteram_size - 4; offs >= 0; offs -= 4)

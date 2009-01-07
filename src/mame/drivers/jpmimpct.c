@@ -78,9 +78,8 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/tms34010/tms34010.h"
-#include "cpu/tms34010/34010ops.h"
 #include "sound/upd7759.h"
 #include "jpmimpct.h"
 #include "machine/meters.h"
@@ -156,8 +155,8 @@ static struct
 
 static void update_irqs(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 2, tms_irq ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 5, duart_1_irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 2, tms_irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 5, duart_1_irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -171,22 +170,22 @@ static MACHINE_RESET( jpmimpct )
 {
 	memset(&duart_1, 0, sizeof(duart_1));
 
-	duart_1_timer = timer_alloc(duart_1_timer_event, NULL);
+	duart_1_timer = timer_alloc(machine, duart_1_timer_event, NULL);
 
 	/* Reset states */
 	duart_1_irq = tms_irq = 0;
 	touch_cnt = 0;
 
 //  duart_1.IVR=0x0f;
-	state_save_register_global(tms_irq);
-	state_save_register_global(duart_1_irq);
-	state_save_register_global(touch_cnt);
-	state_save_register_global_array(touch_data);
+	state_save_register_global(machine, tms_irq);
+	state_save_register_global(machine, duart_1_irq);
+	state_save_register_global(machine, touch_cnt);
+	state_save_register_global_array(machine, touch_data);
 
 	/* TODO! */
-	state_save_register_global(duart_1.ISR);
-	state_save_register_global(duart_1.IMR);
-	state_save_register_global(duart_1.CT);
+	state_save_register_global(machine, duart_1.ISR);
+	state_save_register_global(machine, duart_1.IMR);
+	state_save_register_global(machine, duart_1.CT);
 }
 
 
@@ -198,12 +197,12 @@ static MACHINE_RESET( jpmimpct )
 
 static WRITE16_HANDLER( m68k_tms_w )
 {
-	tms34010_host_w(1, offset, data);
+	tms34010_host_w(space->machine->cpu[1], offset, data);
 }
 
 static READ16_HANDLER( m68k_tms_r )
 {
-	return tms34010_host_r(1, offset);
+	return tms34010_host_r(space->machine->cpu[1], offset);
 }
 
 
@@ -286,7 +285,7 @@ static READ16_HANDLER( duart_1_r )
 		}
 		case 0xd:
 		{
-			val = input_port_read(machine, "TEST/DEMO");
+			val = input_port_read(space->machine, "TEST/DEMO");
 			break;
 		}
 		case 0xe:
@@ -298,7 +297,7 @@ static READ16_HANDLER( duart_1_r )
 		case 0xf:
 		{
 			duart_1_irq = 0;
-			update_irqs(machine);
+			update_irqs(space->machine);
 			duart_1.ISR |= ~0x8;
 			break;
 		}
@@ -400,11 +399,11 @@ static READ16_HANDLER( duart_2_r )
 		{
 			if (touch_cnt == 0)
 			{
-				if ( input_port_read(machine, "TOUCH") & 0x1 )
+				if ( input_port_read(space->machine, "TOUCH") & 0x1 )
 				{
 					touch_data[0] = 0x2a;
-					touch_data[1] = 0x7 - (input_port_read(machine, "TOUCH_Y") >> 5) + 0x30;
-					touch_data[2] = (input_port_read(machine, "TOUCH_X") >> 5) + 0x30;
+					touch_data[1] = 0x7 - (input_port_read(space->machine, "TOUCH_Y") >> 5) + 0x30;
+					touch_data[2] = (input_port_read(space->machine, "TOUCH_X") >> 5) + 0x30;
 
 					/* Return RXRDY */
 					return 0x1;
@@ -468,22 +467,22 @@ static READ16_HANDLER( inputs1_r )
 	{
 		case 0:
 		{
-			val = input_port_read(machine, "DSW");
+			val = input_port_read(space->machine, "DSW");
 			break;
 		}
 		case 2:
 		{
-			val = input_port_read(machine, "SW2");
+			val = input_port_read(space->machine, "SW2");
 			break;
 		}
 		case 4:
 		{
-			val = input_port_read(machine, "SW1");
+			val = input_port_read(space->machine, "SW1");
 			break;
 		}
 		case 9:
 		{
-			val = input_port_read(machine, "COINS");
+			val = input_port_read(space->machine, "COINS");
 			break;
 		}
 	}
@@ -559,7 +558,7 @@ static READ16_HANDLER( jpmio_r )
 
 static WRITE16_HANDLER( jpmio_w )
 {
-	long cycles  = ATTOTIME_TO_CYCLES(0, timer_get_time() );
+	UINT64 cycles = cpu_get_total_cycles(space->cpu);
 	switch (offset)
 	{
 		case 0x02:
@@ -819,10 +818,10 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static void jpmimpct_tms_irq(int state)
+static void jpmimpct_tms_irq(const device_config *device, int state)
 {
 	tms_irq = state;
-	update_irqs(Machine);
+	update_irqs(device->machine);
 }
 
 static const tms34010_config tms_config =
@@ -852,7 +851,7 @@ static MACHINE_DRIVER_START( jpmimpct )
 	MDRV_CPU_CONFIG(tms_config)
 	MDRV_CPU_PROGRAM_MAP(tms_program_map, 0)
 
-	MDRV_INTERLEAVE(500)
+	MDRV_QUANTUM_TIME(HZ(30000))
 	MDRV_MACHINE_RESET(jpmimpct)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 

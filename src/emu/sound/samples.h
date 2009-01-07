@@ -21,8 +21,10 @@ struct _samples_interface
 {
     int         channels;   /* number of discrete audio channels needed */
     const char *const *samplenames;
-    void        (*start)(void);
+    void        (*start)(const device_config *device);
 };
+
+#define SAMPLES_START(name) void name(const device_config *device)
 
 
 void sample_start_n(int num,int channel,int samplenum,int loop);
@@ -49,5 +51,7 @@ int sample_loaded(int samplenum);
 /* helper function that reads samples from disk - this can be used by other */
 /* drivers as well (e.g. a sound chip emulator needing drum samples) */
 struct loaded_samples *readsamples(const char *const *samplenames, const char *name);
+
+SND_GET_INFO( samples );
 
 #endif /* __SAMPLES_H__ */

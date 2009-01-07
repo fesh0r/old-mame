@@ -8,6 +8,7 @@
 ******************************************************************************/
 
 #include "driver.h"
+#include "includes/nbmj9195.h"
 
 
 #define	VRAM_MAX	2
@@ -68,7 +69,7 @@ WRITE8_HANDLER( nbmj9195_palette_w )
 		g = ((nbmj9195_palette[offset + 0] & 0xf0) >> 4);
 		b = ((nbmj9195_palette[offset + 1] & 0x0f) >> 0);
 
-		palette_set_color_rgb(machine, (offset >> 1), pal4bit(r), pal4bit(g), pal4bit(b));
+		palette_set_color_rgb(space->machine, (offset >> 1), pal4bit(r), pal4bit(g), pal4bit(b));
 	}
 }
 
@@ -91,7 +92,7 @@ WRITE8_HANDLER( nbmj9195_nb22090_palette_w )
 	g = nbmj9195_nb22090_palette[(0x100 + (offs_h * 0x300) + offs_l)];
 	b = nbmj9195_nb22090_palette[(0x200 + (offs_h * 0x300) + offs_l)];
 
-	palette_set_color(machine, ((offs_h * 0x100) + offs_l), MAKE_RGB(r, g, b));
+	palette_set_color(space->machine, ((offs_h * 0x100) + offs_l), MAKE_RGB(r, g, b));
 }
 
 /******************************************************************************
@@ -386,18 +387,18 @@ static void nbmj9195_gfxdraw(running_machine *machine, int vram)
 	nb19010_busyflag = 0;
 
 	/* 1650ns per count */
-	timer_set(ATTOTIME_IN_NSEC(nb19010_busyctr * 1650), NULL, 0, blitter_timer_callback);
+	timer_set(machine, ATTOTIME_IN_NSEC(nb19010_busyctr * 1650), NULL, 0, blitter_timer_callback);
 }
 
 /******************************************************************************
 
 
 ******************************************************************************/
-WRITE8_HANDLER( nbmj9195_blitter_0_w )	{ nbmj9195_blitter_w(machine, 0, offset, data); }
-WRITE8_HANDLER( nbmj9195_blitter_1_w )	{ nbmj9195_blitter_w(machine, 1, offset, data); }
+WRITE8_HANDLER( nbmj9195_blitter_0_w )	{ nbmj9195_blitter_w(space->machine, 0, offset, data); }
+WRITE8_HANDLER( nbmj9195_blitter_1_w )	{ nbmj9195_blitter_w(space->machine, 1, offset, data); }
 
-READ8_HANDLER( nbmj9195_blitter_0_r )	{ return nbmj9195_blitter_r(machine, 0, offset); }
-READ8_HANDLER( nbmj9195_blitter_1_r )	{ return nbmj9195_blitter_r(machine, 1, offset); }
+READ8_HANDLER( nbmj9195_blitter_0_r )	{ return nbmj9195_blitter_r(space->machine, 0, offset); }
+READ8_HANDLER( nbmj9195_blitter_1_r )	{ return nbmj9195_blitter_r(space->machine, 1, offset); }
 
 WRITE8_HANDLER( nbmj9195_clut_0_w )		{ nbmj9195_clut_w(0, offset, data); }
 WRITE8_HANDLER( nbmj9195_clut_1_w )		{ nbmj9195_clut_w(1, offset, data); }
@@ -515,7 +516,7 @@ VIDEO_UPDATE( nbmj9195 )
 		// nbmj9195 1layer
 		copyscrollbitmap(bitmap, nbmj9195_tmpbitmap[0], SCANLINE_MAX, nbmj9195_scrollx_raster[0], 1, &scrolly[0], cliprect);
 	else
-		fillbitmap(bitmap, 0x0ff, 0);
+		bitmap_fill(bitmap, 0, 0x0ff);
 
 	if (nbmj9195_dispflag[1])
 	{

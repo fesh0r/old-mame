@@ -73,9 +73,9 @@ VIDEO_START( blktiger )
 {
 	scroll_ram = auto_malloc(BGRAM_BANK_SIZE * BGRAM_BANKS);
 
-	tx_tilemap =    tilemap_create(get_tx_tile_info,tilemap_scan_rows,8,8,32,32);
-	bg_tilemap8x4 = tilemap_create(get_bg_tile_info,bg8x4_scan,          16,16,128,64);
-	bg_tilemap4x8 = tilemap_create(get_bg_tile_info,bg4x8_scan,          16,16,64,128);
+	tx_tilemap =    tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap8x4 = tilemap_create(machine, get_bg_tile_info,bg8x4_scan,          16,16,128,64);
+	bg_tilemap4x8 = tilemap_create(machine, get_bg_tile_info,bg4x8_scan,          16,16,64,128);
 
 	tilemap_set_transparent_pen(tx_tilemap,3);
 
@@ -88,12 +88,12 @@ VIDEO_START( blktiger )
 	tilemap_set_transmask(bg_tilemap4x8,2,0xff00,0x80ff);
 	tilemap_set_transmask(bg_tilemap4x8,3,0xf000,0x8fff);
 
-	state_save_register_global(blktiger_scroll_bank);
-	state_save_register_global(screen_layout);
-	state_save_register_global(chon);
-	state_save_register_global(objon);
-	state_save_register_global(bgon);
-	state_save_register_global_pointer(scroll_ram, BGRAM_BANK_SIZE * BGRAM_BANKS);
+	state_save_register_global(machine, blktiger_scroll_bank);
+	state_save_register_global(machine, screen_layout);
+	state_save_register_global(machine, chon);
+	state_save_register_global(machine, objon);
+	state_save_register_global(machine, bgon);
+	state_save_register_global_pointer(machine, scroll_ram, BGRAM_BANK_SIZE * BGRAM_BANKS);
 }
 
 
@@ -160,10 +160,10 @@ WRITE8_HANDLER( blktiger_video_control_w )
 	coin_counter_w(1,data & 2);
 
 	/* bit 5 resets the sound CPU */
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
 
 	/* bit 6 flips screen */
-	flip_screen_set(data & 0x40);
+	flip_screen_set(space->machine, data & 0x40);
 
 	/* bit 7 enables characters? Just a guess */
 	chon = ~data & 0x80;
@@ -208,7 +208,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int color = attr & 0x07;
 		int flipx = attr & 0x08;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -218,7 +218,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		drawgfx(bitmap,machine->gfx[2],
 				code,
 				color,
-				flipx,flip_screen_get(),
+				flipx,flip_screen_get(machine),
 				sx,sy,
 				cliprect,TRANSPARENCY_PEN,15);
 	}
@@ -226,7 +226,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 VIDEO_UPDATE( blktiger )
 {
-	fillbitmap(bitmap,1023,cliprect);
+	bitmap_fill(bitmap,cliprect,1023);
 
 	if (bgon)
 		tilemap_draw(bitmap,cliprect,screen_layout ? bg_tilemap8x4 : bg_tilemap4x8,TILEMAP_DRAW_LAYER1,0);
@@ -244,5 +244,7 @@ VIDEO_UPDATE( blktiger )
 
 VIDEO_EOF( blktiger )
 {
-	buffer_spriteram_w(machine,0,0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram_w(space, 0, 0);
 }

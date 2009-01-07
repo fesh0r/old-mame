@@ -12,6 +12,8 @@ segac2.c
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "genesis.h"
 
 #define MASTER_CLOCK		53693100
@@ -69,9 +71,9 @@ UINT8 *genesis_z80_ram;
 /* call this whenever the interrupt state has changed */
 static void update_interrupts(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 2, irq2_int ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 4, scanline_int ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 6, vblank_int ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 2, irq2_int ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, scanline_int ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 6, vblank_int ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -94,7 +96,7 @@ static TIMER_CALLBACK( vdp_reload_counter )
 		{
 			scanline_int = 1;
 			update_interrupts(machine);
-			timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline + 1, 0), NULL, 0, vdp_int4_off);
+			timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline + 1, 0), NULL, 0, vdp_int4_off);
 		}
 
 	/* advance to the next scanline */
@@ -122,10 +124,10 @@ INTERRUPT_GEN( genesis_vblank_interrupt )
 {
 	/* generate the interrupt */
 	vblank_int = 1;
-	update_interrupts(machine);
+	update_interrupts(device->machine);
 
 	/* set a timer to turn it off */
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, video_screen_get_vpos(machine->primary_screen), 22), NULL, 0, vdp_int6_off);
+	timer_set(device->machine, video_screen_get_time_until_pos(device->machine->primary_screen, video_screen_get_vpos(device->machine->primary_screen), 22), NULL, 0, vdp_int6_off);
 }
 
 
@@ -139,23 +141,23 @@ void genesis_irq2_interrupt(running_machine *machine, int state)
 
 MACHINE_START( genesis )
 {
-	state_save_register_global(irq2_int);
-	state_save_register_global(scanline_int);
-	state_save_register_global(vblank_int);
+	state_save_register_global(machine, irq2_int);
+	state_save_register_global(machine, scanline_int);
+	state_save_register_global(machine, vblank_int);
 }
 
 
 MACHINE_RESET( genesis )
 {
 	/* C2 doesn't have a Z80, so we can't just assume */
-	if (machine->config->cpu[1].type == CPU_Z80)
+	if (machine->cpu[1] != NULL && cpu_get_type(machine->cpu[1]) == CPU_Z80)
 	{
 	    /* the following ensures that the Z80 begins without running away from 0 */
 		/* 0x76 is just a forced 'halt' as soon as the CPU is initially run */
 	    genesis_z80_ram[0] = 0x76;
 		genesis_z80_ram[0x38] = 0x76;
 
-		cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
 
 		z80running = 0;
 	}
@@ -163,7 +165,7 @@ MACHINE_RESET( genesis )
 	logerror("Machine init\n");
 
 	/* set the first scanline 0 timer to go off */
-	scan_timer = timer_alloc(vdp_reload_counter, NULL);
+	scan_timer = timer_alloc(machine, vdp_reload_counter, NULL);
 	timer_adjust_oneshot(scan_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 320), 0);
 }
 
@@ -207,15 +209,15 @@ WRITE16_HANDLER(genesis_ctrl_w)
 		if (data == 0x100)
 		{
 			z80running = 0;
-			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);	/* halt Z80 */
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);	/* halt Z80 */
 			/* logerror("z80 stopped by 68k BusReq\n"); */
 		}
 		else
 		{
 			z80running = 1;
-//          memory_set_bankptr(1, &genesis_z80_ram[0]);
+//          memory_set_bankptr(space->machine, 1, &genesis_z80_ram[0]);
 
-			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, CLEAR_LINE);
 			/* logerror("z80 started, BusReq ends\n"); */
 		}
 		return;
@@ -223,10 +225,10 @@ WRITE16_HANDLER(genesis_ctrl_w)
 	case 0x100:						/* Z80 CPU Reset */
 		if (data == 0x00)
 		{
-			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
 
-			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
 			/* logerror("z80 reset, ram is %p\n", &genesis_z80_ram[0]); */
 			z80running = 0;
 			return;
@@ -261,11 +263,11 @@ READ16_HANDLER ( genesis_68k_to_z80_r )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_BITS_8_15)	 return ym3438_status_port_0_a_r(machine, 0) << 8;
-			else 				 return ym3438_read_port_0_r(machine, 0);
+			if (ACCESSING_BITS_8_15)	 return ym3438_status_port_0_a_r(space, 0) << 8;
+			else 				 return ym3438_read_port_0_r(space, 0);
 			break;
 		case 2:
-			if (ACCESSING_BITS_8_15)	return ym3438_status_port_0_b_r(machine, 0) << 8;
+			if (ACCESSING_BITS_8_15)	return ym3438_status_port_0_b_r(space, 0) << 8;
 			else 				return 0;
 			break;
 		}
@@ -310,7 +312,7 @@ READ16_HANDLER ( megaplay_68k_to_z80_r )
 	{
 		offset &=0x1fff;
 //      if(offset == 0)     /* this read handler was used around MAME0.82 to read DSWB. Now it's (DSW0 & 0xff) */
-//          return (input_port_read(machine, "DSW0") << 8) ^ 0xff00;
+//          return (input_port_read(space->machine, "DSW0") << 8) ^ 0xff00;
 		return (ic36_ram[offset] << 8) + ic36_ram[offset+1];
 	}
 
@@ -321,11 +323,11 @@ READ16_HANDLER ( megaplay_68k_to_z80_r )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_BITS_8_15)	 return ym3438_status_port_0_a_r(machine, 0) << 8;
-			else 				 return ym3438_read_port_0_r(machine, 0);
+			if (ACCESSING_BITS_8_15)	 return ym3438_status_port_0_a_r(space, 0) << 8;
+			else 				 return ym3438_read_port_0_r(space, 0);
 			break;
 		case 2:
-			if (ACCESSING_BITS_8_15)	return ym3438_status_port_0_b_r(machine, 0) << 8;
+			if (ACCESSING_BITS_8_15)	return ym3438_status_port_0_b_r(space, 0) << 8;
 			else 				return 0;
 			break;
 		}
@@ -373,12 +375,12 @@ WRITE16_HANDLER ( genesis_68k_to_z80_w )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_a_w	(machine, 0,	(data >> 8) & 0xff);
-			else 				ym3438_data_port_0_a_w		(machine, 0,	(data >> 0) & 0xff);
+			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_a_w	(space, 0,	(data >> 8) & 0xff);
+			else 				ym3438_data_port_0_a_w		(space, 0,	(data >> 0) & 0xff);
 			break;
 		case 2:
-			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_b_w	(machine, 0,	(data >> 8) & 0xff);
-			else 				ym3438_data_port_0_b_w		(machine, 0,	(data >> 0) & 0xff);
+			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_b_w	(space, 0,	(data >> 8) & 0xff);
+			else 				ym3438_data_port_0_b_w		(space, 0,	(data >> 0) & 0xff);
 			break;
 		}
 	}
@@ -402,8 +404,8 @@ WRITE16_HANDLER ( genesis_68k_to_z80_w )
 
 		if ( (offset >= 0x10) && (offset <=0x17) )
 		{
-			if (ACCESSING_BITS_0_7) sn76496_0_w(machine, 0, data & 0xff);
-			if (ACCESSING_BITS_8_15) sn76496_0_w(machine, 0, (data >>8) & 0xff);
+			if (ACCESSING_BITS_0_7) sn76496_0_w(space, 0, data & 0xff);
+			if (ACCESSING_BITS_8_15) sn76496_0_w(space, 0, (data >>8) & 0xff);
 		}
 
 	}
@@ -439,7 +441,7 @@ UINT16 *genesis_io_ram;
 /* megaplay.c uses a local copy 'OLD_megaplay_genesis_io_w' */
 WRITE16_HANDLER ( genesis_io_w )
 {
-//  logerror ("write io offset :%02x data %04x PC: 0x%06x\n",offset,data,activecpu_get_previouspc());
+//  logerror ("write io offset :%02x data %04x PC: 0x%06x\n",offset,data,cpu_get_previouspc(space->cpu));
 
 	switch (offset)
 	{
@@ -539,9 +541,9 @@ READ8_HANDLER ( genesis_z80_r )
 	{
 		switch (offset & 3)
 		{
-		case 0: return ym3438_status_port_0_a_r(machine, 0);
-		case 1: return ym3438_read_port_0_r(machine, 0);
-		case 2: return ym3438_status_port_0_b_r(machine, 0);
+		case 0: return ym3438_status_port_0_a_r(space, 0);
+		case 1: return ym3438_read_port_0_r(space, 0);
+		case 2: return ym3438_status_port_0_b_r(space, 0);
 		case 3: return 0;
 		}
 	}
@@ -576,13 +578,13 @@ WRITE8_HANDLER ( genesis_z80_w )
 	{
 		switch (offset & 3)
 		{
-		case 0: ym3438_control_port_0_a_w	(machine, 0,	data);
+		case 0: ym3438_control_port_0_a_w	(space, 0,	data);
 			break;
-		case 1: ym3438_data_port_0_a_w		(machine, 0, data);
+		case 1: ym3438_data_port_0_a_w		(space, 0, data);
 			break;
-		case 2: ym3438_control_port_0_b_w	(machine, 0,	data);
+		case 2: ym3438_control_port_0_b_w	(space, 0,	data);
 			break;
-		case 3: ym3438_data_port_0_b_w		(machine, 0,	data);
+		case 3: ym3438_data_port_0_b_w		(space, 0,	data);
 			break;
 		}
 	}
@@ -590,7 +592,7 @@ WRITE8_HANDLER ( genesis_z80_w )
 	/* Bank Register */
 	if ((offset >= 0x6000) && (offset <= 0x60ff))
 	{
-		genesis_bank_select_w(machine, offset & 0xff, data);
+		genesis_bank_select_w(space, offset & 0xff, data);
 	}
 
 	/* Unused / Illegal */
@@ -609,7 +611,7 @@ WRITE8_HANDLER ( genesis_z80_w )
 READ8_HANDLER ( genesis_z80_bank_r )
 {
 	int address = (z80_68000_latch) + (offset & 0x7fff);
-	const UINT8 *base = memory_region(machine, "sound");
+	const UINT8 *base = memory_region(space->machine, "sound");
 
 	if (!z80running) logerror("undead Z80->68000 read!\n");
 
@@ -651,7 +653,7 @@ static MACHINE_DRIVER_START( genesis_base )
 	MDRV_CPU_PROGRAM_MAP(genesis_z80_readmem, genesis_z80_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* from vdp at scanline 0xe0 */
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_START(genesis)
 	MDRV_MACHINE_RESET(genesis)

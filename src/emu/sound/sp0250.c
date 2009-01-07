@@ -20,6 +20,7 @@
 #include "sndintrf.h"
 #include "streams.h"
 #include "cpuintrf.h"
+#include "cpuexec.h"
 #include "sp0250.h"
 
 /*
@@ -106,7 +107,8 @@ static void sp0250_load_values(struct sp0250 *sp)
 	sp->filter[5].B = sp0250_gc(sp->fifo[13]);
 	sp->filter[5].F = sp0250_gc(sp->fifo[14]);
 	sp->fifo_pos = 0;
-	sp->drq(ASSERT_LINE);
+	if (sp->drq != NULL)
+		sp->drq(ASSERT_LINE);
 
 	sp->pcount = 0;
 	sp->rcount = 0;
@@ -123,12 +125,12 @@ static TIMER_CALLBACK( sp0250_timer_tick )
 	stream_update(sp->stream);
 }
 
-static void sp0250_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( sp0250_update )
 {
 	struct sp0250 *sp = param;
-	stream_sample_t *output = buffer[0];
+	stream_sample_t *output = outputs[0];
 	int i;
-	for (i = 0; i < length; i++)
+	for (i = 0; i < samples; i++)
 	{
 		if (sp->playing)
 		{
@@ -190,7 +192,7 @@ static void sp0250_update(void *param, stream_sample_t **inputs, stream_sample_t
 }
 
 
-static void *sp0250_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( sp0250 )
 {
 	const struct sp0250_interface *intf = config;
 	struct sp0250 *sp;
@@ -198,11 +200,14 @@ static void *sp0250_start(const char *tag, int sndindex, int clock, const void *
 	sp = auto_malloc(sizeof(*sp));
 	memset(sp, 0, sizeof(*sp));
 	sp->RNG = 1;
-	sp->drq = intf->drq_callback;
-	sp->drq(ASSERT_LINE);
-	timer_pulse(attotime_mul(ATTOTIME_IN_HZ(clock), CLOCK_DIVIDER), sp, 0, sp0250_timer_tick);
+	sp->drq = (intf != NULL) ? intf->drq_callback : NULL;
+	if (sp->drq != NULL)
+	{
+		sp->drq(ASSERT_LINE);
+		timer_pulse(device->machine, attotime_mul(ATTOTIME_IN_HZ(clock), CLOCK_DIVIDER), sp, 0, sp0250_timer_tick);
+	}
 
-	sp->stream = stream_create(0, 1, clock / CLOCK_DIVIDER, sp, sp0250_update);
+	sp->stream = stream_create(device, 0, 1, clock / CLOCK_DIVIDER, sp, sp0250_update);
 
 	return sp;
 }
@@ -211,12 +216,23 @@ static void *sp0250_start(const char *tag, int sndindex, int clock, const void *
 WRITE8_HANDLER( sp0250_w )
 {
 	struct sp0250 *sp = sndti_token(SOUND_SP0250, 0);
+	stream_update(sp->stream);
 	if (sp->fifo_pos != 15)
 	{
 		sp->fifo[sp->fifo_pos++] = data;
-		if (sp->fifo_pos == 15)
+		if (sp->fifo_pos == 15 && sp->drq != NULL)
 			sp->drq(CLEAR_LINE);
 	}
+	else
+		logerror("%s: overflow SP0250 FIFO\n", cpuexec_describe_context(space->machine));
+}
+
+
+UINT8 sp0250_drq_r(void)
+{
+	struct sp0250 *sp = sndti_token(SOUND_SP0250, 0);
+	stream_update(sp->stream);
+	return (sp->fifo_pos == 15) ? CLEAR_LINE : ASSERT_LINE;
 }
 
 
@@ -225,7 +241,7 @@ WRITE8_HANDLER( sp0250_w )
  * Generic get_info
  **************************************************************************/
 
-static void sp0250_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( sp0250 )
 {
 	switch (state)
 	{
@@ -234,24 +250,24 @@ static void sp0250_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void sp0250_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( sp0250 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = sp0250_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = sp0250_start;				break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( sp0250 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( sp0250 );			break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "SP0250";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "GI speech";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.1";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "SP0250");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "GI speech");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.1");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

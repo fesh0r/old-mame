@@ -53,8 +53,8 @@ static TILE_GET_INFO( fg_get_tile_info )
 
 VIDEO_START( ppking )
 {
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,8,8,32,64);
-	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,8,8,32,64);
+	bg_tilemap = tilemap_create(machine, bg_get_tile_info,tilemap_scan_rows,8,8,32,64);
+	fg_tilemap = tilemap_create(machine, fg_get_tile_info,tilemap_scan_rows,8,8,32,64);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
@@ -65,8 +65,8 @@ VIDEO_START( ppking )
 
 VIDEO_START( gladiatr )
 {
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,8,8,64,32);
-	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, bg_get_tile_info,tilemap_scan_rows,8,8,64,32);
+	fg_tilemap = tilemap_create(machine, fg_get_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
@@ -117,7 +117,7 @@ WRITE8_HANDLER( gladiatr_paletteram_w )
 	g = (g << 1) + ((paletteram[offset + 0x400] >> 5) & 0x01);
 	b = (b << 1) + ((paletteram[offset + 0x400] >> 6) & 0x01);
 
-	palette_set_color_rgb(machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
+	palette_set_color_rgb(space->machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 
@@ -221,7 +221,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int color = src[1] & 0x1f;
 		int x,y;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			xflip = !xflip;
 			yflip = !yflip;
@@ -291,9 +291,9 @@ VIDEO_UPDATE( gladiatr )
 		int scroll;
 
 		scroll = bg_scrollx + ((video_attributes & 0x04) << 6);
-		tilemap_set_scrollx(bg_tilemap, 0, scroll ^ (flip_screen_get() ? 0x0f : 0));
+		tilemap_set_scrollx(bg_tilemap, 0, scroll ^ (flip_screen_get(screen->machine) ? 0x0f : 0));
 		scroll = fg_scrollx + ((video_attributes & 0x08) << 5);
-		tilemap_set_scrollx(fg_tilemap, 0, scroll ^ (flip_screen_get() ? 0x0f : 0));
+		tilemap_set_scrollx(fg_tilemap, 0, scroll ^ (flip_screen_get(screen->machine) ? 0x0f : 0));
 
 		// always 0 anyway
 		tilemap_set_scrolly(bg_tilemap, 0, bg_scrolly);
@@ -304,6 +304,6 @@ VIDEO_UPDATE( gladiatr )
 		tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	}
 	else
-		fillbitmap( bitmap, get_black_pen(screen->machine), cliprect );
+		bitmap_fill( bitmap, cliprect , get_black_pen(screen->machine));
 	return 0;
 }

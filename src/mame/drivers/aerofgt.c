@@ -59,49 +59,12 @@ Verification still needed for the other PCBs.
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
 #include "sound/2610intf.h"
 #include "sound/3812intf.h"
 #include "sound/okim6295.h"
-
-
-extern UINT16 *aerofgt_rasterram;
-extern UINT16 *aerofgt_bg1videoram,*aerofgt_bg2videoram;
-extern UINT16 *aerofgt_spriteram1,*aerofgt_spriteram2,*aerofgt_spriteram3;
-extern UINT16 *wbbc97_bitmapram;
-extern size_t aerofgt_spriteram1_size,aerofgt_spriteram2_size,aerofgt_spriteram3_size;
-extern UINT16 *spikes91_tx_tilemap_ram;
-
-WRITE16_HANDLER( aerofgt_bg1videoram_w );
-WRITE16_HANDLER( aerofgt_bg2videoram_w );
-WRITE16_HANDLER( pspikes_gfxbank_w );
-WRITE16_HANDLER( pspikesb_gfxbank_w );
-WRITE16_HANDLER( spikes91_lookup_w );
-WRITE16_HANDLER( karatblz_gfxbank_w );
-WRITE16_HANDLER( spinlbrk_gfxbank_w );
-WRITE16_HANDLER( turbofrc_gfxbank_w );
-WRITE16_HANDLER( aerofgt_gfxbank_w );
-WRITE16_HANDLER( aerofgt_bg1scrollx_w );
-WRITE16_HANDLER( aerofgt_bg1scrolly_w );
-WRITE16_HANDLER( aerofgt_bg2scrollx_w );
-WRITE16_HANDLER( aerofgt_bg2scrolly_w );
-WRITE16_HANDLER( pspikes_palette_bank_w );
-WRITE16_HANDLER( wbbc97_bitmap_enable_w );
-VIDEO_START( pspikes );
-VIDEO_START( karatblz );
-VIDEO_START( spinlbrk );
-VIDEO_START( turbofrc );
-VIDEO_UPDATE( pspikes );
-VIDEO_UPDATE( pspikesb );
-VIDEO_UPDATE( spikes91 );
-VIDEO_UPDATE( karatblz );
-VIDEO_UPDATE( spinlbrk );
-VIDEO_UPDATE( turbofrc );
-VIDEO_UPDATE( aerofgt );
-VIDEO_UPDATE( aerfboot );
-VIDEO_UPDATE( aerfboo2 );
-VIDEO_START( wbbc97 );
-VIDEO_UPDATE( wbbc97 );
+#include "includes/aerofgt.h"
 
 
 static int pending_command;
@@ -111,8 +74,8 @@ static WRITE16_HANDLER( sound_command_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		pending_command = 1;
-		soundlatch_w(machine,offset,data & 0xff);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(space,offset,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -121,8 +84,8 @@ static WRITE16_HANDLER( turbofrc_sound_command_w )
 	if (ACCESSING_BITS_8_15)
 	{
 		pending_command = 1;
-		soundlatch_w(machine,offset,(data >> 8) & 0xff);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(space,offset,(data >> 8) & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -130,8 +93,8 @@ static WRITE16_HANDLER( aerfboot_soundlatch_w )
 {
 	if(data & 0x8000)
 	{
-		soundlatch_w(machine,0,data & 0xff);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(space,0,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -147,14 +110,16 @@ static WRITE8_HANDLER( pending_command_clear_w )
 
 static WRITE8_HANDLER( aerofgt_sh_bankswitch_w )
 {
-	UINT8 *rom = memory_region(machine, "audio") + 0x10000;
+	UINT8 *rom = memory_region(space->machine, "audio") + 0x10000;
 
-	memory_set_bankptr(1,rom + (data & 0x03) * 0x8000);
+	memory_set_bankptr(space->machine, 1,rom + (data & 0x03) * 0x8000);
 }
 
 static MACHINE_RESET( aerofgt )
 {
-	aerofgt_sh_bankswitch_w(machine,0,0);	/* needed by spinlbrk */
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	aerofgt_sh_bankswitch_w(space,0,0);	/* needed by spinlbrk */
 }
 
 
@@ -1305,7 +1270,7 @@ GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =

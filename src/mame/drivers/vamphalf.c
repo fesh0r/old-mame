@@ -18,16 +18,14 @@
     Final Godori              (c) 2001 SemiCom            (version 2.20.5915)
     Wyvern Wings              (c) 2001 SemiCom
 
- Games Needed:
-
-    Vamp 1/2 (World version)
-
  Real games bugs:
  - dquizgo2: bugged video test
 
 *********************************************************************/
 
 #include "driver.h"
+#include "cpu/mcs51/mcs51.h"
+#include "cpu/e132xs/e132xs.h"
 #include "machine/eeprom.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
@@ -47,7 +45,7 @@ static UINT8 *finalgdr_backupram;
 static READ16_HANDLER( oki_r )
 {
 	if(offset)
-		return okim6295_status_0_r(machine, 0);
+		return okim6295_status_0_r(space, 0);
 	else
 		return 0;
 }
@@ -55,23 +53,23 @@ static READ16_HANDLER( oki_r )
 static WRITE16_HANDLER( oki_w )
 {
 	if(offset)
-		okim6295_data_0_w(machine, 0, data);
+		okim6295_data_0_w(space, 0, data);
 }
 
 static READ32_HANDLER( oki32_r )
 {
-	return okim6295_status_0_r(machine, 0) << 8;
+	return okim6295_status_0_r(space, 0) << 8;
 }
 
 static WRITE32_HANDLER( oki32_w )
 {
-	okim6295_data_0_w(machine, 0, (data >> 8) & 0xff);
+	okim6295_data_0_w(space, 0, (data >> 8) & 0xff);
 }
 
 static READ16_HANDLER( ym2151_status_r )
 {
 	if(offset)
-		return ym2151_status_port_0_r(machine, 0);
+		return ym2151_status_port_0_r(space, 0);
 	else
 		return 0;
 }
@@ -79,28 +77,28 @@ static READ16_HANDLER( ym2151_status_r )
 static WRITE16_HANDLER( ym2151_data_w )
 {
 	if(offset)
-		ym2151_data_port_0_w(machine, 0, data);
+		ym2151_data_port_0_w(space, 0, data);
 }
 
 static WRITE16_HANDLER( ym2151_register_w )
 {
 	if(offset)
-		ym2151_register_port_0_w(machine, 0, data);
+		ym2151_register_port_0_w(space, 0, data);
 }
 
 static READ32_HANDLER( ym2151_status32_r )
 {
-	return ym2151_status_port_0_r(machine, 0) << 8;
+	return ym2151_status_port_0_r(space, 0) << 8;
 }
 
 static WRITE32_HANDLER( ym2151_data32_w )
 {
-	ym2151_data_port_0_w(machine, 0, (data >> 8) & 0xff);
+	ym2151_data_port_0_w(space, 0, (data >> 8) & 0xff);
 }
 
 static WRITE32_HANDLER( ym2151_register32_w )
 {
-	ym2151_register_port_0_w(machine, 0, (data >> 8) & 0xff);
+	ym2151_register_port_0_w(space, 0, (data >> 8) & 0xff);
 }
 
 static READ16_HANDLER( eeprom_r )
@@ -160,10 +158,10 @@ static WRITE32_HANDLER( paletteram32_w )
 	COMBINE_DATA(&paletteram32[offset]);
 
 	paldata = paletteram32[offset] & 0xffff;
-	palette_set_color_rgb(machine, offset*2 + 1, pal5bit(paldata >> 10), pal5bit(paldata >> 5), pal5bit(paldata >> 0));
+	palette_set_color_rgb(space->machine, offset*2 + 1, pal5bit(paldata >> 10), pal5bit(paldata >> 5), pal5bit(paldata >> 0));
 
 	paldata = (paletteram32[offset] >> 16) & 0xffff;
-	palette_set_color_rgb(machine, offset*2 + 0, pal5bit(paldata >> 10), pal5bit(paldata >> 5), pal5bit(paldata >> 0));
+	palette_set_color_rgb(space->machine, offset*2 + 0, pal5bit(paldata >> 10), pal5bit(paldata >> 5), pal5bit(paldata >> 0));
 }
 
 static READ32_HANDLER( wyvernwg_prot_r )
@@ -418,7 +416,7 @@ static void draw_sprites(const device_config *screen, bitmap_t *bitmap)
 
 static VIDEO_UPDATE( common )
 {
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 	draw_sprites(screen, bitmap);
 	return 0;
 }
@@ -530,7 +528,7 @@ static NVRAM_HANDLER( 93C46_vamphalf )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_interface_93C46);
+		eeprom_init(machine, &eeprom_interface_93C46);
 		if (file)
 		{
 			eeprom_load(file);
@@ -552,7 +550,7 @@ static NVRAM_HANDLER( finalgdr )
 	}
 	else
 	{
-		eeprom_init(&eeprom_interface_93C46);
+		eeprom_init(machine, &eeprom_interface_93C46);
 		if (file)
 		{
 			eeprom_load(file);
@@ -565,7 +563,7 @@ static ADDRESS_MAP_START( qs1000_prg_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( qs1000_data_map, ADDRESS_SPACE_DATA, 8 )
+static ADDRESS_MAP_START( qs1000_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x0000, 0x007f) AM_RAM	// RAM?  wavetable registers?  not sure.
 ADDRESS_MAP_END
 
@@ -606,7 +604,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( sound_qs1000 )
 	MDRV_CPU_ADD("audio", I8052, 24000000/4)	/* 6 MHz? */
 	MDRV_CPU_PROGRAM_MAP(qs1000_prg_map, 0)
-	MDRV_CPU_DATA_MAP( qs1000_data_map, 0 )
+	MDRV_CPU_IO_MAP( qs1000_io_map, 0 )
 
 MACHINE_DRIVER_END
 
@@ -710,6 +708,22 @@ ROML* / U*:    Graphics, device is MX29F1610ML (surface mounted SOP44 MASK ROM)
 ROM_START( vamphalf )
 	ROM_REGION16_BE( 0x100000, "user1", ROMREGION_ERASE00 ) /* Hyperstone CPU Code */
 	/* 0 - 0x80000 empty */
+	ROM_LOAD( "prg.rom1", 0x80000, 0x80000, CRC(9b1fc6c5) SHA1(acf10a50d2119ac893b6cbd494911982a9352350) )
+
+	ROM_REGION( 0x800000, "gfx1", ROMREGION_DISPOSE ) /* 16x16x8 Sprites */
+	ROM_LOAD32_WORD( "eur.roml00", 0x000000, 0x200000, CRC(bdee9a46) SHA1(7e240b07377201afbe0cd0911ccee4ad52a74079) )
+	ROM_LOAD32_WORD( "eur.romu00", 0x000002, 0x200000, CRC(fa79e8ea) SHA1(feaba99f0a863bc5d27ad91d206168684976b4c2) )
+	ROM_LOAD32_WORD( "eur.roml01", 0x400000, 0x200000, CRC(a7995b06) SHA1(8b789b6a00bc177c3329ee4a31722fc65376b975) )
+	ROM_LOAD32_WORD( "eur.romu01", 0x400002, 0x200000, CRC(e269f5fe) SHA1(70f1308f11e147dd20f8bd45b91aefc9fd653da6) )
+
+	ROM_REGION( 0x40000, "oki", 0 ) /* Oki Samples */
+	ROM_LOAD( "snd.vrom1", 0x00000, 0x40000, CRC(ee9e371e) SHA1(3ead5333121a77d76e4e40a0e0bf0dbc75f261eb) )
+ROM_END
+
+
+ROM_START( vamphafk )
+	ROM_REGION16_BE( 0x100000, "user1", ROMREGION_ERASE00 ) /* Hyperstone CPU Code */
+	/* 0 - 0x80000 empty */
 	ROM_LOAD( "prom1", 0x80000, 0x80000, CRC(f05e8e96) SHA1(c860e65c811cbda2dc70300437430fb4239d3e2d) )
 
 	ROM_REGION( 0x800000, "gfx1", ROMREGION_DISPOSE ) /* 16x16x8 Sprites */
@@ -719,8 +733,9 @@ ROM_START( vamphalf )
 	ROM_LOAD32_WORD( "romu01", 0x400002, 0x200000, CRC(d5be3363) SHA1(dbdd0586909064e015f190087f338f37bbf205d2) )
 
 	ROM_REGION( 0x40000, "oki", 0 ) /* Oki Samples */
-	ROM_LOAD( "vrom1", 0x00000, 0x40000, CRC(ee9e371e) SHA1(3ead5333121a77d76e4e40a0e0bf0dbc75f261eb) )
+	ROM_LOAD( "snd.vrom1", 0x00000, 0x40000, CRC(ee9e371e) SHA1(3ead5333121a77d76e4e40a0e0bf0dbc75f261eb) )
 ROM_END
+
 
 /*
 
@@ -1136,9 +1151,9 @@ ROM_START( dquizgo2 )
 	ROM_LOAD( "vrom1", 0x00000, 0x40000, CRC(24d5b55f) SHA1(cb4d3a22440831e37df0a7fe5433bea708d60f31) )
 ROM_END
 
-static int irq_active(void)
+static int irq_active(const address_space *space)
 {
-	UINT32 FCR = activecpu_get_reg(27);
+	UINT32 FCR = cpu_get_reg(space->cpu, 27);
 	if( !(FCR&(1<<29)) ) // int 2 (irq 4)
 		return 1;
 	else
@@ -1147,12 +1162,25 @@ static int irq_active(void)
 
 static READ16_HANDLER( vamphalf_speedup_r )
 {
-	if(activecpu_get_pc() == 0x82de)
+	if(cpu_get_pc(space->cpu) == 0x82de)
 	{
-		if(irq_active())
-			cpu_spinuntil_int();
+		if(irq_active(space))
+			cpu_spinuntil_int(space->cpu);
 		else
-			activecpu_eat_cycles(50);
+			cpu_eat_cycles(space->cpu, 50);
+	}
+
+	return wram[(0x4a840/2)+offset];
+}
+
+static READ16_HANDLER( vamphafk_speedup_r )
+{
+	if(cpu_get_pc(space->cpu) == 0x82de)
+	{
+		if(irq_active(space))
+			cpu_spinuntil_int(space->cpu);
+		else
+			cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return wram[(0x4a6d0/2)+offset];
@@ -1160,12 +1188,12 @@ static READ16_HANDLER( vamphalf_speedup_r )
 
 static READ16_HANDLER( misncrft_speedup_r )
 {
-	if(activecpu_get_pc() == 0xecc8)
+	if(cpu_get_pc(space->cpu) == 0xecc8)
 	{
-		if(irq_active())
-			cpu_spinuntil_int();
+		if(irq_active(space))
+			cpu_spinuntil_int(space->cpu);
 		else
-			activecpu_eat_cycles(50);
+			cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return wram[(0x72eb4/2)+offset];
@@ -1173,12 +1201,12 @@ static READ16_HANDLER( misncrft_speedup_r )
 
 static READ16_HANDLER( coolmini_speedup_r )
 {
-	if(activecpu_get_pc() == 0x75f7a)
+	if(cpu_get_pc(space->cpu) == 0x75f7a)
 	{
-		if(irq_active())
-			cpu_spinuntil_int();
+		if(irq_active(space))
+			cpu_spinuntil_int(space->cpu);
 		else
-			activecpu_eat_cycles(50);
+			cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return wram[(0xd2e80/2)+offset];
@@ -1186,12 +1214,12 @@ static READ16_HANDLER( coolmini_speedup_r )
 
 static READ16_HANDLER( suplup_speedup_r )
 {
-	if(activecpu_get_pc() == 0xaf18a )
+	if(cpu_get_pc(space->cpu) == 0xaf18a )
 	{
-		if(irq_active())
-			cpu_spinuntil_int();
+		if(irq_active(space))
+			cpu_spinuntil_int(space->cpu);
 		else
-			activecpu_eat_cycles(50);
+			cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return wram[(0x11605c/2)+offset];
@@ -1199,12 +1227,12 @@ static READ16_HANDLER( suplup_speedup_r )
 
 static READ16_HANDLER( luplup_speedup_r )
 {
-	if(activecpu_get_pc() == 0xaefac )
+	if(cpu_get_pc(space->cpu) == 0xaefac )
 	{
-		if(irq_active())
-			cpu_spinuntil_int();
+		if(irq_active(space))
+			cpu_spinuntil_int(space->cpu);
 		else
-			activecpu_eat_cycles(50);
+			cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return wram[(0x115e84/2)+offset];
@@ -1212,12 +1240,12 @@ static READ16_HANDLER( luplup_speedup_r )
 
 static READ16_HANDLER( luplup29_speedup_r )
 {
-	if(activecpu_get_pc() == 0xae6c0 )
+	if(cpu_get_pc(space->cpu) == 0xae6c0 )
 	{
-		if(irq_active())
-			cpu_spinuntil_int();
+		if(irq_active(space))
+			cpu_spinuntil_int(space->cpu);
 		else
-			activecpu_eat_cycles(50);
+			cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return wram[(0x113f08/2)+offset];
@@ -1225,12 +1253,12 @@ static READ16_HANDLER( luplup29_speedup_r )
 
 static READ16_HANDLER( puzlbang_speedup_r )
 {
-	if(activecpu_get_pc() == 0xae6d2 )
+	if(cpu_get_pc(space->cpu) == 0xae6d2 )
 	{
-		if(irq_active())
-			cpu_spinuntil_int();
+		if(irq_active(space))
+			cpu_spinuntil_int(space->cpu);
 		else
-			activecpu_eat_cycles(50);
+			cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return wram[(0x113ecc/2)+offset];
@@ -1238,12 +1266,12 @@ static READ16_HANDLER( puzlbang_speedup_r )
 
 static READ32_HANDLER( wyvernwg_speedup_r )
 {
-	if(activecpu_get_pc() == 0x10758 )
+	if(cpu_get_pc(space->cpu) == 0x10758 )
 	{
-		if(irq_active())
-			cpu_spinuntil_int();
+		if(irq_active(space))
+			cpu_spinuntil_int(space->cpu);
 		else
-			activecpu_eat_cycles(50);
+			cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return wram32[0x00b56fc/4];
@@ -1251,12 +1279,12 @@ static READ32_HANDLER( wyvernwg_speedup_r )
 
 static READ32_HANDLER( finalgdr_speedup_r )
 {
-	if(activecpu_get_pc() == 0x1c212 )
+	if(cpu_get_pc(space->cpu) == 0x1c212 )
 	{
-		if(irq_active())
-			cpu_spinuntil_int();
+		if(irq_active(space))
+			cpu_spinuntil_int(space->cpu);
 		else
-			activecpu_eat_cycles(50);
+			cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return wram32[0x005e874/4];
@@ -1264,21 +1292,28 @@ static READ32_HANDLER( finalgdr_speedup_r )
 
 static READ16_HANDLER( dquizgo2_speedup_r )
 {
-	if(activecpu_get_pc() == 0xaa622)
+	if(cpu_get_pc(space->cpu) == 0xaa622)
 	{
-		if(irq_active())
-			cpu_spinuntil_int();
+		if(irq_active(space))
+			cpu_spinuntil_int(space->cpu);
 		else
-			activecpu_eat_cycles(50);
+			cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return wram[(0xcde70/2)+offset];
 }
 
-
 static DRIVER_INIT( vamphalf )
 {
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0004a6d0, 0x0004a6d3, 0, 0, vamphalf_speedup_r );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0004a840, 0x0004a843, 0, 0, vamphalf_speedup_r );
+
+	palshift = 0;
+	flip_bit = 0x80;
+}
+
+static DRIVER_INIT( vamphafk )
+{
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0004a6d0, 0x0004a6d3, 0, 0, vamphafk_speedup_r );
 
 	palshift = 0;
 	flip_bit = 0x80;
@@ -1286,7 +1321,7 @@ static DRIVER_INIT( vamphalf )
 
 static DRIVER_INIT( misncrft )
 {
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00072eb4, 0x00072eb7, 0, 0, misncrft_speedup_r );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00072eb4, 0x00072eb7, 0, 0, misncrft_speedup_r );
 
 	palshift = 0;
 	flip_bit = 1;
@@ -1294,7 +1329,7 @@ static DRIVER_INIT( misncrft )
 
 static DRIVER_INIT( coolmini )
 {
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000d2e80, 0x000d2e83, 0, 0, coolmini_speedup_r );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x000d2e80, 0x000d2e83, 0, 0, coolmini_speedup_r );
 
 	palshift = 0;
 	flip_bit = 1;
@@ -1302,7 +1337,7 @@ static DRIVER_INIT( coolmini )
 
 static DRIVER_INIT( suplup )
 {
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0011605c, 0x0011605f, 0, 0, suplup_speedup_r );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0011605c, 0x0011605f, 0, 0, suplup_speedup_r );
 
 	palshift = 8;
 	/* no flipscreen */
@@ -1310,7 +1345,7 @@ static DRIVER_INIT( suplup )
 
 static DRIVER_INIT( luplup )
 {
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00115e84, 0x00115e87, 0, 0, luplup_speedup_r );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00115e84, 0x00115e87, 0, 0, luplup_speedup_r );
 
 	palshift = 8;
 	/* no flipscreen */
@@ -1318,7 +1353,7 @@ static DRIVER_INIT( luplup )
 
 static DRIVER_INIT( luplup29 )
 {
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00113f08, 0x00113f0b, 0, 0, luplup29_speedup_r );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00113f08, 0x00113f0b, 0, 0, luplup29_speedup_r );
 
 	palshift = 8;
 	/* no flipscreen */
@@ -1326,7 +1361,7 @@ static DRIVER_INIT( luplup29 )
 
 static DRIVER_INIT( puzlbang )
 {
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00113ecc, 0x00113ecf, 0, 0, puzlbang_speedup_r );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00113ecc, 0x00113ecf, 0, 0, puzlbang_speedup_r );
 
 	palshift = 8;
 	/* no flipscreen */
@@ -1334,7 +1369,7 @@ static DRIVER_INIT( puzlbang )
 
 static DRIVER_INIT( wyvernwg )
 {
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00b56fc, 0x00b56ff, 0, 0, wyvernwg_speedup_r );
+	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00b56fc, 0x00b56ff, 0, 0, wyvernwg_speedup_r );
 
 	palshift = 0;
 	flip_bit = 1;
@@ -1346,7 +1381,7 @@ static DRIVER_INIT( wyvernwg )
 static DRIVER_INIT( finalgdr )
 {
 	finalgdr_backupram = auto_malloc(0x80*0x100);
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x005e874, 0x005e877, 0, 0, finalgdr_speedup_r );
+	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x005e874, 0x005e877, 0, 0, finalgdr_speedup_r );
 
 	palshift = 0;
 	flip_bit = 1; //?
@@ -1357,19 +1392,20 @@ static DRIVER_INIT( finalgdr )
 
 static DRIVER_INIT( dquizgo2 )
 {
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00cde70, 0x00cde73, 0, 0, dquizgo2_speedup_r );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00cde70, 0x00cde73, 0, 0, dquizgo2_speedup_r );
 
 	palshift = 0;
 	flip_bit = 1;
 }
 
-GAME( 1999, coolmini, 0,      coolmini, common,   coolmini, ROT0,   "SemiCom",           "Cool Minigame Collection", 0 )
-GAME( 1999, suplup,   0,      suplup,   common,   suplup,   ROT0,   "Omega System",      "Super Lup Lup Puzzle / Zhuan Zhuan Puzzle (version 4.0 / 990518)" , 0)
-GAME( 1999, luplup,   suplup, suplup,   common,   luplup,   ROT0,   "Omega System",      "Lup Lup Puzzle / Zhuan Zhuan Puzzle (version 3.0 / 990128)", 0 )
-GAME( 1999, luplup29, suplup, suplup,   common,   luplup29, ROT0,   "Omega System",      "Lup Lup Puzzle / Zhuan Zhuan Puzzle (version 2.9 / 990108)", 0 )
-GAME( 1999, puzlbang, suplup, suplup,   common,   puzlbang, ROT0,   "Omega System",      "Puzzle Bang Bang (version 2.8 / 990106)", 0 )
-GAME( 1999, vamphalf, 0,      vamphalf, common,   vamphalf, ROT0,   "Danbi & F2 System", "Vamp 1/2 (Korea version)", 0 )
-GAME( 2000, dquizgo2, 0,      coolmini, common,   dquizgo2, ROT0,   "SemiCom",           "Date Quiz Go Go Episode 2" , 0)
-GAME( 2000, misncrft, 0,      misncrft, common,   misncrft, ROT90,  "Sun",               "Mission Craft (version 2.4)", GAME_NO_SOUND )
-GAME( 2001, finalgdr, 0,      finalgdr, finalgdr, finalgdr, ROT0,   "SemiCom",           "Final Godori (Korea, version 2.20.5915)", 0 )
-GAME( 2001, wyvernwg, 0,      wyvernwg, common,   wyvernwg, ROT270, "SemiCom (Game Vision License)", "Wyvern Wings", GAME_NO_SOUND )
+GAME( 1999, coolmini, 0,        coolmini, common,   coolmini, ROT0,   "SemiCom",           "Cool Minigame Collection", 0 )
+GAME( 1999, suplup,   0,        suplup,   common,   suplup,   ROT0,   "Omega System",      "Super Lup Lup Puzzle / Zhuan Zhuan Puzzle (version 4.0 / 990518)" , 0)
+GAME( 1999, luplup,   suplup,   suplup,   common,   luplup,   ROT0,   "Omega System",      "Lup Lup Puzzle / Zhuan Zhuan Puzzle (version 3.0 / 990128)", 0 )
+GAME( 1999, luplup29, suplup,   suplup,   common,   luplup29, ROT0,   "Omega System",      "Lup Lup Puzzle / Zhuan Zhuan Puzzle (version 2.9 / 990108)", 0 )
+GAME( 1999, puzlbang, suplup,   suplup,   common,   puzlbang, ROT0,   "Omega System",      "Puzzle Bang Bang (version 2.8 / 990106)", 0 )
+GAME( 1999, vamphalf, 0,        vamphalf, common,   vamphalf, ROT0,   "Danbi & F2 System", "Vamf x1/2 (Europe)", 0 )
+GAME( 1999, vamphafk, vamphalf, vamphalf, common,   vamphafk, ROT0,   "Danbi & F2 System", "Vamp x1/2 (Korea)", 0 )
+GAME( 2000, dquizgo2, 0,        coolmini, common,   dquizgo2, ROT0,   "SemiCom",           "Date Quiz Go Go Episode 2" , 0)
+GAME( 2000, misncrft, 0,        misncrft, common,   misncrft, ROT90,  "Sun",               "Mission Craft (version 2.4)", GAME_NO_SOUND )
+GAME( 2001, finalgdr, 0,        finalgdr, finalgdr, finalgdr, ROT0,   "SemiCom",           "Final Godori (Korea, version 2.20.5915)", 0 )
+GAME( 2001, wyvernwg, 0,        wyvernwg, common,   wyvernwg, ROT270, "SemiCom (Game Vision License)", "Wyvern Wings", GAME_NO_SOUND )

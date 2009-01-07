@@ -35,7 +35,7 @@ PALETTE_INIT( battlex )
 
 WRITE8_HANDLER( battlex_palette_w )
 {
-	palette_set_color_rgb(machine,16*8 + offset,pal1bit(data >> 2),pal1bit(data >> 0),pal1bit(data >> 1));
+	palette_set_color_rgb(space->machine,16*8 + offset,pal1bit(data >> 2),pal1bit(data >> 0),pal1bit(data >> 1));
 }
 
 WRITE8_HANDLER( battlex_scroll_x_lsb_w )
@@ -60,9 +60,9 @@ WRITE8_HANDLER( battlex_flipscreen_w )
 
 	/* bit 7 is flip screen */
 
-	if (flip_screen_get() != (data & 0x80))
+	if (flip_screen_get(space->machine) != (data & 0x80))
 	{
-		flip_screen_set(data & 0x80);
+		flip_screen_set(space->machine, data & 0x80);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
@@ -77,7 +77,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( battlex )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		 8, 8, 64, 32);
 }
 
@@ -96,7 +96,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int flipy = source[1] & 0x80;
 		int flipx = source[1] & 0x40;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;

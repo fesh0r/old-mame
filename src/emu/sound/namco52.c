@@ -46,7 +46,6 @@ Jan 12, 2005.  The 555 is probably an external playback frequency.
 ***************************************************************************/
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "filter.h"
 #include "namco52.h"
@@ -70,22 +69,22 @@ struct namco_52xx
 	filter2_context n52_lp_filter;
 };
 
-static void namco_52xx_reset(void *_chip);
+static void namco_52xx_reset(struct namco_52xx *chip);
 
 
-static void namco_52xx_stream_update_one(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( namco_52xx_stream_update_one )
 {
 	struct namco_52xx *chip = param;
 	int i, rom_pos, whole_pb_cycles, buf;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
 	if (chip->n52_start >= chip->n52_end)
 	{
-		memset(buffer, 0, length * sizeof(*buffer));
+		memset(buffer, 0, samples * sizeof(*buffer));
 		return;
 	}
 
-	for (i = 0; i < length; i++)
+	for (i = 0; i < samples; i++)
 	{
 		chip->n52_pb_cycle += chip->n52_step;
 		if (chip->n52_pb_cycle >= 1)
@@ -98,8 +97,8 @@ static void namco_52xx_stream_update_one(void *param, stream_sample_t **inputs, 
 		if (chip->n52_pos > chip->n52_length)
 		{
 			/* sample done */
-			memset(&buffer[i], 0, (length - i) * sizeof(INT16));
-			i = length;
+			memset(&buffer[i], 0, (samples - i) * sizeof(INT16));
+			i = samples;
 			namco_52xx_reset(chip);
 		}
 		else
@@ -120,17 +119,20 @@ static void namco_52xx_stream_update_one(void *param, stream_sample_t **inputs, 
 	}
 }
 
-
-static void namco_52xx_reset(void *_chip)
+static void namco_52xx_reset(struct namco_52xx *chip)
 {
-	struct namco_52xx *chip = _chip;
 	chip->n52_pb_cycle = chip->n52_start = chip->n52_end = chip->n52_length = chip->n52_pos = 0;
 
 	filter2_reset(&chip->n52_hp_filter);
 	filter2_reset(&chip->n52_lp_filter);
 }
 
-static void *namco_52xx_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_RESET( namco_52xx )
+{
+	namco_52xx_reset(device->token);
+}
+
+static SND_START( namco_52xx )
 {
 	struct namco_52xx *chip;
 	int rate = clock/32;
@@ -139,8 +141,8 @@ static void *namco_52xx_start(const char *tag, int sndindex, int clock, const vo
 	memset(chip, 0, sizeof(*chip));
 
 	chip->intf = config;
-	chip->rom     = memory_region(Machine, tag);
-	chip->rom_len = memory_region_length(Machine, tag);
+	chip->rom     = device->region;
+	chip->rom_len = device->regionbytes;
 
 	if (chip->intf->play_rate == 0)
 	{
@@ -151,20 +153,20 @@ static void *namco_52xx_start(const char *tag, int sndindex, int clock, const vo
 	{
 		chip->n52_step = chip->intf->play_rate / rate;
 	}
-	filter2_setup(FILTER_HIGHPASS, chip->intf->hp_filt_fc, Q_TO_DAMP(chip->intf->hp_filt_q), 1, &chip->n52_hp_filter);
-	filter2_setup(FILTER_LOWPASS,  chip->intf->lp_filt_fc, Q_TO_DAMP(chip->intf->lp_filt_q), chip->intf->filt_gain, &chip->n52_lp_filter);
+	filter2_setup(device, FILTER_HIGHPASS, chip->intf->hp_filt_fc, Q_TO_DAMP(chip->intf->hp_filt_q), 1, &chip->n52_hp_filter);
+	filter2_setup(device, FILTER_LOWPASS,  chip->intf->lp_filt_fc, Q_TO_DAMP(chip->intf->lp_filt_q), chip->intf->filt_gain, &chip->n52_lp_filter);
 
 
-	chip->stream = stream_create(0, 1, rate, chip, namco_52xx_stream_update_one);
+	chip->stream = stream_create(device, 0, 1, rate, chip, namco_52xx_stream_update_one);
 
 	namco_52xx_reset(chip);
 
-	state_save_register_item("namco52xx", sndindex, chip->n52_pb_cycle);
-	state_save_register_item("namco52xx", sndindex, chip->n52_step);
-	state_save_register_item("namco52xx", sndindex, chip->n52_start);
-	state_save_register_item("namco52xx", sndindex, chip->n52_end);
-	state_save_register_item("namco52xx", sndindex, chip->n52_length);
-	state_save_register_item("namco52xx", sndindex, chip->n52_pos);
+	state_save_register_device_item(device, 0, chip->n52_pb_cycle);
+	state_save_register_device_item(device, 0, chip->n52_step);
+	state_save_register_device_item(device, 0, chip->n52_start);
+	state_save_register_device_item(device, 0, chip->n52_end);
+	state_save_register_device_item(device, 0, chip->n52_length);
+	state_save_register_device_item(device, 0, chip->n52_pos);
 
 	return chip;
 }
@@ -197,7 +199,7 @@ void namcoio_52xx_write(int data)
  * Generic get_info
  **************************************************************************/
 
-static void namco_52xx_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( namco_52xx )
 {
 	switch (state)
 	{
@@ -206,24 +208,24 @@ static void namco_52xx_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void namco_52xx_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( namco_52xx )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = namco_52xx_set_info;	break;
-		case SNDINFO_PTR_START:							info->start = namco_52xx_start;			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							info->reset = namco_52xx_reset;			break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( namco_52xx );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( namco_52xx );			break;
+		case SNDINFO_PTR_STOP:							/* Nothing */										break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( namco_52xx );			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "Namco 52XX";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Namco custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "Namco 52XX");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Namco custom");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");								break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);							break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

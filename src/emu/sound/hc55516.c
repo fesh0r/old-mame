@@ -48,11 +48,11 @@ struct hc55516_data
 static double charge, decay, leak;
 
 
-static void hc55516_update(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length);
+static STREAM_UPDATE( hc55516_update );
 
 
 
-static void *start_common(int sndindex, int clock, const void *config,
+static void *start_common(const device_config *device, int clock,
 						  UINT8 _shiftreg_mask, int _active_clock_hi)
 {
 	struct hc55516_data *chip;
@@ -72,45 +72,46 @@ static void *start_common(int sndindex, int clock, const void *config,
 	chip->last_clock_state = 0;
 
 	/* create the stream */
-	chip->channel = stream_create(0, 1, SAMPLE_RATE, chip, hc55516_update);
+	chip->channel = stream_create(device, 0, 1, SAMPLE_RATE, chip, hc55516_update);
 
-	state_save_register_item("hc55516", sndindex, chip->last_clock_state);
-	state_save_register_item("hc55516", sndindex, chip->digit);
-	state_save_register_item("hc55516", sndindex, chip->new_digit);
-	state_save_register_item("hc55516", sndindex, chip->shiftreg);
-	state_save_register_item("hc55516", sndindex, chip->curr_sample);
-	state_save_register_item("hc55516", sndindex, chip->next_sample);
-	state_save_register_item("hc55516", sndindex, chip->update_count);
-	state_save_register_item("hc55516", sndindex, chip->filter);
-	state_save_register_item("hc55516", sndindex, chip->integrator);
+	state_save_register_device_item(device, 0, chip->last_clock_state);
+	state_save_register_device_item(device, 0, chip->digit);
+	state_save_register_device_item(device, 0, chip->new_digit);
+	state_save_register_device_item(device, 0, chip->shiftreg);
+	state_save_register_device_item(device, 0, chip->curr_sample);
+	state_save_register_device_item(device, 0, chip->next_sample);
+	state_save_register_device_item(device, 0, chip->update_count);
+	state_save_register_device_item(device, 0, chip->filter);
+	state_save_register_device_item(device, 0, chip->integrator);
 
 	/* success */
 	return chip;
 }
 
 
-static void *hc55516_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( hc55516 )
 {
-	return start_common(sndindex, clock, config, 0x07, TRUE);
+	return start_common(device, clock, 0x07, TRUE);
 }
 
 
-static void *mc3417_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( mc3417 )
 {
-	return start_common(sndindex, clock, config, 0x07, FALSE);
+	return start_common(device, clock, 0x07, FALSE);
 }
 
 
-static void *mc3418_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( mc3418 )
 {
-	return start_common(sndindex, clock, config, 0x0f, FALSE);
+	return start_common(device, clock, 0x0f, FALSE);
 }
 
 
 
-static void hc55516_reset(void *chip)
+static SND_RESET( hc55516 )
 {
-	((struct hc55516_data *)chip)->last_clock_state = 0;
+	struct hc55516_data *chip = device->token;
+	chip->last_clock_state = 0;
 }
 
 
@@ -181,21 +182,21 @@ static void process_digit(struct hc55516_data *chip)
 }
 
 
-static void hc55516_update(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( hc55516_update )
 {
 	struct hc55516_data *chip = param;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 	int i;
 	INT32 sample, slope;
 
 	/* zero-length? bail */
-	if (length == 0)
+	if (samples == 0)
 		return;
 
 	if (!is_external_osciallator(chip))
 	{
 		/* track how many samples we've updated without a clock */
-		chip->update_count += length;
+		chip->update_count += samples;
 		if (chip->update_count > SAMPLE_RATE / 32)
 		{
 			chip->update_count = SAMPLE_RATE;
@@ -205,13 +206,13 @@ static void hc55516_update(void *param, stream_sample_t **inputs, stream_sample_
 
 	/* compute the interpolation slope */
 	sample = chip->curr_sample;
-	slope = ((INT32)chip->next_sample - sample) / length;
+	slope = ((INT32)chip->next_sample - sample) / samples;
 	chip->curr_sample = chip->next_sample;
 
 	if (is_external_osciallator(chip))
 	{
 		/* external oscillator */
-		for (i = 0; i < length; i++, sample += slope)
+		for (i = 0; i < samples; i++, sample += slope)
 		{
 			UINT8 clock_state;
 
@@ -235,7 +236,7 @@ static void hc55516_update(void *param, stream_sample_t **inputs, stream_sample_
 
 	/* software driven clock */
 	else
-		for (i = 0; i < length; i++, sample += slope)
+		for (i = 0; i < samples; i++, sample += slope)
 			*buffer++ = sample;
 }
 
@@ -333,46 +334,46 @@ READ8_HANDLER ( hc55516_1_clock_state_r )	{ return hc55516_clock_state_r(1); }
  * Generic get_info
  **************************************************************************/
 
-void hc55516_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( hc55516 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case SNDINFO_INT_ALIAS:							info->i = SOUND_HC55516;				break;
+		case SNDINFO_INT_ALIAS:							info->i = SOUND_HC55516;					break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_START:							info->start = hc55516_start;			break;
-		case SNDINFO_PTR_RESET:							info->reset = hc55516_reset;			break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( hc55516 );	break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( hc55516 );	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "HC-55516";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "CVSD";						break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "2.1";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "HC-55516");				break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "CVSD");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "2.1");						break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);					break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 
 
-void mc3417_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( mc3417 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = mc3417_start;				break;
-		case SNDINFO_PTR_RESET:							/* chip has no reset pin */				break;
-		case SNDINFO_STR_NAME:							info->s = "MC3417";						break;
-		default: 										hc55516_get_info(token, state, info);	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( mc3417 );		break;
+		case SNDINFO_PTR_RESET:							/* chip has no reset pin */					break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "MC3417");					break;
+		default: 										SND_GET_INFO_CALL(hc55516);					break;
 	}
 }
 
 
-void mc3418_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( mc3418 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = mc3418_start;				break;
-		case SNDINFO_PTR_RESET:							/* chip has no reset pin */				break;
-		case SNDINFO_STR_NAME:							info->s = "MC3418";						break;
-		default: 										hc55516_get_info(token, state, info);	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( mc3418 );		break;
+		case SNDINFO_PTR_RESET:							/* chip has no reset pin */					break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "MC3418");					break;
+		default: 										SND_GET_INFO_CALL(hc55516);					break;
 	}
 }

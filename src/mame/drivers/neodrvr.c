@@ -306,6 +306,12 @@ INPUT_PORTS_END
 
 /****
  These are the known Bios Roms, Set options.bios to the one you want
+
+ the Universe bios roms are supported because they're now used on enough PCBs
+ to be considered 'in active arcade use' rather than just homebrew hacks.
+  -- some may be missing, there have been multiple CRCs reported for the same
+     revision in some cases
+
  ****/
 
 #define ROM_LOAD16_WORD_SWAP_BIOS(bios,name,offset,length,hash) \
@@ -329,15 +335,33 @@ INPUT_PORTS_END
 	ROM_LOAD16_WORD_SWAP_BIOS( 6, "sp-j2.rom",    0x00000, 0x020000, CRC(acede59c) SHA1(b6f97acd282fd7e94d9426078a90f059b5e9dd91) ) /* Japan, Older */ \
 	ROM_SYSTEM_BIOS( 7, "japan-s1",   "Japan MVS (Ver. 1)" ) \
 	ROM_LOAD16_WORD_SWAP_BIOS( 7, "sp1.jipan.1024",0x00000, 0x020000,  CRC(9fb0abe4) SHA1(18a987ce2229df79a8cf6a84f968f0e42ce4e59d) ) /* Japan, Older */ \
+	ROM_SYSTEM_BIOS( 8, "uni-bios_2_3","Universe Bios (Hack, Ver. 2.3)" ) \
+	ROM_LOAD16_WORD_SWAP_BIOS( 8, "uni-bios_2_3.rom",  0x00000, 0x020000, CRC(27664eb5) SHA1(5b02900a3ccf3df168bdcfc98458136fd2b92ac0) ) /* Universe Bios v2.3 (hack) */ \
+	ROM_SYSTEM_BIOS( 9, "uni-bios_2_3o","Universe Bios (Hack, Ver. 2.3, older?)" ) \
+	ROM_LOAD16_WORD_SWAP_BIOS( 9, "uni-bios_2_3o.rom",  0x00000, 0x020000, CRC(601720ae) SHA1(1b8a72c720cdb5ee3f1d735bbcf447b09204b8d9) ) /* Universe Bios v2.3 (hack) alt version, withdrawn? */ \
+	ROM_SYSTEM_BIOS( 10, "uni-bios_2_2","Universe Bios (Hack, Ver. 2.2)" ) \
+	ROM_LOAD16_WORD_SWAP_BIOS( 10, "uni-bios_2_2.rom",  0x00000, 0x020000, CRC(2d50996a) SHA1(5241a4fb0c63b1a23fd1da8efa9c9a9bd3b4279c) ) /* Universe Bios v2.2 (hack) */ \
+	ROM_SYSTEM_BIOS( 11, "uni-bios_2_1","Universe Bios (Hack, Ver. 2.1)" ) \
+	ROM_LOAD16_WORD_SWAP_BIOS( 11, "uni-bios_2_1.rom",  0x00000, 0x020000, CRC(8dabf76b) SHA1(c23732c4491d966cf0373c65c83c7a4e88f0082c) ) /* Universe Bios v2.1 (hack) */ \
+	ROM_SYSTEM_BIOS( 12, "uni-bios_2_0","Universe Bios (Hack, Ver. 2.0)" ) \
+	ROM_LOAD16_WORD_SWAP_BIOS( 12, "uni-bios_2_0.rom",  0x00000, 0x020000, CRC(0c12c2ad) SHA1(37bcd4d30f3892078b46841d895a6eff16dc921e) ) /* Universe Bios v2.0 (hack) */ \
+	ROM_SYSTEM_BIOS( 13, "uni-bios_1_3","Universe Bios (Hack, Ver. 1.3)" ) \
+	ROM_LOAD16_WORD_SWAP_BIOS( 13, "uni-bios_1_3.rom",  0x00000, 0x020000, CRC(b24b44a0) SHA1(eca8851d30557b97c309a0d9f4a9d20e5b14af4e) ) /* Universe Bios v1.3 (hack) */ \
+	ROM_SYSTEM_BIOS( 14, "uni-bios_1_2","Universe Bios (Hack, Ver. 1.2)" ) \
+	ROM_LOAD16_WORD_SWAP_BIOS( 14, "uni-bios_1_2.rom",  0x00000, 0x020000, CRC(4fa698e9) SHA1(682e13ec1c42beaa2d04473967840c88fd52c75a) ) /* Universe Bios v1.2 (hack) */ \
+	ROM_SYSTEM_BIOS( 15, "uni-bios_1_2o","Universe Bios (Hack, Ver. 1.2, older)" ) \
+	ROM_LOAD16_WORD_SWAP_BIOS( 15, "uni-bios_1_2o.rom", 0x00000, 0x020000, CRC(e19d3ce9) SHA1(af88ef837f44a3af2d7144bb46a37c8512b67770) ) /* Universe Bios v1.2 (hack) alt version */ \
+	ROM_SYSTEM_BIOS( 16, "uni-bios_1_1","Universe Bios (Hack, Ver. 1.1)" ) \
+	ROM_LOAD16_WORD_SWAP_BIOS( 16, "uni-bios_1_1.rom",  0x00000, 0x020000, CRC(5dda0d84) SHA1(4153d533c02926a2577e49c32657214781ff29b7) ) /* Universe Bios v1.1 (hack) */ \
+	ROM_SYSTEM_BIOS( 17, "uni-bios_1_0","Universe Bios (Hack, Ver. 1.0)" ) \
+	ROM_LOAD16_WORD_SWAP_BIOS( 17, "uni-bios_1_0.rom",  0x00000, 0x020000, CRC(0ce453a0) SHA1(3b4c0cd26c176fc6b26c3a2f95143dd478f6abf9) ) /* Universe Bios v1.0 (hack) */ \
+//  ROM_SYSTEM_BIOS( 18, "debug",      "Debug MVS (Hack?)" )
+//  ROM_LOAD16_WORD_SWAP_BIOS( 18, "neodebug.rom", 0x00000, 0x020000, CRC(698ebb7d) SHA1(081c49aa8cc7dad5939833dc1b18338321ea0a07) ) /* Debug (Development) Bios */
+//  ROM_SYSTEM_BIOS(19, "asia-aes",   "Asia AES" )
+//  ROM_LOAD16_WORD_SWAP_BIOS(19, "neo-epo.bin", 0x00000, 0x020000, CRC(d27a71f1) SHA1(1b3b22092f30c4d1b2c15f04d1670eb1e9fbea07) ) /* AES Console (Asia?) Bios */
+//  ROM_SYSTEM_BIOS(20, "jap-aes",   "Japan AES" )
+//  ROM_LOAD16_WORD_SWAP_BIOS(20, "neo-po.bin", 0x00000, 0x020000, CRC(16d0c132) SHA1(4e4a440cae46f3889d20234aebd7f8d5f522e22c) ) /* AES Console (Japan) Bios */
 
-//  ROM_SYSTEM_BIOS( 8, "uni-bios","Universe Bios (Hack, Ver. 2.3)" )
-//  ROM_LOAD16_WORD_SWAP_BIOS( 8, "uni-bios.rom",  0x00000, 0x020000, CRC(601720ae) SHA1(1b8a72c720cdb5ee3f1d735bbcf447b09204b8d9) ) /* Universe Bios v2.3 (hack) */
-//  ROM_SYSTEM_BIOS( 9, "debug",      "Debug MVS (Hack?)" )
-//  ROM_LOAD16_WORD_SWAP_BIOS( 9, "neodebug.rom", 0x00000, 0x020000, CRC(698ebb7d) SHA1(081c49aa8cc7dad5939833dc1b18338321ea0a07) ) /* Debug (Development) Bios */
-//  ROM_SYSTEM_BIOS(10, "asia-aes",   "Asia AES" )
-//  ROM_LOAD16_WORD_SWAP_BIOS(10, "neo-epo.bin", 0x00000, 0x020000, CRC(d27a71f1) SHA1(1b3b22092f30c4d1b2c15f04d1670eb1e9fbea07) ) /* AES Console (Asia?) Bios */
-//  ROM_SYSTEM_BIOS(11, "jap-aes",   "Japan AES" )
-//  ROM_LOAD16_WORD_SWAP_BIOS(11, "neo-po.bin", 0x00000, 0x020000, CRC(16d0c132) SHA1(4e4a440cae46f3889d20234aebd7f8d5f522e22c) ) /* AES Console (Japan) Bios */
 
 /* note you'll have to modify the last for lines of each block to use the extra bios roms,
    they're hacks / homebrew / console bios roms so MAME doesn't list them by default */
@@ -458,6 +482,7 @@ INPUT_PORTS_END
 	ROM_REGION( 0x20000, "zoomy", 0 )														\
 	ROM_LOAD( "000-lo.lo", 0x00000, 0x20000, CRC(5a86cff2) SHA1(5992277debadeb64d1c1c64b0a92d9293eaf7e4a) )
 
+
 /***************************************************************************
 
     Neo-Geo game pcb infos:
@@ -517,11 +542,14 @@ INPUT_PORTS_END
 
     MVS PROG:
     -- SNK --
+    . NEO-MVS PROG-NAM
     . NEO-MVS PROG-HERO
     . NEO-MVS PROG-EP
+    . NEO-MVS PROG-8MB
     . NEO-MVS PROG8M42
     . NEO-MVS PROG16
     . NEO-MVS PROG42G
+    . NEO-MVS PROG42G-COM
     . NEO-MVS PROG42G-1
     . NEO-MVS PROG-G2
     . NEO-MVS PROG 4096
@@ -541,7 +569,7 @@ INPUT_PORTS_END
     . NEO-MVS PROGBK2R (2003.8.26) - NEO-HYCS (2003.9.29)
     . NEO-MVS PROGBK3R (2003.9.2) - NEO-HYCS (2003.9.29)
     . NEO-MVS PROGBK3S (2003.10.1)
-    . NEO-MVS PROGBK2S (2003.10.xx)
+    . NEO-MVS PROGBK2S (2003.10.18)
 
 
     AES CHA:
@@ -643,6 +671,7 @@ INPUT_PORTS_END
     . Power Spikes II (early revisions) ?
     . Metal Slug 3 (rev. Mar/17/2000 1:36)
     . Metal Slug 4 (AES)
+    . Metal Slug 4 (MVS, 1st revision)
     . Metal Slug 5 (PCB)
     . 98 Best 44
 
@@ -745,18 +774,18 @@ ROM_START( mahretsu )
 	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "004-p1.bin", 0x000000, 0x080000, CRC(fc6f53db) SHA1(64a62ca4c8fb68954e06121399c9402278bd0467) )
 
-	NEO_SFIX_64K( "004-s1.bin", BAD_DUMP CRC(b0d16529) SHA1(1483a3459309596ee3ecff68bdbde0809d82dd7a) )
+	NEO_SFIX_128K( "004-s1.bin", CRC(4e310702) SHA1(edb0a27fe51d5e7f5739715b7c8872b6d4459b06) )
 
-	NEO_BIOS_AUDIO_64K( "004-m1.bin", BAD_DUMP CRC(37965a73) SHA1(61ad03c74169f9f50a37048fb74300ee926ee766) )
+	NEO_BIOS_AUDIO_128K( "004-m1.bin", CRC(c71fbb3b) SHA1(59c58665b53da61352359d191a0569de5dd1f4b3) )
 
 	ROM_REGION( 0x100000, "ym", 0 )
-	ROM_LOAD( "004-v1.bin", 0x000000, 0x080000, CRC(b2fb2153) SHA1(36e0cc8927b11105de40188af46f6cf532794c10) )
-	ROM_LOAD( "004-v2.bin", 0x080000, 0x080000, CRC(8503317b) SHA1(ab22f1aba1e977ab234a4f1d73dc6ed789dbeb85) )
+	ROM_LOAD( "004-v11.bin", 0x000000, 0x080000, CRC(b2fb2153) SHA1(36e0cc8927b11105de40188af46f6cf532794c10) )
+	ROM_LOAD( "004-v12.bin", 0x080000, 0x080000, CRC(8503317b) SHA1(ab22f1aba1e977ab234a4f1d73dc6ed789dbeb85) )
 
 	ROM_REGION( 0x180000, "ym.deltat", 0 )
-	ROM_LOAD( "004-v3.bin", 0x000000, 0x080000, CRC(4999fb27) SHA1(2d4926a220ea21bdd5e816bb16f985fff089500a) )
-	ROM_LOAD( "004-v4.bin", 0x080000, 0x080000, CRC(776fa2a2) SHA1(e7d5a362ab7806b7b009700a435c815a20e8ec68) )
-	ROM_LOAD( "004-v5.bin", 0x100000, 0x080000, CRC(b3e7eeea) SHA1(4d1e97f380702a3a06e7f954b4caddd9c4119d8f) )
+	ROM_LOAD( "004-v21.bin", 0x000000, 0x080000, CRC(4999fb27) SHA1(2d4926a220ea21bdd5e816bb16f985fff089500a) )
+	ROM_LOAD( "004-v22.bin", 0x080000, 0x080000, CRC(776fa2a2) SHA1(e7d5a362ab7806b7b009700a435c815a20e8ec68) )
+	ROM_LOAD( "004-v23.bin", 0x100000, 0x080000, CRC(b3e7eeea) SHA1(4d1e97f380702a3a06e7f954b4caddd9c4119d8f) )
 
 	ROM_REGION( 0x200000, "sprites", ROMREGION_DISPOSE )
 	ROM_LOAD16_BYTE( "004-c1.bin", 0x000000, 0x80000, CRC(f1ae16bc) SHA1(df68feed4dcba1e1566032b01ebb7b478a1792bf) ) /* Plane 0,1 */
@@ -914,7 +943,7 @@ ROM_START( ncombat )
 	ROM_LOAD16_BYTE( "009-c6.bin", 0x200001, 0x80000, CRC(2eca8b19) SHA1(16764ef10e404325ba0a1a2ad3a4c0af287be21f) ) /* Plane 2,3 */
 ROM_END
 
-ROM_START( ncombath ) /* AES VERSION */
+ROM_START( ncombath ) /* MBS AND AES VERSION */
 	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "009-pg1.bin", 0x000000, 0x080000, CRC(8e9f0add) SHA1(d0b908a86a58f2537eea73a431038f1cd74a5a2f) )
 
@@ -965,7 +994,7 @@ ROM_START( cyberlip )
 	ROM_LOAD16_BYTE( "010-c6.bin", 0x200001, 0x80000, CRC(c495c567) SHA1(2f58475fbb5f1adafce027d396fb05dd71e8fb55) ) /* Plane 2,3 */
 ROM_END
 
-ROM_START( superspy )
+ROM_START( superspy ) /* MVS AND AES VERSION */
 	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "011-p1.bin",  0x000000, 0x080000, CRC(c7f944b5) SHA1(da7560e09187c68f1d9f7656218497b4464c56c9) )
 	ROM_LOAD16_WORD_SWAP( "011-sp2.bin", 0x080000, 0x020000, CRC(811a4faf) SHA1(8169dfaf79f52d80ecec402ce1b1ab9cafb7ebdd) )
@@ -989,7 +1018,7 @@ ROM_START( superspy )
 	ROM_LOAD16_BYTE( "011-c4.bin", 0x200001, 0x100000, CRC(b7f63162) SHA1(077a81b2bb0a8f17c9df6945078608f74432877a) ) /* Plane 2,3 */
 ROM_END
 
-ROM_START( mutnat )
+ROM_START( mutnat ) /* MVS AND AES VERSION */
 	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "014-p1.bin", 0x000000, 0x080000, CRC(6f1699c8) SHA1(87206f67a619dede7959230f9ff3701b8b78957a) )
 
@@ -1057,7 +1086,7 @@ ROM_START( kotmh ) /* AES VERSION */
 	ROM_LOAD16_BYTE( "016-c4.bin", 0x200001, 0x100000, CRC(070506e2) SHA1(3a2ec365e1d87a9c5ce1ee9bea88402a8eef4ed7) ) /* Plane 2,3 */
 ROM_END
 
-ROM_START( sengoku )
+ROM_START( sengoku ) /* MVS VERSION */
 	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "017-p1.bin", 0x000000, 0x080000, CRC(f8a63983) SHA1(7a10ecb2f0fd8315641374c065d2602107b09e72) )
 	ROM_LOAD16_WORD_SWAP( "017-p2.bin", 0x080000, 0x020000, CRC(3024bbb3) SHA1(88892e1292dd60f35a76f9a22e623d4f0f9693cc) )
@@ -1595,7 +1624,7 @@ ROM_START( crsword )
 	ROM_LOAD16_BYTE( "037-c4.bin", 0x200001, 0x100000, CRC(4a24395d) SHA1(943f911f40985db901eaef4c28dfcda299fca73e) ) /* Plane 2,3 */
 ROM_END
 
-ROM_START( trally )
+ROM_START( trally ) /* MVS AND AES VERSION */
 	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "038-p1.bin", 0x000000, 0x080000, CRC(1e52a576) SHA1(a1cb56354c3378e955b0cd482c3c41ae15add952) )
 	ROM_LOAD16_WORD_SWAP( "038-p2.bin", 0x080000, 0x080000, CRC(a5193e2f) SHA1(96803480439e90da23cdca70d59ff519ee85beeb) )
@@ -2476,9 +2505,9 @@ ROM_START( gururin )
 	ROM_REGION( 0x100000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "067-p1.bin", 0x000000, 0x80000, CRC(4cea8a49) SHA1(cea4a35db8de898e30eb40dd339b3cbe77ac0856) )
 
-	NEO_SFIX_128K( "067-s1.bin", CRC(4f0cbd58) SHA1(509bad8416a057d5239439e775640b71ccf09ef7) )
+	NEO_SFIX_128K( "067-s1.bin", CRC(b119e1eb) SHA1(f63a68a71aea220d3d4475847652e2a1f68b2b6f) )
 
-	NEO_BIOS_AUDIO_64K( "067-m1.bin", BAD_DUMP CRC(833cdf1b) SHA1(3a92c79adbe0d37956ea46a4746d6f1cbf7d2c14) )
+	NEO_BIOS_AUDIO_128K( "067-m1.bin", CRC(e777a234) SHA1(9f3974ac07859337bc0203f903c40ae3f60dc1fb) )
 
 	ROM_REGION( 0x80000, "ym", 0 )
 	ROM_LOAD( "067-v1.bin", 0x000000, 0x80000, CRC(cf23afd0) SHA1(10f87014ee10613f92b04f482f449721a6379db7) )
@@ -4402,13 +4431,14 @@ ROM_START( breakrev )
 
 	NO_DELTAT_REGION
 
-	ROM_REGION( 0x1400000, "sprites", ROMREGION_DISPOSE )
-	ROM_LOAD16_BYTE( "230-c1.bin", 0x0000000, 0x400000, CRC(68d4ae76) SHA1(2e820067f6963669f104bebf19e865fe4127b4dd) ) /* Plane 0,1 */
-	ROM_LOAD16_BYTE( "230-c2.bin", 0x0000001, 0x400000, CRC(fdee05cd) SHA1(efc4ffd790953ac7c25d5f045c64a9b49d24b096) ) /* Plane 2,3 */
-	ROM_LOAD16_BYTE( "230-c3.bin", 0x0800000, 0x400000, CRC(645077f3) SHA1(0ae74f3b4b3b88f128c6d8c0f35ffa53f5d67ef2) ) /* Plane 0,1 */
-	ROM_LOAD16_BYTE( "230-c4.bin", 0x0800001, 0x400000, CRC(63aeb74c) SHA1(9ff6930c0c3d79b46b86356e8565ce4fcd69ac38) ) /* Plane 2,3 */
-	ROM_LOAD16_BYTE( "245-c5.bin", 0x1000000, 0x200000, CRC(28ff1792) SHA1(0cc5c16ac42f52cee74f88235aef0671bee33b4c) ) /* Plane 0,1 */
-	ROM_LOAD16_BYTE( "245-c6.bin", 0x1000001, 0x200000, CRC(23c65644) SHA1(9dc74c3075cf0f738b6b41e5e8d89a74a6c9ef07) ) /* Plane 2,3 */
+	ROM_REGION( 0x1800000, "sprites", ROMREGION_DISPOSE )
+	/* The chip labels and sizes are correct */
+	ROM_LOAD16_BYTE( "245-c1.bin", 0x0000000, 0x400000, CRC(68d4ae76) SHA1(2e820067f6963669f104bebf19e865fe4127b4dd) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "245-c2.bin", 0x0000001, 0x400000, CRC(fdee05cd) SHA1(efc4ffd790953ac7c25d5f045c64a9b49d24b096) ) /* Plane 2,3 */
+	ROM_LOAD16_BYTE( "245-c3.bin", 0x0800000, 0x400000, CRC(645077f3) SHA1(0ae74f3b4b3b88f128c6d8c0f35ffa53f5d67ef2) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "245-c4.bin", 0x0800001, 0x400000, CRC(63aeb74c) SHA1(9ff6930c0c3d79b46b86356e8565ce4fcd69ac38) ) /* Plane 2,3 */
+	ROM_LOAD16_BYTE( "245-c5.bin", 0x1000000, 0x400000, CRC(b5f40e7f) SHA1(b332bac64dbb9a9dd66c5315f47ea08634d36f45) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "245-c6.bin", 0x1000001, 0x400000, CRC(d0337328) SHA1(dff86b75dc283bd4512557a5c64f16e6be6c16e4) ) /* Plane 2,3 */
 ROM_END
 
 ROM_START( shocktr2 )
@@ -4528,7 +4558,7 @@ ROM_START( kof99 ) /* Original Version - Encrypted Code & GFX */ /* AES VERSION 
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4564,7 +4594,7 @@ ROM_START( kof99a ) /* Original Version - Encrypted Code & GFX */ /* MVS VERSION
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4602,7 +4632,7 @@ ROM_START( kof99e ) /* Original Version - Encrypted Code & GFX */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4638,7 +4668,7 @@ ROM_START( kof99n ) /* Original Version - Encrypted GFX */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4704,7 +4734,7 @@ ROM_START( ganryu ) /* Original Version - Encrypted GFX */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4733,7 +4763,7 @@ ROM_START( garou ) /* Original Version - Encrypted GFX */ /* later revision */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, "fixed", 0 )	/* larger char set */
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4769,7 +4799,7 @@ ROM_START( garouo ) /* Original Version - Encrypted GFX */ /* earlier revision *
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, "fixed", 0 )	/* larger char set */
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4832,7 +4862,7 @@ ROM_START( s1945p ) /* Original Version, Encrypted GFX Roms */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4866,7 +4896,7 @@ ROM_START( preisle2 ) /* Original Version, Encrypted GFX */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4898,7 +4928,7 @@ ROM_START( mslug3 ) /* Original Version - Encrypted Code & GFX */ /* revision 20
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, "fixed", 0 ) /* larger char set */
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4926,14 +4956,14 @@ ROM_START( mslug3 ) /* Original Version - Encrypted Code & GFX */ /* revision 20
 	ROM_LOAD16_BYTE( "256-c8.bin", 0x3000001, 0x800000, CRC(4d9be34c) SHA1(a737bdfa2b815aea7067e7af2636e83a9409c414) ) /* Plane 2,3 */
 ROM_END
 
-ROM_START( mslug3h ) /* Original Version - Encrypted GFX */ /* AES VERSION */
+ROM_START( mslug3h ) /* Original Version - Encrypted GFX */ /* MVS AND AES VERSION */
 	ROM_REGION( 0x500000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "256-ph1.bin", 0x000000, 0x100000, CRC(9c42ca85) SHA1(7a8f77a89867b889295ae9b9dfd4ba28f02d234d) )
 	ROM_LOAD16_WORD_SWAP( "256-ph2.bin", 0x100000, 0x400000, CRC(1f3d8ce8) SHA1(08b05a8abfb86ec09a5e758d6273acf1489961f9) )
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, "fixed", 0 ) /* larger char set */
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4969,7 +4999,7 @@ ROM_START( kof2000 ) /* Original Version, Encrypted Code + Sound + GFX Roms */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, "fixed", 0 )	/* larger char set */
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -4999,12 +5029,12 @@ ROM_END
 
 ROM_START( kof2000n ) /* Original Version, Encrypted Sound + GFX Roms */
 	ROM_REGION( 0x500000, "main", 0 )
-	ROM_LOAD16_WORD_SWAP( "257-p1n.bin", 0x000000, 0x100000, CRC(5f809dbe) SHA1(2bc233dcff5622de86d01e3b74b840c7caf12982) )
-	ROM_LOAD16_WORD_SWAP( "257-p2n.bin", 0x100000, 0x400000, CRC(693c2c5e) SHA1(dc9121b7369ef46596343cac055a00aec81704d4) )
+	ROM_LOAD16_WORD_SWAP( "257-pg1.bin", 0x000000, 0x100000, CRC(5f809dbe) SHA1(2bc233dcff5622de86d01e3b74b840c7caf12982) )
+	ROM_LOAD16_WORD_SWAP( "257-pg2.bin", 0x100000, 0x400000, CRC(693c2c5e) SHA1(dc9121b7369ef46596343cac055a00aec81704d4) )
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, "fixed", 0 )	/* larger char set */
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5039,7 +5069,7 @@ ROM_START( bangbead ) /* Original Version - Encrypted GFX */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5092,7 +5122,7 @@ ROM_START( nitd ) /* Original Version - Encrypted GFX */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5119,7 +5149,7 @@ ROM_START( sengoku3 ) /* Original Version - Encrypted GFX */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5149,7 +5179,7 @@ ROM_START( kof2001 ) /* MVS VERSION */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5185,7 +5215,7 @@ ROM_START( kof2001h ) /* AES VERSION */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5214,14 +5244,14 @@ ROM_START( kof2001h ) /* AES VERSION */
 	ROM_LOAD16_BYTE( "262-c8-08-e0.bin", 0x3000001, 0x800000, CRC(59289a6b) SHA1(ddfce7c85b2a144975db5bb14b4b51aaf881880e) ) /* Plane 2,3 */
 ROM_END
 
-ROM_START( mslug4 ) /* Original Version - Encrypted GFX */ /* MVS VERSION */
+ROM_START( mslug4 ) /* Original Version - Encrypted GFX */ /* MVS VERSION */ /* 2nd revision */
 	ROM_REGION( 0x500000, "main", 0 )
 	ROM_LOAD16_WORD_SWAP( "263-pg1.bin", 0x000000, 0x100000, CRC(27e4def3) SHA1(a08785e8145981bb6b5332a3b2df7eb321253cca) )
 	ROM_LOAD16_WORD_SWAP( "263-p2.bin",  0x100000, 0x400000, CRC(fdb7aed8) SHA1(dbeaec38f44e58ffedba99e70fa1439c2bf0dfa3) )
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, "fixed", 0 )	/* larger char set */
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5253,7 +5283,7 @@ ROM_START( rotd ) /* Encrypted Set */ /* MVS VERSION */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5288,7 +5318,7 @@ ROM_START( kof2002 ) /* Encrypted Set */ /* MVS AND AES VERSION */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5323,7 +5353,7 @@ ROM_START( matrim ) /* Encrypted Set */ /* MVS AND AES VERSION */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x80000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5357,7 +5387,7 @@ ROM_START( pnyaa ) /* Encrypted Set */ /* MVS VERSION */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5385,7 +5415,7 @@ ROM_START( mslug5 ) /* Encrypted Set */ /* MVS VERSION */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5420,7 +5450,7 @@ ROM_START( mslug5h ) /* Encrypted Set */ /* AES release of the game but is also 
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5455,7 +5485,7 @@ ROM_START( svc ) /* Encrypted Set */ /* MVS AND AES VERSION */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, "fixed", 0 ) /* larger char set */
 	ROM_FILL( 0x000000, 0x80000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5488,7 +5518,7 @@ ROM_START( samsho5 ) /* Encrypted Set */ /* MVS VERSION */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5523,7 +5553,7 @@ ROM_START( samsho5h ) /* Encrypted Set, Alternate Set */ /* AES VERSION */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5559,7 +5589,7 @@ ROM_START( kof2003 ) /* Encrypted Code + Sound + GFX Roms */ /* MVS VERSION */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, "fixed", 0 ) /* larger char set */
 	ROM_FILL( 0x000000, 0x80000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5595,7 +5625,7 @@ ROM_START( kof2003h ) /* Encrypted Code + Sound + GFX Roms */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x80000, "fixed", 0 ) /* larger char set */
 	ROM_FILL( 0x000000, 0x80000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5630,7 +5660,7 @@ ROM_START( samsh5sp ) /* Encrypted Set */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5664,7 +5694,7 @@ ROM_START( samsh5sh ) /* Encrypted Set */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5699,7 +5729,7 @@ ROM_START( samsh5sn ) /* Encrypted Set */
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5734,7 +5764,7 @@ ROM_START( jockeygp )
 
 	ROM_Y_ZOOM
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
+	/* The Encrypted Boards do not have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -5815,7 +5845,6 @@ ROM_START( ms5pcb ) /* Encrypted Set */
 	ROM_LOAD32_WORD_SWAP( "268-p1r.bin", 0x000000, 0x400000, NO_DUMP )
 	ROM_LOAD32_WORD_SWAP( "268-p2r.bin", 0x000002, 0x400000, NO_DUMP )
 
-	/* The Encrypted Boards do _not_ have an s1 rom, data for it comes from the Cx ROMs */
 	ROM_REGION( 0x20000, "fixed", 0 )
 	ROM_FILL( 0x000000, 0x20000, 0 )
 	ROM_REGION( 0x20000, "fixedbios", 0 )
@@ -6279,6 +6308,34 @@ ROM_START( ms4plus )
 ROM_END
 
 /* The King of Fighters 2002 bootlegs */
+
+ROM_START( kof2002b )
+	ROM_REGION( 0x500000, "main", 0 )
+	ROM_LOAD16_WORD_SWAP( "265-p1.bin", 0x000000, 0x100000, CRC(9ede7323) SHA1(ad9d45498777fda9fa58e75781f48e09aee705a6) )
+	ROM_LOAD16_WORD_SWAP( "2k2-p2.bin", 0x100000, 0x400000, CRC(6dbee4df) SHA1(9a9646c81b233b44213c624b898c19f83e9a07f8) )
+
+	NEO_SFIX_128K( "2k2-s1.bin", CRC(2255f5bf) SHA1(8a82b3e9717df30b580b9d0bac0b403f8102a002) )
+
+	/* Encrypted */
+	NEO_BIOS_AUDIO_ENCRYPTED_128K( "265-m1.bin", CRC(85aaa632) SHA1(744fba4ca3bc3a5873838af886efb97a8a316104) )
+
+	ROM_REGION( 0x1000000, "ym", 0 )
+	/* Encrypted */
+	ROM_LOAD( "265-v1.bin", 0x000000, 0x800000, CRC(15e8f3f5) SHA1(7c9e6426b9fa6db0158baa17a6485ffce057d889) )
+	ROM_LOAD( "265-v2.bin", 0x800000, 0x800000, CRC(da41d6f9) SHA1(a43021f1e58947dcbe3c8ca5283b20b649f0409d) )
+
+	NO_DELTAT_REGION
+
+	ROM_REGION( 0x4000000, "sprites", 0 )
+	ROM_LOAD16_BYTE( "2k2-c1.bin", 0x0000000, 0x800000, CRC(f25d3d66) SHA1(eb1da3e171c126d91e851ce141840709a2f62f8a) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "2k2-c2.bin", 0x0000001, 0x800000, CRC(e3e66f1d) SHA1(af93e9e134816353d6187a53959c6e418b83ad8d) ) /* Plane 2,3 */
+	ROM_LOAD16_BYTE( "2k2-c3.bin", 0x1000000, 0x800000, CRC(8732fa30) SHA1(81c482b375c04bcfbbc69e3e2a2e9ab567c9bb78) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "2k2-c4.bin", 0x1000001, 0x800000, CRC(0989fd40) SHA1(355d6b2c528319e41ce89952c5cf5bcc47cd6de0) ) /* Plane 2,3 */
+	ROM_LOAD16_BYTE( "2k2-c5.bin", 0x2000000, 0x800000, CRC(60635cd2) SHA1(0cf2c54e003edfcdbed64e0570e6b800e7ed3c1b) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "2k2-c6.bin", 0x2000001, 0x800000, CRC(bd736824) SHA1(d897fc8248ace145fef57d8aa393eaebc4a1ccc4) ) /* Plane 2,3 */
+	ROM_LOAD16_BYTE( "2k2-c7.bin", 0x3000000, 0x800000, CRC(2da8d8cf) SHA1(ab8aa88b8e1baba88e5fc01d0f3cb55503b6c81a) ) /* Plane 0,1 */
+	ROM_LOAD16_BYTE( "2k2-c8.bin", 0x3000001, 0x800000, CRC(2048404a) SHA1(d6d0f049ffc196334825328e0472b04e04bf6695) ) /* Plane 2,3 */
+ROM_END
 
 ROM_START( kf2k2pls )
 	ROM_REGION( 0x500000, "main", 0 )
@@ -7166,6 +7223,16 @@ static DRIVER_INIT( kof2002 )
 	DRIVER_INIT_CALL(neogeo);
 }
 
+static DRIVER_INIT( kof2002b )
+{
+	kof2002_decrypt_68k(machine);
+	neo_pcm2_swap(machine, 0);
+	neogeo_cmc50_m1_decrypt(machine);
+	kof2002b_gfx_decrypt(machine, memory_region(machine, "sprites"),0x4000000);
+	kof2002b_gfx_decrypt(machine, memory_region(machine, "fixed"),0x20000);
+	DRIVER_INIT_CALL(neogeo);
+}
+
 static DRIVER_INIT( kf2k2pls )
 {
 	kof2002_decrypt_68k(machine);
@@ -7187,7 +7254,7 @@ static DRIVER_INIT( kf2k2mp )
 
 static DRIVER_INIT( kf2k2mp2 )
 {
-	kof2km2_px_decrypt(machine);
+	kf2k2mp2_px_decrypt(machine);
 	neo_pcm2_swap(machine, 0);
 	neogeo_cmc50_m1_decrypt(machine);
 	neogeo_bootleg_sx_decrypt(machine, 1);
@@ -7262,14 +7329,14 @@ static DRIVER_INIT( mslug5 )
 static TIMER_CALLBACK( ms5pcb_bios_timer_callback )
 {
 	int harddip3 = input_port_read(machine, "HARDDIP") & 1;
-	memory_set_bankptr(NEOGEO_BANK_BIOS, memory_region(machine, "mainbios")+0x20000+harddip3*0x20000);
+	memory_set_bankptr(machine, NEOGEO_BANK_BIOS, memory_region(machine, "mainbios")+0x20000+harddip3*0x20000);
 }
 
 static DRIVER_INIT( ms5pcb )
 {
 	/* start a timer that will check the BIOS select DIP every second */
-	timer_set(attotime_zero, NULL, 0, ms5pcb_bios_timer_callback);
-	timer_pulse(ATTOTIME_IN_MSEC(1000), NULL, 0, ms5pcb_bios_timer_callback);
+	timer_set(machine, attotime_zero, NULL, 0, ms5pcb_bios_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_MSEC(1000), NULL, 0, ms5pcb_bios_timer_callback);
 
 	mslug5_decrypt_68k(machine);
 	svcpcb_gfx_decrypt(machine);
@@ -7296,14 +7363,14 @@ static DRIVER_INIT( ms5plus )
 static TIMER_CALLBACK( svcpcb_bios_timer_callback )
 {
 	int harddip3 = input_port_read(machine, "HARDDIP") & 1;
-	memory_set_bankptr(NEOGEO_BANK_BIOS, memory_region(machine, "mainbios")+0x20000+harddip3*0x20000);
+	memory_set_bankptr(machine, NEOGEO_BANK_BIOS, memory_region(machine, "mainbios")+0x20000+harddip3*0x20000);
 }
 
 static DRIVER_INIT( svcpcb )
 {
 	/* start a timer that will check the BIOS select DIP every second */
-	timer_set(attotime_zero, NULL, 0, svcpcb_bios_timer_callback);
-	timer_pulse(ATTOTIME_IN_MSEC(1000), NULL, 0, svcpcb_bios_timer_callback);
+	timer_set(machine, attotime_zero, NULL, 0, svcpcb_bios_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_MSEC(1000), NULL, 0, svcpcb_bios_timer_callback);
 
 	svc_px_decrypt(machine);
 	svcpcb_gfx_decrypt(machine);
@@ -7407,7 +7474,7 @@ static DRIVER_INIT( kf2k3pcb )
 	neogeo_fixed_layer_bank_type = 2;
 	DRIVER_INIT_CALL(neogeo);
 	install_pvc_protection(machine);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc7ffff, 0, 0, SMH_BANK6 );  // 512k bios
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc00000, 0xc7ffff, 0, 0, SMH_BANK6 );  // 512k bios
 }
 
 static DRIVER_INIT( kof2003 )
@@ -7481,13 +7548,13 @@ static DRIVER_INIT( jockeygp )
 
 	/* install some extra RAM */
 	extra_ram = auto_malloc(0x2000);
-	state_save_register_global_pointer(extra_ram, 0x2000 / 2);
+	state_save_register_global_pointer(machine, extra_ram, 0x2000 / 2);
 
-	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x201fff, 0, 0, SMH_BANK8, SMH_BANK8);
-	memory_set_bankptr(NEOGEO_BANK_EXTRA_RAM, extra_ram);
+	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x200000, 0x201fff, 0, 0, SMH_BANK8, SMH_BANK8);
+	memory_set_bankptr(machine, NEOGEO_BANK_EXTRA_RAM, extra_ram);
 
-//  memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x280000, 0x280001, 0, 0, input_port_read_handler16(machine->portconfig, "IN5") );
-//  memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2c0000, 0x2c0001, 0, 0, input_port_read_handler16(machine->portconfig, "IN6") );
+//  memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x280000, 0x280001, 0, 0, input_port_read_handler16(machine->portconfig, "IN5") );
+//  memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x2c0000, 0x2c0001, 0, 0, input_port_read_handler16(machine->portconfig, "IN6") );
 
 	DRIVER_INIT_CALL(neogeo);
 }
@@ -7498,13 +7565,13 @@ static DRIVER_INIT( vliner )
 
 	/* install some extra RAM */
 	extra_ram = auto_malloc(0x2000);
-	state_save_register_global_pointer(extra_ram, 0x2000 / 2);
+	state_save_register_global_pointer(machine, extra_ram, 0x2000 / 2);
 
-	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x201fff, 0, 0, SMH_BANK8, SMH_BANK8);
-	memory_set_bankptr(NEOGEO_BANK_EXTRA_RAM, extra_ram);
+	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x200000, 0x201fff, 0, 0, SMH_BANK8, SMH_BANK8);
+	memory_set_bankptr(machine, NEOGEO_BANK_EXTRA_RAM, extra_ram);
 
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x280000, 0x280001, 0, 0, input_port_read_handler16(machine->portconfig, "IN5") );
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2c0000, 0x2c0001, 0, 0, input_port_read_handler16(machine->portconfig, "IN6") );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x280000, 0x280001, 0, 0, input_port_read_handler16(machine->portconfig, "IN5") );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x2c0000, 0x2c0001, 0, 0, input_port_read_handler16(machine->portconfig, "IN6") );
 
 	DRIVER_INIT_CALL(neogeo);
 }
@@ -7512,7 +7579,7 @@ static DRIVER_INIT( vliner )
 static DRIVER_INIT( kog )
 {
 	/* overlay cartridge ROM */
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0ffffe, 0x0fffff, 0, 0, input_port_read_handler16(machine->portconfig, "JUMPER") );
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0ffffe, 0x0fffff, 0, 0, input_port_read_handler16(machine->portconfig, "JUMPER") );
 
 	kog_px_decrypt(machine);
 	neogeo_bootleg_sx_decrypt(machine, 1);
@@ -7640,13 +7707,14 @@ GAME( 2000, mslug3b6, mslug3,   neogeo,   neogeo,   mslug3b6, ROT0, "bootleg", "
 GAME( 2000, kof2000,  neogeo,   neogeo,   neogeo,   kof2000,  ROT0, "SNK", "The King of Fighters 2000" , 0 ) /* Encrypted Code & GFX */
 GAME( 2000, kof2000n, kof2000,  neogeo,   neogeo,   kof2000n, ROT0, "SNK", "The King of Fighters 2000 (not encrypted)" , 0 ) /* Encrypted GFX */
 GAME( 2001, zupapa,   neogeo,   neogeo,   neogeo,   zupapa,   ROT0, "SNK", "Zupapa!" , 0 )	/* Encrypted GFX */
-GAME( 2001, sengoku3, neogeo,   neogeo,   neogeo,   sengoku3, ROT0, "SNK", "Sengoku 3" , 0 )	/* Encrypted GFX */
+GAME( 2001, sengoku3, neogeo,   neogeo,   neogeo,   sengoku3, ROT0, "Noise Factory / SNK", "Sengoku 3" , 0 )	/* Encrypted GFX */
 GAME( 2001, kof2001,  neogeo,   neogeo,   neogeo,   kof2001,  ROT0, "Eolith / SNK", "The King of Fighters 2001 (set 1)" , 0 ) /* Encrypted GFX */
 GAME( 2001, kof2001h, kof2001,  neogeo,   neogeo,   kof2001,  ROT0, "Eolith / SNK", "The King of Fighters 2001 (set 2)" , 0 ) /* Encrypted GFX */
 GAME( 2003, cthd2003, kof2001,  neogeo,   neogeo,   cthd2003, ROT0, "bootleg", "Crouching Tiger Hidden Dragon 2003 (The King of Fighters 2001 bootleg)", 0 ) /* Protected Hack / Bootleg of kof2001 */
 GAME( 2003, ct2k3sp,  kof2001,  neogeo,   neogeo,   ct2k3sp,  ROT0, "bootleg", "Crouching Tiger Hidden Dragon 2003 Super Plus (The King of Fighters 2001 bootleg)", 0 ) /* Protected Hack / Bootleg of kof2001 */
 GAME( 2003, ct2k3sa,  kof2001,  neogeo,   neogeo,   ct2k3sa,  ROT0, "bootleg", "Crouching Tiger Hidden Dragon 2003 Super Plus alternate (The King of Fighters 2001 bootleg)", 0 ) /* Hack / Bootleg of kof2001 */
 GAME( 2002, kof2002,  neogeo,   neogeo,   neogeo,   kof2002,  ROT0, "Eolith / Playmore", "The King of Fighters 2002" , 0 ) /* Encrypted GFX */
+GAME( 2002, kof2002b, kof2002,  neogeo,   neogeo,   kof2002b, ROT0, "bootleg", "The King of Fighters 2002 (bootleg)", 0 )
 GAME( 2002, kf2k2pls, kof2002,  neogeo,   neogeo,   kf2k2pls, ROT0, "bootleg", "The King of Fighters 2002 Plus (bootleg set 1)" , 0 ) /* Encrypted GFX */
 GAME( 2002, kf2k2pla, kof2002,  neogeo,   neogeo,   kf2k2pls, ROT0, "bootleg", "The King of Fighters 2002 Plus (bootleg set 2)" , 0 ) /* Encrypted GFX */
 GAME( 2002, kf2k2mp,  kof2002,  neogeo,   neogeo,   kf2k2mp,  ROT0, "bootleg", "The King of Fighters 2002 Magic Plus (bootleg)" , 0 ) /* Encrypted GFX */
@@ -7680,7 +7748,7 @@ GAME( 2003, samsh5sp, neogeo,   neogeo,   neogeo,   samsh5sp, ROT0, "Yuki Enterp
 GAME( 2003, samsh5sh, samsh5sp, neogeo,   neogeo,   samsh5sp, ROT0, "Yuki Enterprise / SNK Playmore", "Samurai Shodown V Special / Samurai Spirits Zero Special (set 2, censored)", 0 )
 GAME( 2003, samsh5sn, samsh5sp, neogeo,   neogeo,   samsh5sp, ROT0, "Yuki Enterprise / SNK Playmore", "Samurai Shodown V Special / Samurai Spirits Zero Special (set 3, less censored)", 0 )
 
-/* there are other bootlegs kof2002b etc. kof96ep, kf2k1pls? -- work out which should be supported */
+/* there are other bootlegs kof96ep, kf2k1pls etc.? -- work out which should be supported */
 
 /* Alpha Denshi Co. / ADK (changed name in 1993) */
 GAME( 1990, maglord,  neogeo,   neogeo,   neogeo,   neogeo,   ROT0, "Alpha Denshi Co.", "Magician Lord (set 1)", 0 )
@@ -7802,7 +7870,7 @@ GAME( 1995, goalx3,   neogeo,   neogeo,   neogeo,   neogeo,   ROT0, "Visco", "Go
 GAME( 1996, neodrift, neogeo,   neogeo,   neogeo,   neogeo,   ROT0, "Visco", "Neo Drift Out - New Technology", 0 )
 GAME( 1996, breakers, neogeo,   neogeo,   neogeo,   neogeo,   ROT0, "Visco", "Breakers", 0 )
 GAME( 1997, puzzldpr, puzzledp, neogeo,   neogeo,   neogeo,   ROT0, "Taito (Visco license)", "Puzzle De Pon! R!", 0 )
-GAME( 1998, breakrev, breakers, neogeo,   neogeo,   neogeo,   ROT0, "Visco", "Breakers Revenge", 0 )
+GAME( 1998, breakrev, neogeo,   neogeo,   neogeo,   neogeo,   ROT0, "Visco", "Breakers Revenge", 0 )
 GAME( 1998, flipshot, neogeo,   neogeo,   neogeo,   neogeo,   ROT0, "Visco", "Battle Flip Shot", 0 )
 GAME( 1999, ctomaday, neogeo,   neogeo,   neogeo,   neogeo,   ROT0, "Visco", "Captain Tomaday", 0 )
 GAME( 1999, ganryu,   neogeo,   neogeo,   neogeo,   ganryu,   ROT0, "Visco", "Ganryu / Musashi Ganryuki" , 0 )	/* Encrypted GFX */
@@ -7820,10 +7888,10 @@ GAME( 2002, rotd,     neogeo,   neogeo,   neogeo,   rotd,     ROT0, "Evoga / Pla
 GAME( 2002, matrim,   neogeo,   neogeo,   neogeo,   matrim,   ROT0, "Noise Factory / Atlus", "Matrimelee / Shin Gouketsuji Ichizoku Toukon", 0 )
 GAME( 2002, matrimbl, matrim,   neogeo,   neogeo,   matrimbl, ROT0, "bootleg", "Matrimelee / Shin Gouketsuji Ichizoku Toukon (bootleg)", 0 )
 
-/* Breezasoft */
+/* BrezzaSoft */
 GAME( 2001, jockeygp, neogeo,   neogeo,   jockeygp, jockeygp, ROT0, "Sun Amusement / BrezzaSoft", "Jockey Grand Prix", 0 )
-GAME( 2001, vliner,   neogeo,   neogeo,   vliner,   vliner,   ROT0, "Dyna / BreezaSoft", "V-Liner (set 1)", 0 )
-GAME( 2001, vlinero,  vliner,   neogeo,   vliner,   vliner,   ROT0, "Dyna / BreezaSoft", "V-Liner (set 2)", 0 )
+GAME( 2001, vliner,   neogeo,   neogeo,   vliner,   vliner,   ROT0, "Dyna / BrezzaSoft", "V-Liner (set 1)", 0 )
+GAME( 2001, vlinero,  vliner,   neogeo,   vliner,   vliner,   ROT0, "Dyna / BrezzaSoft", "V-Liner (set 2)", 0 )
 
 /* Kyle Hodgetts */
 GAME( 2000, diggerma, neogeo,   neogeo,   neogeo,   neogeo,   ROT0, "Kyle Hodgetts", "Digger Man (prototype)", 0 )

@@ -161,9 +161,9 @@ WRITE8_HANDLER( ladybug_colorram_w )
 
 WRITE8_HANDLER( ladybug_flipscreen_w )
 {
-	if (flip_screen_get() != (data & 0x01))
+	if (flip_screen_get(space->machine) != (data & 0x01))
 	{
-		flip_screen_set(data & 0x01);
+		flip_screen_set(space->machine, data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
@@ -234,7 +234,7 @@ WRITE8_HANDLER( sraider_misc_w )
 			sraider_0x38 = data&0x3f;
 			break;
 		default:
-			mame_printf_debug("(%04X) write to %02X\n",activecpu_get_pc(),offset);
+			mame_printf_debug("(%04X) write to %02X\n",cpu_get_pc(space->cpu),offset);
 			break;
 	}
 }
@@ -250,9 +250,9 @@ WRITE8_HANDLER( sraider_io_w )
 	// bit3 = enable stars
 	// bit210 = stars speed/dir
 
-	if (flip_screen_get() != (data & 0x80))
+	if (flip_screen_get(space->machine) != (data & 0x80))
 	{
-		flip_screen_set(data & 0x80);
+		flip_screen_set(space->machine, data & 0x80);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 
@@ -291,18 +291,18 @@ static TILE_GET_INFO( get_grid_tile_info )
 
 VIDEO_START( ladybug )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_scroll_rows(bg_tilemap, 32);
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 }
 
 VIDEO_START( sraider )
 {
-	grid_tilemap = tilemap_create(get_grid_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	grid_tilemap = tilemap_create(machine, get_grid_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_scroll_rows(grid_tilemap, 32);
 	tilemap_set_transparent_pen(grid_tilemap, 0);
 
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_scroll_rows(bg_tilemap, 32);
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 }
@@ -363,14 +363,14 @@ VIDEO_UPDATE( ladybug )
 	int offs;
 
 	// clear the bg bitmap
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	for (offs = 0; offs < 32; offs++)
 	{
 		int sx = offs % 4;
 		int sy = offs / 4;
 
-		if (flip_screen_get())
+		if (flip_screen_get(screen->machine))
 			tilemap_set_scrollx(bg_tilemap, offs, -videoram[32 * sx + sy]);
 		else
 			tilemap_set_scrollx(bg_tilemap, offs, videoram[32 * sx + sy]);
@@ -399,17 +399,17 @@ VIDEO_UPDATE( sraider )
 		int sx = offs % 4;
 		int sy = offs / 4;
 
-		if (flip_screen_get())
+		if (flip_screen_get(screen->machine))
 			tilemap_set_scrollx(bg_tilemap, offs, -videoram[32 * sx + sy]);
 		else
 			tilemap_set_scrollx(bg_tilemap, offs, videoram[32 * sx + sy]);
 	}
 
 	// clear the bg bitmap
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	// draw the stars
-	if (flip_screen_get())
+	if (flip_screen_get(screen->machine))
 		redclash_draw_stars(bitmap,cliprect,0x60,1,0x27,0xff);
 	else
 		redclash_draw_stars(bitmap,cliprect,0x60,1,0x00,0xd8);
@@ -418,7 +418,7 @@ VIDEO_UPDATE( sraider )
 	colortable_palette_set_color(screen->machine->colortable, 0x40, MAKE_RGB(sraider_grid_color & 0x40 ? 0xff : 0,
 		              					  									 sraider_grid_color & 0x20 ? 0xff : 0,
 		              					  									 sraider_grid_color & 0x10 ? 0xff : 0));
-	tilemap_draw(bitmap, cliprect, grid_tilemap, 0, flip_screen_get());
+	tilemap_draw(bitmap, cliprect, grid_tilemap, 0, flip_screen_get(screen->machine));
 
 	for (i = 0; i < 0x100; i++)
 	{
@@ -428,7 +428,7 @@ VIDEO_UPDATE( sraider )
 
 			int height = cliprect->max_y - cliprect->min_y + 1;
 
-			if (flip_screen_get())
+			if (flip_screen_get(screen->machine))
 				x = ~x;
 
 			plot_box(bitmap, x, cliprect->min_y, 1, height, 0x81);
@@ -436,7 +436,7 @@ VIDEO_UPDATE( sraider )
 	}
 
 	// now the chars
-	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, flip_screen_get());
+	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, flip_screen_get(screen->machine));
 
 	// now the sprites
 	draw_sprites(screen->machine, bitmap, cliprect);

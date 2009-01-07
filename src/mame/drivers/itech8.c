@@ -9,6 +9,7 @@
         * Strata Bowling [2 sets]
         * Super Strike Bowling
         * Wheel of Fortune [2 sets]
+        * Grudge Match
         * Golden Tee Golf [2 sets]
         * Golden Tee Golf II [3 sets]
         * Slick Shot [3 sets]
@@ -143,7 +144,7 @@
 
     Summary:
 
-        There are 7 known variants of PCBs for these games. All the PCBs
+        There are 8 known variants of PCBs for these games. All the PCBs
         have the following features in common:
 
             68B09 @ 2 MHz for the main CPU
@@ -151,20 +152,25 @@
 
             68B09 @ 2 MHz for the sound CPU
             2k RAM for the sound CPU
-            YM2203C or YM3812 for music
-            OKI M6295 for speech
+            YM2203C, YM2608B or YM3812 for music
+            OKI M6295 for speech (except for YM2608B-based system)
 
             TMS34061 for the video controller
             ITV4400 custom blitter for rendering
-            6-bit RAMDAC for palette
+            6-bit RAMDAC for palette, or 2xTMS34070NL (Grudge Match only)
             From 2-8 64k x 4-bit VRAM chips for frame buffers
 
         An overview of each style PCB is given below:
 
-        Wheel of Fortune-style
+        Wheel Watcher (Wheel of Fortune)-style
             * Single board
             * YM2203C for music
             * 2 VRAM chips for a single 8-bit 256x256 video page
+
+        Grudge Match-style
+            * Single board
+            * YM2608B for music
+            * 4 VRAM chips for two 4-bit 512x256 layers
 
         Strata Bowling-style
             * Single board
@@ -202,9 +208,9 @@
 
 ****************************************************************************
 
-    ----------------
-    Wheel of Fortune
-    ----------------
+    --------------------------------
+    Wheel Watcher (Wheel of Fortune)
+    --------------------------------
 
         +------------------------------------+-+
         |    Bt476KP35                       | |
@@ -236,6 +242,44 @@
         CDM6464 = 8k x 8 RAM
         HY6116 = 2k x 8 RAM
         Bt476 = 6-bit DAC
+        TMS34061 = video controller
+        ITV4400 = IT custom blitter
+
+
+    -------------
+    Grudge Match
+    ------------
+
+        +------------------------------------+-+
+        | TMS34070NL                         | |
+        | TMS34070NL  DIPSW4                 | |
+        | TMS4461-15   8MHz                  | |
+        | TMS4461-15                         | |
+        | TMS4461-15                         | |
+        | TMS4461-15                         | |
+        |                                    | |
+        |       TMS34061                     +-
+        |                                      |
+        |          ITV4400                     |
+        |  GROM6                     SROM0     |
+        |  GROM5                               |
+        |  GROM4                               |
+        |  GROM3    MK40702B-20      YM2608B   |
+        |  GROM2    U5-PGM    MK6116           |
+        |  GROM1              U27-SND          |
+        |  GROM0                               |
+        |        MC68B09         MC68B09       |
+        +--------------------------------------+
+
+        GROM0-6 = AM27C010-25
+        U5-PGM = D27512-25
+        U27-SND = 27C256-20
+        SROM0 = AM27C010-25
+        ITVS = ???
+        MT42C4064Z = 64k x 4 VRAM (2 populated on Wheel of Fortune)
+        MK40702B = zero-power RAM
+        MK6116 = 2k x 8 RAM
+        TMS34070NL = 16-color RAMDAC
         TMS34061 = video controller
         ITV4400 = IT custom blitter
 
@@ -451,6 +495,9 @@
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
+#include "cpu/hd6309/hd6309.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
 #include "machine/6522via.h"
@@ -459,6 +506,7 @@
 #include "video/tlc34076.h"
 #include "itech8.h"
 #include "sound/2203intf.h"
+#include "sound/2608intf.h"
 #include "sound/3812intf.h"
 #include "sound/okim6295.h"
 
@@ -516,13 +564,20 @@ static const pia6821_interface pia_interface =
  *
  *************************************/
 
-static void via_irq(running_machine *machine, int state);
+static void via_irq(const device_config *device, int state);
 
-static const struct via6522_interface via_interface =
+static WRITE8_DEVICE_HANDLER( via_pia_portb_out )
+{
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	pia_portb_out(space, offset, data);
+}
+
+
+static const via6522_interface via_interface =
 {
 	/*inputs : A/B         */ 0, 0,
 	/*inputs : CA/B1,CA/B2 */ 0, 0, 0, 0,
-	/*outputs: A/B         */ 0, pia_portb_out,
+	/*outputs: A/B         */ 0, via_pia_portb_out,
 	/*outputs: CA/B1,CA/B2 */ 0, 0, 0, 0,
 	/*irq                  */ via_irq
 };
@@ -537,25 +592,27 @@ static const struct via6522_interface via_interface =
 
 void itech8_update_interrupts(running_machine *machine, int periodic, int tms34061, int blitter)
 {
+	cpu_type main_cpu_type = cpu_get_type(machine->cpu[0]);
+
 	/* update the states */
 	if (periodic != -1) periodic_int = periodic;
 	if (tms34061 != -1) tms34061_int = tms34061;
 	if (blitter != -1) blitter_int = blitter;
 
 	/* handle the 6809 case */
-	if (machine->config->cpu[0].type == CPU_M6809 || machine->config->cpu[0].type == CPU_HD6309)
+	if (main_cpu_type == CPU_M6809 || main_cpu_type == CPU_HD6309)
 	{
 		/* just modify lines that have changed */
-		if (periodic != -1) cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, periodic ? ASSERT_LINE : CLEAR_LINE);
-		if (tms34061 != -1) cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, tms34061 ? ASSERT_LINE : CLEAR_LINE);
-		if (blitter != -1) cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, blitter ? ASSERT_LINE : CLEAR_LINE);
+		if (periodic != -1) cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, periodic ? ASSERT_LINE : CLEAR_LINE);
+		if (tms34061 != -1) cpu_set_input_line(machine->cpu[0], M6809_IRQ_LINE, tms34061 ? ASSERT_LINE : CLEAR_LINE);
+		if (blitter != -1) cpu_set_input_line(machine->cpu[0], M6809_FIRQ_LINE, blitter ? ASSERT_LINE : CLEAR_LINE);
 	}
 
 	/* handle the 68000 case */
 	else
 	{
-		cpunum_set_input_line(machine, 0, 2, blitter_int ? ASSERT_LINE : CLEAR_LINE);
-		cpunum_set_input_line(machine, 0, 3, periodic_int ? ASSERT_LINE : CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], 2, blitter_int ? ASSERT_LINE : CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], 3, periodic_int ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -576,23 +633,23 @@ static TIMER_CALLBACK( irq_off )
 static INTERRUPT_GEN( generate_nmi )
 {
 	/* signal the NMI */
-	itech8_update_interrupts(machine, 1, -1, -1);
-	timer_set(ATTOTIME_IN_USEC(1), NULL, 0, irq_off);
+	itech8_update_interrupts(device->machine, 1, -1, -1);
+	timer_set(device->machine, ATTOTIME_IN_USEC(1), NULL, 0, irq_off);
 
-	if (FULL_LOGGING) logerror("------------ VBLANK (%d) --------------\n", video_screen_get_vpos(machine->primary_screen));
+	if (FULL_LOGGING) logerror("------------ VBLANK (%d) --------------\n", video_screen_get_vpos(device->machine->primary_screen));
 }
 
 
 static WRITE8_HANDLER( itech8_nmi_ack_w )
 {
 /* doesn't seem to hold for every game (e.g., hstennis) */
-/*  cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);*/
+/*  cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);*/
 }
 
 
 static void generate_sound_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 1, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -608,7 +665,7 @@ static TIMER_CALLBACK( behind_the_beam_update );
 
 static MACHINE_START( itech8 )
 {
-	pia_config(0, &pia_interface);
+	pia_config(machine, 0, &pia_interface);
 }
 
 static MACHINE_START( sstrike )
@@ -616,25 +673,25 @@ static MACHINE_START( sstrike )
 	MACHINE_START_CALL(itech8);
 
 	/* we need to update behind the beam as well */
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 32, behind_the_beam_update);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 32, behind_the_beam_update);
 }
 
 static MACHINE_RESET( itech8 )
 {
+	cpu_type main_cpu_type = cpu_get_type(machine->cpu[0]);
+
 	/* make sure bank 0 is selected */
-	if (machine->config->cpu[0].type == CPU_M6809 || machine->config->cpu[0].type == CPU_HD6309)
-		memory_set_bankptr(1, &memory_region(machine, "main")[0x4000]);
+	if (main_cpu_type == CPU_M6809 || main_cpu_type == CPU_HD6309)
+	{
+		memory_set_bankptr(machine, 1, &memory_region(machine, "main")[0x4000]);
+		device_reset(machine->cpu[0]);
+	}
 
 	/* reset the PIA (if used) */
 	pia_reset();
 
-	/* reset the VIA chip (if used) */
-	via_config(0, &via_interface);
-	via_set_clock(0, CLOCK_8MHz/4);
-	via_reset();
-
 	/* reset the ticket dispenser */
-	ticket_dispenser_init(200, TICKET_MOTOR_ACTIVE_HIGH, TICKET_STATUS_ACTIVE_LOW);
+	ticket_dispenser_init(machine, 200, TICKET_MOTOR_ACTIVE_HIGH, TICKET_STATUS_ACTIVE_LOW);
 
 	/* reset the palette chip */
 	tlc34076_reset(6);
@@ -668,7 +725,7 @@ static TIMER_CALLBACK( behind_the_beam_update )
 	if (scanline >= 256) scanline = 0;
 
 	/* set a new timer */
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, (scanline << 8) + interval, behind_the_beam_update);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, (scanline << 8) + interval, behind_the_beam_update);
 }
 
 
@@ -683,17 +740,17 @@ static WRITE8_HANDLER( blitter_w )
 {
 	/* bit 0x20 on address 7 controls CPU banking */
 	if (offset / 2 == 7)
-		memory_set_bankptr(1, &memory_region(machine, "main")[0x4000 + 0xc000 * ((data >> 5) & 1)]);
+		memory_set_bankptr(space->machine, 1, &memory_region(space->machine, "main")[0x4000 + 0xc000 * ((data >> 5) & 1)]);
 
 	/* the rest is handled by the video hardware */
-	itech8_blitter_w(machine, offset, data);
+	itech8_blitter_w(space, offset, data);
 }
 
 
 static WRITE8_HANDLER( rimrockn_bank_w )
 {
 	/* banking is controlled here instead of by the blitter output */
-	memory_set_bankptr(1, &memory_region(machine, "main")[0x4000 + 0xc000 * (data & 3)]);
+	memory_set_bankptr(space->machine, 1, &memory_region(space->machine, "main")[0x4000 + 0xc000 * (data & 3)]);
 }
 
 
@@ -732,7 +789,7 @@ static WRITE8_HANDLER( pia_portb_out )
 	/* bit 5 controls the coin counter */
 	/* bit 6 controls the diagnostic sound LED */
 	pia_portb_data = data;
-	ticket_dispenser_w(machine, 0, (data & 0x10) << 3);
+	ticket_dispenser_w(space, 0, (data & 0x10) << 3);
 	coin_counter_w(0, (data & 0x20) >> 5);
 }
 
@@ -746,7 +803,7 @@ static WRITE8_HANDLER( ym2203_portb_out )
 	/* bit 6 controls the diagnostic sound LED */
 	/* bit 7 controls the ticket dispenser */
 	pia_portb_data = data;
-	ticket_dispenser_w(machine, 0, data & 0x80);
+	ticket_dispenser_w(space, 0, data & 0x80);
 	coin_counter_w(0, (data & 0x20) >> 5);
 }
 
@@ -761,13 +818,13 @@ static WRITE8_HANDLER( ym2203_portb_out )
 static TIMER_CALLBACK( delayed_sound_data_w )
 {
 	sound_data = param;
-	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[1], M6809_IRQ_LINE, ASSERT_LINE);
 }
 
 
 static WRITE8_HANDLER( sound_data_w )
 {
-	timer_call_after_resynch(NULL, data, delayed_sound_data_w);
+	timer_call_after_resynch(space->machine, NULL, data, delayed_sound_data_w);
 }
 
 
@@ -778,13 +835,13 @@ static WRITE8_HANDLER( gtg2_sound_data_w )
 	       ((data & 0x5d) << 1) |
 	       ((data & 0x20) >> 3) |
 	       ((data & 0x02) << 5);
-	timer_call_after_resynch(NULL, data, delayed_sound_data_w);
+	timer_call_after_resynch(space->machine, NULL, data, delayed_sound_data_w);
 }
 
 
 static READ8_HANDLER( sound_data_r )
 {
-	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], M6809_IRQ_LINE, CLEAR_LINE);
 	return sound_data;
 }
 
@@ -796,12 +853,12 @@ static READ8_HANDLER( sound_data_r )
  *
  *************************************/
 
-static void via_irq(running_machine *machine, int state)
+static void via_irq(const device_config *device, int state)
 {
 	if (state)
-		cpunum_set_input_line(machine, 1, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[1], M6809_FIRQ_LINE, ASSERT_LINE);
 	else
-		cpunum_set_input_line(machine, 1, M6809_FIRQ_LINE, CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[1], M6809_FIRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -822,14 +879,14 @@ static WRITE16_HANDLER( grom_bank16_w )
 static WRITE16_HANDLER( display_page16_w )
 {
 	if (ACCESSING_BITS_8_15)
-		itech8_page_w(machine, 0, ~data >> 8);
+		itech8_page_w(space, 0, ~data >> 8);
 }
 
 
 static WRITE16_HANDLER( palette16_w )
 {
 	if (ACCESSING_BITS_8_15)
-		itech8_palette_w(machine, offset / 8, data >> 8);
+		itech8_palette_w(space, offset / 8, data >> 8);
 }
 
 
@@ -944,6 +1001,19 @@ static ADDRESS_MAP_START( sound2203_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
+/*------ YM2608B-based sound ------*/
+static ADDRESS_MAP_START( sound2608b_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x1000, 0x1000) AM_WRITENOP
+	AM_RANGE(0x2000, 0x2000) AM_READ(sound_data_r)
+	AM_RANGE(0x4000, 0x4000) AM_READWRITE(ym2608_status_port_0_a_r, ym2608_control_port_0_a_w)
+	AM_RANGE(0x4001, 0x4001) AM_WRITE(ym2608_data_port_0_a_w)
+	AM_RANGE(0x4002, 0x4002) AM_READWRITE(ym2608_status_port_0_b_r, ym2608_control_port_0_b_w)
+	AM_RANGE(0x4003, 0x4003) AM_WRITE(ym2608_data_port_0_b_w)
+	AM_RANGE(0x6000, 0x67ff) AM_RAM
+	AM_RANGE(0x8000, 0xffff) AM_ROM
+ADDRESS_MAP_END
+
+
 /*------ YM3812-based sound ------*/
 static ADDRESS_MAP_START( sound3812_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0000) AM_WRITENOP
@@ -965,7 +1035,7 @@ static ADDRESS_MAP_START( sound3812_external_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2001, 0x2001) AM_WRITE(ym3812_write_port_0_w)
 	AM_RANGE(0x3000, 0x37ff) AM_RAM
 	AM_RANGE(0x4000, 0x4000) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
-	AM_RANGE(0x5000, 0x500f) AM_READWRITE(via_0_r, via_0_w)
+	AM_RANGE(0x5000, 0x500f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -1021,6 +1091,44 @@ static INPUT_PORTS_START( wfortune )
 
 	PORT_START("AN_F")	/* analog F */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(75) PORT_KEYDELTA(10) PORT_COCKTAIL PORT_PLAYER(2)
+INPUT_PORTS_END
+
+
+static INPUT_PORTS_START( grmatch )
+	PORT_START("40")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(special_r, NULL)	/* input from sound board */
+	PORT_BIT( 0x06, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_DIPNAME( 0x08, 0x08, "Adjustments Lockout" )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Coinage ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( 1C_1C ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x20, "1" )
+	PORT_DIPSETTING(    0x00, "3" )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
+
+	PORT_START("60")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+
+	PORT_START("80")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 INPUT_PORTS_END
 
 
@@ -1615,6 +1723,20 @@ static const ym2203_interface ym2203_config =
 };
 
 
+static const ym2608_interface ym2608b_config =
+{
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL,
+		NULL,
+		NULL,
+		ym2203_portb_out,
+	},
+	generate_sound_irq
+};
+
+
 static const ym3812_interface ym3812_config =
 {
 	generate_sound_irq
@@ -1653,9 +1775,8 @@ static MACHINE_DRIVER_START( itech8_core_lo )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("oki", OKIM6295, CLOCK_8MHz/8) // was /128??
-	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // was /128, not /132, so unsure so pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+	/* via */
+	MDRV_VIA6522_ADD("via6522_0", CLOCK_8MHz/4, via_interface)
 MACHINE_DRIVER_END
 
 
@@ -1681,6 +1802,23 @@ static MACHINE_DRIVER_START( itech8_sound_ym2203 )
 	MDRV_SOUND_ROUTE(1, "mono", 0.07)
 	MDRV_SOUND_ROUTE(2, "mono", 0.07)
 	MDRV_SOUND_ROUTE(3, "mono", 0.75)
+
+	MDRV_SOUND_ADD("oki", OKIM6295, CLOCK_8MHz/8) // was /128??
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // was /128, not /132, so unsure so pin 7 not verified
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( itech8_sound_ym2608b )
+
+	/* basic machine hardware */
+	MDRV_CPU_ADD("sound", M6809, CLOCK_8MHz/4)
+	MDRV_CPU_PROGRAM_MAP(sound2608b_map,0)
+
+	/* sound hardware */
+	MDRV_SOUND_ADD("ym", YM2608, CLOCK_8MHz)
+	MDRV_SOUND_CONFIG(ym2608b_config)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 MACHINE_DRIVER_END
 
 
@@ -1694,6 +1832,10 @@ static MACHINE_DRIVER_START( itech8_sound_ym3812 )
 	MDRV_SOUND_ADD("ym", YM3812, CLOCK_8MHz/2)
 	MDRV_SOUND_CONFIG(ym3812_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+
+	MDRV_SOUND_ADD("oki", OKIM6295, CLOCK_8MHz/8) // was /128??
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // was /128, not /132, so unsure so pin 7 not verified
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 MACHINE_DRIVER_END
 
 
@@ -1706,6 +1848,10 @@ static MACHINE_DRIVER_START( itech8_sound_ym3812_external )
 	/* sound hardware */
 	MDRV_SOUND_ADD("ym", YM3812, CLOCK_8MHz/2)
 	MDRV_SOUND_CONFIG(ym3812_config)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+
+	MDRV_SOUND_ADD("oki", OKIM6295, CLOCK_8MHz/8) // was /128??
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // was /128, not /132, so unsure so pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 MACHINE_DRIVER_END
 
@@ -1722,6 +1868,22 @@ static MACHINE_DRIVER_START( wfortune )
 	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 239)
 	MDRV_VIDEO_UPDATE(itech8_2layer)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( grmatch )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(itech8_core_hi)
+	MDRV_IMPORT_FROM(itech8_sound_ym2608b)
+
+	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_VISIBLE_AREA(0, 399, 0, 239)
+	MDRV_VIDEO_UPDATE(itech8_grmatch)
+
+	/* palette updater */
+	MDRV_TIMER_ADD_SCANLINE("palette", grmatch_palette_update, "main", 0, 0)
 MACHINE_DRIVER_END
 
 
@@ -1896,7 +2058,7 @@ ROM_START( wfortune )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "wofsnd", 0x08000, 0x8000, CRC(0a6aa5dc) SHA1(42eef40a4300d6d16d9e2af678432a02be05f104) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "wofgrom0", 0x00000, 0x10000, CRC(9a157b2c) SHA1(c349b41ba00cf6e2fec32872627c8cfdd8b5c1b9) )
 	ROM_LOAD( "wofgrom1", 0x10000, 0x10000, CRC(5064739b) SHA1(424e3f94333f8ca21ac39b64b684cf6b487164d3) )
 	ROM_LOAD( "wofgrom2", 0x20000, 0x10000, CRC(3d393b2b) SHA1(2c94d2dab7369c099c470cf96391b033f39add78) )
@@ -1916,7 +2078,7 @@ ROM_START( wfortuna )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "wofsnd", 0x08000, 0x8000, CRC(0a6aa5dc) SHA1(42eef40a4300d6d16d9e2af678432a02be05f104) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "wofgrom0", 0x00000, 0x10000, CRC(9a157b2c) SHA1(c349b41ba00cf6e2fec32872627c8cfdd8b5c1b9) )
 	ROM_LOAD( "wofgrom1", 0x10000, 0x10000, CRC(5064739b) SHA1(424e3f94333f8ca21ac39b64b684cf6b487164d3) )
 	ROM_LOAD( "wofgrom2", 0x20000, 0x10000, CRC(3d393b2b) SHA1(2c94d2dab7369c099c470cf96391b033f39add78) )
@@ -1924,6 +2086,29 @@ ROM_START( wfortuna )
 
 	ROM_REGION( 0x20000, "oki", 0 )
 	ROM_LOAD( "wofsbom0", 0x00000, 0x20000, CRC(5c28c3fe) SHA1(eba64ede749fb26f9926f644d66860b54b4c76e7) )
+ROM_END
+
+
+ROM_START( grmatch )
+	ROM_REGION( 0x1c000, "main", 0 )
+	ROM_LOAD( "grudgematch.u5", 0x04000, 0x4000, CRC(11cadec9) SHA1(e21df623d1311ea63bafa2d6d0d94eb7d13232da) )
+	ROM_CONTINUE(               0x10000, 0xc000 )
+	ROM_COPY( "main",           0x14000, 0x8000, 0x8000 )
+
+	ROM_REGION( 0x10000, "sound", 0 )
+	ROM_LOAD( "grudgematch.u27", 0x08000, 0x8000, CRC(59c18e63) SHA1(0d00c9cc683ff17e3213ba343ae65d533b57a243) )
+
+	ROM_REGION( 0xe0000, "grom", 0 )
+	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(9064eff9) SHA1(4c80432ef359266c43b4691b503f529ed018a655) )
+	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(6919c314) SHA1(e4a7ca77ee27ea8e41a236806e689c964d981210) )
+	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(36b1682c) SHA1(6098b8aa576522c3cea66b5ac8f9406bf4222008) )
+	ROM_LOAD( "grom3.bin", 0x60000, 0x20000, CRC(7bf05f61) SHA1(269e1cacf319d9f2a2b865ac6573e690f36827a1) )
+	ROM_LOAD( "grom4.bin", 0x80000, 0x20000, CRC(55bded89) SHA1(61e0c60e391327a5fdda704c7756fcd6e11253c5) )
+	ROM_LOAD( "grom5.bin", 0xa0000, 0x20000, CRC(37b47b2e) SHA1(352204d3e95e6db556aacf053c42d0d5871245a7) )
+	ROM_LOAD( "grom6.bin", 0xc0000, 0x20000, CRC(860ee822) SHA1(2ca821c2fa220065b99b99b7487fe9666f338c75) )
+
+	ROM_REGION( 0x20000, "ym", 0 )
+	ROM_LOAD( "srom0.bin", 0x00000, 0x20000, CRC(49bce954) SHA1(68a8b11c03722349d673f7383288c63054f0d6f6) )
 ROM_END
 
 
@@ -1935,7 +2120,7 @@ ROM_START( stratab )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "sbsnds.bin", 0x08000, 0x8000, CRC(b36c8f0a) SHA1(c4c3edf3352d95561f76705087338c1946137447) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(a915b0bd) SHA1(0955c7ebb48e97ccffc18c5deec6eccce1d68de8) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(340c661f) SHA1(150f9158fa6d956d08051c67c17723b1d8c66867) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(5df9f1cf) SHA1(cad87f63ac0e902dffeeaa42538fc73f792d87d9) )
@@ -1953,7 +2138,7 @@ ROM_START( stratab1 )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "sbsnds.bin", 0x08000, 0x8000, CRC(b36c8f0a) SHA1(c4c3edf3352d95561f76705087338c1946137447) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(a915b0bd) SHA1(0955c7ebb48e97ccffc18c5deec6eccce1d68de8) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(340c661f) SHA1(150f9158fa6d956d08051c67c17723b1d8c66867) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(5df9f1cf) SHA1(cad87f63ac0e902dffeeaa42538fc73f792d87d9) )
@@ -1972,7 +2157,7 @@ ROM_START( gtg )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "u27.bin", 0x08000, 0x8000, CRC(358d2440) SHA1(7b09350c89f9d2c86dc187d8812bbf26b576a38f) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(a29c688a) SHA1(32dbb996a5e4c23cfd44b79312ac4a767658f20a) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(b52a23f6) SHA1(092961acf47875179b44342e2dd8955670e67ea2) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(9b8e3a61) SHA1(1b5682b1328d6c97b604fb71512e8f72322a688f) )
@@ -1994,7 +2179,7 @@ ROM_START( gtgt )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "snd-u27.256", 0x08000, 0x8000, CRC(471da557) SHA1(32bfe450a42d9eb6c14edcfa2b4e33f65a11126e) )
 
-	ROM_REGION( 0xb0000, "gfx1", 0 )
+	ROM_REGION( 0xb0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(a29c688a) SHA1(32dbb996a5e4c23cfd44b79312ac4a767658f20a) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(b52a23f6) SHA1(092961acf47875179b44342e2dd8955670e67ea2) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(9b8e3a61) SHA1(1b5682b1328d6c97b604fb71512e8f72322a688f) )
@@ -2017,7 +2202,7 @@ ROM_START( gtg2t )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "u27.bin", 0x08000, 0x8000, CRC(dd2a5905) SHA1(dc93f13de3953852a6757361eb9683a57d3ed326) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(a29c688a) SHA1(32dbb996a5e4c23cfd44b79312ac4a767658f20a) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(a4182776) SHA1(9f4704d1a61a4fffce454c82cb3eb4629d9a2006) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(0580bb99) SHA1(012d473bc63632a5ed1a250daa54a00a4e30e8b2) )
@@ -2042,7 +2227,7 @@ ROM_START( gtg2j )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "u27.bin", 0x08000, 0x8000, CRC(dd2a5905) SHA1(dc93f13de3953852a6757361eb9683a57d3ed326) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(a29c688a) SHA1(32dbb996a5e4c23cfd44b79312ac4a767658f20a) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(a4182776) SHA1(9f4704d1a61a4fffce454c82cb3eb4629d9a2006) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(0580bb99) SHA1(012d473bc63632a5ed1a250daa54a00a4e30e8b2) )
@@ -2073,7 +2258,7 @@ ROM_START( slikshot )
 	ROM_CONTINUE(        0x00000, 0x0800 )
 	ROM_CONTINUE(        0x00000, 0x0800 )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(e60c2804) SHA1(e62d11b6c4439a70a2f32df72c8c64e2f110351e) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(d764d542) SHA1(43fc0c9b627484a670d87da91e212741b137e995) )
 
@@ -2097,7 +2282,7 @@ ROM_START( sliksh17 )
 	ROM_CONTINUE(        0x00000, 0x0800 )
 	ROM_CONTINUE(        0x00000, 0x0800 )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(e60c2804) SHA1(e62d11b6c4439a70a2f32df72c8c64e2f110351e) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(d764d542) SHA1(43fc0c9b627484a670d87da91e212741b137e995) )
 
@@ -2121,7 +2306,7 @@ ROM_START( sliksh16 )
 	ROM_CONTINUE(        0x00000, 0x0800 )
 	ROM_CONTINUE(        0x00000, 0x0800 )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "pool-grom.0", 0x00000, 0x10000, CRC(e6d0edc6) SHA1(5287a31bbdde1e4291d8e9e6b99d3aa12bfb6e18) )
 	ROM_LOAD( "pool-grom.1", 0x10000, 0x10000, CRC(5a071aa2) SHA1(9c5506e37625d213429b1231d457d7ce8a7a81ff) )
 	ROM_LOAD( "pool-grom.2", 0x20000, 0x10000, CRC(c0bdf4e0) SHA1(3b7c635375c5e5fddcbc1bd1b186c960081ec37e) )
@@ -2147,7 +2332,7 @@ ROM_START( dynobop )
 	ROM_CONTINUE(            0x00000, 0x0800 )
 	ROM_CONTINUE(            0x00000, 0x0800 )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "dynobop.gr0", 0x00000, 0x20000, CRC(3525a7a3) SHA1(fe0b08203c135d55507506936dc34e1503e4906b) )
 	ROM_LOAD( "dynobop.gr1", 0x20000, 0x20000, CRC(1544a232) SHA1(60bba76537c82887db8e38c6a87c528afdd385d0) )
 
@@ -2170,7 +2355,7 @@ ROM_START( sstrike )
 	ROM_CONTINUE(        0x00000, 0x0800 )
 	ROM_CONTINUE(        0x00000, 0x0800 )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "sstgrom0.bin", 0x00000, 0x20000, CRC(9cfb9849) SHA1(5aa860c0c6e3916ebdb8898ee44f633bf3347ca8) )
 	ROM_LOAD( "sstgrom1.bin", 0x20000, 0x20000, CRC(d9ea14e1) SHA1(4cddf3237c203b0a3f7ae770f85f1be35e9e1b78) )
 	ROM_LOAD( "sstgrom2.bin", 0x40000, 0x20000, CRC(dcd97bf7) SHA1(95361222ac58bf74539f2a7e80574bcd848c615e) )
@@ -2189,7 +2374,7 @@ ROM_START( pokrdice )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "pd-snd.bin", 0x08000, 0x8000, CRC(4925401c) SHA1(e35983bec4a0dd4cb1d942fd909790b1adeb415d) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "pd-grom0.bin", 0x00000, 0x20000, CRC(7c2573e7) SHA1(d6a2a16277ad854c66927d88c5617d05eefe1057) )
 	ROM_LOAD( "pd-grom1.bin", 0x20000, 0x20000, CRC(e7c06aeb) SHA1(4be54b078d886359bf6ed376019cc1f6f04f52d6) )
 
@@ -2207,7 +2392,7 @@ ROM_START( hstennis )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "tensnd.v1", 0x08000, 0x8000, CRC(f034a694) SHA1(3540e2edff2ce47504260ec856bab9b638d9260d) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(1e69ebae) SHA1(a32e2c2f4e4a527ae6b57adeccd2c4d2045ab5fe) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(4e6a22d5) SHA1(3c2d51dd874f61c0a557ea2c1968afa02d9bfc42) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(c0b643a9) SHA1(d240f703a55c39ce4a969612fbb9cd76e4b849ac) )
@@ -2231,7 +2416,7 @@ ROM_START( hstenn10 )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "tensnd.v1", 0x08000, 0x8000, CRC(f034a694) SHA1(3540e2edff2ce47504260ec856bab9b638d9260d) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(1e69ebae) SHA1(a32e2c2f4e4a527ae6b57adeccd2c4d2045ab5fe) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(4e6a22d5) SHA1(3c2d51dd874f61c0a557ea2c1968afa02d9bfc42) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(c0b643a9) SHA1(d240f703a55c39ce4a969612fbb9cd76e4b849ac) )
@@ -2256,7 +2441,7 @@ ROM_START( arlingtn )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "ahrsnd11.bin", 0x08000, 0x8000, CRC(dec57dca) SHA1(21a8ead10b0434629f41f6b067c49b6622569a6c) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(5ef57fe5) SHA1(e877979e034a61968b432037501e25a302a17a9a) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(6aca95c0) SHA1(da7a899bf0812a7af178e48b5a626ce56a836579) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x10000, CRC(6d6fde1b) SHA1(aaabc45d4b566be42e8d28d767e4771a96d9caae) )
@@ -2275,7 +2460,7 @@ ROM_START( peggle )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "sound.u27", 0x08000, 0x8000, CRC(b99beb70) SHA1(8d82c3b081a1afb236afa658abb3aa605c6c2264) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(5c02348d) SHA1(c85352728d94b3a5ca78c2493e98bdb4b3206bed) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(85a7a3a2) SHA1(7fb7be67c75867fcccf4272f1ce42f2af94c16e6) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(bfe11f18) SHA1(5e8d36c6a86a8eb883f50620fbfcea3d8398faeb) )
@@ -2294,7 +2479,7 @@ ROM_START( pegglet )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "sound.u27", 0x08000, 0x8000, CRC(b99beb70) SHA1(8d82c3b081a1afb236afa658abb3aa605c6c2264) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(5c02348d) SHA1(c85352728d94b3a5ca78c2493e98bdb4b3206bed) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(85a7a3a2) SHA1(7fb7be67c75867fcccf4272f1ce42f2af94c16e6) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(bfe11f18) SHA1(5e8d36c6a86a8eb883f50620fbfcea3d8398faeb) )
@@ -2314,7 +2499,7 @@ ROM_START( neckneck )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "nn_snd10.u27", 0x08000, 0x8000, CRC(74771b2f) SHA1(0a963d2962699bb1b4d08bd486979151d0a228da) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "nn_grom0.bin", 0x00000, 0x20000, CRC(064d1464) SHA1(4ce5bcadad93586c9af2b0c499d7a7140b080cdb) )
 	ROM_LOAD( "nn_grom1.bin", 0x20000, 0x20000, CRC(622d9a0b) SHA1(f084dcf194cfc658f97f36972f2b2ff30e834fc5) )
 	ROM_LOAD( "nn_grom2.bin", 0x40000, 0x20000, CRC(e7eb4020) SHA1(29ceb535d1dfddf8c12cf78919ea10f6b956b8b3) )
@@ -2339,7 +2524,7 @@ ROM_START( rimrockn )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "u27", 0x08000, 0x8000, CRC(59f87f0e) SHA1(46f38aca35a7c2faee227b4c950d20a6076c6fa7) )
 
-	ROM_REGION( 0x100000, "gfx1", 0 )
+	ROM_REGION( 0x100000, "grom", 0 )
 	ROM_LOAD( "grom00",       0x00000, 0x40000, CRC(3eacbad9) SHA1(bff1ec6a24ccf983434e4e9453c30f36fa397534) )
 	ROM_LOAD( "grom01",       0x40000, 0x40000, CRC(864cc269) SHA1(06f92889cd20881faeb59ec06ca1578ead2294f4) )
 	ROM_LOAD( "grom02-2.st2", 0x80000, 0x40000, CRC(47904233) SHA1(6a4d10e8f7b75582f706a74b37d59788613ffc61) )
@@ -2369,7 +2554,7 @@ ROM_START( rimrck20 )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "u27", 0x08000, 0x8000, CRC(59f87f0e) SHA1(46f38aca35a7c2faee227b4c950d20a6076c6fa7) )
 
-	ROM_REGION( 0x100000, "gfx1", 0 )
+	ROM_REGION( 0x100000, "grom", 0 )
 	ROM_LOAD( "grom00",       0x00000, 0x40000, CRC(3eacbad9) SHA1(bff1ec6a24ccf983434e4e9453c30f36fa397534) )
 	ROM_LOAD( "grom01",       0x40000, 0x40000, CRC(864cc269) SHA1(06f92889cd20881faeb59ec06ca1578ead2294f4) )
 	ROM_LOAD( "grom02-2.st2", 0x80000, 0x40000, CRC(47904233) SHA1(6a4d10e8f7b75582f706a74b37d59788613ffc61) )
@@ -2394,7 +2579,7 @@ ROM_START( rimrck16 )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "u27", 0x08000, 0x8000, CRC(59f87f0e) SHA1(46f38aca35a7c2faee227b4c950d20a6076c6fa7) )
 
-	ROM_REGION( 0x100000, "gfx1", 0 )
+	ROM_REGION( 0x100000, "grom", 0 )
 	ROM_LOAD( "grom00", 0x00000, 0x40000, CRC(3eacbad9) SHA1(bff1ec6a24ccf983434e4e9453c30f36fa397534) )
 	ROM_LOAD( "grom01", 0x40000, 0x40000, CRC(864cc269) SHA1(06f92889cd20881faeb59ec06ca1578ead2294f4) )
 	ROM_LOAD( "grom02", 0x80000, 0x40000, CRC(34e567d5) SHA1(d0eb6fd0da8b9c3bfe7d4ecfb4bd903e4926b63a) )
@@ -2419,7 +2604,7 @@ ROM_START( rimrck12 )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "rrbsndv1.u27", 0x08000, 0x8000, CRC(8eda5f53) SHA1(f256544a8c87125587719460ed0fef14efef9015) )
 
-	ROM_REGION( 0x100000, "gfx1", 0 )
+	ROM_REGION( 0x100000, "grom", 0 )
 	ROM_LOAD( "grom00", 0x00000, 0x40000, CRC(3eacbad9) SHA1(bff1ec6a24ccf983434e4e9453c30f36fa397534) )
 	ROM_LOAD( "grom01", 0x40000, 0x40000, CRC(864cc269) SHA1(06f92889cd20881faeb59ec06ca1578ead2294f4) )
 	ROM_LOAD( "grom02", 0x80000, 0x40000, CRC(34e567d5) SHA1(d0eb6fd0da8b9c3bfe7d4ecfb4bd903e4926b63a) )
@@ -2439,7 +2624,7 @@ ROM_START( ninclown )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "nc-snd", 0x08000, 0x8000, CRC(f9d5b4e1) SHA1(e5c3774db349b60baf11baecf55ac432871e612c) )
 
-	ROM_REGION( 0x180000, "gfx1", 0 )
+	ROM_REGION( 0x180000, "grom", 0 )
 	ROM_LOAD( "nc-grom0", 0x000000, 0x40000, CRC(532f7bff) SHA1(cc7a64ad1581f37ff4bcad78c11aad355a6e9aa8) )
 	ROM_LOAD( "nc-grom1", 0x040000, 0x40000, CRC(45640d4a) SHA1(1b59ae2a74fef535c646586422f17b39c9ae247b) )
 	ROM_LOAD( "nc-grom2", 0x080000, 0x40000, CRC(c8281d06) SHA1(f75d4e858f9bc19e5234f184b75818e448638c15) )
@@ -2461,7 +2646,7 @@ ROM_START( gpgolf )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "sndv1.u27", 0x08000, 0x8000, CRC(55734876) SHA1(eb5ef816acbc6e35642749e38a2908b7ba359b9d) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom00.bin", 0x00000, 0x40000, CRC(c3a7b54b) SHA1(414d693bc5337d578d2630817dd647cf7e5cbcf7) )
 	ROM_LOAD( "grom01.bin", 0x40000, 0x40000, BAD_DUMP CRC(2c834cf9) SHA1(49eb070ca4439d4fcd2d8a2db62d3c99b824bf99) ) /* Self test checksum reports BAD */
 	ROM_LOAD( "grom02.bin", 0x80000, 0x40000, CRC(aebe6c45) SHA1(15e64fcb36cb1064988ee5cd45699d501a6e7f01) )
@@ -2481,7 +2666,7 @@ ROM_START( gtg2 )
 	ROM_REGION( 0x10000, "sound", 0 )
 	ROM_LOAD( "sndv1.u27", 0x08000, 0x8000, CRC(55734876) SHA1(eb5ef816acbc6e35642749e38a2908b7ba359b9d) )
 
-	ROM_REGION( 0xc0000, "gfx1", 0 )
+	ROM_REGION( 0xc0000, "grom", 0 )
 	ROM_LOAD( "grom0.bin", 0x00000, 0x20000, CRC(a29c688a) SHA1(32dbb996a5e4c23cfd44b79312ac4a767658f20a) )
 	ROM_LOAD( "grom1.bin", 0x20000, 0x20000, CRC(a4182776) SHA1(9f4704d1a61a4fffce454c82cb3eb4629d9a2006) )
 	ROM_LOAD( "grom2.bin", 0x40000, 0x20000, CRC(0580bb99) SHA1(012d473bc63632a5ed1a250daa54a00a4e30e8b2) )
@@ -2504,19 +2689,27 @@ ROM_END
  *
  *************************************/
 
+static DRIVER_INIT( grmatch )
+{
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0160, 0x0160, 0, 0, grmatch_palette_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0180, 0x0180, 0, 0, grmatch_xscroll_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x01e0, 0x01ff, 0, 0, SMH_UNMAP);
+}
+
+
 static DRIVER_INIT( slikshot )
 {
-	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0180, 0x0180, 0, 0, slikshot_z80_r);
-	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x01cf, 0x01cf, 0, 0, slikshot_z80_control_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01cf, 0x01cf, 0, 0, slikshot_z80_control_w);
+	memory_install_read8_handler (cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0180, 0x0180, 0, 0, slikshot_z80_r);
+	memory_install_read8_handler (cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x01cf, 0x01cf, 0, 0, slikshot_z80_control_r);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x01cf, 0x01cf, 0, 0, slikshot_z80_control_w);
 }
 
 
 static DRIVER_INIT( sstrike )
 {
-	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x1180, 0x1180, 0, 0, slikshot_z80_r);
-	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x11cf, 0x11cf, 0, 0, slikshot_z80_control_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x11cf, 0x11cf, 0, 0, slikshot_z80_control_w);
+	memory_install_read8_handler (cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1180, 0x1180, 0, 0, slikshot_z80_r);
+	memory_install_read8_handler (cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x11cf, 0x11cf, 0, 0, slikshot_z80_control_r);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x11cf, 0x11cf, 0, 0, slikshot_z80_control_w);
 }
 
 
@@ -2551,15 +2744,15 @@ static DRIVER_INIT( neckneck )
 static DRIVER_INIT( rimrockn )
 {
 	/* additional input ports */
-	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0161, 0x0161, 0, 0, input_port_read_handler8(machine->portconfig, "161"));
-	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0162, 0x0162, 0, 0, input_port_read_handler8(machine->portconfig, "162"));
-	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0163, 0x0163, 0, 0, input_port_read_handler8(machine->portconfig, "163"));
-	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0164, 0x0164, 0, 0, input_port_read_handler8(machine->portconfig, "164"));
-	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0165, 0x0165, 0, 0, input_port_read_handler8(machine->portconfig, "165"));
+	memory_install_read8_handler (cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0161, 0x0161, 0, 0, input_port_read_handler8(machine->portconfig, "161"));
+	memory_install_read8_handler (cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0162, 0x0162, 0, 0, input_port_read_handler8(machine->portconfig, "162"));
+	memory_install_read8_handler (cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0163, 0x0163, 0, 0, input_port_read_handler8(machine->portconfig, "163"));
+	memory_install_read8_handler (cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0164, 0x0164, 0, 0, input_port_read_handler8(machine->portconfig, "164"));
+	memory_install_read8_handler (cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0165, 0x0165, 0, 0, input_port_read_handler8(machine->portconfig, "165"));
 
 	/* different banking mechanism (disable the old one) */
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01a0, 0x01a0, 0, 0, rimrockn_bank_w);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01c0, 0x01df, 0, 0, itech8_blitter_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x01a0, 0x01a0, 0, 0, rimrockn_bank_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x01c0, 0x01df, 0, 0, itech8_blitter_w);
 }
 
 
@@ -2573,6 +2766,9 @@ static DRIVER_INIT( rimrockn )
 /* Wheel of Fortune-style PCB */
 GAME( 1989, wfortune, 0,        wfortune,          wfortune, 0,        ROT0,   "GameTek", "Wheel Of Fortune", 0 )
 GAME( 1989, wfortuna, wfortune, wfortune,          wfortune, 0,        ROT0,   "GameTek", "Wheel Of Fortune (alternate)", 0 )
+
+/* Grudge Match-style PCB */
+GAME( 1989, grmatch,  0,        grmatch,           grmatch,  grmatch,  ROT0,   "Yankee Game Technology", "Grudge Match (Yankee Game Technology)", 0 )
 
 /* Strata Bowling-style PCB */
 GAME( 1990, stratab,  0,        stratab_hi,        stratab,  0,        ROT270, "Strata/Incredible Technologies", "Strata Bowling (V3)", 0 )

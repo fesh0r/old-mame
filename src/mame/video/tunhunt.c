@@ -74,7 +74,7 @@ VIDEO_START( tunhunt )
     */
 	tmpbitmap = auto_bitmap_alloc(256, 64, video_screen_get_format(machine->primary_screen));
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols, 8, 8, 32, 32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_cols, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 	tilemap_set_scrollx(fg_tilemap, 0, 64);
@@ -269,7 +269,7 @@ static void draw_box(bitmap_t *bitmap, const rectangle *cliprect)
 {
 /*
     This is unnecessarily slow, but the box priorities aren't completely understood,
-    yet.  Once understood, this function should be converted to use fillbitmap with
+    yet.  Once understood, this function should be converted to use bitmap_fill with
     rectangular chunks instead of BITMAP_ADDR.
 
     Tunnels:

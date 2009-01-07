@@ -74,6 +74,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 extern WRITE8_HANDLER( lvcards_videoram_w );
@@ -90,9 +91,9 @@ static UINT8 result;
 
 static MACHINE_START( lvpoker )
 {
-	state_save_register_global(payout);
-	state_save_register_global(pulse);
-	state_save_register_global(result);
+	state_save_register_global(machine, payout);
+	state_save_register_global(machine, pulse);
+	state_save_register_global(machine, result);
 }
 
 static MACHINE_RESET( lvpoker )
@@ -136,7 +137,7 @@ static WRITE8_HANDLER(control_port_2a_w)
 
 static READ8_HANDLER( payout_r )
 {
-	result = input_port_read(machine, "IN2");
+	result = input_port_read(space->machine, "IN2");
 
 	if (payout)
 	{

@@ -5,6 +5,7 @@ Atari Wolf Pack (prototype) driver
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "sound/s14001a.h"
 
 extern int wolfpack_collision;
@@ -34,20 +35,20 @@ static TIMER_CALLBACK( periodic_callback )
 {
 	int scanline = param;
 
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+	cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 
 	scanline += 64;
 
 	if (scanline >= 262)
 		scanline = 0;
 
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, periodic_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, periodic_callback);
 }
 
 
 static MACHINE_RESET( wolfpack )
 {
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, periodic_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, periodic_callback);
 }
 
 
@@ -77,7 +78,7 @@ static READ8_HANDLER( wolfpack_misc_r )
 	if (!wolfpack_collision)
 		val |= 0x10;
 
-	if (video_screen_get_vpos(machine->primary_screen) >= 240)
+	if (video_screen_get_vpos(space->machine->primary_screen) >= 240)
 		val |= 0x80;
 
 	return val;

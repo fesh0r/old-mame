@@ -23,12 +23,12 @@ enum
 
 struct namcoio_interface
 {
-	read8_machine_func in[4];	/* read handlers for ports A-D */
-	write8_machine_func out[2];	/* write handlers for ports A-B */
+	read8_space_func in[4];	/* read handlers for ports A-D */
+	write8_space_func out[2];	/* write handlers for ports A-B */
 };
 
 
-void namco_06xx_init(int chipnum, int cpu,
+void namco_06xx_init(running_machine *machine, int chipnum, int cpu,
 	int type0, const struct namcoio_interface *intf0,
 	int type1, const struct namcoio_interface *intf1,
 	int type2, const struct namcoio_interface *intf2,
@@ -45,9 +45,9 @@ WRITE8_HANDLER( namco_06xx_1_ctrl_w );
 
 READ8_HANDLER( namcoio_r );
 WRITE8_HANDLER( namcoio_w );
-void namcoio_init(int chipnum, int type, const struct namcoio_interface *intf);
+void namcoio_init(running_machine *machine, int chipnum, int type, const struct namcoio_interface *intf);
 void namcoio_set_reset_line(int chipnum, int state);
-void namcoio_set_irq_line(int chipnum, int state);
+void namcoio_set_irq_line(running_machine *machine, int chipnum, int state);
 
 
 #endif

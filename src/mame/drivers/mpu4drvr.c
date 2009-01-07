@@ -230,7 +230,7 @@ static MACHINE_RESET( mpu4_vid )
 {
 	ROC10937_reset(0);
 
-/*  cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE); */
+/*  cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE); */
 	mpu4_stepper_reset();
 
 	lamp_strobe    = 0;
@@ -271,30 +271,30 @@ static MACHINE_RESET( mpu4_vid )
 
 static void update_mpu68_interrupts(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 1, 1, m6840_irq_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 1, 2, m6850_irq_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 1, 3, scn2674_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 1, m6840_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 2, m6850_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 3, scn2674_irq_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* Communications with 6809 board */
 /* Clock values are currently unknown, and are derived from the 68k board.*/
 
-static void m6809_acia_irq(int state)
+static void m6809_acia_irq(const device_config *device, int state)
 {
 	m68k_acia_cts = state;
-	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, state?ASSERT_LINE:CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], M6809_IRQ_LINE, state?ASSERT_LINE:CLEAR_LINE);
 }
 
 
-static void m68k_acia_irq(int state)
+static void m68k_acia_irq(const device_config *device, int state)
 {
 	m6809_acia_cts = state;
 	m6850_irq_state = state;
-	update_mpu68_interrupts(Machine);
+	update_mpu68_interrupts(device->machine);
 }
 
 
-static const struct acia6850_interface m6809_acia_if =
+static const acia6850_interface m6809_acia_if =
 {
 	0,
 	0,
@@ -307,7 +307,7 @@ static const struct acia6850_interface m6809_acia_if =
 };
 
 
-static const struct acia6850_interface m68k_acia_if =
+static const acia6850_interface m68k_acia_if =
 {
 	0,
 	0,
@@ -329,27 +329,29 @@ static void cpu1_ptm_irq(running_machine *machine, int state)
 
 static WRITE8_HANDLER( vid_o1_callback )
 {
-	ptm6840_set_c2(   machine, 1, data); /* this output is the clock for timer2 */
+	ptm6840_set_c2(   space->machine, 1, data); /* this output is the clock for timer2 */
 
 	if (data)
 	{
-		acia_tx_clock_in(0);
-		acia_rx_clock_in(0);
-		acia_tx_clock_in(1);
-		acia_rx_clock_in(1);
+		const device_config *acia_0 = device_list_find_by_tag(space->machine->config->devicelist, ACIA6850, "acia6850_0");
+		const device_config *acia_1 = device_list_find_by_tag(space->machine->config->devicelist, ACIA6850, "acia6850_1");
+		acia_tx_clock_in(acia_0);
+		acia_rx_clock_in(acia_0);
+		acia_tx_clock_in(acia_1);
+		acia_rx_clock_in(acia_1);
 	}
 }
 
 
 static WRITE8_HANDLER( vid_o2_callback )
 {
-	ptm6840_set_c3(   machine, 1, data); /* this output is the clock for timer3 */
+	ptm6840_set_c3(   space->machine, 1, data); /* this output is the clock for timer3 */
 }
 
 
 static WRITE8_HANDLER( vid_o3_callback )
 {
-	ptm6840_set_c1(   machine, 1, data); /* this output is the clock for timer1 */
+	ptm6840_set_c1(   space->machine, 1, data); /* this output is the clock for timer1 */
 }
 
 
@@ -448,7 +450,7 @@ static VIDEO_UPDATE( mpu4_vid )
 
 	int x,y,count = 0;
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	for (i = 0; i < 0x1000; i++)
 	{
@@ -920,19 +922,19 @@ static READ16_HANDLER( mpu4_vid_scn2674_r )
         */
 
 		case 0:
-			LOGSTUFF(("Read Irq Register %06x\n",activecpu_get_pc()));
+			LOGSTUFF(("Read Irq Register %06x\n",cpu_get_pc(space->cpu)));
 			return scn2674_irq_register;
 
 		case 1:
-			LOGSTUFF(("Read Status Register %06x\n",activecpu_get_pc()));
+			LOGSTUFF(("Read Status Register %06x\n",cpu_get_pc(space->cpu)));
 			return scn2674_status_register;
 
-		case 2: LOGSTUFF(("Read Screen1_l Register %06x\n",activecpu_get_pc()));return scn2674_screen1_l;
-		case 3: LOGSTUFF(("Read Screen1_h Register %06x\n",activecpu_get_pc()));return scn2674_screen1_h;
-		case 4: LOGSTUFF(("Read Cursor_l Register %06x\n",activecpu_get_pc()));return scn2674_cursor_l;
-		case 5: LOGSTUFF(("Read Cursor_h Register %06x\n",activecpu_get_pc()));return scn2674_cursor_h;
-		case 6:	LOGSTUFF(("Read Screen2_l Register %06x\n",activecpu_get_pc()));return scn2674_screen2_l;
-		case 7: LOGSTUFF(("Read Screen2_h Register %06x\n",activecpu_get_pc()));return scn2674_screen2_h;
+		case 2: LOGSTUFF(("Read Screen1_l Register %06x\n",cpu_get_pc(space->cpu)));return scn2674_screen1_l;
+		case 3: LOGSTUFF(("Read Screen1_h Register %06x\n",cpu_get_pc(space->cpu)));return scn2674_screen1_h;
+		case 4: LOGSTUFF(("Read Cursor_l Register %06x\n",cpu_get_pc(space->cpu)));return scn2674_cursor_l;
+		case 5: LOGSTUFF(("Read Cursor_h Register %06x\n",cpu_get_pc(space->cpu)));return scn2674_cursor_h;
+		case 6:	LOGSTUFF(("Read Screen2_l Register %06x\n",cpu_get_pc(space->cpu)));return scn2674_screen2_l;
+		case 7: LOGSTUFF(("Read Screen2_h Register %06x\n",cpu_get_pc(space->cpu)));return scn2674_screen2_h;
 	}
 
 	return 0xffff;
@@ -962,7 +964,7 @@ static WRITE16_HANDLER( mpu4_vid_scn2674_w )
 			break;
 
 		case 1:
-			scn2674_write_command(machine, data);
+			scn2674_write_command(space->machine, data);
 			break;
 
 		case 2: scn2674_screen1_l = data; break;
@@ -994,10 +996,10 @@ static VIDEO_START( mpu4_vid )
 	assert(mpu4_gfx_index != MAX_GFX_ELEMENTS);
 
 	/* create the char set (gfx will then be updated dynamically from RAM) */
-	machine->gfx[mpu4_gfx_index+0] = allocgfx(&mpu4_vid_char_8x8_layout);
-	machine->gfx[mpu4_gfx_index+1] = allocgfx(&mpu4_vid_char_8x16_layout);
-	machine->gfx[mpu4_gfx_index+2] = allocgfx(&mpu4_vid_char_16x8_layout);
-	machine->gfx[mpu4_gfx_index+3] = allocgfx(&mpu4_vid_char_16x16_layout);
+	machine->gfx[mpu4_gfx_index+0] = allocgfx(machine, &mpu4_vid_char_8x8_layout);
+	machine->gfx[mpu4_gfx_index+1] = allocgfx(machine, &mpu4_vid_char_8x16_layout);
+	machine->gfx[mpu4_gfx_index+2] = allocgfx(machine, &mpu4_vid_char_16x8_layout);
+	machine->gfx[mpu4_gfx_index+3] = allocgfx(machine, &mpu4_vid_char_16x16_layout);
 
 	/* set the color information */
 	machine->gfx[mpu4_gfx_index+0]->total_colors = machine->config->total_colors / 16;
@@ -1054,7 +1056,7 @@ static WRITE16_HANDLER( ef9369_w )
 			col = pal.clut[entry] & 0xfff;
 
 			/* Update the MAME palette */
-			palette_set_color_rgb(machine, entry, pal4bit(col >> 0), pal4bit(col >> 4), pal4bit(col >> 8));
+			palette_set_color_rgb(space->machine, entry, pal4bit(col >> 0), pal4bit(col >> 4), pal4bit(col >> 8));
 		}
 
 			/* Address register auto-increment */
@@ -1328,7 +1330,7 @@ INPUT_PORTS_END
 static INTERRUPT_GEN(mpu4_vid_irq)
 {
 	LOGSTUFF(("scn2674_irq_mask %02x\n",scn2674_irq_mask));
-	if (cpu_getiloops()==0) /* vbl */
+	if (cpu_getiloops(device)==0) /* vbl */
 	{
 	/*  if (scn2674_display_enabled) ? */
 		{
@@ -1336,7 +1338,7 @@ static INTERRUPT_GEN(mpu4_vid_irq)
 			{
 				LOGSTUFF(("vblank irq\n"));
 				scn2674_irq_state = 1;
-				update_mpu68_interrupts(machine);
+				update_mpu68_interrupts(device->machine);
 
 				scn2674_irq_register |= 0x10;
 			}
@@ -1356,18 +1358,16 @@ MACHINE_START( mpu4_vid )
 
 	/* setup communications */
 	serial_card_connected=1;
-	acia6850_config(0, &m6809_acia_if);
-	acia6850_config(1, &m68k_acia_if);
 
 	/* setup 8 mechanical meters */
 	Mechmtr_init(8);
 
 	/* setup 4 reels (for hybrid machines) */
 
-	stepper_config(0, &barcrest_reel_interface);
-	stepper_config(1, &barcrest_reel_interface);
-	stepper_config(2, &barcrest_reel_interface);
-	stepper_config(3, &barcrest_reel_interface);
+	stepper_config(machine, 0, &barcrest_reel_interface);
+	stepper_config(machine, 1, &barcrest_reel_interface);
+	stepper_config(machine, 2, &barcrest_reel_interface);
+	stepper_config(machine, 3, &barcrest_reel_interface);
 
 	/* setup the standard oki MSC1937 display */
 
@@ -1388,7 +1388,7 @@ static WRITE16_HANDLER( characteriser16_w )
 {
 	int x;
 	int call=data;
-	LOG_CHR_FULL(("%04x Characteriser write offset %02X data %02X", activecpu_get_previouspc(),offset,data));
+	LOG_CHR_FULL(("%04x Characteriser write offset %02X data %02X", cpu_get_previouspc(space->cpu),offset,data));
 	for (x = prot_col; x < 64; x++)
 	{
 		if (call == 0)
@@ -1410,7 +1410,7 @@ static WRITE16_HANDLER( characteriser16_w )
 
 static READ16_HANDLER( characteriser16_r )
 {
-	LOG_CHR_FULL(("%04x Characteriser read offset %02X,data %02X", activecpu_get_previouspc(),offset,MPU4_chr_data[prot_col]));
+	LOG_CHR_FULL(("%04x Characteriser read offset %02X,data %02X", cpu_get_previouspc(space->cpu),offset,MPU4_chr_data[prot_col]));
 	LOG_CHR(("Characteriser read offset %02X \n",offset));
 	LOG_CHR(("Characteriser read data %02X \n",MPU4_chr_data[prot_col]));
 	return MPU4_chr_data[prot_col];
@@ -1436,8 +1436,8 @@ static ADDRESS_MAP_START( mpu4_68k_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xc00000, 0xc1ffff) AM_READWRITE(mpu4_vid_vidram_r, mpu4_vid_vidram_w)
 
 	/* comms with the MPU4 */
-    AM_RANGE(0xff8000, 0xff8001) AM_READWRITE(acia6850_1_stat_lsb_r, acia6850_1_ctrl_lsb_w)
-    AM_RANGE(0xff8002, 0xff8003) AM_READWRITE(acia6850_1_data_lsb_r, acia6850_1_data_lsb_w)
+    AM_RANGE(0xff8000, 0xff8001) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_stat_lsb_r, acia6850_ctrl_lsb_w)
+    AM_RANGE(0xff8002, 0xff8003) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_data_lsb_r, acia6850_data_lsb_w)
 
 	AM_RANGE(0xff9000, 0xff900f) AM_READWRITE(ptm6840_1_lsb_r,ptm6840_1_lsb_w)	/* 6840PTM */
 
@@ -1448,8 +1448,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( mpu4_6809_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07FF) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 
-	AM_RANGE(0x0800, 0x0800) AM_READWRITE(acia6850_0_stat_r, acia6850_0_ctrl_w)
-	AM_RANGE(0x0801, 0x0801) AM_READWRITE(acia6850_0_data_r, acia6850_0_data_w)
+	AM_RANGE(0x0800, 0x0800) AM_DEVREADWRITE(ACIA6850, "acia6850_0", acia6850_stat_r, acia6850_ctrl_w)
+	AM_RANGE(0x0801, 0x0801) AM_DEVREADWRITE(ACIA6850, "acia6850_0", acia6850_data_r, acia6850_data_w)
 
 	AM_RANGE(0x0880, 0x0881) AM_NOP /* Could be a UART datalogger is here. */
 
@@ -1492,8 +1492,8 @@ static ADDRESS_MAP_START( vp_68k_map, ADDRESS_SPACE_PROGRAM, 16 )
 /*  AM_RANGE(0xe05000, 0xe05001) AM_READWRITE(adpcm_r, adpcm_w) */
 
 	/* comms with the MPU4 */
-    AM_RANGE(0xff8000, 0xff8001) AM_READWRITE(acia6850_1_stat_lsb_r, acia6850_1_ctrl_lsb_w)
-    AM_RANGE(0xff8002, 0xff8003) AM_READWRITE(acia6850_1_data_lsb_r, acia6850_1_data_lsb_w)
+    AM_RANGE(0xff8000, 0xff8001) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_stat_lsb_r, acia6850_ctrl_lsb_w)
+    AM_RANGE(0xff8002, 0xff8003) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_data_lsb_r, acia6850_data_lsb_w)
 
 	AM_RANGE(0xff9000, 0xff900f) AM_READ(  ptm6840_1_lsb_r)
 	AM_RANGE(0xff9000, 0xff900f) AM_WRITE( ptm6840_1_lsb_w)
@@ -1607,7 +1607,7 @@ static VIDEO_UPDATE(dealem)
 
 static MC6845_ON_VSYNC_CHANGED( dealem_vsync_changed )
 {
-	cpunum_set_input_line(device->machine, 0, INPUT_LINE_NMI, vsync);
+	cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_NMI, vsync);
 }
 
 /*************************************
@@ -1619,7 +1619,6 @@ static MC6845_ON_VSYNC_CHANGED( dealem_vsync_changed )
 static const mc6845_interface hd6845_intf =
 {
 	"main",						/* screen we are acting on */
-	MPU4_MASTER_CLOCK / 4 / 8,	/* the clock (pin 21) of the chip (educated guess)*/
 	8,							/* number of pixels per video memory address */
 	NULL,						/* before pixel update callback */
 	NULL,						/* row update callback */
@@ -1670,7 +1669,7 @@ static MACHINE_DRIVER_START( mpu4_vid )
 	MDRV_CPU_PROGRAM_MAP(mpu4_68k_map,0)
 	MDRV_CPU_VBLANK_INT("main", mpu4_vid_irq)
 
-	MDRV_INTERLEAVE(16)
+	MDRV_QUANTUM_TIME(HZ(960))
 
 	MDRV_MACHINE_START(mpu4_vid)
 	MDRV_MACHINE_RESET(mpu4_vid)
@@ -1688,6 +1687,10 @@ static MACHINE_DRIVER_START( mpu4_vid )
 	MDRV_SOUND_ADD("saa", SAA1099, 8000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.00)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.00)
+
+	/* ACIAs */
+	MDRV_ACIA6850_ADD("acia6850_0", m6809_acia_if)
+	MDRV_ACIA6850_ADD("acia6850_1", m68k_acia_if)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( vgpoker )
@@ -1726,8 +1729,7 @@ static MACHINE_DRIVER_START( dealem )
 	MDRV_PALETTE_LENGTH(32)
 	MDRV_PALETTE_INIT(dealem)
 
-	MDRV_DEVICE_ADD("crtc", HD6845)							/* HD68B45 */
-	MDRV_DEVICE_CONFIG(hd6845_intf)
+	MDRV_MC6845_ADD("crtc", HD6845, MPU4_MASTER_CLOCK / 4 / 8, hd6845_intf)	/* HD68B45 */
 MACHINE_DRIVER_END
 
 

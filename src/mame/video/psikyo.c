@@ -168,48 +168,48 @@ VIDEO_START( psikyo )
 	/* The Hardware is Capable of Changing the Dimensions of the Tilemaps, its safer to create
        the various sized tilemaps now as opposed to later */
 
-	tilemap_0_size0	=	tilemap_create(	get_tile_info_0,
+	tilemap_0_size0	=	tilemap_create(	machine, get_tile_info_0,
 									tilemap_scan_rows,
 
 									16,16,
 									0x20, 0x80 );
-	tilemap_0_size1	=	tilemap_create(	get_tile_info_0,
+	tilemap_0_size1	=	tilemap_create(	machine, get_tile_info_0,
 									tilemap_scan_rows,
 
 									16,16,
 									0x40, 0x40 );
 
-	tilemap_0_size2	=	tilemap_create(	get_tile_info_0,
+	tilemap_0_size2	=	tilemap_create(	machine, get_tile_info_0,
 									tilemap_scan_rows,
 
 									16,16,
 									0x80, 0x20 );
 
-	tilemap_0_size3	=	tilemap_create(	get_tile_info_0,
+	tilemap_0_size3	=	tilemap_create(	machine, get_tile_info_0,
 									tilemap_scan_rows,
 
 									16,16,
 									0x100, 0x10 );
 
-	tilemap_1_size0	=	tilemap_create(	get_tile_info_1,
+	tilemap_1_size0	=	tilemap_create(	machine, get_tile_info_1,
 									tilemap_scan_rows,
 
 									16,16,
 									0x20, 0x80 );
 
-	tilemap_1_size1	=	tilemap_create(	get_tile_info_1,
+	tilemap_1_size1	=	tilemap_create(	machine, get_tile_info_1,
 									tilemap_scan_rows,
 
 									16,16,
 									0x40, 0x40 );
 
-	tilemap_1_size2	=	tilemap_create(	get_tile_info_1,
+	tilemap_1_size2	=	tilemap_create(	machine, get_tile_info_1,
 									tilemap_scan_rows,
 
 									16,16,
 									0x80, 0x20 );
 
-	tilemap_1_size3	=	tilemap_create(	get_tile_info_1,
+	tilemap_1_size3	=	tilemap_create(	machine, get_tile_info_1,
 									tilemap_scan_rows,
 
 									16,16,
@@ -359,7 +359,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		zoomy = 32 - zoomy;
 
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			x = width  - x - (nx * zoomx)/2;
 			y = height - y - (ny * zoomy)/2;
@@ -434,7 +434,7 @@ VIDEO_UPDATE( psikyo )
 
 	tilemap *tmptilemap0, *tmptilemap1;
 
-	flip_screen_set(~input_port_read(screen->machine, "DSW") & 0x00010000);		// hardwired to a DSW bit
+	flip_screen_set(screen->machine, ~input_port_read(screen->machine, "DSW") & 0x00010000);		// hardwired to a DSW bit
 
 	/* Layers enable (not quite right) */
 
@@ -576,9 +576,9 @@ VIDEO_UPDATE( psikyo )
 	tilemap_set_transparent_pen(tilemap_1_size2,(layer1_ctrl & 8 ?0:15));
 	tilemap_set_transparent_pen(tilemap_1_size3,(layer1_ctrl & 8 ?0:15));
 
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	if (layers_ctrl & 1)
 		tilemap_draw(bitmap,cliprect,tmptilemap0, layer0_ctrl & 2 ? TILEMAP_DRAW_OPAQUE : 0, 1);

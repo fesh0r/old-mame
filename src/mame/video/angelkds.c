@@ -253,7 +253,7 @@ WRITE8_HANDLER( angelkds_paletteram_w )
 	paletteram[offset] = data;
 
 	no=offset & 0xff;
-	palette_set_color_rgb(machine,no,pal4bit(paletteram[no]),pal4bit(paletteram[no]>>4),pal4bit(paletteram[no+0x100]));
+	palette_set_color_rgb(space->machine,no,pal4bit(paletteram[no]),pal4bit(paletteram[no]>>4),pal4bit(paletteram[no+0x100]));
 }
 
 /*** Video Start & Update
@@ -263,13 +263,13 @@ WRITE8_HANDLER( angelkds_paletteram_w )
 VIDEO_START( angelkds )
 {
 
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
 	tilemap_set_transparent_pen(tx_tilemap,0);
 
-	bgbot_tilemap = tilemap_create(get_bgbot_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	bgbot_tilemap = tilemap_create(machine, get_bgbot_tile_info,tilemap_scan_rows, 8, 8,32,32);
 	tilemap_set_transparent_pen(bgbot_tilemap,15);
 
-	bgtop_tilemap = tilemap_create(get_bgtop_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	bgtop_tilemap = tilemap_create(machine, get_bgtop_tile_info,tilemap_scan_rows, 8, 8,32,32);
 	tilemap_set_transparent_pen(bgtop_tilemap,15);
 }
 
@@ -280,7 +280,7 @@ VIDEO_UPDATE( angelkds )
 	const rectangle *visarea = video_screen_get_visible_area(screen);
 	rectangle clip;
 
-	fillbitmap(bitmap,0x3f,cliprect); /* is there a register controling the colour?, we currently use the last colour of the tx palette */
+	bitmap_fill(bitmap,cliprect,0x3f); /* is there a register controling the colour?, we currently use the last colour of the tx palette */
 
 	/* draw top of screen */
 	clip.min_x = 8*0;

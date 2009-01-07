@@ -195,7 +195,7 @@ static void starfield_init(running_machine *machine)
 
 VIDEO_START( gaplus )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan,8,8,36,28);
+	bg_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan,8,8,36,28);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[0], 0xff);
 
@@ -290,7 +290,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			int duplicate = spriteram_3[offs] & 0x80;
 			int x,y;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				flipx ^= 1;
 				flipy ^= 1;
@@ -319,9 +319,9 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 VIDEO_UPDATE( gaplus )
 {
 	/* flip screen control is embedded in RAM */
-	flip_screen_set(gaplus_spriteram[0x1f7f-0x800] & 1);
+	flip_screen_set(screen->machine, gaplus_spriteram[0x1f7f-0x800] & 1);
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	starfield_render(screen->machine, bitmap);
 

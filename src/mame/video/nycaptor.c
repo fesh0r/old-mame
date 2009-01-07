@@ -71,7 +71,7 @@ static TILE_GET_INFO( get_tile_info )
 VIDEO_START( nycaptor )
 {
   nycaptor_spriteram = auto_malloc (160);
-  bg_tilemap = tilemap_create( get_tile_info,tilemap_scan_rows,8,8,32,32 );
+  bg_tilemap = tilemap_create( machine, get_tile_info,tilemap_scan_rows,8,8,32,32 );
 
   tilemap_set_transmask(bg_tilemap,0,0xf800,0x7ff); //split 0
   tilemap_set_transmask(bg_tilemap,1,0xfe00,0x01ff);//split 1
@@ -100,9 +100,9 @@ WRITE8_HANDLER( nycaptor_palette_w )
 		return;
 
 	if (offset & 0x100)
-		paletteram_xxxxBBBBGGGGRRRR_split2_w(machine, (offset & 0xff) + (palette_bank << 8),data);
+		paletteram_xxxxBBBBGGGGRRRR_split2_w(space, (offset & 0xff) + (palette_bank << 8),data);
 	else
-		paletteram_xxxxBBBBGGGGRRRR_split1_w(machine, (offset & 0xff) + (palette_bank << 8),data);
+		paletteram_xxxxBBBBGGGGRRRR_split1_w(space, (offset & 0xff) + (palette_bank << 8),data);
 }
 
 READ8_HANDLER( nycaptor_palette_r )

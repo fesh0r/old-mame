@@ -81,8 +81,8 @@ WRITE16_HANDLER( gaelco_vram_w )
 
 VIDEO_START( bigkarnk )
 {
-	pant[0] = tilemap_create(get_tile_info_gaelco_screen0,tilemap_scan_rows,16,16,32,32);
-	pant[1] = tilemap_create(get_tile_info_gaelco_screen1,tilemap_scan_rows,16,16,32,32);
+	pant[0] = tilemap_create(machine, get_tile_info_gaelco_screen0,tilemap_scan_rows,16,16,32,32);
+	pant[1] = tilemap_create(machine, get_tile_info_gaelco_screen1,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transmask(pant[0],0,0xff01,0x00ff); /* pens 1-7 opaque, pens 0, 8-15 transparent */
 	tilemap_set_transmask(pant[1],0,0xff01,0x00ff); /* pens 1-7 opaque, pens 0, 8-15 transparent */
@@ -90,8 +90,8 @@ VIDEO_START( bigkarnk )
 
 VIDEO_START( maniacsq )
 {
-	pant[0] = tilemap_create(get_tile_info_gaelco_screen0,tilemap_scan_rows,16,16,32,32);
-	pant[1] = tilemap_create(get_tile_info_gaelco_screen1,tilemap_scan_rows,16,16,32,32);
+	pant[0] = tilemap_create(machine, get_tile_info_gaelco_screen0,tilemap_scan_rows,16,16,32,32);
+	pant[1] = tilemap_create(machine, get_tile_info_gaelco_screen1,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transparent_pen(pant[0],0);
 	tilemap_set_transparent_pen(pant[1],0);
@@ -195,8 +195,8 @@ VIDEO_UPDATE( maniacsq )
 	tilemap_set_scrolly(pant[1], 0, gaelco_vregs[2]);
 	tilemap_set_scrollx(pant[1], 0, gaelco_vregs[3]);
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap( bitmap, 0, cliprect );
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill( bitmap, cliprect , 0);
 
 	tilemap_draw(bitmap,cliprect,pant[1],3,0);
 	tilemap_draw(bitmap,cliprect,pant[0],3,0);
@@ -222,8 +222,8 @@ VIDEO_UPDATE( bigkarnk )
 	tilemap_set_scrolly(pant[1], 0, gaelco_vregs[2]);
 	tilemap_set_scrollx(pant[1], 0, gaelco_vregs[3]);
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap( bitmap, 0, cliprect );
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill( bitmap, cliprect , 0);
 
 	tilemap_draw(bitmap,cliprect,pant[1],TILEMAP_DRAW_LAYER1 | 3,0);
 	tilemap_draw(bitmap,cliprect,pant[0],TILEMAP_DRAW_LAYER1 | 3,0);

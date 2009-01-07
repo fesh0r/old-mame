@@ -65,9 +65,10 @@ Notes:
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "sound/okim6295.h"
-#include "cpu/i8051/i8051.h"
+#include "cpu/mcs51/mcs51.h"
 
 #define FIFO_SIZE 1024
 #define IO_SIZE 	0x100
@@ -80,7 +81,7 @@ static UINT16 io_reg[IO_SIZE];
 static UINT16 fifo[FIFO_SIZE];
 static UINT16 fptr;
 
-static int jpeg_addr=-1;
+static int jpeg_addr;
 static UINT16 jpeg1,jpeg2;
 static int jpeg_h=0;
 static int jpeg_w=0;
@@ -288,14 +289,14 @@ static void blit_gfx(running_machine *machine)
 
 static WRITE16_HANDLER( fifo_clear_w )
 {
-		fillbitmap(sliver_bitmap_fg, 0,0);
+		bitmap_fill(sliver_bitmap_fg, 0,0);
 		fptr=0;
 		tmp_counter=0;
 }
 
 static WRITE16_HANDLER( fifo_flush_w )
 {
-		blit_gfx(machine);
+		blit_gfx(space->machine);
 }
 
 
@@ -310,7 +311,7 @@ static void render_jpeg(running_machine *machine)
 	int addr=jpeg_addr;
 	UINT8 *rom;
 
-	fillbitmap(sliver_bitmap_bg, 0,0);
+	bitmap_fill(sliver_bitmap_bg, 0,0);
 	if(jpeg_addr<0)
 	{
 		return;
@@ -351,7 +352,7 @@ static WRITE16_HANDLER( jpeg2_w )
 				jpeg_addr=gfxlookup[idx][0];
 				jpeg_w=gfxlookup[idx][2];
 				jpeg_h=gfxlookup[idx][3];
-				render_jpeg(machine);
+				render_jpeg(space->machine);
 		}
 		else
 			{
@@ -379,7 +380,7 @@ static WRITE16_HANDLER(io_data_w)
 		{
 			jpeg_x=tmpx;
 			jpeg_y=tmpy;
-			render_jpeg(machine);
+			render_jpeg(space->machine);
 		}
 	}
 	else
@@ -390,8 +391,8 @@ static WRITE16_HANDLER(io_data_w)
 
 static WRITE16_HANDLER(sound_w)
 {
-		soundlatch_w(machine,0,data & 0xff);
-		cpunum_set_input_line(machine, 1, I8051_INT0_LINE, HOLD_LINE);
+		soundlatch_w(space,0,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], MCS51_INT0_LINE, HOLD_LINE);
 }
 
 static ADDRESS_MAP_START( sliver_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -426,7 +427,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER(oki_setbank)
 {
-	UINT8 *sound = memory_region(machine, "oki");
+	UINT8 *sound = memory_region(space->machine, "oki");
 	int bank=(data^0xff)&3; //xor or not ?
 	memcpy(sound+0x20000, sound+0x100000+0x20000*bank, 0x20000);
 }
@@ -435,13 +436,11 @@ static ADDRESS_MAP_START( soundmem_prg, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( soundmem_data, ADDRESS_SPACE_DATA, 8 )
+static ADDRESS_MAP_START( soundmem_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0100, 0x0100) AM_READWRITE( okim6295_status_0_r, okim6295_data_0_w )
 	AM_RANGE(0x0101, 0x0101) AM_READ(soundlatch_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( soundmem_io, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0001, 0x0001) AM_WRITE( oki_setbank )
+	/* ports */
+	AM_RANGE(MCS51_PORT_P1, MCS51_PORT_P1) AM_WRITE( oki_setbank )
 ADDRESS_MAP_END
 
 static VIDEO_START(sliver)
@@ -530,7 +529,7 @@ INPUT_PORTS_END
 static INTERRUPT_GEN( sliver_int )
 {
 	//valid interrupts are 2,3,4
-	cpunum_set_input_line(machine, 0, 2+cpu_getiloops(), HOLD_LINE);
+	cpu_set_input_line(device, 2+cpu_getiloops(device), HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( sliver )
@@ -540,7 +539,6 @@ static MACHINE_DRIVER_START( sliver )
 
 	MDRV_CPU_ADD("audio", I8051, 8000000)
 	MDRV_CPU_PROGRAM_MAP(soundmem_prg,0)
-	MDRV_CPU_DATA_MAP(soundmem_data,0)
 	MDRV_CPU_IO_MAP(soundmem_io,0)
 
 
@@ -591,6 +589,7 @@ ROM_END
 
 static DRIVER_INIT(sliver)
 {
+	jpeg_addr = -1;
 	colorram=auto_malloc(256*3);
 }
 

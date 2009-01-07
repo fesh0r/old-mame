@@ -108,8 +108,8 @@ PALETTE_INIT( thedeep )
 
 VIDEO_START( thedeep )
 {
-	tilemap_0  = tilemap_create(get_tile_info_0,tilemap_scan_rows_back,16,16,0x20,0x20);
-	tilemap_1  = tilemap_create(get_tile_info_1,tilemap_scan_rows,8,8,0x20,0x20);
+	tilemap_0  = tilemap_create(machine, get_tile_info_0,tilemap_scan_rows_back,16,16,0x20,0x20);
+	tilemap_1  = tilemap_create(machine, get_tile_info_1,tilemap_scan_rows,8,8,0x20,0x20);
 
 	tilemap_set_transparent_pen( tilemap_0,  0 );
 	tilemap_set_transparent_pen( tilemap_1,  0 );
@@ -176,7 +176,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		if (color & 1)	sx -= 256;
 		if (attr  & 1)	sy -= 256;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			flipx = !flipx;
 			flipy = !flipy;
@@ -227,7 +227,7 @@ VIDEO_UPDATE( thedeep )
 		tilemap_set_scrolly(tilemap_0, x, y + scrolly);
 	}
 
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	tilemap_draw(bitmap,cliprect,tilemap_0,0,0);
 	draw_sprites(screen->machine, bitmap,cliprect);

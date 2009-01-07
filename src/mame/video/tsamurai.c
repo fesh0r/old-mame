@@ -55,8 +55,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( tsamurai )
 {
-	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,32,32);
-	foreground = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	background = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,8,8,32,32);
+	foreground = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(background,0);
 	tilemap_set_transparent_pen(foreground,0);
@@ -173,7 +173,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		/* So I'm using this specific check. -kal 11 jul 2002 */
 //      if(sprite_type == 1) sy=sy+2;
 
-		if( flip_screen_get() )
+		if( flip_screen_get(machine) )
 		{
 			drawgfx( bitmap,gfx,
 				sprite_number&0x7f,
@@ -216,7 +216,7 @@ VIDEO_UPDATE( tsamurai )
         Note that the background color register isn't well understood
         (screenshots would be helpful)
     */
-	fillbitmap(bitmap,bgcolor,cliprect);
+	bitmap_fill(bitmap,cliprect,bgcolor);
 	tilemap_draw(bitmap,cliprect,background,0,0);
 	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,foreground,0,0);
@@ -255,7 +255,7 @@ static TILE_GET_INFO( get_vsgongf_tile_info )
 
 VIDEO_START( vsgongf )
 {
-	foreground = tilemap_create(get_vsgongf_tile_info,tilemap_scan_rows,8,8,32,32);
+	foreground = tilemap_create(machine, get_vsgongf_tile_info,tilemap_scan_rows,8,8,32,32);
 }
 
 VIDEO_UPDATE( vsgongf )

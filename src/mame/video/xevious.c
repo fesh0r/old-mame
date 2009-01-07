@@ -194,9 +194,9 @@ static TILE_GET_INFO( get_fg_tile_info )
 	UINT8 color = ((attr & 0x03) << 4) | ((attr & 0x3c) >> 2);
 	SET_TILE_INFO(
 			0,
-			xevious_fg_videoram[tile_index] | (flip_screen_get() ? 0x100 : 0),
+			xevious_fg_videoram[tile_index] | (flip_screen_get(machine) ? 0x100 : 0),
 			color,
-			TILE_FLIPYX((attr & 0xc0) >> 6) ^ (flip_screen_get() ? TILE_FLIPX : 0));
+			TILE_FLIPYX((attr & 0xc0) >> 6) ^ (flip_screen_get(machine) ? TILE_FLIPX : 0));
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
@@ -221,8 +221,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( xevious )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     8,8,64,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,     8,8,64,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_scrolldx(bg_tilemap,-20,288+27);
 	tilemap_set_scrolldy(bg_tilemap,-16,-16);
@@ -234,7 +234,7 @@ VIDEO_START( xevious )
 	spriteram_3 = xevious_sr2 + 0x780;
 	spriteram   = xevious_sr3 + 0x780;
 
-	state_save_register_global_array(xevious_bs);
+	state_save_register_global_array(machine, xevious_bs);
 }
 
 
@@ -311,7 +311,7 @@ WRITE8_HANDLER( xevious_vh_latch_w )
 		tilemap_set_scrolly(fg_tilemap,0,scroll);
 		break;
 	case 7:
-		flip_screen_set(scroll & 1);
+		flip_screen_set(space->machine, scroll & 1);
 		break;
    default:
 		   logerror("CRTC WRITE REG: %x  Data: %03x\n",reg, scroll);
@@ -328,7 +328,7 @@ WRITE8_HANDLER( xevious_bs_w )
 
 READ8_HANDLER( xevious_bb_r )
 {
-	UINT8 *rom2a = memory_region(machine, "gfx4");
+	UINT8 *rom2a = memory_region(space->machine, "gfx4");
 	UINT8 *rom2b = rom2a+0x1000;
 	UINT8 *rom2c = rom2a+0x3000;
 	int adr_2b,adr_2c;
@@ -454,7 +454,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 			sx = spriteram_2[offs + 1] - 40 + 0x100*(spriteram_3[offs + 1] & 1);
 			sy = 28*8-spriteram_2[offs]-1;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				flipx = !flipx;
 				flipy = !flipy;

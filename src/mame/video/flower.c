@@ -1,6 +1,7 @@
 /* Flower Video Hardware */
 
 #include "driver.h"
+#include "includes/flower.h"
 
 static tilemap *flower_bg0_tilemap, *flower_bg1_tilemap, *flower_text_tilemap, *flower_text_right_tilemap;
 UINT8 *flower_textram, *flower_bg0ram, *flower_bg1ram, *flower_bg0_scroll, *flower_bg1_scroll;
@@ -79,7 +80,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		code |= ((source[2] & 0x01) << 6);
 		code |= ((source[2] & 0x08) << 4);
 
-		if(flip_screen_get())
+		if(flip_screen_get(machine))
 		{
 			flipx = !flipx;
 			flipy = !flipy;
@@ -148,10 +149,10 @@ static TILE_GET_INFO( get_text_tile_info )
 
 VIDEO_START(flower)
 {
-	flower_bg0_tilemap        = tilemap_create(get_bg0_tile_info, tilemap_scan_rows,     16,16,16,16);
-	flower_bg1_tilemap        = tilemap_create(get_bg1_tile_info, tilemap_scan_rows,16,16,16,16);
-	flower_text_tilemap       = tilemap_create(get_text_tile_info,tilemap_scan_rows, 8, 8,32,32);
-	flower_text_right_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_cols, 8, 8, 2,32);
+	flower_bg0_tilemap        = tilemap_create(machine, get_bg0_tile_info, tilemap_scan_rows,     16,16,16,16);
+	flower_bg1_tilemap        = tilemap_create(machine, get_bg1_tile_info, tilemap_scan_rows,16,16,16,16);
+	flower_text_tilemap       = tilemap_create(machine, get_text_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	flower_text_right_tilemap = tilemap_create(machine, get_text_tile_info,tilemap_scan_cols, 8, 8, 2,32);
 
 	tilemap_set_transparent_pen(flower_bg1_tilemap,15);
 	tilemap_set_transparent_pen(flower_text_tilemap,3);
@@ -173,7 +174,7 @@ VIDEO_UPDATE( flower )
 
 	draw_sprites(screen->machine,bitmap,cliprect);
 
-	if(flip_screen_get())
+	if(flip_screen_get(screen->machine))
 	{
 		myclip.min_x = cliprect->min_x;
 		myclip.max_x = cliprect->min_x + 15;
@@ -210,5 +211,5 @@ WRITE8_HANDLER( flower_bg1ram_w )
 
 WRITE8_HANDLER( flower_flipscreen_w )
 {
-	flip_screen_set(data);
+	flip_screen_set(space->machine, data);
 }

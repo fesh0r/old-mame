@@ -134,11 +134,11 @@ WRITE8_HANDLER( sn76496_3_w ) {	SN76496Write(3,data); }
 WRITE8_HANDLER( sn76496_4_w ) {	SN76496Write(4,data); }
 
 
-static void SN76496Update(void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length)
+static STREAM_UPDATE( SN76496Update )
 {
 	int i;
 	struct SN76496 *R = param;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
 
 	/* If the volume is 0, increase the counter */
@@ -146,14 +146,14 @@ static void SN76496Update(void *param,stream_sample_t **inputs, stream_sample_t 
 	{
 		if (R->Volume[i] == 0)
 		{
-			/* note that I do count += length, NOT count = length + 1. You might think */
+			/* note that I do count += samples, NOT count = samples + 1. You might think */
 			/* it's the same since the volume is 0, but doing the latter could cause */
 			/* interferencies when the program is rapidly modulating the volume. */
-			if (R->Count[i] <= length*STEP) R->Count[i] += length*STEP;
+			if (R->Count[i] <= samples*STEP) R->Count[i] += samples*STEP;
 		}
 	}
 
-	while (length > 0)
+	while (samples > 0)
 	{
 		int vol[4];
 		unsigned int out;
@@ -245,7 +245,7 @@ static void SN76496Update(void *param,stream_sample_t **inputs, stream_sample_t 
 
 		*(buffer++) = out / STEP;
 
-		length--;
+		samples--;
 	}
 }
 
@@ -278,12 +278,12 @@ static void SN76496_set_gain(struct SN76496 *R,int gain)
 
 
 
-static int SN76496_init(struct SN76496 *R,int sndindex,int clock)
+static int SN76496_init(const device_config *device, int clock, struct SN76496 *R)
 {
 	int sample_rate = clock/16;
 	int i;
 
-	R->Channel = stream_create(0,1, sample_rate,R,SN76496Update);
+	R->Channel = stream_create(device,0,1,sample_rate,R,SN76496Update);
 
 	R->SampleRate = sample_rate;
 
@@ -314,14 +314,14 @@ static int SN76496_init(struct SN76496 *R,int sndindex,int clock)
 }
 
 
-static void *generic_start(int sndindex, int clock, int feedbackmask, int noisetaps, int noiseinvert)
+static void *generic_start(const device_config *device, int clock, int feedbackmask, int noisetaps, int noiseinvert)
 {
 	struct SN76496 *chip;
 
 	chip = auto_malloc(sizeof(*chip));
 	memset(chip, 0, sizeof(*chip));
 
-	if (SN76496_init(chip,sndindex,clock) != 0)
+	if (SN76496_init(device,clock,chip) != 0)
 		return NULL;
 	SN76496_set_gain(chip, 0);
 
@@ -329,48 +329,48 @@ static void *generic_start(int sndindex, int clock, int feedbackmask, int noiset
 	chip->WhitenoiseTaps = noisetaps;
 	chip->WhitenoiseInvert = noiseinvert;
 
-	state_save_register_item_array("sn76496", sndindex, chip->Register);
-	state_save_register_item("sn76496", sndindex, chip->LastRegister);
-	state_save_register_item_array("sn76496", sndindex, chip->Volume);
-	state_save_register_item("sn76496", sndindex, chip->RNG);
-	state_save_register_item("sn76496", sndindex, chip->NoiseMode);
-	state_save_register_item_array("sn76496", sndindex, chip->Period);
-	state_save_register_item_array("sn76496", sndindex, chip->Count);
-	state_save_register_item_array("sn76496", sndindex, chip->Output);
+	state_save_register_device_item_array(device, 0, chip->Register);
+	state_save_register_device_item(device, 0, chip->LastRegister);
+	state_save_register_device_item_array(device, 0, chip->Volume);
+	state_save_register_device_item(device, 0, chip->RNG);
+	state_save_register_device_item(device, 0, chip->NoiseMode);
+	state_save_register_device_item_array(device, 0, chip->Period);
+	state_save_register_device_item_array(device, 0, chip->Count);
+	state_save_register_device_item_array(device, 0, chip->Output);
 
 	return chip;
 
 }
 
 
-static void *sn76489_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( sn76489 )
 {
-	return generic_start(sndindex, clock, 0x4000, 0x03, TRUE);
+	return generic_start(device, clock, 0x4000, 0x03, TRUE);
 }
 
-static void *sn76489a_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( sn76489a )
 {
-	return generic_start(sndindex, clock, 0x8000, 0x06, FALSE);
+	return generic_start(device, clock, 0x8000, 0x06, FALSE);
 }
 
-static void *sn76494_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( sn76494 )
 {
-	return generic_start(sndindex, clock, 0x8000, 0x06, FALSE);
+	return generic_start(device, clock, 0x8000, 0x06, FALSE);
 }
 
-static void *sn76496_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( sn76496 )
 {
-	return generic_start(sndindex, clock, 0x8000, 0x06, FALSE);
+	return generic_start(device, clock, 0x8000, 0x06, FALSE);
 }
 
-static void *gamegear_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( gamegear )
 {
-	return generic_start(sndindex, clock, 0x8000, 0x09, FALSE);
+	return generic_start(device, clock, 0x8000, 0x09, FALSE);
 }
 
-static void *smsiii_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( smsiii )
 {
-	return generic_start(sndindex, clock, 0x8000, 0x09, FALSE);
+	return generic_start(device, clock, 0x8000, 0x09, FALSE);
 }
 
 
@@ -378,7 +378,7 @@ static void *smsiii_start(const char *tag, int sndindex, int clock, const void *
  * Generic get_info
  **************************************************************************/
 
-static void sn76496_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( sn76496 )
 {
 	switch (state)
 	{
@@ -387,74 +387,74 @@ static void sn76496_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void sn76496_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( sn76496 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case SNDINFO_INT_ALIAS:							info->i = SOUND_SN76496;				break;
+		case SNDINFO_INT_ALIAS:							info->i = SOUND_SN76496;						break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = sn76496_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = sn76496_start;			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( sn76496 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( sn76496 );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "SN76496";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "TI PSG";						break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.1";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "SN76496");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "TI PSG");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.1");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 
-void sn76489_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( sn76489 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = sn76489_start;			break;
-		case SNDINFO_STR_NAME:							info->s = "SN76489";					break;
-		default: 										sn76496_get_info(token, state, info);	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( sn76489 );		break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "SN76489");						break;
+		default: 										SND_GET_INFO_CALL(sn76496);						break;
 	}
 }
 
-void sn76489a_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( sn76489a )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = sn76489a_start;			break;
-		case SNDINFO_STR_NAME:							info->s = "SN76489A";					break;
-		default: 										sn76496_get_info(token, state, info);	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( sn76489a );		break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "SN76489A");					break;
+		default: 										SND_GET_INFO_CALL(sn76496);						break;
 	}
 }
 
-void sn76494_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( sn76494 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = sn76494_start;			break;
-		case SNDINFO_STR_NAME:							info->s = "SN76494";					break;
-		default: 										sn76496_get_info(token, state, info);	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( sn76494 );		break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "SN76494");						break;
+		default: 										SND_GET_INFO_CALL(sn76496);						break;
 	}
 }
 
-void gamegear_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( gamegear )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = gamegear_start;			break;
-		case SNDINFO_STR_NAME:							info->s = "Game Gear PSG";				break;
-		default: 										sn76496_get_info(token, state, info);	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( gamegear );		break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "Game Gear PSG");				break;
+		default: 										SND_GET_INFO_CALL(sn76496);						break;
 	}
 }
 
-void smsiii_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( smsiii )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = smsiii_start;				break;
-		case SNDINFO_STR_NAME:							info->s = "SMSIII PSG";					break;
-		default: 										sn76496_get_info(token, state, info);	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( smsiii );			break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "SMSIII PSG");					break;
+		default: 										SND_GET_INFO_CALL(sn76496);						break;
 	}
 }

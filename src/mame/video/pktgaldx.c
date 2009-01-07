@@ -8,7 +8,7 @@ UINT16* pcktgaldb_sprites;
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
-	int flipscreen=!flip_screen_get();
+	int flipscreen=!flip_screen_get(machine);
 
 	for (offs = 0;offs < 0x400;offs += 4)
 	{
@@ -85,15 +85,15 @@ VIDEO_START(pktgaldx)
 
 VIDEO_UPDATE(pktgaldx)
 {
-	flip_screen_set( deco16_pf12_control[0]&0x80 );
+	flip_screen_set(screen->machine,  deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 
-	fillbitmap(bitmap,0,cliprect); /* not Confirmed */
-	fillbitmap(priority_bitmap,0,NULL);
+	bitmap_fill(bitmap,cliprect,0); /* not Confirmed */
+	bitmap_fill(priority_bitmap,NULL,0);
 
-	deco16_tilemap_2_draw(bitmap,cliprect,0,0);
+	deco16_tilemap_2_draw(screen,bitmap,cliprect,0,0);
 	draw_sprites(screen->machine,bitmap,cliprect);
-	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
+	deco16_tilemap_1_draw(screen,bitmap,cliprect,0,0);
 	return 0;
 }
 
@@ -109,7 +109,7 @@ VIDEO_UPDATE(pktgaldb)
 	int tileno;
 	int colour;
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	/* the bootleg seems to treat the tilemaps as sprites */
 	for (offset = 0;offset<0x1600/2;offset+=8)

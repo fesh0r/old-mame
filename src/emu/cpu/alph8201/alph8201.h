@@ -41,33 +41,12 @@ enum
 	ALPHA8201_R4,ALPHA8201_R5,ALPHA8201_R6,ALPHA8201_R7
 };
 
-extern void alpha8201_get_info(UINT32 state, cpuinfo *info);
-extern void alpha8301_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( alpha8201 );
+extern CPU_GET_INFO( alpha8301 );
 
-/*
- *   Read a UINT8 from given memory location
- */
-#define ALPHA8201_RDMEM(A) ((unsigned)program_read_byte_8le(A))
+#define CPU_ALPHA8201 CPU_GET_INFO_NAME( alpha8201 )
+#define CPU_ALPHA8301 CPU_GET_INFO_NAME( alpha8301 )
 
-/*
- *   Write a UINT8 to given memory location
- */
-#define ALPHA8201_WRMEM(A,V) (program_write_byte_8le(A,V))
-
-/*
- *   ALPHA8201_RDOP() is identical to ALPHA8201_RDMEM() except it is used for reading
- *   opcodes. In case of system with memory mapped I/O, this function can be
- *   used to greatly speed up emulation
- */
-#define ALPHA8201_RDOP(A) ((unsigned)cpu_readop(A))
-
-/*
- *   ALPHA8201_RDOP_ARG() is identical to ALPHA8201_RDOP() except it is used for reading
- *   opcode arguments. This difference can be used to support systems that
- *   use different encoding mechanisms for opcodes and opcode arguments
- */
-#define ALPHA8201_RDOP_ARG(A) ((unsigned)cpu_readop_arg(A))
-
-offs_t ALPHA8201_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+CPU_DISASSEMBLE( alpha8201 );
 
 #endif  /* __ALPH8201_H__ */

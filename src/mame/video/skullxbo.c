@@ -83,13 +83,13 @@ VIDEO_START( skullxbo )
 	};
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols,  16,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(machine, get_playfield_tile_info, tilemap_scan_cols,  16,8, 64,64);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  16,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(machine, get_alpha_tile_info, tilemap_scan_rows,  16,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 }
 
@@ -110,7 +110,7 @@ WRITE16_HANDLER( skullxbo_xscroll_w )
 
 	/* if something changed, force an update */
 	if (oldscroll != newscroll)
-		video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+		video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 
 	/* adjust the actual scrolls */
 	tilemap_set_scrollx(atarigen_playfield_tilemap, 0, 2 * (newscroll >> 7));
@@ -124,7 +124,7 @@ WRITE16_HANDLER( skullxbo_xscroll_w )
 WRITE16_HANDLER( skullxbo_yscroll_w )
 {
 	/* combine data */
-	int scanline = video_screen_get_vpos(machine->primary_screen);
+	int scanline = video_screen_get_vpos(space->machine->primary_screen);
 	UINT16 oldscroll = *atarigen_yscroll;
 	UINT16 newscroll = oldscroll;
 	UINT16 effscroll;
@@ -132,10 +132,10 @@ WRITE16_HANDLER( skullxbo_yscroll_w )
 
 	/* if something changed, force an update */
 	if (oldscroll != newscroll)
-		video_screen_update_partial(machine->primary_screen, scanline);
+		video_screen_update_partial(space->machine->primary_screen, scanline);
 
 	/* adjust the effective scroll for the current scanline */
-	if (scanline > video_screen_get_visible_area(machine->primary_screen)->max_y)
+	if (scanline > video_screen_get_visible_area(space->machine->primary_screen)->max_y)
 		scanline = 0;
 	effscroll = (newscroll >> 7) - scanline;
 
@@ -157,7 +157,7 @@ WRITE16_HANDLER( skullxbo_yscroll_w )
 
 WRITE16_HANDLER( skullxbo_mobmsb_w )
 {
-	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+	video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 	atarimo_set_bank(0, (offset >> 9) & 1);
 }
 

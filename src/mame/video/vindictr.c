@@ -95,13 +95,13 @@ VIDEO_START( vindictr )
 	};
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols,  8,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(machine, get_playfield_tile_info, tilemap_scan_cols,  8,8, 64,64);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(machine, get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 }
 
@@ -131,7 +131,7 @@ WRITE16_HANDLER( vindictr_paletteram_w )
 		int g = ((data >> 4) & 15) * i;
 		int b = ((data >> 0) & 15) * i;
 
-		palette_set_color(machine,offset + c*2048,MAKE_RGB(r,g,b));
+		palette_set_color(space->machine,offset + c*2048,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -191,7 +191,7 @@ void vindictr_scanline_update(const device_config *screen, int scanline)
 				break;
 
 			case 6:		/* /VIRQ */
-				atarigen_scanline_int_gen(screen->machine, 0);
+				atarigen_scanline_int_gen(screen->machine->cpu[0]);
 				break;
 
 			case 7:		/* /PFVS */

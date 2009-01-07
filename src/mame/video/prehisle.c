@@ -32,11 +32,11 @@ READ16_HANDLER( prehisle_control16_r )
 {
 	switch (offset)
 	{
-	case 0x08: return input_port_read(machine, "P2");						// Player 2
-	case 0x10: return input_port_read(machine, "COIN");						// Coins, Tilt, Service
-	case 0x20: return input_port_read(machine, "P1") ^ invert_controls;		// Player 1
-	case 0x21: return input_port_read(machine, "DSW0");						// DIPs
-	case 0x22: return input_port_read(machine, "DSW1");						// DIPs + VBLANK
+	case 0x08: return input_port_read(space->machine, "P2");						// Player 2
+	case 0x10: return input_port_read(space->machine, "COIN");						// Coins, Tilt, Service
+	case 0x20: return input_port_read(space->machine, "P1") ^ invert_controls;		// Player 1
+	case 0x21: return input_port_read(space->machine, "DSW0");						// DIPs
+	case 0x22: return input_port_read(space->machine, "DSW1");						// DIPs + VBLANK
 	default: return 0;
 	}
 }
@@ -56,7 +56,7 @@ WRITE16_HANDLER( prehisle_control16_w )
 	case 0x23: invert_controls = data ? 0x00ff : 0x0000; break;
 	case 0x28: coin_counter_w(0, data & 1); break;
 	case 0x29: coin_counter_w(1, data & 1); break;
-	case 0x30: flip_screen_set(data & 0x01); break;
+	case 0x30: flip_screen_set(space->machine, data & 0x01); break;
 	}
 }
 
@@ -94,20 +94,20 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( prehisle )
 {
-	bg2_tilemap = tilemap_create(get_bg2_tile_info, tilemap_scan_cols,
+	bg2_tilemap = tilemap_create(machine, get_bg2_tile_info, tilemap_scan_cols,
 		 16, 16, 1024, 32);
 
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,
 		 16, 16, 256, 32);
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 15);
 	tilemap_set_transparent_pen(fg_tilemap, 15);
 
 	/* register for saving */
-	state_save_register_global(invert_controls);
+	state_save_register_global(machine, invert_controls);
 }
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int foreground )
@@ -127,7 +127,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 		if (sx & 0x200) sx = -(0xff - (sx & 0xff));	// wraparound
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;

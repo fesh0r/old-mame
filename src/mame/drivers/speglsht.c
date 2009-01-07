@@ -115,8 +115,6 @@ static UINT8 *shared;
 UINT32 *speglsht_framebuffer;
 UINT32  speglsht_videoreg;
 
-extern UINT8 *st0016_charram;
-
 static ADDRESS_MAP_START( st0016_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)
@@ -305,7 +303,7 @@ static const st0016_interface st0016_config =
 
  static INTERRUPT_GEN( irq4_gen )
 {
-	cpunum_set_input_line(machine, 1, R3000_IRQ4, ASSERT_LINE);
+	cpu_set_input_line(device, R3000_IRQ4, ASSERT_LINE);
 }
 
 static const r3000_cpu_core config =
@@ -333,7 +331,7 @@ static MACHINE_DRIVER_START( speglsht )
 	MDRV_CPU_PROGRAM_MAP(speglsht_mem,0)
 	MDRV_CPU_VBLANK_INT("main", irq4_gen)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 	MDRV_MACHINE_RESET(speglsht)
 
 	/* video hardware */

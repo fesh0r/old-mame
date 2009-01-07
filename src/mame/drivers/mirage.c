@@ -1,7 +1,10 @@
 /* Mirage Youjuu Mahjongden
 
-todo: inputs, eeprom?
-      sound (is mbl-03.10a a bad dump?)
+TODO:
+-eeprom emulation? Software settings all changes if you toggle the "flip screen" dip-switch
+-priorities.
+
+Notes:To enter into Test Mode you need to keep pressed the Mahjong A button at start-up.
 */
 
 /*
@@ -31,6 +34,7 @@ MR_01-.3A    [a0b758aa]
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "decocrpt.h"
 #include "decoprot.h"
 #include "deco16ic.h"
@@ -78,7 +82,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 			inc = 1;
 		}
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			y=240-y;
 			x=304-x;
@@ -117,33 +121,57 @@ static VIDEO_START(mirage)
 
 static VIDEO_UPDATE(mirage)
 {
-	flip_screen_set( deco16_pf12_control[0]&0x80 );
+	flip_screen_set(screen->machine,  deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 
-	fillbitmap(bitmap,256,cliprect); /* not verified */
+	bitmap_fill(bitmap,cliprect,256); /* not verified */
 
-	deco16_tilemap_2_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
-	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
+	deco16_tilemap_2_draw(screen,bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
+	deco16_tilemap_1_draw(screen,bitmap,cliprect,0,0);
 
 	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
+static UINT32 mux_data;
 
-static READ16_HANDLER( mirage_controls_r )
+static WRITE16_HANDLER( mirage_mux_w )
 {
-	return input_port_read(machine, "SYSTEM_IN");
-}
-
-static READ16_HANDLER( random_readers )
-{
-	return mame_rand(machine);
+	mux_data = data & 0x1f;
 }
 
 static READ16_HANDLER( mirage_input_r )
 {
-	UINT16 port = input_port_read(machine, "MIRAGE0");
-	return port;
+	switch(mux_data & 0x1f)
+	{
+		case 0x01: return input_port_read(space->machine, "KEY0");
+		case 0x02: return input_port_read(space->machine, "KEY1");
+		case 0x04: return input_port_read(space->machine, "KEY2");
+		case 0x08: return input_port_read(space->machine, "KEY3");
+		case 0x10: return input_port_read(space->machine, "KEY4");
+	}
+
+	return 0xffff;
+}
+
+static WRITE16_HANDLER( okim1_rombank_w )
+{
+	if(ACCESSING_BITS_0_7)
+	{
+		UINT8 *oki = memory_region(space->machine, "oki2");
+		memcpy(&oki[0], &oki[(data & 3) * 0x40000] + 0x40000, 0x40000);
+	}
+}
+
+static WRITE16_HANDLER( okim0_rombank_w )
+{
+	/*bits 4-6 used?Volume control?*/
+
+	if(ACCESSING_BITS_0_7)
+	{
+		UINT8 *oki = memory_region(space->machine, "oki1");
+		memcpy(&oki[0], &oki[(data & 7) * 0x40000] + 0x40000, 0x40000);
+	}
 }
 
 static ADDRESS_MAP_START( mirage_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -159,16 +187,15 @@ static ADDRESS_MAP_START( mirage_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x130000, 0x1307ff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x140006, 0x140007) AM_READ(random_readers)
+//  AM_RANGE(0x140006, 0x140007) AM_READ(random_readers)
 
-	AM_RANGE(0x150006, 0x150007) AM_READ(SMH_NOP)
+//  AM_RANGE(0x150006, 0x150007) AM_READ(SMH_NOP)
 
 	AM_RANGE(0x16c006, 0x16c007) AM_READ(mirage_input_r)
 
-	AM_RANGE(0x16e002, 0x16e003) AM_READ(mirage_controls_r)
+	AM_RANGE(0x16e002, 0x16e003) AM_READ_PORT("SYSTEM_IN")
 
 	AM_RANGE(0x170000, 0x173fff) AM_READ(SMH_RAM)
-
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mirage_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -185,8 +212,8 @@ static ADDRESS_MAP_START( mirage_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x130000, 0x1307ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 
-	AM_RANGE(0x150000, 0x150001) AM_WRITE(SMH_NOP)
-	AM_RANGE(0x150002, 0x150003) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x140000, 0x14000f) AM_READWRITE(okim6295_status_1_lsb_r, okim6295_data_1_lsb_w)
+	AM_RANGE(0x150000, 0x15000f) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
 
 	AM_RANGE(0x160000, 0x160001) AM_WRITE(SMH_NOP)
 
@@ -194,9 +221,9 @@ static ADDRESS_MAP_START( mirage_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x16a000, 0x16a001) AM_WRITE(SMH_NOP)
 
-	AM_RANGE(0x16c000, 0x16c001) AM_WRITE(SMH_NOP)
-	AM_RANGE(0x16c002, 0x16c003) AM_WRITE(SMH_NOP) // input multiplex?
-	AM_RANGE(0x16c004, 0x16c005) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x16c000, 0x16c001) AM_WRITE(okim1_rombank_w)
+	AM_RANGE(0x16c002, 0x16c003) AM_WRITE(okim0_rombank_w)
+	AM_RANGE(0x16c004, 0x16c005) AM_WRITE(mirage_mux_w)
 
 	AM_RANGE(0x16e000, 0x16e001) AM_WRITE(SMH_NOP)
 
@@ -207,11 +234,9 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( mirage )
 	PORT_START("SYSTEM_IN")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-    PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_SERVICE( 0x0008, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Flip_Screen ) )
@@ -248,56 +273,41 @@ static INPUT_PORTS_START( mirage )
     PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
     PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START("MIRAGE0")
-	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_SERVICE1 ) /* Inputs start here???? */
-    PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) ) /* Makes selections in "Test Mode" when changing from "Off" to "On" */
-    PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0200, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0400, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0800, 0x0800, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0800, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x1000, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x2000, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_START("KEY0")
+    PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_A )
+    PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_E )
+    PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_I )
+    PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_M )
+    PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_MAHJONG_KAN )
+    PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_START1 )
+    PORT_BIT( 0xffc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
+	PORT_START("KEY1")
+    PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_C )
+    PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_G )
+    PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_K )
+    PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_CHI )
+    PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_MAHJONG_RON )
+    PORT_BIT( 0xffe0, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START("KEY2")
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_FLIP_FLOP )
+    PORT_BIT( 0xfff7, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START("KEY3")
+    PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_B )
+    PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_F )
+    PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_J )
+    PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_N )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_MAHJONG_REACH )
+    PORT_BIT( 0xffe0, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_START("KEY4")
+    PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_D )
+    PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_MAHJONG_H )
+    PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_MAHJONG_L )
+    PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_MAHJONG_PON )
+    PORT_BIT( 0xfff0, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
 
@@ -367,13 +377,13 @@ static MACHINE_DRIVER_START( mirage )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("oki1", OKIM6295, 1000000)
+	MDRV_SOUND_ADD("oki1", OKIM6295, 2500000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MDRV_SOUND_ADD("oki2", OKIM6295, 1000000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 
@@ -389,57 +399,18 @@ ROM_START( mirage )
   	ROM_LOAD16_BYTE( "mbl-01.11a", 0x000001, 0x200000, CRC(895be69a) SHA1(541d8f37fb4cf99312b80a0eb0d729fbbeab5f4f) )
 	ROM_LOAD16_BYTE( "mbl-02.12a", 0x000000, 0x200000, CRC(474f6104) SHA1(ff81b32b90192c3d5f27c436a9246aa6caaeeeee) )
 
-	ROM_REGION( 0x200000, "oki1", 0 )	/* M6295 samples */
-	ROM_LOAD( "mbl-03.10a", 0x000000, 0x200000, CRC(4a599703) SHA1(b49e84faa2d6acca952740d30fc8d1a33ac47e79) )
+	ROM_REGION( 0x240000, "oki1", 0 )	/* M6295 samples */
+	ROM_LOAD( "mbl-03.10a", 0x040000, 0x200000, CRC(4a599703) SHA1(b49e84faa2d6acca952740d30fc8d1a33ac47e79) )
+	ROM_RELOAD(				0x000000, 0x040000 )
 
-	ROM_REGION( 0x200000, "oki2", 0 )	/* M6295 samples */
-	ROM_LOAD( "mbl-04.12k", 0x000000, 0x100000, CRC(b533123d) SHA1(2cb2f11331d00c2d282113932ed2836805f4fc6e) )
+	ROM_REGION( 0x140000, "oki2", 0 )	/* M6295 samples */
+	ROM_LOAD( "mbl-04.12k", 0x040000, 0x100000, CRC(b533123d) SHA1(2cb2f11331d00c2d282113932ed2836805f4fc6e) )
+	ROM_RELOAD(				0x000000, 0x040000 )
 ROM_END
-
-static void descramble_sound( running_machine *machine, const char *region )
-{
-	UINT8 *rom = memory_region(machine, region);
-	int length = memory_region_length(machine, region);
-	UINT8 *buf1 = malloc_or_die(length);
-	UINT32 x;
-
-	for (x=0;x<length;x++)
-	{
-		UINT32 addr;
-
-		addr = BITSWAP24 (x,23,22,21,0, 20,
-		                    19,18,17,16,
-		                    15,14,13,12,
-		                    11,10,9, 8,
-		                    7, 6, 5, 4,
-		                    3, 2, 1 );
-
-		buf1[addr] = rom[x];
-	}
-
-	memcpy(rom,buf1,length);
-
-	free (buf1);
-
-#if 0
-	{
-		FILE *fp;
-		fp=fopen("sound.dmp", "w+b");
-		if (fp)
-		{
-			fwrite(rom, length, 1, fp);
-			fclose(fp);
-		}
-	}
-#endif
-
-}
-
 
 static DRIVER_INIT( mirage )
 {
 	deco56_decrypt_gfx(machine, "gfx1");
-	descramble_sound(machine, "oki1");
 }
 
-GAME( 1994, mirage, 0,        mirage, mirage, mirage, ROT0, "Mitchell", "Mirage Youjuu Mahjongden (Japan)", GAME_NOT_WORKING )
+GAME( 1994, mirage, 0,        mirage, mirage, mirage, ROT0, "Mitchell", "Mirage Youjuu Mahjongden (Japan)", GAME_IMPERFECT_GRAPHICS )

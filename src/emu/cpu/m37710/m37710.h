@@ -85,38 +85,11 @@ enum
 	M37710_SER0_XMIT, M37710_SER1_REC, M37710_SER1_XMIT
 };
 
-/* ======================================================================== */
-/* ============================== PROTOTYPES ============================== */
-/* ======================================================================== */
+CPU_GET_INFO( m37710 );
+CPU_GET_INFO( m37702 );
 
-extern int m37710_ICount;				/* cycle count */
-
-/* ======================================================================== */
-/* ================================= MAME ================================= */
-/* ======================================================================== */
-
-/* Clean up after the emulation core - Not used in this core - */
-void m37710_exit(void);
-
-/* Save the current CPU state to disk */
-void m37710_state_save(void *file);
-
-/* Load a CPU state from disk */
-void m37710_state_load(void *file);
-
-#undef M37710_CALL_DEBUGGER
-
-#define M37710_CALL_DEBUGGER(x) 		debugger_instruction_hook(Machine, x)
-#define m37710_read_8(addr) 			program_read_byte_16le(addr)
-#define m37710_write_8(addr,data)		program_write_byte_16le(addr,data)
-#define m37710_read_8_immediate(A)		program_read_byte_16le(A)
-#define m37710_read_16(addr) 			program_read_word_16le(addr)
-#define m37710_write_16(addr,data)		program_write_word_16le(addr,data)
-#define m37710_jumping(A)				change_pc(A)
-#define m37710_branching(A)
-
-
-void m37710_get_info(UINT32 state, cpuinfo *info);
+#define CPU_M37710 CPU_GET_INFO_NAME( m37710 )
+#define CPU_M37702 CPU_GET_INFO_NAME( m37702 )
 
 /* ======================================================================== */
 /* ============================== END OF FILE ============================= */

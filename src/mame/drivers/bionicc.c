@@ -55,6 +55,8 @@ ToDo:
 ********************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "sound/2151intf.h"
 
@@ -85,25 +87,25 @@ static UINT16 bionicc_inp[3];
 
 static WRITE16_HANDLER( hacked_controls_w )
 {
-logerror("%06x: hacked_controls_w %04x %02x\n",activecpu_get_pc(),offset,data);
+logerror("%06x: hacked_controls_w %04x %02x\n",cpu_get_pc(space->cpu),offset,data);
 	COMBINE_DATA(&bionicc_inp[offset]);
 }
 
 static READ16_HANDLER( hacked_controls_r )
 {
-logerror("%06x: hacked_controls_r %04x %04x\n",activecpu_get_pc(),offset,bionicc_inp[offset]);
+logerror("%06x: hacked_controls_r %04x %04x\n",cpu_get_pc(space->cpu),offset,bionicc_inp[offset]);
 	return bionicc_inp[offset];
 }
 
 static WRITE16_HANDLER( bionicc_mpu_trigger_w )
 {
-	data = input_port_read(machine, "SYSTEM") >> 12;
+	data = input_port_read(space->machine, "SYSTEM") >> 12;
 	bionicc_inp[0] = data ^ 0x0f;
 
-	data = input_port_read(machine, "P2");
+	data = input_port_read(space->machine, "P2");
 	bionicc_inp[1] = data ^ 0xff;
 
-	data = input_port_read(machine, "P1");
+	data = input_port_read(space->machine, "P1");
 	bionicc_inp[2] = data ^ 0xff;
 }
 
@@ -113,7 +115,7 @@ static UINT16 soundcommand;
 static WRITE16_HANDLER( hacked_soundcommand_w )
 {
 	COMBINE_DATA(&soundcommand);
-	soundlatch_w(machine,0,soundcommand & 0xff);
+	soundlatch_w(space,0,soundcommand & 0xff);
 }
 
 static READ16_HANDLER( hacked_soundcommand_r )
@@ -138,10 +140,10 @@ static READ16_HANDLER( hacked_soundcommand_r )
 
 static INTERRUPT_GEN( bionicc_interrupt )
 {
-	if (cpu_getiloops() == 0)
-		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
+	if (cpu_getiloops(device) == 0)
+		cpu_set_input_line(device, 2, HOLD_LINE);
 	else
-		cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+		cpu_set_input_line(device, 4, HOLD_LINE);
 }
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -203,7 +205,7 @@ static INPUT_PORTS_START( bionicc )
 	PORT_DIPSETTING(      0x0018, DEF_STR( 1C_6C ) )
 	PORT_SERVICE_DIPLOC(  0x0040, IP_ACTIVE_LOW, "SWB:7" )
 	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Flip_Screen ) )	PORT_DIPLOCATION("SWB:8")
-	PORT_DIPSETTING(      0x0080, DEF_STR( Off ))
+	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Lives ) )		PORT_DIPLOCATION("SWA:1,2")
 	PORT_DIPSETTING(      0x0300, "3" )
@@ -213,27 +215,27 @@ static INPUT_PORTS_START( bionicc )
 	PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Cabinet ) )		PORT_DIPLOCATION("SWA:3")
 	PORT_DIPSETTING(      0x0400, DEF_STR( Upright ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x1800, 0x1800, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SWA:4,5")
-	PORT_DIPSETTING(      0x1800, "20K, 40K, every 60K")
-	PORT_DIPSETTING(      0x1000, "30K, 50K, every 70K" )
-	PORT_DIPSETTING(      0x0800, "20K and 60K only")
-	PORT_DIPSETTING(      0x0000, "30K and 70K only" )
+	PORT_DIPNAME( 0x1800, 0x1800, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SWA:4,5")   /* table at 0x00483a */
+	PORT_DIPSETTING(      0x1800, "20k 40k 100k 60k+" )
+	PORT_DIPSETTING(      0x1000, "30k 50k 120k 70k+" )
+	PORT_DIPSETTING(      0x0800, "20k 60k")
+	PORT_DIPSETTING(      0x0000, "30k 70k" )
 	PORT_DIPNAME( 0x6000, 0x4000, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SWA:6,7")
 	PORT_DIPSETTING(      0x4000, DEF_STR( Easy ) )
-	PORT_DIPSETTING(      0x6000, DEF_STR( Medium ))
-	PORT_DIPSETTING(      0x2000, DEF_STR( Hard ))
+	PORT_DIPSETTING(      0x6000, DEF_STR( Medium ) )
+	PORT_DIPSETTING(      0x2000, DEF_STR( Hard ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
-	PORT_DIPNAME( 0x8000, 0x8000, "Freeze" )				PORT_DIPLOCATION("SWA:8") /* Listed as "Unused" */
-	PORT_DIPSETTING(      0x8000, DEF_STR( Off ))
+	PORT_DIPNAME( 0x8000, 0x8000, "Freeze" )				PORT_DIPLOCATION("SWA:8")     /* Listed as "Unused" */
+	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
 	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_8WAY
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_8WAY
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_8WAY
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
@@ -241,9 +243,9 @@ static INPUT_PORTS_START( bionicc )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END

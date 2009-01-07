@@ -115,6 +115,7 @@ BG0 palette intensity ( $C47F, $C4FF )
 
 #include "driver.h"
 #include "jalblend.h"
+#include "includes/argus.h"
 
 
 UINT8 *argus_paletteram;
@@ -312,9 +313,9 @@ static void reset_common(running_machine *machine)
 VIDEO_START( argus )
 {
 	/*                           info                     offset             w   h  col  row */
-	bg0_tilemap = tilemap_create(argus_get_bg0_tile_info, tilemap_scan_cols, 16, 16, 32, 32);
-	bg1_tilemap = tilemap_create(argus_get_bg1_tile_info, tilemap_scan_cols, 16, 16, 32, 32);
-	tx_tilemap  = tilemap_create(argus_get_tx_tile_info,  tilemap_scan_cols,  8,  8, 32, 32);
+	bg0_tilemap = tilemap_create(machine, argus_get_bg0_tile_info, tilemap_scan_cols, 16, 16, 32, 32);
+	bg1_tilemap = tilemap_create(machine, argus_get_bg1_tile_info, tilemap_scan_cols, 16, 16, 32, 32);
+	tx_tilemap  = tilemap_create(machine, argus_get_tx_tile_info,  tilemap_scan_cols,  8,  8, 32, 32);
 
 	tilemap_set_transparent_pen(bg1_tilemap, 15);
 	tilemap_set_transparent_pen(tx_tilemap,  15);
@@ -338,8 +339,8 @@ VIDEO_RESET( argus )
 VIDEO_START( valtric )
 {
 	/*                           info                      offset             w   h  col  row */
-	bg1_tilemap = tilemap_create(valtric_get_bg_tile_info, tilemap_scan_cols, 16, 16, 32, 32);
-	tx_tilemap  = tilemap_create(valtric_get_tx_tile_info, tilemap_scan_cols,  8,  8, 32, 32);
+	bg1_tilemap = tilemap_create(machine, valtric_get_bg_tile_info, tilemap_scan_cols, 16, 16, 32, 32);
+	tx_tilemap  = tilemap_create(machine, valtric_get_tx_tile_info, tilemap_scan_cols,  8,  8, 32, 32);
 
 	tilemap_set_transparent_pen(tx_tilemap,  15);
 
@@ -357,9 +358,9 @@ VIDEO_RESET( valtric )
 VIDEO_START( butasan )
 {
 	/*                           info                       offset             w   h  col  row */
-	bg0_tilemap = tilemap_create(butasan_get_bg0_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
-	bg1_tilemap = tilemap_create(butasan_get_bg1_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
-	tx_tilemap  = tilemap_create(butasan_get_tx_tile_info,  tilemap_scan_rows,  8,  8, 32, 32);
+	bg0_tilemap = tilemap_create(machine, butasan_get_bg0_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
+	bg1_tilemap = tilemap_create(machine, butasan_get_bg1_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
+	tx_tilemap  = tilemap_create(machine, butasan_get_tx_tile_info,  tilemap_scan_rows,  8,  8, 32, 32);
 
 	tilemap_set_transparent_pen(bg1_tilemap, 15);
 	tilemap_set_transparent_pen(tx_tilemap,  15);
@@ -529,7 +530,7 @@ WRITE8_HANDLER( argus_bg_status_w )
 
 			for (offs = 0x400; offs < 0x500; offs++)
 			{
-				argus_change_bg_palette(machine, (offs - 0x400) + 0x080, offs, offs + 0x400);
+				argus_change_bg_palette(space->machine, (offs - 0x400) + 0x080, offs, offs + 0x400);
 			}
 		}
 	}
@@ -548,7 +549,7 @@ WRITE8_HANDLER( valtric_bg_status_w )
 
 			for (offs = 0x400; offs < 0x600; offs += 2)
 			{
-				argus_change_bg_palette(machine, ((offs - 0x400) >> 1) + 0x100, offs & ~1, offs | 1);
+				argus_change_bg_palette(space->machine, ((offs - 0x400) >> 1) + 0x100, offs & ~1, offs | 1);
 			}
 		}
 	}
@@ -590,14 +591,14 @@ WRITE8_HANDLER( argus_paletteram_w )
 	{
 		offset &= 0x07f;
 
-		argus_change_palette(machine, offset, offset, offset + 0x080);
+		argus_change_palette(space->machine, offset, offset, offset + 0x080);
 
 		if (offset == 0x07f || offset == 0x0ff)
 		{
 			argus_palette_intensity = argus_paletteram[0x0ff] | (argus_paletteram[0x07f] << 8);
 
 			for (offs = 0x400; offs < 0x500; offs++)
-				argus_change_bg_palette(machine, (offs & 0xff) + 0x080, offs, offs + 0x400);
+				argus_change_bg_palette(space->machine, (offs & 0xff) + 0x080, offs, offs + 0x400);
 		}
 	}
 	else if ((offset >= 0x400 && offset <= 0x4ff) ||
@@ -606,7 +607,7 @@ WRITE8_HANDLER( argus_paletteram_w )
 		offs = offset & 0xff;
 		offset = offs | 0x400;
 
-		argus_change_bg_palette(machine, offs + 0x080, offset, offset + 0x400);
+		argus_change_bg_palette(space->machine, offs + 0x080, offset, offset + 0x400);
 	}
 	else if ((offset >= 0x500 && offset <= 0x5ff) ||
 			 (offset >= 0x900 && offset <= 0x9ff))		/* BG1 color */
@@ -614,7 +615,7 @@ WRITE8_HANDLER( argus_paletteram_w )
 		offs = offset & 0xff;
 		offset = offs | 0x500;
 
-		argus_change_palette(machine, offs + 0x180, offset, offset + 0x400);
+		argus_change_palette(space->machine, offs + 0x180, offset, offset + 0x400);
 	}
 	else if ((offset >= 0x700 && offset <= 0x7ff) ||
 			 (offset >= 0xb00 && offset <= 0xbff))		/* text color */
@@ -622,7 +623,7 @@ WRITE8_HANDLER( argus_paletteram_w )
 		offs = offset & 0xff;
 		offset = offs | 0x700;
 
-		argus_change_palette(machine, offs + 0x280, offset, offset + 0x400);
+		argus_change_palette(space->machine, offs + 0x280, offset, offset + 0x400);
 	}
 }
 
@@ -632,7 +633,7 @@ WRITE8_HANDLER( valtric_paletteram_w )
 
 	if (offset <= 0x1ff)							/* Sprite color */
 	{
-		argus_change_palette(machine, offset >> 1, offset & ~1, offset | 1);
+		argus_change_palette(space->machine, offset >> 1, offset & ~1, offset | 1);
 
 		if (offset == 0x1fe || offset == 0x1ff)
 		{
@@ -641,16 +642,16 @@ WRITE8_HANDLER( valtric_paletteram_w )
 			argus_palette_intensity = argus_paletteram[0x1ff] | (argus_paletteram[0x1fe] << 8);
 
 			for (offs = 0x400; offs < 0x600; offs += 2)
-				argus_change_bg_palette(machine, ((offs & 0x1ff) >> 1) + 0x100, offs & ~1, offs | 1);
+				argus_change_bg_palette(space->machine, ((offs & 0x1ff) >> 1) + 0x100, offs & ~1, offs | 1);
 		}
 	}
 	else if (offset >= 0x400 && offset <= 0x5ff)		/* BG color */
 	{
-		argus_change_bg_palette(machine, ((offset & 0x1ff) >> 1) + 0x100, offset & ~1, offset | 1);
+		argus_change_bg_palette(space->machine, ((offset & 0x1ff) >> 1) + 0x100, offset & ~1, offset | 1);
 	}
 	else if (offset >= 0x600 && offset <= 0x7ff)		/* Text color */
 	{
-		argus_change_palette(machine, ((offset & 0x1ff) >> 1) + 0x200, offset & ~1, offset | 1);
+		argus_change_palette(space->machine, ((offset & 0x1ff) >> 1) + 0x200, offset & ~1, offset | 1);
 	}
 }
 
@@ -660,31 +661,31 @@ WRITE8_HANDLER( butasan_paletteram_w )
 
 	if (offset <= 0x1ff)							/* BG0 color */
 	{
-		argus_change_palette(machine, (offset >> 1) + 0x100, offset & ~1, offset | 1);
+		argus_change_palette(space->machine, (offset >> 1) + 0x100, offset & ~1, offset | 1);
 	}
 	else if (offset <= 0x23f)						/* BG1 color */
 	{
-		argus_change_palette(machine, ((offset & 0x3f) >> 1) + 0x0c0, offset & ~1, offset | 1);
+		argus_change_palette(space->machine, ((offset & 0x3f) >> 1) + 0x0c0, offset & ~1, offset | 1);
 	}
 	else if (offset >= 0x400 && offset <= 0x47f)	/* Sprite color */
 	{												/* 16 colors */
-		argus_change_palette(machine, (offset & 0x7f) >> 1, offset & ~1, offset | 1);
+		argus_change_palette(space->machine, (offset & 0x7f) >> 1, offset & ~1, offset | 1);
 	}
 	else if (offset >= 0x480 && offset <= 0x4ff)	/* Sprite color */
 	{												/* 8  colors */
 		int offs = (offset & 0x070) | ((offset & 0x00f) >> 1);
 
-		argus_change_palette(machine, offs + 0x040, offset & ~1, offset | 1);
-		argus_change_palette(machine, offs + 0x048, offset & ~1, offset | 1);
+		argus_change_palette(space->machine, offs + 0x040, offset & ~1, offset | 1);
+		argus_change_palette(space->machine, offs + 0x048, offset & ~1, offset | 1);
 	}
 	else if (offset >= 0x600 && offset <= 0x7ff)	/* Text color */
 	{
-		argus_change_palette(machine, ((offset & 0x1ff) >> 1) + 0x200, offset & ~1, offset | 1);
+		argus_change_palette(space->machine, ((offset & 0x1ff) >> 1) + 0x200, offset & ~1, offset | 1);
 	}
 	else if (offset >= 0x240 && offset <= 0x25f)	// dummy
-		argus_change_palette(machine, ((offset & 0x1f) >> 1) + 0xe0, offset & ~1, offset | 1);
+		argus_change_palette(space->machine, ((offset & 0x1f) >> 1) + 0xe0, offset & ~1, offset | 1);
 	else if (offset >= 0x500 && offset <= 0x51f)	// dummy
-		argus_change_palette(machine, ((offset & 0x1f) >> 1) + 0xf0, offset & ~1, offset | 1);
+		argus_change_palette(space->machine, ((offset & 0x1f) >> 1) + 0xf0, offset & ~1, offset | 1);
 }
 
 READ8_HANDLER( butasan_bg1ram_r )
@@ -1232,7 +1233,7 @@ VIDEO_UPDATE( valtric )
 	if (argus_bg_status & 1)	/* Backgound enable */
 		valtric_draw_mosaic(screen, bitmap, cliprect);
 	else
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 	valtric_draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, tx_tilemap,  0, 0);
 	return 0;
@@ -1245,7 +1246,7 @@ VIDEO_UPDATE( butasan )
 	if (argus_bg_status & 1)	/* Backgound enable */
 		tilemap_draw(bitmap, cliprect, bg0_tilemap, 0, 0);
 	else
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 	if (butasan_bg1_status & 1) tilemap_draw(bitmap, cliprect, bg1_tilemap, 0, 0);
 	butasan_draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, tx_tilemap,  0, 0);

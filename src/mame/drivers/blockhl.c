@@ -20,14 +20,14 @@ found it.
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "video/konamiic.h"
 #include "sound/2151intf.h"
 
 /* prototypes */
 static MACHINE_RESET( blockhl );
-static void blockhl_banking( int lines );
+static KONAMI_SETLINES_CALLBACK( blockhl_banking );
 
 
 VIDEO_START( blockhl );
@@ -40,7 +40,7 @@ static int rombank;
 static INTERRUPT_GEN( blockhl_interrupt )
 {
 	if (K052109_is_IRQ_enabled() && rombank == 0)	/* kludge to prevent crashes */
-		cpunum_set_input_line(machine, 0, KONAMI_IRQ_LINE, HOLD_LINE);
+		cpu_set_input_line(device, KONAMI_IRQ_LINE, HOLD_LINE);
 }
 
 static READ8_HANDLER( bankedram_r )
@@ -54,14 +54,14 @@ static READ8_HANDLER( bankedram_r )
 static WRITE8_HANDLER( bankedram_w )
 {
 	if (palette_selected)
-		paletteram_xBBBBBGGGGGRRRRR_be_w(machine,offset,data);
+		paletteram_xBBBBBGGGGGRRRRR_be_w(space,offset,data);
 	else
 		ram[offset] = data;
 }
 
 static WRITE8_HANDLER( blockhl_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff);
+	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff);
 }
 
 
@@ -289,15 +289,15 @@ ROM_END
 
 ***************************************************************************/
 
-static void blockhl_banking( int lines )
+static KONAMI_SETLINES_CALLBACK( blockhl_banking )
 {
-	UINT8 *RAM = memory_region(Machine, "main");
+	UINT8 *RAM = memory_region(device->machine, "main");
 	int offs;
 
 	/* bits 0-1 = ROM bank */
 	rombank = lines & 0x03;
 	offs = 0x10000 + (lines & 0x03) * 0x2000;
-	memory_set_bankptr(1,&RAM[offs]);
+	memory_set_bankptr(device->machine, 1,&RAM[offs]);
 
 	/* bits 3/4 = coin counters */
 	coin_counter_w(0,lines & 0x08);
@@ -313,14 +313,14 @@ static void blockhl_banking( int lines )
 
 	/* other bits unknown */
 
-	if ((lines & 0x84) != 0x80) logerror("%04x: setlines %02x\n",activecpu_get_pc(),lines);
+	if ((lines & 0x84) != 0x80) logerror("%04x: setlines %02x\n",cpu_get_pc(device),lines);
 }
 
 static MACHINE_RESET( blockhl )
 {
 	UINT8 *RAM = memory_region(machine, "main");
 
-	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)blockhl_banking);
+	konami_configure_set_lines(machine->cpu[0], blockhl_banking);
 
 	paletteram = &RAM[0x18000];
 }
@@ -328,8 +328,8 @@ static MACHINE_RESET( blockhl )
 
 static DRIVER_INIT( blockhl )
 {
-	konami_rom_deinterleave_2("gfx1");
-	konami_rom_deinterleave_2("gfx2");
+	konami_rom_deinterleave_2(machine, "gfx1");
+	konami_rom_deinterleave_2(machine, "gfx2");
 }
 
 

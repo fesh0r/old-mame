@@ -44,7 +44,7 @@ WRITE8_HANDLER( djboy_videoram_w )
 
 VIDEO_START( djboy )
 {
-	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,16,16,64,32);
+	background = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,16,16,64,32);
 	pandora_start(machine,0,0,0);
 }
 
@@ -56,7 +56,7 @@ WRITE8_HANDLER( djboy_paletteram_w )
 	offset &= ~1;
 	val = (paletteram[offset]<<8) | paletteram[offset+1];
 
-	palette_set_color_rgb(machine,offset/2,pal4bit(val >> 8),pal4bit(val >> 4),pal4bit(val >> 0));
+	palette_set_color_rgb(space->machine,offset/2,pal4bit(val >> 8),pal4bit(val >> 4),pal4bit(val >> 0));
 }
 
 VIDEO_UPDATE( djboy )

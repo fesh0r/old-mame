@@ -34,8 +34,8 @@ UINT32 *generic_nvram32;
 /* memory card status */
 static int memcard_inserted;
 
-/* interrupt status */
-static UINT8 interrupt_enable[MAX_CPU];
+/* interrupt status for up to 8 CPUs */
+static UINT8 interrupt_enable[8];
 
 
 
@@ -71,9 +71,9 @@ void generic_machine_init(running_machine *machine)
 	}
 
 	/* register coin save state */
-	state_save_register_item_array("coin", 0, coin_count);
-	state_save_register_item_array("coin", 0, coinlockedout);
-	state_save_register_item_array("coin", 0, lastcoin);
+	state_save_register_item_array(machine, "coin", NULL, 0, coin_count);
+	state_save_register_item_array(machine, "coin", NULL, 0, coinlockedout);
+	state_save_register_item_array(machine, "coin", NULL, 0, lastcoin);
 
 	/* reset NVRAM size and pointers */
 	generic_nvram_size = 0;
@@ -86,7 +86,7 @@ void generic_machine_init(running_machine *machine)
 
 	/* register a reset callback and save state for interrupt enable */
 	add_reset_callback(machine, interrupt_reset);
-	state_save_register_item_array("cpu", 0, interrupt_enable);
+	state_save_register_item_array(machine, "cpu", NULL, 0, interrupt_enable);
 
 	/* register for configuration */
 	config_register(machine, "counters", counters_load, counters_save);
@@ -94,7 +94,7 @@ void generic_machine_init(running_machine *machine)
 	/* for memory cards, request save state and an exit callback */
 	if (machine->config->memcard_handler != NULL)
 	{
-		state_save_register_global(memcard_inserted);
+		state_save_register_global(machine, memcard_inserted);
 		add_exit_callback(machine, memcard_eject);
 	}
 }
@@ -271,7 +271,7 @@ mame_file *nvram_fopen(running_machine *machine, UINT32 openflags)
 void nvram_load(running_machine *machine)
 {
 	mame_file *nvram_file = NULL;
-	device_config *device;
+	const device_config *device;
 
 	if (machine->config->nvram_handler != NULL)
 	{
@@ -279,23 +279,19 @@ void nvram_load(running_machine *machine)
 		(*machine->config->nvram_handler)(machine, nvram_file, 0);
 	}
 
-	for (device = (device_config *)machine->config->devicelist; device != NULL; device = device->next)
+	for (device = machine->config->devicelist; device != NULL; device = device->next)
 	{
-		if (device->nvram != NULL)
+		device_nvram_func nvram = (device_nvram_func)device_get_info_fct(device, DEVINFO_FCT_NVRAM);
+		if (nvram != NULL)
 		{
 			if (nvram_file == NULL)
-			{
 				nvram_file = nvram_fopen(machine, OPEN_FLAG_READ);
-			}
-
-			(*device->nvram)(device, nvram_file, 0);
+			(*nvram)(device, nvram_file, 0);
 		}
 	}
 
 	if (nvram_file != NULL)
-	{
 		mame_fclose(nvram_file);
-	}
 }
 
 
@@ -306,7 +302,7 @@ void nvram_load(running_machine *machine)
 void nvram_save(running_machine *machine)
 {
 	mame_file *nvram_file = NULL;
-	device_config *device;
+	const device_config *device;
 
 	if (machine->config->nvram_handler != NULL)
 	{
@@ -314,23 +310,19 @@ void nvram_save(running_machine *machine)
 		(*machine->config->nvram_handler)(machine, nvram_file, 1);
 	}
 
-	for (device = (device_config *)machine->config->devicelist; device != NULL; device = device->next)
+	for (device = machine->config->devicelist; device != NULL; device = device->next)
 	{
-		if (device->nvram != NULL)
+		device_nvram_func nvram = (device_nvram_func)device_get_info_fct(device, DEVINFO_FCT_NVRAM);
+		if (nvram != NULL)
 		{
 			if (nvram_file == NULL)
-			{
 				nvram_file = nvram_fopen(machine, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-			}
-
-			(*device->nvram)(device, nvram_file, 1);
+			(*nvram)(device, nvram_file, 1);
 		}
 	}
 
 	if (nvram_file != NULL)
-	{
 		mame_fclose(nvram_file);
-	}
 }
 
 
@@ -566,7 +558,7 @@ static void interrupt_reset(running_machine *machine)
 	int cpunum;
 
 	/* on a reset, enable all interrupts */
-	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+	for (cpunum = 0; cpunum < ARRAY_LENGTH(machine->cpu); cpunum++)
 		interrupt_enable[cpunum] = 1;
 }
 
@@ -578,14 +570,56 @@ static void interrupt_reset(running_machine *machine)
 
 static TIMER_CALLBACK( clear_all_lines )
 {
-	int cpunum = param;
-	int inputcount = cpunum_input_lines(cpunum);
+	const device_config *device = ptr;
+	int inputcount = cpu_get_input_lines(device);
 	int line;
 
 	/* clear NMI and all inputs */
-	cpunum_set_input_line(machine, cpunum, INPUT_LINE_NMI, CLEAR_LINE);
+	cpu_set_input_line(device, INPUT_LINE_NMI, CLEAR_LINE);
 	for (line = 0; line < inputcount; line++)
-		cpunum_set_input_line(machine, cpunum, line, CLEAR_LINE);
+		cpu_set_input_line(device, line, CLEAR_LINE);
+}
+
+
+/*-------------------------------------------------
+    irq_pulse_clear - clear a "pulsed" IRQ line
+-------------------------------------------------*/
+
+static TIMER_CALLBACK( irq_pulse_clear )
+{
+	const device_config *device = ptr;
+	int irqline = param;
+	cpu_set_input_line(device, irqline, CLEAR_LINE);
+}
+
+
+/*-------------------------------------------------
+    generic_pulse_irq_line - "pulse" an IRQ line by
+    asserting it and then clearing it 1 cycle
+    later
+-------------------------------------------------*/
+
+void generic_pulse_irq_line(const device_config *device, int irqline)
+{
+	int multiplier = cpu_get_clock_multiplier(device);
+	int clocks = (cpu_get_min_cycles(device) * cpu_get_clock_divider(device) + multiplier - 1) / multiplier;
+	assert(irqline != INPUT_LINE_NMI && irqline != INPUT_LINE_RESET);
+	cpu_set_input_line(device, irqline, ASSERT_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device, MAX(clocks, 1)), (void *)device, irqline, irq_pulse_clear);
+}
+
+
+/*-------------------------------------------------
+    generic_pulse_irq_line_and_vector - "pulse" an
+    IRQ line by asserting it and then clearing it
+    1 cycle later, specifying a vector
+-------------------------------------------------*/
+
+void generic_pulse_irq_line_and_vector(const device_config *device, int irqline, int vector)
+{
+	assert(irqline != INPUT_LINE_NMI && irqline != INPUT_LINE_RESET);
+	cpu_set_input_line_and_vector(device, irqline, ASSERT_LINE, vector);
+	timer_set(device->machine, cpu_clocks_to_attotime(device, 1), (void *)device, irqline, irq_pulse_clear);
 }
 
 
@@ -594,16 +628,18 @@ static TIMER_CALLBACK( clear_all_lines )
     disable value for global interrupts
 -------------------------------------------------*/
 
-void cpu_interrupt_enable(int cpunum, int enabled)
+void cpu_interrupt_enable(const device_config *device, int enabled)
 {
-	assert_always(cpunum >= 0 && cpunum < cpu_gettotalcpu(), "cpu_interrupt_enable() called for invalid cpu num!");
+	int cpunum = cpu_get_index(device);
+
+	assert_always(device != NULL, "cpu_interrupt_enable() called for invalid cpu!");
 
 	/* set the new state */
 	interrupt_enable[cpunum] = enabled;
 
 	/* make sure there are no queued interrupts */
 	if (enabled == 0)
-		timer_call_after_resynch(NULL, cpunum, clear_all_lines);
+		timer_call_after_resynch(device->machine, (void *)device, 0, clear_all_lines);
 }
 
 
@@ -614,9 +650,7 @@ void cpu_interrupt_enable(int cpunum, int enabled)
 
 WRITE8_HANDLER( interrupt_enable_w )
 {
-	int activecpu = cpu_getactivecpu();
-	assert_always(activecpu >= 0, "interrupt_enable_w() called with no active cpu!");
-	cpu_interrupt_enable(activecpu, data);
+	cpu_interrupt_enable(space->cpu, data);
 }
 
 
@@ -627,9 +661,7 @@ WRITE8_HANDLER( interrupt_enable_w )
 
 READ8_HANDLER( interrupt_enable_r )
 {
-	int activecpu = cpu_getactivecpu();
-	assert_always(activecpu >= 0, "interrupt_enable_r() called with no active cpu!");
-	return interrupt_enable[activecpu];
+	return interrupt_enable[cpu_get_index(space->cpu)];
 }
 
 
@@ -643,10 +675,10 @@ READ8_HANDLER( interrupt_enable_r )
     specified state on the active CPU
 -------------------------------------------------*/
 
-INLINE void irqn_line_set(running_machine *machine, int cpunum, int line, int state)
+INLINE void irqn_line_set(const device_config *device, int line, int state)
 {
-	if (interrupt_enable[cpunum])
-		cpunum_set_input_line(machine, cpunum, line, state);
+	if (interrupt_enable[cpu_get_index(device)])
+		cpu_set_input_line(device, line, state);
 }
 
 
@@ -654,45 +686,45 @@ INLINE void irqn_line_set(running_machine *machine, int cpunum, int line, int st
     NMI callbacks
 -------------------------------------------------*/
 
-INTERRUPT_GEN( nmi_line_pulse )		{ irqn_line_set(machine, cpunum, INPUT_LINE_NMI, PULSE_LINE); }
-INTERRUPT_GEN( nmi_line_assert )	{ irqn_line_set(machine, cpunum, INPUT_LINE_NMI, ASSERT_LINE); }
+INTERRUPT_GEN( nmi_line_pulse )		{ irqn_line_set(device, INPUT_LINE_NMI, PULSE_LINE); }
+INTERRUPT_GEN( nmi_line_assert )	{ irqn_line_set(device, INPUT_LINE_NMI, ASSERT_LINE); }
 
 
 /*-------------------------------------------------
     IRQn callbacks
 -------------------------------------------------*/
 
-INTERRUPT_GEN( irq0_line_hold )		{ irqn_line_set(machine, cpunum, 0, HOLD_LINE); }
-INTERRUPT_GEN( irq0_line_pulse )	{ irqn_line_set(machine, cpunum, 0, PULSE_LINE); }
-INTERRUPT_GEN( irq0_line_assert )	{ irqn_line_set(machine, cpunum, 0, ASSERT_LINE); }
+INTERRUPT_GEN( irq0_line_hold )		{ irqn_line_set(device, 0, HOLD_LINE); }
+INTERRUPT_GEN( irq0_line_pulse )	{ if (interrupt_enable[cpu_get_index(device)]) generic_pulse_irq_line(device, 0); }
+INTERRUPT_GEN( irq0_line_assert )	{ irqn_line_set(device, 0, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq1_line_hold )		{ irqn_line_set(machine, cpunum, 1, HOLD_LINE); }
-INTERRUPT_GEN( irq1_line_pulse )	{ irqn_line_set(machine, cpunum, 1, PULSE_LINE); }
-INTERRUPT_GEN( irq1_line_assert )	{ irqn_line_set(machine, cpunum, 1, ASSERT_LINE); }
+INTERRUPT_GEN( irq1_line_hold )		{ irqn_line_set(device, 1, HOLD_LINE); }
+INTERRUPT_GEN( irq1_line_pulse )	{ if (interrupt_enable[cpu_get_index(device)]) generic_pulse_irq_line(device, 1); }
+INTERRUPT_GEN( irq1_line_assert )	{ irqn_line_set(device, 1, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq2_line_hold )		{ irqn_line_set(machine, cpunum, 2, HOLD_LINE); }
-INTERRUPT_GEN( irq2_line_pulse )	{ irqn_line_set(machine, cpunum, 2, PULSE_LINE); }
-INTERRUPT_GEN( irq2_line_assert )	{ irqn_line_set(machine, cpunum, 2, ASSERT_LINE); }
+INTERRUPT_GEN( irq2_line_hold )		{ irqn_line_set(device, 2, HOLD_LINE); }
+INTERRUPT_GEN( irq2_line_pulse )	{ if (interrupt_enable[cpu_get_index(device)]) generic_pulse_irq_line(device, 2); }
+INTERRUPT_GEN( irq2_line_assert )	{ irqn_line_set(device, 2, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq3_line_hold )		{ irqn_line_set(machine, cpunum, 3, HOLD_LINE); }
-INTERRUPT_GEN( irq3_line_pulse )	{ irqn_line_set(machine, cpunum, 3, PULSE_LINE); }
-INTERRUPT_GEN( irq3_line_assert )	{ irqn_line_set(machine, cpunum, 3, ASSERT_LINE); }
+INTERRUPT_GEN( irq3_line_hold )		{ irqn_line_set(device, 3, HOLD_LINE); }
+INTERRUPT_GEN( irq3_line_pulse )	{ if (interrupt_enable[cpu_get_index(device)]) generic_pulse_irq_line(device, 3); }
+INTERRUPT_GEN( irq3_line_assert )	{ irqn_line_set(device, 3, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq4_line_hold )		{ irqn_line_set(machine, cpunum, 4, HOLD_LINE); }
-INTERRUPT_GEN( irq4_line_pulse )	{ irqn_line_set(machine, cpunum, 4, PULSE_LINE); }
-INTERRUPT_GEN( irq4_line_assert )	{ irqn_line_set(machine, cpunum, 4, ASSERT_LINE); }
+INTERRUPT_GEN( irq4_line_hold )		{ irqn_line_set(device, 4, HOLD_LINE); }
+INTERRUPT_GEN( irq4_line_pulse )	{ if (interrupt_enable[cpu_get_index(device)]) generic_pulse_irq_line(device, 4); }
+INTERRUPT_GEN( irq4_line_assert )	{ irqn_line_set(device, 4, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq5_line_hold )		{ irqn_line_set(machine, cpunum, 5, HOLD_LINE); }
-INTERRUPT_GEN( irq5_line_pulse )	{ irqn_line_set(machine, cpunum, 5, PULSE_LINE); }
-INTERRUPT_GEN( irq5_line_assert )	{ irqn_line_set(machine, cpunum, 5, ASSERT_LINE); }
+INTERRUPT_GEN( irq5_line_hold )		{ irqn_line_set(device, 5, HOLD_LINE); }
+INTERRUPT_GEN( irq5_line_pulse )	{ if (interrupt_enable[cpu_get_index(device)]) generic_pulse_irq_line(device, 5); }
+INTERRUPT_GEN( irq5_line_assert )	{ irqn_line_set(device, 5, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq6_line_hold )		{ irqn_line_set(machine, cpunum, 6, HOLD_LINE); }
-INTERRUPT_GEN( irq6_line_pulse )	{ irqn_line_set(machine, cpunum, 6, PULSE_LINE); }
-INTERRUPT_GEN( irq6_line_assert )	{ irqn_line_set(machine, cpunum, 6, ASSERT_LINE); }
+INTERRUPT_GEN( irq6_line_hold )		{ irqn_line_set(device, 6, HOLD_LINE); }
+INTERRUPT_GEN( irq6_line_pulse )	{ if (interrupt_enable[cpu_get_index(device)]) generic_pulse_irq_line(device, 6); }
+INTERRUPT_GEN( irq6_line_assert )	{ irqn_line_set(device, 6, ASSERT_LINE); }
 
-INTERRUPT_GEN( irq7_line_hold )		{ irqn_line_set(machine, cpunum, 7, HOLD_LINE); }
-INTERRUPT_GEN( irq7_line_pulse )	{ irqn_line_set(machine, cpunum, 7, PULSE_LINE); }
-INTERRUPT_GEN( irq7_line_assert )	{ irqn_line_set(machine, cpunum, 7, ASSERT_LINE); }
+INTERRUPT_GEN( irq7_line_hold )		{ irqn_line_set(device, 7, HOLD_LINE); }
+INTERRUPT_GEN( irq7_line_pulse )	{ if (interrupt_enable[cpu_get_index(device)]) generic_pulse_irq_line(device, 7); }
+INTERRUPT_GEN( irq7_line_assert )	{ irqn_line_set(device, 7, ASSERT_LINE); }
 
 
 
@@ -704,24 +736,24 @@ INTERRUPT_GEN( irq7_line_assert )	{ irqn_line_set(machine, cpunum, 7, ASSERT_LIN
     8-bit reset read/write handlers
 -------------------------------------------------*/
 
-WRITE8_HANDLER( watchdog_reset_w ) { watchdog_reset(machine); }
-READ8_HANDLER( watchdog_reset_r ) { watchdog_reset(machine); return 0xff; }
+WRITE8_HANDLER( watchdog_reset_w ) { watchdog_reset(space->machine); }
+READ8_HANDLER( watchdog_reset_r ) { watchdog_reset(space->machine); return 0xff; }
 
 
 /*-------------------------------------------------
     16-bit reset read/write handlers
 -------------------------------------------------*/
 
-WRITE16_HANDLER( watchdog_reset16_w ) {	watchdog_reset(machine); }
-READ16_HANDLER( watchdog_reset16_r ) { watchdog_reset(machine); return 0xffff; }
+WRITE16_HANDLER( watchdog_reset16_w ) {	watchdog_reset(space->machine); }
+READ16_HANDLER( watchdog_reset16_r ) { watchdog_reset(space->machine); return 0xffff; }
 
 
 /*-------------------------------------------------
     32-bit reset read/write handlers
 -------------------------------------------------*/
 
-WRITE32_HANDLER( watchdog_reset32_w ) {	watchdog_reset(machine); }
-READ32_HANDLER( watchdog_reset32_r ) { watchdog_reset(machine); return 0xffffffff; }
+WRITE32_HANDLER( watchdog_reset32_w ) {	watchdog_reset(space->machine); }
+READ32_HANDLER( watchdog_reset32_r ) { watchdog_reset(space->machine); return 0xffffffff; }
 
 
 
@@ -745,114 +777,114 @@ static input_port_value input_port_read_indexed(running_machine *machine, int po
     8-bit read handlers
 -------------------------------------------------*/
 
-READ8_HANDLER( input_port_0_r ) { return input_port_read_indexed(machine, 0); }
-READ8_HANDLER( input_port_1_r ) { return input_port_read_indexed(machine, 1); }
-READ8_HANDLER( input_port_2_r ) { return input_port_read_indexed(machine, 2); }
-READ8_HANDLER( input_port_3_r ) { return input_port_read_indexed(machine, 3); }
-READ8_HANDLER( input_port_4_r ) { return input_port_read_indexed(machine, 4); }
-READ8_HANDLER( input_port_5_r ) { return input_port_read_indexed(machine, 5); }
-READ8_HANDLER( input_port_6_r ) { return input_port_read_indexed(machine, 6); }
-READ8_HANDLER( input_port_7_r ) { return input_port_read_indexed(machine, 7); }
-READ8_HANDLER( input_port_8_r ) { return input_port_read_indexed(machine, 8); }
-READ8_HANDLER( input_port_9_r ) { return input_port_read_indexed(machine, 9); }
-READ8_HANDLER( input_port_10_r ) { return input_port_read_indexed(machine, 10); }
-READ8_HANDLER( input_port_11_r ) { return input_port_read_indexed(machine, 11); }
-READ8_HANDLER( input_port_12_r ) { return input_port_read_indexed(machine, 12); }
-READ8_HANDLER( input_port_13_r ) { return input_port_read_indexed(machine, 13); }
-READ8_HANDLER( input_port_14_r ) { return input_port_read_indexed(machine, 14); }
-READ8_HANDLER( input_port_15_r ) { return input_port_read_indexed(machine, 15); }
-READ8_HANDLER( input_port_16_r ) { return input_port_read_indexed(machine, 16); }
-READ8_HANDLER( input_port_17_r ) { return input_port_read_indexed(machine, 17); }
-READ8_HANDLER( input_port_18_r ) { return input_port_read_indexed(machine, 18); }
-READ8_HANDLER( input_port_19_r ) { return input_port_read_indexed(machine, 19); }
-READ8_HANDLER( input_port_20_r ) { return input_port_read_indexed(machine, 20); }
-READ8_HANDLER( input_port_21_r ) { return input_port_read_indexed(machine, 21); }
-READ8_HANDLER( input_port_22_r ) { return input_port_read_indexed(machine, 22); }
-READ8_HANDLER( input_port_23_r ) { return input_port_read_indexed(machine, 23); }
-READ8_HANDLER( input_port_24_r ) { return input_port_read_indexed(machine, 24); }
-READ8_HANDLER( input_port_25_r ) { return input_port_read_indexed(machine, 25); }
-READ8_HANDLER( input_port_26_r ) { return input_port_read_indexed(machine, 26); }
-READ8_HANDLER( input_port_27_r ) { return input_port_read_indexed(machine, 27); }
-READ8_HANDLER( input_port_28_r ) { return input_port_read_indexed(machine, 28); }
-READ8_HANDLER( input_port_29_r ) { return input_port_read_indexed(machine, 29); }
-READ8_HANDLER( input_port_30_r ) { return input_port_read_indexed(machine, 30); }
-READ8_HANDLER( input_port_31_r ) { return input_port_read_indexed(machine, 31); }
+READ8_HANDLER( input_port_0_r ) { return input_port_read_indexed(space->machine, 0); }
+READ8_HANDLER( input_port_1_r ) { return input_port_read_indexed(space->machine, 1); }
+READ8_HANDLER( input_port_2_r ) { return input_port_read_indexed(space->machine, 2); }
+READ8_HANDLER( input_port_3_r ) { return input_port_read_indexed(space->machine, 3); }
+READ8_HANDLER( input_port_4_r ) { return input_port_read_indexed(space->machine, 4); }
+READ8_HANDLER( input_port_5_r ) { return input_port_read_indexed(space->machine, 5); }
+READ8_HANDLER( input_port_6_r ) { return input_port_read_indexed(space->machine, 6); }
+READ8_HANDLER( input_port_7_r ) { return input_port_read_indexed(space->machine, 7); }
+READ8_HANDLER( input_port_8_r ) { return input_port_read_indexed(space->machine, 8); }
+READ8_HANDLER( input_port_9_r ) { return input_port_read_indexed(space->machine, 9); }
+READ8_HANDLER( input_port_10_r ) { return input_port_read_indexed(space->machine, 10); }
+READ8_HANDLER( input_port_11_r ) { return input_port_read_indexed(space->machine, 11); }
+READ8_HANDLER( input_port_12_r ) { return input_port_read_indexed(space->machine, 12); }
+READ8_HANDLER( input_port_13_r ) { return input_port_read_indexed(space->machine, 13); }
+READ8_HANDLER( input_port_14_r ) { return input_port_read_indexed(space->machine, 14); }
+READ8_HANDLER( input_port_15_r ) { return input_port_read_indexed(space->machine, 15); }
+READ8_HANDLER( input_port_16_r ) { return input_port_read_indexed(space->machine, 16); }
+READ8_HANDLER( input_port_17_r ) { return input_port_read_indexed(space->machine, 17); }
+READ8_HANDLER( input_port_18_r ) { return input_port_read_indexed(space->machine, 18); }
+READ8_HANDLER( input_port_19_r ) { return input_port_read_indexed(space->machine, 19); }
+READ8_HANDLER( input_port_20_r ) { return input_port_read_indexed(space->machine, 20); }
+READ8_HANDLER( input_port_21_r ) { return input_port_read_indexed(space->machine, 21); }
+READ8_HANDLER( input_port_22_r ) { return input_port_read_indexed(space->machine, 22); }
+READ8_HANDLER( input_port_23_r ) { return input_port_read_indexed(space->machine, 23); }
+READ8_HANDLER( input_port_24_r ) { return input_port_read_indexed(space->machine, 24); }
+READ8_HANDLER( input_port_25_r ) { return input_port_read_indexed(space->machine, 25); }
+READ8_HANDLER( input_port_26_r ) { return input_port_read_indexed(space->machine, 26); }
+READ8_HANDLER( input_port_27_r ) { return input_port_read_indexed(space->machine, 27); }
+READ8_HANDLER( input_port_28_r ) { return input_port_read_indexed(space->machine, 28); }
+READ8_HANDLER( input_port_29_r ) { return input_port_read_indexed(space->machine, 29); }
+READ8_HANDLER( input_port_30_r ) { return input_port_read_indexed(space->machine, 30); }
+READ8_HANDLER( input_port_31_r ) { return input_port_read_indexed(space->machine, 31); }
 
 
 /*-------------------------------------------------
     16-bit read handlers
 -------------------------------------------------*/
 
-READ16_HANDLER( input_port_0_word_r ) { return input_port_read_indexed(machine, 0); }
-READ16_HANDLER( input_port_1_word_r ) { return input_port_read_indexed(machine, 1); }
-READ16_HANDLER( input_port_2_word_r ) { return input_port_read_indexed(machine, 2); }
-READ16_HANDLER( input_port_3_word_r ) { return input_port_read_indexed(machine, 3); }
-READ16_HANDLER( input_port_4_word_r ) { return input_port_read_indexed(machine, 4); }
-READ16_HANDLER( input_port_5_word_r ) { return input_port_read_indexed(machine, 5); }
-READ16_HANDLER( input_port_6_word_r ) { return input_port_read_indexed(machine, 6); }
-READ16_HANDLER( input_port_7_word_r ) { return input_port_read_indexed(machine, 7); }
-READ16_HANDLER( input_port_8_word_r ) { return input_port_read_indexed(machine, 8); }
-READ16_HANDLER( input_port_9_word_r ) { return input_port_read_indexed(machine, 9); }
-READ16_HANDLER( input_port_10_word_r ) { return input_port_read_indexed(machine, 10); }
-READ16_HANDLER( input_port_11_word_r ) { return input_port_read_indexed(machine, 11); }
-READ16_HANDLER( input_port_12_word_r ) { return input_port_read_indexed(machine, 12); }
-READ16_HANDLER( input_port_13_word_r ) { return input_port_read_indexed(machine, 13); }
-READ16_HANDLER( input_port_14_word_r ) { return input_port_read_indexed(machine, 14); }
-READ16_HANDLER( input_port_15_word_r ) { return input_port_read_indexed(machine, 15); }
-READ16_HANDLER( input_port_16_word_r ) { return input_port_read_indexed(machine, 16); }
-READ16_HANDLER( input_port_17_word_r ) { return input_port_read_indexed(machine, 17); }
-READ16_HANDLER( input_port_18_word_r ) { return input_port_read_indexed(machine, 18); }
-READ16_HANDLER( input_port_19_word_r ) { return input_port_read_indexed(machine, 19); }
-READ16_HANDLER( input_port_20_word_r ) { return input_port_read_indexed(machine, 20); }
-READ16_HANDLER( input_port_21_word_r ) { return input_port_read_indexed(machine, 21); }
-READ16_HANDLER( input_port_22_word_r ) { return input_port_read_indexed(machine, 22); }
-READ16_HANDLER( input_port_23_word_r ) { return input_port_read_indexed(machine, 23); }
-READ16_HANDLER( input_port_24_word_r ) { return input_port_read_indexed(machine, 24); }
-READ16_HANDLER( input_port_25_word_r ) { return input_port_read_indexed(machine, 25); }
-READ16_HANDLER( input_port_26_word_r ) { return input_port_read_indexed(machine, 26); }
-READ16_HANDLER( input_port_27_word_r ) { return input_port_read_indexed(machine, 27); }
-READ16_HANDLER( input_port_28_word_r ) { return input_port_read_indexed(machine, 28); }
-READ16_HANDLER( input_port_29_word_r ) { return input_port_read_indexed(machine, 29); }
-READ16_HANDLER( input_port_30_word_r ) { return input_port_read_indexed(machine, 30); }
-READ16_HANDLER( input_port_31_word_r ) { return input_port_read_indexed(machine, 31); }
+READ16_HANDLER( input_port_0_word_r ) { return input_port_read_indexed(space->machine, 0); }
+READ16_HANDLER( input_port_1_word_r ) { return input_port_read_indexed(space->machine, 1); }
+READ16_HANDLER( input_port_2_word_r ) { return input_port_read_indexed(space->machine, 2); }
+READ16_HANDLER( input_port_3_word_r ) { return input_port_read_indexed(space->machine, 3); }
+READ16_HANDLER( input_port_4_word_r ) { return input_port_read_indexed(space->machine, 4); }
+READ16_HANDLER( input_port_5_word_r ) { return input_port_read_indexed(space->machine, 5); }
+READ16_HANDLER( input_port_6_word_r ) { return input_port_read_indexed(space->machine, 6); }
+READ16_HANDLER( input_port_7_word_r ) { return input_port_read_indexed(space->machine, 7); }
+READ16_HANDLER( input_port_8_word_r ) { return input_port_read_indexed(space->machine, 8); }
+READ16_HANDLER( input_port_9_word_r ) { return input_port_read_indexed(space->machine, 9); }
+READ16_HANDLER( input_port_10_word_r ) { return input_port_read_indexed(space->machine, 10); }
+READ16_HANDLER( input_port_11_word_r ) { return input_port_read_indexed(space->machine, 11); }
+READ16_HANDLER( input_port_12_word_r ) { return input_port_read_indexed(space->machine, 12); }
+READ16_HANDLER( input_port_13_word_r ) { return input_port_read_indexed(space->machine, 13); }
+READ16_HANDLER( input_port_14_word_r ) { return input_port_read_indexed(space->machine, 14); }
+READ16_HANDLER( input_port_15_word_r ) { return input_port_read_indexed(space->machine, 15); }
+READ16_HANDLER( input_port_16_word_r ) { return input_port_read_indexed(space->machine, 16); }
+READ16_HANDLER( input_port_17_word_r ) { return input_port_read_indexed(space->machine, 17); }
+READ16_HANDLER( input_port_18_word_r ) { return input_port_read_indexed(space->machine, 18); }
+READ16_HANDLER( input_port_19_word_r ) { return input_port_read_indexed(space->machine, 19); }
+READ16_HANDLER( input_port_20_word_r ) { return input_port_read_indexed(space->machine, 20); }
+READ16_HANDLER( input_port_21_word_r ) { return input_port_read_indexed(space->machine, 21); }
+READ16_HANDLER( input_port_22_word_r ) { return input_port_read_indexed(space->machine, 22); }
+READ16_HANDLER( input_port_23_word_r ) { return input_port_read_indexed(space->machine, 23); }
+READ16_HANDLER( input_port_24_word_r ) { return input_port_read_indexed(space->machine, 24); }
+READ16_HANDLER( input_port_25_word_r ) { return input_port_read_indexed(space->machine, 25); }
+READ16_HANDLER( input_port_26_word_r ) { return input_port_read_indexed(space->machine, 26); }
+READ16_HANDLER( input_port_27_word_r ) { return input_port_read_indexed(space->machine, 27); }
+READ16_HANDLER( input_port_28_word_r ) { return input_port_read_indexed(space->machine, 28); }
+READ16_HANDLER( input_port_29_word_r ) { return input_port_read_indexed(space->machine, 29); }
+READ16_HANDLER( input_port_30_word_r ) { return input_port_read_indexed(space->machine, 30); }
+READ16_HANDLER( input_port_31_word_r ) { return input_port_read_indexed(space->machine, 31); }
 
 
 /*-------------------------------------------------
     32-bit read handlers
 -------------------------------------------------*/
 
-READ32_HANDLER( input_port_0_dword_r ) { return input_port_read_indexed(machine, 0); }
-READ32_HANDLER( input_port_1_dword_r ) { return input_port_read_indexed(machine, 1); }
-READ32_HANDLER( input_port_2_dword_r ) { return input_port_read_indexed(machine, 2); }
-READ32_HANDLER( input_port_3_dword_r ) { return input_port_read_indexed(machine, 3); }
-READ32_HANDLER( input_port_4_dword_r ) { return input_port_read_indexed(machine, 4); }
-READ32_HANDLER( input_port_5_dword_r ) { return input_port_read_indexed(machine, 5); }
-READ32_HANDLER( input_port_6_dword_r ) { return input_port_read_indexed(machine, 6); }
-READ32_HANDLER( input_port_7_dword_r ) { return input_port_read_indexed(machine, 7); }
-READ32_HANDLER( input_port_8_dword_r ) { return input_port_read_indexed(machine, 8); }
-READ32_HANDLER( input_port_9_dword_r ) { return input_port_read_indexed(machine, 9); }
-READ32_HANDLER( input_port_10_dword_r ) { return input_port_read_indexed(machine, 10); }
-READ32_HANDLER( input_port_11_dword_r ) { return input_port_read_indexed(machine, 11); }
-READ32_HANDLER( input_port_12_dword_r ) { return input_port_read_indexed(machine, 12); }
-READ32_HANDLER( input_port_13_dword_r ) { return input_port_read_indexed(machine, 13); }
-READ32_HANDLER( input_port_14_dword_r ) { return input_port_read_indexed(machine, 14); }
-READ32_HANDLER( input_port_15_dword_r ) { return input_port_read_indexed(machine, 15); }
-READ32_HANDLER( input_port_16_dword_r ) { return input_port_read_indexed(machine, 16); }
-READ32_HANDLER( input_port_17_dword_r ) { return input_port_read_indexed(machine, 17); }
-READ32_HANDLER( input_port_18_dword_r ) { return input_port_read_indexed(machine, 18); }
-READ32_HANDLER( input_port_19_dword_r ) { return input_port_read_indexed(machine, 19); }
-READ32_HANDLER( input_port_20_dword_r ) { return input_port_read_indexed(machine, 20); }
-READ32_HANDLER( input_port_21_dword_r ) { return input_port_read_indexed(machine, 21); }
-READ32_HANDLER( input_port_22_dword_r ) { return input_port_read_indexed(machine, 22); }
-READ32_HANDLER( input_port_23_dword_r ) { return input_port_read_indexed(machine, 23); }
-READ32_HANDLER( input_port_24_dword_r ) { return input_port_read_indexed(machine, 24); }
-READ32_HANDLER( input_port_25_dword_r ) { return input_port_read_indexed(machine, 25); }
-READ32_HANDLER( input_port_26_dword_r ) { return input_port_read_indexed(machine, 26); }
-READ32_HANDLER( input_port_27_dword_r ) { return input_port_read_indexed(machine, 27); }
-READ32_HANDLER( input_port_28_dword_r ) { return input_port_read_indexed(machine, 28); }
-READ32_HANDLER( input_port_29_dword_r ) { return input_port_read_indexed(machine, 29); }
-READ32_HANDLER( input_port_30_dword_r ) { return input_port_read_indexed(machine, 30); }
-READ32_HANDLER( input_port_31_dword_r ) { return input_port_read_indexed(machine, 31); }
+READ32_HANDLER( input_port_0_dword_r ) { return input_port_read_indexed(space->machine, 0); }
+READ32_HANDLER( input_port_1_dword_r ) { return input_port_read_indexed(space->machine, 1); }
+READ32_HANDLER( input_port_2_dword_r ) { return input_port_read_indexed(space->machine, 2); }
+READ32_HANDLER( input_port_3_dword_r ) { return input_port_read_indexed(space->machine, 3); }
+READ32_HANDLER( input_port_4_dword_r ) { return input_port_read_indexed(space->machine, 4); }
+READ32_HANDLER( input_port_5_dword_r ) { return input_port_read_indexed(space->machine, 5); }
+READ32_HANDLER( input_port_6_dword_r ) { return input_port_read_indexed(space->machine, 6); }
+READ32_HANDLER( input_port_7_dword_r ) { return input_port_read_indexed(space->machine, 7); }
+READ32_HANDLER( input_port_8_dword_r ) { return input_port_read_indexed(space->machine, 8); }
+READ32_HANDLER( input_port_9_dword_r ) { return input_port_read_indexed(space->machine, 9); }
+READ32_HANDLER( input_port_10_dword_r ) { return input_port_read_indexed(space->machine, 10); }
+READ32_HANDLER( input_port_11_dword_r ) { return input_port_read_indexed(space->machine, 11); }
+READ32_HANDLER( input_port_12_dword_r ) { return input_port_read_indexed(space->machine, 12); }
+READ32_HANDLER( input_port_13_dword_r ) { return input_port_read_indexed(space->machine, 13); }
+READ32_HANDLER( input_port_14_dword_r ) { return input_port_read_indexed(space->machine, 14); }
+READ32_HANDLER( input_port_15_dword_r ) { return input_port_read_indexed(space->machine, 15); }
+READ32_HANDLER( input_port_16_dword_r ) { return input_port_read_indexed(space->machine, 16); }
+READ32_HANDLER( input_port_17_dword_r ) { return input_port_read_indexed(space->machine, 17); }
+READ32_HANDLER( input_port_18_dword_r ) { return input_port_read_indexed(space->machine, 18); }
+READ32_HANDLER( input_port_19_dword_r ) { return input_port_read_indexed(space->machine, 19); }
+READ32_HANDLER( input_port_20_dword_r ) { return input_port_read_indexed(space->machine, 20); }
+READ32_HANDLER( input_port_21_dword_r ) { return input_port_read_indexed(space->machine, 21); }
+READ32_HANDLER( input_port_22_dword_r ) { return input_port_read_indexed(space->machine, 22); }
+READ32_HANDLER( input_port_23_dword_r ) { return input_port_read_indexed(space->machine, 23); }
+READ32_HANDLER( input_port_24_dword_r ) { return input_port_read_indexed(space->machine, 24); }
+READ32_HANDLER( input_port_25_dword_r ) { return input_port_read_indexed(space->machine, 25); }
+READ32_HANDLER( input_port_26_dword_r ) { return input_port_read_indexed(space->machine, 26); }
+READ32_HANDLER( input_port_27_dword_r ) { return input_port_read_indexed(space->machine, 27); }
+READ32_HANDLER( input_port_28_dword_r ) { return input_port_read_indexed(space->machine, 28); }
+READ32_HANDLER( input_port_29_dword_r ) { return input_port_read_indexed(space->machine, 29); }
+READ32_HANDLER( input_port_30_dword_r ) { return input_port_read_indexed(space->machine, 30); }
+READ32_HANDLER( input_port_31_dword_r ) { return input_port_read_indexed(space->machine, 31); }
 
 /*-------------------------------------------------
     custom_port_read - act like input_port_read

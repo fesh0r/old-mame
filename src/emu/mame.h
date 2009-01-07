@@ -18,6 +18,7 @@
 #include "restrack.h"
 #include "options.h"
 #include "inptport.h"
+#include "cpuintrf.h"
 #include <stdarg.h>
 
 #ifdef MESS
@@ -125,12 +126,18 @@ typedef void (*output_callback_func)(void *param, const char *format, va_list ar
 
 /* forward type declarations */
 typedef struct _mame_private mame_private;
+typedef struct _cpuexec_private cpuexec_private;
+typedef struct _timer_private timer_private;
+typedef struct _state_private state_private;
+typedef struct _memory_private memory_private;
 typedef struct _palette_private palette_private;
 typedef struct _streams_private streams_private;
 typedef struct _devices_private devices_private;
 typedef struct _input_port_private input_port_private;
 typedef struct _ui_input_private ui_input_private;
 typedef struct _cheat_private cheat_private;
+typedef struct _debugcpu_private debugcpu_private;
+typedef struct _debugvw_private debugvw_private;
 
 
 /* description of the currently-running machine */
@@ -140,6 +147,9 @@ struct _running_machine
 	/* configuration data */
 	const machine_config *	config;				/* points to the constructed machine_config */
 	const input_port_config *portconfig;		/* points to a list of input port configurations */
+
+	/* CPU information */
+	const device_config *	cpu[8];				/* array of first 8 CPU devices */
 
 	/* game-related information */
 	const game_driver *		gamedrv;			/* points to the definition of the game machine */
@@ -163,12 +173,18 @@ struct _running_machine
 
 	/* internal core information */
 	mame_private *			mame_data;			/* internal data from mame.c */
+	cpuexec_private *		cpuexec_data;		/* internal data from cpuexec.c */
+	timer_private *			timer_data;			/* internal data from timer.c */
+	state_private *			state_data;			/* internal data from state.c */
+	memory_private *		memory_data;		/* internal data from memory.c */
 	palette_private *		palette_data;		/* internal data from palette.c */
 	streams_private *		streams_data;		/* internal data from streams.c */
 	devices_private *		devices_data;		/* internal data from devices.c */
 	input_port_private *	input_port_data;	/* internal data from inptport.c */
 	ui_input_private *		ui_input_data;		/* internal data from uiinput.c */
 	cheat_private *			cheat_data;			/* internal data from cheat.c */
+	debugcpu_private *		debugcpu_data;		/* internal data from debugcpu.c */
+	debugvw_private *		debugvw_data;		/* internal data from debugvw.c */
 #ifdef MESS
 	images_private *		images_data;		/* internal data from image.c */
 	ui_mess_private *		ui_mess_data;		/* internal data from uimess.c */
@@ -344,9 +360,6 @@ void mame_parse_ini_files(core_options *options, const game_driver *driver);
 
 /* standardized random number generator */
 UINT32 mame_rand(running_machine *machine);
-
-/* return the index of the given CPU, or -1 if not found */
-int mame_find_cpu_index(running_machine *machine, const char *tag);
 
 /* retrieve the base system time */
 void mame_get_base_datetime(running_machine *machine, mame_system_time *systime);

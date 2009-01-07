@@ -14,7 +14,6 @@
 #include "sndintrf.h"
 #include "streams.h"
 #include "cpuintrf.h"
-#include "deprecat.h"
 #include "aica.h"
 #include "aicadsp.h"
 
@@ -40,7 +39,7 @@
 #define LPCTL(slot)		((slot->udata.data[0x0]>>0x9)&0x0001)
 #define PCMS(slot)		((slot->udata.data[0x0]>>0x7)&0x0003)
 
-#define SA(slot)		(((slot->udata.data[0x0]&0x3F)<<16)|(slot->udata.data[0x4/2]))
+#define SA(slot)		(((slot->udata.data[0x0]&0x7F)<<16)|(slot->udata.data[0x4/2]))
 
 #define LSA(slot)		(slot->udata.data[0x8/2])
 
@@ -203,6 +202,7 @@ struct _AICA
 	int ARTABLE[64], DRTABLE[64];
 
 	struct _AICADSP DSP;
+	const device_config *device;
 };
 
 static const float SDLT[16]={-1000000.0,-42.0,-39.0,-36.0,-33.0,-30.0,-27.0,-24.0,-21.0,-18.0,-15.0,-12.0,-9.0,-6.0,-3.0,0.0};
@@ -231,7 +231,7 @@ static void ResetInterrupts(struct _AICA *AICA)
 {
 #if 0
 	UINT32 reset = AICA->udata.data[0xa4/2];
-	running_machine *machine = Machine;
+	running_machine *machine = AICA->device->machine;
 
 	if (reset & 0x40)
 		AICA->IntARMCB(machine, -AICA->IrqTimA);
@@ -244,7 +244,7 @@ static void CheckPendingIRQ(struct _AICA *AICA)
 {
 	UINT32 pend=AICA->udata.data[0xa0/2];
 	UINT32 en=AICA->udata.data[0x9c/2];
-	running_machine *machine = Machine;
+	running_machine *machine = AICA->device->machine;
 
 	if(AICA->MidiW!=AICA->MidiR)
 	{
@@ -513,18 +513,17 @@ static void AICA_StopSlot(struct _SLOT *slot,int keyoff)
 
 #define log_base_2(n) (log((float) n)/log((float) 2))
 
-static void AICA_Init(const char *tag, struct _AICA *AICA, const aica_interface *intf, int sndindex)
+static void AICA_Init(const device_config *device, struct _AICA *AICA, const aica_interface *intf, int sndindex)
 {
 	int i;
 
+	AICA->device = device;
 	AICA->IrqTimA = AICA->IrqTimBC = AICA->IrqMidi = 0;
 	AICA->MidiR=AICA->MidiW=0;
 	AICA->MidiOutR=AICA->MidiOutW=0;
 
 	// get AICA RAM
 	{
-		memset(AICA,0,sizeof(*AICA));
-
 		if (sndindex == 0)
 		{
 			AICA->Master=1;
@@ -534,11 +533,11 @@ static void AICA_Init(const char *tag, struct _AICA *AICA, const aica_interface 
 			AICA->Master=0;
 		}
 
-		AICA->AICARAM = memory_region(Machine, tag);
+		AICA->AICARAM = device->region;
 		if (AICA->AICARAM)
 		{
 			AICA->AICARAM += intf->roffset;
-			AICA->AICARAM_LENGTH = memory_region_length(Machine, tag);
+			AICA->AICARAM_LENGTH = device->regionbytes;
 			AICA->RAM_MASK = AICA->AICARAM_LENGTH-1;
 			AICA->RAM_MASK16 = AICA->RAM_MASK & 0x7ffffe;
 			AICA->DSP.AICARAM = (UINT16 *)AICA->AICARAM;
@@ -546,9 +545,9 @@ static void AICA_Init(const char *tag, struct _AICA *AICA, const aica_interface 
 		}
 	}
 
-	AICA->timerA = timer_alloc(timerA_cb, AICA);
-	AICA->timerB = timer_alloc(timerB_cb, AICA);
-	AICA->timerC = timer_alloc(timerC_cb, AICA);
+	AICA->timerA = timer_alloc(device->machine, timerA_cb, AICA);
+	AICA->timerB = timer_alloc(device->machine, timerB_cb, AICA);
+	AICA->timerC = timer_alloc(device->machine, timerC_cb, AICA);
 
 	for(i=0;i<0x400;++i)
 	{
@@ -646,7 +645,7 @@ static void AICA_Init(const char *tag, struct _AICA *AICA, const aica_interface 
 		AICA->Slots[i].mslc=0;
 	}
 
-	AICALFO_Init();
+	AICALFO_Init(device->machine);
 	AICA->buffertmpl=(signed int*) auto_malloc(44100*sizeof(signed int));
 	AICA->buffertmpr=(signed int*) auto_malloc(44100*sizeof(signed int));
 	memset(AICA->buffertmpl,0,44100*sizeof(signed int));
@@ -718,6 +717,8 @@ static void AICA_UpdateSlotReg(struct _AICA *AICA,int s,int r)
 
 static void AICA_UpdateReg(struct _AICA *AICA, int reg)
 {
+	/* temporary hack until this is converted to a device */
+	const address_space *space = memory_find_address_space(AICA->device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	switch(reg&0xff)
 	{
 		case 0x4:
@@ -737,7 +738,7 @@ static void AICA_UpdateReg(struct _AICA *AICA, int reg)
 			break;
 		case 0x8:
 		case 0x9:
-			aica_midi_in(Machine, 0, AICA->udata.data[0x8/2]&0xff, 0);
+			aica_midi_in(space, 0, AICA->udata.data[0x8/2]&0xff, 0);
 			break;
 		case 0x12:
 		case 0x13:
@@ -858,7 +859,7 @@ static void AICA_UpdateRegR(struct _AICA *AICA, int reg)
 				unsigned short v=AICA->udata.data[0x8/2];
 				v&=0xff00;
 				v|=AICA->MidiStack[AICA->MidiR];
-				AICA->IntARMCB(Machine, 0);	// cancel the IRQ
+				AICA->IntARMCB(AICA->device->machine, 0);	// cancel the IRQ
 				if(AICA->MidiR!=AICA->MidiW)
 				{
 					++AICA->MidiR;
@@ -924,7 +925,7 @@ static void AICA_w16(struct _AICA *AICA,unsigned int addr,unsigned short val)
 
 			if (val)
 			{
-				AICA->IntARMCB(Machine, 0);
+				AICA->IntARMCB(AICA->device->machine, 0);
 			}
 		}
 	}
@@ -1189,8 +1190,18 @@ INLINE INT32 AICA_UpdateSlot(struct _AICA *AICA, struct _SLOT *slot)
 		AICA->udata.data[0x14/2] = addr1;
 		if (!(AFSEL(AICA)))
 		{
+			UINT16 res;
+
 			AICA->udata.data[0x10/2] |= slot->EG.state<<13;
-			AICA->udata.data[0x10/2] |= 0x3FF - (slot->EG.volume>>EG_SHIFT);
+
+			res = 0x3FF - (slot->EG.volume>>EG_SHIFT);
+
+			res *= 959;
+			res /= 1024;
+
+			if (res > 959) res = 959;
+
+			AICA->udata.data[0x10/2] = res;
 		}
 	}
 
@@ -1263,16 +1274,16 @@ static int AICA_IRQCB(void *param)
 }
 #endif
 
-static void AICA_Update(void *param, stream_sample_t **inputs, stream_sample_t **buf, int samples)
+static STREAM_UPDATE( AICA_Update )
 {
 	struct _AICA *AICA = param;
-	bufferl = buf[0];
-	bufferr = buf[1];
+	bufferl = outputs[0];
+	bufferr = outputs[1];
 	length = samples;
 	AICA_DoMasterSamples(AICA, samples);
 }
 
-static void *aica_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( aica )
 {
 	const aica_interface *intf;
 
@@ -1284,20 +1295,20 @@ static void *aica_start(const char *tag, int sndindex, int clock, const void *co
 	intf = config;
 
 	// init the emulation
-	AICA_Init(tag, AICA, intf, sndindex);
+	AICA_Init(device, AICA, intf, sndindex);
 
 	// set up the IRQ callbacks
 	{
 		AICA->IntARMCB = intf->irq_callback;
 
-		AICA->stream = stream_create(0, 2, 44100, AICA, AICA_Update);
+		AICA->stream = stream_create(device, 0, 2, 44100, AICA, AICA_Update);
 	}
 
 	return AICA;
 }
 
 #ifdef UNUSED_FUNCTION
-static void aica_stop(void)
+static SND_STOP( aica )
 {
 }
 #endif
@@ -1355,7 +1366,7 @@ READ16_HANDLER( aica_midi_out_r )
  * Generic get_info
  **************************************************************************/
 
-static void aica_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( aica )
 {
 	switch (state)
 	{
@@ -1364,24 +1375,24 @@ static void aica_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void aica_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( aica )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:					info->set_info = aica_set_info;			break;
-		case SNDINFO_PTR_START:						info->start = aica_start;			break;
-		case SNDINFO_PTR_STOP:						/* Nothing */					break;
-		case SNDINFO_PTR_RESET:						/* Nothing */					break;
+		case SNDINFO_PTR_SET_INFO:					info->set_info = SND_SET_INFO_NAME( aica );	break;
+		case SNDINFO_PTR_START:						info->start = SND_START_NAME( aica );		break;
+		case SNDINFO_PTR_STOP:						/* Nothing */								break;
+		case SNDINFO_PTR_RESET:						/* Nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:						info->s = "AICA";				break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Sega/Yamaha custom";		 	break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0.1";			 	break;
-		case SNDINFO_STR_CORE_FILE:					info->s = __FILE__;				break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:						strcpy(info->s, "AICA");					break;
+		case SNDINFO_STR_CORE_FAMILY:				strcpy(info->s, "Sega/Yamaha custom");		break;
+		case SNDINFO_STR_CORE_VERSION:				strcpy(info->s, "1.0.1");			 		break;
+		case SNDINFO_STR_CORE_FILE:					strcpy(info->s, __FILE__);					break;
+		case SNDINFO_STR_CORE_CREDITS:				strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

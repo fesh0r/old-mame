@@ -43,6 +43,7 @@ ROMs 6A, 7A, 8A, 9A: 2764
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/sn76496.h"
 
 
@@ -75,7 +76,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( io_0x00_w )
 {
-	mrjong_flipscreen_w(machine, 0, ((data & 0x04) > 2));
+	mrjong_flipscreen_w(space, 0, ((data & 0x04) > 2));
 }
 
 static READ8_HANDLER( io_0x03_r )

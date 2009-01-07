@@ -48,7 +48,7 @@ static tilemap *bg_tilemap[2][4];
 
 ***************************************************************************/
 
-static void mrokumei_handleblit( running_machine *machine, int rom_base )
+static void mrokumei_handleblit( const address_space *space, int rom_base )
 {
 	int i;
 	int DestParam;
@@ -56,7 +56,7 @@ static void mrokumei_handleblit( running_machine *machine, int rom_base )
 	int DestAddr;
 	int BaseAddr;
 	int opcode,data,NumTiles;
-	UINT8 *pBlitData = memory_region(machine, "user1") + rom_base;
+	UINT8 *pBlitData = memory_region(space->machine, "user1") + rom_base;
 
 	DestParam =
 		blitter_param[(blitter_param_count-4)&3]*256+
@@ -116,7 +116,7 @@ static void mrokumei_handleblit( running_machine *machine, int rom_base )
 			} /* i!=0 */
 
 			if (data)	/* 00 is a nop */
-				mrokumei_videoram_w( machine, BaseAddr + DestAddr, data );
+				mrokumei_videoram_w( space, BaseAddr + DestAddr, data );
 
 			if (homedata_vreg[1] & 0x80)	/* flip screen */
 			{
@@ -132,17 +132,17 @@ static void mrokumei_handleblit( running_machine *machine, int rom_base )
 	} /* for(;;) */
 
 finish:
-	cpunum_set_input_line(machine, 0,M6809_FIRQ_LINE,HOLD_LINE);
+	cpu_set_input_line(space->machine->cpu[0],M6809_FIRQ_LINE,HOLD_LINE);
 }
 
-static void reikaids_handleblit( running_machine *machine, int rom_base )
+static void reikaids_handleblit( const address_space *space, int rom_base )
 {
 	int i;
 	UINT16 DestParam;
 	int flipx;
 	int SourceAddr, BaseAddr;
 	int DestAddr;
-	UINT8 *pBlitData = memory_region(machine, "user1") + rom_base;
+	UINT8 *pBlitData = memory_region(space->machine, "user1") + rom_base;
 
 	int opcode,data,NumTiles;
 
@@ -220,7 +220,7 @@ static void reikaids_handleblit( running_machine *machine, int rom_base )
 						addr ^= 0x007c;
 					}
 
-					reikaids_videoram_w( machine, addr, dat );
+					reikaids_videoram_w( space, addr, dat );
 				}
 			}
 
@@ -232,17 +232,17 @@ static void reikaids_handleblit( running_machine *machine, int rom_base )
 	}
 
 finish:
-	cpunum_set_input_line(machine, 0,M6809_FIRQ_LINE,HOLD_LINE);
+	cpu_set_input_line(space->machine->cpu[0],M6809_FIRQ_LINE,HOLD_LINE);
 }
 
-static void pteacher_handleblit( running_machine *machine, int rom_base )
+static void pteacher_handleblit( const address_space *space, int rom_base )
 {
 	int i;
 	int DestParam;
 	int SourceAddr;
 	int DestAddr, BaseAddr;
 	int opcode,data,NumTiles;
-	UINT8 *pBlitData = memory_region(machine, "user1") + rom_base;
+	UINT8 *pBlitData = memory_region(space->machine, "user1") + rom_base;
 
 	DestParam =
 		blitter_param[(blitter_param_count-4)&3]*256+
@@ -308,7 +308,7 @@ static void pteacher_handleblit( running_machine *machine, int rom_base )
 				if ((addr & 0x2080) == 0)
 				{
 					addr = ((addr & 0xc000) >> 2) | ((addr & 0x1f00) >> 1) | (addr & 0x7f);
-					pteacher_videoram_w( machine, addr, data );
+					pteacher_videoram_w( space, addr, data );
 				}
 			}
 
@@ -320,7 +320,7 @@ static void pteacher_handleblit( running_machine *machine, int rom_base )
 	} /* for(;;) */
 
 finish:
-	cpunum_set_input_line(machine, 0,M6809_FIRQ_LINE,HOLD_LINE);
+	cpu_set_input_line(space->machine->cpu[0],M6809_FIRQ_LINE,HOLD_LINE);
 }
 
 
@@ -502,10 +502,10 @@ static TILE_GET_INFO( lemnangl_get_info1_1 ) { lemnangl_info( machine, tileinfo,
 
 VIDEO_START( mrokumei )
 {
-	bg_tilemap[0][0] = tilemap_create( mrokumei_get_info0_0, tilemap_scan_rows,       8, 8, 64,32 );
-	bg_tilemap[0][1] = tilemap_create( mrokumei_get_info0_1, tilemap_scan_rows,  8, 8, 64,32 );
-	bg_tilemap[1][0] = tilemap_create( mrokumei_get_info1_0, tilemap_scan_rows,       8, 8, 64,32 );
-	bg_tilemap[1][1] = tilemap_create( mrokumei_get_info1_1, tilemap_scan_rows,  8, 8, 64,32 );
+	bg_tilemap[0][0] = tilemap_create( machine, mrokumei_get_info0_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[0][1] = tilemap_create( machine, mrokumei_get_info0_1, tilemap_scan_rows,  8, 8, 64,32 );
+	bg_tilemap[1][0] = tilemap_create( machine, mrokumei_get_info1_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[1][1] = tilemap_create( machine, mrokumei_get_info1_1, tilemap_scan_rows,  8, 8, 64,32 );
 
 	tilemap_set_transparent_pen(bg_tilemap[0][1],0);
 	tilemap_set_transparent_pen(bg_tilemap[1][1],0);
@@ -513,14 +513,14 @@ VIDEO_START( mrokumei )
 
 VIDEO_START( reikaids )
 {
-	bg_tilemap[0][0] = tilemap_create( reikaids_get_info0_0, tilemap_scan_rows,  8, 8, 32, 32 );
-	bg_tilemap[0][1] = tilemap_create( reikaids_get_info0_1, tilemap_scan_rows,  8, 8, 32, 32 );
-	bg_tilemap[0][2] = tilemap_create( reikaids_get_info0_2, tilemap_scan_rows,  8, 8, 32, 32 );
-	bg_tilemap[0][3] = tilemap_create( reikaids_get_info0_3, tilemap_scan_rows,  8, 8, 32, 32 );
-	bg_tilemap[1][0] = tilemap_create( reikaids_get_info1_0, tilemap_scan_rows,  8, 8, 32, 32 );
-	bg_tilemap[1][1] = tilemap_create( reikaids_get_info1_1, tilemap_scan_rows,  8, 8, 32, 32 );
-	bg_tilemap[1][2] = tilemap_create( reikaids_get_info1_2, tilemap_scan_rows,  8, 8, 32, 32 );
-	bg_tilemap[1][3] = tilemap_create( reikaids_get_info1_3, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[0][0] = tilemap_create( machine, reikaids_get_info0_0, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[0][1] = tilemap_create( machine, reikaids_get_info0_1, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[0][2] = tilemap_create( machine, reikaids_get_info0_2, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[0][3] = tilemap_create( machine, reikaids_get_info0_3, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[1][0] = tilemap_create( machine, reikaids_get_info1_0, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[1][1] = tilemap_create( machine, reikaids_get_info1_1, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[1][2] = tilemap_create( machine, reikaids_get_info1_2, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[1][3] = tilemap_create( machine, reikaids_get_info1_3, tilemap_scan_rows,  8, 8, 32, 32 );
 
 	tilemap_set_transparent_pen(bg_tilemap[0][0],0xff);
 	tilemap_set_transparent_pen(bg_tilemap[0][1],0xff);
@@ -534,10 +534,10 @@ VIDEO_START( reikaids )
 
 VIDEO_START( pteacher )
 {
-	bg_tilemap[0][0] = tilemap_create( pteacher_get_info0_0, tilemap_scan_rows,       8, 8, 64,32 );
-	bg_tilemap[0][1] = tilemap_create( pteacher_get_info0_1, tilemap_scan_rows,  8, 8, 64,32 );
-	bg_tilemap[1][0] = tilemap_create( pteacher_get_info1_0, tilemap_scan_rows,       8, 8, 64,32 );
-	bg_tilemap[1][1] = tilemap_create( pteacher_get_info1_1, tilemap_scan_rows,  8, 8, 64,32 );
+	bg_tilemap[0][0] = tilemap_create( machine, pteacher_get_info0_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[0][1] = tilemap_create( machine, pteacher_get_info0_1, tilemap_scan_rows,  8, 8, 64,32 );
+	bg_tilemap[1][0] = tilemap_create( machine, pteacher_get_info1_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[1][1] = tilemap_create( machine, pteacher_get_info1_1, tilemap_scan_rows,  8, 8, 64,32 );
 
 	tilemap_set_transparent_pen(bg_tilemap[0][1],0xff);
 	tilemap_set_transparent_pen(bg_tilemap[1][1],0xff);
@@ -545,10 +545,10 @@ VIDEO_START( pteacher )
 
 VIDEO_START( lemnangl )
 {
-	bg_tilemap[0][0] = tilemap_create( lemnangl_get_info0_0, tilemap_scan_rows,       8, 8, 64,32 );
-	bg_tilemap[0][1] = tilemap_create( lemnangl_get_info0_1, tilemap_scan_rows,  8, 8, 64,32 );
-	bg_tilemap[1][0] = tilemap_create( lemnangl_get_info1_0, tilemap_scan_rows,       8, 8, 64,32 );
-	bg_tilemap[1][1] = tilemap_create( lemnangl_get_info1_1, tilemap_scan_rows,  8, 8, 64,32 );
+	bg_tilemap[0][0] = tilemap_create( machine, lemnangl_get_info0_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[0][1] = tilemap_create( machine, lemnangl_get_info0_1, tilemap_scan_rows,  8, 8, 64,32 );
+	bg_tilemap[1][0] = tilemap_create( machine, lemnangl_get_info1_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[1][1] = tilemap_create( machine, lemnangl_get_info1_1, tilemap_scan_rows,  8, 8, 64,32 );
 
 	tilemap_set_transparent_pen(bg_tilemap[0][1],0x0f);
 	tilemap_set_transparent_pen(bg_tilemap[1][1],0x0f);
@@ -583,7 +583,7 @@ WRITE8_HANDLER( pteacher_videoram_w )
 WRITE8_HANDLER( reikaids_gfx_bank_w )
 {
 
-//logerror( "%04x: [setbank %02x]\n",activecpu_get_pc(),data);
+//logerror( "%04x: [setbank %02x]\n",cpu_get_pc(space->cpu),data);
 
 	if (reikaids_gfx_bank[reikaids_which] != data)
 	{
@@ -596,7 +596,7 @@ WRITE8_HANDLER( reikaids_gfx_bank_w )
 
 WRITE8_HANDLER( pteacher_gfx_bank_w )
 {
-//  logerror( "%04x: gfxbank:=%02x\n", activecpu_get_pc(), data );
+//  logerror( "%04x: gfxbank:=%02x\n", cpu_get_pc(space->cpu), data );
 	if (pteacher_gfx_bank != data)
 	{
 		pteacher_gfx_bank = data;
@@ -606,7 +606,7 @@ WRITE8_HANDLER( pteacher_gfx_bank_w )
 
 WRITE8_HANDLER( homedata_blitter_param_w )
 {
-//logerror("%04x: blitter_param_w %02x\n",activecpu_get_pc(),data);
+//logerror("%04x: blitter_param_w %02x\n",cpu_get_pc(space->cpu),data);
 	blitter_param[blitter_param_count] = data;
 	blitter_param_count++;
 	blitter_param_count&=3;
@@ -650,7 +650,7 @@ WRITE8_HANDLER( pteacher_blitter_bank_w )
 
 WRITE8_HANDLER( mrokumei_blitter_start_w )
 {
-	if (data & 0x80) mrokumei_handleblit(machine, ((blitter_bank & 0x04) >> 2) * 0x10000);
+	if (data & 0x80) mrokumei_handleblit(space, ((blitter_bank & 0x04) >> 2) * 0x10000);
 
 	/* bit 0 = bank switch; used by hourouki to access the
        optional service mode ROM (not available in current dump) */
@@ -658,12 +658,12 @@ WRITE8_HANDLER( mrokumei_blitter_start_w )
 
 WRITE8_HANDLER( reikaids_blitter_start_w )
 {
-	reikaids_handleblit(machine, (blitter_bank & 3) * 0x10000);
+	reikaids_handleblit(space, (blitter_bank & 3) * 0x10000);
 }
 
 WRITE8_HANDLER( pteacher_blitter_start_w )
 {
-	pteacher_handleblit(machine, (blitter_bank >> 5) * 0x10000 & (memory_region_length(machine, "user1") - 1));
+	pteacher_handleblit(space, (blitter_bank >> 5) * 0x10000 & (memory_region_length(space->machine, "user1") - 1));
 }
 
 
@@ -681,7 +681,7 @@ VIDEO_UPDATE( mrokumei )
 	/* blank screen */
 	if (homedata_vreg[0x3] == 0xc1 && homedata_vreg[0x4] == 0xc0 && homedata_vreg[0x5] == 0xff)
 	{
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 		return 0;
 	}
 
@@ -743,7 +743,7 @@ VIDEO_UPDATE( reikaids )
     }
 
 
-    fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+    bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
     pri = (blitter_bank & 0x70) >> 4;
     for (i = 0;i < 4;i++)
@@ -789,7 +789,7 @@ VIDEO_UPDATE( reikaids )
 	}
 
 
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	pri = (blitter_bank & 0x70) >> 4;
 	for (i = 0;i < 4;i++)
@@ -806,7 +806,7 @@ VIDEO_UPDATE( pteacher )
 	/* blank screen */
 	if (homedata_vreg[0x3] == 0xc1 && homedata_vreg[0x4] == 0xc0 && homedata_vreg[0x5] == 0xff)
 	{
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 		return 0;
 	}
 

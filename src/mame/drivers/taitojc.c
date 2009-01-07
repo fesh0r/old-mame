@@ -350,6 +350,8 @@ Notes:
 */
 
 #include "driver.h"
+#include "cpu/tms32051/tms32051.h"
+#include "cpu/m68000/m68000.h"
 #include "taito_f3.h"
 #include "cpu/mc68hc11/mc68hc11.h"
 #include "sound/es5506.h"
@@ -407,20 +409,20 @@ static WRITE32_HANDLER( taitojc_palette_w )
 	g = (color >> 16) & 0xff;
 	b = (color >>  0) & 0xff;
 
-	palette_set_color(machine,offset, MAKE_RGB(r, g, b));
+	palette_set_color(space->machine,offset, MAKE_RGB(r, g, b));
 }
 
 static READ32_HANDLER ( jc_control_r )
 {
 	UINT32 r = 0;
-//  mame_printf_debug("jc_control_r: %08X, %08X at %08X\n", offset, mem_mask, activecpu_get_pc());
+//  mame_printf_debug("jc_control_r: %08X, %08X at %08X\n", offset, mem_mask, cpu_get_pc(space->cpu));
 	switch(offset)
 	{
 		case 0x0:
 		{
 			if (ACCESSING_BITS_24_31)
 			{
-				r |= ((input_port_read(machine, "COINS") & 0x2) << 2) << 24;
+				r |= ((input_port_read(space->machine, "COINS") & 0x2) << 2) << 24;
 			}
 			return r;
 		}
@@ -428,7 +430,7 @@ static READ32_HANDLER ( jc_control_r )
 		{
 			if (ACCESSING_BITS_24_31)
 			{
-				r |= input_port_read(machine, "COINS") << 24;
+				r |= input_port_read(space->machine, "COINS") << 24;
 			}
 			return r;
 		}
@@ -436,7 +438,7 @@ static READ32_HANDLER ( jc_control_r )
 		{
 			if (ACCESSING_BITS_24_31)
 			{
-				r |= input_port_read(machine, "START") << 24;
+				r |= input_port_read(space->machine, "START") << 24;
 			}
 			return r;
 		}
@@ -444,7 +446,7 @@ static READ32_HANDLER ( jc_control_r )
 		{
 			if (ACCESSING_BITS_24_31)
 			{
-				r |= input_port_read(machine, "UNUSED") << 24;
+				r |= input_port_read(space->machine, "UNUSED") << 24;
 			}
 			return r;
 		}
@@ -452,7 +454,7 @@ static READ32_HANDLER ( jc_control_r )
 		{
 			if (ACCESSING_BITS_24_31)
 			{
-				//r |= (mame_rand(machine) & 0xff) << 24;
+				//r |= (mame_rand(space->machine) & 0xff) << 24;
 			}
 			return r;
 		}
@@ -460,7 +462,7 @@ static READ32_HANDLER ( jc_control_r )
 		{
 			if (ACCESSING_BITS_24_31)
 			{
-				r |= input_port_read(machine, "BUTTONS") << 24;
+				r |= input_port_read(space->machine, "BUTTONS") << 24;
 			}
 			return r;
 		}
@@ -505,7 +507,7 @@ static WRITE32_HANDLER (jc_control1_w)
 
 
 
-static UINT8 mcu_comm_reg_r(int reg)
+static UINT8 mcu_comm_reg_r(const address_space *space, int reg)
 {
 	UINT8 r = 0;
 
@@ -523,7 +525,7 @@ static UINT8 mcu_comm_reg_r(int reg)
 		}
 		default:
 		{
-			//mame_printf_debug("hc11_reg_r: %02X at %08X\n", reg, activecpu_get_pc());
+			//mame_printf_debug("hc11_reg_r: %02X at %08X\n", reg, cpu_get_pc(space->cpu));
 			break;
 		}
 	}
@@ -531,7 +533,7 @@ static UINT8 mcu_comm_reg_r(int reg)
 	return r;
 }
 
-static void mcu_comm_reg_w(int reg, UINT8 data)
+static void mcu_comm_reg_w(const address_space *space, int reg, UINT8 data)
 {
 	switch (reg)
 	{
@@ -548,7 +550,7 @@ static void mcu_comm_reg_w(int reg, UINT8 data)
 		}
 		default:
 		{
-			//mame_printf_debug("hc11_reg_w: %02X, %02X at %08X\n", reg, data, activecpu_get_pc());
+			//mame_printf_debug("hc11_reg_w: %02X, %02X at %08X\n", reg, data, cpu_get_pc(space->cpu));
 			break;
 		}
 	}
@@ -561,19 +563,19 @@ static READ32_HANDLER(mcu_comm_r)
 
 	if (ACCESSING_BITS_24_31)
 	{
-		r |= mcu_comm_reg_r(reg + 0) << 24;
+		r |= mcu_comm_reg_r(space, reg + 0) << 24;
 	}
 	if (ACCESSING_BITS_16_23)
 	{
-		r |= mcu_comm_reg_r(reg + 1) << 16;
+		r |= mcu_comm_reg_r(space, reg + 1) << 16;
 	}
 	if (ACCESSING_BITS_8_15)
 	{
-		r |= mcu_comm_reg_r(reg + 2) << 8;
+		r |= mcu_comm_reg_r(space, reg + 2) << 8;
 	}
 	if (ACCESSING_BITS_0_7)
 	{
-		r |= mcu_comm_reg_r(reg + 3) << 0;
+		r |= mcu_comm_reg_r(space, reg + 3) << 0;
 	}
 
 	return r;
@@ -585,19 +587,19 @@ static WRITE32_HANDLER(mcu_comm_w)
 
 	if (ACCESSING_BITS_24_31)
 	{
-		mcu_comm_reg_w(reg + 0, (data >> 24) & 0xff);
+		mcu_comm_reg_w(space, reg + 0, (data >> 24) & 0xff);
 	}
 	if (ACCESSING_BITS_16_23)
 	{
-		mcu_comm_reg_w(reg + 1, (data >> 16) & 0xff);
+		mcu_comm_reg_w(space, reg + 1, (data >> 16) & 0xff);
 	}
 	if (ACCESSING_BITS_8_15)
 	{
-		mcu_comm_reg_w(reg + 2, (data >> 8) & 0xff);
+		mcu_comm_reg_w(space, reg + 2, (data >> 8) & 0xff);
 	}
 	if (ACCESSING_BITS_0_7)
 	{
-		mcu_comm_reg_w(reg + 3, (data >> 0) & 0xff);
+		mcu_comm_reg_w(space, reg + 3, (data >> 0) & 0xff);
 	}
 }
 
@@ -748,7 +750,7 @@ static void debug_dsp_command(void)
 static int first_dsp_reset;
 static WRITE32_HANDLER(dsp_shared_w)
 {
-	//mame_printf_debug("dsp_shared_ram: %08X, %04X at %08X\n", offset, data >> 16, activecpu_get_pc());
+	//mame_printf_debug("dsp_shared_ram: %08X, %04X at %08X\n", offset, data >> 16, cpu_get_pc(space->cpu));
 	if (ACCESSING_BITS_24_31)
 	{
 		dsp_shared_ram[offset] &= 0x00ff;
@@ -773,13 +775,13 @@ static WRITE32_HANDLER(dsp_shared_w)
 		{
 			if (!first_dsp_reset)
 			{
-				cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, CLEAR_LINE);
+				cpu_set_input_line(space->machine->cpu[3], INPUT_LINE_RESET, CLEAR_LINE);
 			}
 			first_dsp_reset = 0;
 		}
 		else
 		{
-			cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[3], INPUT_LINE_RESET, ASSERT_LINE);
 		}
 	}
 }
@@ -869,7 +871,7 @@ static READ8_HANDLER(hc11_analog_r)
 	static const char *const portnames[] = { "ANALOG1", "ANALOG2", "ANALOG3", "ANALOG4",
 										"ANALOG5", "ANALOG6", "ANALOG7", "ANALOG8" };
 
-	return input_port_read_safe(machine, portnames[offset], 0);
+	return input_port_read_safe(space->machine, portnames[offset], 0);
 }
 
 
@@ -897,9 +899,9 @@ static UINT16 dsp_tex_offset = 0;
 
 static READ16_HANDLER( dsp_rom_r )
 {
-	UINT16 *rom = (UINT16*)memory_region(machine, "gfx2");
+	UINT16 *rom = (UINT16*)memory_region(space->machine, "gfx2");
 	UINT16 data = rom[dsp_rom_pos++];
-	//mame_printf_debug("dsp_rom_r:  %08X, %08X at %08X\n", offset, mem_mask, activecpu_get_pc());
+	//mame_printf_debug("dsp_rom_r:  %08X, %08X at %08X\n", offset, mem_mask, cpu_get_pc(space->cpu));
 	return data;
 }
 
@@ -943,7 +945,7 @@ static READ16_HANDLER( dsp_texaddr_r )
 static WRITE16_HANDLER( dsp_texaddr_w )
 {
 	dsp_tex_address = data;
-//  mame_printf_debug("texaddr = %08X at %08X\n", data, activecpu_get_pc());
+//  mame_printf_debug("texaddr = %08X at %08X\n", data, cpu_get_pc(space->cpu));
 
 	texture_x = (((data >> 0) & 0x1f) << 1) | ((data >> 12) & 0x1);
 	texture_y = (((data >> 5) & 0x1f) << 1) | ((data >> 13) & 0x1);
@@ -1018,8 +1020,8 @@ static WRITE16_HANDLER(dsp_unk2_w)
 {
 	if (offset == 0)
 	{
-		taitojc_clear_frame(machine);
-		taitojc_render_polygons(machine, polygon_fifo, polygon_fifo_ptr);
+		taitojc_clear_frame(space->machine);
+		taitojc_render_polygons(space->machine, polygon_fifo, polygon_fifo_ptr);
 
 		polygon_fifo_ptr = 0;
 	}
@@ -1275,20 +1277,20 @@ static MACHINE_RESET( taitojc )
 
 	taito_f3_soundsystem_reset(machine);
 
-	f3_68681_reset();
+	f3_68681_reset(machine);
 
 	// hold the TMS in reset until we have code
-	cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[3], INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static INTERRUPT_GEN( taitojc_vblank )
 {
-	cpunum_set_input_line_and_vector(machine, 0, 2, HOLD_LINE, 130);
+	cpu_set_input_line_and_vector(device, 2, HOLD_LINE, 130);
 }
 
 static INTERRUPT_GEN( taitojc_int6 )
 {
-	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
+	cpu_set_input_line(device, 6, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( taitojc )
@@ -1307,7 +1309,7 @@ static MACHINE_DRIVER_START( taitojc )
 	MDRV_CPU_PROGRAM_MAP(tms_program_map, 0)
 	MDRV_CPU_DATA_MAP(tms_data_map, 0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_RESET(taitojc)
 	MDRV_NVRAM_HANDLER(93C46)

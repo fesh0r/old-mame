@@ -71,10 +71,10 @@
 typedef struct _pokey_interface pokey_interface;
 struct _pokey_interface
 {
-	read8_machine_func pot_r[8];
-	read8_machine_func allpot_r;
-	read8_machine_func serin_r;
-	write8_machine_func serout_w;
+	read8_space_func pot_r[8];
+	read8_space_func allpot_r;
+	read8_space_func serin_r;
+	write8_space_func serout_w;
 	void (*interrupt_cb)(running_machine *machine, int mask);
 };
 
@@ -105,5 +105,7 @@ void pokey1_kbcode_w (int kbcode, int make);
 void pokey2_kbcode_w (int kbcode, int make);
 void pokey3_kbcode_w (int kbcode, int make);
 void pokey4_kbcode_w (int kbcode, int make);
+
+SND_GET_INFO( pokey );
 
 #endif	/* __POKEY_H__ */

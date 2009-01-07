@@ -18,14 +18,11 @@
 
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/atarigen.h"
 #include "audio/atarijsa.h"
 #include "thunderj.h"
 
-
-
-static UINT16 *shared_ram;
-static UINT16 *rom_base[2];
 
 
 /*************************************
@@ -36,9 +33,9 @@ static UINT16 *rom_base[2];
 
 static void update_interrupts(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 4, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 1, 4, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 6, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 4, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 6, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -48,10 +45,6 @@ static MACHINE_RESET( thunderj )
 	atarigen_interrupt_reset(update_interrupts);
 	atarivc_reset(machine->primary_screen, atarivc_eof_data, 2);
 	atarijsa_reset();
-
-	rom_base[0] = (UINT16 *)memory_region(machine, "main");
-	rom_base[1] = (UINT16 *)memory_region(machine, "extra");
-	memory_set_bankptr(1, shared_ram);
 }
 
 
@@ -64,7 +57,7 @@ static MACHINE_RESET( thunderj )
 
 static READ16_HANDLER( special_port2_r )
 {
-	int result = input_port_read(machine, "260012");
+	int result = input_port_read(space->machine, "260012");
 
 	if (atarigen_sound_to_cpu_ready) result ^= 0x0004;
 	if (atarigen_cpu_to_sound_ready) result ^= 0x0008;
@@ -81,60 +74,18 @@ static WRITE16_HANDLER( latch_w )
 	{
 		/* 0 means hold CPU 2's reset low */
 		if (data & 1)
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 		else
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 
 		/* bits 2-5 are the alpha bank */
 		if (thunderj_alpha_tile_bank != ((data >> 2) & 7))
 		{
-			video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+			video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 			tilemap_mark_all_tiles_dirty(atarigen_alpha_tilemap);
 			thunderj_alpha_tile_bank = (data >> 2) & 7;
 		}
 	}
-}
-
-
-
-/*************************************
- *
- *  Synchronization helper
- *
- *************************************/
-
-static TIMER_CALLBACK( shared_sync_callback )
-{
-	if (--param)
-		timer_set(ATTOTIME_IN_USEC(50), NULL, param, shared_sync_callback);
-}
-
-
-static READ16_HANDLER( shared_ram_r )
-{
-	UINT16 result = shared_ram[offset];
-
-	/* look for a byte access, and then check for the high bit and a TAS opcode */
-	if (mem_mask != 0xffff && (result & mem_mask & 0x8080))
-	{
-		offs_t ppc = activecpu_get_previouspc();
-		if (ppc < 0xa0000)
-		{
-			int cpunum = cpu_getactivecpu();
-			UINT16 opcode = rom_base[cpunum][ppc / 2];
-
-			/* look for TAS or BTST #$7; both CPUs spin waiting for these in order to */
-			/* coordinate communications. Some spins have timeouts that reset the machine */
-			/* if they fail, so we must make sure they are released in time */
-			if ((opcode & 0xffc0) == 0x4ac0 ||
-				((opcode & 0xffc0) == 0x0080 && rom_base[cpunum][ppc / 2 + 1] == 7))
-			{
-				timer_call_after_resynch(NULL, 4, shared_sync_callback);
-			}
-		}
-	}
-
-	return result;
 }
 
 
@@ -151,7 +102,7 @@ static READ16_HANDLER( thunderj_atarivc_r )
        the beginning of interrupt and once near the end. It stores these values in a
        table starting at $163484. CPU #2 periodically looks at this table to make
        sure that it is getting interrupts at the appropriate times, and that the
-       VBLANK bit is set appropriately. Unfortunately, due to all the cpu_yield()
+       VBLANK bit is set appropriately. Unfortunately, due to all the cpu_yield(space->cpu)
        calls we make to synchronize the two CPUs, we occasionally get out of time
        and generate the interrupt outside of the tight tolerances CPU #2 expects.
 
@@ -163,17 +114,17 @@ static READ16_HANDLER( thunderj_atarivc_r )
 	/* Use these lines to detect when things go south: */
 
 #if 0
-	if (program_read_word(0x163482) > 0xfff)
+	if (memory_read_word(space, 0x163482) > 0xfff)
 		mame_printf_debug("You're screwed!");
 #endif
 
-	return atarivc_r(machine->primary_screen, offset);
+	return atarivc_r(space->machine->primary_screen, offset);
 }
 
 
 static WRITE16_HANDLER( thunderj_atarivc_w )
 {
-	atarivc_w(machine->primary_screen, offset, data, mem_mask);
+	atarivc_w(space->machine->primary_screen, offset, data, mem_mask);
 }
 
 
@@ -187,7 +138,7 @@ static WRITE16_HANDLER( thunderj_atarivc_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x09ffff) AM_ROM
 	AM_RANGE(0x0e0000, 0x0e0fff) AM_READWRITE(atarigen_eeprom_r, atarigen_eeprom_w) AM_BASE(&atarigen_eeprom) AM_SIZE(&atarigen_eeprom_size)
-	AM_RANGE(0x160000, 0x16ffff) AM_READWRITE(shared_ram_r, SMH_BANK1) AM_BASE(&shared_ram)
+	AM_RANGE(0x160000, 0x16ffff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x1f0000, 0x1fffff) AM_WRITE(atarigen_eeprom_enable_w)
 	AM_RANGE(0x260000, 0x26000f) AM_READ_PORT("260000")
 	AM_RANGE(0x260010, 0x260011) AM_READ_PORT("260010")
@@ -220,7 +171,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( extra_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x060000, 0x07ffff) AM_ROM
-	AM_RANGE(0x160000, 0x16ffff) AM_READWRITE(shared_ram_r, SMH_BANK1)
+	AM_RANGE(0x160000, 0x16ffff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x260000, 0x26000f) AM_READ_PORT("260000")
 	AM_RANGE(0x260010, 0x260011) AM_READ_PORT("260010")
 	AM_RANGE(0x260012, 0x260013) AM_READ(special_port2_r)
@@ -328,7 +279,9 @@ static MACHINE_DRIVER_START( thunderj )
 
 	MDRV_MACHINE_RESET(thunderj)
 	MDRV_NVRAM_HANDLER(atarigen)
-	MDRV_INTERLEAVE(100)
+
+	/* perfect synchronization due to shared RAM */
+	MDRV_QUANTUM_PERFECT_CPU("main")
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)

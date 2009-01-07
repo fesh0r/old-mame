@@ -15,6 +15,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
 
 static tilemap *suprgolf_tilemap;
@@ -40,19 +41,19 @@ static READ8_HANDLER( rom_bank_select_r )
 
 static WRITE8_HANDLER( rom_bank_select_w )
 {
-	UINT8 *region_base = memory_region(machine, "user1");
+	UINT8 *region_base = memory_region(space->machine, "user1");
 
 	suprgolf_rom_bank = data;
 
-	mame_printf_debug("ROM_BANK 0x8000 - %X @%X\n",data,activecpu_get_previouspc());
-	memory_set_bankptr(2, region_base + (data&0x3f ) * 0x4000);
+	mame_printf_debug("ROM_BANK 0x8000 - %X @%X\n",data,cpu_get_previouspc(space->cpu));
+	memory_set_bankptr(space->machine, 2, region_base + (data&0x3f ) * 0x4000);
 }
 
 static WRITE8_HANDLER( rom2_bank_select_w )
 {
-	UINT8 *region_base = memory_region(machine, "user2");
-	mame_printf_debug("ROM_BANK 0x4000 - %X @%X\n",data,activecpu_get_previouspc());
-	memory_set_bankptr(1, region_base + (data&0x3f ) * 0x4000);
+	UINT8 *region_base = memory_region(space->machine, "user2");
+	mame_printf_debug("ROM_BANK 0x4000 - %X @%X\n",data,cpu_get_previouspc(space->cpu));
+	memory_set_bankptr(space->machine, 1, region_base + (data&0x3f ) * 0x4000);
 }
 
 static MACHINE_RESET( suprgolf )
@@ -62,7 +63,7 @@ static MACHINE_RESET( suprgolf )
 
 static VIDEO_START( suprgolf )
 {
-	suprgolf_tilemap = tilemap_create( get_tile_info,tilemap_scan_rows,8,8,32,32 );
+	suprgolf_tilemap = tilemap_create( machine, get_tile_info,tilemap_scan_rows,8,8,32,32 );
 }
 
 static VIDEO_UPDATE( suprgolf )
@@ -92,7 +93,7 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( suprgolf_random )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
@@ -258,7 +259,7 @@ static WRITE8_HANDLER( suprgolf_writeB )
 
 static void irqhandler(running_machine *machine, int irq)
 {
-//  cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =

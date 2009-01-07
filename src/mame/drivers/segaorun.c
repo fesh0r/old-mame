@@ -14,7 +14,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 #include "system16.h"
 #include "machine/fd1089.h"
 #include "machine/segaic16.h"
@@ -44,8 +44,8 @@ static UINT8 adc_select;
 static UINT8 irq2_state;
 static UINT8 vblank_irq_state;
 
-static read16_machine_func custom_io_r;
-static write16_machine_func custom_io_w;
+static read16_space_func custom_io_r;
+static write16_space_func custom_io_w;
 
 static const UINT8 *custom_map;
 
@@ -93,7 +93,7 @@ static const ppi8255_interface single_ppi_intf =
  *
  *************************************/
 
-static const struct segaic16_memory_map_entry outrun_info[] =
+static const segaic16_memory_map_entry outrun_info[] =
 {
 	{ 0x35/2, 0x90000, 0x10000, 0xf00000,      ~0, segaic16_road_control_0_r, segaic16_road_control_0_w, NULL,                  "road control" },
 	{ 0x35/2, 0x80000, 0x01000, 0xf0f000,      ~0, SMH_BANK10,              SMH_BANK10,              &segaic16_roadram_0,   "road RAM" },
@@ -119,21 +119,22 @@ static const struct segaic16_memory_map_entry outrun_info[] =
 
 static TIMER_CALLBACK( delayed_sound_data_w )
 {
-	soundlatch_w(machine, 0, param);
-	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, ASSERT_LINE);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	soundlatch_w(space, 0, param);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 
-static void sound_data_w(UINT8 data)
+static void sound_data_w(running_machine *machine, UINT8 data)
 {
-	timer_call_after_resynch(NULL, data, delayed_sound_data_w);
+	timer_call_after_resynch(machine, NULL, data, delayed_sound_data_w);
 }
 
 
 static READ8_HANDLER( sound_data_r )
 {
-	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, CLEAR_LINE);
-	return soundlatch_r(machine,offset);
+	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_NMI, CLEAR_LINE);
+	return soundlatch_r(space,offset);
 }
 
 
@@ -148,7 +149,7 @@ static void outrun_generic_init(running_machine *machine)
 	workram              = auto_malloc(0x08000);
 
 	/* init the memory mapper */
-	segaic16_memory_mapper_init(machine, "main", outrun_info, sound_data_w, NULL);
+	segaic16_memory_mapper_init(cputag_get_cpu(machine, "main"), outrun_info, sound_data_w, NULL);
 
 	/* init the FD1094 */
 	fd1094_driver_init(machine, segaic16_memory_mapper_set_decrypted);
@@ -169,12 +170,12 @@ static void outrun_generic_init(running_machine *machine)
 
 static void update_main_irqs(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 2, irq2_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 4, vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 6, vblank_irq_state && irq2_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 2, irq2_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, vblank_irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 6, vblank_irq_state && irq2_state ? ASSERT_LINE : CLEAR_LINE);
 
 	if(vblank_irq_state || irq2_state)
-		cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
+		cpuexec_boost_interleave(machine, attotime_zero, ATTOTIME_IN_USEC(100));
 }
 
 
@@ -198,7 +199,7 @@ static TIMER_CALLBACK( scanline_callback )
 		case 65:
 		case 129:
 		case 193:
-			timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, video_screen_get_visible_area(machine->primary_screen)->max_x + 1), NULL, 0, irq2_gen);
+			timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline, video_screen_get_visible_area(machine->primary_screen)->max_x + 1), NULL, 0, irq2_gen);
 			next_scanline = scanline + 1;
 			break;
 
@@ -214,14 +215,14 @@ static TIMER_CALLBACK( scanline_callback )
 		case 223:
 			vblank_irq_state = 1;
 			next_scanline = scanline + 1;
-			cpunum_set_input_line(machine, 1, 4, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[1], 4, ASSERT_LINE);
 			break;
 
 		/* VBLANK turns off at the start of scanline 224 */
 		case 224:
 			vblank_irq_state = 0;
 			next_scanline = 65;
-			cpunum_set_input_line(machine, 1, 4, CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[1], 4, CLEAR_LINE);
 			break;
 	}
 
@@ -229,7 +230,7 @@ static TIMER_CALLBACK( scanline_callback )
 	update_main_irqs(machine);
 
 	/* come back at the next targeted scanline */
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, next_scanline, 0), NULL, next_scanline, scanline_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, next_scanline, 0), NULL, next_scanline, scanline_callback);
 }
 
 
@@ -240,27 +241,27 @@ static TIMER_CALLBACK( scanline_callback )
  *
  *************************************/
 
-static void outrun_reset(void)
+static void outrun_reset(const device_config *device)
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
 }
 
 
 static MACHINE_RESET( outrun )
 {
-	fd1094_machine_init();
+	fd1094_machine_init(machine->cpu[0]);
 
 	/* reset misc components */
 	segaic16_memory_mapper_reset(machine);
 	if (custom_map)
 		segaic16_memory_mapper_config(machine, custom_map);
-	segaic16_tilemap_reset(0);
+	segaic16_tilemap_reset(machine, 0);
 
 	/* hook the RESET line, which resets CPU #1 */
-	cpunum_set_info_fct(0, CPUINFO_PTR_M68K_RESET_CALLBACK, (genf *)outrun_reset);
+	device_set_info_fct(machine->cpu[0], CPUINFO_FCT_M68K_RESET_CALLBACK, (genf *)outrun_reset);
 
 	/* start timers to track interrupts */
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 223, 0), NULL, 223, scanline_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 223, 0), NULL, 223, scanline_callback);
 }
 
 
@@ -271,52 +272,52 @@ static MACHINE_RESET( outrun )
  *
  *************************************/
 
-static void log_unknown_ppi_read( unsigned port )
+static void log_unknown_ppi_read( running_machine *machine, unsigned port )
 {
 	static const char ports[] = "ABC";
 
-	logerror("%06X:read from 8255 port %c\n", activecpu_get_pc(), ports[port]);
+	logerror("%06X:read from 8255 port %c\n", cpu_get_pc(machine->cpu[0]), ports[port]);
 }
 
 
-static void log_unknown_ppi_write( unsigned port, UINT8 data )
+static void log_unknown_ppi_write( running_machine *machine, unsigned port, UINT8 data )
 {
 	static const char ports[] = "ABC";
 
-	logerror("%06X:write %02X to 8255 port %c\n", activecpu_get_pc(), data, ports[port]);
+	logerror("%06X:write %02X to 8255 port %c\n", cpu_get_pc(machine->cpu[0]), data, ports[port]);
 }
 
 
 static READ8_DEVICE_HANDLER( unknown_porta_r )
 {
-	log_unknown_ppi_read(0);
+	log_unknown_ppi_read(device->machine, 0);
 	return 0;
 }
 
 
 static READ8_DEVICE_HANDLER( unknown_portb_r )
 {
-	log_unknown_ppi_read(1);
+	log_unknown_ppi_read(device->machine, 1);
 	return 0;
 }
 
 
 static READ8_DEVICE_HANDLER( unknown_portc_r )
 {
-	log_unknown_ppi_read(2);
+	log_unknown_ppi_read(device->machine, 2);
 	return 0;
 }
 
 
 static WRITE8_DEVICE_HANDLER( unknown_porta_w )
 {
-	log_unknown_ppi_write(0, data);
+	log_unknown_ppi_write(device->machine, 0, data);
 }
 
 
 static WRITE8_DEVICE_HANDLER( unknown_portb_w )
 {
-	log_unknown_ppi_write(1, data);
+	log_unknown_ppi_write(device->machine, 1, data);
 }
 
 
@@ -332,7 +333,7 @@ static WRITE8_DEVICE_HANDLER( video_control_w )
     */
 	segaic16_set_display_enable(device->machine, data & 0x20);
 	adc_select = (data >> 2) & 7;
-	cpunum_set_input_line(device->machine, 2, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(device->machine->cpu[2], INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -346,9 +347,9 @@ static WRITE8_DEVICE_HANDLER( video_control_w )
 static READ16_HANDLER( misc_io_r )
 {
 	if (custom_io_r)
-		return custom_io_r(machine, offset, mem_mask);
-	logerror("%06X:misc_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(machine,0,mem_mask);
+		return custom_io_r(space, offset, mem_mask);
+	logerror("%06X:misc_io_r - unknown read access to address %04X\n", cpu_get_pc(space->cpu), offset * 2);
+	return segaic16_open_bus_r(space,0,mem_mask);
 }
 
 
@@ -356,10 +357,10 @@ static WRITE16_HANDLER( misc_io_w )
 {
 	if (custom_io_w)
 	{
-		custom_io_w(machine, offset, data, mem_mask);
+		custom_io_w(space, offset, data, mem_mask);
 		return;
 	}
-	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask);
+	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", cpu_get_pc(space->cpu), offset * 2, data, mem_mask);
 }
 
 
@@ -369,26 +370,26 @@ static READ16_HANDLER( outrun_custom_io_r )
 	switch (offset & 0x70/2)
 	{
 		case 0x00/2:
-			return ppi8255_r(devtag_get_device(machine, PPI8255, "ppi8255"), offset & 3);
+			return ppi8255_r(devtag_get_device(space->machine, PPI8255, "ppi8255"), offset & 3);
 
 		case 0x10/2:
 		{
 			static const char *const sysports[] = { "SERVICE", "UNKNOWN", "COINAGE", "DSW" };
-			return input_port_read(machine, sysports[offset & 3]);
+			return input_port_read(space->machine, sysports[offset & 3]);
 		}
 
 		case 0x30/2:
 		{
 			static const char *const ports[] = { "ADC0", "ADC1", "ADC2", "ADC3", "ADC4", "ADC5", "ADC6", "ADC7" };
-			return input_port_read_safe(machine, ports[adc_select], 0x0010);
+			return input_port_read_safe(space->machine, ports[adc_select], 0x0010);
 		}
 
 		case 0x60/2:
-			return watchdog_reset_r(machine,0);
+			return watchdog_reset_r(space,0);
 	}
 
-	logerror("%06X:outrun_custom_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(machine,0,mem_mask);
+	logerror("%06X:outrun_custom_io_r - unknown read access to address %04X\n", cpu_get_pc(space->cpu), offset * 2);
+	return segaic16_open_bus_r(space,0,mem_mask);
 }
 
 
@@ -399,7 +400,7 @@ static WRITE16_HANDLER( outrun_custom_io_w )
 	{
 		case 0x00/2:
 			if (ACCESSING_BITS_0_7)
-				ppi8255_w(devtag_get_device(machine, PPI8255, "ppi8255"), offset & 3, data);
+				ppi8255_w(devtag_get_device(space->machine, PPI8255, "ppi8255"), offset & 3, data);
 			return;
 
 		case 0x20/2:
@@ -418,14 +419,14 @@ static WRITE16_HANDLER( outrun_custom_io_w )
 			return;
 
 		case 0x60/2:
-			watchdog_reset_w(machine,0,0);
+			watchdog_reset_w(space,0,0);
 			return;
 
 		case 0x70/2:
-			segaic16_sprites_draw_0_w(machine, offset, data, mem_mask);
+			segaic16_sprites_draw_0_w(space, offset, data, mem_mask);
 			return;
 	}
-	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask);
+	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", cpu_get_pc(space->cpu), offset * 2, data, mem_mask);
 }
 
 
@@ -440,17 +441,17 @@ static READ16_HANDLER( shangon_custom_io_r )
 		case 0x1006/2:
 		{
 			static const char *const sysports[] = { "SERVICE", "UNKNOWN", "COINAGE", "DSW" };
-			return input_port_read(machine, sysports[offset & 3]);
+			return input_port_read(space->machine, sysports[offset & 3]);
 		}
 
 		case 0x3020/2:
 		{
 			static const char *const ports[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
-			return input_port_read_safe(machine, ports[adc_select], 0x0010);
+			return input_port_read_safe(space->machine, ports[adc_select], 0x0010);
 		}
 	}
-	logerror("%06X:misc_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(machine,0,mem_mask);
+	logerror("%06X:misc_io_r - unknown read access to address %04X\n", cpu_get_pc(space->cpu), offset * 2);
+	return segaic16_open_bus_r(space,0,mem_mask);
 }
 
 
@@ -465,25 +466,25 @@ static WRITE16_HANDLER( shangon_custom_io_w )
                 D5: Screen display
             */
 			adc_select = (data >> 6) & 3;
-			segaic16_set_display_enable(machine, (data >> 5) & 1);
+			segaic16_set_display_enable(space->machine, (data >> 5) & 1);
 			return;
 
 		case 0x0020/2:
 			/* Output port:
                 D0: Sound section reset (1= normal operation, 0= reset)
             */
-			cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 			return;
 
 		case 0x3000/2:
-			watchdog_reset_w(machine,0,0);
+			watchdog_reset_w(space,0,0);
 			return;
 
 		case 0x3020/2:
 			/* ADC trigger */
 			return;
 	}
-	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask);
+	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", cpu_get_pc(space->cpu), offset * 2, data, mem_mask);
 }
 
 
@@ -816,7 +817,7 @@ static MACHINE_DRIVER_START( outrundx )
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 
 	MDRV_MACHINE_RESET(outrun)
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_PPI8255_ADD( "ppi8255", single_ppi_intf )
 

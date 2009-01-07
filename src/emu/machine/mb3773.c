@@ -31,9 +31,9 @@ void mb3773_set_ck( UINT8 new_ck )
 	ck = new_ck;
 }
 
-void mb3773_init( void )
+void mb3773_init( running_machine *machine )
 {
-	watchdog_timer = timer_alloc( watchdog_timeout , NULL);
+	watchdog_timer = timer_alloc(machine, watchdog_timeout, NULL);
 	reset_timer();
-	state_save_register_global( ck );
+	state_save_register_global(machine,  ck );
 }

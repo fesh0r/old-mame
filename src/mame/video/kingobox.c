@@ -174,9 +174,9 @@ WRITE8_HANDLER( kingofb_f800_w )
 		tilemap_mark_all_tiles_dirty(bg_tilemap);
 	}
 
-	if (flip_screen_get() != (data & 0x80))
+	if (flip_screen_get(space->machine) != (data & 0x80))
 	{
-		flip_screen_set(data & 0x80);
+		flip_screen_set(space->machine, data & 0x80);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
@@ -203,8 +203,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( kingofb )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flip_y, 16, 16, 16, 16);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols_flip_y,  8,  8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols_flip_y, 16, 16, 16, 16);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_cols_flip_y,  8,  8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
@@ -229,7 +229,7 @@ static void kingofb_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 		sx = spriteram[roffs+1];
 		sy = spriteram[roffs];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -266,10 +266,10 @@ static TILE_GET_INFO( ringking_get_bg_tile_info )
 
 VIDEO_START( ringking )
 {
-	bg_tilemap = tilemap_create(ringking_get_bg_tile_info, tilemap_scan_cols_flip_y,
+	bg_tilemap = tilemap_create(machine, ringking_get_bg_tile_info, tilemap_scan_cols_flip_y,
 		 16, 16, 16, 16);
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols_flip_y,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_cols_flip_y,
 		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
@@ -289,7 +289,7 @@ static void ringking_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 		int sx = spriteram[offs+2];
 		int sy = spriteram[offs];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;

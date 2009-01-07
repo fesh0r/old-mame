@@ -81,29 +81,19 @@ emulated now. ;)
 #include "driver.h"
 #include "cpu/z80/z80.h"
 #include "sound/samples.h"
+#include "includes/polyplay.h"
 
-/* video hardware access */
-extern UINT8 *polyplay_characterram;
-PALETTE_INIT( polyplay );
-VIDEO_UPDATE( polyplay );
-READ8_HANDLER( polyplay_characterram_r );
-WRITE8_HANDLER( polyplay_characterram_w );
 
 /* I/O Port handling */
 static READ8_HANDLER( polyplay_random_read );
 
 /* sound handling */
-void polyplay_set_channel1(int active);
-void polyplay_set_channel2(int active);
 static int prescale1;
 static int prescale2;
 static int channel1_active;
 static int channel1_const;
 static int channel2_active;
 static int channel2_const;
-void polyplay_play_channel1(int data);
-void polyplay_play_channel2(int data);
-void polyplay_sh_start(void);
 
 /* timer handling */
 static TIMER_CALLBACK( polyplay_timer_callback );
@@ -133,13 +123,13 @@ static MACHINE_RESET( polyplay )
 	polyplay_set_channel2(0);
 	polyplay_play_channel2(0);
 
-	polyplay_timer = timer_alloc(polyplay_timer_callback, NULL);
+	polyplay_timer = timer_alloc(machine, polyplay_timer_callback, NULL);
 }
 
 
 static INTERRUPT_GEN( periodic_interrupt )
 {
-	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0x4e);
+	cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0x4e);
 }
 
 
@@ -147,12 +137,12 @@ static INTERRUPT_GEN( coin_interrupt )
 {
 	static int last = 0;
 
-	if (input_port_read(machine, "INPUT") & 0x80)
+	if (input_port_read(device->machine, "INPUT") & 0x80)
 		last = 0;
 	else
 	{
 		if (last == 0)    /* coin inserted */
-			cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0x50);
+			cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0x50);
 
 		last = 1;
 	}
@@ -252,7 +242,7 @@ static WRITE8_HANDLER( polyplay_start_timer2 )
 
 static READ8_HANDLER( polyplay_random_read )
 {
-	return mame_rand(machine) & 0xff;
+	return mame_rand(space->machine) & 0xff;
 }
 
 /* graphic structures */
@@ -365,7 +355,7 @@ ROM_END
 
 static TIMER_CALLBACK( polyplay_timer_callback )
 {
-	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0x4c);
+	cpu_set_input_line_and_vector(machine->cpu[0], 0, HOLD_LINE, 0x4c);
 }
 
 /* game driver */

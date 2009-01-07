@@ -72,9 +72,9 @@ static TILE_GET_INFO( get_bg2_tile_info )
 
 VIDEO_START( vastar )
 {
-	fg_tilemap  = tilemap_create(get_fg_tile_info, tilemap_scan_rows,8,8,32,32);
-	bg1_tilemap = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,8,8,32,32);
-	bg2_tilemap = tilemap_create(get_bg2_tile_info,tilemap_scan_rows,8,8,32,32);
+	fg_tilemap  = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,8,8,32,32);
+	bg1_tilemap = tilemap_create(machine, get_bg1_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg2_tilemap = tilemap_create(machine, get_bg2_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(bg1_tilemap,0);
@@ -146,7 +146,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		flipx = spriteram_3[offs] & 0x02;
 		flipy = spriteram_3[offs] & 0x01;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			flipx = !flipx;
 			flipy = !flipy;
@@ -154,7 +154,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 
 		if (spriteram_2[offs] & 0x08)	/* double width */
 		{
-			if (!flip_screen_get())
+			if (!flip_screen_get(machine))
 				sy = 224 - sy;
 
 			drawgfx(bitmap,machine->gfx[2],
@@ -173,7 +173,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		}
 		else
 		{
-			if (!flip_screen_get())
+			if (!flip_screen_get(machine))
 				sy = 240 - sy;
 
 			drawgfx(bitmap,machine->gfx[1],

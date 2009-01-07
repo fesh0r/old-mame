@@ -7,6 +7,7 @@
 **************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/dac.h"
 
 
@@ -26,7 +27,7 @@ static INPUT_CHANGED( coin_inserted )
 {
 	/* this starts a 556 one-shot timer (and triggers a sound effect) */
 	if (newval)
-		cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 

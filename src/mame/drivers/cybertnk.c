@@ -170,6 +170,8 @@ lev 7 : 0x7c : 0000 07e0 - input device clear?
 *******************************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "sound/3812intf.h"
 
@@ -178,7 +180,7 @@ static UINT16 *tx_vram;
 static UINT16 *shared_ram;
 static UINT16 *io_ram;
 
-#define LOG_UNKNOWN_WRITE logerror("unknown io write CPU%d:%08x  0x%08x 0x%04x & 0x%04x\n", cpu_getactivecpu(), activecpu_get_pc(), offset*2, data, mem_mask);
+#define LOG_UNKNOWN_WRITE logerror("unknown io write CPU '%s':%08x  0x%08x 0x%04x & 0x%04x\n", space->cpu->tag, cpu_get_pc(space->cpu), offset*2, data, mem_mask);
 #define IGNORE_MISSING_ROM 1
 
 static TILE_GET_INFO( get_tx_tile_info )
@@ -193,7 +195,7 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 static VIDEO_START( cybertnk )
 {
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,8,8,128,32);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows,8,8,128,32);
 }
 
 static VIDEO_UPDATE( cybertnk )
@@ -236,7 +238,7 @@ static READ16_HANDLER( io_r )
 	switch( offset )
 	{
 		case 2/2:
-			return input_port_read(machine, "DSW1");
+			return input_port_read(space->machine, "DSW1");
 
 		// 0x00110007 is controller device select
 		// 0x001100D5 is controller data
@@ -245,15 +247,15 @@ static READ16_HANDLER( io_r )
 			switch( (io_ram[7/2]) & 0xff )
 			{
 				case 0:
-					io_ram[0xd5/2] = input_port_read(machine, "TRAVERSE");
+					io_ram[0xd5/2] = input_port_read(space->machine, "TRAVERSE");
 					break;
 
 				case 0x20:
-					io_ram[0xd5/2] = input_port_read(machine, "ELEVATE");
+					io_ram[0xd5/2] = input_port_read(space->machine, "ELEVATE");
 					break;
 
 				case 0x40:
-					io_ram[0xd5/2] = input_port_read(machine, "ACCEL");
+					io_ram[0xd5/2] = input_port_read(space->machine, "ACCEL");
 					break;
 
 				case 0x42:
@@ -265,7 +267,7 @@ static READ16_HANDLER( io_r )
 					break;
 
 				case 0x60:
-					io_ram[0xd5/2] = input_port_read(machine, "HANDLE");
+					io_ram[0xd5/2] = input_port_read(space->machine, "HANDLE");
 					break;
 
 				default:
@@ -274,13 +276,13 @@ static READ16_HANDLER( io_r )
 			return 0;
 
 		case 6/2:
-			return input_port_read(machine, "IN0"); // high half
+			return input_port_read(space->machine, "IN0"); // high half
 
 		case 9/2:
-			return input_port_read(machine, "IN0"); // low half
+			return input_port_read(space->machine, "IN0"); // low half
 
 		case 0xb/2:
-			return input_port_read(machine, "DSW2");
+			return input_port_read(space->machine, "DSW2");
 
 		case 0xd5/2:
 			return io_ram[offset]; // controller data
@@ -302,7 +304,7 @@ static WRITE16_HANDLER( io_w )
 		case 0:
 			// sound data
 			if (ACCESSING_BITS_0_7)
-				cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
+				cpu_set_input_line(space->machine->cpu[2], 0, HOLD_LINE);
 			else
 				LOG_UNKNOWN_WRITE
 			break;
@@ -540,19 +542,19 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( master_irq )
 {
-	switch(cpu_getiloops())
+	switch(cpu_getiloops(device))
 	{
-		case 0: cpunum_set_input_line(machine, 0,1,HOLD_LINE); break;
-		case 1: cpunum_set_input_line(machine, 0,3,HOLD_LINE); break;
+		case 0: cpu_set_input_line(device,1,HOLD_LINE); break;
+		case 1: cpu_set_input_line(device,3,HOLD_LINE); break;
 	}
 }
 
 static INTERRUPT_GEN( slave_irq )
 {
-	switch(cpu_getiloops())
+	switch(cpu_getiloops(device))
 	{
-		case 0: cpunum_set_input_line(machine, 0,3,HOLD_LINE); break;
-		case 1: cpunum_set_input_line(machine, 0,1,HOLD_LINE); break;
+		case 0: cpu_set_input_line(device,3,HOLD_LINE); break;
+		case 1: cpu_set_input_line(device,1,HOLD_LINE); break;
 	}
 }
 
@@ -572,7 +574,7 @@ static MACHINE_DRIVER_START( cybertnk )
 	MDRV_CPU_ADD("audio", Z80,3579500)
 	MDRV_CPU_PROGRAM_MAP(sound_mem,0)
 
-	MDRV_INTERLEAVE(100)//arbitrary value,needed to get the communication to work
+	MDRV_QUANTUM_TIME(HZ(6000))//arbitrary value,needed to get the communication to work
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

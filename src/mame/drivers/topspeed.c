@@ -230,6 +230,7 @@ Stephh's notes (based on the game M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "taitoipt.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
@@ -272,7 +273,7 @@ static void parse_control(running_machine *machine)	/* assumes Z80 sandwiched be
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
        if cpu B is disabled !! */
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
 
 }
 
@@ -282,9 +283,9 @@ static WRITE16_HANDLER( cpua_ctrl_w )
 		data = data >> 8;	/* for Wgp */
 	cpua_ctrl = data;
 
-	parse_control(machine);
+	parse_control(space->machine);
 
-	logerror("CPU #0 PC %06x: write %04x to cpu control\n",activecpu_get_pc(),data);
+	logerror("CPU #0 PC %06x: write %04x to cpu control\n",cpu_get_pc(space->cpu),data);
 }
 
 
@@ -296,29 +297,29 @@ static WRITE16_HANDLER( cpua_ctrl_w )
 
 static TIMER_CALLBACK( topspeed_interrupt6  )
 {
-	cpunum_set_input_line(machine, 0,6,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],6,HOLD_LINE);
 }
 
 /* 68000 B */
 
 static TIMER_CALLBACK( topspeed_cpub_interrupt6 )
 {
-	cpunum_set_input_line(machine, 2,6,HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
+	cpu_set_input_line(machine->cpu[2],6,HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
 }
 
 
 static INTERRUPT_GEN( topspeed_interrupt )
 {
 	/* Unsure how many int6's per frame */
-	timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL, 0, topspeed_interrupt6);
-	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,200000-500), NULL, 0, topspeed_interrupt6);
+	cpu_set_input_line(device, 5, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( topspeed_cpub_interrupt )
 {
 	/* Unsure how many int6's per frame */
-	timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL, 0, topspeed_cpub_interrupt6);
-	cpunum_set_input_line(machine, 2, 5, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,200000-500), NULL, 0, topspeed_cpub_interrupt6);
+	cpu_set_input_line(device, 5, HOLD_LINE);
 }
 
 
@@ -332,10 +333,10 @@ static INTERRUPT_GEN( topspeed_cpub_interrupt )
 
 static READ16_HANDLER( topspeed_input_bypass_r )
 {
-	UINT8 port = TC0220IOC_port_r(machine,0);	/* read port number */
+	UINT8 port = TC0220IOC_port_r(space,0);	/* read port number */
 	int steer = 0;
-	int analogue_steer = input_port_read_safe(machine, STEER_PORT_TAG,0x00);
-	int fake = input_port_read_safe(machine, FAKE_PORT_TAG,0x00);
+	int analogue_steer = input_port_read_safe(space->machine, STEER_PORT_TAG,0x00);
+	int fake = input_port_read_safe(space->machine, FAKE_PORT_TAG,0x00);
 
 	if (!(fake & 0x10))	/* Analogue steer (the real control method) */
 	{
@@ -369,7 +370,7 @@ static READ16_HANDLER( topspeed_input_bypass_r )
 			return steer >> 8;
 
 		default:
-			return TC0220IOC_portreg_r(machine,offset);
+			return TC0220IOC_portreg_r(space,offset);
 	}
 }
 
@@ -379,13 +380,13 @@ static READ16_HANDLER( topspeed_motor_r )
 	switch (offset)
 	{
 		case 0x0:
-			return (mame_rand(machine) &0xff);	/* motor status ?? */
+			return (mame_rand(space->machine) &0xff);	/* motor status ?? */
 
 		case 0x101:
 			return 0x55;	/* motor cpu status ? */
 
 		default:
-logerror("CPU #0 PC %06x: warning - read from motor cpu %03x\n",activecpu_get_pc(),offset);
+logerror("CPU #0 PC %06x: warning - read from motor cpu %03x\n",cpu_get_pc(space->cpu),offset);
 			return 0;
 	}
 }
@@ -394,7 +395,7 @@ static WRITE16_HANDLER( topspeed_motor_w )
 {
 	/* Writes $900000-25 and $900200-219 */
 
-logerror("CPU #0 PC %06x: warning - write %04x to motor cpu %03x\n",activecpu_get_pc(),data,offset);
+logerror("CPU #0 PC %06x: warning - write %04x to motor cpu %03x\n",cpu_get_pc(space->cpu),data,offset);
 
 }
 
@@ -405,16 +406,16 @@ logerror("CPU #0 PC %06x: warning - write %04x to motor cpu %03x\n",activecpu_ge
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr( 10, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr(machine,  10, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )	/* assumes Z80 sandwiched between 68Ks */
 {
 	banknum = (data - 1) & 7;
-	reset_sound_region(machine);
+	reset_sound_region(space->machine);
 }
 
-static void topspeed_msm5205_vck(running_machine *machine, int chip)
+static void topspeed_msm5205_vck(const device_config *device)
 {
 	if (adpcm_data != -1)
 	{
@@ -423,7 +424,7 @@ static void topspeed_msm5205_vck(running_machine *machine, int chip)
 	}
 	else
 	{
-		adpcm_data = memory_region(machine, "adpcm")[adpcm_pos];
+		adpcm_data = memory_region(device->machine, "adpcm")[adpcm_pos];
 		adpcm_pos = (adpcm_pos + 1) & 0x1ffff;
 		msm5205_data_w(0, adpcm_data >> 4);
 	}
@@ -655,7 +656,7 @@ GFXDECODE_END
 
 static void irq_handler(running_machine *machine, int irq)	/* assumes Z80 sandwiched between 68Ks */
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface ym2151_config =
@@ -683,9 +684,9 @@ static STATE_POSTLOAD( topspeed_postload )
 
 static MACHINE_START( topspeed )
 {
-	state_save_register_global(cpua_ctrl);
-	state_save_register_global(ioc220_port);
-	state_save_register_global(banknum);
+	state_save_register_global(machine, cpua_ctrl);
+	state_save_register_global(machine, ioc220_port);
+	state_save_register_global(machine, banknum);
 	state_save_register_postload(machine, topspeed_postload, NULL);
 }
 

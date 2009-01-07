@@ -178,7 +178,7 @@ VIDEO_START( turbo )
 	turbo_state *state = machine->driver_data;
 
 	/* initialize the foreground tilemap */
-	state->fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,  8,8, 32,32);
+	state->fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,  8,8, 32,32);
 }
 
 
@@ -187,11 +187,11 @@ VIDEO_START( buckrog )
 	turbo_state *state = machine->driver_data;
 
 	/* initialize the foreground tilemap */
-	state->fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,  8,8, 32,32);
+	state->fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	/* allocate the bitmap RAM */
 	state->buckrog_bitmap_ram = auto_malloc(0xe000);
-	state_save_register_global_pointer(state->buckrog_bitmap_ram, 0xe000);
+	state_save_register_global_pointer(machine, state->buckrog_bitmap_ram, 0xe000);
 }
 
 
@@ -204,11 +204,11 @@ VIDEO_START( buckrog )
 
 WRITE8_HANDLER( turbo_videoram_w )
 {
-	turbo_state *state = machine->driver_data;
+	turbo_state *state = space->machine->driver_data;
 	state->videoram[offset] = data;
 	if (offset < 0x400)
 	{
-		video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+		video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 		tilemap_mark_tile_dirty(state->fg_tilemap, offset);
 	}
 }
@@ -216,7 +216,7 @@ WRITE8_HANDLER( turbo_videoram_w )
 
 WRITE8_HANDLER( buckrog_bitmap_w )
 {
-	turbo_state *state = machine->driver_data;
+	turbo_state *state = space->machine->driver_data;
 	state->buckrog_bitmap_ram[offset] = data & 1;
 }
 

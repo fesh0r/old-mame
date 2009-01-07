@@ -41,8 +41,8 @@ static TILE_GET_INFO( get_tile_info2 )
 
 VIDEO_START( crshrace )
 {
-	tilemap1 = tilemap_create(get_tile_info1,tilemap_scan_rows,16,16,64,64);
-	tilemap2 = tilemap_create(get_tile_info2,tilemap_scan_rows, 8, 8,64,64);
+	tilemap1 = tilemap_create(machine, get_tile_info1,tilemap_scan_rows,16,16,64,64);
+	tilemap2 = tilemap_create(machine, get_tile_info2,tilemap_scan_rows, 8, 8,64,64);
 
 	K053936_wraparound_enable(0, 1);
 	K053936_set_offset(0, -48, -21);
@@ -187,11 +187,11 @@ VIDEO_UPDATE( crshrace )
 {
 	if (gfxctrl & 0x04)	/* display disable? */
 	{
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 		return 0;
 	}
 
-	fillbitmap(bitmap,0x1ff,cliprect);
+	bitmap_fill(bitmap,cliprect,0x1ff);
 
 	switch (gfxctrl & 0xfb)
 	{
@@ -215,6 +215,8 @@ popmessage("gfxctrl = %02x",gfxctrl);
 
 VIDEO_EOF( crshrace )
 {
-	buffer_spriteram16_w(machine,0,0,0xffff);
-	buffer_spriteram16_2_w(machine,0,0,0xffff);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram16_w(space,0,0,0xffff);
+	buffer_spriteram16_2_w(space,0,0,0xffff);
 }

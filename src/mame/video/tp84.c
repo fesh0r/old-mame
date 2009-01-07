@@ -116,7 +116,7 @@ PALETTE_INIT( tp84 )
 WRITE8_HANDLER( tp84_spriteram_w )
 {
 	/* the game multiplexes the sprites, so update now */
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 	tp84_spriteram[offset] = data;
 }
 
@@ -124,7 +124,7 @@ WRITE8_HANDLER( tp84_spriteram_w )
 READ8_HANDLER( tp84_scanline_r )
 {
 	/* reads 1V - 128V */
-	return video_screen_get_vpos(machine->primary_screen);
+	return video_screen_get_vpos(space->machine->primary_screen);
 }
 
 
@@ -153,8 +153,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( tp84 )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 }
 
 

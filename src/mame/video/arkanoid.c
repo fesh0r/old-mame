@@ -24,13 +24,13 @@ WRITE8_HANDLER( arkanoid_d008_w )
 	int bank;
 
 	/* bits 0 and 1 flip X and Y, I don't know which is which */
-	if (flip_screen_x_get() != (data & 0x01)) {
-		flip_screen_x_set(data & 0x01);
+	if (flip_screen_x_get(space->machine) != (data & 0x01)) {
+		flip_screen_x_set(space->machine, data & 0x01);
 		tilemap_mark_all_tiles_dirty(bg_tilemap);
 	}
 
-	if (flip_screen_y_get() != (data & 0x02)) {
-		flip_screen_y_set(data & 0x02);
+	if (flip_screen_y_get(space->machine) != (data & 0x02)) {
+		flip_screen_y_set(space->machine, data & 0x02);
 		tilemap_mark_all_tiles_dirty(bg_tilemap);
 	}
 
@@ -65,8 +65,8 @@ WRITE8_HANDLER( arkanoid_d008_w )
      leaving the tilt screen (as the MCU is now out of sync with main CPU
      which resets itself).  This bit is the likely candidate as it is flipped
      early in bootup just prior to accessing the MCU for the first time. */
-	if (cpu_gettotalcpu()>1) // Bootlegs don't have the MCU but still set this bit
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	if (space->machine->cpu[1] != NULL) // Bootlegs don't have the MCU but still set this bit
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
@@ -80,11 +80,11 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( arkanoid )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
-	state_save_register_global(gfxbank);
-	state_save_register_global(palettebank);
+	state_save_register_global(machine, gfxbank);
+	state_save_register_global(machine, palettebank);
 }
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
@@ -97,21 +97,21 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 		sx = spriteram[offs];
 		sy = 248 - spriteram[offs + 1];
-		if (flip_screen_x_get()) sx = 248 - sx;
-		if (flip_screen_y_get()) sy = 248 - sy;
+		if (flip_screen_x_get(machine)) sx = 248 - sx;
+		if (flip_screen_y_get(machine)) sy = 248 - sy;
 
 		code = spriteram[offs + 3] + ((spriteram[offs + 2] & 0x03) << 8) + 1024 * gfxbank;
 
 		drawgfx(bitmap,machine->gfx[0],
 				2 * code,
 				((spriteram[offs + 2] & 0xf8) >> 3) + 32 * palettebank,
-				flip_screen_x_get(),flip_screen_y_get(),
-				sx,sy + (flip_screen_y_get() ? 8 : -8),
+				flip_screen_x_get(machine),flip_screen_y_get(machine),
+				sx,sy + (flip_screen_y_get(machine) ? 8 : -8),
 				cliprect,TRANSPARENCY_PEN,0);
 		drawgfx(bitmap,machine->gfx[0],
 				2 * code + 1,
 				((spriteram[offs + 2] & 0xf8) >> 3) + 32 * palettebank,
-				flip_screen_x_get(),flip_screen_y_get(),
+				flip_screen_x_get(machine),flip_screen_y_get(machine),
 				sx,sy,
 				cliprect,TRANSPARENCY_PEN,0);
 	}

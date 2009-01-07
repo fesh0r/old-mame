@@ -198,7 +198,7 @@ VIDEO_START( taitojc )
 
 	taitojc_char_dirty = 1;
 
-	poly = poly_alloc(4000, sizeof(poly_extra_data), POLYFLAG_ALLOW_QUADS);
+	poly = poly_alloc(machine, 4000, sizeof(poly_extra_data), POLYFLAG_ALLOW_QUADS);
 	add_exit_callback(machine, taitojc_exit);
 
  	/* find first empty slot to decode gfx */
@@ -208,7 +208,7 @@ VIDEO_START( taitojc )
 
 	assert(taitojc_gfx_index != MAX_GFX_ELEMENTS);
 
-	taitojc_tilemap = tilemap_create(taitojc_tile_info, tilemap_scan_rows,  16, 16, 64, 64);
+	taitojc_tilemap = tilemap_create(machine, taitojc_tile_info, tilemap_scan_rows,  16, 16, 64, 64);
 	taitojc_dirty_map = auto_malloc(TAITOJC_NUM_TILES);
 
 	tilemap_set_transparent_pen(taitojc_tilemap, 0);
@@ -220,7 +220,7 @@ VIDEO_START( taitojc )
 	memset(taitojc_tile_ram, 0, 0x4000);
 
 	/* create the char set (gfx will then be updated dynamically from RAM) */
-	machine->gfx[taitojc_gfx_index] = allocgfx(&taitojc_char_layout);
+	machine->gfx[taitojc_gfx_index] = allocgfx(machine, &taitojc_char_layout);
 
 	/* set the color information */
 	machine->gfx[taitojc_gfx_index]->total_colors = machine->config->total_colors / 16;
@@ -254,7 +254,7 @@ VIDEO_UPDATE( taitojc )
     }
     */
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	for (i=(0xc00/4)-2; i >= 0; i-=2)
 	{
@@ -642,6 +642,6 @@ void taitojc_clear_frame(running_machine *machine)
 	cliprect.max_x = video_screen_get_width(machine->primary_screen) - 1;
 	cliprect.max_y = video_screen_get_height(machine->primary_screen) - 1;
 
-	fillbitmap(framebuffer, 0, &cliprect);
-	fillbitmap(zbuffer, 0xffff, &cliprect);
+	bitmap_fill(framebuffer, &cliprect, 0);
+	bitmap_fill(zbuffer, &cliprect, 0xffff);
 }

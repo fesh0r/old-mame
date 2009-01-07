@@ -48,13 +48,13 @@ static const device_config *genesis_screen;
     Function Prototypes
 ******************************************************************************/
 
-static int  vdp_data_r(void);
+static int  vdp_data_r(running_machine *machine);
 static void vdp_data_w(running_machine *machine, int data);
 static int  vdp_control_r(running_machine *machine);
-static void vdp_control_w(running_machine *machine, int data);
+static void vdp_control_w(const address_space *space, int data);
 static void vdp_register_w(running_machine *machine, int data, int vblank);
-static void vdp_control_dma(running_machine *machine, int data);
-static void vdp_dma_68k(running_machine *machine);
+static void vdp_control_dma(const address_space *space, int data);
+static void vdp_dma_68k(const address_space *space);
 static void vdp_dma_fill(int);
 static void vdp_dma_copy(void);
 
@@ -175,29 +175,29 @@ static void start_genesis_vdp(const device_config *screen)
 	vdp_address = 0;
 
 	/* Save State Stuff */
-	state_save_register_global_array(genesis_vdp_regs);
-	state_save_register_global_pointer(vdp_vram, 0x10000);
-	state_save_register_global_pointer(vdp_vsram, 0x80);
-	state_save_register_global_array(genesis_bg_pal_lookup);
-	state_save_register_global_array(genesis_sp_pal_lookup);
-	state_save_register_global(display_enable);
-	state_save_register_global(vdp_scrollabase);
-	state_save_register_global(vdp_scrollbbase);
-	state_save_register_global(vdp_windowbase);
-	state_save_register_global(vdp_spritebase);
-	state_save_register_global(vdp_hscrollbase);
-	state_save_register_global(vdp_hscrollmask);
-	state_save_register_global(vdp_hscrollsize);
-	state_save_register_global(vdp_vscrollmode);
-	state_save_register_global(vdp_cmdpart);
-	state_save_register_global(vdp_code);
-	state_save_register_global(vdp_address);
-	state_save_register_global(vdp_dmafill);
-	state_save_register_global(scrollheight);
-	state_save_register_global(scrollwidth);
-	state_save_register_global(bgcol);
-	state_save_register_global(window_down);
-	state_save_register_global(window_vpos);
+	state_save_register_global_array(screen->machine, genesis_vdp_regs);
+	state_save_register_global_pointer(screen->machine, vdp_vram, 0x10000);
+	state_save_register_global_pointer(screen->machine, vdp_vsram, 0x80);
+	state_save_register_global_array(screen->machine, genesis_bg_pal_lookup);
+	state_save_register_global_array(screen->machine, genesis_sp_pal_lookup);
+	state_save_register_global(screen->machine, display_enable);
+	state_save_register_global(screen->machine, vdp_scrollabase);
+	state_save_register_global(screen->machine, vdp_scrollbbase);
+	state_save_register_global(screen->machine, vdp_windowbase);
+	state_save_register_global(screen->machine, vdp_spritebase);
+	state_save_register_global(screen->machine, vdp_hscrollbase);
+	state_save_register_global(screen->machine, vdp_hscrollmask);
+	state_save_register_global(screen->machine, vdp_hscrollsize);
+	state_save_register_global(screen->machine, vdp_vscrollmode);
+	state_save_register_global(screen->machine, vdp_cmdpart);
+	state_save_register_global(screen->machine, vdp_code);
+	state_save_register_global(screen->machine, vdp_address);
+	state_save_register_global(screen->machine, vdp_dmafill);
+	state_save_register_global(screen->machine, scrollheight);
+	state_save_register_global(screen->machine, scrollwidth);
+	state_save_register_global(screen->machine, bgcol);
+	state_save_register_global(screen->machine, window_down);
+	state_save_register_global(screen->machine, window_vpos);
 }
 
 VIDEO_START(genesis)
@@ -269,7 +269,7 @@ VIDEO_UPDATE( genesis )
 VIDEO_UPDATE( segac2 )
 {
 	if (!display_enable)
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 	else
 		VIDEO_UPDATE_CALL(genesis);
 	return 0;
@@ -335,11 +335,11 @@ READ16_HANDLER( genesis_vdp_r )
 	{
 		case 0x00:	/* Read Data */
 		case 0x01:
-			return vdp_data_r();
+			return vdp_data_r(space->machine);
 
 		case 0x02:	/* Status Register */
 		case 0x03:
-			return vdp_control_r(machine);
+			return vdp_control_r(space->machine);
 
 		case 0x04:	/* HV counter */
 		case 0x05:
@@ -377,7 +377,7 @@ WRITE16_HANDLER( genesis_vdp_w )
 				 else
 				 	data |= data << 8;
 			}
-			vdp_data_w(machine, data);
+			vdp_data_w(space->machine, data);
 			break;
 
 		case 0x02:	/* Control Write */
@@ -390,7 +390,7 @@ WRITE16_HANDLER( genesis_vdp_w )
 				 else
 				 	data |= data << 8;
 			}
-			vdp_control_w(machine, data);
+			vdp_control_w(space, data);
 			break;
 
 		case 0x08:	/* SN76489 Write */
@@ -398,7 +398,7 @@ WRITE16_HANDLER( genesis_vdp_w )
 		case 0x0a:
 		case 0x0b:
 			if (ACCESSING_BITS_0_7 && sndti_exists(SOUND_SN76496, 0))
-				sn76496_0_w(machine, 0, data & 0xff);
+				sn76496_0_w(space, 0, data & 0xff);
 			break;
 	}
 }
@@ -418,7 +418,7 @@ WRITE16_HANDLER( genesis_vdp_w )
 ******************************************************************************/
 
 /* Games needing Read to Work .. bloxeed (attract) .. puyo puyo .. probably more */
-static int vdp_data_r(void)
+static int vdp_data_r(running_machine *machine)
 {
 	int read = 0;
 
@@ -437,7 +437,7 @@ static int vdp_data_r(void)
 			break;
 
 		default:		/* Illegal read attempt */
-			logerror("%06x: VDP illegal read type %02x\n", activecpu_get_previouspc(), vdp_code);
+			logerror("%s: VDP illegal read type %02x\n", cpuexec_describe_context(machine), vdp_code);
 			read = 0x00;
 			break;
 	}
@@ -498,7 +498,7 @@ static void vdp_data_w(running_machine *machine, int data)
 			break;
 
 		default:		/* Illegal write attempt */
-			logerror("PC:%06x: VDP illegal write type %02x data %04x\n", activecpu_get_previouspc(), vdp_code, data);
+			logerror("%s: VDP illegal write type %02x data %04x\n", cpuexec_describe_context(machine), vdp_code, data);
 			break;
 	}
 
@@ -561,14 +561,14 @@ static int vdp_control_r(running_machine *machine)
 }
 
 
-static void vdp_control_w(running_machine *machine, int data)
+static void vdp_control_w(const address_space *space, int data)
 {
 	/* case 1: we're not expecting the 2nd half of a command */
 	if (!vdp_cmdpart)
 	{
 		/* if 10xxxxxx xxxxxxxx this is a register setting command */
 		if ((data & 0xc000) == 0x8000)
-			vdp_register_w(machine, data, video_screen_get_vblank(machine->primary_screen));
+			vdp_register_w(space->machine, data, video_screen_get_vblank(space->machine->primary_screen));
 
 		/* otherwise this is the First part of a mode setting command */
 		else
@@ -585,7 +585,7 @@ static void vdp_control_w(running_machine *machine, int data)
 		vdp_code    = (vdp_code & 0x03) | ((data >> 2) & 0x3c);
 		vdp_address = (vdp_address & 0x3fff) | ((data << 14) & 0xc000);
 		vdp_cmdpart = 0;
-		vdp_control_dma(machine, data);
+		vdp_control_dma(space, data);
 	}
 }
 
@@ -700,7 +700,7 @@ static void vdp_register_w(running_machine *machine, int data, int vblank)
 }
 
 
-static void vdp_control_dma(running_machine *machine, int data)
+static void vdp_control_dma(const address_space *space, int data)
 {
 	if ((vdp_code & 0x20) && (genesis_vdp_regs[1] & 0x10))
 	{
@@ -708,7 +708,7 @@ static void vdp_control_dma(running_machine *machine, int data)
 		{
 			case 0x00:
 			case 0x40:		/* 68k -> VRAM Tranfser */
-				vdp_dma_68k(machine);
+				vdp_dma_68k(space);
 				break;
 
 			case 0x80:		/* VRAM fill, can't be done here, requires data write */
@@ -732,7 +732,7 @@ static void vdp_control_dma(running_machine *machine, int data)
 
 ******************************************************************************/
 
-static void vdp_dma_68k(running_machine *machine)
+static void vdp_dma_68k(const address_space *space)
 {
 	int length = genesis_vdp_regs[19] | (genesis_vdp_regs[20] << 8);
 	int source = (genesis_vdp_regs[21] << 1) | (genesis_vdp_regs[22] << 9) | ((genesis_vdp_regs[23] & 0x7f) << 17);
@@ -745,7 +745,7 @@ static void vdp_dma_68k(running_machine *machine)
 	/* handle the DMA */
 	for (count = 0; count < length; count++)
 	{
-		vdp_data_w(machine, program_read_word(source));
+		vdp_data_w(space->machine, memory_read_word(space, source));
 		source += 2;
 	}
 }

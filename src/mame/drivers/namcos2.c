@@ -447,6 +447,8 @@ $a00000 checks have been seen on the Final Lap boards.
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
+#include "cpu/m6805/m6805.h"
 #include "deprecat.h"
 #include "namcos2.h"
 #include "cpu/m6809/m6809.h"
@@ -887,6 +889,16 @@ static INPUT_PORTS_START( default )
 	NAMCOS2_MCU_DIAL_DEFAULT
 INPUT_PORTS_END
 
+static INPUT_PORTS_START( kyukaidk )
+	PORT_INCLUDE( default )
+
+	PORT_MODIFY("DSW")
+	/* Must be 'L' for correct C140 output */
+	PORT_DIPNAME( 0x20, 0x00, "$2000-5" )
+	PORT_DIPSETTING(	0x20, "H" )
+	PORT_DIPSETTING(	0x00, "L" )
+INPUT_PORTS_END
+
 static INPUT_PORTS_START( gollygho )
 	PORT_START("MCUB")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1314,7 +1326,7 @@ static INPUT_PORTS_START( luckywld )
 	NAMCOS2_MCU_DIAL_DEFAULT
 INPUT_PORTS_END
 
-static INPUT_PORTS_START( sgunner  )
+static INPUT_PORTS_START( sgunner )
 	PORT_START("MCUB")		/* 63B05Z0 - PORT B */
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
@@ -1592,7 +1604,7 @@ static MACHINE_DRIVER_START( default )
 	MDRV_CPU_PROGRAM_MAP(readmem_mcu,writemem_mcu)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_INTERLEAVE(100) /* CPU slices per frame */
+	MDRV_QUANTUM_TIME(HZ(6000)) /* CPU slices per frame */
 
 	MDRV_MACHINE_START(namcos2)
 	MDRV_MACHINE_RESET(namcos2)
@@ -1666,7 +1678,7 @@ static MACHINE_DRIVER_START( gollygho )
 	MDRV_CPU_PROGRAM_MAP(readmem_mcu,writemem_mcu)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_INTERLEAVE(100) /* CPU slices per frame */
+	MDRV_QUANTUM_TIME(HZ(6000)) /* CPU slices per frame */
 
 	MDRV_MACHINE_START(namcos2)
 	MDRV_MACHINE_RESET(namcos2)
@@ -1716,7 +1728,7 @@ static MACHINE_DRIVER_START( finallap )
 	MDRV_CPU_PROGRAM_MAP(readmem_mcu,writemem_mcu)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_INTERLEAVE(100) /* CPU slices per frame */
+	MDRV_QUANTUM_TIME(HZ(6000)) /* CPU slices per frame */
 
 	MDRV_MACHINE_START(namcos2)
 	MDRV_MACHINE_RESET(namcos2)
@@ -1766,7 +1778,7 @@ static MACHINE_DRIVER_START( sgunner )
 	MDRV_CPU_PROGRAM_MAP(readmem_mcu,writemem_mcu)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_INTERLEAVE(100) /* CPU slices per frame */
+	MDRV_QUANTUM_TIME(HZ(6000)) /* CPU slices per frame */
 
 	MDRV_MACHINE_START(namcos2)
 	MDRV_MACHINE_RESET(namcos2)
@@ -1816,7 +1828,7 @@ static MACHINE_DRIVER_START( luckywld )
 	MDRV_CPU_PROGRAM_MAP(readmem_mcu,writemem_mcu)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_INTERLEAVE(100) /* CPU slices per frame */
+	MDRV_QUANTUM_TIME(HZ(6000)) /* CPU slices per frame */
 
 	MDRV_MACHINE_START(namcos2)
 	MDRV_MACHINE_RESET(namcos2)
@@ -1866,7 +1878,7 @@ static MACHINE_DRIVER_START( metlhawk )
 	MDRV_CPU_PROGRAM_MAP(readmem_mcu,writemem_mcu)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_INTERLEAVE(100) /* CPU slices per frame */
+	MDRV_QUANTUM_TIME(HZ(6000)) /* CPU slices per frame */
 
 	MDRV_MACHINE_START(namcos2)
 	MDRV_MACHINE_RESET(namcos2)
@@ -4882,8 +4894,8 @@ GAME( 1989, burnforc, 0,        default3, default,  burnforc, ROT0,   "Namco", "
 GAME( 1989, burnfrco, burnforc, default3, default,  burnforc, ROT0,   "Namco", "Burning Force (Japan old version)", 0 )
 GAME( 1989, marvland, 0,        default,  default,  marvland, ROT0,   "Namco", "Marvel Land (US)", 0 )
 GAME( 1989, marvlanj, marvland, default,  default,  marvlanj, ROT0,   "Namco", "Marvel Land (Japan)", 0 )
-GAME( 1990, kyukaidk, 0,        default,  default,  kyukaidk, ROT0,   "Namco", "Kyuukai Douchuuki (Japan new version)", 0 )
-GAME( 1990, kyukaido, kyukaidk, default,  default,  kyukaidk, ROT0,   "Namco", "Kyuukai Douchuuki (Japan old version)", 0 )
+GAME( 1990, kyukaidk, 0,        default,  kyukaidk, kyukaidk, ROT0,   "Namco", "Kyuukai Douchuuki (Japan new version)", 0 )
+GAME( 1990, kyukaido, kyukaidk, default,  kyukaidk, kyukaidk, ROT0,   "Namco", "Kyuukai Douchuuki (Japan old version)", 0 )
 GAME( 1990, dsaber,   0,        default3, default,  dsaber,   ROT90,  "Namco", "Dragon Saber", 0 )
 GAME( 1990, dsaberj,  dsaber,   default3, default,  dsaberj,  ROT90,  "Namco", "Dragon Saber (Japan)", 0 )
 GAME( 1990, finalap2, 0,        finallap, finallap, finalap2, ROT0,   "Namco", "Final Lap 2", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS  )

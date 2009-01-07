@@ -112,6 +112,7 @@ CN4               CN5
 ******************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/sn76496.h"
 #include "video/tms9928a.h"
 #include "machine/8255ppi.h"
@@ -225,12 +226,12 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( sg1000a_interrupt )
 {
-	TMS9928A_interrupt(machine);
+	TMS9928A_interrupt(device->machine);
 }
 
 static void vdp_interrupt(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, state);
+	cpu_set_input_line(machine->cpu[0], INPUT_LINE_IRQ0, state);
 }
 
 static const TMS9928a_interface tms9928a_interface =

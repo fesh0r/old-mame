@@ -24,89 +24,101 @@
 /* Functions */
 
 #if (HAS_E116T)
-void e116t_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( e116t );
+#define CPU_E116T CPU_GET_INFO_NAME( e116t )
 #endif
 
 #if (HAS_E116XT)
-void e116xt_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( e116xt );
+#define CPU_E116XT CPU_GET_INFO_NAME( e116xt )
 #endif
 
 #if (HAS_E116XS)
-void e116xs_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( e116xs );
+#define CPU_E116XS CPU_GET_INFO_NAME( e116xs )
 #endif
 
 #if (HAS_E116XSR)
-void e116xsr_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( e116xsr );
+#define CPU_E116XSR CPU_GET_INFO_NAME( e116xsr )
 #endif
 
 #if (HAS_E132N)
-void e132n_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( e132n );
+#define CPU_E132N CPU_GET_INFO_NAME( e132n )
 #endif
 
 #if (HAS_E132T)
-void e132t_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( e132t );
+#define CPU_E132T CPU_GET_INFO_NAME( e132t )
 #endif
 
 #if (HAS_E132XN)
-void e132xn_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( e132xn );
+#define CPU_E132XN CPU_GET_INFO_NAME( e132xn )
 #endif
 
 #if (HAS_E132XT)
-void e132xt_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( e132xt );
+#define CPU_E132XT CPU_GET_INFO_NAME( e132xt )
 #endif
 
 #if (HAS_E132XS)
-void e132xs_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( e132xs );
+#define CPU_E132XS CPU_GET_INFO_NAME( e132xs )
 #endif
 
 #if (HAS_E132XSR)
-void e132xsr_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( e132xsr );
+#define CPU_E132XSR CPU_GET_INFO_NAME( e132xsr )
 #endif
 
 #if (HAS_GMS30C2116)
-void gms30c2116_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( gms30c2116 );
+#define CPU_GMS30C2116 CPU_GET_INFO_NAME( gms30c2116 )
 #endif
 
 #if (HAS_GMS30C2132)
-void gms30c2132_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( gms30c2132 );
+#define CPU_GMS30C2132 CPU_GET_INFO_NAME( gms30c2132 )
 #endif
 
 #if (HAS_GMS30C2216)
-void gms30c2216_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( gms30c2216 );
+#define CPU_GMS30C2216 CPU_GET_INFO_NAME( gms30c2216 )
 #endif
 
 #if (HAS_GMS30C2232)
-void gms30c2232_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( gms30c2232 );
+#define CPU_GMS30C2232 CPU_GET_INFO_NAME( gms30c2232 )
 #endif
 
 extern unsigned dasm_hyperstone(char *buffer, unsigned pc, const UINT8 *oprom, unsigned h_flag, int private_fp);
 
-extern int hyp_type_16bit;
-
 /* Memory access */
 /* read byte */
-#define READ_B(addr)           ((*hyp_cpu_read_byte)(addr))
+#define READ_B(H,addr)         memory_read_byte((H)->program, (addr))
 /* read half-word */
-#define READ_HW(addr)          ((*hyp_cpu_read_half_word)((addr) & ~1))
+#define READ_HW(H,addr)        memory_read_word((H)->program, (addr) & ~1)
 /* read word */
-#define READ_W(addr)           ((*hyp_cpu_read_word)((addr) & ~3))
+#define READ_W(H,addr)         memory_read_dword((H)->program, (addr) & ~3)
 
 /* write byte */
-#define WRITE_B(addr, data)    ((*hyp_cpu_write_byte)(addr, data))
+#define WRITE_B(H,addr, data)  memory_write_byte((H)->program, addr, data)
 /* write half-word */
-#define WRITE_HW(addr, data)   ((*hyp_cpu_write_half_word)((addr) & ~1, data))
+#define WRITE_HW(H,addr, data) memory_write_word((H)->program, (addr) & ~1, data)
 /* write word */
-#define WRITE_W(addr, data)    ((*hyp_cpu_write_word)((addr) & ~3, data))
+#define WRITE_W(H,addr, data)  memory_write_dword((H)->program, (addr) & ~3, data)
 
 
 /* I/O access */
 /* read word */
-#define IO_READ_W(addr)        ((*hyp_cpu_read_io_word)(((addr) >> 11) & 0x7ffc))
+#define IO_READ_W(H,addr)      memory_read_dword((H)->io, ((addr) >> 11) & 0x7ffc)
 /* write word */
-#define IO_WRITE_W(addr, data) ((*hyp_cpu_write_io_word)(((addr) >> 11) & 0x7ffc, data))
+#define IO_WRITE_W(H,addr, data) memory_write_dword((H)->io, ((addr) >> 11) & 0x7ffc, data)
 
 
-#define READ_OP(addr)	       (cpu_readop16(hyp_type_16bit ? addr: WORD_XOR_BE(addr)))
+#define READ_OP(H,addr)	       memory_decrypted_read_word((H)->program, (addr) ^ (H)->opcodexor)
 
 
 /* Registers Number */

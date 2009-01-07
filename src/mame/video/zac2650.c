@@ -37,7 +37,7 @@ READ8_HANDLER( zac_s2636_r )
 
 READ8_HANDLER( tinvader_port_0_r )
 {
-	return input_port_read(machine, "1E80") - CollisionBackground;
+	return input_port_read(space->machine, "1E80") - CollisionBackground;
 }
 
 /*****************************************/
@@ -132,7 +132,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( tinvader )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		 24, 24, 32, 32);
 
 	spritebitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);

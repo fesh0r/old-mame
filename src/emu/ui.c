@@ -297,6 +297,8 @@ int ui_display_startup_screens(running_machine *machine, int first_time, int sho
 				if (show_warnings && astring_len(warnings_string(machine, messagebox_text)) > 0)
 				{
 					ui_set_handler(handler_messagebox_ok, 0);
+					if (machine->gamedrv->flags & (GAME_WRONG_COLORS | GAME_IMPERFECT_COLORS | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NO_SOUND))
+						messagebox_backcolor = UI_YELLOWCOLOR;
 					if (machine->gamedrv->flags & (GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION))
 						messagebox_backcolor = UI_REDCOLOR;
 				}
@@ -981,41 +983,43 @@ static astring *warnings_string(running_machine *machine, astring *string)
 astring *game_info_astring(running_machine *machine, astring *string)
 {
 	int scrcount = video_screen_count(machine->config);
-	int cpunum, sndnum;
+	const device_config *scandevice;
+	const device_config *device;
+	int sndnum;
 	int count;
 
 	/* print description, manufacturer, and CPU: */
 	astring_printf(string, "%s\n%s %s\n\nCPU:\n", machine->gamedrv->description, machine->gamedrv->year, machine->gamedrv->manufacturer);
 
 	/* loop over all CPUs */
-	for (cpunum = 0; cpunum < MAX_CPU && machine->config->cpu[cpunum].type != CPU_DUMMY; cpunum += count)
+	for (device = machine->cpu[0]; device != NULL; device = scandevice)
 	{
-		cpu_type type = machine->config->cpu[cpunum].type;
-		int clock = machine->config->cpu[cpunum].clock;
-
 		/* count how many identical CPUs we have */
-		for (count = 1; cpunum + count < MAX_CPU; count++)
-			if (machine->config->cpu[cpunum + count].type != type ||
-		        machine->config->cpu[cpunum + count].clock != clock)
-		    	break;
+		count = 1;
+		for (scandevice = device->typenext; scandevice != NULL; scandevice = scandevice->typenext)
+		{
+			if (cpu_get_type(device) != cpu_get_type(scandevice) || device->clock != scandevice->clock)
+				break;
+			count++;
+		}
 
 		/* if more than one, prepend a #x in front of the CPU name */
 		if (count > 1)
 			astring_catprintf(string, "%d" UTF8_MULTIPLY, count);
-		astring_catc(string, cputype_name(type));
+		astring_catc(string, cpu_get_name(device));
 
 		/* display clock in kHz or MHz */
-		if (clock >= 1000000)
-			astring_catprintf(string, " %d.%06d" UTF8_NBSP "MHz\n", clock / 1000000, clock % 1000000);
+		if (device->clock >= 1000000)
+			astring_catprintf(string, " %d.%06d" UTF8_NBSP "MHz\n", device->clock / 1000000, device->clock % 1000000);
 		else
-			astring_catprintf(string, " %d.%03d" UTF8_NBSP "kHz\n", clock / 1000, clock % 1000);
+			astring_catprintf(string, " %d.%03d" UTF8_NBSP "kHz\n", device->clock / 1000, device->clock % 1000);
 	}
 
 	/* loop over all sound chips */
 	for (sndnum = 0; sndnum < MAX_SOUND && machine->config->sound[sndnum].type != SOUND_DUMMY; sndnum += count)
 	{
 		sound_type type = machine->config->sound[sndnum].type;
-		int clock = sndnum_clock(sndnum);
+		int clock = machine->config->sound[sndnum].clock;
 
 		/* append the Sound: string */
 		if (sndnum == 0)
@@ -1024,13 +1028,13 @@ astring *game_info_astring(running_machine *machine, astring *string)
 		/* count how many identical sound chips we have */
 		for (count = 1; sndnum + count < MAX_SOUND; count++)
 			if (machine->config->sound[sndnum + count].type != type ||
-		        sndnum_clock(sndnum + count) != clock)
+		        machine->config->sound[sndnum + count].clock != clock)
 		    	break;
 
-		/* if more than one, prepend a #x in front of the CPU name */
+		/* if more than one, prepend a #x in front of the SND name */
 		if (count > 1)
 			astring_catprintf(string, "%d" UTF8_MULTIPLY, count);
-		astring_catc(string, sndnum_name(sndnum));
+		astring_catc(string, sndtype_get_name(type));
 
 		/* display clock in kHz or MHz */
 		if (clock >= 1000000)
@@ -1054,7 +1058,10 @@ astring *game_info_astring(running_machine *machine, astring *string)
 			const screen_config *scrconfig = screen->inline_config;
 
 			if (scrcount > 1)
+			{
 				astring_catc(string, slider_get_screen_desc(screen));
+				astring_catc(string, ": ");
+			}
 
 			if (scrconfig->type == SCREEN_TYPE_VECTOR)
 				astring_catc(string, "Vector\n");
@@ -1167,7 +1174,11 @@ static UINT32 handler_ingame(running_machine *machine, UINT32 state)
 
 	/* draw the profiler if visible */
 	if (show_profiler)
-		ui_draw_text_full(profiler_get_text(machine), 0.0f, 0.0f, 1.0f, JUSTIFY_LEFT, WRAP_WORD, DRAW_OPAQUE, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
+	{
+		astring *profilertext = profiler_get_text(machine, astring_alloc());
+		ui_draw_text_full(astring_c(profilertext), 0.0f, 0.0f, 1.0f, JUSTIFY_LEFT, WRAP_WORD, DRAW_OPAQUE, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
+		astring_free(profilertext);
+	}
 
 	/* if we're single-stepping, pause now */
 	if (single_step)
@@ -1190,8 +1201,8 @@ static UINT32 handler_ingame(running_machine *machine, UINT32 state)
 		return ui_set_handler(ui_menu_ui_handler, 0);
 
 	/* if the on-screen display isn't up and the user has toggled it, turn it on */
-//  if ((machine->debug_flags & DEBUG_FLAG_ENABLED) == 0 && ui_input_pressed(machine, IPT_UI_ON_SCREEN_DISPLAY))
-//      return ui_set_handler(ui_slider_ui_handler, 0);
+	if ((machine->debug_flags & DEBUG_FLAG_ENABLED) == 0 && ui_input_pressed(machine, IPT_UI_ON_SCREEN_DISPLAY))
+		return ui_set_handler(ui_slider_ui_handler, 1);
 
 	/* handle a reset request */
 	if (ui_input_pressed(machine, IPT_UI_RESET_MACHINE))
@@ -1461,13 +1472,13 @@ static slider_state *slider_init(running_machine *machine)
 	/* add CPU overclocking (cheat only) */
 	if (options_get_bool(mame_options(), OPTION_CHEAT))
 	{
-		numitems = cpu_gettotalcpu();
-		for (item = 0; item < numitems; item++)
-		{
-			astring_printf(string, "Overclock CPU %s", machine->config->cpu[item].tag);
-			*tailptr = slider_alloc(astring_c(string), 10, 1000, 2000, 1, slider_overclock, (void *)(FPTR)item);
-			tailptr = &(*tailptr)->next;
-		}
+		for (item = 0; item < ARRAY_LENGTH(machine->cpu); item++)
+			if (machine->cpu[item] != NULL)
+			{
+				astring_printf(string, "Overclock CPU %s", machine->cpu[item]->tag);
+				*tailptr = slider_alloc(astring_c(string), 10, 1000, 2000, 1, slider_overclock, (void *)(FPTR)item);
+				tailptr = &(*tailptr)->next;
+			}
 	}
 
 	/* add screen parameters */
@@ -1637,10 +1648,10 @@ static INT32 slider_overclock(running_machine *machine, void *arg, astring *stri
 {
 	int which = (FPTR)arg;
 	if (newval != SLIDER_NOCHANGE)
-		cpunum_set_clockscale(machine, which, (float)newval * 0.001f);
+		cpu_set_clockscale(machine->cpu[which], (float)newval * 0.001f);
 	if (string != NULL)
-		astring_printf(string, "%3.0f%%", floor(cpunum_get_clockscale(which) * 100.0f + 0.5f));
-	return floor(cpunum_get_clockscale(which) * 1000.0f + 0.5f);
+		astring_printf(string, "%3.0f%%", floor(cpu_get_clockscale(machine->cpu[which]) * 100.0f + 0.5f));
+	return floor(cpu_get_clockscale(machine->cpu[which]) * 1000.0f + 0.5f);
 }
 
 

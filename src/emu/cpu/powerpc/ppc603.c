@@ -22,7 +22,6 @@ void ppc603_exception(int exception)
 					ppc.npc = 0x00000000 | 0x0500;
 
 				ppc.interrupt_pending &= ~0x1;
-				change_pc(ppc.npc);
 			}
 			break;
 
@@ -46,7 +45,6 @@ void ppc603_exception(int exception)
 					ppc.npc = 0x00000000 | 0x0900;
 
 				ppc.interrupt_pending &= ~0x2;
-				change_pc(ppc.npc);
 			}
 			break;
 
@@ -68,7 +66,6 @@ void ppc603_exception(int exception)
 					ppc.npc = 0xfff00000 | 0x0700;
 				else
 					ppc.npc = 0x00000000 | 0x0700;
-				change_pc(ppc.npc);
 			}
 			break;
 
@@ -90,7 +87,6 @@ void ppc603_exception(int exception)
 					ppc.npc = 0xfff00000 | 0x0c00;
 				else
 					ppc.npc = 0x00000000 | 0x0c00;
-				change_pc(ppc.npc);
 			}
 			break;
 
@@ -114,7 +110,6 @@ void ppc603_exception(int exception)
 					ppc.npc = 0x00000000 | 0x1400;
 
 				ppc.interrupt_pending &= ~0x4;
-				change_pc(ppc.npc);
 			}
 			break;
 
@@ -138,7 +133,6 @@ void ppc603_exception(int exception)
 					ppc.npc = 0x00000000 | 0x0300;
 
 				ppc.interrupt_pending &= ~0x4;
-				change_pc(ppc.npc);
 			}
 			break;
 
@@ -162,7 +156,6 @@ void ppc603_exception(int exception)
 					ppc.npc = 0x00000000 | 0x0400;
 
 				ppc.interrupt_pending &= ~0x4;
-				change_pc(ppc.npc);
 			}
 			break;
 
@@ -178,19 +171,17 @@ static void ppc603_set_irq_line(int irqline, int state)
 		ppc.interrupt_pending |= 0x1;
 		if (ppc.irq_callback)
 		{
-			ppc.irq_callback(irqline);
+			ppc.irq_callback(ppc.device, irqline);
 		}
 	}
 }
 
-#if HAS_PPC603
 static void ppc603_set_smi_line(int state)
 {
 	if( state ) {
 		ppc.interrupt_pending |= 0x4;
 	}
 }
-#endif
 
 INLINE void ppc603_check_interrupts(void)
 {
@@ -214,12 +205,11 @@ INLINE void ppc603_check_interrupts(void)
 	}
 }
 
-static void ppc603_reset(void)
+static CPU_RESET( ppc603 )
 {
 	ppc.pc = ppc.npc = 0xfff00100;
 
 	ppc_set_msr(0x40);
-	change_pc(ppc.pc);
 
 	ppc.hid0 = 1;
 
@@ -227,7 +217,7 @@ static void ppc603_reset(void)
 }
 
 
-static int ppc603_execute(int cycles)
+static CPU_EXECUTE( ppc603 )
 {
 	int exception_type;
 	UINT32 opcode;
@@ -245,8 +235,6 @@ static int ppc603_execute(int cycles)
 		ppc_dec_trigger_cycle = 0x7fffffff;
 	}
 
-	change_pc(ppc.npc);
-
 	// MinGW's optimizer kills setjmp()/longjmp()
 	SETJMP_GNUC_PROTECT();
 
@@ -260,10 +248,10 @@ static int ppc603_execute(int cycles)
 	while( ppc_icount > 0 )
 	{
 		ppc.pc = ppc.npc;
-		debugger_instruction_hook(Machine, ppc.pc);
+		debugger_instruction_hook(device, ppc.pc);
 
 		if (MSR & MSR_IR)
-			opcode = ppc_readop_translated(ppc.pc);
+			opcode = ppc_readop_translated(ppc.program, ppc.pc);
 		else
 		opcode = ROPCODE64(ppc.pc);
 

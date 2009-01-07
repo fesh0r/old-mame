@@ -61,7 +61,7 @@ DIP locations verified for:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/5110intf.h"
 #include "sound/tms5110.h"
@@ -73,51 +73,41 @@ static int speech_rom_address = 0;
 static UINT8 ls259_buf[8] = {0,0,0,0,0,0,0,0};
 
 
-static void start_talking (running_machine *machine)
+static void start_talking (const address_space *space)
 {
-#if 0
-	logerror("Talk started: selected bit %1i, selected roms QS %i  QT %i\n",
-			(ls259_buf[0]<<2 | ls259_buf[1]<<1 | ls259_buf[2]<<0) ^ 0x7,
-			ls259_buf[4], ls259_buf[5] );
-	if ( (ls259_buf[4] == 0) &&  (ls259_buf[5] == 0) )
-		logerror("BAD SPEECH ROM SELECT (both enabled)\n");
-	if ( (ls259_buf[4] == 1) &&  (ls259_buf[5] == 1) )
-		logerror("BAD SPEECH ROM SELECT (both disabled)\n");
-#endif
-
 	speech_rom_address = 0x0;
-	tms5110_ctl_w(machine,0,TMS5110_CMD_SPEAK);
-	tms5110_pdc_w(machine,0,0);
-	tms5110_pdc_w(machine,0,1);
-	tms5110_pdc_w(machine,0,0);
+	tms5110_ctl_w(space,0,TMS5110_CMD_SPEAK);
+	tms5110_pdc_w(space,0,0);
+	tms5110_pdc_w(space,0,1);
+	tms5110_pdc_w(space,0,0);
 }
 
-static void reset_talking (running_machine *machine)
+static void reset_talking (const address_space *space)
 {
 /*To be extremely accurate there should be a delays between each of
   the function calls below. In real they happen with the frequency of 160 kHz.
 */
 
-	tms5110_ctl_w(machine,0,TMS5110_CMD_RESET);
-	tms5110_pdc_w(machine,0,0);
-	tms5110_pdc_w(machine,0,1);
-	tms5110_pdc_w(machine,0,0);
+	tms5110_ctl_w(space,0,TMS5110_CMD_RESET);
+	tms5110_pdc_w(space,0,0);
+	tms5110_pdc_w(space,0,1);
+	tms5110_pdc_w(space,0,0);
 
-	tms5110_pdc_w(machine,0,0);
-	tms5110_pdc_w(machine,0,1);
-	tms5110_pdc_w(machine,0,0);
+	tms5110_pdc_w(space,0,0);
+	tms5110_pdc_w(space,0,1);
+	tms5110_pdc_w(space,0,0);
 
-	tms5110_pdc_w(machine,0,0);
-	tms5110_pdc_w(machine,0,1);
-	tms5110_pdc_w(machine,0,0);
+	tms5110_pdc_w(space,0,0);
+	tms5110_pdc_w(space,0,1);
+	tms5110_pdc_w(space,0,0);
 
 	speech_rom_address = 0x0;
 }
 
 
-static int bagman_speech_rom_read_bit(void)
+static int bagman_speech_rom_read_bit(const device_config *device)
 {
-	UINT8 *ROM = memory_region(Machine, "speech");
+	UINT8 *ROM = memory_region(device->machine, "speech");
 	int bit_no = (ls259_buf[0]<<2) | (ls259_buf[1]<<1) | (ls259_buf[2]<<0);
 	int byte = 0;
 
@@ -154,7 +144,7 @@ static READ8_HANDLER( bagman_ls259_r )
 
 static WRITE8_HANDLER( bagman_ls259_w )
 {
-	bagman_pal16r6_w(machine,offset,data); /*this is just a simulation*/
+	bagman_pal16r6_w(space,offset,data); /*this is just a simulation*/
 
 	if (ls259_buf[offset] != (data&1) )
 	{
@@ -164,11 +154,11 @@ static WRITE8_HANDLER( bagman_ls259_w )
 		{
 			if (ls259_buf[3] == 0)	/* 1->0 transition */
 			{
-				reset_talking(machine);
+				reset_talking(space);
 			}
 			else
 			{
-				start_talking(machine);	/* 0->1 transition */
+				start_talking(space);	/* 0->1 transition */
 			}
 		}
 	}

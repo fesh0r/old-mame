@@ -19,7 +19,7 @@ static offs_t pcbase;
 
 static unsigned MakeEA (char **ea, int lo, unsigned pc, int width)
 {
-	char *buffer = cpuintrf_temp_str();
+	static char buffer[32];
 	int reg, pm;
 
 	assert (width == 2 || width == 4);
@@ -83,7 +83,7 @@ static unsigned MakeEA (char **ea, int lo, unsigned pc, int width)
 }
 
 
-offs_t t11_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
+CPU_DISASSEMBLE( t11 )
 {
 	char *ea1, *ea2;
 	unsigned PC = pc;

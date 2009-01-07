@@ -36,7 +36,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( meadows )
 {
-	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows,  8,8, 32,30);
+	bg_tilemap = tilemap_create(machine, get_tile_info, tilemap_scan_rows,  8,8, 32,30);
 }
 
 
@@ -63,7 +63,7 @@ WRITE8_HANDLER( meadows_videoram_w )
 
 WRITE8_HANDLER( meadows_spriteram_w )
 {
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 	spriteram[offset] = data;
 }
 

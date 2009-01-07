@@ -16,39 +16,20 @@ enum
 #define M6809_IRQ_LINE	0	/* IRQ line number */
 #define M6809_FIRQ_LINE 1   /* FIRQ line number */
 
-void m6809_get_info(UINT32 state, cpuinfo *info);
-void m6809e_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( m6809 );
+#define CPU_M6809 CPU_GET_INFO_NAME( m6809 )
 
-/****************************************************************************/
-/* Read a byte from given memory location                                   */
-/****************************************************************************/
-/* ASG 971005 -- changed to program_read_byte_8/cpu_writemem16 */
-#define M6809_RDMEM(Addr) ((unsigned)program_read_byte_8be(Addr))
+/* M6809e has LIC line to indicate opcode/data fetch */
+CPU_GET_INFO( m6809e );
+#define CPU_M6809E CPU_GET_INFO_NAME( m6809e )
 
-/****************************************************************************/
-/* Write a byte to given memory location                                    */
-/****************************************************************************/
-#define M6809_WRMEM(Addr,Value) (program_write_byte_8be(Addr,Value))
 
-/****************************************************************************/
-/* Z80_RDOP() is identical to Z80_RDMEM() except it is used for reading     */
-/* opcodes. In case of system with memory mapped I/O, this function can be  */
-/* used to greatly speed up emulation                                       */
-/****************************************************************************/
-#define M6809_RDOP(Addr) ((unsigned)cpu_readop(Addr))
+CPU_DISASSEMBLE( m6809 );
 
-/****************************************************************************/
-/* Z80_RDOP_ARG() is identical to Z80_RDOP() except it is used for reading  */
-/* opcode arguments. This difference can be used to support systems that    */
-/* use different encoding mechanisms for opcodes and opcode arguments       */
-/****************************************************************************/
-#define M6809_RDOP_ARG(Addr) ((unsigned)cpu_readop_arg(Addr))
-
-#ifndef FALSE
-#    define FALSE 0
-#endif
-#ifndef TRUE
-#    define TRUE (!FALSE)
-#endif
+typedef struct _m6809_config m6809_config;
+struct _m6809_config
+{
+	UINT8	encrypt_only_first_byte;		/* encrypt only the first byte in 10 xx and 11 xx opcodes */
+};
 
 #endif /* __M6809_H__ */

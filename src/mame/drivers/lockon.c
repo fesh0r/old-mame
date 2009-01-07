@@ -10,6 +10,8 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/nec/nec.h"
 #include "sound/2203intf.h"
 #include "sound/flt_vol.h"
 #include "lockon.h"
@@ -64,93 +66,72 @@ static WRITE16_HANDLER( adrst_w )
 	lockon_ctrl_reg = data & 0xff;
 
 	/* Bus mastering for shared access */
-	cpunum_set_input_line(machine, GROUND_CPU, INPUT_LINE_HALT, data & 0x04 ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, OBJECT_CPU, INPUT_LINE_HALT, data & 0x20 ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, SOUND_CPU,  INPUT_LINE_HALT, data & 0x40 ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[GROUND_CPU], INPUT_LINE_HALT, data & 0x04 ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[OBJECT_CPU], INPUT_LINE_HALT, data & 0x20 ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[SOUND_CPU],  INPUT_LINE_HALT, data & 0x40 ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static READ16_HANDLER( main_gnd_r )
 {
-	UINT16 result;
-
-	cpuintrf_push_context(GROUND_CPU);
-	result = program_read_word(V30_GND_ADDR | offset * 2);
-	cpuintrf_pop_context();
-
-	return result;
+	const address_space *gndspace = cpu_get_address_space(space->machine->cpu[GROUND_CPU], ADDRESS_SPACE_PROGRAM);
+	return memory_read_word(gndspace, V30_GND_ADDR | offset * 2);
 }
 
 static WRITE16_HANDLER( main_gnd_w )
 {
-	cpuintrf_push_context(GROUND_CPU);
+	const address_space *gndspace = cpu_get_address_space(space->machine->cpu[GROUND_CPU], ADDRESS_SPACE_PROGRAM);
 
 	if (ACCESSING_BITS_0_7)
-		program_write_byte(V30_GND_ADDR | (offset * 2 + 0), data);
+		memory_write_byte(gndspace, V30_GND_ADDR | (offset * 2 + 0), data);
 	if (ACCESSING_BITS_8_15)
-		program_write_byte(V30_GND_ADDR | (offset * 2 + 1), data >> 8);
-
-	cpuintrf_pop_context();
+		memory_write_byte(gndspace, V30_GND_ADDR | (offset * 2 + 1), data >> 8);
 }
 
 static READ16_HANDLER( main_obj_r )
 {
-	UINT16 result;
-
-	cpuintrf_push_context(OBJECT_CPU);
-	result = program_read_word(V30_OBJ_ADDR | offset * 2);
-	cpuintrf_pop_context();
-
-	return result;
+	const address_space *objspace = cpu_get_address_space(space->machine->cpu[OBJECT_CPU], ADDRESS_SPACE_PROGRAM);
+	return memory_read_word(objspace, V30_OBJ_ADDR | offset * 2);
 }
 
 static WRITE16_HANDLER( main_obj_w )
 {
-	cpuintrf_push_context(OBJECT_CPU);
+	const address_space *objspace = cpu_get_address_space(space->machine->cpu[OBJECT_CPU], ADDRESS_SPACE_PROGRAM);
 
 	if (ACCESSING_BITS_0_7)
-		program_write_byte(V30_OBJ_ADDR | (offset * 2 + 0), data);
+		memory_write_byte(objspace, V30_OBJ_ADDR | (offset * 2 + 0), data);
 	if (ACCESSING_BITS_8_15)
-		program_write_byte(V30_OBJ_ADDR | (offset * 2 + 1), data >> 8);
-
-	cpuintrf_pop_context();
+		memory_write_byte(objspace, V30_OBJ_ADDR | (offset * 2 + 1), data >> 8);
 }
 
 static WRITE16_HANDLER( tst_w )
 {
 	if (offset < 0x800)
 	{
-		cpuintrf_push_context(GROUND_CPU);
-		if (ACCESSING_BITS_0_7)
-			program_write_byte(V30_GND_ADDR | (offset * 2 + 0), data);
-		if (ACCESSING_BITS_8_15)
-			program_write_byte(V30_GND_ADDR | (offset * 2 + 1), data >> 8);
-		cpuintrf_pop_context();
+		const address_space *gndspace = cpu_get_address_space(space->machine->cpu[GROUND_CPU], ADDRESS_SPACE_PROGRAM);
+		const address_space *objspace = cpu_get_address_space(space->machine->cpu[OBJECT_CPU], ADDRESS_SPACE_PROGRAM);
 
-		cpuintrf_push_context(OBJECT_CPU);
 		if (ACCESSING_BITS_0_7)
-			program_write_byte(V30_OBJ_ADDR | (offset * 2 + 0), data);
+			memory_write_byte(gndspace, V30_GND_ADDR | (offset * 2 + 0), data);
 		if (ACCESSING_BITS_8_15)
-			program_write_byte(V30_OBJ_ADDR | (offset * 2 + 1), data >> 8);
-		cpuintrf_pop_context();
+			memory_write_byte(gndspace, V30_GND_ADDR | (offset * 2 + 1), data >> 8);
+
+		if (ACCESSING_BITS_0_7)
+			memory_write_byte(objspace, V30_OBJ_ADDR | (offset * 2 + 0), data);
+		if (ACCESSING_BITS_8_15)
+			memory_write_byte(objspace, V30_OBJ_ADDR | (offset * 2 + 1), data >> 8);
 	}
 }
 
 static READ16_HANDLER( main_z80_r )
 {
-	UINT16 val;
-
-	cpuintrf_push_context(SOUND_CPU);
-	val = program_read_byte(offset);
-	cpuintrf_pop_context();
-
-	return 0xff00 | val;
+	const address_space *sndspace = cpu_get_address_space(space->machine->cpu[SOUND_CPU], ADDRESS_SPACE_PROGRAM);
+	return 0xff00 | memory_read_byte(sndspace, offset);
 }
 
 static WRITE16_HANDLER( main_z80_w )
 {
-	cpuintrf_push_context(SOUND_CPU);
-	program_write_byte(offset, data);
-	cpuintrf_pop_context();
+	const address_space *sndspace = cpu_get_address_space(space->machine->cpu[SOUND_CPU], ADDRESS_SPACE_PROGRAM);
+	memory_write_byte(sndspace, offset, data);
 }
 
 static WRITE16_HANDLER( inten_w )
@@ -160,7 +141,7 @@ static WRITE16_HANDLER( inten_w )
 
 static WRITE16_HANDLER( emres_w )
 {
-	watchdog_reset(machine);
+	watchdog_reset(space->machine);
 	lockon_main_inten = 0;
 }
 
@@ -361,10 +342,10 @@ static READ8_HANDLER( adc_r )
 {
 	switch (offset)
 	{
-		case 0:  return input_port_read(machine, "ADC_BANK");
-		case 1:  return input_port_read(machine, "ADC_PITCH");
-		case 2:  return input_port_read(machine, "ADC_MISSILE");
-		case 3:  return input_port_read(machine, "ADC_HOVER");
+		case 0:  return input_port_read(space->machine, "ADC_BANK");
+		case 1:  return input_port_read(space->machine, "ADC_PITCH");
+		case 2:  return input_port_read(space->machine, "ADC_MISSILE");
+		case 3:  return input_port_read(space->machine, "ADC_HOVER");
 		default: return 0;
 	}
 }
@@ -445,7 +426,7 @@ static WRITE8_HANDLER( sound_vol )
 
 static void ym2203_irq(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, SOUND_CPU, 0, irq ? ASSERT_LINE : CLEAR_LINE );
+	cpu_set_input_line(machine->cpu[SOUND_CPU], 0, irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
 static WRITE8_HANDLER( ym2203_out_b )
@@ -492,8 +473,8 @@ static MACHINE_DRIVER_START( lockon )
 	MDRV_CPU_PROGRAM_MAP(sound_prg, 0)
 	MDRV_CPU_IO_MAP(sound_io, 0)
 
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_NSEC(PERIOD_OF_555_ASTABLE_NSEC(10000, 4700, 10000e-12) * 4096))
-	MDRV_INTERLEAVE(10)
+	MDRV_WATCHDOG_TIME_INIT(NSEC(PERIOD_OF_555_ASTABLE_NSEC(10000, 4700, 10000e-12) * 4096))
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 

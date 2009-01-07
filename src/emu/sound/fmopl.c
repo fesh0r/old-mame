@@ -68,12 +68,8 @@ Revision History:
 */
 
 #include <math.h>
-
-#include "sndintrf.h"		/* use M.A.M.E. */
-#include "deprecat.h"		/* use M.A.M.E. */
-
+#include "sndintrf.h"
 #include "ymdeltat.h"
-
 #include "fmopl.h"
 
 
@@ -1726,7 +1722,7 @@ static TIMER_CALLBACK( cymfile_callback )
 }
 
 /* lock/unlock for common table */
-static int OPL_LockTable(void)
+static int OPL_LockTable(const device_config *device)
 {
 	num_lock++;
 	if(num_lock>1) return 0;
@@ -1745,7 +1741,7 @@ static int OPL_LockTable(void)
 	{
 		cymfile = fopen("3812_.cym","wb");
 		if (cymfile)
-			timer_pulse ( ATTOTIME_IN_HZ(110), NULL, 0, cymfile_callback); /*110 Hz pulse timer*/
+			timer_pulse ( device->machine, ATTOTIME_IN_HZ(110), NULL, 0, cymfile_callback); /*110 Hz pulse timer*/
 		else
 			logerror("Could not create file 3812_.cym\n");
 	}
@@ -1872,48 +1868,43 @@ static STATE_POSTLOAD( OPL_postload )
 }
 
 
-static void OPLsave_state_channel(const char *name, int num, OPL_CH *CH)
+static void OPLsave_state_channel(const device_config *device, OPL_CH *CH)
 {
 	int slot, ch;
-	char state_name[20];
-	static const char slot_array[2] = { 1, 2 };
 
 	for( ch=0 ; ch < 9 ; ch++, CH++ )
 	{
 		/* channel */
-		sprintf(state_name, "%s.CH%d", name,ch);
-		state_save_register_item(state_name, num, CH->block_fnum);
-		state_save_register_item(state_name, num, CH->kcode);
+		state_save_register_device_item(device, ch, CH->block_fnum);
+		state_save_register_device_item(device, ch, CH->kcode);
 		/* slots */
 		for( slot=0 ; slot < 2 ; slot++ )
 		{
 			OPL_SLOT *SLOT = &CH->SLOT[slot];
 
-			sprintf(state_name, "%s.CH%d.SLOT%d", name, ch, slot_array[slot]);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->ar);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->dr);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->rr);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->KSR);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->ksl);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->mul);
 
-			state_save_register_item(state_name, num, SLOT->ar);
-			state_save_register_item(state_name, num, SLOT->dr);
-			state_save_register_item(state_name, num, SLOT->rr);
-			state_save_register_item(state_name, num, SLOT->KSR);
-			state_save_register_item(state_name, num, SLOT->ksl);
-			state_save_register_item(state_name, num, SLOT->mul);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->Cnt);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->FB);
+			state_save_register_device_item_array(device, ch * 2 + slot, SLOT->op1_out);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->CON);
 
-			state_save_register_item(state_name, num, SLOT->Cnt);
-			state_save_register_item(state_name, num, SLOT->FB);
-			state_save_register_item_array(state_name, num, SLOT->op1_out);
-			state_save_register_item(state_name, num, SLOT->CON);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->eg_type);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->state);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->TL);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->volume);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->sl);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->key);
 
-			state_save_register_item(state_name, num, SLOT->eg_type);
-			state_save_register_item(state_name, num, SLOT->state);
-			state_save_register_item(state_name, num, SLOT->TL);
-			state_save_register_item(state_name, num, SLOT->volume);
-			state_save_register_item(state_name, num, SLOT->sl);
-			state_save_register_item(state_name, num, SLOT->key);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->AMmask);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->vib);
 
-			state_save_register_item(state_name, num, SLOT->AMmask);
-			state_save_register_item(state_name, num, SLOT->vib);
-
-			state_save_register_item(state_name, num, SLOT->wavetable);
+			state_save_register_device_item(device, ch * 2 + slot, SLOT->wavetable);
 		}
 	}
 }
@@ -1921,63 +1912,63 @@ static void OPLsave_state_channel(const char *name, int num, OPL_CH *CH)
 
 /* Register savestate for a virtual YM3812/YM3526Y8950 */
 
-static void OPL_save_state(FM_OPL *OPL, const char *statename, int index)
+static void OPL_save_state(FM_OPL *OPL, const device_config *device)
 {
-	OPLsave_state_channel(statename, index, OPL->P_CH);
+	OPLsave_state_channel(device, OPL->P_CH);
 
-	state_save_register_item(statename, index, OPL->eg_cnt);
-	state_save_register_item(statename, index, OPL->eg_timer);
+	state_save_register_device_item(device, 0, OPL->eg_cnt);
+	state_save_register_device_item(device, 0, OPL->eg_timer);
 
-	state_save_register_item(statename, index, OPL->rhythm);
+	state_save_register_device_item(device, 0, OPL->rhythm);
 
-	state_save_register_item(statename, index, OPL->lfo_am_depth);
-	state_save_register_item(statename, index, OPL->lfo_pm_depth_range);
-	state_save_register_item(statename, index, OPL->lfo_am_cnt);
-	state_save_register_item(statename, index, OPL->lfo_pm_cnt);
+	state_save_register_device_item(device, 0, OPL->lfo_am_depth);
+	state_save_register_device_item(device, 0, OPL->lfo_pm_depth_range);
+	state_save_register_device_item(device, 0, OPL->lfo_am_cnt);
+	state_save_register_device_item(device, 0, OPL->lfo_pm_cnt);
 
-	state_save_register_item(statename, index, OPL->noise_rng);
-	state_save_register_item(statename, index, OPL->noise_p);
+	state_save_register_device_item(device, 0, OPL->noise_rng);
+	state_save_register_device_item(device, 0, OPL->noise_p);
 
 	if( OPL->type & OPL_TYPE_WAVESEL )
 	{
-		state_save_register_item(statename, index, OPL->wavesel);
+		state_save_register_device_item(device, 0, OPL->wavesel);
 	}
 
-	state_save_register_item_array(statename, index, OPL->T);
-	state_save_register_item_array(statename, index, OPL->st);
+	state_save_register_device_item_array(device, 0, OPL->T);
+	state_save_register_device_item_array(device, 0, OPL->st);
 
 #if BUILD_Y8950
 	if ( (OPL->type & OPL_TYPE_ADPCM) && (OPL->deltat) )
 	{
-		YM_DELTAT_savestate(statename, index, OPL->deltat);
+		YM_DELTAT_savestate(device, OPL->deltat);
 	}
 
 	if ( OPL->type & OPL_TYPE_IO )
 	{
-		state_save_register_item(statename, index, OPL->portDirection);
-		state_save_register_item(statename, index, OPL->portLatch);
+		state_save_register_device_item(device, 0, OPL->portDirection);
+		state_save_register_device_item(device, 0, OPL->portLatch);
 	}
 #endif
 
-	state_save_register_item(statename, index, OPL->address);
-	state_save_register_item(statename, index, OPL->status);
-	state_save_register_item(statename, index, OPL->statusmask);
-	state_save_register_item(statename, index, OPL->mode);
+	state_save_register_device_item(device, 0, OPL->address);
+	state_save_register_device_item(device, 0, OPL->status);
+	state_save_register_device_item(device, 0, OPL->statusmask);
+	state_save_register_device_item(device, 0, OPL->mode);
 
-	state_save_register_postload(Machine, OPL_postload, OPL);
+	state_save_register_postload(device->machine, OPL_postload, OPL);
 }
 
 
 /* Create one of virtual YM3812/YM3526/Y8950 */
 /* 'clock' is chip clock in Hz  */
 /* 'rate'  is sampling rate  */
-static FM_OPL *OPLCreate(int type, UINT32 clock, UINT32 rate)
+static FM_OPL *OPLCreate(const device_config *device, UINT32 clock, UINT32 rate, int type)
 {
 	char *ptr;
 	FM_OPL *OPL;
 	int state_size;
 
-	if (OPL_LockTable() ==-1) return NULL;
+	if (OPL_LockTable(device) == -1) return NULL;
 
 	/* calculate OPL state size */
 	state_size  = sizeof(FM_OPL);
@@ -2164,13 +2155,13 @@ static int OPLTimerOver(FM_OPL *OPL,int c)
 
 #if (BUILD_YM3812)
 
-void * ym3812_init(int sndindex, UINT32 clock, UINT32 rate)
+void * ym3812_init(const device_config *device, UINT32 clock, UINT32 rate)
 {
 	/* emulator create */
-	FM_OPL *YM3812 = OPLCreate(OPL_TYPE_YM3812,clock,rate);
+	FM_OPL *YM3812 = OPLCreate(device,clock,rate,OPL_TYPE_YM3812);
 	if (YM3812)
 	{
-		OPL_save_state(YM3812, "YM3812", sndindex);
+		OPL_save_state(YM3812, device);
 		ym3812_reset_chip(YM3812);
 	}
 	return YM3812;
@@ -2300,13 +2291,13 @@ void ym3812_update_one(void *chip, OPLSAMPLE *buffer, int length)
 
 #if (BUILD_YM3526)
 
-void *ym3526_init(int sndindex, UINT32 clock, UINT32 rate)
+void *ym3526_init(const device_config *device, UINT32 clock, UINT32 rate)
 {
 	/* emulator create */
-	FM_OPL *YM3526 = OPLCreate(OPL_TYPE_YM3526,clock,rate);
+	FM_OPL *YM3526 = OPLCreate(device,clock,rate,OPL_TYPE_YM3526);
 	if (YM3526)
 	{
-		OPL_save_state(YM3526, "YM3526", sndindex);
+		OPL_save_state(YM3526, device);
 		ym3526_reset_chip(YM3526);
 	}
 	return YM3526;
@@ -2447,10 +2438,10 @@ static void Y8950_deltat_status_reset(void *chip, UINT8 changebits)
 	OPL_STATUS_RESET(Y8950, changebits);
 }
 
-void *y8950_init(int sndindex, UINT32 clock, UINT32 rate)
+void *y8950_init(const device_config *device, UINT32 clock, UINT32 rate)
 {
 	/* emulator create */
-	FM_OPL *Y8950 = OPLCreate(OPL_TYPE_Y8950,clock,rate);
+	FM_OPL *Y8950 = OPLCreate(device,clock,rate,OPL_TYPE_Y8950);
 	if (Y8950)
 	{
 		Y8950->deltat->status_set_handler = Y8950_deltat_status_set;
@@ -2462,7 +2453,7 @@ void *y8950_init(int sndindex, UINT32 clock, UINT32 rate)
 		/*Y8950->deltat->write_time = 10.0 / clock;*/		/* a single byte write takes 10 cycles of main clock */
 		/*Y8950->deltat->read_time  = 8.0 / clock;*/		/* a single byte read takes 8 cycles of main clock */
 		/* reset */
-		OPL_save_state(Y8950, "Y8950", sndindex);
+		OPL_save_state(Y8950, device);
 		y8950_reset_chip(Y8950);
 	}
 

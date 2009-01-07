@@ -53,14 +53,14 @@ typedef void (*z80pio_on_brdy_changed_func) (const device_config *device, int st
 typedef struct _z80pio_interface z80pio_interface;
 struct _z80pio_interface
 {
-	const char *cpu;				/* CPU whose clock we use for our base */
-	int clock;						/* clock (pin 25) of the chip */
-
-	/* this gets called for every change of the _INT pin (pin 23) */
-	z80pio_on_int_changed_func		on_int_changed;
-
-	/* this gets called for every read from port A */
-	read8_device_func				port_a_r;
+	void (*intr)(const device_config *device, int which);    /* callback when change interrupt status */
+	read8_device_func portAread;    /* port A read callback */
+	read8_device_func portBread;    /* port B read callback */
+	write8_device_func portAwrite;  /* port A write callback */
+	write8_device_func portBwrite;  /* port B write callback */
+	void (*rdyA)(const device_config *device, int data);     /* portA ready active callback (do not support yet)*/
+	void (*rdyB)(const device_config *device, int data);     /* portB ready active callback (do not support yet)*/
+};
 
 	/* this gets called for every read from port B */
 	read8_device_func				port_b_r;
@@ -84,7 +84,7 @@ struct _z80pio_interface
 ***************************************************************************/
 
 #define MDRV_Z80PIO_ADD(_tag, _intrf) \
-	MDRV_DEVICE_ADD(_tag, Z80PIO) \
+	MDRV_DEVICE_ADD(_tag, Z80PIO, 0) \
 	MDRV_DEVICE_CONFIG(_intrf)
 
 #define MDRV_Z80PIO_REMOVE(_tag) \

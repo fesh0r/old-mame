@@ -5,6 +5,7 @@
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/powerpc/ppc.h"
 #include "sound/k054539.h"
 #include "machine/eeprom.h"
@@ -43,8 +44,8 @@ static WRITE32_HANDLER( palette_w )
 	COMBINE_DATA(&paletteram32[offset]);
 	data = paletteram32[offset];
 
-	palette_set_color(machine, (offset*2)+0, MAKE_RGB(pal5bit(data >> 26), pal5bit(data >> 21), pal5bit(data >> 16)));
-	palette_set_color(machine, (offset*2)+1, MAKE_RGB(pal5bit(data >> 10), pal5bit(data >>  5), pal5bit(data >>  0)));
+	palette_set_color(space->machine, (offset*2)+0, MAKE_RGB(pal5bit(data >> 26), pal5bit(data >> 21), pal5bit(data >> 16)));
+	palette_set_color(space->machine, (offset*2)+1, MAKE_RGB(pal5bit(data >> 10), pal5bit(data >>  5), pal5bit(data >>  0)));
 }
 
 static READ32_HANDLER( eeprom_r )
@@ -52,7 +53,7 @@ static READ32_HANDLER( eeprom_r )
 	UINT32 r = 0;
 
 	if (ACCESSING_BITS_24_31)
-		r |= input_port_read(machine, "SERVICE");
+		r |= input_port_read(space->machine, "SERVICE");
 
 	return r;
 }
@@ -75,27 +76,29 @@ static CUSTOM_INPUT( analog_ctrl_r )
 
 static WRITE32_HANDLER( int_ack_w )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ1, CLEAR_LINE);
 }
 
 static MACHINE_START( ultrsprt )
 {
 	/* set conservative DRC options */
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_END, 0x0007ffff);
-	cpunum_set_info_ptr(0, CPUINFO_PTR_PPC_FASTRAM_BASE, vram);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_END, 0x0007ffff);
+	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_PPC_FASTRAM_BASE, vram);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
 
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_SELECT, 1);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_START, 0x7f000000);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_END, 0x7f01ffff);
-	cpunum_set_info_ptr(0, CPUINFO_PTR_PPC_FASTRAM_BASE, workram);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_SELECT, 1);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_START, 0x7f000000);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_END, 0x7f01ffff);
+	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_PPC_FASTRAM_BASE, workram);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
 }
+
+
 
 static ADDRESS_MAP_START( ultrsprt_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0007ffff) AM_RAM AM_BASE(&vram)
@@ -122,10 +125,10 @@ static READ16_HANDLER( sound_r )
 	int reg = offset * 2;
 
 	if (ACCESSING_BITS_8_15)
-		r |= k054539_0_r(machine, reg+0) << 8;
+		r |= k054539_0_r(space, reg+0) << 8;
 
 	if (ACCESSING_BITS_0_7)
-		r |= k054539_0_r(machine, reg+1) << 0;
+		r |= k054539_0_r(space, reg+1) << 0;
 
 	return r;
 }
@@ -135,10 +138,10 @@ static WRITE16_HANDLER( sound_w )
 	int reg = offset * 2;
 
 	if (ACCESSING_BITS_8_15)
-		k054539_0_w(machine, reg+0, (data >> 8) & 0xff);
+		k054539_0_w(space, reg+0, (data >> 8) & 0xff);
 
 	if (ACCESSING_BITS_0_7)
-		k054539_0_w(machine, reg+1, (data >> 0) & 0xff);
+		k054539_0_w(space, reg+1, (data >> 0) & 0xff);
 }
 
 static READ16_HANDLER( K056800_68k_r )
@@ -146,10 +149,10 @@ static READ16_HANDLER( K056800_68k_r )
 	UINT16 r = 0;
 
 	if (ACCESSING_BITS_8_15)
-		r |= K056800_sound_r(machine, (offset*2)+0, 0xffff) << 8;
+		r |= K056800_sound_r(space, (offset*2)+0, 0xffff) << 8;
 
 	if (ACCESSING_BITS_0_7)
-		r |= K056800_sound_r(machine, (offset*2)+1, 0xffff) << 0;
+		r |= K056800_sound_r(space, (offset*2)+1, 0xffff) << 0;
 
 	return r;
 }
@@ -157,10 +160,10 @@ static READ16_HANDLER( K056800_68k_r )
 static WRITE16_HANDLER( K056800_68k_w )
 {
 	if (ACCESSING_BITS_8_15)
-		K056800_sound_w(machine, (offset*2)+0, (data >> 8) & 0xff, 0x00ff);
+		K056800_sound_w(space, (offset*2)+0, (data >> 8) & 0xff, 0x00ff);
 
 	if (ACCESSING_BITS_0_7)
-		K056800_sound_w(machine, (offset*2)+1, (data >> 0) & 0xff, 0x00ff);
+		K056800_sound_w(space, (offset*2)+1, (data >> 0) & 0xff, 0x00ff);
 }
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -205,7 +208,7 @@ static INPUT_PORTS_START( ultrsprt )
 	PORT_BIT( 0xfff, 0x800, IPT_AD_STICK_Y ) PORT_MINMAX(0x000,0xfff) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(2)
 INPUT_PORTS_END
 
-static void eeprom_handler(mame_file *file, int read_or_write)
+static NVRAM_HANDLER(ultrsprt)
 {
 	if (read_or_write)
 	{
@@ -213,7 +216,7 @@ static void eeprom_handler(mame_file *file, int read_or_write)
 	}
 	else
 	{
-		eeprom_init(&eeprom_interface_93C46);
+		eeprom_init(machine, &eeprom_interface_93C46);
 		if (file)
 		{
 			eeprom_load(file);
@@ -221,14 +224,9 @@ static void eeprom_handler(mame_file *file, int read_or_write)
 	}
 }
 
-static NVRAM_HANDLER(ultrsprt)
-{
-	eeprom_handler(file, read_or_write);
-}
-
 static INTERRUPT_GEN( ultrsprt_vblank )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
+	cpu_set_input_line(device, INPUT_LINE_IRQ1, ASSERT_LINE);
 }
 
 
@@ -242,7 +240,7 @@ static MACHINE_DRIVER_START( ultrsprt )
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 	MDRV_CPU_PERIODIC_INT(irq5_line_hold, 1)	// ???
 
-	MDRV_INTERLEAVE(200)
+	MDRV_QUANTUM_TIME(HZ(12000))
 
 	MDRV_NVRAM_HANDLER(ultrsprt)
 	MDRV_MACHINE_START(ultrsprt)
@@ -270,16 +268,14 @@ MACHINE_DRIVER_END
 static void sound_irq_callback(running_machine *machine, int irq)
 {
 	if (irq == 0)
-		/*cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ5, PULSE_LINE)*/;
+		/*generic_pulse_irq_line(machine->cpu[1], INPUT_LINE_IRQ5)*/;
 	else
-		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ6, PULSE_LINE);
+		cpu_set_input_line(machine->cpu[1], INPUT_LINE_IRQ6, HOLD_LINE);
 }
 
 static DRIVER_INIT( ultrsprt )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
-
-	K056800_init(sound_irq_callback);
+	K056800_init(machine, sound_irq_callback);
 }
 
 /*****************************************************************************/

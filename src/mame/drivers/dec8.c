@@ -38,52 +38,13 @@ To do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/hd6309/hd6309.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
 #include "sound/msm5205.h"
-
-PALETTE_INIT( ghostb );
-VIDEO_UPDATE( cobracom );
-VIDEO_UPDATE( ghostb );
-VIDEO_UPDATE( srdarwin );
-VIDEO_UPDATE( gondo );
-VIDEO_UPDATE( garyoret );
-VIDEO_UPDATE( lastmiss );
-VIDEO_UPDATE( shackled );
-VIDEO_UPDATE( oscar );
-VIDEO_START( cobracom );
-VIDEO_START( oscar );
-VIDEO_START( ghostb );
-VIDEO_START( lastmiss );
-VIDEO_START( shackled );
-VIDEO_START( srdarwin );
-VIDEO_START( gondo );
-VIDEO_START( garyoret );
-
-WRITE8_HANDLER( dec8_bac06_0_w );
-WRITE8_HANDLER( dec8_bac06_1_w );
-WRITE8_HANDLER( dec8_pf0_data_w );
-WRITE8_HANDLER( dec8_pf1_data_w );
-READ8_HANDLER( dec8_pf0_data_r );
-READ8_HANDLER( dec8_pf1_data_r );
-WRITE8_HANDLER( srdarwin_videoram_w );
-WRITE8_HANDLER( dec8_scroll1_w );
-WRITE8_HANDLER( dec8_scroll2_w );
-WRITE8_HANDLER( srdarwin_control_w );
-WRITE8_HANDLER( gondo_scroll_w );
-WRITE8_HANDLER( shackled_control_w );
-WRITE8_HANDLER( lastmiss_control_w );
-WRITE8_HANDLER( lastmiss_scrollx_w );
-WRITE8_HANDLER( lastmiss_scrolly_w );
-WRITE8_HANDLER( dec8_bac06_0_w );
-WRITE8_HANDLER( dec8_bac06_1_w );
-WRITE8_HANDLER( dec8_videoram_w );
-
-/******************************************************************************/
-
-extern UINT8 *dec8_pf0_data,*dec8_pf1_data,*dec8_row;
+#include "includes/dec8.h"
 
 static int nmi_enable,int_enable;
 static int i8751_return, i8751_value;
@@ -94,7 +55,8 @@ static int msm5205next;
 /* Only used by ghostb, gondo, garyoret, other games can control buffering */
 static VIDEO_EOF( dec8 )
 {
-	buffer_spriteram_w(machine,0,0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	buffer_spriteram_w(space,0,0);
 }
 
 static READ8_HANDLER( i8751_h_r )
@@ -118,9 +80,9 @@ static READ8_HANDLER( gondo_player_1_r )
 {
 	switch (offset) {
 		case 0: /* Rotary low byte */
-			return ~((1 << (input_port_read(machine, "AN0") * 12 / 256))&0xff);
+			return ~((1 << (input_port_read(space->machine, "AN0") * 12 / 256))&0xff);
 		case 1: /* Joystick = bottom 4 bits, rotary = top 4 */
-			return ((~((1 << (input_port_read(machine, "AN0") * 12 / 256))>>4))&0xf0) | (input_port_read(machine, "IN0") & 0xf);
+			return ((~((1 << (input_port_read(space->machine, "AN0") * 12 / 256))>>4))&0xf0) | (input_port_read(space->machine, "IN0") & 0xf);
 	}
 	return 0xff;
 }
@@ -129,9 +91,9 @@ static READ8_HANDLER( gondo_player_2_r )
 {
 	switch (offset) {
 		case 0: /* Rotary low byte */
-			return ~((1 << (input_port_read(machine, "AN1") * 12 / 256))&0xff);
+			return ~((1 << (input_port_read(space->machine, "AN1") * 12 / 256))&0xff);
 		case 1: /* Joystick = bottom 4 bits, rotary = top 4 */
-			return ((~((1 << (input_port_read(machine, "AN1") * 12 / 256))>>4))&0xf0) | (input_port_read(machine, "IN1") & 0xf);
+			return ((~((1 << (input_port_read(space->machine, "AN1") * 12 / 256))>>4))&0xf0) | (input_port_read(space->machine, "IN1") & 0xf);
 	}
 	return 0xff;
 }
@@ -177,8 +139,8 @@ static WRITE8_HANDLER( srdarwin_i8751_w )
  	if (i8751_value==0x5000) i8751_return=((coins / 10) << 4) | (coins % 10); /* Coin request */
  	if (i8751_value==0x6000) {i8751_value=-1; coins--; } /* Coin clear */
 	/* Nb:  Command 0x4000 for setting coinage options is not supported */
- 	if ((input_port_read(machine, "FAKE") & 1) == 1) latch=1;
- 	if ((input_port_read(machine, "FAKE") & 1) != 1 && latch) {coins++; latch=0;}
+ 	if ((input_port_read(space->machine, "FAKE") & 1) == 1) latch=1;
+ 	if ((input_port_read(space->machine, "FAKE") & 1) != 1 && latch) {coins++; latch=0;}
 
 	/* This next value is the index to a series of tables,
     each table controls the end of level bad guy, wrong values crash the
@@ -237,7 +199,7 @@ static WRITE8_HANDLER( gondo_i8751_w )
 	switch (offset) {
 	case 0: /* High byte */
 		i8751_value=(i8751_value&0xff) | (data<<8);
-		if (int_enable) cpunum_set_input_line (machine, 0, M6809_IRQ_LINE, HOLD_LINE); /* IRQ on *high* byte only */
+		if (int_enable) cpu_set_input_line (space->machine->cpu[0], M6809_IRQ_LINE, HOLD_LINE); /* IRQ on *high* byte only */
 		break;
 	case 1: /* Low byte */
 		i8751_value=(i8751_value&0xff00) | data;
@@ -245,9 +207,9 @@ static WRITE8_HANDLER( gondo_i8751_w )
 	}
 
 	/* Coins are controlled by the i8751 */
- 	if ((input_port_read(machine, "I8751") & 3) == 3) latch=1;
- 	if ((input_port_read(machine, "I8751") & 1) != 1 && latch) {coin1++; snd=1; latch=0;}
- 	if ((input_port_read(machine, "I8751") & 2) != 2 && latch) {coin2++; snd=1; latch=0;}
+ 	if ((input_port_read(space->machine, "I8751") & 3) == 3) latch=1;
+ 	if ((input_port_read(space->machine, "I8751") & 1) != 1 && latch) {coin1++; snd=1; latch=0;}
+ 	if ((input_port_read(space->machine, "I8751") & 2) != 2 && latch) {coin2++; snd=1; latch=0;}
 
 	/* Work out return values */
 	if (i8751_value==0x0000) {i8751_return=0; coin1=coin2=snd=0;}
@@ -270,7 +232,7 @@ static WRITE8_HANDLER( shackled_i8751_w )
 	switch (offset) {
 	case 0: /* High byte */
 		i8751_value=(i8751_value&0xff) | (data<<8);
-		cpunum_set_input_line (machine, 1, M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
+		cpu_set_input_line (space->machine->cpu[1], M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
 		break;
 	case 1: /* Low byte */
 		i8751_value=(i8751_value&0xff00) | data;
@@ -278,9 +240,9 @@ static WRITE8_HANDLER( shackled_i8751_w )
 	}
 
 	/* Coins are controlled by the i8751 */
- 	if (/*(input_port_read(machine, "IN2") & 3) == 3*/!latch) {latch=1;coin1=coin2=0;}
- 	if ((input_port_read(machine, "IN2") & 1) != 1 && latch) {coin1=1; latch=0;}
- 	if ((input_port_read(machine, "IN2") & 2) != 2 && latch) {coin2=1; latch=0;}
+ 	if (/*(input_port_read(space->machine, "IN2") & 3) == 3*/!latch) {latch=1;coin1=coin2=0;}
+ 	if ((input_port_read(space->machine, "IN2") & 1) != 1 && latch) {coin1=1; latch=0;}
+ 	if ((input_port_read(space->machine, "IN2") & 2) != 2 && latch) {coin2=1; latch=0;}
 
 	if (i8751_value==0x0050) i8751_return=0; /* Breywood ID */
 	if (i8751_value==0x0051) i8751_return=0; /* Shackled ID */
@@ -298,7 +260,7 @@ static WRITE8_HANDLER( lastmiss_i8751_w )
 	switch (offset) {
 	case 0: /* High byte */
 		i8751_value=(i8751_value&0xff) | (data<<8);
-		cpunum_set_input_line (machine, 0, M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
+		cpu_set_input_line (space->machine->cpu[0], M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
 		break;
 	case 1: /* Low byte */
 		i8751_value=(i8751_value&0xff00) | data;
@@ -308,8 +270,8 @@ static WRITE8_HANDLER( lastmiss_i8751_w )
 	if(offset==0)
 	{
 		/* Coins are controlled by the i8751 */
- 		if ((input_port_read(machine, "IN2") & 3) == 3 && !latch) latch=1;
- 		if ((input_port_read(machine, "IN2") & 3) != 3 && latch) {coin++; latch=0;snd=0x400;i8751_return=0x400;return;}
+ 		if ((input_port_read(space->machine, "IN2") & 3) == 3 && !latch) latch=1;
+ 		if ((input_port_read(space->machine, "IN2") & 3) != 3 && latch) {coin++; latch=0;snd=0x400;i8751_return=0x400;return;}
 		if (i8751_value==0x007a) i8751_return=0x0185; /* Japan ID code */
 		if (i8751_value==0x007b) i8751_return=0x0184; /* USA ID code */
 		if (i8751_value==0x0001) {coin=snd=0;}//???
@@ -329,7 +291,7 @@ static WRITE8_HANDLER( csilver_i8751_w )
 	switch (offset) {
 	case 0: /* High byte */
 		i8751_value=(i8751_value&0xff) | (data<<8);
-		cpunum_set_input_line (machine, 0, M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
+		cpu_set_input_line (space->machine->cpu[0], M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
 		break;
 	case 1: /* Low byte */
 		i8751_value=(i8751_value&0xff00) | data;
@@ -339,8 +301,8 @@ static WRITE8_HANDLER( csilver_i8751_w )
 	if(offset==0)
 	{
 		/* Coins are controlled by the i8751 */
- 		if ((input_port_read(machine, "IN2") & 3) == 3 && !latch) latch=1;
- 		if ((input_port_read(machine, "IN2") & 3) != 3 && latch) {coin++; latch=0; snd=0x1200; i8751_return=0x1200;return;}
+ 		if ((input_port_read(space->machine, "IN2") & 3) == 3 && !latch) latch=1;
+ 		if ((input_port_read(space->machine, "IN2") & 3) != 3 && latch) {coin++; latch=0; snd=0x1200; i8751_return=0x1200;return;}
 
 		if (i8751_value==0x054a) {i8751_return=~(0x4a); coin=0; snd=0;} /* Captain Silver (Japan) ID */
 		if (i8751_value==0x054c) {i8751_return=~(0x4c); coin=0; snd=0;} /* Captain Silver (World) ID */
@@ -365,9 +327,9 @@ static WRITE8_HANDLER( garyoret_i8751_w )
 	}
 
 	/* Coins are controlled by the i8751 */
- 	if ((input_port_read(machine, "I8751") & 3) == 3) latch=1;
- 	if ((input_port_read(machine, "I8751") & 1) != 1 && latch) {coin1++; latch=0;}
- 	if ((input_port_read(machine, "I8751") & 2) != 2 && latch) {coin2++; latch=0;}
+ 	if ((input_port_read(space->machine, "I8751") & 3) == 3) latch=1;
+ 	if ((input_port_read(space->machine, "I8751") & 1) != 1 && latch) {coin1++; latch=0;}
+ 	if ((input_port_read(space->machine, "I8751") & 2) != 2 && latch) {coin2++; latch=0;}
 
 	/* Work out return values */
 	if ((i8751_value>>8)==0x00) {i8751_return=0; coin1=coin2=0;}
@@ -382,17 +344,17 @@ static WRITE8_HANDLER( garyoret_i8751_w )
 static WRITE8_HANDLER( dec8_bank_w )
 {
  	int bankaddress;
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 
 	bankaddress = 0x10000 + (data & 0x0f) * 0x4000;
-	memory_set_bankptr(1,&RAM[bankaddress]);
+	memory_set_bankptr(space->machine, 1,&RAM[bankaddress]);
 }
 
 /* Used by Ghostbusters, Meikyuu Hunter G & Gondomania */
 static WRITE8_HANDLER( ghostb_bank_w )
 {
  	int bankaddress;
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 
 	/* Bit 0: Interrupt enable/disable (I think..)
        Bit 1: NMI enable/disable
@@ -402,16 +364,16 @@ static WRITE8_HANDLER( ghostb_bank_w )
     */
 
 	bankaddress = 0x10000 + (data >> 4) * 0x4000;
-	memory_set_bankptr(1,&RAM[bankaddress]);
+	memory_set_bankptr(space->machine, 1,&RAM[bankaddress]);
 
 	if (data&1) int_enable=1; else int_enable=0;
 	if (data&2) nmi_enable=1; else nmi_enable=0;
-	flip_screen_set(data & 0x08);
+	flip_screen_set(space->machine, data & 0x08);
 }
 
 static WRITE8_HANDLER( csilver_control_w )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 
 	/*
         Bit 0x0f - ROM bank switch.
@@ -420,28 +382,28 @@ static WRITE8_HANDLER( csilver_control_w )
         Bit 0x40 - Unused.
         Bit 0x80 - Hold subcpu reset line high if clear, else low?  (Not needed anyway)
     */
-	memory_set_bankptr(1,&RAM[0x10000 + (data & 0x0f) * 0x4000]);
+	memory_set_bankptr(space->machine, 1,&RAM[0x10000 + (data & 0x0f) * 0x4000]);
 }
 
 static WRITE8_HANDLER( dec8_sound_w )
 {
- 	soundlatch_w(machine,0,data);
-	cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+ 	soundlatch_w(space,0,data);
+	cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 }
 
 static WRITE8_HANDLER( oscar_sound_w )
 {
- 	soundlatch_w(machine,0,data);
-	cpunum_set_input_line(machine, 2,INPUT_LINE_NMI,PULSE_LINE);
+ 	soundlatch_w(space,0,data);
+	cpu_set_input_line(space->machine->cpu[2],INPUT_LINE_NMI,PULSE_LINE);
 }
 
-static void csilver_adpcm_int(running_machine *machine, int data)
+static void csilver_adpcm_int(const device_config *device)
 {
 	static int toggle =0;
 
 	toggle ^= 1;
 	if (toggle)
-		cpunum_set_input_line(machine, 2,M6502_IRQ_LINE,HOLD_LINE);
+		cpu_set_input_line(device->machine->cpu[2],M6502_IRQ_LINE,HOLD_LINE);
 
 	msm5205_data_w (0,msm5205next>>4);
 	msm5205next<<=4;
@@ -460,10 +422,10 @@ static WRITE8_HANDLER( csilver_adpcm_data_w )
 
 static WRITE8_HANDLER( csilver_sound_bank_w )
 {
-	UINT8 *RAM = memory_region(machine, "audio");
+	UINT8 *RAM = memory_region(space->machine, "audio");
 
-	if (data&8) { memory_set_bankptr(3,&RAM[0x14000]); }
-	else { memory_set_bankptr(3,&RAM[0x10000]); }
+	if (data&8) { memory_set_bankptr(space->machine, 3,&RAM[0x14000]); }
+	else { memory_set_bankptr(space->machine, 3,&RAM[0x10000]); }
 }
 
 /******************************************************************************/
@@ -473,16 +435,16 @@ static WRITE8_HANDLER( oscar_int_w )
 	/* Deal with interrupts, coins also generate NMI to CPU 0 */
 	switch (offset) {
 		case 0: /* IRQ2 */
-			cpunum_set_input_line(machine, 1,M6809_IRQ_LINE,ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[1],M6809_IRQ_LINE,ASSERT_LINE);
 			return;
 		case 1: /* IRC 1 */
-			cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[0],M6809_IRQ_LINE,CLEAR_LINE);
 			return;
 		case 2: /* IRQ 1 */
-			cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[0],M6809_IRQ_LINE,ASSERT_LINE);
 			return;
 		case 3: /* IRC 2 */
-			cpunum_set_input_line(machine, 1,M6809_IRQ_LINE,CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[1],M6809_IRQ_LINE,CLEAR_LINE);
 			return;
 	}
 }
@@ -496,18 +458,18 @@ static WRITE8_HANDLER( shackled_int_w )
     (The last interrupt has not finished and been ack'd when the new one occurs */
 	switch (offset) {
 		case 0: /* CPU 2 - IRQ acknowledge */
-			cpunum_set_input_line(machine, 1,M6809_IRQ_LINE,CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[1],M6809_IRQ_LINE,CLEAR_LINE);
             return;
         case 1: /* CPU 1 - IRQ acknowledge */
-			cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[0],M6809_IRQ_LINE,CLEAR_LINE);
         	return;
         case 2: /* i8751 - FIRQ acknowledge */
             return;
         case 3: /* IRQ 1 */
-			cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[0],M6809_IRQ_LINE,ASSERT_LINE);
 			return;
         case 4: /* IRQ 2 */
-            cpunum_set_input_line(machine, 1,M6809_IRQ_LINE,ASSERT_LINE);
+            cpu_set_input_line(space->machine->cpu[1],M6809_IRQ_LINE,ASSERT_LINE);
             return;
 	}
 #endif
@@ -520,10 +482,10 @@ static WRITE8_HANDLER( shackled_int_w )
         case 2: /* i8751 - FIRQ acknowledge */
             return;
         case 3: /* IRQ 1 */
-			cpunum_set_input_line (machine, 0, M6809_IRQ_LINE, HOLD_LINE);
+			cpu_set_input_line (space->machine->cpu[0], M6809_IRQ_LINE, HOLD_LINE);
 			return;
         case 4: /* IRQ 2 */
-            cpunum_set_input_line (machine, 1, M6809_IRQ_LINE, HOLD_LINE);
+            cpu_set_input_line (space->machine->cpu[1], M6809_IRQ_LINE, HOLD_LINE);
             return;
 	}
 }
@@ -532,7 +494,7 @@ static WRITE8_HANDLER( shackled_int_w )
 
 static READ8_HANDLER( shackled_sprite_r ) { return spriteram[offset]; }
 static WRITE8_HANDLER( shackled_sprite_w ) { spriteram[offset]=data; }
-static WRITE8_HANDLER( flip_screen_w ) {	flip_screen_set(data); }
+static WRITE8_HANDLER( flip_screen_w ) {	flip_screen_set(space->machine, data); }
 
 /******************************************************************************/
 
@@ -1425,7 +1387,7 @@ static INPUT_PORTS_START( oscar )
 	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
-static INPUT_PORTS_START( oscarj0 )
+static INPUT_PORTS_START( oscaru )
 	PORT_START("IN0")
 	PLAYER1_JOYSTICK
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
@@ -2011,12 +1973,12 @@ GFXDECODE_END
 /* handler called by the 3812 emulator when the internal timers cause an IRQ */
 static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(machine, 1,0,linestate); /* M6502_IRQ_LINE */
+	cpu_set_input_line(machine->cpu[1],0,linestate); /* M6502_IRQ_LINE */
 }
 
 static void oscar_irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(machine, 2,0,linestate); /* M6502_IRQ_LINE */
+	cpu_set_input_line(machine->cpu[2],0,linestate); /* M6502_IRQ_LINE */
 }
 
 static const ym3526_interface ym3526_config =
@@ -2045,7 +2007,7 @@ static const msm5205_interface msm5205_config =
 static INTERRUPT_GEN( ghostb_interrupt )
 {
 	static int latch[4];
-	int i8751_out=input_port_read(machine, "I8751");
+	int i8751_out=input_port_read(device->machine, "I8751");
 
 	/* Ghostbusters coins are controlled by the i8751 */
 	if ((i8751_out & 0x8) == 0x8) latch[0]=1;
@@ -2053,18 +2015,18 @@ static INTERRUPT_GEN( ghostb_interrupt )
 	if ((i8751_out & 0x2) == 0x2) latch[2]=1;
 	if ((i8751_out & 0x1) == 0x1) latch[3]=1;
 
-	if (((i8751_out & 0x8) != 0x8) && latch[0]) {latch[0]=0; cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,HOLD_LINE); i8751_return=0x8001; } /* Player 1 coin */
-	if (((i8751_out & 0x4) != 0x4) && latch[1]) {latch[1]=0; cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,HOLD_LINE); i8751_return=0x4001; } /* Player 2 coin */
-	if (((i8751_out & 0x2) != 0x2) && latch[2]) {latch[2]=0; cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,HOLD_LINE); i8751_return=0x2001; } /* Player 3 coin */
-	if (((i8751_out & 0x1) != 0x1) && latch[3]) {latch[3]=0; cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,HOLD_LINE); i8751_return=0x1001; } /* Service */
+	if (((i8751_out & 0x8) != 0x8) && latch[0]) {latch[0]=0; cpu_set_input_line(device,M6809_IRQ_LINE,HOLD_LINE); i8751_return=0x8001; } /* Player 1 coin */
+	if (((i8751_out & 0x4) != 0x4) && latch[1]) {latch[1]=0; cpu_set_input_line(device,M6809_IRQ_LINE,HOLD_LINE); i8751_return=0x4001; } /* Player 2 coin */
+	if (((i8751_out & 0x2) != 0x2) && latch[2]) {latch[2]=0; cpu_set_input_line(device,M6809_IRQ_LINE,HOLD_LINE); i8751_return=0x2001; } /* Player 3 coin */
+	if (((i8751_out & 0x1) != 0x1) && latch[3]) {latch[3]=0; cpu_set_input_line(device,M6809_IRQ_LINE,HOLD_LINE); i8751_return=0x1001; } /* Service */
 
-	if (nmi_enable) cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE); /* VBL */
+	if (nmi_enable) cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE); /* VBL */
 }
 
 static INTERRUPT_GEN( gondo_interrupt )
 {
 	if (nmi_enable)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE); /* VBL */
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE); /* VBL */
 }
 
 /* Coins generate NMI's */
@@ -2072,10 +2034,10 @@ static INTERRUPT_GEN( oscar_interrupt )
 {
 	static int latch=1;
 
-	if ((input_port_read(machine, "IN2") & 0x7) == 0x7) latch=1;
-	if (latch && (input_port_read(machine, "IN2") & 0x7) != 0x7) {
+	if ((input_port_read(device->machine, "IN2") & 0x7) == 0x7) latch=1;
+	if (latch && (input_port_read(device->machine, "IN2") & 0x7) != 0x7) {
 		latch=0;
-    	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+    	cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
     }
 }
 
@@ -2261,7 +2223,7 @@ static MACHINE_DRIVER_START( oscar )
 	MDRV_CPU_ADD("audio", M6502, XTAL_12MHz/8)
 	MDRV_CPU_PROGRAM_MAP(dec8_s_readmem,oscar_s_writemem)
 								/* NMIs are caused by the main CPU */
-	MDRV_INTERLEAVE(40) /* 40 CPU slices per frame */
+	MDRV_QUANTUM_TIME(HZ(2400)) /* 40 CPU slices per frame */
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
@@ -2305,7 +2267,7 @@ static MACHINE_DRIVER_START( lastmiss )
 	MDRV_CPU_ADD("audio", M6502, 1500000)
 	MDRV_CPU_PROGRAM_MAP(ym3526_s_readmem,ym3526_s_writemem)
 								/* NMIs are caused by the main CPU */
-	MDRV_INTERLEAVE(200)
+	MDRV_QUANTUM_TIME(HZ(12000))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
@@ -2349,7 +2311,7 @@ static MACHINE_DRIVER_START( shackled )
 	MDRV_CPU_ADD("audio", M6502, 1500000)
 	MDRV_CPU_PROGRAM_MAP(ym3526_s_readmem,ym3526_s_writemem)
 								/* NMIs are caused by the main CPU */
-	MDRV_INTERLEAVE(80)
+	MDRV_QUANTUM_TIME(HZ(4800))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
@@ -2394,7 +2356,7 @@ static MACHINE_DRIVER_START( csilver )
 	MDRV_CPU_ADD("audio", M6502, XTAL_12MHz/8) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(csilver_s_readmem,csilver_s_writemem)
 								/* NMIs are caused by the main CPU */
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
@@ -2999,6 +2961,36 @@ ROM_END
 
 ROM_START( oscar )
 	ROM_REGION( 0x20000, "main", 0 )
+	ROM_LOAD( "du10", 0x08000, 0x08000, CRC(120040d8) SHA1(22d5f84f3ca724cbf39dfc4790f2175ba4945aaf) )
+	ROM_LOAD( "ed09", 0x10000, 0x10000, CRC(e2d4bba9) SHA1(99f0310debe51f4bcd00b5fdaedc1caf2eeccdeb) )
+
+	ROM_REGION( 0x10000, "sub", 0 )	/* CPU 2, 1st 16k is empty */
+	ROM_LOAD( "du11", 0x0000, 0x10000, CRC(ff45c440) SHA1(4769944bcfebcdcba7ed7d5133d4d9f98890d75c) )
+
+	ROM_REGION( 2*0x10000, "audio", 0 )	/* 64K for sound CPU + 64k for decrypted opcodes */
+	ROM_LOAD( "ed12", 0x8000, 0x8000, CRC(432031c5) SHA1(af2deea48b98eb0f9e85a4fb1486021f999f9abd) )
+
+	ROM_REGION( 0x1000, "cpu3", 0 )	/* ID8751H MCU */
+	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
+
+	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )	/* characters */
+	ROM_LOAD( "ed08", 0x00000, 0x04000, CRC(308ac264) SHA1(fd1c4ec4e4f99c33e93cd15e178c4714251a9b7e) )
+
+	ROM_REGION( 0x80000, "gfx2", ROMREGION_DISPOSE )	/* sprites */
+	ROM_LOAD( "ed04", 0x00000, 0x10000, CRC(416a791b) SHA1(e6541b713225289a43962363029eb0e22a1ecb4a) )
+	ROM_LOAD( "ed05", 0x20000, 0x10000, CRC(fcdba431) SHA1(0be2194519c36ddf136610f60890506eda1faf0b) )
+	ROM_LOAD( "ed06", 0x40000, 0x10000, CRC(7d50bebc) SHA1(06375f3273c48c7c7d81f1c15cbc5d3f3e05b8ed) )
+	ROM_LOAD( "ed07", 0x60000, 0x10000, CRC(8fdf0fa5) SHA1(2b4d1ca1436864e89b13b3fa151a4a3708592e0a) )
+
+	ROM_REGION( 0x80000, "gfx3", ROMREGION_DISPOSE )	/* tiles */
+	ROM_LOAD( "ed01", 0x00000, 0x10000, CRC(d3a58e9e) SHA1(35eda2aa630fc2c11a1aff2b00bcfabe2f3d4249) )
+	ROM_LOAD( "ed03", 0x20000, 0x10000, CRC(4fc4fb0f) SHA1(0906762a3adbffe765e072255262fedaa78bdb2a) )
+	ROM_LOAD( "ed00", 0x40000, 0x10000, CRC(ac201f2d) SHA1(77f13eb6a1a44444ca9b25363031451b0d68c988) )
+	ROM_LOAD( "ed02", 0x60000, 0x10000, CRC(7ddc5651) SHA1(f5ec5245cf3d9d4d9c1df6a8128c24565e331317) )
+ROM_END
+
+ROM_START( oscaru )
+	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "ed10", 0x08000, 0x08000, CRC(f9b0d4d4) SHA1(dc2aba978ba96f365027c7be5714728d5d7fb802) )
 	ROM_LOAD( "ed09", 0x10000, 0x10000, CRC(e2d4bba9) SHA1(99f0310debe51f4bcd00b5fdaedc1caf2eeccdeb) )
 
@@ -3028,36 +3020,6 @@ ROM_START( oscar )
 
 	ROM_REGION( 512, "proms", 0 )
 	ROM_LOAD( "du-13.bin", 0x00000,  0x200,  CRC(bea1f87e) SHA1(f5215992e4b53c9cd4c7e0b20ff5cfdce3ab6d02) )	/* Priority (Not yet used) */
-ROM_END
-
-ROM_START( oscarj0 )
-	ROM_REGION( 0x20000, "main", 0 )
-	ROM_LOAD( "du10", 0x08000, 0x08000, CRC(120040d8) SHA1(22d5f84f3ca724cbf39dfc4790f2175ba4945aaf) )
-	ROM_LOAD( "ed09", 0x10000, 0x10000, CRC(e2d4bba9) SHA1(99f0310debe51f4bcd00b5fdaedc1caf2eeccdeb) )
-
-	ROM_REGION( 0x10000, "sub", 0 )	/* CPU 2, 1st 16k is empty */
-	ROM_LOAD( "du11", 0x0000, 0x10000, CRC(ff45c440) SHA1(4769944bcfebcdcba7ed7d5133d4d9f98890d75c) )
-
-	ROM_REGION( 2*0x10000, "audio", 0 )	/* 64K for sound CPU + 64k for decrypted opcodes */
-	ROM_LOAD( "ed12", 0x8000, 0x8000, CRC(432031c5) SHA1(af2deea48b98eb0f9e85a4fb1486021f999f9abd) )
-
-	ROM_REGION( 0x1000, "cpu3", 0 )	/* ID8751H MCU */
-	ROM_LOAD( "id8751h.mcu", 0x0000, 0x1000, NO_DUMP )
-
-	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )	/* characters */
-	ROM_LOAD( "ed08", 0x00000, 0x04000, CRC(308ac264) SHA1(fd1c4ec4e4f99c33e93cd15e178c4714251a9b7e) )
-
-	ROM_REGION( 0x80000, "gfx2", ROMREGION_DISPOSE )	/* sprites */
-	ROM_LOAD( "ed04", 0x00000, 0x10000, CRC(416a791b) SHA1(e6541b713225289a43962363029eb0e22a1ecb4a) )
-	ROM_LOAD( "ed05", 0x20000, 0x10000, CRC(fcdba431) SHA1(0be2194519c36ddf136610f60890506eda1faf0b) )
-	ROM_LOAD( "ed06", 0x40000, 0x10000, CRC(7d50bebc) SHA1(06375f3273c48c7c7d81f1c15cbc5d3f3e05b8ed) )
-	ROM_LOAD( "ed07", 0x60000, 0x10000, CRC(8fdf0fa5) SHA1(2b4d1ca1436864e89b13b3fa151a4a3708592e0a) )
-
-	ROM_REGION( 0x80000, "gfx3", ROMREGION_DISPOSE )	/* tiles */
-	ROM_LOAD( "ed01", 0x00000, 0x10000, CRC(d3a58e9e) SHA1(35eda2aa630fc2c11a1aff2b00bcfabe2f3d4249) )
-	ROM_LOAD( "ed03", 0x20000, 0x10000, CRC(4fc4fb0f) SHA1(0906762a3adbffe765e072255262fedaa78bdb2a) )
-	ROM_LOAD( "ed00", 0x40000, 0x10000, CRC(ac201f2d) SHA1(77f13eb6a1a44444ca9b25363031451b0d68c988) )
-	ROM_LOAD( "ed02", 0x60000, 0x10000, CRC(7ddc5651) SHA1(f5ec5245cf3d9d4d9c1df6a8128c24565e331317) )
 ROM_END
 
 ROM_START( oscarj1 )
@@ -3093,7 +3055,7 @@ ROM_START( oscarj1 )
 	ROM_LOAD( "du-13.bin", 0x00000,  0x200,  CRC(bea1f87e) SHA1(f5215992e4b53c9cd4c7e0b20ff5cfdce3ab6d02) )	/* Priority (Not yet used) */
 ROM_END
 
-ROM_START( oscarj )
+ROM_START( oscarj2 )
 	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "oscr10-2.bin", 0x08000, 0x08000, CRC(114e898d) SHA1(1072ccabe6d53c50cdfa1e27d5d848ecdd6559cc) ) /* DU10-2 */
 	ROM_LOAD( "ed09", 0x10000, 0x10000, CRC(e2d4bba9) SHA1(99f0310debe51f4bcd00b5fdaedc1caf2eeccdeb) )
@@ -3484,19 +3446,16 @@ ROM_END
 /* Ghostbusters, Darwin, Oscar use a "Deco 222" custom 6502 for sound. */
 static DRIVER_INIT( deco222 )
 {
-	int A,sound_cpu;
+	const address_space *space = cputag_get_address_space(machine, "audio", ADDRESS_SPACE_PROGRAM);
+	int A;
 	UINT8 *decrypt;
 	UINT8 *rom;
-
-	sound_cpu = 1;
-	/* Oscar has three CPUs */
-	if (machine->config->cpu[2].type != CPU_DUMMY) sound_cpu = 2;
 
 	/* bits 5 and 6 of the opcodes are swapped */
 	rom = memory_region(machine, "audio");
 	decrypt = auto_malloc(0x8000);
 
-	memory_set_decrypted_region(sound_cpu, 0x8000, 0xffff, decrypt);
+	memory_set_decrypted_region(space, 0x8000, 0xffff, decrypt);
 
 	for (A = 0x8000;A < 0x10000;A++)
 		decrypt[A-0x8000] = (rom[A] & 0x9f) | ((rom[A] & 0x20) << 1) | ((rom[A] & 0x40) >> 1);
@@ -3527,10 +3486,10 @@ GAME( 1987, srdarwin, 0,        srdarwin, srdarwin, deco222, ROT270, "Data East 
 GAME( 1987, srdarwnj, srdarwin, srdarwin, srdarwin, deco222, ROT270, "Data East Corporation", "Super Real Darwin (Japan)", 0 )
 GAME( 1987, gondo,    0,        gondo,    gondo,    0,       ROT270, "Data East USA", "Gondomania (US)", 0 )
 GAME( 1987, makyosen, gondo,    gondo,    gondo,    0,       ROT270, "Data East Corporation", "Makyou Senshi (Japan)", 0 )
-GAME( 1988, oscar,    0,        oscar,    oscar,    deco222, ROT0,   "Data East USA", "Psycho-Nics Oscar (US)", 0 )
-GAME( 1987, oscarj,   oscar,    oscar,    oscar,    deco222, ROT0,   "Data East Corporation", "Psycho-Nics Oscar (Japan revision 2)", 0 )
-GAME( 1987, oscarj1,  oscar,    oscar,    oscar,    deco222, ROT0,   "Data East Corporation", "Psycho-Nics Oscar (Japan revision 1)", 0 )
-GAME( 1987, oscarj0,  oscar,    oscar,    oscarj0,  deco222, ROT0,   "Data East Corporation", "Psycho-Nics Oscar (Japan revision 0)", 0 )
+GAME( 1988, oscar,    0,        oscar,    oscar,    deco222, ROT0,   "Data East Corporation", "Psycho-Nics Oscar (World revision 0)", 0 )
+GAME( 1987, oscaru,   oscar,    oscar,    oscaru,   deco222, ROT0,   "Data East USA", "Psycho-Nics Oscar (US)", 0 )
+GAME( 1987, oscarj1,  oscar,    oscar,    oscaru,   deco222, ROT0,   "Data East Corporation", "Psycho-Nics Oscar (Japan revision 1)", 0 )
+GAME( 1987, oscarj2,  oscar,    oscar,    oscaru,   deco222, ROT0,   "Data East Corporation", "Psycho-Nics Oscar (Japan revision 2)", 0 )
 GAME( 1986, lastmisn, 0,        lastmiss, lastmisn, 0,       ROT270, "Data East USA", "Last Mission (US revision 6)", 0 )
 GAME( 1986, lastmsno, lastmisn, lastmiss, lastmisn, 0,       ROT270, "Data East USA", "Last Mission (US revision 5)", 0 )
 GAME( 1986, lastmsnj, lastmisn, lastmiss, lastmsnj, 0,       ROT270, "Data East Corporation", "Last Mission (Japan)", 0 )

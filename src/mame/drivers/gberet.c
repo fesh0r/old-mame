@@ -66,6 +66,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/sn76496.h"
 
@@ -91,16 +92,16 @@ static UINT8 nmi_enable, irq_enable;
 
 static INTERRUPT_GEN( gberet_interrupt )
 {
-	if (cpu_getiloops() == 0)
+	if (cpu_getiloops(device) == 0)
 	{
 		if (irq_enable)
-			cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+			cpu_set_input_line(device, 0, HOLD_LINE);
 	}
 
-	if (cpu_getiloops() % 2)
+	if (cpu_getiloops(device) % 2)
 	{
 		if (nmi_enable)
-			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+			cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -119,7 +120,7 @@ static WRITE8_HANDLER( gberet_flipscreen_w )
 	nmi_enable = data & 0x01;
 	irq_enable = data & 0x04;
 
-	flip_screen_set(data & 0x08);
+	flip_screen_set(space->machine, data & 0x08);
 }
 
 static WRITE8_HANDLER( mrgoemon_coin_counter_w )
@@ -132,7 +133,7 @@ static WRITE8_HANDLER( mrgoemon_coin_counter_w )
 
 	/* bits 5-7 = ROM bank select */
 	offs = 0x10000 + ((data & 0xe0) >> 5) * 0x800;
-	memory_set_bankptr(1, &memory_region(machine, "main")[offs]);
+	memory_set_bankptr(space->machine, 1, &memory_region(space->machine, "main")[offs]);
 }
 
 static WRITE8_HANDLER( mrgoemon_flipscreen_w )
@@ -140,7 +141,7 @@ static WRITE8_HANDLER( mrgoemon_flipscreen_w )
 	nmi_enable = data & 0x01;
 	irq_enable = data & 0x02;
 
-	flip_screen_set(data & 0x08);
+	flip_screen_set(space->machine, data & 0x08);
 }
 
 /* Memory Maps */

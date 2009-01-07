@@ -174,9 +174,9 @@ static void dma8237_update_status(const device_config *device)
 		}
 
 		/* set the halt line */
-		if (dma8237->intf && dma8237->intf->cpunum >= 0)
+		if (dma8237->intf && dma8237->intf->cputag != NULL)
 		{
-			cpunum_set_input_line(device->machine, dma8237->intf->cpunum, INPUT_LINE_HALT,
+			cputag_set_input_line(device->machine, dma8237->intf->cputag, INPUT_LINE_HALT,
 				pending_transfer ? ASSERT_LINE : CLEAR_LINE);
 		}
 
@@ -368,7 +368,7 @@ static void dma8237_drq_write_callback(const device_config *device, int param)
 void dma8237_drq_write(const device_config *device, int channel, int state)
 {
 	int param = (channel << 1) | (state ? 1 : 0);
-	//timer_call_after_resynch(NULL, param, dma8237_drq_write_callback);
+	//timer_call_after_resynch(device->machine, NULL, param, dma8237_drq_write_callback);
 	dma8237_drq_write_callback(device, param);
 }
 
@@ -404,8 +404,8 @@ static DEVICE_RESET( dma8237 ) {
 	dma8237_t	*dma8237 = get_safe_token(device);
 
 	dma8237->status = 0x0F;
-	dma8237->timer = timer_alloc(dma8237_timerproc, (void *)device);
-	dma8237->msbflip_timer = timer_alloc(dma8237_msbflip_timerproc, (void *)device);
+	dma8237->timer = timer_alloc(device->machine, dma8237_timerproc, (void *)device);
+	dma8237->msbflip_timer = timer_alloc(device->machine, dma8237_msbflip_timerproc, (void *)device);
 	dma8237->eop = 1;
 
 	dma8237->mask = 0x00;
@@ -440,11 +440,11 @@ DEVICE_GET_INFO( dma8237 ) {
 		case DEVINFO_FCT_RESET:						info->reset = DEVICE_RESET_NAME(dma8237);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:						info->s = "Intel DMA8237";					break;
-		case DEVINFO_STR_FAMILY:					info->s = "DMA8237";						break;
-		case DEVINFO_STR_VERSION:					info->s = "1.00";							break;
-		case DEVINFO_STR_SOURCE_FILE:				info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:					info->s = "Copyright the MAME and MESS Teams";	break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "Intel DMA8237");			break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "DMA8237");					break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.00");					break;
+		case DEVINFO_STR_SOURCE_FILE:				strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright the MAME and MESS Teams");	break;
 	}
 }
 

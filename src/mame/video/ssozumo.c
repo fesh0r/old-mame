@@ -98,7 +98,7 @@ WRITE8_HANDLER( ssozumo_paletteram_w )
 	bit3 = (val >> 3) & 0x01;
 	b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
-	palette_set_color(machine, offs2 + 64, MAKE_RGB(r, g, b));
+	palette_set_color(space->machine, offs2 + 64, MAKE_RGB(r, g, b));
 }
 
 WRITE8_HANDLER( ssozumo_scroll_w )
@@ -108,7 +108,7 @@ WRITE8_HANDLER( ssozumo_scroll_w )
 
 WRITE8_HANDLER( ssozumo_flipscreen_w )
 {
-	flip_screen_set(data & 0x80);
+	flip_screen_set(space->machine, data & 0x80);
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
@@ -130,10 +130,10 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( ssozumo )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flip_x,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols_flip_x,
 		 16, 16, 16, 32);
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols_flip_x,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_cols_flip_x,
 		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
@@ -154,7 +154,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			int sx = 239 - spriteram[offs + 3];
 			int sy = (240 - spriteram[offs + 2]) & 0xff;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 240 - sx;
 				sy = 240 - sy;

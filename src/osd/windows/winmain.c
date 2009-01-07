@@ -34,7 +34,7 @@
 #include "strconv.h"
 #include "winutf8.h"
 #include "winutil.h"
-#include "debug/debugcpu.h"
+#include "debugger.h"
 
 #define ENABLE_PROFILER		0
 #define DEBUG_SLOW_LOCKS	0
@@ -126,6 +126,8 @@ const options_entry mame_win_options[] =
 	{ NULL,                       NULL,       OPTION_HEADER,     "WINDOWS DEBUGGING OPTIONS" },
 	{ "oslog",                    "0",        OPTION_BOOLEAN,    "output error.log data to the system debugger" },
 	{ "watchdog;wdog",            "0",        0,                 "force the program to terminate if no updates within specified number of seconds" },
+	{ "debugger_font;dfont",      "Lucida Console", 0,           "specifies the font to use for debugging; defaults to Lucida Console" },
+	{ "debugger_font_size;dfontsize", "9",    0,                 "specifies the font size to use for debugging; defaults to 9 pt" },
 
 	// performance options
 	{ NULL,                       NULL,       OPTION_HEADER,     "WINDOWS PERFORMANCE OPTIONS" },
@@ -455,7 +457,7 @@ static LONG CALLBACK exception_filter(struct _EXCEPTION_POINTERS *info)
 	already_hit = 1;
 
 	// flush any debugging traces that were live
-	debug_cpu_flush_traces();
+	debugger_flush_all_traces_on_abnormal_exit();
 
 	// find our man
 	for (i = 0; exception_table[i].code != 0; i++)

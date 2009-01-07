@@ -17,6 +17,7 @@ Differences between these sets include
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
 #include "includes/fgoal.h"
 
 UINT8* fgoal_video_ram;
@@ -83,10 +84,10 @@ static TIMER_CALLBACK( interrupt_callback )
 	int scanline;
 	int coin = (input_port_read(machine, "IN1") & 2);
 
-	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 
 	if (!coin && prev_coin)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, ASSERT_LINE);
 
 	prev_coin = coin;
 
@@ -95,13 +96,13 @@ static TIMER_CALLBACK( interrupt_callback )
 	if (scanline > 256)
 		scanline = 0;
 
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, 0, interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, 0, interrupt_callback);
 }
 
 
 static MACHINE_RESET( fgoal )
 {
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, interrupt_callback);
 }
 
 
@@ -113,7 +114,7 @@ static unsigned video_ram_address(void)
 
 static READ8_HANDLER( fgoal_analog_r )
 {
-	return input_port_read(machine, fgoal_player ? "PADDLE1" : "PADDLE0"); /* PCB can be jumpered to use a single dial */
+	return input_port_read(space->machine, fgoal_player ? "PADDLE1" : "PADDLE0"); /* PCB can be jumpered to use a single dial */
 }
 
 
@@ -126,7 +127,7 @@ static CUSTOM_INPUT( fgoal_80_r )
 
 static READ8_HANDLER( fgoal_nmi_reset_r )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
 
 	return 0;
 }
@@ -134,7 +135,7 @@ static READ8_HANDLER( fgoal_nmi_reset_r )
 
 static READ8_HANDLER( fgoal_irq_reset_r )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 
 	return 0;
 }

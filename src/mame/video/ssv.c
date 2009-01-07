@@ -228,7 +228,7 @@ VIDEO_START( gdfs )
 	eaglshot_gfxram		=	(UINT16*)auto_malloc(4 * 0x100000);
 	eaglshot_dirty_tile	=	(char*)auto_malloc(4 * 0x100000 / (16*8));
 
-	gdfs_tmap			=	tilemap_create(	get_tile_info_0, tilemap_scan_rows,
+	gdfs_tmap			=	tilemap_create(	machine, get_tile_info_0, tilemap_scan_rows,
 											 16,16, 0x100,0x100	);
 
 	tilemap_set_transparent_pen(gdfs_tmap, 0);
@@ -369,7 +369,7 @@ char eaglshot_dirty, *eaglshot_dirty_tile;
 
 READ16_HANDLER( ssv_vblank_r )
 {
-	if (video_screen_get_vblank(machine->primary_screen))
+	if (video_screen_get_vblank(space->machine->primary_screen))
 		return 0x2000 | 0x1000;
 	else
 		return 0x0000;
@@ -399,7 +399,7 @@ WRITE16_HANDLER( paletteram16_xrgb_swap_word_w )
 	g = data1 >> 8;
 	b = data1 & 0xff;
 
-	palette_set_color(machine, offset>>1, MAKE_RGB(r, g, b));
+	palette_set_color(space->machine, offset>>1, MAKE_RGB(r, g, b));
 }
 
 /***************************************************************************
@@ -1158,7 +1158,7 @@ VIDEO_UPDATE( ssv )
 	}
 
 	/* The background color is the first one in the palette */
-	fillbitmap(bitmap,0, cliprect);
+	bitmap_fill(bitmap,cliprect, 0);
 
 	if (!enable_video)	return 0;
 

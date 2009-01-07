@@ -137,7 +137,7 @@ typedef struct dpcm_s
    uint8 cur_byte;
    boolean enabled;
    boolean irq_occurred;
-   uint8 *cpu_mem;
+   const address_space *memory;
    signed char vol;
 } dpcm_t;
 

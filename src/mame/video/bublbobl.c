@@ -30,7 +30,7 @@ VIDEO_UPDATE( bublbobl )
 	/* the background character columns is stored in the area dd00-dd3f */
 
 	/* This clears & redraws the entire screen each pass */
-	fillbitmap(bitmap,255,cliprect);
+	bitmap_fill(bitmap,cliprect,255);
 
 	if (!bublbobl_video_enable) return 0;
 
@@ -78,7 +78,7 @@ VIDEO_UPDATE( bublbobl )
 				x = sx + xc * 8;
 				y = (sy + yc * 8) & 0xff;
 
-				if (flip_screen_get())
+				if (flip_screen_get(screen->machine))
 				{
 					x = 248 - x;
 					y = 248 - y;

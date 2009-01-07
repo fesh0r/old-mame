@@ -59,7 +59,6 @@
 
 #include <math.h>
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "cpuintrf.h"
 #include "ymf278b.h"
@@ -256,7 +255,7 @@ static void ymf278b_envelope_next(YMF278BSlot *slot)
 	}
 }
 
-static void ymf278b_pcm_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length)
+static STREAM_UPDATE( ymf278b_pcm_update )
 {
 	YMF278BChip *chip = param;
 	int i, j;
@@ -266,7 +265,7 @@ static void ymf278b_pcm_update(void *param, stream_sample_t **inputs, stream_sam
 	INT32 *mixp;
 	INT32 vl, vr;
 
-	memset(mix, 0, sizeof(mix[0])*length*2);
+	memset(mix, 0, sizeof(mix[0])*samples*2);
 
 	rombase = chip->rom;
 
@@ -278,7 +277,7 @@ static void ymf278b_pcm_update(void *param, stream_sample_t **inputs, stream_sam
 		{
 			mixp = mix;
 
-			for (j = 0; j < length; j++)
+			for (j = 0; j < samples; j++)
 			{
 				switch (slot->bits)
 				{
@@ -330,7 +329,7 @@ static void ymf278b_pcm_update(void *param, stream_sample_t **inputs, stream_sam
 	mixp = mix;
 	vl = chip->mix_level[chip->pcm_l];
 	vr = chip->mix_level[chip->pcm_r];
-	for (i = 0; i < length; i++)
+	for (i = 0; i < samples; i++)
 	{
 		outputs[0][i] = (*mixp++ * vl) >> 16;
 		outputs[1][i] = (*mixp++ * vr) >> 16;
@@ -655,19 +654,19 @@ static void ymf278b_data_port_C_w(int num, UINT8 data)
 	ymf278b_C_w(chip, chip->port_C, data);
 }
 
-static void ymf278b_init(YMF278BChip *chip, UINT8 *rom, void (*cb)(running_machine *, int), int clock)
+static void ymf278b_init(running_machine *machine, YMF278BChip *chip, UINT8 *rom, void (*cb)(running_machine *, int), int clock)
 {
 	chip->rom = rom;
 	chip->irq_callback = cb;
-	chip->timer_a = timer_alloc(ymf278b_timer_a_tick, chip);
-	chip->timer_b = timer_alloc(ymf278b_timer_b_tick, chip);
+	chip->timer_a = timer_alloc(machine, ymf278b_timer_a_tick, chip);
+	chip->timer_b = timer_alloc(machine, ymf278b_timer_b_tick, chip);
 	chip->irq_line = CLEAR_LINE;
 	chip->clock = clock;
 
 	mix = auto_malloc(44100*2*sizeof(*mix));
 }
 
-static void *ymf278b_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( ymf278b )
 {
 	static const ymf278b_interface defintrf = { 0 };
 	const ymf278b_interface *intf;
@@ -680,8 +679,8 @@ static void *ymf278b_start(const char *tag, int sndindex, int clock, const void 
 
 	intf = (config != NULL) ? config : &defintrf;
 
-	ymf278b_init(chip, memory_region(Machine, tag), intf->irq_callback, clock);
-	chip->stream = stream_create(0, 2, clock/768, chip, ymf278b_pcm_update);
+	ymf278b_init(device->machine, chip, device->region, intf->irq_callback, clock);
+	chip->stream = stream_create(device, 0, 2, clock/768, chip, ymf278b_pcm_update);
 
 	// Volume table, 1 = -0.375dB, 8 = -3dB, 256 = -96dB
 	for(i = 0; i < 256; i++)
@@ -722,7 +721,7 @@ WRITE8_HANDLER( ymf278b_control_port_0_a_w )
 
 WRITE8_HANDLER( ymf278b_data_port_0_a_w )
 {
-	ymf278b_data_port_A_w(machine, 0, data);
+	ymf278b_data_port_A_w(space->machine, 0, data);
 }
 
 WRITE8_HANDLER( ymf278b_control_port_0_b_w )
@@ -763,7 +762,7 @@ WRITE8_HANDLER( ymf278b_control_port_1_a_w )
 
 WRITE8_HANDLER( ymf278b_data_port_1_a_w )
 {
-	ymf278b_data_port_A_w(machine, 1, data);
+	ymf278b_data_port_A_w(space->machine, 1, data);
 }
 
 WRITE8_HANDLER( ymf278b_control_port_1_b_w )
@@ -793,7 +792,7 @@ WRITE8_HANDLER( ymf278b_data_port_1_c_w )
  * Generic get_info
  **************************************************************************/
 
-static void ymf278b_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( ymf278b )
 {
 	switch (state)
 	{
@@ -802,24 +801,24 @@ static void ymf278b_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void ymf278b_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( ymf278b )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = ymf278b_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = ymf278b_start;			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( ymf278b );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ymf278b );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "YMF278B";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Yamaha FM";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "YMF278B");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Yamaha FM");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

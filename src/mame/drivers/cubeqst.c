@@ -18,9 +18,9 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/cubeqcpu/cubeqcpu.h"
 #include "sound/dac.h"
-#include "deprecat.h"
 #include "sound/custom.h"
 #include "streams.h"
 #include "machine/laserdsc.h"
@@ -98,7 +98,7 @@ static PALETTE_INIT( cubeqst )
 
 static WRITE16_HANDLER( palette_w )
 {
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 	COMBINE_DATA(&paletteram16[offset]);
 }
 
@@ -113,16 +113,14 @@ static VIDEO_UPDATE( cubeqst )
     */
 
 	/* Bit 3 selects LD/#GRAPHICS */
-	fillbitmap(bitmap, colormap[255], cliprect);
-
-	cpuintrf_push_context(LINE_CPU);
+	bitmap_fill(bitmap, cliprect, colormap[255]);
 
 	/* TODO: Add 1 for linebuffering? */
 	for (y = cliprect->min_y; y <= cliprect->max_y; ++y)
 	{
 		int i;
-		int num_entries = get_ptr_ram_val(y);
-		UINT32 *stk_ram = get_stack_ram();
+		int num_entries = cubeqcpu_get_ptr_ram_val(screen->machine->cpu[LINE_CPU], y);
+		UINT32 *stk_ram = cubeqcpu_get_stack_ram(screen->machine->cpu[LINE_CPU]);
 		UINT32 *dest = BITMAP_ADDR32(bitmap, y, 0);
 		UINT32 pen;
 
@@ -130,65 +128,67 @@ static VIDEO_UPDATE( cubeqst )
 		memset(depth_buffer, 0xff, 512);
 
 		/* Process all the spans on this scanline */
-		for (i = 0; i < num_entries; i += 2)
+		if (y < 256)
 		{
-			int color = 0, depth = 0;
-			int h1 = 0, h2 = 0;
-			int x;
-
-			int entry1 = stk_ram[(y << 7) | ((i + 0) & 0x7f)];
-			int entry2 = stk_ram[(y << 7) | ((i + 1) & 0x7f)];
-
-			/* Determine which entry is the start point and which is the stop */
-			if ( entry1 & (1 << 19) )
+			for (i = 0; i < num_entries; i += 2)
 			{
-				h1 = (entry2 >> 8) & 0x1ff;
-				depth = entry2 & 0xff;
+				int color = 0, depth = 0;
+				int h1 = 0, h2 = 0;
+				int x;
 
-				h2 = (entry1 >> 8) & 0x1ff;
-				color = entry1 & 0xff;
-			}
-			else if ( entry2 & (1 << 19) )
-			{
-				h1 = (entry1 >> 8) & 0x1ff;
-				depth = entry1 & 0xff;
+				int entry1 = stk_ram[(y << 7) | ((i + 0) & 0x7f)];
+				int entry2 = stk_ram[(y << 7) | ((i + 1) & 0x7f)];
 
-				h2 = (entry2 >> 8) & 0x1ff;
-				color = entry2 & 0xff;
-			}
-			else
-			{
-				// Shouldn't happen...
-			}
-
-			/* Draw the span, testing for depth */
-			pen = colormap[paletteram16[color]];
-			for (x = h1; x <= h2; ++x)
-			{
-				if (!(depth_buffer[x] < depth))
+				/* Determine which entry is the start point and which is the stop */
+				if ( entry1 & (1 << 19) )
 				{
-					dest[x] = pen;
-					depth_buffer[x] = depth;
+					h1 = (entry2 >> 8) & 0x1ff;
+					depth = entry2 & 0xff;
+
+					h2 = (entry1 >> 8) & 0x1ff;
+					color = entry1 & 0xff;
+				}
+				else if ( entry2 & (1 << 19) )
+				{
+					h1 = (entry1 >> 8) & 0x1ff;
+					depth = entry1 & 0xff;
+
+					h2 = (entry2 >> 8) & 0x1ff;
+					color = entry2 & 0xff;
+				}
+				else
+				{
+					// Shouldn't happen...
+				}
+
+				/* Draw the span, testing for depth */
+				pen = colormap[paletteram16[color]];
+				for (x = h1; x <= h2; ++x)
+				{
+					if (!(depth_buffer[x] < depth))
+					{
+						dest[x] = pen;
+						depth_buffer[x] = depth;
+					}
 				}
 			}
 		}
 	}
 
-	cpuintrf_pop_context();
 	return 0;
 }
 
 static READ16_HANDLER( line_r )
 {
 	/* I think this is unusued */
-	return video_screen_get_vpos(machine->primary_screen);
+	return video_screen_get_vpos(space->machine->primary_screen);
 }
 
 static INTERRUPT_GEN( vblank )
 {
 	int int_level = video_field == 0 ? 5 : 6;
 
-	cputag_set_input_line(machine, "main_cpu", int_level, HOLD_LINE);
+	cpu_set_input_line(device, int_level, HOLD_LINE);
 
 	/* Update the laserdisc */
 	video_field ^= 1;
@@ -249,20 +249,17 @@ static WRITE16_HANDLER( control_w )
 
 static TIMER_CALLBACK( delayed_bank_swap )
 {
-	cpuintrf_push_context(LINE_CPU);
-	cubeqcpu_swap_line_banks();
+	cubeqcpu_swap_line_banks(machine->cpu[LINE_CPU]);
 
 	/* TODO: This is a little dubious */
-	clear_stack();
-
-	cpuintrf_pop_context();
+	cubeqcpu_clear_stack(machine->cpu[LINE_CPU]);
 }
 
 
-static void swap_linecpu_banks(void)
+static void swap_linecpu_banks(running_machine *machine)
 {
 	/* Best sync up before we switch banks around */
-	timer_call_after_resynch(NULL, 0, delayed_bank_swap);
+	timer_call_after_resynch(machine, NULL, 0, delayed_bank_swap);
 }
 
 
@@ -276,13 +273,13 @@ static void swap_linecpu_banks(void)
 */
 static WRITE16_HANDLER( reset_w )
 {
-	cputag_set_input_line(machine, "rotate_cpu", INPUT_LINE_RESET, data & 1 ? CLEAR_LINE : ASSERT_LINE);
-	cputag_set_input_line(machine, "line_cpu", INPUT_LINE_RESET, data & 1 ? CLEAR_LINE : ASSERT_LINE);
-	cputag_set_input_line(machine, "sound_cpu", INPUT_LINE_RESET, data & 2 ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "rotate_cpu", INPUT_LINE_RESET, data & 1 ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "line_cpu", INPUT_LINE_RESET, data & 1 ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "sound_cpu", INPUT_LINE_RESET, data & 2 ? CLEAR_LINE : ASSERT_LINE);
 
 	/* Swap stack and pointer RAM banks on rising edge of display reset */
 	if (!BIT(reset_latch, 0) && BIT(data, 0))
-		swap_linecpu_banks();
+		swap_linecpu_banks(space->machine);
 
 	if (!BIT(data, 2))
 		device_reset(laserdisc);
@@ -325,7 +322,7 @@ static WRITE16_HANDLER( io_w )
 
 static READ16_HANDLER( io_r )
 {
-	UINT16 port_data = input_port_read(machine, "IO");
+	UINT16 port_data = input_port_read(space->machine, "IO");
 
 	/*
          Certain bits depend on Q7 of the IO latch:
@@ -346,7 +343,7 @@ static READ16_HANDLER( io_r )
 /* Trackball ('CHOP') */
 static READ16_HANDLER( chop_r )
 {
-	return (input_port_read(machine, "TRACK_X") << 8) | input_port_read(machine, "TRACK_Y");
+	return (input_port_read(space->machine, "TRACK_X") << 8) | input_port_read(space->machine, "TRACK_Y");
 }
 
 
@@ -384,6 +381,26 @@ INPUT_PORTS_END
  *  CPU memory handlers
  *
  *************************************/
+
+static READ16_HANDLER( read_rotram )
+{
+	return cubeqcpu_rotram_r(space->machine->cpu[ROTATE_CPU], offset, mem_mask);
+}
+
+static WRITE16_HANDLER( write_rotram )
+{
+	cubeqcpu_rotram_w(space->machine->cpu[ROTATE_CPU], offset, data, mem_mask);
+}
+
+static READ16_HANDLER( read_sndram )
+{
+	return cubeqcpu_sndram_r(space->machine->cpu[SOUND_CPU], offset, mem_mask);
+}
+
+static WRITE16_HANDLER( write_sndram )
+{
+	cubeqcpu_sndram_w(space->machine->cpu[SOUND_CPU], offset, data, mem_mask);
+}
 
 static ADDRESS_MAP_START( m68k_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_GLOBAL_MASK(0x03ffff)
@@ -446,7 +463,7 @@ static MACHINE_RESET( cubeqst )
  */
 
 /* Called by the sound CPU emulation */
-static void sound_dac_w(UINT16 data)
+static void sound_dac_w(const device_config *device, UINT16 data)
 {
 	dac_signed_data_16_w(data & 15, (data & 0xfff0) ^ 0x8000);
 }
@@ -455,6 +472,16 @@ static const cubeqst_snd_config snd_config =
 {
 	sound_dac_w,
 	"soundproms"
+};
+
+static const cubeqst_rot_config rot_config =
+{
+	"line_cpu"
+};
+
+static const cubeqst_lin_config lin_config =
+{
+	"rotate_cpu"
 };
 
 
@@ -471,15 +498,17 @@ static MACHINE_DRIVER_START( cubeqst )
 
 	MDRV_CPU_ADD("rotate_cpu", CQUESTROT, XTAL_10MHz / 2)
 	MDRV_CPU_PROGRAM_MAP(rotate_map, 0)
+	MDRV_CPU_CONFIG(rot_config)
 
 	MDRV_CPU_ADD("line_cpu", CQUESTLIN, XTAL_10MHz / 2)
 	MDRV_CPU_PROGRAM_MAP(line_sound_map, 0)
+	MDRV_CPU_CONFIG(lin_config)
 
 	MDRV_CPU_ADD("sound_cpu", CQUESTSND, XTAL_10MHz / 2)
 	MDRV_CPU_PROGRAM_MAP(line_sound_map, 0)
 	MDRV_CPU_CONFIG(snd_config)
 
-	MDRV_INTERLEAVE(700)
+	MDRV_QUANTUM_TIME(HZ(48000))
 
 	MDRV_MACHINE_START(cubeqst)
 	MDRV_MACHINE_RESET(cubeqst)

@@ -28,7 +28,7 @@
 #include "sndintrf.h"
 #include "streams.h"
 #include "cpuintrf.h"
-#include "deprecat.h"
+#include "cpuexec.h"
 #include "scsp.h"
 #include "scspdsp.h"
 
@@ -224,9 +224,11 @@ struct _SCSP
 	int ARTABLE[64], DRTABLE[64];
 
 	struct _SCSPDSP DSP;
+
+	const device_config *device;
 };
 
-static void dma_scsp(running_machine *machine, struct _SCSP *SCSP); 		/*SCSP DMA transfer function*/
+static void dma_scsp(const address_space *space, struct _SCSP *SCSP); 		/*SCSP DMA transfer function*/
 #define	scsp_dgate		scsp_regs[0x16/2] & 0x4000
 #define	scsp_ddir		scsp_regs[0x16/2] & 0x2000
 #define scsp_dexe 		scsp_regs[0x16/2] & 0x1000
@@ -259,7 +261,7 @@ static void CheckPendingIRQ(struct _SCSP *SCSP)
 {
 	UINT32 pend=SCSP->udata.data[0x20/2];
 	UINT32 en=SCSP->udata.data[0x1e/2];
-	running_machine *machine = Machine;
+	running_machine *machine = SCSP->device->machine;
 
 	if(SCSP->MidiW!=SCSP->MidiR)
 	{
@@ -300,7 +302,7 @@ static void CheckPendingIRQ(struct _SCSP *SCSP)
 static void ResetInterrupts(struct _SCSP *SCSP)
 {
 	UINT32 reset = SCSP->udata.data[0x22/2];
-	running_machine *machine = Machine;
+	running_machine *machine = SCSP->device->machine;
 
 	if (reset & 0x40)
 	{
@@ -507,40 +509,39 @@ static void SCSP_StopSlot(struct _SLOT *slot,int keyoff)
 
 #define log_base_2(n) (log((double)(n))/log(2.0))
 
-static void SCSP_Init(const char *tag, struct _SCSP *SCSP, const scsp_interface *intf, int sndindex)
+static void SCSP_Init(const device_config *device, struct _SCSP *SCSP, const scsp_interface *intf, int sndindex)
 {
 	int i;
 
+	memset(SCSP,0,sizeof(*SCSP));
+
+	SCSP->device = device;
 	SCSP->IrqTimA = SCSP->IrqTimBC = SCSP->IrqMidi = 0;
 	SCSP->MidiR=SCSP->MidiW=0;
 	SCSP->MidiOutR=SCSP->MidiOutW=0;
 
 	// get SCSP RAM
+	if (sndindex == 0)
 	{
-		memset(SCSP,0,sizeof(*SCSP));
-
-		if (sndindex == 0)
-		{
-			SCSP->Master=1;
-		}
-		else
-		{
-			SCSP->Master=0;
-		}
-
-		SCSP->SCSPRAM = memory_region(Machine, tag);
-		if (SCSP->SCSPRAM)
-		{
-			SCSP->SCSPRAM_LENGTH = memory_region_length(Machine, tag);
-			SCSP->DSP.SCSPRAM = (UINT16 *)SCSP->SCSPRAM;
-			SCSP->DSP.SCSPRAM_LENGTH = SCSP->SCSPRAM_LENGTH/2;
-			SCSP->SCSPRAM += intf->roffset;
-		}
+		SCSP->Master=1;
+	}
+	else
+	{
+		SCSP->Master=0;
 	}
 
-	SCSP->timerA = timer_alloc(timerA_cb, SCSP);
-	SCSP->timerB = timer_alloc(timerB_cb, SCSP);
-	SCSP->timerC = timer_alloc(timerC_cb, SCSP);
+	SCSP->SCSPRAM = device->region;
+	if (SCSP->SCSPRAM)
+	{
+		SCSP->SCSPRAM_LENGTH = device->regionbytes;
+		SCSP->DSP.SCSPRAM = (UINT16 *)SCSP->SCSPRAM;
+		SCSP->DSP.SCSPRAM_LENGTH = SCSP->SCSPRAM_LENGTH/2;
+		SCSP->SCSPRAM += intf->roffset;
+	}
+
+	SCSP->timerA = timer_alloc(device->machine, timerA_cb, SCSP);
+	SCSP->timerB = timer_alloc(device->machine, timerB_cb, SCSP);
+	SCSP->timerC = timer_alloc(device->machine, timerC_cb, SCSP);
 
 	for(i=0;i<0x400;++i)
 	{
@@ -637,7 +638,7 @@ static void SCSP_Init(const char *tag, struct _SCSP *SCSP, const scsp_interface 
 		SCSP->Slots[i].base=NULL;
 	}
 
-	LFO_Init();
+	LFO_Init(device->machine);
 	SCSP->buffertmpl=(signed int*) auto_malloc(44100*sizeof(signed int));
 	SCSP->buffertmpr=(signed int*) auto_malloc(44100*sizeof(signed int));
 	memset(SCSP->buffertmpl,0,44100*sizeof(signed int));
@@ -696,6 +697,8 @@ static void SCSP_UpdateSlotReg(struct _SCSP *SCSP,int s,int r)
 
 static void SCSP_UpdateReg(struct _SCSP *SCSP, int reg)
 {
+	/* temporary hack until this is converted to a device */
+	const address_space *space = memory_find_address_space(SCSP->device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	switch(reg&0x3f)
 	{
 		case 0x2:
@@ -715,7 +718,7 @@ static void SCSP_UpdateReg(struct _SCSP *SCSP, int reg)
 			break;
 		case 0x6:
 		case 0x7:
-			scsp_midi_in(Machine, 0, SCSP->udata.data[0x6/2]&0xff, 0);
+			scsp_midi_in(space, 0, SCSP->udata.data[0x6/2]&0xff, 0);
 			break;
 		case 0x12:
 		case 0x13:
@@ -836,7 +839,7 @@ static void SCSP_UpdateRegR(struct _SCSP *SCSP, int reg)
 				unsigned short v=SCSP->udata.data[0x5/2];
 				v&=0xff00;
 				v|=SCSP->MidiStack[SCSP->MidiR];
-				SCSP[0].Int68kCB(Machine, -SCSP->IrqMidi);	// cancel the IRQ
+				SCSP[0].Int68kCB(SCSP->device->machine, -SCSP->IrqMidi);	// cancel the IRQ
 				if(SCSP->MidiR!=SCSP->MidiW)
 				{
 					++SCSP->MidiR;
@@ -1150,7 +1153,7 @@ static void SCSP_DoMasterSamples(struct _SCSP *SCSP, int nsamples)
 	}
 }
 
-static void dma_scsp(running_machine *machine, struct _SCSP *SCSP)
+static void dma_scsp(const address_space *space, struct _SCSP *SCSP)
 {
 	static UINT16 tmp_dma[3], *scsp_regs;
 
@@ -1173,7 +1176,7 @@ static void dma_scsp(running_machine *machine, struct _SCSP *SCSP)
 	{
 		for(;SCSP->scsp_dtlg > 0;SCSP->scsp_dtlg-=2)
 		{
-			program_write_word(SCSP->scsp_dmea, program_read_word(0x100000|SCSP->scsp_drga));
+			memory_write_word(space,SCSP->scsp_dmea, memory_read_word(space,0x100000|SCSP->scsp_drga));
 			SCSP->scsp_dmea+=2;
 			SCSP->scsp_drga+=2;
 		}
@@ -1182,7 +1185,7 @@ static void dma_scsp(running_machine *machine, struct _SCSP *SCSP)
 	{
 		for(;SCSP->scsp_dtlg > 0;SCSP->scsp_dtlg-=2)
 		{
-  			program_write_word(0x100000|SCSP->scsp_drga,program_read_word(SCSP->scsp_dmea));
+  			memory_write_word(space,0x100000|SCSP->scsp_drga,memory_read_word(space,SCSP->scsp_dmea));
 			SCSP->scsp_dmea+=2;
 			SCSP->scsp_drga+=2;
 		}
@@ -1198,7 +1201,7 @@ static void dma_scsp(running_machine *machine, struct _SCSP *SCSP)
 
 	/*Job done,request a dma end irq*/
 	if(scsp_regs[0x1e/2] & 0x10)
-	cpunum_set_input_line(machine, 2,dma_transfer_end,HOLD_LINE);
+		cpu_set_input_line(space->machine->cpu[2],dma_transfer_end,HOLD_LINE);
 }
 
 #ifdef UNUSED_FUNCTION
@@ -1209,16 +1212,16 @@ int SCSP_IRQCB(void *param)
 }
 #endif
 
-static void SCSP_Update(void *param, stream_sample_t **inputs, stream_sample_t **buf, int samples)
+static STREAM_UPDATE( SCSP_Update )
 {
 	struct _SCSP *SCSP = param;
-	bufferl = buf[0];
-	bufferr = buf[1];
+	bufferl = outputs[0];
+	bufferr = outputs[1];
 	length = samples;
 	SCSP_DoMasterSamples(SCSP, samples);
 }
 
-static void *scsp_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( scsp )
 {
 	const scsp_interface *intf;
 
@@ -1230,13 +1233,13 @@ static void *scsp_start(const char *tag, int sndindex, int clock, const void *co
 	intf = config;
 
 	// init the emulation
-	SCSP_Init(tag, SCSP, intf, sndindex);
+	SCSP_Init(device, SCSP, intf, sndindex);
 
 	// set up the IRQ callbacks
 	{
 		SCSP->Int68kCB = intf->irq_callback;
 
-		SCSP->stream = stream_create(0, 2, 44100, SCSP, SCSP_Update);
+		SCSP->stream = stream_create(device, 0, 2, 44100, SCSP, SCSP_Update);
 	}
 
 	return SCSP;
@@ -1307,7 +1310,7 @@ WRITE16_HANDLER( scsp_0_w )
 		SCSP->scsp_dtlg = scsp_regs[0x416/2] & 0x0ffe;
 		if(scsp_dexe)
 		{
-			dma_scsp(machine, SCSP);
+			dma_scsp(space, SCSP);
 			scsp_regs[0x416/2]^=0x1000;//disable starting bit
 		}
 		break;
@@ -1315,7 +1318,7 @@ WRITE16_HANDLER( scsp_0_w )
 		case 0x42a:
 			if(stv_scu && !(stv_scu[40] & 0x40) /*&& scsp_regs[0x42c/2] & 0x20*/)/*Main CPU allow sound irq*/
 			{
-				cpunum_set_input_line_and_vector(machine, 0, 9, HOLD_LINE , 0x46);
+				cpu_set_input_line_and_vector(space->machine->cpu[0], 9, HOLD_LINE , 0x46);
 			    logerror("SCSP: Main CPU interrupt\n");
 			}
 		break;
@@ -1368,7 +1371,7 @@ READ16_HANDLER( scsp_midi_out_r )
  * Generic get_info
  **************************************************************************/
 
-static void scsp_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( scsp )
 {
 	switch (state)
 	{
@@ -1377,24 +1380,24 @@ static void scsp_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void scsp_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( scsp )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = scsp_set_info;			break;
-		case SNDINFO_PTR_START:							info->start = scsp_start;				break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( scsp );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( scsp );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */								break;
+		case SNDINFO_PTR_RESET:							/* Nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "SCSP";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Sega/Yamaha custom";			break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "2.1.1";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "SCSP");					break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Sega/Yamaha custom");		break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "2.1.1");					break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);					break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

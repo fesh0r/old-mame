@@ -8,6 +8,7 @@ driver by Nicola Salmoria
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "deprecat.h"
 #include "dogfgt.h"
 #include "sound/ay8910.h"
@@ -31,12 +32,12 @@ static WRITE8_HANDLER( subirqtrigger_w )
 	/* bit 0 used but unknown */
 
 	if (data & 0x04)
-		cpunum_set_input_line(machine, 1,0,ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[1],0,ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( sub_irqack_w )
 {
-	cpunum_set_input_line(machine, 1,0,CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1],0,CLEAR_LINE);
 }
 
 
@@ -57,18 +58,18 @@ static WRITE8_HANDLER( dogfgt_soundcontrol_w )
 	{
 		/* bit 4 goes to the 8910 #0 BC1 pin */
 		if (last & 0x10)
-			ay8910_control_port_0_w(machine,0,soundlatch);
+			ay8910_control_port_0_w(space,0,soundlatch);
 		else
-			ay8910_write_port_0_w(machine,0,soundlatch);
+			ay8910_write_port_0_w(space,0,soundlatch);
 	}
 	/* bit 7 goes to 8910 #1 BDIR pin  */
 	if ((last & 0x80) == 0x80 && (data & 0x80) == 0x00)
 	{
 		/* bit 6 goes to the 8910 #1 BC1 pin */
 		if (last & 0x40)
-			ay8910_control_port_1_w(machine,0,soundlatch);
+			ay8910_control_port_1_w(space,0,soundlatch);
 		else
-			ay8910_write_port_1_w(machine,0,soundlatch);
+			ay8910_write_port_1_w(space,0,soundlatch);
 	}
 
 	last = data;
@@ -248,7 +249,7 @@ static MACHINE_DRIVER_START( dogfgt )
 	MDRV_CPU_ADD("sub", M6502, 1500000)	/* 1.5 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(sub_readmem,sub_writemem)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

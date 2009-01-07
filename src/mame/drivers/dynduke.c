@@ -63,6 +63,7 @@ Also, implemented conditional port for Coin Mode (SW1:1)
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/nec/nec.h"
 #include "cpu/z80/z80.h"
 #include "audio/seibu.h"
 #include "sound/3812intf.h"
@@ -275,7 +276,7 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( dynduke_interrupt )
 {
-	cpunum_set_input_line_and_vector(machine, cpunum, 0, HOLD_LINE, 0xc8/4);	// VBL
+	cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xc8/4);	// VBL
 }
 
 /* Machine Driver */
@@ -292,7 +293,7 @@ static MACHINE_DRIVER_START( dynduke )
 
 	SEIBU_SOUND_SYSTEM_CPU(14318180/4)
 
-	MDRV_INTERLEAVE(60)
+	MDRV_QUANTUM_TIME(HZ(3600))
 
 	MDRV_MACHINE_RESET(seibu_sound)
 

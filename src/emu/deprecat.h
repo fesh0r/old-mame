@@ -16,21 +16,7 @@
 #define __DEPRECAT_H__
 
 #include "mamecore.h"
-
-
-/*************************************
- *
- *  Global access to the currently
- *  executing machine.
- *
- *  Please investigate if it is
- *  possible to use a passed in
- *  'machine' argument.
- *
- *************************************/
-
-extern running_machine *Machine;
-
+#include "devintrf.h"
 
 
 /*************************************
@@ -48,8 +34,9 @@ extern running_machine *Machine;
  *************************************/
 
 #define MDRV_CPU_VBLANK_INT_HACK(_func, _rate) \
-	TOKEN_UINT32_PACK2(MCONFIG_TOKEN_CPU_VBLANK_INT_HACK, 8, _rate, 24), \
-	TOKEN_PTR(interrupt, _func),
+	MDRV_DEVICE_CONFIG_DATAPTR(cpu_config, vblank_interrupt, _func) \
+	MDRV_DEVICE_CONFIG_DATAPTR(cpu_config, vblank_interrupt_screen, NULL) \
+	MDRV_DEVICE_CONFIG_DATA32(cpu_config, vblank_interrupts_per_frame, _rate)
 
 
 
@@ -64,7 +51,7 @@ extern running_machine *Machine;
    handlers to synchronize their operation. If you call this from outside
    an interrupt handler, add 1 to the result, i.e. if it returns 0, it means
    that the interrupt handler will be called once. */
-int cpu_getiloops(void);
+int cpu_getiloops(const device_config *device);
 
 
 #endif	/* __DEPRECAT_H__ */

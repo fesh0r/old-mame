@@ -57,8 +57,6 @@ struct _poly_extra_data
  *
  *************************************/
 
-extern UINT32 *zeusbase;
-
 static poly_manager *poly;
 static UINT8 log_fifo;
 
@@ -259,7 +257,7 @@ INLINE UINT8 get_texel_4bit(const void *base, int y, int x, int width)
 
 static TIMER_CALLBACK( int_timer_callback )
 {
-	cpunum_set_input_line(machine, 0, 2, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], 2, ASSERT_LINE);
 }
 
 
@@ -270,27 +268,27 @@ VIDEO_START( midzeus2 )
 	waveram[1] = auto_malloc(WAVERAM1_WIDTH * WAVERAM1_HEIGHT * 12);
 
 	/* initialize polygon engine */
-	poly = poly_alloc(10000, sizeof(poly_extra_data), POLYFLAG_ALLOW_QUADS);
+	poly = poly_alloc(machine, 10000, sizeof(poly_extra_data), POLYFLAG_ALLOW_QUADS);
 
 	/* we need to cleanup on exit */
 	add_exit_callback(machine, exit_handler);
 
 	zeus_renderbase = waveram[1];
 
-	int_timer = timer_alloc(int_timer_callback, NULL);
+	int_timer = timer_alloc(machine, int_timer_callback, NULL);
 
 	/* save states */
-	state_save_register_global_pointer(waveram[0], WAVERAM0_WIDTH * WAVERAM0_HEIGHT * 8 / sizeof(waveram[0][0]));
-	state_save_register_global_pointer(waveram[1], WAVERAM1_WIDTH * WAVERAM1_HEIGHT * 12 / sizeof(waveram[1][0]));
-	state_save_register_global_array(zeus_fifo);
-	state_save_register_global(zeus_fifo_words);
-	state_save_register_global(zeus_cliprect.min_x);
-	state_save_register_global(zeus_cliprect.max_x);
-	state_save_register_global(zeus_cliprect.min_y);
-	state_save_register_global(zeus_cliprect.max_y);
-	state_save_register_global_2d_array(zeus_matrix);
-	state_save_register_global_array(zeus_point);
-	state_save_register_global(zeus_texbase);
+	state_save_register_global_pointer(machine, waveram[0], WAVERAM0_WIDTH * WAVERAM0_HEIGHT * 8 / sizeof(waveram[0][0]));
+	state_save_register_global_pointer(machine, waveram[1], WAVERAM1_WIDTH * WAVERAM1_HEIGHT * 12 / sizeof(waveram[1][0]));
+	state_save_register_global_array(machine, zeus_fifo);
+	state_save_register_global(machine, zeus_fifo_words);
+	state_save_register_global(machine, zeus_cliprect.min_x);
+	state_save_register_global(machine, zeus_cliprect.max_x);
+	state_save_register_global(machine, zeus_cliprect.min_y);
+	state_save_register_global(machine, zeus_cliprect.max_y);
+	state_save_register_global_2d_array(machine, zeus_matrix);
+	state_save_register_global_array(machine, zeus_point);
+	state_save_register_global(machine, zeus_texbase);
 }
 
 
@@ -427,7 +425,7 @@ READ32_HANDLER( zeus2_r )
 #endif
 
 	if (logit)
-		logerror("%06X:zeus2_r(%02X)\n", activecpu_get_pc(), offset);
+		logerror("%06X:zeus2_r(%02X)\n", cpu_get_pc(space->cpu), offset);
 
 	switch (offset)
 	{
@@ -440,7 +438,7 @@ READ32_HANDLER( zeus2_r )
 			/* bits $00080000 is tested in a loop until 0 */
 			/* bit  $00000004 is tested for toggling; probably VBLANK */
 			result = 0x00;
-			if (video_screen_get_vblank(machine->primary_screen))
+			if (video_screen_get_vblank(space->machine->primary_screen))
 				result |= 0x04;
 			break;
 
@@ -451,7 +449,7 @@ READ32_HANDLER( zeus2_r )
 
 		case 0x54:
 			/* both upper 16 bits and lower 16 bits seem to be used as vertical counters */
-			result = (video_screen_get_vpos(machine->primary_screen) << 16) | video_screen_get_vpos(machine->primary_screen);
+			result = (video_screen_get_vpos(space->machine->primary_screen) << 16) | video_screen_get_vpos(space->machine->primary_screen);
 			break;
 	}
 
@@ -473,8 +471,8 @@ WRITE32_HANDLER( zeus2_w )
 				 offset != 0x40 && offset != 0x41 && offset != 0x48 && offset != 0x49 && offset != 0x4e &&
 				 offset != 0x50 && offset != 0x51 && offset != 0x57 && offset != 0x58 && offset != 0x59 && offset != 0x5a && offset != 0x5e);
 	if (logit)
-		logerror("%06X:zeus2_w", activecpu_get_pc());
-	zeus_register32_w(machine, offset, data, logit);
+		logerror("%06X:zeus2_w", cpu_get_pc(space->cpu));
+	zeus_register32_w(space->machine, offset, data, logit);
 }
 
 

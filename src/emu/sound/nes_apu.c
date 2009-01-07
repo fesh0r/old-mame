@@ -45,9 +45,10 @@
  *****************************************************************************/
 
 #include "sndintrf.h"
+#include "cpuexec.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "nes_apu.h"
+#include "driver.h"
 #include "cpu/m6502/m6502.h"
 
 #include "nes_defs.h"
@@ -366,7 +367,7 @@ static int8 apu_dpcm(struct nesapu_info *info, dpcm_t *chan)
                if (chan->regs[0] & 0x80) /* IRQ Generator */
                {
                   chan->irq_occurred = TRUE;
-                  n2a03_irq();
+                  n2a03_irq(info->APU.dpcm.memory->cpu);
                }
                break;
             }
@@ -377,7 +378,7 @@ static int8 apu_dpcm(struct nesapu_info *info, dpcm_t *chan)
          bit_pos = 7 - (chan->bits_left & 7);
          if (7 == bit_pos)
          {
-            chan->cur_byte = chan->cpu_mem[chan->address];
+            chan->cur_byte = memory_read_byte(info->APU.dpcm.memory, chan->address);
             chan->address++;
             chan->length--;
          }
@@ -476,7 +477,8 @@ INLINE void apu_regwrite(struct nesapu_info *info,int address, uint8 value)
       ** dereferences and load up the other triregs
       */
 
-      info->APU.tri.write_latency = 3;
+	/* used to be 3, but now we run the clock faster, so base it on samples/sync */
+      info->APU.tri.write_latency = (info->samps_per_sync + 239) / 240;
 
       if (info->APU.tri.enabled)
       {
@@ -658,15 +660,15 @@ WRITE8_HANDLER( nes_psg_0_w ) {apu_write(0,offset,data);}
 WRITE8_HANDLER( nes_psg_1_w ) {apu_write(1,offset,data);}
 
 /* UPDATE APU SYSTEM */
-static void nes_psg_update_sound(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( nes_psg_update_sound )
 {
   struct nesapu_info *info = param;
-  apu_update(info, buffer[0], length);
+  apu_update(info, outputs[0], samples);
 }
 
 
 /* INITIALIZE APU SYSTEM */
-static void *nesapu_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( nesapu )
 {
 	const nes_interface *intf = config;
 	struct nesapu_info *info;
@@ -677,9 +679,9 @@ static void *nesapu_start(const char *tag, int sndindex, int clock, const void *
 	memset(info, 0, sizeof(*info));
 
 	/* Initialize global variables */
-	info->samps_per_sync = rate / ATTOSECONDS_TO_HZ(video_screen_get_frame_period(Machine->primary_screen).attoseconds);
+	info->samps_per_sync = rate / ATTOSECONDS_TO_HZ(video_screen_get_frame_period(device->machine->primary_screen).attoseconds);
 	info->buffer_size = info->samps_per_sync;
-	info->real_rate = info->samps_per_sync * ATTOSECONDS_TO_HZ(video_screen_get_frame_period(Machine->primary_screen).attoseconds);
+	info->real_rate = info->samps_per_sync * ATTOSECONDS_TO_HZ(video_screen_get_frame_period(device->machine->primary_screen).attoseconds);
 	info->apu_incsize = (float) (clock / (float) info->real_rate);
 
 	/* Use initializer calls */
@@ -691,63 +693,63 @@ static void *nesapu_start(const char *tag, int sndindex, int clock, const void *
 	info->buffer_size+=info->samps_per_sync;
 
 	/* Initialize individual chips */
-	(info->APU.dpcm).cpu_mem=memory_region(Machine, intf->region);
+	(info->APU.dpcm).memory = cputag_get_address_space(device->machine, intf->cpu_tag, ADDRESS_SPACE_PROGRAM);
 
-	info->stream = stream_create(0, 1, rate, info, nes_psg_update_sound);
+	info->stream = stream_create(device, 0, 1, rate, info, nes_psg_update_sound);
 
 	/* register for save */
 	for (i = 0; i < 2; i++)
 	{
-		state_save_register_item_array("apu", sndindex + i * 100, info->APU.squ[i].regs);
-		state_save_register_item("apu", sndindex + i * 100, info->APU.squ[i].vbl_length);
-		state_save_register_item("apu", sndindex + i * 100, info->APU.squ[i].freq);
-		state_save_register_item("apu", sndindex + i * 100, info->APU.squ[i].phaseacc);
-		state_save_register_item("apu", sndindex + i * 100, info->APU.squ[i].output_vol);
-		state_save_register_item("apu", sndindex + i * 100, info->APU.squ[i].env_phase);
-		state_save_register_item("apu", sndindex + i * 100, info->APU.squ[i].sweep_phase);
-		state_save_register_item("apu", sndindex + i * 100, info->APU.squ[i].adder);
-		state_save_register_item("apu", sndindex + i * 100, info->APU.squ[i].env_vol);
-		state_save_register_item("apu", sndindex + i * 100, info->APU.squ[i].enabled);
+		state_save_register_device_item_array(device, i, info->APU.squ[i].regs);
+		state_save_register_device_item(device, i, info->APU.squ[i].vbl_length);
+		state_save_register_device_item(device, i, info->APU.squ[i].freq);
+		state_save_register_device_item(device, i, info->APU.squ[i].phaseacc);
+		state_save_register_device_item(device, i, info->APU.squ[i].output_vol);
+		state_save_register_device_item(device, i, info->APU.squ[i].env_phase);
+		state_save_register_device_item(device, i, info->APU.squ[i].sweep_phase);
+		state_save_register_device_item(device, i, info->APU.squ[i].adder);
+		state_save_register_device_item(device, i, info->APU.squ[i].env_vol);
+		state_save_register_device_item(device, i, info->APU.squ[i].enabled);
 	}
 
-	state_save_register_item_array("apu", sndindex, info->APU.tri.regs);
-	state_save_register_item("apu", sndindex, info->APU.tri.linear_length);
-	state_save_register_item("apu", sndindex, info->APU.tri.vbl_length);
-	state_save_register_item("apu", sndindex, info->APU.tri.write_latency);
-	state_save_register_item("apu", sndindex, info->APU.tri.phaseacc);
-	state_save_register_item("apu", sndindex, info->APU.tri.output_vol);
-	state_save_register_item("apu", sndindex, info->APU.tri.adder);
-	state_save_register_item("apu", sndindex, info->APU.tri.counter_started);
-	state_save_register_item("apu", sndindex, info->APU.tri.enabled);
+	state_save_register_device_item_array(device, 0, info->APU.tri.regs);
+	state_save_register_device_item(device, 0, info->APU.tri.linear_length);
+	state_save_register_device_item(device, 0, info->APU.tri.vbl_length);
+	state_save_register_device_item(device, 0, info->APU.tri.write_latency);
+	state_save_register_device_item(device, 0, info->APU.tri.phaseacc);
+	state_save_register_device_item(device, 0, info->APU.tri.output_vol);
+	state_save_register_device_item(device, 0, info->APU.tri.adder);
+	state_save_register_device_item(device, 0, info->APU.tri.counter_started);
+	state_save_register_device_item(device, 0, info->APU.tri.enabled);
 
-	state_save_register_item_array("apu", sndindex, info->APU.noi.regs);
-	state_save_register_item("apu", sndindex, info->APU.noi.cur_pos);
-	state_save_register_item("apu", sndindex, info->APU.noi.vbl_length);
-	state_save_register_item("apu", sndindex, info->APU.noi.phaseacc);
-	state_save_register_item("apu", sndindex, info->APU.noi.output_vol);
-	state_save_register_item("apu", sndindex, info->APU.noi.env_phase);
-	state_save_register_item("apu", sndindex, info->APU.noi.env_vol);
-	state_save_register_item("apu", sndindex, info->APU.noi.enabled);
+	state_save_register_device_item_array(device, 0, info->APU.noi.regs);
+	state_save_register_device_item(device, 0, info->APU.noi.cur_pos);
+	state_save_register_device_item(device, 0, info->APU.noi.vbl_length);
+	state_save_register_device_item(device, 0, info->APU.noi.phaseacc);
+	state_save_register_device_item(device, 0, info->APU.noi.output_vol);
+	state_save_register_device_item(device, 0, info->APU.noi.env_phase);
+	state_save_register_device_item(device, 0, info->APU.noi.env_vol);
+	state_save_register_device_item(device, 0, info->APU.noi.enabled);
 
-	state_save_register_item_array("apu", sndindex, info->APU.dpcm.regs);
-	state_save_register_item("apu", sndindex, info->APU.dpcm.address);
-	state_save_register_item("apu", sndindex, info->APU.dpcm.length);
-	state_save_register_item("apu", sndindex, info->APU.dpcm.bits_left);
-	state_save_register_item("apu", sndindex, info->APU.dpcm.phaseacc);
-	state_save_register_item("apu", sndindex, info->APU.dpcm.output_vol);
-	state_save_register_item("apu", sndindex, info->APU.dpcm.cur_byte);
-	state_save_register_item("apu", sndindex, info->APU.dpcm.enabled);
-	state_save_register_item("apu", sndindex, info->APU.dpcm.irq_occurred);
-	state_save_register_item("apu", sndindex, info->APU.dpcm.vol);
+	state_save_register_device_item_array(device, 0, info->APU.dpcm.regs);
+	state_save_register_device_item(device, 0, info->APU.dpcm.address);
+	state_save_register_device_item(device, 0, info->APU.dpcm.length);
+	state_save_register_device_item(device, 0, info->APU.dpcm.bits_left);
+	state_save_register_device_item(device, 0, info->APU.dpcm.phaseacc);
+	state_save_register_device_item(device, 0, info->APU.dpcm.output_vol);
+	state_save_register_device_item(device, 0, info->APU.dpcm.cur_byte);
+	state_save_register_device_item(device, 0, info->APU.dpcm.enabled);
+	state_save_register_device_item(device, 0, info->APU.dpcm.irq_occurred);
+	state_save_register_device_item(device, 0, info->APU.dpcm.vol);
 
-	state_save_register_item_array("apu", sndindex, info->APU.regs);
+	state_save_register_device_item_array(device, 0, info->APU.regs);
 
 #ifdef USE_QUEUE
-	state_save_register_item_array("apu", sndindex, info->APU.queue);
-	state_save_register_item("apu", sndindex, info->APU.head);
-	state_save_register_item("apu", sndindex, info->APU.tail);
+	state_save_register_device_item_array(device, 0, info->APU.queue);
+	state_save_register_device_item(device, 0, info->APU.head);
+	state_save_register_device_item(device, 0, info->APU.tail);
 #else
-	state_save_register_item("apu", sndindex, info->APU.buf_pos);
+	state_save_register_device_item(device, 0, info->APU.buf_pos);
 #endif
 
 	return info;
@@ -758,7 +760,7 @@ static void *nesapu_start(const char *tag, int sndindex, int clock, const void *
  * Generic get_info
  **************************************************************************/
 
-static void nesapu_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( nesapu )
 {
 	switch (state)
 	{
@@ -767,24 +769,24 @@ static void nesapu_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void nesapu_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( nesapu )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = nesapu_set_info;       break;
-		case SNDINFO_PTR_START:							info->start = nesapu_start;		break;
-		case SNDINFO_PTR_STOP:							/* Nothing */				break;
-		case SNDINFO_PTR_RESET:							/* Nothing */				break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( nesapu );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( nesapu );			break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:						info->s = "N2A03";				break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Nintendo custom";			break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";				break;
-		case SNDINFO_STR_CORE_FILE:					info->s = __FILE__;		      		break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team";  break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "N2A03");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Nintendo custom");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);      					break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team");  break;
 	}
 }
 

@@ -17,7 +17,6 @@
 *
 ******************************************************************************/
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "cpuintrf.h"
 #include "3812intf.h"
@@ -33,12 +32,13 @@ struct ym3812_info
 	emu_timer *	timer[2];
 	void *			chip;
 	const ym3812_interface *intf;
+	const device_config *device;
 };
 
 static void IRQHandler_3812(void *param,int irq)
 {
 	struct ym3812_info *info = param;
-	if (info->intf->handler) (info->intf->handler)(Machine, irq ? ASSERT_LINE : CLEAR_LINE);
+	if (info->intf->handler) (info->intf->handler)(info->device->machine, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 static TIMER_CALLBACK( timer_callback_3812_0 )
 {
@@ -66,10 +66,10 @@ static void TimerHandler_3812(void *param,int c,attotime period)
 }
 
 
-static void ym3812_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( ym3812_stream_update )
 {
 	struct ym3812_info *info = param;
-	ym3812_update_one(info->chip, buffer[0], length);
+	ym3812_update_one(info->chip, outputs[0], samples);
 }
 
 static void _stream_update_3812(void * param, int interval)
@@ -79,7 +79,7 @@ static void _stream_update_3812(void * param, int interval)
 }
 
 
-static void *ym3812_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( ym3812 )
 {
 	static const ym3812_interface dummy = { 0 };
 	struct ym3812_info *info;
@@ -89,34 +89,35 @@ static void *ym3812_start(const char *tag, int sndindex, int clock, const void *
 	memset(info, 0, sizeof(*info));
 
 	info->intf = config ? config : &dummy;
+	info->device = device;
 
 	/* stream system initialize */
-	info->chip = ym3812_init(sndindex,clock,rate);
+	info->chip = ym3812_init(device,clock,rate);
 	if (!info->chip)
 		return NULL;
 
-	info->stream = stream_create(0,1,rate,info,ym3812_stream_update);
+	info->stream = stream_create(device,0,1,rate,info,ym3812_stream_update);
 
 	/* YM3812 setup */
 	ym3812_set_timer_handler (info->chip, TimerHandler_3812, info);
 	ym3812_set_irq_handler   (info->chip, IRQHandler_3812, info);
 	ym3812_set_update_handler(info->chip, _stream_update_3812, info);
 
-	info->timer[0] = timer_alloc(timer_callback_3812_0, info);
-	info->timer[1] = timer_alloc(timer_callback_3812_1, info);
+	info->timer[0] = timer_alloc(device->machine, timer_callback_3812_0, info);
+	info->timer[1] = timer_alloc(device->machine, timer_callback_3812_1, info);
 
 	return info;
 }
 
-static void ym3812_stop(void *token)
+static SND_STOP( ym3812 )
 {
-	struct ym3812_info *info = token;
+	struct ym3812_info *info = device->token;
 	ym3812_shutdown(info->chip);
 }
 
-static void ym3812_reset(void *token)
+static SND_RESET( ym3812 )
 {
-	struct ym3812_info *info = token;
+	struct ym3812_info *info = device->token;
 	ym3812_reset_chip(info->chip);
 }
 
@@ -159,7 +160,7 @@ READ8_HANDLER( ym3812_read_port_1_r ) {
  * Generic get_info
  **************************************************************************/
 
-static void ym3812_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( ym3812 )
 {
 	switch (state)
 	{
@@ -168,24 +169,24 @@ static void ym3812_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void ym3812_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( ym3812 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = ym3812_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = ym3812_start;				break;
-		case SNDINFO_PTR_STOP:							info->stop = ym3812_stop;				break;
-		case SNDINFO_PTR_RESET:							info->reset = ym3812_reset;				break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( ym3812 );		break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ym3812 );				break;
+		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( ym3812 );				break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( ym3812 );				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "YM3812";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Yamaha FM";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "YM3812");							break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Yamaha FM");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");								break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);							break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 
@@ -200,6 +201,7 @@ struct ym3526_info
 	emu_timer *	timer[2];
 	void *			chip;
 	const ym3526_interface *intf;
+	const device_config *device;
 };
 
 
@@ -207,7 +209,7 @@ struct ym3526_info
 static void IRQHandler_3526(void *param,int irq)
 {
 	struct ym3526_info *info = param;
-	if (info->intf->handler) (info->intf->handler)(Machine, irq ? ASSERT_LINE : CLEAR_LINE);
+	if (info->intf->handler) (info->intf->handler)(info->device->machine, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 /* Timer overflow callback from timer.c */
 static TIMER_CALLBACK( timer_callback_3526_0 )
@@ -235,10 +237,10 @@ static void TimerHandler_3526(void *param,int c,attotime period)
 }
 
 
-static void ym3526_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( ym3526_stream_update )
 {
 	struct ym3526_info *info = param;
-	ym3526_update_one(info->chip, buffer[0], length);
+	ym3526_update_one(info->chip, outputs[0], samples);
 }
 
 static void _stream_update_3526(void *param, int interval)
@@ -248,7 +250,7 @@ static void _stream_update_3526(void *param, int interval)
 }
 
 
-static void *ym3526_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( ym3526 )
 {
 	static const ym3526_interface dummy = { 0 };
 	struct ym3526_info *info;
@@ -258,33 +260,34 @@ static void *ym3526_start(const char *tag, int sndindex, int clock, const void *
 	memset(info, 0, sizeof(*info));
 
 	info->intf = config ? config : &dummy;
+	info->device = device;
 
 	/* stream system initialize */
-	info->chip = ym3526_init(sndindex,clock,rate);
+	info->chip = ym3526_init(device,clock,rate);
 	if (!info->chip)
 		return NULL;
 
-	info->stream = stream_create(0,1,rate,info,ym3526_stream_update);
+	info->stream = stream_create(device,0,1,rate,info,ym3526_stream_update);
 	/* YM3526 setup */
 	ym3526_set_timer_handler (info->chip, TimerHandler_3526, info);
 	ym3526_set_irq_handler   (info->chip, IRQHandler_3526, info);
 	ym3526_set_update_handler(info->chip, _stream_update_3526, info);
 
-	info->timer[0] = timer_alloc(timer_callback_3526_0, info);
-	info->timer[1] = timer_alloc(timer_callback_3526_1, info);
+	info->timer[0] = timer_alloc(device->machine, timer_callback_3526_0, info);
+	info->timer[1] = timer_alloc(device->machine, timer_callback_3526_1, info);
 
 	return info;
 }
 
-static void ym3526_stop(void *token)
+static SND_STOP( ym3526 )
 {
-	struct ym3526_info *info = token;
+	struct ym3526_info *info = device->token;
 	ym3526_shutdown(info->chip);
 }
 
-static void ym3526_reset(void *token)
+static SND_RESET( ym3526 )
 {
-	struct ym3526_info *info = token;
+	struct ym3526_info *info = device->token;
 	ym3526_reset_chip(info->chip);
 }
 
@@ -327,7 +330,7 @@ READ8_HANDLER( ym3526_read_port_1_r ) {
  * Generic get_info
  **************************************************************************/
 
-static void ym3526_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( ym3526 )
 {
 	switch (state)
 	{
@@ -336,24 +339,24 @@ static void ym3526_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void ym3526_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( ym3526 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = ym3526_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = ym3526_start;				break;
-		case SNDINFO_PTR_STOP:							info->stop = ym3526_stop;				break;
-		case SNDINFO_PTR_RESET:							info->reset = ym3526_reset;				break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( ym3526 );		break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ym3526 );				break;
+		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( ym3526 );				break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( ym3526 );				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "YM3526";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Yamaha FM";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "YM3526");							break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Yamaha FM");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");								break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);							break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 
@@ -368,13 +371,14 @@ struct y8950_info
 	emu_timer *	timer[2];
 	void *			chip;
 	const y8950_interface *intf;
+	const device_config *device;
 	int				index;
 };
 
 static void IRQHandler_8950(void *param,int irq)
 {
 	struct y8950_info *info = param;
-	if (info->intf->handler) (info->intf->handler)(Machine, irq ? ASSERT_LINE : CLEAR_LINE);
+	if (info->intf->handler) (info->intf->handler)(info->device->machine, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 static TIMER_CALLBACK( timer_callback_8950_0 )
 {
@@ -403,37 +407,45 @@ static void TimerHandler_8950(void *param,int c,attotime period)
 static unsigned char Y8950PortHandler_r(void *param)
 {
 	struct y8950_info *info = param;
+	/* temporary hack until this is converted to a device */
+	const address_space *space = memory_find_address_space(info->device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	if (info->intf->portread)
-		return info->intf->portread(Machine,info->index);
+		return info->intf->portread(space,info->index);
 	return 0;
 }
 
 static void Y8950PortHandler_w(void *param,unsigned char data)
 {
 	struct y8950_info *info = param;
+	/* temporary hack until this is converted to a device */
+	const address_space *space = memory_find_address_space(info->device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	if (info->intf->portwrite)
-		info->intf->portwrite(Machine,info->index,data);
+		info->intf->portwrite(space,info->index,data);
 }
 
 static unsigned char Y8950KeyboardHandler_r(void *param)
 {
 	struct y8950_info *info = param;
+	/* temporary hack until this is converted to a device */
+	const address_space *space = memory_find_address_space(info->device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	if (info->intf->keyboardread)
-		return info->intf->keyboardread(Machine,info->index);
+		return info->intf->keyboardread(space,info->index);
 	return 0;
 }
 
 static void Y8950KeyboardHandler_w(void *param,unsigned char data)
 {
 	struct y8950_info *info = param;
+	/* temporary hack until this is converted to a device */
+	const address_space *space = memory_find_address_space(info->device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	if (info->intf->keyboardwrite)
-		info->intf->keyboardwrite(Machine,info->index,data);
+		info->intf->keyboardwrite(space,info->index,data);
 }
 
-static void y8950_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( y8950_stream_update )
 {
 	struct y8950_info *info = param;
-	y8950_update_one(info->chip, buffer[0], length);
+	y8950_update_one(info->chip, outputs[0], samples);
 }
 
 static void _stream_update_8950(void *param, int interval)
@@ -443,7 +455,7 @@ static void _stream_update_8950(void *param, int interval)
 }
 
 
-static void *y8950_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( y8950 )
 {
 	static const y8950_interface dummy = { 0 };
 	struct y8950_info *info;
@@ -453,19 +465,18 @@ static void *y8950_start(const char *tag, int sndindex, int clock, const void *c
 	memset(info, 0, sizeof(*info));
 
 	info->intf = config ? config : &dummy;
+	info->device = device;
 	info->index = sndindex;
 
 	/* stream system initialize */
-	info->chip = y8950_init(sndindex,clock,rate);
+	info->chip = y8950_init(device,clock,rate);
 	if (!info->chip)
 		return NULL;
 
 	/* ADPCM ROM data */
-	y8950_set_delta_t_memory(info->chip,
-		(void *)(memory_region(Machine, tag)),
-			memory_region_length(Machine, tag) );
+	y8950_set_delta_t_memory(info->chip, device->region, device->regionbytes);
 
-	info->stream = stream_create(0,1,rate,info,y8950_stream_update);
+	info->stream = stream_create(device,0,1,rate,info,y8950_stream_update);
 
 	/* port and keyboard handler */
 	y8950_set_port_handler(info->chip, Y8950PortHandler_w, Y8950PortHandler_r, info);
@@ -476,21 +487,21 @@ static void *y8950_start(const char *tag, int sndindex, int clock, const void *c
 	y8950_set_irq_handler   (info->chip, IRQHandler_8950, info);
 	y8950_set_update_handler(info->chip, _stream_update_8950, info);
 
-	info->timer[0] = timer_alloc(timer_callback_8950_0, info);
-	info->timer[1] = timer_alloc(timer_callback_8950_1, info);
+	info->timer[0] = timer_alloc(device->machine, timer_callback_8950_0, info);
+	info->timer[1] = timer_alloc(device->machine, timer_callback_8950_1, info);
 
 	return info;
 }
 
-static void y8950_stop(void *token)
+static SND_STOP( y8950 )
 {
-	struct y8950_info *info = token;
+	struct y8950_info *info = device->token;
 	y8950_shutdown(info->chip);
 }
 
-static void y8950_reset(void *token)
+static SND_RESET( y8950 )
 {
-	struct y8950_info *info = token;
+	struct y8950_info *info = device->token;
 	y8950_reset_chip(info->chip);
 }
 
@@ -533,7 +544,7 @@ READ8_HANDLER( y8950_read_port_1_r ) {
  * Generic get_info
  **************************************************************************/
 
-static void y8950_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( y8950 )
 {
 	switch (state)
 	{
@@ -542,24 +553,24 @@ static void y8950_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void y8950_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( y8950 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = y8950_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = y8950_start;				break;
-		case SNDINFO_PTR_STOP:							info->stop = y8950_stop;				break;
-		case SNDINFO_PTR_RESET:							info->reset = y8950_reset;				break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( y8950 );		break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( y8950 );				break;
+		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( y8950 );				break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( y8950 );				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "Y8950";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Yamaha FM";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "Y8950");							break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Yamaha FM");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");								break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);							break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

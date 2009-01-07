@@ -1241,7 +1241,7 @@ static void hng64_drawtilemap1( bitmap_t *bitmap, const rectangle *cliprect )
 
 VIDEO_UPDATE( hng64 )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), 0);
+	bitmap_fill(bitmap, 0, get_black_pen(screen->machine));
 
 	// Debug
 //  for (int iii = 0; iii < 0x0f; iii++)
@@ -1257,7 +1257,7 @@ VIDEO_UPDATE( hng64 )
         tilemap2Offset = hng64_videoregs[0xc] ;
 
         tilemap_dispose(hng64_tilemap1) ;
-        hng64_tilemap1 = tilemap_create(get_hng64_tile2_info,tilemap_scan_rows, 16, 16, 128,128); // 128x128x4 = 0x10000
+        hng64_tilemap1 = tilemap_create(machine, get_hng64_tile2_info,tilemap_scan_rows, 16, 16, 128,128); // 128x128x4 = 0x10000
     }
     */
 
@@ -1282,8 +1282,8 @@ VIDEO_UPDATE( hng64 )
 	/* hack to enable 2nd cpu when key is pressed */
 //  if ( input_code_pressed_once(KEYCODE_L) )
 //  {
-//      cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
-//      cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+//      cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, CLEAR_LINE);
+//      cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 //  }
 
 	/* AJG */
@@ -1302,10 +1302,10 @@ VIDEO_START( hng64 )
 {
 	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
-	hng64_tilemap0 = tilemap_create(get_hng64_tile0_info, tilemap_scan_rows,  8,   8, 128,128); /* 128x128x4 = 0x10000 */
-	hng64_tilemap1 = tilemap_create(get_hng64_tile1_info, tilemap_scan_rows,  16, 16, 128,128); /* 128x128x4 = 0x10000 */
-	hng64_tilemap2 = tilemap_create(get_hng64_tile2_info, tilemap_scan_rows,  16, 16, 128,128); /* 128x128x4 = 0x10000 */
-	hng64_tilemap3 = tilemap_create(get_hng64_tile3_info, tilemap_scan_rows,  16, 16, 128,128); /* 128x128x4 = 0x10000 */
+	hng64_tilemap0 = tilemap_create(machine, get_hng64_tile0_info, tilemap_scan_rows,  8,   8, 128,128); /* 128x128x4 = 0x10000 */
+	hng64_tilemap1 = tilemap_create(machine, get_hng64_tile1_info, tilemap_scan_rows,  16, 16, 128,128); /* 128x128x4 = 0x10000 */
+	hng64_tilemap2 = tilemap_create(machine, get_hng64_tile2_info, tilemap_scan_rows,  16, 16, 128,128); /* 128x128x4 = 0x10000 */
+	hng64_tilemap3 = tilemap_create(machine, get_hng64_tile3_info, tilemap_scan_rows,  16, 16, 128,128); /* 128x128x4 = 0x10000 */
 	tilemap_set_transparent_pen(hng64_tilemap0,0);
 	tilemap_set_transparent_pen(hng64_tilemap1,0);
 	tilemap_set_transparent_pen(hng64_tilemap2,0);

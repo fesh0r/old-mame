@@ -136,8 +136,8 @@ static void video_start_common(running_machine *machine, tile_get_info_func fg_t
 	memset(congo_custom, 0, sizeof(congo_custom));
 
 	/* create a background and foreground tilemap */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,  8,8, 32,512);
-	fg_tilemap = tilemap_create(fg_tile_info, tilemap_scan_rows,  8,8, 32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,  8,8, 32,512);
+	fg_tilemap = tilemap_create(machine, fg_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	/* configure the foreground tilemap */
 	tilemap_set_transparent_pen(fg_tilemap, 0);
@@ -145,10 +145,10 @@ static void video_start_common(running_machine *machine, tile_get_info_func fg_t
 	tilemap_set_scrolldy(fg_tilemap, 0, video_screen_get_height(machine->primary_screen) - 256);
 
 	/* register for save states */
-	state_save_register_global(bg_enable);
-	state_save_register_global(bg_color);
-	state_save_register_global(bg_position);
-	state_save_register_global(fg_color);
+	state_save_register_global(machine, bg_enable);
+	state_save_register_global(machine, bg_color);
+	state_save_register_global(machine, bg_position);
+	state_save_register_global(machine, fg_color);
 }
 
 
@@ -170,10 +170,10 @@ VIDEO_START( congo )
 	spriteram = auto_malloc(0x100);
 
 	/* register for save states */
-	state_save_register_global(congo_fg_bank);
-	state_save_register_global(congo_color_bank);
-	state_save_register_global_array(congo_custom);
-	state_save_register_global_pointer(spriteram, 0x100);
+	state_save_register_global(machine, congo_fg_bank);
+	state_save_register_global(machine, congo_color_bank);
+	state_save_register_global_array(machine, congo_custom);
+	state_save_register_global_pointer(machine, spriteram, 0x100);
 
 	video_start_common(machine, congo_get_fg_tile_info);
 }
@@ -189,8 +189,8 @@ VIDEO_START( congo )
 WRITE8_HANDLER( zaxxon_flipscreen_w )
 {
 	/* low bit controls flip; background and sprite flip are handled at render time */
-	flip_screen_set_no_update(~data & 1);
-	tilemap_set_flip(fg_tilemap, flip_screen_get() ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
+	flip_screen_set_no_update(space->machine, ~data & 1);
+	tilemap_set_flip(fg_tilemap, flip_screen_get(space->machine) ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 }
 
 
@@ -281,16 +281,16 @@ WRITE8_HANDLER( congo_sprite_custom_w )
 		int count = congo_custom[2];
 
 		/* count cycles (just a guess) */
-		activecpu_adjust_icount(-count * 5);
+		cpu_adjust_icount(space->cpu, -count * 5);
 
 		/* this is just a guess; the chip is hardwired to the spriteram */
 		while (count-- >= 0)
 		{
-			UINT8 daddr = program_read_byte(saddr + 0) * 4;
-			spriteram[(daddr + 0) & 0xff] = program_read_byte(saddr + 1);
-			spriteram[(daddr + 1) & 0xff] = program_read_byte(saddr + 2);
-			spriteram[(daddr + 2) & 0xff] = program_read_byte(saddr + 3);
-			spriteram[(daddr + 3) & 0xff] = program_read_byte(saddr + 4);
+			UINT8 daddr = memory_read_byte(space, saddr + 0) * 4;
+			spriteram[(daddr + 0) & 0xff] = memory_read_byte(space, saddr + 1);
+			spriteram[(daddr + 1) & 0xff] = memory_read_byte(space, saddr + 2);
+			spriteram[(daddr + 2) & 0xff] = memory_read_byte(space, saddr + 3);
+			spriteram[(daddr + 3) & 0xff] = memory_read_byte(space, saddr + 4);
 			saddr += 0x20;
 		}
 	}
@@ -313,13 +313,13 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, const re
 		int colorbase = bg_color + (congo_color_bank << 8);
 		int xmask = pixmap->width - 1;
 		int ymask = pixmap->height - 1;
-		int flipmask = flip_screen_get() ? 0xff : 0x00;
-		int flipoffs = flip_screen_get() ? 0x38 : 0x40;
+		int flipmask = flip_screen_get(machine) ? 0xff : 0x00;
+		int flipoffs = flip_screen_get(machine) ? 0x38 : 0x40;
 		int x, y;
 
 		/* the starting X value is offset by 1 pixel (normal) or 7 pixels */
 		/* (flipped) due to a delay in the loading */
-		if (!flip_screen_get())
+		if (!flip_screen_get(machine))
 			flipoffs -= 1;
 		else
 			flipoffs += 7;
@@ -364,7 +364,7 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, const re
 
 	/* if not enabled, fill the background with black */
 	else
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(machine));
 }
 
 
@@ -375,10 +375,10 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, const re
  *
  *************************************/
 
-INLINE int find_minimum_y(UINT8 value)
+INLINE int find_minimum_y(UINT8 value, int flip)
 {
-	int flipmask = flip_screen_get() ? 0xff : 0x00;
-	int flipconst = flip_screen_get() ? 0xef : 0xf1;
+	int flipmask = flip ? 0xff : 0x00;
+	int flipconst = flip ? 0xef : 0xf1;
 	int y;
 
 	/* the sum of the Y position plus a constant based on the flip state */
@@ -406,9 +406,9 @@ INLINE int find_minimum_y(UINT8 value)
 }
 
 
-INLINE int find_minimum_x(UINT8 value)
+INLINE int find_minimum_x(UINT8 value, int flip)
 {
-	int flipmask = flip_screen_get() ? 0xff : 0x00;
+	int flipmask = flip ? 0xff : 0x00;
 	int x;
 
 	/* the sum of the X position plus a constant specifies the address within */
@@ -422,18 +422,19 @@ INLINE int find_minimum_x(UINT8 value)
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT16 flipxmask, UINT16 flipymask)
 {
-	int flipmask = flip_screen_get() ? 0xff : 0x00;
+	int flip = flip_screen_get(machine);
+	int flipmask = flip ? 0xff : 0x00;
 	int offs;
 
 	/* only the lower half of sprite RAM is read during rendering */
 	for (offs = 0x7c; offs >= 0; offs -= 4)
 	{
-		int sy = find_minimum_y(spriteram[offs]);
+		int sy = find_minimum_y(spriteram[offs], flip);
 		int flipy = (spriteram[offs + (flipymask >> 8)] ^ flipmask) & flipymask;
 		int flipx = (spriteram[offs + (flipxmask >> 8)] ^ flipmask) & flipxmask;
 		int code = spriteram[offs + 1];
 		int color = (spriteram[offs + 2] & 0x1f) + (congo_color_bank << 5);
-		int sx = find_minimum_x(spriteram[offs + 3]);
+		int sx = find_minimum_x(spriteram[offs + 3], flip);
 
 		/* draw with 256 pixel offsets to ensure we wrap properly */
 		drawgfx(bitmap, machine->gfx[2], code, color, flipx, flipy, sx, sy, cliprect, TRANSPARENCY_PEN, 0);

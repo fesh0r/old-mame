@@ -166,11 +166,18 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( mrdo )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,8,8,32,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(bg_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
+
+	tilemap_set_scrolldx(bg_tilemap, 0, 56);
+	tilemap_set_scrolldx(fg_tilemap, 0, 56);
+	tilemap_set_scrolldy(bg_tilemap, 0, 6);
+	tilemap_set_scrolldy(fg_tilemap, 0, 6);
+
+    state_save_register_global(machine, flipscreen);
 }
 
 
@@ -245,7 +252,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 
 VIDEO_UPDATE( mrdo )
 {
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	draw_sprites(screen->machine,bitmap,cliprect);

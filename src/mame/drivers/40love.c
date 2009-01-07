@@ -246,14 +246,14 @@ static int sound_nmi_enable,pending_nmi;
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	if (sound_nmi_enable) cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	if (sound_nmi_enable) cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	else pending_nmi = 1;
 }
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(machine,0,data);
-	timer_call_after_resynch(NULL, data,nmi_callback);
+	soundlatch_w(space,0,data);
+	timer_call_after_resynch(space->machine, NULL, data,nmi_callback);
 }
 
 static WRITE8_HANDLER( nmi_disable_w )
@@ -266,7 +266,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -283,17 +283,17 @@ static WRITE8_HANDLER( fortyl_coin_counter_w )
 
 static READ8_HANDLER( fortyl_mcu_r )
 {
-	return buggychl_mcu_r(machine,offset);
+	return buggychl_mcu_r(space,offset);
 }
 
 static READ8_HANDLER( fortyl_mcu_status_r )
 {
-	return buggychl_mcu_status_r(machine,offset);
+	return buggychl_mcu_status_r(space,offset);
 }
 
 static WRITE8_HANDLER( fortyl_mcu_w )
 {
-	buggychl_mcu_w(machine,offset,data);
+	buggychl_mcu_w(space,offset,data);
 }
 
 static WRITE8_HANDLER( bank_select_w )
@@ -305,7 +305,7 @@ static WRITE8_HANDLER( bank_select_w )
 //      popmessage("WRONG BANK SELECT = %x !!!!\n",data);
 	}
 
-	memory_set_bank( 1, data&1 );
+	memory_set_bank(space->machine,  1, data&1 );
 }
 
 
@@ -598,7 +598,7 @@ static READ8_HANDLER( undoukai_mcu_status_r )
 static DRIVER_INIT( undoukai )
 {
 	UINT8 *ROM = memory_region(machine, "main");
-	memory_configure_bank(1, 0, 2, &ROM[0x10000], 0x2000);
+	memory_configure_bank(machine, 1, 0, 2, &ROM[0x10000], 0x2000);
 
 	from_mcu = 0xff;
 	mcu_cmd = -1;
@@ -612,7 +612,7 @@ static DRIVER_INIT( undoukai )
 static DRIVER_INIT( 40love )
 {
 	UINT8 *ROM = memory_region(machine, "main");
-	memory_configure_bank(1, 0, 2, &ROM[0x10000], 0x2000);
+	memory_configure_bank(machine, 1, 0, 2, &ROM[0x10000], 0x2000);
 
 	#if 0
 		/* character ROM hack
@@ -1020,6 +1020,25 @@ static const msm5232_interface msm5232_config =
 
 /*******************************************************************************/
 
+static MACHINE_START( 40love )
+{
+    state_save_register_global(machine, pix1);
+    state_save_register_global_array(machine, pix2);
+    state_save_register_global(machine, from_mcu);
+    state_save_register_global(machine, mcu_cmd);
+    state_save_register_global_array(machine, mcu_in[0]);
+    state_save_register_global_array(machine, mcu_in[1]);
+    state_save_register_global_array(machine, mcu_out[0]);
+    state_save_register_global_array(machine, mcu_out[1]);
+    state_save_register_global(machine, snd_data);
+    state_save_register_global(machine, snd_flag);
+    state_save_register_global_array(machine, vol_ctrl);
+    state_save_register_global(machine, snd_ctrl0);
+    state_save_register_global(machine, snd_ctrl1);
+    state_save_register_global(machine, snd_ctrl2);
+    state_save_register_global(machine, snd_ctrl3);
+}
+
 static MACHINE_DRIVER_START( 40love )
 
 	/* basic machine hardware */
@@ -1034,7 +1053,7 @@ static MACHINE_DRIVER_START( 40love )
 	MDRV_CPU_ADD("mcu",M68705,18432000/6) /* OK */
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 
-	MDRV_INTERLEAVE(100)	/* high interleave to ensure proper synchronization of CPUs */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* high interleave to ensure proper synchronization of CPUs */
 	MDRV_MACHINE_RESET(ta7630)	/* init machine */
 
 	/* video hardware */
@@ -1050,6 +1069,8 @@ static MACHINE_DRIVER_START( 40love )
 	MDRV_PALETTE_INIT(fortyl)
 	MDRV_VIDEO_START(fortyl)
 	MDRV_VIDEO_UPDATE(fortyl)
+
+    MDRV_MACHINE_START(40love)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1105,6 +1126,8 @@ static MACHINE_DRIVER_START( undoukai )
 	MDRV_PALETTE_INIT(fortyl)
 	MDRV_VIDEO_START(fortyl)
 	MDRV_VIDEO_UPDATE(fortyl)
+
+    MDRV_MACHINE_START(40love)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1247,6 +1270,6 @@ ROM_START( undoukai )
 	ROM_LOAD( "a17-18.23v", 0x0c00, 0x0400, CRC(3023a1da) SHA1(08ce4c6e99d04b358d66f0588852311d07183619) )	/* ??? */
 ROM_END
 
-GAME( 1984, 40love,   0,        40love,   40love,   40love,   ROT0, "Taito Corporation", "Forty-Love", GAME_IMPERFECT_GRAPHICS )
-GAME( 1984, fieldday, 0,        undoukai, undoukai, undoukai, ROT0, "Taito Corporation", "Field Day", 0 )
-GAME( 1984, undoukai, fieldday, undoukai, undoukai, undoukai, ROT0, "Taito Corporation", "The Undoukai (Japan)", 0 )
+GAME( 1984, 40love,   0,        40love,   40love,   40love,   ROT0, "Taito Corporation", "Forty-Love", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1984, fieldday, 0,        undoukai, undoukai, undoukai, ROT0, "Taito Corporation", "Field Day", GAME_SUPPORTS_SAVE )
+GAME( 1984, undoukai, fieldday, undoukai, undoukai, undoukai, ROT0, "Taito Corporation", "The Undoukai (Japan)", GAME_SUPPORTS_SAVE )

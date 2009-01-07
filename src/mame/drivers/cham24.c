@@ -55,7 +55,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/ppu2c0x.h"
 #include "sound/nes_apu.h"
 #include "cpu/m6502/m6502.h"
@@ -63,22 +62,22 @@ Notes:
 static WRITE8_HANDLER( sprite_dma_w )
 {
 	int source = ( data & 7 );
-	ppu2c0x_spriteram_dma( 0, source );
+	ppu2c0x_spriteram_dma( space, 0, source );
 }
 
 static READ8_HANDLER( psg_4015_r )
 {
-	return nes_psg_0_r(machine,0x15);
+	return nes_psg_0_r(space,0x15);
 }
 
 static WRITE8_HANDLER( psg_4015_w )
 {
-	nes_psg_0_w(machine,0x15, data);
+	nes_psg_0_w(space,0x15, data);
 }
 
 static WRITE8_HANDLER( psg_4017_w )
 {
-	nes_psg_0_w(machine,0x17, data);
+	nes_psg_0_w(space,0x17, data);
 }
 
 static UINT32 in_0;
@@ -106,8 +105,8 @@ static WRITE8_HANDLER( cham24_IN0_w )
 	in_0_shift = 0;
 	in_1_shift = 0;
 
-	in_0 = input_port_read(machine, "P1");
-	in_1 = input_port_read(machine, "P2");
+	in_0 = input_port_read(space->machine, "P1");
+	in_1 = input_port_read(space->machine, "P2");
 
 }
 
@@ -124,8 +123,8 @@ static WRITE8_HANDLER( cham24_mapper_w )
 	UINT32 prg_bank_page_size = (offset >> 12) & 0x01;
 	UINT32 gfx_mirroring = (offset >> 13) & 0x01;
 
-	UINT8* dst = memory_region( machine, "main" );
-	UINT8* src = memory_region( machine, "user1" );
+	UINT8* dst = memory_region( space->machine, "main" );
+	UINT8* src = memory_region( space->machine, "user1" );
 
 	// switch PPU VROM bank
 	ppu2c0x_set_videorom_bank( 0, 0, 8, gfx_bank, 512 );
@@ -203,6 +202,7 @@ static MACHINE_RESET( cham24 )
 
 	memcpy( &dst[0x8000], &src[0x0f8000], 0x4000 );
 	memcpy( &dst[0xc000], &src[0x0f8000], 0x4000 );
+	device_reset(machine->cpu[0]);
 
 	/* reset the ppu */
 	ppu2c0x_reset( machine, 0, 1 );
@@ -213,9 +213,9 @@ static PALETTE_INIT( cham24 )
 	ppu2c0x_init_palette(machine, 0 );
 }
 
-static void ppu_irq( int num, int *ppu_regs )
+static void ppu_irq( running_machine *machine, int num, int *ppu_regs )
 {
-	cpunum_set_input_line(Machine, num, INPUT_LINE_NMI, PULSE_LINE );
+	cpu_set_input_line(machine->cpu[num], INPUT_LINE_NMI, PULSE_LINE );
 }
 
 /* our ppu interface                                            */

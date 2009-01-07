@@ -62,27 +62,20 @@ enum
 typedef struct _z80pio z80pio_t;
 struct _z80pio
 {
-	const z80pio_interface *intf;			/* interface */
-
-	int clock;								/* clock frequency */
-
-	int state[PIO_PORT_COUNT];				/* control register state */
-	int mode[PIO_PORT_COUNT];				/* mode control register */
-	int irq_enable[PIO_PORT_COUNT];			/* interrupt enable flag */
-	int irq_pending[PIO_PORT_COUNT];		/* interrupt pending flag */
-	int int_state[PIO_PORT_COUNT];			/* interrupt status */
-	UINT8 enable[PIO_PORT_COUNT];			/* interrupt control word */
-	UINT8 input[PIO_PORT_COUNT];			/* data input register */
-	UINT8 output[PIO_PORT_COUNT];			/* data output register */
-	UINT8 vector[PIO_PORT_COUNT];			/* interrupt vector */
-	UINT8 mask[PIO_PORT_COUNT];				/* mask register */
-	UINT8 ddr[PIO_PORT_COUNT];				/* input/output select register */
-	int strobe[PIO_PORT_COUNT];				/* strobe pulse */
-	int match[PIO_PORT_COUNT];				/* control mode bit logic equation match */
-
-	/* timers */
-	emu_timer *poll_timer;					/* mode 3 poll timer */
-	emu_timer *irq_timer;					/* interrupt enable timer */
+	UINT8 vector[2];                      /* interrupt vector               */
+	void (*intr)(const device_config *, int which);            /* interrupt callbacks            */
+	void (*rdyr[2])(const device_config *, int data);          /* RDY active callback            */
+	read8_device_func  port_read[2];     /* port read callbacks            */
+	write8_device_func port_write[2];    /* port write callbacks           */
+	UINT8 mode[2];                        /* mode 00=in,01=out,02=i/o,03=bit*/
+	UINT8 enable[2];                      /* interrupt enable               */
+	UINT8 mask[2];                        /* mask folowers                  */
+	UINT8 dir[2];                         /* direction (bit mode)           */
+	UINT8 rdy[2];                         /* ready pin level                */
+	UINT8 in[2];                          /* input port data                */
+	UINT8 out[2];                         /* output port                    */
+	UINT8 strobe[2];						/* strobe inputs */
+	UINT8 int_state[2];                   /* interrupt status (daisy chain) */
 };
 
 /***************************************************************************
@@ -124,23 +117,9 @@ static void z80pio_check_interrupt(const device_config *device)
 				/* trigger interrupt request */
 				z80pio->int_state[channel] |= Z80_DAISY_INT;
 
-				/* reset interrupt pending */
-				z80pio->irq_pending[channel] = 0;
-
-				LOGERROR("Z80PIO \"%s\" Port %c : Interrupt Request\n", device->tag, 'A' + channel);
-			}
-		}
-		else
-		{
-			/* clear interrupt request */
-			z80pio->int_state[channel] &= ~Z80_DAISY_INT;
-		}
-	}
-
-	if (z80pio->intf->on_int_changed)
-	{
-		z80pio->intf->on_int_changed(device, (z80pio_irq_state(device) & Z80_DAISY_INT) ? ASSERT_LINE : CLEAR_LINE);
-	}
+	/* call callback with state */
+	if (z80pio->rdyr[ch])
+		z80pio->rdyr[ch](device, z80pio->rdy[ch]);
 }
 
 static void z80pio_trigger_interrupt(const device_config *device, int channel)
@@ -834,55 +813,20 @@ static DEVICE_START( z80pio )
 {
 	const z80pio_interface *intf = device->static_config;
 	z80pio_t *z80pio = get_safe_token( device );
-	char unique_tag[30];
-	int cpunum = -1;
-
-	assert(intf != NULL);
-	z80pio->intf = intf;
-
-	/* get clock */
-
-	if (intf->cpu != NULL)
-	{
-		cpunum = mame_find_cpu_index(device->machine, intf->cpu);
-	}
-
-	if (cpunum != -1)
-	{
-		z80pio->clock = device->machine->config->cpu[cpunum].clock;
-	}
-	else
-	{
-		assert(intf->clock > 0);
-		z80pio->clock = intf->clock;
-	}
-
-	/* allocate poll timer */
-
-	z80pio->poll_timer = timer_alloc(z80pio_poll_tick, (void *)device);
-	timer_adjust_periodic(z80pio->poll_timer, attotime_zero, 0, ATTOTIME_IN_HZ(z80pio->clock / 16));
-
-	/* allocate interrupt enable timer */
-
-	z80pio->irq_timer = timer_alloc(z80pio_irq_tick, (void *)device);
 
 	/* register for state saving */
 
-	state_save_combine_module_and_tag(unique_tag, "z80pio", device->tag);
-
-	state_save_register_item_array(unique_tag, 0, z80pio->state);
-	state_save_register_item_array(unique_tag, 0, z80pio->mode);
-	state_save_register_item_array(unique_tag, 0, z80pio->irq_enable);
-	state_save_register_item_array(unique_tag, 0, z80pio->irq_pending);
-	state_save_register_item_array(unique_tag, 0, z80pio->int_state);
-	state_save_register_item_array(unique_tag, 0, z80pio->enable);
-	state_save_register_item_array(unique_tag, 0, z80pio->input);
-	state_save_register_item_array(unique_tag, 0, z80pio->output);
-	state_save_register_item_array(unique_tag, 0, z80pio->vector);
-	state_save_register_item_array(unique_tag, 0, z80pio->mask);
-	state_save_register_item_array(unique_tag, 0, z80pio->ddr);
-	state_save_register_item_array(unique_tag, 0, z80pio->strobe);
-	state_save_register_item_array(unique_tag, 0, z80pio->match);
+	/* register for save states */
+	state_save_register_device_item_array(device, 0, z80pio->vector);
+	state_save_register_device_item_array(device, 0, z80pio->mode);
+	state_save_register_device_item_array(device, 0, z80pio->enable);
+	state_save_register_device_item_array(device, 0, z80pio->mask);
+	state_save_register_device_item_array(device, 0, z80pio->dir);
+	state_save_register_device_item_array(device, 0, z80pio->rdy);
+	state_save_register_device_item_array(device, 0, z80pio->in);
+	state_save_register_device_item_array(device, 0, z80pio->out);
+	state_save_register_device_item_array(device, 0, z80pio->strobe);
+	state_save_register_device_item_array(device, 0, z80pio->int_state);
 
 	return DEVICE_START_OK;
 }
@@ -949,11 +893,11 @@ DEVICE_GET_INFO( z80pio )
 		case DEVINFO_FCT_IRQ_RETI:						info->f = (genf *)z80pio_irq_reti;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Zilog Z80 PIO";				break;
-		case DEVINFO_STR_FAMILY:						info->s = "Z80";						break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";						break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;						break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Zilog Z80 PIO");		break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Z80");					break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");					break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);				break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

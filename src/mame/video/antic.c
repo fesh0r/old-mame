@@ -90,7 +90,7 @@ READ8_HANDLER ( atari_antic_r )
 		data = antic.r.antic09;
 		break;
 	case 10: /* WSYNC read */
-		cpunum_spinuntil_trigger(0, TRIGGER_HSYNC);
+		cpu_spinuntil_trigger(space->machine->cpu[0], TRIGGER_HSYNC);
 		antic.w.wsync = 1;
 		data = antic.r.antic0a;
 		break;
@@ -200,7 +200,7 @@ WRITE8_HANDLER ( atari_antic_w )
 		break;
 	case 10: /* WSYNC write */
 		LOG(("ANTIC 0A write WSYNC  $%02X\n", data));
-		cpunum_spinuntil_trigger(0, TRIGGER_HSYNC);
+		cpu_spinuntil_trigger(space->machine->cpu[0], TRIGGER_HSYNC);
 		antic.w.wsync = 1;
 		break;
 	case 11:
@@ -238,7 +238,7 @@ WRITE8_HANDLER ( atari_antic_w )
 /*************  ANTIC mode 00: *********************************
  * generate 1-8 empty scanlines
  ***************************************************************/
-void antic_mode_0_xx(VIDEO *video)
+ANTIC_RENDERER( antic_mode_0_xx )
 {
 	PREPARE();
 	memset(dst, PBK, HWIDTH*4);
@@ -255,21 +255,21 @@ void antic_mode_0_xx(VIDEO *video)
  ***************************************************************/
 #define MODE2(s) COPY4(dst, antic.pf_21[video->data[s]])
 
-void antic_mode_2_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_2_32 )
 {
-	PREPARE_TXT2(32);
+	PREPARE_TXT2(space, 32);
 	REP32(MODE2);
 	POST_TXT(32);
 }
-void antic_mode_2_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_2_40 )
 {
-	PREPARE_TXT2(40);
+	PREPARE_TXT2(space, 40);
 	REP40(MODE2);
 	POST_TXT(40);
 }
-void antic_mode_2_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_2_48 )
 {
-	PREPARE_TXT2(48);
+	PREPARE_TXT2(space, 48);
 	REP48(MODE2);
 	POST_TXT(48);
 }
@@ -279,21 +279,21 @@ void antic_mode_2_48(VIDEO *video)
  ***************************************************************/
 #define MODE3(s) COPY4(dst, antic.pf_21[video->data[s]])
 
-void antic_mode_3_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_3_32 )
 {
-	PREPARE_TXT3(32);
+	PREPARE_TXT3(space, 32);
 	REP32(MODE3);
 	POST_TXT(32);
 }
-void antic_mode_3_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_3_40 )
 {
-	PREPARE_TXT3(40);
+	PREPARE_TXT3(space, 40);
 	REP40(MODE3);
 	POST_TXT(40);
 }
-void antic_mode_3_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_3_48 )
 {
-	PREPARE_TXT3(48);
+	PREPARE_TXT3(space, 48);
 	REP48(MODE3);
 	POST_TXT(48);
 }
@@ -303,21 +303,21 @@ void antic_mode_3_48(VIDEO *video)
  ***************************************************************/
 #define MODE4(s) COPY4(dst, antic.pf_x10b[video->data[s]])
 
-void antic_mode_4_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_4_32 )
 {
-	PREPARE_TXT45(32,0);
+	PREPARE_TXT45(space, 32,0);
 	REP32(MODE4);
 	POST_TXT(32);
 }
-void antic_mode_4_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_4_40 )
 {
-	PREPARE_TXT45(40,0);
+	PREPARE_TXT45(space, 40,0);
 	REP40(MODE4);
 	POST_TXT(40);
 }
-void antic_mode_4_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_4_48 )
 {
-	PREPARE_TXT45(48,0);
+	PREPARE_TXT45(space, 48,0);
 	REP48(MODE4);
 	POST_TXT(48);
 }
@@ -327,21 +327,21 @@ void antic_mode_4_48(VIDEO *video)
  ***************************************************************/
 #define MODE5(s) COPY4(dst, antic.pf_x10b[video->data[s]])
 
-void antic_mode_5_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_5_32 )
 {
-	PREPARE_TXT45(32,1);
+	PREPARE_TXT45(space, 32,1);
 	REP32(MODE5);
 	POST_TXT(32);
 }
-void antic_mode_5_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_5_40 )
 {
-	PREPARE_TXT45(40,1);
+	PREPARE_TXT45(space, 40,1);
 	REP40(MODE5);
 	POST_TXT(40);
 }
-void antic_mode_5_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_5_48 )
 {
-	PREPARE_TXT45(48,1);
+	PREPARE_TXT45(space, 48,1);
 	REP48(MODE5);
 	POST_TXT(48);
 }
@@ -351,21 +351,21 @@ void antic_mode_5_48(VIDEO *video)
  ***************************************************************/
 #define MODE6(s) COPY8(dst, antic.pf_3210b2[video->data[s]], antic.pf_3210b2[video->data[s]+1])
 
-void antic_mode_6_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_6_32 )
 {
-	PREPARE_TXT67(16,0);
+	PREPARE_TXT67(space, 16,0);
 	REP16(MODE6);
 	POST_TXT(16);
 }
-void antic_mode_6_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_6_40 )
 {
-	PREPARE_TXT67(20,0);
+	PREPARE_TXT67(space, 20,0);
 	REP20(MODE6);
 	POST_TXT(20);
 }
-void antic_mode_6_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_6_48 )
 {
-	PREPARE_TXT67(24,0);
+	PREPARE_TXT67(space, 24,0);
 	REP24(MODE6);
 	POST_TXT(24);
 }
@@ -375,21 +375,21 @@ void antic_mode_6_48(VIDEO *video)
  ***************************************************************/
 #define MODE7(s) COPY8(dst, antic.pf_3210b2[video->data[s]], antic.pf_3210b2[video->data[s]+1])
 
-void antic_mode_7_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_7_32 )
 {
-	PREPARE_TXT67(16,1);
+	PREPARE_TXT67(space, 16,1);
 	REP16(MODE7);
 	POST_TXT(16);
 }
-void antic_mode_7_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_7_40 )
 {
-	PREPARE_TXT67(20,1);
+	PREPARE_TXT67(space, 20,1);
 	REP20(MODE7);
 	POST_TXT(20);
 }
-void antic_mode_7_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_7_48 )
 {
-	PREPARE_TXT67(24,1);
+	PREPARE_TXT67(space, 24,1);
 	REP24(MODE7);
 	POST_TXT(24);
 }
@@ -399,21 +399,21 @@ void antic_mode_7_48(VIDEO *video)
  ***************************************************************/
 #define MODE8(s) COPY16(dst, antic.pf_210b4[video->data[s]],antic.pf_210b4[video->data[s]+1],antic.pf_210b4[video->data[s]+2],antic.pf_210b4[video->data[s]+3])
 
-void antic_mode_8_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_8_32 )
 {
-	PREPARE_GFX8(8);
+	PREPARE_GFX8(space, 8);
 	REP08(MODE8);
 	POST_GFX(8);
 }
-void antic_mode_8_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_8_40 )
 {
-	PREPARE_GFX8(10);
+	PREPARE_GFX8(space, 10);
 	REP10(MODE8);
 	POST_GFX(10);
 }
-void antic_mode_8_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_8_48 )
 {
-	PREPARE_GFX8(12);
+	PREPARE_GFX8(space, 12);
 	REP12(MODE8);
 	POST_GFX(12);
 }
@@ -423,21 +423,21 @@ void antic_mode_8_48(VIDEO *video)
  ***************************************************************/
 #define MODE9(s) COPY8(dst, antic.pf_3210b2[video->data[s]], antic.pf_3210b2[video->data[s]+1])
 
-void antic_mode_9_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_9_32 )
 {
-	PREPARE_GFX9BC(16);
+	PREPARE_GFX9BC(space, 16);
 	REP16(MODE9);
 	POST_GFX(16);
 }
-void antic_mode_9_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_9_40 )
 {
-	PREPARE_GFX9BC(20);
+	PREPARE_GFX9BC(space, 20);
 	REP20(MODE9);
 	POST_GFX(20);
 }
-void antic_mode_9_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_9_48 )
 {
-	PREPARE_GFX9BC(24);
+	PREPARE_GFX9BC(space, 24);
 	REP24(MODE9);
 	POST_GFX(24);
 }
@@ -447,21 +447,21 @@ void antic_mode_9_48(VIDEO *video)
  ***************************************************************/
 #define MODEA(s) COPY8(dst, antic.pf_210b2[video->data[s]], antic.pf_210b2[video->data[s]+1])
 
-void antic_mode_a_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_a_32 )
 {
-	PREPARE_GFXA(16);
+	PREPARE_GFXA(space, 16);
 	REP16(MODEA);
 	POST_GFX(16);
 }
-void antic_mode_a_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_a_40 )
 {
-	PREPARE_GFXA(20);
+	PREPARE_GFXA(space, 20);
 	REP20(MODEA);
 	POST_GFX(20);
 }
-void antic_mode_a_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_a_48 )
 {
-	PREPARE_GFXA(24);
+	PREPARE_GFXA(space, 24);
 	REP24(MODEA);
 	POST_GFX(24);
 }
@@ -471,21 +471,21 @@ void antic_mode_a_48(VIDEO *video)
  ***************************************************************/
 #define MODEB(s) COPY8(dst, antic.pf_3210b2[video->data[s]], antic.pf_3210b2[video->data[s]+1])
 
-void antic_mode_b_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_b_32 )
 {
-	PREPARE_GFX9BC(16);
+	PREPARE_GFX9BC(space, 16);
 	REP16(MODEB);
 	POST_GFX(16);
 }
-void antic_mode_b_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_b_40 )
 {
-	PREPARE_GFX9BC(20);
+	PREPARE_GFX9BC(space, 20);
 	REP20(MODEB);
 	POST_GFX(20);
 }
-void antic_mode_b_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_b_48 )
 {
-	PREPARE_GFX9BC(24);
+	PREPARE_GFX9BC(space, 24);
 	REP24(MODEB);
 	POST_GFX(24);
 }
@@ -495,21 +495,21 @@ void antic_mode_b_48(VIDEO *video)
  ***************************************************************/
 #define MODEC(s) COPY8(dst, antic.pf_3210b2[video->data[s]], antic.pf_3210b2[video->data[s]+1])
 
-void antic_mode_c_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_c_32 )
 {
-	PREPARE_GFX9BC(16);
+	PREPARE_GFX9BC(space, 16);
 	REP16(MODEC);
 	POST_GFX(16);
 }
-void antic_mode_c_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_c_40 )
 {
-	PREPARE_GFX9BC(20);
+	PREPARE_GFX9BC(space, 20);
 	REP20(MODEC);
 	POST_GFX(20);
 }
-void antic_mode_c_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_c_48 )
 {
-	PREPARE_GFX9BC(24);
+	PREPARE_GFX9BC(space, 24);
 	REP24(MODEC);
 	POST_GFX(24);
 }
@@ -519,21 +519,21 @@ void antic_mode_c_48(VIDEO *video)
  ***************************************************************/
 #define MODED(s) COPY4(dst, antic.pf_x10b[video->data[s]])
 
-void antic_mode_d_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_d_32 )
 {
-	PREPARE_GFXDE(32);
+	PREPARE_GFXDE(space, 32);
 	REP32(MODED);
 	POST_GFX(32);
 }
-void antic_mode_d_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_d_40 )
 {
-	PREPARE_GFXDE(40);
+	PREPARE_GFXDE(space, 40);
 	REP40(MODED);
 	POST_GFX(40);
 }
-void antic_mode_d_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_d_48 )
 {
-	PREPARE_GFXDE(48);
+	PREPARE_GFXDE(space, 48);
 	REP48(MODED);
 	POST_GFX(48);
 }
@@ -543,21 +543,21 @@ void antic_mode_d_48(VIDEO *video)
  ***************************************************************/
 #define MODEE(s) COPY4(dst, antic.pf_x10b[video->data[s]])
 
-void antic_mode_e_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_e_32 )
 {
-	PREPARE_GFXDE(32);
+	PREPARE_GFXDE(space, 32);
 	REP32(MODEE);
 	POST_GFX(32);
 }
-void antic_mode_e_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_e_40 )
 {
-	PREPARE_GFXDE(40);
+	PREPARE_GFXDE(space, 40);
 	REP40(MODEE);
 	POST_GFX(40);
 }
-void antic_mode_e_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_e_48 )
 {
-	PREPARE_GFXDE(48);
+	PREPARE_GFXDE(space, 48);
 	REP48(MODEE);
 	POST_GFX(48);
 }
@@ -567,21 +567,21 @@ void antic_mode_e_48(VIDEO *video)
  ***************************************************************/
 #define MODEF(s) COPY4(dst, antic.pf_1b[video->data[s]])
 
-void antic_mode_f_32(VIDEO *video)
+ANTIC_RENDERER( antic_mode_f_32 )
 {
-	PREPARE_GFXF(32);
+	PREPARE_GFXF(space, 32);
 	REP32(MODEF);
 	POST_GFX(32);
 }
-void antic_mode_f_40(VIDEO *video)
+ANTIC_RENDERER( antic_mode_f_40 )
 {
-	PREPARE_GFXF(40);
+	PREPARE_GFXF(space, 40);
 	REP40(MODEF);
 	POST_GFX(40);
 }
-void antic_mode_f_48(VIDEO *video)
+ANTIC_RENDERER( antic_mode_f_48 )
 {
-	PREPARE_GFXF(48);
+	PREPARE_GFXF(space, 48);
 	REP48(MODEF);
 	POST_GFX(48);
 }

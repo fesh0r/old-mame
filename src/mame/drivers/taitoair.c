@@ -216,6 +216,8 @@ cpu #2 (PC=0000060E): unmapped memory word read from 0000683A & FFFF
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "taitoipt.h"
 #include "audio/taitosnd.h"
 #include "video/taitoic.h"
@@ -246,9 +248,9 @@ static WRITE16_HANDLER( system_control_w )
 
 	dsp_HOLD_signal = (data & 4) ? CLEAR_LINE : ASSERT_LINE;
 
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 
-	logerror("68K:%06x writing %04x to TMS32025.  %s HOLD , %s RESET\n",activecpu_get_previouspc(),data,((data & 4) ? "Clear" : "Assert"),((data & 1) ? "Clear" : "Assert"));
+	logerror("68K:%06x writing %04x to TMS32025.  %s HOLD , %s RESET\n",cpu_get_previouspc(space->cpu),data,((data & 4) ? "Clear" : "Assert"),((data & 1) ? "Clear" : "Assert"));
 }
 
 static READ16_HANDLER( lineram_r )
@@ -276,7 +278,7 @@ static WRITE16_HANDLER( dspram_w )
 static READ16_HANDLER( dsp_HOLD_signal_r )
 {
 	/* HOLD signal is active low */
-	//  logerror("TMS32025:%04x Reading %01x level from HOLD signal\n",activecpu_get_previouspc(),dsp_HOLD_signal);
+	//  logerror("TMS32025:%04x Reading %01x level from HOLD signal\n",cpu_get_previouspc(space->cpu),dsp_HOLD_signal);
 
 	return dsp_HOLD_signal;
 }
@@ -284,7 +286,7 @@ static READ16_HANDLER( dsp_HOLD_signal_r )
 static WRITE16_HANDLER( dsp_HOLDA_signal_w )
 {
 	if (offset)
-		logerror("TMS32025:%04x Writing %01x level to HOLD-Acknowledge signal\n",activecpu_get_previouspc(),data);
+		logerror("TMS32025:%04x Writing %01x level to HOLD-Acknowledge signal\n",cpu_get_previouspc(space->cpu),data);
 }
 
 
@@ -294,7 +296,7 @@ static WRITE16_HANDLER( airsys_paletteram16_w )	/* xxBBBBxRRRRxGGGG */
 	COMBINE_DATA(&paletteram16[offset]);
 
 	a = paletteram16[offset];
-	palette_set_color_rgb(machine,offset,pal4bit(a >> 0),pal4bit(a >> 5),pal4bit(a >> 10));
+	palette_set_color_rgb(space->machine,offset,pal4bit(a >> 0),pal4bit(a >> 5),pal4bit(a >> 10));
 }
 
 
@@ -311,16 +313,16 @@ static READ16_HANDLER( stick_input_r )
 	switch( offset )
 	{
 		case 0x00:	/* "counter 1" lo */
-			return input_port_read(machine, STICK1_PORT_TAG);
+			return input_port_read(space->machine, STICK1_PORT_TAG);
 
 		case 0x01:	/* "counter 2" lo */
-			return input_port_read(machine, STICK2_PORT_TAG);
+			return input_port_read(space->machine, STICK2_PORT_TAG);
 
 		case 0x02:	/* "counter 1" hi */
-			return (input_port_read(machine, STICK1_PORT_TAG) & 0xff00) >> 8;
+			return (input_port_read(space->machine, STICK1_PORT_TAG) & 0xff00) >> 8;
 
 		case 0x03:	/* "counter 2" hi */
-			return (input_port_read(machine, STICK2_PORT_TAG) & 0xff00) >> 8;
+			return (input_port_read(space->machine, STICK2_PORT_TAG) & 0xff00) >> 8;
 	}
 
 	return 0;
@@ -331,10 +333,10 @@ static READ16_HANDLER( stick2_input_r )
 	switch( offset )
 	{
 		case 0x00:	/* "counter 3" lo */
-			return input_port_read(machine, STICK3_PORT_TAG);
+			return input_port_read(space->machine, STICK3_PORT_TAG);
 
 		case 0x02:	/* "counter 3" hi */
-			return (input_port_read(machine, STICK3_PORT_TAG) & 0xff00) >> 8;
+			return (input_port_read(space->machine, STICK3_PORT_TAG) & 0xff00) >> 8;
 	}
 
 	return 0;
@@ -345,13 +347,13 @@ static INT32 banknum;
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr(1, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000);
+	memory_set_bankptr(machine, 1, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	banknum = (data - 1) & 3;
-	reset_sound_region(machine);
+	reset_sound_region(space->machine);
 }
 
 static STATE_POSTLOAD( taitoair_postload )
@@ -364,7 +366,7 @@ static MACHINE_START( taitoair )
 	dsp_HOLD_signal = ASSERT_LINE;
 	banknum = -1;
 
-	state_save_register_global(banknum);
+	state_save_register_global(machine, banknum);
 	state_save_register_postload(machine, taitoair_postload, NULL);
 }
 
@@ -583,7 +585,7 @@ GFXDECODE_END
 /* Handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface airsys_ym2610_interface =
@@ -611,7 +613,7 @@ static MACHINE_DRIVER_START( airsys )
 	MDRV_CPU_DATA_MAP(DSP_map_data, 0)
 	MDRV_CPU_IO_MAP(DSP_map_io, 0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_START(taitoair)
 
@@ -675,11 +677,11 @@ ROM_START( topland )
 	ROM_LOAD16_BYTE( "b62-32.30",  0x0c0001, 0x20000, CRC(66806646) SHA1(d8e0c37b5227d8583d523164ffc6828b4508d5a3) )
 
 	ROM_REGION( 0xa0000, "ym", 0 )	/* ADPCM samples */
-	ROM_LOAD( "b62-13.1",  0x00000, 0x20000, CRC(b37dc3ea) SHA1(198d4f828132316c624da998e49b1873b9886bf0) )
-	ROM_LOAD( "b62-14.2",  0x20000, 0x20000, CRC(617948a3) SHA1(4660570fa6263c28cfae7ccdf154763cc6144896) )
+	ROM_LOAD( "b62-17.5",  0x00000, 0x20000, CRC(36447066) SHA1(91c8cc4e99534b2d533895a342abb22766a20090) )
+	ROM_LOAD( "b62-16.4",  0x20000, 0x20000, CRC(203a5c27) SHA1(f6fc9322dea8d82bfec3be3fdc8616dc6adf666e) )
 	ROM_LOAD( "b62-15.3",  0x40000, 0x20000, CRC(e35ffe81) SHA1(f35afdd7cfd4c09907fb062beb5ae46c2286a381) )
-	ROM_LOAD( "b62-16.4",  0x60000, 0x20000, CRC(203a5c27) SHA1(f6fc9322dea8d82bfec3be3fdc8616dc6adf666e) )
-	ROM_LOAD( "b62-17.5",  0x80000, 0x20000, CRC(36447066) SHA1(91c8cc4e99534b2d533895a342abb22766a20090) )
+	ROM_LOAD( "b62-14.2",  0x60000, 0x20000, CRC(617948a3) SHA1(4660570fa6263c28cfae7ccdf154763cc6144896) )
+	ROM_LOAD( "b62-13.1",  0x80000, 0x20000, CRC(b37dc3ea) SHA1(198d4f828132316c624da998e49b1873b9886bf0) )
 
 	ROM_REGION( 0x20000, "ym.deltat", 0 )	/* Delta-T samples */
 	ROM_LOAD( "b62-18.31", 0x00000, 0x20000, CRC(3a4e687a) SHA1(43f07fe19dec351e851defdf9c7810fb9df04736) )

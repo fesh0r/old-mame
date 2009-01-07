@@ -62,7 +62,7 @@ READ16_HANDLER( lethalj_gun_r )
 		case 4:
 		case 5:
 			/* latch the crosshair position */
-			get_crosshair_xy(machine, offset - 4, &beamx, &beamy);
+			get_crosshair_xy(space->machine, offset - 4, &beamx, &beamy);
 			gunx = beamx;
 			guny = beamy;
 			blank_palette = 1;
@@ -76,7 +76,7 @@ READ16_HANDLER( lethalj_gun_r )
 			result = guny + 4;
 			break;
 	}
-/*  logerror("%08X:lethalj_gun_r(%d) = %04X\n", activecpu_get_pc(), offset, result); */
+/*  logerror("%08X:lethalj_gun_r(%d) = %04X\n", cpu_get_pc(space->cpu), offset, result); */
 	return result;
 }
 
@@ -108,7 +108,7 @@ VIDEO_START( lethalj )
 
 static TIMER_CALLBACK( gen_ext1_int )
 {
-	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 }
 
 
@@ -165,12 +165,12 @@ WRITE16_HANDLER( lethalj_blitter_w )
 		else
 			do_blit();
 
-		timer_set(attotime_mul(ATTOTIME_IN_HZ(XTAL_32MHz), (blitter_data[5] + 1) * (blitter_data[7] + 1)), NULL, 0, gen_ext1_int);
+		timer_set(space->machine, attotime_mul(ATTOTIME_IN_HZ(XTAL_32MHz), (blitter_data[5] + 1) * (blitter_data[7] + 1)), NULL, 0, gen_ext1_int);
 	}
 
 	/* clear the IRQ on offset 0 */
 	else if (offset == 0)
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 

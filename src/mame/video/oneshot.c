@@ -1,16 +1,7 @@
 /* One Shot One Kill Video Hardware */
 
 #include "driver.h"
-
-extern UINT16 *oneshot_sprites;
-extern UINT16 *oneshot_bg_videoram;
-extern UINT16 *oneshot_mid_videoram;
-extern UINT16 *oneshot_fg_videoram;
-extern UINT16 *oneshot_scroll;
-
-extern int gun_x_p1,gun_y_p1,gun_x_p2,gun_y_p2;
-extern int gun_x_shift;
-
+#include "includes/oneshot.h"
 
 static tilemap *oneshot_bg_tilemap;
 static tilemap *oneshot_mid_tilemap;
@@ -67,9 +58,9 @@ WRITE16_HANDLER( oneshot_fg_videoram_w )
 
 VIDEO_START( oneshot )
 {
-	oneshot_bg_tilemap = tilemap_create(get_oneshot_bg_tile_info,tilemap_scan_rows, 16, 16,32,32);
-	oneshot_mid_tilemap = tilemap_create(get_oneshot_mid_tile_info,tilemap_scan_rows, 16, 16,32,32);
-	oneshot_fg_tilemap = tilemap_create(get_oneshot_fg_tile_info,tilemap_scan_rows, 16, 16,32,32);
+	oneshot_bg_tilemap = tilemap_create(machine, get_oneshot_bg_tile_info,tilemap_scan_rows, 16, 16,32,32);
+	oneshot_mid_tilemap = tilemap_create(machine, get_oneshot_mid_tile_info,tilemap_scan_rows, 16, 16,32,32);
+	oneshot_fg_tilemap = tilemap_create(machine, get_oneshot_fg_tile_info,tilemap_scan_rows, 16, 16,32,32);
 
 	tilemap_set_transparent_pen(oneshot_bg_tilemap,0);
 	tilemap_set_transparent_pen(oneshot_mid_tilemap,0);
@@ -168,7 +159,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 VIDEO_UPDATE( oneshot )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	tilemap_set_scrollx(oneshot_mid_tilemap,0, oneshot_scroll[0]-0x1f5);
 	tilemap_set_scrolly(oneshot_mid_tilemap,0, oneshot_scroll[1]);
@@ -183,7 +174,7 @@ VIDEO_UPDATE( oneshot )
 
 VIDEO_UPDATE( maddonna )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	tilemap_set_scrolly(oneshot_mid_tilemap,0, oneshot_scroll[1]); // other registers aren't used so we don't know which layers they relate to
 

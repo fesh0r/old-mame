@@ -93,9 +93,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( bionicc )
 {
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,16,16,64,64);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows, 8, 8,64,64);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,16,16,64,64);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows, 8, 8,64,64);
 
 	tilemap_set_transparent_pen(tx_tilemap,3);
 	tilemap_set_transmask(fg_tilemap,0,0xffff,0x8000); /* split type 0 is completely transparent in front half */
@@ -147,7 +147,7 @@ WRITE16_HANDLER( bionicc_paletteram_w )
 		b = b * (0x07 + bright) / 0x0e;
 	}
 
-	palette_set_color (machine, offset, MAKE_RGB(r, g, b));
+	palette_set_color (space->machine, offset, MAKE_RGB(r, g, b));
 }
 
 WRITE16_HANDLER( bionicc_scroll_w )
@@ -177,7 +177,7 @@ WRITE16_HANDLER( bionicc_gfxctrl_w )
 {
 	if (ACCESSING_BITS_8_15)
 	{
-		flip_screen_set(data & 0x0100);
+		flip_screen_set(space->machine, data & 0x0100);
 
 		tilemap_set_enable(bg_tilemap,data & 0x2000);	/* guess */
 		tilemap_set_enable(fg_tilemap,data & 0x1000);	/* guess */
@@ -211,7 +211,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			int sx = (INT16)buffered_spriteram16[offs+3];	/* signed */
 			int sy = (INT16)buffered_spriteram16[offs+2];	/* signed */
 			if(sy>512-16) sy-=512;
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 240 - sx;
 				sy = 240 - sy;
@@ -231,7 +231,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 VIDEO_UPDATE( bionicc )
 {
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 	tilemap_draw(bitmap,cliprect,fg_tilemap,1|TILEMAP_DRAW_LAYER1,0);	/* nothing in FRONT */
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0|TILEMAP_DRAW_LAYER1,0);
@@ -243,5 +243,7 @@ VIDEO_UPDATE( bionicc )
 
 VIDEO_EOF( bionicc )
 {
-	buffer_spriteram16_w(machine,0,0,0xffff);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram16_w(space,0,0,0xffff);
 }

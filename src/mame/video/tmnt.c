@@ -1,6 +1,7 @@
 #include "driver.h"
 #include "machine/eeprom.h"
 #include "video/konamiic.h"
+#include "includes/tmnt.h"
 
 
 static int layer_colorbase[3],sprite_colorbase,bg_colorbase;
@@ -253,10 +254,10 @@ VIDEO_START( lgtnfght )	/* also tmnt2, ssriders */
 
 	dim_c = dim_v = lastdim = lasten = 0;
 
-	state_save_register_global(dim_c);
-	state_save_register_global(dim_v);
-	state_save_register_global(lastdim);
-	state_save_register_global(lasten);
+	state_save_register_global(machine, dim_c);
+	state_save_register_global(machine, dim_v);
+	state_save_register_global(machine, lastdim);
+	state_save_register_global(machine, lasten);
 }
 
 VIDEO_START( sunsetbl )
@@ -279,7 +280,7 @@ VIDEO_START( glfgreat )
 	K052109_vh_start(machine,"gfx1",NORMAL_PLANE_ORDER,tmnt_tile_callback);
 	K053245_vh_start(machine,0, "gfx2",NORMAL_PLANE_ORDER,lgtnfght_sprite_callback);
 
-	roz_tilemap = tilemap_create(glfgreat_get_roz_tile_info,tilemap_scan_rows,16,16,512,512);
+	roz_tilemap = tilemap_create(machine, glfgreat_get_roz_tile_info,tilemap_scan_rows,16,16,512,512);
 
 	tilemap_set_transparent_pen(roz_tilemap,0);
 
@@ -300,7 +301,7 @@ VIDEO_START( prmrsocr )
 	K052109_vh_start(machine,"gfx1",NORMAL_PLANE_ORDER,tmnt_tile_callback);
 	K053245_vh_start(machine,0, "gfx2",NORMAL_PLANE_ORDER,prmrsocr_sprite_callback);
 
-	roz_tilemap = tilemap_create(prmrsocr_get_roz_tile_info,tilemap_scan_rows,16,16,512,256);
+	roz_tilemap = tilemap_create(machine, prmrsocr_get_roz_tile_info,tilemap_scan_rows,16,16,512,256);
 
 	tilemap_set_transparent_pen(roz_tilemap,0);
 
@@ -322,7 +323,7 @@ WRITE16_HANDLER( tmnt_paletteram_word_w )
 	offset &= ~1;
 
 	data = (paletteram16[offset] << 8) | paletteram16[offset+1];
-	palette_set_color_rgb(machine,offset / 2,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+	palette_set_color_rgb(space->machine,offset / 2,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 }
 
 
@@ -339,12 +340,12 @@ WRITE16_HANDLER( tmnt_0a0000_w )
 
 		/* bit 3 high then low triggers irq on sound CPU */
 		if (last == 0x08 && (data & 0x08) == 0)
-			cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
+			cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
 
 		last = data & 0x08;
 
 		/* bit 5 = irq enable */
-		interrupt_enable_w(machine,0,data & 0x20);
+		interrupt_enable_w(space,0,data & 0x20);
 
 		/* bit 7 = enable char ROM reading through the video RAM */
 		K052109_set_RMRD_line((data & 0x80) ? ASSERT_LINE : CLEAR_LINE);
@@ -365,7 +366,7 @@ WRITE16_HANDLER( punkshot_0a0020_w )
 
 		/* bit 2 = trigger irq on sound CPU */
 		if (last == 0x04 && (data & 0x04) == 0)
-			cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
+			cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
 
 		last = data & 0x04;
 
@@ -387,7 +388,7 @@ WRITE16_HANDLER( lgtnfght_0a0018_w )
 
 		/* bit 2 = trigger irq on sound CPU */
 		if (last == 0x00 && (data & 0x04) == 0x04)
-			cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
+			cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
 
 		last = data & 0x04;
 
@@ -422,15 +423,15 @@ WRITE16_HANDLER( blswhstl_700300_w )
 READ16_HANDLER( glfgreat_rom_r )
 {
 	if (glfgreat_roz_rom_mode)
-		return memory_region(machine, "gfx3")[glfgreat_roz_char_bank * 0x80000 + offset];
+		return memory_region(space->machine, "gfx3")[glfgreat_roz_char_bank * 0x80000 + offset];
 	else if (offset < 0x40000)
 	{
-		UINT8 *usr = memory_region(machine, "user1");
+		UINT8 *usr = memory_region(space->machine, "user1");
 		return usr[offset + 0x80000 + glfgreat_roz_rom_bank * 0x40000] +
 				256 * usr[offset + glfgreat_roz_rom_bank * 0x40000];
 	}
 	else
-		return memory_region(machine, "user1")[((offset & 0x3ffff) >> 2) + 0x100000 + glfgreat_roz_rom_bank * 0x10000];
+		return memory_region(space->machine, "user1")[((offset & 0x3ffff) >> 2) + 0x100000 + glfgreat_roz_rom_bank * 0x10000];
 }
 
 WRITE16_HANDLER( glfgreat_122000_w )
@@ -526,10 +527,10 @@ WRITE16_HANDLER( prmrsocr_122000_w )
 READ16_HANDLER( prmrsocr_rom_r )
 {
 	if(glfgreat_roz_char_bank)
-		return memory_region(machine, "gfx3")[offset];
+		return memory_region(space->machine, "gfx3")[offset];
 	else
 	{
-		UINT8 *usr = memory_region(machine, "user1");
+		UINT8 *usr = memory_region(space->machine, "user1");
 		return 256 * usr[offset] + usr[offset + 0x020000];
 	}
 }
@@ -628,7 +629,7 @@ VIDEO_UPDATE( punkshot )
 
 	sortlayers(sorted_layer,layerpri);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[0]],TILEMAP_DRAW_OPAQUE,1);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[1]],0,2);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[2]],0,4);
@@ -657,8 +658,8 @@ VIDEO_UPDATE( lgtnfght )
 
 	sortlayers(sorted_layer,layerpri);
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,16 * bg_colorbase,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,16 * bg_colorbase);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[0]],0,1);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[1]],0,2);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[2]],0,4);
@@ -702,8 +703,8 @@ VIDEO_UPDATE( glfgreat )
 
 	/* not sure about the 053936 priority, but it seems to work */
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,16 * bg_colorbase,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,16 * bg_colorbase);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[0]],0,1);
 	if (layerpri[0] >= 0x30 && layerpri[1] < 0x30)
 	{
@@ -797,8 +798,8 @@ VIDEO_UPDATE( thndrx2 )
 
 	sortlayers(sorted_layer,layerpri);
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,16 * bg_colorbase,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,16 * bg_colorbase);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[0]],0,1);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[1]],0,2);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[2]],0,4);

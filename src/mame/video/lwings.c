@@ -91,17 +91,17 @@ static TILE_GET_INFO( get_bg2_tile_info )
 
 VIDEO_START( lwings )
 {
-	fg_tilemap  = tilemap_create(get_fg_tile_info,        tilemap_scan_rows, 8, 8,32,32);
-	bg1_tilemap = tilemap_create(lwings_get_bg1_tile_info,tilemap_scan_cols,     16,16,32,32);
+	fg_tilemap  = tilemap_create(machine, get_fg_tile_info,        tilemap_scan_rows, 8, 8,32,32);
+	bg1_tilemap = tilemap_create(machine, lwings_get_bg1_tile_info,tilemap_scan_cols,     16,16,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,3);
 }
 
 VIDEO_START( trojan )
 {
-	fg_tilemap  = tilemap_create(get_fg_tile_info,        tilemap_scan_rows,    8, 8,32,32);
-	bg1_tilemap = tilemap_create(trojan_get_bg1_tile_info,tilemap_scan_cols,         16,16,32,32);
-	bg2_tilemap = tilemap_create(get_bg2_tile_info,       get_bg2_memory_offset,    16,16,32,16);
+	fg_tilemap  = tilemap_create(machine, get_fg_tile_info,        tilemap_scan_rows,    8, 8,32,32);
+	bg1_tilemap = tilemap_create(machine, trojan_get_bg1_tile_info,tilemap_scan_cols,         16,16,32,32);
+	bg2_tilemap = tilemap_create(machine, get_bg2_tile_info,       get_bg2_memory_offset,    16,16,32,16);
 
 		tilemap_set_transparent_pen(fg_tilemap,3);
 		tilemap_set_transmask(bg1_tilemap,0,0xffff,0x0001); /* split type 0 is totally transparent in front half */
@@ -203,7 +203,7 @@ static void lwings_draw_sprites(running_machine *machine, bitmap_t *bitmap, cons
 			flipx = buffered_spriteram[offs + 1] & 0x02;
 			flipy = buffered_spriteram[offs + 1] & 0x04;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 240 - sx;
 				sy = 240 - sy;
@@ -252,7 +252,7 @@ static void trojan_draw_sprites(running_machine *machine, bitmap_t *bitmap, cons
 				flipy = 1;
 			}
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 240 - sx;
 				sy = 240 - sy;
@@ -289,5 +289,7 @@ VIDEO_UPDATE( trojan )
 
 VIDEO_EOF( lwings )
 {
-	buffer_spriteram_w(machine,0,0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram_w(space,0,0);
 }

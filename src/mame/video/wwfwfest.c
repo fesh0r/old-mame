@@ -189,7 +189,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			number = (source[2] & 0x00ff) | (source[3] & 0x00ff) << 8;
 			colourbank = (source[4] & 0x000f);
 
-			if (flip_screen_get()) {
+			if (flip_screen_get(machine)) {
 				if (flipy) flipy=0; else flipy=1;
 				if (flipx) flipx=0; else flipx=1;
 				ypos=240-ypos-sprite_xoff;
@@ -197,7 +197,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			}
 
 			for (count=0;count<chain;count++) {
-				if (flip_screen_get()) {
+				if (flip_screen_get(machine)) {
 					if (!flipy) {
 						drawgfx(bitmap,gfx,number+count,colourbank,flipx,flipy,xpos,ypos+(16*(chain-1))-(16*count),cliprect,TRANSPARENCY_PEN,0);
 					} else {
@@ -224,15 +224,15 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 VIDEO_START( wwfwfest )
 {
-    state_save_register_global(wwfwfest_pri);
-    state_save_register_global(wwfwfest_bg0_scrollx);
-    state_save_register_global(wwfwfest_bg0_scrolly);
-    state_save_register_global(wwfwfest_bg1_scrollx);
-    state_save_register_global(wwfwfest_bg1_scrolly);
+    state_save_register_global(machine, wwfwfest_pri);
+    state_save_register_global(machine, wwfwfest_bg0_scrollx);
+    state_save_register_global(machine, wwfwfest_bg0_scrolly);
+    state_save_register_global(machine, wwfwfest_bg1_scrollx);
+    state_save_register_global(machine, wwfwfest_bg1_scrolly);
 
-	fg0_tilemap = tilemap_create(get_fg0_tile_info,tilemap_scan_rows, 8, 8,64,32);
-	bg1_tilemap = tilemap_create(get_bg1_tile_info,tilemap_scan_rows, 16, 16,32,32);
-	bg0_tilemap = tilemap_create(get_bg0_tile_info,tilemap_scan_rows, 16, 16,32,32);
+	fg0_tilemap = tilemap_create(machine, get_fg0_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	bg1_tilemap = tilemap_create(machine, get_bg1_tile_info,tilemap_scan_rows, 16, 16,32,32);
+	bg0_tilemap = tilemap_create(machine, get_bg0_tile_info,tilemap_scan_rows, 16, 16,32,32);
 
 	tilemap_set_transparent_pen(fg0_tilemap,0);
 	tilemap_set_transparent_pen(bg1_tilemap,0);

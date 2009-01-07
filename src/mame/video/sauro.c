@@ -78,7 +78,7 @@ WRITE8_HANDLER( sauro_palette_bank_w )
 
 WRITE8_HANDLER( sauro_scroll_fg_w )
 {
-	const int *map = (flip_screen_get() ? scroll2_map_flip : scroll2_map);
+	const int *map = (flip_screen_get(space->machine) ? scroll2_map_flip : scroll2_map);
 	int scroll = (data & 0xf8) | map[data & 7];
 
 	tilemap_set_scrollx(fg_tilemap, 0, scroll);
@@ -86,10 +86,10 @@ WRITE8_HANDLER( sauro_scroll_fg_w )
 
 VIDEO_START( sauro )
 {
-	bg_tilemap = tilemap_create(get_tile_info_bg, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_tile_info_bg, tilemap_scan_cols,
 		 8, 8, 32, 32);
 
-	fg_tilemap = tilemap_create(get_tile_info_fg, tilemap_scan_cols,
+	fg_tilemap = tilemap_create(machine, get_tile_info_fg, tilemap_scan_cols,
 		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
@@ -126,7 +126,7 @@ static void sauro_draw_sprites(running_machine *machine, bitmap_t *bitmap, const
 
 		flipx = spriteram[offs+3] & 0x04;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			flipx = !flipx;
 			sx = (235 - sx) & 0xff;  // The &0xff is not 100% percent correct
@@ -136,7 +136,7 @@ static void sauro_draw_sprites(running_machine *machine, bitmap_t *bitmap, const
 		drawgfx(bitmap, machine->gfx[2],
 				code,
 				color,
-				flipx,flip_screen_get(),
+				flipx,flip_screen_get(machine),
 				sx,sy,
 				cliprect,TRANSPARENCY_PEN,0);
 	}
@@ -159,7 +159,7 @@ WRITE8_HANDLER ( trckydoc_spriteram_mirror_w )
 
 VIDEO_START( trckydoc )
 {
-	bg_tilemap = tilemap_create(get_tile_info_bg, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_tile_info_bg, tilemap_scan_cols,
 		 8, 8, 32, 32);
 }
 
@@ -201,7 +201,7 @@ static void trckydoc_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 
 		flipx = spriteram[offs+3] & 0x04;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			flipx = !flipx;
 			sx = (235 - sx) & 0xff;  /* The &0xff is not 100% percent correct */
@@ -211,7 +211,7 @@ static void trckydoc_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 		drawgfx(bitmap, machine->gfx[1],
 				code,
 				color,
-				flipx,flip_screen_get(),
+				flipx,flip_screen_get(machine),
 				sx,sy,
 				cliprect,TRANSPARENCY_PEN,0);
 	}

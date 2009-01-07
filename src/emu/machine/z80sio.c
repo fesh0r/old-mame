@@ -8,7 +8,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "z80sio.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
@@ -19,7 +18,7 @@
     DEBUGGING
 ***************************************************************************/
 
-#define VERBOSE		1
+#define VERBOSE		0
 
 #define VPRINTF(x) do { if (VERBOSE) logerror x; } while (0)
 
@@ -179,7 +178,6 @@ struct _z80sio
 {
 	sio_channel	chan[2];			/* 2 channels */
 	UINT8		int_state[8];		/* interrupt states */
-	UINT32		clock;				/* clock value */
 
 	void (*irq_cb)(const device_config *device, int state);
 	write8_device_func dtr_changed_cb;
@@ -341,7 +339,7 @@ WRITE8_DEVICE_HANDLER( z80sio_c_w )
 	UINT8 old = chan->regs[reg];
 
 	if (reg != 0 || (reg & 0xf8))
-		VPRINTF(("%04X:sio_reg_w(%c,%d) = %02X\n", activecpu_get_pc(), 'A' + ch, reg, data));
+		VPRINTF(("%s:sio_reg_w(%c,%d) = %02X\n", cpuexec_describe_context(device->machine), 'A' + ch, reg, data));
 
 	/* write a new value to the selected register */
 	chan->regs[reg] = data;
@@ -358,7 +356,7 @@ WRITE8_DEVICE_HANDLER( z80sio_c_w )
 			switch (data & SIO_WR0_COMMAND_MASK)
 			{
 				case SIO_WR0_COMMAND_CH_RESET:
-					VPRINTF(("%04X:SIO reset channel %c\n", activecpu_get_pc(), 'A' + ch));
+					VPRINTF(("%s:SIO reset channel %c\n", cpuexec_describe_context(device->machine), 'A' + ch));
 					reset_channel(device, ch);
 					break;
 
@@ -425,7 +423,7 @@ READ8_DEVICE_HANDLER( z80sio_c_r )
 			break;
 	}
 
-	VPRINTF(("%04X:sio_reg_r(%c,%d) = %02x\n", activecpu_get_pc(), 'A' + ch, reg, chan->status[reg]));
+	VPRINTF(("%s:sio_reg_r(%c,%d) = %02x\n", cpuexec_describe_context(device->machine), 'A' + ch, reg, chan->status[reg]));
 
 	return chan->status[reg];
 }
@@ -447,7 +445,7 @@ WRITE8_DEVICE_HANDLER( z80sio_d_w )
 	int ch = offset & 1;
 	sio_channel *chan = &sio->chan[ch];
 
-	VPRINTF(("%04X:sio_data_w(%c) = %02X\n", activecpu_get_pc(), 'A' + ch, data));
+	VPRINTF(("%s:sio_data_w(%c) = %02X\n", cpuexec_describe_context(device->machine), 'A' + ch, data));
 
 	/* if tx not enabled, just ignore it */
 	if (!(chan->regs[5] & SIO_WR5_TX_ENABLE))
@@ -482,7 +480,7 @@ READ8_DEVICE_HANDLER( z80sio_d_r )
 	sio->int_state[INT_CHA_RECEIVE - 4*ch] &= ~Z80_DAISY_INT;
 	interrupt_check(device);
 
-	VPRINTF(("%04X:sio_data_r(%c) = %02X\n", activecpu_get_pc(), 'A' + ch, chan->inbuf));
+	VPRINTF(("%s:sio_data_r(%c) = %02X\n", cpuexec_describe_context(device->machine), 'A' + ch, chan->inbuf));
 
 	return chan->inbuf;
 }
@@ -562,7 +560,7 @@ WRITE8_DEVICE_HANDLER( z80sio_set_cts )
 {
 	/* operate deferred */
 	void *ptr = (void *)device;
-	timer_call_after_resynch(ptr, (SIO_RR0_CTS << 8) + (data != 0) * 0x80 + (offset & 1), change_input_line);
+	timer_call_after_resynch(device->machine, ptr, (SIO_RR0_CTS << 8) + (data != 0) * 0x80 + (offset & 1), change_input_line);
 }
 
 
@@ -575,7 +573,7 @@ WRITE8_DEVICE_HANDLER( z80sio_set_dcd )
 {
 	/* operate deferred */
 	void *ptr = (void *)device;
-	timer_call_after_resynch(ptr, (SIO_RR0_DCD << 8) + (data != 0) * 0x80 + (offset & 1), change_input_line);
+	timer_call_after_resynch(device->machine, ptr, (SIO_RR0_DCD << 8) + (data != 0) * 0x80 + (offset & 1), change_input_line);
 }
 
 
@@ -788,21 +786,9 @@ static DEVICE_START( z80sio )
 	astring *tempstring = astring_alloc();
 	z80sio *sio = get_safe_token(device);
 	void *ptr = (void *)device;
-	int cpunum = -1;
 
-	if (intf->cpu != NULL)
-	{
-		cpunum = mame_find_cpu_index(device->machine, device_inherit_tag(tempstring, device->tag, intf->cpu));
-		if (cpunum == -1)
-			fatalerror("Z80SIO:Unable to find CPU %s\n", device_inherit_tag(tempstring, device->tag, intf->cpu));
-	}
-	if (cpunum != -1)
-		sio->clock = device->machine->config->cpu[cpunum].clock;
-	else
-		sio->clock = intf->baseclock;
-
-	sio->chan[0].receive_timer = timer_alloc(serial_callback, ptr);
-	sio->chan[1].receive_timer = timer_alloc(serial_callback, ptr);
+	sio->chan[0].receive_timer = timer_alloc(device->machine, serial_callback, ptr);
+	sio->chan[1].receive_timer = timer_alloc(device->machine, serial_callback, ptr);
 
 	sio->irq_cb = intf->irq_cb;
 	sio->dtr_changed_cb = intf->dtr_changed_cb;
@@ -854,11 +840,11 @@ DEVICE_GET_INFO( z80sio )
 		case DEVINFO_FCT_IRQ_RETI:						info->f = (genf *)z80sio_irq_reti;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Zilog Z80 SIO";				break;
-		case DEVINFO_STR_FAMILY:						info->s = "Z80";						break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";						break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;						break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Zilog Z80 SIO");		break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Z80");					break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");					break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);				break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

@@ -55,7 +55,7 @@ static NVRAM_HANDLER( xorworld )
 	}
 	else
 	{
-		eeprom_init(&eeprom_interface_93C46);
+		eeprom_init(machine, &eeprom_interface_93C46);
 
 		if (file)
 		{
@@ -188,13 +188,13 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( xorworld_interrupt )
 {
-	if (cpu_getiloops() == 0)
+	if (cpu_getiloops(device) == 0)
 	{
-		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
+		cpu_set_input_line(device, 2, HOLD_LINE);
 	}
-	else if (cpu_getiloops() % 2)
+	else if (cpu_getiloops(device) % 2)
 	{
-		cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
+		cpu_set_input_line(device, 6, HOLD_LINE);
 	}
 }
 
@@ -205,7 +205,7 @@ static MACHINE_DRIVER_START( xorworld )
 	MDRV_CPU_PROGRAM_MAP(xorworld_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(xorworld_interrupt, 4)	// 1 IRQ2 + 1 IRQ4 + 1 IRQ6
 
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_NVRAM_HANDLER(xorworld)
 

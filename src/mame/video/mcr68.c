@@ -63,7 +63,7 @@ static TILE_GET_INFO( zwackery_get_fg_tile_info )
 VIDEO_START( mcr68 )
 {
 	/* initialize the background tilemap */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,  16,16, 32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,  16,16, 32,32);
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 }
 
@@ -76,10 +76,10 @@ VIDEO_START( zwackery )
 	int code, y, x;
 
 	/* initialize the background tilemap */
-	bg_tilemap = tilemap_create(zwackery_get_bg_tile_info, tilemap_scan_rows,  16,16, 32,32);
+	bg_tilemap = tilemap_create(machine, zwackery_get_bg_tile_info, tilemap_scan_rows,  16,16, 32,32);
 
 	/* initialize the foreground tilemap */
-	fg_tilemap = tilemap_create(zwackery_get_fg_tile_info, tilemap_scan_rows,  16,16, 32,32);
+	fg_tilemap = tilemap_create(machine, zwackery_get_fg_tile_info, tilemap_scan_rows,  16,16, 32,32);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 
 	/* "colorize" each code */
@@ -133,7 +133,7 @@ WRITE16_HANDLER( mcr68_paletteram_w )
 
 	COMBINE_DATA(&paletteram16[offset]);
 	newword = paletteram16[offset];
-	palette_set_color_rgb(machine, offset, pal3bit(newword >> 6), pal3bit(newword >> 0), pal3bit(newword >> 3));
+	palette_set_color_rgb(space->machine, offset, pal3bit(newword >> 6), pal3bit(newword >> 0), pal3bit(newword >> 3));
 }
 
 
@@ -143,7 +143,7 @@ WRITE16_HANDLER( zwackery_paletteram_w )
 
 	COMBINE_DATA(&paletteram16[offset]);
 	newword = paletteram16[offset];
-	palette_set_color_rgb(machine, offset, pal5bit(~newword >> 10), pal5bit(~newword >> 0), pal5bit(~newword >> 5));
+	palette_set_color_rgb(space->machine, offset, pal5bit(~newword >> 10), pal5bit(~newword >> 0), pal5bit(~newword >> 5));
 }
 
 
@@ -195,7 +195,7 @@ static void mcr68_update_sprites(running_machine *machine, bitmap_t *bitmap, con
 	sprite_clip.max_x -= mcr68_sprite_clip;
 	sect_rect(&sprite_clip, cliprect);
 
-	fillbitmap(priority_bitmap,1,&sprite_clip);
+	bitmap_fill(priority_bitmap,&sprite_clip,1);
 
 	/* loop over sprite RAM */
 	for (offs = spriteram_size / 2 - 4;offs >= 0;offs -= 4)
@@ -241,7 +241,7 @@ static void zwackery_update_sprites(running_machine *machine, bitmap_t *bitmap, 
 {
 	int offs;
 
-	fillbitmap(priority_bitmap,1,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,1);
 
 	/* loop over sprite RAM */
 	for (offs = spriteram_size / 2 - 4;offs >= 0;offs -= 4)

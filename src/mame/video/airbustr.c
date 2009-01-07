@@ -86,7 +86,7 @@ WRITE8_HANDLER( airbustr_scrollregs_w )
 		case 0x06:	bg_scrollx =  data;	break;
 		case 0x08:	highbits   = ~data;	break;	// complemented high bits
 
-		default:	logerror("CPU #2 - port %02X written with %02X - PC = %04X\n", offset, data, activecpu_get_pc());
+		default:	logerror("CPU #2 - port %02X written with %02X - PC = %04X\n", offset, data, cpu_get_pc(space->cpu));
 	}
 
 	tilemap_set_scrolly(bg_tilemap, 0, ((highbits << 5) & 0x100) + bg_scrolly);
@@ -115,8 +115,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( airbustr )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
 
 	sprites_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 	tilemap_set_transparent_pen(fg_tilemap, 0);

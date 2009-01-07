@@ -639,10 +639,10 @@ VIDEO_START( f3 )
 	f3_game_config=pCFG;
 
 	if (f3_game_config->extend) {
-		pf1_tilemap = tilemap_create(get_tile_info1,tilemap_scan_rows,16,16,64,32);
-		pf2_tilemap = tilemap_create(get_tile_info2,tilemap_scan_rows,16,16,64,32);
-		pf3_tilemap = tilemap_create(get_tile_info3,tilemap_scan_rows,16,16,64,32);
-		pf4_tilemap = tilemap_create(get_tile_info4,tilemap_scan_rows,16,16,64,32);
+		pf1_tilemap = tilemap_create(machine, get_tile_info1,tilemap_scan_rows,16,16,64,32);
+		pf2_tilemap = tilemap_create(machine, get_tile_info2,tilemap_scan_rows,16,16,64,32);
+		pf3_tilemap = tilemap_create(machine, get_tile_info3,tilemap_scan_rows,16,16,64,32);
+		pf4_tilemap = tilemap_create(machine, get_tile_info4,tilemap_scan_rows,16,16,64,32);
 
 		f3_pf_data_1=f3_pf_data+0x0000;
 		f3_pf_data_2=f3_pf_data+0x0800;
@@ -654,10 +654,10 @@ VIDEO_START( f3 )
 		twidth_mask_bit=6;
 
 	} else {
-		pf1_tilemap = tilemap_create(get_tile_info1,tilemap_scan_rows,16,16,32,32);
-		pf2_tilemap = tilemap_create(get_tile_info2,tilemap_scan_rows,16,16,32,32);
-		pf3_tilemap = tilemap_create(get_tile_info3,tilemap_scan_rows,16,16,32,32);
-		pf4_tilemap = tilemap_create(get_tile_info4,tilemap_scan_rows,16,16,32,32);
+		pf1_tilemap = tilemap_create(machine, get_tile_info1,tilemap_scan_rows,16,16,32,32);
+		pf2_tilemap = tilemap_create(machine, get_tile_info2,tilemap_scan_rows,16,16,32,32);
+		pf3_tilemap = tilemap_create(machine, get_tile_info3,tilemap_scan_rows,16,16,32,32);
+		pf4_tilemap = tilemap_create(machine, get_tile_info4,tilemap_scan_rows,16,16,32,32);
 
 		f3_pf_data_1=f3_pf_data+0x0000;
 		f3_pf_data_2=f3_pf_data+0x0400;
@@ -672,8 +672,8 @@ VIDEO_START( f3 )
 	spriteram32_buffered = (UINT32 *)auto_malloc(0x10000);
 	spritelist = auto_malloc(0x400 * sizeof(*spritelist));
 	sprite_end = spritelist;
-	vram_layer = tilemap_create(get_tile_info_vram,tilemap_scan_rows,8,8,64,64);
-	pixel_layer = tilemap_create(get_tile_info_pixel,tilemap_scan_cols,8,8,64,32);
+	vram_layer = tilemap_create(machine, get_tile_info_vram,tilemap_scan_rows,8,8,64,64);
+	pixel_layer = tilemap_create(machine, get_tile_info_pixel,tilemap_scan_cols,8,8,64,32);
 	pivot_dirty = (UINT8 *)auto_malloc(2048);
 	pf_line_inf = auto_malloc(5 * sizeof(struct f3_playfield_line_inf));
 	sa_line_inf = auto_malloc(1 * sizeof(struct f3_spritealpha_line_inf));
@@ -700,8 +700,8 @@ VIDEO_START( f3 )
 	memset(spriteram32_buffered,0,spriteram_size);
 	memset(spriteram32,0,spriteram_size);
 
-	state_save_register_global_array(f3_control_0);
-	state_save_register_global_array(f3_control_1);
+	state_save_register_global_array(machine, f3_control_0);
+	state_save_register_global_array(machine, f3_control_1);
 
 	for (tile = 0;tile < 256;tile++)
 		vram_dirty[tile]=1;
@@ -896,7 +896,7 @@ WRITE32_HANDLER( f3_palette_24bit_w )
 		b = (paletteram32[offset] >> 0) & 0xff;
 	}
 
-	palette_set_color(machine,offset,MAKE_RGB(r,g,b));
+	palette_set_color(space->machine,offset,MAKE_RGB(r,g,b));
 }
 
 /******************************************************************************/
@@ -2410,6 +2410,9 @@ static void scanline_draw(running_machine *machine, bitmap_t *bitmap, const rect
 				{
 					if(alpha_type==1)
 					{
+						/* if (f3_alpha_level_2as==0   && f3_alpha_level_2ad==255)
+                         *     alpha_mode[i]=3; alpha_mode_flag[i] |= 0x80;}
+                         * will display continue screen in gseeker (mt 00026) */
 						if     (f3_alpha_level_2as==0   && f3_alpha_level_2ad==255) alpha_mode[i]=0;
 						else if(f3_alpha_level_2as==255 && f3_alpha_level_2ad==0  ) alpha_mode[i]=1;
 					}
@@ -3301,7 +3304,7 @@ VIDEO_UPDATE( f3 )
 		sy_fix[4]=-sy_fix[4];
 	}
 
-	fillbitmap(pri_alp_bitmap,0,cliprect);
+	bitmap_fill(pri_alp_bitmap,cliprect,0);
 
 	/* sprites */
 	if (sprite_lag==0)

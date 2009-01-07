@@ -5,9 +5,8 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "streams.h"
-#include "sound/custom.h"
+#include "includes/flower.h"
 
 
 /* 8 voices max */
@@ -78,7 +77,7 @@ static int make_mixer_table(int voices, int gain)
 
 
 /* generate sound to the mix buffer in mono */
-static void flower_update_mono(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length)
+static STREAM_UPDATE( flower_update_mono )
 {
 	stream_sample_t *buffer = outputs[0];
 	sound_channel *voice;
@@ -88,12 +87,12 @@ static void flower_update_mono(void *param, stream_sample_t **inputs, stream_sam
 	/* if no sound, we're done */
 	if (sound_enable == 0)
 	{
-		memset(buffer, 0, length * sizeof(*buffer));
+		memset(buffer, 0, samples * sizeof(*buffer));
 		return;
 	}
 
 	/* zap the contents of the mixer buffer */
-	memset(mixer_buffer, 0, length * sizeof(short));
+	memset(mixer_buffer, 0, samples * sizeof(short));
 
 	/* loop over each voice and add its contribution */
 	for (voice = channel_list; voice < last_channel; voice++)
@@ -110,7 +109,7 @@ static void flower_update_mono(void *param, stream_sample_t **inputs, stream_sam
 			mix = mixer_buffer;
 
 			/* add our contribution */
-			for (i = 0; i < length; i++)
+			for (i = 0; i < samples; i++)
 			{
 				int offs;
 
@@ -149,19 +148,20 @@ static void flower_update_mono(void *param, stream_sample_t **inputs, stream_sam
 
 	/* mix it down */
 	mix = mixer_buffer;
-	for (i = 0; i < length; i++)
+	for (i = 0; i < samples; i++)
 		*buffer++ = mixer_lookup[*mix++];
 }
 
 
 
-void * flower_sh_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( flower_sh_start )
 {
+	running_machine *machine = device->machine;
 	sound_channel *voice;
 	int i;
 
 	/* get stream channels */
-	stream = stream_create(0, 1, samplerate, 0, flower_update_mono);
+	stream = stream_create(device, 0, 1, samplerate, 0, flower_update_mono);
 
 	/* allocate a pair of buffers to mix into - 1 second's worth should be more than enough */
 	mixer_buffer = auto_malloc(2 * sizeof(short) * samplerate);
@@ -175,15 +175,15 @@ void * flower_sh_start(int clock, const custom_sound_interface *config)
 	num_voices = 8;
 	last_channel = channel_list + num_voices;
 
-	sound_rom1 = memory_region(Machine, "sound1");
-	sound_rom2 = memory_region(Machine, "sound2");
+	sound_rom1 = memory_region(machine, "sound1");
+	sound_rom2 = memory_region(machine, "sound2");
 
 	/* start with sound enabled, many games don't have a sound enable register */
 	sound_enable = 1;
 
 	/* save globals */
-	state_save_register_item("flower_custom", 0, num_voices);
-	state_save_register_item("flower_custom", 0, sound_enable);
+	state_save_register_item(machine, "flower_custom", NULL, 0, num_voices);
+	state_save_register_item(machine, "flower_custom", NULL, 0, sound_enable);
 
 	/* reset all the voices */
 	for (i = 0; i < num_voices; i++)
@@ -195,12 +195,12 @@ void * flower_sh_start(int clock, const custom_sound_interface *config)
 		voice->counter = 0;
 		voice->rom_offset = 0;
 
-		state_save_register_item("flower_custom", i+1, voice->frequency);
-		state_save_register_item("flower_custom", i+1, voice->counter);
-		state_save_register_item("flower_custom", i+1, voice->volume);
-		state_save_register_item("flower_custom", i+1, voice->oneshot);
-		state_save_register_item("flower_custom", i+1, voice->oneshotplaying);
-		state_save_register_item("flower_custom", i+1, voice->rom_offset);
+		state_save_register_item(machine, "flower_custom", NULL, i+1, voice->frequency);
+		state_save_register_item(machine, "flower_custom", NULL, i+1, voice->counter);
+		state_save_register_item(machine, "flower_custom", NULL, i+1, voice->volume);
+		state_save_register_item(machine, "flower_custom", NULL, i+1, voice->oneshot);
+		state_save_register_item(machine, "flower_custom", NULL, i+1, voice->oneshotplaying);
+		state_save_register_item(machine, "flower_custom", NULL, i+1, voice->rom_offset);
 	}
 
 	return auto_malloc(1);

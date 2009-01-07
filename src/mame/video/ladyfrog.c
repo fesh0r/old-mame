@@ -53,9 +53,9 @@ READ8_HANDLER( ladyfrog_videoram_r )
 WRITE8_HANDLER( ladyfrog_palette_w )
 {
 	if (offset & 0x100)
-		paletteram_xxxxBBBBGGGGRRRR_split2_w(machine, (offset & 0xff) + (palette_bank << 8),data);
+		paletteram_xxxxBBBBGGGGRRRR_split2_w(space, (offset & 0xff) + (palette_bank << 8),data);
 	else
-		paletteram_xxxxBBBBGGGGRRRR_split1_w(machine, (offset & 0xff) + (palette_bank << 8),data);
+		paletteram_xxxxBBBBGGGGRRRR_split1_w(space, (offset & 0xff) + (palette_bank << 8),data);
 }
 
 READ8_HANDLER( ladyfrog_palette_r )
@@ -137,7 +137,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 VIDEO_START( ladyfrog )
 {
   ladyfrog_spriteram = auto_malloc (160);
-  bg_tilemap = tilemap_create( get_tile_info,tilemap_scan_rows,8,8,32,32 );
+  bg_tilemap = tilemap_create( machine, get_tile_info,tilemap_scan_rows,8,8,32,32 );
 
   paletteram = auto_malloc(0x200);
   paletteram_2 = auto_malloc(0x200);

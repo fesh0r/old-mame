@@ -5,7 +5,6 @@
 *************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "vertigo.h"
 #include "exidy440.h"
 #include "machine/74148.h"
@@ -21,7 +20,7 @@
 
 static PIT8253_OUTPUT_CHANGED( v_irq4_w );
 static PIT8253_OUTPUT_CHANGED( v_irq3_w );
-static void update_irq(void);
+static void update_irq(running_machine *machine);
 
 
 
@@ -75,39 +74,39 @@ static const struct TTL74148_interface irq_encoder =
  *
  *************************************/
 
-static void update_irq(void)
+static void update_irq(running_machine *machine)
 {
 	if (irq_state < 7)
-		cpunum_set_input_line(Machine, 0, irq_state ^ 7, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], irq_state ^ 7, CLEAR_LINE);
 
 	irq_state = TTL74148_output_r(0);
 
 	if (irq_state < 7)
-		cpunum_set_input_line(Machine, 0, irq_state ^ 7, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], irq_state ^ 7, ASSERT_LINE);
 }
 
 
-static void update_irq_encoder(int line, int state)
+static void update_irq_encoder(running_machine *machine, int line, int state)
 {
 	TTL74148_input_line_w(0, line, !state);
-	TTL74148_update(0);
+	TTL74148_update(machine, 0);
 }
 
 
 static PIT8253_OUTPUT_CHANGED( v_irq4_w )
 {
-	update_irq_encoder(INPUT_LINE_IRQ4, state);
-	vertigo_vproc(ATTOTIME_TO_CYCLES(0, attotime_sub(timer_get_time(), irq4_time)), state);
-	irq4_time = timer_get_time();
+	update_irq_encoder(device->machine, INPUT_LINE_IRQ4, state);
+	vertigo_vproc(cpu_attotime_to_clocks(device->machine->cpu[0], attotime_sub(timer_get_time(device->machine), irq4_time)), state);
+	irq4_time = timer_get_time(device->machine);
 }
 
 
 static PIT8253_OUTPUT_CHANGED( v_irq3_w )
 {
 	if (state)
-		cpunum_set_input_line(device->machine, 1, INPUT_LINE_IRQ0, ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_IRQ0, ASSERT_LINE);
 
-	update_irq_encoder(INPUT_LINE_IRQ3, state);
+	update_irq_encoder(device->machine, INPUT_LINE_IRQ3, state);
 }
 
 
@@ -125,32 +124,32 @@ READ16_HANDLER( vertigo_io_convert )
 	if (offset > 2)
 		adc_result = 0;
 	else
-		adc_result = input_port_read(machine, adcnames[offset]);
+		adc_result = input_port_read(space->machine, adcnames[offset]);
 
-	update_irq_encoder(INPUT_LINE_IRQ2, ASSERT_LINE);
+	update_irq_encoder(space->machine, INPUT_LINE_IRQ2, ASSERT_LINE);
 	return 0;
 }
 
 
 READ16_HANDLER( vertigo_io_adc )
 {
-	update_irq_encoder(INPUT_LINE_IRQ2, CLEAR_LINE);
+	update_irq_encoder(space->machine, INPUT_LINE_IRQ2, CLEAR_LINE);
 	return adc_result;
 }
 
 
 READ16_HANDLER( vertigo_coin_r )
 {
-	update_irq_encoder(INPUT_LINE_IRQ6, CLEAR_LINE);
-	return (input_port_read(machine, "COIN"));
+	update_irq_encoder(space->machine, INPUT_LINE_IRQ6, CLEAR_LINE);
+	return (input_port_read(space->machine, "COIN"));
 }
 
 
 INTERRUPT_GEN( vertigo_interrupt )
 {
 	/* Coin inputs cause IRQ6 */
-	if ((input_port_read(machine, "COIN") & 0x7) < 0x7)
-		update_irq_encoder(INPUT_LINE_IRQ6, ASSERT_LINE);
+	if ((input_port_read(device->machine, "COIN") & 0x7) < 0x7)
+		update_irq_encoder(device->machine, INPUT_LINE_IRQ6, ASSERT_LINE);
 }
 
 
@@ -165,9 +164,9 @@ WRITE16_HANDLER( vertigo_wsot_w )
 {
 	/* Reset sound cpu */
 	if ((data & 2) == 0)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 	else
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 
@@ -175,20 +174,20 @@ static TIMER_CALLBACK( sound_command_w )
 {
 	exidy440_sound_command = param;
 	exidy440_sound_command_ack = 0;
-	cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ1, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_IRQ1, ASSERT_LINE);
 
 	/* It is important that the sound cpu ACKs the sound command
        quickly. Otherwise the main CPU gives up with sound. Boosting
        the interleave for a while helps. */
 
-	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
+	cpuexec_boost_interleave(machine, attotime_zero, ATTOTIME_IN_USEC(100));
 }
 
 
 WRITE16_HANDLER( vertigo_audio_w )
 {
 	if (ACCESSING_BITS_0_7)
-		timer_call_after_resynch(NULL, data & 0xff, sound_command_w);
+		timer_call_after_resynch(space->machine, NULL, data & 0xff, sound_command_w);
 }
 
 
@@ -212,22 +211,22 @@ MACHINE_RESET( vertigo )
 {
 	int i;
 
-	TTL74148_config(0, &irq_encoder);
+	TTL74148_config(machine, 0, &irq_encoder);
 	TTL74148_enable_input_w(0, 0);
 
 	for (i = 0; i < 8; i++)
 		TTL74148_input_line_w(0, i, 1);
 
-	TTL74148_update(0);
+	TTL74148_update(machine, 0);
 	vertigo_vproc_init(machine);
 
-	irq4_time = timer_get_time();
+	irq4_time = timer_get_time(machine);
 	irq_state = 7;
 
-	state_save_register_global(irq_state);
-	state_save_register_global(adc_result);
-	state_save_register_global(irq4_time.seconds);
-	state_save_register_global(irq4_time.attoseconds);
+	state_save_register_global(machine, irq_state);
+	state_save_register_global(machine, adc_result);
+	state_save_register_global(machine, irq4_time.seconds);
+	state_save_register_global(machine, irq4_time.attoseconds);
 }
 
 

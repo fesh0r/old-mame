@@ -80,9 +80,9 @@ WRITE8_HANDLER( mrjong_colorram_w )
 
 WRITE8_HANDLER( mrjong_flipscreen_w )
 {
-	if (flip_screen_get() != (data & 0x01))
+	if (flip_screen_get(space->machine) != (data & 0x01))
 	{
-		flip_screen_set(data & 0x01);
+		flip_screen_set(space->machine, data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
@@ -98,7 +98,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( mrjong )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows_flip_xy, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows_flip_xy, 8, 8, 32, 32);
 }
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
@@ -119,7 +119,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 		sx = 224 - spriteram[offs + 2];
 		sy = spriteram[offs + 0];
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 208 - sx;
 			sy = 240 - sy;

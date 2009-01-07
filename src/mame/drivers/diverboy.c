@@ -47,6 +47,8 @@
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 
 extern UINT16 *diverboy_spriteram;
@@ -60,8 +62,8 @@ static WRITE16_HANDLER( soundcmd_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,0,data & 0xff);
-		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
+		soundlatch_w(space,0,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
 	}
 }
 

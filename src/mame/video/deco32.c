@@ -156,7 +156,7 @@ WRITE32_HANDLER( deco32_nonbuffered_palette_w )
 	g = (paletteram32[offset] >> 8) & 0xff;
 	r = (paletteram32[offset] >> 0) & 0xff;
 
-	palette_set_color(machine,offset,MAKE_RGB(r,g,b));
+	palette_set_color(space->machine,offset,MAKE_RGB(r,g,b));
 }
 
 WRITE32_HANDLER( deco32_buffered_palette_w )
@@ -167,7 +167,7 @@ WRITE32_HANDLER( deco32_buffered_palette_w )
 
 WRITE32_HANDLER( deco32_palette_dma_w )
 {
-	const int m=machine->config->total_colors;
+	const int m=space->machine->config->total_colors;
 	int r,g,b,i;
 
 	for (i=0; i<m; i++) {
@@ -184,7 +184,7 @@ WRITE32_HANDLER( deco32_palette_dma_w )
 				g = (paletteram32[i] >> 8) & 0xff;
 				r = (paletteram32[i] >> 0) & 0xff;
 
-				palette_set_color(machine,i,MAKE_RGB(r,g,b));
+				palette_set_color(space->machine,i,MAKE_RGB(r,g,b));
 			}
 		}
 	}
@@ -240,7 +240,7 @@ static void captaven_draw_sprites(running_machine* machine, bitmap_t *bitmap, co
 		fx = !(spritedata[offs+0]&0x4000);
 		fy = !(spritedata[offs+0]&0x8000);
 
-		if (!flip_screen_get()) {
+		if (!flip_screen_get(machine)) {
 			sx = sx & 0x01ff;
 			sy = sy & 0x01ff;
 			if (sx>0x180) sx=-(0x200 - sx);
@@ -951,10 +951,10 @@ static TILE_GET_INFO( get_ll_pf4_tile_info )
 
 VIDEO_START( captaven )
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info,    tilemap_scan_rows, 8, 8,64,32);
-	pf1a_tilemap =tilemap_create(get_pf1a_tile_info,   deco16_scan_rows,16,16,64,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,    deco16_scan_rows,16,16,64,32);
-	pf3_tilemap = tilemap_create(get_ca_pf3_tile_info, tilemap_scan_rows,16,16,32,32);
+	pf1_tilemap = tilemap_create(machine, get_pf1_tile_info,    tilemap_scan_rows, 8, 8,64,32);
+	pf1a_tilemap =tilemap_create(machine, get_pf1a_tile_info,   deco16_scan_rows,16,16,64,32);
+	pf2_tilemap = tilemap_create(machine, get_pf2_tile_info,    deco16_scan_rows,16,16,64,32);
+	pf3_tilemap = tilemap_create(machine, get_ca_pf3_tile_info, tilemap_scan_rows,16,16,32,32);
 	deco32_raster_display_list=auto_malloc(10 * 256);
 	memset(deco32_raster_display_list, 0, 10 * 256);
 
@@ -970,10 +970,10 @@ VIDEO_START( captaven )
 
 VIDEO_START( fghthist )
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info, tilemap_scan_rows, 8, 8,64,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info, deco16_scan_rows,16,16,64,32);
-	pf3_tilemap = tilemap_create(get_pf3_tile_info, deco16_scan_rows,16,16,64,32);
-	pf4_tilemap = tilemap_create(get_pf4_tile_info, deco16_scan_rows,     16,16,64,32);
+	pf1_tilemap = tilemap_create(machine, get_pf1_tile_info, tilemap_scan_rows, 8, 8,64,32);
+	pf2_tilemap = tilemap_create(machine, get_pf2_tile_info, deco16_scan_rows,16,16,64,32);
+	pf3_tilemap = tilemap_create(machine, get_pf3_tile_info, deco16_scan_rows,16,16,64,32);
+	pf4_tilemap = tilemap_create(machine, get_pf4_tile_info, deco16_scan_rows,     16,16,64,32);
 	pf1a_tilemap =0;
 	dirty_palette = auto_malloc(4096);
 
@@ -990,11 +990,11 @@ VIDEO_START( fghthist )
 
 VIDEO_START( dragngun )
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info,    tilemap_scan_rows, 8, 8,64,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,    deco16_scan_rows,16,16,64,32);
-	pf3_tilemap = tilemap_create(get_ll_pf3_tile_info, deco16_scan_rows,16,16,64,32);
-	pf4_tilemap = tilemap_create(get_ll_pf4_tile_info, deco16_scan_rows,     16,16,64,32);
-	pf1a_tilemap =tilemap_create(get_pf1a_tile_info,   deco16_scan_rows,16,16,64,32);
+	pf1_tilemap = tilemap_create(machine, get_pf1_tile_info,    tilemap_scan_rows, 8, 8,64,32);
+	pf2_tilemap = tilemap_create(machine, get_pf2_tile_info,    deco16_scan_rows,16,16,64,32);
+	pf3_tilemap = tilemap_create(machine, get_ll_pf3_tile_info, deco16_scan_rows,16,16,64,32);
+	pf4_tilemap = tilemap_create(machine, get_ll_pf4_tile_info, deco16_scan_rows,     16,16,64,32);
+	pf1a_tilemap =tilemap_create(machine, get_pf1a_tile_info,   deco16_scan_rows,16,16,64,32);
 	dirty_palette = auto_malloc(4096);
 	deco32_raster_display_list = auto_malloc(10 * 256);
 
@@ -1007,17 +1007,17 @@ VIDEO_START( dragngun )
 	deco32_pf2_colourbank=deco32_pf4_colourbank=0;
 
 	alpha_set_level(0x80);
-	state_save_register_global(dragngun_sprite_ctrl);
+	state_save_register_global(machine, dragngun_sprite_ctrl);
 	has_ace_ram=0;
 }
 
 VIDEO_START( lockload )
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info,    tilemap_scan_rows, 8, 8,64,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,    deco16_scan_rows,16,16,64,32);
-	pf3_tilemap = tilemap_create(get_ll_pf3_tile_info, deco16_scan_rows,16,16,32,32);
-	pf4_tilemap = tilemap_create(get_ll_pf4_tile_info, deco16_scan_rows,     16,16,32,32);
-	pf1a_tilemap =tilemap_create(get_pf1a_tile_info,   deco16_scan_rows,16,16,64,32);
+	pf1_tilemap = tilemap_create(machine, get_pf1_tile_info,    tilemap_scan_rows, 8, 8,64,32);
+	pf2_tilemap = tilemap_create(machine, get_pf2_tile_info,    deco16_scan_rows,16,16,64,32);
+	pf3_tilemap = tilemap_create(machine, get_ll_pf3_tile_info, deco16_scan_rows,16,16,32,32);
+	pf4_tilemap = tilemap_create(machine, get_ll_pf4_tile_info, deco16_scan_rows,     16,16,32,32);
+	pf1a_tilemap =tilemap_create(machine, get_pf1a_tile_info,   deco16_scan_rows,16,16,64,32);
 	dirty_palette = auto_malloc(4096);
 	deco32_raster_display_list = auto_malloc(10 * 256);
 	memset(deco32_raster_display_list, 0, 10 * 256);
@@ -1031,7 +1031,7 @@ VIDEO_START( lockload )
 	deco32_pf2_colourbank=deco32_pf4_colourbank=0;
 
 	alpha_set_level(0x80);
-	state_save_register_global(dragngun_sprite_ctrl);
+	state_save_register_global(machine, dragngun_sprite_ctrl);
 	has_ace_ram=0;
 }
 
@@ -1039,10 +1039,10 @@ VIDEO_START( nslasher )
 {
 	int width, height;
 
-	pf1_tilemap = tilemap_create(get_pf1_tile_info, tilemap_scan_rows, 8, 8,64,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info, deco16_scan_rows,16,16,64,32);
-	pf3_tilemap = tilemap_create(get_pf3_tile_info, deco16_scan_rows,16,16,64,32);
-	pf4_tilemap = tilemap_create(get_pf4_tile_info, deco16_scan_rows,     16,16,64,32);
+	pf1_tilemap = tilemap_create(machine, get_pf1_tile_info, tilemap_scan_rows, 8, 8,64,32);
+	pf2_tilemap = tilemap_create(machine, get_pf2_tile_info, deco16_scan_rows,16,16,64,32);
+	pf3_tilemap = tilemap_create(machine, get_pf3_tile_info, deco16_scan_rows,16,16,64,32);
+	pf4_tilemap = tilemap_create(machine, get_pf4_tile_info, deco16_scan_rows,     16,16,64,32);
 	pf1a_tilemap =0;
 	dirty_palette = auto_malloc(4096);
 
@@ -1060,7 +1060,7 @@ VIDEO_START( nslasher )
 	deco32_raster_display_list=0;
 	deco32_pf2_colourbank=16;
 	deco32_pf4_colourbank=16;
-	state_save_register_global(deco32_pri);
+	state_save_register_global(machine, deco32_pri);
 	alpha_set_level(0x80);
 	has_ace_ram=1;
 }
@@ -1218,8 +1218,8 @@ VIDEO_UPDATE( captaven )
 	int pf1_enable,pf2_enable,pf3_enable;
 	static int last_pf3_bank;
 
-	flip_screen_set(deco32_pf12_control[0]&0x80);
-	tilemap_set_flip(ALL_TILEMAPS,flip_screen_get() ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+	flip_screen_set(screen->machine, deco32_pf12_control[0]&0x80);
+	tilemap_set_flip(ALL_TILEMAPS,flip_screen_get(screen->machine) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
 	deco32_setup_scroll(pf1_tilemap, 256,(deco32_pf12_control[5]>>0)&0xff,(deco32_pf12_control[6]>>0)&0xff,deco32_pf12_control[2],deco32_pf12_control[1],deco32_pf1_rowscroll,deco32_pf1_rowscroll+0x200);
 	deco32_setup_scroll(pf1a_tilemap,512,(deco32_pf12_control[5]>>0)&0xff,(deco32_pf12_control[6]>>0)&0xff,deco32_pf12_control[2],deco32_pf12_control[1],deco32_pf1_rowscroll,deco32_pf1_rowscroll+0x200);
@@ -1244,12 +1244,12 @@ VIDEO_UPDATE( captaven )
 	tilemap_set_enable(pf2_tilemap,pf2_enable);
 	tilemap_set_enable(pf3_tilemap,pf3_enable);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 	if ((deco32_pri&1)==0) {
 		if (pf3_enable)
 			tilemap_draw(bitmap,cliprect,pf3_tilemap,TILEMAP_DRAW_OPAQUE,0);
 		else
-			fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+			bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 		if (deco32_raster_display_position)
 			tilemap_raster_draw(bitmap,cliprect,0,1);
@@ -1263,7 +1263,7 @@ VIDEO_UPDATE( captaven )
 				tilemap_draw(bitmap,cliprect,pf2_tilemap,0,0);
 		}
 		else
-			fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+			bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 		tilemap_draw(bitmap,cliprect,pf3_tilemap,0,1);
 	}
@@ -1314,7 +1314,7 @@ VIDEO_UPDATE( dragngun )
 	tilemap_set_enable(pf4_tilemap, deco32_pf34_control[5]&0x8000);
 
 	if ((deco32_pf34_control[5]&0x8000)==0)
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	tilemap_draw(bitmap,cliprect,pf4_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,pf3_tilemap,0,0);
@@ -1400,8 +1400,8 @@ VIDEO_UPDATE( fghthist )
 
 	/* Draw screen */
 	deco16_clear_sprite_priority_bitmap();
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,screen->machine->pens[0x000],cliprect); // Palette index not confirmed
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,screen->machine->pens[0x000]); // Palette index not confirmed
 	tilemap_draw(bitmap,cliprect,pf4_tilemap,0,1);
 	tilemap_draw(bitmap,cliprect,pf3_tilemap,0,4);
 	tilemap_draw(bitmap,cliprect,pf2_tilemap,0,16);
@@ -1591,12 +1591,12 @@ VIDEO_UPDATE( nslasher )
 	if (deco32_ace_ram_dirty)
 		updateAceRam(screen->machine);
 
-	fillbitmap(sprite0_mix_bitmap,0,cliprect);
-	fillbitmap(sprite1_mix_bitmap,0,cliprect);
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(tilemap_alpha_bitmap,0,cliprect);
+	bitmap_fill(sprite0_mix_bitmap,cliprect,0);
+	bitmap_fill(sprite1_mix_bitmap,cliprect,0);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(tilemap_alpha_bitmap,cliprect,0);
 	if ((deco32_pf34_control[5]&0x8000)==0)
-		fillbitmap(bitmap,screen->machine->pens[0x200],cliprect);
+		bitmap_fill(bitmap,cliprect,screen->machine->pens[0x200]);
 
 	/* Draw sprites to temporary bitmaps, saving alpha & priority info for later mixing */
 	nslasher_draw_sprites(screen->machine,sprite0_mix_bitmap,cliprect,buffered_spriteram32,3);
@@ -1604,7 +1604,7 @@ VIDEO_UPDATE( nslasher )
 
 	/* Render alpha-blended tilemap to seperate buffer for proper mixing */
 	if (alphaTilemap)
-		fillbitmap(tilemap_alpha_bitmap,0,cliprect);
+		bitmap_fill(tilemap_alpha_bitmap,cliprect,0);
 
 	/* Draw playfields & sprites */
 	if (deco32_pri&2)

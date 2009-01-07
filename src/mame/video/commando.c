@@ -59,10 +59,10 @@ WRITE8_HANDLER( commando_c804_w )
 	coin_counter_w(1, data & 0x02);
 
 	// bit 4 resets the sound CPU
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
 
 	// bit 7 flips screen
-	flip_screen_set(data & 0x80);
+	flip_screen_set(space->machine, data & 0x80);
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
@@ -87,10 +87,10 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( commando )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,
 		 16, 16, 32, 32);
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 3);
@@ -112,7 +112,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int sx = buffered_spriteram[offs + 3] - ((attr & 0x01) << 8);
 		int sy = buffered_spriteram[offs + 2];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -136,5 +136,7 @@ VIDEO_UPDATE( commando )
 
 VIDEO_EOF( commando )
 {
-	buffer_spriteram_w(machine, 0, 0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram_w(space, 0, 0);
 }

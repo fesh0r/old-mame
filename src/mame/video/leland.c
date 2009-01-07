@@ -92,7 +92,7 @@ static VIDEO_START( leland )
 	memset(leland_video_ram, 0, VRAM_SIZE);
 
 	/* scanline timer */
-	scanline_timer = timer_alloc(scanline_callback, NULL);
+	scanline_timer = timer_alloc(machine, scanline_callback, NULL);
 	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 
 }
@@ -120,9 +120,9 @@ static VIDEO_START( ataxx )
 
 WRITE8_HANDLER( leland_scroll_w )
 {
-	int scanline = video_screen_get_vpos(machine->primary_screen);
+	int scanline = video_screen_get_vpos(space->machine->primary_screen);
 	if (scanline > 0)
-		video_screen_update_partial(machine->primary_screen, scanline - 1);
+		video_screen_update_partial(space->machine->primary_screen, scanline - 1);
 
 	/* adjust the proper scroll value */
 	switch (offset)
@@ -152,7 +152,7 @@ WRITE8_HANDLER( leland_scroll_w )
 
 WRITE8_HANDLER( leland_gfx_port_w )
 {
-	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+	video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 	gfxbank = data;
 }
 
@@ -182,7 +182,7 @@ static void leland_video_addr_w(int offset, int data, int num)
  *
  *************************************/
 
-static int leland_vram_port_r(int offset, int num)
+static int leland_vram_port_r(const address_space *space, int offset, int num)
 {
 	struct vram_state_data *state = vram_state + num;
 	int addr = state->addr;
@@ -208,15 +208,15 @@ static int leland_vram_port_r(int offset, int num)
 			break;
 
 		default:
-			logerror("CPU #%d %04x Warning: Unknown video port %02x read (address=%04x)\n",
-						cpu_getactivecpu(),activecpu_get_pc(), offset, addr);
+			logerror("%s: Warning: Unknown video port %02x read (address=%04x)\n",
+						cpuexec_describe_context(space->machine), offset, addr);
 			ret = 0;
 			break;
 	}
 	state->addr = addr;
 
 	if (LOG_COMM && addr >= 0xf000)
-		logerror("%04X:%s comm read %04X = %02X\n", activecpu_get_previouspc(), num ? "slave" : "master", addr, ret);
+		logerror("%s:%s comm read %04X = %02X\n", cpuexec_describe_context(space->machine), num ? "slave" : "master", addr, ret);
 
 	return ret;
 	}
@@ -229,7 +229,7 @@ static int leland_vram_port_r(int offset, int num)
  *
  *************************************/
 
-static void leland_vram_port_w(running_machine *machine, int offset, int data, int num)
+static void leland_vram_port_w(const address_space *space, int offset, int data, int num)
 {
 	struct vram_state_data *state = vram_state + num;
 	int addr = state->addr;
@@ -238,12 +238,12 @@ static void leland_vram_port_w(running_machine *machine, int offset, int data, i
 
 	/* don't fully understand why this is needed.  Isn't the
        video RAM just one big RAM? */
-	int scanline = video_screen_get_vpos(machine->primary_screen);
+	int scanline = video_screen_get_vpos(space->machine->primary_screen);
 	if (scanline > 0)
-		video_screen_update_partial(machine->primary_screen, scanline - 1);
+		video_screen_update_partial(space->machine->primary_screen, scanline - 1);
 
 	if (LOG_COMM && addr >= 0xf000)
-		logerror("%04X:%s comm write %04X = %02X\n", activecpu_get_previouspc(), num ? "slave" : "master", addr, data);
+		logerror("%s:%s comm write %04X = %02X\n", cpuexec_describe_context(space->machine), num ? "slave" : "master", addr, data);
 
 	/* based on the low 3 bits of the offset, update the destination */
 	switch (offset & 7)
@@ -294,8 +294,8 @@ static void leland_vram_port_w(running_machine *machine, int offset, int data, i
 			break;
 
 		default:
-			logerror("CPU #%d %04x Warning: Unknown video port write (address=%04x value=%02x)\n",
-						cpu_getactivecpu(),activecpu_get_pc(), offset, addr);
+			logerror("%s:Warning: Unknown video port write (address=%04x value=%02x)\n",
+						cpuexec_describe_context(space->machine), offset, addr);
 			break;
 	}
 
@@ -319,22 +319,24 @@ WRITE8_HANDLER( leland_master_video_addr_w )
 
 static TIMER_CALLBACK( leland_delayed_mvram_w )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
 	int num = (param >> 16) & 1;
 	int offset = (param >> 8) & 0xff;
 	int data = param & 0xff;
-	leland_vram_port_w(machine, offset, data, num);
+	leland_vram_port_w(space, offset, data, num);
 }
 
 
 WRITE8_HANDLER( leland_mvram_port_w )
 {
-	timer_call_after_resynch(NULL, 0x00000 | (offset << 8) | data, leland_delayed_mvram_w);
+	timer_call_after_resynch(space->machine, NULL, 0x00000 | (offset << 8) | data, leland_delayed_mvram_w);
 }
 
 
 READ8_HANDLER( leland_mvram_port_r )
 {
-	return leland_vram_port_r(offset, 0);
+	return leland_vram_port_r(space, offset, 0);
 }
 
 
@@ -353,13 +355,13 @@ WRITE8_HANDLER( leland_slave_video_addr_w )
 
 WRITE8_HANDLER( leland_svram_port_w )
 {
-	leland_vram_port_w(machine, offset, data, 1);
+	leland_vram_port_w(space, offset, data, 1);
 }
 
 
 READ8_HANDLER( leland_svram_port_r )
 {
-	return leland_vram_port_r(offset, 1);
+	return leland_vram_port_r(space, offset, 1);
 }
 
 
@@ -373,14 +375,14 @@ READ8_HANDLER( leland_svram_port_r )
 WRITE8_HANDLER( ataxx_mvram_port_w )
 {
 	offset = ((offset >> 1) & 0x07) | ((offset << 3) & 0x08) | (offset & 0x10);
-	timer_call_after_resynch(NULL, 0x00000 | (offset << 8) | data, leland_delayed_mvram_w);
+	timer_call_after_resynch(space->machine, NULL, 0x00000 | (offset << 8) | data, leland_delayed_mvram_w);
 }
 
 
 WRITE8_HANDLER( ataxx_svram_port_w )
 {
 	offset = ((offset >> 1) & 0x07) | ((offset << 3) & 0x08) | (offset & 0x10);
-	leland_vram_port_w(machine, offset, data, 1);
+	leland_vram_port_w(space, offset, data, 1);
 }
 
 
@@ -394,14 +396,14 @@ WRITE8_HANDLER( ataxx_svram_port_w )
 READ8_HANDLER( ataxx_mvram_port_r )
 {
 	offset = ((offset >> 1) & 0x07) | ((offset << 3) & 0x08) | (offset & 0x10);
-	return leland_vram_port_r(offset, 0);
+	return leland_vram_port_r(space, offset, 0);
 }
 
 
 READ8_HANDLER( ataxx_svram_port_r )
 {
 	offset = ((offset >> 1) & 0x07) | ((offset << 3) & 0x08) | (offset & 0x10);
-	return leland_vram_port_r(offset, 1);
+	return leland_vram_port_r(space, offset, 1);
 }
 
 

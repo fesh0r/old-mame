@@ -85,15 +85,15 @@ VIDEO_START( tecmo )
 {
 	if (tecmo_video_type == 2)	/* gemini */
 	{
-		bg_tilemap = tilemap_create(gemini_get_bg_tile_info,tilemap_scan_rows,16,16,32,16);
-		fg_tilemap = tilemap_create(gemini_get_fg_tile_info,tilemap_scan_rows,16,16,32,16);
+		bg_tilemap = tilemap_create(machine, gemini_get_bg_tile_info,tilemap_scan_rows,16,16,32,16);
+		fg_tilemap = tilemap_create(machine, gemini_get_fg_tile_info,tilemap_scan_rows,16,16,32,16);
 	}
 	else	/* rygar, silkworm */
 	{
-		bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,16,16,32,16);
-		fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,16,16,32,16);
+		bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,16,16,32,16);
+		fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,16,16,32,16);
 	}
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(bg_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -151,7 +151,7 @@ WRITE8_HANDLER( tecmo_bgscroll_w )
 
 WRITE8_HANDLER( tecmo_flipscreen_w )
 {
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 }
 
 
@@ -201,7 +201,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 			flipx = bank & 1;
 			flipy = bank & 2;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				xpos = 256 - (8 * size) - xpos;
 				ypos = 256 - (8 * size) - ypos;
@@ -241,8 +241,8 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 
 VIDEO_UPDATE( tecmo )
 {
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0x100,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0x100);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,1);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,2);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,4);

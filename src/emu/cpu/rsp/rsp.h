@@ -3,14 +3,16 @@
 #ifndef __RSP_H__
 #define __RSP_H__
 
+typedef void (*rsp_set_status_func)(const device_config *device, UINT32 status);
+
 typedef struct _rsp_config rsp_config;
 struct _rsp_config
 {
-	read32_machine_func dp_reg_r;
-	write32_machine_func dp_reg_w;
-	read32_machine_func sp_reg_r;
-	write32_machine_func sp_reg_w;
-	void (*sp_set_status)(UINT32 status);
+	read32_space_func dp_reg_r;
+	write32_space_func dp_reg_w;
+	read32_space_func sp_reg_r;
+	write32_space_func sp_reg_w;
+	rsp_set_status_func sp_set_status;
 };
 
 enum
@@ -69,7 +71,8 @@ enum
 #define RSP_STATUS_SIGNAL6       0x2000
 #define RSP_STATUS_SIGNAL7       0x4000
 
-void rsp_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( rsp );
+#define CPU_RSP CPU_GET_INFO_NAME( rsp )
 
 extern offs_t rsp_dasm_one(char *buffer, offs_t pc, UINT32 op);
 

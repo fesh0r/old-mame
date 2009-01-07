@@ -1,4 +1,6 @@
 #include "driver.h"
+#include "includes/playmark.h"
+
 
 UINT16 *bigtwin_bgvideoram;
 UINT16 *wbeachvl_videoram1,*wbeachvl_videoram2,*wbeachvl_videoram3;
@@ -111,8 +113,8 @@ static TILE_GET_INFO( hrdtimes_get_bg_tile_info )
 
 VIDEO_START( bigtwin )
 {
-	tx_tilemap = tilemap_create(bigtwin_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
-	fg_tilemap = tilemap_create(bigtwin_get_fg_tile_info,tilemap_scan_rows,     16,16,32,32);
+	tx_tilemap = tilemap_create(machine, bigtwin_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	fg_tilemap = tilemap_create(machine, bigtwin_get_fg_tile_info,tilemap_scan_rows,     16,16,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0);
 
@@ -124,9 +126,9 @@ VIDEO_START( bigtwin )
 
 VIDEO_START( wbeachvl )
 {
-	tx_tilemap = tilemap_create(wbeachvl_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
-	fg_tilemap = tilemap_create(wbeachvl_get_fg_tile_info,tilemap_scan_rows,16,16,64,32);
-	bg_tilemap = tilemap_create(wbeachvl_get_bg_tile_info,tilemap_scan_rows,     16,16,64,32);
+	tx_tilemap = tilemap_create(machine, wbeachvl_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	fg_tilemap = tilemap_create(machine, wbeachvl_get_fg_tile_info,tilemap_scan_rows,16,16,64,32);
+	bg_tilemap = tilemap_create(machine, wbeachvl_get_bg_tile_info,tilemap_scan_rows,     16,16,64,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -138,8 +140,8 @@ VIDEO_START( wbeachvl )
 
 VIDEO_START( excelsr )
 {
-	tx_tilemap = tilemap_create(bigtwin_get_tx_tile_info,tilemap_scan_rows,16,16,32,32);
-	fg_tilemap = tilemap_create(bigtwin_get_fg_tile_info,tilemap_scan_rows,     16,16,32,32);
+	tx_tilemap = tilemap_create(machine, bigtwin_get_tx_tile_info,tilemap_scan_rows,16,16,32,32);
+	fg_tilemap = tilemap_create(machine, bigtwin_get_fg_tile_info,tilemap_scan_rows,     16,16,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0);
 
@@ -150,9 +152,9 @@ VIDEO_START( excelsr )
 
 VIDEO_START( hotmind )
 {
-	tx_tilemap = tilemap_create(hrdtimes_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,64);
-	fg_tilemap = tilemap_create(hrdtimes_get_fg_tile_info,tilemap_scan_rows,16,16,32,32);
-	bg_tilemap = tilemap_create(hrdtimes_get_bg_tile_info,tilemap_scan_rows,     16,16,32,32);
+	tx_tilemap = tilemap_create(machine, hrdtimes_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,64);
+	fg_tilemap = tilemap_create(machine, hrdtimes_get_fg_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap = tilemap_create(machine, hrdtimes_get_bg_tile_info,tilemap_scan_rows,     16,16,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -172,9 +174,9 @@ VIDEO_START( hotmind )
 
 VIDEO_START( hrdtimes )
 {
-	tx_tilemap = tilemap_create(hrdtimes_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,64);
-	fg_tilemap = tilemap_create(hrdtimes_get_fg_tile_info,tilemap_scan_rows,16,16,32,32);
-	bg_tilemap = tilemap_create(hrdtimes_get_bg_tile_info,tilemap_scan_rows,     16,16,32,32);
+	tx_tilemap = tilemap_create(machine, hrdtimes_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,64);
+	fg_tilemap = tilemap_create(machine, hrdtimes_get_fg_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap = tilemap_create(machine, hrdtimes_get_bg_tile_info,tilemap_scan_rows,     16,16,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -250,7 +252,7 @@ WRITE16_HANDLER( bigtwin_paletteram_w )
 	g |= ((val & 0x04) >> 2);
 	b |= ((val & 0x02) >> 1);
 
-	palette_set_color_rgb(machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
+	palette_set_color_rgb(space->machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 WRITE16_HANDLER( bigtwin_scroll_w )
@@ -410,7 +412,7 @@ static void draw_bitmap(bitmap_t *bitmap, const rectangle *cliprect)
 
 VIDEO_UPDATE( bigtwin )
 {
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	if (bg_enable)
@@ -422,7 +424,7 @@ VIDEO_UPDATE( bigtwin )
 
 VIDEO_UPDATE( excelsr )
 {
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,1);
 	if (bg_enable)
@@ -448,7 +450,7 @@ VIDEO_UPDATE( wbeachvl )
 		tilemap_set_scrollx(fg_tilemap,0,fgscrollx);
 	}
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,1);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,2);
@@ -459,7 +461,7 @@ VIDEO_UPDATE( wbeachvl )
 
 VIDEO_UPDATE( hrdtimes )
 {
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	// video enabled
 	if(playmark_scroll[6] & 1)
@@ -470,6 +472,6 @@ VIDEO_UPDATE( hrdtimes )
 		tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	}
 	else
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 	return 0;
 }

@@ -74,9 +74,9 @@ VIDEO_START( fstarfrc )
 	/* set up sprites */
 	sprite_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
-	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,16,16,32,32);
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,16,16,32,32);
-	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	fg_tilemap = tilemap_create(machine, fg_get_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap = tilemap_create(machine, bg_get_tile_info,tilemap_scan_rows,16,16,32,32);
+	tx_tilemap = tilemap_create(machine, tx_get_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(bg_tilemap,0);
@@ -99,9 +99,9 @@ VIDEO_START( ginkun )
 	/* set up sprites */
 	sprite_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
-	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,16,16,64,32);
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,16,16,64,32);
-	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	fg_tilemap = tilemap_create(machine, fg_get_tile_info,tilemap_scan_rows,16,16,64,32);
+	bg_tilemap = tilemap_create(machine, bg_get_tile_info,tilemap_scan_rows,16,16,64,32);
+	tx_tilemap = tilemap_create(machine, tx_get_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(bg_tilemap,0);
@@ -122,9 +122,9 @@ VIDEO_START( riot )
 	/* set up sprites */
 	sprite_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
-	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,16,16,64,32);
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,16,16,64,32);
-	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	fg_tilemap = tilemap_create(machine, fg_get_tile_info,tilemap_scan_rows,16,16,64,32);
+	bg_tilemap = tilemap_create(machine, bg_get_tile_info,tilemap_scan_rows,16,16,64,32);
+	tx_tilemap = tilemap_create(machine, tx_get_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(bg_tilemap,0);
@@ -170,7 +170,7 @@ WRITE16_HANDLER( tecmo16_charram_w )
 WRITE16_HANDLER( tecmo16_flipscreen_w )
 {
 	flipscreen = data & 0x01;
-	flip_screen_set(flipscreen);
+	flip_screen_set(space->machine, flipscreen);
 }
 
 /******************************************************************************/
@@ -493,11 +493,11 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap_bg, bitmap_t
 
 VIDEO_UPDATE( tecmo16 )
 {
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
-	fillbitmap(tile_bitmap_bg, 0x300, cliprect);
-	fillbitmap(tile_bitmap_fg,     0, cliprect);
-	fillbitmap(sprite_bitmap,      0, cliprect);
+	bitmap_fill(tile_bitmap_bg, cliprect, 0x300);
+	bitmap_fill(tile_bitmap_fg,     cliprect, 0);
+	bitmap_fill(sprite_bitmap,      cliprect, 0);
 
 	/* draw tilemaps into a 16-bit bitmap */
 	tilemap_draw(tile_bitmap_bg, cliprect,bg_tilemap, 0, 1);

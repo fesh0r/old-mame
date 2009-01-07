@@ -5,12 +5,17 @@
 
 #include "cpuintrf.h"
 
-void tmp90840_get_info(UINT32, cpuinfo*);
-void tmp90841_get_info(UINT32, cpuinfo*);
-void tmp91640_get_info(UINT32, cpuinfo*);
-void tmp91641_get_info(UINT32, cpuinfo*);
+CPU_GET_INFO( tmp90840 );
+CPU_GET_INFO( tmp90841 );
+CPU_GET_INFO( tmp91640 );
+CPU_GET_INFO( tmp91641 );
 
-unsigned t90_dasm(char *buffer, UINT32 oldpc, const UINT8 *oprom, const UINT8 *opram);
+#define CPU_TMP90840 CPU_GET_INFO_NAME( tmp90840 )
+#define CPU_TMP90841 CPU_GET_INFO_NAME( tmp90841 )
+#define CPU_TMP91640 CPU_GET_INFO_NAME( tmp91640 )
+#define CPU_TMP91641 CPU_GET_INFO_NAME( tmp91641 )
+
+CPU_DISASSEMBLE( t90 );
 
 #define T90_IOBASE	0xffc0
 

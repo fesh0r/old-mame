@@ -36,7 +36,6 @@
 #include <math.h>
 #include "sndintrf.h"
 #include "cpuintrf.h"
-#include "deprecat.h"
 #include "es5503.h"
 #include "streams.h"
 #include "state.h"
@@ -70,7 +69,7 @@ typedef struct
 
 	void (*irq_callback)(running_machine *machine, int);	// IRQ callback
 
-	read8_machine_func adc_read;		// callback for the 5503's built-in analog to digital converter
+	read8_space_func adc_read;		// callback for the 5503's built-in analog to digital converter
 
 	INT8  oscsenabled;		// # of oscillators enabled
 
@@ -78,6 +77,7 @@ typedef struct
 
 	UINT32 clock;
 	UINT32 output_rate;
+	const device_config *device;
 } ES5503Chip;
 
 static const UINT16 wavesizes[8] = { 256, 512, 1024, 2048, 4096, 8192, 16384, 32768 };
@@ -128,7 +128,7 @@ static void es5503_halt_osc(ES5503Chip *chip, int onum, int type, UINT32 *accumu
 
 		if (chip->irq_callback)
 		{
-			chip->irq_callback(Machine, 1);
+			chip->irq_callback(chip->device->machine, 1);
 		}
 	}
 }
@@ -141,7 +141,7 @@ static TIMER_CALLBACK( es5503_timer_cb )
 	stream_update(chip->stream);
 }
 
-static void es5503_pcm_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length)
+static STREAM_UPDATE( es5503_pcm_update )
 {
 	INT32 mix[48000*2];
 	INT32 *mixp;
@@ -169,7 +169,7 @@ static void es5503_pcm_update(void *param, stream_sample_t **inputs, stream_samp
 			int resshift = resshifts[pOsc->resolution] - pOsc->wavetblsize;
 			UINT32 sizemask = accmasks[pOsc->wavetblsize];
 
-			for (snum = 0; snum < length; snum++)
+			for (snum = 0; snum < samples; snum++)
 			{
 				ramptr = (acc >> resshift) & sizemask;
 				altram = acc >> resshift;
@@ -216,7 +216,7 @@ static void es5503_pcm_update(void *param, stream_sample_t **inputs, stream_samp
 	}
 
 	mixp = &mix[0];
-	for (i = 0; i < length; i++)
+	for (i = 0; i < samples; i++)
 	{
 		outputs[0][i] = (*mixp++)>>1;
 		outputs[1][i] = (*mixp++)>>1;
@@ -224,7 +224,7 @@ static void es5503_pcm_update(void *param, stream_sample_t **inputs, stream_samp
 }
 
 
-static void *es5503_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( es5503 )
 {
 	const es5503_interface *intf;
 	int osc;
@@ -240,37 +240,35 @@ static void *es5503_start(const char *tag, int sndindex, int clock, const void *
 	chip->adc_read = intf->adc_read;
 	chip->docram = intf->wave_memory;
 	chip->clock = clock;
+	chip->device = device;
 
 	chip->rege0 = 0x80;
 
 	for (osc = 0; osc < 32; osc++)
 	{
-		char sname[32];
-		sprintf(sname, "ES5503 %d osc %d", sndindex, osc);
-
-		state_save_register_item(sname, sndindex, chip->oscillators[osc].freq);
-		state_save_register_item(sname, sndindex, chip->oscillators[osc].wtsize);
-		state_save_register_item(sname, sndindex, chip->oscillators[osc].control);
-		state_save_register_item(sname, sndindex, chip->oscillators[osc].vol);
-		state_save_register_item(sname, sndindex, chip->oscillators[osc].data);
-		state_save_register_item(sname, sndindex, chip->oscillators[osc].wavetblpointer);
-		state_save_register_item(sname, sndindex, chip->oscillators[osc].wavetblsize);
-		state_save_register_item(sname, sndindex, chip->oscillators[osc].resolution);
-		state_save_register_item(sname, sndindex, chip->oscillators[osc].accumulator);
-		state_save_register_item(sname, sndindex, chip->oscillators[osc].irqpend);
+		state_save_register_device_item(device, osc, chip->oscillators[osc].freq);
+		state_save_register_device_item(device, osc, chip->oscillators[osc].wtsize);
+		state_save_register_device_item(device, osc, chip->oscillators[osc].control);
+		state_save_register_device_item(device, osc, chip->oscillators[osc].vol);
+		state_save_register_device_item(device, osc, chip->oscillators[osc].data);
+		state_save_register_device_item(device, osc, chip->oscillators[osc].wavetblpointer);
+		state_save_register_device_item(device, osc, chip->oscillators[osc].wavetblsize);
+		state_save_register_device_item(device, osc, chip->oscillators[osc].resolution);
+		state_save_register_device_item(device, osc, chip->oscillators[osc].accumulator);
+		state_save_register_device_item(device, osc, chip->oscillators[osc].irqpend);
 
 		chip->oscillators[osc].data = 0x80;
 		chip->oscillators[osc].irqpend = 0;
 		chip->oscillators[osc].accumulator = 0;
 
-		chip->oscillators[osc].timer = timer_alloc(es5503_timer_cb, &chip->oscillators[osc]);
+		chip->oscillators[osc].timer = timer_alloc(device->machine, es5503_timer_cb, &chip->oscillators[osc]);
 		chip->oscillators[osc].chip = (void *)chip;
 	}
 
 	chip->oscsenabled = 1;
 
 	chip->output_rate = (clock/8)/34;	// (input clock / 8) / # of oscs. enabled + 2
-	chip->stream = stream_create(0, 2, chip->output_rate, chip, es5503_pcm_update);
+	chip->stream = stream_create(device, 0, 2, chip->output_rate, chip, es5503_pcm_update);
 
 	return chip;
 }
@@ -348,7 +346,7 @@ READ8_HANDLER(es5503_reg_0_r)
 
 						if (chip->irq_callback)
 						{
-							chip->irq_callback(machine, 0);
+							chip->irq_callback(space->machine, 0);
 						}
 						break;
 					}
@@ -361,7 +359,7 @@ READ8_HANDLER(es5503_reg_0_r)
 					{
 						if (chip->irq_callback)
 						{
-							chip->irq_callback(machine, 1);
+							chip->irq_callback(space->machine, 1);
 						}
 						break;
 					}
@@ -377,7 +375,7 @@ READ8_HANDLER(es5503_reg_0_r)
 			case 0xe2:	// A/D converter
 				if (chip->adc_read)
 				{
-					return chip->adc_read(machine, 0);
+					return chip->adc_read(space, 0);
 				}
 				break;
 		}
@@ -520,7 +518,7 @@ void es5503_set_base_0(UINT8 *wavemem)
  * Generic get_info
  **************************************************************************/
 
-static void es5503_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( es5503 )
 {
 	switch (state)
 	{
@@ -529,24 +527,24 @@ static void es5503_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void es5503_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( es5503 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = es5503_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = es5503_start;				break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( es5503 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( es5503 );			break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "ES5503";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Ensoniq ES550x";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright R. Belmont"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "ES5503");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Ensoniq ES550x");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright R. Belmont");	 	break;
 	}
 }
 

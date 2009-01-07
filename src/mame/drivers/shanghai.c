@@ -23,6 +23,7 @@ displayed.
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/nec/nec.h"
 #include "audio/seibu.h"
 #include "video/hd63484.h"
 
@@ -107,7 +108,7 @@ static VIDEO_UPDATE( shanghai )
 
 static INTERRUPT_GEN( shanghai_interrupt )
 {
-	cpunum_set_input_line_and_vector(machine, 0,0,HOLD_LINE,0x80);
+	cpu_set_input_line_and_vector(device,0,HOLD_LINE,0x80);
 }
 
 static WRITE16_HANDLER( shanghai_coin_w )
@@ -496,7 +497,7 @@ static MACHINE_DRIVER_START( kothello )
 
 	SEIBU3A_SOUND_SYSTEM_CPU(14318180/4)
 
-	MDRV_INTERLEAVE(200)
+	MDRV_QUANTUM_TIME(HZ(12000))
 
 	MDRV_MACHINE_RESET(seibu_sound)
 

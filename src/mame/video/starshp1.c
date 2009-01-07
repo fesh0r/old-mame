@@ -88,7 +88,7 @@ VIDEO_START( starshp1 )
 
 	int i;
 
-	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows,  16, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_tile_info, tilemap_scan_rows,  16, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 
@@ -114,10 +114,10 @@ VIDEO_START( starshp1 )
 
 READ8_HANDLER( starshp1_rng_r )
 {
-	int width = video_screen_get_width(machine->primary_screen);
-	int height = video_screen_get_height(machine->primary_screen);
-	int x = video_screen_get_hpos(machine->primary_screen);
-	int y = video_screen_get_vpos(machine->primary_screen);
+	int width = video_screen_get_width(space->machine->primary_screen);
+	int height = video_screen_get_height(space->machine->primary_screen);
+	int x = video_screen_get_hpos(space->machine->primary_screen);
+	int y = video_screen_get_vpos(space->machine->primary_screen);
 
 	/* the LFSR is only running in the non-blank region
        of the screen, so this is not quite right */
@@ -380,7 +380,7 @@ VIDEO_UPDATE( starshp1 )
 {
 	set_pens(screen->machine->colortable);
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	if (starshp1_starfield_kill == 0)
 		draw_starfield(bitmap);
@@ -424,7 +424,7 @@ VIDEO_EOF( starshp1 )
 	if (rect.max_y > helper->height - 1)
 		rect.max_y = helper->height - 1;
 
-	fillbitmap(helper, 0, visarea);
+	bitmap_fill(helper, visarea, 0);
 
 	if (starshp1_attract == 0)
 		draw_spaceship(machine, helper, visarea);

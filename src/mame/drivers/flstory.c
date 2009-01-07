@@ -46,14 +46,14 @@ static int sound_nmi_enable,pending_nmi;
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	if (sound_nmi_enable) cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+	if (sound_nmi_enable) cpu_set_input_line(machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 	else pending_nmi = 1;
 }
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(machine,0,data);
-	timer_call_after_resynch(NULL, data,nmi_callback);
+	soundlatch_w(space,0,data);
+	timer_call_after_resynch(space->machine, NULL, data,nmi_callback);
 }
 
 
@@ -67,7 +67,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{
-		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+		cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -126,7 +126,9 @@ ADDRESS_MAP_END
 
 static CUSTOM_INPUT( victnine_mcu_status_bit01_r )
 {
-	return (victnine_mcu_status_r(field->port->machine,0) & 3);
+	const address_space *space = cpu_get_address_space(field->port->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	return (victnine_mcu_status_r(space,0) & 3);
 }
 
 static ADDRESS_MAP_START( victnine_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -666,7 +668,7 @@ static MACHINE_DRIVER_START( flstory )
 	MDRV_CPU_ADD("mcu", M68705,XTAL_18_432MHz/6)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(flstory_m68705_map,0)
 
-	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_RESET(ta7630)
 
@@ -723,7 +725,7 @@ static MACHINE_DRIVER_START( onna34ro )
 //  MDRV_CPU_ADD("mcu", M68705,4000000)  /* ??? */
 //  MDRV_CPU_PROGRAM_MAP(m68705_readmem,m68705_writemem)
 
-	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_RESET(ta7630)
 
@@ -780,7 +782,7 @@ static MACHINE_DRIVER_START( victnine )
 //  MDRV_CPU_ADD("mcu", M68705,4000000)  /* ??? */
 //  MDRV_CPU_PROGRAM_MAP(m68705_readmem,m68705_writemem)
 
-	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_RESET(ta7630)
 

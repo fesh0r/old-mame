@@ -434,6 +434,7 @@
 */
 
 #include "driver.h"
+#include "cpu/z180/z180.h"
 #include "sound/saa1099.h"
 #include "sound/msm5205.h"
 
@@ -517,7 +518,7 @@ static READ8_HANDLER(banked_ram_r)
 
 		if (bank>0x3) // ROM access
 		{
-			UINT8 *src    = memory_region( machine, "gfx1" );
+			UINT8 *src    = memory_region( space->machine, "gfx1" );
 			bank &=0x3;
 			return src[offset+(bank*0x4000)];
 		}
@@ -533,7 +534,7 @@ static READ8_HANDLER(banked_ram_r)
 		UINT8 *src;
 		int bank;
 		bank = mastboy_bank & 0x7f;
-		src = memory_region       ( machine, "user1" ) + bank * 0x4000;
+		src = memory_region       ( space->machine, "user1" ) + bank * 0x4000;
 		return src[offset];
 	}
 }
@@ -562,7 +563,7 @@ static WRITE8_HANDLER( banked_ram_w )
 			mastboy_vram[offs] = data^0xff;
 
 			/* Decode the new tile */
-			decodechar(machine->gfx[0], offs/32, mastboy_vram);
+			decodechar(space->machine->gfx[0], offs/32, mastboy_vram);
 		}
 	}
 	else
@@ -633,14 +634,14 @@ static WRITE8_HANDLER( mastboy_msm5205_data_w )
 	mastboy_m5205_next = data;
 }
 
-static void mastboy_adpcm_int(running_machine *machine, int data)
+static void mastboy_adpcm_int(const device_config *device)
 {
 	msm5205_data_w (0,mastboy_m5205_next);
 	mastboy_m5205_next>>=4;
 
 	mastboy_m5205_part ^= 1;
 	if(!mastboy_m5205_part)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -655,14 +656,14 @@ static const msm5205_interface msm5205_config =
 static WRITE8_HANDLER( mastboy_irq0_ack_w )
 {
 	mastboy_irq0_ack = data;
-	if ((data&1)==1) cpunum_set_input_line(machine, 0,0, CLEAR_LINE);
+	if ((data&1)==1) cpu_set_input_line(space->machine->cpu[0],0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( mastboy_interrupt )
 {
 	if ((mastboy_irq0_ack&1)==1)
 	{
-		cpunum_set_input_line(machine, 0,0, ASSERT_LINE);
+		cpu_set_input_line(device,0, ASSERT_LINE);
 	}
 }
 

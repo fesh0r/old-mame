@@ -125,7 +125,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( gberet )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[0], 0x10);
 	tilemap_set_scroll_rows(bg_tilemap, 32);
@@ -153,7 +153,7 @@ static void gberet_draw_sprites(running_machine *machine, bitmap_t *bitmap, cons
 			int flipx = attr & 0x10;
 			int flipy = attr & 0x20;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 240 - sx;
 				sy = 240 - sy;
@@ -205,7 +205,7 @@ static void gberetb_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 			int flipx = attr & 0x10;
 			int flipy = attr & 0x20;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 240 - sx;
 				sy = 240 - sy;

@@ -39,9 +39,8 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/tetrisp2.h"
 
-
-extern UINT16 tetrisp2_systemregs[0x10];
 
 /* Variables needed by driver: */
 
@@ -72,14 +71,14 @@ WRITE16_HANDLER( tetrisp2_palette_w )
 {
 	data = COMBINE_DATA(&paletteram16[offset]);
 	if ((offset & 1) == 0)
-		palette_set_color_rgb(machine,offset/2,pal5bit(data >> 1),pal5bit(data >> 6),pal5bit(data >> 11));
+		palette_set_color_rgb(space->machine,offset/2,pal5bit(data >> 1),pal5bit(data >> 6),pal5bit(data >> 11));
 }
 
 WRITE16_HANDLER( rocknms_sub_palette_w )
 {
 	data = COMBINE_DATA(&paletteram16_2[offset]);
 	if ((offset & 1) == 0)
-		palette_set_color_rgb(machine,(0x8000 + (offset/2)),pal5bit(data >> 1),pal5bit(data >> 6),pal5bit(data >> 11));
+		palette_set_color_rgb(space->machine,(0x8000 + (offset/2)),pal5bit(data >> 1),pal5bit(data >> 6),pal5bit(data >> 11));
 }
 
 
@@ -273,15 +272,15 @@ VIDEO_START( tetrisp2 )
 {
 	flipscreen_old = -1;
 
-	tilemap_bg = tilemap_create(	get_tile_info_bg,tilemap_scan_rows,
+	tilemap_bg = tilemap_create(	machine, get_tile_info_bg,tilemap_scan_rows,
 
 								16,16,NX_0,NY_0);
 
-	tilemap_fg = tilemap_create(	get_tile_info_fg,tilemap_scan_rows,
+	tilemap_fg = tilemap_create(	machine, get_tile_info_fg,tilemap_scan_rows,
 
 								8,8,NX_1,NY_1);
 
-	tilemap_rot = tilemap_create(	get_tile_info_rot,tilemap_scan_rows,
+	tilemap_rot = tilemap_create(	machine, get_tile_info_rot,tilemap_scan_rows,
 
 								16,16,NX_0*2,NY_0*2);
 
@@ -300,15 +299,15 @@ VIDEO_START( rockntread )
 {
 	flipscreen_old = -1;
 
-	tilemap_bg = tilemap_create(	get_tile_info_bg,tilemap_scan_rows,
+	tilemap_bg = tilemap_create(	machine, get_tile_info_bg,tilemap_scan_rows,
 
 								16, 16, 256, 16);	// rockn ms(main),1,2,3,4
 
-	tilemap_fg = tilemap_create(	get_tile_info_fg,tilemap_scan_rows,
+	tilemap_fg = tilemap_create(	machine, get_tile_info_fg,tilemap_scan_rows,
 
 								8, 8, 64, 64);
 
-	tilemap_rot = tilemap_create(	get_tile_info_rot,tilemap_scan_rows,
+	tilemap_rot = tilemap_create(	machine, get_tile_info_rot,tilemap_scan_rows,
 
 								16, 16, 128, 128);
 
@@ -322,15 +321,15 @@ VIDEO_START( rocknms )
 {
 	VIDEO_START_CALL( rockntread );
 
-	tilemap_sub_bg = tilemap_create(get_tile_info_rocknms_sub_bg,tilemap_scan_rows,
+	tilemap_sub_bg = tilemap_create(machine, get_tile_info_rocknms_sub_bg,tilemap_scan_rows,
 
 					16, 16, 32, 256);	// rockn ms(sub)
 
-	tilemap_sub_fg = tilemap_create(get_tile_info_rocknms_sub_fg,tilemap_scan_rows,
+	tilemap_sub_fg = tilemap_create(machine, get_tile_info_rocknms_sub_fg,tilemap_scan_rows,
 
 					8, 8, 64, 64);
 
-	tilemap_sub_rot = tilemap_create( get_tile_info_rocknms_sub_rot,tilemap_scan_rows,
+	tilemap_sub_rot = tilemap_create( machine, get_tile_info_rocknms_sub_rot,tilemap_scan_rows,
 
 					16, 16, 128, 128);
 
@@ -518,8 +517,8 @@ VIDEO_UPDATE( tetrisp2 )
 	flipscreen = (tetrisp2_systemregs[0x00] & 0x02);
 
 	/* Black background color */
-	fillbitmap(bitmap, 0, cliprect);
-	fillbitmap(priority_bitmap, 0, NULL);
+	bitmap_fill(bitmap, cliprect, 0);
+	bitmap_fill(priority_bitmap, NULL, 0);
 
 	/* Flip Screen */
 	if (flipscreen != flipscreen_old)
@@ -602,8 +601,8 @@ VIDEO_UPDATE( rockntread )
 	flipscreen = (tetrisp2_systemregs[0x00] & 0x02);
 
 	/* Black background color */
-	fillbitmap(bitmap, 0, cliprect);
-	fillbitmap(priority_bitmap, 0, NULL);
+	bitmap_fill(bitmap, cliprect, 0);
+	bitmap_fill(priority_bitmap, NULL, 0);
 
 	/* Flip Screen */
 	if (flipscreen != flipscreen_old)
@@ -697,8 +696,8 @@ VIDEO_UPDATE( rocknms )
 		tilemap_set_scrollx(tilemap_sub_rot, 0, rocknms_sub_rotregs[ 0 ] + 0x400);
 		tilemap_set_scrolly(tilemap_sub_rot, 0, rocknms_sub_rotregs[ 2 ] + 0x400);
 
-		fillbitmap(bitmap, screen->machine->pens[0x0000], cliprect);
-		fillbitmap(priority_bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, screen->machine->pens[0x0000]);
+		bitmap_fill(priority_bitmap, cliprect, 0);
 
 		asc_pri = scr_pri = rot_pri = 0;
 
@@ -750,8 +749,8 @@ VIDEO_UPDATE( rocknms )
 		tilemap_set_scrolly(tilemap_rot, 0, tetrisp2_rotregs[ 2 ] + 0x400);
 
 		/* Black background color */
-		fillbitmap(bitmap, screen->machine->pens[0x0000], cliprect);
-		fillbitmap(priority_bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, screen->machine->pens[0x0000]);
+		bitmap_fill(priority_bitmap, cliprect, 0);
 
 		asc_pri = scr_pri = rot_pri = 0;
 

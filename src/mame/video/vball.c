@@ -9,10 +9,12 @@
 #include "driver.h"
 #include "deprecat.h"
 #include "cpu/m6502/m6502.h"
+#include "includes/vball.h"
 
 int vb_scrollx_hi=0;
 int vb_scrollx_lo=0;
 int vb_scrolly_hi=0;
+int scrollx[256];
 
 UINT8 *vb_scrolly_lo;
 UINT8 *vb_videoram;
@@ -22,7 +24,6 @@ static int vb_bgprombank=0xff;
 static int vb_spprombank=0xff;
 
 static tilemap *bg_tilemap;
-static int scrollx[32];
 
 /***************************************************************************
 
@@ -50,7 +51,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( vb )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,background_scan, 8, 8,64,64);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,background_scan, 8, 8,64,64);
 
 	tilemap_set_scroll_rows(bg_tilemap,32);
 }
@@ -135,7 +136,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int flipy = 0;
 		int dy = -16;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -167,26 +168,11 @@ VIDEO_UPDATE( vb )
 	tilemap_set_scrolly(bg_tilemap,0,vb_scrolly_hi + *vb_scrolly_lo);
 
 	/*To get linescrolling to work properly, we must ignore the 1st two scroll values, no idea why! -SJE */
-	for (i = 2;i < 32;i++) {
+	for (i = 2; i < 256; i++) {
 		tilemap_set_scrollx(bg_tilemap,i,scrollx[i-2]);
 		//logerror("scrollx[%d] = %d\n",i,scrollx[i]);
 	}
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
-}
-
-
-/*I don't really understand what the proper timing of this should be,
-  but after TONS of testing, the tilemap individual line scrolling works as long as flip screen is not set -SJE
-*/
-INTERRUPT_GEN( vball_interrupt )
-{
-	int line = 31 - cpu_getiloops();
-	if (line < 13)
-		cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, HOLD_LINE);
-	else if (line == 13)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
-	//save the scroll x register value
-	if(line<32) scrollx[31-line] = (vb_scrollx_hi + vb_scrollx_lo+4);
 }

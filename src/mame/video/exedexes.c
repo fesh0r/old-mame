@@ -170,13 +170,13 @@ static TILEMAP_MAPPER( exedexes_fg_tilemap_scan )
 
 VIDEO_START( exedexes )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, exedexes_bg_tilemap_scan,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, exedexes_bg_tilemap_scan,
 		 32, 32, 64, 64);
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, exedexes_fg_tilemap_scan,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, exedexes_fg_tilemap_scan,
 		 16, 16, 128, 128);
 
-	tx_tilemap = tilemap_create(get_tx_tile_info, tilemap_scan_rows,
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
@@ -222,7 +222,7 @@ VIDEO_UPDATE( exedexes )
 		tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	}
 	else
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 
 	draw_sprites(screen->machine, bitmap, cliprect, 1);
 
@@ -243,5 +243,7 @@ VIDEO_UPDATE( exedexes )
 
 VIDEO_EOF( exedexes )
 {
-	buffer_spriteram_w(machine,0,0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram_w(space, 0, 0);
 }

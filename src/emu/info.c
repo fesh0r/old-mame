@@ -386,18 +386,11 @@ static void print_game_rom(FILE *out, const game_driver *game, const machine_con
 					const char *name = ROM_GETNAME(rom);
 					int offset = ROM_GETOFFSET(rom);
 					const rom_entry *parent_rom = NULL;
-					const rom_entry *chunk;
 					char bios_name[100];
-					int length;
 
 					/* BIOS ROMs only apply to bioses */
 					if ((is_bios && rom_type != 0) || (!is_bios && rom_type == 0))
 						continue;
-
-					/* compute the total length of all chunks */
-					length = 0;
-					for (chunk = rom_first_chunk(rom); chunk; chunk = rom_next_chunk(chunk))
-						length += ROM_GETLENGTH(chunk);
 
 					/* if we have a valid ROM and we are a clone, see if we can find the parent ROM */
 					if (!ROM_NOGOODDUMP(rom) && clone_of != NULL)
@@ -443,7 +436,7 @@ static void print_game_rom(FILE *out, const game_driver *game, const machine_con
 					if (bios_name[0] != 0)
 						fprintf(out, " bios=\"%s\"", xml_normalize_string(bios_name));
 					if (!is_disk)
-						fprintf(out, " size=\"%d\"", length);
+						fprintf(out, " size=\"%d\"", rom_file_size(rom));
 
 					/* dump checksum information only if there is a known dump */
 					if (!hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_NO_DUMP))
@@ -569,19 +562,19 @@ static void print_game_sample(FILE *out, const game_driver *game, const machine_
 
 static void print_game_chips(FILE *out, const game_driver *game, const machine_config *config)
 {
+	const device_config *device;
 	int chipnum;
 
 	/* iterate over CPUs */
-	for (chipnum = 0; chipnum < ARRAY_LENGTH(config->cpu); chipnum++)
-		if (config->cpu[chipnum].type != CPU_DUMMY)
-		{
-			fprintf(out, "\t\t<chip");
-			fprintf(out, " type=\"cpu\"");
-			fprintf(out, " tag=\"%s\"", xml_normalize_string(config->cpu[chipnum].tag));
-			fprintf(out, " name=\"%s\"", xml_normalize_string(cputype_name(config->cpu[chipnum].type)));
-			fprintf(out, " clock=\"%d\"", config->cpu[chipnum].clock);
-			fprintf(out, "/>\n");
-		}
+	for (device = cpu_first(config); device != NULL; device = cpu_next(device))
+	{
+		fprintf(out, "\t\t<chip");
+		fprintf(out, " type=\"cpu\"");
+		fprintf(out, " tag=\"%s\"", xml_normalize_string(device->tag));
+		fprintf(out, " name=\"%s\"", xml_normalize_string(device_get_name(device)));
+		fprintf(out, " clock=\"%d\"", device->clock);
+		fprintf(out, "/>\n");
+	}
 
 	/* iterate over sound chips */
 	for (chipnum = 0; chipnum < ARRAY_LENGTH(config->sound); chipnum++)
@@ -590,7 +583,7 @@ static void print_game_chips(FILE *out, const game_driver *game, const machine_c
 			fprintf(out, "\t\t<chip");
 			fprintf(out, " type=\"audio\"");
 			fprintf(out, " tag=\"%s\"", xml_normalize_string(config->sound[chipnum].tag));
-			fprintf(out, " name=\"%s\"", xml_normalize_string(sndtype_name(config->sound[chipnum].type)));
+			fprintf(out, " name=\"%s\"", xml_normalize_string(sndtype_get_name(config->sound[chipnum].type)));
 			if (config->sound[chipnum].clock != 0)
 				fprintf(out, " clock=\"%d\"", config->sound[chipnum].clock);
 			fprintf(out, "/>\n");
@@ -794,7 +787,7 @@ static void print_game_info(FILE *out, const game_driver *game)
 	config = machine_config_alloc(game->machine_config);
 #ifdef MESS
 	/* temporary hook until MESS device transition is complete */
-	mess_devices_setup(config, game);
+	mess_devices_setup(NULL, config, game);
 #endif /* MESS */
 	portconfig = input_port_config_alloc(game->ipt, NULL, 0);
 

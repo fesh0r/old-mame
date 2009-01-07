@@ -34,9 +34,11 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 #include "sound/ymz280b.h"
 #include "rocknms.lh"
+#include "includes/tetrisp2.h"
 
 UINT16 tetrisp2_systemregs[0x10];
 static UINT16 rocknms_sub_systemregs[0x10];
@@ -47,50 +49,6 @@ static UINT16 rockn_soundvolume;
 
 static emu_timer *rockn_timer_l4;
 static emu_timer *rockn_timer_sub_l4;
-
-/* Variables defined in video: */
-
-extern UINT16 *tetrisp2_vram_bg, *tetrisp2_scroll_bg;
-extern UINT16 *tetrisp2_vram_fg, *tetrisp2_scroll_fg;
-extern UINT16 *tetrisp2_vram_rot, *tetrisp2_rotregs;
-
-extern UINT16 *tetrisp2_priority;
-
-extern UINT16 *rocknms_sub_vram_bg, *rocknms_sub_scroll_bg;
-extern UINT16 *rocknms_sub_vram_fg, *rocknms_sub_scroll_fg;
-extern UINT16 *rocknms_sub_vram_rot, *rocknms_sub_rotregs;
-
-extern UINT16 *rocknms_sub_priority;
-
-/* Functions defined in video: */
-
-WRITE16_HANDLER( tetrisp2_palette_w );
-WRITE16_HANDLER( rocknms_sub_palette_w );
-READ16_HANDLER( tetrisp2_priority_r );
-WRITE16_HANDLER( tetrisp2_priority_w );
-WRITE16_HANDLER( rockn_priority_w );
-READ16_HANDLER( rocknms_sub_priority_r );
-WRITE16_HANDLER( rocknms_sub_priority_w );
-READ16_HANDLER( nndmseal_priority_r );
-
-WRITE16_HANDLER( tetrisp2_vram_bg_w );
-WRITE16_HANDLER( tetrisp2_vram_fg_w );
-WRITE16_HANDLER( tetrisp2_vram_rot_w );
-
-WRITE16_HANDLER( rocknms_sub_vram_bg_w );
-WRITE16_HANDLER( rocknms_sub_vram_fg_w );
-WRITE16_HANDLER( rocknms_sub_vram_rot_w );
-
-VIDEO_START( tetrisp2 );
-VIDEO_UPDATE( tetrisp2 );
-
-VIDEO_START( rockntread );
-VIDEO_UPDATE( rockntread );
-
-VIDEO_START( rocknms );
-VIDEO_UPDATE( rocknms );
-
-VIDEO_START( nndmseal );
 
 /***************************************************************************
 
@@ -148,15 +106,15 @@ static WRITE16_HANDLER( rocknms_sub_systemregs_w )
 
 static READ16_HANDLER( tetrisp2_sound_r )
 {
-	return ymz280b_status_0_r(machine,offset);
+	return ymz280b_status_0_r(space,offset);
 }
 
 static WRITE16_HANDLER( tetrisp2_sound_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		if (offset)	ymz280b_data_0_w     (machine, offset, data & 0xff);
-		else		ymz280b_register_0_w (machine, offset, data & 0xff);
+		if (offset)	ymz280b_data_0_w     (space, offset, data & 0xff);
+		else		ymz280b_register_0_w (space, offset, data & 0xff);
 	}
 }
 
@@ -167,7 +125,7 @@ static READ16_HANDLER( rockn_adpcmbank_r )
 
 static WRITE16_HANDLER( rockn_adpcmbank_w )
 {
-	UINT8 *SNDROM = memory_region(machine, "ymz");
+	UINT8 *SNDROM = memory_region(space->machine, "ymz");
 	int bank;
 
 	rockn_adpcmbank = data;
@@ -184,7 +142,7 @@ static WRITE16_HANDLER( rockn_adpcmbank_w )
 
 static WRITE16_HANDLER( rockn2_adpcmbank_w )
 {
-	UINT8 *SNDROM = memory_region(machine, "ymz");
+	UINT8 *SNDROM = memory_region(space->machine, "ymz");
 	int bank;
 
 	char banktable[9][3]=
@@ -232,23 +190,23 @@ static WRITE16_HANDLER( nndmseal_sound_bank_w )
 
 	if (ACCESSING_BITS_0_7)
 	{
-		UINT8 *rom = memory_region(machine, "okisource");
+		UINT8 *rom = memory_region(space->machine, "okisource");
 
 		if (data & 0x04)
 		{
 			bank_lo = data & 0x03;
 
-			memcpy(memory_region(machine, "oki"), rom + (bank_lo * 0x80000), 0x20000);
+			memcpy(memory_region(space->machine, "oki"), rom + (bank_lo * 0x80000), 0x20000);
 
-//          logerror("PC:%06X sound bank_lo = %02X\n",activecpu_get_pc(),bank_lo);
+//          logerror("PC:%06X sound bank_lo = %02X\n",cpu_get_pc(space->cpu),bank_lo);
 		}
 		else
 		{
 			bank_hi = data & 0x03;
 
-			memcpy(memory_region(machine, "oki") + 0x20000, rom + (bank_lo * 0x80000) + (bank_hi * 0x20000), 0x20000);
+			memcpy(memory_region(space->machine, "oki") + 0x20000, rom + (bank_lo * 0x80000) + (bank_hi * 0x20000), 0x20000);
 
-//          logerror("PC:%06X sound bank_hi = %02X\n",activecpu_get_pc(),bank_hi);
+//          logerror("PC:%06X sound bank_hi = %02X\n",cpu_get_pc(space->cpu),bank_hi);
 		}
 	}
 }
@@ -263,9 +221,9 @@ static WRITE16_HANDLER( nndmseal_sound_bank_w )
 
 static READ16_HANDLER( tetrisp2_ip_1_word_r )
 {
-	return	( input_port_read(machine, "SYSTEM") &  0xfcff ) |
-			(           mame_rand(machine) & ~0xfcff ) |
-			(      1 << (8 + (mame_rand(machine)&1)) );
+	return	( input_port_read(space->machine, "SYSTEM") &  0xfcff ) |
+			(           mame_rand(space->machine) & ~0xfcff ) |
+			(      1 << (8 + (mame_rand(space->machine)&1)) );
 }
 
 
@@ -1173,35 +1131,35 @@ GFXDECODE_END
 
 static TIMER_CALLBACK( rockn_timer_level4_callback )
 {
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( rockn_timer_sub_level4_callback )
 {
-	cpunum_set_input_line(machine, 1, 4, HOLD_LINE);
+	cpu_set_input_line(machine->cpu[1], 4, HOLD_LINE);
 }
 
 
 static TIMER_CALLBACK( rockn_timer_level1_callback )
 {
-	cpunum_set_input_line(machine, 0, 1, HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0], 1, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( rockn_timer_sub_level1_callback )
 {
-	cpunum_set_input_line(machine, 1, 1, HOLD_LINE);
+	cpu_set_input_line(machine->cpu[1], 1, HOLD_LINE);
 }
 
 static void init_rockn_timer(running_machine *machine)
 {
-	timer_pulse(ATTOTIME_IN_MSEC(32), NULL, 0, rockn_timer_level1_callback);
-	rockn_timer_l4 = timer_alloc(rockn_timer_level4_callback, NULL);
+	timer_pulse(machine, ATTOTIME_IN_MSEC(32), NULL, 0, rockn_timer_level1_callback);
+	rockn_timer_l4 = timer_alloc(machine, rockn_timer_level4_callback, NULL);
 
-	state_save_register_global_array(tetrisp2_systemregs);
-	state_save_register_global_array(rocknms_sub_systemregs);
-	state_save_register_global(rockn_protectdata);
-	state_save_register_global(rockn_adpcmbank);
-	state_save_register_global(rockn_soundvolume);
+	state_save_register_global_array(machine, tetrisp2_systemregs);
+	state_save_register_global_array(machine, rocknms_sub_systemregs);
+	state_save_register_global(machine, rockn_protectdata);
+	state_save_register_global(machine, rockn_adpcmbank);
+	state_save_register_global(machine, rockn_soundvolume);
 }
 
 static DRIVER_INIT( rockn )
@@ -1226,8 +1184,8 @@ static DRIVER_INIT( rocknms )
 {
 	init_rockn_timer(machine);
 
-	timer_pulse(ATTOTIME_IN_MSEC(32), NULL, 0, rockn_timer_sub_level1_callback);
-	rockn_timer_sub_l4 = timer_alloc(rockn_timer_sub_level4_callback, NULL);
+	timer_pulse(machine, ATTOTIME_IN_MSEC(32), NULL, 0, rockn_timer_sub_level1_callback);
+	rockn_timer_sub_l4 = timer_alloc(machine, rockn_timer_sub_level4_callback, NULL);
 
 	rockn_protectdata = 3;
 

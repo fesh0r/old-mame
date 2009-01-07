@@ -44,6 +44,10 @@ Year + Game             Main CPU    Sound CPU    Sound            Video
 ***************************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/nec/nec.h"
+#include "cpu/i86/i86.h"
+#include "cpu/i86/i86.h"
 #include "sound/2151intf.h"
 #include "sound/3812intf.h"
 #include "sound/dac.h"
@@ -64,25 +68,25 @@ static WRITE8_HANDLER( fantland_nmi_enable_w )
 	fantland_nmi_enable = data;
 
 	if ((fantland_nmi_enable != 0) && (fantland_nmi_enable != 8))
-		logerror("CPU #0 PC = %04X: nmi_enable = %02x\n", activecpu_get_pc(), data);
+		logerror("CPU #0 PC = %04X: nmi_enable = %02x\n", cpu_get_pc(space->cpu), data);
 }
 
 static WRITE16_HANDLER( fantland_nmi_enable_16_w )
 {
 	if (ACCESSING_BITS_0_7)
-		fantland_nmi_enable_w(machine,offset*2,data);
+		fantland_nmi_enable_w(space,offset*2,data);
 }
 
 static WRITE8_HANDLER( fantland_soundlatch_w )
 {
-	soundlatch_w(machine,0,data);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(space,0,data);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static WRITE16_HANDLER( fantland_soundlatch_16_w )
 {
 	if (ACCESSING_BITS_0_7)
-		fantland_soundlatch_w(machine, offset*2, data);
+		fantland_soundlatch_w(space, offset*2, data);
 }
 
 /***************************************************************************
@@ -165,7 +169,7 @@ static WRITE8_HANDLER( borntofi_nmi_enable_w )
 	// data & 0x31 changes when lightgun fires
 
 	if ((fantland_nmi_enable != 0) && (fantland_nmi_enable != 8))
-		logerror("CPU #0 PC = %04X: nmi_enable = %02x\n", activecpu_get_pc(), data);
+		logerror("CPU #0 PC = %04X: nmi_enable = %02x\n", cpu_get_pc(space->cpu), data);
 
 //  popmessage("%02X",data);
 }
@@ -178,20 +182,20 @@ static READ8_HANDLER( borntofi_inputs_r )
 	static int old_x[2], old_y[2], old_f[2];
 	static UINT8 ret[2];
 
-	switch (input_port_read(machine, "Controls") & 0x03)
+	switch (input_port_read(space->machine, "Controls") & 0x03)
 	{
 		case 3:
-		case 1:	return input_port_read(machine, offset ? "P2_GUN" : "P1_GUN");	// Lightgun buttons
-		case 2:	return input_port_read(machine, offset ? "P2_JOY" : "P1_JOY");	// Joystick
+		case 1:	return input_port_read(space->machine, offset ? "P2_GUN" : "P1_GUN");	// Lightgun buttons
+		case 2:	return input_port_read(space->machine, offset ? "P2_JOY" : "P1_JOY");	// Joystick
 	}
 
 	// Trackball
 
-	x = input_port_read(machine, offset ? "P2 Trackball X" : "P1 Trackball X");
-	y = input_port_read(machine, offset ? "P2 Trackball Y" : "P1 Trackball Y");
-	f = video_screen_get_frame_number(machine->primary_screen);
+	x = input_port_read(space->machine, offset ? "P2 Trackball X" : "P1 Trackball X");
+	y = input_port_read(space->machine, offset ? "P2 Trackball Y" : "P1 Trackball Y");
+	f = video_screen_get_frame_number(space->machine->primary_screen);
 
-	ret[offset]	=	(ret[offset] & 0x14) | (input_port_read(machine, offset ? "P2_TRACK" : "P1_TRACK") & 0xc3);
+	ret[offset]	=	(ret[offset] & 0x14) | (input_port_read(space->machine, offset ? "P2_TRACK" : "P1_TRACK") & 0xc3);
 
 	x =  (x & 0x7f) - (x & 0x80);
 	y =  (y & 0x7f) - (y & 0x80);
@@ -300,7 +304,7 @@ static void borntofi_adpcm_start(int voice)
 	msm5205_reset_w(voice,0);
 	borntofi_adpcm[voice].playing = 1;
 	borntofi_adpcm[voice].nibble  = 0;
-//  logerror("CPU #0 PC = %04X: adpcm start = %06x, stop = %06x\n", activecpu_get_pc(), borntofi_adpcm[voice].addr[0], borntofi_adpcm[voice].addr[1]);
+//  logerror("%s: adpcm start = %06x, stop = %06x\n", cpuexec_describe_context(device->machine), borntofi_adpcm[voice].addr[0], borntofi_adpcm[voice].addr[1]);
 }
 
 static void borntofi_adpcm_stop(int voice)
@@ -321,7 +325,7 @@ static WRITE8_HANDLER( borntofi_msm5205_w )
 		{
 			case 0x00:		borntofi_adpcm_stop(voice);			break;
 			case 0x03:		borntofi_adpcm_start(voice);		break;
-			default:		logerror("CPU #0 PC = %04X: adpcm reg %d <- %02x\n", activecpu_get_pc(), reg, data);
+			default:		logerror("CPU #0 PC = %04X: adpcm reg %d <- %02x\n", cpu_get_pc(space->cpu), reg, data);
 		}
 	}
 	else
@@ -334,7 +338,7 @@ static WRITE8_HANDLER( borntofi_msm5205_w )
 	}
 }
 
-static void borntofi_adpcm_int(running_machine *machine, int voice)
+static void borntofi_adpcm_int(const device_config *device, int voice)
 {
 	UINT8 *rom;
 	size_t   len;
@@ -343,8 +347,8 @@ static void borntofi_adpcm_int(running_machine *machine, int voice)
 	if (!borntofi_adpcm[voice].playing)
 		return;
 
-	rom = memory_region( machine, "adpcm" );
-	len = memory_region_length( machine, "adpcm" ) * 2;
+	rom = memory_region( device->machine, "adpcm" );
+	len = memory_region_length( device->machine, "adpcm" ) * 2;
 
 	start = borntofi_adpcm[voice].addr[0] + borntofi_adpcm[voice].nibble;
 	stop  = borntofi_adpcm[voice].addr[1];
@@ -366,6 +370,12 @@ static void borntofi_adpcm_int(running_machine *machine, int voice)
 		borntofi_adpcm[voice].nibble++;
 	}
 }
+
+static void borntofi_adpcm_int_0(const device_config *device) { borntofi_adpcm_int(device, 0); }
+static void borntofi_adpcm_int_1(const device_config *device) { borntofi_adpcm_int(device, 1); }
+static void borntofi_adpcm_int_2(const device_config *device) { borntofi_adpcm_int(device, 2); }
+static void borntofi_adpcm_int_3(const device_config *device) { borntofi_adpcm_int(device, 3); }
+
 
 static ADDRESS_MAP_START( borntofi_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x00000, 0x003ff ) AM_RAM
@@ -798,12 +808,12 @@ static MACHINE_RESET( fantland )
 static INTERRUPT_GEN( fantland_irq )
 {
 	if (fantland_nmi_enable & 8)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static INTERRUPT_GEN( fantland_sound_irq )
 {
-	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0x80/4);
+	cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0x80/4);
 }
 
 static MACHINE_DRIVER_START( fantland )
@@ -820,7 +830,7 @@ static MACHINE_DRIVER_START( fantland )
 
 	MDRV_MACHINE_RESET(fantland)
 
-	MDRV_INTERLEAVE(8000/60)	// sound irq must feed the DAC at 8kHz
+	MDRV_QUANTUM_TIME(HZ(8000))	// sound irq must feed the DAC at 8kHz
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -849,7 +859,7 @@ MACHINE_DRIVER_END
 
 static void galaxygn_sound_irq(running_machine *machine, int line)
 {
-	cpunum_set_input_line_and_vector(machine, 1, 0, line ? ASSERT_LINE : CLEAR_LINE, 0x80/4);
+	cpu_set_input_line_and_vector(machine->cpu[1], 0, line ? ASSERT_LINE : CLEAR_LINE, 0x80/4);
 }
 
 static const ym2151_interface galaxygn_ym2151_interface =
@@ -894,9 +904,24 @@ MACHINE_DRIVER_END
 
 
 // OKI M5205 running at 384kHz [18.432/48]. Sample rate = 384000 / 48
-static const msm5205_interface msm5205_config =
+static const msm5205_interface msm5205_config_0 =
 {
-	borntofi_adpcm_int,	/* IRQ handler */
+	borntofi_adpcm_int_0,	/* IRQ handler */
+	MSM5205_S48_4B		/* 8 kHz, 4 Bits  */
+};
+static const msm5205_interface msm5205_config_1 =
+{
+	borntofi_adpcm_int_1,	/* IRQ handler */
+	MSM5205_S48_4B		/* 8 kHz, 4 Bits  */
+};
+static const msm5205_interface msm5205_config_2 =
+{
+	borntofi_adpcm_int_2,	/* IRQ handler */
+	MSM5205_S48_4B		/* 8 kHz, 4 Bits  */
+};
+static const msm5205_interface msm5205_config_3 =
+{
+	borntofi_adpcm_int_3,	/* IRQ handler */
 	MSM5205_S48_4B		/* 8 kHz, 4 Bits  */
 };
 
@@ -937,17 +962,17 @@ static MACHINE_DRIVER_START( borntofi )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("msm1", MSM5205, 384000) MDRV_SOUND_CONFIG(msm5205_config) MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ADD("msm2", MSM5205, 384000) MDRV_SOUND_CONFIG(msm5205_config) MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ADD("msm3", MSM5205, 384000) MDRV_SOUND_CONFIG(msm5205_config) MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-	MDRV_SOUND_ADD("msm4", MSM5205, 384000) MDRV_SOUND_CONFIG(msm5205_config) MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ADD("msm1", MSM5205, 384000) MDRV_SOUND_CONFIG(msm5205_config_0) MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ADD("msm2", MSM5205, 384000) MDRV_SOUND_CONFIG(msm5205_config_1) MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ADD("msm3", MSM5205, 384000) MDRV_SOUND_CONFIG(msm5205_config_2) MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ADD("msm4", MSM5205, 384000) MDRV_SOUND_CONFIG(msm5205_config_3) MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
 
 static void wheelrun_ym3526_irqhandler(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ0, state);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_IRQ0, state);
 }
 
 static const ym3526_interface wheelrun_ym3526_interface =

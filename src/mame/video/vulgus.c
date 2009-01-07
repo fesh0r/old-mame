@@ -117,8 +117,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( vulgus )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows, 8, 8,32,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,16,16,32,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_cols,16,16,32,32);
 
 	colortable_configure_tilemap_groups(machine->colortable, fg_tilemap, machine->gfx[0], 47);
 }
@@ -150,7 +150,7 @@ WRITE8_HANDLER( vulgus_c804_w )
 	coin_counter_w(1, data & 0x02);
 
 	/* bit 7 flips screen */
-	flip_screen_set(data & 0x80);
+	flip_screen_set(space->machine, data & 0x80);
 }
 
 
@@ -185,7 +185,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		sx = spriteram[offs + 3];
 		sy = spriteram[offs + 2];
 		dir = 1;
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -200,7 +200,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 			drawgfx(bitmap,machine->gfx[2],
 					code + i,
 					col,
-					flip_screen_get(),flip_screen_get(),
+					flip_screen_get(machine),flip_screen_get(machine),
 					sx, sy + 16 * i * dir,
 					cliprect,TRANSPARENCY_PEN,15);
 
@@ -208,7 +208,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 			drawgfx(bitmap,machine->gfx[2],
 					code + i,
 					col,
-					flip_screen_get(),flip_screen_get(),
+					flip_screen_get(machine),flip_screen_get(machine),
 					sx, sy + 16 * i * dir -  dir * 256,
 					cliprect,TRANSPARENCY_PEN,15);
 			i--;

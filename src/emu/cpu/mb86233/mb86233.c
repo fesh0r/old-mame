@@ -15,7 +15,6 @@
 
 #include "mb86233.h"
 #include "debugger.h"
-#include "deprecat.h"
 
 /***************************************************************************
     STRUCTURES & TYPEDEFS
@@ -28,7 +27,8 @@ typedef union
 	float	f;
 } MB86233_REG;
 
-typedef struct
+typedef struct _mb86233_state mb86233_state;
+struct _mb86233_state
 {
 	UINT16			pc;
 	MB86233_REG		a;
@@ -47,107 +47,88 @@ typedef struct
 	UINT32			gpr[16];
 	UINT32			extport[0x30];
 
+	const device_config *device;
+	const address_space *program;
+	int icount;
+
 	/* FIFO */
 	int				fifo_wait;
-	int				(*fifo_read_cb)( UINT32 *data );
-	void			(*fifo_write_cb)( UINT32 data );
+	mb86233_fifo_read_func fifo_read_cb;
+	mb86233_fifo_write_func fifo_write_cb;
 
 	/* internal RAM */
 	UINT32			*RAM;
 	UINT32			*ARAM, *BRAM;
 	UINT32			*Tables;
-} MB86233_REGS;
-
-/***************************************************************************
-    PRIVATE GLOBAL VARIABLES
-***************************************************************************/
-
-static MB86233_REGS mb86233;
-static int mb86233_icount;
+};
 
 /***************************************************************************
     MACROS
 ***************************************************************************/
 
-#define GETPC()				mb86233.pc
-#define GETA()				mb86233.a
-#define GETB()				mb86233.b
-#define GETD()				mb86233.d
-#define GETP()				mb86233.p
-#define GETSR()				mb86233.sr
-#define GETGPR(a)			mb86233.gpr[a]
-#define GETSHIFT()			mb86233.shift
-#define GETPCS()			mb86233.pcs
-#define GETPCSP()			mb86233.pcsp
-#define GETEB()				mb86233.eb
-#define GETREPS()			mb86233.reps
-#define GETEXTPORT()		mb86233.extport
-#define GETFIFOWAIT()		mb86233.fifo_wait
-#define GETARAM()			mb86233.ARAM
-#define GETBRAM()			mb86233.BRAM
-#define ALU(a)				mb86233_alu(a)
-#define GETREPCNT()			mb86233.repcnt
+#define GETPC()				cpustate->pc
+#define GETA()				cpustate->a
+#define GETB()				cpustate->b
+#define GETD()				cpustate->d
+#define GETP()				cpustate->p
+#define GETSR()				cpustate->sr
+#define GETGPR(a)			cpustate->gpr[a]
+#define GETSHIFT()			cpustate->shift
+#define GETPCS()			cpustate->pcs
+#define GETPCSP()			cpustate->pcsp
+#define GETEB()				cpustate->eb
+#define GETREPS()			cpustate->reps
+#define GETEXTPORT()		cpustate->extport
+#define GETFIFOWAIT()		cpustate->fifo_wait
+#define GETARAM()			cpustate->ARAM
+#define GETBRAM()			cpustate->BRAM
+#define ALU(cs,a)			mb86233_alu(cs,a)
+#define GETREPCNT()			cpustate->repcnt
 
-#define ROPCODE(a)			cpu_readop32(a<<2)
-#define RDMEM(a)			program_read_dword_32le((a<<2))
-#define WRMEM(a,v)			program_write_dword_32le((a<<2),v)
-
-/***************************************************************************
-    Context Switching
-***************************************************************************/
-
-static void mb86233_get_context(void *dst)
-{
-	/* copy the context */
-	*(MB86233_REGS *)dst = mb86233;
-}
-
-static void mb86233_set_context(void *src)
-{
-	/* copy the context */
-	if (src)
-		mb86233 = *(MB86233_REGS *)src;
-	change_pc(GETPC());
-}
-
+#define ROPCODE(a)			memory_decrypted_read_dword(cpustate->program, a<<2)
+#define RDMEM(a)			memory_read_dword_32le(cpustate->program, (a<<2))
+#define WRMEM(a,v)			memory_write_dword_32le(cpustate->program, (a<<2), v)
 
 /***************************************************************************
     Initialization and Shutdown
 ***************************************************************************/
 
-static void mb86233_init(int index, int clock, const void *config, int (*irqcallback)(int))
+static CPU_INIT( mb86233 )
 {
-	mb86233_cpu_core * _config = (mb86233_cpu_core *)config;
-	(void)index;
-	(void)clock;
+	mb86233_state *cpustate = device->token;
+	mb86233_cpu_core * _config = (mb86233_cpu_core *)device->static_config;
 	(void)irqcallback;
 
-	memset(&mb86233, 0, sizeof( MB86233_REGS ) );
+	memset(cpustate, 0, sizeof( *cpustate ) );
+	cpustate->device = device;
+	cpustate->program = memory_find_address_space(device, ADDRESS_SPACE_PROGRAM);
 
 	if ( _config )
 	{
-		mb86233.fifo_read_cb = _config->fifo_read_cb;
-		mb86233.fifo_write_cb = _config->fifo_write_cb;
+		cpustate->fifo_read_cb = _config->fifo_read_cb;
+		cpustate->fifo_write_cb = _config->fifo_write_cb;
 	}
 
-	mb86233.RAM = auto_malloc(2 * 0x200 * sizeof(UINT32));		/* 2x 2KB */
-	memset( mb86233.RAM, 0, 2 * 0x200 * sizeof(UINT32) );
-	mb86233.ARAM = &mb86233.RAM[0];
-	mb86233.BRAM = &mb86233.RAM[0x200];
-	mb86233.Tables = (UINT32*) memory_region(Machine, _config->tablergn);
+	cpustate->RAM = auto_malloc(2 * 0x200 * sizeof(UINT32));		/* 2x 2KB */
+	memset( cpustate->RAM, 0, 2 * 0x200 * sizeof(UINT32) );
+	cpustate->ARAM = &cpustate->RAM[0];
+	cpustate->BRAM = &cpustate->RAM[0x200];
+	cpustate->Tables = (UINT32*) memory_region(device->machine, _config->tablergn);
 
-	state_save_register_global_pointer(mb86233.RAM,2 * 0x200 * sizeof(UINT32));
+	state_save_register_global_pointer(device->machine, cpustate->RAM,2 * 0x200 * sizeof(UINT32));
 }
 
-static void mb86233_reset(void)
+static CPU_RESET( mb86233 )
 {
+	mb86233_state *cpustate = device->token;
+
 	/* zero registers and flags */
-	mb86233.pc = 0;
-	mb86233.sr = 0;
-	mb86233.pcsp = 0;
-	mb86233.eb = 0;
-	mb86233.shift = 0;
-	mb86233.fifo_wait = 0;
+	cpustate->pc = 0;
+	cpustate->sr = 0;
+	cpustate->pcsp = 0;
+	cpustate->eb = 0;
+	cpustate->shift = 0;
+	cpustate->fifo_wait = 0;
 }
 
 
@@ -160,7 +141,7 @@ static void mb86233_reset(void)
 #define SIGN_FLAG	(1 << 1)
 #define EXTERNAL_FLAG	(1 << 2)		//This seems to be a flag coming from some external circuit??
 
-static void FLAGSF( float v )
+static void FLAGSF( mb86233_state *cpustate, float v )
 {
 	GETSR() = 0;
 
@@ -171,7 +152,7 @@ static void FLAGSF( float v )
 		GETSR() |= SIGN_FLAG;
 }
 
-static void FLAGSI( UINT32 v )
+static void FLAGSI( mb86233_state *cpustate, UINT32 v )
 {
 	GETSR() = 0;
 
@@ -188,7 +169,7 @@ static void FLAGSI( UINT32 v )
     Condition Codes
 ***************************************************************************/
 
-static int COND( UINT32 cond )
+static int COND( mb86233_state *cpustate, UINT32 cond )
 {
 	switch( cond )
 	{
@@ -239,7 +220,7 @@ static int COND( UINT32 cond )
     ALU
 ***************************************************************************/
 
-static void ALU( UINT32 alu)
+static void ALU( mb86233_state *cpustate, UINT32 alu)
 {
 	float	ftmp;
 
@@ -250,135 +231,135 @@ static void ALU( UINT32 alu)
 
 		case 0x01:	/* D = D & A */
 			GETD().u &= GETA().u;
-			FLAGSI(GETD().u);
+			FLAGSI(cpustate, GETD().u);
 		break;
 
 		case 0x02:	/* D = D | A */
 			GETD().u |= GETA().u;
-			FLAGSI(GETD().u);
+			FLAGSI(cpustate, GETD().u);
 		break;
 
 		case 0x03:	/* D = D ^ A */
 			GETD().u ^= GETA().u;
-			FLAGSI(GETD().u);
+			FLAGSI(cpustate, GETD().u);
 		break;
 
 		case 0x05:	/* CMP D,A */
 			ftmp = GETD().f - GETA().f;
-			FLAGSF(ftmp);
-			mb86233_icount--;
+			FLAGSF(cpustate, ftmp);
+			cpustate->icount--;
 		break;
 
 		case 0x06:	/* D = D + A */
 			GETD().f += GETA().f;
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x07:	/* D = D - A */
 			GETD().f -= GETA().f;
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x08:	/* P = A * B */
 			GETP().f = GETA().f * GETB().f;
-			mb86233_icount--;
+			cpustate->icount--;
 		break;
 
 		case 0x09:	/* D = D + P; P = A * B */
 			GETD().f += GETP().f;
 			GETP().f = GETA().f * GETB().f;
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x0A:	/* D = D - P; P = A * B */
 			GETD().f -= GETP().f;
 			GETP().f = GETA().f * GETB().f;
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x0B:	/* D = fabs(D) */
 			GETD().f = fabs( GETD().f );
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x0C:	/* D = D + P */
 			GETD().f += GETP().f;
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x0D:	/* D = P; P = A * B */
 			GETD().f = GETP().f;
 			GETP().f = GETA().f * GETB().f;
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x0E:	/* D = float(D) */
 			GETD().f = (float)GETD().i;
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x0F:	/* D = int(D) */
 			GETD().i = (INT32)GETD().f;
-			FLAGSI(GETD().u);
+			FLAGSI(cpustate, GETD().u);
 		break;
 
 		case 0x10:	/* D = D / A */
 			if ( GETA().u != 0 )
 				GETD().f = GETD().f / GETA().f;
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x11:	/* D = -D */
 			GETD().f = -GETD().f;
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x13:	/* D = A + B */
 			GETD().f = GETA().f + GETB().f;
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x14:	/* D = B - A */
 			GETD().f = GETB().f - GETA().f;
-			FLAGSF(GETD().f);
-			mb86233_icount--;
+			FLAGSF(cpustate, GETD().f);
+			cpustate->icount--;
 		break;
 
 		case 0x16:	/* LSR D, SHIFT */
 			GETD().u >>= GETSHIFT();
-			FLAGSI(GETD().u);
+			FLAGSI(cpustate, GETD().u);
 		break;
 
 		case 0x17:	/* LSL D, SHIFT */
 			GETD().u <<= GETSHIFT();
-			FLAGSI(GETD().u);
+			FLAGSI(cpustate, GETD().u);
 		break;
 
 		case 0x18:	/* ASR D, SHIFT */
 //          GETD().u = (GETD().u & 0x80000000) | (GETD().u >> GETSHIFT());
 			GETD().i >>= GETSHIFT();
-			FLAGSI(GETD().u);
+			FLAGSI(cpustate, GETD().u);
 		break;
 
 		case 0x1A:	/* D = D + A */
 			GETD().i += GETA().i;
-			FLAGSI(GETD().u);
+			FLAGSI(cpustate, GETD().u);
 		break;
 
 		case 0x1B:	/* D = D - A */
 			GETD().i -= GETA().i;
-			FLAGSI(GETD().u);
+			FLAGSI(cpustate, GETD().u);
 		break;
 
 		default:
@@ -402,7 +383,7 @@ static UINT32 ScaleExp(unsigned int v,int scale)
 }
 
 
-static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
+static UINT32 GETEXTERNAL( mb86233_state *cpustate, UINT32 EB, UINT32 offset )
 {
 	UINT32		addr;
 
@@ -423,7 +404,7 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 			{
 				if(value&0x4000)
 					off=0x4000-off;
-				r=mb86233.Tables[off];
+				r=cpustate->Tables[off];
 			}
 			if(value&0x8000)
 				r|=1<<31;
@@ -487,7 +468,7 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 
 			}
 
-			res=(mb86233.Tables[index+0x10000/4]>>sign)&0xffff;
+			res=(cpustate->Tables[index+0x10000/4]>>sign)&0xffff;
 
 			if((a.u&0x7fffffff)<=(b.u&0x7fffffff))
 				res=0x4000-res;
@@ -513,7 +494,7 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 		if(offset==0x28)
 		{
 			UINT32 offset=(GETEXTPORT()[0x28]>>10)&0x1fff;
-			UINT32 value=mb86233.Tables[offset*2+0x20000/4];
+			UINT32 value=cpustate->Tables[offset*2+0x20000/4];
 			UINT32 srcexp=(GETEXTPORT()[0x28]>>23)&0xff;
 
 			value&=0x7FFFFFFF;
@@ -523,7 +504,7 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 		if(offset==0x29)
 		{
 			UINT32 offset=(GETEXTPORT()[0x28]>>10)&0x1fff;
-			UINT32 value=mb86233.Tables[offset*2+(0x20000/4)+1];
+			UINT32 value=cpustate->Tables[offset*2+(0x20000/4)+1];
 			UINT32 srcexp=(GETEXTPORT()[0x28]>>23)&0xff;
 
 			value&=0x7FFFFFFF;
@@ -535,7 +516,7 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 		if(offset==0x2a)
 		{
 			UINT32 offset=((GETEXTPORT()[0x2a]>>11)&0x1fff)^0x1000;
-			UINT32 value=mb86233.Tables[offset*2+0x30000/4];
+			UINT32 value=cpustate->Tables[offset*2+0x30000/4];
 			UINT32 srcexp=(GETEXTPORT()[0x2a]>>24)&0x7f;
 
 			value&=0x7FFFFFFF;
@@ -545,7 +526,7 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 		if(offset==0x2b)
 		{
 			UINT32 offset=((GETEXTPORT()[0x2a]>>11)&0x1fff)^0x1000;
-			UINT32 value=mb86233.Tables[offset*2+(0x30000/4)+1];
+			UINT32 value=cpustate->Tables[offset*2+(0x30000/4)+1];
 			UINT32 srcexp=(GETEXTPORT()[0x2a]>>24)&0x7f;
 
 			value&=0x7FFFFFFF;
@@ -563,7 +544,7 @@ static UINT32 GETEXTERNAL( UINT32 EB, UINT32 offset )
 	return RDMEM(addr);
 }
 
-static void SETEXTERNAL( UINT32 EB, UINT32 offset, UINT32 value )
+static void SETEXTERNAL( mb86233_state *cpustate, UINT32 EB, UINT32 offset, UINT32 value )
 {
 	UINT32	addr;
 
@@ -596,7 +577,7 @@ static void SETEXTERNAL( UINT32 EB, UINT32 offset, UINT32 value )
     Register Access
 ***************************************************************************/
 
-static UINT32 GETREGS( UINT32 reg, int source )
+static UINT32 GETREGS( mb86233_state *cpustate, UINT32 reg, int source )
 {
 	UINT32	mode = ( reg >> 6 ) & 0x07;
 
@@ -672,9 +653,9 @@ static UINT32 GETREGS( UINT32 reg, int source )
 			{
 				UINT32	fifo_data;
 
-				if ( mb86233.fifo_read_cb )
+				if ( cpustate->fifo_read_cb )
 				{
-					if ( mb86233.fifo_read_cb(&fifo_data) )
+					if ( cpustate->fifo_read_cb(cpustate->device, &fifo_data) )
 					{
 						return fifo_data;
 					}
@@ -767,7 +748,7 @@ static UINT32 GETREGS( UINT32 reg, int source )
 	return 0;
 }
 
-static void SETREGS( UINT32 reg, UINT32 val )
+static void SETREGS( mb86233_state *cpustate, UINT32 reg, UINT32 val )
 {
 	int		mode = ( reg >> 6) & 0x07;
 
@@ -855,9 +836,9 @@ static void SETREGS( UINT32 reg, UINT32 val )
 			break;
 
 			case 0x22: /* FOut */
-				if ( mb86233.fifo_write_cb )
+				if ( cpustate->fifo_write_cb )
 				{
-					mb86233.fifo_write_cb( val );
+					cpustate->fifo_write_cb( cpustate->device, val );
 				}
 			break;
 
@@ -887,7 +868,7 @@ static void SETREGS( UINT32 reg, UINT32 val )
     Addressing Modes
 ***************************************************************************/
 
-static UINT32 INDIRECT( UINT32 reg, int source )
+static UINT32 INDIRECT( mb86233_state *cpustate, UINT32 reg, int source )
 {
 	UINT32	mode = ( reg >> 6 ) & 0x07;
 
@@ -964,17 +945,18 @@ static UINT32 INDIRECT( UINT32 reg, int source )
     Core Execution Loop
 ***************************************************************************/
 
-static int mb86233_execute(int cycles)
+static CPU_EXECUTE( mb86233 )
 {
+	mb86233_state *cpustate = device->token;
 
-	mb86233_icount = cycles;
+	cpustate->icount = cycles;
 
-	while( mb86233_icount > 0 )
+	while( cpustate->icount > 0 )
 	{
 		UINT32		val;
 		UINT32		opcode;
 
-		debugger_instruction_hook(Machine, GETPC());
+		debugger_instruction_hook(device, GETPC());
 
 		opcode = ROPCODE(GETPC());
 
@@ -989,7 +971,7 @@ static int mb86233_execute(int cycles)
 				UINT32		alu = ( opcode >> 21 ) & 0x1f;
 				UINT32		op = ( opcode >> 16 ) & 0x1f;
 
-				ALU( alu );
+				ALU( cpustate, alu );
 
 				switch( op )
 				{
@@ -999,23 +981,23 @@ static int mb86233_execute(int cycles)
 					break;
 
 					case 0x0D:
-						GETA().u = GETARAM()[INDIRECT(r1,0)];
-						GETB().u = GETBRAM()[INDIRECT(r2|2<<6,0)];
+						GETA().u = GETARAM()[INDIRECT(cpustate,r1,0)];
+						GETB().u = GETBRAM()[INDIRECT(cpustate,r2|2<<6,0)];
 					break;
 
 					case 0x0F:
 						GETA().u = GETARAM()[r1];
-						GETB().u = GETBRAM()[INDIRECT(r2|6<<6,0)];
+						GETB().u = GETBRAM()[INDIRECT(cpustate,r2|6<<6,0)];
 					break;
 
 					case 0x10:
-						GETA().u = GETBRAM()[INDIRECT(r1,1)];
+						GETA().u = GETBRAM()[INDIRECT(cpustate,r1,1)];
 						GETB().u = GETARAM()[r2];
 					break;
 
 					case 0x11:
-						GETA().u = GETARAM()[INDIRECT(r1,1)];
-						GETB().u = GETBRAM()[INDIRECT(r2|(2<<6),0)];
+						GETA().u = GETARAM()[INDIRECT(cpustate,r1,1)];
+						GETB().u = GETBRAM()[INDIRECT(cpustate,r2|(2<<6),0)];
 					break;
 
 					default:
@@ -1036,15 +1018,15 @@ static int mb86233_execute(int cycles)
 				{
 					case 0x04:	/* MOV RAM->External */
 					{
-						SETEXTERNAL(GETEB(), r2, GETARAM()[r1]);
-						ALU(alu);
+						SETEXTERNAL(cpustate, GETEB(), r2, GETARAM()[r1]);
+						ALU(cpustate, alu);
 					}
 					break;
 
 					case 0x0c:	/* MOV RAM->BRAM */
 					{
 						GETBRAM()[r2] = GETARAM()[r1];
-						ALU(alu);
+						ALU(cpustate, alu);
 					}
 					break;
 
@@ -1052,7 +1034,7 @@ static int mb86233_execute(int cycles)
 					{
 						if ( r1 & 0x180 )
 						{
-							val = GETARAM()[GETREGS(r1,0)];
+							val = GETARAM()[GETREGS(cpustate,r1,0)];
 						}
 						else
 						{
@@ -1063,28 +1045,28 @@ static int mb86233_execute(int cycles)
 						if ( GETFIFOWAIT() )
 							break;
 
-						ALU(alu);
-						SETREGS(r2,val);
+						ALU(cpustate, alu);
+						SETREGS(cpustate,r2,val);
 					}
 					break;
 
 					case 0x1c:  /* MOV Reg->RAMInd */
 					{
-						val = GETREGS(r2,1);
+						val = GETREGS(cpustate,r2,1);
 
 						/* if we're waiting for data, don't complete the instruction */
 						if ( GETFIFOWAIT() )
 							break;
 
-						ALU(alu);
+						ALU(cpustate, alu);
 
 						if ( ( r2 >> 6 ) & 0x01)
 						{
-							SETEXTERNAL(GETEB(),INDIRECT(r1,0),val);
+							SETEXTERNAL(cpustate, GETEB(),INDIRECT(cpustate,r1,0),val);
 						}
 						else
 						{
-							GETARAM()[INDIRECT(r1,0)] = val;
+							GETARAM()[INDIRECT(cpustate,r1,0)] = val;
 						}
 					}
 					break;
@@ -1094,42 +1076,42 @@ static int mb86233_execute(int cycles)
 						if ( r1 == 0x10 && r2 == 0xf )
 						{
 							/* NOP */
-							ALU(alu);
+							ALU(cpustate, alu);
 						}
 						else
 						{
-							val = GETREGS(r1,1);
+							val = GETREGS(cpustate,r1,1);
 
 							/* if we're waiting for data, don't complete the instruction */
 							if ( GETFIFOWAIT() )
 								break;
 
-							ALU(alu);
-							SETREGS( r2, val );
+							ALU(cpustate, alu);
+							SETREGS(cpustate, r2, val );
 						}
 					}
 					break;
 
 					case 0x0f:	/* MOV RAMInd->BRAMInd */
 					{
-						val = GETARAM()[INDIRECT(r1,1)];
-						ALU(alu);
-						GETBRAM()[INDIRECT(r2|(6<<6),0)] = val;
+						val = GETARAM()[INDIRECT(cpustate,r1,1)];
+						ALU(cpustate, alu);
+						GETBRAM()[INDIRECT(cpustate,r2|(6<<6),0)] = val;
 					}
 					break;
 
 					case 0x13:	/* MOV BRAMInd->RAMInd */
 					{
-						val = GETBRAM()[INDIRECT(r1,1)];
-						ALU(alu);
-						GETARAM()[INDIRECT(r2|(6<<6),0)] = val;
+						val = GETBRAM()[INDIRECT(cpustate,r1,1)];
+						ALU(cpustate, alu);
+						GETARAM()[INDIRECT(cpustate,r2|(6<<6),0)] = val;
 					}
 					break;
 
 					case 0x10:	/* MOV RAMInd->RAM  */
 					{
-						val = GETBRAM()[INDIRECT(r1,1)];
-						ALU(alu);
+						val = GETBRAM()[INDIRECT(cpustate,r1,1)];
+						ALU(cpustate, alu);
 						GETARAM()[r2] = val;
 					}
 					break;
@@ -1139,45 +1121,45 @@ static int mb86233_execute(int cycles)
 						UINT32	offset;
 
 						if ( ( r2 >> 6 ) & 1 )
-							offset = INDIRECT(r1,1);
+							offset = INDIRECT(cpustate,r1,1);
 						else
-							offset = INDIRECT(r1,0);
+							offset = INDIRECT(cpustate,r1,0);
 
-						val = GETEXTERNAL(GETEB(),offset);
-						ALU(alu);
-						SETREGS(r2,val);
+						val = GETEXTERNAL(cpustate, GETEB(),offset);
+						ALU(cpustate, alu);
+						SETREGS(cpustate,r2,val);
 					}
 					break;
 
 					case 0x03:	/* RAM->External Ind */
 					{
 						val = GETARAM()[r1];
-						ALU(alu);
-						SETEXTERNAL(GETEB(),INDIRECT(r2|(6<<6),0),val);
+						ALU(cpustate, alu);
+						SETEXTERNAL(cpustate, GETEB(),INDIRECT(cpustate,r2|(6<<6),0),val);
 					}
 					break;
 
 					case 0x07:	/* RAMInd->External */
 					{
-						val = GETARAM()[INDIRECT(r1,1)];
-						ALU(alu);
-						SETEXTERNAL(GETEB(),INDIRECT(r2|(6<<6),0),val);
+						val = GETARAM()[INDIRECT(cpustate,r1,1)];
+						ALU(cpustate, alu);
+						SETEXTERNAL(cpustate, GETEB(),INDIRECT(cpustate,r2|(6<<6),0),val);
 					}
 					break;
 
 					case 0x08:	/* External->RAM */
 					{
-						val = GETEXTERNAL(GETEB(),INDIRECT(r1,1));
-						ALU(alu);
+						val = GETEXTERNAL(cpustate, GETEB(),INDIRECT(cpustate,r1,1));
+						ALU(cpustate, alu);
 						GETARAM()[r2] = val;
 					}
 					break;
 
 					case 0x0b:	/* External->RAMInd */
 					{
-						val = GETEXTERNAL(GETEB(),INDIRECT(r1,1));
-						ALU(alu);
-						GETARAM()[INDIRECT(r2|(6<<6),0)] = val;
+						val = GETEXTERNAL(cpustate, GETEB(),INDIRECT(cpustate,r1,1));
+						ALU(cpustate, alu);
+						GETARAM()[INDIRECT(cpustate,r2|(6<<6),0)] = val;
 					}
 					break;
 
@@ -1223,7 +1205,7 @@ static int mb86233_execute(int cycles)
 				UINT32		alu = ( opcode >> 20 ) & 0x1f;
 				UINT32		sub2 = ( opcode >> 16 ) & 0x0f;
 
-				ALU( alu );
+				ALU(cpustate, alu );
 
 				if( sub2 == 0x00 )			/* CLEAR reg */
 				{
@@ -1259,7 +1241,7 @@ static int mb86233_execute(int cycles)
 					}
 					else if ( sub3 == 8 )
 					{
-						GETREPS() = GETREGS( opcode & 0xfff, 0 );
+						GETREPS() = GETREGS(cpustate, opcode & 0xfff, 0 );
 						GETPC()++;
 					}
 				}
@@ -1430,18 +1412,17 @@ static int mb86233_execute(int cycles)
 				UINT32	subtype = ( opcode >> 16 ) & 0x0f;
 				UINT32	data = opcode & 0xffff;
 
-				if( COND(cond) )
+				if( COND(cpustate, cond) )
 				{
 					switch( subtype )
 					{
 						case 0x00:	/* BRIF <addr> */
 							GETPC() = data - 1;
-							change_pc( GETPC() );
 						break;
 
 						case 0x02:	/* BRIF indirect */
 							if ( data & 0x4000 )
-								data = GETREGS(data&0x3f,0) - 1;
+								data = GETREGS(cpustate,data&0x3f,0) - 1;
 							else
 								data = ((GETARAM()[data&0x3ff])&0xffff)-1;
 
@@ -1450,21 +1431,19 @@ static int mb86233_execute(int cycles)
 								break;
 
 							GETPC() = data;
-							change_pc( GETPC() );
 						break;
 
 						case 0x04:	/* BSIF <addr> */
 							GETPCS()[GETPCSP()] = GETPC();
 							GETPCSP()++;
 							GETPC() = data - 1;
-							change_pc( GETPC() );
 						break;
 
 						case 0x06:	/* BSIF indirect */
 							GETPCS()[GETPCSP()] = GETPC();
 							GETPCSP()++;
 							if ( data & 0x4000 )
-								data = GETREGS(data&0x3f,0) - 1;
+								data = GETREGS(cpustate,data&0x3f,0) - 1;
 							else
 								data = ((GETARAM()[data&0x3ff])&0xffff)-1;
 
@@ -1473,17 +1452,15 @@ static int mb86233_execute(int cycles)
 								break;
 
 							GETPC() = data;
-							change_pc( GETPC() );
 						break;
 
 						case 0x0a:	/* RTIF */
 							--GETPCSP();
 							GETPC() = GETPCS()[GETPCSP()];
-							change_pc( GETPC() );
 						break;
 
 						case 0x0c:	/* LDIF */
-							SETREGS(((data>>9)&0x3f), GETARAM()[data&0x1FF] );
+							SETREGS(cpustate,((data>>9)&0x3f), GETARAM()[data&0x1FF] );
 						break;
 
 						case 0x0e:	/* RIIF */
@@ -1504,7 +1481,7 @@ static int mb86233_execute(int cycles)
 				UINT32	subtype = ( opcode >> 16 ) & 0x0f;
 				UINT32	data = opcode & 0xffff;
 
-				if( !COND(cond) )
+				if( !COND(cpustate, cond) )
 				{
 					switch( subtype )
 					{
@@ -1514,7 +1491,7 @@ static int mb86233_execute(int cycles)
 
 						case 0x02:	/* BRUL indirect */
 							if ( data & 0x4000 )
-								data = GETREGS(data&0x3f,0) - 1;
+								data = GETREGS(cpustate,data&0x3f,0) - 1;
 							else
 								data = ((GETARAM()[data&0x3ff])&0xffff)-1;
 
@@ -1523,21 +1500,19 @@ static int mb86233_execute(int cycles)
 								break;
 
 							GETPC() = data;
-							change_pc( GETPC() );
 						break;
 
 						case 0x04:	/* BSUL <addr> */
 							GETPCS()[GETPCSP()] = GETPC();
 							GETPCSP()++;
 							GETPC() = data - 1;
-							change_pc( GETPC() );
 						break;
 
 						case 0x06:	/* BSUL indirect */
 							GETPCS()[GETPCSP()] = GETPC();
 							GETPCSP()++;
 							if ( data & 0x4000 )
-								data = GETREGS(data&0x3f,0) - 1;
+								data = GETREGS(cpustate,data&0x3f,0) - 1;
 							else
 								data = ((GETARAM()[data&0x3ff])&0xffff)-1;
 
@@ -1546,17 +1521,15 @@ static int mb86233_execute(int cycles)
 								break;
 
 							GETPC() = data;
-							change_pc( GETPC() );
 						break;
 
 						case 0x0a:	/* RTUL */
 							--GETPCSP();
 							GETPC() = GETPCS()[GETPCSP()];
-							change_pc( GETPC() );
 						break;
 
 						case 0x0c:	/* LDUL */
-							SETREGS(((data>>9)&0x3f), GETARAM()[data&0x1FF] );
+							SETREGS(cpustate,((data>>9)&0x3f), GETARAM()[data&0x1FF] );
 						break;
 
 						case 0x0e:	/* RIUL */
@@ -1583,22 +1556,22 @@ static int mb86233_execute(int cycles)
 			else
 				--GETREPS();
 
-			mb86233_icount--;
+			cpustate->icount--;
 		}
 		else
 		{
-			mb86233_icount = 0;
+			cpustate->icount = 0;
 		}
 	}
 
-	return cycles - mb86233_icount;
+	return cycles - cpustate->icount;
 }
 
 /***************************************************************************
     DISASSEMBLY HOOK
 ***************************************************************************/
 
-static offs_t mb86233_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
+static CPU_DISASSEMBLE( mb86233 )
 {
 	extern UINT32 dasm_mb86233(char *, UINT32);
 
@@ -1612,12 +1585,14 @@ static offs_t mb86233_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UI
     Information Setters
 ***************************************************************************/
 
-static void mb86233_set_info(UINT32 state, cpuinfo *info)
+static CPU_SET_INFO( mb86233 )
 {
+	mb86233_state *cpustate = device->token;
+
 	switch (state)
 	{
 		case CPUINFO_INT_PC:
-		case CPUINFO_INT_REGISTER + MB86233_PC:			GETPC() = info->i; change_pc(GETPC());	break;
+		case CPUINFO_INT_REGISTER + MB86233_PC:			GETPC() = info->i; 						break;
 		case CPUINFO_INT_REGISTER + MB86233_A:			GETA().u = info->i;						break;
 		case CPUINFO_INT_REGISTER + MB86233_B:			GETB().u = info->i;						break;
 		case CPUINFO_INT_REGISTER + MB86233_P:			GETP().u = info->i;						break;
@@ -1651,15 +1626,17 @@ static void mb86233_set_info(UINT32 state, cpuinfo *info)
     Information Getters
 ***************************************************************************/
 
-void mb86233_get_info(UINT32 state, cpuinfo *info)
+CPU_GET_INFO( mb86233 )
 {
+	mb86233_state *cpustate = (device != NULL) ? device->token : NULL;
+
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case CPUINFO_INT_CONTEXT_SIZE:					info->i = sizeof(MB86233_REGS);			break;
+		case CPUINFO_INT_CONTEXT_SIZE:					info->i = sizeof(mb86233_state);		break;
 		case CPUINFO_INT_INPUT_LINES:					info->i = 0;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
-		case CPUINFO_INT_ENDIANNESS:					info->i = CPU_IS_LE;					break;
+		case CPUINFO_INT_ENDIANNESS:					info->i = ENDIANNESS_LITTLE;					break;
 		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -1667,15 +1644,15 @@ void mb86233_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1;							break;
 		case CPUINFO_INT_MAX_CYCLES:					info->i = 2;							break;
 
-		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 32;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_PROGRAM: info->i = 32;					break;
-		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_PROGRAM: info->i = -2;					break;
-		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_DATA:	info->i = 32;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_DATA: 	info->i = 32;					break;
-		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_DATA: 	info->i = 0;					break;
-		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 0;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO: 		info->i = 0;					break;
-		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_IO: 		info->i = 0;					break;
+		case CPUINFO_INT_DATABUS_WIDTH_PROGRAM:	info->i = 32;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH_PROGRAM: info->i = 32;					break;
+		case CPUINFO_INT_ADDRBUS_SHIFT_PROGRAM: info->i = -2;					break;
+		case CPUINFO_INT_DATABUS_WIDTH_DATA:	info->i = 32;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH_DATA: 	info->i = 32;					break;
+		case CPUINFO_INT_ADDRBUS_SHIFT_DATA: 	info->i = 0;					break;
+		case CPUINFO_INT_DATABUS_WIDTH_IO:		info->i = 0;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH_IO: 		info->i = 0;					break;
+		case CPUINFO_INT_ADDRBUS_SHIFT_IO: 		info->i = 0;					break;
 
 		case CPUINFO_INT_PREVIOUSPC:					/* not implemented */					break;
 
@@ -1709,16 +1686,14 @@ void mb86233_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_REGISTER + MB86233_R15:		info->i = GETGPR(15);					break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case CPUINFO_PTR_SET_INFO:						info->setinfo = mb86233_set_info;		break;
-		case CPUINFO_PTR_GET_CONTEXT:					info->getcontext = mb86233_get_context;	break;
-		case CPUINFO_PTR_SET_CONTEXT:					info->setcontext = mb86233_set_context;	break;
-		case CPUINFO_PTR_INIT:							info->init = mb86233_init;				break;
-		case CPUINFO_PTR_RESET:							info->reset = mb86233_reset;			break;
-		case CPUINFO_PTR_EXIT:							info->exit = NULL;						break;
-		case CPUINFO_PTR_EXECUTE:						info->execute = mb86233_execute;		break;
-		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = mb86233_dasm;		break;
-		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &mb86233_icount;			break;
+		case CPUINFO_FCT_SET_INFO:						info->setinfo = CPU_SET_INFO_NAME(mb86233);		break;
+		case CPUINFO_FCT_INIT:							info->init = CPU_INIT_NAME(mb86233);				break;
+		case CPUINFO_FCT_RESET:							info->reset = CPU_RESET_NAME(mb86233);			break;
+		case CPUINFO_FCT_EXIT:							info->exit = NULL;						break;
+		case CPUINFO_FCT_EXECUTE:						info->execute = CPU_EXECUTE_NAME(mb86233);		break;
+		case CPUINFO_FCT_BURN:							info->burn = NULL;						break;
+		case CPUINFO_FCT_DISASSEMBLE:					info->disassemble = CPU_DISASSEMBLE_NAME(mb86233);		break;
+		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &cpustate->icount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "MB86233");				break;

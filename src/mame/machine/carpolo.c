@@ -7,7 +7,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6821pia.h"
 #include "machine/7474.h"
@@ -88,63 +87,63 @@ static UINT8 priority_0_extension;
 static UINT8 last_wheel_value[4];
 
 
-static void TTL74148_3S_cb(void)
+static void TTL74148_3S_cb(running_machine *machine)
 {
-	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, TTL74148_output_valid_r(TTL74148_3S) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], M6502_IRQ_LINE, TTL74148_output_valid_r(TTL74148_3S) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
 /* the outputs of the flip-flops are connected to the priority encoder */
-static void TTL7474_2S_1_cb(void)
+static void TTL7474_2S_1_cb(running_machine *machine)
 {
 	TTL74148_input_line_w(TTL74148_3S, COIN1_PRIORITY_LINE, TTL7474_output_comp_r(TTL7474_2S_1));
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(machine, TTL74148_3S);
 }
 
-static void TTL7474_2S_2_cb(void)
+static void TTL7474_2S_2_cb(running_machine *machine)
 {
 	TTL74148_input_line_w(TTL74148_3S, COIN2_PRIORITY_LINE, TTL7474_output_comp_r(TTL7474_2S_2));
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(machine, TTL74148_3S);
 }
 
-static void TTL7474_2U_1_cb(void)
+static void TTL7474_2U_1_cb(running_machine *machine)
 {
 	TTL74148_input_line_w(TTL74148_3S, COIN3_PRIORITY_LINE, TTL7474_output_comp_r(TTL7474_2U_1));
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(machine, TTL74148_3S);
 }
 
-static void TTL7474_2U_2_cb(void)
+static void TTL7474_2U_2_cb(running_machine *machine)
 {
 	TTL74148_input_line_w(TTL74148_3S, COIN4_PRIORITY_LINE, TTL7474_output_comp_r(TTL7474_2U_2));
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(machine, TTL74148_3S);
 }
 
 
-void carpolo_generate_ball_screen_interrupt(UINT8 cause)
+void carpolo_generate_ball_screen_interrupt(running_machine *machine, UINT8 cause)
 {
 	ball_screen_collision_cause = cause;
 
 	TTL74148_input_line_w(TTL74148_3S, BALL_SCREEN_PRIORITY_LINE, 0);
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(machine, TTL74148_3S);
 }
 
-void carpolo_generate_car_car_interrupt(int car1, int car2)
+void carpolo_generate_car_car_interrupt(running_machine *machine, int car1, int car2)
 {
 	car_car_collision_cause = ~((1 << (3 - car1)) | (1 << (3 - car2)));
 
 	TTL74148_input_line_w(TTL74148_3S, CAR_CAR_PRIORITY_LINE, 0);
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(machine, TTL74148_3S);
 }
 
-void carpolo_generate_car_goal_interrupt(int car, int right_goal)
+void carpolo_generate_car_goal_interrupt(running_machine *machine, int car, int right_goal)
 {
 	car_goal_collision_cause = car | (right_goal ? 0x08 : 0x00);
 
 	TTL74148_input_line_w(TTL74148_3S, CAR_GOAL_PRIORITY_LINE, 0);
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(machine, TTL74148_3S);
 }
 
-void carpolo_generate_car_ball_interrupt(int car, int car_x, int car_y)
+void carpolo_generate_car_ball_interrupt(running_machine *machine, int car, int car_x, int car_y)
 {
 	car_ball_collision_cause = car;
 	car_ball_collision_x = car_x;
@@ -153,17 +152,17 @@ void carpolo_generate_car_ball_interrupt(int car, int car_x, int car_y)
 	priority_0_extension = CAR_BALL_EXTRA_BITS;
 
 	TTL74148_input_line_w(TTL74148_3S, PRI0_PRIORTITY_LINE, 0);
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(machine, TTL74148_3S);
 }
 
-void carpolo_generate_car_border_interrupt(int car, int horizontal_border)
+void carpolo_generate_car_border_interrupt(running_machine *machine, int car, int horizontal_border)
 {
 	car_border_collision_cause = car | (horizontal_border ? 0x04 : 0x00);
 
 	priority_0_extension = CAR_BORDER_EXTRA_BITS;
 
 	TTL74148_input_line_w(TTL74148_3S, PRI0_PRIORTITY_LINE, 0);
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(machine, TTL74148_3S);
 }
 
 
@@ -237,21 +236,21 @@ INTERRUPT_GEN( carpolo_timer_interrupt )
 	TTL74148_input_line_w(TTL74148_3S, PRI0_PRIORTITY_LINE, 0);
 	priority_0_extension = TIMER_EXTRA_BITS;
 
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(device->machine, TTL74148_3S);
 
 
 	/* check the coins here as well - they drive the clock of the flip-flops */
-	port_value = input_port_read(machine, "IN0");
+	port_value = input_port_read(device->machine, "IN0");
 
 	TTL7474_clock_w(TTL7474_2S_1, port_value & 0x01);
 	TTL7474_clock_w(TTL7474_2S_2, port_value & 0x02);
 	TTL7474_clock_w(TTL7474_2U_1, port_value & 0x04);
 	TTL7474_clock_w(TTL7474_2U_2, port_value & 0x08);
 
-	TTL7474_update(TTL7474_2S_1);
-	TTL7474_update(TTL7474_2S_2);
-	TTL7474_update(TTL7474_2U_1);
-	TTL7474_update(TTL7474_2U_2);
+	TTL7474_update(device->machine, TTL7474_2S_1);
+	TTL7474_update(device->machine, TTL7474_2S_2);
+	TTL7474_update(device->machine, TTL7474_2U_1);
+	TTL7474_update(device->machine, TTL7474_2U_2);
 
 
 	/* read the steering controls */
@@ -261,7 +260,7 @@ INTERRUPT_GEN( carpolo_timer_interrupt )
 		int dir_flip_flop      = movement_flip_flop + 1;
 		static const char *const portnames[] = { "DIAL0", "DIAL1", "DIAL2", "DIAL3" };
 
-		port_value = input_port_read(machine, portnames[player]);
+		port_value = input_port_read(device->machine, portnames[player]);
 
 		if (port_value != last_wheel_value[player])
 		{
@@ -275,14 +274,14 @@ INTERRUPT_GEN( carpolo_timer_interrupt )
 		TTL7474_clock_w(movement_flip_flop, port_value & 0x01);
 		TTL7474_clock_w(dir_flip_flop,      port_value & 0x01);
 
-		TTL7474_update(movement_flip_flop);
-		TTL7474_update(dir_flip_flop);
+		TTL7474_update(device->machine, movement_flip_flop);
+		TTL7474_update(device->machine, dir_flip_flop);
 	}
 
 
 
 	/* finally read the accelerator pedals */
-	port_value = input_port_read(machine, "PEDALS");
+	port_value = input_port_read(device->machine, "PEDALS");
 
 	for (player = 0; player < 4; player++)
 	{
@@ -314,61 +313,61 @@ INTERRUPT_GEN( carpolo_timer_interrupt )
 static WRITE8_HANDLER( coin1_interrupt_clear_w )
 {
 	TTL7474_clear_w(TTL7474_2S_1, data);
-	TTL7474_update(TTL7474_2S_1);
+	TTL7474_update(space->machine, TTL7474_2S_1);
 }
 
 static WRITE8_HANDLER( coin2_interrupt_clear_w )
 {
 	TTL7474_clear_w(TTL7474_2S_2, data);
-	TTL7474_update(TTL7474_2S_2);
+	TTL7474_update(space->machine, TTL7474_2S_2);
 }
 
 static WRITE8_HANDLER( coin3_interrupt_clear_w )
 {
 	TTL7474_clear_w(TTL7474_2U_1, data);
-	TTL7474_update(TTL7474_2U_1);
+	TTL7474_update(space->machine, TTL7474_2U_1);
 }
 
 static WRITE8_HANDLER( coin4_interrupt_clear_w )
 {
 	TTL7474_clear_w(TTL7474_2U_2, data);
-	TTL7474_update(TTL7474_2U_2);
+	TTL7474_update(space->machine, TTL7474_2U_2);
 }
 
 WRITE8_HANDLER( carpolo_ball_screen_interrupt_clear_w )
 {
 	TTL74148_input_line_w(TTL74148_3S, BALL_SCREEN_PRIORITY_LINE, 1);
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(space->machine, TTL74148_3S);
 }
 
 WRITE8_HANDLER( carpolo_car_car_interrupt_clear_w )
 {
 	TTL74148_input_line_w(TTL74148_3S, CAR_CAR_PRIORITY_LINE, 1);
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(space->machine, TTL74148_3S);
 }
 
 WRITE8_HANDLER( carpolo_car_goal_interrupt_clear_w )
 {
 	TTL74148_input_line_w(TTL74148_3S, CAR_GOAL_PRIORITY_LINE, 1);
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(space->machine, TTL74148_3S);
 }
 
 WRITE8_HANDLER( carpolo_car_ball_interrupt_clear_w )
 {
 	TTL74148_input_line_w(TTL74148_3S, PRI0_PRIORTITY_LINE, 1);
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(space->machine, TTL74148_3S);
 }
 
 WRITE8_HANDLER( carpolo_car_border_interrupt_clear_w )
 {
 	TTL74148_input_line_w(TTL74148_3S, PRI0_PRIORTITY_LINE, 1);
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(space->machine, TTL74148_3S);
 }
 
 WRITE8_HANDLER( carpolo_timer_interrupt_clear_w )
 {
 	TTL74148_input_line_w(TTL74148_3S, PRI0_PRIORTITY_LINE, 1);
-	TTL74148_update(TTL74148_3S);
+	TTL74148_update(space->machine, TTL74148_3S);
 }
 
 
@@ -397,10 +396,10 @@ static WRITE8_HANDLER( pia_0_port_a_w )
 	TTL7474_clear_w(TTL7474_1C_1, data & 0x08);
 	TTL7474_clear_w(TTL7474_1A_1, data & 0x08);
 
-	TTL7474_update(TTL7474_1F_1);
-	TTL7474_update(TTL7474_1D_1);
-	TTL7474_update(TTL7474_1C_1);
-	TTL7474_update(TTL7474_1A_1);
+	TTL7474_update(space->machine, TTL7474_1F_1);
+	TTL7474_update(space->machine, TTL7474_1D_1);
+	TTL7474_update(space->machine, TTL7474_1C_1);
+	TTL7474_update(space->machine, TTL7474_1A_1);
 }
 
 
@@ -446,7 +445,7 @@ static READ8_HANDLER( pia_1_port_a_r )
 		  (TTL7474_output_r(TTL7474_1C_2) ? 0x02 : 0x00) |
 		  (TTL7474_output_r(TTL7474_1D_2) ? 0x04 : 0x00) |
 		  (TTL7474_output_r(TTL7474_1F_2) ? 0x08 : 0x00) |
-		  (input_port_read(machine, "IN2") & 0xf0);
+		  (input_port_read(space->machine, "IN2") & 0xf0);
 
 	return ret;
 }
@@ -513,22 +512,32 @@ static const struct TTL7474_interface TTL7474_2U_2_intf =
 MACHINE_START( carpolo )
 {
 	/* set up the PIA's */
-	pia_config(0, &pia_0_intf);
-	pia_config(1, &pia_1_intf);
+	pia_config(machine, 0, &pia_0_intf);
+	pia_config(machine, 1, &pia_1_intf);
+
+    state_save_register_global(machine, ball_screen_collision_cause);
+    state_save_register_global(machine, car_ball_collision_x);
+    state_save_register_global(machine, car_ball_collision_y);
+    state_save_register_global(machine, car_car_collision_cause);
+    state_save_register_global(machine, car_goal_collision_cause);
+    state_save_register_global(machine, car_ball_collision_cause);
+    state_save_register_global(machine, car_border_collision_cause);
+    state_save_register_global(machine, priority_0_extension);
+    state_save_register_global_array(machine, last_wheel_value);
 }
 
 MACHINE_RESET( carpolo )
 {
 	/* set up the priority encoder */
-	TTL74148_config(TTL74148_3S, &TTL74148_3S_intf);
+	TTL74148_config(machine, TTL74148_3S, &TTL74148_3S_intf);
 	TTL74148_enable_input_w(TTL74148_3S, 0);	/* always enabled */
 
 
 	/* set up the coin handling flip-flops */
-	TTL7474_config(TTL7474_2S_1, &TTL7474_2S_1_intf);
-	TTL7474_config(TTL7474_2S_2, &TTL7474_2S_2_intf);
-	TTL7474_config(TTL7474_2U_1, &TTL7474_2U_1_intf);
-	TTL7474_config(TTL7474_2U_2, &TTL7474_2U_2_intf);
+	TTL7474_config(machine, TTL7474_2S_1, &TTL7474_2S_1_intf);
+	TTL7474_config(machine, TTL7474_2S_2, &TTL7474_2S_2_intf);
+	TTL7474_config(machine, TTL7474_2U_1, &TTL7474_2U_1_intf);
+	TTL7474_config(machine, TTL7474_2U_2, &TTL7474_2U_2_intf);
 
 	TTL7474_d_w     (TTL7474_2S_1, 1);
 	TTL7474_preset_w(TTL7474_2S_1, 1);
@@ -544,14 +553,14 @@ MACHINE_RESET( carpolo )
 
 
 	/* set up the steering handling flip-flops */
-	TTL7474_config(TTL7474_1F_1, 0);
-	TTL7474_config(TTL7474_1F_2, 0);
-	TTL7474_config(TTL7474_1D_1, 0);
-	TTL7474_config(TTL7474_1D_2, 0);
-	TTL7474_config(TTL7474_1C_1, 0);
-	TTL7474_config(TTL7474_1C_2, 0);
-	TTL7474_config(TTL7474_1A_1, 0);
-	TTL7474_config(TTL7474_1A_2, 0);
+	TTL7474_config(machine, TTL7474_1F_1, 0);
+	TTL7474_config(machine, TTL7474_1F_2, 0);
+	TTL7474_config(machine, TTL7474_1D_1, 0);
+	TTL7474_config(machine, TTL7474_1D_2, 0);
+	TTL7474_config(machine, TTL7474_1C_1, 0);
+	TTL7474_config(machine, TTL7474_1C_2, 0);
+	TTL7474_config(machine, TTL7474_1A_1, 0);
+	TTL7474_config(machine, TTL7474_1A_2, 0);
 
 	TTL7474_d_w     (TTL7474_1F_1, 1);
 	TTL7474_preset_w(TTL7474_1F_1, 1);
@@ -579,7 +588,7 @@ MACHINE_RESET( carpolo )
 
 
 	/* set up the pedal handling chips */
-	TTL74153_config(TTL74153_1K, 0);
+	TTL74153_config(machine, TTL74153_1K, 0);
 
 	TTL74153_enable_w(TTL74153_1K, 0, 0);
 	TTL74153_enable_w(TTL74153_1K, 1, 0);

@@ -44,7 +44,7 @@ WRITE16_HANDLER( galpanic_paletteram_w )
 {
 	data = COMBINE_DATA(&paletteram16[offset]);
 	/* bit 0 seems to be a transparency flag for the front bitmap */
-	palette_set_color_rgb(machine,offset,pal5bit(data >> 6),pal5bit(data >> 11),pal5bit(data >> 1));
+	palette_set_color_rgb(space->machine,offset,pal5bit(data >> 6),pal5bit(data >> 11),pal5bit(data >> 1));
 }
 
 
@@ -123,7 +123,7 @@ VIDEO_UPDATE( comad )
 
 //  if(galpanic_clear_sprites)
 	{
-		fillbitmap(sprites_bitmap,0,cliprect);
+		bitmap_fill(sprites_bitmap,cliprect,0);
 		comad_draw_sprites(screen->machine,bitmap,cliprect);
 	}
 //  else

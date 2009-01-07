@@ -113,7 +113,7 @@ static WRITE8_HANDLER( transmit_data_w )
 }
 static READ8_HANDLER( trigger_slave_nmi_r )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	return 0;
 }
 
@@ -359,19 +359,19 @@ ADDRESS_MAP_END
 
 static INTERRUPT_GEN( master_interrupt )
 {
-	int which = cpu_getiloops();
+	int which = cpu_getiloops(device);
 	if( which==0 )
 	{
 #ifdef HLE_COM
 		memcpy( &slave_workram[0x80], mComData, mComCount );
 		mComCount = 0;
 #endif
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(device, 0, HOLD_LINE);
 	}
 	else
 	{
 		static int oldsteer;
-		int newsteer = input_port_read(machine, "2802") & 0xf;
+		int newsteer = input_port_read(device->machine, "2802") & 0xf;
 		if( newsteer!=oldsteer )
 		{
 			if( imola_steerlatch==0 )
@@ -387,7 +387,7 @@ static INTERRUPT_GEN( master_interrupt )
 			{
 				oldsteer = (oldsteer+1)&0xf;
 			}
-			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+			cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 } /* master_interrupt */
@@ -415,7 +415,7 @@ static MACHINE_DRIVER_START( imolagp )
 	MDRV_CPU_IO_MAP(readport_slave,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_PPI8255_ADD( "ppi8255", ppi8255_intf )
 

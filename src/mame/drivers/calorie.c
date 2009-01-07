@@ -78,6 +78,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/segacrpt.h"
 #include "sound/ay8910.h"
 
@@ -109,8 +110,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 static VIDEO_START( calorie )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,16,16,16,16);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8, 8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,16,16,16,16);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8, 8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
@@ -141,7 +142,7 @@ static VIDEO_UPDATE( calorie )
 		ypos = 0xff - calorie_sprites[x+2];
 		xpos = calorie_sprites[x+3];
 
-		if(flip_screen_get())
+		if(flip_screen_get(screen->machine))
 		{
 			if( calorie_sprites[x+1] & 0x10 )
 				ypos = 0xff - ypos + 32;
@@ -185,13 +186,13 @@ static WRITE8_HANDLER( calorie_bg_w )
 
 static WRITE8_HANDLER( calorie_flipscreen_w )
 {
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 }
 
 static READ8_HANDLER( calorie_soundlatch_r )
 {
-	UINT8 latch = soundlatch_r(machine,0);
-	soundlatch_clear_w(machine,0,0);
+	UINT8 latch = soundlatch_r(space,0);
+	soundlatch_clear_w(space,0,0);
 	return latch;
 }
 
@@ -463,7 +464,8 @@ static DRIVER_INIT( calorie )
 
 static DRIVER_INIT( calorieb )
 {
-	memory_set_decrypted_region(0, 0x0000, 0x7fff, memory_region(machine, "main") + 0x10000);
+	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+	memory_set_decrypted_region(space, 0x0000, 0x7fff, memory_region(machine, "main") + 0x10000);
 }
 
 

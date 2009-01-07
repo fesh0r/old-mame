@@ -39,6 +39,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 
 static tilemap *bg_tilemap, *mlow_tilemap, *mhigh_tilemap, *tx_tilemap;
@@ -123,7 +124,7 @@ static WRITE16_HANDLER( mwarr_brightness_w )
 	brightness = (double)(data & 0xff);
 	for (i=0;i<0x800;i++)
 	{
-		palette_set_pen_contrast(machine, i, brightness/255);
+		palette_set_pen_contrast(space->machine, i, brightness/255);
 	}
 }
 
@@ -309,10 +310,10 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 static VIDEO_START( mwarr )
 {
-	bg_tilemap    = tilemap_create(get_bg_tile_info,   tilemap_scan_cols, 16, 16,64,16);
-	mlow_tilemap  = tilemap_create(get_mlow_tile_info, tilemap_scan_cols, 16, 16,64,16);
-	mhigh_tilemap = tilemap_create(get_mhigh_tile_info,tilemap_scan_cols, 16, 16,64,16);
-	tx_tilemap    = tilemap_create(get_tx_tile_info,   tilemap_scan_rows,  8,  8,64,32);
+	bg_tilemap    = tilemap_create(machine, get_bg_tile_info,   tilemap_scan_cols, 16, 16,64,16);
+	mlow_tilemap  = tilemap_create(machine, get_mlow_tile_info, tilemap_scan_cols, 16, 16,64,16);
+	mhigh_tilemap = tilemap_create(machine, get_mhigh_tile_info,tilemap_scan_cols, 16, 16,64,16);
+	tx_tilemap    = tilemap_create(machine, get_tx_tile_info,   tilemap_scan_rows,  8,  8,64,32);
 
 	sprites_buffer = auto_malloc(sizeof(UINT16) * 0x800);
 
@@ -399,7 +400,7 @@ static VIDEO_UPDATE( mwarr )
 {
 	int i;
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	if(vidattrram[6] & 1)
 	{

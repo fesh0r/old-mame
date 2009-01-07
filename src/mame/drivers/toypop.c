@@ -30,6 +30,8 @@ TODO:
 ****************************************/
 
 #include "driver.h"
+#include "cpu/m6809/m6809.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/namcoio.h"
 #include "sound/namco.h"
 
@@ -55,17 +57,17 @@ PALETTE_INIT( toypop );
 
 ***************************************************************************/
 
-static READ8_HANDLER( in0_l )	{ return input_port_read(machine, "INPUT_RIGHT"); }			// P1 joystick
-static READ8_HANDLER( in0_h )	{ return input_port_read(machine, "INPUT_RIGHT") >> 4; }	// P2 joystick
-static READ8_HANDLER( in1_l )	{ return input_port_read(machine, "SYSTEM"); }				// fire and start buttons
-static READ8_HANDLER( in1_h )	{ return input_port_read(machine, "SYSTEM") >> 4; }			// coins
-static READ8_HANDLER( dipA_l )	{ return input_port_read(machine, "DSW1"); }				// dips A
-static READ8_HANDLER( dipA_h )	{ return input_port_read(machine, "DSW1") >> 4; }			// dips A
-static READ8_HANDLER( dipB_l )	{ return input_port_read(machine, "DSW2"); }				// dips B
-static READ8_HANDLER( dipB_h )	{ return input_port_read(machine, "DSW2") >> 4; }			// dips B
-static READ8_HANDLER( in2_l )	{ return input_port_read(machine, "INPUT_LEFT"); }			// P1 joystick left in liblrabl
-static READ8_HANDLER( in2_h )	{ return input_port_read(machine, "INPUT_LEFT") >> 4; }		// P2 joystick left in liblrabl
-static READ8_HANDLER( in3 )		{ return input_port_read(machine, "SERVICE"); }				// test, cocktail, optional buttons
+static READ8_HANDLER( in0_l )	{ return input_port_read(space->machine, "INPUT_RIGHT"); }			// P1 joystick
+static READ8_HANDLER( in0_h )	{ return input_port_read(space->machine, "INPUT_RIGHT") >> 4; }	// P2 joystick
+static READ8_HANDLER( in1_l )	{ return input_port_read(space->machine, "SYSTEM"); }				// fire and start buttons
+static READ8_HANDLER( in1_h )	{ return input_port_read(space->machine, "SYSTEM") >> 4; }			// coins
+static READ8_HANDLER( dipA_l )	{ return input_port_read(space->machine, "DSW1"); }				// dips A
+static READ8_HANDLER( dipA_h )	{ return input_port_read(space->machine, "DSW1") >> 4; }			// dips A
+static READ8_HANDLER( dipB_l )	{ return input_port_read(space->machine, "DSW2"); }				// dips B
+static READ8_HANDLER( dipB_h )	{ return input_port_read(space->machine, "DSW2") >> 4; }			// dips B
+static READ8_HANDLER( in2_l )	{ return input_port_read(space->machine, "INPUT_LEFT"); }			// P1 joystick left in liblrabl
+static READ8_HANDLER( in2_h )	{ return input_port_read(space->machine, "INPUT_LEFT") >> 4; }		// P2 joystick left in liblrabl
+static READ8_HANDLER( in3 )		{ return input_port_read(space->machine, "SERVICE"); }				// test, cocktail, optional buttons
 static WRITE8_HANDLER( out_coin0 )
 {
 	coin_lockout_global_w(data & 4);
@@ -77,7 +79,7 @@ static WRITE8_HANDLER( out_coin1 )
 }
 static WRITE8_HANDLER( flip )
 {
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 }
 
 /* chip #0: player inputs, buttons, coins */
@@ -108,16 +110,16 @@ static const struct namcoio_interface intf2 =
 
 static DRIVER_INIT( 58c_56_56 )
 {
-	namcoio_init(0, NAMCOIO_58XX, &intf0_coin);
-	namcoio_init(1, NAMCOIO_56XX, &intf1);
-	namcoio_init(2, NAMCOIO_56XX, &intf2);
+	namcoio_init(machine, 0, NAMCOIO_58XX, &intf0_coin);
+	namcoio_init(machine, 1, NAMCOIO_56XX, &intf1);
+	namcoio_init(machine, 2, NAMCOIO_56XX, &intf2);
 }
 
 static DRIVER_INIT( 58_56_56 )
 {
-	namcoio_init(0, NAMCOIO_58XX, &intf0);
-	namcoio_init(1, NAMCOIO_56XX, &intf1);
-	namcoio_init(2, NAMCOIO_56XX, &intf2);
+	namcoio_init(machine, 0, NAMCOIO_58XX, &intf0);
+	namcoio_init(machine, 1, NAMCOIO_56XX, &intf1);
+	namcoio_init(machine, 2, NAMCOIO_56XX, &intf2);
 }
 
 
@@ -136,7 +138,7 @@ static READ8_HANDLER( toypop_sound_sharedram_r )
 static WRITE8_HANDLER( toypop_sound_sharedram_w )
 {
 	if (offset < 0x40)
-		namco_15xx_w(machine,offset,data);
+		namco_15xx_w(space,offset,data);
 	else
 		namco_soundregs[offset] = data;
 }
@@ -154,68 +156,68 @@ static WRITE16_HANDLER( toypop_m68000_sharedram_w )
 
 static READ8_HANDLER( toypop_main_interrupt_enable_r )
 {
-	cpu_interrupt_enable(0,1);
+	cpu_interrupt_enable(space->machine->cpu[0],1);
 	return 0;
 }
 
 static WRITE8_HANDLER( toypop_main_interrupt_enable_w )
 {
-	cpu_interrupt_enable(0,1);
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_interrupt_enable(space->machine->cpu[0],1);
+	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_main_interrupt_disable_w )
 {
-	cpu_interrupt_enable(0,0);
+	cpu_interrupt_enable(space->machine->cpu[0],0);
 }
 
 static WRITE8_HANDLER( toypop_sound_interrupt_enable_acknowledge_w )
 {
-	cpu_interrupt_enable(1,1);
-	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+	cpu_interrupt_enable(space->machine->cpu[1],1);
+	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_sound_interrupt_disable_w )
 {
-	cpu_interrupt_enable(1,0);
+	cpu_interrupt_enable(space->machine->cpu[1],0);
 }
 
 static INTERRUPT_GEN( toypop_main_interrupt )
 {
-	irq0_line_assert(machine, cpunum);	// this also checks if irq is enabled - IMPORTANT!
-						// so don't replace with cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+	irq0_line_assert(device);	// this also checks if irq is enabled - IMPORTANT!
+						// so don't replace with cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 
-	namcoio_set_irq_line(0,PULSE_LINE);
-	namcoio_set_irq_line(1,PULSE_LINE);
-	namcoio_set_irq_line(2,PULSE_LINE);
+	namcoio_set_irq_line(device->machine,0,PULSE_LINE);
+	namcoio_set_irq_line(device->machine,1,PULSE_LINE);
+	namcoio_set_irq_line(device->machine,2,PULSE_LINE);
 }
 
 static WRITE8_HANDLER( toypop_sound_clear_w )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_sound_assert_w )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( toypop_m68000_clear_w )
 {
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_m68000_assert_w )
 {
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static TIMER_CALLBACK( disable_interrupts )
 {
-	cpu_interrupt_enable(0,0);
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
-	cpu_interrupt_enable(1,0);
-	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+	cpu_interrupt_enable(machine->cpu[0],0);
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
+	cpu_interrupt_enable(machine->cpu[1],0);
+	cpu_set_input_line(machine->cpu[1], 0, CLEAR_LINE);
 	interrupt_enable_68k = 0;
 }
 
@@ -223,13 +225,13 @@ static MACHINE_RESET( toypop )
 {
 	/* we must do this on a timer in order to have it take effect */
 	/* otherwise, the reset process will override our changes */
-	timer_call_after_resynch(NULL, 0, disable_interrupts);
+	timer_call_after_resynch(machine, NULL, 0, disable_interrupts);
 }
 
 static INTERRUPT_GEN( toypop_m68000_interrupt )
 {
 	if (interrupt_enable_68k)
-		cpunum_set_input_line(machine, 2, 6, HOLD_LINE);
+		cpu_set_input_line(device, 6, HOLD_LINE);
 }
 
 static WRITE16_HANDLER( toypop_m68000_interrupt_enable_w )
@@ -580,7 +582,7 @@ static MACHINE_DRIVER_START( liblrabl )
 	MDRV_CPU_PROGRAM_MAP(readmem_68k,writemem_68k)
 	MDRV_CPU_VBLANK_INT("main", toypop_m68000_interrupt)
 
-	MDRV_INTERLEAVE(100)    /* 100 CPU slices per frame - an high value to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(6000))    /* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_RESET(toypop)
 

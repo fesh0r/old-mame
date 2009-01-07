@@ -30,8 +30,11 @@ TO DO :
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
+#include "includes/oneshot.h"
 
 
 UINT16 *oneshot_sprites;
@@ -43,17 +46,9 @@ UINT16 *oneshot_scroll;
 int gun_x_p1,gun_y_p1,gun_x_p2,gun_y_p2;
 int gun_x_shift;
 
-WRITE16_HANDLER( oneshot_bg_videoram_w );
-WRITE16_HANDLER( oneshot_mid_videoram_w );
-WRITE16_HANDLER( oneshot_fg_videoram_w );
-VIDEO_START( oneshot );
-VIDEO_UPDATE( oneshot );
-VIDEO_UPDATE( maddonna );
-
-
 static READ16_HANDLER( oneshot_in0_word_r )
 {
-	int data = input_port_read(machine, "DSW1");
+	int data = input_port_read(space->machine, "DSW1");
 
 	switch (data & 0x0c)
 	{
@@ -358,7 +353,7 @@ GFXDECODE_END
 
 static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym3812_interface ym3812_config =

@@ -70,50 +70,36 @@ CHIP #  POSITION   TYPE
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
-#include "sound/custom.h"
-
-WRITE8_HANDLER( flower_textram_w );
-WRITE8_HANDLER( flower_bg0ram_w );
-WRITE8_HANDLER( flower_bg1ram_w );
-WRITE8_HANDLER( flower_flipscreen_w );
-VIDEO_UPDATE( flower );
-VIDEO_START( flower );
-PALETTE_INIT( flower );
-
-WRITE8_HANDLER( flower_sound1_w );
-WRITE8_HANDLER( flower_sound2_w );
-
-extern UINT8 *flower_textram, *flower_bg0ram, *flower_bg1ram, *flower_bg0_scroll, *flower_bg1_scroll;
-extern UINT8 *flower_soundregs1,*flower_soundregs2;
-void *flower_sh_start(int clock, const custom_sound_interface *config);
+#include "includes/flower.h"
 
 static UINT8 *sn_irq_enable;
 static UINT8 *sn_nmi_enable;
 
 static WRITE8_HANDLER( flower_irq_ack )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( sn_irq_enable_w )
 {
 	*sn_irq_enable = data;
 
-	cpunum_set_input_line(machine, 2, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[2], 0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( sn_irq )
 {
 	if ((*sn_irq_enable & 1) == 1)
-		cpunum_set_input_line(machine, 2, 0, ASSERT_LINE);
+		cpu_set_input_line(device, 0, ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(machine,0,data);
+	soundlatch_w(space,0,data);
 	if ((*sn_nmi_enable & 1) == 1)
-		cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( flower_cpu1_2, ADDRESS_SPACE_PROGRAM, 8 )
@@ -253,7 +239,7 @@ static const custom_sound_interface custom_interface =
 
 static INTERRUPT_GEN( flower_cpu0_interrupt )
 {
-	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+	cpu_set_input_line(device, 0, ASSERT_LINE);
 }
 
 static MACHINE_DRIVER_START( flower )

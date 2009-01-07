@@ -42,8 +42,8 @@ static TILE_GET_INFO( get_text_tile_info )
 
 VIDEO_START( cabal )
 {
-	background_layer = tilemap_create(get_back_tile_info,tilemap_scan_rows,16,16,16,16);
-	text_layer       = tilemap_create(get_text_tile_info,tilemap_scan_rows,  8,8,32,32);
+	background_layer = tilemap_create(machine, get_back_tile_info,tilemap_scan_rows,16,16,16,16);
+	text_layer       = tilemap_create(machine, get_text_tile_info,tilemap_scan_rows,  8,8,32,32);
 
 	tilemap_set_transparent_pen(text_layer,3);
 	tilemap_set_transparent_pen(background_layer,15);
@@ -60,7 +60,7 @@ WRITE16_HANDLER( cabal_flipscreen_w )
 		tilemap_set_flip(background_layer,flip);
 		tilemap_set_flip(text_layer,flip);
 
-		flip_screen_set(data & 0x20);
+		flip_screen_set(space->machine, data & 0x20);
 	}
 }
 
@@ -119,7 +119,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 			if ( sx>256 )   sx -= 512;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 240 - sx;
 				sy = 240 - sy;

@@ -111,7 +111,7 @@ the decryption keys.
 *******************************************************************************/
 
 #include "driver.h"
-#include "cpu/m68000/m68kmame.h"
+#include "cpu/m68000/m68000.h"
 #include "ui.h"
 #include "includes/cps1.h"
 
@@ -632,6 +632,7 @@ static void optimise_sboxes(struct optimised_sbox* out, const struct sbox* in)
 
 static void cps2_decrypt(running_machine *machine, const UINT32 *master_key, UINT32 upper_limit)
 {
+	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
 	UINT16 *rom = (UINT16 *)memory_region(machine, "main");
 	int length = memory_region_length(machine, "main");
 	UINT16 *dec = auto_malloc(length);
@@ -719,8 +720,8 @@ static void cps2_decrypt(running_machine *machine, const UINT32 *master_key, UIN
 		}
 	}
 
-	memory_set_decrypted_region(0, 0x000000, length - 1, dec);
-	m68k_set_encrypted_opcode_range(0,0,length);
+	memory_set_decrypted_region(space, 0x000000, length - 1, dec);
+	m68k_set_encrypted_opcode_range(machine->cpu[0],0,length);
 }
 
 
@@ -867,10 +868,10 @@ static const struct game_keys keys_table[] =
 	{ "sfz2br1",  { 0xac134599,0x61f8bb2e }, 0x100000 },	// 0C80 3039 9783  cmpi.l  #$30399783,D0
 	{ "sfz2h",    { 0xf98a2d42,0x597b089f }, 0x100000 },	// 0C80 3039 9783  cmpi.l  #$30399783,D0
 	{ "sfz2n",    { 0xe32bf89c,0xa57b46dc }, 0x100000 },	// 0C80 3039 9783  cmpi.l  #$30399783,D0
-	{ "sfz2aj",   { 0x99450c88,0xa00a2c4d }, 0x100000 },	// 0C80 8E73 9110  cmpi.l  #$8E739110,D0
-	{ "sfz2ah",   { 0x95f15b7c,0x200c08c6 }, 0x100000 },	// 0C80 8E73 9110  cmpi.l  #$8E739110,D0
-	{ "sfz2ab",   { 0x73cd4a28,0xff83af1c }, 0x100000 },	// 0C80 8E73 9110  cmpi.l  #$8E739110,D0
-	{ "sfz2aa",   { 0xf172c0d0,0x040621a6 }, 0x100000 },	// 0C80 8E73 9110  cmpi.l  #$8E739110,D0
+	{ "sfz2al",   { 0xf172c0d0,0x040621a6 }, 0x100000 },	// 0C80 8E73 9110  cmpi.l  #$8E739110,D0
+	{ "sfz2alj",  { 0x99450c88,0xa00a2c4d }, 0x100000 },	// 0C80 8E73 9110  cmpi.l  #$8E739110,D0
+	{ "sfz2alh",  { 0x95f15b7c,0x200c08c6 }, 0x100000 },	// 0C80 8E73 9110  cmpi.l  #$8E739110,D0
+	{ "sfz2alb",  { 0x73cd4a28,0xff83af1c }, 0x100000 },	// 0C80 8E73 9110  cmpi.l  #$8E739110,D0
 	{ "spf2t",    { 0x706a8750,0x7d0fc185 }, 0x040000 },	// 0C80 3039 9819  cmpi.l  #$30399819,D0
 	{ "spf2xj",   { 0xb12c835a,0xe90976ff }, 0x040000 },	// 0C80 3039 9819  cmpi.l  #$30399819,D0
 	{ "spf2ta",   { 0x9c48e1ab,0xd60f34fb }, 0x040000 },	// 0C80 3039 9819  cmpi.l  #$30399819,D0

@@ -45,10 +45,11 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/custom.h"
 #include "includes/amiga.h"
 #include "includes/cubocd32.h"
+#include "machine/6526cia.h"
 
 static WRITE32_HANDLER( aga_overlay_w )
 {
@@ -57,15 +58,15 @@ static WRITE32_HANDLER( aga_overlay_w )
 		data = (data >> 16) & 1;
 
 		/* switch banks as appropriate */
-		memory_set_bank(1, data & 1);
+		memory_set_bank(space->machine, 1, data & 1);
 
 		/* swap the write handlers between ROM and bank 1 based on the bit */
 		if ((data & 1) == 0)
 			/* overlay disabled, map RAM on 0x000000 */
-			memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x1fffff, 0, 0, SMH_BANK1);
+			memory_install_write32_handler(space, 0x000000, 0x1fffff, 0, 0, SMH_BANK1);
 		else
 			/* overlay enabled, map Amiga system ROM on 0x000000 */
-			memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x1fffff, 0, 0, SMH_UNMAP);
+			memory_install_write32_handler(space, 0x000000, 0x1fffff, 0, 0, SMH_UNMAP);
 	}
 }
 
@@ -84,12 +85,12 @@ static WRITE32_HANDLER( aga_overlay_w )
  *
  *************************************/
 
-static UINT8 cd32_cia_0_porta_r(void)
+static UINT8 cd32_cia_0_porta_r(const device_config *device)
 {
-	return input_port_read(Machine, "CIA0PORTA");
+	return input_port_read(device->machine, "CIA0PORTA");
 }
 
-static void cd32_cia_0_porta_w(UINT8 data)
+static void cd32_cia_0_porta_w(const device_config *device, UINT8 data)
 {
 	/* bit 1 = cd audio mute */
 	sndti_set_output_gain(SOUND_CDDA, 0, 0, ( data & 1 ) ? 0.0 : 1.0 );
@@ -113,17 +114,17 @@ static void cd32_cia_0_porta_w(UINT8 data)
  *
  *************************************/
 
-static UINT8 cd32_cia_0_portb_r(void)
+static UINT8 cd32_cia_0_portb_r(const device_config *device)
 {
 	/* parallel port */
-	logerror("%06x:CIA0_portb_r\n", activecpu_get_pc());
+	logerror("%s:CIA0_portb_r\n", cpuexec_describe_context(device->machine));
 	return 0xff;
 }
 
-static void cd32_cia_0_portb_w(UINT8 data)
+static void cd32_cia_0_portb_w(const device_config *device, UINT8 data)
 {
 	/* parallel port */
-	logerror("%06x:CIA0_portb_w(%02x)\n", activecpu_get_pc(), data);
+	logerror("%s:CIA0_portb_w(%02x)\n", cpuexec_describe_context(device->machine), data);
 }
 
 static ADDRESS_MAP_START( cd32_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -219,6 +220,27 @@ static const custom_sound_interface amiga_custom_interface =
 };
 
 
+
+static const cia6526_interface cia_0_intf =
+{
+	amiga_cia_0_irq,									/* irq_func */
+	0,													/* tod_clock */
+	{
+		{ cd32_cia_0_porta_r, cd32_cia_0_porta_w },		/* port A */
+		{ cd32_cia_0_portb_r, cd32_cia_0_portb_w }		/* port B */
+	}
+};
+
+static const cia6526_interface cia_1_intf =
+{
+	amiga_cia_1_irq,									/* irq_func */
+	0,													/* tod_clock */
+	{
+		{ NULL, NULL },									/* port A */
+		{ NULL, NULL }									/* port B */
+	}
+};
+
 static MACHINE_DRIVER_START( cd32 )
 
 	/* basic machine hardware */
@@ -257,6 +279,10 @@ static MACHINE_DRIVER_START( cd32 )
     MDRV_SOUND_ADD( "cdda", CDDA, 0 )
 	MDRV_SOUND_ROUTE( 0, "left", 0.50 )
 	MDRV_SOUND_ROUTE( 1, "right", 0.50 )
+
+	/* cia */
+	MDRV_CIA8520_ADD("cia_0", AMIGA_68EC020_PAL_CLOCK / 10, cia_0_intf)
+	MDRV_CIA8520_ADD("cia_1", AMIGA_68EC020_PAL_CLOCK / 10, cia_1_intf)
 MACHINE_DRIVER_END
 
 
@@ -322,10 +348,6 @@ static DRIVER_INIT( cd32 )
 	static const amiga_machine_interface cubocd32_intf =
 	{
 		AGA_CHIP_RAM_MASK,
-		cd32_cia_0_porta_r, cd32_cia_0_portb_r,
-		cd32_cia_0_porta_w, cd32_cia_0_portb_w,
-		NULL, NULL,
-		NULL, NULL,
 		NULL, NULL, NULL,
 		NULL, NULL, NULL,
 		NULL, NULL,
@@ -337,8 +359,8 @@ static DRIVER_INIT( cd32 )
 	amiga_machine_config(machine, &cubocd32_intf);
 
 	/* set up memory */
-	memory_configure_bank(1, 0, 1, amiga_chip_ram32, 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, "user1"), 0);
+	memory_configure_bank(machine, 1, 0, 1, amiga_chip_ram32, 0);
+	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "user1"), 0);
 
 	/* intialize akiko */
 	amiga_akiko_init(machine);

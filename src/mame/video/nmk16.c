@@ -8,6 +8,7 @@
 */
 
 #include "driver.h"
+#include "includes/nmk16.h"
 
 UINT16 *nmk_bgvideoram,*nmk_fgvideoram,*nmk_txvideoram;
 UINT16 *gunnail_scrollram, *gunnail_scrollramy;
@@ -98,8 +99,8 @@ static TILE_GET_INFO( bjtwin_get_bg_tile_info )
 
 VIDEO_START( bioship )
 {
-	bg_tilemap = tilemap_create(macross_get_bg_tile_info,bg_scan,16,16,256,32);
-	tx_tilemap = tilemap_create(macross_get_tx_tile_info,tilemap_scan_cols,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, macross_get_bg_tile_info,bg_scan,16,16,256,32);
+	tx_tilemap = tilemap_create(machine, macross_get_tx_tile_info,tilemap_scan_cols,8,8,32,32);
 	spriteram_old = auto_malloc(0x1000);
 	spriteram_old2 = auto_malloc(0x1000);
 	background_bitmap = auto_bitmap_alloc(8192,512,video_screen_get_format(machine->primary_screen));
@@ -117,9 +118,9 @@ VIDEO_START( bioship )
 
 VIDEO_START( strahl )
 {
-	bg_tilemap = tilemap_create(macross_get_bg_tile_info,bg_scan,16,16,256,32);
-	fg_tilemap = tilemap_create(strahl_get_fg_tile_info, bg_scan,16,16,256,32);
-	tx_tilemap = tilemap_create(macross_get_tx_tile_info,tilemap_scan_cols,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, macross_get_bg_tile_info,bg_scan,16,16,256,32);
+	fg_tilemap = tilemap_create(machine, strahl_get_fg_tile_info, bg_scan,16,16,256,32);
+	tx_tilemap = tilemap_create(machine, macross_get_tx_tile_info,tilemap_scan_cols,8,8,32,32);
 	spriteram_old = auto_malloc(0x1000);
 	spriteram_old2 = auto_malloc(0x1000);
 
@@ -135,8 +136,8 @@ VIDEO_START( strahl )
 
 VIDEO_START( macross )
 {
-	bg_tilemap = tilemap_create(macross_get_bg_tile_info,bg_scan,16,16,256,32);
-	tx_tilemap = tilemap_create(macross_get_tx_tile_info,tilemap_scan_cols,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, macross_get_bg_tile_info,bg_scan,16,16,256,32);
+	tx_tilemap = tilemap_create(machine, macross_get_tx_tile_info,tilemap_scan_cols,8,8,32,32);
 	spriteram_old = auto_malloc(0x1000);
 	spriteram_old2 = auto_malloc(0x1000);
 
@@ -151,8 +152,8 @@ VIDEO_START( macross )
 
 VIDEO_START( gunnail )
 {
-	bg_tilemap = tilemap_create(macross_get_bg_tile_info,bg_scan,16,16,256,32);
-	tx_tilemap = tilemap_create(macross_get_tx_tile_info,tilemap_scan_cols,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, macross_get_bg_tile_info,bg_scan,16,16,256,32);
+	tx_tilemap = tilemap_create(machine, macross_get_tx_tile_info,tilemap_scan_cols,8,8,64,32);
 	spriteram_old = auto_malloc(0x1000);
 	spriteram_old2 = auto_malloc(0x1000);
 
@@ -169,8 +170,8 @@ VIDEO_START( gunnail )
 
 VIDEO_START( macross2 )
 {
-	bg_tilemap = tilemap_create(macross_get_bg_tile_info,bg_scan,16,16,1024,128);
-	tx_tilemap = tilemap_create(macross_get_tx_tile_info,tilemap_scan_cols,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, macross_get_bg_tile_info,bg_scan,16,16,1024,128);
+	tx_tilemap = tilemap_create(machine, macross_get_tx_tile_info,tilemap_scan_cols,8,8,64,32);
 	spriteram_old = auto_malloc(0x1000);
 	spriteram_old2 = auto_malloc(0x1000);
 
@@ -186,8 +187,8 @@ VIDEO_START( macross2 )
 
 VIDEO_START( tdragon2 )
 {
-	bg_tilemap = tilemap_create(macross_get_bg_tile_info,bg_scan_td2,16,16,1024,32);
-	tx_tilemap = tilemap_create(macross_get_tx_tile_info,tilemap_scan_cols,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, macross_get_bg_tile_info,bg_scan_td2,16,16,1024,32);
+	tx_tilemap = tilemap_create(machine, macross_get_tx_tile_info,tilemap_scan_cols,8,8,64,32);
 	spriteram_old = auto_malloc(0x1000);
 	spriteram_old2 = auto_malloc(0x1000);
 
@@ -203,7 +204,7 @@ VIDEO_START( tdragon2 )
 
 VIDEO_START( bjtwin )
 {
-	bg_tilemap = tilemap_create(bjtwin_get_bg_tile_info,tilemap_scan_cols,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, bjtwin_get_bg_tile_info,tilemap_scan_cols,8,8,64,32);
 	spriteram_old = auto_malloc(0x1000);
 	spriteram_old2 = auto_malloc(0x1000);
 
@@ -369,7 +370,7 @@ WRITE16_HANDLER( manybloc_scroll_w )
 WRITE16_HANDLER( nmk_flipscreen_w )
 {
 	if (ACCESSING_BITS_0_7)
-		flip_screen_set(data & 0x01);
+		flip_screen_set(space->machine, data & 0x01);
 }
 
 WRITE16_HANDLER( nmk_tilebank_w )
@@ -433,7 +434,7 @@ static void nmk16_draw_sprites(running_machine *machine, bitmap_t *bitmap, const
 			if(pri != priority)
 				continue;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 368 - sx;
 				sy = 240 - sy;
@@ -450,7 +451,7 @@ static void nmk16_draw_sprites(running_machine *machine, bitmap_t *bitmap, const
 					drawgfx(bitmap,machine->gfx[2],
 							code,
 							color,
-							flip_screen_get(), flip_screen_get(),
+							flip_screen_get(machine), flip_screen_get(machine),
 							((x + 16) & 0x1ff) - 16,sy & 0x1ff,
 							cliprect,TRANSPARENCY_PEN,15);
 					code++;
@@ -487,10 +488,10 @@ static void nmk16_draw_sprites_flipsupported(running_machine *machine, bitmap_t 
 			if(pri != priority)
 				continue;
 
-			flipx ^= flip_screen_get();
-			flipy ^= flip_screen_get();
+			flipx ^= flip_screen_get(machine);
+			flipy ^= flip_screen_get(machine);
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 368 - sx;
 				sy = 240 - sy;
@@ -542,133 +543,9 @@ VIDEO_UPDATE( macross )
 	return 0;
 }
 
-/*coin setting MCU simulation*/
-static void mcu_run(running_machine *machine, UINT8 dsw_setting)
-{
-	static UINT8 read_coin;
-	static UINT8 old_value;
-	static UINT8 coina,coinb;
-	UINT8 dsw_a,dsw_b;
-	/*needed because of the uncompatibility of the dsw settings.*/
-	if(dsw_setting)
-	{
-		dsw_a = (input_port_read(machine, "DSW2") & 0x7);
-		dsw_b = (input_port_read(machine, "DSW2") & 0x38) >> 3;
-	}
-	else
-	{
-		dsw_a = (input_port_read(machine, "DSW1") & 0x0700) >> 8;
-		dsw_b = (input_port_read(machine, "DSW1") & 0x3800) >> 11;
-	}
-
-	read_coin = old_value;
-	old_value = input_port_read(machine, "IN0");
-
-	if(dsw_a == 0 || dsw_b == 0)
-		nmk16_mainram[0x9000/2]|=0x4000; //free_play
-
-	if(read_coin != old_value)
-	{
-		if(!(input_port_read(machine, "IN0") & 0x01))//COIN1
-		{
-			switch(dsw_a & 7)
-			{
-				case 1: nmk16_mainram[0xef00/2]+=4; break;
-				case 2: nmk16_mainram[0xef00/2]+=3; break;
-				case 3: nmk16_mainram[0xef00/2]+=2; break;
-				case 4:
-				coina++;
-				if(coina >= 4)
-				{
-					coina = 0;
-					nmk16_mainram[0xef00/2]++;
-				}
-				break;
-				case 5:
-				coina++;
-				if(coina >= 3)
-				{
-					coina = 0;
-					nmk16_mainram[0xef00/2]++;
-				}
-				break;
-				case 6:
-				coina++;
-				if(coina >= 2)
-				{
-					coina = 0;
-					nmk16_mainram[0xef00/2]++;
-				}
-				break;
-				case 7: nmk16_mainram[0xef00/2]++; break;
-			}
-		}
-
-		if(!(input_port_read(machine, "IN0") & 0x02))//COIN2
-		{
-			switch(dsw_b & 7)
-			{
-				case 1: nmk16_mainram[0xef00/2]+=4; break;
-				case 2: nmk16_mainram[0xef00/2]+=3; break;
-				case 3: nmk16_mainram[0xef00/2]+=2; break;
-				case 4:
-				coinb++;
-				if(coinb >= 4)
-				{
-					coinb = 0;
-					nmk16_mainram[0xef00/2]++;
-				}
-				break;
-				case 5:
-				coinb++;
-				if(coinb >= 3)
-				{
-					coinb = 0;
-					nmk16_mainram[0xef00/2]++;
-				}
-				break;
-				case 6:
-				coinb++;
-				if(coinb >= 2)
-				{
-					coinb = 0;
-					nmk16_mainram[0xef00/2]++;
-				}
-				break;
-				case 7: nmk16_mainram[0xef00/2]++; break;
-			}
-		}
-
-		if(!(input_port_read(machine, "IN0") & 0x04))	//SERVICE_COIN
-			nmk16_mainram[0xef00/2]++;
-
-		if(nmk16_mainram[0xef00/2] >= 1 && (nmk16_mainram[0x9000/2] & 0x8000))/*enable start button*/
-		{
-			/*Start a 1-player game,but don't decrement if the player 1 is already playing*/
-			if((!(input_port_read(machine, "IN0") & 0x08)) /*START1*/
-			&& (!(nmk16_mainram[0x9000/2] & 0x0200)) /*PLAYER-1 playing*/
-			)
-				nmk16_mainram[0xef00/2]--;
-
-			/*Start a 2-players game,but don't decrement if the player 2 is already playing*/
-			if((!(input_port_read(machine, "IN0") & 0x10))
-			&& (!(nmk16_mainram[0x9000/2] & 0x0100))
-			)
-			{
-				if(!(nmk16_mainram[0x9000/2] & 0x0200) && nmk16_mainram[0xef00/2] >= 2)
-					nmk16_mainram[0xef00/2]-=2;
-				else
-					nmk16_mainram[0xef00/2]--;
-			}
-		}
-
-		if(nmk16_mainram[0xef00/2] > 99) nmk16_mainram[0xef00/2] = 99;
-	}
-}
-
 VIDEO_UPDATE( tdragon )
 {
-	mcu_run(screen->machine, 1);
+//  mcu_run(screen->machine, 1);
 
 	tilemap_set_scrollx(tx_tilemap,0,-videoshift);
 
@@ -685,7 +562,7 @@ VIDEO_UPDATE( tdragon )
 
 VIDEO_UPDATE( hachamf )
 {
-	mcu_run(screen->machine, 0);
+//  mcu_run(screen->machine, 0);
 
 	tilemap_set_scrollx(tx_tilemap,0,-videoshift);
 
@@ -989,12 +866,12 @@ VIDEO_START( afega )
 	memset(spriteram_old2,0,0x1000);
 
 
-	tilemap_0 = tilemap_create(	get_tile_info_0_4bit, afega_tilemap_scan_pages,
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0_4bit, afega_tilemap_scan_pages,
 
 								16,16,
 								TILES_PER_PAGE_X*PAGES_PER_TMAP_X,TILES_PER_PAGE_Y*PAGES_PER_TMAP_Y);
 
-	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_cols,
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1, tilemap_scan_cols,
 
 								8,8,
 								32,32);
@@ -1011,12 +888,12 @@ VIDEO_START( grdnstrm )
 	memset(spriteram_old2,0,0x1000);
 
 
-	tilemap_0 = tilemap_create(	get_tile_info_0_8bit, afega_tilemap_scan_pages,
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0_8bit, afega_tilemap_scan_pages,
 
 								16,16,
 								TILES_PER_PAGE_X*PAGES_PER_TMAP_X,TILES_PER_PAGE_Y*PAGES_PER_TMAP_Y);
 
-	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_cols,
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1, tilemap_scan_cols,
 
 								8,8,
 								32,32);
@@ -1033,12 +910,12 @@ VIDEO_START( firehawk )
 	memset(spriteram_old2,0,0x1000);
 
 
-	tilemap_0 = tilemap_create(	get_tile_info_0_8bit, firehawk_tilemap_scan_pages,
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0_8bit, firehawk_tilemap_scan_pages,
 
 								16,16,
 								TILES_PER_PAGE_X*FIREHAWK_PAGES_PER_TMAP_X,TILES_PER_PAGE_Y*FIREHAWK_PAGES_PER_TMAP_Y);
 
-	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_cols,
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1, tilemap_scan_cols,
 
 								8,8,
 								32,32);
@@ -1067,8 +944,8 @@ static void video_update(running_machine *machine, bitmap_t *bitmap, const recta
 	if (dsw_flipscreen)
 	{
 
-		flip_screen_x_set(~input_port_read(machine, "DSW1") & 0x0100);
-		flip_screen_y_set(~input_port_read(machine, "DSW1") & 0x0200);
+		flip_screen_x_set(machine, ~input_port_read(machine, "DSW1") & 0x0100);
+		flip_screen_y_set(machine, ~input_port_read(machine, "DSW1") & 0x0200);
 	}
 
 	tilemap_set_scrollx(tilemap_0, 0, afega_scroll_0[1] + xoffset);

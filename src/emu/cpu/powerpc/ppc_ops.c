@@ -4,12 +4,10 @@
 #include <math.h>
 
 #ifndef PPC_DRC
-#if (HAS_PPC601||HAS_PPC602||HAS_PPC603||HAS_MPC8240)
 static void ppc_unimplemented(UINT32 op)
 {
 	fatalerror("ppc: Unimplemented opcode %08X at %08X", op, ppc.pc);
 }
-#endif
 
 static void ppc_addx(UINT32 op)
 {
@@ -213,8 +211,6 @@ static void ppc_bx(UINT32 op)
 	if( LKBIT ) {
 		LR = ppc.pc + 4;
 	}
-
-	change_pc(ppc.npc);
 }
 
 static void ppc_bcx(UINT32 op)
@@ -227,8 +223,6 @@ static void ppc_bcx(UINT32 op)
 		} else {
 			ppc.npc = ppc.pc + (SIMM16 & ~0x3);
 		}
-
-		change_pc(ppc.npc);
 	}
 
 	if( LKBIT ) {
@@ -242,7 +236,6 @@ static void ppc_bcctrx(UINT32 op)
 
 	if( condition ) {
 		ppc.npc = CTR & ~0x3;
-		change_pc(ppc.npc);
 	}
 
 	if( LKBIT ) {
@@ -256,7 +249,6 @@ static void ppc_bclrx(UINT32 op)
 
 	if( condition ) {
 		ppc.npc = LR & ~0x3;
-		change_pc(ppc.npc);
 	}
 
 	if( LKBIT ) {
@@ -1018,8 +1010,6 @@ static void ppc_rfi(UINT32 op)
 	ppc.npc = ppc_get_spr(SPR_SRR0);
 	msr = ppc_get_spr(SPR_SRR1);
 	ppc_set_msr( msr );
-
-	change_pc(ppc.npc);
 }
 
 static void ppc_rlwimix(UINT32 op)
@@ -1071,21 +1061,15 @@ static void ppc_rlwnmx(UINT32 op)
 #ifndef PPC_DRC
 static void ppc_sc(UINT32 op)
 {
-#if (HAS_PPC603 || HAS_PPC601)
 	if (ppc.is603) {
 		ppc603_exception(EXCEPTION_SYSTEM_CALL);
 	}
-#endif
-#if (HAS_PPC602)
 	if (ppc.is602) {
 		ppc602_exception(EXCEPTION_SYSTEM_CALL);
 	}
-#endif
-#if (HAS_PPC403)
 	if (IS_PPC403()) {
 		ppc403_exception(EXCEPTION_SYSTEM_CALL);
 	}
-#endif
 }
 #endif
 
@@ -1551,21 +1535,15 @@ static void ppc_tw(UINT32 op)
 	}
 
 	if (exception) {
-#if (HAS_PPC603 || HAS_PPC601)
 		if (ppc.is603) {
 			ppc603_exception(EXCEPTION_TRAP);
 		}
-#endif
-#if (HAS_PPC602)
 		if (ppc.is602) {
 			ppc602_exception(EXCEPTION_TRAP);
 		}
-#endif
-#if (HAS_PPC403)
 		if (IS_PPC403()) {
 			ppc403_exception(EXCEPTION_TRAP);
 		}
-#endif
 	}
 }
 #endif
@@ -1595,21 +1573,15 @@ static void ppc_twi(UINT32 op)
 	}
 
 	if (exception) {
-#if (HAS_PPC603 || HAS_PPC601)
 		if (ppc.is603) {
 			ppc603_exception(EXCEPTION_TRAP);
 		}
-#endif
-#if (HAS_PPC602)
 		if (ppc.is602) {
 			ppc602_exception(EXCEPTION_TRAP);
 		}
-#endif
-#if (HAS_PPC403)
 		if (IS_PPC403()) {
 			ppc403_exception(EXCEPTION_TRAP);
 		}
-#endif
 	}
 }
 #endif
@@ -1785,7 +1757,6 @@ INLINE void set_fprf(FPR f)
 
 
 
-#if (HAS_PPC601||HAS_PPC602||HAS_PPC603||HAS_PPC604||HAS_MPC8240)
 static void ppc_lfs(UINT32 op)
 {
 	UINT32 ea = SIMM16;
@@ -2845,4 +2816,3 @@ static void ppc_fnmsubsx(UINT32 op)
 		SET_CR1();
 	}
 }
-#endif

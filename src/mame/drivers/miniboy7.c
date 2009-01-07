@@ -124,6 +124,7 @@
 #define MASTER_CLOCK	10000000	/* 10MHz */
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "video/mc6845.h"
 
 
@@ -166,7 +167,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( miniboy7 )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 37, 37);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 37, 37);
 }
 
 static VIDEO_UPDATE( miniboy7 )
@@ -247,6 +248,23 @@ static GFXDECODE_START( miniboy7 )
 GFXDECODE_END
 
 
+/************************
+*    CRTC Interface    *
+************************/
+
+static const mc6845_interface mc6845_intf =
+{
+	"main",		/* screen we are acting on */
+	8,			/* number of pixels per video memory address */
+	NULL,		/* before pixel update callback */
+	NULL,		/* row update callback */
+	NULL,		/* after pixel update callback */
+	NULL,		/* callback for display state changes */
+	NULL,		/* HSYNC callback */
+	NULL		/* VSYNC callback */
+};
+
+
 /*************************
 *    Machine Drivers     *
 *************************/
@@ -273,7 +291,7 @@ static MACHINE_DRIVER_START( miniboy7 )
 	MDRV_VIDEO_START(miniboy7)
 	MDRV_VIDEO_UPDATE(miniboy7)
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_MC6845_ADD("crtc", MC6845, MASTER_CLOCK/11, mc6845_intf) /* guess */
 MACHINE_DRIVER_END
 
 

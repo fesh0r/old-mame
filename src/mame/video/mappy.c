@@ -322,7 +322,7 @@ static TILE_GET_INFO( mappy_get_tile_info )
 
 VIDEO_START( superpac )
 {
-	bg_tilemap = tilemap_create(superpac_get_tile_info,superpac_tilemap_scan,8,8,36,28);
+	bg_tilemap = tilemap_create(machine, superpac_get_tile_info,superpac_tilemap_scan,8,8,36,28);
 	sprite_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[0], 31);
@@ -334,7 +334,7 @@ VIDEO_START( superpac )
 
 VIDEO_START( phozon )
 {
-	bg_tilemap = tilemap_create(phozon_get_tile_info,superpac_tilemap_scan,8,8,36,28);
+	bg_tilemap = tilemap_create(machine, phozon_get_tile_info,superpac_tilemap_scan,8,8,36,28);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[0], 15);
 
@@ -345,7 +345,7 @@ VIDEO_START( phozon )
 
 VIDEO_START( mappy )
 {
-	bg_tilemap = tilemap_create(mappy_get_tile_info,mappy_tilemap_scan,8,8,36,60);
+	bg_tilemap = tilemap_create(machine, mappy_get_tile_info,mappy_tilemap_scan,8,8,36,60);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[0], 31);
 	tilemap_set_scroll_cols(bg_tilemap, 36);
@@ -377,12 +377,12 @@ WRITE8_HANDLER( mappy_videoram_w )
 
 WRITE8_HANDLER( superpac_flipscreen_w )
 {
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 }
 
 READ8_HANDLER( superpac_flipscreen_r )
 {
-	flip_screen_set(1);
+	flip_screen_set(space->machine, 1);
 	return 0xff;
 }
 
@@ -430,7 +430,7 @@ void mappy_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectan
 			sy -= 16 * sizey;
 			sy = (sy & 0xff) - 32;	// fix wraparound
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				flipx ^= 1;
 				flipy ^= 1;
@@ -506,7 +506,7 @@ static void phozon_draw_sprites(running_machine *machine, bitmap_t *bitmap, cons
 			sy -= 8 * sizey;
 			sy = (sy & 0xff) - 32;	// fix wraparound
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				flipx ^= 1;
 				flipy ^= 1;
@@ -540,7 +540,7 @@ VIDEO_UPDATE( superpac )
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_OPAQUE | TILEMAP_DRAW_ALL_CATEGORIES,0);
 
-	fillbitmap(sprite_bitmap,15,cliprect);
+	bitmap_fill(sprite_bitmap,cliprect,15);
 	mappy_draw_sprites(screen->machine,sprite_bitmap,cliprect,0,0,15);
 	copybitmap_trans(bitmap,sprite_bitmap,0,0,0,0,cliprect,15);
 
@@ -562,7 +562,7 @@ VIDEO_UPDATE( superpac )
 VIDEO_UPDATE( phozon )
 {
 	/* flip screen control is embedded in RAM */
-	flip_screen_set(mappy_spriteram[0x1f7f-0x800] & 1);
+	flip_screen_set(screen->machine, mappy_spriteram[0x1f7f-0x800] & 1);
 
 	tilemap_set_scrolldx(bg_tilemap, 0, 96);
 	tilemap_set_scrolldy(bg_tilemap, 0, 0);

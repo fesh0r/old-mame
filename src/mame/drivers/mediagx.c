@@ -64,8 +64,8 @@
 */
 
 #include "driver.h"
+#include "cpu/i386/i386.h"
 #include "devconv.h"
-#include "deprecat.h"
 #include "machine/8237dma.h"
 #include "machine/pic8259.h"
 #include "machine/pit8253.h"
@@ -75,7 +75,6 @@
 #include "machine/8042kbdc.h"
 #include "machine/pckeybrd.h"
 #include "machine/idectrl.h"
-#include "cpu/i386/i386.h"
 #include "sound/dmadac.h"
 
 #define SPEEDUP_HACKS	1
@@ -319,7 +318,7 @@ static void draw_cga(running_machine *machine, bitmap_t *bitmap, const rectangle
 
 static VIDEO_UPDATE(mediagx)
 {
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	draw_framebuffer(screen->machine, bitmap, cliprect);
 
@@ -339,12 +338,12 @@ static READ32_HANDLER( disp_ctrl_r )
 		case DC_TIMING_CFG:
 			r |= 0x40000000;
 
-			if (video_screen_get_vpos(machine->primary_screen) >= frame_height)
+			if (video_screen_get_vpos(space->machine->primary_screen) >= frame_height)
 				r &= ~0x40000000;
 
 #if SPEEDUP_HACKS
 			// wait for vblank speedup
-			cpu_spinuntil_int();
+			cpu_spinuntil_int(space->cpu);
 #endif
 			break;
 	}
@@ -503,20 +502,20 @@ static READ32_HANDLER( parallel_port_r )
 
 	if (ACCESSING_BITS_8_15)
 	{
-		UINT8 nibble = parallel_latched;//(input_port_read_safe(machine, portnames[parallel_pointer / 3], 0) >> (4 * (parallel_pointer % 3))) & 15;
+		UINT8 nibble = parallel_latched;//(input_port_read_safe(space->machine, portnames[parallel_pointer / 3], 0) >> (4 * (parallel_pointer % 3))) & 15;
 		r |= ((~nibble & 0x08) << 12) | ((nibble & 0x07) << 11);
-		logerror("%08X:parallel_port_r()\n", activecpu_get_pc());
+		logerror("%08X:parallel_port_r()\n", cpu_get_pc(space->cpu));
 /*      if (controls_data == 0x18)
         {
-            r |= input_port_read(machine, "IN0") << 8;
+            r |= input_port_read(space->machine, "IN0") << 8;
         }
         else if (controls_data == 0x60)
         {
-            r |= input_port_read(machine, "IN1") << 8;
+            r |= input_port_read(space->machine, "IN1") << 8;
         }
         else if (controls_data == 0xff ||  controls_data == 0x50)
         {
-            r |= input_port_read(machine, "IN2") << 8;
+            r |= input_port_read(space->machine, "IN2") << 8;
         }
 
         //r |= control_read << 8;*/
@@ -552,9 +551,9 @@ static WRITE32_HANDLER( parallel_port_w )
                 7x..ff = advance pointer
         */
 
-		logerror("%08X:", activecpu_get_pc());
+		logerror("%08X:", cpu_get_pc(space->cpu));
 
-		parallel_latched = (input_port_read_safe(machine, portnames[parallel_pointer / 3], 0) >> (4 * (parallel_pointer % 3))) & 15;
+		parallel_latched = (input_port_read_safe(space->machine, portnames[parallel_pointer / 3], 0) >> (4 * (parallel_pointer % 3))) & 15;
 //      parallel_pointer++;
 //      logerror("[%02X] Advance pointer to %d\n", data, parallel_pointer);
 		switch (data & 0xfc)
@@ -612,7 +611,7 @@ static WRITE32_HANDLER( parallel_port_w )
 	}
 }
 
-static UINT32 cx5510_pci_r(int function, int reg, UINT32 mem_mask)
+static UINT32 cx5510_pci_r(const device_config *busdevice, const device_config *device, int function, int reg, UINT32 mem_mask)
 {
 //  mame_printf_debug("CX5510: PCI read %d, %02X, %08X\n", function, reg, mem_mask);
 
@@ -624,7 +623,7 @@ static UINT32 cx5510_pci_r(int function, int reg, UINT32 mem_mask)
 	return cx5510_regs[reg/4];
 }
 
-static void cx5510_pci_w(int function, int reg, UINT32 data, UINT32 mem_mask)
+static void cx5510_pci_w(const device_config *busdevice, const device_config *device, int function, int reg, UINT32 data, UINT32 mem_mask)
 {
 //  mame_printf_debug("CX5510: PCI write %d, %02X, %08X, %08X\n", function, reg, data, mem_mask);
 	COMBINE_DATA(cx5510_regs + (reg/4));
@@ -772,32 +771,27 @@ static WRITE8_HANDLER(at_page8_w)
 
 static DMA8237_MEM_READ( pc_dma_read_byte )
 {
-	UINT8 result;
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
 		& 0xFF0000;
 
-	cpuintrf_push_context(0);
-	result = program_read_byte(page_offset + offset);
-	cpuintrf_pop_context();
-
-	return result;
+	return memory_read_byte(space, page_offset + offset);
 }
 
 
 static DMA8237_MEM_WRITE( pc_dma_write_byte )
 {
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
 		& 0xFF0000;
 
-	cpuintrf_push_context(0);
-	program_write_byte(page_offset + offset, data);
-	cpuintrf_pop_context();
+	memory_write_byte(space, page_offset + offset, data);
 }
 
 
 static const struct dma8237_interface dma8237_1_config =
 {
-	0,
+	"main",
 	1.0e-6, // 1us
 
 	pc_dma_read_byte,
@@ -811,7 +805,7 @@ static const struct dma8237_interface dma8237_1_config =
 
 static const struct dma8237_interface dma8237_2_config =
 {
-	0,
+	"main",
 	1.0e-6, // 1us
 
 	NULL,
@@ -852,7 +846,7 @@ static ADDRESS_MAP_START(mediagx_io, ADDRESS_SPACE_IO, 32)
 	AM_RANGE(0x0378, 0x037b) AM_READWRITE(parallel_port_r, parallel_port_w)
 	AM_RANGE(0x03f0, 0x03ff) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", fdc_r, fdc_w)
 	AM_RANGE(0x0400, 0x04ff) AM_READWRITE(ad1847_r, ad1847_w)
-	AM_RANGE(0x0cf8, 0x0cff) AM_READWRITE(pci_32le_r,				pci_32le_w)
+	AM_RANGE(0x0cf8, 0x0cff) AM_DEVREADWRITE(PCI_BUS, "pcibus", pci_32le_r,	pci_32le_w)
 ADDRESS_MAP_END
 
 /*****************************************************************************/
@@ -959,14 +953,15 @@ static MACHINE_RESET(mediagx)
 {
 	UINT8 *rom = memory_region(machine, "bios");
 
-	cpunum_set_irq_callback(0, irq_callback);
+	cpu_set_irq_callback(machine->cpu[0], irq_callback);
 
 	memcpy(bios_ram, rom, 0x40000);
+	device_reset(machine->cpu[0]);
 
 	dacl = auto_malloc(65536 * sizeof(INT16));
 	dacr = auto_malloc(65536 * sizeof(INT16));
 
-	sound_timer = timer_alloc(sound_timer_callback, NULL);
+	sound_timer = timer_alloc(machine, sound_timer_callback, NULL);
 	timer_adjust_oneshot(sound_timer, ATTOTIME_IN_MSEC(10), 0);
 
 	dmadac_enable(0, 2, 1);
@@ -980,7 +975,7 @@ static MACHINE_RESET(mediagx)
  *************************************************************/
 
 static PIC8259_SET_INT_LINE( mediagx_pic8259_1_set_int_line ) {
-	cpunum_set_input_line(device->machine, 0, 0, interrupt ? HOLD_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], 0, interrupt ? HOLD_LINE : CLEAR_LINE);
 }
 
 
@@ -1038,20 +1033,18 @@ static MACHINE_DRIVER_START(mediagx)
 	MDRV_MACHINE_START(mediagx)
 	MDRV_MACHINE_RESET(mediagx)
 
-	MDRV_DEVICE_ADD( "pit8254", PIT8254 )
-	MDRV_DEVICE_CONFIG( mediagx_pit8254_config )
+	MDRV_PCI_BUS_ADD("pcibus", 0)
+	MDRV_PCI_BUS_DEVICE(18, NULL, NULL, cx5510_pci_r, cx5510_pci_w)
 
-	MDRV_DEVICE_ADD( "dma8237_1", DMA8237 )
-	MDRV_DEVICE_CONFIG( dma8237_1_config )
+	MDRV_PIT8254_ADD( "pit8254", mediagx_pit8254_config )
 
-	MDRV_DEVICE_ADD( "dma8237_2", DMA8237 )
-	MDRV_DEVICE_CONFIG( dma8237_2_config )
+	MDRV_DMA8237_ADD( "dma8237_1", dma8237_1_config )
 
-	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
-	MDRV_DEVICE_CONFIG( mediagx_pic8259_1_config )
+	MDRV_DMA8237_ADD( "dma8237_2", dma8237_2_config )
 
-	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
-	MDRV_DEVICE_CONFIG( mediagx_pic8259_2_config )
+	MDRV_PIC8259_ADD( "pic8259_master", mediagx_pic8259_1_config )
+
+	MDRV_PIC8259_ADD( "pic8259_slave", mediagx_pic8259_2_config )
 
 	MDRV_IDE_CONTROLLER_ADD("ide", ide_interrupt)
 
@@ -1080,12 +1073,12 @@ static MACHINE_DRIVER_START(mediagx)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
 MACHINE_DRIVER_END
 
-static void set_gate_a20(int a20)
+static void set_gate_a20(running_machine *machine, int a20)
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_A20, a20);
+	cpu_set_input_line(machine->cpu[0], INPUT_LINE_A20, a20);
 }
 
-static void keyboard_interrupt(int state)
+static void keyboard_interrupt(running_machine *machine, int state)
 {
 	pic8259_set_irq_line(mediagx_devices.pic8259_1, 1, state);
 }
@@ -1104,13 +1097,7 @@ static const struct kbdc8042_interface at8042 =
 	KBDC8042_AT386, set_gate_a20, keyboard_interrupt, mediagx_get_out2
 };
 
-static const struct pci_device_info cx5510 =
-{
-	cx5510_pci_r,
-	cx5510_pci_w
-};
-
-static void mediagx_set_keyb_int(int state) {
+static void mediagx_set_keyb_int(running_machine *machine, int state) {
 	pic8259_set_irq_line(mediagx_devices.pic8259_1, 1, state);
 }
 
@@ -1121,10 +1108,7 @@ static void init_mediagx(running_machine *machine)
 	init_pc_common(machine, PCCOMMON_KEYBOARD_AT,mediagx_set_keyb_int);
 	mc146818_init(machine, MC146818_STANDARD);
 
-	pci_init();
-	pci_add_device(0, 18, &cx5510);
-
-	kbdc8042_init(&at8042);
+	kbdc8042_init(machine, &at8042);
 }
 
 #if SPEEDUP_HACKS
@@ -1140,30 +1124,30 @@ struct _speedup_entry
 static speedup_entry *speedup_table;
 static int speedup_count;
 
-INLINE UINT32 generic_speedup(speedup_entry *entry)
+INLINE UINT32 generic_speedup(const address_space *space, speedup_entry *entry)
 {
-	if (activecpu_get_pc() == entry->pc)
+	if (cpu_get_pc(space->cpu) == entry->pc)
 	{
 		entry->hits++;
-		cpu_spinuntil_int();
+		cpu_spinuntil_int(space->cpu);
 	}
 	return main_ram[entry->offset/4];
 }
 
-static READ32_HANDLER( speedup0_r ) { return generic_speedup(&speedup_table[0]); }
-static READ32_HANDLER( speedup1_r ) { return generic_speedup(&speedup_table[1]); }
-static READ32_HANDLER( speedup2_r ) { return generic_speedup(&speedup_table[2]); }
-static READ32_HANDLER( speedup3_r ) { return generic_speedup(&speedup_table[3]); }
-static READ32_HANDLER( speedup4_r ) { return generic_speedup(&speedup_table[4]); }
-static READ32_HANDLER( speedup5_r ) { return generic_speedup(&speedup_table[5]); }
-static READ32_HANDLER( speedup6_r ) { return generic_speedup(&speedup_table[6]); }
-static READ32_HANDLER( speedup7_r ) { return generic_speedup(&speedup_table[7]); }
-static READ32_HANDLER( speedup8_r ) { return generic_speedup(&speedup_table[8]); }
-static READ32_HANDLER( speedup9_r ) { return generic_speedup(&speedup_table[9]); }
-static READ32_HANDLER( speedup10_r ) { return generic_speedup(&speedup_table[10]); }
-static READ32_HANDLER( speedup11_r ) { return generic_speedup(&speedup_table[11]); }
+static READ32_HANDLER( speedup0_r ) { return generic_speedup(space, &speedup_table[0]); }
+static READ32_HANDLER( speedup1_r ) { return generic_speedup(space, &speedup_table[1]); }
+static READ32_HANDLER( speedup2_r ) { return generic_speedup(space, &speedup_table[2]); }
+static READ32_HANDLER( speedup3_r ) { return generic_speedup(space, &speedup_table[3]); }
+static READ32_HANDLER( speedup4_r ) { return generic_speedup(space, &speedup_table[4]); }
+static READ32_HANDLER( speedup5_r ) { return generic_speedup(space, &speedup_table[5]); }
+static READ32_HANDLER( speedup6_r ) { return generic_speedup(space, &speedup_table[6]); }
+static READ32_HANDLER( speedup7_r ) { return generic_speedup(space, &speedup_table[7]); }
+static READ32_HANDLER( speedup8_r ) { return generic_speedup(space, &speedup_table[8]); }
+static READ32_HANDLER( speedup9_r ) { return generic_speedup(space, &speedup_table[9]); }
+static READ32_HANDLER( speedup10_r ) { return generic_speedup(space, &speedup_table[10]); }
+static READ32_HANDLER( speedup11_r ) { return generic_speedup(space, &speedup_table[11]); }
 
-static const read32_machine_func speedup_handlers[] =
+static const read32_space_func speedup_handlers[] =
 {
 	speedup0_r,		speedup1_r,		speedup2_r,		speedup3_r,
 	speedup4_r,		speedup5_r,		speedup6_r,		speedup7_r,
@@ -1190,7 +1174,7 @@ static void install_speedups(running_machine *machine, speedup_entry *entries, i
 	speedup_count = count;
 
 	for (i = 0; i < count; i++)
-		memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, entries[i].offset, entries[i].offset + 3, 0, 0, speedup_handlers[i]);
+		memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), entries[i].offset, entries[i].offset + 3, 0, 0, speedup_handlers[i]);
 
 #ifdef MAME_DEBUG
 	add_exit_callback(machine, report_speedups);

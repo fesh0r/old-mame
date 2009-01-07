@@ -31,6 +31,7 @@ voice.rom - VOICE ROM
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 
 static tilemap *bg_tilemap;
@@ -70,8 +71,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( good )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows, 16, 16, 32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows, 16, 16, 32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows, 16, 16, 32,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows, 16, 16, 32,32);
 	tilemap_set_transparent_pen(fg_tilemap,0xf);
 }
 

@@ -169,7 +169,8 @@ static const struct WD33C93interface *intf;
 #define SRCID_ER					0x80
 
 /* command handler definition */
-typedef void (*cmd_handler)(void);
+typedef void (*cmd_handler)(running_machine *machine);
+#define CMD_HANDLER(name) void name(running_machine *machine)
 
 #define TEMP_INPUT_LEN	65536
 #define FIFO_SIZE		12
@@ -291,15 +292,15 @@ static void wd33c93_complete_cmd( UINT8 status )
 }
 
 /* command handlers */
-static void wd33c93_invalid_cmd( void )
+static CMD_HANDLER( wd33c93_invalid_cmd )
 {
-	logerror( "Unknown/Unimplemented SCSI controller command: %02x (PC=%x)\n", scsi_data.regs[WD_COMMAND], activecpu_get_pc() );
+	logerror( "%s:Unknown/Unimplemented SCSI controller command: %02x\n", cpuexec_describe_context(machine), scsi_data.regs[WD_COMMAND] );
 
 	/* complete the command */
 	wd33c93_complete_cmd( CSR_INVALID );
 }
 
-static void wd33c93_reset_cmd( void )
+static CMD_HANDLER( wd33c93_reset_cmd )
 {
 	int		advanced = 0;
 
@@ -316,19 +317,19 @@ static void wd33c93_reset_cmd( void )
 	wd33c93_complete_cmd(advanced ? CSR_RESET_AF : CSR_RESET);
 }
 
-static void wd33c93_abort_cmd( void )
+static CMD_HANDLER( wd33c93_abort_cmd )
 {
 	/* complete the command */
 	wd33c93_complete_cmd(CSR_ABORT);
 }
 
-static void wd33c93_disconnect_cmd( void )
+static CMD_HANDLER( wd33c93_disconnect_cmd )
 {
 	/* complete the command */
 	scsi_data.regs[WD_AUXILIARY_STATUS] &= ~(ASR_CIP | ASR_BSY);
 }
 
-static void wd33c93_select_cmd( void )
+static CMD_HANDLER( wd33c93_select_cmd )
 {
 	UINT8	unit = wd33c93_getunit();
 	UINT8	newstatus;
@@ -352,7 +353,7 @@ static void wd33c93_select_cmd( void )
 		}
 
 		/* queue up a service request out in the future */
-		timer_set( ATTOTIME_IN_USEC(50), NULL, 0, wd33c93_service_request );
+		timer_set( machine, ATTOTIME_IN_USEC(50), NULL, 0, wd33c93_service_request );
 	}
 	else
 	{
@@ -364,7 +365,7 @@ static void wd33c93_select_cmd( void )
 	wd33c93_complete_cmd(newstatus);
 }
 
-static void wd33c93_selectxfer_cmd( void )
+static CMD_HANDLER( wd33c93_selectxfer_cmd )
 {
 	UINT8	unit = wd33c93_getunit();
 	UINT8	newstatus;
@@ -424,7 +425,7 @@ static void wd33c93_selectxfer_cmd( void )
 			scsi_data.busphase = PHS_MESS_IN;
 
 			/* queue up a service request out in the future */
-			timer_set( ATTOTIME_IN_MSEC(50), NULL, 0, wd33c93_service_request );
+			timer_set( machine, ATTOTIME_IN_MSEC(50), NULL, 0, wd33c93_service_request );
 		}
 	}
 	else
@@ -439,7 +440,7 @@ static void wd33c93_selectxfer_cmd( void )
 	wd33c93_complete_cmd(newstatus);
 }
 
-static void wd33c93_negate_ack( void )
+static CMD_HANDLER( wd33c93_negate_ack )
 {
 	logerror( "WD33C93: ACK Negated\n" );
 
@@ -447,14 +448,14 @@ static void wd33c93_negate_ack( void )
 	scsi_data.regs[WD_AUXILIARY_STATUS] &= ~(ASR_CIP | ASR_BSY);
 }
 
-static void wd33c93_xferinfo_cmd( void )
+static CMD_HANDLER( wd33c93_xferinfo_cmd )
 {
 	/* make the buffer available right away */
 	scsi_data.regs[WD_AUXILIARY_STATUS] |= ASR_DBR;
 	scsi_data.regs[WD_AUXILIARY_STATUS] |= ASR_CIP;
 
 	/* the command will be completed once the data is transferred */
-	timer_set( ATTOTIME_IN_MSEC(1), NULL, 0, wd33c93_deassert_cip );
+	timer_set( machine, ATTOTIME_IN_MSEC(1), NULL, 0, wd33c93_deassert_cip );
 }
 
 /* Command handlers */
@@ -497,7 +498,7 @@ static const cmd_handler wd33c93_cmds[0x22] =
 };
 
 /* Handle pending commands */
-static void wd33c93_command( void )
+static void wd33c93_command( running_machine *machine )
 {
 	/* get the command */
 	UINT8 cmd = scsi_data.regs[WD_COMMAND];
@@ -505,12 +506,12 @@ static void wd33c93_command( void )
 	/* check if its within valid bounds */
 	if ( (cmd & 0x7F) > WD_CMD_TRANSFER_PAD )
 	{
-		wd33c93_invalid_cmd();
+		wd33c93_invalid_cmd(machine);
 		return;
 	}
 
 	/* call the command handler */
-	(*wd33c93_cmds[cmd & 0x7F])();
+	(*wd33c93_cmds[cmd & 0x7F])(machine);
 }
 
 WRITE8_HANDLER(wd33c93_w)
@@ -526,7 +527,7 @@ WRITE8_HANDLER(wd33c93_w)
 
 		case 1:
 		{
-			LOG(( "WD33C93: PC=%08x - Write REG=%02x, data = %02x\n", safe_activecpu_get_pc(), scsi_data.sasr, data ));
+			LOG(( "WD33C93: PC=%08x - Write REG=%02x, data = %02x\n", cpu_get_pc(space->cpu), scsi_data.sasr, data ));
 
 			/* update the register */
 			scsi_data.regs[scsi_data.sasr] = data;
@@ -534,13 +535,13 @@ WRITE8_HANDLER(wd33c93_w)
 			/* if we receive a command, schedule to process it */
 			if ( scsi_data.sasr == WD_COMMAND )
 			{
-				LOG(( "WDC33C93: PC=%08x - Executing command %08x - unit %d\n", safe_activecpu_get_pc(), data, wd33c93_getunit() ));
+				LOG(( "WDC33C93: PC=%08x - Executing command %08x - unit %d\n", cpu_get_pc(space->cpu), data, wd33c93_getunit() ));
 
 				/* signal we're processing it */
 				scsi_data.regs[WD_AUXILIARY_STATUS] |= ASR_CIP;
 
 				/* process the command */
-				wd33c93_command();
+				wd33c93_command(space->machine);
 			}
 			else if ( scsi_data.sasr == WD_CDB_1 )
 			{
@@ -635,7 +636,7 @@ WRITE8_HANDLER(wd33c93_w)
 						}
 
 						/* complete the command */
-						wd33c93_complete_immediate(machine, CSR_XFER_DONE | scsi_data.busphase);
+						wd33c93_complete_immediate(space->machine, CSR_XFER_DONE | scsi_data.busphase);
 					}
 				}
 				else
@@ -682,10 +683,10 @@ READ8_HANDLER(wd33c93_r)
 
 				if (intf && intf->irq_callback)
 				{
-					intf->irq_callback(machine, 0);
+					intf->irq_callback(space->machine, 0);
 				}
 
-				LOG(( "WD33C93: PC=%08x - Status read (%02x)\n", safe_activecpu_get_pc(), scsi_data.regs[WD_SCSI_STATUS] ));
+				LOG(( "WD33C93: PC=%08x - Status read (%02x)\n", cpu_get_pc(space->cpu), scsi_data.regs[WD_SCSI_STATUS] ));
 			}
 			else if ( scsi_data.sasr == WD_DATA )
 			{
@@ -754,7 +755,7 @@ READ8_HANDLER(wd33c93_r)
 				}
 			}
 
-			LOG(( "WD33C93: PC=%08x - Data read (%02x)\n", safe_activecpu_get_pc(), scsi_data.regs[WD_DATA] ));
+			LOG(( "WD33C93: PC=%08x - Data read (%02x)\n", cpu_get_pc(space->cpu), scsi_data.regs[WD_DATA] ));
 
 			/* get the register value */
 			ret = scsi_data.regs[scsi_data.sasr];
@@ -778,7 +779,7 @@ READ8_HANDLER(wd33c93_r)
 	return 0;
 }
 
-extern void wd33c93_init( const struct WD33C93interface *interface )
+void wd33c93_init( running_machine *machine, const struct WD33C93interface *interface )
 {
 	int i;
 
@@ -791,18 +792,18 @@ extern void wd33c93_init( const struct WD33C93interface *interface )
 	// try to open the devices
 	for (i = 0; i < interface->scsidevs->devs_present; i++)
 	{
-		SCSIAllocInstance( interface->scsidevs->devices[i].scsiClass, &devices[interface->scsidevs->devices[i].scsiID], interface->scsidevs->devices[i].diskregion );
+		SCSIAllocInstance( machine, interface->scsidevs->devices[i].scsiClass, &devices[interface->scsidevs->devices[i].scsiID], interface->scsidevs->devices[i].diskregion );
 	}
 
 	/* allocate a timer for commands */
-	scsi_data.cmd_timer = timer_alloc(wd33c93_complete_cb, NULL);
+	scsi_data.cmd_timer = timer_alloc(machine, wd33c93_complete_cb, NULL);
 
 	scsi_data.temp_input = auto_malloc( TEMP_INPUT_LEN );
 
-//  state_save_register_item_array("wd33c93", 0, scsi_data);
+//  state_save_register_item_array(machine, "wd33c93", NULL, 0, scsi_data);
 }
 
-extern void wd33c93_exit( const struct WD33C93interface *interface )
+void wd33c93_exit( const struct WD33C93interface *interface )
 {
 	int i;
 

@@ -46,6 +46,7 @@
 *************************************************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/ymz280b.h"
 #include "machine/eeprom.h"
 
@@ -66,7 +67,7 @@ static TILE_GET_INFO( get_tile_info )
 
 static VIDEO_START( livequiz )
 {
-	tmap = tilemap_create(	get_tile_info, tilemap_scan_cols,
+	tmap = tilemap_create(	machine, get_tile_info, tilemap_scan_cols,
 							8,8, 0x80,0x20	);
 
 	tilemap_set_transparent_pen(tmap, 0);
@@ -170,7 +171,7 @@ static VIDEO_UPDATE( livequiz )
 	}
 #endif
 
-	fillbitmap(bitmap,4095,cliprect);
+	bitmap_fill(bitmap,cliprect,4095);
 
 	if (layers_ctrl & 2)	draw_sprites(screen->machine, bitmap,cliprect);
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect, tmap, 0, 0);

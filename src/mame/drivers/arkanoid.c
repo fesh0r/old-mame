@@ -469,6 +469,7 @@ DIP locations verified for:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "arkanoid.h"
 #include "sound/ay8910.h"
 #include "cpu/m6805/m6805.h"
@@ -767,7 +768,7 @@ static MACHINE_DRIVER_START( arkanoid )
 	MDRV_CPU_ADD("mcu", M68705, XTAL_12MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(mcu_map, 0)
 
-	MDRV_INTERLEAVE(100)					// 100 CPU slices per second to synchronize between the MCU and the main CPU
+	MDRV_QUANTUM_TIME(HZ(6000))					// 100 CPU slices per second to synchronize between the MCU and the main CPU
 
 	MDRV_MACHINE_START(arkanoid)
 	MDRV_MACHINE_RESET(arkanoid)
@@ -1013,10 +1014,29 @@ ROM_START( arkbloc2 )
 	ROM_LOAD( "a75-09.bpr",    0x0400, 0x0200, CRC(a7c6c277) SHA1(adaa003dcd981576ea1cc5f697d709b2d6b2ea29) )	/* blue component */
 ROM_END
 
+
+/* arkgcbl - dump from citylan:
+
+Anno 1986
+N.revisione 06.09.86
+CPU:
+1x MK3880N-4-Z80CPU (main)
+1x AY-3-8910A (sound)
+1x oscillator 12.000MHz
+ROMs:
+5x TNS27256JL
+5x PROM N82S129N
+1x PROM MMI63S141N
+Note:
+1x 28x2 EDGE connector (not Jamma)
+1x trimmer (volume)
+1x 8 switches dip
+Dumped 19/03/2006 */
+
 ROM_START( arkgcbl )
 	ROM_REGION( 0x10000, "main", 0 )
-	ROM_LOAD( "arkanunk.1",   0x0000, 0x8000, CRC(b0f73900) SHA1(2c9a36cc1d2a3f33ec81d63c1c325554b818d2d3) )
-	ROM_LOAD( "arkanunk.2",   0x8000, 0x8000, CRC(9827f297) SHA1(697874e73e045eb5a7bf333d7310934b239c0adf) )
+	ROM_LOAD( "16.6e",        0x0000, 0x8000, CRC(b0f73900) SHA1(2c9a36cc1d2a3f33ec81d63c1c325554b818d2d3) )
+	ROM_LOAD( "17.6f",        0x8000, 0x8000, CRC(9827f297) SHA1(697874e73e045eb5a7bf333d7310934b239c0adf) )
 
 	ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "a75-03.rom",   0x00000, 0x8000, CRC(038b74ba) SHA1(ac053cc4908b4075f918748b89570e07a0ba5116) )
@@ -1024,9 +1044,15 @@ ROM_START( arkgcbl )
 	ROM_LOAD( "a75-05.rom",   0x10000, 0x8000, CRC(c76374e2) SHA1(7520dd48de20db60a2038f134dcaa454988e7874) )
 
 	ROM_REGION( 0x0600, "proms", 0 )
-	ROM_LOAD( "a75-07.bpr",    0x0000, 0x0200, CRC(0af8b289) SHA1(6bc589e8a609b4cf450aebedc8ce02d5d45c970f) )	/* red component */
-	ROM_LOAD( "a75-08.bpr",    0x0200, 0x0200, CRC(abb002fb) SHA1(c14f56b8ef103600862e7930709d293b0aa97a73) )	/* green component */
-	ROM_LOAD( "a75-09.bpr",    0x0400, 0x0200, CRC(a7c6c277) SHA1(adaa003dcd981576ea1cc5f697d709b2d6b2ea29) )	/* blue component */
+	ROM_LOAD( "82s129.5k",    0x0000, 0x0100, CRC(fa70b64d) SHA1(273669d05f793cf1ee0741b175be281307fa9b5e) )	/* red component   + */
+	ROM_LOAD( "82s129.5jk",   0x0100, 0x0100, CRC(cca69884) SHA1(fdcd66110c8eb901a401f8618821c7980946a511) )	/* red component   = a75-07.bpr*/
+	ROM_LOAD( "82s129.5l",    0x0200, 0x0100, CRC(3e4d2bf5) SHA1(c475887302dd137d6965769070b7d55f488c1b25) )	/* green component + */
+	ROM_LOAD( "82s129.5kl",   0x0300, 0x0100, CRC(085d625a) SHA1(26c96a1c1b7562fed84c31dd92fdf7829e96a9c7) )	/* green component = a75-08.bpr*/
+	ROM_LOAD( "82s129.5mn",   0x0400, 0x0100, CRC(0fe0b108) SHA1(fcf27619208922345a1e42b3a219b4274f66968d) )	/* blue component  + */
+	ROM_LOAD( "63s141.5m",    0x0500, 0x0100, CRC(5553f675) SHA1(c50255af8d99664b92e0bb34a527fd42ebf7e759) )	/* blue component  = a75-09.bpr*/
+
+	ROM_REGION( 0x0200, "pal", ROMREGION_DISPOSE )
+	ROM_LOAD( "pal16r8.5f",   0x0000, 0x0104, CRC(36471917) SHA1(d0f295a94d480b44416e66be4b480b299aad5c3c) )
 ROM_END
 
 ROM_START( paddle2 )
@@ -1100,9 +1126,9 @@ ROM_END
 
 static void arkanoid_bootleg_init( running_machine *machine )
 {
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf002, 0xf002, 0, 0, arkanoid_bootleg_f002_r );
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd018, 0xd018, 0, 0, arkanoid_bootleg_d018_w );
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd008, 0xd008, 0, 0, arkanoid_bootleg_d008_r );
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf002, 0xf002, 0, 0, arkanoid_bootleg_f002_r );
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd018, 0xd018, 0, 0, arkanoid_bootleg_d018_w );
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd008, 0xd008, 0, 0, arkanoid_bootleg_d008_r );
 }
 
 static DRIVER_INIT( arkangc )

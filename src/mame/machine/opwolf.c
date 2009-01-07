@@ -418,7 +418,7 @@ WRITE16_HANDLER( opwolf_cchip_data_w )
 	cchip_ram[(current_bank * 0x400) + offset]=data&0xff;
 
 //  if (offset!=0x64 && offset!=0x65 && offset!=0x66 && offset!=0x67 && offset!=0x68 && offset!=0x69)
-//      logerror("%08x:  opwolf c write %04x %04x\n", activecpu_get_pc(), offset,data);
+//      logerror("%08x:  opwolf c write %04x %04x\n", cpu_get_pc(space->cpu), offset,data);
 
 	if (current_bank == 0)
 	{
@@ -427,7 +427,7 @@ WRITE16_HANDLER( opwolf_cchip_data_w )
 		if (offset == 0x14)
 		{
 #if OPWOLF_READ_COINAGE_FROM_ROM
-			UINT16* rom=(UINT16*)memory_region(machine, "main");
+			UINT16* rom=(UINT16*)memory_region(space->machine, "main");
 			UINT32 coin_table[2]={0,0};
 			UINT8 coin_offset[2];
 			int slot;
@@ -518,8 +518,8 @@ READ16_HANDLER( opwolf_cchip_status_r )
 
 READ16_HANDLER( opwolf_cchip_data_r )
 {
-//  if (offset!=0x7f && offset!=0x1c && offset!=0x1d && offset!=0x1e && offset!=0x1f && offset!=0x20 && activecpu_get_pc()!=0xc18 && activecpu_get_pc()!=0xc2e && activecpu_get_pc()!=0xc9e && offset!=0x50 && offset!=0x51 && offset!=0x52 && offset!=0x53 && offset!=0x5 && offset!=0x13 && offset!=0x79 && offset!=0x12 && offset!=0x34)
-//      logerror("%08x:  opwolf c read %04x (bank %04x)\n", activecpu_get_pc(), offset, current_bank);
+//  if (offset!=0x7f && offset!=0x1c && offset!=0x1d && offset!=0x1e && offset!=0x1f && offset!=0x20 && cpu_get_pc(space->cpu)!=0xc18 && cpu_get_pc(space->cpu)!=0xc2e && cpu_get_pc(space->cpu)!=0xc9e && offset!=0x50 && offset!=0x51 && offset!=0x52 && offset!=0x53 && offset!=0x5 && offset!=0x13 && offset!=0x79 && offset!=0x12 && offset!=0x34)
+//      logerror("%08x:  opwolf c read %04x (bank %04x)\n", cpu_get_pc(space->cpu), offset, current_bank);
 
 	return cchip_ram[(current_bank * 0x400) + offset];
 }
@@ -695,7 +695,7 @@ static TIMER_CALLBACK( cchip_timer )
 	{
 		// Simulate time for command to execute (exact timing unknown, this is close)
 		current_cmd=0xf5;
-		timer_set(ATTOTIME_IN_CYCLES(80000,0), NULL, 0, opwolf_timer_callback);
+		timer_set(machine, cpu_clocks_to_attotime(machine->cpu[0],80000), NULL, 0, opwolf_timer_callback);
 	}
 	cchip_last_7a=cchip_ram[0x7a];
 
@@ -718,25 +718,25 @@ static TIMER_CALLBACK( cchip_timer )
  *
  *************************************/
 
-void opwolf_cchip_init(void)
+void opwolf_cchip_init(running_machine *machine)
 {
 	cchip_ram=auto_malloc(0x400 * 8);
 
-	state_save_register_global(current_bank);
-	state_save_register_global(current_cmd);
-	state_save_register_global(cchip_last_7a);
-	state_save_register_global(cchip_last_04);
-	state_save_register_global(cchip_last_05);
-	state_save_register_global(c588);
-	state_save_register_global(c589);
-	state_save_register_global(c58a);
-	state_save_register_global(cchip_coins[0]);
-	state_save_register_global(cchip_coins[1]);
-	state_save_register_global(cchip_coins_for_credit[0]);
-	state_save_register_global(cchip_credits_for_coin[0]);
-	state_save_register_global(cchip_coins_for_credit[1]);
-	state_save_register_global(cchip_credits_for_coin[1]);
-	state_save_register_global_pointer(cchip_ram, 0x400 * 8);
+	state_save_register_global(machine, current_bank);
+	state_save_register_global(machine, current_cmd);
+	state_save_register_global(machine, cchip_last_7a);
+	state_save_register_global(machine, cchip_last_04);
+	state_save_register_global(machine, cchip_last_05);
+	state_save_register_global(machine, c588);
+	state_save_register_global(machine, c589);
+	state_save_register_global(machine, c58a);
+	state_save_register_global(machine, cchip_coins[0]);
+	state_save_register_global(machine, cchip_coins[1]);
+	state_save_register_global(machine, cchip_coins_for_credit[0]);
+	state_save_register_global(machine, cchip_credits_for_coin[0]);
+	state_save_register_global(machine, cchip_coins_for_credit[1]);
+	state_save_register_global(machine, cchip_credits_for_coin[1]);
+	state_save_register_global_pointer(machine, cchip_ram, 0x400 * 8);
 
 	current_bank=0;
 	current_cmd=0;
@@ -753,5 +753,5 @@ void opwolf_cchip_init(void)
 	cchip_coins_for_credit[1]=1;
 	cchip_credits_for_coin[1]=1;
 
-	timer_pulse(ATTOTIME_IN_HZ(60), NULL, 0, cchip_timer);
+	timer_pulse(machine, ATTOTIME_IN_HZ(60), NULL, 0, cchip_timer);
 }

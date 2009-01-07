@@ -14,7 +14,7 @@
 #ifndef __CPUEXEC_H__
 #define __CPUEXEC_H__
 
-#include "memory.h"
+#include "cpuintrf.h"
 #include "timer.h"
 
 
@@ -39,225 +39,9 @@ enum
 	SUSPEND_REASON_SPIN 	= 0x0004,
 	SUSPEND_REASON_TRIGGER 	= 0x0008,
 	SUSPEND_REASON_DISABLE 	= 0x0010,
+	SUSPEND_REASON_TIMESLICE= 0x0020,
 	SUSPEND_ANY_REASON 		= ~0
 };
-
-
-/* list of all possible CPUs we might be compiled with */
-enum _cpu_type
-{
-	CPU_DUMMY,
-	CPU_Z80,
-	CPU_Z180,
-	CPU_8080,
-	CPU_8085A,
-	CPU_M6502,
-	CPU_M65C02,
-	CPU_M65SC02,
-	CPU_M65CE02,
-	CPU_M6509,
-	CPU_M6510,
-	CPU_M6510T,
-	CPU_M7501,
-	CPU_M8502,
-	CPU_N2A03,
-	CPU_DECO16,
-	CPU_M4510,
-	CPU_H6280,
-	CPU_I8086,
-	CPU_I8088,
-	CPU_I80186,
-	CPU_I80188,
-	CPU_I80286,
-	CPU_V20,
-	CPU_V25,
-	CPU_V30,
-	CPU_V33,
-	CPU_V35,
-	CPU_V60,
-	CPU_V70,
-	CPU_I8035,
-	CPU_I8041,
-	CPU_I8048,
-	CPU_I8648,
-	CPU_I8748,
-	CPU_MB8884,
-	CPU_N7751,
-	CPU_I8039,
-	CPU_I8049,
-	CPU_I8749,
-	CPU_M58715,
-	CPU_I8X41,
-	CPU_I8051,
-	CPU_I8052,
-	CPU_I8751,
-	CPU_I8752,
-	CPU_DS5002FP,
-	CPU_M6800,
-	CPU_M6801,
-	CPU_M6802,
-	CPU_M6803,
-	CPU_M6808,
-	CPU_HD63701,
-	CPU_NSC8105,
-	CPU_M6805,
-	CPU_M68705,
-	CPU_HD63705,
-	CPU_HD6309,
-	CPU_M6809,
-	CPU_M6809E,
-	CPU_KONAMI,
-	CPU_M68000,
-	CPU_M68008,
-	CPU_M68010,
-	CPU_M68EC020,
-	CPU_M68020,
-	CPU_M68040,
-	CPU_T11,
-	CPU_S2650,
-	CPU_TMS34010,
-	CPU_TMS34020,
-	CPU_TI990_10,
-	CPU_TMS9900,
-	CPU_TMS9940,
-	CPU_TMS9980,
-	CPU_TMS9985,
-	CPU_TMS9989,
-	CPU_TMS9995,
-	CPU_TMS99100,
-	CPU_TMS99105A,
-	CPU_TMS99110A,
-	CPU_TMS99000,
-	CPU_Z8000,
-	CPU_TMS32010,
-	CPU_TMS32025,
-	CPU_TMS32026,
-	CPU_TMS32031,
-	CPU_TMS32032,
-	CPU_TMS32051,
-	CPU_CCPU,
-	CPU_ADSP2100,
- 	CPU_ADSP2101,
-	CPU_ADSP2104,
-	CPU_ADSP2105,
-	CPU_ADSP2115,
-	CPU_ADSP2181,
-	CPU_PSXCPU,
-	CPU_ASAP,
-	CPU_UPD7810,
-	CPU_UPD7807,
-	CPU_UPD7801,
-	CPU_UPD78C05,
-	CPU_UPD78C06,
-	CPU_JAGUARGPU,
-	CPU_JAGUARDSP,
-	CPU_CQUESTSND,
-	CPU_CQUESTROT,
-	CPU_CQUESTLIN,
-	CPU_R3000BE,
-	CPU_R3000LE,
-	CPU_R3041BE,
-	CPU_R3041LE,
-	CPU_R4600BE,
-	CPU_R4600LE,
-	CPU_R4650BE,
-	CPU_R4650LE,
-	CPU_R4700BE,
-	CPU_R4700LE,
-	CPU_R5000BE,
-	CPU_R5000LE,
-	CPU_QED5271BE,
-	CPU_QED5271LE,
-	CPU_RM7000BE,
-	CPU_RM7000LE,
-	CPU_ARM,
-	CPU_ARM7,
-	CPU_SH1,
-	CPU_SH2,
-	CPU_SH4,
-	CPU_DSP32C,
-	CPU_PIC16C54,
-	CPU_PIC16C55,
-	CPU_PIC16C56,
-	CPU_PIC16C57,
-	CPU_PIC16C58,
-	CPU_G65816,
-	CPU_SPC700,
-	CPU_E116T,
-	CPU_E116XT,
-	CPU_E116XS,
-	CPU_E116XSR,
-	CPU_E132N,
-	CPU_E132T,
-	CPU_E132XN,
-	CPU_E132XT,
-	CPU_E132XS,
-	CPU_E132XSR,
-	CPU_GMS30C2116,
-	CPU_GMS30C2132,
-	CPU_GMS30C2216,
-	CPU_GMS30C2232,
-	CPU_I386,
-	CPU_I486,
-	CPU_PENTIUM,
-	CPU_MEDIAGX,
-	CPU_I960,
-	CPU_H83002,
-	CPU_H83007,
-	CPU_H83044,
-	CPU_V810,
-	CPU_M37702,
-	CPU_M37710,
-	CPU_PPC403GA,
-	CPU_PPC403GCX,
-	CPU_PPC601,
-	CPU_PPC602,
-	CPU_PPC603,
-	CPU_PPC603E,
-	CPU_PPC603R,
-	CPU_PPC604,
-	CPU_MPC8240,
-	CPU_SE3208,
-	CPU_MC68HC11,
-	CPU_ADSP21062,
-	CPU_DSP56156,
-	CPU_RSP,
-	CPU_ALPHA8201,
-	CPU_ALPHA8301,
-	CPU_CDP1802,
-	CPU_COP420,
-	CPU_COP421,
-	CPU_COP410,
-	CPU_COP411,
-	CPU_TMP90840,
-	CPU_TMP90841,
-	CPU_TMP91640,
-	CPU_TMP91641,
-	CPU_APEXC,
-	CPU_CP1610,
-	CPU_F8,
-	CPU_LH5801,
-	CPU_PDP1,
-	CPU_SATURN,
-	CPU_SC61860,
-	CPU_TX0_64KW,
-	CPU_TX0_8KW,
-	CPU_LR35902,
-	CPU_TMS7000,
-	CPU_TMS7000_EXL,
-	CPU_SM8500,
-	CPU_V30MZ,
-	CPU_MB8841,
-	CPU_MB8842,
-	CPU_MB8843,
-	CPU_MB8844,
-	CPU_MB86233,
-	CPU_SSP1601,
-	CPU_MINX,
-	CPU_CXD8661R,
-    CPU_COUNT
-};
-typedef enum _cpu_type cpu_type;
 
 
 
@@ -265,22 +49,119 @@ typedef enum _cpu_type cpu_type;
     TYPE DEFINITIONS
 ***************************************************************************/
 
+/* opaque definition of CPU internal and debugging info */
+typedef struct _cpu_debug_data cpu_debug_data;
+
+
+/* interrupt callback for VBLANK and timed interrupts */
+typedef void (*cpu_interrupt_func)(const device_config *device);
+
+
 /* CPU description for drivers */
 typedef struct _cpu_config cpu_config;
 struct _cpu_config
 {
-	cpu_type		type;						/* index for the CPU type */
-	int				flags;						/* flags; see #defines below */
-	int				clock;						/* in Hertz */
-	const addrmap_token *address_map[ADDRESS_SPACES][2]; /* 2 memory maps per address space */
-	void 			(*vblank_interrupt)(running_machine *machine, int cpunum);	/* for interrupts tied to VBLANK */
-	int 			vblank_interrupts_per_frame;/* usually 1 */
-	const char *	vblank_interrupt_screen;	/* the screen that causes the VBLANK interrupt */
-	void 			(*timed_interrupt)(running_machine *machine, int cpunum);	/* for interrupts not tied to VBLANK */
-	attoseconds_t 	timed_interrupt_period;		/* period for periodic interrupts */
-	const void *	reset_param;				/* parameter for cpu_reset */
-	const char *	tag;
+	cpu_type			type;						/* index for the CPU type */
+	UINT32				flags;						/* flags; see #defines below */
+	const addrmap_token *address_map[ADDRESS_SPACES]; /* 2 memory maps per address space */
+	const addrmap_token *address_map2[ADDRESS_SPACES]; /* 2 memory maps per address space */
+	cpu_interrupt_func 	vblank_interrupt;			/* for interrupts tied to VBLANK */
+	int 				vblank_interrupts_per_frame;/* usually 1 */
+	const char *		vblank_interrupt_screen;	/* the screen that causes the VBLANK interrupt */
+	cpu_interrupt_func 	timed_interrupt;			/* for interrupts not tied to VBLANK */
+	UINT64		 		timed_interrupt_period;		/* period for periodic interrupts */
 };
+
+
+/* public data at the end of the device->token */
+typedef struct _cpu_class_header cpu_class_header;
+struct _cpu_class_header
+{
+	cpu_debug_data *		debug;					/* debugging data */
+	const address_space *	space[ADDRESS_SPACES];	/* address spaces */
+	cpu_set_info_func		set_info;				/* this CPU's set_info function */
+};
+
+
+
+/***************************************************************************
+    CPU DEVICE CONFIGURATION MACROS
+***************************************************************************/
+
+#define MDRV_CPU_ADD(_tag, _type, _clock) \
+	MDRV_DEVICE_ADD(_tag, CPU, _clock) \
+	MDRV_DEVICE_CONFIG_DATAPTR(cpu_config, type, CPU_##_type)
+
+#define MDRV_CPU_REMOVE(_tag) \
+	MDRV_DEVICE_REMOVE(_tag, CPU)
+
+#define MDRV_CPU_MODIFY(_tag) \
+	MDRV_DEVICE_MODIFY(_tag, CPU)
+
+#define MDRV_CPU_TYPE(_type) \
+	MDRV_DEVICE_CONFIG_DATAPTR(cpu_config, type, CPU_##_type)
+
+#define MDRV_CPU_CLOCK(_clock) \
+	MDRV_DEVICE_CLOCK(_clock)
+
+#define MDRV_CPU_REPLACE(_tag, _type, _clock) \
+	MDRV_DEVICE_MODIFY(_tag, CPU) \
+	MDRV_DEVICE_CONFIG_DATAPTR(cpu_config, type, CPU_##_type) \
+	MDRV_DEVICE_CLOCK(_clock)
+
+#define MDRV_CPU_FLAGS(_flags) \
+	MDRV_DEVICE_CONFIG_DATA32(cpu_config, flags, _flags)
+
+#define MDRV_CPU_CONFIG(_config) \
+	MDRV_DEVICE_CONFIG(_config)
+
+#define MDRV_CPU_PROGRAM_MAP(_map1, _map2) \
+	MDRV_DEVICE_CONFIG_DATAPTR_ARRAY(cpu_config, address_map, ADDRESS_SPACE_PROGRAM, ADDRESS_MAP_NAME(_map1)) \
+	MDRV_DEVICE_CONFIG_DATAPTR_ARRAY(cpu_config, address_map2, ADDRESS_SPACE_PROGRAM, ADDRESS_MAP_NAME(_map2))
+
+#define MDRV_CPU_DATA_MAP(_map1, _map2) \
+	MDRV_DEVICE_CONFIG_DATAPTR_ARRAY(cpu_config, address_map, ADDRESS_SPACE_DATA, ADDRESS_MAP_NAME(_map1)) \
+	MDRV_DEVICE_CONFIG_DATAPTR_ARRAY(cpu_config, address_map2, ADDRESS_SPACE_DATA, ADDRESS_MAP_NAME(_map2))
+
+#define MDRV_CPU_IO_MAP(_map1, _map2) \
+	MDRV_DEVICE_CONFIG_DATAPTR_ARRAY(cpu_config, address_map, ADDRESS_SPACE_IO, ADDRESS_MAP_NAME(_map1)) \
+	MDRV_DEVICE_CONFIG_DATAPTR_ARRAY(cpu_config, address_map2, ADDRESS_SPACE_IO, ADDRESS_MAP_NAME(_map2))
+
+#define MDRV_CPU_VBLANK_INT(_tag, _func) \
+	MDRV_DEVICE_CONFIG_DATAPTR(cpu_config, vblank_interrupt, _func) \
+	MDRV_DEVICE_CONFIG_DATAPTR(cpu_config, vblank_interrupt_screen, _tag) \
+	MDRV_DEVICE_CONFIG_DATA32(cpu_config, vblank_interrupts_per_frame, 0)
+
+#define MDRV_CPU_PERIODIC_INT(_func, _rate)	\
+	MDRV_DEVICE_CONFIG_DATAPTR(cpu_config, timed_interrupt, _func) \
+	MDRV_DEVICE_CONFIG_DATA64(cpu_config, timed_interrupt_period, UINT64_ATTOTIME_IN_HZ(_rate))
+
+
+
+/***************************************************************************
+    MACROS
+***************************************************************************/
+
+#define INTERRUPT_GEN(func)		void func(const device_config *device)
+
+/* return a pointer to the given CPU by tag */
+#define cputag_get_cpu(mach, tag)										devtag_get_device(mach, CPU, tag)
+
+/* helpers for using machine/cputag instead of cpu objects */
+#define cputag_reset(mach, tag)											devtag_reset(mach, CPU, tag)
+#define cputag_get_index(mach, tag)										cpu_get_index(cputag_get_cpu(mach, tag))
+#define cputag_get_address_space(mach, tag, space)						cpu_get_address_space(cputag_get_cpu(mach, tag), space)
+#define cputag_suspend(mach, tag, reason, eat)							cpu_suspend(cputag_get_cpu(mach, tag), reason, eat)
+#define cputag_resume(mach, tag, reason)								cpu_resume(cputag_get_cpu(mach, tag), reason)
+#define cputag_is_suspended(mach, tag, reason)							cpu_is_suspended(cputag_get_cpu(mach, tag), reason)
+#define cputag_get_clock(mach, tag)										cpu_get_clock(cputag_get_cpu(mach, tag))
+#define cputag_set_clock(mach, tag, clock)								cpu_set_clock(cputag_get_cpu(mach, tag), clock)
+#define cputag_clocks_to_attotime(mach, tag, clocks)					cpu_clocks_to_attotime(cputag_get_cpu(mach, tag), clocks)
+#define cputag_attotime_to_clocks(mach, tag, duration)					cpu_attotime_to_clocks(cputag_get_cpu(mach, tag), duration)
+#define cputag_get_local_time(mach, tag)								cpu_get_local_time(cputag_get_cpu(mach, tag))
+#define cputag_get_total_cycles(mach, tag)								cpu_get_total_cycles(cputag_get_cpu(mach, tag))
+#define cputag_set_input_line(mach, tag, line, state)					cpu_set_input_line(cputag_get_cpu(mach, tag), line, state)
+#define cputag_set_input_line_and_vector(mach, tag, line, state, vec)	cpu_set_input_line_and_vector(cputag_get_cpu(mach, tag), line, state, vec)
 
 
 
@@ -297,92 +178,189 @@ void cpuexec_init(running_machine *machine);
 /* execute for a single timeslice */
 void cpuexec_timeslice(running_machine *machine);
 
+/* temporarily boosts the interleave factor */
+void cpuexec_boost_interleave(running_machine *machine, attotime timeslice_time, attotime boost_duration);
+
+
+
+/* ----- CPU device interface ----- */
+
+/* device get info callback */
+#define CPU DEVICE_GET_INFO_NAME(cpu)
+DEVICE_GET_INFO( cpu );
+
+
+
+/* ----- global helpers ----- */
+
+/* abort execution for the current timeslice */
+void cpuexec_abort_timeslice(running_machine *machine);
+
+/* return a string describing which CPUs are currently executing and their PC */
+const char *cpuexec_describe_context(running_machine *machine);
+
 
 
 /* ----- CPU scheduling----- */
 
-/* temporarily boosts the interleave factor */
-void cpu_boost_interleave(attotime timeslice_time, attotime boost_duration);
-
-/* aborts the timeslice for the active CPU */
-void activecpu_abort_timeslice(void);
-
 /* suspend the given CPU for a specific reason */
-void cpunum_suspend(int cpunum, int reason, int eatcycles);
+void cpu_suspend(const device_config *device, int reason, int eatcycles);
 
 /* resume the given CPU for a specific reason */
-void cpunum_resume(int cpunum, int reason);
+void cpu_resume(const device_config *device, int reason);
 
-/* returns true if the given CPU is suspended for any of the given reasons */
-int cpunum_is_suspended(int cpunum, int reason);
+/* return TRUE if the given CPU is within its execute function */
+int cpu_is_executing(const device_config *device);
+
+/* returns TRUE if the given CPU is suspended for any of the given reasons */
+int cpu_is_suspended(const device_config *device, int reason);
 
 
 
 /* ----- CPU clock management ----- */
 
 /* returns the current CPU's unscaled running clock speed */
-int cpunum_get_clock(int cpunum);
+int cpu_get_clock(const device_config *device);
 
 /* sets the current CPU's clock speed and then adjusts for scaling */
-void cpunum_set_clock(running_machine *machine, int cpunum, int clock);
+void cpu_set_clock(const device_config *device, int clock);
 
 /* returns the current scaling factor for a CPU's clock speed */
-double cpunum_get_clockscale(int cpunum);
+double cpu_get_clockscale(const device_config *device);
 
 /* sets the current scaling factor for a CPU's clock speed */
-void cpunum_set_clockscale(running_machine *machine, int cpunum, double clockscale);
+void cpu_set_clockscale(const device_config *device, double clockscale);
+
+/* converts a number of clock ticks to an attotime */
+attotime cpu_clocks_to_attotime(const device_config *device, UINT64 clocks);
+
+/* converts a duration as attotime to CPU clock ticks */
+UINT64 cpu_attotime_to_clocks(const device_config *device, attotime duration);
 
 
 
 /* ----- CPU timing ----- */
 
 /* returns the current local time for a CPU */
-attotime cpunum_get_localtime(int cpunum);
-
-/* returns the total number of CPU cycles */
-UINT64 activecpu_gettotalcycles(void);
+attotime cpu_get_local_time(const device_config *device);
 
 /* returns the total number of CPU cycles for a given CPU */
-UINT64 cpunum_gettotalcycles(int cpunum);
+UINT64 cpu_get_total_cycles(const device_config *device);
 
 /* safely eats cycles so we don't cross a timeslice boundary */
-void activecpu_eat_cycles(int cycles);
+void cpu_eat_cycles(const device_config *device, int cycles);
+
+/* apply a +/- to the current icount */
+void cpu_adjust_icount(const device_config *device, int delta);
+
+/* abort execution for the current timeslice, allowing other CPUs to run before we run again */
+void cpu_abort_timeslice(const device_config *device);
 
 
 
 /* ----- synchronization helpers ----- */
 
-/* yield our current timeslice */
-void cpu_yield(void);
+/* yield the given CPU until the end of the current timeslice */
+void cpu_yield(const device_config *device);
 
-/* burn CPU cycles until our timeslice is up */
-void cpu_spin(void);
+/* burn CPU cycles until the end of the current timeslice */
+void cpu_spin(const device_config *device);
 
-/* burn CPU cycles until a timer trigger */
-void cpu_spinuntil_trigger(int trigger);
-
-/* burn specified CPU cycles until a timer trigger */
-void cpunum_spinuntil_trigger(int cpunum, int trigger);
+/* burn specified CPU cycles until a trigger */
+void cpu_spinuntil_trigger(const device_config *device, int trigger);
 
 /* burn CPU cycles until the next interrupt */
-void cpu_spinuntil_int(void);
+void cpu_spinuntil_int(const device_config *device);
 
 /* burn CPU cycles for a specific period of time */
-void cpu_spinuntil_time(attotime duration);
+void cpu_spinuntil_time(const device_config *device, attotime duration);
 
 
 
 /* ----- triggers ----- */
 
-/* generate a trigger now */
-void cpu_trigger(running_machine *machine, int trigger);
+/* generate a global trigger now */
+void cpuexec_trigger(running_machine *machine, int trigger);
 
-/* generate a trigger after a specific period of time */
-void cpu_triggertime(attotime duration, int trigger);
+/* generate a global trigger after a specific period of time */
+void cpuexec_triggertime(running_machine *machine, int trigger, attotime duration);
 
 /* generate a trigger corresponding to an interrupt on the given CPU */
-void cpu_triggerint(running_machine *machine, int cpunum);
+void cpu_triggerint(const device_config *device);
 
 
+
+/* ----- interrupts ----- */
+
+/* set the logical state (ASSERT_LINE/CLEAR_LINE) of the an input line on a CPU */
+void cpu_set_input_line(const device_config *cpu, int line, int state);
+
+/* set the vector to be returned during a CPU's interrupt acknowledge cycle */
+void cpu_set_input_line_vector(const device_config *cpu, int irqline, int vector);
+
+/* set the logical state (ASSERT_LINE/CLEAR_LINE) of the an input line on a CPU and its associated vector */
+void cpu_set_input_line_and_vector(const device_config *cpu, int line, int state, int vector);
+
+/* install a driver-specific callback for IRQ acknowledge */
+void cpu_set_irq_callback(const device_config *cpu, cpu_irq_callback callback);
+
+
+
+/***************************************************************************
+    INLINE FUNCTIONS
+***************************************************************************/
+
+/*-------------------------------------------------
+    cpu_get_type - return the type of the
+    specified CPU
+-------------------------------------------------*/
+
+INLINE cpu_type cpu_get_type(const device_config *device)
+{
+	const cpu_config *config = device->inline_config;
+	return config->type;
+}
+
+
+/*-------------------------------------------------
+    cpu_get_class_header - return a pointer to
+    the class header
+-------------------------------------------------*/
+
+INLINE cpu_class_header *cpu_get_class_header(const device_config *device)
+{
+	if (device->token != NULL)
+		return (cpu_class_header *)((UINT8 *)device->token + device->tokenbytes) - 1;
+	return NULL;
+}
+
+
+/*-------------------------------------------------
+    cpu_get_debug_data - return a pointer to
+    the given CPU's debugger data
+-------------------------------------------------*/
+
+INLINE cpu_debug_data *cpu_get_debug_data(const device_config *device)
+{
+	cpu_class_header *classheader = cpu_get_class_header(device);
+	return classheader->debug;
+}
+
+
+/*-------------------------------------------------
+    cpu_get_address_space - return a pointer to
+    the given CPU's address space
+-------------------------------------------------*/
+
+INLINE const address_space *cpu_get_address_space(const device_config *device, int spacenum)
+{
+	/* it is faster to pull this from the class header, but only after we've started */
+	if (device->token != NULL)
+	{
+		cpu_class_header *classheader = cpu_get_class_header(device);
+		return classheader->space[spacenum];
+	}
+	return memory_find_address_space(device, spacenum);
+}
 
 #endif	/* __CPUEXEC_H__ */

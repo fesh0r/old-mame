@@ -311,6 +311,8 @@ Stephh's notes (based on the game M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "taitoipt.h"
 #include "audio/taitosnd.h"
 #include "seta.h"
@@ -325,13 +327,13 @@ static READ16_HANDLER( superman_dsw_input_r )
 	switch (offset)
 	{
 		case 0x00:
-			return  input_port_read(machine, "DSWA") & 0x0f;
+			return  input_port_read(space->machine, "DSWA") & 0x0f;
 		case 0x01:
-			return (input_port_read(machine, "DSWA") & 0xf0) >> 4;
+			return (input_port_read(space->machine, "DSWA") & 0xf0) >> 4;
 		case 0x02:
-			return  input_port_read(machine, "DSWB") & 0x0f;
+			return  input_port_read(space->machine, "DSWB") & 0x0f;
 		case 0x03:
-			return (input_port_read(machine, "DSWB") & 0xf0) >> 4;
+			return (input_port_read(space->machine, "DSWB") & 0xf0) >> 4;
 		default:
 			logerror("taitox unknown dsw read offset: %04x\n", offset);
 			return 0x00;
@@ -343,11 +345,11 @@ static READ16_HANDLER( daisenpu_input_r )
 	switch (offset)
 	{
 		case 0x00:
-			return input_port_read(machine, "IN0");    /* Player 1 controls + START1 */
+			return input_port_read(space->machine, "IN0");    /* Player 1 controls + START1 */
 		case 0x01:
-			return input_port_read(machine, "IN1");    /* Player 2 controls + START2 */
+			return input_port_read(space->machine, "IN1");    /* Player 2 controls + START2 */
 		case 0x02:
-			return input_port_read(machine, "IN2");    /* COINn + SERVICE1 + TILT */
+			return input_port_read(space->machine, "IN2");    /* COINn + SERVICE1 + TILT */
 
 		default:
 			logerror("taitox unknown input read offset: %04x\n", offset);
@@ -397,13 +399,13 @@ static INT32 banknum;
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr( 2, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr(machine,  2, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	banknum = (data - 1) & 3;
-	reset_sound_region(machine);
+	reset_sound_region(space->machine);
 }
 
 
@@ -966,7 +968,7 @@ GFXDECODE_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -987,7 +989,7 @@ static STATE_POSTLOAD( taitox_postload )
 static MACHINE_START( taitox )
 {
 	banknum = -1;
-	state_save_register_global(banknum);
+	state_save_register_global(machine, banknum);
 	state_save_register_postload(machine, taitox_postload, NULL);
 }
 
@@ -1003,7 +1005,7 @@ static MACHINE_DRIVER_START( superman )
 	MDRV_CPU_ADD("audio", Z80, XTAL_16MHz/4)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
+	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	MDRV_MACHINE_START(taitox)
 	MDRV_MACHINE_RESET(cchip1)
@@ -1043,7 +1045,7 @@ static MACHINE_DRIVER_START( daisenpu )
 	MDRV_CPU_ADD("audio", Z80, XTAL_16MHz/4)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(daisenpu_sound_readmem,daisenpu_sound_writemem)
 
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
+	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	MDRV_MACHINE_START(taitox)
 
@@ -1080,7 +1082,7 @@ static MACHINE_DRIVER_START( gigandes )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(ballbros_sound_readmem,ballbros_sound_writemem)
 
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
+	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	MDRV_MACHINE_START(taitox)
 
@@ -1119,7 +1121,7 @@ static MACHINE_DRIVER_START( ballbros )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(ballbros_sound_readmem,ballbros_sound_writemem)
 
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
+	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	MDRV_MACHINE_START(taitox)
 
@@ -1382,7 +1384,7 @@ ROM_END
 
 static DRIVER_INIT( kyustrkr )
 {
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x900000, 0x90000f, 0, 0, kyustrkr_input_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x900000, 0x90000f, 0, 0, kyustrkr_input_w);
 }
 
 

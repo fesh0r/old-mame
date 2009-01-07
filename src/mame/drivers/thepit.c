@@ -115,6 +115,7 @@ HT-01B
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 
@@ -1031,7 +1032,7 @@ static READ8_HANDLER( rtriv_question_r )
 	// Read the actual byte from question roms
 	else if((offset & 0xc00) == 0xc00)
 	{
-		UINT8 *ROM = memory_region(machine, "user1");
+		UINT8 *ROM = memory_region(space->machine, "user1");
 		int real_address;
 
 		real_address = (0x8000 * question_rom) | question_address | (offset & 0x3f0) | remap_address[offset & 0x0f];
@@ -1045,7 +1046,7 @@ static READ8_HANDLER( rtriv_question_r )
 static DRIVER_INIT( rtriv )
 {
 	// Set-up the weirdest questions read ever done
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4fff, 0, 0, rtriv_question_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x4000, 0x4fff, 0, 0, rtriv_question_r);
 }
 
 

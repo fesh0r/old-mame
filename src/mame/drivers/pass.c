@@ -100,6 +100,8 @@
  */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/2203intf.h"
 #include "sound/okim6295.h"
 
@@ -117,7 +119,7 @@ WRITE16_HANDLER( pass_bg_videoram_w );
 
 static WRITE16_HANDLER ( pass_soundwrite )
 {
-	soundlatch_w(machine,0,data & 0xff);
+	soundlatch_w(space,0,data & 0xff);
 }
 
 /* todo: check all memory regions actually readable / read from */

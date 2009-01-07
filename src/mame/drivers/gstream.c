@@ -95,6 +95,7 @@
 *********************************************************************/
 
 #include "driver.h"
+#include "cpu/e132xs/e132xs.h"
 #include "sound/okim6295.h"
 
 static UINT32 *gstream_vram;
@@ -140,12 +141,12 @@ static WRITE32_HANDLER( gstream_palette_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
 
-	palette_set_color_rgb(machine,offset*2,pal5bit(paletteram32[offset] >> (0+16)),
+	palette_set_color_rgb(space->machine,offset*2,pal5bit(paletteram32[offset] >> (0+16)),
 		                             pal5bit(paletteram32[offset] >> (6+16)),
 									 pal5bit(paletteram32[offset] >> (11+16)));
 
 
-	palette_set_color_rgb(machine,offset*2+1,pal5bit(paletteram32[offset] >> (0)),
+	palette_set_color_rgb(space->machine,offset*2+1,pal5bit(paletteram32[offset] >> (0)),
 		                             pal5bit(paletteram32[offset] >> (6)),
 									 pal5bit(paletteram32[offset] >> (11)));
 }
@@ -194,41 +195,76 @@ static ADDRESS_MAP_START( gstream_32bit_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xFFF80000, 0xFFFFFFFF) AM_ROM AM_REGION("user1",0) // boot rom
 ADDRESS_MAP_END
 
-static READ32_HANDLER( gstream_oki_0_r ) { return okim6295_status_0_r(machine, 0); }
-static READ32_HANDLER( gstream_oki_1_r ) { return okim6295_status_1_r(machine, 0); }
-static WRITE32_HANDLER( gstream_oki_0_w ) { okim6295_data_0_w(machine, 0, data & 0xff); }
-static WRITE32_HANDLER( gstream_oki_1_w ) { okim6295_data_1_w(machine, 0, data & 0xff); }
+static READ32_HANDLER( gstream_oki_0_r ) { return okim6295_status_0_r(space, 0); }
+static READ32_HANDLER( gstream_oki_1_r ) { return okim6295_status_1_r(space, 0); }
+static WRITE32_HANDLER( gstream_oki_0_w ) { okim6295_data_0_w(space, 0, data & 0xff); }
+static WRITE32_HANDLER( gstream_oki_1_w ) { okim6295_data_1_w(space, 0, data & 0xff); }
 
-static WRITE32_HANDLER( gstream_oki_4030_w )
+static WRITE32_HANDLER( gstream_oki_banking_w )
 {
-/*
-    // the only nibbles that are written are: 0x6 0x7 0x9 0xa 0xb 0xe 0xd 0xf which should map to the 8 oki banks
+	/* OKI BANKING  (still far from perfect, based on game behaviour)
 
-    static const int bank_lookup[16] = { -1, -1, -1, -1, -1, -1, 0, 1, -1, 2, 3, 4, -1, 5, 6, 7 };
+    The two okis can indifferently play music or samples and are switched on the fly during game
+    This is a preliminary table of the banks:
 
-    static int old_bank_0 = -1;
-    static int old_bank_1 = -1;
+    BANK    MUSIC   SAMPLES
+     0         X
+     1    X
+     2    X
+     3    X
+     4         X
+     5    X
+     6    X
+     7    X
 
-    if(bank_lookup[data & 0xf] != old_bank_0)
-    {
-        old_bank_0 = bank_lookup[data & 0xf];
+    Two nibbles are used in this handler: (data & 0xf) and ((data >> 4) & 0xf)
+    The values for the first nibble are the followings and should map the 8 oki banks:
+    - 0x6, 0x7, 0x9, 0xa, 0xb, 0xd, 0xe, 0xf
+    The values for the second nibble are the followings and should probably be used too:
+    - 0x6, 0x9, 0xa
 
-        if(old_bank_0 != -1)
-            okim6295_set_bank_base(0, old_bank_0 * 0x40000);
-        else
-            logerror("oki_0 banking value = %X\n",data & 0xf);
-    }
+    Same values are redudant, for example:
+    level 2: data = 0x99
+    level 6: data = 0x99
+    (this means same background music for the two levels - it could be correct, though)
 
-    if(bank_lookup[(data >> 4) & 0xf] != old_bank_1)
-    {
-        old_bank_1 = bank_lookup[(data >> 4) & 0xf];
+    Also with current implementation, using only (data & 0xf), we have to force some values
+    manually, because the correspondent places in the table are already used
 
-        if(old_bank_1 != -1)
-            okim6295_set_bank_base(1, old_bank_1 * 0x40000);
-        else
-            logerror("oki_1 banking value = %X\n",(data >> 4) & 0xf);
-    }
-*/
+    Musics order is completely guessed but close to what the original PCB game should be */
+
+	static const int bank_table_0[16] = { -1, -1, -1, -1, -1, -1, 0, 0, -1, 6, 0, 5, -1, 0, 0, 0 };
+	static const int bank_table_1[16] = { -1, -1, -1, -1, -1, -1, 2, 2, -1, 0, 0, 4, -1, 1, 1, 1 };
+
+	static int bank_0 = 0;
+	static int bank_1 = 0;
+
+	//popmessage("oki_0 banking value = %X\noki_1 banking value = %X\n",data & 0xf,(data >> 4) & 0xf);
+
+	bank_0 = bank_table_0[data & 0xf];
+	bank_1 = bank_table_1[data & 0xf];		// (data >> 4) & 0xf ??
+
+	/* some values are already used in the table, so we force them manually */
+	if ((data == 0x6f) || (data == 0x6e))
+	{
+		bank_0 = 0; 	// level 3b-5a samples
+		bank_1 = 6;		// level 3b-5a music
+	}
+
+	if (data == 0x9b)
+	{
+		bank_0 = 7;		// level 7 music
+		bank_1 = 0;		// level 7 samples
+	}
+
+	if (data == 0x9f)
+	{
+		bank_0 = 0;		// end sequence samples
+		bank_1 = 3;		// end sequence music
+	}
+
+	okim6295_set_bank_base(0, bank_0 * 0x40000);
+	okim6295_set_bank_base(1, bank_1 * 0x40000);
 }
 
 static WRITE32_HANDLER( gstream_oki_4040_w )
@@ -239,11 +275,11 @@ static WRITE32_HANDLER( gstream_oki_4040_w )
 static ADDRESS_MAP_START( gstream_io, ADDRESS_SPACE_IO, 32 )
 	AM_RANGE(0x4000, 0x4003) AM_READ_PORT("IN0")
 	AM_RANGE(0x4010, 0x4013) AM_READ_PORT("IN1")
-	AM_RANGE(0x4020, 0x4023) AM_READ_PORT("IN2") // extra coin switches etc
-	AM_RANGE(0x4030, 0x4033) AM_WRITE(gstream_oki_4030_w) // ??
-	AM_RANGE(0x4040, 0x4043) AM_WRITE(gstream_oki_4040_w) // ??
-	AM_RANGE(0x4050, 0x4053) AM_READWRITE(gstream_oki_1_r, gstream_oki_1_w) // music
-	AM_RANGE(0x4060, 0x4063) AM_READWRITE(gstream_oki_0_r, gstream_oki_0_w) // samples
+	AM_RANGE(0x4020, 0x4023) AM_READ_PORT("IN2") 	// extra coin switches etc
+	AM_RANGE(0x4030, 0x4033) AM_WRITE(gstream_oki_banking_w) 	// oki banking
+	AM_RANGE(0x4040, 0x4043) AM_WRITE(gstream_oki_4040_w) 	// ??
+	AM_RANGE(0x4050, 0x4053) AM_READWRITE(gstream_oki_1_r, gstream_oki_1_w) 	// music and samples
+	AM_RANGE(0x4060, 0x4063) AM_READWRITE(gstream_oki_0_r, gstream_oki_0_w) 	// music and samples
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( gstream )
@@ -349,9 +385,9 @@ static TILE_GET_INFO( get_gs3_tile_info )
 
 static VIDEO_START(gstream)
 {
-	gstream_tilemap1 = tilemap_create(get_gs1_tile_info,tilemap_scan_rows, 32, 32,16,16);
-	gstream_tilemap2 = tilemap_create(get_gs2_tile_info,tilemap_scan_rows, 32, 32,16,16);
-	gstream_tilemap3 = tilemap_create(get_gs3_tile_info,tilemap_scan_rows, 32, 32,16,16);
+	gstream_tilemap1 = tilemap_create(machine, get_gs1_tile_info,tilemap_scan_rows, 32, 32,16,16);
+	gstream_tilemap2 = tilemap_create(machine, get_gs2_tile_info,tilemap_scan_rows, 32, 32,16,16);
+	gstream_tilemap3 = tilemap_create(machine, get_gs3_tile_info,tilemap_scan_rows, 32, 32,16,16);
 
 	tilemap_set_transparent_pen(gstream_tilemap1,0);
 	tilemap_set_transparent_pen(gstream_tilemap2,0);
@@ -433,12 +469,12 @@ static MACHINE_DRIVER_START( gstream )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	MDRV_SOUND_ADD("oki1", OKIM6295, 1000000) /* 1 Mhz? */
-	MDRV_SOUND_CONFIG(okim6295_interface_pin7low) // pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // pin 7 not verified
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_SOUND_ADD("oki2", OKIM6295, 1000000) /* 1 Mhz? */
-	MDRV_SOUND_CONFIG(okim6295_interface_pin7low) // pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // pin 7 not verified
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 ROM_START( gstream )
@@ -478,9 +514,9 @@ ROM_END
 
 static READ32_HANDLER( gstream_speedup_r )
 {
-	if (activecpu_get_pc()==0xc0001592)
+	if (cpu_get_pc(space->cpu)==0xc0001592)
 	{
-		activecpu_eat_cycles(50);
+		cpu_spinuntil_int(space->cpu);
 	}
 
 	return gstream_workram[0xd1ee0/4];
@@ -488,7 +524,8 @@ static READ32_HANDLER( gstream_speedup_r )
 
 static DRIVER_INIT( gstream )
 {
-	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd1ee0, 0xd1ee3, 0, 0, gstream_speedup_r );
+	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd1ee0, 0xd1ee3, 0, 0, gstream_speedup_r );
 
 }
+
 GAME( 2002, gstream, 0, gstream, gstream, gstream, ROT270, "Oriental Soft Japan", "G-Stream G2020", GAME_IMPERFECT_SOUND )

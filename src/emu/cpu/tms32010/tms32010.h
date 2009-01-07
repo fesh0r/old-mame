@@ -51,81 +51,10 @@ enum
  *  Public Functions
  */
 
-void tms32010_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( tms32010 );
+#define CPU_TMS32010 CPU_GET_INFO_NAME( tms32010 )
 
 
-
-/****************************************************************************
- *  Read the state of the BIO pin
- */
-
-#define TMS32010_BIO_In (io_read_word_16be(TMS32010_BIO<<1))
-
-
-/****************************************************************************
- *  Input a word from given I/O port
- */
-
-#define TMS32010_In(Port) (io_read_word_16be((Port)<<1))
-
-
-/****************************************************************************
- *  Output a word to given I/O port
- */
-
-#define TMS32010_Out(Port,Value) (io_write_word_16be((Port)<<1,Value))
-
-
-
-/****************************************************************************
- *  Read a word from given ROM memory location
- */
-
-#define TMS32010_ROM_RDMEM(A) (program_read_word_16be((A)<<1))
-
-
-/****************************************************************************
- *  Write a word to given ROM memory location
- */
-
-#define TMS32010_ROM_WRMEM(A,V) (program_write_word_16be((A)<<1,V))
-
-
-
-/****************************************************************************
- *  Read a word from given RAM memory location
- */
-
-#define TMS32010_RAM_RDMEM(A) (data_read_word_16be((A)<<1))
-
-
-/****************************************************************************
- *  Write a word to given RAM memory location
- */
-
-#define TMS32010_RAM_WRMEM(A,V) (data_write_word_16be((A)<<1,V))
-
-
-
-/****************************************************************************
- *  TMS32010_RDOP() is identical to TMS32010_RDMEM() except it is used for reading
- *  opcodes. In case of system with memory mapped I/O, this function can be
- *  used to greatly speed up emulation
- */
-
-#define TMS32010_RDOP(A) (cpu_readop16((A)<<1))
-
-
-/****************************************************************************
- *  TMS32010_RDOP_ARG() is identical to TMS32010_RDOP() except it is used
- *  for reading opcode arguments. This difference can be used to support systems
- *  that use different encoding mechanisms for opcodes and opcode arguments
- */
-
-#define TMS32010_RDOP_ARG(A) (cpu_readop_arg16((A)<<1))
-
-
-
-offs_t tms32010_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+CPU_DISASSEMBLE( tms32010 );
 
 #endif	/* __TMS32010_H__ */

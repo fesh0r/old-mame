@@ -52,7 +52,7 @@ WRITE8_HANDLER( sidearms_c804_w )
 	/* bit 4 resets the sound CPU */
 	if (data & 0x10)
 	{
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
 	}
 
 	/* bit 5 enables starfield */
@@ -70,7 +70,7 @@ WRITE8_HANDLER( sidearms_c804_w )
 	if (flipon != (data & 0x80))
 	{
 		flipon = data & 0x80;
-		flip_screen_set(flipon);
+		flip_screen_set(space->machine, flipon);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
@@ -150,17 +150,17 @@ VIDEO_START( sidearms )
 
 	if (!sidearms_gameid)
 	{
-		bg_tilemap = tilemap_create(get_sidearms_bg_tile_info, sidearms_tilemap_scan,
+		bg_tilemap = tilemap_create(machine, get_sidearms_bg_tile_info, sidearms_tilemap_scan,
 			 32, 32, 128, 128);
 
 		tilemap_set_transparent_pen(bg_tilemap, 15);
 	}
 	else
 	{
-		bg_tilemap = tilemap_create(get_philko_bg_tile_info, sidearms_tilemap_scan, 32, 32, 128, 128);
+		bg_tilemap = tilemap_create(machine, get_philko_bg_tile_info, sidearms_tilemap_scan, 32, 32, 128, 128);
 	}
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,
 		 8, 8, 64, 64);
 
 	tilemap_set_transparent_pen(fg_tilemap, 3);
@@ -359,5 +359,7 @@ VIDEO_UPDATE( sidearms )
 
 VIDEO_EOF( sidearms )
 {
-	buffer_spriteram_w(machine, 0, 0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram_w(space, 0, 0);
 }

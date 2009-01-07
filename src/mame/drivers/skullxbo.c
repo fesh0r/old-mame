@@ -18,6 +18,7 @@
 
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/atarigen.h"
 #include "audio/atarijsa.h"
 #include "skullxbo.h"
@@ -32,15 +33,15 @@
 
 static void update_interrupts(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 1, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 2, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 4, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 1, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 2, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static TIMER_CALLBACK( irq_gen )
 {
-	atarigen_scanline_int_gen(machine, 0);
+	atarigen_scanline_int_gen(machine->cpu[0]);
 }
 
 
@@ -54,7 +55,7 @@ static void alpha_row_update(const device_config *screen, int scanline)
 	{
 		int	width = video_screen_get_width(screen);
 		attotime period = video_screen_get_time_until_pos(screen, video_screen_get_vpos(screen) + 6, width * 0.9);
-		timer_set(period, NULL, 0, irq_gen);
+		timer_set(screen->machine, period, NULL, 0, irq_gen);
 	}
 
 	/* update the playfield and motion objects */
@@ -64,7 +65,7 @@ static void alpha_row_update(const device_config *screen, int scanline)
 
 static WRITE16_HANDLER( skullxbo_halt_until_hblank_0_w )
 {
-	atarigen_halt_until_hblank_0(machine->primary_screen);
+	atarigen_halt_until_hblank_0(space->machine->primary_screen);
 }
 
 
@@ -86,9 +87,9 @@ static MACHINE_RESET( skullxbo )
 
 static READ16_HANDLER( special_port1_r )
 {
-	int temp = input_port_read(machine, "FF5802");
+	int temp = input_port_read(space->machine, "FF5802");
 	if (atarigen_cpu_to_sound_ready) temp ^= 0x0040;
-	if (atarigen_get_hblank(machine->primary_screen)) temp ^= 0x0010;
+	if (atarigen_get_hblank(space->machine->primary_screen)) temp ^= 0x0010;
 	return temp;
 }
 

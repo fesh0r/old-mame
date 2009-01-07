@@ -190,6 +190,7 @@ rumbling on a subwoofer in the cabinet.)
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "taitoipt.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
@@ -212,7 +213,7 @@ static void parse_control(running_machine *machine)	/* assumes Z80 sandwiched be
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
        if cpu B is disabled !! */
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
 
 }
 
@@ -222,9 +223,9 @@ static WRITE16_HANDLER( cpua_ctrl_w )
 		data = data >> 8;	/* for Wgp */
 	cpua_ctrl = data;
 
-	parse_control(machine);
+	parse_control(space->machine);
 
-	logerror("CPU #0 PC %06x: write %04x to cpu control\n",activecpu_get_pc(),data);
+	logerror("CPU #0 PC %06x: write %04x to cpu control\n",cpu_get_pc(space->cpu),data);
 }
 
 
@@ -236,21 +237,21 @@ static INT32 banknum;
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr( 10, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr(machine,  10, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	banknum = (data - 1) & 7;
-	reset_sound_region(machine);
+	reset_sound_region(space->machine);
 }
 
 static WRITE16_HANDLER( ninjaw_sound_w )
 {
 	if (offset == 0)
-		taitosound_port_w (machine, 0, data & 0xff);
+		taitosound_port_w (space, 0, data & 0xff);
 	else if (offset == 1)
-		taitosound_comm_w (machine, 0, data & 0xff);
+		taitosound_comm_w (space, 0, data & 0xff);
 
 #ifdef MAME_DEBUG
 	if (data & 0xff00)
@@ -261,7 +262,7 @@ static WRITE16_HANDLER( ninjaw_sound_w )
 static READ16_HANDLER( ninjaw_sound_r )
 {
 	if (offset == 1)
-		return ((taitosound_comm_r (machine,0) & 0xff));
+		return ((taitosound_comm_r (space, 0) & 0xff));
 	else return 0;
 }
 
@@ -570,7 +571,7 @@ GFXDECODE_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -631,7 +632,7 @@ static MACHINE_DRIVER_START( ninjaw )
 	MDRV_CPU_PROGRAM_MAP(ninjaw_cpub_readmem,ninjaw_cpub_writemem)
 	MDRV_CPU_VBLANK_INT("left", irq4_line_hold)
 
-	MDRV_INTERLEAVE(100)	/* CPU slices */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* CPU slices */
 
 	MDRV_MACHINE_START(ninjaw)
 	MDRV_MACHINE_RESET(ninjaw)
@@ -704,7 +705,7 @@ static MACHINE_DRIVER_START( darius2 )
 	MDRV_CPU_PROGRAM_MAP(darius2_cpub_readmem,darius2_cpub_writemem)
 	MDRV_CPU_VBLANK_INT("left", irq4_line_hold)
 
-	MDRV_INTERLEAVE(100)	/* CPU slices */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* CPU slices */
 
 	MDRV_MACHINE_START(ninjaw)
 	MDRV_MACHINE_RESET(ninjaw)
@@ -934,8 +935,8 @@ static MACHINE_START( ninjaw )
 	banknum = -1;
 	memset(ninjaw_pandata, 0, sizeof(ninjaw_pandata));
 
-	state_save_register_global(cpua_ctrl);
-	state_save_register_global(banknum);
+	state_save_register_global(machine, cpua_ctrl);
+	state_save_register_global(machine, banknum);
 	state_save_register_postload(machine, ninjaw_postload, NULL);
 }
 

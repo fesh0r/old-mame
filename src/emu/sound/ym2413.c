@@ -38,8 +38,7 @@ to do:
 */
 
 #include <math.h>
-
-#include "sndintrf.h"		/* use M.A.M.E. */
+#include "sndintrf.h"
 #include "ym2413.h"
 
 
@@ -261,7 +260,6 @@ typedef struct {
 	UINT8 address;					/* address register             */
 	UINT8 status;					/* status flag                  */
 
-	int index;						/* index                        */
 	int clock;						/* master clock  (Hz)           */
 	int rate;						/* sampling rate (Hz)           */
 	double freqbase;				/* frequency base               */
@@ -1250,86 +1248,83 @@ static void OPLCloseTable( void )
 }
 
 
-static void OPLL_init_save(YM2413 *chip)
+static void OPLL_init_save(YM2413 *chip, const device_config *device)
 {
-	int chipitem = chip->index * 100;
 	int chnum;
 
-	state_save_register_item_array("ym2413", chipitem, chip->instvol_r);
-	state_save_register_item("ym2413", chipitem, chip->eg_cnt);
-	state_save_register_item("ym2413", chipitem, chip->eg_timer);
-	state_save_register_item("ym2413", chipitem, chip->eg_timer_add);
-	state_save_register_item("ym2413", chipitem, chip->eg_timer_overflow);
-	state_save_register_item("ym2413", chipitem, chip->rhythm);
-	state_save_register_item("ym2413", chipitem, chip->lfo_am_cnt);
-	state_save_register_item("ym2413", chipitem, chip->lfo_am_inc);
-	state_save_register_item("ym2413", chipitem, chip->lfo_pm_cnt);
-	state_save_register_item("ym2413", chipitem, chip->lfo_pm_inc);
-	state_save_register_item("ym2413", chipitem, chip->noise_rng);
-	state_save_register_item("ym2413", chipitem, chip->noise_p);
-	state_save_register_item("ym2413", chipitem, chip->noise_f);
-	state_save_register_item_2d_array("ym2413", chipitem, chip->inst_tab);
-	state_save_register_item("ym2413", chipitem, chip->address);
-	state_save_register_item("ym2413", chipitem, chip->status);
+	state_save_register_device_item_array(device, 0, chip->instvol_r);
+	state_save_register_device_item(device, 0, chip->eg_cnt);
+	state_save_register_device_item(device, 0, chip->eg_timer);
+	state_save_register_device_item(device, 0, chip->eg_timer_add);
+	state_save_register_device_item(device, 0, chip->eg_timer_overflow);
+	state_save_register_device_item(device, 0, chip->rhythm);
+	state_save_register_device_item(device, 0, chip->lfo_am_cnt);
+	state_save_register_device_item(device, 0, chip->lfo_am_inc);
+	state_save_register_device_item(device, 0, chip->lfo_pm_cnt);
+	state_save_register_device_item(device, 0, chip->lfo_pm_inc);
+	state_save_register_device_item(device, 0, chip->noise_rng);
+	state_save_register_device_item(device, 0, chip->noise_p);
+	state_save_register_device_item(device, 0, chip->noise_f);
+	state_save_register_device_item_2d_array(device, 0, chip->inst_tab);
+	state_save_register_device_item(device, 0, chip->address);
+	state_save_register_device_item(device, 0, chip->status);
 
 	for (chnum = 0; chnum < ARRAY_LENGTH(chip->P_CH); chnum++)
 	{
 		OPLL_CH *ch = &chip->P_CH[chnum];
-		int chitem = chipitem + (chnum + 1) * 10;
 		int slotnum;
 
-		state_save_register_item("ym2413", chitem, ch->block_fnum);
-		state_save_register_item("ym2413", chitem, ch->fc);
-		state_save_register_item("ym2413", chitem, ch->ksl_base);
-		state_save_register_item("ym2413", chitem, ch->kcode);
-		state_save_register_item("ym2413", chitem, ch->sus);
+		state_save_register_device_item(device, chnum, ch->block_fnum);
+		state_save_register_device_item(device, chnum, ch->fc);
+		state_save_register_device_item(device, chnum, ch->ksl_base);
+		state_save_register_device_item(device, chnum, ch->kcode);
+		state_save_register_device_item(device, chnum, ch->sus);
 
 		for (slotnum = 0; slotnum < ARRAY_LENGTH(ch->SLOT); slotnum++)
 		{
 			OPLL_SLOT *sl = &ch->SLOT[slotnum];
-			int slitem = chitem + (slotnum + 1);
 
-			state_save_register_item("ym2413", slitem, sl->ar);
-			state_save_register_item("ym2413", slitem, sl->dr);
-			state_save_register_item("ym2413", slitem, sl->rr);
-			state_save_register_item("ym2413", slitem, sl->KSR);
-			state_save_register_item("ym2413", slitem, sl->ksl);
-			state_save_register_item("ym2413", slitem, sl->ksr);
-			state_save_register_item("ym2413", slitem, sl->mul);
-			state_save_register_item("ym2413", slitem, sl->phase);
-			state_save_register_item("ym2413", slitem, sl->freq);
-			state_save_register_item("ym2413", slitem, sl->fb_shift);
-			state_save_register_item_array("ym2413", slitem, sl->op1_out);
-			state_save_register_item("ym2413", slitem, sl->eg_type);
-			state_save_register_item("ym2413", slitem, sl->state);
-			state_save_register_item("ym2413", slitem, sl->TL);
-			state_save_register_item("ym2413", slitem, sl->TLL);
-			state_save_register_item("ym2413", slitem, sl->volume);
-			state_save_register_item("ym2413", slitem, sl->sl);
-			state_save_register_item("ym2413", slitem, sl->eg_sh_dp);
-			state_save_register_item("ym2413", slitem, sl->eg_sel_dp);
-			state_save_register_item("ym2413", slitem, sl->eg_sh_ar);
-			state_save_register_item("ym2413", slitem, sl->eg_sel_ar);
-			state_save_register_item("ym2413", slitem, sl->eg_sh_dr);
-			state_save_register_item("ym2413", slitem, sl->eg_sel_dr);
-			state_save_register_item("ym2413", slitem, sl->eg_sh_rr);
-			state_save_register_item("ym2413", slitem, sl->eg_sel_rr);
-			state_save_register_item("ym2413", slitem, sl->eg_sh_rs);
-			state_save_register_item("ym2413", slitem, sl->eg_sel_rs);
-			state_save_register_item("ym2413", slitem, sl->key);
-			state_save_register_item("ym2413", slitem, sl->AMmask);
-			state_save_register_item("ym2413", slitem, sl->vib);
-			state_save_register_item("ym2413", slitem, sl->wavetable);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->ar);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->dr);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->rr);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->KSR);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->ksl);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->ksr);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->mul);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->phase);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->freq);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->fb_shift);
+			state_save_register_device_item_array(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->op1_out);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->eg_type);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->state);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->TL);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->TLL);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->volume);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->sl);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->eg_sh_dp);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->eg_sel_dp);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->eg_sh_ar);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->eg_sel_ar);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->eg_sh_dr);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->eg_sel_dr);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->eg_sh_rr);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->eg_sel_rr);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->eg_sh_rs);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->eg_sel_rs);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->key);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->AMmask);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->vib);
+			state_save_register_device_item(device, chnum * ARRAY_LENGTH(ch->SLOT) + slotnum, sl->wavetable);
 		}
 	}
 }
 
 
-static void OPLL_initalize(YM2413 *chip)
+static void OPLL_initalize(YM2413 *chip, const device_config *device)
 {
 	int i;
 
-	OPLL_init_save(chip);
+	OPLL_init_save(chip, device);
 
 	/* frequency base */
 	chip->freqbase  = (chip->rate) ? ((double)chip->clock / 72.0) / chip->rate  : 0;
@@ -1921,7 +1916,7 @@ static TIMER_CALLBACK( cymfile_callback )
 }
 
 /* lock/unlock for common table */
-static int OPLL_LockTable(void)
+static int OPLL_LockTable(const device_config *device)
 {
 	num_lock++;
 	if(num_lock>1) return 0;
@@ -1940,7 +1935,7 @@ static int OPLL_LockTable(void)
 	{
 		cymfile = fopen("2413_.cym","wb");
 		if (cymfile)
-			timer_pulse ( ATTOTIME_IN_HZ(110), NULL, 0, cymfile_callback); /*110 Hz pulse timer*/
+			timer_pulse ( device->machine, ATTOTIME_IN_HZ(110), NULL, 0, cymfile_callback); /*110 Hz pulse timer*/
 		else
 			logerror("Could not create file 2413_.cym\n");
 	}
@@ -2005,13 +2000,13 @@ static void OPLLResetChip(YM2413 *chip)
 /* Create one of virtual YM2413 */
 /* 'clock' is chip clock in Hz  */
 /* 'rate'  is sampling rate  */
-static YM2413 *OPLLCreate(int clock, int rate, int index)
+static YM2413 *OPLLCreate(const device_config *device, int clock, int rate)
 {
 	char *ptr;
 	YM2413 *chip;
 	int state_size;
 
-	if (OPLL_LockTable() ==-1) return NULL;
+	if (OPLL_LockTable(device) == -1) return NULL;
 
 	/* calculate chip state size */
 	state_size  = sizeof(YM2413);
@@ -2027,12 +2022,11 @@ static YM2413 *OPLLCreate(int clock, int rate, int index)
 
 	chip  = (YM2413 *)ptr;
 
-	chip->index = index;
 	chip->clock = clock;
 	chip->rate  = rate;
 
 	/* init global tables */
-	OPLL_initalize(chip);
+	OPLL_initalize(chip, device);
 
 	/* reset chip */
 	OPLLResetChip(chip);
@@ -2082,10 +2076,10 @@ static unsigned char OPLLRead(YM2413 *chip,int a)
 
 
 
-void * ym2413_init(int clock, int rate, int index)
+void * ym2413_init(const device_config *device, int clock, int rate)
 {
 	/* emulator create */
-	return OPLLCreate(clock, rate, index);
+	return OPLLCreate(device, clock, rate);
 }
 
 void ym2413_shutdown(void *chip)

@@ -71,7 +71,7 @@ static void draw_sprites(running_machine* machine, bitmap_t *bitmap, const recta
 				inc = 1;
 			}
 
-			if (flip_screen_get()) {
+			if (flip_screen_get(machine)) {
 				y=240-y;
 				x=304-x;
 				if (fx) fx=0; else fx=1;
@@ -166,32 +166,32 @@ VIDEO_START( dassault )
 VIDEO_UPDATE( dassault )
 {
 	/* Update tilemaps */
-	flip_screen_set( deco16_pf12_control[0]&0x80 );
+	flip_screen_set(screen->machine,  deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
 	/* Draw playfields/update priority bitmap */
 	deco16_clear_sprite_priority_bitmap();
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,screen->machine->pens[3072],cliprect);
-	deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,screen->machine->pens[3072]);
+	deco16_tilemap_4_draw(screen,bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 
 	/* The middle playfields can be swapped priority-wise */
 	if ((deco16_priority&3)==0) {
-		deco16_tilemap_2_draw(bitmap,cliprect,0,2);
-		deco16_tilemap_3_draw(bitmap,cliprect,0,16);
+		deco16_tilemap_2_draw(screen,bitmap,cliprect,0,2);
+		deco16_tilemap_3_draw(screen,bitmap,cliprect,0,16);
 	} else if ((deco16_priority&3)==1) {
-		deco16_tilemap_3_draw(bitmap,cliprect,0,2);
-		deco16_tilemap_2_draw(bitmap,cliprect,0,64);
+		deco16_tilemap_3_draw(screen,bitmap,cliprect,0,2);
+		deco16_tilemap_2_draw(screen,bitmap,cliprect,0,64);
 	} else if ((deco16_priority&3)==3) {
-		deco16_tilemap_3_draw(bitmap,cliprect,0,2);
-		deco16_tilemap_2_draw(bitmap,cliprect,0,16);
+		deco16_tilemap_3_draw(screen,bitmap,cliprect,0,2);
+		deco16_tilemap_2_draw(screen,bitmap,cliprect,0,16);
 	} else {
 		/* Unused */
 	}
 
 	/* Draw sprites - two sprite generators, with selectable priority */
 	draw_sprites(screen->machine,bitmap,cliprect,deco16_priority);
-	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
+	deco16_tilemap_1_draw(screen,bitmap,cliprect,0,0);
 	return 0;
 }

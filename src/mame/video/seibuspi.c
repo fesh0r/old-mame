@@ -207,8 +207,8 @@ WRITE32_HANDLER( palette_dma_start_w )
 			UINT32 color = spimainram[(video_dma_address / 4) + i - 0x200];
 			if (palette_ram[i] != color) {
 				palette_ram[i] = color;
-				palette_set_color_rgb( machine, (i * 2), pal5bit(palette_ram[i] >> 0), pal5bit(palette_ram[i] >> 5), pal5bit(palette_ram[i] >> 10) );
-				palette_set_color_rgb( machine, (i * 2) + 1, pal5bit(palette_ram[i] >> 16), pal5bit(palette_ram[i] >> 21), pal5bit(palette_ram[i] >> 26) );
+				palette_set_color_rgb( space->machine, (i * 2), pal5bit(palette_ram[i] >> 0), pal5bit(palette_ram[i] >> 5), pal5bit(palette_ram[i] >> 10) );
+				palette_set_color_rgb( space->machine, (i * 2) + 1, pal5bit(palette_ram[i] >> 16), pal5bit(palette_ram[i] >> 21), pal5bit(palette_ram[i] >> 26) );
 			}
 		}
 	}
@@ -482,10 +482,10 @@ VIDEO_START( spi )
 	int i;
 	int region_length;
 
-	text_layer	= tilemap_create( get_text_tile_info, tilemap_scan_rows,  8,8,64,32 );
-	back_layer	= tilemap_create( get_back_tile_info, tilemap_scan_cols,  16,16,32,32 );
-	mid_layer	= tilemap_create( get_mid_tile_info, tilemap_scan_cols,  16,16,32,32 );
-	fore_layer	= tilemap_create( get_fore_tile_info, tilemap_scan_cols,  16,16,32,32 );
+	text_layer	= tilemap_create( machine, get_text_tile_info, tilemap_scan_rows,  8,8,64,32 );
+	back_layer	= tilemap_create( machine, get_back_tile_info, tilemap_scan_cols,  16,16,32,32 );
+	mid_layer	= tilemap_create( machine, get_mid_tile_info, tilemap_scan_cols,  16,16,32,32 );
+	fore_layer	= tilemap_create( machine, get_fore_tile_info, tilemap_scan_cols,  16,16,32,32 );
 
 	tilemap_set_transparent_pen(text_layer, 31);
 	tilemap_set_transparent_pen(mid_layer, 63);
@@ -624,7 +624,7 @@ VIDEO_UPDATE( spi )
 	}
 
 	if( layer_enable & 0x1 )
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 
 	if (!(layer_enable & 0x1))
 		combine_tilemap(screen->machine, bitmap, cliprect, back_layer, spi_scrollram[0] & 0xffff, (spi_scrollram[0] >> 16) & 0xffff, 1, back_rowscroll);

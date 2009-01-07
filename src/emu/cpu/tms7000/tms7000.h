@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- *   tms7000.h (c header file)
+ *   cpustate->h (c header file)
  *   Portable TMS7000 emulator (Texas Instruments 7000)
  *
  *   Copyright tim lindner, all rights reserved.
@@ -47,10 +47,13 @@ enum
 };
 
 /* PUBLIC FUNCTIONS */
-extern void tms7000_A6EC1( void ); /* External event counter */
-extern void tms7000_get_info(UINT32 state, cpuinfo *info);
-extern void tms7000_exl_get_info(UINT32 state, cpuinfo *info);
+extern void tms7000_A6EC1( const device_config *device ); /* External event counter */
+extern CPU_GET_INFO( tms7000 );
+extern CPU_GET_INFO( tms7000_exl );
 
-extern unsigned tms7000_dasm( char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram );
+#define CPU_TMS7000 CPU_GET_INFO_NAME( tms7000 )
+#define CPU_TMS7000_EXL CPU_GET_INFO_NAME( tms7000_exl )
+
+extern CPU_DISASSEMBLE( tms7000 );
 
 #endif /* __TMS7000_H__ */

@@ -51,12 +51,12 @@ static void ppcdrc_init(void)
 	drconfig.pcptr            = (UINT32 *)&ppc.pc;
 	drconfig.icountptr        = (UINT32 *)&ppc_icount;
 	drconfig.esiptr           = NULL;
-	drconfig.cb_reset         = ppcdrc_reset;
+	drconfig.cb_reset         = CPU_RESET_NAME(ppcdrc);
 	drconfig.cb_recompile     = ppcdrc_recompile;
 	drconfig.cb_entrygen      = ppcdrc_entrygen;
 
 	/* initialize the compiler */
-	ppc.drc = drc_init(cpu_getactivecpu(), &drconfig);
+	ppc.drc = drc_init(cpunum_get_active(), &drconfig);
 	ppc.drcoptions = 0;
 }
 
@@ -110,7 +110,7 @@ static void ppcdrc_reset(drc_core *drc)
 	}
 }
 
-static void ppcdrc_exit(void)
+static CPU_EXIT( ppcdrc )
 {
 	drc_exit(ppc.drc);
 }
@@ -132,7 +132,7 @@ static UINT32 *ppcdrc_getopptr(UINT32 address)
 		address &= ~0x07;
 	}
 
-	result = (UINT32 *) memory_get_op_ptr(Machine, cpu_getactivecpu(), address, 0);
+	result = (UINT32 *) memory_decrypted_read_ptr(ppc.core->program, address);
 	if (result)
 		result += offset;
 	return result;
@@ -2624,7 +2624,6 @@ static UINT32 recompile_xoris(drc_core *drc, UINT32 op)
 	return RECOMPILE_SUCCESSFUL_CP(1,4);
 }
 
-#if HAS_PPC403
 static UINT32 recompile_dccci(drc_core *drc, UINT32 op)
 {
 	return RECOMPILE_SUCCESSFUL_CP(1,4);
@@ -2713,7 +2712,6 @@ static UINT32 recompile_invalid(drc_core *drc, UINT32 op)
 
 /* PowerPC 60x Recompilers */
 
-#if (HAS_PPC601||HAS_PPC602||HAS_PPC603||HAS_PPC604||HAS_MPC8240)
 static UINT32 recompile_lfs(drc_core *drc,UINT32 op)
 {
 	emit_mov_m32_r32(DRCTOP, MABS(&ppc_icount), REG_EBP);
@@ -3768,7 +3766,6 @@ static UINT32 recompile_fnmsubsx(drc_core *drc, UINT32 op)
 
 // PPC602
 
-#if (HAS_PPC602)
 static UINT32 recompile_esa(drc_core *drc, UINT32 op)
 {
 	emit_mov_m32_r32(DRCTOP, MABS(&ppc_icount), REG_EBP);
@@ -3790,19 +3787,14 @@ static UINT32 recompile_dsa(drc_core *drc, UINT32 op)
 
 	return RECOMPILE_SUCCESSFUL_CP(1,4);
 }
-#endif /* HAS_PPC602 */
 
-#if (HAS_PPC602 || HAS_MPC8240)
 static UINT32 recompile_tlbli(drc_core *drc, UINT32 op)
 {
 	return RECOMPILE_SUCCESSFUL_CP(1,4);
 }
-#endif
 
-#if (HAS_PPC602||HAS_PPC604||HAS_MPC8240)
 static UINT32 recompile_tlbld(drc_core *drc, UINT32 op)
 {
 	return RECOMPILE_SUCCESSFUL_CP(1,4);
 }
-#endif
 

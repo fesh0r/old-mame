@@ -93,7 +93,7 @@ READ8_DEVICE_HANDLER( cdp1852_data_r )
 {
 	cdp1852_t *cdp1852 = get_safe_token(device);
 
-	if (cdp1852->intf->mode == CDP1852_MODE_INPUT && cdp1852->intf->clock == 0)
+	if (cdp1852->intf->mode == CDP1852_MODE_INPUT && device->clock == 0)
 	{
 		// input data into register
 		cdp1852->data = cdp1852->intf->data_r(device);
@@ -120,12 +120,10 @@ WRITE8_DEVICE_HANDLER( cdp1852_data_w )
 static DEVICE_START( cdp1852 )
 {
 	cdp1852_t *cdp1852 = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 
 	cdp1852->intf = device->static_config;
 
@@ -137,25 +135,23 @@ static DEVICE_START( cdp1852 )
 	}
 	else
 	{
-		assert(cdp1852->intf->clock > 0);
+		assert(device->clock > 0);
 		assert(cdp1852->intf->data_w != NULL);
 	}
 
 	/* create the timers */
-	if (cdp1852->intf->clock > 0)
+	if (device->clock > 0)
 	{
-		cdp1852->scan_timer = timer_alloc(cdp1852_scan_tick, (void *)device);
-		timer_adjust_periodic(cdp1852->scan_timer, attotime_zero, 0, ATTOTIME_IN_HZ(cdp1852->intf->clock));
+		cdp1852->scan_timer = timer_alloc(device->machine, cdp1852_scan_tick, (void *)device);
+		timer_adjust_periodic(cdp1852->scan_timer, attotime_zero, 0, ATTOTIME_IN_HZ(device->clock));
 	}
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "CDP1852", device->tag);
-
-	state_save_register_item(unique_tag, 0, cdp1852->new_data);
-	state_save_register_item(unique_tag, 0, cdp1852->data);
-	state_save_register_item(unique_tag, 0, cdp1852->next_data);
-	state_save_register_item(unique_tag, 0, cdp1852->sr);
-	state_save_register_item(unique_tag, 0, cdp1852->next_sr);
+	state_save_register_device_item(device, 0, cdp1852->new_data);
+	state_save_register_device_item(device, 0, cdp1852->data);
+	state_save_register_device_item(device, 0, cdp1852->next_data);
+	state_save_register_device_item(device, 0, cdp1852->sr);
+	state_save_register_device_item(device, 0, cdp1852->next_sr);
 
 	return DEVICE_START_OK;
 }
@@ -206,10 +202,10 @@ DEVICE_GET_INFO( cdp1852 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(cdp1852);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "RCA CDP1852";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "RCA CDP1800";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "RCA CDP1852");				break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "RCA CDP1800");				break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

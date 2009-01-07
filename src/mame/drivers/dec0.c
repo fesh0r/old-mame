@@ -43,6 +43,7 @@ ToDo:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/h6280/h6280.h"
 #include "dec0.h"
@@ -60,30 +61,30 @@ static WRITE16_HANDLER( dec0_control_w )
 	switch (offset<<1)
 	{
 		case 0: /* Playfield & Sprite priority */
-			dec0_priority_w(machine,0,data,mem_mask);
+			dec0_priority_w(space,0,data,mem_mask);
 			break;
 
 		case 2: /* DMA flag */
-			dec0_update_sprites_w(machine,0,0,mem_mask);
+			dec0_update_sprites_w(space,0,0,mem_mask);
 			break;
 
 		case 4: /* 6502 sound cpu */
 			if (ACCESSING_BITS_0_7)
 			{
-				soundlatch_w(machine,0,data & 0xff);
-				cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+				soundlatch_w(space,0,data & 0xff);
+				cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 			}
 			break;
 
 		case 6: /* Intel 8751 microcontroller - Bad Dudes, Heavy Barrel, Birdy Try only */
-			dec0_i8751_write(machine, data);
+			dec0_i8751_write(space->machine, data);
 			break;
 
 		case 8: /* Interrupt ack (VBL - IRQ 6) */
 			break;
 
 		case 0xa: /* Mix Psel(?). */
- 			logerror("CPU #0 PC %06x: warning - write %02x to unmapped memory address %06x\n",activecpu_get_pc(),data,0x30c010+(offset<<1));
+ 			logerror("CPU #0 PC %06x: warning - write %02x to unmapped memory address %06x\n",cpu_get_pc(space->cpu),data,0x30c010+(offset<<1));
 			break;
 
 		case 0xc: /* Cblk - coin blockout.  Seems to be unused by the games */
@@ -91,11 +92,11 @@ static WRITE16_HANDLER( dec0_control_w )
 
 		case 0xe: /* Reset Intel 8751? - not sure, all the games write here at startup */
 			dec0_i8751_reset();
- 			logerror("CPU #0 PC %06x: warning - write %02x to unmapped memory address %06x\n",activecpu_get_pc(),data,0x30c010+(offset<<1));
+ 			logerror("CPU #0 PC %06x: warning - write %02x to unmapped memory address %06x\n",cpu_get_pc(space->cpu),data,0x30c010+(offset<<1));
 			break;
 
 		default:
-			logerror("CPU #0 PC %06x: warning - write %02x to unmapped memory address %06x\n",activecpu_get_pc(),data,0x30c010+(offset<<1));
+			logerror("CPU #0 PC %06x: warning - write %02x to unmapped memory address %06x\n",cpu_get_pc(space->cpu),data,0x30c010+(offset<<1));
 			break;
 	}
 }
@@ -106,12 +107,12 @@ static WRITE16_HANDLER( slyspy_control_w )
     	case 0:
 			if (ACCESSING_BITS_0_7)
 			{
-				soundlatch_w(machine,0,data & 0xff);
-				cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+				soundlatch_w(space,0,data & 0xff);
+				cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 			}
 			break;
 		case 2:
-			dec0_priority_w(machine,0,data,mem_mask);
+			dec0_priority_w(space,0,data,mem_mask);
 			break;
     }
 }
@@ -120,8 +121,8 @@ static WRITE16_HANDLER( midres_sound_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,0,data & 0xff);
-		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+		soundlatch_w(space,0,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 	}
 }
 
@@ -298,10 +299,10 @@ static WRITE8_HANDLER( YM3812_w )
 {
 	switch (offset) {
 	case 0:
-		ym3812_control_port_0_w(machine,0,data);
+		ym3812_control_port_0_w(space,0,data);
 		break;
 	case 1:
-		ym3812_write_port_0_w(machine,0,data);
+		ym3812_write_port_0_w(space,0,data);
 		break;
 	}
 }
@@ -310,10 +311,10 @@ static WRITE8_HANDLER( YM2203_w )
 {
 	switch (offset) {
 	case 0:
-		ym2203_control_port_0_w(machine,0,data);
+		ym2203_control_port_0_w(space,0,data);
 		break;
 	case 1:
-		ym2203_write_port_0_w(machine,0,data);
+		ym2203_write_port_0_w(space,0,data);
 		break;
 	}
 }
@@ -824,12 +825,12 @@ GFXDECODE_END
 
 static void sound_irq(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(machine, 1,0,linestate); /* IRQ */
+	cpu_set_input_line(machine->cpu[1],0,linestate); /* IRQ */
 }
 
 static void sound_irq2(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(machine, 1,1,linestate); /* IRQ2 */
+	cpu_set_input_line(machine->cpu[1],1,linestate); /* IRQ2 */
 }
 
 static const ym3812_interface ym3812_config =
@@ -983,7 +984,7 @@ static MACHINE_DRIVER_START( robocop )
 	MDRV_CPU_ADD("sub", H6280,21477200/16) /* 21.4772MHz clock */
 	MDRV_CPU_PROGRAM_MAP(robocop_sub_readmem,robocop_sub_writemem)
 
-	MDRV_INTERLEAVE(50)	/* Interleave between HuC6280 & 68000 */
+	MDRV_QUANTUM_TIME(HZ(3000))	/* Interleave between HuC6280 & 68000 */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1072,7 +1073,7 @@ static MACHINE_DRIVER_START( hippodrm )
 	MDRV_CPU_ADD("sub", H6280,21477200/16) /* 21.4772MHz clock */
 	MDRV_CPU_PROGRAM_MAP(hippodrm_sub_readmem,hippodrm_sub_writemem)
 
-	MDRV_INTERLEAVE(5)	/* Interleave between H6280 & 68000 */
+	MDRV_QUANTUM_TIME(HZ(300))	/* Interleave between H6280 & 68000 */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

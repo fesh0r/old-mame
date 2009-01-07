@@ -144,8 +144,8 @@ static void _gxcommoninitnosprites(running_machine *machine)
 {
 	int i;
 
-	K054338_vh_start();
-	K055555_vh_start();
+	K054338_vh_start(machine);
+	K055555_vh_start(machine);
 
 	konamigx_mixer_init(machine, 0);
 
@@ -154,7 +154,7 @@ static void _gxcommoninitnosprites(running_machine *machine)
 		gx_tilebanks[i] = gx_oldbanks[i] = 0;
 	}
 
-	state_save_register_global_array(gx_tilebanks);
+	state_save_register_global_array(machine, gx_tilebanks);
 
 	gx_tilemode = 0;
 
@@ -272,7 +272,7 @@ VIDEO_START(konamigx_type3)
 
 	_gxcommoninit(machine);
 
-	gx_psac_tilemap = tilemap_create(get_gx_psac3_tile_info, tilemap_scan_rows,  16, 16, 256, 1024);
+	gx_psac_tilemap = tilemap_create(machine, get_gx_psac3_tile_info, tilemap_scan_rows,  16, 16, 256, 1024);
 	gx_rozenable = 1;
 
 	K053936_wraparound_enable(0, 1);
@@ -285,7 +285,7 @@ VIDEO_START(konamigx_type4)
 
 	_gxcommoninit(machine);
 
-	gx_psac_tilemap = tilemap_create(get_gx_psac_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
+	gx_psac_tilemap = tilemap_create(machine, get_gx_psac_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
 	gx_rozenable = 1;
 
 	K053936_wraparound_enable(0, 0);
@@ -320,8 +320,8 @@ VIDEO_START(opengolf)
 	K056832_set_LayerOffset(2,  2+1, 0);
 	K056832_set_LayerOffset(3,  3+1, 0);
 
-	gx_psac_tilemap = tilemap_create(get_gx_psac1a_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
-	gx_psac_tilemap2 = tilemap_create(get_gx_psac1b_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
+	gx_psac_tilemap = tilemap_create(machine, get_gx_psac1a_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
+	gx_psac_tilemap2 = tilemap_create(machine, get_gx_psac1b_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
 	tilemap_set_transparent_pen(gx_psac_tilemap, 0);
 	tilemap_set_transparent_pen(gx_psac_tilemap2, 0);
 
@@ -340,8 +340,8 @@ VIDEO_START(racinfrc)
 	K056832_set_LayerOffset(2,  2+1, 0);
 	K056832_set_LayerOffset(3,  3+1, 0);
 
-	gx_psac_tilemap = tilemap_create(get_gx_psac1a_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
-	gx_psac_tilemap2 = tilemap_create(get_gx_psac1b_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
+	gx_psac_tilemap = tilemap_create(machine, get_gx_psac1a_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
+	gx_psac_tilemap2 = tilemap_create(machine, get_gx_psac1b_tile_info, tilemap_scan_rows,  16, 16, 128, 128);
 	tilemap_set_transparent_pen(gx_psac_tilemap, 0);
 	tilemap_set_transparent_pen(gx_psac_tilemap2, 0);
 
@@ -419,7 +419,7 @@ WRITE32_HANDLER( konamigx_palette_w )
 	g = (paletteram32[offset] >> 8) & 0xff;
 	b = (paletteram32[offset] >> 0) & 0xff;
 
-	palette_set_color(machine,offset,MAKE_RGB(r,g,b));
+	palette_set_color(space->machine,offset,MAKE_RGB(r,g,b));
 }
 
 WRITE32_HANDLER( konamigx_palette2_w )
@@ -436,7 +436,7 @@ WRITE32_HANDLER( konamigx_palette2_w )
 	g = (paletteram32[offset] >> 8) & 0xff;
 	b = (paletteram32[offset] >> 0) & 0xff;
 
-	palette_set_color(machine,offset,MAKE_RGB(r,g,b));
+	palette_set_color(space->machine,offset,MAKE_RGB(r,g,b));
 }
 
 // main monitor for type 3
@@ -446,9 +446,9 @@ WRITE32_HANDLER( konamigx_555_palette_w )
 	paletteram16 = (UINT16 *)paletteram32;
 
 	if ((ACCESSING_BITS_16_23) && (ACCESSING_BITS_24_31))
-		paletteram16_xRRRRRGGGGGBBBBB_word_w(machine, offset*2, data >> 16, mem_mask >> 16);
+		paletteram16_xRRRRRGGGGGBBBBB_word_w(space, offset*2, data >> 16, mem_mask >> 16);
 	if ((ACCESSING_BITS_0_7) && (ACCESSING_BITS_8_15))
-		paletteram16_xRRRRRGGGGGBBBBB_word_w(machine, offset*2+1, data, mem_mask);
+		paletteram16_xRRRRRGGGGGBBBBB_word_w(space, offset*2+1, data, mem_mask);
 }
 
 // sub monitor for type 3
@@ -460,9 +460,9 @@ WRITE32_HANDLER( konamigx_555_palette2_w )
 	paletteram16 = (UINT16 *)paletteram32;
 
 	if ((ACCESSING_BITS_16_23) && (ACCESSING_BITS_24_31))
-		paletteram16_xRRRRRGGGGGBBBBB_word_w(machine, offset*2, data >> 16, mem_mask >> 16);
+		paletteram16_xRRRRRGGGGGBBBBB_word_w(space, offset*2, data >> 16, mem_mask >> 16);
 	if ((ACCESSING_BITS_0_7) && (ACCESSING_BITS_8_15))
-		paletteram16_xRRRRRGGGGGBBBBB_word_w(machine, offset*2+1, data, mem_mask);
+		paletteram16_xRRRRRGGGGGBBBBB_word_w(space, offset*2+1, data, mem_mask);
 }
 
 WRITE32_HANDLER( konamigx_tilebank_w )

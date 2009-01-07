@@ -63,7 +63,7 @@ WRITE8_HANDLER( cheekyms_port_80_w )
 	*cheekyms_port_80 = data;
 
 	/* d2 - interrupt enable */
-	interrupt_enable_w(machine, offset, data & 0x04);
+	interrupt_enable_w(space, offset, data & 0x04);
 }
 
 
@@ -100,7 +100,7 @@ static TILE_GET_INFO( cheekyms_get_tile_info )
 
 VIDEO_START( cheekyms )
 {
-	cheekyms_tilemap = tilemap_create(cheekyms_get_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	cheekyms_tilemap = tilemap_create(machine, cheekyms_get_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_transparent_pen(cheekyms_tilemap, 0);
 }
 
@@ -165,7 +165,7 @@ VIDEO_UPDATE( cheekyms )
 	tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	tilemap_set_flip(ALL_TILEMAPS, flip ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	/* sprites go under the playfield */
 	draw_sprites(screen->machine->gfx, bitmap, cliprect, flip);

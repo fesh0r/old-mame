@@ -400,8 +400,8 @@ READ8_DEVICE_HANDLER(duart68681_r)
 				case 0x07: /* Timer, CLK/16 */
 					{
 						double hz;
-						//attotime rate = attotime_mul(ATTOTIME_IN_HZ(duart68681->duart_config->frequency), 16*duart68681->CTR.w.l);
-						attotime rate = ATTOTIME_IN_HZ(2*duart68681->duart_config->frequency/(2*16*16*duart68681->CTR.w.l));
+						//attotime rate = attotime_mul(ATTOTIME_IN_HZ(duart68681->clock), 16*duart68681->CTR.w.l);
+						attotime rate = ATTOTIME_IN_HZ(2*device->clock/(2*16*16*duart68681->CTR.w.l));
 						hz = ATTOSECONDS_TO_HZ(rate.attoseconds);
 						timer_adjust_periodic(duart68681->duart_timer, rate, 0, rate);
 					}
@@ -537,54 +537,50 @@ void duart68681_rx_data( const device_config* device, int ch, UINT8 data )
 static DEVICE_START(duart68681)
 {
 	duart68681_state *duart68681 = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 
-	state_save_combine_module_and_tag(unique_tag, "DUART 68681", device->tag);
+	state_save_register_device_item(device, 0, duart68681->ACR);
+	state_save_register_device_item(device, 0, duart68681->IMR);
+	state_save_register_device_item(device, 0, duart68681->ISR);
+	state_save_register_device_item(device, 0, duart68681->IVR);
+	state_save_register_device_item(device, 0, duart68681->OPCR);
+	state_save_register_device_item(device, 0, duart68681->CTR);
+	state_save_register_device_item(device, 0, duart68681->IP_last_state);
 
-	state_save_register_item(unique_tag, 0, duart68681->ACR);
-	state_save_register_item(unique_tag, 0, duart68681->IMR);
-	state_save_register_item(unique_tag, 0, duart68681->ISR);
-	state_save_register_item(unique_tag, 0, duart68681->IVR);
-	state_save_register_item(unique_tag, 0, duart68681->OPCR);
-	state_save_register_item(unique_tag, 0, duart68681->CTR);
-	state_save_register_item(unique_tag, 0, duart68681->IP_last_state);
+	state_save_register_device_item(device, 0, duart68681->channel[0].CR);
+	state_save_register_device_item(device, 0, duart68681->channel[0].CSR);
+	state_save_register_device_item(device, 0, duart68681->channel[0].MR1);
+	state_save_register_device_item(device, 0, duart68681->channel[0].MR2);
+	state_save_register_device_item(device, 0, duart68681->channel[0].MR_ptr);
+	state_save_register_device_item(device, 0, duart68681->channel[0].SR);
+	state_save_register_device_item(device, 0, duart68681->channel[0].baud_rate);
+	state_save_register_device_item(device, 0, duart68681->channel[0].rx_enabled);
+	state_save_register_device_item_array(device, 0, duart68681->channel[0].rx_fifo);
+	state_save_register_device_item(device, 0, duart68681->channel[0].rx_fifo_read_ptr);
+	state_save_register_device_item(device, 0, duart68681->channel[0].rx_fifo_write_ptr);
+	state_save_register_device_item(device, 0, duart68681->channel[0].rx_fifo_num);
+	state_save_register_device_item(device, 0, duart68681->channel[0].tx_enabled);
+	state_save_register_device_item(device, 0, duart68681->channel[0].tx_data);
+	state_save_register_device_item(device, 0, duart68681->channel[0].tx_ready);
 
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].CR);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].CSR);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].MR1);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].MR2);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].MR_ptr);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].SR);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].baud_rate);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].rx_enabled);
-	state_save_register_item_array(unique_tag, 0, duart68681->channel[0].rx_fifo);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].rx_fifo_read_ptr);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].rx_fifo_write_ptr);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].rx_fifo_num);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].tx_enabled);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].tx_data);
-	state_save_register_item(unique_tag, 0, duart68681->channel[0].tx_ready);
-
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].CR);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].CSR);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].MR1);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].MR2);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].MR_ptr);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].SR);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].baud_rate);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].rx_enabled);
-	state_save_register_item_array(unique_tag, 0, duart68681->channel[1].rx_fifo);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].rx_fifo_read_ptr);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].rx_fifo_write_ptr);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].rx_fifo_num);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].tx_enabled);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].tx_data);
-	state_save_register_item(unique_tag, 0, duart68681->channel[1].tx_ready);
+	state_save_register_device_item(device, 0, duart68681->channel[1].CR);
+	state_save_register_device_item(device, 0, duart68681->channel[1].CSR);
+	state_save_register_device_item(device, 0, duart68681->channel[1].MR1);
+	state_save_register_device_item(device, 0, duart68681->channel[1].MR2);
+	state_save_register_device_item(device, 0, duart68681->channel[1].MR_ptr);
+	state_save_register_device_item(device, 0, duart68681->channel[1].SR);
+	state_save_register_device_item(device, 0, duart68681->channel[1].baud_rate);
+	state_save_register_device_item(device, 0, duart68681->channel[1].rx_enabled);
+	state_save_register_device_item_array(device, 0, duart68681->channel[1].rx_fifo);
+	state_save_register_device_item(device, 0, duart68681->channel[1].rx_fifo_read_ptr);
+	state_save_register_device_item(device, 0, duart68681->channel[1].rx_fifo_write_ptr);
+	state_save_register_device_item(device, 0, duart68681->channel[1].rx_fifo_num);
+	state_save_register_device_item(device, 0, duart68681->channel[1].tx_enabled);
+	state_save_register_device_item(device, 0, duart68681->channel[1].tx_data);
+	state_save_register_device_item(device, 0, duart68681->channel[1].tx_ready);
 
 	return DEVICE_START_OK;
 }
@@ -603,13 +599,13 @@ static DEVICE_RESET(duart68681)
 	duart68681->IVR = 0x0f;
 
 	// allocate timers
-	duart68681->channel[0].tx_timer = timer_alloc(tx_timer_callback, (void*)device);
+	duart68681->channel[0].tx_timer = timer_alloc(device->machine, tx_timer_callback, (void*)device);
 	timer_adjust_oneshot(duart68681->channel[0].tx_timer, attotime_never, 0);
 
-	duart68681->channel[1].tx_timer = timer_alloc(tx_timer_callback, (void*)device);
+	duart68681->channel[1].tx_timer = timer_alloc(device->machine, tx_timer_callback, (void*)device);
 	timer_adjust_oneshot(duart68681->channel[1].tx_timer, attotime_never, 1);
 
-	duart68681->duart_timer = timer_alloc(duart_timer_callback, (void*)device);
+	duart68681->duart_timer = timer_alloc(device->machine, duart_timer_callback, (void*)device);
 }
 
 /*-------------------------------------------------
@@ -644,10 +640,10 @@ DEVICE_GET_INFO(duart68681)
 		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME(duart68681);break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					info->s = "DUART 68681";				break;
-		case DEVINFO_STR_FAMILY:				info->s = "DUART";						break;
-		case DEVINFO_STR_VERSION:				info->s = "1.0";						break;
-		case DEVINFO_STR_SOURCE_FILE:			info->s = __FILE__;						break;
-		case DEVINFO_STR_CREDITS:				info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:					strcpy(info->s, "DUART 68681");			break;
+		case DEVINFO_STR_FAMILY:				strcpy(info->s, "DUART");				break;
+		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.0");					break;
+		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);				break;
+		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

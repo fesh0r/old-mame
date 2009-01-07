@@ -47,13 +47,13 @@ static void update_24bitcol(running_machine *machine, int offset)
 WRITE16_HANDLER( twocrude_palette_24bit_rg_w )
 {
 	COMBINE_DATA(&paletteram16[offset]);
-	update_24bitcol(machine, offset);
+	update_24bitcol(space->machine, offset);
 }
 
 WRITE16_HANDLER( twocrude_palette_24bit_b_w )
 {
 	COMBINE_DATA(&paletteram16_2[offset]);
-	update_24bitcol(machine, offset);
+	update_24bitcol(space->machine, offset);
 }
 
 /******************************************************************************/
@@ -110,7 +110,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			inc = 1;
 		}
 
-		if (flip_screen_get()) {
+		if (flip_screen_get(machine)) {
 			y=240-y;
 			x=240-x;
 			if (fx) fx=0; else fx=1;
@@ -137,25 +137,25 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 VIDEO_UPDATE( twocrude )
 {
-	flip_screen_set( !(deco16_pf12_control[0]&0x80) );
+	flip_screen_set(screen->machine,  !(deco16_pf12_control[0]&0x80) );
 
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
 	/* Draw playfields & sprites */
-	deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
+	deco16_tilemap_4_draw(screen,bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 	draw_sprites(screen->machine,bitmap,cliprect,0);
 
 	if (twocrude_pri) {
-		deco16_tilemap_2_draw(bitmap,cliprect,0,0);
-		deco16_tilemap_3_draw(bitmap,cliprect,0,0);
+		deco16_tilemap_2_draw(screen,bitmap,cliprect,0,0);
+		deco16_tilemap_3_draw(screen,bitmap,cliprect,0,0);
 	}
 	else {
-		deco16_tilemap_3_draw(bitmap,cliprect,0,0);
-		deco16_tilemap_2_draw(bitmap,cliprect,0,0);
+		deco16_tilemap_3_draw(screen,bitmap,cliprect,0,0);
+		deco16_tilemap_2_draw(screen,bitmap,cliprect,0,0);
 	}
 
 	draw_sprites(screen->machine,bitmap,cliprect,1);
-	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
+	deco16_tilemap_1_draw(screen,bitmap,cliprect,0,0);
 	return 0;
 }

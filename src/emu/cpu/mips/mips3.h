@@ -226,28 +226,45 @@ struct _mips3_config
 ***************************************************************************/
 
 #if (HAS_R4600)
-void r4600be_get_info(UINT32 state, cpuinfo *info);
-void r4600le_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( r4600be );
+#define CPU_R4600BE CPU_GET_INFO_NAME( r4600be )
+CPU_GET_INFO( r4600le );
+#define CPU_R4600LE CPU_GET_INFO_NAME( r4600le )
+#endif
+
+#if (HAS_R4650)
+CPU_GET_INFO( r4650be);
+#define CPU_R4650BE CPU_GET_INFO_NAME( r4650be )
+CPU_GET_INFO( r4650le);
+#define CPU_R4650LE CPU_GET_INFO_NAME( r4650le )
 #endif
 
 #if (HAS_R4700)
-void r4700be_get_info(UINT32 state, cpuinfo *info);
-void r4700le_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( r4700be );
+#define CPU_R4700BE CPU_GET_INFO_NAME( r4700be )
+CPU_GET_INFO( r4700le );
+#define CPU_R4700LE CPU_GET_INFO_NAME( r4700le )
 #endif
 
 #if (HAS_R5000)
-void r5000be_get_info(UINT32 state, cpuinfo *info);
-void r5000le_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( r5000be );
+#define CPU_R5000BE CPU_GET_INFO_NAME( r5000be )
+CPU_GET_INFO( r5000le );
+#define CPU_R5000LE CPU_GET_INFO_NAME( r5000le )
 #endif
 
 #if (HAS_QED5271)
-void qed5271be_get_info(UINT32 state, cpuinfo *info);
-void qed5271le_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( qed5271be );
+#define CPU_QED5271BE CPU_GET_INFO_NAME( qed5271be )
+CPU_GET_INFO( qed5271le );
+#define CPU_QED5271LE CPU_GET_INFO_NAME( qed5271le )
 #endif
 
 #if (HAS_RM7000)
-void rm7000be_get_info(UINT32 state, cpuinfo *info);
-void rm7000le_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( rm7000be );
+#define CPU_RM7000BE CPU_GET_INFO_NAME( rm7000be )
+CPU_GET_INFO( rm7000le );
+#define CPU_RM7000LE CPU_GET_INFO_NAME( rm7000le )
 #endif
 
 

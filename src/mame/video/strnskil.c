@@ -56,9 +56,9 @@ WRITE8_HANDLER( strnskil_scrl_ctrl_w )
 {
 	strnskil_scrl_ctrl = data >> 5;
 
-	if (flip_screen_get() != (data & 0x08))
+	if (flip_screen_get(space->machine) != (data & 0x08))
 	{
-		flip_screen_set(data & 0x08);
+		flip_screen_set(space->machine, data & 0x08);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
@@ -74,7 +74,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( strnskil )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,
 		 8, 8, 32, 32);
 
 	tilemap_set_scroll_rows(bg_tilemap, 32);
@@ -88,14 +88,14 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 	{
 		int code = spriteram[offs + 1];
 		int color = spriteram[offs + 2] & 0x3f;
-		int flipx = flip_screen_x_get();
-		int flipy = flip_screen_y_get();
+		int flipx = flip_screen_x_get(machine);
+		int flipy = flip_screen_y_get(machine);
 
 		int sx = spriteram[offs + 3];
 		int sy = spriteram[offs];
 		int px, py;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			px = 240 - sx + 0; /* +2 or +0 ? */
 			py = sy;

@@ -14,6 +14,7 @@ OKI M6295 sound ROM dump is bad.
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 #include "includes/bublbobl.h"
@@ -35,7 +36,7 @@ static VIDEO_UPDATE( missb2 )
 	/* and sprites) are stored in the same memory region, and information on */
 	/* the background character columns is stored in the area dd00-dd3f */
 
-	fillbitmap(bitmap,255,cliprect);
+	bitmap_fill(bitmap,cliprect,255);
 
 	if (!bublbobl_video_enable) return 0;
 
@@ -96,7 +97,7 @@ static VIDEO_UPDATE( missb2 )
 				x = sx + xc * 8;
 				y = (sy + yc * 8) & 0xff;
 
-				if (flip_screen_get())
+				if (flip_screen_get(screen->machine))
 				{
 					x = 248 - x;
 					y = 248 - y;
@@ -126,17 +127,17 @@ INLINE void bg_changecolor_RRRRGGGGBBBBxxxx(running_machine *machine,pen_t color
 static WRITE8_HANDLER( bg_paletteram_RRRRGGGGBBBBxxxx_be_w )
 {
 	bg_paletteram[offset] = data;
-	bg_changecolor_RRRRGGGGBBBBxxxx(machine, offset / 2,bg_paletteram[offset | 1] | (bg_paletteram[offset & ~1] << 8));
+	bg_changecolor_RRRRGGGGBBBBxxxx(space->machine, offset / 2,bg_paletteram[offset | 1] | (bg_paletteram[offset & ~1] << 8));
 }
 
 static WRITE8_HANDLER( missb2_bg_bank_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, "slave");
+	UINT8 *RAM = memory_region(space->machine, "slave");
 
 	// I don't know how this is really connected,bit 1 is always high afaik...
 	bankaddress = ((data & 2) ? 0x1000 : 0x0000) | ((data & 1) ? 0x4000 : 0x0000) | (0x8000);
-	memory_set_bankptr(2, &RAM[bankaddress]);
+	memory_set_bankptr(space->machine, 2, &RAM[bankaddress]);
 }
 
 /* Memory Maps */
@@ -336,7 +337,7 @@ GFXDECODE_END
 static void irqhandler(running_machine *machine, int irq)
 {
 	logerror("YM3526 firing an IRQ\n");
-//  cpunum_set_input_line(machine, 2,0,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cpu_set_input_line(machine->cpu[2],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym3526_interface ym3526_config =
@@ -348,7 +349,7 @@ static const ym3526_interface ym3526_config =
 
 static INTERRUPT_GEN( missb2_interrupt )
 {
-	cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
+	cpu_set_input_line(device, 0, HOLD_LINE);
 }
 
 /* Machine Driver */
@@ -368,7 +369,7 @@ static MACHINE_DRIVER_START( missb2 )
 //  MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 	MDRV_CPU_VBLANK_INT("main", missb2_interrupt)
 
-	MDRV_INTERLEAVE(100) // 100 CPU slices per frame - a high value to ensure proper synchronization of the CPUs
+	MDRV_QUANTUM_TIME(HZ(6000)) // 100 CPU slices per frame - a high value to ensure proper synchronization of the CPUs
 
 	// video hardware
 
@@ -426,22 +427,22 @@ ROM_START( missb2 )
 	ROM_REGION( 0x20000, "oki", 0 ) /* samples */
 	ROM_LOAD( "msbub2-u.13", 0x00000, 0x20000, BAD_DUMP CRC(14f07386) SHA1(097897d92226f900e11dbbdd853aff3ac46ff016) )
 
+	/* I doubt this prom is on the board, it's loaded so we can share video emulation with bubble bobble */
 	ROM_REGION( 0x0100, "proms", 0 )
 	ROM_LOAD( "a71-25.bin",  0x0000, 0x0100, CRC(2d0f8545) SHA1(089c31e2f614145ef2743164f7b52ae35bc06808) )	/* video timing - taken from bublbobl */
 ROM_END
 
-/* Driver Initialization */
+static void configure_banks(running_machine* machine)
+{
+	UINT8 *ROM = memory_region(machine, "main");
+	memory_configure_bank(machine, 1, 0, 8, &ROM[0x10000], 0x4000);
+}
 
 static DRIVER_INIT( missb2 )
 {
-	UINT8 *ROM = memory_region(machine, "main");
-
-	/* in Bubble Bobble, bank 0 has code falling from 7fff to 8000,
-       so I have to copy it there because bank switching wouldn't catch it */
-	memcpy(ROM+0x08000,ROM+0x10000,0x4000);
-
+	configure_banks(machine);
 }
 
 /* Game Drivers */
 
-GAME( 1996, missb2, bublbobl, missb2, missb2, missb2, ROT0,  "Alpha Co", "Miss Bubble 2", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1996, missb2, 0, missb2, missb2, missb2, ROT0,  "Alpha Co", "Miss Bubble 2", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )

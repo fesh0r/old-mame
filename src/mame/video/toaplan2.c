@@ -146,6 +146,7 @@ Pipi & Bibis     | Fix Eight        | V-Five           | Snow Bros. 2     |
 
 #include "driver.h"
 #include "cpu/m68000/m68000.h"
+#include "includes/toaplan2.h"
 
 
 
@@ -154,10 +155,10 @@ Pipi & Bibis     | Fix Eight        | V-Five           | Snow Bros. 2     |
 #define TOAPLAN2_TOP_VRAM_SIZE  0x1000	/* Top Layer  RAM size */
 #define TOAPLAN2_SPRITERAM_SIZE 0x800	/* Sprite     RAM size */
 #define RAIZING_TX_GFXRAM_SIZE  0x8000	/* GFX data decode RAM size */
-extern  size_t toaplan2_tx_vram_size;		 /* 0x2000 Text layer RAM size */
-extern  size_t toaplan2_tx_offs_vram_size;	 /* 0x200 Text layer tile flip and positon ? */
-extern  size_t toaplan2_tx_scroll_vram_size; /* 0x200 Text layer scroll ? */
-extern  size_t batrider_paletteram16_size;
+size_t toaplan2_tx_vram_size;		 /* 0x2000 Text layer RAM size */
+size_t toaplan2_tx_offs_vram_size;	 /* 0x200 Text layer tile flip and positon ? */
+size_t toaplan2_tx_scroll_vram_size; /* 0x200 Text layer scroll ? */
+size_t batrider_paletteram16_size;
 
 
 
@@ -181,20 +182,20 @@ UINT16 *toaplan2_txvideoram16_offs;	/* Text layer tile flip and positon ? */
 UINT16 *toaplan2_txscrollram16;		/* Text layer scroll ? */
 UINT16 *toaplan2_tx_gfxram16;			/* Text Layer RAM based tiles */
 static UINT16 *raizing_tx_gfxram16;			/* Text Layer RAM based tiles (Batrider) */
-static int toaplan2_overflow_vram;		/* Teki Paki VRAM test is bugged. It goes out of range */
+static UINT16 toaplan2_overflow_vram;		/* Teki Paki VRAM test is bugged. It goes out of range */
 
-static int toaplan2_scroll_reg[2];
-static int toaplan2_voffs[2];
-static int bg_scrollx[2];
-static int bg_scrolly[2];
-static int fg_scrollx[2];
-static int fg_scrolly[2];
-static int top_scrollx[2];
-static int top_scrolly[2];
-static int sprite_scrollx[2];
-static int sprite_scrolly[2];
+static UINT16 toaplan2_scroll_reg[2];
+static UINT16 toaplan2_voffs[2];
+static UINT16 bg_scrollx[2];
+static UINT16 bg_scrolly[2];
+static UINT16 fg_scrollx[2];
+static UINT16 fg_scrolly[2];
+static UINT16 top_scrollx[2];
+static UINT16 top_scrolly[2];
+static UINT16 sprite_scrollx[2];
+static UINT16 sprite_scrolly[2];
 static int objectbank_dirty = 0;		/* dirty flag of object bank (for Batrider) */
-static int batrider_object_bank[8];		/* Batrider object bank */
+static UINT16 batrider_object_bank[8];		/* Batrider object bank */
 
 #ifdef MAME_DEBUG
 static int display_bg[2]  = { 1, 1 };
@@ -205,15 +206,13 @@ static int display_tx = 1;
 #endif
 static int display_sp[2] = { 1, 1 };
 
-static int sprite_priority[2][16];
-static int bg_flip[2] = { 0, 0 };
-static int fg_flip[2] = { 0, 0 };
-static int top_flip[2] = { 0, 0 };
-static int sprite_flip[2] = { 0, 0 };
-static int tx_flip = 0;
+static UINT8 bg_flip[2] = { 0, 0 };
+static UINT8 fg_flip[2] = { 0, 0 };
+static UINT8 top_flip[2] = { 0, 0 };
+static UINT8 sprite_flip[2] = { 0, 0 };
+static UINT8 tx_flip = 0;
 
-extern int toaplan2_sub_cpu;
-
+static UINT8 sprite_priority[2][16];
 static UINT8 top_tile_priority[2][16];
 static UINT8 fg_tile_priority[2][16];
 static UINT8 bg_tile_priority[2][16];
@@ -403,34 +402,34 @@ static TILE_GET_INFO( get_text_tile_info )
   Start the video hardware emulation.
 
 ***************************************************************************/
-static void create_tilemaps_0(void)
+static void create_tilemaps_0(running_machine *machine)
 {
-	top_tilemap[0] = tilemap_create(get_top0_tile_info,tilemap_scan_rows,16,16,32,32);
-	fg_tilemap[0] = tilemap_create(get_fg0_tile_info,tilemap_scan_rows,16,16,32,32);
-	bg_tilemap[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,16,16,32,32);
+	top_tilemap[0] = tilemap_create(machine, get_top0_tile_info,tilemap_scan_rows,16,16,32,32);
+	fg_tilemap[0] = tilemap_create(machine, get_fg0_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[0] = tilemap_create(machine, get_bg0_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transparent_pen(top_tilemap[0],0);
 	tilemap_set_transparent_pen(fg_tilemap[0],0);
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 }
 
-static void create_tilemaps_1(void)
+static void create_tilemaps_1(running_machine *machine)
 {
-	top_tilemap[1] = tilemap_create(get_top1_tile_info,tilemap_scan_rows,16,16,32,32);
-	fg_tilemap[1] = tilemap_create(get_fg1_tile_info,tilemap_scan_rows,16,16,32,32);
-	bg_tilemap[1] = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,16,16,32,32);
+	top_tilemap[1] = tilemap_create(machine, get_top1_tile_info,tilemap_scan_rows,16,16,32,32);
+	fg_tilemap[1] = tilemap_create(machine, get_fg1_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[1] = tilemap_create(machine, get_bg1_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transparent_pen(top_tilemap[1],0);
 	tilemap_set_transparent_pen(fg_tilemap[1],0);
 	tilemap_set_transparent_pen(bg_tilemap[1],0);
 }
 
-static void truxton2_create_tilemaps_0(void)
+static void truxton2_create_tilemaps_0(running_machine *machine)
 {
-	tx_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_rows,8,8,64,32);
-	top_tilemap[0] = tilemap_create(get_top0_tile_info,tilemap_scan_rows,16,16,32,32);
-	fg_tilemap[0] = tilemap_create(get_fg0_tile_info,tilemap_scan_rows,16,16,32,32);
-	bg_tilemap[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,16,16,32,32);
+	tx_tilemap = tilemap_create(machine, get_text_tile_info,tilemap_scan_rows,8,8,64,32);
+	top_tilemap[0] = tilemap_create(machine, get_top0_tile_info,tilemap_scan_rows,16,16,32,32);
+	fg_tilemap[0] = tilemap_create(machine, get_fg0_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[0] = tilemap_create(machine, get_bg0_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_scroll_rows(tx_tilemap,8*32);	/* line scrolling */
 	tilemap_set_scroll_cols(tx_tilemap,1);
@@ -441,12 +440,12 @@ static void truxton2_create_tilemaps_0(void)
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 }
 
-static void batrider_create_tilemaps_0(void)
+static void batrider_create_tilemaps_0(running_machine *machine)
 {
-	tx_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_rows,8,8,64,32);
-	top_tilemap[0] = tilemap_create(batrider_get_top0_tile_info,tilemap_scan_rows,16,16,32,32);
-	fg_tilemap[0] = tilemap_create(batrider_get_fg0_tile_info,tilemap_scan_rows,16,16,32,32);
-	bg_tilemap[0] = tilemap_create(batrider_get_bg0_tile_info,tilemap_scan_rows,16,16,32,32);
+	tx_tilemap = tilemap_create(machine, get_text_tile_info,tilemap_scan_rows,8,8,64,32);
+	top_tilemap[0] = tilemap_create(machine, batrider_get_top0_tile_info,tilemap_scan_rows,16,16,32,32);
+	fg_tilemap[0] = tilemap_create(machine, batrider_get_fg0_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[0] = tilemap_create(machine, batrider_get_bg0_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_scroll_rows(tx_tilemap,8*32);	/* line scrolling */
 	tilemap_set_scroll_cols(tx_tilemap,1);
@@ -478,37 +477,86 @@ static void toaplan2_vram_alloc(int controller)
 	spriteram16_n[controller] = spriteram16_now[controller];
 }
 
-static void toaplan2_vh_start(int controller)
+static void toaplan2_vh_start(running_machine *machine, int controller)
 {
 	toaplan2_vram_alloc(controller);
 
 	if (controller == 0)
 	{
-		create_tilemaps_0();
+		create_tilemaps_0(machine);
 	}
 	if (controller == 1)
 	{
-		create_tilemaps_1();
+		create_tilemaps_1(machine);
 	}
+}
+
+static void register_state_save(running_machine *machine, int vrams)
+{
+	state_save_register_global_array(machine, toaplan2_scroll_reg);
+	state_save_register_global_array(machine, toaplan2_voffs);
+	state_save_register_global_array(machine, bg_scrollx);
+	state_save_register_global_array(machine, bg_scrolly);
+	state_save_register_global_array(machine, fg_scrollx);
+	state_save_register_global_array(machine, fg_scrolly);
+	state_save_register_global_array(machine, top_scrollx);
+	state_save_register_global_array(machine, top_scrolly);
+	state_save_register_global_array(machine, sprite_scrollx);
+	state_save_register_global_array(machine, sprite_scrolly);
+	state_save_register_global_array(machine, batrider_object_bank);
+
+	state_save_register_global_array(machine, bg_flip);
+	state_save_register_global_array(machine, fg_flip);
+	state_save_register_global_array(machine, top_flip);
+	state_save_register_global_array(machine, sprite_flip);
+	state_save_register_global(machine, tx_flip);
+
+	state_save_register_global_2d_array(machine, sprite_priority);
+	state_save_register_global_2d_array(machine, top_tile_priority);
+	state_save_register_global_2d_array(machine, fg_tile_priority);
+	state_save_register_global_2d_array(machine, bg_tile_priority);
+
+	switch (vrams)
+	{
+	case 2:
+		state_save_register_global_pointer(machine, spriteram16_new[1], TOAPLAN2_SPRITERAM_SIZE/2);
+		state_save_register_global_pointer(machine, spriteram16_now[1], TOAPLAN2_SPRITERAM_SIZE/2);
+		state_save_register_global_pointer(machine, topvideoram16[1], TOAPLAN2_TOP_VRAM_SIZE/2);
+		state_save_register_global_pointer(machine, fgvideoram16[1], TOAPLAN2_FG_VRAM_SIZE/2);
+		state_save_register_global_pointer(machine, bgvideoram16[1], TOAPLAN2_BG_VRAM_SIZE/2);
+		/* fall through */
+	case 1:
+		state_save_register_global_pointer(machine, spriteram16_new[0], TOAPLAN2_SPRITERAM_SIZE/2);
+		state_save_register_global_pointer(machine, spriteram16_now[0], TOAPLAN2_SPRITERAM_SIZE/2);
+		state_save_register_global_pointer(machine, topvideoram16[0], TOAPLAN2_TOP_VRAM_SIZE/2);
+		state_save_register_global_pointer(machine, fgvideoram16[0], TOAPLAN2_FG_VRAM_SIZE/2);
+		state_save_register_global_pointer(machine, bgvideoram16[0], TOAPLAN2_BG_VRAM_SIZE/2);
+		/* fall through */
+	default:
+		break;
+	}
+
 }
 
 VIDEO_START( toaplan2_0 )
 {
 	defaultOffsets();
-	toaplan2_vh_start(0);
+	toaplan2_vh_start(machine, 0);
+	register_state_save(machine,1);
 }
 
 VIDEO_START( toaplan2_1 )
 {
-	toaplan2_vh_start(0);
-	toaplan2_vh_start(1);
+	toaplan2_vh_start(machine, 0);
+	toaplan2_vh_start(machine, 1);
 	defaultOffsets();
+	register_state_save(machine,2);
 }
 
 VIDEO_START( truxton2_0 )
 {
 	toaplan2_vram_alloc(0);
-	truxton2_create_tilemaps_0();
+	truxton2_create_tilemaps_0(machine);
 
 	if(!strcmp(machine->gamedrv->name,"fixeighb"))
 	{
@@ -528,28 +576,33 @@ VIDEO_START( truxton2_0 )
 		defaultOffsets();
 		tilemap_set_scrolldx(tx_tilemap, 0x1d4 +1, 0x2a);
 	}
+
+	register_state_save(machine,1);
 }
 
 VIDEO_START( bgaregga_0 )
 {
 	toaplan2_vram_alloc(0);
-	truxton2_create_tilemaps_0();
+	truxton2_create_tilemaps_0(machine);
 	tilemap_set_scrolldx(tx_tilemap, 0x1d4, 0x2a);
 	defaultOffsets();
+	register_state_save(machine,1);
 }
 
 VIDEO_START( batrider_0 )
 {
 	raizing_tx_gfxram16 = auto_malloc(RAIZING_TX_GFXRAM_SIZE);
 	memset(raizing_tx_gfxram16,0,RAIZING_TX_GFXRAM_SIZE);
+	state_save_register_global_pointer(machine, raizing_tx_gfxram16, RAIZING_TX_GFXRAM_SIZE/2);
 
 	toaplan2_vram_alloc(0);
 	spriteram16_n[0] = spriteram16_new[0];
 
-	batrider_create_tilemaps_0();
+	batrider_create_tilemaps_0(machine);
 
 	tilemap_set_scrolldx(tx_tilemap, 0x1d4, 0x2a);
 	defaultOffsets();
+	register_state_save(machine,1);
 }
 
 
@@ -559,7 +612,7 @@ VIDEO_START( batrider_0 )
 
 ***************************************************************************/
 
-static void toaplan2_voffs_w(offs_t offset, UINT16 data, UINT32 mem_mask, int controller)
+static void toaplan2_voffs_w(offs_t offset, UINT16 data, UINT16 mem_mask, int controller)
 {
 	if (data >= 0x1c00)
 		logerror("Hmmm, unknown video controller %01x layer being selected (%08x)\n",controller,data);
@@ -655,7 +708,7 @@ WRITE16_HANDLER( toaplan2_tx_gfxram16_w )
 	{
 		int code = offset/32;
 		COMBINE_DATA(&toaplan2_tx_gfxram16[offset]);
-		decodechar(machine->gfx[2], code, toaplan2_tx_gfxram);
+		decodechar(space->machine->gfx[2], code, toaplan2_tx_gfxram);
 
 		tilemap_mark_all_tiles_dirty(tx_tilemap);
 	}
@@ -698,7 +751,7 @@ WRITE16_HANDLER( batrider_textdata_decode )
 
 	/* Decode text characters */
 	for (code = 0; code < 1024; code++)
-		decodechar (machine->gfx[2], code, raizing_tx_gfxram);
+		decodechar (space->machine->gfx[2], code, raizing_tx_gfxram);
 	tilemap_mark_all_tiles_dirty(tx_tilemap);
 }
 
@@ -719,8 +772,8 @@ WRITE16_HANDLER( batrider_objectbank_w )
 
 static int toaplan2_videoram16_r(offs_t offset, int controller)
 {
-	static UINT16 video_data = 0;
-	static offs_t vram_offset;
+	UINT16 video_data = 0;
+	offs_t vram_offset;
 
 
 	switch (toaplan2_voffs[controller] & 0xfc00)
@@ -763,7 +816,7 @@ READ16_HANDLER( toaplan2_1_videoram16_r )
 	return toaplan2_videoram16_r(offset, 1);
 }
 
-static void toaplan2_videoram16_w(offs_t offset, UINT16 data, UINT32 mem_mask, int controller)
+static void toaplan2_videoram16_w(offs_t offset, UINT16 data, UINT16 mem_mask, int controller)
 {
 	offs_t vram_offset;
 
@@ -810,7 +863,7 @@ WRITE16_HANDLER( toaplan2_1_videoram16_w )
 }
 
 
-static void toaplan2_scroll_reg_select_w(offs_t offset, UINT16 data, UINT32 mem_mask, int controller)
+static void toaplan2_scroll_reg_select_w(offs_t offset, UINT16 data, UINT16 mem_mask, int controller)
 {
 	if (ACCESSING_BITS_0_7)
 	{
@@ -835,7 +888,7 @@ WRITE16_HANDLER( toaplan2_1_scroll_reg_select_w )
 }
 
 
-static void toaplan2_scroll_reg_data_w(running_machine *machine, offs_t offset, UINT16 data, UINT32 mem_mask, int controller)
+static void toaplan2_scroll_reg_data_w(running_machine *machine, offs_t offset, UINT16 data, UINT16 mem_mask, int controller)
 {
 	/************************************************************************/
 	/***** layer X and Y flips can be set independantly, so emulate it ******/
@@ -952,7 +1005,7 @@ static void toaplan2_scroll_reg_data_w(running_machine *machine, offs_t offset, 
 						/* HACK! When tilted, sound CPU needs to be reset. */
 						if (machine->config->sound[0].type == SOUND_YM3812)
 						{
-							cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+							cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
 							sndti_reset(SOUND_YM3812, 0);
 						}
 					}
@@ -1030,12 +1083,12 @@ static void toaplan2_scroll_reg_data_w(running_machine *machine, offs_t offset, 
 
 WRITE16_HANDLER( toaplan2_0_scroll_reg_data_w )
 {
-	toaplan2_scroll_reg_data_w(machine, offset, data, mem_mask, 0);
+	toaplan2_scroll_reg_data_w(space->machine, offset, data, mem_mask, 0);
 }
 
 WRITE16_HANDLER( toaplan2_1_scroll_reg_data_w )
 {
-	toaplan2_scroll_reg_data_w(machine, offset, data, mem_mask, 1);
+	toaplan2_scroll_reg_data_w(space->machine, offset, data, mem_mask, 1);
 }
 
 
@@ -1060,7 +1113,7 @@ WRITE16_HANDLER( pipibibi_scroll_w )
 		}
 
 		toaplan2_scroll_reg[0] = offset;
-		toaplan2_scroll_reg_data_w(machine, offset, data, mem_mask, 0);
+		toaplan2_scroll_reg_data_w(space->machine, offset, data, mem_mask, 0);
 	}
 }
 
@@ -1430,7 +1483,7 @@ VIDEO_UPDATE( toaplan2_0 )
 	mark_sprite_priority(0);
 	mark_tile_priority(0);
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	for (priority = 0; priority < 16; priority++)
 	{
@@ -1457,7 +1510,7 @@ VIDEO_UPDATE( dogyuun_1 )
 	mark_tile_priority(0);
 	mark_tile_priority(1);
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	for (priority = 0; priority < 16; priority++)
 	{
@@ -1492,7 +1545,7 @@ VIDEO_UPDATE( batsugun_1 )
 	mark_tile_priority(0);
 	mark_tile_priority(1);
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	for (priority = 0; priority < 16; priority++)
 	{
@@ -1546,7 +1599,7 @@ VIDEO_UPDATE( batrider_0 )
 		objectbank_dirty = 0;
 	}
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	for (priority = 0; priority < 16; priority++)
 	{
@@ -1585,7 +1638,7 @@ VIDEO_UPDATE( mahoudai_0 )
 	mark_sprite_priority(0);
 	mark_tile_priority(0);
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	if (bg_tile_priority[0][0]) tilemap_draw(bitmap,cliprect,bg_tilemap[0],0,0);
 	if (fg_tile_priority[0][0]) tilemap_draw(bitmap,cliprect,fg_tilemap[0],0,0);

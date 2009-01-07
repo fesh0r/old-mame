@@ -64,6 +64,7 @@ SRAM:
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
@@ -85,13 +86,13 @@ static WRITE8_HANDLER( bank_select_w )
         xxxxxxx  - unused ?
 
     */
-	memory_set_bankptr( 1, memory_region(machine, "main") + ((data&1) * 0x4000) + 0x10000 );
+	memory_set_bankptr(space->machine,  1, memory_region(space->machine, "main") + ((data&1) * 0x4000) + 0x10000 );
 }
 
 static WRITE8_HANDLER( latch_w )
 {
 	sound_status&=~0x80;
-	soundlatch_w(machine,0,data|0x80);
+	soundlatch_w(space,0,data|0x80);
 }
 
 static READ8_HANDLER (sound_status_r)
@@ -249,7 +250,7 @@ static MACHINE_DRIVER_START( ksayakyu )
 	MDRV_CPU_PROGRAM_MAP(soundcpu_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
-	MDRV_INTERLEAVE(1000)
+	MDRV_QUANTUM_TIME(HZ(60000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

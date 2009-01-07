@@ -46,9 +46,9 @@ WRITE8_HANDLER( zodiack_attributes_w )
 
 WRITE8_HANDLER( zodiack_flipscreen_w )
 {
-	if (flip_screen_get() != (~data & 0x01))
+	if (flip_screen_get(space->machine) != (~data & 0x01))
 	{
-		flip_screen_set(~data & 0x01);
+		flip_screen_set(space->machine, ~data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
@@ -123,15 +123,15 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( zodiack )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 	tilemap_set_scroll_cols(fg_tilemap, 32);
 
 	/* FIXME: flip_screen_x should not be written. */
-	flip_screen_set_no_update(0);
+	flip_screen_set_no_update(machine, 0);
 }
 
 static void draw_bullets(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
@@ -145,7 +145,7 @@ static void draw_bullets(running_machine *machine, bitmap_t *bitmap, const recta
 		x = zodiack_bulletsram[offs + 3] + 7;
 		y = 255 - zodiack_bulletsram[offs + 1];
 
-		if (flip_screen_get() && percuss_hardware)
+		if (flip_screen_get(machine) && percuss_hardware)
 		{
 			y = 255 - y;
 		}
@@ -175,7 +175,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		flipy = spriteram[offs + 1] & 0x80;
 		spritecode = spriteram[offs + 1] & 0x3f;
 
-		if (flip_screen_get() && percuss_hardware)
+		if (flip_screen_get(machine) && percuss_hardware)
 		{
 			sy = 240 - sy;
 			flipy = !flipy;

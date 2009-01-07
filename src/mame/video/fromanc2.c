@@ -7,6 +7,7 @@
 ******************************************************************************/
 
 #include "driver.h"
+#include "includes/fromanc2.h"
 
 static int fromanc2_scrollx[2][4], fromanc2_scrolly[2][4];
 static int fromanc2_gfxbank[2][4];
@@ -82,7 +83,7 @@ WRITE16_HANDLER( fromanc2_paletteram_0_w )
 
 	// GGGG_GRRR_RRBB_BBBx
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color_rgb(machine, 0x000 + color, pal5bit(data >> 6), pal5bit(data >> 11), pal5bit(data >> 1));
+	palette_set_color_rgb(space->machine, 0x000 + color, pal5bit(data >> 6), pal5bit(data >> 11), pal5bit(data >> 1));
 }
 
 WRITE16_HANDLER( fromanc2_paletteram_1_w )
@@ -93,7 +94,7 @@ WRITE16_HANDLER( fromanc2_paletteram_1_w )
 
 	// GGGG_GRRR_RRBB_BBBx
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color_rgb(machine, 0x100 + color, pal5bit(data >> 6), pal5bit(data >> 11), pal5bit(data >> 1));
+	palette_set_color_rgb(space->machine, 0x100 + color, pal5bit(data >> 6), pal5bit(data >> 11), pal5bit(data >> 1));
 }
 
 
@@ -115,7 +116,7 @@ WRITE16_HANDLER( fromancr_paletteram_0_w )
 
 	// xGGG_GGRR_RRRB_BBBB
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color_rgb(machine, 0x000 + color, pal5bit(data >> 5), pal5bit(data >> 10), pal5bit(data >> 0));
+	palette_set_color_rgb(space->machine, 0x000 + color, pal5bit(data >> 5), pal5bit(data >> 10), pal5bit(data >> 0));
 }
 
 WRITE16_HANDLER( fromancr_paletteram_1_w )
@@ -126,7 +127,7 @@ WRITE16_HANDLER( fromancr_paletteram_1_w )
 
 	// xGGG_GGRR_RRRB_BBBB
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color_rgb(machine, 0x100 + color, pal5bit(data >> 5), pal5bit(data >> 10), pal5bit(data >> 0));
+	palette_set_color_rgb(space->machine, 0x100 + color, pal5bit(data >> 5), pal5bit(data >> 10), pal5bit(data >> 0));
 }
 
 
@@ -148,7 +149,7 @@ WRITE16_HANDLER( fromanc4_paletteram_0_w )
 
 	// xRRR_RRGG_GGGB_BBBB
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color_rgb(machine, 0x000 + color, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(space->machine, 0x000 + color, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 WRITE16_HANDLER( fromanc4_paletteram_1_w )
@@ -159,7 +160,7 @@ WRITE16_HANDLER( fromanc4_paletteram_1_w )
 
 	// xRRR_RRGG_GGGB_BBBB
 	color = ((offset & 0x0700) << 1) + (offset & 0x00ff);
-	palette_set_color_rgb(machine, 0x100 + color, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(space->machine, 0x100 + color, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 
@@ -370,14 +371,14 @@ WRITE16_HANDLER( fromanc4_gfxreg_2_w )
 
 VIDEO_START( fromanc2 )
 {
-	fromanc2_tilemap[0][0] = tilemap_create(fromanc2_get_v0_l0_tile_info, tilemap_scan_rows,       8, 8, 64, 64);
-	fromanc2_tilemap[0][1] = tilemap_create(fromanc2_get_v0_l1_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
-	fromanc2_tilemap[0][2] = tilemap_create(fromanc2_get_v0_l2_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
-	fromanc2_tilemap[0][3] = tilemap_create(fromanc2_get_v0_l3_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
-	fromanc2_tilemap[1][0] = tilemap_create(fromanc2_get_v1_l0_tile_info, tilemap_scan_rows,       8, 8, 64, 64);
-	fromanc2_tilemap[1][1] = tilemap_create(fromanc2_get_v1_l1_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
-	fromanc2_tilemap[1][2] = tilemap_create(fromanc2_get_v1_l2_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
-	fromanc2_tilemap[1][3] = tilemap_create(fromanc2_get_v1_l3_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	fromanc2_tilemap[0][0] = tilemap_create(machine, fromanc2_get_v0_l0_tile_info, tilemap_scan_rows,       8, 8, 64, 64);
+	fromanc2_tilemap[0][1] = tilemap_create(machine, fromanc2_get_v0_l1_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	fromanc2_tilemap[0][2] = tilemap_create(machine, fromanc2_get_v0_l2_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	fromanc2_tilemap[0][3] = tilemap_create(machine, fromanc2_get_v0_l3_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	fromanc2_tilemap[1][0] = tilemap_create(machine, fromanc2_get_v1_l0_tile_info, tilemap_scan_rows,       8, 8, 64, 64);
+	fromanc2_tilemap[1][1] = tilemap_create(machine, fromanc2_get_v1_l1_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	fromanc2_tilemap[1][2] = tilemap_create(machine, fromanc2_get_v1_l2_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	fromanc2_tilemap[1][3] = tilemap_create(machine, fromanc2_get_v1_l3_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
 
 	fromanc2_videoram[0][0] = auto_malloc((64 * 64) * sizeof(UINT16));
 	fromanc2_videoram[0][1] = auto_malloc((64 * 64) * sizeof(UINT16));
@@ -401,13 +402,13 @@ VIDEO_START( fromanc2 )
 
 VIDEO_START( fromancr )
 {
-	fromanc2_tilemap[0][0] = tilemap_create(fromancr_get_v0_l0_tile_info, tilemap_scan_rows,       8, 8, 64, 64);
-	fromanc2_tilemap[0][1] = tilemap_create(fromancr_get_v0_l1_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
-	fromanc2_tilemap[0][2] = tilemap_create(fromancr_get_v0_l2_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	fromanc2_tilemap[0][0] = tilemap_create(machine, fromancr_get_v0_l0_tile_info, tilemap_scan_rows,       8, 8, 64, 64);
+	fromanc2_tilemap[0][1] = tilemap_create(machine, fromancr_get_v0_l1_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	fromanc2_tilemap[0][2] = tilemap_create(machine, fromancr_get_v0_l2_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
 	fromanc2_tilemap[0][3] = 0;
-	fromanc2_tilemap[1][0] = tilemap_create(fromancr_get_v1_l0_tile_info, tilemap_scan_rows,       8, 8, 64, 64);
-	fromanc2_tilemap[1][1] = tilemap_create(fromancr_get_v1_l1_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
-	fromanc2_tilemap[1][2] = tilemap_create(fromancr_get_v1_l2_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	fromanc2_tilemap[1][0] = tilemap_create(machine, fromancr_get_v1_l0_tile_info, tilemap_scan_rows,       8, 8, 64, 64);
+	fromanc2_tilemap[1][1] = tilemap_create(machine, fromancr_get_v1_l1_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	fromanc2_tilemap[1][2] = tilemap_create(machine, fromancr_get_v1_l2_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
 	fromanc2_tilemap[1][3] = 0;
 
 	fromanc2_videoram[0][0] = auto_malloc((64 * 64) * sizeof(UINT16));
@@ -429,13 +430,13 @@ VIDEO_START( fromancr )
 
 VIDEO_START( fromanc4 )
 {
-	fromanc2_tilemap[0][0] = tilemap_create(fromancr_get_v0_l0_tile_info, tilemap_scan_rows,       8, 8, 256, 64);
-	fromanc2_tilemap[0][1] = tilemap_create(fromancr_get_v0_l1_tile_info, tilemap_scan_rows,  8, 8, 256, 64);
-	fromanc2_tilemap[0][2] = tilemap_create(fromancr_get_v0_l2_tile_info, tilemap_scan_rows,  8, 8, 256, 64);
+	fromanc2_tilemap[0][0] = tilemap_create(machine, fromancr_get_v0_l0_tile_info, tilemap_scan_rows,       8, 8, 256, 64);
+	fromanc2_tilemap[0][1] = tilemap_create(machine, fromancr_get_v0_l1_tile_info, tilemap_scan_rows,  8, 8, 256, 64);
+	fromanc2_tilemap[0][2] = tilemap_create(machine, fromancr_get_v0_l2_tile_info, tilemap_scan_rows,  8, 8, 256, 64);
 	fromanc2_tilemap[0][3] = 0;
-	fromanc2_tilemap[1][0] = tilemap_create(fromancr_get_v1_l0_tile_info, tilemap_scan_rows,       8, 8, 256, 64);
-	fromanc2_tilemap[1][1] = tilemap_create(fromancr_get_v1_l1_tile_info, tilemap_scan_rows,  8, 8, 256, 64);
-	fromanc2_tilemap[1][2] = tilemap_create(fromancr_get_v1_l2_tile_info, tilemap_scan_rows,  8, 8, 256, 64);
+	fromanc2_tilemap[1][0] = tilemap_create(machine, fromancr_get_v1_l0_tile_info, tilemap_scan_rows,       8, 8, 256, 64);
+	fromanc2_tilemap[1][1] = tilemap_create(machine, fromancr_get_v1_l1_tile_info, tilemap_scan_rows,  8, 8, 256, 64);
+	fromanc2_tilemap[1][2] = tilemap_create(machine, fromancr_get_v1_l2_tile_info, tilemap_scan_rows,  8, 8, 256, 64);
 	fromanc2_tilemap[1][3] = 0;
 
 	fromanc2_videoram[0][0] = auto_malloc((256 * 64) * sizeof(UINT16));

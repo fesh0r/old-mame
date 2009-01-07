@@ -47,8 +47,12 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( circus )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
+
+    state_save_register_global(machine, clown_x);
+    state_save_register_global(machine, clown_y);
+    state_save_register_global(machine, clown_z);
 }
 
 static void draw_line(bitmap_t *bitmap, const rectangle *cliprect, int x1, int y1, int x2, int y2, int dotted)
@@ -248,8 +252,8 @@ static void ripcord_draw_skydiver(running_machine *machine, bitmap_t *bitmap, co
 	// report collision only when the character is not blank and within display area
 	if (collision && code!=0xf && clown_x>0 && clown_x<240 && clown_y>-12 && clown_y<240)
 	{
-		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE); // interrupt accuracy is critical in Ripcord
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE); // interrupt accuracy is critical in Ripcord
+		cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 	}
 }
 

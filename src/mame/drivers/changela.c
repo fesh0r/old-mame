@@ -13,17 +13,7 @@ Tomasz Slanina
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
-
-
-VIDEO_START( changela );
-VIDEO_UPDATE( changela );
-
-WRITE8_HANDLER( changela_colors_w );
-WRITE8_HANDLER( changela_mem_device_select_w );
-WRITE8_HANDLER( changela_mem_device_w );
-READ8_HANDLER( changela_mem_device_r );
-WRITE8_HANDLER( changela_slope_rom_addr_hi_w );
-WRITE8_HANDLER( changela_slope_rom_addr_lo_w );
+#include "includes/changela.h"
 
 
 static UINT8 portA_in,portA_out,ddrA;
@@ -95,7 +85,7 @@ static WRITE8_HANDLER( changela_68705_ddrA_w )
 
 static READ8_HANDLER( changela_68705_portB_r )
 {
-	return (portB_out & ddrB) | (input_port_read(machine, "MCU") & ~ddrB);
+	return (portB_out & ddrB) | (input_port_read(space->machine, "MCU") & ~ddrB);
 }
 
 static WRITE8_HANDLER( changela_68705_portB_w )
@@ -177,7 +167,7 @@ static READ8_HANDLER( changela_25_r )
 
 static READ8_HANDLER( changela_30_r )
 {
-	return input_port_read(machine, "WHEEL") & 0x0f;	//wheel control (clocked input) signal on bits 3,2,1,0
+	return input_port_read(space->machine, "WHEEL") & 0x0f;	//wheel control (clocked input) signal on bits 3,2,1,0
 }
 
 static READ8_HANDLER( changela_31_r )
@@ -186,7 +176,7 @@ static READ8_HANDLER( changela_31_r )
        or if the new value is greater than the old value, and it did wrap around,
        then we are moving LEFT. */
 	static UINT8 prev_value = 0;
-	UINT8 curr_value = input_port_read(machine, "WHEEL");
+	UINT8 curr_value = input_port_read(space->machine, "WHEEL");
 	static int dir = 0;
 
 	if( (curr_value < prev_value && (prev_value - curr_value) < 0x80)
@@ -204,7 +194,7 @@ static READ8_HANDLER( changela_31_r )
 
 static READ8_HANDLER( changela_2c_r )
 {
-	int val = input_port_read(machine, "IN0");
+	int val = input_port_read(space->machine, "IN0");
 
     val = (val&0x30) | ((val&1)<<7) | (((val&1)^1)<<6);
 
@@ -217,11 +207,11 @@ static READ8_HANDLER( changela_2d_r )
 	int v8 = 0;
 	int gas;
 
-	if ((video_screen_get_vpos(machine->primary_screen) & 0xf8)==0xf8)
+	if ((video_screen_get_vpos(space->machine->primary_screen) & 0xf8)==0xf8)
 		v8 = 1;
 
 	/* Gas pedal is made up of 2 switches, 1 active low, 1 active high */
-	switch(input_port_read(machine, "IN1") & 0x03)
+	switch(input_port_read(space->machine, "IN1") & 0x03)
 	{
 		case 0x02:
 			gas = 0x80;
@@ -234,7 +224,7 @@ static READ8_HANDLER( changela_2d_r )
 			break;
 	}
 
-	return (input_port_read(machine, "IN1") & 0x20) | gas | (v8<<4);
+	return (input_port_read(space->machine, "IN1") & 0x20) | gas | (v8<<4);
 }
 
 static WRITE8_HANDLER( mcu_PC0_w )
@@ -480,17 +470,17 @@ static const ay8910_interface ay8910_interface_2 =
 
 static INTERRUPT_GEN( chl_interrupt )
 {
-	int vector = video_screen_get_vblank(machine->primary_screen) ? 0xdf : 0xcf; /* 4 irqs per frame: 3 times 0xcf, 1 time 0xdf */
+	int vector = video_screen_get_vblank(device->machine->primary_screen) ? 0xdf : 0xcf; /* 4 irqs per frame: 3 times 0xcf, 1 time 0xdf */
 
-//    video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+//    video_screen_update_partial(device->machine->primary_screen, video_screen_get_vpos(device->machine->primary_screen));
 
-	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, vector);
+	cpu_set_input_line_and_vector(device, 0, HOLD_LINE, vector);
 
 	/* it seems the V8 == Vblank and it is connected to the INT on the 68705 */
 	//so we should cause an INT on the cpu 1 here, as well.
 	//but only once per frame !
 	if (vector == 0xdf) /* only on vblank */
-		cpunum_set_input_line(machine, 1, 0, PULSE_LINE );
+		generic_pulse_irq_line(device->machine->cpu[1], 0);
 
 }
 
@@ -566,27 +556,27 @@ ROM_END
 
 static DRIVER_INIT(changela)
 {
-	state_save_register_global(portA_in);
-	state_save_register_global(portA_out);
-	state_save_register_global(ddrA);
-	state_save_register_global(portB_out);
-	state_save_register_global(ddrB);
-	state_save_register_global(portC_in);
-	state_save_register_global(portC_out);
-	state_save_register_global(ddrC);
+	state_save_register_global(machine, portA_in);
+	state_save_register_global(machine, portA_out);
+	state_save_register_global(machine, ddrA);
+	state_save_register_global(machine, portB_out);
+	state_save_register_global(machine, ddrB);
+	state_save_register_global(machine, portC_in);
+	state_save_register_global(machine, portC_out);
+	state_save_register_global(machine, ddrC);
 
-	state_save_register_global(mcu_out);
-	state_save_register_global(mcu_in);
-	state_save_register_global(mcu_PC1);
-	state_save_register_global(mcu_PC0);
+	state_save_register_global(machine, mcu_out);
+	state_save_register_global(machine, mcu_in);
+	state_save_register_global(machine, mcu_PC1);
+	state_save_register_global(machine, mcu_PC0);
 
-	state_save_register_global(changela_tree0_col);
-	state_save_register_global(changela_tree1_col);
-	state_save_register_global(changela_left_bank_col);
-	state_save_register_global(changela_right_bank_col);
-	state_save_register_global(changela_boat_shore_col);
-	state_save_register_global(changela_collision_reset);
-	state_save_register_global(changela_tree_collision_reset);
+	state_save_register_global(machine, changela_tree0_col);
+	state_save_register_global(machine, changela_tree1_col);
+	state_save_register_global(machine, changela_left_bank_col);
+	state_save_register_global(machine, changela_right_bank_col);
+	state_save_register_global(machine, changela_boat_shore_col);
+	state_save_register_global(machine, changela_collision_reset);
+	state_save_register_global(machine, changela_tree_collision_reset);
 }
 
 GAME( 1983, changela, 0, changela, changela, changela, ROT180, "Taito Corporation", "Change Lanes", GAME_SUPPORTS_SAVE )

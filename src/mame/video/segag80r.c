@@ -25,7 +25,7 @@ static UINT16 spaceod_vcounter;
 static UINT8 spaceod_fixed_color;
 static UINT8 spaceod_bg_control;
 static UINT8 spaceod_bg_detect;
-static UINT8 spaceod_bg_detect_tile_color = 1;
+static const UINT8 spaceod_bg_detect_tile_color = 1;
 
 static tilemap *bg_tilemap;
 static UINT8 bg_enable;
@@ -48,12 +48,12 @@ static TIMER_CALLBACK( vblank_latch_clear )
 }
 
 
-static void vblank_latch_set(void)
+static void vblank_latch_set(running_machine *machine)
 {
 	/* set a timer to mimic the 555 timer that drives the EDGINT signal */
 	/* the 555 is run in monostable mode with R=56000 and C=1000pF */
 	vblank_latch = 1;
-	timer_set(PERIOD_OF_555_MONOSTABLE(CAP_P(1000), RES_K(56)), NULL, 0, vblank_latch_clear);
+	timer_set(machine, PERIOD_OF_555_MONOSTABLE(CAP_P(1000), RES_K(56)), NULL, 0, vblank_latch_clear);
 
 	/* latch the current flip state at the same time */
 	video_flip = video_control & 1;
@@ -62,22 +62,22 @@ static void vblank_latch_set(void)
 
 INTERRUPT_GEN( segag80r_vblank_start )
 {
-	vblank_latch_set();
+	vblank_latch_set(device->machine);
 
 	/* if interrupts are enabled, clock one */
 	if (video_control & 0x04)
-		irq0_line_hold(machine, cpunum);
+		irq0_line_hold(device);
 }
 
 
 INTERRUPT_GEN( sindbadm_vblank_start )
 {
-	vblank_latch_set();
+	vblank_latch_set(device->machine);
 
 	/* interrupts appear to always be enabled, but they have a manual */
 	/* acknowledge rather than an automatic ack; they are also not masked */
 	/* by bit 2 of video_control like a standard G80 */
-	irq0_line_assert(machine, cpunum);
+	irq0_line_assert(device);
 }
 
 
@@ -227,41 +227,41 @@ VIDEO_START( segag80r )
 		/* and one vertically scrolling */
 		case G80_BACKGROUND_SPACEOD:
 			spaceod_bg_init_palette(machine);
-			spaceod_bg_htilemap = tilemap_create(spaceod_get_tile_info, spaceod_scan_rows,  8,8, 128,32);
-			spaceod_bg_vtilemap = tilemap_create(spaceod_get_tile_info, spaceod_scan_rows,  8,8, 32,128);
+			spaceod_bg_htilemap = tilemap_create(machine, spaceod_get_tile_info, spaceod_scan_rows,  8,8, 128,32);
+			spaceod_bg_vtilemap = tilemap_create(machine, spaceod_get_tile_info, spaceod_scan_rows,  8,8, 32,128);
 			break;
 
 		/* background tilemap is effectively 1 screen x n screens */
 		case G80_BACKGROUND_MONSTERB:
-			bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_rows,  8,8, 32,memory_region_length(machine, "gfx2") / 32);
+			bg_tilemap = tilemap_create(machine, bg_get_tile_info, tilemap_scan_rows,  8,8, 32,memory_region_length(machine, "gfx2") / 32);
 			break;
 
 		/* background tilemap is effectively 4 screens x n screens */
 		case G80_BACKGROUND_PIGNEWT:
 		case G80_BACKGROUND_SINDBADM:
-			bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_rows,  8,8, 128,memory_region_length(machine, "gfx2") / 128);
+			bg_tilemap = tilemap_create(machine, bg_get_tile_info, tilemap_scan_rows,  8,8, 128,memory_region_length(machine, "gfx2") / 128);
 			break;
 	}
 
 	/* register for save states */
-	state_save_register_global_pointer(paletteram, 0x80);
+	state_save_register_global_pointer(machine, paletteram, 0x80);
 
-	state_save_register_global(video_control);
-	state_save_register_global(video_flip);
-	state_save_register_global(vblank_latch);
+	state_save_register_global(machine, video_control);
+	state_save_register_global(machine, video_flip);
+	state_save_register_global(machine, vblank_latch);
 
-	state_save_register_global(spaceod_hcounter);
-	state_save_register_global(spaceod_vcounter);
-	state_save_register_global(spaceod_fixed_color);
-	state_save_register_global(spaceod_bg_control);
-	state_save_register_global(spaceod_bg_detect);
+	state_save_register_global(machine, spaceod_hcounter);
+	state_save_register_global(machine, spaceod_vcounter);
+	state_save_register_global(machine, spaceod_fixed_color);
+	state_save_register_global(machine, spaceod_bg_control);
+	state_save_register_global(machine, spaceod_bg_detect);
 
-	state_save_register_global(bg_enable);
-	state_save_register_global(bg_char_bank);
-	state_save_register_global(bg_scrollx);
-	state_save_register_global(bg_scrolly);
+	state_save_register_global(machine, bg_enable);
+	state_save_register_global(machine, bg_char_bank);
+	state_save_register_global(machine, bg_scrollx);
+	state_save_register_global(machine, bg_scrolly);
 
-	state_save_register_global(pignewt_bg_color_offset);
+	state_save_register_global(machine, pignewt_bg_color_offset);
 }
 
 
@@ -279,7 +279,7 @@ WRITE8_HANDLER( segag80r_videoram_w )
 	{
 		offset &= 0x3f;
 		paletteram[offset] = data;
-		g80_set_palette_entry(machine, offset, data);
+		g80_set_palette_entry(space->machine, offset, data);
 		return;
 	}
 
@@ -303,7 +303,7 @@ READ8_HANDLER( segag80r_video_port_r )
 {
 	if (offset == 0)
 	{
-		logerror("%04X:segag80r_video_port_r(%d)\n", activecpu_get_pc(), offset);
+		logerror("%04X:segag80r_video_port_r(%d)\n", cpu_get_pc(space->cpu), offset);
 		return 0xff;
 	}
 	else
@@ -323,7 +323,7 @@ WRITE8_HANDLER( segag80r_video_port_w )
 {
 	if (offset == 0)
 	{
-		logerror("%04X:segag80r_video_port_w(%d) = %02X\n", activecpu_get_pc(), offset, data);
+		logerror("%04X:segag80r_video_port_w(%d) = %02X\n", cpu_get_pc(space->cpu), offset, data);
 	}
 	else
 	{
@@ -350,7 +350,7 @@ WRITE8_HANDLER( segag80r_video_port_w )
 READ8_HANDLER( spaceod_back_port_r )
 {
 	/* force an update to get the current detection value */
-	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+	video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 	return 0xfe | spaceod_bg_detect;
 }
 
@@ -403,7 +403,7 @@ WRITE8_HANDLER( spaceod_back_port_w )
 
 		/* port 3: clears the background detection flag */
 		case 3:
-			video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+			video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 			spaceod_bg_detect = 0;
 			break;
 
@@ -443,13 +443,13 @@ WRITE8_HANDLER( monsterb_videoram_w )
 	{
 		offs_t paloffs = offset & 0x3f;
 		paletteram[paloffs | 0x40] = data;
-		g80_set_palette_entry(machine, paloffs | 0x40, data);
+		g80_set_palette_entry(space->machine, paloffs | 0x40, data);
 		/* note that since the background board is not integrated with the main board */
 		/* writes here also write through to regular videoram */
 	}
 
 	/* handle everything else */
-	segag80r_videoram_w(machine, offset, data);
+	segag80r_videoram_w(space, offset, data);
 }
 
 
@@ -513,12 +513,12 @@ WRITE8_HANDLER( pignewt_videoram_w )
 	{
 		offs_t paloffs = offset & 0x3f;
 		paletteram[paloffs | 0x40] = data;
-		g80_set_palette_entry(machine, paloffs | 0x40, data);
+		g80_set_palette_entry(space->machine, paloffs | 0x40, data);
 		return;
 	}
 
 	/* handle everything else */
-	segag80r_videoram_w(machine, offset, data);
+	segag80r_videoram_w(space, offset, data);
 }
 
 
@@ -596,12 +596,12 @@ WRITE8_HANDLER( sindbadm_videoram_w )
 	{
 		offs_t paloffs = offset & 0x3f;
 		paletteram[paloffs | 0x40] = data;
-		g80_set_palette_entry(machine, paloffs | 0x40, data);
+		g80_set_palette_entry(space->machine, paloffs | 0x40, data);
 		return;
 	}
 
 	/* handle everything else */
-	segag80r_videoram_w(machine, offset, data);
+	segag80r_videoram_w(space, offset, data);
 }
 
 
@@ -611,7 +611,7 @@ WRITE8_HANDLER( sindbadm_back_port_w )
 	{
 		/* port 0: irq ack */
 		case 0:
-			cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 			break;
 
 		/* port 1: background control
@@ -747,7 +747,7 @@ static void draw_background_page_scroll(bitmap_t *bitmap, const rectangle *clipr
 	/* if disabled, draw nothing */
 	if (!bg_enable)
 	{
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 		return;
 	}
 
@@ -787,7 +787,7 @@ static void draw_background_full_scroll(bitmap_t *bitmap, const rectangle *clipr
 	/* if disabled, draw nothing */
 	if (!bg_enable)
 	{
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 		return;
 	}
 

@@ -8,11 +8,11 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "cpu/mcs48/mcs48.h"
 #include "segag80r.h"
 #include "machine/8255ppi.h"
+#include "machine/i8243.h"
 #include "sound/samples.h"
 #include "sound/tms36xx.h"
 #include "sound/dac.h"
@@ -224,8 +224,8 @@ MACHINE_DRIVER_END
 
 static SOUND_START( astrob )
 {
-	state_save_register_global_array(sound_state);
-	state_save_register_global(sound_rate);
+	state_save_register_global_array(machine, sound_state);
+	state_save_register_global(machine, sound_rate);
 }
 
 
@@ -339,8 +339,8 @@ WRITE8_HANDLER( astrob_sound_w )
  *************************************/
 
 static SOUND_START( 005 );
-static void *sega005_custom_start(int clock, const custom_sound_interface *config);
-static void sega005_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
+static CUSTOM_START( sega005_custom_start );
+static STREAM_UPDATE( sega005_stream_update );
 static TIMER_CALLBACK( sega005_auto_timer );
 static WRITE8_DEVICE_HANDLER( sega005_sound_a_w );
 static WRITE8_DEVICE_HANDLER( sega005_sound_b_w );
@@ -464,11 +464,11 @@ MACHINE_DRIVER_END
 
 static SOUND_START( 005 )
 {
-	state_save_register_global_array(sound_state);
-	state_save_register_global(sound_addr);
-	state_save_register_global(sound_data);
-	state_save_register_global(square_state);
-	state_save_register_global(square_count);
+	state_save_register_global_array(machine, sound_state);
+	state_save_register_global(machine, sound_addr);
+	state_save_register_global(machine, sound_data);
+	state_save_register_global(machine, square_state);
+	state_save_register_global(machine, square_count);
 }
 
 
@@ -577,25 +577,27 @@ static WRITE8_DEVICE_HANDLER( sega005_sound_b_w )
  *
  *************************************/
 
-static void *sega005_custom_start(int clock, const custom_sound_interface *config)
+static CUSTOM_START( sega005_custom_start )
 {
+	running_machine *machine = device->machine;
+
 	/* create the stream */
-	sega005_stream = stream_create(0, 1, SEGA005_COUNTER_FREQ, NULL, sega005_stream_update);
+	sega005_stream = stream_create(device, 0, 1, SEGA005_COUNTER_FREQ, NULL, sega005_stream_update);
 
 	/* create a timer for the 555 */
-	sega005_sound_timer = timer_alloc(sega005_auto_timer, NULL);
+	sega005_sound_timer = timer_alloc(machine, sega005_auto_timer, NULL);
 
 	/* set the initial sound data */
 	sound_data = 0x00;
-	sega005_update_sound_data(Machine);
+	sega005_update_sound_data(machine);
 
 	return auto_malloc(1);
 }
 
 
-static void sega005_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+static STREAM_UPDATE( sega005_stream_update )
 {
-	const UINT8 *sound_prom = memory_region(Machine, "proms");
+	const UINT8 *sound_prom = memory_region(device->machine, "proms");
 	int i;
 
 	/* no implementation yet */
@@ -681,7 +683,7 @@ MACHINE_DRIVER_END
 
 static SOUND_START( spaceod )
 {
-	state_save_register_global_array(sound_state);
+	state_save_register_global_array(machine, sound_state);
 }
 
 
@@ -752,11 +754,10 @@ static WRITE8_DEVICE_HANDLER( monsterb_sound_a_w );
 static WRITE8_DEVICE_HANDLER( monsterb_sound_b_w );
 static READ8_DEVICE_HANDLER( n7751_status_r );
 static WRITE8_DEVICE_HANDLER( n7751_command_w );
-static WRITE8_HANDLER( n7751_rom_offset_w );
-static WRITE8_HANDLER( n7751_rom_select_w );
+static WRITE8_DEVICE_HANDLER( n7751_rom_control_w );
 static READ8_HANDLER( n7751_rom_r );
 static READ8_HANDLER( n7751_command_r );
-static WRITE8_HANDLER( n7751_busy_w );
+static WRITE8_DEVICE_HANDLER( n7751_p2_w );
 static READ8_HANDLER( n7751_t1_r );
 
 /*
@@ -801,13 +802,12 @@ static const tms36xx_interface monsterb_tms3617_interface =
  *************************************/
 
 static ADDRESS_MAP_START( monsterb_7751_portmap, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) AM_READ(n7751_t1_r)
-	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_READ(n7751_command_r)
-	AM_RANGE(MCS48_PORT_BUS, MCS48_PORT_BUS) AM_READ(n7751_rom_r)
-	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_WRITE(dac_0_data_w)
-	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_WRITE(n7751_busy_w)
-	AM_RANGE(MCS48_PORT_P4, MCS48_PORT_P6) AM_WRITE(n7751_rom_offset_w)
-	AM_RANGE(MCS48_PORT_P7, MCS48_PORT_P7) AM_WRITE(n7751_rom_select_w)
+	AM_RANGE(MCS48_PORT_T1,   MCS48_PORT_T1) AM_READ(n7751_t1_r)
+	AM_RANGE(MCS48_PORT_P2,   MCS48_PORT_P2) AM_READ(n7751_command_r)
+	AM_RANGE(MCS48_PORT_BUS,  MCS48_PORT_BUS) AM_READ(n7751_rom_r)
+	AM_RANGE(MCS48_PORT_P1,   MCS48_PORT_P1) AM_WRITE(dac_0_data_w)
+	AM_RANGE(MCS48_PORT_P2,   MCS48_PORT_P2) AM_DEVWRITE(I8243, "audio_8243", n7751_p2_w)
+	AM_RANGE(MCS48_PORT_PROG, MCS48_PORT_PROG) AM_DEVWRITE(I8243, "audio_8243", i8243_prog_w)
 ADDRESS_MAP_END
 
 
@@ -837,6 +837,8 @@ MACHINE_DRIVER_START( monsterb_sound_board )
 	MDRV_CPU_ADD("audio", N7751, 6000000)
 	MDRV_CPU_IO_MAP(monsterb_7751_portmap,0)
 
+	MDRV_I8243_ADD("audio_8243", NULL, n7751_rom_control_w)
+
 	/* sound hardware */
 	MDRV_SOUND_START(monsterb)
 
@@ -862,10 +864,10 @@ MACHINE_DRIVER_END
 
 static SOUND_START( monsterb )
 {
-	state_save_register_global_array(sound_state);
-	state_save_register_global(sound_addr);
-	state_save_register_global(n7751_command);
-	state_save_register_global(n7751_busy);
+	state_save_register_global_array(machine, sound_state);
+	state_save_register_global(machine, sound_addr);
+	state_save_register_global(machine, n7751_command);
+	state_save_register_global(machine, n7751_busy);
 }
 
 
@@ -933,38 +935,49 @@ static WRITE8_DEVICE_HANDLER( n7751_command_w )
         D3    = /INT line
     */
 	n7751_command = data & 0x07;
-	cpunum_set_input_line(device->machine, 1, 0, ((data & 0x08) == 0) ? ASSERT_LINE : CLEAR_LINE);
-	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
+	cpu_set_input_line(device->machine->cpu[1], 0, ((data & 0x08) == 0) ? ASSERT_LINE : CLEAR_LINE);
+	cpuexec_boost_interleave(device->machine, attotime_zero, ATTOTIME_IN_USEC(100));
 }
 
 
-static WRITE8_HANDLER( n7751_rom_offset_w )
+static WRITE8_DEVICE_HANDLER( n7751_rom_control_w )
 {
 	/* P4 - address lines 0-3 */
 	/* P5 - address lines 4-7 */
 	/* P6 - address lines 8-11 */
-	int mask = (0xf << (4 * offset)) & 0x3fff;
-	int newdata = (data << (4 * offset)) & mask;
-	sound_addr = (sound_addr & ~mask) | newdata;
-}
-
-
-static WRITE8_HANDLER( n7751_rom_select_w )
-{
 	/* P7 - ROM selects */
-	int numroms = memory_region_length(machine, "n7751") / 0x1000;
-	sound_addr &= 0xfff;
-	if (!(data & 0x01) && numroms >= 1) sound_addr |= 0x0000;
-	if (!(data & 0x02) && numroms >= 2) sound_addr |= 0x1000;
-	if (!(data & 0x04) && numroms >= 3) sound_addr |= 0x2000;
-	if (!(data & 0x08) && numroms >= 4) sound_addr |= 0x3000;
+	switch (offset)
+	{
+		case 0:
+			sound_addr = (sound_addr & ~0x00f) | ((data & 0x0f) << 0);
+			break;
+
+		case 1:
+			sound_addr = (sound_addr & ~0x0f0) | ((data & 0x0f) << 4);
+			break;
+
+		case 2:
+			sound_addr = (sound_addr & ~0xf00) | ((data & 0x0f) << 8);
+			break;
+
+		case 3:
+			sound_addr &= 0xfff;
+			{
+				int numroms = memory_region_length(device->machine, "n7751") / 0x1000;
+				if (!(data & 0x01) && numroms >= 1) sound_addr |= 0x0000;
+				if (!(data & 0x02) && numroms >= 2) sound_addr |= 0x1000;
+				if (!(data & 0x04) && numroms >= 3) sound_addr |= 0x2000;
+				if (!(data & 0x08) && numroms >= 4) sound_addr |= 0x3000;
+			}
+			break;
+	}
 }
 
 
 static READ8_HANDLER( n7751_rom_r )
 {
 	/* read from BUS */
-	return memory_region(machine, "n7751")[sound_addr];
+	return memory_region(space->machine, "n7751")[sound_addr];
 }
 
 
@@ -976,9 +989,11 @@ static READ8_HANDLER( n7751_command_r )
 }
 
 
-static WRITE8_HANDLER( n7751_busy_w )
+static WRITE8_DEVICE_HANDLER( n7751_p2_w )
 {
-	/* write to P2 */
+	/* write to P2; low 4 bits go to 8243 */
+	i8243_p2_w(device, offset, data & 0x0f);
+
 	/* output of bit $80 indicates we are ready (1) or busy (0) */
 	/* no other outputs are used */
 	n7751_busy = data >> 7;

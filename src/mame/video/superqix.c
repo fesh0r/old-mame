@@ -56,27 +56,27 @@ static TILE_GET_INFO( sqix_get_bg_tile_info )
 
 VIDEO_START( pbillian )
 {
-	bg_tilemap = tilemap_create(pb_get_bg_tile_info, tilemap_scan_rows,  8, 8,32,32);
+	bg_tilemap = tilemap_create(machine, pb_get_bg_tile_info, tilemap_scan_rows,  8, 8,32,32);
 
 	/* Need to do save state here */
-	state_save_register_global(last_power[0]);
-	state_save_register_global(last_power[1]);
-	state_save_register_global(pbillian_show_power);
+	state_save_register_global(machine, last_power[0]);
+	state_save_register_global(machine, last_power[1]);
+	state_save_register_global(machine, pbillian_show_power);
 }
 
 VIDEO_START( superqix )
 {
 	fg_bitmap[0] = auto_bitmap_alloc(256, 256, video_screen_get_format(machine->primary_screen));
 	fg_bitmap[1] = auto_bitmap_alloc(256, 256, video_screen_get_format(machine->primary_screen));
-	bg_tilemap = tilemap_create(sqix_get_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, sqix_get_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 
 	tilemap_set_transmask(bg_tilemap,0,0xffff,0x0000); /* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(bg_tilemap,1,0x0001,0xfffe); /* split type 1 has pen 0 transparent in front half */
 
-	state_save_register_global(gfxbank);
-	state_save_register_global(show_bitmap);
-	state_save_register_global_bitmap(fg_bitmap[0]);
-	state_save_register_global_bitmap(fg_bitmap[1]);
+	state_save_register_global(machine, gfxbank);
+	state_save_register_global(machine, show_bitmap);
+	state_save_register_global_bitmap(machine, fg_bitmap[0]);
+	state_save_register_global_bitmap(machine, fg_bitmap[1]);
 }
 
 
@@ -135,10 +135,10 @@ WRITE8_HANDLER( pbillian_0410_w )
 	coin_counter_w(0,data & 0x02);
 	coin_counter_w(1,data & 0x04);
 
-	memory_set_bank(1, (data & 0x08) >> 3);
+	memory_set_bank(space->machine, 1, (data & 0x08) >> 3);
 
-	interrupt_enable_w(machine,0,data & 0x10);
-	flip_screen_set(data & 0x20);
+	interrupt_enable_w(space,0,data & 0x10);
+	flip_screen_set(space->machine, data & 0x20);
 }
 
 WRITE8_HANDLER( superqix_0410_w )
@@ -154,10 +154,10 @@ WRITE8_HANDLER( superqix_0410_w )
 	show_bitmap = (data & 0x04) >> 2;
 
 	/* bit 3 enables NMI */
-	interrupt_enable_w(machine,offset,data & 0x08);
+	interrupt_enable_w(space,offset,data & 0x08);
 
 	/* bits 4-5 control ROM bank */
-	memory_set_bank(1, (data & 0x30) >> 4);
+	memory_set_bank(space->machine, 1, (data & 0x30) >> 4);
 }
 
 
@@ -180,7 +180,7 @@ static void pbillian_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 		int sx = spriteram[offs + 1] + 256 * (spriteram[offs] & 0x01);
 		int sy = spriteram[offs + 2];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -189,7 +189,7 @@ static void pbillian_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 		drawgfx(bitmap,machine->gfx[1],
 				code,
 				color,
-				flip_screen_get(), flip_screen_get(),
+				flip_screen_get(machine), flip_screen_get(machine),
 				sx, sy,
 				cliprect, TRANSPARENCY_PEN, 0);
 	}
@@ -209,7 +209,7 @@ static void superqix_draw_sprites(running_machine *machine, bitmap_t *bitmap,con
 		int sx = spriteram[offs + 1];
 		int sy = spriteram[offs + 2];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -255,7 +255,7 @@ VIDEO_UPDATE( pbillian )
 VIDEO_UPDATE( superqix )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_LAYER1, 0);
-	copybitmap_trans(bitmap,fg_bitmap[show_bitmap],flip_screen_get(),flip_screen_get(),0,0,cliprect,0);
+	copybitmap_trans(bitmap,fg_bitmap[show_bitmap],flip_screen_get(screen->machine),flip_screen_get(screen->machine),0,0,cliprect,0);
 	superqix_draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_LAYER0, 0);
 	return 0;

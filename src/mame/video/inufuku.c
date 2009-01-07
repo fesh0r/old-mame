@@ -12,15 +12,8 @@
 ******************************************************************************/
 
 #include "driver.h"
+#include "includes/inufuku.h"
 
-
-extern UINT16 *inufuku_spriteram1;
-extern UINT16 *inufuku_spriteram2;
-extern size_t inufuku_spriteram1_size;
-
-extern UINT16 *inufuku_bg_videoram;
-extern UINT16 *inufuku_bg_rasterram;
-extern UINT16 *inufuku_text_videoram;
 
 static int inufuku_bg_scrollx, inufuku_bg_scrolly;
 static int inufuku_text_scrollx, inufuku_text_scrolly;
@@ -222,8 +215,8 @@ WRITE16_HANDLER( inufuku_text_videoram_w )
 
 VIDEO_START( inufuku )
 {
-	inufuku_bg_tilemap = tilemap_create(get_inufuku_bg_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
-	inufuku_text_tilemap = tilemap_create(get_inufuku_text_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	inufuku_bg_tilemap = tilemap_create(machine, get_inufuku_bg_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	inufuku_text_tilemap = tilemap_create(machine, get_inufuku_text_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
 
 	tilemap_set_transparent_pen(inufuku_bg_tilemap, 255);
 	tilemap_set_transparent_pen(inufuku_text_tilemap, 255);
@@ -240,8 +233,8 @@ VIDEO_UPDATE( inufuku )
 {
 	int i;
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
-	fillbitmap(priority_bitmap, 0, NULL);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
+	bitmap_fill(priority_bitmap, NULL, 0);
 
 	if (inufuku_bg_raster) {
 		tilemap_set_scroll_rows(inufuku_bg_tilemap, 512);

@@ -285,7 +285,7 @@ static UINT8 gfxbank[5];
  *
  *************************************/
 
-static void state_save_register(void);
+static void state_save_register(running_machine *machine);
 static TILE_GET_INFO( bg_get_tile_info );
 
 static void sprites_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, const UINT8 *spritebase);
@@ -444,7 +444,7 @@ VIDEO_START( galaxian )
 	if (!galaxian_sfx_tilemap)
 	{
 		/* normal galaxian hardware is row-based and individually scrolling columns */
-		bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_rows, GALAXIAN_XSCALE*8,8, 32,32);
+		bg_tilemap = tilemap_create(machine, bg_get_tile_info, tilemap_scan_rows, GALAXIAN_XSCALE*8,8, 32,32);
 		tilemap_set_scroll_cols(bg_tilemap, 32);
 		tilemap_set_scrolldx(bg_tilemap, 0, -GALAXIAN_XSCALE * 128);
 		tilemap_set_scrolldy(bg_tilemap, 0, 8);
@@ -452,7 +452,7 @@ VIDEO_START( galaxian )
 	else
 	{
 		/* sfx hardware is column-based and individually scrolling rows */
-		bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_cols, GALAXIAN_XSCALE*8,8, 32,32);
+		bg_tilemap = tilemap_create(machine, bg_get_tile_info, tilemap_scan_cols, GALAXIAN_XSCALE*8,8, 32,32);
 		tilemap_set_scroll_rows(bg_tilemap, 32);
 		tilemap_set_scrolldx(bg_tilemap, 0, -GALAXIAN_XSCALE * 128);
 		tilemap_set_scrolldy(bg_tilemap, 0, 8);
@@ -471,25 +471,25 @@ VIDEO_START( galaxian )
 	stars_init();
 
 	/* register for save states */
-	state_save_register();
+	state_save_register(machine);
 }
 
 
-static void state_save_register(void)
+static void state_save_register(running_machine *machine)
 {
-	state_save_register_global(flipscreen_x);
-	state_save_register_global(flipscreen_y);
-	state_save_register_global(background_enable);
-	state_save_register_global(background_red);
-	state_save_register_global(background_green);
-	state_save_register_global(background_blue);
+	state_save_register_global(machine, flipscreen_x);
+	state_save_register_global(machine, flipscreen_y);
+	state_save_register_global(machine, background_enable);
+	state_save_register_global(machine, background_red);
+	state_save_register_global(machine, background_green);
+	state_save_register_global(machine, background_blue);
 
-	state_save_register_global_array(gfxbank);
+	state_save_register_global_array(machine, gfxbank);
 
-	state_save_register_global(stars_enabled);
-	state_save_register_global(star_rng_origin);
-	state_save_register_global(star_rng_origin_frame);
-	state_save_register_global(stars_blink_state);
+	state_save_register_global(machine, stars_enabled);
+	state_save_register_global(machine, star_rng_origin);
+	state_save_register_global(machine, star_rng_origin_frame);
+	state_save_register_global(machine, stars_blink_state);
 }
 
 
@@ -544,7 +544,7 @@ static TILE_GET_INFO( bg_get_tile_info )
 WRITE8_HANDLER( galaxian_videoram_w )
 {
 	/* update any video up to the current scanline */
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 
 	/* store the data and mark the corresponding tile dirty */
 	videoram[offset] = data;
@@ -555,7 +555,7 @@ WRITE8_HANDLER( galaxian_videoram_w )
 WRITE8_HANDLER( galaxian_objram_w )
 {
 	/* update any video up to the current scanline */
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 
 	/* store the data */
 	spriteram[offset] = data;
@@ -705,12 +705,12 @@ WRITE8_HANDLER( galaxian_flip_screen_x_w )
 {
 	if (flipscreen_x != (data & 0x01))
 	{
-		video_screen_update_now(machine->primary_screen);
+		video_screen_update_now(space->machine->primary_screen);
 
 		/* when the direction changes, we count a different number of clocks */
 		/* per frame, so we need to reset the origin of the stars to the current */
 		/* frame before we flip */
-		stars_update_origin(machine);
+		stars_update_origin(space->machine);
 
 		flipscreen_x = data & 0x01;
 		tilemap_set_flip(bg_tilemap, (flipscreen_x ? TILEMAP_FLIPX : 0) | (flipscreen_y ? TILEMAP_FLIPY : 0));
@@ -721,7 +721,7 @@ WRITE8_HANDLER( galaxian_flip_screen_y_w )
 {
 	if (flipscreen_y != (data & 0x01))
 	{
-		video_screen_update_now(machine->primary_screen);
+		video_screen_update_now(space->machine->primary_screen);
 		flipscreen_y = data & 0x01;
 		tilemap_set_flip(bg_tilemap, (flipscreen_x ? TILEMAP_FLIPX : 0) | (flipscreen_y ? TILEMAP_FLIPY : 0));
 	}
@@ -729,8 +729,8 @@ WRITE8_HANDLER( galaxian_flip_screen_y_w )
 
 WRITE8_HANDLER( galaxian_flip_screen_xy_w )
 {
-	galaxian_flip_screen_x_w(machine, offset, data);
-	galaxian_flip_screen_y_w(machine, offset, data);
+	galaxian_flip_screen_x_w(space, offset, data);
+	galaxian_flip_screen_y_w(space, offset, data);
 }
 
 
@@ -744,14 +744,14 @@ WRITE8_HANDLER( galaxian_flip_screen_xy_w )
 WRITE8_HANDLER( galaxian_stars_enable_w )
 {
 	if ((stars_enabled ^ data) & 0x01)
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 	if (!stars_enabled && (data & 0x01))
 	{
 		/* on the rising edge of this, the CLR on the shift registers is released */
 		/* this resets the "origin" of this frame to 0 minus the number of clocks */
 		/* we have counted so far */
-		star_rng_origin = STAR_RNG_PERIOD - (video_screen_get_vpos(machine->primary_screen) * 512 + video_screen_get_hpos(machine->primary_screen));
-		star_rng_origin_frame = video_screen_get_frame_number(machine->primary_screen);
+		star_rng_origin = STAR_RNG_PERIOD - (video_screen_get_vpos(space->machine->primary_screen) * 512 + video_screen_get_hpos(space->machine->primary_screen));
+		star_rng_origin_frame = video_screen_get_frame_number(space->machine->primary_screen);
 	}
 	stars_enabled = data & 0x01;
 }
@@ -759,28 +759,28 @@ WRITE8_HANDLER( galaxian_stars_enable_w )
 
 WRITE8_HANDLER( scramble_background_enable_w )
 {
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 	background_enable = data & 0x01;
 }
 
 
 WRITE8_HANDLER( scramble_background_red_w )
 {
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 	background_red = data & 0x01;
 }
 
 
 WRITE8_HANDLER( scramble_background_green_w )
 {
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 	background_green = data & 0x01;
 }
 
 
 WRITE8_HANDLER( scramble_background_blue_w )
 {
-	video_screen_update_now(machine->primary_screen);
+	video_screen_update_now(space->machine->primary_screen);
 	background_blue = data & 0x01;
 }
 
@@ -796,7 +796,7 @@ WRITE8_HANDLER( galaxian_gfxbank_w )
 {
 	if (gfxbank[offset] != data)
 	{
-		video_screen_update_now(machine->primary_screen);
+		video_screen_update_now(space->machine->primary_screen);
 		gfxbank[offset] = data;
 		tilemap_mark_all_tiles_dirty(bg_tilemap);
 	}
@@ -972,7 +972,7 @@ static int flip_and_clip(rectangle *draw, int xstart, int xend, const rectangle 
 void galaxian_draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/* erase the background to black first */
-	fillbitmap(bitmap, RGB_BLACK, cliprect);
+	bitmap_fill(bitmap, cliprect, RGB_BLACK);
 
 	/* update the star origin to the current frame */
 	stars_update_origin(machine);
@@ -1003,12 +1003,12 @@ void frogger_draw_background(running_machine *machine, bitmap_t *bitmap, const r
 		draw = *cliprect;
 		draw.max_x = MIN(draw.max_x, (128-8) * GALAXIAN_XSCALE - 1);
 		if (draw.min_x <= draw.max_x)
-			fillbitmap(bitmap, RGB_BLACK, &draw);
+			bitmap_fill(bitmap, &draw, RGB_BLACK);
 
 		draw = *cliprect;
 		draw.min_x = MAX(draw.min_x, (128-8) * GALAXIAN_XSCALE);
 		if (draw.min_x <= draw.max_x)
-			fillbitmap(bitmap, MAKE_RGB(0,0,0x47), &draw);
+			bitmap_fill(bitmap, &draw, MAKE_RGB(0,0,0x47));
 	}
 	else
 	{
@@ -1017,12 +1017,12 @@ void frogger_draw_background(running_machine *machine, bitmap_t *bitmap, const r
 		draw = *cliprect;
 		draw.max_x = MIN(draw.max_x, (128+8) * GALAXIAN_XSCALE - 1);
 		if (draw.min_x <= draw.max_x)
-			fillbitmap(bitmap, MAKE_RGB(0,0,0x47), &draw);
+			bitmap_fill(bitmap, &draw, MAKE_RGB(0,0,0x47));
 
 		draw = *cliprect;
 		draw.min_x = MAX(draw.min_x, (128+8) * GALAXIAN_XSCALE);
 		if (draw.min_x <= draw.max_x)
-			fillbitmap(bitmap, RGB_BLACK, &draw);
+			bitmap_fill(bitmap, &draw, RGB_BLACK);
 	}
 
 }
@@ -1054,7 +1054,7 @@ void amidar_draw_background(running_machine *machine, bitmap_t *bitmap, const re
 			UINT8 red = ((~prom[x] & 0x02) && background_red) ? 0x7c : 0x00;
 			UINT8 green = ((~prom[x] & 0x02) && background_green) ? 0x3c : 0x00;
 			UINT8 blue = ((~prom[x] & 0x01) && background_blue) ? 0x47 : 0x00;
-			fillbitmap(bitmap, MAKE_RGB(red, green, blue), &draw);
+			bitmap_fill(bitmap, &draw, MAKE_RGB(red, green, blue));
 		}
 }
 
@@ -1068,14 +1068,14 @@ void turtles_draw_background(running_machine *machine, bitmap_t *bitmap, const r
             GREEN - 470 ohm resistor
             BLUE  - 390 ohm resistor
     */
-	fillbitmap(bitmap, MAKE_RGB(background_red * 0x55, background_green * 0x47, background_blue * 0x55), cliprect);
+	bitmap_fill(bitmap, cliprect, MAKE_RGB(background_red * 0x55, background_green * 0x47, background_blue * 0x55));
 }
 
 
 void scramble_draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/* blue background - 390 ohm resistor */
-	fillbitmap(bitmap, background_enable ? MAKE_RGB(0,0,0x56) : RGB_BLACK, cliprect);
+	bitmap_fill(bitmap, cliprect, background_enable ? MAKE_RGB(0,0,0x56) : RGB_BLACK);
 
 	/* update the star origin to the current frame */
 	stars_update_origin(machine);
@@ -1104,7 +1104,7 @@ void scramble_draw_background(running_machine *machine, bitmap_t *bitmap, const 
 void jumpbug_draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/* blue background - 390 ohm resistor */
-	fillbitmap(bitmap, background_enable ? MAKE_RGB(0,0,0x56) : RGB_BLACK, cliprect);
+	bitmap_fill(bitmap, cliprect, background_enable ? MAKE_RGB(0,0,0x56) : RGB_BLACK);
 
 	/* update the star origin to the current frame */
 	stars_update_origin(machine);

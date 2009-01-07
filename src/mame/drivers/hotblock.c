@@ -42,6 +42,7 @@ so it could be by them instead
 */
 
 #include "driver.h"
+#include "cpu/i86/i86.h"
 #include "sound/ay8910.h"
 
 static UINT8 *hotblock_ram;
@@ -73,8 +74,8 @@ static READ8_HANDLER( hotblock_port4_r )
 
 static WRITE8_HANDLER( hotblock_port4_w )
 {
-//  mame_printf_debug("port4_w: pc = %06x : data %04x\n",activecpu_get_pc(),data);
-//  popmessage("port4_w: pc = %06x : data %04x",activecpu_get_pc(),data);
+//  mame_printf_debug("port4_w: pc = %06x : data %04x\n",cpu_get_pc(space->cpu),data);
+//  popmessage("port4_w: pc = %06x : data %04x",cpu_get_pc(space->cpu),data);
 	hotblock_port4=data;
 }
 
@@ -82,7 +83,7 @@ static WRITE8_HANDLER( hotblock_port4_w )
 
 static WRITE8_HANDLER( hotblock_port0_w )
 {
-//  popmessage("port4_w: pc = %06x : data %04x",activecpu_get_pc(),data);
+//  popmessage("port4_w: pc = %06x : data %04x",cpu_get_pc(space->cpu),data);
 	hotblock_port0=data;
 }
 
@@ -124,9 +125,9 @@ static VIDEO_UPDATE(hotblock)
 
 	int y,x,count;
 	int i;
-	static int xxx=320,yyy=204;
+	static const int xxx=320,yyy=204;
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), 0);
+	bitmap_fill(bitmap, 0, get_black_pen(screen->machine));
 
 	for (i=0;i<256;i++)
 	{
@@ -173,7 +174,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( hotblocks_irq ) /* right? */
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+	cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static const ay8910_interface ay8910_config =

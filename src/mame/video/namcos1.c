@@ -107,12 +107,12 @@ VIDEO_START( namcos1 )
 	namcos1_spriteram = auto_malloc(0x1000);
 
 	/* initialize playfields */
-	bg_tilemap[0] = tilemap_create(bg_get_info0,tilemap_scan_rows,8,8,64,64);
-	bg_tilemap[1] = tilemap_create(bg_get_info1,tilemap_scan_rows,8,8,64,64);
-	bg_tilemap[2] = tilemap_create(bg_get_info2,tilemap_scan_rows,8,8,64,64);
-	bg_tilemap[3] = tilemap_create(bg_get_info3,tilemap_scan_rows,8,8,64,32);
-	bg_tilemap[4] = tilemap_create(fg_get_info4,tilemap_scan_rows,8,8,36,28);
-	bg_tilemap[5] = tilemap_create(fg_get_info5,tilemap_scan_rows,8,8,36,28);
+	bg_tilemap[0] = tilemap_create(machine, bg_get_info0,tilemap_scan_rows,8,8,64,64);
+	bg_tilemap[1] = tilemap_create(machine, bg_get_info1,tilemap_scan_rows,8,8,64,64);
+	bg_tilemap[2] = tilemap_create(machine, bg_get_info2,tilemap_scan_rows,8,8,64,64);
+	bg_tilemap[3] = tilemap_create(machine, bg_get_info3,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap[4] = tilemap_create(machine, fg_get_info4,tilemap_scan_rows,8,8,36,28);
+	bg_tilemap[5] = tilemap_create(machine, fg_get_info5,tilemap_scan_rows,8,8,36,28);
 
 	tilemap_set_scrolldx(bg_tilemap[4],73,512-73);
 	tilemap_set_scrolldx(bg_tilemap[5],73,512-73);
@@ -120,10 +120,10 @@ VIDEO_START( namcos1 )
 	tilemap_set_scrolldy(bg_tilemap[5],0x10,0x110);
 
 	/* register videoram to the save state system (post-allocation) */
-	state_save_register_global_pointer(namcos1_videoram, 0x8000);
-	state_save_register_global_array(namcos1_cus116);
-	state_save_register_global_pointer(namcos1_spriteram, 0x1000);
-	state_save_register_global_array(namcos1_playfield_control);
+	state_save_register_global_pointer(machine, namcos1_videoram, 0x8000);
+	state_save_register_global_array(machine, namcos1_cus116);
+	state_save_register_global_pointer(machine, namcos1_spriteram, 0x1000);
+	state_save_register_global_array(machine, namcos1_playfield_control);
 
 	/* set table for sprite color == 0x7f */
 	for (i = 0;i <= 15;i++)
@@ -196,7 +196,7 @@ WRITE8_HANDLER( namcos1_paletteram_w )
 		r = namcos1_paletteram[offset];
 		g = namcos1_paletteram[offset + 0x0800];
 		b = namcos1_paletteram[offset + 0x1000];
-		palette_set_color(machine,color,MAKE_RGB(r,g,b));
+		palette_set_color(space->machine,color,MAKE_RGB(r,g,b));
 	}
 	else
 	{
@@ -308,7 +308,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		sx += sprite_xoffs;
 		sy -= sprite_yoffs;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = -sx - sizex;
 			sy = -sy - sizey;
@@ -343,13 +343,13 @@ VIDEO_UPDATE( namcos1 )
 	rectangle new_clip = *cliprect;
 
 	/* flip screen is embedded in the sprite control registers */
-	/* can't use flip_screen_set() because the visible area is asymmetrical */
-	flip_screen_set_no_update(spriteram[0x07f6] & 1);
-	tilemap_set_flip(ALL_TILEMAPS,flip_screen_get() ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+	/* can't use flip_screen_set(screen->machine, ) because the visible area is asymmetrical */
+	flip_screen_set_no_update(screen->machine, spriteram[0x07f6] & 1);
+	tilemap_set_flip(ALL_TILEMAPS,flip_screen_get(screen->machine) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
 
 	/* background color */
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	/* berabohm uses asymmetrical visibility windows to iris on the character */
 	i = ((namcos1_cus116[0] << 8) | namcos1_cus116[1]) - 1;			// min x
@@ -377,7 +377,7 @@ VIDEO_UPDATE( namcos1 )
 		scrollx = ( namcos1_playfield_control[j+1] + (namcos1_playfield_control[j+0]<<8) ) - disp_x[i];
 		scrolly = ( namcos1_playfield_control[j+3] + (namcos1_playfield_control[j+2]<<8) ) + 8;
 
-		if (flip_screen_get())
+		if (flip_screen_get(screen->machine))
 		{
 			scrollx = -scrollx;
 			scrolly = -scrolly;
@@ -388,7 +388,7 @@ VIDEO_UPDATE( namcos1 )
 	}
 
 
-	fillbitmap(priority_bitmap, 0, &new_clip);
+	bitmap_fill(priority_bitmap, &new_clip, 0);
 
 	/* bit 0-2 priority */
 	/* bit 3   disable  */

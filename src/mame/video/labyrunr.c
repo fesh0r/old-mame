@@ -125,8 +125,8 @@ static TILE_GET_INFO( get_tile_info1 )
 
 VIDEO_START( labyrunr )
 {
-	layer0 = tilemap_create(get_tile_info0,tilemap_scan_rows,8,8,32,32);
-	layer1 = tilemap_create(get_tile_info1,tilemap_scan_rows,8,8,32,32);
+	layer0 = tilemap_create(machine, get_tile_info0,tilemap_scan_rows,8,8,32,32);
+	layer1 = tilemap_create(machine, get_tile_info1,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(layer0,0);
 	tilemap_set_transparent_pen(layer1,0);
@@ -175,8 +175,8 @@ VIDEO_UPDATE( labyrunr )
 
 	set_pens(screen->machine->colortable);
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	if(~K007121_ctrlram[0][3] & 0x20)
 	{

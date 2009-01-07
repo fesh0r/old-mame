@@ -62,16 +62,73 @@ A few notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/ay8910.h"
 #include "includes/btime.h"
 
+#define MASTER_CLOCK 	XTAL_12MHz
+#define HCLK			(MASTER_CLOCK/2)
+#define HCLK1			(HCLK/2)
+#define HCLK2			(HCLK1/2)
+#define HCLK4			(HCLK2/2)
+
+
+enum
+{
+	AUDIO_ENABLE_NONE,
+	AUDIO_ENABLE_DIRECT,		/* via direct address in memory map */
+	AUDIO_ENABLE_AY8910			/* via ay-8910 port A */
+};
+
 static WRITE8_HANDLER( audio_command_w );
+static READ8_HANDLER( audio_command_r );
 
 static UINT8 *decrypted;
 static UINT8 *rambase;
 static UINT8 *audio_rambase;
+
+static UINT8 audio_nmi_enable_type;
+static UINT8 audio_nmi_enabled;
+static UINT8 audio_nmi_state;
+
+
+
+static MACHINE_START( btime )
+{
+	/* by default, the audio NMI is disabled, except for bootlegs which don't use the enable */
+	audio_nmi_enabled = (audio_nmi_enable_type == AUDIO_ENABLE_NONE);
+}
+
+static WRITE8_HANDLER( audio_nmi_enable_w )
+{
+	/* for most games, this serves as the NMI enable for the audio CPU; however,
+       lnc and disco use bit 0 of the first AY-8910's port A instead; many other
+       games also write there in addition to this address */
+	if (audio_nmi_enable_type == AUDIO_ENABLE_DIRECT)
+	{
+		audio_nmi_enabled = data & 1;
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, (audio_nmi_enabled && audio_nmi_state) ? ASSERT_LINE : CLEAR_LINE);
+	}
+}
+
+static WRITE8_HANDLER( ay_audio_nmi_enable_w )
+{
+	/* port A bit 0, when 1, inhibits the NMI */
+	if (audio_nmi_enable_type == AUDIO_ENABLE_AY8910)
+	{
+		audio_nmi_enabled = ~data & 1;
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, (audio_nmi_enabled && audio_nmi_state) ? ASSERT_LINE : CLEAR_LINE);
+	}
+}
+
+static TIMER_DEVICE_CALLBACK( audio_nmi_gen )
+{
+	int scanline = param;
+	audio_nmi_state = scanline & 8;
+	cpu_set_input_line(timer->machine->cpu[1], INPUT_LINE_NMI, (audio_nmi_enabled && audio_nmi_state) ? ASSERT_LINE : CLEAR_LINE);
+}
+
+
 
 
 
@@ -81,7 +138,7 @@ INLINE UINT8 swap_bits_5_6(UINT8 data)
 }
 
 
-static void btime_decrypt(running_machine *machine)
+static void btime_decrypt(const address_space *space)
 {
 	UINT8 *src, *src1;
 	int addr, addr1;
@@ -93,17 +150,17 @@ static void btime_decrypt(running_machine *machine)
 	/* xxxx xxx1 xxxx x1xx are encrypted. */
 
 	/* get the address of the next opcode */
-	addr = activecpu_get_pc();
+	addr = cpu_get_pc(space->cpu);
 
 	/* however if the previous instruction was JSR (which caused a write to */
 	/* the stack), fetch the address of the next instruction. */
-	addr1 = activecpu_get_previouspc();
-	src1 = (addr1 < 0x9000) ? rambase : memory_region(machine, "main");
+	addr1 = cpu_get_previouspc(space->cpu);
+	src1 = (addr1 < 0x9000) ? rambase : memory_region(space->machine, "main");
 	if (decrypted[addr1] == 0x20)	/* JSR $xxxx */
 		addr = src1[addr1+1] + 256 * src1[addr1+2];
 
 	/* If the address of the next instruction is xxxx xxx1 xxxx x1xx, decode it. */
-	src = (addr < 0x9000) ? rambase : memory_region(machine, "main");
+	src = (addr < 0x9000) ? rambase : memory_region(space->machine, "main");
 	if ((addr & 0x0104) == 0x0104)
 	{
 		/* 76543210 -> 65342710 bit rotation */
@@ -114,15 +171,15 @@ static void btime_decrypt(running_machine *machine)
 static WRITE8_HANDLER( lnc_w )
 {
 	if      (offset <= 0x3bff)                       ;
-	else if (offset >= 0x3c00 && offset <= 0x3fff) { lnc_videoram_w(machine,offset - 0x3c00,data); return; }
-	else if (offset >= 0x7c00 && offset <= 0x7fff) { lnc_mirrorvideoram_w(machine,offset - 0x7c00,data); return; }
+	else if (offset >= 0x3c00 && offset <= 0x3fff) { lnc_videoram_w(space,offset - 0x3c00,data); return; }
+	else if (offset >= 0x7c00 && offset <= 0x7fff) { lnc_mirrorvideoram_w(space,offset - 0x7c00,data); return; }
 	else if (offset == 0x8000)                     { return; }  /* SMH_NOP */
-	else if (offset == 0x8001)                     { lnc_video_control_w(machine,0,data); return; }
+	else if (offset == 0x8001)                     { bnj_video_control_w(space,0,data); return; }
 	else if (offset == 0x8003)                       ;
 	else if (offset == 0x9000)                     { return; }  /* SMH_NOP */
-	else if (offset == 0x9002)                     { audio_command_w(machine,0,data); return; }
+	else if (offset == 0x9002)                     { audio_command_w(space,0,data); return; }
 	else if (offset >= 0xb000 && offset <= 0xb1ff)   ;
-	else logerror("CPU #%d PC %04x: warning - write %02x to unmapped memory address %04x\n",cpu_getactivecpu(),activecpu_get_pc(),data,offset);
+	else logerror("CPU '%s' PC %04x: warning - write %02x to unmapped memory address %04x\n",space->cpu->tag,cpu_get_pc(space->cpu),data,offset);
 
 	rambase[offset] = data;
 
@@ -133,14 +190,14 @@ static WRITE8_HANDLER( lnc_w )
 static WRITE8_HANDLER( mmonkey_w )
 {
 	if      (offset <= 0x3bff)                       ;
-	else if (offset >= 0x3c00 && offset <= 0x3fff) { lnc_videoram_w(machine,offset - 0x3c00,data); return; }
-	else if (offset >= 0x7c00 && offset <= 0x7fff) { lnc_mirrorvideoram_w(machine,offset - 0x7c00,data); return; }
-	else if (offset == 0x8001)                     { lnc_video_control_w(machine,0,data); return; }
+	else if (offset >= 0x3c00 && offset <= 0x3fff) { lnc_videoram_w(space,offset - 0x3c00,data); return; }
+	else if (offset >= 0x7c00 && offset <= 0x7fff) { lnc_mirrorvideoram_w(space,offset - 0x7c00,data); return; }
+	else if (offset == 0x8001)                     { bnj_video_control_w(space,0,data); return; }
 	else if (offset == 0x8003)                       ;
 	else if (offset == 0x9000)                     { return; }  /* SMH_NOP */
-	else if (offset == 0x9002)                     { audio_command_w(machine,0,data); return; }
-	else if (offset >= 0xb000 && offset <= 0xbfff) { mmonkey_protection_w(machine,offset - 0xb000, data); return; }
-	else logerror("CPU #%d PC %04x: warning - write %02x to unmapped memory address %04x\n",cpu_getactivecpu(),activecpu_get_pc(),data,offset);
+	else if (offset == 0x9002)                     { audio_command_w(space,0,data); return; }
+	else if (offset >= 0xb000 && offset <= 0xbfff) { mmonkey_protection_w(space,offset - 0xb000, data); return; }
+	else logerror("CPU '%s' PC %04x: warning - write %02x to unmapped memory address %04x\n",space->cpu->tag,cpu_get_pc(space->cpu),data,offset);
 
 	rambase[offset] = data;
 
@@ -151,50 +208,70 @@ static WRITE8_HANDLER( mmonkey_w )
 static WRITE8_HANDLER( btime_w )
 {
 	if      (offset <= 0x07ff)                     ;
-	else if (offset >= 0x0c00 && offset <= 0x0c0f) btime_paletteram_w(machine,offset - 0x0c00,data);
+	else if (offset >= 0x0c00 && offset <= 0x0c0f) btime_paletteram_w(space,offset - 0x0c00,data);
 	else if (offset >= 0x1000 && offset <= 0x17ff) ;
-	else if (offset >= 0x1800 && offset <= 0x1bff) btime_mirrorvideoram_w(machine,offset - 0x1800,data);
-	else if (offset >= 0x1c00 && offset <= 0x1fff) btime_mirrorcolorram_w(machine,offset - 0x1c00,data);
-	else if (offset == 0x4002)                     btime_video_control_w(machine,0,data);
-	else if (offset == 0x4003)                     audio_command_w(machine,0,data);
-	else if (offset == 0x4004)                     bnj_scroll1_w(machine,0,data);
-	else logerror("CPU #%d PC %04x: warning - write %02x to unmapped memory address %04x\n",cpu_getactivecpu(),activecpu_get_pc(),data,offset);
+	else if (offset >= 0x1800 && offset <= 0x1bff) btime_mirrorvideoram_w(space,offset - 0x1800,data);
+	else if (offset >= 0x1c00 && offset <= 0x1fff) btime_mirrorcolorram_w(space,offset - 0x1c00,data);
+	else if (offset == 0x4002)                     btime_video_control_w(space,0,data);
+	else if (offset == 0x4003)                     audio_command_w(space,0,data);
+	else if (offset == 0x4004)                     bnj_scroll1_w(space,0,data);
+	else logerror("CPU '%s' PC %04x: warning - write %02x to unmapped memory address %04x\n",space->cpu->tag,cpu_get_pc(space->cpu),data,offset);
 
 	rambase[offset] = data;
 
-	btime_decrypt(machine);
+	btime_decrypt(space);
+}
+
+static WRITE8_HANDLER( tisland_w )
+{
+	if      (offset <= 0x07ff)                     ;
+	else if (offset >= 0x0c00 && offset <= 0x0c0f) btime_paletteram_w(space,offset - 0x0c00,data);
+	else if (offset >= 0x1000 && offset <= 0x17ff) ;
+	else if (offset >= 0x1800 && offset <= 0x1bff) btime_mirrorvideoram_w(space,offset - 0x1800,data);
+	else if (offset >= 0x1c00 && offset <= 0x1fff) btime_mirrorcolorram_w(space,offset - 0x1c00,data);
+	else if (offset == 0x4002)                     btime_video_control_w(space,0,data);
+	else if (offset == 0x4003)                     audio_command_w(space,0,data);
+	else if (offset == 0x4004)                     bnj_scroll1_w(space,0,data);
+	else if (offset == 0x4005)					   bnj_scroll2_w(space,0,data);
+//  else if (offset == 0x8000)                     btime_video_control_w(space,0,data);
+	else logerror("CPU '%s' PC %04x: warning - write %02x to unmapped memory address %04x\n",space->cpu->tag,cpu_get_pc(space->cpu),data,offset);
+
+
+	rambase[offset] = data;
+
+	btime_decrypt(space);
 }
 
 static WRITE8_HANDLER( zoar_w )
 {
 	if      (offset <= 0x07ff) 					   ;
 	else if (offset >= 0x8000 && offset <= 0x87ff) ;
-	else if (offset >= 0x8800 && offset <= 0x8bff) btime_mirrorvideoram_w(machine,offset - 0x8800,data);
-	else if (offset >= 0x8c00 && offset <= 0x8fff) btime_mirrorcolorram_w(machine,offset - 0x8c00,data);
-	else if (offset == 0x9000)					   zoar_video_control_w(machine,0, data);
+	else if (offset >= 0x8800 && offset <= 0x8bff) btime_mirrorvideoram_w(space,offset - 0x8800,data);
+	else if (offset >= 0x8c00 && offset <= 0x8fff) btime_mirrorcolorram_w(space,offset - 0x8c00,data);
+	else if (offset == 0x9000)					   zoar_video_control_w(space,0, data);
 	else if (offset >= 0x9800 && offset <= 0x9803) ;
-	else if (offset == 0x9804)                     bnj_scroll2_w(machine,0,data);
-	else if (offset == 0x9805)                     bnj_scroll1_w(machine,0,data);
-	else if (offset == 0x9806)                     audio_command_w(machine,0,data);
-	else logerror("CPU #%d PC %04x: warning - write %02x to unmapped memory address %04x\n",cpu_getactivecpu(),activecpu_get_pc(),data,offset);
+	else if (offset == 0x9804)                     bnj_scroll2_w(space,0,data);
+	else if (offset == 0x9805)                     bnj_scroll1_w(space,0,data);
+	else if (offset == 0x9806)                     audio_command_w(space,0,data);
+	else logerror("CPU '%s' PC %04x: warning - write %02x to unmapped memory address %04x\n",space->cpu->tag,cpu_get_pc(space->cpu),data,offset);
 
 	rambase[offset] = data;
 
-	btime_decrypt(machine);
+	btime_decrypt(space);
 }
 
 static WRITE8_HANDLER( disco_w )
 {
 	if      (offset <= 0x04ff)                     ;
-	else if (offset >= 0x2000 && offset <= 0x7fff) deco_charram_w(machine,offset - 0x2000,data);
+	else if (offset >= 0x2000 && offset <= 0x7fff) deco_charram_w(space,offset - 0x2000,data);
 	else if (offset >= 0x8000 && offset <= 0x881f) ;
-	else if (offset == 0x9a00)                     audio_command_w(machine,0,data);
-	else if (offset == 0x9c00)                     disco_video_control_w(machine,0,data);
-	else logerror("CPU #%d PC %04x: warning - write %02x to unmapped memory address %04x\n",cpu_getactivecpu(),activecpu_get_pc(),data,offset);
+	else if (offset == 0x9a00)                     audio_command_w(space,0,data);
+	else if (offset == 0x9c00)                     disco_video_control_w(space,0,data);
+	else logerror("CPU '%s' PC %04x: warning - write %02x to unmapped memory address %04x\n",space->cpu->tag,cpu_get_pc(space->cpu),data,offset);
 
 	rambase[offset] = data;
 
-	btime_decrypt(machine);
+	btime_decrypt(space);
 }
 
 
@@ -235,6 +312,24 @@ static ADDRESS_MAP_START( cookrace_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xfff9, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( tisland_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0xffff) AM_WRITE(tisland_w)	/* override the following entries to */
+													/* support ROM decryption */
+	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_BASE(&rambase)
+	AM_RANGE(0x0c00, 0x0c0f) AM_WRITE(btime_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0x1000, 0x13ff) AM_RAM AM_BASE(&btime_videoram) AM_SIZE(&btime_videoram_size)
+	AM_RANGE(0x1400, 0x17ff) AM_RAM AM_BASE(&btime_colorram)
+	AM_RANGE(0x1800, 0x1bff) AM_READWRITE(btime_mirrorvideoram_r, btime_mirrorvideoram_w)
+	AM_RANGE(0x1c00, 0x1fff) AM_READWRITE(btime_mirrorcolorram_r, btime_mirrorcolorram_w)
+	AM_RANGE(0x4000, 0x4000) AM_READ_PORT("P1") AM_WRITENOP
+	AM_RANGE(0x4001, 0x4001) AM_READ_PORT("P2")
+	AM_RANGE(0x4002, 0x4002) AM_READ_PORT("SYSTEM") AM_WRITE(btime_video_control_w)
+	AM_RANGE(0x4003, 0x4003) AM_READ_PORT("DSW1") AM_WRITE(audio_command_w)
+	AM_RANGE(0x4004, 0x4004) AM_READ_PORT("DSW2") AM_WRITE(bnj_scroll1_w)
+	AM_RANGE(0x4005, 0x4005) AM_WRITE(bnj_scroll2_w)
+	AM_RANGE(0x9000, 0xffff) AM_READ(SMH_ROM)
+ADDRESS_MAP_END
+
 static ADDRESS_MAP_START( zoar_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xffff) AM_WRITE(zoar_w)	/* override the following entries to */
 												/* support ROM decryption */
@@ -263,7 +358,7 @@ static ADDRESS_MAP_START( lnc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7800, 0x7bff) AM_WRITE(SMH_RAM) AM_BASE(&btime_colorram)  /* this is just here to initialize the pointer */
 	AM_RANGE(0x7c00, 0x7fff) AM_READWRITE(btime_mirrorvideoram_r, lnc_mirrorvideoram_w)
 	AM_RANGE(0x8000, 0x8000) AM_READ_PORT("DSW1") AM_WRITENOP     /* ??? */
-	AM_RANGE(0x8001, 0x8001) AM_READ_PORT("DSW2") AM_WRITE(lnc_video_control_w)
+	AM_RANGE(0x8001, 0x8001) AM_READ_PORT("DSW2") AM_WRITE(bnj_video_control_w)
 	AM_RANGE(0x8003, 0x8003) AM_WRITE(SMH_RAM) AM_BASE(&lnc_charbank)
 	AM_RANGE(0x9000, 0x9000) AM_READ_PORT("P1") AM_WRITENOP     /* IRQ ack??? */
 	AM_RANGE(0x9001, 0x9001) AM_READ_PORT("P2")
@@ -280,7 +375,7 @@ static ADDRESS_MAP_START( mmonkey_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7800, 0x7bff) AM_WRITE(SMH_RAM) AM_BASE(&btime_colorram)		/* this is just here to initialize the pointer */
 	AM_RANGE(0x7c00, 0x7fff) AM_READWRITE(btime_mirrorvideoram_r, lnc_mirrorvideoram_w)
 	AM_RANGE(0x8000, 0x8000) AM_READ_PORT("DSW1")
-	AM_RANGE(0x8001, 0x8001) AM_READ_PORT("DSW2") AM_WRITE(lnc_video_control_w)
+	AM_RANGE(0x8001, 0x8001) AM_READ_PORT("DSW2") AM_WRITE(bnj_video_control_w)
 	AM_RANGE(0x8003, 0x8003) AM_WRITE(SMH_RAM) AM_BASE(&lnc_charbank)
 	AM_RANGE(0x9000, 0x9000) AM_READ_PORT("P1") AM_WRITENOP	/* IRQ ack??? */
 	AM_RANGE(0x9001, 0x9001) AM_READ_PORT("P2")
@@ -325,16 +420,16 @@ static ADDRESS_MAP_START( disco_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
+
 static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_RAM AM_BASE(&audio_rambase)
-	AM_RANGE(0x0400, 0x0fff) AM_ROM AM_REGION("audio", 0xf400)
-	AM_RANGE(0x2000, 0x2fff) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x4000, 0x4fff) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x6000, 0x6fff) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0x8000, 0x8fff) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0xa000, 0xafff) AM_READ(soundlatch_r)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(interrupt_enable_w)
-	AM_RANGE(0xf000, 0xffff) AM_ROM
+	AM_RANGE(0x0000, 0x03ff) AM_MIRROR(0x1c00) AM_RAM AM_BASE(&audio_rambase)
+	AM_RANGE(0x2000, 0x3fff) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x4000, 0x5fff) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x6000, 0x7fff) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x8000, 0x9fff) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0xa000, 0xbfff) AM_READ(audio_command_r)
+	AM_RANGE(0xc000, 0xdfff) AM_WRITE(audio_nmi_enable_w)
+	AM_RANGE(0xe000, 0xefff) AM_MIRROR(0x1000) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( disco_audio_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -351,25 +446,31 @@ ADDRESS_MAP_END
 static INPUT_CHANGED( coin_inserted_irq_hi )
 {
 	if (newval)
-		cpunum_set_input_line(field->port->machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(field->port->machine->cpu[0], 0, HOLD_LINE);
 }
 
 static INPUT_CHANGED( coin_inserted_irq_lo )
 {
 	if (!newval)
-		cpunum_set_input_line(field->port->machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(field->port->machine->cpu[0], 0, HOLD_LINE);
 }
 
 static INPUT_CHANGED( coin_inserted_nmi_lo )
 {
-	cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
 static WRITE8_HANDLER( audio_command_w )
 {
-	soundlatch_w(machine,offset,data);
-	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+	soundlatch_w(space,offset,data);
+	cpu_set_input_line(space->machine->cpu[1], 0, ASSERT_LINE);
+}
+
+static READ8_HANDLER( audio_command_r )
+{
+	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+	return soundlatch_r(space,offset);
 }
 
 
@@ -1043,133 +1144,102 @@ static INPUT_PORTS_START( sdtennis )
       whatever the coinage Dip Switch are (they are not read in this case) */
 INPUT_PORTS_END
 
-static const gfx_layout charlayout =
+static const gfx_layout tile8layout =
 {
-	8,8,    /* 8*8 characters */
-	1024,   /* 1024 characters */
-	3,      /* 3 bits per pixel */
-	{ 2*1024*8*8, 1024*8*8, 0 },    /* the bitplanes are separated */
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8     /* every char takes 8 consecutive bytes */
+	8,8,
+	RGN_FRAC(1,3),
+	3,
+	{ RGN_FRAC(2,3), RGN_FRAC(1,3), RGN_FRAC(0,3) },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
+	8*8
 };
 
-static const gfx_layout spritelayout =
+
+
+static const gfx_layout tile16layout =
 {
-	16,16,  /* 16*16 sprites */
-	256,    /* 256 sprites */
-	3,      /* 3 bits per pixel */
-	{ 2*256*16*16, 256*16*16, 0 },  /* the bitplanes are separated */
-	{ 16*8+0, 16*8+1, 16*8+2, 16*8+3, 16*8+4, 16*8+5, 16*8+6, 16*8+7,
-	  0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8,
-	  8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
-	32*8    /* every sprite takes 32 consecutive bytes */
+	16,16,
+	RGN_FRAC(1,3),
+	3,
+	{ RGN_FRAC(2,3), RGN_FRAC(1,3), RGN_FRAC(0,3) },
+	{ STEP8(16*8,1), STEP8(0,1) },
+	{ STEP16(0,8) },
+	32*8
 };
 
-static const gfx_layout zoar_spritelayout =
-{
-	16,16,  /* 16*16 sprites */
-	128,    /* 256 sprites */
-	3,      /* 3 bits per pixel */
-	{ 2*128*16*16, 128*16*16, 0 },  /* the bitplanes are separated */
-	{ 16*8+0, 16*8+1, 16*8+2, 16*8+3, 16*8+4, 16*8+5, 16*8+6, 16*8+7,
-	  0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8,
-	  8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
-	32*8    /* every sprite takes 32 consecutive bytes */
-};
 
-static const gfx_layout btime_tilelayout =
-{
-	16,16,  /* 16*16 characters */
-	64,    /* 64 characters */
-	3,      /* 3 bits per pixel */
-	{  2*64*16*16, 64*16*16, 0 },    /* the bitplanes are separated */
-	{ 16*8+0, 16*8+1, 16*8+2, 16*8+3, 16*8+4, 16*8+5, 16*8+6, 16*8+7,
-	  0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8,
-	  8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
-	32*8    /* every tile takes 32 consecutive bytes */
-};
 
-static const gfx_layout cookrace_tilelayout =
+static const gfx_layout bnj_tile16layout =
 {
-	8,8,  /* 8*8 characters */
-	256,    /* 256 characters */
-	3,      /* 3 bits per pixel */
-	{  2*256*8*8, 256*8*8, 0 },    /* the bitplanes are separated */
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8    /* every tile takes 8 consecutive bytes */
-};
-
-static const gfx_layout bnj_tilelayout =
-{
-	16,16,  /* 16*16 characters */
-	64, /* 64 characters */
-	3,  /* 3 bits per pixel */
-	{ 2*64*16*16+4, 0, 4 },
-	{ 3*16*8+0, 3*16*8+1, 3*16*8+2, 3*16*8+3, 2*16*8+0, 2*16*8+1, 2*16*8+2, 2*16*8+3,
-	  16*8+0, 16*8+1, 16*8+2, 16*8+3, 0, 1, 2, 3 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8,
-	  8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
-	64*8    /* every tile takes 64 consecutive bytes */
+	16,16,
+	RGN_FRAC(1,2),
+	3,
+	{ RGN_FRAC(1,2)+4, RGN_FRAC(0,2)+0, RGN_FRAC(0,2)+4 },
+	{ STEP4(3*16*8,1), STEP4(2*16*8,1), STEP4(1*16*8,1), STEP4(0*16*8,1) },
+	{ STEP16(0,8) },
+	64*8
 };
 
 static GFXDECODE_START( btime )
-	GFXDECODE_ENTRY( "gfx1", 0, charlayout,          0, 1 ) /* char set #1 */
-	GFXDECODE_ENTRY( "gfx1", 0, spritelayout,        0, 1 ) /* sprites */
-	GFXDECODE_ENTRY( "gfx2", 0, btime_tilelayout,    8, 1 ) /* background tiles */
+	GFXDECODE_ENTRY( "gfx1", 0, tile8layout,     0, 1 ) /* char set #1 */
+	GFXDECODE_ENTRY( "gfx1", 0, tile16layout,    0, 1 ) /* sprites */
+	GFXDECODE_ENTRY( "gfx2", 0, tile16layout,    8, 1 ) /* background tiles */
 GFXDECODE_END
 
 static GFXDECODE_START( cookrace )
-	GFXDECODE_ENTRY( "gfx1", 0, charlayout,          0, 1 ) /* char set #1 */
-	GFXDECODE_ENTRY( "gfx1", 0, spritelayout,        0, 1 ) /* sprites */
-	GFXDECODE_ENTRY( "gfx2", 0, cookrace_tilelayout, 8, 1 ) /* background tiles */
+	GFXDECODE_ENTRY( "gfx1", 0, tile8layout,     0, 1 ) /* char set #1 */
+	GFXDECODE_ENTRY( "gfx1", 0, tile16layout,    0, 1 ) /* sprites */
+	GFXDECODE_ENTRY( "gfx2", 0, tile8layout,     8, 1 ) /* background tiles */
 GFXDECODE_END
 
 static GFXDECODE_START( lnc )
-	GFXDECODE_ENTRY( "gfx1", 0, charlayout,          0, 1 )     /* char set #1 */
-	GFXDECODE_ENTRY( "gfx1", 0, spritelayout,        0, 1 )     /* sprites */
+	GFXDECODE_ENTRY( "gfx1", 0, tile8layout,     0, 1 ) /* char set #1 */
+	GFXDECODE_ENTRY( "gfx1", 0, tile16layout,    0, 1 ) /* sprites */
 GFXDECODE_END
 
 static GFXDECODE_START( bnj )
-	GFXDECODE_ENTRY( "gfx1", 0, charlayout,          0, 1 ) /* char set #1 */
-	GFXDECODE_ENTRY( "gfx1", 0, spritelayout,        0, 1 ) /* sprites */
-	GFXDECODE_ENTRY( "gfx2", 0, bnj_tilelayout,      8, 1 ) /* background tiles */
+	GFXDECODE_ENTRY( "gfx1", 0, tile8layout,     0, 1 ) /* char set #1 */
+	GFXDECODE_ENTRY( "gfx1", 0, tile16layout,    0, 1 ) /* sprites */
+	GFXDECODE_ENTRY( "gfx2", 0, bnj_tile16layout,8, 1 ) /* background tiles */
 GFXDECODE_END
 
 static GFXDECODE_START( zoar )
-	GFXDECODE_ENTRY( "gfx1", 0, charlayout,          0, 8 ) /* char set #1 */
-	GFXDECODE_ENTRY( "gfx4", 0, zoar_spritelayout,   0, 8 ) /* sprites */
-	GFXDECODE_ENTRY( "gfx2", 0, btime_tilelayout,    0, 8 ) /* background tiles */
+	GFXDECODE_ENTRY( "gfx1", 0, tile8layout,     0, 8 ) /* char set #1 */
+	GFXDECODE_ENTRY( "gfx3", 0, tile16layout,    0, 8 ) /* sprites */
+	GFXDECODE_ENTRY( "gfx2", 0, tile16layout,    0, 8 ) /* background tiles */
 GFXDECODE_END
 
 static GFXDECODE_START( disco )
-	GFXDECODE_ENTRY( NULL, 0x2000, charlayout,          0, 4 ) /* char set #1 */
-	GFXDECODE_ENTRY( NULL, 0x2000, spritelayout,        0, 4 ) /* sprites */
+	GFXDECODE_ENTRY( "gfx1", 0, tile8layout,  0, 4 ) /* char set #1 */
+	GFXDECODE_ENTRY( "gfx1", 0, tile16layout, 0, 4 ) /* sprites */
 GFXDECODE_END
 
 
+
+static const ay8910_interface ay1_intf =
+{
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL, NULL, ay_audio_nmi_enable_w, NULL
+};
 
 static MACHINE_DRIVER_START( btime )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 1500000)
+	MDRV_CPU_ADD("main", M6502, HCLK2)	/* seletable between H2/H4 via jumper */
 	MDRV_CPU_PROGRAM_MAP(btime_map,0)
 
-	MDRV_CPU_ADD("audio", M6502, 500000)
+	MDRV_CPU_ADD("audio", M6502, HCLK1/3/2)
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
-	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16)
+	MDRV_TIMER_ADD_SCANLINE("audionmi", audio_nmi_gen, "main", 0, 8)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3072))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+	MDRV_SCREEN_RAW_PARAMS(HCLK, 384, 8, 248, 272, 8, 248)
+
+	MDRV_MACHINE_START(btime)
 
 	MDRV_GFXDECODE(btime)
 	MDRV_PALETTE_LENGTH(16)
@@ -1181,10 +1251,11 @@ static MACHINE_DRIVER_START( btime )
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("ay1", AY8910, 1500000)
+	MDRV_SOUND_ADD("ay1", AY8910, HCLK2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.23)
+	MDRV_SOUND_CONFIG(ay1_intf)
 
-	MDRV_SOUND_ADD("ay2", AY8910, 1500000)
+	MDRV_SOUND_ADD("ay2", AY8910, HCLK2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.23)
 MACHINE_DRIVER_END
 
@@ -1214,9 +1285,6 @@ static MACHINE_DRIVER_START( lnc )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(lnc_map,0)
 
-	MDRV_CPU_MODIFY("audio")
-	MDRV_CPU_VBLANK_INT_HACK(lnc_sound_interrupt,16)
-
 	MDRV_MACHINE_RESET(lnc)
 
 	/* video hardware */
@@ -1232,8 +1300,6 @@ static MACHINE_DRIVER_START( wtennis )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(lnc)
-	MDRV_CPU_MODIFY("audio")
-	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16)
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(eggs)
@@ -1253,7 +1319,7 @@ static MACHINE_DRIVER_START( bnj )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(btime)
-	MDRV_CPU_REPLACE("main", M6502, 750000)
+	MDRV_CPU_REPLACE("main", M6502, HCLK4)
 	MDRV_CPU_PROGRAM_MAP(bnj_map,0)
 
 	/* video hardware */
@@ -1284,7 +1350,7 @@ static MACHINE_DRIVER_START( disco )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(btime)
-	MDRV_CPU_REPLACE("main", M6502, 750000)
+	MDRV_CPU_REPLACE("main", M6502, HCLK4)
 	MDRV_CPU_PROGRAM_MAP(disco_map,0)
 
 	MDRV_CPU_MODIFY("audio")
@@ -1296,6 +1362,19 @@ static MACHINE_DRIVER_START( disco )
 
 	MDRV_VIDEO_UPDATE(disco)
 MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( tisland )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(btime)
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_PROGRAM_MAP(tisland_map,0)
+
+	/* video hardware */
+	MDRV_GFXDECODE(zoar)
+MACHINE_DRIVER_END
+
 
 /***************************************************************************
 
@@ -1311,7 +1390,7 @@ ROM_START( btime )
 	ROM_LOAD( "aa07.15b",     0xf000, 0x1000, CRC(086440ad) SHA1(4a32bc92f8ff5fbe112f56e62d2c03da8851a7b9) )
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "ab14.12h",     0xf000, 0x1000, CRC(f55e5211) SHA1(27940026d0c6212d1138d2fd88880df697218627) )
+	ROM_LOAD( "ab14.12h",     0xe000, 0x1000, CRC(f55e5211) SHA1(27940026d0c6212d1138d2fd88880df697218627) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "aa12.7k",      0x0000, 0x1000, CRC(c4617243) SHA1(24204d591aa2c264a852ee9ba8c4be63efd97728) )    /* charset #1 */
@@ -1326,9 +1405,10 @@ ROM_START( btime )
 	ROM_LOAD( "ab01.3b",      0x0800, 0x0800, CRC(25b49078) SHA1(4abdcbd4f3362c3e4463a1274731289f1a72d2e6) )
 	ROM_LOAD( "ab02.4b",      0x1000, 0x0800, CRC(b8ef56c3) SHA1(4a03bf011dc1fb2902f42587b1174b880cf06df1) )
 
-	ROM_REGION( 0x0800, "gfx3", 0 )	/* background tilemaps */
+	ROM_REGION( 0x0800, "bg_map", 0 )	/* background tilemaps */
 	ROM_LOAD( "ab03.6b",      0x0000, 0x0800, CRC(d26bc1f3) SHA1(737af6e264183a1f151f277a07cf250d6abb3fd8) )
 ROM_END
+
 
 ROM_START( btime2 )
 	ROM_REGION( 0x10000, "main", 0 )
@@ -1338,7 +1418,7 @@ ROM_START( btime2 )
 	ROM_LOAD( "aa07.15b",     0xf000, 0x1000, CRC(086440ad) SHA1(4a32bc92f8ff5fbe112f56e62d2c03da8851a7b9) )
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "ab14.12h",     0xf000, 0x1000, CRC(f55e5211) SHA1(27940026d0c6212d1138d2fd88880df697218627) )
+	ROM_LOAD( "ab14.12h",     0xe000, 0x1000, CRC(f55e5211) SHA1(27940026d0c6212d1138d2fd88880df697218627) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "aa12.7k",      0x0000, 0x1000, CRC(c4617243) SHA1(24204d591aa2c264a852ee9ba8c4be63efd97728) )    /* charset #1 */
@@ -1353,7 +1433,7 @@ ROM_START( btime2 )
 	ROM_LOAD( "ab01.3b",      0x0800, 0x0800, CRC(25b49078) SHA1(4abdcbd4f3362c3e4463a1274731289f1a72d2e6) )
 	ROM_LOAD( "ab02.4b",      0x1000, 0x0800, CRC(b8ef56c3) SHA1(4a03bf011dc1fb2902f42587b1174b880cf06df1) )
 
-	ROM_REGION( 0x0800, "gfx3", 0 )	/* background tilemaps */
+	ROM_REGION( 0x0800, "bg_map", 0 )	/* background tilemaps */
 	ROM_LOAD( "ab03.6b",      0x0000, 0x0800, CRC(d26bc1f3) SHA1(737af6e264183a1f151f277a07cf250d6abb3fd8) )
 ROM_END
 
@@ -1366,7 +1446,7 @@ ROM_START( btimem )
 	ROM_LOAD( "ab07.15b",     0xf000, 0x1000, CRC(a142f862) SHA1(39d7ef172d18874885f1b1542e885cc4287dc344) )
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "ab14.12h",     0xf000, 0x1000, CRC(f55e5211) SHA1(27940026d0c6212d1138d2fd88880df697218627) )
+	ROM_LOAD( "ab14.12h",     0xe000, 0x1000, CRC(f55e5211) SHA1(27940026d0c6212d1138d2fd88880df697218627) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "ab12.7k",      0x0000, 0x1000, CRC(6c79f79f) SHA1(338009199b5889621693833d88c35abb8e9e38a2) )    /* charset #1 */
@@ -1381,7 +1461,7 @@ ROM_START( btimem )
 	ROM_LOAD( "ab01.3b",      0x0800, 0x0800, CRC(25b49078) SHA1(4abdcbd4f3362c3e4463a1274731289f1a72d2e6) )
 	ROM_LOAD( "ab02.4b",      0x1000, 0x0800, CRC(b8ef56c3) SHA1(4a03bf011dc1fb2902f42587b1174b880cf06df1) )
 
-	ROM_REGION( 0x0800, "gfx3", 0 )	/* background tilemaps */
+	ROM_REGION( 0x0800, "bg_map", 0 )	/* background tilemaps */
 	ROM_LOAD( "ab03.6b",      0x0000, 0x0800, CRC(d26bc1f3) SHA1(737af6e264183a1f151f277a07cf250d6abb3fd8) )
 ROM_END
 
@@ -1393,7 +1473,7 @@ ROM_START( cookrace )
 	ROM_LOAD( "2k",           0xffe0, 0x0020, CRC(e2553b3d) SHA1(0a38929cdb3f37c6e4bacc5c3f94c049b4352858) )	/* reset/interrupt vectors */
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "6f.6",         0xf000, 0x1000, CRC(6b8e0272) SHA1(372a891b7b357aea0297ba9bcae752c3c9d8c1be) ) /* starts at 0000, not f000; 0000-01ff is RAM */
+	ROM_LOAD( "6f.6",         0xe000, 0x1000, CRC(6b8e0272) SHA1(372a891b7b357aea0297ba9bcae752c3c9d8c1be) ) /* starts at 0000, not f000; 0000-01ff is RAM */
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "m8.7",         0x0000, 0x2000, CRC(a1a0d5a6) SHA1(e9583320e9c303407abfe02988b95403e5209c52) )  /* charset #1 */
@@ -1413,6 +1493,44 @@ ROM_START( cookrace )
 	ROM_LOAD( "b7",           0x0020, 0x0020, CRC(e4268fa6) SHA1(93f74e633c3a19755e78e0e2883109cd8ccde9a8) )	/* unknown */
 ROM_END
 
+
+
+ROM_START( tisland )
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "t-04.b7",      0xa000, 0x1000, CRC(641af7f9) SHA1(50cd8f2372725356bb5a66024084363f5c5a870d) )
+	ROM_RELOAD(               0x9000, 0x1000 )
+	ROM_LOAD( "t-07.b11",     0xb000, 0x1000, CRC(6af00c8b) SHA1(e3948ca36642d3c2a1f94b017893d6e2fe178bb0) )
+	ROM_LOAD( "t-05.b9",      0xc000, 0x1000, CRC(95b1a1d3) SHA1(5636580f26e839d1140838c7efc1cabc2cf06f6f) )
+	ROM_LOAD( "t-08.b13",     0xd000, 0x1000, CRC(b7bbc008) SHA1(751491eac90f46985c83a6c06088638bcd0c0f20) )
+	ROM_LOAD( "t-06.b10",     0xe000, 0x1000, CRC(5a6783cf) SHA1(f518290efec0fedb92432b4e3448aea2438b8448) )
+	ROM_LOAD( "t-09.b14",     0xf000, 0x1000, CRC(5b26771a) SHA1(31d86acba4b6549fc08a3947d6d6d1a470fcb9da) )
+
+	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_LOAD( "t-0a.j11",     0xe000, 0x1000, CRC(807e1652) SHA1(ccfee616dc0e34d10a0e62b9864fd987291bf176) )
+
+	ROM_REGION( 0x3000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD( "t-13.k14",     0x0000, 0x1000, CRC(95bdec2f) SHA1(201b9c53ea53a25535b619231d0d14e08c206ecf) )
+	ROM_LOAD( "t-10.k10",     0x1000, 0x1000, CRC(3ba416cb) SHA1(90c968f963ba6f52f979f28f62eaccc0e2911508) )
+	ROM_LOAD( "t-0d.k5",      0x2000, 0x1000, CRC(3d3e40b2) SHA1(90576c82500ce8eddbf4dd02e59ec4ccc3b13000) ) /* 8x8 tiles */
+
+	ROM_REGION( 0x1800, "gfx2", ROMREGION_DISPOSE ) /* bg tiles */
+	// also contains the (incomplete) bg tilemap data for 1 tilemap (0x400-0x7ff of every rom is same as bg_map region, leftover?) */
+	ROM_LOAD( "t-00.b1",      0x0000, 0x0800, CRC(05eaf899) SHA1(b03a1b7d985b4d841d6bbb213a32a33e324dff89) )    /* charset #2 */
+	ROM_LOAD( "t-01.b2",      0x0800, 0x0800, CRC(f692e9e0) SHA1(e07ef20de8e9387f1096412d42d14ed5e52bbbd9) )
+	ROM_LOAD( "t-02.b4",      0x1000, 0x0800, CRC(88396cae) SHA1(47233d91e9c7b14091a0050524fa49e1bc69311d) )
+
+	ROM_REGION( 0x6000, "gfx3", ROMREGION_DISPOSE )
+	ROM_LOAD( "t-11.k11",     0x0000, 0x1000, CRC(779cc47c) SHA1(8921b81d460232252fd5a3c9bb2ad0befc1421da) ) /* 16x16 tiles*/
+	ROM_LOAD( "t-12.k13",     0x1000, 0x1000, CRC(c804a8aa) SHA1(f8ce1da88443416b6cd276741a600104d36c3725) )
+	ROM_LOAD( "t-0e.k6",      0x2000, 0x1000, CRC(63aa2b22) SHA1(765c405b1948191f5bdf1d8c1e7f20acb0894195) )
+	ROM_LOAD( "t-0f.k8",      0x3000, 0x1000, CRC(3eeca392) SHA1(78deceea3628aed0a57cb4208d260a91a304695a) )
+	ROM_LOAD( "t-0b.k2",      0x4000, 0x1000, CRC(ec416f20) SHA1(20852ef9753b103c5ec03d5eede778c0e25fc059) )
+	ROM_LOAD( "t-0c.k4",      0x5000, 0x1000, CRC(428513a7) SHA1(aab97ee938dc743a2941f71f827c22b9dde8aef0) )
+
+	ROM_REGION( 0x1000, "bg_map", 0 ) /* bg tilemap data */
+	ROM_LOAD( "t-03.b5",      0x0000, 0x1000, CRC(68df6d50) SHA1(461acc39089faac36bf8a8d279fbb6c046ae0264) )
+ROM_END
+
 /* There is a flyer with a screen shot for Lock'n'Chase at:
    http://www.gamearchive.com/flyers/video/taito/locknchase_f.jpg  */
 
@@ -1424,7 +1542,7 @@ ROM_START( lnc )
 	ROM_LOAD( "s0-3a",        0xf000, 0x1000, CRC(beb4b1fc) SHA1(166a96b5757946231f3619844366218065412935) )
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "sa-1h",        0xf000, 0x1000, CRC(379387ec) SHA1(29d37f04c64ed53a2573962dfa9c0623b89e0045) )
+	ROM_LOAD( "sa-1h",        0xe000, 0x1000, CRC(379387ec) SHA1(29d37f04c64ed53a2573962dfa9c0623b89e0045) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "s4-11l",       0x0000, 0x1000, CRC(a2162a9e) SHA1(2729cef805c8e863af540424faa1aca82d3525e2) )
@@ -1439,6 +1557,27 @@ ROM_START( lnc )
 	ROM_LOAD( "sb-4c",        0x0020, 0x0020, CRC(a29b4204) SHA1(7f15cae5c4aaa29638fb45029782dafd2b3d1484) )	/* RAS/CAS logic - not used */
 ROM_END
 
+/*This one doesn't have the (c) deco and the "pro" word at the title screen so I'm assuming it's a bootleg.*/
+ROM_START( protennb )
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "t6.a1",        0xa000, 0x1000, CRC(e89cc295) SHA1(68f1578c4be816db6028a561d286b19553c87506) )
+	ROM_LOAD( "t5.a3",        0xb000, 0x1000, CRC(9131ed87) SHA1(af2276a82e024bf00c6db02deb7f06ade89dd386) )
+	ROM_LOAD( "t4.a4",        0xc000, 0x1000, CRC(01dc0e71) SHA1(a359468fb9dab9cfadcf8ec22a4d7ce9341f4324) )
+	ROM_LOAD( "t3.a6",        0xd000, 0x1000, CRC(6253acec) SHA1(24aaac1cdea1c60f8ff05dff6c17ba3a0e732187) )
+	ROM_LOAD( "t2.a8",        0xe000, 0x1000, CRC(6faf561c) SHA1(7fd5430af4b3f255e2c01e9b092b960ebdca8d13) )
+	ROM_LOAD( "t1.a9",        0xf000, 0x1000, CRC(baa330ae) SHA1(b10c66d9a03b036d95926d0c0fe441bb7ca4015d) )
+
+	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_LOAD( "t7.b1",        0xf000, 0x1000, CRC(a6bcc2d1) SHA1(383cd170417256467dfce94939d6afa66518c6d2) )
+
+	ROM_REGION( 0x6000, "gfx1", ROMREGION_ERASE00 )
+	/* dynamically allocated */
+
+	ROM_REGION( 0x0040, "proms", 0 )
+	ROM_LOAD( "82s123n.a8",    0x0000, 0x0020, CRC(6a0006ac) SHA1(72265bc472fb7610af190130560ef507244ce41c) )	/* palette */
+	ROM_LOAD( "82s123n.j10",   0x0020, 0x0020, CRC(27b004e3) SHA1(4b9960b99130281a3b07f44816001e5eabf7a6fc) )	/* RAS/CAS logic - not used */
+ROM_END
+
 ROM_START( wtennis )
 	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "tx",           0xc000, 0x0800, CRC(fd343474) SHA1(1e1fd3f20ce1c7533767344f924029c8c62139a1) )
@@ -1447,7 +1586,7 @@ ROM_START( wtennis )
 	ROM_LOAD( "t2",           0xf000, 0x1000, CRC(d2f9dd30) SHA1(1faa088806e8627b5e561d8b99054d295045dcfb) )
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "t1",           0xf000, 0x1000, CRC(40737ea7) SHA1(27e8474028385574035d3982f9c576bb9bb3facd) ) /* starts at 0000, not f000; 0000-01ff is RAM */
+	ROM_LOAD( "t1",           0xe000, 0x1000, CRC(40737ea7) SHA1(27e8474028385574035d3982f9c576bb9bb3facd) ) /* starts at 0000, not f000; 0000-01ff is RAM */
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "t7",           0x0000, 0x1000, CRC(aa935169) SHA1(965f41a9fcf35ac7c899e79acd0a85ab588d5831) )
@@ -1470,7 +1609,7 @@ ROM_START( mmonkey )
 	ROM_LOAD( "mmonkey.a4",   0xf000, 0x1000, CRC(f7d3d1e3) SHA1(ff650a833e5e8975fe5b4a644ce6c35de5e04740) )
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "mmonkey.h1",   0xf000, 0x1000, CRC(5bcb2e81) SHA1(60fb8fd83c83b278e3aaf96f0b6dbefbc1eef0f7) )
+	ROM_LOAD( "mmonkey.h1",   0xe000, 0x1000, CRC(5bcb2e81) SHA1(60fb8fd83c83b278e3aaf96f0b6dbefbc1eef0f7) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "mmonkey.l11",  0x0000, 0x1000, CRC(b6aa8566) SHA1(bc90d4cfa9a221477d1989fea532621ce3e76439) )
@@ -1492,7 +1631,7 @@ ROM_START( brubber )
 	ROM_LOAD( "brubber.12d",  0xe000, 0x2000, CRC(b2ce51f5) SHA1(5e38ea24bcafef1faba023def96532abd6f97d38) )
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "bnj6c.bin",    0xf000, 0x1000, CRC(8c02f662) SHA1(1279d564e65fd3ccac25b1f9fbb40d910de2b544) )
+	ROM_LOAD( "bnj6c.bin",    0xe000, 0x1000, CRC(8c02f662) SHA1(1279d564e65fd3ccac25b1f9fbb40d910de2b544) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "bnj4e.bin",    0x0000, 0x2000, CRC(b864d082) SHA1(cacf71fa6c0f7121d077381a0ff6222f534295ab) )
@@ -1511,7 +1650,7 @@ ROM_START( bnj )
 	ROM_LOAD( "bnj12d.bin",   0xe000, 0x2000, CRC(b88bc99e) SHA1(08a4ddea4037f9e14d0d9f4262a1746b0a3a140c) )
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "bnj6c.bin",    0xf000, 0x1000, CRC(8c02f662) SHA1(1279d564e65fd3ccac25b1f9fbb40d910de2b544) )
+	ROM_LOAD( "bnj6c.bin",    0xe000, 0x1000, CRC(8c02f662) SHA1(1279d564e65fd3ccac25b1f9fbb40d910de2b544) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "bnj4e.bin",    0x0000, 0x2000, CRC(b864d082) SHA1(cacf71fa6c0f7121d077381a0ff6222f534295ab) )
@@ -1530,7 +1669,7 @@ ROM_START( caractn )
 	ROM_LOAD( "c6.12d",  0xe000, 0x2000, CRC(1d6957c4) SHA1(bd30f00187e56eef9adcc167dd752a3bb616454c) )
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "c5.6c",   0xf000, 0x1000, CRC(8c02f662) SHA1(1279d564e65fd3ccac25b1f9fbb40d910de2b544) )
+	ROM_LOAD( "c5.6c",   0xe000, 0x1000, CRC(8c02f662) SHA1(1279d564e65fd3ccac25b1f9fbb40d910de2b544) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "c0.4e",   0x0000, 0x2000, CRC(bf3ea732) SHA1(d98970b2dda8c3435506656909e5e3aa70d45652) )
@@ -1552,12 +1691,12 @@ ROM_END
 
 ROM_START( zoar )
 	ROM_REGION( 0x10000, "main", 0 )
-	ROM_LOAD( "zoar15",       0xd000, 0x1000, BAD_DUMP CRC(1f0cfdb7) SHA1(ce7e871f17c52b6eaf99cfb721e702e4f0e6bb25) )
+	ROM_LOAD( "zoar15",       0xd000, 0x1000, CRC(1f0cfdb7) SHA1(ce7e871f17c52b6eaf99cfb721e702e4f0e6bb25) )
 	ROM_LOAD( "zoar16",       0xe000, 0x1000, CRC(7685999c) SHA1(fabe38d71e797ae0b04b5d3aba228b4c85d96185) )
 	ROM_LOAD( "zoar17",       0xf000, 0x1000, CRC(619ea867) SHA1(0a3735384f03a1052d54ab799b5e37038d8ece2a) )
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "zoar09",       0xf000, 0x1000, CRC(18d96ff1) SHA1(671d934a451e0b042450ea86d24c3751a39b38f8) )
+	ROM_LOAD( "zoar09",       0xe000, 0x1000, CRC(18d96ff1) SHA1(671d934a451e0b042450ea86d24c3751a39b38f8) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "zoar00",       0x0000, 0x1000, CRC(fd2dcb64) SHA1(1a49a6ec6ffd354d872b1af83d55ec96e8215b2b) )
@@ -1572,13 +1711,13 @@ ROM_START( zoar )
 	ROM_LOAD( "zoar11",       0x0800, 0x0800, CRC(dcdad357) SHA1(d1569e1d38f14f5f457547e24df4f80f726c6157) )
 	ROM_LOAD( "zoar12",       0x1000, 0x0800, CRC(ed317e40) SHA1(db70889af5f233ca71acf734abfbdb74b6a393c0) )
 
-	ROM_REGION( 0x1000, "gfx3", 0 )	/* background tilemaps */
-	ROM_LOAD( "zoar13",       0x0000, 0x1000, CRC(8fefa960) SHA1(614026aa71703dd3898e470f45730e5c6934b31b) )
-
-	ROM_REGION( 0x3000, "gfx4", ROMREGION_DISPOSE )
+	ROM_REGION( 0x3000, "gfx3", ROMREGION_DISPOSE )
 	ROM_LOAD( "zoar02",       0x0000, 0x1000, CRC(d8c3c122) SHA1(841006cc84622e851df462a64696b64bb8cb62a1) )
 	ROM_LOAD( "zoar05",       0x1000, 0x1000, CRC(05dc6b09) SHA1(197c720544a090e12980513b441a2b9cf04e212f) )
 	ROM_LOAD( "zoar08",       0x2000, 0x1000, CRC(9a148551) SHA1(db92dd7552c6f76a062910f37a3fe3524fdffd38) )
+
+	ROM_REGION( 0x1000, "bg_map", 0 )	/* background tilemaps */
+	ROM_LOAD( "zoar13",       0x0000, 0x1000, CRC(8fefa960) SHA1(614026aa71703dd3898e470f45730e5c6934b31b) )
 
 	ROM_REGION( 0x0040, "proms", 0 )
 	ROM_LOAD( "z20-1l",       0x0000, 0x0020, CRC(a63f0a07) SHA1(16532d3ac0536ad4b712005fd722ee8c14d02e9b) )
@@ -1597,7 +1736,8 @@ ROM_START( disco )
 	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "disco.w6",     0xf000, 0x1000, CRC(d81e781e) SHA1(bde510bfed06a13bd56bf7ddbf220e7cf82f79b6) )
 
-	/* no gfx1 */
+	ROM_REGION( 0x6000, "gfx1", ROMREGION_ERASE00 )
+	/* dynamically allocated */
 
 	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "disco.clr",    0x0000, 0x0020, CRC(a393f913) SHA1(42dce159283427064b3f5ce3a6e2189744ecd943) )
@@ -1615,7 +1755,8 @@ ROM_START( discof )
 	ROM_REGION( 0x10000, "audio", 0 )
 	ROM_LOAD( "disco.w6",     0xf000, 0x1000, CRC(d81e781e) SHA1(bde510bfed06a13bd56bf7ddbf220e7cf82f79b6) )
 
-	/* no gfx1 */
+	ROM_REGION( 0x6000, "gfx1", ROMREGION_ERASE00 )
+	/* dynamically allocated */
 
 	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "disco.clr",    0x0000, 0x0020, CRC(a393f913) SHA1(42dce159283427064b3f5ce3a6e2189744ecd943) )
@@ -1628,7 +1769,7 @@ ROM_START( sdtennis )
 	ROM_LOAD( "ao_06.12d",  0xe000, 0x2000, CRC(413c984c) SHA1(1431df4db52d621ba39fd47dbd49da103b5c0bcf) )
 
 	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "ao_05.6c",    0xf000, 0x1000, CRC(46833e38) SHA1(420831149a566199d6a3c74ef3df0687b4ddcbe4) )
+	ROM_LOAD( "ao_05.6c",    0xe000, 0x1000, CRC(46833e38) SHA1(420831149a566199d6a3c74ef3df0687b4ddcbe4) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "ao_00.4e",    0x0000, 0x2000, CRC(f4e0cbd6) SHA1(a2ede0ce4a26957a5d3b62872a42b8979f5000aa) )
@@ -1640,25 +1781,26 @@ ROM_START( sdtennis )
 	ROM_LOAD( "ao_04.10f",   0x1000, 0x1000, CRC(921952af) SHA1(4e9248f3493a5f4651278f27c11f507571242317) )
 ROM_END
 
-static void decrypt_C10707_cpu(running_machine *machine, int cpu, const char *cputag)
+static void decrypt_C10707_cpu(running_machine *machine, const char *cputag)
 {
+	const address_space *space = cputag_get_address_space(machine, cputag, ADDRESS_SPACE_PROGRAM);
 	UINT8 *decrypt = auto_malloc(0x10000);
 	UINT8 *rom = memory_region(machine, cputag);
 	offs_t addr;
 
-	memory_set_decrypted_region(cpu, 0x0000, 0xffff, decrypt);
+	memory_set_decrypted_region(space, 0x0000, 0xffff, decrypt);
 
 	/* Swap bits 5 & 6 for opcodes */
 	for (addr = 0; addr < 0x10000; addr++)
 		decrypt[addr] = swap_bits_5_6(rom[addr]);
 
-	if (cpu == 0)
+	if (space->cpu == machine->cpu[0])
 		decrypted = decrypt;
 }
 
 static READ8_HANDLER( wtennis_reset_hack_r )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 
 	/* Otherwise the game goes into test mode and there is no way out that I
        can see.  I'm not sure how it can work, it probably somehow has to do
@@ -1671,10 +1813,11 @@ static READ8_HANDLER( wtennis_reset_hack_r )
 
 static void init_rom1(running_machine *machine)
 {
+	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
 	UINT8 *rom = memory_region(machine, "main");
 
 	decrypted = auto_malloc(0x10000);
-	memory_set_decrypted_region(0, 0x0000, 0xffff, decrypted);
+	memory_set_decrypted_region(space, 0x0000, 0xffff, decrypted);
 
 	/* For now, just copy the RAM array over to ROM. Decryption will happen */
 	/* at run time, since the CPU applies the decryption only if the previous */
@@ -1685,6 +1828,7 @@ static void init_rom1(running_machine *machine)
 static DRIVER_INIT( btime )
 {
 	init_rom1(machine);
+	audio_nmi_enable_type = AUDIO_ENABLE_DIRECT;
 }
 
 static DRIVER_INIT( zoar )
@@ -1698,44 +1842,88 @@ static DRIVER_INIT( zoar )
 	memset(&rom[0xd50a],0xea,8);
 
 	init_rom1(machine);
+	audio_nmi_enable_type = AUDIO_ENABLE_AY8910;
+}
+
+static DRIVER_INIT( tisland )
+{
+	UINT8 *rom = memory_region(machine, "main");
+
+	/* At location 0xa2b6 there's a strange RLA followed by a BPL that reads from an
+    unmapped area that causes the game to fail in several circumstances.On the Cassette
+    version the RLA (33) is in reality a BIT (24),so I'm guessing that there's something
+    wrong going on in the encryption scheme.*/
+	memset(&rom[0xa2b6],0x24,1);
+
+	init_rom1(machine);
+	audio_nmi_enable_type = AUDIO_ENABLE_DIRECT;
 }
 
 static DRIVER_INIT( lnc )
 {
-	decrypt_C10707_cpu(machine, 0, "main");
+	decrypt_C10707_cpu(machine, "main");
+	audio_nmi_enable_type = AUDIO_ENABLE_AY8910;
+}
+
+static DRIVER_INIT( bnj )
+{
+	decrypt_C10707_cpu(machine, "main");
+	audio_nmi_enable_type = AUDIO_ENABLE_DIRECT;
+}
+
+static DRIVER_INIT( disco )
+{
+	DRIVER_INIT_CALL(btime);
+	audio_nmi_enable_type = AUDIO_ENABLE_AY8910;
 }
 
 static DRIVER_INIT( cookrace )
 {
-	memcpy(&audio_rambase[0x200], memory_region(machine, "audio") + 0xf200, 0x200);
-	decrypt_C10707_cpu(machine, 0, "main");
+	decrypt_C10707_cpu(machine, "main");
+
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x0200, 0x0fff, 0, 0, SMH_BANK10);
+	memory_set_bankptr(machine, 10, memory_region(machine, "audio") + 0xe200);
+	audio_nmi_enable_type = AUDIO_ENABLE_DIRECT;
+}
+
+static DRIVER_INIT( protennb )
+{
+	DRIVER_INIT_CALL(btime);
+	audio_nmi_enable_type = AUDIO_ENABLE_AY8910;
 }
 
 static DRIVER_INIT( wtennis )
 {
-	memcpy(&audio_rambase[0x200], memory_region(machine, "audio") + 0xf200, 0x200);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc15f, 0xc15f, 0, 0, wtennis_reset_hack_r);
-	decrypt_C10707_cpu(machine, 0, "main");
+	decrypt_C10707_cpu(machine, "main");
+
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc15f, 0xc15f, 0, 0, wtennis_reset_hack_r);
+
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x0200, 0x0fff, 0, 0, SMH_BANK10);
+	memory_set_bankptr(machine, 10, memory_region(machine, "audio") + 0xe200);
+	audio_nmi_enable_type = AUDIO_ENABLE_DIRECT;
 }
 
 static DRIVER_INIT( sdtennis )
 {
-	decrypt_C10707_cpu(machine, 0, "main");
-	decrypt_C10707_cpu(machine, 1, "audio");
+	decrypt_C10707_cpu(machine, "main");
+	decrypt_C10707_cpu(machine, "audio");
+	audio_nmi_enable_type = AUDIO_ENABLE_DIRECT;
 }
 
 
-GAME( 1982, btime,    0,       btime,    btime,    btime,   ROT270, "Data East Corporation", "Burger Time (Data East set 1)", 0 )
-GAME( 1982, btime2,   btime,   btime,    btime,    btime,   ROT270, "Data East Corporation", "Burger Time (Data East set 2)", 0 )
-GAME( 1982, btimem,   btime,   btime,    btime,    btime,   ROT270, "Data East (Bally Midway license)", "Burger Time (Midway)", 0 )
-GAME( 1982, cookrace, btime,   cookrace, cookrace, cookrace,ROT270, "bootleg", "Cook Race", 0 )
-GAME( 1981, lnc,      0,       lnc,      lnc,      lnc,     ROT270, "Data East Corporation", "Lock'n'Chase", 0 )
-GAME( 1982, wtennis,  0,       wtennis,  wtennis,  wtennis, ROT270, "bootleg", "World Tennis", 0 )
-GAME( 1982, mmonkey,  0,       mmonkey,  mmonkey,  lnc,     ROT270, "Technos + Roller Tron", "Minky Monkey", 0 )
-GAME( 1982, brubber,  0,       bnj,      bnj,      lnc,     ROT270, "Data East", "Burnin' Rubber", 0 )
-GAME( 1982, bnj,      brubber, bnj,      bnj,      lnc,     ROT270, "Data East USA (Bally Midway license)", "Bump 'n' Jump", 0 )
-GAME( 1982, caractn,  brubber, bnj,      bnj,      lnc,     ROT270, "bootleg", "Car Action", 0 )
-GAME( 1982, zoar,     0,       zoar,     zoar,     zoar,    ROT270, "Data East USA", "Zoar", 0 )
-GAME( 1982, disco,    0,       disco,    disco,    btime,   ROT270, "Data East", "Disco No.1", 0 )
-GAME( 1982, discof,   disco,   disco,    disco,    btime,   ROT270, "Data East", "Disco No.1 (Rev.F)", 0 )
-GAME( 1983, sdtennis, 0,       bnj,      sdtennis, sdtennis,ROT270, "Data East Corporation", "Super Doubles Tennis", 0 )
+GAME( 1982, btime,    0,       btime,    btime,    btime,    ROT270, "Data East Corporation", "Burger Time (Data East set 1)", 0 )
+GAME( 1982, btime2,   btime,   btime,    btime,    btime,    ROT270, "Data East Corporation", "Burger Time (Data East set 2)", 0 )
+GAME( 1982, btimem,   btime,   btime,    btime,    btime,    ROT270, "Data East (Bally Midway license)", "Burger Time (Midway)", 0 )
+GAME( 1982, cookrace, btime,   cookrace, cookrace, cookrace, ROT270, "bootleg", "Cook Race", 0 )
+GAME( 1981, tisland,  0,       tisland,  btime,    tisland,  ROT270, "Data East Corporation", "Treasure Island", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS )
+GAME( 1981, lnc,      0,       lnc,      lnc,      lnc,      ROT270, "Data East Corporation", "Lock'n'Chase", 0 )
+GAME( 1982, protennb, 0,       disco,    disco,    protennb, ROT270, "bootleg", "Tennis (bootleg of Pro Tennis)", 0 )
+GAME( 1982, wtennis,  0,       wtennis,  wtennis,  wtennis,  ROT270, "bootleg", "World Tennis", 0 )
+GAME( 1982, mmonkey,  0,       mmonkey,  mmonkey,  lnc,      ROT270, "Technos + Roller Tron", "Minky Monkey", 0 )
+GAME( 1982, brubber,  0,       bnj,      bnj,      bnj,      ROT270, "Data East", "Burnin' Rubber", 0 )
+GAME( 1982, bnj,      brubber, bnj,      bnj,      bnj,      ROT270, "Data East USA (Bally Midway license)", "Bump 'n' Jump", 0 )
+GAME( 1982, caractn,  brubber, bnj,      bnj,      bnj,      ROT270, "bootleg", "Car Action", 0 )
+GAME( 1982, zoar,     0,       zoar,     zoar,     zoar,     ROT270, "Data East USA", "Zoar", 0 )
+GAME( 1982, disco,    0,       disco,    disco,    disco,    ROT270, "Data East", "Disco No.1", 0 )
+GAME( 1982, discof,   disco,   disco,    disco,    disco,    ROT270, "Data East", "Disco No.1 (Rev.F)", 0 )
+GAME( 1983, sdtennis, 0,       bnj,      sdtennis, sdtennis, ROT270, "Data East Corporation", "Super Doubles Tennis", 0 )

@@ -81,16 +81,16 @@ static int make_mixer_table(struct k051649_info *info, int voices)
 
 
 /* generate sound to the mix buffer */
-static void k051649_update(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( k051649_update )
 {
 	struct k051649_info *info = param;
 	k051649_sound_channel *voice=info->channel_list;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 	short *mix;
 	int i,v,f,j,k;
 
 	/* zap the contents of the mixer buffer */
-	memset(info->mixer_buffer, 0, length * sizeof(short));
+	memset(info->mixer_buffer, 0, samples * sizeof(short));
 
 	for (j=0; j<5; j++) {
 		v=voice[j].volume;
@@ -105,7 +105,7 @@ static void k051649_update(void *param, stream_sample_t **inputs, stream_sample_
 			mix = info->mixer_buffer;
 
 			/* add our contribution */
-			for (i = 0; i < length; i++)
+			for (i = 0; i < samples; i++)
 			{
 				int offs;
 
@@ -123,11 +123,11 @@ static void k051649_update(void *param, stream_sample_t **inputs, stream_sample_
 
 	/* mix it down */
 	mix = info->mixer_buffer;
-	for (i = 0; i < length; i++)
+	for (i = 0; i < samples; i++)
 		*buffer++ = info->mixer_lookup[*mix++];
 }
 
-static void *k051649_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( k051649 )
 {
 	struct k051649_info *info;
 
@@ -136,7 +136,7 @@ static void *k051649_start(const char *tag, int sndindex, int clock, const void 
 
 	/* get stream channels */
 	info->rate = clock/16;
-	info->stream = stream_create(0, 1, info->rate, info, k051649_update);
+	info->stream = stream_create(device, 0, 1, info->rate, info, k051649_update);
 	info->mclock = clock;
 
 	/* allocate a buffer to mix into - 1 second's worth should be more than enough */
@@ -149,9 +149,9 @@ static void *k051649_start(const char *tag, int sndindex, int clock, const void 
 	return info;
 }
 
-static void k051649_reset(void *chip)
+static SND_RESET( k051649 )
 {
-	struct k051649_info *info = chip;
+	struct k051649_info *info = device->token;
 	k051649_sound_channel *voice = info->channel_list;
 	int i;
 
@@ -223,7 +223,7 @@ WRITE8_HANDLER( k051649_keyonoff_w )
  * Generic get_info
  **************************************************************************/
 
-static void k051649_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( k051649 )
 {
 	switch (state)
 	{
@@ -232,24 +232,24 @@ static void k051649_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void k051649_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( k051649 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = k051649_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = k051649_start;			break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							info->reset = k051649_reset;			break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( k051649 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( k051649 );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( k051649 );		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "K051649";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Konami custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "K051649");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Konami custom");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

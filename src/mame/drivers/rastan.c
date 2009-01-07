@@ -157,6 +157,8 @@ Stephh's notes (based on the game M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "taitoipt.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
@@ -182,11 +184,11 @@ static WRITE8_HANDLER( rastan_bankswitch_w )
 	if (data == 0) offs = 0x0000;
 	else offs = (data-1) * 0x4000 + 0x10000;
 
-	memory_set_bankptr( 1, memory_region(machine, "audio") + offs );
+	memory_set_bankptr(space->machine,  1, memory_region(space->machine, "audio") + offs );
 }
 
 
-static void rastan_msm5205_vck(running_machine *machine, int chip)
+static void rastan_msm5205_vck(const device_config *device)
 {
 	if (adpcm_data != -1)
 	{
@@ -195,7 +197,7 @@ static void rastan_msm5205_vck(running_machine *machine, int chip)
 	}
 	else
 	{
-		adpcm_data = memory_region(machine, "adpcm")[adpcm_pos];
+		adpcm_data = memory_region(device->machine, "adpcm")[adpcm_pos];
 		adpcm_pos = (adpcm_pos + 1) & 0xffff;
 		msm5205_data_w(0, adpcm_data >> 4);
 	}
@@ -358,7 +360,7 @@ GFXDECODE_END
 /* handler called by the YM2151 emulator when the internal timers cause an IRQ */
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface ym2151_config =
@@ -390,7 +392,7 @@ static MACHINE_DRIVER_START( rastan )
 	MDRV_CPU_ADD("audio", Z80, XTAL_16MHz/4)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(rastan_s_map,0)
 
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
+	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

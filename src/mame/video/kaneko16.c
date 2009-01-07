@@ -128,13 +128,11 @@ VIDEO_START( kaneko16_sprites )
 	spritelist.first_sprite = (struct tempsprite *)auto_malloc(0x400 * sizeof(spritelist.first_sprite[0]));
 }
 
-VIDEO_START( kaneko16_1xVIEW2 )
+VIDEO_START( kaneko16_1xVIEW2_tilemaps )
 {
-	VIDEO_START_CALL(kaneko16_sprites);
-
-	kaneko16_tmap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
+	kaneko16_tmap_0 = tilemap_create(	machine, get_tile_info_0, tilemap_scan_rows,
 										 16,16, 0x20,0x20	);
-	kaneko16_tmap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
+	kaneko16_tmap_1 = tilemap_create(	machine, get_tile_info_1, tilemap_scan_rows,
 										 16,16, 0x20,0x20	);
 
 	kaneko16_tmap_2 = 0;
@@ -174,15 +172,24 @@ VIDEO_START( kaneko16_1xVIEW2 )
 		tilemap_set_scroll_rows(kaneko16_tmap_0, 0x200);	// Line Scroll
 		tilemap_set_scroll_rows(kaneko16_tmap_1, 0x200);
 	}
+
+}
+
+
+VIDEO_START( kaneko16_1xVIEW2 )
+{
+	VIDEO_START_CALL(kaneko16_sprites);
+
+	VIDEO_START_CALL(kaneko16_1xVIEW2_tilemaps);
 }
 
 VIDEO_START( kaneko16_2xVIEW2 )
 {
 	VIDEO_START_CALL(kaneko16_1xVIEW2);
 
-	kaneko16_tmap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
+	kaneko16_tmap_2 = tilemap_create(	machine, get_tile_info_2, tilemap_scan_rows,
 										 16,16, 0x20,0x20	);
-	kaneko16_tmap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
+	kaneko16_tmap_3 = tilemap_create(	machine, get_tile_info_3, tilemap_scan_rows,
 										 16,16, 0x20,0x20	);
 
 	{
@@ -292,9 +299,9 @@ VIDEO_START( galsnew )
 {
 	VIDEO_START_CALL(kaneko16_sprites);
 
-	kaneko16_tmap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
+	kaneko16_tmap_0 = tilemap_create(	machine, get_tile_info_0, tilemap_scan_rows,
 										 16,16, 0x20,0x20	);
-	kaneko16_tmap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
+	kaneko16_tmap_1 = tilemap_create(	machine, get_tile_info_1, tilemap_scan_rows,
 										 16,16, 0x20,0x20	);
 
 	kaneko16_tmap_2 = 0;
@@ -736,7 +743,7 @@ WRITE16_HANDLER( kaneko16_sprites_regs_w )
 			break;
 	}
 
-//  logerror("CPU #0 PC %06X : Warning, sprites reg %04X <- %04X\n",activecpu_get_pc(),offset*2,data);
+//  logerror("CPU #0 PC %06X : Warning, sprites reg %04X <- %04X\n",cpu_get_pc(space->cpu),offset*2,data);
 }
 
 
@@ -943,7 +950,7 @@ static void kaneko16_render_sprites(running_machine *machine, bitmap_t *bitmap, 
 	}
 	else
 	{
-		fillbitmap(sprites_bitmap,0,cliprect);
+		bitmap_fill(sprites_bitmap,cliprect,0);
 		kaneko16_draw_sprites(machine,bitmap,cliprect);
 	}
 }
@@ -971,19 +978,19 @@ static void kaneko16_render_15bpp_bitmap(running_machine *machine, bitmap_t *bit
 static void kaneko16_fill_bitmap(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	if(kaneko16_sprite_type == 1)
-		fillbitmap(bitmap,0x7f00,cliprect);
+		bitmap_fill(bitmap,cliprect,0x7f00);
 	else
 		/* Fill the bitmap with pen 0. This is wrong, but will work most of
            the times. To do it right, each pixel should be drawn with pen 0
            of the bottomost tile that covers it (which is pretty tricky to do) */
-		fillbitmap(bitmap,0,cliprect);
+		bitmap_fill(bitmap,cliprect,0);
 }
 
 static VIDEO_UPDATE( common )
 {
 	int i;
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	kaneko16_prepare_first_tilemap_chip(screen->machine, bitmap, cliprect);
 	kaneko16_prepare_second_tilemap_chip(screen->machine, bitmap, cliprect);
@@ -1010,6 +1017,24 @@ VIDEO_UPDATE(berlwall)
 	return 0;
 }
 
+
+VIDEO_UPDATE( jchan_view2 )
+{
+	int dx,dy;
+
+	VIDEO_UPDATE_CALL(common);
+
+	/* override the offsets set in common - tuned to char select in jchan2 */
+	dx = 25;dy = 11;
+
+	tilemap_set_scrolldx( kaneko16_tmap_0, -dx,		320 + dx -1        );
+	tilemap_set_scrolldx( kaneko16_tmap_1, -(dx+2),	320 + (dx + 2) - 1 );
+
+	tilemap_set_scrolldy( kaneko16_tmap_0, -dy,		240 + dy -1 );
+	tilemap_set_scrolldy( kaneko16_tmap_1, -dy,		240 + dy -1 );
+
+	return 0;
+}
 
 
 VIDEO_UPDATE( kaneko16 )

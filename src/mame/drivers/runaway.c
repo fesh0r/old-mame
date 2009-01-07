@@ -11,6 +11,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "machine/atari_vg.h"
 #include "sound/pokey.h"
 
@@ -32,20 +33,20 @@ static TIMER_CALLBACK( interrupt_callback )
 	/* assume Centipede-style interrupt timing */
 	int scanline = param;
 
-	cpunum_set_input_line(machine, 0, 0, (scanline & 32) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, (scanline & 32) ? ASSERT_LINE : CLEAR_LINE);
 
 	scanline += 32;
 
 	if (scanline >= 263)
 		scanline = 16;
 
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, interrupt_callback);
 }
 
 
 static MACHINE_RESET( runaway )
 {
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 16, 0), NULL, 16, interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 16, 0), NULL, 16, interrupt_callback);
 }
 
 
@@ -53,11 +54,11 @@ static READ8_HANDLER( runaway_input_r )
 {
 	UINT8 val = 0;
 
-	if (input_port_read(machine, "3000D7") & (1 << offset))
+	if (input_port_read(space->machine, "3000D7") & (1 << offset))
 	{
 		val |= 0x80;
 	}
-	if (input_port_read(machine, "3000D6") & (1 << offset))
+	if (input_port_read(space->machine, "3000D6") & (1 << offset))
 	{
 		val |= 0x40;
 	}
@@ -68,7 +69,7 @@ static READ8_HANDLER( runaway_input_r )
 
 static READ8_HANDLER( runaway_pot_r )
 {
-	return (input_port_read(machine, "7000") << (7 - offset)) & 0x80;
+	return (input_port_read(space->machine, "7000") << (7 - offset)) & 0x80;
 }
 
 
@@ -80,7 +81,7 @@ static WRITE8_HANDLER( runaway_led_w )
 
 static WRITE8_HANDLER( runaway_irq_ack_w )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 

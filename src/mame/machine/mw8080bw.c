@@ -66,7 +66,7 @@ static TIMER_CALLBACK( mw8080bw_interrupt_callback )
 	int vpos = video_screen_get_vpos(machine->primary_screen);
 	UINT8 counter = vpos_to_vysnc_chain_counter(vpos);
 	UINT8 vector = 0xc7 | ((counter & 0x40) >> 2) | ((~counter & 0x40) >> 3);
-	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, vector);
+	cpu_set_input_line_and_vector(machine->cpu[0], 0, HOLD_LINE, vector);
 
 	/* set up for next interrupt */
 	if (counter == MW8080BW_INT_TRIGGER_COUNT_1)
@@ -85,9 +85,9 @@ static TIMER_CALLBACK( mw8080bw_interrupt_callback )
 }
 
 
-static void mw8080bw_create_interrupt_timer(void)
+static void mw8080bw_create_interrupt_timer(running_machine *machine)
 {
-	interrupt_timer = timer_alloc(mw8080bw_interrupt_callback, NULL);
+	interrupt_timer = timer_alloc(machine, mw8080bw_interrupt_callback, NULL);
 }
 
 
@@ -107,8 +107,8 @@ static void mw8080bw_start_interrupt_timer(running_machine *machine)
 
 MACHINE_START( mw8080bw )
 {
-	mw8080bw_create_interrupt_timer();
-	mb14241_init(0);
+	mw8080bw_create_interrupt_timer(machine);
+	mb14241_init(machine,0);
 }
 
 

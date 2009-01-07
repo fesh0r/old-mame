@@ -4,6 +4,8 @@
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "audio/taitosnd.h"
 #include "sound/2151intf.h"
@@ -80,17 +82,17 @@ static READ16_HANDLER( io1_r ) //240006
 static WRITE16_HANDLER(ml_subreset_w)
 {
 	//wrong
-	if(activecpu_get_pc()==0x822)
-		cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, PULSE_LINE);
+	if(cpu_get_pc(space->cpu)==0x822)
+		cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	data=0;
-	memory_set_bankptr( 1, memory_region(machine, "z80") + ((data) & 0x03) * 0x4000 + 0x10000 );
+	memory_set_bankptr(space->machine,  1, memory_region(space->machine, "z80") + ((data) & 0x03) * 0x4000 + 0x10000 );
 }
 
-static void ml_msm5205_vck(running_machine *machine, int chip)
+static void ml_msm5205_vck(const device_config *device)
 {
 	if (adpcm_data != -1)
 	{
@@ -99,7 +101,7 @@ static void ml_msm5205_vck(running_machine *machine, int chip)
 	}
 	else
 	{
-		adpcm_data = memory_region(machine, "adpcm")[adpcm_pos];
+		adpcm_data = memory_region(device->machine, "adpcm")[adpcm_pos];
 		adpcm_pos = (adpcm_pos + 1) & 0xffff;
 		msm5205_data_w(0, adpcm_data >> 4);
 	}
@@ -209,7 +211,7 @@ static VIDEO_START(mlanding)
 
 static VIDEO_UPDATE(mlanding)
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	updateChars(screen->machine);
 
@@ -332,7 +334,7 @@ INPUT_PORTS_END
 
 static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static GFXDECODE_START( mlanding )

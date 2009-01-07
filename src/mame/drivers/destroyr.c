@@ -5,6 +5,7 @@ Atari Destroyer Driver
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
 #include "deprecat.h"
 
 extern VIDEO_UPDATE( destroyr );
@@ -38,7 +39,7 @@ static TIMER_CALLBACK( destroyr_dial_callback	)
 
 	if (destroyr_potmask[dial])
 	{
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -50,14 +51,14 @@ static TIMER_CALLBACK( destroyr_frame_callback )
 
 	/* PCB supports two dials, but cab has only got one */
 
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, input_port_read(machine, "PADDLE"), 0), NULL, 0, destroyr_dial_callback);
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, destroyr_frame_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, input_port_read(machine, "PADDLE"), 0), NULL, 0, destroyr_dial_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, destroyr_frame_callback);
 }
 
 
 static MACHINE_RESET( destroyr )
 {
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, destroyr_frame_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, destroyr_frame_callback);
 }
 
 
@@ -81,13 +82,13 @@ static WRITE8_HANDLER( destroyr_cursor_load_w )
 {
 	destroyr_cursor = data;
 
-	watchdog_reset_w(machine, offset, data);
+	watchdog_reset_w(space, offset, data);
 }
 
 
 static WRITE8_HANDLER( destroyr_interrupt_ack_w )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 
@@ -122,7 +123,7 @@ static WRITE8_HANDLER( destroyr_output_w )
 		/* bit 0 => low explosion */
 		break;
 	case 8:
-		destroyr_misc_w(machine, offset, data);
+		destroyr_misc_w(space, offset, data);
 		break;
 	default:
 		logerror("unmapped output port %d\n", offset);
@@ -137,7 +138,7 @@ static READ8_HANDLER( destroyr_input_r )
 
 	if (offset == 0)
 	{
-		UINT8 ret = input_port_read(machine, "IN0");
+		UINT8 ret = input_port_read(space->machine, "IN0");
 
 		if (destroyr_potsense[0] && destroyr_potmask[0])
 			ret |= 4;
@@ -149,7 +150,7 @@ static READ8_HANDLER( destroyr_input_r )
 
 	if (offset == 1)
 	{
-		return input_port_read(machine, "IN1");
+		return input_port_read(space->machine, "IN1");
 	}
 
 	logerror("unmapped input port %d\n", offset);
@@ -160,7 +161,7 @@ static READ8_HANDLER( destroyr_input_r )
 
 static READ8_HANDLER( destroyr_scanline_r )
 {
-	return video_screen_get_vpos(machine->primary_screen);
+	return video_screen_get_vpos(space->machine->primary_screen);
 }
 
 

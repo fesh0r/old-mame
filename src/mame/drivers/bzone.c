@@ -201,6 +201,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "video/vector.h"
 #include "video/avgdvg.h"
 #include "machine/mathbox.h"
@@ -212,7 +213,7 @@
 
 #include "bzone.lh"
 
-#define MASTER_CLOCK (12096000)
+#define MASTER_CLOCK (XTAL_12_096MHz)
 #define CLOCK_3KHZ  (MASTER_CLOCK / 4096)
 
 
@@ -230,18 +231,18 @@ UINT8 rb_input_select;
 
 static MACHINE_START( bzone )
 {
-	state_save_register_global(analog_data);
-	mb_register_states();
-	atari_vg_register_states();
+	state_save_register_global(machine, analog_data);
+	mb_register_states(machine);
+	atari_vg_register_states(machine);
 }
 
 
 static MACHINE_START( redbaron )
 {
-	state_save_register_global(analog_data);
-	state_save_register_global(rb_input_select);
-	mb_register_states();
-	atari_vg_register_states();
+	state_save_register_global(machine, analog_data);
+	state_save_register_global(machine, rb_input_select);
+	mb_register_states(machine);
+	atari_vg_register_states(machine);
 }
 
 
@@ -254,8 +255,8 @@ static MACHINE_START( redbaron )
 
 static INTERRUPT_GEN( bzone_interrupt )
 {
-	if (input_port_read(machine, "IN0") & 0x10)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+	if (input_port_read(device->machine, "IN0") & 0x10)
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -268,7 +269,7 @@ static INTERRUPT_GEN( bzone_interrupt )
 
 static CUSTOM_INPUT( clock_r )
 {
-	return (cpunum_gettotalcycles(0) & 0x100) ? 1 : 0;
+	return (cpu_get_total_cycles(field->port->machine->cpu[0]) & 0x100) ? 1 : 0;
 }
 
 
@@ -287,7 +288,7 @@ static WRITE8_HANDLER( bzone_coin_counter_w )
 
 static READ8_HANDLER( redbaron_joy_r )
 {
-	return input_port_read(machine, rb_input_select ? "FAKE1" : "FAKE2");
+	return input_port_read(space->machine, rb_input_select ? "FAKE1" : "FAKE2");
 }
 
 
@@ -796,19 +797,19 @@ static WRITE8_HANDLER( analog_select_w )
 	static const char *const analog_port[] = { "AN0", "AN1", "AN2" };
 
 	if (offset <= 2)
-		analog_data = input_port_read(machine, analog_port[offset]);
+		analog_data = input_port_read(space->machine, analog_port[offset]);
 }
 
 
 static DRIVER_INIT( bradley )
 {
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x400, 0x7ff, 0, 0, SMH_BANK1, SMH_BANK1);
-	memory_set_bankptr(1, auto_malloc(0x400));
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x400, 0x7ff, 0, 0, SMH_BANK1, SMH_BANK1);
+	memory_set_bankptr(machine, 1, auto_malloc(0x400));
 
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1808, 0x1808, 0, 0, input_port_read_handler8(machine->portconfig, "1808"));
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1809, 0x1809, 0, 0, input_port_read_handler8(machine->portconfig, "1809"));
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x180a, 0x180a, 0, 0, analog_data_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1848, 0x1850, 0, 0, analog_select_w);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1808, 0x1808, 0, 0, input_port_read_handler8(machine->portconfig, "1808"));
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1809, 0x1809, 0, 0, input_port_read_handler8(machine->portconfig, "1809"));
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x180a, 0x180a, 0, 0, analog_data_r);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1848, 0x1850, 0, 0, analog_select_w);
 }
 
 

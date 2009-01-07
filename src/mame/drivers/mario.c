@@ -90,6 +90,7 @@ write:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/z80dma.h"
 
 #include "mario.h"
@@ -105,12 +106,12 @@ static WRITE8_DEVICE_HANDLER(mario_dma_write_byte);
 
 static const z80dma_interface mario_dma =
 {
-	0,
-	Z80_CLOCK,
+	"main",
 
 	mario_dma_read_byte,
 	mario_dma_write_byte,
-	0, 0, 0, 0
+	0, 0, 0, 0,
+	NULL
 };
 
 /*************************************
@@ -127,20 +128,14 @@ static const z80dma_interface mario_dma =
 
 static READ8_DEVICE_HANDLER(mario_dma_read_byte)
 {
-	UINT8 result;
-
-	cpuintrf_push_context(0);
-	result = program_read_byte(offset);
-	cpuintrf_pop_context();
-
-	return result;
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	return memory_read_byte(space, offset);
 }
 
 static WRITE8_DEVICE_HANDLER(mario_dma_write_byte)
 {
-	cpuintrf_push_context(0);
-	program_write_byte(offset, data);
-	cpuintrf_pop_context();
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	memory_write_byte(space, offset, data);
 }
 
 /*************************************
@@ -351,8 +346,7 @@ static MACHINE_DRIVER_START( mario_base )
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	/* devices */
-	MDRV_DEVICE_ADD("z80dma", Z80DMA)
-	MDRV_DEVICE_CONFIG(mario_dma)
+	MDRV_Z80DMA_ADD("z80dma", Z80_CLOCK, mario_dma)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

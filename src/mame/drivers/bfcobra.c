@@ -73,7 +73,6 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/6850acia.h"
 #include "machine/meters.h"
 #include "cpu/z80/z80.h"
@@ -132,7 +131,7 @@ static void update_irqs(running_machine *machine)
 	if (newstate != irq_state)
 	{
 		irq_state = newstate;
-		cpunum_set_input_line(machine, 0, 0, irq_state ? ASSERT_LINE : CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, irq_state ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -410,9 +409,9 @@ INLINE UINT8* blitter_get_addr(running_machine *machine, UINT32 addr)
     The Flare One blitter is a simpler design with slightly different parameters
     and will require hardware tests to figure everything out correctly.
 */
-static void RunBlit(running_machine *machine)
+static void RunBlit(const address_space *space)
 {
-#define BLITPRG_READ(x)		blitter.x = *(blitter_get_addr(machine, blitter.program.addr++))
+#define BLITPRG_READ(x)		blitter.x = *(blitter_get_addr(space->machine, blitter.program.addr++))
 
 	int cycles_used = 0;
 
@@ -440,7 +439,7 @@ static void RunBlit(running_machine *machine)
 		/* This debug is now wrong ! */
 		if (DEBUG_BLITTER)
 		{
-			mame_printf_debug("\nBlitter (%x): Running command from 0x%.5x\n\n", activecpu_get_previouspc(), blitter.program.addr - 12);
+			mame_printf_debug("\n%s:Blitter: Running command from 0x%.5x\n\n", cpuexec_describe_context(device->machine), blitter.program.addr - 12);
 			mame_printf_debug("Command Reg         %.2x",	blitter.command);
 			mame_printf_debug("		%s %s %s %s %s %s %s\n",
 				blitter.command & CMD_RUN ? "RUN" : "     ",
@@ -522,7 +521,7 @@ static void RunBlit(running_machine *machine)
 						blitter.source.addr0 -=blitter.step;
 					}
 
-					*blitter_get_addr(machine, blitter.dest.addr) = blitter.pattern;
+					*blitter_get_addr(space->machine, blitter.dest.addr) = blitter.pattern;
 					cycles_used++;
 
 				} while (--innercnt);
@@ -536,7 +535,7 @@ static void RunBlit(running_machine *machine)
 
 				if (LOOPTYPE == 3 && innercnt == blitter.innercnt)
 				{
-					srcdata = *(blitter_get_addr(machine, blitter.source.addr & 0xfffff));
+					srcdata = *(blitter_get_addr(space->machine, blitter.source.addr & 0xfffff));
 					blitter.source.loword++;
 					cycles_used++;
 				}
@@ -546,7 +545,7 @@ static void RunBlit(running_machine *machine)
 				{
 					if (LOOPTYPE == 0 || LOOPTYPE == 1)
 					{
-						srcdata = *(blitter_get_addr(machine, blitter.source.addr & 0xfffff));
+						srcdata = *(blitter_get_addr(space->machine, blitter.source.addr & 0xfffff));
 						cycles_used++;
 
 						if (blitter.modectl & MODE_SSIGN)
@@ -561,7 +560,7 @@ static void RunBlit(running_machine *machine)
 				/* Read destination pixel? */
 				if (LOOPTYPE == 0)
 				{
-					dstdata = *blitter_get_addr(machine, blitter.dest.addr & 0xfffff);
+					dstdata = *blitter_get_addr(space->machine, blitter.dest.addr & 0xfffff);
 					cycles_used++;
 				}
 
@@ -630,10 +629,10 @@ static void RunBlit(running_machine *machine)
                             The existing destination pixel is used as a lookup
                             into the table and the colours is replaced.
                         */
-						UINT8 dest = *blitter_get_addr(machine, blitter.dest.addr);
-						UINT8 newcol = *(blitter_get_addr(machine, (blitter.source.addr + dest) & 0xfffff));
+						UINT8 dest = *blitter_get_addr(space->machine, blitter.dest.addr);
+						UINT8 newcol = *(blitter_get_addr(space->machine, (blitter.source.addr + dest) & 0xfffff));
 
-						*blitter_get_addr(machine, blitter.dest.addr) = newcol;
+						*blitter_get_addr(space->machine, blitter.dest.addr) = newcol;
 						cycles_used += 3;
 					}
 					else
@@ -652,7 +651,7 @@ static void RunBlit(running_machine *machine)
 						if (blitter.compfunc & CMPFUNC_LOG0)
 							final_result |= ~result & ~dstdata;
 
-						*blitter_get_addr(machine, blitter.dest.addr) = final_result;
+						*blitter_get_addr(space->machine, blitter.dest.addr) = final_result;
 						cycles_used++;
 					}
 				}
@@ -692,7 +691,7 @@ static void RunBlit(running_machine *machine)
 	} while (blitter.command  & CMD_RUN);
 
 	/* Burn Z80 cycles while blitter is in operation */
-	cpu_spinuntil_time( ATTOTIME_IN_NSEC( (1000000000 / Z80_XTAL)*cycles_used * 2 ) );
+	cpu_spinuntil_time(space->cpu,  ATTOTIME_IN_NSEC( (1000000000 / Z80_XTAL)*cycles_used * 2 ) );
 }
 
 
@@ -709,7 +708,7 @@ static READ8_HANDLER( ramdac_r )
 			if (*count == 0)
 			{
 				rgb_t color;
-				color = palette_get_color(machine, ramdac.addr_r);
+				color = palette_get_color(space->machine, ramdac.addr_r);
 
 				ramdac.color_r[0] = RGB_RED(color);
 				ramdac.color_r[1] = RGB_GREEN(color);
@@ -730,7 +729,7 @@ static READ8_HANDLER( ramdac_r )
 		}
 		default:
 		{
-			mame_printf_debug("Unhandled RAMDAC read (PC:%.4x)\n", activecpu_get_previouspc());
+			mame_printf_debug("Unhandled RAMDAC read (PC:%.4x)\n", cpu_get_previouspc(space->cpu));
 		}
 	}
 
@@ -753,7 +752,7 @@ static WRITE8_HANDLER( ramdac_w )
 			ramdac.color_w[ramdac.count_w] = pal6bit(data);
 			if (++ramdac.count_w == 3)
 			{
-				palette_set_color_rgb(machine, ramdac.addr_w, ramdac.color_w[0], ramdac.color_w[1], ramdac.color_w[2]);
+				palette_set_color_rgb(space->machine, ramdac.addr_w, ramdac.color_w[0], ramdac.color_w[1], ramdac.color_w[2]);
 				ramdac.count_w = 0;
 				ramdac.addr_w++;
 			}
@@ -846,7 +845,7 @@ static READ8_HANDLER( chipset_r )
 			val = 0x1;
 
 			/* TODO */
-			update_irqs(machine);
+			update_irqs(space->machine);
 			break;
 		}
 		case 0x1C:
@@ -863,12 +862,12 @@ static READ8_HANDLER( chipset_r )
 		}
 		case 0x22:
 		{
-			val = 0x40 | input_port_read(machine, "JOYSTICK");
+			val = 0x40 | input_port_read(space->machine, "JOYSTICK");
 			break;
 		}
 		default:
 		{
-			mame_printf_debug("Flare One unknown read: 0x%.2x (PC:0x%.4x)\n", offset, activecpu_get_previouspc());
+			mame_printf_debug("Flare One unknown read: 0x%.2x (PC:0x%.4x)\n", offset, cpu_get_previouspc(space->cpu));
 		}
 	}
 
@@ -884,11 +883,11 @@ static WRITE8_HANDLER( chipset_w )
 		case 0x03:
 		{
 			if (data > 0x3f)
-				popmessage("%x: Unusual bank access (%x)\n", activecpu_get_previouspc(), data);
+				popmessage("%x: Unusual bank access (%x)\n", cpu_get_previouspc(space->cpu), data);
 
 			data &= 0x3f;
 			bank[offset] = data;
-			z80_bank(machine, offset, data);
+			z80_bank(space->machine, offset, data);
 			break;
 		}
 
@@ -945,7 +944,7 @@ static WRITE8_HANDLER( chipset_w )
 			blitter.command = data;
 
 			if (data & CMD_RUN)
-				RunBlit(machine);
+				RunBlit(space);
 			else
 				mame_printf_debug("Blitter stopped by IO.\n");
 
@@ -958,7 +957,7 @@ static WRITE8_HANDLER( chipset_w )
 		}
 		default:
 		{
-			mame_printf_debug("Flare One unknown write: 0x%.2x with 0x%.2x (PC:0x%.4x)\n", offset, data, activecpu_get_previouspc());
+			mame_printf_debug("Flare One unknown write: 0x%.2x with 0x%.2x (PC:0x%.4x)\n", offset, data, cpu_get_previouspc(space->cpu));
 		}
 	}
 }
@@ -976,24 +975,24 @@ INLINE void z80_bank(running_machine *machine, int num, int data)
 
 		UINT32 offset = ((bank[0] >> 1) * 0x20000) + offs_table[bank[0] & 0x1][data];
 
-		memory_set_bankptr(num, memory_region(machine, "user1") + offset);
+		memory_set_bankptr(machine, num, memory_region(machine, "user1") + offset);
 	}
 	else if (data < 0x10)
 	{
-		memory_set_bankptr(num, &video_ram[(data - 0x08) * 0x4000]);
+		memory_set_bankptr(machine, num, &video_ram[(data - 0x08) * 0x4000]);
 	}
 	else
 	{
-		memory_set_bankptr(num, &work_ram[(data - 0x10) * 0x4000]);
+		memory_set_bankptr(machine, num, &work_ram[(data - 0x10) * 0x4000]);
 	}
 }
 
 static WRITE8_HANDLER( rombank_w )
 {
 	bank[0] = data;
-	z80_bank(machine, 1, bank[1]);
-	z80_bank(machine, 2, bank[2]);
-	z80_bank(machine, 3, bank[3]);
+	z80_bank(space->machine, 1, bank[1]);
+	z80_bank(space->machine, 2, bank[2]);
+	z80_bank(space->machine, 3, bank[3]);
 }
 
 
@@ -1114,7 +1113,7 @@ static READ8_HANDLER( fddata_r )
 				}
 
 				fdc.offset = (BPT * fdc.track*2) + (fdc.side ? BPT : 0) + (BPS * (fdc.sector-1)) + fdc.byte_pos++;
-				val = *(memory_region(machine, "user2") + fdc.offset);
+				val = *(memory_region(space->machine, "user2") + fdc.offset);
 
 				/* Move on to next sector? */
 				if (fdc.byte_pos == 1024)
@@ -1316,10 +1315,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( z80_io_map, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x23) AM_READWRITE(chipset_r, chipset_w)
-	AM_RANGE(0x24, 0x24) AM_WRITE(acia6850_0_ctrl_w)
-	AM_RANGE(0x25, 0x25) AM_WRITE(acia6850_0_data_w)
-	AM_RANGE(0x26, 0x26) AM_READ(acia6850_0_stat_r)
-	AM_RANGE(0x27, 0x27) AM_READ(acia6850_0_data_r)
+	AM_RANGE(0x24, 0x24) AM_DEVWRITE(ACIA6850, "acia6850_0", acia6850_ctrl_w)
+	AM_RANGE(0x25, 0x25) AM_DEVWRITE(ACIA6850, "acia6850_0", acia6850_data_w)
+	AM_RANGE(0x26, 0x26) AM_DEVREAD(ACIA6850, "acia6850_0", acia6850_stat_r)
+	AM_RANGE(0x27, 0x27) AM_DEVREAD(ACIA6850, "acia6850_0", acia6850_data_r)
 	AM_RANGE(0x30, 0x30) AM_READ(fdctrl_r)
 	AM_RANGE(0x31, 0x31) AM_READWRITE(fddata_r, fdctrl_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(rombank_w)
@@ -1365,7 +1364,7 @@ static WRITE8_HANDLER( meter_w )
 {
 	int i;
 	int  changed = meter_latch ^ data;
-	long cycles  = ATTOTIME_TO_CYCLES(0, timer_get_time() );
+	UINT64 cycles = cpu_get_total_cycles(space->cpu);
 
 	meter_latch = data;
 
@@ -1378,7 +1377,7 @@ static WRITE8_HANDLER( meter_w )
 		if (changed & (1 << i))
 		{
 			Mechmtr_update(i, cycles, data & (1 << i) );
-			cpunum_set_input_line(machine, 1, M6809_FIRQ_LINE, PULSE_LINE );
+			generic_pulse_irq_line(space->cpu, M6809_FIRQ_LINE);
 		}
  	}
 }
@@ -1408,7 +1407,7 @@ static WRITE8_HANDLER( latch_w )
 
 				/* Clock is low */
 				if (!(data & 0x08))
-					mux_input = input_port_read(machine, port[input_strobe]);
+					mux_input = input_port_read(space->machine, port[input_strobe]);
 			}
 			break;
 		}
@@ -1447,10 +1446,10 @@ static ADDRESS_MAP_START( m6809_prog_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2E00, 0x2E00) AM_READ(int_latch_r)
 	AM_RANGE(0x3001, 0x3001) AM_WRITE(ay8910_write_port_0_w)
 	AM_RANGE(0x3201, 0x3201) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x3404, 0x3404) AM_READWRITE(acia6850_1_stat_r, acia6850_1_ctrl_w)
-	AM_RANGE(0x3405, 0x3405) AM_READWRITE(acia6850_1_data_r, acia6850_1_data_w)
-	AM_RANGE(0x3406, 0x3406) AM_READWRITE(acia6850_2_stat_r, acia6850_2_ctrl_w)
-	AM_RANGE(0x3407, 0x3407) AM_READWRITE(acia6850_2_data_r, acia6850_2_data_w)
+	AM_RANGE(0x3404, 0x3404) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_stat_r, acia6850_ctrl_w)
+	AM_RANGE(0x3405, 0x3405) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_data_r, acia6850_data_w)
+	AM_RANGE(0x3406, 0x3406) AM_DEVREADWRITE(ACIA6850, "acia6850_2", acia6850_stat_r, acia6850_ctrl_w)
+	AM_RANGE(0x3407, 0x3407) AM_DEVREADWRITE(ACIA6850, "acia6850_2", acia6850_data_r, acia6850_data_w)
 //  AM_RANGE(0x3408, 0x3408) AM_NOP
 //  AM_RANGE(0x340A, 0x340A) AM_NOP
 //  AM_RANGE(0x3600, 0x3600) AM_NOP
@@ -1577,21 +1576,21 @@ static void init_ram(void)
 	memset(video_ram, 0, 0x20000);
 }
 
-static void z80_acia_irq(int state)
+static void z80_acia_irq(const device_config *device, int state)
 {
 	acia_irq = state ? CLEAR_LINE : ASSERT_LINE;
-	update_irqs(Machine);
+	update_irqs(device->machine);
 }
 
-static void m6809_data_irq(int state)
+static void m6809_data_irq(const device_config *device, int state)
 {
-	cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, state ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(device->machine->cpu[1], M6809_IRQ_LINE, state ? CLEAR_LINE : ASSERT_LINE);
 }
 
 /*
     What are the correct ACIA clocks ?
 */
-static const struct acia6850_interface z80_acia_if =
+static const acia6850_interface z80_acia_if =
 {
 	500000,
 	500000,
@@ -1603,7 +1602,7 @@ static const struct acia6850_interface z80_acia_if =
 	z80_acia_irq
 };
 
-static const struct acia6850_interface m6809_acia_if =
+static const acia6850_interface m6809_acia_if =
 {
 	500000,
 	500000,
@@ -1615,7 +1614,7 @@ static const struct acia6850_interface m6809_acia_if =
 	NULL
 };
 
-static const struct acia6850_interface data_acia_if =
+static const acia6850_interface data_acia_if =
 {
 	500000,
 	500000,
@@ -1672,43 +1671,38 @@ static DRIVER_INIT( bfcobra )
 	bank[3] = 0;
 
 	/* Fixed 16kB ROM region */
-	memory_set_bankptr(4, memory_region(machine, "user1"));
-
-	/* Configure the ACIAs */
-	acia6850_config(0, &z80_acia_if);
-	acia6850_config(1, &m6809_acia_if);
-	acia6850_config(2, &data_acia_if);
+	memory_set_bankptr(machine, 4, memory_region(machine, "user1"));
 
 	/* TODO: Properly sort out the data ACIA */
 	data_r = 1;
 
 	/* Finish this */
-	state_save_register_global(z80_m6809_line);
-	state_save_register_global(m6809_z80_line);
-	state_save_register_global(data_r);
-	state_save_register_global(data_t);
-	state_save_register_global(h_scroll);
-	state_save_register_global(v_scroll);
-	state_save_register_global(flip_8);
-	state_save_register_global(flip_22);
-	state_save_register_global(z80_int);
-	state_save_register_global(z80_inten);
-	state_save_register_global_array(bank);
-	state_save_register_global_pointer(work_ram, 0xc0000);
-	state_save_register_global_pointer(video_ram, 0x20000);
+	state_save_register_global(machine, z80_m6809_line);
+	state_save_register_global(machine, m6809_z80_line);
+	state_save_register_global(machine, data_r);
+	state_save_register_global(machine, data_t);
+	state_save_register_global(machine, h_scroll);
+	state_save_register_global(machine, v_scroll);
+	state_save_register_global(machine, flip_8);
+	state_save_register_global(machine, flip_22);
+	state_save_register_global(machine, z80_int);
+	state_save_register_global(machine, z80_inten);
+	state_save_register_global_array(machine, bank);
+	state_save_register_global_pointer(machine, work_ram, 0xc0000);
+	state_save_register_global_pointer(machine, video_ram, 0x20000);
 }
 
 /* TODO */
 static INTERRUPT_GEN( timer_irq )
 {
-	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, PULSE_LINE);
+	generic_pulse_irq_line(device, M6809_IRQ_LINE);
 }
 
 /* TODO */
 static INTERRUPT_GEN( vblank_gen )
 {
 	vblank_irq = 1;
-	update_irqs(machine);
+	update_irqs(device->machine);
 }
 
 static MACHINE_DRIVER_START( bfcobra )
@@ -1744,6 +1738,11 @@ static MACHINE_DRIVER_START( bfcobra )
 
 	MDRV_VIDEO_START(bfcobra)
 	MDRV_VIDEO_UPDATE(bfcobra)
+
+	/* ACIAs */
+	MDRV_ACIA6850_ADD("acia6850_0", z80_acia_if)
+	MDRV_ACIA6850_ADD("acia6850_1", m6809_acia_if)
+	MDRV_ACIA6850_ADD("acia6850_2", data_acia_if)
 MACHINE_DRIVER_END
 
 /***************************************************************************

@@ -5,6 +5,7 @@ Atari Sky Raider driver
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 
 extern UINT8* skyraid_alpha_num_ram;
 extern UINT8* skyraid_pos_ram;
@@ -52,11 +53,11 @@ static READ8_HANDLER( skyraid_alpha_num_r)
 
 static READ8_HANDLER( skyraid_port_0_r )
 {
-	UINT8 val = input_port_read(machine, "LANGUAGE");
+	UINT8 val = input_port_read(space->machine, "LANGUAGE");
 
-	if (input_port_read(machine, "STICKY") > analog_range)
+	if (input_port_read(space->machine, "STICKY") > analog_range)
 		val |= 0x40;
-	if (input_port_read(machine, "STICKX") > analog_range)
+	if (input_port_read(space->machine, "STICKX") > analog_range)
 		val |= 0x80;
 
 	return val;

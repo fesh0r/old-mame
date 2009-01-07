@@ -119,7 +119,7 @@ VIDEO_START( tank8 )
 	helper2 = video_screen_auto_bitmap_alloc(machine->primary_screen);
 	helper3 = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
-	tank8_tilemap = tilemap_create(tank8_get_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
+	tank8_tilemap = tilemap_create(machine, tank8_get_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
 
 	/* VBLANK starts on scanline #256 and ends on scanline #24 */
 
@@ -189,7 +189,7 @@ static void draw_bullets(bitmap_t *bitmap, const rectangle *cliprect)
 		if (rect.max_y > cliprect->max_y)
 			rect.max_y = cliprect->max_y;
 
-		fillbitmap(bitmap, (i << 1) | 0x01, &rect);
+		bitmap_fill(bitmap, &rect, (i << 1) | 0x01);
 	}
 }
 
@@ -219,8 +219,8 @@ VIDEO_EOF( tank8 )
 
 	tilemap_draw(helper1, visarea, tank8_tilemap, 0, 0);
 
-	fillbitmap(helper2, 8, visarea);
-	fillbitmap(helper3, 8, visarea);
+	bitmap_fill(helper2, visarea, 8);
+	bitmap_fill(helper3, visarea, 8);
 
 	draw_sprites(machine, helper2, visarea);
 	draw_bullets(helper3, visarea);
@@ -292,7 +292,7 @@ VIDEO_EOF( tank8 )
 					index |= 0x80; /* collision on right side */
 			}
 
-			timer_set(video_screen_get_time_until_pos(machine->primary_screen, y, x), NULL, index, tank8_collision_callback);
+			timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, y, x), NULL, index, tank8_collision_callback);
 
 			state = 1;
 		}

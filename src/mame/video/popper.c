@@ -89,7 +89,7 @@ WRITE8_HANDLER( popper_flipscreen_w )
 	popper_flipscreen = data;
 	tilemap_set_flip( ALL_TILEMAPS,popper_flipscreen?(TILEMAP_FLIPX|TILEMAP_FLIPY):0 );
 
-	tilemap_clip = *video_screen_get_visible_area(machine->primary_screen);
+	tilemap_clip = *video_screen_get_visible_area(space->machine->primary_screen);
 
 	if (popper_flipscreen)
 		tilemap_clip.min_x=tilemap_clip.max_x-15;
@@ -173,10 +173,10 @@ static TILE_GET_INFO( get_popper_ol_p0_tile_info )
 
 VIDEO_START( popper )
 {
-	popper_p123_tilemap    = tilemap_create( get_popper_p123_tile_info,   tilemap_scan_cols,8,8,33,32 );
-	popper_p0_tilemap      = tilemap_create( get_popper_p0_tile_info,     tilemap_scan_cols,8,8,33,32 );
-	popper_ol_p123_tilemap = tilemap_create( get_popper_ol_p123_tile_info,tilemap_scan_cols,8,8,2 ,32 );
-	popper_ol_p0_tilemap   = tilemap_create( get_popper_ol_p0_tile_info,  tilemap_scan_cols,8,8,2 ,32 );
+	popper_p123_tilemap    = tilemap_create( machine, get_popper_p123_tile_info,   tilemap_scan_cols,8,8,33,32 );
+	popper_p0_tilemap      = tilemap_create( machine, get_popper_p0_tile_info,     tilemap_scan_cols,8,8,33,32 );
+	popper_ol_p123_tilemap = tilemap_create( machine, get_popper_ol_p123_tile_info,tilemap_scan_cols,8,8,2 ,32 );
+	popper_ol_p0_tilemap   = tilemap_create( machine, get_popper_ol_p0_tile_info,  tilemap_scan_cols,8,8,2 ,32 );
 
 	tilemap_set_transmask(popper_p123_tilemap,   0,0x0f,0x01);
 	tilemap_set_transmask(popper_p123_tilemap,   1,0x01,0x0f);
@@ -189,9 +189,9 @@ VIDEO_START( popper )
 
 	tilemap_clip = *video_screen_get_visible_area(machine->primary_screen);
 
-	state_save_register_global(popper_flipscreen);
-//  state_save_register_global(popper_e002);
-	state_save_register_global(popper_gfx_bank);
+	state_save_register_global(machine, popper_flipscreen);
+//  state_save_register_global(machine, popper_e002);
+	state_save_register_global(machine, popper_gfx_bank);
 }
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)

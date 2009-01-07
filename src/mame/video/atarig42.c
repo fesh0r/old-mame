@@ -120,7 +120,7 @@ VIDEO_START( atarig42 )
 	atarigen_blend_gfx(machine, 0, 2, 0x0f, 0x30);
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, atarig42_playfield_scan,  8,8, 128,64);
+	atarigen_playfield_tilemap = tilemap_create(machine, get_playfield_tile_info, atarig42_playfield_scan,  8,8, 128,64);
 
 	/* initialize the motion objects */
 	adjusted_modesc.palettebase = atarig42_motion_object_base;
@@ -129,7 +129,7 @@ VIDEO_START( atarig42 )
 	atarirle_init(machine, 0, &adjusted_modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(machine, get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 
 	/* reset statics */
@@ -150,7 +150,7 @@ VIDEO_START( atarig42 )
 
 WRITE16_HANDLER( atarig42_mo_control_w )
 {
-	logerror("MOCONT = %d (scan = %d)\n", data, video_screen_get_vpos(machine->primary_screen));
+	logerror("MOCONT = %d (scan = %d)\n", data, video_screen_get_vpos(space->machine->primary_screen));
 
 	/* set the control value */
 	COMBINE_DATA(&current_control);
@@ -228,7 +228,7 @@ void atarig42_scanline_update(const device_config *screen, int scanline)
 VIDEO_UPDATE( atarig42 )
 {
 	/* draw the playfield */
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 0);
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 0, 0);
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 1, 1);
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 2, 2);

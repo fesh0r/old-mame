@@ -9,6 +9,7 @@ Quiz Gekiretsu Scramble (Gakuen Paradise 2) (c) 1993 Face
 *****************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
 #include "sound/okim6295.h"
 
@@ -28,14 +29,14 @@ WRITE8_HANDLER( paletteram_xBGR_RRRR_GGGG_BBBB_w );
 
 static WRITE8_HANDLER( quizdna_rombank_w )
 {
-	UINT8 *ROM = memory_region(machine, "main");
-	memory_set_bankptr(1,&ROM[0x10000+0x4000*(data & 0x3f)]);
+	UINT8 *ROM = memory_region(space->machine, "main");
+	memory_set_bankptr(space->machine, 1,&ROM[0x10000+0x4000*(data & 0x3f)]);
 }
 
 static WRITE8_HANDLER( gekiretu_rombank_w )
 {
-	UINT8 *ROM = memory_region(machine, "main");
-	memory_set_bankptr(1,&ROM[0x10000+0x4000*((data & 0x3f) ^ 0x0a)]);
+	UINT8 *ROM = memory_region(space->machine, "main");
+	memory_set_bankptr(space->machine, 1,&ROM[0x10000+0x4000*((data & 0x3f) ^ 0x0a)]);
 }
 
 /****************************************************************************/

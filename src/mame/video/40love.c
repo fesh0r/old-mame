@@ -23,6 +23,8 @@ static tilemap *background;
 
 int fortyl_pix_color[4];
 
+static int pixram_sel;
+
 /*
 *   color prom decoding
 */
@@ -98,6 +100,19 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 /***************************************************************************
 
+  State-related callbacks
+
+***************************************************************************/
+
+static STATE_POSTLOAD( redraw_pixels )
+{
+    fortyl_pix_redraw = 1;
+    tilemap_mark_all_tiles_dirty(background);
+}
+
+
+/***************************************************************************
+
   Start the video hardware emulation.
 
 ***************************************************************************/
@@ -112,10 +127,19 @@ VIDEO_START( fortyl )
 	pixel_bitmap1 = auto_bitmap_alloc(256,256,video_screen_get_format(machine->primary_screen));
 	pixel_bitmap2 = auto_bitmap_alloc(256,256,video_screen_get_format(machine->primary_screen));
 
-	background  = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8,8,64,32);
+	background  = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8,8,64,32);
 
 	tilemap_set_scroll_rows(background,32);
 	tilemap_set_transparent_pen(background,0);
+
+    state_save_register_global(machine, fortyl_flipscreen);
+    state_save_register_global_array(machine, fortyl_pix_color);
+    state_save_register_global_pointer(machine, fortyl_pixram1, 0x4000);
+    state_save_register_global_pointer(machine, fortyl_pixram2, 0x4000);
+    state_save_register_global_bitmap(machine, pixel_bitmap1);
+    state_save_register_global_bitmap(machine, pixel_bitmap2);
+    state_save_register_global(machine, pixram_sel);
+    state_save_register_postload(machine, redraw_pixels, NULL);
 }
 
 
@@ -124,8 +148,6 @@ VIDEO_START( fortyl )
   Memory handlers
 
 ***************************************************************************/
-
-static int pixram_sel;
 
 static void fortyl_set_scroll_x(int offset)
 {
@@ -153,7 +175,7 @@ WRITE8_HANDLER( fortyl_pixram_sel_w )
 	if (fortyl_flipscreen != f)
 	{
 		fortyl_flipscreen = f;
-		flip_screen_set(fortyl_flipscreen);
+		flip_screen_set(space->machine, fortyl_flipscreen);
 		fortyl_pix_redraw = 1;
 
 		for (offs=0;offs<32;offs++)

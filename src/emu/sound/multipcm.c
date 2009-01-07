@@ -33,7 +33,6 @@
 
 #include <math.h>
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "multipcm.h"
 
@@ -414,20 +413,20 @@ static void WriteSlot(struct _MultiPCM *ptChip,struct _SLOT *slot,int reg,unsign
 	}
 }
 
-static void MultiPCM_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length )
+static STREAM_UPDATE( MultiPCM_update )
 {
 	struct _MultiPCM *ptChip = param;
 	stream_sample_t  *datap[2];
 	int i,sl;
 
-	datap[0] = buffer[0];
-	datap[1] = buffer[1];
+	datap[0] = outputs[0];
+	datap[1] = outputs[1];
 
-	memset(datap[0], 0, sizeof(*datap[0])*length);
-	memset(datap[1], 0, sizeof(*datap[1])*length);
+	memset(datap[0], 0, sizeof(*datap[0])*samples);
+	memset(datap[1], 0, sizeof(*datap[1])*samples);
 
 
-	for(i=0;i<length;++i)
+	for(i=0;i<samples;++i)
 	{
 		signed int smpl=0;
 		signed int smpr=0;
@@ -487,18 +486,17 @@ static unsigned char multi_pcm_reg_r(int chip, int offset)
 	return 0;
 }
 
-static void *multipcm_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( multipcm )
 {
 	struct _MultiPCM *ptChip;
 	int i;
-	char mname[20];
 
 	ptChip=(struct _MultiPCM *)auto_malloc(sizeof(struct _MultiPCM));
 
-	ptChip->ROM=(INT8 *)memory_region(Machine, tag);
+	ptChip->ROM=(INT8 *)device->region;
 	ptChip->Rate=(float) clock / MULTIPCM_CLOCKDIV;
 
-	ptChip->stream = stream_create(0, 2, ptChip->Rate, ptChip, MultiPCM_update);
+	ptChip->stream = stream_create(device, 0, 2, ptChip->Rate, ptChip, MultiPCM_update);
 
 	//Volume+pan table
 	for(i=0;i<0x800;++i)
@@ -601,44 +599,39 @@ static void *multipcm_start(const char *tag, int sndindex, int clock, const void
 		ptChip->Samples[i].AM=ptSample[11];
 	}
 
-	sprintf(mname, "MultiPCM %d", sndindex);
-	state_save_register_item(mname, sndindex, ptChip->CurSlot);
-	state_save_register_item(mname, sndindex, ptChip->Address);
-	state_save_register_item(mname, sndindex, ptChip->BankL);
-	state_save_register_item(mname, sndindex, ptChip->BankR);
+	state_save_register_device_item(device, 0, ptChip->CurSlot);
+	state_save_register_device_item(device, 0, ptChip->Address);
+	state_save_register_device_item(device, 0, ptChip->BankL);
+	state_save_register_device_item(device, 0, ptChip->BankR);
 
 	for(i=0;i<28;++i)
 	{
-		char mname2[20];
-
 		ptChip->Slots[i].Num=i;
 		ptChip->Slots[i].Playing=0;
 
-		sprintf(mname2, "MultiPCM %d v %d", sndindex, i);
-
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].Num);
-		state_save_register_item_array(mname2, sndindex, ptChip->Slots[i].Regs);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].Playing);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].Base);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].offset);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].step);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].Pan);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].TL);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].DstTL);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].TLStep);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].Prev);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].EG.volume);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].EG.state);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].EG.step);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].EG.AR);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].EG.D1R);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].EG.D2R);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].EG.RR);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].EG.DL);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].PLFO.phase);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].PLFO.phase_step);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].ALFO.phase);
-		state_save_register_item(mname2, sndindex, ptChip->Slots[i].ALFO.phase_step);
+		state_save_register_device_item(device, i, ptChip->Slots[i].Num);
+		state_save_register_device_item_array(device, i, ptChip->Slots[i].Regs);
+		state_save_register_device_item(device, i, ptChip->Slots[i].Playing);
+		state_save_register_device_item(device, i, ptChip->Slots[i].Base);
+		state_save_register_device_item(device, i, ptChip->Slots[i].offset);
+		state_save_register_device_item(device, i, ptChip->Slots[i].step);
+		state_save_register_device_item(device, i, ptChip->Slots[i].Pan);
+		state_save_register_device_item(device, i, ptChip->Slots[i].TL);
+		state_save_register_device_item(device, i, ptChip->Slots[i].DstTL);
+		state_save_register_device_item(device, i, ptChip->Slots[i].TLStep);
+		state_save_register_device_item(device, i, ptChip->Slots[i].Prev);
+		state_save_register_device_item(device, i, ptChip->Slots[i].EG.volume);
+		state_save_register_device_item(device, i, ptChip->Slots[i].EG.state);
+		state_save_register_device_item(device, i, ptChip->Slots[i].EG.step);
+		state_save_register_device_item(device, i, ptChip->Slots[i].EG.AR);
+		state_save_register_device_item(device, i, ptChip->Slots[i].EG.D1R);
+		state_save_register_device_item(device, i, ptChip->Slots[i].EG.D2R);
+		state_save_register_device_item(device, i, ptChip->Slots[i].EG.RR);
+		state_save_register_device_item(device, i, ptChip->Slots[i].EG.DL);
+		state_save_register_device_item(device, i, ptChip->Slots[i].PLFO.phase);
+		state_save_register_device_item(device, i, ptChip->Slots[i].PLFO.phase_step);
+		state_save_register_device_item(device, i, ptChip->Slots[i].ALFO.phase);
+		state_save_register_device_item(device, i, ptChip->Slots[i].ALFO.phase_step);
 	}
 
 	LFO_Init();
@@ -700,7 +693,7 @@ void multi_pcm_set_bank(int which, UINT32 leftoffs, UINT32 rightoffs)
  * Generic get_info
  **************************************************************************/
 
-static void multipcm_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( multipcm )
 {
 	switch (state)
 	{
@@ -709,24 +702,24 @@ static void multipcm_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void multipcm_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( multipcm )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = multipcm_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = multipcm_start;			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( multipcm );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( multipcm );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "Sega/Yamaha 315-5560";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Sega custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "2.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "Sega/Yamaha 315-5560");		break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Sega custom");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "2.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

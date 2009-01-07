@@ -19,6 +19,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 
 
 static tilemap *tmap;
@@ -49,7 +50,7 @@ static VIDEO_UPDATE( tattack )
 
 static VIDEO_START( tattack )
 {
-		tmap = tilemap_create( get_tile_info,tilemap_scan_rows,8,8,32,32 );
+		tmap = tilemap_create( machine, get_tile_info,tilemap_scan_rows,8,8,32,32 );
 }
 
 static ADDRESS_MAP_START( mem, ADDRESS_SPACE_PROGRAM, 8 )

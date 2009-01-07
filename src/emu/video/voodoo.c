@@ -302,7 +302,7 @@ int voodoo_update(const device_config *device, bitmap_t *bitmap, const rectangle
 	/* if we are blank, just fill with black */
 	if (v->type <= VOODOO_2 && FBIINIT1_SOFTWARE_BLANK(v->reg[fbiInit1].u))
 	{
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 		return changed;
 	}
 
@@ -486,7 +486,7 @@ static void init_fbi(voodoo_state *v, fbi_state *f, void *memory, int fbmem)
 	}
 
 	/* allocate a VBLANK timer */
-	f->vblank_timer = timer_alloc(vblank_callback, v);
+	f->vblank_timer = timer_alloc(v->device->machine, vblank_callback, v);
 	f->vblank = FALSE;
 
 	/* initialize the memory FIFO */
@@ -617,125 +617,120 @@ static STATE_POSTLOAD( voodoo_postload )
 static void init_save_state(const device_config *device)
 {
 	voodoo_state *v = get_safe_token(device);
-	char unique_tag[50];
 	int index, subindex;
 
 	state_save_register_postload(device->machine, voodoo_postload, v);
 
-	/* create the name for save states */
-	assert(strlen(device->tag) < 30);
-	state_save_combine_module_and_tag(unique_tag, "voodoo", device->tag);
-
 	/* register states: core */
-	state_save_register_item(unique_tag, 0, v->extra_cycles);
-	state_save_register_item_pointer(unique_tag, 0, (&v->reg[0].u), ARRAY_LENGTH(v->reg));
-	state_save_register_item(unique_tag, 0, v->alt_regmap);
+	state_save_register_device_item(device, 0, v->extra_cycles);
+	state_save_register_device_item_pointer(device, 0, (&v->reg[0].u), ARRAY_LENGTH(v->reg));
+	state_save_register_device_item(device, 0, v->alt_regmap);
 
 	/* register states: pci */
-	state_save_register_item(unique_tag, 0, v->pci.fifo.in);
-	state_save_register_item(unique_tag, 0, v->pci.fifo.out);
-	state_save_register_item(unique_tag, 0, v->pci.init_enable);
-	state_save_register_item(unique_tag, 0, v->pci.stall_state);
-	state_save_register_item(unique_tag, 0, v->pci.op_pending);
-	state_save_register_item(unique_tag, 0, v->pci.op_end_time.seconds);
-	state_save_register_item(unique_tag, 0, v->pci.op_end_time.attoseconds);
-	state_save_register_item_array(unique_tag, 0, v->pci.fifo_mem);
+	state_save_register_device_item(device, 0, v->pci.fifo.in);
+	state_save_register_device_item(device, 0, v->pci.fifo.out);
+	state_save_register_device_item(device, 0, v->pci.init_enable);
+	state_save_register_device_item(device, 0, v->pci.stall_state);
+	state_save_register_device_item(device, 0, v->pci.op_pending);
+	state_save_register_device_item(device, 0, v->pci.op_end_time.seconds);
+	state_save_register_device_item(device, 0, v->pci.op_end_time.attoseconds);
+	state_save_register_device_item_array(device, 0, v->pci.fifo_mem);
 
 	/* register states: dac */
-	state_save_register_item_array(unique_tag, 0, v->dac.reg);
-	state_save_register_item(unique_tag, 0, v->dac.read_result);
+	state_save_register_device_item_array(device, 0, v->dac.reg);
+	state_save_register_device_item(device, 0, v->dac.read_result);
 
 	/* register states: fbi */
-	state_save_register_item_pointer(unique_tag, 0, v->fbi.ram, v->fbi.mask + 1);
-	state_save_register_item_array(unique_tag, 0, v->fbi.rgboffs);
-	state_save_register_item(unique_tag, 0, v->fbi.auxoffs);
-	state_save_register_item(unique_tag, 0, v->fbi.frontbuf);
-	state_save_register_item(unique_tag, 0, v->fbi.backbuf);
-	state_save_register_item(unique_tag, 0, v->fbi.swaps_pending);
-	state_save_register_item(unique_tag, 0, v->fbi.video_changed);
-	state_save_register_item(unique_tag, 0, v->fbi.yorigin);
-	state_save_register_item(unique_tag, 0, v->fbi.lfb_base);
-	state_save_register_item(unique_tag, 0, v->fbi.lfb_stride);
-	state_save_register_item(unique_tag, 0, v->fbi.width);
-	state_save_register_item(unique_tag, 0, v->fbi.height);
-	state_save_register_item(unique_tag, 0, v->fbi.xoffs);
-	state_save_register_item(unique_tag, 0, v->fbi.yoffs);
-	state_save_register_item(unique_tag, 0, v->fbi.vsyncscan);
-	state_save_register_item(unique_tag, 0, v->fbi.rowpixels);
-	state_save_register_item(unique_tag, 0, v->fbi.vblank);
-	state_save_register_item(unique_tag, 0, v->fbi.vblank_count);
-	state_save_register_item(unique_tag, 0, v->fbi.vblank_swap_pending);
-	state_save_register_item(unique_tag, 0, v->fbi.vblank_swap);
-	state_save_register_item(unique_tag, 0, v->fbi.vblank_dont_swap);
-	state_save_register_item(unique_tag, 0, v->fbi.cheating_allowed);
-	state_save_register_item(unique_tag, 0, v->fbi.sign);
-	state_save_register_item(unique_tag, 0, v->fbi.ax);
-	state_save_register_item(unique_tag, 0, v->fbi.ay);
-	state_save_register_item(unique_tag, 0, v->fbi.bx);
-	state_save_register_item(unique_tag, 0, v->fbi.by);
-	state_save_register_item(unique_tag, 0, v->fbi.cx);
-	state_save_register_item(unique_tag, 0, v->fbi.cy);
-	state_save_register_item(unique_tag, 0, v->fbi.startr);
-	state_save_register_item(unique_tag, 0, v->fbi.startg);
-	state_save_register_item(unique_tag, 0, v->fbi.startb);
-	state_save_register_item(unique_tag, 0, v->fbi.starta);
-	state_save_register_item(unique_tag, 0, v->fbi.startz);
-	state_save_register_item(unique_tag, 0, v->fbi.startw);
-	state_save_register_item(unique_tag, 0, v->fbi.drdx);
-	state_save_register_item(unique_tag, 0, v->fbi.dgdx);
-	state_save_register_item(unique_tag, 0, v->fbi.dbdx);
-	state_save_register_item(unique_tag, 0, v->fbi.dadx);
-	state_save_register_item(unique_tag, 0, v->fbi.dzdx);
-	state_save_register_item(unique_tag, 0, v->fbi.dwdx);
-	state_save_register_item(unique_tag, 0, v->fbi.drdy);
-	state_save_register_item(unique_tag, 0, v->fbi.dgdy);
-	state_save_register_item(unique_tag, 0, v->fbi.dbdy);
-	state_save_register_item(unique_tag, 0, v->fbi.dady);
-	state_save_register_item(unique_tag, 0, v->fbi.dzdy);
-	state_save_register_item(unique_tag, 0, v->fbi.dwdy);
-	state_save_register_item(unique_tag, 0, v->fbi.lfb_stats.pixels_in);
-	state_save_register_item(unique_tag, 0, v->fbi.lfb_stats.pixels_out);
-	state_save_register_item(unique_tag, 0, v->fbi.lfb_stats.chroma_fail);
-	state_save_register_item(unique_tag, 0, v->fbi.lfb_stats.zfunc_fail);
-	state_save_register_item(unique_tag, 0, v->fbi.lfb_stats.afunc_fail);
-	state_save_register_item(unique_tag, 0, v->fbi.lfb_stats.clip_fail);
-	state_save_register_item(unique_tag, 0, v->fbi.lfb_stats.stipple_count);
-	state_save_register_item(unique_tag, 0, v->fbi.sverts);
+	state_save_register_device_item_pointer(device, 0, v->fbi.ram, v->fbi.mask + 1);
+	state_save_register_device_item_array(device, 0, v->fbi.rgboffs);
+	state_save_register_device_item(device, 0, v->fbi.auxoffs);
+	state_save_register_device_item(device, 0, v->fbi.frontbuf);
+	state_save_register_device_item(device, 0, v->fbi.backbuf);
+	state_save_register_device_item(device, 0, v->fbi.swaps_pending);
+	state_save_register_device_item(device, 0, v->fbi.video_changed);
+	state_save_register_device_item(device, 0, v->fbi.yorigin);
+	state_save_register_device_item(device, 0, v->fbi.lfb_base);
+	state_save_register_device_item(device, 0, v->fbi.lfb_stride);
+	state_save_register_device_item(device, 0, v->fbi.width);
+	state_save_register_device_item(device, 0, v->fbi.height);
+	state_save_register_device_item(device, 0, v->fbi.xoffs);
+	state_save_register_device_item(device, 0, v->fbi.yoffs);
+	state_save_register_device_item(device, 0, v->fbi.vsyncscan);
+	state_save_register_device_item(device, 0, v->fbi.rowpixels);
+	state_save_register_device_item(device, 0, v->fbi.vblank);
+	state_save_register_device_item(device, 0, v->fbi.vblank_count);
+	state_save_register_device_item(device, 0, v->fbi.vblank_swap_pending);
+	state_save_register_device_item(device, 0, v->fbi.vblank_swap);
+	state_save_register_device_item(device, 0, v->fbi.vblank_dont_swap);
+	state_save_register_device_item(device, 0, v->fbi.cheating_allowed);
+	state_save_register_device_item(device, 0, v->fbi.sign);
+	state_save_register_device_item(device, 0, v->fbi.ax);
+	state_save_register_device_item(device, 0, v->fbi.ay);
+	state_save_register_device_item(device, 0, v->fbi.bx);
+	state_save_register_device_item(device, 0, v->fbi.by);
+	state_save_register_device_item(device, 0, v->fbi.cx);
+	state_save_register_device_item(device, 0, v->fbi.cy);
+	state_save_register_device_item(device, 0, v->fbi.startr);
+	state_save_register_device_item(device, 0, v->fbi.startg);
+	state_save_register_device_item(device, 0, v->fbi.startb);
+	state_save_register_device_item(device, 0, v->fbi.starta);
+	state_save_register_device_item(device, 0, v->fbi.startz);
+	state_save_register_device_item(device, 0, v->fbi.startw);
+	state_save_register_device_item(device, 0, v->fbi.drdx);
+	state_save_register_device_item(device, 0, v->fbi.dgdx);
+	state_save_register_device_item(device, 0, v->fbi.dbdx);
+	state_save_register_device_item(device, 0, v->fbi.dadx);
+	state_save_register_device_item(device, 0, v->fbi.dzdx);
+	state_save_register_device_item(device, 0, v->fbi.dwdx);
+	state_save_register_device_item(device, 0, v->fbi.drdy);
+	state_save_register_device_item(device, 0, v->fbi.dgdy);
+	state_save_register_device_item(device, 0, v->fbi.dbdy);
+	state_save_register_device_item(device, 0, v->fbi.dady);
+	state_save_register_device_item(device, 0, v->fbi.dzdy);
+	state_save_register_device_item(device, 0, v->fbi.dwdy);
+	state_save_register_device_item(device, 0, v->fbi.lfb_stats.pixels_in);
+	state_save_register_device_item(device, 0, v->fbi.lfb_stats.pixels_out);
+	state_save_register_device_item(device, 0, v->fbi.lfb_stats.chroma_fail);
+	state_save_register_device_item(device, 0, v->fbi.lfb_stats.zfunc_fail);
+	state_save_register_device_item(device, 0, v->fbi.lfb_stats.afunc_fail);
+	state_save_register_device_item(device, 0, v->fbi.lfb_stats.clip_fail);
+	state_save_register_device_item(device, 0, v->fbi.lfb_stats.stipple_count);
+	state_save_register_device_item(device, 0, v->fbi.sverts);
 	for (index = 0; index < ARRAY_LENGTH(v->fbi.svert); index++)
 	{
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].x);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].y);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].a);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].r);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].g);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].b);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].z);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].wb);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].w0);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].s0);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].t0);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].w1);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].s1);
-		state_save_register_item(unique_tag, index, v->fbi.svert[index].t1);
+		state_save_register_device_item(device, index, v->fbi.svert[index].x);
+		state_save_register_device_item(device, index, v->fbi.svert[index].y);
+		state_save_register_device_item(device, index, v->fbi.svert[index].a);
+		state_save_register_device_item(device, index, v->fbi.svert[index].r);
+		state_save_register_device_item(device, index, v->fbi.svert[index].g);
+		state_save_register_device_item(device, index, v->fbi.svert[index].b);
+		state_save_register_device_item(device, index, v->fbi.svert[index].z);
+		state_save_register_device_item(device, index, v->fbi.svert[index].wb);
+		state_save_register_device_item(device, index, v->fbi.svert[index].w0);
+		state_save_register_device_item(device, index, v->fbi.svert[index].s0);
+		state_save_register_device_item(device, index, v->fbi.svert[index].t0);
+		state_save_register_device_item(device, index, v->fbi.svert[index].w1);
+		state_save_register_device_item(device, index, v->fbi.svert[index].s1);
+		state_save_register_device_item(device, index, v->fbi.svert[index].t1);
 	}
-	state_save_register_item(unique_tag, 0, v->fbi.fifo.size);
-	state_save_register_item(unique_tag, 0, v->fbi.fifo.in);
-	state_save_register_item(unique_tag, 0, v->fbi.fifo.out);
+	state_save_register_device_item(device, 0, v->fbi.fifo.size);
+	state_save_register_device_item(device, 0, v->fbi.fifo.in);
+	state_save_register_device_item(device, 0, v->fbi.fifo.out);
 	for (index = 0; index < ARRAY_LENGTH(v->fbi.cmdfifo); index++)
 	{
-		state_save_register_item(unique_tag, index, v->fbi.cmdfifo[index].enable);
-		state_save_register_item(unique_tag, index, v->fbi.cmdfifo[index].count_holes);
-		state_save_register_item(unique_tag, index, v->fbi.cmdfifo[index].base);
-		state_save_register_item(unique_tag, index, v->fbi.cmdfifo[index].end);
-		state_save_register_item(unique_tag, index, v->fbi.cmdfifo[index].rdptr);
-		state_save_register_item(unique_tag, index, v->fbi.cmdfifo[index].amin);
-		state_save_register_item(unique_tag, index, v->fbi.cmdfifo[index].amax);
-		state_save_register_item(unique_tag, index, v->fbi.cmdfifo[index].depth);
-		state_save_register_item(unique_tag, index, v->fbi.cmdfifo[index].holes);
+		state_save_register_device_item(device, index, v->fbi.cmdfifo[index].enable);
+		state_save_register_device_item(device, index, v->fbi.cmdfifo[index].count_holes);
+		state_save_register_device_item(device, index, v->fbi.cmdfifo[index].base);
+		state_save_register_device_item(device, index, v->fbi.cmdfifo[index].end);
+		state_save_register_device_item(device, index, v->fbi.cmdfifo[index].rdptr);
+		state_save_register_device_item(device, index, v->fbi.cmdfifo[index].amin);
+		state_save_register_device_item(device, index, v->fbi.cmdfifo[index].amax);
+		state_save_register_device_item(device, index, v->fbi.cmdfifo[index].depth);
+		state_save_register_device_item(device, index, v->fbi.cmdfifo[index].holes);
 	}
-	state_save_register_item_array(unique_tag, 0, v->fbi.fogblend);
-	state_save_register_item_array(unique_tag, 0, v->fbi.fogdelta);
-	state_save_register_item_array(unique_tag, 0, v->fbi.clut);
+	state_save_register_device_item_array(device, 0, v->fbi.fogblend);
+	state_save_register_device_item_array(device, 0, v->fbi.fogdelta);
+	state_save_register_device_item_array(device, 0, v->fbi.clut);
 
 	/* register states: tmu */
 	for (index = 0; index < ARRAY_LENGTH(v->tmu); index++)
@@ -744,39 +739,39 @@ static void init_save_state(const device_config *device)
 		if (tmu->ram == NULL)
 			continue;
 		if (tmu->ram != v->fbi.ram)
-			state_save_register_item_pointer(unique_tag, index, tmu->ram, tmu->mask + 1);
-		state_save_register_item(unique_tag, index, tmu->starts);
-		state_save_register_item(unique_tag, index, tmu->startt);
-		state_save_register_item(unique_tag, index, tmu->startw);
-		state_save_register_item(unique_tag, index, tmu->dsdx);
-		state_save_register_item(unique_tag, index, tmu->dtdx);
-		state_save_register_item(unique_tag, index, tmu->dwdx);
-		state_save_register_item(unique_tag, index, tmu->dsdy);
-		state_save_register_item(unique_tag, index, tmu->dtdy);
-		state_save_register_item(unique_tag, index, tmu->dwdy);
+			state_save_register_device_item_pointer(device, index, tmu->ram, tmu->mask + 1);
+		state_save_register_device_item(device, index, tmu->starts);
+		state_save_register_device_item(device, index, tmu->startt);
+		state_save_register_device_item(device, index, tmu->startw);
+		state_save_register_device_item(device, index, tmu->dsdx);
+		state_save_register_device_item(device, index, tmu->dtdx);
+		state_save_register_device_item(device, index, tmu->dwdx);
+		state_save_register_device_item(device, index, tmu->dsdy);
+		state_save_register_device_item(device, index, tmu->dtdy);
+		state_save_register_device_item(device, index, tmu->dwdy);
 		for (subindex = 0; subindex < ARRAY_LENGTH(tmu->ncc); subindex++)
 		{
-			state_save_register_item_array(unique_tag, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].ir);
-			state_save_register_item_array(unique_tag, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].ig);
-			state_save_register_item_array(unique_tag, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].ib);
-			state_save_register_item_array(unique_tag, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].qr);
-			state_save_register_item_array(unique_tag, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].qg);
-			state_save_register_item_array(unique_tag, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].qb);
-			state_save_register_item_array(unique_tag, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].y);
+			state_save_register_device_item_array(device, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].ir);
+			state_save_register_device_item_array(device, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].ig);
+			state_save_register_device_item_array(device, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].ib);
+			state_save_register_device_item_array(device, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].qr);
+			state_save_register_device_item_array(device, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].qg);
+			state_save_register_device_item_array(device, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].qb);
+			state_save_register_device_item_array(device, index * ARRAY_LENGTH(tmu->ncc) + subindex, tmu->ncc[subindex].y);
 		}
 	}
 
 	/* register states: banshee */
 	if (v->type >= VOODOO_BANSHEE)
 	{
-		state_save_register_item_array(unique_tag, 0, v->banshee.io);
-		state_save_register_item_array(unique_tag, 0, v->banshee.agp);
-		state_save_register_item_array(unique_tag, 0, v->banshee.vga);
-		state_save_register_item_array(unique_tag, 0, v->banshee.crtc);
-		state_save_register_item_array(unique_tag, 0, v->banshee.seq);
-		state_save_register_item_array(unique_tag, 0, v->banshee.gc);
-		state_save_register_item_array(unique_tag, 0, v->banshee.att);
-		state_save_register_item(unique_tag, 0, v->banshee.attff);
+		state_save_register_device_item_array(device, 0, v->banshee.io);
+		state_save_register_device_item_array(device, 0, v->banshee.agp);
+		state_save_register_device_item_array(device, 0, v->banshee.vga);
+		state_save_register_device_item_array(device, 0, v->banshee.crtc);
+		state_save_register_device_item_array(device, 0, v->banshee.seq);
+		state_save_register_device_item_array(device, 0, v->banshee.gc);
+		state_save_register_device_item_array(device, 0, v->banshee.att);
+		state_save_register_device_item(device, 0, v->banshee.attff);
 	}
 }
 
@@ -879,13 +874,13 @@ static void swap_buffers(voodoo_state *v)
 	/* reset the last_op_time to now and start processing the next command */
 	if (v->pci.op_pending)
 	{
-		v->pci.op_end_time = timer_get_time();
+		v->pci.op_end_time = timer_get_time(v->device->machine);
 		flush_fifos(v, v->pci.op_end_time);
 	}
 
 	/* we may be able to unstall now */
 	if (v->pci.stall_state != NOT_STALLED)
-		check_stalled_cpu(v, timer_get_time());
+		check_stalled_cpu(v, timer_get_time(v->device->machine));
 
 	/* periodically log rasterizer info */
 	v->stats.swaps++;
@@ -984,7 +979,7 @@ static TIMER_CALLBACK( vblank_callback )
 	if (v->pci.op_pending)
 	{
 		if (LOG_VBLANK_SWAP) logerror("---- vblank flush begin\n");
-		flush_fifos(v, timer_get_time());
+		flush_fifos(v, timer_get_time(machine));
 		if (LOG_VBLANK_SWAP) logerror("---- vblank flush end\n");
 	}
 
@@ -1002,7 +997,7 @@ static TIMER_CALLBACK( vblank_callback )
 		swap_buffers(v);
 
 	/* set a timer for the next off state */
-	timer_set(video_screen_get_time_until_pos(v->screen, 0, 0), v, 0, vblank_off_callback);
+	timer_set(machine, video_screen_get_time_until_pos(v->screen, 0, 0), v, 0, vblank_off_callback);
 
 	/* set internal state and call the client */
 	v->fbi.vblank = TRUE;
@@ -1971,10 +1966,10 @@ static void cmdfifo_w(voodoo_state *v, cmdfifo_info *f, offs_t offset, UINT32 da
 		if (cycles > 0)
 		{
 			v->pci.op_pending = TRUE;
-			v->pci.op_end_time = attotime_add_attoseconds(timer_get_time(), (attoseconds_t)cycles * v->attoseconds_per_cycle);
+			v->pci.op_end_time = attotime_add_attoseconds(timer_get_time(v->device->machine), (attoseconds_t)cycles * v->attoseconds_per_cycle);
 
 			if (LOG_FIFO_VERBOSE) logerror("VOODOO.%d.FIFO:direct write start at %d.%08X%08X end at %d.%08X%08X\n", v->index,
-				timer_get_time().seconds, (UINT32)(timer_get_time().attoseconds >> 32), (UINT32)timer_get_time().attoseconds,
+				timer_get_time(v->device->machine).seconds, (UINT32)(timer_get_time(v->device->machine).attoseconds >> 32), (UINT32)timer_get_time(v->device->machine).attoseconds,
 				v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.attoseconds >> 32), (UINT32)v->pci.op_end_time.attoseconds);
 		}
 	}
@@ -1984,14 +1979,14 @@ static void cmdfifo_w(voodoo_state *v, cmdfifo_info *f, offs_t offset, UINT32 da
 
 /*************************************
  *
- *  Stall the activecpu until we are
+ *  Stall the active cpu until we are
  *  ready
  *
  *************************************/
 
 static TIMER_CALLBACK( stall_cpu_callback )
 {
-	check_stalled_cpu(ptr, timer_get_time());
+	check_stalled_cpu(ptr, timer_get_time(machine));
 }
 
 
@@ -2038,7 +2033,7 @@ static void check_stalled_cpu(voodoo_state *v, attotime current_time)
 		if (v->pci.stall_callback)
 			(*v->pci.stall_callback)(v->device, FALSE);
 		else
-			cpu_trigger(v->device->machine, v->trigger);
+			cpuexec_trigger(v->device->machine, v->trigger);
 	}
 
 	/* if not, set a timer for the next one */
@@ -2062,7 +2057,7 @@ static void stall_cpu(voodoo_state *v, int state, attotime current_time)
 	if (v->pci.stall_callback)
 		(*v->pci.stall_callback)(v->device, TRUE);
 	else
-		cpu_spinuntil_trigger(v->trigger);
+		cpu_spinuntil_trigger(v->cpu, v->trigger);
 
 	/* set a timer to clear the stall */
 	timer_adjust_oneshot(v->pci.continue_timer, attotime_sub(v->pci.op_end_time, current_time), 0);
@@ -3432,7 +3427,7 @@ WRITE32_DEVICE_HANDLER( voodoo_w )
 
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, timer_get_time());
+		flush_fifos(v, timer_get_time(device->machine));
 
 	/* special handling for registers */
 	if ((offset & 0xc00000/4) == 0)
@@ -3512,10 +3507,10 @@ WRITE32_DEVICE_HANDLER( voodoo_w )
 		if (cycles)
 		{
 			v->pci.op_pending = TRUE;
-			v->pci.op_end_time = attotime_add_attoseconds(timer_get_time(), (attoseconds_t)cycles * v->attoseconds_per_cycle);
+			v->pci.op_end_time = attotime_add_attoseconds(timer_get_time(device->machine), (attoseconds_t)cycles * v->attoseconds_per_cycle);
 
 			if (LOG_FIFO_VERBOSE) logerror("VOODOO.%d.FIFO:direct write start at %d.%08X%08X end at %d.%08X%08X\n", v->index,
-				timer_get_time().seconds, (UINT32)(timer_get_time().attoseconds >> 32), (UINT32)timer_get_time().attoseconds,
+				timer_get_time(device->machine).seconds, (UINT32)(timer_get_time(device->machine).attoseconds >> 32), (UINT32)timer_get_time(device->machine).attoseconds,
 				v->pci.op_end_time.seconds, (UINT32)(v->pci.op_end_time.attoseconds >> 32), (UINT32)v->pci.op_end_time.attoseconds);
 		}
 		profiler_mark(PROFILER_END);
@@ -3565,7 +3560,7 @@ WRITE32_DEVICE_HANDLER( voodoo_w )
 			fifo_items(&v->fbi.fifo) >= 2 * 32 * FBIINIT0_MEMORY_FIFO_HWM(v->reg[fbiInit0].u))
 		{
 			if (LOG_FIFO) logerror("VOODOO.%d.FIFO:voodoo_w hit memory FIFO HWM -- stalling\n", v->index);
-			stall_cpu(v, STALLED_UNTIL_FIFO_LWM, timer_get_time());
+			stall_cpu(v, STALLED_UNTIL_FIFO_LWM, timer_get_time(device->machine));
 		}
 	}
 
@@ -3574,14 +3569,14 @@ WRITE32_DEVICE_HANDLER( voodoo_w )
 		fifo_space(&v->pci.fifo) <= 2 * FBIINIT0_PCI_FIFO_LWM(v->reg[fbiInit0].u))
 	{
 		if (LOG_FIFO) logerror("VOODOO.%d.FIFO:voodoo_w hit PCI FIFO free LWM -- stalling\n", v->index);
-		stall_cpu(v, STALLED_UNTIL_FIFO_LWM, timer_get_time());
+		stall_cpu(v, STALLED_UNTIL_FIFO_LWM, timer_get_time(device->machine));
 	}
 
 	/* if we weren't ready, and this is a non-FIFO access, stall until the FIFOs are clear */
 	if (stall)
 	{
 		if (LOG_FIFO_VERBOSE) logerror("VOODOO.%d.FIFO:voodoo_w wrote non-FIFO register -- stalling until clear\n", v->index);
-		stall_cpu(v, STALLED_UNTIL_FIFO_EMPTY, timer_get_time());
+		stall_cpu(v, STALLED_UNTIL_FIFO_EMPTY, timer_get_time(device->machine));
 	}
 
 	profiler_mark(PROFILER_END);
@@ -3686,7 +3681,7 @@ static UINT32 register_r(voodoo_state *v, offs_t offset)
 			/* bit 31 is not used */
 
 			/* eat some cycles since people like polling here */
-			activecpu_eat_cycles(1000);
+			cpu_eat_cycles(v->cpu, 1000);
 			break;
 
 		/* bit 2 of the initEnable register maps this to dacRead */
@@ -3699,7 +3694,7 @@ static UINT32 register_r(voodoo_state *v, offs_t offset)
 		case vRetrace:
 
 			/* eat some cycles since people like polling here */
-			activecpu_eat_cycles(10);
+			cpu_eat_cycles(v->cpu, 10);
 			result = video_screen_get_vpos(v->screen);
 			break;
 
@@ -3714,7 +3709,7 @@ static UINT32 register_r(voodoo_state *v, offs_t offset)
 			result = v->fbi.cmdfifo[0].rdptr;
 
 			/* eat some cycles since people like polling here */
-			activecpu_eat_cycles(1000);
+			cpu_eat_cycles(v->cpu, 1000);
 			break;
 
 		case cmdFifoAMin:
@@ -3750,16 +3745,16 @@ static UINT32 register_r(voodoo_state *v, offs_t offset)
 		int logit = TRUE;
 
 		/* don't log multiple identical status reads from the same address */
-        if (regnum == status)
-        {
-            offs_t pc = activecpu_get_pc();
-            if (pc == v->last_status_pc && result == v->last_status_value)
-                logit = FALSE;
-            v->last_status_pc = pc;
-            v->last_status_value = result;
-        }
-        if (regnum == cmdFifoRdPtr)
-        	logit = FALSE;
+		if (regnum == status)
+		{
+			offs_t pc = cpu_get_pc(v->cpu);
+			if (pc == v->last_status_pc && result == v->last_status_value)
+				logit = FALSE;
+			v->last_status_pc = pc;
+			v->last_status_value = result;
+		}
+		if (regnum == cmdFifoRdPtr)
+			logit = FALSE;
 
 		if (logit)
 			logerror("VOODOO.%d.REG:%s read = %08X\n", v->index, v->regnames[regnum], result);
@@ -3859,7 +3854,7 @@ READ32_DEVICE_HANDLER( voodoo_r )
 
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, timer_get_time());
+		flush_fifos(v, timer_get_time(device->machine));
 
 	/* target the appropriate location */
 	if (!(offset & (0xc00000/4)))
@@ -3935,7 +3930,7 @@ static READ32_DEVICE_HANDLER( banshee_agp_r )
 	}
 
 	if (LOG_REGISTERS)
-		logerror("%08X:banshee_r(AGP:%s)\n", activecpu_get_pc(), banshee_agp_reg_name[offset]);
+		logerror("%s:banshee_r(AGP:%s)\n", cpuexec_describe_context(v->device->machine), banshee_agp_reg_name[offset]);
 	return result;
 }
 
@@ -3947,22 +3942,22 @@ READ32_DEVICE_HANDLER( banshee_r )
 
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, timer_get_time());
+		flush_fifos(v, timer_get_time(device->machine));
 
 	if (offset < 0x80000/4)
 		result = banshee_io_r(device, offset, mem_mask);
 	else if (offset < 0x100000/4)
 		result = banshee_agp_r(device, offset, mem_mask);
 	else if (offset < 0x200000/4)
-		logerror("%08X:banshee_r(2D:%X)\n", activecpu_get_pc(), (offset*4) & 0xfffff);
+		logerror("%s:banshee_r(2D:%X)\n", cpuexec_describe_context(device->machine), (offset*4) & 0xfffff);
 	else if (offset < 0x600000/4)
 		result = register_r(v, offset & 0x1fffff/4);
 	else if (offset < 0x800000/4)
-		logerror("%08X:banshee_r(TEX:%X)\n", activecpu_get_pc(), (offset*4) & 0x1fffff);
+		logerror("%s:banshee_r(TEX:%X)\n", cpuexec_describe_context(device->machine), (offset*4) & 0x1fffff);
 	else if (offset < 0xc00000/4)
-		logerror("%08X:banshee_r(RES:%X)\n", activecpu_get_pc(), (offset*4) & 0x3fffff);
+		logerror("%s:banshee_r(RES:%X)\n", cpuexec_describe_context(device->machine), (offset*4) & 0x3fffff);
 	else if (offset < 0x1000000/4)
-		logerror("%08X:banshee_r(YUV:%X)\n", activecpu_get_pc(), (offset*4) & 0x3fffff);
+		logerror("%s:banshee_r(YUV:%X)\n", cpuexec_describe_context(device->machine), (offset*4) & 0x3fffff);
 	else if (offset < 0x2000000/4)
 	{
 		UINT8 temp = v->fbi.lfb_stride;
@@ -3981,11 +3976,11 @@ READ32_DEVICE_HANDLER( banshee_fb_r )
 
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, timer_get_time());
+		flush_fifos(v, timer_get_time(device->machine));
 
 	if (offset < v->fbi.lfb_base)
 	{
-		logerror("%08X:banshee_fb_r(%X)\n", activecpu_get_pc(), offset*4);
+		logerror("%s:banshee_fb_r(%X)\n", cpuexec_describe_context(device->machine), offset*4);
 		if (offset*4 <= v->fbi.mask)
 			result = ((UINT32 *)v->fbi.ram)[offset];
 	}
@@ -4010,7 +4005,7 @@ static READ8_DEVICE_HANDLER( banshee_vga_r )
 			if (v->banshee.vga[0x3c1 & 0x1f] < ARRAY_LENGTH(v->banshee.att))
 				result = v->banshee.att[v->banshee.vga[0x3c1 & 0x1f]];
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_att_r(%X)\n", activecpu_get_pc(), v->banshee.vga[0x3c1 & 0x1f]);
+				logerror("%s:banshee_att_r(%X)\n", cpuexec_describe_context(device->machine), v->banshee.vga[0x3c1 & 0x1f]);
 			break;
 
 		/* Input status 0 */
@@ -4023,7 +4018,7 @@ static READ8_DEVICE_HANDLER( banshee_vga_r )
             */
 			result = 0x00;
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_vga_r(%X)\n", activecpu_get_pc(), 0x300+offset);
+				logerror("%s:banshee_vga_r(%X)\n", cpuexec_describe_context(device->machine), 0x300+offset);
 			break;
 
 		/* Sequencer access */
@@ -4031,7 +4026,7 @@ static READ8_DEVICE_HANDLER( banshee_vga_r )
 			if (v->banshee.vga[0x3c4 & 0x1f] < ARRAY_LENGTH(v->banshee.seq))
 				result = v->banshee.seq[v->banshee.vga[0x3c4 & 0x1f]];
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_seq_r(%X)\n", activecpu_get_pc(), v->banshee.vga[0x3c4 & 0x1f]);
+				logerror("%s:banshee_seq_r(%X)\n", cpuexec_describe_context(device->machine), v->banshee.vga[0x3c4 & 0x1f]);
 			break;
 
 		/* Feature control */
@@ -4039,14 +4034,14 @@ static READ8_DEVICE_HANDLER( banshee_vga_r )
 			result = v->banshee.vga[0x3da & 0x1f];
 			v->banshee.attff = 0;
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_vga_r(%X)\n", activecpu_get_pc(), 0x300+offset);
+				logerror("%s:banshee_vga_r(%X)\n", cpuexec_describe_context(device->machine), 0x300+offset);
 			break;
 
 		/* Miscellaneous output */
 		case 0x3cc:
 			result = v->banshee.vga[0x3c2 & 0x1f];
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_vga_r(%X)\n", activecpu_get_pc(), 0x300+offset);
+				logerror("%s:banshee_vga_r(%X)\n", cpuexec_describe_context(device->machine), 0x300+offset);
 			break;
 
 		/* Graphics controller access */
@@ -4054,7 +4049,7 @@ static READ8_DEVICE_HANDLER( banshee_vga_r )
 			if (v->banshee.vga[0x3ce & 0x1f] < ARRAY_LENGTH(v->banshee.gc))
 				result = v->banshee.gc[v->banshee.vga[0x3ce & 0x1f]];
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_gc_r(%X)\n", activecpu_get_pc(), v->banshee.vga[0x3ce & 0x1f]);
+				logerror("%s:banshee_gc_r(%X)\n", cpuexec_describe_context(device->machine), v->banshee.vga[0x3ce & 0x1f]);
 			break;
 
 		/* CRTC access */
@@ -4062,7 +4057,7 @@ static READ8_DEVICE_HANDLER( banshee_vga_r )
 			if (v->banshee.vga[0x3d4 & 0x1f] < ARRAY_LENGTH(v->banshee.crtc))
 				result = v->banshee.crtc[v->banshee.vga[0x3d4 & 0x1f]];
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_crtc_r(%X)\n", activecpu_get_pc(), v->banshee.vga[0x3d4 & 0x1f]);
+				logerror("%s:banshee_crtc_r(%X)\n", cpuexec_describe_context(device->machine), v->banshee.vga[0x3d4 & 0x1f]);
 			break;
 
 		/* Input status 1 */
@@ -4078,13 +4073,13 @@ static READ8_DEVICE_HANDLER( banshee_vga_r )
             */
 			result = 0x04;
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_vga_r(%X)\n", activecpu_get_pc(), 0x300+offset);
+				logerror("%s:banshee_vga_r(%X)\n", cpuexec_describe_context(device->machine), 0x300+offset);
 			break;
 
 		default:
 			result = v->banshee.vga[offset];
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_vga_r(%X)\n", activecpu_get_pc(), 0x300+offset);
+				logerror("%s:banshee_vga_r(%X)\n", cpuexec_describe_context(device->machine), 0x300+offset);
 			break;
 	}
 	return result;
@@ -4108,7 +4103,7 @@ READ32_DEVICE_HANDLER( banshee_io_r )
 		case io_dacData:
 			result = v->fbi.clut[v->banshee.io[io_dacAddr] & 0x1ff] = v->banshee.io[offset];
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_dac_r(%X)\n", activecpu_get_pc(), v->banshee.io[io_dacAddr] & 0x1ff);
+				logerror("%s:banshee_dac_r(%X)\n", cpuexec_describe_context(device->machine), v->banshee.io[io_dacAddr] & 0x1ff);
 			break;
 
 		case io_vgab0:	case io_vgab4:	case io_vgab8:	case io_vgabc:
@@ -4128,7 +4123,7 @@ READ32_DEVICE_HANDLER( banshee_io_r )
 		default:
 			result = v->banshee.io[offset];
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_io_r(%s)\n", activecpu_get_pc(), banshee_io_reg_name[offset]);
+				logerror("%s:banshee_io_r(%s)\n", cpuexec_describe_context(device->machine), banshee_io_reg_name[offset]);
 			break;
 	}
 
@@ -4138,7 +4133,7 @@ READ32_DEVICE_HANDLER( banshee_io_r )
 
 READ32_DEVICE_HANDLER( banshee_rom_r )
 {
-	logerror("%08X:banshee_rom_r(%X)\n", activecpu_get_pc(), offset*4);
+	logerror("%s:banshee_rom_r(%X)\n", cpuexec_describe_context(device->machine), offset*4);
 	return 0xffffffff;
 }
 
@@ -4232,7 +4227,7 @@ static WRITE32_DEVICE_HANDLER( banshee_agp_w )
 	}
 
 	if (LOG_REGISTERS)
-		logerror("%08X:banshee_w(AGP:%s) = %08X & %08X\n", activecpu_get_pc(), banshee_agp_reg_name[offset], data, mem_mask);
+		logerror("%s:banshee_w(AGP:%s) = %08X & %08X\n", cpuexec_describe_context(device->machine), banshee_agp_reg_name[offset], data, mem_mask);
 }
 
 
@@ -4242,22 +4237,22 @@ WRITE32_DEVICE_HANDLER( banshee_w )
 
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, timer_get_time());
+		flush_fifos(v, timer_get_time(device->machine));
 
 	if (offset < 0x80000/4)
 		banshee_io_w(device, offset, data, mem_mask);
 	else if (offset < 0x100000/4)
 		banshee_agp_w(device, offset, data, mem_mask);
 	else if (offset < 0x200000/4)
-		logerror("%08X:banshee_w(2D:%X) = %08X & %08X\n", activecpu_get_pc(), (offset*4) & 0xfffff, data, mem_mask);
+		logerror("%s:banshee_w(2D:%X) = %08X & %08X\n", cpuexec_describe_context(device->machine), (offset*4) & 0xfffff, data, mem_mask);
 	else if (offset < 0x600000/4)
 		register_w(v, offset & 0x1fffff/4, data);
 	else if (offset < 0x800000/4)
-		logerror("%08X:banshee_w(TEX:%X) = %08X & %08X\n", activecpu_get_pc(), (offset*4) & 0x1fffff, data, mem_mask);
+		logerror("%s:banshee_w(TEX:%X) = %08X & %08X\n", cpuexec_describe_context(device->machine), (offset*4) & 0x1fffff, data, mem_mask);
 	else if (offset < 0xc00000/4)
-		logerror("%08X:banshee_w(RES:%X) = %08X & %08X\n", activecpu_get_pc(), (offset*4) & 0x3fffff, data, mem_mask);
+		logerror("%s:banshee_w(RES:%X) = %08X & %08X\n", cpuexec_describe_context(device->machine), (offset*4) & 0x3fffff, data, mem_mask);
 	else if (offset < 0x1000000/4)
-		logerror("%08X:banshee_w(YUV:%X) = %08X & %08X\n", activecpu_get_pc(), (offset*4) & 0x3fffff, data, mem_mask);
+		logerror("%s:banshee_w(YUV:%X) = %08X & %08X\n", cpuexec_describe_context(device->machine), (offset*4) & 0x3fffff, data, mem_mask);
 	else if (offset < 0x2000000/4)
 	{
 		UINT8 temp = v->fbi.lfb_stride;
@@ -4275,7 +4270,7 @@ WRITE32_DEVICE_HANDLER( banshee_fb_w )
 
 	/* if we have something pending, flush the FIFOs up to the current time */
 	if (v->pci.op_pending)
-		flush_fifos(v, timer_get_time());
+		flush_fifos(v, timer_get_time(device->machine));
 
 	if (offset < v->fbi.lfb_base)
 	{
@@ -4287,7 +4282,7 @@ WRITE32_DEVICE_HANDLER( banshee_fb_w )
 		{
 			if (offset*4 <= v->fbi.mask)
 				COMBINE_DATA(&((UINT32 *)v->fbi.ram)[offset]);
-			logerror("%08X:banshee_fb_w(%X) = %08X & %08X\n", activecpu_get_pc(), offset*4, data, mem_mask);
+			logerror("%s:banshee_fb_w(%X) = %08X & %08X\n", cpuexec_describe_context(device->machine), offset*4, data, mem_mask);
 		}
 	}
 	else
@@ -4310,14 +4305,14 @@ static WRITE8_DEVICE_HANDLER( banshee_vga_w )
 			{
 				v->banshee.vga[0x3c1 & 0x1f] = data;
 				if (LOG_REGISTERS)
-					logerror("%08X:banshee_vga_w(%X) = %02X\n", activecpu_get_pc(), 0x3c0+offset, data);
+					logerror("%s:banshee_vga_w(%X) = %02X\n", cpuexec_describe_context(device->machine), 0x3c0+offset, data);
 			}
 			else
 			{
 				if (v->banshee.vga[0x3c1 & 0x1f] < ARRAY_LENGTH(v->banshee.att))
 					v->banshee.att[v->banshee.vga[0x3c1 & 0x1f]] = data;
 				if (LOG_REGISTERS)
-					logerror("%08X:banshee_att_w(%X) = %02X\n", activecpu_get_pc(), v->banshee.vga[0x3c1 & 0x1f], data);
+					logerror("%s:banshee_att_w(%X) = %02X\n", cpuexec_describe_context(device->machine), v->banshee.vga[0x3c1 & 0x1f], data);
 			}
 			v->banshee.attff ^= 1;
 			break;
@@ -4327,7 +4322,7 @@ static WRITE8_DEVICE_HANDLER( banshee_vga_w )
 			if (v->banshee.vga[0x3c4 & 0x1f] < ARRAY_LENGTH(v->banshee.seq))
 				v->banshee.seq[v->banshee.vga[0x3c4 & 0x1f]] = data;
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_seq_w(%X) = %02X\n", activecpu_get_pc(), v->banshee.vga[0x3c4 & 0x1f], data);
+				logerror("%s:banshee_seq_w(%X) = %02X\n", cpuexec_describe_context(device->machine), v->banshee.vga[0x3c4 & 0x1f], data);
 			break;
 
 		/* Graphics controller access */
@@ -4335,7 +4330,7 @@ static WRITE8_DEVICE_HANDLER( banshee_vga_w )
 			if (v->banshee.vga[0x3ce & 0x1f] < ARRAY_LENGTH(v->banshee.gc))
 				v->banshee.gc[v->banshee.vga[0x3ce & 0x1f]] = data;
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_gc_w(%X) = %02X\n", activecpu_get_pc(), v->banshee.vga[0x3ce & 0x1f], data);
+				logerror("%s:banshee_gc_w(%X) = %02X\n", cpuexec_describe_context(device->machine), v->banshee.vga[0x3ce & 0x1f], data);
 			break;
 
 		/* CRTC access */
@@ -4343,13 +4338,13 @@ static WRITE8_DEVICE_HANDLER( banshee_vga_w )
 			if (v->banshee.vga[0x3d4 & 0x1f] < ARRAY_LENGTH(v->banshee.crtc))
 				v->banshee.crtc[v->banshee.vga[0x3d4 & 0x1f]] = data;
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_crtc_w(%X) = %02X\n", activecpu_get_pc(), v->banshee.vga[0x3d4 & 0x1f], data);
+				logerror("%s:banshee_crtc_w(%X) = %02X\n", cpuexec_describe_context(device->machine), v->banshee.vga[0x3d4 & 0x1f], data);
 			break;
 
 		default:
 			v->banshee.vga[offset] = data;
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_vga_w(%X) = %02X\n", activecpu_get_pc(), 0x3c0+offset, data);
+				logerror("%s:banshee_vga_w(%X) = %02X\n", cpuexec_describe_context(device->machine), 0x3c0+offset, data);
 			break;
 	}
 }
@@ -4371,7 +4366,7 @@ WRITE32_DEVICE_HANDLER( banshee_io_w )
 			if ((v->banshee.io[offset] ^ old) & 0x2800)
 				v->fbi.clut_dirty = TRUE;
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_io_w(%s) = %08X & %08X\n", activecpu_get_pc(), banshee_io_reg_name[offset], data, mem_mask);
+				logerror("%s:banshee_io_w(%s) = %08X & %08X\n", cpuexec_describe_context(device->machine), banshee_io_reg_name[offset], data, mem_mask);
 			break;
 
 		case io_dacData:
@@ -4382,14 +4377,14 @@ WRITE32_DEVICE_HANDLER( banshee_io_w )
 				v->fbi.clut_dirty = TRUE;
 			}
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_dac_w(%X) = %08X & %08X\n", activecpu_get_pc(), v->banshee.io[io_dacAddr] & 0x1ff, data, mem_mask);
+				logerror("%s:banshee_dac_w(%X) = %08X & %08X\n", cpuexec_describe_context(device->machine), v->banshee.io[io_dacAddr] & 0x1ff, data, mem_mask);
 			break;
 
 		case io_miscInit0:
 			COMBINE_DATA(&v->banshee.io[offset]);
 			v->fbi.yorigin = (data >> 18) & 0xfff;
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_io_w(%s) = %08X & %08X\n", activecpu_get_pc(), banshee_io_reg_name[offset], data, mem_mask);
+				logerror("%s:banshee_io_w(%s) = %08X & %08X\n", cpuexec_describe_context(device->machine), banshee_io_reg_name[offset], data, mem_mask);
 			break;
 
 		case io_vidScreenSize:
@@ -4403,14 +4398,14 @@ WRITE32_DEVICE_HANDLER( banshee_io_w )
 			video_screen_set_visarea(v->screen, 0, v->fbi.width - 1, 0, v->fbi.height - 1);
 			adjust_vblank_timer(v);
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_io_w(%s) = %08X & %08X\n", activecpu_get_pc(), banshee_io_reg_name[offset], data, mem_mask);
+				logerror("%s:banshee_io_w(%s) = %08X & %08X\n", cpuexec_describe_context(device->machine), banshee_io_reg_name[offset], data, mem_mask);
 			break;
 
 		case io_lfbMemoryConfig:
 			v->fbi.lfb_base = (data & 0x1fff) << 10;
 			v->fbi.lfb_stride = ((data >> 13) & 7) + 9;
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_io_w(%s) = %08X & %08X\n", activecpu_get_pc(), banshee_io_reg_name[offset], data, mem_mask);
+				logerror("%s:banshee_io_w(%s) = %08X & %08X\n", cpuexec_describe_context(device->machine), banshee_io_reg_name[offset], data, mem_mask);
 			break;
 
 		case io_vgab0:	case io_vgab4:	case io_vgab8:	case io_vgabc:
@@ -4429,7 +4424,7 @@ WRITE32_DEVICE_HANDLER( banshee_io_w )
 		default:
 			COMBINE_DATA(&v->banshee.io[offset]);
 			if (LOG_REGISTERS)
-				logerror("%08X:banshee_io_w(%s) = %08X & %08X\n", activecpu_get_pc(), banshee_io_reg_name[offset], data, mem_mask);
+				logerror("%s:banshee_io_w(%s) = %08X & %08X\n", cpuexec_describe_context(device->machine), banshee_io_reg_name[offset], data, mem_mask);
 			break;
 	}
 }
@@ -4461,6 +4456,7 @@ static DEVICE_START( voodoo )
 
 	/* validate configuration */
 	assert(config->screen != NULL);
+	assert(config->cputag != NULL);
 	assert(config->type >= VOODOO_1 && config->type < MAX_VOODOO_TYPES);
 	assert(config->fbmem > 0);
 	assert(config->type >= VOODOO_BANSHEE || config->tmumem0 > 0);
@@ -4469,12 +4465,12 @@ static DEVICE_START( voodoo )
 	v->device = device;
 
 	/* copy config data */
-	v->freq = config->clock;
+	v->freq = device->clock;
 	v->fbi.vblank_client = config->vblank;
 	v->pci.stall_callback = config->stall;
 
 	/* create a multiprocessor work queue */
-	v->poly = poly_alloc(64, sizeof(poly_extra_data), 0);
+	v->poly = poly_alloc(device->machine, 64, sizeof(poly_extra_data), 0);
 	v->thread_stats = auto_malloc(sizeof(v->thread_stats[0]) * WORK_MAX_THREADS);
 
 	/* create a table of precomputed 1/n and log2(n) values */
@@ -4544,8 +4540,10 @@ static DEVICE_START( voodoo )
 
 	/* set the type, and initialize the chip mask */
 	v->index = device_list_index(device->machine->config->devicelist, device->type, device->tag);
-	v->screen = device_list_find_by_tag(device->machine->config->devicelist, VIDEO_SCREEN, config->screen);
+	v->screen = devtag_get_device(device->machine, VIDEO_SCREEN, config->screen);
 	assert_always(v->screen != NULL, "Unable to find screen attached to voodoo");
+	v->cpu = cputag_get_cpu(device->machine, config->cputag);
+	assert_always(v->cpu != NULL, "Unable to find CPU attached to voodoo");
 	v->type = config->type;
 	v->chipmask = 0x01;
 	v->attoseconds_per_cycle = ATTOSECONDS_PER_SECOND / v->freq;
@@ -4560,7 +4558,7 @@ static DEVICE_START( voodoo )
 	v->pci.fifo.size = 64*2;
 	v->pci.fifo.in = v->pci.fifo.out = 0;
 	v->pci.stall_state = NOT_STALLED;
-	v->pci.continue_timer = timer_alloc(stall_cpu_callback, v);
+	v->pci.continue_timer = timer_alloc(v->device->machine, stall_cpu_callback, v);
 
 	/* allocate memory */
 	tmumem0 = config->tmumem0;
@@ -4684,16 +4682,16 @@ DEVICE_GET_INFO( voodoo )
 			switch (config->type)
 			{
 				default:
-				case VOODOO_1:					info->s = "3dfx Voodoo Graphics";		break;
-				case VOODOO_2:					info->s = "3dfx Voodoo 2";				break;
-				case VOODOO_BANSHEE:			info->s = "3dfx Voodoo Banshee";		break;
-				case VOODOO_3:					info->s = "3dfx Voodoo 3";				break;
+				case VOODOO_1:					strcpy(info->s, "3dfx Voodoo Graphics");break;
+				case VOODOO_2:					strcpy(info->s, "3dfx Voodoo 2");		break;
+				case VOODOO_BANSHEE:			strcpy(info->s, "3dfx Voodoo Banshee");	break;
+				case VOODOO_3:					strcpy(info->s, "3dfx Voodoo 3");		break;
 			}
 			break;
-		case DEVINFO_STR_FAMILY:				info->s = "3dfx Voodoo Graphics";		break;
-		case DEVINFO_STR_VERSION:				info->s = "1.0";						break;
-		case DEVINFO_STR_SOURCE_FILE:			info->s = __FILE__;						break;
-		case DEVINFO_STR_CREDITS:				info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_FAMILY:				strcpy(info->s, "3dfx Voodoo Graphics");break;
+		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.0");					break;
+		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);				break;
+		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

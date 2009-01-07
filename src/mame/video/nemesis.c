@@ -5,6 +5,8 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/nemesis.h"
+
 
 UINT16 *nemesis_videoram1b;
 UINT16 *nemesis_videoram2b;
@@ -93,7 +95,7 @@ WRITE16_HANDLER( nemesis_gfx_flipx_w )
 	else
 	{
 		if (data & 0x100)
-			cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff);
+			cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff);
 	}
 }
 
@@ -148,7 +150,7 @@ WRITE16_HANDLER( nemesis_palette_word_w )
 	bit5=(data >>  14)&1;
 	b = MULTIPLIER;
 
-	palette_set_color(machine,offset,MAKE_RGB(r,g,b));
+	palette_set_color(space->machine,offset,MAKE_RGB(r,g,b));
 }
 
 WRITE16_HANDLER( salamander_palette_word_w )
@@ -157,7 +159,7 @@ WRITE16_HANDLER( salamander_palette_word_w )
 	offset &= ~1;
 
 	data = ((paletteram16[offset] << 8) & 0xff00) | (paletteram16[offset+1] & 0xff);
-	palette_set_color_rgb(machine,offset / 2,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+	palette_set_color_rgb(space->machine,offset / 2,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 }
 
 WRITE16_HANDLER( nemesis_videoram1b_word_w )
@@ -209,10 +211,10 @@ VIDEO_START( nemesis )
 	int i;
 	spriteram_words = spriteram_size / 2;
 
-	background = tilemap_create(
+	background = tilemap_create(machine,
 		get_bg_tile_info, tilemap_scan_rows,  8,8, 64,32 );
 
-	foreground = tilemap_create(
+	foreground = tilemap_create(machine,
 		get_fg_tile_info, tilemap_scan_rows,  8,8, 64,32 );
 
 	tilemap_set_transparent_pen( background, 0 );
@@ -386,8 +388,8 @@ VIDEO_UPDATE( nemesis )
 
 	update_gfx(screen->machine);
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);
 
 	tilemap_set_scrolly( background, 0, (nemesis_yscroll[0x180] & 0xff) );
 
@@ -415,8 +417,8 @@ VIDEO_UPDATE( salamand )
 
 	update_gfx(screen->machine);
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);
 
 	clip.min_x = 0;
 	clip.max_x = 255;

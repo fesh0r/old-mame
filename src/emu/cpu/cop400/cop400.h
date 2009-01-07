@@ -14,28 +14,36 @@
 #ifndef __COP400__
 #define __COP400__
 
-#define COP400_PORT_L	0x100
-#define COP400_PORT_G	0x101
-#define COP400_PORT_D	0x102
-#define	COP400_PORT_IN	0x103
-#define	COP400_PORT_SK	0x104
-#define	COP400_PORT_SIO	0x105
-#define	COP400_PORT_CKO	0x106
+enum
+{
+	COP400_PORT_L = 0x100,
+	COP400_PORT_G,
+	COP400_PORT_D,
+	COP400_PORT_H,
+	COP400_PORT_R,
+	COP400_PORT_IN,
+	COP400_PORT_SK,
+	COP400_PORT_SIO,
+	COP400_PORT_CKO
+};
 
 enum
 {
-	COP400_PC=1,
+	COP400_PC = 1,
 	COP400_A,
 	COP400_B,
 	COP400_C,
 	COP400_G,
+	COP400_H,
+	COP400_R,
 	COP400_EN,
 	COP400_Q,
     COP400_SA,
     COP400_SB,
     COP400_SC,
     COP400_SIO,
-    COP400_SKL
+    COP400_SKL,
+    COP400_T
 };
 
 typedef enum _cop400_cki_bond cop400_cki_bond;
@@ -82,25 +90,42 @@ struct _cop400_interface
 */
 
 /* COP 41x */
-extern void cop401_get_info(UINT32 state, cpuinfo *info);
-extern void cop410_get_info(UINT32 state, cpuinfo *info);
-extern void cop411_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( cop401 );
+extern CPU_GET_INFO( cop410 );
+extern CPU_GET_INFO( cop411 );
+
+#define CPU_COP401 CPU_GET_INFO_NAME( cop401 )
+#define CPU_COP410 CPU_GET_INFO_NAME( cop410 )
+#define CPU_COP411 CPU_GET_INFO_NAME( cop411 )
 
 /* COP 42x */
-extern void cop402_get_info(UINT32 state, cpuinfo *info);
-extern void cop420_get_info(UINT32 state, cpuinfo *info);
-extern void cop421_get_info(UINT32 state, cpuinfo *info);
-extern void cop422_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( cop402 );
+extern CPU_GET_INFO( cop420 );
+extern CPU_GET_INFO( cop421 );
+extern CPU_GET_INFO( cop422 );
+
+#define CPU_COP402 CPU_GET_INFO_NAME( cop402 )
+#define CPU_COP420 CPU_GET_INFO_NAME( cop420 )
+#define CPU_COP421 CPU_GET_INFO_NAME( cop421 )
+#define CPU_COP422 CPU_GET_INFO_NAME( cop422 )
 
 /* COP 44x */
-extern void cop404_get_info(UINT32 state, cpuinfo *info);
-extern void cop424_get_info(UINT32 state, cpuinfo *info);
-extern void cop425_get_info(UINT32 state, cpuinfo *info);
-extern void cop426_get_info(UINT32 state, cpuinfo *info);
-extern void cop444_get_info(UINT32 state, cpuinfo *info);
-extern void cop445_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( cop404 );
+extern CPU_GET_INFO( cop424 );
+extern CPU_GET_INFO( cop425 );
+extern CPU_GET_INFO( cop426 );
+extern CPU_GET_INFO( cop444 );
+extern CPU_GET_INFO( cop445 );
 
-offs_t cop410_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-offs_t cop420_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+#define CPU_COP404 CPU_GET_INFO_NAME( cop404 )
+#define CPU_COP424 CPU_GET_INFO_NAME( cop424 )
+#define CPU_COP425 CPU_GET_INFO_NAME( cop425 )
+#define CPU_COP426 CPU_GET_INFO_NAME( cop426 )
+#define CPU_COP444 CPU_GET_INFO_NAME( cop444 )
+#define CPU_COP445 CPU_GET_INFO_NAME( cop445 )
+
+CPU_DISASSEMBLE( cop410 );
+CPU_DISASSEMBLE( cop420 );
+CPU_DISASSEMBLE( cop444 );
 
 #endif  /* __COP400__ */

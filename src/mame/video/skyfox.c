@@ -67,7 +67,7 @@ WRITE8_HANDLER( skyfox_vregs_w )
 	switch (offset)
 	{
 		case 0:	skyfox_bg_ctrl = data;	break;
-		case 1:	soundlatch_w(machine,0,data);	break;
+		case 1:	soundlatch_w(space,0,data);	break;
 		case 2:	break;
 		case 3:	break;
 		case 4:	break;
@@ -287,7 +287,7 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, const re
 
 VIDEO_UPDATE( skyfox )
 {
-	fillbitmap(bitmap,255,cliprect);	// the bg is black
+	bitmap_fill(bitmap,cliprect,255);	// the bg is black
 	draw_background(screen->machine, bitmap, cliprect);
 	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;

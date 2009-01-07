@@ -33,7 +33,7 @@ VIDEO_START( triplhnt )
 {
 	helper = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
-	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, 16, 16, 16, 16);
+	bg_tilemap = tilemap_create(machine, get_tile_info, tilemap_scan_rows, 16, 16, 16, 16);
 }
 
 
@@ -124,19 +124,21 @@ static void draw_sprites(running_machine *machine, bitmap_t* bitmap, const recta
 	}
 
 	if (hit_line != 999 && hit_code != 999)
-		timer_set(video_screen_get_time_until_pos(machine->primary_screen, hit_line, 0), NULL, hit_code, triplhnt_hit_callback);
+		timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, hit_line, 0), NULL, hit_code, triplhnt_hit_callback);
 }
 
 
 VIDEO_UPDATE( triplhnt )
 {
+	const address_space *space = cpu_get_address_space(screen->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
 	tilemap_mark_all_tiles_dirty(bg_tilemap);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
 	draw_sprites(screen->machine, bitmap, cliprect);
 
-	discrete_sound_w(screen->machine, TRIPLHNT_BEAR_ROAR_DATA, triplhnt_playfield_ram[0xfa] & 15);
-	discrete_sound_w(screen->machine, TRIPLHNT_SHOT_DATA, triplhnt_playfield_ram[0xfc] & 15);
+	discrete_sound_w(space, TRIPLHNT_BEAR_ROAR_DATA, triplhnt_playfield_ram[0xfa] & 15);
+	discrete_sound_w(space, TRIPLHNT_SHOT_DATA, triplhnt_playfield_ram[0xfc] & 15);
 	return 0;
 }

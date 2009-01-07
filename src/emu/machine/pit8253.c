@@ -62,7 +62,6 @@ struct pit8253_timer
 
 	emu_timer *updatetimer;			/* MAME timer to process updates */
 
-	UINT8 programmed;				/* Has this counter been programmed by writing to the control word */
 	UINT16 value;					/* current counter value ("CE" in Intel docs) */
 	UINT16 latch;					/* latched counter value ("OL" in Intel docs) */
 	UINT16 count;					/* new counter value ("CR" in Intel docs) */
@@ -597,7 +596,7 @@ static void	simulate2(const device_config *device, struct pit8253_timer *timer, 
 	{
 		attotime next_fire_time = attotime_add( timer->last_updated, double_to_attotime( cycles_to_output / timer->clockin ) );
 
-		timer_adjust_oneshot(timer->updatetimer, attotime_sub( next_fire_time, timer_get_time() ), timer->index );
+		timer_adjust_oneshot(timer->updatetimer, attotime_sub( next_fire_time, timer_get_time(device->machine) ), timer->index );
 	}
 
     LOG2(("pit8253: simulate2(): simulating %d cycles for %d in mode %d, bcd = %d, phase = %d, gate = %d, output %d, value = 0x%04x, cycles_to_output = %04x\n",
@@ -637,7 +636,7 @@ static void	update(const device_config *device, struct pit8253_timer *timer)
 {
 	/* With the 82C54's maximum clockin of 10MHz, 64 bits is nearly 60,000
        years of time. Should be enough for now. */
-	attotime now =	timer_get_time();
+	attotime now =	timer_get_time(device->machine);
 	attotime elapsed_time = attotime_sub(now,timer->last_updated);
 	INT64 elapsed_cycles =	attotime_to_double(elapsed_time) * timer->clockin;
 
@@ -652,8 +651,7 @@ static void	update(const device_config *device, struct pit8253_timer *timer)
 		timer->last_updated = now;
 	}
 
-	if ( timer->programmed )
-		simulate(device, timer, elapsed_cycles);
+	simulate(device, timer, elapsed_cycles);
 }
 
 
@@ -886,16 +884,12 @@ WRITE8_DEVICE_HANDLER( pit8253_w )
 		else {
 			LOG1(("pit8253_write(): timer=%d bytes=%d mode=%d bcd=%d\n", (data >> 6) & 3, (data >> 4) & 3, (data >> 1) & 7,data & 1));
 
-			if ( ( CTRL_MODE(timer->control) != CTRL_MODE(data) ) || ! timer->programmed )
-			{
-				timer->control = (data & 0x3f);
-				timer->null_count =	1;
-				timer->wmsb	= timer->rmsb =	0;
-				/* Phase 0 is always the phase after a mode control write */
-				timer->phase = 0;
-				set_output(device, timer, CTRL_MODE(timer->control) ? 1 : 0);
-				timer->programmed = 1;
-			}
+			timer->control = (data & 0x3f);
+			timer->null_count =	1;
+			timer->wmsb	= timer->rmsb =	0;
+			/* Phase 0 is always the phase after a mode control write */
+			timer->phase = 0;
+			set_output(device, timer, CTRL_MODE(timer->control) ? 1 : 0);
 		}
 	}
 	else
@@ -904,7 +898,7 @@ WRITE8_DEVICE_HANDLER( pit8253_w )
 
 		update(device, timer);
 
-		if ( attotime_compare( timer_get_time(), timer->last_updated ) > 0 && timer->clockin != 0 )
+		if ( attotime_compare( timer_get_time(device->machine), timer->last_updated ) > 0 && timer->clockin != 0 )
 		{
 			middle_of_a_cycle = 1;
 		}
@@ -1046,15 +1040,12 @@ void pit8253_set_clock_signal(const device_config *device, int timerno, int stat
 
 static device_start_err common_start( const device_config *device, int device_type ) {
 	pit8253_t	*pit8253 = get_safe_token(device);
-	char		unique_tag[30];
 	int			timerno;
 
 	pit8253->config = device->static_config;
 	pit8253->device_type = device_type;
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, device_tags[device_type], device->tag);
-
 	for (timerno = 0; timerno < MAX_TIMER; timerno++)
 	{
 		struct pit8253_timer *timer = get_timer(pit8253,timerno);
@@ -1062,30 +1053,29 @@ static device_start_err common_start( const device_config *device, int device_ty
 		timer->clockin = pit8253->config->timer[timerno].clockin;
 		timer->output_changed = pit8253->config->timer[timerno].output_changed;
 
-		timer->updatetimer = timer_alloc(update_timer_cb, (void *)device);
+		timer->updatetimer = timer_alloc(device->machine, update_timer_cb, (void *)device);
 		timer_adjust_oneshot(timer->updatetimer, attotime_never, timerno);
 
 		/* set up state save values */
-		state_save_register_item(unique_tag, timerno, timer->clockin);
-		state_save_register_item(unique_tag, timerno, timer->control);
-		state_save_register_item(unique_tag, timerno, timer->status);
-		state_save_register_item(unique_tag, timerno, timer->lowcount);
-		state_save_register_item(unique_tag, timerno, timer->latch);
-		state_save_register_item(unique_tag, timerno, timer->count);
-		state_save_register_item(unique_tag, timerno, timer->value);
-		state_save_register_item(unique_tag, timerno, timer->wmsb);
-		state_save_register_item(unique_tag, timerno, timer->rmsb);
-		state_save_register_item(unique_tag, timerno, timer->output);
-		state_save_register_item(unique_tag, timerno, timer->gate);
-		state_save_register_item(unique_tag, timerno, timer->latched_count);
-		state_save_register_item(unique_tag, timerno, timer->latched_status);
-		state_save_register_item(unique_tag, timerno, timer->null_count);
-		state_save_register_item(unique_tag, timerno, timer->phase);
-		state_save_register_item(unique_tag, timerno, timer->cycles_to_output);
-		state_save_register_item(unique_tag, timerno, timer->last_updated.seconds);
-		state_save_register_item(unique_tag, timerno, timer->last_updated.attoseconds);
-		state_save_register_item(unique_tag, timerno, timer->programmed);
-		state_save_register_item(unique_tag, timerno, timer->clock);
+		state_save_register_device_item(device, timerno, timer->clockin);
+		state_save_register_device_item(device, timerno, timer->control);
+		state_save_register_device_item(device, timerno, timer->status);
+		state_save_register_device_item(device, timerno, timer->lowcount);
+		state_save_register_device_item(device, timerno, timer->latch);
+		state_save_register_device_item(device, timerno, timer->count);
+		state_save_register_device_item(device, timerno, timer->value);
+		state_save_register_device_item(device, timerno, timer->wmsb);
+		state_save_register_device_item(device, timerno, timer->rmsb);
+		state_save_register_device_item(device, timerno, timer->output);
+		state_save_register_device_item(device, timerno, timer->gate);
+		state_save_register_device_item(device, timerno, timer->latched_count);
+		state_save_register_device_item(device, timerno, timer->latched_status);
+		state_save_register_device_item(device, timerno, timer->null_count);
+		state_save_register_device_item(device, timerno, timer->phase);
+		state_save_register_device_item(device, timerno, timer->cycles_to_output);
+		state_save_register_device_item(device, timerno, timer->last_updated.seconds);
+		state_save_register_device_item(device, timerno, timer->last_updated.attoseconds);
+		state_save_register_device_item(device, timerno, timer->clock);
 	}
 
 	return DEVICE_START_OK;
@@ -1124,7 +1114,7 @@ static DEVICE_RESET( pit8253 ) {
 		timer->null_count = 1;
 		timer->cycles_to_output = CYCLES_NEVER;
 
-		timer->last_updated = timer_get_time();
+		timer->last_updated = timer_get_time(device->machine);
 
 		update(device, timer);
 	}
@@ -1152,11 +1142,11 @@ DEVICE_GET_INFO( pit8253 ) {
 		case DEVINFO_FCT_RESET:						info->reset = DEVICE_RESET_NAME(pit8253);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:						info->s = "Intel PIT8253";					break;
-		case DEVINFO_STR_FAMILY:					info->s = "PIT8253";						break;
-		case DEVINFO_STR_VERSION:					info->s = "1.00";							break;
-		case DEVINFO_STR_SOURCE_FILE:				info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:					info->s = "Copyright the MAME and MESS Teams"; break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "Intel PIT8253");			break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "PIT8253");					break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.00");					break;
+		case DEVINFO_STR_SOURCE_FILE:				strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright the MAME and MESS Teams"); break;
 	}
 }
 
@@ -1164,7 +1154,7 @@ DEVICE_GET_INFO( pit8253 ) {
 DEVICE_GET_INFO( pit8254 ) {
 	switch ( state ) {
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_STR_NAME:						info->s = "Intel PIT8254";					break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "Intel PIT8254");			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:						info->start = DEVICE_START_NAME(pit8254);	break;

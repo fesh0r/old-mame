@@ -148,8 +148,8 @@ VIDEO_START( ninjakd2 )
 {
 	videoram_alloc(machine, 0);
 
-	fg_tilemap = tilemap_create(         get_fg_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
-	bg_tilemap = tilemap_create(ninjakd2_get_bg_tile_info, tilemap_scan_rows,  16, 16, 32, 32);
+	fg_tilemap = tilemap_create(         machine, get_fg_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
+	bg_tilemap = tilemap_create(machine, ninjakd2_get_bg_tile_info, tilemap_scan_rows,  16, 16, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 15);
 
@@ -160,8 +160,8 @@ VIDEO_START( mnight )
 {
 	videoram_alloc(machine, 0);
 
-	fg_tilemap = tilemap_create(       get_fg_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
-	bg_tilemap = tilemap_create(mnight_get_bg_tile_info, tilemap_scan_rows,  16, 16, 32, 32);
+	fg_tilemap = tilemap_create(       machine, get_fg_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
+	bg_tilemap = tilemap_create(machine, mnight_get_bg_tile_info, tilemap_scan_rows,  16, 16, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 15);
 
@@ -174,10 +174,10 @@ VIDEO_START( robokid )
 
 	videoram_alloc(machine, 0x0800);
 
-	fg_tilemap  = tilemap_create(        get_fg_tile_info,  tilemap_scan_rows,   8,  8, 32, 32);
-	bg0_tilemap = tilemap_create(robokid_get_bg0_tile_info, robokid_bg_scan,    16, 16, 32, 32);
-	bg1_tilemap = tilemap_create(robokid_get_bg1_tile_info, robokid_bg_scan,    16, 16, 32, 32);
-	bg2_tilemap = tilemap_create(robokid_get_bg2_tile_info, robokid_bg_scan,    16, 16, 32, 32);
+	fg_tilemap  = tilemap_create(        machine, get_fg_tile_info,  tilemap_scan_rows,   8,  8, 32, 32);
+	bg0_tilemap = tilemap_create(machine, robokid_get_bg0_tile_info, robokid_bg_scan,    16, 16, 32, 32);
+	bg1_tilemap = tilemap_create(machine, robokid_get_bg1_tile_info, robokid_bg_scan,    16, 16, 32, 32);
+	bg2_tilemap = tilemap_create(machine, robokid_get_bg2_tile_info, robokid_bg_scan,    16, 16, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap,  15);
 	tilemap_set_transparent_pen(bg1_tilemap, 15);
@@ -192,10 +192,10 @@ VIDEO_START( omegaf )
 
 	videoram_alloc(machine, 0x2000);
 
-	fg_tilemap  = tilemap_create(        get_fg_tile_info,  tilemap_scan_rows,   8,  8,  32, 32);
-	bg0_tilemap = tilemap_create(robokid_get_bg0_tile_info, omegaf_bg_scan,     16, 16, 128, 32);
-	bg1_tilemap = tilemap_create(robokid_get_bg1_tile_info, omegaf_bg_scan,     16, 16, 128, 32);
-	bg2_tilemap = tilemap_create(robokid_get_bg2_tile_info, omegaf_bg_scan,     16, 16, 128, 32);
+	fg_tilemap  = tilemap_create(        machine, get_fg_tile_info,  tilemap_scan_rows,   8,  8,  32, 32);
+	bg0_tilemap = tilemap_create(machine, robokid_get_bg0_tile_info, omegaf_bg_scan,     16, 16, 128, 32);
+	bg1_tilemap = tilemap_create(machine, robokid_get_bg1_tile_info, omegaf_bg_scan,     16, 16, 128, 32);
+	bg2_tilemap = tilemap_create(machine, robokid_get_bg2_tile_info, omegaf_bg_scan,     16, 16, 128, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap,  15);
 	tilemap_set_transparent_pen(bg0_tilemap, 15);
@@ -368,7 +368,7 @@ static void draw_sprites(running_machine* const machine, bitmap_t* const bitmap)
 			int const big = (sprptr[2] & 0x04) >> 2;
 			int x,y;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 240 - 16*big - sx;
 				sy = 240 - 16*big - sy;
@@ -419,7 +419,7 @@ static void erase_sprites(running_machine* const machine, bitmap_t* const bitmap
 	// if sprite overdraw is disabled, clear the sprite framebuffer
 	// if sprite overdraw is enabled, only clear palettes 0-B and F, and leave C-E on screen
 	if (!sprite_overdraw_enabled)
-		fillbitmap(sp_bitmap, 15, cliprect);
+		bitmap_fill(sp_bitmap, cliprect, 15);
 	else
 	{
 		int x,y;
@@ -460,7 +460,7 @@ VIDEO_UPDATE( ninjakd2 )
 	update_sprites(screen->machine);
 	sprites_updated = 1;
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
@@ -476,7 +476,7 @@ VIDEO_UPDATE( robokid )
 	update_sprites(screen->machine);
 	sprites_updated = 1;
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, bg0_tilemap, 0, 0);
 
@@ -496,7 +496,7 @@ VIDEO_UPDATE( omegaf )
 	update_sprites(screen->machine);
 	sprites_updated = 1;
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, bg0_tilemap, 0, 0);
 

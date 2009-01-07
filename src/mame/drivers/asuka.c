@@ -213,6 +213,8 @@ DIP locations verified for:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "taitoipt.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
@@ -241,13 +243,13 @@ static int adpcm_data;
 
 static TIMER_CALLBACK( cadash_interrupt5 )
 {
-	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0], 5, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( cadash_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(500,0), NULL, 0, cadash_interrupt5);
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);  /* interrupt vector 4 */
+	timer_set(device->machine, cpu_clocks_to_attotime(device,500), NULL, 0, cadash_interrupt5);
+	cpu_set_input_line(device, 4, HOLD_LINE);  /* interrupt vector 4 */
 }
 
 
@@ -257,12 +259,12 @@ static INTERRUPT_GEN( cadash_interrupt )
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
-	memory_set_bankptr( 1, memory_region(machine, "audio") + ((data-1) & 0x03) * 0x4000 + 0x10000 );
+	memory_set_bankptr(space->machine,  1, memory_region(space->machine, "audio") + ((data-1) & 0x03) * 0x4000 + 0x10000 );
 }
 
 
 
-static void asuka_msm5205_vck(running_machine *machine, int chip)
+static void asuka_msm5205_vck(const device_config *device)
 {
 	if (adpcm_data != -1)
 	{
@@ -271,7 +273,7 @@ static void asuka_msm5205_vck(running_machine *machine, int chip)
 	}
 	else
 	{
-		adpcm_data = memory_region(machine, "ym")[adpcm_pos];
+		adpcm_data = memory_region(device->machine, "ym")[adpcm_pos];
 		adpcm_pos = (adpcm_pos + 1) & 0xffff;
 		msm5205_data_w(0, adpcm_data >> 4);
 	}
@@ -298,10 +300,10 @@ static WRITE8_HANDLER( asuka_msm5205_stop_w )
 static MACHINE_START( asuka )
 {
 	/* configure the banks */
-    memory_configure_bank(1, 0, 1, memory_region(machine, "audio"), 0);
-	memory_configure_bank(1, 1, 3, memory_region(machine, "audio") + 0x10000, 0x04000);
+    memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "audio"), 0);
+	memory_configure_bank(machine, 1, 1, 3, memory_region(machine, "audio") + 0x10000, 0x04000);
 
-	state_save_register_global(adpcm_pos);
+	state_save_register_global(machine, adpcm_pos);
 }
 
 static MACHINE_RESET( asuka )
@@ -753,7 +755,7 @@ GFXDECODE_END
 
 static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -795,7 +797,7 @@ static MACHINE_DRIVER_START( bonzeadv )
 	MDRV_CPU_ADD("audio", Z80,4000000)    /* sound CPU, also required for test mode */
 	MDRV_CPU_PROGRAM_MAP(bonzeadv_z80_map,0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -834,7 +836,7 @@ static MACHINE_DRIVER_START( asuka )
 	MDRV_CPU_ADD("audio", Z80, XTAL_16MHz/4)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(z80_map,0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -876,7 +878,7 @@ static MACHINE_DRIVER_START( cadash )
 	MDRV_CPU_ADD("audio", Z80, XTAL_8MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cadash_z80_map,0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -914,7 +916,7 @@ static MACHINE_DRIVER_START( mofflott )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(z80_map,0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -956,7 +958,7 @@ static MACHINE_DRIVER_START( galmedes )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(cadash_z80_map,0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -994,7 +996,7 @@ static MACHINE_DRIVER_START( eto )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(cadash_z80_map,0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

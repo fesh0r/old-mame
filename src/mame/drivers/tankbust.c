@@ -17,6 +17,7 @@ To do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 
@@ -46,7 +47,7 @@ static TIMER_CALLBACK( soundlatch_callback )
 
 static WRITE8_HANDLER( tankbust_soundlatch_w )
 {
-	timer_call_after_resynch(NULL, data,soundlatch_callback);
+	timer_call_after_resynch(space->machine, NULL, data,soundlatch_callback);
 }
 
 static READ8_HANDLER( tankbust_soundlatch_r )
@@ -70,7 +71,7 @@ static TIMER_CALLBACK( soundirqline_callback )
 //logerror("sound_irq_line write = %2x (after CPUs synced) \n",param);
 
 		if ((param&1) == 0)
-			cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+			cpu_set_input_line(machine->cpu[1], 0, HOLD_LINE);
 }
 
 
@@ -91,11 +92,11 @@ static WRITE8_HANDLER( tankbust_e0xx_w )
 	switch (offset)
 	{
 	case 0:	/* 0xe000 interrupt enable */
-		interrupt_enable_w(machine,0,data);
+		interrupt_enable_w(space,0,data);
 	break;
 
 	case 1:	/* 0xe001 (value 0 then 1) written right after the soundlatch_w */
-		timer_call_after_resynch(NULL, data,soundirqline_callback);
+		timer_call_after_resynch(space->machine, NULL, data,soundirqline_callback);
 	break;
 
 	case 2:	/* 0xe002 coin counter */
@@ -113,8 +114,8 @@ static WRITE8_HANDLER( tankbust_e0xx_w )
 	case 7: /* 0xe007 bankswitch */
 		/* bank 1 at 0x6000-9fff = from 0x10000 when bit0=0 else from 0x14000 */
 		/* bank 2 at 0xa000-bfff = from 0x18000 when bit0=0 else from 0x1a000 */
-		memory_set_bankptr( 1, memory_region(machine, "main") + 0x10000 + ((data&1) * 0x4000) );
-		memory_set_bankptr( 2, memory_region(machine, "main") + 0x18000 + ((data&1) * 0x2000) ); /* verified (the game will reset after the "game over" otherwise) */
+		memory_set_bankptr(space->machine,  1, memory_region(space->machine, "main") + 0x10000 + ((data&1) * 0x4000) );
+		memory_set_bankptr(space->machine,  2, memory_region(space->machine, "main") + 0x18000 + ((data&1) * 0x2000) ); /* verified (the game will reset after the "game over" otherwise) */
 	break;
 	}
 }
@@ -350,7 +351,7 @@ static MACHINE_DRIVER_START( tankbust )
 	MDRV_CPU_PROGRAM_MAP(map_cpu2,0)
 	MDRV_CPU_IO_MAP(port_map_cpu2,0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_RESET( tankbust )
 

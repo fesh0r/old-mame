@@ -17,10 +17,10 @@ struct _y8950_interface
 {
 	void (*handler)(running_machine *machine, int linestate);
 
-	read8_machine_func keyboardread;
-	write8_machine_func keyboardwrite;
-	read8_machine_func portread;
-	write8_machine_func portwrite;
+	read8_space_func keyboardread;
+	write8_space_func keyboardwrite;
+	read8_space_func portread;
+	write8_space_func portwrite;
 };
 
 
@@ -35,6 +35,7 @@ WRITE8_HANDLER( ym3812_control_port_1_w );
 READ8_HANDLER( ym3812_read_port_1_r );
 WRITE8_HANDLER( ym3812_write_port_1_w );
 
+SND_GET_INFO( ym3812 );
 
 /* YM3526 */
 READ8_HANDLER ( ym3526_status_port_0_r );
@@ -47,6 +48,7 @@ WRITE8_HANDLER( ym3526_control_port_1_w );
 READ8_HANDLER( ym3526_read_port_1_r );
 WRITE8_HANDLER( ym3526_write_port_1_w );
 
+SND_GET_INFO( ym3526 );
 
 /* Y8950 */
 READ8_HANDLER ( y8950_status_port_0_r );
@@ -58,5 +60,7 @@ READ8_HANDLER ( y8950_status_port_1_r );
 WRITE8_HANDLER( y8950_control_port_1_w );
 READ8_HANDLER ( y8950_read_port_1_r );
 WRITE8_HANDLER( y8950_write_port_1_w );
+
+SND_GET_INFO( y8950 );
 
 #endif /* __3812INTF_H__ */

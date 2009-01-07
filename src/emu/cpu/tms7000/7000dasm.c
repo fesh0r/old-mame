@@ -358,7 +358,7 @@ static const opcodeinfo opcodes[] = {
 	{0x00, "NOP", 23, 0 }
 };
 
-unsigned tms7000_dasm( char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram )
+CPU_DISASSEMBLE( tms7000 )
 {
 	int opcode, i, size = 1;
 	int pos = 0;
@@ -431,7 +431,7 @@ unsigned tms7000_dasm( char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 
 						break;
 					case TRAP:
 						vector = 0xffff - ((0xff - opcode) * 2);
-						c = (UINT16)((cpu_readop( vector-1 ) << 8) + cpu_readop( vector ));
+						c = vector;//(UINT16)((memory_decrypted_read_byte( vector-1 ) << 8) + memory_decrypted_read_byte( vector ));
 						break;
 				}
 			}

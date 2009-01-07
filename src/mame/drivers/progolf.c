@@ -47,7 +47,7 @@ Twenty four 8116 rams.
 static ADDRESS_MAP_START( main_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM
 	AM_RANGE(0x1000, 0x1fff) AM_RAM //AM_WRITE(deco_charram_w) AM_BASE(&deco_charram)
-	AM_RANGE(0x2000, 0x7fff) AM_RAM //AM_WRITE(deco_charram_w) AM_BASE(&deco_charram)
+	AM_RANGE(0x2000, 0x7fff) AM_RAM AM_BASE(&deco_charram) //AM_WRITE(deco_charram_w)
 	AM_RANGE(0x9000, 0x9000) AM_WRITENOP
 	AM_RANGE(0x9000, 0x9000) AM_READNOP
 	AM_RANGE(0x9200, 0x9200) AM_WRITENOP
@@ -183,7 +183,7 @@ GFXDECODE_END
 static INTERRUPT_GEN( progolf_interrupt )
 {
 	//if (input_port_read(machine, "IN2") & 0xc0)
-		cpunum_set_input_line(machine, 0, /*0*/INPUT_LINE_NMI, /*HOLD_LINE*/PULSE_LINE);
+		cpu_set_input_line(device, /*0*/INPUT_LINE_NMI, /*HOLD_LINE*/PULSE_LINE);
 }
 #endif
 
@@ -272,10 +272,11 @@ ROM_END
 static DRIVER_INIT( progolf )
 {
 	int A;
+	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
 	UINT8 *rom = memory_region(machine, "main");
 	UINT8* decrypted = auto_malloc(0x10000);
 
-	memory_set_decrypted_region(0,0x0000,0xffff, decrypted);
+	memory_set_decrypted_region(space,0x0000,0xffff, decrypted);
 
 	/* Swap bits 5 & 6 for opcodes */
 	for (A = 0;A < 0x10000;A++)

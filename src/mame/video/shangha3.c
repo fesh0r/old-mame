@@ -96,7 +96,7 @@ WRITE16_HANDLER( shangha3_flipscreen_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 7 flips screen, the rest seems to always be set to 0x7e */
-		flip_screen_set(data & 0x80);
+		flip_screen_set(space->machine, data & 0x80);
 
 		if ((data & 0x7f) != 0x7e) popmessage("flipscreen_w %02x",data);
 	}
@@ -133,7 +133,7 @@ WRITE16_HANDLER( shangha3_blitter_go_w )
 		zoomx = shangha3_ram[offs+10];
 		zoomy = shangha3_ram[offs+13];
 
-		if (flip_screen_get())
+		if (flip_screen_get(space->machine))
 		{
 			sx = 383 - sx - sizex;
 			sy = 255 - sy - sizey;
@@ -211,7 +211,7 @@ WRITE16_HANDLER( shangha3_blitter_go_w )
 						if (flipy) dy = sy + sizey-15 - dy;
 						else dy = sy + dy;
 
-						drawgfx(rawbitmap,machine->gfx[0],
+						drawgfx(rawbitmap,space->machine->gfx[0],
 								(tile & 0x0fff) | (code & 0xf000),
 								(tile >> 12) | (color & 0x70),
 								flipx,flipy,
@@ -225,7 +225,7 @@ WRITE16_HANDLER( shangha3_blitter_go_w )
 				int w;
 
 if (zoomx <= 1 && zoomy <= 1)
-	drawgfxzoom(rawbitmap,machine->gfx[0],
+	drawgfxzoom(rawbitmap,space->machine->gfx[0],
 			code,
 			color,
 			flipx,flipy,
@@ -238,7 +238,7 @@ else
 
 				for (x = 0;x < w;x++)
 				{
-					drawgfxzoom(rawbitmap,machine->gfx[0],
+					drawgfxzoom(rawbitmap,space->machine->gfx[0],
 							code,
 							color,
 							flipx,flipy,

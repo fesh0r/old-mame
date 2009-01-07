@@ -48,7 +48,7 @@ static TILE_GET_INFO( get_usgames_tile_info )
 
 VIDEO_START(usgames)
 {
-	usgames_tilemap = tilemap_create(get_usgames_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	usgames_tilemap = tilemap_create(machine, get_usgames_tile_info,tilemap_scan_rows, 8, 8,64,32);
 }
 
 
@@ -62,7 +62,7 @@ WRITE8_HANDLER( usgames_charram_w )
 {
 	usgames_charram[offset] = data;
 
-	decodechar(machine->gfx[0], offset/8, usgames_charram);
+	decodechar(space->machine->gfx[0], offset/8, usgames_charram);
 
 	tilemap_mark_all_tiles_dirty(usgames_tilemap);
 }

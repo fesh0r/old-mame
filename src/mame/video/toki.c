@@ -32,18 +32,18 @@ remove all the code writing the $a0000 area.)
 
 WRITE16_HANDLER( toki_control_w )
 {
-	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen) - 1);
+	video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen) - 1);
 	COMBINE_DATA(&toki_scrollram16[offset]);
 }
 
 VIDEO_EOF( toki )
 {
-	buffer_spriteram16_w(machine,0,0,0xffff);
+	buffer_spriteram16_w(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),0,0,0xffff);
 }
 
 VIDEO_EOF( tokib )
 {
-	buffer_spriteram16_w(machine,0,0,0xffff);
+	buffer_spriteram16_w(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),0,0,0xffff);
 }
 
 static TILE_GET_INFO( get_text_tile_info )
@@ -97,9 +97,9 @@ static TILE_GET_INFO( get_fore_tile_info )
 
 VIDEO_START( toki )
 {
-	text_layer       = tilemap_create(get_text_tile_info,tilemap_scan_rows,  8,8,32,32);
-	background_layer = tilemap_create(get_back_tile_info,tilemap_scan_rows,16,16,32,32);
-	foreground_layer = tilemap_create(get_fore_tile_info,tilemap_scan_rows,16,16,32,32);
+	text_layer       = tilemap_create(machine, get_text_tile_info,tilemap_scan_rows,  8,8,32,32);
+	background_layer = tilemap_create(machine, get_back_tile_info,tilemap_scan_rows,16,16,32,32);
+	foreground_layer = tilemap_create(machine, get_fore_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transparent_pen(text_layer,15);
 	tilemap_set_transparent_pen(background_layer,15);
@@ -201,7 +201,7 @@ static void toki_draw_sprites(running_machine *machine, bitmap_t *bitmap,const r
 			flipy   = 0;
 			tile    = (sprite_word[1] & 0xfff) + ((sprite_word[2] & 0x8000) >> 3);
 
-			if (flip_screen_get()) {
+			if (flip_screen_get(machine)) {
 				x=240-x;
 				y=240-y;
 				if (flipx) flipx=0; else flipx=1;
@@ -283,7 +283,7 @@ VIDEO_UPDATE( toki )
 	tilemap_set_scrollx( foreground_layer, 0, foreground_x_scroll );
 	tilemap_set_scrolly( foreground_layer, 0, foreground_y_scroll );
 
-	flip_screen_set((toki_scrollram16[0x28]&0x8000)==0);
+	flip_screen_set(screen->machine, (toki_scrollram16[0x28]&0x8000)==0);
 
 	if (toki_scrollram16[0x28]&0x100) {
 		tilemap_draw(bitmap,cliprect,background_layer,TILEMAP_DRAW_OPAQUE,0);

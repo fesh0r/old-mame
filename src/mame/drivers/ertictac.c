@@ -41,7 +41,7 @@ static WRITE32_HANDLER(video_fifo_w)
 
 static READ32_HANDLER(IOCR_r)
 {
-	return (input_port_read(machine, "dummy") & 0x80) | 0x34;
+	return (input_port_read(space->machine, "dummy") & 0x80) | 0x34;
 }
 
 static WRITE32_HANDLER(IOCR_w)
@@ -79,7 +79,7 @@ static WRITE32_HANDLER(IRQMSKA_w)
 
 static READ32_HANDLER(IRQRQB_r)
 {
-	return mame_rand(machine)&IRQMSKB; /* hack  0x20 - controls,  0x02 - ?sound? */
+	return mame_rand(space->machine)&IRQMSKB; /* hack  0x20 - controls,  0x02 - ?sound? */
 }
 
 static READ32_HANDLER(IRQMSKB_r)
@@ -126,26 +126,26 @@ static WRITE32_HANDLER(T1high_w)
 		T1high=data;
 }
 
-static void startTimer(void);
+static void startTimer(running_machine *machine);
 
 static TIMER_CALLBACK( ertictacTimer )
 {
 	IRQSTA|=0x40;
 	if(IRQMSKA&0x40)
 	{
-		cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0], ARM_IRQ_LINE, HOLD_LINE);
 	}
-	startTimer();
+	startTimer(machine);
 }
 
-static void startTimer(void)
+static void startTimer(running_machine *machine)
 {
-	timer_set(ATTOTIME_IN_USEC( ((T1low&0xff)|((T1high&0xff)<<8))>>4), NULL, 0, ertictacTimer);
+	timer_set(machine, ATTOTIME_IN_USEC( ((T1low&0xff)|((T1high&0xff)<<8))>>4), NULL, 0, ertictacTimer);
 }
 
 static WRITE32_HANDLER(T1GO_w)
 {
-	startTimer();
+	startTimer(space->machine);
 }
 
 static ADDRESS_MAP_START( ertictac_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -334,7 +334,7 @@ static INTERRUPT_GEN( ertictac_interrupt )
 	IRQSTA|=0x08;
 	if(IRQMSKA&0x08)
 	{
-		cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, HOLD_LINE);
+		cpu_set_input_line(device, ARM_IRQ_LINE, HOLD_LINE);
 	}
 }
 

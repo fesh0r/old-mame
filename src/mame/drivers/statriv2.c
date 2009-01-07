@@ -5,6 +5,7 @@
 * Triv Four driver by Pierpaolo Prazzoli                         *
 * Super Triv III driver by Pierpaolo Prazzoli                    *
 * Hangman driver by Pierpaolo Prazzoli                           *
+* Status Black Jack driver by Angelo Salese & Roberto Fresca     *
 *                                                                *
 ******************************************************************
 *                                                                *
@@ -24,6 +25,8 @@
 *     sound seems to make sense. Can someone with a PCB stomach  *
 *     the game long enough to verify one way or the other?       *
 *                                                                *
+* AS: All games in this driver needs the the PPI8255 and the     *
+*     9937 CRT Controller properly hooked up.                    *
 ******************************************************************
 
 ******************************************************************
@@ -61,6 +64,7 @@ PROM use is unknown
 #include "driver.h"
 #include "cpu/i8085/i8085.h"
 #include "sound/ay8910.h"
+#include "machine/8255ppi.h"
 
 /* Default NVram, we seem to need one or statriv2 crashes during attract
    attempting to display an unterminated message */
@@ -126,8 +130,14 @@ static WRITE8_HANDLER( statriv2_videoram_w )
 
 static VIDEO_START (statriv2)
 {
-	statriv2_tilemap = tilemap_create(get_statriv2_tile_info,tilemap_scan_rows,8,16,64, 16);
+	statriv2_tilemap = tilemap_create(machine, get_statriv2_tile_info,tilemap_scan_rows,8,16,64, 16);
 }
+
+static VIDEO_START (statriv2v)
+{
+	statriv2_tilemap = tilemap_create(machine, get_statriv2_tile_info,tilemap_scan_rows,16,8,32, 32);
+}
+
 
 static VIDEO_UPDATE (statriv2)
 {
@@ -189,7 +199,7 @@ static WRITE8_HANDLER ( question_offset_high_w )
 
 static READ8_HANDLER (statriv2_questions_read)
 {
-	UINT8 *question_data    = memory_region       ( machine, "user1" );
+	UINT8 *question_data    = memory_region       ( space->machine, "user1" );
 	int offs;
 
 	question_offset_low++;
@@ -261,7 +271,7 @@ static READ8_HANDLER (statriv2_questions_read)
 
 static READ8_HANDLER (supertr2_questions_read)
 {
-	UINT8 *question_data = memory_region( machine, "user1" );
+	UINT8 *question_data = memory_region( space->machine, "user1" );
 	int offs;
 	int XORval;
 
@@ -278,7 +288,7 @@ static READ8_HANDLER (supertr2_questions_read)
 
 static READ8_HANDLER (supertr3_questions_read)
 {
-	UINT8 *question_data = memory_region( machine, "user1" );
+	UINT8 *question_data = memory_region( space->machine, "user1" );
 	int offs;
 
 	offs = (question_offset_high << 16) | (question_offset_med << 8) | question_offset_low;
@@ -288,7 +298,7 @@ static READ8_HANDLER (supertr3_questions_read)
 
 static READ8_HANDLER (hangman_questions_read)
 {
-	UINT8 *question_data = memory_region( machine, "user1" );
+	UINT8 *question_data = memory_region( space->machine, "user1" );
 	int offs;
 
 	offs = (question_offset_high << 16) | (question_offset_med << 8) | question_offset_low;
@@ -412,6 +422,49 @@ static ADDRESS_MAP_START( hangman_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xb1, 0xb1) AM_READ(ay8910_read_port_0_r)		// ???
 	AM_RANGE(0xce, 0xce) AM_READ(SMH_NOP)			// ???
 ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( statusbj_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x20, 0x23) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xb0, 0xb0) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xb1, 0xb1) AM_READWRITE(ay8910_read_port_0_r,ay8910_write_port_0_w)
+	AM_RANGE(0xc0, 0xcf) AM_READWRITE(SMH_NOP, SMH_NOP)		/* 9927 CRT controller? */
+//  AM_RANGE(0xce,0xce) AM_READ(test_r)
+ADDRESS_MAP_END
+
+/*some sort of "simple" protection? This is just a kludge for it,coin chuts doesn't work consistantly,
+  probably sometimes it reads a protection latch,some other times reads the inputs... -AS*/
+static READ8_DEVICE_HANDLER( prot_r )
+{
+	static UINT8 x;
+
+	x^=4;
+
+	return input_port_read(device->machine, "IN1") | x;
+}
+
+
+//static WRITE8_DEVICE_HANDLER( ppi_portc_hi_w );
+//{
+//  popmessage("PPI port C out: %02X", data);
+//}
+
+
+static const ppi8255_interface ppi8255_intf[1] =
+{
+/* PPI 8255 group A & B set to Mode 0.
+   Port A, B and lower 4 bits of C set as Input.
+   High 4 bits of C set as Output
+*/
+	{
+		DEVICE8_PORT("IN0"),	/* Port A read */
+		prot_r,					/* Port B read */
+		DEVICE8_PORT("IN2"),	/* Port C read (Lower Nibble as Input) */
+		NULL,   				/* Port A write */
+		NULL,  		 			/* Port B write */
+		NULL	//ppi_portc_hi_w                /* Port C write (High nibble as Output) */
+	}
+};
 
 static INPUT_PORTS_START( statriv2 )
 	PORT_START("IN0")
@@ -579,6 +632,35 @@ static INPUT_PORTS_START( sextriv )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
 
+static INPUT_PORTS_START( statusbj )
+	PORT_START("IN0")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("P1 Bet")  PORT_CODE(KEYCODE_Z)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("P1 Hit")  PORT_CODE(KEYCODE_X)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("P1 Stand")  PORT_CODE(KEYCODE_C)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("0-5") PORT_CODE(KEYCODE_V)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("0-6") PORT_CODE(KEYCODE_B)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("0-7") PORT_CODE(KEYCODE_N)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("0-8") PORT_CODE(KEYCODE_M)
+
+	PORT_START("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("1-1") PORT_CODE(KEYCODE_Q)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("1-2") PORT_CODE(KEYCODE_W)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("1-4") PORT_CODE(KEYCODE_R)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("1-5") PORT_CODE(KEYCODE_T)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("1-6") PORT_CODE(KEYCODE_Y)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("1-7") PORT_CODE(KEYCODE_U)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("1-8") PORT_CODE(KEYCODE_I)
+
+	PORT_START("IN2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("2-1") PORT_CODE(KEYCODE_A)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("2-2") PORT_CODE(KEYCODE_S)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("2-3") PORT_CODE(KEYCODE_D)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("2-4") PORT_CODE(KEYCODE_F)
+	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )	/* only lower nibble is used */
+INPUT_PORTS_END
+
 static const gfx_layout statriv2_tiles8x16_layout =
 {
 	8,16,
@@ -596,17 +678,40 @@ static GFXDECODE_START( statriv2 )
 GFXDECODE_END
 
 
+static const gfx_layout statriv2_tiles16x8_layout =
+{
+	16,8,
+	RGN_FRAC(1,1),
+	1,
+	{ 0 },
+	{ 0, 1, 2, 3, 4, 5, 6, 7, 64+0, 64+1, 64+2, 64+3, 64+4, 64+5, 64+6, 64+7 },
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	128,
+};
+
+static GFXDECODE_START( statriv2v )
+	GFXDECODE_ENTRY( "gfx1", 0, statriv2_tiles16x8_layout, 0, 64 )
+GFXDECODE_END
+
+static MACHINE_START( statriv2 )
+{
+    state_save_register_global(machine, question_offset_low);
+    state_save_register_global(machine, question_offset_med);
+    state_save_register_global(machine, question_offset_high);
+}
+
 static INTERRUPT_GEN( statriv2_interrupt )
 {
-	cpunum_set_input_line(machine, 0, I8085_RST75_LINE, HOLD_LINE);
+	cpu_set_input_line(device, I8085_RST75_LINE, ASSERT_LINE);
+	cpu_set_input_line(device, I8085_RST75_LINE, CLEAR_LINE);
 }
 
 static MACHINE_DRIVER_START( statriv2 )
 	/* basic machine hardware */
 	/* FIXME: The 8085A had a max clock of 6MHz, internally divided by 2! */
-	MDRV_CPU_ADD("main",8085A,12400000*2)              /* 12.4MHz / 4? */
-	MDRV_CPU_PROGRAM_MAP(statriv2_readmem,statriv2_writemem)
-	MDRV_CPU_IO_MAP(statriv2_readport,statriv2_writeport)
+    MDRV_CPU_ADD("main", 8085A, 13684000) /* 12.44MHz * 1.1, ugh, glargh, hack, but it makes one in-game second roughly one real-life second */
+	MDRV_CPU_PROGRAM_MAP(statriv2_readmem, statriv2_writemem)
+	MDRV_CPU_IO_MAP(statriv2_readport, statriv2_writeport)
 	MDRV_CPU_VBLANK_INT("main", statriv2_interrupt)
 
 	MDRV_NVRAM_HANDLER(statriv2)
@@ -614,7 +719,7 @@ static MACHINE_DRIVER_START( statriv2 )
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1200))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(4*8, 38*8-1, 0, 32*8-1)
@@ -626,12 +731,29 @@ static MACHINE_DRIVER_START( statriv2 )
 	MDRV_VIDEO_START(statriv2)
 	MDRV_VIDEO_UPDATE(statriv2)
 
+    MDRV_MACHINE_START(statriv2)
+
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	MDRV_SOUND_ADD("ay", AY8910, 1500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( statriv2v )
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(statriv2)
+
+	MDRV_VIDEO_START(statriv2v)
+
+	MDRV_GFXDECODE(statriv2v)
+
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0, 30*8-1)
+MACHINE_DRIVER_END
+
+
+
 
 static MACHINE_DRIVER_START( statriv4 )
 	/* basic machine hardware */
@@ -712,6 +834,43 @@ static MACHINE_DRIVER_START( hangman )
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 35*8-1, 0, 32*8-1)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( statusbj )
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(statriv2)
+
+	MDRV_CPU_REPLACE("main",8085A,12400000/4)
+	MDRV_CPU_IO_MAP(statusbj_io,0)
+
+	/* 1x 8255 */
+	MDRV_PPI8255_ADD( "ppi8255_0", ppi8255_intf[0] )
+MACHINE_DRIVER_END
+
+/*
+Black Jack (Status 1981)
+
+12.44Mhz
+                          5101  5101
+8085
+                2
+                1
+      8255                 2114
+      9927                 2114
+      8255                 2114
+                           2114
+*/
+
+ROM_START( statusbj )
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "statusbj.1",   0x0000, 0x0800, CRC(d3faf340) SHA1(e03f7e3375a02a3bec07d9c7f4f2b1a711d4d1cc) )
+	ROM_LOAD( "statusbj.2",   0x0800, 0x0800, CRC(3f1727af) SHA1(0df12626591fc70031a9d8615c37243813d67b70) )
+	ROM_RELOAD(               0x1000, 0x0800 )
+
+	ROM_REGION( 0x800, "gfx1", ROMREGION_INVERT )
+	ROM_LOAD( "statusbj.vid",   0x0000, 0x0800, CRC(99ade7a2) SHA1(98704ca3a9fcfc4590f850c8ae24445baaed6dfa) )
+
+	//no proms?
+ROM_END
+
 ROM_START( statriv2 )
 	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "trivii1c.u7", 0x00000, 0x01000, CRC(89326d7b) SHA1(4878a3aabe51a4de5ff5927a0707b2d121ff87fa) )
@@ -720,6 +879,35 @@ ROM_START( statriv2 )
 
 	ROM_REGION( 0x1000, "gfx1", ROMREGION_INVERT )
 	ROM_LOAD( "trivii0c.u36", 0x00000, 0x01000, CRC(af5f434a) SHA1(1e7ae7ad7ea697007a30f5ba89127802a835eddc) )
+
+	ROM_REGION( 0x10000, "user1", 0 ) /* question data */
+	ROM_LOAD( "statuspb.u1", 0x00000, 0x02000, CRC(a50c0313) SHA1(f9bf84613e2ebb952a81a10ee1da49a37423b717) )
+	ROM_LOAD( "statuspb.u2", 0x02000, 0x02000, CRC(0bc03294) SHA1(c4873cd065c9eb237b03a4195332b7629abac327) )
+	ROM_LOAD( "statuspb.u3", 0x04000, 0x02000, CRC(d1732f3b) SHA1(c4e862bd98f237e1d2ecad430226cba6aba4ebb8) )
+	ROM_LOAD( "statuspb.u4", 0x06000, 0x02000, CRC(e51d45b8) SHA1(7cd0ced0245dbd55a225182e43b89d55d8d33197) )
+	ROM_LOAD( "statuspb.u5", 0x08000, 0x02000, CRC(b3e49c5d) SHA1(bc42ba21bb0d411c2f484076499484b104f0b4ea) )
+	ROM_LOAD( "statuspb.u6", 0x0a000, 0x02000, CRC(7ee1cea0) SHA1(00ef768524e54890ebd1fdb3dd52d0080a18fc03) )
+	ROM_LOAD( "statuspb.u7", 0x0c000, 0x02000, CRC(121d6976) SHA1(2e4da8f2c3620c8f46fd4951551b0747b3c38caf) )
+	ROM_LOAD( "statuspb.u8", 0x0e000, 0x02000, CRC(5080df10) SHA1(b5cb0868d844bbb598159177fd5ce65ff3f18eda) )
+
+	ROM_REGION( 0x0140, "proms", 0 ) /* unknown */
+	ROM_LOAD( "dm74s288.u17", 0x0000, 0x0020, BAD_DUMP CRC(63b8a63e) SHA1(d59ad84edd583f7befce73b79e12dfb58a204c4f) ) /* Socketted, not verified the same! */
+	ROM_LOAD( "dm74s288.u21", 0x0020, 0x0020, CRC(853d6172) SHA1(4aaab0faeaa1a07ee883fbed021f8dcd7e0ba549) ) /* Soldered in (Color?) */
+	ROM_LOAD( "dm74s282.u22", 0x0040, 0x0100, CRC(0421b8e0) SHA1(8b786eed86397a1463ad37b9b011edf83d76dd63) ) /* Soldered in */
+ROM_END
+
+ROM_START( statrv2v )
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "status.u7",    0x00000, 0x01000, CRC(4acc2060) SHA1(04f841fa7fba2231f312904dbd1d352fd2dbc287) )
+	ROM_LOAD( "status.u8",    0x01000, 0x01000, CRC(f2de3867) SHA1(ec891d4aa4e8dc0780cf187d8b1548d7e00d4321) )
+	ROM_LOAD( "status.u9",    0x02000, 0x01000, CRC(d70f5dbf) SHA1(1b21a6d9cc17c7cd03a43056070ab55f3c5d4c58))
+
+	ROM_REGION( 0x1000,  "gfx1", ROMREGION_INVERT )
+	ROM_LOAD( "status.u36",    0x00000, 0x00800, CRC(ae1d07c0) SHA1(2b657ba58e3ae7cceb8cf23cba3e1f0d20817933) ) // first half is garbage?
+	ROM_CONTINUE(0x0000, 0x800)
+
+	/* other roms were not from this set, missing sub-board?, but as the game is 'triv two' like the parent
+       it seems compatible with the same question board */
 
 	ROM_REGION( 0x10000, "user1", 0 ) /* question data */
 	ROM_LOAD( "statuspb.u1", 0x00000, 0x02000, CRC(a50c0313) SHA1(f9bf84613e2ebb952a81a10ee1da49a37423b717) )
@@ -812,6 +1000,7 @@ ROM_START( supertr2 )
 	ROM_LOAD( "dm74s288.u21", 0x0020, 0x0020, CRC(853d6172) SHA1(4aaab0faeaa1a07ee883fbed021f8dcd7e0ba549) ) /* Soldered in (Color?) */
 	ROM_LOAD( "dm74s282.u22", 0x0040, 0x0100, CRC(0421b8e0) SHA1(8b786eed86397a1463ad37b9b011edf83d76dd63) ) /* Soldered in */
 ROM_END
+
 
 ROM_START( supertr3 )
 	ROM_REGION( 0x10000, "main", 0 )
@@ -915,11 +1104,13 @@ ROM_START( sextriv )
 	ROM_LOAD( "dm74s282.u22", 0x0040, 0x0100, CRC(0421b8e0) SHA1(8b786eed86397a1463ad37b9b011edf83d76dd63) ) /* Soldered in */
 ROM_END
 
-GAME( 1984, hangman,  0, hangman,  hangman,  0, ROT0, "Status Games", "Hangman", 0 )
-GAME( 1984, trivquiz, 0, trivquiz, statriv2, 0, ROT0, "Status Games", "Triv Quiz", 0 )
-GAME( 1984, statriv2, 0, statriv2, statriv2, 0, ROT0, "Status Games", "Triv Two", 0 )
-GAME( 1985, statriv4, 0, statriv4, statriv4, 0, ROT0, "Status Games", "Triv Four", 0 )
-GAME( 1985, sextriv,  0, sextriv,  sextriv,  0, ROT0, "Status Games", "Sex Triv", 0 )
-GAME( 1985, quaquiz2, 0, quaquiz2, quaquiz2, 0, ROT0, "Status Games", "Quadro Quiz II", GAME_NOT_WORKING )
-GAME( 1986, supertr2, 0, supertr2, supertr2, 0, ROT0, "Status Games", "Super Triv II", 0 )
-GAME( 1988, supertr3, 0, supertr3, supertr2, 0, ROT0, "Status Games", "Super Triv III", GAME_IMPERFECT_GRAPHICS)
+GAME( 1981, statusbj, 0,        statusbj,  statusbj, 0, ROT0, "Status Games", "Status Black Jack (V1.0c)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_COLORS | GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
+GAME( 1984, hangman,  0,        hangman,   hangman,  0, ROT0, "Status Games", "Hangman", GAME_SUPPORTS_SAVE )
+GAME( 1984, trivquiz, 0,        trivquiz,  statriv2, 0, ROT0, "Status Games", "Triv Quiz", GAME_SUPPORTS_SAVE )
+GAME( 1984, statriv2, 0,        statriv2,  statriv2, 0, ROT0, "Status Games", "Triv Two", GAME_SUPPORTS_SAVE )
+GAME( 1985, statrv2v, statriv2, statriv2v, statriv2, 0, ROT90,"Status Games", "Triv Two (Vertical)", GAME_SUPPORTS_SAVE )
+GAME( 1985, statriv4, 0,        statriv4,  statriv4, 0, ROT0, "Status Games", "Triv Four", GAME_SUPPORTS_SAVE )
+GAME( 1985, sextriv,  0,        sextriv,   sextriv,  0, ROT0, "Status Games", "Sex Triv", GAME_SUPPORTS_SAVE )
+GAME( 1985, quaquiz2, 0,        quaquiz2,  quaquiz2, 0, ROT0, "Status Games", "Quadro Quiz II", GAME_SUPPORTS_SAVE | GAME_NOT_WORKING )
+GAME( 1986, supertr2, 0,        supertr2,  supertr2, 0, ROT0, "Status Games", "Super Triv II", GAME_SUPPORTS_SAVE )
+GAME( 1988, supertr3, 0,        supertr3,  supertr2, 0, ROT0, "Status Games", "Super Triv III", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS)

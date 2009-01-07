@@ -9,6 +9,7 @@ Todo:
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 
 
@@ -31,18 +32,15 @@ static CUSTOM_INPUT( dorachan_protection_r )
 {
 	UINT8 ret = 0;
 
-	if ((cpu_getactivecpu() >= 0))
+	switch (cpu_get_previouspc(field->port->machine->cpu[0]))
 	{
-		switch (activecpu_get_previouspc())
-		{
-		case 0x70ce: ret = 0xf2; break;
-		case 0x72a2: ret = 0xd5; break;
-		case 0x72b5: ret = 0xcb; break;
+	case 0x70ce: ret = 0xf2; break;
+	case 0x72a2: ret = 0xd5; break;
+	case 0x72b5: ret = 0xcb; break;
 
-		default:
-			mame_printf_debug("unhandled $2400 read @ %x\n",activecpu_get_previouspc());
-			break;
-		}
+	default:
+		mame_printf_debug("unhandled $2400 read @ %x\n",cpu_get_previouspc(field->port->machine->cpu[0]));
+		break;
 	}
 
 	return ret;

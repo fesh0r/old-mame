@@ -15,8 +15,10 @@ Supported games:
     Name        Board No      Maker         Game name
     ----------------------------------------------------------------------------
     tekipaki    TP-020        Toaplan       Teki Paki
-    ghox        TP-021        Toaplan       Ghox
+    ghox        TP-021        Toaplan       Ghox (Spinner with single up/down axis control)
+    ghoxj       TP-021        Toaplan       Ghox (8-Way Joystick controls)
     dogyuun     TP-022        Toaplan       Dogyuun
+    dogyuunk    TP-022        Toaplan       Dogyuun (Licensed to Unite Trading For Korea)
     kbash       TP-023        Toaplan       Knuckle Bash
     kbash2      bootleg       Toaplan       Knuckle Bash 2
     truxton2    TP-024        Toaplan       Truxton 2 / Tatsujin Oh
@@ -49,28 +51,34 @@ Supported games:
 
     SET NOTES:
 
-    sstriker - The region jumper is read with this set but even when set to Japan you get all english
-               text etc which seems a little odd. However this has been verified correct on two boards.
-    kingdmgp - might be a bootleg / hack, some of the tiles needed for the credits screen have been
-               stripped out, doesn't seem very professional, since its rare and should probably only
-               have a different graphics rom its nearly impossible for us to verify, a lot of boards
-               being sold as 'Kingdom Grand Prix' are infact conversions using Neill Corlett's hack
+    sstriker - The region jumper is read with this set but even when set to Japan you get all English
+               text etc. which seems a little odd. However, this has been verified correct on two boards.
+
+    kingdmgp - Might be a bootleg / hack, some of the tiles needed for the credits screen have been
+               stripped out, doesn't seem very professional, since it's rare and should probably only
+               have a different graphics rom, it's nearly impossible for us to verify. A lot of boards
+               being sold as 'Kingdom Grand Prix' are infact conversions using Neill Corlett's hack.
 
             ** The above two look like genuine Korean release boards, Raizing probably just missed a few things
 
-    bgaregga - the clones have fewer types of enemy bullets (not fewer bullets, just fewer types!)
+    bgaregga - The clones have fewer types of enemy bullets (not fewer bullets, just fewer types!)
                and Stage Edit is disabled - the dipswitch is still listed in service mode but it
-               doesn't do anything.  In addition to these changes, bgaregt2 has no third button!
+               doesn't do anything. In addition to these changes, bgaregt2 has no third button!
                Instead of being able to change the formation of your options with a button press,
                each of the selectable ships has a different, fixed option formation.
 
-    batrider - original release was marketed as a two button game, but actually needed a third button
-               to fully use some of the ships' weaponry!  This error was rectified in the B Version
-               (which is fully playable with either two or three buttons)
+    batrider - The original release was marketed as a two button game, but actually needed a third button
+               to fully use some of the ships' weaponry! This error was rectified in the B Version
+               (which is fully playable with either two or three buttons).
 
-    bbakraid - the Unlimited Version can display more score digits (as players managed to counter stop
+    bbakraid - The Unlimited Version can display more score digits (as players managed to counter stop
                the original within days of its release!) and adds a "team" mode ala Batrider where you
-               select a different ship for each of your three lives
+               select a different ship for each of your three lives.
+
+    dogyuunk - PCB says "TOAPLAN CO.,LTD. TP-022-1 MADE IN KOREA". It contains 3 custom Toaplan chips
+               (2 gfx chips and TS-002-MACH sound MCU). Uses original Toaplan-badged MASKROMs for GFX
+               and sound and original 'TP-022 01 TOAPLAN' sticker on program EPROM.
+
 
  ****************************************************************************
  * Battle Garegga and Armed Police Batrider have secret characters.         *
@@ -242,7 +250,8 @@ To Do / Unknowns:
 
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z180/z180.h"
+#include "cpu/nec/nec.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
@@ -251,6 +260,7 @@ To Do / Unknowns:
 #include "sound/3812intf.h"
 #include "sound/okim6295.h"
 #include "sound/ymz280b.h"
+#include "includes/toaplan2.h"
 
 
 /**************** Machine stuff ******************/
@@ -269,83 +279,16 @@ static UINT16 *toaplan2_shared_ram16;	/* Really 8bit RAM connected to Z180 */
 static UINT16 *V25_shared_ram;			/* Really 8bit RAM connected to Z180 */
 static UINT16 *fixeight_sec_cpu_mem;
 
-/************ Video RAM related values ************/
-extern UINT16 *toaplan2_txvideoram16;
-extern UINT16 *toaplan2_txvideoram16_offs;
-extern UINT16 *toaplan2_txscrollram16;
-extern UINT16 *toaplan2_tx_gfxram16;
-size_t toaplan2_tx_vram_size;
-size_t toaplan2_tx_offs_vram_size;
-size_t toaplan2_tx_scroll_vram_size;
-size_t batrider_paletteram16_size;
-
 /********** Status related values **********/
 int toaplan2_sub_cpu = 0;
-static int mcu_data = 0;
-static int video_status;
+static UINT16 mcu_data = 0;
+static UINT16 video_status;
 static INT8 old_p1_paddle_h;		/* For Ghox */
 static INT8 old_p2_paddle_h;
-static int current_bank;			/* Z80 bank used in Battle Garegga and Batrider */
+static INT8 current_bank;			/* Z80 bank used in Battle Garegga and Batrider */
 static int raizing_sndirq_line;		/* IRQ4 for batrider, IRQ2 for bbakraid */
-static int raizing_Z80_busreq;
+static UINT16 raizing_Z80_busreq;
 static int bbakraid_unlimited_ver;
-
-/**************** Video stuff ******************/
-WRITE16_HANDLER( toaplan2_0_voffs_w );
-WRITE16_HANDLER( toaplan2_1_voffs_w );
-
-READ16_HANDLER ( toaplan2_0_videoram16_r );
-READ16_HANDLER ( toaplan2_1_videoram16_r );
-WRITE16_HANDLER( toaplan2_0_videoram16_w );
-WRITE16_HANDLER( toaplan2_1_videoram16_w );
-
-READ16_HANDLER ( toaplan2_txvideoram16_r );
-WRITE16_HANDLER( toaplan2_txvideoram16_w );
-READ16_HANDLER ( toaplan2_txvideoram16_offs_r );
-WRITE16_HANDLER( toaplan2_txvideoram16_offs_w );
-READ16_HANDLER ( toaplan2_txscrollram16_r );
-WRITE16_HANDLER( toaplan2_txscrollram16_w );
-READ16_HANDLER ( toaplan2_tx_gfxram16_r );
-WRITE16_HANDLER( toaplan2_tx_gfxram16_w );
-READ16_HANDLER ( raizing_tx_gfxram16_r );
-WRITE16_HANDLER( raizing_tx_gfxram16_w );
-
-WRITE16_HANDLER( toaplan2_0_scroll_reg_select_w );
-WRITE16_HANDLER( toaplan2_1_scroll_reg_select_w );
-WRITE16_HANDLER( toaplan2_0_scroll_reg_data_w );
-WRITE16_HANDLER( toaplan2_1_scroll_reg_data_w );
-
-WRITE16_HANDLER( batrider_objectbank_w );
-WRITE16_HANDLER( batrider_textdata_decode );
-
-VIDEO_EOF( toaplan2_0 );
-VIDEO_EOF( toaplan2_1 );
-VIDEO_START( toaplan2_0 );
-VIDEO_START( toaplan2_1 );
-VIDEO_START( truxton2_0 );
-VIDEO_START( bgaregga_0 );
-VIDEO_START( batrider_0 );
-VIDEO_UPDATE( toaplan2_0 );
-VIDEO_UPDATE( truxton2_0 );
-VIDEO_UPDATE( dogyuun_1 );
-VIDEO_UPDATE( batsugun_1 );
-VIDEO_UPDATE( batrider_0 );
-VIDEO_UPDATE( mahoudai_0 );
-
-
-/********* Video wrappers for PIPIBIBI *********/
-READ16_HANDLER ( pipibibi_videoram16_r );
-WRITE16_HANDLER( pipibibi_videoram16_w );
-READ16_HANDLER ( pipibibi_spriteram16_r );
-WRITE16_HANDLER( pipibibi_spriteram16_w );
-WRITE16_HANDLER( pipibibi_scroll_w );
-
-
-/***************** Sound stuff *****************/
-void dogyuun_okisnd_w(running_machine *machine, int data);
-void kbash_okisnd_w(running_machine *machine, int data);
-void fixeight_okisnd_w(running_machine *machine, int data);
-void batsugun_okisnd_w(running_machine *machine, int data);
 
 static MACHINE_RESET(batsugun);
 #if USE_V25
@@ -359,10 +302,10 @@ static WRITE16_HANDLER( batsugun_share2_w );
   Initialisation handlers
 ***************************************************************************/
 
-static void toaplan2_reset(void)
+static void toaplan2_reset(const device_config *device)
 {
-	if ( cpu_gettotalcpu() > 1 )
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+	if (device->machine->cpu[1] != NULL)
+		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
 }
 
 static MACHINE_RESET( toaplan2 )
@@ -374,7 +317,7 @@ static MACHINE_RESET( toaplan2 )
       This is important for games with common RAM; the RAM test will fail
       when leaving service mode if the sound CPU is not reset.
     */
-	cpunum_set_info_fct(0, CPUINFO_PTR_M68K_RESET_CALLBACK, (genf *)toaplan2_reset);
+	device_set_info_fct(machine->cpu[0], CPUINFO_FCT_M68K_RESET_CALLBACK, (genf *)toaplan2_reset);
 }
 
 static MACHINE_RESET( ghox )
@@ -401,8 +344,9 @@ static MACHINE_RESET( bgaregga )
 	UINT8 *Z80 = (UINT8 *)memory_region(machine, "audio");
 
 	// Set Z80 bank switch - default bank is 2
-	current_bank = 2;
-	memory_set_bankptr(1, &Z80[0x10000]);
+	current_bank = 4;
+	memory_configure_bank(machine, 1, 0, 16, Z80, 0x4000);
+	memory_set_bank(machine, 1, 4);
 
 	if (memory_region(machine, "oki1") != NULL)
 		NMK112_init(0, "oki1", "oki2");
@@ -411,24 +355,38 @@ static MACHINE_RESET( bgaregga )
 	MACHINE_RESET_CALL(toaplan2);
 }
 
+static void register_state_save(running_machine *machine)
+{
+	state_save_register_global(machine, mcu_data);
+	state_save_register_global(machine, video_status);
+	state_save_register_global(machine, old_p1_paddle_h);
+	state_save_register_global(machine, old_p2_paddle_h);
+	state_save_register_global(machine, current_bank);
+	state_save_register_global(machine, raizing_Z80_busreq);
+}
+
 static DRIVER_INIT( T2_Z80 )		/* init_t2_Z80(); */
 {
 	toaplan2_sub_cpu = CPU_2_Z80;
+	register_state_save(machine);
 }
 
 static DRIVER_INIT( T2_Z180 )
 {
 	toaplan2_sub_cpu = CPU_2_HD647180;
+	register_state_save(machine);
 }
 
 static DRIVER_INIT( T2_V25 )
 {
 	toaplan2_sub_cpu = CPU_2_V25;
+	register_state_save(machine);
 }
 
 static DRIVER_INIT( T2_noZ80 )
 {
 	toaplan2_sub_cpu = CPU_2_NONE;
+	register_state_save(machine);
 }
 
 static DRIVER_INIT( fixeight )
@@ -436,19 +394,21 @@ static DRIVER_INIT( fixeight )
 	#if USE_V25
 
 	#else
-	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x28f002, 0x28fbff, 0, 0, SMH_BANK2, SMH_BANK2 );
-	memory_set_bankptr(2, fixeight_sec_cpu_mem);
+	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x28f002, 0x28fbff, 0, 0, SMH_BANK2, SMH_BANK2 );
+	memory_set_bankptr(machine, 2, fixeight_sec_cpu_mem);
 	#endif
 
 	toaplan2_sub_cpu = CPU_2_V25;
+	register_state_save(machine);
 }
 
 static DRIVER_INIT( fixeighb )
 {
 	UINT16 *bgdata = (UINT16 *)memory_region(machine, "main");
-	memory_set_bankptr(1, &bgdata[0x40000]); /* $80000 - $fffff */
+	memory_set_bankptr(machine, 1, &bgdata[0x40000]); /* $80000 - $fffff */
 
 	toaplan2_sub_cpu = CPU_2_NONE;
+	register_state_save(machine);
 }
 
 static DRIVER_INIT( pipibibi )
@@ -530,12 +490,14 @@ static DRIVER_INIT( pipibibi )
 	}
 
 	toaplan2_sub_cpu = CPU_2_Z80;
+	register_state_save(machine);
 }
 
 static DRIVER_INIT( batrider )
 {
 	raizing_sndirq_line = 4;
 	toaplan2_sub_cpu = CPU_2_Z80;
+	register_state_save(machine);
 }
 
 static DRIVER_INIT( bbakraid )
@@ -543,6 +505,7 @@ static DRIVER_INIT( bbakraid )
 	bbakraid_unlimited_ver = 0;
 	raizing_sndirq_line = 2;
 	toaplan2_sub_cpu = CPU_2_Z80;
+	register_state_save(machine);
 }
 
 static DRIVER_INIT( bbakradu )
@@ -550,6 +513,7 @@ static DRIVER_INIT( bbakradu )
 	bbakraid_unlimited_ver = 1;
 	raizing_sndirq_line = 2;
 	toaplan2_sub_cpu = CPU_2_Z80;
+	register_state_save(machine);
 }
 
 
@@ -559,24 +523,24 @@ static DRIVER_INIT( bbakradu )
 
 static READ16_HANDLER( toaplan2_inputport_0_word_r )
 {
-	return ((video_screen_get_vpos(machine->primary_screen) + 15) % 262) >= 245;
+	return ((video_screen_get_vpos(space->machine->primary_screen) + 15) % 262) >= 245;
 }
 
 
 static TIMER_CALLBACK( toaplan2_raise_irq )
 {
-	cpunum_set_input_line(machine, 0, param, HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0], param, HOLD_LINE);
 }
 
 static void toaplan2_vblank_irq(running_machine *machine, int irq_line)
 {
 	/* the IRQ appears to fire at line 0xe6 */
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0xe6, 0), NULL, irq_line, toaplan2_raise_irq);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 0xe6, 0), NULL, irq_line, toaplan2_raise_irq);
 }
 
-static INTERRUPT_GEN( toaplan2_vblank_irq1 ) { toaplan2_vblank_irq(machine, 1); }
-static INTERRUPT_GEN( toaplan2_vblank_irq2 ) { toaplan2_vblank_irq(machine, 2); }
-static INTERRUPT_GEN( toaplan2_vblank_irq4 ) { toaplan2_vblank_irq(machine, 4); }
+static INTERRUPT_GEN( toaplan2_vblank_irq1 ) { toaplan2_vblank_irq(device->machine, 1); }
+static INTERRUPT_GEN( toaplan2_vblank_irq2 ) { toaplan2_vblank_irq(device->machine, 2); }
+static INTERRUPT_GEN( toaplan2_vblank_irq4 ) { toaplan2_vblank_irq(device->machine, 4); }
 
 static READ16_HANDLER( video_count_r )
 {
@@ -586,8 +550,8 @@ static READ16_HANDLER( video_count_r )
 	/* +---------+---------+--------+---------------------------+ */
 	/*************** Control Signals are active low ***************/
 
-	int hpos = video_screen_get_hpos(machine->primary_screen);
-	int vpos = video_screen_get_vpos(machine->primary_screen);
+	int hpos = video_screen_get_hpos(space->machine->primary_screen);
+	int vpos = video_screen_get_vpos(space->machine->primary_screen);
 	video_status = 0xff00;						/* Set signals inactive */
 
 	vpos = (vpos + 15) % 262;
@@ -603,7 +567,7 @@ static READ16_HANDLER( video_count_r )
 	else
 		video_status |= 0xff;
 
-//  logerror("VC: vpos=%04x hpos=%04x VBL=%04x\n",vpos,hpos,video_screen_get_vblank(machine->primary_screen));
+//  logerror("VC: vpos=%04x hpos=%04x VBL=%04x\n",vpos,hpos,video_screen_get_vblank(space->machine->primary_screen));
 
 	return video_status;
 }
@@ -635,7 +599,7 @@ static WRITE16_HANDLER( toaplan2_coin_word_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		toaplan2_coin_w(machine, offset, data & 0xff);
+		toaplan2_coin_w(space, offset, data & 0xff);
 	}
 	if (ACCESSING_BITS_8_15 && (data & 0xff00) )
 	{
@@ -649,12 +613,12 @@ static WRITE16_HANDLER( toaplan2_v25_coin_word_w )
 
 	if (ACCESSING_BITS_0_7)
 	{
-		toaplan2_coin_w(machine, offset, data & 0x0f);
+		toaplan2_coin_w(space, offset, data & 0x0f);
 
 		#if USE_V25
 		/* only the ram-based V25 based games access the following bits */
-		//cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x0020) ? CLEAR_LINE : ASSERT_LINE );
-		cpunum_set_input_line(machine, 1, INPUT_LINE_HALT,  (data & 0x0010) ? CLEAR_LINE : ASSERT_LINE);
+		//cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x0020) ? CLEAR_LINE : ASSERT_LINE );
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT,  (data & 0x0010) ? CLEAR_LINE : ASSERT_LINE);
 		#endif
 
 	}
@@ -669,7 +633,7 @@ static WRITE16_HANDLER( shippumd_coin_word_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		toaplan2_coin_w(machine, offset, data & 0xff);
+		toaplan2_coin_w(space, offset, data & 0xff);
 		okim6295_set_bank_base(0, (((data & 0x10) >> 4) * 0x40000));
 	}
 	if (ACCESSING_BITS_8_15 && (data & 0xff00) )
@@ -705,7 +669,7 @@ static WRITE16_HANDLER( toaplan2_hd647180_cpu_w )
 		else										/* Teki Paki */
 		{
 			mcu_data = data & 0xff;
-			logerror("PC:%08x Writing command (%04x) to secondary CPU shared port\n",activecpu_get_previouspc(),mcu_data);
+			logerror("PC:%08x Writing command (%04x) to secondary CPU shared port\n",cpu_get_previouspc(space->cpu),mcu_data);
 		}
 	}
 }
@@ -742,7 +706,7 @@ static READ16_HANDLER( ghox_p1_h_analog_r )
 {
 	INT8 value, new_value;
 
-	new_value = input_port_read(machine, "PAD1");
+	new_value = input_port_read(space->machine, "PAD1");
 	if (new_value == old_p1_paddle_h) return 0;
 	value = new_value - old_p1_paddle_h;
 	old_p1_paddle_h = new_value;
@@ -753,7 +717,7 @@ static READ16_HANDLER( ghox_p2_h_analog_r )
 {
 	INT8 value, new_value;
 
-	new_value = input_port_read(machine, "PAD2");
+	new_value = input_port_read(space->machine, "PAD2");
 	if (new_value == old_p2_paddle_h) return 0;
 	value = new_value - old_p2_paddle_h;
 	old_p2_paddle_h = new_value;
@@ -778,7 +742,7 @@ static WRITE16_HANDLER( ghox_mcu_w )
 		}
 		else
 		{
-			logerror("PC:%08x Writing %08x to HD647180 cpu shared ram status port\n",activecpu_get_previouspc(),mcu_data);
+			logerror("PC:%08x Writing %08x to HD647180 cpu shared ram status port\n",cpu_get_previouspc(space->cpu),mcu_data);
 		}
 		toaplan2_shared_ram16[0x56 / 2] = 0x004e;	/* Return a RTS instruction */
 		toaplan2_shared_ram16[0x58 / 2] = 0x0075;
@@ -855,7 +819,7 @@ static WRITE16_HANDLER( shared_ram_w )
 			case 0xcf8:
 			case 0xff8: toaplan2_shared_ram16[offset + 1] = data; /* Dogyuun */
 						toaplan2_shared_ram16[offset + 2] = data; /* FixEight */
-						logerror("PC:%08x Writing (%04x) to shared RAM at %04x\n",activecpu_get_previouspc(),data,(offset*2));
+						logerror("PC:%08x Writing (%04x) to shared RAM at %04x\n",cpu_get_previouspc(space->cpu),data,(offset*2));
 						if (data == 0x81) data = 0x0001;
 						break;
 			default:	break;
@@ -878,7 +842,7 @@ static READ16_HANDLER( toaplan2_snd_cpu_r )
 		mcu_data = 0xffff;
 	}
 
-	logerror("PC:%06x reading status %08x from the NEC V25+ secondary CPU port\n",activecpu_get_previouspc(),response);
+	logerror("PC:%06x reading status %08x from the NEC V25+ secondary CPU port\n",cpu_get_previouspc(space->cpu),response);
 	return response;
 }
 
@@ -887,9 +851,9 @@ static WRITE16_HANDLER( dogyuun_snd_cpu_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		mcu_data = data;
-		dogyuun_okisnd_w(machine, data);
+		dogyuun_okisnd_w(space, data);
 	}
-	logerror("PC:%06x Writing command (%04x) to the NEC V25+ secondary CPU port\n",activecpu_get_previouspc(),mcu_data);
+	logerror("PC:%06x Writing command (%04x) to the NEC V25+ secondary CPU port\n",cpu_get_previouspc(space->cpu),mcu_data);
 }
 
 static READ16_HANDLER( kbash_snd_cpu_r )
@@ -906,9 +870,9 @@ static WRITE16_HANDLER( kbash_snd_cpu_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		kbash_okisnd_w(machine, data);
+		kbash_okisnd_w(space, data);
 	}
-	logerror("PC:%06x Writing Sound command (%04x) to the NEC V25+ secondary CPU\n",activecpu_get_previouspc(),data);
+	logerror("PC:%06x Writing Sound command (%04x) to the NEC V25+ secondary CPU\n",cpu_get_previouspc(space->cpu),data);
 }
 
 static READ16_HANDLER( fixeight_sec_cpu_r )
@@ -932,7 +896,7 @@ static READ16_HANDLER( fixeight_sec_cpu_r )
 	{
 		response = mcu_data;	/* Return the shared RAM data during POST */
 	}
-	logerror("PC:%06x reading status %08x from the NEC V25+ secondary CPU port\n",activecpu_get_previouspc(),response);
+	logerror("PC:%06x reading status %08x from the NEC V25+ secondary CPU port\n",cpu_get_previouspc(space->cpu),response);
 	return response;
 }
 
@@ -943,7 +907,7 @@ static WRITE16_HANDLER( fixeight_sec_cpu_w )
 		if (mcu_data & 0xff00)
 		{
 			mcu_data = (mcu_data & 0xff00) | (data & 0xff);
-			fixeight_okisnd_w(machine, data);
+			fixeight_okisnd_w(space, data);
 		}
 		else if (mcu_data == 0xff00)
 		{
@@ -957,11 +921,11 @@ static WRITE16_HANDLER( fixeight_sec_cpu_w )
 			/* game keeping service mode. It writes/reads the settings to/from */
 			/* these shared RAM locations. The secondary CPU reads/writes them */
 			/* from/to nvram to store the settings (a 93C45 EEPROM) */
-			memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x28f002, 0x28fbff, 0, 0, SMH_BANK2, SMH_BANK2);
-			memory_set_bankptr(2, fixeight_sec_cpu_mem);
-			memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x28f004, 0x28f005, 0, 0, input_port_read_handler16(machine->portconfig, "DSWA"), SMH_NOP);	/* Dip Switch A - Wrong !!! */
-			memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x28f006, 0x28f007, 0, 0, input_port_read_handler16(machine->portconfig, "DSWB"), SMH_NOP);	/* Dip Switch B - Wrong !!! */
-			memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x28f008, 0x28f009, 0, 0, input_port_read_handler16(machine->portconfig, "JMPR"), SMH_NOP);	/* Territory Jumper block - Wrong !!! */
+			memory_install_readwrite16_handler(space, 0x28f002, 0x28fbff, 0, 0, SMH_BANK2, SMH_BANK2);
+			memory_set_bankptr(space->machine, 2, fixeight_sec_cpu_mem);
+			memory_install_readwrite16_handler(space, 0x28f004, 0x28f005, 0, 0, input_port_read_handler16(space->machine->portconfig, "DSWA"), SMH_NOP);	/* Dip Switch A - Wrong !!! */
+			memory_install_readwrite16_handler(space, 0x28f006, 0x28f007, 0, 0, input_port_read_handler16(space->machine->portconfig, "DSWB"), SMH_NOP);	/* Dip Switch B - Wrong !!! */
+			memory_install_readwrite16_handler(space, 0x28f008, 0x28f009, 0, 0, input_port_read_handler16(space->machine->portconfig, "JMPR"), SMH_NOP);	/* Territory Jumper block - Wrong !!! */
 
 			mcu_data = data;
 		}
@@ -970,7 +934,7 @@ static WRITE16_HANDLER( fixeight_sec_cpu_w )
 			mcu_data = data;
 		}
 	}
-	logerror("PC:%06x Writing command (%04x) to the NEC V25+ secondary CPU port\n",activecpu_get_previouspc(),mcu_data);
+	logerror("PC:%06x Writing command (%04x) to the NEC V25+ secondary CPU port\n",cpu_get_previouspc(space->cpu),mcu_data);
 }
 
 static WRITE16_HANDLER( vfive_snd_cpu_w )
@@ -979,7 +943,7 @@ static WRITE16_HANDLER( vfive_snd_cpu_w )
 	{
 		mcu_data = data;
 	}
-	logerror("PC:%06x Writing command (%04x) to the NEC V25+ secondary CPU port\n",activecpu_get_previouspc(),mcu_data);
+	logerror("PC:%06x Writing command (%04x) to the NEC V25+ secondary CPU port\n",cpu_get_previouspc(space->cpu),mcu_data);
 }
 
 static WRITE16_HANDLER( batsugun_snd_cpu_w )
@@ -987,9 +951,9 @@ static WRITE16_HANDLER( batsugun_snd_cpu_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		mcu_data = data;
-		batsugun_okisnd_w(machine, data);
+		batsugun_okisnd_w(space, data);
 	}
-	logerror("PC:%06x Writing command (%04x) to the NEC V25+ secondary CPU port %02x\n",activecpu_get_previouspc(),mcu_data,(offset*2));
+	logerror("PC:%06x Writing command (%04x) to the NEC V25+ secondary CPU port %02x\n",cpu_get_previouspc(space->cpu),mcu_data,(offset*2));
 }
 
 static READ16_HANDLER( V25_sharedram_r )
@@ -1020,7 +984,7 @@ static WRITE16_HANDLER( fixeighb_oki_bankswitch_w )
 		data &= 7;
 		if (data <= 4)
 		{
-			UINT8 *fixeighb_oki = memory_region(machine, "oki");
+			UINT8 *fixeighb_oki = memory_region(space->machine, "oki");
 			memcpy(&fixeighb_oki[0x30000], &fixeighb_oki[(data * 0x10000) + 0x40000], 0x10000);
 		}
 	}
@@ -1051,8 +1015,8 @@ static WRITE16_HANDLER( bgaregga_soundlatch_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine, offset, data & 0xff);
-		cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+		soundlatch_w(space, offset, data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
 	}
 }
 
@@ -1076,17 +1040,12 @@ static WRITE8_HANDLER( bgaregga_E00C_w )
 
 static WRITE8_HANDLER( bgaregga_bankswitch_w )
 {
-	UINT8 *RAM = (UINT8 *)memory_region(machine, "audio");
-	int bankaddress;
-	int bank;
-
-	bank = (data & 0x0f) - 10;
+	int bank = (data & 0x0f) - 10 + 4;
 
 	if (bank != current_bank)
 	{
 		current_bank = bank;
-		bankaddress = 0x10000 + 0x4000 * current_bank;
-		memory_set_bankptr(1, &RAM[bankaddress]);
+		memory_set_bank(space->machine, 1, bank);
 	}
 }
 
@@ -1098,46 +1057,38 @@ static WRITE8_HANDLER( bgaregga_bankswitch_w )
 
 static WRITE8_HANDLER( raizing_okim6295_bankselect_0 )
 {
-	NMK112_okibank_w(machine, 0,  data		& 0x0f);	// chip 0 bank 0
-	NMK112_okibank_w(machine, 1, (data >> 4)	& 0x0f);	// chip 0 bank 1
+	NMK112_okibank_w(space, 0,  data		& 0x0f);	// chip 0 bank 0
+	NMK112_okibank_w(space, 1, (data >> 4)	& 0x0f);	// chip 0 bank 1
 }
 
 static WRITE8_HANDLER( raizing_okim6295_bankselect_1 )
 {
-	NMK112_okibank_w(machine, 2,  data		& 0x0f);	// chip 0 bank 2
-	NMK112_okibank_w(machine, 3, (data >> 4)	& 0x0f);	// chip 0 bank 3
+	NMK112_okibank_w(space, 2,  data		& 0x0f);	// chip 0 bank 2
+	NMK112_okibank_w(space, 3, (data >> 4)	& 0x0f);	// chip 0 bank 3
 }
 
 static WRITE8_HANDLER( raizing_okim6295_bankselect_2 )
 {
-	NMK112_okibank_w(machine, 4,  data		& 0x0f);	// chip 1 bank 0
-	NMK112_okibank_w(machine, 5, (data >> 4)	& 0x0f);	// chip 1 bank 1
+	NMK112_okibank_w(space, 4,  data		& 0x0f);	// chip 1 bank 0
+	NMK112_okibank_w(space, 5, (data >> 4)	& 0x0f);	// chip 1 bank 1
 }
 
 static WRITE8_HANDLER( raizing_okim6295_bankselect_3 )
 {
-	NMK112_okibank_w(machine, 6,  data		& 0x0f);	// chip 1 bank 2
-	NMK112_okibank_w(machine, 7, (data >> 4)	& 0x0f);	// chip 1 bank 3
+	NMK112_okibank_w(space, 6,  data		& 0x0f);	// chip 1 bank 2
+	NMK112_okibank_w(space, 7, (data >> 4)	& 0x0f);	// chip 1 bank 3
 }
 
 
 static WRITE8_HANDLER( batrider_bankswitch_w )
 {
-	UINT8 *RAM = (UINT8 *)memory_region(machine, "audio");
-	int bankaddress;
-	int bank;
-
-	bank = data & 0x0f;
+	int bank = data & 0x0f;
+	bank = (bank > 1) ? bank + 2 : bank;
 
 	if (bank != current_bank)
 	{
 		current_bank = bank;
-		logerror("Z80 cpu set bank #%d\n", bank);
-		if (bank > 1)
-			bankaddress = 0x10000 + 0x4000 * (current_bank - 2);
-		else
-			bankaddress = 0x4000 * current_bank;
-		memory_set_bankptr(1, &RAM[bankaddress]);
+		memory_set_bank(space->machine, 1, bank);
 	}
 }
 
@@ -1165,7 +1116,7 @@ static WRITE16_HANDLER( batrider_z80_busreq_w )
 
 static READ16_HANDLER( raizing_z80rom_r )
 {
-	UINT8 *Z80_ROM_test = (UINT8 *)memory_region(machine, "audio");
+	UINT8 *Z80_ROM_test = (UINT8 *)memory_region(space->machine, "audio");
 
 	if (offset < 0x8000)
 		return Z80_ROM_test[offset] & 0xff;
@@ -1179,8 +1130,8 @@ static WRITE16_HANDLER( batrider_soundlatch_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine, offset, data & 0xff);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
+		soundlatch_w(space, offset, data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
 	}
 }
 
@@ -1189,8 +1140,8 @@ static WRITE16_HANDLER( batrider_soundlatch2_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch2_w(machine, offset, data & 0xff);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
+		soundlatch2_w(space, offset, data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
 	}
 }
 
@@ -1206,20 +1157,20 @@ static WRITE16_HANDLER( raizing_clear_sndirq_w )
 {
 	// not sure whether this is correct
 	// the 68K writes here during the sound IRQ handler, and nowhere else...
-	cpunum_set_input_line(machine, 0, raizing_sndirq_line, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], raizing_sndirq_line, CLEAR_LINE);
 }
 
 
 static WRITE8_HANDLER( raizing_sndirq_w )
 {
 	// if raizing_clear_sndirq_w() is correct, should this be ASSERT_LINE?
-	cpunum_set_input_line(machine, 0, raizing_sndirq_line, HOLD_LINE);
+	cpu_set_input_line(space->machine->cpu[0], raizing_sndirq_line, HOLD_LINE);
 }
 
 
 static WRITE8_HANDLER( raizing_clear_nmi_w )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 
@@ -1288,7 +1239,7 @@ static NVRAM_HANDLER( bbakraid )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_interface_93C66);
+		eeprom_init(machine, &eeprom_interface_93C66);
 
 		if (file) eeprom_load(file);
 		else
@@ -1319,7 +1270,7 @@ static READ16_HANDLER( bbakraid_nvram_r )
 static WRITE16_HANDLER( bbakraid_nvram_w )
 {
 	if (data & ~0x001f)
-		logerror("CPU #0 PC:%06X - Unknown EEPROM data being written %04X\n",activecpu_get_pc(),data);
+		logerror("CPU #0 PC:%06X - Unknown EEPROM data being written %04X\n",cpu_get_pc(space->cpu),data);
 
 	if ( ACCESSING_BITS_0_7 )
 	{
@@ -1345,7 +1296,7 @@ static void bbakraid_irqhandler(running_machine *machine, int state)
 
 static INTERRUPT_GEN( bbakraid_snd_interrupt )
 {
-	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+	cpu_set_input_line(device, 0, HOLD_LINE);
 }
 
 
@@ -1545,7 +1496,7 @@ ADDRESS_MAP_END
 WRITE16_HANDLER( fixeight_subcpu_ctrl )
 {
 	/* 0x18 used */
-	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT,  (data & 0x0010) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT,  (data & 0x0010) ? CLEAR_LINE : ASSERT_LINE);
 }
 #endif
 
@@ -2284,6 +2235,30 @@ static INPUT_PORTS_START( dogyuun )
 
 	PORT_MODIFY("JMPR")
 	PORT_DIPNAME( 0x000f,	0x0003, "Territory" )
+	PORT_DIPSETTING(		0x0003, DEF_STR( Europe ) )
+	PORT_DIPSETTING(		0x0001, DEF_STR( USA ) )
+//  PORT_DIPSETTING(        0x0007, DEF_STR( USA ) )
+	PORT_DIPSETTING(		0x0002, "USA (Atari Games Corp license)" )
+//  PORT_DIPSETTING(        0x000c, "USA (Atari Games Corp license)" )
+	PORT_DIPSETTING(		0x0000, DEF_STR( Japan ) )
+	PORT_DIPSETTING(		0x000f, "Japan (Taito Corp license)" )
+	PORT_DIPSETTING(		0x0008, "South East Asia (Charterfield license)" )
+//  PORT_DIPSETTING(        0x000d, "South East Asia (Charterfield license)" )
+	PORT_DIPSETTING(		0x0005, "Korea (Unite Trading license)" )
+//  PORT_DIPSETTING(        0x000a, "Korea (Unite Trading license)" )
+	PORT_DIPSETTING(		0x0004, "Hong Kong (Charterfield license)" )
+//  PORT_DIPSETTING(        0x0009, "Hong Kong (Charterfield license)" )
+	PORT_DIPSETTING(		0x0006, "Taiwan" )
+//  PORT_DIPSETTING(        0x000b, "Taiwan" )
+	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* Sound ready */
+INPUT_PORTS_END
+
+
+static INPUT_PORTS_START( dogyuunk )
+	PORT_INCLUDE( dogyuun )
+
+	PORT_MODIFY("JMPR")
+	PORT_DIPNAME( 0x000f,	0x0005, "Territory" )
 	PORT_DIPSETTING(		0x0003, DEF_STR( Europe ) )
 	PORT_DIPSETTING(		0x0001, DEF_STR( USA ) )
 //  PORT_DIPSETTING(        0x0007, DEF_STR( USA ) )
@@ -3376,7 +3351,7 @@ GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(machine, 1,0,linestate);
+	cpu_set_input_line(machine->cpu[1],0,linestate);
 }
 
 static const ym3812_interface ym3812_config =
@@ -3640,7 +3615,7 @@ static MACHINE_DRIVER_START( pipibibs )
 	MDRV_CPU_ADD("audio", Z80,XTAL_27MHz/8)			/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_z80_mem, 0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(toaplan2)
 
@@ -3680,7 +3655,7 @@ static MACHINE_DRIVER_START( whoopee )
 											/* Change this to 10MHz when HD647180 gets dumped. 10MHz Oscillator */
 	MDRV_CPU_PROGRAM_MAP(sound_z80_mem, 0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(toaplan2)
 
@@ -3719,7 +3694,7 @@ static MACHINE_DRIVER_START( pipibibi )
 	MDRV_CPU_ADD("audio", Z80, XTAL_27MHz/8)			/* ??? 3.37MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_z80_mem, 0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(toaplan2)
 
@@ -3866,7 +3841,7 @@ MACHINE_DRIVER_END
 static MACHINE_RESET(batsugun)
 {
 	#if USE_V25
-	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
 	#endif
 }
 
@@ -3972,7 +3947,7 @@ static MACHINE_DRIVER_START( mahoudai )
 	MDRV_CPU_ADD("audio", Z80, XTAL_32MHz/8)		/* 4MHz , 32MHz Oscillator */
 	MDRV_CPU_PROGRAM_MAP(raizing_sound_z80_mem, 0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(toaplan2)
 
@@ -4014,7 +3989,7 @@ static MACHINE_DRIVER_START( shippumd )
 	MDRV_CPU_ADD("audio", Z80, XTAL_32MHz/8)		/* 4MHz , 32MHz Oscillator */
 	MDRV_CPU_PROGRAM_MAP(raizing_sound_z80_mem, 0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(toaplan2)
 
@@ -4056,7 +4031,7 @@ static MACHINE_DRIVER_START( bgaregga )
 	MDRV_CPU_ADD("audio", Z80, XTAL_32MHz/8)		/* 4MHz , 32MHz Oscillator */
 	MDRV_CPU_PROGRAM_MAP(bgaregga_sound_z80_mem, 0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_RESET(bgaregga)
 
@@ -4099,7 +4074,7 @@ static MACHINE_DRIVER_START( batrider )
 	MDRV_CPU_PROGRAM_MAP(batrider_sound_z80_mem, 0)
 	MDRV_CPU_IO_MAP(batrider_sound_z80_port, 0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(bgaregga)
 
@@ -4145,7 +4120,7 @@ static MACHINE_DRIVER_START( bbakraid )
 	MDRV_CPU_IO_MAP(bbakraid_sound_z80_port, 0)
 	MDRV_CPU_PERIODIC_INT(bbakraid_snd_interrupt, 448)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(toaplan2)
 	MDRV_NVRAM_HANDLER(bbakraid)
@@ -4200,7 +4175,7 @@ ROM_START( tekipaki )
 ROM_END
 
 
-ROM_START( ghox )
+ROM_START( ghox ) /* Spinner with single axis (up/down) controls */
 	ROM_REGION( 0x040000, "main", 0 )			/* Main 68K code */
 	ROM_LOAD16_BYTE( "tp021-01.u10", 0x000000, 0x020000, CRC(9e56ac67) SHA1(daf241d9e55a6e60fc004ed61f787641595b1e62) )
 	ROM_LOAD16_BYTE( "tp021-02.u11", 0x000001, 0x020000, CRC(15cac60f) SHA1(6efa3a50a5dfe6ef4072738d6a7d0d95dca8a675) )
@@ -4217,7 +4192,7 @@ ROM_START( ghox )
 ROM_END
 
 
-ROM_START( ghoxa )
+ROM_START( ghoxj ) /* 8-way joystick for controls */
 	ROM_REGION( 0x040000, "main", 0 )			/* Main 68K code */
 	ROM_LOAD16_BYTE( "tp021-01a.u10", 0x000000, 0x020000, CRC(c11b13c8) SHA1(da7defc1d3b6ddded910ba56c31fbbdb5ed57b09) )
 	ROM_LOAD16_BYTE( "tp021-02a.u11", 0x000001, 0x020000, CRC(8d426767) SHA1(1ed4a8bcbf4352257e7d58cb5c2c91eb48c2f047) )
@@ -4237,6 +4212,30 @@ ROM_END
 ROM_START( dogyuun )
 	ROM_REGION( 0x080000, "main", 0 )			/* Main 68K code */
 	ROM_LOAD16_WORD_SWAP( "tp022_01.r16", 0x000000, 0x080000, CRC(79eb2429) SHA1(088c5ed0ed77557ab71f52cafe35028e3648ae1e) )
+
+	/* Secondary CPU is a Toaplan marked chip, (TS-002-MACH  TOA PLAN) */
+	/* Its likely to be a NEC V25+ (PLCC94). */
+#if USE_V25
+	ROM_REGION( 0x10000, "cpu1", 0 )			/* Sound CPU code */
+//  ROM_LOAD( "tp022.mcu", 0x00000, 0x08000, NO_DUMP )
+#endif
+
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD16_WORD_SWAP( "tp022_3.w92", 0x000000, 0x100000, CRC(191b595f) SHA1(89344946daa18087cc83f92027cf5da659b1c7a5) )
+	ROM_LOAD16_WORD_SWAP( "tp022_4.w93", 0x100000, 0x100000, CRC(d58d29ca) SHA1(90d142fef37764ef817347a2bed77892a288a077) )
+
+	ROM_REGION( 0x400000, "gfx2", ROMREGION_DISPOSE )
+	ROM_LOAD16_WORD_SWAP( "tp022_5.w16", 0x000000, 0x200000, CRC(d4c1db45) SHA1(f5655467149ba737128c2f54c9c6cdaca6e4c35c) )
+	ROM_LOAD16_WORD_SWAP( "tp022_6.w17", 0x200000, 0x200000, CRC(d48dc74f) SHA1(081b5a00a2ff2bd82b98b30aab3cb5b6ae1014d5) )
+
+	ROM_REGION( 0x40000, "oki", 0 )		/* ADPCM Samples */
+	ROM_LOAD( "tp022_2.w30", 0x00000, 0x40000, CRC(043271b3) SHA1(c7eaa929e55dd956579b824ea9d20a1d0129a925) )
+ROM_END
+
+
+ROM_START( dogyuunk )
+	ROM_REGION( 0x080000, "main", 0 )			/* Main 68K code */
+	ROM_LOAD16_WORD_SWAP( "01.u64", 0x000000, 0x080000, CRC(fe5bd7f4) SHA1(9c725466112a514c9ed0fb074422d291c175c3f4) )
 
 	/* Secondary CPU is a Toaplan marked chip, (TS-002-MACH  TOA PLAN) */
 	/* Its likely to be a NEC V25+ (PLCC94). */
@@ -4760,7 +4759,7 @@ ROM_START( bgaregga )
 	ROM_LOAD16_BYTE( "prg0.bin", 0x000000, 0x080000, CRC(f80c2fc2) SHA1(a9aac5c7f5439b6fe8d1b3db1fb02a27cc28fdf6) )
 	ROM_LOAD16_BYTE( "prg1.bin", 0x000001, 0x080000, CRC(2ccfdd1e) SHA1(7a9f11f851854f3f8389b9c3c0906ebb8dc28712) )
 
-	ROM_REGION( 0x28000, "audio", 0 )			/* Sound Z80 code + bank */
+	ROM_REGION( 0x40000, "audio", 0 )			/* Sound Z80 code + bank */
 	ROM_LOAD( "snd.bin", 0x00000, 0x08000, CRC(68632952) SHA1(fb834db83157948e2b420b6051102a9c6ac3969b) )
 	ROM_CONTINUE(        0x10000, 0x18000 )
 
@@ -4783,7 +4782,7 @@ ROM_START( bgareghk )
 	ROM_LOAD16_BYTE( "prg_0.rom", 0x000000, 0x080000, CRC(26e0019e) SHA1(5197001f5d59246b137e19ed1952a8207b25d4c0) )
 	ROM_LOAD16_BYTE( "prg_1.rom", 0x000001, 0x080000, CRC(2ccfdd1e) SHA1(7a9f11f851854f3f8389b9c3c0906ebb8dc28712) )
 
-	ROM_REGION( 0x28000, "audio", 0 )			/* Sound Z80 code + bank */
+	ROM_REGION( 0x40000, "audio", 0 )			/* Sound Z80 code + bank */
 	ROM_LOAD( "snd.bin", 0x00000, 0x08000, CRC(68632952) SHA1(fb834db83157948e2b420b6051102a9c6ac3969b) )
 	ROM_CONTINUE(        0x10000, 0x18000 )
 
@@ -4806,7 +4805,7 @@ ROM_START( bgaregnv )
 	ROM_LOAD16_BYTE( "prg_0.bin", 0x000000, 0x080000, CRC(951ecc07) SHA1(a82e4b59e4a974566e59f3ab2fbae1aec7d88a2b) )
 	ROM_LOAD16_BYTE( "prg_1.bin", 0x000001, 0x080000, CRC(729a60c6) SHA1(cb6f5d138bb82c32910f42d8ee16fa573a23cef3) )
 
-	ROM_REGION( 0x28000, "audio", 0 )			/* Sound Z80 code + bank */
+	ROM_REGION( 0x40000, "audio", 0 )			/* Sound Z80 code + bank */
 	ROM_LOAD( "snd.bin", 0x00000, 0x08000, CRC(68632952) SHA1(fb834db83157948e2b420b6051102a9c6ac3969b) )
 	ROM_CONTINUE(        0x10000, 0x18000 )
 
@@ -4829,7 +4828,7 @@ ROM_START( bgaregt2 )
 	ROM_LOAD16_BYTE( "prg0", 0x000000, 0x080000, CRC(84094099) SHA1(49fc68a8bcdae4477e20eade9dd569de88b0b798) )
 	ROM_LOAD16_BYTE( "prg1", 0x000001, 0x080000, CRC(46f92fe4) SHA1(62a02cc1dbdc3ac362339aebb62368eb89b06bad) )
 
-	ROM_REGION( 0x28000, "audio", 0 )			/* Sound Z80 code + bank */
+	ROM_REGION( 0x40000, "audio", 0 )			/* Sound Z80 code + bank */
 	ROM_LOAD( "snd.bin", 0x00000, 0x08000, CRC(68632952) SHA1(fb834db83157948e2b420b6051102a9c6ac3969b) )
 	ROM_CONTINUE(        0x10000, 0x18000 )
 
@@ -4852,7 +4851,7 @@ ROM_START( bgaregcn )
 	ROM_LOAD16_BYTE( "u123", 0x000000, 0x080000, CRC(88a4e66a) SHA1(ca97e564eed0c5e028b937312e55da56400d5c8c) )
 	ROM_LOAD16_BYTE( "u65",  0x000001, 0x080000, CRC(5dea32a3) SHA1(59df6689e3eb5ea9e49a758604d21a64c65ca14d) )
 
-	ROM_REGION( 0x28000, "audio", 0 )			/* Sound Z80 code + bank */
+	ROM_REGION( 0x40000, "audio", 0 )			/* Sound Z80 code + bank */
 	ROM_LOAD( "snd.bin", 0x00000, 0x08000, CRC(68632952) SHA1(fb834db83157948e2b420b6051102a9c6ac3969b) )
 	ROM_CONTINUE(        0x10000, 0x18000 )
 
@@ -5000,7 +4999,7 @@ ROM_START( bbakraid )
 	ROM_LOAD16_BYTE( "prg2u021.bin", 0x100000, 0x080000, CRC(ffba8656) SHA1(6526bb65fad3384de3f301a7d1095cbf03757433) )
 	ROM_LOAD16_BYTE( "prg3u024.bin", 0x100001, 0x080000, CRC(834b8ad6) SHA1(0dd6223bb0749819ad29811eeb04fd08d937abb0) )
 
-	ROM_REGION( 0x28000, "audio", 0 )			/* Sound Z80 code */
+	ROM_REGION( 0x40000, "audio", 0 )			/* Sound Z80 code */
 	ROM_LOAD( "sndu0720.bin", 0x00000, 0x08000, CRC(e62ab246) SHA1(00d23689dd423ecd4024c58b5903d16e890f1dff) )
 	ROM_CONTINUE(             0x10000, 0x18000 )
 
@@ -5024,7 +5023,7 @@ ROM_START( bbakradu )
 	ROM_LOAD16_BYTE( "prg2u021.bin", 0x100000, 0x080000, CRC(ffba8656) SHA1(6526bb65fad3384de3f301a7d1095cbf03757433) )
 	ROM_LOAD16_BYTE( "prg3u024.bin", 0x100001, 0x080000, CRC(834b8ad6) SHA1(0dd6223bb0749819ad29811eeb04fd08d937abb0) )
 
-	ROM_REGION( 0x28000, "audio", 0 )			/* Sound Z80 code */
+	ROM_REGION( 0x40000, "audio", 0 )			/* Sound Z80 code */
 	ROM_LOAD( "sndu0720.bin", 0x00000, 0x08000, CRC(e62ab246) SHA1(00d23689dd423ecd4024c58b5903d16e890f1dff) )
 	ROM_CONTINUE(             0x10000, 0x18000 )
 
@@ -5048,37 +5047,38 @@ ROM_END
 /* Whoopee  init   to be changed to T2_Z180   when (if) HD647180 is dumped */
 
 /*  ( YEAR  NAME      PARENT    MACHINE   INPUT     INIT      MONITOR COMPANY    FULLNAME     FLAGS ) */
-GAME( 1991, tekipaki, 0,        tekipaki, tekipaki, T2_Z180,  ROT0,   "Toaplan", "Teki Paki", GAME_NO_SOUND )
-GAME( 1991, ghox,     0,        ghox,     ghox,     T2_Z180,  ROT270, "Toaplan", "Ghox (set 1)", GAME_NO_SOUND )
-GAME( 1991, ghoxa,    ghox,     ghox,     ghox,     T2_Z180,  ROT270, "Toaplan", "Ghox (set 2)", GAME_NO_SOUND )
-GAME( 1992, dogyuun,  0,        dogyuun,  dogyuun,  T2_V25,   ROT270, "Toaplan", "Dogyuun", GAME_NO_SOUND )
-GAME( 1993, kbash,    0,        kbash,    kbash,    T2_V25,   ROT0,   "Toaplan", "Knuckle Bash", GAME_IMPERFECT_SOUND )
-GAME( 1999, kbash2,   0,        kbash2,   kbash2,   T2_noZ80, ROT0,   "bootleg", "Knuckle Bash 2 (bootleg)", 0 )
-GAME( 1992, truxton2, 0,        truxton2, truxton2, T2_noZ80, ROT270, "Toaplan", "Truxton II / Tatsujin Oh", 0 )
-GAME( 1991, pipibibs, 0,        pipibibs, pipibibs, T2_Z80,   ROT0,   "Toaplan", "Pipi & Bibis / Whoopee!! (Z80 sound cpu)", 0 )
-GAME( 1991, whoopee,  pipibibs, whoopee,  whoopee,  T2_Z80,   ROT0,   "Toaplan", "Whoopee!! / Pipi & Bibis", 0 )
-GAME( 1991, pipibibi, pipibibs, pipibibi, pipibibi, pipibibi, ROT0,   "[Toaplan] Ryouta Kikaku", "Pipi & Bibis / Whoopee!! (bootleg ?)", 0 )
-GAME( 1992, fixeight, 0,        fixeight, fixeight, fixeight, ROT270, "Toaplan", "FixEight", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
-GAME( 1992, fixeighb, fixeight, fixeighb, fixeighb, fixeighb, ROT270, "bootleg", "FixEight (bootleg)", 0 )
-GAME( 1992, grindstm, vfive,    vfive,    grindstm, T2_V25,   ROT270, "Toaplan", "Grind Stormer", GAME_NO_SOUND )
-GAME( 1992, grindsta, vfive,    vfive,    grindstm, T2_V25,   ROT270, "Toaplan", "Grind Stormer (older set)", GAME_NO_SOUND )
-GAME( 1993, vfive,    0,        vfive,    vfive,    T2_V25,   ROT270, "Toaplan", "V-Five (Japan)", GAME_NO_SOUND )
-GAME( 1993, batsugun, 0,        batsugun, batsugun, T2_V25,   ROT270, "Toaplan", "Batsugun (set 1)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAME( 1993, batsugna, batsugun, batsugun, batsugun, T2_V25,   ROT270, "Toaplan", "Batsugun (set 2)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAME( 1993, batugnsp, batsugun, batsugun, batsugun, T2_V25,   ROT270, "Toaplan", "Batsugun (Special Ver.)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAME( 1994, snowbro2, 0,        snowbro2, snowbro2, T2_noZ80, ROT0,   "[Toaplan] Hanafram", "Snow Bros. 2 - With New Elves / Otenki Paradise", 0 )
-GAME( 1993, mahoudai, 0,        mahoudai, mahoudai, T2_Z80,   ROT270, "Raizing (Able license)", "Mahou Daisakusen (Japan)", 0 )
-GAME( 1993, sstriker, mahoudai, mahoudai, sstriker, T2_Z80,   ROT270, "Raizing", "Sorcer Striker (World)" , 0) // from korean board
-GAME( 1993, sstrikra, mahoudai, mahoudai, sstriker, T2_Z80,   ROT270, "Raizing", "Sorcer Striker (World, alt)" , 0) // verified on two different PCBs
-GAME( 1994, shippumd, 0,        shippumd, shippumd, T2_Z80,   ROT270, "Raizing / Eighting", "Shippu Mahou Daisakusen (Japan)", 0 )
-GAME( 1994, kingdmgp, shippumd, shippumd, kingdmgp, T2_Z80,   ROT270, "Raizing / Eighting", "Kingdom Grandprix (World)" , 0) // from korean board, missing letters on credits screen but this is correct
-GAME( 1996, bgaregga, 0,        bgaregga, bgaregga, T2_Z80,   ROT270, "Raizing / Eighting", "Battle Garegga (Europe / USA / Japan / Asia) (Sat Feb 3 1996)", 0 )
-GAME( 1996, bgareghk, bgaregga, bgaregga, bgareghk, T2_Z80,   ROT270, "Raizing / Eighting", "Battle Garegga (Austria / Hong Kong) (Sat Feb 3 1996)", 0 )
-GAME( 1996, bgaregnv, bgaregga, bgaregga, bgareghk, T2_Z80,   ROT270, "Raizing / Eighting", "Battle Garegga - New Version (Austria / Hong Kong) (Sat Mar 2 1996)" , 0) // displays New Version only when set to HK
-GAME( 1996, bgaregt2, bgaregga, bgaregga, bgaregga, T2_Z80,   ROT270, "Raizing / Eighting", "Battle Garegga - Type 2 (Europe / USA / Japan / Asia) (Sat Mar 2 1996)" , 0) // displays Type 2 only when set to Europe
-GAME( 1996, bgaregcn, bgaregga, bgaregga, bgaregcn, T2_Z80,   ROT270, "Raizing / Eighting", "Battle Garegga - Type 2 (Denmark / China) (Tue Apr 2 1996)", 0 ) // displays Type 2 only when set to Denmark
-GAME( 1998, batrider, 0,        batrider, batrider, batrider, ROT270, "Raizing / Eighting", "Armed Police Batrider - B Version (Japan) (Fri Feb 13 1998)", 0 )
-GAME( 1998, batridra, batrider, batrider, batrider, batrider, ROT270, "Raizing / Eighting", "Armed Police Batrider (Japan) (Mon Dec 22 1997)", 0 )
-GAME( 1998, batridrk, batrider, batrider, batrider, batrider, ROT270, "Raizing / Eighting", "Armed Police Batrider (Korea) (Fri Feb 13 1998)", 0 )
-GAME( 1999, bbakraid, 0,        bbakraid, bbakraid, bbakraid, ROT270, "Eighting", "Battle Bakraid (Japan) (Wed Apr 7 1999)", 0)
-GAME( 1999, bbakradu, bbakraid, bbakraid, bbakraid, bbakradu, ROT270, "Eighting", "Battle Bakraid - Unlimited Version (Japan) (Tue Jun 8 1999)", 0)
+GAME( 1991, tekipaki, 0,        tekipaki, tekipaki, T2_Z180,  ROT0,   "Toaplan", "Teki Paki", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1991, ghox,     0,        ghox,     ghox,     T2_Z180,  ROT270, "Toaplan", "Ghox (Spinner with Up/Down Axis)", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1991, ghoxj,    ghox,     ghox,     ghox,     T2_Z180,  ROT270, "Toaplan", "Ghox (8-Way Joystick)", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1992, dogyuun,  0,        dogyuun,  dogyuun,  T2_V25,   ROT270, "Toaplan", "Dogyuun", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1992, dogyuunk, dogyuun,  dogyuun,  dogyuunk, T2_V25,   ROT270, "Toaplan", "Dogyuun (Licensed to Unite Trading For Korea)", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1993, kbash,    0,        kbash,    kbash,    T2_V25,   ROT0,   "Toaplan", "Knuckle Bash", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1999, kbash2,   0,        kbash2,   kbash2,   T2_noZ80, ROT0,   "bootleg", "Knuckle Bash 2 (bootleg)", GAME_SUPPORTS_SAVE )
+GAME( 1992, truxton2, 0,        truxton2, truxton2, T2_noZ80, ROT270, "Toaplan", "Truxton II / Tatsujin Oh", GAME_SUPPORTS_SAVE )
+GAME( 1991, pipibibs, 0,        pipibibs, pipibibs, T2_Z80,   ROT0,   "Toaplan", "Pipi & Bibis / Whoopee!! (Z80 sound cpu)", GAME_SUPPORTS_SAVE )
+GAME( 1991, whoopee,  pipibibs, whoopee,  whoopee,  T2_Z80,   ROT0,   "Toaplan", "Whoopee!! / Pipi & Bibis", GAME_SUPPORTS_SAVE )
+GAME( 1991, pipibibi, pipibibs, pipibibi, pipibibi, pipibibi, ROT0,   "[Toaplan] Ryouta Kikaku", "Pipi & Bibis / Whoopee!! (bootleg ?)", GAME_SUPPORTS_SAVE )
+GAME( 1992, fixeight, 0,        fixeight, fixeight, fixeight, ROT270, "Toaplan", "FixEight", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+GAME( 1992, fixeighb, fixeight, fixeighb, fixeighb, fixeighb, ROT270, "bootleg", "FixEight (bootleg)", GAME_SUPPORTS_SAVE )
+GAME( 1992, grindstm, vfive,    vfive,    grindstm, T2_V25,   ROT270, "Toaplan", "Grind Stormer", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1992, grindsta, vfive,    vfive,    grindstm, T2_V25,   ROT270, "Toaplan", "Grind Stormer (older set)", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1993, vfive,    0,        vfive,    vfive,    T2_V25,   ROT270, "Toaplan", "V-Five (Japan)", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1993, batsugun, 0,        batsugun, batsugun, T2_V25,   ROT270, "Toaplan", "Batsugun (set 1)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
+GAME( 1993, batsugna, batsugun, batsugun, batsugun, T2_V25,   ROT270, "Toaplan", "Batsugun (set 2)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
+GAME( 1993, batugnsp, batsugun, batsugun, batsugun, T2_V25,   ROT270, "Toaplan", "Batsugun (Special Ver.)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
+GAME( 1994, snowbro2, 0,        snowbro2, snowbro2, T2_noZ80, ROT0,   "[Toaplan] Hanafram", "Snow Bros. 2 - With New Elves / Otenki Paradise", GAME_SUPPORTS_SAVE )
+GAME( 1993, mahoudai, 0,        mahoudai, mahoudai, T2_Z80,   ROT270, "Raizing (Able license)", "Mahou Daisakusen (Japan)", GAME_SUPPORTS_SAVE )
+GAME( 1993, sstriker, mahoudai, mahoudai, sstriker, T2_Z80,   ROT270, "Raizing", "Sorcer Striker (World)" , GAME_SUPPORTS_SAVE ) // from korean board
+GAME( 1993, sstrikra, mahoudai, mahoudai, sstriker, T2_Z80,   ROT270, "Raizing", "Sorcer Striker (World, alt)" , GAME_SUPPORTS_SAVE ) // verified on two different PCBs
+GAME( 1994, shippumd, 0,        shippumd, shippumd, T2_Z80,   ROT270, "Raizing / Eighting", "Shippu Mahou Daisakusen (Japan)", GAME_SUPPORTS_SAVE )
+GAME( 1994, kingdmgp, shippumd, shippumd, kingdmgp, T2_Z80,   ROT270, "Raizing / Eighting", "Kingdom Grandprix (World)" , GAME_SUPPORTS_SAVE ) // from korean board, missing letters on credits screen but this is correct
+GAME( 1996, bgaregga, 0,        bgaregga, bgaregga, T2_Z80,   ROT270, "Raizing / Eighting", "Battle Garegga (Europe / USA / Japan / Asia) (Sat Feb 3 1996)", GAME_SUPPORTS_SAVE )
+GAME( 1996, bgareghk, bgaregga, bgaregga, bgareghk, T2_Z80,   ROT270, "Raizing / Eighting", "Battle Garegga (Austria / Hong Kong) (Sat Feb 3 1996)", GAME_SUPPORTS_SAVE )
+GAME( 1996, bgaregnv, bgaregga, bgaregga, bgareghk, T2_Z80,   ROT270, "Raizing / Eighting", "Battle Garegga - New Version (Austria / Hong Kong) (Sat Mar 2 1996)" , GAME_SUPPORTS_SAVE ) // displays New Version only when set to HK
+GAME( 1996, bgaregt2, bgaregga, bgaregga, bgaregga, T2_Z80,   ROT270, "Raizing / Eighting", "Battle Garegga - Type 2 (Europe / USA / Japan / Asia) (Sat Mar 2 1996)" , GAME_SUPPORTS_SAVE ) // displays Type 2 only when set to Europe
+GAME( 1996, bgaregcn, bgaregga, bgaregga, bgaregcn, T2_Z80,   ROT270, "Raizing / Eighting", "Battle Garegga - Type 2 (Denmark / China) (Tue Apr 2 1996)", GAME_SUPPORTS_SAVE ) // displays Type 2 only when set to Denmark
+GAME( 1998, batrider, 0,        batrider, batrider, batrider, ROT270, "Raizing / Eighting", "Armed Police Batrider - B Version (Japan) (Fri Feb 13 1998)", GAME_SUPPORTS_SAVE )
+GAME( 1998, batridra, batrider, batrider, batrider, batrider, ROT270, "Raizing / Eighting", "Armed Police Batrider (Japan) (Mon Dec 22 1997)", GAME_SUPPORTS_SAVE )
+GAME( 1998, batridrk, batrider, batrider, batrider, batrider, ROT270, "Raizing / Eighting", "Armed Police Batrider (Korea) (Fri Feb 13 1998)", GAME_SUPPORTS_SAVE )
+GAME( 1999, bbakraid, 0,        bbakraid, bbakraid, bbakraid, ROT270, "Eighting", "Battle Bakraid (Japan) (Wed Apr 7 1999)", GAME_SUPPORTS_SAVE )
+GAME( 1999, bbakradu, bbakraid, bbakraid, bbakraid, bbakradu, ROT270, "Eighting", "Battle Bakraid - Unlimited Version (Japan) (Tue Jun 8 1999)", GAME_SUPPORTS_SAVE )

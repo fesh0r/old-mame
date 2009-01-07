@@ -87,6 +87,8 @@ ROMs    : MR96004-10.1  [125661cd] (IC5 - Samples)
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/v60/v60.h"
 #include "deprecat.h"
 #include "sound/ymf271.h"
 #include "rendlay.h"
@@ -312,13 +314,13 @@ static void update_color(running_machine *machine, int color, int screen)
 static WRITE32_HANDLER( ms32_pal0_ram_w )
 {
 	COMBINE_DATA(&ms32_pal_ram[0][offset]);
-	update_color(machine, offset/2, 0);
+	update_color(space->machine, offset/2, 0);
 }
 
 static WRITE32_HANDLER( ms32_pal1_ram_w )
 {
 	COMBINE_DATA(&ms32_pal_ram[1][offset]);
-	update_color(machine, offset/2, 1);
+	update_color(space->machine, offset/2, 1);
 }
 
 static int ms32_reverse_sprite_order = 0;
@@ -466,18 +468,18 @@ static WRITE32_HANDLER( ms32_spramx_w )
 
 static VIDEO_START(bnstars)
 {
-	ms32_tx_tilemap[0] = tilemap_create(get_ms32_tx0_tile_info,tilemap_scan_rows, 8, 8,64,64);
-	ms32_tx_tilemap[1] = tilemap_create(get_ms32_tx1_tile_info,tilemap_scan_rows, 8, 8,64,64);
+	ms32_tx_tilemap[0] = tilemap_create(machine, get_ms32_tx0_tile_info,tilemap_scan_rows, 8, 8,64,64);
+	ms32_tx_tilemap[1] = tilemap_create(machine, get_ms32_tx1_tile_info,tilemap_scan_rows, 8, 8,64,64);
 	tilemap_set_transparent_pen(ms32_tx_tilemap[0],0);
 	tilemap_set_transparent_pen(ms32_tx_tilemap[1],0);
 
-	ms32_bg_tilemap[0] = tilemap_create(get_ms32_bg0_tile_info,tilemap_scan_rows,16,16,64,64);
-	ms32_bg_tilemap[1] = tilemap_create(get_ms32_bg1_tile_info,tilemap_scan_rows,16,16,64,64);
+	ms32_bg_tilemap[0] = tilemap_create(machine, get_ms32_bg0_tile_info,tilemap_scan_rows,16,16,64,64);
+	ms32_bg_tilemap[1] = tilemap_create(machine, get_ms32_bg1_tile_info,tilemap_scan_rows,16,16,64,64);
 	tilemap_set_transparent_pen(ms32_bg_tilemap[0],0);
 	tilemap_set_transparent_pen(ms32_bg_tilemap[1],0);
 
-	ms32_roz_tilemap[0] = tilemap_create(get_ms32_roz0_tile_info,tilemap_scan_rows,16,16,128,128);
-	ms32_roz_tilemap[1] = tilemap_create(get_ms32_roz1_tile_info,tilemap_scan_rows,16,16,128,128);
+	ms32_roz_tilemap[0] = tilemap_create(machine, get_ms32_roz0_tile_info,tilemap_scan_rows,16,16,128,128);
+	ms32_roz_tilemap[1] = tilemap_create(machine, get_ms32_roz1_tile_info,tilemap_scan_rows,16,16,128,128);
 	tilemap_set_transparent_pen(ms32_roz_tilemap[0],0);
 	tilemap_set_transparent_pen(ms32_roz_tilemap[1],0);
 
@@ -490,12 +492,14 @@ static VIDEO_START(bnstars)
 
 static VIDEO_UPDATE(bnstars)
 {
+	const device_config *left_screen  = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
-	if (screen==0)
+	if (screen==left_screen)
 	{
-		fillbitmap(bitmap,0,cliprect);	/* bg color */
+		bitmap_fill(bitmap,cliprect,0);	/* bg color */
 
 
 		tilemap_set_scrollx(ms32_bg_tilemap[0], 0, ms32_bg0_scroll[0x00/4] + ms32_bg0_scroll[0x08/4] + 0x10 );
@@ -511,9 +515,9 @@ static VIDEO_UPDATE(bnstars)
 
 		draw_sprites(screen->machine,bitmap,cliprect, ms32_spram, 0x20000, 0);
 	}
-	else
+	else if (screen == right_screen)
 	{
-		fillbitmap(bitmap,0x8000+0,cliprect);	/* bg color */
+		bitmap_fill(bitmap,cliprect,0x8000+0);	/* bg color */
 
 
 		tilemap_set_scrollx(ms32_bg_tilemap[1], 0, ms32_bg1_scroll[0x00/4] + ms32_bg1_scroll[0x08/4] + 0x10 );
@@ -1201,28 +1205,28 @@ static READ32_HANDLER( bnstars1_r )
 			return 0xffffffff;
 
 		case 0x0000:
-			return input_port_read(machine, "IN0");
+			return input_port_read(space->machine, "IN0");
 
 		case 0x0080:
-			return input_port_read(machine, "IN1");
+			return input_port_read(space->machine, "IN1");
 
 		case 0x2000:
-			return input_port_read(machine, "IN2");
+			return input_port_read(space->machine, "IN2");
 
 		case 0x2080:
-			return input_port_read(machine, "IN3");
+			return input_port_read(space->machine, "IN3");
 
 	}
 }
 
 static READ32_HANDLER( bnstars2_r )
 {
-	return input_port_read(machine, "IN4");
+	return input_port_read(space->machine, "IN4");
 }
 
 static READ32_HANDLER( bnstars3_r )
 {
-	return input_port_read(machine, "IN5");
+	return input_port_read(space->machine, "IN5");
 }
 
 static WRITE32_HANDLER( bnstars1_mahjong_select_w )
@@ -1284,28 +1288,28 @@ static IRQ_CALLBACK(irq_callback)
 	for(i=15; i>=0 && !(irqreq & (1<<i)); i--);
 	irqreq &= ~(1<<i);
 	if(!irqreq)
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(device, 0, CLEAR_LINE);
 	return i;
 }
 
 static void irq_init(running_machine *machine)
 {
 	irqreq = 0;
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
-	cpunum_set_irq_callback(0, irq_callback);
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
+	cpu_set_irq_callback(machine->cpu[0], irq_callback);
 }
 
 static void irq_raise(running_machine *machine, int level)
 {
 	irqreq |= (1<<level);
-	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 }
 
 
 static INTERRUPT_GEN(ms32_interrupt)
 {
-	if( cpu_getiloops() == 0 ) irq_raise(machine, 10);
-	if( cpu_getiloops() == 1 ) irq_raise(machine, 9);
+	if( cpu_getiloops(device) == 0 ) irq_raise(device->machine, 10);
+	if( cpu_getiloops(device) == 1 ) irq_raise(device->machine, 9);
 	/* hayaosi1 needs at least 12 IRQ 0 per frame to work (see code at FFE02289)
        kirarast needs it too, at least 8 per frame, but waits for a variable amount
        47pi2 needs ?? per frame (otherwise it hangs when you lose)
@@ -1314,7 +1318,7 @@ static INTERRUPT_GEN(ms32_interrupt)
        desertwr
        p47aces
        */
-	if( cpu_getiloops() >= 3 && cpu_getiloops() <= 32 ) irq_raise(machine, 0);
+	if( cpu_getiloops(device) >= 3 && cpu_getiloops(device) <= 32 ) irq_raise(device->machine, 0);
 }
 
 static MACHINE_RESET( ms32 )
@@ -1333,7 +1337,7 @@ static MACHINE_DRIVER_START( bnstars )
 //  MDRV_CPU_ADD("audio", Z80, 4000000)
 //  MDRV_CPU_PROGRAM_MAP(bnstars_z80_map, 0)
 
-	MDRV_INTERLEAVE(1000)
+	MDRV_QUANTUM_TIME(HZ(60000))
 
 	MDRV_MACHINE_RESET(ms32)
 
@@ -1440,7 +1444,7 @@ static DRIVER_INIT (bnstars)
 	decrypt_ms32_tx(machine, 0x00020,0x7e, "gfx7");
 	decrypt_ms32_bg(machine, 0x00001,0x9b, "gfx6");
 
-	memory_set_bankptr(1, memory_region(machine, "main"));
+	memory_set_bankptr(machine, 1, memory_region(machine, "main"));
 }
 
 GAME( 1997, bnstars1, 0,        bnstars, bnstars, bnstars, ROT0,   "Jaleco", "Vs. Janshi Brandnew Stars", GAME_NO_SOUND )

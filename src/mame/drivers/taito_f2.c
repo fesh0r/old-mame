@@ -293,6 +293,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "taitoipt.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
@@ -314,7 +315,7 @@ static INT32 mjnquest_input;
 
 static WRITE16_HANDLER( taitof2_watchdog_w )
 {
-	watchdog_reset(machine);
+	watchdog_reset(space->machine);
 }
 
 static WRITE16_HANDLER( growl_coin_word_w )	/* what about coins 3&4 ?? */
@@ -363,13 +364,13 @@ static READ16_HANDLER( growl_dsw_r )
     switch (offset)
     {
          case 0x00:
-              return input_port_read(machine, "DSWA");
+              return input_port_read(space->machine, "DSWA");
 
          case 0x01:
-              return input_port_read(machine, "DSWB");
+              return input_port_read(space->machine, "DSWB");
     }
 
-	logerror("CPU #0 PC %06x: warning - read unmapped dsw_r offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped dsw_r offset %06x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0xff;
 }
@@ -379,17 +380,17 @@ static READ16_HANDLER( growl_input_r )
     switch (offset)
     {
          case 0x00:
-              return input_port_read(machine, "IN0");
+              return input_port_read(space->machine, "IN0");
 
          case 0x01:
-              return input_port_read(machine, "IN1");
+              return input_port_read(space->machine, "IN1");
 
          case 0x02:
-              return input_port_read(machine, "IN2");
+              return input_port_read(space->machine, "IN2");
 
     }
 
-	logerror("CPU #0 PC %06x: warning - read unmapped input_r offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped input_r offset %06x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0xff;
 }
@@ -399,31 +400,31 @@ static READ16_HANDLER( footchmp_input_r )
 	switch (offset)
 	{
 		case 0x00:
-			return input_port_read(machine, "DSWA");
+			return input_port_read(space->machine, "DSWA");
 
 		case 0x01:
-			return input_port_read(machine, "DSWB");
+			return input_port_read(space->machine, "DSWB");
 
 		case 0x02:
-			return input_port_read(machine, "IN2");
+			return input_port_read(space->machine, "IN2");
 
 //      case 0x03:
 //          return (coin_word & mem_mask);
 
 		case 0x05:
-			return input_port_read(machine, "IN0");
+			return input_port_read(space->machine, "IN0");
 
 		case 0x06:
-			return input_port_read(machine, "IN1");
+			return input_port_read(space->machine, "IN1");
 
 		case 0x07:
-			return input_port_read(machine, "IN3");
+			return input_port_read(space->machine, "IN3");
 
 		case 0x08:
-			return input_port_read(machine, "IN4");
+			return input_port_read(space->machine, "IN4");
     }
 
-	logerror("CPU #0 PC %06x: warning - read unmapped input offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped input offset %06x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0xff;
 }
@@ -433,31 +434,31 @@ static READ16_HANDLER( ninjak_input_r )
 	switch (offset)
 	{
 		case 0x00:
-			return (input_port_read(machine, "DSWA") << 8);
+			return (input_port_read(space->machine, "DSWA") << 8);
 
 		case 0x01:
-			return (input_port_read(machine, "DSWB") << 8);
+			return (input_port_read(space->machine, "DSWB") << 8);
 
 		case 0x02:
-			return (input_port_read(machine, "IN0") << 8);
+			return (input_port_read(space->machine, "IN0") << 8);
 
 		case 0x03:
-			return (input_port_read(machine, "IN1") << 8);
+			return (input_port_read(space->machine, "IN1") << 8);
 
 		case 0x04:
-			return (input_port_read(machine, "IN3") << 8);
+			return (input_port_read(space->machine, "IN3") << 8);
 
 		case 0x05:
-			return (input_port_read(machine, "IN4") << 8);
+			return (input_port_read(space->machine, "IN4") << 8);
 
 		case 0x06:
-			return (input_port_read(machine, "IN2") << 8);
+			return (input_port_read(space->machine, "IN2") << 8);
 
 //      case 0x07:
 //          return (coin_word & mem_mask);
 	}
 
-	logerror("CPU #0 PC %06x: warning - read unmapped input offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped input offset %06x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0xff;
 }
@@ -470,19 +471,19 @@ static READ16_HANDLER( cameltry_paddle_r )
 	switch (offset)
 	{
 		case 0x00:
-			curr = input_port_read(machine, "PADDLE1");
+			curr = input_port_read(space->machine, "PADDLE1");
 			res = curr - last[0];
 			last[0] = curr;
 			return res;
 
 		case 0x02:
-			curr = input_port_read(machine, "PADDLE2");
+			curr = input_port_read(space->machine, "PADDLE2");
 			res = curr - last[1];
 			last[1] = curr;
 			return res;
 	}
 
-	logerror("CPU #0 PC %06x: warning - read unmapped paddle offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped paddle offset %06x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0;
 }
@@ -492,13 +493,13 @@ static READ16_HANDLER( driftout_paddle_r )
     switch (offset)
     {
          case 0x00:
-              return input_port_read(machine, "PADDLE1");
+              return input_port_read(space->machine, "PADDLE1");
 
          case 0x01:
-              return input_port_read(machine, "PADDLE2");
+              return input_port_read(space->machine, "PADDLE2");
     }
 
-	logerror("CPU #0 PC %06x: warning - read unmapped paddle offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped paddle offset %06x\n", cpu_get_pc(space->cpu), offset);
 
         return 0xff;
 }
@@ -508,25 +509,25 @@ static READ16_HANDLER( deadconx_input_r )
 	switch (offset)
 	{
 		case 0x00:
-			return input_port_read(machine, "DSWA");
+			return input_port_read(space->machine, "DSWA");
 
 		case 0x01:
-			return input_port_read(machine, "DSWB");
+			return input_port_read(space->machine, "DSWB");
 
 		case 0x02:
-			return input_port_read(machine, "IN2");
+			return input_port_read(space->machine, "IN2");
 
 //      case 0x03:
 //          return (coin_word & mem_mask);
 
 		case 0x05:
-			return input_port_read(machine, "IN0");
+			return input_port_read(space->machine, "IN0");
 
 		case 0x06:
-			return input_port_read(machine, "IN1");
+			return input_port_read(space->machine, "IN1");
     }
 
-	logerror("CPU #0 PC %06x: warning - read unmapped input offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped input offset %06x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0xff;
 }
@@ -537,16 +538,16 @@ static READ16_HANDLER( mjnquest_dsw_r )
     {
         case 0x00:
         {
-			return (input_port_read(machine, "IN5") << 8) + input_port_read(machine, "DSWA");	/* DSW A + coin */
+			return (input_port_read(space->machine, "IN5") << 8) + input_port_read(space->machine, "DSWA");	/* DSW A + coin */
         }
 
         case 0x01:
         {
-			return (input_port_read(machine, "IN6") << 8) + input_port_read(machine, "DSWB");	/* DSW B + coin */
+			return (input_port_read(space->machine, "IN6") << 8) + input_port_read(space->machine, "DSWB");	/* DSW B + coin */
         }
     }
 
-    logerror("CPU #0 PC %06x: warning - read unmapped dsw_r offset %06x\n", activecpu_get_pc(), offset);
+    logerror("CPU #0 PC %06x: warning - read unmapped dsw_r offset %06x\n", cpu_get_pc(space->cpu), offset);
 
     return 0xff;
 }
@@ -556,23 +557,23 @@ static READ16_HANDLER( mjnquest_input_r )
     switch (mjnquest_input)
     {
          case 0x01:
-              return input_port_read(machine, "IN0");
+              return input_port_read(space->machine, "IN0");
 
          case 0x02:
-              return input_port_read(machine, "IN1");
+              return input_port_read(space->machine, "IN1");
 
          case 0x04:
-              return input_port_read(machine, "IN2");
+              return input_port_read(space->machine, "IN2");
 
          case 0x08:
-              return input_port_read(machine, "IN3");
+              return input_port_read(space->machine, "IN3");
 
          case 0x10:
-              return input_port_read(machine, "IN4");
+              return input_port_read(space->machine, "IN4");
 
     }
 
-	logerror("CPU #0 mjnquest_input %06x: warning - read unknown input %06x\n", activecpu_get_pc(), mjnquest_input);
+	logerror("CPU #0 mjnquest_input %06x: warning - read unknown input %06x\n", cpu_get_pc(space->cpu), mjnquest_input);
 
 	return 0xff;
 }
@@ -587,13 +588,13 @@ static READ16_HANDLER( quizhq_input1_r )
     switch (offset)
     {
          case 0x00:
-              return input_port_read(machine, "DSWB");
+              return input_port_read(space->machine, "DSWB");
 
          case 0x01:
-              return input_port_read(machine, "IN0");
+              return input_port_read(space->machine, "IN0");
     }
 
-	logerror("CPU #0 PC %06x: warning - read unmapped input_r offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped input_r offset %06x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0xff;
 }
@@ -603,16 +604,16 @@ static READ16_HANDLER( quizhq_input2_r )
     switch (offset)
     {
          case 0x00:
-              return input_port_read(machine, "DSWA");
+              return input_port_read(space->machine, "DSWA");
 
          case 0x01:
-              return input_port_read(machine, "IN1");
+              return input_port_read(space->machine, "IN1");
 
          case 0x02:
-              return input_port_read(machine, "IN2");
+              return input_port_read(space->machine, "IN2");
     }
 
-	logerror("CPU #0 PC %06x: warning - read unmapped input_r offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped input_r offset %06x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0xff;
 }
@@ -622,16 +623,16 @@ static READ16_HANDLER( yesnoj_input_r )
     switch (offset)
     {
          case 0x00:
-              return input_port_read(machine, "IN0");
+              return input_port_read(space->machine, "IN0");
 
          case 0x01:
-              return input_port_read(machine, "IN1");
+              return input_port_read(space->machine, "IN1");
 
          case 0x02:
-              return input_port_read(machine, "IN2");
+              return input_port_read(space->machine, "IN2");
     }
 #ifdef MAME_DEBUG
-	logerror("CPU #0 PC %06x: warning - read unmapped input_r offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped input_r offset %06x\n", cpu_get_pc(space->cpu), offset);
 #endif
 
 	return 0x0;
@@ -639,7 +640,7 @@ static READ16_HANDLER( yesnoj_input_r )
 
 static READ16_HANDLER( yesnoj_dsw_r )
 {
-	return input_port_read(machine, "DSWA");
+	return input_port_read(space->machine, "DSWA");
 }
 
 /******************************************************************
@@ -788,13 +789,13 @@ driftout  8000 0000/8  0000 0000    The first control changes from 8000 to 0000 
 
 static TIMER_CALLBACK( taitof2_interrupt6 )
 {
-	cpunum_set_input_line(machine, 0,6,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],6,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( taitof2_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(500,0), NULL, 0, taitof2_interrupt6);
-	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,500), NULL, 0, taitof2_interrupt6);
+	cpu_set_input_line(device, 5, HOLD_LINE);
 }
 
 
@@ -804,13 +805,13 @@ static INTERRUPT_GEN( taitof2_interrupt )
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr( 2, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr(machine,  2, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	banknum = (data - 1) & 7;
-	reset_sound_region(machine);
+	reset_sound_region(space->machine);
 
 #ifdef MAME_DEBUG
 	if (banknum>2) logerror("CPU #1 switch to ROM bank %06x: should only happen if Z80 prg rom is 128K!\n",banknum);
@@ -821,14 +822,14 @@ static WRITE8_HANDLER( sound_bankswitch_w )
 static READ16_HANDLER( taitof2_sound_r )
 {
 	if (offset == 1)
-		return (taitosound_comm16_lsb_r(machine,0,mem_mask));
+		return (taitosound_comm16_lsb_r(space,0,mem_mask));
 	else return 0;
 }
 
 static READ16_HANDLER( taitof2_msb_sound_r )
 {
 	if (offset == 1)
-		return (taitosound_comm16_msb_r(machine,0,mem_mask));
+		return (taitosound_comm16_msb_r(space,0,mem_mask));
 	else return 0;
 }
 
@@ -838,7 +839,7 @@ static INT32 driveout_sound_latch = 0;
 
 static READ8_HANDLER( driveout_sound_command_r)
 {
-	cpunum_set_input_line(machine, 1,0,CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1],0,CLEAR_LINE);
 //  logerror("sound IRQ OFF (sound command=%02x)\n",driveout_sound_latch);
 	return driveout_sound_latch;
 }
@@ -879,7 +880,7 @@ static WRITE16_HANDLER ( driveout_sound_command_w )
 			else
 			{
 				driveout_sound_latch = ((data<<4) & 0xf0) | (driveout_sound_latch & 0x0f);
-				cpunum_set_input_line (machine, 1, 0, ASSERT_LINE);
+				cpu_set_input_line (space->machine->cpu[1], 0, ASSERT_LINE);
 			}
 		}
 	}
@@ -3499,7 +3500,7 @@ static INPUT_PORTS_START( mjnquest )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( yesnoj )
+static INPUT_PORTS_START( yesnoj )
 	/* 0xb00000 -> 0x20c0e0.b ($40e0,A5) */
 	PORT_START("DSWA")
 	PORT_DIPNAME( 0x01, 0x00, "Print Results" )
@@ -3660,7 +3661,7 @@ GFXDECODE_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -3699,14 +3700,14 @@ static STATE_POSTLOAD( f2_postload )
 
 static MACHINE_START( f2 )
 {
-	state_save_register_global(banknum);
+	state_save_register_global(machine, banknum);
 	state_save_register_postload(machine, f2_postload, NULL);
 }
 
 static MACHINE_RESET( qcrayon )
 {
 	/* point to the extra ROM */
-	memory_set_bankptr(1,memory_region(machine, "user1"));
+	memory_set_bankptr(machine, 1,memory_region(machine, "user1"));
 }
 
 
@@ -5811,8 +5812,8 @@ static STATE_POSTLOAD( driveout_postload )
 
 static DRIVER_INIT( driveout )
 {
-	state_save_register_global(driveout_sound_latch);
-	state_save_register_global(oki_bank);
+	state_save_register_global(machine, driveout_sound_latch);
+	state_save_register_global(machine, oki_bank);
 	state_save_register_postload(machine, driveout_postload, NULL);
 }
 

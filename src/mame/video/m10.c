@@ -64,13 +64,13 @@ WRITE8_HANDLER( m10_colorram_w )
 
 WRITE8_HANDLER( m15_chargen_w )
 {
-	m10_state *state = machine->driver_data;
+	m10_state *state = space->machine->driver_data;
 
 	if (state->chargen[offset] != data)
 	{
 		state->chargen[offset] = data;
 		/* not very effective ... dirty would be better */
-		decodechar(machine->gfx[0],offset >> 3,state->chargen);
+		decodechar(space->machine->gfx[0],offset >> 3,state->chargen);
 	}
 }
 
@@ -94,12 +94,12 @@ VIDEO_START( m10 )
 	for (i=0;i<32*8;i++)
 		extyoffs[i] = i*8;
 
-	tx_tilemap = tilemap_create(get_tile_info,tilemap_scan,8,8,32,32);
+	tx_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan,8,8,32,32);
 	tilemap_set_transparent_pen(tx_tilemap, 0);
 	tilemap_set_scrolldx(tx_tilemap, 0, 62);
 	tilemap_set_scrolldy(tx_tilemap, 0, 0);
 
-	back_gfx = allocgfx(&backlayout);
+	back_gfx = allocgfx(machine, &backlayout);
 	back_gfx->total_colors = 8;
 
 	machine->gfx[1] = back_gfx;
@@ -110,12 +110,12 @@ VIDEO_START( m15 )
 {
 	m10_state *state = machine->driver_data;
 
-	machine->gfx[0] = allocgfx(&charlayout);
+	machine->gfx[0] = allocgfx(machine, &charlayout);
 	machine->gfx[0]->total_colors = 8;
 
 	decodegfx(machine->gfx[0], state->chargen,0,256);
 
-	tx_tilemap = tilemap_create(get_tile_info,tilemap_scan,8,8,32,32);
+	tx_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan,8,8,32,32);
 	tilemap_set_scrolldx(tx_tilemap, 0, 116);
 	tilemap_set_scrolldy(tx_tilemap, 0, 0);
 
@@ -135,7 +135,7 @@ VIDEO_UPDATE( m10 )
 	static const int xpos[4] = { 4*8, 26*8, 7*8, 6*8};
 	int i;
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	decodegfx(back_gfx, state->chargen,0,4);
 	for (i=0;i<4;i++)

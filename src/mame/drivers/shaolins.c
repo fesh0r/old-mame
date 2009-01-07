@@ -7,6 +7,7 @@ driver by Allard Van Der Bas
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6809/m6809.h"
 #include "deprecat.h"
 #include "sound/sn76496.h"
 
@@ -26,10 +27,10 @@ VIDEO_UPDATE( shaolins );
 
 static INTERRUPT_GEN( shaolins_interrupt )
 {
-	if (cpu_getiloops() == 0) cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
-	else if (cpu_getiloops() % 2)
+	if (cpu_getiloops(device) == 0) cpu_set_input_line(device, 0, HOLD_LINE);
+	else if (cpu_getiloops(device) % 2)
 	{
-		if (shaolins_nmi_enable & 0x02) cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		if (shaolins_nmi_enable & 0x02) cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 

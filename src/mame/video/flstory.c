@@ -47,7 +47,7 @@ static TILE_GET_INFO( victnine_get_tile_info )
 
 VIDEO_START( flstory )
 {
-	bg_tilemap = tilemap_create( get_tile_info,tilemap_scan_rows,8,8,32,32 );
+	bg_tilemap = tilemap_create( machine, get_tile_info,tilemap_scan_rows,8,8,32,32 );
 //  tilemap_set_transparent_pen( bg_tilemap,15 );
 	tilemap_set_transmask(bg_tilemap,0,0x3fff,0xc000); /* split type 0 has pens 0-13 transparent in front half */
 	tilemap_set_transmask(bg_tilemap,1,0x8000,0x7fff); /* split type 1 has pen 15 transparent in front half */
@@ -59,7 +59,7 @@ VIDEO_START( flstory )
 
 VIDEO_START( victnine )
 {
-	bg_tilemap = tilemap_create( victnine_get_tile_info,tilemap_scan_rows,8,8,32,32 );
+	bg_tilemap = tilemap_create( machine, victnine_get_tile_info,tilemap_scan_rows,8,8,32,32 );
 	tilemap_set_scroll_cols(bg_tilemap,32);
 
 	paletteram = auto_malloc(0x200);
@@ -75,9 +75,9 @@ WRITE8_HANDLER( flstory_videoram_w )
 WRITE8_HANDLER( flstory_palette_w )
 {
 	if (offset & 0x100)
-		paletteram_xxxxBBBBGGGGRRRR_split2_w(machine, (offset & 0xff) + (palette_bank << 8),data);
+		paletteram_xxxxBBBBGGGGRRRR_split2_w(space, (offset & 0xff) + (palette_bank << 8),data);
 	else
-		paletteram_xxxxBBBBGGGGRRRR_split1_w(machine, (offset & 0xff) + (palette_bank << 8),data);
+		paletteram_xxxxBBBBGGGGRRRR_split1_w(space, (offset & 0xff) + (palette_bank << 8),data);
 }
 
 READ8_HANDLER( flstory_palette_r )
@@ -102,9 +102,9 @@ WRITE8_HANDLER( flstory_gfxctrl_w )
 	}
 	palette_bank = (data & 0x20) >> 5;
 
-	flip_screen_set(flipscreen);
+	flip_screen_set(space->machine, flipscreen);
 
-//popmessage("%04x: gfxctrl = %02x\n",activecpu_get_pc(),data);
+//popmessage("%04x: gfxctrl = %02x\n",cpu_get_pc(space->cpu),data);
 
 }
 
@@ -124,10 +124,10 @@ WRITE8_HANDLER( victnine_gfxctrl_w )
 	if (data & 0x04)
 	{
 		flipscreen = (data & 0x01);
-		flip_screen_set(flipscreen);
+		flip_screen_set(space->machine, flipscreen);
 	}
 
-//popmessage("%04x: gfxctrl = %02x\n",activecpu_get_pc(),data);
+//popmessage("%04x: gfxctrl = %02x\n",cpu_get_pc(space->cpu),data);
 
 }
 

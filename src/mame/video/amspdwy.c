@@ -21,7 +21,7 @@ static tilemap *bg_tilemap;
 WRITE8_HANDLER( amspdwy_paletteram_w )
 {
 	data ^= 0xff;
-	paletteram_BBGGGRRR_w(machine,offset,data);
+	paletteram_BBGGGRRR_w(space,offset,data);
 //  paletteram_RRRGGGBB_w(offset,data);
 }
 
@@ -29,7 +29,7 @@ WRITE8_HANDLER( amspdwy_flipscreen_w )
 {
 	static int flip = 0;
 	flip ^= 1;
-	flip_screen_set( flip );
+	flip_screen_set(space->machine,  flip );
 }
 
 /***************************************************************************
@@ -78,7 +78,7 @@ static TILEMAP_MAPPER( tilemap_scan_cols_back )
 
 VIDEO_START( amspdwy )
 {
-	bg_tilemap	=	tilemap_create(	get_tile_info,	tilemap_scan_cols_back,
+	bg_tilemap	=	tilemap_create(	machine, get_tile_info,	tilemap_scan_cols_back,
 									8,8,	0x20, 0x20 );
 }
 
@@ -117,7 +117,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		int flipx	=	attr & 0x80;
 		int flipy	=	attr & 0x40;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			x = max_x - x - 8;	y = max_y - y - 8;
 			flipx = !flipx;	flipy = !flipy;

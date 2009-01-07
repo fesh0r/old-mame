@@ -55,18 +55,18 @@ WRITE8_HANDLER( ninjakun_paletteram_w )
 {
 	int i;
 
-	paletteram_BBGGRRII_w(machine,offset,data);
+	paletteram_BBGGRRII_w(space,offset,data);
 
 	// expand the sprite palette to full length
 	if (offset < 16)
 	{
-		paletteram_BBGGRRII_w(machine, 0x200 + offset * 16 + 1, data);
+		paletteram_BBGGRRII_w(space, 0x200 + offset * 16 + 1, data);
 
 		if (offset != 1)
 		{
 			for (i = 0; i < 16; i++)
 			{
-				paletteram_BBGGRRII_w(machine, 0x200 + offset + i * 16, data);
+				paletteram_BBGGRRII_w(space, 0x200 + offset + i * 16, data);
 			}
 		}
 	}
@@ -157,30 +157,30 @@ static TILE_GET_INFO( raiders5_get_fg_tile_info )
 
 VIDEO_START( nova2001 )
 {
-	bg_tilemap = tilemap_create(nova2001_get_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
-	fg_tilemap = tilemap_create(nova2001_get_fg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, nova2001_get_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+	fg_tilemap = tilemap_create(machine, nova2001_get_fg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 	tilemap_set_scrolldx(bg_tilemap, 0, -7);
 }
 
 VIDEO_START( pkunwar )
 {
-	bg_tilemap = tilemap_create(pkunwar_get_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, pkunwar_get_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 }
 
 VIDEO_START( ninjakun )
 {
-	bg_tilemap = tilemap_create(ninjakun_get_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
-	fg_tilemap = tilemap_create(ninjakun_get_fg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, ninjakun_get_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+	fg_tilemap = tilemap_create(machine, ninjakun_get_fg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 	tilemap_set_scrolldx(bg_tilemap, 7, 0);
 }
 
 VIDEO_START( raiders5 )
 {
-	bg_tilemap = tilemap_create(raiders5_get_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
-	fg_tilemap = tilemap_create(raiders5_get_fg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, raiders5_get_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+	fg_tilemap = tilemap_create(machine, raiders5_get_fg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 	tilemap_set_scrolldx(bg_tilemap, 7, 0);
 }
@@ -241,12 +241,12 @@ WRITE8_HANDLER( nova2001_scroll_y_w )
 WRITE8_HANDLER( nova2001_flipscreen_w )
 {
 	// inverted
-	flip_screen_set(~data & 1);
+	flip_screen_set(space->machine, ~data & 1);
 }
 
 WRITE8_HANDLER( pkunwar_flipscreen_w )
 {
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 }
 
 
@@ -277,7 +277,7 @@ static void nova2001_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 			continue;
 		}
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -314,7 +314,7 @@ static void pkunwar_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 			continue;
 		}
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;

@@ -17,6 +17,7 @@ MAIN BOARD:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/sn76496.h"
 
@@ -37,7 +38,7 @@ static READ8_HANDLER( mikie_sh_timer_r )
 
 	#define TIMER_RATE 512
 
-	clock = activecpu_gettotalcycles() / TIMER_RATE;
+	clock = cpu_get_total_cycles(space->cpu) / TIMER_RATE;
 
 	return clock;
 }
@@ -49,7 +50,7 @@ static WRITE8_HANDLER( mikie_sh_irqtrigger_w )
 	if (last == 0 && data == 1)
 	{
 		// setting bit 0 low then high triggers IRQ on the sound CPU
-		cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff);
+		cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff);
 	}
 
 	last = data;

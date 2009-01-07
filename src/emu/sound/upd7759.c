@@ -100,7 +100,6 @@
 #include <math.h>
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "upd7759.h"
 
@@ -149,6 +148,7 @@ enum
 
 struct upd7759_chip
 {
+	const device_config *device;
 	sound_stream *channel;					/* stream channel for playback */
 
 	/* internal clock to output sample rate mapping */
@@ -162,7 +162,7 @@ struct upd7759_chip
 	UINT8		reset;						/* current state of the RESET line */
 	UINT8		start;						/* current state of the START line */
 	UINT8		drq;						/* current state of the DRQ line */
-	void (*drqcallback)(int param);			/* drq callback */
+	void (*drqcallback)(const device_config *device, int param);			/* drq callback */
 
 	/* internal state machine */
 	INT8		state;						/* current overall chip state */
@@ -460,14 +460,14 @@ static void advance_state(struct upd7759_chip *chip)
 
 *************************************************************/
 
-static void upd7759_update(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int samples)
+static STREAM_UPDATE( upd7759_update )
 {
 	struct upd7759_chip *chip = param;
 	INT32 clocks_left = chip->clocks_left;
 	INT16 sample = chip->sample;
 	UINT32 step = chip->step;
 	UINT32 pos = chip->pos;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
 	/* loop until done */
 	if (chip->state != STATE_IDLE)
@@ -537,7 +537,7 @@ static TIMER_CALLBACK( upd7759_slave_update )
 	/* if the DRQ changed, update it */
 	logerror("slave_update: DRQ %d->%d\n", olddrq, chip->drq);
 	if (olddrq != chip->drq && chip->drqcallback)
-		(*chip->drqcallback)(chip->drq);
+		(*chip->drqcallback)(chip->device, chip->drq);
 
 	/* set a timer to go off when that is done */
 	if (chip->state != STATE_IDLE)
@@ -580,6 +580,12 @@ static void upd7759_reset(struct upd7759_chip *chip)
 }
 
 
+static SND_RESET( upd7759 )
+{
+	upd7759_reset(device->token);
+}
+
+
 static STATE_POSTLOAD( upd7759_postload )
 {
 	struct upd7759_chip *chip = (struct upd7759_chip *)param;
@@ -587,40 +593,40 @@ static STATE_POSTLOAD( upd7759_postload )
 }
 
 
-static void register_for_save(struct upd7759_chip *chip, int index)
+static void register_for_save(struct upd7759_chip *chip, const device_config *device)
 {
-	state_save_register_item("upd7759", index, chip->pos);
-	state_save_register_item("upd7759", index, chip->step);
+	state_save_register_device_item(device, 0, chip->pos);
+	state_save_register_device_item(device, 0, chip->step);
 
-	state_save_register_item("upd7759", index, chip->fifo_in);
-	state_save_register_item("upd7759", index, chip->reset);
-	state_save_register_item("upd7759", index, chip->start);
-	state_save_register_item("upd7759", index, chip->drq);
+	state_save_register_device_item(device, 0, chip->fifo_in);
+	state_save_register_device_item(device, 0, chip->reset);
+	state_save_register_device_item(device, 0, chip->start);
+	state_save_register_device_item(device, 0, chip->drq);
 
-	state_save_register_item("upd7759", index, chip->state);
-	state_save_register_item("upd7759", index, chip->clocks_left);
-	state_save_register_item("upd7759", index, chip->nibbles_left);
-	state_save_register_item("upd7759", index, chip->repeat_count);
-	state_save_register_item("upd7759", index, chip->post_drq_state);
-	state_save_register_item("upd7759", index, chip->post_drq_clocks);
-	state_save_register_item("upd7759", index, chip->req_sample);
-	state_save_register_item("upd7759", index, chip->last_sample);
-	state_save_register_item("upd7759", index, chip->block_header);
-	state_save_register_item("upd7759", index, chip->sample_rate);
-	state_save_register_item("upd7759", index, chip->first_valid_header);
-	state_save_register_item("upd7759", index, chip->offset);
-	state_save_register_item("upd7759", index, chip->repeat_offset);
+	state_save_register_device_item(device, 0, chip->state);
+	state_save_register_device_item(device, 0, chip->clocks_left);
+	state_save_register_device_item(device, 0, chip->nibbles_left);
+	state_save_register_device_item(device, 0, chip->repeat_count);
+	state_save_register_device_item(device, 0, chip->post_drq_state);
+	state_save_register_device_item(device, 0, chip->post_drq_clocks);
+	state_save_register_device_item(device, 0, chip->req_sample);
+	state_save_register_device_item(device, 0, chip->last_sample);
+	state_save_register_device_item(device, 0, chip->block_header);
+	state_save_register_device_item(device, 0, chip->sample_rate);
+	state_save_register_device_item(device, 0, chip->first_valid_header);
+	state_save_register_device_item(device, 0, chip->offset);
+	state_save_register_device_item(device, 0, chip->repeat_offset);
 
-	state_save_register_item("upd7759", index, chip->adpcm_state);
-	state_save_register_item("upd7759", index, chip->adpcm_data);
-	state_save_register_item("upd7759", index, chip->sample);
+	state_save_register_device_item(device, 0, chip->adpcm_state);
+	state_save_register_device_item(device, 0, chip->adpcm_data);
+	state_save_register_device_item(device, 0, chip->sample);
 
-	state_save_register_item("upd7759", index, chip->romoffset);
-	state_save_register_postload(Machine, upd7759_postload, chip);
+	state_save_register_device_item(device, 0, chip->romoffset);
+	state_save_register_postload(device->machine, upd7759_postload, chip);
 }
 
 
-static void *upd7759_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( upd7759 )
 {
 	static const upd7759_interface defintrf = { 0 };
 	const upd7759_interface *intf = (config != NULL) ? config : &defintrf;
@@ -629,8 +635,10 @@ static void *upd7759_start(const char *tag, int sndindex, int clock, const void 
 	chip = auto_malloc(sizeof(*chip));
 	memset(chip, 0, sizeof(*chip));
 
+	chip->device = device;
+
 	/* allocate a stream channel */
-	chip->channel = stream_create(0, 1, clock/4, chip, upd7759_update);
+	chip->channel = stream_create(device, 0, 1, clock/4, chip, upd7759_update);
 
 	/* compute the stepping rate based on the chip's clock speed */
 	chip->step = 4 * FRAC_ONE;
@@ -642,9 +650,9 @@ static void *upd7759_start(const char *tag, int sndindex, int clock, const void 
 	chip->state = STATE_IDLE;
 
 	/* compute the ROM base or allocate a timer */
-	chip->rom = chip->rombase = memory_region(Machine, tag);
+	chip->rom = chip->rombase = device->region;
 	if (chip->rom == NULL)
-		chip->timer = timer_alloc(upd7759_slave_update, chip);
+		chip->timer = timer_alloc(device->machine, upd7759_slave_update, chip);
 
 	/* set the DRQ callback */
 	chip->drqcallback = intf->drqcallback;
@@ -656,7 +664,7 @@ static void *upd7759_start(const char *tag, int sndindex, int clock, const void 
 	/* toggle the reset line to finish the reset */
 	upd7759_reset(chip);
 
-	register_for_save(chip, sndindex);
+	register_for_save(chip, device);
 
 	return chip;
 }
@@ -770,7 +778,7 @@ READ8_HANDLER(upd7759_0_busy_r)
  * Generic get_info
  **************************************************************************/
 
-static void upd7759_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( upd7759 )
 {
 	switch (state)
 	{
@@ -779,24 +787,24 @@ static void upd7759_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void upd7759_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( upd7759 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = upd7759_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = upd7759_start;			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( upd7759 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( upd7759 );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( upd7759 );		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "UPD7759";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "NEC ADPCM";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "UPD7759");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "NEC ADPCM");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

@@ -26,7 +26,7 @@ WRITE16_HANDLER(tatsumi_sprite_control_w)
 
 	/* 0xe0 is bank switch, others unknown */
 //  if ((offset==0xe0 && data&0xefff) || offset!=0xe0)
-//      logerror("%08x:  Tatsumi TZB215 sprite control %04x %08x\n", activecpu_get_pc(), offset, data);
+//      logerror("%08x:  Tatsumi TZB215 sprite control %04x %08x\n", cpu_get_pc(space->cpu), offset, data);
 }
 
 /******************************************************************************/
@@ -48,7 +48,7 @@ WRITE16_HANDLER(roundup5_vram_w)
 
 	offset=offset%0xc000;
 
-	decodechar(machine->gfx[1],offset/0x10,(UINT8 *)roundup5_vram);
+	decodechar(space->machine->gfx[1],offset/0x10,(UINT8 *)roundup5_vram);
 }
 
 
@@ -80,7 +80,7 @@ bit 0:  3.9kOhm resistor
 
 	offset&=~1;
 	word = ((paletteram16[offset] & 0xff)<<8) | (paletteram16[offset+1] & 0xff);
-	palette_set_color_rgb(machine,offset/2,pal5bit(word >> 10),pal5bit(word >> 5),pal5bit(word >> 0));
+	palette_set_color_rgb(space->machine,offset/2,pal5bit(word >> 10),pal5bit(word >> 5),pal5bit(word >> 0));
 }
 
 
@@ -110,7 +110,7 @@ bit 0:  3.9kOhm resistor
 //  logerror("PAL: %04x %02x\n",offset,data);
 
 	data = paletteram16[offset];
-	palette_set_color_rgb(machine,offset,pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
+	palette_set_color_rgb(space->machine,offset,pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
 }
 
 
@@ -157,7 +157,7 @@ WRITE16_HANDLER( roundup5_crt_w )
 	if (offset==1 && ACCESSING_BITS_0_7) {
 		roundupt_crt_reg[roundupt_crt_selected_reg]=data;
 //      if (roundupt_crt_selected_reg!=0xa && roundupt_crt_selected_reg!=0xb && roundupt_crt_selected_reg!=29)
-//      logerror("%08x:  Crt write %02x %02x\n",activecpu_get_pc(),roundupt_crt_selected_reg,data);
+//      logerror("%08x:  Crt write %02x %02x\n",cpu_get_pc(space->cpu),roundupt_crt_selected_reg,data);
 	}
 }
 
@@ -191,7 +191,7 @@ static TILE_GET_INFO( get_tile_info_bigfight_1 )
 
 VIDEO_START( apache3 )
 {
-	tx_layer = tilemap_create(get_text_tile_info,tilemap_scan_rows,8,8,64,64);
+	tx_layer = tilemap_create(machine, get_text_tile_info,tilemap_scan_rows,8,8,64,64);
 	shadow_pen_array = auto_malloc(8192);
 	temp_bitmap = auto_bitmap_alloc(512, 512, BITMAP_FORMAT_RGB32);
 
@@ -201,7 +201,7 @@ VIDEO_START( apache3 )
 
 VIDEO_START( roundup5 )
 {
-	tx_layer = tilemap_create(get_text_tile_info,tilemap_scan_rows,8,8,128,64);
+	tx_layer = tilemap_create(machine, get_text_tile_info,tilemap_scan_rows,8,8,128,64);
 	shadow_pen_array = auto_malloc(8192);
 	roundup5_vram = auto_malloc(0x48000 * 4);
 
@@ -211,11 +211,11 @@ VIDEO_START( roundup5 )
 
 VIDEO_START( cyclwarr )
 {
-	layer0 = tilemap_create(get_tile_info_bigfight_0,tilemap_scan_rows,8,8,64,512);
-	//layer1 = tilemap_create(get_tile_info_bigfight_0,tilemap_scan_rows,8,8,64,512);
-	layer1 = tilemap_create(get_tile_info_bigfight_0,tilemap_scan_rows,8,8,128,256);
-	layer2 = tilemap_create(get_tile_info_bigfight_1,tilemap_scan_rows,8,8,64,512);
-	layer3 = tilemap_create(get_tile_info_bigfight_1,tilemap_scan_rows,8,8,64,512);
+	layer0 = tilemap_create(machine, get_tile_info_bigfight_0,tilemap_scan_rows,8,8,64,512);
+	//layer1 = tilemap_create(machine, get_tile_info_bigfight_0,tilemap_scan_rows,8,8,64,512);
+	layer1 = tilemap_create(machine, get_tile_info_bigfight_0,tilemap_scan_rows,8,8,128,256);
+	layer2 = tilemap_create(machine, get_tile_info_bigfight_1,tilemap_scan_rows,8,8,64,512);
+	layer3 = tilemap_create(machine, get_tile_info_bigfight_1,tilemap_scan_rows,8,8,64,512);
 
 	shadow_pen_array = auto_malloc(8192);
 	memset(shadow_pen_array, 0, 8192);
@@ -223,10 +223,10 @@ VIDEO_START( cyclwarr )
 
 VIDEO_START( bigfight )
 {
-	layer0 = tilemap_create(get_tile_info_bigfight_0,tilemap_scan_rows,8,8,128,256);
-	layer1 = tilemap_create(get_tile_info_bigfight_0,tilemap_scan_rows,8,8,128,256);
-	layer2 = tilemap_create(get_tile_info_bigfight_1,tilemap_scan_rows,8,8,128,256);
-	layer3 = tilemap_create(get_tile_info_bigfight_1,tilemap_scan_rows,8,8,128,256);
+	layer0 = tilemap_create(machine, get_tile_info_bigfight_0,tilemap_scan_rows,8,8,128,256);
+	layer1 = tilemap_create(machine, get_tile_info_bigfight_0,tilemap_scan_rows,8,8,128,256);
+	layer2 = tilemap_create(machine, get_tile_info_bigfight_1,tilemap_scan_rows,8,8,128,256);
+	layer3 = tilemap_create(machine, get_tile_info_bigfight_1,tilemap_scan_rows,8,8,128,256);
 
 	shadow_pen_array = auto_malloc(8192);
 	memset(shadow_pen_array, 0, 8192);
@@ -592,7 +592,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		if (rotate)
 		{
 			render_y=0;
-			fillbitmap(temp_bitmap, 0, 0);
+			bitmap_fill(temp_bitmap, 0, 0);
 		}
 
 extent_x=extent_y=0;
@@ -1001,7 +1001,7 @@ VIDEO_UPDATE( apache3 )
 {
 	update_cluts(screen->machine, 1024, 0, 2048);
 
-	fillbitmap(bitmap,screen->machine->pens[0],cliprect);
+	bitmap_fill(bitmap,cliprect,screen->machine->pens[0]);
 	draw_sky(screen->machine, bitmap, cliprect, 256, apache3_a0000[1]);
 	draw_sprites(screen->machine, bitmap,cliprect,0, (tatsumi_sprite_control_ram[0x20]&0x1000) ? 0x1000 : 0);
 	tilemap_draw(bitmap,cliprect,tx_layer,0,0);
@@ -1018,8 +1018,8 @@ VIDEO_UPDATE( roundup5 )
 	tilemap_set_scrollx(tx_layer,0,24);
 	tilemap_set_scrolly(tx_layer,0,0); //(((roundupt_crt_reg[0xe]<<8)|roundupt_crt_reg[0xf])>>5) + 96);
 
-	fillbitmap(bitmap,screen->machine->pens[384],cliprect); // todo
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,screen->machine->pens[384]); // todo
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	draw_sprites(screen->machine, priority_bitmap,cliprect,1,(tatsumi_sprite_control_ram[0xe0]&0x1000) ? 0x1000 : 0); // Alpha pass only
 	draw_road(screen->machine, bitmap,cliprect,priority_bitmap);
@@ -1040,7 +1040,7 @@ VIDEO_UPDATE( cyclwarr )
 		bigfight_last_bank=bigfight_bank;
 	}
 
-	fillbitmap(bitmap,screen->machine->pens[0],cliprect);
+	bitmap_fill(bitmap,cliprect,screen->machine->pens[0]);
 
 	draw_bg(screen->machine, bitmap, layer3, &cyclwarr_videoram1[0x000], &cyclwarr_videoram1[0x100], cyclwarr_videoram1, bigfight_a40000[0], 8, -0x80, 512, 4096);
 	draw_bg(screen->machine, bitmap, layer2, &cyclwarr_videoram1[0x200], &cyclwarr_videoram1[0x300], cyclwarr_videoram1, bigfight_a40000[0], 8, -0x80, 512, 4096);
@@ -1064,7 +1064,7 @@ VIDEO_UPDATE( bigfight )
 		bigfight_last_bank=bigfight_bank;
 	}
 
-	fillbitmap(bitmap,screen->machine->pens[0],cliprect);
+	bitmap_fill(bitmap,cliprect,screen->machine->pens[0]);
 	draw_bg(screen->machine, bitmap, layer3, &cyclwarr_videoram1[0x000], &cyclwarr_videoram1[0x100], cyclwarr_videoram1, bigfight_a40000[0], 8, -0x40, 1024, 2048);
 	draw_bg(screen->machine, bitmap, layer2, &cyclwarr_videoram1[0x200], &cyclwarr_videoram1[0x300], cyclwarr_videoram1, bigfight_a40000[0], 8, -0x40, 1024, 2048);
 	draw_bg(screen->machine, bitmap, layer1, &cyclwarr_videoram0[0x000], &cyclwarr_videoram0[0x100], cyclwarr_videoram0, bigfight_a40000[0], 8, -0x40, 1024, 2048);

@@ -16,7 +16,8 @@
  *  PUBLIC FUNCTIONS
  ***************************************************************************************************/
 
-extern void arm_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( arm );
+#define CPU_ARM CPU_GET_INFO_NAME( arm )
 
 extern UINT32 arm_disasm(char *pBuf, UINT32 pc, UINT32 opcode);
 

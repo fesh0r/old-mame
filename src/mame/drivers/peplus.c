@@ -159,8 +159,9 @@ Stephh's log (2007.11.28) :
 
 #include "driver.h"
 #include "sound/ay8910.h"
-#include "cpu/i8051/i8051.h"
+#include "cpu/mcs51/mcs51.h"
 #include "machine/i2cmem.h"
+#include "video/mc6845.h"
 
 #include "peplus.lh"
 #include "pe_schip.lh"
@@ -169,6 +170,9 @@ Stephh's log (2007.11.28) :
 #include "pe_keno.lh"
 #include "pe_slots.lh"
 
+#define MASTER_CLOCK 		XTAL_20MHz
+#define CPU_CLOCK			((MASTER_CLOCK)/2)		/* divided by 2 - 7474 */
+#define MC6845_CLOCK		((MASTER_CLOCK)/8/3)
 
 static UINT16 autohold_addr; /* address to patch in program RAM to enable autohold feature */
 
@@ -185,9 +189,7 @@ static UINT8 *sd000_ram;
 static UINT8 *sf000_ram;
 
 /* Variables used instead of CRTC6845 system */
-static UINT8 vid_register = 0;
-static UINT8 vid_low = 0;
-static UINT8 vid_high = 0;
+static UINT16 vid_address = 0;
 
 /* Holds upper video address and palette number */
 static UINT8 *palette_ram;
@@ -208,6 +210,22 @@ static int sda_dir = 0;
 #define CMOS_NVRAM_SIZE     0x2000
 #define eeprom_NVRAM_SIZE   0x200 // 4k Bit
 
+/* prototypes */
+static MC6845_ON_VSYNC_CHANGED(crtc_vsync);
+static MC6845_ON_UPDATE_ADDR_CHANGED(crtc_addr);
+
+static const mc6845_interface mc6845_intf =
+{
+	"main",					/* screen we are acting on */
+	8,						/* number of pixels per video memory address */
+	NULL,					/* before pixel update callback */
+	NULL,					/* row update callback */
+	NULL,					/* after pixel update callback */
+	NULL,					/* callback for display state changes */
+	NULL,					/* HSYNC callback */
+	crtc_vsync,				/* VSYNC callback */
+	crtc_addr				/* update address callback */
+};
 
 /*****************
 * NVRAM Handlers *
@@ -264,7 +282,7 @@ static WRITE8_HANDLER( peplus_bgcolor_w )
 		bit2 = 0;
 		b = 0x21 * bit2 + 0x47 * bit1 + 0x97 * bit0;
 
-		palette_set_color(machine, (15 + (i*16)), MAKE_RGB(r, g, b));
+		palette_set_color(space->machine, (15 + (i*16)), MAKE_RGB(r, g, b));
 	}
 }
 
@@ -273,42 +291,51 @@ static WRITE8_HANDLER( peplus_bgcolor_w )
     The current CRTC6845 driver does not support these
     additional registers (R18, R19, R31)
 */
-static WRITE8_HANDLER( peplus_crtc_mode_w )
+
+static MC6845_ON_UPDATE_ADDR_CHANGED(crtc_addr)
 {
-	/* Mode Control - Register 8 */
-	/* Sets CRT to Transparent Memory Addressing Mode */
+	vid_address = address;
 }
 
-static WRITE8_HANDLER( peplus_crtc_register_w )
+
+static WRITE8_DEVICE_HANDLER( peplus_crtc_mode_w )
 {
-    vid_register = data;
+	/* Reset timing logic */
 }
 
-static WRITE8_HANDLER( peplus_crtc_address_w )
+static TIMER_CALLBACK(assert_lp_cb)
 {
-	switch(vid_register) {
-		case 0x12:  /* Update Address High */
-			vid_high = data & 0x3f;
-			break;
-		case 0x13:  /* Update Address Low */
-			vid_low = data;
-			break;
-	}
+	mc6845_assert_light_pen_input((const device_config *) ptr);
 }
 
-static WRITE8_HANDLER( peplus_crtc_display_w )
+static void handle_lightpen( const device_config *device )
 {
-	UINT16 vid_address = (vid_high<<8) | vid_low;
+    int x_val = input_port_read_safe(device->machine, "TOUCH_X",0x00);
+    int y_val = input_port_read_safe(device->machine, "TOUCH_Y",0x00);
+    const rectangle *vis_area = video_screen_get_visible_area(device->machine->primary_screen);
+    int xt, yt;
 
+    xt = x_val * (vis_area->max_x - vis_area->min_x) / 1024 + vis_area->min_x;
+    yt = y_val * (vis_area->max_y - vis_area->min_y) / 1024 + vis_area->min_y;
+
+     timer_set(device->machine, video_screen_get_time_until_pos(device->machine->primary_screen, yt, xt), (void *) device, 0, assert_lp_cb);
+ }
+
+static MC6845_ON_VSYNC_CHANGED(crtc_vsync)
+{
+	cputag_set_input_line(device->machine, "main", 0, vsync ? ASSERT_LINE : CLEAR_LINE);
+	handle_lightpen(device);
+}
+
+
+static WRITE8_DEVICE_HANDLER( peplus_crtc_display_w )
+{
 	videoram[vid_address] = data;
 	palette_ram[vid_address] = io_port[1];
 	tilemap_mark_tile_dirty(bg_tilemap, vid_address);
 
-	/* Transparent Memory Addressing increments the update address register */
-	if (vid_low == 0xff) {
-		vid_high++;
-	}
-	vid_low++;
+	/* An access here triggers a device read !*/
+	(void) mc6845_register_r(device, 0);
 }
 
 static WRITE8_HANDLER( peplus_io_w )
@@ -398,48 +425,15 @@ static WRITE8_HANDLER( peplus_output_bank_c_w )
 
 static WRITE8_HANDLER(i2c_nvram_w)
 {
-	i2cmem_write(0, I2CMEM_SCL, BIT(data, 2));
+	i2cmem_write(space->machine, 0, I2CMEM_SCL, BIT(data, 2));
 	sda_dir = BIT(data, 1);
-	i2cmem_write(0, I2CMEM_SDA, BIT(data, 0));
+	i2cmem_write(space->machine, 0, I2CMEM_SDA, BIT(data, 0));
 }
 
 
 /****************
 * Read Handlers *
 ****************/
-
-static READ8_HANDLER( peplus_crtc_display_r )
-{
-	UINT16 vid_address = ((vid_high<<8) | vid_low) + 1;
-    vid_high = (vid_address>>8) & 0x3f;
-    vid_low = vid_address& 0xff;
-
-    return 0x00;
-}
-
-static READ8_HANDLER( peplus_crtc_lpen1_r )
-{
-    return 0x40;
-}
-
-static READ8_HANDLER( peplus_crtc_lpen2_r )
-{
-    UINT8 ret_val = 0x00;
-    UINT8 x_val = input_port_read_safe(machine, "TOUCH_X",0x00);
-    UINT8 y_val = (0x19 - input_port_read_safe(machine, "TOUCH_Y",0x00));
-    UINT16 t_val = y_val * 0x28 + (x_val+1);
-
-	switch(vid_register) {
-		case 0x10:  /* Light Pen Address High */
-			ret_val = (t_val >> 8) & 0x3f;
-			break;
-		case 0x11:  /* Light Pen Address Low */
-			ret_val = t_val & 0xff;
-			break;
-	}
-
-    return ret_val;
-}
 
 static READ8_HANDLER( peplus_io_r )
 {
@@ -487,20 +481,10 @@ static READ8_HANDLER( peplus_sf000_r )
 	return sf000_ram[offset];
 }
 
-/* External RAM Callback for I8052 */
-static READ32_HANDLER( peplus_external_ram_iaddr )
-{
-	if (mem_mask == 0xff) {
-		return (io_port[2] << 8) | offset;
-	} else {
-		return offset;
-	}
-}
-
 /* Last Color in Every Palette is bgcolor */
 static READ8_HANDLER( peplus_bgcolor_r )
 {
-	return palette_get_color(machine, 15); // Return bgcolor from First Palette
+	return palette_get_color(space->machine, 15); // Return bgcolor from First Palette
 }
 
 static READ8_HANDLER( peplus_dropdoor_r )
@@ -528,24 +512,24 @@ static READ8_HANDLER( peplus_input_bank_a_r )
 	UINT8 bank_a = 0x50; // Turn Off Low Battery and Hopper Full Statuses
 	UINT8 coin_optics = 0x00;
     UINT8 coin_out = 0x00;
-	UINT64 curr_cycles = activecpu_gettotalcycles();
+	UINT64 curr_cycles = cpu_get_total_cycles(space->cpu);
 
 	UINT8 sda = 0;
 	if(!sda_dir)
 	{
-		sda = i2cmem_read(0, I2CMEM_SDA);
+		sda = i2cmem_read(space->machine, 0, I2CMEM_SDA);
 	}
 
-	if ((input_port_read_safe(machine, "SENSOR",0x00) & 0x01) == 0x01 && coin_state == 0) {
+	if ((input_port_read_safe(space->machine, "SENSOR",0x00) & 0x01) == 0x01 && coin_state == 0) {
 		coin_state = 1; // Start Coin Cycle
-		last_cycles = activecpu_gettotalcycles();
+		last_cycles = cpu_get_total_cycles(space->cpu);
 	} else {
 		/* Process Next Coin Optic State */
-		if (curr_cycles - last_cycles > 600000 && coin_state != 0) {
+		if (curr_cycles - last_cycles > 600000/6 && coin_state != 0) {
 			coin_state++;
 			if (coin_state > 5)
 				coin_state = 0;
-			last_cycles = activecpu_gettotalcycles();
+			last_cycles = cpu_get_total_cycles(space->cpu);
 		}
 	}
 
@@ -571,23 +555,23 @@ static READ8_HANDLER( peplus_input_bank_a_r )
 			break;
 	}
 
-	if (curr_cycles - last_door > 6000) { // Guessing with 6000
-		if ((input_port_read_safe(machine, "DOOR",0xff) & 0x01) == 0x01) {
+	if (curr_cycles - last_door > 6000/12) { // Guessing with 6000
+		if ((input_port_read_safe(space->machine, "DOOR",0xff) & 0x01) == 0x01) {
 			door_open = (!door_open & 0x01);
 		} else {
 			door_open = 1;
 		}
-		last_door = activecpu_gettotalcycles();
+		last_door = cpu_get_total_cycles(space->cpu);
 	}
 
-	if (curr_cycles - last_coin_out > 600000 && coin_out_state != 0) { // Guessing with 600000
+	if (curr_cycles - last_coin_out > 600000/12 && coin_out_state != 0) { // Guessing with 600000
 		if (coin_out_state != 2) {
             coin_out_state = 2; // Coin-Out Off
         } else {
             coin_out_state = 3; // Coin-Out On
         }
 
-		last_coin_out = activecpu_gettotalcycles();
+		last_coin_out = cpu_get_total_cycles(space->cpu);
 	}
 
     switch (coin_out_state)
@@ -629,7 +613,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( peplus )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 40, 25);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 40, 25);
 	palette_ram = auto_malloc(0x3000);
 	memset(palette_ram, 0, 0x3000);
 }
@@ -711,15 +695,15 @@ static ADDRESS_MAP_START( peplus_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xffff) AM_ROM AM_BASE(&program_ram)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( peplus_datamap, ADDRESS_SPACE_DATA, 8 )
+static ADDRESS_MAP_START( peplus_iomap, ADDRESS_SPACE_IO, 8 )
 	// Battery-backed RAM (0x1000-0x01fff Extended RAM for Superboards Only)
 	AM_RANGE(0x0000, 0x1fff) AM_READWRITE(peplus_cmos_r, peplus_cmos_w) AM_BASE(&cmos_ram)
 
 	// CRT Controller
-	AM_RANGE(0x2008, 0x2008) AM_WRITE(peplus_crtc_mode_w)
-	AM_RANGE(0x2080, 0x2080) AM_READ(peplus_crtc_lpen1_r) AM_WRITE(peplus_crtc_register_w)
-	AM_RANGE(0x2081, 0x2081) AM_READ(peplus_crtc_lpen2_r) AM_WRITE(peplus_crtc_address_w)
-	AM_RANGE(0x2083, 0x2083) AM_READ(peplus_crtc_display_r) AM_WRITE(peplus_crtc_display_w)
+	AM_RANGE(0x2008, 0x2008) AM_DEVWRITE(R6545_1, "crtc", peplus_crtc_mode_w)
+	AM_RANGE(0x2080, 0x2080) AM_DEVREADWRITE(R6545_1, "crtc", mc6845_status_r, mc6845_address_w)
+	AM_RANGE(0x2081, 0x2081) AM_DEVREADWRITE(R6545_1, "crtc", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0x2083, 0x2083) AM_DEVREADWRITE(R6545_1, "crtc", mc6845_register_r, peplus_crtc_display_w)
 
     // Superboard Data
 	AM_RANGE(0x3000, 0x3fff) AM_READWRITE(peplus_s3000_r, peplus_s3000_w) AM_BASE(&s3000_ram)
@@ -763,15 +747,10 @@ static ADDRESS_MAP_START( peplus_datamap, ADDRESS_SPACE_DATA, 8 )
 
     // Superboard Data
 	AM_RANGE(0xf000, 0xffff) AM_READWRITE(peplus_sf000_r, peplus_sf000_w) AM_BASE(&sf000_ram)
+
+	/* Ports start here */
+	AM_RANGE(MCS51_PORT_P0, MCS51_PORT_P3) AM_READ(peplus_io_r) AM_WRITE(peplus_io_w) AM_BASE(&io_port)
 ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( peplus_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-
-	// I/O Ports
-	AM_RANGE(0x00, 0x03) AM_READ(peplus_io_r) AM_WRITE(peplus_io_w) AM_BASE(&io_port)
-ADDRESS_MAP_END
-
 
 /*************************
 *      Input ports       *
@@ -921,13 +900,13 @@ static INPUT_PORTS_START( peplus_keno )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON15 ) PORT_NAME("Bill Acceptor") PORT_CODE(KEYCODE_U)
 
 	PORT_START("TOUCH_X")
-	PORT_BIT( 0xff, 0x08, IPT_LIGHTGUN_X ) PORT_MINMAX(0x00, 0x28) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(25) PORT_KEYDELTA(13)
+	PORT_BIT( 0xffff, 0x200, IPT_LIGHTGUN_X ) PORT_MINMAX(0x00, 1024) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(25) PORT_KEYDELTA(13)
 	PORT_START("TOUCH_Y")
-	PORT_BIT( 0xff, 0x08, IPT_LIGHTGUN_Y ) PORT_MINMAX(0x00, 0x19) PORT_CROSSHAIR(Y, -1.0, 0.0, 0) PORT_SENSITIVITY(25) PORT_KEYDELTA(13)
+	PORT_BIT( 0xffff, 0x200, IPT_LIGHTGUN_Y ) PORT_MINMAX(0x00, 1024) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(25) PORT_KEYDELTA(13)
 
 	PORT_START("IN0")
 	PORT_BIT( 0x07, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_CUSTOM(peplus_input_r, "IN_BANK1")
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Light Pen") PORT_CODE(KEYCODE_A)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("Light Pen") PORT_CODE(KEYCODE_A)
 	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_CUSTOM(peplus_input_r, "IN_BANK2")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
@@ -1008,11 +987,9 @@ static MACHINE_RESET( peplus )
 
 static MACHINE_DRIVER_START( peplus )
 	// basic machine hardware
-	MDRV_CPU_ADD("main", I8052, 3686400*2)
+	MDRV_CPU_ADD("main", I80C32, CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(peplus_map, 0)
-	MDRV_CPU_DATA_MAP(peplus_datamap, 0)
 	MDRV_CPU_IO_MAP(peplus_iomap, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(peplus)
 	MDRV_NVRAM_HANDLER(peplus)
@@ -1021,13 +998,14 @@ static MACHINE_DRIVER_START( peplus )
 
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE((52+1)*8, (31+1)*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 25*8-1)
 
 	MDRV_GFXDECODE(peplus)
 	MDRV_PALETTE_LENGTH(16*16)
+
+	MDRV_MC6845_ADD("crtc", R6545_1, MC6845_CLOCK, mc6845_intf)
 
 	MDRV_PALETTE_INIT(peplus)
 	MDRV_VIDEO_START(peplus)
@@ -1045,13 +1023,10 @@ MACHINE_DRIVER_END
 *****************/
 
 /* Normal board */
-static void peplus_init(void)
+static void peplus_init(running_machine *machine)
 {
-	/* External RAM callback */
-	i8051_set_eram_iaddr_callback(peplus_external_ram_iaddr);
-
     /* EEPROM is a X2404P 4K-bit Serial I2C Bus */
-	i2cmem_init(0, I2CMEM_SLAVE_ADDRESS, 8, eeprom_NVRAM_SIZE, NULL);
+	i2cmem_init(machine, 0, I2CMEM_SLAVE_ADDRESS, 8, eeprom_NVRAM_SIZE, NULL);
 
 	/* default : no address to patch in program RAM to enable autohold feature */
 	autohold_addr = 0;
@@ -1065,7 +1040,7 @@ static void peplus_init(void)
 /* Normal board */
 static DRIVER_INIT( peplus )
 {
-	peplus_init();
+	peplus_init(machine);
 }
 
 /* Superboard */
@@ -1081,7 +1056,7 @@ static DRIVER_INIT( peplussb )
     memcpy(sd000_ram, &super_data[0xd000], 0x1000);
     memcpy(sf000_ram, &super_data[0xf000], 0x1000);
 
-	peplus_init();
+	peplus_init(machine);
 }
 
 /*************************

@@ -6,8 +6,8 @@
 
 #include "driver.h"
 #include "lockon.h"
-#include "video/resnet.h"
 #include "cpu/nec/nec.h"
+#include "video/resnet.h"
 
 #define CURSOR_XPOS			168
 #define CURSOR_YPOS			239
@@ -115,7 +115,7 @@ WRITE16_HANDLER( lockon_crtc_w )
 static TIMER_CALLBACK( cursor_callback )
 {
 	if (lockon_main_inten)
-		cpunum_set_input_line_and_vector(machine, MAIN_CPU, 0, HOLD_LINE, 0xff);
+		cpu_set_input_line_and_vector(machine->cpu[MAIN_CPU], 0, HOLD_LINE, 0xff);
 
 	timer_adjust_oneshot(cursor_timer, video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), 0);
 }
@@ -329,8 +329,8 @@ WRITE16_HANDLER( lockon_ground_ctrl_w )
 
 static TIMER_CALLBACK( bufend_callback )
 {
-	cpunum_set_input_line_and_vector(machine, GROUND_CPU, 0, HOLD_LINE, 0xff);
-	cpunum_set_input_line(machine, OBJECT_CPU, NEC_INPUT_LINE_POLL, ASSERT_LINE);
+	cpu_set_input_line_and_vector(machine->cpu[GROUND_CPU], 0, HOLD_LINE, 0xff);
+	cpu_set_input_line(machine->cpu[OBJECT_CPU], NEC_INPUT_LINE_POLL, ASSERT_LINE);
 }
 
 /* Get data for a each 8x8x3 ground tile */
@@ -652,13 +652,13 @@ WRITE16_HANDLER( lockon_tza112_w )
 	{
 		obj_pal_latch = data & 0xff;
 		obj_pal_addr = offset & 0xf;
-		objects_draw(machine);
+		objects_draw(space->machine);
 	}
 }
 
 READ16_HANDLER( lockon_obj_4000_r )
 {
-	cpunum_set_input_line(machine, OBJECT_CPU, NEC_INPUT_LINE_POLL, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[OBJECT_CPU], NEC_INPUT_LINE_POLL, CLEAR_LINE);
 	return 0xffff;
 }
 
@@ -694,8 +694,8 @@ WRITE16_HANDLER( lockon_fb_clut_w )
 {
 	rgb_t color;
 
-	color = palette_get_color(machine, 0x300 + (data & 0xff));
-	palette_set_color(machine, 0x400 + offset, color);
+	color = palette_get_color(space->machine, 0x300 + (data & 0xff));
+	palette_set_color(space->machine, 0x400 + offset, color);
 }
 
 /* Rotation control register */
@@ -934,7 +934,7 @@ static void hud_draw(running_machine *machine, bitmap_t *bitmap, const rectangle
 
 VIDEO_START( lockon )
 {
-	lockon_tilemap = tilemap_create(get_lockon_tile_info, tilemap_scan_rows, 8, 8, 64, 32);
+	lockon_tilemap = tilemap_create(machine, get_lockon_tile_info, tilemap_scan_rows, 8, 8, 64, 32);
 	tilemap_set_transparent_pen(lockon_tilemap, 0);
 
 	/* Allocate the two frame buffers for rotation */
@@ -945,10 +945,10 @@ VIDEO_START( lockon )
 	obj_pal_ram = auto_malloc(2048);
 
 	/* Timer for ground display list callback */
-	bufend_timer = timer_alloc(bufend_callback, NULL);
+	bufend_timer = timer_alloc(machine, bufend_callback, NULL);
 
 	/* Timer for the CRTC cursor pulse */
-	cursor_timer = timer_alloc(cursor_callback, NULL);
+	cursor_timer = timer_alloc(machine, cursor_callback, NULL);
 	timer_adjust_oneshot(cursor_timer, video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), 0);
 }
 
@@ -957,7 +957,7 @@ VIDEO_UPDATE( lockon )
 	/* If screen output is disabled, fill with black */
 	if ( !BIT(lockon_ctrl_reg, 7) )
 	{
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 		return 0;
 	}
 

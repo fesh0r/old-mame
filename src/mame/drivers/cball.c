@@ -5,6 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
 
 static UINT8* cball_video_ram;
 
@@ -28,7 +29,7 @@ static WRITE8_HANDLER( cball_vram_w )
 
 static VIDEO_START( cball )
 {
-	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 }
 
 
@@ -55,20 +56,20 @@ static TIMER_CALLBACK( interrupt_callback )
 {
 	int scanline = param;
 
-	cpunum_set_input_line(machine, 0, 0, PULSE_LINE);
+	generic_pulse_irq_line(machine->cpu[0], 0);
 
 	scanline = scanline + 32;
 
 	if (scanline >= 262)
 		scanline = 16;
 
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, interrupt_callback);
 }
 
 
 static MACHINE_RESET( cball )
 {
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 16, 0), NULL, 16, interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 16, 0), NULL, 16, interrupt_callback);
 }
 
 

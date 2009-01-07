@@ -29,13 +29,6 @@ static const char *const condition[16] =
 
 
 /***************************************************************************
-    MEMORY ACCESSORS
-***************************************************************************/
-
-#define ROPCODE(pc)		cpu_readop32(pc)
-
-
-/***************************************************************************
     CODE CODE
 ***************************************************************************/
 
@@ -49,7 +42,7 @@ INLINE char *src2(UINT32 op, int scale)
 	return temp;
 }
 
-offs_t asap_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
+CPU_DISASSEMBLE( asap )
 {
 	UINT32 op = oprom[0] | (oprom[1] << 8) | (oprom[2] << 16) | (oprom[3] << 24);
 	int opcode = op >> 27;

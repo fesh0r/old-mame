@@ -15,6 +15,7 @@ Buccaneers has a 5.6888 Mhz and a 18.432 Mhz OSC
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "audio/m72.h"
 #include "sound/dac.h"
@@ -36,10 +37,10 @@ VIDEO_UPDATE( kikcubic );
 static WRITE8_HANDLER( vigilant_bank_select_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 
 	bankaddress = 0x10000 + (data & 0x07) * 0x4000;
-	memory_set_bankptr(1,&RAM[bankaddress]);
+	memory_set_bankptr(space->machine, 1,&RAM[bankaddress]);
 }
 
 /***************************************************************************
@@ -73,7 +74,7 @@ static WRITE8_HANDLER( kikcubic_coin_w )
 
 static ADDRESS_MAP_START( vigilant_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)		/* Fallthrough */
-	AM_RANGE(0x0000, 0xbfff) AM_ROM
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xc020, 0xc0df) AM_RAM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xc800, 0xcfff) AM_RAM_WRITE(vigilant_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0xd000, 0xdfff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
@@ -94,7 +95,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kikcubic_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)		/* Fallthrough */
-	AM_RANGE(0x0000, 0xbfff) AM_ROM
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xc000, 0xc0ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xc800, 0xcaff) AM_RAM_WRITE(vigilant_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0xd000, 0xdfff) AM_RAM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)

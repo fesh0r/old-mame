@@ -3,7 +3,6 @@
 /*********************************************************/
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "segapcm.h"
 
@@ -17,14 +16,14 @@ struct segapcm
 	sound_stream * stream;
 };
 
-static void SEGAPCM_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( SEGAPCM_update )
 {
 	struct segapcm *spcm = param;
 	int ch;
 
 	/* clear the buffers */
-	memset(buffer[0], 0, length*sizeof(*buffer[0]));
-	memset(buffer[1], 0, length*sizeof(*buffer[1]));
+	memset(outputs[0], 0, samples*sizeof(*outputs[0]));
+	memset(outputs[1], 0, samples*sizeof(*outputs[1]));
 
 	/* loop over channels */
 	for (ch = 0; ch < 16; ch++)
@@ -44,7 +43,7 @@ static void SEGAPCM_update(void *param, stream_sample_t **inputs, stream_sample_
 			int i;
 
 			/* loop over samples on this channel */
-			for (i = 0; i < length; i++)
+			for (i = 0; i < samples; i++)
 			{
 				INT8 v = 0;
 
@@ -64,8 +63,8 @@ static void SEGAPCM_update(void *param, stream_sample_t **inputs, stream_sample_
 				v = rom[addr >> 8] - 0x80;
 
 				/* apply panning and advance */
-				buffer[0][i] += v * voll;
-				buffer[1][i] += v * volr;
+				outputs[0][i] += v * voll;
+				outputs[1][i] += v * volr;
 				addr += delta;
 			}
 
@@ -77,7 +76,7 @@ static void SEGAPCM_update(void *param, stream_sample_t **inputs, stream_sample_
 		}
 }
 
-static void *segapcm_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( segapcm )
 {
 	const sega_pcm_interface *intf = config;
 	int mask, rom_mask, len;
@@ -86,7 +85,7 @@ static void *segapcm_start(const char *tag, int sndindex, int clock, const void 
 	spcm = auto_malloc(sizeof(*spcm));
 	memset(spcm, 0, sizeof(*spcm));
 
-	spcm->rom = (const UINT8 *)memory_region(Machine, tag);
+	spcm->rom = (const UINT8 *)device->region;
 	spcm->ram = auto_malloc(0x800);
 
 	memset(spcm->ram, 0xff, 0x800);
@@ -96,16 +95,16 @@ static void *segapcm_start(const char *tag, int sndindex, int clock, const void 
 	if(!mask)
 		mask = BANK_MASK7>>16;
 
-	len = memory_region_length(Machine, tag);
+	len = device->regionbytes;
 	for(rom_mask = 1; rom_mask < len; rom_mask *= 2);
 	rom_mask--;
 
 	spcm->bankmask = mask & (rom_mask >> spcm->bankshift);
 
-	spcm->stream = stream_create(0, 2, clock / 128, spcm, SEGAPCM_update);
+	spcm->stream = stream_create(device, 0, 2, clock / 128, spcm, SEGAPCM_update);
 
-	state_save_register_item_array("segapcm", sndindex, spcm->low);
-	state_save_register_item_pointer("segapcm", sndindex, spcm->ram, 0x800);
+	state_save_register_device_item_array(device, 0, spcm->low);
+	state_save_register_device_item_pointer(device, 0, spcm->ram, 0x800);
 
 	return spcm;
 }
@@ -131,7 +130,7 @@ READ8_HANDLER( sega_pcm_r )
  * Generic get_info
  **************************************************************************/
 
-static void segapcm_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( segapcm )
 {
 	switch (state)
 	{
@@ -140,23 +139,23 @@ static void segapcm_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void segapcm_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( segapcm )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = segapcm_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = segapcm_start;			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( segapcm );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( segapcm );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "Sega PCM";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Sega custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "Sega PCM");					break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Sega custom");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

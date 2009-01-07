@@ -96,6 +96,7 @@ Dip Locations and factory settings verified with manual
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 
@@ -112,7 +113,7 @@ static UINT8 latch;
 
 static MACHINE_START( bombjack )
 {
-	state_save_register_global(latch);
+	state_save_register_global(machine, latch);
 }
 
 
@@ -124,7 +125,7 @@ static TIMER_CALLBACK( soundlatch_callback )
 static WRITE8_HANDLER( bombjack_soundlatch_w )
 {
 	/* make all the CPUs synchronize, and only AFTER that write the new command to the latch */
-	timer_call_after_resynch(NULL, data,soundlatch_callback);
+	timer_call_after_resynch(space->machine, NULL, data,soundlatch_callback);
 }
 
 static READ8_HANDLER( bombjack_soundlatch_r )

@@ -100,7 +100,7 @@ READ8_DEVICE_HANDLER( msm6242_r )
 		case MSM6242_REG_CF: return msm6242->reg[2];
 	}
 
-	logerror("%04x: MSM6242 unmapped offset %02x read\n", activecpu_get_pc(), offset);
+	logerror("%s: MSM6242 unmapped offset %02x read\n", cpuexec_describe_context(device->machine), offset);
 	return 0;
 }
 
@@ -141,7 +141,7 @@ WRITE8_DEVICE_HANDLER( msm6242_w )
 		}
 	}
 
-	logerror("%04x: MSM6242 unmapped offset %02x written with %02x\n", activecpu_get_pc(), offset, data);
+	logerror("%s: MSM6242 unmapped offset %02x written with %02x\n", cpuexec_describe_context(device->machine), offset, data);
 }
 
 
@@ -183,11 +183,11 @@ DEVICE_GET_INFO( msm6242 )
 		case DEVINFO_FCT_RESET:							/* Nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "OKI MSM6242";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "MSM6242 RTC";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.00";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "OKI MSM6242");				break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "MSM6242 RTC");				break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.00");					break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 
@@ -198,12 +198,12 @@ DEVICE_GET_INFO( msm6242 )
 #if 0
 READ16_HANDLER( msm6242_lsb_r )
 {
-	return msm6242_r(machine, offset);
+	return msm6242_r(space, offset);
 }
 
 WRITE16_HANDLER( msm6242_lsb_w )
 {
 	if (ACCESSING_BITS_0_7)
-		msm6242_w(machine, offset, data);
+		msm6242_w(space, offset, data);
 }
 #endif

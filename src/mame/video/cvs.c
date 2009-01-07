@@ -106,7 +106,7 @@ static void set_pens(colortable_t *colortable)
 WRITE8_HANDLER( cvs_video_fx_w )
 {
 	if (data & 0xce)
-		logerror("%4x : CVS: Unimplemented CVS video fx = %2x\n",activecpu_get_pc(), data & 0xce);
+		logerror("%4x : CVS: Unimplemented CVS video fx = %2x\n",cpu_get_pc(space->cpu), data & 0xce);
 
     stars_on = data & 0x01;
 
@@ -361,10 +361,10 @@ VIDEO_UPDATE( cvs )
 
 			if ((y & 1) ^ ((x >> 4) & 1))
 			{
-				if (flip_screen_x_get())
+				if (flip_screen_x_get(screen->machine))
 					x = ~x;
 
-				if (flip_screen_y_get())
+				if (flip_screen_y_get(screen->machine))
 					y = ~y;
 
 				if ((y >= cliprect->min_y) && (y <= cliprect->max_y) &&

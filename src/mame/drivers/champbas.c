@@ -81,6 +81,8 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/alph8201/alph8201.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 
@@ -128,21 +130,21 @@ static WRITE8_HANDLER( irq_enable_w )
 {
 	int bit = data & 1;
 
-	cpu_interrupt_enable(0,bit);
+	cpu_interrupt_enable(space->machine->cpu[0],bit);
 	if (!bit)
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 
 static TIMER_CALLBACK( exctsccr_fm_callback )
 {
-	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff );
+	cpu_set_input_line_and_vector(machine->cpu[1], 0, HOLD_LINE, 0xff );
 }
 
 static MACHINE_START( exctsccr )
 {
 	// FIXME
-	timer_pulse(ATTOTIME_IN_HZ(75), NULL, 0, exctsccr_fm_callback); /* updates fm */
+	timer_pulse(machine, ATTOTIME_IN_HZ(75), NULL, 0, exctsccr_fm_callback); /* updates fm */
 }
 
 
@@ -171,14 +173,14 @@ static WRITE8_HANDLER( champbas_mcu_switch_w )
 
 static WRITE8_HANDLER( champbas_mcu_halt_w )
 {
-	int cpunum = mame_find_cpu_index(machine, CPUTAG_MCU);
+	const device_config *cpu = cputag_get_cpu(space->machine, CPUTAG_MCU);
 
 	// MCU not present/not used in champbas
-	if (cpunum == -1)
+	if (cpu == NULL)
 		return;
 
 	data &= 1;
-	cpunum_set_input_line(machine, cpunum, INPUT_LINE_HALT, data ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(cpu, INPUT_LINE_HALT, data ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -637,7 +639,7 @@ static MACHINE_DRIVER_START( champmcu )
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 
 	/* to MCU timeout champbbj */
-	MDRV_INTERLEAVE(50)
+	MDRV_QUANTUM_TIME(HZ(3000))
 MACHINE_DRIVER_END
 
 

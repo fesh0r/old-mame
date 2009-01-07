@@ -5,12 +5,14 @@
 
 #include "cpuintrf.h"
 
+typedef void (*lr35902_timer_fired_func)(const device_config *device, int cycles);
+
 typedef struct _lr35902_cpu_core lr35902_cpu_core;
 struct _lr35902_cpu_core
 {
 	const UINT16	*regs;
-	UINT8	features;
-	void	(*timer_fired_func)(int cycles);
+	UINT8			features;
+	lr35902_timer_fired_func timer_fired_func;
 };
 
 enum
@@ -28,8 +30,9 @@ enum
 /****************************************************************************/
 /* Return register contents                                                 */
 /****************************************************************************/
-extern void lr35902_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( lr35902 );
+#define CPU_LR35902 CPU_GET_INFO_NAME( lr35902 )
 
-extern unsigned lr35902_dasm( char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram );
+extern CPU_DISASSEMBLE( lr35902 );
 
 #endif /* __LR35902_H__ */

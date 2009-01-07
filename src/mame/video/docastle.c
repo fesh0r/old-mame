@@ -77,27 +77,27 @@ WRITE8_HANDLER( docastle_colorram_w )
 
 READ8_HANDLER( docastle_flipscreen_off_r )
 {
-	flip_screen_set(0);
+	flip_screen_set(space->machine, 0);
 	tilemap_mark_all_tiles_dirty(docastle_tilemap);
 	return 0;
 }
 
 READ8_HANDLER( docastle_flipscreen_on_r )
 {
-	flip_screen_set(1);
+	flip_screen_set(space->machine, 1);
 	tilemap_mark_all_tiles_dirty(docastle_tilemap);
 	return 1;
 }
 
 WRITE8_HANDLER( docastle_flipscreen_off_w )
 {
-	flip_screen_set(0);
+	flip_screen_set(space->machine, 0);
 	tilemap_mark_all_tiles_dirty(docastle_tilemap);
 }
 
 WRITE8_HANDLER( docastle_flipscreen_on_w )
 {
-	flip_screen_set(1);
+	flip_screen_set(space->machine, 1);
 	tilemap_mark_all_tiles_dirty(docastle_tilemap);
 }
 
@@ -111,7 +111,7 @@ static TILE_GET_INFO( get_tile_info )
 
 static void video_start_common(running_machine *machine, UINT32 tile_transmask)
 {
-	docastle_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+	docastle_tilemap = tilemap_create(machine, get_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 	tilemap_set_transmask(docastle_tilemap, 0, tile_transmask, 0x0000);
 }
 
@@ -129,7 +129,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 {
 	int offs;
 
-	fillbitmap(priority_bitmap,1,NULL);
+	bitmap_fill(priority_bitmap,NULL,1);
 
 	for (offs = spriteram_size - 4;offs >= 0;offs -= 4)
 	{
@@ -188,7 +188,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			flipy = spriteram[offs + 2] & 0x80;
 		}
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;

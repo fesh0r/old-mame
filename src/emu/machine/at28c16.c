@@ -50,29 +50,38 @@ WRITE8_DEVICE_HANDLER( at28c16_w )
 
 	if( c->last_write >= 0 )
 	{
-//      logerror( "%08x: at28c16_write( %d, %04x, %02x ) busy\n", activecpu_get_pc(), chip, offset, data );
+//      logerror( "%s: at28c16_write( %d, %04x, %02x ) busy\n", cpuexec_describe_context(machine), chip, offset, data );
 	}
 	else if( c->oe_12v )
 	{
-//      logerror( "%08x: at28c16_write( %d, %04x, %02x ) erase\n", activecpu_get_pc(), chip, offset, data );
-		memset( c->data, 0xff, SIZE_DATA );
-		memset( c->id, 0xff, SIZE_ID );
-		c->last_write = 0xff;
-		timer_adjust_oneshot( c->write_timer, ATTOTIME_IN_USEC( 200 ), 0 );
+//      logerror( "%s: at28c16_write( %d, %04x, %02x ) erase\n", cpuexec_describe_context(machine), chip, offset, data );
+		if( c->last_write < 0 )
+		{
+			memset( c->data, 0xff, SIZE_DATA );
+			memset( c->id, 0xff, SIZE_ID );
+			c->last_write = 0xff;
+			timer_adjust_oneshot( c->write_timer, ATTOTIME_IN_USEC( 200 ), 0 );
+		}
 	}
 	else if( offset >= OFFSET_ID && c->a9_12v )
 	{
-//      logerror( "%08x: at28c16_write( %d, %04x, %02x ) id\n", activecpu_get_pc(), chip, offset, data );
-		c->id[ offset - OFFSET_ID ] = data;
-		c->last_write = data;
-		timer_adjust_oneshot( c->write_timer, ATTOTIME_IN_USEC( 200 ), 0 );
+//      logerror( "%s: at28c16_write( %d, %04x, %02x ) id\n", cpuexec_describe_context(machine), chip, offset, data );
+		if( c->last_write < 0 && c->id[ offset - OFFSET_ID ] != data )
+		{
+			c->id[ offset - OFFSET_ID ] = data;
+			c->last_write = data;
+			timer_adjust_oneshot( c->write_timer, ATTOTIME_IN_USEC( 200 ), 0 );
+		}
 	}
 	else
 	{
-//      logerror( "%08x: at28c16_write( %d, %04x, %02x ) data\n", activecpu_get_pc(), chip, offset, data );
-		c->data[ offset ] = data;
-		c->last_write = data;
-		timer_adjust_oneshot( c->write_timer, ATTOTIME_IN_USEC( 200 ), 0 );
+//      logerror( "%s: at28c16_write( %d, %04x, %02x ) data\n", cpuexec_describe_context(machine), chip, offset, data );
+		if( c->last_write < 0 && c->data[ offset ] != data )
+		{
+			c->data[ offset ] = data;
+			c->last_write = data;
+			timer_adjust_oneshot( c->write_timer, ATTOTIME_IN_USEC( 200 ), 0 );
+		}
 	}
 }
 
@@ -93,7 +102,7 @@ READ8_DEVICE_HANDLER( at28c16_r )
 	}
 	else
 	{
-//      logerror( "%08x: at28c16_read( %d, %04x ) %02x data\n", activecpu_get_pc(), chip, offset, c->data[ offset ] );
+//      logerror( "%s: at28c16_read( %d, %04x ) %02x data\n", cpuexec_describe_context(machine), chip, offset, c->data[ offset ] );
 		return c->data[ offset ];
 	}
 }
@@ -120,12 +129,11 @@ static DEVICE_START(at28c16)
 {
 	at28c16_state *c = get_safe_token(device);
 	const at28c16_config *config;
-	char unique_tag[50];
 
 	/* validate some basic stuff */
 	assert(device != NULL);
 //  assert(device->static_config != NULL);
-	assert(device->inline_config == NULL);
+//  assert(device->inline_config == NULL);
 	assert(device->machine != NULL);
 	assert(device->machine->config != NULL);
 
@@ -134,28 +142,19 @@ static DEVICE_START(at28c16)
 	c->a9_12v = 0;
 	c->oe_12v = 0;
 	c->last_write = -1;
-	c->write_timer = timer_alloc( write_finished, c );
+	c->write_timer = timer_alloc(device->machine,  write_finished, c );
+	c->default_data = device->region;
 
-	config = device->static_config;
-	if( config != NULL && config->data != NULL )
-	{
-		c->default_data = memory_region( device->machine, config->data );
-	}
-
-	if( config != NULL && config->id != NULL )
-	{
+	config = device->inline_config;
+	if (config->id != NULL)
 		c->default_id = memory_region( device->machine, config->id );
-	}
 
 	/* create the name for save states */
-	assert( strlen( device->tag ) < 30 );
-	state_save_combine_module_and_tag( unique_tag, "at28c16", device->tag );
-
-	state_save_register_item_pointer( unique_tag, 0, c->data, SIZE_DATA );
-	state_save_register_item_pointer( unique_tag, 0, c->id, SIZE_ID );
-	state_save_register_item( unique_tag, 0, c->a9_12v );
-	state_save_register_item( unique_tag, 0, c->oe_12v );
-	state_save_register_item( unique_tag, 0, c->last_write );
+	state_save_register_device_item_pointer( device, 0, c->data, SIZE_DATA );
+	state_save_register_device_item_pointer( device, 0, c->id, SIZE_ID );
+	state_save_register_device_item( device, 0, c->a9_12v );
+	state_save_register_device_item( device, 0, c->oe_12v );
+	state_save_register_device_item( device, 0, c->last_write );
 
 	return DEVICE_START_OK;
 }
@@ -229,7 +228,7 @@ DEVICE_GET_INFO(at28c16)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:			info->i = sizeof(at28c16_state); break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:	info->i = 0; break; // sizeof(at28c16_config)
+		case DEVINFO_INT_INLINE_CONFIG_BYTES:	info->i = sizeof(at28c16_config); break;
 		case DEVINFO_INT_CLASS:					info->i = DEVICE_CLASS_PERIPHERAL; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
@@ -240,10 +239,10 @@ DEVICE_GET_INFO(at28c16)
 		case DEVINFO_FCT_NVRAM:					info->nvram = DEVICE_NVRAM_NAME(at28c16); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					info->s = "AT28C16"; break;
-		case DEVINFO_STR_FAMILY:				info->s = "EEPROM"; break;
-		case DEVINFO_STR_VERSION:				info->s = "1.0"; break;
-		case DEVINFO_STR_SOURCE_FILE:			info->s = __FILE__; break;
-		case DEVINFO_STR_CREDITS:				info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:					strcpy(info->s, "AT28C16"); break;
+		case DEVINFO_STR_FAMILY:				strcpy(info->s, "EEPROM"); break;
+		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.0"); break;
+		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__); break;
+		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

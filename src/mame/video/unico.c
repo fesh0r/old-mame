@@ -64,7 +64,7 @@ WRITE16_HANDLER( unico_palette_w )
 	COMBINE_DATA(&paletteram16[offset]);
 	data1 = paletteram16[offset & ~1];
 	data2 = paletteram16[offset |  1];
-	palette_set_color_rgb( machine,offset/2,
+	palette_set_color_rgb( space->machine,offset/2,
 		 (data1 >> 8) & 0xFC,
 		 (data1 >> 0) & 0xFC,
 		 (data2 >> 8) & 0xFC	);
@@ -73,7 +73,7 @@ WRITE16_HANDLER( unico_palette_w )
 WRITE32_HANDLER( unico_palette32_w )
 {
 	UINT32 rgb0 = COMBINE_DATA(&paletteram32[offset]);
-	palette_set_color_rgb( machine,offset,
+	palette_set_color_rgb( space->machine,offset,
 		 (rgb0 >> 24) & 0xFC,
 		 (rgb0 >> 16) & 0xFC,
 		 (rgb0 >>  8) & 0xFC	);
@@ -140,13 +140,13 @@ static int sprites_scrolldx, sprites_scrolldy;
 
 VIDEO_START( unico )
 {
-	tilemap_0 = tilemap_create(	get_tile_info_0,tilemap_scan_rows,
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0,tilemap_scan_rows,
 									16,16,	0x40, 0x40);
 
-	tilemap_1 = tilemap_create(	get_tile_info_1,tilemap_scan_rows,
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1,tilemap_scan_rows,
 									16,16,	0x40, 0x40);
 
-	tilemap_2 = tilemap_create(	get_tile_info_2,tilemap_scan_rows,
+	tilemap_2 = tilemap_create(	machine, get_tile_info_2,tilemap_scan_rows,
 									16,16,	0x40, 0x40);
 
 	sprites_scrolldx = -0x3f;
@@ -167,13 +167,13 @@ VIDEO_START( unico )
 
 VIDEO_START( zeropnt2 )
 {
-	tilemap_0 = tilemap_create(	get_tile_info32_0,tilemap_scan_rows,
+	tilemap_0 = tilemap_create(	machine, get_tile_info32_0,tilemap_scan_rows,
 									16,16,	0x40, 0x40);
 
-	tilemap_1 = tilemap_create(	get_tile_info32_1,tilemap_scan_rows,
+	tilemap_1 = tilemap_create(	machine, get_tile_info32_1,tilemap_scan_rows,
 									16,16,	0x40, 0x40);
 
-	tilemap_2 = tilemap_create(	get_tile_info32_2,tilemap_scan_rows,
+	tilemap_2 = tilemap_create(	machine, get_tile_info32_2,tilemap_scan_rows,
 									16,16,	0x40, 0x40);
 
 	sprites_scrolldx = -0x3f;
@@ -358,8 +358,8 @@ if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
 #endif
 
 	/* The background color is the first of the last palette */
-	fillbitmap(bitmap,0x1f00,cliprect);
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0x1f00);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect,tilemap_0,0,1);
 	if (layers_ctrl & 2)	tilemap_draw(bitmap,cliprect,tilemap_1,0,2);
@@ -397,8 +397,8 @@ if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
 #endif
 
 	/* The background color is the first of the last palette */
-	fillbitmap(bitmap,0x1f00,cliprect);
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0x1f00);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect,tilemap_0,0,1);
 	if (layers_ctrl & 2)	tilemap_draw(bitmap,cliprect,tilemap_1,0,2);

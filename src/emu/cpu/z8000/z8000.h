@@ -25,8 +25,9 @@ enum
 #define Z8000_HALT		0x0100	/* halted flag  */
 
 /* PUBLIC FUNCTIONS */
-extern void z8000_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( z8000 );
+#define CPU_Z8000 CPU_GET_INFO_NAME( z8000 )
 
-offs_t z8000_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+CPU_DISASSEMBLE( z8000 );
 
 #endif /* __Z8000_H__ */

@@ -196,7 +196,7 @@ static void cninja_draw_sprites(running_machine *machine, bitmap_t *bitmap, cons
 			inc = 1;
 		}
 
-		if (flip_screen_get()) {
+		if (flip_screen_get(machine)) {
 			y=240-y;
 			x=240-x;
 			if (fx) fx=0; else fx=1;
@@ -264,7 +264,7 @@ static void robocop2_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 			inc = 1;
 		}
 
-		if (flip_screen_get()) {
+		if (flip_screen_get(machine)) {
 			y=240-y;
 			x=304-x;
 			if (fx) fx=0; else fx=1;
@@ -354,7 +354,7 @@ static void mutantf_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 		fx = (spriteptr[offs+0]&0x4000);
 		fy = (spriteptr[offs+0]&0x8000);
 
-		if (flip_screen_get()) {
+		if (flip_screen_get(machine)) {
 			if (fx) fx=0; else fx=1;
 			if (fy) fy=0; else fy=1;
 
@@ -397,38 +397,38 @@ static void mutantf_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 
 VIDEO_UPDATE( cninja )
 {
-	flip_screen_set( deco16_pf12_control[0]&0x80 );
+	flip_screen_set(screen->machine,  deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
 	/* Draw playfields */
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,512,cliprect);
-	deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,1);
-	deco16_tilemap_3_draw(bitmap,cliprect,0,2);
-	deco16_tilemap_2_draw(bitmap,cliprect,TILEMAP_DRAW_LAYER1,2);
-	deco16_tilemap_2_draw(bitmap,cliprect,TILEMAP_DRAW_LAYER0,4);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,512);
+	deco16_tilemap_4_draw(screen,bitmap,cliprect,TILEMAP_DRAW_OPAQUE,1);
+	deco16_tilemap_3_draw(screen,bitmap,cliprect,0,2);
+	deco16_tilemap_2_draw(screen,bitmap,cliprect,TILEMAP_DRAW_LAYER1,2);
+	deco16_tilemap_2_draw(screen,bitmap,cliprect,TILEMAP_DRAW_LAYER0,4);
 	cninja_draw_sprites(screen->machine,bitmap,cliprect);
-	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
+	deco16_tilemap_1_draw(screen,bitmap,cliprect,0,0);
 	return 0;
 }
 
 VIDEO_UPDATE( edrandy )
 {
-	flip_screen_set( deco16_pf12_control[0]&0x80 );
+	flip_screen_set(screen->machine,  deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);
-	deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,1);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);
+	deco16_tilemap_4_draw(screen,bitmap,cliprect,TILEMAP_DRAW_OPAQUE,1);
 	if (deco16_raster_display_position)
 		raster_pf3_draw(bitmap,cliprect,0,2);
 	else
-		deco16_tilemap_3_draw(bitmap,cliprect,0,2);
-	deco16_tilemap_2_draw(bitmap,cliprect,0,4);
+		deco16_tilemap_3_draw(screen,bitmap,cliprect,0,2);
+	deco16_tilemap_2_draw(screen,bitmap,cliprect,0,4);
 	cninja_draw_sprites(screen->machine,bitmap,cliprect);
-	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
+	deco16_tilemap_1_draw(screen,bitmap,cliprect,0,0);
 	return 0;
 }
 
@@ -446,48 +446,48 @@ VIDEO_UPDATE( robocop2 )
 	}
 
 	/* Update playfields */
-	flip_screen_set( deco16_pf12_control[0]&0x80 );
+	flip_screen_set(screen->machine,  deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
 	/* Draw playfields */
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0x200,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0x200);
 	if ((deco16_priority&4)==0)
-		deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,1);
+		deco16_tilemap_4_draw(screen,bitmap,cliprect,TILEMAP_DRAW_OPAQUE,1);
 
 	/* Switchable priority */
 	switch (deco16_priority&0x8) {
 		case 8:
-			deco16_tilemap_2_draw(bitmap,cliprect,0,2);
+			deco16_tilemap_2_draw(screen,bitmap,cliprect,0,2);
 			if (deco16_raster_display_position)
 				raster_pf3_draw(bitmap,cliprect,0,4);
 			else
-				deco16_tilemap_3_draw(bitmap,cliprect,0,4);
+				deco16_tilemap_3_draw(screen,bitmap,cliprect,0,4);
 			break;
 		default:
 		case 0:
 			if (deco16_raster_display_position)
 				raster_pf3_draw(bitmap,cliprect,0,2);
 			else
-				deco16_tilemap_3_draw(bitmap,cliprect,0,2);
-			deco16_tilemap_2_draw(bitmap,cliprect,0,4);
+				deco16_tilemap_3_draw(screen,bitmap,cliprect,0,2);
+			deco16_tilemap_2_draw(screen,bitmap,cliprect,0,4);
 			break;
 	}
 
 	robocop2_draw_sprites(screen->machine,bitmap,cliprect);
-	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
+	deco16_tilemap_1_draw(screen,bitmap,cliprect,0,0);
 	return 0;
 }
 
 VIDEO_UPDATE( mutantf )
 {
-	flip_screen_set( deco16_pf12_control[0]&0x80 );
+	flip_screen_set(screen->machine,  deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
 	/* Draw playfields */
-	fillbitmap(bitmap,0x400,cliprect); /* Confirmed */
+	bitmap_fill(bitmap,cliprect,0x400); /* Confirmed */
 
 	/* There is no priority prom on this board, but there is a
     priority control word, the only values used in game appear
@@ -500,9 +500,9 @@ VIDEO_UPDATE( mutantf )
     The other bits may control alpha blend on the 2nd sprite chip, or
     layer order.
     */
-	deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
-	deco16_tilemap_2_draw(bitmap,cliprect,0,0);
-	deco16_tilemap_3_draw(bitmap,cliprect,0,0);
+	deco16_tilemap_4_draw(screen,bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
+	deco16_tilemap_2_draw(screen,bitmap,cliprect,0,0);
+	deco16_tilemap_3_draw(screen,bitmap,cliprect,0,0);
 
 	/* We need to abuse the priority bitmap a little by clearing it before
         drawing each sprite layer.  This is because there is no priority
@@ -511,16 +511,16 @@ VIDEO_UPDATE( mutantf )
         then when two alpha blended shadows overlapped then they would be 25%
         transparent against the background, rather than 50% */
 	if (deco16_priority&1) {
-		fillbitmap(priority_bitmap,0,cliprect);
+		bitmap_fill(priority_bitmap,cliprect,0);
 		mutantf_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16,3);
-		fillbitmap(priority_bitmap,0,cliprect);
+		bitmap_fill(priority_bitmap,cliprect,0);
 		mutantf_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16_2,4);
 	} else {
-		fillbitmap(priority_bitmap,0,cliprect);
+		bitmap_fill(priority_bitmap,cliprect,0);
 		mutantf_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16_2,4);
-		fillbitmap(priority_bitmap,0,cliprect);
+		bitmap_fill(priority_bitmap,cliprect,0);
 		mutantf_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16,3);
 	}
-	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
+	deco16_tilemap_1_draw(screen,bitmap,cliprect,0,0);
 	return 0;
 }

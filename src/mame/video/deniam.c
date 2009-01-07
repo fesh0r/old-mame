@@ -97,9 +97,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( deniam )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,scan_pages,            8,8,128,64);
-	fg_tilemap = tilemap_create(get_fg_tile_info,scan_pages,       8,8,128,64);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,8,8, 64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,scan_pages,            8,8,128,64);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,scan_pages,       8,8,128,64);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows,8,8, 64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
@@ -145,7 +145,7 @@ WRITE16_HANDLER( deniam_palette_w )
 	r = ((data << 1) & 0x1e) | ((data >> 12) & 0x01);
 	g = ((data >> 3) & 0x1e) | ((data >> 13) & 0x01);
 	b = ((data >> 7) & 0x1e) | ((data >> 14) & 0x01);
-	palette_set_color_rgb(machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
+	palette_set_color_rgb(space->machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 
@@ -390,7 +390,7 @@ VIDEO_UPDATE( deniam )
 	tilemap_set_scrollx(fg_tilemap,0,fg_scrollx & 0x1ff);
 	tilemap_set_scrolly(fg_tilemap,0,fg_scrolly & 0x0ff);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,1);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,2);

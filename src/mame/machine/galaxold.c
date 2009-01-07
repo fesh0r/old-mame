@@ -8,7 +8,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/7474.h"
 #include "includes/galaxold.h"
 
@@ -17,18 +16,18 @@ static emu_timer *int_timer;
 
 static UINT8 _4in1_bank;
 
-static void galaxold_7474_9M_2_callback(void)
+static void galaxold_7474_9M_2_callback(running_machine *machine)
 {
 	/* Q bar clocks the other flip-flop,
        Q is VBLANK (not visible to the CPU) */
 	TTL7474_clock_w(1, TTL7474_output_comp_r(0));
-	TTL7474_update(1);
+	TTL7474_update(machine, 1);
 }
 
-static void galaxold_7474_9M_1_callback(void)
+static void galaxold_7474_9M_1_callback(running_machine *machine)
 {
 	/* Q goes to the NMI line */
-	cpunum_set_input_line(Machine, 0, irq_line, TTL7474_output_r(1) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], irq_line, TTL7474_output_r(1) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static const struct TTL7474_interface galaxold_7474_9M_2_intf =
@@ -45,7 +44,7 @@ static const struct TTL7474_interface galaxold_7474_9M_1_intf =
 WRITE8_HANDLER( galaxold_nmi_enable_w )
 {
 	TTL7474_preset_w(1, data);
-	TTL7474_update(1);
+	TTL7474_update(space->machine, 1);
 }
 
 
@@ -61,7 +60,7 @@ static TIMER_CALLBACK( interrupt_timer )
 
 	timer_adjust_oneshot(int_timer, video_screen_get_time_until_pos(machine->primary_screen, param, 0), param);
 
-	TTL7474_update(0);
+	TTL7474_update(machine, 0);
 }
 
 
@@ -70,17 +69,17 @@ static void machine_reset_common(running_machine *machine, int line)
 	irq_line = line;
 
 	/* initalize main CPU interrupt generator flip-flops */
-	TTL7474_config(0, &galaxold_7474_9M_2_intf);
+	TTL7474_config(machine, 0, &galaxold_7474_9M_2_intf);
 	TTL7474_preset_w(0, 1);
 	TTL7474_clear_w (0, 1);
 
-	TTL7474_config(1, &galaxold_7474_9M_1_intf);
+	TTL7474_config(machine, 1, &galaxold_7474_9M_1_intf);
 	TTL7474_clear_w (1, 1);
 	TTL7474_d_w     (1, 0);
 	TTL7474_preset_w(1, 0);
 
 	/* start a timer to generate interrupts */
-	int_timer = timer_alloc(interrupt_timer, NULL);
+	int_timer = timer_alloc(machine, interrupt_timer, NULL);
 	timer_adjust_oneshot(int_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 }
 
@@ -125,7 +124,7 @@ WRITE8_HANDLER( galaxold_leds_w )
 
 static READ8_HANDLER( checkmaj_protection_r )
 {
-	switch (activecpu_get_pc())
+	switch (cpu_get_pc(space->cpu))
 	{
 	case 0x0f15:  return 0xf5;
 	case 0x0f8f:  return 0x7c;
@@ -134,7 +133,7 @@ static READ8_HANDLER( checkmaj_protection_r )
 	case 0x10f1:  return 0xaa;
 	case 0x1402:  return 0xaa;
 	default:
-		logerror("Unknown protection read. PC=%04X\n",activecpu_get_pc());
+		logerror("Unknown protection read. PC=%04X\n",cpu_get_pc(space->cpu));
 	}
 
 	return 0;
@@ -147,23 +146,23 @@ WRITE8_HANDLER( zigzag_sillyprotection_w )
 	if (data)
 	{
 		/* swap ROM 2 and 3! */
-		memory_set_bank(1, 1);
-		memory_set_bank(2, 0);
+		memory_set_bank(space->machine, 1, 1);
+		memory_set_bank(space->machine, 2, 0);
 	}
 	else
 	{
-		memory_set_bank(1, 0);
-		memory_set_bank(2, 1);
+		memory_set_bank(space->machine, 1, 0);
+		memory_set_bank(space->machine, 2, 1);
 	}
 }
 
 DRIVER_INIT( zigzag )
 {
 	UINT8 *RAM = memory_region(machine, "main");
-	memory_configure_bank(1, 0, 2, &RAM[0x2000], 0x1000);
-	memory_configure_bank(2, 0, 2, &RAM[0x2000], 0x1000);
-	memory_set_bank(1, 0);
-	memory_set_bank(2, 1);
+	memory_configure_bank(machine, 1, 0, 2, &RAM[0x2000], 0x1000);
+	memory_configure_bank(machine, 2, 0, 2, &RAM[0x2000], 0x1000);
+	memory_set_bank(machine, 1, 0);
+	memory_set_bank(machine, 2, 1);
 }
 
 
@@ -210,30 +209,30 @@ DRIVER_INIT( dingoe )
 			rom[i] = BITSWAP8(rom[i],7,6,5,0,3,2,1,4);
 	}
 
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3001, 0x3001, 0, 0, dingoe_3001_r);	/* Protection check */
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x3001, 0x3001, 0, 0, dingoe_3001_r);	/* Protection check */
 
 }
 
 
 READ8_HANDLER( scramblb_protection_1_r )
 {
-	switch (activecpu_get_pc())
+	switch (cpu_get_pc(space->cpu))
 	{
 	case 0x01da: return 0x80;
 	case 0x01e4: return 0x00;
 	default:
-		logerror("%04x: read protection 1\n",activecpu_get_pc());
+		logerror("%04x: read protection 1\n",cpu_get_pc(space->cpu));
 		return 0;
 	}
 }
 
 READ8_HANDLER( scramblb_protection_2_r )
 {
-	switch (activecpu_get_pc())
+	switch (cpu_get_pc(space->cpu))
 	{
 	case 0x01ca: return 0x90;
 	default:
-		logerror("%04x: read protection 2\n",activecpu_get_pc());
+		logerror("%04x: read protection 2\n",cpu_get_pc(space->cpu));
 		return 0;
 	}
 }
@@ -242,8 +241,8 @@ READ8_HANDLER( scramblb_protection_2_r )
 WRITE8_HANDLER( _4in1_bank_w )
 {
 	_4in1_bank = data & 0x03;
-	galaxold_gfxbank_w(machine, 0, _4in1_bank);
-	memory_set_bank(1, _4in1_bank);
+	galaxold_gfxbank_w(space, 0, _4in1_bank);
+	memory_set_bank(space->machine, 1, _4in1_bank);
 }
 
 CUSTOM_INPUT( _4in1_fake_port_r )
@@ -257,19 +256,19 @@ CUSTOM_INPUT( _4in1_fake_port_r )
 DRIVER_INIT( pisces )
 {
 	/* the coin lockout was replaced */
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6002, 0x6002, 0, 0, galaxold_gfxbank_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x6002, 0x6002, 0, 0, galaxold_gfxbank_w);
 }
 
 DRIVER_INIT( checkmaj )
 {
 	/* for the title screen */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3800, 0x3800, 0, 0, checkmaj_protection_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x3800, 0x3800, 0, 0, checkmaj_protection_r);
 }
 
 DRIVER_INIT( dingo )
 {
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3000, 0, 0, dingo_3000_r);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3035, 0x3035, 0, 0, dingo_3035_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x3000, 0x3000, 0, 0, dingo_3000_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x3035, 0x3035, 0, 0, dingo_3035_r);
 }
 
 
@@ -287,7 +286,7 @@ static UINT8 decode_mooncrst(UINT8 data,offs_t addr)
 
 DRIVER_INIT( mooncrsu )
 {
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa002, 0, 0, galaxold_gfxbank_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa000, 0xa002, 0, 0, galaxold_gfxbank_w);
 }
 
 DRIVER_INIT( mooncrst )
@@ -304,16 +303,17 @@ DRIVER_INIT( mooncrst )
 
 DRIVER_INIT( mooncrgx )
 {
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6002, 0, 0, galaxold_gfxbank_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x6000, 0x6002, 0, 0, galaxold_gfxbank_w);
 }
 
 DRIVER_INIT( moonqsr )
 {
 	offs_t i;
+	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
 	UINT8 *rom = memory_region(machine, "main");
 	UINT8 *decrypt = auto_malloc(0x8000);
 
-	memory_set_decrypted_region(0, 0x0000, 0x7fff, decrypt);
+	memory_set_decrypted_region(space, 0x0000, 0x7fff, decrypt);
 
 	for (i = 0;i < 0x8000;i++)
 		decrypt[i] = decode_mooncrst(rom[i],i);
@@ -386,6 +386,7 @@ Pin layout is such that links can replace the PAL if encryption is not used.
 
 DRIVER_INIT( 4in1 )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	offs_t i, len = memory_region_length(machine, "main");
 	UINT8 *RAM = memory_region(machine, "main");
 
@@ -394,20 +395,20 @@ DRIVER_INIT( 4in1 )
 		RAM[i] = RAM[i] ^ (i & 0xff);
 
 	/* games are banked at 0x0000 - 0x3fff */
-	memory_configure_bank(1, 0, 4, &RAM[0x10000], 0x4000);
+	memory_configure_bank(machine, 1, 0, 4, &RAM[0x10000], 0x4000);
 
-	_4in1_bank_w(machine, 0, 0); /* set the initial CPU bank */
+	_4in1_bank_w(space, 0, 0); /* set the initial CPU bank */
 
-	state_save_register_global(_4in1_bank);
+	state_save_register_global(machine, _4in1_bank);
 }
 
 INTERRUPT_GEN( hunchbks_vh_interrupt )
 {
-	cpunum_set_input_line_and_vector(machine, 0,0,PULSE_LINE,0x03);
+	generic_pulse_irq_line_and_vector(device,0,0x03);
 }
 
 DRIVER_INIT( ladybugg )
 {
 /* Doesn't actually use the bank, but it mustn't have a coin lock! */
-memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6002, 0x6002, 0, 0, galaxold_gfxbank_w);
+memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x6002, 0x6002, 0, 0, galaxold_gfxbank_w);
 }

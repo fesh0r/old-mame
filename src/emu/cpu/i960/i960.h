@@ -61,8 +61,10 @@ enum
   I960_IRQ3 = 3
 };
 
-void i960_get_info(UINT32 state, cpuinfo *info);
-void i960_noburst(void);
-void i960_stall(void);
+CPU_GET_INFO( i960 );
+#define CPU_I960 CPU_GET_INFO_NAME( i960 )
+
+void i960_noburst(const device_config *device);
+void i960_stall(const device_config *device);
 
 #endif /* __I960_H__ */

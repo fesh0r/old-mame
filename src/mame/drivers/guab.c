@@ -20,6 +20,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/6840ptm.h"
 #include "video/tms34061.h"
 #include "sound/sn76496.h"
@@ -55,7 +56,7 @@ enum int_levels
 
 static void ptm_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 0, INT_6840PTM, state);
+	cpu_set_input_line(machine->cpu[0], INT_6840PTM, state);
 }
 
 static const ptm6840_interface ptm_intf =
@@ -79,7 +80,7 @@ static const ptm6840_interface ptm_intf =
 
 static void tms_interrupt(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 0, INT_TMS34061, state);
+	cpu_set_input_line(machine->cpu[0], INT_TMS34061, state);
 }
 
 static const struct tms34061_interface tms34061intf =
@@ -103,10 +104,10 @@ static WRITE16_HANDLER( guab_tms34061_w )
 		col = offset <<= 1;
 
 	if (ACCESSING_BITS_8_15)
-		tms34061_w(col, row, func, data >> 8);
+		tms34061_w(space, col, row, func, data >> 8);
 
 	if (ACCESSING_BITS_0_7)
-		tms34061_w(col | 1, row, func, data & 0xff);
+		tms34061_w(space, col | 1, row, func, data & 0xff);
 }
 
 
@@ -123,10 +124,10 @@ static READ16_HANDLER( guab_tms34061_r )
 		col = offset <<= 1;
 
 	if (ACCESSING_BITS_8_15)
-		data |= tms34061_r(col, row, func) << 8;
+		data |= tms34061_r(space, col, row, func) << 8;
 
 	if (ACCESSING_BITS_0_7)
-		data |= tms34061_r(col | 1, row, func);
+		data |= tms34061_r(space, col | 1, row, func);
 
 	return data;
 }
@@ -175,7 +176,7 @@ static WRITE16_HANDLER( ef9369_w )
 			col = pal.clut[entry] & 0xfff;
 
 			/* Update the MAME palette */
-			palette_set_color_rgb(machine, entry, pal4bit(col >> 0), pal4bit(col >> 4), pal4bit(col >> 8));
+			palette_set_color_rgb(space->machine, entry, pal4bit(col >> 0), pal4bit(col >> 4), pal4bit(col >> 8));
 		}
 
 			/* Address register auto-increment */
@@ -219,7 +220,7 @@ static VIDEO_UPDATE( guab )
 	/* If blanked, fill with black */
 	if (state.blanked)
 	{
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 		return 0;
 	}
 
@@ -346,7 +347,7 @@ static TIMER_CALLBACK( fdc_data_callback )
 	}
 
 	fdc.status |= DATA_REQUEST;
-	cpunum_set_input_line(machine, 0, INT_FLOPPYCTRL, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], INT_FLOPPYCTRL, ASSERT_LINE);
 }
 
 
@@ -440,7 +441,7 @@ static WRITE16_HANDLER( wd1770_w )
 															fdc.sector));
 
 					/* Trigger a DRQ interrupt on the CPU */
-					cpunum_set_input_line(machine, 0, INT_FLOPPYCTRL, ASSERT_LINE);
+					cpu_set_input_line(space->machine->cpu[0], INT_FLOPPYCTRL, ASSERT_LINE);
 					fdc.status |= DATA_REQUEST;
 					break;
 				}
@@ -485,7 +486,7 @@ static WRITE16_HANDLER( wd1770_w )
 			fdc.data = data;
 
 			/* Clear the DRQ */
-			cpunum_set_input_line(machine, 0, INT_FLOPPYCTRL, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[0], INT_FLOPPYCTRL, CLEAR_LINE);
 
 			/* Queue an event to write the data if write command was specified */
 			if (fdc.cmd & 0x20)
@@ -522,7 +523,7 @@ static READ16_HANDLER( wd1770_r )
 			retval = fdc.data;
 
 			/* Clear the DRQ */
-			cpunum_set_input_line(machine, 0, INT_FLOPPYCTRL, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[0], INT_FLOPPYCTRL, CLEAR_LINE);
 			fdc.status &= ~DATA_REQUEST;
 			break;
 		}
@@ -548,7 +549,7 @@ static READ16_HANDLER( io_r )
 		case 0x01:
 		case 0x02:
 		{
-			return input_port_read(machine, portnames[offset]);
+			return input_port_read(space->machine, portnames[offset]);
 		}
 		case 0x30:
 		{
@@ -734,7 +735,7 @@ INPUT_PORTS_END
 
  static MACHINE_START( guab )
 {
-	fdc_timer = timer_alloc(fdc_data_callback, NULL);
+	fdc_timer = timer_alloc(machine, fdc_data_callback, NULL);
 	ptm6840_config(machine, 0, &ptm_intf);
 }
 

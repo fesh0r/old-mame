@@ -75,6 +75,7 @@ ROMS: All ROM labels say only "PROM" and a number.
 
 */
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/ay8910.h"
 
@@ -120,9 +121,9 @@ static TILE_GET_INFO( get_pturn_bg_tile_info )
 
 static VIDEO_START(pturn)
 {
-	pturn_fgmap = tilemap_create(get_pturn_tile_info,tilemap_scan_rows,8, 8,32,32);
+	pturn_fgmap = tilemap_create(machine, get_pturn_tile_info,tilemap_scan_rows,8, 8,32,32);
 	tilemap_set_transparent_pen(pturn_fgmap,0);
-	pturn_bgmap = tilemap_create(get_pturn_bg_tile_info,tilemap_scan_rows,8, 8,32,32*8);
+	pturn_bgmap = tilemap_create(machine, get_pturn_bg_tile_info,tilemap_scan_rows,8, 8,32,32*8);
 	tilemap_set_transparent_pen(pturn_bgmap,0);
 }
 
@@ -132,7 +133,7 @@ static VIDEO_UPDATE(pturn)
 	int sx, sy;
 	int flipx, flipy;
 
-	fillbitmap(bitmap, bgcolor, cliprect);
+	bitmap_fill(bitmap, cliprect, bgcolor);
 	tilemap_draw(bitmap,cliprect,pturn_bgmap,0,0);
 	for ( offs = 0x80-4 ; offs >=0 ; offs -= 4)
 	{
@@ -143,13 +144,13 @@ static VIDEO_UPDATE(pturn)
 		flipy=spriteram[offs+1]&0x80;
 
 
-		if (flip_screen_x_get())
+		if (flip_screen_x_get(screen->machine))
 		{
 			sx = 224 - sx;
 			flipx ^= 0x40;
 		}
 
-		if (flip_screen_y_get())
+		if (flip_screen_y_get(screen->machine))
 		{
 			flipy ^= 0x80;
 			sy = 224 - sy;
@@ -201,7 +202,7 @@ static WRITE8_HANDLER( nmi_sub_enable_w )
 
 static WRITE8_HANDLER(sound_w)
 {
-	soundlatch_w(machine,0,data);
+	soundlatch_w(space,0,data);
 }
 
 
@@ -242,7 +243,7 @@ static WRITE8_HANDLER(bgbank_w)
 
 static WRITE8_HANDLER(flip_w)
 {
-	flip_screen_set(data);
+	flip_screen_set(space->machine, data);
 }
 
 
@@ -427,7 +428,7 @@ static INTERRUPT_GEN( pturn_sub_intgen )
 {
 	if(nmi_sub)
 	{
-		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+		cpu_set_input_line(device,INPUT_LINE_NMI,PULSE_LINE);
 	}
 }
 
@@ -435,13 +436,14 @@ static INTERRUPT_GEN( pturn_main_intgen )
 {
 	if (nmi_main)
 	{
-		cpunum_set_input_line(machine, 0,INPUT_LINE_NMI,PULSE_LINE);
+		cpu_set_input_line(device,INPUT_LINE_NMI,PULSE_LINE);
 	}
 }
 
 static MACHINE_RESET( pturn )
 {
-	soundlatch_clear_w(machine,0,0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	soundlatch_clear_w(space,0,0);
 }
 
 static MACHINE_DRIVER_START( pturn )
@@ -520,8 +522,8 @@ ROM_END
 static DRIVER_INIT(pturn)
 {
 	/*
-    memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc0dd, 0xc0dd, 0, 0, pturn_protection_r);
-    memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc0db, 0xc0db, 0, 0, pturn_protection2_r);
+    memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc0dd, 0xc0dd, 0, 0, pturn_protection_r);
+    memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc0db, 0xc0db, 0, 0, pturn_protection2_r);
     */
 }
 

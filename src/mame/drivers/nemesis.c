@@ -37,6 +37,7 @@ So this is the correct behavior of real hardware, not an emulation bug.
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
@@ -46,35 +47,10 @@ So this is the correct behavior of real hardware, not an emulation bug.
 #include "sound/k005289.h"
 #include "sound/k007232.h"
 #include "sound/k051649.h"
+#include "includes/nemesis.h"
 
 static UINT16 *ram;
 static UINT16 *ram2;
-
-extern UINT16 *nemesis_videoram1b;
-extern UINT16 *nemesis_videoram1f;
-extern UINT16 *nemesis_videoram2b;
-extern UINT16 *nemesis_videoram2f;
-extern UINT16 *nemesis_characterram;
-extern UINT16 *nemesis_xscroll1,*nemesis_xscroll2, *nemesis_yscroll;
-extern size_t nemesis_characterram_size;
-
-WRITE16_HANDLER( nemesis_videoram1b_word_w );
-WRITE16_HANDLER( nemesis_videoram1f_word_w );
-WRITE16_HANDLER( nemesis_videoram2b_word_w );
-WRITE16_HANDLER( nemesis_videoram2f_word_w );
-WRITE16_HANDLER( nemesis_characterram_word_w );
-VIDEO_UPDATE( nemesis );
-VIDEO_START( nemesis );
-VIDEO_UPDATE( salamand );
-static MACHINE_RESET( nemesis );
-
-WRITE16_HANDLER( nemesis_gfx_flipx_w );
-WRITE16_HANDLER( nemesis_gfx_flipy_w );
-WRITE16_HANDLER( salamander_palette_word_w );
-
-extern UINT16 *nemesis_yscroll1, *nemesis_yscroll2;
-
-WRITE16_HANDLER( nemesis_palette_word_w );
 
 static int irq_on = 0;
 static int irq1_on = 0;
@@ -97,15 +73,15 @@ static MACHINE_RESET( nemesis )
 static INTERRUPT_GEN( nemesis_interrupt )
 {
 	if (irq_on)
-		cpunum_set_input_line(machine, 0, 1, HOLD_LINE);
+		cpu_set_input_line(device, 1, HOLD_LINE);
 }
 
 
 static WRITE16_HANDLER( salamand_soundlatch_word_w )
 {
 	if(ACCESSING_BITS_0_7) {
-		soundlatch_w(machine,offset,data & 0xff);
-		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
+		soundlatch_w(space,offset,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
 	}
 }
 
@@ -113,30 +89,30 @@ static int gx400_irq1_cnt;
 
 static INTERRUPT_GEN( konamigt_interrupt )
 {
-	if (cpu_getiloops() == 0)
+	if (cpu_getiloops(device) == 0)
 	{
-		if ( (irq_on) && (gx400_irq1_cnt++ & 1) ) cpunum_set_input_line(machine, 0, 1, HOLD_LINE);
+		if ( (irq_on) && (gx400_irq1_cnt++ & 1) ) cpu_set_input_line(device, 1, HOLD_LINE);
 	}
 	else
 	{
-		if (irq2_on) cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
+		if (irq2_on) cpu_set_input_line(device, 2, HOLD_LINE);
 	}
 }
 
 static INTERRUPT_GEN( gx400_interrupt )
 {
-	switch (cpu_getiloops())
+	switch (cpu_getiloops(device))
 	{
 		case 0:
-			if (irq2_on) cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
+			if (irq2_on) cpu_set_input_line(device, 2, HOLD_LINE);
 			break;
 
 		case 1:
-			if ( (irq1_on) && (gx400_irq1_cnt++ & 1) ) cpunum_set_input_line(machine, 0, 1, HOLD_LINE);
+			if ( (irq1_on) && (gx400_irq1_cnt++ & 1) ) cpu_set_input_line(device, 1, HOLD_LINE);
 			break;
 
 		case 2:
-			if (irq4_on) cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+			if (irq4_on) cpu_set_input_line(device, 4, HOLD_LINE);
 			break;
 	}
 }
@@ -183,13 +159,13 @@ static WRITE16_HANDLER( gx400_sharedram_word_w )
 static INTERRUPT_GEN( salamand_interrupt )
 {
 	if (irq_on)
-		cpunum_set_input_line(machine, 0, 1, HOLD_LINE);
+		cpu_set_input_line(device, 1, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( blkpnthr_interrupt )
 {
 	if (irq_on)
-		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
+		cpu_set_input_line(device, 2, HOLD_LINE);
 }
 
 static WRITE16_HANDLER( nemesis_irq_enable_word_w )
@@ -219,8 +195,8 @@ static READ16_HANDLER( konamigt_input_word_r )
     bit 12-15: accel
 */
 
-	int data=input_port_read(machine, "IN3");
-	int data2=input_port_read(machine, "PADDLE");
+	int data=input_port_read(space->machine, "IN3");
+	int data2=input_port_read(space->machine, "PADDLE");
 
 	int ret=0x0000;
 
@@ -247,10 +223,10 @@ static READ16_HANDLER( selected_ip_r )
 {
 	switch (hcrash_selected_ip & 0xf)
 	{												// From WEC Le Mans Schems:
-		case 0xc:  return input_port_read(machine, "ACCEL");	// Accel - Schems: Accelevr
-		case 0:    return input_port_read(machine, "ACCEL");
-		case 0xd:  return input_port_read(machine, "WHEEL");	// Wheel - Schems: Handlevr
-		case 1:    return input_port_read(machine, "WHEEL");
+		case 0xc:  return input_port_read(space->machine, "ACCEL");	// Accel - Schems: Accelevr
+		case 0:    return input_port_read(space->machine, "ACCEL");
+		case 0xd:  return input_port_read(space->machine, "WHEEL");	// Wheel - Schems: Handlevr
+		case 1:    return input_port_read(space->machine, "WHEEL");
 
 		default: return ~0;
 	}
@@ -259,7 +235,7 @@ static READ16_HANDLER( selected_ip_r )
 static WRITE16_HANDLER( nemesis_soundlatch_word_w )
 {
 	if(ACCESSING_BITS_0_7) {
-		soundlatch_w(machine,offset,data & 0xff);
+		soundlatch_w(space,offset,data & 0xff);
 	}
 }
 
@@ -340,7 +316,7 @@ static READ8_HANDLER( nemesis_portA_r )
    bit 7:     unused by this software version. Bubble Memory version uses this bit.
 */
 
-	int res = (activecpu_gettotalcycles() / 1024) & 0x2f; // this should be 0x0f, but it doesn't work
+	int res = (cputag_get_total_cycles(space->machine, "audio") / 1024) & 0x2f; // this should be 0x0f, but it doesn't work
 
 	res |= 0xd0;
 
@@ -2108,7 +2084,7 @@ static const ay8910_interface ay8910_interface_2 =
 static void sound_irq(running_machine *machine, int state)
 {
 /* Interrupts _are_ generated, I wonder where they go.. */
-/*cpunum_set_input_line(machine, 1,0,HOLD_LINE);*/
+/*cpu_set_input_line(machine->cpu[1],0,HOLD_LINE);*/
 }
 
 static const ym2151_interface ym2151_config =

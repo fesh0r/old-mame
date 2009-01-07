@@ -9,6 +9,7 @@
 ******************************************************************************/
 
 #include "driver.h"
+#include "includes/gomoku.h"
 
 
 static int gomoku_flipscreen;
@@ -121,12 +122,12 @@ VIDEO_START( gomoku )
 
 	gomoku_bg_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32, 32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
 	/* make background bitmap */
-	fillbitmap(gomoku_bg_bitmap, 0x20, 0);
+	bitmap_fill(gomoku_bg_bitmap, 0, 0x20);
 
 	// board
 	for (y = 0; y < 256; y++)
@@ -227,7 +228,7 @@ VIDEO_UPDATE( gomoku )
 	}
 	else
 	{
-		fillbitmap(bitmap, 0x20, 0);
+		bitmap_fill(bitmap, 0, 0x20);
 	}
 
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);

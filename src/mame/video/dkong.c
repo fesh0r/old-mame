@@ -472,7 +472,7 @@ static TILE_GET_INFO( radarsc1_bg_tile_info )
 
 WRITE8_HANDLER( dkong_videoram_w )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 
 	if (state->video_ram[offset] != data)
 	{
@@ -483,7 +483,7 @@ WRITE8_HANDLER( dkong_videoram_w )
 
 WRITE8_HANDLER( dkongjr_gfxbank_w )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 
 	if (state->gfx_bank != (data & 0x01))
 	{
@@ -494,7 +494,7 @@ WRITE8_HANDLER( dkongjr_gfxbank_w )
 
 WRITE8_HANDLER( dkong3_gfxbank_w )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 
 	if (state->gfx_bank != (~data & 0x01))
 	{
@@ -505,7 +505,7 @@ WRITE8_HANDLER( dkong3_gfxbank_w )
 
 WRITE8_HANDLER( dkong_palettebank_w )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 	int newbank;
 
 	newbank = state->palette_bank;
@@ -524,14 +524,14 @@ WRITE8_HANDLER( dkong_palettebank_w )
 
 WRITE8_HANDLER( radarscp_grid_enable_w )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 
 	state->grid_on = data & 0x01;
 }
 
 WRITE8_HANDLER( radarscp_grid_color_w )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 
 	state->grid_col = (data & 0x07) ^ 0x07;
 	/* popmessage("Gridcol: %d", state->grid_col); */
@@ -539,14 +539,14 @@ WRITE8_HANDLER( radarscp_grid_color_w )
 
 WRITE8_HANDLER( dkong_flipscreen_w )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 
 	state->flip = ~data & 0x01;
 }
 
 WRITE8_HANDLER( dkong_spritebank_w )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = space->machine->driver_data;
 
 	state->sprite_bank = data & 0x01;
 }
@@ -902,14 +902,17 @@ static void check_palette(running_machine *machine)
 		newset = input_port_read_direct(port);
 		if (newset != state->vidhw)
 		{
+			const UINT8 *color_prom;
 			state->vidhw = newset;
 			switch (newset)
 			{
 				case 0x00:
-					palette_init_radarscp(machine, memory_region(machine, "proms"));
+					color_prom = memory_region(machine, "proms");
+					PALETTE_INIT_CALL(radarscp);
 					break;
 				case 0x01:
-					palette_init_dkong2b(machine, memory_region(machine, "proms"));
+					color_prom = memory_region(machine, "proms");
+					PALETTE_INIT_CALL(dkong2b);
 					break;
 			}
 		}
@@ -928,13 +931,13 @@ static VIDEO_START( dkong_base )
 	state->sprite_bank = 0;
 	state->vidhw = -1;
 
-	state_save_register_global(state->gfx_bank);
-	state_save_register_global(state->palette_bank);
-	state_save_register_global(state->sprite_bank);
-	state_save_register_global(state->grid_on);
+	state_save_register_global(machine, state->gfx_bank);
+	state_save_register_global(machine, state->palette_bank);
+	state_save_register_global(machine, state->sprite_bank);
+	state_save_register_global(machine, state->grid_on);
 
-	state_save_register_global(state->grid_col);
-	state_save_register_global(state->flip);
+	state_save_register_global(machine, state->grid_col);
+	state_save_register_global(machine, state->flip);
 }
 
 VIDEO_START( dkong )
@@ -943,7 +946,7 @@ VIDEO_START( dkong )
 
 	VIDEO_START_CALL(dkong_base);
 
-	state->scanline_timer = timer_alloc(scanline_callback, NULL);
+	state->scanline_timer = timer_alloc(machine, scanline_callback, NULL);
 	timer_adjust_oneshot(state->scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 
 	switch (state->hardware_type)
@@ -955,11 +958,11 @@ VIDEO_START( dkong )
 		    /* fall through */
 		case HARDWARE_TKG04:
 		case HARDWARE_TKG02:
-			state->bg_tilemap = tilemap_create(dkong_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+			state->bg_tilemap = tilemap_create(machine, dkong_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 			tilemap_set_scrolldx(state->bg_tilemap, 0, 128);
 			break;
 		case HARDWARE_TRS01:
-			state->bg_tilemap = tilemap_create(radarsc1_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+			state->bg_tilemap = tilemap_create(machine, radarsc1_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 			tilemap_set_scrolldx(state->bg_tilemap, 0, 128);
 
 			state->bg_bits = video_screen_auto_bitmap_alloc(machine->primary_screen);

@@ -5,9 +5,9 @@
 *********************************************************/
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "cpuintrf.h"
+#include "cpuexec.h"
 #include "k053260.h"
 
 /* 2004-02-28: Fixed ppcm decoding. Games sound much better now.*/
@@ -38,6 +38,7 @@ struct k053260_chip_def {
 	unsigned long					*delta_table;
 	struct k053260_channel_def		channels[4];
 	const k053260_interface			*intf;
+	const device_config *device;
 };
 
 
@@ -64,8 +65,7 @@ static void InitDeltaTable( struct k053260_chip_def *ic, int rate, int clock ) {
 	}
 }
 
-static void k053260_reset( void *chip ) {
-	struct k053260_chip_def *ic = chip;
+static void k053260_reset(struct k053260_chip_def *ic) {
 	int i;
 
 	for( i = 0; i < 4; i++ ) {
@@ -83,6 +83,11 @@ static void k053260_reset( void *chip ) {
 	}
 }
 
+static SND_RESET( k053260 ) {
+	k053260_reset(device->token);
+}
+
+
 INLINE int limit( int val, int max, int min ) {
 	if ( val > max )
 		val = max;
@@ -95,7 +100,7 @@ INLINE int limit( int val, int max, int min ) {
 #define MAXOUT 0x7fff
 #define MINOUT -0x8000
 
-static void k053260_update( void * param, stream_sample_t **inputs, stream_sample_t **buffer, int length ) {
+static STREAM_UPDATE( k053260_update ) {
 	static const long dpcmcnv[] = { 0,1,2,4,8,16,32,64, -128, -64, -32, -16, -8, -4, -2, -1};
 
 	int i, j, lvol[4], rvol[4], play[4], loop[4], ppcm_data[4], ppcm[4];
@@ -121,7 +126,7 @@ static void k053260_update( void * param, stream_sample_t **inputs, stream_sampl
 			delta[i] /= 2;
 	}
 
-		for ( j = 0; j < length; j++ ) {
+		for ( j = 0; j < samples; j++ ) {
 
 			dataL = dataR = 0;
 
@@ -182,8 +187,8 @@ static void k053260_update( void * param, stream_sample_t **inputs, stream_sampl
 				}
 			}
 
-			buffer[1][j] = limit( dataL, MAXOUT, MINOUT );
-			buffer[0][j] = limit( dataR, MAXOUT, MINOUT );
+			outputs[1][j] = limit( dataL, MAXOUT, MINOUT );
+			outputs[0][j] = limit( dataR, MAXOUT, MINOUT );
 		}
 
 	/* update the regs now */
@@ -194,7 +199,7 @@ static void k053260_update( void * param, stream_sample_t **inputs, stream_sampl
 	}
 }
 
-static void *k053260_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( k053260 )
 {
 	static const k053260_interface defintrf = { 0 };
 	struct k053260_chip_def *ic;
@@ -205,11 +210,17 @@ static void *k053260_start(const char *tag, int sndindex, int clock, const void 
 	memset(ic, 0, sizeof(*ic));
 
 	/* Initialize our chip structure */
+	ic->device = device;
 	ic->intf = (config != NULL) ? config : &defintrf;
 
 	ic->mode = 0;
-	ic->rom = memory_region(Machine, (ic->intf->rgnoverride != NULL) ? ic->intf->rgnoverride : tag);
-	ic->rom_size = memory_region_length(Machine, (ic->intf->rgnoverride != NULL) ? ic->intf->rgnoverride : tag) - 1;
+	ic->rom = device->region;
+	ic->rom_size = device->regionbytes;
+	if (ic->intf->rgnoverride != NULL)
+	{
+		ic->rom = memory_region(device->machine, ic->intf->rgnoverride);
+		ic->rom_size = memory_region_length(device->machine, ic->intf->rgnoverride);
+	}
 
 	k053260_reset( ic );
 
@@ -218,13 +229,13 @@ static void *k053260_start(const char *tag, int sndindex, int clock, const void 
 
 	ic->delta_table = ( unsigned long * )auto_malloc( 0x1000 * sizeof( unsigned long ) );
 
-	ic->channel = stream_create( 0, 2, rate, ic, k053260_update );
+	ic->channel = stream_create( device, 0, 2, rate, ic, k053260_update );
 
 	InitDeltaTable( ic, rate, clock );
 
 	/* setup SH1 timer if necessary */
 	if ( ic->intf->irq )
-		timer_pulse( attotime_mul(ATTOTIME_IN_HZ(clock), 32), NULL, 0, ic->intf->irq );
+		timer_pulse( device->machine, attotime_mul(ATTOTIME_IN_HZ(clock), 32), NULL, 0, ic->intf->irq );
 
     return ic;
 }
@@ -250,7 +261,7 @@ INLINE void check_bounds( struct k053260_chip_def *ic, int channel ) {
 	if (LOG) logerror("K053260: Sample Start = %06x, Sample End = %06x, Sample rate = %04lx, PPCM = %s\n", channel_start, channel_end, ic->channels[channel].rate, ic->channels[channel].ppcm ? "yes" : "no" );
 }
 
-static void k053260_write( int chip, offs_t offset, UINT8 data )
+static void k053260_write( const address_space *space, offs_t offset, UINT8 data, int chip )
 {
 	int i, t;
 	int r = offset;
@@ -367,7 +378,7 @@ static void k053260_write( int chip, offs_t offset, UINT8 data )
 	}
 }
 
-static UINT8 k053260_read( int chip, offs_t offset )
+static UINT8 k053260_read( const address_space *space,  offs_t offset, int chip )
 {
 	struct k053260_chip_def *ic = sndti_token(SOUND_K053260, chip);
 
@@ -390,7 +401,7 @@ static UINT8 k053260_read( int chip, offs_t offset )
 				ic->channels[0].pos += ( 1 << 16 );
 
 				if ( offs > ic->rom_size ) {
-					logerror("%06x: K53260: Attempting to read past rom size in rom Read Mode (offs = %06x, size = %06x).\n",activecpu_get_pc(),offs,ic->rom_size );
+					logerror("%s: K53260: Attempting to read past rom size in rom Read Mode (offs = %06x, size = %06x).\n", cpuexec_describe_context(space->machine),offs,ic->rom_size );
 
 					return 0;
 				}
@@ -408,44 +419,44 @@ static UINT8 k053260_read( int chip, offs_t offset )
 
 READ8_HANDLER( k053260_0_r )
 {
-	return k053260_read( 0, offset );
+	return k053260_read( space, offset, 0 );
 }
 
 WRITE8_HANDLER( k053260_0_w )
 {
-	k053260_write( 0, offset, data );
+	k053260_write( space, offset, data, 0 );
 }
 
 READ8_HANDLER( k053260_1_r )
 {
-	return k053260_read( 1, offset );
+	return k053260_read( space, offset, 1 );
 }
 
 WRITE8_HANDLER( k053260_1_w )
 {
-	k053260_write( 1, offset, data );
+	k053260_write( space, offset, data, 1 );
 }
 
 WRITE16_HANDLER( k053260_0_lsb_w )
 {
 	if (ACCESSING_BITS_0_7)
-		k053260_0_w (machine, offset, data & 0xff);
+		k053260_0_w (space, offset, data & 0xff);
 }
 
 READ16_HANDLER( k053260_0_lsb_r )
 {
-	return k053260_0_r(machine, offset);
+	return k053260_0_r(space, offset);
 }
 
 WRITE16_HANDLER( k053260_1_lsb_w )
 {
 	if (ACCESSING_BITS_0_7)
-		k053260_1_w (machine, offset, data & 0xff);
+		k053260_1_w (space, offset, data & 0xff);
 }
 
 READ16_HANDLER( k053260_1_lsb_r )
 {
-	return k053260_1_r(machine, offset);
+	return k053260_1_r(space, offset);
 }
 
 
@@ -455,7 +466,7 @@ READ16_HANDLER( k053260_1_lsb_r )
  * Generic get_info
  **************************************************************************/
 
-static void k053260_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( k053260 )
 {
 	switch (state)
 	{
@@ -464,24 +475,24 @@ static void k053260_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void k053260_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( k053260 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = k053260_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = k053260_start;			break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( k053260 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( k053260 );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( k053260);			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "K053260";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Konami custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "K053260");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Konami custom");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

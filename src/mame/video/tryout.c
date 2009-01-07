@@ -140,7 +140,7 @@ WRITE8_HANDLER( tryout_vram_w )
 		break;
 	}
 
-	decodechar(machine->gfx[2],(offset-0x400/64)&0x7f,tryout_vram_gfx);
+	decodechar(space->machine->gfx[2],(offset-0x400/64)&0x7f,tryout_vram_gfx);
 	tilemap_mark_all_tiles_dirty(bg_tilemap);
 }
 
@@ -151,7 +151,7 @@ WRITE8_HANDLER( tryout_vram_bankswitch_w )
 
 WRITE8_HANDLER( tryout_flipscreen_w )
 {
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 }
 
 static TILEMAP_MAPPER( get_fg_memory_offset )
@@ -173,8 +173,8 @@ static TILEMAP_MAPPER( get_bg_memory_offset )
 
 VIDEO_START( tryout )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,get_fg_memory_offset,8,8,32,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,get_bg_memory_offset,16,16,64,16);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,get_fg_memory_offset,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,get_bg_memory_offset,16,16,64,16);
 
 	tryout_vram=auto_malloc(8 * 0x800);
 	tryout_vram_gfx=auto_malloc(0x6000);
@@ -199,7 +199,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		fy = 0;
 		inc = 16;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			x = 240 - x;
 			fx = !fx;
@@ -239,7 +239,7 @@ VIDEO_UPDATE( tryout )
 
 	int scrollx;
 
-	if (!flip_screen_get())
+	if (!flip_screen_get(screen->machine))
 		tilemap_set_scrollx(fg_tilemap, 0, 16); /* Assumed hard-wired */
 	else
 		tilemap_set_scrollx(fg_tilemap, 0, -8); /* Assumed hard-wired */

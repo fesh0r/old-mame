@@ -237,6 +237,8 @@ Stephh's notes (based on the game M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "taitoipt.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
@@ -261,7 +263,7 @@ static WRITE16_HANDLER( jumping_sound_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		jumping_latch = data & 0xff; /*M68000 writes .b to $400007*/
-		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
+		cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
 	}
 }
 
@@ -347,7 +349,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( bankswitch_w )
 {
-	memory_set_bankptr(5, memory_region(machine, "audio") + ((data - 1) & 3) * 0x4000 + 0x10000);
+	memory_set_bankptr(space->machine, 5, memory_region(space->machine, "audio") + ((data - 1) & 3) * 0x4000 + 0x10000);
 }
 
 static READ8_HANDLER( jumping_latch_r )
@@ -592,7 +594,7 @@ GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface ym2151_config =
@@ -616,7 +618,7 @@ static MACHINE_DRIVER_START( rainbow )
 	MDRV_CPU_ADD("audio", Z80, XTAL_16MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(rainbow_s_readmem,rainbow_s_writemem)
 
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
+	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -653,7 +655,7 @@ static MACHINE_DRIVER_START( jumping )
 	MDRV_CPU_ADD("audio", Z80, XTAL_18_432MHz/6)	/* not verified but music tempo matches original */
 	MDRV_CPU_PROGRAM_MAP(jumping_sound_readmem,jumping_sound_writemem)
 
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough ? */
+	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - enough ? */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -793,12 +795,12 @@ ROM_END
 
 static DRIVER_INIT( rainbow )
 {
-	rainbow_cchip_init(0);
+	rainbow_cchip_init(machine, 0);
 }
 
 static DRIVER_INIT( rainbowe )
 {
-	rainbow_cchip_init(1);
+	rainbow_cchip_init(machine, 1);
 }
 
 static DRIVER_INIT( jumping )
@@ -811,7 +813,7 @@ static DRIVER_INIT( jumping )
 	for (i = 0;i < len;i++)
 		rom[i] ^= 0xff;
 
-	state_save_register_global(jumping_latch);
+	state_save_register_global(machine, jumping_latch);
 }
 
 

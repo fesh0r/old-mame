@@ -144,9 +144,13 @@ Tetris         -         -         -         -         EPR12169  EPR12170  -    
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
+#include "cpu/mcs51/mcs51.h"
 #include "system16.h"
 #include "machine/8255ppi.h"
 #include "machine/fd1089.h"
+#include "machine/i8243.h"
 #include "cpu/mcs48/mcs48.h"
 #include "sound/dac.h"
 #include "sound/2151intf.h"
@@ -163,8 +167,8 @@ static UINT16 *workram;
 static UINT8 video_control;
 static UINT8 mj_input_num;
 
-static read16_machine_func custom_io_r;
-static write16_machine_func custom_io_w;
+static read16_space_func custom_io_r;
+static write16_space_func custom_io_w;
 static void (*lamp_changed_w)(UINT8 changed, UINT8 newval);
 static void (*i8751_vblank_hook)(running_machine *machine);
 
@@ -230,7 +234,7 @@ static void system16a_generic_init(running_machine *machine)
 
 static TIMER_CALLBACK( suspend_i8751 )
 {
-	cpunum_suspend(mame_find_cpu_index(machine, "mcu"), SUSPEND_REASON_DISABLE, 1);
+	cputag_suspend(machine, "mcu", SUSPEND_REASON_DISABLE, 1);
 }
 
 
@@ -243,11 +247,11 @@ static TIMER_CALLBACK( suspend_i8751 )
 
 static MACHINE_RESET( system16a )
 {
-	fd1094_machine_init();
+	fd1094_machine_init(machine->cpu[0]);
 
 	/* if we have a fake i8751 handler, disable the actual 8751 */
 	if (i8751_vblank_hook != NULL)
-		timer_call_after_resynch(NULL, 0, suspend_i8751);
+		timer_call_after_resynch(machine, NULL, 0, suspend_i8751);
 }
 
 
@@ -270,18 +274,18 @@ static READ16_HANDLER( standard_io_r )
 	switch (offset & (0x3000/2))
 	{
 		case 0x0000/2:
-			return ppi8255_r(devtag_get_device(machine, PPI8255, "ppi8255"), offset & 3);
+			return ppi8255_r(devtag_get_device(space->machine, PPI8255, "ppi8255"), offset & 3);
 
 		case 0x1000/2:
 		{
 			static const char *const sysports[] = { "SERVICE", "P1", "UNUSED", "P2" };
-			return input_port_read(machine, sysports[offset & 3]);
+			return input_port_read(space->machine, sysports[offset & 3]);
 		}
 
 		case 0x2000/2:
-			return input_port_read(machine, (offset & 1) ? "DSW2" : "DSW1");
+			return input_port_read(space->machine, (offset & 1) ? "DSW2" : "DSW1");
 	}
-	logerror("%06X:standard_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
+	logerror("%06X:standard_io_r - unknown read access to address %04X\n", cpu_get_pc(space->cpu), offset * 2);
 	return 0xffff;
 }
 
@@ -295,28 +299,28 @@ static WRITE16_HANDLER( standard_io_w )
 			/* the port C handshaking signals control the Z80 NMI, */
 			/* so we have to sync whenever we access this PPI */
 			if (ACCESSING_BITS_0_7)
-				timer_call_after_resynch(NULL, ((offset & 3) << 8) | (data & 0xff), delayed_ppi8255_w);
+				timer_call_after_resynch(space->machine, NULL, ((offset & 3) << 8) | (data & 0xff), delayed_ppi8255_w);
 			return;
 	}
-	logerror("%06X:standard_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask);
+	logerror("%06X:standard_io_w - unknown write access to address %04X = %04X & %04X\n", cpu_get_pc(space->cpu), offset * 2, data, mem_mask);
 }
 
 
 static READ16_HANDLER( misc_io_r )
 {
 	if (custom_io_r)
-		return (*custom_io_r)(machine, offset, mem_mask);
+		return (*custom_io_r)(space, offset, mem_mask);
 	else
-		return standard_io_r(machine, offset, mem_mask);
+		return standard_io_r(space, offset, mem_mask);
 }
 
 
 static WRITE16_HANDLER( misc_io_w )
 {
 	if (custom_io_w)
-		(*custom_io_w)(machine, offset, data, mem_mask);
+		(*custom_io_w)(space, offset, data, mem_mask);
 	else
-		standard_io_w(machine, offset, data, mem_mask);
+		standard_io_w(space, offset, data, mem_mask);
 }
 
 
@@ -344,8 +348,8 @@ static WRITE8_DEVICE_HANDLER( video_control_w )
 	if (((video_control ^ data) & 0x0c) && lamp_changed_w)
 		(*lamp_changed_w)(video_control ^ data, data);
 	video_control = data;
-	segaic16_tilemap_set_flip(0, data & 0x80);
-	segaic16_sprites_set_flip(0, data & 0x80);
+	segaic16_tilemap_set_flip(device->machine, 0, data & 0x80);
+	segaic16_sprites_set_flip(device->machine, 0, data & 0x80);
 	segaic16_set_display_enable(device->machine, data & 0x10);
 	set_led_status(1, data & 0x08);
 	set_led_status(0, data & 0x04);
@@ -363,7 +367,8 @@ static WRITE8_DEVICE_HANDLER( video_control_w )
 
 static WRITE8_DEVICE_HANDLER( sound_latch_w )
 {
-	soundlatch_w(device->machine, offset, data);
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	soundlatch_w(space, offset, data);
 }
 
 
@@ -383,9 +388,9 @@ static WRITE8_DEVICE_HANDLER( tilemap_sound_w )
              0= Sound is disabled
              1= sound is enabled
     */
-	cpunum_set_input_line(device->machine, 1, INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
-	segaic16_tilemap_set_colscroll(0, ~data & 0x04);
-	segaic16_tilemap_set_rowscroll(0, ~data & 0x02);
+	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	segaic16_tilemap_set_colscroll(device->machine, 0, ~data & 0x04);
+	segaic16_tilemap_set_rowscroll(device->machine, 0, ~data & 0x02);
 }
 
 
@@ -399,8 +404,8 @@ static WRITE8_DEVICE_HANDLER( tilemap_sound_w )
 static READ8_HANDLER( sound_data_r )
 {
 	/* assert ACK */
-	ppi8255_set_port_c(devtag_get_device(machine, PPI8255, "ppi8255"), 0x00);
-	return soundlatch_r(machine, offset);
+	ppi8255_set_port_c(devtag_get_device(space->machine, PPI8255, "ppi8255"), 0x00);
+	return soundlatch_r(space, offset);
 }
 
 
@@ -416,7 +421,7 @@ static WRITE8_HANDLER( n7751_command_w )
         D1    = /CS for ROM 0
         D0    = A14 line to ROMs
     */
-	int numroms = memory_region_length(machine, "n7751data") / 0x8000;
+	int numroms = memory_region_length(space->machine, "n7751data") / 0x8000;
 	n7751_rom_address &= 0x3fff;
 	n7751_rom_address |= (data & 0x01) << 14;
 	if (!(data & 0x02) && numroms >= 1) n7751_rom_address |= 0x00000;
@@ -435,13 +440,13 @@ static WRITE8_HANDLER( n7751_control_w )
         D1 = /RESET line on 7751
         D0 = /IRQ line on 7751
     */
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
-	cpunum_set_input_line(machine, 2, 0, (data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
-	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
+	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[2], 0, (data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
+	cpuexec_boost_interleave(space->machine, attotime_zero, ATTOTIME_IN_USEC(100));
 }
 
 
-static WRITE8_HANDLER( n7751_rom_offset_w )
+static WRITE8_DEVICE_HANDLER( n7751_rom_offset_w )
 {
 	/* P4 - address lines 0-3 */
 	/* P5 - address lines 4-7 */
@@ -456,21 +461,23 @@ static WRITE8_HANDLER( n7751_rom_offset_w )
 static READ8_HANDLER( n7751_rom_r )
 {
 	/* read from BUS */
-	return memory_region(machine, "n7751data")[n7751_rom_address];
+	return memory_region(space->machine, "n7751data")[n7751_rom_address];
 }
 
 
-static READ8_HANDLER( n7751_command_r )
+static READ8_DEVICE_HANDLER( n7751_p2_r )
 {
 	/* read from P2 - 8255's PC0-2 connects to 7751's S0-2 (P24-P26 on an 8048) */
 	/* bit 0x80 is an alternate way to control the sample on/off; doesn't appear to be used */
-	return 0x80 | ((n7751_command & 0x07) << 4);
+	return 0x80 | ((n7751_command & 0x07) << 4) | (i8243_p2_r(device, offset) & 0x0f);
 }
 
 
-static WRITE8_HANDLER( n7751_busy_w )
+static WRITE8_DEVICE_HANDLER( n7751_p2_w )
 {
-	/* write to P2 */
+	/* write to P2; low 4 bits go to 8243 */
+	i8243_p2_w(device, offset, data & 0x0f);
+
 	/* output of bit $80 indicates we are ready (1) or busy (0) */
 	/* no other outputs are used */
 }
@@ -494,7 +501,7 @@ static INTERRUPT_GEN( i8751_main_cpu_vblank )
 {
 	/* if we have a fake 8751 handler, call it on VBLANK */
 	if (i8751_vblank_hook != NULL)
-		(*i8751_vblank_hook)(machine);
+		(*i8751_vblank_hook)(device->machine);
 }
 
 
@@ -513,7 +520,7 @@ static void bodyslam_i8751_sim(running_machine *machine)
 	UINT8 min = workram[0x202/2] & 0xff;
 
 	/* signal a VBLANK to the main CPU */
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, HOLD_LINE);
 
 	/* out of time? set the flag */
 	if (tick == 0 && sec == 0 && min == 0)
@@ -552,16 +559,17 @@ static void bodyslam_i8751_sim(running_machine *machine)
 
 static void quartet_i8751_sim(running_machine *machine)
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	/* signal a VBLANK to the main CPU */
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, HOLD_LINE);
 
 	/* X scroll values */
-	segaic16_textram_0_w(machine, 0xff8/2, workram[0x0d14/2], 0xffff);
-	segaic16_textram_0_w(machine, 0xffa/2, workram[0x0d18/2], 0xffff);
+	segaic16_textram_0_w(space, 0xff8/2, workram[0x0d14/2], 0xffff);
+	segaic16_textram_0_w(space, 0xffa/2, workram[0x0d18/2], 0xffff);
 
 	/* page values */
-	segaic16_textram_0_w(machine, 0xe9e/2, workram[0x0d1c/2], 0xffff);
-	segaic16_textram_0_w(machine, 0xe9c/2, workram[0x0d1e/2], 0xffff);
+	segaic16_textram_0_w(space, 0xe9e/2, workram[0x0d1c/2], 0xffff);
+	segaic16_textram_0_w(space, 0xe9c/2, workram[0x0d1e/2], 0xffff);
 }
 
 
@@ -583,25 +591,25 @@ static READ16_HANDLER( aceattaa_custom_io_r )
 				{
 					switch (video_control & 0xf)
 					{
-						case 0x00: return input_port_read(machine, "P1");
-						case 0x04: return input_port_read(machine, "ANALOGX1");
-						case 0x08: return input_port_read(machine, "ANALOGY1");
-						case 0x0c: return input_port_read(machine, "UNUSED");
+						case 0x00: return input_port_read(space->machine, "P1");
+						case 0x04: return input_port_read(space->machine, "ANALOGX1");
+						case 0x08: return input_port_read(space->machine, "ANALOGY1");
+						case 0x0c: return input_port_read(space->machine, "UNUSED");
 					}
 					break;
 				}
 
 				case 0x02:
-					return input_port_read(machine, "DIAL1") | (input_port_read(machine, "DIAL2") << 4);
+					return input_port_read(space->machine, "DIAL1") | (input_port_read(space->machine, "DIAL2") << 4);
 
 				case 0x03:
 				{
 					switch (video_control & 0xf)
 					{
-						case 0x00: return input_port_read(machine, "P2");
-						case 0x04: return input_port_read(machine, "ANALOGX2");
-						case 0x08: return input_port_read(machine, "ANALOGY2");
-						case 0x0c: return input_port_read(machine, "POW2");
+						case 0x00: return input_port_read(space->machine, "P2");
+						case 0x04: return input_port_read(space->machine, "ANALOGX2");
+						case 0x08: return input_port_read(space->machine, "ANALOGY2");
+						case 0x0c: return input_port_read(space->machine, "POW2");
 					}
 					break;
 				}
@@ -609,7 +617,7 @@ static READ16_HANDLER( aceattaa_custom_io_r )
 			break;
 	}
 
-	return standard_io_r(machine, offset, mem_mask);
+	return standard_io_r(space, offset, mem_mask);
 }
 
 
@@ -631,9 +639,9 @@ static READ16_HANDLER( mjleague_custom_io_r )
 				/* upper bit of the trackball controls */
 				case 0:
 				{
-					UINT8 buttons = input_port_read(machine, "SERVICE");
-					UINT8 analog1 = input_port_read(machine, (video_control & 4) ? "ANALOGY1" : "ANALOGX1");
-					UINT8 analog2 = input_port_read(machine, (video_control & 4) ? "ANALOGY2" : "ANALOGX2");
+					UINT8 buttons = input_port_read(space->machine, "SERVICE");
+					UINT8 analog1 = input_port_read(space->machine, (video_control & 4) ? "ANALOGY1" : "ANALOGX1");
+					UINT8 analog2 = input_port_read(space->machine, (video_control & 4) ? "ANALOGY2" : "ANALOGX2");
 					buttons |= (analog1 & 0x80) >> 1;
 					buttons |= (analog2 & 0x80);
 					return buttons;
@@ -643,8 +651,8 @@ static READ16_HANDLER( mjleague_custom_io_r )
 				/* player 1 select switch mapped to bit 7 */
 				case 1:
 				{
-					UINT8 buttons = input_port_read(machine, "BUTTONS1");
-					UINT8 analog = input_port_read(machine, (video_control & 4) ? "ANALOGY1" : "ANALOGX1");
+					UINT8 buttons = input_port_read(space->machine, "BUTTONS1");
+					UINT8 analog = input_port_read(space->machine, (video_control & 4) ? "ANALOGY1" : "ANALOGX1");
 					return (buttons & 0x80) | (analog & 0x7f);
 				}
 
@@ -652,13 +660,13 @@ static READ16_HANDLER( mjleague_custom_io_r )
 				case 2:
 				{
 					if (video_control & 4)
-						return (input_port_read(machine, "ANALOGZ1") >> 4) | (input_port_read(machine, "ANALOGZ2") & 0xf0);
+						return (input_port_read(space->machine, "ANALOGZ1") >> 4) | (input_port_read(space->machine, "ANALOGZ2") & 0xf0);
 					else
 					{
 						static UINT8 last_buttons1 = 0;
 						static UINT8 last_buttons2 = 0;
-						UINT8 buttons1 = input_port_read(machine, "BUTTONS1");
-						UINT8 buttons2 = input_port_read(machine, "BUTTONS2");
+						UINT8 buttons1 = input_port_read(space->machine, "BUTTONS1");
+						UINT8 buttons2 = input_port_read(space->machine, "BUTTONS2");
 
 						if (!(buttons1 & 0x01))
 							last_buttons1 = 0;
@@ -686,14 +694,14 @@ static READ16_HANDLER( mjleague_custom_io_r )
 				/* player 2 select switch mapped to bit 7 */
 				case 3:
 				{
-					UINT8 buttons = input_port_read(machine, "BUTTONS2");
-					UINT8 analog = input_port_read(machine, (video_control & 4) ? "ANALOGY2" : "ANALOGX2");
+					UINT8 buttons = input_port_read(space->machine, "BUTTONS2");
+					UINT8 analog = input_port_read(space->machine, (video_control & 4) ? "ANALOGY2" : "ANALOGX2");
 					return (buttons & 0x80) | (analog & 0x7f);
 				}
 			}
 			break;
 	}
-	return standard_io_r(machine, offset, mem_mask);
+	return standard_io_r(space, offset, mem_mask);
 }
 
 /*************************************
@@ -717,17 +725,17 @@ static READ16_HANDLER( pshot16a_custom_io_r )
 				case 1:
 					switch ((read_port++)&3)
 					{
-						case 0: return input_port_read(machine, "P1");
-						case 1: return input_port_read(machine, "P2");
-						case 2: return input_port_read(machine, "P3");
-						case 3: return input_port_read(machine, "P4");
+						case 0: return input_port_read(space->machine, "P1");
+						case 1: return input_port_read(space->machine, "P2");
+						case 2: return input_port_read(space->machine, "P3");
+						case 3: return input_port_read(space->machine, "P4");
 					}
 
 					break;
 			}
 			break;
 	}
-	return standard_io_r(machine, offset, mem_mask);
+	return standard_io_r(space, offset, mem_mask);
 }
 
 /*************************************
@@ -743,12 +751,12 @@ static READ16_HANDLER( sdi_custom_io_r )
 		case 0x1000/2:
 			switch (offset & 3)
 			{
-				case 1:	return input_port_read(machine, (video_control & 4) ? "ANALOGY1" : "ANALOGX1");
-				case 3:	return input_port_read(machine, (video_control & 4) ? "ANALOGY2" : "ANALOGX2");
+				case 1:	return input_port_read(space->machine, (video_control & 4) ? "ANALOGY1" : "ANALOGX1");
+				case 3:	return input_port_read(space->machine, (video_control & 4) ? "ANALOGY2" : "ANALOGX2");
 			}
 			break;
 	}
-	return standard_io_r(machine, offset, mem_mask);
+	return standard_io_r(space, offset, mem_mask);
 }
 
 
@@ -768,16 +776,16 @@ static READ16_HANDLER( sjryuko_custom_io_r )
 			switch (offset & 3)
 			{
 				case 1:
-					if (input_port_read_safe(machine, portname[mj_input_num], 0xff) != 0xff)
+					if (input_port_read_safe(space->machine, portname[mj_input_num], 0xff) != 0xff)
 						return 0xff & ~(1 << mj_input_num);
 					return 0xff;
 
 				case 2:
-					return input_port_read_safe(machine, portname[mj_input_num], 0xff);
+					return input_port_read_safe(space->machine, portname[mj_input_num], 0xff);
 			}
 			break;
 	}
-	return standard_io_r(machine, offset, mem_mask);
+	return standard_io_r(space, offset, mem_mask);
 }
 
 
@@ -856,11 +864,11 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( n7751_portmap, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(MCS48_PORT_BUS,MCS48_PORT_BUS) AM_READ(n7751_rom_r)
-	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1)  AM_READ(n7751_t1_r)
-	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1)  AM_WRITE(dac_0_data_w)
-	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2)  AM_READWRITE(n7751_command_r, n7751_busy_w)
-	AM_RANGE(MCS48_PORT_P4, MCS48_PORT_P7)  AM_WRITE(n7751_rom_offset_w)
+	AM_RANGE(MCS48_PORT_BUS,  MCS48_PORT_BUS)  AM_READ(n7751_rom_r)
+	AM_RANGE(MCS48_PORT_T1,   MCS48_PORT_T1)   AM_READ(n7751_t1_r)
+	AM_RANGE(MCS48_PORT_P1,   MCS48_PORT_P1)   AM_WRITE(dac_0_data_w)
+	AM_RANGE(MCS48_PORT_P2,   MCS48_PORT_P2)   AM_DEVREADWRITE(I8243, "n7751_8243", n7751_p2_r, n7751_p2_w)
+	AM_RANGE(MCS48_PORT_PROG, MCS48_PORT_PROG) AM_DEVWRITE(I8243, "n7751_8243", i8243_prog_w)
 ADDRESS_MAP_END
 
 
@@ -871,12 +879,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0fff) AM_ROM
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( mcu_data_map, ADDRESS_SPACE_DATA, 8 )
+static ADDRESS_MAP_START( mcu_io_map, ADDRESS_SPACE_DATA, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
@@ -1784,6 +1787,8 @@ static MACHINE_DRIVER_START( system16a )
 	MDRV_CPU_ADD("n7751", N7751, 6000000)
 	MDRV_CPU_IO_MAP(n7751_portmap,0)
 
+	MDRV_I8243_ADD("n7751_8243", NULL, n7751_rom_offset_w)
+
 	MDRV_MACHINE_RESET(system16a)
 	MDRV_NVRAM_HANDLER(system16a)
 
@@ -1830,8 +1835,7 @@ static MACHINE_DRIVER_START( system16a_8751 )
 	MDRV_CPU_VBLANK_INT("main", i8751_main_cpu_vblank)
 
 	MDRV_CPU_ADD("mcu", I8751, 8000000)
-	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
-	MDRV_CPU_DATA_MAP(mcu_data_map,0)
+	MDRV_CPU_IO_MAP(mcu_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_pulse)
 MACHINE_DRIVER_END
 

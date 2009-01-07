@@ -19,6 +19,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "video/konamiic.h"
 #include "machine/eeprom.h"
@@ -35,46 +36,46 @@ VIDEO_UPDATE( overdriv );
 
 static READ16_HANDLER( K051316_0_msb_r )
 {
-	return K051316_0_r(machine,offset) << 8;
+	return K051316_0_r(space,offset) << 8;
 }
 
 static READ16_HANDLER( K051316_1_msb_r )
 {
-	return K051316_1_r(machine,offset) << 8;
+	return K051316_1_r(space,offset) << 8;
 }
 
 static READ16_HANDLER( K051316_rom_0_msb_r )
 {
-	return K051316_rom_0_r(machine,offset) << 8;
+	return K051316_rom_0_r(space,offset) << 8;
 }
 
 static READ16_HANDLER( K051316_rom_1_msb_r )
 {
-	return K051316_rom_1_r(machine,offset) << 8;
+	return K051316_rom_1_r(space,offset) << 8;
 }
 
 static WRITE16_HANDLER( K051316_0_msb_w )
 {
 	if (ACCESSING_BITS_8_15)
-		K051316_0_w(machine,offset,data >> 8);
+		K051316_0_w(space,offset,data >> 8);
 }
 
 static WRITE16_HANDLER( K051316_1_msb_w )
 {
 	if (ACCESSING_BITS_8_15)
-		K051316_1_w(machine,offset,data >> 8);
+		K051316_1_w(space,offset,data >> 8);
 }
 
 static WRITE16_HANDLER( K051316_ctrl_0_msb_w )
 {
 	if (ACCESSING_BITS_8_15)
-		K051316_ctrl_0_w(machine,offset,data >> 8);
+		K051316_ctrl_0_w(space,offset,data >> 8);
 }
 
 static WRITE16_HANDLER( K051316_ctrl_1_msb_w )
 {
 	if (ACCESSING_BITS_8_15)
-		K051316_ctrl_1_w(machine,offset,data >> 8);
+		K051316_ctrl_1_w(space,offset,data >> 8);
 }
 
 
@@ -114,7 +115,7 @@ static NVRAM_HANDLER( overdriv )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_intf);
+		eeprom_init(machine, &eeprom_intf);
 
 		if (file)
 			eeprom_load(file);
@@ -125,7 +126,7 @@ static NVRAM_HANDLER( overdriv )
 
 static WRITE16_HANDLER( eeprom_w )
 {
-//logerror("%06x: write %04x to eeprom_w\n",activecpu_get_pc(),data);
+//logerror("%06x: write %04x to eeprom_w\n",cpu_get_pc(space->cpu),data);
 	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0 is data */
@@ -143,20 +144,20 @@ static WRITE16_HANDLER( eeprom_w )
 
 static INTERRUPT_GEN( cpuA_interrupt )
 {
-	if (cpu_getiloops()) cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
-	else cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+	if (cpu_getiloops(device)) cpu_set_input_line(device, 5, HOLD_LINE);
+	else cpu_set_input_line(device, 4, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( cpuB_interrupt )
 {
-	if (K053246_is_IRQ_enabled()) cpunum_set_input_line(machine, 1, 4, HOLD_LINE);
+	if (K053246_is_IRQ_enabled()) cpu_set_input_line(device, 4, HOLD_LINE);
 }
 
 
 static MACHINE_RESET( overdriv )
 {
 	/* start with cpu B halted */
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static WRITE16_HANDLER( cpuA_ctrl_w )
@@ -164,7 +165,7 @@ static WRITE16_HANDLER( cpuA_ctrl_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0 probably enables the second 68000 */
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 
 		/* bit 1 is clear during service mode - function unknown */
 
@@ -172,7 +173,7 @@ static WRITE16_HANDLER( cpuA_ctrl_w )
 		coin_counter_w(0,data & 0x10);
 		coin_counter_w(1,data & 0x20);
 
-//logerror("%06x: write %04x to cpuA_ctrl_w\n",activecpu_get_pc(),data);
+//logerror("%06x: write %04x to cpuA_ctrl_w\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
@@ -216,27 +217,27 @@ static WRITE16_HANDLER( sharedram_w )
 
 static READ16_HANDLER( overdriv_sound_0_r )
 {
-	return k053260_0_r(machine,2 + offset);
+	return k053260_0_r(space,2 + offset);
 }
 
 static READ16_HANDLER( overdriv_sound_1_r )
 {
-	return k053260_1_r(machine,2 + offset);
+	return k053260_1_r(space,2 + offset);
 }
 
 static WRITE16_HANDLER( overdriv_soundirq_w )
 {
-	cpunum_set_input_line(machine, 2,M6809_IRQ_LINE,HOLD_LINE);
+	cpu_set_input_line(space->machine->cpu[2],M6809_IRQ_LINE,HOLD_LINE);
 }
 
 static WRITE16_HANDLER( overdriv_cpuB_irq5_w )
 {
-	cpunum_set_input_line(machine, 1,5,HOLD_LINE);
+	cpu_set_input_line(space->machine->cpu[1],5,HOLD_LINE);
 }
 
 static WRITE16_HANDLER( overdriv_cpuB_irq6_w )
 {
-	cpunum_set_input_line(machine, 1,6,HOLD_LINE);
+	cpu_set_input_line(space->machine->cpu[1],6,HOLD_LINE);
 }
 
 
@@ -401,7 +402,7 @@ static MACHINE_DRIVER_START( overdriv )
 						/* 60 fps, that's how I fixed it for now. */
 	MDRV_CPU_PROGRAM_MAP(overdriv_s_readmem,overdriv_s_writemem)
 
-	MDRV_INTERLEAVE(200)
+	MDRV_QUANTUM_TIME(HZ(12000))
 
 	MDRV_MACHINE_RESET(overdriv)
 	MDRV_NVRAM_HANDLER(overdriv)
@@ -490,7 +491,7 @@ ROM_END
 
 static DRIVER_INIT( overdriv )
 {
-	konami_rom_deinterleave_4("gfx1");
+	konami_rom_deinterleave_4(machine, "gfx1");
 }
 
 

@@ -289,7 +289,7 @@ static const char *const seqtypestrings[] = { "standard", "decrement", "incremen
     PORT HANDLER TABLES
 ***************************************************************************/
 
-static const read8_machine_func port_handler8[] =
+static const read8_space_func port_handler8[] =
 {
 	input_port_0_r,			input_port_1_r,			input_port_2_r,			input_port_3_r,
 	input_port_4_r,			input_port_5_r,			input_port_6_r,			input_port_7_r,
@@ -302,7 +302,7 @@ static const read8_machine_func port_handler8[] =
 };
 
 
-static const read16_machine_func port_handler16[] =
+static const read16_space_func port_handler16[] =
 {
 	input_port_0_word_r,	input_port_1_word_r,	input_port_2_word_r,	input_port_3_word_r,
 	input_port_4_word_r,	input_port_5_word_r,	input_port_6_word_r,	input_port_7_word_r,
@@ -315,7 +315,7 @@ static const read16_machine_func port_handler16[] =
 };
 
 
-static const read32_machine_func port_handler32[] =
+static const read32_space_func port_handler32[] =
 {
 	input_port_0_dword_r,	input_port_1_dword_r,	input_port_2_dword_r,	input_port_3_dword_r,
 	input_port_4_dword_r,	input_port_5_dword_r,	input_port_6_dword_r,	input_port_7_dword_r,
@@ -628,7 +628,7 @@ INLINE const char *get_port_tag(const input_port_config *port, char *tempbuffer)
     buffer
 -------------------------------------------------*/
 
-INLINE void *error_buf_append(char *errorbuf, int errorbuflen, const char *format, ...)
+INLINE void* ATTR_PRINTF(3,4) error_buf_append(char *errorbuf, int errorbuflen, const char *format, ...)
 {
 	int curlen = (errorbuf != NULL) ? strlen(errorbuf) : 0;
 	int bytesleft = errorbuflen - curlen;
@@ -1277,7 +1277,7 @@ input_port_value input_port_read_direct(const input_port_config *port)
 			/* interpolate if appropriate and if time has passed since the last update */
 			if (analog->interpolate && !(analog->field->flags & ANALOG_FLAG_RESET) && portdata->last_delta_nsec != 0)
 			{
-				attoseconds_t nsec_since_last = attotime_to_attoseconds(attotime_sub(timer_get_time(), portdata->last_frame_time)) / ATTOSECONDS_PER_NANOSECOND;
+				attoseconds_t nsec_since_last = attotime_to_attoseconds(attotime_sub(timer_get_time(port->machine), portdata->last_frame_time)) / ATTOSECONDS_PER_NANOSECOND;
 				value = analog->previous + ((INT64)(analog->accum - analog->previous) * nsec_since_last / portdata->last_delta_nsec);
 			}
 
@@ -1530,28 +1530,28 @@ const char *input_port_string_from_token(const input_port_token token)
     tag
 -------------------------------------------------*/
 
-read8_machine_func input_port_read_handler8(const input_port_config *portlist, const char *tag)
+read8_space_func input_port_read_handler8(const input_port_config *portlist, const char *tag)
 {
 	int portnum = get_port_index(portlist, tag);
 	return (portnum == -1) ? SMH_NOP : port_handler8[portnum];
 }
 
 
-read16_machine_func input_port_read_handler16(const input_port_config *portlist, const char *tag)
+read16_space_func input_port_read_handler16(const input_port_config *portlist, const char *tag)
 {
 	int portnum = get_port_index(portlist, tag);
 	return (portnum == -1) ? SMH_NOP : port_handler16[portnum];
 }
 
 
-read32_machine_func input_port_read_handler32(const input_port_config *portlist, const char *tag)
+read32_space_func input_port_read_handler32(const input_port_config *portlist, const char *tag)
 {
 	int portnum = get_port_index(portlist, tag);
 	return (portnum == -1) ? SMH_NOP : port_handler32[portnum];
 }
 
 
-read64_machine_func input_port_read_handler64(const input_port_config *portlist, const char *tag)
+read64_space_func input_port_read_handler64(const input_port_config *portlist, const char *tag)
 {
 	return SMH_NOP;
 }
@@ -2008,7 +2008,7 @@ static void frame_update(running_machine *machine)
 	input_port_private *portdata = machine->input_port_data;
 	const input_field_config *mouse_field = NULL;
 	int ui_visible = ui_is_menu_active();
-	attotime curtime = timer_get_time();
+	attotime curtime = timer_get_time(machine);
 	const input_port_config *port;
 	render_target *mouse_target;
 	INT32 mouse_target_x;
@@ -2033,7 +2033,7 @@ profiler_mark(PROFILER_INPUT);
 
 	/* perform the mouse hit test */
 	mouse_target = ui_input_find_mouse(machine, &mouse_target_x, &mouse_target_y, &mouse_button);
-	if (mouse_button)
+	if (mouse_button && mouse_target)
 	{
 		const char *tag = NULL;
 		input_port_value mask;
@@ -3137,7 +3137,9 @@ static void field_config_insert(input_field_config *field, input_port_value *dis
 	for (scanfieldptr = &field->port->fieldlist; *scanfieldptr != NULL; scanfieldptr = scanfieldnextptr)
 	{
 		scanfieldnextptr = &(*scanfieldptr)->next;
-		if (((*scanfieldptr)->mask & field->mask) != 0 && (field->condition.condition == PORTCOND_ALWAYS || condition_equal(&(*scanfieldptr)->condition, &field->condition)))
+		if (((*scanfieldptr)->mask & field->mask) != 0 && (field->condition.condition == PORTCOND_ALWAYS ||
+		                                                   (*scanfieldptr)->condition.condition == PORTCOND_ALWAYS ||
+		                                                   condition_equal(&(*scanfieldptr)->condition, &field->condition)))
 		{
 			/* reduce the mask of the field we found */
 			config = (input_field_config *)*scanfieldptr;
@@ -3971,6 +3973,9 @@ static time_t playback_init(running_machine *machine)
 	if (memcmp(machine->gamedrv->name, header + 0x14, strlen(machine->gamedrv->name) + 1) != 0)
 		fatalerror("Input file is for " GAMENOUN " '%s', not for current " GAMENOUN " '%s'\n", header + 0x14, machine->gamedrv->name);
 
+	/* enable compression */
+	mame_fcompress(portdata->playback_file, FCOMPRESS_MEDIUM);
+
 	return basetime;
 }
 
@@ -4042,7 +4047,8 @@ static void playback_port(const input_port_config *port)
 	{
 		analog_field_state *analog;
 
-		/* read the digital value */
+		/* read the default value and the digital state */
+		port->state->defvalue = playback_read_uint32(port->machine);
 		port->state->digital = playback_read_uint32(port->machine);
 
 		/* loop over analog ports and save their data */
@@ -4166,6 +4172,9 @@ static void record_init(running_machine *machine)
 
 	/* write it */
 	mame_fwrite(portdata->record_file, header, sizeof(header));
+
+	/* enable compression */
+	mame_fcompress(portdata->record_file, FCOMPRESS_MEDIUM);
 }
 
 
@@ -4226,7 +4235,8 @@ static void record_port(const input_port_config *port)
 	{
 		analog_field_state *analog;
 
-		/* store the digital value */
+		/* store the default value and digital state */
+		record_write_uint32(port->machine, port->state->defvalue);
 		record_write_uint32(port->machine, port->state->digital);
 
 		/* loop over analog ports and save their data */

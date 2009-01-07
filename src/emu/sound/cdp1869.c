@@ -12,11 +12,11 @@
 
 #include "sndintrf.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "sound/cdp1869.h"
 
 struct CDP1869
 {
+	const device_config *device;
 	sound_stream *stream;	/* returned by stream_create() */
 	int clock;			/* chip's base frequency */
 
@@ -40,20 +40,20 @@ struct CDP1869
  *
  *************************************/
 
-static void cdp1869_update(void *param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( cdp1869_update )
 {
-	struct CDP1869 *info = (struct CDP1869 *) param;
+	struct CDP1869 *info = param;
 	INT16 signal = info->signal;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
-	memset( buffer, 0, length * sizeof(*buffer) );
+	memset( buffer, 0, samples * sizeof(*buffer) );
 
 	if (!info->toneoff && info->toneamp)
 	{
 		double frequency = (info->clock / 2) / (512 >> info->tonefreq) / (info->tonediv + 1);
 //      double amplitude = info->toneamp * ((0.78*5) / 15);
 
-		int rate = Machine->sample_rate / 2;
+		int rate = info->device->machine->sample_rate / 2;
 
 		/* get progress through wave */
 		int incr = info->incr;
@@ -67,7 +67,7 @@ static void cdp1869_update(void *param, stream_sample_t **inputs, stream_sample_
 			signal = info->toneamp * (0x07fff / 15);
 		}
 
-		while( length-- > 0 )
+		while( samples-- > 0 )
 		{
 			*buffer++ = signal;
 			incr -= frequency;
@@ -103,14 +103,15 @@ static void cdp1869_update(void *param, stream_sample_t **inputs, stream_sample_
  *
  *************************************/
 
-static void *cdp1869_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( cdp1869 )
 {
 	struct CDP1869 *info;
 
 	info = auto_malloc(sizeof(*info));
 	memset(info, 0, sizeof(*info));
 
-	info->stream = stream_create(0, 1, Machine->sample_rate, info, cdp1869_update );
+	info->device = device;
+	info->stream = stream_create(device, 0, 1, device->machine->sample_rate, info, cdp1869_update );
 	info->incr = 0;
 	info->signal = 0x07fff;
 
@@ -172,7 +173,7 @@ void cdp1869_set_wnoff(int which, int value)
  * Generic get_info
  **************************************************************************/
 
-static void cdp1869_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( cdp1869 )
 {
 	switch (state)
 	{
@@ -180,23 +181,23 @@ static void cdp1869_set_info(void *token, UINT32 state, sndinfo *info)
 	}
 }
 
-void cdp1869_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( cdp1869 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = cdp1869_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = cdp1869_start;			break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( cdp1869 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( cdp1869 );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							/* nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "CDP1869";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "RCA CDP1869";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "CDP1869");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "RCA CDP1869");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

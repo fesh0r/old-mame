@@ -12,15 +12,7 @@ Todo: Priority between tree0 and tree1.
 ***************************************************************************/
 
 #include "driver.h"
-
-
-extern UINT8 changela_tree0_col;
-extern UINT8 changela_tree1_col;
-extern UINT8 changela_left_bank_col;
-extern UINT8 changela_right_bank_col;
-extern UINT8 changela_boat_shore_col;
-extern UINT8 changela_collision_reset;
-extern UINT8 changela_tree_collision_reset;
+#include "includes/changela.h"
 
 
 static UINT32 slopeROM_bank;
@@ -46,16 +38,16 @@ VIDEO_START( changela )
 	tree0_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 	tree1_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
-	changela_scanline_timer = timer_alloc(changela_scanline_callback, NULL);
+	changela_scanline_timer = timer_alloc(machine, changela_scanline_callback, NULL);
 	timer_adjust_oneshot(changela_scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 30, 0), 30);
 
-	state_save_register_global(slopeROM_bank);
-	state_save_register_global(tree_en);
-	state_save_register_global(horizon);
-	state_save_register_global(mem_dev_selected);
+	state_save_register_global(machine, slopeROM_bank);
+	state_save_register_global(machine, tree_en);
+	state_save_register_global(machine, horizon);
+	state_save_register_global(machine, mem_dev_selected);
 
-	state_save_register_global_pointer(memory_devices, 4*0x800);
-	state_save_register_global_pointer(tree_ram, 2*0x20);
+	state_save_register_global_pointer(machine, memory_devices, 4*0x800);
+	state_save_register_global_pointer(machine, tree_ram, 2*0x20);
 }
 
 /**************************************************************************
@@ -671,10 +663,10 @@ static TIMER_CALLBACK( changela_scanline_callback )
 
 	/* clear the current scanline first */
 	rectangle rect = { 0, 255, sy, sy };
-	fillbitmap(river_bitmap, 0x00, &rect);
-	fillbitmap(obj0_bitmap, 0x00, &rect);
-	fillbitmap(tree0_bitmap, 0x00, &rect);
-	fillbitmap(tree1_bitmap, 0x00, &rect);
+	bitmap_fill(river_bitmap, &rect, 0x00);
+	bitmap_fill(obj0_bitmap, &rect, 0x00);
+	bitmap_fill(tree0_bitmap, &rect, 0x00);
+	bitmap_fill(tree1_bitmap, &rect, 0x00);
 
 	draw_river(machine, river_bitmap, sy);
 	draw_obj0(machine, obj0_bitmap, sy);
@@ -784,7 +776,7 @@ WRITE8_HANDLER( changela_colors_w )
 	g = color_table[(c >> 3) & 0x07];
 	b = color_table[(c >> 6) & 0x07];
 
-	palette_set_color_rgb(machine,color_index,r,g,b);
+	palette_set_color_rgb(space->machine,color_index,r,g,b);
 }
 
 
@@ -797,11 +789,11 @@ WRITE8_HANDLER( changela_mem_device_select_w )
 	/*
     (data & 0x07) possible settings:
     0 - not connected (no device)
-    1 - ADR1 is 2114 RAM at U59 (state machine) (accessible range: 0x0000-0x003f)
+    1 - ADR1 is 2114 RAM at U59 (state space->machine) (accessible range: 0x0000-0x003f)
     2 - ADR2 is 2128 RAM at U109 (River RAM)    (accessible range: 0x0000-0x07ff)
     3 - ADR3 is 2128 RAM at U114 (Tree RAM)    (accessible range: 0x0000-0x07ff)
     4 - ADR4 is 2732 ROM at U7    (Tree ROM)    (accessible range: 0x0000-0x07ff)
-    5 - SLOPE is ROM at U44 (state machine)     (accessible range: 0x0000-0x07ff)
+    5 - SLOPE is ROM at U44 (state space->machine)     (accessible range: 0x0000-0x07ff)
     */
 }
 

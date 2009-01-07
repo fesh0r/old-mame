@@ -10,6 +10,8 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6805/m6805.h"
+#include "cpu/m68000/m68000.h"
 #include "video/vector.h"
 #include "vertigo.h"
 #include "exidy440.h"
@@ -110,8 +112,7 @@ static MACHINE_DRIVER_START( vertigo )
 
 	MDRV_IMPORT_FROM(exidy440_audio)
 
-	MDRV_DEVICE_ADD( "pit8254", PIT8254 )
-	MDRV_DEVICE_CONFIG( vertigo_pit8254_config )
+	MDRV_PIT8254_ADD( "pit8254", vertigo_pit8254_config )
 
 	/* motor controller */
 	/*

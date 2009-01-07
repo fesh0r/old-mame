@@ -31,7 +31,6 @@ RAM = 4116 (x11)
 ********************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/rescap.h"
 #include "machine/6821pia.h"
 #include "machine/74123.h"
@@ -77,7 +76,7 @@ static void main_cpu_irq(running_machine *machine, int state)
 	int combined_state = pia_get_irq_a(0) | pia_get_irq_b(0) |
 						 pia_get_irq_a(1) | pia_get_irq_b(1);
 
-	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE,  combined_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], M6809_IRQ_LINE,  combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -90,9 +89,9 @@ static void main_cpu_irq(running_machine *machine, int state)
 
 static READ8_HANDLER( audio_command_r )
 {
-	UINT8 ret = soundlatch_r(machine, 0);
+	UINT8 ret = soundlatch_r(space, 0);
 
-if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  Audio Command Read: %x\n", safe_activecpu_get_pc(), ret);
+if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  Audio Command Read: %x\n", cpu_get_pc(space->cpu), ret);
 
 	return ret;
 }
@@ -100,17 +99,17 @@ if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  Audio Command Read: %x\n", safe_activ
 
 static WRITE8_HANDLER( audio_command_w )
 {
-	soundlatch_w(machine, 0, ~data);
-	cpunum_set_input_line(machine, 1, M6802_IRQ_LINE, HOLD_LINE);
+	soundlatch_w(space, 0, ~data);
+	cpu_set_input_line(space->machine->cpu[1], M6800_IRQ_LINE, HOLD_LINE);
 
-if (LOG_AUDIO_COMM) logerror("%08X   CPU#0  Audio Command Write: %x\n", safe_activecpu_get_pc(), data^0xff);
+if (LOG_AUDIO_COMM) logerror("%08X   CPU#0  Audio Command Write: %x\n", cpu_get_pc(space->cpu), data^0xff);
 }
 
 
 static READ8_HANDLER( audio_answer_r )
 {
-	UINT8 ret = soundlatch2_r(machine, 0);
-if (LOG_AUDIO_COMM) logerror("%08X  CPU#0  Audio Answer Read: %x\n", safe_activecpu_get_pc(), ret);
+	UINT8 ret = soundlatch2_r(space, 0);
+if (LOG_AUDIO_COMM) logerror("%08X  CPU#0  Audio Answer Read: %x\n", cpu_get_pc(space->cpu), ret);
 
 	return ret;
 }
@@ -119,13 +118,13 @@ if (LOG_AUDIO_COMM) logerror("%08X  CPU#0  Audio Answer Read: %x\n", safe_active
 static WRITE8_HANDLER( audio_answer_w )
 {
 	/* HACK - prevents lock-up, but causes game to end some in-between sreens prematurely */
-	if (safe_activecpu_get_pc() == 0xfb12)
+	if (cpu_get_pc(space->cpu) == 0xfb12)
 		data = 0x00;
 
-	soundlatch2_w(machine, 0, data);
-	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, HOLD_LINE);
+	soundlatch2_w(space, 0, data);
+	cpu_set_input_line(space->machine->cpu[0], M6809_IRQ_LINE, HOLD_LINE);
 
-if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  Audio Answer Write: %x\n", safe_activecpu_get_pc(), data);
+if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  Audio Answer Write: %x\n", cpu_get_pc(space->cpu), data);
 }
 
 
@@ -140,7 +139,7 @@ static WRITE8_HANDLER( AY8910_select_w )
        D5-D7 - not used */
 	AY8910_selected = data;
 
-if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910_select_w: %x\n", safe_activecpu_get_pc(), data);
+if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910_select_w: %x\n", cpu_get_pc(space->cpu), data);
 }
 
 
@@ -150,13 +149,13 @@ static READ8_HANDLER( AY8910_port_r )
 
 	if (AY8910_selected & 0x08)
 {
-		ret = ay8910_read_port_0_r(machine, offset);
-if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Port Read: %x\n", safe_activecpu_get_pc(), ret);}
+		ret = ay8910_read_port_0_r(space, offset);
+if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Port Read: %x\n", cpu_get_pc(space->cpu), ret);}
 
 	if (AY8910_selected & 0x10)
 {
-		ret = ay8910_read_port_1_r(machine, offset);
-if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Port Read: %x\n", safe_activecpu_get_pc(), ret);}
+		ret = ay8910_read_port_1_r(space, offset);
+if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Port Read: %x\n", cpu_get_pc(space->cpu), ret);}
 
 	return ret;
 }
@@ -167,24 +166,24 @@ static WRITE8_HANDLER( AY8910_port_w )
 	if (AY8910_selected & 0x04)
 	{
 		if (AY8910_selected & 0x08)
-{if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Control Write: %x\n", safe_activecpu_get_pc(), data);
-			ay8910_control_port_0_w(machine, offset, data);
+{if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Control Write: %x\n", cpu_get_pc(space->cpu), data);
+			ay8910_control_port_0_w(space, offset, data);
 }
 		if (AY8910_selected & 0x10)
-{if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Control Write: %x\n", safe_activecpu_get_pc(), data);
-			ay8910_control_port_1_w(machine, offset, data);
+{if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Control Write: %x\n", cpu_get_pc(space->cpu), data);
+			ay8910_control_port_1_w(space, offset, data);
 }
 	}
 	else
 	{
 		if (AY8910_selected & 0x08)
-{if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Port Write: %x\n", safe_activecpu_get_pc(), data);
-			ay8910_write_port_0_w(machine, offset, data);
+{if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Port Write: %x\n", cpu_get_pc(space->cpu), data);
+			ay8910_write_port_0_w(space, offset, data);
 }
 
 		if (AY8910_selected & 0x10)
-{if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Port Write: %x\n", safe_activecpu_get_pc(), data);
-			ay8910_write_port_1_w(machine, offset, data);
+{if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Port Write: %x\n", cpu_get_pc(space->cpu), data);
+			ay8910_write_port_1_w(space, offset, data);
 }
 	}
 }
@@ -225,10 +224,11 @@ static const ay8910_interface ay8910_2_interface =
  *
  *************************************/
 
-static void ttl74123_output_changed(int output)
+static WRITE8_DEVICE_HANDLER( ttl74123_output_changed )
 {
-	pia_0_ca1_w(Machine, 0, output);
-	ttl74123_output = output;
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	pia_0_ca1_w(space, 0, data);
+	ttl74123_output = data;
 }
 
 
@@ -238,7 +238,7 @@ static CUSTOM_INPUT( get_ttl74123_output )
 }
 
 
-static const TTL74123_interface ttl74123_intf =
+static const ttl74123_config ttl74123_intf =
 {
 	TTL74123_GROUNDED,	/* the hook up type */
 	RES_K(22),			/* resistor connected to RCext */
@@ -275,15 +275,13 @@ static const pia6821_interface pia_audio_intf =
 
 static MACHINE_START( r2dtank )
 {
-	pia_config(0, &pia_main_intf);
-	pia_config(1, &pia_audio_intf);
-
-	TTL74123_config(0, &ttl74123_intf);
+	pia_config(machine, 0, &pia_main_intf);
+	pia_config(machine, 1, &pia_audio_intf);
 
 	/* setup for save states */
-	state_save_register_global(flipscreen);
-	state_save_register_global(ttl74123_output);
-	state_save_register_global(AY8910_selected);
+	state_save_register_global(machine, flipscreen);
+	state_save_register_global(machine, ttl74123_output);
+	state_save_register_global(machine, AY8910_selected);
 }
 
 
@@ -297,7 +295,6 @@ static MACHINE_START( r2dtank )
 static MACHINE_RESET( r2dtank )
 {
 	pia_reset();
-	TTL74123_reset(0);
 }
 
 
@@ -383,14 +380,13 @@ static MC6845_UPDATE_ROW( update_row )
 
 static MC6845_ON_DE_CHANGED( display_enable_changed )
 {
-	TTL74123_A_w(0, display_enabled);
+	ttl74123_a_w(devtag_get_device(device->machine, TTL74123, "74123"), 0, display_enabled);
 }
 
 
 static const mc6845_interface mc6845_intf =
 {
 	"main",					/* screen we are acting on */
-	CRTC_CLOCK, 			/* the clock (pin 21) of the chip */
 	8,						/* number of pixels per video memory address */
 	begin_update,			/* before pixel update callback */
 	update_row,				/* row update callback */
@@ -419,7 +415,7 @@ static VIDEO_UPDATE( r2dtank )
 
 static WRITE8_HANDLER( pia_comp_0_w )
 {
-	pia_0_w(machine, offset, ~data);
+	pia_0_w(space, offset, ~data);
 }
 
 
@@ -553,8 +549,11 @@ static MACHINE_DRIVER_START( r2dtank )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 256, 0, 256, 256, 0, 256)	/* temporary, CRTC will configure screen */
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
-	MDRV_DEVICE_CONFIG(mc6845_intf)
+	MDRV_MC6845_ADD("crtc", MC6845, CRTC_CLOCK, mc6845_intf)
+
+	/* 74LS123 */
+
+	MDRV_TTL74123_ADD("74123", ttl74123_intf)
 
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

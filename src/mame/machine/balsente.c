@@ -102,7 +102,7 @@ static UINT8 grudge_last_steering[3];
 
 static TIMER_CALLBACK( irq_off )
 {
-	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], M6809_IRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -115,10 +115,10 @@ static TIMER_CALLBACK( interrupt_timer )
 		timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, param + 64, 0), param + 64);
 
 	/* IRQ starts on scanline 0, 64, 128, etc. */
-	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], M6809_IRQ_LINE, ASSERT_LINE);
 
 	/* it will turn off on the next HBLANK */
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, param, BALSENTE_HBSTART), NULL, 0, irq_off);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, param, BALSENTE_HBSTART), NULL, 0, irq_off);
 
 	/* if this is Grudge Match, update the steering */
 	if (grudge_steering_result & 0x80)
@@ -147,6 +147,7 @@ static TIMER_CALLBACK( interrupt_timer )
 
 MACHINE_RESET( balsente )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	int numbanks, i;
 
 	/* create the polynomial tables */
@@ -154,14 +155,14 @@ MACHINE_RESET( balsente )
 
 	/* reset counters; counter 2's gate is tied high */
 	memset(counter, 0, sizeof(counter));
-	counter[1].timer = timer_alloc(counter_callback, NULL);
-	counter[2].timer = timer_alloc(counter_callback, NULL);
+	counter[1].timer = timer_alloc(machine, counter_callback, NULL);
+	counter[2].timer = timer_alloc(machine, counter_callback, NULL);
 	counter[2].gate = 1;
 
 	/* reset the manual counter 0 clock */
 	counter_control = 0x00;
 	counter_0_ff = 0;
-	counter_0_timer = timer_alloc(clock_counter_0_ff, NULL);
+	counter_0_timer = timer_alloc(machine, clock_counter_0_ff, NULL);
 	counter_0_timer_active = 0;
 
 	/* reset the ADC states */
@@ -176,66 +177,67 @@ MACHINE_RESET( balsente )
 	grudge_steering_result = 0;
 
 	/* reset the 6850 chips */
-	balsente_m6850_w(machine, 0, 3);
-	balsente_m6850_sound_w(machine, 0, 3);
+	balsente_m6850_w(space, 0, 3);
+	balsente_m6850_sound_w(space, 0, 3);
 
 	/* reset the noise generator */
 	memset(noise_position, 0, sizeof(noise_position));
 
 	/* point the banks to bank 0 */
 	numbanks = (memory_region_length(machine, "main") > 0x40000) ? 16 : 8;
-	memory_configure_bank(1, 0, numbanks, &memory_region(machine, "main")[0x10000], 0x6000);
-	memory_configure_bank(2, 0, numbanks, &memory_region(machine, "main")[0x12000], 0x6000);
-	memory_set_bank(1, 0);
-	memory_set_bank(2, 0);
+	memory_configure_bank(machine, 1, 0, numbanks, &memory_region(machine, "main")[0x10000], 0x6000);
+	memory_configure_bank(machine, 2, 0, numbanks, &memory_region(machine, "main")[0x12000], 0x6000);
+	memory_set_bank(space->machine, 1, 0);
+	memory_set_bank(space->machine, 2, 0);
+	device_reset(machine->cpu[0]);
 
 	/* start a timer to generate interrupts */
-	scanline_timer = timer_alloc(interrupt_timer, NULL);
+	scanline_timer = timer_alloc(machine, interrupt_timer, NULL);
 	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 
 	/* register for saving */
 	for (i = 0; i < 3; i++)
 	{
-		state_save_register_item("8253counter", i, counter[i].timer_active);
-		state_save_register_item("8253counter", i, counter[i].initial);
-		state_save_register_item("8253counter", i, counter[i].count);
-		state_save_register_item("8253counter", i, counter[i].gate);
-		state_save_register_item("8253counter", i, counter[i].out);
-		state_save_register_item("8253counter", i, counter[i].mode);
-		state_save_register_item("8253counter", i, counter[i].readbyte);
-		state_save_register_item("8253counter", i, counter[i].writebyte);
+		state_save_register_item(machine, "8253counter", NULL, i, counter[i].timer_active);
+		state_save_register_item(machine, "8253counter", NULL, i, counter[i].initial);
+		state_save_register_item(machine, "8253counter", NULL, i, counter[i].count);
+		state_save_register_item(machine, "8253counter", NULL, i, counter[i].gate);
+		state_save_register_item(machine, "8253counter", NULL, i, counter[i].out);
+		state_save_register_item(machine, "8253counter", NULL, i, counter[i].mode);
+		state_save_register_item(machine, "8253counter", NULL, i, counter[i].readbyte);
+		state_save_register_item(machine, "8253counter", NULL, i, counter[i].writebyte);
 	}
 
-	state_save_register_global(counter_control);
-	state_save_register_global(counter_0_ff);
-	state_save_register_global(counter_0_timer_active);
+	state_save_register_global(machine, counter_control);
+	state_save_register_global(machine, counter_0_ff);
+	state_save_register_global(machine, counter_0_timer_active);
 
-	state_save_register_global_array(analog_input_data);
-	state_save_register_global(adc_value);
+	state_save_register_global_array(machine, analog_input_data);
+	state_save_register_global(machine, adc_value);
 
-	state_save_register_global(dac_value);
-	state_save_register_global(dac_register);
-	state_save_register_global(chip_select);
+	state_save_register_global(machine, dac_value);
+	state_save_register_global(machine, dac_register);
+	state_save_register_global(machine, chip_select);
 
-	state_save_register_global(m6850_status);
-	state_save_register_global(m6850_control);
-	state_save_register_global(m6850_input);
-	state_save_register_global(m6850_output);
-	state_save_register_global(m6850_data_ready);
+	state_save_register_global(machine, m6850_status);
+	state_save_register_global(machine, m6850_control);
+	state_save_register_global(machine, m6850_input);
+	state_save_register_global(machine, m6850_output);
+	state_save_register_global(machine, m6850_data_ready);
 
-	state_save_register_global(m6850_sound_status);
-	state_save_register_global(m6850_sound_control);
-	state_save_register_global(m6850_sound_input);
-	state_save_register_global(m6850_sound_output);
+	state_save_register_global(machine, m6850_sound_status);
+	state_save_register_global(machine, m6850_sound_control);
+	state_save_register_global(machine, m6850_sound_input);
+	state_save_register_global(machine, m6850_sound_output);
 
-	state_save_register_global_array(noise_position);
+	state_save_register_global_array(machine, noise_position);
 
-	state_save_register_global(nstocker_bits);
-	state_save_register_global(spiker_expand_color);
-	state_save_register_global(spiker_expand_bgcolor);
-	state_save_register_global(spiker_expand_bits);
-	state_save_register_global(grudge_steering_result);
-	state_save_register_global_array(grudge_last_steering);
+	state_save_register_global(machine, nstocker_bits);
+	state_save_register_global(machine, spiker_expand_color);
+	state_save_register_global(machine, spiker_expand_bgcolor);
+	state_save_register_global(machine, spiker_expand_bits);
+	state_save_register_global(machine, grudge_steering_result);
+	state_save_register_global_array(machine, grudge_last_steering);
 }
 
 
@@ -312,7 +314,7 @@ READ8_HANDLER( balsente_random_num_r )
 	UINT32 cc;
 
 	/* CPU runs at 1.25MHz, noise source at 100kHz --> multiply by 12.5 */
-	cc = activecpu_gettotalcycles();
+	cc = cpu_get_total_cycles(space->cpu);
 
 	/* 12.5 = 8 + 4 + 0.5 */
 	cc = (cc << 3) + (cc << 2) + (cc >> 1);
@@ -330,8 +332,8 @@ READ8_HANDLER( balsente_random_num_r )
 WRITE8_HANDLER( balsente_rombank_select_w )
 {
 	/* the bank number comes from bits 4-6 */
-	memory_set_bank(1, (data >> 4) & 7);
-	memory_set_bank(2, (data >> 4) & 7);
+	memory_set_bank(space->machine, 1, (data >> 4) & 7);
+	memory_set_bank(space->machine, 2, (data >> 4) & 7);
 }
 
 
@@ -341,20 +343,20 @@ WRITE8_HANDLER( balsente_rombank2_select_w )
 	int bank = data & 7;
 
 	/* top bit controls which half of the ROMs to use (Name that Tune only) */
-	if (memory_region_length(machine, "main") > 0x40000) bank |= (data >> 4) & 8;
+	if (memory_region_length(space->machine, "main") > 0x40000) bank |= (data >> 4) & 8;
 
 	/* when they set the AB bank, it appears as though the CD bank is reset */
 	if (data & 0x20)
 	{
-		memory_set_bank(1, bank);
-		memory_set_bank(2, 6);
+		memory_set_bank(space->machine, 1, bank);
+		memory_set_bank(space->machine, 2, 6);
 	}
 
 	/* set both banks */
 	else
 	{
-		memory_set_bank(1, bank);
-		memory_set_bank(2, bank);
+		memory_set_bank(space->machine, 1, bank);
+		memory_set_bank(space->machine, 2, bank);
 	}
 }
 
@@ -447,12 +449,12 @@ static void m6850_update_io(running_machine *machine)
 	/* apply the change */
 	if (new_state && !(m6850_status & 0x80))
 	{
-		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], M6809_FIRQ_LINE, ASSERT_LINE);
 		m6850_status |= 0x80;
 	}
 	else if (!new_state && (m6850_status & 0x80))
 	{
-		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], M6809_FIRQ_LINE, CLEAR_LINE);
 		m6850_status &= ~0x80;
 	}
 
@@ -465,12 +467,12 @@ static void m6850_update_io(running_machine *machine)
 	/* apply the change */
 	if (new_state && !(m6850_sound_status & 0x80))
 	{
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
 		m6850_sound_status |= 0x80;
 	}
 	else if (!new_state && (m6850_sound_status & 0x80))
 	{
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
 		m6850_sound_status &= ~0x80;
 	}
 }
@@ -500,7 +502,7 @@ READ8_HANDLER( balsente_m6850_r )
 
 		/* clear the overrun and receive buffer full bits */
 		m6850_status &= ~0x21;
-		m6850_update_io(machine);
+		m6850_update_io(space->machine);
 	}
 
 	return result;
@@ -524,7 +526,7 @@ static TIMER_CALLBACK( m6850_w_callback )
 
 	/* set a timer for 500usec later to actually transmit the data */
 	/* (this is very important for several games, esp Snacks'n Jaxson) */
-	timer_set(ATTOTIME_IN_USEC(500), NULL, param, m6850_data_ready_callback);
+	timer_set(machine, ATTOTIME_IN_USEC(500), NULL, param, m6850_data_ready_callback);
 }
 
 
@@ -536,12 +538,12 @@ WRITE8_HANDLER( balsente_m6850_w )
 		m6850_control = data;
 
 		/* re-update since interrupt enables could have been modified */
-		m6850_update_io(machine);
+		m6850_update_io(space->machine);
 	}
 
 	/* output register is at offset 1; set a timer to synchronize the CPUs */
 	else
-		timer_call_after_resynch(NULL, data, m6850_w_callback);
+		timer_call_after_resynch(space->machine, NULL, data, m6850_w_callback);
 }
 
 
@@ -569,7 +571,7 @@ READ8_HANDLER( balsente_m6850_sound_r )
 
 		/* clear the overrun and receive buffer full bits */
 		m6850_sound_status &= ~0x21;
-		m6850_update_io(machine);
+		m6850_update_io(space->machine);
 	}
 
 	return result;
@@ -590,7 +592,7 @@ WRITE8_HANDLER( balsente_m6850_sound_w )
 	}
 
 	/* re-update since interrupt enables could have been modified */
-	m6850_update_io(machine);
+	m6850_update_io(space->machine);
 }
 
 
@@ -611,7 +613,7 @@ INTERRUPT_GEN( balsente_update_analog_inputs )
 	/* ports are read once a frame, just at varying intervals. To get around this, we */
 	/* read all the analog inputs at VBLANK time and just return the cached values. */
 	for (i = 0; i < 4; i++)
-		analog_input_data[i] = input_port_read(machine, analog[i]);
+		analog_input_data[i] = input_port_read(device->machine, analog[i]);
 }
 
 
@@ -661,7 +663,7 @@ WRITE8_HANDLER( balsente_adc_select_w )
 	/* set a timer to go off and read the value after 50us */
 	/* it's important that we do this for Mini Golf */
 logerror("adc_select %d\n", offset & 7);
-	timer_set(ATTOTIME_IN_USEC(50), NULL, offset & 7, adc_finished);
+	timer_set(space->machine, ATTOTIME_IN_USEC(50), NULL, offset & 7, adc_finished);
 }
 
 
@@ -756,7 +758,7 @@ static void counter_set_out(running_machine *machine, int which, int out)
 {
 	/* OUT on counter 2 is hooked to the /INT line on the Z80 */
 	if (which == 2)
-		cpunum_set_input_line(machine, 1, 0, out ? ASSERT_LINE : CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[1], 0, out ? ASSERT_LINE : CLEAR_LINE);
 
 	/* OUT on counter 0 is hooked to the GATE line on counter 1 */
 	else if (which == 0)
@@ -839,7 +841,7 @@ WRITE8_HANDLER( balsente_counter_8253_w )
 
 			/* if the counter is in mode 0, a write here will reset the OUT state */
 			if (counter[which].mode == 0)
-				counter_set_out(machine, which, 0);
+				counter_set_out(space->machine, which, 0);
 
 			/* write the LSB */
 			if (counter[which].writebyte == 0)
@@ -868,7 +870,7 @@ WRITE8_HANDLER( balsente_counter_8253_w )
 
 				/* if the counter is in mode 1, a write here will set the OUT state */
 				if (counter[which].mode == 1)
-					counter_set_out(machine, which, 1);
+					counter_set_out(space->machine, which, 1);
 			}
 			break;
 
@@ -879,14 +881,14 @@ WRITE8_HANDLER( balsente_counter_8253_w )
 
 			/* if the counter was in mode 0, a write here will reset the OUT state */
 			if (((counter[which].mode >> 1) & 7) == 0)
-				counter_set_out(machine, which, 0);
+				counter_set_out(space->machine, which, 0);
 
 			/* set the mode */
 			counter[which].mode = (data >> 1) & 7;
 
 			/* if the counter is in mode 0, a write here will reset the OUT state */
 			if (counter[which].mode == 0)
-				counter_set_out(machine, which, 0);
+				counter_set_out(space->machine, which, 0);
 			break;
 	}
 }
@@ -1011,14 +1013,14 @@ WRITE8_HANDLER( balsente_counter_control_w )
 	}
 
 	/* set the actual gate afterwards, since we need to know the old value above */
-	counter_set_gate(machine, 0, (data >> 1) & 1);
+	counter_set_gate(space->machine, 0, (data >> 1) & 1);
 
 	/* bits D2 and D4 control the clear/reset flags on the flip-flop that feeds counter 0 */
-	if (!(data & 0x04)) set_counter_0_ff(machine, 1);
-	if (!(data & 0x10)) set_counter_0_ff(machine, 0);
+	if (!(data & 0x04)) set_counter_0_ff(space->machine, 1);
+	if (!(data & 0x10)) set_counter_0_ff(space->machine, 0);
 
 	/* bit 5 clears the NMI interrupt; recompute the I/O state now */
-	m6850_update_io(machine);
+	m6850_update_io(space->machine);
 }
 
 
@@ -1077,7 +1079,7 @@ WRITE8_HANDLER( balsente_chip_select_w )
 					"PULSE_WIDTH",
 					"WAVE_SELECT"
 				};
-				logerror("s%04X:   CEM#%d:%s=%f\n", activecpu_get_previouspc(), i, names[dac_register], voltage);
+				logerror("s%04X:   CEM#%d:%s=%f\n", cpu_get_previouspc(space->cpu), i, names[dac_register], voltage);
 			}
 #endif
 		}
@@ -1101,8 +1103,8 @@ WRITE8_HANDLER( balsente_dac_data_w )
 	if ((chip_select & 0x3f) != 0x3f)
 	{
 		UINT8 temp = chip_select;
-		balsente_chip_select_w(machine, 0, 0x3f);
-		balsente_chip_select_w(machine, 0, temp);
+		balsente_chip_select_w(space, 0, 0x3f);
+		balsente_chip_select_w(space, 0, temp);
 	}
 }
 
@@ -1204,7 +1206,7 @@ static void update_grudge_steering(running_machine *machine)
 
 READ8_HANDLER( grudge_steering_r )
 {
-	logerror("%04X:grudge_steering_r(@%d)\n", activecpu_get_pc(), video_screen_get_vpos(machine->primary_screen));
+	logerror("%04X:grudge_steering_r(@%d)\n", cpu_get_pc(space->cpu), video_screen_get_vpos(space->machine->primary_screen));
 	grudge_steering_result |= 0x80;
 	return grudge_steering_result;
 }

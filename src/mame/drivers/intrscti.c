@@ -12,10 +12,11 @@ I've not had a chance to wire up the board yet, but it might be possible to writ
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 
 static READ8_HANDLER( unk_r )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 static UINT8 *intrscti_ram;
@@ -68,7 +69,7 @@ static VIDEO_UPDATE(intrscti)
 	int y,x;
 	int count;
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	count = 0;
 	for (y=0;y<64;y++)

@@ -77,9 +77,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 VIDEO_START( gaiden )
 {
 	/* set up tile layers */
-	background = tilemap_create(get_bg_tile_info, tilemap_scan_rows,  16, 16, 64, 32);
-	foreground = tilemap_create(get_fg_tile_info, tilemap_scan_rows,  16, 16, 64, 32);
-	text_layer = tilemap_create(get_tx_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
+	background = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,  16, 16, 64, 32);
+	foreground = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,  16, 16, 64, 32);
+	text_layer = tilemap_create(machine, get_tx_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
 
 	tilemap_set_transparent_pen(background, 0);
 	tilemap_set_transparent_pen(foreground, 0);
@@ -95,9 +95,9 @@ VIDEO_START( raiga )
 	tile_bitmap_bg = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 	tile_bitmap_fg = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
-	background = tilemap_create(get_bg_tile_info,	   tilemap_scan_rows,16,16,64,32);
-	foreground = tilemap_create(get_fg_tile_info_raiga,tilemap_scan_rows,16,16,64,32);
-	text_layer = tilemap_create(get_tx_tile_info,	   tilemap_scan_rows, 8, 8,32,32);
+	background = tilemap_create(machine, get_bg_tile_info,	   tilemap_scan_rows,16,16,64,32);
+	foreground = tilemap_create(machine, get_fg_tile_info_raiga,tilemap_scan_rows,16,16,64,32);
+	text_layer = tilemap_create(machine, get_tx_tile_info,	   tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(background,0);
 	tilemap_set_transparent_pen(foreground,0);
@@ -110,9 +110,9 @@ VIDEO_START( raiga )
 VIDEO_START( drgnbowl )
 {
 	/* set up tile layers */
-	background = tilemap_create(get_bg_tile_info, tilemap_scan_rows,       16, 16, 64, 32);
-	foreground = tilemap_create(get_fg_tile_info, tilemap_scan_rows,  16, 16, 64, 32);
-	text_layer = tilemap_create(get_tx_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
+	background = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,       16, 16, 64, 32);
+	foreground = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,  16, 16, 64, 32);
+	text_layer = tilemap_create(machine, get_tx_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
 
 	tilemap_set_transparent_pen(foreground, 15);
 	tilemap_set_transparent_pen(text_layer, 15);
@@ -180,7 +180,7 @@ WRITE16_HANDLER( gaiden_videoram3_w )
 WRITE16_HANDLER( gaiden_flip_w )
 {
 	if (ACCESSING_BITS_0_7)
-		flip_screen_set(data & 1);
+		flip_screen_set(space->machine, data & 1);
 }
 
 
@@ -330,7 +330,7 @@ static void gaiden_draw_sprites(running_machine *machine, bitmap_t *bitmap, cons
 			if (ypos >= 256)
 				ypos -= 512;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				flipx = !flipx;
 				flipy = !flipy;
@@ -426,7 +426,7 @@ static void raiga_draw_sprites(running_machine *machine, bitmap_t *bitmap_bg, bi
 			if (ypos >= 256)
 				ypos -= 512;
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				flipx = !flipx;
 				flipy = !flipy;
@@ -563,8 +563,8 @@ static void drgnbowl_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 
 VIDEO_UPDATE( gaiden )
 {
-	fillbitmap(priority_bitmap, 0, cliprect);
-	fillbitmap(bitmap, 0x200, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 0);
+	bitmap_fill(bitmap, cliprect, 0x200);
 
 	tilemap_draw(bitmap, cliprect, background, 0, 1);
 	tilemap_draw(bitmap, cliprect, foreground, 0, 2);
@@ -576,11 +576,11 @@ VIDEO_UPDATE( gaiden )
 
 VIDEO_UPDATE( raiga )
 {
-	fillbitmap(priority_bitmap,    0, cliprect);
+	bitmap_fill(priority_bitmap,    cliprect, 0);
 
-	fillbitmap(tile_bitmap_bg, 0x200, cliprect);
-	fillbitmap(tile_bitmap_fg,     0, cliprect);
-	fillbitmap(sprite_bitmap,      0, cliprect);
+	bitmap_fill(tile_bitmap_bg, cliprect, 0x200);
+	bitmap_fill(tile_bitmap_fg,     cliprect, 0);
+	bitmap_fill(sprite_bitmap,      cliprect, 0);
 
 	/* draw tilemaps into a 16-bit bitmap */
 	tilemap_draw(tile_bitmap_bg, cliprect,background, 0, 1);
@@ -600,7 +600,7 @@ VIDEO_UPDATE( raiga )
 
 VIDEO_UPDATE( drgnbowl )
 {
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, background, 0, 1);
 	tilemap_draw(bitmap, cliprect, foreground, 0, 2);

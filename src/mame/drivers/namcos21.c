@@ -289,6 +289,8 @@ CPU68 PCB:
   JP3
 */
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
+#include "cpu/m6805/m6805.h"
 #include "deprecat.h"
 #include "namcos2.h"
 #include "cpu/m6809/m6809.h"
@@ -324,6 +326,8 @@ static UINT16 *mpSharedRAM1;
 static UINT8	*mpDualPortRAM;
 static UINT16 pointram_control;
 
+
+#define ENABLE_LOGGING		0
 
 
 #define DSP_BUF_MAX (4096*12)
@@ -375,20 +379,20 @@ static READ16_HANDLER(dspcuskey_r)
 	UINT16 result = 0;
 	if( namcos2_gametype == NAMCOS21_SOLVALOU )
 	{
-		switch( activecpu_get_pc() )
+		switch( cpu_get_pc(space->cpu) )
 		{
 		case 0x805e: result = 0x0000; break;
 		case 0x805f: result = 0xfeba; break;
 		case 0x8067: result = 0xffff; break;
 		case 0x806e: result = 0x0145; break;
 		default:
-			logerror( "unk cuskey_r; pc=0x%x\n", activecpu_get_pc() );
+			logerror( "unk cuskey_r; pc=0x%x\n", cpu_get_pc(space->cpu) );
 			break;
 		}
 	}
 	else if( namcos2_gametype == NAMCOS21_CYBERSLED )
 	{
-		switch( activecpu_get_pc() )
+		switch( cpu_get_pc(space->cpu) )
 		{
 		case 0x8061: result = 0xfe95; break;
 		case 0x8069: result = 0xffff; break;
@@ -399,7 +403,7 @@ static READ16_HANDLER(dspcuskey_r)
 	}
 	else if( namcos2_gametype == NAMCOS21_AIRCOMBAT )
 	{
-		switch( activecpu_get_pc() )
+		switch( cpu_get_pc(space->cpu) )
 		{
 		case 0x8062: result = 0xfeb9; break;
 		case 0x806a: result = 0xffff; break;
@@ -416,7 +420,7 @@ TransmitWordToSlave( UINT16 data )
 {
 	unsigned offs = mpDspState->slaveInputStart+mpDspState->slaveBytesAvailable++;
 	mpDspState->slaveInputBuffer[offs%DSP_BUF_MAX] = data;
-	logerror( "+%04x(#%04x)\n", data, mpDspState->slaveBytesAvailable );
+	if (ENABLE_LOGGING) logerror( "+%04x(#%04x)\n", data, mpDspState->slaveBytesAvailable );
 	mpDspState->slaveActive = 1;
 	if( mpDspState->slaveBytesAvailable >= DSP_BUF_MAX )
 	{
@@ -444,7 +448,7 @@ TransferDspData( running_machine *machine )
 				{
 					addr = namcos21_dspram16[addr];
 					mpDspState->masterSourceAddr = addr;
-					logerror( "LOOP:0x%04x\n", addr );
+					if (ENABLE_LOGGING) logerror( "LOOP:0x%04x\n", addr );
 					addr&=0x7fff;
 					if( old==addr )
 					{
@@ -459,7 +463,7 @@ TransferDspData( running_machine *machine )
 			}
 			else if( mode==0 )
 			{ /* direct data transfer */
-				logerror( "DATA TFR(0x%x)\n", code );
+				if (ENABLE_LOGGING) logerror( "DATA TFR(0x%x)\n", code );
 				TransmitWordToSlave( code );
 				for( i=0; i<code; i++ )
 				{
@@ -469,7 +473,7 @@ TransferDspData( running_machine *machine )
 			}
 			else if( code==0x18 || code==0x1a )
 			{
-				logerror( "HEADER TFR(0x%x)\n", code );
+				if (ENABLE_LOGGING) logerror( "HEADER TFR(0x%x)\n", code );
 				TransmitWordToSlave( code+1 );
 				for( i=0; i<code; i++ )
 				{
@@ -480,7 +484,7 @@ TransferDspData( running_machine *machine )
 			else
 			{
 				INT32 masterAddr = ReadPointROMData(machine, code);
-				logerror( "OBJ TFR(0x%x)\n", code );
+				if (ENABLE_LOGGING) logerror( "OBJ TFR(0x%x)\n", code );
 				{
 					UINT16 len = namcos21_dspram16[addr++];
 					for(;;)
@@ -510,7 +514,7 @@ TransferDspData( running_machine *machine )
 							}
 							else
 							{
-								logerror( "TFR NOP?\n" );
+								if (ENABLE_LOGGING) logerror( "TFR NOP?\n" );
 							}
 						}
 					} /* for(;;) */
@@ -552,12 +556,12 @@ namcos21_kickstart( running_machine *machine, int internal )
 	mpDspState->slaveOutputSize = 0;
 	mpDspState->masterFinished = 0;
 	mpDspState->slaveActive = 0;
-	cpunum_set_input_line(machine, 4, 0, HOLD_LINE); /* DSP: master */
-	cpunum_set_input_line(machine, 5, INPUT_LINE_RESET, PULSE_LINE); /* DSP: slave */
+	cpu_set_input_line(machine->cpu[4], 0, HOLD_LINE); /* DSP: master */
+	cpu_set_input_line(machine->cpu[5], INPUT_LINE_RESET, PULSE_LINE); /* DSP: slave */
 }
 
 static UINT16
-ReadWordFromSlaveInput( void )
+ReadWordFromSlaveInput( const address_space *space )
 {
 	UINT16 data = 0;
 	if( mpDspState->slaveBytesAvailable>0 )
@@ -569,7 +573,7 @@ ReadWordFromSlaveInput( void )
 		{
 			mpDspState->slaveBytesAdvertised--;
 		}
-		logerror( "-%04x(0x%04x) %x\n", data, mpDspState->slaveBytesAvailable, activecpu_get_pc() );
+		if (ENABLE_LOGGING) logerror( "%s:-%04x(0x%04x)\n", cpuexec_describe_context(space->machine), data, mpDspState->slaveBytesAvailable );
 	}
 	return data;
 } /* ReadWordFromSlaveInput */
@@ -602,14 +606,14 @@ static WRITE16_HANDLER( dspram16_w )
 		if( mpDspState->masterSourceAddr &&
 			offset == 1+(mpDspState->masterSourceAddr&0x7fff) )
 		{
-			logerror( "IDC-CONTINUE\n" );
-			TransferDspData(machine);
+			if (ENABLE_LOGGING) logerror( "IDC-CONTINUE\n" );
+			TransferDspData(space->machine);
 		}
 		else if( namcos2_gametype == NAMCOS21_SOLVALOU &&
 					offset == 0x103 &&
-					cpu_getactivecpu()==0 )
+					space->cpu == space->machine->cpu[0] )
 		{ /* hack; synchronization for solvalou */
-			cpu_yield();
+			cpu_yield(space->cpu);
 		}
 	}
 } /* dspram16_w */
@@ -643,7 +647,7 @@ static int mbPointRomDataAvailable;
 
 static READ16_HANDLER( dsp_port0_r )
 {
-	INT32 data = ReadPointROMData(machine, pointrom_idx++);
+	INT32 data = ReadPointROMData(space->machine, pointrom_idx++);
 	mPointRomMSB = (UINT8)(data>>16);
 	mbPointRomDataAvailable = 1;
 	return (UINT16)data;
@@ -651,7 +655,7 @@ static READ16_HANDLER( dsp_port0_r )
 
 static WRITE16_HANDLER( dsp_port0_w )
 { /* unused? */
-	logerror( "PTRAM_LO(0x%04x)\n", data );
+	if (ENABLE_LOGGING) logerror( "PTRAM_LO(0x%04x)\n", data );
 } /* dsp_port0_w */
 
 static READ16_HANDLER( dsp_port1_r )
@@ -666,7 +670,7 @@ static READ16_HANDLER( dsp_port1_r )
 
 static WRITE16_HANDLER( dsp_port1_w )
 { /* unused? */
-	logerror( "PTRAM_HI(0x%04x)\n", data );
+	if (ENABLE_LOGGING) logerror( "PTRAM_HI(0x%04x)\n", data );
 } /* dsp_port1_w */
 
 static READ16_HANDLER( dsp_port2_r )
@@ -676,9 +680,9 @@ static READ16_HANDLER( dsp_port2_r )
 
 static WRITE16_HANDLER( dsp_port2_w )
 {
-	logerror( "IDC ADDR INIT(0x%04x)\n", data );
+	if (ENABLE_LOGGING) logerror( "IDC ADDR INIT(0x%04x)\n", data );
 	mpDspState->masterSourceAddr = data;
-	TransferDspData(machine);
+	TransferDspData(space->machine);
 } /* dsp_port2_w */
 
 static READ16_HANDLER( dsp_port3_idc_rcv_enable_r )
@@ -705,7 +709,7 @@ static int namcos21_irq_enable;
 
 static WRITE16_HANDLER( dsp_port8_w )
 { /* IRQ-enable? */
-	logerror( "port8_w(%d)\n", data );
+	if (ENABLE_LOGGING) logerror( "port8_w(%d)\n", data );
 	if( data )
 	{
 		mpDspState->masterFinished = 1;
@@ -730,7 +734,7 @@ static WRITE16_HANDLER(dsp_porta_w)
 	/* INT2 begin: 1 */
 	/* direct-draw begin: 0 */
 	/* INT1 begin: 1 */
-//  logerror( "dsp_porta_w(0x%04x)\n", data );
+//  if (ENABLE_LOGGING) logerror( "dsp_porta_w(0x%04x)\n", data );
 } /* dsp_porta_w */
 
 static READ16_HANDLER(dsp_portb_r)
@@ -790,7 +794,7 @@ static READ16_HANDLER( dsp_portf_r )
 
 static WRITE16_HANDLER( dsp_xf_w )
 {
-	logerror("xf(%d)\n",data);
+	if (ENABLE_LOGGING) logerror("xf(%d)\n",data);
 }
 
 static ADDRESS_MAP_START( master_dsp_program, ADDRESS_SPACE_PROGRAM, 16 )
@@ -879,7 +883,7 @@ RenderSlaveOutput( UINT16 data )
 		}
 		else if( count==0 )
 		{
-			logerror( "RenderSlaveOutput\n" );
+			if (ENABLE_LOGGING) logerror( "RenderSlaveOutput\n" );
 			exit(1);
 		}
 	}
@@ -887,7 +891,7 @@ RenderSlaveOutput( UINT16 data )
 
 static READ16_HANDLER(slave_port0_r)
 {
-	return ReadWordFromSlaveInput();
+	return ReadWordFromSlaveInput(space);
 } /* slave_port0_r */
 
 static WRITE16_HANDLER(slave_port0_w)
@@ -897,7 +901,7 @@ static WRITE16_HANDLER(slave_port0_w)
 
 static READ16_HANDLER(slave_port2_r)
 {
-	return GetInputBytesAdvertisedForSlave(machine);
+	return GetInputBytesAdvertisedForSlave(space->machine);
 } /* slave_port2_r */
 
 static READ16_HANDLER(slave_port3_r)
@@ -914,7 +918,7 @@ static WRITE16_HANDLER(slave_port3_w)
 
 static WRITE16_HANDLER( slave_XF_output_w )
 {
-	logerror( "0x%x:slaveXF(%d)\n", activecpu_get_pc(), data );
+	if (ENABLE_LOGGING) logerror( "0x%x:slaveXF(%d)\n", cpu_get_pc(space->cpu), data );
 } /* slave_XF_output_w */
 
 static READ16_HANDLER( slave_portf_r )
@@ -967,9 +971,9 @@ static WRITE16_HANDLER( pointram_control_w )
 
 	/* pointram_control&0x20 : bank for depthcue data */
 /*
-    logerror( "dsp_control_w:%x:%x[%x]:=%04x ",
-            cpu_getactivecpu(),
-            activecpu_get_pc(),
+    logerror( "dsp_control_w:'%s':%x[%x]:=%04x ",
+            space->cpu->tag,
+            cpu_get_pc(space->cpu),
             offset,
             pointram_control );
 
@@ -1152,7 +1156,7 @@ static WRITE16_HANDLER( winrun_dspcomram_w )
 
 static READ16_HANDLER( winrun_cuskey_r )
 {
-	int pc = activecpu_get_pc();
+	int pc = cpu_get_pc(space->cpu);
 	switch( pc )
 	{
 	case 0x0064: /* winrun91 */
@@ -1252,7 +1256,7 @@ static WRITE16_HANDLER( winrun_dsp_pointrom_addr_w )
 
 static READ16_HANDLER( winrun_dsp_pointrom_data_r )
 {
-	UINT16 *ptrom = (UINT16 *)memory_region(machine, "user2");
+	UINT16 *ptrom = (UINT16 *)memory_region(space->machine, "user2");
 	return ptrom[winrun_pointrom_addr++];
 } /* winrun_dsp_pointrom_data_r */
 
@@ -1261,7 +1265,7 @@ static WRITE16_HANDLER( winrun_dsp_complete_w )
 	if( data )
 	{
 		winrun_flushpoly();
-		cpunum_set_input_line(machine, 4, INPUT_LINE_RESET, PULSE_LINE);
+		cpu_set_input_line(space->machine->cpu[4], INPUT_LINE_RESET, PULSE_LINE);
 		namcos21_ClearPolyFrameBuffer();
 	}
 }
@@ -1294,7 +1298,7 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( gpu_data_r )
 {
-	const UINT16 *pSrc = (UINT16 *)memory_region( machine, "user3" );
+	const UINT16 *pSrc = (UINT16 *)memory_region( space->machine, "user3" );
 	return pSrc[offset];
 }
 
@@ -1312,7 +1316,7 @@ static WRITE16_HANDLER( winrun_dspbios_w )
 	COMBINE_DATA( &winrun_dspbios[offset] );
 	if( offset==0xfff )
 	{
-		UINT16 *mem = (UINT16 *)memory_region(machine, "dsp");
+		UINT16 *mem = (UINT16 *)memory_region(space->machine, "dsp");
 		memcpy( mem, winrun_dspbios, 0x2000 );
 		winrun_dsp_alive = 1;
 	}
@@ -1559,7 +1563,7 @@ static MACHINE_DRIVER_START( s21base )
 	MDRV_CPU_DATA_MAP(slave_dsp_data,0)
 	MDRV_CPU_IO_MAP(slave_dsp_io,0)
 
-	MDRV_INTERLEAVE(200)
+	MDRV_QUANTUM_TIME(HZ(12000))
 
 	MDRV_MACHINE_START(namcos2)
 	MDRV_MACHINE_RESET(namcos2)
@@ -1633,7 +1637,7 @@ static MACHINE_DRIVER_START( driveyes )
 	MDRV_CPU_DATA_MAP(winrun_dsp_data,0)
 	MDRV_CPU_IO_MAP(winrun_dsp_io,0)
 
-	MDRV_INTERLEAVE(100) /* 100 CPU slices per frame */
+	MDRV_QUANTUM_TIME(HZ(6000)) /* 100 CPU slices per frame */
 
 	MDRV_MACHINE_START(namcos2)
 	MDRV_MACHINE_RESET(namcos2)
@@ -1692,7 +1696,7 @@ static MACHINE_DRIVER_START( winrun_c140_typeB )
 	MDRV_CPU_PROGRAM_MAP(am_gpu_winrun,0)
 	MDRV_CPU_VBLANK_INT("main", namcos2_68k_gpu_vblank)
 
-	MDRV_INTERLEAVE(100) /* 100 CPU slices per frame */
+	MDRV_QUANTUM_TIME(HZ(6000)) /* 100 CPU slices per frame */
 
 	MDRV_MACHINE_START(namcos2)
 	MDRV_MACHINE_RESET(namcos2)

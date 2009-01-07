@@ -19,6 +19,7 @@
 #include "ldcore.h"
 #include "machine/8255ppi.h"
 #include "machine/z80ctc.h"
+#include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 
 
@@ -53,7 +54,7 @@
 struct _ldplayer_data
 {
 	/* low-level emulation data */
-	int					cpunum;					/* CPU index of the Z80 */
+	const device_config *cpu;					/* CPU index of the Z80 */
 	const device_config *ctc;					/* CTC device */
 	const device_config *multitimer;			/* multi-jump timer device */
 
@@ -113,22 +114,6 @@ static WRITE8_DEVICE_HANDLER( ppi1_portc_w );
 
 
 /***************************************************************************
-    INLINE FUNCTIONS
-***************************************************************************/
-
-/*-------------------------------------------------
-    find_ldv1000 - find our device; assumes there
-    is only one
--------------------------------------------------*/
-
-INLINE laserdisc_state *find_ldv1000(running_machine *machine)
-{
-	return ldcore_get_safe_token(device_list_first(machine->config->devicelist, LASERDISC));
-}
-
-
-
-/***************************************************************************
     LD-V1000 ROM AND MACHINE INTERFACES
 ***************************************************************************/
 
@@ -165,8 +150,6 @@ static const ppi8255_interface ppi1intf =
 
 static const z80ctc_interface ctcintf =
 {
-	"ldv1000",
-	0,
 	0,
 	ctc_interrupt
 };
@@ -185,7 +168,7 @@ static MACHINE_DRIVER_START( ldv1000 )
 	MDRV_CPU_PROGRAM_MAP(ldv1000_map,0)
 	MDRV_CPU_IO_MAP(ldv1000_portmap,0)
 
-	MDRV_Z80CTC_ADD("ldvctc", ctcintf)
+	MDRV_Z80CTC_ADD("ldvctc", XTAL_5MHz/2 /* same as "ldv1000" */, ctcintf)
 	MDRV_PPI8255_ADD("ldvppi0", ppi0intf)
 	MDRV_PPI8255_ADD("ldvppi1", ppi1intf)
 	MDRV_TIMER_ADD("multitimer", multijump_timer)
@@ -247,9 +230,9 @@ static void ldv1000_init(laserdisc_state *ld)
 	memset(player, 0, sizeof(*player));
 
 	/* find our devices */
-	player->cpunum = mame_find_cpu_index(ld->device->machine, device_build_tag(tempstring, ld->device->tag, "ldv1000"));
-	player->ctc = devtag_get_device(ld->device->machine, Z80CTC, device_build_tag(tempstring, ld->device->tag, "ldvctc"));
-	player->multitimer = devtag_get_device(ld->device->machine, TIMER, device_build_tag(tempstring, ld->device->tag, "multitimer"));
+	player->cpu = cputag_get_cpu(ld->device->machine, device_build_tag(tempstring, ld->device, "ldv1000"));
+	player->ctc = devtag_get_device(ld->device->machine, Z80CTC, device_build_tag(tempstring, ld->device, "ldvctc"));
+	player->multitimer = devtag_get_device(ld->device->machine, TIMER, device_build_tag(tempstring, ld->device, "multitimer"));
 	timer_device_set_ptr(player->multitimer, ld);
 	astring_free(tempstring);
 }
@@ -271,13 +254,13 @@ static void ldv1000_vsync(laserdisc_state *ld, const vbi_metadata *vbi, int fiel
 
 	/* signal VSYNC and set a timer to turn it off */
 	player->vsync = TRUE;
-	timer_set(attotime_mul(video_screen_get_scan_period(ld->screen), 4), ld, 0, vsync_off);
+	timer_set(ld->device->machine, attotime_mul(video_screen_get_scan_period(ld->screen), 4), ld, 0, vsync_off);
 
 	/* also set a timer to fetch the VBI data when it is ready */
-	timer_set(video_screen_get_time_until_pos(ld->screen, 19*2, 0), ld, 0, vbi_data_fetch);
+	timer_set(ld->device->machine, video_screen_get_time_until_pos(ld->screen, 19*2, 0), ld, 0, vbi_data_fetch);
 
 	/* boost interleave for the first 1ms to improve communications */
-	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_MSEC(1));
+	cpuexec_boost_interleave(ld->device->machine, attotime_zero, ATTOTIME_IN_MSEC(1));
 }
 
 
@@ -436,8 +419,8 @@ static TIMER_DEVICE_CALLBACK( multijump_timer )
 
 static void ctc_interrupt(const device_config *device, int state)
 {
-	laserdisc_state *ld = find_ldv1000(device->machine);
-	cpunum_set_input_line(device->machine, ld->player->cpunum, 0, state ? ASSERT_LINE : CLEAR_LINE);
+	laserdisc_state *ld = ldcore_get_safe_token(device->owner);
+	cpu_set_input_line(ld->player->cpu, 0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -454,7 +437,7 @@ static WRITE8_HANDLER( decoder_display_port_w )
         Display is 6-bit
         Decoder is 4-bit
     */
-	laserdisc_state *ld = find_ldv1000(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	ldplayer_data *player = ld->player;
 
 	/* writes to offset 0 select the target for reads/writes of actual data */
@@ -481,7 +464,7 @@ static WRITE8_HANDLER( decoder_display_port_w )
 
 static READ8_HANDLER( decoder_display_port_r )
 {
-	laserdisc_state *ld = find_ldv1000(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	ldplayer_data *player = ld->player;
 	UINT8 result = 0;
 
@@ -506,7 +489,7 @@ static READ8_HANDLER( decoder_display_port_r )
 
 static READ8_HANDLER( controller_r )
 {
-	laserdisc_state *ld = find_ldv1000(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 
 	/* note that this is a cheesy implementation; the real thing relies on exquisite timing */
 	UINT8 result = ld->player->command ^ 0xff;
@@ -521,9 +504,9 @@ static READ8_HANDLER( controller_r )
 
 static WRITE8_HANDLER( controller_w )
 {
-	laserdisc_state *ld = find_ldv1000(machine);
+	laserdisc_state *ld = ldcore_get_safe_token(space->cpu->owner);
 	if (LOG_STATUS_CHANGES && data != ld->player->status)
-		printf("%04X:CONTROLLER.W=%02X\n", activecpu_get_pc(), data);
+		printf("%04X:CONTROLLER.W=%02X\n", cpu_get_pc(space->cpu), data);
 	ld->player->status = data;
 }
 
@@ -535,10 +518,10 @@ static WRITE8_HANDLER( controller_w )
 
 static WRITE8_DEVICE_HANDLER( ppi0_porta_w )
 {
-	laserdisc_state *ld = find_ldv1000(device->machine);
+	laserdisc_state *ld = ldcore_get_safe_token(device->owner);
 	ld->player->counter_start = data;
 	if (LOG_PORT_IO)
-		printf("%04X:PORTA.0=%02X\n", activecpu_get_pc(), data);
+		printf("%s:PORTA.0=%02X\n", cpuexec_describe_context(device->machine), data);
 }
 
 
@@ -549,7 +532,7 @@ static WRITE8_DEVICE_HANDLER( ppi0_porta_w )
 
 static READ8_DEVICE_HANDLER( ppi0_portb_r )
 {
-	laserdisc_state *ld = find_ldv1000(device->machine);
+	laserdisc_state *ld = ldcore_get_safe_token(device->owner);
 	return ld->player->counter;
 }
 
@@ -567,7 +550,7 @@ static READ8_DEVICE_HANDLER( ppi0_portc_r )
         $40 = TRKG LOOP (N24-1)
         $80 = DUMP (N20-1) -- code reads the state and waits for it to change
     */
-	laserdisc_state *ld = find_ldv1000(device->machine);
+	laserdisc_state *ld = ldcore_get_safe_token(device->owner);
 	ldplayer_data *player = ld->player;
 	UINT8 result = 0x00;
 
@@ -593,7 +576,7 @@ static WRITE8_DEVICE_HANDLER( ppi0_portc_w )
         $04 = SCAN MODE
         $08 = n/c
     */
-	laserdisc_state *ld = find_ldv1000(device->machine);
+	laserdisc_state *ld = ldcore_get_safe_token(device->owner);
 	ldplayer_data *player = ld->player;
 	UINT8 prev = player->portc0;
 
@@ -601,7 +584,7 @@ static WRITE8_DEVICE_HANDLER( ppi0_portc_w )
 	player->portc0 = data;
 	if (LOG_PORT_IO && ((data ^ prev) & 0x0f) != 0)
 	{
-		printf("%04X:PORTC.0=%02X", activecpu_get_pc(), data);
+		printf("%s:PORTC.0=%02X", cpuexec_describe_context(device->machine), data);
 		if (data & 0x01) printf(" PRELOAD");
 		if (!(data & 0x02)) printf(" /MULTIJUMP");
 		if (data & 0x04) printf(" SCANMODE");
@@ -635,7 +618,7 @@ static READ8_DEVICE_HANDLER( ppi1_porta_r )
         $40 = /INT LOCK
         $80 = 8 INCH CHK
     */
-	laserdisc_state *ld = find_ldv1000(device->machine);
+	laserdisc_state *ld = ldcore_get_safe_token(device->owner);
 	ldplayer_data *player = ld->player;
 	slider_position sliderpos = ldcore_get_slider_position(ld);
 	UINT8 focus_on = !(player->portb1 & 0x01);
@@ -688,7 +671,7 @@ static WRITE8_DEVICE_HANDLER( ppi1_portb_w )
         $40 = /LASER ON
         $80 = /SYNC ST0
     */
-	laserdisc_state *ld = find_ldv1000(device->machine);
+	laserdisc_state *ld = ldcore_get_safe_token(device->owner);
 	ldplayer_data *player = ld->player;
 	UINT8 prev = player->portb1;
 	int direction;
@@ -697,7 +680,7 @@ static WRITE8_DEVICE_HANDLER( ppi1_portb_w )
 	player->portb1 = data;
 	if (LOG_PORT_IO && ((data ^ prev) & 0xff) != 0)
 	{
-		printf("%04X:PORTB.1=%02X:", activecpu_get_pc(), data);
+		printf("%s:PORTB.1=%02X:", cpuexec_describe_context(device->machine), data);
 		if (!(data & 0x01)) printf(" FOCSON");
 		if (!(data & 0x02)) printf(" SPDLRUN");
 		if (!(data & 0x04)) printf(" JUMPTRIG");
@@ -745,7 +728,7 @@ static WRITE8_DEVICE_HANDLER( ppi1_portc_w )
         $40 = SIZE 8/12
         $80 = /LED CAV
     */
-	laserdisc_state *ld = find_ldv1000(device->machine);
+	laserdisc_state *ld = ldcore_get_safe_token(device->owner);
 	ldplayer_data *player = ld->player;
 	UINT8 prev = player->portc1;
 
@@ -753,7 +736,7 @@ static WRITE8_DEVICE_HANDLER( ppi1_portc_w )
 	player->portc1 = data;
 	if (LOG_PORT_IO && ((data ^ prev) & 0xcf) != 0)
 	{
-		printf("%04X:PORTC.1=%02X", activecpu_get_pc(), data);
+		printf("%s:PORTC.1=%02X", cpuexec_describe_context(device->machine), data);
 		if (data & 0x01) printf(" AUD1");
 		if (data & 0x02) printf(" AUD2");
 		if (data & 0x04) printf(" AUDEN");

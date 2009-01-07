@@ -66,6 +66,7 @@
 #include "sndintrf.h"
 #include "streams.h"
 #include "cpuintrf.h"
+#include "cpuexec.h"
 #include "saa1099.h"
 #include <math.h>
 
@@ -101,6 +102,7 @@ struct saa1099_noise
 /* this structure defines a SAA1099 chip */
 struct SAA1099
 {
+	const device_config *device;
 	sound_stream * stream;			/* our stream */
 	int noise_params[2];			/* noise generators parameters */
 	int env_enable[2];				/* envelope generators enable */
@@ -108,7 +110,7 @@ struct SAA1099
 	int env_mode[2];				/* envelope generators mode */
 	int env_bits[2];				/* non zero = 3 bits resolution */
 	int env_clock[2];				/* envelope clock mode (non-zero external) */
-    int env_step[2];                /* current envelope step */
+	int env_step[2];                /* current envelope step */
 	int all_ch_enable;				/* all channels enable */
 	int sync_state;					/* sync all channels */
 	int selected_reg;				/* selected register */
@@ -210,7 +212,7 @@ static void saa1099_envelope(struct SAA1099 *saa, int ch)
 }
 
 
-static void saa1099_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( saa1099_update )
 {
 	struct SAA1099 *saa = param;
     int j, ch;
@@ -219,8 +221,8 @@ static void saa1099_update(void *param, stream_sample_t **inputs, stream_sample_
 	if (!saa->all_ch_enable)
 	{
 		/* init output data */
-		memset(buffer[LEFT],0,length*sizeof(*buffer[LEFT]));
-		memset(buffer[RIGHT],0,length*sizeof(*buffer[RIGHT]));
+		memset(outputs[LEFT],0,samples*sizeof(*outputs[LEFT]));
+		memset(outputs[RIGHT],0,samples*sizeof(*outputs[RIGHT]));
         return;
 	}
 
@@ -236,7 +238,7 @@ static void saa1099_update(void *param, stream_sample_t **inputs, stream_sample_
 	}
 
     /* fill all data needed */
-	for( j = 0; j < length; j++ )
+	for( j = 0; j < samples; j++ )
 	{
 		int output_l = 0, output_r = 0;
 
@@ -303,14 +305,14 @@ static void saa1099_update(void *param, stream_sample_t **inputs, stream_sample_
 			}
 		}
         /* write sound data to the buffer */
-		buffer[LEFT][j] = output_l / 6;
-		buffer[RIGHT][j] = output_r / 6;
+		outputs[LEFT][j] = output_l / 6;
+		outputs[RIGHT][j] = output_r / 6;
 	}
 }
 
 
 
-static void *saa1099_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( saa1099 )
 {
 	struct SAA1099 *saa;
 
@@ -318,10 +320,11 @@ static void *saa1099_start(const char *tag, int sndindex, int clock, const void 
 	memset(saa, 0, sizeof(*saa));
 
 	/* copy global parameters */
+	saa->device = device;
 	saa->sample_rate = clock / 256;
 
 	/* for each chip allocate one stream */
-	saa->stream = stream_create(0, 2, saa->sample_rate, saa, saa1099_update);
+	saa->stream = stream_create(device, 0, 2, saa->sample_rate, saa, saa1099_update);
 
 	return saa;
 }
@@ -330,13 +333,13 @@ static void saa1099_control_port_w( int chip, int reg, int data )
 {
 	struct SAA1099 *saa = sndti_token(SOUND_SAA1099, chip);
 
-    if ((data & 0xff) > 0x1c)
+	if ((data & 0xff) > 0x1c)
 	{
 		/* Error! */
-                logerror("%04x: (SAA1099 #%d) Unknown register selected\n",activecpu_get_pc(), chip);
+                logerror("%s: (SAA1099 #%d) Unknown register selected\n",cpuexec_describe_context(saa->device->machine), chip);
 	}
 
-    saa->selected_reg = data & 0x1f;
+	saa->selected_reg = data & 0x1f;
 	if (saa->selected_reg == 0x18 || saa->selected_reg == 0x19)
 	{
 		/* clock the envelope channels */
@@ -419,7 +422,7 @@ static void saa1099_write_port_w( int chip, int offset, int data )
 			int i;
 
 			/* Synch & Reset generators */
-			logerror("%04x: (SAA1099 #%d) -reg 0x1c- Chip reset\n",activecpu_get_pc(), chip);
+			logerror("%s: (SAA1099 #%d) -reg 0x1c- Chip reset\n",cpuexec_describe_context(saa->device->machine), chip);
 			for (i = 0; i < 6; i++)
 			{
                 saa->channels[i].level = 0;
@@ -428,7 +431,7 @@ static void saa1099_write_port_w( int chip, int offset, int data )
 		}
 		break;
 	default:	/* Error! */
-		logerror("%04x: (SAA1099 #%d) Unknown operation (reg:%02x, data:%02x)\n",activecpu_get_pc(), chip, reg, data);
+		logerror("%s: (SAA1099 #%d) Unknown operation (reg:%02x, data:%02x)\n",cpuexec_describe_context(saa->device->machine), chip, reg, data);
 	}
 }
 
@@ -487,7 +490,7 @@ WRITE16_HANDLER( saa1099_write_port_1_lsb_w )
  * Generic get_info
  **************************************************************************/
 
-static void saa1099_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( saa1099 )
 {
 	switch (state)
 	{
@@ -496,24 +499,24 @@ static void saa1099_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void saa1099_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( saa1099 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = saa1099_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = saa1099_start;			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( saa1099 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( saa1099 );		break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "SAA1099";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Philips";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "SAA1099");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Philips");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

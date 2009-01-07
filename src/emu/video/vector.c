@@ -31,7 +31,6 @@
  **************************************************************************** */
 
 #include "rendutil.h"
-#include "deprecat.h"
 #include "vector.h"
 
 
@@ -95,7 +94,7 @@ static render_texture *get_vector_texture(float dx, float dy, float intensity)
 
 	height = lbucket * VECTOR_WIDTH_DENOM / TEXTURE_LENGTH_BUCKETS;
 	tex->bitmap = bitmap_alloc(TEXTURE_WIDTH, height, BITMAP_FORMAT_ARGB32);
-	fillbitmap(tex->bitmap, NULL, MAKE_ARGB(0xff,0xff,0xff,0xff));
+	bitmap_fill(tex->bitmap, NULL, MAKE_ARGB(0xff,0xff,0xff,0xff));
 
 	totalint = 1.0f;
 	for (x = TEXTURE_WIDTH / 2 - 1; x >= 0; x--)
@@ -193,7 +192,7 @@ VIDEO_START( vector )
  * Adds a line end point to the vertices list. The vector processor emulation
  * needs to call this.
  */
-void vector_add_point (int x, int y, rgb_t color, int intensity)
+void vector_add_point (running_machine *machine, int x, int y, rgb_t color, int intensity)
 {
 	point *newpoint;
 
@@ -202,7 +201,7 @@ void vector_add_point (int x, int y, rgb_t color, int intensity)
 
 	if (flicker && (intensity > 0))
 	{
-		intensity += (intensity * (0x80-(mame_rand(Machine)&0xff)) * flicker)>>16;
+		intensity += (intensity * (0x80-(mame_rand(machine)&0xff)) * flicker)>>16;
 		if (intensity < 0)
 			intensity = 0;
 		if (intensity > 0xff)

@@ -12,7 +12,6 @@
 ***************************************************************************/
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "ay8910.h"
 #include "2608intf.h"
@@ -25,6 +24,7 @@ struct ym2608_info
 	void *			chip;
 	void *			psg;
 	const ym2608_interface *intf;
+	const device_config *device;
 };
 
 
@@ -66,7 +66,7 @@ static const ssg_callbacks psgintf =
 static void IRQHandler(void *param,int irq)
 {
 	struct ym2608_info *info = param;
-	if(info->intf->handler) info->intf->handler(Machine, irq);
+	if(info->intf->handler) info->intf->handler(info->device->machine, irq);
 }
 
 /* Timer overflow callback from timer.c */
@@ -104,10 +104,10 @@ void ym2608_update_request(void *param)
 	stream_update(info->stream);
 }
 
-static void ym2608_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **buffers, int length)
+static STREAM_UPDATE( ym2608_stream_update )
 {
 	struct ym2608_info *info = param;
-	ym2608_update_one(info->chip, buffers, length);
+	ym2608_update_one(info->chip, outputs, samples);
 }
 
 
@@ -118,7 +118,7 @@ static STATE_POSTLOAD( ym2608_intf_postload )
 }
 
 
-static void *ym2608_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( ym2608 )
 {
 	static const ym2608_interface generic_2608 =
 	{
@@ -140,26 +140,28 @@ static void *ym2608_start(const char *tag, int sndindex, int clock, const void *
 	memset(info, 0, sizeof(*info));
 
 	info->intf = intf;
+	info->device = device;
+
 	/* FIXME: Force to use simgle output */
-	info->psg = ay8910_start_ym(SOUND_YM2608, sndindex, clock, &intf->ay8910_intf);
+	info->psg = ay8910_start_ym(SOUND_YM2608, device, clock, &intf->ay8910_intf);
 	if (!info->psg) return NULL;
 
 	/* Timer Handler set */
-	info->timer[0] = timer_alloc(timer_callback_2608_0, info);
-	info->timer[1] = timer_alloc(timer_callback_2608_1, info);
+	info->timer[0] = timer_alloc(device->machine, timer_callback_2608_0, info);
+	info->timer[1] = timer_alloc(device->machine, timer_callback_2608_1, info);
 
 	/* stream system initialize */
-	info->stream = stream_create(0,2,rate,info,ym2608_stream_update);
+	info->stream = stream_create(device,0,2,rate,info,ym2608_stream_update);
 	/* setup adpcm buffers */
-	pcmbufa  = (void *)(memory_region(Machine, tag));
-	pcmsizea = memory_region_length(Machine, tag);
+	pcmbufa  = device->region;
+	pcmsizea = device->regionbytes;
 
 	/* initialize YM2608 */
-	info->chip = ym2608_init(info,sndindex,clock,rate,
+	info->chip = ym2608_init(info,device,clock,rate,
 		           pcmbufa,pcmsizea,
 		           timer_handler,IRQHandler,&psgintf);
 
-	state_save_register_postload(Machine, ym2608_intf_postload, info);
+	state_save_register_postload(device->machine, ym2608_intf_postload, info);
 
 	if (info->chip)
 		return info;
@@ -168,16 +170,16 @@ static void *ym2608_start(const char *tag, int sndindex, int clock, const void *
 	return NULL;
 }
 
-static void ym2608_stop(void *token)
+static SND_STOP( ym2608 )
 {
-	struct ym2608_info *info = token;
+	struct ym2608_info *info = device->token;
 	ym2608_shutdown(info->chip);
 	ay8910_stop_ym(info->psg);
 }
 
-static void ym2608_reset(void *token)
+static SND_RESET( ym2608 )
 {
-	struct ym2608_info *info = token;
+	struct ym2608_info *info = device->token;
 	ym2608_reset_chip(info->chip);
 }
 
@@ -186,14 +188,14 @@ static void ym2608_reset(void *token)
 /************************************************/
 READ8_HANDLER( ym2608_status_port_0_a_r )
 {
-//logerror("PC %04x: 2608 S0A=%02X\n",activecpu_get_pc(),ym2608_read(sndti_token(SOUND_YM2608, 0),0));
+//logerror("PC %04x: 2608 S0A=%02X\n",cpu_get_pc(space->cpu),ym2608_read(sndti_token(SOUND_YM2608, 0),0));
 	struct ym2608_info *info = sndti_token(SOUND_YM2608, 0);
 	return ym2608_read(info->chip,0);
 }
 
 READ8_HANDLER( ym2608_status_port_0_b_r )
 {
-//logerror("PC %04x: 2608 S0B=%02X\n",activecpu_get_pc(),ym2608_read(sndti_token(SOUND_YM2608, 0),2));
+//logerror("PC %04x: 2608 S0B=%02X\n",cpu_get_pc(space->cpu),ym2608_read(sndti_token(SOUND_YM2608, 0),2));
 	struct ym2608_info *info = sndti_token(SOUND_YM2608, 0);
 	return ym2608_read(info->chip,2);
 }
@@ -293,7 +295,7 @@ WRITE8_HANDLER( ym2608_data_port_1_b_w ){
  * Generic get_info
  **************************************************************************/
 
-static void ym2608_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( ym2608 )
 {
 	switch (state)
 	{
@@ -302,23 +304,23 @@ static void ym2608_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void ym2608_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( ym2608 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = ym2608_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = ym2608_start;				break;
-		case SNDINFO_PTR_STOP:							info->stop = ym2608_stop;				break;
-		case SNDINFO_PTR_RESET:							info->reset = ym2608_reset;				break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( ym2608 );		break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ym2608 );				break;
+		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( ym2608 );				break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( ym2608 );				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "YM2608";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Yamaha FM";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "YM2608");							break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Yamaha FM");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");								break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);							break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

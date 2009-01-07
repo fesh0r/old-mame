@@ -30,7 +30,6 @@
  */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "namcond1.h"   // only while debugging
 #include "video/ygv608.h"
 
@@ -51,10 +50,10 @@ static tilemap *tilemap_A = NULL;
 static tilemap *tilemap_B = NULL;
 static bitmap_t *work_bitmap = NULL;
 
-static void HandleYGV608Reset( void );
-static void HandleRomTransfers( void );
+static void HandleYGV608Reset( running_machine *machine );
+static void HandleRomTransfers( running_machine *machine );
 static void SetPreShortcuts( int reg, int data );
-static void SetPostShortcuts( int reg );
+static void SetPostShortcuts( running_machine *machine, int reg );
 
 #ifdef MAME_DEBUG
 static void ShowYGV608Registers( void );
@@ -79,7 +78,7 @@ INTERRUPT_GEN( ygv608_timed_interrupt )
 	{
 		ygv608.ports.s.p6 |= p6_fv;
 		if (ygv608.regs.s.r14 & r14_iev)
-			irq2_line_hold(machine, cpunum);
+			irq2_line_hold(device);
 	}
 
 	/* once every 60Hz, set the position detection flag (somewhere) */
@@ -87,7 +86,7 @@ INTERRUPT_GEN( ygv608_timed_interrupt )
 	{
 		ygv608.ports.s.p6 |= p6_fp;
 		if (ygv608.regs.s.r14 & r14_iep)
-			irq2_line_hold(machine, cpunum);
+			irq2_line_hold(device);
 	}
 }
 
@@ -482,17 +481,17 @@ static STATE_POSTLOAD( ygv608_postload )
 	ygv608.tilemap_resize = 1;
 
 	for(i = 0; i < 50; i++)
-		SetPostShortcuts(i);
+		SetPostShortcuts(machine, i);
 }
 
 static void ygv608_register_state_save(running_machine *machine)
 {
-	state_save_register_item_array("ygv608", 0, ygv608.ports.b);
-	state_save_register_item_array("ygv608", 0, ygv608.regs.b);
-	state_save_register_item_array("ygv608", 0, ygv608.pattern_name_table);
-	state_save_register_item_array("ygv608", 0, ygv608.sprite_attribute_table.b);
-	state_save_register_item_2d_array("ygv608", 0, ygv608.scroll_data_table);
-	state_save_register_item_2d_array("ygv608", 0, ygv608.colour_palette);
+	state_save_register_item_array(machine, "ygv608", NULL, 0, ygv608.ports.b);
+	state_save_register_item_array(machine, "ygv608", NULL, 0, ygv608.regs.b);
+	state_save_register_item_array(machine, "ygv608", NULL, 0, ygv608.pattern_name_table);
+	state_save_register_item_array(machine, "ygv608", NULL, 0, ygv608.sprite_attribute_table.b);
+	state_save_register_item_2d_array(machine, "ygv608", NULL, 0, ygv608.scroll_data_table);
+	state_save_register_item_2d_array(machine, "ygv608", NULL, 0, ygv608.colour_palette);
 
 	state_save_register_postload(machine, ygv608_postload, NULL);
 }
@@ -515,21 +514,21 @@ VIDEO_START( ygv608 )
 	namcond1_gfxbank = 0;
 
 	/* create tilemaps of all sizes and combinations */
-	tilemap_A_cache_8[0] = tilemap_create(get_tile_info_A_8, get_tile_offset,  8,8, 32,32);
-	tilemap_A_cache_8[1] = tilemap_create(get_tile_info_A_8, get_tile_offset,  8,8, 64,32);
-	tilemap_A_cache_8[2] = tilemap_create(get_tile_info_A_8, get_tile_offset,  8,8, 32,64);
+	tilemap_A_cache_8[0] = tilemap_create(machine, get_tile_info_A_8, get_tile_offset,  8,8, 32,32);
+	tilemap_A_cache_8[1] = tilemap_create(machine, get_tile_info_A_8, get_tile_offset,  8,8, 64,32);
+	tilemap_A_cache_8[2] = tilemap_create(machine, get_tile_info_A_8, get_tile_offset,  8,8, 32,64);
 
-	tilemap_A_cache_16[0] = tilemap_create(get_tile_info_A_16, get_tile_offset,  16,16, 32,32);
-	tilemap_A_cache_16[1] = tilemap_create(get_tile_info_A_16, get_tile_offset,  16,16, 64,32);
-	tilemap_A_cache_16[2] = tilemap_create(get_tile_info_A_16, get_tile_offset,  16,16, 32,64);
+	tilemap_A_cache_16[0] = tilemap_create(machine, get_tile_info_A_16, get_tile_offset,  16,16, 32,32);
+	tilemap_A_cache_16[1] = tilemap_create(machine, get_tile_info_A_16, get_tile_offset,  16,16, 64,32);
+	tilemap_A_cache_16[2] = tilemap_create(machine, get_tile_info_A_16, get_tile_offset,  16,16, 32,64);
 
-	tilemap_B_cache_8[0] = tilemap_create(get_tile_info_B_8, get_tile_offset,  8,8, 32,32);
-	tilemap_B_cache_8[1] = tilemap_create(get_tile_info_B_8, get_tile_offset,  8,8, 64,32);
-	tilemap_B_cache_8[2] = tilemap_create(get_tile_info_B_8, get_tile_offset,  8,8, 32,64);
+	tilemap_B_cache_8[0] = tilemap_create(machine, get_tile_info_B_8, get_tile_offset,  8,8, 32,32);
+	tilemap_B_cache_8[1] = tilemap_create(machine, get_tile_info_B_8, get_tile_offset,  8,8, 64,32);
+	tilemap_B_cache_8[2] = tilemap_create(machine, get_tile_info_B_8, get_tile_offset,  8,8, 32,64);
 
-	tilemap_B_cache_16[0] = tilemap_create(get_tile_info_B_16, get_tile_offset,  16,16, 32,32);
-	tilemap_B_cache_16[1] = tilemap_create(get_tile_info_B_16, get_tile_offset,  16,16, 64,32);
-	tilemap_B_cache_16[2] = tilemap_create(get_tile_info_B_16, get_tile_offset,  16,16, 32,64);
+	tilemap_B_cache_16[0] = tilemap_create(machine, get_tile_info_B_16, get_tile_offset,  16,16, 32,32);
+	tilemap_B_cache_16[1] = tilemap_create(machine, get_tile_info_B_16, get_tile_offset,  16,16, 64,32);
+	tilemap_B_cache_16[2] = tilemap_create(machine, get_tile_info_B_16, get_tile_offset,  16,16, 32,64);
 
 	tilemap_A = NULL;
 	tilemap_B = NULL;
@@ -756,7 +755,7 @@ VIDEO_UPDATE( ygv608 )
 	// punt if not initialized
 	if (ygv608.page_x == 0 || ygv608.page_y == 0)
 	{
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 		return 0;
 	}
 
@@ -809,7 +808,7 @@ VIDEO_UPDATE( ygv608 )
 		tilemap_set_scroll_cols( tilemap_B, ygv608.page_x );
 
 		// now clear the screen in case we change to 1-plane mode
-		fillbitmap( work_bitmap, 0, cliprect );
+		bitmap_fill( work_bitmap, cliprect , 0);
 
 		// reset resize flag
 		ygv608.tilemap_resize = 0;
@@ -862,8 +861,8 @@ VIDEO_UPDATE( ygv608 )
 	if ((ygv608.regs.s.r7 & r7_md) & MD_1PLANE)
 	{
 		// If the background tilemap is disabled, we need to clear the bitmap to black
-		fillbitmap (work_bitmap,0,cliprect);
-//      fillbitmap (work_bitmap,1,visarea);
+		bitmap_fill (work_bitmap,cliprect,0);
+//      bitmap_fill (work_bitmap,visarea,1);
 	}
 	else
 #endif
@@ -900,7 +899,7 @@ VIDEO_UPDATE( ygv608 )
   // for some reason we can't use an opaque tilemap_A
   // so use a transparent but clear the work bitmap first
   // - look at why this is the case?!?
-  fillbitmap( work_bitmap,0,visarea );
+  bitmap_fill( work_bitmap,visarea ,0);
 
 	if ((ygv608.regs.s.r11 & r11_prm) == PRM_ASBDEX ||
 		(ygv608.regs.s.r11 & r11_prm) == PRM_ASEBDX )
@@ -1221,7 +1220,7 @@ WRITE16_HANDLER( ygv608_w )
 			if (++p3_state == 3)
 			{
 				p3_state = 0;
-				palette_set_color_rgb(machine,ygv608.regs.s.cc,
+				palette_set_color_rgb(space->machine,ygv608.regs.s.cc,
 			    	pal6bit(ygv608.colour_palette[ygv608.regs.s.cc][0]),
 			    	pal6bit(ygv608.colour_palette[ygv608.regs.s.cc][1]),
 			    	pal6bit(ygv608.colour_palette[ygv608.regs.s.cc][2]) );
@@ -1238,7 +1237,7 @@ WRITE16_HANDLER( ygv608_w )
 #endif
 			SetPreShortcuts (regNum, data);
 			ygv608.regs.b[regNum] = data;
-			SetPostShortcuts (regNum);
+			SetPostShortcuts (space->machine, regNum);
 			if (ygv608.ports.s.p5 & p5_rwai)
 			{
 				regNum ++;
@@ -1265,9 +1264,9 @@ WRITE16_HANDLER( ygv608_w )
 		case 0x07: /* P#7 - system control port */
 			ygv608.ports.b[7] = data;
 			if (ygv608.ports.b[7] & 0x3e)
-				HandleRomTransfers();
+				HandleRomTransfers(space->machine);
 			if (ygv608.ports.b[7] & 0x01)
-				HandleYGV608Reset();
+				HandleYGV608Reset(space->machine);
 			break;
 
 		default:
@@ -1276,7 +1275,7 @@ WRITE16_HANDLER( ygv608_w )
 	}
 }
 
-static void HandleYGV608Reset( void )
+static void HandleYGV608Reset( running_machine *machine )
 {
     int i;
 
@@ -1297,7 +1296,7 @@ static void HandleYGV608Reset( void )
     /* should set shortcuts here too */
     for( i=0; i<50; i++ ) {
       //SetPreShortcuts( i );
-      SetPostShortcuts( i );
+      SetPostShortcuts( machine, i );
     }
 }
 
@@ -1308,14 +1307,14 @@ static void HandleYGV608Reset( void )
     - So leave it in!
  */
 
-static void HandleRomTransfers(void)
+static void HandleRomTransfers(running_machine *machine)
 {
 #if 0
   static UINT8 *sdt = (UINT8 *)ygv608.scroll_data_table;
   static UINT8 *sat = (UINT8 *)ygv608.sprite_attribute_table.b;
 
   /* fudge copy from sprite data for now... */
-  UINT8 *RAM = Machine->memory_region[0];
+  UINT8 *RAM = machine->memory_region[0];
   int i;
 
   int src = ( ( (int)ygv608.regs.s.tb13 << 8 ) +
@@ -1420,7 +1419,7 @@ static void SetPreShortcuts( int reg, int data )
 // Set any "short-cut" variables after we have updated the YGV608 registers
 // - these are used only in optimisation of the emulation
 
-static void SetPostShortcuts( int reg )
+static void SetPostShortcuts( running_machine *machine, int reg )
 {
 	int plane, addr;
 
@@ -1431,8 +1430,8 @@ static void SetPostShortcuts( int reg )
 			UINT8 yTile = ygv608.regs.s.r0 & r0_pny;
 
 			if (yTile >= ygv608.page_y)
-				logerror ("setting pny(%d) >= page_y(%d) @ $%X\n",
-						yTile, ygv608.page_y, activecpu_get_pc() );
+				logerror ("%s:setting pny(%d) >= page_y(%d)\n", cpuexec_describe_context(machine),
+						yTile, ygv608.page_y );
 			yTile &= (ygv608.page_y - 1);
 			ygv608.regs.s.r0 &= ~r0_pny;
 			ygv608.regs.s.r0 |= yTile;
@@ -1444,8 +1443,8 @@ static void SetPostShortcuts( int reg )
 			UINT8 xTile = ygv608.regs.s.r1 & r1_pnx;
 
 			if (xTile >= ygv608.page_x)
-				logerror ("setting pnx(%d) >= page_x(%d) @ $%X\n",
-						xTile, ygv608.page_x, activecpu_get_pc() );
+				logerror ("%s:setting pnx(%d) >= page_x(%d)\n", cpuexec_describe_context(machine),
+						xTile, ygv608.page_x );
 			xTile &= (ygv608.page_x - 1);
 			ygv608.regs.s.r1 &= ~r1_pnx;
 			ygv608.regs.s.r1 |= xTile;

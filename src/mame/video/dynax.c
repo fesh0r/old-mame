@@ -123,7 +123,7 @@ WRITE8_HANDLER( dynax_blit2_dest_w )
 }
 WRITE8_HANDLER( tenkai_blit_dest_w )
 {
-	dynax_blit_dest_w(machine, 0, BITSWAP8(data, 7,6,5,4, 0,1,2,3));
+	dynax_blit_dest_w(space, 0, BITSWAP8(data, 7,6,5,4, 0,1,2,3));
 }
 
 /* Background Color */
@@ -245,7 +245,7 @@ WRITE8_HANDLER( dynax_flipscreen_w )
 {
 	flipscreen = data & 1;
 	if (data & ~1)
-		logerror("CPU#0 PC %06X: Warning, flip screen <- %02X\n", activecpu_get_pc(), data);
+		logerror("CPU#0 PC %06X: Warning, flip screen <- %02X\n", cpu_get_pc(space->cpu), data);
 	LOG(("F=%02X ",data));
 }
 
@@ -261,8 +261,8 @@ WRITE8_HANDLER( dynax_blit_romregion_w )
 
 WRITE8_HANDLER( dynax_blit2_romregion_w )
 {
-	if (data < ARRAY_LENGTH(gfxregions))
-		dynax_blit2_romregion = gfxregions[data];
+	if (data+1 < ARRAY_LENGTH(gfxregions))
+		dynax_blit2_romregion = gfxregions[data+1];
 	LOG(("GFX%X' ",data+2));
 }
 
@@ -657,13 +657,13 @@ WRITE8_HANDLER( dynax_blitter_rev2_w )
 {
 	switch (offset)
 	{
-		case 0: dynax_blitter_start(machine,data); break;
+		case 0: dynax_blitter_start(space->machine,data); break;
 		case 1:	blit_x		=	data; break;
 		case 2: blit_y		=	data; break;
 		case 3:	blit_src	=	(blit_src & 0xffff00) | (data << 0); break;
 		case 4: blit_src	=	(blit_src & 0xff00ff) | (data << 8); break;
 		case 5: blit_src	=	(blit_src & 0x00ffff) | (data <<16); break;
-		case 6: dynax_blit_scroll_w(machine,0,data); break;
+		case 6: dynax_blit_scroll_w(space,0,data); break;
 	}
 }
 
@@ -672,13 +672,13 @@ WRITE8_HANDLER( tenkai_blitter_rev2_w )
 {
 	switch (offset)
 	{
-		case 0: dynax_blitter_start(machine,data); break;
+		case 0: dynax_blitter_start(space->machine,data); break;
 		case 1:	blit_x		=	data; break;
 		case 2: blit_y		=	data; break;
 		case 3:	blit_src	=	(blit_src & 0xffff00) | (data << 0); break;
 		case 4: blit_src	=	(blit_src & 0xff00ff) | (data << 8); break;
 		case 5: blit_src	=	(blit_src & 0x00ffff) | (data <<16); break;
-		case 6: tenkai_blit_scroll_w(machine,0,data); break;
+		case 6: tenkai_blit_scroll_w(space,0,data); break;
 	}
 }
 
@@ -687,13 +687,13 @@ WRITE8_HANDLER( jantouki_blitter_rev2_w )
 {
 	switch (offset)
 	{
-		case 0: jantouki_blitter_start(machine,data); break;
+		case 0: jantouki_blitter_start(space->machine,data); break;
 		case 1:	blit_x		=	data; break;
 		case 2: blit_y		=	data; break;
 		case 3:	blit_src	=	(blit_src & 0xffff00) | (data << 0); break;
 		case 4: blit_src	=	(blit_src & 0xff00ff) | (data << 8); break;
 		case 5: blit_src	=	(blit_src & 0x00ffff) | (data <<16); break;
-		case 6: dynax_blit_scroll_w(machine,0,data); break;
+		case 6: dynax_blit_scroll_w(space,0,data); break;
 	}
 }
 
@@ -701,13 +701,13 @@ WRITE8_HANDLER( jantouki_blitter2_rev2_w )
 {
 	switch (offset)
 	{
-		case 0: jantouki_blitter2_start(machine,data); break;
+		case 0: jantouki_blitter2_start(space->machine,data); break;
 		case 1:	blit2_x		=	data; break;
 		case 2: blit2_y		=	data; break;
 		case 3:	blit2_src	=	(blit2_src & 0xffff00) | (data << 0); break;
 		case 4: blit2_src	=	(blit2_src & 0xff00ff) | (data << 8); break;
 		case 5: blit2_src	=	(blit2_src & 0x00ffff) | (data <<16); break;
-		case 6: dynax_blit2_scroll_w(machine,0,data); break;
+		case 6: dynax_blit2_scroll_w(space,0,data); break;
 	}
 }
 
@@ -1100,7 +1100,7 @@ static int debug_viewer(running_machine *machine, bitmap_t *bitmap,const rectang
 		dynax_blit_palettes = (c & 0xf) * 0x111;
 		dynax_blit_palbank  = (c >>  4) & 1;
 
-		fillbitmap(bitmap,0,cliprect);
+		bitmap_fill(bitmap,cliprect,0);
 		memset(dynax_pixmap[0][0],0,sizeof(UINT8)*0x100*0x100);
 		if (layer_layout != LAYOUT_MJDIALQ2)
 			memset(dynax_pixmap[0][1],0,sizeof(UINT8)*0x100*0x100);
@@ -1126,10 +1126,8 @@ VIDEO_UPDATE( hanamai )
 	if (debug_viewer(screen->machine,bitmap,cliprect))	return 0;
 	layers_ctrl &= debug_mask();
 
-	fillbitmap(
-		bitmap,
-		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256,
-		cliprect);
+	bitmap_fill(bitmap, cliprect,
+		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256);
 
 	/* bit 4 = display enable? */
 	if (!(hanamai_priority & 0x10)) return 0;
@@ -1162,10 +1160,8 @@ VIDEO_UPDATE( hnoridur )
 	if (debug_viewer(screen->machine,bitmap,cliprect))	return 0;
 	layers_ctrl &= debug_mask();
 
-	fillbitmap(
-		bitmap,
-		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 0x0f) * 256,
-		cliprect);
+	bitmap_fill(bitmap, cliprect,
+		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 0x0f) * 256);
 
 	pri = hanamai_priority >> 4;
 
@@ -1197,10 +1193,8 @@ VIDEO_UPDATE( sprtmtch )
 	if (debug_viewer(screen->machine,bitmap,cliprect))	return 0;
 	layers_ctrl &= debug_mask();
 
-	fillbitmap(
-		bitmap,
-		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256,
-		cliprect);
+	bitmap_fill(bitmap, cliprect,
+		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256);
 
 	if (layers_ctrl & 1)	hanamai_copylayer( bitmap, cliprect, 0 );
 	if (layers_ctrl & 2)	hanamai_copylayer( bitmap, cliprect, 1 );
@@ -1218,10 +1212,8 @@ VIDEO_UPDATE( jantouki )
 	if (debug_viewer(screen->machine,bitmap,cliprect))	return 0;
 	layers_ctrl &= debug_mask();
 
-	fillbitmap(
-		bitmap,
-		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256,
-		cliprect);
+	bitmap_fill(bitmap, cliprect,
+		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256);
 
 	if (screen == top_screen)
 	{
@@ -1249,10 +1241,8 @@ VIDEO_UPDATE( mjdialq2 )
 	if (debug_viewer(screen->machine,bitmap,cliprect))	return 0;
 	layers_ctrl &= debug_mask();
 
-	fillbitmap(
-		bitmap,
-		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256,
-		cliprect);
+	bitmap_fill(bitmap, cliprect,
+		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256);
 
 	if (layers_ctrl & 1)	mjdialq2_copylayer( bitmap, cliprect, 0 );
 	if (layers_ctrl & 2)	mjdialq2_copylayer( bitmap, cliprect, 1 );
@@ -1275,7 +1265,7 @@ VIDEO_UPDATE(htengoku)
 	// format and let VIDEO_UPDATE(ddenlovr) do the final compositing (priorities + palettes)
 	for (layer = 0; layer < 4; layer++)
 	{
-		fillbitmap(bitmap,0,cliprect);
+		bitmap_fill(bitmap,cliprect,0);
 		hanamai_copylayer( bitmap, cliprect, layer );
 
 		for (y=0; y < 256; y++)

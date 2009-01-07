@@ -516,9 +516,9 @@ WRITE16_HANDLER( sys16_paletteram_w )
 		gh = combine_6_weights(weights[1][1], g0, g1, g2, g3, g4, 1);
 		bh = combine_6_weights(weights[1][2], b0, b1, b2, b3, b4, 1);
 
-		palette_set_color( machine, offset, MAKE_RGB(r, g, b) );
+		palette_set_color( space->machine, offset, MAKE_RGB(r, g, b) );
 
-		palette_set_color( machine, offset+machine->config->total_colors/2,MAKE_RGB(rs,gs,bs));
+		palette_set_color( space->machine, offset+space->machine->config->total_colors/2,MAKE_RGB(rs,gs,bs));
 	}
 }
 
@@ -777,28 +777,28 @@ VIDEO_START( system16 ){
 		);
 
 	if( !sys16_bg1_trans )
-		background = tilemap_create(
+		background = tilemap_create(machine,
 			get_bg_tile_info,
 			sys16_bg_map,
 
 			8,8,
 			64*2,32*2 );
 	else
-		background = tilemap_create(
+		background = tilemap_create(machine,
 			get_bg_tile_info,
 			sys16_bg_map,
 
 			8,8,
 			64*2,32*2 );
 
-	foreground = tilemap_create(
+	foreground = tilemap_create(machine,
 		get_fg_tile_info,
 		sys16_bg_map,
 
 		8,8,
 		64*2,32*2 );
 
-	text_layer = tilemap_create(
+	text_layer = tilemap_create(machine,
 		get_text_tile_info,
 		sys16_text_map,
 
@@ -864,14 +864,14 @@ VIDEO_START( system18old ){
 		sys18_ddcrew_bankregs[i]=-1;
 	}
 
-	background2 = tilemap_create(
+	background2 = tilemap_create(machine,
 		get_bg2_tile_info,
 		sys16_bg_map,
 
 		8,8,
 		64*2,32*2 );
 
-	foreground2 = tilemap_create(
+	foreground2 = tilemap_create(machine,
 		get_fg2_tile_info,
 		sys16_bg_map,
 
@@ -1060,7 +1060,7 @@ static void sys18_vh_screenrefresh_helper( void ){
 VIDEO_UPDATE( system16 ){
 	if (!sys16_refreshenable)
 	{
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 		return 0;
 	}
 
@@ -1068,7 +1068,7 @@ VIDEO_UPDATE( system16 ){
 	update_page();
 	sys16_vh_refresh_helper(); /* set scroll registers */
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	tilemap_draw( bitmap,cliprect, background, TILEMAP_DRAW_OPAQUE, 0x00 );
 	if(sys16_bg_priority_mode) tilemap_draw( bitmap,cliprect, background, TILEMAP_DRAW_OPAQUE | 1, 0x00 );
@@ -1092,7 +1092,7 @@ VIDEO_UPDATE( system18old ){
 	if (!sys16_refreshenable)
 	{
 		/* should it REALLY not clear the bitmap? ddcrew vdp gfx look ugly if i don't do it like this */
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 		return 0;
 	}
 
@@ -1100,11 +1100,11 @@ VIDEO_UPDATE( system18old ){
 	update_page();
 	sys18_vh_screenrefresh_helper(); /* set scroll registers */
 
-	fillbitmap(priority_bitmap,0,NULL);
+	bitmap_fill(priority_bitmap,NULL,0);
 	if(sys18_bg2_active)
 		tilemap_draw( bitmap,cliprect, background2, 0, 0 );
 	else
-		fillbitmap(bitmap,0,cliprect);
+		bitmap_fill(bitmap,cliprect,0);
 
 	tilemap_draw( bitmap,cliprect, background, TILEMAP_DRAW_OPAQUE, 0 );
 	tilemap_draw( bitmap,cliprect, background, TILEMAP_DRAW_OPAQUE | 1, 0 );	//??

@@ -29,7 +29,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( canyon )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 }
 
@@ -77,7 +77,7 @@ static void draw_bombs(bitmap_t *bitmap, const rectangle* cliprect)
 		if (rect.max_x > cliprect->max_x) rect.max_x = cliprect->max_x;
 		if (rect.max_y > cliprect->max_y) rect.max_y = cliprect->max_y;
 
-		fillbitmap(bitmap, 1 + 2 * i, &rect);
+		bitmap_fill(bitmap, &rect, 1 + 2 * i);
 	}
 }
 

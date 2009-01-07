@@ -26,7 +26,7 @@ WRITE16_HANDLER( sshangha_palette_24bit_w )
 	g = (paletteram16[offset+1] >> 8) & 0xff;
 	r = (paletteram16[offset+1] >> 0) & 0xff;
 
-	palette_set_color(machine,offset/2,MAKE_RGB(r,g,b));
+	palette_set_color(space->machine,offset/2,MAKE_RGB(r,g,b));
 }
 
 static void sshangha_tilemap_draw(bitmap_t *bitmap, const rectangle *cliprect)
@@ -86,7 +86,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 		sprite &= ~multi;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			y=240-y;
 			x=304-x;
@@ -172,9 +172,9 @@ static TILE_GET_INFO( get_pf1_8x8_tile_info )
 
 VIDEO_START( sshangha )
 {
-	pf1_8x8_tilemap   = tilemap_create(get_pf1_8x8_tile_info,  tilemap_scan_rows, 8, 8,64,32);
-	pf1_16x16_tilemap = tilemap_create(get_pf1_16x16_tile_info,tilemap_scan_rows,16,16,32,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,         16,16,32,32);
+	pf1_8x8_tilemap   = tilemap_create(machine, get_pf1_8x8_tile_info,  tilemap_scan_rows, 8, 8,64,32);
+	pf1_16x16_tilemap = tilemap_create(machine, get_pf1_16x16_tile_info,tilemap_scan_rows,16,16,32,32);
+	pf2_tilemap = tilemap_create(machine, get_pf2_tile_info,tilemap_scan_rows,         16,16,32,32);
 
 	tilemap_set_transparent_pen(pf1_8x8_tilemap,0);
 	tilemap_set_transparent_pen(pf1_16x16_tilemap,0);
@@ -187,8 +187,8 @@ VIDEO_UPDATE( sshangha )
 	static int last_pf1_bank,last_pf2_bank;
 	int offs;
 
-	flip_screen_set_no_update(sshangha_control_0[0]&0x80);
-	tilemap_set_flip(ALL_TILEMAPS,flip_screen_x_get() ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+	flip_screen_set_no_update(screen->machine, sshangha_control_0[0]&0x80);
+	tilemap_set_flip(ALL_TILEMAPS,flip_screen_x_get(screen->machine) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
 	tilemap_set_enable( pf2_tilemap, sshangha_control_0[5]&0x8000);
 	tilemap_set_enable( pf1_8x8_tilemap, sshangha_control_0[5]&0x0080);
@@ -233,7 +233,7 @@ VIDEO_UPDATE( sshangha )
 	tilemap_set_scrolly( pf1_16x16_tilemap,0, sshangha_control_0[2] );
 
 	if ((sshangha_control_0[5]&0x8000)==0)
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	/* Super Shanghai has a mode where the two tilemaps are combined to
     produce a 6bpp tilemap.  We can't precompute this as any tiles can be

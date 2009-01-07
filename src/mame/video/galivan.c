@@ -184,37 +184,37 @@ VIDEO_START( galivan )
 {
 	/* configure ROM banking */
 	UINT8 *rombase = memory_region(machine, "main");
-	memory_configure_bank(1, 0, 2, &rombase[0x10000], 0x2000);
+	memory_configure_bank(machine, 1, 0, 2, &rombase[0x10000], 0x2000);
 
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,   16,16,128,128);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_cols,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,   16,16,128,128);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_cols,8,8,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,15);
 
 	/* register for saving */
-	state_save_register_global_array(scrollx);
-	state_save_register_global_array(scrolly);
-	state_save_register_global(flipscreen);
-	state_save_register_global(write_layers);
-	state_save_register_global(layers);
+	state_save_register_global_array(machine, scrollx);
+	state_save_register_global_array(machine, scrolly);
+	state_save_register_global(machine, flipscreen);
+	state_save_register_global(machine, write_layers);
+	state_save_register_global(machine, layers);
 }
 
 VIDEO_START( ninjemak )
 {
 	/* configure ROM banking */
 	UINT8 *rombase = memory_region(machine, "main");
-	memory_configure_bank(1, 0, 4, &rombase[0x10000], 0x2000);
+	memory_configure_bank(machine, 1, 0, 4, &rombase[0x10000], 0x2000);
 
-	bg_tilemap = tilemap_create(ninjemak_get_bg_tile_info,tilemap_scan_cols,   16,16,512,32);
-	tx_tilemap = tilemap_create(ninjemak_get_tx_tile_info,tilemap_scan_cols,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, ninjemak_get_bg_tile_info,tilemap_scan_cols,   16,16,512,32);
+	tx_tilemap = tilemap_create(machine, ninjemak_get_tx_tile_info,tilemap_scan_cols,8,8,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,15);
 
 	/* register for saving */
-	state_save_register_global_array(scrollx);
-	state_save_register_global_array(scrolly);
-	state_save_register_global(flipscreen);
-	state_save_register_global(ninjemak_dispdisable);
+	state_save_register_global_array(machine, scrollx);
+	state_save_register_global_array(machine, scrolly);
+	state_save_register_global(machine, flipscreen);
+	state_save_register_global(machine, ninjemak_dispdisable);
 }
 
 
@@ -250,9 +250,9 @@ WRITE8_HANDLER( galivan_gfxbank_w )
 	tilemap_set_flip (tx_tilemap, flipscreen ? TILEMAP_FLIPX|TILEMAP_FLIPY : 0);
 
 	/* bit 7 selects one of two ROM banks for c000-dfff */
-	memory_set_bank(1, (data & 0x80) >> 7);
+	memory_set_bank(space->machine, 1, (data & 0x80) >> 7);
 
-/*  logerror("Address: %04X - port 40 = %02x\n",activecpu_get_pc(),data); */
+/*  logerror("Address: %04X - port 40 = %02x\n",cpu_get_pc(space->cpu),data); */
 }
 
 WRITE8_HANDLER( ninjemak_gfxbank_w )
@@ -273,15 +273,15 @@ WRITE8_HANDLER( ninjemak_gfxbank_w )
 
 		int offs;
 
-logerror("%04x: write %02x to port 80\n",activecpu_get_pc(),data);
+logerror("%04x: write %02x to port 80\n",cpu_get_pc(space->cpu),data);
 
 		for (offs = 0; offs < videoram_size; offs++)
 		{
-			galivan_videoram_w(machine, offs, 0x20);
+			galivan_videoram_w(space, offs, 0x20);
 		}
 		for (offs = 0; offs < videoram_size; offs++)
 		{
-			galivan_colorram_w(machine, offs, 0x03);
+			galivan_colorram_w(space, offs, 0x03);
 		}
 	}
 
@@ -291,7 +291,7 @@ logerror("%04x: write %02x to port 80\n",activecpu_get_pc(),data);
 	/* bit 5 sprite flag ??? */
 
 	/* bit 6, 7 ROM bank select */
-	memory_set_bank(1, (data & 0xc0) >> 6);
+	memory_set_bank(space->machine, 1, (data & 0xc0) >> 6);
 
 #if 0
 	{
@@ -392,7 +392,7 @@ VIDEO_UPDATE( galivan )
 	tilemap_set_scrolly(bg_tilemap,0,scrolly[0] + 256 * (scrolly[1] & 0x07));
 
 	if (layers & 0x40)
-		fillbitmap(bitmap,0,cliprect);
+		bitmap_fill(bitmap,cliprect,0);
 	else
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 
@@ -416,7 +416,7 @@ VIDEO_UPDATE( ninjemak )
 	tilemap_set_scrolly(bg_tilemap,0,scrolly[0] + 256 * (scrolly[1] & 0xff));
 
 	if (ninjemak_dispdisable)
-		fillbitmap(bitmap,0,cliprect);
+		bitmap_fill(bitmap,cliprect,0);
 	else
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 

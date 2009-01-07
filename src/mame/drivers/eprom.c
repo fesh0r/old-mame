@@ -12,6 +12,10 @@
     Known bugs:
         * none at this time
 
+    TODO:
+        * the RGB generator visible in the schematics is not properly modeled.
+
+
 ****************************************************************************
 
     Memory map (TBA)
@@ -20,6 +24,7 @@
 
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/atarigen.h"
 #include "audio/atarijsa.h"
 #include "eprom.h"
@@ -44,9 +49,9 @@ static UINT16 *sync_data;
 
 static void update_interrupts(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 4, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 1, 4, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 6, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 4, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 6, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -63,7 +68,7 @@ static MACHINE_RESET( klaxp )
 static MACHINE_RESET( eprom )
 {
 	MACHINE_RESET_CALL(klaxp);
-	state_save_register_global_pointer(sync_data, 2);
+	state_save_register_global_pointer(machine, sync_data, 2);
 }
 
 
@@ -76,7 +81,7 @@ static MACHINE_RESET( eprom )
 
 static READ16_HANDLER( special_port1_r )
 {
-	int result = input_port_read(machine, "260010");
+	int result = input_port_read(space->machine, "260010");
 
 	if (atarigen_sound_to_cpu_ready) result ^= 0x0004;
 	if (atarigen_cpu_to_sound_ready) result ^= 0x0008;
@@ -90,7 +95,7 @@ static READ16_HANDLER( adc_r )
 {
 	static int last_offset;
 	static const char *const adcnames[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
-	int result = input_port_read(machine, adcnames[last_offset & 3]);
+	int result = input_port_read(space->machine, adcnames[last_offset & 3]);
 
 	last_offset = offset;
 	return result;
@@ -106,13 +111,19 @@ static READ16_HANDLER( adc_r )
 
 static WRITE16_HANDLER( eprom_latch_w )
 {
-	/* reset extra CPU */
 	if (ACCESSING_BITS_0_7)
 	{
+		/* bit 0: reset extra CPU */
 		if (data & 1)
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 		else
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+
+		/* bits 1-4: screen intensity */
+		eprom_screen_intensity = (data & 0x1e) >> 1;
+
+		/* bit 5: video disable */
+		eprom_video_disable = (data & 0x20);
 	}
 }
 
@@ -138,7 +149,7 @@ static WRITE16_HANDLER( sync_w )
 
 	sync_data[offset] = newword;
 	if ((oldword & 0xff00) != (newword & 0xff00))
-		cpu_yield();
+		cpu_yield(space->cpu);
 }
 
 
@@ -164,7 +175,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x360010, 0x360011) AM_WRITE(eprom_latch_w)
 	AM_RANGE(0x360020, 0x360021) AM_WRITE(atarigen_sound_reset_w)
 	AM_RANGE(0x360030, 0x360031) AM_WRITE(atarigen_sound_w)
-	AM_RANGE(0x3e0000, 0x3e0fff) AM_RAM_WRITE(paletteram16_IIIIRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x3e0000, 0x3e0fff) AM_RAM AM_BASE(&paletteram16)
 	AM_RANGE(0x3f0000, 0x3f1fff) AM_WRITE(atarigen_playfield_w) AM_BASE(&atarigen_playfield)
 	AM_RANGE(0x3f2000, 0x3f3fff) AM_WRITE(atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
 	AM_RANGE(0x3f4000, 0x3f4f7f) AM_WRITE(atarigen_alpha_w) AM_BASE(&atarigen_alpha)
@@ -189,7 +200,7 @@ static ADDRESS_MAP_START( guts_map, ADDRESS_SPACE_PROGRAM, 16 )
 //  AM_RANGE(0x360010, 0x360011) AM_WRITE(eprom_latch_w)
 	AM_RANGE(0x360020, 0x360021) AM_WRITE(atarigen_sound_reset_w)
 	AM_RANGE(0x360030, 0x360031) AM_WRITE(atarigen_sound_w)
-	AM_RANGE(0x3e0000, 0x3e0fff) AM_RAM_WRITE(paletteram16_IIIIRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x3e0000, 0x3e0fff) AM_RAM AM_BASE(&paletteram16)
 	AM_RANGE(0xff0000, 0xff1fff) AM_WRITE(atarigen_playfield_upper_w) AM_BASE(&atarigen_playfield_upper)
 	AM_RANGE(0xff8000, 0xff9fff) AM_WRITE(atarigen_playfield_w) AM_BASE(&atarigen_playfield)
 	AM_RANGE(0xffa000, 0xffbfff) AM_WRITE(atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
@@ -406,7 +417,7 @@ static MACHINE_DRIVER_START( eprom )
 	MDRV_CPU_ADD("extra", M68000, ATARI_CLOCK_14MHz/2)
 	MDRV_CPU_PROGRAM_MAP(extra_map,0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_RESET(eprom)
 	MDRV_NVRAM_HANDLER(atarigen)
@@ -437,7 +448,7 @@ static MACHINE_DRIVER_START( klaxp )
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT("main", atarigen_video_int_gen)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(klaxp)
 	MDRV_NVRAM_HANDLER(atarigen)
@@ -467,7 +478,7 @@ static MACHINE_DRIVER_START( guts )
 	MDRV_CPU_PROGRAM_MAP(guts_map,0)
 	MDRV_CPU_VBLANK_INT("main", atarigen_video_int_gen)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(eprom)
 	MDRV_NVRAM_HANDLER(atarigen)
@@ -715,8 +726,8 @@ static DRIVER_INIT( eprom )
 	atarijsa_init(machine, "260010", 0x0002);
 
 	/* install CPU synchronization handlers */
-	sync_data = memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x16cc00, 0x16cc01, 0, 0, sync_r, sync_w);
-	sync_data = memory_install_readwrite16_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x16cc00, 0x16cc01, 0, 0, sync_r, sync_w);
+	sync_data = memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x16cc00, 0x16cc01, 0, 0, sync_r, sync_w);
+	sync_data = memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x16cc00, 0x16cc01, 0, 0, sync_r, sync_w);
 }
 
 

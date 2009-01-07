@@ -7,6 +7,7 @@ Mahjong Sisters (c) 1986 Toa Plan
 *****************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
@@ -40,7 +41,7 @@ static TIMER_CALLBACK( dac_callback )
 	dac_data_w(0,DACROM[(dac_bank * 0x10000 + dac_adr++) & 0x1ffff]);
 
 	if (((dac_adr & 0xff00 ) >> 8) !=  dac_adr_e )
-		timer_set(attotime_mul(ATTOTIME_IN_HZ(MCLK), 1024), NULL, 0, dac_callback);
+		timer_set(machine, attotime_mul(ATTOTIME_IN_HZ(MCLK), 1024), NULL, 0, dac_callback);
 	else
 		dac_busy = 0;
 }
@@ -56,7 +57,7 @@ static WRITE8_HANDLER( mjsister_dac_adr_e_w )
 	dac_adr = dac_adr_s << 8;
 
 	if (dac_busy == 0)
-		timer_call_after_resynch(NULL, 0,dac_callback);
+		timer_call_after_resynch(space->machine, NULL, 0,dac_callback);
 
 	dac_busy = 1;
 }
@@ -68,7 +69,7 @@ static MACHINE_RESET( mjsister )
 
 static WRITE8_HANDLER( mjsister_banksel1_w )
 {
-	UINT8 *BANKROM = memory_region(machine, "main");
+	UINT8 *BANKROM = memory_region(space->machine, "main");
 	int tmp = mjsister_colorbank;
 
 	switch (data)
@@ -93,18 +94,18 @@ static WRITE8_HANDLER( mjsister_banksel1_w )
 		case 0xf: mjsister_vrambank = 1 ; break;
 
 		default:
-			logerror("%04x p30_w:%02x\n",activecpu_get_pc(),data);
+			logerror("%04x p30_w:%02x\n",cpu_get_pc(space->cpu),data);
 	}
 
 	if (tmp != mjsister_colorbank)
 		mjsister_screen_redraw = 1;
 
-	memory_set_bankptr(1,&BANKROM[rombank0*0x10000+rombank1*0x8000]+0x10000);
+	memory_set_bankptr(space->machine, 1,&BANKROM[rombank0*0x10000+rombank1*0x8000]+0x10000);
 }
 
 static WRITE8_HANDLER( mjsister_banksel2_w )
 {
-	UINT8 *BANKROM = memory_region(machine, "main");
+	UINT8 *BANKROM = memory_region(space->machine, "main");
 
 	switch (data)
 	{
@@ -115,10 +116,10 @@ static WRITE8_HANDLER( mjsister_banksel2_w )
 		case 0xd: rombank1 = 1; break;
 
 		default:
-			logerror("%04x p31_w:%02x\n",activecpu_get_pc(),data);
+			logerror("%04x p31_w:%02x\n",cpu_get_pc(space->cpu),data);
 	}
 
-	memory_set_bankptr(1,&BANKROM[rombank0*0x10000+rombank1*0x8000]+0x10000);
+	memory_set_bankptr(space->machine, 1,&BANKROM[rombank0*0x10000+rombank1*0x8000]+0x10000);
 }
 
 static WRITE8_HANDLER( mjsister_input_sel1_w )
@@ -142,7 +143,7 @@ static READ8_HANDLER( mjsister_keys_r )
 	for (i=0; i<6; i++)
 	{
 		if (p & (1 << i))
-			ret |= input_port_read(machine, keynames[i]);
+			ret |= input_port_read(space->machine, keynames[i]);
 	}
 
 	return ret;

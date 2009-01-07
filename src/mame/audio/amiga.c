@@ -10,7 +10,6 @@
 
 #include "driver.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "includes/amiga.h"
 #include "cpu/m68000/m68000.h"
 
@@ -83,7 +82,7 @@ static amiga_audio *audio_state;
 
 static TIMER_CALLBACK( signal_irq )
 {
-	amiga_custom_w(machine, REG_INTREQ, 0x8000 | (0x80 << param), 0xffff);
+	amiga_custom_w(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), REG_INTREQ, 0x8000 | (0x80 << param), 0xffff);
 }
 
 
@@ -123,7 +122,7 @@ void amiga_audio_update(void)
 
 
 
-static void amiga_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length)
+static STREAM_UPDATE( amiga_stream_update )
 {
 	amiga_audio *audio = param;
 	int channum, sampoffs = 0;
@@ -138,11 +137,11 @@ static void amiga_stream_update(void *param, stream_sample_t **inputs, stream_sa
 
 		/* clear the sample data to 0 */
 		for (channum = 0; channum < 4; channum++)
-			memset(outputs[channum], 0, sizeof(stream_sample_t) * length);
+			memset(outputs[channum], 0, sizeof(stream_sample_t) * samples);
 		return;
 	}
 
-	length *= CLOCK_DIVIDER;
+	samples *= CLOCK_DIVIDER;
 
 	/* update the DMA states on each channel and reload if fresh */
 	for (channum = 0; channum < 4; channum++)
@@ -154,10 +153,10 @@ static void amiga_stream_update(void *param, stream_sample_t **inputs, stream_sa
 	}
 
 	/* loop until done */
-	while (length > 0)
+	while (samples > 0)
 	{
 		int nextper, nextvol;
-		int ticks = length;
+		int ticks = samples;
 
 		/* determine the number of ticks we can do in this chunk */
 		if (ticks > audio->channel[0].curticks)
@@ -242,7 +241,7 @@ static void amiga_stream_update(void *param, stream_sample_t **inputs, stream_sa
 				/* if we're in manual mode, signal an interrupt once we latch the low byte */
 				if (!chan->dmaenabled && chan->manualmode && (chan->curlocation & 1))
 				{
-					signal_irq(Machine, NULL, channum);
+					signal_irq(device->machine, NULL, channum);
 					chan->manualmode = FALSE;
 				}
 			}
@@ -250,7 +249,7 @@ static void amiga_stream_update(void *param, stream_sample_t **inputs, stream_sa
 
 		/* bump ourselves forward by the number of ticks */
 		sampoffs += ticks;
-		length -= ticks;
+		samples -= ticks;
 	}
 }
 
@@ -262,8 +261,9 @@ static void amiga_stream_update(void *param, stream_sample_t **inputs, stream_sa
  *
  *************************************/
 
-void *amiga_sh_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( amiga_sh_start )
 {
+	running_machine *machine = device->machine;
 	int i;
 
 	/* allocate a new audio state */
@@ -272,10 +272,10 @@ void *amiga_sh_start(int clock, const custom_sound_interface *config)
 	for (i = 0; i < 4; i++)
 	{
 		audio_state->channel[i].index = i;
-		audio_state->channel[i].irq_timer = timer_alloc(signal_irq, NULL);
+		audio_state->channel[i].irq_timer = timer_alloc(machine, signal_irq, NULL);
 	}
 
 	/* create the stream */
-	audio_state->stream = stream_create(0, 4, clock / CLOCK_DIVIDER, audio_state, amiga_stream_update);
+	audio_state->stream = stream_create(device, 0, 4, clock / CLOCK_DIVIDER, audio_state, amiga_stream_update);
 	return audio_state;
 }

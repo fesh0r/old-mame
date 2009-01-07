@@ -15,7 +15,6 @@
 #include <math.h>
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "es8712.h"
 
@@ -166,7 +165,7 @@ static void generate_adpcm(struct es8712 *chip, stream_sample_t *buffer, int sam
 
 ***********************************************************************************************/
 
-static void es8712_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+static STREAM_UPDATE( es8712_update )
 {
 	stream_sample_t *buffer = outputs[0];
 	struct es8712 *chip = param;
@@ -183,36 +182,32 @@ static void es8712_update(void *param, stream_sample_t **inputs, stream_sample_t
 
 ***********************************************************************************************/
 
-static void es8712_state_save_register(struct es8712 *chip, int sndindex)
+static void es8712_state_save_register(struct es8712 *chip, const device_config *device)
 {
-	char buf[20];
+	state_save_register_device_item(device, 0, chip->bank_offset);
 
-	sprintf(buf,"ES8712");
+	state_save_register_device_item(device, 0, chip->playing);
+	state_save_register_device_item(device, 0, chip->sample);
+	state_save_register_device_item(device, 0, chip->count);
+	state_save_register_device_item(device, 0, chip->signal);
+	state_save_register_device_item(device, 0, chip->step);
 
-	state_save_register_item(buf, sndindex, chip->bank_offset);
+	state_save_register_device_item(device, 0, chip->base_offset);
 
-	state_save_register_item(buf, sndindex, chip->playing);
-	state_save_register_item(buf, sndindex, chip->sample);
-	state_save_register_item(buf, sndindex, chip->count);
-	state_save_register_item(buf, sndindex, chip->signal);
-	state_save_register_item(buf, sndindex, chip->step);
-
-	state_save_register_item(buf, sndindex, chip->base_offset);
-
-	state_save_register_item(buf, sndindex, chip->start);
-	state_save_register_item(buf, sndindex, chip->end);
-	state_save_register_item(buf, sndindex, chip->repeat);
+	state_save_register_device_item(device, 0, chip->start);
+	state_save_register_device_item(device, 0, chip->end);
+	state_save_register_device_item(device, 0, chip->repeat);
 }
 
 
 
 /**********************************************************************************************
 
-    ES8712_start -- start emulation of an ES8712 chip
+    SND_START( es8712 ) -- start emulation of an ES8712 chip
 
 ***********************************************************************************************/
 
-static void *es8712_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( es8712 )
 {
 	struct es8712 *chip;
 
@@ -226,15 +221,15 @@ static void *es8712_start(const char *tag, int sndindex, int clock, const void *
 	chip->repeat = 0;
 
 	chip->bank_offset = 0;
-	chip->region_base = memory_region(Machine, tag);
+	chip->region_base = device->region;
 
 	/* generate the name and create the stream */
-	chip->stream = stream_create(0, 1, clock, chip, es8712_update);
+	chip->stream = stream_create(device, 0, 1, clock, chip, es8712_update);
 
 	/* initialize the rest of the structure */
 	chip->signal = -2;
 
-	es8712_state_save_register(chip, sndindex);
+	es8712_state_save_register(chip, device);
 
 	/* success */
 	return chip;
@@ -244,13 +239,13 @@ static void *es8712_start(const char *tag, int sndindex, int clock, const void *
 
 /*************************************************************************************
 
-     ES8712_reset -- stop emulation of an ES8712-compatible chip
+     SND_RESET( es8712 ) -- stop emulation of an ES8712-compatible chip
 
 **************************************************************************************/
 
-static void es8712_reset(void *chip_src)
+static SND_RESET( es8712 )
 {
-	struct es8712 *chip = chip_src;
+	struct es8712 *chip = device->token;
 
 	if (chip->playing)
 	{
@@ -441,7 +436,7 @@ WRITE16_HANDLER( es8712_data_2_msb_w )
  * Generic get_info
  **************************************************************************/
 
-static void es8712_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( es8712 )
 {
 	switch (state)
 	{
@@ -450,24 +445,24 @@ static void es8712_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void es8712_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( es8712 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = es8712_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = es8712_start;				break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							info->reset = es8712_reset;				break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( es8712 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( es8712 );			break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( es8712 );			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "ES8712";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Excellent Systems ADPCM";			break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "ES8712");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Excellent Systems ADPCM");		break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

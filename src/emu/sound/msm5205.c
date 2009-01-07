@@ -16,7 +16,6 @@
 
 #include "sndintrf.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "msm5205.h"
 
 /*
@@ -32,6 +31,7 @@
 struct MSM5205Voice
 {
 	const msm5205_interface *intf;
+	const device_config *device;
 	sound_stream * stream;  /* number of stream system      */
 	INT32 index;
 	INT32 clock;				/* clock rate */
@@ -90,23 +90,23 @@ static void ComputeTables (struct MSM5205Voice *voice)
 }
 
 /* stream update callbacks */
-static void MSM5205_update(void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length)
+static STREAM_UPDATE( MSM5205_update )
 {
 	struct MSM5205Voice *voice = param;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
 	/* if this voice is active */
 	if(voice->signal)
 	{
 		short val = voice->signal * 16;
-		while (length)
+		while (samples)
 		{
 			*buffer++ = val;
-			length--;
+			samples--;
 		}
 	}
 	else
-		memset (buffer,0,length*sizeof(*buffer));
+		memset (buffer,0,samples*sizeof(*buffer));
 }
 
 /* timer callback at VCLK low eddge */
@@ -116,7 +116,7 @@ static TIMER_CALLBACK( MSM5205_vclk_callback )
 	int val;
 	int new_signal;
 	/* callback user handler and latch next data */
-	if(voice->intf->vclk_callback) (*voice->intf->vclk_callback)(machine, voice->index);
+	if(voice->intf->vclk_callback) (*voice->intf->vclk_callback)(voice->device);
 
 	/* reset check at last hieddge of VCLK */
 	if(voice->reset)
@@ -147,10 +147,8 @@ static TIMER_CALLBACK( MSM5205_vclk_callback )
 /*
  *    Reset emulation of an MSM5205-compatible chip
  */
-static void msm5205_reset(void *chip)
+static void msm5205_reset(struct MSM5205Voice *voice)
 {
-	struct MSM5205Voice *voice = chip;
-
 	/* initialize work */
 	voice->data    = 0;
 	voice->vclk    = 0;
@@ -161,11 +159,17 @@ static void msm5205_reset(void *chip)
 	msm5205_playmode_w(voice->index,voice->intf->select);
 }
 
+
+static SND_RESET( msm5205 )
+{
+	msm5205_reset(device->token);
+}
+
 /*
  *    Start emulation of an MSM5205-compatible chip
  */
 
-static void *msm5205_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( msm5205 )
 {
 	struct MSM5205Voice *voice;
 
@@ -175,6 +179,7 @@ static void *msm5205_start(const char *tag, int sndindex, int clock, const void 
 
 	/* save a global pointer to our interface */
 	voice->intf = config;
+	voice->device = device;
 	voice->index = sndindex;
 	voice->clock = clock;
 
@@ -182,21 +187,21 @@ static void *msm5205_start(const char *tag, int sndindex, int clock, const void 
 	ComputeTables (voice);
 
 	/* stream system initialize */
-	voice->stream = stream_create(0,1,clock,voice,MSM5205_update);
-	voice->timer = timer_alloc(MSM5205_vclk_callback, voice);
+	voice->stream = stream_create(device,0,1,clock,voice,MSM5205_update);
+	voice->timer = timer_alloc(device->machine, MSM5205_vclk_callback, voice);
 
 	/* initialize */
 	msm5205_reset(voice);
 
 	/* register for save states */
-	state_save_register_item("msm5205", sndindex, voice->clock);
-	state_save_register_item("msm5205", sndindex, voice->data);
-	state_save_register_item("msm5205", sndindex, voice->vclk);
-	state_save_register_item("msm5205", sndindex, voice->reset);
-	state_save_register_item("msm5205", sndindex, voice->prescaler);
-	state_save_register_item("msm5205", sndindex, voice->bitwidth);
-	state_save_register_item("msm5205", sndindex, voice->signal);
-	state_save_register_item("msm5205", sndindex, voice->step);
+	state_save_register_device_item(device, 0, voice->clock);
+	state_save_register_device_item(device, 0, voice->data);
+	state_save_register_device_item(device, 0, voice->vclk);
+	state_save_register_device_item(device, 0, voice->reset);
+	state_save_register_device_item(device, 0, voice->prescaler);
+	state_save_register_device_item(device, 0, voice->bitwidth);
+	state_save_register_device_item(device, 0, voice->signal);
+	state_save_register_device_item(device, 0, voice->step);
 
 	/* success */
 	return voice;
@@ -219,7 +224,7 @@ void msm5205_vclk_w (int num, int vclk)
 		if( voice->vclk != vclk)
 		{
 			voice->vclk = vclk;
-			if( !vclk ) MSM5205_vclk_callback(Machine, voice, 0);
+			if( !vclk ) MSM5205_vclk_callback(voice->device->machine, voice, 0);
 		}
 	}
 }
@@ -297,7 +302,7 @@ void msm5205_set_volume(int num,int volume)
  * Generic get_info
  **************************************************************************/
 
-static void msm5205_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( msm5205 )
 {
 	switch (state)
 	{
@@ -306,24 +311,24 @@ static void msm5205_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void msm5205_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( msm5205 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = msm5205_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = msm5205_start;			break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( msm5205 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( msm5205 );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( msm5205 );		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "MSM5205";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "ADPCM";						break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "MSM5205");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "ADPCM");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

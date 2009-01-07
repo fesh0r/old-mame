@@ -40,6 +40,8 @@ Stephh's notes (based on the game M68000 code and some tests) :
 ********************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "taitoipt.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
@@ -210,7 +212,7 @@ GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -233,7 +235,7 @@ static const ym2203_interface ym2203_config =
 
 static DRIVER_INIT( volfied )
 {
-	volfied_cchip_init();
+	volfied_cchip_init(machine);
 }
 
 static MACHINE_DRIVER_START( volfied )
@@ -246,7 +248,7 @@ static MACHINE_DRIVER_START( volfied )
 	MDRV_CPU_ADD("audio", Z80, 4000000)   /* sound CPU, required to run the game */
 	MDRV_CPU_PROGRAM_MAP(z80_map,0)
 
-	MDRV_INTERLEAVE(20)
+	MDRV_QUANTUM_TIME(HZ(1200))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -308,7 +310,7 @@ ROM_START( volfiedu )
 	ROM_LOAD16_BYTE( "c04-12-1.30", 0x00000, 0x10000, CRC(afb6a058) SHA1(fca488e86725a0a673332afeb0002f0e77ef2dbf) )
 	ROM_LOAD16_BYTE( "c04-08-1.10", 0x00001, 0x10000, CRC(19f7e66b) SHA1(51b5d0d00ec398ed717154286bec24b05c3f81b8) )
 	ROM_LOAD16_BYTE( "c04-11-1.29", 0x20000, 0x10000, CRC(1aaf6e9b) SHA1(4be643283dc78eb57e9fe4c5afebdc427e4354e8) )
-	ROM_LOAD16_BYTE( "volf-usa.9",  0x20001, 0x10000, CRC(c499346f) SHA1(f039b36050e6091929c44ab22e03af3d66d41eaf) )
+	ROM_LOAD16_BYTE( "c04-24-1.9",  0x20001, 0x10000, CRC(c499346f) SHA1(f039b36050e6091929c44ab22e03af3d66d41eaf) )
 	ROM_LOAD16_BYTE( "c04-20.7",    0x80000, 0x20000, CRC(0aea651f) SHA1(a438a37ec9dc764c841561608924da158ddde66f) )
 	ROM_LOAD16_BYTE( "c04-22.9",    0x80001, 0x20000, CRC(f405d465) SHA1(67f6a4baf640dc74d9534ffda790f76677e944e8) )
 	ROM_LOAD16_BYTE( "c04-19.6",    0xc0000, 0x20000, CRC(231493ae) SHA1(2658e6556fd0e75ddd0f0b8628cfa5237c187a06) )

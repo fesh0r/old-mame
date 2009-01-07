@@ -141,6 +141,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/i8085/i8085.h"
 #include "rendlay.h"
 #include "machine/rescap.h"
 #include "mw8080bw.h"
@@ -163,7 +164,7 @@ static UINT8 rev_shift_res;
 
 static READ8_HANDLER( mw8080bw_shift_result_rev_r )
 {
-	UINT8 ret = mb14241_0_shift_result_r(machine, 0);
+	UINT8 ret = mb14241_0_shift_result_r(space, 0);
 
 	return BITSWAP8(ret,0,1,2,3,4,5,6,7);
 }
@@ -175,11 +176,11 @@ static READ8_HANDLER( mw8080bw_reversable_shift_result_r )
 
 	if (rev_shift_res)
 	{
-		ret = mw8080bw_shift_result_rev_r(machine, 0);
+		ret = mw8080bw_shift_result_rev_r(space, 0);
 	}
 	else
 	{
-		ret = mb14241_0_shift_result_r(machine, 0);
+		ret = mb14241_0_shift_result_r(space, 0);
 	}
 
 	return ret;
@@ -187,7 +188,7 @@ static READ8_HANDLER( mw8080bw_reversable_shift_result_r )
 
 static WRITE8_HANDLER( mw8080bw_reversable_shift_count_w)
 {
-	mb14241_0_shift_count_w(machine, offset, data);
+	mb14241_0_shift_count_w(space, offset, data);
 
 	rev_shift_res = data & 0x08;
 }
@@ -421,11 +422,11 @@ MACHINE_DRIVER_END
 
 static WRITE8_HANDLER( gunfight_io_w )
 {
-	if (offset & 0x01)  gunfight_audio_w(machine, 0, data);
+	if (offset & 0x01)  gunfight_audio_w(space, 0, data);
 
-	if (offset & 0x02)  mb14241_0_shift_count_w(machine, 0, data);
+	if (offset & 0x02)  mb14241_0_shift_count_w(space, 0, data);
 
-	if (offset & 0x04)  mb14241_0_shift_data_w(machine, 0, data);
+	if (offset & 0x04)  mb14241_0_shift_data_w(space, 0, data);
 }
 
 
@@ -610,11 +611,11 @@ static CUSTOM_INPUT( tornbase_score_input_r )
 
 static WRITE8_HANDLER( tornbase_io_w )
 {
-	if (offset & 0x01)  tornbase_audio_w(machine, 0, data);
+	if (offset & 0x01)  tornbase_audio_w(space, 0, data);
 
-	if (offset & 0x02)  mb14241_0_shift_count_w(machine, 0, data);
+	if (offset & 0x02)  mb14241_0_shift_count_w(space, 0, data);
 
-	if (offset & 0x04)  mb14241_0_shift_data_w(machine, 0, data);
+	if (offset & 0x04)  mb14241_0_shift_data_w(space, 0, data);
 }
 
 
@@ -834,7 +835,7 @@ static MACHINE_DRIVER_START( zzzap )
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(zzzap_io_map,0)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_M(1), CAP_U(1)))) /* 1.1s */
+	MDRV_WATCHDOG_TIME_INIT(NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_M(1), CAP_U(1)))) /* 1.1s */
 
 	/* audio hardware */
 	/* MDRV_IMPORT_FROM(zzzap_audio) */
@@ -872,13 +873,13 @@ static TIMER_CALLBACK( maze_tone_timing_timer_callback )
 static MACHINE_START( maze )
 {
 	/* create astable timer for IC B1 */
-	timer_pulse(MAZE_555_B1_PERIOD, NULL, 0, maze_tone_timing_timer_callback);
+	timer_pulse(machine, MAZE_555_B1_PERIOD, NULL, 0, maze_tone_timing_timer_callback);
 
 	/* initialize state of Tone Timing FF, IC C1 */
 	maze_tone_timing_state = 0;
 
 	/* setup for save states */
-	state_save_register_global(maze_tone_timing_state);
+	state_save_register_global(machine, maze_tone_timing_state);
 	state_save_register_postload(machine, maze_update_discrete, NULL);
 
 	MACHINE_START_CALL(mw8080bw);
@@ -895,9 +896,9 @@ static WRITE8_HANDLER( maze_coin_counter_w )
 
 static WRITE8_HANDLER( maze_io_w )
 {
-	if (offset & 0x01)  maze_coin_counter_w(machine, 0, data);
+	if (offset & 0x01)  maze_coin_counter_w(space, 0, data);
 
-	if (offset & 0x02)  watchdog_reset_w(machine, 0, data);
+	if (offset & 0x02)  watchdog_reset_w(space, 0, data);
 }
 
 
@@ -946,7 +947,7 @@ static MACHINE_DRIVER_START( maze )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(maze_io_map,0)
 	MDRV_MACHINE_START(maze)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_K(270), CAP_U(10)))) /* 2.97s */
+	MDRV_WATCHDOG_TIME_INIT(NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_K(270), CAP_U(10)))) /* 2.97s */
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(maze_audio)
@@ -964,7 +965,7 @@ MACHINE_DRIVER_END
 static MACHINE_START( boothill )
 {
 	/* setup for save states */
-	state_save_register_global(rev_shift_res);
+	state_save_register_global(machine, rev_shift_res);
 
 	MACHINE_START_CALL(mw8080bw);
 }
@@ -1037,7 +1038,7 @@ static MACHINE_DRIVER_START( boothill )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(boothill_io_map,0)
 	MDRV_MACHINE_START(boothill)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_K(270), CAP_U(10)))) /* 2.97s */
+	MDRV_WATCHDOG_TIME_INIT(NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_K(270), CAP_U(10)))) /* 2.97s */
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(boothill_audio)
@@ -1054,9 +1055,9 @@ MACHINE_DRIVER_END
 
 static WRITE8_HANDLER( checkmat_io_w )
 {
-	if (offset & 0x01)  checkmat_audio_w(machine, 0, data);
+	if (offset & 0x01)  checkmat_audio_w(space, 0, data);
 
-	if (offset & 0x02)  watchdog_reset_w(machine, 0, data);
+	if (offset & 0x02)  watchdog_reset_w(space, 0, data);
 }
 
 
@@ -1139,7 +1140,7 @@ static MACHINE_DRIVER_START( checkmat )
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(checkmat_io_map,0)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_K(270), CAP_U(10)))) /* 2.97s */
+	MDRV_WATCHDOG_TIME_INIT(NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_K(270), CAP_U(10)))) /* 2.97s */
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(checkmat_audio)
@@ -1164,7 +1165,7 @@ static UINT8 desertgu_controller_select;
 static MACHINE_START( desertgu )
 {
 	/* setup for save states */
-	state_save_register_global(desertgu_controller_select);
+	state_save_register_global(machine, desertgu_controller_select);
 
 	MACHINE_START_CALL(mw8080bw);
 }
@@ -1275,7 +1276,7 @@ static MACHINE_DRIVER_START( desertgu )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(desertgu_io_map,0)
 	MDRV_MACHINE_START(desertgu)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(desertgu_audio)
@@ -1472,7 +1473,7 @@ static MACHINE_DRIVER_START( dplay )
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(dplay_io_map,0)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(dplay_audio)
@@ -1490,7 +1491,7 @@ MACHINE_DRIVER_END
 static MACHINE_START( gmissile )
 {
 	/* setup for save states */
-	state_save_register_global(rev_shift_res);
+	state_save_register_global(machine, rev_shift_res);
 
 	MACHINE_START_CALL(mw8080bw);
 }
@@ -1582,7 +1583,7 @@ MACHINE_DRIVER_END
 static MACHINE_START( m4 )
 {
 	/* setup for save states */
-	state_save_register_global(rev_shift_res);
+	state_save_register_global(machine, rev_shift_res);
 
 	MACHINE_START_CALL(mw8080bw);
 }
@@ -1654,7 +1655,7 @@ static MACHINE_DRIVER_START( m4 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(m4_io_map,0)
 	MDRV_MACHINE_START(m4)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(m4_audio)
@@ -1679,7 +1680,7 @@ static UINT8 clowns_controller_select;
 static MACHINE_START( clowns )
 {
 	/* setup for save states */
-	state_save_register_global(clowns_controller_select);
+	state_save_register_global(machine, clowns_controller_select);
 
 	MACHINE_START_CALL(mw8080bw);
 }
@@ -1828,7 +1829,7 @@ static MACHINE_DRIVER_START( clowns )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(clowns_io_map,0)
 	MDRV_MACHINE_START(clowns)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(clowns_audio)
@@ -1906,7 +1907,7 @@ static MACHINE_DRIVER_START( shuffle )
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(shuffle_io_map,0)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* audio hardware */
 	/* MDRV_IMPORT_FROM(shuffle_audio) */
@@ -1991,7 +1992,7 @@ static MACHINE_DRIVER_START( dogpatch )
 	MDRV_CPU_IO_MAP(dogpatch_io_map,0)
 	/* the watch dog time is unknown, but all other */
 	/* Midway boards of the era used the same circuit */
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(dogpatch_audio)
@@ -2025,10 +2026,10 @@ static TIMER_DEVICE_CALLBACK( spcenctr_strobe_timer_callback )
 static MACHINE_START( spcenctr )
 {
 	/* setup for save states */
-	state_save_register_global(spcenctr_strobe_state);
-	state_save_register_global(spcenctr_trench_width);
-	state_save_register_global(spcenctr_trench_center);
-	state_save_register_global_array(spcenctr_trench_slope);
+	state_save_register_global(machine, spcenctr_strobe_state);
+	state_save_register_global(machine, spcenctr_trench_width);
+	state_save_register_global(machine, spcenctr_trench_center);
+	state_save_register_global_array(machine, spcenctr_trench_slope);
 
 	MACHINE_START_CALL(mw8080bw);
 }
@@ -2061,16 +2062,16 @@ UINT8 spcenctr_get_trench_slope(UINT8 addr)
 static WRITE8_HANDLER( spcenctr_io_w )
 {												/* A7 A6 A5 A4 A3 A2 A1 A0 */
 	if ((offset & 0x07) == 0x02)
-		watchdog_reset_w(machine, 0, data);		/*  -  -  -  -  -  0  1  0 */
+		watchdog_reset_w(space, 0, data);		/*  -  -  -  -  -  0  1  0 */
 
 	else if ((offset & 0x5f) == 0x01)
-		spcenctr_audio_1_w(machine, 0, data);	/*  -  0  -  0  0  0  0  1 */
+		spcenctr_audio_1_w(space, 0, data);	/*  -  0  -  0  0  0  0  1 */
 
 	else if ((offset & 0x5f) == 0x09)
-		spcenctr_audio_2_w(machine, 0, data);	/*  -  0  -  0  1  0  0  1 */
+		spcenctr_audio_2_w(space, 0, data);	/*  -  0  -  0  1  0  0  1 */
 
 	else if ((offset & 0x5f) == 0x11)
-		spcenctr_audio_3_w(machine, 0, data);	/*  -  0  -  1  0  0  0  1 */
+		spcenctr_audio_3_w(space, 0, data);	/*  -  0  -  1  0  0  0  1 */
 
 	else if ((offset & 0x07) == 0x03)
 	{											/*  -  -  -  -  -  0  1  1 */
@@ -2084,7 +2085,7 @@ static WRITE8_HANDLER( spcenctr_io_w )
 		spcenctr_trench_width = data;			/*  -  -  -  -  -  1  1  1 */
 
 	else
-		logerror("%04x:  Unmapped I/O port write to %02x = %02x\n", activecpu_get_pc(), offset, data);
+		logerror("%04x:  Unmapped I/O port write to %02x = %02x\n", cpu_get_pc(space->cpu), offset, data);
 }
 
 
@@ -2157,7 +2158,7 @@ static MACHINE_DRIVER_START( spcenctr )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(spcenctr_io_map,0)
 	MDRV_MACHINE_START(spcenctr)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* timers */
 	MDRV_TIMER_ADD_PERIODIC("strobeon", spcenctr_strobe_timer_callback, HZ(SPCENCTR_STROBE_FREQ))
@@ -2189,7 +2190,7 @@ static UINT16 phantom2_cloud_counter = 0;
 static MACHINE_START( phantom2 )
 {
 	/* setup for save states */
-	state_save_register_global(phantom2_cloud_counter);
+	state_save_register_global(machine, phantom2_cloud_counter);
 
 	MACHINE_START_CALL(mw8080bw);
 }
@@ -2265,7 +2266,7 @@ static MACHINE_DRIVER_START( phantom2 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(phantom2_io_map,0)
 	MDRV_MACHINE_START(phantom2)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(phantom2)
@@ -2290,7 +2291,7 @@ static READ8_HANDLER( bowler_shift_result_r )
        anything unusual on the schematics that would cause
        the bits to flip */
 
-	return ~mb14241_0_shift_result_r(machine,0);
+	return ~mb14241_0_shift_result_r(space,0);
 }
 
 
@@ -2401,7 +2402,7 @@ static MACHINE_DRIVER_START( bowler )
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(bowler_io_map,0)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(bowler_audio)
@@ -2426,7 +2427,7 @@ static UINT8 invaders_flip_screen = 0;
 static MACHINE_START( invaders )
 {
 	/* setup for save states */
-	state_save_register_global(invaders_flip_screen);
+	state_save_register_global(machine, invaders_flip_screen);
 
 	MACHINE_START_CALL(mw8080bw);
 }
@@ -2627,7 +2628,7 @@ MACHINE_DRIVER_START( invaders )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(invaders_io_map,0)
 	MDRV_MACHINE_START(invaders)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(invaders)
@@ -2706,7 +2707,7 @@ static MACHINE_DRIVER_START( blueshrk )
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(blueshrk_io_map,0)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(blueshrk_audio)
@@ -2804,7 +2805,7 @@ static MACHINE_DRIVER_START( invad2ct )
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(invad2ct_io_map,0)
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(invad2ct_audio)

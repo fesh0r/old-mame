@@ -25,24 +25,26 @@ WRITE8_HANDLER( jack_colorram_w )
 WRITE8_HANDLER( jack_paletteram_w )
 {
 	/* RGB output is inverted */
-	paletteram_BBGGGRRR_w(machine,offset,~data);
+	paletteram_BBGGGRRR_w(space,offset,~data);
 }
 
 READ8_HANDLER( jack_flipscreen_r )
 {
-	flip_screen_set(offset);
+	flip_screen_set(space->machine, offset);
 	return 0;
 }
 
 WRITE8_HANDLER( jack_flipscreen_w )
 {
-	flip_screen_set(offset);
+	flip_screen_set(space->machine, offset);
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram[tile_index] + ((colorram[tile_index] & 0x18) << 5);
 	int color = colorram[tile_index] & 0x07;
+
+	// striv: colorram[tile_index] & 0x80 ???
 
 	SET_TILE_INFO(0, code, color, 0);
 }
@@ -55,7 +57,7 @@ static UINT32 tilemap_scan_cols_flipy( UINT32 col, UINT32 row, UINT32 num_cols, 
 
 VIDEO_START( jack )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flipy,  8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols_flipy,  8, 8, 32, 32);
 }
 
 static void jack_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
@@ -73,7 +75,7 @@ static void jack_draw_sprites(running_machine *machine, bitmap_t *bitmap, const 
 		flipx = (spriteram[offs + 3] & 0x80);
 		flipy = (spriteram[offs + 3] & 0x40);
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 248 - sx;
 			sy = 248 - sy;
@@ -136,7 +138,7 @@ static TILE_GET_INFO( joinem_get_bg_tile_info )
 
 VIDEO_START( joinem )
 {
-	bg_tilemap = tilemap_create(joinem_get_bg_tile_info, tilemap_scan_cols_flipy,  8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, joinem_get_bg_tile_info, tilemap_scan_cols_flipy,  8, 8, 32, 32);
 }
 
 static void joinem_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
@@ -154,7 +156,7 @@ static void joinem_draw_sprites(running_machine *machine, bitmap_t *bitmap, cons
 		flipx = (spriteram[offs + 3] & 0x80);
 		flipy = (spriteram[offs + 3] & 0x40);
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 248 - sx;
 			sy = 248 - sy;

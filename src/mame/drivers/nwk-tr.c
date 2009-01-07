@@ -213,7 +213,7 @@ Thrill Drive 713A13  -       713A14  -
 */
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/powerpc/ppc.h"
 #include "cpu/sharc/sharc.h"
 #include "machine/konppc.h"
@@ -232,7 +232,7 @@ static WRITE32_HANDLER( paletteram32_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
 	data = paletteram32[offset];
-	palette_set_color_rgb(machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(space->machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 
@@ -431,21 +431,21 @@ int K001604_vh_start(running_machine *machine, int chip)
 	{
 		int roz_tile_size = K001604_roz_size[chip] ? 16 : 8;
 		int roz_width = K001604_layer_size ? 64 : 128;
-		K001604_layer_8x8[chip][0] = tilemap_create(K001604_0_tile_info_layer_8x8, K001604_scan_layer_8x8_0, 8, 8, 64, 64);
-		K001604_layer_8x8[chip][1] = tilemap_create(K001604_0_tile_info_layer_8x8, K001604_scan_layer_8x8_1, 8, 8, 64, 64);
+		K001604_layer_8x8[chip][0] = tilemap_create(machine, K001604_0_tile_info_layer_8x8, K001604_scan_layer_8x8_0, 8, 8, 64, 64);
+		K001604_layer_8x8[chip][1] = tilemap_create(machine, K001604_0_tile_info_layer_8x8, K001604_scan_layer_8x8_1, 8, 8, 64, 64);
 
-		K001604_layer_roz[chip][0] = tilemap_create(K001604_0_tile_info_layer_roz, K001604_scan_layer_roz_0, roz_tile_size, roz_tile_size, roz_width, 64);
-		K001604_layer_roz[chip][1] = tilemap_create(K001604_0_tile_info_layer_roz, K001604_scan_layer_roz_1, roz_tile_size, roz_tile_size, 64, 64);
+		K001604_layer_roz[chip][0] = tilemap_create(machine, K001604_0_tile_info_layer_roz, K001604_scan_layer_roz_0, roz_tile_size, roz_tile_size, roz_width, 64);
+		K001604_layer_roz[chip][1] = tilemap_create(machine, K001604_0_tile_info_layer_roz, K001604_scan_layer_roz_1, roz_tile_size, roz_tile_size, 64, 64);
 	}
 	else
 	{
 		int roz_tile_size = K001604_roz_size[chip] ? 16 : 8;
 		int roz_width = K001604_layer_size ? 64 : 128;
-		K001604_layer_8x8[chip][0] = tilemap_create(K001604_1_tile_info_layer_8x8, K001604_scan_layer_8x8_0, 8, 8, 64, 64);
-		K001604_layer_8x8[chip][1] = tilemap_create(K001604_1_tile_info_layer_8x8, K001604_scan_layer_8x8_1, 8, 8, 64, 64);
+		K001604_layer_8x8[chip][0] = tilemap_create(machine, K001604_1_tile_info_layer_8x8, K001604_scan_layer_8x8_0, 8, 8, 64, 64);
+		K001604_layer_8x8[chip][1] = tilemap_create(machine, K001604_1_tile_info_layer_8x8, K001604_scan_layer_8x8_1, 8, 8, 64, 64);
 
-		K001604_layer_roz[chip][0] = tilemap_create(K001604_1_tile_info_layer_roz, K001604_scan_layer_roz_0, roz_tile_size, roz_tile_size, roz_width, 64);
-		K001604_layer_roz[chip][1] = tilemap_create(K001604_1_tile_info_layer_roz, K001604_scan_layer_roz_1, roz_tile_size, roz_tile_size, 64, 64);
+		K001604_layer_roz[chip][0] = tilemap_create(machine, K001604_1_tile_info_layer_roz, K001604_scan_layer_roz_0, roz_tile_size, roz_tile_size, roz_width, 64);
+		K001604_layer_roz[chip][1] = tilemap_create(machine, K001604_1_tile_info_layer_roz, K001604_scan_layer_roz_1, roz_tile_size, roz_tile_size, 64, 64);
 	}
 
 	tilemap_set_transparent_pen(K001604_layer_8x8[chip][0], 0);
@@ -458,9 +458,9 @@ int K001604_vh_start(running_machine *machine, int chip)
 	memset(K001604_reg[chip], 0, 0x400);
 
 
-	machine->gfx[K001604_gfx_index[chip][0]] = allocgfx(&K001604_char_layout_layer_8x8);
+	machine->gfx[K001604_gfx_index[chip][0]] = allocgfx(machine, &K001604_char_layout_layer_8x8);
 	decodegfx(machine->gfx[K001604_gfx_index[chip][0]], (UINT8*)&K001604_char_ram[chip][0], 0, machine->gfx[K001604_gfx_index[chip][0]]->total_elements);
-	machine->gfx[K001604_gfx_index[chip][1]] = allocgfx(&K001604_char_layout_layer_16x16);
+	machine->gfx[K001604_gfx_index[chip][1]] = allocgfx(machine, &K001604_char_layout_layer_16x16);
 	decodegfx(machine->gfx[K001604_gfx_index[chip][1]], (UINT8*)&K001604_char_ram[chip][0], 0, machine->gfx[K001604_gfx_index[chip][1]]->total_elements);
 
 	machine->gfx[K001604_gfx_index[chip][0]]->total_colors = machine->config->total_colors / 16;
@@ -517,7 +517,7 @@ void K001604_draw_back_layer(int chip, bitmap_t *bitmap, const rectangle *clipre
 {
 	int layer;
 	int num_layers;
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	num_layers = K001604_layer_size ? 2 : 1;
 
@@ -685,7 +685,7 @@ WRITE32_HANDLER(K001604_reg_w)
 
 	if (offset != 0x08 && offset != 0x09 && offset != 0x0a /*&& offset != 0x17 && offset != 0x18*/)
 	{
-		//printf("K001604_reg_w (%d), %02X, %08X, %08X at %08X\n", chip, offset, data, mem_mask, activecpu_get_pc());
+		//printf("K001604_reg_w (%d), %02X, %08X, %08X at %08X\n", chip, offset, data, mem_mask, cpu_get_pc(space->cpu));
 	}
 }
 
@@ -695,8 +695,8 @@ READ32_HANDLER(K001604_reg_r)
 
 	switch (offset)
 	{
-		case 0x54/4:	return mame_rand(machine) << 16; break;
-		case 0x5c/4:	return mame_rand(machine) << 16 | mame_rand(machine); break;
+		case 0x54/4:	return mame_rand(space->machine) << 16; break;
+		case 0x5c/4:	return mame_rand(space->machine) << 16 | mame_rand(space->machine); break;
 	}
 
 	return K001604_reg[chip][offset];
@@ -707,7 +707,7 @@ READ32_HANDLER(K001604_reg_r)
 
 static void voodoo_vblank_0(const device_config *device, int param)
 {
-	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
+	cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
 static VIDEO_START( nwktr )
@@ -720,7 +720,7 @@ static VIDEO_UPDATE( nwktr )
 {
 	const device_config *voodoo = device_list_find_by_tag(screen->machine->config->devicelist, VOODOO_GRAPHICS, "voodoo");
 
-	fillbitmap(bitmap, screen->machine->pens[0], cliprect);
+	bitmap_fill(bitmap, cliprect, screen->machine->pens[0]);
 
 	voodoo_update(voodoo, bitmap, cliprect);
 
@@ -734,16 +734,16 @@ static VIDEO_UPDATE( nwktr )
 
 /*****************************************************************************/
 
-static double adc12138_input_callback(int input)
+static double adc12138_input_callback(running_machine *machine, int input)
 {
 	int value = 0;
 	switch (input)
 	{
-		case 0:		value = input_port_read(Machine, "ANALOG1") - 0x800; break;
-		case 1:		value = input_port_read(Machine, "ANALOG2"); break;
-		case 2:		value = input_port_read(Machine, "ANALOG3"); break;
-		case 3:		value = input_port_read(Machine, "ANALOG4"); break;
-		case 4:		value = input_port_read(Machine, "ANALOG5"); break;
+		case 0:		value = input_port_read(machine, "ANALOG1") - 0x800; break;
+		case 1:		value = input_port_read(machine, "ANALOG2"); break;
+		case 2:		value = input_port_read(machine, "ANALOG3"); break;
+		case 3:		value = input_port_read(machine, "ANALOG4"); break;
+		case 4:		value = input_port_read(machine, "ANALOG5"); break;
 	}
 
 	return (double)(value) / 2047.0;
@@ -756,15 +756,15 @@ static READ32_HANDLER( sysreg_r )
 	{
 		if (ACCESSING_BITS_24_31)
 		{
-			r |= input_port_read(machine, "IN0") << 24;
+			r |= input_port_read(space->machine, "IN0") << 24;
 		}
 		if (ACCESSING_BITS_16_23)
 		{
-			r |= input_port_read(machine, "IN1") << 16;
+			r |= input_port_read(space->machine, "IN1") << 16;
 		}
 		if (ACCESSING_BITS_8_15)
 		{
-			r |= input_port_read(machine, "IN2") << 8;
+			r |= input_port_read(space->machine, "IN2") << 8;
 		}
 		if (ACCESSING_BITS_0_7)
 		{
@@ -775,7 +775,7 @@ static READ32_HANDLER( sysreg_r )
 	{
 		if (ACCESSING_BITS_24_31)
 		{
-			r |= input_port_read(machine, "DSW") << 24;
+			r |= input_port_read(space->machine, "DSW") << 24;
 		}
 	}
 	return r;
@@ -804,7 +804,7 @@ static WRITE32_HANDLER( sysreg_w )
 			int di = (data >> 25) & 0x1;
 			int sclk = (data >> 24) & 0x1;
 
-			adc1213x_cs_w(0, cs);
+			adc1213x_cs_w(space->machine, 0, cs);
 			adc1213x_conv_w(0, conv);
 			adc1213x_di_w(0, di);
 			adc1213x_sclk_w(0, sclk);
@@ -813,11 +813,11 @@ static WRITE32_HANDLER( sysreg_w )
 		{
 			if (data & 0x80)	// CG Board 1 IRQ Ack
 			{
-				//cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
+				//cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ1, CLEAR_LINE);
 			}
 			if (data & 0x40)	// CG Board 0 IRQ Ack
 			{
-				//cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
+				//cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ0, CLEAR_LINE);
 			}
 		}
 		return;
@@ -853,7 +853,7 @@ static READ32_HANDLER( lanc1_r )
 
 		default:
 		{
-			//printf("lanc1_r: %08X, %08X at %08X\n", offset, mem_mask, activecpu_get_pc());
+			//printf("lanc1_r: %08X, %08X at %08X\n", offset, mem_mask, cpu_get_pc(space->cpu));
 			return 0xffffffff;
 		}
 	}
@@ -861,7 +861,7 @@ static READ32_HANDLER( lanc1_r )
 
 static WRITE32_HANDLER( lanc1_w )
 {
-	//printf("lanc1_w: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, activecpu_get_pc());
+	//printf("lanc1_w: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, cpu_get_pc(space->cpu));
 }
 
 static READ32_HANDLER( lanc2_r )
@@ -889,7 +889,7 @@ static READ32_HANDLER( lanc2_r )
 		}
 	}
 
-	//printf("lanc2_r: %08X, %08X at %08X\n", offset, mem_mask, activecpu_get_pc());
+	//printf("lanc2_r: %08X, %08X at %08X\n", offset, mem_mask, cpu_get_pc(space->cpu));
 
 	return r;
 }
@@ -913,7 +913,7 @@ static WRITE32_HANDLER( lanc2_w )
 
 			fpga_uploaded = 1;
 
-			//printf("lanc2_fpga_w: %02X at %08X\n", value, activecpu_get_pc());
+			//printf("lanc2_fpga_w: %02X at %08X\n", value, cpu_get_pc(space->cpu));
 		}
 		else if (ACCESSING_BITS_0_7)
 		{
@@ -922,12 +922,12 @@ static WRITE32_HANDLER( lanc2_w )
 		}
 		else
 		{
-			//printf("lanc2_w: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, activecpu_get_pc());
+			//printf("lanc2_w: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, cpu_get_pc(space->cpu));
 		}
 	}
 	if (offset == 4)
 	{
-		if (mame_stricmp(machine->gamedrv->name, "thrilld") == 0)
+		if (mame_stricmp(space->machine->gamedrv->name, "thrilld") == 0)
 		{
 			work_ram[(0x3ffed0/4) + 0] = 0x472a3731;
 			work_ram[(0x3ffed0/4) + 1] = 0x33202020;
@@ -941,7 +941,7 @@ static WRITE32_HANDLER( lanc2_w )
 		}
 	}
 
-	//printf("lanc2_w: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, activecpu_get_pc());
+	//printf("lanc2_w: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, cpu_get_pc(space->cpu));
 }
 
 /*****************************************************************************/
@@ -949,14 +949,14 @@ static WRITE32_HANDLER( lanc2_w )
 static MACHINE_START( nwktr )
 {
 	/* set conservative DRC options */
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_END, 0x003fffff);
-	cpunum_set_info_ptr(0, CPUINFO_PTR_PPC_FASTRAM_BASE, work_ram);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_END, 0x003fffff);
+	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_PPC_FASTRAM_BASE, work_ram);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
 }
 
 static ADDRESS_MAP_START( nwktr_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -1087,13 +1087,8 @@ static const sharc_config sharc_cfg =
 
 static MACHINE_RESET( nwktr )
 {
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
 }
-
-static const timekeeper_config timekeeper_intf =
-{
-	"m48t58"
-};
 
 static MACHINE_DRIVER_START( nwktr )
 
@@ -1108,12 +1103,13 @@ static MACHINE_DRIVER_START( nwktr )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_START(nwktr)
 	MDRV_MACHINE_RESET(nwktr)
 
 	MDRV_3DFX_VOODOO_1_ADD("voodoo", STD_VOODOO_1_CLOCK, 2, "main")
+	MDRV_3DFX_VOODOO_CPU("dsp")
 	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 2)
 	MDRV_3DFX_VOODOO_TMU_MEMORY(1, 2)
 	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_0)
@@ -1136,8 +1132,7 @@ static MACHINE_DRIVER_START( nwktr )
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
-	MDRV_DEVICE_ADD( "m48t58", M48T58 )
-	MDRV_DEVICE_CONFIG( timekeeper_intf )
+	MDRV_M48T58_ADD( "m48t58" )
 MACHINE_DRIVER_END
 
 /*****************************************************************************/
@@ -1145,24 +1140,24 @@ MACHINE_DRIVER_END
 static void sound_irq_callback(running_machine *machine, int irq)
 {
 	if (irq == 0)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ1, PULSE_LINE);
+		generic_pulse_irq_line(machine->cpu[1], INPUT_LINE_IRQ1);
 	else
-		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ2, PULSE_LINE);
+		generic_pulse_irq_line(machine->cpu[1], INPUT_LINE_IRQ2);
 }
 
 static DRIVER_INIT(nwktr)
 {
-	init_konami_cgboard(1, CGBOARD_TYPE_NWKTR);
-	set_cgboard_texture_bank(0, 5, memory_region(machine, "user5"));
+	init_konami_cgboard(machine, 1, CGBOARD_TYPE_NWKTR);
+	set_cgboard_texture_bank(machine, 0, 5, memory_region(machine, "user5"));
 
 	sharc_dataram = auto_malloc(0x100000);
 	led_reg0 = led_reg1 = 0x7f;
 
-	K056800_init(sound_irq_callback);
-	K033906_init();
+	K056800_init(machine, sound_irq_callback);
+	K033906_init(machine);
 
-//  cpunum_set_info_fct(0, CPUINFO_PTR_SPU_TX_HANDLER, (genf *)jamma_jvs_w);
-//  cpunum_set_info_fct(0, CPUINFO_PTR_SPU_RX_HANDLER, (genf *)jamma_jvs_r);
+//  device_set_info_fct(machine->cpu[0], CPUINFO_FCT_SPU_TX_HANDLER, (genf *)jamma_jvs_w);
+//  device_set_info_fct(machine->cpu[0], CPUINFO_FCT_SPU_RX_HANDLER, (genf *)jamma_jvs_r);
 
 	adc1213x_init(0, adc12138_input_callback);
 	lanc2_init();

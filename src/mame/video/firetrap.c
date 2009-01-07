@@ -136,9 +136,9 @@ static TILE_GET_INFO( get_bg2_tile_info )
 
 VIDEO_START( firetrap )
 {
-	fg_tilemap  = tilemap_create(get_fg_tile_info, get_fg_memory_offset, 8, 8,32,32);
-	bg1_tilemap = tilemap_create(get_bg1_tile_info,get_bg_memory_offset,16,16,32,32);
-	bg2_tilemap = tilemap_create(get_bg2_tile_info,get_bg_memory_offset,     16,16,32,32);
+	fg_tilemap  = tilemap_create(machine, get_fg_tile_info, get_fg_memory_offset, 8, 8,32,32);
+	bg1_tilemap = tilemap_create(machine, get_bg1_tile_info,get_bg_memory_offset,16,16,32,32);
+	bg2_tilemap = tilemap_create(machine, get_bg2_tile_info,get_bg_memory_offset,     16,16,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(bg1_tilemap,0);
@@ -227,7 +227,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		color = ((spriteram[offs + 1] & 0x08) >> 2) | (spriteram[offs + 1] & 0x01);
 		flipx = spriteram[offs + 1] & 0x04;
 		flipy = spriteram[offs + 1] & 0x02;
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -237,7 +237,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 		if (spriteram[offs + 1] & 0x10)	/* double width */
 		{
-			if (flip_screen_get()) sy -= 16;
+			if (flip_screen_get(machine)) sy -= 16;
 
 			drawgfx(bitmap,machine->gfx[3],
 					code & ~1,

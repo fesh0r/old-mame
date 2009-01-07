@@ -98,6 +98,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 static tilemap *bg_tilemap;
@@ -273,7 +274,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( jollyjgr )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 	tilemap_set_scroll_cols(bg_tilemap, 32);
@@ -319,7 +320,7 @@ static VIDEO_UPDATE( jollyjgr )
 {
 	int offs;
 
-	fillbitmap(bitmap,32,cliprect);
+	bitmap_fill(bitmap,cliprect,32);
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 
@@ -394,7 +395,7 @@ GFXDECODE_END
 static INTERRUPT_GEN( jollyjgr_interrupt )
 {
 	if(nmi_enable)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static MACHINE_DRIVER_START( jollyjgr )

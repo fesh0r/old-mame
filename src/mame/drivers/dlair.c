@@ -33,6 +33,7 @@
 *************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "render.h"
 #include "cpu/z80/z80daisy.h"
 #include "machine/laserdsc.h"
@@ -84,7 +85,7 @@ static const UINT8 led_map[16] =
 
 static void dleuro_interrupt(const device_config *device, int state)
 {
-	cpunum_set_input_line(device->machine, 0, 0, state);
+	cpu_set_input_line(device->machine->cpu[0], 0, state);
 }
 
 
@@ -106,8 +107,6 @@ static int serial_receive(const device_config *device, int channel)
 
 static const z80ctc_interface ctc_intf =
 {
-	"main",				/* clock comes from main CPU's clock */
-	0,                  /* clock (filled in from the CPU clock) */
 	0,              	/* timer disables */
 	dleuro_interrupt,  	/* interrupt handler */
 	0,					/* ZC/TO0 callback */
@@ -118,8 +117,6 @@ static const z80ctc_interface ctc_intf =
 
 static const z80sio_interface sio_intf =
 {
-	"main",				/* clock comes from main CPU's clock */
-	0,                  /* clock (filled in from the CPU clock) */
 	dleuro_interrupt,	/* interrupt handler */
 	0,					/* DTR changed handler */
 	0,					/* RTS changed handler */
@@ -215,7 +212,7 @@ static INTERRUPT_GEN( vblank_callback )
 	/* also update the speaker on the European version */
 	if (sndti_exists(SOUND_BEEP, 0))
 	{
-		const device_config *ctc = devtag_get_device(machine, Z80CTC, "ctc");
+		const device_config *ctc = devtag_get_device(device->machine, Z80CTC, "ctc");
 		beep_set_state(0, 1);
 		beep_set_frequency(0, ATTOSECONDS_TO_HZ(z80ctc_getperiod(ctc, 0).attoseconds));
 	}
@@ -743,10 +740,10 @@ static MACHINE_DRIVER_START( dleuro )
 	MDRV_CPU_IO_MAP(dleuro_io_map,0)
 	MDRV_CPU_VBLANK_INT("main", vblank_callback)
 
-	MDRV_Z80CTC_ADD("ctc", ctc_intf)
-	MDRV_Z80SIO_ADD("sio", sio_intf)
+	MDRV_Z80CTC_ADD("ctc", MASTER_CLOCK_EURO/4 /* same as "main" */, ctc_intf)
+	MDRV_Z80SIO_ADD("sio", MASTER_CLOCK_EURO/4 /* same as "main" */, sio_intf)
 
-	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_HZ(MASTER_CLOCK_EURO/(16*16*16*16*16*8)))
+	MDRV_WATCHDOG_TIME_INIT(HZ(MASTER_CLOCK_EURO/(16*16*16*16*16*8)))
 
 	MDRV_MACHINE_START(dlair)
 	MDRV_MACHINE_RESET(dlair)

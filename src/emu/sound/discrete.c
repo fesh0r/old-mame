@@ -26,10 +26,9 @@
  * Core software takes care of traversing the netlist in the correct
  * order
  *
- * discrete_start()         - Read Node list, initialise & reset
- * discrete_stop()          - Shutdown discrete sound system
- * discrete_reset()         - Put sound system back to time 0
- * discrete_update()        - Update streams to current time
+ * SND_START(discrete)      - Read Node list, initialise & reset
+ * SND_STOP(discrete)       - Shutdown discrete sound system
+ * SND_RESET(discrete)      - Put sound system back to time 0
  * discrete_stream_update() - This does the real update to the sim
  *
  ************************************************************************/
@@ -37,7 +36,6 @@
 #include "sndintrf.h"
 #include "streams.h"
 #include "inptport.h"
-#include "deprecat.h"
 #include "wavwrite.h"
 #include "discrete.h"
 
@@ -57,47 +55,7 @@
  *
  *************************************/
 
-struct _discrete_info
-{
-	/* emulation info */
-	int		sndindex;
-	int		sample_rate;
-	double	sample_time;
-
-	/* internal node tracking */
-	int node_count;
-	node_description **running_order;
-	node_description **indexed_node;
-	node_description *node_list;
-
-	/* the input streams */
-	int discrete_input_streams;
-	stream_sample_t *input_stream_data[DISCRETE_MAX_OUTPUTS];
-
-	/* output node tracking */
-	int discrete_outputs;
-	node_description *output_node[DISCRETE_MAX_OUTPUTS];
-
-	/* the output stream */
-	sound_stream *discrete_stream;
-
-	/* debugging statics */
-	FILE *disclogfile;
-
-	/* csvlog tracking */
-	int num_csvlogs;
-	FILE *disc_csv_file[DISCRETE_MAX_CSVLOGS];
-	node_description *csvlog_node[DISCRETE_MAX_CSVLOGS];
-	INT64 sample_num;
-
-	/* wavelog tracking */
-	int num_wavelogs;
-	wav_file *disc_wav_file[DISCRETE_MAX_WAVELOGS];
-	node_description *wavelog_node[DISCRETE_MAX_WAVELOGS];
-};
-typedef struct _discrete_info discrete_info;
-
-static discrete_info *discrete_current_context;
+discrete_info *discrete_current_context = NULL;
 
 
 
@@ -107,11 +65,11 @@ static discrete_info *discrete_current_context;
  *
  *************************************/
 
-static void init_nodes(discrete_info *info, discrete_sound_block *block_list);
+static void init_nodes(discrete_info *info, discrete_sound_block *block_list, const device_config *device);
 static void find_input_nodes(discrete_info *info, discrete_sound_block *block_list);
-static void setup_output_nodes(discrete_info *info);
+static void setup_output_nodes(const device_config *device, discrete_info *info);
 static void setup_disc_logs(discrete_info *info);
-static void discrete_reset(void *chip);
+static SND_RESET( discrete );
 
 
 
@@ -218,9 +176,9 @@ static const discrete_module module_list[] =
 	{ DST_ASWITCH     ,"DST_ASWITCH"     , 1 ,0                                      ,NULL                  ,dst_aswitch_step     },
 	{ DST_TRANSFORM   ,"DST_TRANSFORM"   , 1 ,0                                      ,NULL                  ,dst_transform_step   },
 	/* Component specific */
-	{ DST_COMP_ADDER  ,"DST_COMP_ADDER"  , 1 ,0                                      ,NULL                  ,dst_comp_adder_step  },
+	{ DST_COMP_ADDER  ,"DST_COMP_ADDER"  , 1 ,sizeof(struct dst_comp_adder_context)  ,dst_comp_adder_reset  ,dst_comp_adder_step  },
 	{ DST_DAC_R1      ,"DST_DAC_R1"      , 1 ,sizeof(struct dst_dac_r1_context)      ,dst_dac_r1_reset      ,dst_dac_r1_step      },
-	{ DST_DIODE_MIX   ,"DST_DIODE_MIX"   , 1 ,sizeof(struct dst_size_context)        ,dst_diode_mix_reset   ,dst_diode_mix_step   },
+	{ DST_DIODE_MIX   ,"DST_DIODE_MIX"   , 1 ,sizeof(struct dst_diode_mix__context)  ,dst_diode_mix_reset   ,dst_diode_mix_step   },
 	{ DST_INTEGRATE   ,"DST_INTEGRATE"   , 1 ,sizeof(struct dst_integrate_context)   ,dst_integrate_reset   ,dst_integrate_step   },
 	{ DST_MIXER       ,"DST_MIXER"       , 1 ,sizeof(struct dst_mixer_context)       ,dst_mixer_reset       ,dst_mixer_step       },
 	{ DST_OP_AMP      ,"DST_OP_AMP"      , 1 ,sizeof(struct dst_op_amp_context)      ,dst_op_amp_reset      ,dst_op_amp_step      },
@@ -287,7 +245,7 @@ node_description *discrete_find_node(void *chip, int node)
  *
  *************************************/
 
-static void *discrete_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( discrete )
 {
 	discrete_sound_block *intf = (discrete_sound_block *)config;
 	discrete_info *info;
@@ -296,14 +254,16 @@ static void *discrete_start(const char *tag, int sndindex, int clock, const void
 	info = auto_malloc(sizeof(*info));
 	memset(info, 0, sizeof(*info));
 
+	info->device = device;
 	info->sndindex = sndindex;
 
 	/* If a clock is specified we will use it, otherwise run at the audio sample rate. */
 	if (clock)
 		info->sample_rate = clock;
 	else
-		info->sample_rate = Machine->sample_rate;
+		info->sample_rate = device->machine->sample_rate;
 	info->sample_time = 1.0 / info->sample_rate;
+	info->neg_sample_time = - info->sample_time;
 
 	/* create the logfile */
 	sprintf(name, "discrete%d.log", info->sndindex);
@@ -348,13 +308,13 @@ static void *discrete_start(const char *tag, int sndindex, int clock, const void
 	memset(info->indexed_node, 0, DISCRETE_MAX_NODES * sizeof(info->indexed_node[0]));
 
 	/* initialize the node data */
-	init_nodes(info, intf);
+	init_nodes(info, intf, device);
 
 	/* now go back and find pointers to all input nodes */
 	find_input_nodes(info, intf);
 
 	/* then set up the output nodes */
-	setup_output_nodes(info);
+	setup_output_nodes(device, info);
 
 	setup_disc_logs(info);
 
@@ -370,9 +330,9 @@ static void *discrete_start(const char *tag, int sndindex, int clock, const void
  *
  *************************************/
 
-static void discrete_stop(void *chip)
+static SND_STOP( discrete )
 {
-	discrete_info *info = chip;
+	discrete_info *info = device->token;
 	int log_num;
 
 #if (DISCRETE_PROFILING)
@@ -430,9 +390,9 @@ static void discrete_stop(void *chip)
  *
  *************************************/
 
-static void discrete_reset(void *chip)
+static SND_RESET( discrete )
 {
-	discrete_info *info = chip;
+	discrete_info *info = device->token;
 	int nodenum;
 
 	discrete_current_context = info;
@@ -446,14 +406,11 @@ static void discrete_reset(void *chip)
 
 		/* if the node has a reset function, call it */
 		if (node->module.reset)
-			(*node->module.reset)(node);
+			(*node->module.reset)(device, node);
 
 		/* otherwise, just step it */
 		else if (node->module.step)
-			(*node->module.step)(node);
-
-		/* and register save state */
-		state_save_register_item_array("discrete", nodenum, node->output);
+			(*node->module.step)(device, node);
 	}
 
 	discrete_current_context = NULL;
@@ -467,7 +424,7 @@ static void discrete_reset(void *chip)
  *
  *************************************/
 
-static void discrete_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( discrete_stream_update )
 {
 	discrete_info *info = param;
 	int samplenum, nodenum, outputnum;
@@ -482,8 +439,8 @@ static void discrete_stream_update(void *param, stream_sample_t **inputs, stream
 		info->input_stream_data[nodenum] = inputs[nodenum];
 	}
 
-	/* Now we must do length iterations of the node list, one output for each step */
-	for (samplenum = 0; samplenum < length; samplenum++)
+	/* Now we must do samples iterations of the node list, one output for each step */
+	for (samplenum = 0; samplenum < samples; samplenum++)
 	{
 		/* loop over all nodes */
 		for (nodenum = 0; nodenum < info->node_count; nodenum++)
@@ -495,7 +452,7 @@ static void discrete_stream_update(void *param, stream_sample_t **inputs, stream
 			node->run_time -= osd_profiling_ticks();
 #endif
 			if (node->module.step)
-				(*node->module.step)(node);
+				(*node->module.step)(info->device, node);
 #if (DISCRETE_PROFILING)
 			node->run_time += osd_profiling_ticks();
 #endif
@@ -506,7 +463,7 @@ static void discrete_stream_update(void *param, stream_sample_t **inputs, stream
 		for (outputnum = 0; outputnum < info->discrete_outputs; outputnum++)
 		{
 			val = (*info->output_node[outputnum]->input[0]) * (*info->output_node[outputnum]->input[1]);
-			buffer[outputnum][samplenum] = val;
+			outputs[outputnum][samplenum] = val;
 		}
 
 		/* Dump any csv logs */
@@ -561,7 +518,7 @@ static void discrete_stream_update(void *param, stream_sample_t **inputs, stream
  *
  *************************************/
 
-static void init_nodes(discrete_info *info, discrete_sound_block *block_list)
+static void init_nodes(discrete_info *info, discrete_sound_block *block_list, const device_config *device)
 {
 	int nodenum;
 
@@ -669,6 +626,8 @@ static void init_nodes(discrete_info *info, discrete_sound_block *block_list)
 			info->discrete_input_streams++;
 		}
 
+		/* and register save state */
+		state_save_register_device_item_array(device, nodenum, node->output);
 	}
 
 	/* if no outputs, give an error */
@@ -734,10 +693,10 @@ static void find_input_nodes(discrete_info *info, discrete_sound_block *block_li
  *
  *************************************/
 
-static void setup_output_nodes(discrete_info *info)
+static void setup_output_nodes(const device_config *device, discrete_info *info)
 {
 	/* initialize the stream(s) */
-	info->discrete_stream = stream_create(info->discrete_input_streams, info->discrete_outputs, info->sample_rate, info, discrete_stream_update);
+	info->discrete_stream = stream_create(device, info->discrete_input_streams, info->discrete_outputs, info->sample_rate, info, discrete_stream_update);
 }
 
 
@@ -783,7 +742,7 @@ static void setup_disc_logs(discrete_info *info)
  * Generic get_info
  **************************************************************************/
 
-static void discrete_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( discrete )
 {
 	switch (state)
 	{
@@ -792,24 +751,24 @@ static void discrete_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void discrete_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( discrete )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = discrete_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = discrete_start;			break;
-		case SNDINFO_PTR_STOP:							info->stop = discrete_stop;				break;
-		case SNDINFO_PTR_RESET:							info->reset = discrete_reset;			break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( discrete );		break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( discrete );			break;
+		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( discrete );				break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( discrete );			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "Discrete";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Analog";						break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.1";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "Discrete");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Analog");							break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.1");								break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);							break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

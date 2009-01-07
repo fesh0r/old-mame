@@ -1,6 +1,7 @@
 /* Mogura Desse */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/dac.h"
 
 static UINT8 *mogura_tileram;
@@ -54,7 +55,7 @@ static TILE_GET_INFO( get_mogura_tile_info )
 
 static VIDEO_START( mogura )
 {
-	mogura_tilemap = tilemap_create(get_mogura_tile_info,tilemap_scan_rows,8,8,64, 32);
+	mogura_tilemap = tilemap_create(machine, get_mogura_tile_info,tilemap_scan_rows,8,8,64, 32);
 }
 
 static VIDEO_UPDATE( mogura )
@@ -88,8 +89,8 @@ static WRITE8_HANDLER( mogura_tileram_w )
 
 static WRITE8_HANDLER(dac_w)
 {
-	dac_0_data_w(machine, 0, data & 0xf0 );	/* left */
-	dac_1_data_w(machine, 0, (data & 0x0f)<<4 );	/* right */
+	dac_0_data_w(space, 0, data & 0xf0 );	/* left */
+	dac_1_data_w(space, 0, (data & 0x0f)<<4 );	/* right */
 }
 
 static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
@@ -109,7 +110,7 @@ static WRITE8_HANDLER ( mogura_gfxram_w )
 {
 	mogura_gfxram[offset] = data ;
 
-	decodechar(machine->gfx[0], offset/16, mogura_gfxram);
+	decodechar(space->machine->gfx[0], offset/16, mogura_gfxram);
 
 	tilemap_mark_all_tiles_dirty(mogura_tilemap);
 }

@@ -224,7 +224,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( travrusa )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transmask(bg_tilemap,0,0xff,0x00); /* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(bg_tilemap,1,0x3f,0xc0); /* split type 1 has pens 6 and 7 opaque - tunnels */
@@ -274,9 +274,9 @@ WRITE8_HANDLER( travrusa_scroll_x_high_w )
 WRITE8_HANDLER( travrusa_flipscreen_w )
 {
 	/* screen flip is handled both by software and hardware */
-	data ^= ~input_port_read(machine, "DSW2") & 1;
+	data ^= ~input_port_read(space->machine, "DSW2") & 1;
 
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 
 	coin_counter_w(0,data & 0x02);
 	coin_counter_w(1,data & 0x20);
@@ -304,7 +304,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		8*8, 32*8-1
 	};
 	rectangle clip = *cliprect;
-	if (flip_screen_get())
+	if (flip_screen_get(machine))
 		sect_rect(&clip, &spritevisibleareaflip);
 	else
 		sect_rect(&clip, &spritevisiblearea);
@@ -319,7 +319,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		int flipx = attr & 0x40;
 		int flipy = attr & 0x80;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;

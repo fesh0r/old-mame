@@ -60,21 +60,21 @@ static WRITE8_HANDLER( spcforce_SN76496_select_w )
 {
     spcforce_SN76496_select = data;
 
-	if (~data & 0x40)  sn76496_0_w(machine, 0, spcforce_SN76496_latch);
-	if (~data & 0x20)  sn76496_1_w(machine, 0, spcforce_SN76496_latch);
-	if (~data & 0x10)  sn76496_2_w(machine, 0, spcforce_SN76496_latch);
+	if (~data & 0x40)  sn76496_0_w(space, 0, spcforce_SN76496_latch);
+	if (~data & 0x20)  sn76496_1_w(space, 0, spcforce_SN76496_latch);
+	if (~data & 0x10)  sn76496_2_w(space, 0, spcforce_SN76496_latch);
 }
 
 static READ8_HANDLER( spcforce_t0_r )
 {
 	/* SN76496 status according to Al - not supported by MAME?? */
-	return mame_rand(machine) & 1;
+	return mame_rand(space->machine) & 1;
 }
 
 
 static WRITE8_HANDLER( spcforce_soundtrigger_w )
 {
-	cpunum_set_input_line(machine, 1, 0, (~data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], 0, (~data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -256,7 +256,7 @@ static MACHINE_DRIVER_START( spcforce )
 	/* FIXME: The 8085A had a max clock of 6MHz, internally divided by 2! */
 	MDRV_CPU_ADD("main", 8085A, 8000000 * 2)        /* 4.00 MHz??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", irq3_line_hold)
+	MDRV_CPU_VBLANK_INT("main", irq3_line_pulse)
 
 	MDRV_CPU_ADD("audio", I8035, 6144000)		/* divisor ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)

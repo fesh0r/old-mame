@@ -17,10 +17,10 @@ static tilemap *drmicro_bg2;
 
 /****************************************************************************/
 
-void drmicro_flip_w( int flip )
+void drmicro_flip_w( running_machine *machine, int flip )
 {
 	flipscreen = flip ? 1 : 0;
-	flip_screen_set(flip);
+	flip_screen_set(machine, flip);
 }
 
 WRITE8_HANDLER( drmicro_videoram_w )
@@ -114,8 +114,8 @@ VIDEO_START( drmicro)
 {
 	drmicro_videoram = auto_malloc(0x1000);
 
-	drmicro_bg1 = tilemap_create(get_bg1_tile_info, tilemap_scan_rows, 8,8,32,32);
-	drmicro_bg2 = tilemap_create(get_bg2_tile_info, tilemap_scan_rows, 8,8,32,32);
+	drmicro_bg1 = tilemap_create(machine, get_bg1_tile_info, tilemap_scan_rows, 8,8,32,32);
+	drmicro_bg2 = tilemap_create(machine, get_bg2_tile_info, tilemap_scan_rows, 8,8,32,32);
 
 	tilemap_set_transparent_pen(drmicro_bg2,0);
 }

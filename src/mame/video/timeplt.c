@@ -113,7 +113,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( timeplt )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_rows,8,8,32,32);
 }
 
 
@@ -140,13 +140,13 @@ WRITE8_HANDLER( timeplt_colorram_w )
 
 WRITE8_HANDLER( timeplt_flipscreen_w )
 {
-	flip_screen_set(~data & 1);
+	flip_screen_set(space->machine, ~data & 1);
 }
 
 
 READ8_HANDLER( timeplt_scanline_r )
 {
-	return video_screen_get_vpos(machine->primary_screen);
+	return video_screen_get_vpos(space->machine->primary_screen);
 }
 
 

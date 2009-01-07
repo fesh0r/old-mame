@@ -66,8 +66,9 @@ Notes:
  *************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "video/ygv608.h"
-#include "cpu/h83002/h83002.h"
+#include "cpu/h83002/h8.h"
 #include "namcond1.h"
 #include "sound/c352.h"
 #include "machine/at28c16.h"
@@ -259,8 +260,8 @@ static ADDRESS_MAP_START( nd1h8rwmap, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( nd1h8iomap, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(H8_PORT7, H8_PORT7) AM_READ( mcu_p7_read )
-	AM_RANGE(H8_PORTA, H8_PORTA) AM_READWRITE( mcu_pa_read, mcu_pa_write )
+	AM_RANGE(H8_PORT_7, H8_PORT_7) AM_READ( mcu_p7_read )
+	AM_RANGE(H8_PORT_A, H8_PORT_A) AM_READWRITE( mcu_pa_read, mcu_pa_write )
 	AM_RANGE(H8_ADC_0_L, H8_ADC_3_H) AM_NOP // MCU reads these, but the games have no analog controls
 ADDRESS_MAP_END
 
@@ -268,7 +269,7 @@ static INTERRUPT_GEN( mcu_interrupt )
 {
     if( namcond1_h8_irq5_enabled )
     {
-    	cpunum_set_input_line(machine, 1, H8_IRQ5, PULSE_LINE);
+    	generic_pulse_irq_line(device, H8_IRQ5);
     }
 }
 
@@ -293,7 +294,7 @@ static MACHINE_DRIVER_START( namcond1 )
 	MDRV_CPU_IO_MAP( nd1h8iomap, 0 )
 	MDRV_CPU_VBLANK_INT("main", mcu_interrupt)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_START(namcond1)
 	MDRV_MACHINE_RESET(namcond1)
@@ -321,7 +322,7 @@ static MACHINE_DRIVER_START( namcond1 )
 	MDRV_SOUND_ROUTE(2, "right", 1.00)
 	MDRV_SOUND_ROUTE(3, "left", 1.00)
 
-	MDRV_DEVICE_ADD( "at28c16", AT28C16 )
+	MDRV_AT28C16_ADD( "at28c16", NULL )
 MACHINE_DRIVER_END
 
 ROM_START( ncv1 )

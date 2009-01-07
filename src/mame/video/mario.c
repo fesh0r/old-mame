@@ -79,7 +79,7 @@ PALETTE_INIT( mario )
 
 WRITE8_HANDLER( mario_videoram_w )
 {
-	mario_state	*state = machine->driver_data;
+	mario_state	*state = space->machine->driver_data;
 
 	state->videoram[offset] = data;
 	tilemap_mark_tile_dirty(state->bg_tilemap, offset);
@@ -87,7 +87,7 @@ WRITE8_HANDLER( mario_videoram_w )
 
 WRITE8_HANDLER( mario_gfxbank_w )
 {
-	mario_state	*state = machine->driver_data;
+	mario_state	*state = space->machine->driver_data;
 
 	if (state->gfx_bank != (data & 0x01))
 	{
@@ -98,7 +98,7 @@ WRITE8_HANDLER( mario_gfxbank_w )
 
 WRITE8_HANDLER( mario_palettebank_w )
 {
-	mario_state	*state = machine->driver_data;
+	mario_state	*state = space->machine->driver_data;
 
 	if (state->palette_bank != (data & 0x01))
 	{
@@ -109,14 +109,14 @@ WRITE8_HANDLER( mario_palettebank_w )
 
 WRITE8_HANDLER( mario_scroll_w )
 {
-	mario_state	*state = machine->driver_data;
+	mario_state	*state = space->machine->driver_data;
 
 	state->gfx_scroll = data + 17;
 }
 
 WRITE8_HANDLER( mario_flip_w )
 {
-	mario_state	*state = machine->driver_data;
+	mario_state	*state = space->machine->driver_data;
 
 	if (state->flip != (data & 0x01))
 	{
@@ -144,16 +144,16 @@ VIDEO_START( mario )
 {
 	mario_state	*state = machine->driver_data;
 
-	state->bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	state->bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
 	state->gfx_bank = 0;
 	state->palette_bank = 0;
 	state->gfx_scroll = 0;
-	state_save_register_global(state->gfx_bank);
-	state_save_register_global(state->palette_bank);
-	state_save_register_global(state->gfx_scroll);
-	state_save_register_global(state->flip);
+	state_save_register_global(machine, state->gfx_bank);
+	state_save_register_global(machine, state->palette_bank);
+	state_save_register_global(machine, state->gfx_scroll);
+	state_save_register_global(machine, state->flip);
 }
 
 /*

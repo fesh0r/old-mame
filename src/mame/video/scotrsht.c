@@ -108,7 +108,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int sx = spriteram[i + 2] - ((attr & 0x80) << 1);
 		int sy = spriteram[i + 3];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -124,7 +124,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 VIDEO_START( scotrsht )
 {
-	bg_tilemap = tilemap_create(scotrsht_get_bg_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
+	bg_tilemap = tilemap_create(machine, scotrsht_get_bg_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
 
 	tilemap_set_scroll_cols(bg_tilemap, 64);
 }

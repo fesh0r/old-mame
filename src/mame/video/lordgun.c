@@ -121,16 +121,16 @@ WRITE16_HANDLER( lordgun_vram_3_w )
 
 VIDEO_START( lordgun )
 {
-	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0, tilemap_scan_rows,
 								 8,8, 0x100, 0x40 );
 
-	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1, tilemap_scan_rows,
 								 16,16, 0x80,0x20 );
 
-	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
+	tilemap_2 = tilemap_create(	machine, get_tile_info_2, tilemap_scan_rows,
 								 32,32, 0x40,0x40 );
 
-	tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
+	tilemap_3 = tilemap_create(	machine, get_tile_info_3, tilemap_scan_rows,
 								 8,8, 0x40,0x20 );
 
 	tilemap_set_scroll_rows(tilemap_0,1);
@@ -282,7 +282,7 @@ if (input_code_pressed(KEYCODE_Z))
 
 	if (lordgun_whitescreen)
 	{
-		fillbitmap( bitmap, get_white_pen(screen->machine), cliprect );
+		bitmap_fill( bitmap, cliprect , get_white_pen(screen->machine));
 		return 0;
 	}
 
@@ -299,7 +299,7 @@ if (input_code_pressed(KEYCODE_Z))
 	tilemap_set_scrollx( tilemap_3, 0, *lordgun_scroll_x_3 );
 	tilemap_set_scrolly( tilemap_3, 0, *lordgun_scroll_y_3 );
 
-	fillbitmap( bitmap, 0, cliprect );
+	bitmap_fill( bitmap, cliprect , 0);
 
 	if (layers_ctrl & 4)	tilemap_draw(bitmap, cliprect, tilemap_2, 0, 0);
 	if (layers_ctrl & 1)	tilemap_draw(bitmap, cliprect, tilemap_0, 0, 0);

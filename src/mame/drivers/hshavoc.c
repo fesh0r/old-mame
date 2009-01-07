@@ -35,6 +35,8 @@ Unfortunately it's read protected.
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "genesis.h"
 
 #define MASTER_CLOCK		53693100
@@ -139,7 +141,7 @@ static MACHINE_DRIVER_START( genesis_base )
 	MDRV_CPU_PROGRAM_MAP(genesis_z80_readmem, genesis_z80_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* from vdp at scanline 0xe0 */
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_START(genesis)
 	MDRV_MACHINE_RESET(genesis)
@@ -200,16 +202,16 @@ ROM_END
 
 static READ16_HANDLER( vdp_fake_r )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 static DRIVER_INIT(genesis)
 {
 	/* hack -- fix vdp emulation instead */
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC00004, 0xC00005, 0, 0, vdp_fake_r);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xC00004, 0xC00005, 0, 0, vdp_fake_r);
 
-	memory_set_bankptr(3, memory_region(machine, "main") );
-	memory_set_bankptr(4, genesis_68k_ram );
+	memory_set_bankptr(machine, 3, memory_region(machine, "main") );
+	memory_set_bankptr(machine, 4, genesis_68k_ram );
 }
 
 static DRIVER_INIT(hshavoc)

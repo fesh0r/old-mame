@@ -39,7 +39,7 @@ static UINT32 *nwk_ram[MAX_CG_BOARDS];
 
 /*****************************************************************************/
 
-void init_konami_cgboard(int num_boards, int type)
+void init_konami_cgboard(running_machine *machine, int num_boards, int type)
 {
 	int i;
 	num_cgboards = num_boards;
@@ -61,20 +61,20 @@ void init_konami_cgboard(int num_boards, int type)
 		nwk_fifo[i] = auto_malloc(sizeof(UINT32) * 0x800);
 		nwk_ram[i] = auto_malloc(sizeof(UINT32) * 0x2000);
 
-		state_save_register_item_array("konppc", i, dsp_comm_ppc[i]);
-		state_save_register_item_array("konppc", i, dsp_comm_sharc[i]);
-		state_save_register_item("konppc", i, dsp_shared_ram_bank[i]);
-		state_save_register_item_pointer("konppc", i, dsp_shared_ram[i], DSP_BANK_SIZE * 2 / sizeof(dsp_shared_ram[i][0]));
-		state_save_register_item("konppc", i, dsp_state[i]);
-		state_save_register_item("konppc", i, texture_bank[i]);
-		state_save_register_item("konppc", i, pci_bridge_enable[i]);
-		state_save_register_item("konppc", i, nwk_device_sel[i]);
-		state_save_register_item("konppc", i, nwk_fifo_read_ptr[i]);
-		state_save_register_item("konppc", i, nwk_fifo_write_ptr[i]);
-		state_save_register_item_pointer("konppc", i, nwk_fifo[i], 0x800);
-		state_save_register_item_pointer("konppc", i, nwk_ram[i], 0x2000);
+		state_save_register_item_array(machine, "konppc", NULL, i, dsp_comm_ppc[i]);
+		state_save_register_item_array(machine, "konppc", NULL, i, dsp_comm_sharc[i]);
+		state_save_register_item(machine, "konppc", NULL, i, dsp_shared_ram_bank[i]);
+		state_save_register_item_pointer(machine, "konppc", NULL, i, dsp_shared_ram[i], DSP_BANK_SIZE * 2 / sizeof(dsp_shared_ram[i][0]));
+		state_save_register_item(machine, "konppc", NULL, i, dsp_state[i]);
+		state_save_register_item(machine, "konppc", NULL, i, texture_bank[i]);
+		state_save_register_item(machine, "konppc", NULL, i, pci_bridge_enable[i]);
+		state_save_register_item(machine, "konppc", NULL, i, nwk_device_sel[i]);
+		state_save_register_item(machine, "konppc", NULL, i, nwk_fifo_read_ptr[i]);
+		state_save_register_item(machine, "konppc", NULL, i, nwk_fifo_write_ptr[i]);
+		state_save_register_item_pointer(machine, "konppc", NULL, i, nwk_fifo[i], 0x800);
+		state_save_register_item_pointer(machine, "konppc", NULL, i, nwk_ram[i], 0x2000);
 	}
-	state_save_register_item("konppc", 0, cgboard_id);
+	state_save_register_item(machine, "konppc", NULL, 0, cgboard_id);
 	cgboard_type = type;
 
 	if (type == CGBOARD_TYPE_NWKTR)
@@ -117,11 +117,11 @@ int get_cgboard_id(void)
 	}
 }
 
-void set_cgboard_texture_bank(int board, int bank, UINT8 *rom)
+void set_cgboard_texture_bank(running_machine *machine, int board, int bank, UINT8 *rom)
 {
 	texture_bank[board] = bank;
 
-	memory_configure_bank(bank, 0, 2, rom, 0x800000);
+	memory_configure_bank(machine, bank, 0, 2, rom, 0x800000);
 }
 
 /*****************************************************************************/
@@ -132,7 +132,7 @@ READ32_HANDLER( cgboard_dsp_comm_r_ppc )
 {
 	if (cgboard_id < MAX_CG_BOARDS)
 	{
-//      mame_printf_debug("dsp_cmd_r: (board %d) %08X, %08X at %08X\n", cgboard_id, offset, mem_mask, activecpu_get_pc());
+//      mame_printf_debug("dsp_cmd_r: (board %d) %08X, %08X at %08X\n", cgboard_id, offset, mem_mask, cpu_get_pc(space->cpu));
 		return dsp_comm_sharc[cgboard_id][offset] | (dsp_state[cgboard_id] << 16);
 	}
 	else
@@ -144,7 +144,7 @@ READ32_HANDLER( cgboard_dsp_comm_r_ppc )
 WRITE32_HANDLER( cgboard_dsp_comm_w_ppc )
 {
 	int dsp = (cgboard_id == 0) ? 2 : 3;
-//  mame_printf_debug("dsp_cmd_w: (board %d) %08X, %08X, %08X at %08X\n", cgboard_id, data, offset, mem_mask, activecpu_get_pc());
+//  mame_printf_debug("dsp_cmd_w: (board %d) %08X, %08X, %08X at %08X\n", cgboard_id, data, offset, mem_mask, cpu_get_pc(space->cpu));
 
 	if (cgboard_id < MAX_CG_BOARDS)
 	{
@@ -160,15 +160,15 @@ WRITE32_HANDLER( cgboard_dsp_comm_w_ppc )
 				pci_bridge_enable[cgboard_id] = (data & 0x20000000) ? 1 : 0;
 
 				if (data & 0x10000000)
-					cpunum_set_input_line(machine, dsp, INPUT_LINE_RESET, CLEAR_LINE);
+					cpu_set_input_line(space->machine->cpu[dsp], INPUT_LINE_RESET, CLEAR_LINE);
 				else
-					cpunum_set_input_line(machine, dsp, INPUT_LINE_RESET, ASSERT_LINE);
+					cpu_set_input_line(space->machine->cpu[dsp], INPUT_LINE_RESET, ASSERT_LINE);
 
 				if (data & 0x02000000)
-					cpunum_set_input_line(machine, dsp, INPUT_LINE_IRQ0, ASSERT_LINE);
+					cpu_set_input_line(space->machine->cpu[dsp], INPUT_LINE_IRQ0, ASSERT_LINE);
 
 				if (data & 0x04000000)
-					cpunum_set_input_line(machine, dsp, INPUT_LINE_IRQ1, ASSERT_LINE);
+					cpu_set_input_line(space->machine->cpu[dsp], INPUT_LINE_IRQ1, ASSERT_LINE);
 			}
 
 			if (ACCESSING_BITS_0_7)
@@ -197,7 +197,7 @@ WRITE32_HANDLER( cgboard_dsp_shared_w_ppc )
 {
 	if (cgboard_id < MAX_CG_BOARDS)
 	{
-		cpu_trigger(machine, 10000);		// Remove the timeout (a part of the GTI Club FIFO test workaround)
+		cpuexec_trigger(space->machine, 10000);		// Remove the timeout (a part of the GTI Club FIFO test workaround)
 		COMBINE_DATA(dsp_shared_ram[cgboard_id] + (offset + (dsp_shared_ram_bank[cgboard_id] * DSP_BANK_SIZE_WORD)));
 	}
 }
@@ -211,7 +211,7 @@ static UINT32 dsp_comm_sharc_r(int board, int offset)
 	return dsp_comm_ppc[board][offset];
 }
 
-static void dsp_comm_sharc_w(running_machine *machine, int board, int offset, UINT32 data)
+static void dsp_comm_sharc_w(const address_space *space, int board, int offset, UINT32 data)
 {
 	if (offset >= 2)
 	{
@@ -223,15 +223,13 @@ static void dsp_comm_sharc_w(running_machine *machine, int board, int offset, UI
 		case CGBOARD_TYPE_ZR107:
 		case CGBOARD_TYPE_GTICLUB:
 		{
-			//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG0, ASSERT_LINE);
-			cpuintrf_push_context(2);
-			sharc_set_flag_input(0, ASSERT_LINE);
-			cpuintrf_pop_context();
+			//cpu_set_input_line(machine->cpu[2], SHARC_INPUT_FLAG0, ASSERT_LINE);
+			sharc_set_flag_input(space->machine->cpu[2], 0, ASSERT_LINE);
 
 			if (offset == 1)
 			{
 				if (data & 0x03)
-					cpunum_set_input_line(machine, 2, INPUT_LINE_IRQ2, ASSERT_LINE);
+					cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_IRQ2, ASSERT_LINE);
 			}
 			break;
 		}
@@ -245,16 +243,14 @@ static void dsp_comm_sharc_w(running_machine *machine, int board, int offset, UI
 
 				if (data & 0x01 || data & 0x10)
 				{
-					cpuintrf_push_context((board == 0) ? 2 : 3);
-					sharc_set_flag_input(1, ASSERT_LINE);
-					cpuintrf_pop_context();
+					sharc_set_flag_input(space->machine->cpu[board == 0 ? 2 : 3], 1, ASSERT_LINE);
 				}
 
 				if (texture_bank[board] != -1)
 				{
 					int offset = (data & 0x08) ? 1 : 0;
 
-					memory_set_bank(texture_bank[board], offset);
+					memory_set_bank(space->machine, texture_bank[board], offset);
 				}
 			}
 			break;
@@ -268,14 +264,14 @@ static void dsp_comm_sharc_w(running_machine *machine, int board, int offset, UI
 				{
 					int offset = (data & 0x08) ? 1 : 0;
 
-					memory_set_bank(texture_bank[board], offset);
+					memory_set_bank(space->machine, texture_bank[board], offset);
 				}
 			}
 			break;
 		}
 	}
 
-//  printf("cgboard_dsp_comm_w_sharc: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, activecpu_get_pc());
+//  printf("%s:cgboard_dsp_comm_w_sharc: %08X, %08X, %08X\n", cpuexec_describe_context(space->machine), data, offset, mem_mask);
 
 	dsp_comm_sharc[board][offset] = data;
 }
@@ -316,7 +312,7 @@ READ32_HANDLER( cgboard_0_comm_sharc_r )
 
 WRITE32_HANDLER( cgboard_0_comm_sharc_w )
 {
-	dsp_comm_sharc_w(machine, 0, offset, data);
+	dsp_comm_sharc_w(space, 0, offset, data);
 }
 
 READ32_HANDLER( cgboard_0_shared_sharc_r )
@@ -336,7 +332,7 @@ READ32_HANDLER( cgboard_1_comm_sharc_r )
 
 WRITE32_HANDLER( cgboard_1_comm_sharc_w )
 {
-	dsp_comm_sharc_w(machine, 1, offset, data);
+	dsp_comm_sharc_w(space, 1, offset, data);
 }
 
 READ32_HANDLER( cgboard_1_shared_sharc_r )
@@ -351,35 +347,28 @@ WRITE32_HANDLER( cgboard_1_shared_sharc_w )
 
 /*****************************************************************************/
 
-static UINT32 nwk_fifo_r(int board)
+static UINT32 nwk_fifo_r(const address_space *space, int board)
 {
 	int cpu = (board == 0) ? 2 : 3;
+	const device_config *device = space->machine->cpu[cpu];
 	UINT32 data;
 
 	if (nwk_fifo_read_ptr[board] < nwk_fifo_half_full_r)
 	{
-		cpuintrf_push_context(cpu);
-		sharc_set_flag_input(1, CLEAR_LINE);
-		cpuintrf_pop_context();
+		sharc_set_flag_input(device, 1, CLEAR_LINE);
 	}
 	else
 	{
-		cpuintrf_push_context(cpu);
-		sharc_set_flag_input(1, ASSERT_LINE);
-		cpuintrf_pop_context();
+		sharc_set_flag_input(device, 1, ASSERT_LINE);
 	}
 
 	if (nwk_fifo_read_ptr[board] < nwk_fifo_full)
 	{
-		cpuintrf_push_context(cpu);
-		sharc_set_flag_input(2, ASSERT_LINE);
-		cpuintrf_pop_context();
+		sharc_set_flag_input(device, 2, ASSERT_LINE);
 	}
 	else
 	{
-		cpuintrf_push_context(cpu);
-		sharc_set_flag_input(2, CLEAR_LINE);
-		cpuintrf_pop_context();
+		sharc_set_flag_input(device, 2, CLEAR_LINE);
 	}
 
 	data = nwk_fifo[board][nwk_fifo_read_ptr[board]];
@@ -389,26 +378,21 @@ static UINT32 nwk_fifo_r(int board)
 	return data;
 }
 
-static void nwk_fifo_w(int board, UINT32 data)
+static void nwk_fifo_w(running_machine *machine, int board, UINT32 data)
 {
 	int cpu = (board == 0) ? 2 : 3;
+	const device_config *device = machine->cpu[cpu];
 
 	if (nwk_fifo_write_ptr[board] < nwk_fifo_half_full_w)
 	{
-		cpuintrf_push_context(cpu);
-		sharc_set_flag_input(1, ASSERT_LINE);
-		cpuintrf_pop_context();
+		sharc_set_flag_input(device, 1, ASSERT_LINE);
 	}
 	else
 	{
-		cpuintrf_push_context(cpu);
-		sharc_set_flag_input(1, CLEAR_LINE);
-		cpuintrf_pop_context();
+		sharc_set_flag_input(device, 1, CLEAR_LINE);
 	}
 
-	cpuintrf_push_context(cpu);
-	sharc_set_flag_input(2, ASSERT_LINE);
-	cpuintrf_pop_context();
+	sharc_set_flag_input(device, 2, ASSERT_LINE);
 
 	nwk_fifo[board][nwk_fifo_write_ptr[board]] = data;
 	nwk_fifo_write_ptr[board]++;
@@ -424,19 +408,19 @@ static void nwk_fifo_w(int board, UINT32 data)
 static UINT32 *K033906_reg[MAX_K033906_CHIPS];
 static UINT32 *K033906_ram[MAX_K033906_CHIPS];
 
-void K033906_init(void)
+void K033906_init(running_machine *machine)
 {
 	int i;
 	for (i=0; i < MAX_K033906_CHIPS; i++)
 	{
 		K033906_reg[i] = auto_malloc(sizeof(UINT32) * 256);
 		K033906_ram[i] = auto_malloc(sizeof(UINT32) * 32768);
-		state_save_register_item_pointer("K033906", i, K033906_reg[i], 256);
-		state_save_register_item_pointer("K033906", i, K033906_ram[i], 32768);
+		state_save_register_item_pointer(machine, "K033906", NULL, i, K033906_reg[i], 256);
+		state_save_register_item_pointer(machine, "K033906", NULL, i, K033906_ram[i], 32768);
 	}
 }
 
-static UINT32 K033906_r(int chip, int reg)
+static UINT32 K033906_r(const address_space *space, int chip, int reg)
 {
 	switch(reg)
 	{
@@ -446,12 +430,12 @@ static UINT32 K033906_r(int chip, int reg)
 		case 0x0f:		return K033906_reg[chip][0x0f];		// interrupt_line, interrupt_pin, min_gnt, max_lat
 
 		default:
-			fatalerror("K033906_r: %d, %08X at %08X", chip, reg, activecpu_get_pc());
+			fatalerror("%s:K033906_r: %d, %08X", cpuexec_describe_context(space->machine), chip, reg);
 	}
 	return 0;
 }
 
-static void K033906_w(running_machine *machine, int chip, int reg, UINT32 data)
+static void K033906_w(const address_space *space, int chip, int reg, UINT32 data)
 {
 	switch(reg)
 	{
@@ -482,7 +466,7 @@ static void K033906_w(running_machine *machine, int chip, int reg, UINT32 data)
 
 		case 0x10:		// initEnable
 		{
-			const device_config *device = device_list_find_by_index(machine->config->devicelist, VOODOO_GRAPHICS, chip);
+			const device_config *device = device_list_find_by_index(space->machine->config->devicelist, VOODOO_GRAPHICS, chip);
 			voodoo_set_init_enable(device, data);
 			break;
 		}
@@ -495,7 +479,7 @@ static void K033906_w(running_machine *machine, int chip, int reg, UINT32 data)
 			break;
 
 		default:
-			fatalerror("K033906_w: %d, %08X, %08X at %08X", chip, data, reg, activecpu_get_pc());
+			fatalerror("%s:K033906_w: %d, %08X, %08X", cpuexec_describe_context(space->machine), chip, data, reg);
 	}
 }
 
@@ -503,13 +487,13 @@ READ32_HANDLER(K033906_0_r)
 {
 	if (nwk_device_sel[0] & 0x01)
 	{
-		return nwk_fifo_r(0);
+		return nwk_fifo_r(space, 0);
 	}
 	else
 	{
 		if (pci_bridge_enable[0])
 		{
-			return K033906_r(0, offset);
+			return K033906_r(space, 0, offset);
 		}
 		else
 		{
@@ -522,7 +506,7 @@ WRITE32_HANDLER(K033906_0_w)
 {
 	if (pci_bridge_enable[0])
 	{
-		K033906_w(machine, 0, offset, data);
+		K033906_w(space, 0, offset, data);
 	}
 	else
 	{
@@ -534,13 +518,13 @@ READ32_HANDLER(K033906_1_r)
 {
 	if (nwk_device_sel[1] & 0x01)
 	{
-		return nwk_fifo_r(1);
+		return nwk_fifo_r(space, 1);
 	}
 	else
 	{
 		if (pci_bridge_enable[1])
 		{
-			return K033906_r(1, offset);
+			return K033906_r(space, 1, offset);
 		}
 		else
 		{
@@ -553,7 +537,7 @@ WRITE32_HANDLER(K033906_1_w)
 {
 	if (pci_bridge_enable[1])
 	{
-		K033906_w(machine, 1, offset, data);
+		K033906_w(space, 1, offset, data);
 	}
 	else
 	{
@@ -567,7 +551,7 @@ WRITE32_DEVICE_HANDLER(nwk_fifo_0_w)
 {
 	if (nwk_device_sel[0] & 0x01)
 	{
-		nwk_fifo_w(0, data);
+		nwk_fifo_w(device->machine, 0, data);
 	}
 	else if (nwk_device_sel[0] & 0x02)
 	{
@@ -584,7 +568,7 @@ WRITE32_DEVICE_HANDLER(nwk_fifo_1_w)
 {
 	if (nwk_device_sel[1] & 0x01)
 	{
-		nwk_fifo_w(1, data);
+		nwk_fifo_w(device->machine, 1, data);
 	}
 	else if (nwk_device_sel[1] & 0x02)
 	{
@@ -625,7 +609,7 @@ WRITE32_DEVICE_HANDLER(nwk_voodoo_0_w)
 {
 	if (nwk_device_sel[0] & 0x01)
 	{
-		nwk_fifo_w(0, data);
+		nwk_fifo_w(device->machine, 0, data);
 	}
 	else if (nwk_device_sel[0] & 0x02)
 	{
@@ -642,7 +626,7 @@ WRITE32_DEVICE_HANDLER(nwk_voodoo_1_w)
 {
 	if (nwk_device_sel[1] & 0x01)
 	{
-		nwk_fifo_w(1, data);
+		nwk_fifo_w(device->machine, 1, data);
 	}
 	else if (nwk_device_sel[1] & 0x02)
 	{

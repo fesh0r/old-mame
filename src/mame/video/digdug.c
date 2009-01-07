@@ -134,9 +134,9 @@ static TILE_GET_INFO( tx_get_tile_info )
        characters when screen is flipped, we have to flip them back. */
 	SET_TILE_INFO(
 			0,
-			(code & 0x7f) | (flip_screen_get() ? 0x80 : 0),
+			(code & 0x7f) | (flip_screen_get(machine) ? 0x80 : 0),
 			color,
-			flip_screen_get() ? TILE_FLIPX : 0);
+			flip_screen_get(machine) ? TILE_FLIPX : 0);
 }
 
 
@@ -149,8 +149,8 @@ static TILE_GET_INFO( tx_get_tile_info )
 
 VIDEO_START( digdug )
 {
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan,     8,8,36,28);
-	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan,8,8,36,28);
+	bg_tilemap = tilemap_create(machine, bg_get_tile_info,tilemap_scan,     8,8,36,28);
+	tx_tilemap = tilemap_create(machine, tx_get_tile_info,tilemap_scan,8,8,36,28);
 
 	tilemap_set_transparent_pen(tx_tilemap, 0);
 
@@ -158,10 +158,10 @@ VIDEO_START( digdug )
 	spriteram_2 = digdug_posram + 0x380;
 	spriteram_3 = digdug_flpram + 0x380;
 
-	state_save_register_global(bg_select);
-	state_save_register_global(tx_color_mode);
-	state_save_register_global(bg_disable);
-	state_save_register_global(bg_color_bank);
+	state_save_register_global(machine, bg_select);
+	state_save_register_global(machine, tx_color_mode);
+	state_save_register_global(machine, bg_disable);
+	state_save_register_global(machine, bg_color_bank);
 }
 
 
@@ -235,7 +235,7 @@ WRITE8_HANDLER( digdug_PORT_w )
 			break;
 
 		case 7:	/* FLIP */
-			flip_screen_set(data & 1);
+			flip_screen_set(space->machine, data & 1);
 			break;
 	}
 }
@@ -280,7 +280,7 @@ static void draw_sprites(running_machine* machine, bitmap_t *bitmap, const recta
 		sy -= 16 * size;
 		sy = (sy & 0xff) - 32;	// fix wraparound
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			flipx ^= 1;
 			flipy ^= 1;

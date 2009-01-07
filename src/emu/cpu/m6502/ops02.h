@@ -32,14 +32,14 @@
 #define F_N 0x80
 
 /* some shortcuts for improved readability */
-#define A	m6502.a
-#define X	m6502.x
-#define Y	m6502.y
-#define P	m6502.p
-#define S	m6502.sp.b.l
-#define SPD m6502.sp.d
+#define A	cpustate->a
+#define X	cpustate->x
+#define Y	cpustate->y
+#define P	cpustate->p
+#define S	cpustate->sp.b.l
+#define SPD cpustate->sp.d
 
-#define NZ	m6502.nz
+#define NZ	cpustate->nz
 
 #define SET_NZ(n)				\
 	if ((n) == 0) P = (P & ~F_N) | F_Z; else P = (P & ~(F_N | F_Z)) | ((n) & F_N)
@@ -47,47 +47,46 @@
 #define SET_Z(n)				\
 	if ((n) == 0) P |= F_Z; else P &= ~F_Z
 
-#define EAL m6502.ea.b.l
-#define EAH m6502.ea.b.h
-#define EAW m6502.ea.w.l
-#define EAD m6502.ea.d
+#define EAL cpustate->ea.b.l
+#define EAH cpustate->ea.b.h
+#define EAW cpustate->ea.w.l
+#define EAD cpustate->ea.d
 
-#define ZPL m6502.zp.b.l
-#define ZPH m6502.zp.b.h
-#define ZPW m6502.zp.w.l
-#define ZPD m6502.zp.d
+#define ZPL cpustate->zp.b.l
+#define ZPH cpustate->zp.b.h
+#define ZPW cpustate->zp.w.l
+#define ZPD cpustate->zp.d
 
-#define PCL m6502.pc.b.l
-#define PCH m6502.pc.b.h
-#define PCW m6502.pc.w.l
-#define PCD m6502.pc.d
+#define PCL cpustate->pc.b.l
+#define PCH cpustate->pc.b.h
+#define PCW cpustate->pc.w.l
+#define PCD cpustate->pc.d
 
-#define PPC m6502.ppc.d
+#define PPC cpustate->ppc.d
 
-#define RDMEM_ID(a)		m6502.rdmem_id(Machine,a)
-#define WRMEM_ID(a,d)	m6502.wrmem_id(Machine,a,d)
-
-#define CHANGE_PC change_pc(PCD)
+#define RDMEM_ID(a)		cpustate->rdmem_id(cpustate->space,a)
+#define WRMEM_ID(a,d)	cpustate->wrmem_id(cpustate->space,a,d)
 
 /***************************************************************
  *  RDOP    read an opcode
  ***************************************************************/
-#define RDOP() cpu_readop(PCW++); m6502_ICount -= 1
+#define RDOP() memory_decrypted_read_byte(cpustate->space, PCW++); cpustate->icount -= 1
+#define PEEKOP() memory_decrypted_read_byte(cpustate->space, PCW)
 
 /***************************************************************
  *  RDOPARG read an opcode argument
  ***************************************************************/
-#define RDOPARG() cpu_readop_arg(PCW++); m6502_ICount -= 1
+#define RDOPARG() memory_raw_read_byte(cpustate->space, PCW++); cpustate->icount -= 1
 
 /***************************************************************
  *  RDMEM   read memory
  ***************************************************************/
-#define RDMEM(addr) program_read_byte_8le(addr); m6502_ICount -= 1
+#define RDMEM(addr) memory_read_byte_8le(cpustate->space, addr); cpustate->icount -= 1
 
 /***************************************************************
  *  WRMEM   write memory
  ***************************************************************/
-#define WRMEM(addr,data) program_write_byte_8le(addr,data); m6502_ICount -= 1
+#define WRMEM(addr,data) memory_write_byte_8le(cpustate->space, addr,data); cpustate->icount -= 1
 
 /***************************************************************
  *  BRA  branch relative
@@ -104,7 +103,6 @@
 				RDMEM( (PCH << 8 ) | EAL) ;							\
 			}														\
 			PCD = EAD;												\
-			CHANGE_PC;												\
 		}															\
 	}
 
@@ -269,9 +267,9 @@
 #define RD_ABX_NP	EA_ABX_NP; tmp = RDMEM(EAD)
 #define RD_ABY_P	EA_ABY_P; tmp = RDMEM(EAD)
 #define RD_ABY_NP	EA_ABY_NP; tmp = RDMEM(EAD)
-#define RD_IDX		EA_IDX; tmp = RDMEM_ID(EAD); m6502_ICount -= 1
-#define RD_IDY_P	EA_IDY_P; tmp = RDMEM_ID(EAD); m6502_ICount -= 1
-#define RD_IDY_NP	EA_IDY_NP; tmp = RDMEM_ID(EAD); m6502_ICount -= 1
+#define RD_IDX		EA_IDX; tmp = RDMEM_ID(EAD); cpustate->icount -= 1
+#define RD_IDY_P	EA_IDY_P; tmp = RDMEM_ID(EAD); cpustate->icount -= 1
+#define RD_IDY_NP	EA_IDY_NP; tmp = RDMEM_ID(EAD); cpustate->icount -= 1
 #define RD_ZPI		EA_ZPI; tmp = RDMEM(EAD)
 
 /* write a value from tmp */
@@ -281,8 +279,8 @@
 #define WR_ABS		EA_ABS; WRMEM(EAD, tmp)
 #define WR_ABX_NP	EA_ABX_NP; WRMEM(EAD, tmp)
 #define WR_ABY_NP	EA_ABY_NP; WRMEM(EAD, tmp)
-#define WR_IDX		EA_IDX; WRMEM_ID(EAD, tmp); m6502_ICount -= 1
-#define WR_IDY_NP	EA_IDY_NP; WRMEM_ID(EAD, tmp); m6502_ICount -= 1
+#define WR_IDX		EA_IDX; WRMEM_ID(EAD, tmp); cpustate->icount -= 1
+#define WR_IDY_NP	EA_IDY_NP; WRMEM_ID(EAD, tmp); cpustate->icount -= 1
 #define WR_ZPI		EA_ZPI; WRMEM(EAD, tmp)
 
 /* dummy read from the last EA */
@@ -409,8 +407,7 @@
 	PUSH(P | F_B);												\
 	P = (P | F_I);												\
 	PCL = RDMEM(M6502_IRQ_VEC); 								\
-	PCH = RDMEM(M6502_IRQ_VEC+1);								\
-	CHANGE_PC
+	PCH = RDMEM(M6502_IRQ_VEC+1)
 
 /* 6502 ********************************************************
  * BVC  Branch if overflow clear
@@ -438,8 +435,10 @@
  * CLI  Clear interrupt flag
  ***************************************************************/
 #define CLI 													\
-	if ((m6502.irq_state != CLEAR_LINE) && (P & F_I)) { 		\
-		m6502.after_cli = 1;									\
+	if ((cpustate->irq_state != CLEAR_LINE) && (P & F_I)) { 		\
+		/* kludge for now until IRQ rewrite: ignore if RTI follows */ \
+		if (PEEKOP() != 0x40) \
+			cpustate->after_cli = 1;									\
 	}															\
 	P &= ~F_I
 
@@ -508,7 +507,7 @@
  *  ILL Illegal opcode
  ***************************************************************/
 #define ILL 													\
-	logerror("M6502 illegal opcode %04x: %02x\n",(PCW-1)&0xffff, cpu_readop((PCW-1)&0xffff))
+	logerror("M6502 illegal opcode %04x: %02x\n",(PCW-1)&0xffff, memory_decrypted_read_byte(cpustate->space, (PCW-1)&0xffff))
 
 /* 6502 ********************************************************
  *  INC Increment memory
@@ -536,10 +535,9 @@
  *  set PC to the effective address
  ***************************************************************/
 #define JMP 													\
-	if( EAD == PPC && !m6502.pending_irq && !m6502.after_cli )	\
-		if( m6502_ICount > 0 ) m6502_ICount = 0;				\
-	PCD = EAD;													\
-	CHANGE_PC
+	if( EAD == PPC && !cpustate->pending_irq && !cpustate->after_cli )	\
+		if( cpustate->icount > 0 ) cpustate->icount = 0;				\
+	PCD = EAD
 
 /* 6502 ********************************************************
  *  JSR Jump to subroutine
@@ -552,8 +550,7 @@
 	PUSH(PCH);													\
 	PUSH(PCL);													\
 	EAH = RDOPARG();											\
-	PCD = EAD;													\
-	CHANGE_PC
+	PCD = EAD
 
 /* 6502 ********************************************************
  *  LDA Load accumulator
@@ -625,9 +622,9 @@
 	RDMEM(SPD);													\
 	if ( P & F_I ) {											\
 		PULL(P);												\
-		if ((m6502.irq_state != CLEAR_LINE) && !(P & F_I)) {	\
-			LOG(("M6502#%d PLP sets after_cli\n",cpu_getactivecpu()));	\
-			m6502.after_cli = 1;								\
+		if ((cpustate->irq_state != CLEAR_LINE) && !(P & F_I)) {	\
+			LOG(("M6502 '%s' PLP sets after_cli\n",cpustate->device->tag));	\
+			cpustate->after_cli = 1;								\
 		}														\
 	} else {													\
 		PULL(P);												\
@@ -666,12 +663,11 @@
 	PULL(PCL);													\
 	PULL(PCH);													\
 	P |= F_T | F_B; 											\
-	if( (m6502.irq_state != CLEAR_LINE) && !(P & F_I) )			\
+	if( (cpustate->irq_state != CLEAR_LINE) && !(P & F_I) )			\
 	{															\
-		LOG(("M6502#%d RTI sets after_cli\n",cpu_getactivecpu())); 	\
-		m6502.after_cli = 1;									\
-	}															\
-	CHANGE_PC
+		LOG(("M6502 '%s' RTI sets after_cli\n",cpustate->device->tag)); 	\
+		cpustate->after_cli = 1;									\
+	}
 
 /* 6502 ********************************************************
  *  RTS Return from subroutine
@@ -682,8 +678,7 @@
 	RDMEM(SPD);													\
 	PULL(PCL);													\
 	PULL(PCH);													\
-	RDMEM(PCW); PCW++;											\
-	CHANGE_PC
+	RDMEM(PCW); PCW++
 
 /* 6502 ********************************************************
  *  SBC Subtract with carry

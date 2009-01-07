@@ -217,9 +217,9 @@ static render_texture *hilight_texture;
 
 static render_texture *arrow_texture;
 
-static const char *priortext = "Return to Prior Menu";
-static const char *backtext = "Return to " CAPSTARTGAMENOUN;
-static const char *exittext = "Exit";
+static const char priortext[] = "Return to Prior Menu";
+static const char backtext[] = "Return to " CAPSTARTGAMENOUN;
+static const char exittext[] = "Exit";
 
 static const rgb_t text_fgcolor = MAKE_ARGB(0xff,0xff,0xff,0xff);
 static const rgb_t text_bgcolor = MAKE_ARGB(0xe0,0x80,0x80,0x80);
@@ -275,7 +275,7 @@ static void menu_cheat_populate(running_machine *machine, ui_menu *menu);
 static void menu_memory_card(running_machine *machine, ui_menu *menu, void *parameter, void *state);
 static void menu_memory_card_populate(running_machine *machine, ui_menu *menu, int cardnum);
 static void menu_sliders(running_machine *machine, ui_menu *menu, void *parameter, void *state);
-static void menu_sliders_populate(running_machine *machine, ui_menu *menu);
+static void menu_sliders_populate(running_machine *machine, ui_menu *menu, int menuless_mode);
 static void menu_sliders_custom_render(running_machine *machine, ui_menu *menu, void *state, void *selectedref, float top, float bottom, float x1, float y1, float x2, float y2);
 static void menu_video_targets(running_machine *machine, ui_menu *menu, void *parameter, void *state);
 static void menu_video_targets_populate(running_machine *machine, ui_menu *menu);
@@ -1346,10 +1346,20 @@ UINT32 ui_menu_ui_handler(running_machine *machine, UINT32 state)
 
 UINT32 ui_slider_ui_handler(running_machine *machine, UINT32 state)
 {
-	/* if we have no menus stacked up, start with the sliders menu */
-	if (menu_stack == NULL)
-		ui_menu_stack_push(ui_menu_alloc(machine, menu_sliders, machine));
-	return ui_menu_ui_handler(machine, state);
+	UINT32 result;
+
+	/* if this is the first call, push the sliders menu */
+	if (state)
+		ui_menu_stack_push(ui_menu_alloc(machine, menu_sliders, (void *)1));
+
+	/* handle standard menus */
+	result = ui_menu_ui_handler(machine, state);
+
+	/* if we are cancelled, pop the sliders menu */
+	if (result == UI_HANDLER_CANCEL)
+		ui_menu_stack_pop(machine);
+
+	return (menu_stack != NULL && menu_stack->handler == menu_sliders && menu_stack->parameter != NULL) ? 0 : UI_HANDLER_CANCEL;
 }
 
 
@@ -2356,7 +2366,7 @@ static void menu_bookkeeping(running_machine *machine, ui_menu *menu, void *para
 	prevtime = state;
 
 	/* if the time has rolled over another second, regenerate */
-	curtime = timer_get_time();
+	curtime = timer_get_time(machine);
 	if (prevtime->seconds != curtime.seconds)
 	{
 		ui_menu_reset(menu, UI_MENU_RESET_SELECT_FIRST);
@@ -2641,16 +2651,19 @@ static void menu_memory_card_populate(running_machine *machine, ui_menu *menu, i
 
 static void menu_sliders(running_machine *machine, ui_menu *menu, void *parameter, void *state)
 {
+	int menuless_mode = (parameter != NULL);
 	const ui_menu_event *event;
 	UINT8 *hidden = state;
 
 	/* if no state, allocate some */
 	if (hidden == NULL)
 		hidden = ui_menu_alloc_state(menu, sizeof(*hidden), NULL);
+	if (menuless_mode)
+		*hidden = TRUE;
 
 	/* if the menu isn't built, populate now */
 	if (!ui_menu_populated(menu))
-		menu_sliders_populate(machine, menu);
+		menu_sliders_populate(machine, menu, menuless_mode);
 
 	/* process the menu */
 	event = ui_menu_process(machine, menu, UI_MENU_PROCESS_LR_REPEAT | (*hidden ? UI_MENU_PROCESS_CUSTOM_ONLY : 0));
@@ -2667,7 +2680,10 @@ static void menu_sliders(running_machine *machine, ui_menu *menu, void *paramete
 			{
 				/* toggle visibility */
 				case IPT_UI_ON_SCREEN_DISPLAY:
-					*hidden = !*hidden;
+					if (menuless_mode)
+						ui_menu_stack_pop(machine);
+					else
+						*hidden = !*hidden;
 					break;
 
 				/* decrease value */
@@ -2743,7 +2759,7 @@ static void menu_sliders(running_machine *machine, ui_menu *menu, void *paramete
     menu
 -------------------------------------------------*/
 
-static void menu_sliders_populate(running_machine *machine, ui_menu *menu)
+static void menu_sliders_populate(running_machine *machine, ui_menu *menu, int menuless_mode)
 {
 	astring *tempstring = astring_alloc();
 	const slider_state *curslider;
@@ -2758,9 +2774,12 @@ static void menu_sliders_populate(running_machine *machine, ui_menu *menu)
 		if (curval < curslider->maxval)
 			flags |= MENU_FLAG_RIGHT_ARROW;
 		ui_menu_item_append(menu, curslider->description, astring_c(tempstring), flags, (void *)curslider);
+
+		if (menuless_mode)
+			break;
 	}
 
-	ui_menu_set_custom_render(menu, menu_sliders_custom_render, 0.0f, 2.0f * ui_get_line_height());
+	ui_menu_set_custom_render(menu, menu_sliders_custom_render, 0.0f, 2.0f * ui_get_line_height() + 2.0f * UI_BOX_TB_BORDER);
 	astring_free(tempstring);
 }
 
@@ -2775,39 +2794,43 @@ static void menu_sliders_custom_render(running_machine *machine, ui_menu *menu, 
 	const slider_state *curslider = selectedref;
 	if (curslider != NULL)
 	{
-		astring *tempstring = astring_alloc();
-		INT32 curval = (*curslider->update)(machine, curslider->arg, tempstring, SLIDER_NOCHANGE);
-		float percentage = (float)(curval - curslider->minval) / (float)(curslider->maxval - curslider->minval);
-		float default_percentage = (float)(curslider->defval - curslider->minval) / (float)(curslider->maxval - curslider->minval);
 		float bar_left, bar_area_top, bar_width, bar_area_height, bar_top, bar_bottom, default_x, current_x;
-		float space_width = ui_get_char_width(' ');
 		float line_height = ui_get_line_height();
-		float ui_width, ui_height;
+		astring *tempstring = astring_alloc();
+		float percentage, default_percentage;
 		float text_height;
+		INT32 curval;
 
-		/* finish assembling the text */
+		/* determine the current value and text */
+		curval = (*curslider->update)(machine, curslider->arg, tempstring, SLIDER_NOCHANGE);
+
+		/* compute the current and default percentages */
+		percentage = (float)(curval - curslider->minval) / (float)(curslider->maxval - curslider->minval);
+		default_percentage = (float)(curslider->defval - curslider->minval) / (float)(curslider->maxval - curslider->minval);
+
+		/* assemble the the text */
 		astring_insc(tempstring, 0, " ");
 		astring_insc(tempstring, 0, curslider->description);
 
-		/* leave a spaces' worth of room along the left/right sides, and a lines' worth on the top/bottom */
-		ui_width = 1.0f - 2.0f * space_width;
-		ui_height = 1.0f - 2.0f * line_height;
+		/* move us to the bottom of the screen, and expand to full width */
+		y2 = 1.0f - UI_BOX_TB_BORDER;
+		y1 = y2 - bottom;
+		x1 = UI_BOX_LR_BORDER;
+		x2 = 1.0f - UI_BOX_LR_BORDER;
+
+		/* draw extra menu area */
+		ui_draw_outlined_box(x1, y1, x2, y2, UI_FILLCOLOR);
+		y1 += UI_BOX_TB_BORDER;
 
 		/* determine the text height */
-		ui_draw_text_full(astring_c(tempstring), 0, 0, ui_width - 2 * UI_BOX_LR_BORDER,
-					JUSTIFY_CENTER, WRAP_WORD, DRAW_NONE, ARGB_WHITE, ARGB_BLACK, NULL, &text_height);
-
-		/* add a box around the whole area */
-		ui_draw_outlined_box(space_width,
-						 line_height + ui_height - text_height - line_height - 2 * UI_BOX_TB_BORDER,
-						 space_width + ui_width,
-						 line_height + ui_height, UI_FILLCOLOR);
+		ui_draw_text_full(astring_c(tempstring), 0, 0, x2 - x1 - 2.0f * UI_BOX_LR_BORDER,
+					JUSTIFY_CENTER, WRAP_TRUNCATE, DRAW_NONE, ARGB_WHITE, ARGB_BLACK, NULL, &text_height);
 
 		/* draw the thermometer */
-		bar_left = 2.0f * space_width;
-		bar_area_top = line_height + ui_height - UI_BOX_TB_BORDER - text_height - line_height * 0.75f;
-		bar_width = ui_width - 2.0f * space_width;
-		bar_area_height = line_height * 0.75f;
+		bar_left = x1 + UI_BOX_LR_BORDER;
+		bar_area_top = y1;
+		bar_width = x2 - x1 - 2.0f * UI_BOX_LR_BORDER;
+		bar_area_height = line_height;
 
 		/* compute positions */
 		bar_top = bar_area_top + 0.125f * bar_area_height;
@@ -2827,7 +2850,7 @@ static void menu_sliders_custom_render(running_machine *machine, ui_menu *menu, 
 		render_ui_add_line(default_x, bar_bottom, default_x, bar_area_top + bar_area_height, UI_LINE_WIDTH, ARGB_WHITE, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
 
 		/* draw the actual text */
-		ui_draw_text_full(astring_c(tempstring), space_width + UI_BOX_LR_BORDER, line_height + ui_height - UI_BOX_TB_BORDER - text_height, ui_width - 2.0f * UI_BOX_LR_BORDER,
+		ui_draw_text_full(astring_c(tempstring), x1 + UI_BOX_LR_BORDER, y1 + line_height, x2 - x1 - 2.0f * UI_BOX_LR_BORDER,
 					JUSTIFY_CENTER, WRAP_WORD, DRAW_NORMAL, ARGB_WHITE, ARGB_BLACK, NULL, &text_height);
 
 		astring_free(tempstring);
@@ -3153,7 +3176,7 @@ static void menu_select_game_populate(running_machine *machine, ui_menu *menu, s
 	{
 		ui_menu_item_append(menu, "No "GAMESNOUN" found. Please check the rompath specified in the "CONFIGNAME".ini file.\n\n"
 								  "If this is your first time using "APPNAME", please see the config.txt file in "
-								  "the docs directory for information on configuring "APPNAME, NULL, MENU_FLAG_MULTILINE | MENU_FLAG_REDTEXT, NULL);
+								  "the docs directory for information on configuring "APPNAME".", NULL, MENU_FLAG_MULTILINE | MENU_FLAG_REDTEXT, NULL);
 		return;
 	}
 
@@ -3393,6 +3416,8 @@ static void menu_select_game_custom_render(running_machine *machine, ui_menu *me
 
 	/* draw a box */
 	color = UI_FILLCOLOR;
+	if (driver != NULL && (driver->flags & (GAME_IMPERFECT_GRAPHICS | GAME_WRONG_COLORS | GAME_IMPERFECT_COLORS | GAME_NO_SOUND | GAME_IMPERFECT_SOUND)) != 0)
+		color = UI_YELLOWCOLOR;
 	if (driver != NULL && (driver->flags & (GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION)) != 0)
 		color = UI_REDCOLOR;
 	ui_draw_outlined_box(x1, y1, x2, y2, color);

@@ -4,6 +4,7 @@
 
 *************************************************************************/
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
 #include "qix.h"
 #include "machine/6821pia.h"
 #include "sound/sn76496.h"
@@ -22,12 +23,12 @@ Audio handlers
 
 WRITE8_HANDLER( qix_dac_w )
 {
-	discrete_sound_w(machine, QIX_DAC_DATA, data);
+	discrete_sound_w(space, QIX_DAC_DATA, data);
 }
 
 WRITE8_HANDLER( qix_vol_w )
 {
-	discrete_sound_w(machine, QIX_VOL_DATA, data);
+	discrete_sound_w(space, QIX_VOL_DATA, data);
 }
 
 
@@ -60,8 +61,8 @@ static DISCRETE_SOUND_START(qix)
 	DISCRETE_TRANSFORM2(QIX_VOL_DATA_R, QIX_VOL_DATA, 0x0f, "01&")
 
 	/* Work out the parallel resistance of the selected resistors. */
-	DISCRETE_COMP_ADDER(NODE_10, 1, QIX_VOL_DATA_L, &qix_attn_table)
-	DISCRETE_COMP_ADDER(NODE_20, 1, QIX_VOL_DATA_R, &qix_attn_table)
+	DISCRETE_COMP_ADDER(NODE_10, QIX_VOL_DATA_L, &qix_attn_table)
+	DISCRETE_COMP_ADDER(NODE_20, QIX_VOL_DATA_R, &qix_attn_table)
 
 	/* Then use it for the resistor divider network. */
 	DISCRETE_TRANSFORM3(NODE_11, NODE_10, RES_K(10), QIX_DAC_DATA, "001+/2*")

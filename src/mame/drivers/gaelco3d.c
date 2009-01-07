@@ -143,7 +143,7 @@ REF. 970429
 **************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/m68000/m68000.h"
 #include "gaelco3d.h"
 #include "cpu/tms32031/tms32031.h"
 #include "cpu/adsp2100/adsp2100.h"
@@ -169,7 +169,7 @@ static UINT16 *adsp_fastram_base;
 static UINT8 adsp_ireg;
 static offs_t adsp_ireg_base, adsp_incs, adsp_size;
 
-static void adsp_tx_callback(int port, INT32 data);
+static void adsp_tx_callback(const device_config *device, int port, INT32 data);
 static TIMER_CALLBACK( adsp_autobuffer_irq );
 
 
@@ -194,27 +194,24 @@ static MACHINE_RESET( common )
 		adsp_ram_base[i] = opcode;
 	}
 
-	/* initialize the ADSP Tx callback */
-	cpunum_set_info_fct(2, CPUINFO_PTR_ADSP2100_TX_HANDLER, (genf *)adsp_tx_callback);
-
 	/* allocate a timer for feeding the autobuffer */
-	adsp_autobuffer_timer = timer_alloc(adsp_autobuffer_irq, NULL);
+	adsp_autobuffer_timer = timer_alloc(machine, adsp_autobuffer_irq, NULL);
 
-	memory_configure_bank(1, 0, 256, memory_region(machine, "user1"), 0x4000);
-	memory_set_bank(1, 0);
+	memory_configure_bank(machine, 1, 0, 256, memory_region(machine, "user1"), 0x4000);
+	memory_set_bank(machine, 1, 0);
 
 	/* keep the TMS32031 halted until the code is ready to go */
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 
 	/* Save state support */
-	state_save_register_global(sound_data);
-	state_save_register_global(sound_status);
-	state_save_register_global_array(analog_ports);
-	state_save_register_global(framenum);
-	state_save_register_global(adsp_ireg);
-	state_save_register_global(adsp_ireg_base);
-	state_save_register_global(adsp_incs);
-	state_save_register_global(adsp_size);
+	state_save_register_global(machine, sound_data);
+	state_save_register_global(machine, sound_status);
+	state_save_register_global_array(machine, analog_ports);
+	state_save_register_global(machine, framenum);
+	state_save_register_global(machine, adsp_ireg);
+	state_save_register_global(machine, adsp_ireg_base);
+	state_save_register_global(machine, adsp_incs);
+	state_save_register_global(machine, adsp_size);
 }
 
 
@@ -222,7 +219,7 @@ static MACHINE_RESET( gaelco3d )
 {
 	MACHINE_RESET_CALL( common );
 	tms_offset_xor = 0;
-	state_save_register_global(tms_offset_xor);
+	state_save_register_global(machine, tms_offset_xor);
 }
 
 
@@ -230,7 +227,7 @@ static MACHINE_RESET( gaelco3d2 )
 {
 	MACHINE_RESET_CALL( common );
 	tms_offset_xor = BYTE_XOR_BE(0);
-	state_save_register_global(tms_offset_xor);
+	state_save_register_global(machine, tms_offset_xor);
 }
 
 
@@ -243,14 +240,14 @@ static MACHINE_RESET( gaelco3d2 )
 
 static INTERRUPT_GEN( vblank_gen )
 {
-	gaelco3d_render();
-	cpunum_set_input_line(machine, 0, 2, ASSERT_LINE);
+	gaelco3d_render(device->machine->primary_screen);
+	cpu_set_input_line(device, 2, ASSERT_LINE);
 }
 
 
 static WRITE16_HANDLER( irq_ack_w )
 {
-	cpunum_set_input_line(machine, 0, 2, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], 2, CLEAR_LINE);
 }
 
 
@@ -303,29 +300,29 @@ static TIMER_CALLBACK( delayed_sound_w )
 {
 	logerror("delayed_sound_w(%02X)\n", param);
 	sound_data = param;
-	cpunum_set_input_line(machine, 2, ADSP2115_IRQ2, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2], ADSP2115_IRQ2, ASSERT_LINE);
 }
 
 
 static WRITE16_HANDLER( sound_data_w )
 {
-	logerror("%06X:sound_data_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
+	logerror("%06X:sound_data_w(%02X) = %08X & %08X\n", cpu_get_pc(space->cpu), offset, data, mem_mask);
 	if (ACCESSING_BITS_0_7)
-		timer_call_after_resynch(NULL, data & 0xff, delayed_sound_w);
+		timer_call_after_resynch(space->machine, NULL, data & 0xff, delayed_sound_w);
 }
 
 
 static READ16_HANDLER( sound_data_r )
 {
 	logerror("sound_data_r(%02X)\n", sound_data);
-	cpunum_set_input_line(machine, 2, ADSP2115_IRQ2, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[2], ADSP2115_IRQ2, CLEAR_LINE);
 	return sound_data;
 }
 
 
 static READ16_HANDLER( sound_status_r )
 {
-	logerror("%06X:sound_status_r(%02X) = %02X\n", activecpu_get_pc(), offset, sound_status);
+	logerror("%06X:sound_status_r(%02X) = %02X\n", cpu_get_pc(space->cpu), offset, sound_status);
 	if (ACCESSING_BITS_0_7)
 		return sound_status;
 	return 0xffff;
@@ -367,7 +364,7 @@ static WRITE16_HANDLER( analog_port_clock_w )
 		}
 	}
 	else
-		logerror("%06X:analog_port_clock_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
+		logerror("%06X:analog_port_clock_w(%02X) = %08X & %08X\n", cpu_get_pc(space->cpu), offset, data, mem_mask);
 }
 
 
@@ -378,14 +375,14 @@ static WRITE16_HANDLER( analog_port_latch_w )
 	{
 		if (!(data & 0xff))
 		{
-			analog_ports[0] = input_port_read_safe(machine, "ANALOG0", 0);
-			analog_ports[1] = input_port_read_safe(machine, "ANALOG1", 0);
-			analog_ports[2] = input_port_read_safe(machine, "ANALOG2", 0);
-			analog_ports[3] = input_port_read_safe(machine, "ANALOG3", 0);
+			analog_ports[0] = input_port_read_safe(space->machine, "ANALOG0", 0);
+			analog_ports[1] = input_port_read_safe(space->machine, "ANALOG1", 0);
+			analog_ports[2] = input_port_read_safe(space->machine, "ANALOG2", 0);
+			analog_ports[3] = input_port_read_safe(space->machine, "ANALOG3", 0);
 		}
 	}
 	else
-		logerror("%06X:analog_port_latch_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
+		logerror("%06X:analog_port_latch_w(%02X) = %08X & %08X\n", cpu_get_pc(space->cpu), offset, data, mem_mask);
 }
 
 
@@ -398,7 +395,7 @@ static WRITE16_HANDLER( analog_port_latch_w )
 
 static READ32_HANDLER( tms_m68k_ram_r )
 {
-//  logerror("%06X:tms_m68k_ram_r(%04X) = %08X\n", activecpu_get_pc(), offset, !(offset & 1) ? ((INT32)m68k_ram_base[offset/2] >> 16) : (int)(INT16)m68k_ram_base[offset/2]);
+//  logerror("%06X:tms_m68k_ram_r(%04X) = %08X\n", cpu_get_pc(space->cpu), offset, !(offset & 1) ? ((INT32)m68k_ram_base[offset/2] >> 16) : (int)(INT16)m68k_ram_base[offset/2]);
 	return (INT32)(INT16)m68k_ram_base[offset ^ tms_offset_xor];
 }
 
@@ -409,10 +406,10 @@ static WRITE32_HANDLER( tms_m68k_ram_w )
 }
 
 
-static void iack_w(UINT8 state, offs_t addr)
+static void iack_w(const device_config *device, UINT8 state, offs_t addr)
 {
 	logerror("iack_w(%d) - %06X\n", state, addr);
-	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+	cpu_set_input_line(device, 0, CLEAR_LINE);
 }
 
 
@@ -427,8 +424,8 @@ static WRITE16_HANDLER( tms_reset_w )
 {
 	/* this is set to 0 while data is uploaded, then set to $ffff after it is done */
 	/* it does not ever appear to be touched after that */
-	logerror("%06X:tms_reset_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data == 0xffff) ? CLEAR_LINE : ASSERT_LINE);
+	logerror("%06X:tms_reset_w(%02X) = %08X & %08X\n", cpu_get_pc(space->cpu), offset, data, mem_mask);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data == 0xffff) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -436,22 +433,22 @@ static WRITE16_HANDLER( tms_irq_w )
 {
 	/* this is written twice, 0,1, in quick succession */
 	/* done after uploading, and after modifying the comm area */
-	logerror("%06X:tms_irq_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
+	logerror("%06X:tms_irq_w(%02X) = %08X & %08X\n", cpu_get_pc(space->cpu), offset, data, mem_mask);
 	if (ACCESSING_BITS_0_7)
-		cpunum_set_input_line(machine, 1, 0, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[1], 0, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
 static WRITE16_HANDLER( tms_control3_w )
 {
-	logerror("%06X:tms_control3_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
+	logerror("%06X:tms_control3_w(%02X) = %08X & %08X\n", cpu_get_pc(space->cpu), offset, data, mem_mask);
 }
 
 
 static WRITE16_HANDLER( tms_comm_w )
 {
 	COMBINE_DATA(&tms_comm_base[offset ^ tms_offset_xor]);
-	logerror("%06X:tms_comm_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset*2, data, mem_mask);
+	logerror("%06X:tms_comm_w(%02X) = %08X & %08X\n", cpu_get_pc(space->cpu), offset*2, data, mem_mask);
 }
 
 
@@ -531,7 +528,7 @@ static WRITE16_HANDLER( adsp_control_w )
 static WRITE16_HANDLER( adsp_rombank_w )
 {
 	logerror("adsp_rombank_w(%d) = %04X\n", offset, data);
-	memory_set_bank(1, (offset & 1) * 0x80 + (data & 0x7f));
+	memory_set_bank(space->machine, 1, (offset & 1) * 0x80 + (data & 0x7f));
 }
 
 
@@ -545,7 +542,7 @@ static WRITE16_HANDLER( adsp_rombank_w )
 static TIMER_CALLBACK( adsp_autobuffer_irq )
 {
 	/* get the index register */
-	int reg = cpunum_get_reg(2, ADSP2100_I0 + adsp_ireg);
+	int reg = cpu_get_reg(machine->cpu[2], ADSP2100_I0 + adsp_ireg);
 
 	/* copy the current data into the buffer */
 // logerror("ADSP buffer: I%d=%04X incs=%04X size=%04X\n", adsp_ireg, reg, adsp_incs, adsp_size);
@@ -562,15 +559,15 @@ static TIMER_CALLBACK( adsp_autobuffer_irq )
 		reg = adsp_ireg_base;
 
 		/* generate the (internal, thats why the pulse) irq */
-		cpunum_set_input_line(machine, 2, ADSP2105_IRQ1, PULSE_LINE);
+		generic_pulse_irq_line(machine->cpu[2], ADSP2105_IRQ1);
 	}
 
 	/* store it */
-	cpunum_set_reg(2, ADSP2100_I0 + adsp_ireg, reg);
+	cpu_set_reg(machine->cpu[2], ADSP2100_I0 + adsp_ireg, reg);
 }
 
 
-static void adsp_tx_callback(int port, INT32 data)
+static void adsp_tx_callback(const device_config *device, int port, INT32 data)
 {
 	/* check if it's for SPORT1 */
 	if (port != 1)
@@ -594,15 +591,15 @@ static void adsp_tx_callback(int port, INT32 data)
 
 			/* now get the register contents in a more legible format */
 			/* we depend on register indexes to be continuous (wich is the case in our core) */
-			source = cpunum_get_reg(2, ADSP2100_I0 + adsp_ireg);
-			adsp_incs = cpunum_get_reg(2, ADSP2100_M0 + mreg);
-			adsp_size = cpunum_get_reg(2, ADSP2100_L0 + lreg);
+			source = cpu_get_reg(device, ADSP2100_I0 + adsp_ireg);
+			adsp_incs = cpu_get_reg(device, ADSP2100_M0 + mreg);
+			adsp_size = cpu_get_reg(device, ADSP2100_L0 + lreg);
 
 			/* get the base value, since we need to keep it around for wrapping */
 			source -= adsp_incs;
 
 			/* make it go back one so we dont lose the first sample */
-			cpunum_set_reg(2, ADSP2100_I0 + adsp_ireg, source);
+			cpu_set_reg(device, ADSP2100_I0 + adsp_ireg, source);
 
 			/* save it as it is now */
 			adsp_ireg_base = source;
@@ -610,7 +607,7 @@ static void adsp_tx_callback(int port, INT32 data)
 			/* calculate how long until we generate an interrupt */
 
 			/* period per each bit sent */
-			sample_period = attotime_mul(ATTOTIME_IN_HZ(cpunum_get_clock(2)), 2 * (adsp_control_regs[S1_SCLKDIV_REG] + 1));
+			sample_period = attotime_mul(ATTOTIME_IN_HZ(cpu_get_clock(device)), 2 * (adsp_control_regs[S1_SCLKDIV_REG] + 1));
 
 			/* now put it down to samples, so we know what the channel frequency has to be */
 			sample_period = attotime_mul(sample_period, 16 * SOUND_CHANNELS);
@@ -648,36 +645,36 @@ static WRITE32_HANDLER( unknown_107_w )
 {
 	/* arbitrary data written */
 	if (ACCESSING_BITS_0_7)
-		logerror("%06X:unknown_107_w = %02X\n", activecpu_get_pc(), data & 0xff);
+		logerror("%06X:unknown_107_w = %02X\n", cpu_get_pc(space->cpu), data & 0xff);
 	else
-		logerror("%06X:unknown_107_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
+		logerror("%06X:unknown_107_w(%02X) = %08X & %08X\n", cpu_get_pc(space->cpu), offset, data, mem_mask);
 }
 
 static WRITE32_HANDLER( unknown_127_w )
 {
 	/* arbitrary data written */
 	if (ACCESSING_BITS_0_7)
-		logerror("%06X:unknown_127_w = %02X\n", activecpu_get_pc(), data & 0xff);
+		logerror("%06X:unknown_127_w = %02X\n", cpu_get_pc(space->cpu), data & 0xff);
 	else
-		logerror("%06X:unknown_127_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
+		logerror("%06X:unknown_127_w(%02X) = %08X & %08X\n", cpu_get_pc(space->cpu), offset, data, mem_mask);
 }
 
 static WRITE32_HANDLER( unknown_137_w )
 {
 	/* only written $00 or $ff */
 	if (ACCESSING_BITS_0_7)
-		logerror("%06X:unknown_137_w = %02X\n", activecpu_get_pc(), data & 0xff);
+		logerror("%06X:unknown_137_w = %02X\n", cpu_get_pc(space->cpu), data & 0xff);
 	else
-		logerror("%06X:unknown_137_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
+		logerror("%06X:unknown_137_w(%02X) = %08X & %08X\n", cpu_get_pc(space->cpu), offset, data, mem_mask);
 }
 
 static WRITE32_HANDLER( unknown_13a_w )
 {
 	/* only written $0000 or $0001 */
 	if (ACCESSING_BITS_0_15)
-		logerror("%06X:unknown_13a_w = %04X\n", activecpu_get_pc(), data & 0xffff);
+		logerror("%06X:unknown_13a_w = %04X\n", cpu_get_pc(space->cpu), data & 0xffff);
 	else
-		logerror("%06X:unknown_13a_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
+		logerror("%06X:unknown_13a_w(%02X) = %08X & %08X\n", cpu_get_pc(space->cpu), offset, data, mem_mask);
 }
 
 
@@ -908,7 +905,14 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct tms32031_config tms_config =
+static const adsp21xx_config adsp_config =
+{
+	NULL,					/* callback for serial receive */
+	adsp_tx_callback,		/* callback for serial transmit */
+	NULL					/* callback for timer fired */
+};
+
+static const tms32031_config tms_config =
 {
 	0x1000,
 	0,
@@ -925,17 +929,18 @@ static MACHINE_DRIVER_START( gaelco3d )
 	MDRV_CPU_VBLANK_INT("main", vblank_gen)
 
 	MDRV_CPU_ADD("tms", TMS32031, 60000000)
-	MDRV_CPU_PROGRAM_MAP(tms_map,0)
 	MDRV_CPU_CONFIG(tms_config)
+	MDRV_CPU_PROGRAM_MAP(tms_map,0)
 
 	MDRV_CPU_ADD("adsp", ADSP2115, 16000000)
+	MDRV_CPU_CONFIG(adsp_config)
 	MDRV_CPU_PROGRAM_MAP(adsp_program_map,0)
 	MDRV_CPU_DATA_MAP(adsp_data_map, 0)
 
 	MDRV_MACHINE_RESET(gaelco3d)
 	MDRV_NVRAM_HANDLER(93C66B)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1019,6 +1024,39 @@ ROM_START( surfplnt )
 	ROM_REGION( 0x200000, "main", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "surfplnt.u5",  0x000000, 0x80000, CRC(c96e0a18) SHA1(b313d02d1d1bff8717b3d798e6ae681baefc1061) )
 	ROM_LOAD16_BYTE( "surfplnt.u11", 0x000001, 0x80000, CRC(99211d2d) SHA1(dee5b157489ce9c6988c8eec92fa91fff60d521c) )
+	ROM_LOAD16_BYTE( "surfplnt.u8",  0x100000, 0x80000, CRC(aef9e1d0) SHA1(15258e62fbf61e21e7d77aa7a81fdbf842fd4560) )
+	ROM_LOAD16_BYTE( "surfplnt.u13", 0x100001, 0x80000, CRC(d9754369) SHA1(0d82569cb925402a9f4634e52f15435112ec4878) )
+
+	ROM_REGION16_LE( 0x400000, "user1", 0 )	/* ADSP-2115 code & data */
+	ROM_LOAD( "pls.18", 0x0000000, 0x400000, CRC(a1b64695) SHA1(7487cd51305e30a5b55aada0bae9161fcb3fcd19) )
+
+	ROM_REGION32_LE( 0x800000, "user2", 0 )
+	ROM_LOAD32_WORD( "pls.40", 0x000000, 0x400000, CRC(26877ad3) SHA1(2e0c15b0e060e0b3d5b5cdaf1e22b9ec8e1abc9a) )
+	ROM_LOAD32_WORD( "pls.37", 0x000002, 0x400000, CRC(75893062) SHA1(81f10243336a309f8cc8532ee9a130ecc35bbcd6) )
+
+	ROM_REGION( 0x1000000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD( "pls.7",  0x0000000, 0x400000, CRC(04bd1605) SHA1(4871758e57af5132c30137cd6c46f1a3a567b640) )
+	ROM_LOAD( "pls.9",  0x0400000, 0x400000, CRC(f4400160) SHA1(206557cd4c73b6b3a04bd35b48de736c7546c5e1) )
+	ROM_LOAD( "pls.12", 0x0800000, 0x400000, CRC(edc2e826) SHA1(48d428f928a9805a62bbeaecffcac21aaa76ce77) )
+	ROM_LOAD( "pls.15", 0x0c00000, 0x400000, CRC(b0f6b8da) SHA1(7404ec7455adf145919a28907443994f6a5706a1) )
+
+	ROM_REGION( 0x0080000, "gfx2", ROMREGION_DISPOSE )
+	ROM_LOAD( "surfplnt.u19", 0x0000000, 0x020000, CRC(691bd7a7) SHA1(2ff404b3974a64097372ed15fb5fbbe52c503265) )
+	ROM_LOAD( "surfplnt.u20", 0x0020000, 0x020000, CRC(fb293318) SHA1(d255fe3db1b91ec7cc744b0158e70503bca5ceab) )
+	ROM_LOAD( "surfplnt.u21", 0x0040000, 0x020000, CRC(b80611fb) SHA1(70d6767ddfb04e94cf2796e3f7090f89fd36fe8c) )
+	ROM_LOAD( "surfplnt.u22", 0x0060000, 0x020000, CRC(ccf88f7e) SHA1(c6a3bb9d6cf14a93a36ed20a47b7c068ccd630aa) )
+	/* these 4 are copies of the previous 4 */
+//  ROM_LOAD( "surfplnt.u27", 0x0000000, 0x020000, CRC(691bd7a7) SHA1(2ff404b3974a64097372ed15fb5fbbe52c503265) )
+//  ROM_LOAD( "surfplnt.u28", 0x0020000, 0x020000, CRC(fb293318) SHA1(d255fe3db1b91ec7cc744b0158e70503bca5ceab) )
+//  ROM_LOAD( "surfplnt.u29", 0x0040000, 0x020000, CRC(b80611fb) SHA1(70d6767ddfb04e94cf2796e3f7090f89fd36fe8c) )
+//  ROM_LOAD( "surfplnt.u30", 0x0060000, 0x020000, CRC(ccf88f7e) SHA1(c6a3bb9d6cf14a93a36ed20a47b7c068ccd630aa) )
+ROM_END
+
+
+ROM_START( surfpl40 )
+	ROM_REGION( 0x200000, "main", 0 )	/* 68000 code */
+	ROM_LOAD16_BYTE( "surfpl40.u5",  0x000000, 0x80000, CRC(572e0343) SHA1(badb08a5a495611b5fd2d821d4299348b2c9f308) )
+	ROM_LOAD16_BYTE( "surfpl40.u11", 0x000001, 0x80000, CRC(6056edaa) SHA1(9bc2df54d1367b9d58272a8f506e523e74110361) )
 	ROM_LOAD16_BYTE( "surfplnt.u8",  0x100000, 0x80000, CRC(aef9e1d0) SHA1(15258e62fbf61e21e7d77aa7a81fdbf842fd4560) )
 	ROM_LOAD16_BYTE( "surfplnt.u13", 0x100001, 0x80000, CRC(d9754369) SHA1(0d82569cb925402a9f4634e52f15435112ec4878) )
 
@@ -1132,6 +1170,7 @@ static DRIVER_INIT( gaelco3d )
  *
  *************************************/
 
-GAME( 1996, speedup,  0,        gaelco3d,  speedup,  gaelco3d, ROT0, "Gaelco", "Speed Up", GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
-GAME( 1997, surfplnt, 0,        gaelco3d,  surfplnt, gaelco3d, ROT0, "Gaelco", "Surf Planet", GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE)
-GAME( 1998, radikalb, 0,        gaelco3d2, radikalb, gaelco3d, ROT0, "Gaelco", "Radikal Bikers", GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE)
+GAME( 1996, speedup,  0,        gaelco3d,  speedup,  gaelco3d, ROT0, "Gaelco", "Speed Up (Version 1.20)", GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
+GAME( 1997, surfplnt, 0,        gaelco3d,  surfplnt, gaelco3d, ROT0, "Gaelco", "Surf Planet (Version 4.1)", GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE)
+GAME( 1997, surfpl40, surfplnt, gaelco3d,  surfplnt, gaelco3d, ROT0, "Gaelco", "Surf Planet (Version 4.0)", GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE)
+GAME( 1998, radikalb, 0,        gaelco3d2, radikalb, gaelco3d, ROT0, "Gaelco", "Radikal Bikers (Version 2.02)", GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE)

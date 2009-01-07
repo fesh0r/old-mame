@@ -450,6 +450,12 @@
     --------------
 
 
+    [2008-12-26]
+
+    - Correctly setup the MC6845 device for all systems.
+    - Added common MC6845 device interface.
+
+
     [2008-07-01]
 
     - Unified MACHINE_RESET for systems 903/904/905.
@@ -616,12 +622,11 @@
 #define SND_CLOCK	(MASTER_CLOCK/8)
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "video/mc6845.h"
 #include "machine/6821pia.h"
 #include "machine/6850acia.h"
 #include "sound/ay8910.h"
-
-#include "deprecat.h"
 
 
 /* UART */
@@ -643,24 +648,23 @@ VIDEO_UPDATE( calomega );
 
 static READ8_HANDLER( dipsw_1_r )
 {
-	return input_port_read(machine, "SW1");
+	return input_port_read(space->machine, "SW1");
 }
 
-static void tx_rx_clk (int dsw2)
+static void tx_rx_clk (const device_config *device, int dsw2)
 {
 	int trx_clk;
-
-	dsw2 = input_port_read(Machine, "SW2");
+	dsw2 = input_port_read(device->machine, "SW2");
 	trx_clk = UART_CLOCK * dsw2 / 128;
-	acia6850_set_rx_clock(0, trx_clk);
-	acia6850_set_tx_clock(0, trx_clk);
+	acia6850_set_rx_clock(device, trx_clk);
+	acia6850_set_tx_clock(device, trx_clk);
 
 	return;
 }
 
 static READ8_HANDLER( dipsw_3_r )
 {
-	return input_port_read(machine, "SW3");
+	return input_port_read(space->machine, "SW3");
 }
 
 static int s903_mux_data = 0;
@@ -669,10 +673,10 @@ static READ8_HANDLER( s903_mux_port_r )
 {
 	switch( s903_mux_data & 0xf0 )	/* bits 4-7 */
 	{
-		case 0x10: return input_port_read(machine, "IN0-0");
-		case 0x20: return input_port_read(machine, "IN0-1");
-		case 0x40: return input_port_read(machine, "IN0-2");
-		case 0x80: return input_port_read(machine, "IN0-3");
+		case 0x10: return input_port_read(space->machine, "IN0-0");
+		case 0x20: return input_port_read(space->machine, "IN0-1");
+		case 0x40: return input_port_read(space->machine, "IN0-2");
+		case 0x80: return input_port_read(space->machine, "IN0-3");
 	}
 	return 0xff;
 }
@@ -689,10 +693,10 @@ static READ8_HANDLER( s905_mux_port_r )
 {
 	switch( s905_mux_data & 0x0f )	/* bits 0-3 */
 	{
-		case 0x01: return input_port_read(machine, "IN0-0");
-		case 0x02: return input_port_read(machine, "IN0-1");
-		case 0x04: return input_port_read(machine, "IN0-2");
-		case 0x08: return input_port_read(machine, "IN0-3");
+		case 0x01: return input_port_read(space->machine, "IN0-0");
+		case 0x02: return input_port_read(space->machine, "IN0-1");
+		case 0x04: return input_port_read(space->machine, "IN0-2");
+		case 0x08: return input_port_read(space->machine, "IN0-3");
 	}
 	return 0xff;
 }
@@ -761,8 +765,8 @@ static ADDRESS_MAP_START( sys903_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0881, 0x0881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0x08c4, 0x08c7) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0x08c8, 0x08cb) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0x08d0, 0x08d0) AM_READWRITE(acia6850_0_stat_r, acia6850_0_ctrl_w)
-	AM_RANGE(0x08d1, 0x08d1) AM_READWRITE(acia6850_0_data_r, acia6850_0_data_w)
+	AM_RANGE(0x08d0, 0x08d0) AM_DEVREADWRITE(ACIA6850, "acia6850_0", acia6850_stat_r, acia6850_ctrl_w)
+	AM_RANGE(0x08d1, 0x08d1) AM_DEVREADWRITE(ACIA6850, "acia6850_0", acia6850_data_r, acia6850_data_w)
 	AM_RANGE(0x1000, 0x13ff) AM_RAM_WRITE(calomega_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x1400, 0x17ff) AM_RAM_WRITE(calomega_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x1800, 0x3fff) AM_ROM
@@ -1057,7 +1061,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( gdrawpkr )
 	PORT_START("IN0-0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )	/* credits */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )   PORT_IMPULSE(2)	/* credits */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Collect") PORT_CODE(KEYCODE_I)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Double Up") PORT_CODE(KEYCODE_3)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Deal/Draw") PORT_CODE(KEYCODE_2)
@@ -1160,7 +1164,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( comg076 )
 	PORT_START("IN0-0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )	/* credits */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )   PORT_IMPULSE(2)	/* credits */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Double Up") PORT_CODE(KEYCODE_3)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Deal/Draw") PORT_CODE(KEYCODE_2)
@@ -1170,7 +1174,7 @@ static INPUT_PORTS_START( comg076 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("IN0-1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )	/* credits */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )   PORT_IMPULSE(2)	/* credits */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1263,7 +1267,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( comg128 )
 	PORT_START("IN0-0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )	/* credits */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )   PORT_IMPULSE(2)	/* credits */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Double Up") PORT_CODE(KEYCODE_3)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Deal/Draw") PORT_CODE(KEYCODE_2)
@@ -1367,7 +1371,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( elgrande )
 	PORT_START("IN0-0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )   PORT_IMPULSE(2)	/* credits */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Double Up") PORT_CODE(KEYCODE_3)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Deal/Draw") PORT_CODE(KEYCODE_2)
@@ -1377,7 +1381,7 @@ static INPUT_PORTS_START( elgrande )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("IN0-1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )   PORT_IMPULSE(2)	/* credits */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1433,7 +1437,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( jjpoker )
 	PORT_START("IN0-0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )   PORT_IMPULSE(2)	/* credits */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Double Up") PORT_CODE(KEYCODE_3)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Deal/Draw") PORT_CODE(KEYCODE_2)
@@ -1443,7 +1447,7 @@ static INPUT_PORTS_START( jjpoker )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("IN0-1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )   PORT_IMPULSE(2)	/* credits */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1499,7 +1503,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( ssipkr )
 	PORT_START("IN0-0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )   PORT_IMPULSE(2)	/* credits */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Double Up") PORT_CODE(KEYCODE_3)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Deal/Draw") PORT_CODE(KEYCODE_2)
@@ -1509,7 +1513,7 @@ static INPUT_PORTS_START( ssipkr )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("IN0-1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )   PORT_IMPULSE(2)	/* credits */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1842,7 +1846,7 @@ static const pia6821_interface sys905_pia1_intf =
 *    ACIA Interface    *
 ***********************/
 
-static const struct acia6850_interface acia6850_intf =
+static const acia6850_interface acia6850_intf =
 {
 	UART_CLOCK,
 	UART_CLOCK,
@@ -1861,15 +1865,14 @@ static const struct acia6850_interface acia6850_intf =
 
 static MACHINE_START( sys903 )
 {
-	pia_config(0, &sys903_pia0_intf);
-	pia_config(1, &sys903_pia1_intf);
-	acia6850_config(0, &acia6850_intf);
+	pia_config(machine, 0, &sys903_pia0_intf);
+	pia_config(machine, 1, &sys903_pia1_intf);
 }
 
 static MACHINE_START( sys905 )
 {
-	pia_config(0, &sys905_pia0_intf);
-	pia_config(1, &sys905_pia1_intf);
+	pia_config(machine, 0, &sys905_pia0_intf);
+	pia_config(machine, 1, &sys905_pia1_intf);
 }
 
 static MACHINE_RESET( calomega )
@@ -1903,6 +1906,23 @@ static const ay8910_interface sys905_ay8912_intf =
 };
 
 
+/************************
+*    CRTC Interface    *
+************************/
+
+static const mc6845_interface mc6845_intf =
+{
+	"main",	/* screen we are acting on */
+	8,		/* number of pixels per video memory address */
+	NULL,	/* before pixel update callback */
+	NULL,	/* row update callback */
+	NULL,	/* after pixel update callback */
+	NULL,	/* callback for display state changes */
+	NULL,	/* HSYNC callback */
+	NULL	/* VSYNC callback */
+};
+
+
 /*************************
 *    Machine Drivers     *
 *************************/
@@ -1933,13 +1953,16 @@ static MACHINE_DRIVER_START( sys903 )
 	MDRV_VIDEO_START(calomega)
 	MDRV_VIDEO_UPDATE(calomega)
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_MC6845_ADD("crtc", MC6845, CPU_CLOCK, mc6845_intf)	/* 6845 @ CPU clock */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("ay8912", AY8912, SND_CLOCK)	/* confirmed */
 	MDRV_SOUND_CONFIG(sys903_ay8912_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+
+	/* acia */
+	MDRV_ACIA6850_ADD("acia6850_0", acia6850_intf)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sys905 )
@@ -1955,6 +1978,8 @@ static MACHINE_DRIVER_START( sys905 )
 	MDRV_SOUND_MODIFY("ay8912")
 	MDRV_SOUND_CONFIG(sys905_ay8912_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+
+	MDRV_DEVICE_REMOVE("acia6850_0", ACIA6850)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( s903mod )
@@ -1968,6 +1993,8 @@ static MACHINE_DRIVER_START( s903mod )
 	MDRV_SOUND_MODIFY("ay8912")
 	MDRV_SOUND_CONFIG(sys905_ay8912_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+
+	MDRV_DEVICE_REMOVE("acia6850_0", ACIA6850)
 MACHINE_DRIVER_END
 
 

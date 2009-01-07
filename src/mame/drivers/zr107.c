@@ -174,7 +174,7 @@ Check gticlub.c for details on the bottom board.
 */
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/powerpc/ppc.h"
 #include "cpu/sharc/sharc.h"
 #include "sound/k054539.h"
@@ -195,11 +195,6 @@ extern WRITE8_HANDLER(K056230_w);
 extern UINT32 *lanc_ram;
 extern READ32_HANDLER(lanc_ram_r);
 extern WRITE32_HANDLER(lanc_ram_w);
-
-
-// defined in video/gticlub.c
-VIDEO_START( gticlub );
-VIDEO_UPDATE( gticlub );
 
 
 // defined in drivers/nwk-tr.c
@@ -227,7 +222,7 @@ static VIDEO_START( jetwave )
 
 static VIDEO_UPDATE( jetwave )
 {
-	fillbitmap(bitmap, screen->machine->pens[0], cliprect);
+	bitmap_fill(bitmap, cliprect, screen->machine->pens[0]);
 
 	K001604_tile_update(screen->machine, 0);
 	K001005_draw(bitmap, cliprect);
@@ -237,9 +232,7 @@ static VIDEO_UPDATE( jetwave )
 	draw_7segment_led(bitmap, 3, 3, led_reg0);
 	draw_7segment_led(bitmap, 9, 3, led_reg1);
 
-	cpuintrf_push_context(2);
-	sharc_set_flag_input(1, ASSERT_LINE);
-	cpuintrf_pop_context();
+	sharc_set_flag_input(screen->machine->cpu[2], 1, ASSERT_LINE);
 	return 0;
 }
 
@@ -250,8 +243,8 @@ static WRITE32_HANDLER( paletteram32_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
 	data = paletteram32[offset];
-	palette_set_color_rgb(machine, (offset * 2) + 0, pal5bit(data >> 26), pal5bit(data >> 21), pal5bit(data >> 16));
-	palette_set_color_rgb(machine, (offset * 2) + 1, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(space->machine, (offset * 2) + 0, pal5bit(data >> 26), pal5bit(data >> 21), pal5bit(data >> 16));
+	palette_set_color_rgb(space->machine, (offset * 2) + 1, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 #define NUM_LAYERS	2
@@ -275,7 +268,7 @@ static VIDEO_START( zr107 )
 
 static VIDEO_UPDATE( zr107 )
 {
-	fillbitmap(bitmap, screen->machine->pens[0], cliprect);
+	bitmap_fill(bitmap, cliprect, screen->machine->pens[0]);
 
 	K056832_set_LayerOffset(0, -29, -27);
 	K056832_set_LayerOffset(1, -29, -27);
@@ -293,9 +286,7 @@ static VIDEO_UPDATE( zr107 )
 	draw_7segment_led(bitmap, 3, 3, led_reg0);
 	draw_7segment_led(bitmap, 9, 3, led_reg1);
 
-	cpuintrf_push_context(2);
-	sharc_set_flag_input(1, ASSERT_LINE);
-	cpuintrf_pop_context();
+	sharc_set_flag_input(screen->machine->cpu[2], 1, ASSERT_LINE);
 	return 0;
 }
 
@@ -303,7 +294,7 @@ static VIDEO_UPDATE( zr107 )
 
 static CUSTOM_INPUT( adcdo_r )
 {
-	return adc083x_do_read(0);
+	return adc083x_do_read(field->port->machine, 0);
 }
 
 static READ8_HANDLER( sysreg_r )
@@ -317,7 +308,7 @@ static READ8_HANDLER( sysreg_r )
 		case 1:	/* I/O port 1 */
 		case 2:	/* I/O port 2 */
 		case 3:	/* System Port 0 */
-			r = input_port_read(machine, portnames[offset]);
+			r = input_port_read(space->machine, portnames[offset]);
 			break;
 
 		case 4:	/* System Port 1 */
@@ -327,7 +318,7 @@ static READ8_HANDLER( sysreg_r )
                 0x20 = SARS (A/D busy flag)
                 0x10 = EEPDO (EEPROM DO)
             */
-			r = (adc083x_sars_read(0) << 5) | (eeprom_read_bit() << 4);
+			r = (adc083x_sars_read(space->machine, 0) << 5) | (eeprom_read_bit() << 4);
 			break;
 
 		case 5:	/* Parallel data port */
@@ -366,7 +357,7 @@ static WRITE8_HANDLER( sysreg_w )
 			eeprom_write_bit((data & 0x01) ? 1 : 0);
 			eeprom_set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
 			eeprom_set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
-			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 			mame_printf_debug("System register 0 = %02X\n", data);
 			break;
 
@@ -382,13 +373,13 @@ static WRITE8_HANDLER( sysreg_w )
                 0x01 = ADDSCLK (ADC SCLK)
             */
 			if (data & 0x80)	/* CG Board 1 IRQ Ack */
-				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
+				cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ1, CLEAR_LINE);
 			if (data & 0x40)	/* CG Board 0 IRQ Ack */
-				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
+				cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ0, CLEAR_LINE);
 			set_cgboard_id((data >> 4) & 3);
-			adc083x_cs_write(0, (data >> 2) & 1);
-			adc083x_di_write(0, (data >> 1) & 1);
-			adc083x_clk_write(0, (data >> 0) & 1);
+			adc083x_cs_write(space->machine, 0, (data >> 2) & 1);
+			adc083x_di_write(space->machine, 0, (data >> 1) & 1);
+			adc083x_clk_write(space->machine, 0, (data >> 0) & 1);
 			mame_printf_debug("System register 1 = %02X\n", data);
 			break;
 
@@ -397,22 +388,22 @@ static WRITE8_HANDLER( sysreg_w )
                 0x01 = AFE
             */
 			if (data & 0x01)
-				watchdog_reset(machine);
+				watchdog_reset(space->machine);
 			break;
 
 	}
 }
 
-static double adc0838_callback(int input)
+static double adc0838_callback(running_machine *machine, int input)
 {
 	switch (input)
 	{
 		case ADC083X_CH0:
-			return (double)(5 * input_port_read(Machine, "ANALOG1")) / 255.0;
+			return (double)(5 * input_port_read(machine, "ANALOG1")) / 255.0;
 		case ADC083X_CH1:
-			return (double)(5 * input_port_read(Machine, "ANALOG2")) / 255.0;
+			return (double)(5 * input_port_read(machine, "ANALOG2")) / 255.0;
 		case ADC083X_CH2:
-			return (double)(5 * input_port_read(Machine, "ANALOG3")) / 255.0;
+			return (double)(5 * input_port_read(machine, "ANALOG3")) / 255.0;
 		case ADC083X_CH3:
 			return 0;
 		case ADC083X_COM:
@@ -463,14 +454,14 @@ static UINT32 *workram;
 static MACHINE_START( zr107 )
 {
 	/* set conservative DRC options */
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_END, 0x000fffff);
-	cpunum_set_info_ptr(0, CPUINFO_PTR_PPC_FASTRAM_BASE, workram);
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_END, 0x000fffff);
+	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_PPC_FASTRAM_BASE, workram);
+	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
 }
 
 static ADDRESS_MAP_START( zr107_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -498,7 +489,7 @@ static WRITE32_HANDLER( jetwave_palette_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
 	data = paletteram32[offset];
-	palette_set_color_rgb(machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(space->machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 static ADDRESS_MAP_START( jetwave_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -531,9 +522,9 @@ static READ16_HANDLER( dual539_r )
 	UINT16 ret = 0;
 
 	if (ACCESSING_BITS_0_7)
-		ret |= k054539_1_r(machine, offset);
+		ret |= k054539_1_r(space, offset);
 	if (ACCESSING_BITS_8_15)
-		ret |= k054539_0_r(machine, offset)<<8;
+		ret |= k054539_0_r(space, offset)<<8;
 
 	return ret;
 }
@@ -541,9 +532,9 @@ static READ16_HANDLER( dual539_r )
 static WRITE16_HANDLER( dual539_w )
 {
 	if (ACCESSING_BITS_0_7)
-		k054539_1_w(machine, offset, data);
+		k054539_1_w(space, offset, data);
 	if (ACCESSING_BITS_8_15)
-		k054539_0_w(machine, offset, data>>8);
+		k054539_0_w(space, offset, data>>8);
 }
 
 static ADDRESS_MAP_START( sound_memmap, ADDRESS_SPACE_PROGRAM, 16 )
@@ -731,11 +722,11 @@ static const sharc_config sharc_cfg =
 */
 static INTERRUPT_GEN( zr107_vblank )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
+	cpu_set_input_line(device, INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 static MACHINE_RESET( zr107 )
 {
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static MACHINE_DRIVER_START( zr107 )
@@ -752,7 +743,7 @@ static MACHINE_DRIVER_START( zr107 )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
-	MDRV_INTERLEAVE(500)
+	MDRV_QUANTUM_TIME(HZ(30000))
 
 	MDRV_NVRAM_HANDLER(93C46)
 	MDRV_MACHINE_START(zr107)
@@ -797,7 +788,7 @@ static MACHINE_DRIVER_START( jetwave )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
-	MDRV_INTERLEAVE(500)
+	MDRV_QUANTUM_TIME(HZ(30000))
 
 	MDRV_NVRAM_HANDLER(93C46)
 	MDRV_MACHINE_START(zr107)
@@ -832,14 +823,14 @@ MACHINE_DRIVER_END
 
 static TIMER_CALLBACK( irq_off )
 {
-	cpunum_set_input_line(machine, 1, param, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], param, CLEAR_LINE);
 }
 
 static void sound_irq_callback(running_machine *machine, int irq)
 {
 	int line = (irq == 0) ? INPUT_LINE_IRQ1 : INPUT_LINE_IRQ2;
-	cpunum_set_input_line(machine, 1, line, ASSERT_LINE);
-	timer_set(ATTOTIME_IN_USEC(1), NULL, line, irq_off);
+	cpu_set_input_line(machine->cpu[1], line, ASSERT_LINE);
+	timer_set(machine, ATTOTIME_IN_USEC(1), NULL, line, irq_off);
 }
 
 static void init_zr107(running_machine *machine)
@@ -850,20 +841,20 @@ static void init_zr107(running_machine *machine)
 
 	K001005_preprocess_texture_data(memory_region(machine, "gfx1"), memory_region_length(machine, "gfx1"), 0);
 
-	K056800_init(sound_irq_callback);
+	K056800_init(machine, sound_irq_callback);
 
-	adc083x_init(0, ADC0838, adc0838_callback);
+	adc083x_init(machine, 0, ADC0838, adc0838_callback);
 }
 
 static DRIVER_INIT(zr107)
 {
-	init_konami_cgboard(1, CGBOARD_TYPE_ZR107);
+	init_konami_cgboard(machine, 1, CGBOARD_TYPE_ZR107);
 	init_zr107(machine);
 }
 
 static DRIVER_INIT(jetwave)
 {
-	init_konami_cgboard(1, CGBOARD_TYPE_GTICLUB);
+	init_konami_cgboard(machine, 1, CGBOARD_TYPE_GTICLUB);
 	init_zr107(machine);
 }
 

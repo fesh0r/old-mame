@@ -59,6 +59,7 @@ Dip sw.2
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 
 static UINT16 littlerb_vdp_address_low;
 static UINT16 littlerb_vdp_address_high;
@@ -174,7 +175,7 @@ static WRITE16_HANDLER( littlerb_vdp_w )
 
 
 		case 2:
-		littlerb_data_write(machine, data);
+		littlerb_data_write(space->machine, data);
 		break;
 
 		case 3:
@@ -338,7 +339,7 @@ static VIDEO_UPDATE(littlerb)
 	int x,y,offs, code;
 	int xsize,ysize;
 	UINT16* spriteregion = &littlerb_region4[0x400];
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	/* the spriteram format is something like this .. */
 	for (offs=0x26/2;offs<0xc00;offs+=6) // start at 00x26?

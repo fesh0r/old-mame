@@ -118,7 +118,7 @@ static void sound_save(running_machine *machine, int config_type, xml_data_node 
 static TIMER_CALLBACK( sound_update );
 static void start_sound_chips(running_machine *machine);
 static void route_sound(running_machine *machine);
-static void mixer_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length);
+static STREAM_UPDATE( mixer_update );
 static STATE_POSTLOAD( mixer_postload );
 
 
@@ -197,7 +197,7 @@ void sound_init(running_machine *machine)
 	finalmix = auto_malloc(machine->sample_rate * sizeof(*finalmix));
 
 	/* allocate a global timer for sound timing */
-	sound_update_timer = timer_alloc(sound_update, NULL);
+	sound_update_timer = timer_alloc(machine, sound_update, NULL);
 	timer_adjust_periodic(sound_update_timer, update_frequency, 0, update_frequency);
 
 	/* initialize the streams engine */
@@ -292,18 +292,18 @@ static void start_sound_chips(running_machine *machine)
 
 		/* start the chip, tagging all its streams */
 		VPRINTF(("sndnum = %d -- sound_type = %d\n", sndnum, msound->type));
-		num_regs = state_save_get_reg_count();
+		num_regs = state_save_get_reg_count(machine);
 		streams_set_tag(machine, info);
-		if (sndintrf_init_sound(sndnum, msound->tag, msound->type, msound->clock, msound->config) != 0)
-			fatalerror("Sound chip #%d (%s) failed to initialize!", sndnum, sndnum_name(sndnum));
+		if (sndintrf_init_sound(machine, sndnum, msound->tag, msound->type, msound->clock, msound->config) != 0)
+			fatalerror("Sound chip #%d (%s) failed to initialize!", sndnum, sndnum_get_name(sndnum));
 
 		/* if no state registered for saving, we can't save */
-		num_regs = state_save_get_reg_count() - num_regs;
+		num_regs = state_save_get_reg_count(machine) - num_regs;
 		if (num_regs == 0)
 		{
-			logerror("Sound chip #%d (%s) did not register any state to save!\n", sndnum, sndnum_name(sndnum));
+			logerror("Sound chip #%d (%s) did not register any state to save!\n", sndnum, sndnum_get_name(sndnum));
 			if (machine->gamedrv->flags & GAME_SUPPORTS_SAVE)
-				fatalerror("Sound chip #%d (%s) did not register any state to save!", sndnum, sndnum_name(sndnum));
+				fatalerror("Sound chip #%d (%s) did not register any state to save!", sndnum, sndnum_get_name(sndnum));
 		}
 
 		/* now count the outputs */
@@ -396,7 +396,7 @@ static void route_sound(running_machine *machine)
 		speaker_info *info = curspeak->token;
 		if (info->inputs != 0)
 		{
-			info->mixer_stream = stream_create(info->inputs, 1, machine->sample_rate, info, mixer_update);
+			info->mixer_stream = stream_create(curspeak, info->inputs, 1, machine->sample_rate, info, mixer_update);
 			state_save_register_postload(machine, mixer_postload, info->mixer_stream);
 			info->input = auto_malloc(info->inputs * sizeof(*info->input));
 			info->inputs = 0;
@@ -440,7 +440,7 @@ static void route_sound(running_machine *machine)
 							sprintf(namebuf, "%sSpeaker '%s': ", namebuf, speaker->tag);
 
                         /* device name */
-						sprintf(namebuf, "%s%s ", namebuf, sndnum_name(sndnum));
+						sprintf(namebuf, "%s%s ", namebuf, sndnum_get_name(sndnum));
 
 						/* device index, if more than one of this type */
 						if (sndtype_count(sndtype) > 1)
@@ -770,16 +770,16 @@ static TIMER_CALLBACK( sound_update )
     mixer_update - mix all inputs to one output
 -------------------------------------------------*/
 
-static void mixer_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( mixer_update )
 {
 	speaker_info *speaker = param;
 	int numinputs = speaker->inputs;
 	int pos;
 
-	VPRINTF(("Mixer_update(%d)\n", length));
+	VPRINTF(("Mixer_update(%d)\n", samples));
 
 	/* loop over samples */
-	for (pos = 0; pos < length; pos++)
+	for (pos = 0; pos < samples; pos++)
 	{
 		INT32 sample = inputs[0][pos];
 		int inp;
@@ -787,7 +787,7 @@ static void mixer_update(void *param, stream_sample_t **inputs, stream_sample_t 
 		/* add up all the inputs */
 		for (inp = 1; inp < numinputs; inp++)
 			sample += inputs[inp][pos];
-		buffer[0][pos] = sample;
+		outputs[0][pos] = sample;
 	}
 }
 
@@ -878,11 +878,11 @@ DEVICE_GET_INFO( speaker_output )
 		case DEVINFO_FCT_RESET:							/* Nothing */							break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Speaker";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "Sound";						break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";						break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;						break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Speaker");				break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Sound");				break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");					break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);				break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

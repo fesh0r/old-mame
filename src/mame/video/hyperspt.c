@@ -105,9 +105,9 @@ WRITE8_HANDLER( hyperspt_colorram_w )
 
 WRITE8_HANDLER( hyperspt_flipscreen_w )
 {
-	if (flip_screen_get() != (data & 0x01))
+	if (flip_screen_get(space->machine) != (data & 0x01))
 	{
-		flip_screen_set(data & 0x01);
+		flip_screen_set(space->machine, data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
@@ -123,7 +123,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( hyperspt )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 64, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 64, 32);
 
 	tilemap_set_scroll_rows(bg_tilemap, 32);
 }
@@ -141,13 +141,13 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int flipx = ~spriteram[offs] & 0x40;
 		int flipy = spriteram[offs] & 0x80;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sy = 240 - sy;
 			flipy = !flipy;
 		}
 
-		/* Note that this adjustment must be done AFTER handling flip_screen_get(), thus */
+		/* Note that this adjustment must be done AFTER handling flip_screen_get(machine), thus */
 		/* proving that this is a hardware related "feature" */
 
 		sy += 1;
@@ -179,7 +179,7 @@ VIDEO_UPDATE( hyperspt )
 	for (row = 0; row < 32; row++)
 	{
 		int scrollx = hyperspt_scroll[row * 2] + (hyperspt_scroll[(row * 2) + 1] & 0x01) * 256;
-		if (flip_screen_get()) scrollx = -scrollx;
+		if (flip_screen_get(screen->machine)) scrollx = -scrollx;
 		tilemap_set_scrollx(bg_tilemap, row, scrollx);
 	}
 
@@ -201,7 +201,7 @@ static TILE_GET_INFO( roadf_get_bg_tile_info )
 
 VIDEO_START( roadf )
 {
-	bg_tilemap = tilemap_create(roadf_get_bg_tile_info, tilemap_scan_rows, 8, 8, 64, 32);
+	bg_tilemap = tilemap_create(machine, roadf_get_bg_tile_info, tilemap_scan_rows, 8, 8, 64, 32);
 
 	tilemap_set_scroll_rows(bg_tilemap, 32);
 }

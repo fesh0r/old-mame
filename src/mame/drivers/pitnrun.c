@@ -64,6 +64,7 @@ K1000233A
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
 #include "includes/pitnrun.h"
@@ -72,7 +73,7 @@ static int pitnrun_nmi;
 
 static INTERRUPT_GEN( pitnrun_nmi_source )
 {
-	 if(pitnrun_nmi) cpunum_set_input_line(machine, 0,INPUT_LINE_NMI, PULSE_LINE);
+	 if(pitnrun_nmi) cpu_set_input_line(device,INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( nmi_enable_w )
@@ -82,12 +83,12 @@ static WRITE8_HANDLER( nmi_enable_w )
 
 static WRITE8_HANDLER(pitnrun_hflip_w)
 {
-	flip_screen_x_set(data);
+	flip_screen_x_set(space->machine, data);
 }
 
 static WRITE8_HANDLER(pitnrun_vflip_w)
 {
-	flip_screen_y_set(data);
+	flip_screen_y_set(space->machine, data);
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -267,7 +268,7 @@ static MACHINE_DRIVER_START( pitnrun )
 
 	MDRV_MACHINE_RESET(pitnrun)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

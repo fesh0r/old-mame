@@ -27,10 +27,13 @@ a physical DSW B but only read when SWA:3,4 are both set to OFF. Currently,
 
 
 #include "driver.h"
+#include "cpu/tms9900/tms9900.h"
 #include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/samples.h"
 #include "sound/dac.h"
+
+#define MASTER_CLOCK (XTAL_9_828MHz)
 
 
 PALETTE_INIT( panic );
@@ -127,7 +130,7 @@ static WRITE8_HANDLER( panic_sound_output_w )
 
 static WRITE8_HANDLER( panic_sound_output2_w )
 {
-	panic_sound_output_w(machine, offset+15, data);
+	panic_sound_output_w(space, offset+15, data);
 }
 
 static WRITE8_HANDLER( cosmicg_output_w )
@@ -195,22 +198,175 @@ static WRITE8_HANDLER( cosmicg_output_w )
     #endif
 }
 
+
+static WRITE8_HANDLER( cosmica_sound_output_w )
+{
+    static int  sound_enabled=1;
+    static int dive_bomb_b_select=0;
+
+    /* Sound Enable / Disable */
+    if (offset == 11)
+    {
+    	int count;
+    	if (data == 0)
+        	for(count=0; count<12; count++) sample_stop(count);
+	else
+	{
+	  sample_start(0, 0, 1); /*Background Noise*/
+	}
+
+    	sound_enabled = data;
+    }
+
+    if (sound_enabled)
+    {
+        switch (offset)
+        {
+		case 0: if (data) sample_start(1, 2, 0); break; /*Dive Bombing Type A*/
+
+		case 2:	/*Dive Bombing Type B (Main Control)*/
+
+
+			if (data)
+			{
+
+			  switch(dive_bomb_b_select)
+			  {
+
+			    case 2:
+
+					if (sample_playing(2))
+					{
+					  sample_stop(2);
+	   				  sample_start(2, 3, 0); break;
+					}
+					else
+ 		    			 sample_start(2, 3, 0); break;
+
+
+			    case 3:
+
+					if (sample_playing(3))
+					{
+					  sample_stop(3);
+	   				  sample_start(3, 4, 0); break;
+					}
+					else
+ 		    			 sample_start(3, 4, 0); break;
+
+
+			    case 4:
+					if (sample_playing(4))
+					{
+					  sample_stop(4);
+	   				  sample_start(4, 5, 0); break;
+					}
+					else
+	 	    			 sample_start(4, 5, 0); break;
+
+
+
+			    case 5:
+					if (sample_playing(5))
+					{
+					  sample_stop(5);
+	   				  sample_start(5, 6, 0); break;
+					}
+					else
+ 		    			 sample_start(5, 6, 0); break;
+
+
+			    case 6:
+					if (sample_playing(6))
+					{
+					  sample_stop(6);
+	   				  sample_start(6, 7, 0); break;
+					}
+					else
+ 		    			 sample_start(6, 7, 0); break;
+
+			    case 7:
+
+					if (sample_playing(7))
+					{
+					  sample_stop(7);
+	   				  sample_start(7, 8, 0); break;
+					}
+					else
+ 		    			 sample_start(7, 8, 0); break;
+			  }
+			}
+
+		case 3: /*Dive Bombing Type B (G.S.B)*/
+
+			if (data)
+			  dive_bomb_b_select |= 0x04;
+			else
+			  dive_bomb_b_select &= 0xFB;
+			break;
+
+
+		case 4: /*Dive Bombing Type B (M.S.B)*/
+			if (data)
+			  dive_bomb_b_select |= 0x02;
+			else
+			  dive_bomb_b_select &= 0xFD;
+
+			break;
+
+		case 5: /*Dive Bombing Type B (L.S.B)*/
+
+
+			if (data)
+			  dive_bomb_b_select |= 0x01;
+			else
+			  dive_bomb_b_select &= 0xFE;
+			break;
+
+
+		case 6: if (data) sample_start(8, 9, 0); break; /*Fire Control*/
+
+		case 7: if (data) sample_start(9, 10, 0); break; /*Small Explosion*/
+
+		case 8: if (data) sample_start(10, 11, 0); break; /*Loud Explosion*/
+
+		case 9:
+		 if (data)
+		  sample_start(11, 1, 1);
+		else
+		 sample_stop(11);
+
+		break; /*Extend Sound control*/
+
+		case 12:
+		 if (data) sample_start(11,12, 0); break; /*Insert Coin*/
+        }
+    }
+
+    #ifdef MAME_DEBUG
+ 	logerror("Sound output %x=%x\n",offset,data);
+	#endif
+}
+
+
+
+
 static INTERRUPT_GEN( panic_interrupt )
 {
-	if (cpu_getiloops() != 0)
+	if (cpu_getiloops(device) != 0)
 	{
     	/* Coin insert - Trigger Sample */
 
         /* mostly not noticed since sound is */
 		/* only enabled if game in progress! */
 
-    	if ((input_port_read(machine, "SYSTEM") & 0xc0) != 0xc0)
-        	panic_sound_output_w(machine, 17, 1);
+    	if ((input_port_read(device->machine, "SYSTEM") & 0xc0) != 0xc0)
+        	panic_sound_output_w(cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM), 17, 1);
 
-		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xcf);	/* RST 08h */
+		cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xcf);	/* RST 08h */
     }
     else
-        cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xd7);	/* RST 10h */
+        cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xd7);	/* RST 10h */
 }
 
 static INTERRUPT_GEN( cosmica_interrupt )
@@ -219,8 +375,8 @@ static INTERRUPT_GEN( cosmica_interrupt )
 
     if (pixel_clock == 0)
     {
-		if (input_port_read(machine, "FAKE") & 1)	/* Left Coin */
-			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		if (input_port_read(device->machine, "FAKE") & 1)	/* Left Coin */
+			cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
     }
 }
 
@@ -233,27 +389,27 @@ static INTERRUPT_GEN( cosmicg_interrupt )
     It makes sense and works fine, but I cannot be 100% sure this is correct,
     as I have no Cosmic Guerilla console :-) . */
 
-	if ((input_port_read(machine, "IN2") & 1))	/* Coin */
+	if ((input_port_read(device->machine, "IN2") & 1))	/* Coin */
 		/* on tms9980, a 6 on the interrupt bus means level 4 interrupt */
-		cpunum_set_input_line_and_vector(machine, 0, 0, ASSERT_LINE, 6);
+		cpu_set_input_line_and_vector(device, 0, ASSERT_LINE, 6);
 	else
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(device, 0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( magspot_interrupt )
 {
 	/* Coin 1 causes an IRQ, Coin 2 an NMI */
-	if (input_port_read(machine, "COINS") & 0x01)
-  		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
-	else if (input_port_read(machine, "COINS") & 0x02)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+	if (input_port_read(device->machine, "COINS") & 0x01)
+  		cpu_set_input_line(device, 0, HOLD_LINE);
+	else if (input_port_read(device->machine, "COINS") & 0x02)
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static INTERRUPT_GEN( nomnlnd_interrupt )
 {
 	/* Coin causes an NMI */
-	if (input_port_read(machine, "COIN") & 0x01)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+	if (input_port_read(device->machine, "COIN") & 0x01)
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -267,12 +423,12 @@ static READ8_HANDLER( cosmicg_port_0_r )
 {
 	/* The top four address lines from the CRTC are bits 0-3 */
 
-	return (input_port_read(machine, "IN0") & 0xf0) | ((video_screen_get_vpos(machine->primary_screen) & 0xf0) >> 4);
+	return (input_port_read(space->machine, "IN0") & 0xf0) | ((video_screen_get_vpos(space->machine->primary_screen) & 0xf0) >> 4);
 }
 
 static READ8_HANDLER( magspot_coinage_dip_r )
 {
-	return (input_port_read_safe(machine, "DSW", 0) & (1 << (7 - offset))) ? 0 : 1;
+	return (input_port_read_safe(space->machine, "DSW", 0) & (1 << (7 - offset))) ? 0 : 1;
 }
 
 
@@ -281,12 +437,12 @@ static READ8_HANDLER( magspot_coinage_dip_r )
 static READ8_HANDLER( nomnlnd_port_0_1_r )
 {
 	int control;
-    int fire = input_port_read(machine, "IN3");
+    int fire = input_port_read(space->machine, "IN3");
 
 	if (offset)
-		control = input_port_read(machine, "IN1");
+		control = input_port_read(space->machine, "IN1");
     else
-		control = input_port_read(machine, "IN0");
+		control = input_port_read(space->machine, "IN0");
 
     /* If firing - stop tank */
 
@@ -306,7 +462,7 @@ static READ8_HANDLER( nomnlnd_port_0_1_r )
 
 static WRITE8_HANDLER( flip_screen_w )
 {
-	flip_screen_set(data&0x80);
+	flip_screen_set(space->machine, data&0x80);
 }
 
 
@@ -343,6 +499,7 @@ static ADDRESS_MAP_START( cosmica_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x4000, 0x5fff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x6000, 0x601f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x7000, 0x700b) AM_WRITE(cosmica_sound_output_w)
 	AM_RANGE(0x700c, 0x700d) AM_WRITE(cosmic_color_register_w)
 	AM_RANGE(0x700f, 0x700f) AM_WRITE(flip_screen_w)
 ADDRESS_MAP_END
@@ -844,6 +1001,33 @@ static GFXDECODE_START( cosmica )
 GFXDECODE_END
 
 
+static const char *const cosmica_sample_names[] =
+{
+	"*cosmica",
+	"backgr.wav",
+	"extend.wav",
+	"divea.wav",
+	"diveb1.wav",
+	"diveb2.wav",
+	"diveb3.wav",
+	"diveb4.wav",
+	"diveb5.wav",
+	"diveb6.wav",
+	"fire.wav",
+	"loudexp.wav",
+	"smallexp.wav",
+	"coin.wav",
+	0       /* end of array */
+};
+
+
+static const samples_interface cosmica_samples_interface =
+{
+	13,	/* 12 channels */
+	cosmica_sample_names
+};
+
+
 static const char *const panic_sample_names[] =
 {
 	"*panic",
@@ -952,13 +1136,24 @@ static MACHINE_DRIVER_START( cosmica )
 
 	MDRV_PALETTE_INIT(cosmica)
 	MDRV_VIDEO_UPDATE(cosmica)
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+
+	MDRV_SOUND_ADD("samples", SAMPLES, 0)
+	MDRV_SOUND_CONFIG(cosmica_samples_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+
+	MDRV_SOUND_ADD("dac", DAC, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( cosmicg )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", TMS9980, 1228500)
+	MDRV_CPU_ADD("main", TMS9980, MASTER_CLOCK/8)
 			/* 9.828 MHz Crystal */
 			/* R Nabet : huh ? This would imply the crystal frequency is somehow divided by 2 before being
             fed to the tms9904 or tms9980.  Also, I have never heard of a tms9900/9980 operating under
@@ -1392,22 +1587,22 @@ static DRIVER_INIT( cosmicg )
 
 static DRIVER_INIT( devzone )
 {
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4807, 0x4807, 0, 0, cosmic_background_enable_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x4807, 0x4807, 0, 0, cosmic_background_enable_w);
 }
 
 
 static DRIVER_INIT( nomnlnd )
 {
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x5001, 0, 0, nomnlnd_port_0_1_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x4800, 0, 0, SMH_NOP);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4807, 0x4807, 0, 0, cosmic_background_enable_w);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x480a, 0x480a, 0, 0, dac_0_data_w);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x5000, 0x5001, 0, 0, nomnlnd_port_0_1_r);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x4800, 0x4800, 0, 0, SMH_NOP);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x4807, 0x4807, 0, 0, cosmic_background_enable_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x480a, 0x480a, 0, 0, dac_0_data_w);
 }
 
 
 GAME( 1979, cosmicg,  0,       cosmicg,  cosmicg,  cosmicg, ROT270, "Universal", "Cosmic Guerilla", GAME_NO_COCKTAIL )
-GAME( 1979, cosmica,  0,       cosmica,  cosmica,  0,       ROT270, "Universal", "Cosmic Alien", GAME_NO_SOUND )
-GAME( 1979, cosmica2, cosmica, cosmica,  cosmica,  0,       ROT270, "Universal", "Cosmic Alien (older)", GAME_NO_SOUND )
+GAME( 1979, cosmica,  0,       cosmica,  cosmica,  0,       ROT270, "Universal", "Cosmic Alien", 0 )
+GAME( 1979, cosmica2, cosmica, cosmica,  cosmica,  0,       ROT270, "Universal", "Cosmic Alien (older)", 0 )
 GAME( 1980, nomnlnd,  0,       nomnlnd,  nomnlnd,  nomnlnd, ROT270, "Universal", "No Man's Land", GAME_IMPERFECT_SOUND )
 GAME( 1980, nomnlndg, nomnlnd, nomnlnd,  nomnlndg, nomnlnd, ROT270, "Universal (Gottlieb license)", "No Man's Land (Gottlieb)", GAME_IMPERFECT_SOUND )
 GAME( 1980, magspot,  0,       magspot,  magspot,  0,       ROT270, "Universal", "Magical Spot", GAME_IMPERFECT_SOUND )

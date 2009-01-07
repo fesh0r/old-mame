@@ -22,7 +22,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 #include "streams.h"
 #include "sound/sn76496.h"
 #include "sound/okim6295.h"
@@ -47,7 +47,7 @@ static struct mjkjidai_adpcm_state
 	UINT8 *base;
 } mjkjidai_adpcm;
 
-static void mjkjidai_adpcm_callback (void *param, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+static STREAM_UPDATE( mjkjidai_adpcm_callback )
 {
 	struct mjkjidai_adpcm_state *state = param;
 	stream_sample_t *dest = outputs[0];
@@ -74,12 +74,13 @@ static void mjkjidai_adpcm_callback (void *param, stream_sample_t **inputs, stre
 	}
 }
 
-static void *mjkjidai_adpcm_start (int clock, const custom_sound_interface *config)
+static CUSTOM_START( mjkjidai_adpcm_start )
 {
+	running_machine *machine = device->machine;
 	struct mjkjidai_adpcm_state *state = &mjkjidai_adpcm;
 	state->playing = 0;
-	state->stream = stream_create(0, 1, clock, state, mjkjidai_adpcm_callback);
-	state->base = memory_region(Machine, "adpcm");
+	state->stream = stream_create(device, 0, 1, clock, state, mjkjidai_adpcm_callback);
+	state->base = memory_region(machine, "adpcm");
 	reset_adpcm(&state->adpcm);
 	return state;
 }
@@ -106,18 +107,18 @@ static READ8_HANDLER( keyboard_r )
 	int res = 0x3f,i;
 	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7", "KEY8", "KEY9", "KEY10", "KEY11" };
 
-//  logerror("%04x: keyboard_r\n", activecpu_get_pc());
+//  logerror("%04x: keyboard_r\n", cpu_get_pc(space->cpu));
 
 	for (i = 0; i < 12; i++)
 	{
 		if (~keyb & (1 << i))
 		{
-			res = input_port_read(machine, keynames[i]) & 0x3f;
+			res = input_port_read(space->machine, keynames[i]) & 0x3f;
 			break;
 		}
 	}
 
-	res |= (input_port_read(machine, "IN3") & 0xc0);
+	res |= (input_port_read(space->machine, "IN3") & 0xc0);
 
 	if (nvram_init_count)
 	{
@@ -130,7 +131,7 @@ static READ8_HANDLER( keyboard_r )
 
 static WRITE8_HANDLER( keyboard_select_w )
 {
-//  logerror("%04x: keyboard_select %d = %02x\n",activecpu_get_pc(),offset,data);
+//  logerror("%04x: keyboard_select %d = %02x\n",cpu_get_pc(space->cpu),offset,data);
 
 	switch (offset)
 	{

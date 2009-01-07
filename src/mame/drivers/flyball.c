@@ -5,6 +5,9 @@ Atari Flyball Driver
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
+
+#define MASTER_CLOCK ( XTAL_12_096MHz )
 
 extern VIDEO_START( flyball );
 extern VIDEO_UPDATE( flyball );
@@ -28,7 +31,7 @@ static TIMER_CALLBACK( flyball_joystick_callback )
 	int potsense = param;
 
 	if (potsense & ~flyball_potmask)
-		cpunum_set_input_line(machine, 0, 0, PULSE_LINE);
+		generic_pulse_irq_line(machine->cpu[0], 0);
 
 	flyball_potsense |= potsense;
 }
@@ -48,12 +51,12 @@ static TIMER_CALLBACK( flyball_quarter_callback	)
 
 	for (i = 0; i < 64; i++)
 		if (potsense[i] != 0)
-			timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline + i, 0), NULL, potsense[i], flyball_joystick_callback);
+			timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline + i, 0), NULL, potsense[i], flyball_joystick_callback);
 
 	scanline += 0x40;
 	scanline &= 0xff;
 
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, flyball_quarter_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, flyball_quarter_callback);
 
 	flyball_potsense = 0;
 	flyball_potmask = 0;
@@ -70,8 +73,9 @@ static MACHINE_RESET( flyball )
 
 	for (i = 0; i < 0x1000; i++)
 		rombase[i] = ROM[i ^ 0x1ff];
+	device_reset(machine->cpu[0]);
 
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, flyball_quarter_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, flyball_quarter_callback);
 }
 
 
@@ -79,12 +83,12 @@ static MACHINE_RESET( flyball )
 
 static READ8_HANDLER( flyball_input_r )
 {
-	return input_port_read(machine, "IN0") & input_port_read(machine, "IN1");
+	return input_port_read(space->machine, "IN0") & input_port_read(space->machine, "IN1");
 }
 
 static READ8_HANDLER( flyball_scanline_r )
 {
-	return video_screen_get_vpos(machine->primary_screen) & 0x3f;
+	return video_screen_get_vpos(space->machine->primary_screen) & 0x3f;
 }
 
 static READ8_HANDLER( flyball_potsense_r )
@@ -174,17 +178,15 @@ static INPUT_PORTS_START( flyball )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_SERVICE( 0x08, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coinage ) )
+	PORT_SERVICE( 0x08, IP_ACTIVE_LOW ) PORT_DIPLOCATION("DSW1:6")
+	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("DSW1:4,5")
 	PORT_DIPSETTING( 0x20, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING( 0x10, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING( 0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0x40, 0x40, "Innings Per Game" )
+	PORT_DIPNAME( 0x40, 0x40, "Innings Per Game" ) PORT_DIPLOCATION("DSW1:2")
 	PORT_DIPSETTING( 0x00, "1" )
 	PORT_DIPSETTING( 0x40, "2" )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Unused ) )
-	PORT_DIPSETTING( 0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING( 0x80, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x80, 0x00, "DSW1:1" )
 
 	PORT_START("STICK1_Y") /* IN1 */
 	PORT_BIT( 0x3f, 0x20, IPT_AD_STICK_Y ) PORT_MINMAX(1,63) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_PLAYER(2)
@@ -255,7 +257,7 @@ static PALETTE_INIT( flyball )
 static MACHINE_DRIVER_START( flyball )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 12096000 / 16)
+	MDRV_CPU_ADD("main", M6502, MASTER_CLOCK/16)
 	MDRV_CPU_PROGRAM_MAP(flyball_map, 0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 

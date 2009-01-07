@@ -40,11 +40,14 @@ enum
     CONFIG STRUCTURE
 ***************************************************************************/
 
+typedef UINT8 (*ccpu_input_func)(const device_config *device);
+typedef void (*ccpu_vector_func)(const device_config *device, INT16 sx, INT16 sy, INT16 ex, INT16 ey, UINT8 shift);
+
 typedef struct _ccpu_config ccpu_config;
 struct _ccpu_config
 {
-	UINT8		(*external_input)(void);		/* if NULL, assume JMI jumper is present */
-	void		(*vector_callback)(INT16 sx, INT16 sy, INT16 ex, INT16 ey, UINT8 shift);
+	ccpu_input_func		external_input;		/* if NULL, assume JMI jumper is present */
+	ccpu_vector_func	vector_callback;
 };
 
 
@@ -53,9 +56,11 @@ struct _ccpu_config
     PUBLIC FUNCTIONS
 ***************************************************************************/
 
-void ccpu_get_info(UINT32 state, cpuinfo *info);
-void ccpu_wdt_timer_trigger(void);
+CPU_GET_INFO( ccpu );
+#define CPU_CCPU CPU_GET_INFO_NAME( ccpu )
 
-offs_t ccpu_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+void ccpu_wdt_timer_trigger(const device_config *device);
+
+CPU_DISASSEMBLE( ccpu );
 
 #endif /* __CCPU_H__ */

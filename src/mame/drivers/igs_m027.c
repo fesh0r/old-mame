@@ -15,6 +15,7 @@
 */
 
 #include "driver.h"
+#include "cpu/arm7/arm7.h"
 #include "cpu/arm7/arm7core.h"
 
 
@@ -40,7 +41,7 @@ static WRITE32_HANDLER( igs_cg_videoram_w )
 {
 	COMBINE_DATA(&igs_cg_videoram[offset]);
 	//if(data!=0)
-	logerror("PC(%08X) CG @%x = %x!\n",activecpu_get_pc(),offset ,igs_cg_videoram[offset]);
+	logerror("PC(%08X) CG @%x = %x!\n",cpu_get_pc(space->cpu),offset ,igs_cg_videoram[offset]);
 
 
 
@@ -132,10 +133,10 @@ static WRITE32_HANDLER( igs_pallete32_w )
 
 static VIDEO_START(igs_majhong)
 {
-	igs_tx_tilemap= tilemap_create(get_tx_tilemap_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	igs_tx_tilemap= tilemap_create(machine, get_tx_tilemap_tile_info,tilemap_scan_rows, 8, 8,64,32);
 	tilemap_set_transparent_pen(igs_tx_tilemap,15);
-	igs_bg_tilemap= tilemap_create(get_bg_tilemap_tile_info,tilemap_scan_rows, 8, 8,64,32);
-	//igs_bg_tilemap= tilemap_create(get_bg_tilemap_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	igs_bg_tilemap= tilemap_create(machine, get_bg_tilemap_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	//igs_bg_tilemap= tilemap_create(machine, get_bg_tilemap_tile_info,tilemap_scan_rows, 8, 8,64,32);
 	//tilemap_set_transparent_pen(igs_bg_tilemap,15);
 	logerror("Video START OK!\n");
 }
@@ -143,7 +144,7 @@ static VIDEO_START(igs_majhong)
 static VIDEO_UPDATE(igs_majhong)
 {
 	//??????????
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	//??????
 	tilemap_draw(bitmap,cliprect,igs_bg_tilemap,0,0);
@@ -359,7 +360,7 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( igs_majhong_interrupt )
 {
-	cpunum_set_input_line(machine, 0, ARM7_FIRQ_LINE, PULSE_LINE);
+	generic_pulse_irq_line(device, ARM7_FIRQ_LINE);
 }
 
 

@@ -52,7 +52,7 @@ static TILE_GET_INFO( get_tile_info4 ) { get_tile_info(machine,tileinfo,tile_ind
 static TILE_GET_INFO( get_tile_info5 ) { get_tile_info(machine,tileinfo,tile_index,&mTilemapInfo.videoram[0x4408]); }
 
 void
-namco_tilemap_init( int gfxbank, void *maskBaseAddr,
+namco_tilemap_init( running_machine *machine, int gfxbank, void *maskBaseAddr,
 	void (*cb)( UINT16 code, int *gfx, int *mask) )
 {
 	int i;
@@ -62,14 +62,14 @@ namco_tilemap_init( int gfxbank, void *maskBaseAddr,
 	mTilemapInfo.videoram = auto_malloc( 0x10000*2 );
 
 		/* four scrolling tilemaps */
-		mTilemapInfo.tmap[0] = tilemap_create(get_tile_info0,tilemap_scan_rows,8,8,64,64);
-		mTilemapInfo.tmap[1] = tilemap_create(get_tile_info1,tilemap_scan_rows,8,8,64,64);
-		mTilemapInfo.tmap[2] = tilemap_create(get_tile_info2,tilemap_scan_rows,8,8,64,64);
-		mTilemapInfo.tmap[3] = tilemap_create(get_tile_info3,tilemap_scan_rows,8,8,64,64);
+		mTilemapInfo.tmap[0] = tilemap_create(machine, get_tile_info0,tilemap_scan_rows,8,8,64,64);
+		mTilemapInfo.tmap[1] = tilemap_create(machine, get_tile_info1,tilemap_scan_rows,8,8,64,64);
+		mTilemapInfo.tmap[2] = tilemap_create(machine, get_tile_info2,tilemap_scan_rows,8,8,64,64);
+		mTilemapInfo.tmap[3] = tilemap_create(machine, get_tile_info3,tilemap_scan_rows,8,8,64,64);
 
 		/* two non-scrolling tilemaps */
-		mTilemapInfo.tmap[4] = tilemap_create(get_tile_info4,tilemap_scan_rows,8,8,36,28);
-		mTilemapInfo.tmap[5] = tilemap_create(get_tile_info5,tilemap_scan_rows,8,8,36,28);
+		mTilemapInfo.tmap[4] = tilemap_create(machine, get_tile_info4,tilemap_scan_rows,8,8,36,28);
+		mTilemapInfo.tmap[5] = tilemap_create(machine, get_tile_info5,tilemap_scan_rows,8,8,36,28);
 
 		/* define offsets for scrolling */
 		for( i=0; i<4; i++ )
@@ -420,7 +420,7 @@ namcos2_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle
 	int loop;
 	if( pri==0 )
 	{
-		fillbitmap( priority_bitmap, 0, cliprect );
+		bitmap_fill( priority_bitmap, cliprect , 0);
 	}
 	for( loop=0; loop < 128; loop++ )
 	{
@@ -535,7 +535,7 @@ namcos2_draw_sprites_metalhawk(running_machine *machine, bitmap_t *bitmap, const
 	int loop;
 	if( pri==0 )
 	{
-		fillbitmap( priority_bitmap, 0, cliprect );
+		bitmap_fill( priority_bitmap, cliprect , 0);
 	}
 	for( loop=0; loop < 128; loop++ )
 	{
@@ -953,7 +953,7 @@ namco_obj_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *clip
 //  int offs = spriteram16[0x18000/2]; /* end-of-sprite-list */
 	if( pri==0 )
 	{
-		fillbitmap( priority_bitmap, 0, cliprect );
+		bitmap_fill( priority_bitmap, cliprect , 0);
 	}
 //  if( offs==0 )
 	{ /* boot */
@@ -1082,6 +1082,7 @@ roz_get_info( running_machine *machine, tile_data *tileinfo, int tile_index, int
 		if( tile&0x0200 ) mangle |= 0x0400;
 		if( tile&0x0400 ) mangle |= 0x0800;
 		if( tile&0x0800 ) mangle |= 0x1000;
+		tile &= 0x3fff; /* cap mask offset */
 		break;
 
 	default:
@@ -1119,7 +1120,7 @@ TILEMAP_MAPPER( namco_roz_scan )
 } /* namco_roz_scan*/
 
 void
-namco_roz_init( int gfxbank, const char * maskregion )
+namco_roz_init( running_machine *machine, int gfxbank, const char * maskregion )
 {
 	int i;
 	static const tile_get_info_func roz_info[ROZ_TILEMAP_COUNT] =
@@ -1137,7 +1138,7 @@ namco_roz_init( int gfxbank, const char * maskregion )
 
 		for( i=0; i<ROZ_TILEMAP_COUNT; i++ )
 		{
-			mRozTilemap[i] = tilemap_create(
+			mRozTilemap[i] = tilemap_create(machine,
 				roz_info[i],
 				namco_roz_scan,
 				16,16,
@@ -1618,19 +1619,19 @@ namco_road_init(running_machine *machine, int gfxbank )
 		mbRoadSomethingIsDirty = 0;
 		mpRoadRAM = auto_malloc(0x20000);
 		{
-			gfx_element *pGfx = allocgfx( &RoadTileLayout );
+			gfx_element *pGfx = allocgfx( machine, &RoadTileLayout );
 				decodegfx(pGfx, 0x10000+(UINT8 *)mpRoadRAM, 0, pGfx->total_elements);
 				pGfx->color_base = 0xf00;
 				pGfx->total_colors = 0x3f;
 
 				machine->gfx[gfxbank] = pGfx;
-				mpRoadTilemap = tilemap_create(
+				mpRoadTilemap = tilemap_create(machine,
 					get_road_info,tilemap_scan_rows,
 					ROAD_TILE_SIZE,ROAD_TILE_SIZE,
 					ROAD_COLS,ROAD_ROWS);
 
-					state_save_register_global_pointer(mpRoadDirty, ROAD_TILE_COUNT_MAX);
-					state_save_register_global_pointer(mpRoadRAM,   0x20000 / 2);
+					state_save_register_global_pointer(machine, mpRoadDirty, ROAD_TILE_COUNT_MAX);
+					state_save_register_global_pointer(machine, mpRoadRAM,   0x20000 / 2);
 					state_save_register_postload(machine, RoadMarkAllDirty, NULL);
 
 		}

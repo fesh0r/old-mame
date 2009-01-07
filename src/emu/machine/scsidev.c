@@ -27,7 +27,7 @@ static int scsidev_exec_command( SCSIInstance *scsiInstance, UINT8 *statusCode )
 			return 0;
 
 		default:
-			logerror( "%08x: SCSIDEV unknown command %02x\n", activecpu_get_pc(), command[ 0 ] );
+			logerror( "%s: SCSIDEV unknown command %02x\n", cpuexec_describe_context(scsiInstance->machine), command[ 0 ] );
 			return 0;
 	}
 }
@@ -42,7 +42,7 @@ static void scsidev_read_data( SCSIInstance *scsiInstance, UINT8 *data, int data
 	switch( command[ 0 ] )
 	{
 		default:
-			logerror( "%08x: SCSIDEV unknown read %02x\n", activecpu_get_pc(), command[ 0 ] );
+			logerror( "%s: SCSIDEV unknown read %02x\n", cpuexec_describe_context(scsiInstance->machine), command[ 0 ] );
 			break;
 	}
 }
@@ -57,7 +57,7 @@ static void scsidev_write_data( SCSIInstance *scsiInstance, UINT8 *data, int dat
 	switch( command[ 0 ] )
 	{
 		default:
-			logerror( "%08x: SCSIDEV unknown write %02x\n", activecpu_get_pc(), command[ 0 ] );
+			logerror( "%s: SCSIDEV unknown write %02x\n", cpuexec_describe_context(scsiInstance->machine), command[ 0 ] );
 			break;
 	}
 }
@@ -99,14 +99,12 @@ static int scsidev_get_command( SCSIInstance *scsiInstance, void **command )
 
 static void scsidev_alloc_instance( SCSIInstance *scsiInstance, const char *diskregion )
 {
+	running_machine *machine = scsiInstance->machine;
 	SCSIDev *our_this = SCSIThis( &SCSIClassDevice, scsiInstance );
-	char tag[256];
 
-	state_save_combine_module_and_tag(tag, "scsidev", diskregion);
-
-	state_save_register_item_array( tag, 0, our_this->command );
-	state_save_register_item( tag, 0, our_this->commandLength );
-	state_save_register_item( tag, 0, our_this->phase );
+	state_save_register_item_array( machine, "scsidev", diskregion, 0, our_this->command );
+	state_save_register_item( machine, "scsidev", diskregion, 0, our_this->commandLength );
+	state_save_register_item( machine, "scsidev", diskregion, 0, our_this->phase );
 }
 
 static int scsidev_dispatch( int operation, void *file, INT64 intparm, void *ptrparm )
@@ -142,7 +140,7 @@ static int scsidev_dispatch( int operation, void *file, INT64 intparm, void *ptr
 
 		case SCSIOP_ALLOC_INSTANCE:
 			params = ptrparm;
-			params->instance = SCSIMalloc( file );
+			params->instance = SCSIMalloc( params->machine, file );
 			scsidev_alloc_instance( params->instance, params->diskregion );
 			return 0;
 

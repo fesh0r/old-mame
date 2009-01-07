@@ -1,6 +1,5 @@
 #include "driver.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "sound/samples.h"
 #include "includes/galaxian.h"
 
@@ -71,16 +70,16 @@ static emu_timer *noisetimer;
 static TIMER_CALLBACK( lfo_timer_cb );
 static TIMER_CALLBACK( galaxian_sh_update );
 
-static void tone_update(void *param, stream_sample_t **input, stream_sample_t **output, int length)
+static STREAM_UPDATE( tone_update )
 {
-	stream_sample_t *buffer = output[0];
+	stream_sample_t *buffer = outputs[0];
 	int i,j;
 	INT16 *w = tonewave[vol];
 
 	/* only update if we have non-zero volume and frequency */
 	if( pitch != 0xff )
 	{
-		for (i = 0; i < length; i++)
+		for (i = 0; i < samples; i++)
 		{
 			int mix = 0;
 
@@ -100,7 +99,7 @@ static void tone_update(void *param, stream_sample_t **input, stream_sample_t **
 	}
 	else
 	{
-		for( i = 0; i < length; i++ )
+		for( i = 0; i < samples; i++ )
 			*buffer++ = 0;
 	}
 }
@@ -113,23 +112,23 @@ WRITE8_HANDLER( galaxian_sound_w )
 		case 0:		/* FS1 (controls 555 timer at 8R) */
 		case 1:		/* FS2 (controls 555 timer at 8S) */
 		case 2:		/* FS3 (controls 555 timer at 8T) */
-			galaxian_background_enable_w(machine, offset, data);
+			galaxian_background_enable_w(space, offset, data);
 			break;
 
 		case 3:		/* HIT */
-			galaxian_noise_enable_w(machine, 0, data);
+			galaxian_noise_enable_w(space, 0, data);
 			break;
 
 		case 4:		/* n/c */
 			break;
 
 		case 5:		/* FIRE */
-			galaxian_shoot_enable_w(machine, 0, data);
+			galaxian_shoot_enable_w(space, 0, data);
 			break;
 
 		case 6:		/* VOL1 */
 		case 7:		/* VOL2 */
-			galaxian_vol_w(machine, offset & 1, data);
+			galaxian_vol_w(space, offset & 1, data);
 			break;
 	}
 }
@@ -182,8 +181,9 @@ WRITE8_HANDLER( galaxian_shoot_enable_w )
 }
 
 
-static void galaxian_sh_start(void)
+static SAMPLES_START( galaxian_sh_start )
 {
+	running_machine *machine = device->machine;
 	int i, j, sweep, charge, countdown, generator, bit1, bit2;
 
 	freq = MAXFREQ;
@@ -197,7 +197,7 @@ static void galaxian_sh_start(void)
 	noisewave = auto_malloc(NOISE_LENGTH * sizeof(INT16));
 
 #define SHOOT_SEC 2
-	shoot_rate = Machine->sample_rate;
+	shoot_rate = machine->sample_rate;
 	shoot_length = SHOOT_SEC * shoot_rate;
 	shootwave = auto_malloc(shoot_length * sizeof(INT16));
 
@@ -376,7 +376,7 @@ static void galaxian_sh_start(void)
 	pitch = 0xff;
 	vol = 0;
 
-	tone_stream = stream_create(0,1,SOUND_CLOCK/STEPS,NULL,tone_update);
+	tone_stream = stream_create(device,0,1,SOUND_CLOCK/STEPS,NULL,tone_update);
 	stream_set_output_gain(tone_stream, 0, TOOTHSAW_VOLUME);
 
 	sample_set_volume(CHANNEL_NOISE,0);
@@ -392,22 +392,22 @@ static void galaxian_sh_start(void)
 	sample_set_volume(CHANNEL_LFO+2,0);
 	sample_start_raw(CHANNEL_LFO+2,backgroundwave,ARRAY_LENGTH(backgroundwave),1000,1);
 
-	noisetimer = timer_alloc(noise_timer_cb, NULL);
+	noisetimer = timer_alloc(machine, noise_timer_cb, NULL);
 	timer_adjust_periodic(noisetimer, ATTOTIME_IN_NSEC((155000+22000)/100*693*22), 0, ATTOTIME_IN_NSEC((155000+22000)/100*693*22));
 
-	lfotimer = timer_alloc(lfo_timer_cb, NULL);
+	lfotimer = timer_alloc(machine, lfo_timer_cb, NULL);
 
-	timer_pulse(video_screen_get_frame_period(Machine->primary_screen), NULL, 0, galaxian_sh_update);
+	timer_pulse(machine, video_screen_get_frame_period(machine->primary_screen), NULL, 0, galaxian_sh_update);
 
-	state_save_register_global(freq);
-	state_save_register_global(noise_enable);
-	state_save_register_global(noisevolume);
-	state_save_register_global(last_port2);
-	state_save_register_global(pitch);
-	state_save_register_global(vol);
-	state_save_register_global(counter);
-	state_save_register_global(countdown);
-	state_save_register_global_array(lfobit);
+	state_save_register_global(machine, freq);
+	state_save_register_global(machine, noise_enable);
+	state_save_register_global(machine, noisevolume);
+	state_save_register_global(machine, last_port2);
+	state_save_register_global(machine, pitch);
+	state_save_register_global(machine, vol);
+	state_save_register_global(machine, counter);
+	state_save_register_global(machine, countdown);
+	state_save_register_global_array(machine, lfobit);
 }
 
 

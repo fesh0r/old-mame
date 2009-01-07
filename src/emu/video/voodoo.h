@@ -40,11 +40,11 @@ typedef struct _voodoo_config voodoo_config;
 struct _voodoo_config
 {
 	int					type;
-	UINT32				clock;
 	UINT8				fbmem;
 	UINT8				tmumem0;
 	UINT8				tmumem1;
 	const char *		screen;
+	const char *		cputag;
 	voodoo_vblank_func	vblank;
 	voodoo_stall_func	stall;
 };
@@ -56,9 +56,8 @@ struct _voodoo_config
 ***************************************************************************/
 
 #define MDRV_3DFX_VOODOO_ADD(_tag, _type, _clock, _fbmem, _screen) \
-	MDRV_DEVICE_ADD(_tag, VOODOO_GRAPHICS) \
+	MDRV_DEVICE_ADD(_tag, VOODOO_GRAPHICS, _clock) \
 	MDRV_DEVICE_CONFIG_DATA32(voodoo_config, type, _type) \
-	MDRV_DEVICE_CONFIG_DATA32(voodoo_config, clock, _clock) \
 	MDRV_DEVICE_CONFIG_DATA32(voodoo_config, fbmem, _fbmem) \
 	MDRV_DEVICE_CONFIG_DATAPTR(voodoo_config, screen, _screen)
 
@@ -82,6 +81,9 @@ struct _voodoo_config
 
 #define MDRV_3DFX_VOODOO_STALL(_stall) \
 	MDRV_DEVICE_CONFIG_DATAPTR(voodoo_config, stall, _stall)
+
+#define MDRV_3DFX_VOODOO_CPU(_cputag) \
+	MDRV_DEVICE_CONFIG_DATAPTR(voodoo_config, cputag, _cputag)
 
 #define MDRV_3DFX_VOODOO_MODIFY(_tag) \
 	MDRV_DEVICE_MODIFY(_tag, VOODOO_GRAPHICS)

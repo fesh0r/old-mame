@@ -23,6 +23,7 @@
 
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "machine/atarigen.h"
 #include "rampart.h"
 #include "sound/okim6295.h"
@@ -40,7 +41,7 @@
 
 static void update_interrupts(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 4, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -48,7 +49,7 @@ static void scanline_update(const device_config *screen, int scanline)
 {
 	/* generate 32V signals */
 	if ((scanline & 32) == 0)
-		atarigen_scanline_int_gen(screen->machine, 0);
+		atarigen_scanline_int_gen(screen->machine->cpu[0]);
 }
 
 
@@ -77,14 +78,14 @@ static MACHINE_RESET( rampart )
 
 static READ16_HANDLER( adpcm_r )
 {
-	return (okim6295_status_0_r(machine, offset) << 8) | 0x00ff;
+	return (okim6295_status_0_r(space, offset) << 8) | 0x00ff;
 }
 
 
 static WRITE16_HANDLER( adpcm_w )
 {
 	if (ACCESSING_BITS_8_15)
-		okim6295_data_0_w(machine, offset, (data >> 8) & 0xff);
+		okim6295_data_0_w(space, offset, (data >> 8) & 0xff);
 }
 
 
@@ -100,9 +101,9 @@ static WRITE16_HANDLER( ym2413_w )
 	if (ACCESSING_BITS_8_15)
 	{
 		if (offset & 1)
-			ym2413_data_port_0_w(machine, 0, (data >> 8) & 0xff);
+			ym2413_data_port_0_w(space, 0, (data >> 8) & 0xff);
 		else
-			ym2413_register_port_0_w(machine, 0, (data >> 8) & 0xff);
+			ym2413_register_port_0_w(space, 0, (data >> 8) & 0xff);
 	}
 }
 
@@ -144,10 +145,10 @@ static WRITE16_HANDLER( latch_w )
 	/* lower byte being modified? */
 	if (ACCESSING_BITS_0_7)
 	{
-		atarigen_set_oki6295_vol(machine, (data & 0x0020) ? 100 : 0);
+		atarigen_set_oki6295_vol(space->machine, (data & 0x0020) ? 100 : 0);
 		if (!(data & 0x0010))
 			sndti_reset(SOUND_OKIM6295, 0);
-		atarigen_set_ym2413_vol(machine, ((data >> 1) & 7) * 100 / 7);
+		atarigen_set_ym2413_vol(space->machine, ((data >> 1) & 7) * 100 / 7);
 		if (!(data & 0x0001))
 			sndti_reset(SOUND_YM2413, 0);
 	}
@@ -528,7 +529,7 @@ static DRIVER_INIT( rampart )
 
 	atarigen_eeprom_default = compressed_default_eeprom;
 	memcpy(&rom[0x140000], &rom[0x40000], 0x8000);
-	atarigen_slapstic_init(machine, 0, 0x140000, 0x438000, 118);
+	atarigen_slapstic_init(machine->cpu[0], 0x140000, 0x438000, 118);
 }
 
 

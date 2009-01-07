@@ -64,6 +64,7 @@ TODO:
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "machine/6532riot.h"
 #include "machine/6522via.h"
 #include "sound/ay8910.h"
@@ -77,9 +78,9 @@ TODO:
  *
  *************************************/
 
-static WRITE8_HANDLER( io_select_w )
+static WRITE8_DEVICE_HANDLER( io_select_w )
 {
-	gameplan_state *state = machine->driver_data;
+	gameplan_state *state = device->machine->driver_data;
 
 	switch (data)
 	{
@@ -93,22 +94,22 @@ static WRITE8_HANDLER( io_select_w )
 }
 
 
-static READ8_HANDLER( io_port_r )
+static READ8_DEVICE_HANDLER( io_port_r )
 {
 	static const char *const portnames[] = { "IN0", "IN1", "IN2", "IN3", "DSW0", "DSW1" };
-	gameplan_state *state = machine->driver_data;
+	gameplan_state *state = device->machine->driver_data;
 
-	return input_port_read(machine, portnames[state->current_port]);
+	return input_port_read(device->machine, portnames[state->current_port]);
 }
 
 
-static WRITE8_HANDLER( coin_w )
+static WRITE8_DEVICE_HANDLER( coin_w )
 {
 	coin_counter_w(0, ~data & 1);
 }
 
 
-static const struct via6522_interface via_1_interface =
+static const via6522_interface via_1_interface =
 {
 	io_port_r, 0,	 /*inputs : A/B         */
 	0, 0, 0, 0,		 /*inputs : CA/B1,CA/B2 */
@@ -125,35 +126,42 @@ static const struct via6522_interface via_1_interface =
  *
  *************************************/
 
-static WRITE8_HANDLER( audio_reset_w )
+static WRITE8_DEVICE_HANDLER( audio_reset_w )
 {
-	gameplan_state *state = machine->driver_data;
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
+	gameplan_state *state = device->machine->driver_data;
+	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
 	if (data == 0)
 	{
 		device_reset(state->riot);
-		cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(10));
+		cpuexec_boost_interleave(device->machine, attotime_zero, ATTOTIME_IN_USEC(10));
 	}
 }
 
 
-static WRITE8_HANDLER( audio_cmd_w )
+static WRITE8_DEVICE_HANDLER( audio_cmd_w )
 {
-	gameplan_state *state = machine->driver_data;
+	gameplan_state *state = device->machine->driver_data;
 	riot6532_porta_in_set(state->riot, data, 0x7f);
 }
 
 
-static WRITE8_HANDLER( audio_trigger_w )
+static WRITE8_DEVICE_HANDLER( audio_trigger_w )
 {
-	gameplan_state *state = machine->driver_data;
+	gameplan_state *state = device->machine->driver_data;
 	riot6532_porta_in_set(state->riot, data << 7, 0x80);
 }
 
 
-static const struct via6522_interface via_2_interface =
+static READ8_DEVICE_HANDLER( via_soundlatch_r )
 {
-	0, soundlatch_r,					  /*inputs : A/B         */
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	return soundlatch_r(space, offset);
+}
+
+
+static const via6522_interface via_2_interface =
+{
+	0, via_soundlatch_r,				  /*inputs : A/B         */
 	0, 0, 0, 0,							  /*inputs : CA/B1,CA/B2 */
 	audio_cmd_w, 0,						  /*outputs: A/B         */
 	0, 0, audio_trigger_w, audio_reset_w, /*outputs: CA/B1,CA/B2 */
@@ -170,15 +178,16 @@ static const struct via6522_interface via_2_interface =
 
 static void r6532_irq(const device_config *device, int state)
 {
-	cpunum_set_input_line(device->machine, 1, 0, state);
+	cpu_set_input_line(device->machine->cpu[1], 0, state);
 	if (state == ASSERT_LINE)
-		cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(10));
+		cpuexec_boost_interleave(device->machine, attotime_zero, ATTOTIME_IN_USEC(10));
 }
 
 
 static void r6532_soundlatch_w(const device_config *device, UINT8 newdata, UINT8 olddata)
 {
-	soundlatch_w(device->machine, 0, newdata);
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	soundlatch_w(space, 0, newdata);
 }
 
 
@@ -205,11 +214,8 @@ static MACHINE_START( gameplan )
 
 	state->riot = device_list_find_by_tag(machine->config->devicelist, RIOT6532, "riot");
 
-	via_config(1, &via_1_interface);
-	via_config(2, &via_2_interface);
-
 	/* register for save states */
-	state_save_register_global(state->current_port);
+	state_save_register_global(machine, state->current_port);
 }
 
 
@@ -222,7 +228,6 @@ static MACHINE_START( gameplan )
 
 static MACHINE_RESET( gameplan )
 {
-	via_reset();
 }
 
 
@@ -235,9 +240,9 @@ static MACHINE_RESET( gameplan )
 
 static ADDRESS_MAP_START( gameplan_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_MIRROR(0x1c00) AM_RAM
-	AM_RANGE(0x2000, 0x200f) AM_MIRROR(0x07f0) AM_READWRITE(via_0_r, via_0_w)	/* VIA 1 */
-	AM_RANGE(0x2800, 0x280f) AM_MIRROR(0x07f0) AM_READWRITE(via_1_r, via_1_w)	/* VIA 2 */
-	AM_RANGE(0x3000, 0x300f) AM_MIRROR(0x07f0) AM_READWRITE(via_2_r, via_2_w)	/* VIA 3 */
+	AM_RANGE(0x2000, 0x200f) AM_MIRROR(0x07f0) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)	/* VIA 1 */
+	AM_RANGE(0x2800, 0x280f) AM_MIRROR(0x07f0) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)	/* VIA 2 */
+	AM_RANGE(0x3000, 0x300f) AM_MIRROR(0x07f0) AM_DEVREADWRITE(VIA6522, "via6522_2", via_r, via_w)	/* VIA 3 */
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -1190,6 +1195,11 @@ static MACHINE_DRIVER_START( gameplan )
 	MDRV_SOUND_ADD("ay", AY8910, GAMEPLAN_AY8910_CLOCK)
 	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.33)
+
+	/* via */
+	MDRV_VIA6522_ADD("via6522_0", 0, gameplan_via_0_interface)
+	MDRV_VIA6522_ADD("via6522_1", 0, via_1_interface)
+	MDRV_VIA6522_ADD("via6522_2", 0, via_2_interface)
 MACHINE_DRIVER_END
 
 
@@ -1203,6 +1213,10 @@ static MACHINE_DRIVER_START( leprechn )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(leprechn_video)
+
+	/* via */
+	MDRV_VIA6522_REMOVE("via6522_0")
+	MDRV_VIA6522_ADD("via6522_0", 0, leprechn_via_0_interface)
 MACHINE_DRIVER_END
 
 

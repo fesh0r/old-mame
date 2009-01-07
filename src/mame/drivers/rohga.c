@@ -108,6 +108,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/h6280/h6280.h"
 #include "decocrpt.h"
 #include "decoprot.h"
@@ -790,7 +791,7 @@ GFXDECODE_END
 
 static void sound_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 1,1,state); /* IRQ 2 */
+	cpu_set_input_line(machine->cpu[1],1,state); /* IRQ 2 */
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -1435,7 +1436,7 @@ static DRIVER_INIT( rohga )
 	deco56_decrypt_gfx(machine, "gfx1");
 	deco56_decrypt_gfx(machine, "gfx2");
 
-	decoprot_reset();
+	decoprot_reset(machine);
 }
 
 static DRIVER_INIT( wizdfire )
@@ -1451,7 +1452,7 @@ static DRIVER_INIT( nitrobal )
 	deco56_decrypt_gfx(machine, "gfx2");
 	deco74_decrypt_gfx(machine, "gfx3");
 
-	decoprot_reset();
+	decoprot_reset(machine);
 }
 
 static DRIVER_INIT( schmeisr )
@@ -1465,7 +1466,7 @@ static DRIVER_INIT( schmeisr )
 	deco74_decrypt_gfx(machine, "gfx1");
 	deco74_decrypt_gfx(machine, "gfx2");
 
-	decoprot_reset();
+	decoprot_reset(machine);
 }
 
 GAME( 1991, rohga,    0,       rohga,    rohga,    rohga,    ROT0,   "Data East Corporation", "Rohga Armor Force (Asia/Europe v5.0)" , 0 )

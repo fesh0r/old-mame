@@ -6,8 +6,6 @@
 
 /*----------- defined in drivers/snk.c -----------*/
 
-extern UINT8 *snk_rambase;
-
 extern READ8_HANDLER ( snk_cpuA_nmi_trigger_r );
 extern WRITE8_HANDLER( snk_cpuA_nmi_ack_w );
 
@@ -20,7 +18,6 @@ extern WRITE8_HANDLER( snk_cpuB_nmi_ack_w );
 extern PALETTE_INIT( tnk3 );
 
 extern VIDEO_START( marvins );
-extern VIDEO_START( madcrash );
 extern VIDEO_START( jcross );
 extern VIDEO_START( sgladiat );
 extern VIDEO_START( hal21 );
@@ -73,7 +70,3 @@ extern WRITE8_HANDLER( snk_tx_videoram_w );
 extern WRITE8_HANDLER( snk_bg_videoram_w );
 extern WRITE8_HANDLER( marvins_fg_videoram_w );
 extern WRITE8_HANDLER( marvins_bg_videoram_w );
-
-/*----------- defined in drivers/hal21.c -----------*/
-
-extern PALETTE_INIT( aso );

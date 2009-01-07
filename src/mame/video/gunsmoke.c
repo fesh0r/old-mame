@@ -83,12 +83,12 @@ WRITE8_HANDLER( gunsmoke_c804_w )
 	coin_counter_w(0, data & 0x02);
 
 	/* bits 2 and 3 select the ROM bank */
-	memory_set_bank(1, (data & 0x0c) >> 2);
+	memory_set_bank(space->machine, 1, (data & 0x0c) >> 2);
 
 	/* bit 5 resets the sound CPU? - we ignore it */
 
 	/* bit 6 flips screen */
-	flip_screen_set(data & 0x40);
+	flip_screen_set(space->machine, data & 0x40);
 
 	/* bit 7 enables characters? */
 	chon = data & 0x80;
@@ -134,19 +134,19 @@ VIDEO_START( gunsmoke )
 {
 	/* configure ROM banking */
 	UINT8 *rombase = memory_region(machine, "main");
-	memory_configure_bank(1, 0, 4, &rombase[0x10000], 0x4000);
+	memory_configure_bank(machine, 1, 0, 4, &rombase[0x10000], 0x4000);
 
 	/* create tilemaps */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,  32, 32, 2048, 8);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_cols,  32, 32, 2048, 8);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 
 	colortable_configure_tilemap_groups(machine->colortable, fg_tilemap, machine->gfx[0], 0x4f);
 
 	/* register for saving */
-	state_save_register_global(chon);
-	state_save_register_global(objon);
-	state_save_register_global(bgon);
-	state_save_register_global(sprite3bank);
+	state_save_register_global(machine, chon);
+	state_save_register_global(machine, objon);
+	state_save_register_global(machine, bgon);
+	state_save_register_global(machine, sprite3bank);
 }
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
@@ -167,7 +167,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		if (bank == 3) bank += sprite3bank;
 		code += 256 * bank;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -188,7 +188,7 @@ VIDEO_UPDATE( gunsmoke )
 	if (bgon)
 		tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	else
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	if (objon) draw_sprites(screen->machine, bitmap, cliprect);
 	if (chon)  tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);

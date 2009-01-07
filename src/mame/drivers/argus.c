@@ -87,68 +87,10 @@ Known issues :
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/2203intf.h"
-
-
-/***************************************************************************
-
-  Variables
-
-***************************************************************************/
-
-extern UINT8 *argus_paletteram;
-extern UINT8 *argus_txram;
-extern UINT8 *argus_bg0ram;
-extern UINT8 *argus_bg0_scrollx;
-extern UINT8 *argus_bg0_scrolly;
-extern UINT8 *argus_bg1ram;
-extern UINT8 *argus_bg1_scrollx;
-extern UINT8 *argus_bg1_scrolly;
-extern UINT8 *butasan_bg1ram;
-
-VIDEO_START( argus );
-VIDEO_START( valtric );
-VIDEO_START( butasan );
-VIDEO_RESET( argus );
-VIDEO_RESET( valtric );
-VIDEO_RESET( butasan );
-VIDEO_UPDATE( argus );
-VIDEO_UPDATE( valtric );
-VIDEO_UPDATE( butasan );
-
-READ8_HANDLER( argus_txram_r );
-READ8_HANDLER( argus_bg1ram_r );
-READ8_HANDLER( argus_paletteram_r );
-
-WRITE8_HANDLER( argus_txram_w );
-WRITE8_HANDLER( argus_bg1ram_w );
-WRITE8_HANDLER( argus_bg0_scrollx_w );
-WRITE8_HANDLER( argus_bg0_scrolly_w );
-WRITE8_HANDLER( argus_bg1_scrollx_w );
-WRITE8_HANDLER( argus_bg1_scrolly_w );
-WRITE8_HANDLER( argus_bg_status_w );
-WRITE8_HANDLER( argus_flipscreen_w );
-WRITE8_HANDLER( argus_paletteram_w );
-
-WRITE8_HANDLER( valtric_bg_status_w );
-WRITE8_HANDLER( valtric_paletteram_w );
-WRITE8_HANDLER( valtric_mosaic_w );
-WRITE8_HANDLER( valtric_unknown_w );
-
-READ8_HANDLER( butasan_pagedram_r );
-READ8_HANDLER( butasan_bg1ram_r );
-READ8_HANDLER( butasan_txbackram_r );
-READ8_HANDLER( butasan_bg0backram_r );
-WRITE8_HANDLER( butasan_pageselect_w );
-WRITE8_HANDLER( butasan_pagedram_w );
-WRITE8_HANDLER( butasan_bg1ram_w );
-WRITE8_HANDLER( butasan_bg0_status_w );
-WRITE8_HANDLER( butasan_paletteram_w );
-WRITE8_HANDLER( butasan_txbackram_w );
-WRITE8_HANDLER( butasan_bg0backram_w );
-WRITE8_HANDLER( butasan_bg1_status_w );
-WRITE8_HANDLER( butasan_unknown_w );
+#include "includes/argus.h"
 
 
 /***************************************************************************
@@ -159,16 +101,16 @@ WRITE8_HANDLER( butasan_unknown_w );
 
 static INTERRUPT_GEN( argus_interrupt )
 {
-	if (cpu_getiloops() == 0)
-		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xd7);	/* RST 10h */
+	if (cpu_getiloops(device) == 0)
+		cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xd7);	/* RST 10h */
 	else
-		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xcf);	/* RST 08h */
+		cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xcf);	/* RST 08h */
 }
 
 /* Handler called by the YM2203 emulator when the internal timers cause an IRQ */
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -190,11 +132,11 @@ static const ym2203_interface ym2203_config =
 
 static WRITE8_HANDLER( argus_bankselect_w )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 	int bankaddress;
 
 	bankaddress = 0x10000 + ((data & 7) * 0x4000);
-	memory_set_bankptr(1, &RAM[bankaddress]);	 /* Select 8 banks of 16k */
+	memory_set_bankptr(space->machine, 1, &RAM[bankaddress]);	 /* Select 8 banks of 16k */
 }
 
 
@@ -583,7 +525,7 @@ static MACHINE_DRIVER_START( argus )
 	MDRV_CPU_IO_MAP(sound_portmap_2,0)
 #endif
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -637,7 +579,7 @@ static MACHINE_DRIVER_START( valtric )
 	MDRV_CPU_PROGRAM_MAP(sound_map_a,0)
 	MDRV_CPU_IO_MAP(sound_portmap_2,0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -682,7 +624,7 @@ static MACHINE_DRIVER_START( butasan )
 	MDRV_CPU_PROGRAM_MAP(sound_map_b,0)
 	MDRV_CPU_IO_MAP(sound_portmap_2,0)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

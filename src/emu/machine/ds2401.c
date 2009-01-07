@@ -13,7 +13,7 @@
 
 #define VERBOSE_LEVEL ( 0 )
 
-INLINE void ATTR_PRINTF(2,3) verboselog( int n_level, const char *s_fmt, ... )
+INLINE void ATTR_PRINTF(3,4) verboselog( running_machine *machine, int n_level, const char *s_fmt, ... )
 {
 	if( VERBOSE_LEVEL >= n_level )
 	{
@@ -22,14 +22,7 @@ INLINE void ATTR_PRINTF(2,3) verboselog( int n_level, const char *s_fmt, ... )
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		if( cpu_getactivecpu() != -1 )
-		{
-			logerror( "%08x: %s", activecpu_get_pc(), buf );
-		}
-		else
-		{
-			logerror( "(timer) : %s", buf );
-		}
+		logerror( "%s: %s", cpuexec_describe_context(machine), buf );
 	}
 }
 
@@ -69,7 +62,7 @@ static TIMER_CALLBACK( ds2401_reset )
 	int which = param;
 	struct ds2401_chip *c = &ds2401[ which ];
 
-	verboselog( 1, "ds2401_reset(%d)\n", which );
+	verboselog( machine, 1, "ds2401_reset(%d)\n", which );
 
 	c->state = STATE_RESET;
 	timer_adjust_oneshot( c->timer, attotime_never, which );
@@ -83,20 +76,20 @@ static TIMER_CALLBACK( ds2401_tick )
 	switch( c->state )
 	{
 	case STATE_RESET1:
-		verboselog( 2, "ds2401_tick(%d) state_reset1 %d\n", which, c->rx );
+		verboselog( machine, 2, "ds2401_tick(%d) state_reset1 %d\n", which, c->rx );
 		c->tx = 0;
 		c->state = STATE_RESET2;
 		timer_adjust_oneshot( c->timer, c->t_pdl, which );
 		break;
 	case STATE_RESET2:
-		verboselog( 2, "ds2401_tick(%d) state_reset2 %d\n", which, c->rx );
+		verboselog( machine, 2, "ds2401_tick(%d) state_reset2 %d\n", which, c->rx );
 		c->tx = 1;
 		c->bit = 0;
 		c->shift = 0;
 		c->state = STATE_COMMAND;
 		break;
 	case STATE_COMMAND:
-		verboselog( 2, "ds2401_tick(%d) state_command %d\n", which, c->rx );
+		verboselog( machine, 2, "ds2401_tick(%d) state_command %d\n", which, c->rx );
 		c->shift >>= 1;
 		if( c->rx != 0 )
 		{
@@ -108,13 +101,13 @@ static TIMER_CALLBACK( ds2401_tick )
 			switch( c->shift )
 			{
 			case COMMAND_READROM:
-				verboselog( 1, "ds2401_tick(%d) readrom\n", which );
+				verboselog( machine, 1, "ds2401_tick(%d) readrom\n", which );
 				c->bit = 0;
 				c->byte = 0;
 				c->state = STATE_READROM;
 				break;
 			default:
-				verboselog( 0, "ds2401_tick(%d) command not handled %02x\n", which, c->shift );
+				verboselog( machine, 0, "ds2401_tick(%d) command not handled %02x\n", which, c->shift );
 				c->state = STATE_IDLE;
 				break;
 			}
@@ -124,21 +117,21 @@ static TIMER_CALLBACK( ds2401_tick )
 		c->tx = 1;
 		if( c->byte == 8 )
 		{
-			verboselog( 1, "ds2401_tick(%d) readrom finished\n", which );
+			verboselog( machine, 1, "ds2401_tick(%d) readrom finished\n", which );
 			c->state = STATE_IDLE;
 		}
 		else
 		{
-			verboselog( 2, "ds2401_tick(%d) readrom window closed\n", which );
+			verboselog( machine, 2, "ds2401_tick(%d) readrom window closed\n", which );
 		}
 		break;
 	default:
-		verboselog( 0, "ds2401_tick(%d) state not handled: %d\n", which, c->state );
+		verboselog( machine, 0, "ds2401_tick(%d) state not handled: %d\n", which, c->state );
 		break;
 	}
 }
 
-void ds2401_init( int which, const UINT8 *data )
+void ds2401_init( running_machine *machine, int which, const UINT8 *data )
 {
 	struct ds2401_chip *c = &ds2401[ which ];
 
@@ -155,22 +148,22 @@ void ds2401_init( int which, const UINT8 *data )
 	c->t_pdh = ATTOTIME_IN_USEC( 15 );
 	c->t_pdl = ATTOTIME_IN_USEC( 60 );
 
-	state_save_register_item( "ds2401", which, c->state );
-	state_save_register_item( "ds2401", which, c->bit );
-	state_save_register_item( "ds2401", which, c->byte );
-	state_save_register_item( "ds2401", which, c->shift );
-	state_save_register_item( "ds2401", which, c->rx );
-	state_save_register_item( "ds2401", which, c->tx );
+	state_save_register_item(machine,  "ds2401", NULL, which, c->state );
+	state_save_register_item(machine,  "ds2401", NULL, which, c->bit );
+	state_save_register_item(machine,  "ds2401", NULL, which, c->byte );
+	state_save_register_item(machine,  "ds2401", NULL, which, c->shift );
+	state_save_register_item(machine,  "ds2401", NULL, which, c->rx );
+	state_save_register_item(machine,  "ds2401", NULL, which, c->tx );
 
-	c->timer = timer_alloc( ds2401_tick , NULL);
-	c->reset_timer = timer_alloc( ds2401_reset , NULL);
+	c->timer = timer_alloc(machine, ds2401_tick , NULL);
+	c->reset_timer = timer_alloc(machine, ds2401_reset , NULL);
 }
 
-void ds2401_write( int which, int data )
+void ds2401_write( running_machine *machine, int which, int data )
 {
 	struct ds2401_chip *c = &ds2401[ which ];
 
-	verboselog( 1, "ds2401_write( %d, %d )\n", which, data );
+	verboselog( machine, 1, "ds2401_write( %d, %d )\n", which, data );
 
 	if( data == 0 && c->rx != 0 )
 	{
@@ -179,14 +172,14 @@ void ds2401_write( int which, int data )
 		case STATE_IDLE:
 			break;
 		case STATE_COMMAND:
-			verboselog( 2, "ds2401_write(%d) state_command\n", which );
+			verboselog( machine, 2, "ds2401_write(%d) state_command\n", which );
 			timer_adjust_oneshot( c->timer, c->t_samp, which );
 			break;
 		case STATE_READROM:
 			if( c->bit == 0 )
 			{
 				c->shift = c->data[ 7 - c->byte ];
-				verboselog( 1, "ds2401_write(%d) <- data %02x\n", which, c->shift );
+				verboselog( machine, 1, "ds2401_write(%d) <- data %02x\n", which, c->shift );
 			}
 			c->tx = c->shift & 1;
 			c->shift >>= 1;
@@ -196,11 +189,11 @@ void ds2401_write( int which, int data )
 				c->bit = 0;
 				c->byte++;
 			}
-			verboselog( 2, "ds2401_write(%d) state_readrom %d\n", which, c->tx );
+			verboselog( machine, 2, "ds2401_write(%d) state_readrom %d\n", which, c->tx );
 			timer_adjust_oneshot( c->timer, c->t_rdv, which );
 			break;
 		default:
-			verboselog( 0, "ds2401_write(%d) state not handled: %d\n", which, c->state );
+			verboselog( machine, 0, "ds2401_write(%d) state not handled: %d\n", which, c->state );
 			break;
 		}
 		timer_adjust_oneshot( c->reset_timer, c->t_rstl, which );
@@ -219,11 +212,11 @@ void ds2401_write( int which, int data )
 	c->rx = data;
 }
 
-int ds2401_read( int which )
+int ds2401_read( running_machine *machine, int which )
 {
 	struct ds2401_chip *c = &ds2401[ which ];
 
-	verboselog( 2, "ds2401_read( %d ) %d\n", which, c->tx & c->rx );
+	verboselog( machine, 2, "ds2401_read( %d ) %d\n", which, c->tx & c->rx );
 	return c->tx & c->rx;
 }
 

@@ -8,16 +8,16 @@
     Written by Roberto Fresca.
 
 
-    Games running in this hardware:
+    Games running on this hardware:
 
     * Jolly Card (austrian),                            TAB-Austria,        1985.
-    * Jolly Card (austrian, encrypted),                 TAB-Austria,        1985.
     * Jolly Card (3x3 deal),                            TAB-Austria,        1985.
     * Jolly Card Professional 2.0,                      Spale-Soft,         2000.
     * Jolly Card (Evona Electronic),                    Evona Electronic    1998.
     * Jolly Card (croatian, set 1),                     TAB-Austria,        1985.
     * Jolly Card (croatian, set 2),                     Soft Design,        1993.
     * Jolly Card (italian, blue TAB board, encrypted),  bootleg,            199?.
+    * Jolly Card (italian, encrypted bootleg),          bootleg,            1990.
     * Super Joly 2000 - 3x,                             M.P.                1985.
     * Jolly Card (austrian, Funworld, bootleg),         Inter Games,        1986.
     * Big Deal (hungarian, set 1),                      Funworld,           1986.
@@ -150,12 +150,12 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START(funworld)
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 4, 8, 96, 29);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 4, 8, 96, 29);
 }
 
-VIDEO_START(magiccrd)
+VIDEO_START(magicrd2)
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 4, 8, 112, 34);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 4, 8, 112, 34);
 }
 
 VIDEO_UPDATE(funworld)

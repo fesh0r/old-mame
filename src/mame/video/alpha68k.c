@@ -37,7 +37,7 @@ WRITE16_HANDLER( alpha68k_paletteram_w )
 	g = ((newword >> 3) & 0x1e) | ((newword >> 13) & 0x01);
 	b = ((newword << 1) & 0x1e) | ((newword >> 12) & 0x01);
 
-	palette_set_color_rgb(machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
+	palette_set_color_rgb(space->machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 /******************************************************************************/
@@ -68,7 +68,7 @@ WRITE16_HANDLER( alpha68k_videoram_w )
 
 VIDEO_START( alpha68k )
 {
-	fix_tilemap = tilemap_create(get_tile_info,tilemap_scan_cols,8,8,32,32);
+	fix_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_cols,8,8,32,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
 }
@@ -132,7 +132,7 @@ VIDEO_UPDATE( alpha68k_II )
 	last_bank=bank_base;
 	tilemap_set_flip(ALL_TILEMAPS,flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
-	fillbitmap(bitmap,2047,cliprect);
+	bitmap_fill(bitmap,cliprect,2047);
 //AT
 	draw_sprites(screen->machine, bitmap,cliprect,0,0x07c0,0x0800);
 	draw_sprites(screen->machine, bitmap,cliprect,1,0x0000,0x0800);
@@ -271,7 +271,7 @@ VIDEO_UPDATE( alpha68k_V )
 	last_bank=bank_base;
 	tilemap_set_flip(ALL_TILEMAPS,flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
-	fillbitmap(bitmap,4095,cliprect);
+	bitmap_fill(bitmap,cliprect,4095);
 
 	/* This appears to be correct priority */
 	if (alpha68k_microcontroller_id == 0x8814) /* Sky Adventure */
@@ -307,7 +307,7 @@ VIDEO_UPDATE( alpha68k_V_sb )
 	last_bank=bank_base;
 	tilemap_set_flip(ALL_TILEMAPS,flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
-	fillbitmap(bitmap,4095,cliprect);
+	bitmap_fill(bitmap,cliprect,4095);
 
 	/* This appears to be correct priority */
 	draw_sprites_V(screen->machine,bitmap,cliprect,0,0x07c0,0x0800,0x4000,0x8000,0x3fff);
@@ -352,7 +352,7 @@ VIDEO_UPDATE( alpha68k_I )
 {
 	int yshift = (alpha68k_microcontroller_id == 0x890a) ? 1 : 0; // The Next Space is 1 pixel off
 
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	/* This appears to be correct priority */
 	draw_sprites_I(screen->machine, bitmap,cliprect,2,0x0800,yshift);
@@ -479,7 +479,7 @@ static void kyros_draw_sprites(running_machine *machine, bitmap_t *bitmap, const
 VIDEO_UPDATE( kyros )
 {
 	colortable_entry_set_value(screen->machine->colortable, 0x100, *videoram16 & 0xff);
-	fillbitmap(bitmap, 0x100, cliprect); //AT
+	bitmap_fill(bitmap, cliprect, 0x100); //AT
 
 	kyros_draw_sprites(screen->machine, bitmap,cliprect,2,0x0800);
 	kyros_draw_sprites(screen->machine, bitmap,cliprect,3,0x0c00);
@@ -537,7 +537,7 @@ static void sstingry_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 VIDEO_UPDATE( sstingry )
 {
 	colortable_entry_set_value(screen->machine->colortable, 0x100, *videoram16 & 0xff);
-	fillbitmap(bitmap, 0x100, cliprect); //AT
+	bitmap_fill(bitmap, cliprect, 0x100); //AT
 
 	sstingry_draw_sprites(screen->machine, bitmap,cliprect,2,0x0800);
 	sstingry_draw_sprites(screen->machine, bitmap,cliprect,3,0x0c00);

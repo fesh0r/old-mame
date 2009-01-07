@@ -43,6 +43,8 @@ This info came from http://www.ne.jp/asahi/cc-sakura/akkun/old/fryski.html
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m6800/m6800.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 
@@ -84,21 +86,21 @@ static NVRAM_HANDLER( seicross )
 static MACHINE_RESET( friskyt )
 {
 	/* start with the protection mcu halted */
-	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
 }
 
 
 
 static READ8_HANDLER( friskyt_portB_r )
 {
-	return (portb & 0x9f) | (input_port_read_safe(machine, "DEBUG", 0) & 0x60);
+	return (portb & 0x9f) | (input_port_read_safe(space->machine, "DEBUG", 0) & 0x60);
 }
 
 static WRITE8_HANDLER( friskyt_portB_w )
 {
-//logerror("PC %04x: 8910 port B = %02x\n",activecpu_get_pc(),data);
+//logerror("PC %04x: 8910 port B = %02x\n",cpu_get_pc(space->cpu),data);
 	/* bit 0 is IRQ enable */
-	cpu_interrupt_enable(0,data & 1);
+	cpu_interrupt_enable(space->machine->cpu[0],data & 1);
 
 	/* bit 1 flips screen */
 
@@ -106,8 +108,8 @@ static WRITE8_HANDLER( friskyt_portB_w )
 	if (((portb & 4) == 0) && (data & 4))
 	{
 		/* reset and start the protection mcu */
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, CLEAR_LINE);
 	}
 
 	/* other bits unknown */
@@ -410,7 +412,7 @@ static MACHINE_DRIVER_START( nvram )
 	MDRV_CPU_ADD("mcu", NSC8105, 6000000)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(mcu_nvram_map,0)
 
-	MDRV_INTERLEAVE(20)	/* 20 CPU slices per frame - an high value to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(1200))	/* 20 CPU slices per frame - an high value to ensure proper */
 						/* synchronization of the CPUs */
 	MDRV_MACHINE_RESET(friskyt)
 	MDRV_NVRAM_HANDLER(seicross)

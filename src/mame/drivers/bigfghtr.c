@@ -109,6 +109,8 @@ Notes:
 
 **********************************************************************/
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "sound/dac.h"
 #include "sound/okim6295.h"
@@ -162,9 +164,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 static VIDEO_START( bigfghtr )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,16,16,64,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,16,16,64,32);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_cols,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_cols,16,16,64,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_cols,16,16,64,32);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_cols,8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0xf);
 	tilemap_set_transparent_pen(tx_tilemap,0xf);
@@ -256,7 +258,7 @@ static VIDEO_UPDATE( bigfghtr )
 	}
 	else
 	{
-		fillbitmap( bitmap, get_black_pen(screen->machine), cliprect );
+		bitmap_fill( bitmap, cliprect , get_black_pen(screen->machine));
 	}
 
 	if( sprite_enable ) draw_sprites(screen->machine, bitmap, cliprect, 2 );
@@ -272,20 +274,21 @@ static VIDEO_UPDATE( bigfghtr )
 
 static VIDEO_EOF( bigfghtr )
 {
-	buffer_spriteram16_w(machine,0,0,0xffff);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	buffer_spriteram16_w(space,0,0,0xffff);
 }
 
 
 static WRITE16_HANDLER( sound_command_w )
 {
 	if (ACCESSING_BITS_0_7)
-		soundlatch_w(machine,0,((data & 0x7f) << 1) | 1);
+		soundlatch_w(space,0,((data & 0x7f) << 1) | 1);
 }
 
 static WRITE16_HANDLER( io_w )
 {
 	COMBINE_DATA(&vreg);
-	flip_screen_set(vreg & 0x1000);
+	flip_screen_set(space->machine, vreg & 0x1000);
 }
 
 static int read_latch=0;
@@ -312,12 +315,12 @@ static READ16_HANDLER(sharedram_r)
 				if(read_latch)
 				{
 					read_latch=0;
-					return mame_rand(machine);
+					return mame_rand(space->machine);
 				}
 			break;
 
 			case 0x46/2:
-				return (input_port_read(machine, "P1") & 0xffff)^0xffff;
+				return (input_port_read(space->machine, "P1") & 0xffff)^0xffff;
 
 
 		}
@@ -357,7 +360,7 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( soundlatch_clear_r )
 {
-	soundlatch_clear_w(machine,0,0);
+	soundlatch_clear_w(space,0,0);
 	return 0;
 }
 

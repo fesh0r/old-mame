@@ -33,6 +33,8 @@ Merge with other Video System games ?
 ******************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "gstriker.h"
 #include "sound/2610intf.h"
 
@@ -180,15 +182,15 @@ Frequencies: 68k is XTAL_32MHZ/2
 
 //UINT16 *gs_videoram3;
 static UINT16 *gs_mixer_regs;
+static UINT16 dmmy_8f_ret;
 
 
 /*** MISC READ / WRITE HANDLERS **********************************************/
 
 static READ16_HANDLER(dmmy_8f)
 {
-	static int ret = 0xFFFF;
-	ret = ~ret;
-	return ret;
+	dmmy_8f_ret = ~dmmy_8f_ret;
+	return dmmy_8f_ret;
 }
 
 /*** SOUND RELATED ***********************************************************/
@@ -200,8 +202,8 @@ static WRITE16_HANDLER( sound_command_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		pending_command = 1;
-		soundlatch_w(machine,offset,data & 0xff);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(space,offset,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -219,11 +221,11 @@ static WRITE8_HANDLER( gs_sh_pending_command_clear_w )
 
 static WRITE8_HANDLER( gs_sh_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, "audio");
+	UINT8 *RAM = memory_region(space->machine, "audio");
 	int bankaddress;
 
 	bankaddress = 0x10000 + (data & 0x03) * 0x8000;
-	memory_set_bankptr(1,&RAM[bankaddress]);
+	memory_set_bankptr(space->machine, 1,&RAM[bankaddress]);
 }
 
 /*** GFX DECODE **************************************************************/
@@ -268,9 +270,9 @@ GFXDECODE_END
 static void gs_ym2610_irq(running_machine *machine, int irq)
 {
 	if (irq)
-		cpunum_set_input_line(machine, 1, 0, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[1], 0, ASSERT_LINE);
 	else
-		cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[1], 0, CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -986,11 +988,15 @@ static WRITE16_HANDLER( vbl_toggle_w )
 
 static void mcu_init( running_machine *machine )
 {
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x20008a, 0x20008b, 0, 0, twrldc94_mcu_w);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x20008a, 0x20008b, 0, 0, twrldc94_mcu_r);
+	dmmy_8f_ret = 0xFFFF;
+	pending_command = 0;
+	mcu_data = 0;
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x20008e, 0x20008f, 0, 0, twrldc94_prot_reg_w);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x20008e, 0x20008f, 0, 0, twrldc94_prot_reg_r);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x20008a, 0x20008b, 0, 0, twrldc94_mcu_w);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x20008a, 0x20008b, 0, 0, twrldc94_mcu_r);
+
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x20008e, 0x20008f, 0, 0, twrldc94_prot_reg_w);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x20008e, 0x20008f, 0, 0, twrldc94_prot_reg_r);
 }
 
 static DRIVER_INIT( twrldc94 )
@@ -1010,8 +1016,8 @@ static DRIVER_INIT( vgoalsoc )
 	gametype = 3;
 	mcu_init( machine );
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200090, 0x200091, 0, 0, vbl_toggle_w); // vblank toggle
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200090, 0x200091, 0, 0, vbl_toggle_r);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x200090, 0x200091, 0, 0, vbl_toggle_w); // vblank toggle
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x200090, 0x200091, 0, 0, vbl_toggle_r);
 }
 
 /*** GAME DRIVERS ************************************************************/

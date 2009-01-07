@@ -14,6 +14,7 @@
 #include "cpuintrf.h"
 #include "mips3.h"
 #include "cpu/vtlb.h"
+#include "timer.h"
 
 
 /***************************************************************************
@@ -193,7 +194,9 @@ struct _mips3_state
 
 	/* internal stuff */
 	mips3_flavor	flavor;
-	int 			(*irq_callback)(int irqline);
+	cpu_irq_callback irq_callback;
+	const device_config *device;
+	const address_space *program;
 	UINT32			system_clock;
 	UINT32			cpu_clock;
 	UINT64			count_zero_time;
@@ -222,15 +225,13 @@ struct _mips3_state
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-void mips3com_init(mips3_state *mips, mips3_flavor flavor, int bigendian, int index, int clock, const mips3_config *config, int (*irqcallback)(int));
+void mips3com_init(mips3_state *mips, mips3_flavor flavor, int bigendian, const device_config *device, cpu_irq_callback irqcallback);
 void mips3com_exit(mips3_state *mips);
 
 void mips3com_reset(mips3_state *mips);
 offs_t mips3com_dasm(mips3_state *mips, char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 void mips3com_update_cycle_counting(mips3_state *mips);
 
-void mips3com_map_tlb_entry(mips3_state *mips, int tlbindex);
-void mips3com_map_tlb_entries(mips3_state *mips);
 void mips3com_asid_changed(mips3_state *mips);
 int mips3com_translate_address(mips3_state *mips, int space, int intention, offs_t *address);
 void mips3com_tlbr(mips3_state *mips);

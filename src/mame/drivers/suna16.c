@@ -22,6 +22,8 @@ Year + Game                 By      Board      Hardware
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "sound/dac.h"
 #include "sound/2151intf.h"
@@ -53,9 +55,9 @@ static WRITE16_HANDLER( suna16_soundlatch_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w( machine, 0, data & 0xff );
+		soundlatch_w( space, 0, data & 0xff );
 	}
-	if (data & ~0xff)	logerror("CPU#0 PC %06X - Sound latch unknown bits: %04X\n", activecpu_get_pc(), data);
+	if (data & ~0xff)	logerror("CPU#0 PC %06X - Sound latch unknown bits: %04X\n", cpu_get_pc(space->cpu), data);
 }
 
 
@@ -69,7 +71,7 @@ static WRITE16_HANDLER( bssoccer_leds_w )
 		set_led_status(3, data & 0x08);
 		coin_counter_w(0, data & 0x10);
 	}
-	if (data & ~0x1f)	logerror("CPU#0 PC %06X - Leds unknown bits: %04X\n", activecpu_get_pc(), data);
+	if (data & ~0x1f)	logerror("CPU#0 PC %06X - Leds unknown bits: %04X\n", cpu_get_pc(space->cpu), data);
 }
 
 
@@ -81,7 +83,7 @@ static WRITE16_HANDLER( uballoon_leds_w )
 		set_led_status(0, data & 0x02);
 		set_led_status(1, data & 0x04);
 	}
-	if (data & ~0x07)	logerror("CPU#0 PC %06X - Leds unknown bits: %04X\n", activecpu_get_pc(), data);
+	if (data & ~0x07)	logerror("CPU#0 PC %06X - Leds unknown bits: %04X\n", cpu_get_pc(space->cpu), data);
 }
 
 
@@ -91,7 +93,7 @@ static WRITE16_HANDLER( bestbest_coin_w )
 	{
 		coin_counter_w(0, data & 0x04);
 	}
-	if (data & ~0x04)	logerror("CPU#0 PC %06X - Leds unknown bits: %04X\n", activecpu_get_pc(), data);
+	if (data & ~0x04)	logerror("CPU#0 PC %06X - Leds unknown bits: %04X\n", cpu_get_pc(space->cpu), data);
 }
 
 
@@ -212,7 +214,7 @@ static WRITE16_HANDLER( bestbest_prot_w )
 			case 0x00:	prot = prot ^ 0x0009;	break;
 			case 0x08:	prot = prot ^ 0x0002;	break;
 			case 0x0c:	prot = prot ^ 0x0003;	break;
-//          default:    logerror("CPU#0 PC %06X - Unknown protection value: %04X\n", activecpu_get_pc(), data);
+//          default:    logerror("CPU#0 PC %06X - Unknown protection value: %04X\n", cpu_get_pc(space->cpu), data);
 		}
 	}
 }
@@ -336,18 +338,18 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( bssoccer_pcm_1_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, "pcm1");
+	UINT8 *RAM = memory_region(space->machine, "pcm1");
 	int bank = data & 7;
-	if (bank & ~7)	logerror("CPU#2 PC %06X - ROM bank unknown bits: %02X\n", activecpu_get_pc(), data);
-	memory_set_bankptr(1, &RAM[bank * 0x10000 + 0x1000]);
+	if (bank & ~7)	logerror("CPU#2 PC %06X - ROM bank unknown bits: %02X\n", cpu_get_pc(space->cpu), data);
+	memory_set_bankptr(space->machine, 1, &RAM[bank * 0x10000 + 0x1000]);
 }
 
 static WRITE8_HANDLER( bssoccer_pcm_2_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, "pcm2");
+	UINT8 *RAM = memory_region(space->machine, "pcm2");
 	int bank = data & 7;
-	if (bank & ~7)	logerror("CPU#3 PC %06X - ROM bank unknown bits: %02X\n", activecpu_get_pc(), data);
-	memory_set_bankptr(2, &RAM[bank * 0x10000 + 0x1000]);
+	if (bank & ~7)	logerror("CPU#3 PC %06X - ROM bank unknown bits: %02X\n", cpu_get_pc(space->cpu), data);
+	memory_set_bankptr(space->machine, 2, &RAM[bank * 0x10000 + 0x1000]);
 }
 
 
@@ -408,10 +410,10 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( uballoon_pcm_1_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(machine, "pcm");
+	UINT8 *RAM = memory_region(space->machine, "pcm1");
 	int bank = data & 1;
-	if (bank & ~1)	logerror("CPU#2 PC %06X - ROM bank unknown bits: %02X\n", activecpu_get_pc(), data);
-	memory_set_bankptr(1, &RAM[bank * 0x10000 + 0x400]);
+	if (bank & ~1)	logerror("CPU#2 PC %06X - ROM bank unknown bits: %02X\n", cpu_get_pc(space->cpu), data);
+	memory_set_bankptr(space->machine, 1, &RAM[bank * 0x10000 + 0x400]);
 }
 
 /* Memory maps: Yes, *no* RAM */
@@ -434,7 +436,8 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET(uballoon)
 {
-	uballoon_pcm_1_bankswitch_w(machine, 0, 0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	uballoon_pcm_1_bankswitch_w(space, 0, 0);
 }
 
 
@@ -827,10 +830,10 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( bssoccer_interrupt )
 {
-	switch (cpu_getiloops())
+	switch (cpu_getiloops(device))
 	{
-		case 0: 	cpunum_set_input_line(machine, 0, 1, HOLD_LINE);	break;
-		case 1: 	cpunum_set_input_line(machine, 0, 2, HOLD_LINE);	break;
+		case 0: 	cpu_set_input_line(device, 1, HOLD_LINE);	break;
+		case 1: 	cpu_set_input_line(device, 2, HOLD_LINE);	break;
 	}
 }
 
@@ -852,7 +855,7 @@ static MACHINE_DRIVER_START( bssoccer )
 	MDRV_CPU_PROGRAM_MAP(bssoccer_pcm_2_readmem,bssoccer_pcm_2_writemem)
 	MDRV_CPU_IO_MAP(bssoccer_pcm_2_io_map,0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -904,13 +907,13 @@ static MACHINE_DRIVER_START( uballoon )
 	MDRV_CPU_ADD("audio", Z80, 3579545)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(uballoon_sound_readmem,uballoon_sound_writemem)
 
-	MDRV_CPU_ADD("pcm", Z80, 5000000)	/* ? */
+	MDRV_CPU_ADD("pcm1", Z80, 5000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(uballoon_pcm_1_readmem,uballoon_pcm_1_writemem)
 	MDRV_CPU_IO_MAP(uballoon_pcm_1_io_map,0)
 
 	/* 2nd PCM Z80 missing */
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_RESET(uballoon)
 
@@ -955,13 +958,13 @@ static MACHINE_DRIVER_START( sunaq )
 	MDRV_CPU_ADD("audio", Z80, 14318000/4)
 	MDRV_CPU_PROGRAM_MAP(sunaq_sound_readmem,sunaq_sound_writemem)
 
-	MDRV_CPU_ADD("pcm", Z80, 24000000/4)		/* Z80B */
+	MDRV_CPU_ADD("pcm1", Z80, 24000000/4)		/* Z80B */
 	MDRV_CPU_PROGRAM_MAP(bssoccer_pcm_1_readmem,bssoccer_pcm_1_writemem)
 	MDRV_CPU_IO_MAP(bssoccer_pcm_1_io_map,0)
 
 	/* 2nd PCM Z80 missing */
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -997,7 +1000,7 @@ MACHINE_DRIVER_END
 
 static void bestbest_ym3526_irqhandler(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ0, state);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_IRQ0, state);
 }
 
 static const ym3526_interface bestbest_ym3526_interface =
@@ -1027,13 +1030,13 @@ static MACHINE_DRIVER_START( bestbest )
 	MDRV_CPU_ADD("audio", Z80, 24000000/4)
 	MDRV_CPU_PROGRAM_MAP(bestbest_sound_map,0)
 
-	MDRV_CPU_ADD("pcm", Z80, 24000000/4)
+	MDRV_CPU_ADD("pcm1", Z80, 24000000/4)
 	MDRV_CPU_PROGRAM_MAP(bestbest_pcm_1_map,0)
 	MDRV_CPU_IO_MAP(bestbest_pcm_1_iomap,0)
 
 	/* 2nd PCM Z80 missing */
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1162,7 +1165,7 @@ ROM_START( uballoon )
 	ROM_REGION( 0x010000, "audio", 0 ) 	/* Z80 #1 - Music */
 	ROM_LOAD( "audio1.rom", 0x000000, 0x010000, CRC(c771f2b4) SHA1(6da4c526c0ea3be5d5bb055a31bf1171a6ddb51d) )
 
-	ROM_REGION( 0x020000, "pcm", 0 ) 	/* Z80 #2 - PCM */
+	ROM_REGION( 0x020000, "pcm1", 0 ) 	/* Z80 #2 - PCM */
 	ROM_LOAD( "audio2.rom", 0x000000, 0x020000, CRC(c7f75347) SHA1(5bbbd39285c593441c6da6a12f3632d60b103216) )
 
 	/* There's no Z80 #3 - PCM */
@@ -1215,7 +1218,7 @@ ROM_START( sunaq )
 	ROM_REGION( 0x010000, "audio", 0 ) 	/* Z80 #1 - Music */
 	ROM_LOAD( "audio1.bin", 0x000000, 0x010000, CRC(3df42f82) SHA1(91c1037c9d5d1ec82ed4cdfb35de5a6d626ecb3b) )
 
-	ROM_REGION( 0x080000, "pcm", 0 ) 	/* Z80 #2 - PCM */
+	ROM_REGION( 0x080000, "pcm1", 0 ) 	/* Z80 #2 - PCM */
 	ROM_LOAD( "audio2.bin", 0x000000, 0x080000, CRC(cac85ba9) SHA1(e5fbe813022c17d9eaf2a57184341666e2af365a) )
 
 	/* There's no Z80 #3 - PCM */
@@ -1292,7 +1295,7 @@ ROM_START( bestbest )
 	ROM_REGION( 0x10000, "audio", 0 ) 	/* Z80 #1 - Music */
 	ROM_LOAD( "5.bin", 0x00000, 0x10000, CRC(bb9265e6) SHA1(424eceac4fd48c9a99653ece2f3fcbc8b37569cf) ) // BEST OF BEST V10 XILINX PROGRAM 3020 1994,1,17
 
-	ROM_REGION( 0x10000, "pcm", 0 ) 	/* Z80 #2 - PCM */
+	ROM_REGION( 0x10000, "pcm1", 0 ) 	/* Z80 #2 - PCM */
 	ROM_LOAD( "6.bin", 0x00000, 0x10000, CRC(dd445f6b) SHA1(658417d72c003f25db273e3c731838317ed1876c) )
 
 	/* There's no Z80 #3 - PCM */

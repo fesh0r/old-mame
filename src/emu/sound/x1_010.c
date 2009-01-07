@@ -49,7 +49,6 @@ Registers:
 ***************************************************************************/
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "cpuintrf.h"
 #include "streams.h"
 #include "x1_010.h"
@@ -86,7 +85,7 @@ struct x1_010_info
 	int	rate;								// Output sampling rate (Hz)
 	sound_stream *	stream;					// Stream handle
 	int	address;							// address eor data
-	const char *region;						// region name
+	const UINT8 *region;					// region name
 	int	sound_enable;						// sound output enable/disable
 	UINT8	reg[0x2000];				// X1-010 Register & wave form area
 	UINT8	HI_WORD_BUF[0x2000];			// X1-010 16bit access ram check avoidance work
@@ -103,7 +102,7 @@ struct x1_010_info
 /*--------------------------------------------------------------
  generate sound to the mix buffer
 --------------------------------------------------------------*/
-static void seta_update( void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length )
+static STREAM_UPDATE( seta_update )
 {
 	struct x1_010_info *info = param;
 	X1_010_CHANNEL	*reg;
@@ -111,19 +110,19 @@ static void seta_update( void *param, stream_sample_t **inputs, stream_sample_t 
 	register INT8	*start, *end, data;
 	register UINT8	*env;
 	register UINT32	smp_offs, smp_step, env_offs, env_step, delta;
-	UINT8 *snd1 = memory_region(Machine, info->region);
+	const UINT8 *snd1 = info->region;
 
 	// mixer buffer zero clear
-	memset( buffer[0], 0, length*sizeof(*buffer[0]) );
-	memset( buffer[1], 0, length*sizeof(*buffer[1]) );
+	memset( outputs[0], 0, samples*sizeof(*outputs[0]) );
+	memset( outputs[1], 0, samples*sizeof(*outputs[1]) );
 
 //  if( info->sound_enable == 0 ) return;
 
 	for( ch = 0; ch < SETA_NUM_CHANNELS; ch++ ) {
 		reg = (X1_010_CHANNEL *)&(info->reg[ch*sizeof(X1_010_CHANNEL)]);
 		if( (reg->status&1) != 0 ) {							// Key On
-			stream_sample_t *bufL = buffer[0];
-			stream_sample_t *bufR = buffer[1];
+			stream_sample_t *bufL = outputs[0];
+			stream_sample_t *bufR = outputs[1];
 			if( (reg->status&2) == 0 ) {						// PCM sampling
 				start    = (INT8 *)(reg->start      *0x1000+snd1);
 				end      = (INT8 *)((0x100-reg->end)*0x1000+snd1);
@@ -139,7 +138,7 @@ static void seta_update( void *param, stream_sample_t **inputs, stream_sample_t 
 					LOG_SOUND(( "Play sample %p - %p, channel %X volume %d:%d freq %X step %X offset %X\n",
 						start, end, ch, volL, volR, freq, smp_step, smp_offs ));
 				}
-				for( i = 0; i < length; i++ ) {
+				for( i = 0; i < samples; i++ ) {
 					delta = smp_offs>>FREQ_BASE_BITS;
 					// sample ended?
 					if( start+delta >= end ) {
@@ -166,7 +165,7 @@ static void seta_update( void *param, stream_sample_t **inputs, stream_sample_t 
 					LOG_SOUND(( "Play waveform %X, channel %X volume %X freq %4X step %X offset %X\n",
 						reg->volume, ch, reg->end, freq, smp_step, smp_offs ));
 				}
-				for( i = 0; i < length; i++ ) {
+				for( i = 0; i < samples; i++ ) {
 					int vol;
 					delta = env_offs>>ENV_BASE_BITS;
 	 				// Envelope one shot mode
@@ -192,7 +191,7 @@ static void seta_update( void *param, stream_sample_t **inputs, stream_sample_t 
 
 
 
-static void *x1_010_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( x1_010 )
 {
 	int i;
 	const x1_010_interface *intf = config;
@@ -201,7 +200,7 @@ static void *x1_010_start(const char *tag, int sndindex, int clock, const void *
 	info = auto_malloc(sizeof(*info));
 	memset(info, 0, sizeof(*info));
 
-	info->region		= tag;
+	info->region		= device->region;
 	info->base_clock	= clock;
 	info->rate			= clock / 1024;
 	info->address		= intf->adr;
@@ -214,7 +213,7 @@ static void *x1_010_start(const char *tag, int sndindex, int clock, const void *
 	LOG_SOUND(("masterclock = %d rate = %d\n", clock, info->rate ));
 
 	/* get stream channels */
-	info->stream = stream_create(0,2,info->rate,info,seta_update);
+	info->stream = stream_create(device,0,2,info->rate,info,seta_update);
 
 	return info;
 }
@@ -255,7 +254,7 @@ WRITE8_HANDLER( seta_sound_w )
 	 	info->smp_offset[channel] = 0;
 	 	info->env_offset[channel] = 0;
 	}
-	LOG_REGISTER_WRITE(("PC: %06X : offset %6X : data %2X\n", activecpu_get_pc(), offset, data ));
+	LOG_REGISTER_WRITE(("PC: %06X : offset %6X : data %2X\n", cpu_get_pc(space->cpu), offset, data ));
 	info->reg[offset] = data;
 }
 
@@ -270,8 +269,8 @@ READ16_HANDLER( seta_sound_word_r )
 	UINT16	ret;
 
 	ret = info->HI_WORD_BUF[offset]<<8;
-	ret += (seta_sound_r( machine, offset )&0xff);
-	LOG_REGISTER_READ(( "Read X1-010 PC:%06X Offset:%04X Data:%04X\n", activecpu_get_pc(), offset, ret ));
+	ret += (seta_sound_r( space, offset )&0xff);
+	LOG_REGISTER_READ(( "Read X1-010 PC:%06X Offset:%04X Data:%04X\n", cpu_get_pc(space->cpu), offset, ret ));
 	return ret;
 }
 
@@ -279,8 +278,8 @@ WRITE16_HANDLER( seta_sound_word_w )
 {
 	struct x1_010_info *info = sndti_token(SOUND_X1_010, 0);
 	info->HI_WORD_BUF[offset] = (data>>8)&0xff;
-	seta_sound_w( machine, offset, data&0xff );
-	LOG_REGISTER_WRITE(( "Write X1-010 PC:%06X Offset:%04X Data:%04X\n", activecpu_get_pc(), offset, data ));
+	seta_sound_w( space, offset, data&0xff );
+	LOG_REGISTER_WRITE(( "Write X1-010 PC:%06X Offset:%04X Data:%04X\n", cpu_get_pc(space->cpu), offset, data ));
 }
 
 
@@ -289,7 +288,7 @@ WRITE16_HANDLER( seta_sound_word_w )
  * Generic get_info
  **************************************************************************/
 
-static void x1_010_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( x1_010 )
 {
 	switch (state)
 	{
@@ -298,24 +297,24 @@ static void x1_010_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void x1_010_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( x1_010 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = x1_010_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = x1_010_start;				break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( x1_010 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( x1_010 );			break;
+		case SNDINFO_PTR_STOP:							/* Nothing */									break;
+		case SNDINFO_PTR_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "X1-010";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Seta custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "X1-010");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Seta custom");					break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

@@ -14,6 +14,7 @@ likewise be a 2 screen game
 
 ***************************************************************************/
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "video/konamiic.h"
 #include "machine/eeprom.h"
@@ -21,14 +22,15 @@ likewise be a 2 screen game
 #include "sound/2151intf.h"
 #include "sound/k054539.h"
 #include "rendlay.h"
-
-VIDEO_START( xmen );
-VIDEO_START( xmen6p );
-VIDEO_UPDATE( xmen );
-VIDEO_UPDATE( xmen6p );
-VIDEO_EOF( xmen6p );
+#include "includes/xmen.h"
 
 UINT16 xmen_current_frame;
+
+/* 6p version */
+UINT16*xmen6p_spriteramleft;
+UINT16*xmen6p_spriteramright;
+UINT16*xmen6p_tilemapleft;
+UINT16*xmen6p_tilemapright;
 
 /***************************************************************************
 
@@ -56,7 +58,7 @@ static NVRAM_HANDLER( xmen )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_intf);
+		eeprom_init(machine, &eeprom_intf);
 
 		if (file)
 		{
@@ -72,11 +74,11 @@ static READ16_HANDLER( eeprom_r )
 {
 	int res;
 
-logerror("%06x eeprom_r\n",activecpu_get_pc());
+logerror("%06x eeprom_r\n",cpu_get_pc(space->cpu));
 	/* bit 6 is EEPROM data */
 	/* bit 7 is EEPROM ready */
 	/* bit 14 is service button */
-	res = input_port_read(machine, "EEPROM");
+	res = input_port_read(space->machine, "EEPROM");
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
@@ -88,7 +90,7 @@ logerror("%06x eeprom_r\n",activecpu_get_pc());
 
 static WRITE16_HANDLER( eeprom_w )
 {
-logerror("%06x: write %04x to 108000\n",activecpu_get_pc(),data);
+logerror("%06x: write %04x to 108000\n",cpu_get_pc(space->cpu),data);
 	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0 = coin counter */
@@ -112,20 +114,20 @@ logerror("%06x: write %04x to 108000\n",activecpu_get_pc(),data);
 
 static READ16_HANDLER( sound_status_r )
 {
-	return soundlatch2_r(machine,0);
+	return soundlatch2_r(space,0);
 }
 
 static WRITE16_HANDLER( sound_cmd_w )
 {
 	if (ACCESSING_BITS_0_7) {
 		data &= 0xff;
-		soundlatch_w(machine, 0, data);
+		soundlatch_w(space, 0, data);
 	}
 }
 
 static WRITE16_HANDLER( sound_irq_w )
 {
-	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+	cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
 }
 
 //int xmen_irqenabled;
@@ -134,7 +136,7 @@ static WRITE16_HANDLER( xmen_18fa00_w )
 {
 	if(ACCESSING_BITS_0_7) {
 		/* bit 2 is interrupt enable */
-		interrupt_enable_w(machine,0,data & 0x04);
+		interrupt_enable_w(space,0,data & 0x04);
 	//  xmen_irqenabled = data;
 	}
 }
@@ -143,13 +145,13 @@ static UINT8 sound_curbank;
 
 static void sound_reset_bank(running_machine *machine)
 {
-	memory_set_bankptr(4, memory_region(machine, "audio") + 0x10000 + (sound_curbank & 0x07) * 0x4000);
+	memory_set_bankptr(machine, 4, memory_region(machine, "audio") + 0x10000 + (sound_curbank & 0x07) * 0x4000);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	sound_curbank = data;
-	sound_reset_bank(machine);
+	sound_reset_bank(space->machine);
 }
 
 
@@ -187,12 +189,6 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf800, 0xf800) AM_WRITE(sound_bankswitch_w)
 ADDRESS_MAP_END
 
-
-/* 6p version */
-UINT16*xmen6p_spriteramleft;
-UINT16*xmen6p_spriteramright;
-UINT16*xmen6p_tilemapleft;
-UINT16*xmen6p_tilemapright;
 
 static ADDRESS_MAP_START( 6p_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
@@ -419,8 +415,8 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( xmen_interrupt )
 {
-	if (cpu_getiloops() == 0) irq5_line_hold(machine, cpunum);
-	else irq3_line_hold(machine, cpunum);
+	if (cpu_getiloops(device) == 0) irq5_line_hold(device);
+	else irq3_line_hold(device);
 }
 
 static STATE_POSTLOAD( xmen_postload )
@@ -430,7 +426,7 @@ static STATE_POSTLOAD( xmen_postload )
 
 static MACHINE_START( xmen )
 {
-	state_save_register_global(sound_curbank);
+	state_save_register_global(machine, sound_curbank);
 	state_save_register_postload(machine, xmen_postload, NULL);
 }
 
@@ -482,9 +478,9 @@ static MACHINE_RESET(xmen6p)
 
 static INTERRUPT_GEN( xmen6p_interrupt )
 {
-	if (cpu_getiloops() == 0)
+	if (cpu_getiloops(device) == 0)
 	{
-		irq5_line_hold(machine, cpunum);
+		irq5_line_hold(device);
 
 
 	}
@@ -492,7 +488,7 @@ static INTERRUPT_GEN( xmen6p_interrupt )
 	{
 //      if (xmen_irqenabled&0x04)
 //      {
-			irq3_line_hold(machine, cpunum);
+			irq3_line_hold(device);
 //          xmen_current_frame = 0x00;
 
 //      }
@@ -817,8 +813,8 @@ ROM_END
 
 static DRIVER_INIT( xmen )
 {
-	konami_rom_deinterleave_2("gfx1");
-	konami_rom_deinterleave_4("gfx2");
+	konami_rom_deinterleave_2(machine, "gfx1");
+	konami_rom_deinterleave_4(machine, "gfx2");
 }
 
 GAME( 1992, xmen,    0,    xmen, xmen,   xmen,   ROT0, "Konami", "X-Men (4 Players ver UBB)", 0 ) /* Second "version" letter denotes players, A=2 players, B=4 players, C=6 players ??? */

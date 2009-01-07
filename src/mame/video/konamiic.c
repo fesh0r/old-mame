@@ -1150,7 +1150,6 @@ Registers (word-wise):
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/konamiic.h"
 
 #define VERBOSE 0
@@ -1185,25 +1184,25 @@ static void shuffle(UINT16 *buf,int len)
 
 
 /* helper function to join two 16-bit ROMs and form a 32-bit data stream */
-void konami_rom_deinterleave_2(const char *mem_region)
+void konami_rom_deinterleave_2(running_machine *machine, const char *mem_region)
 {
-	shuffle((UINT16 *)memory_region(Machine, mem_region),memory_region_length(Machine, mem_region)/2);
+	shuffle((UINT16 *)memory_region(machine, mem_region),memory_region_length(machine, mem_region)/2);
 }
 
 /* hacked version of rom_deinterleave_2_half for Lethal Enforcers */
-void konami_rom_deinterleave_2_half(const char *mem_region)
+void konami_rom_deinterleave_2_half(running_machine *machine, const char *mem_region)
 {
-	UINT8 *rgn = memory_region(Machine, mem_region);
+	UINT8 *rgn = memory_region(machine, mem_region);
 
-	shuffle((UINT16 *)rgn,memory_region_length(Machine, mem_region)/4);
-	shuffle((UINT16 *)(rgn+memory_region_length(Machine, mem_region)/2),memory_region_length(Machine, mem_region)/4);
+	shuffle((UINT16 *)rgn,memory_region_length(machine, mem_region)/4);
+	shuffle((UINT16 *)(rgn+memory_region_length(machine, mem_region)/2),memory_region_length(machine, mem_region)/4);
 }
 
 /* helper function to join four 16-bit ROMs and form a 64-bit data stream */
-void konami_rom_deinterleave_4(const char *mem_region)
+void konami_rom_deinterleave_4(running_machine *machine, const char *mem_region)
 {
-	konami_rom_deinterleave_2(mem_region);
-	konami_rom_deinterleave_2(mem_region);
+	konami_rom_deinterleave_2(machine, mem_region);
+	konami_rom_deinterleave_2(machine, mem_region);
 }
 
 
@@ -1213,7 +1212,7 @@ static void decode_gfx(running_machine *machine, int gfx_index, UINT8 *data, UIN
 
 	memcpy(&gl, layout, sizeof(gl));
 	gl.total = total;
-	machine->gfx[gfx_index] = allocgfx(&gl);
+	machine->gfx[gfx_index] = allocgfx(machine, &gl);
 	decodegfx(machine->gfx[gfx_index], data, 0, machine->gfx[gfx_index]->total_elements);
 
 	/* set the color information */
@@ -1519,13 +1518,13 @@ static TILE_GET_INFO( K007342_get_tile_info1 ) { K007342_get_tile_info(machine,t
 
 
 
-void K007342_vh_start(int gfx_index, void (*callback)(int tmap, int bank, int *code, int *color, int *flags))
+void K007342_vh_start(running_machine *machine, int gfx_index, void (*callback)(int tmap, int bank, int *code, int *color, int *flags))
 {
 	K007342_gfxnum = gfx_index;
 	K007342_callback = callback;
 
-	K007342_tilemap[0] = tilemap_create(K007342_get_tile_info0,K007342_scan,8,8,64,32);
-	K007342_tilemap[1] = tilemap_create(K007342_get_tile_info1,K007342_scan,8,8,64,32);
+	K007342_tilemap[0] = tilemap_create(machine, K007342_get_tile_info0,K007342_scan,8,8,64,32);
+	K007342_tilemap[1] = tilemap_create(machine, K007342_get_tile_info1,K007342_scan,8,8,64,32);
 
 	K007342_ram = auto_malloc(0x2000);
 	K007342_scroll_ram = auto_malloc(0x0200);
@@ -1540,13 +1539,13 @@ void K007342_vh_start(int gfx_index, void (*callback)(int tmap, int bank, int *c
 	tilemap_set_transparent_pen(K007342_tilemap[0],0);
 	tilemap_set_transparent_pen(K007342_tilemap[1],0);
 
-	state_save_register_global_pointer(K007342_ram, 0x2000);
-	state_save_register_global_pointer(K007342_scroll_ram, 0x0200);
-	state_save_register_global(K007342_int_enabled);
-	state_save_register_global(K007342_flipscreen);
-	state_save_register_global_array(K007342_scrollx);
-	state_save_register_global_array(K007342_scrolly);
-	state_save_register_global_array(K007342_regs);
+	state_save_register_global_pointer(machine, K007342_ram, 0x2000);
+	state_save_register_global_pointer(machine, K007342_scroll_ram, 0x0200);
+	state_save_register_global(machine, K007342_int_enabled);
+	state_save_register_global(machine, K007342_flipscreen);
+	state_save_register_global_array(machine, K007342_scrollx);
+	state_save_register_global_array(machine, K007342_scrolly);
+	state_save_register_global_array(machine, K007342_regs);
 }
 
 READ8_HANDLER( K007342_r )
@@ -1708,8 +1707,8 @@ void K007420_vh_start(running_machine *machine, int gfxnum, void (*callback)(int
 
 	K007420_banklimit = -1;
 
-	state_save_register_global_pointer(K007420_ram, 0x0200);
-	state_save_register_global(K007420_banklimit);
+	state_save_register_global_pointer(machine, K007420_ram, 0x0200);
+	state_save_register_global(machine, K007420_banklimit);
 }
 
 READ8_HANDLER( K007420_r )
@@ -2042,9 +2041,9 @@ void K052109_vh_start(running_machine *machine,const char *gfx_memory_region,int
 
 	has_extra_video_ram = 0;
 
-	K052109_tilemap[0] = tilemap_create(K052109_get_tile_info0,tilemap_scan_rows,8,8,64,32);
-	K052109_tilemap[1] = tilemap_create(K052109_get_tile_info1,tilemap_scan_rows,8,8,64,32);
-	K052109_tilemap[2] = tilemap_create(K052109_get_tile_info2,tilemap_scan_rows,8,8,64,32);
+	K052109_tilemap[0] = tilemap_create(machine, K052109_get_tile_info0,tilemap_scan_rows,8,8,64,32);
+	K052109_tilemap[1] = tilemap_create(machine, K052109_get_tile_info1,tilemap_scan_rows,8,8,64,32);
+	K052109_tilemap[2] = tilemap_create(machine, K052109_get_tile_info2,tilemap_scan_rows,8,8,64,32);
 
 	K052109_ram = auto_malloc(0x6000);
 
@@ -2069,16 +2068,16 @@ void K052109_vh_start(running_machine *machine,const char *gfx_memory_region,int
 		K052109_dx[i] = K052109_dy[i] = 0;
 	}
 
-	state_save_register_global_pointer(K052109_ram, 0x6000);
-	state_save_register_global(K052109_RMRD_line);
-	state_save_register_global(K052109_romsubbank);
-	state_save_register_global(K052109_scrollctrl);
-	state_save_register_global(K052109_irq_enabled);
-	state_save_register_global_array(K052109_charrombank);
-	state_save_register_global_array(K052109_charrombank_2);
-	state_save_register_global_array(K052109_dx);
-	state_save_register_global_array(K052109_dy);
-	state_save_register_global(has_extra_video_ram);
+	state_save_register_global_pointer(machine, K052109_ram, 0x6000);
+	state_save_register_global(machine, K052109_RMRD_line);
+	state_save_register_global(machine, K052109_romsubbank);
+	state_save_register_global(machine, K052109_scrollctrl);
+	state_save_register_global(machine, K052109_irq_enabled);
+	state_save_register_global_array(machine, K052109_charrombank);
+	state_save_register_global_array(machine, K052109_charrombank_2);
+	state_save_register_global_array(machine, K052109_dx);
+	state_save_register_global_array(machine, K052109_dy);
+	state_save_register_global(machine, has_extra_video_ram);
 
 	state_save_register_postload(machine, K052109_tileflip_reset, NULL);
 }
@@ -2100,7 +2099,7 @@ READ8_HANDLER( K052109_r )
 			else if (offset >= 0x3a00 && offset < 0x3c00)
 			{	/* B x scroll */	}
 //          else
-//logerror("%04x: read from unknown 052109 address %04x\n",activecpu_get_pc(),offset);
+//logerror("%04x: read from unknown 052109 address %04x\n",cpu_get_pc(space->cpu),offset);
 		}
 
 		return K052109_ram[offset];
@@ -2121,11 +2120,11 @@ else
 		(*K052109_callback)(0,bank,&code,&color,&flags,&priority);
 
 		addr = (code << 5) + (offset & 0x1f);
-		addr &= memory_region_length(machine, K052109_memory_region)-1;
+		addr &= memory_region_length(space->machine, K052109_memory_region)-1;
 
-//      logerror("%04x: off = %04x sub = %02x (bnk = %x) adr = %06x\n",activecpu_get_pc(),offset,K052109_romsubbank,bank,addr);
+//      logerror("%04x: off = %04x sub = %02x (bnk = %x) adr = %06x\n",cpu_get_pc(space->cpu),offset,K052109_romsubbank,bank,addr);
 
-		return memory_region(machine, K052109_memory_region)[addr];
+		return memory_region(space->machine, K052109_memory_region)[addr];
 	}
 }
 
@@ -2150,13 +2149,13 @@ WRITE8_HANDLER( K052109_w )
 			if (K052109_scrollctrl != data)
 			{
 //popmessage("scrollcontrol = %02x",data);
-//logerror("%04x: rowscrollcontrol = %02x\n",activecpu_get_pc(),data);
+//logerror("%04x: rowscrollcontrol = %02x\n",cpu_get_pc(space->cpu),data);
 				K052109_scrollctrl = data;
 			}
 		}
 		else if (offset == 0x1d00)
 		{
-//logerror("%04x: 052109 register 1d00 = %02x\n",activecpu_get_pc(),data);
+//logerror("%04x: 052109 register 1d00 = %02x\n",cpu_get_pc(space->cpu),data);
 			/* bit 2 = irq enable */
 			/* the custom chip can also generate NMI and FIRQ, for use with a 6809 */
 			K052109_irq_enabled = data & 0x04;
@@ -2186,12 +2185,12 @@ WRITE8_HANDLER( K052109_w )
 		}
 		else if (offset == 0x1e00 || offset == 0x3e00) // Surprise Attack uses offset 0x3e00
 		{
-//logerror("%04x: 052109 register 1e00 = %02x\n",activecpu_get_pc(),data);
+//logerror("%04x: 052109 register 1e00 = %02x\n",cpu_get_pc(space->cpu),data);
 			K052109_romsubbank = data;
 		}
 		else if (offset == 0x1e80)
 		{
-//if ((data & 0xfe)) logerror("%04x: 052109 register 1e80 = %02x\n",activecpu_get_pc(),data);
+//if ((data & 0xfe)) logerror("%04x: 052109 register 1e80 = %02x\n",cpu_get_pc(space->cpu),data);
 			tilemap_set_flip(K052109_tilemap[0],(data & 1) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 			tilemap_set_flip(K052109_tilemap[1],(data & 1) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 			tilemap_set_flip(K052109_tilemap[2],(data & 1) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
@@ -2242,32 +2241,32 @@ WRITE8_HANDLER( K052109_w )
 			K052109_charrombank_2[3] = (data >> 4) & 0x0f;
 		}
 //      else
-//          logerror("%04x: write %02x to unknown 052109 address %04x\n",activecpu_get_pc(),data,offset);
+//          logerror("%04x: write %02x to unknown 052109 address %04x\n",cpu_get_pc(space->cpu),data,offset);
 	}
 }
 
 READ16_HANDLER( K052109_word_r )
 {
-	return K052109_r(machine,offset + 0x2000) | (K052109_r(machine,offset) << 8);
+	return K052109_r(space,offset + 0x2000) | (K052109_r(space,offset) << 8);
 }
 
 WRITE16_HANDLER( K052109_word_w )
 {
 	if (ACCESSING_BITS_8_15)
-		K052109_w(machine,offset,(data >> 8) & 0xff);
+		K052109_w(space,offset,(data >> 8) & 0xff);
 	if (ACCESSING_BITS_0_7)
-		K052109_w(machine,offset + 0x2000,data & 0xff);
+		K052109_w(space,offset + 0x2000,data & 0xff);
 }
 
 READ16_HANDLER(K052109_lsb_r)
 {
-	return K052109_r(machine,offset);
+	return K052109_r(space,offset);
 }
 
 WRITE16_HANDLER(K052109_lsb_w)
 {
 	if(ACCESSING_BITS_0_7)
-		K052109_w(machine, offset, data & 0xff);
+		K052109_w(space, offset, data & 0xff);
 }
 
 void K052109_set_RMRD_line(int state)
@@ -2563,13 +2562,13 @@ void K051960_vh_start(running_machine *machine,const char *gfx_memory_region,int
 	K051960_ram = auto_malloc(0x400);
 	memset(K051960_ram,0,0x400);
 
-	state_save_register_global(K051960_romoffset);
-	state_save_register_global(K051960_spriteflip);
-	state_save_register_global(K051960_readroms);
-	state_save_register_global_array(K051960_spriterombank);
-	state_save_register_global_pointer(K051960_ram, 0x400);
-	state_save_register_global(K051960_irq_enabled);
-	state_save_register_global(K051960_nmi_enabled);
+	state_save_register_global(machine, K051960_romoffset);
+	state_save_register_global(machine, K051960_spriteflip);
+	state_save_register_global(machine, K051960_readroms);
+	state_save_register_global_array(machine, K051960_spriterombank);
+	state_save_register_global_pointer(machine, K051960_ram, 0x400);
+	state_save_register_global(machine, K051960_irq_enabled);
+	state_save_register_global(machine, K051960_nmi_enabled);
 }
 
 
@@ -2590,7 +2589,7 @@ static int K051960_fetchromdata(running_machine *machine, int byte)
 	addr = (code << 7) | (off1 << 2) | byte;
 	addr &= memory_region_length(machine, K051960_memory_region)-1;
 
-//  popmessage("%04x: addr %06x",activecpu_get_pc(),addr);
+//  popmessage("%s: addr %06x",cpuexec_describe_context(machine),addr);
 
 	return memory_region(machine, K051960_memory_region)[addr];
 }
@@ -2601,7 +2600,7 @@ READ8_HANDLER( K051960_r )
 	{
 		/* the 051960 remembers the last address read and uses it when reading the sprite ROMs */
 		K051960_romoffset = (offset & 0x3fc) >> 2;
-		return K051960_fetchromdata(machine, offset & 3);	/* only 88 Games reads the ROMs from here */
+		return K051960_fetchromdata(space->machine, offset & 3);	/* only 88 Games reads the ROMs from here */
 	}
 	else
 		return K051960_ram[offset];
@@ -2614,22 +2613,22 @@ WRITE8_HANDLER( K051960_w )
 
 READ16_HANDLER( K051960_word_r )
 {
-	return K051960_r(machine,offset*2 + 1) | (K051960_r(machine,offset*2) << 8);
+	return K051960_r(space,offset*2 + 1) | (K051960_r(space,offset*2) << 8);
 }
 
 WRITE16_HANDLER( K051960_word_w )
 {
 	if (ACCESSING_BITS_8_15)
-		K051960_w(machine,offset*2,(data >> 8) & 0xff);
+		K051960_w(space,offset*2,(data >> 8) & 0xff);
 	if (ACCESSING_BITS_0_7)
-		K051960_w(machine,offset*2 + 1,data & 0xff);
+		K051960_w(space,offset*2 + 1,data & 0xff);
 }
 
 READ8_HANDLER( K051937_r )
 {
 	if (K051960_readroms && offset >= 4 && offset < 8)
 	{
-		return K051960_fetchromdata(machine, offset & 3);
+		return K051960_fetchromdata(space->machine, offset & 3);
 	}
 	else
 	{
@@ -2640,7 +2639,7 @@ READ8_HANDLER( K051937_r )
 			/* some games need bit 0 to pulse */
 			return (counter++) & 1;
 		}
-//logerror("%04x: read unknown 051937 address %x\n",activecpu_get_pc(),offset);
+//logerror("%04x: read unknown 051937 address %x\n",cpu_get_pc(space->cpu),offset);
 		return 0;
 	}
 }
@@ -2667,12 +2666,12 @@ WRITE8_HANDLER( K051937_w )
 
 		/* bit 5 = enable gfx ROM reading */
 		K051960_readroms = data & 0x20;
-//logerror("%04x: write %02x to 051937 address %x\n",activecpu_get_pc(),data,offset);
+//logerror("%04x: write %02x to 051937 address %x\n",cpu_get_pc(space->cpu),data,offset);
 	}
 	else if (offset == 1)
 	{
-//  popmessage("%04x: write %02x to 051937 address %x",activecpu_get_pc(),data,offset);
-//logerror("%04x: write %02x to unknown 051937 address %x\n",activecpu_get_pc(),data,offset);
+//  popmessage("%04x: write %02x to 051937 address %x",cpu_get_pc(space->cpu),data,offset);
+//logerror("%04x: write %02x to unknown 051937 address %x\n",cpu_get_pc(space->cpu),data,offset);
 	}
 	else if (offset >= 2 && offset < 5)
 	{
@@ -2680,22 +2679,22 @@ WRITE8_HANDLER( K051937_w )
 	}
 	else
 	{
-//  popmessage("%04x: write %02x to 051937 address %x",activecpu_get_pc(),data,offset);
-//logerror("%04x: write %02x to unknown 051937 address %x\n",activecpu_get_pc(),data,offset);
+//  popmessage("%04x: write %02x to 051937 address %x",cpu_get_pc(space->cpu),data,offset);
+//logerror("%04x: write %02x to unknown 051937 address %x\n",cpu_get_pc(space->cpu),data,offset);
 	}
 }
 
 READ16_HANDLER( K051937_word_r )
 {
-	return K051937_r(machine,offset*2 + 1) | (K051937_r(machine,offset*2) << 8);
+	return K051937_r(space,offset*2 + 1) | (K051937_r(space,offset*2) << 8);
 }
 
 WRITE16_HANDLER( K051937_word_w )
 {
 	if (ACCESSING_BITS_8_15)
-		K051937_w(machine,offset*2,(data >> 8) & 0xff);
+		K051937_w(space,offset*2,(data >> 8) & 0xff);
 	if (ACCESSING_BITS_0_7)
-		K051937_w(machine,offset*2 + 1,data & 0xff);
+		K051937_w(space,offset*2 + 1,data & 0xff);
 }
 
 
@@ -2928,23 +2927,23 @@ READ8_HANDLER( K052109_051960_r )
 	if (K052109_RMRD_line == CLEAR_LINE)
 	{
 		if (offset >= 0x3800 && offset < 0x3808)
-			return K051937_r(machine,offset - 0x3800);
+			return K051937_r(space,offset - 0x3800);
 		else if (offset < 0x3c00)
-			return K052109_r(machine,offset);
+			return K052109_r(space,offset);
 		else
-			return K051960_r(machine,offset - 0x3c00);
+			return K051960_r(space,offset - 0x3c00);
 	}
-	else return K052109_r(machine,offset);
+	else return K052109_r(space,offset);
 }
 
 WRITE8_HANDLER( K052109_051960_w )
 {
 	if (offset >= 0x3800 && offset < 0x3808)
-		K051937_w(machine,offset - 0x3800,data);
+		K051937_w(space,offset - 0x3800,data);
 	else if (offset < 0x3c00)
-		K052109_w(machine,offset,data);
+		K052109_w(space,offset,data);
 	else
-		K051960_w(machine,offset - 0x3c00,data);
+		K051960_w(space,offset - 0x3c00,data);
 }
 
 
@@ -3062,12 +3061,12 @@ void K053245_vh_start(running_machine *machine,int chip, const char *gfx_memory_
 	memset(K053245_ram[chip],0,K053245_ramsize[chip]);
 	memset(K053245_buffer[chip],0,K053245_ramsize[chip]);
 
-	state_save_register_item_pointer("K053245", chip, K053245_ram[chip], K053245_ramsize[chip] / 2);
-	state_save_register_item_pointer("K053245", chip, K053245_buffer[chip], K053245_ramsize[chip] / 2);
-	state_save_register_item("K053245", chip, K053244_rombank[chip]);
-	state_save_register_item("K053245", chip, K053245_dx[chip]);
-	state_save_register_item("K053245", chip, K053245_dy[chip]);
-	state_save_register_item_array("K053245", chip, K053244_regs[chip]);
+	state_save_register_item_pointer(machine, "K053245", NULL, chip, K053245_ram[chip], K053245_ramsize[chip] / 2);
+	state_save_register_item_pointer(machine, "K053245", NULL, chip, K053245_buffer[chip], K053245_ramsize[chip] / 2);
+	state_save_register_item(machine, "K053245", NULL, chip, K053244_rombank[chip]);
+	state_save_register_item(machine, "K053245", NULL, chip, K053245_dx[chip]);
+	state_save_register_item(machine, "K053245", NULL, chip, K053245_dy[chip]);
+	state_save_register_item_array(machine, "K053245", NULL, chip, K053244_regs[chip]);
 }
 
 void K053245_set_SpriteOffset(int chip,int offsx, int offsy)
@@ -3136,7 +3135,7 @@ static UINT8 K053244_chip_r (running_machine *machine, int chip, int offset)
 			| ((offset & 3) ^ 1);
 		addr &= memory_region_length(machine, K053245_memory_region[chip])-1;
 
-//  popmessage("%04x: offset %02x addr %06x",activecpu_get_pc(),offset&3,addr);
+//  popmessage("%s: offset %02x addr %06x",cpuexec_describe_context(machine),offset&3,addr);
 
 		return memory_region(machine, K053245_memory_region[chip])[addr];
 	}
@@ -3147,14 +3146,14 @@ static UINT8 K053244_chip_r (running_machine *machine, int chip, int offset)
 	}
 	else
 	{
-//logerror("%04x: read from unknown 053244 address %x\n",activecpu_get_pc(),offset);
+//logerror("%s: read from unknown 053244 address %x\n",cpuexec_describe_context(machine),offset);
 		return 0;
 	}
 }
 
 READ8_HANDLER( K053244_r )
 {
-	return K053244_chip_r(machine,0,offset);
+	return K053244_chip_r(space->machine,0,offset);
 }
 
 static void K053244_chip_w(int chip, int offset, int data)
@@ -3167,7 +3166,7 @@ static void K053244_chip_w(int chip, int offset, int data)
 //          popmessage("053244 reg 05 = %02x",data);
 		/* bit 2 = unknown, Parodius uses it */
 		/* bit 5 = unknown, Rollergames uses it */
-//      logerror("%04x: write %02x to 053244 address 5\n",activecpu_get_pc(),data);
+//      logerror("%s: write %02x to 053244 address 5\n",cpuexec_describe_context(machine),data);
 		break;
 	}
 	case 0x06:
@@ -3190,26 +3189,26 @@ WRITE8_HANDLER( K053244_1_w )
 
 READ16_HANDLER( K053244_lsb_r )
 {
-	return K053244_r(machine, offset);
+	return K053244_r(space, offset);
 }
 
 WRITE16_HANDLER( K053244_lsb_w )
 {
 	if (ACCESSING_BITS_0_7)
-		K053244_w(machine, offset, data & 0xff);
+		K053244_w(space, offset, data & 0xff);
 }
 
 READ16_HANDLER( K053244_word_r )
 {
-	return (K053244_r(machine, offset*2)<<8)|K053244_r(machine, offset*2+1);
+	return (K053244_r(space, offset*2)<<8)|K053244_r(space, offset*2+1);
 }
 
 WRITE16_HANDLER( K053244_word_w )
 {
 	if (ACCESSING_BITS_8_15)
-		K053244_w(machine, offset*2, (data >> 8) & 0xff);
+		K053244_w(space, offset*2, (data >> 8) & 0xff);
 	if (ACCESSING_BITS_0_7)
-		K053244_w(machine, offset*2+1, data & 0xff);
+		K053244_w(space, offset*2+1, data & 0xff);
 }
 
 void K053244_bankselect(int chip, int bank)
@@ -3816,10 +3815,10 @@ void K053247_vh_start(running_machine *machine, const char *gfx_memory_region, i
 	memset(K053246_regs, 0, 8);
 	memset(K053247_regs, 0, 32);
 
-	state_save_register_global_pointer(K053247_ram, 0x800);
-	state_save_register_global_array(K053246_regs);
-	state_save_register_global_array(K053247_regs);
-	state_save_register_global(K053246_OBJCHA_line);
+	state_save_register_global_pointer(machine, K053247_ram, 0x800);
+	state_save_register_global_array(machine, K053246_regs);
+	state_save_register_global_array(machine, K053247_regs);
+	state_save_register_global(machine, K053246_OBJCHA_line);
 }
 
 /* K055673 used with the 54246 in PreGX/Run and Gun/System GX games */
@@ -3952,10 +3951,10 @@ void K055673_vh_start(running_machine *machine, const char *gfx_memory_region, i
 	memset(K053246_regs, 0, 8);
 	memset(K053247_regs, 0, 32);
 
-	state_save_register_global_pointer(K053247_ram, 0x800);
-	state_save_register_global_array(K053246_regs);
-	state_save_register_global_array(K053247_regs);
-	state_save_register_global(K053246_OBJCHA_line);
+	state_save_register_global_pointer(machine, K053247_ram, 0x800);
+	state_save_register_global_array(machine, K053246_regs);
+	state_save_register_global_array(machine, K053247_regs);
+	state_save_register_global(machine, K053246_OBJCHA_line);
 }
 
 WRITE16_HANDLER( K053247_reg_word_w ) // write-only OBJSET2 registers (see p.43 table 6.1)
@@ -4022,9 +4021,9 @@ WRITE8_HANDLER( K053247_w )
 // in this window, +0 = 32 bits from one set of ROMs, and +8 = 32 bits from another set
 READ16_HANDLER( K055673_rom_word_r )	// 5bpp
 {
-	UINT8 *ROM8 = (UINT8 *)memory_region(machine, K053247_memory_region);
-	UINT16 *ROM = (UINT16 *)memory_region(machine, K053247_memory_region);
-	int size4 = (memory_region_length(machine, K053247_memory_region)/(1024*1024))/5;
+	UINT8 *ROM8 = (UINT8 *)memory_region(space->machine, K053247_memory_region);
+	UINT16 *ROM = (UINT16 *)memory_region(space->machine, K053247_memory_region);
+	int size4 = (memory_region_length(space->machine, K053247_memory_region)/(1024*1024))/5;
 	int romofs;
 
 	size4 *= 4*1024*1024;	// get offset to 5th bit
@@ -4066,7 +4065,7 @@ READ16_HANDLER( K055673_rom_word_r )	// 5bpp
 
 READ16_HANDLER( K055673_GX6bpp_rom_word_r )
 {
-	UINT16 *ROM = (UINT16 *)memory_region(machine, K053247_memory_region);
+	UINT16 *ROM = (UINT16 *)memory_region(space->machine, K053247_memory_region);
 	int romofs;
 
 	romofs = K053246_regs[6]<<16 | K053246_regs[7]<<8 | K053246_regs[4];
@@ -4097,7 +4096,7 @@ READ16_HANDLER( K055673_GX6bpp_rom_word_r )
 		       	return ROM[romofs+2];
 			break;
 		default:
-			LOG(("55673_rom_word_r: Unknown read offset %x (PC=%x)\n", offset, activecpu_get_pc()));
+			LOG(("55673_rom_word_r: Unknown read offset %x (PC=%x)\n", offset, cpu_get_pc(space->cpu)));
 			break;
 	}
 
@@ -4111,14 +4110,14 @@ READ8_HANDLER( K053246_r )
 		int addr;
 
 		addr = (K053246_regs[6] << 17) | (K053246_regs[7] << 9) | (K053246_regs[4] << 1) | ((offset & 1) ^ 1);
-		addr &= memory_region_length(machine, K053247_memory_region)-1;
+		addr &= memory_region_length(space->machine, K053247_memory_region)-1;
 		if (VERBOSE)
-			popmessage("%04x: offset %02x addr %06x",activecpu_get_pc(),offset,addr);
-		return memory_region(machine, K053247_memory_region)[addr];
+			popmessage("%04x: offset %02x addr %06x",cpu_get_pc(space->cpu),offset,addr);
+		return memory_region(space->machine, K053247_memory_region)[addr];
 	}
 	else
 	{
-		LOG(("%04x: read from unknown 053246 address %x\n",activecpu_get_pc(),offset));
+		LOG(("%04x: read from unknown 053246 address %x\n",cpu_get_pc(space->cpu),offset));
 		return 0;
 	}
 }
@@ -4131,28 +4130,28 @@ WRITE8_HANDLER( K053246_w )
 READ16_HANDLER( K053246_word_r )
 {
 	offset <<= 1;
-	return K053246_r(machine, offset + 1) | (K053246_r(machine, offset) << 8);
+	return K053246_r(space, offset + 1) | (K053246_r(space, offset) << 8);
 }
 
 WRITE16_HANDLER( K053246_word_w )
 {
 	if (ACCESSING_BITS_8_15)
-		K053246_w(machine, offset<<1,(data >> 8) & 0xff);
+		K053246_w(space, offset<<1,(data >> 8) & 0xff);
 	if (ACCESSING_BITS_0_7)
-		K053246_w(machine, (offset<<1) + 1,data & 0xff);
+		K053246_w(space, (offset<<1) + 1,data & 0xff);
 }
 
 READ32_HANDLER( K053246_long_r )
 {
 	offset <<= 1;
-	return (K053246_word_r(machine, offset+1, 0xffff) | K053246_word_r(machine, offset, 0xffff)<<16);
+	return (K053246_word_r(space, offset+1, 0xffff) | K053246_word_r(space, offset, 0xffff)<<16);
 }
 
 WRITE32_HANDLER( K053246_long_w )
 {
 	offset <<= 1;
-	K053246_word_w(machine, offset, data>>16, mem_mask >> 16);
-	K053246_word_w(machine, offset+1, data, mem_mask);
+	K053246_word_w(space, offset, data>>16, mem_mask >> 16);
+	K053246_word_w(space, offset+1, data, mem_mask);
 }
 
 void K053246_set_OBJCHA_line(int state)
@@ -4702,7 +4701,7 @@ static void K051316_vh_start(running_machine *machine,int chip, const char *gfx_
 	K051316_bpp[chip] = bpp;
 	K051316_callback[chip] = callback;
 
-	K051316_tilemap[chip] = tilemap_create(get_tile_info[chip],tilemap_scan_rows,16,16,32,32);
+	K051316_tilemap[chip] = tilemap_create(machine, get_tile_info[chip],tilemap_scan_rows,16,16,32,32);
 
 	K051316_ram[chip] = auto_malloc(0x800);
 
@@ -4717,11 +4716,11 @@ static void K051316_vh_start(running_machine *machine,int chip, const char *gfx_
 	K051316_wraparound[chip] = 0;	/* default = no wraparound */
 	K051316_offset[chip][0] = K051316_offset[chip][1] = 0;
 
-	state_save_register_item_pointer("K051316", chip, K051316_ram[chip], 0x800);
-	state_save_register_item_array("K051316", chip, K051316_ctrlram[chip]);
-	state_save_register_item("K051316", chip, K051316_wraparound[chip]);
-	state_save_register_item("K051316", chip, K051316_offset[chip][0]);
-	state_save_register_item("K051316", chip, K051316_offset[chip][1]);
+	state_save_register_item_pointer(machine, "K051316", NULL, chip, K051316_ram[chip], 0x800);
+	state_save_register_item_array(machine, "K051316", NULL, chip, K051316_ctrlram[chip]);
+	state_save_register_item(machine, "K051316", NULL, chip, K051316_wraparound[chip]);
+	state_save_register_item(machine, "K051316", NULL, chip, K051316_offset[chip][0]);
+	state_save_register_item(machine, "K051316", NULL, chip, K051316_offset[chip][1]);
 }
 
 void K051316_vh_start_0(running_machine *machine,const char *gfx_memory_region,int bpp,
@@ -4799,30 +4798,30 @@ static int K051316_rom_r(running_machine *machine, int chip, int offset)
 		if (K051316_bpp[chip] <= 4) addr /= 2;
 		addr &= memory_region_length(machine, K051316_memory_region[chip])-1;
 
-//  popmessage("%04x: offset %04x addr %04x",activecpu_get_pc(),offset,addr);
+//  popmessage("%s: offset %04x addr %04x",cpuexec_describe_context(machine),offset,addr);
 
 		return memory_region(machine, K051316_memory_region[chip])[addr];
 	}
 	else
 	{
-//logerror("%04x: read 051316 ROM offset %04x but reg 0x0c bit 0 not clear\n",activecpu_get_pc(),offset);
+//logerror("%s: read 051316 ROM offset %04x but reg 0x0c bit 0 not clear\n",cpuexec_describe_context(machine),offset);
 		return 0;
 	}
 }
 
 READ8_HANDLER( K051316_rom_0_r )
 {
-	return K051316_rom_r(machine,0,offset);
+	return K051316_rom_r(space->machine,0,offset);
 }
 
 READ8_HANDLER( K051316_rom_1_r )
 {
-	return K051316_rom_r(machine,1,offset);
+	return K051316_rom_r(space->machine,1,offset);
 }
 
 READ8_HANDLER( K051316_rom_2_r )
 {
-	return K051316_rom_r(machine,2,offset);
+	return K051316_rom_r(space->machine,2,offset);
 }
 
 
@@ -4830,7 +4829,7 @@ READ8_HANDLER( K051316_rom_2_r )
 static void K051316_ctrl_w(int chip,int offset,int data)
 {
 	K051316_ctrlram[chip][offset] = data;
-//if (offset >= 0x0c) logerror("%04x: write %02x to 051316 reg %x\n",activecpu_get_pc(),data,offset);
+//if (offset >= 0x0c) logerror("%s: write %02x to 051316 reg %x\n",cpuexec_describe_context(machine),data,offset);
 }
 
 WRITE8_HANDLER( K051316_ctrl_0_w )
@@ -5092,7 +5091,7 @@ void K053251_vh_start(running_machine *machine)
 {
 	K053251_set_tilemaps(NULL,NULL,NULL,NULL,NULL);
 
-	state_save_register_global_array(K053251_ram);
+	state_save_register_global_array(machine, K053251_ram);
 	state_save_register_postload(machine, K053251_reset_indexes, NULL);
 }
 
@@ -5158,13 +5157,13 @@ WRITE8_HANDLER( K053251_w )
 WRITE16_HANDLER( K053251_lsb_w )
 {
 	if (ACCESSING_BITS_0_7)
-		K053251_w(machine, offset, data & 0xff);
+		K053251_w(space, offset, data & 0xff);
 }
 
 WRITE16_HANDLER( K053251_msb_w )
 {
 	if (ACCESSING_BITS_8_15)
-		K053251_w(machine, offset, (data >> 8) & 0xff);
+		K053251_w(space, offset, (data >> 8) & 0xff);
 }
 
 int K053251_get_priority(int ci)
@@ -5189,7 +5188,7 @@ static UINT8 K054000_ram[0x20];
 
 WRITE8_HANDLER( K054000_w )
 {
-//logerror("%04x: write %02x to 054000 address %02x\n",activecpu_get_pc(),data,offset);
+//logerror("%04x: write %02x to 054000 address %02x\n",cpu_get_pc(space->cpu),data,offset);
 
 	K054000_ram[offset] = data;
 }
@@ -5199,7 +5198,7 @@ READ8_HANDLER( K054000_r )
 	int Acx,Acy,Aax,Aay;
 	int Bcx,Bcy,Bax,Bay;
 
-//logerror("%04x: read 054000 address %02x\n",activecpu_get_pc(),offset);
+//logerror("%04x: read 054000 address %02x\n",cpu_get_pc(space->cpu),offset);
 
 	if (offset != 0x18) return 0;
 
@@ -5233,13 +5232,13 @@ if (K054000_ram[0x0c] == 0xff) Acy+=3;
 
 READ16_HANDLER( K054000_lsb_r )
 {
-	return K054000_r(machine, offset);
+	return K054000_r(space, offset);
 }
 
 WRITE16_HANDLER( K054000_lsb_w )
 {
 	if (ACCESSING_BITS_0_7)
-		K054000_w(machine, offset, data & 0xff);
+		K054000_w(space, offset, data & 0xff);
 }
 
 
@@ -5254,7 +5253,7 @@ static UINT8 K051733_ram[0x20];
 
 WRITE8_HANDLER( K051733_w )
 {
-//logerror("%04x: write %02x to 051733 address %02x\n",activecpu_get_pc(),data,offset);
+//logerror("%04x: write %02x to 051733 address %02x\n",cpu_get_pc(space->cpu),data,offset);
 
 	K051733_ram[offset] = data;
 }
@@ -5288,7 +5287,7 @@ READ8_HANDLER( K051733_r )
 	int yobj2c = (K051733_ram[0x0c] << 8) | K051733_ram[0x0d];
 	int xobj2c = (K051733_ram[0x0e] << 8) | K051733_ram[0x0f];
 
-//logerror("%04x: read 051733 address %02x\n",activecpu_get_pc(),offset);
+//logerror("%04x: read 051733 address %02x\n",cpu_get_pc(space->cpu),offset);
 
 	switch(offset){
 		case 0x00:
@@ -5791,22 +5790,22 @@ void K056832_vh_start(running_machine *machine, const char *gfx_memory_region, i
 
 	K056832_videoram = auto_malloc(0x2000 * (K056832_PAGE_COUNT+1));
 
-	K056832_tilemap[0x0] = tilemap_create(K056832_get_tile_info0, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0x1] = tilemap_create(K056832_get_tile_info1, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0x2] = tilemap_create(K056832_get_tile_info2, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0x3] = tilemap_create(K056832_get_tile_info3, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0x4] = tilemap_create(K056832_get_tile_info4, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0x5] = tilemap_create(K056832_get_tile_info5, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0x6] = tilemap_create(K056832_get_tile_info6, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0x7] = tilemap_create(K056832_get_tile_info7, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0x8] = tilemap_create(K056832_get_tile_info8, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0x9] = tilemap_create(K056832_get_tile_info9, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0xa] = tilemap_create(K056832_get_tile_infoa, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0xb] = tilemap_create(K056832_get_tile_infob, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0xc] = tilemap_create(K056832_get_tile_infoc, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0xd] = tilemap_create(K056832_get_tile_infod, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0xe] = tilemap_create(K056832_get_tile_infoe, tilemap_scan_rows,  8, 8, 64, 32);
-	K056832_tilemap[0xf] = tilemap_create(K056832_get_tile_infof, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0x0] = tilemap_create(machine, K056832_get_tile_info0, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0x1] = tilemap_create(machine, K056832_get_tile_info1, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0x2] = tilemap_create(machine, K056832_get_tile_info2, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0x3] = tilemap_create(machine, K056832_get_tile_info3, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0x4] = tilemap_create(machine, K056832_get_tile_info4, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0x5] = tilemap_create(machine, K056832_get_tile_info5, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0x6] = tilemap_create(machine, K056832_get_tile_info6, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0x7] = tilemap_create(machine, K056832_get_tile_info7, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0x8] = tilemap_create(machine, K056832_get_tile_info8, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0x9] = tilemap_create(machine, K056832_get_tile_info9, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0xa] = tilemap_create(machine, K056832_get_tile_infoa, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0xb] = tilemap_create(machine, K056832_get_tile_infob, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0xc] = tilemap_create(machine, K056832_get_tile_infoc, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0xd] = tilemap_create(machine, K056832_get_tile_infod, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0xe] = tilemap_create(machine, K056832_get_tile_infoe, tilemap_scan_rows,  8, 8, 64, 32);
+	K056832_tilemap[0xf] = tilemap_create(machine, K056832_get_tile_infof, tilemap_scan_rows,  8, 8, 64, 32);
 
 	for (i=0; i<K056832_PAGE_COUNT; i++)
 	{
@@ -5826,16 +5825,16 @@ void K056832_vh_start(running_machine *machine, const char *gfx_memory_region, i
 	K056832_change_rambank();
 	K056832_change_rombank();
 
-	state_save_register_global_pointer(K056832_videoram, 0x10000);
-	state_save_register_global_array(K056832_regs);
-	state_save_register_global_array(K056832_regsb);
-	state_save_register_global_array(K056832_X);
-	state_save_register_global_array(K056832_Y);
-	state_save_register_global_array(K056832_W);
-	state_save_register_global_array(K056832_H);
-	state_save_register_global_array(K056832_dx);
-	state_save_register_global_array(K056832_dy);
-	state_save_register_global_array(K056832_LayerTileMode);
+	state_save_register_global_pointer(machine, K056832_videoram, 0x10000);
+	state_save_register_global_array(machine, K056832_regs);
+	state_save_register_global_array(machine, K056832_regsb);
+	state_save_register_global_array(machine, K056832_X);
+	state_save_register_global_array(machine, K056832_Y);
+	state_save_register_global_array(machine, K056832_W);
+	state_save_register_global_array(machine, K056832_H);
+	state_save_register_global_array(machine, K056832_dx);
+	state_save_register_global_array(machine, K056832_dy);
+	state_save_register_global_array(machine, K056832_LayerTileMode);
 
 	state_save_register_postload(machine, K056832_postload, NULL);
 }
@@ -5885,15 +5884,15 @@ READ16_HANDLER( K056832_5bpp_rom_word_r )
 {
 	if (mem_mask == 0xff00)
 	{
-		return K056832_rom_read_b(machine, offset*2, 4, 5, 0)<<8;
+		return K056832_rom_read_b(space->machine, offset*2, 4, 5, 0)<<8;
 	}
 	else if (mem_mask == 0x00ff)
 	{
-		return K056832_rom_read_b(machine, offset*2+1, 4, 5, 0)<<16;
+		return K056832_rom_read_b(space->machine, offset*2+1, 4, 5, 0)<<16;
 	}
 	else
 	{
-		LOG(("Non-byte read of tilemap ROM, PC=%x (mask=%x)\n", activecpu_get_pc(), mem_mask));
+		LOG(("Non-byte read of tilemap ROM, PC=%x (mask=%x)\n", cpu_get_pc(space->cpu), mem_mask));
 	}
 	return 0;
 }
@@ -5902,23 +5901,23 @@ READ32_HANDLER( K056832_5bpp_rom_long_r )
 {
 	if (mem_mask == 0xff000000)
 	{
-		return K056832_rom_read_b(machine, offset*4, 4, 5, 0)<<24;
+		return K056832_rom_read_b(space->machine, offset*4, 4, 5, 0)<<24;
 	}
 	else if (mem_mask == 0x00ff0000)
 	{
-		return K056832_rom_read_b(machine, offset*4+1, 4, 5, 0)<<16;
+		return K056832_rom_read_b(space->machine, offset*4+1, 4, 5, 0)<<16;
 	}
 	else if (mem_mask == 0x0000ff00)
 	{
-		return K056832_rom_read_b(machine, offset*4+2, 4, 5, 0)<<8;
+		return K056832_rom_read_b(space->machine, offset*4+2, 4, 5, 0)<<8;
 	}
 	else if (mem_mask == 0x000000ff)
 	{
-		return K056832_rom_read_b(machine, offset*4+3, 4, 5, 1);
+		return K056832_rom_read_b(space->machine, offset*4+3, 4, 5, 1);
 	}
 	else
 	{
-		LOG(("Non-byte read of tilemap ROM, PC=%x (mask=%x)\n", activecpu_get_pc(), mem_mask));
+		LOG(("Non-byte read of tilemap ROM, PC=%x (mask=%x)\n", cpu_get_pc(space->cpu), mem_mask));
 	}
 	return 0;
 }
@@ -5927,23 +5926,23 @@ READ32_HANDLER( K056832_6bpp_rom_long_r )
 {
 	if (mem_mask == 0xff000000)
 	{
-		return K056832_rom_read_b(machine, offset*4, 4, 6, 0)<<24;
+		return K056832_rom_read_b(space->machine, offset*4, 4, 6, 0)<<24;
 	}
 	else if (mem_mask == 0x00ff0000)
 	{
-		return K056832_rom_read_b(machine, offset*4+1, 4, 6, 0)<<16;
+		return K056832_rom_read_b(space->machine, offset*4+1, 4, 6, 0)<<16;
 	}
 	else if (mem_mask == 0x0000ff00)
 	{
-		return K056832_rom_read_b(machine, offset*4+2, 4, 6, 0)<<8;
+		return K056832_rom_read_b(space->machine, offset*4+2, 4, 6, 0)<<8;
 	}
 	else if (mem_mask == 0x000000ff)
 	{
-		return K056832_rom_read_b(machine, offset*4+3, 4, 6, 0);
+		return K056832_rom_read_b(space->machine, offset*4+3, 4, 6, 0);
 	}
 	else
 	{
-		LOG(("Non-byte read of tilemap ROM, PC=%x (mask=%x)\n", activecpu_get_pc(), mem_mask));
+		LOG(("Non-byte read of tilemap ROM, PC=%x (mask=%x)\n", cpu_get_pc(space->cpu), mem_mask));
 	}
 	return 0;
 }
@@ -5962,7 +5961,7 @@ READ16_HANDLER( K056832_rom_word_r )
 
 	if (!K056832_rombase)
 	{
-		K056832_rombase = memory_region(machine, K056832_memory_region);
+		K056832_rombase = memory_region(space->machine, K056832_memory_region);
 	}
 	rombase = (UINT8 *)K056832_rombase;
 
@@ -5988,7 +5987,7 @@ READ16_HANDLER( K056832_mw_rom_word_r )
 
 	if (!K056832_rombase)
 	{
-		K056832_rombase = memory_region(machine, K056832_memory_region);
+		K056832_rombase = memory_region(space->machine, K056832_memory_region);
 	}
 
 	if (K056832_regsb[2] & 0x8)
@@ -6052,7 +6051,7 @@ READ16_HANDLER( K056832_bishi_rom_word_r )
 
 	if (!K056832_rombase)
 	{
-		K056832_rombase = memory_region(machine, K056832_memory_region);
+		K056832_rombase = memory_region(space->machine, K056832_memory_region);
 	}
 
 	return K056832_rombase[addr+2] | (K056832_rombase[addr] << 8);
@@ -6064,7 +6063,7 @@ READ16_HANDLER( K056832_rom_word_8000_r )
 
 	if (!K056832_rombase)
 	{
-		K056832_rombase = memory_region(machine, K056832_memory_region);
+		K056832_rombase = memory_region(space->machine, K056832_memory_region);
 	}
 
 	return K056832_rombase[addr+2] | (K056832_rombase[addr] << 8);
@@ -6076,7 +6075,7 @@ READ16_HANDLER( K056832_old_rom_word_r )
 
 	if (!K056832_rombase)
 	{
-		K056832_rombase = memory_region(machine, K056832_memory_region);
+		K056832_rombase = memory_region(space->machine, K056832_memory_region);
 	}
 
 	return K056832_rombase[addr+1] | (K056832_rombase[addr] << 8);
@@ -6085,7 +6084,7 @@ READ16_HANDLER( K056832_old_rom_word_r )
 READ32_HANDLER( K056832_rom_long_r )
 {
 	offset <<= 1;
-	return (K056832_rom_word_r(machine, offset+1, 0xffff) | (K056832_rom_word_r(machine, offset, 0xffff)<<16));
+	return (K056832_rom_word_r(space, offset+1, 0xffff) | (K056832_rom_word_r(space, offset, 0xffff)<<16));
 }
 
 /* only one page is mapped to videoram at a time through a window */
@@ -6392,8 +6391,8 @@ WRITE32_HANDLER( K056832_long_w )
 	// if (ACCESSING_xxx) trick.  in particular, 8-bit writes
 	// are used to the tilemap bank register.
 	offset <<= 1;
-	K056832_word_w(machine, offset, data>>16, mem_mask >> 16);
-	K056832_word_w(machine, offset+1, data, mem_mask);
+	K056832_word_w(space, offset, data>>16, mem_mask >> 16);
+	K056832_word_w(space, offset+1, data, mem_mask);
 }
 
 WRITE16_HANDLER( K056832_b_word_w )
@@ -6405,11 +6404,11 @@ WRITE8_HANDLER( K056832_w )
 {
 	if (offset & 1)
 	{
-		K056832_word_w(machine, (offset>>1), data, 0x00ff);
+		K056832_word_w(space, (offset>>1), data, 0x00ff);
 	}
 	else
 	{
-		K056832_word_w(machine, (offset>>1), data<<8, 0xff00);
+		K056832_word_w(space, (offset>>1), data<<8, 0xff00);
 	}
 }
 
@@ -6417,11 +6416,11 @@ WRITE8_HANDLER( K056832_b_w )
 {
 	if (offset & 1)
 	{
-		K056832_b_word_w(machine, (offset>>1), data, 0x00ff);
+		K056832_b_word_w(space, (offset>>1), data, 0x00ff);
 	}
 	else
 	{
-		K056832_b_word_w(machine, (offset>>1), data<<8, 0xff00);
+		K056832_b_word_w(space, (offset>>1), data<<8, 0xff00);
 	}
 }
 
@@ -6429,11 +6428,11 @@ WRITE32_HANDLER( K056832_b_long_w )
 {
 	if (ACCESSING_BITS_16_31)
 	{
-		K056832_b_word_w(machine, offset<<1, data>>16, mem_mask >> 16);
+		K056832_b_word_w(space, offset<<1, data>>16, mem_mask >> 16);
 	}
 	if (ACCESSING_BITS_0_15)
 	{
-		K056832_b_word_w(machine, (offset<<1)+1, data, mem_mask);
+		K056832_b_word_w(space, (offset<<1)+1, data, mem_mask);
 	}
 }
 
@@ -6469,7 +6468,7 @@ static int K056832_update_linemap(running_machine *machine, bitmap_t *bitmap, in
 			// *really ugly but it minimizes alteration to tilemap.c
 			memset (&zerorect, 0, sizeof(rectangle));	// zero dimension
 			tilemap_draw(bitmap, &zerorect, tmap, 0, 0);	// dummy call to reset tile_dirty_map
-			fillbitmap(xprmap, 0, 0);						// reset pixel transparency_bitmap;
+			bitmap_fill(xprmap, 0, 0);						// reset pixel transparency_bitmap;
 			memset(xprdata, TILEMAP_PIXEL_LAYER0, 0x800);	// reset tile transparency_data;
 		}
 		else
@@ -7165,9 +7164,9 @@ int K056832_read_register(int regnum)
 
 static UINT8 k55555_regs[128];
 
-void K055555_vh_start(void)
+void K055555_vh_start(running_machine *machine)
 {
-	state_save_register_global_array(k55555_regs);
+	state_save_register_global_array(machine, k55555_regs);
 
 	memset(k55555_regs, 0, 64*sizeof(UINT8));
 }
@@ -7256,13 +7255,13 @@ static int K054338_alphainverted;
 // K054338 alpha blend / final mixer (normally used with the 55555)
 // because the implementation is video dependant, this is just a
 // register-handling shell.
-void K054338_vh_start(void)
+void K054338_vh_start(running_machine *machine)
 {
 	memset(k54338_regs, 0, sizeof(UINT16)*32);
 	memset(K054338_shdRGB, 0, sizeof(int)*9);
 	K054338_alphainverted = 1;
 
-	state_save_register_global_array(k54338_regs);
+	state_save_register_global_array(machine, k54338_regs);
 }
 
 WRITE16_HANDLER( K054338_word_w )
@@ -7273,8 +7272,8 @@ WRITE16_HANDLER( K054338_word_w )
 WRITE32_HANDLER( K054338_long_w )
 {
 	offset <<= 1;
-	K054338_word_w(machine, offset, data>>16, mem_mask>>16);
-	K054338_word_w(machine, offset+1, data, mem_mask);
+	K054338_word_w(space, offset, data>>16, mem_mask>>16);
+	K054338_word_w(space, offset+1, data, mem_mask);
 }
 
 // returns a 16-bit '338 register
@@ -7509,13 +7508,13 @@ void K053250_dma(running_machine *machine, int chip, int limiter)
 }
 
 // Pixel data of the K053250 is nibble packed. It's preferable to be unpacked into byte format.
-void K053250_unpack_pixels(const char *region)
+void K053250_unpack_pixels(running_machine *machine, const char *region)
 {
 	UINT8 *src_ptr, *dst_ptr;
 	int hi_nibble, lo_nibble, offset;
 
-	dst_ptr = src_ptr = memory_region(Machine, region);
-	offset = memory_region_length(Machine, region) / 2 - 1;
+	dst_ptr = src_ptr = memory_region(machine, region);
+	offset = memory_region_length(machine, region) / 2 - 1;
 
 	do
 	{
@@ -7528,7 +7527,7 @@ void K053250_unpack_pixels(const char *region)
 	while ((--offset) >= 0);
 }
 
-void K053250_vh_start(int chips, const char **region)
+void K053250_vh_start(running_machine *machine, int chips, const char **region)
 {
 	UINT16 *ram;
 	int chip;
@@ -7537,20 +7536,20 @@ void K053250_vh_start(int chips, const char **region)
 
 	for(chip=0; chip<chips; chip++)
 	{
-		K053250_info.chip[chip].base = memory_region(Machine, region[chip]);
+		K053250_info.chip[chip].base = memory_region(machine, region[chip]);
 		ram = auto_malloc(0x6000);
 		K053250_info.chip[chip].ram = ram;
 		K053250_info.chip[chip].rammax = ram + 0x800;
 		K053250_info.chip[chip].buffer[0] = ram + 0x2000;
 		K053250_info.chip[chip].buffer[1] = ram + 0x2800;
 		memset(ram+0x2000, 0, 0x2000);
-		K053250_info.chip[chip].rommask = memory_region_length(Machine, region[chip]);
+		K053250_info.chip[chip].rommask = memory_region_length(machine, region[chip]);
 		K053250_info.chip[chip].page[1] = K053250_info.chip[chip].page[0] = 0;
 		K053250_info.chip[chip].offsy = K053250_info.chip[chip].offsx = 0;
 		K053250_info.chip[chip].frame = -1;
 
-		state_save_register_item_pointer("K053250", chip, K053250_info.chip[chip].ram,  0x800);
-		state_save_register_item_array("K053250", chip, K053250_info.chip[chip].regs);
+		state_save_register_item_pointer(machine, "K053250", NULL, chip, K053250_info.chip[chip].ram,  0x800);
+		state_save_register_item_array(machine, "K053250", NULL, chip, K053250_info.chip[chip].regs);
 	}
 }
 
@@ -7559,7 +7558,7 @@ WRITE16_HANDLER( K053250_0_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		// start LVC DMA transfer at the falling edge of control register's bit1
-		if (offset == 4 && !(data & 2) && (K053250_info.chip[0].regs[4] & 2)) K053250_dma(machine, 0, 1);
+		if (offset == 4 && !(data & 2) && (K053250_info.chip[0].regs[4] & 2)) K053250_dma(space->machine, 0, 1);
 
 		K053250_info.chip[0].regs[offset] = data;
 	}
@@ -7592,7 +7591,7 @@ WRITE16_HANDLER( K053250_1_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		// start LVC DMA transfer at the falling edge of control register's bit1
-		if (offset == 4 && !(data & 2) && (K053250_info.chip[1].regs[4] & 2)) K053250_dma(machine, 1, 1);
+		if (offset == 4 && !(data & 2) && (K053250_info.chip[1].regs[4] & 2)) K053250_dma(space->machine, 1, 1);
 
 		K053250_info.chip[1].regs[offset] = data;
 	}
@@ -8406,8 +8405,8 @@ WRITE16_HANDLER( K053252_word_w )
 WRITE32_HANDLER( K053252_long_w )
 {
 	offset <<= 1;
-	K053252_word_w(machine, offset, data>>16, mem_mask>>16);
-	K053252_word_w(machine, offset+1, data, mem_mask);
+	K053252_word_w(space, offset, data>>16, mem_mask>>16);
+	K053252_word_w(space, offset+1, data, mem_mask);
 }
 
 
@@ -8425,19 +8424,19 @@ READ16_HANDLER( K055555_word_r ) { return(k55555_regs[offset]<<8); }	// PCU2
 READ32_HANDLER( K056832_long_r )
 {
 	offset <<= 1;
-	return (K056832_word_r(machine, offset+1, 0xffff) | K056832_word_r(machine, offset, 0xffff)<<16);
+	return (K056832_word_r(space, offset+1, 0xffff) | K056832_word_r(space, offset, 0xffff)<<16);
 }
 
 READ32_HANDLER( K053247_reg_long_r )
 {
 	offset <<= 1;
-	return (K053247_reg_word_r(machine, offset+1, 0xffff) | K053247_reg_word_r(machine, offset, 0xffff)<<16);
+	return (K053247_reg_word_r(space, offset+1, 0xffff) | K053247_reg_word_r(space, offset, 0xffff)<<16);
 }
 
 READ32_HANDLER( K055555_long_r )
 {
 	offset <<= 1;
-	return (K055555_word_r(machine, offset+1, 0xffff) | K055555_word_r(machine, offset, 0xffff)<<16);
+	return (K055555_word_r(space, offset+1, 0xffff) | K055555_word_r(space, offset, 0xffff)<<16);
 }
 
 READ16_HANDLER( K053244_reg_word_r ) { return(K053244_regs[0][offset*2]<<8|K053244_regs[0][offset*2+1]); }

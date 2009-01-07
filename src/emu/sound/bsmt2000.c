@@ -14,7 +14,6 @@
 #include <math.h>
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "bsmt2000.h"
 
@@ -86,9 +85,8 @@ struct _bsmt2000_chip
 ***************************************************************************/
 
 /* core implementation */
-static void *bsmt2000_start(const char *tag, int sndindex, int clock, const void *config);
-static void bsmt2000_reset(void *_chip);
-static void bsmt2000_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length);
+static void bsmt2000_reset(bsmt2000_chip *chip);
+static STREAM_UPDATE( bsmt2000_update );
 
 /* read/write access */
 static void bsmt2000_reg_write(bsmt2000_chip *chip, offs_t offset, UINT16 data);
@@ -104,10 +102,10 @@ static void set_regmap(bsmt2000_chip *chip, UINT8 posbase, UINT8 ratebase, UINT8
 ***************************************************************************/
 
 /*-------------------------------------------------
-    bsmt2000_start - initialization callback
+    SND_START( bsmt2000 ) - initialization callback
 -------------------------------------------------*/
 
-static void *bsmt2000_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( bsmt2000 )
 {
 	bsmt2000_chip *chip;
 	int voicenum;
@@ -117,35 +115,34 @@ static void *bsmt2000_start(const char *tag, int sndindex, int clock, const void
 	memset(chip, 0, sizeof(*chip));
 
 	/* create a stream at a nominal sample rate (real one specified later) */
-	chip->stream = stream_create(0, 2, clock / 1000, chip, bsmt2000_update);
+	chip->stream = stream_create(device, 0, 2, clock / 1000, chip, bsmt2000_update);
 	chip->clock = clock;
 
 	/* initialize the regions */
-	chip->region_base = (INT8 *)memory_region(Machine, tag);
-	chip->total_banks = memory_region_length(Machine, tag) / 0x10000;
+	chip->region_base = (INT8 *)device->region;
+	chip->total_banks = device->regionbytes / 0x10000;
 
 	/* register chip-wide data for save states */
-	state_save_register_item("bsmt2000", sndindex * 16, chip->last_register);
-	state_save_register_item("bsmt2000", sndindex * 16, chip->stereo);
-	state_save_register_item("bsmt2000", sndindex * 16, chip->voices);
-	state_save_register_item("bsmt2000", sndindex * 16, chip->adpcm);
-	state_save_register_item("bsmt2000", sndindex * 16, chip->adpcm_current);
-	state_save_register_item("bsmt2000", sndindex * 16, chip->adpcm_delta_n);
+	state_save_register_device_item(device, 0, chip->last_register);
+	state_save_register_device_item(device, 0, chip->stereo);
+	state_save_register_device_item(device, 0, chip->voices);
+	state_save_register_device_item(device, 0, chip->adpcm);
+	state_save_register_device_item(device, 0, chip->adpcm_current);
+	state_save_register_device_item(device, 0, chip->adpcm_delta_n);
 
 	/* register voice-specific data for save states */
 	for (voicenum = 0; voicenum < MAX_VOICES; voicenum++)
 	{
 		bsmt2000_voice *voice = &chip->voice[voicenum];
-		int index = sndindex * 16 + voicenum;
 
-		state_save_register_item("bsmt2000", index, voice->pos);
-		state_save_register_item("bsmt2000", index, voice->rate);
-		state_save_register_item("bsmt2000", index, voice->loopend);
-		state_save_register_item("bsmt2000", index, voice->loopstart);
-		state_save_register_item("bsmt2000", index, voice->bank);
-		state_save_register_item("bsmt2000", index, voice->leftvol);
-		state_save_register_item("bsmt2000", index, voice->rightvol);
-		state_save_register_item("bsmt2000", index, voice->fraction);
+		state_save_register_device_item(device, voicenum, voice->pos);
+		state_save_register_device_item(device, voicenum, voice->rate);
+		state_save_register_device_item(device, voicenum, voice->loopend);
+		state_save_register_device_item(device, voicenum, voice->loopstart);
+		state_save_register_device_item(device, voicenum, voice->bank);
+		state_save_register_device_item(device, voicenum, voice->leftvol);
+		state_save_register_device_item(device, voicenum, voice->rightvol);
+		state_save_register_device_item(device, voicenum, voice->fraction);
 	}
 
 	/* reset the chip -- this also configures the default mode */
@@ -155,12 +152,11 @@ static void *bsmt2000_start(const char *tag, int sndindex, int clock, const void
 
 
 /*-------------------------------------------------
-    bsmt2000_reset - chip reset callback
+    SND_RESET( bsmt2000 ) - chip reset callback
 -------------------------------------------------*/
 
-static void bsmt2000_reset(void *_chip)
+static void bsmt2000_reset(bsmt2000_chip *chip)
 {
-	bsmt2000_chip *chip = _chip;
 	int voicenum;
 
 	/* reset all the voice data */
@@ -176,23 +172,28 @@ static void bsmt2000_reset(void *_chip)
 	set_mode(chip);
 }
 
+static SND_RESET( bsmt2000 )
+{
+	bsmt2000_reset(device->token);
+}
+
 
 /*-------------------------------------------------
     bsmt2000_update - update callback for
     sample generation
 -------------------------------------------------*/
 
-static void bsmt2000_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( bsmt2000_update )
 {
-	stream_sample_t *left = buffer[0];
-	stream_sample_t *right = buffer[1];
+	stream_sample_t *left = outputs[0];
+	stream_sample_t *right = outputs[1];
 	bsmt2000_chip *chip = param;
 	bsmt2000_voice *voice;
 	int samp, voicenum;
 
 	/* clear out the accumulator */
-	memset(left, 0, length * sizeof(left[0]));
-	memset(right, 0, length * sizeof(right[0]));
+	memset(left, 0, samples * sizeof(left[0]));
+	memset(right, 0, samples * sizeof(right[0]));
 
 	/* loop over voices */
 	for (voicenum = 0; voicenum < chip->voices; voicenum++)
@@ -210,7 +211,7 @@ static void bsmt2000_update(void *param, stream_sample_t **inputs, stream_sample
 			UINT16 frac = voice->fraction;
 
 			/* loop while we still have samples to generate */
-			for (samp = 0; samp < length; samp++)
+			for (samp = 0; samp < samples; samp++)
 			{
 #if ENABLE_INTERPOLATION
 				INT32 sample = (base[pos] * (0x800 - frac) + (base[pos + 1] * frac)) >> 11;
@@ -248,7 +249,7 @@ static void bsmt2000_update(void *param, stream_sample_t **inputs, stream_sample
 		UINT32 frac = voice->fraction;
 
 		/* loop while we still have samples to generate */
-		for (samp = 0; samp < length && pos < voice->loopend; samp++)
+		for (samp = 0; samp < samples && pos < voice->loopend; samp++)
 		{
 			/* apply volumes and add */
 			left[samp] += (chip->adpcm_current * lvol) >> 8;
@@ -303,7 +304,7 @@ static void bsmt2000_update(void *param, stream_sample_t **inputs, stream_sample
 	}
 
 	/* reduce the overall gain */
-	for (samp = 0; samp < length; samp++)
+	for (samp = 0; samp < samples; samp++)
 	{
 		left[samp] >>= 9;
 		right[samp] >>= 9;
@@ -476,11 +477,11 @@ static void set_regmap(bsmt2000_chip *chip, UINT8 posbase, UINT8 ratebase, UINT8
 ***************************************************************************/
 
 /*-------------------------------------------------
-    bsmt2000_set_info - callback for setting chip
-    information
+    SND_SET_INFO( bsmt2000 ) - callback for
+    setting chip information
 -------------------------------------------------*/
 
-static void bsmt2000_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( bsmt2000 )
 {
 	switch (state)
 	{
@@ -490,27 +491,27 @@ static void bsmt2000_set_info(void *token, UINT32 state, sndinfo *info)
 
 
 /*-------------------------------------------------
-    bsmt2000_get_info - callback for retrieving
-    chip information
+    SND_GET_INFO( bsmt2000 ) - callback for
+    retrieving chip information
 -------------------------------------------------*/
 
-void bsmt2000_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( bsmt2000 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = bsmt2000_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = bsmt2000_start;			break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							info->reset = bsmt2000_reset;			break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( bsmt2000 );		break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( bsmt2000 );			break;
+		case SNDINFO_PTR_STOP:							/* nothing */										break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( bsmt2000 );			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "BSMT2000";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Data East Wavetable";		break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "BSMT2000");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Data East Wavetable");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");								break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);							break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

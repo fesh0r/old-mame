@@ -5,6 +5,7 @@ Atari Sprint 4 driver
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "audio/sprint4.h"
 
 #define MASTER_CLOCK    12096000
@@ -118,15 +119,15 @@ static TIMER_CALLBACK( nmi_callback	)
 	watchdog_enable(machine, input_port_read(machine, "IN0") & 0x40);
 
 	if (input_port_read(machine, "IN0") & 0x40)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, nmi_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, nmi_callback);
 }
 
 
 static MACHINE_RESET( sprint4 )
 {
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 32, 0), NULL, 32, nmi_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 32, 0), NULL, 32, nmi_callback);
 
 	memset(steer_FF1, 0, sizeof steer_FF1);
 	memset(steer_FF2, 0, sizeof steer_FF2);
@@ -148,21 +149,21 @@ static READ8_HANDLER( sprint4_wram_r )
 
 static READ8_HANDLER( sprint4_analog_r )
 {
-	return (input_port_read(machine, "ANALOG") << (~offset & 7)) & 0x80;
+	return (input_port_read(space->machine, "ANALOG") << (~offset & 7)) & 0x80;
 }
 static READ8_HANDLER( sprint4_coin_r )
 {
-	return (input_port_read(machine, "COIN") << (~offset & 7)) & 0x80;
+	return (input_port_read(space->machine, "COIN") << (~offset & 7)) & 0x80;
 }
 static READ8_HANDLER( sprint4_collision_r )
 {
-	return (input_port_read(machine, "COLLISION") << (~offset & 7)) & 0x80;
+	return (input_port_read(space->machine, "COLLISION") << (~offset & 7)) & 0x80;
 }
 
 
 static READ8_HANDLER( sprint4_options_r )
 {
-	return (input_port_read(machine, "DIP") >> (2 * (offset & 3))) & 3;
+	return (input_port_read(space->machine, "DIP") >> (2 * (offset & 3))) & 3;
 }
 
 
@@ -200,25 +201,25 @@ static WRITE8_HANDLER( sprint4_lockout_w )
 
 static WRITE8_HANDLER( sprint4_screech_1_w )
 {
-	discrete_sound_w(machine, SPRINT4_SCREECH_EN_1, offset & 1);
+	discrete_sound_w(space, SPRINT4_SCREECH_EN_1, offset & 1);
 }
 
 
 static WRITE8_HANDLER( sprint4_screech_2_w )
 {
-	discrete_sound_w(machine, SPRINT4_SCREECH_EN_2, offset & 1);
+	discrete_sound_w(space, SPRINT4_SCREECH_EN_2, offset & 1);
 }
 
 
 static WRITE8_HANDLER( sprint4_screech_3_w )
 {
-	discrete_sound_w(machine, SPRINT4_SCREECH_EN_3, offset & 1);
+	discrete_sound_w(space, SPRINT4_SCREECH_EN_3, offset & 1);
 }
 
 
 static WRITE8_HANDLER( sprint4_screech_4_w )
 {
-	discrete_sound_w(machine, SPRINT4_SCREECH_EN_4, offset & 1);
+	discrete_sound_w(space, SPRINT4_SCREECH_EN_4, offset & 1);
 }
 
 
@@ -226,13 +227,13 @@ static WRITE8_HANDLER( sprint4_screech_4_w )
 
 static WRITE8_HANDLER( sprint4_bang_w )
 {
-	discrete_sound_w(machine, SPRINT4_BANG_DATA, data & 0x0f);
+	discrete_sound_w(space, SPRINT4_BANG_DATA, data & 0x0f);
 }
 
 
 static WRITE8_HANDLER( sprint4_attract_w )
 {
-	discrete_sound_w(machine, SPRINT4_ATTRACT_EN, data & 1);
+	discrete_sound_w(space, SPRINT4_ATTRACT_EN, data & 1);
 }
 
 

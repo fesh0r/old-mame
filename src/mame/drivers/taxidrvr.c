@@ -5,21 +5,22 @@ Taxi Driver  (c) 1984 Graphic Techno
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/8255ppi.h"
 #include "taxidrvr.h"
 #include "sound/ay8910.h"
 
 
 
-static WRITE8_DEVICE_HANDLER( p2a_w ) { taxidrvr_spritectrl_w(device->machine,0,data); }
-static WRITE8_DEVICE_HANDLER( p2b_w ) { taxidrvr_spritectrl_w(device->machine,1,data); }
-static WRITE8_DEVICE_HANDLER( p2c_w ) { taxidrvr_spritectrl_w(device->machine,2,data); }
-static WRITE8_DEVICE_HANDLER( p3a_w ) { taxidrvr_spritectrl_w(device->machine,3,data); }
-static WRITE8_DEVICE_HANDLER( p3b_w ) { taxidrvr_spritectrl_w(device->machine,4,data); }
-static WRITE8_DEVICE_HANDLER( p3c_w ) { taxidrvr_spritectrl_w(device->machine,5,data); }
-static WRITE8_DEVICE_HANDLER( p4a_w ) { taxidrvr_spritectrl_w(device->machine,6,data); }
-static WRITE8_DEVICE_HANDLER( p4b_w ) { taxidrvr_spritectrl_w(device->machine,7,data); }
-static WRITE8_DEVICE_HANDLER( p4c_w ) { taxidrvr_spritectrl_w(device->machine,8,data); }
+static WRITE8_DEVICE_HANDLER( p2a_w ) { taxidrvr_spritectrl_w(device,0,data); }
+static WRITE8_DEVICE_HANDLER( p2b_w ) { taxidrvr_spritectrl_w(device,1,data); }
+static WRITE8_DEVICE_HANDLER( p2c_w ) { taxidrvr_spritectrl_w(device,2,data); }
+static WRITE8_DEVICE_HANDLER( p3a_w ) { taxidrvr_spritectrl_w(device,3,data); }
+static WRITE8_DEVICE_HANDLER( p3b_w ) { taxidrvr_spritectrl_w(device,4,data); }
+static WRITE8_DEVICE_HANDLER( p3c_w ) { taxidrvr_spritectrl_w(device,5,data); }
+static WRITE8_DEVICE_HANDLER( p4a_w ) { taxidrvr_spritectrl_w(device,6,data); }
+static WRITE8_DEVICE_HANDLER( p4b_w ) { taxidrvr_spritectrl_w(device,7,data); }
+static WRITE8_DEVICE_HANDLER( p4c_w ) { taxidrvr_spritectrl_w(device,8,data); }
 
 
 
@@ -49,7 +50,7 @@ static WRITE8_DEVICE_HANDLER( p0c_w )
 
 	/* bit 2 toggles during gameplay */
 
-	flip_screen_set(data & 8);
+	flip_screen_set(device->machine, data & 8);
 
 //  popmessage("%02x",data&0x0f);
 }
@@ -373,7 +374,7 @@ static MACHINE_DRIVER_START( taxidrvr )
 	MDRV_CPU_IO_MAP(cpu3_port_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	/* ??? */
 
-	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 
 	MDRV_PPI8255_ADD( "ppi8255_0", ppi8255_intf[0] )

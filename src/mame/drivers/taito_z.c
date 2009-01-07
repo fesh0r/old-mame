@@ -858,6 +858,7 @@ J1100256A VIDEO PCB
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "taitoipt.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/eeprom.h"
@@ -912,7 +913,7 @@ static void parse_control(running_machine *machine)
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
        if cpu B is disabled !! */
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
 
 }
 
@@ -921,7 +922,7 @@ static void parse_control_noz80(running_machine *machine)
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
        if cpu B is disabled !! */
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
 
 }
 
@@ -931,16 +932,16 @@ static WRITE16_HANDLER( cpua_ctrl_w )	/* assumes Z80 sandwiched between 68Ks */
 		data = data >> 8;	/* for Wgp */
 	cpua_ctrl = data;
 
-	parse_control(machine);
+	parse_control(space->machine);
 
 	// Chase HQ: handle the lights
-	if ((!strcmp(machine->gamedrv->name, "chasehq")) || (!strcmp(machine->gamedrv->name, "chasehqj")))
+	if ((!strcmp(space->machine->gamedrv->name, "chasehq")) || (!strcmp(space->machine->gamedrv->name, "chasehqj")))
 	{
 		output_set_lamp_value(0, (data&0x20) ? 1 : 0);
 		output_set_lamp_value(1, (data&0x40) ? 1 : 0);
 	}
 
-	logerror("CPU #0 PC %06x: write %04x to cpu control\n",activecpu_get_pc(),data);
+	logerror("CPU #0 PC %06x: write %04x to cpu control\n",cpu_get_pc(space->cpu),data);
 }
 
 static WRITE16_HANDLER( cpua_noz80_ctrl_w )	/* assumes no Z80 */
@@ -949,9 +950,9 @@ static WRITE16_HANDLER( cpua_noz80_ctrl_w )	/* assumes no Z80 */
 		data = data >> 8;	/* for Wgp */
 	cpua_ctrl = data;
 
-	parse_control_noz80(machine);
+	parse_control_noz80(space->machine);
 
-	logerror("CPU #0 PC %06x: write %04x to cpu control\n",activecpu_get_pc(),data);
+	logerror("CPU #0 PC %06x: write %04x to cpu control\n",cpu_get_pc(space->cpu),data);
 }
 
 
@@ -963,7 +964,7 @@ static WRITE16_HANDLER( cpua_noz80_ctrl_w )	/* assumes no Z80 */
 
 static TIMER_CALLBACK( taitoz_interrupt6 )
 {
-	cpunum_set_input_line(machine, 0,6,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],6,HOLD_LINE);
 }
 
 /* 68000 B */
@@ -971,19 +972,19 @@ static TIMER_CALLBACK( taitoz_interrupt6 )
 #if 0
 static TIMER_CALLBACK( taitoz_cpub_interrupt5 )
 {
-	cpunum_set_input_line(machine, 2,5,HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
+	cpu_set_input_line(machine->cpu[2],5,HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
 }
 #endif
 
 static TIMER_CALLBACK( taitoz_sg_cpub_interrupt5 )
 {
-	cpunum_set_input_line(machine, 1,5,HOLD_LINE);	/* assumes no Z80 */
+	cpu_set_input_line(machine->cpu[1],5,HOLD_LINE);	/* assumes no Z80 */
 }
 
 #if 0
 static TIMER_CALLBACK( taitoz_cpub_interrupt6 )
 {
-	cpunum_set_input_line(machine, 2,6,HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
+	cpu_set_input_line(machine->cpu[2],6,HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
 }
 #endif
 
@@ -1000,8 +1001,8 @@ static INTERRUPT_GEN( sci_interrupt )
 	sci_int6 = !sci_int6;
 
 	if (sci_int6)
-		timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL, 0, taitoz_interrupt6);
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+		timer_set(device->machine, cpu_clocks_to_attotime(device,200000-500), NULL, 0, taitoz_interrupt6);
+	cpu_set_input_line(device, 4, HOLD_LINE);
 }
 
 /* Double Axle seems to keep only 1 sprite frame in sprite ram,
@@ -1015,16 +1016,16 @@ static INTERRUPT_GEN( dblaxle_interrupt )
 	dblaxle_int6 = !dblaxle_int6;
 
 	if (dblaxle_int6)
-		timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL, 0, taitoz_interrupt6);
+		timer_set(device->machine, cpu_clocks_to_attotime(device,200000-500), NULL, 0, taitoz_interrupt6);
 
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+	cpu_set_input_line(device, 4, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( dblaxle_cpub_interrupt )
 {
 	// Unsure how many int6's per frame
-	timer_set(ATTOTIME_IN_CYCLES(200000-500,0), NULL,  0, taitoz_interrupt6);
-	cpunum_set_input_line(machine, 2, 4, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,200000-500), NULL,  0, taitoz_interrupt6);
+	cpu_set_input_line(device, 4, HOLD_LINE);
 }
 
 
@@ -1061,7 +1062,7 @@ static NVRAM_HANDLER( spacegun )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_intf);
+		eeprom_init(machine, &eeprom_intf);
 
 		if (file)
 			eeprom_load(file);
@@ -1101,7 +1102,7 @@ static WRITE16_HANDLER( spacegun_output_bypass_w )
 			break;
 
 		default:
-			TC0220IOC_w(machine, offset, data);	/* might be a 510NIO ! */
+			TC0220IOC_w(space, offset, data);	/* might be a 510NIO ! */
 	}
 }
 
@@ -1114,14 +1115,14 @@ static READ16_HANDLER( contcirc_input_bypass_r )
 {
 	/* Bypass TC0220IOC controller for analog input */
 
-	UINT8 port = TC0220IOC_port_r(machine, 0);	/* read port number */
+	UINT8 port = TC0220IOC_port_r(space, 0);	/* read port number */
 	int steer = 0;
-	int fake = input_port_read(machine, "FAKE");
+	int fake = input_port_read(space->machine, "FAKE");
 
 	if (!(fake & 0x10))	/* Analogue steer (the real control method) */
 	{
 		/* center around zero and reduce span to 0xc0 */
-		steer = ((input_port_read(machine, "STEER") - 0x80) * 0xc0) / 0x100;
+		steer = ((input_port_read(space->machine, "STEER") - 0x80) * 0xc0) / 0x100;
 
 	}
 	else	/* Digital steer */
@@ -1145,7 +1146,7 @@ static READ16_HANDLER( contcirc_input_bypass_r )
 			return steer >> 8;
 
 		default:
-			return TC0220IOC_portreg_r(machine, offset);
+			return TC0220IOC_portreg_r(space, offset);
 	}
 }
 
@@ -1154,14 +1155,14 @@ static READ16_HANDLER( chasehq_input_bypass_r )
 {
 	/* Bypass TC0220IOC controller for extra inputs */
 
-	UINT8 port = TC0220IOC_port_r(machine, 0);	/* read port number */
+	UINT8 port = TC0220IOC_port_r(space, 0);	/* read port number */
 	int steer = 0;
-	int fake = input_port_read(machine, "FAKE");
+	int fake = input_port_read(space->machine, "FAKE");
 
 	if (!(fake & 0x10))	/* Analogue steer (the real control method) */
 	{
 		/* center around zero */
-		steer = input_port_read(machine, "STEER") - 0x80;
+		steer = input_port_read(space->machine, "STEER") - 0x80;
 	}
 	else	/* Digital steer */
 	{
@@ -1178,16 +1179,16 @@ static READ16_HANDLER( chasehq_input_bypass_r )
 	switch (port)
 	{
 		case 0x08:
-			return input_port_read(machine, "UNK1");
+			return input_port_read(space->machine, "UNK1");
 
 		case 0x09:
-			return input_port_read(machine, "UNK2");
+			return input_port_read(space->machine, "UNK2");
 
 		case 0x0a:
-			return input_port_read(machine, "UNK3");
+			return input_port_read(space->machine, "UNK3");
 
 		case 0x0b:
-			return input_port_read(machine, "UNK4");
+			return input_port_read(space->machine, "UNK4");
 
 		case 0x0c:
 			return steer & 0xff;
@@ -1196,7 +1197,7 @@ static READ16_HANDLER( chasehq_input_bypass_r )
 			return steer >> 8;
 
 		default:
-			return TC0220IOC_portreg_r(machine, offset);
+			return TC0220IOC_portreg_r(space, offset);
 	}
 }
 
@@ -1206,19 +1207,19 @@ static READ16_HANDLER( bshark_stick_r )
 	switch (offset)
 	{
 		case 0x00:
-			return input_port_read(machine, "STICKX");
+			return input_port_read(space->machine, "STICKX");
 
 		case 0x01:
-			return input_port_read(machine, "X_ADJUST");
+			return input_port_read(space->machine, "X_ADJUST");
 
 		case 0x02:
-			return input_port_read(machine, "STICKY");
+			return input_port_read(space->machine, "STICKY");
 
 		case 0x03:
-			return input_port_read(machine, "Y_ADJUST");
+			return input_port_read(space->machine, "Y_ADJUST");
 	}
 
-	logerror("CPU #0 PC %06x: warning - read unmapped stick offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped stick offset %06x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0xff;
 }
@@ -1229,19 +1230,19 @@ static READ16_HANDLER( nightstr_stick_r )
 	switch (offset)
 	{
 		case 0x00:
-			return input_port_read(machine, "STICKX");
+			return input_port_read(space->machine, "STICKX");
 
 		case 0x01:
-			return input_port_read(machine, "STICKY");
+			return input_port_read(space->machine, "STICKY");
 
 		case 0x02:
-			return input_port_read(machine, "X_ADJUST");
+			return input_port_read(space->machine, "X_ADJUST");
 
 		case 0x03:
-			return input_port_read(machine, "Y_ADJUST");
+			return input_port_read(space->machine, "Y_ADJUST");
 	}
 
-	logerror("CPU #0 PC %06x: warning - read unmapped stick offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped stick offset %06x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0xff;
 }
@@ -1254,19 +1255,19 @@ static WRITE16_HANDLER( bshark_stick_w )
        but we don't want CPUA to have an int6 before int4 is over (?)
     */
 
-	timer_set(ATTOTIME_IN_CYCLES(10000,0), NULL, 0, taitoz_interrupt6);
+	timer_set(space->machine, cpu_clocks_to_attotime(space->cpu,10000), NULL, 0, taitoz_interrupt6);
 }
 
 
 static READ16_HANDLER( sci_steer_input_r )
 {
 	int steer = 0;
-	int fake = input_port_read(machine, "FAKE");
+	int fake = input_port_read(space->machine, "FAKE");
 
 	if (!(fake & 0x10))	/* Analogue steer (the real control method) */
 	{
 		/* center around zero and reduce span to 0xc0 */
-		steer = ((input_port_read(machine, "STEER") - 0x80) * 0xc0) / 0x100;
+		steer = ((input_port_read(space->machine, "STEER") - 0x80) * 0xc0) / 0x100;
 	}
 	else	/* Digital steer */
 	{
@@ -1289,7 +1290,7 @@ static READ16_HANDLER( sci_steer_input_r )
 			return (steer & 0xff00) >> 8;
 	}
 
-	logerror("CPU #0 PC %06x: warning - read unmapped steer input offset %06x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped steer input offset %06x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0xff;
 }
@@ -1303,7 +1304,7 @@ static READ16_HANDLER( spacegun_input_bypass_r )
 			return eeprom_r();
 
 		default:
-			return TC0220IOC_r(machine, offset);	/* might be a 510NIO ! */
+			return TC0220IOC_r(space, offset);	/* might be a 510NIO ! */
 	}
 }
 
@@ -1312,16 +1313,16 @@ static READ16_HANDLER( spacegun_lightgun_r )
 	switch (offset)
 	{
 		case 0x00:
-			return input_port_read(machine, "STICKX1");
+			return input_port_read(space->machine, "STICKX1");
 
 		case 0x01:
-			return input_port_read(machine, "STICKY1");
+			return input_port_read(space->machine, "STICKY1");
 
 		case 0x02:
-			return input_port_read(machine, "STICKX2");
+			return input_port_read(space->machine, "STICKX2");
 
 		case 0x03:
-			return input_port_read(machine, "STICKY2");
+			return input_port_read(space->machine, "STICKY2");
 	}
 
 	return 0x00;
@@ -1337,19 +1338,19 @@ static WRITE16_HANDLER( spacegun_lightgun_w )
        Four lightgun interrupts happen before the collected coords
        are moved to shared ram where CPUA can use them. */
 
-	timer_set(ATTOTIME_IN_CYCLES(10000,0), NULL, 0, taitoz_sg_cpub_interrupt5);
+	timer_set(space->machine, cpu_clocks_to_attotime(space->cpu,10000), NULL, 0, taitoz_sg_cpub_interrupt5);
 }
 
 
 static READ16_HANDLER( dblaxle_steer_input_r )
 {
 	int steer = 0;
-	int fake = input_port_read(machine, "FAKE");
+	int fake = input_port_read(space->machine, "FAKE");
 
 	if (!(fake & 0x10))	/* Analogue steer (the real control method) */
 	{
 		/* center around zero and reduce span to 0x80 */
-		steer = ((input_port_read(machine, "STEER") - 0x80) * 0x80) / 0x100;
+		steer = ((input_port_read(space->machine, "STEER") - 0x80) * 0x80) / 0x100;
 	}
 	else	/* Digital steer */
 	{
@@ -1372,7 +1373,7 @@ static READ16_HANDLER( dblaxle_steer_input_r )
 			return steer & 0xff;
 	}
 
-	logerror("CPU #0 PC %06x: warning - read unmapped steer input offset %02x\n", activecpu_get_pc(), offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped steer input offset %02x\n", cpu_get_pc(space->cpu), offset);
 
 	return 0x00;
 }
@@ -1383,13 +1384,13 @@ static READ16_HANDLER( chasehq_motor_r )
 	switch (offset)
 	{
 		case 0x0:
-			return (mame_rand(machine) &0xff);	/* motor status ?? */
+			return (mame_rand(space->machine) &0xff);	/* motor status ?? */
 
 		case 0x101:
 			return 0x55;	/* motor cpu status ? */
 
 		default:
-logerror("CPU #0 PC %06x: warning - read motor cpu %03x\n",activecpu_get_pc(),offset);
+logerror("CPU #0 PC %06x: warning - read motor cpu %03x\n",cpu_get_pc(space->cpu),offset);
 			return 0;
 	}
 }
@@ -1398,7 +1399,7 @@ static WRITE16_HANDLER( chasehq_motor_w )
 {
 	/* Writes $e00000-25 and $e00200-219 */
 
-logerror("CPU #0 PC %06x: warning - write %04x to motor cpu %03x\n",activecpu_get_pc(),data,offset);
+logerror("CPU #0 PC %06x: warning - write %04x to motor cpu %03x\n",cpu_get_pc(space->cpu),data,offset);
 
 }
 
@@ -1416,21 +1417,21 @@ static INT32 banknum;
 
 static void reset_sound_region(running_machine *machine)	/* assumes Z80 sandwiched between 68Ks */
 {
-	memory_set_bankptr( 10, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr(machine,  10, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	banknum = (data - 1) & 7;
-	reset_sound_region(machine);
+	reset_sound_region(space->machine);
 }
 
 static WRITE16_HANDLER( taitoz_sound_w )
 {
 	if (offset == 0)
-		taitosound_port_w (machine, 0, data & 0xff);
+		taitosound_port_w (space, 0, data & 0xff);
 	else if (offset == 1)
-		taitosound_comm_w (machine, 0, data & 0xff);
+		taitosound_comm_w (space, 0, data & 0xff);
 
 #ifdef MAME_DEBUG
 //  if (data & 0xff00)
@@ -1446,7 +1447,7 @@ static WRITE16_HANDLER( taitoz_sound_w )
 static READ16_HANDLER( taitoz_sound_r )
 {
 	if (offset == 1)
-		return ((taitosound_comm_r (machine,0) & 0xff));
+		return ((taitosound_comm_r (space,0) & 0xff));
 	else return 0;
 }
 
@@ -1494,7 +1495,7 @@ static WRITE8_HANDLER( taitoz_pancontrol )
 static WRITE16_HANDLER( spacegun_pancontrol )
 {
 	if (ACCESSING_BITS_0_7)
-		taitoz_pancontrol(machine, offset, data & 0xff);
+		taitoz_pancontrol(space, offset, data & 0xff);
 }
 
 
@@ -1516,14 +1517,14 @@ static MACHINE_START( taitoz )
 	dblaxle_int6 = 0;
 	ioc220_port = 0;
 
-	state_save_register_global(cpua_ctrl);
+	state_save_register_global(machine, cpua_ctrl);
 
 	/* these are specific to various games: we ought to split the inits */
-	state_save_register_global(sci_int6);
-	state_save_register_global(dblaxle_int6);
-	state_save_register_global(ioc220_port);
+	state_save_register_global(machine, sci_int6);
+	state_save_register_global(machine, dblaxle_int6);
+	state_save_register_global(machine, ioc220_port);
 
-	state_save_register_global(banknum);
+	state_save_register_global(machine, banknum);
 	state_save_register_postload(machine, taitoz_postload, NULL);
 }
 
@@ -3044,14 +3045,14 @@ Interface B is for games which lack a Z80 (Spacegun, Bshark).
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(running_machine *machine, int irq)	// assumes Z80 sandwiched between 68Ks
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandlerb(running_machine *machine, int irq)
 {
 	// DG: this is probably specific to Z80 and wrong?
-//  cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -3253,7 +3254,7 @@ static MACHINE_DRIVER_START( enforce )
 
 	MDRV_MACHINE_START(taitoz)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3307,7 +3308,7 @@ static MACHINE_DRIVER_START( bshark )
 
 	MDRV_MACHINE_START(taitoz)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3362,7 +3363,7 @@ static MACHINE_DRIVER_START( sci )
 
 	MDRV_MACHINE_START(taitoz)
 
-	MDRV_INTERLEAVE(50)
+	MDRV_QUANTUM_TIME(HZ(3000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3417,7 +3418,7 @@ static MACHINE_DRIVER_START( nightstr )
 
 	MDRV_MACHINE_START(taitoz)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3473,7 +3474,7 @@ static MACHINE_DRIVER_START( aquajack )
 
 	MDRV_MACHINE_START(taitoz)
 
-	MDRV_INTERLEAVE(500)
+	MDRV_QUANTUM_TIME(HZ(30000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3580,7 +3581,7 @@ static MACHINE_DRIVER_START( dblaxle )
 
 	MDRV_MACHINE_START(taitoz)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3634,7 +3635,7 @@ static MACHINE_DRIVER_START( racingb )
 	MDRV_CPU_VBLANK_INT("main", dblaxle_cpub_interrupt)
 
 	MDRV_MACHINE_START(taitoz)
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -4627,17 +4628,17 @@ ROM_END
 
 ROM_START( dblaxle )
 	ROM_REGION( 0x80000, "main", 0 )	/* 512K for 68000 code (CPU A) */
-	ROM_LOAD16_BYTE( "c78-41.3",  0x00000, 0x20000, CRC(cf297fe4) SHA1(4875de63e8336062c27d83b55938bcb3d08a24a3) )
-	ROM_LOAD16_BYTE( "c78-43.5",  0x00001, 0x20000, CRC(38a8bad6) SHA1(50977a6a364893549d2f7899bbc4e0c67086697e) )
-	ROM_LOAD16_BYTE( "c78-42.4",  0x40000, 0x20000, CRC(4124ab2b) SHA1(96c3b6e01a1823259b3d7ca43e0a8631bfe33d0e) )
-	ROM_LOAD16_BYTE( "c78-44.6",  0x40001, 0x20000, CRC(50a55b6e) SHA1(62a72d33030d50c157a5cf05f6bdc1b02c9b9ff1) )
+	ROM_LOAD16_BYTE( "c78-41-1.2",  0x00000, 0x20000, CRC(cf297fe4) SHA1(4875de63e8336062c27d83b55938bcb3d08a24a3) )
+	ROM_LOAD16_BYTE( "c78-43-1.4",  0x00001, 0x20000, CRC(38a8bad6) SHA1(50977a6a364893549d2f7899bbc4e0c67086697e) )
+	ROM_LOAD16_BYTE( "c78-42-1.3",  0x40000, 0x20000, CRC(4124ab2b) SHA1(96c3b6e01a1823259b3d7ca43e0a8631bfe33d0e) )
+	ROM_LOAD16_BYTE( "c78-44-1.5",  0x40001, 0x20000, CRC(50a55b6e) SHA1(62a72d33030d50c157a5cf05f6bdc1b02c9b9ff1) )
 
 	ROM_REGION( 0x40000, "sub", 0 )	/* 256K for 68000 code (CPU B) */
 	ROM_LOAD16_BYTE( "c78-30-1.35", 0x00000, 0x20000, CRC(026aac18) SHA1(f50873982b4dc0fc822060f4c20c635efdd75d7e) )
 	ROM_LOAD16_BYTE( "c78-31-1.36", 0x00001, 0x20000, CRC(67ce23e8) SHA1(983e998a79e3d4376b005c92ded050be236d37cc) )
 
 	ROM_REGION( 0x2c000, "audio", 0 )	/* sound cpu */
-	ROM_LOAD    ( "ic42", 0x00000, 0x04000, CRC(f2186943) SHA1(2e9aed39fddf3aa1db7e20f8a709b6b82cc3e7df) )
+	ROM_LOAD    ( "c78-34.c42", 0x00000, 0x04000, CRC(f2186943) SHA1(2e9aed39fddf3aa1db7e20f8a709b6b82cc3e7df) )
 	ROM_CONTINUE(         0x10000, 0x1c000 )	/* banked stuff */
 
 	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
@@ -4659,9 +4660,8 @@ ROM_START( dblaxle )
 	ROM_LOAD16_WORD( "c78-04.3", 0x00000, 0x80000, CRC(cc1aa37c) SHA1(cfa2eb338dc81c98c637c2f0b14d2baea8b115f5) )	/* STY spritemap */
 
 	ROM_REGION( 0x180000, "ym", 0 )	/* ADPCM samples */
-	ROM_LOAD( "c78-12.33", 0x000000, 0x80000, BAD_DUMP CRC(fbb39585) SHA1(4b7cdf9a3fba71155871b3e52d2301e50bf817ca) )	// Half size ??
-	// ??? gap 0x80000-fffff //
-	ROM_LOAD( "c78-13.46", 0x100000, 0x80000, CRC(1b363aa2) SHA1(0aae3988024654e98cc0c784307b1c329c8f0783) )
+	ROM_LOAD( "c78-12.33", 0x000000, 0x100000, CRC(b0267404) SHA1(ffd337336ff9b096e3725f733364762f6e6d3fab) )
+	ROM_LOAD( "c78-13.46", 0x100000, 0x080000, CRC(1b363aa2) SHA1(0aae3988024654e98cc0c784307b1c329c8f0783) )
 
 	ROM_REGION( 0x80000, "ym.deltat", 0 )	/* Delta-T samples */
 	ROM_LOAD( "c78-14.31",  0x00000, 0x80000, CRC(9cad4dfb) SHA1(9187ef827a3f1bc9233d0e45e72c72c0956c5912) )
@@ -4782,7 +4782,7 @@ static DRIVER_INIT( bshark )
 	eep_latch = 0;
 	state_save_register_postload(machine, bshark_postload, NULL);
 
-	state_save_register_global(eep_latch);
+	state_save_register_global(machine, eep_latch);
 }
 
 

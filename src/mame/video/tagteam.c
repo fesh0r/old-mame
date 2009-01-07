@@ -87,7 +87,7 @@ WRITE8_HANDLER( tagteam_mirrorvideoram_w )
 	y = offset % 32;
 	offset = 32 * y + x;
 
-	tagteam_videoram_w(machine,offset,data);
+	tagteam_videoram_w(space,offset,data);
 }
 
 WRITE8_HANDLER( tagteam_mirrorcolorram_w )
@@ -99,12 +99,12 @@ WRITE8_HANDLER( tagteam_mirrorcolorram_w )
 	y = offset % 32;
 	offset = 32 * y + x;
 
-	tagteam_colorram_w(machine,offset,data);
+	tagteam_colorram_w(space,offset,data);
 }
 
 WRITE8_HANDLER( tagteam_control_w )
 {
-logerror("%04x: control = %02x\n",activecpu_get_pc(),data);
+logerror("%04x: control = %02x\n",cpu_get_pc(space->cpu),data);
 
 	/* bit 7 is the palette bank */
 	palettebank = (data & 0x80) >> 7;
@@ -112,9 +112,9 @@ logerror("%04x: control = %02x\n",activecpu_get_pc(),data);
 
 WRITE8_HANDLER( tagteam_flipscreen_w )
 {
-	if (flip_screen_get() != (data &0x01))
+	if (flip_screen_get(space->machine) != (data &0x01))
 	{
-		flip_screen_set(data & 0x01);
+		flip_screen_set(space->machine, data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 }
@@ -129,7 +129,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( tagteam )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows_flip_x,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows_flip_x,
 		 8, 8, 32, 32);
 }
 
@@ -149,7 +149,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 		if (!(videoram[offs] & 0x01)) continue;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -168,7 +168,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 		code = videoram[offs + 0x20] + 256 * spritebank;
 		color = palettebank;
-		sy += (flip_screen_get() ? -256 : 256);
+		sy += (flip_screen_get(machine) ? -256 : 256);
 
 		drawgfx(bitmap, machine->gfx[1],
 			code, color,

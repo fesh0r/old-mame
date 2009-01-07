@@ -8,7 +8,7 @@ Preliminary driver by:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "video/konamiic.h"
 #include "sound/2151intf.h"
@@ -16,7 +16,7 @@ Preliminary driver by:
 
 /* prototypes */
 static MACHINE_RESET( gbusters );
-static void gbusters_banking( int lines );
+static KONAMI_SETLINES_CALLBACK( gbusters_banking );
 
 
 extern int gbusters_priority;
@@ -30,7 +30,7 @@ static UINT8 *ram;
 static INTERRUPT_GEN( gbusters_interrupt )
 {
 	if (K052109_is_IRQ_enabled())
-		cpunum_set_input_line(machine, 0, KONAMI_IRQ_LINE, HOLD_LINE);
+		cpu_set_input_line(device, KONAMI_IRQ_LINE, HOLD_LINE);
 }
 
 static READ8_HANDLER( bankedram_r )
@@ -44,7 +44,7 @@ static READ8_HANDLER( bankedram_r )
 static WRITE8_HANDLER( bankedram_w )
 {
 	if (palette_selected)
-		paletteram_xBBBBBGGGGGRRRRR_be_w(machine,offset,data);
+		paletteram_xBBBBBGGGGGRRRRR_be_w(space,offset,data);
 	else
 		ram[offset] = data;
 }
@@ -59,7 +59,7 @@ static WRITE8_HANDLER( gbusters_1f98_w )
 
 	/* other bits unused/unknown */
 	if (data & 0xfe){
-		//logerror("%04x: (1f98) write %02x\n",activecpu_get_pc(), data);
+		//logerror("%04x: (1f98) write %02x\n",cpu_get_pc(space->cpu), data);
 		//popmessage("$1f98 = %02x", data);
 	}
 }
@@ -86,13 +86,13 @@ static WRITE8_HANDLER( gbusters_coin_counter_w )
 		sprintf(baf,"ccnt = %02x", data);
 		popmessage(baf);
 #endif
-		logerror("%04x: (ccount) write %02x\n",activecpu_get_pc(), data);
+		logerror("%04x: (ccount) write %02x\n",cpu_get_pc(space->cpu), data);
 	}
 }
 
 static WRITE8_HANDLER( gbusters_unknown_w )
 {
-	logerror("%04x: write %02x to 0x1f9c\n",activecpu_get_pc(), data);
+	logerror("%04x: write %02x to 0x1f9c\n",cpu_get_pc(space->cpu), data);
 
 {
 char baf[40];
@@ -103,7 +103,7 @@ char baf[40];
 
 static WRITE8_HANDLER( gbusters_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
+	cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
 }
 
 static WRITE8_HANDLER( gbusters_snd_bankswitch_w )
@@ -414,17 +414,17 @@ ROM_START( crazycop )
 ROM_END
 
 
-static void gbusters_banking( int lines )
+static KONAMI_SETLINES_CALLBACK( gbusters_banking )
 {
-	UINT8 *RAM = memory_region(Machine, "main");
+	UINT8 *RAM = memory_region(device->machine, "main");
 	int offs = 0x10000;
 
 	/* bits 0-3 ROM bank */
 	offs += (lines & 0x0f)*0x2000;
-	memory_set_bankptr( 1, &RAM[offs] );
+	memory_set_bankptr(device->machine,  1, &RAM[offs] );
 
 	if (lines & 0xf0){
-		//logerror("%04x: (lines) write %02x\n",activecpu_get_pc(), lines);
+		//logerror("%04x: (lines) write %02x\n",cpu_get_pc(device), lines);
 		//popmessage("lines = %02x", lines);
 	}
 
@@ -435,7 +435,7 @@ static MACHINE_RESET( gbusters )
 {
 	UINT8 *RAM = memory_region(machine, "main");
 
-	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)gbusters_banking);
+	konami_configure_set_lines(machine->cpu[0], gbusters_banking);
 
 	/* mirror address for banked ROM */
 	memcpy(&RAM[0x18000], &RAM[0x10000], 0x08000 );
@@ -446,8 +446,8 @@ static MACHINE_RESET( gbusters )
 
 static DRIVER_INIT( gbusters )
 {
-	konami_rom_deinterleave_2("gfx1");
-	konami_rom_deinterleave_2("gfx2");
+	konami_rom_deinterleave_2(machine, "gfx1");
+	konami_rom_deinterleave_2(machine, "gfx2");
 }
 
 

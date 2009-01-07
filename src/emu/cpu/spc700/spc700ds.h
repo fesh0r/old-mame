@@ -21,9 +21,7 @@ author (Karl Stenerud) at karl@higashiyama-unet.ocn.ne.jp.
 
 #include "cpuintrf.h"
 
-offs_t spc700_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-
-#define spc700_read_8_disassembler(addr)				program_read_byte_8(addr)
+CPU_DISASSEMBLE( spc700 );
 
 
 #endif /* __SPC700DS_H__ */

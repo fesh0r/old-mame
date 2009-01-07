@@ -88,9 +88,9 @@ static TILE_GET_INFO( get_char_tile_info )
 
 VIDEO_START( xain )
 {
-	bgram0_tilemap = tilemap_create(get_bgram0_tile_info,back_scan,    16,16,32,32);
-	bgram1_tilemap = tilemap_create(get_bgram1_tile_info,back_scan,    16,16,32,32);
-	char_tilemap = tilemap_create(get_char_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	bgram0_tilemap = tilemap_create(machine, get_bgram0_tile_info,back_scan,    16,16,32,32);
+	bgram1_tilemap = tilemap_create(machine, get_bgram1_tile_info,back_scan,    16,16,32,32);
+	char_tilemap = tilemap_create(machine, get_char_tile_info,tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(bgram0_tilemap,0);
 	tilemap_set_transparent_pen(bgram1_tilemap,0);
@@ -158,7 +158,7 @@ WRITE8_HANDLER( xain_scrollyP1_w )
 
 WRITE8_HANDLER( xain_flipscreen_w )
 {
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 }
 
 
@@ -184,7 +184,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		sy = 240 - spriteram[offs];
 		if (sy <= -7) sy += 256;
 		flipx = attr & 0x40;
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 239 - sx;
 			sy = 240 - sy;
@@ -196,13 +196,13 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 			drawgfx(bitmap,machine->gfx[3],
 					numtile,
 					color,
-					flipx,flip_screen_get(),
-					sx-1,flip_screen_get() ? sy+16:sy-16,
+					flipx,flip_screen_get(machine),
+					sx-1,flip_screen_get(machine) ? sy+16:sy-16,
 					cliprect,TRANSPARENCY_PEN,0);
 			drawgfx(bitmap,machine->gfx[3],
 					numtile+1,
 					color,
-					flipx,flip_screen_get(),
+					flipx,flip_screen_get(machine),
 					sx-1,sy,
 					cliprect,TRANSPARENCY_PEN,0);
 		}
@@ -211,7 +211,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 			drawgfx(bitmap,machine->gfx[3],
 					numtile,
 					color,
-					flipx,flip_screen_get(),
+					flipx,flip_screen_get(machine),
 					sx,sy,
 					cliprect,TRANSPARENCY_PEN,0);
 		}

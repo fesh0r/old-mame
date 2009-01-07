@@ -163,41 +163,17 @@ Stephh's notes (based on the games M68000 code and some tests) :
 #include "cpu/z80/z80.h"
 #include "sound/dac.h"
 #include "sound/3812intf.h"
+#include "includes/armedf.h"
 
 #define LEGION_HACK	0
 
-
-extern void armedf_setgfxtype( int type );
-
-VIDEO_UPDATE( armedf );
-VIDEO_EOF( armedf );
-VIDEO_START( armedf );
-
-WRITE16_HANDLER( armedf_bg_videoram_w );
-WRITE16_HANDLER( armedf_fg_videoram_w );
-WRITE16_HANDLER( armedf_text_videoram_w );
-WRITE16_HANDLER( terraf_fg_scrollx_w );
-WRITE16_HANDLER( terraf_fg_scrolly_w );
-WRITE16_HANDLER( terraf_fg_scroll_msb_arm_w );
-WRITE16_HANDLER( armedf_fg_scrollx_w );
-WRITE16_HANDLER( armedf_fg_scrolly_w );
-WRITE16_HANDLER( armedf_bg_scrollx_w );
-WRITE16_HANDLER( armedf_bg_scrolly_w );
-WRITE16_HANDLER( armedf_mcu_cmd );
-
-extern UINT16 armedf_vreg;
-extern UINT16 *armedf_bg_videoram;
-extern UINT16 *armedf_fg_videoram;
-extern UINT16 *terraf_text_videoram;
-extern UINT16 *legion_cmd;
-extern tilemap *armedf_tx_tilemap;
 
 static WRITE16_HANDLER( io_w )
 {
 	COMBINE_DATA(&armedf_vreg);
 	/* bits 0 and 1 of armedf_vreg are coin counters */
 	/* bit 12 seems to handle screen flipping */
-	flip_screen_set(armedf_vreg & 0x1000);
+	flip_screen_set(space->machine, armedf_vreg & 0x1000);
 }
 
 static WRITE16_HANDLER( terraf_io_w )
@@ -205,7 +181,7 @@ static WRITE16_HANDLER( terraf_io_w )
 	COMBINE_DATA(&armedf_vreg);
 	/* bits 0 and 1 of armedf_vreg are coin counters */
 	/* bit 12 seems to handle screen flipping */
-	flip_screen_set(armedf_vreg & 0x1000);
+	flip_screen_set(space->machine, armedf_vreg & 0x1000);
 
 
 	if ((armedf_vreg & 0x4000) && !(armedf_vreg & 0x0100))
@@ -227,7 +203,7 @@ static WRITE16_HANDLER( kodure_io_w )
 	COMBINE_DATA(&armedf_vreg);
 	/* bits 0 and 1 of armedf_vreg are coin counters */
 	/* bit 12 seems to handle screen flipping */
-	flip_screen_set(armedf_vreg & 0x1000);
+	flip_screen_set(space->machine, armedf_vreg & 0x1000);
 
 	/* This is a temporary condition specification. */
 	if (!(armedf_vreg & 0x0080))
@@ -235,7 +211,7 @@ static WRITE16_HANDLER( kodure_io_w )
 		int i;
 		for (i = 0; i < 0x1000; i++)
 		{
-			armedf_text_videoram_w(machine,i, ' ', 0xffff);
+			armedf_text_videoram_w(space,i, ' ', 0xffff);
 		}
 	}
 }
@@ -243,7 +219,7 @@ static WRITE16_HANDLER( kodure_io_w )
 static WRITE16_HANDLER( sound_command_w )
 {
 	if (ACCESSING_BITS_0_7)
-		soundlatch_w(machine,0,((data & 0x7f) << 1) | 1);
+		soundlatch_w(space,0,((data & 0x7f) << 1) | 1);
 }
 
 #ifdef UNUSED_FUNCTION
@@ -445,7 +421,7 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( soundlatch_clear_r )
 {
-	soundlatch_clear_w(machine,0,0);
+	soundlatch_clear_w(space,0,0);
 	return 0;
 }
 

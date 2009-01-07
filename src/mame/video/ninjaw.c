@@ -23,22 +23,24 @@ static int taito_hide_pixels;
 static VIDEO_START( ninjaw_core )
 {
 	int chips;
+	int mask;
 
 	spritelist = auto_malloc(0x1000 * sizeof(*spritelist));
 
-	chips = number_of_TC0100SCN();
+	chips = TC0100SCN_count(machine);
 
 	assert_always(chips > 0, "we have an erroneous TC0100SCN configuration");
 
 	TC0100SCN_vh_start(machine,chips,TC0100SCN_GFX_NUM,taito_hide_pixels,0,0,0,0,0,2);
 
-	if (has_TC0110PCR())
+	mask = TC0110PCR_mask(machine);
+	if (mask & 1)
 		TC0110PCR_vh_start(machine);
 
-	if (has_second_TC0110PCR())
+	if (mask & 2)
 		TC0110PCR_1_vh_start(machine);
 
-	if (has_third_TC0110PCR())
+	if (mask & 4)
 		TC0110PCR_2_vh_start(machine);
 
 	/* Ensure palette from correct TC0110PCR used for each screen */
@@ -181,7 +183,7 @@ VIDEO_UPDATE( ninjaw )
 	nodraw  = TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,screen_number,layer[0],TILEMAP_DRAW_OPAQUE,0);	/* left */
 
 	/* Ensure screen blanked even when bottom layers not drawn due to disable bit */
-	if (nodraw) fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	if (nodraw) bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	/* Sprites can be under/over the layer below text layer */
 	draw_sprites(screen->machine,bitmap,cliprect,1,xoffs,8); // draw sprites with priority 1 which are under the mid layer

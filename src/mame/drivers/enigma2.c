@@ -19,6 +19,8 @@ TODO:
 *********************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/i8085/i8085.h"
 #include "deprecat.h"
 #include "sound/ay8910.h"
 
@@ -86,7 +88,7 @@ INLINE int vysnc_chain_counter_to_vpos(UINT16 counter)
 
 static TIMER_CALLBACK( interrupt_clear_callback )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 }
 
 
@@ -99,7 +101,7 @@ static TIMER_CALLBACK( interrupt_assert_callback )
 	int vpos = video_screen_get_vpos(machine->primary_screen);
 	UINT16 counter = vpos_to_vysnc_chain_counter(vpos);
 	UINT8 vector = 0xc7 | ((counter & 0x80) >> 3) | ((~counter & 0x80) >> 4);
-	cpunum_set_input_line_and_vector(machine, 0, 0, ASSERT_LINE, vector);
+	cpu_set_input_line_and_vector(machine->cpu[0], 0, ASSERT_LINE, vector);
 
 	/* set up for next interrupt */
 	if (counter == INT_TRIGGER_COUNT_1)
@@ -113,10 +115,10 @@ static TIMER_CALLBACK( interrupt_assert_callback )
 }
 
 
-static void create_interrupt_timers(void)
+static void create_interrupt_timers(running_machine *machine)
 {
-	interrupt_clear_timer = timer_alloc(interrupt_clear_callback, NULL);
-	interrupt_assert_timer = timer_alloc(interrupt_assert_callback, NULL);
+	interrupt_clear_timer = timer_alloc(machine, interrupt_clear_callback, NULL);
+	interrupt_assert_timer = timer_alloc(machine, interrupt_assert_callback, NULL);
 }
 
 
@@ -130,14 +132,14 @@ static void start_interrupt_timers(running_machine *machine)
 
 static MACHINE_START( enigma2 )
 {
-	create_interrupt_timers();
+	create_interrupt_timers(machine);
 }
 
 
 static MACHINE_RESET( enigma2 )
 {
 	last_sound_data = 0;
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
 
 	engima2_flip_screen = 0;
 
@@ -194,7 +196,7 @@ static VIDEO_UPDATE( enigma2 )
 			offs_t color_map_address = (y >> 3 << 5) | (x >> 3);
 			/* the schematics shows it like this, but it doesn't work as this would
                produce no stars, due to the contents of the PROM -- maybe there is
-               a star disabled bit somewhere that's connected here instead of flip_screen_get() */
+               a star disabled bit somewhere that's connected here instead of flip_screen_get(screen->machine) */
 			/* star_map_address = (y >> 4 << 6) | (engima2_flip_screen_get() << 5) | (x >> 3); */
 			offs_t star_map_address = (y >> 4 << 6) | 0x20 | (x >> 3);
 
@@ -317,18 +319,18 @@ static READ8_HANDLER( dip_switch_r )
 {
 	UINT8 ret = 0x00;
 
-if (LOG_PROT) logerror("DIP SW Read: %x at %x (prot data %x)\n", offset, activecpu_get_pc(), protection_data);
+if (LOG_PROT) logerror("DIP SW Read: %x at %x (prot data %x)\n", offset, cpu_get_pc(space->cpu), protection_data);
 	switch (offset)
 	{
 	case 0x01:
 		if (protection_data != 0xff)
 			ret = protection_data ^ 0x88;
 		else
-			ret = input_port_read(machine, "DSW");
+			ret = input_port_read(space->machine, "DSW");
 		break;
 
 	case 0x02:
-		if (activecpu_get_pc() == 0x07e5)
+		if (cpu_get_pc(space->cpu) == 0x07e5)
 			ret = 0xaa;
 		else
 			ret = 0xf4;
@@ -349,7 +351,7 @@ static WRITE8_HANDLER( sound_data_w )
 	if (!(data & 0x04) && (last_sound_data & 0x04))
 		sound_latch = (sound_latch << 1) | (~data & 0x01);
 
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, (data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, (data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
 
 	last_sound_data = data;
 }
@@ -363,14 +365,14 @@ static READ8_HANDLER( sound_latch_r )
 
 static WRITE8_HANDLER( protection_data_w )
 {
-if (LOG_PROT) logerror("Protection Data Write: %x at %x\n", data, safe_activecpu_get_pc());
+if (LOG_PROT) logerror("Protection Data Write: %x at %x\n", data, cpu_get_pc(space->cpu));
 	protection_data = data;
 }
 
 
 static WRITE8_HANDLER( enigma2_flip_screen_w )
 {
-	engima2_flip_screen = ((data >> 5) & 0x01) && ((input_port_read(machine, "DSW") & 0x20) == 0x20);
+	engima2_flip_screen = ((data >> 5) & 0x01) && ((input_port_read(space->machine, "DSW") & 0x20) == 0x20);
 }
 
 

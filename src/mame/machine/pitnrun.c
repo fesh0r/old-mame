@@ -19,7 +19,7 @@ MACHINE_RESET( pitnrun )
 {
 	zaccept = 1;
 	zready = 0;
-	cpunum_set_input_line(machine, 2,0,CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[2],0,CLEAR_LINE);
 }
 
 static TIMER_CALLBACK( pitnrun_mcu_real_data_r )
@@ -29,21 +29,21 @@ static TIMER_CALLBACK( pitnrun_mcu_real_data_r )
 
 READ8_HANDLER( pitnrun_mcu_data_r )
 {
-	timer_call_after_resynch(NULL, 0,pitnrun_mcu_real_data_r);
+	timer_call_after_resynch(space->machine, NULL, 0,pitnrun_mcu_real_data_r);
 	return toz80;
 }
 
 static TIMER_CALLBACK( pitnrun_mcu_real_data_w )
 {
 	zready = 1;
-	cpunum_set_input_line(machine, 2,0,ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[2],0,ASSERT_LINE);
 	fromz80 = param;
 }
 
 WRITE8_HANDLER( pitnrun_mcu_data_w )
 {
-	timer_call_after_resynch(NULL, data,pitnrun_mcu_real_data_w);
-	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(5));
+	timer_call_after_resynch(space->machine, NULL, data,pitnrun_mcu_real_data_w);
+	cpuexec_boost_interleave(space->machine, attotime_zero, ATTOTIME_IN_USEC(5));
 }
 
 READ8_HANDLER( pitnrun_mcu_status_r )
@@ -106,29 +106,26 @@ static TIMER_CALLBACK( pitnrun_mcu_status_real_w )
 
 WRITE8_HANDLER( pitnrun_68705_portB_w )
 {
+	const address_space *cpu0space = cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	if (~data & 0x02)
 	{
 		/* 68705 is going to read data from the Z80 */
-		timer_call_after_resynch(NULL, 0,pitnrun_mcu_data_real_r);
-		cpunum_set_input_line(machine, 2,0,CLEAR_LINE);
+		timer_call_after_resynch(space->machine, NULL, 0,pitnrun_mcu_data_real_r);
+		cpu_set_input_line(space->machine->cpu[2],0,CLEAR_LINE);
 		portA_in = fromz80;
 	}
 	if (~data & 0x04)
 	{
 		/* 68705 is writing data for the Z80 */
-		timer_call_after_resynch(NULL, portA_out,pitnrun_mcu_status_real_w);
+		timer_call_after_resynch(space->machine, NULL, portA_out,pitnrun_mcu_status_real_w);
 	}
 	if (~data & 0x10)
 	{
-    cpuintrf_push_context(0);
-		program_write_byte(address, portA_out);
-    cpuintrf_pop_context();
+		memory_write_byte(cpu0space, address, portA_out);
 	}
 	if (~data & 0x20)
 	{
-        cpuintrf_push_context(0);
-				portA_in = program_read_byte(address);
-        cpuintrf_pop_context();
+		portA_in = memory_read_byte(cpu0space, address);
 	}
 	if (~data & 0x40)
 	{

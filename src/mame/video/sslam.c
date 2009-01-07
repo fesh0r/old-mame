@@ -142,30 +142,30 @@ WRITE16_HANDLER( powerbls_bg_tileram_w )
 
 VIDEO_START(sslam)
 {
-	sslam_bg_tilemap = tilemap_create(get_sslam_bg_tile_info,tilemap_scan_rows,16,16,32,32);
-	sslam_md_tilemap = tilemap_create(get_sslam_md_tile_info,tilemap_scan_rows,16,16,32,32);
-	sslam_tx_tilemap = tilemap_create(get_sslam_tx_tile_info,tilemap_scan_rows,8,8,64,64);
+	sslam_bg_tilemap = tilemap_create(machine, get_sslam_bg_tile_info,tilemap_scan_rows,16,16,32,32);
+	sslam_md_tilemap = tilemap_create(machine, get_sslam_md_tile_info,tilemap_scan_rows,16,16,32,32);
+	sslam_tx_tilemap = tilemap_create(machine, get_sslam_tx_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	tilemap_set_transparent_pen(sslam_md_tilemap,0);
 	tilemap_set_transparent_pen(sslam_tx_tilemap,0);
 
 	sprites_x_offset = 0;
-	state_save_register_global(sprites_x_offset);
+	state_save_register_global(machine, sprites_x_offset);
 }
 
 VIDEO_START(powerbls)
 {
-	sslam_bg_tilemap = tilemap_create(get_powerbls_bg_tile_info,tilemap_scan_rows,8,8,64,64);
+	sslam_bg_tilemap = tilemap_create(machine, get_powerbls_bg_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	sprites_x_offset = -21;
-	state_save_register_global(sprites_x_offset);
+	state_save_register_global(machine, sprites_x_offset);
 }
 
 VIDEO_UPDATE(sslam)
 {
 	if(!(sslam_regs[6] & 1))
 	{
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 		return 0;
 	}
 
@@ -203,7 +203,7 @@ VIDEO_UPDATE(powerbls)
 {
 	if(!(sslam_regs[6] & 1))
 	{
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 		return 0;
 	}
 

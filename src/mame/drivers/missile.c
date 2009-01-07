@@ -328,10 +328,11 @@ Notes:
 *****************************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "sound/pokey.h"
 
 
-#define MASTER_CLOCK	(10000000)
+#define MASTER_CLOCK	XTAL_10MHz
 
 #define PIXEL_CLOCK		(MASTER_CLOCK/2)
 #define HTOTAL			(320)
@@ -404,7 +405,7 @@ static TIMER_CALLBACK( clock_irq )
 
 	/* assert the IRQ if not already asserted */
 	irq_state = (~curv >> 5) & 1;
-	cpunum_set_input_line(machine, 0, 0, irq_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, irq_state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* force an update while we're here */
 	video_screen_update_partial(machine->primary_screen, v_to_scanline(curv));
@@ -434,9 +435,9 @@ static TIMER_CALLBACK( adjust_cpu_speed )
 
 	/* starting at scanline 224, the CPU runs at half speed */
 	if (curv == 224)
-		cpunum_set_clock(machine, 0, MASTER_CLOCK/16);
+		cpu_set_clock(machine->cpu[0], MASTER_CLOCK/16);
 	else
-		cpunum_set_clock(machine, 0, MASTER_CLOCK/8);
+		cpu_set_clock(machine->cpu[0], MASTER_CLOCK/8);
 
 	/* scanline for the next run */
 	curv ^= 224;
@@ -444,7 +445,7 @@ static TIMER_CALLBACK( adjust_cpu_speed )
 }
 
 
-static OPBASE_HANDLER( missile_opbase_handler )
+static DIRECT_UPDATE_HANDLER( missile_direct_handler )
 {
 	/* offset accounts for lack of A15 decoding */
 	int offset = address & 0x8000;
@@ -453,14 +454,14 @@ static OPBASE_HANDLER( missile_opbase_handler )
 	/* RAM? */
 	if (address < 0x4000)
 	{
-		opbase->rom = opbase->ram = videoram - offset;
+		direct->raw = direct->decrypted = videoram - offset;
 		return ~0;
 	}
 
 	/* ROM? */
 	else if (address >= 0x5000)
 	{
-		opbase->rom = opbase->ram = memory_region(machine, "main") - offset;
+		direct->raw = direct->decrypted = memory_region(space->machine, "main") - offset;
 		return ~0;
 	}
 
@@ -476,29 +477,29 @@ static MACHINE_START( missile )
 	flipscreen = 0;
 
 	/* set up an opcode base handler since we use mapped handlers for RAM */
-	memory_set_opbase_handler(0, missile_opbase_handler);
+	memory_set_direct_update_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), missile_direct_handler);
 
 	/* create a timer to speed/slow the CPU */
-	cpu_timer = timer_alloc(adjust_cpu_speed, NULL);
+	cpu_timer = timer_alloc(machine, adjust_cpu_speed, NULL);
 	timer_adjust_oneshot(cpu_timer, video_screen_get_time_until_pos(machine->primary_screen, v_to_scanline(0), 0), 0);
 
 	/* create a timer for IRQs and set up the first callback */
-	irq_timer = timer_alloc(clock_irq, NULL);
+	irq_timer = timer_alloc(machine, clock_irq, NULL);
 	irq_state = 0;
 	schedule_next_irq(machine, -32);
 
 	/* setup for save states */
-	state_save_register_global(irq_state);
-	state_save_register_global(ctrld);
-	state_save_register_global(flipscreen);
-	state_save_register_global(madsel_delay);
-	state_save_register_global(madsel_lastpc);
+	state_save_register_global(machine, irq_state);
+	state_save_register_global(machine, ctrld);
+	state_save_register_global(machine, flipscreen);
+	state_save_register_global(machine, madsel_delay);
+	state_save_register_global(machine, madsel_lastpc);
 }
 
 
 static MACHINE_RESET( missile )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 	irq_state = 0;
 }
 
@@ -510,9 +511,9 @@ static MACHINE_RESET( missile )
  *
  *************************************/
 
-INLINE int get_madsel(void)
+INLINE int get_madsel(const address_space *space)
 {
-	UINT16 pc = activecpu_get_previouspc();
+	UINT16 pc = cpu_get_previouspc(space->cpu);
 
 	/* if we're at a different instruction than last time, reset our delay counter */
 	if (pc != madsel_lastpc)
@@ -521,7 +522,7 @@ INLINE int get_madsel(void)
 	/* MADSEL signal disables standard address decoding and routes
         writes to video RAM; it is enabled if the IRQ signal is clear
         and the low 5 bits of the fetched opcode are 0x01 */
-	if (!irq_state && (cpu_readop(pc) & 0x1f) == 0x01)
+	if (!irq_state && (memory_decrypted_read_byte(space, pc) & 0x1f) == 0x01)
 	{
 		/* the MADSEL signal goes high 5 cycles after the opcode is identified;
             this effectively skips the indirect memory read. Since this is difficult
@@ -547,7 +548,7 @@ INLINE offs_t get_bit3_addr(offs_t pixaddr)
 }
 
 
-static void write_vram(offs_t address, UINT8 data)
+static void write_vram(const address_space *space, offs_t address, UINT8 data)
 {
 	static const UINT8 data_lookup[4] = { 0x00, 0x0f, 0xf0, 0xff };
 	offs_t vramaddr;
@@ -572,12 +573,12 @@ static void write_vram(offs_t address, UINT8 data)
 		videoram[vramaddr] = (videoram[vramaddr] & vrammask) | (vramdata & ~vrammask);
 
 		/* account for the extra clock cycle */
-		activecpu_adjust_icount(-1);
+		cpu_adjust_icount(space->cpu, -1);
 	}
 }
 
 
-static UINT8 read_vram(offs_t address)
+static UINT8 read_vram(const address_space *space, offs_t address)
 {
 	offs_t vramaddr;
 	UINT8 vramdata;
@@ -606,7 +607,7 @@ static UINT8 read_vram(offs_t address)
 			result &= ~0x20;
 
 		/* account for the extra clock cycle */
-		activecpu_adjust_icount(-1);
+		cpu_adjust_icount(space->cpu, -1);
 	}
 	return result;
 }
@@ -663,9 +664,9 @@ static VIDEO_UPDATE( missile )
 static WRITE8_HANDLER( missile_w )
 {
 	/* if we're in MADSEL mode, write to video RAM */
-	if (get_madsel())
+	if (get_madsel(space))
 	{
-		write_vram(offset, data);
+		write_vram(space, offset, data);
 		return;
 	}
 
@@ -678,7 +679,7 @@ static WRITE8_HANDLER( missile_w )
 
 	/* POKEY */
 	else if (offset < 0x4800)
-		pokey1_w(machine, offset & 0x0f, data);
+		pokey1_w(space, offset & 0x0f, data);
 
 	/* OUT0 */
 	else if (offset < 0x4900)
@@ -694,25 +695,25 @@ static WRITE8_HANDLER( missile_w )
 
 	/* color RAM */
 	else if (offset >= 0x4b00 && offset < 0x4c00)
-		palette_set_color_rgb(machine, offset & 7, pal1bit(~data >> 3), pal1bit(~data >> 2), pal1bit(~data >> 1));
+		palette_set_color_rgb(space->machine, offset & 7, pal1bit(~data >> 3), pal1bit(~data >> 2), pal1bit(~data >> 1));
 
 	/* watchdog */
 	else if (offset >= 0x4c00 && offset < 0x4d00)
-		watchdog_reset(machine);
+		watchdog_reset(space->machine);
 
 	/* interrupt ack */
 	else if (offset >= 0x4d00 && offset < 0x4e00)
 	{
 		if (irq_state)
 		{
-			cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 			irq_state = 0;
 		}
 	}
 
 	/* anything else */
 	else
-		logerror("%04X:Unknown write to %04X = %02X\n", activecpu_get_pc(), offset, data);
+		logerror("%04X:Unknown write to %04X = %02X\n", cpu_get_pc(space->cpu), offset, data);
 }
 
 
@@ -721,8 +722,8 @@ static READ8_HANDLER( missile_r )
 	UINT8 result = 0xff;
 
 	/* if we're in MADSEL mode, read from video RAM */
-	if (get_madsel())
-		return read_vram(offset);
+	if (get_madsel(space))
+		return read_vram(space, offset);
 
 	/* otherwise, strip A15 and handle manually */
 	offset &= 0x7fff;
@@ -733,11 +734,11 @@ static READ8_HANDLER( missile_r )
 
 	/* ROM */
 	else if (offset >= 0x5000)
-		result = memory_region(machine, "main")[offset];
+		result = memory_region(space->machine, "main")[offset];
 
 	/* POKEY */
 	else if (offset < 0x4800)
-		result = pokey1_r(machine, offset & 0x0f);
+		result = pokey1_r(space, offset & 0x0f);
 
 	/* IN0 */
 	else if (offset < 0x4900)
@@ -745,25 +746,25 @@ static READ8_HANDLER( missile_r )
 		if (ctrld)	/* trackball */
 		{
 			if (!flipscreen)
-		  	    result = ((input_port_read(machine, "TRACK0_Y") << 4) & 0xf0) | (input_port_read(machine, "TRACK0_X") & 0x0f);
+		  	    result = ((input_port_read(space->machine, "TRACK0_Y") << 4) & 0xf0) | (input_port_read(space->machine, "TRACK0_X") & 0x0f);
 			else
-		  	    result = ((input_port_read(machine, "TRACK1_Y") << 4) & 0xf0) | (input_port_read(machine, "TRACK1_X") & 0x0f);
+		  	    result = ((input_port_read(space->machine, "TRACK1_Y") << 4) & 0xf0) | (input_port_read(space->machine, "TRACK1_X") & 0x0f);
 		}
 		else	/* buttons */
-			result = input_port_read(machine, "IN0");
+			result = input_port_read(space->machine, "IN0");
 	}
 
 	/* IN1 */
 	else if (offset < 0x4a00)
-		result = input_port_read(machine, "IN1");
+		result = input_port_read(space->machine, "IN1");
 
 	/* IN2 */
 	else if (offset < 0x4b00)
-		result = input_port_read(machine, "R10");
+		result = input_port_read(space->machine, "R10");
 
 	/* anything else */
 	else
-		logerror("%04X:Unknown read from %04X\n", activecpu_get_pc(), offset);
+		logerror("%04X:Unknown read from %04X\n", cpu_get_pc(space->cpu), offset);
 	return result;
 }
 

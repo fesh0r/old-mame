@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/vector.h"
 #include "cpu/ccpu/ccpu.h"
 #include "cinemat.h"
@@ -47,9 +46,9 @@ static UINT8 last_control;
  *
  *************************************/
 
-void cinemat_vector_callback(INT16 sx, INT16 sy, INT16 ex, INT16 ey, UINT8 shift)
+void cinemat_vector_callback(const device_config *device, INT16 sx, INT16 sy, INT16 ex, INT16 ey, UINT8 shift)
 {
-	const rectangle *visarea = video_screen_get_visible_area(Machine->primary_screen);
+	const rectangle *visarea = video_screen_get_visible_area(device->machine->primary_screen);
 	int intensity = 0xff;
 
 	/* adjust for slop */
@@ -64,10 +63,10 @@ void cinemat_vector_callback(INT16 sx, INT16 sy, INT16 ex, INT16 ey, UINT8 shift
 
 	/* move to the starting position if we're not there already */
 	if (sx != lastx || sy != lasty)
-		vector_add_point(sx << 16, sy << 16, 0, 0);
+		vector_add_point(device->machine, sx << 16, sy << 16, 0, 0);
 
 	/* draw the vector */
-	vector_add_point(ex << 16, ey << 16, vector_color, intensity);
+	vector_add_point(device->machine, ex << 16, ey << 16, vector_color, intensity);
 
 	/* remember the last point */
 	lastx = ex;
@@ -98,7 +97,7 @@ WRITE8_HANDLER(cinemat_vector_control_w)
 			/* X register as the intensity */
 			if (data != last_control && data)
 			{
-				int xval = cpunum_get_reg(0, CCPU_X) & 0x0f;
+				int xval = cpu_get_reg(space->machine->cpu[0], CCPU_X) & 0x0f;
 				i = (xval + 1) * 255 / 16;
 				vector_color = MAKE_RGB(i,i,i);
 			}
@@ -109,7 +108,7 @@ WRITE8_HANDLER(cinemat_vector_control_w)
 			/* X register as the intensity */
 			if (data != last_control && data)
 			{
-				int xval = cpunum_get_reg(0, CCPU_X);
+				int xval = cpu_get_reg(space->machine->cpu[0], CCPU_X);
 				xval = (~xval >> 2) & 0x3f;
 				i = (xval + 1) * 255 / 64;
 				vector_color = MAKE_RGB(i,i,i);
@@ -121,7 +120,7 @@ WRITE8_HANDLER(cinemat_vector_control_w)
 			/* as 4-4-4 BGR values */
 			if (data != last_control && data)
 			{
-				int xval = cpunum_get_reg(0, CCPU_X);
+				int xval = cpu_get_reg(space->machine->cpu[0], CCPU_X);
 				r = (~xval >> 0) & 0x0f;
 				r = r * 255 / 15;
 				g = (~xval >> 4) & 0x0f;
@@ -142,15 +141,15 @@ WRITE8_HANDLER(cinemat_vector_control_w)
 				/* on an IV instruction if data == 0 here */
 				if (data != last_control && !data)
 				{
-					lastx = cpunum_get_reg(0, CCPU_X);
-					lasty = cpunum_get_reg(0, CCPU_Y);
+					lastx = cpu_get_reg(space->machine->cpu[0], CCPU_X);
+					lasty = cpu_get_reg(space->machine->cpu[0], CCPU_Y);
 				}
 
 				/* on the rising edge of the data value, latch the Y register */
 				/* as 2-3-3 BGR values */
 				if (data != last_control && data)
 				{
-					int yval = cpunum_get_reg(0, CCPU_Y);
+					int yval = cpu_get_reg(space->machine->cpu[0], CCPU_Y);
 					r = (~yval >> 0) & 0x07;
 					r = r * 255 / 7;
 					g = (~yval >> 3) & 0x07;
@@ -160,8 +159,8 @@ WRITE8_HANDLER(cinemat_vector_control_w)
 					vector_color = MAKE_RGB(r,g,b);
 
 					/* restore the original X,Y values */
-					cpunum_set_reg(0, CCPU_X, lastx);
-					cpunum_set_reg(0, CCPU_Y, lasty);
+					cpu_set_reg(space->machine->cpu[0], CCPU_X, lastx);
+					cpu_set_reg(space->machine->cpu[0], CCPU_Y, lasty);
 				}
 			}
 			break;
@@ -226,9 +225,7 @@ VIDEO_UPDATE( cinemat )
 	VIDEO_UPDATE_CALL(vector);
 	vector_clear_list();
 
-	cpuintrf_push_context(0);
-	ccpu_wdt_timer_trigger();
-	cpuintrf_pop_context();
+	ccpu_wdt_timer_trigger(screen->machine->cpu[0]);
 
 	return 0;
 }

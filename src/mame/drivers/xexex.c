@@ -62,6 +62,7 @@ Unresolved Issues:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "video/konamiic.h"
 #include "cpu/z80/z80.h"
@@ -103,7 +104,7 @@ static NVRAM_HANDLER( xexex )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_intf);
+		eeprom_init(machine, &eeprom_intf);
 
 		if (file)
 		{
@@ -189,9 +190,9 @@ static WRITE16_HANDLER( spriteram16_mirror_w )
 
 static READ16_HANDLER( xexex_waitskip_r )
 {
-	if (activecpu_get_pc() == 0x1158)
+	if (cpu_get_pc(space->cpu) == 0x1158)
 	{
-		cpu_spinuntil_trigger(resume_trigger);
+		cpu_spinuntil_trigger(space->cpu, resume_trigger);
 		suspension_active = 1;
 	}
 
@@ -206,7 +207,7 @@ static READ16_HANDLER( control1_r )
 	/* bit 0 is EEPROM data */
 	/* bit 1 is EEPROM ready */
 	/* bit 3 is service button */
-	res = input_port_read(machine, "EEPROM");
+	res = input_port_read(space->machine, "EEPROM");
 
 	if (init_eeprom_count)
 	{
@@ -255,9 +256,9 @@ static WRITE16_HANDLER( sound_cmd1_w )
 	{
 		// anyone knows why 0x1a keeps lurking the sound queue in the world version???
 		if (xexex_strip0x1a)
-			if (soundlatch2_r(machine, 0)==1 && data==0x1a) return;
+			if (soundlatch2_r(space, 0)==1 && data==0x1a) return;
 
-		soundlatch_w(machine, 0, data & 0xff);
+		soundlatch_w(space, 0, data & 0xff);
 	}
 }
 
@@ -265,29 +266,29 @@ static WRITE16_HANDLER( sound_cmd2_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch2_w(machine, 0, data & 0xff);
+		soundlatch2_w(space, 0, data & 0xff);
 	}
 }
 
 static WRITE16_HANDLER( sound_irq_w )
 {
-	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+	cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
 }
 
 static READ16_HANDLER( sound_status_r )
 {
-	return soundlatch3_r(machine, 0);
+	return soundlatch3_r(space, 0);
 }
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr(2, memory_region(machine, "audio") + 0x10000 + cur_sound_region*0x4000);
+	memory_set_bankptr(machine, 2, memory_region(machine, "audio") + 0x10000 + cur_sound_region*0x4000);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	cur_sound_region = data & 7;
-	reset_sound_region(machine);
+	reset_sound_region(space->machine);
 }
 
 static void ym_set_mixing(double left, double right)
@@ -303,31 +304,31 @@ static TIMER_CALLBACK( dmaend_callback )
 	if (cur_control2 & 0x0040)
 	{
 		// foul-proof (CPU0 could be deactivated while we wait)
-		if (suspension_active) { suspension_active = 0; cpu_trigger(machine, resume_trigger); }
+		if (suspension_active) { suspension_active = 0; cpuexec_trigger(machine, resume_trigger); }
 
 		// IRQ 5 is the "object DMA end interrupt" and shouldn't be triggered
 		// if object data isn't ready for DMA within the frame.
-		cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0], 5, HOLD_LINE);
 	}
 }
 
 static INTERRUPT_GEN( xexex_interrupt )
 {
-	if (suspension_active) { suspension_active = 0; cpu_trigger(machine, resume_trigger); }
+	if (suspension_active) { suspension_active = 0; cpuexec_trigger(device->machine, resume_trigger); }
 
-	switch (cpu_getiloops())
+	switch (cpu_getiloops(device))
 	{
 		case 0:
 			// IRQ 6 is for test mode only
 			if (cur_control2 & 0x0020)
-				cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
+				cpu_set_input_line(device, 6, HOLD_LINE);
 		break;
 
 		case 1:
 			if (K053246_is_IRQ_enabled())
 			{
 				// OBJDMA starts at the beginning of V-blank
-				xexex_objdma(machine, 0);
+				xexex_objdma(device->machine, 0);
 
 				// schedule DMA end interrupt
 				timer_adjust_oneshot(dmadelay_timer, XE_DMADELAY, 0);
@@ -336,7 +337,7 @@ static INTERRUPT_GEN( xexex_interrupt )
 			// IRQ 4 is the V-blank interrupt. It controls color, sound and
 			// vital game logics that shouldn't be interfered by frame-drop.
 			if (cur_control2 & 0x0800)
-				cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+				cpu_set_input_line(device, 4, HOLD_LINE);
 		break;
 	}
 }
@@ -463,7 +464,7 @@ static MACHINE_DRIVER_START( xexex )
 	MDRV_CPU_ADD("audio", Z80, 8000000)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
-	MDRV_INTERLEAVE(32)
+	MDRV_QUANTUM_TIME(HZ(1920))
 
 	MDRV_MACHINE_START(xexex)
 	MDRV_MACHINE_RESET(xexex)
@@ -617,14 +618,14 @@ static STATE_POSTLOAD( xexex_postload )
 
 static MACHINE_START( xexex )
 {
-	state_save_register_global(cur_control2);
-	state_save_register_global(cur_sound_region);
+	state_save_register_global(machine, cur_control2);
+	state_save_register_global(machine, cur_sound_region);
 	state_save_register_postload(machine, xexex_postload, NULL);
 
 	resume_trigger = 1000;
 	init_eeprom_count = 0;
 
-	dmadelay_timer = timer_alloc(dmaend_callback, NULL);
+	dmadelay_timer = timer_alloc(machine, dmaend_callback, NULL);
 }
 
 
@@ -638,9 +639,9 @@ static DRIVER_INIT( xexex )
 		xexex_strip0x1a = 1;
 	}
 
-	konami_rom_deinterleave_2("gfx1");
-	konami_rom_deinterleave_4("gfx2");
-	K053250_unpack_pixels("gfx3");
+	konami_rom_deinterleave_2(machine, "gfx1");
+	konami_rom_deinterleave_4(machine, "gfx2");
+	K053250_unpack_pixels(machine, "gfx3");
 }
 
 GAME( 1991, xexex,  0,     xexex, xexex, xexex, ROT0, "Konami", "Xexex (ver EAA)", 0 )

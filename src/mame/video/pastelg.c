@@ -84,23 +84,31 @@ WRITE8_HANDLER( pastelg_blitter_w )
 		case 4: blitter_sizex = data; break;
 		case 5: blitter_sizey = data;
 				/* writing here also starts the blit */
-				pastelg_gfxdraw(machine);
+				pastelg_gfxdraw(space->machine);
 				break;
 		case 6:	blitter_direction_x = (data & 0x01) ? 1 : 0;
 				blitter_direction_y = (data & 0x02) ? 1 : 0;
 				pastelg_flipscreen = (data & 0x04) ? 0 : 1;
 				pastelg_dispflag = (data & 0x08) ? 0 : 1;
-				pastelg_vramflip(machine);
+				pastelg_vramflip(space->machine);
 				break;
 	}
 }
 
+
+WRITE8_HANDLER( threeds_romsel_w )
+{
+	if (data&0xfc) printf("%02x\n",data);
+	pastelg_gfxrom = (data & 0x3);
+}
+
+
 WRITE8_HANDLER( pastelg_romsel_w )
 {
-	int gfxlen = memory_region_length(machine, "gfx1");
+	int gfxlen = memory_region_length(space->machine, "gfx1");
 	pastelg_gfxrom = ((data & 0xc0) >> 6);
 	pastelg_palbank = ((data & 0x10) >> 4);
-	nb1413m3_sndrombank1_w(machine, 0, data);
+	nb1413m3_sndrombank1_w(space, 0, data);
 
 	if ((pastelg_gfxrom << 16) > (gfxlen - 1))
 	{
@@ -153,10 +161,11 @@ static void pastelg_gfxdraw(running_machine *machine)
 	int dx, dy;
 	int startx, starty;
 	int sizex, sizey;
-	int skipx, skipy;
+	int incx, incy;
 	int ctrx, ctry;
 	int readflag;
 	int gfxaddr, gfxlen;
+	int count;
 	UINT8 color;
 
 	nb1413m3_busyctr = 0;
@@ -164,26 +173,29 @@ static void pastelg_gfxdraw(running_machine *machine)
 	startx = blitter_destx + blitter_sizex;
 	starty = blitter_desty + blitter_sizey;
 
+
 	if (blitter_direction_x)
 	{
-		sizex = blitter_sizex ^ 0xff;
-		skipx = 1;
+		if (blitter_sizex&0x80) sizex = 0xff-blitter_sizex;
+		else sizex=blitter_sizex;
+		incx = 1;
 	}
 	else
 	{
 		sizex = blitter_sizex;
-		skipx = -1;
+		incx = -1;
 	}
 
 	if (blitter_direction_y)
 	{
-		sizey = blitter_sizey ^ 0xff;
-		skipy = 1;
+		if (blitter_sizey&0x80) sizey = 0xff-blitter_sizey;
+		else sizey=blitter_sizey;
+		incy = 1;
 	}
 	else
 	{
 		sizey = blitter_sizey;
-		skipy = -1;
+		incy = -1;
 	}
 
 	gfxlen = memory_region_length(machine, "gfx1");
@@ -191,10 +203,17 @@ static void pastelg_gfxdraw(running_machine *machine)
 
 	readflag = 0;
 
-	for (y = starty, ctry = sizey; ctry >= 0; y += skipy, ctry--)
+	count = 0;
+	y = starty;
+
+	for (ctry = sizey; ctry >= 0; ctry--)
 	{
-		for (x = startx, ctrx = sizex; ctrx >= 0; x += skipx, ctrx--)
+		x = startx;
+
+		for (ctrx = sizex; ctrx >= 0; ctrx--)
 		{
+			gfxaddr = (pastelg_gfxrom << 16) + ((blitter_src_addr + count));
+
 			if ((gfxaddr > (gfxlen - 1)))
 			{
 #ifdef MAME_DEBUG
@@ -223,7 +242,7 @@ static void pastelg_gfxdraw(running_machine *machine)
 			{
 				// 2nd, 4th, 6th, ... read
 				color = (color & 0xf0) >> 4;
-				gfxaddr++;
+				count++;
 			}
 
 			readflag ^= 1;
@@ -243,11 +262,14 @@ static void pastelg_gfxdraw(running_machine *machine)
 			}
 
 			nb1413m3_busyctr++;
+			x += incx;
 		}
+
+		y += incy;
 	}
 
 	nb1413m3_busyflag = 0;
-	timer_set(attotime_mul(ATTOTIME_IN_HZ(400000), nb1413m3_busyctr), NULL, 0, blitter_timer_callback);
+	timer_set(machine, attotime_mul(ATTOTIME_IN_HZ(400000), nb1413m3_busyctr), NULL, 0, blitter_timer_callback);
 }
 
 /******************************************************************************
@@ -281,7 +303,7 @@ VIDEO_UPDATE( pastelg )
 				*BITMAP_ADDR16(bitmap, y, x) = pastelg_videoram[(y * width) + x];
 	}
 	else
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 
 	return 0;
 }

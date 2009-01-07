@@ -121,9 +121,9 @@ static UINT8		sound_banks;		/* number of sound banks */
 
 static MACHINE_START( segac2 )
 {
-	state_save_register_global_array(misc_io_data);
-	state_save_register_global(prot_write_buf);
-	state_save_register_global(prot_read_buf);
+	state_save_register_global_array(machine, misc_io_data);
+	state_save_register_global(machine, prot_write_buf);
+	state_save_register_global(machine, prot_read_buf);
 
 //  MACHINE_START_CALL(genesis);
 }
@@ -176,9 +176,9 @@ static READ16_HANDLER( ym3438_r )
 {
 	switch (offset)
 	{
-		case 0: return ym3438_status_port_0_a_r(machine, 0);
-		case 1: return ym3438_read_port_0_r(machine, 0);
-		case 2: return ym3438_status_port_0_b_r(machine, 0);
+		case 0: return ym3438_status_port_0_a_r(space, 0);
+		case 1: return ym3438_read_port_0_r(space, 0);
+		case 2: return ym3438_status_port_0_b_r(space, 0);
 	}
 	return 0xff;
 }
@@ -194,10 +194,10 @@ static WRITE16_HANDLER( ym3438_w )
 
 		switch (offset)
 		{
-			case 0: ym3438_control_port_0_a_w(machine, 0, data & 0xff);	last_port = data;	break;
-			case 1: ym3438_data_port_0_a_w(machine, 0, data & 0xff);							break;
-			case 2: ym3438_control_port_0_b_w(machine, 0, data & 0xff);	last_port = data;	break;
-			case 3: ym3438_data_port_0_b_w(machine, 0, data & 0xff);							break;
+			case 0: ym3438_control_port_0_a_w(space, 0, data & 0xff);	last_port = data;	break;
+			case 1: ym3438_data_port_0_a_w(space, 0, data & 0xff);							break;
+			case 2: ym3438_control_port_0_b_w(space, 0, data & 0xff);	last_port = data;	break;
+			case 3: ym3438_data_port_0_b_w(space, 0, data & 0xff);							break;
 		}
 	}
 }
@@ -247,12 +247,6 @@ static READ16_HANDLER( palette_r )
 	return paletteram16[offset + palbank * 0x200];
 }
 
-extern UINT16* megadrive_vdp_palette_lookup;
-extern UINT16* megadrive_vdp_palette_lookup_sprite; // for C2
-extern UINT16* megadrive_vdp_palette_lookup_shadow;
-extern UINT16* megadrive_vdp_palette_lookup_highlight;
-
-
 UINT16* megadrive_vdp_palette_lookup_segac2;
 UINT16* megadrive_vdp_palette_lookup_sprite_segac2;
 UINT16* megadrive_vdp_palette_lookup_shadow_segac2;
@@ -281,7 +275,7 @@ static WRITE16_HANDLER( palette_w )
 	b = ((newword >> 7) & 0x1e) | ((newword >> 14) & 0x01);
 
 	/* set the color */
-	palette_set_color_rgb(machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
+	palette_set_color_rgb(space->machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
 
 	megadrive_vdp_palette_lookup_segac2[offset] = (b) | (g<<5) | (r<<10);
 	megadrive_vdp_palette_lookup_sprite_segac2[offset] = (b) | (g<<5) | (r<<10);
@@ -325,9 +319,6 @@ static WRITE16_HANDLER( palette_w )
     RAM address bits.
 
 ******************************************************************************/
-
-extern int segac2_bg_pal_lookup[4];
-extern int segac2_sp_pal_lookup[4];
 
 static void recompute_palette_tables(void)
 {
@@ -388,8 +379,8 @@ static READ16_HANDLER( io_chip_r )
 
 			/* otherwise, return an input port */
 			if (offset == 0x04/2 && sound_banks)
-				return (input_port_read(machine, portnames[offset]) & 0xbf) | (upd7759_0_busy_r(machine,0) << 6);
-			return input_port_read(machine, portnames[offset]);
+				return (input_port_read(space->machine, portnames[offset]) & 0xbf) | (upd7759_0_busy_r(space,0) << 6);
+			return input_port_read(space->machine, portnames[offset]);
 
 		/* 'SEGA' protection */
 		case 0x10/2:
@@ -469,7 +460,7 @@ static WRITE16_HANDLER( io_chip_w )
 			newbank = data & 3;
 			if (newbank != palbank)
 			{
-				//video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen) + 1);
+				//video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen) + 1);
 				palbank = newbank;
 				recompute_palette_tables();
 			}
@@ -508,7 +499,7 @@ static WRITE16_HANDLER( control_w )
 	data &= 0x0f;
 
 	/* bit 0 controls display enable */
-	//segac2_enable_display(machine, ~data & 1);
+	//segac2_enable_display(space->machine, ~data & 1);
 	segac2_enable_display = ~data & 1;
 
 	/* bit 1 resets the protection */
@@ -538,7 +529,7 @@ static WRITE16_HANDLER( control_w )
 /* protection chip reads */
 static READ16_HANDLER( prot_r )
 {
-	if (LOG_PROTECTION) logerror("%06X:protection r=%02X\n", activecpu_get_previouspc(), prot_func ? prot_read_buf : 0xff);
+	if (LOG_PROTECTION) logerror("%06X:protection r=%02X\n", cpu_get_previouspc(space->cpu), prot_func ? prot_read_buf : 0xff);
 	return prot_read_buf | 0xf0;
 }
 
@@ -563,16 +554,16 @@ static WRITE16_HANDLER( prot_w )
 	/* determine the value to return, should a read occur */
 	if (prot_func)
 		prot_read_buf = prot_func(table_index);
-	if (LOG_PROTECTION) logerror("%06X:protection w=%02X, new result=%02X\n", activecpu_get_previouspc(), data & 0x0f, prot_read_buf);
+	if (LOG_PROTECTION) logerror("%06X:protection w=%02X, new result=%02X\n", cpu_get_previouspc(space->cpu), data & 0x0f, prot_read_buf);
 
 	/* if the palette changed, force an update */
 	if (new_sp_palbase != sp_palbase || new_bg_palbase != bg_palbase)
 	{
-		//video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen) + 1);
+		//video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen) + 1);
 		sp_palbase = new_sp_palbase;
 		bg_palbase = new_bg_palbase;
 		recompute_palette_tables();
-		if (LOG_PALETTE) logerror("Set palbank: %d/%d (scan=%d)\n", bg_palbase, sp_palbase, video_screen_get_vpos(machine->primary_screen));
+		if (LOG_PALETTE) logerror("Set palbank: %d/%d (scan=%d)\n", bg_palbase, sp_palbase, video_screen_get_vpos(space->machine->primary_screen));
 	}
 }
 
@@ -1359,7 +1350,7 @@ INPUT_PORTS_END
 void  segac2_irq2_interrupt(running_machine *machine, int state)
 {
 	//printf("sound irq %d\n", state);
-	cpunum_set_input_line(machine, 0, 2, state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 2, state ? ASSERT_LINE : CLEAR_LINE);
 }
 static const ym3438_interface ym3438_intf =
 {
@@ -1401,7 +1392,7 @@ VIDEO_UPDATE(segac2_new)
 {
 	if (!segac2_enable_display)
 	{
-		fillbitmap(bitmap, get_black_pen(screen->machine), NULL);
+		bitmap_fill(bitmap, NULL, get_black_pen(screen->machine));
 		return 0;
 	}
 
@@ -1868,12 +1859,6 @@ it should be, otherwise I don't see how the formula could be computed.
 
 ******************************************************************************/
 
-extern int genvdp_use_cram;
-extern int genesis_has_z80;
-extern int genesis_always_irq6;
-extern int genesis_other_hacks;
-extern DRIVER_INIT( megadriv_c2 );
-
 static void segac2_common_init(running_machine* machine, int (*func)(int in))
 {
 	DRIVER_INIT_CALL( megadriv_c2 );
@@ -2140,7 +2125,7 @@ static DRIVER_INIT( tfrceacb )
 {
 	/* disable the palette bank switching from the protection chip */
 	segac2_common_init(machine, NULL);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x800001, 0, 0, SMH_NOP);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x800000, 0x800001, 0, 0, SMH_NOP);
 }
 
 static DRIVER_INIT( borench )
@@ -2228,36 +2213,36 @@ static DRIVER_INIT( pclub )
 {
 	segac2_common_init(machine, prot_func_pclub);
 
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880124, 0x880125, 0, 0, print_club_camera_w);
 }
 
 static DRIVER_INIT( pclubjv2 )
 {
 	segac2_common_init(machine, prot_func_pclubjv2);
 
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880124, 0x880125, 0, 0, print_club_camera_w);
 }
 
 static DRIVER_INIT( pclubjv4 )
 {
 	segac2_common_init(machine, prot_func_pclubjv4);
 
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880124, 0x880125, 0, 0, print_club_camera_w);
 }
 
 static DRIVER_INIT( pclubjv5 )
 {
 	segac2_common_init(machine, prot_func_pclubjv5);
 
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x880124, 0x880125, 0, 0, print_club_camera_w);
 }
 
 

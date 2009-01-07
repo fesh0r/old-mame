@@ -26,7 +26,7 @@
 #include "mc6845.h"
 
 
-#define LOG		(0)
+#define LOG		(1)
 
 
 /* device types */
@@ -43,6 +43,13 @@ enum
 	NUM_TYPES
 };
 
+/* mode macros */
+
+#define MODE_TRANSPARENT(d)				(((d)->mode_control & 0x08) != 0)
+#define MODE_TRANSPARENT_PHI2(d)		(((d)->mode_control & 0x88) == 0x88)
+/* FIXME: not supported yet */
+#define MODE_TRANSPARENT_BLANK(d)		(((d)->mode_control & 0x88) == 0x08)
+#define MODE_UPDATE_STROBE(d)			(((d)->mode_control & 0x40) != 0)
 
 /* tags for state saving */
 static const char * const device_tags[NUM_TYPES] = {     "mc6845", "mc6845-1", "c6545-1", "r6545-1", "h46505", "hd6845", "sy6545-1" };
@@ -52,6 +59,9 @@ static const int supports_disp_start_addr_r[NUM_TYPES] = {  TRUE,       TRUE,   
 static const int supports_vert_sync_width[NUM_TYPES]   = { FALSE,       TRUE,      TRUE,      TRUE,    FALSE,     TRUE,       TRUE };
 static const int supports_status_reg_d5[NUM_TYPES]     = { FALSE,      FALSE,      TRUE,      TRUE,    FALSE,    FALSE,       TRUE };
 static const int supports_status_reg_d6[NUM_TYPES]     = { FALSE,      FALSE,      TRUE,      TRUE,    FALSE,    FALSE,       TRUE };
+
+/* FIXME: check other variants */
+static const int supports_transparent[NUM_TYPES]       = { FALSE,      FALSE,     FALSE,      TRUE,    FALSE,    FALSE,      FALSE };
 
 
 typedef struct _mc6845_t mc6845_t;
@@ -77,6 +87,7 @@ struct _mc6845_t
 	UINT16	disp_start_addr;	/* 0x0c/0x0d */
 	UINT16	cursor_addr;		/* 0x0e/0x0f */
 	UINT16	light_pen_addr;		/* 0x10/0x11 */
+	UINT16	update_addr;		/* 0x12/0x13 */
 
 	/* other internal state */
 	UINT64	clock;
@@ -115,6 +126,9 @@ static void update_hsync_changed_timers(mc6845_t *mc6845);
 static void update_vsync_changed_timers(mc6845_t *mc6845);
 
 
+mc6845_interface mc6845_null_interface = { 0 };
+
+
 /* makes sure that the passed in device is the right type */
 INLINE mc6845_t *get_safe_token(const device_config *device)
 {
@@ -135,6 +149,28 @@ INLINE mc6845_t *get_safe_token(const device_config *device)
 static STATE_POSTLOAD( mc6845_state_save_postload )
 {
 	recompute_parameters(param, TRUE);
+}
+
+
+static TIMER_CALLBACK( on_update_address_cb )
+{
+	const device_config *device = ptr;
+	mc6845_t *mc6845 = get_safe_token(device);
+	int addr = (param >> 8);
+	int strobe = (param & 0xff);
+
+	/* call the callback function -- we know it exists */
+	mc6845->intf->on_update_addr_changed(device, addr, strobe);
+}
+
+INLINE void call_on_update_address(const device_config *device, int strobe)
+{
+	mc6845_t *mc6845 = get_safe_token(device);
+
+	if (mc6845->intf->on_update_addr_changed)
+		timer_set(device->machine, attotime_zero, (void *) device, (mc6845->update_addr << 8) | strobe, on_update_address_cb);
+	else
+		fatalerror("M6845: transparent memory mode without handler\n");
 }
 
 
@@ -176,6 +212,14 @@ READ8_DEVICE_HANDLER( mc6845_register_r )
 		case 0x0f:  ret = (mc6845->cursor_addr    >> 0) & 0xff; break;
 		case 0x10:  ret = (mc6845->light_pen_addr >> 8) & 0xff; mc6845->light_pen_latched = FALSE; break;
 		case 0x11:  ret = (mc6845->light_pen_addr >> 0) & 0xff; mc6845->light_pen_latched = FALSE; break;
+		case 0x1f:
+			if (supports_transparent[mc6845->device_type] && MODE_TRANSPARENT(mc6845))
+			{
+				mc6845->update_addr++;
+				mc6845->update_addr &= 0x3fff;
+				call_on_update_address(device, 0);
+			}
+			break;
 
 		/* all other registers are write only and return 0 */
 		default: break;
@@ -189,7 +233,7 @@ WRITE8_DEVICE_HANDLER( mc6845_register_w )
 {
 	mc6845_t *mc6845 = get_safe_token(device);
 
-	if (LOG)  logerror("M6845 PC %04x: reg 0x%02x = 0x%02x\n", activecpu_get_pc(), mc6845->register_address_latch, data);
+	if (LOG)  logerror("%s:M6845 reg 0x%02x = 0x%02x\n", cpuexec_describe_context(device->machine), mc6845->register_address_latch, data);
 
 	switch (mc6845->register_address_latch)
 	{
@@ -211,12 +255,35 @@ WRITE8_DEVICE_HANDLER( mc6845_register_w )
 		case 0x0f:  mc6845->cursor_addr      = ((data & 0xff) << 0) | (mc6845->cursor_addr & 0xff00); break;
 		case 0x10: /* read-only */ break;
 		case 0x11: /* read-only */ break;
+		case 0x12:
+			if (supports_transparent[mc6845->device_type])
+			{
+				mc6845->update_addr = ((data & 0x3f) << 8) | (mc6845->update_addr & 0x00ff);
+				call_on_update_address(device, 0);
+			}
+			break;
+		case 0x13:
+			if (supports_transparent[mc6845->device_type])
+			{
+				mc6845->update_addr = ((data & 0xff) << 0) | (mc6845->update_addr & 0xff00);
+				call_on_update_address(device, 0);
+			}
+			break;
+		case 0x1f:
+			if (supports_transparent[mc6845->device_type] && MODE_TRANSPARENT(mc6845))
+			{
+				mc6845->update_addr++;
+				mc6845->update_addr &= 0x3fff;
+				call_on_update_address(device, 0);
+			}
+			break;
 		default: break;
 	}
 
 	/* display message if the Mode Control register is not zero */
 	if ((mc6845->register_address_latch == 0x08) && (mc6845->mode_control != 0))
-		popmessage("Mode Control %02X is not supported!!!", mc6845->mode_control);
+		if (!(supports_transparent[mc6845->device_type] && MODE_TRANSPARENT_PHI2(mc6845)))
+			popmessage("Mode Control %02X is not supported!!!", mc6845->mode_control);
 
 	recompute_parameters(mc6845, FALSE);
 }
@@ -377,10 +444,6 @@ static void update_hsync_changed_timers(mc6845_t *mc6845)
 		/* trigger on the next line */
 		else
 			next_y = (video_screen_get_vpos(mc6845->screen) + 1) % mc6845->vert_pix_total;
-
-		/* if the next line is not in the visible region, go to the beginning of the screen */
-		if (next_y > mc6845->max_visible_y)
-			next_y = 0;
 
 		timer_adjust_oneshot(mc6845->hsync_on_timer,  video_screen_get_time_until_pos(mc6845->screen, next_y, mc6845->hsync_on_pos) , 0);
 		timer_adjust_oneshot(mc6845->hsync_off_timer, video_screen_get_time_until_pos(mc6845->screen, next_y, mc6845->hsync_off_pos), 0);
@@ -678,23 +741,21 @@ void mc6845_update(const device_config *device, bitmap_t *bitmap, const rectangl
 static device_start_err common_start(const device_config *device, int device_type)
 {
 	mc6845_t *mc6845 = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 
 	mc6845->intf = device->static_config;
 	mc6845->device_type = device_type;
 
 	if (mc6845->intf != NULL)
 	{
-		assert(mc6845->intf->clock > 0);
+		assert(device->clock > 0);
 		assert(mc6845->intf->hpixels_per_column > 0);
 
 		/* copy the initial parameters */
-		mc6845->clock = mc6845->intf->clock;
+		mc6845->clock = device->clock;
 		mc6845->hpixels_per_column = mc6845->intf->hpixels_per_column;
 
 		/* get the screen device */
@@ -703,49 +764,48 @@ static device_start_err common_start(const device_config *device, int device_typ
 
 		/* create the timers */
 		if (mc6845->intf->on_de_changed != NULL)
-			mc6845->de_changed_timer = timer_alloc(de_changed_timer_cb, (void *)device);
+			mc6845->de_changed_timer = timer_alloc(device->machine, de_changed_timer_cb, (void *)device);
 
 		if (mc6845->intf->on_hsync_changed != NULL)
 		{
-			mc6845->hsync_on_timer = timer_alloc(hsync_on_timer_cb, (void *)device);
-			mc6845->hsync_off_timer = timer_alloc(hsync_off_timer_cb, (void *)device);
+			mc6845->hsync_on_timer = timer_alloc(device->machine, hsync_on_timer_cb, (void *)device);
+			mc6845->hsync_off_timer = timer_alloc(device->machine, hsync_off_timer_cb, (void *)device);
 		}
 
 		if (mc6845->intf->on_vsync_changed != NULL)
 		{
-			mc6845->vsync_on_timer = timer_alloc(vsync_on_timer_cb, (void *)device);
-			mc6845->vsync_off_timer = timer_alloc(vsync_off_timer_cb, (void *)device);
+			mc6845->vsync_on_timer = timer_alloc(device->machine, vsync_on_timer_cb, (void *)device);
+			mc6845->vsync_off_timer = timer_alloc(device->machine, vsync_off_timer_cb, (void *)device);
 		}
 	}
 
-	mc6845->light_pen_latch_timer = timer_alloc(light_pen_latch_timer_cb, (void *)device);
+	mc6845->light_pen_latch_timer = timer_alloc(device->machine, light_pen_latch_timer_cb, (void *)device);
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, device_tags[device_type], device->tag);
-
 	state_save_register_postload(device->machine, mc6845_state_save_postload, mc6845);
 
-	state_save_register_item(unique_tag, 0, mc6845->clock);
-	state_save_register_item(unique_tag, 0, mc6845->hpixels_per_column);
-	state_save_register_item(unique_tag, 0, mc6845->register_address_latch);
-	state_save_register_item(unique_tag, 0, mc6845->horiz_char_total);
-	state_save_register_item(unique_tag, 0, mc6845->horiz_disp);
-	state_save_register_item(unique_tag, 0, mc6845->horiz_sync_pos);
-	state_save_register_item(unique_tag, 0, mc6845->sync_width);
-	state_save_register_item(unique_tag, 0, mc6845->vert_char_total);
-	state_save_register_item(unique_tag, 0, mc6845->vert_total_adj);
-	state_save_register_item(unique_tag, 0, mc6845->vert_disp);
-	state_save_register_item(unique_tag, 0, mc6845->vert_sync_pos);
-	state_save_register_item(unique_tag, 0, mc6845->mode_control);
-	state_save_register_item(unique_tag, 0, mc6845->max_ras_addr);
-	state_save_register_item(unique_tag, 0, mc6845->cursor_start_ras);
-	state_save_register_item(unique_tag, 0, mc6845->cursor_end_ras);
-	state_save_register_item(unique_tag, 0, mc6845->disp_start_addr);
-	state_save_register_item(unique_tag, 0, mc6845->cursor_addr);
-	state_save_register_item(unique_tag, 0, mc6845->light_pen_addr);
-	state_save_register_item(unique_tag, 0, mc6845->light_pen_latched);
-	state_save_register_item(unique_tag, 0, mc6845->cursor_state);
-	state_save_register_item(unique_tag, 0, mc6845->cursor_blink_count);
+	state_save_register_device_item(device, 0, mc6845->clock);
+	state_save_register_device_item(device, 0, mc6845->hpixels_per_column);
+	state_save_register_device_item(device, 0, mc6845->register_address_latch);
+	state_save_register_device_item(device, 0, mc6845->horiz_char_total);
+	state_save_register_device_item(device, 0, mc6845->horiz_disp);
+	state_save_register_device_item(device, 0, mc6845->horiz_sync_pos);
+	state_save_register_device_item(device, 0, mc6845->sync_width);
+	state_save_register_device_item(device, 0, mc6845->vert_char_total);
+	state_save_register_device_item(device, 0, mc6845->vert_total_adj);
+	state_save_register_device_item(device, 0, mc6845->vert_disp);
+	state_save_register_device_item(device, 0, mc6845->vert_sync_pos);
+	state_save_register_device_item(device, 0, mc6845->mode_control);
+	state_save_register_device_item(device, 0, mc6845->max_ras_addr);
+	state_save_register_device_item(device, 0, mc6845->cursor_start_ras);
+	state_save_register_device_item(device, 0, mc6845->cursor_end_ras);
+	state_save_register_device_item(device, 0, mc6845->disp_start_addr);
+	state_save_register_device_item(device, 0, mc6845->cursor_addr);
+	state_save_register_device_item(device, 0, mc6845->light_pen_addr);
+	state_save_register_device_item(device, 0, mc6845->light_pen_latched);
+	state_save_register_device_item(device, 0, mc6845->cursor_state);
+	state_save_register_device_item(device, 0, mc6845->cursor_blink_count);
+	state_save_register_device_item(device, 0, mc6845->update_addr);
 
 	return DEVICE_START_OK;
 }
@@ -811,9 +871,9 @@ static DEVICE_VALIDITY_CHECK( mc6845 )
 	int error = FALSE;
 	const mc6845_interface *intf = (const mc6845_interface *) device->static_config;
 
-	if (intf != NULL)
+	if (intf != NULL && intf->screen_tag != NULL)
 	{
-		if (intf->clock <= 0)
+		if (device->clock <= 0)
 		{
 			mame_printf_error("%s: %s has an mc6845 with an invalid clock\n", driver->source_file, driver->name);
 			error = TRUE;
@@ -856,11 +916,11 @@ DEVICE_GET_INFO( mc6845 )
 		case DEVINFO_FCT_VALIDITY_CHECK:				info->validity_check = DEVICE_VALIDITY_CHECK_NAME(mc6845); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Motorola 6845";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "MC6845 CRTC";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.61";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Motorola 6845");			break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "MC6845 CRTC");				break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.61");					break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 
@@ -870,7 +930,7 @@ DEVICE_GET_INFO( mc6845_1 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Motorla 6845-1";					break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Motorla 6845-1");			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(mc6845_1);	break;
@@ -885,7 +945,7 @@ DEVICE_GET_INFO( c6545_1 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "MOS Technology 6545-1";			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "MOS Technology 6545-1");	break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(c6545_1);	break;
@@ -900,7 +960,7 @@ DEVICE_GET_INFO( r6545_1 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Rockwell 6545-1";				break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Rockwell 6545-1");			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(r6545_1);	break;
@@ -915,7 +975,7 @@ DEVICE_GET_INFO( h46505 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Hitachi 46505";					break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Hitachi 46505");			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(h46505);	break;
@@ -930,7 +990,7 @@ DEVICE_GET_INFO( hd6845 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Hitachi 6845";					break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Hitachi 6845");			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(hd6845);	break;
@@ -945,7 +1005,7 @@ DEVICE_GET_INFO( sy6545_1 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Synertek 6545-1";				break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Synertek 6545-1");			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(sy6545_1);	break;

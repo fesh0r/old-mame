@@ -19,7 +19,7 @@
 #define SERIAL_TYPE_ENCRYPT_XOR	4
 
 extern UINT8 leland_dac_control;
-extern void (*leland_update_master_bank)(void);
+extern void (*leland_update_master_bank)(running_machine *machine);
 
 READ8_HANDLER( cerberus_dial_1_r );
 READ8_HANDLER( cerberus_dial_2_r );
@@ -54,17 +54,17 @@ MACHINE_RESET( ataxx );
 INTERRUPT_GEN( leland_master_interrupt );
 
 WRITE8_HANDLER( leland_master_alt_bankswitch_w );
-void cerberus_bankswitch(void);
-void mayhem_bankswitch(void);
-void dangerz_bankswitch(void);
-void basebal2_bankswitch(void);
-void redline_bankswitch(void);
-void viper_bankswitch(void);
-void offroad_bankswitch(void);
-void ataxx_bankswitch(void);
+void cerberus_bankswitch(running_machine *machine);
+void mayhem_bankswitch(running_machine *machine);
+void dangerz_bankswitch(running_machine *machine);
+void basebal2_bankswitch(running_machine *machine);
+void redline_bankswitch(running_machine *machine);
+void viper_bankswitch(running_machine *machine);
+void offroad_bankswitch(running_machine *machine);
+void ataxx_bankswitch(running_machine *machine);
 
-void leland_init_eeprom(UINT8 default_val, const UINT16 *data, UINT8 serial_offset, UINT8 serial_type);
-void ataxx_init_eeprom(UINT8 default_val, const UINT16 *data, UINT8 serial_offset);
+void leland_init_eeprom(running_machine *machine, UINT8 default_val, const UINT16 *data, UINT8 serial_offset, UINT8 serial_type);
+void ataxx_init_eeprom(running_machine *machine, UINT8 default_val, const UINT16 *data, UINT8 serial_offset);
 
 READ8_HANDLER( ataxx_eeprom_r );
 WRITE8_HANDLER( ataxx_eeprom_w );
@@ -101,10 +101,10 @@ void leland_rotate_memory(running_machine *machine, const char *cpuname);
 
 /*----------- defined in audio/leland.c -----------*/
 
-void *leland_sh_start(int clock, const custom_sound_interface *config);
+CUSTOM_START( leland_sh_start );
 
-void *leland_80186_sh_start(int clock, const custom_sound_interface *config);
-void *redline_80186_sh_start(int clock, const custom_sound_interface *config);
+CUSTOM_START( leland_80186_sh_start );
+CUSTOM_START( redline_80186_sh_start );
 void leland_dac_update(int dacnum, UINT8 sample);
 
 void leland_80186_sound_init(void);

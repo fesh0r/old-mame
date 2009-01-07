@@ -14,6 +14,7 @@ etc.
 */
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "sound/ay8910.h"
 
 static UINT8 *ltcasino_tile_num_ram, *ltcasino_tile_atr_ram;
@@ -36,7 +37,7 @@ static TILE_GET_INFO( get_ltcasino_tile_info )
 
 static VIDEO_START(ltcasino)
 {
-	ltcasino_tilemap = tilemap_create(get_ltcasino_tile_info,tilemap_scan_rows,8, 8,64,32);
+	ltcasino_tilemap = tilemap_create(machine, get_ltcasino_tile_info,tilemap_scan_rows,8, 8,64,32);
 }
 
 

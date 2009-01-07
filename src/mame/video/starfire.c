@@ -31,10 +31,10 @@ static UINT16 starfire_colors[NUM_PENS];
 VIDEO_START( starfire )
 {
 	/* register for state saving */
-	state_save_register_global(starfire_vidctrl);
-	state_save_register_global(starfire_vidctrl1);
-	state_save_register_global(starfire_color);
-	state_save_register_global_array(starfire_colors);
+	state_save_register_global(machine, starfire_vidctrl);
+	state_save_register_global(machine, starfire_vidctrl1);
+	state_save_register_global(machine, starfire_color);
+	state_save_register_global_array(machine, starfire_colors);
 }
 
 
@@ -79,7 +79,7 @@ WRITE8_HANDLER( starfire_colorram_w )
 		/* don't modify the palette unless the TRANS bit is set */
 		if (starfire_vidctrl1 & 0x40)
 		{
-			video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+			video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 
 			starfire_colors[palette_index] = ((((data << 1) & 0x06) | ((offset >> 8) & 0x01)) << 6) |
 											 (((data >> 5) & 0x07) << 3) |

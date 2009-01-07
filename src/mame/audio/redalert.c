@@ -8,6 +8,8 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
+#include "cpu/m6502/m6502.h"
 #include "machine/rescap.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/6821pia.h"
@@ -76,12 +78,12 @@ static WRITE8_HANDLER( redalert_analog_w )
 WRITE8_HANDLER( redalert_audio_command_w )
 {
 	/* the byte is connected to port A of the AY8910 */
-	soundlatch_w(machine, 0, data);
+	soundlatch_w(space, 0, data);
 
 	/* D7 is also connected to the NMI input of the CPU -
        the NMI is actually toggled by a 74121 */
 	if ((data & 0x80) == 0x00)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -96,18 +98,18 @@ static WRITE8_HANDLER( redalert_AY8910_w )
 
 		/* BC1=1, BDIR=0 : read from PSG */
 		case 0x01:
-			ay8910_latch_1 = ay8910_read_port_0_r(machine, 0);
+			ay8910_latch_1 = ay8910_read_port_0_r(space, 0);
 			break;
 
 		/* BC1=0, BDIR=1 : write to PSG */
 		case 0x02:
-			ay8910_write_port_0_w(machine, 0, ay8910_latch_2);
+			ay8910_write_port_0_w(space, 0, ay8910_latch_2);
 			break;
 
 		/* BC1=1, BDIR=1 : latch address */
 		default:
 		case 0x03:
-			ay8910_control_port_0_w(machine, 0, ay8910_latch_2);
+			ay8910_control_port_0_w(space, 0, ay8910_latch_2);
 			break;
 	}
 }
@@ -151,8 +153,8 @@ ADDRESS_MAP_END
 
 static SOUND_START( redalert_audio )
 {
-	state_save_register_global(ay8910_latch_1);
-	state_save_register_global(ay8910_latch_2);
+	state_save_register_global(machine, ay8910_latch_1);
+	state_save_register_global(machine, ay8910_latch_2);
 }
 
 
@@ -164,28 +166,30 @@ static SOUND_START( redalert_audio )
 
 WRITE8_HANDLER( redalert_voice_command_w )
 {
-	soundlatch2_w(machine, 0, (data & 0x78) >> 3);
-	cpunum_set_input_line(machine, 2, I8085_RST75_LINE, (~data & 0x80) ? ASSERT_LINE : CLEAR_LINE);
+	soundlatch2_w(space, 0, (data & 0x78) >> 3);
+	cpu_set_input_line(space->machine->cpu[2], I8085_RST75_LINE, (~data & 0x80) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
-static void sod_callback(int data)
+static void sod_callback(const device_config *device, int data)
 {
 	hc55516_digit_w(0, data);
 }
 
 
-static int sid_callback(void)
+static int sid_callback(const device_config *device)
 {
 	return hc55516_clock_state_r(0);
 }
 
 
-static SOUND_START( redalert_voice )
+static const i8085_config redalert_voice_i8085_config =
 {
-	cpunum_set_info_fct(2, CPUINFO_PTR_I8085_SOD_CALLBACK, (void *)sod_callback);
-	cpunum_set_info_fct(2, CPUINFO_PTR_I8085_SID_CALLBACK, (void *)sid_callback);
-}
+	NULL,				/* INTE changed callback */
+	NULL,				/* STATUS changed callback */
+	sod_callback,		/* SOD changed callback (8085A only) */
+	sid_callback		/* SID changed callback (8085A only) */
+};
 
 
 static ADDRESS_MAP_START( redalert_voice_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -206,7 +210,6 @@ ADDRESS_MAP_END
 static SOUND_START( redalert )
 {
 	SOUND_START_CALL(redalert_audio);
-	SOUND_START_CALL(redalert_voice);
 }
 
 
@@ -240,6 +243,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( redalert_audio_voice )
 
 	MDRV_CPU_ADD("voice", 8085A, REDALERT_VOICE_CPU_CLOCK)
+	MDRV_CPU_CONFIG(redalert_voice_i8085_config)
 	MDRV_CPU_PROGRAM_MAP(redalert_voice_map,0)
 
 	MDRV_SOUND_ADD("cvsd", HC55516, REDALERT_HC55516_CLOCK)
@@ -289,8 +293,8 @@ MACHINE_DRIVER_END
 WRITE8_HANDLER( demoneye_audio_command_w )
 {
 	/* the byte is connected to port A of the AY8910 */
-	soundlatch_w(machine, 0, data);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(space, 0, data);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -312,28 +316,28 @@ static WRITE8_HANDLER( demoneye_ay8910_data_w )
 	{
 		case 0x00:
 			if (ay8910_latch_1 & 0x10)
-				ay8910_write_port_0_w(machine, 0, data);
+				ay8910_write_port_0_w(space, 0, data);
 
 			if (ay8910_latch_1 & 0x20)
-				ay8910_write_port_1_w(machine, 0, data);
+				ay8910_write_port_1_w(space, 0, data);
 
 			break;
 
 		case 0x01:
 			if (ay8910_latch_1 & 0x10)
-				ay8910_latch_2 = ay8910_read_port_0_r(machine, 0);
+				ay8910_latch_2 = ay8910_read_port_0_r(space, 0);
 
 			if (ay8910_latch_1 & 0x20)
-				ay8910_latch_2 = ay8910_read_port_1_r(machine, 0);
+				ay8910_latch_2 = ay8910_read_port_1_r(space, 0);
 
 			break;
 
 		case 0x03:
 			if (ay8910_latch_1 & 0x10)
-				ay8910_control_port_0_w(machine, 0, data);
+				ay8910_control_port_0_w(space, 0, data);
 
 			if (ay8910_latch_1 & 0x20)
-				ay8910_control_port_1_w(machine, 0, data);
+				ay8910_control_port_1_w(space, 0, data);
 
 			break;
 
@@ -378,10 +382,10 @@ static const pia6821_interface demoneye_pia_intf =
 
 static SOUND_START( demoneye )
 {
-	pia_config(0, &demoneye_pia_intf);
+	pia_config(machine, 0, &demoneye_pia_intf);
 
-	state_save_register_global(ay8910_latch_1);
-	state_save_register_global(ay8910_latch_2);
+	state_save_register_global(machine, ay8910_latch_1);
+	state_save_register_global(machine, ay8910_latch_2);
 }
 
 

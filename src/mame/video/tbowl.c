@@ -204,9 +204,9 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 
 VIDEO_START( tbowl )
 {
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows, 16, 16,128,32);
-	bg2_tilemap = tilemap_create(get_bg2_tile_info,tilemap_scan_rows, 16, 16,128,32);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows, 16, 16,128,32);
+	bg2_tilemap = tilemap_create(machine, get_bg2_tile_info,tilemap_scan_rows, 16, 16,128,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0);
 	tilemap_set_transparent_pen(bg_tilemap,0);
@@ -228,7 +228,7 @@ VIDEO_UPDATE( tbowl )
 		tilemap_set_scrollx(tx_tilemap,  0, 0 );
 		tilemap_set_scrolly(tx_tilemap,  0, 0 );
 
-		fillbitmap(bitmap,0x100,cliprect); /* is there a register controling the colour? looks odd when screen is blank */
+		bitmap_fill(bitmap,cliprect,0x100); /* is there a register controling the colour? looks odd when screen is blank */
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 		draw_sprites(screen->machine, bitmap,cliprect, 0);
 		tilemap_draw(bitmap,cliprect,bg2_tilemap,0,0);
@@ -243,7 +243,7 @@ VIDEO_UPDATE( tbowl )
 		tilemap_set_scrollx(tx_tilemap,  0, 32*8 );
 		tilemap_set_scrolly(tx_tilemap,  0, 0 );
 
-		fillbitmap(bitmap,0x100,cliprect); /* is there a register controling the colour? looks odd when screen is blank */
+		bitmap_fill(bitmap,cliprect,0x100); /* is there a register controling the colour? looks odd when screen is blank */
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 		draw_sprites(screen->machine, bitmap,cliprect, 32*8);
 		tilemap_draw(bitmap,cliprect,bg2_tilemap,0,0);

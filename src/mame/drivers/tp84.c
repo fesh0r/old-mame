@@ -65,6 +65,8 @@ C004      76489 #4 trigger
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m6809/m6809.h"
 #include "sound/sn76496.h"
 #include "sound/flt_rc.h"
 
@@ -95,7 +97,7 @@ static READ8_HANDLER( tp84_sh_timer_r )
 	/* divided by 2048 to get this timer */
 	/* (divide by (2048/2), and not 1024, because the CPU cycle counter is */
 	/* incremented every other state change of the clock) */
-	return (activecpu_gettotalcycles() / (2048/2)) & 0x0f;
+	return (cpu_get_total_cycles(space->cpu) / (2048/2)) & 0x0f;
 }
 
 
@@ -128,7 +130,7 @@ static WRITE8_HANDLER( tp84_filter_w )
 
 static WRITE8_HANDLER( tp84_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(machine, 2,0,HOLD_LINE,0xff);
+	cpu_set_input_line_and_vector(space->machine->cpu[2],0,HOLD_LINE,0xff);
 }
 
 
@@ -429,7 +431,7 @@ static MACHINE_DRIVER_START( tp84 )
 	MDRV_CPU_ADD("audio", Z80,XTAL_14_31818MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 
-	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

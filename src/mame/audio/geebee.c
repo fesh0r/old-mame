@@ -62,11 +62,11 @@ WRITE8_HANDLER( geebee_sound_w )
     }
 }
 
-static void geebee_sound_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length)
+static STREAM_UPDATE( geebee_sound_update )
 {
     stream_sample_t *buffer = outputs[0];
 
-    while (length--)
+    while (samples--)
     {
 		*buffer++ = sound_signal;
 		/* 1V = HSYNC = 18.432MHz / 3 / 2 / 384 = 8000Hz */
@@ -112,8 +112,9 @@ static void geebee_sound_update(void *param, stream_sample_t **inputs, stream_sa
     }
 }
 
-void *geebee_sh_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( geebee_sh_start )
 {
+	running_machine *machine = device->machine;
 	int i;
 
 	decay = (UINT16 *)auto_malloc(32768 * sizeof(INT16));
@@ -122,9 +123,9 @@ void *geebee_sh_start(int clock, const custom_sound_interface *config)
 		decay[0x7fff-i] = (INT16) (0x7fff/exp(1.0*i/4096));
 
 	/* 1V = HSYNC = 18.432MHz / 3 / 2 / 384 = 8000Hz */
-	channel = stream_create(0, 1, 18432000 / 3 / 2 / 384, NULL, geebee_sound_update);
+	channel = stream_create(device, 0, 1, 18432000 / 3 / 2 / 384, NULL, geebee_sound_update);
 	vcount = 0;
 
-	volume_timer = timer_alloc(volume_decay, NULL);
+	volume_timer = timer_alloc(machine, volume_decay, NULL);
     return auto_malloc(1);
 }

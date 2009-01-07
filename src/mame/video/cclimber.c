@@ -453,11 +453,11 @@ static TILE_GET_INFO( toproller_get_bg_tile_info )
 
 VIDEO_START( cclimber )
 {
-	pf_tilemap = tilemap_create(cclimber_get_pf_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	pf_tilemap = tilemap_create(machine, cclimber_get_pf_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_transparent_pen(pf_tilemap, 0);
 	tilemap_set_scroll_cols(pf_tilemap, 32);
 
-	bs_tilemap = tilemap_create(cclimber_get_bs_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bs_tilemap = tilemap_create(machine, cclimber_get_bs_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_scroll_cols(bs_tilemap, 1);
 	tilemap_set_scroll_rows(bs_tilemap, 1);
 	tilemap_set_transmask(bs_tilemap, 0, 0x01, 0);	/* pen 0 is transaprent */
@@ -467,11 +467,11 @@ VIDEO_START( cclimber )
 
 VIDEO_START( swimmer )
 {
-	pf_tilemap = tilemap_create(swimmer_get_pf_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	pf_tilemap = tilemap_create(machine, swimmer_get_pf_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_transparent_pen(pf_tilemap, 0);
 	tilemap_set_scroll_cols(pf_tilemap, 32);
 
-	bs_tilemap = tilemap_create(cclimber_get_bs_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bs_tilemap = tilemap_create(machine, cclimber_get_bs_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_scroll_cols(bs_tilemap, 1);
 	tilemap_set_scroll_rows(bs_tilemap, 1);
 	tilemap_set_transmask(bs_tilemap, 0, 0x01, 0);	/* pen 0 is transaprent */
@@ -481,13 +481,13 @@ VIDEO_START( swimmer )
 
 VIDEO_START( toprollr )
 {
-	pf_tilemap = tilemap_create(toprollr_get_pf_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	pf_tilemap = tilemap_create(machine, toprollr_get_pf_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_transparent_pen(pf_tilemap, 0);
 
-	toproller_bg_tilemap = tilemap_create(toproller_get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	toproller_bg_tilemap = tilemap_create(machine, toproller_get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_scroll_rows(toproller_bg_tilemap, 1);
 
-	bs_tilemap = tilemap_create(toprollr_get_bs_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bs_tilemap = tilemap_create(machine, toprollr_get_bs_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_scroll_cols(bs_tilemap, 1);
 	tilemap_set_scroll_rows(bs_tilemap, 1);
 	tilemap_set_transmask(bs_tilemap, 0, 0x01, 0);	/* pen 0 is transaprent */
@@ -626,7 +626,7 @@ static void swimmer_draw_sprites(bitmap_t *bitmap, gfx_element **gfx, const rect
 
 VIDEO_UPDATE( cclimber )
 {
-	fillbitmap(bitmap, CCLIMBER_BG_PEN, cliprect);
+	bitmap_fill(bitmap, cliprect, CCLIMBER_BG_PEN);
 	draw_playfield(bitmap, cliprect);
 
 	/* draw the "big sprite" under the regular sprites */
@@ -693,10 +693,10 @@ VIDEO_UPDATE( swimmer )
 			rectangle split_rect_right = { 0x100 - SWIMMER_BG_SPLIT, 0xff, 0, 0xff };
 
 			sect_rect(&split_rect_left, cliprect);
-			fillbitmap(bitmap, SWIMMER_SIDE_BG_PEN, &split_rect_left);
+			bitmap_fill(bitmap, &split_rect_left, SWIMMER_SIDE_BG_PEN);
 
 			sect_rect(&split_rect_right, cliprect);
-			fillbitmap(bitmap, CCLIMBER_BG_PEN, &split_rect_right);
+			bitmap_fill(bitmap, &split_rect_right, CCLIMBER_BG_PEN);
 		}
 		else
 		{
@@ -704,14 +704,14 @@ VIDEO_UPDATE( swimmer )
 			rectangle split_rect_right = { SWIMMER_BG_SPLIT, 0xff, 0, 0xff };
 
 			sect_rect(&split_rect_left, cliprect);
-			fillbitmap(bitmap, CCLIMBER_BG_PEN, &split_rect_left);
+			bitmap_fill(bitmap, &split_rect_left, CCLIMBER_BG_PEN);
 
 			sect_rect(&split_rect_right, cliprect);
-			fillbitmap(bitmap, SWIMMER_SIDE_BG_PEN, &split_rect_right);
+			bitmap_fill(bitmap, &split_rect_right, SWIMMER_SIDE_BG_PEN);
 		}
 	}
 	else
-		fillbitmap(bitmap, CCLIMBER_BG_PEN, cliprect);
+		bitmap_fill(bitmap, cliprect, CCLIMBER_BG_PEN);
 
 	draw_playfield(bitmap, cliprect);
 
@@ -739,7 +739,7 @@ VIDEO_UPDATE( toprollr )
 	scroll_area_clip.min_x = 4*8;
 	scroll_area_clip.max_x = 29*8-1;
 
-	fillbitmap(bitmap, CCLIMBER_BG_PEN, cliprect);
+	bitmap_fill(bitmap, cliprect, CCLIMBER_BG_PEN);
 
 	tilemap_set_scrollx(toproller_bg_tilemap, 0, toprollr_bg_videoram[0]);
 	tilemap_set_flip(toproller_bg_tilemap, (CCLIMBER_FLIP_X ? TILEMAP_FLIPX : 0) |

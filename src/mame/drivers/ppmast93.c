@@ -130,6 +130,7 @@ Dip locations added based on the notes above.
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/3812intf.h"
 #include "sound/2413intf.h"
 #include "sound/dac.h"
@@ -152,14 +153,14 @@ static WRITE8_HANDLER( ppmast93_bgram_w )
 
 static WRITE8_HANDLER( ppmast93_port4_w )
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(space->machine, "main");
 	int bank;
 
 	coin_counter_w(0, data & 0x08);
 	coin_counter_w(1, data & 0x10);
 
 	bank = data & 0x07;
-	memory_set_bankptr(1,&rom[0x10000+(bank*0x4000)]);
+	memory_set_bankptr(space->machine, 1,&rom[0x10000+(bank*0x4000)]);
 }
 
 static ADDRESS_MAP_START( ppmast93_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -194,10 +195,10 @@ static WRITE8_HANDLER(ppmast_sound_w)
 {
 	switch(offset&0xff)
 	{
-		case 0: ym2413_register_port_0_w(machine,0,data); break;
-		case 1: ym2413_data_port_0_w(machine,0,data); break;
-		case 2: dac_0_data_w(machine,0,data);break;
-		default: logerror("%x %x - %x\n",offset,data,activecpu_get_previouspc());
+		case 0: ym2413_register_port_0_w(space,0,data); break;
+		case 1: ym2413_data_port_0_w(space,0,data); break;
+		case 2: dac_0_data_w(space,0,data);break;
+		default: logerror("%x %x - %x\n",offset,data,cpu_get_previouspc(space->cpu));
 	}
 }
 
@@ -325,8 +326,8 @@ static TILE_GET_INFO( get_ppmast93_fg_tile_info )
 
 static VIDEO_START( ppmast93 )
 {
-	ppmast93_bg_tilemap = tilemap_create(get_ppmast93_bg_tile_info,tilemap_scan_rows,8,8,32, 32);
-	ppmast93_fg_tilemap = tilemap_create(get_ppmast93_fg_tile_info,tilemap_scan_rows,8,8,32, 32);
+	ppmast93_bg_tilemap = tilemap_create(machine, get_ppmast93_bg_tile_info,tilemap_scan_rows,8,8,32, 32);
+	ppmast93_fg_tilemap = tilemap_create(machine, get_ppmast93_fg_tile_info,tilemap_scan_rows,8,8,32, 32);
 
 	tilemap_set_transparent_pen(ppmast93_fg_tilemap,0);
 }

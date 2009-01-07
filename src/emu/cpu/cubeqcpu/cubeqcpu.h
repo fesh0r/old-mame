@@ -118,29 +118,50 @@ enum
     CONFIGURATION STRUCTURE
 ***************************************************************************/
 
+typedef void (*cubeqst_dac_w_func)(const device_config *, UINT16);
+
 typedef struct _cubeqst_snd_config cubeqst_snd_config;
 struct _cubeqst_snd_config
 {
-	void (*dac_w)(UINT16);
-	const char *sound_data_region;
+	cubeqst_dac_w_func	dac_w;
+	const char *		sound_data_region;
 
+};
+
+typedef struct _cubeqst_lin_config cubeqst_lin_config;
+struct _cubeqst_lin_config
+{
+	const char *		rot_cpu_tag;
+};
+
+typedef struct _cubeqst_rot_config cubeqst_rot_config;
+struct _cubeqst_rot_config
+{
+	const char *		lin_cpu_tag;
 };
 
 /***************************************************************************
     PUBLIC FUNCTIONS
 ***************************************************************************/
 
-extern READ16_HANDLER( read_sndram );
-extern WRITE16_HANDLER( write_sndram );
+extern READ16_DEVICE_HANDLER( cubeqcpu_sndram_r );
+extern WRITE16_DEVICE_HANDLER( cubeqcpu_sndram_w );
 
-extern READ16_HANDLER( read_rotram );
-extern WRITE16_HANDLER( write_rotram );
+extern READ16_DEVICE_HANDLER( cubeqcpu_rotram_r );
+extern WRITE16_DEVICE_HANDLER( cubeqcpu_rotram_w );
 
-void cubeqcpu_swap_line_banks(void);
+void cubeqcpu_swap_line_banks(const device_config *device);
 
-void clear_stack(void);
-UINT8 get_ptr_ram_val(int i);
-UINT32* get_stack_ram(void);
+void cubeqcpu_clear_stack(const device_config *device);
+UINT8 cubeqcpu_get_ptr_ram_val(const device_config *device, int i);
+UINT32* cubeqcpu_get_stack_ram(const device_config *device);
 
+CPU_GET_INFO( cquestsnd );
+CPU_GET_INFO( cquestrot );
+CPU_GET_INFO( cquestlin );
+
+#define CPU_CQUESTSND CPU_GET_INFO_NAME( cquestsnd )
+#define CPU_CQUESTROT CPU_GET_INFO_NAME( cquestrot )
+#define CPU_CQUESTLIN CPU_GET_INFO_NAME( cquestlin )
 
 #endif /* _CUBEQCPU_H */

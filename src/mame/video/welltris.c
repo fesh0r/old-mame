@@ -175,7 +175,7 @@ WRITE16_HANDLER( welltris_palette_bank_w )
 			tilemap_mark_all_tiles_dirty(char_tilemap);
 		}
 
-		flip_screen_set(data & 0x80);
+		flip_screen_set(space->machine, data & 0x80);
 
 		spritepalettebank = (data & 0x20) >> 5;
 		pixelpalettebank = (data & 0x08) >> 3;
@@ -219,7 +219,7 @@ WRITE16_HANDLER( welltris_charvideoram_w )
 
 VIDEO_START( welltris )
 {
-	char_tilemap = tilemap_create(get_welltris_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
+	char_tilemap = tilemap_create(machine, get_welltris_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(char_tilemap, 15);
 }

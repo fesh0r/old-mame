@@ -159,8 +159,8 @@ static TILE_GET_INFO( get_gai_936_tile_info )
 
 VIDEO_START(gaiapols)
 {
-	K055555_vh_start();
-	K054338_vh_start();
+	K055555_vh_start(machine);
+	K054338_vh_start(machine);
 
 	gametype = 0;
 
@@ -182,7 +182,7 @@ VIDEO_START(gaiapols)
 	K053936_wraparound_enable(0, 1);
 	K053936GP_set_offset(0, -10,  0); // floor tiles in demo loop2 (Elaine vs. boss)
 
-	ult_936_tilemap = tilemap_create(get_gai_936_tile_info, tilemap_scan_rows,  16, 16, 512, 512);
+	ult_936_tilemap = tilemap_create(machine, get_gai_936_tile_info, tilemap_scan_rows,  16, 16, 512, 512);
 	tilemap_set_transparent_pen(ult_936_tilemap, 0);
 }
 
@@ -201,8 +201,8 @@ static TILE_GET_INFO( get_ult_936_tile_info )
 
 VIDEO_START(dadandrn)
 {
-	K055555_vh_start();
-	K054338_vh_start();
+	K055555_vh_start(machine);
+	K054338_vh_start(machine);
 
 	gametype = 1;
 
@@ -226,14 +226,14 @@ VIDEO_START(dadandrn)
 	K053936_wraparound_enable(0, 1);
 	K053936GP_set_offset(0, -8, 0); // Brainy's laser
 
-	ult_936_tilemap = tilemap_create(get_ult_936_tile_info, tilemap_scan_rows,  16, 16, 512, 512);
+	ult_936_tilemap = tilemap_create(machine, get_ult_936_tile_info, tilemap_scan_rows,  16, 16, 512, 512);
 	tilemap_set_transparent_pen(ult_936_tilemap, 0);
 }
 
 VIDEO_START(mystwarr)
 {
-	K055555_vh_start();
-	K054338_vh_start();
+	K055555_vh_start(machine);
+	K054338_vh_start(machine);
 
 	gametype = 0;
 
@@ -261,9 +261,9 @@ VIDEO_START(metamrph)
 
 	gametype = 0;
 
-	K055555_vh_start();
-	K054338_vh_start();
-	K053250_vh_start(1, &rgn_250);
+	K055555_vh_start(machine);
+	K054338_vh_start(machine);
+	K053250_vh_start(machine, 1, &rgn_250);
 
 	mystwarr_save_orig_tiles(machine);
 
@@ -288,8 +288,8 @@ VIDEO_START(viostorm)
 {
 	gametype = 0;
 
-	K055555_vh_start();
-	K054338_vh_start();
+	K055555_vh_start(machine);
+	K054338_vh_start(machine);
 
 	mystwarr_save_orig_tiles(machine);
 
@@ -311,8 +311,8 @@ VIDEO_START(martchmp)
 {
 	gametype = 0;
 
-	K055555_vh_start();
-	K054338_vh_start();
+	K055555_vh_start(machine);
+	K054338_vh_start(machine);
 
 	mystwarr_save_orig_tiles(machine);
 
@@ -452,8 +452,8 @@ WRITE16_HANDLER(ddd_053936_clip_w)
 // reference: 223e5c in gaiapolis (ROMs 34j and 36m)
 READ16_HANDLER(gai_053936_tilerom_0_r)
 {
-	UINT8 *ROM1 = (UINT8 *)memory_region(machine, "gfx4");
-	UINT8 *ROM2 = (UINT8 *)memory_region(machine, "gfx4");
+	UINT8 *ROM1 = (UINT8 *)memory_region(space->machine, "gfx4");
+	UINT8 *ROM2 = (UINT8 *)memory_region(space->machine, "gfx4");
 
 	ROM1 += 0x20000;
 	ROM2 += 0x20000+0x40000;
@@ -463,8 +463,8 @@ READ16_HANDLER(gai_053936_tilerom_0_r)
 
 READ16_HANDLER(ddd_053936_tilerom_0_r)
 {
-	UINT8 *ROM1 = (UINT8 *)memory_region(machine, "gfx4");
-	UINT8 *ROM2 = (UINT8 *)memory_region(machine, "gfx4");
+	UINT8 *ROM1 = (UINT8 *)memory_region(space->machine, "gfx4");
+	UINT8 *ROM2 = (UINT8 *)memory_region(space->machine, "gfx4");
 
 	ROM2 += 0x40000;
 
@@ -474,7 +474,7 @@ READ16_HANDLER(ddd_053936_tilerom_0_r)
 // reference: 223e1a in gaiapolis (ROM 36j)
 READ16_HANDLER(ddd_053936_tilerom_1_r)
 {
-	UINT8 *ROM = (UINT8 *)memory_region(machine, "gfx4");
+	UINT8 *ROM = (UINT8 *)memory_region(space->machine, "gfx4");
 
 	return ROM[offset/2];
 }
@@ -482,7 +482,7 @@ READ16_HANDLER(ddd_053936_tilerom_1_r)
 // reference: 223db0 in gaiapolis (ROMs 32n, 29n, 26n)
 READ16_HANDLER(gai_053936_tilerom_2_r)
 {
-	UINT8 *ROM = (UINT8 *)memory_region(machine, "gfx3");
+	UINT8 *ROM = (UINT8 *)memory_region(space->machine, "gfx3");
 
 	offset += (roz_rombank * 0x100000);
 
@@ -491,7 +491,7 @@ READ16_HANDLER(gai_053936_tilerom_2_r)
 
 READ16_HANDLER(ddd_053936_tilerom_2_r)
 {
-	UINT8 *ROM = (UINT8 *)memory_region(machine, "gfx3");
+	UINT8 *ROM = (UINT8 *)memory_region(space->machine, "gfx3");
 
 	offset += (roz_rombank * 0x100000);
 

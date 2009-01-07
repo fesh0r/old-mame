@@ -166,6 +166,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "cpu/rsp/rsp.h"
 #include "cpu/mips/mips3.h"
 #include "streams.h"
 #include "sound/custom.h"
@@ -175,11 +176,11 @@ static READ32_HANDLER( aleck_dips_r )
 {
 	if (offset == 0)
 	{
-		return (input_port_read(machine, "IN0"));	/* mtetrisc has regular inputs here */
+		return (input_port_read(space->machine, "IN0"));	/* mtetrisc has regular inputs here */
 	}
 	else if (offset == 1)
 	{
-		return (input_port_read(machine, "IN1"));
+		return (input_port_read(space->machine, "IN1"));
 	}
 
 	return 0;
@@ -417,7 +418,7 @@ static const mips3_config config =
 
 static INTERRUPT_GEN( n64_vblank )
 {
-	signal_rcp_interrupt(machine, VI_INTERRUPT);
+	signal_rcp_interrupt(device->machine, VI_INTERRUPT);
 }
 
 static MACHINE_RESET( aleck64 )

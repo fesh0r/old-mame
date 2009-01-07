@@ -84,7 +84,7 @@ WRITE16_HANDLER( hyprduel_paletteram_w )
 {
 	data = COMBINE_DATA(&paletteram16[offset]);
 	/* We need the ^0xff because we had to invert the pens in the gfx */
-	palette_set_color_rgb(machine,offset^0xff,pal5bit(data >> 6),pal5bit(data >> 11),pal5bit(data >> 1));
+	palette_set_color_rgb(space->machine,offset^0xff,pal5bit(data >> 6),pal5bit(data >> 11),pal5bit(data >> 1));
 }
 
 
@@ -319,9 +319,9 @@ VIDEO_START( hyprduel_14220 )
 	hypr_tiletable_old = auto_malloc(hyprduel_tiletable_size);
 	dirtyindex = auto_malloc(hyprduel_tiletable_size/4);
 
-	bg_tilemap[0] = tilemap_create(get_tile_info_0_8bit,tilemap_scan_rows,8,8,WIN_NX,WIN_NY);
-	bg_tilemap[1] = tilemap_create(get_tile_info_1_8bit,tilemap_scan_rows,8,8,WIN_NX,WIN_NY);
-	bg_tilemap[2] = tilemap_create(get_tile_info_2_8bit,tilemap_scan_rows,8,8,WIN_NX,WIN_NY);
+	bg_tilemap[0] = tilemap_create(machine, get_tile_info_0_8bit,tilemap_scan_rows,8,8,WIN_NX,WIN_NY);
+	bg_tilemap[1] = tilemap_create(machine, get_tile_info_1_8bit,tilemap_scan_rows,8,8,WIN_NX,WIN_NY);
+	bg_tilemap[2] = tilemap_create(machine, get_tile_info_2_8bit,tilemap_scan_rows,8,8,WIN_NX,WIN_NY);
 
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 	tilemap_set_transparent_pen(bg_tilemap[1],0);
@@ -460,7 +460,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 			gfxdata		=	base_gfx + (8*8*4/8) * (((attr & 0x000f) << 16) + code);
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				flipx = !flipx;		x = max_x - x - width;
 				flipy = !flipy;		y = max_y - y - height;
@@ -470,6 +470,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			{
 				/* prepare GfxElement on the fly */
 				gfx_element gfx;
+				gfx.machine = machine;
 				gfx.width = width;
 				gfx.height = height;
 				gfx.total_elements = 1;
@@ -482,6 +483,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 				gfx.line_modulo = width;
 				gfx.char_modulo = 0;	/* doesn't matter */
 				gfx.flags = 0;
+				gfx.machine = machine;
 
 				/* Bounds checking */
 				if ( (gfxdata + width * height - 1) >= gfx_max )
@@ -500,6 +502,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			{
 				/* prepare GfxElement on the fly */
 				gfx_element gfx;
+				gfx.machine = machine;
 				gfx.width = width;
 				gfx.height = height;
 				gfx.total_elements = 1;
@@ -512,6 +515,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 				gfx.line_modulo = width/2;
 				gfx.char_modulo = 0;	/* doesn't matter */
 				gfx.flags = GFX_ELEMENT_PACKED;
+				gfx.machine = machine;
 
 				/* Bounds checking */
 				if ( (gfxdata + width/2 * height - 1) >= gfx_max )
@@ -635,8 +639,8 @@ VIDEO_UPDATE( hyprduel )
 	hyprduel_sprite_yoffs	=	hyprduel_videoregs[0x04/2] - video_screen_get_height(screen) / 2;
 
 	/* The background color is selected by a register */
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,((hyprduel_videoregs[0x12/2] & 0x0fff) ^ 0x0ff) + 0x1000,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,((hyprduel_videoregs[0x12/2] & 0x0fff) ^ 0x0ff) + 0x1000);
 
 	/*  Screen Control Register:
 
@@ -650,7 +654,7 @@ VIDEO_UPDATE( hyprduel )
         ---- ---- ---- --1-     ? Blank Screen
         ---- ---- ---- ---0     Flip  Screen    */
 	if (screenctrl & 2)	return 0;
-	flip_screen_set(screenctrl & 1);
+	flip_screen_set(screen->machine, screenctrl & 1);
 
 	/* If the game supports 16x16 tiles, make sure that the
        16x16 and 8x8 tilemaps of a given layer are not simultaneously
@@ -664,7 +668,7 @@ if (input_code_pressed(KEYCODE_Z))
 	if (input_code_pressed(KEYCODE_E))	msk |= 0x04;
 	if (input_code_pressed(KEYCODE_A))	msk |= 0x08;
 	if (msk != 0)
-	{	fillbitmap(bitmap,0,cliprect);
+	{	bitmap_fill(bitmap,cliprect,0);
 		layers_ctrl &= msk;	}
 
 	popmessage("%x-%x-%x:%04x %04x %04x",

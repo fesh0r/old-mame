@@ -7,7 +7,6 @@
 #include "driver.h"
 #include "profiler.h"
 #include "cpu/tms34010/tms34010.h"
-#include "cpu/tms34010/34010ops.h"
 #include "midyunit.h"
 
 
@@ -88,11 +87,11 @@ static VIDEO_START( common )
 	memset(&dma_state, 0, sizeof(dma_state));
 
 	/* register for state saving */
-	state_save_register_global(autoerase_enable);
-	state_save_register_global_pointer(local_videoram, 0x80000/sizeof(local_videoram[0]));
-	state_save_register_global_pointer(midyunit_cmos_ram, (0x2000 * 4)/sizeof(midyunit_cmos_ram[0]));
-	state_save_register_global(videobank_select);
-	state_save_register_global_array(dma_register);
+	state_save_register_global(machine, autoerase_enable);
+	state_save_register_global_pointer(machine, local_videoram, 0x80000/sizeof(local_videoram[0]));
+	state_save_register_global_pointer(machine, midyunit_cmos_ram, (0x2000 * 4)/sizeof(midyunit_cmos_ram[0]));
+	state_save_register_global(machine, videobank_select);
+	state_save_register_global_array(machine, dma_register);
 }
 
 
@@ -204,13 +203,13 @@ READ16_HANDLER( midyunit_vram_r )
  *
  *************************************/
 
-void midyunit_to_shiftreg(UINT32 address, UINT16 *shiftreg)
+void midyunit_to_shiftreg(const address_space *space, UINT32 address, UINT16 *shiftreg)
 {
 	memcpy(shiftreg, &local_videoram[address >> 3], 2 * 512 * sizeof(UINT16));
 }
 
 
-void midyunit_from_shiftreg(UINT32 address, UINT16 *shiftreg)
+void midyunit_from_shiftreg(const address_space *space, UINT32 address, UINT16 *shiftreg)
 {
 	memcpy(&local_videoram[address >> 3], shiftreg, 2 * 512 * sizeof(UINT16));
 }
@@ -266,7 +265,7 @@ WRITE16_HANDLER( midyunit_paletteram_w )
 
 	COMBINE_DATA(&paletteram16[offset]);
 	newword = paletteram16[offset];
-	palette_set_color_rgb(machine, offset & palette_mask, pal5bit(newword >> 10), pal5bit(newword >> 5), pal5bit(newword >> 0));
+	palette_set_color_rgb(space->machine, offset & palette_mask, pal5bit(newword >> 10), pal5bit(newword >> 5), pal5bit(newword >> 0));
 }
 
 
@@ -390,7 +389,7 @@ static void dma_draw(UINT16 command)
 static TIMER_CALLBACK( dma_callback )
 {
 	dma_register[DMA_COMMAND] &= ~0x8000; /* tell the cpu we're done */
-	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 }
 
 
@@ -453,7 +452,7 @@ WRITE16_HANDLER( midyunit_dma_w )
 
 	/* high bit triggers action */
 	command = dma_register[DMA_COMMAND];
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 	if (!(command & 0x8000))
 		return;
 
@@ -543,7 +542,7 @@ if (LOG_DMA)
 	}
 
 	/* signal we're done */
-	timer_set(ATTOTIME_IN_NSEC(41 * dma_state.width * dma_state.height), NULL, 0, dma_callback);
+	timer_set(space->machine, ATTOTIME_IN_NSEC(41 * dma_state.width * dma_state.height), NULL, 0, dma_callback);
 
 	profiler_mark(PROFILER_END);
 }
@@ -582,5 +581,5 @@ void midyunit_scanline_update(const device_config *screen, bitmap_t *bitmap, int
 	/* if this is the last update of the screen, set a timer to clear out the final line */
 	/* (since we update one behind) */
 	if (scanline == video_screen_get_visible_area(screen)->max_y)
-		timer_set(video_screen_get_time_until_pos(screen, scanline + 1, 0), NULL, params->rowaddr, autoerase_line);
+		timer_set(screen->machine, video_screen_get_time_until_pos(screen, scanline + 1, 0), NULL, params->rowaddr, autoerase_line);
 }

@@ -31,18 +31,14 @@ enum
 };
 
 #define CP1610_INT_NONE		0
-#define CP1610_INT_INTRM	1				/* Maskable */
-#define CP1610_RESET		2				/* Non-Maskable */
-#define CP1610_INT_INTR		INPUT_LINE_NMI	/* Non-Maskable */
+#define CP1610_INT_INTRM	1					/* Maskable */
+#define CP1610_RESET		INPUT_LINE_RESET	/* Non-Maskable */
+#define CP1610_INT_INTR		INPUT_LINE_NMI		/* Non-Maskable */
 
 
-void cp1610_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( cp1610 );
+#define CPU_CP1610 CPU_GET_INFO_NAME( cp1610 )
 
-unsigned cp1610_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-
-// Temporary
-#define cp1610_readop(A) program_read_word_16be((A)<<1)
-#define cp1610_readmem16(A) program_read_word_16be((A)<<1)
-#define cp1610_writemem16(A,B) program_write_word_16be((A)<<1,B)
+CPU_DISASSEMBLE( cp1610 );
 
 #endif /* __CP1610_H__ */

@@ -12,7 +12,6 @@
 ***************************************************************************/
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "sound/fm.h"
 #include "sound/2612intf.h"
@@ -24,6 +23,7 @@ struct ym2612_info
 	emu_timer *	timer[2];
 	void *			chip;
 	const ym2612_interface *intf;
+	const device_config *device;
 };
 
 /*------------------------- TM2612 -------------------------------*/
@@ -31,7 +31,7 @@ struct ym2612_info
 static void IRQHandler(void *param,int irq)
 {
 	struct ym2612_info *info = param;
-	if(info->intf->handler) info->intf->handler(Machine, irq);
+	if(info->intf->handler) info->intf->handler(info->device->machine, irq);
 }
 
 /* Timer overflow callback from timer.c */
@@ -73,10 +73,10 @@ void ym2612_update_request(void *param)
 /*    YM2612                                               */
 /***********************************************************/
 
-static void ym2612_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **buffers, int length)
+static STREAM_UPDATE( ym2612_stream_update )
 {
 	struct ym2612_info *info = param;
-	ym2612_update_one(info->chip, buffers, length);
+	ym2612_update_one(info->chip, outputs, samples);
 }
 
 
@@ -87,7 +87,7 @@ static STATE_POSTLOAD( ym2612_intf_postload )
 }
 
 
-static void *ym2612_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( ym2612 )
 {
 	static const ym2612_interface dummy = { 0 };
 	struct ym2612_info *info;
@@ -97,19 +97,20 @@ static void *ym2612_start(const char *tag, int sndindex, int clock, const void *
 	memset(info, 0, sizeof(*info));
 
 	info->intf = config ? config : &dummy;
+	info->device = device;
 
 	/* FM init */
 	/* Timer Handler set */
-	info->timer[0] = timer_alloc(timer_callback_2612_0, info);
-	info->timer[1] = timer_alloc(timer_callback_2612_1, info);
+	info->timer[0] = timer_alloc(device->machine, timer_callback_2612_0, info);
+	info->timer[1] = timer_alloc(device->machine, timer_callback_2612_1, info);
 
 	/* stream system initialize */
-	info->stream = stream_create(0,2,rate,info,ym2612_stream_update);
+	info->stream = stream_create(device,0,2,rate,info,ym2612_stream_update);
 
 	/**** initialize YM2612 ****/
-	info->chip = ym2612_init(info,sndindex,clock,rate,timer_handler,IRQHandler);
+	info->chip = ym2612_init(info,device,clock,rate,timer_handler,IRQHandler);
 
-	state_save_register_postload(Machine, ym2612_intf_postload, info);
+	state_save_register_postload(device->machine, ym2612_intf_postload, info);
 
 	if (info->chip)
 		return info;
@@ -118,15 +119,15 @@ static void *ym2612_start(const char *tag, int sndindex, int clock, const void *
 }
 
 
-static void ym2612_stop(void *token)
+static SND_STOP( ym2612 )
 {
-	struct ym2612_info *info = token;
+	struct ym2612_info *info = device->token;
 	ym2612_shutdown(info->chip);
 }
 
-static void ym2612_reset(void *token)
+static SND_RESET( ym2612 )
 {
-	struct ym2612_info *info = token;
+	struct ym2612_info *info = device->token;
 	ym2612_reset_chip(info->chip);
 }
 
@@ -347,7 +348,7 @@ WRITE8_HANDLER( ym3438_data_port_1_b_w ){
  * Generic get_info
  **************************************************************************/
 
-static void ym2612_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( ym2612 )
 {
 	switch (state)
 	{
@@ -356,24 +357,24 @@ static void ym2612_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void ym2612_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( ym2612 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = ym2612_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = ym2612_start;				break;
-		case SNDINFO_PTR_STOP:							info->stop = ym2612_stop;				break;
-		case SNDINFO_PTR_RESET:							info->reset = ym2612_reset;				break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( ym2612 );		break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ym2612 );				break;
+		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( ym2612 );				break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( ym2612 );				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "YM2612";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Yamaha FM";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "YM2612");							break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Yamaha FM");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");								break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);							break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 
@@ -383,7 +384,7 @@ void ym2612_get_info(void *token, UINT32 state, sndinfo *info)
 
 #if BUILD_YM3438
 
-static void ym3438_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( ym3438 )
 {
 	switch (state)
 	{
@@ -392,24 +393,24 @@ static void ym3438_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void ym3438_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( ym3438 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = ym3438_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = ym2612_start;				break;
-		case SNDINFO_PTR_STOP:							info->stop = ym2612_stop;				break;
-		case SNDINFO_PTR_RESET:							info->reset = ym2612_reset;				break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( ym3438 );		break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ym2612 );				break;
+		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( ym2612 );				break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( ym2612 );				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "YM3438";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Yamaha FM";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "YM3438");							break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Yamaha FM");						break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");								break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);							break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

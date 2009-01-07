@@ -1,6 +1,5 @@
 #include "sndintrf.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "flt_vol.h"
 
 
@@ -12,7 +11,7 @@ struct filter_volume_info
 
 
 
-static void filter_volume_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
+static STREAM_UPDATE( filter_volume_update )
 {
 	stream_sample_t *src = inputs[0];
 	stream_sample_t *dst = outputs[0];
@@ -23,7 +22,7 @@ static void filter_volume_update(void *param, stream_sample_t **inputs, stream_s
 }
 
 
-static void *filter_volume_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( filter_volume )
 {
 	struct filter_volume_info *info;
 
@@ -31,7 +30,7 @@ static void *filter_volume_start(const char *tag, int sndindex, int clock, const
 	memset(info, 0, sizeof(*info));
 
 	info->gain = 0x100;
-	info->stream = stream_create(1, 1, Machine->sample_rate, info, filter_volume_update);
+	info->stream = stream_create(device, 1, 1, device->machine->sample_rate, info, filter_volume_update);
 
 	return info;
 }
@@ -49,7 +48,7 @@ void flt_volume_set_volume(int num, float volume)
  * Generic get_info
  **************************************************************************/
 
-static void filter_volume_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( filter_volume )
 {
 	switch (state)
 	{
@@ -58,24 +57,24 @@ static void filter_volume_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void filter_volume_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( filter_volume )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = filter_volume_set_info;break;
-		case SNDINFO_PTR_START:							info->start = filter_volume_start;		break;
-		case SNDINFO_PTR_STOP:							/* Nothing */							break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( filter_volume );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( filter_volume );			break;
+		case SNDINFO_PTR_STOP:							/* Nothing */											break;
+		case SNDINFO_PTR_RESET:							/* Nothing */											break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "Volume Filter";				break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Filters";					break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "Volume Filter");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Filters");								break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");									break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);								break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

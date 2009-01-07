@@ -5,6 +5,7 @@ Based on drivers from Juno First emulator by Chris Hardy (chrish@kcbbs.gen.nz)
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/konami1.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/vlm5030.h"
@@ -44,7 +45,7 @@ static READ8_HANDLER( konami_IN1_r )
 	static int cheat = 0;
 	static const int bits[] = { 0xee, 0xff, 0xbb, 0xaa };
 
-	res = input_port_read(machine, "P1_P2");
+	res = input_port_read(space->machine, "P1_P2");
 
 	if ((res & 0x80) == 0)
 	{

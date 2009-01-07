@@ -21,6 +21,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2203intf.h"
@@ -44,11 +45,11 @@ static WRITE8_HANDLER( gng_bankswitch_w )
 {
 	if (data == 4)
 	{
-		memory_set_bank(1,4);
+		memory_set_bank(space->machine, 1,4);
 	}
 	else
 	{
-		memory_set_bank(1,(data & 0x03));
+		memory_set_bank(space->machine, 1,(data & 0x03));
 	}
 }
 
@@ -61,8 +62,8 @@ static MACHINE_START( gng )
 {
 	/* configure ROM banking */
 	UINT8 *rombase = memory_region(machine, "main");
-	memory_configure_bank(1,0,4,&rombase[0x10000],0x2000);
-	memory_configure_bank(1,4,1,&rombase[0x4000],0x2000);
+	memory_configure_bank(machine, 1,0,4,&rombase[0x10000],0x2000);
+	memory_configure_bank(machine, 1,4,1,&rombase[0x4000],0x2000);
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -703,7 +704,7 @@ static READ8_HANDLER( diamond_hack_r )
 
 static DRIVER_INIT( diamond )
 {
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6000, 0, 0, diamond_hack_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x6000, 0x6000, 0, 0, diamond_hack_r);
 }
 
 

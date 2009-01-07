@@ -258,7 +258,7 @@
 
 #include "driver.h"
 #include "cpu/mcs48/mcs48.h"
-#include "cpu/i8051/i8051.h"
+#include "cpu/mcs51/mcs51.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 #include "videopkr.lh"
@@ -288,8 +288,8 @@ static UINT8 dc_40103;
 static UINT8 te_40103;
 static UINT8 ld_40103;
 
-UINT8 ant_jckp, jckp, ant_cio, c_io, hp_1, hp_2, bell, aux3, dvrt;
-unsigned long count0, count1, count2, count3, count4;
+static UINT8 ant_jckp, jckp, ant_cio, c_io, hp_1, hp_2, bell, aux3, dvrt;
+static unsigned long count0, count1, count2, count3, count4;
 
 /* Baby vars */
 static UINT8 sbp0, sbp2, sbp3;
@@ -302,7 +302,7 @@ static UINT8 sbp0, sbp2, sbp3;
 static tilemap *bg_tilemap;
 
 /* BCD to Seven Segment Decoder */
-UINT8 dec_7seg(int data)
+static UINT8 dec_7seg(int data)
 {
 	UINT8 segment;
 	switch (data)
@@ -324,7 +324,7 @@ UINT8 dec_7seg(int data)
 }
 
 /* Display a seven digit counter on layout - Index points to less significant digit*/
-void count_7dig(unsigned long data, UINT8 index)
+static void count_7dig(unsigned long data, UINT8 index)
 {
 	UINT8 i;
 	char strn[7];
@@ -336,7 +336,7 @@ void count_7dig(unsigned long data, UINT8 index)
 	}
 }
 
-PALETTE_INIT( videopkr )
+static PALETTE_INIT( videopkr )
 {
 	int j;
 
@@ -362,7 +362,7 @@ PALETTE_INIT( videopkr )
 	}
 }
 
-PALETTE_INIT( babypkr )
+static PALETTE_INIT( babypkr )
 {
 	int j;
 
@@ -402,18 +402,18 @@ static TILE_GET_INFO( get_bg_tile_info )
 }
 
 
-VIDEO_START( videopkr )
+static VIDEO_START( videopkr )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 }
 
-VIDEO_START( vidadcba )
+static VIDEO_START( vidadcba )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 16, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 16, 8, 32, 32);
 }
 
 
-VIDEO_UPDATE( videopkr )
+static VIDEO_UPDATE( videopkr )
 {
 	tilemap_mark_all_tiles_dirty(bg_tilemap);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
@@ -471,9 +471,9 @@ static READ8_HANDLER( videopkr_io_r )
 	{
 		case 0xef:	/* inputs are multiplexed through a diode matrix */
 		{
-			hf = ((input_port_read(machine, "IN1") & 0x10 ) >> 4) & 1; 			/* Hopper full detection */
-			co = 0x10 * ((input_port_read(machine, "IN1") & 0x20 ) >> 5);		/* Coin Out detection */
-			kbdin = ((input_port_read(machine, "IN1") & 0xaf ) << 8) + input_port_read(machine, "IN0");
+			hf = ((input_port_read(space->machine, "IN1") & 0x10 ) >> 4) & 1; 			/* Hopper full detection */
+			co = 0x10 * ((input_port_read(space->machine, "IN1") & 0x20 ) >> 5);		/* Coin Out detection */
+			kbdin = ((input_port_read(space->machine, "IN1") & 0xaf ) << 8) + input_port_read(space->machine, "IN0");
 
 			switch (kbdin)
 			{
@@ -672,9 +672,10 @@ static READ8_HANDLER( videopkr_t0_latch )
 	return t0_latch;
 }
 
-static WRITE8_HANDLER(p4_w)
+static WRITE8_HANDLER( prog_w )
 {
-	cputag_set_input_line(machine, "main", 0, CLEAR_LINE);	/* clear interrupt FF */
+	if (!data)
+		cputag_set_input_line(space->machine, "main", 0, CLEAR_LINE);	/* clear interrupt FF */
 }
 
 /*************************
@@ -815,7 +816,7 @@ static READ8_HANDLER(baby_sound_p2_r)
 static WRITE8_HANDLER(baby_sound_p2_w)
 {
 	sbp2 = data;
-	dac_0_data_w(machine, 0, data);
+	dac_0_data_w(space, 0, data);
 }
 
 static READ8_HANDLER(baby_sound_p3_r)
@@ -846,11 +847,11 @@ static WRITE8_HANDLER(baby_sound_p3_w)
 		case 0x00:	break;
 		case 0x01:	break;
 		case 0x02:	break;
-		case 0x03:	ay8910_write_port_0_w(machine, 1, sbp0); break;
+		case 0x03:	ay8910_write_port_0_w(space, 1, sbp0); break;
 		case 0x04:	break;
-		case 0x05:	sbp0 = ay8910_read_port_0_r(machine, sbp0); break;
+		case 0x05:	sbp0 = ay8910_read_port_0_r(space, sbp0); break;
 		case 0x06:	break;
-		case 0x07:	ay8910_control_port_0_w(machine, 0, sbp0); break;
+		case 0x07:	ay8910_control_port_0_w(space, 0, sbp0); break;
 	}
 }
 
@@ -863,7 +864,7 @@ static TIMER_CALLBACK(sound_t1_callback)
 
 		if (dc_40103 == 0)
 		{
-			cpunum_set_input_line(machine, 1, 0, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[1], 0, ASSERT_LINE);
 		}
 	}
 }
@@ -877,11 +878,11 @@ static ADDRESS_MAP_START( i8039_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( i8039_io_port, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x00         , 0xff         ) AM_READWRITE(videopkr_io_r, videopkr_io_w)
-	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_READWRITE(videopkr_p1_data_r, videopkr_p1_data_w)
-	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_READWRITE(videopkr_p2_data_r, videopkr_p2_data_w)
-	AM_RANGE(MCS48_PORT_P4, MCS48_PORT_P4) AM_WRITE(p4_w)
-	AM_RANGE(MCS48_PORT_T0, MCS48_PORT_T0) AM_READ(videopkr_t0_latch)
+	AM_RANGE(0x00,            0xff           ) AM_READWRITE(videopkr_io_r, videopkr_io_w)
+	AM_RANGE(MCS48_PORT_P1,   MCS48_PORT_P1  ) AM_READWRITE(videopkr_p1_data_r, videopkr_p1_data_w)
+	AM_RANGE(MCS48_PORT_P2,   MCS48_PORT_P2  ) AM_READWRITE(videopkr_p2_data_r, videopkr_p2_data_w)
+	AM_RANGE(MCS48_PORT_PROG, MCS48_PORT_PROG) AM_WRITE(prog_w)
+	AM_RANGE(MCS48_PORT_T0,   MCS48_PORT_T0  ) AM_READ(videopkr_t0_latch)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( i8039_sound_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -899,15 +900,13 @@ static ADDRESS_MAP_START( i8051_sound_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( i8051_sound_dat, ADDRESS_SPACE_DATA, 8 )
-	AM_RANGE(0x0000, 0x1ff) AM_RAM
-ADDRESS_MAP_END
-
 static ADDRESS_MAP_START( i8051_sound_port, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x00, 0x00) AM_READWRITE(baby_sound_p0_r, baby_sound_p0_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(baby_sound_p1_r, baby_sound_p1_w)
-	AM_RANGE(0x02, 0x02) AM_READWRITE(baby_sound_p2_r, baby_sound_p2_w)
-	AM_RANGE(0x03, 0x03) AM_READWRITE(baby_sound_p3_r, baby_sound_p3_w)
+	AM_RANGE(0x0000, 0x1ff) AM_RAM
+	/* ports */
+	AM_RANGE(MCS51_PORT_P0, MCS51_PORT_P0) AM_READWRITE(baby_sound_p0_r, baby_sound_p0_w)
+	AM_RANGE(MCS51_PORT_P1, MCS51_PORT_P1) AM_READWRITE(baby_sound_p1_r, baby_sound_p1_w)
+	AM_RANGE(MCS51_PORT_P2, MCS51_PORT_P2) AM_READWRITE(baby_sound_p2_r, baby_sound_p2_w)
+	AM_RANGE(MCS51_PORT_P3, MCS51_PORT_P3) AM_READWRITE(baby_sound_p3_r, baby_sound_p3_w)
 ADDRESS_MAP_END
 
 
@@ -1137,7 +1136,7 @@ static MACHINE_START(videopkr)
 	p1 = 0xff;
 	ant_cio = 0;
 	count0 = 0;
-	t1_timer = timer_alloc(sound_t1_callback, NULL);
+	t1_timer = timer_alloc(machine, sound_t1_callback, NULL);
 	timer_adjust_periodic(t1_timer, attotime_zero, 0, ATTOTIME_IN_HZ(50));	/* 50Hz. */
 }
 
@@ -1226,9 +1225,9 @@ static MACHINE_DRIVER_START( babypkr )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(videopkr)
 	MDRV_CPU_REPLACE("main", I8039, CPU_CLOCK_ALT)
-	MDRV_CPU_REPLACE("sound", I8051, CPU_CLOCK )
+	/* most likely romless or eprom */
+	MDRV_CPU_REPLACE("sound", I8031, CPU_CLOCK )
 	MDRV_CPU_PROGRAM_MAP(i8051_sound_mem, 0)
-	MDRV_CPU_DATA_MAP(i8051_sound_dat, 0)
 	MDRV_CPU_IO_MAP(i8051_sound_port, 0)
 
 	/* video hardware */

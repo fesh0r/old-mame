@@ -31,7 +31,7 @@ TODO:
   interleaving is taken into account. A high resolution timer around the
   poll loop is probably the best bet. The driver sets its timer manually
   because strange enough, interleaving doesn't occur immediately when
-  cpu_boost_interleave() is called. Speculations are TIME_NOWs could have
+  cpuexec_boost_interleave() is called. Speculations are TIME_NOWs could have
   been used as the timer durations to force instant triggering.
 
 
@@ -122,6 +122,7 @@ Dip location and recommended settings verified with the US manual
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/hd6309/hd6309.h"
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
 #include "sound/upd7759.h"
@@ -173,7 +174,7 @@ static READ8_HANDLER( trackball_r )
 		{
 			UINT8 curr;
 
-			curr = input_port_read_safe(machine, tracknames[i], 0xff);
+			curr = input_port_read_safe(space->machine, tracknames[i], 0xff);
 
 			dir[i] = curr - pos[i];
 			sign[i] = dir[i] & 0x80;
@@ -218,7 +219,7 @@ static WRITE8_HANDLER( protection_clock_w )
 
 static WRITE8_HANDLER( combasc_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
+	cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
 }
 
 static WRITE8_HANDLER( combasc_play_w )
@@ -241,14 +242,14 @@ static emu_timer *combasc_interleave_timer;
 static READ8_HANDLER ( combasc_YM2203_status_port_0_r )
 {
 	static int boost = 1;
-	int status = ym2203_status_port_0_r(machine,0);
+	int status = ym2203_status_port_0_r(space,0);
 
-	if (activecpu_get_pc() == 0x334)
+	if (cpu_get_pc(space->cpu) == 0x334)
 	{
 		if (boost)
 		{
 			boost = 0;
-			timer_adjust_periodic(combasc_interleave_timer, attotime_zero, 0, ATTOTIME_IN_CYCLES(80,1));
+			timer_adjust_periodic(combasc_interleave_timer, attotime_zero, 0, cpu_clocks_to_attotime(space->cpu,80));
 		}
 		else if (status & 2)
 		{
@@ -582,7 +583,7 @@ static MACHINE_DRIVER_START( combasc )
 	MDRV_CPU_ADD("audio", Z80,3579545)	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(combasc_readmem_sound,combasc_writemem_sound)
 
-	MDRV_INTERLEAVE(20)
+	MDRV_QUANTUM_TIME(HZ(1200))
 
 	MDRV_MACHINE_RESET(combasc)
 
@@ -623,7 +624,7 @@ static MACHINE_DRIVER_START( combascb )
 	MDRV_CPU_ADD("audio", Z80,3579545)	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(combasc_readmem_sound,combasc_writemem_sound) /* FAKE */
 
-	MDRV_INTERLEAVE(20)
+	MDRV_QUANTUM_TIME(HZ(1200))
 
 	MDRV_MACHINE_RESET(combasc)
 
@@ -814,27 +815,27 @@ ROM_END
 
 
 
-static void combasc_init_common(void)
+static void combasc_init_common(running_machine *machine)
 {
-	combasc_interleave_timer = timer_alloc(NULL, NULL);
+	combasc_interleave_timer = timer_alloc(machine, NULL, NULL);
 }
 
 static DRIVER_INIT( combasct )
 {
-	combasc_init_common();
+	combasc_init_common(machine);
 }
 
 static DRIVER_INIT( combasc )
 {
 	/* joystick instead of trackball */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0404, 0x0404, 0, 0, input_port_read_handler8(machine->portconfig, "IN1"));
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0404, 0x0404, 0, 0, input_port_read_handler8(machine->portconfig, "IN1"));
 
-	combasc_init_common();
+	combasc_init_common(machine);
 }
 
 static DRIVER_INIT( combascb )
 {
-	combasc_init_common();
+	combasc_init_common(machine);
 }
 
 

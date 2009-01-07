@@ -51,8 +51,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( srumbler )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,8,8,64,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,    16,16,64,64);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_cols,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_cols,    16,16,64,64);
 
 	tilemap_set_transparent_pen(fg_tilemap,3);
 
@@ -84,7 +84,7 @@ WRITE8_HANDLER( srumbler_background_w )
 WRITE8_HANDLER( srumbler_4009_w )
 {
 	/* bit 0 flips screen */
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 
 	/* bits 4-5 used during attract mode, unknown */
 
@@ -142,7 +142,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		sx = buffered_spriteram[offs + 3] + 0x100 * ( attr & 0x01);
 		flipy = attr & 0x02;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 496 - sx;
 			sy = 240 - sy;
@@ -152,7 +152,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		drawgfx(bitmap,machine->gfx[2],
 				code,
 				colour,
-				flip_screen_get(),flipy,
+				flip_screen_get(machine),flipy,
 				sx, sy,
 				cliprect,TRANSPARENCY_PEN,15);
 	}
@@ -170,5 +170,7 @@ VIDEO_UPDATE( srumbler )
 
 VIDEO_EOF( srumbler )
 {
-	buffer_spriteram_w(machine,0,0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	buffer_spriteram_w(space,0,0);
 }

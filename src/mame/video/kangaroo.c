@@ -25,7 +25,7 @@ VIDEO_START( kangaroo )
 {
 	/* video RAM is accessed 32 bits at a time (two planes, 4bpp each, 4 pixels) */
 	videoram32 = auto_malloc(256 * 64 * 4);
-	state_save_register_global_pointer(videoram32, 256 * 64);
+	state_save_register_global_pointer(machine, videoram32, 256 * 64);
 }
 
 
@@ -83,11 +83,11 @@ WRITE8_HANDLER( kangaroo_video_control_w )
 	switch (offset)
 	{
 		case 5:	/* blitter start */
-			blitter_execute(machine);
+			blitter_execute(space->machine);
 			break;
 
 		case 8:	/* bank select */
-			memory_set_bank(1, (data & 0x05) ? 0 : 1);
+			memory_set_bank(space->machine, 1, (data & 0x05) ? 0 : 1);
 			break;
 	}
 }

@@ -45,6 +45,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "timeplt.h"
 #include "audio/timeplt.h"
 
@@ -64,14 +65,14 @@ static UINT8 nmi_enable;
 
 static MACHINE_START( timeplt )
 {
-	state_save_register_global(nmi_enable);
+	state_save_register_global(machine, nmi_enable);
 }
 
 
 static INTERRUPT_GEN( timeplt_interrupt )
 {
 	if (nmi_enable)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
+		cpu_set_input_line(device, INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 
@@ -79,7 +80,7 @@ static WRITE8_HANDLER( timeplt_nmi_enable_w )
 {
 	nmi_enable = data & 1;
 	if (!nmi_enable)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 

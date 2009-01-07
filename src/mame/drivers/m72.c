@@ -81,6 +81,8 @@ other supported games as well.
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/nec/nec.h"
 #include "deprecat.h"
 #include "machine/irem_cpu.h"
 #include "audio/m72.h"
@@ -88,8 +90,7 @@ other supported games as well.
 #include "sound/2151intf.h"
 #include "iremipt.h"
 #include "m72.h"
-#include "cpu/nec/nec.h"
-
+#include "cpu/mcs51/mcs51.h"
 
 #define MASTER_CLOCK		XTAL_32MHz
 #define SOUND_CLOCK			XTAL_3_579545MHz
@@ -98,6 +99,9 @@ other supported games as well.
 static UINT16 *protection_ram;
 static emu_timer *scanline_timer;
 static UINT8 m72_irq_base;
+static UINT8 mcu_snd_cmd_latch;
+static UINT8 mcu_sample_latch;
+static UINT32 mcu_sample_addr;
 
 static TIMER_CALLBACK( m72_scanline_interrupt );
 
@@ -105,14 +109,28 @@ static TIMER_CALLBACK( m72_scanline_interrupt );
 
 static MACHINE_START( m72 )
 {
-	scanline_timer = timer_alloc(m72_scanline_interrupt, NULL);
+	scanline_timer = timer_alloc(machine, m72_scanline_interrupt, NULL);
+}
+
+static TIMER_CALLBACK( synch_callback )
+{
+	//cpuexec_boost_interleave(machine, attotime_zero, ATTOTIME_IN_USEC(8000000));
+	cpuexec_boost_interleave(machine, ATTOTIME_IN_HZ(MASTER_CLOCK/4/12), ATTOTIME_IN_SEC(25));
 }
 
 static MACHINE_RESET( m72 )
 {
 	m72_irq_base = 0x20;
+	mcu_sample_addr = 0;
+	mcu_snd_cmd_latch = 0;
+
 	MACHINE_RESET_CALL(m72_sound);
+
+	state_save_register_global(machine, mcu_sample_addr);
+	state_save_register_global(machine, mcu_snd_cmd_latch);
+
 	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
+	timer_call_after_resynch(machine,  NULL, 0, synch_callback);
 }
 
 static MACHINE_RESET( xmultipl )
@@ -153,6 +171,194 @@ static TIMER_CALLBACK( m72_scanline_interrupt )
 	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
+/***************************************************************************
+
+Protection emulation
+
+Currently only available for lohtb2, since this is the only game
+with a dumped 8751.
+
+The protection device does
+
+* provide startup code
+* provide checksums
+* feed samples to the sound cpu
+
+***************************************************************************/
+
+static TIMER_CALLBACK( delayed_ram16_w )
+{
+	UINT16 val = ((UINT32) param) & 0xffff;
+	UINT16 offset = (((UINT32) param) >> 16) & 0xffff;
+	UINT16 *ram = ptr;
+
+	ram[offset] = val;
+}
+
+
+static WRITE16_HANDLER( m72_main_mcu_sound_w )
+{
+	if (data & 0xfff0)
+		logerror("sound_w: %04x %04x\n", mem_mask, data);
+
+	if (ACCESSING_BITS_0_7)
+	{
+		mcu_snd_cmd_latch = data;
+		cputag_set_input_line(space->machine, "mcu", 1, ASSERT_LINE);
+	}
+}
+
+static WRITE16_HANDLER( m72_main_mcu_w)
+{
+	UINT16 val = protection_ram[offset];
+
+	COMBINE_DATA(&val);
+
+	/* 0x07fe is used for synchronization as well.
+     * This address however will not trigger an interrupt
+     */
+
+	if (offset == 0x0fff/2 && ACCESSING_BITS_8_15)
+	{
+		protection_ram[offset] = val;
+		cputag_set_input_line(space->machine, "mcu", 0, ASSERT_LINE);
+		/* Line driven, most likely by write line */
+		//timer_set(space->machine, cpu_clocks_to_attotime(cputag_get_cpu(space->machine, "mcu"), 2), NULL, 0, mcu_irq0_clear);
+		//timer_set(space->machine, cpu_clocks_to_attotime(cputag_get_cpu(space->machine, "mcu"), 0), NULL, 0, mcu_irq0_raise);
+	}
+	else
+		timer_call_after_resynch( space->machine, protection_ram, (offset<<16) | val, delayed_ram16_w);
+}
+
+static WRITE8_HANDLER( m72_mcu_data_w )
+{
+	UINT16 val;
+	if (offset&1) val = (protection_ram[offset/2] & 0x00ff) | (data << 8);
+	else val = (protection_ram[offset/2] & 0xff00) | (data&0xff);
+
+	timer_call_after_resynch( space->machine, protection_ram, ((offset >>1 ) << 16) | val, delayed_ram16_w);
+}
+
+static READ8_HANDLER(m72_mcu_data_r )
+{
+	UINT8 ret;
+
+	if (offset == 0x0fff || offset == 0x0ffe)
+	{
+		cputag_set_input_line(space->machine, "mcu", 0, CLEAR_LINE);
+	}
+
+	if (offset&1) ret = (protection_ram[offset/2] & 0xff00)>>8;
+	else ret = (protection_ram[offset/2] & 0x00ff);
+
+	return ret;
+}
+
+static INTERRUPT_GEN( m72_mcu_int )
+{
+	//mcu_snd_cmd_latch |= 0x11; /* 0x10 is special as well - FIXME */
+	mcu_snd_cmd_latch = 0x11;// | (mame_rand(machine) & 1); /* 0x10 is special as well - FIXME */
+	cpu_set_input_line(device, 1, ASSERT_LINE);
+}
+
+static READ8_HANDLER(m72_mcu_sample_r )
+{
+	UINT8 sample;
+	sample = memory_region(space->machine, "samples")[mcu_sample_addr++];
+	return sample;
+}
+
+static WRITE8_HANDLER(m72_mcu_ack_w )
+{
+	cputag_set_input_line(space->machine, "mcu", 1, CLEAR_LINE);
+	mcu_snd_cmd_latch = 0;
+}
+
+static READ8_HANDLER(m72_mcu_snd_r )
+{
+	return mcu_snd_cmd_latch;
+}
+
+static READ8_HANDLER(m72_mcu_port_r )
+{
+	logerror("port read: %02x\n", offset);
+	return 0;
+}
+
+static WRITE8_HANDLER(m72_mcu_port_w )
+{
+	if (offset == 1)
+	{
+		mcu_sample_latch = data;
+		cputag_set_input_line(space->machine, "sound", INPUT_LINE_NMI, PULSE_LINE);
+	}
+	else
+		logerror("port: %02x %02x\n", offset, data);
+
+}
+
+static WRITE8_HANDLER( m72_mcu_low_w )
+{
+	mcu_sample_addr = (mcu_sample_addr & 0xffe000) | (data<<5);
+	logerror("low: %02x %02x %08x\n", offset, data, mcu_sample_addr);
+}
+
+static WRITE8_HANDLER( m72_mcu_high_w )
+{
+	mcu_sample_addr = (mcu_sample_addr & 0x1fff) | (data<<(8+5));
+	logerror("high: %02x %02x %08x\n", offset, data, mcu_sample_addr);
+}
+
+static WRITE8_HANDLER( m72_snd_cpu_sample_w )
+{
+	//dac_signed_data_w(0,data);
+	dac_data_w(0,data);
+}
+
+static READ8_HANDLER( m72_snd_cpu_sample_r )
+{
+	return mcu_sample_latch;
+}
+
+INLINE DRIVER_INIT( loht_mcu )
+{
+	const device_config *cpu = cputag_get_cpu(machine, "main");
+	const device_config *sndcpu = cputag_get_cpu(machine, "sound");
+
+	protection_ram = auto_malloc(0x10000);
+	memory_install_read16_handler(cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM), 0xb0000, 0xbffff, 0, 0, SMH_BANK1);
+	memory_install_write16_handler(cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM), 0xb0000, 0xb0fff, 0, 0, m72_main_mcu_w);
+	memory_set_bankptr(machine, 1, protection_ram);
+
+	//memory_install_write16_handler(cpu_get_address_space(cpu, ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, loht_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(cpu, ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, m72_main_mcu_sound_w);
+
+	/* sound cpu */
+	memory_install_write8_handler(cpu_get_address_space(sndcpu, ADDRESS_SPACE_IO), 0x82, 0x82, 0xff, 0, m72_snd_cpu_sample_w);
+	memory_install_read8_handler (cpu_get_address_space(sndcpu, ADDRESS_SPACE_IO), 0x84, 0x84, 0xff, 0, m72_snd_cpu_sample_r);
+
+#if 0
+	/* running the mcu at twice the speed, the following
+     * timeouts have to be modified.
+     * At normal speed, the timing heavily depends on opcode
+     * prefetching on the V30.
+     */
+	{
+		UINT8 *rom=memory_region(machine, "mcu");
+
+		rom[0x12d+5] += 1; printf(" 5: %d\n", rom[0x12d+5]);
+		rom[0x12d+8] += 5;  printf(" 8: %d\n", rom[0x12d+8]);
+		rom[0x12d+11] += 7; printf("11: %d\n", rom[0x12d+11]);
+		rom[0x12d+14] += 9; printf("14: %d\n", rom[0x12d+14]);
+		rom[0x12d+17] += 1; printf("17: %d\n", rom[0x12d+17]);
+		rom[0x12d+20] += 10; printf("20: %d\n", rom[0x12d+20]);
+		rom[0x12d+23] += 3; printf("23: %d\n", rom[0x12d+23]);
+		rom[0x12d+26] += 2; printf("26: %d\n", rom[0x12d+26]);
+		rom[0x12d+29] += 2; printf("29: %d\n", rom[0x12d+29]);
+		rom[0x12d+32] += 16; printf("32: %d\n", rom[0x12d+32]);
+	}
+#endif
+}
 
 
 /***************************************************************************
@@ -197,9 +403,10 @@ static int find_sample(int num)
 
 static INTERRUPT_GEN(fake_nmi)
 {
-	int sample = m72_sample_r(machine,0);
+	const address_space *space = cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM);
+	int sample = m72_sample_r(space,0);
 	if (sample)
-		m72_sample_w(machine,0,sample);
+		m72_sample_w(space,0,sample);
 }
 
 
@@ -491,152 +698,88 @@ static void install_protection_handler(running_machine *machine, const UINT8 *co
 	protection_ram = auto_malloc(0x1000);
 	protection_code = code;
 	protection_crc =  crc;
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0, SMH_BANK1);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0ffa, 0xb0ffb, 0, 0, protection_r);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0, protection_w);
-	memory_set_bankptr(1, protection_ram);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xb0000, 0xb0fff, 0, 0, SMH_BANK1);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xb0ffa, 0xb0ffb, 0, 0, protection_r);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xb0000, 0xb0fff, 0, 0, protection_w);
+	memory_set_bankptr(machine, 1, protection_ram);
 }
 
 static DRIVER_INIT( bchopper )
 {
 	install_protection_handler(machine, bchopper_code,bchopper_crc);
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
 }
 
 static DRIVER_INIT( mrheli )
 {
 	install_protection_handler(machine, bchopper_code,mrheli_crc);
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
 }
 
 static DRIVER_INIT( nspirit )
 {
 	install_protection_handler(machine, nspirit_code,nspirit_crc);
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
 }
 
 static DRIVER_INIT( nspiritj )
 {
 	install_protection_handler(machine, nspirit_code,nspiritj_crc);
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
 }
 
 static DRIVER_INIT( imgfight )
 {
 	install_protection_handler(machine, imgfight_code,imgfight_crc);
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, imgfight_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, imgfight_sample_trigger_w);
 }
 
 static DRIVER_INIT( loht )
 {
 	install_protection_handler(machine, loht_code,loht_crc);
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, loht_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, loht_sample_trigger_w);
 
 	/* since we skip the startup tests, clear video RAM to prevent garbage on title screen */
 	memset(m72_videoram2,0,0x4000);
-}
-#if 0
-int stepping = 0;
-
-static TIMER_CALLBACK( single_step )
-{
-	if (param>0)
-		timer_set( ATTOTIME_IN_NSEC(20), NULL, param-1, single_step);
-	else
-		stepping = 0;
-}
-static TIMER_CALLBACK( delayed_ram16_w )
-{
-	UINT16 val = ((UINT32) param) & 0xffff;
-	UINT16 offset = (((UINT32) param) >> 16) & 0xffff;
-	UINT16 *ram = ptr;
-
-	ram[offset] = val;
-
-	if (!stepping)
-	{
-		stepping = 1;
-		timer_call_after_resynch( NULL, 50, single_step);
-	}
-}
-#else
-static TIMER_CALLBACK( delayed_ram16_w )
-{
-	UINT16 val = ((UINT32) param) & 0xffff;
-	UINT16 offset = (((UINT32) param) >> 16) & 0xffff;
-	UINT16 *ram = ptr;
-
-	ram[offset] = val;
-}
-
-#endif
-
-static WRITE16_HANDLER( m72_main_mcu_w)
-{
-	UINT16 val = protection_ram[offset];
-
-	COMBINE_DATA(&val);
-
-	if (offset == 0x0fff/2 && ACCESSING_BITS_8_15)
-	{
-		protection_ram[offset] = val;
-		cputag_set_input_line(machine, "mcu", 0, PULSE_LINE);
-	}
-	else
-		timer_call_after_resynch( protection_ram, (offset<<16) | val, delayed_ram16_w);
-}
-
-static DRIVER_INIT( loht_mcu )
-{
-	int cpunum =  mame_find_cpu_index(machine, "main");
-
-	protection_ram = auto_malloc(0x1000);
-	memset(protection_ram, 0xff, 0x1000);
-	memory_install_read16_handler(machine, cpunum, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0, SMH_BANK1);
-	memory_install_write16_handler(machine, cpunum, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0, m72_main_mcu_w);
-	memory_set_bankptr(1, protection_ram);
-
-	memory_install_write16_handler(machine, cpunum, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, loht_sample_trigger_w);
-
 }
 
 static DRIVER_INIT( xmultipl )
 {
 	install_protection_handler(machine, xmultipl_code,xmultipl_crc);
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, xmultipl_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, xmultipl_sample_trigger_w);
 }
 
 static DRIVER_INIT( dbreed72 )
 {
 	install_protection_handler(machine, dbreed72_code,dbreed72_crc);
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, dbreed72_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, dbreed72_sample_trigger_w);
 }
 
 static DRIVER_INIT( airduel )
 {
 	install_protection_handler(machine, airduel_code,airduel_crc);
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, airduel_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, airduel_sample_trigger_w);
 }
 
 static DRIVER_INIT( dkgenm72 )
 {
 	install_protection_handler(machine, dkgenm72_code,dkgenm72_crc);
 
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, dkgenm72_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, dkgenm72_sample_trigger_w);
 }
 
 static DRIVER_INIT( gallop )
 {
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, gallop_sample_trigger_w);
+	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, gallop_sample_trigger_w);
 }
 
 
@@ -670,7 +813,7 @@ static READ16_HANDLER( poundfor_trackball_r )
 
 		for (i = 0;i < 4;i++)
 		{
-			curr = input_port_read(machine, axisnames[i]);
+			curr = input_port_read(space->machine, axisnames[i]);
 			diff[i] = (curr - prev[i]);
 			prev[i] = curr;
 		}
@@ -682,7 +825,7 @@ static READ16_HANDLER( poundfor_trackball_r )
 		case 0:
 			return (diff[0] & 0xff) | ((diff[2] & 0xff) << 8);
 		case 1:
-			return ((diff[0] >> 8) & 0x1f) | (diff[2] & 0x1f00) | (input_port_read(machine, "IN0") & 0xe0e0);
+			return ((diff[0] >> 8) & 0x1f) | (diff[2] & 0x1f00) | (input_port_read(space->machine, "IN0") & 0xe0e0);
 		case 2:
 			return (diff[1] & 0xff) | ((diff[3] & 0xff) << 8);
 		case 3:
@@ -800,7 +943,7 @@ static ADDRESS_MAP_START( m72_portmap, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE(0x02, 0x03) AM_WRITE(m72_port02_w)	/* coin counters, reset sound cpu, other stuff? */
 	AM_RANGE(0x04, 0x05) AM_WRITE(m72_dmaon_w)
 	AM_RANGE(0x06, 0x07) AM_WRITE(m72_irq_line_w)
-	AM_RANGE(0x40, 0x43) AM_WRITE(SMH_NOP) /* Interrupt controller, only written to at bootup */
+	//AM_RANGE(0x40, 0x43) AM_WRITE(SMH_NOP) /* Interrupt controller, only written to at bootup */
 	AM_RANGE(0x80, 0x81) AM_WRITE(m72_scrolly1_w)
 	AM_RANGE(0x82, 0x83) AM_WRITE(m72_scrollx1_w)
 	AM_RANGE(0x84, 0x85) AM_WRITE(m72_scrolly2_w)
@@ -916,6 +1059,17 @@ static ADDRESS_MAP_START( poundfor_sound_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x42, 0x42) AM_WRITE(m72_sound_irq_ack_w)
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( mcu_io_map, ADDRESS_SPACE_IO, 8 )
+	/* External access */
+	AM_RANGE(0x0000, 0x0000) AM_READWRITE(m72_mcu_sample_r, m72_mcu_low_w)
+	AM_RANGE(0x0001, 0x0001) AM_WRITE(m72_mcu_high_w)
+	AM_RANGE(0x0002, 0x0002) AM_READWRITE(m72_mcu_snd_r, m72_mcu_ack_w)
+	/* shared at b0000 - b0fff on the main cpu */
+	AM_RANGE(0xc000, 0xcfff) AM_RAM AM_READWRITE(m72_mcu_data_r,m72_mcu_data_w )
+
+	/* Ports */
+	AM_RANGE(MCS51_PORT_P0, MCS51_PORT_P3) AM_READWRITE(m72_mcu_port_r, m72_mcu_port_w)
+ADDRESS_MAP_END
 
 #define COIN_MODE_1 \
 	PORT_DIPNAME( 0x00f0, 0x00f0, DEF_STR( Coinage ) ) PORT_CONDITION("DSW", 0x0400, PORTCOND_NOTEQUALS, 0x0000) PORT_DIPLOCATION("SW1:5,6,7,8") \
@@ -1661,45 +1815,7 @@ static MACHINE_DRIVER_START( rtype )
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
-
-static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0fff) AM_ROM
-ADDRESS_MAP_END
-
-static WRITE8_HANDLER( m72_mcu_data_w )
-{
-	UINT16 val;
-	if (offset&1) val = (protection_ram[offset/2] & 0x00ff) | (data << 8);
-	else val = (protection_ram[offset/2] & 0xff00) | (data&0xff);
-
-	if (offset == 6 && data == 0xfe)
-		/* Hack - The v30 overshoots and will not see the unlock written to offset 6
-         * We thus delay the lock, i.e. storing an unconditional branch to 6
-         * here. This is highly time critical ... */
-		timer_set(ATTOTIME_IN_USEC(10), protection_ram, ((offset >>1 ) << 16) | val, delayed_ram16_w);
-	else
-		timer_call_after_resynch( protection_ram, ((offset >>1 ) << 16) | val, delayed_ram16_w);
-}
-
-static READ8_HANDLER(m72_mcu_data_r )
-{
-	UINT8 ret;
-
-	if (offset&1) ret = (protection_ram[offset/2] & 0xff00)>>8;
-	else ret = (protection_ram[offset/2] & 0x00ff);
-
-	return ret;
-}
-
-static ADDRESS_MAP_START( mcu_data_map, ADDRESS_SPACE_DATA, 8 )
-	ADDRESS_MAP_UNMAP_HIGH
-	/* shared at b0000 - b0fff on the main cpu */
-	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(m72_mcu_data_r,m72_mcu_data_w )
-ADDRESS_MAP_END
-
-
-static MACHINE_DRIVER_START( m72 )
+static MACHINE_DRIVER_START( m72_base )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main",V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
@@ -1709,8 +1825,6 @@ static MACHINE_DRIVER_START( m72 )
 	MDRV_CPU_ADD("sound",Z80, SOUND_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(sound_ram_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
-	MDRV_CPU_VBLANK_INT_HACK(fake_nmi,128)	/* clocked by V1? (Vigilante) */
-								/* IRQs are generated by main Z80 and YM2151 */
 
 	MDRV_MACHINE_START(m72)
 	MDRV_MACHINE_RESET(m72)
@@ -1739,15 +1853,22 @@ static MACHINE_DRIVER_START( m72 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.40)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( m72 )
+
+	MDRV_IMPORT_FROM(m72_base)
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_VBLANK_INT_HACK(fake_nmi,128)	/* clocked by V1? (Vigilante) */
+							/* IRQs are generated by main Z80 and YM2151 */
+MACHINE_DRIVER_END
+
+
 static MACHINE_DRIVER_START( m72_8751 )
 
-	MDRV_IMPORT_FROM(m72)
+	MDRV_IMPORT_FROM(m72_base)
 
-	MDRV_CPU_ADD("mcu",I8751, 16000000)
-	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
-	MDRV_CPU_DATA_MAP(mcu_data_map,0)
-	//MDRV_CPU_VBLANK_INT("main", irq0_line_pulse)
-	MDRV_INTERLEAVE(1000)
+	MDRV_CPU_ADD("mcu",I8751, MASTER_CLOCK/4)
+	MDRV_CPU_IO_MAP(mcu_io_map,0)
+	MDRV_CPU_VBLANK_INT("main", m72_mcu_int)
 
 MACHINE_DRIVER_END
 
@@ -2158,6 +2279,7 @@ static MACHINE_DRIVER_START( cosmccop )
 MACHINE_DRIVER_END
 
 static const nec_config kengo_config ={ gunforce_decryption_table, };
+
 static MACHINE_DRIVER_START( kengo )
 	MDRV_IMPORT_FROM( cosmccop )
 	MDRV_CPU_MODIFY("main")
@@ -2324,6 +2446,42 @@ ROM_START( rtypeu )
 	/* Located on M72-A-C CPU/Sound board */
 	ROM_LOAD( "m72_a-3d-.bin",  0x0000, 0x0001, NO_DUMP ) /* PAL16L8 at IC11 */
 	ROM_LOAD( "m72_a-4d-.bin",  0x0000, 0x0001, NO_DUMP ) /* PAL16L8 at IC19 */
+ROM_END
+
+ROM_START( rtypeb )
+	ROM_REGION( 0x100000, "main", 0 ) /* Roms located on the M72-ROM-C rom board */
+	ROM_LOAD16_BYTE( "7.512", 0x00001, 0x10000, CRC(eacc8024) SHA1(6bcf1d4ea182b7341eac736d2a5d5f70deec0758) )
+	ROM_LOAD16_BYTE( "1.512", 0x00000, 0x10000, CRC(2e5fe27b) SHA1(a3364be5ab9c67aaa2152baf39ea12c571eca3cc) )
+	ROM_LOAD16_BYTE( "8.512", 0x20001, 0x10000, CRC(22cc4950) SHA1(ada5cffc13c38391a334411632237166a6be4938) )
+	ROM_RELOAD(                      0xe0001, 0x10000 )
+	ROM_LOAD16_BYTE( "2.512", 0x20000, 0x10000, CRC(ada7b90e) SHA1(c9d2caed95b95d1c1718a10766bc88b2f8f51619) )
+	ROM_RELOAD(                      0xe0000, 0x10000 )
+
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE ) /* Roms located on the M72-ROM-C rom board */
+	ROM_LOAD( "rt_r-00.1h", 0x00000, 0x10000, CRC(dad53bc0) SHA1(1e3bc498861946278a0b1fe24259f5d224e265d7) )	/* sprites */
+	ROM_LOAD( "rt_r-01.1j", 0x10000, 0x08000, CRC(5e441e7f) SHA1(6741eb7f2d9d985b5a89eefc73ea44c3e38de6f7) )
+	ROM_RELOAD(             0x18000, 0x08000 )
+	ROM_LOAD( "rt_r-10.1k", 0x20000, 0x10000, CRC(d6a66298) SHA1(d2873d05aa3b257e7699c188880ac3daad672fa5) )
+	ROM_LOAD( "rt_r-11.1l", 0x30000, 0x08000, CRC(791df4f8) SHA1(5239a97222212ac9c019177771cb2b5096b7bc17) )
+	ROM_RELOAD(             0x38000, 0x08000 )
+	ROM_LOAD( "rt_r-20.3h", 0x40000, 0x10000, CRC(fc247c8a) SHA1(01cf0a60f47fa5e2ed430a3f075e69e6cb762a48) )
+	ROM_LOAD( "rt_r-21.3j", 0x50000, 0x08000, CRC(ed793841) SHA1(7e55a9a11fcd989db39bce6be48821b747c7d97f) )
+	ROM_RELOAD(             0x58000, 0x08000 )
+	ROM_LOAD( "rt_r-30.3k", 0x60000, 0x10000, CRC(eb02a1cb) SHA1(60a394ab53afdcbbf9e88083b8dbe8c897170d77) )
+	ROM_LOAD( "rt_r-31.3l", 0x70000, 0x08000, CRC(8558355d) SHA1(b5467d1f22f6e5f90c5d8a8ac2d55974f287d589) )
+	ROM_RELOAD(             0x78000, 0x08000 )
+
+	ROM_REGION( 0x20000, "gfx2", ROMREGION_DISPOSE ) /* Roms located on the M72-B-D rom board */
+	ROM_LOAD( "rt_b-a0.3c", 0x00000, 0x08000, CRC(4e212fb0) SHA1(687061ecade2ebd0bd1343c9c4a831791853f79c) )	/* tiles #1 */
+	ROM_LOAD( "rt_b-a1.3d", 0x08000, 0x08000, CRC(8a65bdff) SHA1(130bf6af521f13247a739a95eab4bdaa24b2ac10) )
+	ROM_LOAD( "rt_b-a2.3a", 0x10000, 0x08000, CRC(5a4ae5b9) SHA1(95c3b64f50e6f673b2bf9b40642c152da5009d25) )
+	ROM_LOAD( "rt_b-a3.3e", 0x18000, 0x08000, CRC(73327606) SHA1(9529ecdedd30e2a0400fb1083117992cc18b5158) )
+
+	ROM_REGION( 0x20000, "gfx3", ROMREGION_DISPOSE ) /* Roms located on the M72-B-D rom board */
+	ROM_LOAD( "rt_b-b0.3j", 0x00000, 0x08000, CRC(a7b17491) SHA1(5b390770e56ba2d35e108534d7eda8dca996fdf7) )	/* tiles #2 */
+	ROM_LOAD( "rt_b-b1.3k", 0x08000, 0x08000, CRC(b9709686) SHA1(700905a3e9661e0874939f54da2909e1396ce596) )
+	ROM_LOAD( "rt_b-b2.3h", 0x10000, 0x08000, CRC(433b229a) SHA1(14222eaa3e67e5a7f80eafcf22bac4eb2d485a9a) )
+	ROM_LOAD( "rt_b-b3.3f", 0x18000, 0x08000, CRC(ad89b072) SHA1(e2683d0e7415f3abd147e518bf6c87e44744cd4f) )
 ROM_END
 
 ROM_START( bchopper )
@@ -3292,6 +3450,7 @@ GAME( 1987, rtype,    0,        rtype,    rtype,    0,        ROT0,   "Irem", "R
 GAME( 1987, rtypej,   rtype,    rtype,    rtype,    0,        ROT0,   "Irem", "R-Type (Japan)", GAME_NO_COCKTAIL )
 GAME( 1987, rtypejp,  rtype,    rtype,    rtypep,   0,        ROT0,   "Irem", "R-Type (Japan prototype)", GAME_NO_COCKTAIL )
 GAME( 1987, rtypeu,   rtype,    rtype,    rtype,    0,        ROT0,   "Irem (Nintendo of America license)", "R-Type (US)", GAME_NO_COCKTAIL )
+GAME( 1987, rtypeb,   rtype,    rtype,    rtype,    0,        ROT0,   "bootleg", "R-Type (World bootleg)", GAME_NO_COCKTAIL )
 GAME( 1987, bchopper, 0,        m72,      bchopper, bchopper, ROT0,   "Irem", "Battle Chopper", GAME_NO_COCKTAIL )
 GAME( 1987, mrheli,   bchopper, m72,      bchopper, mrheli,   ROT0,   "Irem", "Mr. HELI no Dai-Bouken", GAME_NO_COCKTAIL )
 GAME( 1988, nspirit,  0,        m72,      nspirit,  nspirit,  ROT0,   "Irem", "Ninja Spirit", GAME_NO_COCKTAIL )

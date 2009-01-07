@@ -28,6 +28,7 @@ DIP locations verified for:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "cpu/z80/z80.h"
 #include "lasso.h"
 #include "sound/dac.h"
@@ -38,7 +39,7 @@ DIP locations verified for:
 static INPUT_CHANGED( coin_inserted )
 {
 	/* coin insertion causes an NMI */
-	cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -49,14 +50,14 @@ static UINT8 *lasso_chip_data;
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(machine,offset,data);
-	cpunum_set_input_line(machine, 1, 0, PULSE_LINE);
+	soundlatch_w(space,offset,data);
+	generic_pulse_irq_line(space->machine->cpu[1], 0);
 }
 
 static WRITE8_HANDLER( pinbo_sound_command_w )
 {
-	soundlatch_w(machine,offset,data);
-	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+	soundlatch_w(space,offset,data);
+	cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
 }
 
 static READ8_HANDLER( sound_status_r )
@@ -70,10 +71,10 @@ static WRITE8_HANDLER( sound_select_w )
 	UINT8 to_write = BITSWAP8(*lasso_chip_data, 0, 1, 2, 3, 4, 5, 6, 7);
 
 	if (~data & 0x01)	/* chip #0 */
-		sn76496_0_w(machine, 0, to_write);
+		sn76496_0_w(space, 0, to_write);
 
 	if (~data & 0x02)	/* chip #1 */
-		sn76496_1_w(machine, 0, to_write);
+		sn76496_1_w(space, 0, to_write);
 }
 
 
@@ -472,7 +473,7 @@ static MACHINE_DRIVER_START( base )
 	MDRV_CPU_ADD("audio", M6502, 600000)
 	MDRV_CPU_PROGRAM_MAP(lasso_audio_map, 0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

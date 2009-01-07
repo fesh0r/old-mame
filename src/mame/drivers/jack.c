@@ -66,14 +66,14 @@ static READ8_HANDLER( timer_r )
 {
 	/* wrong! there should be no need for timer_rate, the same function */
 	/* should work for both games */
-	return activecpu_gettotalcycles() / timer_rate;
+	return cputag_get_total_cycles(space->machine, "audio") / timer_rate;
 }
 
 
 static WRITE8_HANDLER( jack_sh_command_w )
 {
-	soundlatch_w(machine,0,data);
-	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+	soundlatch_w(space,0,data);
+	cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
 }
 
 
@@ -83,7 +83,7 @@ static int joinem_snd_bit = 0;
 
 static WRITE8_HANDLER( joinem_misc_w )
 {
-	flip_screen_set(data & 0x80);
+	flip_screen_set(space->machine, data & 0x80);
 	joinem_snd_bit = data & 1;
 }
 
@@ -121,7 +121,7 @@ static READ8_HANDLER( striv_question_r )
 	// Read the actual byte from question roms
 	else
 	{
-		UINT8 *ROM = memory_region(machine, "user1");
+		UINT8 *ROM = memory_region(space->machine, "user1");
 		int real_address;
 
 		real_address = question_address | (offset & 0x3f0) | remap_address[offset & 0x0f];
@@ -815,9 +815,9 @@ INPUT_PORTS_END
 static const gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
-	1024,	/* 1024 characters */
+	RGN_FRAC(1,2),	/* 1024 characters */
 	2,	/* 2 bits per pixel */
-	{ 0, 1024*8*8 },	/* the two bitplanes are seperated */
+	{ RGN_FRAC(0,2), RGN_FRAC(1,2) },	/* the two bitplanes are seperated */
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8	/* every char takes 16 bytes */
@@ -894,12 +894,12 @@ MACHINE_DRIVER_END
 
 static INTERRUPT_GEN( joinem_interrupts )
 {
-	if(cpu_getiloops() > 0)
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+	if(cpu_getiloops(device) > 0)
+		cpu_set_input_line(device, 0, HOLD_LINE);
 	else
 	{
-		if(!(input_port_read(machine, "IN2") & 0x80))
-			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		if(!(input_port_read(device->machine, "IN2") & 0x80))
+			cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -1308,10 +1308,10 @@ ROM_START( striv )
 	ROM_LOAD( "snd.5a",       0x0000, 0x1000, CRC(b7ddf84f) SHA1(fa4cc0b2e5a88c82c62492c03e97ac6aa8a905b1) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
-	ROM_LOAD( "chr0.1a",      0x0000, 0x1000, CRC(8f60229b) SHA1(96a888ae02797a205e1c6202395d3b42a820ad4d) )
+	ROM_LOAD( "chr3.5a",      0x0000, 0x1000, CRC(8f982a9c) SHA1(dd6f454dfd3e03d008080890881cfafd79758a40) )
 	ROM_LOAD( "chr2.4a",      0x1000, 0x1000, CRC(8f982a9c) SHA1(dd6f454dfd3e03d008080890881cfafd79758a40) )
-	ROM_LOAD( "chr3.5a",      0x2000, 0x1000, CRC(8f982a9c) SHA1(dd6f454dfd3e03d008080890881cfafd79758a40) )
-	ROM_LOAD( "chr1.2a",      0x3000, 0x1000, CRC(7ad4358e) SHA1(dd3a03c78fa8bf435e9905b901dc5a9987cd52e4) )
+	ROM_LOAD( "chr1.2a",      0x2000, 0x1000, CRC(7ad4358e) SHA1(dd3a03c78fa8bf435e9905b901dc5a9987cd52e4) )
+	ROM_LOAD( "chr0.1a",      0x3000, 0x1000, CRC(8f60229b) SHA1(96a888ae02797a205e1c6202395d3b42a820ad4d) )
 
 	ROM_REGION( 0x80000, "user1", ROMREGION_ERASEFF ) /* Question roms */
 	ROM_LOAD( "rom.u6",       0x00000, 0x8000, CRC(a32d7a28) SHA1(fbad0b5c9f1dbeb4f245a2198248c18ceae556fa) )
@@ -1334,11 +1334,12 @@ ROM_END
 static void treahunt_decode(running_machine *machine)
 {
 	int A;
+	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
 	UINT8 *rom = memory_region(machine, "main");
 	UINT8 *decrypt = auto_malloc(0x4000);
 	int data;
 
-	memory_set_decrypted_region(0, 0x0000, 0x3fff, decrypt);
+	memory_set_decrypted_region(space, 0x0000, 0x3fff, decrypt);
 
 	/* Thanks to Mike Balfour for helping out with the decryption */
 	for (A = 0; A < 0x4000; A++)
@@ -1435,10 +1436,10 @@ static DRIVER_INIT( striv )
 	}
 
 	// Set-up the weirdest questions read ever done
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, striv_question_r);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc000, 0xcfff, 0, 0, striv_question_r);
 
 	// Nop out unused sprites writes
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xb0ff, 0, 0, SMH_NOP);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xb000, 0xb0ff, 0, 0, SMH_NOP);
 
 	timer_rate = 128;
 }
@@ -1456,5 +1457,5 @@ GAME( 1981, tripool,  0,        tripool, tripool,  jack,     ROT90, "Noma (Casin
 GAME( 1981, tripoola, tripool,  tripool, tripool,  jack,     ROT90, "Noma (Costal Games license)", "Tri-Pool (Costal Games)", 0 )
 GAME( 1986, joinem,   0,        joinem,  joinem,   zzyzzyxx, ROT90, "Global Corporation", "Joinem", 0 )
 GAME( 1983, loverboy, 0,        loverboy,loverboy, loverboy, ROT90, "G.T Enterprise Inc", "Lover Boy", 0 )
-GAME( 1985, striv,    0,        jack,    striv,    striv,    ROT270,"Hara Industries", "Super Triv", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_COLORS )
+GAME( 1985, striv,    0,        jack,    striv,    striv,    ROT270,"Hara Industries", "Super Triv", GAME_IMPERFECT_SOUND )
 

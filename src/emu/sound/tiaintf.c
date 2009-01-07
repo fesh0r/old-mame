@@ -10,21 +10,21 @@ struct tia_info
 };
 
 
-static void tia_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( tia_update )
 {
 	struct tia_info *info = param;
-	tia_process(info->chip, buffer[0], length);
+	tia_process(info->chip, outputs[0], samples);
 }
 
 
-static void *tia_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( tia )
 {
 	struct tia_info *info;
 
 	info = auto_malloc(sizeof(*info));
 	memset(info, 0, sizeof(*info));
 
-	info->channel = stream_create(0, 1, clock, info, tia_update);
+	info->channel = stream_create(device, 0, 1, clock, info, tia_update);
 
 	info->chip = tia_sound_init(clock, clock, 16);
 	if (!info->chip)
@@ -33,9 +33,9 @@ static void *tia_start(const char *tag, int sndindex, int clock, const void *con
     return info;
 }
 
-static void tia_stop(void *token)
+static SND_STOP( tia )
 {
-	struct tia_info *info = (struct tia_info*)token;
+	struct tia_info *info = device->token;
 	tia_sound_free(info->chip);
 }
 
@@ -53,7 +53,7 @@ WRITE8_HANDLER( tia_sound_w )
  * Generic get_info
  **************************************************************************/
 
-static void tia_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( tia )
 {
 	switch (state)
 	{
@@ -62,24 +62,24 @@ static void tia_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void tia_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( tia )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = tia_set_info;			break;
-		case SNDINFO_PTR_START:							info->start = tia_start;				break;
-		case SNDINFO_PTR_STOP:							info->stop = tia_stop;					break;
-		case SNDINFO_PTR_RESET:							/* Nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( tia );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( tia );		break;
+		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( tia );			break;
+		case SNDINFO_PTR_RESET:							/* Nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "TIA";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Atari custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "TIA");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Atari custom");			break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");						break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);					break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

@@ -71,17 +71,17 @@ static int adpcm_data;
 static WRITE8_HANDLER( tecmo_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 
 
 	bankaddress = 0x10000 + ((data & 0xf8) << 8);
-	memory_set_bankptr(1,&RAM[bankaddress]);
+	memory_set_bankptr(space->machine, 1,&RAM[bankaddress]);
 }
 
 static WRITE8_HANDLER( tecmo_sound_command_w )
 {
-	soundlatch_w(machine,offset,data);
-	cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+	soundlatch_w(space,offset,data);
+	cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 }
 
 static WRITE8_HANDLER( tecmo_adpcm_start_w )
@@ -97,10 +97,10 @@ static WRITE8_HANDLER( tecmo_adpcm_vol_w )
 {
 	msm5205_set_volume(0,(data & 0x0f) * 100 / 15);
 }
-static void tecmo_adpcm_int(running_machine *machine, int num)
+static void tecmo_adpcm_int(const device_config *device)
 {
 	if (adpcm_pos >= adpcm_end ||
-				adpcm_pos >= memory_region_length(machine, "adpcm"))
+				adpcm_pos >= memory_region_length(device->machine, "adpcm"))
 		msm5205_reset_w(0,1);
 	else if (adpcm_data != -1)
 	{
@@ -109,7 +109,7 @@ static void tecmo_adpcm_int(running_machine *machine, int num)
 	}
 	else
 	{
-		UINT8 *ROM = memory_region(machine, "adpcm");
+		UINT8 *ROM = memory_region(device->machine, "adpcm");
 
 		adpcm_data = ROM[adpcm_pos++];
 		msm5205_data_w(0,adpcm_data >> 4);
@@ -544,7 +544,7 @@ GFXDECODE_END
 
 static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(machine, 1,0,linestate);
+	cpu_set_input_line(machine->cpu[1],0,linestate);
 }
 
 static const ym3526_interface ym3526_config =

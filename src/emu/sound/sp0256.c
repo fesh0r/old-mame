@@ -33,7 +33,6 @@
 
 #include <math.h>
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "cpuintrf.h"
 #include "sp0256.h"
@@ -59,7 +58,7 @@
 	if( sp->sby_line != line_state )           \
 	{                                          \
 		sp->sby_line = line_state;             \
-		if( sp->sby ) sp->sby(sp->sby_line);   \
+		if( sp->sby ) sp->sby(sp->device, sp->sby_line);   \
 	}                                          \
 }
 
@@ -78,9 +77,10 @@ struct lpc12_t
 
 struct sp0256
 {
+	const device_config *device;
 	sound_stream  *stream;	        /* MAME core sound stream                       */
-	void         (*drq)(int state); /* Data request callback                        */
-	void         (*sby)(int state); /* Standby callback                             */
+	void         (*drq)(const device_config *device, int state); /* Data request callback                        */
+	void         (*sby)(const device_config *device, int state); /* Standby callback                             */
 	int            sby_line;        /* Standby line state                           */
     INT16         *cur_buf;         /* Current sound buffer.                        */
     int            cur_len;         /* Fullness of current sound buffer.            */
@@ -767,7 +767,7 @@ static void sp0256_micro(struct sp0256 *sp)
             sp->ald      = 0;
             for (i = 0; i < 16; i++)
                 sp->filt.r[i] = 0;
-            if( sp->drq) sp->drq(ASSERT_LINE);
+            if( sp->drq) sp->drq(sp->device, ASSERT_LINE);
         }
 
         /* ---------------------------------------------------------------- */
@@ -1092,14 +1092,14 @@ static void sp0256_micro(struct sp0256 *sp)
     }
 }
 
-static void sp0256_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( sp0256_update )
 {
 	struct sp0256 *sp = param;
-	stream_sample_t *output = buffer[0];
+	stream_sample_t *output = outputs[0];
 	int output_index = 0;
-    int samples, did_samp, old_idx;
+	int length, did_samp, old_idx;
 
-	while( output_index < length )
+	while( output_index < samples )
 	{
 		/* ---------------------------------------------------------------- */
 		/*  First, drain as much of our scratch buffer as we can into the   */
@@ -1111,17 +1111,17 @@ static void sp0256_update(void *param, stream_sample_t **inputs, stream_sample_t
 			output[output_index++] = sp->scratch[sp->sc_tail++ & SCBUF_MASK];
 			sp->sc_tail &= SCBUF_MASK;
 
-			if( output_index > length )
+			if( output_index > samples )
 				break;
 		}
 
 		/* ---------------------------------------------------------------- */
-		/*  If output buffer is full, then we're done.                      */
+		/*  If output outputs is full, then we're done.                      */
 		/* ---------------------------------------------------------------- */
-		if( output_index > length )
+		if( output_index > samples )
 			break;
 
-		samples = length - output_index;
+		length = samples - output_index;
 
 		/* ---------------------------------------------------------------- */
 		/*  Process the current set of filter coefficients as long as the   */
@@ -1129,7 +1129,7 @@ static void sp0256_update(void *param, stream_sample_t **inputs, stream_sample_t
 		/* ---------------------------------------------------------------- */
 		did_samp = 0;
 		old_idx  = sp->sc_head;
-		if (samples > 0) do
+		if (length > 0) do
 		{
 			int do_samp;
 
@@ -1142,7 +1142,7 @@ static void sp0256_update(void *param, stream_sample_t **inputs, stream_sample_t
 			/* ------------------------------------------------------------ */
 			/*  Do as many samples as we can.                               */
 			/* ------------------------------------------------------------ */
-			do_samp = samples - did_samp;
+			do_samp = length - did_samp;
 			if (sp->sc_head + do_samp - sp->sc_tail > SCBUF_SIZE)
 				do_samp = sp->sc_tail + SCBUF_SIZE - sp->sc_head;
 
@@ -1165,23 +1165,24 @@ static void sp0256_update(void *param, stream_sample_t **inputs, stream_sample_t
 
 			sp->sc_head &= SCBUF_MASK;
 
-		} while (sp->filt.rpt >= 0 && samples > did_samp);
+		} while (sp->filt.rpt >= 0 && length > did_samp);
 	}
 }
 
-static void *sp0256_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( sp0256 )
 {
 	const sp0256_interface *intf = config;
 	struct sp0256 *sp;
 
 	sp = auto_malloc(sizeof(*sp));
 	memset(sp, 0, sizeof(*sp));
+	sp->device = device;
 	sp->drq = intf->lrq_callback;
 	sp->sby = intf->sby_callback;
-	if( sp->drq ) sp->drq(ASSERT_LINE);
-	if( sp->sby ) sp->sby(sp->sby_line = ASSERT_LINE);
+	if( sp->drq ) sp->drq(device, ASSERT_LINE);
+	if( sp->sby ) sp->sby(device, sp->sby_line = ASSERT_LINE);
 
-	sp->stream = stream_create(0, 1, clock / CLOCK_DIVIDER, sp, sp0256_update);
+	sp->stream = stream_create(device, 0, 1, clock / CLOCK_DIVIDER, sp, sp0256_update);
 
     /* -------------------------------------------------------------------- */
     /*  Configure our internal variables.                                   */
@@ -1206,22 +1207,20 @@ static void *sp0256_start(const char *tag, int sndindex, int clock, const void *
     /* -------------------------------------------------------------------- */
     /*  Setup the ROM.                                                      */
     /* -------------------------------------------------------------------- */
-	sp->rom = memory_region(Machine, tag);
+	sp->rom = device->region;
 	sp0256_bitrevbuff(sp->rom, 0, 0xffff);
 
 	return sp;
 }
 
-static void sp0256_stop(void *token)
+static SND_STOP( sp0256 )
 {
-	struct sp0256 *sp = token;
+	struct sp0256 *sp = device->token;
 	free( sp->scratch );
 }
 
-static void sp0256_reset(void *token)
+static void sp0256_reset(struct sp0256 *sp)
 {
-	struct sp0256 *sp = token;
-
 	/* ---------------------------------------------------------------- */
 	/*  Reset the FIFO and SP0256.                                      */
 	/* ---------------------------------------------------------------- */
@@ -1239,8 +1238,13 @@ static void sp0256_reset(void *token)
 	sp->mode     = 0;
 	sp->page     = 0x1000 << 3;
 	sp->silent   = 1;
-	if( sp->drq ) sp->drq(ASSERT_LINE);
+	if( sp->drq ) sp->drq(sp->device, ASSERT_LINE);
 	SET_SBY(ASSERT_LINE)
+}
+
+static SND_RESET( sp0256 )
+{
+	sp0256_reset(device->token);
 }
 
 WRITE8_HANDLER( sp0256_ALD_w )
@@ -1263,7 +1267,7 @@ WRITE8_HANDLER( sp0256_ALD_w )
 	/* ---------------------------------------------------------------- */
 	sp->lrq = 0;
 	sp->ald = (0xFF & data) << 4;
-	if( sp->drq ) sp->drq(CLEAR_LINE);
+	if( sp->drq ) sp->drq(sp->device, CLEAR_LINE);
 	SET_SBY(CLEAR_LINE)
 
 	return;
@@ -1301,7 +1305,7 @@ WRITE16_HANDLER( spb640_w )
 
 	if( offset == 0 )
 	{
-		sp0256_ALD_w( machine, 0, data & 0xff );
+		sp0256_ALD_w( space, 0, data & 0xff );
 		return;
 	}
 
@@ -1344,7 +1348,7 @@ WRITE16_HANDLER( spb640_w )
  * Generic get_info
  **************************************************************************/
 
-static void sp0256_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( sp0256 )
 {
 	switch (state)
 	{
@@ -1353,24 +1357,24 @@ static void sp0256_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void sp0256_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( sp0256 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = sp0256_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = sp0256_start;				break;
-		case SNDINFO_PTR_STOP:							info->stop = sp0256_stop;				break;
-		case SNDINFO_PTR_RESET:							info->reset = sp0256_reset;			    break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( sp0256 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( sp0256 );			break;
+		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( sp0256 );			break;
+		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( sp0256 );			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "SP0256";						break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "GI";							break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Joseph Zbiciak, tim lindner"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "SP0256");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "GI");							break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Joseph Zbiciak, tim lindner"); break;
 	}
 }
 

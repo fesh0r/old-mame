@@ -266,7 +266,7 @@ WRITE8_DEVICE_HANDLER( timekeeper_w )
 		data &= ~FLAGS_BL;
 	}
 
-//  logerror( "%08x: timekeeper_write( %s, %04x, %02x )\n", activecpu_get_pc(), c->device->tag, offset, data );
+//  logerror( "%s: timekeeper_write( %s, %04x, %02x )\n", cpuexec_describe_context(machine), c->device->tag, offset, data );
 	c->data[ offset ] = data;
 }
 
@@ -274,7 +274,7 @@ READ8_DEVICE_HANDLER( timekeeper_r )
 {
 	timekeeper_state *c = get_safe_token(device);
 	UINT8 data = c->data[ offset ];
-//  logerror( "%08x: timekeeper_read( %s, %04x ) %02x\n", activecpu_get_pc(), c->device->tag, offset, data );
+//  logerror( "%s: timekeeper_read( %s, %04x ) %02x\n", cpuexec_describe_context(machine), c->device->tag, offset, data );
 	return data;
 }
 
@@ -285,8 +285,6 @@ READ8_DEVICE_HANDLER( timekeeper_r )
 static DEVICE_START(timekeeper)
 {
 	timekeeper_state *c = get_safe_token(device);
-	const timekeeper_config *config;
-	char unique_tag[50];
 	emu_timer *timer;
 	attotime duration;
 	mame_system_time systime;
@@ -312,31 +310,24 @@ static DEVICE_START(timekeeper)
 	c->century = make_bcd( systime.local_time.year / 100 );
 	c->data = auto_malloc( c->size );
 
-	config = device->static_config;
-	if( config != NULL && config->data != NULL )
+	c->default_data = device->region;
+	if (c->default_data != NULL)
 	{
-		c->default_data = memory_region( device->machine, config->data );
-		if( c->default_data != NULL )
-		{
-			assert( memory_region_length( device->machine, config->data ) == c->size );
-		}
+		assert( device->regionbytes == c->size );
 	}
 
-	assert( strlen( device->tag ) < 30 );
-	state_save_combine_module_and_tag( unique_tag, "timekeeper", device->tag );
+	state_save_register_device_item( device, 0, c->control );
+	state_save_register_device_item( device, 0, c->seconds );
+	state_save_register_device_item( device, 0, c->minutes );
+	state_save_register_device_item( device, 0, c->hours );
+	state_save_register_device_item( device, 0, c->day );
+	state_save_register_device_item( device, 0, c->date );
+	state_save_register_device_item( device, 0, c->month );
+	state_save_register_device_item( device, 0, c->year );
+	state_save_register_device_item( device, 0, c->century );
+	state_save_register_device_item_pointer( device, 0, c->data, c->size );
 
-	state_save_register_item( unique_tag, 0, c->control );
-	state_save_register_item( unique_tag, 0, c->seconds );
-	state_save_register_item( unique_tag, 0, c->minutes );
-	state_save_register_item( unique_tag, 0, c->hours );
-	state_save_register_item( unique_tag, 0, c->day );
-	state_save_register_item( unique_tag, 0, c->date );
-	state_save_register_item( unique_tag, 0, c->month );
-	state_save_register_item( unique_tag, 0, c->year );
-	state_save_register_item( unique_tag, 0, c->century );
-	state_save_register_item_pointer( unique_tag, 0, c->data, c->size );
-
-	timer = timer_alloc( timekeeper_tick, c );
+	timer = timer_alloc( device->machine, timekeeper_tick, c );
 	duration = ATTOTIME_IN_SEC(1);
 	timer_adjust_periodic( timer, duration, 0, duration );
 
@@ -490,11 +481,11 @@ static DEVICE_GET_INFO(timekeeper)
 		case DEVINFO_FCT_NVRAM:					info->nvram = DEVICE_NVRAM_NAME(timekeeper); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					info->s = "Timekeeper"; break;
-		case DEVINFO_STR_FAMILY:				info->s = "EEPROM"; break;
-		case DEVINFO_STR_VERSION:				info->s = "1.0"; break;
-		case DEVINFO_STR_SOURCE_FILE:			info->s = __FILE__; break;
-		case DEVINFO_STR_CREDITS:				info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:					strcpy(info->s, "Timekeeper"); break;
+		case DEVINFO_STR_FAMILY:				strcpy(info->s, "EEPROM"); break;
+		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.0"); break;
+		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__); break;
+		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 
@@ -503,12 +494,12 @@ DEVICE_GET_INFO( m48t02 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "M48T02";					break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "M48T02");					break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(m48t02);	break;
 
-		default: 										DEVICE_GET_INFO_CALL(timekeeper);				break;
+		default: 										DEVICE_GET_INFO_CALL(timekeeper);			break;
 	}
 }
 
@@ -517,12 +508,12 @@ DEVICE_GET_INFO( m48t35 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "M48T35";					break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "M48T35");					break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(m48t35);	break;
 
-		default: 										DEVICE_GET_INFO_CALL(timekeeper);				break;
+		default: 										DEVICE_GET_INFO_CALL(timekeeper);			break;
 	}
 }
 
@@ -531,12 +522,12 @@ DEVICE_GET_INFO( m48t58 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "M48T58";					break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "M48T58");					break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(m48t58);	break;
 
-		default: 										DEVICE_GET_INFO_CALL(timekeeper);				break;
+		default: 										DEVICE_GET_INFO_CALL(timekeeper);			break;
 	}
 }
 
@@ -545,11 +536,11 @@ DEVICE_GET_INFO( mk48t08 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "MK48T08";					break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "MK48T08");					break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(mk48t08);	break;
 
-		default: 										DEVICE_GET_INFO_CALL(timekeeper);				break;
+		default: 										DEVICE_GET_INFO_CALL(timekeeper);			break;
 	}
 }

@@ -32,7 +32,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( mjkjidai )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_rows,8,8,64,32);
 }
 
 
@@ -51,15 +51,15 @@ WRITE8_HANDLER( mjkjidai_videoram_w )
 
 WRITE8_HANDLER( mjkjidai_ctrl_w )
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(space->machine, "main");
 
-//  logerror("%04x: port c0 = %02x\n",activecpu_get_pc(),data);
+//  logerror("%04x: port c0 = %02x\n",cpu_get_pc(space->cpu),data);
 
 	/* bit 0 = NMI enable */
-	interrupt_enable_w(machine,0,data & 1);
+	interrupt_enable_w(space,0,data & 1);
 
 	/* bit 1 = flip screen */
-	flip_screen_set(data & 0x02);
+	flip_screen_set(space->machine, data & 0x02);
 
 	/* bit 2 =display enable */
 	display_enable = data & 0x04;
@@ -70,12 +70,12 @@ WRITE8_HANDLER( mjkjidai_ctrl_w )
 	/* bits 6-7 select ROM bank */
 	if (data & 0xc0)
 	{
-		memory_set_bankptr(1,rom + 0x10000-0x4000 + ((data & 0xc0) << 8));
+		memory_set_bankptr(space->machine, 1,rom + 0x10000-0x4000 + ((data & 0xc0) << 8));
 	}
 	else
 	{
 		/* there is code flowing from 7fff to this bank so they have to be contiguous in memory */
-		memory_set_bankptr(1,rom + 0x08000);
+		memory_set_bankptr(space->machine, 1,rom + 0x08000);
 	}
 }
 
@@ -104,7 +104,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 
 		sx += (spriteram_2[offs] & 0x20) >> 5;	// not sure about this
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 496 - sx;
 			sy = 240 - sy;
@@ -129,7 +129,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 VIDEO_UPDATE( mjkjidai )
 {
 	if (!display_enable)
-		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 	else
 	{
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);

@@ -79,6 +79,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/okim6295.h"
 #include "sound/k051649.h"
@@ -97,14 +98,14 @@ WRITE8_HANDLER( hexion_gfxrom_select_w );
 
 static WRITE8_HANDLER( coincntr_w )
 {
-//logerror("%04x: coincntr_w %02x\n",activecpu_get_pc(),data);
+//logerror("%04x: coincntr_w %02x\n",cpu_get_pc(space->cpu),data);
 
 	/* bits 0/1 = coin counters */
 	coin_counter_w(0,data & 0x01);
 	coin_counter_w(1,data & 0x02);
 
 	/* bit 5 = flip screen */
-	flip_screen_set(data & 0x20);
+	flip_screen_set(space->machine, data & 0x20);
 
 	/* other bit unknown */
 if ((data & 0xdc) != 0x10) popmessage("coincntr %02x",data);
@@ -273,10 +274,10 @@ GFXDECODE_END
 static INTERRUPT_GEN( hexion_interrupt )
 {
 	/* NMI handles start and coin inputs, origin unknown */
-	if (cpu_getiloops())
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+	if (cpu_getiloops(device))
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 	else
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(device, 0, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( hexion )

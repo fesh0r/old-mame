@@ -400,7 +400,7 @@ static void words_to_sensors(UINT16 word1, UINT16 word2, UINT16 word3, UINT8 bea
  *
  *************************************/
 
-static void compute_sensors(void)
+static void compute_sensors(running_machine *machine)
 {
 	UINT16 inter1, inter2, inter3;
 	UINT16 word1 = 0, word2 = 0, word3 = 0;
@@ -415,7 +415,7 @@ static void compute_sensors(void)
 	inters_to_words(inter1, inter2, inter3, &beams, &word1, &word2, &word3);
 	words_to_sensors(word1, word2, word3, beams, &sensor0, &sensor1, &sensor2, &sensor3);
 
-	logerror("%15f: Sensor values: %04x %04x %04x %04x\n", attotime_to_double(timer_get_time()), sensor0, sensor1, sensor2, sensor3);
+	logerror("%15f: Sensor values: %04x %04x %04x %04x\n", attotime_to_double(timer_get_time(machine)), sensor0, sensor1, sensor2, sensor3);
 }
 
 
@@ -506,9 +506,9 @@ static TIMER_CALLBACK( delayed_z80_control_w )
 
 	/* this is a big kludge: only allow a reset if the Z80 is stopped */
 	/* at its endpoint; otherwise, we never get a result from the Z80 */
-	if ((data & 0x10) || cpunum_get_reg(2, Z80_PC) == 0x13a)
+	if ((data & 0x10) || cpu_get_reg(machine->cpu[2], Z80_PC) == 0x13a)
 	{
-		cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 
 		/* on the rising edge, make the crosshair visible again */
 		if ((data & 0x10) && !(z80_ctrl & 0x10))
@@ -516,7 +516,7 @@ static TIMER_CALLBACK( delayed_z80_control_w )
 	}
 
 	/* boost the interleave whenever this is written to */
-	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
+	cpuexec_boost_interleave(machine, attotime_zero, ATTOTIME_IN_USEC(100));
 
 	/* stash the new value */
 	z80_ctrl = data;
@@ -525,7 +525,7 @@ static TIMER_CALLBACK( delayed_z80_control_w )
 
 WRITE8_HANDLER( slikshot_z80_control_w )
 {
-	timer_call_after_resynch(NULL, data, delayed_z80_control_w);
+	timer_call_after_resynch(space->machine, NULL, data, delayed_z80_control_w);
 }
 
 
@@ -581,7 +581,7 @@ VIDEO_UPDATE( slikshot )
 		if (temp >=  0x90) temp =  0x90;
 		curx = temp;
 
-		compute_sensors();
+		compute_sensors(screen->machine);
 //      popmessage("V=%02x,%02x  X=%02x", curvx, curvy, curx);
 		crosshair_vis = 0;
 	}

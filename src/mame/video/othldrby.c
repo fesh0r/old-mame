@@ -59,9 +59,9 @@ static TILE_GET_INFO( get_tile_info2 )
 
 VIDEO_START( othldrby )
 {
-	bg_tilemap[0] = tilemap_create(get_tile_info0,tilemap_scan_rows,16,16,32,32);
-	bg_tilemap[1] = tilemap_create(get_tile_info1,tilemap_scan_rows,16,16,32,32);
-	bg_tilemap[2] = tilemap_create(get_tile_info2,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[0] = tilemap_create(machine, get_tile_info0,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[1] = tilemap_create(machine, get_tile_info1,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[2] = tilemap_create(machine, get_tile_info2,tilemap_scan_rows,16,16,32,32);
 
 	vram = auto_malloc(VIDEORAM_SIZE * sizeof(vram[0]));
 	buf_spriteram = auto_malloc(2*SPRITERAM_SIZE * sizeof(buf_spriteram[0]));
@@ -121,7 +121,7 @@ WRITE16_HANDLER( othldrby_vreg_w )
 	if (vreg_addr < VREG_SIZE)
 		vreg[vreg_addr++] = data;
 	else
-		popmessage("%06x: VREG OUT OF BOUNDS %04x",activecpu_get_pc(),vreg_addr);
+		popmessage("%06x: VREG OUT OF BOUNDS %04x",cpu_get_pc(space->cpu),vreg_addr);
 }
 
 
@@ -153,7 +153,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		sizex = (buf_spriteram[offs+2] & 0x000f) + 1;
 		sizey = (buf_spriteram[offs+3] & 0x000f) + 1;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			flipx = !flipx;
 			flipy = !flipy;
@@ -181,11 +181,11 @@ VIDEO_UPDATE( othldrby )
 	int layer;
 
 
-	flip_screen_set(vreg[0x0f] & 0x80);
+	flip_screen_set(screen->machine, vreg[0x0f] & 0x80);
 
 	for (layer = 0;layer < 3;layer++)
 	{
-		if (flip_screen_get())
+		if (flip_screen_get(screen->machine))
 		{
 			tilemap_set_scrollx(bg_tilemap[layer],0,vreg[2*layer]+59);
 			tilemap_set_scrolly(bg_tilemap[layer],0,vreg[2*layer+1]+248);
@@ -197,9 +197,9 @@ VIDEO_UPDATE( othldrby )
 		}
 	}
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 	for (layer = 0;layer < 3;layer++)
 		tilemap_draw(bitmap,cliprect,bg_tilemap[layer],0,0);

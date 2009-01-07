@@ -5,6 +5,7 @@ Atari Sprint 8 driver
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
 #include "includes/sprint8.h"
 
 static int steer_dir[8];
@@ -18,7 +19,7 @@ void sprint8_set_collision(running_machine *machine, int n)
 {
 	if (collision_reset == 0)
 	{
-		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 
 		collision_index = n;
 	}
@@ -59,7 +60,7 @@ static MACHINE_RESET( sprint8 )
 	collision_reset = 0;
 	collision_index = 0;
 
-	timer_pulse(video_screen_get_frame_period(machine->primary_screen), NULL, 0, input_callback);
+	timer_pulse(machine, video_screen_get_frame_period(machine->primary_screen), NULL, 0, input_callback);
 }
 
 
@@ -72,7 +73,7 @@ static READ8_HANDLER( sprint8_collision_r )
 static READ8_HANDLER( sprint8_input_r )
 {
 	static const char *const portnames[] = { "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8" };
-	UINT8 val = input_port_read(machine, portnames[offset]);
+	UINT8 val = input_port_read(space->machine, portnames[offset]);
 
 	if (steer_dir[offset])
 	{
@@ -98,7 +99,7 @@ static WRITE8_HANDLER( sprint8_int_reset_w )
 	collision_reset = !(data & 1);
 
 	if (collision_reset)
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 

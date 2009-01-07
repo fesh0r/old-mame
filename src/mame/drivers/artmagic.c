@@ -22,15 +22,15 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/tms34010/tms34010.h"
 #include "video/tlc34076.h"
 #include "artmagic.h"
 #include "sound/okim6295.h"
 
 
-#define MASTER_CLOCK_40MHz		(40000000)
-#define MASTER_CLOCK_25MHz		(25000000)
+#define MASTER_CLOCK_40MHz		(XTAL_40MHz)
+#define MASTER_CLOCK_25MHz		(XTAL_25MHz)
 
 
 static UINT16 *control;
@@ -57,15 +57,15 @@ static void (*protection_handler)(running_machine *);
 
 static void update_irq_state(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 4, tms_irq  ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(machine, 0, 5, hack_irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 4, tms_irq  ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 5, hack_irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
-static void m68k_gen_int(int state)
+static void m68k_gen_int(const device_config *device, int state)
 {
 	tms_irq = state;
-	update_irq_state(Machine);
+	update_irq_state(device->machine);
 }
 
 
@@ -93,13 +93,13 @@ static MACHINE_RESET( artmagic )
 
 static READ16_HANDLER( tms_host_r )
 {
-	return tms34010_host_r(1, offset);
+	return tms34010_host_r(space->machine->cpu[1], offset);
 }
 
 
 static WRITE16_HANDLER( tms_host_w )
 {
-	tms34010_host_w(1, offset, data);
+	tms34010_host_w(space->machine->cpu[1], offset, data);
 }
 
 
@@ -116,9 +116,9 @@ static WRITE16_HANDLER( control_w )
 
 	/* OKI banking here */
 	if (offset == 0)
-		okim6295_set_bank_base(0, (((data >> 4) & 1) * 0x40000) % memory_region_length(machine, "oki"));
+		okim6295_set_bank_base(0, (((data >> 4) & 1) * 0x40000) % memory_region_length(space->machine, "oki"));
 
-	logerror("%06X:control_w(%d) = %04X\n", activecpu_get_pc(), offset, data);
+	logerror("%06X:control_w(%d) = %04X\n", cpu_get_pc(space->cpu), offset, data);
 }
 
 
@@ -138,13 +138,13 @@ static TIMER_CALLBACK( irq_off )
 static READ16_HANDLER( ultennis_hack_r )
 {
 	/* IRQ5 points to: jsr (a5); rte */
-	if (activecpu_get_pc() == 0x18c2)
+	if (cpu_get_pc(space->cpu) == 0x18c2)
 	{
 		hack_irq = 1;
-		update_irq_state(machine);
-		timer_set(ATTOTIME_IN_USEC(1), NULL, 0, irq_off);
+		update_irq_state(space->machine);
+		timer_set(space->machine, ATTOTIME_IN_USEC(1), NULL, 0, irq_off);
 	}
-	return input_port_read(machine, "300000");
+	return input_port_read(space->machine, "300000");
 }
 
 
@@ -397,7 +397,7 @@ static WRITE16_HANDLER( protection_bit_w )
 		prot_bit_index = 0;
 
 		/* update the protection state */
-		(*protection_handler)(machine);
+		(*protection_handler)(space->machine);
 	}
 }
 
@@ -700,7 +700,7 @@ static MACHINE_DRIVER_START( artmagic )
 	MDRV_CPU_PROGRAM_MAP(tms_map,0)
 
 	MDRV_MACHINE_RESET(artmagic)
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
@@ -716,6 +716,14 @@ static MACHINE_DRIVER_START( artmagic )
 
 	MDRV_SOUND_ADD("oki", OKIM6295, MASTER_CLOCK_40MHz/3/10)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7low)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.65)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( cheesech )
+	MDRV_IMPORT_FROM(artmagic)
+
+	MDRV_SOUND_MODIFY("oki")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -728,6 +736,9 @@ static MACHINE_DRIVER_START( stonebal )
 
 	MDRV_CPU_MODIFY("tms")
 	MDRV_CPU_PROGRAM_MAP(stonebal_tms_map,0)
+
+	MDRV_SOUND_MODIFY("oki")
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.45)
 MACHINE_DRIVER_END
 
 
@@ -879,7 +890,7 @@ static DRIVER_INIT( ultennis )
 	protection_handler = ultennis_protection;
 
 	/* additional (protection?) hack */
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x300000, 0x300001, 0, 0, ultennis_hack_r);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x300000, 0x300001, 0, 0, ultennis_hack_r);
 }
 
 
@@ -907,6 +918,6 @@ static DRIVER_INIT( stonebal )
  *************************************/
 
 GAME( 1993, ultennis, 0,        artmagic, ultennis, ultennis, ROT0, "Art & Magic", "Ultimate Tennis",		 0 )
-GAME( 1994, cheesech, 0,        artmagic, cheesech, cheesech, ROT0, "Art & Magic", "Cheese Chase",			 0 )
+GAME( 1994, cheesech, 0,        cheesech, cheesech, cheesech, ROT0, "Art & Magic", "Cheese Chase",			 0 )
 GAME( 1994, stonebal, 0,        stonebal, stonebal, stonebal, ROT0, "Art & Magic", "Stone Ball (4 Players)", 0 )
 GAME( 1994, stoneba2, stonebal, stonebal, stoneba2, stonebal, ROT0, "Art & Magic", "Stone Ball (2 Players)", 0 )

@@ -85,9 +85,25 @@ WRITE8_HANDLER( speedatk_colorram_w )
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-WRITE8_HANDLER( speedatk_flip_screen_w )
+WRITE8_HANDLER( speedatk_videoregs_w )
 {
-	flip_screen_set(data);
+	static UINT8 address;
+
+	if(offset == 0)
+		address = data;
+	else
+	{
+		switch(address)
+		{
+			/*temporary hook-up.*/
+			case 0x0d:
+				flip_screen_set(space->machine, data & 8);
+				tilemap_set_scrolldx(bg_tilemap,0,data & 0x40);
+				break;
+			default:
+				logerror("Video Register %02x called with %02x data\n",address,data);
+		}
+	}
 }
 
 static TILE_GET_INFO( get_tile_info )
@@ -103,7 +119,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( speedatk )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,34,32);
+	bg_tilemap = tilemap_create(machine, get_tile_info,tilemap_scan_rows,8,8,34,32);
 }
 
 VIDEO_UPDATE( speedatk )

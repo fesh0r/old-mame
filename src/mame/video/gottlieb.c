@@ -45,7 +45,7 @@ WRITE8_HANDLER( gottlieb_paletteram_w )
 
 	/* alpha is set to 0 if laserdisc video is enabled */
 	a = (transparent0 && offset / 2 == 0) ? 0 : 255;
-	palette_set_color(machine, offset / 2, MAKE_ARGB(a, r, g, b));
+	palette_set_color(space->machine, offset / 2, MAKE_ARGB(a, r, g, b));
 }
 
 
@@ -60,20 +60,20 @@ WRITE8_HANDLER( gottlieb_video_control_w )
 {
 	/* bit 0 controls foreground/background priority */
 	if (background_priority != (data & 0x01))
-		video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+		video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 	background_priority = data & 0x01;
 
 	/* bit 1 controls horizonal flip screen */
-	if (flip_screen_x_get() != (data & 0x02))
+	if (flip_screen_x_get(space->machine) != (data & 0x02))
 	{
-		flip_screen_x_set(data & 0x02);
+		flip_screen_x_set(space->machine, data & 0x02);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 
 	/* bit 2 controls horizonal flip screen */
-	if (flip_screen_y_get() != (data & 0x04))
+	if (flip_screen_y_get(space->machine) != (data & 0x04))
 	{
-		flip_screen_y_set(data & 0x04);
+		flip_screen_y_set(space->machine, data & 0x04);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 
@@ -84,10 +84,10 @@ WRITE8_HANDLER( gottlieb_video_control_w )
 
 WRITE8_HANDLER( gottlieb_laserdisc_video_control_w )
 {
-	const device_config *laserdisc = device_list_first(machine->config->devicelist, LASERDISC);
+	const device_config *laserdisc = device_list_first(space->machine->config->devicelist, LASERDISC);
 
 	/* bit 0 works like the other games */
-	gottlieb_video_control_w(machine, offset, data & 0x01);
+	gottlieb_video_control_w(space, offset, data & 0x01);
 
 	/* bit 1 controls the sprite bank. */
 	spritebank = (data & 0x02) >> 1;
@@ -99,7 +99,7 @@ WRITE8_HANDLER( gottlieb_laserdisc_video_control_w )
 
 	/* configure the palette if the laserdisc is enabled */
 	transparent0 = (data >> 3) & 1;
-	gottlieb_paletteram_w(machine, 0, paletteram[0]);
+	gottlieb_paletteram_w(space, 0, paletteram[0]);
 }
 
 
@@ -122,7 +122,7 @@ WRITE8_HANDLER( gottlieb_charram_w )
 	if (gottlieb_charram[offset] != data)
 	{
 		gottlieb_charram[offset] = data;
-		decodechar(machine->gfx[0], offset / 32, gottlieb_charram);
+		decodechar(space->machine->gfx[0], offset / 32, gottlieb_charram);
 		tilemap_mark_all_tiles_dirty(bg_tilemap);
 	}
 }
@@ -159,14 +159,14 @@ VIDEO_START( gottlieb )
 	transparent0 = FALSE;
 
 	/* configure the background tilemap */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 	tilemap_set_scrolldx(bg_tilemap, 0, 318 - 256);
 
 	/* save some state */
-	state_save_register_global(background_priority);
-	state_save_register_global(spritebank);
-	state_save_register_global(transparent0);
+	state_save_register_global(machine, background_priority);
+	state_save_register_global(machine, spritebank);
+	state_save_register_global(machine, transparent0);
 }
 
 
@@ -194,12 +194,12 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int sy = (spriteram[offs]) - 13;
 		int code = (255 ^ spriteram[offs + 2]) + 256 * spritebank;
 
-		if (flip_screen_x_get()) sx = 233 - sx;
-		if (flip_screen_y_get()) sy = 244 - sy;
+		if (flip_screen_x_get(machine)) sx = 233 - sx;
+		if (flip_screen_y_get(machine)) sy = 244 - sy;
 
 		drawgfx(bitmap, machine->gfx[2],
 			code, 0,
-			flip_screen_x_get(), flip_screen_y_get(),
+			flip_screen_x_get(machine), flip_screen_y_get(machine),
 			sx,sy,
 			&clip,
 			TRANSPARENCY_PEN, 0);
@@ -220,7 +220,7 @@ VIDEO_UPDATE( gottlieb )
 	if (!background_priority)
 		tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_OPAQUE, 0);
 	else
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 
 	/* draw the sprites */
 	draw_sprites(screen->machine, bitmap, cliprect);

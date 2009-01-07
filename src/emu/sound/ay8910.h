@@ -66,10 +66,10 @@ struct _ay8910_interface
 {
 	int					flags;			/* Flags */
 	int					res_load[3]; 	/* Load on channel in ohms */
-	read8_machine_func	portAread;
-	read8_machine_func	portBread;
-	write8_machine_func	portAwrite;
-	write8_machine_func	portBwrite;
+	read8_space_func	portAread;
+	read8_space_func	portBread;
+	write8_space_func	portAwrite;
+	write8_space_func	portBwrite;
 };
 
 
@@ -126,12 +126,21 @@ WRITE16_HANDLER( ay8910_write_port_4_msb_w );
 
 /*********** An interface for SSG of YM2203 ***********/
 
-void *ay8910_start_ym(sound_type chip_type, int sndindex, int clock, const ay8910_interface *intf);
+void *ay8910_start_ym(sound_type chip_type, const device_config *device, int clock, const ay8910_interface *intf);
 
 void ay8910_stop_ym(void *chip);
 void ay8910_reset_ym(void *chip);
 void ay8910_set_clock_ym(void *chip, int clock);
 void ay8910_write_ym(void *chip, int addr, int data);
 int ay8910_read_ym(void *chip);
+
+SND_GET_INFO( ay8910 );
+SND_GET_INFO( ay8912 );
+SND_GET_INFO( ay8913 );
+SND_GET_INFO( ay8930 );
+SND_GET_INFO( ym2149 );
+SND_GET_INFO( ym3439 );
+SND_GET_INFO( ymz284 );
+SND_GET_INFO( ymz294 );
 
 #endif /* __AY8910_H__ */

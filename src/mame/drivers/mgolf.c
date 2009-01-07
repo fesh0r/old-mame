@@ -5,6 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 
 static UINT8* mgolf_video_ram;
 
@@ -34,7 +35,7 @@ static WRITE8_HANDLER( mgolf_vram_w )
 
 static VIDEO_START( mgolf )
 {
-	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(machine, get_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 }
 
 
@@ -78,13 +79,13 @@ static void update_plunger(running_machine *machine)
 	{
 		if (val == 0)
 		{
-			time_released = timer_get_time();
+			time_released = timer_get_time(machine);
 
 			if (!mask)
-				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+				cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 		}
 		else
-			time_pushed = timer_get_time();
+			time_pushed = timer_get_time(machine);
 
 		prev = val;
 	}
@@ -97,26 +98,26 @@ static TIMER_CALLBACK( interrupt_callback )
 
 	update_plunger(machine);
 
-	cpunum_set_input_line(machine, 0, 0, PULSE_LINE);
+	generic_pulse_irq_line(machine->cpu[0], 0);
 
 	scanline = scanline + 32;
 
 	if (scanline >= 262)
 		scanline = 16;
 
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, interrupt_callback);
 }
 
 
-static double calc_plunger_pos(void)
+static double calc_plunger_pos(running_machine *machine)
 {
-	return (attotime_to_double(timer_get_time()) - attotime_to_double(time_released)) * (attotime_to_double(time_released) - attotime_to_double(time_pushed) + 0.2);
+	return (attotime_to_double(timer_get_time(machine)) - attotime_to_double(time_released)) * (attotime_to_double(time_released) - attotime_to_double(time_pushed) + 0.2);
 }
 
 
 static MACHINE_RESET( mgolf )
 {
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 16, 0), NULL, 16, interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 16, 0), NULL, 16, interrupt_callback);
 }
 
 
@@ -137,13 +138,13 @@ static READ8_HANDLER( mgolf_wram_r )
 
 static READ8_HANDLER( mgolf_dial_r )
 {
-	UINT8 val = input_port_read(machine, "41");
+	UINT8 val = input_port_read(space->machine, "41");
 
-	if ((input_port_read(machine, "DIAL") + 0x00) & 0x20)
+	if ((input_port_read(space->machine, "DIAL") + 0x00) & 0x20)
 	{
 		val |= 0x01;
 	}
-	if ((input_port_read(machine, "DIAL") + 0x10) & 0x20)
+	if ((input_port_read(space->machine, "DIAL") + 0x10) & 0x20)
 	{
 		val |= 0x02;
 	}
@@ -154,9 +155,9 @@ static READ8_HANDLER( mgolf_dial_r )
 
 static READ8_HANDLER( mgolf_misc_r )
 {
-	double plunger = calc_plunger_pos(); /* see Video Pinball */
+	double plunger = calc_plunger_pos(space->machine); /* see Video Pinball */
 
-	UINT8 val = input_port_read(machine, "61");
+	UINT8 val = input_port_read(space->machine, "61");
 
 	if (plunger >= 0.000 && plunger <= 0.001)
 	{

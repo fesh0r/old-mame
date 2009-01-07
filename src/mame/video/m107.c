@@ -133,7 +133,7 @@ VIDEO_START( m107 )
 		pf_layer_info *layer = &pf_layer[laynum];
 
 		/* allocate a tilemaps per layer */
-		layer->tmap = tilemap_create(get_pf_tile_info, tilemap_scan_rows,  8,8, 64,64);
+		layer->tmap = tilemap_create(machine, get_pf_tile_info, tilemap_scan_rows,  8,8, 64,64);
 
 		/* set the user data to point to the layer */
 		tilemap_set_user_data(layer->tmap, &pf_layer[laynum]);
@@ -281,7 +281,7 @@ static void m107_screenrefresh(running_machine *machine, bitmap_t *bitmap, const
 		tilemap_draw(bitmap, cliprect, pf_layer[3].tmap, 1, 0);
 	}
 	else
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, pf_layer[2].tmap, 0, 0);
 	tilemap_draw(bitmap, cliprect, pf_layer[2].tmap, 1, 0);
@@ -304,7 +304,7 @@ static void m107_screenrefresh(running_machine *machine, bitmap_t *bitmap, const
 WRITE16_HANDLER( m107_spritebuffer_w )
 {
 	if (ACCESSING_BITS_0_7) {
-//      logerror("%04x: buffered spriteram\n",activecpu_get_pc());
+//      logerror("%04x: buffered spriteram\n",cpu_get_pc(space->cpu));
 		memcpy(m107_spriteram,spriteram16,0x1000);
 	}
 }

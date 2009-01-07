@@ -14,7 +14,7 @@ UINT8 *spcforce_scrollram;
 
 WRITE8_HANDLER( spcforce_flip_screen_w )
 {
-	flip_screen_set(~data & 0x01);
+	flip_screen_set(space->machine, ~data & 0x01);
 }
 
 
@@ -25,7 +25,7 @@ VIDEO_UPDATE( spcforce )
 
 	/* draw the characters as sprites because they could be overlapping */
 
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(bitmap,cliprect,0);
 
 
 	for (offs = 0; offs < videoram_size; offs++)
@@ -39,7 +39,7 @@ VIDEO_UPDATE( spcforce )
 		code = videoram[offs] + ((colorram[offs] & 0x01) << 8);
 		col  = (~colorram[offs] >> 4) & 0x07;
 
-		if (flip_screen_get())
+		if (flip_screen_get(screen->machine))
 		{
 			sx = 248 - sx;
 			sy = 248 - sy;
@@ -47,7 +47,7 @@ VIDEO_UPDATE( spcforce )
 
 		drawgfx(bitmap,screen->machine->gfx[0],
 				code, col,
-				flip_screen_get(), flip_screen_get(),
+				flip_screen_get(screen->machine), flip_screen_get(screen->machine),
 				sx, sy,
 				cliprect,TRANSPARENCY_PEN,0);
 	}

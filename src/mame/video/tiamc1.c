@@ -8,6 +8,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/tiamc1.h"
 
 
 UINT8 *tiamc1_tileram;
@@ -83,7 +84,7 @@ WRITE8_HANDLER( tiamc1_bg_hshift_w ) {
 
 WRITE8_HANDLER( tiamc1_palette_w )
 {
-	palette_set_color(machine, offset, palette[data]);
+	palette_set_color(space->machine, offset, palette[data]);
 }
 
 PALETTE_INIT( tiamc1 )
@@ -139,18 +140,18 @@ static TILE_GET_INFO( get_bg2_tile_info )
 
 VIDEO_START( tiamc1 )
 {
-	bg_tilemap1 = tilemap_create(get_bg1_tile_info, tilemap_scan_rows,
+	bg_tilemap1 = tilemap_create(machine, get_bg1_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
-	bg_tilemap2 = tilemap_create(get_bg2_tile_info, tilemap_scan_rows,
+	bg_tilemap2 = tilemap_create(machine, get_bg2_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
 	tiamc1_bg_vshift = 0;
 	tiamc1_bg_hshift = 0;
 
-	state_save_register_global(tiamc1_layers_ctrl);
-	state_save_register_global(tiamc1_bg_vshift);
-	state_save_register_global(tiamc1_bg_hshift);
+	state_save_register_global(machine, tiamc1_layers_ctrl);
+	state_save_register_global(machine, tiamc1_bg_vshift);
+	state_save_register_global(machine, tiamc1_bg_hshift);
 }
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)

@@ -119,7 +119,7 @@ WRITE8_HANDLER( warpwarp_music2_w )
 
 }
 
-static void warpwarp_sound_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int length)
+static STREAM_UPDATE( warpwarp_sound_update )
 {
     static int vcarry = 0;
     static int vcount = 0;
@@ -127,7 +127,7 @@ static void warpwarp_sound_update(void *param, stream_sample_t **inputs, stream_
 	static int mcount = 0;
 	stream_sample_t *buffer = outputs[0];
 
-    while (length--)
+    while (samples--)
     {
 		*buffer++ = (sound_signal + music_signal) / 2;
 
@@ -204,8 +204,9 @@ static void warpwarp_sound_update(void *param, stream_sample_t **inputs, stream_
     }
 }
 
-void *warpwarp_sh_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( warpwarp_sh_start )
 {
+	running_machine *machine = device->machine;
 	int i;
 
 	decay = (INT16 *) auto_malloc(32768 * sizeof(INT16));
@@ -213,9 +214,9 @@ void *warpwarp_sh_start(int clock, const custom_sound_interface *config)
     for( i = 0; i < 0x8000; i++ )
 		decay[0x7fff-i] = (INT16) (0x7fff/exp(1.0*i/4096));
 
-	channel = stream_create(0, 1, CLOCK_16H, NULL, warpwarp_sound_update);
+	channel = stream_create(device, 0, 1, CLOCK_16H, NULL, warpwarp_sound_update);
 
-	sound_volume_timer = timer_alloc(sound_volume_decay, NULL);
-	music_volume_timer = timer_alloc(music_volume_decay, NULL);
+	sound_volume_timer = timer_alloc(machine, sound_volume_decay, NULL);
+	music_volume_timer = timer_alloc(machine, music_volume_decay, NULL);
     return auto_malloc(1);
 }

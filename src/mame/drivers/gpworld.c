@@ -40,6 +40,7 @@ Dumping Notes:
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/laserdsc.h"
 
 /* Assumed to be the same as segald hardware */
@@ -76,9 +77,9 @@ static void gpworld_draw_tiles(running_machine *machine, bitmap_t *bitmap,const 
 	}
 }
 
-INLINE void draw_pixel(bitmap_t *bitmap,const rectangle *cliprect,int x,int y,int color)
+INLINE void draw_pixel(bitmap_t *bitmap,const rectangle *cliprect,int x,int y,int color,int flip)
 {
-	if (flip_screen_get())
+	if (flip)
 	{
 		x = bitmap->width - x - 1;
 		y = bitmap->height - y - 1;
@@ -103,6 +104,7 @@ static void gpworld_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 	const int SPR_SKIP_HI   = 5;
 	const int SPR_GFXOFS_LO = 6;
 	const int SPR_GFXOFS_HI = 7;
+	int flip = flip_screen_get(machine);
 
 	int i;
 
@@ -133,7 +135,7 @@ static void gpworld_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 
             logerror("%02x %02x %02x %02x %02x %02x %02x %02x\n", spr_reg[SPR_Y_TOP], spr_reg[SPR_Y_BOTTOM], spr_reg[SPR_X_LO], spr_reg[SPR_X_HI],
                                                                   spr_reg[SPR_SKIP_LO], spr_reg[SPR_SKIP_HI], spr_reg[SPR_GFXOFS_LO], spr_reg[SPR_GFXOFS_HI]);
-            draw_pixel(bitmap,cliprect,sx,sy,0xffffffff);
+            draw_pixel(bitmap,cliprect,sx,sy,0xffffffff,flip);
 */
 
 			for (row = 0; row < height; row++)
@@ -179,10 +181,10 @@ static void gpworld_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 					}
 
 					/* Daphne says "don't draw the pixel if it's black". */
-					draw_pixel(bitmap,cliprect,x+0,y,palette_get_color(machine, pixel1 + (sprite_color*0x10 + 0x200)));
-					draw_pixel(bitmap,cliprect,x+1,y,palette_get_color(machine, pixel2 + (sprite_color*0x10 + 0x200)));
-					draw_pixel(bitmap,cliprect,x+2,y,palette_get_color(machine, pixel3 + (sprite_color*0x10 + 0x200)));
-					draw_pixel(bitmap,cliprect,x+3,y,palette_get_color(machine, pixel4 + (sprite_color*0x10 + 0x200)));
+					draw_pixel(bitmap,cliprect,x+0,y,palette_get_color(machine, pixel1 + (sprite_color*0x10 + 0x200)),flip);
+					draw_pixel(bitmap,cliprect,x+1,y,palette_get_color(machine, pixel2 + (sprite_color*0x10 + 0x200)),flip);
+					draw_pixel(bitmap,cliprect,x+2,y,palette_get_color(machine, pixel3 + (sprite_color*0x10 + 0x200)),flip);
+					draw_pixel(bitmap,cliprect,x+3,y,palette_get_color(machine, pixel4 + (sprite_color*0x10 + 0x200)),flip);
 
 					x += 4;
 
@@ -204,7 +206,7 @@ static void gpworld_draw_sprites(running_machine *machine, bitmap_t *bitmap, con
 
 static VIDEO_UPDATE( gpworld )
 {
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	gpworld_draw_tiles(screen->machine, bitmap, cliprect);
 	gpworld_draw_sprites(screen->machine, bitmap, cliprect);
@@ -229,9 +231,9 @@ static READ8_HANDLER( ldp_read )
 static READ8_HANDLER( pedal_in )
 {
 	if (brake_gas)
-		return 	input_port_read(machine, "INACCEL");
+		return 	input_port_read(space->machine, "INACCEL");
 
-	return 	input_port_read(machine, "INBRAKE");
+	return 	input_port_read(space->machine, "INBRAKE");
 
 }
 
@@ -272,7 +274,7 @@ static WRITE8_HANDLER( palette_write )
 
 	/* logerror("PAL WRITE index : %x  rgb : %d %d %d (real %x) at %x\n", pal_index, r,g,b, data, offset); */
 
-	palette_set_color(machine, pal_index, MAKE_ARGB(a, r, g, b));
+	palette_set_color(space->machine, pal_index, MAKE_ARGB(a, r, g, b));
 }
 
 /* PROGRAM MAP */
@@ -405,7 +407,7 @@ INPUT_PORTS_END
 
 static TIMER_CALLBACK( irq_stop )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( vblank_callback_gpworld )
@@ -415,12 +417,12 @@ static INTERRUPT_GEN( vblank_callback_gpworld )
 	{
 		laserdisc_data_w(laserdisc,ldp_write_latch);
 		ldp_read_latch  = laserdisc_data_r(laserdisc);
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 	}
 
 	/* The time the IRQ line stays high is set just long enough to happen after the NMI - hacky? */
-	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
-	timer_set(ATTOTIME_IN_USEC(100), NULL, 0, irq_stop);
+	cpu_set_input_line(device, 0, ASSERT_LINE);
+	timer_set(device->machine, ATTOTIME_IN_USEC(100), NULL, 0, irq_stop);
 }
 
 static const gfx_layout gpworld_tile_layout =

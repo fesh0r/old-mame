@@ -86,10 +86,10 @@ VIDEO_START( relief )
 	atarigen_blend_gfx(machine, 1, 2, 0x0f, 0x10);
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols,  8,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(machine, get_playfield_tile_info, tilemap_scan_cols,  8,8, 64,64);
 
 	/* initialize the second playfield */
-	atarigen_playfield2_tilemap = tilemap_create(get_playfield2_tile_info, tilemap_scan_cols,  8,8, 64,64);
+	atarigen_playfield2_tilemap = tilemap_create(machine, get_playfield2_tile_info, tilemap_scan_cols,  8,8, 64,64);
 	tilemap_set_transparent_pen(atarigen_playfield2_tilemap, 0);
 
 	/* initialize the motion objects */
@@ -111,7 +111,7 @@ VIDEO_UPDATE( relief )
 	int x, y, r;
 
 	/* draw the playfield */
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 0);
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 0, 0);
 	tilemap_draw(bitmap, cliprect, atarigen_playfield2_tilemap, 0, 1);
 

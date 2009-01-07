@@ -22,6 +22,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "kyugo.h"
 #include "sound/ay8910.h"
@@ -38,15 +39,16 @@ static UINT8 *shared_ram;
 
 MACHINE_RESET( kyugo )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	// must start with interrupts and sub CPU disabled
-	cpu_interrupt_enable(0, 0);
-	kyugo_sub_cpu_control_w(machine, 0, 0);
+	cpu_interrupt_enable(machine->cpu[0], 0);
+	kyugo_sub_cpu_control_w(space, 0, 0);
 }
 
 
 WRITE8_HANDLER( kyugo_sub_cpu_control_w )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, data ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -471,7 +473,7 @@ static MACHINE_DRIVER_START( gyrodine )
 	MDRV_CPU_IO_MAP(gyrodine_sub_portmap,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_RESET(kyugo)
 
@@ -1204,19 +1206,19 @@ ROM_END
 static DRIVER_INIT( gyrodine )
 {
 	/* add watchdog */
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xe000, 0, 0, watchdog_reset_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe000, 0xe000, 0, 0, watchdog_reset_w);
 }
 
 
 static DRIVER_INIT( srdmissn )
 {
 	/* shared RAM is mapped at 0xe000 as well  */
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xe7ff, 0, 0, SMH_BANK1, SMH_BANK1);
-	memory_set_bankptr(1, shared_ram);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe000, 0xe7ff, 0, 0, SMH_BANK1, SMH_BANK1);
+	memory_set_bankptr(machine, 1, shared_ram);
 
 	/* extra RAM on sub CPU  */
-	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8800, 0x8fff, 0, 0, SMH_BANK2, SMH_BANK2);
-	memory_set_bankptr(2, auto_malloc(0x800));
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x8800, 0x8fff, 0, 0, SMH_BANK2, SMH_BANK2);
+	memory_set_bankptr(machine, 2, auto_malloc(0x800));
 }
 
 

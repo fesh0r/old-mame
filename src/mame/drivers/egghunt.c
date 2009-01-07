@@ -42,6 +42,7 @@ I dumped it with this configuration. In case I'll redump it desoldering pin 16 f
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/okim6295.h"
 
 static UINT8 *egghunt_bgram;
@@ -144,7 +145,7 @@ static WRITE8_HANDLER( egghunt_atram_w )
 
 static VIDEO_START(egghunt)
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,64, 32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,8,8,64, 32);
 	egghunt_bgram = auto_malloc(0x1000);
 	egghunt_spram = auto_malloc(0x1000);
 }
@@ -172,8 +173,8 @@ static WRITE8_HANDLER( egghunt_vidram_bank_w )
 
 static WRITE8_HANDLER( egghunt_soundlatch_w )
 {
-	soundlatch_w(machine,0,data);
-	cpunum_set_input_line(machine, 1,0,HOLD_LINE);
+	soundlatch_w(space,0,data);
+	cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
 }
 
 static READ8_HANDLER( egghunt_okibanking_r )

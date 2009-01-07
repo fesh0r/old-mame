@@ -506,7 +506,6 @@ UINT8 ppi8255_get_port_c( const device_config *device ) {
 
 static DEVICE_START( ppi8255 ) {
 	ppi8255_t	*ppi8255 = get_safe_token(device);
-	char		unique_tag[30];
 
 	ppi8255->intf = device->static_config;
 
@@ -519,24 +518,22 @@ static DEVICE_START( ppi8255 ) {
 	ppi8255->port_write[2] = ppi8255->intf->port_c_write;
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "ppi8255", device->tag);
-
-	state_save_register_item(unique_tag, 0, ppi8255->group_a_mode);
-	state_save_register_item(unique_tag, 0, ppi8255->group_b_mode);
-	state_save_register_item(unique_tag, 0, ppi8255->port_a_dir);
-	state_save_register_item(unique_tag, 0, ppi8255->port_b_dir);
-	state_save_register_item(unique_tag, 0, ppi8255->port_ch_dir);
-	state_save_register_item(unique_tag, 0, ppi8255->port_cl_dir);
-	state_save_register_item(unique_tag, 0, ppi8255->obf_a);
-	state_save_register_item(unique_tag, 0, ppi8255->obf_b);
-	state_save_register_item(unique_tag, 0, ppi8255->ibf_a);
-	state_save_register_item(unique_tag, 0, ppi8255->ibf_b);
-	state_save_register_item(unique_tag, 0, ppi8255->inte_a);
-	state_save_register_item(unique_tag, 0, ppi8255->inte_b);
-	state_save_register_item_array(unique_tag, 0, ppi8255->in_mask);
-	state_save_register_item_array(unique_tag, 0, ppi8255->out_mask);
-	state_save_register_item_array(unique_tag, 0, ppi8255->read);
-	state_save_register_item_array(unique_tag, 0, ppi8255->latch);
+	state_save_register_device_item(device, 0, ppi8255->group_a_mode);
+	state_save_register_device_item(device, 0, ppi8255->group_b_mode);
+	state_save_register_device_item(device, 0, ppi8255->port_a_dir);
+	state_save_register_device_item(device, 0, ppi8255->port_b_dir);
+	state_save_register_device_item(device, 0, ppi8255->port_ch_dir);
+	state_save_register_device_item(device, 0, ppi8255->port_cl_dir);
+	state_save_register_device_item(device, 0, ppi8255->obf_a);
+	state_save_register_device_item(device, 0, ppi8255->obf_b);
+	state_save_register_device_item(device, 0, ppi8255->ibf_a);
+	state_save_register_device_item(device, 0, ppi8255->ibf_b);
+	state_save_register_device_item(device, 0, ppi8255->inte_a);
+	state_save_register_device_item(device, 0, ppi8255->inte_b);
+	state_save_register_device_item_array(device, 0, ppi8255->in_mask);
+	state_save_register_device_item_array(device, 0, ppi8255->out_mask);
+	state_save_register_device_item_array(device, 0, ppi8255->read);
+	state_save_register_device_item_array(device, 0, ppi8255->latch);
 
 	return DEVICE_START_OK;
 }
@@ -584,11 +581,11 @@ DEVICE_GET_INFO(ppi8255) {
 		case DEVINFO_FCT_RESET:						info->reset = DEVICE_RESET_NAME(ppi8255);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:						info->s = "Intel PPI8255";					break;
-		case DEVINFO_STR_FAMILY:					info->s = "PPI8255";						break;
-		case DEVINFO_STR_VERSION:					info->s = "1.00";							break;
-		case DEVINFO_STR_SOURCE_FILE:				info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:					info->s = "Copyright the MAME and MESS Teams"; break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "Intel PPI8255");			break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "PPI8255");					break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.00");					break;
+		case DEVINFO_STR_SOURCE_FILE:				strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright the MAME and MESS Teams"); break;
 	}
 }
 

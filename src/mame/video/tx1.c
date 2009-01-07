@@ -6,8 +6,8 @@
 
 #include "driver.h"
 #include "render.h"
-#include "cpu/i86/i86.h"
 #include "video/resnet.h"
+#include "cpu/i86/i86.h"
 #include "tx1.h"
 
 
@@ -75,7 +75,7 @@ enum
 	TX1_RDFLAG_TNLF,
 	TX1_RDFLAG_STLF,
 	TX1_RDFLAG_SCCHGF
-} tx1_roadreg;
+};
 
 static struct
 {
@@ -1177,7 +1177,7 @@ VIDEO_UPDATE( tx1 )
 	const device_config *centre_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "center");
 	const device_config *right_screen  = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
 
-	if ( screen == left_screen )
+	if (screen == left_screen)
 	{
 		memset(tx1_obj_bmp, 0, 768*240);
 
@@ -1333,7 +1333,7 @@ static void buggyboy_draw_char(running_machine *machine, UINT8 *bitmap, int wide
 	if (wide)
 	{
 		scroll_y = (buggyboy_vram[0xfff] >> 10) & 0x3f;
-		scroll_x = buggyboy_vram[0xfff] & 0x1ff;
+		scroll_x = buggyboy_vram[0xfff] & 0x3ff;
 		total_width = 768;
 		x_mask = 0x3ff;
 	}
@@ -2312,7 +2312,7 @@ WRITE16_HANDLER( buggyboy_gas_w )
 		}
 		case 0xe0:
 		{
-			cpunum_set_input_line(machine, 1, INPUT_LINE_TEST, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_TEST, CLEAR_LINE);
 			vregs.flags = data;
 			break;
 		}
@@ -2450,6 +2450,7 @@ VIDEO_UPDATE( buggyboy )
 	if (screen == left_screen)
 	{
 		memset(bb_obj_bmp, 0, 768*240);
+		memset(bb_rod_bmp, 0, 768*240);
 
 		buggyboy_draw_char(screen->machine, bb_chr_bmp, 1);
 //      buggyboy_draw_road(screen->machine, bb_rod_bmp, 1);

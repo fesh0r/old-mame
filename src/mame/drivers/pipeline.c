@@ -48,6 +48,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/z80ctc.h"
 #include "sound/2203intf.h"
 #include "machine/8255ppi.h"
@@ -90,8 +91,8 @@ static TILE_GET_INFO( get_tile_info2 )
 static VIDEO_START ( pipeline )
 {
 	palram=auto_malloc(0x1000);
-	tilemap1 = tilemap_create( get_tile_info,tilemap_scan_rows,8,8,64,32 );
-	tilemap2 = tilemap_create( get_tile_info2,tilemap_scan_rows,8,8,64,32 );
+	tilemap1 = tilemap_create( machine, get_tile_info,tilemap_scan_rows,8,8,64,32 );
+	tilemap2 = tilemap_create( machine, get_tile_info2,tilemap_scan_rows,8,8,64,32 );
 	tilemap_set_transparent_pen(tilemap2,0);
 }
 
@@ -186,7 +187,7 @@ static WRITE8_HANDLER(vram2_w)
 		 if(offset<0x300)
 		 {
 		 	offset&=0xff;
-		 	palette_set_color_rgb(machine, offset, pal6bit(palram[offset]), pal6bit(palram[offset+0x100]), pal6bit(palram[offset+0x200]));
+		 	palette_set_color_rgb(space->machine, offset, pal6bit(palram[offset]), pal6bit(palram[offset+0x100]), pal6bit(palram[offset+0x200]));
 		 }
 	}
 }
@@ -209,8 +210,8 @@ static TIMER_CALLBACK( protection_deferred_w )
 
 static WRITE8_DEVICE_HANDLER(protection_w)
 {
-	timer_call_after_resynch(NULL, data, protection_deferred_w);
-	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
+	timer_call_after_resynch(device->machine, NULL, data, protection_deferred_w);
+	cpuexec_boost_interleave(device->machine, attotime_zero, ATTOTIME_IN_USEC(100));
 }
 
 static ADDRESS_MAP_START( cpu0_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -292,8 +293,6 @@ static void ctc0_interrupt(const device_config *device, int state)
 
 static const z80ctc_interface ctc_intf =
 {
-	"audio",			// clock from audio CPU
-	0,					// clock
 	0,					// timer disables
 	ctc0_interrupt,		// interrupt handler
 	0,					// ZC/TO0 callback
@@ -379,7 +378,7 @@ static MACHINE_DRIVER_START( pipeline )
 	MDRV_CPU_ADD("mcu", M68705, 7372800/2)
 	MDRV_CPU_PROGRAM_MAP(mcu_mem, 0)
 
-	MDRV_Z80CTC_ADD( "ctc", ctc_intf )
+	MDRV_Z80CTC_ADD( "ctc", 7372800/2 /* same as "audio" */, ctc_intf )
 
 	MDRV_PPI8255_ADD( "ppi8255_0", ppi8255_intf[0] )
 	MDRV_PPI8255_ADD( "ppi8255_1", ppi8255_intf[1] )

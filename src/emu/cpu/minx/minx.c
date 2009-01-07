@@ -44,7 +44,6 @@ TODO:
 
 #include "minx.h"
 #include "debugger.h"
-#include "deprecat.h"
 
 #define FLAG_I  0x80
 #define FLAG_D  0x40
@@ -83,14 +82,16 @@ typedef struct {
 	UINT8	YI;
 	UINT8	halted;
 	UINT8	interrupt_pending;
-	int		(*irq_callback)(int irqline);
+	cpu_irq_callback irq_callback;
+	const device_config *device;
+	const address_space *program;
 } minx_regs;
 
 static minx_regs regs;
 static int minx_icount;
 
-#define RD(offset)		program_read_byte_8be( offset )
-#define WR(offset,data)	program_write_byte_8be( offset, data )
+#define RD(offset)		memory_read_byte_8be( regs.program, offset )
+#define WR(offset,data)	memory_write_byte_8be( regs.program, offset, data )
 #define GET_MINX_PC		( ( regs.PC & 0x8000 ) ? ( regs.V << 15 ) | (regs.PC & 0x7FFF ) : regs.PC )
 
 
@@ -107,10 +108,12 @@ INLINE void wr16( UINT32 offset, UINT16 data )
 }
 
 
-static void minx_init(int index, int clock, const void *config, int (*irqcallback)(int))
+static CPU_INIT( minx )
 {
 	regs.irq_callback = irqcallback;
-	if ( config != NULL )
+	regs.device = device;
+	regs.program = memory_find_address_space(device, ADDRESS_SPACE_PROGRAM);
+	if ( device->static_config != NULL )
 	{
 	}
 	else
@@ -119,18 +122,17 @@ static void minx_init(int index, int clock, const void *config, int (*irqcallbac
 }
 
 
-static void minx_reset( void )
+static CPU_RESET( minx )
 {
 	regs.SP = regs.BA = regs.HL = regs.X = regs.Y = 0;
 	regs.U = regs.V = regs.F = regs.E = regs.I = regs.XI = regs.YI = 0;
 	regs.halted = regs.interrupt_pending = 0;
 
 	regs.PC = rd16( 0 );
-	change_pc( regs.PC );
 }
 
 
-static void minx_exit( void )
+static CPU_EXIT( minx )
 {
 }
 
@@ -157,7 +159,7 @@ INLINE UINT16 rdop16( void )
 #include "minxops.h"
 
 
-static int minx_execute( int cycles )
+static CPU_EXECUTE( minx )
 {
 	UINT32	oldpc;
 	UINT8	op;
@@ -166,7 +168,7 @@ static int minx_execute( int cycles )
 
 	do
 	{
-		debugger_instruction_hook(Machine, GET_MINX_PC);
+		debugger_instruction_hook(device, GET_MINX_PC);
 		oldpc = GET_MINX_PC;
 
 		if ( regs.interrupt_pending )
@@ -182,7 +184,7 @@ static int minx_execute( int cycles )
 				/* Set Interrupt Branch flag */
 				regs.F |= 0x80;
 				regs.V = 0;
-				regs.PC = rd16( regs.irq_callback( 0 ) << 1 );
+				regs.PC = rd16( regs.irq_callback( regs.device, 0 ) << 1 );
 				minx_icount -= 28;		/* This cycle count is a guess */
 			}
 		}
@@ -202,19 +204,9 @@ static int minx_execute( int cycles )
 }
 
 
-static void minx_burn( int cycles )
+static CPU_BURN( minx )
 {
 	minx_icount = 0;
-}
-
-
-static void minx_set_context( void *src )
-{
-}
-
-
-static void minx_get_context( void *dst )
-{
 }
 
 
@@ -222,9 +214,9 @@ static unsigned minx_get_reg( int regnum )
 {
 	switch( regnum )
 	{
-	case REG_PC:	return GET_MINX_PC;
+	case REG_GENPC:	return GET_MINX_PC;
 	case MINX_PC:	return regs.PC;
-	case REG_SP:
+	case REG_GENSP:
 	case MINX_SP:	return regs.SP;
 	case MINX_BA:	return regs.BA;
 	case MINX_HL:	return regs.HL;
@@ -247,9 +239,9 @@ static void minx_set_reg( int regnum, unsigned val )
 {
 	switch( regnum )
 	{
-	case REG_PC:	break;
+	case REG_GENPC:	break;
 	case MINX_PC:	regs.PC = val; break;
-	case REG_SP:
+	case REG_GENSP:
 	case MINX_SP:	regs.SP = val; break;
 	case MINX_BA:	regs.BA = val; break;
 	case MINX_HL:	regs.HL = val; break;
@@ -280,7 +272,7 @@ static void minx_set_irq_line( int irqline, int state )
 }
 
 
-static void minx_set_info( UINT32 state, cpuinfo *info )
+static CPU_SET_INFO( minx )
 {
 	switch( state )
 	{
@@ -306,32 +298,32 @@ static void minx_set_info( UINT32 state, cpuinfo *info )
 }
 
 
-void minx_get_info( UINT32 state, cpuinfo *info )
+CPU_GET_INFO( minx )
 {
 	switch( state )
 	{
 	case CPUINFO_INT_CONTEXT_SIZE:								info->i = sizeof(minx_regs); break;
 	case CPUINFO_INT_INPUT_LINES:								info->i = 1; break;
 	case CPUINFO_INT_DEFAULT_IRQ_VECTOR:						info->i = 0x00; break;
-	case CPUINFO_INT_ENDIANNESS:								info->i = CPU_IS_BE; break;
+	case CPUINFO_INT_ENDIANNESS:								info->i = ENDIANNESS_BIG; break;
 	case CPUINFO_INT_CLOCK_MULTIPLIER:							info->i = 1; break;
 	case CPUINFO_INT_CLOCK_DIVIDER:								info->i = 1; break;
 	case CPUINFO_INT_MIN_INSTRUCTION_BYTES:						info->i = 1; break;
 	case CPUINFO_INT_MAX_INSTRUCTION_BYTES:						info->i = 5; break;
 	case CPUINFO_INT_MIN_CYCLES:								info->i = 1; break;
 	case CPUINFO_INT_MAX_CYCLES:								info->i = 4; break;
-	case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:		info->i = 8; break;
-	case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_PROGRAM:		info->i = 24; break;
-	case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_PROGRAM:		info->i = 0; break;
-	case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_DATA:		info->i = 0; break;
-	case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_DATA:		info->i = 0; break;
-	case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_DATA:		info->i = 0; break;
-	case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:			info->i = 0; break;
-	case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO:			info->i = 0; break;
-	case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_IO:			info->i = 0; break;
+	case CPUINFO_INT_DATABUS_WIDTH_PROGRAM:		info->i = 8; break;
+	case CPUINFO_INT_ADDRBUS_WIDTH_PROGRAM:		info->i = 24; break;
+	case CPUINFO_INT_ADDRBUS_SHIFT_PROGRAM:		info->i = 0; break;
+	case CPUINFO_INT_DATABUS_WIDTH_DATA:		info->i = 0; break;
+	case CPUINFO_INT_ADDRBUS_WIDTH_DATA:		info->i = 0; break;
+	case CPUINFO_INT_ADDRBUS_SHIFT_DATA:		info->i = 0; break;
+	case CPUINFO_INT_DATABUS_WIDTH_IO:			info->i = 0; break;
+	case CPUINFO_INT_ADDRBUS_WIDTH_IO:			info->i = 0; break;
+	case CPUINFO_INT_ADDRBUS_SHIFT_IO:			info->i = 0; break;
 	case CPUINFO_INT_INPUT_STATE + 0:							info->i = 0; break;
-	case CPUINFO_INT_REGISTER + REG_PC:							info->i = GET_MINX_PC; break;
-	case CPUINFO_INT_REGISTER + REG_SP:
+	case CPUINFO_INT_REGISTER + REG_GENPC:							info->i = GET_MINX_PC; break;
+	case CPUINFO_INT_REGISTER + REG_GENSP:
 	case CPUINFO_INT_REGISTER + MINX_PC:
 	case CPUINFO_INT_REGISTER + MINX_SP:
 	case CPUINFO_INT_REGISTER + MINX_BA:
@@ -347,23 +339,21 @@ void minx_get_info( UINT32 state, cpuinfo *info )
 	case CPUINFO_INT_REGISTER + MINX_XI:
 	case CPUINFO_INT_REGISTER + MINX_YI:						info->i = minx_get_reg( state - CPUINFO_INT_REGISTER ); break;
 	case CPUINFO_INT_PREVIOUSPC:								info->i = 0x0000; break;
-	case CPUINFO_PTR_SET_INFO:									info->setinfo = minx_set_info; break;
-	case CPUINFO_PTR_GET_CONTEXT:								info->getcontext = minx_get_context; break;
-	case CPUINFO_PTR_SET_CONTEXT:								info->setcontext = minx_set_context; break;
-	case CPUINFO_PTR_INIT:										info->init = minx_init; break;
-	case CPUINFO_PTR_RESET:										info->reset = minx_reset; break;
-	case CPUINFO_PTR_EXIT:										info->exit = minx_exit; break;
-	case CPUINFO_PTR_EXECUTE:									info->execute = minx_execute; break;
-	case CPUINFO_PTR_BURN:										info->burn = minx_burn; break;
-	case CPUINFO_PTR_DISASSEMBLE:								info->disassemble = minx_dasm; break;
+	case CPUINFO_FCT_SET_INFO:									info->setinfo = CPU_SET_INFO_NAME(minx); break;
+	case CPUINFO_FCT_INIT:										info->init = CPU_INIT_NAME(minx); break;
+	case CPUINFO_FCT_RESET:										info->reset = CPU_RESET_NAME(minx); break;
+	case CPUINFO_FCT_EXIT:										info->exit = CPU_EXIT_NAME(minx); break;
+	case CPUINFO_FCT_EXECUTE:									info->execute = CPU_EXECUTE_NAME(minx); break;
+	case CPUINFO_FCT_BURN:										info->burn = CPU_BURN_NAME(minx); break;
+	case CPUINFO_FCT_DISASSEMBLE:								info->disassemble = CPU_DISASSEMBLE_NAME(minx); break;
 	case CPUINFO_PTR_INSTRUCTION_COUNTER:						info->icount = &minx_icount; break;
-	case CPUINFO_STR_NAME:										strcpy( info->s = cpuintrf_temp_str(), "Minx" ); break;
-	case CPUINFO_STR_CORE_FAMILY:								strcpy( info->s = cpuintrf_temp_str(), "Nintendo Minx" ); break;
-	case CPUINFO_STR_CORE_VERSION:								strcpy( info->s = cpuintrf_temp_str(), "0.1" ); break;
-	case CPUINFO_STR_CORE_FILE:									strcpy( info->s = cpuintrf_temp_str(), __FILE__ ); break;
-	case CPUINFO_STR_CORE_CREDITS:								strcpy( info->s = cpuintrf_temp_str(), "Copyright The MESS Team." ); break;
+	case CPUINFO_STR_NAME:										strcpy( info->s, "Minx" ); break;
+	case CPUINFO_STR_CORE_FAMILY:								strcpy( info->s, "Nintendo Minx" ); break;
+	case CPUINFO_STR_CORE_VERSION:								strcpy( info->s, "0.1" ); break;
+	case CPUINFO_STR_CORE_FILE:									strcpy( info->s, __FILE__ ); break;
+	case CPUINFO_STR_CORE_CREDITS:								strcpy( info->s, "Copyright The MESS Team." ); break;
 	case CPUINFO_STR_FLAGS:
-		sprintf( info->s = cpuintrf_temp_str(), "%c%c%c%c%c%c%c%c-%c%c%c%c%c",
+		sprintf( info->s, "%c%c%c%c%c%c%c%c-%c%c%c%c%c",
 			regs.F & FLAG_I ? 'I' : '.',
 			regs.F & FLAG_D ? 'D' : '.',
 			regs.F & FLAG_L ? 'L' : '.',
@@ -378,20 +368,20 @@ void minx_get_info( UINT32 state, cpuinfo *info )
 			regs.E & EXEC_DZ ? 'z' : '.',
 			regs.E & EXEC_EN ? 'E' : '.' );
 		break;
-	case CPUINFO_STR_REGISTER + MINX_PC:						sprintf( info->s = cpuintrf_temp_str(), "PC:%04X", regs.PC ); break;
-	case CPUINFO_STR_REGISTER + MINX_SP:						sprintf( info->s = cpuintrf_temp_str(), "SP:%04X", regs.SP ); break;
-	case CPUINFO_STR_REGISTER + MINX_BA:						sprintf( info->s = cpuintrf_temp_str(), "BA:%04X", regs.BA ); break;
-	case CPUINFO_STR_REGISTER + MINX_HL:						sprintf( info->s = cpuintrf_temp_str(), "HL:%04X", regs.HL ); break;
-	case CPUINFO_STR_REGISTER + MINX_X:							sprintf( info->s = cpuintrf_temp_str(), "X:%04X", regs.X ); break;
-	case CPUINFO_STR_REGISTER + MINX_Y:							sprintf( info->s = cpuintrf_temp_str(), "Y:%04X", regs.Y ); break;
-	case CPUINFO_STR_REGISTER + MINX_U:							sprintf( info->s = cpuintrf_temp_str(), "U:%02X", regs.U ); break;
-	case CPUINFO_STR_REGISTER + MINX_V:							sprintf( info->s = cpuintrf_temp_str(), "V:%02X", regs.V ); break;
-	case CPUINFO_STR_REGISTER + MINX_F:							sprintf( info->s = cpuintrf_temp_str(), "F:%02X", regs.F ); break;
-	case CPUINFO_STR_REGISTER + MINX_E:							sprintf( info->s = cpuintrf_temp_str(), "E:%02X", regs.E ); break;
-	case CPUINFO_STR_REGISTER + MINX_N:							sprintf( info->s = cpuintrf_temp_str(), "N:%02X", regs.N ); break;
-	case CPUINFO_STR_REGISTER + MINX_I:							sprintf( info->s = cpuintrf_temp_str(), "I:%02X", regs.I ); break;
-	case CPUINFO_STR_REGISTER + MINX_XI:						sprintf( info->s = cpuintrf_temp_str(), "XI:%02X", regs.XI ); break;
-	case CPUINFO_STR_REGISTER + MINX_YI:						sprintf( info->s = cpuintrf_temp_str(), "YI:%02X", regs.YI ); break;
+	case CPUINFO_STR_REGISTER + MINX_PC:						sprintf( info->s, "PC:%04X", regs.PC ); break;
+	case CPUINFO_STR_REGISTER + MINX_SP:						sprintf( info->s, "SP:%04X", regs.SP ); break;
+	case CPUINFO_STR_REGISTER + MINX_BA:						sprintf( info->s, "BA:%04X", regs.BA ); break;
+	case CPUINFO_STR_REGISTER + MINX_HL:						sprintf( info->s, "HL:%04X", regs.HL ); break;
+	case CPUINFO_STR_REGISTER + MINX_X:							sprintf( info->s, "X:%04X", regs.X ); break;
+	case CPUINFO_STR_REGISTER + MINX_Y:							sprintf( info->s, "Y:%04X", regs.Y ); break;
+	case CPUINFO_STR_REGISTER + MINX_U:							sprintf( info->s, "U:%02X", regs.U ); break;
+	case CPUINFO_STR_REGISTER + MINX_V:							sprintf( info->s, "V:%02X", regs.V ); break;
+	case CPUINFO_STR_REGISTER + MINX_F:							sprintf( info->s, "F:%02X", regs.F ); break;
+	case CPUINFO_STR_REGISTER + MINX_E:							sprintf( info->s, "E:%02X", regs.E ); break;
+	case CPUINFO_STR_REGISTER + MINX_N:							sprintf( info->s, "N:%02X", regs.N ); break;
+	case CPUINFO_STR_REGISTER + MINX_I:							sprintf( info->s, "I:%02X", regs.I ); break;
+	case CPUINFO_STR_REGISTER + MINX_XI:						sprintf( info->s, "XI:%02X", regs.XI ); break;
+	case CPUINFO_STR_REGISTER + MINX_YI:						sprintf( info->s, "YI:%02X", regs.YI ); break;
 	}
 }
 

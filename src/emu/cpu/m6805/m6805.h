@@ -11,7 +11,8 @@ enum { M6805_PC=1, M6805_S, M6805_CC, M6805_A, M6805_X, M6805_IRQ_STATE };
 
 #define M6805_IRQ_LINE		0
 
-extern void m6805_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m6805 );
+#define CPU_M6805 CPU_GET_INFO_NAME( m6805 )
 
 /****************************************************************************
  * 68705 section
@@ -28,7 +29,8 @@ extern void m6805_get_info(UINT32 state, cpuinfo *info);
 #define M68705_IRQ_LINE				M6805_IRQ_LINE
 #define M68705_INT_TIMER			0x01
 
-extern void m68705_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m68705 );
+#define CPU_M68705 CPU_GET_INFO_NAME( m68705 )
 #endif
 
 /****************************************************************************
@@ -57,33 +59,10 @@ extern void m68705_get_info(UINT32 state, cpuinfo *info);
 #define	HD63705_INT_ADCONV			0x07
 #define HD63705_INT_NMI				0x08
 
-extern void hd63705_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( hd63705 );
+#define CPU_HD63705 CPU_GET_INFO_NAME( hd63705 )
 #endif
 
-/****************************************************************************/
-/* Read a byte from given memory location                                   */
-/****************************************************************************/
-#define M6805_RDMEM(Addr) ((unsigned)program_read_byte_8be(Addr))
-
-/****************************************************************************/
-/* Write a byte to given memory location                                    */
-/****************************************************************************/
-#define M6805_WRMEM(Addr,Value) (program_write_byte_8be(Addr,Value))
-
-/****************************************************************************/
-/* M6805_RDOP() is identical to M6805_RDMEM() except it is used for reading */
-/* opcodes. In case of system with memory mapped I/O, this function can be  */
-/* used to greatly speed up emulation                                       */
-/****************************************************************************/
-#define M6805_RDOP(Addr) ((unsigned)cpu_readop(Addr))
-
-/****************************************************************************/
-/* M6805_RDOP_ARG() is identical to M6805_RDOP() but it's used for reading  */
-/* opcode arguments. This difference can be used to support systems that    */
-/* use different encoding mechanisms for opcodes and opcode arguments       */
-/****************************************************************************/
-#define M6805_RDOP_ARG(Addr) ((unsigned)cpu_readop_arg(Addr))
-
-offs_t m6805_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+CPU_DISASSEMBLE( m6805 );
 
 #endif /* __M6805_H__ */

@@ -36,25 +36,25 @@ PALETTE_INIT( exterm )
  *
  *************************************/
 
-void exterm_to_shiftreg_master(UINT32 address, UINT16 *shiftreg)
+void exterm_to_shiftreg_master(const address_space *space, UINT32 address, UINT16 *shiftreg)
 {
 	memcpy(shiftreg, &exterm_master_videoram[TOWORD(address)], 256 * sizeof(UINT16));
 }
 
 
-void exterm_from_shiftreg_master(UINT32 address, UINT16 *shiftreg)
+void exterm_from_shiftreg_master(const address_space *space, UINT32 address, UINT16 *shiftreg)
 {
 	memcpy(&exterm_master_videoram[TOWORD(address)], shiftreg, 256 * sizeof(UINT16));
 }
 
 
-void exterm_to_shiftreg_slave(UINT32 address, UINT16 *shiftreg)
+void exterm_to_shiftreg_slave(const address_space *space, UINT32 address, UINT16 *shiftreg)
 {
 	memcpy(shiftreg, &exterm_slave_videoram[TOWORD(address)], 256 * 2 * sizeof(UINT8));
 }
 
 
-void exterm_from_shiftreg_slave(UINT32 address, UINT16 *shiftreg)
+void exterm_from_shiftreg_slave(const address_space *space, UINT32 address, UINT16 *shiftreg)
 {
 	memcpy(&exterm_slave_videoram[TOWORD(address)], shiftreg, 256 * 2 * sizeof(UINT8));
 }
@@ -78,7 +78,7 @@ void exterm_scanline_update(const device_config *screen, bitmap_t *bitmap, int s
 	int x;
 
 	/* get parameters for the slave CPU */
-	tms34010_get_display_params(1, &fgparams);
+	tms34010_get_display_params(screen->machine->cpu[1], &fgparams);
 
 	/* compute info about the slave vram */
 	if (fgparams.enabled && scanline >= fgparams.veblnk && scanline < fgparams.vsblnk && fgparams.heblnk < fgparams.hsblnk)

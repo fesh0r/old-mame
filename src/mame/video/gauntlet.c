@@ -106,13 +106,13 @@ VIDEO_START( gauntlet )
 	int i, size;
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols,  8,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(machine, get_playfield_tile_info, tilemap_scan_cols,  8,8, 64,64);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(machine, get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 
 	/* modify the motion object code lookup table to account for the code XOR */
@@ -140,7 +140,7 @@ WRITE16_HANDLER( gauntlet_xscroll_w )
 	/* if something changed, force a partial update */
 	if (*atarigen_xscroll != oldxscroll)
 	{
-		video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+		video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 
 		/* adjust the scrolls */
 		tilemap_set_scrollx(atarigen_playfield_tilemap, 0, *atarigen_xscroll);
@@ -164,7 +164,7 @@ WRITE16_HANDLER( gauntlet_yscroll_w )
 	/* if something changed, force a partial update */
 	if (*atarigen_yscroll != oldyscroll)
 	{
-		video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+		video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
 
 		/* if the bank changed, mark all tiles dirty */
 		if (playfield_tile_bank != (*atarigen_yscroll & 3))

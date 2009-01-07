@@ -32,7 +32,15 @@
 
     Fix bugs - comprehensive testing!
 
-    Add SegaCD / 32X support (not used by any arcade systems?)
+    Add SegaCD
+
+    Fix 32X support (not used by any arcade systems?)
+     - this seems to require far greater sync and timing accuracy on rom / ram access than MAME can provide
+     - World Series Baseball 95 (and others) are odd, they write data to the normal DRAM framebuffer
+       expecting it to act like the 'overwrite area' (where 00 bytes ignored)  this can't be right..
+
+
+
     Add PicoDrive support (not arcade)
 
     Change SegaC2 to use the VDP emulation here
@@ -58,6 +66,7 @@ On SegaC2 the VDP never turns on the IRQ6 enable register
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/sn76496.h"
 #include "sound/2612intf.h"
@@ -65,12 +74,16 @@ On SegaC2 the VDP never turns on the IRQ6 enable register
 #include "sound/fm.h"
 #include "cpu/m68000/m68000.h"
 #include "megadriv.h"
-
+#include "cpu/sh2/sh2.h"
 
 #define MEGADRIV_VDP_VRAM(address) megadrive_vdp_vram[(address)&0x7fff]
 
 /* the same on all systems? */
-#define MASTER_CLOCK_NTSC		53693100
+#define MASTER_CLOCK_NTSC 53693175
+#define MASTER_CLOCK_PAL  53203424
+
+#define SEGACD_CLOCK      12500000
+
 /* timing details */
 static int megadriv_framerate;
 static int megadrive_total_scanlines;
@@ -85,14 +98,56 @@ static int megadrive_vblank_flag = 0;
 static int megadrive_irq6_pending = 0;
 static int megadrive_irq4_pending = 0;
 
-int segac2_bg_pal_lookup[4] = { 0x00, 0x10, 0x20, 0x30 };
-int segac2_sp_pal_lookup[4] = { 0x00, 0x10, 0x20, 0x30 };
+/* 32x! */
+static const device_config *_32x_master_cpu;
+static const device_config *_32x_slave_cpu;
+static int _32x_is_connected;
+
+static int sh2_are_running;
+static int _32x_adapter_enabled;
+static int _32x_access_auth;
+static int _32x_screenshift;
+static int _32x_videopriority;
+static int _32x_displaymode;
+static int _32x_240mode;
+
+static UINT16 _32x_68k_a15104_reg;
+
+
+static int sh2_master_vint_enable, sh2_slave_vint_enable;
+static int sh2_master_hint_enable, sh2_slave_hint_enable;
+static int sh2_master_cmdint_enable, sh2_slave_cmdint_enable;
+static int sh2_master_pwmint_enable, sh2_slave_pwmint_enable;
+static int sh2_hint_in_vbl;
+
+#define SH2_VRES_IRQ_LEVEL 14
+#define SH2_VINT_IRQ_LEVEL 12
+#define SH2_HINT_IRQ_LEVEL 10
+#define SH2_CINT_IRQ_LEVEL 8
+#define SH2_PINT_IRQ_LEVEL 6
+
+
+static UINT16* _32x_dram0;
+static UINT16* _32x_dram1;
+static UINT16 *_32x_display_dram, *_32x_access_dram;
+static UINT16* _32x_palette;
+static UINT16* _32x_palette_lookup;
+/* SegaCD! */
+static const device_config *_segacd_68k_cpu;
+/* SVP (virtua racing) */
+static const device_config *_svp_cpu;
+
+
+static const device_config *_genesis_snd_z80_cpu;
+
+int segac2_bg_pal_lookup[4];
+int segac2_sp_pal_lookup[4];
 
 // hacks for C2
-int genvdp_use_cram = 1; // c2 uses it's own palette ram
-int genesis_has_z80 = 1; // c2 doesn't have a z80..
+int genvdp_use_cram = 0; // c2 uses it's own palette ram
+int genesis_has_z80;
 int genesis_always_irq6 = 0; // c2 never enables the irq6, different source??
-int genesis_other_hacks = 1; // misc hacks
+int genesis_other_hacks = 0; // misc hacks
 
 INLINE UINT16 get_hposition(void);
 
@@ -124,7 +179,7 @@ static bitmap_t* render_bitmap;
 #ifdef UNUSED_FUNCTION
 /* taken from segaic16.c */
 /* doesn't seem to meet my needs, not used */
-static UINT16 read_next_instruction(void)
+static UINT16 read_next_instruction(const address_space *space)
 {
 	static UINT8 recurse = 0;
 	UINT16 result;
@@ -143,7 +198,7 @@ static UINT16 read_next_instruction(void)
 
 	/* read original encrypted memory at that address */
 	recurse = 1;
-	result = program_read_word_16be(activecpu_get_pc());
+	result = memory_read_word(space, cpu_get_pc(space->cpu));
 	recurse = 0;
 	return result;
 }
@@ -183,13 +238,13 @@ static void megadriv_z80_bank_w(UINT16 data)
 
 static WRITE16_HANDLER( megadriv_68k_z80_bank_write )
 {
-	//logerror("%06x: 68k writing bit to bank register %01x\n", activecpu_get_pc(),data&0x01);
+	//logerror("%06x: 68k writing bit to bank register %01x\n", cpu_get_pc(space->cpu),data&0x01);
 	megadriv_z80_bank_w(data&0x01);
 }
 
 static WRITE8_HANDLER(megadriv_z80_z80_bank_w)
 {
-	//logerror("%04x: z80 writing bit to bank register %01x\n", activecpu_get_pc(),data&0x01);
+	//logerror("%04x: z80 writing bit to bank register %01x\n", cpu_get_pc(space->cpu),data&0x01);
 	megadriv_z80_bank_w(data&0x01);
 }
 
@@ -538,9 +593,9 @@ static void megadrive_vdp_set_register(running_machine *machine, int regnum, UIN
 		if (megadrive_irq4_pending)
 		{
 			if (MEGADRIVE_REG0_IRQ4_ENABLE)
-				cpunum_set_input_line(machine, 0,4,HOLD_LINE);
+				cpu_set_input_line(machine->cpu[0],4,HOLD_LINE);
 			else
-				cpunum_set_input_line(machine, 0,4,CLEAR_LINE);
+				cpu_set_input_line(machine->cpu[0],4,CLEAR_LINE);
 		}
 
 		/* ??? Fatal Rewind needs this but I'm not sure it's accurate behavior
@@ -555,9 +610,9 @@ static void megadrive_vdp_set_register(running_machine *machine, int regnum, UIN
 		if (megadrive_irq6_pending)
 		{
 			if (MEGADRIVE_REG01_IRQ6_ENABLE )
-				cpunum_set_input_line(machine, 0,6,HOLD_LINE);
+				cpu_set_input_line(machine->cpu[0],6,HOLD_LINE);
 			else
-				cpunum_set_input_line(machine, 0,6,CLEAR_LINE);
+				cpu_set_input_line(machine->cpu[0],6,CLEAR_LINE);
 		}
 
 		/* ??? */
@@ -570,7 +625,7 @@ static void megadrive_vdp_set_register(running_machine *machine, int regnum, UIN
 //  if (regnum == 0x0a)
 //      mame_printf_debug("Set HINT Reload Register to %d on scanline %d\n",value, genesis_scanline_counter);
 
-//  mame_printf_debug("%06x Setting VDP Register #%02x to %02x\n",activecpu_get_pc(), regnum,value);
+//  mame_printf_debug("%s: Setting VDP Register #%02x to %02x\n",cpuexec_describe_context(machine), regnum,value);
 }
 
 static void update_megadrive_vdp_code_and_address(void)
@@ -582,13 +637,13 @@ static void update_megadrive_vdp_code_and_address(void)
                             ((megadrive_vdp_command_part2 & 0x0003) << 14);
 }
 
-static UINT16 (*vdp_get_word_from_68k_mem)(UINT32 source);
+static UINT16 (*vdp_get_word_from_68k_mem)(running_machine *machine, UINT32 source);
 
-static UINT16 vdp_get_word_from_68k_mem_default(UINT32 source)
+static UINT16 vdp_get_word_from_68k_mem_default(running_machine *machine, UINT32 source)
 {
 	if (( source >= 0x000000 ) && ( source <= 0x3fffff ))
 	{
-		UINT16 *rom = (UINT16*)memory_region(Machine, "main");
+		UINT16 *rom = (UINT16*)memory_region(machine, "main");
 		return rom[(source&0x3fffff)>>1];
 	}
 	else if (( source >= 0xe00000 ) && ( source <= 0xffffff ))
@@ -599,8 +654,8 @@ static UINT16 vdp_get_word_from_68k_mem_default(UINT32 source)
 	}
 	else
 	{
-		mame_printf_debug("DMA Read unmapped %06x\n",source);
-		return mame_rand(Machine);
+		printf("DMA Read unmapped %06x\n",source);
+		return mame_rand(machine);
 	}
 
 }
@@ -658,18 +713,18 @@ static void megadrive_do_insta_vram_copy(UINT32 source, UINT16 length)
 }
 
 /* Instant, but we pause the 68k a bit */
-static void megadrive_do_insta_68k_to_vram_dma(UINT32 source,int length)
+static void megadrive_do_insta_68k_to_vram_dma(running_machine *machine, UINT32 source,int length)
 {
 	int count;
 
 	if (length==0x00) length = 0xffff;
 
 	/* This is a hack until real DMA timings are implemented */
-	cpu_spinuntil_time(ATTOTIME_IN_NSEC(length*1000/3500));
+	cpu_spinuntil_time(machine->cpu[0], ATTOTIME_IN_NSEC(length*1000/3500));
 
 	for (count = 0;count<(length>>1);count++)
 	{
-		vdp_vram_write(vdp_get_word_from_68k_mem(source));
+		vdp_vram_write(vdp_get_word_from_68k_mem(machine, source));
 		source+=2;
 		if (source>0xffffff) source = 0xe00000;
 	}
@@ -695,7 +750,7 @@ static void megadrive_do_insta_68k_to_cram_dma(running_machine *machine,UINT32 s
 	{
 		//if (megadrive_vdp_address>=0x80) return; // abandon
 
-		write_cram_value(machine, (megadrive_vdp_address&0x7e)>>1, vdp_get_word_from_68k_mem(source));
+		write_cram_value(machine, (megadrive_vdp_address&0x7e)>>1, vdp_get_word_from_68k_mem(machine, source));
 		source+=2;
 
 		if (source>0xffffff) source = 0xfe0000;
@@ -713,7 +768,7 @@ static void megadrive_do_insta_68k_to_cram_dma(running_machine *machine,UINT32 s
 
 }
 
-static void megadrive_do_insta_68k_to_vsram_dma(UINT32 source,UINT16 length)
+static void megadrive_do_insta_68k_to_vsram_dma(running_machine *machine,UINT32 source,UINT16 length)
 {
 	int count;
 
@@ -723,7 +778,7 @@ static void megadrive_do_insta_68k_to_vsram_dma(UINT32 source,UINT16 length)
 	{
 		if (megadrive_vdp_address>=0x80) return; // abandon
 
-		megadrive_vdp_vsram[(megadrive_vdp_address&0x7e)>>1] = vdp_get_word_from_68k_mem(source);
+		megadrive_vdp_vsram[(megadrive_vdp_address&0x7e)>>1] = vdp_get_word_from_68k_mem(machine, source);
 		source+=2;
 
 		if (source>0xffffff) source = 0xfe0000;
@@ -750,7 +805,7 @@ static void handle_dma_bits(running_machine *machine)
 		UINT16 length;
 		source = (MEGADRIVE_REG15_DMASOURCE1 | (MEGADRIVE_REG16_DMASOURCE2<<8) | ((MEGADRIVE_REG17_DMASOURCE3&0xff)<<16))<<1;
 		length = (MEGADRIVE_REG13_DMALENGTH1 | (MEGADRIVE_REG14_DMALENGTH2<<8))<<1;
-	//  mame_printf_debug("%06x 68k DMAtran set source %06x length %04x dest %04x enabled %01x code %02x %02x\n", activecpu_get_pc(), source, length, megadrive_vdp_address,MEGADRIVE_REG01_DMA_ENABLE, megadrive_vdp_code,MEGADRIVE_REG0F_AUTO_INC);
+	//  mame_printf_debug("%s 68k DMAtran set source %06x length %04x dest %04x enabled %01x code %02x %02x\n", cpuexec_describe_context(machine), source, length, megadrive_vdp_address,MEGADRIVE_REG01_DMA_ENABLE, megadrive_vdp_code,MEGADRIVE_REG0F_AUTO_INC);
 
 	}
 
@@ -769,7 +824,7 @@ static void handle_dma_bits(running_machine *machine)
 
 			/* The 68k is frozen during this transfer, it should be safe to throw a few cycles away and do 'instant' DMA because the 68k can't detect it being in progress (can the z80?) */
 			//mame_printf_debug("68k->VRAM DMA transfer source %06x length %04x dest %04x enabled %01x\n", source, length, megadrive_vdp_address,MEGADRIVE_REG01_DMA_ENABLE);
-			if (MEGADRIVE_REG01_DMA_ENABLE) megadrive_do_insta_68k_to_vram_dma(source,length);
+			if (MEGADRIVE_REG01_DMA_ENABLE) megadrive_do_insta_68k_to_vram_dma(machine,source,length);
 
 		}
 		else if (MEGADRIVE_REG17_DMATYPE==0x2)
@@ -830,7 +885,7 @@ static void handle_dma_bits(running_machine *machine)
 
 			/* The 68k is frozen during this transfer, it should be safe to throw a few cycles away and do 'instant' DMA because the 68k can't detect it being in progress (can the z80?) */
 			//mame_printf_debug("68k->VSRAM DMA transfer source %06x length %04x dest %04x enabled %01x\n", source, length, megadrive_vdp_address,MEGADRIVE_REG01_DMA_ENABLE);
-			if (MEGADRIVE_REG01_DMA_ENABLE) megadrive_do_insta_68k_to_vsram_dma(source,length);
+			if (MEGADRIVE_REG01_DMA_ENABLE) megadrive_do_insta_68k_to_vsram_dma(machine,source,length);
 		}
 		else if (MEGADRIVE_REG17_DMATYPE==0x2)
 		{
@@ -930,13 +985,13 @@ WRITE16_HANDLER( megadriv_vdp_w )
 				data = (data&0xff00) | data>>8;
 			//  mame_printf_debug("8-bit write VDP data port access, offset %04x data %04x mem_mask %04x\n",offset,data,mem_mask);
 			}
-			megadriv_vdp_data_port_w(machine, data);
+			megadriv_vdp_data_port_w(space->machine, data);
 			break;
 
 		case 0x04:
 		case 0x06:
 			if ((!ACCESSING_BITS_8_15) || (!ACCESSING_BITS_0_7)) mame_printf_debug("8-bit write VDP control port access, offset %04x data %04x mem_mask %04x\n",offset,data,mem_mask);
-			megadriv_vdp_ctrl_port_w(machine, data);
+			megadriv_vdp_ctrl_port_w(space->machine, data);
 			break;
 
 		case 0x08:
@@ -950,8 +1005,8 @@ WRITE16_HANDLER( megadriv_vdp_w )
 		case 0x12:
 		case 0x14:
 		case 0x16:
-			if (ACCESSING_BITS_0_7) sn76496_0_w(machine, 0, data & 0xff);
-			//if (ACCESSING_BITS_8_15) sn76496_0_w(machine, 0, (data >>8) & 0xff);
+			if (ACCESSING_BITS_0_7) sn76496_0_w(space, 0, data & 0xff);
+			//if (ACCESSING_BITS_8_15) sn76496_0_w(space, 0, (data >>8) & 0xff);
 			break;
 
 		default:
@@ -1319,15 +1374,15 @@ READ16_HANDLER( megadriv_vdp_r )
 		case 0x00:
 		case 0x02:
 			if ((!ACCESSING_BITS_8_15) || (!ACCESSING_BITS_0_7)) mame_printf_debug("8-bit VDP read data port access, offset %04x mem_mask %04x\n",offset,mem_mask);
-			retvalue = megadriv_vdp_data_port_r(machine);
+			retvalue = megadriv_vdp_data_port_r(space->machine);
 			break;
 
 		case 0x04:
 		case 0x06:
 		//  if ((!ACCESSING_BITS_8_15) || (!ACCESSING_BITS_0_7)) mame_printf_debug("8-bit VDP read control port access, offset %04x mem_mask %04x\n",offset,mem_mask);
 			retvalue = megadriv_vdp_ctrl_port_r();
-		//  retvalue = mame_rand(machine);
-		//  mame_printf_debug("%06x: Read Control Port at scanline %d hpos %d (return %04x)\n",activecpu_get_pc(),genesis_scanline_counter, get_hposition(),retvalue);
+		//  retvalue = mame_rand(space->machine);
+		//  mame_printf_debug("%06x: Read Control Port at scanline %d hpos %d (return %04x)\n",cpu_get_pc(space->cpu),genesis_scanline_counter, get_hposition(),retvalue);
 			break;
 
 		case 0x08:
@@ -1336,8 +1391,8 @@ READ16_HANDLER( megadriv_vdp_r )
 		case 0x0e:
 		//  if ((!ACCESSING_BITS_8_15) || (!ACCESSING_BITS_0_7)) mame_printf_debug("8-bit VDP read HV counter port access, offset %04x mem_mask %04x\n",offset,mem_mask);
 			retvalue = megadriv_read_hv_counters();
-		//  retvalue = mame_rand(machine);
-		//  mame_printf_debug("%06x: Read HV counters at scanline %d hpos %d (return %04x)\n",activecpu_get_pc(),genesis_scanline_counter, get_hposition(),retvalue);
+		//  retvalue = mame_rand(space->machine);
+		//  mame_printf_debug("%06x: Read HV counters at scanline %d hpos %d (return %04x)\n",cpu_get_pc(space->cpu),genesis_scanline_counter, get_hposition(),retvalue);
 			break;
 
 		case 0x10:
@@ -1359,18 +1414,18 @@ static READ16_HANDLER( megadriv_68k_YM2612_read)
 		switch (offset)
 		{
 			case 0:
-				if (ACCESSING_BITS_8_15)	 return ym2612_status_port_0_a_r(machine, 0) << 8;
-				else 				 return ym2612_status_port_0_a_r(machine, 0);
+				if (ACCESSING_BITS_8_15)	 return ym2612_status_port_0_a_r(space, 0) << 8;
+				else 				 return ym2612_status_port_0_a_r(space, 0);
 				break;
 			case 1:
-				if (ACCESSING_BITS_8_15)	return ym2612_status_port_0_a_r(machine, 0) << 8;
-				else 				return ym2612_status_port_0_a_r(machine, 0);
+				if (ACCESSING_BITS_8_15)	return ym2612_status_port_0_a_r(space, 0) << 8;
+				else 				return ym2612_status_port_0_a_r(space, 0);
 				break;
 		}
 	}
 	else
 	{
-		logerror("%06x: 68000 attempting to access YM2612 (read) without bus\n", activecpu_get_pc());
+		logerror("%06x: 68000 attempting to access YM2612 (read) without bus\n", cpu_get_pc(space->cpu));
 		return 0;
 	}
 
@@ -1387,18 +1442,18 @@ static WRITE16_HANDLER( megadriv_68k_YM2612_write)
 		switch (offset)
 		{
 			case 0:
-				if (ACCESSING_BITS_8_15)	ym2612_control_port_0_a_w	(machine, 0,	(data >> 8) & 0xff);
-				else 				ym2612_data_port_0_a_w		(machine, 0,	(data >> 0) & 0xff);
+				if (ACCESSING_BITS_8_15)	ym2612_control_port_0_a_w	(space, 0,	(data >> 8) & 0xff);
+				else 				ym2612_data_port_0_a_w		(space, 0,	(data >> 0) & 0xff);
 				break;
 			case 1:
-				if (ACCESSING_BITS_8_15)	ym2612_control_port_0_b_w	(machine, 0,	(data >> 8) & 0xff);
-				else 				ym2612_data_port_0_b_w		(machine, 0,	(data >> 0) & 0xff);
+				if (ACCESSING_BITS_8_15)	ym2612_control_port_0_b_w	(space, 0,	(data >> 8) & 0xff);
+				else 				ym2612_data_port_0_b_w		(space, 0,	(data >> 0) & 0xff);
 				break;
 		}
 	}
 	else
 	{
-		logerror("%06x: 68000 attempting to access YM2612 (write) without bus\n", activecpu_get_pc());
+		logerror("%06x: 68000 attempting to access YM2612 (write) without bus\n", cpu_get_pc(space->cpu));
 	}
 }
 
@@ -1406,10 +1461,10 @@ static READ8_HANDLER( megadriv_z80_YM2612_read )
 {
 	switch (offset)
 	{
-		case 0: return ym2612_status_port_0_a_r(machine,0);
-		case 1: return ym2612_status_port_0_a_r(machine,0);
-		case 2: return ym2612_status_port_0_a_r(machine,0);
-		case 3: return ym2612_status_port_0_a_r(machine,0);
+		case 0: return ym2612_status_port_0_a_r(space,0);
+		case 1: return ym2612_status_port_0_a_r(space,0);
+		case 2: return ym2612_status_port_0_a_r(space,0);
+		case 3: return ym2612_status_port_0_a_r(space,0);
 
 	}
 
@@ -1421,10 +1476,10 @@ static WRITE8_HANDLER( megadriv_z80_YM2612_write )
 	//mame_printf_debug("megadriv_z80_YM2612_write %02x %02x\n",offset,data);
 	switch (offset)
 	{
-		case 0: ym2612_control_port_0_a_w(machine, 0, data); break;
-		case 1: ym2612_data_port_0_a_w(machine, 0, data); break;
-		case 2: ym2612_control_port_0_b_w(machine, 0, data); break;
-		case 3: ym2612_data_port_0_b_w(machine, 0, data); break;
+		case 0: ym2612_control_port_0_a_w(space, 0, data); break;
+		case 1: ym2612_data_port_0_a_w(space, 0, data); break;
+		case 2: ym2612_control_port_0_b_w(space, 0, data); break;
+		case 3: ym2612_data_port_0_b_w(space, 0, data); break;
 	}
 }
 
@@ -1437,20 +1492,20 @@ static TIMER_CALLBACK( io_timeout_timer_callback )
 	io_stage[(int)(FPTR)ptr] = -1;
 }
 
-static void init_megadri6_io(void)
+static void init_megadri6_io(running_machine *machine)
 {
 	int i;
 
 	for (i=0; i<3; i++)
 	{
-		io_timeout[i] = timer_alloc(io_timeout_timer_callback, (void*)(FPTR)i);
+		io_timeout[i] = timer_alloc(machine, io_timeout_timer_callback, (void*)(FPTR)i);
 		io_stage[i] = -1;
 	}
 }
 
 /* pointers to our io data read/write functions */
-UINT8 (*megadrive_io_read_data_port_ptr)(int offset);
-void (*megadrive_io_write_data_port_ptr)(int offset, UINT16 data);
+UINT8 (*megadrive_io_read_data_port_ptr)(running_machine *machine, int offset);
+void (*megadrive_io_write_data_port_ptr)(running_machine *machine, int offset, UINT16 data);
 
 INPUT_PORTS_START( megadri6 )
 	PORT_START("PAD1")		/* Joypad 1 (6 button + start + mode) NOT READ DIRECTLY */
@@ -1724,20 +1779,20 @@ INPUT_PORTS_END
 /* xxx_BUTTONs are used with player = 0, 1, 2, 3 so we need to return 0 for the missing 4th I/O port  */
 static const char *const padnames[] = { "PAD1", "PAD2", "IN0", "UNK" };
 
-#define MODE_BUTTON(player)	 ((input_port_read_safe(Machine, padnames[player], 0) & 0x0800) >> 11)
-#define Z_BUTTON(player)	 ((input_port_read_safe(Machine, padnames[player], 0) & 0x0400) >> 10)
-#define Y_BUTTON(player)	 ((input_port_read_safe(Machine, padnames[player], 0) & 0x0200) >> 9 )
-#define X_BUTTON(player)	 ((input_port_read_safe(Machine, padnames[player], 0) & 0x0100) >> 8 )
+#define MODE_BUTTON(machine,player)	 ((input_port_read_safe(machine, padnames[player], 0) & 0x0800) >> 11)
+#define Z_BUTTON(machine,player)	 ((input_port_read_safe(machine, padnames[player], 0) & 0x0400) >> 10)
+#define Y_BUTTON(machine,player)	 ((input_port_read_safe(machine, padnames[player], 0) & 0x0200) >> 9 )
+#define X_BUTTON(machine,player)	 ((input_port_read_safe(machine, padnames[player], 0) & 0x0100) >> 8 )
 
-#define START_BUTTON(player) ((input_port_read_safe(Machine, padnames[player], 0) & 0x0080) >> 7 )
-#define C_BUTTON(player)	 ((input_port_read_safe(Machine, padnames[player], 0) & 0x0040) >> 6 )
-#define B_BUTTON(player)	 ((input_port_read_safe(Machine, padnames[player], 0) & 0x0020) >> 5 )
-#define A_BUTTON(player)	 ((input_port_read_safe(Machine, padnames[player], 0) & 0x0010) >> 4 )
-#define RIGHT_BUTTON(player) ((input_port_read_safe(Machine, padnames[player], 0) & 0x0008) >> 3 )
-#define LEFT_BUTTON(player)	 ((input_port_read_safe(Machine, padnames[player], 0) & 0x0004) >> 2 )
-#define DOWN_BUTTON(player)	 ((input_port_read_safe(Machine, padnames[player], 0) & 0x0002) >> 1 )
-#define UP_BUTTON(player)	 ((input_port_read_safe(Machine, padnames[player], 0) & 0x0001) >> 0 )
-#define MD_RESET_BUTTON		 ((input_port_read_safe(Machine, "RESET", 0x00) & 0x01) >> 0 )
+#define START_BUTTON(machine,player) ((input_port_read_safe(machine, padnames[player], 0) & 0x0080) >> 7 )
+#define C_BUTTON(machine,player)	 ((input_port_read_safe(machine, padnames[player], 0) & 0x0040) >> 6 )
+#define B_BUTTON(machine,player)	 ((input_port_read_safe(machine, padnames[player], 0) & 0x0020) >> 5 )
+#define A_BUTTON(machine,player)	 ((input_port_read_safe(machine, padnames[player], 0) & 0x0010) >> 4 )
+#define RIGHT_BUTTON(machine,player) ((input_port_read_safe(machine, padnames[player], 0) & 0x0008) >> 3 )
+#define LEFT_BUTTON(machine,player)	 ((input_port_read_safe(machine, padnames[player], 0) & 0x0004) >> 2 )
+#define DOWN_BUTTON(machine,player)	 ((input_port_read_safe(machine, padnames[player], 0) & 0x0002) >> 1 )
+#define UP_BUTTON(machine,player)	 ((input_port_read_safe(machine, padnames[player], 0) & 0x0001) >> 0 )
+#define MD_RESET_BUTTON(machine)		 ((input_port_read_safe(machine, "RESET", 0x00) & 0x01) >> 0 )
 
 UINT8 megadrive_io_data_regs[3];
 UINT8 megadrive_io_ctrl_regs[3];
@@ -1756,14 +1811,14 @@ static void megadrive_init_io(running_machine *machine)
 	megadrive_io_tx_regs[2] = 0xff;
 
 	if (machine->gamedrv->ipt==ipt_megadri6)
-		init_megadri6_io();
+		init_megadri6_io(machine);
 
 	if (machine->gamedrv->ipt==ipt_ssf2ghw)
-		init_megadri6_io();
+		init_megadri6_io(machine);
 }
 
 /************* 6 button version **************************/
-static UINT8 megadrive_io_read_data_port_6button(int portnum)
+static UINT8 megadrive_io_read_data_port_6button(running_machine *machine, int portnum)
 {
 	UINT8 retdata;
 
@@ -1773,23 +1828,23 @@ static UINT8 megadrive_io_read_data_port_6button(int portnum)
 		{
 			retdata = ( megadrive_io_data_regs[portnum] & 0x80) |
 			          (1 <<6) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(C_BUTTON(portnum)<<5)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(B_BUTTON(portnum)<<4)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x08)?(megadrive_io_data_regs[portnum]&0x08):(MODE_BUTTON(portnum)<<3)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x04)?(megadrive_io_data_regs[portnum]&0x04):(X_BUTTON(portnum)<<2)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(Y_BUTTON(portnum)<<1)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x01)?(megadrive_io_data_regs[portnum]&0x01):(Z_BUTTON(portnum)<<0));
+			          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(C_BUTTON(machine,portnum)<<5)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(B_BUTTON(machine,portnum)<<4)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x08)?(megadrive_io_data_regs[portnum]&0x08):(MODE_BUTTON(machine,portnum)<<3)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x04)?(megadrive_io_data_regs[portnum]&0x04):(X_BUTTON(machine,portnum)<<2)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(Y_BUTTON(machine,portnum)<<1)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x01)?(megadrive_io_data_regs[portnum]&0x01):(Z_BUTTON(machine,portnum)<<0));
 		}
 		else
 		{
 			retdata = ( megadrive_io_data_regs[portnum] & 0x80) |
 			          (1 << 6) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(C_BUTTON(portnum)<<5)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(B_BUTTON(portnum)<<4)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x08)?(megadrive_io_data_regs[portnum]&0x08):(RIGHT_BUTTON(portnum)<<3)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x04)?(megadrive_io_data_regs[portnum]&0x04):(LEFT_BUTTON(portnum)<<2)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(DOWN_BUTTON(portnum)<<1)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x01)?(megadrive_io_data_regs[portnum]&0x01):(UP_BUTTON(portnum)<<0));
+			          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(C_BUTTON(machine,portnum)<<5)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(B_BUTTON(machine,portnum)<<4)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x08)?(megadrive_io_data_regs[portnum]&0x08):(RIGHT_BUTTON(machine,portnum)<<3)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x04)?(megadrive_io_data_regs[portnum]&0x04):(LEFT_BUTTON(machine,portnum)<<2)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(DOWN_BUTTON(machine,portnum)<<1)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x01)?(megadrive_io_data_regs[portnum]&0x01):(UP_BUTTON(machine,portnum)<<0));
 		}
 	}
 	else
@@ -1798,8 +1853,8 @@ static UINT8 megadrive_io_read_data_port_6button(int portnum)
 		{
 			retdata = ( megadrive_io_data_regs[portnum] & 0x80) |
 			          ( 0<<6 ) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(START_BUTTON(portnum)<<5)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(A_BUTTON(portnum)<<4)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(START_BUTTON(machine,portnum)<<5)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(A_BUTTON(machine,portnum)<<4)) |
 			          ((megadrive_io_ctrl_regs[portnum]&0x08)?(megadrive_io_data_regs[portnum]&0x08):(0<<3)) |
 			          ((megadrive_io_ctrl_regs[portnum]&0x04)?(megadrive_io_data_regs[portnum]&0x04):(0<<2)) |
 			          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(0<<1)) |
@@ -1809,8 +1864,8 @@ static UINT8 megadrive_io_read_data_port_6button(int portnum)
 		{
 			retdata = ( megadrive_io_data_regs[portnum] & 0x80) |
 			          ( 0<<6 ) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(START_BUTTON(portnum)<<5)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(A_BUTTON(portnum)<<4)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(START_BUTTON(machine,portnum)<<5)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(A_BUTTON(machine,portnum)<<4)) |
 			          ((megadrive_io_ctrl_regs[portnum]&0x08)?(megadrive_io_data_regs[portnum]&0x08):(1<<3)) |
 			          ((megadrive_io_ctrl_regs[portnum]&0x04)?(megadrive_io_data_regs[portnum]&0x04):(1<<2)) |
 			          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(1<<1)) |
@@ -1820,12 +1875,12 @@ static UINT8 megadrive_io_read_data_port_6button(int portnum)
 		{
 			retdata = ( megadrive_io_data_regs[portnum] & 0x80) |
 			          ( 0<<6 ) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(START_BUTTON(portnum)<<5)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(A_BUTTON(portnum)<<4)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(START_BUTTON(machine,portnum)<<5)) |
+			          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(A_BUTTON(machine,portnum)<<4)) |
 			          ((megadrive_io_ctrl_regs[portnum]&0x08)?(megadrive_io_data_regs[portnum]&0x08):(0<<3)) |
 			          ((megadrive_io_ctrl_regs[portnum]&0x04)?(megadrive_io_data_regs[portnum]&0x04):(0<<2)) |
-			          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(DOWN_BUTTON(portnum)<<1)) |
-	                  ((megadrive_io_ctrl_regs[portnum]&0x01)?(megadrive_io_data_regs[portnum]&0x01):(UP_BUTTON(portnum)<<0));
+			          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(DOWN_BUTTON(machine,portnum)<<1)) |
+	                  ((megadrive_io_ctrl_regs[portnum]&0x01)?(megadrive_io_data_regs[portnum]&0x01):(UP_BUTTON(machine,portnum)<<0));
 		}
 	}
 
@@ -1836,7 +1891,7 @@ static UINT8 megadrive_io_read_data_port_6button(int portnum)
 }
 /************* end 6 button version ********************************************/
 
-static UINT8 megadrive_io_read_data_port_3button(int portnum)
+static UINT8 megadrive_io_read_data_port_3button(running_machine *machine, int portnum)
 {
 	UINT8 retdata;
 
@@ -1845,30 +1900,30 @@ static UINT8 megadrive_io_read_data_port_3button(int portnum)
 	{
 		retdata = ( megadrive_io_data_regs[portnum] & 0x80) |
 		          ((megadrive_io_ctrl_regs[portnum]&0x40)?(megadrive_io_data_regs[portnum]&0x40):(0x40)) |
-		          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(C_BUTTON(portnum)<<5)) |
-		          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(B_BUTTON(portnum)<<4)) |
-		          ((megadrive_io_ctrl_regs[portnum]&0x08)?(megadrive_io_data_regs[portnum]&0x08):(RIGHT_BUTTON(portnum)<<3)) |
-		          ((megadrive_io_ctrl_regs[portnum]&0x04)?(megadrive_io_data_regs[portnum]&0x04):(LEFT_BUTTON(portnum)<<2)) |
-		          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(DOWN_BUTTON(portnum)<<1)) |
-		          ((megadrive_io_ctrl_regs[portnum]&0x01)?(megadrive_io_data_regs[portnum]&0x01):(UP_BUTTON(portnum)<<0));
+		          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(C_BUTTON(machine,portnum)<<5)) |
+		          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(B_BUTTON(machine,portnum)<<4)) |
+		          ((megadrive_io_ctrl_regs[portnum]&0x08)?(megadrive_io_data_regs[portnum]&0x08):(RIGHT_BUTTON(machine,portnum)<<3)) |
+		          ((megadrive_io_ctrl_regs[portnum]&0x04)?(megadrive_io_data_regs[portnum]&0x04):(LEFT_BUTTON(machine,portnum)<<2)) |
+		          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(DOWN_BUTTON(machine,portnum)<<1)) |
+		          ((megadrive_io_ctrl_regs[portnum]&0x01)?(megadrive_io_data_regs[portnum]&0x01):(UP_BUTTON(machine,portnum)<<0));
 	}
 	else
 	{
 		retdata = ( megadrive_io_data_regs[portnum] & 0x80) |
 		          ((megadrive_io_ctrl_regs[portnum]&0x40)?(megadrive_io_data_regs[portnum]&0x40):(0x40)) |
-		          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(START_BUTTON(portnum)<<5)) |
-		          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(A_BUTTON(portnum)<<4)) |
+		          ((megadrive_io_ctrl_regs[portnum]&0x20)?(megadrive_io_data_regs[portnum]&0x20):(START_BUTTON(machine,portnum)<<5)) |
+		          ((megadrive_io_ctrl_regs[portnum]&0x10)?(megadrive_io_data_regs[portnum]&0x10):(A_BUTTON(machine,portnum)<<4)) |
 		          ((megadrive_io_ctrl_regs[portnum]&0x08)?(megadrive_io_data_regs[portnum]&0x08):(0<<3)) |
 		          ((megadrive_io_ctrl_regs[portnum]&0x04)?(megadrive_io_data_regs[portnum]&0x04):(0<<2)) |
-		          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(DOWN_BUTTON(portnum)<<1)) |
-		          ((megadrive_io_ctrl_regs[portnum]&0x01)?(megadrive_io_data_regs[portnum]&0x01):(UP_BUTTON(portnum)<<0));
+		          ((megadrive_io_ctrl_regs[portnum]&0x02)?(megadrive_io_data_regs[portnum]&0x02):(DOWN_BUTTON(machine,portnum)<<1)) |
+		          ((megadrive_io_ctrl_regs[portnum]&0x01)?(megadrive_io_data_regs[portnum]&0x01):(UP_BUTTON(machine,portnum)<<0));
 	}
 
 	return retdata;
 }
 
 /* used by megatech bios, the test mode accesses the joypad/stick inputs like this */
-UINT8 megatech_bios_port_cc_dc_r(int offset, int ctrl)
+UINT8 megatech_bios_port_cc_dc_r(running_machine *machine, int offset, int ctrl)
 {
 	UINT8 retdata;
 
@@ -1876,9 +1931,9 @@ UINT8 megatech_bios_port_cc_dc_r(int offset, int ctrl)
 	{
 			retdata = (1<<0) |
 					  (1<<1) |
-					  (A_BUTTON(1)<<2) |
+					  (A_BUTTON(machine,1)<<2) |
 					  (1<<3) |
-					  (A_BUTTON(0)<<4) |
+					  (A_BUTTON(machine,0)<<4) |
 					  (1<<5) |
 					  (1<<6) |
 					  (1<<7);
@@ -1887,21 +1942,21 @@ UINT8 megatech_bios_port_cc_dc_r(int offset, int ctrl)
 	{
 		if (offset==0)
 		{
-			retdata = (UP_BUTTON(0)<<0) |
-					  (DOWN_BUTTON(0)<<1) |
-					  (LEFT_BUTTON(0)<<2) |
-					  (RIGHT_BUTTON(0)<<3) |
-					  (B_BUTTON(0)<<4) |
-					  (C_BUTTON(0)<<5) |
-					  (UP_BUTTON(1)<<6) |
-					  (DOWN_BUTTON(1)<<7);
+			retdata = (UP_BUTTON(machine,0)<<0) |
+					  (DOWN_BUTTON(machine,0)<<1) |
+					  (LEFT_BUTTON(machine,0)<<2) |
+					  (RIGHT_BUTTON(machine,0)<<3) |
+					  (B_BUTTON(machine,0)<<4) |
+					  (C_BUTTON(machine,0)<<5) |
+					  (UP_BUTTON(machine,1)<<6) |
+					  (DOWN_BUTTON(machine,1)<<7);
 		}
 		else
 		{
-			retdata = (LEFT_BUTTON(1)<<0) |
-					  (RIGHT_BUTTON(1)<<1) |
-					  (B_BUTTON(1)<<2) |
-					  (C_BUTTON(1)<<3) |
+			retdata = (LEFT_BUTTON(machine,1)<<0) |
+					  (RIGHT_BUTTON(machine,1)<<1) |
+					  (B_BUTTON(machine,1)<<2) |
+					  (C_BUTTON(machine,1)<<3) |
 					  (1<<4) |
 					  (1<<5) |
 					  (1<<6) |
@@ -1916,26 +1971,28 @@ UINT8 megatech_bios_port_cc_dc_r(int offset, int ctrl)
 /* the SMS inputs should be more complex, like the megadrive ones */
 READ8_HANDLER (megatech_sms_ioport_dc_r)
 {
-	return (DOWN_BUTTON(1)  << 7) |
-		   (UP_BUTTON(1)    << 6) |
-		   (B_BUTTON(0)     << 5) | // TR-A
-		   (A_BUTTON(0)     << 4) | // TL-A
-		   (RIGHT_BUTTON(0) << 3) |
-		   (LEFT_BUTTON(0)  << 2) |
-		   (DOWN_BUTTON(0)  << 1) |
-		   (UP_BUTTON(0)    << 0);
+	running_machine *machine = space->machine;
+	return (DOWN_BUTTON(machine,1)  << 7) |
+		   (UP_BUTTON(machine,1)    << 6) |
+		   (B_BUTTON(machine,0)     << 5) | // TR-A
+		   (A_BUTTON(machine,0)     << 4) | // TL-A
+		   (RIGHT_BUTTON(machine,0) << 3) |
+		   (LEFT_BUTTON(machine,0)  << 2) |
+		   (DOWN_BUTTON(machine,0)  << 1) |
+		   (UP_BUTTON(machine,0)    << 0);
 }
 
 READ8_HANDLER (megatech_sms_ioport_dd_r)
 {
+	running_machine *machine = space->machine;
 	return (0               << 7) | // TH-B
 		   (0               << 6) | // TH-A
 		   (0               << 5) | // unused
 		   (1               << 4) | // RESET button
-		   (B_BUTTON(1)     << 3) | // TR-B
-		   (A_BUTTON(1)     << 2) | // TL-B
-		   (RIGHT_BUTTON(1) << 1) |
-		   (LEFT_BUTTON(1)  << 0);
+		   (B_BUTTON(machine,1)     << 3) | // TR-B
+		   (A_BUTTON(machine,1)     << 2) | // TL-B
+		   (RIGHT_BUTTON(machine,1) << 1) |
+		   (LEFT_BUTTON(machine,1)  << 0);
 }
 
 static UINT8 megadrive_io_read_ctrl_port(int portnum)
@@ -1981,11 +2038,11 @@ static READ16_HANDLER( megadriv_68k_io_read )
           D0 : Bit 0 of version number
       */
 
-	//return (mame_rand(machine)&0x0f0f)|0xf0f0;//0x0000;
+	//return (mame_rand(space->machine)&0x0f0f)|0xf0f0;//0x0000;
 	switch (offset)
 	{
 		case 0:
-			logerror("%06x read version register\n", activecpu_get_pc());
+			logerror("%06x read version register\n", cpu_get_pc(space->cpu));
 			retdata = megadrive_region_export<<7 | // Export
 			          megadrive_region_pal<<6 | // NTSC
 			          0x20 | // No Sega CD
@@ -2002,7 +2059,7 @@ static READ16_HANDLER( megadriv_68k_io_read )
 		case 0x2:
 		case 0x3:
 //          retdata = megadrive_io_read_data_port(offset-1);
-			retdata = megadrive_io_read_data_port_ptr(offset-1);
+			retdata = megadrive_io_read_data_port_ptr(space->machine, offset-1);
 			break;
 
 		case 0x4:
@@ -2031,7 +2088,7 @@ static READ16_HANDLER( megadriv_68k_io_read )
 }
 
 
-static void megadrive_io_write_data_port_3button(int portnum, UINT16 data)
+static void megadrive_io_write_data_port_3button(running_machine *machine, int portnum, UINT16 data)
 {
 	megadrive_io_data_regs[portnum] = data;
 	//mame_printf_debug("Writing IO Data Register #%d data %04x\n",portnum,data);
@@ -2041,14 +2098,14 @@ static void megadrive_io_write_data_port_3button(int portnum, UINT16 data)
 
 /******************************6 button version*****************************/
 
-static void megadrive_io_write_data_port_6button(int portnum, UINT16 data)
+static void megadrive_io_write_data_port_6button(running_machine *machine, int portnum, UINT16 data)
 {
 	if (megadrive_io_ctrl_regs[portnum]&0x40)
 	{
 		if (((megadrive_io_data_regs[portnum]&0x40)==0x00) && ((data&0x40) == 0x40))
 		{
 			io_stage[portnum]++;
-			timer_adjust_oneshot(io_timeout[portnum], ATTOTIME_IN_CYCLES(8192,0), 0);
+			timer_adjust_oneshot(io_timeout[portnum], cpu_clocks_to_attotime(machine->cpu[0],8192), 0);
 		}
 
 	}
@@ -2060,23 +2117,23 @@ static void megadrive_io_write_data_port_6button(int portnum, UINT16 data)
 
 /***************************end 6 button version ****************************/
 
-static void megadrive_io_write_ctrl_port(int portnum, UINT16 data)
+static void megadrive_io_write_ctrl_port(running_machine *machine, int portnum, UINT16 data)
 {
 	megadrive_io_ctrl_regs[portnum] = data;
 //  mame_printf_debug("Setting IO Control Register #%d data %04x\n",portnum,data);
 }
 
-static void megadrive_io_write_tx_port(int portnum, UINT16 data)
+static void megadrive_io_write_tx_port(running_machine *machine, int portnum, UINT16 data)
 {
 	megadrive_io_tx_regs[portnum] = data;
 }
 
-static void megadrive_io_write_rx_port(int portnum, UINT16 data)
+static void megadrive_io_write_rx_port(running_machine *machine, int portnum, UINT16 data)
 {
 
 }
 
-static void megadrive_io_write_sctrl_port(int portnum, UINT16 data)
+static void megadrive_io_write_sctrl_port(running_machine *machine, int portnum, UINT16 data)
 {
 
 }
@@ -2100,30 +2157,30 @@ static WRITE16_HANDLER( megadriv_68k_io_write )
 		case 0x2:
 		case 0x3:
 //          megadrive_io_write_data_port(offset-1,data);
-			megadrive_io_write_data_port_ptr(offset-1,data);
+			megadrive_io_write_data_port_ptr(space->machine, offset-1,data);
 			break;
 
 		case 0x4:
 		case 0x5:
 		case 0x6:
-			megadrive_io_write_ctrl_port(offset-4,data);
+			megadrive_io_write_ctrl_port(space->machine,offset-4,data);
 			break;
 
 		/* Serial I/O Registers */
 
-		case 0x7: megadrive_io_write_tx_port(0,data); break;
-		case 0x8: megadrive_io_write_rx_port(0,data); break;
-		case 0x9: megadrive_io_write_sctrl_port(0,data); break;
+		case 0x7: megadrive_io_write_tx_port(space->machine,0,data); break;
+		case 0x8: megadrive_io_write_rx_port(space->machine,0,data); break;
+		case 0x9: megadrive_io_write_sctrl_port(space->machine,0,data); break;
 
 
-		case 0xa: megadrive_io_write_tx_port(1,data); break;
-		case 0xb: megadrive_io_write_rx_port(1,data); break;
-		case 0xc: megadrive_io_write_sctrl_port(1,data); break;
+		case 0xa: megadrive_io_write_tx_port(space->machine,1,data); break;
+		case 0xb: megadrive_io_write_rx_port(space->machine,1,data); break;
+		case 0xc: megadrive_io_write_sctrl_port(space->machine,1,data); break;
 			break;
 
-		case 0xd: megadrive_io_write_tx_port(2,data); break;
-		case 0xe: megadrive_io_write_rx_port(2,data); break;
-		case 0xf: megadrive_io_write_sctrl_port(2,data); break;
+		case 0xd: megadrive_io_write_tx_port(space->machine,2,data); break;
+		case 0xe: megadrive_io_write_rx_port(space->machine,2,data); break;
+		case 0xf: megadrive_io_write_sctrl_port(space->machine,2,data); break;
 			break;
 	}
 
@@ -2191,8 +2248,8 @@ static READ16_HANDLER( megadriv_68k_read_z80_ram )
 	}
 	else
 	{
-		logerror("%06x: 68000 attempting to access Z80 (read) address space without bus\n", activecpu_get_pc());
-		return mame_rand(machine);
+		logerror("%06x: 68000 attempting to access Z80 (read) address space without bus\n", cpu_get_pc(space->cpu));
+		return mame_rand(space->machine);
 	}
 }
 
@@ -2218,7 +2275,7 @@ static WRITE16_HANDLER( megadriv_68k_write_z80_ram )
 	}
 	else
 	{
-		logerror("%06x: 68000 attempting to access Z80 (write) address space without bus\n", activecpu_get_pc());
+		logerror("%06x: 68000 attempting to access Z80 (write) address space without bus\n", cpu_get_pc(space->cpu));
 	}
 }
 
@@ -2234,7 +2291,7 @@ static READ16_HANDLER( megadriv_68k_check_z80_bus )
        the value is never zero.  Time Killers is the most fussy, and doesn't like the
        read_next_instruction function from system16, so I just return a random value
        in the unused bits */
-	UINT16 nextvalue = mame_rand(machine);//read_next_instruction()&0xff00;
+	UINT16 nextvalue = mame_rand(space->machine);//read_next_instruction(space)&0xff00;
 
 
 	/* Check if the 68k has the z80 bus */
@@ -2243,13 +2300,13 @@ static READ16_HANDLER( megadriv_68k_check_z80_bus )
 		if (genz80.z80_has_bus || genz80.z80_is_reset) retvalue = nextvalue | 0x0100;
 		else retvalue = (nextvalue & 0xfeff);
 
-		//logerror("%06x: 68000 check z80 Bus (byte MSB access) returning %04x mask %04x\n", activecpu_get_pc(),retvalue, mem_mask);
+		//logerror("%06x: 68000 check z80 Bus (byte MSB access) returning %04x mask %04x\n", cpu_get_pc(space->cpu),retvalue, mem_mask);
 		return retvalue;
 
 	}
 	else if (!ACCESSING_BITS_8_15) // is this valid?
 	{
-		//logerror("%06x: 68000 check z80 Bus (byte LSB access) %04x\n", activecpu_get_pc(),mem_mask);
+		//logerror("%06x: 68000 check z80 Bus (byte LSB access) %04x\n", cpu_get_pc(space->cpu),mem_mask);
 		if (genz80.z80_has_bus || genz80.z80_is_reset) retvalue = 0x0001;
 		else retvalue = 0x0000;
 
@@ -2257,11 +2314,11 @@ static READ16_HANDLER( megadriv_68k_check_z80_bus )
 	}
 	else
 	{
-		//logerror("%06x: 68000 check z80 Bus (word access) %04x\n", activecpu_get_pc(),mem_mask);
+		//logerror("%06x: 68000 check z80 Bus (word access) %04x\n", cpu_get_pc(space->cpu),mem_mask);
 		if (genz80.z80_has_bus || genz80.z80_is_reset) retvalue = nextvalue | 0x0100;
 		else retvalue = (nextvalue & 0xfeff);
 
-	//  mame_printf_debug("%06x: 68000 check z80 Bus (word access) %04x %04x\n", activecpu_get_pc(),mem_mask, retvalue);
+	//  mame_printf_debug("%06x: 68000 check z80 Bus (word access) %04x %04x\n", cpu_get_pc(space->cpu),mem_mask, retvalue);
 		return retvalue;
 	}
 }
@@ -2274,15 +2331,15 @@ static WRITE16_HANDLER( megadriv_68k_req_z80_bus )
 	{
 		if (data & 0x0100)
 		{
-			//logerror("%06x: 68000 request z80 Bus (byte MSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 request z80 Bus (byte MSB access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_has_bus=0;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_HALT, ASSERT_LINE);
 		}
 		else
 		{
-			//logerror("%06x: 68000 return z80 Bus (byte MSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 return z80 Bus (byte MSB access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_has_bus=1;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_HALT, CLEAR_LINE);
 
 		}
 	}
@@ -2290,30 +2347,30 @@ static WRITE16_HANDLER( megadriv_68k_req_z80_bus )
 	{
 		if (data & 0x0001)
 		{
-			//logerror("%06x: 68000 request z80 Bus (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 request z80 Bus (byte LSB access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_has_bus=0;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_HALT, ASSERT_LINE);
 		}
 		else
 		{
-			//logerror("%06x: 68000 return z80 Bus (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 return z80 Bus (byte LSB access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_has_bus=1;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_HALT, CLEAR_LINE);
 		}
 	}
 	else // word access
 	{
 		if (data & 0x0100)
 		{
-			//logerror("%06x: 68000 request z80 Bus (word access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 request z80 Bus (word access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_has_bus=0;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_HALT, ASSERT_LINE);
 		}
 		else
 		{
-			//logerror("%06x: 68000 return z80 Bus (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 return z80 Bus (byte LSB access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_has_bus=1;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_HALT, CLEAR_LINE);
 		}
 	}
 }
@@ -2324,15 +2381,15 @@ static WRITE16_HANDLER ( megadriv_68k_req_z80_reset )
 	{
 		if (data & 0x0100)
 		{
-			//logerror("%06x: 68000 clear z80 reset (byte MSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 clear z80 reset (byte MSB access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_is_reset=0;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_RESET, CLEAR_LINE);
 		}
 		else
 		{
-			//logerror("%06x: 68000 start z80 reset (byte MSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 start z80 reset (byte MSB access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_is_reset=1;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_RESET, ASSERT_LINE);
 			sndti_reset(SOUND_YM2612, 0);
 		}
 	}
@@ -2340,15 +2397,15 @@ static WRITE16_HANDLER ( megadriv_68k_req_z80_reset )
 	{
 		if (data & 0x0001)
 		{
-			//logerror("%06x: 68000 clear z80 reset (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 clear z80 reset (byte LSB access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_is_reset=0;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_RESET, CLEAR_LINE);
 		}
 		else
 		{
-			//logerror("%06x: 68000 start z80 reset (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 start z80 reset (byte LSB access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_is_reset=1;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_RESET, ASSERT_LINE);
 			sndti_reset(SOUND_YM2612, 0);
 
 		}
@@ -2357,15 +2414,15 @@ static WRITE16_HANDLER ( megadriv_68k_req_z80_reset )
 	{
 		if (data & 0x0100)
 		{
-			//logerror("%06x: 68000 clear z80 reset (word access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 clear z80 reset (word access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_is_reset=0;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, CLEAR_LINE );
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_RESET, CLEAR_LINE );
 		}
 		else
 		{
-			//logerror("%06x: 68000 start z80 reset (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
+			//logerror("%06x: 68000 start z80 reset (byte LSB access) %04x %04x\n", cpu_get_pc(space->cpu),data,mem_mask);
 			genz80.z80_is_reset=1;
-			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[genz80.z80_cpunum], INPUT_LINE_RESET, ASSERT_LINE);
 			sndti_reset(SOUND_YM2612, 0);
 		}
 	}
@@ -2380,13 +2437,36 @@ static READ8_HANDLER( z80_read_68k_banked_data )
 		UINT32 fulladdress;
 		fulladdress = genz80.z80_bank_addr + offset;
 
-		return memory_region(machine, "main")[fulladdress^1]; // ^1? better..
+		return memory_region(space->machine, "main")[fulladdress^1]; // ^1? better..
 
 
 	}
 	else
 	{
-		//mame_printf_debug("unhandled z80 bank read, gen.z80_bank_addr %08x\n",genz80.z80_bank_addr);
+		if (_32x_is_connected)
+		{
+			if ((genz80.z80_bank_addr >= 0x880000) && (genz80.z80_bank_addr <= 0x900000)) // 'fixed' 512kb 32x rom
+			{
+				UINT32 fulladdress;
+				fulladdress = (genz80.z80_bank_addr + offset)&0x3ffff;
+
+				return memory_region(space->machine, "gamecart")[fulladdress^1]; // ^1? better..
+
+
+			}
+			else if ((genz80.z80_bank_addr >= 0x900000) && (genz80.z80_bank_addr <= 0x9fffff)) // 'banked' 1mb 32x rom
+			{
+				UINT32 fulladdress;
+				fulladdress = (genz80.z80_bank_addr + offset)&0x7ffff;
+
+				fulladdress |= (_32x_68k_a15104_reg&0x3)*0x80000;
+
+				return memory_region(space->machine, "gamecart")[fulladdress^1]; // ^1? better..
+
+			}
+		}
+
+		printf("unhandled z80 bank read, gen.z80_bank_addr %08x\n",genz80.z80_bank_addr);
 		return 0x0000;
 	}
 
@@ -2401,7 +2481,7 @@ static WRITE8_HANDLER( megadriv_z80_vdp_write )
 		case 0x13:
 		case 0x15:
 		case 0x17:
-			sn76496_0_w(machine, 0, data);
+			sn76496_0_w(space, 0, data);
 			break;
 
 		default:
@@ -2432,12 +2512,12 @@ static WRITE8_HANDLER( z80_write_68k_banked_data )
 	else if (fulladdress == 0xc00011)
 	{
 		/* quite a few early games write here, most of the later ones don't */
-		sn76496_0_w(machine, 0, data);
+		sn76496_0_w(space, 0, data);
 	}
 	else
 	{
 
-		//mame_printf_debug("z80 write to 68k address %06x\n",fulladdress);
+		//printf("z80 write to 68k address %06x\n",fulladdress);
 	}
 
 }
@@ -2445,7 +2525,7 @@ static WRITE8_HANDLER( z80_write_68k_banked_data )
 static READ8_HANDLER( megadriv_z80_vdp_read )
 {
 	mame_printf_debug("megadriv_z80_vdp_read %02x\n",offset);
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 static READ8_HANDLER( megadriv_z80_unmapped_read )
@@ -2484,23 +2564,33 @@ ADDRESS_MAP_END
 
 /****************************************** 32X related ******************************************/
 
-static READ16_HANDLER( _32x_reg_r )
-{
-	return mame_rand(machine);
-}
+/**********************************************************************************************/
+// Function Prototypes
+/**********************************************************************************************/
 
-static UINT16 _32x_68k_comms[0x8];
-static UINT16 _32x_palette[0x400/2];
 
-static READ16_HANDLER( _32x_68k_comms_r )
-{
-	return _32x_68k_comms[offset];
-}
+static READ16_HANDLER( _32x_68k_a15180_r );
+static READ16_HANDLER( _32x_68k_a15182_r );
+static READ16_HANDLER( _32x_68k_a15184_r );
+static READ16_HANDLER( _32x_68k_a15186_r );
+static READ16_HANDLER( _32x_68k_a15188_r );
+static READ16_HANDLER( _32x_68k_a1518a_r );
 
-static WRITE16_HANDLER(_32x_68k_comms_w)
-{
-	_32x_68k_comms[offset] = data;
-}
+static WRITE16_HANDLER( _32x_68k_a15180_w );
+static WRITE16_HANDLER( _32x_68k_a15182_w );
+static WRITE16_HANDLER( _32x_68k_a15184_w );
+static WRITE16_HANDLER( _32x_68k_a15186_w );
+static WRITE16_HANDLER( _32x_68k_a15188_w );
+static WRITE16_HANDLER( _32x_68k_a1518a_w );
+
+static UINT16 _32x_autofill_length;
+static UINT16 _32x_autofill_address;
+static UINT16 _32x_autofill_data;
+
+
+
+
+
 
 static READ16_HANDLER( _32x_68k_palette_r )
 {
@@ -2509,73 +2599,976 @@ static READ16_HANDLER( _32x_68k_palette_r )
 
 static WRITE16_HANDLER( _32x_68k_palette_w )
 {
-	_32x_palette[offset] = data;
+	int r,g,b, p;
+
+	COMBINE_DATA(&_32x_palette[offset]);
+	data = _32x_palette[offset];
+
+	r = ((data >> 0)  & 0x1f);
+	g = ((data >> 5)  & 0x1f);
+	b = ((data >> 10) & 0x1f);
+	p = ((data >> 15) & 0x01); // priority 'through' bit
+
+	_32x_palette_lookup[offset] = (r << 10) | (g << 5) | (b << 0) | (p << 15);
+
+	palette_set_color_rgb(space->machine,offset+0x40,pal5bit(r),pal5bit(g),pal5bit(b));
+
 }
 
-static ADDRESS_MAP_START( _32x_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000 , 0x3fffff) AM_READ(SMH_ROM)
+static READ16_HANDLER( _32x_68k_dram_r )
+{
+	return _32x_access_dram[offset];
+}
 
-	AM_RANGE(0x880000 , 0x8fffff) AM_READ(SMH_BANK2)
-	AM_RANGE(0x900000 , 0x9fffff) AM_READ(SMH_BANK3)
+static WRITE16_HANDLER( _32x_68k_dram_w )
+{
+	COMBINE_DATA(&_32x_access_dram[offset]);
+}
 
-	AM_RANGE(0xa00000 , 0xa01fff) AM_READ(megadriv_68k_read_z80_ram)
-	AM_RANGE(0xa04000 , 0xa04003) AM_READ(megadriv_68k_YM2612_read)
-	AM_RANGE(0xa10000 , 0xa1001f) AM_READ(megadriv_68k_io_read)
-	AM_RANGE(0xa11100 , 0xa11101) AM_READ(megadriv_68k_check_z80_bus)
+static READ16_HANDLER( _32x_68k_dram_overwrite_r )
+{
+	return _32x_access_dram[offset+0x10000];
+}
+
+static WRITE16_HANDLER( _32x_68k_dram_overwrite_w )
+{
+	COMBINE_DATA(&_32x_access_dram[offset+0x10000]);
+
+	if (ACCESSING_BITS_8_15)
+	{
+		if (data & 0xff00)
+		{
+			_32x_access_dram[offset] = (_32x_access_dram[offset]&0x00ff) | (data & 0xff00);
+		}
+	}
+
+	if (ACCESSING_BITS_0_7)
+	{
+		if (data & 0x00ff)
+		{
+			_32x_access_dram[offset] = (_32x_access_dram[offset]&0xff00) | (data & 0x00ff);
+		}
+	}
+}
 
 
-	AM_RANGE(0xa15120 , 0xa1512f) AM_READ(_32x_68k_comms_r )
-	AM_RANGE(0xa1518a , 0xa1518b) AM_READ(_32x_reg_r)
-	AM_RANGE(0xa15200 , 0xa153ff) AM_READ(_32x_68k_palette_r )
 
-	AM_RANGE(0xc00000 , 0xc0001f) AM_READ(megadriv_vdp_r)
-	AM_RANGE(0xd00000 , 0xd0001f) AM_READ(megadriv_vdp_r) // the earth defend
-	AM_RANGE(0xe00000 , 0xe0ffff) AM_READ(SMH_RAM) AM_MIRROR(0x1f0000)
+/*
+
+15106 DREQ
+
+ ---- ---- F--- -K0R
+
+ F = Fifo FULL
+ K = 68k CPU Write mode (0 = no, 1 = CPU write)
+ 0 = always 0
+ R = RV (0 = no operation, 1 = DMA Start allowed)
+
+*/
+
+static UINT16 a15106_reg;
+
+
+static READ16_HANDLER( _32x_68k_a15106_r)
+{
+	UINT16 retval;
+
+	retval = a15106_reg;
+
+	//if (fifo_full) retval |= 0x0080;
+
+	return retval;
+}
+
+static WRITE16_HANDLER( _32x_68k_a15106_w )
+{
+	if (ACCESSING_BITS_0_7)
+	{
+		a15106_reg = data & 0x5;
+
+		//printf("_32x_68k_a15106_w %04x\n", data);
+		/*
+        if (a15106_reg & 0x4)
+            printf(" --- 68k Write Mode enabled\n");
+        else
+            printf(" --- 68k Write Mode disabled\n");
+
+        if (a15106_reg & 0x1)
+            printf(" --- DMA Start Allowed \n");
+        else
+            printf(" --- DMA Start No Operation\n");
+
+        */
+	}
+}
+
+// returns MARS, the system ID of the 32x
+static READ16_HANDLER( _32x_68k_MARS_r )
+{
+    switch (offset)
+    {
+        case 0:
+            return 0x4d41;
+
+        case 1:
+            return 0x5253;
+    }
+
+    return 0x0000;
+}
+
+/**********************************************************************************************/
+// 68k side a15100
+// control register - used to enable 32x etc.
+/**********************************************************************************************/
+
+static UINT16 a15100_reg;
+
+static READ16_HANDLER( _32x_68k_a15100_r )
+{
+	return (_32x_access_auth<<15) | 0x0080;
+}
+
+static WRITE16_HANDLER( _32x_68k_a15100_w )
+{
+	if (ACCESSING_BITS_0_7)
+	{
+		a15100_reg = (a15100_reg & 0xff00) | (data & 0x00ff);
+
+		if (data & 0x02)
+		{
+			cpu_set_input_line(_32x_master_cpu, INPUT_LINE_RESET, CLEAR_LINE);
+			cpu_set_input_line(_32x_slave_cpu, INPUT_LINE_RESET, CLEAR_LINE);
+		}
+
+		if (data & 0x01)
+		{
+			_32x_adapter_enabled = 1;
+			memory_install_readwrite16_handler(space, 0x0880000, 0x08fffff, 0, 0, SMH_BANK11, SMH_BANK11); // 'fixed' 512kb rom bank
+			memory_set_bankptr(space->machine,  11, memory_region(space->machine, "gamecart") );
+
+			memory_install_readwrite16_handler(space, 0x0900000, 0x09fffff, 0, 0, SMH_BANK12, SMH_BANK12); // 'bankable' 1024kb rom bank
+			memory_set_bankptr(space->machine,  12, memory_region(space->machine, "gamecart") );
+
+			memory_install_readwrite16_handler(space, 0x0000000, 0x03fffff, 0, 0, SMH_BANK10, SMH_BANK10);
+			memory_set_bankptr(space->machine,  10, memory_region(space->machine, "32x_68k_bios") );
+
+			memory_install_readwrite16_handler(space, 0x0a15180, 0x0a15181, 0, 0, _32x_68k_a15180_r, _32x_68k_a15180_w); // mode control regs
+			memory_install_readwrite16_handler(space, 0x0a15182, 0x0a15183, 0, 0, _32x_68k_a15182_r, _32x_68k_a15182_w); // screen shift
+			memory_install_readwrite16_handler(space, 0x0a15184, 0x0a15185, 0, 0, _32x_68k_a15184_r, _32x_68k_a15184_w); // autofill length reg
+			memory_install_readwrite16_handler(space, 0x0a15186, 0x0a15187, 0, 0, _32x_68k_a15186_r, _32x_68k_a15186_w); // autofill address reg
+			memory_install_readwrite16_handler(space, 0x0a15188, 0x0a15189, 0, 0, _32x_68k_a15188_r, _32x_68k_a15188_w); // autofill data reg / start fill
+			memory_install_readwrite16_handler(space, 0x0a1518a, 0x0a1518b, 0, 0, _32x_68k_a1518a_r, _32x_68k_a1518a_w); // framebuffer control regs
+
+			memory_install_readwrite16_handler(space, 0x0a15200, 0x0a153ff, 0, 0, _32x_68k_palette_r, _32x_68k_palette_w); // access to 'palette' xRRRRRGGGGGBBBBB
+
+			memory_install_readwrite16_handler(space, 0x0840000, 0x085ffff, 0, 0, _32x_68k_dram_r, _32x_68k_dram_w); // access to 'display ram' (framebuffer)
+			memory_install_readwrite16_handler(space, 0x0860000, 0x087ffff, 0, 0, _32x_68k_dram_overwrite_r, _32x_68k_dram_overwrite_w); // access to 'display ram' (framebuffer)
+
+
+
+
+		}
+		else
+		{
+			_32x_adapter_enabled = 0;
+
+			memory_install_readwrite16_handler(space, 0x0000000, 0x03fffff, 0, 0, SMH_BANK10, SMH_BANK10);
+			memory_set_bankptr(space->machine,  10, memory_region(space->machine, "gamecart") );
+
+
+		}
+	}
+
+	if (ACCESSING_BITS_8_15)
+	{
+		a15100_reg = (a15100_reg & 0x00ff) | (data & 0xff00);
+		_32x_access_auth = (data & 0x8000)>>15;
+	}
+}
+
+/**********************************************************************************************/
+// 68k side a15102
+// command interrupt to SH2
+/**********************************************************************************************/
+
+static int _32x_68k_a15102_reg;
+
+static READ16_HANDLER( _32x_68k_a15102_r )
+{
+	//printf("_32x_68k_a15102_r\n");
+	return 0x0000;//_32x_68k_a15102_reg;
+}
+
+static WRITE16_HANDLER( _32x_68k_a15102_w )
+{
+	if (ACCESSING_BITS_0_7)
+	{
+		_32x_68k_a15102_reg = data;
+
+		if (data&0x1)
+		{
+			if (sh2_master_cmdint_enable) cpu_set_input_line(_32x_master_cpu,SH2_CINT_IRQ_LEVEL,ASSERT_LINE);
+		}
+
+		if (data&0x2)
+		{
+			if (sh2_slave_cmdint_enable) cpu_set_input_line(_32x_slave_cpu,SH2_CINT_IRQ_LEVEL,ASSERT_LINE);
+		}
+	}
+}
+
+/**********************************************************************************************/
+// 68k side a15104
+// ROM banking for 68k rom
+/**********************************************************************************************/
+
+
+static READ16_HANDLER( _32x_68k_a15104_r )
+{
+	return _32x_68k_a15104_reg;
+}
+
+static WRITE16_HANDLER( _32x_68k_a15104_w )
+{
+	if (ACCESSING_BITS_0_7)
+	{
+		_32x_68k_a15104_reg = (_32x_68k_a15104_reg & 0xff00) | (data & 0x00ff);
+	}
+
+	if (ACCESSING_BITS_8_15)
+	{
+		_32x_68k_a15104_reg = (_32x_68k_a15104_reg & 0x00ff) | (data & 0xff00);
+	}
+
+	memory_set_bankptr(space->machine,  12, memory_region(space->machine, "gamecart")+((_32x_68k_a15104_reg&0x3)*0x100000) );
+}
+
+/**********************************************************************************************/
+// 68k side a15120 - a1512f
+// Communication Port 0
+// access from the SH2 via 4020 - 402f
+/**********************************************************************************************/
+#define _32X_COMMS_PORT_SYNC 0
+static UINT16 commsram[8];
+
+/**********************************************************************************************/
+
+// reads
+static READ16_HANDLER( _32x_68k_commsram_r )
+{
+	if (_32X_COMMS_PORT_SYNC) timer_call_after_resynch(space->machine, NULL, 0, NULL);
+	return commsram[offset];
+}
+
+// writes
+static WRITE16_HANDLER( _32x_68k_commsram_w )
+{
+	COMBINE_DATA(&commsram[offset]);
+	if (_32X_COMMS_PORT_SYNC) timer_call_after_resynch(space->machine, NULL, 0, NULL);
+}
+
+/**********************************************************************************************/
+// 68k side a15180
+// framebuffer control
+// also accessed from the SH2 @ 4100
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_68k_a15180_r )
+{
+	// the flag is inverted compared to the megadrive
+	int ntsc;
+	if (megadrive_region_pal) ntsc = 0;
+	else ntsc = 1;
+
+	return (ntsc << 15) |
+	       (_32x_videopriority << 7 ) |
+	       ( _32x_240mode << 6 ) |
+	       ( _32x_displaymode << 0 );
+
+}
+
+static WRITE16_HANDLER( _32x_68k_a15180_w )
+{
+//  printf("_32x_68k_a15180_w (a15180) %04x %04x\n",data,mem_mask);
+	if (ACCESSING_BITS_0_7)
+	{
+		_32x_videopriority = (data & 0x80) >> 7;
+		_32x_240mode   = (data & 0x40) >> 6;
+		_32x_displaymode   = (data & 0x03) >> 0;
+	}
+
+	if (ACCESSING_BITS_8_15)
+	{
+		// nothing?  (pal flag is read only)
+	}
+}
+
+/**********************************************************************************************/
+// 68k side a15182
+// screenshift register
+// also accessed from the SH2 @ 4102
+// used to shift 32x framebuffer by 1 pixel
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_68k_a15182_r )
+{
+	return _32x_screenshift;
+}
+
+static WRITE16_HANDLER( _32x_68k_a15182_w )
+{
+	if (ACCESSING_BITS_0_7)
+	{
+		_32x_screenshift = data & 1; // allows 1 pixel shifting
+	}
+	if (ACCESSING_BITS_8_15)
+	{
+
+	}
+}
+
+/**********************************************************************************************/
+// 68k side a15184
+// autofill length
+// also accessed from the SH2 @ 4104
+/**********************************************************************************************/
+
+
+static READ16_HANDLER( _32x_68k_a15184_r )
+{
+	return _32x_autofill_length;
+}
+
+static WRITE16_HANDLER( _32x_68k_a15184_w )
+{
+	if (ACCESSING_BITS_0_7)
+	{
+		_32x_autofill_length = data & 0xff;
+	}
+
+	if (ACCESSING_BITS_8_15)
+	{
+
+	}
+}
+
+/**********************************************************************************************/
+// 68k side a15186
+// auto fill addres
+// also accessed from the SH2 @ 4106
+/**********************************************************************************************/
+
+
+static READ16_HANDLER( _32x_68k_a15186_r )
+{
+	return _32x_autofill_address;
+}
+
+static WRITE16_HANDLER( _32x_68k_a15186_w )
+{
+	if (ACCESSING_BITS_0_7)
+	{
+		_32x_autofill_address = (_32x_autofill_address & 0xff00) | (data & 0x00ff);
+	}
+
+	if (ACCESSING_BITS_8_15)
+	{
+		_32x_autofill_address = (_32x_autofill_address & 0x00ff) | (data & 0xff00);
+	}
+}
+
+/**********************************************************************************************/
+// 68k side a15188
+// auto fill data (start command)
+// also accessed from the SH2 @ 4108
+/**********************************************************************************************/
+
+
+static READ16_HANDLER( _32x_68k_a15188_r )
+{
+	return _32x_autofill_data;
+}
+
+static WRITE16_HANDLER( _32x_68k_a15188_w )
+{
+	if (ACCESSING_BITS_0_7)
+	{
+		_32x_autofill_data = (_32x_autofill_data & 0xff00) | (data & 0x00ff);
+	}
+
+	if (ACCESSING_BITS_8_15)
+	{
+		_32x_autofill_data = (_32x_autofill_data & 0x00ff) | (data & 0xff00);
+	}
+
+	// do the fill - shouldn't be instant..
+	{
+		int i;
+		for (i=0; i<_32x_autofill_length+1;i++)
+		{
+			_32x_access_dram[_32x_autofill_address] = _32x_autofill_data;
+			_32x_autofill_address = (_32x_autofill_address & 0xff00) | ((_32x_autofill_address+1) & 0x00ff);
+		}
+	}
+}
+
+
+/**********************************************************************************************/
+// 68k side a1518a
+// framebuffer status / control
+// also accessed from the SH2 @ 410A
+
+/*
+vhp- ---- ---- --fb
+
+v = 1=vblank   r/o
+h = 1=hblank   r/o
+p = 0=palette access approval   r/o
+- = unused
+f = 0=MD framebuffer access, 1 = SH2   r/o
+b = 0=DRAM0 accessed by VDP, 1=DRAM1   r/w
+
+*/
+
+/**********************************************************************************************/
+
+static UINT16 _32x_a1518a_reg;
+static READ16_HANDLER( _32x_68k_a1518a_r )
+{
+	UINT16 retdata = _32x_a1518a_reg;
+	UINT16 hpos = get_hposition();
+	int megadrive_hblank_flag = 0;
+
+	if (megadrive_vblank_flag) retdata |= 0x8000;
+
+	if (hpos>400) megadrive_hblank_flag = 1;
+	if (hpos>460) megadrive_hblank_flag = 0;
+
+	if (megadrive_hblank_flag) retdata |= 0x4000;
+
+	return retdata;
+}
+
+static WRITE16_HANDLER( _32x_68k_a1518a_w )
+{
+	// bit 0 is the framebuffer select;
+	_32x_a1518a_reg = (_32x_a1518a_reg & 0xfffe) | (data & 1);
+
+	if (_32x_a1518a_reg & 1)
+	{
+		_32x_access_dram = _32x_dram0;
+		_32x_display_dram = _32x_dram1;
+	}
+	else
+	{
+		_32x_display_dram = _32x_dram0;
+		_32x_access_dram = _32x_dram1;
+	}
+}
+
+
+
+/**********************************************************************************************/
+// SH2 side 4000
+// IRQ Control
+// Different for each SH2
+
+/*
+f--- --ec h--- VHCP
+
+f = framebuffer permission (0 md, 1 sh2)
+e = Adapter enabled (0 no, 1 yes)
+c = Cart Inserted (0 yes, 1 no)
+h = H Interrupt allowed within Vblank (0 no, 1 yes)
+
+*** these are independent for each SH2 ***
+V = V Interrupt Mask (0 masked, 1 allowed)
+H = H Interrupt Mask (0 masked, 1 allowed)
+C = Command Interrupt Mask (0 masked, 1 allowed)
+P = PWM Interrupt Mask (0 masked, 1 allowed)
+*/
+
+/**********************************************************************************************/
+
+/* MASTER */
+
+static READ16_HANDLER( _32x_sh2_master_4000_r )
+{
+	UINT16 retvalue = 0x0200;
+	retvalue |= _32x_access_auth << 15;
+
+	retvalue |=	sh2_hint_in_vbl;;
+	retvalue |= sh2_master_vint_enable;
+	retvalue |= sh2_master_hint_enable;
+	retvalue |= sh2_master_cmdint_enable;
+	retvalue |= sh2_master_pwmint_enable;
+
+	return retvalue;
+}
+
+static WRITE16_HANDLER( _32x_sh2_master_4000_w )
+{
+	if (ACCESSING_BITS_8_15)
+	{
+		_32x_access_auth = (data &0x80) >> 7;
+	}
+
+	if (ACCESSING_BITS_0_7)
+	{
+		sh2_hint_in_vbl = data & 0x80;
+		sh2_master_vint_enable = data & 0x8;
+		sh2_master_hint_enable = data & 0x4;
+		sh2_master_cmdint_enable = data & 0x2;
+		sh2_master_pwmint_enable = data & 0x1;
+
+		if (sh2_master_hint_enable) printf("sh2_master_hint_enable enable!\n");
+		if (sh2_master_pwmint_enable) printf("sh2_master_pwn_enable enable!\n");
+
+	}
+}
+
+/* SLAVE */
+
+static READ16_HANDLER( _32x_sh2_slave_4000_r )
+{
+	UINT16 retvalue = 0x0200;
+	retvalue |= _32x_access_auth << 15;
+	retvalue |=	sh2_hint_in_vbl;;
+	retvalue |= sh2_slave_vint_enable;
+	retvalue |= sh2_slave_hint_enable;
+	retvalue |= sh2_slave_cmdint_enable;
+	retvalue |= sh2_slave_pwmint_enable;
+
+	return retvalue;
+}
+
+
+static WRITE16_HANDLER( _32x_sh2_slave_4000_w )
+{
+	if (ACCESSING_BITS_8_15)
+	{
+		_32x_access_auth = (data &0x80) >> 7;
+
+	}
+
+	if (ACCESSING_BITS_0_7)
+	{
+		sh2_hint_in_vbl = data & 0x80;
+		sh2_slave_vint_enable = data & 0x8;
+		sh2_slave_hint_enable = data & 0x4;
+		sh2_slave_cmdint_enable = data & 0x2;
+		sh2_slave_pwmint_enable = data & 0x1;
+
+		if (sh2_slave_hint_enable) printf("sh2_slave_hint_enable enable!\n");
+		if (sh2_slave_pwmint_enable) printf("sh2_slave_pwm_enable enable!\n");
+
+	}
+}
+
+/**********************************************************************************************/
+// SH2 side 4002
+// Reserved  ( Stand By Change Register )
+// Shouldn't be used
+/**********************************************************************************************/
+
+
+static READ16_HANDLER( _32x_sh2_common_4002_r )
+{
+	printf("reading 4002!\n");
+	return 0x0000;
+}
+
+static WRITE16_HANDLER( _32x_sh2_common_4002_w )
+{
+	printf("write 4002!\n");
+}
+
+
+/**********************************************************************************************/
+// SH2 side 4004
+// H Count Register (H Interrupt)
+// 0 = every line
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 4006
+// DReq Control Register
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 4008
+// 68k To SH2 DReq Source Address Register ( High Bits )
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 400A
+// 68k To SH2 DReq Source Address Register ( Low Bits )
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 400C
+// 68k To SH2 DReq Destination Address Register ( High Bits )
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 400E
+// 68k To SH2 DReq Destination Address Register ( Low Bits )
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 4010
+// 68k To SH2 DReq Length Register
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 4012
+// FIFO Register (read)
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 4014
+// VRES (md reset button interrupt) clear
+/**********************************************************************************************/
+
+static WRITE16_HANDLER( _32x_sh2_master_4014_w ){cpu_set_input_line(_32x_master_cpu,SH2_VRES_IRQ_LEVEL,CLEAR_LINE);}
+static WRITE16_HANDLER( _32x_sh2_slave_4014_w ) { cpu_set_input_line(_32x_slave_cpu, SH2_VRES_IRQ_LEVEL,CLEAR_LINE);}
+
+/**********************************************************************************************/
+// SH2 side 4016
+// VINT (vertical interrupt) clear
+/**********************************************************************************************/
+
+static WRITE16_HANDLER( _32x_sh2_master_4016_w ){cpu_set_input_line(_32x_master_cpu,SH2_VINT_IRQ_LEVEL,CLEAR_LINE);}
+static WRITE16_HANDLER( _32x_sh2_slave_4016_w ) { cpu_set_input_line(_32x_slave_cpu, SH2_VINT_IRQ_LEVEL,CLEAR_LINE);}
+
+/**********************************************************************************************/
+// SH2 side 4018
+// HINT (horizontal interrupt) clear
+/**********************************************************************************************/
+
+static WRITE16_HANDLER( _32x_sh2_master_4018_w ){ cpu_set_input_line(_32x_master_cpu,SH2_HINT_IRQ_LEVEL,CLEAR_LINE);}
+static WRITE16_HANDLER( _32x_sh2_slave_4018_w ) { cpu_set_input_line(_32x_slave_cpu, SH2_HINT_IRQ_LEVEL,CLEAR_LINE);}
+
+/**********************************************************************************************/
+// SH2 side 401A
+// HINT (control register interrupt) clear
+/**********************************************************************************************/
+
+static WRITE16_HANDLER( _32x_sh2_master_401a_w ){ cpu_set_input_line(_32x_master_cpu,SH2_CINT_IRQ_LEVEL,CLEAR_LINE);}
+static WRITE16_HANDLER( _32x_sh2_slave_401a_w ) { cpu_set_input_line(_32x_slave_cpu, SH2_CINT_IRQ_LEVEL,CLEAR_LINE);}
+
+/**********************************************************************************************/
+// SH2 side 401C
+// PINT (PWM timer interrupt) clear
+/**********************************************************************************************/
+
+static WRITE16_HANDLER( _32x_sh2_master_401c_w ){ cpu_set_input_line(_32x_master_cpu,SH2_PINT_IRQ_LEVEL,CLEAR_LINE);}
+static WRITE16_HANDLER( _32x_sh2_slave_401c_w ) { cpu_set_input_line(_32x_slave_cpu, SH2_PINT_IRQ_LEVEL,CLEAR_LINE);}
+
+/**********************************************************************************************/
+// SH2 side 401E
+// ?? unknown / unused
+/**********************************************************************************************/
+
+static WRITE16_HANDLER( _32x_sh2_master_401e_w )
+{
+	printf("_32x_sh2_master_401e_w\n");
+}
+
+static WRITE16_HANDLER( _32x_sh2_slave_401e_w )
+{
+	printf("_32x_sh2_slave_401e_w\n");
+}
+
+/**********************************************************************************************/
+// SH2 side 4020 - 402f
+// SH2 -> 68k Comms ports,
+// access at a15120 - a1512f on 68k
+// these just map through to the 68k functions
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_sh2_commsram16_r ) { return _32x_68k_commsram_r(space, offset, mem_mask); }
+static WRITE16_HANDLER( _32x_sh2_commsram16_w ) { _32x_68k_commsram_w(space, offset, data, mem_mask); }
+
+/**********************************************************************************************/
+// SH2 side 4030
+// PWM Control Register
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 4032
+// Cycle Register
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 4034
+// LCH Pulse Width Register
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 4036
+// RCH Pulse Width Register
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 4038
+// Mono Pulse Width Register
+/**********************************************************************************************/
+
+/**********************************************************************************************/
+// SH2 side 4100
+// Access to Framebuffer control
+// maps through to 68k at a15180
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_sh2_common_4100_r ) { return _32x_68k_a15180_r(space,offset,mem_mask); }
+static WRITE16_HANDLER( _32x_sh2_common_4100_w ) { _32x_68k_a15180_w(space,offset,data,mem_mask); }
+
+/**********************************************************************************************/
+// SH2 side 4102
+// Screenshift register
+// maps through to 68k at a15182
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_sh2_common_4102_r ) { return _32x_68k_a15182_r(space,offset,mem_mask); }
+static WRITE16_HANDLER( _32x_sh2_common_4102_w ) { _32x_68k_a15182_w(space,offset,data,mem_mask); }
+
+/**********************************************************************************************/
+// SH2 side 4104
+// autofill length
+// maps through to 68k at a15184
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_sh2_common_4104_r ) { return _32x_68k_a15184_r(space,offset,mem_mask); }
+static WRITE16_HANDLER( _32x_sh2_common_4104_w ) { _32x_68k_a15184_w(space,offset,data,mem_mask); }
+
+/**********************************************************************************************/
+// SH2 side 4106
+// autofill address
+// maps through to 68k at a15186
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_sh2_common_4106_r ) { return _32x_68k_a15186_r(space,offset,mem_mask); }
+static WRITE16_HANDLER( _32x_sh2_common_4106_w ) { _32x_68k_a15186_w(space,offset,data,mem_mask); }
+
+/**********************************************************************************************/
+// SH2 side 4108
+// autofill start
+// maps through to 68k at a15188
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_sh2_common_4108_r ) { return _32x_68k_a15188_r(space,offset,mem_mask); }
+static WRITE16_HANDLER( _32x_sh2_common_4108_w ) { _32x_68k_a15188_w(space,offset,data,mem_mask); }
+
+/**********************************************************************************************/
+// SH2 side 410a
+// framebuffer status / control
+// maps through to 68k at a1518a
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_sh2_common_410a_r ) { return _32x_68k_a1518a_r(space,offset,mem_mask); }
+static WRITE16_HANDLER( _32x_sh2_common_410a_w ) { _32x_68k_a1518a_w(space,offset,data,mem_mask); }
+
+/**********************************************************************************************/
+// SH2 side 4200 - 43ff
+// framebuffer status / control
+// maps through to 68k at a15200 - a153ff
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_sh2_paletteram16_r ) { return _32x_68k_palette_r(space,offset,mem_mask); }
+static WRITE16_HANDLER( _32x_sh2_paletteram16_w ) { _32x_68k_palette_w(space,offset,data,mem_mask); }
+
+/**********************************************************************************************/
+// SH2 side 4000000 - 401ffff
+// framebuffer
+// maps through to 68k at 840000 - 85ffff
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_sh2_framebuffer_dram16_r ) { return _32x_68k_dram_r(space,offset,mem_mask); }
+static WRITE16_HANDLER( _32x_sh2_framebuffer_dram16_w ) { _32x_68k_dram_w(space,offset,data,mem_mask); }
+
+/**********************************************************************************************/
+// SH2 side 4020000 - 403ffff
+// framebuffer overwrite
+// maps through to 68k at 860000 - 87ffff
+/**********************************************************************************************/
+
+static READ16_HANDLER( _32x_sh2_framebuffer_overwrite_dram16_r ) { return _32x_68k_dram_overwrite_r(space,offset,mem_mask); }
+static WRITE16_HANDLER( _32x_sh2_framebuffer_overwrite_dram16_w ) { _32x_68k_dram_overwrite_w(space,offset,data,mem_mask); }
+
+
+
+/**********************************************************************************************/
+// SH2 access Macros
+/**********************************************************************************************/
+
+
+/* the 32x treats everything as 16-bit registers, so we remap the 32-bit read & writes
+   to 2x 16-bit handlers here */
+
+#define _32X_MAP_READHANDLERS(NAMEA,NAMEB)                                          \
+static READ32_HANDLER( _32x_sh2_##NAMEA##_##NAMEB##_r )                             \
+{                                                                                   \
+	UINT32 retvalue = 0x00000000;                                                   \
+	if (ACCESSING_BITS_16_31)                                                       \
+	{                                                                               \
+		UINT16 ret = _32x_sh2_##NAMEA##_r(space,0,(mem_mask>>16)&0xffff);         \
+		retvalue |= ret << 16;                                                      \
+	}                                                                               \
+	if (ACCESSING_BITS_0_15)                                                        \
+	{                                                                               \
+		UINT16 ret = _32x_sh2_##NAMEB##_r(space,0,(mem_mask>>0)&0xffff);          \
+		retvalue |= ret << 0;                                                       \
+	}                                                                               \
+                                                                                    \
+	return retvalue;                                                                \
+}                                                                                   \
+
+#define _32X_MAP_WRITEHANDLERS(NAMEA,NAMEB)                                             \
+static WRITE32_HANDLER( _32x_sh2_##NAMEA##_##NAMEB##_w)                                 \
+{                                                                                       \
+	if (ACCESSING_BITS_16_31)                                                           \
+	{                                                                                   \
+		_32x_sh2_##NAMEA##_w(space,0,(data>>16)&0xffff,(mem_mask>>16)&0xffff);        \
+	}                                                                                   \
+	if (ACCESSING_BITS_0_15)                                                            \
+	{                                                                                   \
+		_32x_sh2_##NAMEB##_w(space,0,(data>>0)&0xffff,(mem_mask>>0)&0xffff);          \
+	}                                                                                   \
+}                                                                                       \
+
+/* for RAM ranges, eg. Framebuffer, Comms RAM etc. */
+
+#define _32X_MAP_RAM_READHANDLERS(NAMEA)                                            \
+static READ32_HANDLER( _32x_sh2_##NAMEA##_r )                                       \
+{                                                                                   \
+	UINT32 retvalue = 0x00000000;                                                   \
+	if (ACCESSING_BITS_16_31)                                                       \
+	{                                                                               \
+		UINT16 ret = _32x_sh2_##NAMEA##16_r(space,offset*2,(mem_mask>>16)&0xffff);  \
+		retvalue |= ret << 16;                                                      \
+	}                                                                               \
+	if (ACCESSING_BITS_0_15)                                                        \
+	{                                                                               \
+		UINT16 ret = _32x_sh2_##NAMEA##16_r(space,offset*2+1,(mem_mask>>0)&0xffff); \
+		retvalue |= ret << 0;                                                       \
+	}                                                                               \
+                                                                                    \
+	return retvalue;                                                                \
+}                                                                                   \
+
+#define _32X_MAP_RAM_WRITEHANDLERS(NAMEA)                                               \
+static WRITE32_HANDLER( _32x_sh2_##NAMEA##_w)                                           \
+{                                                                                       \
+	if (ACCESSING_BITS_16_31)                                                           \
+	{                                                                                   \
+		_32x_sh2_##NAMEA##16_w(space,offset*2,(data>>16)&0xffff,(mem_mask>>16)&0xffff); \
+	}                                                                                   \
+	if (ACCESSING_BITS_0_15)                                                            \
+	{                                                                                   \
+		_32x_sh2_##NAMEA##16_w(space,offset*2+1,(data>>0)&0xffff,(mem_mask>>0)&0xffff); \
+	}                                                                                   \
+}                                                                                       \
+
+
+
+/**********************************************************************************************/
+// SH2 access for Memory Map
+/**********************************************************************************************/
+
+
+_32X_MAP_READHANDLERS(master_4000,common_4002)  // _32x_sh2_master_4000_common_4002_r
+_32X_MAP_WRITEHANDLERS(master_4000,common_4002) // _32x_sh2_master_4000_common_4002_w
+
+_32X_MAP_READHANDLERS(slave_4000,common_4002)  // _32x_sh2_slave_4000_common_4002_r
+_32X_MAP_WRITEHANDLERS(slave_4000,common_4002) // _32x_sh2_slave_4000_common_4002_w
+
+_32X_MAP_WRITEHANDLERS(master_4014,master_4016) // _32x_sh2_master_4014_master_4016_w
+_32X_MAP_WRITEHANDLERS(master_4018,master_401a) // _32x_sh2_master_4018_master_401a_w
+_32X_MAP_WRITEHANDLERS(master_401c,master_401e) // _32x_sh2_master_401c_master_401e_w
+
+_32X_MAP_WRITEHANDLERS(slave_4014,slave_4016) // _32x_sh2_slave_4014_slave_4016_w
+_32X_MAP_WRITEHANDLERS(slave_4018,slave_401a) // _32x_sh2_slave_4018_slave_401a_w
+_32X_MAP_WRITEHANDLERS(slave_401c,slave_401e) // _32x_sh2_slave_401c_slave_401e_w
+
+_32X_MAP_RAM_READHANDLERS(commsram) // _32x_sh2_commsram_r
+_32X_MAP_RAM_WRITEHANDLERS(commsram) // _32x_sh2_commsram_w
+
+_32X_MAP_READHANDLERS(common_4100,common_4102) // _32x_sh2_common_4100_common_4102_r
+_32X_MAP_WRITEHANDLERS(common_4100,common_4102) // _32x_sh2_common_4100_common_4102_w
+
+_32X_MAP_READHANDLERS(common_4104,common_4106) // _32x_sh2_common_4104_common_4106_r
+_32X_MAP_WRITEHANDLERS(common_4104,common_4106) // _32x_sh2_common_4104_common_4106_w
+
+_32X_MAP_READHANDLERS(common_4108,common_410a) // _32x_sh2_common_4108_common_410a_r
+_32X_MAP_WRITEHANDLERS(common_4108,common_410a) // _32x_sh2_common_4108_common_410a_w
+
+
+_32X_MAP_RAM_READHANDLERS(framebuffer_dram) // _32x_sh2_framebuffer_dram_r
+_32X_MAP_RAM_WRITEHANDLERS(framebuffer_dram) // _32x_sh2_framebuffer_dram_w
+
+_32X_MAP_RAM_READHANDLERS(framebuffer_overwrite_dram) // _32x_sh2_framebuffer_overwrite_dram_r
+_32X_MAP_RAM_WRITEHANDLERS(framebuffer_overwrite_dram) // _32x_sh2_framebuffer_overwrite_dram_w
+
+_32X_MAP_RAM_READHANDLERS(paletteram) // _32x_sh2_paletteram_r
+_32X_MAP_RAM_WRITEHANDLERS(paletteram) // _32x_sh2_paletteram_w
+
+
+/**********************************************************************************************/
+// SH2 memory maps
+/**********************************************************************************************/
+
+static ADDRESS_MAP_START( sh2_main_map, ADDRESS_SPACE_PROGRAM, 32 )
+	AM_RANGE(0x00000000, 0x00003fff) AM_ROM
+
+	AM_RANGE(0x00004000, 0x00004003) AM_READWRITE( _32x_sh2_master_4000_common_4002_r, _32x_sh2_master_4000_common_4002_w )
+
+	AM_RANGE(0x00004014, 0x00004017) AM_WRITE( _32x_sh2_master_4014_master_4016_w ) // IRQ clear
+	AM_RANGE(0x00004018, 0x0000401b) AM_WRITE( _32x_sh2_master_4018_master_401a_w ) // IRQ clear
+	AM_RANGE(0x0000401c, 0x0000401f) AM_WRITE( _32x_sh2_master_401c_master_401e_w ) // IRQ clear
+
+	AM_RANGE(0x00004020, 0x0000402f) AM_READWRITE( _32x_sh2_commsram_r, _32x_sh2_commsram_w )
+	AM_RANGE(0x00004100, 0x00004103) AM_READWRITE( _32x_sh2_common_4100_common_4102_r, _32x_sh2_common_4100_common_4102_w )
+	AM_RANGE(0x00004104, 0x00004107) AM_READWRITE( _32x_sh2_common_4104_common_4106_r, _32x_sh2_common_4104_common_4106_w )
+	AM_RANGE(0x00004108, 0x0000410b) AM_READWRITE( _32x_sh2_common_4108_common_410a_r, _32x_sh2_common_4108_common_410a_w )
+	AM_RANGE(0x00004200, 0x000043ff) AM_READWRITE(_32x_sh2_paletteram_r, _32x_sh2_paletteram_w)
+
+	AM_RANGE(0x04000000, 0x0401ffff) AM_READWRITE(_32x_sh2_framebuffer_dram_r, _32x_sh2_framebuffer_dram_w)
+	AM_RANGE(0x04020000, 0x0403ffff) AM_READWRITE(_32x_sh2_framebuffer_overwrite_dram_r, _32x_sh2_framebuffer_overwrite_dram_w)
+
+	AM_RANGE(0x06000000, 0x0603ffff) AM_RAM AM_SHARE(10)
+	AM_RANGE(0x02000000, 0x023fffff) AM_ROM AM_REGION("gamecart_sh2", 0)
+
+	AM_RANGE(0xc0000000, 0xc0000fff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( _32x_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000 , 0x3fffff) AM_WRITE(SMH_ROM)
+static ADDRESS_MAP_START( sh2_slave_map, ADDRESS_SPACE_PROGRAM, 32 )
+	AM_RANGE(0x00000000, 0x00003fff) AM_ROM
 
-	AM_RANGE(0x880000, 0x8fffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x900000, 0x9fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x00004000, 0x00004003) AM_READWRITE( _32x_sh2_slave_4000_common_4002_r, _32x_sh2_slave_4000_common_4002_w )
 
+	AM_RANGE(0x00004014, 0x00004017) AM_WRITE( _32x_sh2_slave_4014_slave_4016_w ) // IRQ clear
+	AM_RANGE(0x00004018, 0x0000401b) AM_WRITE( _32x_sh2_slave_4018_slave_401a_w ) // IRQ clear
+	AM_RANGE(0x0000401c, 0x0000401f) AM_WRITE( _32x_sh2_slave_401c_slave_401e_w ) // IRQ clear
 
-	AM_RANGE(0xa00000 , 0xa01fff) AM_WRITE(megadriv_68k_write_z80_ram)
-	AM_RANGE(0xa02000 , 0xa03fff) AM_WRITE(megadriv_68k_write_z80_ram)
-	AM_RANGE(0xa04000 , 0xa04003) AM_WRITE(megadriv_68k_YM2612_write)
-	AM_RANGE(0xa06000 , 0xa06001) AM_WRITE(megadriv_68k_z80_bank_write)
-	AM_RANGE(0xa10000 , 0xa1001f) AM_WRITE(megadriv_68k_io_write)
-	AM_RANGE(0xa11100 , 0xa11101) AM_WRITE(megadriv_68k_req_z80_bus)
-	AM_RANGE(0xa11200 , 0xa11201) AM_WRITE(megadriv_68k_req_z80_reset)
+	AM_RANGE(0x00004020, 0x0000402f) AM_READWRITE( _32x_sh2_commsram_r, _32x_sh2_commsram_w )
+	AM_RANGE(0x00004100, 0x00004103) AM_READWRITE( _32x_sh2_common_4100_common_4102_r, _32x_sh2_common_4100_common_4102_w )
+	AM_RANGE(0x00004104, 0x00004107) AM_READWRITE( _32x_sh2_common_4104_common_4106_r, _32x_sh2_common_4104_common_4106_w )
+	AM_RANGE(0x00004108, 0x0000410b) AM_READWRITE( _32x_sh2_common_4108_common_410a_r, _32x_sh2_common_4108_common_410a_w )
+	AM_RANGE(0x00004200, 0x000043ff) AM_READWRITE(_32x_sh2_paletteram_r, _32x_sh2_paletteram_w)
 
-	AM_RANGE(0xa15120 , 0xa1512f) AM_WRITE(_32x_68k_comms_w )
-	AM_RANGE(0xa15200 , 0xa153ff) AM_WRITE(_32x_68k_palette_w )
+	AM_RANGE(0x04000000, 0x0401ffff) AM_READWRITE(_32x_sh2_framebuffer_dram_r, _32x_sh2_framebuffer_dram_w)
+	AM_RANGE(0x04020000, 0x0403ffff) AM_READWRITE(_32x_sh2_framebuffer_overwrite_dram_r, _32x_sh2_framebuffer_overwrite_dram_w)
 
+	AM_RANGE(0x06000000, 0x0603ffff) AM_RAM AM_SHARE(10)
+	AM_RANGE(0x02000000, 0x023fffff) AM_ROM AM_REGION("gamecart_sh2", 0)
 
-	AM_RANGE(0xc00000 , 0xc0001f) AM_WRITE(megadriv_vdp_w)
-	AM_RANGE(0xd00000 , 0xd0001f) AM_WRITE(megadriv_vdp_w)
-	AM_RANGE(0xe00000 , 0xe0ffff) AM_WRITE(SMH_RAM) AM_MIRROR(0x1f0000) AM_BASE(&megadrive_ram)
+	AM_RANGE(0xc0000000, 0xc0000fff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sh2main_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x0000000 , 0x0003fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x2000000 , 0x23fffff) AM_READ(SMH_BANK4)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sh2main_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x0000000 , 0x0003fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x2000000 , 0x23fffff) AM_WRITE(SMH_ROM)
-ADDRESS_MAP_END
-
-
-static ADDRESS_MAP_START( sh2slave_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x0000000 , 0x0003fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x2000000 , 0x23fffff) AM_READ(SMH_BANK4)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sh2slave_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x0000000 , 0x0003fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x2000000 , 0x23fffff) AM_WRITE(SMH_ROM)
+static ADDRESS_MAP_START( segacd_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x0000000 , 0x0003fff) AM_RAM
 ADDRESS_MAP_END
 
 
@@ -2641,7 +3634,7 @@ INLINE void overwrite_write(UINT16 *dst, UINT16 d)
 	if (d & 0x000f) { *dst &= ~0x000f; *dst |= d & 0x000f; }
 }
 
-static UINT32 pm_io(running_machine *machine, int reg, int write, UINT32 d)
+static UINT32 pm_io(const address_space *space, int reg, int write, UINT32 d)
 {
 	if (svp.emu_status & SSP_PMC_SET)
 	{
@@ -2655,7 +3648,7 @@ static UINT32 pm_io(running_machine *machine, int reg, int write, UINT32 d)
 		svp.emu_status &= ~SSP_PMC_HAVE_ADDR;
 	}
 
-	if (reg == 4 || (activecpu_get_reg(SSP_ST) & 0x60))
+	if (reg == 4 || (cpu_get_reg(space->cpu, SSP_ST) & 0x60))
 	{
 		#define CADDR ((((mode<<16)&0x7f0000)|addr)<<1)
 		UINT16 *dram = (UINT16 *)svp.dram;
@@ -2696,7 +3689,7 @@ static UINT32 pm_io(running_machine *machine, int reg, int write, UINT32 d)
 			int addr = svp.pmac_read[reg]&0xffff;
 			if      ((mode & 0xfff0) == 0x0800) // ROM, inc 1, verified to be correct
 			{
-				UINT16 *ROM = (UINT16 *) memory_region(machine, "main");
+				UINT16 *ROM = (UINT16 *) memory_region(space->machine, "main");
 				svp.pmac_read[reg] += 1;
 				d = ROM[addr|((mode&0xf)<<16)];
 			}
@@ -2725,7 +3718,7 @@ static UINT32 pm_io(running_machine *machine, int reg, int write, UINT32 d)
 
 static READ16_HANDLER( read_PM0 )
 {
-	UINT32 d = pm_io(machine, 0, 0, 0);
+	UINT32 d = pm_io(space, 0, 0, 0);
 	if (d != (UINT32)-1) return d;
 	d = svp.XST2;
 	svp.XST2 &= ~2; // ?
@@ -2734,14 +3727,14 @@ static READ16_HANDLER( read_PM0 )
 
 static WRITE16_HANDLER( write_PM0 )
 {
-	UINT32 r = pm_io(machine, 0, 1, data);
+	UINT32 r = pm_io(space, 0, 1, data);
 	if (r != (UINT32)-1) return;
 	svp.XST2 = data; // ?
 }
 
 static READ16_HANDLER( read_PM1 )
 {
-	UINT32 r = pm_io(machine, 1, 0, 0);
+	UINT32 r = pm_io(space, 1, 0, 0);
 	if (r != (UINT32)-1) return r;
 	logerror("svp: PM1 acces in non PM mode?\n");
 	return 0;
@@ -2749,14 +3742,14 @@ static READ16_HANDLER( read_PM1 )
 
 static WRITE16_HANDLER( write_PM1 )
 {
-	UINT32 r = pm_io(machine, 1, 1, data);
+	UINT32 r = pm_io(space, 1, 1, data);
 	if (r != (UINT32)-1) return;
 	logerror("svp: PM1 acces in non PM mode?\n");
 }
 
 static READ16_HANDLER( read_PM2 )
 {
-	UINT32 r = pm_io(machine, 2, 0, 0);
+	UINT32 r = pm_io(space, 2, 0, 0);
 	if (r != (UINT32)-1) return r;
 	logerror("svp: PM2 acces in non PM mode?\n");
 	return 0;
@@ -2764,14 +3757,14 @@ static READ16_HANDLER( read_PM2 )
 
 static WRITE16_HANDLER( write_PM2 )
 {
-	UINT32 r = pm_io(machine, 2, 1, data);
+	UINT32 r = pm_io(space, 2, 1, data);
 	if (r != (UINT32)-1) return;
 	logerror("svp: PM2 acces in non PM mode?\n");
 }
 
 static READ16_HANDLER( read_XST )
 {
-	UINT32 d = pm_io(machine, 3, 0, 0);
+	UINT32 d = pm_io(space, 3, 0, 0);
 	if (d != (UINT32)-1) return d;
 
 	return svp.XST;
@@ -2779,7 +3772,7 @@ static READ16_HANDLER( read_XST )
 
 static WRITE16_HANDLER( write_XST )
 {
-	UINT32 r = pm_io(machine, 3, 1, data);
+	UINT32 r = pm_io(space, 3, 1, data);
 	if (r != (UINT32)-1) return;
 
 	svp.XST2 |= 1;
@@ -2788,12 +3781,12 @@ static WRITE16_HANDLER( write_XST )
 
 static READ16_HANDLER( read_PM4 )
 {
-	return pm_io(machine, 4, 0, 0);
+	return pm_io(space, 4, 0, 0);
 }
 
 static WRITE16_HANDLER( write_PM4 )
 {
-	pm_io(machine, 4, 1, data);
+	pm_io(space, 4, 1, data);
 }
 
 static READ16_HANDLER( read_PMC )
@@ -2894,11 +3887,11 @@ ADDRESS_MAP_END
 
 
 /* DMA read function for SVP */
-static UINT16 vdp_get_word_from_68k_mem_svp(UINT32 source)
+static UINT16 vdp_get_word_from_68k_mem_svp(running_machine *machine, UINT32 source)
 {
 	if ((source & 0xe00000) == 0x000000)
 	{
-		UINT16 *rom = (UINT16*)memory_region(Machine, "main");
+		UINT16 *rom = (UINT16*)memory_region(machine, "main");
 		source -= 2; // DMA latency
 		return rom[source >> 1];
 	}
@@ -2916,24 +3909,24 @@ static UINT16 vdp_get_word_from_68k_mem_svp(UINT32 source)
 	else
 	{
 		mame_printf_debug("DMA Read unmapped %06x\n",source);
-		return mame_rand(Machine);
+		return mame_rand(machine);
 	}
 }
 
 /* emulate testmode plug */
-static UINT8 megadrive_io_read_data_port_svp(int portnum)
+static UINT8 megadrive_io_read_data_port_svp(running_machine *machine, int portnum)
 {
-	if (portnum == 0 && input_port_read_safe(Machine, "MEMORY_TEST", 0x00))
+	if (portnum == 0 && input_port_read_safe(machine, "MEMORY_TEST", 0x00))
 	{
 		return (megadrive_io_data_regs[0] & 0xc0);
 	}
-	return megadrive_io_read_data_port_3button(portnum);
+	return megadrive_io_read_data_port_3button(machine, portnum);
 }
 
 
 static READ16_HANDLER( svp_speedup_r )
 {
-	 cpu_spinuntil_time(ATTOTIME_IN_USEC(100));
+	 cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(100));
 	return 0x0425;
 }
 
@@ -2946,20 +3939,20 @@ static void svp_init(running_machine *machine)
 
 	/* SVP stuff */
 	svp.dram = auto_malloc(0x20000);
-	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x300000, 0x31ffff, 0, 0, SMH_BANK2, SMH_BANK2);
-	memory_set_bankptr( 2, svp.dram );
-	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa15000, 0xa150ff, 0, 0, svp_68k_io_r, svp_68k_io_w);
+	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x300000, 0x31ffff, 0, 0, SMH_BANK2, SMH_BANK2);
+	memory_set_bankptr(machine,  2, svp.dram );
+	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa15000, 0xa150ff, 0, 0, svp_68k_io_r, svp_68k_io_w);
 	// "cell arrange" 1 and 2
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x390000, 0x39ffff, 0, 0, svp_68k_cell1_r);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3a0000, 0x3affff, 0, 0, svp_68k_cell2_r);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x390000, 0x39ffff, 0, 0, svp_68k_cell1_r);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x3a0000, 0x3affff, 0, 0, svp_68k_cell2_r);
 
-	memory_install_read16_handler(machine, 2, ADDRESS_SPACE_PROGRAM, 0x438, 0x438, 0, 0, svp_speedup_r);
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[2], ADDRESS_SPACE_PROGRAM), 0x438, 0x438, 0, 0, svp_speedup_r);
 
 	svp.iram = auto_malloc(0x800);
-	memory_set_bankptr( 3, svp.iram );
+	memory_set_bankptr(machine,  3, svp.iram );
 	/* SVP ROM just shares m68k region.. */
 	ROM = memory_region(machine, "main");
-	memory_set_bankptr( 4, ROM + 0x800 );
+	memory_set_bankptr(machine,  4, ROM + 0x800 );
 
 	vdp_get_word_from_68k_mem = vdp_get_word_from_68k_mem_svp;
 	megadrive_io_read_data_port_ptr	= megadrive_io_read_data_port_svp;
@@ -2985,6 +3978,14 @@ MACHINE_DRIVER_START( megdsvp )
 	/* IRQs are not used by this CPU */
 MACHINE_DRIVER_END
 
+MACHINE_DRIVER_START( megdsvppal )
+	MDRV_IMPORT_FROM(megadpal)
+
+	MDRV_CPU_ADD("svp", SSP1601, MASTER_CLOCK_PAL / 7 * 3) /* ~23 MHz (guessed) */
+	MDRV_CPU_PROGRAM_MAP(svp_ssp_map, 0)
+	MDRV_CPU_IO_MAP(svp_ext_map, 0)
+	/* IRQs are not used by this CPU */
+MACHINE_DRIVER_END
 
 /****************************************** END SVP related *************************************/
 
@@ -3053,7 +4054,7 @@ VIDEO_UPDATE(megadriv)
 	/* reference */
 
 //  time_elapsed_since_crap = timer_timeelapsed(frame_timer);
-//  xxx = ATTOTIME_TO_CYCLES(0,time_elapsed_since_crap);
+//  xxx = cpu_attotime_to_clocks(screen->machine->cpu[0],time_elapsed_since_crap);
 //  mame_printf_debug("update cycles %d, %08x %08x\n",xxx, (UINT32)(time_elapsed_since_crap.attoseconds>>32),(UINT32)(time_elapsed_since_crap.attoseconds&0xffffffff));
 
 	return 0;
@@ -3331,7 +4332,7 @@ static void genesis_render_videoline_to_videobuffer(int scanline)
 	/* Clear our Render Buffer */
 	for (x=0;x<320;x++)
 	{
-		video_renderline[x]=MEGADRIVE_REG07_BGCOLOUR;
+		video_renderline[x]=MEGADRIVE_REG07_BGCOLOUR | 0x20000; // mark as BG
 	}
 
 	memset(highpri_renderline, 0, 320);
@@ -4318,12 +5319,118 @@ static void genesis_render_videoline_to_videobuffer(int scanline)
 		}
 }
 
+static UINT32 _32x_linerender[320+258]; // tmp buffer (bigger than it needs to be to simplify RLE decode)
+
 /* This converts our render buffer to real screen colours */
 static void genesis_render_videobuffer_to_screenbuffer(running_machine *machine, int scanline)
 {
 	UINT16*lineptr;
 	int x;
 	lineptr = BITMAP_ADDR16(render_bitmap, scanline, 0);
+
+	/* render 32x output to a buffer */
+	if (_32x_is_connected && (_32x_displaymode != 0))
+	{
+		if (_32x_displaymode==1)
+		{
+
+			UINT32 lineoffs;
+			int start;
+
+			lineoffs = _32x_display_dram[scanline];
+
+			if (_32x_screenshift == 0) start=0;
+			else start = -1;
+
+			for (x=start;x<320;x++)
+			{
+				UINT16 coldata;
+				coldata = _32x_display_dram[lineoffs];
+
+				{
+					if (x>=0)
+					{
+						_32x_linerender[x] = _32x_palette_lookup[(coldata & 0xff00)>>8];
+					}
+
+					x++;
+
+					if (x>=0)
+					{
+						_32x_linerender[x] = _32x_palette_lookup[(coldata & 0x00ff)];
+					}
+				}
+
+				lineoffs++;
+
+			}
+		}
+		else if (_32x_displaymode==3) // mode 3 = RLE  (used by BRUTAL intro)
+		{
+			UINT32 lineoffs;
+			int start;
+
+			lineoffs = _32x_display_dram[scanline];
+
+			if (_32x_screenshift == 0) start=0;
+			else start = -1;
+
+            x = start;
+			while (x<320)
+			{
+				UINT16 coldata, length, l;
+				coldata = _32x_display_dram[lineoffs];
+				length = ((coldata & 0xff00)>>8)+1;
+				coldata = (coldata & 0x00ff)>>0;
+				for (l=0;l<length;l++)
+				{
+					if (x>=0)
+					{
+						_32x_linerender[x] = _32x_palette_lookup[(coldata)];
+					}
+					x++;
+				}
+
+				lineoffs++;
+
+			}
+		}
+		else // MODE 2 - 15bpp mode, not used by any commercial games?
+		{
+			UINT32 lineoffs;
+			int start;
+
+			lineoffs = _32x_display_dram[scanline];
+
+			if (_32x_screenshift == 0) start=0;
+			else start = -1;
+
+            x = start;
+			while (x<320)
+			{
+				UINT16 coldata;
+				coldata = _32x_display_dram[lineoffs&0xffff];
+
+				// need to swap red and blue around for MAME
+				{
+					int r = ((coldata >> 0)  & 0x1f);
+					int g = ((coldata >> 5)  & 0x1f);
+					int b = ((coldata >> 10) & 0x1f);
+					int p = ((coldata >> 15) & 0x01); // priority 'through' bit
+
+					coldata = (r << 10) | (g << 5) | (b << 0) | (p << 15);
+
+				}
+
+				if (x>=0)
+					_32x_linerender[x] = coldata;
+
+				x++;
+				lineoffs++;
+			}
+		}
+	}
+
 
 	if (!MEGADRIVE_REG0C_SHADOW_HIGLIGHT)
 	{
@@ -4332,10 +5439,39 @@ static void genesis_render_videobuffer_to_screenbuffer(running_machine *machine,
 		{
 			UINT32 dat;
 			dat = video_renderline[x];
-			if (dat&0x10000)
-				lineptr[x] = megadrive_vdp_palette_lookup_sprite[(dat&0x0f) | segac2_sp_pal_lookup[(dat&0x30)>>4]];
+			if ((dat&0x20000) && (_32x_is_connected) && (_32x_displaymode != 0))
+			{
+				if (_32x_linerender[x]&0x8000)
+				{
+					if (_32x_videopriority)
+					{
+						lineptr[x] = _32x_linerender[x]&0x7fff;
+					}
+					else
+					{
+						// display md bg?
+					}
+				}
+				else
+				{
+					if (_32x_videopriority)
+					{
+						// display md bg?
+					}
+					else
+					{
+						lineptr[x] = _32x_linerender[x]&0x7fff;
+					}
+				}
+			}
 			else
-				lineptr[x] = megadrive_vdp_palette_lookup[(dat&0x0f) | segac2_bg_pal_lookup[(dat&0x30)>>4]];
+			{
+				if (dat&0x10000)
+					lineptr[x] = megadrive_vdp_palette_lookup_sprite[(dat&0x0f) | segac2_sp_pal_lookup[(dat&0x30)>>4]];
+				else
+					lineptr[x] = megadrive_vdp_palette_lookup[(dat&0x0f) | segac2_bg_pal_lookup[(dat&0x30)>>4]];
+			}
+
 		}
 	}
 	else
@@ -4345,49 +5481,105 @@ static void genesis_render_videobuffer_to_screenbuffer(running_machine *machine,
 			UINT32 dat;
 			dat = video_renderline[x];
 
-			/* Verify my handling.. I'm not sure all cases are correct */
-
-			switch (dat&0x1e000)
+			if ((dat&0x20000) && (_32x_is_connected) && (_32x_displaymode != 0))
 			{
-				case 0x00000: // low priority, no shadow sprite, no highlight = shadow
-				case 0x02000: // low priority, shadow sprite, no highlight = shadow
-				case 0x06000: // normal pri,   shadow sprite, no highlight = shadow?
-				case 0x10000: // (sprite) low priority, no shadow sprite, no highlight = shadow
-				case 0x12000: // (sprite) low priority, shadow sprite, no highlight = shadow
-				case 0x16000: // (sprite) normal pri,   shadow sprite, no highlight = shadow?
-					lineptr[x] = megadrive_vdp_palette_lookup_shadow[(dat&0x0f)  | segac2_bg_pal_lookup[(dat&0x30)>>4]];
+				if (_32x_linerender[x]&0x8000)
+				{
+					if (_32x_videopriority)
+					{
+						lineptr[x] = _32x_linerender[x]&0x7fff;
+					}
+					else
+					{
+						// display md bg?
+					}
+				}
+				else
+				{
+					if (_32x_videopriority)
+					{
+						// display md bg?
+					}
+					else
+					{
+						lineptr[x] = _32x_linerender[x]&0x7fff;
+					}
+				}
+
+			}
+			else
+			{
+				/* Verify my handling.. I'm not sure all cases are correct */
+				switch (dat&0x1e000)
+				{
+					case 0x00000: // low priority, no shadow sprite, no highlight = shadow
+					case 0x02000: // low priority, shadow sprite, no highlight = shadow
+					case 0x06000: // normal pri,   shadow sprite, no highlight = shadow?
+					case 0x10000: // (sprite) low priority, no shadow sprite, no highlight = shadow
+					case 0x12000: // (sprite) low priority, shadow sprite, no highlight = shadow
+					case 0x16000: // (sprite) normal pri,   shadow sprite, no highlight = shadow?
+						lineptr[x] = megadrive_vdp_palette_lookup_shadow[(dat&0x0f)  | segac2_bg_pal_lookup[(dat&0x30)>>4]];
+						break;
+
+					case 0x4000: // normal pri, no shadow sprite, no highlight = normal;
+					case 0x8000: // low pri, highlight sprite = normal;
+						lineptr[x] = megadrive_vdp_palette_lookup[(dat&0x0f)  | segac2_bg_pal_lookup[(dat&0x30)>>4]];
+						break;
+
+					case 0x14000: // (sprite) normal pri, no shadow sprite, no highlight = normal;
+					case 0x18000: // (sprite) low pri, highlight sprite = normal;
+						lineptr[x] = megadrive_vdp_palette_lookup_sprite[(dat&0x0f)  | segac2_sp_pal_lookup[(dat&0x30)>>4]];
+						break;
+
+
+					case 0x0c000: // normal pri, highlight set = highlight?
+					case 0x1c000: // (sprite) normal pri, highlight set = highlight?
+						lineptr[x] = megadrive_vdp_palette_lookup_highlight[(dat&0x0f) | segac2_bg_pal_lookup[(dat&0x30)>>4]];
+						break;
+
+					case 0x0a000: // shadow set, highlight set - not possible
+					case 0x0e000: // shadow set, highlight set, normal set, not possible
+					case 0x1a000: // (sprite)shadow set, highlight set - not possible
+					case 0x1e000: // (sprite)shadow set, highlight set, normal set, not possible
+					default:
+						lineptr[x] = mame_rand(machine)&0x3f;
 					break;
-
-				case 0x4000: // normal pri, no shadow sprite, no highlight = normal;
-				case 0x8000: // low pri, highlight sprite = normal;
-					lineptr[x] = megadrive_vdp_palette_lookup[(dat&0x0f)  | segac2_bg_pal_lookup[(dat&0x30)>>4]];
-					break;
-
-				case 0x14000: // (sprite) normal pri, no shadow sprite, no highlight = normal;
-				case 0x18000: // (sprite) low pri, highlight sprite = normal;
-					lineptr[x] = megadrive_vdp_palette_lookup_sprite[(dat&0x0f)  | segac2_sp_pal_lookup[(dat&0x30)>>4]];
-					break;
-
-
-				case 0x0c000: // normal pri, highlight set = highlight?
-				case 0x1c000: // (sprite) normal pri, highlight set = highlight?
-					lineptr[x] = megadrive_vdp_palette_lookup_highlight[(dat&0x0f) | segac2_bg_pal_lookup[(dat&0x30)>>4]];
-					break;
-
-				case 0x0a000: // shadow set, highlight set - not possible
-				case 0x0e000: // shadow set, highlight set, normal set, not possible
-				case 0x1a000: // (sprite)shadow set, highlight set - not possible
-				case 0x1e000: // (sprite)shadow set, highlight set, normal set, not possible
-				default:
-					lineptr[x] = mame_rand(Machine)&0x3f;
-				break;
-
-
+				}
 			}
 		}
 
 	}
 
+
+	if (_32x_is_connected && ( _32x_displaymode != 0))
+	{
+		for (x=0;x<320;x++)
+		{
+			if (_32x_linerender[x]&0x8000)
+			{
+				if (_32x_videopriority)
+				{
+					// display md screen?
+
+				}
+				else
+				{
+					lineptr[x] = _32x_linerender[x]&0x7fff;
+				}
+			}
+			else
+			{
+				if (_32x_videopriority)
+				{
+					lineptr[x] = _32x_linerender[x]&0x7fff;
+				}
+				else
+				{
+					// display md screen?
+				}
+			}
+		}
+	}
 }
 
 static void genesis_render_scanline(running_machine *machine, int scanline)
@@ -4711,7 +5903,7 @@ static TIMER_CALLBACK( scanline_timer_callback )
        top-left of the screen.  The first scanline is scanline 0 (we set scanline to -1 in
        VIDEO_EOF) */
 
-	timer_call_after_resynch(NULL, 0, 0);
+	timer_call_after_resynch(machine, NULL, 0, 0);
 	/* Compensate for some rounding errors
 
        When the counter reaches 261 we should have reached the end of the frame, however due
@@ -4732,6 +5924,14 @@ static TIMER_CALLBACK( scanline_timer_callback )
 			timer_adjust_oneshot(irq6_on_timer,  ATTOTIME_IN_USEC(6), 0);
 			megadrive_irq6_pending = 1;
 			megadrive_vblank_flag = 1;
+
+			// 32x interrupt!
+			if (_32x_is_connected)
+			{
+				if (sh2_master_vint_enable) cpu_set_input_line(_32x_master_cpu,SH2_VINT_IRQ_LEVEL,ASSERT_LINE);
+				if (sh2_slave_vint_enable) cpu_set_input_line(_32x_slave_cpu,SH2_VINT_IRQ_LEVEL,ASSERT_LINE);
+			}
+
 		}
 
 		if (megadrive_vblank_flag>=224)
@@ -4742,6 +5942,8 @@ static TIMER_CALLBACK( scanline_timer_callback )
 
 	//  if (genesis_scanline_counter==0) irq4counter = MEGADRIVE_REG0A_HINT_VALUE;
 		// irq4counter = MEGADRIVE_REG0A_HINT_VALUE;
+
+
 
 		if (genesis_scanline_counter<=224)
 		{
@@ -4772,17 +5974,17 @@ static TIMER_CALLBACK( scanline_timer_callback )
 
 
 
-if (genesis_has_z80)
-{
+	if (genesis_has_z80)
+	{
 		if (genesis_scanline_counter==megadrive_z80irq_scanline)
 		{
-			if ((genz80.z80_has_bus==1) && (genz80.z80_is_reset==0)) cpunum_set_input_line(machine, 1,0,HOLD_LINE);
+			if ((genz80.z80_has_bus==1) && (genz80.z80_is_reset==0)) cpu_set_input_line(machine->cpu[1],0,HOLD_LINE);
 		}
 		if (genesis_scanline_counter==megadrive_z80irq_scanline+1)
 		{
-			cpunum_set_input_line(machine, 1,0,CLEAR_LINE);
+			cpu_set_input_line(machine->cpu[1],0,CLEAR_LINE);
 		}
-}
+	}
 
 	}
 	else /* pretend we're still on the same scanline to compensate for rounding errors */
@@ -4798,14 +6000,14 @@ static TIMER_CALLBACK( irq6_on_callback )
 
 	{
 //      megadrive_irq6_pending = 1;
-		if (MEGADRIVE_REG01_IRQ6_ENABLE || genesis_always_irq6) cpunum_set_input_line(machine, 0,6,HOLD_LINE);
+		if (MEGADRIVE_REG01_IRQ6_ENABLE || genesis_always_irq6) cpu_set_input_line(machine->cpu[0],6,HOLD_LINE);
 	}
 }
 
 static TIMER_CALLBACK( irq4_on_callback )
 {
 	//mame_printf_debug("irq4 active on %d\n",genesis_scanline_counter);
-	cpunum_set_input_line(machine, 0,4,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],4,HOLD_LINE);
 }
 
 /*****************************************************************************************/
@@ -4818,6 +6020,8 @@ MACHINE_RESET( megadriv )
 {
 	/* default state of z80 = reset, with bus */
 	mame_printf_debug("Resetting Megadrive / Genesis\n");
+
+
 
 	switch (input_port_read_safe(machine, "REGION", 0x00))
 	{
@@ -4851,39 +6055,39 @@ MACHINE_RESET( megadriv )
 		break;
 	}
 
-if (genesis_has_z80)
-{
-	genz80.z80_is_reset = 1;
-	cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, ASSERT_LINE);
-	genz80.z80_has_bus = 1;
-	cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, CLEAR_LINE);
-	genz80.z80_bank_pos = 0;
-	genz80.z80_bank_addr = 0;
-	genesis_scanline_counter = -1;
-}
+	if (genesis_has_z80)
+	{
+		genz80.z80_is_reset = 1;
+		cpu_set_input_line(machine->cpu[genz80.z80_cpunum], INPUT_LINE_RESET, ASSERT_LINE);
+		genz80.z80_has_bus = 1;
+		cpu_set_input_line(machine->cpu[genz80.z80_cpunum], INPUT_LINE_HALT, CLEAR_LINE);
+		genz80.z80_bank_pos = 0;
+		genz80.z80_bank_addr = 0;
+		genesis_scanline_counter = -1;
+	}
 
 	megadrive_imode = 0;
 
 	megadrive_init_io(machine);
 
-	frame_timer = timer_alloc(frame_timer_callback, NULL);
-	scanline_timer = timer_alloc(scanline_timer_callback, NULL);
-	render_timer = timer_alloc(render_timer_callback, NULL);
+	frame_timer = timer_alloc(machine, frame_timer_callback, NULL);
+	scanline_timer = timer_alloc(machine, scanline_timer_callback, NULL);
+	render_timer = timer_alloc(machine, render_timer_callback, NULL);
 
-	irq6_on_timer = timer_alloc(irq6_on_callback, NULL);
-	irq4_on_timer = timer_alloc(irq4_on_callback, NULL);
+	irq6_on_timer = timer_alloc(machine, irq6_on_callback, NULL);
+	irq4_on_timer = timer_alloc(machine, irq4_on_callback, NULL);
 
 	timer_adjust_oneshot(frame_timer, attotime_zero, 0);
 	timer_adjust_oneshot(scanline_timer,  attotime_zero, 0);
 
-if (genesis_other_hacks)
-{
-//  set_refresh_rate(megadriv_framerate);
-	cpunum_set_clockscale(machine, 0, 0.9950f); /* Fatal Rewind is very fussy... */
-//  cpunum_set_clockscale(machine, 0, 0.3800f); /* Fatal Rewind is very fussy... */
+	if (genesis_other_hacks)
+	{
+	//  set_refresh_rate(megadriv_framerate);
+		cpu_set_clockscale(machine->cpu[0], 0.9950f); /* Fatal Rewind is very fussy... */
+	//  cpu_set_clockscale(machine->cpu[0], 0.3800f); /* Fatal Rewind is very fussy... */
 
-	memset(megadrive_ram,0x00,0x10000);
-}
+		memset(megadrive_ram,0x00,0x10000);
+	}
 
 	irq4counter = -1;
 	megadrive_total_scanlines = 262;
@@ -4892,6 +6096,22 @@ if (genesis_other_hacks)
 	megadrive_z80irq_scanline = 226;
 
 
+	/* if any of these extra CPUs exist, pause them until we actually turn them on */
+	if (_32x_master_cpu != NULL)
+	{
+		cpu_set_input_line(_32x_master_cpu, INPUT_LINE_RESET, ASSERT_LINE);
+	}
+
+	if (_32x_slave_cpu != NULL)
+	{
+		cpu_set_input_line(_32x_slave_cpu, INPUT_LINE_RESET, ASSERT_LINE);
+	}
+
+	if (_segacd_68k_cpu != NULL )
+	{
+		cpu_set_input_line(_segacd_68k_cpu, INPUT_LINE_RESET, ASSERT_LINE);
+		cpu_set_input_line(_segacd_68k_cpu, INPUT_LINE_HALT, ASSERT_LINE);
+	}
 
 }
 
@@ -4923,9 +6143,9 @@ VIDEO_EOF(megadriv)
 	megadrive_sprite_collision=0;//? when to reset this ..
 	megadrive_imode = MEGADRIVE_REG0C_INTERLEAVE; // can't change mid-frame..
 	megadrive_imode_odd_frame^=1;
-//  cpunum_set_input_line(machine, 1,0,CLEAR_LINE); // if the z80 interrupt hasn't happened by now, clear it..
+//  cpu_set_input_line(machine->cpu[1],0,CLEAR_LINE); // if the z80 interrupt hasn't happened by now, clear it..
 
-	if (MD_RESET_BUTTON)  cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
+	if (MD_RESET_BUTTON(machine))  cpu_set_input_line(machine->cpu[0], INPUT_LINE_RESET, PULSE_LINE);
 
 /*
 int megadrive_total_scanlines = 262;
@@ -5000,48 +6220,7 @@ int megadrive_z80irq_hpos = 320;
 
 	video_screen_configure(machine->primary_screen, scr_width, megadrive_visible_scanlines, &visarea, HZ_TO_ATTOSECONDS(megadriv_framerate));
 
-#if 0
-{
-	UINT16 count = 0;
-	int y,x,yy,xx;
-//  mame_printf_debug("bb\n");
-
-	for (y=0;y<64;y++)
-	{
-		for (x=0;x<64;x++)
-		{
-			for (yy=0;yy<8;yy++)
-			{
-				for (xx=0;xx<2;xx++)
-				{
-					UINT16 dat;
-					UINT16*lineptr;
-
-					dat = MEGADRIV_VDP_VRAM(count);
-					count++;
-					count &=(0xffff>>1);
-
-					lineptr = BITMAP_ADDR16(render_bitmap, y*8+yy, 0);
-
-					//lineptr[x*8+xx*2]   = (dat & 0xf0)>>4;
-					//lineptr[x*8+xx*2+1] = (dat & 0x0f)>>0;
-
-					lineptr[x*8+xx*4+0] = megadrive_vdp_palette_lookup[(dat & 0xf000)>>12];
-					lineptr[x*8+xx*4+1] = megadrive_vdp_palette_lookup[(dat & 0x0f00)>>8];
-					lineptr[x*8+xx*4+2] = megadrive_vdp_palette_lookup[(dat & 0x00f0)>>4];
-					lineptr[x*8+xx*4+3] = megadrive_vdp_palette_lookup[(dat & 0x000f)>>0];
-					//lineptr[x*8+xx*2] = megadrive_vdp_palette_lookup[x&0x3f];
-					//lineptr[x*8+xx*2+1] = megadrive_vdp_palette_lookup[x&0x3f];
-
-
-				}
-			}
-		}
-	}
-}
-#endif
-
-	if (1)
+	if (0)
 	{
 		int xxx;
 		UINT64 frametime;
@@ -5050,12 +6229,12 @@ int megadrive_z80irq_hpos = 320;
 		frametime = ATTOSECONDS_PER_SECOND/megadriv_framerate;
 
 		time_elapsed_since_crap = timer_timeelapsed(frame_timer);
-		xxx = ATTOTIME_TO_CYCLES(0,time_elapsed_since_crap);
+		xxx = cpu_attotime_to_clocks(machine->cpu[0],time_elapsed_since_crap);
 		//mame_printf_debug("---------- cycles %d, %08x %08x\n",xxx, (UINT32)(time_elapsed_since_crap.attoseconds>>32),(UINT32)(time_elapsed_since_crap.attoseconds&0xffffffff));
 		//mame_printf_debug("---------- framet %d, %08x %08x\n",xxx, (UINT32)(frametime>>32),(UINT32)(frametime&0xffffffff));
+		timer_adjust_oneshot(frame_timer,  attotime_zero, 0);
 	}
 
-	timer_adjust_oneshot(frame_timer,  attotime_zero, 0);
 	timer_adjust_oneshot(scanline_timer,  attotime_zero, 0);
 
 }
@@ -5094,13 +6273,12 @@ MACHINE_DRIVER_START( megadriv )
 	MDRV_CPU_PROGRAM_MAP(megadriv_readmem,megadriv_writemem)
 	/* IRQs are handled via the timers */
 
-	MDRV_CPU_ADD("sound", Z80, MASTER_CLOCK_NTSC / 15) /* 3.58 MHz */
+	MDRV_CPU_ADD("genesis_snd_z80", Z80, MASTER_CLOCK_NTSC / 15) /* 3.58 MHz */
 	MDRV_CPU_PROGRAM_MAP(z80_readmem,z80_writemem)
 	MDRV_CPU_IO_MAP(z80_portmap,0)
 	/* IRQ handled via the timers */
 
 	MDRV_MACHINE_RESET(megadriv)
-
 
 	MDRV_SCREEN_ADD("megadriv", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
@@ -5120,17 +6298,6 @@ MACHINE_DRIVER_START( megadriv )
 	MDRV_VIDEO_EOF(megadriv) /* Used to Sync the timing */
 
 	/* sound hardware */
-#if 0
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-
-	MDRV_SOUND_ADD("ym", YM2612, MASTER_CLOCK_NTSC/7) /* 7.67 MHz */
-	MDRV_SOUND_ROUTE(0, "mono", 0.50)
-	MDRV_SOUND_ROUTE(1, "mono", 0.50)
-
-	/* sound hardware */
-	MDRV_SOUND_ADD("sn", SN76496, MASTER_CLOCK_NTSC/15)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50) /* 3.58 MHz */
-#else
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
 	MDRV_SOUND_ADD("ym", YM2612, MASTER_CLOCK_NTSC/7) /* 7.67 MHz */
@@ -5141,28 +6308,104 @@ MACHINE_DRIVER_START( megadriv )
 	MDRV_SOUND_ADD("sn", SN76496, MASTER_CLOCK_NTSC/15)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.25) /* 3.58 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right",0.25) /* 3.58 MHz */
-#endif
-
 MACHINE_DRIVER_END
+
+/************ PAL hardware has a different master clock *************/
 
 MACHINE_DRIVER_START( megadpal )
-	MDRV_IMPORT_FROM(megadriv)
+	MDRV_CPU_ADD("main", M68000, MASTER_CLOCK_PAL / 7) /* 7.67 MHz */
+	MDRV_CPU_PROGRAM_MAP(megadriv_readmem,megadriv_writemem)
+	/* IRQs are handled via the timers */
 
-	MDRV_SCREEN_MODIFY("megadriv")
-	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_CPU_ADD("genesis_snd_z80", Z80, MASTER_CLOCK_PAL / 15) /* 3.58 MHz */
+	MDRV_CPU_PROGRAM_MAP(z80_readmem,z80_writemem)
+	MDRV_CPU_IO_MAP(z80_portmap,0)
+	/* IRQ handled via the timers */
+
+	MDRV_MACHINE_RESET(megadriv)
+
+	MDRV_SCREEN_ADD("megadriv", RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)) // Vblank handled manually.
+	MDRV_SCREEN_SIZE(64*8, 64*8)
+	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 0, 28*8-1)
+
+#ifndef MESS
+	MDRV_NVRAM_HANDLER(megadriv)
+#endif
+
+	MDRV_PALETTE_LENGTH(0x200)
+
+	MDRV_VIDEO_START(megadriv)
+	MDRV_VIDEO_UPDATE(megadriv) /* Copies a bitmap */
+	MDRV_VIDEO_EOF(megadriv) /* Used to Sync the timing */
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+
+	MDRV_SOUND_ADD("ym", YM2612, MASTER_CLOCK_PAL/7) /* 7.67 MHz */
+	MDRV_SOUND_ROUTE(0, "left", 0.50)
+	MDRV_SOUND_ROUTE(1, "right", 0.50)
+
+	/* sound hardware */
+	MDRV_SOUND_ADD("sn", SN76496, MASTER_CLOCK_PAL/15)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.25) /* 3.58 MHz */
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right",0.25) /* 3.58 MHz */
 MACHINE_DRIVER_END
 
-MACHINE_DRIVER_START( _32x )
+
+
+static const sh2_cpu_core sh2_conf_master = { 0, NULL };
+static const sh2_cpu_core sh2_conf_slave  = { 1, NULL };
+
+MACHINE_DRIVER_START( genesis_32x )
 	MDRV_IMPORT_FROM(megadriv)
-	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_PROGRAM_MAP(_32x_readmem,_32x_writemem)
 
-	MDRV_CPU_ADD("SH2main", SH2, 10000000 )
-	MDRV_CPU_PROGRAM_MAP(sh2main_readmem,sh2main_writemem)
+	MDRV_CPU_ADD("32x_master_sh2", SH2, (MASTER_CLOCK_NTSC*3)/7 )
+	MDRV_CPU_PROGRAM_MAP(sh2_main_map, 0)
+	MDRV_CPU_CONFIG(sh2_conf_master)
 
-	MDRV_CPU_ADD("SH2slave", SH2, 10000000 )
-	MDRV_CPU_PROGRAM_MAP(sh2slave_readmem,sh2slave_writemem)
+	MDRV_CPU_ADD("32x_slave_sh2", SH2, (MASTER_CLOCK_NTSC*3)/7 )
+	MDRV_CPU_PROGRAM_MAP(sh2_slave_map, 0)
+	MDRV_CPU_CONFIG(sh2_conf_slave)
+
+	// brutal needs at least 30000 or the backgrounds don't animate properly / lock up, and the game
+	// freezes.  Some stage seem to need as high as 80000 ?   this *KILLS* performance
+	//
+	// boosting the interleave here actually makes Kolibri run incorrectly however, that
+	// one works best just boosting the interleave on communications?!
+	MDRV_QUANTUM_TIME(HZ(1800000))
 MACHINE_DRIVER_END
+
+
+MACHINE_DRIVER_START( genesis_32x_pal )
+	MDRV_IMPORT_FROM(megadpal)
+
+	MDRV_CPU_ADD("32x_master_sh2", SH2, (MASTER_CLOCK_PAL*3)/7 )
+	MDRV_CPU_PROGRAM_MAP(sh2_main_map, 0)
+	MDRV_CPU_CONFIG(sh2_conf_master)
+
+	MDRV_CPU_ADD("32x_slave_sh2", SH2, (MASTER_CLOCK_PAL*3)/7 )
+	MDRV_CPU_PROGRAM_MAP(sh2_slave_map, 0)
+	MDRV_CPU_CONFIG(sh2_conf_slave)
+
+MACHINE_DRIVER_END
+
+MACHINE_DRIVER_START( genesis_scd )
+	MDRV_IMPORT_FROM(megadriv)
+
+	MDRV_CPU_ADD("segacd_68k", M68000, SEGACD_CLOCK ) /* 12.5 MHz */
+	MDRV_CPU_PROGRAM_MAP(segacd_map,0)
+MACHINE_DRIVER_END
+
+MACHINE_DRIVER_START( genesis_32x_scd )
+	MDRV_IMPORT_FROM(genesis_32x)
+
+	MDRV_CPU_ADD("segacd_68k", M68000, SEGACD_CLOCK ) /* 12.5 MHz */
+	MDRV_CPU_PROGRAM_MAP(segacd_map,0)
+MACHINE_DRIVER_END
+
 
 /* Callback when the genesis enters interrupt code */
 static IRQ_CALLBACK(genesis_int_callback)
@@ -5181,30 +6424,75 @@ static IRQ_CALLBACK(genesis_int_callback)
 	return (0x60+irqline*4)/4; // vector address
 }
 
-static int megadriv_tas_callback(void)
+static int megadriv_tas_callback(const device_config *device)
 {
 	return 0; // writeback not allowed
 }
 
 static void megadriv_init_common(running_machine *machine)
 {
+	/* Look to see if this system has the standard Sound Z80 */
+	_genesis_snd_z80_cpu = cputag_get_cpu(machine, "genesis_snd_z80");
+	if (_genesis_snd_z80_cpu != NULL)
+	{
+		printf("GENESIS Sound Z80 cpu found %d\n", cpu_get_index(_genesis_snd_z80_cpu) );
+		genesis_has_z80 = 1;
+	}
+	else
+	{
+		genesis_has_z80 = 0;
+	}
+
+	/* Look to see if this system has the 32x Master SH2 */
+	_32x_master_cpu = cputag_get_cpu(machine, "32x_master_sh2");
+	if (_32x_master_cpu != NULL)
+	{
+		printf("32x MASTER SH2 cpu found %d\n", cpu_get_index(_32x_master_cpu) );
+	}
+
+	/* Look to see if this system has the 32x Slave SH2 */
+	_32x_slave_cpu = cputag_get_cpu(machine, "32x_slave_sh2");
+	if (_32x_slave_cpu != NULL)
+	{
+		printf("32x SLAVE SH2 cpu found %d\n", cpu_get_index(_32x_slave_cpu) );
+	}
+
+	if ((_32x_master_cpu != NULL) && (_32x_slave_cpu != NULL))
+	{
+		_32x_is_connected = 1;
+	}
+	else
+	{
+		_32x_is_connected = 0;
+	}
+
+	_segacd_68k_cpu = cputag_get_cpu(machine, "segacd_68k");
+	if (_segacd_68k_cpu != NULL)
+	{
+		printf("Sega CD secondary 68k cpu found %d\n", cpu_get_index(_segacd_68k_cpu) );
+	}
+
+	_svp_cpu = cputag_get_cpu(machine, "svp");
+	if (_svp_cpu != NULL)
+	{
+		printf("SVP (cpu) found %d\n", cpu_get_index(_svp_cpu) );
+	}
 
 
+	if (genesis_has_z80)
+	{
+		genz80.z80_cpunum = 1;
+		genz80.z80_prgram = auto_malloc(0x2000);
+		memory_set_bankptr(machine,  1, genz80.z80_prgram );
+	}
 
-if (genesis_has_z80)
-{
-	genz80.z80_cpunum = 1;
-	genz80.z80_prgram = auto_malloc(0x2000);
-	memory_set_bankptr( 1, genz80.z80_prgram );
-}
-
-	cpunum_set_irq_callback(0, genesis_int_callback);
+	cpu_set_irq_callback(machine->cpu[0], genesis_int_callback);
 	megadriv_backupram = NULL;
 	megadriv_backupram_length = 0;
 
 	vdp_get_word_from_68k_mem = vdp_get_word_from_68k_mem_default;
 
-	cpunum_set_info_fct(0, CPUINFO_PTR_M68K_TAS_CALLBACK, (void *)megadriv_tas_callback);
+	device_set_info_fct(machine->cpu[0], CPUINFO_FCT_M68K_TAS_CALLBACK, (void *)megadriv_tas_callback);
 
 	if ((machine->gamedrv->ipt==ipt_megadri6) || (machine->gamedrv->ipt==ipt_ssf2ghw))
 	{
@@ -5238,12 +6526,18 @@ if (genesis_has_z80)
 		mame_printf_debug("\n");
 	}
 
+	/* if we have an SVP cpu then do some extra initilization for it */
+	if (_svp_cpu != NULL)
+	{
+		svp_init(machine);
+	}
+
+
 }
 
 DRIVER_INIT( megadriv_c2 )
 {
 	genvdp_use_cram = 0;
-	genesis_has_z80 = 0;
 	genesis_always_irq6 = 1;
 	genesis_other_hacks = 0;
 
@@ -5258,7 +6552,6 @@ DRIVER_INIT( megadriv_c2 )
 DRIVER_INIT( megadriv )
 {
 	genvdp_use_cram = 1;
-	genesis_has_z80 = 1;
 	genesis_always_irq6 = 0;
 	genesis_other_hacks = 1;
 
@@ -5271,7 +6564,6 @@ DRIVER_INIT( megadriv )
 DRIVER_INIT( megadrij )
 {
 	genvdp_use_cram = 1;
-	genesis_has_z80 = 1;
 	genesis_always_irq6 = 0;
 	genesis_other_hacks = 1;
 
@@ -5284,7 +6576,6 @@ DRIVER_INIT( megadrij )
 DRIVER_INIT( megadrie )
 {
 	genvdp_use_cram = 1;
-	genesis_has_z80 = 1;
 	genesis_always_irq6 = 0;
 	genesis_other_hacks = 1;
 
@@ -5292,20 +6583,6 @@ DRIVER_INIT( megadrie )
 	hazemdchoice_megadrive_region_export = 1;
 	hazemdchoice_megadrive_region_pal = 1;
 	hazemdchoice_megadriv_framerate = 50;
-}
-
-DRIVER_INIT( megadsvp )
-{
-	genvdp_use_cram = 1;
-	genesis_has_z80 = 1;
-	genesis_always_irq6 = 0;
-	genesis_other_hacks = 1;
-
-	megadriv_init_common(machine);
-	svp_init(machine);
-	hazemdchoice_megadrive_region_export = 1;
-	hazemdchoice_megadrive_region_pal = 0;
-	hazemdchoice_megadriv_framerate = 60;
 }
 
 
@@ -5337,27 +6614,224 @@ static WRITE8_HANDLER( z80_unmapped_w )
 void megatech_set_megadrive_z80_as_megadrive_z80(running_machine *machine)
 {
 	/* INIT THE PORTS *********************************************************************************************/
-	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_IO, 0x0000, 0xffff, 0, 0, z80_unmapped_port_r, z80_unmapped_port_w);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0x0000, 0xffff, 0, 0, z80_unmapped_port_r, z80_unmapped_port_w);
 
 	/* catch any addresses that don't get mapped */
-	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x0000, 0xffff, 0, 0, z80_unmapped_r, z80_unmapped_w);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x0000, 0xffff, 0, 0, z80_unmapped_r, z80_unmapped_w);
 
 
-	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, SMH_BANK1, SMH_BANK1);
-	memory_set_bankptr( 1, genz80.z80_prgram );
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x0000, 0x1fff, 0, 0, SMH_BANK1, SMH_BANK1);
+	memory_set_bankptr(machine,  1, genz80.z80_prgram );
 
-	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, SMH_BANK6, SMH_BANK6);
-	memory_set_bankptr( 6, genz80.z80_prgram );
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x0000, 0x1fff, 0, 0, SMH_BANK6, SMH_BANK6);
+	memory_set_bankptr(machine,  6, genz80.z80_prgram );
 
 
 	// not allowed??
-//  memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK1, SMH_BANK1);
+//  memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x2000, 0x3fff, 0, 0, SMH_BANK1, SMH_BANK1);
 
-	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4003, 0, 0, megadriv_z80_YM2612_read, megadriv_z80_YM2612_write);
-	memory_install_write8_handler    (machine, 1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6000, 0, 0, megadriv_z80_z80_bank_w);
-	memory_install_write8_handler    (machine, 1, ADDRESS_SPACE_PROGRAM, 0x6001, 0x6001, 0, 0, megadriv_z80_z80_bank_w);
-	memory_install_read8_handler     (machine, 1, ADDRESS_SPACE_PROGRAM, 0x6100, 0x7eff, 0, 0, megadriv_z80_unmapped_read);
-	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x7f00, 0x7fff, 0, 0, megadriv_z80_vdp_read, megadriv_z80_vdp_write);
-	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, z80_read_68k_banked_data, z80_write_68k_banked_data);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x4000, 0x4003, 0, 0, megadriv_z80_YM2612_read, megadriv_z80_YM2612_write);
+	memory_install_write8_handler    (cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x6000, 0x6000, 0, 0, megadriv_z80_z80_bank_w);
+	memory_install_write8_handler    (cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x6001, 0x6001, 0, 0, megadriv_z80_z80_bank_w);
+	memory_install_read8_handler     (cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x6100, 0x7eff, 0, 0, megadriv_z80_unmapped_read);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x7f00, 0x7fff, 0, 0, megadriv_z80_vdp_read, megadriv_z80_vdp_write);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x8000, 0xffff, 0, 0, z80_read_68k_banked_data, z80_write_68k_banked_data);
 }
 
+// these are tests for 'special case' hardware to make sure I don't break anything while rearranging things
+//
+
+
+
+DRIVER_INIT( _32x )
+{
+
+
+	_32x_dram0 = auto_malloc(0x40000);
+	_32x_dram1 = auto_malloc(0x40000);
+
+	memset(_32x_dram0, 0x00, 0x40000);
+	memset(_32x_dram1, 0x00, 0x40000);
+
+	_32x_palette = auto_malloc(0x200);
+	_32x_palette_lookup = auto_malloc(0x200);
+
+	memset(_32x_palette, 0x00, 0x200);
+	memset(_32x_palette_lookup, 0x00, 0x200);
+
+
+	_32x_display_dram = _32x_dram0;
+	_32x_access_dram = _32x_dram1;
+
+	_32x_adapter_enabled = 0;
+
+	if (_32x_adapter_enabled == 0)
+	{
+		memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000000, 0x03fffff, 0, 0, SMH_BANK10, SMH_BANK10);
+		memory_set_bankptr(machine,  10, memory_region(machine, "gamecart") );
+	};
+
+
+	a15100_reg = 0x0000;
+	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa15100, 0xa15101, 0, 0, _32x_68k_a15100_r, _32x_68k_a15100_w); // framebuffer control regs
+	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa15102, 0xa15103, 0, 0, _32x_68k_a15102_r, _32x_68k_a15102_w); // send irq to sh2
+	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa15104, 0xa15105, 0, 0, _32x_68k_a15104_r, _32x_68k_a15104_w); // 68k BANK rom set
+	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa15106, 0xa15107, 0, 0, _32x_68k_a15106_r, _32x_68k_a15106_w); // dreq stuff
+
+	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa15120, 0xa1512f, 0, 0, _32x_68k_commsram_r, _32x_68k_commsram_w); // comms reg 0-7
+
+	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0a130ec, 0x0a130ef, 0, 0, _32x_68k_MARS_r); // system ID
+
+
+
+
+	/* Interrupts are masked / disabled at first */
+	sh2_master_vint_enable = sh2_slave_vint_enable = 0;
+	sh2_master_hint_enable = sh2_slave_hint_enable = 0;
+	sh2_master_cmdint_enable = sh2_slave_cmdint_enable = 0;
+	sh2_master_pwmint_enable = sh2_slave_pwmint_enable = 0;
+
+	// start in a reset state
+	sh2_are_running = 0;
+
+	_32x_a1518a_reg = 0x00; // inital value
+	_32x_68k_a15104_reg = 0x00;
+
+	_32x_autofill_length = 0;
+	_32x_autofill_address = 0;
+	_32x_autofill_data = 0;
+	_32x_screenshift = 0;
+	_32x_videopriority = 0; // MD priority
+	_32x_displaymode = 0;
+	_32x_240mode = 0;
+
+// checking if these help brutal, they don't.
+	device_set_info_int(machine->cpu[2], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_COMPATIBLE_OPTIONS);
+	device_set_info_int(machine->cpu[3], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_COMPATIBLE_OPTIONS);
+
+	DRIVER_INIT_CALL(megadriv);
+}
+
+#if 1
+
+ROM_START( 32x_bios )
+
+	ROM_REGION16_BE( 0x400000, "gamecart", 0 ) /* 68000 Code */
+	// test sets
+//  ROM_LOAD( "32xquin.rom",  0x000000,  0x05d124, CRC(93d4b0a3) SHA1(128bd0b6e048c749da1a2f4c3abd6a867539a293))
+//  ROM_LOAD( "32x_babe.rom", 0x000000,  0x014f80, CRC(816b0cb4) SHA1(dc16d3170d5809b57192e03864b7136935eada64) )
+//  ROM_LOAD( "32x_hot.rom",  0x000000,  0x01235c, CRC(da9c93c9) SHA1(a62652eb8ad8c62b36f6b1ffb96922d045c4e3ac))
+//  ROM_LOAD( "32x_rot.bin",  0x000000,  0x001638, CRC(98c25033) SHA1(8d9ab3084bd29e60b8cdf4b9f1cb755eb4c88d29) )
+//  ROM_LOAD( "32x_3d.bin",   0x000000,  0x006568, CRC(0171743e) SHA1(bbe6fec182baae5e4d47d263fae6b419db5366ae) )
+//  ROM_LOAD( "32x_h15.bin",  0x000000,  0x024564, CRC(938f4e1d) SHA1(ab7270121be53c6c82c4cb45f8f41dd24eb3a2a5) ) // test demo for 15bpp mode
+//  ROM_LOAD( "32x_spin.bin", 0x000000,  0x012c28, CRC(3d1d1191) SHA1(221a74408653e18cef8ce2f9b4d33ed93e4218b7) )
+//  ROM_LOAD( "32x_ecco.bin", 0x000000,  0x300000, CRC(b06178df) SHA1(10409f2245b058e8a32cba51e1ea391ca4480108) ) // fails after sega logo
+
+	// actual games, for testing
+//  ROM_LOAD( "32x_knux.rom", 0x000000,  0x300000, CRC(d0b0b842) SHA1(0c2fff7bc79ed26507c08ac47464c3af19f7ced7) )
+//  ROM_LOAD( "32x_doom.bin", 0x000000,  0x300000, CRC(208332fd) SHA1(b68e9c7af81853b8f05b8696033dfe4c80327e38) ) // works!
+//  ROM_LOAD( "32x_koli.bin", 0x000000,  0x300000, CRC(20ca53ef) SHA1(191ae0b525ecf32664086d8d748e0b35f776ddfe) ) // works but needs sync ONLY on command writes / reads or game stutters?!
+//  ROM_LOAD( "32x_head.bin", 0x000000,  0x300000, CRC(ef5553ff) SHA1(4e872fbb44ecb2bd730abd8cc8f32f96b10582c0) ) // doesn't boot
+//  ROM_LOAD( "32x_pit.bin",  0x000000,  0x300000, CRC(f9126f15) SHA1(ee864d1677c6d976d0846eb5f8d8edb839acfb76) ) // ok, needs vram fill on intro screens tho?
+//  ROM_LOAD( "32x_spid.bin", 0x000000,  0x300000, CRC(29dce257) SHA1(7cc2ea1e10f110338ad880bd3e7ff3bce72e7e9e) ) // needs cmdint status reads, overwrite image support wrong? priority handling wrong??
+//  ROM_LOAD( "32x_carn.bin", 0x000000,  0x300000, CRC(7c7be6a2) SHA1(9a563ed821b483148339561ebd2b876efa58847b) ) // ?? doesn't boot
+//  ROM_LOAD( "32x_raw.bin",  0x000000,  0x400000, CRC(8eb7cd2c) SHA1(94b974f2f69f0c10bc18b349fa4ff95ca56fa47b) ) // needs cmdint status reads
+//  ROM_LOAD( "32x_darx.bin", 0x000000,  0x200000, CRC(22d7c906) SHA1(108b4ffed8643abdefa921cfb58389b119b47f3d) ) // ?? probably abuses the hardware, euro only ;D
+//  ROM_LOAD( "32x_prim.bin", 0x000000,  0x400000, CRC(e78a4d28) SHA1(5084dcca51d76173c383ab7d04cbc661673545f7) ) // needs tight sync or fails after sega logo - works with tight sync, but VERY slow
+//  ROM_LOAD( "32x_brut.bin", 0x000000,  0x300000, CRC(7a72c939) SHA1(40aa2c787f37772cdbd7280b8be06b15421fabae) ) // needs *very* heavy sync to work..
+//  ROM_LOAD( "32x_temp.bin", 0x000000,  0x300000, CRC(14e5c575) SHA1(6673ba83570b4f2c1b4a22415a56594c3cc6c6a9) ) // works (heavy slowdowns) RV emulation - really should hide 68k rom when transfer is off
+//  ROM_LOAD( "32x_vr.bin",   0x000000,  0x300000, CRC(7896b62e) SHA1(18dfdeb50780c2623e60a6587d7ed701a1cf81f1) ) // doesn't work
+//  ROM_LOAD( "32x_vf.bin",   0x000000,  0x400000, CRC(b5de9626) SHA1(f35754f4bfe3a53722d7a799f88face0fd13c424) ) // locks up when starting game
+//  ROM_LOAD( "32x_zaxx.bin", 0x000000,  0x200000, CRC(447d44be) SHA1(60c390f76c394bdd221936c21aecbf98aec49a3d) ) // nothing
+//  ROM_LOAD( "32x_trek.bin", 0x000000,  0x200000, CRC(dd9708b9) SHA1(e5248328b64a1ec4f1079c88ee53ef8d48e99e58) ) // boots, seems to run.. enables hints tho
+//  ROM_LOAD( "32x_sw.bin",   0x000000,  0x280000, CRC(2f16b44a) SHA1(f4ffaaf1d8330ea971643021be3f3203e1ea065d) ) // gets stuck in impossible (buggy?) 68k loop
+//  ROM_LOAD( "32x_wwfa.bin", 0x000000,  0x400000, CRC(61833503) SHA1(551eedc963cba0e1410b3d229b332ef9ea061469) ) // 32x game gfx missing, doesn't progress properly into game
+//  ROM_LOAD( "32x_shar.bin", 0x000000,  0x200000, CRC(86e7f989) SHA1(f32a52a7082761982024e40291dbd962a835b231) ) // doesn't boot
+//  ROM_LOAD( "32x_golf.bin", 0x000000,  0x300000, CRC(d3d0a2fe) SHA1(dc77b1e5c888c2c4284766915a5020bb14ee681d) ) // works
+//  ROM_LOAD( "32x_moto.bin", 0x000000,  0x200000, CRC(a21c5761) SHA1(5f1a107991aaf9eff0b3ce864b2e3151f56abe7b) ) // works (with sound!)
+//  ROM_LOAD( "32x_tmek.bin", 0x000000,  0x300000, CRC(66d2c48f) SHA1(173c8425921d83db3e8d181158e7599364f4c0f6) ) // works?
+//  ROM_LOAD( "32x_bcr.bin",  0x000000,  0x300000, CRC(936c3d27) SHA1(9b5fd499eaa442d48a2c97fceb1d505dc8e8ddff) ) // overwrite image problems, locks going ingame
+//  ROM_LOAD( "32x_blak.bin", 0x000000,  0x300000, CRC(d1a60a47) SHA1(4bf120cf056fe1417ca5b02fa0372ef33cb8ec11) ) // works?
+//  ROM_LOAD( "32x_shad.bin", 0x000000,  0x200000, CRC(60c49e4d) SHA1(561c8c63dbcabc0b1b6f31673ca75a0bde7abc72) ) // works (nasty sound)
+//  ROM_LOAD( "32x_abur.bin", 0x000000,  0x200000, CRC(204044c4) SHA1(9cf575feb036e2f26e78350154d5eb2fd3825325) ) // doesn't boot
+//  ROM_LOAD( "32x_darx.bin", 0x000000,  0x200000, CRC(22d7c906) SHA1(108b4ffed8643abdefa921cfb58389b119b47f3d) ) // doesn't boot (PAL only too)
+//  ROM_LOAD( "32x_fifa.bin", 0x000000,  0x300000, CRC(fb14a7c8) SHA1(131ebb717dee4dd1d8f5ab2b9393c23785d3a359) ) // crash
+//  ROM_LOAD( "32x_tman.bin", 0x000000,  0x400000, CRC(14eac7a6) SHA1(7588b0b8f4e93d5fdc920d3ab7e464154e423da9) ) // ok, some bad gfx
+//  ROM_LOAD( "32x_nba.bin",  0x000000,  0x400000, CRC(6b7994aa) SHA1(c8af3e74c49514669ba6652ec0c81bccf77873b6) ) // crash
+//  ROM_LOAD( "32x_nfl.bin",  0x000000,  0x300000, CRC(0bc7018d) SHA1(a0dc24f2f3a7fc5bfd12791cf25af7f7888843cf) ) // doesn't boot
+//  ROM_LOAD( "32x_rbi.bin",  0x000000,  0x200000, CRC(ff795fdc) SHA1(4f90433a4403fd74cafeea49272689046de4ae43) ) // doesn't boot
+	ROM_LOAD( "32x_wsb.bin",  0x000000,  0x300000, CRC(6de1bc75) SHA1(ab3026eae46a775adb7eaebc13702699557ddc41) ) // working - overwrite problems
+//  ROM_LOAD( "32x_mk2.bin",  0x000000,  0x400000, CRC(211085ce) SHA1(f75698de887d0ef980f73e35fc4615887a9ad58f) ) // working
+//  ROM_LOAD( "32x_sang.bin", 0x000000,  0x400000, CRC(e4de7625) SHA1(74a3ba27c55cff12409bf6c9324ece6247abbad1) ) // hangs after sega logo
+
+//  ROM_LOAD( "32x_mars.bin", 0x000000,  0x400000, CRC(8f7260fb) SHA1(7654c6d3cf2883c30df51cf38d723ab7902280c4) ) // official hw test program? reports lots of errors seems to get stuck on test 39?
+
+	ROM_REGION32_BE( 0x400000, "gamecart_sh2", 0 ) /* Copy for the SH2 */
+	ROM_COPY( "gamecart", 0x0, 0x0, 0x400000)
+
+	ROM_REGION16_BE( 0x400000, "32x_68k_bios", 0 ) /* 68000 Code */
+//  ROM_COPY( "gamecart", 0x0, 0x0, 0x400000)
+	ROM_LOAD( "32x_g_bios.bin", 0x000000,  0x000100, CRC(5c12eae8) SHA1(dbebd76a448447cb6e524ac3cb0fd19fc065d944) )
+
+	ROM_REGION16_BE( 0x400000, "main", ROMREGION_ERASE00 )
+	// temp, rom should only be visible here when one of the regs is set, tempo needs it
+	ROM_COPY( "gamecart", 0x0, 0x0, 0x400000)
+	ROM_COPY( "32x_68k_bios", 0x0, 0x0, 0x100)
+
+	ROM_REGION( 0x400000, "32x_master_sh2", 0 ) /* SH2 Code */
+	ROM_LOAD( "32x_m_bios.bin", 0x000000,  0x000800, CRC(dd9c46b8) SHA1(1e5b0b2441a4979b6966d942b20cc76c413b8c5e) )
+
+	ROM_REGION( 0x400000, "32x_slave_sh2", 0 ) /* SH2 Code */
+	ROM_LOAD( "32x_s_bios.bin", 0x000000,  0x000400, CRC(bfda1fe5) SHA1(4103668c1bbd66c5e24558e73d4f3f92061a109a) )
+ROM_END
+
+ROM_START( segacd )
+	ROM_REGION16_BE( 0x400000, "main", ROMREGION_ERASE00 )
+	ROM_LOAD( "segacd_model2_bios_2_11_u.bin", 0x000000,  0x020000, CRC(2e49d72c) SHA1(328a3228c29fba244b9db2055adc1ec4f7a87e6b) )
+ROM_END
+
+/* some games use the 32x and SegaCD together to give better quality FMV */
+ROM_START( 32x_scd )
+	ROM_REGION16_BE( 0x400000, "main", ROMREGION_ERASE00 )
+
+	ROM_REGION16_BE( 0x400000, "gamecart", 0 ) /* 68000 Code */
+	ROM_LOAD( "segacd_model2_bios_2_11_u.bin", 0x000000,  0x020000, CRC(2e49d72c) SHA1(328a3228c29fba244b9db2055adc1ec4f7a87e6b) )
+
+	ROM_REGION16_BE( 0x400000, "32x_68k_bios", 0 ) /* 68000 Code */
+	ROM_LOAD( "32x_g_bios.bin", 0x000000,  0x000100, CRC(5c12eae8) SHA1(dbebd76a448447cb6e524ac3cb0fd19fc065d944) )
+
+	ROM_REGION( 0x400000, "32x_master_sh2", 0 ) /* SH2 Code */
+	ROM_LOAD( "32x_m_bios.bin", 0x000000,  0x000800, CRC(dd9c46b8) SHA1(1e5b0b2441a4979b6966d942b20cc76c413b8c5e) )
+
+	ROM_REGION( 0x400000, "32x_slave_sh2", 0 ) /* SH2 Code */
+	ROM_LOAD( "32x_s_bios.bin", 0x000000,  0x000400, CRC(bfda1fe5) SHA1(4103668c1bbd66c5e24558e73d4f3f92061a109a) )
+ROM_END
+
+ROM_START( g_virr )
+	ROM_REGION( 0x400000, "main", 0 ) /* 68000 Code */
+	ROM_LOAD( "g_virr.bin", 0x000000, 0x200000, CRC(7e1a324a) SHA1(ff969ae53120cc4e7cb1a8a7e47458f2eb8a2165) )
+ROM_END
+ROM_START( g_virrj )
+	ROM_REGION( 0x400000, "main", 0 ) /* 68000 Code */
+	ROM_LOAD( "g_virrj.bin", 0x000000, 0x200000, CRC(53a293b5) SHA1(0ad38a3ab1cc99edac72184f8ae420e13df5cac6) )
+ROM_END
+ROM_START( g_virre )
+	ROM_REGION( 0x400000, "main", 0 ) /* 68000 Code */
+	ROM_LOAD( "g_virre.bin", 0x000000, 0x200000, CRC(9624d4ef) SHA1(2c3812f8a010571e51269a33a989598787d27c2d) )
+ROM_END
+ROM_START( g_virrea )
+	ROM_REGION( 0x400000, "main", 0 ) /* 68000 Code */
+	ROM_LOAD( "g_virrea.bin", 0x000000, 0x200000, CRC(5a943df9) SHA1(2c08ea556c79d48e88ff5202944c161ae1b41c63) )
+ROM_END
+
+#ifndef MESS
+GAME( 1994, 32x_bios,    0,        genesis_32x,        megadriv,    _32x,    ROT0,   "Sega", "32X Bios", GAME_NOT_WORKING )
+GAME( 1994, segacd,      0,        genesis_scd,        megadriv,    megadriv,ROT0,   "Sega", "Sega-CD Model 2 BIOS V2.11 (U)", GAME_NOT_WORKING )
+GAME( 1994, 32x_scd,     0,        genesis_32x_scd,    megadriv,    _32x,    ROT0,   "Sega", "Sega-CD Model 2 BIOS V2.11 (U) (with 32X)", GAME_NOT_WORKING )
+GAME( 1994, g_virr,      0,        megdsvp,            megadriv,   megadriv, ROT0,   "Sega", "Virtua Racing (U) [!]", 0 )
+GAME( 1994, g_virrj ,    g_virr,   megdsvp,            megadriv,   megadrij, ROT0,   "Sega", "Virtua Racing (J) [!]", 0 )
+GAME( 1994, g_virre ,    g_virr,   megdsvppal,         megadriv,   megadrie, ROT0,   "Sega", "Virtua Racing (E) [!]", 0 )
+GAME( 1994, g_virrea,    g_virr,   megdsvppal,         megadriv,   megadrie, ROT0,   "Sega", "Virtua Racing (E) [a1]", 0 )
+#endif
+
+#endif

@@ -217,6 +217,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "video/vector.h"
 #include "video/avgdvg.h"
 #include "sound/ay8910.h"
@@ -233,8 +234,9 @@
 
 static MACHINE_RESET( omegrace )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	/* Omega Race expects the vector processor to be ready. */
-	avgdvg_reset_w (machine,0, 0);
+	avgdvg_reset_w(space, 0, 0);
 }
 
 
@@ -247,7 +249,7 @@ static MACHINE_RESET( omegrace )
 
 static READ8_HANDLER( omegrace_vg_go_r )
 {
-	avgdvg_go_w(machine,0,0);
+	avgdvg_go_w(space,0,0);
 	return 0;
 }
 
@@ -285,7 +287,7 @@ static const UINT8 spinnerTable[64] =
 
 static READ8_HANDLER( omegrace_spinner1_r )
 {
-	return (spinnerTable[input_port_read(machine, "SPIN0") & 0x3f]);
+	return (spinnerTable[input_port_read(space->machine, "SPIN0") & 0x3f]);
 }
 
 
@@ -314,8 +316,8 @@ static WRITE8_HANDLER( omegrace_leds_w )
 
 static WRITE8_HANDLER( omegrace_soundlatch_w )
 {
-	soundlatch_w (machine, offset, data);
-	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
+	soundlatch_w (space, offset, data);
+	cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
 }
 
 

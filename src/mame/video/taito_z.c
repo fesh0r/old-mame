@@ -14,15 +14,15 @@ static int road_palbank;
 
 static void taitoz_core_vh_start(running_machine *machine, int x_offs)
 {
-	if (has_TC0480SCP())	/* it's Dblaxle, a tc0480scp game */
+	if (has_TC0480SCP(machine))	/* it's Dblaxle, a tc0480scp game */
 		TC0480SCP_vh_start(machine,TC0480SCP_GFX_NUM,x_offs,0x21,0x08,4,0,0,0,0);
 	else	/* it's a tc0100scn game */
 		TC0100SCN_vh_start(machine,1,TC0100SCN_GFX_NUM,x_offs,0,0,0,0,0,0);
 
-	if (has_TC0150ROD())
-		TC0150ROD_vh_start();
+	if (has_TC0150ROD(machine))
+		TC0150ROD_vh_start(machine);
 
-	if (has_TC0110PCR())
+	if (TC0110PCR_mask(machine) & 1)
 		TC0110PCR_vh_start(machine);
 }
 
@@ -831,7 +831,7 @@ WRITE16_HANDLER( contcirc_out_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0 = reset sub CPU */
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 
 		/* bits 1-3 n.c. */
 
@@ -855,9 +855,9 @@ VIDEO_UPDATE( contcirc )
 	layer[1] = layer[0]^1;
 	layer[2] = 2;
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0],0,0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[1],0,1);
@@ -881,10 +881,10 @@ VIDEO_UPDATE( chasehq )
 	layer[1] = layer[0]^1;
 	layer[2] = 2;
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	/* Ensure screen blanked even when bottom layer not drawn due to disable bit */
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0],TILEMAP_DRAW_OPAQUE,0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[1],0,1);
@@ -906,10 +906,10 @@ VIDEO_UPDATE( bshark )
 	layer[1] = layer[0]^1;
 	layer[2] = 2;
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	/* Ensure screen blanked even when bottom layer not drawn due to disable bit */
-	fillbitmap(bitmap, 0,cliprect);
+	bitmap_fill(bitmap, cliprect,0);
 
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0],TILEMAP_DRAW_OPAQUE,0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[1],0,1);
@@ -931,10 +931,10 @@ VIDEO_UPDATE( sci )
 	layer[1] = layer[0]^1;
 	layer[2] = 2;
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	/* Ensure screen blanked even when bottom layer not drawn due to disable bit */
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0],TILEMAP_DRAW_OPAQUE,0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[1],0,1);
@@ -956,10 +956,10 @@ VIDEO_UPDATE( aquajack )
 	layer[1] = layer[0]^1;
 	layer[2] = 2;
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	/* Ensure screen blanked even when bottom layer not drawn due to disable bit */
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0],TILEMAP_DRAW_OPAQUE,0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[1],0,1);
@@ -981,10 +981,10 @@ VIDEO_UPDATE( spacegun )
 	layer[1] = layer[0]^1;
 	layer[2] = 2;
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	/* Ensure screen blanked even when bottom layer not drawn due to disable bit */
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0],TILEMAP_DRAW_OPAQUE,1);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[1],0,2);
@@ -1011,10 +1011,10 @@ VIDEO_UPDATE( dblaxle )
 	layer[3] = (priority &0x000f) >>  0;	/* tells us which is top */
 	layer[4] = 4;   /* text layer always over bg layers */
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	/* Ensure screen blanked - this shouldn't be necessary! */
-	fillbitmap(bitmap, 0, cliprect);
+	bitmap_fill(bitmap, cliprect, 0);
 
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[0],TILEMAP_DRAW_OPAQUE,0);
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[1],0,0);

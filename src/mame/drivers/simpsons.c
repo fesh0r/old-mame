@@ -106,7 +106,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( z80_bankswitch_w )
 {
-	memory_set_bank(2, data & 7);
+	memory_set_bank(space->machine, 2, data & 7);
 }
 
 #if 0
@@ -114,7 +114,7 @@ static int nmi_enabled;
 
 static void sound_nmi_callback( running_machine *machine, int param )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ( nmi_enabled ) ? CLEAR_LINE : ASSERT_LINE );
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, ( nmi_enabled ) ? CLEAR_LINE : ASSERT_LINE );
 
 	nmi_enabled = 0;
 }
@@ -122,14 +122,14 @@ static void sound_nmi_callback( running_machine *machine, int param )
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( z80_arm_nmi_w )
 {
 //  sound_nmi_enabled = 1;
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
-	timer_set(ATTOTIME_IN_USEC(25), NULL,0,nmi_callback);	/* kludge until the K053260 is emulated correctly */
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
+	timer_set(space->machine, ATTOTIME_IN_USEC(25), NULL,0,nmi_callback);	/* kludge until the K053260 is emulated correctly */
 }
 
 static ADDRESS_MAP_START( z80_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -295,7 +295,7 @@ static void simpsons_objdma(void)
 static TIMER_CALLBACK( dmaend_callback )
 {
 	if (simpsons_firq_enabled)
-		cpunum_set_input_line(machine, 0, KONAMI_FIRQ_LINE, HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0], KONAMI_FIRQ_LINE, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( simpsons_irq )
@@ -305,11 +305,11 @@ static INTERRUPT_GEN( simpsons_irq )
 		simpsons_objdma();
 
 		// 32+256us delay at 8MHz dotclock; artificially shortened since actual V-blank length is unknown
-		timer_set(ATTOTIME_IN_USEC(30), NULL, 0, dmaend_callback);
+		timer_set(device->machine, ATTOTIME_IN_USEC(30), NULL, 0, dmaend_callback);
 	}
 
 	if (K052109_is_IRQ_enabled())
-		cpunum_set_input_line(machine, 0, KONAMI_IRQ_LINE, HOLD_LINE);
+		cpu_set_input_line(device, KONAMI_IRQ_LINE, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( simpsons )
@@ -533,8 +533,8 @@ ROM_END
 
 static DRIVER_INIT( simpsons )
 {
-	konami_rom_deinterleave_2("gfx1");
-	konami_rom_deinterleave_4("gfx2");
+	konami_rom_deinterleave_2(machine, "gfx1");
+	konami_rom_deinterleave_4(machine, "gfx2");
 }
 
 // the region warning, if one exists, is shown after the high-score screen in attract mode

@@ -8,18 +8,18 @@ static int y;
 
 INLINE void ea (void)
 {
-	while (1)
-	{
-		if (ib == 0)
-			return;
-		ib = (READ_PDP_18BIT (y) >> 12) & 1;
-		y = READ_PDP_18BIT (y) & 07777;
-	}
+/*  while (1)
+    {
+        if (ib == 0)
+            return;
+        ib = (READ_PDP_18BIT (y) >> 12) & 1;
+        y = READ_PDP_18BIT (y) & 07777;
+    }*/
 }
 
 #define IN if (ib) sprintf(buffer+strlen(buffer)," i")
 
-unsigned pdp1_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
+CPU_DISASSEMBLE( pdp1 )
 {
 	int md;
 	int etime = 0;

@@ -20,8 +20,8 @@ UINT8 namcond1_gfxbank;
 
 MACHINE_START( namcond1 )
 {
-	state_save_register_global(namcond1_h8_irq5_enabled);
-	state_save_register_global(namcond1_gfxbank);
+	state_save_register_global(machine, namcond1_h8_irq5_enabled);
+	state_save_register_global(machine, namcond1_gfxbank);
 }
 
 MACHINE_RESET( namcond1 )
@@ -48,7 +48,7 @@ MACHINE_RESET( namcond1 )
     namcond1_h8_irq5_enabled = 0;
 
     // halt the MCU
-    cpunum_set_input_line(machine, 1,INPUT_LINE_RESET,ASSERT_LINE);
+    cpu_set_input_line(machine->cpu[1],INPUT_LINE_RESET,ASSERT_LINE);
 }
 
 // instance of the shared ram pointer
@@ -73,7 +73,7 @@ READ16_HANDLER( namcond1_cuskey_r )
 
         default :
             logerror( "offset $%X accessed from $%X\n",
-                      offset<<1, activecpu_get_pc() );
+                      offset<<1, cpu_get_pc(space->cpu) );
             return( 0 );
     }
 }
@@ -97,7 +97,7 @@ WRITE16_HANDLER( namcond1_cuskey_w )
             // this is a kludge until we emulate the h8
 	    if ((namcond1_h8_irq5_enabled == 0) && (data != 0x0000))
 	    {
-	    	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+	    	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 	    }
             namcond1_h8_irq5_enabled = ( data != 0x0000 );
             break;

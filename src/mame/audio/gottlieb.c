@@ -6,7 +6,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "debugger.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6532riot.h"
 #include "sound/samples.h"
@@ -14,6 +14,7 @@
 #include "sound/ay8910.h"
 //#include "sound/votrax.h"
 #include "sound/sp0250.h"
+#include "includes/gottlieb.h"
 
 
 #define SOUND1_CLOCK		XTAL_3_579545MHz
@@ -30,7 +31,6 @@ static UINT8 nmi_rate;
 static UINT8 nmi_state;
 
 static UINT8 speech_control;
-static UINT8 sp0250_drq;
 static UINT8 last_command;
 
 static UINT8 *dac_data;
@@ -42,7 +42,7 @@ static int random_offset;
 
 
 static void gottlieb1_sh_w(const device_config *riot, UINT8 data);
-static void gottlieb2_sh_w(running_machine *machine, UINT8 data);
+static void gottlieb2_sh_w(const address_space *space, UINT8 data);
 static void trigger_sample(running_machine *machine, UINT8 data);
 
 
@@ -55,13 +55,13 @@ static void trigger_sample(running_machine *machine, UINT8 data);
 
 WRITE8_HANDLER( gottlieb_sh_w )
 {
-	const device_config *riot = device_list_find_by_tag(machine->config->devicelist, RIOT6532, "riot");
+	const device_config *riot = device_list_find_by_tag(space->machine->config->devicelist, RIOT6532, "riot");
 
 	/* identify rev1 boards by the presence of a 6532 RIOT device */
 	if (riot != NULL)
 		gottlieb1_sh_w(riot, data);
 	else
-		gottlieb2_sh_w(machine, data);
+		gottlieb2_sh_w(space, data);
 }
 
 
@@ -95,7 +95,7 @@ static void gottlieb1_sh_w(const device_config *riot, UINT8 data)
 
 static void snd_interrupt(const device_config *device, int state)
 {
-	cpunum_set_input_line(device->machine, 1, M6502_IRQ_LINE, state);
+	cpu_set_input_line(device->machine->cpu[1], M6502_IRQ_LINE, state);
 }
 
 
@@ -108,7 +108,7 @@ static UINT8 r6532_portb_r(const device_config *device, UINT8 olddata)
 static void r6532_portb_w(const device_config *device, UINT8 newdata, UINT8 olddata)
 {
 	/* unsure if this is ever used, but the NMI is connected to the RIOT's PB7 */
-	cpunum_set_input_line(device->machine, 1, INPUT_LINE_NMI, (newdata & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, (newdata & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -199,9 +199,9 @@ static void trigger_sample(running_machine *machine, UINT8 data)
 
 
 #ifdef UNUSED_FUNCTION
-void gottlieb_knocker(void)
+void gottlieb_knocker(running_machine *machine)
 {
-	if (!strcmp(Machine->gamedrv->name,"reactor"))	/* reactor */
+	if (!strcmp(machine->gamedrv->name,"reactor"))	/* reactor */
 	{
 	}
 	else if (sndti_exists(SOUND_SAMPLES, 0))	/* qbert */
@@ -220,7 +220,7 @@ void gottlieb_knocker(void)
 /* callback for the timer */
 static TIMER_CALLBACK( gottlieb_nmi_generate )
 {
-	cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+	cpu_set_input_line(machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 }
 
 
@@ -275,7 +275,7 @@ logerror("Votrax: intonation %d, phoneme %02x %s\n",data >> 6,data & 0x3f,Phonem
 	}
 
 	/* generate a NMI after a while to make the CPU continue to send data */
-	timer_set(ATTOTIME_IN_USEC(50), NULL, 0, gottlieb_nmi_generate);
+	timer_set(space->machine, ATTOTIME_IN_USEC(50), NULL, 0, gottlieb_nmi_generate);
 }
 
 static WRITE8_HANDLER( speech_clock_dac_w )
@@ -298,8 +298,8 @@ static SOUND_START( gottlieb1 )
 	score_sample = 7;
 	random_offset = 0;
 
-	state_save_register_global_array(votrax_queue);
-	state_save_register_global(votrax_queuepos);
+	state_save_register_global_array(machine, votrax_queue);
+	state_save_register_global(machine, votrax_queuepos);
 }
 
 
@@ -372,20 +372,20 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static void gottlieb2_sh_w(running_machine *machine, UINT8 data)
+static void gottlieb2_sh_w(const address_space *space, UINT8 data)
 {
 	/* when data is not 0xff, the transparent latch at A3 allows it to pass through unmolested */
 	if (data != 0xff)
 	{
 		/* each CPU has its own latch */
-		soundlatch_w(machine, 0, data);
-		soundlatch2_w(machine, 0, data);
+		soundlatch_w(space, 0, data);
+		soundlatch2_w(space, 0, data);
 
 		/* if the previous data was 0xff, clock an IRQ on each */
 		if (last_command == 0xff)
 		{
-			cputag_set_input_line(machine, "audio", M6502_IRQ_LINE, ASSERT_LINE);
-			cputag_set_input_line(machine, "speech", M6502_IRQ_LINE, ASSERT_LINE);
+			cputag_set_input_line(space->machine, "audio", M6502_IRQ_LINE, ASSERT_LINE);
+			cputag_set_input_line(space->machine, "speech", M6502_IRQ_LINE, ASSERT_LINE);
 		}
 	}
 	last_command = data;
@@ -394,22 +394,22 @@ static void gottlieb2_sh_w(running_machine *machine, UINT8 data)
 
 static READ8_HANDLER( speech_data_r )
 {
-	cputag_set_input_line(machine, "speech", M6502_IRQ_LINE, CLEAR_LINE);
-	return soundlatch_r(machine, offset);
+	cputag_set_input_line(space->machine, "speech", M6502_IRQ_LINE, CLEAR_LINE);
+	return soundlatch_r(space, offset);
 }
 
 
 static READ8_HANDLER( audio_data_r )
 {
-	cputag_set_input_line(machine, "audio", M6502_IRQ_LINE, CLEAR_LINE);
-	return soundlatch2_r(machine, offset);
+	cputag_set_input_line(space->machine, "audio", M6502_IRQ_LINE, CLEAR_LINE);
+	return soundlatch2_r(space, offset);
 }
 
 
 static WRITE8_HANDLER( signal_audio_nmi_w )
 {
-	cputag_set_input_line(machine, "audio", INPUT_LINE_NMI, ASSERT_LINE);
-	cputag_set_input_line(machine, "audio", INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audio", INPUT_LINE_NMI, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "audio", INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 
@@ -449,7 +449,7 @@ static TIMER_CALLBACK( nmi_callback )
 	nmi_state_update(machine);
 
 	/* set a timer to turn it off again on hte next SOUND_CLOCK/16 */
-	timer_set(ATTOTIME_IN_HZ(SOUND2_CLOCK/16), NULL, 0, nmi_clear);
+	timer_set(machine, ATTOTIME_IN_HZ(SOUND2_CLOCK/16), NULL, 0, nmi_clear);
 
 	/* adjust the NMI timer for the next time */
 	nmi_timer_adjust();
@@ -470,16 +470,9 @@ static WRITE8_HANDLER( nmi_rate_w )
  *
  *************************************/
 
-static void sp0250_drq_callback(int level)
-{
-	sp0250_drq = (level == ASSERT_LINE) ? 1 : 0;
-}
-
-
 static CUSTOM_INPUT( speech_drq_custom_r )
 {
-	/* this is reflected by a bit in the input port */
-	return sp0250_drq;
+	return sp0250_drq_r();
 }
 
 
@@ -498,7 +491,7 @@ static WRITE8_HANDLER( speech_control_w )
 	speech_control = data;
 
 	/* bit 0 enables/disables the NMI line */
-	nmi_state_update(machine);
+	nmi_state_update(space->machine);
 
 	/* bit 1 controls a LED on the sound board */
 
@@ -510,17 +503,17 @@ static WRITE8_HANDLER( speech_control_w )
 		{
 			/* bit 4 goes to the 8913 BC1 pin */
 			if (data & 0x10)
-				ay8910_control_port_0_w(machine, 0, *psg_latch);
+				ay8910_control_port_0_w(space, 0, *psg_latch);
 			else
-				ay8910_write_port_0_w(machine, 0, *psg_latch);
+				ay8910_write_port_0_w(space, 0, *psg_latch);
 		}
 		else
 		{
 			/* bit 4 goes to the 8913 BC1 pin */
 			if (data & 0x10)
-				ay8910_control_port_1_w(machine, 0, *psg_latch);
+				ay8910_control_port_1_w(space, 0, *psg_latch);
 			else
-				ay8910_write_port_1_w(machine, 0, *psg_latch);
+				ay8910_write_port_1_w(space, 0, *psg_latch);
 		}
 	}
 
@@ -528,7 +521,7 @@ static WRITE8_HANDLER( speech_control_w )
 
 	/* bit 6 = speech chip DATA PRESENT pin; high then low to make the chip read data */
 	if ((previous & 0x40) == 0 && (data & 0x40) != 0)
-		sp0250_w(machine, 0, *sp0250_latch);
+		sp0250_w(space, 0, *sp0250_latch);
 
 	/* bit 7 goes to the speech chip RESET pin */
 	if ((previous ^ data) & 0x80)
@@ -546,16 +539,15 @@ static WRITE8_HANDLER( speech_control_w )
 static SOUND_START( gottlieb2 )
 {
 	/* set up the NMI timer */
-	nmi_timer = timer_alloc(nmi_callback, NULL);
+	nmi_timer = timer_alloc(machine, nmi_callback, NULL);
 	nmi_rate = 0;
 	nmi_timer_adjust();
 
 	/* register for save states */
-	state_save_register_global(nmi_rate);
-	state_save_register_global(nmi_state);
-	state_save_register_global(speech_control);
-	state_save_register_global(sp0250_drq);
-	state_save_register_global(last_command);
+	state_save_register_global(machine, nmi_rate);
+	state_save_register_global(machine, nmi_state);
+	state_save_register_global(machine, speech_control);
+	state_save_register_global(machine, last_command);
 }
 
 
@@ -590,19 +582,6 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *  Rev. 2 sound interfaces
- *
- *************************************/
-
-static const struct sp0250_interface sp0250_interface =
-{
-	sp0250_drq_callback
-};
-
-
-
-/*************************************
- *
  *  Rev. 2 machine driver
  *
  *************************************/
@@ -631,7 +610,6 @@ MACHINE_DRIVER_START( gottlieb_soundrev2 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
 	MDRV_SOUND_ADD("sp", SP0250, SOUND2_SPEECH_CLOCK)
-	MDRV_SOUND_CONFIG(sp0250_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 

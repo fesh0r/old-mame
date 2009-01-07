@@ -141,7 +141,7 @@ static CDP1869_ON_PRD_CHANGED(cidelsa_prd_changed)
 
 	// PRD is inverted
 
-	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ0, !prd);
+	cputag_set_input_line(device->machine, MAIN_CPU_TAG, INPUT_LINE_IRQ0, !prd);
 	state->cdp1869_prd = !prd;
 }
 
@@ -154,11 +154,8 @@ static CDP1869_ON_PRD_CHANGED(draco_prd_changed)
 
 /* CDP1869 Interface */
 
-static const cdp1869_interface destryer_cdp1869_intf =
+static CDP1869_INTERFACE( destryer_cdp1869_intf )
 {
-	SCREEN_TAG,
-	DESTRYER_CHR2,
-	0,
 	CDP1869_PAL,
 	cidelsa_pageram_r,
 	cidelsa_pageram_w,
@@ -168,11 +165,8 @@ static const cdp1869_interface destryer_cdp1869_intf =
 	cidelsa_prd_changed,
 };
 
-static const cdp1869_interface altair_cdp1869_intf =
+static CDP1869_INTERFACE( altair_cdp1869_intf )
 {
-	SCREEN_TAG,
-	ALTAIR_CHR2,
-	0,
 	CDP1869_PAL,
 	cidelsa_pageram_r,
 	cidelsa_pageram_w,
@@ -184,9 +178,6 @@ static const cdp1869_interface altair_cdp1869_intf =
 
 static CDP1869_INTERFACE( draco_cdp1869_intf )
 {
-	SCREEN_TAG,
-	DRACO_CHR2,
-	0,
 	CDP1869_PAL,
 	draco_pageram_r,
 	draco_pageram_w,
@@ -202,47 +193,55 @@ static VIDEO_START(cidelsa)
 {
 	cidelsa_state *state = machine->driver_data;
 
-	// allocate memory
+	/* allocate memory */
 
 	state->pageram = auto_malloc(CIDELSA_PAGERAM_SIZE);
 	state->pcbram = auto_malloc(CIDELSA_CHARRAM_SIZE);
 	state->charram = auto_malloc(CIDELSA_CHARRAM_SIZE);
 
-	// register for save state
+	/* find devices */
 
-	state_save_register_global(state->cdp1869_prd);
-	state_save_register_global(state->cdp1869_pcb);
-	state_save_register_global_pointer(state->pageram, CIDELSA_PAGERAM_SIZE);
-	state_save_register_global_pointer(state->pcbram, CIDELSA_CHARRAM_SIZE);
-	state_save_register_global_pointer(state->charram, CIDELSA_CHARRAM_SIZE);
+	state->cdp1869 = devtag_get_device(machine, CDP1869_VIDEO, CDP1869_TAG);
+
+	/* register for state saving */
+
+	state_save_register_global(machine, state->cdp1869_prd);
+	state_save_register_global(machine, state->cdp1869_pcb);
+	state_save_register_global_pointer(machine, state->pageram, CIDELSA_PAGERAM_SIZE);
+	state_save_register_global_pointer(machine, state->pcbram, CIDELSA_CHARRAM_SIZE);
+	state_save_register_global_pointer(machine, state->charram, CIDELSA_CHARRAM_SIZE);
 }
 
 static VIDEO_START(draco)
 {
 	cidelsa_state *state = machine->driver_data;
 
-	// allocate memory
+	/* allocate memory */
 
 	state->pageram = auto_malloc(DRACO_PAGERAM_SIZE);
 	state->pcbram = auto_malloc(CIDELSA_CHARRAM_SIZE);
 	state->charram = auto_malloc(CIDELSA_CHARRAM_SIZE);
 
-	// register for save state
+	/* find devices */
 
-	state_save_register_global(state->cdp1869_prd);
-	state_save_register_global(state->cdp1869_pcb);
-	state_save_register_global_pointer(state->pageram, DRACO_PAGERAM_SIZE);
-	state_save_register_global_pointer(state->pcbram, CIDELSA_CHARRAM_SIZE);
-	state_save_register_global_pointer(state->charram, CIDELSA_CHARRAM_SIZE);
+	state->cdp1869 = devtag_get_device(machine, CDP1869_VIDEO, CDP1869_TAG);
+
+	/* register for state saving */
+
+	state_save_register_global(machine, state->cdp1869_prd);
+	state_save_register_global(machine, state->cdp1869_pcb);
+	state_save_register_global_pointer(machine, state->pageram, DRACO_PAGERAM_SIZE);
+	state_save_register_global_pointer(machine, state->pcbram, CIDELSA_CHARRAM_SIZE);
+	state_save_register_global_pointer(machine, state->charram, CIDELSA_CHARRAM_SIZE);
 }
 
 /* Video Update */
 
 static VIDEO_UPDATE( cidelsa )
 {
-	const device_config *cdp1869 = device_list_find_by_tag(screen->machine->config->devicelist, CDP1869_VIDEO, CDP1869_TAG);
+	cidelsa_state *state = screen->machine->driver_data;
 
-	cdp1869_update(cdp1869, bitmap, cliprect);
+	cdp1869_update(state->cdp1869, bitmap, cliprect);
 
 	return 0;
 }
@@ -261,8 +260,7 @@ MACHINE_DRIVER_START( destryer_video )
 	MDRV_SCREEN_RAW_PARAMS(DESTRYER_CHR2, CDP1869_SCREEN_WIDTH, CDP1869_HBLANK_END, CDP1869_HBLANK_START, CDP1869_TOTAL_SCANLINES_PAL, CDP1869_SCANLINE_VBLANK_END_PAL, CDP1869_SCANLINE_VBLANK_START_PAL)
 	MDRV_SCREEN_DEFAULT_POSITION(1.226, 0.012, 1.4, 0.044)
 
-	MDRV_DEVICE_ADD(CDP1869_TAG, CDP1869_VIDEO)
-	MDRV_DEVICE_CONFIG(destryer_cdp1869_intf)
+	MDRV_CDP1869_ADD(CDP1869_TAG, SCREEN_TAG, DESTRYER_CHR2, 0, MAIN_CPU_TAG, destryer_cdp1869_intf)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( altair_video )
@@ -277,8 +275,7 @@ MACHINE_DRIVER_START( altair_video )
 	MDRV_SCREEN_RAW_PARAMS(ALTAIR_CHR2, CDP1869_SCREEN_WIDTH, CDP1869_HBLANK_END, CDP1869_HBLANK_START, CDP1869_TOTAL_SCANLINES_PAL, CDP1869_SCANLINE_VBLANK_END_PAL, CDP1869_SCANLINE_VBLANK_START_PAL)
 	MDRV_SCREEN_DEFAULT_POSITION(1.226, 0.012, 1.4, 0.044)
 
-	MDRV_DEVICE_ADD(CDP1869_TAG, CDP1869_VIDEO)
-	MDRV_DEVICE_CONFIG(altair_cdp1869_intf)
+	MDRV_CDP1869_ADD(CDP1869_TAG, SCREEN_TAG, ALTAIR_CHR2, 0, MAIN_CPU_TAG, altair_cdp1869_intf)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( draco_video )
@@ -293,6 +290,5 @@ MACHINE_DRIVER_START( draco_video )
 	MDRV_SCREEN_RAW_PARAMS(DRACO_CHR2, CDP1869_SCREEN_WIDTH, CDP1869_HBLANK_END, CDP1869_HBLANK_START, CDP1869_TOTAL_SCANLINES_PAL, CDP1869_SCANLINE_VBLANK_END_PAL, CDP1869_SCANLINE_VBLANK_START_PAL)
 	MDRV_SCREEN_DEFAULT_POSITION(1.226, 0.012, 1.360, 0.024)
 
-	MDRV_DEVICE_ADD(CDP1869_TAG, CDP1869_VIDEO)
-	MDRV_DEVICE_CONFIG(draco_cdp1869_intf)
+	MDRV_CDP1869_ADD(CDP1869_TAG, SCREEN_TAG, DRACO_CHR2, 0, MAIN_CPU_TAG, draco_cdp1869_intf)
 MACHINE_DRIVER_END

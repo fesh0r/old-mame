@@ -152,13 +152,13 @@ static void update_24bitcol(running_machine *machine, int offset)
 WRITE16_HANDLER( darkseal_palette_24bit_rg_w )
 {
 	COMBINE_DATA(&paletteram16[offset]);
-	update_24bitcol(machine, offset);
+	update_24bitcol(space->machine, offset);
 }
 
 WRITE16_HANDLER( darkseal_palette_24bit_b_w )
 {
 	COMBINE_DATA(&paletteram16_2[offset]);
-	update_24bitcol(machine, offset);
+	update_24bitcol(space->machine, offset);
 }
 
 /******************************************************************************/
@@ -250,7 +250,7 @@ WRITE16_HANDLER( darkseal_pf3_data_w )
 
 WRITE16_HANDLER( darkseal_pf3b_data_w ) /* Mirror */
 {
-	darkseal_pf3_data_w(machine,offset+0x800,data,mem_mask);
+	darkseal_pf3_data_w(space,offset+0x800,data,mem_mask);
 }
 
 WRITE16_HANDLER( darkseal_control_0_w )
@@ -267,9 +267,9 @@ WRITE16_HANDLER( darkseal_control_1_w )
 
 VIDEO_START( darkseal )
 {
-	pf1_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8,64,64);
-	pf2_tilemap = tilemap_create(get_bg_tile_info2,darkseal_scan,    16,16,64,64);
-	pf3_tilemap = tilemap_create(get_bg_tile_info3,darkseal_scan,         16,16,64,64);
+	pf1_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows, 8, 8,64,64);
+	pf2_tilemap = tilemap_create(machine, get_bg_tile_info2,darkseal_scan,    16,16,64,64);
+	pf3_tilemap = tilemap_create(machine, get_bg_tile_info3,darkseal_scan,         16,16,64,64);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 	tilemap_set_transparent_pen(pf2_tilemap,0);

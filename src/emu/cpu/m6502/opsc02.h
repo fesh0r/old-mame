@@ -128,11 +128,11 @@
 #define RD_ABX_C02_P	EA_ABX_C02_P; tmp = RDMEM(EAD)
 #define RD_ABX_C02_NP	EA_ABX_C02_NP; tmp = RDMEM(EAD)
 #define RD_ABY_C02_P	EA_ABY_C02_P; tmp = RDMEM(EAD)
-#define RD_IDY_C02_P	EA_IDY_C02_P; tmp = RDMEM_ID(EAD); m6502_ICount -= 1
+#define RD_IDY_C02_P	EA_IDY_C02_P; tmp = RDMEM_ID(EAD); cpustate->icount -= 1
 
 #define WR_ABX_C02_NP	EA_ABX_C02_NP; WRMEM(EAD, tmp)
 #define WR_ABY_C02_NP	EA_ABY_C02_NP; WRMEM(EAD, tmp)
-#define WR_IDY_C02_NP	EA_IDY_C02_NP; WRMEM_ID(EAD, tmp); m6502_ICount -= 1
+#define WR_IDY_C02_NP	EA_IDY_C02_NP; WRMEM_ID(EAD, tmp); cpustate->icount -= 1
 
 
 /* 65C02********************************************************
@@ -149,7 +149,6 @@
 			RDMEM( PCW - 1 );									\
 		}														\
 		PCD = EAD;												\
-		CHANGE_PC;												\
 	}
 
 /* 65C02 ********************************************************
@@ -252,8 +251,7 @@
 	PUSH(P | F_B);												\
 	P = (P | F_I) & ~F_D;										\
 	PCL = RDMEM(M6502_IRQ_VEC); 								\
-	PCH = RDMEM(M6502_IRQ_VEC+1);								\
-	CHANGE_PC
+	PCH = RDMEM(M6502_IRQ_VEC+1);
 
 
 /* 65C02 *******************************************************
@@ -330,6 +328,15 @@
 	SET_Z(tmp&A);												\
 	tmp |= A
 
+/* 6502 ********************************************************
+ *  BIT Bit test Immediate, only Z affected
+ ***************************************************************/
+#undef BIT_IMM_C02
+#define BIT_IMM_C02												\
+	P &= ~(F_Z); 												\
+	if ((tmp & A) == 0) 										\
+		P |= F_Z
+
 
 /***************************************************************
  ***************************************************************
@@ -348,5 +355,4 @@
 	PUSH(PCL);													\
 	EAH = RDOPARG();											\
 	EAW = PCW + (INT16)(EAW-1); 								\
-	PCD = EAD;													\
-	CHANGE_PC
+	PCD = EAD;

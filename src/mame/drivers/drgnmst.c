@@ -35,8 +35,10 @@ Notes:
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/pic16c5x/pic16c5x.h"
 #include "sound/okim6295.h"
+#include "includes/drgnmst.h"
 
 
 static UINT16 drgnmst_snd_command;
@@ -55,13 +57,6 @@ UINT16 *drgnmst_md_videoram;
 UINT16 *drgnmst_vidregs2;
 
 
-WRITE16_HANDLER( drgnmst_fg_videoram_w );
-WRITE16_HANDLER( drgnmst_bg_videoram_w );
-WRITE16_HANDLER( drgnmst_md_videoram_w );
-VIDEO_START(drgnmst);
-VIDEO_UPDATE(drgnmst);
-
-
 static WRITE16_HANDLER( drgnmst_coin_w )
 {
 	coin_counter_w(0,data & 0x100);
@@ -73,7 +68,7 @@ static WRITE16_HANDLER( drgnmst_snd_command_w )
 {
 	if (ACCESSING_BITS_0_7) {
 		drgnmst_snd_command = (data & 0xff);
-		cpu_yield();
+		cpu_yield(space->cpu);
 	}
 }
 
@@ -96,8 +91,8 @@ static READ8_HANDLER( drgnmst_snd_command_r )
 
 	switch (drgnmst_oki_control & 0x1f)
 	{
-		case 0x12:	data = (okim6295_status_1_r(machine, 0) & 0x0f); break;
-		case 0x16:	data = (okim6295_status_0_r(machine, 0) & 0x0f); break;
+		case 0x12:	data = (okim6295_status_1_r(space, 0) & 0x0f); break;
+		case 0x16:	data = (okim6295_status_0_r(space, 0) & 0x0f); break;
 		case 0x0b:
 		case 0x0f:	data = drgnmst_snd_command; break;
 		default:	break;
@@ -177,12 +172,12 @@ static WRITE8_HANDLER( drgnmst_snd_control_w )
 		case 0x11:
 //                  logerror("Writing %02x to OKI1",drgnmst_oki_command);
 //                  logerror(", PortC=%02x, Code=%02x, Bank0=%01x, Bank1=%01x\n",drgnmst_oki_control,drgnmst_snd_command,drgnmst_oki0_bank,drgnmst_oki1_bank);
-					okim6295_data_1_w(machine, 0, drgnmst_oki_command);
+					okim6295_data_1_w(space, 0, drgnmst_oki_command);
 					break;
 		case 0x15:
 //                  logerror("Writing %02x to OKI0",drgnmst_oki_command);
 //                  logerror(", PortC=%02x, Code=%02x, Bank0=%01x, Bank1=%01x\n",drgnmst_oki_control,drgnmst_snd_command,drgnmst_oki0_bank,drgnmst_oki1_bank);
-					okim6295_data_0_w(machine, 0, drgnmst_oki_command);
+					okim6295_data_0_w(space, 0, drgnmst_oki_command);
 					break;
 		default:	break;
 	}
@@ -545,7 +540,8 @@ static DRIVER_INIT( drgnmst )
 			data_lo = drgnmst_asciitohex((drgnmst_PICROM_HEX[src_pos + 3]));
 			data |= (data_hi << 12) | (data_lo << 8);
 
-			pic16c5x_config(data);
+			pic16c5x_set_config(cputag_get_cpu(machine, "audio"), data);
+
 			src_pos = 0x7fff;		/* Force Exit */
 		}
 		src_pos += 1;

@@ -112,7 +112,7 @@ WRITE8_HANDLER( targ_audio_2_w )
 {
 	if ((data & 0x01) && !(port_2_last & 0x01))
 	{
-		UINT8 *prom = memory_region(machine, "targ");
+		UINT8 *prom = memory_region(space->machine, "targ");
 
 		tone_pointer = (tone_pointer + 1) & 0x0f;
 
@@ -141,7 +141,7 @@ static const char *const sample_names[] =
 };
 
 
-static void common_audio_start(int freq)
+static void common_audio_start(running_machine *machine, int freq)
 {
 	max_freq = freq;
 
@@ -151,26 +151,28 @@ static void common_audio_start(int freq)
 	sample_set_volume(3, 0);
 	sample_start_raw(3, sine_wave, 32, 1000, 1);
 
-	state_save_register_global(port_1_last);
-	state_save_register_global(port_2_last);
-	state_save_register_global(tone_freq);
-	state_save_register_global(tone_active);
+	state_save_register_global(machine, port_1_last);
+	state_save_register_global(machine, port_2_last);
+	state_save_register_global(machine, tone_freq);
+	state_save_register_global(machine, tone_active);
 }
 
 
-static void spectar_audio_start(void)
+static SAMPLES_START( spectar_audio_start )
 {
-	common_audio_start(SPECTAR_MAXFREQ);
+	running_machine *machine = device->machine;
+	common_audio_start(machine, SPECTAR_MAXFREQ);
 }
 
 
-static void targ_audio_start(void)
+static SAMPLES_START( targ_audio_start )
 {
-	common_audio_start(TARG_MAXFREQ);
+	running_machine *machine = device->machine;
+	common_audio_start(machine, TARG_MAXFREQ);
 
 	tone_pointer = 0;
 
-	state_save_register_global(tone_pointer);
+	state_save_register_global(machine, tone_pointer);
 }
 
 

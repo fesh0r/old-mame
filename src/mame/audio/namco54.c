@@ -49,7 +49,6 @@ The command format is very simple:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "namco54.h"
 #include "cpu/mb88xx/mb88xx.h"
 
@@ -76,16 +75,16 @@ static WRITE8_HANDLER( namco_54xx_O_w )
 {
 	UINT8 out = (data & 0x0f);
 	if (data & 0x10)
-		discrete_sound_w(machine, NAMCO_54XX_1_DATA, out);
+		discrete_sound_w(space, NAMCO_54XX_1_DATA, out);
 	else
-		discrete_sound_w(machine, NAMCO_54XX_0_DATA, out);
+		discrete_sound_w(space, NAMCO_54XX_0_DATA, out);
 }
 
 static WRITE8_HANDLER( namco_54xx_R1_w )
 {
 	UINT8 out = (data & 0x0f);
 
-	discrete_sound_w(machine, NAMCO_54XX_2_DATA, out);
+	discrete_sound_w(space, NAMCO_54XX_2_DATA, out);
 }
 
 
@@ -110,24 +109,25 @@ ADDRESS_MAP_END
 
 static TIMER_CALLBACK( namco_54xx_irq_clear )
 {
-	cpunum_set_input_line(machine, param, 0, CLEAR_LINE);
+	const device_config *device = ptr;
+	cpu_set_input_line(device, 0, CLEAR_LINE);
 }
 
-void namco_54xx_write(UINT8 data)
+void namco_54xx_write(running_machine *machine, UINT8 data)
 {
-	int cpunum = mame_find_cpu_index(Machine, CPUTAG_54XX);
+	const device_config *device = cputag_get_cpu(machine, CPUTAG_54XX);
 
-	if (cpunum == -1)
+	if (device == NULL)
 		return;
 
-	timer_call_after_resynch(NULL, data, namco_54xx_latch_callback);
+	timer_call_after_resynch(machine, NULL, data, namco_54xx_latch_callback);
 
-	cpunum_set_input_line(Machine, cpunum, 0, ASSERT_LINE);
+	cpu_set_input_line(device, 0, ASSERT_LINE);
 
 	// The execution time of one instruction is ~4us, so we must make sure to
 	// give the cpu time to poll the /IRQ input before we clear it.
 	// The input clock to the 06XX interface chip is 64H, that is
 	// 18432000/6/64 = 48kHz, so it makes sense for the irq line to be
 	// asserted for one clock cycle ~= 21us.
-	timer_set(ATTOTIME_IN_USEC(21), NULL, cpunum, namco_54xx_irq_clear);
+	timer_set(machine, ATTOTIME_IN_USEC(21), (void *)device, 0, namco_54xx_irq_clear);
 }

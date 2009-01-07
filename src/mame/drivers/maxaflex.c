@@ -46,7 +46,7 @@ static emu_timer *mcu_timer;
 
 static READ8_HANDLER( mcu_portA_r )
 {
-	portA_in = input_port_read(machine, "dsw") | (input_port_read(machine, "coin") << 4) | (input_port_read(machine, "console") << 5);
+	portA_in = input_port_read(space->machine, "dsw") | (input_port_read(space->machine, "coin") << 4) | (input_port_read(space->machine, "console") << 5);
 	return (portA_in & ~ddrA) | (portA_out & ddrA);
 }
 
@@ -79,14 +79,14 @@ static WRITE8_HANDLER( mcu_portB_w )
 
 	/* clear coin interrupt */
 	if (data & 0x04)
-		cpunum_set_input_line(machine, 1, M6805_IRQ_LINE, CLEAR_LINE );
+		cpu_set_input_line(space->machine->cpu[1], M6805_IRQ_LINE, CLEAR_LINE );
 
 	/* AUDMUTE */
 	sound_global_enable((data >> 5) & 1);
 
 	/* RES600 */
 	if (diff & 0x10)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 
 	/* latch for lamps */
 	if ((diff & 0x40) && !(data & 0x40))
@@ -154,7 +154,7 @@ static TIMER_CALLBACK( mcu_timer_proc )
 		if ( (tcr & 0x40) == 0 )
 		{
 			//timer interrupt!
-			cpunum_set_input_line(machine, 1, M68705_INT_TIMER, PULSE_LINE );
+			generic_pulse_irq_line(machine->cpu[1], M68705_INT_TIMER);
 		}
 	}
 }
@@ -212,7 +212,7 @@ static MACHINE_RESET(supervisor_board)
 	portB_in = portB_out = ddrB	= 0;
 	portC_in = portC_out = ddrC	= 0;
 	tdr = tcr = 0;
-	mcu_timer = timer_alloc( mcu_timer_proc , NULL);
+	mcu_timer = timer_alloc(machine,  mcu_timer_proc , NULL);
 
 	output_set_lamp_value(0, 0);
 	output_set_lamp_value(1, 0);
@@ -226,7 +226,7 @@ static MACHINE_RESET(supervisor_board)
 static INPUT_CHANGED( coin_inserted )
 {
 	if (!newval)
-		cpunum_set_input_line(field->port->machine, 1, M6805_IRQ_LINE, HOLD_LINE );
+		cpu_set_input_line(field->port->machine->cpu[1], M6805_IRQ_LINE, HOLD_LINE );
 }
 
 int atari_input_disabled(void)

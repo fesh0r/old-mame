@@ -39,12 +39,12 @@ static UINT8 paradise_palbank, paradise_priority;
 
 WRITE8_HANDLER( paradise_flipscreen_w )
 {
-	flip_screen_set(data ? 0 : 1);
+	flip_screen_set(space->machine, data ? 0 : 1);
 }
 
 WRITE8_HANDLER( tgtball_flipscreen_w )
 {
-	flip_screen_set(data ? 1 : 0);
+	flip_screen_set(space->machine, data ? 1 : 0);
 }
 
 
@@ -53,7 +53,7 @@ WRITE8_HANDLER( paradise_palette_w )
 {
 	paletteram[offset] = data;
 	offset %= 0x800;
-	palette_set_color_rgb(machine,offset,	paletteram[offset + 0x800 * 0],
+	palette_set_color_rgb(space->machine,offset,	paletteram[offset + 0x800 * 0],
 											paletteram[offset + 0x800 * 1],
 											paletteram[offset + 0x800 * 2]	);
 }
@@ -86,7 +86,7 @@ WRITE8_HANDLER( paradise_palbank_w )
 	int bank2 = (data & 0xf0);
 
 	for (i = 0; i < 15; i++)
-		palette_set_color_rgb(machine,0x800+i,	paletteram[0x200 + bank2 + i + 0x800 * 0],
+		palette_set_color_rgb(space->machine,0x800+i,	paletteram[0x200 + bank2 + i + 0x800 * 0],
 												paletteram[0x200 + bank2 + i + 0x800 * 1],
 												paletteram[0x200 + bank2 + i + 0x800 * 2]	);
 	if (paradise_palbank != bank1)
@@ -154,9 +154,9 @@ WRITE8_HANDLER( paradise_pixmap_w )
 
 VIDEO_START( paradise )
 {
-	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows, 8,8, 0x20,0x20 );
-	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows, 8,8, 0x20,0x20 );
-	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows, 8,8, 0x20,0x20 );
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0, tilemap_scan_rows, 8,8, 0x20,0x20 );
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1, tilemap_scan_rows, 8,8, 0x20,0x20 );
+	tilemap_2 = tilemap_create(	machine, get_tile_info_2, tilemap_scan_rows, 8,8, 0x20,0x20 );
 
 	/* pixmap */
 	tmpbitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
@@ -192,7 +192,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		int flipx	=	0;	// ?
 		int flipy	=	0;
 
-		if (flip_screen_get())	{	x = 0xf0 - x;	flipx = !flipx;
+		if (flip_screen_get(machine))	{	x = 0xf0 - x;	flipx = !flipx;
 								y = 0xf0 - y;	flipy = !flipy;	}
 
 		drawgfx(bitmap,machine->gfx[0],
@@ -243,7 +243,7 @@ if (input_code_pressed(KEYCODE_Z))
 }
 #endif
 
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	if (!(paradise_priority & 4))	/* Screen blanking */
 		return 0;
@@ -253,7 +253,7 @@ if (input_code_pressed(KEYCODE_Z))
 
 	if (layers_ctrl&1)	tilemap_draw(bitmap,cliprect, tilemap_0, 0,0);
 	if (layers_ctrl&2)	tilemap_draw(bitmap,cliprect, tilemap_1, 0,0);
-	if (layers_ctrl&4)	copybitmap_trans(bitmap,tmpbitmap,flip_screen_get(),flip_screen_get(),0,0,cliprect, 0x80f);
+	if (layers_ctrl&4)	copybitmap_trans(bitmap,tmpbitmap,flip_screen_get(screen->machine),flip_screen_get(screen->machine),0,0,cliprect, 0x80f);
 
 	if (paradise_priority & 2)
 	{
@@ -273,7 +273,7 @@ if (input_code_pressed(KEYCODE_Z))
 /* no pix layer, no tilemap_0, different priority bits */
 VIDEO_UPDATE( torus )
 {
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	if (!(paradise_priority & 2))	/* Screen blanking */
 		return 0;
@@ -303,7 +303,7 @@ VIDEO_UPDATE( torus )
 /* I don't know how the priority bits work on this one */
 VIDEO_UPDATE( madball )
 {
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 	tilemap_draw(bitmap,cliprect, tilemap_0, 0,0);
 	tilemap_draw(bitmap,cliprect, tilemap_1, 0,0);
 	tilemap_draw(bitmap,cliprect, tilemap_2, 0,0);

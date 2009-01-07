@@ -18,7 +18,6 @@ CHANNEL_DEBUG enables the following keys:
 *********************************************************/
 
 #include "sndintrf.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "k054539.h"
 #include <math.h>
@@ -120,7 +119,7 @@ static void k054539_keyoff(struct k054539_info *info, int channel)
 		info->regs[0x22c] &= ~(1 << channel);
 }
 
-static void k054539_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)
+static STREAM_UPDATE( k054539_update )
 {
 	struct k054539_info *info = param;
 #define VOL_CAP 1.80
@@ -132,7 +131,7 @@ static void k054539_update(void *param, stream_sample_t **inputs, stream_sample_
 
 	int ch, reverb_pos;
 	short *rbase;
-	unsigned char *samples;
+	unsigned char *rom;
 	UINT32 rom_mask;
 
 	unsigned char *base1, *base2;
@@ -147,15 +146,15 @@ static void k054539_update(void *param, stream_sample_t **inputs, stream_sample_
 	reverb_pos = info->reverb_pos;
 	rbase = (short *)(info->ram);
 
-	memset(buffer[0], 0, length*sizeof(*buffer[0]));
-	memset(buffer[1], 0, length*sizeof(*buffer[1]));
+	memset(outputs[0], 0, samples*sizeof(*outputs[0]));
+	memset(outputs[1], 0, samples*sizeof(*outputs[1]));
 
-	samples = info->rom;
+	rom = info->rom;
 	rom_mask = info->rom_mask;
 
 	if(!(info->regs[0x22f] & 1)) return;
 
-	info->reverb_pos = (reverb_pos + length) & 0x3fff;
+	info->reverb_pos = (reverb_pos + samples) & 0x3fff;
 
 
 	for(ch=0; ch<8; ch++)
@@ -200,8 +199,8 @@ else
 
 			cur_pos = (base1[0x0c] | (base1[0x0d] << 8) | (base1[0x0e] << 16)) & rom_mask;
 
-			bufl = buffer[0];
-			bufr = buffer[1];
+			bufl = outputs[0];
+			bufr = outputs[1];
 //*
 
 			if(base2[0] & 0x20) {
@@ -234,18 +233,18 @@ else
 
 			switch(base2[0] & 0xc) {
 			case 0x0: { // 8bit pcm
-				for(i=0; i<length; i++) {
+				for(i=0; i<samples; i++) {
 					cur_pfrac += delta;
 					while(cur_pfrac & ~0xffff) {
 						cur_pfrac += fdelta;
 						cur_pos += pdelta;
 
 						cur_pval = cur_val;
-						cur_val = (INT16)(samples[cur_pos] << 8);
+						cur_val = (INT16)(rom[cur_pos] << 8);
 						if(cur_val == (INT16)0x8000) {
 							if(base2[1] & 1) {
 								cur_pos = (base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & rom_mask;
-								cur_val = (INT16)(samples[cur_pos] << 8);
+								cur_val = (INT16)(rom[cur_pos] << 8);
 								if(cur_val != (INT16)0x8000)
 									continue;
 							}
@@ -262,18 +261,18 @@ else
 			case 0x4: { // 16bit pcm lsb first
 				pdelta <<= 1;
 
-				for(i=0; i<length; i++) {
+				for(i=0; i<samples; i++) {
 					cur_pfrac += delta;
 					while(cur_pfrac & ~0xffff) {
 						cur_pfrac += fdelta;
 						cur_pos += pdelta;
 
 						cur_pval = cur_val;
-						cur_val = (INT16)(samples[cur_pos] | samples[cur_pos+1]<<8);
+						cur_val = (INT16)(rom[cur_pos] | rom[cur_pos+1]<<8);
 						if(cur_val == (INT16)0x8000) {
 							if(base2[1] & 1) {
 								cur_pos = (base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & rom_mask;
-								cur_val = (INT16)(samples[cur_pos] | samples[cur_pos+1]<<8);
+								cur_val = (INT16)(rom[cur_pos] | rom[cur_pos+1]<<8);
 								if(cur_val != (INT16)0x8000)
 									continue;
 							}
@@ -295,18 +294,18 @@ else
 					cur_pos |= 1;
 				}
 
-				for(i=0; i<length; i++) {
+				for(i=0; i<samples; i++) {
 					cur_pfrac += delta;
 					while(cur_pfrac & ~0xffff) {
 						cur_pfrac += fdelta;
 						cur_pos += pdelta;
 
 						cur_pval = cur_val;
-						cur_val = samples[cur_pos>>1];
+						cur_val = rom[cur_pos>>1];
 						if(cur_val == 0x88) {
 							if(base2[1] & 1) {
 								cur_pos = ((base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & rom_mask) << 1;
-								cur_val = samples[cur_pos>>1];
+								cur_val = rom[cur_pos>>1];
 								if(cur_val != 0x88)
 									goto next_iter;
 							}
@@ -352,19 +351,19 @@ else
 	//* drivers should be given the option to disable reverb when things go terribly wrong
 	if(!(info->k054539_flags & K054539_DISABLE_REVERB))
 	{
-		for(i=0; i<length; i++) {
+		for(i=0; i<samples; i++) {
 			short val = rbase[(i+reverb_pos) & 0x3fff];
-			buffer[0][i] += val;
-			buffer[1][i] += val;
+			outputs[0][i] += val;
+			outputs[1][i] += val;
 		}
 	}
 
-	if(reverb_pos + length > 0x4000) {
+	if(reverb_pos + samples > 0x4000) {
 		i = 0x4000 - reverb_pos;
 		memset(rbase + reverb_pos, 0, i*2);
-		memset(rbase, 0, (length-i)*2);
+		memset(rbase, 0, (samples-i)*2);
 	} else
-		memset(rbase + reverb_pos, 0, length*2);
+		memset(rbase + reverb_pos, 0, samples*2);
 
 	#if CHANNEL_DEBUG
 	{
@@ -433,7 +432,7 @@ static TIMER_CALLBACK( k054539_irq )
 		info->intf->irq(machine);
 }
 
-static void k054539_init_chip(const char *tag, struct k054539_info *info, int clock, int sndindex)
+static void k054539_init_chip(const device_config *device, struct k054539_info *info, int clock)
 {
 	int i;
 
@@ -447,8 +446,13 @@ static void k054539_init_chip(const char *tag, struct k054539_info *info, int cl
 	info->cur_ptr = 0;
 	memset(info->ram, 0, 0x4000*2+clock/50*2);
 
-	info->rom = memory_region(Machine, (info->intf->rgnoverride != NULL) ? info->intf->rgnoverride : tag);
-	info->rom_size = memory_region_length(Machine, (info->intf->rgnoverride != NULL) ? info->intf->rgnoverride : tag);
+	info->rom = device->region;
+	info->rom_size = device->regionbytes;
+	if (info->intf->rgnoverride != NULL)
+	{
+		info->rom = memory_region(device->machine, info->intf->rgnoverride);
+		info->rom_size = memory_region_length(device->machine, info->intf->rgnoverride);
+	}
 	info->rom_mask = 0xffffffffU;
 	for(i=0; i<32; i++)
 		if((1U<<i) >= info->rom_size) {
@@ -460,13 +464,13 @@ static void k054539_init_chip(const char *tag, struct k054539_info *info, int cl
 		// One or more of the registers must be the timer period
 		// And anyway, this particular frequency is probably wrong
 		// 480 hz is TRUSTED by gokuparo disco stage - the looping sample doesn't line up otherwise
-		timer_pulse(ATTOTIME_IN_HZ(480), info, 0, k054539_irq);
+		timer_pulse(device->machine, ATTOTIME_IN_HZ(480), info, 0, k054539_irq);
 
-	info->stream = stream_create(0, 2, clock, info, k054539_update);
+	info->stream = stream_create(device, 0, 2, clock, info, k054539_update);
 
-	state_save_register_item_array("K054539", sndindex, info->regs);
-	state_save_register_item_pointer("K054539", sndindex, info->ram,  0x4000);
-	state_save_register_item("K054539", sndindex, info->cur_ptr);
+	state_save_register_device_item_array(device, 0, info->regs);
+	state_save_register_device_item_pointer(device, 0, info->ram,  0x4000);
+	state_save_register_device_item(device, 0, info->cur_ptr);
 }
 
 static void k054539_w(int chip, offs_t offset, UINT8 data) //*
@@ -625,7 +629,7 @@ static UINT8 k054539_r(int chip, offs_t offset)
 	return info->regs[offset];
 }
 
-static void *k054539_start(const char *tag, int sndindex, int clock, const void *config)
+static SND_START( k054539 )
 {
 	static const k054539_interface defintrf = { 0 };
 	int i;
@@ -662,9 +666,9 @@ static void *k054539_start(const char *tag, int sndindex, int clock, const void 
 	for(i=0; i<0xf; i++)
 		info->pantab[i] = sqrt(i) / sqrt(0xe);
 
-	k054539_init_chip(tag, info, clock, sndindex);
+	k054539_init_chip(device, info, clock);
 
-	state_save_register_postload(Machine, reset_zones, info);
+	state_save_register_postload(device->machine, reset_zones, info);
 	return info;
 }
 
@@ -695,7 +699,7 @@ READ8_HANDLER( k054539_1_r )
  * Generic get_info
  **************************************************************************/
 
-static void k054539_set_info(void *token, UINT32 state, sndinfo *info)
+static SND_SET_INFO( k054539 )
 {
 	switch (state)
 	{
@@ -704,24 +708,24 @@ static void k054539_set_info(void *token, UINT32 state, sndinfo *info)
 }
 
 
-void k054539_get_info(void *token, UINT32 state, sndinfo *info)
+SND_GET_INFO( k054539 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = k054539_set_info;		break;
-		case SNDINFO_PTR_START:							info->start = k054539_start;			break;
-		case SNDINFO_PTR_STOP:							/* nothing */							break;
-		case SNDINFO_PTR_RESET:							/* nothing */							break;
+		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( k054539 );	break;
+		case SNDINFO_PTR_START:							info->start = SND_START_NAME( k054539 );		break;
+		case SNDINFO_PTR_STOP:							/* nothing */									break;
+		case SNDINFO_PTR_RESET:							/* nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							info->s = "K054539";					break;
-		case SNDINFO_STR_CORE_FAMILY:					info->s = "Konami custom";				break;
-		case SNDINFO_STR_CORE_VERSION:					info->s = "1.0";						break;
-		case SNDINFO_STR_CORE_FILE:						info->s = __FILE__;						break;
-		case SNDINFO_STR_CORE_CREDITS:					info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case SNDINFO_STR_NAME:							strcpy(info->s, "K054539");						break;
+		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Konami custom");				break;
+		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
+		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
+		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

@@ -18,6 +18,7 @@ XTAL        :   18.432 MHz
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/custom.h"
 
 /* Variables & functions defined in video: */
@@ -36,23 +37,23 @@ VIDEO_START( clshroad );
 VIDEO_UPDATE( clshroad );
 
 extern UINT8 *wiping_soundregs;
-void *wiping_sh_start(int clock, const custom_sound_interface *config);
+CUSTOM_START( wiping_sh_start );
 WRITE8_HANDLER( wiping_sound_w );
 
 
 
 static MACHINE_RESET( clshroad )
 {
-	flip_screen_set(0);
+	flip_screen_set(machine, 0);
 }
 
 
 static READ8_HANDLER( clshroad_input_r )
 {
-	return	((~input_port_read(machine, "P1") & (1 << offset)) ? 1 : 0) |
-			((~input_port_read(machine, "P2") & (1 << offset)) ? 2 : 0) |
-			((~input_port_read(machine, "DSW1") & (1 << offset)) ? 4 : 0) |
-			((~input_port_read(machine, "DSW2") & (1 << offset)) ? 8 : 0) ;
+	return	((~input_port_read(space->machine, "P1") & (1 << offset)) ? 1 : 0) |
+			((~input_port_read(space->machine, "P2") & (1 << offset)) ? 2 : 0) |
+			((~input_port_read(space->machine, "DSW1") & (1 << offset)) ? 4 : 0) |
+			((~input_port_read(space->machine, "DSW2") & (1 << offset)) ? 8 : 0) ;
 }
 
 

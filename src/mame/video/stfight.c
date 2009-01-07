@@ -163,9 +163,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( stfight )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,bg_scan,     16,16,128,256);
-	fg_tilemap = tilemap_create(get_fg_tile_info,fg_scan,16,16,128,256);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,bg_scan,     16,16,128,256);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,fg_scan,16,16,128,256);
+	tx_tilemap = tilemap_create(machine, get_tx_tile_info,tilemap_scan_rows, 8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0x0f);
 	colortable_configure_tilemap_groups(machine->colortable, tx_tilemap, machine->gfx[0], 0xcf);
@@ -235,7 +235,7 @@ WRITE8_HANDLER( stfight_vh_latch_w )
 			/* 0x40 = sprites */
 			tilemap_set_enable(bg_tilemap,data & 0x20);
 			tilemap_set_enable(fg_tilemap,data & 0x10);
-			flip_screen_set(data & 0x01);
+			flip_screen_set(space->machine, data & 0x01);
 			break;
 	}
 }
@@ -272,7 +272,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 				    sx -= 0x100;
 			}
 
-			if (flip_screen_get())
+			if (flip_screen_get(machine))
 			{
 				sx = 240 - sx;
 				sy = 240 - sy;
@@ -284,7 +284,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			pdrawgfx(bitmap,machine->gfx[4],
 				     code,
 					 color,
-					 flipx,flip_screen_get(),
+					 flipx,flip_screen_get(machine),
 					 sx,sy,
 				     cliprect,TRANSPARENCY_PEN,0x0f,
 					 pri ? 0x02 : 0);
@@ -297,9 +297,9 @@ VIDEO_UPDATE( stfight )
 {
 	set_pens(screen->machine->colortable);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
-	fillbitmap(bitmap,0,cliprect);	/* in case bg_tilemap is disabled */
+	bitmap_fill(bitmap,cliprect,0);	/* in case bg_tilemap is disabled */
     tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,1);
 

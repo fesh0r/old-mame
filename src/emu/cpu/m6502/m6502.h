@@ -57,24 +57,31 @@ enum
 };
 
 #define M6502_IRQ_LINE		0
-/* use cpunum_set_input_line(machine, cpu, M6502_SET_OVERFLOW, level)
+/* use cpu_set_input_line(machine->cpu[cpu], M6502_SET_OVERFLOW, level)
    to change level of the so input line
    positiv edge sets overflow flag */
 #define M6502_SET_OVERFLOW	1
 
+typedef UINT8 (*m6502_read_indexed_func)(const address_space *space, offs_t address);
+typedef void (*m6502_write_indexed_func)(const address_space *space, offs_t address, UINT8 data);
+typedef UINT8 (*m6510_port_read_func)(const device_config *device, UINT8 direction);
+typedef void (*m6510_port_write_func)(const device_config *device, UINT8 direction, UINT8 data);
+
+
 enum
 {
-	CPUINFO_PTR_M6502_READINDEXED_CALLBACK = CPUINFO_PTR_CPU_SPECIFIC,
-	CPUINFO_PTR_M6502_WRITEINDEXED_CALLBACK,
-	CPUINFO_PTR_M6510_PORTREAD,
-	CPUINFO_PTR_M6510_PORTWRITE,
+	CPUINFO_FCT_M6502_READINDEXED_CALLBACK = CPUINFO_FCT_CPU_SPECIFIC,
+	CPUINFO_FCT_M6502_WRITEINDEXED_CALLBACK,
+	CPUINFO_FCT_M6510_PORTREAD,
+	CPUINFO_FCT_M6510_PORTWRITE,
 
 	CPUINFO_INT_M6510_PORT = CPUINFO_INT_CPU_SPECIFIC
 };
 
-extern void m6502_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m6502 );
+#define CPU_M6502 CPU_GET_INFO_NAME( m6502 )
 
-extern unsigned m6502_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+extern CPU_DISASSEMBLE( m6502 );
 
 /****************************************************************************
  * The 6510
@@ -93,9 +100,10 @@ extern unsigned m6502_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UI
 
 #define M6510_IRQ_LINE					M6502_IRQ_LINE
 
-extern void m6510_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m6510 );
+#define CPU_M6510 CPU_GET_INFO_NAME( m6510 )
 
-extern unsigned m6510_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+extern CPU_DISASSEMBLE( m6510 );
 
 #endif
 
@@ -113,7 +121,8 @@ extern unsigned m6510_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UI
 
 #define M6510T_IRQ_LINE					M6502_IRQ_LINE
 
-extern void m6510t_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m6510t );
+#define CPU_M6510T CPU_GET_INFO_NAME( m6510t )
 
 #endif
 
@@ -131,7 +140,8 @@ extern void m6510t_get_info(UINT32 state, cpuinfo *info);
 
 #define M7501_IRQ_LINE					M6502_IRQ_LINE
 
-extern void m7501_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m7501 );
+#define CPU_M7501 CPU_GET_INFO_NAME( m7501 )
 #endif
 
 #if (HAS_M8502)
@@ -148,7 +158,8 @@ extern void m7501_get_info(UINT32 state, cpuinfo *info);
 
 #define M8502_IRQ_LINE					M6502_IRQ_LINE
 
-extern void m8502_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m8502 );
+#define CPU_M8502 CPU_GET_INFO_NAME( m8502 )
 #endif
 
 
@@ -169,7 +180,8 @@ extern void m8502_get_info(UINT32 state, cpuinfo *info);
 
 #define N2A03_IRQ_LINE					M6502_IRQ_LINE
 
-extern void n2a03_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( n2a03 );
+#define CPU_N2A03 CPU_GET_INFO_NAME( n2a03 )
 
 #define N2A03_DEFAULTCLOCK (21477272.724 / 12)
 
@@ -177,7 +189,7 @@ extern void n2a03_get_info(UINT32 state, cpuinfo *info);
    Bit 7 of address $4011 (the PSG's DPCM control register), when set,
    causes an IRQ to be generated.  This function allows the IRQ to be called
    from the PSG core when such an occasion arises. */
-extern void n2a03_irq(void);
+extern void n2a03_irq(const device_config *device);
 #endif
 
 
@@ -198,9 +210,10 @@ extern void n2a03_irq(void);
 
 #define M65C02_IRQ_LINE					M6502_IRQ_LINE
 
-extern void m65c02_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m65c02 );
+#define CPU_M65C02 CPU_GET_INFO_NAME( m65c02 )
 
-extern unsigned m65c02_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+extern CPU_DISASSEMBLE( m65c02 );
 
 #endif
 
@@ -221,9 +234,10 @@ extern unsigned m65c02_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const U
 
 #define M65SC02_IRQ_LINE				M6502_IRQ_LINE
 
-extern void m65sc02_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( m65sc02 );
+#define CPU_M65SC02 CPU_GET_INFO_NAME( m65sc02 )
 
-extern unsigned m65sc02_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+extern CPU_DISASSEMBLE( m65sc02 );
 #endif
 
 /****************************************************************************
@@ -243,9 +257,10 @@ extern unsigned m65sc02_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const 
 
 #define DECO16_IRQ_LINE					M6502_IRQ_LINE
 
-extern void deco16_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( deco16 );
+#define CPU_DECO16 CPU_GET_INFO_NAME( deco16 )
 #endif
 
-extern unsigned deco16_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+extern CPU_DISASSEMBLE( deco16 );
 
 #endif /* __M6502_H__ */

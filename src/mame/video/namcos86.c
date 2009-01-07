@@ -126,10 +126,10 @@ static TILE_GET_INFO( get_tile_info3 ) { get_tile_info(machine,tileinfo,tile_ind
 
 VIDEO_START( namcos86 )
 {
-	bg_tilemap[0] = tilemap_create(get_tile_info0,tilemap_scan_rows,8,8,64,32);
-	bg_tilemap[1] = tilemap_create(get_tile_info1,tilemap_scan_rows,8,8,64,32);
-	bg_tilemap[2] = tilemap_create(get_tile_info2,tilemap_scan_rows,8,8,64,32);
-	bg_tilemap[3] = tilemap_create(get_tile_info3,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap[0] = tilemap_create(machine, get_tile_info0,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap[1] = tilemap_create(machine, get_tile_info1,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap[2] = tilemap_create(machine, get_tile_info2,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap[3] = tilemap_create(machine, get_tile_info3,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transparent_pen(bg_tilemap[0],7);
 	tilemap_set_transparent_pen(bg_tilemap[1],7);
@@ -300,7 +300,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		sx += sprite_xoffs;
 		sy -= sprite_yoffs;
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = -sx - sizex;
 			sy = -sy - sizey;
@@ -328,14 +328,14 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 }
 
 
-static void set_scroll(int layer)
+static void set_scroll(running_machine *machine, int layer)
 {
 	static const int xdisp[4] = { 47, 49, 46, 48 };
 	int scrollx,scrolly;
 
 	scrollx = xscroll[layer] - xdisp[layer];
 	scrolly = yscroll[layer] + 9;
-	if (flip_screen_get())
+	if (flip_screen_get(machine))
 	{
 		scrollx = -scrollx;
 		scrolly = -scrolly;
@@ -350,17 +350,17 @@ VIDEO_UPDATE( namcos86 )
 	int layer;
 
 	/* flip screen is embedded in the sprite control registers */
-	/* can't use flip_screen_set() because the visible area is asymmetrical */
-	flip_screen_set_no_update(spriteram[0x07f6] & 1);
-	tilemap_set_flip(ALL_TILEMAPS,flip_screen_get() ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
-	set_scroll(0);
-	set_scroll(1);
-	set_scroll(2);
-	set_scroll(3);
+	/* can't use flip_screen_set(screen->machine, ) because the visible area is asymmetrical */
+	flip_screen_set_no_update(screen->machine, spriteram[0x07f6] & 1);
+	tilemap_set_flip(ALL_TILEMAPS,flip_screen_get(screen->machine) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+	set_scroll(screen->machine, 0);
+	set_scroll(screen->machine, 1);
+	set_scroll(screen->machine, 2);
+	set_scroll(screen->machine, 3);
 
-	fillbitmap(priority_bitmap, 0, cliprect);
+	bitmap_fill(priority_bitmap, cliprect, 0);
 
-	fillbitmap(bitmap,screen->machine->gfx[0]->color_base + 8*backcolor+7,cliprect);
+	bitmap_fill(bitmap,cliprect,screen->machine->gfx[0]->color_base + 8*backcolor+7);
 
 	for (layer = 0;layer < 8;layer++)
 	{

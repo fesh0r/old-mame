@@ -48,8 +48,8 @@ VIDEO_START( cbasebal )
 	cbasebal_textram = auto_malloc(0x1000);
 	cbasebal_scrollram = auto_malloc(0x1000);
 
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,   16,16,64,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,   16,16,64,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,3);
 }
@@ -176,7 +176,7 @@ VIDEO_UPDATE( cbasebal )
 	if (bg_on)
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	else
-		fillbitmap(bitmap,768,cliprect);
+		bitmap_fill(bitmap,cliprect,768);
 
 	if (obj_on)
 		draw_sprites(screen->machine, bitmap,cliprect);

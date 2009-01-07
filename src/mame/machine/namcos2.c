@@ -19,6 +19,12 @@ extern void namcos21_kickstart(running_machine *, int);
 int namcos2_gametype;
 
 static unsigned mFinalLapProtCount;
+static int namcos2_mcu_analog_ctrl;
+static int namcos2_mcu_analog_data;
+static int namcos2_mcu_analog_complete;
+static UINT8 *namcos2_eeprom;
+static int sendval;
+
 
 READ16_HANDLER( namcos2_flap_prot_r )
 {
@@ -69,21 +75,20 @@ READ16_HANDLER( namcos2_flap_prot_r )
 /*************************************************************/
 
 #define namcos2_eeprom_size 0x2000
-static UINT8 *namcos2_eeprom;
 
 static void
 ResetAllSubCPUs( running_machine *machine, int state )
 {
-	cpunum_set_input_line(machine, CPU_SLAVE, INPUT_LINE_RESET, state);
-	cpunum_set_input_line(machine, CPU_MCU, INPUT_LINE_RESET, state);
+	cpu_set_input_line(machine->cpu[CPU_SLAVE], INPUT_LINE_RESET, state);
+	cpu_set_input_line(machine->cpu[CPU_MCU], INPUT_LINE_RESET, state);
 	switch( namcos2_gametype )
 	{
 	case NAMCOS21_SOLVALOU:
 	case NAMCOS21_STARBLADE:
 	case NAMCOS21_AIRCOMBAT:
 	case NAMCOS21_CYBERSLED:
-		cpunum_set_input_line(machine, 4,INPUT_LINE_RESET,state); /* MASTER DSP */
-		cpunum_set_input_line(machine, 5,INPUT_LINE_RESET,state); /* SLAVE DSP */
+		cpu_set_input_line(machine->cpu[4],INPUT_LINE_RESET,state); /* MASTER DSP */
+		cpu_set_input_line(machine->cpu[5],INPUT_LINE_RESET,state); /* SLAVE DSP */
 		break;
 
 //  case NAMCOS21_WINRUN91:
@@ -100,13 +105,18 @@ MACHINE_START( namcos2 )
 
 MACHINE_RESET( namcos2 )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	int loop;
 	mFinalLapProtCount = 0;
+	namcos2_mcu_analog_ctrl=0;
+	namcos2_mcu_analog_data=0xaa;
+	namcos2_mcu_analog_complete=0;
+	sendval = 0;
 
 	/* Initialise the bank select in the sound CPU */
-	namcos2_sound_bankselect_w(machine,0,0); /* Page in bank 0 */
+	namcos2_sound_bankselect_w(space,0,0); /* Page in bank 0 */
 
-	cpunum_set_input_line(machine, CPU_SOUND, INPUT_LINE_RESET, ASSERT_LINE );
+	cpu_set_input_line(machine->cpu[CPU_SOUND], INPUT_LINE_RESET, ASSERT_LINE );
 
 	/* Place CPU2 & CPU3 into the reset condition */
 	ResetAllSubCPUs( machine, ASSERT_LINE );
@@ -163,7 +173,7 @@ READ16_HANDLER( namcos2_68k_eeprom_r ){
 /* 68000 Shared memory area - Data ROM area                  */
 /*************************************************************/
 READ16_HANDLER( namcos2_68k_data_rom_r ){
-	UINT16 *ROM = (UINT16 *)memory_region(machine, "user1");
+	UINT16 *ROM = (UINT16 *)memory_region(space->machine, "user1");
 	return ROM[offset];
 }
 
@@ -238,7 +248,7 @@ sws92g      1992    332         $014c
 suzuk8h2    1993
 sws93       1993    334         $014e
  *************************************************************/
-static int sendval = 0;
+
 READ16_HANDLER( namcos2_68k_key_r )
 {
 	switch (namcos2_gametype)
@@ -353,8 +363,8 @@ READ16_HANDLER( namcos2_68k_key_r )
 		{
 	//  case 3: return 0x142;
 		case 4: return 0x142;
-	//  case 3: popmessage("blah %08x",activecpu_get_pc());
-		default: return mame_rand(machine);
+	//  case 3: popmessage("blah %08x",cpu_get_pc(space->cpu));
+		default: return mame_rand(space->machine);
 		}
 		break;
 
@@ -411,7 +421,7 @@ READ16_HANDLER( namcos2_68k_key_r )
 
 
 
-	return mame_rand(machine)&0xffff;
+	return mame_rand(space->machine)&0xffff;
 }
 
 WRITE16_HANDLER( namcos2_68k_key_w )
@@ -464,33 +474,31 @@ static int IsSystem21( void )
 }
 
 static UINT16
-ReadWriteC148( running_machine *machine, int cpu, offs_t offset, UINT16 data, int bWrite )
+ReadWriteC148( const address_space *space, offs_t offset, UINT16 data, int bWrite )
 {
 	offs_t addr = ((offset*2)+0x1c0000)&0x1fe000;
+	const device_config *altcpu = NULL;
 	UINT16 *pC148Reg = NULL;
 	UINT16 *pC148RegAlt = NULL;
 	UINT16 result = 0;
-	int altCPU = 0;
 
-	switch( cpu )
+	if (space->cpu == space->machine->cpu[CPU_MASTER])
 	{
-	case CPU_MASTER:
 		pC148Reg = namcos2_68k_master_C148;
-		altCPU = CPU_SLAVE;
+		altcpu = space->machine->cpu[CPU_SLAVE];
 		pC148RegAlt = namcos2_68k_slave_C148;
-		break;
-
-	case CPU_SLAVE:
+	}
+	else if (space->cpu == space->machine->cpu[CPU_SLAVE])
+	{
 		pC148Reg = namcos2_68k_slave_C148;
-		altCPU = CPU_MASTER;
+		altcpu = space->machine->cpu[CPU_MASTER];
 		pC148RegAlt = namcos2_68k_master_C148;
-		break;
-
-	case CPU_GPU:
+	}
+	else if (space->cpu == space->machine->cpu[CPU_GPU])
+	{
 		pC148Reg = namcos2_68k_gpu_C148;
-		altCPU = CPU_MASTER;
+		altcpu = space->machine->cpu[CPU_MASTER];
 		pC148RegAlt = namcos2_68k_master_C148;
-		break;
 	}
 
 	if( bWrite )
@@ -512,20 +520,20 @@ ReadWriteC148( running_machine *machine, int cpu, offs_t offset, UINT16 data, in
 	case 0x1d0000:
 		if( bWrite )
 		{
-			cpunum_set_input_line(machine, altCPU, pC148RegAlt[NAMCOS2_C148_CPUIRQ], ASSERT_LINE);
-		}		cpunum_set_input_line(machine, cpu, pC148Reg[NAMCOS2_C148_0], CLEAR_LINE);
+			cpu_set_input_line(altcpu, pC148RegAlt[NAMCOS2_C148_CPUIRQ], ASSERT_LINE);
+		}		cpu_set_input_line(space->cpu, pC148Reg[NAMCOS2_C148_0], CLEAR_LINE);
 		break;
 
 	case 0x1d2000:
-		cpunum_set_input_line(machine, cpu, pC148Reg[NAMCOS2_C148_1], CLEAR_LINE);
+		cpu_set_input_line(space->cpu, pC148Reg[NAMCOS2_C148_1], CLEAR_LINE);
 		break;
 
 	case 0x1d4000:
 		if( bWrite )
 		{
-			cpunum_set_input_line(machine, altCPU, pC148RegAlt[NAMCOS2_C148_CPUIRQ], ASSERT_LINE);
+			cpu_set_input_line(altcpu, pC148RegAlt[NAMCOS2_C148_CPUIRQ], ASSERT_LINE);
 		}
-		cpunum_set_input_line(machine, cpu, pC148Reg[NAMCOS2_C148_2], CLEAR_LINE);
+		cpu_set_input_line(space->cpu, pC148Reg[NAMCOS2_C148_2], CLEAR_LINE);
 		break;
 
 	case 0x1d6000:
@@ -533,7 +541,7 @@ ReadWriteC148( running_machine *machine, int cpu, offs_t offset, UINT16 data, in
 		{
 		//  mame_printf_debug( "cpu(%d) RAM[0x%06x] = 0x%x\n", cpu, addr, data );
 		}
-		cpunum_set_input_line(machine, cpu, pC148Reg[NAMCOS2_C148_CPUIRQ], CLEAR_LINE);
+		cpu_set_input_line(space->cpu, pC148Reg[NAMCOS2_C148_CPUIRQ], CLEAR_LINE);
 		break;
 
 	case 0x1d8000: /* ack EXIRQ */
@@ -541,7 +549,7 @@ ReadWriteC148( running_machine *machine, int cpu, offs_t offset, UINT16 data, in
 		{
 		//  mame_printf_debug( "cpu(%d) RAM[0x%06x] = 0x%x\n", cpu, addr, data );
 		}
-		cpunum_set_input_line(machine, cpu, pC148Reg[NAMCOS2_C148_EXIRQ], CLEAR_LINE);
+		cpu_set_input_line(space->cpu, pC148Reg[NAMCOS2_C148_EXIRQ], CLEAR_LINE);
 		break;
 
 	case 0x1da000: /* ack POSIRQ */
@@ -549,7 +557,7 @@ ReadWriteC148( running_machine *machine, int cpu, offs_t offset, UINT16 data, in
 		{
 		//  mame_printf_debug( "cpu(%d) RAM[0x%06x] = 0x%x\n", cpu, addr, data );
 		}
-		cpunum_set_input_line(machine, cpu, pC148Reg[NAMCOS2_C148_POSIRQ], CLEAR_LINE);
+		cpu_set_input_line(space->cpu, pC148Reg[NAMCOS2_C148_POSIRQ], CLEAR_LINE);
 		break;
 
 	case 0x1dc000: /* ack SCIRQ */
@@ -557,11 +565,11 @@ ReadWriteC148( running_machine *machine, int cpu, offs_t offset, UINT16 data, in
 		{
 		//  mame_printf_debug( "cpu(%d) RAM[0x%06x] = 0x%x\n", cpu, addr, data );
 		}
-		cpunum_set_input_line(machine, cpu, pC148Reg[NAMCOS2_C148_SERIRQ], CLEAR_LINE);
+		cpu_set_input_line(space->cpu, pC148Reg[NAMCOS2_C148_SERIRQ], CLEAR_LINE);
 		break;
 
 	case 0x1de000: /* ack VBLANK */
-		cpunum_set_input_line(machine, cpu, pC148Reg[NAMCOS2_C148_VBLANKIRQ], CLEAR_LINE);
+		cpu_set_input_line(space->cpu, pC148Reg[NAMCOS2_C148_VBLANKIRQ], CLEAR_LINE);
 		break;
 
 	case 0x1e0000: /* EEPROM Status Register */
@@ -569,42 +577,42 @@ ReadWriteC148( running_machine *machine, int cpu, offs_t offset, UINT16 data, in
 		break;
 
 	case 0x1e2000: /* Sound CPU Reset control */
-		if( cpu == CPU_MASTER ) /* ? */
+		if( space->cpu == space->machine->cpu[CPU_MASTER] ) /* ? */
 		{
 			if( data&0x01 )
 			{
 				/* Resume execution */
-				cpunum_set_input_line(machine, CPU_SOUND, INPUT_LINE_RESET, CLEAR_LINE);
-				cpu_yield();
+				cpu_set_input_line(space->machine->cpu[CPU_SOUND], INPUT_LINE_RESET, CLEAR_LINE);
+				cpu_yield(space->cpu);
 			}
 			else
 			{
 				/* Suspend execution */
-				cpunum_set_input_line(machine, CPU_SOUND, INPUT_LINE_RESET, ASSERT_LINE);
+				cpu_set_input_line(space->machine->cpu[CPU_SOUND], INPUT_LINE_RESET, ASSERT_LINE);
 			}
 			if( IsSystem21() )
 			{
 				//printf( "dspkick=0x%x\n", data );
 				if( data&4 )
 				{
-					namcos21_kickstart(machine, 1);
+					namcos21_kickstart(space->machine, 1);
 				}
 			}
 		}
 		break;
 
 	case 0x1e4000: /* Alt 68000 & IO CPU Reset */
-		if( cpu == CPU_MASTER ) /* ? */
+		if( space->cpu == space->machine->cpu[CPU_MASTER] ) /* ? */
 		{
 			if( data&0x01 )
 			{ /* Resume execution */
-				ResetAllSubCPUs( machine, CLEAR_LINE );
+				ResetAllSubCPUs( space->machine, CLEAR_LINE );
 				/* Give the new CPU an immediate slice of the action */
-				cpu_yield();
+				cpu_yield(space->cpu);
 			}
 			else
 			{ /* Suspend execution */
-				ResetAllSubCPUs( machine, ASSERT_LINE );
+				ResetAllSubCPUs( space->machine, ASSERT_LINE );
 			}
 		}
 		break;
@@ -621,38 +629,38 @@ ReadWriteC148( running_machine *machine, int cpu, offs_t offset, UINT16 data, in
 
 WRITE16_HANDLER( namcos2_68k_master_C148_w )
 {
-	(void)ReadWriteC148( machine, CPU_MASTER, offset, data, 1 );
+	(void)ReadWriteC148( space, offset, data, 1 );
 }
 
 READ16_HANDLER( namcos2_68k_master_C148_r )
 {
-	return ReadWriteC148(  machine, CPU_MASTER, offset, 0, 0 );
+	return ReadWriteC148(  space, offset, 0, 0 );
 }
 
 WRITE16_HANDLER( namcos2_68k_slave_C148_w )
 {
-	(void)ReadWriteC148(  machine, CPU_SLAVE, offset, data, 1 );
+	(void)ReadWriteC148(  space, offset, data, 1 );
 }
 
 READ16_HANDLER( namcos2_68k_slave_C148_r )
 {
-	return ReadWriteC148(  machine, CPU_SLAVE, offset, 0, 0 );
+	return ReadWriteC148(  space, offset, 0, 0 );
 }
 
 WRITE16_HANDLER( namcos2_68k_gpu_C148_w )
 {
-	(void)ReadWriteC148(  machine, CPU_GPU, offset, data, 1 );
+	(void)ReadWriteC148(  space, offset, data, 1 );
 }
 
 READ16_HANDLER( namcos2_68k_gpu_C148_r )
 {
-	return ReadWriteC148(  machine, CPU_GPU, offset, 0, 0 );
+	return ReadWriteC148(  space, offset, 0, 0 );
 }
 
 static TIMER_CALLBACK( namcos2_68k_master_posirq )
 {
 	video_screen_update_partial(machine->primary_screen, param);
-	cpunum_set_input_line(machine, CPU_MASTER , namcos2_68k_master_C148[NAMCOS2_C148_POSIRQ] , ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[CPU_MASTER ], namcos2_68k_master_C148[NAMCOS2_C148_POSIRQ] , ASSERT_LINE);
 }
 
 static int
@@ -666,33 +674,33 @@ INTERRUPT_GEN( namcos2_68k_master_vblank )
 {
 	if( IsSystem21()==0 && namcos2_68k_master_C148[NAMCOS2_C148_POSIRQ] )
 	{
-		int scanline = GetPosIRQScanline(machine);
-		timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, namcos2_68k_master_posirq );
+		int scanline = GetPosIRQScanline(device->machine);
+		timer_set(device->machine, video_screen_get_time_until_pos(device->machine->primary_screen, scanline, 0), NULL, scanline, namcos2_68k_master_posirq );
 	}
-	cpunum_set_input_line(machine, CPU_MASTER, namcos2_68k_master_C148[NAMCOS2_C148_VBLANKIRQ], HOLD_LINE);
+	cpu_set_input_line(device, namcos2_68k_master_C148[NAMCOS2_C148_VBLANKIRQ], HOLD_LINE);
 }
 
 static TIMER_CALLBACK( namcos2_68k_slave_posirq )
 {
 	video_screen_update_partial(machine->primary_screen, param);
-	cpunum_set_input_line(machine, CPU_SLAVE , namcos2_68k_slave_C148[NAMCOS2_C148_POSIRQ] , ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[CPU_SLAVE ], namcos2_68k_slave_C148[NAMCOS2_C148_POSIRQ] , ASSERT_LINE);
 }
 
 INTERRUPT_GEN( namcos2_68k_slave_vblank )
 {
 	if( IsSystem21()==0 && namcos2_68k_slave_C148[NAMCOS2_C148_POSIRQ] )
 	{
-		int scanline = GetPosIRQScanline(machine);
-		timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, namcos2_68k_slave_posirq );
+		int scanline = GetPosIRQScanline(device->machine);
+		timer_set(device->machine, video_screen_get_time_until_pos(device->machine->primary_screen, scanline, 0), NULL, scanline, namcos2_68k_slave_posirq );
 	}
-	cpunum_set_input_line(machine, CPU_SLAVE, namcos2_68k_slave_C148[NAMCOS2_C148_VBLANKIRQ], HOLD_LINE);
+	cpu_set_input_line(device, namcos2_68k_slave_C148[NAMCOS2_C148_VBLANKIRQ], HOLD_LINE);
 }
 
 static TIMER_CALLBACK( namcos2_68k_gpu_posirq )
 {
 	//printf( "namcos2_68k_gpu_posirq(%d)\n", param );
 	video_screen_update_partial(machine->primary_screen, param);
-	cpunum_set_input_line(machine, CPU_GPU, namcos2_68k_gpu_C148[NAMCOS2_C148_POSIRQ] , ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[CPU_GPU], namcos2_68k_gpu_C148[NAMCOS2_C148_POSIRQ] , ASSERT_LINE);
 }
 
 INTERRUPT_GEN( namcos2_68k_gpu_vblank )
@@ -701,9 +709,9 @@ INTERRUPT_GEN( namcos2_68k_gpu_vblank )
 	if( namcos2_68k_gpu_C148[NAMCOS2_C148_POSIRQ] )
 	{
 		int scanline = 0x50+0x89; /* HACK for Winning Run */
-		timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, namcos2_68k_gpu_posirq );
+		timer_set(device->machine, video_screen_get_time_until_pos(device->machine->primary_screen, scanline, 0), NULL, scanline, namcos2_68k_gpu_posirq );
 	}
-	cpunum_set_input_line(machine, CPU_GPU, namcos2_68k_gpu_C148[NAMCOS2_C148_VBLANKIRQ], HOLD_LINE);
+	cpu_set_input_line(device, namcos2_68k_gpu_C148[NAMCOS2_C148_VBLANKIRQ], HOLD_LINE);
 }
 
 /**************************************************************/
@@ -712,10 +720,10 @@ INTERRUPT_GEN( namcos2_68k_gpu_vblank )
 
 WRITE8_HANDLER( namcos2_sound_bankselect_w )
 {
-	UINT8 *RAM=memory_region(machine, "audio");
-	UINT32 max = (memory_region_length(machine, "audio") - 0x10000) / 0x4000;
+	UINT8 *RAM=memory_region(space->machine, "audio");
+	UINT32 max = (memory_region_length(space->machine, "audio") - 0x10000) / 0x4000;
 	int bank = ( data >> 4 ) % max;	/* 991104.CAB */
-	memory_set_bankptr( CPU3_ROM1, &RAM[ 0x10000 + ( 0x4000 * bank ) ] );
+	memory_set_bankptr(space->machine,  CPU3_ROM1, &RAM[ 0x10000 + ( 0x4000 * bank ) ] );
 }
 
 /**************************************************************/
@@ -723,10 +731,6 @@ WRITE8_HANDLER( namcos2_sound_bankselect_w )
 /*  68705 IO CPU Support functions                            */
 /*                                                            */
 /**************************************************************/
-
-static int namcos2_mcu_analog_ctrl=0;
-static int namcos2_mcu_analog_data=0xaa;
-static int namcos2_mcu_analog_complete=0;
 
 WRITE8_HANDLER( namcos2_mcu_analog_ctrl_w )
 {
@@ -742,28 +746,28 @@ WRITE8_HANDLER( namcos2_mcu_analog_ctrl_w )
 		switch((data>>2) & 0x07)
 		{
 		case 0:
-			namcos2_mcu_analog_data=input_port_read(machine, "AN0");
+			namcos2_mcu_analog_data=input_port_read(space->machine, "AN0");
 			break;
 		case 1:
-			namcos2_mcu_analog_data=input_port_read(machine, "AN1");
+			namcos2_mcu_analog_data=input_port_read(space->machine, "AN1");
 			break;
 		case 2:
-			namcos2_mcu_analog_data=input_port_read(machine, "AN2");
+			namcos2_mcu_analog_data=input_port_read(space->machine, "AN2");
 			break;
 		case 3:
-			namcos2_mcu_analog_data=input_port_read(machine, "AN3");
+			namcos2_mcu_analog_data=input_port_read(space->machine, "AN3");
 			break;
 		case 4:
-			namcos2_mcu_analog_data=input_port_read(machine, "AN4");
+			namcos2_mcu_analog_data=input_port_read(space->machine, "AN4");
 			break;
 		case 5:
-			namcos2_mcu_analog_data=input_port_read(machine, "AN5");
+			namcos2_mcu_analog_data=input_port_read(space->machine, "AN5");
 			break;
 		case 6:
-			namcos2_mcu_analog_data=input_port_read(machine, "AN6");
+			namcos2_mcu_analog_data=input_port_read(space->machine, "AN6");
 			break;
 		case 7:
-			namcos2_mcu_analog_data=input_port_read(machine, "AN7");
+			namcos2_mcu_analog_data=input_port_read(space->machine, "AN7");
 			break;
 		}
 #if 0
@@ -778,7 +782,7 @@ WRITE8_HANDLER( namcos2_mcu_analog_ctrl_w )
 		/* If the interrupt enable bit is set trigger an A/D IRQ */
 		if(data & 0x20)
 		{
-			cpunum_set_input_line(machine, CPU_MCU, HD63705_INT_ADCONV , PULSE_LINE);
+			generic_pulse_irq_line(space->machine->cpu[CPU_MCU], HD63705_INT_ADCONV);
 		}
 	}
 }
@@ -819,14 +823,14 @@ READ8_HANDLER( namcos2_mcu_port_d_r )
 	int data = 0;
 
 	/* Read/convert the bits one at a time */
-	if(input_port_read(machine, "AN0") > threshold) data |= 0x01;
-	if(input_port_read(machine, "AN1") > threshold) data |= 0x02;
-	if(input_port_read(machine, "AN2") > threshold) data |= 0x04;
-	if(input_port_read(machine, "AN3") > threshold) data |= 0x08;
-	if(input_port_read(machine, "AN4") > threshold) data |= 0x10;
-	if(input_port_read(machine, "AN5") > threshold) data |= 0x20;
-	if(input_port_read(machine, "AN6") > threshold) data |= 0x40;
-	if(input_port_read(machine, "AN7") > threshold) data |= 0x80;
+	if(input_port_read(space->machine, "AN0") > threshold) data |= 0x01;
+	if(input_port_read(space->machine, "AN1") > threshold) data |= 0x02;
+	if(input_port_read(space->machine, "AN2") > threshold) data |= 0x04;
+	if(input_port_read(space->machine, "AN3") > threshold) data |= 0x08;
+	if(input_port_read(space->machine, "AN4") > threshold) data |= 0x10;
+	if(input_port_read(space->machine, "AN5") > threshold) data |= 0x20;
+	if(input_port_read(space->machine, "AN6") > threshold) data |= 0x40;
+	if(input_port_read(space->machine, "AN7") > threshold) data |= 0x80;
 
 	/* Return the result */
 	return data;
@@ -834,18 +838,18 @@ READ8_HANDLER( namcos2_mcu_port_d_r )
 
 READ8_HANDLER( namcos2_input_port_0_r )
 {
-	int data = input_port_read(machine, "MCUB");
+	int data = input_port_read(space->machine, "MCUB");
 	return data;
 }
 
 READ8_HANDLER( namcos2_input_port_10_r )
 {
-	int data = input_port_read(machine, "MCUH");
+	int data = input_port_read(space->machine, "MCUH");
 	return data;
 }
 
 READ8_HANDLER( namcos2_input_port_12_r )
 {
-	int data = input_port_read(machine, "MCUDI0");
+	int data = input_port_read(space->machine, "MCUDI0");
 	return data;
 }

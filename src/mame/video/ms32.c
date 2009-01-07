@@ -73,9 +73,9 @@ static int brt_r,brt_g,brt_b;
 
 VIDEO_START( ms32 )
 {
-	ms32_tx_tilemap = tilemap_create(get_ms32_tx_tile_info,tilemap_scan_rows,8, 8,64,64);
-	ms32_bg_tilemap = tilemap_create(get_ms32_bg_tile_info,tilemap_scan_rows,16,16,64,64);
-	ms32_roz_tilemap = tilemap_create(get_ms32_roz_tile_info,tilemap_scan_rows,16,16,128,128);
+	ms32_tx_tilemap = tilemap_create(machine, get_ms32_tx_tile_info,tilemap_scan_rows,8, 8,64,64);
+	ms32_bg_tilemap = tilemap_create(machine, get_ms32_bg_tile_info,tilemap_scan_rows,16,16,64,64);
+	ms32_roz_tilemap = tilemap_create(machine, get_ms32_roz_tile_info,tilemap_scan_rows,16,16,128,128);
 
 	tilemap_set_transparent_pen(ms32_tx_tilemap,0);
 	tilemap_set_transparent_pen(ms32_bg_tilemap,0);
@@ -140,7 +140,7 @@ WRITE32_HANDLER( ms32_brightness_w )
 			brt_b = 0x100 - ((brt[1] & 0x00ff) >> 0);
 
 			for (i = 0;i < 0x3000;i++)	// colors 0x3000-0x3fff are not used
-				update_color(machine, i);
+				update_color(space->machine, i);
 		}
 	}
 
@@ -151,7 +151,7 @@ WRITE32_HANDLER( ms32_palram_w )
 {
 	COMBINE_DATA(&ms32_palram[offset]);
 
-	update_color(machine, offset/2);
+	update_color(space->machine, offset/2);
 }
 
 
@@ -485,11 +485,11 @@ VIDEO_UPDATE( ms32 )
 	tilemap_set_scrolly(ms32_bg_tilemap, 0, scrolly);
 
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	/* TODO: 0 is correct for gametngk, but break f1superb scrolling grid (text at
        top and bottom of the screen becomes black on black) */
-	fillbitmap(bitmap,0,cliprect);	/* bg color */
+	bitmap_fill(bitmap,cliprect,0);	/* bg color */
 
 
 	/* priority hack, we really need to figure out what priority ram is I think */

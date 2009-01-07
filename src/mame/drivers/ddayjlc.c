@@ -52,6 +52,7 @@ $842f = lives
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 static INT32 char_bank = 0;
@@ -166,13 +167,13 @@ static WRITE8_HANDLER(bg2_w)
 	bgadr = (bgadr & 0xfb) | ((data & 1)<<2);
 	if(bgadr > 2)
 		bgadr = 0;
-	memory_set_bankptr( 1, memory_region(machine, "user1") + bgadr * 0x4000 );
+	memory_set_bankptr(space->machine,  1, memory_region(space->machine, "user1") + bgadr * 0x4000 );
 }
 
 static WRITE8_HANDLER( sound_w )
 {
-	soundlatch_w(machine,offset,data);
-	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff);
+	soundlatch_w(space,offset,data);
+	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff);
 }
 
 static WRITE8_HANDLER( i8257_CH0_w )
@@ -194,7 +195,7 @@ static WRITE8_HANDLER( i8257_LMSR_w )
 
 		for(i = 0; i < size; i++)
 		{
-			program_write_byte(dst++, program_read_byte(src++));
+			memory_write_byte(space, dst++, memory_read_byte(space, src++));
 		}
 
 		e00x_l[0] = 0;
@@ -340,7 +341,7 @@ static TILE_GET_INFO( get_tile_info_bg )
 
 static VIDEO_START( ddayjlc )
 {
-	bg_tilemap = tilemap_create(get_tile_info_bg,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(machine, get_tile_info_bg,tilemap_scan_rows,8,8,32,32);
 }
 
 static VIDEO_UPDATE( ddayjlc )
@@ -390,13 +391,13 @@ static const ay8910_interface ay8910_config =
 static INTERRUPT_GEN( ddayjlc_interrupt )
 {
 	if(main_nmi_enable)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static INTERRUPT_GEN( ddayjlc_snd_interrupt )
 {
 	if(sound_nmi_enable)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static MACHINE_DRIVER_START( ddayjlc )
@@ -408,7 +409,7 @@ static MACHINE_DRIVER_START( ddayjlc )
 	MDRV_CPU_PROGRAM_MAP(sound_cpu,0)
 	MDRV_CPU_VBLANK_INT("main", ddayjlc_snd_interrupt)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -572,7 +573,7 @@ static DRIVER_INIT( ddayjlc )
 		free(temp);
 	}
 
-	memory_set_bankptr( 1, memory_region(machine, "user1") );
+	memory_set_bankptr(machine,  1, memory_region(machine, "user1") );
 
 }
 

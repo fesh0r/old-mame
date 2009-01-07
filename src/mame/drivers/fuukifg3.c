@@ -158,6 +158,8 @@ FG-3J ROM-J 507KA0301P04       Rev:1.3
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/262intf.h"
 #include "sound/ymf278b.h"
 
@@ -194,7 +196,7 @@ static WRITE32_HANDLER( paletteram32_xRRRRRGGGGGBBBBB_dword_w )
 		g = (paletteram32[offset] & 0x03e00000) >> (5+16);
 		b = (paletteram32[offset] & 0x001f0000) >> (0+16);
 
-		palette_set_color_rgb(machine,offset*2,pal5bit(r),pal5bit(g),pal5bit(b));
+		palette_set_color_rgb(space->machine,offset*2,pal5bit(r),pal5bit(g),pal5bit(b));
 	}
 
 	if(ACCESSING_BITS_0_15)
@@ -206,7 +208,7 @@ static WRITE32_HANDLER( paletteram32_xRRRRRGGGGGBBBBB_dword_w )
 		g = (paletteram32[offset] & 0x000003e0) >> (5);
 		b = (paletteram32[offset] & 0x0000001f) >> (0);
 
-		palette_set_color_rgb(machine,offset*2+1,pal5bit(r),pal5bit(g),pal5bit(b));
+		palette_set_color_rgb(space->machine,offset*2+1,pal5bit(r),pal5bit(g),pal5bit(b));
 	}
 }
 
@@ -245,9 +247,9 @@ static WRITE32_HANDLER( fuuki32_vregs_w )
 		COMBINE_DATA(&fuuki32_vregs[offset]);
 		if (offset == 0x1c/4)
 		{
-			const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
-			attotime period = video_screen_get_frame_period(machine->primary_screen);
-			timer_adjust_periodic(raster_interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, fuuki32_vregs[0x1c/4]>>16, visarea->max_x + 1), 0, period);
+			const rectangle *visarea = video_screen_get_visible_area(space->machine->primary_screen);
+			attotime period = video_screen_get_frame_period(space->machine->primary_screen);
+			timer_adjust_periodic(raster_interrupt_timer, video_screen_get_time_until_pos(space->machine->primary_screen, fuuki32_vregs[0x1c/4]>>16, visarea->max_x + 1), 0, period);
 		}
 	}
 }
@@ -317,9 +319,9 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER ( fuuki32_sound_bw_w )
 {
-	UINT8 *rom = memory_region(machine, "sound");
+	UINT8 *rom = memory_region(space->machine, "sound");
 
-	memory_set_bankptr(1, rom + 0x10000 + (data * 0x8000));
+	memory_set_bankptr(space->machine, 1, rom + 0x10000 + (data * 0x8000));
 }
 
 static READ8_HANDLER( snd_z80_r )
@@ -543,31 +545,23 @@ GFXDECODE_END
 
 ***************************************************************************/
 
-static TIMER_CALLBACK( irq_off )
-{
-	cpunum_set_input_line(machine, 0, param, CLEAR_LINE);
-}
-
 static TIMER_CALLBACK( level_1_interrupt_callback )
 {
-	cpunum_set_input_line(machine, 0, 1, ASSERT_LINE);
-	timer_set(ATTOTIME_IN_USEC(1), NULL, 1, irq_off);
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 248, 0), NULL, 0, level_1_interrupt_callback);
+	cpu_set_input_line(machine->cpu[0], 1, HOLD_LINE);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 248, 0), NULL, 0, level_1_interrupt_callback);
 }
 
 
 static TIMER_CALLBACK( vblank_interrupt_callback )
 {
-	cpunum_set_input_line(machine, 0, 3, ASSERT_LINE);	// VBlank IRQ
-	timer_set(ATTOTIME_IN_USEC(1), NULL, 3, irq_off);
-	timer_set(video_screen_get_time_until_vblank_start(machine->primary_screen), NULL, 0, vblank_interrupt_callback);
+	cpu_set_input_line(machine->cpu[0], 3, HOLD_LINE);	// VBlank IRQ
+	timer_set(machine, video_screen_get_time_until_vblank_start(machine->primary_screen), NULL, 0, vblank_interrupt_callback);
 }
 
 
 static TIMER_CALLBACK( raster_interrupt_callback )
 {
-	cpunum_set_input_line(machine, 0, 5, ASSERT_LINE);	// Raster Line IRQ
-	timer_set(ATTOTIME_IN_USEC(1), NULL, 5, irq_off);
+	cpu_set_input_line(machine->cpu[0], 5, HOLD_LINE);	// Raster Line IRQ
 	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 	timer_adjust_oneshot(raster_interrupt_timer, video_screen_get_frame_period(machine->primary_screen), 0);
 }
@@ -575,7 +569,7 @@ static TIMER_CALLBACK( raster_interrupt_callback )
 
 static MACHINE_START( fuuki32 )
 {
-	raster_interrupt_timer = timer_alloc(raster_interrupt_callback, NULL);
+	raster_interrupt_timer = timer_alloc(machine, raster_interrupt_callback, NULL);
 }
 
 
@@ -583,15 +577,15 @@ static MACHINE_RESET( fuuki32 )
 {
 	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 248, 0), NULL, 0, level_1_interrupt_callback);
-	timer_set(video_screen_get_time_until_vblank_start(machine->primary_screen), NULL, 0, vblank_interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 248, 0), NULL, 0, level_1_interrupt_callback);
+	timer_set(machine, video_screen_get_time_until_vblank_start(machine->primary_screen), NULL, 0, vblank_interrupt_callback);
 	timer_adjust_oneshot(raster_interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, visarea->max_x + 1), 0);
 }
 
 
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ymf262_interface fuuki32_ymf262_interface =

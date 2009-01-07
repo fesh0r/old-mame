@@ -10,6 +10,7 @@ DIP locations verified for:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/2151intf.h"
@@ -32,15 +33,15 @@ static INTERRUPT_GEN( blockout_interrupt )
 	/* interrupt 6 is vblank */
 	/* interrupt 5 reads coin inputs - might have to be triggered only */
 	/* when a coin is inserted */
-	cpunum_set_input_line(machine, 0, 6 - cpu_getiloops(), HOLD_LINE);
+	cpu_set_input_line(device, 6 - cpu_getiloops(device), HOLD_LINE);
 }
 
 static WRITE16_HANDLER( blockout_sound_command_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		soundlatch_w(machine,offset,data & 0xff);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(space,offset,data & 0xff);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -171,7 +172,7 @@ INPUT_PORTS_END
 /* handler called by the 2151 emulator when the internal timers cause an IRQ */
 static void blockout_irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line_and_vector(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE,0xff);
+	cpu_set_input_line_and_vector(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE,0xff);
 }
 
 static const ym2151_interface ym2151_config =
@@ -360,5 +361,5 @@ ROM_END
 GAME( 1989, blockout, 0,        blockout, blockout, 0, ROT0, "Technos + California Dreams", "Block Out (set 1)", 0 )
 GAME( 1989, blckout2, blockout, blockout, blockout, 0, ROT0, "Technos + California Dreams", "Block Out (set 2)", 0 )
 GAME( 1989, blckoutj, blockout, blockout, blckoutj, 0, ROT0, "Technos + California Dreams", "Block Out (Japan)", 0 )
-GAME( 1991, agress,   0,        blockout, agress,   0, ROT0, "Palco", "Agress", GAME_IMPERFECT_GRAPHICS )
-GAME( 2003, agressb,  agress,   blockout, agress,   0, ROT0, "Palco", "Agress (English bootleg)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, agress,   0,        blockout, agress,   0, ROT0, "Palco", "Agress", 0 )
+GAME( 2003, agressb,  agress,   blockout, agress,   0, ROT0, "Palco", "Agress (English bootleg)", 0 )

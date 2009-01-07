@@ -7,19 +7,21 @@
 ** Copyright Jarek Burczynski (bujar at mame dot net)
 ** Copyright Tatsuyuki Satoh , MultiArcadeMachineEmulator development
 **
-** Version 1.4 (final beta)
+** Version 1.4.2 (final beta)
 **
 */
 
 /*
 ** History:
 **
-** 2006-2008 Eke-Eke (Genesis Plus port), MAME backport by R. Belmont
+** 2006-2008 Eke-Eke (Genesis Plus GX), MAME backport by R. Belmont.
 **  - implemented PG overflow, aka "detune bug" (Ariel, Comix Zone, Shaq Fu, Spiderman,...), credits to Nemesis
 **  - fixed SSG-EG support, credits to Nemesis and additional fixes from Alone Coder
 **  - modified EG rates and frequency, tested by Nemesis on real hardware
-**  - fixed EG attenuation level on KEY ON (Ecco 2 splash sound)
-**  - fixed LFO phase update for CH3 special mode (Warlock, Alladin), thanks to AamirM
+**  - implemented LFO phase update for CH3 special mode (Warlock birds, Alladin bug sound)
+**  - fixed Attack Rate update (Batman & Robin intro)
+**  - fixed attenuation level at the start of Substain (Gynoug explosions)
+**  - fixed EG decay->substain transition to handle special cases, like SL=0 and Decay rate is very slow (Mega Turrican tracks 03,09...)
 **
 ** 06-23-2007 Zsolt Vasvari:
 **  - changed the timing not to require the use of floating point calculations
@@ -121,8 +123,6 @@
 #include "deftypes.h"		/* use RAINE */
 #include "support.h"		/* use RAINE */
 #endif
-
-//#include "ay8910.h"
 #include "fm.h"
 
 
@@ -640,6 +640,7 @@ typedef struct
 
 typedef struct
 {
+	const device_config *device;
 	void *		param;				/* this chip parameter  */
 	int			clock;				/* master clock  (Hz)   */
 	int			rate;				/* sampling rate (Hz)   */
@@ -701,7 +702,7 @@ typedef struct
         but LFO works with one more bit of a precision so we really need 4096 elements */
 
 	UINT32	fn_table[4096];	/* fnumber->increment counter */
-
+	UINT32 fn_max;    /* maximal phase increment (used for phase overflow) */
 
 	/* LFO */
 	UINT32	lfo_cnt;
@@ -725,8 +726,6 @@ static INT32	out_delta[4];	/* channel output NONE,LEFT,RIGHT or CENTER for YM260
 
 static UINT32	LFO_AM;			/* runtime LFO calculations helper */
 static INT32	LFO_PM;			/* runtime LFO calculations helper */
-
-static int fn_max;    /* maximal phase increment (used for phase overflow) */
 
 /* log output level */
 #define LOG_ERR  3      /* ERROR       */
@@ -894,7 +893,7 @@ INLINE UINT8 FM_STATUS_FLAG(FM_ST *ST)
 {
 	if( COMPARE_TIMES(ST->busy_expiry_time, UNDEFINED_TIME) != 0 )
 	{
-		if (COMPARE_TIMES(ST->busy_expiry_time, FM_GET_TIME_NOW()) > 0)
+		if (COMPARE_TIMES(ST->busy_expiry_time, FM_GET_TIME_NOW(ST->device->machine)) > 0)
 			return ST->status | 0x80;	/* with busy */
 		/* expire */
 		FM_BUSY_CLEAR(ST);
@@ -904,7 +903,7 @@ INLINE UINT8 FM_STATUS_FLAG(FM_ST *ST)
 INLINE void FM_BUSY_SET(FM_ST *ST,int busyclock )
 {
 	TIME_TYPE expiry_period = MULTIPLY_TIME_BY_INT(ATTOTIME_IN_HZ(ST->clock), busyclock * ST->timer_prescaler);
-	ST->busy_expiry_time = ADD_TIMES(FM_GET_TIME_NOW(), expiry_period);
+	ST->busy_expiry_time = ADD_TIMES(FM_GET_TIME_NOW(ST->device->machine), expiry_period);
 }
 #else
 #define FM_STATUS_FLAG(ST) ((ST)->status)
@@ -922,19 +921,19 @@ INLINE void FM_KEYON(UINT8 type, FM_CH *CH , int s )
 	{
 		SLOT->key = 1;
 		SLOT->phase = 0;		/* restart Phase Generator */
+		SLOT->ssgn = (SLOT->ssg & 0x04) >> 1;
 
 		if ((type == TYPE_YM2612) || (type == TYPE_YM2608))
 		{
 		        if( (SLOT->ar + SLOT->ksr) < 32+62 )
 		        {
 			        SLOT->state = EG_ATT;    /* phase -> Attack */
-			        SLOT->volume = MAX_ATT_INDEX;    /* fix Ecco 2 splash sound */
 			}
 			else
 			{
 			        /* directly switch to Decay */
-			        SLOT->state = EG_DEC;
 			        SLOT->volume = MIN_ATT_INDEX;
+			        SLOT->state = EG_DEC;
 			}
 		}
 		else
@@ -1075,6 +1074,7 @@ INLINE void set_ar_ksr(UINT8 type, FM_CH *CH,FM_SLOT *SLOT,int v)
 		SLOT->eg_sh_ar  = eg_rate_shift [SLOT->ar  + SLOT->ksr ];
 		if ((type == TYPE_YM2612) || (type == TYPE_YM2608))
 		{
+                	SLOT->eg_sh_ar  = eg_rate_shift [SLOT->ar  + SLOT->ksr ];
 			SLOT->eg_sel_ar = eg_rate_select2612[SLOT->ar  + SLOT->ksr ];
 		}
 		else
@@ -1168,12 +1168,9 @@ INLINE signed int op_calc1(UINT32 phase, unsigned int env, signed int pm)
 INLINE void advance_lfo(FM_OPN *OPN)
 {
 	UINT8 pos;
-	UINT8 prev_pos;
 
 	if (OPN->lfo_inc)	/* LFO enabled ? */
 	{
-		prev_pos = OPN->lfo_cnt>>LFO_SH & 127;
-
 		OPN->lfo_cnt += OPN->lfo_inc;
 
 		pos = (OPN->lfo_cnt >> LFO_SH) & 127;
@@ -1181,7 +1178,6 @@ INLINE void advance_lfo(FM_OPN *OPN)
 
 		/* update AM when LFO output changes */
 
-		/*if (prev_pos != pos)*/
 		/* actually I can't optimize is this way without rewritting chan_calc()
         to use chip->lfo_am instead of global lfo_am */
 		{
@@ -1195,7 +1191,6 @@ INLINE void advance_lfo(FM_OPN *OPN)
 		}
 
 		/* PM works with 4 times slower clock */
-		prev_pos >>= 2;
 		pos >>= 2;
 		/* update PM when LFO output changes */
 		/*if (prev_pos != pos)*/ /* can't use global lfo_pm for this optimization, must be chip->lfo_pm instead*/
@@ -1222,6 +1217,9 @@ static void advance_eg_channel(FM_OPN *OPN, FM_SLOT *SLOT)
 	i = 4; /* four operators per channel */
 	do
 	{
+		/* reset SSG-EG swap flag */
+		swap_flag = 0;
+
 		switch(SLOT->state)
 		{
 		case EG_ATT:		/* attack phase */
@@ -1240,24 +1238,48 @@ static void advance_eg_channel(FM_OPN *OPN, FM_SLOT *SLOT)
 		break;
 
 		case EG_DEC:	/* decay phase */
-			if (SLOT->ssg&0x08)	/* SSG EG type envelope selected */
+			if ((OPN->type == TYPE_YM2612) || (OPN->type == TYPE_YM2608))
 			{
-				if ( !(OPN->eg_cnt & ((1<<SLOT->eg_sh_d1r)-1) ) )
-				{
-					SLOT->volume += 4 * eg_inc[SLOT->eg_sel_d1r + ((OPN->eg_cnt>>SLOT->eg_sh_d1r)&7)];
+                                if ( !(OPN->eg_cnt & ((1<<SLOT->eg_sh_d1r)-1) ) )
+                                {
+					if (SLOT->ssg&0x08)   /* SSG EG type envelope selected */
+					{
+				       		SLOT->volume += 6 * eg_inc[SLOT->eg_sel_d1r + ((OPN->eg_cnt>>SLOT->eg_sh_d1r)&7)];
+					}
+					else
+					{
+                                                SLOT->volume += eg_inc[SLOT->eg_sel_d1r + ((OPN->eg_cnt>>SLOT->eg_sh_d1r)&7)];
+					}
+        			}
 
-					if ( SLOT->volume >= (INT32)(SLOT->sl) )
-						SLOT->state = EG_SUS;
+				/* check transition even if no volume update: this fixes the case when SL = MIN_ATT_INDEX */
+				if ( SLOT->volume >= (INT32)(SLOT->sl) )
+				{
+					SLOT->volume = (INT32)(SLOT->sl);
+					SLOT->state = EG_SUS;
 				}
 			}
 			else
 			{
-				if ( !(OPN->eg_cnt & ((1<<SLOT->eg_sh_d1r)-1) ) )
+				if (SLOT->ssg&0x08)	/* SSG EG type envelope selected */
 				{
-					SLOT->volume += eg_inc[SLOT->eg_sel_d1r + ((OPN->eg_cnt>>SLOT->eg_sh_d1r)&7)];
+					if ( !(OPN->eg_cnt & ((1<<SLOT->eg_sh_d1r)-1) ) )
+					{
+						SLOT->volume += 4 * eg_inc[SLOT->eg_sel_d1r + ((OPN->eg_cnt>>SLOT->eg_sh_d1r)&7)];
 
-					if ( SLOT->volume >= (INT32)(SLOT->sl) )
-						SLOT->state = EG_SUS;
+						if ( SLOT->volume >= (INT32)(SLOT->sl) )
+							SLOT->state = EG_SUS;
+					}
+				}
+				else
+				{
+					if ( !(OPN->eg_cnt & ((1<<SLOT->eg_sh_d1r)-1) ) )
+					{
+						SLOT->volume += eg_inc[SLOT->eg_sel_d1r + ((OPN->eg_cnt>>SLOT->eg_sh_d1r)&7)];
+
+						if ( SLOT->volume >= (INT32)(SLOT->sl) )
+							SLOT->state = EG_SUS;
+					}
 				}
 			}
 		break;
@@ -1267,11 +1289,22 @@ static void advance_eg_channel(FM_OPN *OPN, FM_SLOT *SLOT)
 			{
 				if ( !(OPN->eg_cnt & ((1<<SLOT->eg_sh_d2r)-1) ) )
 				{
-					SLOT->volume += 4 * eg_inc[SLOT->eg_sel_d2r + ((OPN->eg_cnt>>SLOT->eg_sh_d2r)&7)];
 
-					if ( SLOT->volume >= 512 )
+					if ((OPN->type == TYPE_YM2612) || (OPN->type == TYPE_YM2608))
 					{
-						SLOT->volume = MAX_ATT_INDEX;
+						SLOT->volume += 6 * eg_inc[SLOT->eg_sel_d2r + ((OPN->eg_cnt>>SLOT->eg_sh_d2r)&7)];
+					}
+					else
+					{
+						SLOT->volume += 4 * eg_inc[SLOT->eg_sel_d2r + ((OPN->eg_cnt>>SLOT->eg_sh_d2r)&7)];
+					}
+
+					if ( SLOT->volume >= ENV_QUIET )
+					{
+						if ((OPN->type != TYPE_YM2612) && (OPN->type != TYPE_YM2608))
+						{
+							SLOT->volume = MAX_ATT_INDEX;
+						}
 
 						if (SLOT->ssg&0x01)	/* bit 0 = hold */
 						{
@@ -1287,13 +1320,28 @@ static void advance_eg_channel(FM_OPN *OPN, FM_SLOT *SLOT)
 						{
 							/* same as KEY-ON operation */
 
-							/* restart of the Phase Generator should be here,
-                                only if AR is not maximum ??? */
+							/* restart of the Phase Generator should be here */
 							SLOT->phase = 0;
 
-							/* phase -> Attack */
-							SLOT->volume = 511;
-							SLOT->state = EG_ATT;
+							if ((OPN->type == TYPE_YM2612) || (OPN->type == TYPE_YM2608))
+							{
+								if ((SLOT->ar + SLOT->ksr) < 94 /*32+62*/)
+								{
+									SLOT->state = EG_ATT; /* phase -> Attack */
+								}
+								else
+								{
+									/* Attack Rate is maximal: directly switch to Decay (or Substain) */
+									SLOT->volume = MIN_ATT_INDEX;
+									SLOT->state = (SLOT->sl == MIN_ATT_INDEX) ? EG_SUS : EG_DEC;
+								}
+							}
+							else
+							{
+								/* phase -> Attack */
+								SLOT->volume = 511;
+								SLOT->state = EG_ATT;
+							}
 
 							swap_flag = (SLOT->ssg&0x02); /* bit 1 = alternate */
 						}
@@ -1319,7 +1367,15 @@ static void advance_eg_channel(FM_OPN *OPN, FM_SLOT *SLOT)
 		case EG_REL:	/* release phase */
 				if ( !(OPN->eg_cnt & ((1<<SLOT->eg_sh_rr)-1) ) )
 				{
-					SLOT->volume += eg_inc[SLOT->eg_sel_rr + ((OPN->eg_cnt>>SLOT->eg_sh_rr)&7)];
+					/* SSG-EG affects Release phase also (Nemesis) */
+					if ((SLOT->ssg&0x08) && ((OPN->type = TYPE_YM2612) || (OPN->type = TYPE_YM2608)))
+					{
+						SLOT->volume += 6 * eg_inc[SLOT->eg_sel_rr + ((OPN->eg_cnt>>SLOT->eg_sh_rr)&7)];
+					}
+					else
+					{
+						SLOT->volume += eg_inc[SLOT->eg_sel_rr + ((OPN->eg_cnt>>SLOT->eg_sh_rr)&7)];
+					}
 
 					if ( SLOT->volume >= MAX_ATT_INDEX )
 					{
@@ -1331,15 +1387,18 @@ static void advance_eg_channel(FM_OPN *OPN, FM_SLOT *SLOT)
 
 		}
 
-		out = SLOT->tl + ((UINT32)SLOT->volume);
 
-		if ((SLOT->ssg&0x08) && (SLOT->ssgn&2) && (SLOT->state != EG_OFF))	/* negate output (changes come from alternate bit, init comes from attack bit) */
-			out ^= 511; // was ((1<<ENV_BITS)-1); /* 1023 */
+		out = ((UINT32)SLOT->volume);
+
+                /* negate output (changes come from alternate bit, init comes from attack bit) */
+		if ((SLOT->ssg&0x08) && (SLOT->ssgn&2) && (SLOT->state > EG_REL))
+			out ^= MAX_ATT_INDEX;
 
 		/* we need to store the result here because we are going to change ssgn
             in next instruction */
-		SLOT->vol_out = out;
+		SLOT->vol_out = out + SLOT->tl;
 
+                /* reverse SLOT inversion flag */
 		SLOT->ssgn ^= swap_flag;
 
 		SLOT++;
@@ -1375,7 +1434,7 @@ INLINE void update_phase_lfo_slot(FM_OPN *OPN, FM_SLOT *SLOT, INT32 pms, UINT32 
 		fc = (OPN->fn_table[fn]>>(7-blk)) + SLOT->DT[kc];
 
 		/* detects frequency overflow (credits to Nemesis) */
-		if (fc < 0) fc += fn_max;
+		if (fc < 0) fc += OPN->fn_max;
 
 		/* update phase */
 		SLOT->phase += (fc * SLOT->mul) >> 1;
@@ -1413,19 +1472,19 @@ INLINE void update_phase_lfo_channel(FM_OPN *OPN, FM_CH *CH)
 		/* detects frequency overflow (credits to Nemesis) */
 		finc = fc + CH->SLOT[SLOT1].DT[kc];
 
-		if (finc < 0) finc += fn_max;
+		if (finc < 0) finc += OPN->fn_max;
 		CH->SLOT[SLOT1].phase += (finc*CH->SLOT[SLOT1].mul) >> 1;
 
 		finc = fc + CH->SLOT[SLOT2].DT[kc];
-		if (finc < 0) finc += fn_max;
+		if (finc < 0) finc += OPN->fn_max;
 		CH->SLOT[SLOT2].phase += (finc*CH->SLOT[SLOT2].mul) >> 1;
 
 		finc = fc + CH->SLOT[SLOT3].DT[kc];
-		if (finc < 0) finc += fn_max;
+		if (finc < 0) finc += OPN->fn_max;
 		CH->SLOT[SLOT3].phase += (finc*CH->SLOT[SLOT3].mul) >> 1;
 
 		finc = fc + CH->SLOT[SLOT4].DT[kc];
-		if (finc < 0) finc += fn_max;
+		if (finc < 0) finc += OPN->fn_max;
 		CH->SLOT[SLOT4].phase += (finc*CH->SLOT[SLOT4].mul) >> 1;
 	}
 	else    /* LFO phase modulation  = zero */
@@ -1512,14 +1571,14 @@ INLINE void chan_calc(FM_OPN *OPN, FM_CH *CH, int chnum)
 }
 
 /* update phase increment and envelope generator */
-INLINE void refresh_fc_eg_slot(UINT8 type, FM_SLOT *SLOT , int fc , int kc )
+INLINE void refresh_fc_eg_slot(FM_OPN *OPN, FM_SLOT *SLOT , int fc , int kc )
 {
 	int ksr = kc >> SLOT->KSR;
 
 	fc += SLOT->DT[kc];
 
 	/* detects frequency overflow (credits to Nemesis) */
-	if (fc < 0) fc += fn_max;
+	if (fc < 0) fc += OPN->fn_max;
 
 	/* (frequency) phase increment counter */
 	SLOT->Incr = (fc * SLOT->mul) >> 1;
@@ -1532,7 +1591,7 @@ INLINE void refresh_fc_eg_slot(UINT8 type, FM_SLOT *SLOT , int fc , int kc )
 		if ((SLOT->ar + SLOT->ksr) < 32+62)
 		{
 			SLOT->eg_sh_ar  = eg_rate_shift [SLOT->ar  + SLOT->ksr ];
-			if ((type == TYPE_YM2612) || (type == TYPE_YM2608))
+			if ((OPN->type == TYPE_YM2612) || (OPN->type == TYPE_YM2608))
 			{
 				SLOT->eg_sel_ar = eg_rate_select2612[SLOT->ar  + SLOT->ksr ];
 			}
@@ -1551,7 +1610,7 @@ INLINE void refresh_fc_eg_slot(UINT8 type, FM_SLOT *SLOT , int fc , int kc )
 		SLOT->eg_sh_d2r = eg_rate_shift [SLOT->d2r + SLOT->ksr];
 		SLOT->eg_sh_rr  = eg_rate_shift [SLOT->rr  + SLOT->ksr];
 
-		if ((type == TYPE_YM2612) || (type == TYPE_YM2608))
+		if ((OPN->type == TYPE_YM2612) || (OPN->type == TYPE_YM2608))
 		{
 			SLOT->eg_sel_d1r= eg_rate_select2612[SLOT->d1r + SLOT->ksr];
 			SLOT->eg_sel_d2r= eg_rate_select2612[SLOT->d2r + SLOT->ksr];
@@ -1568,15 +1627,15 @@ INLINE void refresh_fc_eg_slot(UINT8 type, FM_SLOT *SLOT , int fc , int kc )
 
 /* update phase increment counters */
 /* Changed from INLINE to static to work around gcc 4.2.1 codegen bug */
-static void refresh_fc_eg_chan(UINT8 type, FM_CH *CH )
+static void refresh_fc_eg_chan(FM_OPN *OPN, FM_CH *CH )
 {
 	if( CH->SLOT[SLOT1].Incr==-1){
 		int fc = CH->fc;
 		int kc = CH->kcode;
-		refresh_fc_eg_slot(type, &CH->SLOT[SLOT1] , fc , kc );
-		refresh_fc_eg_slot(type, &CH->SLOT[SLOT2] , fc , kc );
-		refresh_fc_eg_slot(type, &CH->SLOT[SLOT3] , fc , kc );
-		refresh_fc_eg_slot(type, &CH->SLOT[SLOT4] , fc , kc );
+		refresh_fc_eg_slot(OPN, &CH->SLOT[SLOT1] , fc , kc );
+		refresh_fc_eg_slot(OPN, &CH->SLOT[SLOT2] , fc , kc );
+		refresh_fc_eg_slot(OPN, &CH->SLOT[SLOT3] , fc , kc );
+		refresh_fc_eg_slot(OPN, &CH->SLOT[SLOT4] , fc , kc );
 	}
 }
 
@@ -1761,59 +1820,68 @@ static void FMCloseTable( void )
 /* CSM Key Controll */
 INLINE void CSMKeyControll(UINT8 type, FM_CH *CH)
 {
-	/* this is wrong, atm */
-
-	/* all key on */
-	FM_KEYON(type, CH,SLOT1);
-	FM_KEYON(type, CH,SLOT2);
-	FM_KEYON(type, CH,SLOT3);
-	FM_KEYON(type, CH,SLOT4);
+	/* all key on then off (only for operators which were OFF!) */
+	if (!CH->SLOT[SLOT1].key)
+	{
+		FM_KEYON(type, CH,SLOT1);
+		FM_KEYOFF(CH, SLOT1);
+	}
+	if (!CH->SLOT[SLOT2].key)
+	{
+		FM_KEYON(type, CH,SLOT2);
+		FM_KEYOFF(CH, SLOT2);
+	}
+	if (!CH->SLOT[SLOT3].key)
+	{
+		FM_KEYON(type, CH,SLOT3);
+		FM_KEYOFF(CH, SLOT3);
+	}
+	if (!CH->SLOT[SLOT4].key)
+	{
+		FM_KEYON(type, CH,SLOT4);
+		FM_KEYOFF(CH, SLOT4);
+	}
 }
 
 #ifdef __STATE_H__
 /* FM channel save , internal state only */
-static void FMsave_state_channel(const char *name,int num,FM_CH *CH,int num_ch)
+static void FMsave_state_channel(const device_config *device,FM_CH *CH,int num_ch)
 {
 	int slot , ch;
-	char state_name[20];
-	static const char slot_array[4] = { 1 , 3 , 2 , 4 };
 
 	for(ch=0;ch<num_ch;ch++,CH++)
 	{
 		/* channel */
-		sprintf(state_name,"%s.CH%d",name,ch);
-		state_save_register_item_array(state_name, num, CH->op1_out);
-		state_save_register_item(state_name, num, CH->fc);
+		state_save_register_device_item_array(device, ch, CH->op1_out);
+		state_save_register_device_item(device, ch, CH->fc);
 		/* slots */
 		for(slot=0;slot<4;slot++)
 		{
 			FM_SLOT *SLOT = &CH->SLOT[slot];
-
-			sprintf(state_name,"%s.CH%d.SLOT%d",name,ch,slot_array[slot]);
-			state_save_register_item(state_name, num, SLOT->phase);
-			state_save_register_item(state_name, num, SLOT->state);
-			state_save_register_item(state_name, num, SLOT->volume);
+			state_save_register_device_item(device, ch * 4 + slot, SLOT->phase);
+			state_save_register_device_item(device, ch * 4 + slot, SLOT->state);
+			state_save_register_device_item(device, ch * 4 + slot, SLOT->volume);
 		}
 	}
 }
 
-static void FMsave_state_st(const char *state_name,int num,FM_ST *ST)
+static void FMsave_state_st(const device_config *device,FM_ST *ST)
 {
 #if FM_BUSY_FLAG_SUPPORT
-	state_save_register_item(state_name, num, ST->busy_expiry_time.seconds );
-	state_save_register_item(state_name, num, ST->busy_expiry_time.attoseconds );
+	state_save_register_device_item(device, 0, ST->busy_expiry_time.seconds );
+	state_save_register_device_item(device, 0, ST->busy_expiry_time.attoseconds );
 #endif
-	state_save_register_item(state_name, num, ST->address );
-	state_save_register_item(state_name, num, ST->irq     );
-	state_save_register_item(state_name, num, ST->irqmask );
-	state_save_register_item(state_name, num, ST->status  );
-	state_save_register_item(state_name, num, ST->mode    );
-	state_save_register_item(state_name, num, ST->prescaler_sel );
-	state_save_register_item(state_name, num, ST->fn_h );
-	state_save_register_item(state_name, num, ST->TA   );
-	state_save_register_item(state_name, num, ST->TAC  );
-	state_save_register_item(state_name, num, ST->TB  );
-	state_save_register_item(state_name, num, ST->TBC  );
+	state_save_register_device_item(device, 0, ST->address );
+	state_save_register_device_item(device, 0, ST->irq     );
+	state_save_register_device_item(device, 0, ST->irqmask );
+	state_save_register_device_item(device, 0, ST->status  );
+	state_save_register_device_item(device, 0, ST->mode    );
+	state_save_register_device_item(device, 0, ST->prescaler_sel );
+	state_save_register_device_item(device, 0, ST->fn_h );
+	state_save_register_device_item(device, 0, ST->TA   );
+	state_save_register_device_item(device, 0, ST->TAC  );
+	state_save_register_device_item(device, 0, ST->TB  );
+	state_save_register_device_item(device, 0, ST->TBC  );
 }
 #endif /* _STATE_H */
 
@@ -1861,8 +1929,8 @@ static void OPNSetPres(FM_OPN *OPN, int pres, int timer_prescaler, int SSGpres)
 #endif
 	}
 
-	/* maximal frequency, used for overflow, best setting with BLOCK=5 (notaz) */
-	fn_max = ((UINT32)((double)OPN->fn_table[0x7ff*2] / OPN->ST.freqbase) >> 2);
+	/* maximal frequency is required for Phase overflow calculation, register size is 17 bits (Nemesis) */
+	OPN->fn_max = (UINT32)( (double)0x20000 * OPN->ST.freqbase * (1<<(FREQ_SH-10)) );
 
 	/* LFO freq. table */
 	for(i = 0; i < 8; i++)
@@ -2204,19 +2272,19 @@ void ym2203_update_one(void *chip, FMSAMPLE *buffer, int length)
 
 
 	/* refresh PG and EG */
-	refresh_fc_eg_chan( OPN->type, cch[0] );
-	refresh_fc_eg_chan( OPN->type, cch[1] );
+	refresh_fc_eg_chan( OPN, cch[0] );
+	refresh_fc_eg_chan( OPN, cch[1] );
 	if( (F2203->OPN.ST.mode & 0xc0) )
 	{
 		/* 3SLOT MODE */
 		if( cch[2]->SLOT[SLOT1].Incr==-1)
 		{
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT1] , OPN->SL3.fc[1] , OPN->SL3.kcode[1] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT2] , OPN->SL3.fc[2] , OPN->SL3.kcode[2] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT3] , OPN->SL3.fc[0] , OPN->SL3.kcode[0] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT4] , cch[2]->fc , cch[2]->kcode );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT1] , OPN->SL3.fc[1] , OPN->SL3.kcode[1] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT2] , OPN->SL3.fc[2] , OPN->SL3.kcode[2] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT3] , OPN->SL3.fc[0] , OPN->SL3.kcode[0] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT4] , cch[2]->fc , cch[2]->kcode );
 		}
-	}else refresh_fc_eg_chan( OPN->type, cch[2] );
+	}else refresh_fc_eg_chan( OPN, cch[2] );
 
 
 	/* YM2203 doesn't have LFO so we must keep these globals at 0 level */
@@ -2332,17 +2400,15 @@ void ym2203_postload(void *chip)
 	}
 }
 
-static void YM2203_save_state(YM2203 *F2203, int index)
+static void YM2203_save_state(YM2203 *F2203, const device_config *device)
 {
-	static const char statename[] = "YM2203";
-
-	state_save_register_item_array(statename, index, F2203->REGS);
-	FMsave_state_st(statename,index,&F2203->OPN.ST);
-	FMsave_state_channel(statename,index,F2203->CH,3);
+	state_save_register_device_item_array(device, 0, F2203->REGS);
+	FMsave_state_st(device,&F2203->OPN.ST);
+	FMsave_state_channel(device,F2203->CH,3);
 	/* 3slots */
-	state_save_register_item_array (statename, index, F2203->OPN.SL3.fc);
-	state_save_register_item  (statename, index, F2203->OPN.SL3.fn_h);
-	state_save_register_item_array  (statename, index, F2203->OPN.SL3.kcode);
+	state_save_register_device_item_array (device, 0, F2203->OPN.SL3.fc);
+	state_save_register_device_item  (device, 0, F2203->OPN.SL3.fn_h);
+	state_save_register_device_item_array  (device, 0, F2203->OPN.SL3.kcode);
 }
 #endif /* _STATE_H */
 
@@ -2351,7 +2417,7 @@ static void YM2203_save_state(YM2203 *F2203, int index)
    'clock' is the chip clock in Hz
    'rate' is sampling rate
 */
-void * ym2203_init(void *param, int index, int clock, int rate,
+void * ym2203_init(void *param, const device_config *device, int clock, int rate,
                FM_TIMERHANDLER timer_handler,FM_IRQHANDLER IRQHandler, const ssg_callbacks *ssg)
 {
 	YM2203 *F2203;
@@ -2371,6 +2437,7 @@ void * ym2203_init(void *param, int index, int clock, int rate,
 	F2203->OPN.ST.param = param;
 	F2203->OPN.type = TYPE_YM2203;
 	F2203->OPN.P_CH = F2203->CH;
+	F2203->OPN.ST.device = device;
 	F2203->OPN.ST.clock = clock;
 	F2203->OPN.ST.rate = rate;
 
@@ -2380,7 +2447,7 @@ void * ym2203_init(void *param, int index, int clock, int rate,
 	ym2203_reset_chip(F2203);
 
 #ifdef __STATE_H__
-	YM2203_save_state(F2203, index);
+	YM2203_save_state(F2203, device);
 #endif
 	return F2203;
 }
@@ -2745,22 +2812,19 @@ static void FM_ADPCMAWrite(YM2610 *F2610,int r,int v)
 
 #ifdef __STATE_H__
 /* FM channel save , internal state only */
-static void FMsave_state_adpcma(const char *name,int num,ADPCM_CH *adpcm)
+static void FMsave_state_adpcma(const device_config *device,ADPCM_CH *adpcm)
 {
 	int ch;
-	char state_name[20];
 
 	for(ch=0;ch<6;ch++,adpcm++)
 	{
-		sprintf(state_name,"%s.CH%d",name,ch);
-
-		state_save_register_item(state_name, num, adpcm->flag);
-		state_save_register_item(state_name, num, adpcm->now_data);
-		state_save_register_item(state_name, num, adpcm->now_addr);
-		state_save_register_item(state_name, num, adpcm->now_step);
-		state_save_register_item(state_name, num, adpcm->adpcm_acc);
-		state_save_register_item(state_name, num, adpcm->adpcm_step);
-		state_save_register_item(state_name, num, adpcm->adpcm_out);
+		state_save_register_device_item(device, ch, adpcm->flag);
+		state_save_register_device_item(device, ch, adpcm->now_data);
+		state_save_register_device_item(device, ch, adpcm->now_addr);
+		state_save_register_device_item(device, ch, adpcm->now_step);
+		state_save_register_device_item(device, ch, adpcm->adpcm_acc);
+		state_save_register_device_item(device, ch, adpcm->adpcm_step);
+		state_save_register_device_item(device, ch, adpcm->adpcm_out);
 	}
 }
 #endif /* _STATE_H */
@@ -3386,22 +3450,22 @@ void ym2608_update_one(void *chip, FMSAMPLE **buffer, int length)
 	pcmsizeA = F2608->pcm_size;
 
 	/* refresh PG and EG */
-	refresh_fc_eg_chan( OPN->type, cch[0] );
-	refresh_fc_eg_chan( OPN->type, cch[1] );
+	refresh_fc_eg_chan( OPN, cch[0] );
+	refresh_fc_eg_chan( OPN, cch[1] );
 	if( (OPN->ST.mode & 0xc0) )
 	{
 		/* 3SLOT MODE */
 		if( cch[2]->SLOT[SLOT1].Incr==-1)
 		{
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT1] , OPN->SL3.fc[1] , OPN->SL3.kcode[1] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT2] , OPN->SL3.fc[2] , OPN->SL3.kcode[2] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT3] , OPN->SL3.fc[0] , OPN->SL3.kcode[0] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT4] , cch[2]->fc , cch[2]->kcode );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT1] , OPN->SL3.fc[1] , OPN->SL3.kcode[1] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT2] , OPN->SL3.fc[2] , OPN->SL3.kcode[2] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT3] , OPN->SL3.fc[0] , OPN->SL3.kcode[0] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT4] , cch[2]->fc , cch[2]->kcode );
 		}
-	}else refresh_fc_eg_chan( OPN->type, cch[2] );
-	refresh_fc_eg_chan( OPN->type, cch[3] );
-	refresh_fc_eg_chan( OPN->type, cch[4] );
-	refresh_fc_eg_chan( OPN->type, cch[5] );
+	}else refresh_fc_eg_chan( OPN, cch[2] );
+	refresh_fc_eg_chan( OPN, cch[3] );
+	refresh_fc_eg_chan( OPN, cch[4] );
+	refresh_fc_eg_chan( OPN, cch[5] );
 
 
 	/* buffering */
@@ -3421,21 +3485,6 @@ void ym2608_update_one(void *chip, FMSAMPLE **buffer, int length)
 		out_fm[4] = 0;
 		out_fm[5] = 0;
 
-		/* advance envelope generator */
-		OPN->eg_timer += OPN->eg_timer_add;
-		while (OPN->eg_timer >= OPN->eg_timer_overflow)
-		{
-			OPN->eg_timer -= OPN->eg_timer_overflow;
-			OPN->eg_cnt++;
-
-			advance_eg_channel(OPN, &cch[0]->SLOT[SLOT1]);
-			advance_eg_channel(OPN, &cch[1]->SLOT[SLOT1]);
-			advance_eg_channel(OPN, &cch[2]->SLOT[SLOT1]);
-			advance_eg_channel(OPN, &cch[3]->SLOT[SLOT1]);
-			advance_eg_channel(OPN, &cch[4]->SLOT[SLOT1]);
-			advance_eg_channel(OPN, &cch[5]->SLOT[SLOT1]);
-		}
-
 		/* calculate FM */
 		chan_calc(OPN, cch[0], 0 );
 		chan_calc(OPN, cch[1], 1 );
@@ -3453,6 +3502,21 @@ void ym2608_update_one(void *chip, FMSAMPLE **buffer, int length)
 		{
 			if( F2608->adpcm[j].flag )
 				ADPCMA_calc_chan( F2608, &F2608->adpcm[j]);
+		}
+
+		/* advance envelope generator */
+		OPN->eg_timer += OPN->eg_timer_add;
+		while (OPN->eg_timer >= OPN->eg_timer_overflow)
+		{
+			OPN->eg_timer -= OPN->eg_timer_overflow;
+			OPN->eg_cnt++;
+
+			advance_eg_channel(OPN, &cch[0]->SLOT[SLOT1]);
+			advance_eg_channel(OPN, &cch[1]->SLOT[SLOT1]);
+			advance_eg_channel(OPN, &cch[2]->SLOT[SLOT1]);
+			advance_eg_channel(OPN, &cch[3]->SLOT[SLOT1]);
+			advance_eg_channel(OPN, &cch[4]->SLOT[SLOT1]);
+			advance_eg_channel(OPN, &cch[5]->SLOT[SLOT1]);
 		}
 
 		/* buffering */
@@ -3547,23 +3611,21 @@ void ym2608_postload(void *chip)
 	}
 }
 
-static void YM2608_save_state(YM2608 *F2608, int index)
+static void YM2608_save_state(YM2608 *F2608, const device_config *device)
 {
-	static const char statename[] = "YM2608";
-
-	state_save_register_item_array(statename, index, F2608->REGS);
-	FMsave_state_st(statename,index,&F2608->OPN.ST);
-	FMsave_state_channel(statename,index,F2608->CH,6);
+	state_save_register_device_item_array(device, 0, F2608->REGS);
+	FMsave_state_st(device,&F2608->OPN.ST);
+	FMsave_state_channel(device,F2608->CH,6);
 	/* 3slots */
-	state_save_register_item_array(statename, index, F2608->OPN.SL3.fc);
-	state_save_register_item(statename, index, F2608->OPN.SL3.fn_h);
-	state_save_register_item_array(statename, index, F2608->OPN.SL3.kcode);
+	state_save_register_device_item_array(device, 0, F2608->OPN.SL3.fc);
+	state_save_register_device_item(device, 0, F2608->OPN.SL3.fn_h);
+	state_save_register_device_item_array(device, 0, F2608->OPN.SL3.kcode);
 	/* address register1 */
-	state_save_register_item(statename, index, F2608->addr_A1);
+	state_save_register_device_item(device, 0, F2608->addr_A1);
 	/* rythm(ADPCMA) */
-	FMsave_state_adpcma(statename,index,F2608->adpcm);
+	FMsave_state_adpcma(device,F2608->adpcm);
 	/* Delta-T ADPCM unit */
-	YM_DELTAT_savestate(statename,index,&F2608->deltaT);
+	YM_DELTAT_savestate(device,&F2608->deltaT);
 }
 #endif /* _STATE_H */
 
@@ -3578,7 +3640,7 @@ static void YM2608_deltat_status_reset(void *chip, UINT8 changebits)
 	FM_STATUS_RESET(&(F2608->OPN.ST), changebits);
 }
 /* YM2608(OPNA) */
-void * ym2608_init(void *param, int index, int clock, int rate,
+void * ym2608_init(void *param, const device_config *device, int clock, int rate,
                void *pcmrom,int pcmsize,
                FM_TIMERHANDLER timer_handler,FM_IRQHANDLER IRQHandler, const ssg_callbacks *ssg)
 {
@@ -3599,6 +3661,7 @@ void * ym2608_init(void *param, int index, int clock, int rate,
 	F2608->OPN.ST.param = param;
 	F2608->OPN.type = TYPE_YM2608;
 	F2608->OPN.P_CH = F2608->CH;
+	F2608->OPN.ST.device = device;
 	F2608->OPN.ST.clock = clock;
 	F2608->OPN.ST.rate = rate;
 
@@ -3630,7 +3693,7 @@ void * ym2608_init(void *param, int index, int clock, int rate,
 	Init_ADPCMATable();
 
 #ifdef __STATE_H__
-	YM2608_save_state(F2608, index);
+	YM2608_save_state(F2608, device);
 #endif
 	return F2608;
 }
@@ -3940,20 +4003,20 @@ void ym2610_update_one(void *chip, FMSAMPLE **buffer, int length)
 #endif
 
 	/* refresh PG and EG */
-	refresh_fc_eg_chan( OPN->type, cch[0] );
+	refresh_fc_eg_chan( OPN, cch[0] );
 	if( (OPN->ST.mode & 0xc0) )
 	{
 		/* 3SLOT MODE */
 		if( cch[1]->SLOT[SLOT1].Incr==-1)
 		{
-			refresh_fc_eg_slot(OPN->type, &cch[1]->SLOT[SLOT1] , OPN->SL3.fc[1] , OPN->SL3.kcode[1] );
-			refresh_fc_eg_slot(OPN->type, &cch[1]->SLOT[SLOT2] , OPN->SL3.fc[2] , OPN->SL3.kcode[2] );
-			refresh_fc_eg_slot(OPN->type, &cch[1]->SLOT[SLOT3] , OPN->SL3.fc[0] , OPN->SL3.kcode[0] );
-			refresh_fc_eg_slot(OPN->type, &cch[1]->SLOT[SLOT4] , cch[1]->fc , cch[1]->kcode );
+			refresh_fc_eg_slot(OPN, &cch[1]->SLOT[SLOT1] , OPN->SL3.fc[1] , OPN->SL3.kcode[1] );
+			refresh_fc_eg_slot(OPN, &cch[1]->SLOT[SLOT2] , OPN->SL3.fc[2] , OPN->SL3.kcode[2] );
+			refresh_fc_eg_slot(OPN, &cch[1]->SLOT[SLOT3] , OPN->SL3.fc[0] , OPN->SL3.kcode[0] );
+			refresh_fc_eg_slot(OPN, &cch[1]->SLOT[SLOT4] , cch[1]->fc , cch[1]->kcode );
 		}
-	}else refresh_fc_eg_chan( OPN->type, cch[1] );
-	refresh_fc_eg_chan( OPN->type, cch[2] );
-	refresh_fc_eg_chan( OPN->type, cch[3] );
+	}else refresh_fc_eg_chan( OPN, cch[1] );
+	refresh_fc_eg_chan( OPN, cch[2] );
+	refresh_fc_eg_chan( OPN, cch[3] );
 
 	/* buffering */
 	for(i=0; i < length ; i++)
@@ -4069,22 +4132,22 @@ void ym2610b_update_one(void *chip, FMSAMPLE **buffer, int length)
 	pcmsizeA = F2610->pcm_size;
 
 	/* refresh PG and EG */
-	refresh_fc_eg_chan( OPN->type, cch[0] );
-	refresh_fc_eg_chan( OPN->type, cch[1] );
+	refresh_fc_eg_chan( OPN, cch[0] );
+	refresh_fc_eg_chan( OPN, cch[1] );
 	if( (OPN->ST.mode & 0xc0) )
 	{
 		/* 3SLOT MODE */
 		if( cch[2]->SLOT[SLOT1].Incr==-1)
 		{
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT1] , OPN->SL3.fc[1] , OPN->SL3.kcode[1] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT2] , OPN->SL3.fc[2] , OPN->SL3.kcode[2] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT3] , OPN->SL3.fc[0] , OPN->SL3.kcode[0] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT4] , cch[2]->fc , cch[2]->kcode );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT1] , OPN->SL3.fc[1] , OPN->SL3.kcode[1] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT2] , OPN->SL3.fc[2] , OPN->SL3.kcode[2] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT3] , OPN->SL3.fc[0] , OPN->SL3.kcode[0] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT4] , cch[2]->fc , cch[2]->kcode );
 		}
-	}else refresh_fc_eg_chan( OPN->type, cch[2] );
-	refresh_fc_eg_chan( OPN->type, cch[3] );
-	refresh_fc_eg_chan( OPN->type, cch[4] );
-	refresh_fc_eg_chan( OPN->type, cch[5] );
+	}else refresh_fc_eg_chan( OPN, cch[2] );
+	refresh_fc_eg_chan( OPN, cch[3] );
+	refresh_fc_eg_chan( OPN, cch[4] );
+	refresh_fc_eg_chan( OPN, cch[5] );
 
 	/* buffering */
 	for(i=0; i < length ; i++)
@@ -4232,25 +4295,23 @@ void ym2610_postload(void *chip)
 	}
 }
 
-static void YM2610_save_state(YM2610 *F2610, int index)
+static void YM2610_save_state(YM2610 *F2610, const device_config *device)
 {
-	static const char statename[] = "YM2610";
-
-	state_save_register_item_array(statename, index, F2610->REGS);
-	FMsave_state_st(statename,index,&F2610->OPN.ST);
-	FMsave_state_channel(statename,index,F2610->CH,6);
+	state_save_register_device_item_array(device, 0, F2610->REGS);
+	FMsave_state_st(device,&F2610->OPN.ST);
+	FMsave_state_channel(device,F2610->CH,6);
 	/* 3slots */
-	state_save_register_item_array(statename, index, F2610->OPN.SL3.fc);
-	state_save_register_item(statename, index, F2610->OPN.SL3.fn_h);
-	state_save_register_item_array(statename, index, F2610->OPN.SL3.kcode);
+	state_save_register_device_item_array(device, 0, F2610->OPN.SL3.fc);
+	state_save_register_device_item(device, 0, F2610->OPN.SL3.fn_h);
+	state_save_register_device_item_array(device, 0, F2610->OPN.SL3.kcode);
 	/* address register1 */
-	state_save_register_item(statename, index, F2610->addr_A1);
+	state_save_register_device_item(device, 0, F2610->addr_A1);
 
-	state_save_register_item(statename, index, F2610->adpcm_arrivedEndAddress);
+	state_save_register_device_item(device, 0, F2610->adpcm_arrivedEndAddress);
 	/* rythm(ADPCMA) */
-	FMsave_state_adpcma(statename,index,F2610->adpcm);
+	FMsave_state_adpcma(device,F2610->adpcm);
 	/* Delta-T ADPCM unit */
-	YM_DELTAT_savestate(statename,index,&F2610->deltaT);
+	YM_DELTAT_savestate(device,&F2610->deltaT);
 }
 #endif /* _STATE_H */
 
@@ -4265,7 +4326,7 @@ static void YM2610_deltat_status_reset(void *chip, UINT8 changebits)
 	F2610->adpcm_arrivedEndAddress &= (~changebits);
 }
 
-void *ym2610_init(void *param, int index, int clock, int rate,
+void *ym2610_init(void *param, const device_config *device, int clock, int rate,
                void *pcmroma,int pcmsizea,void *pcmromb,int pcmsizeb,
                FM_TIMERHANDLER timer_handler,FM_IRQHANDLER IRQHandler, const ssg_callbacks *ssg)
 
@@ -4288,6 +4349,7 @@ void *ym2610_init(void *param, int index, int clock, int rate,
 	F2610->OPN.ST.param = param;
 	F2610->OPN.type = TYPE_YM2610;
 	F2610->OPN.P_CH = F2610->CH;
+	F2610->OPN.ST.device = device;
 	F2610->OPN.ST.clock = clock;
 	F2610->OPN.ST.rate = rate;
 	/* Extend handler */
@@ -4310,7 +4372,7 @@ void *ym2610_init(void *param, int index, int clock, int rate,
 
 	Init_ADPCMATable();
 #ifdef __STATE_H__
-	YM2610_save_state(F2610, index);
+	YM2610_save_state(F2610, device);
 #endif
 	return F2610;
 }
@@ -4590,22 +4652,22 @@ void ym2612_update_one(void *chip, FMSAMPLE **buffer, int length)
 	dacen = F2612->dacen;
 
 	/* refresh PG and EG */
-	refresh_fc_eg_chan( OPN->type, cch[0] );
-	refresh_fc_eg_chan( OPN->type, cch[1] );
+	refresh_fc_eg_chan( OPN, cch[0] );
+	refresh_fc_eg_chan( OPN, cch[1] );
 	if( (OPN->ST.mode & 0xc0) )
 	{
 		/* 3SLOT MODE */
 		if( cch[2]->SLOT[SLOT1].Incr==-1)
 		{
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT1] , OPN->SL3.fc[1] , OPN->SL3.kcode[1] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT2] , OPN->SL3.fc[2] , OPN->SL3.kcode[2] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT3] , OPN->SL3.fc[0] , OPN->SL3.kcode[0] );
-			refresh_fc_eg_slot(OPN->type, &cch[2]->SLOT[SLOT4] , cch[2]->fc , cch[2]->kcode );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT1] , OPN->SL3.fc[1] , OPN->SL3.kcode[1] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT2] , OPN->SL3.fc[2] , OPN->SL3.kcode[2] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT3] , OPN->SL3.fc[0] , OPN->SL3.kcode[0] );
+			refresh_fc_eg_slot(OPN, &cch[2]->SLOT[SLOT4] , cch[2]->fc , cch[2]->kcode );
 		}
-	}else refresh_fc_eg_chan( OPN->type, cch[2] );
-	refresh_fc_eg_chan( OPN->type, cch[3] );
-	refresh_fc_eg_chan( OPN->type, cch[4] );
-	refresh_fc_eg_chan( OPN->type, cch[5] );
+	}else refresh_fc_eg_chan( OPN, cch[2] );
+	refresh_fc_eg_chan( OPN, cch[3] );
+	refresh_fc_eg_chan( OPN, cch[4] );
+	refresh_fc_eg_chan( OPN, cch[5] );
 
 	/* buffering */
 	for(i=0; i < length ; i++)
@@ -4621,6 +4683,17 @@ void ym2612_update_one(void *chip, FMSAMPLE **buffer, int length)
 		out_fm[4] = 0;
 		out_fm[5] = 0;
 
+		/* calculate FM */
+		chan_calc(OPN, cch[0], 0 );
+		chan_calc(OPN, cch[1], 1 );
+		chan_calc(OPN, cch[2], 2 );
+		chan_calc(OPN, cch[3], 3 );
+		chan_calc(OPN, cch[4], 4 );
+		if( dacen )
+			*cch[5]->connect4 += dacout;
+		else
+			chan_calc(OPN, cch[5], 5 );
+
 		/* advance envelope generator */
 		OPN->eg_timer += OPN->eg_timer_add;
 		while (OPN->eg_timer >= OPN->eg_timer_overflow)
@@ -4635,17 +4708,6 @@ void ym2612_update_one(void *chip, FMSAMPLE **buffer, int length)
 			advance_eg_channel(OPN, &cch[4]->SLOT[SLOT1]);
 			advance_eg_channel(OPN, &cch[5]->SLOT[SLOT1]);
 		}
-
-		/* calculate FM */
-		chan_calc(OPN, cch[0], 0 );
-		chan_calc(OPN, cch[1], 1 );
-		chan_calc(OPN, cch[2], 2 );
-		chan_calc(OPN, cch[3], 3 );
-		chan_calc(OPN, cch[4], 4 );
-		if( dacen )
-			*cch[5]->connect4 += dacout;
-		else
-			chan_calc(OPN, cch[5], 5 );
 
 		{
 			int lt,rt;
@@ -4717,24 +4779,22 @@ void ym2612_postload(void *chip)
 	}
 }
 
-static void YM2612_save_state(YM2612 *F2612, int index)
+static void YM2612_save_state(YM2612 *F2612, const device_config *device)
 {
-	static const char statename[] = "YM2612";
-
-	state_save_register_item_array(statename, index, F2612->REGS);
-	FMsave_state_st(statename,index,&F2612->OPN.ST);
-	FMsave_state_channel(statename,index,F2612->CH,6);
+	state_save_register_device_item_array(device, 0, F2612->REGS);
+	FMsave_state_st(device,&F2612->OPN.ST);
+	FMsave_state_channel(device,F2612->CH,6);
 	/* 3slots */
-	state_save_register_item_array(statename, index, F2612->OPN.SL3.fc);
-	state_save_register_item(statename, index, F2612->OPN.SL3.fn_h);
-	state_save_register_item_array(statename, index, F2612->OPN.SL3.kcode);
+	state_save_register_device_item_array(device, 0, F2612->OPN.SL3.fc);
+	state_save_register_device_item(device, 0, F2612->OPN.SL3.fn_h);
+	state_save_register_device_item_array(device, 0, F2612->OPN.SL3.kcode);
 	/* address register1 */
-	state_save_register_item(statename, index, F2612->addr_A1);
+	state_save_register_device_item(device, 0, F2612->addr_A1);
 }
 #endif /* _STATE_H */
 
 /* initialize YM2612 emulator(s) */
-void * ym2612_init(void *param, int index, int clock, int rate,
+void * ym2612_init(void *param, const device_config *device, int clock, int rate,
                FM_TIMERHANDLER timer_handler,FM_IRQHANDLER IRQHandler)
 {
 	YM2612 *F2612;
@@ -4754,6 +4814,7 @@ void * ym2612_init(void *param, int index, int clock, int rate,
 	F2612->OPN.ST.param = param;
 	F2612->OPN.type = TYPE_YM2612;
 	F2612->OPN.P_CH = F2612->CH;
+	F2612->OPN.ST.device = device;
 	F2612->OPN.ST.clock = clock;
 	F2612->OPN.ST.rate = rate;
 	/* F2612->OPN.ST.irq = 0; */
@@ -4764,7 +4825,7 @@ void * ym2612_init(void *param, int index, int clock, int rate,
 	ym2612_reset_chip(F2612);
 
 #ifdef __STATE_H__
-	YM2612_save_state(F2612, index);
+	YM2612_save_state(F2612, device);
 #endif
 	return F2612;
 }

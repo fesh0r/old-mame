@@ -258,6 +258,7 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "snk.h"
 #include "sound/snkwave.h"
 #include "sound/ay8910.h"
@@ -275,24 +276,24 @@ static int sound_status;
 
 READ8_HANDLER ( snk_cpuA_nmi_trigger_r )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, ASSERT_LINE);
 	return 0xff;
 }
 
 WRITE8_HANDLER( snk_cpuA_nmi_ack_w )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 READ8_HANDLER ( snk_cpuB_nmi_trigger_r )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
 	return 0xff;
 }
 
 WRITE8_HANDLER( snk_cpuB_nmi_ack_w )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 /*********************************************************************/
@@ -313,14 +314,14 @@ enum
 static WRITE8_HANDLER( marvins_soundlatch_w )
 {
 	marvins_sound_busy_flag = 1;
-	soundlatch_w(machine, offset, data);
-	cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
+	soundlatch_w(space, offset, data);
+	cpu_set_input_line(space->machine->cpu[2], 0, HOLD_LINE);
 }
 
 static READ8_HANDLER( marvins_soundlatch_r )
 {
 	marvins_sound_busy_flag = 0;
-	return soundlatch_r(machine,0);
+	return soundlatch_r(space,0);
 }
 
 static CUSTOM_INPUT( marvins_sound_busy )
@@ -330,7 +331,7 @@ static CUSTOM_INPUT( marvins_sound_busy )
 
 static READ8_HANDLER( marvins_sound_nmi_ack_r )
 {
-	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_NMI, CLEAR_LINE);
 	return 0xff;
 }
 
@@ -353,31 +354,31 @@ static TIMER_CALLBACK( sgladiat_sndirq_update_callback )
 			break;
 	}
 
-	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, (sound_status & 0x8) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[2], INPUT_LINE_NMI, (sound_status & 0x8) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static WRITE8_HANDLER( sgladiat_soundlatch_w )
 {
-	soundlatch_w(machine, offset, data);
-	timer_call_after_resynch(NULL, CMDIRQ_BUSY_ASSERT, sgladiat_sndirq_update_callback);
+	soundlatch_w(space, offset, data);
+	timer_call_after_resynch(space->machine, NULL, CMDIRQ_BUSY_ASSERT, sgladiat_sndirq_update_callback);
 }
 
 static READ8_HANDLER( sgladiat_soundlatch_r )
 {
-	timer_call_after_resynch(NULL, BUSY_CLEAR, sgladiat_sndirq_update_callback);
-	return soundlatch_r(machine,0);
+	timer_call_after_resynch(space->machine, NULL, BUSY_CLEAR, sgladiat_sndirq_update_callback);
+	return soundlatch_r(space,0);
 }
 
 static READ8_HANDLER( sgladiat_sound_nmi_ack_r )
 {
-	timer_call_after_resynch(NULL, CMDIRQ_CLEAR, sgladiat_sndirq_update_callback);
+	timer_call_after_resynch(space->machine, NULL, CMDIRQ_CLEAR, sgladiat_sndirq_update_callback);
 	return 0xff;
 }
 
 static READ8_HANDLER( sgladiat_sound_irq_ack_r )
 {
-	cpunum_set_input_line(machine, 2, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[2], 0, CLEAR_LINE);
 	return 0xff;
 }
 
@@ -438,7 +439,7 @@ static TIMER_CALLBACK( sndirq_update_callback )
 			break;
 	}
 
-	cpunum_set_input_line(machine, 2, 0, (sound_status & 0xb) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[2], 0, (sound_status & 0xb) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -446,13 +447,13 @@ static TIMER_CALLBACK( sndirq_update_callback )
 static void ymirq_callback_1(running_machine *machine, int irq)
 {
 	if (irq)
-		timer_call_after_resynch(NULL, YM1IRQ_ASSERT, sndirq_update_callback);
+		timer_call_after_resynch(machine, NULL, YM1IRQ_ASSERT, sndirq_update_callback);
 }
 
 static void ymirq_callback_2(running_machine *machine, int irq)
 {
 	if (irq)
-		timer_call_after_resynch(NULL, YM2IRQ_ASSERT, sndirq_update_callback);
+		timer_call_after_resynch(machine, NULL, YM2IRQ_ASSERT, sndirq_update_callback);
 }
 
 
@@ -480,8 +481,8 @@ static const y8950_interface y8950_config_2 =
 
 static WRITE8_HANDLER( snk_soundlatch_w )
 {
-	soundlatch_w(machine, offset, data);
-	timer_call_after_resynch(NULL, CMDIRQ_BUSY_ASSERT, sndirq_update_callback);
+	soundlatch_w(space, offset, data);
+	timer_call_after_resynch(space->machine, NULL, CMDIRQ_BUSY_ASSERT, sndirq_update_callback);
 }
 
 static CUSTOM_INPUT( snk_sound_busy )
@@ -499,37 +500,37 @@ static READ8_HANDLER( snk_sound_status_r )
 static WRITE8_HANDLER( snk_sound_status_w )
 {
 	if (~data & 0x10)	// ack YM1 irq
-		timer_call_after_resynch(NULL, YM1IRQ_CLEAR, sndirq_update_callback);
+		timer_call_after_resynch(space->machine, NULL, YM1IRQ_CLEAR, sndirq_update_callback);
 
 	if (~data & 0x20)	// ack YM2 irq
-		timer_call_after_resynch(NULL, YM2IRQ_CLEAR, sndirq_update_callback);
+		timer_call_after_resynch(space->machine, NULL, YM2IRQ_CLEAR, sndirq_update_callback);
 
 	if (~data & 0x40)	// clear busy flag
-		timer_call_after_resynch(NULL, BUSY_CLEAR, sndirq_update_callback);
+		timer_call_after_resynch(space->machine, NULL, BUSY_CLEAR, sndirq_update_callback);
 
 	if (~data & 0x80)	// ack command from main cpu
-		timer_call_after_resynch(NULL, CMDIRQ_CLEAR, sndirq_update_callback);
+		timer_call_after_resynch(space->machine, NULL, CMDIRQ_CLEAR, sndirq_update_callback);
 }
 
 
 
 static READ8_HANDLER( tnk3_cmdirq_ack_r )
 {
-	timer_call_after_resynch(NULL, CMDIRQ_CLEAR, sndirq_update_callback);
+	timer_call_after_resynch(space->machine, NULL, CMDIRQ_CLEAR, sndirq_update_callback);
 	return 0xff;
 }
 
 static READ8_HANDLER( tnk3_ymirq_ack_r )
 {
-	timer_call_after_resynch(NULL, YM1IRQ_CLEAR, sndirq_update_callback);
+	timer_call_after_resynch(space->machine, NULL, YM1IRQ_CLEAR, sndirq_update_callback);
 	return 0xff;
 }
 
 static READ8_HANDLER( tnk3_busy_clear_r )
 {
 	// it's uncertain whether the latch should be cleared here or when it's read
-	soundlatch_clear_w(machine, 0, 0);
-	timer_call_after_resynch(NULL, BUSY_CLEAR, sndirq_update_callback);
+	soundlatch_clear_w(space, 0, 0);
+	timer_call_after_resynch(space->machine, NULL, BUSY_CLEAR, sndirq_update_callback);
 	return 0xff;
 }
 
@@ -3584,7 +3585,7 @@ static MACHINE_DRIVER_START( marvins )
 	MDRV_CPU_IO_MAP(marvins_sound_portmap,0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_assert, 244)	// schematics show a separate 244Hz timer
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
@@ -3645,7 +3646,7 @@ static MACHINE_DRIVER_START( jcross )
 	MDRV_CPU_IO_MAP(jcross_sound_portmap,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_assert, 244)	// Marvin's frequency, sounds ok
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
@@ -3728,7 +3729,7 @@ static MACHINE_DRIVER_START( tnk3 )
 	MDRV_CPU_ADD("audio", Z80, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(tnk3_YM3526_sound_map,0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
@@ -3819,7 +3820,7 @@ static MACHINE_DRIVER_START( ikari )
 	MDRV_CPU_ADD("audio", Z80, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(YM3526_YM3526_sound_map,0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
@@ -3879,7 +3880,7 @@ static MACHINE_DRIVER_START( bermudat )
 	MDRV_CPU_ADD("audio", Z80, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(24000))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3990,7 +3991,7 @@ static MACHINE_DRIVER_START( tdfever )
 	MDRV_CPU_ADD("audio", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
@@ -6158,7 +6159,7 @@ ROM_END
 static DRIVER_INIT( countryc )
 {
 	// replace coin counter with trackball select
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc300, 0xc300, 0, 0, countryc_trackball_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc300, 0xc300, 0, 0, countryc_trackball_w);
 }
 
 

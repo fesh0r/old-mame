@@ -7,6 +7,7 @@ Kikiippatsu Mayumi-chan (c) 1988 Victory L.L.C.
 *****************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
 
 #define MCLK 10000000
@@ -25,23 +26,24 @@ static int input_sel;
 static INTERRUPT_GEN( mayumi_interrupt )
 {
 	if (int_enable)
-		 cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		 cpu_set_input_line(device, 0, HOLD_LINE);
 }
 
 static WRITE8_HANDLER( bank_sel_w )
 {
-	UINT8 *BANKROM = memory_region(machine, "main");
+	UINT8 *BANKROM = memory_region(space->machine, "main");
 	int bank = ((data & 0x80)) >> 7 | ((data & 0x40) >> 5);
-	memory_set_bankptr(1, &BANKROM[0x10000+bank*0x4000]);
+	memory_set_bankptr(space->machine, 1, &BANKROM[0x10000+bank*0x4000]);
 
 	int_enable = data & 1;
 
-	flip_screen_set(data & 2);
+	flip_screen_set(space->machine, data & 2);
 }
 
 static MACHINE_RESET( mayumi )
 {
-	bank_sel_w(machine,0,0);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	bank_sel_w(space,0,0);
 }
 
 static WRITE8_HANDLER( input_sel_w )
@@ -65,7 +67,7 @@ static READ8_HANDLER( key_matrix_r )
 	for (i=0; i<5; i++)
 	{
 		if (p & (1 << i))
-			ret &= input_port_read(machine, keynames[offset][i]);
+			ret &= input_port_read(space->machine, keynames[offset][i]);
 	}
 
 	return ret;

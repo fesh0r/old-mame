@@ -62,6 +62,7 @@ write:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/ay8910.h"
 
@@ -85,16 +86,16 @@ static UINT8 *vastar_sharedram;
 static MACHINE_RESET( vastar )
 {
 	/* we must start with the second CPU halted */
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( vastar_hold_cpu2_w )
 {
 	/* I'm not sure that this works exactly like this */
 	if (data & 1)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 	else
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static READ8_HANDLER( vastar_sharedram_r )
@@ -109,7 +110,7 @@ static WRITE8_HANDLER( vastar_sharedram_w )
 
 static WRITE8_HANDLER( flip_screen_w )
 {
-	flip_screen_set(data);
+	flip_screen_set(space->machine, data);
 }
 
 
@@ -317,7 +318,7 @@ static MACHINE_DRIVER_START( vastar )
 	MDRV_CPU_IO_MAP(cpu2_port_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)	/* ??? */
 
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - seems enough to ensure proper */
+	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - seems enough to ensure proper */
 						/* synchronization of the CPUs */
 	MDRV_MACHINE_RESET(vastar)
 

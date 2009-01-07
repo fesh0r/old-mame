@@ -72,6 +72,7 @@ Stephh's notes (based on the games Z80 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 
@@ -88,8 +89,8 @@ extern VIDEO_UPDATE( funkybee );
 
 static READ8_HANDLER( funkybee_input_port_0_r )
 {
-	watchdog_reset_r(machine, 0);
-	return input_port_read(machine, "IN0");
+	watchdog_reset_r(space, 0);
+	return input_port_read(space->machine, "IN0");
 }
 
 static WRITE8_HANDLER( funkybee_coin_counter_w )

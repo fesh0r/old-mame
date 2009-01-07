@@ -168,7 +168,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 #include "taitoipt.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
@@ -178,186 +178,160 @@ Notes:
 #include "sound/2203intf.h"
 #include "sound/2610intf.h"
 #include "sound/okim6295.h"
-
-extern UINT16 *taitob_scroll;
-extern UINT16 *TC0180VCU_ram;
-extern UINT16 *taitob_spriteram;
-extern UINT16 *taitob_pixelram;
-
-VIDEO_START( taitob_color_order0 );
-VIDEO_START( taitob_color_order1 );
-VIDEO_START( taitob_color_order2 );
-VIDEO_START( hitice );
-VIDEO_EOF( taitob );
-
-VIDEO_RESET( hitice );
-
-VIDEO_UPDATE( taitob );
-
-WRITE16_HANDLER( TC0180VCU_word_w );
-READ16_HANDLER ( TC0180VCU_word_r );
-
-READ16_HANDLER( TC0180VCU_framebuffer_word_r );
-WRITE16_HANDLER( TC0180VCU_framebuffer_word_w );
-
-WRITE16_HANDLER( taitob_v_control_w );
-READ16_HANDLER ( taitob_v_control_r );
-
-WRITE16_HANDLER( hitice_pixelram_w );
-WRITE16_HANDLER( hitice_pixel_scroll_w );
+#include "includes/taito_b.h"
 
 static WRITE8_HANDLER( bankswitch_w )
 {
-	memory_set_bank(1, (data - 1) & 3);
+	memory_set_bank(space->machine, 1, (data - 1) & 3);
 }
 
 static TIMER_CALLBACK( rsaga2_interrupt2  )
 {
-	cpunum_set_input_line(machine, 0,2,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],2,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( rastansaga2_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, rsaga2_interrupt2);
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,5000), NULL, 0, rsaga2_interrupt2);
+	cpu_set_input_line(device, 4, HOLD_LINE);
 }
 
 
 static TIMER_CALLBACK( crimec_interrupt3 )
 {
-	cpunum_set_input_line(machine, 0,3,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],3,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( crimec_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, crimec_interrupt3);
-	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,5000), NULL, 0, crimec_interrupt3);
+	cpu_set_input_line(device, 5, HOLD_LINE);
 }
 
 
 static TIMER_CALLBACK( hitice_interrupt6 )
 {
-	cpunum_set_input_line(machine, 0,6,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],6,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( hitice_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, hitice_interrupt6);
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,5000), NULL, 0, hitice_interrupt6);
+	cpu_set_input_line(device, 4, HOLD_LINE);
 }
 
 
 static TIMER_CALLBACK( rambo3_interrupt1 )
 {
-	cpunum_set_input_line(machine, 0,1,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],1,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( rambo3_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, rambo3_interrupt1);
-	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,5000), NULL, 0, rambo3_interrupt1);
+	cpu_set_input_line(device, 6, HOLD_LINE);
 }
 
 
 static TIMER_CALLBACK( pbobble_interrupt5 )
 {
-	cpunum_set_input_line(machine, 0,5,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],5,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( pbobble_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, pbobble_interrupt5);
-	cpunum_set_input_line(machine, 0, 3, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,5000), NULL, 0, pbobble_interrupt5);
+	cpu_set_input_line(device, 3, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( viofight_interrupt1 )
 {
-	cpunum_set_input_line(machine, 0,1,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],1,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( viofight_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, viofight_interrupt1);
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,5000), NULL, 0, viofight_interrupt1);
+	cpu_set_input_line(device, 4, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( masterw_interrupt4 )
 {
-	cpunum_set_input_line(machine, 0,4,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],4,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( masterw_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, masterw_interrupt4);
-	cpunum_set_input_line(machine, 0, 5, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,5000), NULL, 0, masterw_interrupt4);
+	cpu_set_input_line(device, 5, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( silentd_interrupt4 )
 {
-	cpunum_set_input_line(machine, 0,4,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],4,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( silentd_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, silentd_interrupt4);
-	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,5000), NULL, 0, silentd_interrupt4);
+	cpu_set_input_line(device, 6, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( selfeena_interrupt4 )
 {
-	cpunum_set_input_line(machine, 0,4,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],4,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( selfeena_interrupt )
 {
-	timer_set(ATTOTIME_IN_CYCLES(5000,0), NULL, 0, selfeena_interrupt4);
-	cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,5000), NULL, 0, selfeena_interrupt4);
+	cpu_set_input_line(device, 6, HOLD_LINE);
 }
 
 static TIMER_CALLBACK( sbm_interrupt5 )//4
 {
-	cpunum_set_input_line(machine, 0,5,HOLD_LINE);
+	cpu_set_input_line(machine->cpu[0],5,HOLD_LINE);
 }
 
 static INTERRUPT_GEN( sbm_interrupt )//5
 {
-	timer_set(ATTOTIME_IN_CYCLES(10000,0), NULL, 0, sbm_interrupt5);
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+	timer_set(device->machine, cpu_clocks_to_attotime(device,10000), NULL, 0, sbm_interrupt5);
+	cpu_set_input_line(device, 4, HOLD_LINE);
 }
 
 
 
 static READ16_HANDLER( tracky1_hi_r )
 {
-	return input_port_read(machine, "TRACKX1");
+	return input_port_read(space->machine, "TRACKX1");
 }
 static READ16_HANDLER( tracky1_lo_r )
 {
-	return (input_port_read(machine, "TRACKX1") & 0xff) <<8;
+	return (input_port_read(space->machine, "TRACKX1") & 0xff) <<8;
 }
 static READ16_HANDLER( trackx1_hi_r )
 {
-	return input_port_read(machine, "TRACKY1");
+	return input_port_read(space->machine, "TRACKY1");
 }
 static READ16_HANDLER( trackx1_lo_r )
 {
-	return (input_port_read(machine, "TRACKY1") & 0xff) <<8;
+	return (input_port_read(space->machine, "TRACKY1") & 0xff) <<8;
 }
 static READ16_HANDLER( tracky2_hi_r )
 {
-	return input_port_read(machine, "TRACKX2");
+	return input_port_read(space->machine, "TRACKX2");
 }
 static READ16_HANDLER( tracky2_lo_r )
 {
-	return (input_port_read(machine, "TRACKX2") & 0xff) <<8;
+	return (input_port_read(space->machine, "TRACKX2") & 0xff) <<8;
 }
 static READ16_HANDLER( trackx2_hi_r )
 {
-	return input_port_read(machine, "TRACKY2");
+	return input_port_read(space->machine, "TRACKY2");
 }
 static READ16_HANDLER( trackx2_lo_r )
 {
-	return (input_port_read(machine, "TRACKY2") & 0xff) <<8;
+	return (input_port_read(space->machine, "TRACKY2") & 0xff) <<8;
 }
 
 
@@ -367,12 +341,12 @@ static WRITE16_HANDLER( gain_control_w )
 	{
 		if (offset==0)
 		{
-			MB87078_data_w(0, data>>8, 0);
+			MB87078_data_w(space->machine, 0, data>>8, 0);
             //logerror("MB87078 dsel=0 data=%4x\n",data);
 		}
 		else
 		{
-			MB87078_data_w(0, data>>8, 1);
+			MB87078_data_w(space->machine, 0, data>>8, 1);
             //logerror("MB87078 dsel=1 data=%4x\n",data);
 		}
 	}
@@ -401,7 +375,7 @@ static NVRAM_HANDLER( taito_b )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_intf);
+		eeprom_init(machine, &eeprom_intf);
 		if (file)
 		{
 			eeprom_load(file);
@@ -414,7 +388,7 @@ static READ16_HANDLER( eeprom_r )
 	int res;
 
 	res = (eeprom_read_bit() & 0x01);
-	res |= input_port_read(machine, "DSWB") & 0xfe;	/* coin inputs */
+	res |= input_port_read(space->machine, "DSWB") & 0xfe;	/* coin inputs */
 
 	return res;
 }
@@ -483,10 +457,10 @@ static READ16_HANDLER( pbobble_input_bypass_r )
 	switch (offset)
 	{
 		case 0x01:
-			return eeprom_r(machine, 0, mem_mask) << 8;
+			return eeprom_r(space, 0, mem_mask) << 8;
 
 		default:
-			return TC0640FIO_r(machine, offset) << 8;
+			return TC0640FIO_r(space, offset) << 8;
 	}
 }
 
@@ -2381,7 +2355,7 @@ GFXDECODE_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -2413,11 +2387,11 @@ static const ym2203_interface ym2203_config =
     Both ym2610 and ym2610b generate 3 (PSG like) + 2 (fm left,right) channels.
     I use mixer_set_volume() to emulate the effect.
 */
-static void mb87078_gain_changed(int channel, int percent)
+static void mb87078_gain_changed(running_machine *machine, int channel, int percent)
 {
 	if (channel==1)
 	{
-		sound_type type = Machine->config->sound[0].type;
+		sound_type type = machine->config->sound[0].type;
 		sndti_set_output_gain(type, 0, 0, percent / 100.0);
 		sndti_set_output_gain(type, 1, 0, percent / 100.0);
 		sndti_set_output_gain(type, 2, 0, percent / 100.0);
@@ -2433,7 +2407,7 @@ static const struct MB87078interface mb87078_interface =
 
 static MACHINE_RESET( mb87078 )
 {
-	MB87078_start(0, &mb87078_interface); /*chip #0*/
+	MB87078_start(machine, 0, &mb87078_interface); /*chip #0*/
 /*
     {
         int i;
@@ -2454,7 +2428,7 @@ static MACHINE_DRIVER_START( rastsag2 )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2492,7 +2466,7 @@ static MACHINE_DRIVER_START( ashura )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2530,7 +2504,7 @@ static MACHINE_DRIVER_START( crimec )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2568,7 +2542,7 @@ static MACHINE_DRIVER_START( tetrist )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2605,7 +2579,7 @@ static MACHINE_DRIVER_START( tetrista )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(masterw_sound_readmem,masterw_sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2643,7 +2617,7 @@ static MACHINE_DRIVER_START( hitice )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(viofight_sound_readmem, viofight_sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2687,7 +2661,7 @@ static MACHINE_DRIVER_START( rambo3 )
 	MDRV_CPU_ADD("audio", Z80, XTAL_24MHz/6)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2725,7 +2699,7 @@ static MACHINE_DRIVER_START( rambo3a )
 	MDRV_CPU_ADD("audio", Z80, XTAL_24MHz/6)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2763,7 +2737,7 @@ static MACHINE_DRIVER_START( pbobble )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(mb87078)
 	MDRV_NVRAM_HANDLER(taito_b)
@@ -2804,7 +2778,7 @@ static MACHINE_DRIVER_START( spacedx )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(mb87078)
 	MDRV_NVRAM_HANDLER(taito_b)
@@ -2845,7 +2819,7 @@ static MACHINE_DRIVER_START( spacedxo )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2883,7 +2857,7 @@ static MACHINE_DRIVER_START( qzshowby )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(mb87078)
 	MDRV_NVRAM_HANDLER(taito_b)
@@ -2924,7 +2898,7 @@ static MACHINE_DRIVER_START( viofight )
 	MDRV_CPU_ADD("audio", Z80, 6000000)	/* 6 MHz verified */
 	MDRV_CPU_PROGRAM_MAP(viofight_sound_readmem, viofight_sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2966,7 +2940,7 @@ static MACHINE_DRIVER_START( masterw )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(masterw_sound_readmem,masterw_sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3005,7 +2979,7 @@ static MACHINE_DRIVER_START( silentd )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3043,7 +3017,7 @@ static MACHINE_DRIVER_START( selfeena )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3090,7 +3064,7 @@ static MACHINE_DRIVER_START( ryujin )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3135,7 +3109,7 @@ static MACHINE_DRIVER_START( sbm )
 	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_INTERLEAVE(10)
+	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3799,7 +3773,7 @@ ROM_END
 
 static DRIVER_INIT( taito_b )
 {
-	memory_configure_bank(1, 0, 4, memory_region(machine, "audio") + 0x10000, 0x4000);
+	memory_configure_bank(machine, 1, 0, 4, memory_region(machine, "audio") + 0x10000, 0x4000);
 }
 
 GAME( 1989, masterw,  0,       masterw,  masterw,  taito_b, ROT270, "Taito Corporation Japan", "Master of Weapon (World)", GAME_SUPPORTS_SAVE )

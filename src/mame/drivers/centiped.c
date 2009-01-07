@@ -26,6 +26,8 @@
       136013-109.5p
       136013-110.5r
 
+The Two Bit Score "Dux" hack was circulated and common enough for inclusion
+
 ****************************************************************************
 
     Main clock: XTAL = 12.096 MHz
@@ -417,6 +419,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "cpu/s2650/s2650.h"
 #include "machine/atari_vg.h"
 #include "centiped.h"
@@ -443,7 +446,7 @@ static TIMER_DEVICE_CALLBACK( generate_interrupt )
 
 	/* IRQ is clocked on the rising edge of 16V, equal to the previous 32V */
 	if (scanline & 16)
-		cpunum_set_input_line(timer->machine, 0, 0, ((scanline - 1) & 32) ? ASSERT_LINE : CLEAR_LINE);
+		cpu_set_input_line(timer->machine->cpu[0], 0, ((scanline - 1) & 32) ? ASSERT_LINE : CLEAR_LINE);
 
 	/* do a partial update now to handle sprite multiplexing (Maze Invaders) */
 	video_screen_update_partial(timer->machine->primary_screen, scanline);
@@ -452,15 +455,15 @@ static TIMER_DEVICE_CALLBACK( generate_interrupt )
 
 static MACHINE_START( centiped )
 {
-	state_save_register_global_array(oldpos);
-	state_save_register_global_array(sign);
-	state_save_register_global(dsw_select);
+	state_save_register_global_array(machine, oldpos);
+	state_save_register_global_array(machine, sign);
+	state_save_register_global(machine, dsw_select);
 }
 
 
 static MACHINE_RESET( centiped )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 	dsw_select = 0;
 	control_select = 0;
 }
@@ -477,7 +480,7 @@ static MACHINE_RESET( magworm )
 
 static WRITE8_HANDLER( irq_ack_w )
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 
@@ -535,24 +538,24 @@ INLINE int read_trackball(running_machine *machine, int idx, int switch_port)
 
 static READ8_HANDLER( centiped_IN0_r )
 {
-	return read_trackball(machine, 0, 0);
+	return read_trackball(space->machine, 0, 0);
 }
 
 
 static READ8_HANDLER( centiped_IN2_r )
 {
-	return read_trackball(machine, 1, 2);
+	return read_trackball(space->machine, 1, 2);
 }
 
 
 static READ8_HANDLER( milliped_IN1_r )
 {
-	return read_trackball(machine, 1, 1);
+	return read_trackball(space->machine, 1, 1);
 }
 
 static READ8_HANDLER( milliped_IN2_r )
 {
-	UINT8 data = input_port_read(machine, "IN2");
+	UINT8 data = input_port_read(space->machine, "IN2");
 
 	/* MSH - 15 Feb, 2007
      * The P2 X Joystick inputs are not properly handled in
@@ -563,7 +566,7 @@ static READ8_HANDLER( milliped_IN2_r )
      */
 	if (0 != control_select) {
 		/* Bottom 4 bits is our joystick inputs */
-		UINT8 joy2data = input_port_read(machine, "IN3") & 0x0f;
+		UINT8 joy2data = input_port_read(space->machine, "IN3") & 0x0f;
 		data = data & 0xf0; /* Keep the top 4 bits */
 		data |= (joy2data & 0x0a) >> 1; /* flip left and up */
 		data |= (joy2data & 0x05) << 1; /* flip right and down */
@@ -587,7 +590,7 @@ static READ8_HANDLER( mazeinv_input_r )
 {
 	static const char *const sticknames[] = { "STICK0", "STICK1", "STICK2", "STICK3" };
 
-	return input_port_read(machine, sticknames[control_select]);
+	return input_port_read(space->machine, sticknames[control_select]);
 }
 
 
@@ -598,7 +601,7 @@ static WRITE8_HANDLER( mazeinv_input_select_w )
 
 static READ8_HANDLER( bullsdrt_data_port_r )
 {
-	switch (activecpu_get_pc())
+	switch (cpu_get_pc(space->cpu))
 	{
 		case 0x0033:
 		case 0x6b19:
@@ -624,7 +627,7 @@ static WRITE8_HANDLER( led_w )
 
 static READ8_HANDLER( caterplr_rand_r )
 {
-	return mame_rand(machine) % 0xff;
+	return mame_rand(space->machine) % 0xff;
 }
 
 
@@ -649,15 +652,15 @@ static WRITE8_HANDLER( bullsdrt_coin_count_w )
 
 static WRITE8_HANDLER( caterplr_AY8910_w )
 {
-	ay8910_control_port_0_w(machine, 0, offset);
-	ay8910_write_port_0_w(machine, 0, data);
+	ay8910_control_port_0_w(space, 0, offset);
+	ay8910_write_port_0_w(space, 0, data);
 }
 
 
 static READ8_HANDLER( caterplr_AY8910_r )
 {
-	ay8910_control_port_0_w(machine, 0, offset);
-	return ay8910_read_port_0_r(machine, 0);
+	ay8910_control_port_0_w(space, 0, offset);
+	return ay8910_read_port_0_r(space, 0);
 }
 
 
@@ -1760,6 +1763,22 @@ ROM_START( centiped )
 ROM_END
 
 
+ROM_START( centipdd ) /* Centipede "Dux" graphics hack by Two Bit Score */
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "136001-307.d1",  0x2000, 0x0800, CRC(5ab0d9de) SHA1(8ea6e3304202831aabaf31dbd0f970a7b3bfe421) )
+	ROM_LOAD( "136001-308.e1",  0x2800, 0x0800, CRC(4c07fd3e) SHA1(af4fdbf32c23b1864819d620a874e7f205da3cdb) )
+	ROM_LOAD( "136001-309.fh1", 0x3000, 0x0800, CRC(ff69b424) SHA1(689fa560d40a384dcbcad7c8095bc12e91875580) )
+	ROM_LOAD( "136001-310.j1",  0x3800, 0x0800, CRC(44e40fa4) SHA1(c557db83876afc8ab52047ab1a3c3bfef34d6351) )
+
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD( "dux-211.f7",  0x0000, 0x0800, CRC(fee15594) SHA1(1193c295b57904d1c19c7f0400ef4c1893a80f55) )
+	ROM_LOAD( "dux-212.hj7", 0x0800, 0x0800, CRC(f980c777) SHA1(3997a45ed38d7ae68dddf70b37da6e2e0c6a7710) )
+
+	ROM_REGION( 0x0100, "proms", 0 )
+	ROM_LOAD( "136001-213.p4",   0x0000, 0x0100, CRC(6fa3093a) SHA1(2b7aeca74c1ae4156bf1878453a047330f96f0a8) )
+ROM_END
+
+
 ROM_START( centipd2 )
 	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "136001-207.d1",  0x2000, 0x0800, CRC(b2909e2f) SHA1(90ec90bd1e262861730afd5b113ec8dddd958ed8) )
@@ -1871,6 +1890,22 @@ ROM_START( milliped )
 ROM_END
 
 
+ROM_START( millipdd ) /* Millipede "Dux" graphics hack by Two Bit Score */
+	ROM_REGION( 0x10000, "main", 0 )
+	ROM_LOAD( "136013-104.1mn", 0x4000, 0x1000, CRC(40711675) SHA1(b595d6a0f5d3c611ade1b83a94c3b909d2124dc4) )
+	ROM_LOAD( "136013-103.1l",  0x5000, 0x1000, CRC(fb01baf2) SHA1(9c1d0bbc20bf25dd21761a311fd1ed80aa029241) )
+	ROM_LOAD( "136013-102.1jk", 0x6000, 0x1000, CRC(62e137e0) SHA1(9fe40db55ba1d20d4f11704f7f5df9ff75b87f30) )
+	ROM_LOAD( "136013-101.1h",  0x7000, 0x1000, CRC(46752c7d) SHA1(ab06b1fd80271849946f90757b3837b617394929) )
+
+	ROM_REGION( 0x1000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD( "mil-dux.5r", 0x0000, 0x0800, CRC(b6c617b6) SHA1(a672a9b35b773677aea6b9a5c4305939180f6854) )
+	ROM_LOAD( "mil-dux.5p", 0x0800, 0x0800, CRC(2a6ef4b0) SHA1(832dae8c1b1f959bb8582f9503d84bea9d50c08c) )
+
+	ROM_REGION( 0x0100, "proms", 0 )
+	ROM_LOAD( "136001-213.7e", 0x0000, 0x0100, CRC(6fa3093a) SHA1(2b7aeca74c1ae4156bf1878453a047330f96f0a8) ) /* not used */
+ROM_END
+
+
 ROM_START( mazeinv )
 	ROM_REGION( 0x10000, "main", 0 )
 	ROM_LOAD( "005.011",      0x3000, 0x1000, CRC(37129536) SHA1(356cb986a40b332100e00fb72194fd4dade2cba7) )
@@ -1935,15 +1970,15 @@ ROM_END
 
 static DRIVER_INIT( caterplr )
 {
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x100f, 0, 0, caterplr_AY8910_r, caterplr_AY8910_w);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1780, 0x1780, 0, 0, caterplr_rand_r);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1000, 0x100f, 0, 0, caterplr_AY8910_r, caterplr_AY8910_w);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1780, 0x1780, 0, 0, caterplr_rand_r);
 }
 
 
 static DRIVER_INIT( magworm )
 {
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1001, 0x1001, 0, 0, ay8910_control_port_0_w);
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1003, 0x1003, 0, 0, ay8910_read_port_0_r, ay8910_write_port_0_w);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1001, 0x1001, 0, 0, ay8910_control_port_0_w);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1003, 0x1003, 0, 0, ay8910_read_port_0_r, ay8910_write_port_0_w);
 }
 
 
@@ -1964,10 +1999,12 @@ GAME( 1980, centiped, 0,        centiped, centiped, 0,        ROT270, "Atari",  
 GAME( 1980, centipd2, centiped, centiped, centiped, 0,        ROT270, "Atari",   "Centipede (revision 2)", GAME_SUPPORTS_SAVE )
 GAME( 1980, centtime, centiped, centiped, centtime, 0,        ROT270, "Atari",   "Centipede (1 player, timed)", GAME_SUPPORTS_SAVE )
 GAME( 1980, centipdb, centiped, centipdb, centiped, 0,        ROT270, "bootleg", "Centipede (bootleg)", GAME_SUPPORTS_SAVE )
+GAME( 1980, centipdd, centiped, centiped, centiped, 0,        ROT270, "hack",    "Centipede Dux (hack)", GAME_SUPPORTS_SAVE )
 GAME( 1980, caterplr, centiped, caterplr, caterplr, caterplr, ROT270, "bootleg", "Caterpillar", GAME_SUPPORTS_SAVE )
 GAME( 1980, millpac,  centiped, centipdb, centiped, 0,        ROT270, "Valadon Automation", "Millpac", GAME_SUPPORTS_SAVE )
 GAME( 1980, magworm,  centiped, magworm,  magworm,  magworm,  ROT270, "bootleg", "Magic Worm (bootleg)", GAME_SUPPORTS_SAVE )
 GAME( 1982, milliped, 0,        milliped, milliped, 0,        ROT270, "Atari",   "Millipede", GAME_SUPPORTS_SAVE )
+GAME( 1982, millipdd, milliped, milliped, milliped, 0,        ROT270, "Atari",   "Millipede Dux (hack)", GAME_SUPPORTS_SAVE )
 
 GAME( 1980, warlords, 0,        warlords, warlords, 0,        ROT0,   "Atari",   "Warlords", GAME_SUPPORTS_SAVE )
 GAME( 1981, mazeinv,  0,        mazeinv,  mazeinv,  0,        ROT270, "Atari",   "Maze Invaders (prototype)", 0 )

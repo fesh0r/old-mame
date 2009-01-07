@@ -63,7 +63,6 @@
 
 #include "driver.h"
 #include "machine/rescap.h"
-#include "deprecat.h"
 #include "machine/6821pia.h"
 #include "machine/74123.h"
 #include "video/mc6845.h"
@@ -116,13 +115,13 @@ static void main_cpu_irq(running_machine *machine, int state)
 {
 	int combined_state = pia_get_irq_a(1) | pia_get_irq_b(1) | pia_get_irq_b(2);
 
-	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static void main_cpu_firq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -135,16 +134,17 @@ static void main_cpu_firq(running_machine *machine, int state)
 
 static INTERRUPT_GEN( update_pia_1 )
 {
+	const address_space *space = cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM);
 	/* update the different PIA pins from the input ports */
 
 	/* CA1 - copy of PA0 (COIN1) */
-	pia_1_ca1_w(machine, 0, input_port_read(machine, "IN0") & 0x01);
+	pia_1_ca1_w(space, 0, input_port_read(device->machine, "IN0") & 0x01);
 
 	/* CA2 - copy of PA1 (SERVICE1) */
-	pia_1_ca2_w(machine, 0, input_port_read(machine, "IN0") & 0x02);
+	pia_1_ca2_w(space, 0, input_port_read(device->machine, "IN0") & 0x02);
 
 	/* CB1 - (crosshatch) */
-	pia_1_cb1_w(machine, 0, input_port_read(machine, "CROSS"));
+	pia_1_cb1_w(space, 0, input_port_read(device->machine, "CROSS"));
 
 	/* CB2 - NOT CONNECTED */
 }
@@ -180,7 +180,7 @@ static WRITE8_HANDLER( pia_2_port_b_w )
 	star_enable = data & 0x10;
 
 	/* bits 5-7 go to the music board connector */
-	audio_2_command_w(machine, 0, data & 0xe0);
+	audio_2_command_w(space, 0, data & 0xe0);
 }
 
 
@@ -205,13 +205,14 @@ static const pia6821_interface pia_2_intf =
  *
  *************************************/
 
-static void ic48_1_74123_output_changed(int output)
+static WRITE8_DEVICE_HANDLER(ic48_1_74123_output_changed)
 {
-	pia_2_ca1_w(Machine, 0, output);
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	pia_2_ca1_w(space, 0, data);
 }
 
 
-static const TTL74123_interface ic48_1_intf =
+static const ttl74123_config ic48_1_config =
 {
 	TTL74123_GROUNDED,	/* the hook up type */
 	RES_K(22),			/* resistor connected to RCext */
@@ -232,16 +233,14 @@ static const TTL74123_interface ic48_1_intf =
 
 static MACHINE_START( nyny )
 {
-	pia_config(1, &pia_1_intf);
-	pia_config(2, &pia_2_intf);
-
-	TTL74123_config(0, &ic48_1_intf);
+	pia_config(machine, 1, &pia_1_intf);
+	pia_config(machine, 2, &pia_2_intf);
 
 	/* setup for save states */
-	state_save_register_global(flipscreen);
-	state_save_register_global(star_enable);
-	state_save_register_global(star_delay_counter);
-	state_save_register_global(star_shift_reg);
+	state_save_register_global(machine, flipscreen);
+	state_save_register_global(machine, star_enable);
+	state_save_register_global(machine, star_delay_counter);
+	state_save_register_global(machine, star_shift_reg);
 }
 
 
@@ -255,7 +254,6 @@ static MACHINE_START( nyny )
 static MACHINE_RESET( nyny )
 {
 	pia_reset();
-	TTL74123_reset(0);
 }
 
 
@@ -397,14 +395,13 @@ static MC6845_END_UPDATE( end_update )
 
 static MC6845_ON_DE_CHANGED( display_enable_changed )
 {
-	TTL74123_A_w(0, display_enabled);
+	ttl74123_a_w(devtag_get_device(device->machine, TTL74123, "ic48_1"), 0, display_enabled);
 }
 
 
 static const mc6845_interface mc6845_intf =
 {
 	"main",					/* screen we are acting on */
-	CRTC_CLOCK, 			/* the clock (pin 21) of the chip */
 	8,						/* number of pixels per video memory address */
 	begin_update,			/* before pixel update callback */
 	update_row,				/* row update callback */
@@ -433,15 +430,15 @@ static VIDEO_UPDATE( nyny )
 
 static WRITE8_HANDLER( audio_1_command_w )
 {
-	soundlatch_w(machine, 0, data);
-	cpunum_set_input_line(machine, 1, M6802_IRQ_LINE, HOLD_LINE);
+	soundlatch_w(space, 0, data);
+	cpu_set_input_line(space->machine->cpu[1], M6800_IRQ_LINE, HOLD_LINE);
 }
 
 
 static WRITE8_HANDLER( audio_1_answer_w )
 {
-	soundlatch3_w(machine, 0, data);
-	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, HOLD_LINE);
+	soundlatch3_w(space, 0, data);
+	cpu_set_input_line(space->machine->cpu[0], M6809_IRQ_LINE, HOLD_LINE);
 }
 
 
@@ -449,7 +446,7 @@ static WRITE8_HANDLER( nyny_ay8910_37_port_a_w )
 {
 	/* not sure what this does */
 
-	/*logerror("%x PORT A write %x at  Y=%x X=%x\n", safe_activecpu_get_pc(), data, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen));*/
+	/*logerror("%x PORT A write %x at  Y=%x X=%x\n", cpu_get_pc(space->cpu), data, video_screen_get_vpos(space->machine->primary_screen), video_screen_get_hpos(space->machine->primary_screen));*/
 }
 
 
@@ -490,8 +487,8 @@ static const ay8910_interface ay8910_64_interface =
 
 static WRITE8_HANDLER( audio_2_command_w )
 {
-	soundlatch2_w(machine, 0, (data & 0x60) >> 5);
-	cpunum_set_input_line(machine, 2, M6802_IRQ_LINE, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	soundlatch2_w(space, 0, (data & 0x60) >> 5);
+	cpu_set_input_line(space->machine->cpu[2], M6800_IRQ_LINE, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -507,8 +504,8 @@ static READ8_HANDLER( nyny_pia_1_2_r )
 	UINT8 ret = 0;
 
 	/* the address bits are directly connected to the chip selects */
-	if (offset & 0x04)  ret = pia_1_r(machine, offset & 0x03);
-	if (offset & 0x08)  ret = pia_2_alt_r(machine, offset & 0x03);
+	if (offset & 0x04)  ret = pia_1_r(space, offset & 0x03);
+	if (offset & 0x08)  ret = pia_2_alt_r(space, offset & 0x03);
 
 	return ret;
 }
@@ -517,8 +514,8 @@ static READ8_HANDLER( nyny_pia_1_2_r )
 static WRITE8_HANDLER( nyny_pia_1_2_w )
 {
 	/* the address bits are directly connected to the chip selects */
-	if (offset & 0x04)  pia_1_w(machine, offset & 0x03, data);
-	if (offset & 0x08)  pia_2_alt_w(machine, offset & 0x03, data);
+	if (offset & 0x04)  pia_1_w(space, offset & 0x03, data);
+	if (offset & 0x08)  pia_2_alt_w(space, offset & 0x03, data);
 }
 
 
@@ -686,8 +683,11 @@ static MACHINE_DRIVER_START( nyny )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 256, 0, 256, 256, 0, 256)	/* temporary, CRTC will configure screen */
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
-	MDRV_DEVICE_CONFIG(mc6845_intf)
+	MDRV_MC6845_ADD("crtc", MC6845, CRTC_CLOCK, mc6845_intf)
+
+	/* 74LS123 */
+
+	MDRV_TTL74123_ADD("ic48_1", ic48_1_config)
 
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

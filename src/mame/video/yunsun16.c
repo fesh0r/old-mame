@@ -101,12 +101,12 @@ static int sprites_scrolldx, sprites_scrolldy;
 
 VIDEO_START( yunsun16 )
 {
-	tilemap_0 = tilemap_create(	get_tile_info_0,yunsun16_tilemap_scan_pages,
+	tilemap_0 = tilemap_create(	machine, get_tile_info_0,yunsun16_tilemap_scan_pages,
 
 								16,16,
 								TILES_PER_PAGE_X*PAGES_PER_TMAP_X,TILES_PER_PAGE_Y*PAGES_PER_TMAP_Y);
 
-	tilemap_1 = tilemap_create(	get_tile_info_1,yunsun16_tilemap_scan_pages,
+	tilemap_1 = tilemap_create(	machine, get_tile_info_1,yunsun16_tilemap_scan_pages,
 
 								16,16,
 								TILES_PER_PAGE_X*PAGES_PER_TMAP_X,TILES_PER_PAGE_Y*PAGES_PER_TMAP_Y);
@@ -176,7 +176,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 		x	+=	sprites_scrolldx;
 		y	+=	sprites_scrolldy;
 
-		if (flip_screen_get())	// not used?
+		if (flip_screen_get(machine))	// not used?
 		{
 			flipx = !flipx;		x = max_x - x - 16;
 			flipy = !flipy;		y = max_y - y - 16;
@@ -212,7 +212,7 @@ VIDEO_UPDATE( yunsun16 )
 
 //  popmessage("%04X", *yunsun16_priority);
 
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	if((*yunsun16_priority & 0x0c) == 4)
 	{

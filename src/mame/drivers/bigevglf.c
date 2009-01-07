@@ -56,6 +56,7 @@ J1100072A
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/msm5232.h"
@@ -78,7 +79,7 @@ static WRITE8_HANDLER( beg_banking_w )
 /* d0-d3 connect to A11-A14 of the ROMs (via ls273 latch)
    d4-d7 select one of ROMs (via ls273(above) and then ls154)
 */
-	memory_set_bankptr(1, memory_region(machine, "main") + 0x10000 + 0x800*(beg_bank&0xff)); /* empty sockets for IC37-IC44 ROMS */
+	memory_set_bankptr(space->machine, 1, memory_region(space->machine, "main") + 0x10000 + 0x800*(beg_bank&0xff)); /* empty sockets for IC37-IC44 ROMS */
 }
 
 static TIMER_CALLBACK( from_sound_latch_callback )
@@ -88,13 +89,13 @@ static TIMER_CALLBACK( from_sound_latch_callback )
 }
 static WRITE8_HANDLER(beg_fromsound_w)	/* write to D800 sets bit 1 in status */
 {
-	timer_call_after_resynch(NULL, (activecpu_get_pc()<<16)|data, from_sound_latch_callback);
+	timer_call_after_resynch(space->machine, NULL, (cpu_get_pc(space->cpu)<<16)|data, from_sound_latch_callback);
 }
 
 static READ8_HANDLER(beg_fromsound_r)
 {
 	/* set a timer to force synchronization after the read */
-	timer_call_after_resynch(NULL, 0, NULL);
+	timer_call_after_resynch(space->machine, NULL, 0, NULL);
 	return from_sound;
 }
 
@@ -102,7 +103,7 @@ static READ8_HANDLER(beg_soundstate_r)
 {
 	UINT8 ret = sound_state;
 	/* set a timer to force synchronization after the read */
-	timer_call_after_resynch(NULL, 0, NULL);
+	timer_call_after_resynch(space->machine, NULL, 0, NULL);
 	sound_state &= ~2; /* read from port 21 clears bit 1 in status */
 	return ret;
 }
@@ -110,20 +111,20 @@ static READ8_HANDLER(beg_soundstate_r)
 static READ8_HANDLER(soundstate_r)
 {
 	/* set a timer to force synchronization after the read */
-	timer_call_after_resynch(NULL, 0, NULL);
+	timer_call_after_resynch(space->machine, NULL, 0, NULL);
 	return sound_state;
 }
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	if (sound_nmi_enable) cpunum_set_input_line(machine, 2,INPUT_LINE_NMI,PULSE_LINE);
+	if (sound_nmi_enable) cpu_set_input_line(machine->cpu[2],INPUT_LINE_NMI,PULSE_LINE);
 	else pending_nmi = 1;
 	sound_state &= ~1;
 }
 static WRITE8_HANDLER( sound_command_w )	/* write to port 20 clears bit 0 in status */
 {
 	for_sound = data;
-	timer_call_after_resynch(NULL, data,nmi_callback);
+	timer_call_after_resynch(space->machine, NULL, data,nmi_callback);
 }
 
 static READ8_HANDLER( sound_command_r )	/* read from D800 sets bit 0 in status */
@@ -142,7 +143,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{
-		cpunum_set_input_line(machine, 2,INPUT_LINE_NMI,PULSE_LINE);
+		cpu_set_input_line(space->machine->cpu[2],INPUT_LINE_NMI,PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -159,19 +160,19 @@ static TIMER_CALLBACK( deferred_ls74_w )
 /* do this on a timer to let the CPUs synchronize */
 static WRITE8_HANDLER (beg13A_clr_w)
 {
-	timer_call_after_resynch(NULL, (0<<8) | 0, deferred_ls74_w);
+	timer_call_after_resynch(space->machine, NULL, (0<<8) | 0, deferred_ls74_w);
 }
 static WRITE8_HANDLER (beg13B_clr_w)
 {
-	timer_call_after_resynch(NULL, (1<<8) | 0, deferred_ls74_w);
+	timer_call_after_resynch(space->machine, NULL, (1<<8) | 0, deferred_ls74_w);
 }
 static WRITE8_HANDLER (beg13A_set_w)
 {
-	timer_call_after_resynch(NULL, (0<<8) | 1, deferred_ls74_w);
+	timer_call_after_resynch(space->machine, NULL, (0<<8) | 1, deferred_ls74_w);
 }
 static WRITE8_HANDLER (beg13B_set_w)
 {
-	timer_call_after_resynch(NULL, (1<<8) | 1, deferred_ls74_w);
+	timer_call_after_resynch(space->machine, NULL, (1<<8) | 1, deferred_ls74_w);
 }
 
 static READ8_HANDLER( beg_status_r )
@@ -186,7 +187,7 @@ static READ8_HANDLER( beg_status_r )
 
 */
 	/* set a timer to force synchronization after the read */
-	timer_call_after_resynch(NULL, 0, NULL);
+	timer_call_after_resynch(space->machine, NULL, 0, NULL);
 	return (beg13_ls74[0]<<0) | (beg13_ls74[1]<<1);
 }
 
@@ -195,14 +196,14 @@ static READ8_HANDLER( beg_trackball_x_r )
 {
 	static const char *const portx_name[2] = { "P1X", "P2X" };
 
-	return input_port_read(machine, portx_name[port_select]);
+	return input_port_read(space->machine, portx_name[port_select]);
 }
 
 static READ8_HANDLER( beg_trackball_y_r )
 {
 	static const char *const porty_name[2] = { "P1Y", "P2Y" };
 
-	return input_port_read(machine, porty_name[port_select]);
+	return input_port_read(space->machine, porty_name[port_select]);
 }
 
 static WRITE8_HANDLER( beg_port08_w )
@@ -335,7 +336,7 @@ static READ8_HANDLER( sub_cpu_mcu_coin_port_r )
 
     */
 	bit5 ^= 0x20;
-	return bigevglf_mcu_status_r(machine,0) | (input_port_read(machine, "PORT04") & 3) | bit5;	/* bit 0 and bit 1 - coin inputs */
+	return bigevglf_mcu_status_r(space,0) | (input_port_read(space->machine, "PORT04") & 3) | bit5;	/* bit 0 and bit 1 - coin inputs */
 }
 
 static ADDRESS_MAP_START( bigevglf_sub_portmap, ADDRESS_SPACE_IO, 8 )
@@ -445,7 +446,7 @@ static MACHINE_DRIVER_START( bigevglf )
 	MDRV_CPU_ADD("mcu", M68705,2000000)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(m68705_map,0)
 
-	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - interleaving is forced on the fly */
+	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - interleaving is forced on the fly */
 
 	MDRV_MACHINE_RESET(bigevglf)
 	/* video hardware */

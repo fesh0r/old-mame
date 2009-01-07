@@ -41,8 +41,10 @@
 
 struct TTL74153
 {
+	running_machine *machine;
+
 	/* callback */
-	void (*output_cb)(void);
+	void (*output_cb)(running_machine *machine);
 
 	/* inputs */
 	int a;					/* pin 14 */
@@ -87,7 +89,7 @@ void TTL74153_update(int which)
 		chips[which].last_output[0] = chips[which].output[0];
 		chips[which].last_output[1] = chips[which].output[1];
 
-		chips[which].output_cb();
+		chips[which].output_cb(chips[which].machine);
 	}
 }
 
@@ -123,7 +125,7 @@ int TTL74153_output_r(int which, int section)
 
 
 
-void TTL74153_config(int which, const struct TTL74153_interface *intf)
+void TTL74153_config(running_machine *machine, int which, const struct TTL74153_interface *intf)
 {
 	if (which >= MAX_TTL74153)
 	{
@@ -132,20 +134,34 @@ void TTL74153_config(int which, const struct TTL74153_interface *intf)
 	}
 
 
-	chips[which].output_cb = (intf ? intf->output_cb : 0);
-	chips[which].a = 1;
-	chips[which].b = 1;
-	chips[which].enable[0] = 1;
-	chips[which].enable[1] = 1;
-	chips[which].input_lines[0][0] = 1;
-	chips[which].input_lines[0][1] = 1;
-	chips[which].input_lines[0][2] = 1;
-	chips[which].input_lines[0][3] = 1;
-	chips[which].input_lines[1][0] = 1;
-	chips[which].input_lines[1][1] = 1;
-	chips[which].input_lines[1][2] = 1;
-	chips[which].input_lines[1][3] = 1;
+    chips[which].machine = machine;
+    chips[which].output_cb = (intf ? intf->output_cb : 0);
+    chips[which].a = 1;
+    chips[which].b = 1;
+    chips[which].enable[0] = 1;
+    chips[which].enable[1] = 1;
+    chips[which].input_lines[0][0] = 1;
+    chips[which].input_lines[0][1] = 1;
+    chips[which].input_lines[0][2] = 1;
+    chips[which].input_lines[0][3] = 1;
+    chips[which].input_lines[1][0] = 1;
+    chips[which].input_lines[1][1] = 1;
+    chips[which].input_lines[1][2] = 1;
+    chips[which].input_lines[1][3] = 1;
 
-	chips[which].last_output[0] = -1;
-	chips[which].last_output[1] = -1;
+    chips[which].last_output[0] = -1;
+    chips[which].last_output[1] = -1;
+
+    state_save_register_item_array(machine, "ttl74153", NULL, which, chips[which].enable);
+    state_save_register_item_array(machine, "ttl74153", NULL, which, chips[which].last_output);
+    state_save_register_item(machine, "ttl74153", NULL, which, chips[which].input_lines[0][0]);
+    state_save_register_item(machine, "ttl74153", NULL, which, chips[which].input_lines[0][1]);
+    state_save_register_item(machine, "ttl74153", NULL, which, chips[which].input_lines[0][2]);
+    state_save_register_item(machine, "ttl74153", NULL, which, chips[which].input_lines[0][3]);
+    state_save_register_item(machine, "ttl74153", NULL, which, chips[which].input_lines[1][0]);
+    state_save_register_item(machine, "ttl74153", NULL, which, chips[which].input_lines[1][1]);
+    state_save_register_item(machine, "ttl74153", NULL, which, chips[which].input_lines[1][2]);
+    state_save_register_item(machine, "ttl74153", NULL, which, chips[which].input_lines[1][3]);
+    state_save_register_item(machine, "ttl74153", NULL, which, chips[which].a);
+    state_save_register_item(machine, "ttl74153", NULL, which, chips[which].b);
 }

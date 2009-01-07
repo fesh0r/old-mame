@@ -3,6 +3,10 @@
 #ifndef __G65816_H__
 #define __G65816_H__
 
+#include "cpuintrf.h"
+#include "debugger.h"
+#include "g65816cm.h"
+
 /* ======================================================================== */
 /* =============================== COPYRIGHT ============================== */
 /* ======================================================================== */
@@ -54,51 +58,14 @@ enum
 	G65816_NMI_STATE, G65816_IRQ_STATE
 };
 
-
-
-/* ======================================================================== */
-/* =================== Functions Implemented by the Host ================== */
-/* ======================================================================== */
-
-/* Read data from RAM */
-unsigned int g65816_read_8(unsigned int address);
-
-/* Read data from ROM */
-unsigned int g65816_read_8_immediate(unsigned int address);
-
-/* Write data to RAM */
-void g65816_write_8(unsigned int address, unsigned int value);
-
-/* Notification of PC changes */
-void g65816_jumping(unsigned int new_pc);
-void g65816_branching(unsigned int new_pc);
-
-
-
-/* ======================================================================== */
-/* ================================= MAME ================================= */
-/* ======================================================================== */
-
-#include "cpuintrf.h"
-#include "debugger.h"
-#include "deprecat.h"
-
 enum
 {
-	CPUINFO_PTR_G65816_READVECTOR_CALLBACK = CPUINFO_PTR_CPU_SPECIFIC
+	CPUINFO_FCT_G65816_READVECTOR_CALLBACK = CPUINFO_FCT_CPU_SPECIFIC
 };
 
 /* Main interface function */
-void g65816_get_info(UINT32 state, cpuinfo *info);
-
-#undef G65816_CALL_DEBUGGER
-#define G65816_CALL_DEBUGGER(x) debugger_instruction_hook(Machine, x)
-
-#define g65816_read_8(addr) 			program_read_byte_8be(addr)
-#define g65816_write_8(addr,data)		program_write_byte_8be(addr,data)
-#define g65816_read_8_immediate(A)		program_read_byte_8be(A)
-#define g65816_jumping(A)				change_pc(A)
-#define g65816_branching(A)
+CPU_GET_INFO( g65816 );
+#define CPU_G65816 CPU_GET_INFO_NAME( g65816 )
 
 
 

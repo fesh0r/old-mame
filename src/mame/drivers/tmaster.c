@@ -99,6 +99,7 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "deprecat.h"
 #include "sound/okim6295.h"
 #include "machine/eeprom.h"
@@ -146,7 +147,7 @@ static WRITE16_HANDLER( tmaster_oki_bank_w )
 
 static void duart_irq_handler(const device_config *device, UINT8 vector)
 {
-	cpunum_set_input_line_and_vector(device->machine, 0, 4, HOLD_LINE, vector);
+	cpu_set_input_line_and_vector(device->machine->cpu[0], 4, HOLD_LINE, vector);
 };
 
 static void duart_tx(const device_config *device, int channel, UINT8 data)
@@ -157,7 +158,7 @@ static void duart_tx(const device_config *device, int channel, UINT8 data)
 	}
 };
 
-static void microtouch_tx(UINT8 data)
+static void microtouch_tx(running_machine *machine, UINT8 data)
 {
 	duart68681_rx_data(tmaster_devices.duart68681, 0, data);
 }
@@ -182,7 +183,7 @@ static READ16_HANDLER(rtc_r)
 {
 	mame_system_time systime;
 
-	mame_get_current_datetime(machine, &systime);
+	mame_get_current_datetime(space->machine, &systime);
 	rtc_ram[0x1] = binary_to_BCD(systime.local_time.second);
 	rtc_ram[0x2] = binary_to_BCD(systime.local_time.minute);
 	rtc_ram[0x3] = binary_to_BCD(systime.local_time.hour);
@@ -296,7 +297,7 @@ static VIDEO_UPDATE( tmaster )
 
 
 	if (layers_ctrl & 1)	copybitmap			(bitmap,tmaster_bitmap[0][(tmaster_regs[0x02/2]>>8)&1],0,0,0,0,cliprect);
-	else					fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	else					bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	if (layers_ctrl & 2)	copybitmap_trans	(bitmap,tmaster_bitmap[1][(tmaster_regs[0x02/2]>>9)&1],0,0,0,0,cliprect,0xff);
 
@@ -308,7 +309,7 @@ static WRITE16_HANDLER( tmaster_color_w )
 	COMBINE_DATA( &tmaster_color );
 #if 0
 	if (tmaster_color & ~7)
-		logerror("%06x: color %04x\n", activecpu_get_pc(), tmaster_color);
+		logerror("%06x: color %04x\n", cpu_get_pc(space->cpu), tmaster_color);
 #endif
 }
 
@@ -345,7 +346,7 @@ static void tmaster_draw(running_machine *machine)
 	addr <<= 1;
 
 #if 0
-	logerror("%06x: blit w %03x, h %02x, x %03x, y %02x, addr %06x, mode %02x\n", activecpu_get_pc(),
+	logerror("%s: blit w %03x, h %02x, x %03x, y %02x, addr %06x, mode %02x\n", cpuexec_describe_context(machine),
 			sw,sh,sx,sy, addr, mode
 	);
 #endif
@@ -369,7 +370,7 @@ static void tmaster_draw(running_machine *machine)
 		case 0x00:							// blit with transparency
 			if (addr > size - sw*sh)
 			{
-				logerror("%06x: blit error, addr %06x out of bounds\n", activecpu_get_pc(),addr);
+				logerror("%s: blit error, addr %06x out of bounds\n", cpuexec_describe_context(machine),addr);
 				addr = size - sw*sh;
 			}
 
@@ -406,8 +407,8 @@ static WRITE16_HANDLER( tmaster_blitter_w )
 	switch (offset*2)
 	{
 		case 0x0e:
-			tmaster_draw(machine);
-			cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
+			tmaster_draw(space->machine);
+			cpu_set_input_line(space->machine->cpu[0], 2, HOLD_LINE);
 			break;
 	}
 }
@@ -429,7 +430,7 @@ static READ16_HANDLER( tmaster_blitter_r )
 
 static READ16_HANDLER( tmaster_coins_r )
 {
-	return input_port_read(machine, "COIN")|(mame_rand(machine)&0x0800);
+	return input_port_read(space->machine, "COIN")|(mame_rand(space->machine)&0x0800);
 }
 
 static ADDRESS_MAP_START( tmaster_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -486,7 +487,7 @@ static READ16_HANDLER( galgames_eeprom_r )
 static WRITE16_HANDLER( galgames_eeprom_w )
 {
 	if (data & ~0x0003)
-		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
+		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",cpu_get_pc(space->cpu),data);
 
 	if ( ACCESSING_BITS_0_7 )
 	{
@@ -504,7 +505,7 @@ static NVRAM_HANDLER( galgames )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&galgames_eeprom_interface);
+		eeprom_init(machine, &galgames_eeprom_interface);
 		if (file)	eeprom_load(file);
 	}
 }
@@ -529,7 +530,7 @@ static WRITE16_HANDLER( galgames_palette_data_w )
 		palette_data[palette_index] = data & 0xff;
 		if (++palette_index == 3)
 		{
-			palette_set_color(machine, palette_offset, MAKE_RGB(palette_data[0], palette_data[1], palette_data[2]));
+			palette_set_color(space->machine, palette_offset, MAKE_RGB(palette_data[0], palette_data[1], palette_data[2]));
 			palette_index = 0;
 			palette_offset++;
 		}
@@ -539,12 +540,12 @@ static WRITE16_HANDLER( galgames_palette_data_w )
 // Sound
 static READ16_HANDLER( galgames_okiram_r )
 {
-	return memory_region(machine, "oki")[offset] | 0xff00;
+	return memory_region(space->machine, "oki")[offset] | 0xff00;
 }
 static WRITE16_HANDLER( galgames_okiram_w )
 {
 	if (ACCESSING_BITS_0_7)
-		memory_region(machine, "oki")[offset] = data & 0xff;
+		memory_region(space->machine, "oki")[offset] = data & 0xff;
 }
 
 
@@ -573,14 +574,14 @@ static WRITE16_HANDLER( galgames_cart_clock_w )
 		// ROM/RAM banking
 		if ((data & 0xf7) == 0x05)
 		{
-			memory_set_bank(1, 1);	// ram
-			memory_set_bank(3, 0);	// rom
-			logerror("%06x: romram bank = %04x\n", activecpu_get_pc(), data);
+			memory_set_bank(space->machine, 1, 1);	// ram
+			memory_set_bank(space->machine, 3, 0);	// rom
+			logerror("%06x: romram bank = %04x\n", cpu_get_pc(space->cpu), data);
 		}
 		else
 		{
-			memory_set_bank(1, 0);	// rom
-			logerror("%06x: unknown romram bank = %04x\n", activecpu_get_pc(), data);
+			memory_set_bank(space->machine, 1, 0);	// rom
+			logerror("%06x: unknown romram bank = %04x\n", cpu_get_pc(space->cpu), data);
 		}
 	}
 }
@@ -744,7 +745,7 @@ INPUT_PORTS_END
 
 static MACHINE_START( tmaster )
 {
-	microtouch_init(microtouch_tx, 0);
+	microtouch_init(machine, microtouch_tx, 0);
 }
 
 static MACHINE_RESET( tmaster )
@@ -754,17 +755,17 @@ static MACHINE_RESET( tmaster )
 
 static INTERRUPT_GEN( tm3k_interrupt )
 {
-	switch (cpu_getiloops())
+	switch (cpu_getiloops(device))
 	{
-		case 0:		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);	break;
-		case 1:		cpunum_set_input_line(machine, 0, 3, HOLD_LINE);	break;
-		default:	cpunum_set_input_line(machine, 0, 1, HOLD_LINE);	break;
+		case 0:		cpu_set_input_line(device, 2, HOLD_LINE);	break;
+		case 1:		cpu_set_input_line(device, 3, HOLD_LINE);	break;
+		default:	cpu_set_input_line(device, 1, HOLD_LINE);	break;
 	}
 }
 
 static const duart68681_config tmaster_duart68681_config =
 {
-	XTAL_8_664MHz / 2, //??
+
 	duart_irq_handler,
 	duart_tx,
 	NULL,
@@ -779,8 +780,7 @@ static MACHINE_DRIVER_START( tm3k )
 	MDRV_MACHINE_START(tmaster)
 	MDRV_MACHINE_RESET(tmaster)
 
-	MDRV_DEVICE_ADD( "duart68681", DUART68681 )
-	MDRV_DEVICE_CONFIG( tmaster_duart68681_config )
+	MDRV_DUART68681_ADD( "duart68681", XTAL_8_664MHz / 2 /*??*/, tmaster_duart68681_config )
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
@@ -816,21 +816,23 @@ MACHINE_DRIVER_END
 
 static INTERRUPT_GEN( galgames_interrupt )
 {
-	switch (cpu_getiloops())
+	switch (cpu_getiloops(device))
 	{
-		case 0:		cpunum_set_input_line(machine, 0, 3, HOLD_LINE);	break;
+		case 0:		cpu_set_input_line(device, 3, HOLD_LINE);	break;
 					// lev 2 triggered at the end of a blit
-		default:	cpunum_set_input_line(machine, 0, 1, HOLD_LINE);	break;
+		default:	cpu_set_input_line(device, 1, HOLD_LINE);	break;
 	}
 }
 
 static MACHINE_RESET( galgames )
 {
-	memory_set_bank(1, 0);	// rom
-	memory_set_bank(3, 1);	// ram
+	memory_set_bank(machine, 1, 0);	// rom
+	memory_set_bank(machine, 3, 1);	// ram
 
-	memory_set_bank(2, 0);	// ram
-	memory_set_bank(4, 0);	// ram
+	memory_set_bank(machine, 2, 0);	// ram
+	memory_set_bank(machine, 4, 0);	// ram
+
+	device_reset(machine->cpu[0]);
 }
 
 static MACHINE_DRIVER_START( galgames )
@@ -1350,11 +1352,11 @@ static DRIVER_INIT( galgames )
 {
 	UINT8 *ROM = memory_region(machine, "main");
 	// configure memory banks
-	memory_configure_bank(1, 0, 2, ROM+0x1c0000, 0x40000);
-	memory_configure_bank(3, 0, 2, ROM+0x1c0000, 0x40000);
+	memory_configure_bank(machine, 1, 0, 2, ROM+0x1c0000, 0x40000);
+	memory_configure_bank(machine, 3, 0, 2, ROM+0x1c0000, 0x40000);
 
-	memory_configure_bank(2, 0, 1, ROM+0x200000, 0x40000);
-	memory_configure_bank(4, 0, 1, ROM+0x200000, 0x40000);
+	memory_configure_bank(machine, 2, 0, 1, ROM+0x200000, 0x40000);
+	memory_configure_bank(machine, 4, 0, 1, ROM+0x200000, 0x40000);
 }
 
 GAME( 1996, tm,       0,    tm,       tm,       0,        ROT0, "Midway",                         "Touchmaster (v3.00 Euro)",           0 )

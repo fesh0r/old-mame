@@ -14,6 +14,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6809/m6809.h"
 #include "cpu/m6800/m6800.h"
 #include "sound/namco.h"
 
@@ -52,19 +53,19 @@ static READ8_HANDLER( inputport_r )
 	switch (inputport_selected)
 	{
 		case 0x00:	/* DSW B (bits 0-4) */
-			return (input_port_read(machine, "DSWB") & 0xf8) >> 3; break;
+			return (input_port_read(space->machine, "DSWB") & 0xf8) >> 3; break;
 		case 0x01:	/* DSW B (bits 5-7), DSW A (bits 0-1) */
-			return ((input_port_read(machine, "DSWB") & 0x07) << 2) | ((input_port_read(machine, "DSWA") & 0xc0) >> 6); break;
+			return ((input_port_read(space->machine, "DSWB") & 0x07) << 2) | ((input_port_read(space->machine, "DSWA") & 0xc0) >> 6); break;
 		case 0x02:	/* DSW A (bits 2-6) */
-			return (input_port_read(machine, "DSWA") & 0x3e) >> 1; break;
+			return (input_port_read(space->machine, "DSWA") & 0x3e) >> 1; break;
 		case 0x03:	/* DSW A (bit 7), DSW C (bits 0-3) */
-			return ((input_port_read(machine, "DSWA") & 0x01) << 4) | (input_port_read(machine, "BUTTON2") & 0x0f); break;
+			return ((input_port_read(space->machine, "DSWA") & 0x01) << 4) | (input_port_read(space->machine, "BUTTON2") & 0x0f); break;
 		case 0x04:	/* coins, start */
-			return input_port_read(machine, "SYSTEM"); break;
+			return input_port_read(space->machine, "SYSTEM"); break;
 		case 0x05:	/* 2P controls */
-			return input_port_read(machine, "P2"); break;
+			return input_port_read(space->machine, "P2"); break;
 		case 0x06:	/* 1P controls */
-			return input_port_read(machine, "P1"); break;
+			return input_port_read(space->machine, "P1"); break;
 		default:
 			return 0xff;
 	}
@@ -79,36 +80,36 @@ static WRITE8_HANDLER( skykid_led_w )
 static WRITE8_HANDLER( skykid_subreset_w )
 {
 	int bit = !BIT(offset,11);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( skykid_bankswitch_w )
 {
-	memory_set_bank(1, !BIT(offset,11));
+	memory_set_bank(space->machine, 1, !BIT(offset,11));
 }
 
 static WRITE8_HANDLER( skykid_irq_1_ctrl_w )
 {
 	int bit = !BIT(offset,11);
-	cpu_interrupt_enable(0,bit);
+	cpu_interrupt_enable(space->machine->cpu[0],bit);
 	if (!bit)
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( skykid_irq_2_ctrl_w )
 {
 	int bit = !BIT(offset,13);
-	cpu_interrupt_enable(1,bit);
+	cpu_interrupt_enable(space->machine->cpu[1],bit);
 	if (!bit)
-		cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 }
 
 static MACHINE_START( skykid )
 {
 	/* configure the banks */
-	memory_configure_bank(1, 0, 2, memory_region(machine, "main") + 0x10000, 0x2000);
+	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, "main") + 0x10000, 0x2000);
 
-	state_save_register_global(inputport_selected);
+	state_save_register_global(machine, inputport_selected);
 }
 
 
@@ -459,7 +460,7 @@ static MACHINE_DRIVER_START( skykid )
 	MDRV_CPU_IO_MAP(mcu_port_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_INTERLEAVE(100)	/* we need heavy synch */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* we need heavy synch */
 
 	MDRV_MACHINE_START(skykid)
 

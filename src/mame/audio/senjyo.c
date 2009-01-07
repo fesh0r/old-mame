@@ -1,9 +1,6 @@
 #include "driver.h"
-#include "deprecat.h"
-#include "cpu/z80/z80daisy.h"
-#include "machine/z80pio.h"
-#include "machine/z80ctc.h"
 #include "sound/samples.h"
+#include "includes/senjyo.h"
 
 
 /* single tone generator */
@@ -43,8 +40,6 @@ const z80pio_interface senjyo_pio_intf =
 /* z80 ctc */
 const z80ctc_interface senjyo_ctc_intf =
 {
-	"sub",		 	/* clock from sub CPU */
-	0,               /* clock (filled in from the CPU 0 clock */
 	NOTIMER_2,       /* timer disables */
 	daisy_interrupt, /* interrupt handler */
 	z80ctc_trg1_w, 	 /* ZC/TO0 callback */
@@ -73,9 +68,10 @@ static TIMER_CALLBACK( senjyo_sh_update )
 }
 
 
-void senjyo_sh_start(void)
+SAMPLES_START( senjyo_sh_start )
 {
-    int i;
+	running_machine *machine = device->machine;
+	int i;
 
 	_single = (INT16 *)auto_malloc(SINGLE_LENGTH*2);
 
@@ -86,5 +82,5 @@ void senjyo_sh_start(void)
 	sample_set_volume(0,0);
 	sample_start_raw(0,_single,SINGLE_LENGTH,single_rate,1);
 
-	timer_pulse(video_screen_get_frame_period(Machine->primary_screen), NULL, 0, senjyo_sh_update);
+	timer_pulse(machine, video_screen_get_frame_period(machine->primary_screen), NULL, 0, senjyo_sh_update);
 }

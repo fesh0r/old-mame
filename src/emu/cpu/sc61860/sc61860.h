@@ -41,21 +41,22 @@
 typedef struct _sc61860_cpu_core sc61860_cpu_core;
 struct _sc61860_cpu_core
 {
-    int (*reset)(void);
-    int (*brk)(void);
-    int (*x)(void);
-    int (*ina)(void);
-    void (*outa)(int);
-    int (*inb)(void);
-    void (*outb)(int);
-    void (*outc)(int);
+    int (*reset)(const device_config *device);
+    int (*brk)(const device_config *device);
+    int (*x)(const device_config *device);
+    int (*ina)(const device_config *device);
+    void (*outa)(const device_config *device, int);
+    int (*inb)(const device_config *device);
+    void (*outb)(const device_config *device, int);
+    void (*outc)(const device_config *device, int);
 };
 
-unsigned sc61860_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+CPU_DISASSEMBLE( sc61860 );
 
 /* this is though for power on/off of the sharps */
-UINT8 *sc61860_internal_ram(void);
+UINT8 *sc61860_internal_ram(const device_config *device);
 
-void sc61860_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( sc61860 );
+#define CPU_SC61860 CPU_GET_INFO_NAME( sc61860 )
 
 #endif /* __SC61860_H__ */

@@ -31,7 +31,7 @@ VIDEO_START( mole )
 {
 	tileram = (UINT16 *)auto_malloc(0x400 * sizeof(UINT16));
 
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 40, 25);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 40, 25);
 }
 
 WRITE8_HANDLER( mole_videoram_w )
@@ -48,7 +48,7 @@ WRITE8_HANDLER( mole_tilebank_w )
 
 WRITE8_HANDLER( mole_flipscreen_w )
 {
-	flip_screen_set(data & 0x01);
+	flip_screen_set(space->machine, data & 0x01);
 }
 
 VIDEO_UPDATE( mole )

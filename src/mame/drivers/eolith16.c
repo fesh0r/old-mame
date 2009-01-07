@@ -10,6 +10,7 @@
 **********************************************************************/
 
 #include "driver.h"
+#include "cpu/e132xs/e132xs.h"
 #include "deprecat.h"
 #include "machine/eeprom.h"
 #include "sound/okim6295.h"
@@ -44,8 +45,8 @@ static WRITE16_HANDLER( eeprom_w )
 
 static READ16_HANDLER( eolith16_custom_r )
 {
-	eolith_speedup_read();
-	return input_port_read(machine, "SPECIAL");
+	eolith_speedup_read(space);
+	return input_port_read(space->machine, "SPECIAL");
 }
 
 
@@ -132,7 +133,7 @@ static NVRAM_HANDLER( eolith16_eeprom )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_interface_93C66);
+		eeprom_init(machine, &eeprom_interface_93C66);
 		if (file)	eeprom_load(file);
 	}
 }

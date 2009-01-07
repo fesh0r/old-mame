@@ -189,7 +189,6 @@
 
 #include "driver.h"
 #include "machine/rescap.h"
-#include "deprecat.h"
 #include "cpu/m6800/m6800.h"
 #include "cpu/m6809/m6809.h"
 #include "video/mc6845.h"
@@ -236,19 +235,19 @@ static void main_cpu_irq(running_machine *machine, int state)
 						 					pia_get_irq_b(2) |
 						 pia_get_irq_a(3) | pia_get_irq_b(3);
 
-	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static void main_cpu_firq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static void audio_cpu_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 1, M6802_IRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], M6800_IRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -269,16 +268,17 @@ static const pia6821_interface pia_1_intf =
 
 static INTERRUPT_GEN( update_pia_1 )
 {
+	const address_space *space = cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM);
 	/* update the different PIA pins from the input ports */
 
 	/* CA1 - copy of PA1 (COIN1) */
-	pia_1_ca1_w(machine, 0, input_port_read(machine, "IN0") & 0x02);
+	pia_1_ca1_w(space, 0, input_port_read(device->machine, "IN0") & 0x02);
 
 	/* CA2 - copy of PA0 (SERVICE1) */
-	pia_1_ca2_w(machine, 0, input_port_read(machine, "IN0") & 0x01);
+	pia_1_ca2_w(space, 0, input_port_read(device->machine, "IN0") & 0x01);
 
 	/* CB1 - (crosshatch) */
-	pia_1_cb1_w(machine, 0, input_port_read(machine, "XHATCH"));
+	pia_1_cb1_w(space, 0, input_port_read(device->machine, "XHATCH"));
 
 	/* CB2 - NOT CONNECTED */
 }
@@ -342,13 +342,14 @@ static const pia6821_interface pia_4_intf =
  *
  *************************************/
 
-static void ic60_74123_output_changed(int output)
+static WRITE8_DEVICE_HANDLER( ic60_74123_output_changed)
 {
-	pia_2_ca1_w(Machine, 0, output);
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	pia_2_ca1_w(space, 0, data);
 }
 
 
-static const TTL74123_interface ic60_intf =
+static const ttl74123_config ic60_intf =
 {
 	TTL74123_GROUNDED,	/* the hook up type */
 	RES_K(22),			/* resistor connected to RCext */
@@ -369,19 +370,17 @@ static const TTL74123_interface ic60_intf =
 
 static MACHINE_START( spiders )
 {
-	pia_config(1, &pia_1_intf);
-	pia_config(2, &pia_2_intf);
-	pia_config(3, &pia_3_intf);
-	pia_config(4, &pia_4_intf);
-
-	TTL74123_config(0, &ic60_intf);
+	pia_config(machine, 1, &pia_1_intf);
+	pia_config(machine, 2, &pia_2_intf);
+	pia_config(machine, 3, &pia_3_intf);
+	pia_config(machine, 4, &pia_4_intf);
 
 	/* setup for save states */
-	state_save_register_global(flipscreen);
-	state_save_register_global(gfx_rom_address);
-	state_save_register_global(gfx_rom_ctrl_mode);
-	state_save_register_global(gfx_rom_ctrl_latch);
-	state_save_register_global(gfx_rom_ctrl_data);
+	state_save_register_global(machine, flipscreen);
+	state_save_register_global(machine, gfx_rom_address);
+	state_save_register_global(machine, gfx_rom_ctrl_mode);
+	state_save_register_global(machine, gfx_rom_ctrl_latch);
+	state_save_register_global(machine, gfx_rom_ctrl_data);
 }
 
 
@@ -395,7 +394,6 @@ static MACHINE_START( spiders )
 static MACHINE_RESET( spiders )
 {
 	pia_reset();
-	TTL74123_reset(0);
 }
 
 
@@ -491,14 +489,13 @@ static MC6845_UPDATE_ROW( update_row )
 
 static MC6845_ON_DE_CHANGED( display_enable_changed )
 {
-	TTL74123_A_w(0, display_enabled);
+	ttl74123_a_w(devtag_get_device(device->machine, TTL74123, "ic60"), 0, display_enabled);
 }
 
 
 static const mc6845_interface mc6845_intf =
 {
 	"main",					/* screen we are acting on */
-	CRTC_CLOCK, 			/* the clock (pin 21) of the chip */
 	8,						/* number of pixels per video memory address */
 	begin_update,			/* before pixel update callback */
 	update_row,				/* row update callback */
@@ -540,7 +537,7 @@ static READ8_HANDLER( gfx_rom_r )
 
 	if (gfx_rom_ctrl_mode)
 	{
-		UINT8 *rom = memory_region(machine, "gfx1");
+		UINT8 *rom = memory_region(space->machine, "gfx1");
 
 		ret = rom[gfx_rom_address];
 
@@ -707,8 +704,11 @@ static MACHINE_DRIVER_START( spiders )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 256, 0, 256, 256, 0, 256)	/* temporary, CRTC will configure screen */
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
-	MDRV_DEVICE_CONFIG(mc6845_intf)
+	MDRV_MC6845_ADD("crtc", MC6845, CRTC_CLOCK, mc6845_intf)
+
+	/* 74LS123 */
+
+	MDRV_TTL74123_ADD("ic60", ic60_intf)
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(spiders_audio)

@@ -29,6 +29,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/sn76496.h"
@@ -39,19 +40,19 @@ static UINT8 cpu2_m6000=0;
 
 static WRITE8_HANDLER( cpu1_reset_w )
 {
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( cpu2_reset_w )
 {
-	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( mcu_reset_w )
 {
 	/* the bootlegs don't have a MCU, so make sure it's there before trying to reset it */
-	if (cpu_gettotalcpu() >= 4)
-		cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
+	if (space->machine->cpu[3] != NULL)
+		cpu_set_input_line(space->machine->cpu[3], INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( cpu2_m6000_w )
@@ -66,26 +67,26 @@ static READ8_HANDLER( cpu0_mf800_r )
 
 static WRITE8_HANDLER( soundcommand_w )
 {
-      soundlatch_w(machine, 0, data);
-      cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
+      soundlatch_w(space, 0, data);
+      cpu_set_input_line(space->machine->cpu[2], 0, HOLD_LINE);
 }
 
 static WRITE8_HANDLER( irq0_ack_w )
 {
 	int bit = data & 1;
 
-	cpu_interrupt_enable(0,bit);
+	cpu_interrupt_enable(space->machine->cpu[0],bit);
 	if (!bit)
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( irq1_ack_w )
 {
 	int bit = data & 1;
 
-	cpu_interrupt_enable(1,bit);
+	cpu_interrupt_enable(space->machine->cpu[1],bit);
 	if (!bit)
-		cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+		cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( coincounter_w )
@@ -353,7 +354,7 @@ static MACHINE_DRIVER_START( retofinv )
 	MDRV_CPU_ADD("68705", M68705,18432000/6)	/* 3.072 MHz? */
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 
-	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - enough for the sound CPU to read all commands */
+	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

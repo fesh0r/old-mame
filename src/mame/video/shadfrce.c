@@ -67,13 +67,13 @@ WRITE16_HANDLER( shadfrce_bg1videoram_w )
 
 VIDEO_START( shadfrce )
 {
-	shadfrce_fgtilemap = tilemap_create(get_shadfrce_fgtile_info,tilemap_scan_rows,    8,  8,64,32);
+	shadfrce_fgtilemap = tilemap_create(machine, get_shadfrce_fgtile_info,tilemap_scan_rows,    8,  8,64,32);
 	tilemap_set_transparent_pen(shadfrce_fgtilemap,0);
 
-	shadfrce_bg0tilemap = tilemap_create(get_shadfrce_bg0tile_info,tilemap_scan_rows, 16, 16,32,32);
+	shadfrce_bg0tilemap = tilemap_create(machine, get_shadfrce_bg0tile_info,tilemap_scan_rows, 16, 16,32,32);
 	tilemap_set_transparent_pen(shadfrce_bg0tilemap,0);
 
-	shadfrce_bg1tilemap = tilemap_create(get_shadfrce_bg1tile_info,tilemap_scan_rows, 16, 16,32,32);
+	shadfrce_bg1tilemap = tilemap_create(machine, get_shadfrce_bg1tile_info,tilemap_scan_rows, 16, 16,32,32);
 
 	shadfrce_spvideoram_old = auto_malloc(spriteram_size);
 }
@@ -151,7 +151,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 VIDEO_UPDATE( shadfrce )
 {
-	fillbitmap(priority_bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
 
 	if(shadfrce_video_enable)
 	{
@@ -162,7 +162,7 @@ VIDEO_UPDATE( shadfrce )
 	}
 	else
 	{
-		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 	}
 
 	return 0;

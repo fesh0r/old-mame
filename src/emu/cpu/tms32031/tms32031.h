@@ -18,12 +18,17 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-struct tms32031_config
+typedef void (*tms32031_xf_func)(const device_config *device, UINT8 val);
+typedef void (*tms32031_iack_func)(const device_config *device, UINT8 val, offs_t address);
+
+
+typedef struct _tms32031_config tms32031_config;
+struct _tms32031_config
 {
-	UINT32		bootoffset;
-	void		(*xf0_w)(UINT8 val);
-	void		(*xf1_w)(UINT8 val);
-	void		(*iack_w)(UINT8 val, offs_t addr);
+	UINT32				bootoffset;
+	tms32031_xf_func	xf0_w;
+	tms32031_xf_func	xf1_w;
+	tms32031_iack_func	iack_w;
 };
 
 
@@ -69,8 +74,11 @@ enum
     PUBLIC FUNCTIONS
 ***************************************************************************/
 
-extern void tms32031_get_info(UINT32 state, cpuinfo *info);
-extern void tms32032_get_info(UINT32 state, cpuinfo *info);
+extern CPU_GET_INFO( tms32031 );
+extern CPU_GET_INFO( tms32032 );
+
+#define CPU_TMS32031 CPU_GET_INFO_NAME( tms32031 )
+#define CPU_TMS32032 CPU_GET_INFO_NAME( tms32032 )
 
 extern float convert_tms3203x_fp_to_float(UINT32 floatdata);
 extern double convert_tms3203x_fp_to_double(UINT32 floatdata);

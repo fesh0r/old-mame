@@ -99,14 +99,15 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "pacman.h"
 #include "sound/namco.h"
 
 
 static WRITE8_HANDLER( jrpacman_interrupt_vector_w )
 {
-	cpunum_set_input_line_vector(0, 0, data);
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line_vector(space->machine->cpu[0], 0, data);
+	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
 

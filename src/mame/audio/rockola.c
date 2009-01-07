@@ -11,7 +11,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "streams.h"
 #include "sound/custom.h"
 #include "sound/sn76477.h"
@@ -23,8 +22,6 @@
 #ifndef M_LN2
 #define M_LN2		0.69314718055994530942
 #endif
-
-extern WRITE8_HANDLER( rockola_flipscreen_w );
 
 #define TONE_VOLUME	50
 #define CHANNELS	3
@@ -396,15 +393,15 @@ INLINE void validate_tone_channel(running_machine *machine, int channel)
 	}
 }
 
-static void rockola_tone_update(void *param, stream_sample_t **inputs, stream_sample_t **outputs, int len)
+static STREAM_UPDATE( rockola_tone_update )
 {
 	stream_sample_t *buffer = outputs[0];
 	int i;
 
 	for (i = 0; i < CHANNELS; i++)
-		validate_tone_channel(Machine, i);
+		validate_tone_channel(device->machine, i);
 
-	while (len-- > 0)
+	while (samples-- > 0)
 	{
 		INT32 data = 0;
 
@@ -437,7 +434,7 @@ static void rockola_tone_update(void *param, stream_sample_t **inputs, stream_sa
 				tone_channels[i].offset++;
 				tone_channels[i].offset &= tone_channels[i].mask;
 
-				validate_tone_channel(Machine, i);
+				validate_tone_channel(device->machine, i);
 			}
 
 			if (tone_channels[0].offset == 0 && Sound0StopOnRollover)
@@ -629,7 +626,7 @@ void rockola_set_music_clock(double clock_time)
 	tone_clock = 0;
 }
 
-void *rockola_sh_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( rockola_sh_start )
 {
 	// adjusted
 	rockola_set_music_freq(43000);
@@ -637,7 +634,7 @@ void *rockola_sh_start(int clock, const custom_sound_interface *config)
 	// 38.99 Hz update (according to schematic)
 	rockola_set_music_clock(M_LN2 * (RES_K(18) * 2 + RES_K(1)) * CAP_U(1));
 
-	tone_stream = stream_create(0, 1, SAMPLE_RATE, NULL, rockola_tone_update);
+	tone_stream = stream_create(device, 0, 1, SAMPLE_RATE, NULL, rockola_tone_update);
 
 	return auto_malloc(1);
 }
@@ -912,7 +909,7 @@ WRITE8_HANDLER( fantasy_sound_w )
 		}
 
 		/* BOMB */
-		discrete_sound_w(machine, FANTASY_BOMB_EN, data & 0x80);
+		discrete_sound_w(space, FANTASY_BOMB_EN, data & 0x80);
 
 		LastPort1 = data;
 		break;
@@ -977,7 +974,7 @@ WRITE8_HANDLER( fantasy_sound_w )
 		tone_channels[2].base = 0x1000 + ((data & 0x70) << 4);
 		tone_channels[2].mask = 0xff;
 
-		rockola_flipscreen_w(machine, 0, data);
+		rockola_flipscreen_w(space, 0, data);
 		break;
 	}
 }

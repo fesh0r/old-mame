@@ -9,6 +9,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "exidy.h"
 #include "machine/74181.h"
 #include "sound/s14001a.h"
@@ -159,7 +160,7 @@ static TIMER_CALLBACK( irq_callback )
 
 	/* set the IRQ line if enabled */
 	if (irq_enabled)
-		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xfc);
+		cpu_set_input_line_and_vector(machine->cpu[0], 0, HOLD_LINE, 0xfc);
 
 	/* set up for next interrupt */
 	next_irq_number = (irq_number + 1) % IRQS_PER_FRAME;
@@ -171,9 +172,9 @@ static TIMER_CALLBACK( irq_callback )
 }
 
 
-static void create_irq_timer(void)
+static void create_irq_timer(running_machine *machine)
 {
-	irq_timer = timer_alloc(irq_callback, NULL);
+	irq_timer = timer_alloc(machine, irq_callback, NULL);
 }
 
 
@@ -236,7 +237,7 @@ static TIMER_CALLBACK( nmi_callback )
 
 	/* pulse the NMI line if enabled */
 	if (nmi_enabled)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 
 	/* set up for next interrupt */
 	next_nmi_number = (nmi_number + 1) % NMIS_PER_FRAME;
@@ -248,9 +249,9 @@ static TIMER_CALLBACK( nmi_callback )
 }
 
 
-static void create_nmi_timer(void)
+static void create_nmi_timer(running_machine *machine)
 {
-	nmi_timer = timer_alloc(nmi_callback, NULL);
+	nmi_timer = timer_alloc(machine, nmi_callback, NULL);
 }
 
 
@@ -270,15 +271,15 @@ static void start_nmi_timer(running_machine *machine)
 
 static MACHINE_START( berzerk )
 {
-	create_irq_timer();
-	create_nmi_timer();
+	create_irq_timer(machine);
+	create_nmi_timer(machine);
 
 	/* register for state saving */
-	state_save_register_global(magicram_control);
-	state_save_register_global(last_shift_data);
-	state_save_register_global(intercept);
-	state_save_register_global(irq_enabled);
-	state_save_register_global(nmi_enabled);
+	state_save_register_global(machine, magicram_control);
+	state_save_register_global(machine, last_shift_data);
+	state_save_register_global(machine, intercept);
+	state_save_register_global(machine, irq_enabled);
+	state_save_register_global(machine, nmi_enabled);
 }
 
 
@@ -377,7 +378,7 @@ static READ8_HANDLER( intercept_v256_r )
 	UINT8 counter;
 	UINT8 v256;
 
-	vpos_to_vysnc_chain_counter(video_screen_get_vpos(machine->primary_screen), &counter, &v256);
+	vpos_to_vysnc_chain_counter(video_screen_get_vpos(space->machine->primary_screen), &counter, &v256);
 
 	return (!intercept << 7) | v256;
 }
@@ -515,12 +516,12 @@ static WRITE8_HANDLER( berzerk_audio_w )
 
 	/* offset 6 writes to the sfxcontrol latch */
 	case 6:
-		exidy_sfxctrl_w(machine, data >> 6, data);
+		exidy_sfxctrl_w(space, data >> 6, data);
 		break;
 
 	/* everything else writes to the 6840 */
 	default:
-		exidy_sh6840_w(machine, offset, data);
+		exidy_sh6840_w(space, offset, data);
 		break;
 
 	}
@@ -536,8 +537,9 @@ static READ8_HANDLER( berzerk_audio_r )
 
 static SOUND_RESET(berzerk)
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO);
 	/* clears the flip-flop controlling the volume and freq on the speech chip */
-	berzerk_audio_w(machine, 4, 0x40);
+	berzerk_audio_w(space, 4, 0x40);
 }
 
 

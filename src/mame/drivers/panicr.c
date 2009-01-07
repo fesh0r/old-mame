@@ -60,6 +60,8 @@ D.9B         [f99cac4b] /
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/nec/nec.h"
 #include "deprecat.h"
 #include "audio/t5182.h"
 
@@ -188,9 +190,9 @@ ADDRESS_MAP_END
 
 static VIDEO_START( panicr )
 {
-	bgtilemap = tilemap_create( get_bgtile_info,tilemap_scan_rows,16,16,1024,16 );
+	bgtilemap = tilemap_create( machine, get_bgtile_info,tilemap_scan_rows,16,16,1024,16 );
 
-	txttilemap = tilemap_create( get_txttile_info,tilemap_scan_rows,8,8,32,32 );
+	txttilemap = tilemap_create( machine, get_txttile_info,tilemap_scan_rows,8,8,32,32 );
 	colortable_configure_tilemap_groups(machine->colortable, txttilemap, machine->gfx[0], 0);
 }
 
@@ -220,7 +222,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 
 static VIDEO_UPDATE( panicr)
 {
-	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 	tilemap_mark_all_tiles_dirty( txttilemap );
 	tilemap_set_scrollx( bgtilemap,0, ((scrollram[0x02]&0x0f)<<12)+((scrollram[0x02]&0xf0)<<4)+((scrollram[0x04]&0x7f)<<1)+((scrollram[0x04]&0x80)>>7) );
 	tilemap_draw(bitmap,cliprect,bgtilemap,0,0);
@@ -232,10 +234,10 @@ static VIDEO_UPDATE( panicr)
 
 static INTERRUPT_GEN( panicr_interrupt )
 {
-	if (cpu_getiloops())
-		cpunum_set_input_line_and_vector(machine, cpunum, 0, HOLD_LINE, 0xc8/4);
+	if (cpu_getiloops(device))
+		cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xc8/4);
 	else
-		cpunum_set_input_line_and_vector(machine, cpunum, 0, HOLD_LINE, 0xc4/4);
+		cpu_set_input_line_and_vector(device, 0, HOLD_LINE, 0xc4/4);
 }
 
 static INPUT_PORTS_START( panicr )

@@ -119,7 +119,7 @@ WRITE8_HANDLER( redclash_gfxbank_w )
 
 WRITE8_HANDLER( redclash_flipscreen_w )
 {
-	flip_screen_set(data & 0x01);
+	flip_screen_set(space->machine, data & 0x01);
 }
 
 void redclash_set_stars_enable( UINT8 on ); //temp
@@ -167,7 +167,7 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( redclash )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
@@ -260,7 +260,7 @@ popmessage("unknown sprite size 0");
 	}
 }
 
-static void draw_bullets(bitmap_t *bitmap, const rectangle *cliprect )
+static void draw_bullets(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -270,7 +270,7 @@ static void draw_bullets(bitmap_t *bitmap, const rectangle *cliprect )
 		int sx = 8 * offs + (videoram[offs] & 0x07);	/* ?? */
 		int sy = 0xff - videoram[offs + 0x20];
 
-		if (flip_screen_get())
+		if (flip_screen_get(machine))
 		{
 			sx = 240 - sx;
 		}
@@ -421,10 +421,10 @@ VIDEO_EOF( redclash )
 
 VIDEO_UPDATE( redclash )
 {
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 	redclash_draw_stars(bitmap, cliprect, 0x60, 0, 0x00, 0xff);
 	draw_sprites(screen->machine, bitmap, cliprect);
-	draw_bullets(bitmap, cliprect);
+	draw_bullets(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }

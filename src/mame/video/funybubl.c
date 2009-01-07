@@ -23,7 +23,7 @@ WRITE8_HANDLER ( funybubl_paldatawrite )
 
 	coldat = funybubl_paletteram[colchanged*4] | (funybubl_paletteram[colchanged*4+1] << 8) | (funybubl_paletteram[colchanged*4+2] << 16) | (funybubl_paletteram[colchanged*4+3] << 24);
 
-	palette_set_color_rgb(machine,colchanged,pal6bit(coldat >> 12),pal6bit(coldat >> 0),pal6bit(coldat >> 6));
+	palette_set_color_rgb(space->machine,colchanged,pal6bit(coldat >> 12),pal6bit(coldat >> 0),pal6bit(coldat >> 6));
 }
 
 
@@ -81,7 +81,7 @@ VIDEO_UPDATE(funybubl)
 
 	offs = 0;
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 
 	/* tilemap .. convert it .. banking makes it slightly more annoying but still easy */

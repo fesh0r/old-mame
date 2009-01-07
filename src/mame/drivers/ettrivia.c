@@ -25,6 +25,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 /* it uses the same palette layout as in naughtyb */
@@ -64,12 +65,12 @@ static WRITE8_HANDLER( ettrivia_control_w )
 
 	coin_counter_w(0, data & 0x80);
 
-	flip_screen_set(data & 1);
+	flip_screen_set(space->machine, data & 1);
 }
 
 static READ8_HANDLER( ettrivia_question_r )
 {
-	UINT8 *QUESTIONS = memory_region(machine, "user1");
+	UINT8 *QUESTIONS = memory_region(space->machine, "user1");
 	return QUESTIONS[offset + 0x10000 * question_bank];
 }
 
@@ -93,20 +94,20 @@ static WRITE8_HANDLER( b800_w )
 		/* special case to return the value written to 0xb000 */
 		/* does it reset the chips too ? */
 		case 0:	break;
-		case 0xc4: b000_ret = ay8910_read_port_0_r(machine,0);	break;
-		case 0x94: b000_ret = ay8910_read_port_1_r(machine,0);	break;
-		case 0x86: b000_ret = ay8910_read_port_2_r(machine,0);	break;
+		case 0xc4: b000_ret = ay8910_read_port_0_r(space,0);	break;
+		case 0x94: b000_ret = ay8910_read_port_1_r(space,0);	break;
+		case 0x86: b000_ret = ay8910_read_port_2_r(space,0);	break;
 
 		case 0x80:
 			switch(b800_prev)
 			{
-				case 0xe0: ay8910_control_port_0_w(machine,0,b000_val);	break;
-				case 0x98: ay8910_control_port_1_w(machine,0,b000_val);	break;
-				case 0x83: ay8910_control_port_2_w(machine,0,b000_val);	break;
+				case 0xe0: ay8910_control_port_0_w(space,0,b000_val);	break;
+				case 0x98: ay8910_control_port_1_w(space,0,b000_val);	break;
+				case 0x83: ay8910_control_port_2_w(space,0,b000_val);	break;
 
-				case 0xa0: ay8910_write_port_0_w(machine,0,b000_val);	break;
-				case 0x88: ay8910_write_port_1_w(machine,0,b000_val);	break;
-				case 0x81: ay8910_write_port_2_w(machine,0,b000_val);	break;
+				case 0xa0: ay8910_write_port_0_w(space,0,b000_val);	break;
+				case 0x88: ay8910_write_port_1_w(space,0,b000_val);	break;
+				case 0x81: ay8910_write_port_2_w(space,0,b000_val);	break;
 
 			}
 		break;
@@ -194,8 +195,8 @@ static TILE_GET_INFO( get_tile_info_fg )
 
 static VIDEO_START( ettrivia )
 {
-	bg_tilemap = tilemap_create( get_tile_info_bg,tilemap_scan_rows,8,8,64,32 );
-	fg_tilemap = tilemap_create( get_tile_info_fg,tilemap_scan_rows,8,8,64,32 );
+	bg_tilemap = tilemap_create( machine, get_tile_info_bg,tilemap_scan_rows,8,8,64,32 );
+	fg_tilemap = tilemap_create( machine, get_tile_info_fg,tilemap_scan_rows,8,8,64,32 );
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
@@ -230,10 +231,10 @@ static const ay8910_interface ay8912_interface_3 =
 
 static INTERRUPT_GEN( ettrivia_interrupt )
 {
-	if( input_port_read(machine, "COIN") & 0x01 )
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+	if( input_port_read(device->machine, "COIN") & 0x01 )
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 	else
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(device, 0, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( ettrivia )

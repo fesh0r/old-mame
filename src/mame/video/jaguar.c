@@ -135,7 +135,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "memconv.h"
 #include "profiler.h"
 #include "machine/atarigen.h"
@@ -214,17 +213,17 @@ static void jagobj_init(void);
 static void process_object_list(running_machine *machine, int vc, UINT16 *_scanline);
 
 /* from jagblit.c */
-static void generic_blitter(UINT32 command, UINT32 a1flags, UINT32 a2flags);
-static void blitter_09800001_010020_010020(UINT32 command, UINT32 a1flags, UINT32 a2flags);
-static void blitter_09800009_000020_000020(UINT32 command, UINT32 a1flags, UINT32 a2flags);
-static void blitter_01800009_000028_000028(UINT32 command, UINT32 a1flags, UINT32 a2flags);
-static void blitter_01800001_000018_000018(UINT32 command, UINT32 a1flags, UINT32 a2flags);
-static void blitter_01c00001_000018_000018(UINT32 command, UINT32 a1flags, UINT32 a2flags);
+static void generic_blitter(running_machine *machine, UINT32 command, UINT32 a1flags, UINT32 a2flags);
+static void blitter_09800001_010020_010020(running_machine *machine, UINT32 command, UINT32 a1flags, UINT32 a2flags);
+static void blitter_09800009_000020_000020(running_machine *machine, UINT32 command, UINT32 a1flags, UINT32 a2flags);
+static void blitter_01800009_000028_000028(running_machine *machine, UINT32 command, UINT32 a1flags, UINT32 a2flags);
+static void blitter_01800001_000018_000018(running_machine *machine, UINT32 command, UINT32 a1flags, UINT32 a2flags);
+static void blitter_01c00001_000018_000018(running_machine *machine, UINT32 command, UINT32 a1flags, UINT32 a2flags);
 
 #ifdef MESS
-static void blitter_00010000_xxxxxx_xxxxxx(UINT32 command, UINT32 a1flags, UINT32 a2flags);
-static void blitter_01800001_xxxxxx_xxxxxx(UINT32 command, UINT32 a1flags, UINT32 a2flags);
-static void blitter_x1800x01_xxxxxx_xxxxxx(UINT32 command, UINT32 a1flags, UINT32 a2flags);
+static void blitter_00010000_xxxxxx_xxxxxx(running_machine *machine, UINT32 command, UINT32 a1flags, UINT32 a2flags);
+static void blitter_01800001_xxxxxx_xxxxxx(running_machine *machine, UINT32 command, UINT32 a1flags, UINT32 a2flags);
+static void blitter_x1800x01_xxxxxx_xxxxxx(running_machine *machine, UINT32 command, UINT32 a1flags, UINT32 a2flags);
 #endif
 
 
@@ -307,15 +306,15 @@ INLINE int adjust_object_timer(running_machine *machine, int vc)
  *
  *************************************/
 
-void jaguar_gpu_suspend(void)
+void jaguar_gpu_suspend(running_machine *machine)
 {
-	cpunum_suspend(1, SUSPEND_REASON_SPIN, 1);
+	cpu_suspend(machine->cpu[1], SUSPEND_REASON_SPIN, 1);
 }
 
 
-void jaguar_gpu_resume(void)
+void jaguar_gpu_resume(running_machine *machine)
 {
-	cpunum_resume(1, SUSPEND_REASON_SPIN);
+	cpu_resume(machine->cpu[1], SUSPEND_REASON_SPIN);
 }
 
 
@@ -329,23 +328,23 @@ void jaguar_gpu_resume(void)
 static void update_cpu_irq(running_machine *machine)
 {
 	if (cpu_irq_state & gpu_regs[INT1] & 0x1f)
-		cpunum_set_input_line(machine, 0, cojag_is_r3000 ? R3000_IRQ4 : MC68000_IRQ_6, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], cojag_is_r3000 ? R3000_IRQ4 : M68K_IRQ_6, ASSERT_LINE);
 	else
-		cpunum_set_input_line(machine, 0, cojag_is_r3000 ? R3000_IRQ4 : MC68000_IRQ_6, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], cojag_is_r3000 ? R3000_IRQ4 : M68K_IRQ_6, CLEAR_LINE);
 }
 
 
-void jaguar_gpu_cpu_int(void)
+void jaguar_gpu_cpu_int(const device_config *device)
 {
 	cpu_irq_state |= 2;
-	update_cpu_irq(Machine);
+	update_cpu_irq(device->machine);
 }
 
 
-void jaguar_dsp_cpu_int(void)
+void jaguar_dsp_cpu_int(const device_config *device)
 {
 	cpu_irq_state |= 16;
-	update_cpu_irq(Machine);
+	update_cpu_irq(device->machine);
 }
 
 
@@ -478,9 +477,9 @@ static void jaguar_set_palette(UINT16 vmode)
  *
  *************************************/
 
-static UINT8 *get_jaguar_memory(UINT32 offset)
+static UINT8 *get_jaguar_memory(running_machine *machine, UINT32 offset)
 {
-	return memory_get_read_ptr(1, ADDRESS_SPACE_PROGRAM, offset);
+	return memory_get_read_ptr(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), offset);
 }
 
 
@@ -491,7 +490,7 @@ static UINT8 *get_jaguar_memory(UINT32 offset)
  *
  *************************************/
 
-static void blitter_run(void)
+static void blitter_run(running_machine *machine)
 {
 	UINT32 command = blitter_regs[B_CMD] & STATIC_COMMAND_MASK;
 	UINT32 a1flags = blitter_regs[A1_FLAGS] & STATIC_FLAGS_MASK;
@@ -503,29 +502,29 @@ static void blitter_run(void)
 	{
 		if (command == 0x09800001 && a1flags == 0x010020)
 		{
-			blitter_09800001_010020_010020(blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
+			blitter_09800001_010020_010020(machine, blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
 			return;
 		}
 		if (command == 0x09800009 && a1flags == 0x000020)
 		{
-			blitter_09800009_000020_000020(blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
+			blitter_09800009_000020_000020(machine, blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
 			return;
 		}
 		if (command == 0x01800009 && a1flags == 0x000028)
 		{
-			blitter_01800009_000028_000028(blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
+			blitter_01800009_000028_000028(machine, blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
 			return;
 		}
 
 		if (command == 0x01800001 && a1flags == 0x000018)
 		{
-			blitter_01800001_000018_000018(blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
+			blitter_01800001_000018_000018(machine, blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
 			return;
 		}
 
 		if (command == 0x01c00001 && a1flags == 0x000018)
 		{
-			blitter_01c00001_000018_000018(blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
+			blitter_01c00001_000018_000018(machine, blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
 			return;
 		}
 	}
@@ -533,19 +532,19 @@ static void blitter_run(void)
 #ifdef MESS
 	if (command == 0x00010000)
 	{
-		blitter_00010000_xxxxxx_xxxxxx(blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
+		blitter_00010000_xxxxxx_xxxxxx(machine, blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
 		return;
 	}
 
 	if (command == 0x01800001)
 	{
-		blitter_01800001_xxxxxx_xxxxxx(blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
+		blitter_01800001_xxxxxx_xxxxxx(machine, blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
 		return;
 	}
 
 	if ((command & 0x0ffff0ff) == 0x01800001)
 	{
-		blitter_x1800x01_xxxxxx_xxxxxx(blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
+		blitter_x1800x01_xxxxxx_xxxxxx(machine, blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
 		return;
 	}
 #endif
@@ -585,7 +584,7 @@ if (++reps % 100 == 99)
 }
 }
 
-	generic_blitter(blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
+	generic_blitter(machine, blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
 	profiler_mark(PROFILER_END);
 }
 
@@ -598,7 +597,7 @@ READ32_HANDLER( jaguar_blitter_r )
 			return 0x00000001;
 
 		default:
-			logerror("%08X:Blitter read register @ F022%02X\n", activecpu_get_previouspc(), offset * 4);
+			logerror("%08X:Blitter read register @ F022%02X\n", cpu_get_previouspc(space->cpu), offset * 4);
 			return 0;
 	}
 }
@@ -608,10 +607,10 @@ WRITE32_HANDLER( jaguar_blitter_w )
 {
 	COMBINE_DATA(&blitter_regs[offset]);
 	if (offset == B_CMD)
-		blitter_run();
+		blitter_run(space->machine);
 
 	if (LOG_BLITTER_WRITE)
-	logerror("%08X:Blitter write register @ F022%02X = %08X\n", activecpu_get_previouspc(), offset * 4, data);
+	logerror("%08X:Blitter write register @ F022%02X = %08X\n", cpu_get_previouspc(space->cpu), offset * 4, data);
 }
 
 
@@ -625,7 +624,7 @@ WRITE32_HANDLER( jaguar_blitter_w )
 READ16_HANDLER( jaguar_tom_regs_r )
 {
 	if (offset != INT1 && offset != INT2 && offset != HC && offset != VC)
-		logerror("%08X:TOM read register @ F00%03X\n", activecpu_get_previouspc(), offset * 2);
+		logerror("%08X:TOM read register @ F00%03X\n", cpu_get_previouspc(space->cpu), offset * 2);
 
 	switch (offset)
 	{
@@ -633,10 +632,10 @@ READ16_HANDLER( jaguar_tom_regs_r )
 			return cpu_irq_state;
 
 		case HC:
-			return video_screen_get_hpos(machine->primary_screen) % (video_screen_get_width(machine->primary_screen) / 2);
+			return video_screen_get_hpos(space->machine->primary_screen) % (video_screen_get_width(space->machine->primary_screen) / 2);
 
 		case VC:
-			return video_screen_get_vpos(machine->primary_screen) * 2 + gpu_regs[VBE];
+			return video_screen_get_vpos(space->machine->primary_screen) * 2 + gpu_regs[VBE];
 
 	}
 
@@ -654,7 +653,7 @@ WRITE16_HANDLER( jaguar_tom_regs_w )
 		{
 			case INT1:
 				cpu_irq_state &= ~(gpu_regs[INT1] >> 8);
-				update_cpu_irq(machine);
+				update_cpu_irq(space->machine);
 				break;
 
 			case VMODE:
@@ -688,7 +687,7 @@ WRITE16_HANDLER( jaguar_tom_regs_w )
 					visarea.max_x = hbstart / 2 - 1;
 					visarea.min_y = vbend / 2;
 					visarea.max_y = vbstart / 2 - 1;
-					video_screen_configure(machine->primary_screen, hperiod / 2, vperiod / 2, &visarea, HZ_TO_ATTOSECONDS((double)COJAG_PIXEL_CLOCK * 2 / hperiod / vperiod));
+					video_screen_configure(space->machine->primary_screen, hperiod / 2, vperiod / 2, &visarea, HZ_TO_ATTOSECONDS((double)COJAG_PIXEL_CLOCK * 2 / hperiod / vperiod));
 				}
 				break;
 			}
@@ -696,7 +695,7 @@ WRITE16_HANDLER( jaguar_tom_regs_w )
 	}
 
 	if (offset != INT2 && offset != VI)
-		logerror("%08X:TOM write register @ F00%03X = %04X\n", activecpu_get_previouspc(), offset * 2, data);
+		logerror("%08X:TOM write register @ F00%03X = %04X\n", cpu_get_previouspc(space->cpu), offset * 2, data);
 }
 
 
@@ -709,13 +708,13 @@ WRITE16_HANDLER( jaguar_tom_regs_w )
 
 READ32_HANDLER( jaguar_tom_regs32_r )
 {
-	return read32be_with_16be_handler(jaguar_tom_regs_r, machine, offset, mem_mask);
+	return read32be_with_16be_handler(jaguar_tom_regs_r, space, offset, mem_mask);
 }
 
 
 WRITE32_HANDLER( jaguar_tom_regs32_w )
 {
-	write32be_with_16be_handler(jaguar_tom_regs_w, machine, offset, data, mem_mask);
+	write32be_with_16be_handler(jaguar_tom_regs_w, space, offset, data, mem_mask);
 }
 
 
@@ -733,15 +732,15 @@ READ32_HANDLER( cojag_gun_input_r )
 	switch (offset)
 	{
 		case 0:
-			get_crosshair_xy(machine, 1, &beamx, &beamy);
+			get_crosshair_xy(space->machine, 1, &beamx, &beamy);
 			return (beamy << 16) | (beamx ^ 0x1ff);
 
 		case 1:
-			get_crosshair_xy(machine, 0, &beamx, &beamy);
+			get_crosshair_xy(space->machine, 0, &beamx, &beamy);
 			return (beamy << 16) | (beamx ^ 0x1ff);
 
 		case 2:
-			return input_port_read(machine, "IN3");
+			return input_port_read(space->machine, "IN3");
 	}
 	return 0;
 }
@@ -809,7 +808,7 @@ static STATE_POSTLOAD( cojag_postload )
 
 VIDEO_START( cojag )
 {
-	object_timer = timer_alloc(cojag_scanline_update, NULL);
+	object_timer = timer_alloc(machine, cojag_scanline_update, NULL);
 	adjust_object_timer(machine, 0);
 
 	screen_bitmap = auto_bitmap_alloc(720, 512, BITMAP_FORMAT_RGB32);
@@ -818,10 +817,10 @@ VIDEO_START( cojag )
 
 	pen_table = auto_malloc(65536 * sizeof(pen_t));
 
-	state_save_register_global_pointer(pen_table, 65536);
-	state_save_register_global_array(blitter_regs);
-	state_save_register_global_array(gpu_regs);
-	state_save_register_global(cpu_irq_state);
+	state_save_register_global_pointer(machine, pen_table, 65536);
+	state_save_register_global_array(machine, blitter_regs);
+	state_save_register_global_array(machine, gpu_regs);
+	state_save_register_global(machine, cpu_irq_state);
 	state_save_register_postload(machine, cojag_postload, NULL);
 }
 
@@ -838,7 +837,7 @@ VIDEO_UPDATE( cojag )
 	/* if not enabled, just blank */
 	if (!(gpu_regs[VMODE] & 1))
 	{
-		fillbitmap(bitmap, 0, cliprect);
+		bitmap_fill(bitmap, cliprect, 0);
 		return 0;
 	}
 

@@ -38,12 +38,12 @@ static VIDEO_START( slapshot_core )
 	spriteram_buffered = auto_malloc(spriteram_size);
 	spritelist = auto_malloc(0x400 * sizeof(*spritelist));
 
-	if (has_TC0480SCP())	/* it's a tc0480scp game */
+	if (has_TC0480SCP(machine))	/* it's a tc0480scp game */
 		TC0480SCP_vh_start(machine,TC0480SCP_GFX_NUM,taito_hide_pixels,30,9,-1,1,0,2,256);
 	else	/* it's a tc0100scn game */
 		TC0100SCN_vh_start(machine,1,TC0100SCN_GFX_NUM,taito_hide_pixels,0,0,0,0,0,0);
 
-	TC0360PRI_vh_start();	/* Purely for save-state purposes */
+	TC0360PRI_vh_start(machine);	/* Purely for save-state purposes */
 
 	for (i = 0; i < 8; i ++)
 		spritebank[i] = 0x400 * i;
@@ -51,13 +51,13 @@ static VIDEO_START( slapshot_core )
 	sprites_disabled = 1;
 	sprites_active_area = 0;
 
-	state_save_register_global(taito_hide_pixels);
-	state_save_register_global(taito_sprite_type);
-	state_save_register_global_array(spritebank);
-	state_save_register_global(sprites_disabled);
-	state_save_register_global(sprites_active_area);
-	state_save_register_global_pointer(spriteram_delayed, spriteram_size/2);
-	state_save_register_global_pointer(spriteram_buffered, spriteram_size/2);
+	state_save_register_global(machine, taito_hide_pixels);
+	state_save_register_global(machine, taito_sprite_type);
+	state_save_register_global_array(machine, spritebank);
+	state_save_register_global(machine, sprites_disabled);
+	state_save_register_global(machine, sprites_active_area);
+	state_save_register_global_pointer(machine, spriteram_delayed, spriteram_size/2);
+	state_save_register_global_pointer(machine, spriteram_buffered, spriteram_size/2);
 }
 
 VIDEO_START( slapshot )
@@ -578,8 +578,8 @@ VIDEO_UPDATE( slapshot )
 	spritepri[2] = TC0360PRI_regs[7] & 0x0f;
 	spritepri[3] = TC0360PRI_regs[7] >> 4;
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);
 
 #ifdef MAME_DEBUG
 	if (dislayer[layer[0]]==0)

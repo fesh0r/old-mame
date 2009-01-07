@@ -207,7 +207,7 @@ static WRITE16_HANDLER( sys16_3d_coinctrl_w )
 
 static INTERRUPT_GEN( sys16_interrupt )
 {
-	cpunum_set_input_line(machine, 0, 4, HOLD_LINE); /* Interrupt vector 4, used by VBlank */
+	cpu_set_input_line(device, 4, HOLD_LINE); /* Interrupt vector 4, used by VBlank */
 }
 
 
@@ -249,13 +249,13 @@ static WRITE8_HANDLER( tturfbl_msm5205_data_w )
 	sample_buffer = data;
 }
 
-static void tturfbl_msm5205_callback(running_machine *machine, int data)
+static void tturfbl_msm5205_callback(const device_config *device)
 {
 	msm5205_data_w(0, (sample_buffer >> 4) & 0x0F);
 	sample_buffer <<= 4;
 	sample_select ^= 1;
 	if(sample_select == 0)
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static const msm5205_interface tturfbl_msm5205_interface =
@@ -275,7 +275,7 @@ static READ8_HANDLER( tturfbl_soundbank_r )
 
 static WRITE8_HANDLER( tturfbl_soundbank_w )
 {
-	UINT8 *mem = memory_region(machine, "sound");
+	UINT8 *mem = memory_region(space->machine, "sound");
 
 	switch(data)
 	{
@@ -299,7 +299,7 @@ static WRITE8_HANDLER( tturfbl_soundbank_w )
 			break;
 		default:
 			tturfbl_soundbank_ptr = NULL;
-			logerror("Invalid bank setting %02X (%04X)\n", data, activecpu_get_pc());
+			logerror("Invalid bank setting %02X (%04X)\n", data, cpu_get_pc(space->cpu));
 			break;
 	}
 }
@@ -370,11 +370,11 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( upd7759_bank_w ) //*
 {
-	int offs, size = memory_region_length(machine, "sound") - 0x10000;
+	int offs, size = memory_region_length(space->machine, "sound") - 0x10000;
 
 	upd7759_reset_w(0, data & 0x40);
 	offs = 0x10000 + (data * 0x4000) % size;
-	memory_set_bankptr(1, memory_region(machine, "sound") + offs);
+	memory_set_bankptr(space->machine, 1, memory_region(space->machine, "sound") + offs);
 }
 
 
@@ -391,8 +391,8 @@ static WRITE16_HANDLER( sound_command_w )
 {
 	if( ACCESSING_BITS_0_7 )
 {
-		soundlatch_w( machine,0,data&0xff );
-		cpunum_set_input_line(machine, 1, 0, HOLD_LINE );
+		soundlatch_w( space,0,data&0xff );
+		cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE );
 	}
 }
 
@@ -400,8 +400,8 @@ static WRITE16_HANDLER( sound_command_nmi_w )
 {
 	if( ACCESSING_BITS_0_7 )
 {
-		soundlatch_w( machine,0,data&0xff );
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w( space,0,data&0xff );
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -793,18 +793,23 @@ static void dduxbl_update_proc( void )
 
 static MACHINE_RESET( dduxbl )
 {
-	sys16_patch_code( 0x1eb2e, 0x01 );
-	sys16_patch_code( 0x1eb2f, 0x01 );
-	sys16_patch_code( 0x1eb3c, 0x00 );
-	sys16_patch_code( 0x1eb3d, 0x00 );
-	sys16_patch_code( 0x23132, 0x01 );
-	sys16_patch_code( 0x23133, 0x01 );
-	sys16_patch_code( 0x23140, 0x00 );
-	sys16_patch_code( 0x23141, 0x00 );
-	sys16_patch_code( 0x24a9a, 0x01 );
-	sys16_patch_code( 0x24a9b, 0x01 );
-	sys16_patch_code( 0x24aa8, 0x00 );
-	sys16_patch_code( 0x24aa9, 0x00 );
+	static const sys16_patch patch[] =
+	{
+		{ 0x1eb2e, 0x01 },
+		{ 0x1eb2f, 0x01 },
+		{ 0x1eb3c, 0x00 },
+		{ 0x1eb3d, 0x00 },
+		{ 0x23132, 0x01 },
+		{ 0x23133, 0x01 },
+		{ 0x23140, 0x00 },
+		{ 0x23141, 0x00 },
+		{ 0x24a9a, 0x01 },
+		{ 0x24a9b, 0x01 },
+		{ 0x24aa8, 0x00 },
+		{ 0x24aa9, 0x00 }
+	};
+
+	sys16_patch_code(machine, patch, ARRAY_LENGTH(patch));
 }
 
 static DRIVER_INIT( dduxbl )
@@ -923,10 +928,16 @@ static MACHINE_RESET( eswatbl )
 		2,3,	6,7,
 		10,11,	14,15
 	};
+	static const sys16_patch patch[] =
+	{
+		{ 0x3897, 0x11 }
+	};
+
+	sys16_patch_code(machine, patch, ARRAY_LENGTH(patch));
+
 	sys16_obj_bank = bank;
 	sys16_sprxoffset = -0x23c;
 
-	sys16_patch_code( 0x3897, 0x11 );
 
 	sys16_update_proc = eswatbl_update_proc;
 }
@@ -1016,30 +1027,34 @@ static void fpoint_update_proc( void )
 
 static MACHINE_RESET( fpointbl )
 {
-	sys16_patch_code( 0x454, 0x33 );
-	sys16_patch_code( 0x455, 0xf8 );
-	sys16_patch_code( 0x456, 0xe0 );
-	sys16_patch_code( 0x457, 0xe2 );
-	sys16_patch_code( 0x8ce8, 0x16 );
-	sys16_patch_code( 0x8ce9, 0x66 );
-	sys16_patch_code( 0x17687, 0x00 );
-	sys16_patch_code( 0x7bed, 0x04 );
+	static const sys16_patch patch[] =
+	{
+		{ 0x454, 0x33 },
+		{ 0x455, 0xf8 },
+		{ 0x456, 0xe0 },
+		{ 0x457, 0xe2 },
+		{ 0x8ce8, 0x16 },
+		{ 0x8ce9, 0x66 },
+		{ 0x17687, 0x00 },
+		{ 0x7bed, 0x04 },
 
-	sys16_patch_code( 0x7ea8, 0x61 );
-	sys16_patch_code( 0x7ea9, 0x00 );
-	sys16_patch_code( 0x7eaa, 0x84 );
-	sys16_patch_code( 0x7eab, 0x16 );
-	sys16_patch_code( 0x2c0, 0xe7 );
-	sys16_patch_code( 0x2c1, 0x48 );
-	sys16_patch_code( 0x2c2, 0xe7 );
-	sys16_patch_code( 0x2c3, 0x49 );
-	sys16_patch_code( 0x2c4, 0x04 );
-	sys16_patch_code( 0x2c5, 0x40 );
-	sys16_patch_code( 0x2c6, 0x00 );
-	sys16_patch_code( 0x2c7, 0x10 );
-	sys16_patch_code( 0x2c8, 0x4e );
-	sys16_patch_code( 0x2c9, 0x75 );
+		{ 0x7ea8, 0x61 },
+		{ 0x7ea9, 0x00 },
+		{ 0x7eaa, 0x84 },
+		{ 0x7eab, 0x16 },
+		{ 0x2c0, 0xe7 },
+		{ 0x2c1, 0x48 },
+		{ 0x2c2, 0xe7 },
+		{ 0x2c3, 0x49 },
+		{ 0x2c4, 0x04 },
+		{ 0x2c5, 0x40 },
+		{ 0x2c6, 0x00 },
+		{ 0x2c7, 0x10 },
+		{ 0x2c8, 0x4e },
+		{ 0x2c9, 0x75 }
+	};
 
+	sys16_patch_code(machine, patch, ARRAY_LENGTH(patch));
 	sys16_update_proc = fpoint_update_proc;
 }
 
@@ -1168,11 +1183,11 @@ MACHINE_DRIVER_END
 /***************************************************************************/
 
 static READ16_HANDLER( ga_io_players_r ) {
-	return (input_port_read(machine, "P1") << 8) | input_port_read(machine, "P2");
+	return (input_port_read(space->machine, "P1") << 8) | input_port_read(space->machine, "P2");
 }
 static READ16_HANDLER( ga_io_service_r )
 {
-	return (input_port_read(machine,"SERVICE") << 8) | (sys16_workingram[0x2c96/2] & 0x00ff);
+	return (input_port_read(space->machine,"SERVICE") << 8) | (sys16_workingram[0x2c96/2] & 0x00ff);
 }
 
 static ADDRESS_MAP_START( goldnaxe_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1197,8 +1212,8 @@ static WRITE16_HANDLER( ga_sound_command_w )
 	COMBINE_DATA( &sys16_workingram[(0xecfc-0xc000)/2] );
 	if( ACCESSING_BITS_8_15 )
 {
-		soundlatch_w( machine,0,data>>8 );
-		cpunum_set_input_line(machine, 1, 0, HOLD_LINE );
+		soundlatch_w( space,0,data>>8 );
+		cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE );
 	}
 }
 
@@ -1249,11 +1264,18 @@ static MACHINE_RESET( goldnaxe )
 		2,3,6,7,
 		10,11,0,0
 	};
+#if 0
+	// protection patch; no longer needed
+	static const sys16_patch patch =
+	{
+		{ 0x3CB2, 0x60 },
+		{ 0x3CB3, 0x1e }
+	};
+	sys16_patch_code(machine, patch, ARRAY_LENGTH(patch));
+#endif
+
 	sys16_obj_bank = bank;
 
-// protection patch; no longer needed
-//  sys16_patch_code( 0x3CB2, 0x60 );
-//  sys16_patch_code( 0x3CB3, 0x1e );
 
 	sys16_sprxoffset = -0xb8;
 	sys16_update_proc = goldnaxe_update_proc;
@@ -1346,36 +1368,36 @@ static int passht4b_io3_val;
 
 static READ16_HANDLER( passht4b_service_r )
 {
-	UINT16 val=input_port_read(machine, "SERVICE");
-	if(!(input_port_read(machine, "P1") & 0x40)) val&=0xef;
-	if(!(input_port_read(machine, "P2") & 0x40)) val&=0xdf;
-	if(!(input_port_read(machine, "P3") & 0x40)) val&=0xbf;
-	if(!(input_port_read(machine, "P4") & 0x40)) val&=0x7f;
+	UINT16 val=input_port_read(space->machine, "SERVICE");
+	if(!(input_port_read(space->machine, "P1") & 0x40)) val&=0xef;
+	if(!(input_port_read(space->machine, "P2") & 0x40)) val&=0xdf;
+	if(!(input_port_read(space->machine, "P3") & 0x40)) val&=0xbf;
+	if(!(input_port_read(space->machine, "P4") & 0x40)) val&=0x7f;
 
-	passht4b_io3_val=(input_port_read(machine, "P1") << 4) | (input_port_read(machine, "P3") & 0xf);
-	passht4b_io2_val=(input_port_read(machine, "P2") << 4) | (input_port_read(machine, "P4") & 0xf);
+	passht4b_io3_val=(input_port_read(space->machine, "P1") << 4) | (input_port_read(space->machine, "P3") & 0xf);
+	passht4b_io2_val=(input_port_read(space->machine, "P2") << 4) | (input_port_read(space->machine, "P4") & 0xf);
 
 	passht4b_io1_val=0xff;
 
 	// player 1 buttons
-	if(!(input_port_read(machine, "P1") & 0x10)) passht4b_io1_val &=0xfe;
-	if(!(input_port_read(machine, "P1") & 0x20)) passht4b_io1_val &=0xfd;
-	if(!(input_port_read(machine, "P1") & 0x80)) passht4b_io1_val &=0xfc;
+	if(!(input_port_read(space->machine, "P1") & 0x10)) passht4b_io1_val &=0xfe;
+	if(!(input_port_read(space->machine, "P1") & 0x20)) passht4b_io1_val &=0xfd;
+	if(!(input_port_read(space->machine, "P1") & 0x80)) passht4b_io1_val &=0xfc;
 
 	// player 2 buttons
-	if(!(input_port_read(machine, "P2") & 0x10)) passht4b_io1_val &=0xfb;
-	if(!(input_port_read(machine, "P2") & 0x20)) passht4b_io1_val &=0xf7;
-	if(!(input_port_read(machine, "P2") & 0x80)) passht4b_io1_val &=0xf3;
+	if(!(input_port_read(space->machine, "P2") & 0x10)) passht4b_io1_val &=0xfb;
+	if(!(input_port_read(space->machine, "P2") & 0x20)) passht4b_io1_val &=0xf7;
+	if(!(input_port_read(space->machine, "P2") & 0x80)) passht4b_io1_val &=0xf3;
 
 	// player 3 buttons
-	if(!(input_port_read(machine, "P3") & 0x10)) passht4b_io1_val &=0xef;
-	if(!(input_port_read(machine, "P3") & 0x20)) passht4b_io1_val &=0xdf;
-	if(!(input_port_read(machine, "P3") & 0x80)) passht4b_io1_val &=0xcf;
+	if(!(input_port_read(space->machine, "P3") & 0x10)) passht4b_io1_val &=0xef;
+	if(!(input_port_read(space->machine, "P3") & 0x20)) passht4b_io1_val &=0xdf;
+	if(!(input_port_read(space->machine, "P3") & 0x80)) passht4b_io1_val &=0xcf;
 
 	// player 4 buttons
-	if(!(input_port_read(machine, "P4") & 0x10)) passht4b_io1_val &=0xbf;
-	if(!(input_port_read(machine, "P4") & 0x20)) passht4b_io1_val &=0x7f;
-	if(!(input_port_read(machine, "P4") & 0x80)) passht4b_io1_val &=0x3f;
+	if(!(input_port_read(space->machine, "P4") & 0x10)) passht4b_io1_val &=0xbf;
+	if(!(input_port_read(space->machine, "P4") & 0x20)) passht4b_io1_val &=0x7f;
+	if(!(input_port_read(space->machine, "P4") & 0x80)) passht4b_io1_val &=0x3f;
 
 	return val;
 }
@@ -1451,22 +1473,30 @@ static void passht4b_update_proc( void )
 
 static MACHINE_RESET( passsht )
 {
+	// fix name entry
+	static const sys16_patch patch[] =
+	{
+		{ 0x13a8,0xc0 }
+	};
+
+	sys16_patch_code(machine, patch, ARRAY_LENGTH(patch));
 	sys16_sprxoffset = -0x48;
 	sys16_spritesystem = sys16_sprite_passshot;
-
-	// fix name entry
-	sys16_patch_code( 0x13a8,0xc0);
 
 	sys16_update_proc = passsht_update_proc;
 }
 
 static MACHINE_RESET( passht4b )
 {
+	// fix name entry
+	static const sys16_patch patch[] =
+	{
+		{ 0x138a,0xc0 }
+	};
+
+	sys16_patch_code(machine, patch, ARRAY_LENGTH(patch));
 	sys16_sprxoffset = -0xb8;
 	sys16_spritesystem = sys16_sprite_passshot;
-
-	// fix name entry
-	sys16_patch_code( 0x138a,0xc0);
 
 	sys16_update_proc = passht4b_update_proc;
 }
@@ -1728,13 +1758,13 @@ ADDRESS_MAP_END
 static READ16_HANDLER(beautyb_unk1_r)
 {
 
-	return mame_rand(machine);;
+	return mame_rand(space->machine);;
 }
 
 
 static READ16_HANDLER(beautyb_unk2_r)
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 static ADDRESS_MAP_START( beautyb_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1775,8 +1805,15 @@ static void tetris_bootleg_update_proc( void )
 
 static MACHINE_RESET( tetrisbl )
 {
-//  sys16_patch_code( 0xba6, 0x4e );
-//  sys16_patch_code( 0xba7, 0x71 );
+#if 0
+	static const sys16_patch patch[] =
+	{
+		{ 0xba6, 0x4e },
+		{ 0xba7, 0x71 }
+	};
+
+	sys16_patch_code(machine, patch, ARRAY_LENGTH(patch));
+#endif
 
 	sys16_sprxoffset = -0x40;
 	sys16_update_proc = tetris_bootleg_update_proc;
@@ -1839,17 +1876,17 @@ MACHINE_DRIVER_END
 
 static READ16_HANDLER( tt_io_player1_r )
 {
-	return input_port_read(machine, "P1") << 8;
+	return input_port_read(space->machine, "P1") << 8;
 }
 
 static READ16_HANDLER( tt_io_player2_r )
 {
-	return input_port_read(machine, "P2") << 8;
+	return input_port_read(space->machine, "P2") << 8;
 }
 
 static READ16_HANDLER( tt_io_service_r )
 {
-	return input_port_read(machine, "SERVICE") << 8;
+	return input_port_read(space->machine, "SERVICE") << 8;
 }
 
 /*
@@ -2102,30 +2139,35 @@ static MACHINE_RESET( wb3bbl )
 		0,1,
 		0,0
 	};
-	sys16_obj_bank = bank;
 #if 1
-	sys16_patch_code( 0x17058, 0x4e );
-	sys16_patch_code( 0x17059, 0xb9 );
-	sys16_patch_code( 0x1705a, 0x00 );
-	sys16_patch_code( 0x1705b, 0x00 );
-	sys16_patch_code( 0x1705c, 0x09 );
-	sys16_patch_code( 0x1705d, 0xdc );
-	sys16_patch_code( 0x1705e, 0x4e );
-	sys16_patch_code( 0x1705f, 0xf9 );
-	sys16_patch_code( 0x17060, 0x00 );
-	sys16_patch_code( 0x17061, 0x01 );
-	sys16_patch_code( 0x17062, 0x70 );
-	sys16_patch_code( 0x17063, 0xe0 );
-	sys16_patch_code( 0x1a3a, 0x31 );
-	sys16_patch_code( 0x1a3b, 0x7c );
-	sys16_patch_code( 0x1a3c, 0x80 );
-	sys16_patch_code( 0x1a3d, 0x00 );
-	sys16_patch_code( 0x23df8, 0x14 );
-	sys16_patch_code( 0x23df9, 0x41 );
-	sys16_patch_code( 0x23dfa, 0x10 );
-	sys16_patch_code( 0x23dfd, 0x14 );
-	sys16_patch_code( 0x23dff, 0x1c );
+	static const sys16_patch patch[] =
+	{
+		{ 0x17058, 0x4e },
+		{ 0x17059, 0xb9 },
+		{ 0x1705a, 0x00 },
+		{ 0x1705b, 0x00 },
+		{ 0x1705c, 0x09 },
+		{ 0x1705d, 0xdc },
+		{ 0x1705e, 0x4e },
+		{ 0x1705f, 0xf9 },
+		{ 0x17060, 0x00 },
+		{ 0x17061, 0x01 },
+		{ 0x17062, 0x70 },
+		{ 0x17063, 0xe0 },
+		{ 0x1a3a, 0x31 },
+		{ 0x1a3b, 0x7c },
+		{ 0x1a3c, 0x80 },
+		{ 0x1a3d, 0x00 },
+		{ 0x23df8, 0x14 },
+		{ 0x23df9, 0x41 },
+		{ 0x23dfa, 0x10 },
+		{ 0x23dfd, 0x14 },
+		{ 0x23dff, 0x1c }
+	};
+
+	sys16_patch_code(machine, patch, ARRAY_LENGTH(patch));
 #endif
+	sys16_obj_bank = bank;
 	sys16_update_proc = wb3bbl_update_proc;
 }
 

@@ -50,6 +50,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 #include "machine/eeprom.h"
 
@@ -60,7 +61,7 @@ static UINT16 tilebank=0;
 
 static READ16_HANDLER( gms_read )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 
@@ -464,7 +465,7 @@ static NVRAM_HANDLER( syf )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_interface_93C46);
+		eeprom_init(machine, &eeprom_interface_93C46);
 		if (file)
 		{
 			eeprom_load(file);

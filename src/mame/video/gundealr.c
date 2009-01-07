@@ -59,8 +59,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( gundealr )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,      8, 8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,gundealr_scan,    16,16,64,32);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_cols,      8, 8,32,32);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,gundealr_scan,    16,16,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
 }
@@ -100,7 +100,7 @@ WRITE8_HANDLER( gundealr_paletteram_w )
 	b = (val >> 4) & 0x0f;
 	/* TODO: the bottom 4 bits are used as well, but I'm not sure about the meaning */
 
-	palette_set_color_rgb(machine,offset / 2,pal4bit(r),pal4bit(g),pal4bit(b));
+	palette_set_color_rgb(space->machine,offset / 2,pal4bit(r),pal4bit(g),pal4bit(b));
 }
 
 WRITE8_HANDLER( gundealr_fg_scroll_w )

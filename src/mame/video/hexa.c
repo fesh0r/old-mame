@@ -19,20 +19,20 @@ WRITE8_HANDLER( hexa_videoram_w )
 
 WRITE8_HANDLER( hexa_d008_w )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "main");
 	int bankaddress;
 
 	/* bit 0 = flipx (or y?) */
-	if (flip_screen_x_get() != (data & 0x01))
+	if (flip_screen_x_get(space->machine) != (data & 0x01))
 	{
-		flip_screen_x_set(data & 0x01);
+		flip_screen_x_set(space->machine, data & 0x01);
 		tilemap_mark_all_tiles_dirty(bg_tilemap);
 	}
 
 	/* bit 1 = flipy (or x?) */
-	if (flip_screen_y_get() != (data & 0x02))
+	if (flip_screen_y_get(space->machine) != (data & 0x02))
 	{
-		flip_screen_y_set(data & 0x02);
+		flip_screen_y_set(space->machine, data & 0x02);
 		tilemap_mark_all_tiles_dirty(bg_tilemap);
 	}
 
@@ -40,7 +40,7 @@ WRITE8_HANDLER( hexa_d008_w )
 
 	/* bit 4 could be the ROM bank selector for 8000-bfff (not sure) */
 	bankaddress = 0x10000 + ((data & 0x10) >> 4) * 0x4000;
-	memory_set_bankptr(1, &RAM[bankaddress]);
+	memory_set_bankptr(space->machine, 1, &RAM[bankaddress]);
 
 	/* bit 5 = char bank */
 	if (charbank != ((data & 0x20) >> 5))
@@ -63,7 +63,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( hexa )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		 8, 8, 32, 32);
 }
 

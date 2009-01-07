@@ -93,11 +93,11 @@ static void taitof2_core_vh_start (running_machine *machine, int sprite_type,int
 	spriteram_buffered = auto_malloc(spriteram_size);
 	spritelist = auto_malloc(0x400 * sizeof(*spritelist));
 
-	chips = number_of_TC0100SCN();
+	chips = TC0100SCN_count(machine);
 
 	assert_always(chips >= 0, "erroneous TC0100SCN configuratiom");
 
-	if (has_TC0480SCP())	/* it's a tc0480scp game */
+	if (has_TC0480SCP(machine))	/* it's a tc0480scp game */
 	{
 		TC0480SCP_vh_start(machine,TC0480SCP_GFX_NUM,f2_hide_pixels,f2_tilemap_xoffs,
 		   f2_tilemap_yoffs,f2_text_xoffs,0,-1,0,f2_tilemap_col_base);
@@ -108,17 +108,17 @@ static void taitof2_core_vh_start (running_machine *machine, int sprite_type,int
 			flip_xoffs,flip_yoffs,flip_text_x_offs,flip_text_yoffs,TC0100SCN_SINGLE_VDU);
 	}
 
-	if (has_TC0110PCR())
+	if (TC0110PCR_mask(machine) & 1)
 		TC0110PCR_vh_start(machine);
 
-	if (has_TC0280GRD())
-		TC0280GRD_vh_start(TC0280GRD_GFX_NUM);
+	if (has_TC0280GRD(machine))
+		TC0280GRD_vh_start(machine, TC0280GRD_GFX_NUM);
 
-	if (has_TC0430GRW())
-		TC0430GRW_vh_start(TC0430GRW_GFX_NUM);
+	if (has_TC0430GRW(machine))
+		TC0430GRW_vh_start(machine, TC0430GRW_GFX_NUM);
 
-	if (has_TC0360PRI())
-		TC0360PRI_vh_start();	/* Purely for save-state purposes */
+	if (has_TC0360PRI(machine))
+		TC0360PRI_vh_start(machine);	/* Purely for save-state purposes */
 
 	for (i = 0; i < 8; i ++)
 	{
@@ -131,14 +131,14 @@ static void taitof2_core_vh_start (running_machine *machine, int sprite_type,int
 
 	f2_game = 0;	/* means NOT footchmp */
 
-	state_save_register_global(f2_hide_pixels);
-	state_save_register_global(f2_sprite_type);
-	state_save_register_global_array(spritebank);
-	state_save_register_global(koshien_spritebank);
-	state_save_register_global(sprites_disabled);
-	state_save_register_global(sprites_active_area);
-	state_save_register_global_pointer(spriteram_delayed, spriteram_size/2);
-	state_save_register_global_pointer(spriteram_buffered, spriteram_size/2);
+	state_save_register_global(machine, f2_hide_pixels);
+	state_save_register_global(machine, f2_sprite_type);
+	state_save_register_global_array(machine, spritebank);
+	state_save_register_global(machine, koshien_spritebank);
+	state_save_register_global(machine, sprites_disabled);
+	state_save_register_global(machine, sprites_active_area);
+	state_save_register_global_pointer(machine, spriteram_delayed, spriteram_size/2);
+	state_save_register_global_pointer(machine, spriteram_buffered, spriteram_size/2);
 }
 
 
@@ -1048,8 +1048,8 @@ VIDEO_UPDATE( ssi )
 
 	/* SSI only uses sprites, the tilemap registers are not even initialized.
        (they are in Majestic 12, but the tilemaps are not used anyway) */
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);
 	draw_sprites(screen->machine, bitmap,cliprect,NULL, 0);
 	return 0;
 }
@@ -1061,8 +1061,8 @@ VIDEO_UPDATE( yesnoj )
 
 	TC0100SCN_tilemap_update(screen->machine);
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 	draw_sprites(screen->machine, bitmap,cliprect,NULL, 0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0),0,0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0)^1,0,0);
@@ -1077,8 +1077,8 @@ VIDEO_UPDATE( taitof2 )
 
 	TC0100SCN_tilemap_update(screen->machine);
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0),0,0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0)^1,0,0);
 	draw_sprites(screen->machine, bitmap,cliprect,NULL, 0);
@@ -1109,8 +1109,8 @@ VIDEO_UPDATE( taitof2_pri )
 
 	f2_spriteblendmode = TC0360PRI_regs[0]&0xc0;
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0],0,1);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[1],0,2);
@@ -1122,12 +1122,12 @@ VIDEO_UPDATE( taitof2_pri )
 
 
 
-static void draw_roz_layer(bitmap_t *bitmap,const rectangle *cliprect,UINT32 priority)
+static void draw_roz_layer(running_machine *machine,bitmap_t *bitmap,const rectangle *cliprect,UINT32 priority)
 {
-	if (has_TC0280GRD())
+	if (has_TC0280GRD(machine))
 		TC0280GRD_zoom_draw(bitmap,cliprect,f2_pivot_xdisp,f2_pivot_ydisp,priority);
 
-	if (has_TC0430GRW())
+	if (has_TC0430GRW(machine))
 		TC0430GRW_zoom_draw(bitmap,cliprect,f2_pivot_xdisp,f2_pivot_ydisp,priority);
 }
 
@@ -1142,10 +1142,10 @@ VIDEO_UPDATE( taitof2_pri_roz )
 
 	taitof2_handle_sprite_buffering();
 
-	if (has_TC0280GRD())
+	if (has_TC0280GRD(screen->machine))
 		TC0280GRD_tilemap_update(roz_base_color);
 
-	if (has_TC0430GRW())
+	if (has_TC0430GRW(screen->machine))
 		TC0430GRW_tilemap_update(roz_base_color);
 
 	TC0100SCN_tilemap_update(screen->machine);
@@ -1168,15 +1168,15 @@ VIDEO_UPDATE( taitof2_pri_roz )
 
 	f2_spriteblendmode = TC0360PRI_regs[0]&0xc0;
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 
 	drawn=0;
 	for (i=0; i<16; i++)
 	{
 		if (rozpri==i)
 		{
-			draw_roz_layer(bitmap,cliprect,1 << drawn);
+			draw_roz_layer(screen->machine,bitmap,cliprect,1 << drawn);
 			f2_tilepri[drawn]=i;
 			drawn++;
 		}
@@ -1231,8 +1231,8 @@ VIDEO_UPDATE( thundfox )
 	spritepri[3] = TC0360PRI_regs[7] >> 4;
 
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 
 
 	/*
@@ -1364,8 +1364,8 @@ VIDEO_UPDATE( metalb )
 
 	f2_spriteblendmode = TC0360PRI_regs[0]&0xc0;
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);
 
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[0],0,1);
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[1],0,2);
@@ -1411,8 +1411,8 @@ VIDEO_UPDATE( deadconx )
 	spritepri[2] = TC0360PRI_regs[7] & 0x0f;
 	spritepri[3] = TC0360PRI_regs[7] >> 4;
 
-	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,0,cliprect);
+	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(bitmap,cliprect,0);
 
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[0],0,1);
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[1],0,2);

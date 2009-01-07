@@ -13,8 +13,8 @@
 
 Note:   Police Trainer v1.3B runs on the same revision PCB as Sharpshooter - Rev 0.5B
         If you hold the test button down and boot the game, all program roms
-        fail the checksum.  However, each checksum listed matches the checksum
-        printed on the ROM label.  This has been verified on an original PCB.
+        fail the checksum.  This has been verified on an original PCB.
+        See below for specific information on each set.
 Note:   Police Trainer v1.0 (Rev 0.2 PCB), the checksum results in MAME have been
         verified to be the same as an original PCB.
 
@@ -121,14 +121,14 @@ static offs_t speedup_pc;
 
 static TIMER_CALLBACK( irq5_gen )
 {
-	cpunum_set_input_line(machine, 0, R3000_IRQ5, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], R3000_IRQ5, ASSERT_LINE);
 }
 
 
 static INTERRUPT_GEN( irq4_gen )
 {
-	cpunum_set_input_line(machine, 0, R3000_IRQ4, ASSERT_LINE);
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, irq5_gen);
+	cpu_set_input_line(device, R3000_IRQ4, ASSERT_LINE);
+	timer_set(device->machine, video_screen_get_time_until_pos(device->machine->primary_screen, 0, 0), NULL, 0, irq5_gen);
 }
 
 
@@ -163,13 +163,13 @@ static WRITE32_HANDLER( control_w )
 	/* toggling BSMT off then on causes a reset */
 	if (!(old & 0x80000000) && (control_data & 0x80000000))
 	{
-		bsmt2000_data_0_w(machine, bsmt_data_bank, 0, 0xffff);
+		bsmt2000_data_0_w(space, bsmt_data_bank, 0, 0xffff);
 		sndti_reset(SOUND_BSMT2000, 0);
 	}
 
 	/* log any unknown bits */
 	if (data & 0x4f1fffff)
-		logerror("%08X: control_w = %08X & %08X\n", activecpu_get_previouspc(), data, mem_mask);
+		logerror("%08X: control_w = %08X & %08X\n", cpu_get_previouspc(space->cpu), data, mem_mask);
 }
 
 
@@ -183,7 +183,7 @@ static WRITE32_HANDLER( control_w )
 static WRITE32_HANDLER( bsmt2000_reg_w )
 {
 	if (control_data & 0x80000000)
-		bsmt2000_data_0_w(machine, bsmt_reg, data & 0xffff, mem_mask & 0xffff);
+		bsmt2000_data_0_w(space, bsmt_reg, data & 0xffff, mem_mask & 0xffff);
 	else
 		COMBINE_DATA(&bsmt_data_offset);
 }
@@ -200,7 +200,7 @@ static WRITE32_HANDLER( bsmt2000_data_w )
 
 static READ32_HANDLER( bsmt2000_data_r )
 {
-	return memory_region(machine, "bsmt")[bsmt_data_bank * 0x10000 + bsmt_data_offset] << 8;
+	return memory_region(space->machine, "bsmt")[bsmt_data_bank * 0x10000 + bsmt_data_offset] << 8;
 }
 
 
@@ -216,9 +216,9 @@ static WRITE32_HANDLER( speedup_w )
 	COMBINE_DATA(speedup_data);
 
 	/* see if the PC matches */
-	if ((activecpu_get_previouspc() & 0x1fffffff) == speedup_pc)
+	if ((cpu_get_previouspc(space->cpu) & 0x1fffffff) == speedup_pc)
 	{
-		UINT64 curr_cycles = activecpu_gettotalcycles();
+		UINT64 curr_cycles = cpu_get_total_cycles(space->cpu);
 
 		/* if less than 50 cycles from the last time, count it */
 		if (curr_cycles - last_cycles < 50)
@@ -227,7 +227,7 @@ static WRITE32_HANDLER( speedup_w )
 
 			/* more than 2 in a row and we spin */
 			if (loop_count > 2)
-				cpu_spinuntil_int();
+				cpu_spinuntil_int(space->cpu);
 		}
 		else
 			loop_count = 0;
@@ -262,7 +262,7 @@ static NVRAM_HANDLER( policetr )
 		eeprom_save(file);
 	else
 	{
-		eeprom_init(&eeprom_interface_policetr);
+		eeprom_init(machine, &eeprom_interface_policetr);
 		if (file)	eeprom_load(file);
 	}
 }
@@ -557,36 +557,56 @@ ROM_START( polict10 ) /* Rev 0.2 PCB with all chips dated 10/07/96 */
 ROM_END
 
 
-ROM_START( plctr13b ) /* Rev 0.5B PCB , unknown program rom date */
+ROM_START( plctr13a ) /* Rev 0.5B PCB , unknown program rom date. Actual version is V1.3B */
 	ROM_REGION( 0x400000, "gfx1", ROMREGION_ERASE00 )
 	ROM_LOAD16_BYTE( "pt-u121.bin", 0x000000, 0x100000, CRC(56b0b00a) SHA1(4034fe373a61f756f4813f0c20b1cf05e4338059) )
 	ROM_LOAD16_BYTE( "pt-u120.bin", 0x000001, 0x100000, CRC(ca664142) SHA1(2727ecb9287b4ed30088e017bb6b8763dfb75b2f) )
 	ROM_LOAD16_BYTE( "pt-u125.bin", 0x200000, 0x100000, CRC(e9ccf3a0) SHA1(b3fd8c094f76ace4cf403c3d0f6bd6c5d8db7d6a) )
 	ROM_LOAD16_BYTE( "pt-u124.bin", 0x200001, 0x100000, CRC(f4acf921) SHA1(5b244e9a51304318fa0c03eb7365b3c12627d19b) )
 
-	ROM_REGION32_BE( 0x100000, "user1", 0 )
+	ROM_REGION32_BE( 0x100000, "user1", 0 ) /* Program roms are type 27C020 */
 /*
-Note: If you set the dipswitch to service mode and reset the game within Mame.
-      All 4 program ROMs fail the checksum code... IE: they show in red
-      instead of green.  But, the listed checksums on the screen match the
-      checksums printed on the ROM labels... this seems wierd to me.
-      However, this has been verified to happen on a real PCB
+Note: With this version, the program roms are twice the size of those found on all other Police Trainer sets. Like the set listed below,
+      if you set the dipswitch to service mode and reset the game within Mame. All 4 program ROMs fail the checksum code and the listed
+      checksums on the screen match the set below.  IE: U110=556D, U111=E5F1, U112=974C & U113=CB73
 
-      There was a PCB on eBay that used mask roms for the program roms with the following checksum
-      values printed on the labels
+      However, if you check the Diagnostics screen, the program rom checksum is 6819480C which is different then the set below. So it
+      looks like it's checking the extra code.  The roms do not contain identical halves, so it's unknown what the "new" data is or does.
 
-      U110  050C
-      u111  F343
-      U112  201D
-      U113  FB46
-
-      These are different then the current set and might have the checksum test corrected.
-
+      This set has also been found using mask roms for the program roms which would indicate it was the final version.
 */
-	ROM_LOAD32_BYTE( "ptb-u113.v13", 0x00000, 0x20000, CRC(d636c00d) SHA1(ef989eb85b51a64ca640297c1286514c8d7f8f76) )
-	ROM_LOAD32_BYTE( "ptb-u112.v13", 0x00001, 0x20000, CRC(86f0497e) SHA1(d177023f7cb2e01de60ef072212836dc94759c1a) )
-	ROM_LOAD32_BYTE( "ptb-u111.v13", 0x00002, 0x20000, CRC(39e96d6a) SHA1(efe6ffe70432b94c98f3d7247408a6d2f6f9e33d) )
-	ROM_LOAD32_BYTE( "ptb-u110.v13", 0x00003, 0x20000, CRC(d7e6f4cb) SHA1(9dffe4937bc5cf47d870f06ae0dced362cd2dd66) )
+	ROM_LOAD32_BYTE( "pt-av13.u113", 0x00000, 0x40000, CRC(909c052d) SHA1(23bd4849261ee5cc2414a4043ee929ccf1bd6806) ) /* Checksum printed on label  FB46 */
+	ROM_LOAD32_BYTE( "pt-av13.u112", 0x00001, 0x40000, CRC(f9dc9ca8) SHA1(52de7bc8c9aa7834d953b9f9e2a65e06f8042f0a) ) /* Checksum printed on label  201D */
+	ROM_LOAD32_BYTE( "pt-av13.u111", 0x00002, 0x40000, CRC(8c4f3a64) SHA1(4953e6fc26bae7d6e7c7230f4ca76e3f5032af14) ) /* Checksum printed on label  F343 */
+	ROM_LOAD32_BYTE( "pt-av13.u110", 0x00003, 0x40000, CRC(738a8277) SHA1(423a9bcecb82959f38ae79a0728d72eb13ed93b3) ) /* Checksum printed on label  050C */
+
+	ROM_REGION( 0x600000, "bsmt", 0 )
+	ROM_LOAD( "pt-u160.bin", 0x000000, 0x100000, CRC(f267f813) SHA1(ae58507947fe2e9701b5df46565fd9908e2f9d77) )
+	ROM_RELOAD(              0x3f8000, 0x100000 )
+	ROM_LOAD( "pt-u162.bin", 0x100000, 0x100000, CRC(75fe850e) SHA1(ab8cf24ae6e5cf80f6a9a34e46f2b1596879643b) )
+	ROM_RELOAD(              0x4f8000, 0x100000 )
+ROM_END
+
+
+ROM_START( plctr13b ) /* Rev 0.5B PCB , unknown program rom date Actual version is V1.3B */
+	ROM_REGION( 0x400000, "gfx1", ROMREGION_ERASE00 )
+	ROM_LOAD16_BYTE( "pt-u121.bin", 0x000000, 0x100000, CRC(56b0b00a) SHA1(4034fe373a61f756f4813f0c20b1cf05e4338059) )
+	ROM_LOAD16_BYTE( "pt-u120.bin", 0x000001, 0x100000, CRC(ca664142) SHA1(2727ecb9287b4ed30088e017bb6b8763dfb75b2f) )
+	ROM_LOAD16_BYTE( "pt-u125.bin", 0x200000, 0x100000, CRC(e9ccf3a0) SHA1(b3fd8c094f76ace4cf403c3d0f6bd6c5d8db7d6a) )
+	ROM_LOAD16_BYTE( "pt-u124.bin", 0x200001, 0x100000, CRC(f4acf921) SHA1(5b244e9a51304318fa0c03eb7365b3c12627d19b) )
+
+	ROM_REGION32_BE( 0x100000, "user1", 0 ) /* Program roms are type 27C010 */
+/*
+Note: If you set the dipswitch to service mode and reset the game within Mame. All 4 program ROMs fail the checksum code, IE: they
+      show in red instead of green.  But, the listed checksums on the screen match the checksums printed on the ROM labels. However,
+      this has been verified to happen on a real PCB
+
+      The program rom checksum in the diagnostic screen is 17551773
+*/
+	ROM_LOAD32_BYTE( "ptb-u113.v13", 0x00000, 0x20000, CRC(d636c00d) SHA1(ef989eb85b51a64ca640297c1286514c8d7f8f76) ) /* Checksum printed on label  CB73 */
+	ROM_LOAD32_BYTE( "ptb-u112.v13", 0x00001, 0x20000, CRC(86f0497e) SHA1(d177023f7cb2e01de60ef072212836dc94759c1a) ) /* Checksum printed on label  974C */
+	ROM_LOAD32_BYTE( "ptb-u111.v13", 0x00002, 0x20000, CRC(39e96d6a) SHA1(efe6ffe70432b94c98f3d7247408a6d2f6f9e33d) ) /* Checksum printed on label  E5F1 */
+	ROM_LOAD32_BYTE( "ptb-u110.v13", 0x00003, 0x20000, CRC(d7e6f4cb) SHA1(9dffe4937bc5cf47d870f06ae0dced362cd2dd66) ) /* Checksum printed on label  556D */
 
 	ROM_REGION( 0x600000, "bsmt", 0 )
 	ROM_LOAD( "pt-u160.bin", 0x000000, 0x100000, CRC(f267f813) SHA1(ae58507947fe2e9701b5df46565fd9908e2f9d77) )
@@ -680,26 +700,26 @@ ROM_END
 
 static DRIVER_INIT( policetr )
 {
-	speedup_data = memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00000fc8, 0x00000fcb, 0, 0, speedup_w);
+	speedup_data = memory_install_write32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00000fc8, 0x00000fcb, 0, 0, speedup_w);
 	speedup_pc = 0x1fc028ac;
 }
 
 static DRIVER_INIT( plctr13b )
 {
-	speedup_data = memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00000fc8, 0x00000fcb, 0, 0, speedup_w);
+	speedup_data = memory_install_write32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00000fc8, 0x00000fcb, 0, 0, speedup_w);
 	speedup_pc = 0x1fc028bc;
 }
 
 
 static DRIVER_INIT( sshooter )
 {
-	speedup_data = memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00018fd8, 0x00018fdb, 0, 0, speedup_w);
+	speedup_data = memory_install_write32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00018fd8, 0x00018fdb, 0, 0, speedup_w);
 	speedup_pc = 0x1fc03470;
 }
 
 static DRIVER_INIT( sshoot12 )
 {
-	speedup_data = memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00018fd8, 0x00018fdb, 0, 0, speedup_w);
+	speedup_data = memory_install_write32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00018fd8, 0x00018fdb, 0, 0, speedup_w);
 	speedup_pc = 0x1fc033e0;
 }
 
@@ -715,6 +735,7 @@ GAME( 1996, policetr, 0,        policetr, policetr, policetr, ROT0, "P & P Marke
 GAME( 1996, polict11, policetr, policetr, polict10, policetr, ROT0, "P & P Marketing", "Police Trainer (Rev 1.1)", 0 )
 GAME( 1996, polict10, policetr, policetr, polict10, policetr, ROT0, "P & P Marketing", "Police Trainer (Rev 1.0)", 0 )
 
+GAME( 1996, plctr13a, policetr, sshooter, policetr, plctr13b, ROT0, "P & P Marketing", "Police Trainer (Rev 1.3B Newer)", 0 )
 GAME( 1996, plctr13b, policetr, sshooter, policetr, plctr13b, ROT0, "P & P Marketing", "Police Trainer (Rev 1.3B)", 0 )
 GAME( 1998, sshooter, 0,        sshooter, policetr, sshooter, ROT0, "P & P Marketing", "Sharpshooter (Rev 1.7)", 0 )
 GAME( 1998, sshoot12, sshooter, sshooter, sshoot11, sshoot12, ROT0, "P & P Marketing", "Sharpshooter (Rev 1.2)", 0 )

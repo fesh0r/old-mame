@@ -204,7 +204,7 @@ static void dma8257_update_status(const device_config *device)
 
 	if (pending_transfer)
 	{
-		next = ATTOTIME_IN_HZ(dma8257->intf->clockhz / 4 );
+		next = ATTOTIME_IN_HZ(device->clock / 4 );
 		timer_adjust_periodic(dma8257->timer,
 			attotime_zero,
 			0,
@@ -218,9 +218,9 @@ static void dma8257_update_status(const device_config *device)
 	}
 
 	/* set the halt line */
-	if (dma8257->intf && dma8257->intf->cpunum >= 0)
+	if (dma8257->intf && dma8257->intf->cputag != NULL)
 	{
-		cpunum_set_input_line(device->machine, dma8257->intf->cpunum, INPUT_LINE_HALT,
+		cputag_set_input_line(device->machine, dma8257->intf->cputag, INPUT_LINE_HALT,
 			pending_transfer ? ASSERT_LINE : CLEAR_LINE);
 	}
 
@@ -351,7 +351,7 @@ WRITE8_DEVICE_HANDLER( dma8257_drq_w )
 {
 	int param = (offset << 1) | (data ? 1 : 0);
 
-	timer_call_after_resynch((void *) device, param, dma8257_drq_write_callback);
+	timer_call_after_resynch(device->machine, (void *) device, param, dma8257_drq_write_callback);
 }
 
 
@@ -362,32 +362,28 @@ WRITE8_DEVICE_HANDLER( dma8257_drq_w )
 static DEVICE_START( dma8257 )
 {
 	dma8257_t *dma8257 = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 
 	//dma8257->device_type = device_type;
 	dma8257->intf = device->static_config;
 
 	dma8257->status = 0x0f;
-	dma8257->timer = timer_alloc(dma8257_timerproc, (void *) device);
-	dma8257->msbflip_timer = timer_alloc(dma8257_msbflip_timerproc, (void *) device);
+	dma8257->timer = timer_alloc(device->machine, dma8257_timerproc, (void *) device);
+	dma8257->msbflip_timer = timer_alloc(device->machine, dma8257_msbflip_timerproc, (void *) device);
 
-	state_save_combine_module_and_tag(unique_tag, "dma8257", device->tag);
+	state_save_register_device_item_array(device, 0, dma8257->address);
+	state_save_register_device_item_array(device, 0, dma8257->count);
+	state_save_register_device_item_array(device, 0, dma8257->rwmode);
+	state_save_register_device_item_array(device, 0, dma8257->registers);
 
-	state_save_register_item_array(unique_tag, 0, dma8257->address);
-	state_save_register_item_array(unique_tag, 0, dma8257->count);
-	state_save_register_item_array(unique_tag, 0, dma8257->rwmode);
-	state_save_register_item_array(unique_tag, 0, dma8257->registers);
-
-	state_save_register_item(unique_tag, 0, dma8257->mode);
-	state_save_register_item(unique_tag, 0, dma8257->rr);
-	state_save_register_item(unique_tag, 0, dma8257->msb);
-	state_save_register_item(unique_tag, 0, dma8257->drq);
-	state_save_register_item(unique_tag, 0, dma8257->status);
+	state_save_register_device_item(device, 0, dma8257->mode);
+	state_save_register_device_item(device, 0, dma8257->rr);
+	state_save_register_device_item(device, 0, dma8257->msb);
+	state_save_register_device_item(device, 0, dma8257->drq);
+	state_save_register_device_item(device, 0, dma8257->status);
 
 	return DEVICE_START_OK;
 }
@@ -417,7 +413,7 @@ DEVICE_GET_INFO( dma8257 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(dma8257_t);				break;
+		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(dma8257_t);			break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;							break;
 		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;		break;
 
@@ -428,10 +424,10 @@ DEVICE_GET_INFO( dma8257 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(dma8257);break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "DMA8257";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "DMA controllers";			break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";						break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;						break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "DMA8257");				break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "DMA controllers");		break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");					break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);				break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

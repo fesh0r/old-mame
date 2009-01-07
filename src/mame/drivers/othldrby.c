@@ -15,6 +15,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 
 
@@ -38,7 +39,7 @@ static READ16_HANDLER( pip )
 
 static READ16_HANDLER( pap )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 
@@ -67,7 +68,7 @@ static READ16_HANDLER( calendar_r )
 {
 	mame_system_time systime;
 
-	mame_get_base_datetime(machine, &systime);
+	mame_get_base_datetime(space->machine, &systime);
 
 	switch (offset)
 	{

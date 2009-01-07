@@ -8,20 +8,21 @@
  */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 
 static READ16_HANDLER( unknown_read_0xc00000 )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 static READ16_HANDLER( unknown_read_0xd00000 )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 static READ16_HANDLER( unknown_read_0xffff00 )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 static ADDRESS_MAP_START( stepstag_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -70,7 +71,7 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( unknown_sub_read_0xbe0004 )
 {
-	return mame_rand(machine);
+	return mame_rand(space->machine);
 }
 
 

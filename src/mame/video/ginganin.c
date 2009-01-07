@@ -142,9 +142,9 @@ WRITE16_HANDLER( ginganin_txtram16_w )
 
 VIDEO_START( ginganin )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,16,16,BG_NX,BG_NY);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,16,16,FG_NX,FG_NY);
-	tx_tilemap = tilemap_create(get_txt_tile_info,tilemap_scan_rows,8,8,TXT_NX,TXT_NY);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_cols,16,16,BG_NX,BG_NY);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_cols,16,16,FG_NX,FG_NY);
+	tx_tilemap = tilemap_create(machine, get_txt_tile_info,tilemap_scan_rows,8,8,TXT_NX,TXT_NY);
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
 	tilemap_set_transparent_pen(tx_tilemap,15);
@@ -181,11 +181,11 @@ WRITE16_HANDLER( ginganin_vregs16_w )
 		tilemap_set_flip(ALL_TILEMAPS,flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 		break;
 	case 7:
-		soundlatch_w(machine,0,data);
-		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(space,0,data);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 		break;
 	default:
-		logerror("CPU #0 PC %06X : Warning, videoreg %04X <- %04X\n",activecpu_get_pc(),offset,data);
+		logerror("CPU #0 PC %06X : Warning, videoreg %04X <- %04X\n",cpu_get_pc(space->cpu),offset,data);
 	}
 }
 
@@ -280,7 +280,7 @@ if (input_code_pressed(KEYCODE_Z))
 
 
 	if (layers_ctrl1 & 1)	tilemap_draw(bitmap,cliprect, bg_tilemap,  0,0);
-	else					fillbitmap(bitmap,0,cliprect);
+	else					bitmap_fill(bitmap,cliprect,0);
 
 	if (layers_ctrl1 & 2)	tilemap_draw(bitmap,cliprect, fg_tilemap,  0,0);
 	if (layers_ctrl1 & 8)	draw_sprites(screen->machine, bitmap,cliprect);

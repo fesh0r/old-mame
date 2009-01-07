@@ -35,6 +35,7 @@ Get correct data for hopper on and lockout.
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
 static tilemap *bg_tilemap;
@@ -102,7 +103,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START(rcasino)
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
 		8, 8, 32, 32);
 }
 
@@ -165,7 +166,7 @@ static READ8_HANDLER( rcasino_port_11_r )
        pulse = 0;
        else pulse = 0x04;
    }
-   return input_port_read(machine, "IN1") + pulse;
+   return input_port_read(space->machine, "IN1") + pulse;
 }
 
 static ADDRESS_MAP_START( rcasino_map, ADDRESS_SPACE_PROGRAM, 8 )

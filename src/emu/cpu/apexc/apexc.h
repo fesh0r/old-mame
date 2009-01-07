@@ -18,23 +18,9 @@ enum
                     from the contents of ML and WS */
 };
 
-void apexc_get_info(UINT32 state, cpuinfo *info);
+CPU_GET_INFO( apexc );
+#define CPU_APEXC CPU_GET_INFO_NAME( apexc )
 
-#ifndef SUPPORT_ODD_WORD_SIZES
-#define apexc_readmem(address)	program_read_dword_32be((address)<<2)
-#define apexc_writemem(address, data)	program_write_dword_32be((address)<<2, (data))
-/* eewww ! - Fortunately, there is no memory mapped I/O, so we can simulate masked write
-without danger */
-#define apexc_writemem_masked(address, data, mask)										\
-	apexc_writemem((address), (apexc_readmem(address) & ~(mask)) | ((data) & (mask)))
-#else
-#define apexc_readmem(address)	cpu_readmem13_32(address)
-#define apexc_writemem(address, data)	cpu_writemem13_32((address), (data))
-#define apexc_writemem_masked(address, data, mask)	cpu_writemem13_32masked((address), (data), (mask))
-#endif
-
-unsigned apexc_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-
-#define apexc_readop(address)	apexc_readmem(address)
+CPU_DISASSEMBLE( apexc );
 
 #endif /* __APEXC_H__ */

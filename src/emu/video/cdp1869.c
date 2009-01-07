@@ -43,7 +43,9 @@ struct _cdp1869_t
 {
 	const cdp1869_interface *intf;	/* interface */
 	const device_config *screen;	/* screen */
+	const device_config *cpu;		/* CPU */
 	sound_stream *stream;			/* sound output */
+	int color_clock;
 
 	/* video state */
 	int dispoff;					/* display off */
@@ -150,9 +152,9 @@ static STATE_POSTLOAD( cdp1869_state_save_postload )
 
 /* CDP1802 X Register */
 
-static UINT16 cdp1802_get_r_x(void)
+static UINT16 cdp1802_get_r_x(cdp1869_t *cdp1869)
 {
-	return activecpu_get_reg(CDP1802_R0 + activecpu_get_reg(CDP1802_X));
+	return cpu_get_reg(cdp1869->cpu, CDP1802_R0 + cpu_get_reg(cdp1869->cpu, CDP1802_X));
 }
 
 /* Palette Initialization */
@@ -383,7 +385,7 @@ WRITE8_DEVICE_HANDLER( cdp1869_out4_w )
 {
 	cdp1869_t *cdp1869 = get_safe_token(device);
 
-	UINT16 word = cdp1802_get_r_x();
+	UINT16 word = cdp1802_get_r_x(cdp1869);
 
 	/*
       bit   description
@@ -422,7 +424,7 @@ WRITE8_DEVICE_HANDLER( cdp1869_out5_w )
 {
 	cdp1869_t *cdp1869 = get_safe_token(device);
 
-	UINT16 word = cdp1802_get_r_x();
+	UINT16 word = cdp1802_get_r_x(cdp1869);
 
 	/*
       bit   description
@@ -479,7 +481,7 @@ WRITE8_DEVICE_HANDLER( cdp1869_out6_w )
 {
 	cdp1869_t *cdp1869 = get_safe_token(device);
 
-	UINT16 word = cdp1802_get_r_x();
+	UINT16 word = cdp1802_get_r_x(cdp1869);
 
 	/*
       bit   description
@@ -509,7 +511,7 @@ WRITE8_DEVICE_HANDLER( cdp1869_out7_w )
 {
 	cdp1869_t *cdp1869 = get_safe_token(device);
 
-	UINT16 word = cdp1802_get_r_x();
+	UINT16 word = cdp1802_get_r_x(cdp1869);
 
 	/*
       bit   description
@@ -664,7 +666,7 @@ void cdp1869_update(const device_config *device, bitmap_t *bitmap, const rectang
 	}
 
 	sect_rect(&outer, cliprect);
-	fillbitmap(bitmap, device->machine->pens[cdp1869->bkg], &outer);
+	bitmap_fill(bitmap, &outer, device->machine->pens[cdp1869->bkg]);
 
 	if (!cdp1869->dispoff)
 	{
@@ -727,7 +729,7 @@ static void cdp1869_sound_update(const device_config *device, stream_sample_t **
 
 	if (!cdp1869->toneoff && cdp1869->toneamp)
 	{
-		double frequency = (cdp1869->intf->pixel_clock / 2) / (512 >> cdp1869->tonefreq) / (cdp1869->tonediv + 1);
+		double frequency = (device->clock / 2) / (512 >> cdp1869->tonefreq) / (cdp1869->tonediv + 1);
 
 		int rate = device->machine->sample_rate / 2;
 
@@ -766,7 +768,7 @@ static void cdp1869_sound_update(const device_config *device, stream_sample_t **
 
         for (wndiv = 0; wndiv < 128; wndiv++)
         {
-            double frequency = (cdp1869->intf->pixel_clock / 2) / (4096 >> cdp1869->wnfreq) / (wndiv + 1);
+            double frequency = (device->clock / 2) / (4096 >> cdp1869->wnfreq) / (wndiv + 1);
 
             cdp1869_sum_square_wave(buffer, frequency, amplitude);
         }
@@ -778,15 +780,15 @@ static void cdp1869_sound_update(const device_config *device, stream_sample_t **
 
 static DEVICE_START( cdp1869 )
 {
+	const cdp1869_inline *inline_config = device->inline_config;
 	cdp1869_t *cdp1869 = get_safe_token(device);
-	char unique_tag[30];
 
 	// validate arguments
 
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 	assert(device->static_config != NULL);
+	assert(inline_config != NULL);
 
 	cdp1869->intf = device->static_config;
 
@@ -801,44 +803,47 @@ static DEVICE_START( cdp1869 )
 
 	// get the screen device
 
-	cdp1869->screen = device_list_find_by_tag(device->machine->config->devicelist, VIDEO_SCREEN, cdp1869->intf->screen_tag);
+	cdp1869->screen = devtag_get_device(device->machine, VIDEO_SCREEN, inline_config->screen_tag);
 	assert(cdp1869->screen != NULL);
+
+	// get the CPU device
+
+	cdp1869->cpu = cputag_get_cpu(device->machine, inline_config->cpu_tag);
+	assert(cdp1869->cpu != NULL);
 
 	// allocate timers
 
 	if (cdp1869->intf->on_prd_changed != NULL)
 	{
-		cdp1869->prd_changed_timer = timer_alloc(prd_changed_tick, (void *)device);
+		cdp1869->prd_changed_timer = timer_alloc(device->machine, prd_changed_tick, (void *)device);
 		update_prd_changed_timer(cdp1869);
 	}
 
 	// register for state saving
-
-	state_save_combine_module_and_tag(unique_tag, "CDP1869", device->tag);
 	state_save_register_postload(device->machine, cdp1869_state_save_postload, cdp1869);
 
-	state_save_register_item(unique_tag, 0, cdp1869->dispoff);
-	state_save_register_item(unique_tag, 0, cdp1869->fresvert);
-	state_save_register_item(unique_tag, 0, cdp1869->freshorz);
-	state_save_register_item(unique_tag, 0, cdp1869->cmem);
-	state_save_register_item(unique_tag, 0, cdp1869->dblpage);
-	state_save_register_item(unique_tag, 0, cdp1869->line16);
-	state_save_register_item(unique_tag, 0, cdp1869->line9);
-	state_save_register_item(unique_tag, 0, cdp1869->cfc);
-	state_save_register_item(unique_tag, 0, cdp1869->col);
-	state_save_register_item(unique_tag, 0, cdp1869->bkg);
-	state_save_register_item(unique_tag, 0, cdp1869->pma);
-	state_save_register_item(unique_tag, 0, cdp1869->hma);
+	state_save_register_device_item(device, 0, cdp1869->dispoff);
+	state_save_register_device_item(device, 0, cdp1869->fresvert);
+	state_save_register_device_item(device, 0, cdp1869->freshorz);
+	state_save_register_device_item(device, 0, cdp1869->cmem);
+	state_save_register_device_item(device, 0, cdp1869->dblpage);
+	state_save_register_device_item(device, 0, cdp1869->line16);
+	state_save_register_device_item(device, 0, cdp1869->line9);
+	state_save_register_device_item(device, 0, cdp1869->cfc);
+	state_save_register_device_item(device, 0, cdp1869->col);
+	state_save_register_device_item(device, 0, cdp1869->bkg);
+	state_save_register_device_item(device, 0, cdp1869->pma);
+	state_save_register_device_item(device, 0, cdp1869->hma);
 
-	state_save_register_item(unique_tag, 0, cdp1869->signal);
-	state_save_register_item(unique_tag, 0, cdp1869->incr);
-	state_save_register_item(unique_tag, 0, cdp1869->toneoff);
-	state_save_register_item(unique_tag, 0, cdp1869->wnoff);
-	state_save_register_item(unique_tag, 0, cdp1869->tonediv);
-	state_save_register_item(unique_tag, 0, cdp1869->tonefreq);
-	state_save_register_item(unique_tag, 0, cdp1869->toneamp);
-	state_save_register_item(unique_tag, 0, cdp1869->wnfreq);
-	state_save_register_item(unique_tag, 0, cdp1869->wnamp);
+	state_save_register_device_item(device, 0, cdp1869->signal);
+	state_save_register_device_item(device, 0, cdp1869->incr);
+	state_save_register_device_item(device, 0, cdp1869->toneoff);
+	state_save_register_device_item(device, 0, cdp1869->wnoff);
+	state_save_register_device_item(device, 0, cdp1869->tonediv);
+	state_save_register_device_item(device, 0, cdp1869->tonefreq);
+	state_save_register_device_item(device, 0, cdp1869->toneamp);
+	state_save_register_device_item(device, 0, cdp1869->wnfreq);
+	state_save_register_device_item(device, 0, cdp1869->wnamp);
 
 	return DEVICE_START_OK;
 }
@@ -857,7 +862,7 @@ DEVICE_GET_INFO( cdp1869_video )
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(cdp1869_t);				break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
+		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = sizeof(cdp1869_inline);			break;
 		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
@@ -867,10 +872,10 @@ DEVICE_GET_INFO( cdp1869_video )
 		case DEVINFO_FCT_RESET:							/* Nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "RCA CDP1869";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "RCA CDP1800";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "RCA CDP1869");				break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "RCA CDP1800");				break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
