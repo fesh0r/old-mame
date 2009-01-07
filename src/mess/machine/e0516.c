@@ -188,7 +188,6 @@ void e0516_cs_w(const device_config *device, int level)
 static DEVICE_START( e0516 )
 {
 	e0516_t *e0516 = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
@@ -201,21 +200,19 @@ static DEVICE_START( e0516 )
 	assert(e0516->intf->clock > 0);
 
 	/* create the timers */
-	e0516->clock_timer = timer_alloc(clock_tick, (void *)device);
+	e0516->clock_timer = timer_alloc(device->machine, clock_tick, (void *)device);
 	timer_adjust_periodic(e0516->clock_timer, attotime_zero, 0, ATTOTIME_IN_HZ(e0516->intf->clock / 32768));
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "E0516", device->tag);
+	state_save_register_item(device->machine, "e0516", device->tag, 0, e0516->cs);
+	state_save_register_item(device->machine, "e0516", device->tag, 0, e0516->data_latch);
+	state_save_register_item(device->machine, "e0516", device->tag, 0, e0516->reg_latch);
+	state_save_register_item(device->machine, "e0516", device->tag, 0, e0516->read_write);
+	state_save_register_item(device->machine, "e0516", device->tag, 0, e0516->state);
+	state_save_register_item(device->machine, "e0516", device->tag, 0, e0516->bits);
+	state_save_register_item(device->machine, "e0516", device->tag, 0, e0516->dio);
 
-	state_save_register_item(unique_tag, 0, e0516->cs);
-	state_save_register_item(unique_tag, 0, e0516->data_latch);
-	state_save_register_item(unique_tag, 0, e0516->reg_latch);
-	state_save_register_item(unique_tag, 0, e0516->read_write);
-	state_save_register_item(unique_tag, 0, e0516->state);
-	state_save_register_item(unique_tag, 0, e0516->bits);
-	state_save_register_item(unique_tag, 0, e0516->dio);
-
-	state_save_register_item_array(unique_tag, 0, e0516->reg);
+	state_save_register_item_array(device->machine, "e0516", device->tag, 0, e0516->reg);
 	return DEVICE_START_OK;
 }
 
@@ -243,10 +240,10 @@ DEVICE_GET_INFO( e0516 )
 		case DEVINFO_FCT_RESET:							/* Nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "E05-16";							break;
-		case DEVINFO_STR_FAMILY:						info->s = "E05-16";							break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright MESS Team";			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "E05-16");					break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "E05-16");					break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");		break;
 	}
 }

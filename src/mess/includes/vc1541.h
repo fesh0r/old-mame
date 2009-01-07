@@ -9,7 +9,12 @@
 #ifndef VC1541_H_
 #define VC1541_H_
 
+#include "machine/6522via.h"
+
 /*----------- defined in machine/vc1541.c -----------*/
+
+extern const via6522_interface vc1541_via2;
+extern const via6522_interface vc1541_via3;
 
 /* we currently have preliminary support for 1541 & 1551 only */
 enum { 
@@ -44,7 +49,7 @@ format_g64,				/* 1541 image in GCR format */
 };
 
 
-int drive_config(int type, int id, int mode, int cpunr, int devicenr);
+int drive_config(running_machine *machine, int type, int id, int mode, int cpunr, int devicenr);
 void drive_reset(void);
 
 void vc1541_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
@@ -171,11 +176,11 @@ MACHINE_DRIVER_EXTERN( cpu_c1571 );
 /* IEC interface for c16 with c1551 */
 
 /* To be passed directly to the drivers */
-void c1551x_0_write_data (int data);
-int c1551x_0_read_data (void);
-void c1551x_0_write_handshake (int data);
-int c1551x_0_read_handshake (void);
-int c1551x_0_read_status (void);
+WRITE8_DEVICE_HANDLER( c1551x_write_data );
+READ8_DEVICE_HANDLER( c1551x_read_data );
+WRITE8_DEVICE_HANDLER( c1551x_write_handshake );
+READ8_DEVICE_HANDLER( c1551x_read_handshake );
+READ8_DEVICE_HANDLER( c1551x_read_status );
 
 
 /* serial bus for vic20, c64 & c16 with vc1541 and some printer */

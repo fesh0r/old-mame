@@ -27,6 +27,7 @@
 ******************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
 #include "devices/cartslot.h"
 #include "includes/mekd2.h"
 
@@ -194,13 +195,11 @@ static GFXDECODE_START( mekd2 )
 	GFXDECODE_ENTRY( "gfx2", 0, key_layout, 16*2, 2 )
 GFXDECODE_END
 
-
-
 static MACHINE_DRIVER_START( mekd2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", M6800, 614400)        /* 614.4 kHz */
 	MDRV_CPU_PROGRAM_MAP(mekd2_mem, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
     /* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -221,6 +220,11 @@ static MACHINE_DRIVER_START( mekd2 )
 
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("d2")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(mekd2_cart)
 MACHINE_DRIVER_END
 
 
@@ -233,28 +237,6 @@ ROM_START(mekd2)
 		/* space filled with key icons by mekd2_init_driver */
 ROM_END
 
-static void mekd2_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(mekd2_cart); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "d2"); break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(mekd2)
-	CONFIG_DEVICE(mekd2_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
 /***************************************************************************
 
   Game driver(s)
@@ -262,4 +244,4 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY     FULLNAME */
-CONS( 1977, mekd2,	0,		0,		mekd2,	  mekd2,	mekd2,	mekd2,	"Motorola",	"MEK6800D2" , GAME_NOT_WORKING )
+CONS( 1977, mekd2,	0,		0,		mekd2,	  mekd2,	mekd2,	0,		"Motorola",	"MEK6800D2" , GAME_NOT_WORKING )

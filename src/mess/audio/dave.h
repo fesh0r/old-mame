@@ -17,9 +17,9 @@ DAVE SOUND CHIP
 
 typedef struct DAVE_INTERFACE
 {
-	void (*reg_r)(int);
-	void (*reg_w)(int,int);
-	void (*int_callback)(int);
+	void (*reg_r)(running_machine *, int);
+	void (*reg_w)(running_machine *, int,int);
+	void (*int_callback)(running_machine *, int);
 } DAVE_INTERFACE;
 
 #define DAVE_FIFTY_HZ_COUNTER_RELOAD 20
@@ -30,7 +30,7 @@ typedef struct DAVE
 	unsigned char Regs[32];
 
 
-	/* int latches (used by 1hz, int1 and int2) */
+	/* int latches (used by 1Hz, int1 and int2) */
 	unsigned long int_latch;
 	/* int enables */
 	unsigned long int_enable;
@@ -42,19 +42,19 @@ typedef struct DAVE
 	/* INTERRUPTS */
 
 	/* internal timer */
-	/* bit 2: 1khz timer irq */
-	/* bit 1: 50khz timer irq */
+	/* bit 2: 1kHz timer irq */
+	/* bit 1: 50kHz timer irq */
 	int timer_irq;
-	/* 1khz timer - divided into 1khz, 50hz and 1hz timer */
+	/* 1khz timer - divided into 1kHz, 50Hz and 1Hz timer */
 	void	*int_timer;
-	/* state of 1khz timer */
+	/* state of 1kHz timer */
 	unsigned long one_khz_state;
-	/* state of 50hz timer */
+	/* state of 50Hz timer */
 	unsigned long fifty_hz_state;
 
-	/* counter used to trigger 50hz from 1khz timer */
+	/* counter used to trigger 50Hz from 1kHz timer */
 	unsigned long fifty_hz_count;
-	/* counter used to trigger 1hz from 1khz timer */
+	/* counter used to trigger 1Hz from 1kHz timer */
 	unsigned long one_hz_count;
 
 
@@ -81,7 +81,7 @@ typedef struct DAVE
 	sound_stream *sound_stream;
 } DAVE;
 
-extern void *Dave_sh_start(int clock, const custom_sound_interface *config);
+extern CUSTOM_START( Dave_sh_start );
 
 /* id's of external ints */
 enum
@@ -90,16 +90,16 @@ enum
 	DAVE_INT2_ID
 };
 
-void	Dave_Init(running_machine *machine);
+void Dave_Init(running_machine *machine);
 /* set external int state */
-void	Dave_SetExternalIntState(int IntID, int State);
+void Dave_SetExternalIntState(running_machine *machine, int IntID, int State);
 
-extern int	Dave_getreg(int);
-extern WRITE8_HANDLER ( Dave_setreg );
+extern int Dave_getreg(int);
+extern void Dave_setreg(running_machine *machine, offs_t offset, UINT8 data);
 
-extern  READ8_HANDLER ( 	Dave_reg_r );
+extern READ8_HANDLER ( Dave_reg_r );
 extern WRITE8_HANDLER (	Dave_reg_w );
 
-void	Dave_SetIFace(const struct DAVE_INTERFACE *newInterface);
+void Dave_SetIFace(const struct DAVE_INTERFACE *newInterface);
 
 #endif

@@ -210,12 +210,12 @@ static thom_floppy_drive* thom_floppy_drive_of_image ( const device_config *imag
 static void thom_floppy_seek ( const device_config *image, int physical_track )
 {
 	thom_floppy_drive* d = thom_floppy_drive_of_image( image );
-	thom_floppy_active( 0 );
+	thom_floppy_active( image->machine, 0 );
 	if ( physical_track < 0 )
 		physical_track = 0;
 	if ( physical_track >= 80 )
 		physical_track = 79;
-	LOG(( "%f thom_floppy_seek: dev=%d track=%i\n", attotime_to_double(timer_get_time()), (int)(FPTR)(d - thom_floppy_drives), physical_track ));
+	//LOG(( "%f thom_floppy_seek: dev=%d track=%i\n", attotime_to_double(timer_get_time(machine)), (int)(FPTR)(d - thom_floppy_drives), physical_track ));
 	d->cur_track = physical_track;
 }
 
@@ -243,7 +243,7 @@ static void thom_floppy_get_id ( const device_config* image, chrn_id* id,
 	       (int)(FPTR)(d - thom_floppy_drives), trk, id_index, physical_side,
 	       (thom_density == DEN_FM_LO) ? "FM" : "MFM",
 	       (d->density == DEN_FM_LO) ? "FM" : "MFM" ));
-	thom_floppy_active( 0 );
+	thom_floppy_active( image->machine, 0 );
 	if ( thom_floppy_sector_ptr( d, id_index+1, trk, 0 ) &&
 #if 0
 	     /* fails with bobwinter */
@@ -282,7 +282,7 @@ static void thom_floppy_read_sector_data_into_buffer ( const device_config* imag
 {
 	thom_floppy_drive* d = thom_floppy_drive_of_image( image );
 	UINT8* src = thom_floppy_sector_ptr( d, index1, d->cur_track, 0 );
-	thom_floppy_active( 0 );
+	thom_floppy_active( image->machine, 0 );
 	LOG(( "thom_floppy_read_sector_data_into_buffer: dev=%d track=%i idx=%i side=%i len=%i\n", (int)(FPTR)(d - thom_floppy_drives), d->cur_track, index1, side, length ));
 	if ( length > d->sector_size )
 	{
@@ -299,7 +299,7 @@ static void thom_floppy_write_sector_data_from_buffer ( const device_config *ima
 {
 	thom_floppy_drive* d = thom_floppy_drive_of_image( image );
 	UINT8* dst = thom_floppy_sector_ptr( d, data_id, d->cur_track, 0 );
-	thom_floppy_active( 1 );
+	thom_floppy_active( image->machine, 1 );
 	LOG(( "thom_floppy_write_sector_data_into_buffer: dev=%d track=%i idx=%i side=%i ddam=%i len=%i\n", (int)(FPTR)(d - thom_floppy_drives), d->cur_track, data_id, side, ddam, length ));
 	if ( length > d->sector_size )
 	{
@@ -320,7 +320,7 @@ static void thom_floppy_format_sector ( const device_config *image, int side, in
 	thom_floppy_drive* d = thom_floppy_drive_of_image( image );
 	int sector_size = 128 << n;
 	UINT8* dst;
-	thom_floppy_active( 1 );
+	thom_floppy_active( image->machine, 1 );
 	LOG(( "thom_floppy_format_sector: dev=%d track=%i/%i side=%i/%i idx=%i/%i c=%i h=%i r=%i n=%i filler=$%02X\n",
 	      (int)(FPTR)(d - thom_floppy_drives),
 	      d->cur_track, d->tracks, side, d->sides, sector_index, d->sectors,
@@ -667,13 +667,13 @@ static int thom_floppy_sap_load ( const device_config* image )
 	for ( i = 0; i < d->tracks * d->sectors; i++ )
 	{
 		UINT16 crc;
-		int j, fmt, prot, track, sector;
+		int j, fmt, /*prot,*/ track, sector;
 
 		/* load */
 		image_fseek( image, i * (d->sector_size + 6) + 66, SEEK_SET  );
 		image_fread( image, buf, d->sector_size + 6 );
 		fmt    = buf[0];
-		prot   = buf[1];
+		/* prot   = buf[1]; */
 		track  = buf[2];
 		sector = buf[3];
 

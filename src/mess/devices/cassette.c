@@ -77,7 +77,7 @@ static void cassette_update(const device_config *device)
 	dev_cassette_t	*cassette = get_safe_token( device );
 	double cur_time;
 
-	cur_time = attotime_to_double(timer_get_time());
+	cur_time = attotime_to_double(timer_get_time(device->machine));
 
 	if (cassette_is_motor_on(device))
 	{
@@ -184,7 +184,7 @@ double cassette_get_position(const device_config *device)
 	position = cassette->position;
 
 	if (cassette_is_motor_on(device))
-		position += attotime_to_double(timer_get_time()) - cassette->position_time;
+		position += attotime_to_double(timer_get_time(device->machine)) - cassette->position_time;
 	return position;
 }
 
@@ -289,7 +289,7 @@ static DEVICE_IMAGE_LOAD( cassette )
 
 	/* reset the position */
 	cassette->position = 0.0;
-	cassette->position_time = attotime_to_double(timer_get_time());
+	cassette->position_time = attotime_to_double(timer_get_time(image->machine));
 
 	return INIT_PASS;
 
@@ -393,23 +393,20 @@ DEVICE_GET_INFO(cassette)
 		case DEVINFO_FCT_DISPLAY:					info->f = (genf *) device_display_cassette; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:						info->s = "Cassette"; break;
-		case DEVINFO_STR_FAMILY:					info->s = "Cassette"; break;
-		case DEVINFO_STR_SOURCE_FILE:				info->s = __FILE__; break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "Cassette"); break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "Cassette"); break;
+		case DEVINFO_STR_SOURCE_FILE:				strcpy(info->s, __FILE__); break;
 		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:
 			if ( device && device->static_config )
 			{
 				const struct CassetteFormat * const *formats = ((cassette_config *)device->static_config)->formats;
-				char	*s;
 				int		i;
 
 				/* set up a temporary string */
-				s = device_temp_str();
-				info->s = s;
-				s[0] = '\0';
+				info->s[0] = '\0';
 
 				for ( i = 0; formats[i]; i++ )
-					specify_extension( s, 256, formats[i]->extensions );
+					specify_extension( info->s, 256, formats[i]->extensions );
 			}
 			break;
 	}

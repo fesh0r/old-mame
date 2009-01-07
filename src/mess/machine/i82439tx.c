@@ -7,7 +7,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/i82439tx.h"
 #include "machine/pci.h"
 
@@ -49,7 +48,7 @@ static WRITE32_HANDLER(bank_e8000_w)	{ COMBINE_DATA(&i82439tx->bios_ram[offset +
 static WRITE32_HANDLER(bank_ec000_w)	{ COMBINE_DATA(&i82439tx->bios_ram[offset + 0x2c000 / 4]); }
 static WRITE32_HANDLER(bank_f0000_w)	{ COMBINE_DATA(&i82439tx->bios_ram[offset + 0x30000 / 4]); }
 
-static UINT32 intel82439tx_pci_read(int function, int offset, UINT32 mem_mask)
+UINT32 intel82439tx_pci_read(const device_config *busdevice, const device_config *device, int function, int offset, UINT32 mem_mask)
 {
 	UINT32 result = 0;
 
@@ -102,25 +101,26 @@ static UINT32 intel82439tx_pci_read(int function, int offset, UINT32 mem_mask)
 
 
 
-static void intel82439tx_configure_memory(running_machine *machine, UINT8 val, offs_t begin, offs_t end, int read_bank, write32_machine_func wh)
+static void intel82439tx_configure_memory(running_machine *machine, UINT8 val, offs_t begin, offs_t end, int read_bank, write32_space_func wh)
 {
-	memory_install_read_handler(machine, 0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, read_bank);
+	const address_space* space = cpu_get_address_space(machine->cpu[0],ADDRESS_SPACE_PROGRAM);
+	memory_install_read_handler(space, begin, end, 0, 0, read_bank);
 	if (val & 0x01)
-		memory_set_bankptr(read_bank, i82439tx->bios_ram + (begin - 0xC0000) / 4);
+		memory_set_bankptr(machine, read_bank, i82439tx->bios_ram + (begin - 0xC0000) / 4);
 	else
-		memory_set_bankptr(read_bank, memory_region(machine, "user1") + (begin - 0xC0000));
+		memory_set_bankptr(machine, read_bank, memory_region(machine, "user1") + (begin - 0xC0000));
 
 	if (val & 0x02)
-		memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, wh);
+		memory_install_write32_handler(space, begin, end, 0, 0, wh);
 	else
-		memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, SMH_NOP);
+		memory_install_write32_handler(space, begin, end, 0, 0, SMH_NOP);
 }
 
 
 
-static void intel82439tx_pci_write(int function, int offset, UINT32 data, UINT32 mem_mask)
+void intel82439tx_pci_write(const device_config *busdevice, const device_config *device, int function, int offset, UINT32 data, UINT32 mem_mask)
 {
-	running_machine *machine = Machine;
+	running_machine *machine = busdevice->machine;
 
 	if (function != 0)
 		return;
@@ -199,7 +199,7 @@ static void intel82439tx_pci_write(int function, int offset, UINT32 data, UINT32
 	}
 
 	/* hack to compensate for weird issue (maybe the Pentium core needs to support caching? */
-	if ((cpunum_get_reg(0, REG_PC) == 0xFCB01) && !strcmp(machine->gamedrv->name, "at586"))
+	if ((cpu_get_reg(machine->cpu[0], REG_GENPC) == 0xFCB01) && !strcmp(machine->gamedrv->name, "at586"))
 	{
 		memory_region(machine, "user1")[0x3CB01] = 0xF3;
 		memory_region(machine, "user1")[0x3CB02] = 0xA4;
@@ -210,20 +210,9 @@ static void intel82439tx_pci_write(int function, int offset, UINT32 data, UINT32
 
 
 
-static const struct pci_device_info intel82439tx_callbacks =
-{
-	intel82439tx_pci_read,
-	intel82439tx_pci_write
-};
-
-
-
 void intel82439tx_init(running_machine *machine)
 {
 	/* setup PCI */
-	pci_init();
-	pci_add_device(0, 0, &intel82439tx_callbacks);
-
 	i82439tx = auto_malloc(sizeof(*i82439tx));
 	memset(i82439tx, 0, sizeof(*i82439tx));
 	i82439tx->regs[0x00] = 0x14020000;

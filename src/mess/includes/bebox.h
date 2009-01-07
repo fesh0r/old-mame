@@ -18,7 +18,10 @@ extern const struct dma8237_interface bebox_dma8237_1_config;
 extern const struct dma8237_interface bebox_dma8237_2_config;
 extern const struct pic8259_interface bebox_pic8259_master_config;
 extern const struct pic8259_interface bebox_pic8259_slave_config;
-extern const ins8250_interface bebox_uart_inteface[4];
+extern const ins8250_interface bebox_uart_inteface_0;
+extern const ins8250_interface bebox_uart_inteface_1;
+extern const ins8250_interface bebox_uart_inteface_2;
+extern const ins8250_interface bebox_uart_inteface_3;
 
 MACHINE_START( bebox );
 MACHINE_RESET( bebox );
@@ -46,7 +49,9 @@ WRITE64_HANDLER( bebox_page_w );
 WRITE64_HANDLER( bebox_80000480_w );
 WRITE64_HANDLER( bebox_flash_w );
 
-void bebox_ide_interrupt(int state);
+void bebox_ide_interrupt(const device_config *device, int state);
 
+UINT32 scsi53c810_pci_read(const device_config *busdevice, const device_config *device, int function, int offset, UINT32 mem_mask);
+void scsi53c810_pci_write(const device_config *busdevice, const device_config *device, int function, int offset, UINT32 data, UINT32 mem_mask);
 
 #endif /* BEBOX_H_ */

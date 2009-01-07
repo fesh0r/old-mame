@@ -37,28 +37,28 @@ static READ8_HANDLER(kc85_4_port_r)
 	switch (port)
 	{
 //      case 0x080:
-//          return kc85_module_r(machine, offset);
+//          return kc85_module_r(space, offset);
 
 		case 0x085:
 		case 0x084:
-			return kc85_4_84_r(machine, offset);
+			return kc85_4_84_r(space, offset);
 
 
 		case 0x086:
 		case 0x087:
-			return kc85_4_86_r(machine, offset);
+			return kc85_4_86_r(space, offset);
 
 		case 0x088:
 		case 0x089:
-			return kc85_pio_data_r(machine, port-0x088);
+			return kc85_pio_data_r(space, port-0x088);
 		case 0x08a:
 		case 0x08b:
-			return kc85_pio_control_r(machine, port-0x08a);
+			return kc85_pio_control_r(space, port-0x08a);
 		case 0x08c:
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			return kc85_ctc_r(device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), port-0x08c);
+			return kc85_ctc_r(device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), port&3);
 
 	}
 
@@ -75,34 +75,34 @@ static WRITE8_HANDLER(kc85_4_port_w)
 	switch (port)
 	{
 //      case 0x080:
-//          kc85_module_w(machine, offset,data);
+//          kc85_module_w(space, offset,data);
 //          return;
 
 		case 0x085:
 		case 0x084:
-			kc85_4_84_w(machine, offset,data);
+			kc85_4_84_w(space, offset,data);
 			return;
 
 		case 0x086:
 		case 0x087:
-			kc85_4_86_w(machine, offset,data);
+			kc85_4_86_w(space, offset,data);
 			return;
 
 		case 0x088:
 		case 0x089:
-			kc85_4_pio_data_w(machine, port-0x088, data);
+			kc85_4_pio_data_w(space, port-0x088, data);
 			return;
 
 		case 0x08a:
 		case 0x08b:
-			kc85_pio_control_w(machine, port-0x08a, data);
+			kc85_pio_control_w(space, port-0x08a, data);
 			return;
 
 		case 0x08c:
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			kc85_ctc_w(device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), port-0x08c, data);
+			kc85_ctc_w(device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), port&3, data);
 			return;
 	}
 
@@ -146,15 +146,15 @@ static READ8_HANDLER(kc85_3_port_r)
 
 		case 0x088:
 		case 0x089:
-			return kc85_pio_data_r(machine, port-0x088);
+			return kc85_pio_data_r(space, port-0x088);
 		case 0x08a:
 		case 0x08b:
-			return kc85_pio_control_r(machine, port-0x08a);
+			return kc85_pio_control_r(space, port-0x08a);
 		case 0x08c:
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			return kc85_ctc_r(device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), port-0x08c);
+			return kc85_ctc_r(device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), port&3);
 	}
 
 	logerror("unhandled port r: %04x\n",offset);
@@ -170,24 +170,24 @@ static WRITE8_HANDLER(kc85_3_port_w)
 	switch (port)
 	{
 //      case 0x080:
-//          kc85_module_w(offset,data);
+//          kc85_module_w(space, offset,data);
 //          return;
 
 		case 0x088:
 		case 0x089:
-			kc85_3_pio_data_w(machine, port-0x088, data);
+			kc85_3_pio_data_w(space, port-0x088, data);
 			return;
 
 		case 0x08a:
 		case 0x08b:
-			kc85_pio_control_w(machine, port-0x08a, data);
+			kc85_pio_control_w(space, port-0x08a, data);
 			return;
 
 		case 0x08c:
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			kc85_ctc_w(device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), port-0x08c, data);
+			kc85_ctc_w(device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), port&3, data);
 			return;
 	}
 
@@ -318,8 +318,6 @@ static const z80_daisy_chain kc85_daisy_chain[] =
 
 static const z80ctc_interface kc85_disc_ctc_intf =
 {
-	"main",			/* cpu */
-	0,				/* timer clock */
 	0,				/* timer disablers */
 	NULL,			/* interrupt callback */
 	NULL,			/* ZC/TO0 callback */
@@ -333,9 +331,9 @@ static ADDRESS_MAP_START(kc85_disc_hw_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(kc85_disc_hw_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0f0, 0x0f0) AM_READ(nec765_status_r)
-	AM_RANGE(0x0f1, 0x0f1) AM_READWRITE(nec765_data_r, nec765_data_w)
-	AM_RANGE(0x0f2, 0x0f3) AM_READWRITE(nec765_dack_r, nec765_dack_w)
+	AM_RANGE(0x0f0, 0x0f0) AM_DEVREAD( NEC765A, "nec765", nec765_status_r)
+	AM_RANGE(0x0f1, 0x0f1) AM_DEVREADWRITE( NEC765A, "nec765", nec765_data_r, nec765_data_w)
+	AM_RANGE(0x0f2, 0x0f3) AM_DEVREADWRITE( NEC765A, "nec765", nec765_dack_r, nec765_dack_w)
 	AM_RANGE(0x0f4, 0x0f5) AM_READ(kc85_disc_hw_input_gate_r)
 	/*{0x0f6, 0x0f7, SMH_NOP},*/		/* for controller */
 	AM_RANGE(0x0f8, 0x0f9) AM_WRITE( kc85_disc_hw_terminal_count_w) /* terminal count */
@@ -347,7 +345,10 @@ static MACHINE_DRIVER_START( cpu_kc_disc )
 	MDRV_CPU_PROGRAM_MAP(kc85_disc_hw_mem, 0)
 	MDRV_CPU_IO_MAP(kc85_disc_hw_io, 0)
 
-	MDRV_Z80CTC_ADD( "z80ctc_1", kc85_disc_ctc_intf )
+	//FIX: put right clock value for CTC
+	MDRV_Z80CTC_ADD( "z80ctc_1", KC85_4_CLOCK, kc85_disc_ctc_intf )
+	
+	MDRV_NEC765A_ADD("nec765", kc_fdc_interface)
 MACHINE_DRIVER_END
 
 
@@ -358,12 +359,12 @@ static MACHINE_DRIVER_START( kc85_3 )
 	MDRV_CPU_PROGRAM_MAP(kc85_3_mem, 0)
 	MDRV_CPU_IO_MAP(kc85_3_io, 0)
 	MDRV_CPU_CONFIG(kc85_daisy_chain)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET( kc85_3 )
 
 	MDRV_Z80PIO_ADD( "z80pio", kc85_pio_intf )
-	MDRV_Z80CTC_ADD( "z80ctc", kc85_ctc_intf )
+	MDRV_Z80CTC_ADD( "z80ctc", 1379310.344828, kc85_ctc_intf )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -408,7 +409,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( kc85_4d )
 	MDRV_IMPORT_FROM( kc85_4 )
 	MDRV_IMPORT_FROM( cpu_kc_disc )
-	MDRV_INTERLEAVE( 2 )
+	MDRV_QUANTUM_TIME(HZ(120))
 	MDRV_MACHINE_RESET( kc85_4d )
 MACHINE_DRIVER_END
 

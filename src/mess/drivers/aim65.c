@@ -14,6 +14,7 @@ ToDo:
 
 /* Core includes */
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "includes/aim65.h"
 
 /* peripheral chips */
@@ -38,11 +39,11 @@ ToDo:
 /* Note: RAM is mapped dynamically in machine/aim65.c */
 static ADDRESS_MAP_START( aim65_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x1000, 0x9fff ) AM_NOP /* User available expansions */
-	AM_RANGE( 0xa000, 0xa00f ) AM_MIRROR(0x3f0) AM_READWRITE(via_1_r, via_1_w) /* User VIA */
+	AM_RANGE( 0xa000, 0xa00f ) AM_MIRROR(0x3f0) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w) /* User VIA */
 	AM_RANGE( 0xa400, 0xa47f ) AM_RAM /* RIOT RAM */
 	AM_RANGE( 0xa480, 0xa497 ) AM_DEVREADWRITE(RIOT6532, "riot", riot6532_r, riot6532_w)
 	AM_RANGE( 0xa498, 0xa7ff ) AM_NOP /* Not available */
-	AM_RANGE( 0xa800, 0xa80f ) AM_MIRROR(0x3f0) AM_READWRITE(via_0_r, via_0_w)
+	AM_RANGE( 0xa800, 0xa80f ) AM_MIRROR(0x3f0) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
 	AM_RANGE( 0xac00, 0xac03 ) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE( 0xac04, 0xac43 ) AM_RAM /* PIA RAM */
 	AM_RANGE( 0xac44, 0xafff ) AM_NOP /* Not available */
@@ -150,15 +151,8 @@ INPUT_PORTS_END
  Device interfaces
 ******************************************************************************/
 
-/* Display driver interfaces */
-static const dl1416_interface dl1416_ds1 = { DL1416T, aim65_update_ds1 };
-static const dl1416_interface dl1416_ds2 = { DL1416T, aim65_update_ds2 };
-static const dl1416_interface dl1416_ds3 = { DL1416T, aim65_update_ds3 };
-static const dl1416_interface dl1416_ds4 = { DL1416T, aim65_update_ds4 };
-static const dl1416_interface dl1416_ds5 = { DL1416T, aim65_update_ds5 };
-
 /* riot interface */
-static const riot6532_interface aim65_r6532_interface =
+static const riot6532_interface aim65_riot_interface =
 {
 	NULL,
 	aim65_riot_b_r,
@@ -167,36 +161,66 @@ static const riot6532_interface aim65_r6532_interface =
 	aim65_riot_irq
 };
 
+/* system via interface */
+static const via6522_interface aim65_system_via =
+{
+	NULL,
+	aim65_via0_b_r,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	aim65_via0_a_w,
+	aim65_via0_b_w,
+	NULL,
+	NULL,
+	NULL,
+	aim65_printer_on,
+	aim65_via_irq_func
+};
 
+/* user via interface */
+static const via6522_interface aim65_user_via =
+{
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+};
 
 /******************************************************************************
  Machine Drivers
 ******************************************************************************/
-
 
 static MACHINE_DRIVER_START( aim65 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", M6502, AIM65_CLOCK) /* 1 MHz */
 	MDRV_CPU_PROGRAM_MAP(aim65_mem, 0)
 
+	MDRV_MACHINE_START(aim65)
+
 	MDRV_DEFAULT_LAYOUT(layout_aim65)
 
 	/* alpha-numeric display */
-	MDRV_DEVICE_ADD("ds1", DL1416)
-	MDRV_DEVICE_CONFIG(dl1416_ds1)
-	MDRV_DEVICE_ADD("ds2", DL1416)
-	MDRV_DEVICE_CONFIG(dl1416_ds2)
-	MDRV_DEVICE_ADD("ds3", DL1416)
-	MDRV_DEVICE_CONFIG(dl1416_ds3)
-	MDRV_DEVICE_ADD("ds4", DL1416)
-	MDRV_DEVICE_CONFIG(dl1416_ds4)
-	MDRV_DEVICE_ADD("ds5", DL1416)
-	MDRV_DEVICE_CONFIG(dl1416_ds5)
+	MDRV_DL1416T_ADD("ds1", aim65_update_ds1)
+	MDRV_DL1416T_ADD("ds2", aim65_update_ds2)
+	MDRV_DL1416T_ADD("ds3", aim65_update_ds3)
+	MDRV_DL1416T_ADD("ds4", aim65_update_ds4)
+	MDRV_DL1416T_ADD("ds5", aim65_update_ds5)
 
 	MDRV_VIDEO_START(aim65)
 
 	/* other devices */
-	MDRV_RIOT6532_ADD("riot", AIM65_CLOCK, aim65_r6532_interface)
+	MDRV_RIOT6532_ADD("riot", AIM65_CLOCK, aim65_riot_interface)
+	MDRV_VIA6522_ADD("via6522_0", 0, aim65_system_via)
+	MDRV_VIA6522_ADD("via6522_1", 0, aim65_user_via)
+
+	MDRV_CARTSLOT_ADD("cart1")
+	MDRV_CARTSLOT_EXTENSION_LIST("z26")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_ADD("cart2")
+	MDRV_CARTSLOT_EXTENSION_LIST("z25")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_ADD("cart3")
+	MDRV_CARTSLOT_EXTENSION_LIST("z24")
+	MDRV_CARTSLOT_NOT_MANDATORY
 MACHINE_DRIVER_END
 
 
@@ -208,9 +232,9 @@ MACHINE_DRIVER_END
 
 ROM_START( aim65 )
 	ROM_REGION(0x10000, "main", 0)
-	ROM_CART_LOAD(0, "z26", 0xb000, 0x1000, ROM_OPTIONAL)
-	ROM_CART_LOAD(1, "z25", 0xc000, 0x1000, ROM_OPTIONAL)
-	ROM_CART_LOAD(2, "z24", 0xd000, 0x1000, ROM_OPTIONAL)
+	ROM_CART_LOAD("cart1", 0xb000, 0x1000, ROM_OPTIONAL)
+	ROM_CART_LOAD("cart2", 0xc000, 0x1000, ROM_OPTIONAL)
+	ROM_CART_LOAD("cart3", 0xd000, 0x1000, ROM_OPTIONAL)
 	ROM_SYSTEM_BIOS(0, "aim65",  "Rockwell AIM-65")
 	ROMX_LOAD("aim65mon.z23", 0xe000, 0x1000, CRC(90e44afe) SHA1(78e38601edf6bfc787b58750555a636b0cf74c5c), ROM_BIOS(1))
 	ROMX_LOAD("aim65mon.z22", 0xf000, 0x1000, CRC(d01914b0) SHA1(e5b5ddd4cd43cce073a718ee4ba5221f2bc84eaf), ROM_BIOS(1))
@@ -246,7 +270,6 @@ ROM_END
 
 
 static SYSTEM_CONFIG_START( aim65 )
-	CONFIG_DEVICE(cartslot_device_getinfo)
 	CONFIG_RAM_DEFAULT(4 * 1024) /* 4KB RAM */
 	CONFIG_RAM        (3 * 1024) /* 3KB RAM */
 	CONFIG_RAM        (2 * 1024) /* 2KB RAM */
@@ -260,5 +283,5 @@ SYSTEM_CONFIG_END
 ******************************************************************************/
 
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY     FULLNAME  FLAGS */
-COMP(1977,	aim65,	0,		0,		aim65,	aim65,	aim65,	aim65,	"Rockwell",	"AIM 65", 0)
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT   INIT    CONFIG  COMPANY     FULLNAME  FLAGS */
+COMP(1977,  aim65,  0,      0,      aim65,   aim65,  0,      aim65,  "Rockwell", "AIM 65", 0)

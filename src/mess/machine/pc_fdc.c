@@ -12,7 +12,6 @@
 **********************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/pc_fdc.h"
 #include "machine/nec765.h"
 #include "memconv.h"
@@ -56,16 +55,31 @@ static struct pc_fdc *fdc;
 /* Prototypes */
 
 static TIMER_CALLBACK( watchdog_timeout );
-static void pc_fdc_hw_interrupt(int state);
-static void pc_fdc_hw_dma_drq(int,int);
-static const device_config *pc_fdc_get_image(int floppy_index);
 
-static const nec765_interface pc_fdc_nec765_interface =
+static NEC765_INTERRUPT(  pc_fdc_hw_interrupt );
+static NEC765_DMA_REQUEST(pc_fdc_hw_dma_drq);
+static NEC765_GET_IMAGE ( pc_fdc_get_image);
+
+const nec765_interface pc_fdc_nec765_connected_interface =
 {
 	pc_fdc_hw_interrupt,
 	pc_fdc_hw_dma_drq,
-	pc_fdc_get_image
+	pc_fdc_get_image,
+	NEC765_RDY_PIN_CONNECTED
 };
+
+const nec765_interface pc_fdc_nec765_not_connected_interface =
+{
+	pc_fdc_hw_interrupt,
+	pc_fdc_hw_dma_drq,
+	pc_fdc_get_image,
+	NEC765_RDY_PIN_NOT_CONNECTED
+};
+
+static const device_config* pc_get_device(running_machine *machine)
+{
+	return (*fdc->fdc_interface.get_device)(machine);
+}
 
 static void pc_fdc_reset(running_machine *machine)
 {
@@ -76,10 +90,10 @@ static void pc_fdc_reset(running_machine *machine)
 	/* bit 7 is disk change */
 	fdc->digital_input_register = 0x07f;
 
-	nec765_reset(machine, 0);
+	nec765_reset(pc_get_device(machine),0);
 
 	/* set FDC at reset */
-	nec765_set_reset_state(machine, 1);
+	nec765_set_reset_state(pc_get_device(machine), 1);
 }
 
 
@@ -98,33 +112,33 @@ void pc_fdc_init(running_machine *machine, const struct pc_fdc_interface *iface)
 		memcpy(&fdc->fdc_interface, iface, sizeof(fdc->fdc_interface));
 
 	/* setup nec765 interface */
-	nec765_init(machine, &pc_fdc_nec765_interface, iface->nec765_type, iface->nec765_rdy_pin);
+	//nec765_init(machine, &pc_fdc_nec765_interface, iface->nec765_type, iface->nec765_rdy_pin);
 
-	fdc->watchdog = timer_alloc( watchdog_timeout, NULL );
+	fdc->watchdog = timer_alloc(machine,  watchdog_timeout, NULL );
 
 	pc_fdc_reset(machine);
 
 	for (i = 0; i < device_count(machine, IO_FLOPPY); i++)
 	{
-		img = image_from_devtype_and_index(IO_FLOPPY, i);
+		img = image_from_devtype_and_index(machine, IO_FLOPPY, i);
 		floppy_drive_set_geometry(img, FLOPPY_DRIVE_DS_80);
 	}
 }
 
 
 
-static const device_config *pc_fdc_get_image(int floppy_index)
+static NEC765_GET_IMAGE ( pc_fdc_get_image )
 {
 	const device_config *image = NULL;
 
 	if (!fdc->fdc_interface.get_image)
 	{
-		if (floppy_index < device_count(Machine, IO_FLOPPY))
-			image = image_from_devtype_and_index(IO_FLOPPY, floppy_index);
+		if (floppy_index < device_count(device->machine, IO_FLOPPY))
+			image = image_from_devtype_and_index(device->machine, IO_FLOPPY, floppy_index);
 	}
 	else
 	{
-		image = fdc->fdc_interface.get_image(floppy_index);
+		image = fdc->fdc_interface.get_image(device->machine, floppy_index);
 	}
 	return image;
 }
@@ -139,13 +153,13 @@ void pc_fdc_set_tc_state(running_machine *machine, int state)
 	/* if dma is not enabled, tc's are not acknowledged */
 	if ((fdc->digital_output_register & PC_FDC_FLAGS_DOR_DMA_ENABLED)!=0)
 	{
-		nec765_set_tc_state(machine, state);
+		nec765_set_tc_state(pc_get_device(machine), state);
 	}
 }
 
 
 
-void pc_fdc_hw_interrupt(int state)
+static NEC765_INTERRUPT(  pc_fdc_hw_interrupt )
 {
 	fdc->int_state = state;
 
@@ -155,7 +169,7 @@ void pc_fdc_hw_interrupt(int state)
 
 	/* send irq */
 	if (fdc->fdc_interface.pc_fdc_interrupt)
-		fdc->fdc_interface.pc_fdc_interrupt(state);
+		fdc->fdc_interface.pc_fdc_interrupt(device->machine, state);
 }
 
 
@@ -170,7 +184,7 @@ int	pc_fdc_dack_r(running_machine *machine)
 	/* if dma is not enabled, dacks are not acknowledged */
 	if ((fdc->digital_output_register & PC_FDC_FLAGS_DOR_DMA_ENABLED)!=0)
 	{
-		data = nec765_dack_r(machine, 0);
+		data = nec765_dack_r(pc_get_device(machine), 0);
 	}
 
 	return data;
@@ -184,23 +198,23 @@ void pc_fdc_dack_w(running_machine *machine, int data)
 	if ((fdc->digital_output_register & PC_FDC_FLAGS_DOR_DMA_ENABLED)!=0)
 	{
 		/* dma acknowledge - and send byte to fdc */
-		nec765_dack_w(machine, 0,data);
+		nec765_dack_w(pc_get_device(machine), 0,data);
 	}
 }
 
 
 
-void pc_fdc_hw_dma_drq(int state, int read_)
+static NEC765_DMA_REQUEST( pc_fdc_hw_dma_drq )
 {
 	fdc->dma_state = state;
-	fdc->dma_read = read_;
+	fdc->dma_read = read_write;
 
 	/* if dma is not enabled, drqs are masked */
 	if ((fdc->digital_output_register & PC_FDC_FLAGS_DOR_DMA_ENABLED)==0)
 		return;
 
 	if (fdc->fdc_interface.pc_fdc_dma_drq)
-		fdc->fdc_interface.pc_fdc_dma_drq(state, read_);
+		fdc->fdc_interface.pc_fdc_dma_drq(device->machine,state, read_write);
 }
 
 
@@ -210,11 +224,11 @@ static void pc_fdc_data_rate_w(running_machine *machine, UINT8 data)
 	if ((data & 0x080)!=0)
 	{
 		/* set ready state */
-		nec765_set_ready_state(1);
+		nec765_set_ready_state(pc_get_device(machine),1);
 
 		/* toggle reset state */
-		nec765_set_reset_state(machine, 1);
- 		nec765_set_reset_state(machine, 0);
+		nec765_set_reset_state(pc_get_device(machine), 1);
+ 		nec765_set_reset_state(pc_get_device(machine), 0);
 
 		/* bit is self-clearing */
 		data &= ~0x080;
@@ -245,7 +259,7 @@ static void pc_fdc_dor_w(running_machine *machine, UINT8 data)
 	floppy_count = device_count(machine, IO_FLOPPY);
 
 	if (floppy_count > (fdc->digital_output_register & 0x03))
-		floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, fdc->digital_output_register & 0x03), 1, 0);
+		floppy_drive_set_ready_state(image_from_devtype_and_index(machine, IO_FLOPPY, fdc->digital_output_register & 0x03), 1, 0);
 
 	fdc->digital_output_register = data;
 
@@ -253,18 +267,18 @@ static void pc_fdc_dor_w(running_machine *machine, UINT8 data)
 
 	/* set floppy drive motor state */
 	if (floppy_count > 0)
-		floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0),	(data>>4) & 0x0f);
+		floppy_drive_set_motor_state(image_from_devtype_and_index(machine, IO_FLOPPY, 0),	(data>>4) & 0x0f);
 	if (floppy_count > 1)
-		floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 1),	(data>>5) & 0x01);
+		floppy_drive_set_motor_state(image_from_devtype_and_index(machine, IO_FLOPPY, 1),	(data>>5) & 0x01);
 	if (floppy_count > 2)
-		floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 2),	(data>>6) & 0x01);
+		floppy_drive_set_motor_state(image_from_devtype_and_index(machine, IO_FLOPPY, 2),	(data>>6) & 0x01);
 	if (floppy_count > 3)
-		floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 3),	(data>>7) & 0x01);
+		floppy_drive_set_motor_state(image_from_devtype_and_index(machine, IO_FLOPPY, 3),	(data>>7) & 0x01);
 
 	if ((data>>4) & (1<<selected_drive))
 	{
 		if (floppy_count > selected_drive)
-			floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, selected_drive), 1, 0);
+			floppy_drive_set_ready_state(image_from_devtype_and_index(machine, IO_FLOPPY, selected_drive), 1, 0);
 	}
 
 	/* changing the DMA enable bit, will affect the terminal count state
@@ -275,12 +289,12 @@ static void pc_fdc_dor_w(running_machine *machine, UINT8 data)
 	/* changing the DMA enable bit, will affect the dma drq state
 	from reaching us - if dma is enabled this will send it through
 	otherwise it will be ignored */
-	pc_fdc_hw_dma_drq(fdc->dma_state, fdc->dma_read);
+	pc_fdc_hw_dma_drq(pc_get_device(machine), fdc->dma_state, fdc->dma_read);
 
 	/* changing the DMA enable bit, will affect the irq state
 	from reaching us - if dma is enabled this will send it through
 	otherwise it will be ignored */
-	pc_fdc_hw_interrupt(fdc->int_state);
+	pc_fdc_hw_interrupt(pc_get_device(machine), fdc->int_state);
 
 	/* reset? */
 	if ((fdc->digital_output_register & PC_FDC_FLAGS_DOR_FDC_ENABLED)==0)
@@ -303,17 +317,17 @@ static void pc_fdc_dor_w(running_machine *machine, UINT8 data)
 		what is not yet clear is if this is a result of the drives ready state
 		changing...
 		*/
-			nec765_set_ready_state(1);
+			nec765_set_ready_state(pc_get_device(machine),1);
 
 		/* set FDC at reset */
-		nec765_set_reset_state(machine, 1);
+		nec765_set_reset_state(pc_get_device(machine), 1);
 	}
 	else
 	{
 		pc_fdc_set_tc_state(machine, 0);
 
 		/* release reset on fdc */
-		nec765_set_reset_state(machine, 0);
+		nec765_set_reset_state(pc_get_device(machine), 0);
 	}
 }
 
@@ -337,8 +351,8 @@ static TIMER_CALLBACK( watchdog_timeout )
 	/* Trigger a watchdog timeout signal */
 	if ( fdc->fdc_interface.pc_fdc_interrupt )
 	{
-		fdc->fdc_interface.pc_fdc_interrupt( 1 );
-		fdc->fdc_interface.pc_fdc_interrupt( 0 );
+		fdc->fdc_interface.pc_fdc_interrupt(machine, 1 );
+		fdc->fdc_interface.pc_fdc_interrupt(machine, 0 );
 	}
 }
 
@@ -350,12 +364,12 @@ static void pcjr_fdc_dor_w(running_machine *machine, UINT8 data)
 
 	/* set floppy drive motor state */
 	if (floppy_count > 0)
-		floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), data & 0x01);
+		floppy_drive_set_motor_state(image_from_devtype_and_index(machine, IO_FLOPPY, 0), data & 0x01);
 
 	if ( data & 0x01 )
 	{
 		if ( floppy_count )
-			floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1, 0);
+			floppy_drive_set_ready_state(image_from_devtype_and_index(machine, IO_FLOPPY, 0), 1, 0);
 	}
 
 	/* Is the watchdog timer disabled */
@@ -392,17 +406,17 @@ static void pcjr_fdc_dor_w(running_machine *machine, UINT8 data)
 		what is not yet clear is if this is a result of the drives ready state
 		changing...
 		*/
-			nec765_set_ready_state(1);
+			nec765_set_ready_state(pc_get_device(machine),1);
 
 		/* set FDC at reset */
-		nec765_set_reset_state(machine, 1);
+		nec765_set_reset_state(pc_get_device(machine), 1);
 	}
 	else
 	{
 		pc_fdc_set_tc_state(machine, 0);
 
 		/* release reset on fdc */
-		nec765_set_reset_state(machine, 0);
+		nec765_set_reset_state(pc_get_device(machine), 0);
 	}
 
 	logerror("pcjr_fdc_dor_w: changing dor from %02x to %02x\n", fdc->digital_output_register, data);
@@ -426,10 +440,10 @@ READ8_HANDLER ( pc_fdc_r )
 		case 3: /* tape drive select? */
 			break;
 		case 4:
-			data = nec765_status_r(machine, 0);
+			data = nec765_status_r(pc_get_device(space->machine), 0);
 			break;
 		case 5:
-			data = nec765_data_r(machine, offset);
+			data = nec765_data_r(pc_get_device(space->machine), offset);
 			break;
 		case 6: /* FDC reserved */
 			break;
@@ -439,7 +453,7 @@ READ8_HANDLER ( pc_fdc_r )
     }
 
 	if (LOG_FDC)
-		logerror("pc_fdc_r(): pc=0x%08x offset=%d result=0x%02X\n", (unsigned) activecpu_get_reg(REG_PC), offset, data);
+		logerror("pc_fdc_r(): pc=0x%08x offset=%d result=0x%02X\n", (unsigned) cpu_get_reg(space->machine->cpu[0],REG_GENPC), offset, data);
 	return data;
 }
 
@@ -448,7 +462,7 @@ READ8_HANDLER ( pc_fdc_r )
 WRITE8_HANDLER ( pc_fdc_w )
 {
 	if (LOG_FDC)
-		logerror("pc_fdc_w(): pc=0x%08x offset=%d data=0x%02X\n", (unsigned) activecpu_get_reg(REG_PC), offset, data);
+		logerror("pc_fdc_w(): pc=0x%08x offset=%d data=0x%02X\n", (unsigned) cpu_get_reg(space->machine->cpu[0],REG_GENPC), offset, data);
 
 	switch(offset)
 	{
@@ -456,16 +470,16 @@ WRITE8_HANDLER ( pc_fdc_w )
 		case 1:	/* n/a */
 			break;
 		case 2:
-			pc_fdc_dor_w(machine, data);
+			pc_fdc_dor_w(space->machine, data);
 			break;
 		case 3:
 			/* tape drive select? */
 			break;
 		case 4:
-			pc_fdc_data_rate_w(machine, data);
+			pc_fdc_data_rate_w(space->machine, data);
 			break;
 		case 5:
-			nec765_data_w(machine, 0, data);
+			nec765_data_w(pc_get_device(space->machine), 0, data);
 			break;
 		case 6:
 			/* FDC reserved */
@@ -487,15 +501,15 @@ WRITE8_HANDLER ( pc_fdc_w )
 WRITE8_HANDLER ( pcjr_fdc_w )
 {
 	if (LOG_FDC)
-		logerror("pcjr_fdc_w(): pc=0x%08x offset=%d data=0x%02X\n", (unsigned) activecpu_get_reg(REG_PC), offset, data);
+		logerror("pcjr_fdc_w(): pc=0x%08x offset=%d data=0x%02X\n", (unsigned) cpu_get_reg(space->machine->cpu[0],REG_GENPC), offset, data);
 
 	switch(offset)
 	{
 		case 2:
-			pcjr_fdc_dor_w( machine, data );
+			pcjr_fdc_dor_w( space->machine, data );
 			break;
 		default:
-			pc_fdc_w( machine, offset, data );
+			pc_fdc_w( space, offset, data );
 			break;
 	}
 }

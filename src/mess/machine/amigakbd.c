@@ -22,13 +22,14 @@ static emu_timer *kbd_timer;
 static void kbd_sendscancode( running_machine *machine, UINT8 scancode )
 {
 	int j;
+	const device_config *cia = device_list_find_by_tag(machine->config->devicelist, CIA8520, "cia_0");
 
 	/* send over to the cia A */
 	for( j = 0; j < 8; j++ )
 	{
-		cia_set_input_cnt( machine, 0, 0 );	/* lower cnt */
-		cia_set_input_sp( 0, ( scancode >> j ) & 1 ); /* set the serial data */
-		cia_set_input_cnt( machine, 0, 1 );	/* raise cnt */
+		cia_set_input_cnt( cia, 0 );	/* lower cnt */
+		cia_set_input_sp( cia, ( scancode >> j ) & 1 ); /* set the serial data */
+		cia_set_input_cnt( cia, 1 );	/* raise cnt */
 	}
 }
 
@@ -68,7 +69,7 @@ static INPUT_CHANGED( kbd_update )
 
 		if ( amiga_intf != NULL && amiga_intf->nmi_callback )
 		{
-			(*amiga_intf->nmi_callback)();
+			(*amiga_intf->nmi_callback)(field->port->machine);
 		}
 	}
 	else
@@ -97,13 +98,13 @@ static INPUT_CHANGED( kbd_update )
 	}
 }
 
-void amigakbd_init( void )
+void amigakbd_init( running_machine *machine )
 {
 	/* allocate a keyboard buffer */
 	key_buf = auto_malloc( KEYBOARD_BUFFER_SIZE );
 	key_buf_pos = 0;
 	key_cur_pos = 0;
-	kbd_timer = timer_alloc(kbd_update_callback, NULL);
+	kbd_timer = timer_alloc(machine, kbd_update_callback, NULL);
 	timer_reset( kbd_timer, attotime_never );
 }
 

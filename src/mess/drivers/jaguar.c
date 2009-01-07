@@ -43,6 +43,7 @@
 
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "cpu/mips/r3000.h"
 #include "cpu/jaguar/jaguar.h"
 #include "includes/jaguar.h"
@@ -99,7 +100,7 @@ static IRQ_CALLBACK(jaguar_irq_callback)
 
 static MACHINE_RESET( jaguar )
 {
-	cpunum_set_irq_callback(0, jaguar_irq_callback);
+	cpu_set_irq_callback(machine->cpu[0], jaguar_irq_callback);
 
 	*((UINT32 *) jaguar_gpu_ram) = 0x3d0dead;
 
@@ -109,29 +110,29 @@ static MACHINE_RESET( jaguar )
 
 #if 0
 	/* set up main CPU RAM/ROM banks */
-	memory_set_bankptr(3, jaguar_gpu_ram);
+	memory_set_bankptr(machine, 3, jaguar_gpu_ram);
 
 	/* set up DSP RAM/ROM banks */
-	memory_set_bankptr(10, jaguar_shared_ram);
-	memory_set_bankptr(11, jaguar_gpu_clut);
-	memory_set_bankptr(12, jaguar_gpu_ram);
-	memory_set_bankptr(13, jaguar_dsp_ram);
-	memory_set_bankptr(14, jaguar_shared_ram);
+	memory_set_bankptr(machine, 10, jaguar_shared_ram);
+	memory_set_bankptr(machine, 11, jaguar_gpu_clut);
+	memory_set_bankptr(machine, 12, jaguar_gpu_ram);
+	memory_set_bankptr(machine, 13, jaguar_dsp_ram);
+	memory_set_bankptr(machine, 14, jaguar_shared_ram);
 #endif
-	memory_set_bankptr(15, cart_base);
-	memory_set_bankptr(16, rom_base);
-//  memory_set_bankptr(17, jaguar_gpu_ram);
+	memory_set_bankptr(machine, 15, cart_base);
+	memory_set_bankptr(machine, 16, rom_base);
+//  memory_set_bankptr(machine, 17, jaguar_gpu_ram);
 
 	/* clear any spinuntil stuff */
-	jaguar_gpu_resume();
-	jaguar_dsp_resume();
+	jaguar_gpu_resume(machine);
+	jaguar_dsp_resume(machine);
 
 	/* halt the CPUs */
-	jaguargpu_ctrl_w(1, G_CTRL, 0, 0);
-	jaguardsp_ctrl_w(2, D_CTRL, 0, 0);
+	jaguargpu_ctrl_w(machine->cpu[1], G_CTRL, 0, 0);
+	jaguardsp_ctrl_w(machine->cpu[2], D_CTRL, 0, 0);
 
 	/* init the sound system */
-	cojag_sound_reset();
+	cojag_sound_reset(machine);
 
 	joystick_data = 0xffffffff;
 }
@@ -146,13 +147,13 @@ static MACHINE_RESET( jaguar )
 
 static READ32_HANDLER( gpuctrl_r )
 {
-	return jaguargpu_ctrl_r(1, offset);
+	return jaguargpu_ctrl_r(space->machine->cpu[1], offset);
 }
 
 
 static WRITE32_HANDLER( gpuctrl_w )
 {
-	jaguargpu_ctrl_w(1, offset, data, mem_mask);
+	jaguargpu_ctrl_w(space->machine->cpu[1], offset, data, mem_mask);
 }
 
 
@@ -165,13 +166,13 @@ static WRITE32_HANDLER( gpuctrl_w )
 
 static READ32_HANDLER( dspctrl_r )
 {
-	return jaguardsp_ctrl_r(2, offset);
+	return jaguardsp_ctrl_r(space->machine->cpu[1], offset);
 }
 
 
 static WRITE32_HANDLER( dspctrl_w )
 {
-	jaguardsp_ctrl_w(2, offset, data, mem_mask);
+	jaguardsp_ctrl_w(space->machine->cpu[2], offset, data, mem_mask);
 }
 
 
@@ -217,8 +218,8 @@ static READ32_HANDLER( joystick_r )
 	{
 		if ((joystick_data & (0x10000 << i)) == 0)
 		{
-			joystick_result &= input_port_read(machine, keynames[0][i]);
-			joybuts_result &= input_port_read(machine, keynames[1][i]);
+			joystick_result &= input_port_read(space->machine, keynames[0][i]);
+			joybuts_result &= input_port_read(space->machine, keynames[1][i]);
 		}
 	}
 
@@ -439,13 +440,13 @@ INPUT_PORTS_END
  *************************************/
 
 
-static const jaguar_cpu_core gpu_config =
+static const jaguar_cpu_config gpu_config =
 {
 	jaguar_gpu_cpu_int
 };
 
 
-static const jaguar_cpu_core dsp_config =
+static const jaguar_cpu_config dsp_config =
 {
 	jaguar_dsp_cpu_int
 };
@@ -486,6 +487,11 @@ static MACHINE_DRIVER_START( jaguar )
 
 	/* quickload */
 	MDRV_QUICKLOAD_ADD(jaguar, "bin", 0)
+
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("jag,abs,bin,rom,j64")
+	MDRV_CARTSLOT_MANDATORY
 MACHINE_DRIVER_END
 
 
@@ -499,10 +505,8 @@ MACHINE_DRIVER_END
 ROM_START( jaguar )
 	ROM_REGION( 0xe20000, "main", 0 )  /* 4MB for RAM at 0 */
 	ROM_LOAD16_WORD( "jagboot.rom",          0xe00000, 0x020000, CRC(fb731aaa) SHA1(f8991b0c385f4e5002fa2a7e2f5e61e8c5213356))
-	ROM_CART_LOAD(0, "jag,abs,bin,rom,j64", 0x800000, 0x600000, ROM_NOMIRROR)
+	ROM_CART_LOAD("cart", 0x800000, 0x600000, ROM_NOMIRROR)
 ROM_END
-
-
 
 /*************************************
  *
@@ -512,8 +516,8 @@ ROM_END
 
 static DRIVER_INIT( jaguar )
 {
-	state_save_register_global(joystick_data);
-	state_save_register_global(eeprom_enable);
+	state_save_register_global(machine, joystick_data);
+	state_save_register_global(machine, eeprom_enable);
 
 	/* init the sound system and install DSP speedups */
 	cojag_sound_init(machine);
@@ -524,14 +528,9 @@ static QUICKLOAD_LOAD( jaguar )
 	offs_t quickload_begin = 0x4000;
 	quickload_size = MIN(quickload_size, 0x200000 - quickload_begin);
 	image_fread(image, &memory_region(image->machine, "main")[quickload_begin], quickload_size);
-	cpunum_set_reg(0, REG_PC, quickload_begin);
+	cpu_set_reg(image->machine->cpu[0], REG_GENPC, quickload_begin);
 	return INIT_PASS;
 }
-
-static SYSTEM_CONFIG_START(jaguar)
-	CONFIG_DEVICE(cartslot_device_getinfo)
-SYSTEM_CONFIG_END
-
 
 
 /*************************************
@@ -541,4 +540,4 @@ SYSTEM_CONFIG_END
  *************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY     FULLNAME */
-CONS(1993,	jaguar,   0,        0,		jaguar,   jaguar,   jaguar,   jaguar,	"Atari",	"Atari Jaguar", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND)
+CONS(1993,	jaguar,   0,        0,		jaguar,   jaguar,   jaguar,   0,	"Atari",	"Atari Jaguar", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND)

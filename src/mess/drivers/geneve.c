@@ -198,11 +198,13 @@
 */
 
 #include "driver.h"
+#include "cpu/tms9900/tms9900.h"
 #include "deprecat.h"
 #include "video/v9938.h"
 #include "includes/geneve.h"
 #include "machine/ti99_4x.h"
 #include "machine/tms9901.h"
+#include "machine/tms9902.h"
 #include "audio/spchroms.h"
 #include "machine/99_peb.h"
 #include "machine/994x_ser.h"
@@ -214,6 +216,8 @@
 #include "devices/harddriv.h"
 #include "machine/idectrl.h"
 #include "machine/smc92x4.h" 
+#include "machine/mm58274c.h"
+
 
 /*
     memory map
@@ -232,14 +236,14 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(writecru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE(tms9901_0_cru_w)
+	AM_RANGE(0x0000, 0x07ff) AM_DEVWRITE(TMS9901, "tms9901", tms9901_cru_w)
 	AM_RANGE(0x0800, 0x0fff) AM_WRITE(geneve_peb_mode_cru_w)
 
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(readcru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x00ff) AM_READ(tms9901_0_cru_r)
+	AM_RANGE(0x0000, 0x00ff) AM_DEVREAD(TMS9901, "tms9901", tms9901_cru_r)
 	AM_RANGE(0x0100, 0x01ff) AM_READ(geneve_peb_cru_r)
 
 ADDRESS_MAP_END
@@ -253,6 +257,9 @@ ADDRESS_MAP_END
 static INPUT_PORTS_START(geneve)
 
 	PORT_START("CFG")	/* config */
+		PORT_DIPNAME( config_boot_mask << config_boot_bit, 0x0000, "Boot ROM")
+			PORT_DIPSETTING( 0x0000, "1.0" )
+			PORT_DIPSETTING( 1 << config_boot_bit, "0.9" )
 		PORT_DIPNAME( config_speech_mask << config_speech_bit, 1 << config_speech_bit, "Speech synthesis")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_speech_bit, DEF_STR( On ) )
@@ -446,6 +453,18 @@ static const tms5220_interface geneve_tms5220interface =
 #endif
 };
 
+static const mm58274c_interface geneve_mm58274c_interface =
+{
+	1,	/* 	mode 24*/
+	0   /*  first day of week */
+};
+
+
+static const mm58274c_interface floppy_mm58274c_interface =
+{
+	1,	/* 	mode 24*/
+	0   /*  first day of week */
+};
 
 static MACHINE_DRIVER_START(geneve_60hz)
 	/* basic machine hardware */
@@ -485,7 +504,19 @@ static MACHINE_DRIVER_START(geneve_60hz)
 
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
-	MDRV_DEVICE_ADD( "ide_harddisk", IDE_HARDDISK )
+	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
+	
+	/* rtc */
+	MDRV_MM58274C_ADD("mm58274c", geneve_mm58274c_interface)
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)
+	
+	/* tms9901 */
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99)	
+	/* tms9902 */
+	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
+	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)
+	
+	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
 MACHINE_DRIVER_END
 
 
@@ -499,6 +530,7 @@ ROM_START(geneve)
 	/*CPU memory space*/
 	ROM_REGION(region_cpu1_len_geneve, "main", 0)
 	ROM_LOAD("genbt100.bin", offset_rom_geneve, 0x4000, CRC(8001e386) SHA1(b44618b54dabac3882543e18555d482b299e0109)) /* CPU ROMs */
+	ROM_LOAD_OPTIONAL("genbt090.bin", offset_altrom_geneve, 0x4000, CRC(b2e20df9) SHA1(2d5d09177afe97d63ceb3ad59b498b1c9e2153f7)) /* CPU ROMs */
 
 	/*DSR ROM space*/
 	ROM_REGION(region_dsr_len, region_dsr, 0)
@@ -625,5 +657,6 @@ static SYSTEM_CONFIG_START(geneve)
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE      INPUT    INIT      CONFIG  COMPANY     FULLNAME */
-COMP( 1987?,geneve,   0,		0,		geneve_60hz,  geneve,  geneve,	geneve,	"Myarc",	"Geneve 9640" , 0)
-COMP( 199??,genmod,   geneve,	0,		geneve_60hz,  geneve,  genmod,	geneve,	"Myarc",	"Geneve 9640 (with Genmod modification)" , 0)
+COMP( 1987,geneve,   0,		0,		geneve_60hz,  geneve,  geneve,	geneve,	"Myarc",	"Geneve 9640" , 0)
+COMP( 1990,genmod,   geneve,	0,		geneve_60hz,  geneve,  genmod,	geneve,	"Myarc",	"Geneve 9640 (with Genmod modification)" , 0)
+

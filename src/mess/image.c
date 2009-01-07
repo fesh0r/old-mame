@@ -148,28 +148,6 @@ INLINE genf *device_get_info_fct_offline(const device_config *device, UINT32 sta
 
 
 
-/*-------------------------------------------------
-    device_get_info_str_offline - return an integer
-	state value from an allocated device; can be
-	called offline
--------------------------------------------------*/
-
-INLINE const char *device_get_info_string_offline(const device_config *device, UINT32 state)
-{
-	deviceinfo info;
-
-	assert(device != NULL);
-	assert(device->type != NULL);
-	assert(state >= DEVINFO_STR_FIRST && state <= DEVINFO_STR_LAST);
-
-	/* retrieve the value */
-	info.s = 0;
-	(*device->type)(device, state, &info);
-	return info.s;
-}
-
-
-
 /***************************************************************************
     CORE IMPLEMENTATION
 ***************************************************************************/
@@ -402,7 +380,7 @@ static void get_device_name(const device_config *device, char *buffer, size_t bu
 	if (name == NULL)
 	{
 		/* next try DEVINFO_STR_NAME */
-		name = device_get_info_string_offline(device, DEVINFO_STR_NAME);
+		name = device_get_info_string(device, DEVINFO_STR_NAME);
 	}
 
 	/* make sure that the name is put into the buffer */
@@ -428,7 +406,7 @@ static void get_device_file_extensions(const device_config *device,
 	buffer_len--;
 
 	/* copy the string */
-	file_extensions = device_get_info_string_offline(device, DEVINFO_STR_IMAGE_FILE_EXTENSIONS);
+	file_extensions = device_get_info_string(device, DEVINFO_STR_IMAGE_FILE_EXTENSIONS);
 	snprintf(buffer, buffer_len, "%s", (file_extensions != NULL) ? file_extensions : "");
 
 	/* convert the comma delimited list to a NUL delimited list */
@@ -452,8 +430,8 @@ static void get_device_instance_name(const machine_config *config, const device_
 	int count, index;
 
 	/* retrieve info about the device instance */
-	result = device_get_info_string_offline(device, state);
-	if (result != NULL)
+	result = device_get_info_string(device, state);
+	if ((result != NULL) && (result[0] != '\0'))
 	{
 		/* we got info directly */
 		snprintf(buffer, buffer_len, "%s", result);
@@ -824,7 +802,7 @@ static int image_load_internal(const device_config *image, const char *path,
 		goto done;
 
 	/* do we need to reset the CPU? */
-	if ((attotime_compare(timer_get_time(), attotime_zero) > 0) && slot->info.reset_on_load)
+	if ((attotime_compare(timer_get_time(machine), attotime_zero) > 0) && slot->info.reset_on_load)
 		mame_schedule_hard_reset(machine);
 
 	/* determine open plan */
@@ -938,7 +916,6 @@ static void image_clear(image_slot_data *image)
 
 	astring_cpyc(image->name, "");
 
-	pool_clear(image->mempool);
 	image->writeable = 0;
 	image->created = 0;
 	image->dir = NULL;

@@ -90,8 +90,8 @@ static void ram_init(running_machine *machine, const game_driver *gamedrv)
 		mess_ram = (UINT8 *) auto_malloc(mess_ram_size);
 		memset(mess_ram, mess_ram_default_value, mess_ram_size);
 
-		state_save_register_item("mess", 0, mess_ram_size);
-		state_save_register_item_pointer("mess", 0, mess_ram, mess_ram_size);
+		state_save_register_item(machine, "mess", NULL, 0, mess_ram_size);
+		state_save_register_item_pointer(machine, "mess", NULL, 0, mess_ram, mess_ram_size);
 	}
 	else
 	{
@@ -112,7 +112,7 @@ void mess_predevice_init(running_machine *machine)
 	inputx_init(machine);
 
 	/* allocate the IODevice struct */
-	mess_devices_setup((machine_config *) machine->config, machine->gamedrv);
+	mess_devices_setup(machine, (machine_config *) machine->config, machine->gamedrv);
 
 	/* initialize RAM code */
 	ram_init(machine, machine->gamedrv);

@@ -170,7 +170,9 @@ int spectrum_plus3_port_1ffd_data = -1;
 static const nec765_interface spectrum_plus3_nec765_interface =
 {
 		NULL,
-		NULL
+		NULL,
+		NULL,
+		NEC765_RDY_PIN_CONNECTED
 };
 
 
@@ -184,30 +186,32 @@ static const int spectrum_plus3_memory_selections[]=
 
 static WRITE8_HANDLER(spectrum_plus3_port_3ffd_w)
 {
-		if (~input_port_read(machine, "CONFIG") & 0x20)
-				nec765_data_w(machine, 0,data);
+		if (~input_port_read(space->machine, "CONFIG") & 0x20)
+				nec765_data_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765"), 0,data);
 }
 
 static  READ8_HANDLER(spectrum_plus3_port_3ffd_r)
 {
-		if (input_port_read(machine, "CONFIG") & 0x20)
+		if (input_port_read(space->machine, "CONFIG") & 0x20)
 				return 0xff;
 		else
-				return nec765_data_r(machine, 0);
+				return nec765_data_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765"), 0);
 }
 
 
 static  READ8_HANDLER(spectrum_plus3_port_2ffd_r)
 {
-		if (input_port_read(machine, "CONFIG") & 0x20)
+		if (input_port_read(space->machine, "CONFIG") & 0x20)
 				return 0xff;
 		else
-				return nec765_status_r(machine, 0);
+				return nec765_status_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765"), 0);
 }
 
 
 void spectrum_plus3_update_memory(running_machine *machine)
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	
 	if (spectrum_128_port_7ffd_data & 8)
 	{
 			logerror("+3 SCREEN 1: BLOCK 7\n");
@@ -232,16 +236,16 @@ void spectrum_plus3_update_memory(running_machine *machine)
 			ram_page = spectrum_128_port_7ffd_data & 0x07;
 			ram_data = mess_ram + (ram_page<<14);
 
-			memory_set_bankptr(4, ram_data);
+			memory_set_bankptr(machine, 4, ram_data);
 
 			logerror("RAM at 0xc000: %02x\n",ram_page);
 
 			/* Reset memory between 0x4000 - 0xbfff in case extended paging was being used */
 			/* Bank 5 in 0x4000 - 0x7fff */
-			memory_set_bankptr(2, mess_ram + (5<<14));
+			memory_set_bankptr(machine, 2, mess_ram + (5<<14));
 
 			/* Bank 2 in 0x8000 - 0xbfff */
-			memory_set_bankptr(3, mess_ram + (2<<14));
+			memory_set_bankptr(machine, 3, mess_ram + (2<<14));
 
 
 			ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) |
@@ -251,8 +255,8 @@ void spectrum_plus3_update_memory(running_machine *machine)
 
 			ChosenROM = memory_region(machine, "main") + 0x010000 + (ROMSelection<<14);
 
-			memory_set_bankptr(1, ChosenROM);
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
+			memory_set_bankptr(machine, 1, ChosenROM);
+			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 
 			logerror("rom switch: %02x\n", ROMSelection);
 	}
@@ -269,18 +273,18 @@ void spectrum_plus3_update_memory(running_machine *machine)
 			memory_selection = &spectrum_plus3_memory_selections[(MemorySelection<<2)];
 
 			ram_data = mess_ram + (memory_selection[0]<<14);
-			memory_set_bankptr(1, ram_data);
+			memory_set_bankptr(machine, 1, ram_data);
 			/* allow writes to 0x0000-0x03fff */
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
 
 			ram_data = mess_ram + (memory_selection[1]<<14);
-			memory_set_bankptr(2, ram_data);
+			memory_set_bankptr(machine, 2, ram_data);
 
 			ram_data = mess_ram + (memory_selection[2]<<14);
-			memory_set_bankptr(3, ram_data);
+			memory_set_bankptr(machine, 3, ram_data);
 
 			ram_data = mess_ram + (memory_selection[3]<<14);
-			memory_set_bankptr(4, ram_data);
+			memory_set_bankptr(machine, 4, ram_data);
 
 			logerror("extended memory paging: %02x\n",MemorySelection);
 		}
@@ -303,30 +307,29 @@ static WRITE8_HANDLER(spectrum_plus3_port_7ffd_w)
 		spectrum_128_port_7ffd_data = data;
 
 		/* update memory */
-		spectrum_plus3_update_memory(machine);
+		spectrum_plus3_update_memory(space->machine);
 }
 
 static WRITE8_HANDLER(spectrum_plus3_port_1ffd_w)
 {
+	/* D0-D1: ROM/RAM paging */
+	/* D2: Affects if d0-d1 work on ram/rom */
+	/* D3 - Disk motor on/off */
+	/* D4 - parallel port strobe */
 
-		/* D0-D1: ROM/RAM paging */
-		/* D2: Affects if d0-d1 work on ram/rom */
-		/* D3 - Disk motor on/off */
-		/* D4 - parallel port strobe */
+	floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), data & (1<<3));
+	floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), data & (1<<3));
+	floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), 1, 1);
+	floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 1, 1);
 
-		floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), data & (1<<3));
-		floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 1), data & (1<<3));
-		floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1, 1);
-		floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1, 1);
+	spectrum_plus3_port_1ffd_data = data;
 
-		spectrum_plus3_port_1ffd_data = data;
-
-		/* disable paging? */
-		if ((spectrum_128_port_7ffd_data & 0x20)==0)
-		{
-				/* no */
-				spectrum_plus3_update_memory(machine);
-		}
+	/* disable paging? */
+	if ((spectrum_128_port_7ffd_data & 0x20)==0)
+	{
+			/* no */
+			spectrum_plus3_update_memory(space->machine);
+	}
 }
 
 /* ports are not decoded full.
@@ -347,10 +350,8 @@ static MACHINE_RESET( spectrum_plus3 )
 {
 	memset(mess_ram,0,128*1024);
 	
-	nec765_init(machine, &spectrum_plus3_nec765_interface, NEC765A, NEC765_RDY_PIN_CONNECTED);
-
-	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
-	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1), FLOPPY_DRIVE_SS_40);
+	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
+	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 1), FLOPPY_DRIVE_SS_40);
 
 	/* Initial configuration */
 	spectrum_128_port_7ffd_data = 0;
@@ -368,6 +369,8 @@ static MACHINE_DRIVER_START( spectrum_plus3 )
 	MDRV_SCREEN_REFRESH_RATE(50.01)
 
 	MDRV_MACHINE_RESET( spectrum_plus3 )
+	
+	MDRV_NEC765A_ADD("nec765", spectrum_plus3_nec765_interface)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -382,7 +385,7 @@ ROM_START(specpl2a)
 	ROM_LOAD("p2a41_1.rom",0x14000,0x4000, CRC(a7916b3f) SHA1(1a7812c383a3701e90e88d1da086efb0c033ac72))
 	ROM_LOAD("p2a41_2.rom",0x18000,0x4000, CRC(c9a0b748) SHA1(8df145d10ff78f98138682ea15ebccb2874bf759))
 	ROM_LOAD("p2a41_3.rom",0x1c000,0x4000, CRC(b88fd6e3) SHA1(be365f331942ec7ec35456b641dac56a0dbfe1f0))
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specpls3)
@@ -405,7 +408,7 @@ ROM_START(specpls3)
 	ROM_SYSTEM_BIOS( 4, "12ms", "Customize 3.5\" 12ms" )
 	ROMX_LOAD("p3_01_cm.rom",0x10000,0x8000, CRC(ad99380a) SHA1(4e5d114b72d464cefdde0566457f52a3c0c1cae2), ROM_BIOS(5))
 	ROMX_LOAD("p3_23_cm.rom",0x18000,0x8000, CRC(61f2b50c) SHA1(d062765ceb1f3cd2c94ea51cb737cac7ad6151b4), ROM_BIOS(5))
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specpl3e)
@@ -416,7 +419,7 @@ ROM_START(specpl3e)
 	ROM_SYSTEM_BIOS( 1, "sp", "Spanish" )
 	ROMX_LOAD("roma-es.rom",0x10000,0x8000, CRC(ba694b4b) SHA1(d15d9e43950483cffc79f1cfa89ecb114a88f6c2), ROM_BIOS(2))
 	ROMX_LOAD("romb-es.rom",0x18000,0x8000, CRC(61ed94db) SHA1(935b14c13db75d872de8ad0d591aade0adbbc355), ROM_BIOS(2))	
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(sp3e8bit)
@@ -425,7 +428,7 @@ ROM_START(sp3e8bit)
 	ROMX_LOAD("3e8biten.rom",0x10000,0x10000, CRC(beee3bf6) SHA1(364ec903916282d5401901c5fb0cb93a142038b3), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "sp", "Spanish" )
 	ROMX_LOAD("3e8bites.rom",0x10000,0x10000, CRC(cafe4c35) SHA1(8331d273d29d3e37ec1324053bb050874d2c1434), ROM_BIOS(2))
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(sp3ezcf)
@@ -434,7 +437,7 @@ ROM_START(sp3ezcf)
 	ROMX_LOAD("3ezcfen.rom",0x10000,0x10000, CRC(43993f11) SHA1(27cbfbe8b5ef9eec6056026fa0b84fe158ba2f45), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "sp", "Spanish" )
 	ROMX_LOAD("3ezcfes.rom",0x10000,0x10000, CRC(1325a0d7) SHA1(521cf47e10f46c8a621c8889ef1f008454c7e10b), ROM_BIOS(2))
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(sp3eata)
@@ -443,7 +446,7 @@ ROM_START(sp3eata)
 	ROMX_LOAD("3ezxaen.rom",0x10000,0x10000, CRC(dfb676dc) SHA1(37618bc66ae33dbf686be8a92867e4a9144b65dc), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "sp", "Spanish" )
 	ROMX_LOAD("3ezxaes.rom",0x10000,0x10000, CRC(8f0ae91a) SHA1(71693e18b30c90914be58cba26682ca025c924ea), ROM_BIOS(2))
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 static void specpls3_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)

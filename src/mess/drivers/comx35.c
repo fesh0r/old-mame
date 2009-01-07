@@ -4,7 +4,6 @@
 
 	- unreliable DOS commands?
 	- tape input/output
-	- 80 column card
 	- PL-80 plotter
 	- serial printer
 	- thermal printer
@@ -25,7 +24,7 @@
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+	return devtag_get_device(machine, CASSETTE, "cassette");
 }
 
 /* Memory Maps */
@@ -205,14 +204,14 @@ INPUT_PORTS_END
 
 static CDP1802_MODE_READ( comx35_mode_r )
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = device->machine->driver_data;
 
 	return state->cdp1802_mode;
 }
 
 static CDP1802_EF_READ( comx35_ef_r )
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = device->machine->driver_data;
 
 	int flags = 0x0f;
 
@@ -241,14 +240,14 @@ static CDP1802_EF_READ( comx35_ef_r )
 	if (!state->cdp1871_efxa) flags -= EF3;
 
 	// cassette input, expansion device flag
-	if ((cassette_input(cassette_device_image(machine)) < +0.0) || !state->cdp1802_ef4) flags -= EF4;
+	if ((cassette_input(cassette_device_image(device->machine)) < +0.0) || !state->cdp1802_ef4) flags -= EF4;
 
 	return flags;
 }
 
 static CDP1802_SC_WRITE( comx35_sc_w )
 {
-	comx35_state *driver_state = machine->driver_data;
+	comx35_state *driver_state = device->machine->driver_data;
 
 	switch (state)
 	{
@@ -264,7 +263,7 @@ static CDP1802_SC_WRITE( comx35_sc_w )
 
 			if (!driver_state->iden)
 			{
-				cpunum_set_input_line(machine, 0, CDP1802_INPUT_LINE_DMAOUT, HOLD_LINE);
+				cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_DMAOUT, HOLD_LINE);
 			}
 		}
 		else
@@ -275,19 +274,19 @@ static CDP1802_SC_WRITE( comx35_sc_w )
 
 	case CDP1802_STATE_CODE_S2_DMA:
 		// DMA acknowledge clears the DMAOUT request
-		cpunum_set_input_line(machine, 0, CDP1802_INPUT_LINE_DMAOUT, CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_DMAOUT, CLEAR_LINE);
 		break;
 
 	case CDP1802_STATE_CODE_S3_INTERRUPT:
 		// interrupt acknowledge clears the INT request
-		cpunum_set_input_line(machine, 0, CDP1802_INPUT_LINE_INT, CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_INT, CLEAR_LINE);
 		break;
 	}
 }
 
 static CDP1802_Q_WRITE( comx35_q_w )
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = device->machine->driver_data;
 
 	state->cdp1802_q = level;
 
@@ -298,7 +297,7 @@ static CDP1802_Q_WRITE( comx35_q_w )
 	}
 
 	// cassette output
-	cassette_output(cassette_device_image(machine), level ? +1.0 : -1.0);
+	cassette_output(cassette_device_image(device->machine), level ? +1.0 : -1.0);
 }
 
 static CDP1802_INTERFACE( comx35_cdp1802_config )
@@ -364,9 +363,7 @@ static MACHINE_DRIVER_START( comx35p )
 	MDRV_MACHINE_RESET(comx35)
 
 	// keyboard encoder
-
-	MDRV_DEVICE_ADD(CDP1871_TAG, CDP1871)
-	MDRV_DEVICE_CONFIG(comx35p_cdp1871_intf)
+	MDRV_CDP1871_ADD(CDP1871_TAG, comx35p_cdp1871_intf)
 	
 	// video hardware
 
@@ -384,13 +381,15 @@ static MACHINE_DRIVER_START( comx35p )
 
 	// printer
 
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
 
 	// quickload
 
 	MDRV_QUICKLOAD_ADD(comx35, "comx", 0)
 
 	MDRV_CASSETTE_ADD( "cassette", comx35_cassette_config )
+
+	MDRV_WD1770_ADD("wd1770", comx35_wd17xx_interface )	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( comx35n )
@@ -407,9 +406,7 @@ static MACHINE_DRIVER_START( comx35n )
 	MDRV_MACHINE_RESET(comx35)
 
 	// keyboard encoder
-
-	MDRV_DEVICE_ADD(CDP1871_TAG, CDP1871)
-	MDRV_DEVICE_CONFIG(comx35n_cdp1871_intf)
+	MDRV_CDP1871_ADD(CDP1871_TAG, comx35n_cdp1871_intf)
 
 	// video hardware
 
@@ -427,7 +424,7 @@ static MACHINE_DRIVER_START( comx35n )
 
 	// printer
 
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
 
 	// quickload
 
@@ -451,16 +448,26 @@ ROM_START( comx35p )
 	ROM_SYSTEM_BIOS( 3, "basic101", "COMX BASIC V1.01" )
 	ROMX_LOAD( "comx_11.u21",			0x0000, 0x4000, CRC(609d89cd) SHA1(799646810510d8236fbfafaff7a73d5170990f16), ROM_BIOS(4) )
 
-	ROM_REGION( 0x10000, "user1", 0 )
+	ROM_REGION( 0x2000, "fdc", 0 )
 	ROM_LOAD( "fdc.f4",					0x0000, 0x2000, CRC(cf4ecd2e) SHA1(290e19bdc89e3c8059e63d5ae3cca4daa194e1fe) )
-	ROM_LOAD( "printer.bin",			0x2000, 0x0800, CRC(3bbc2b2e) SHA1(08bf7ea4174713ab24969c553affd5c1401876b8) )
-	ROM_LOAD( "f&m.printer.1.2.bin",	0x4000, 0x1000, CRC(2feb997d) SHA1(ee9cb91042696c88ff5f2f44d2f702dc93369ba0) )
-	ROM_LOAD( "rs232.bin",				0x6000, 0x0800, CRC(926ff2d1) SHA1(be02bd388bba0211ea72d4868264a63308e4318d) )
-	ROM_LOAD( "thermal.bin",			0x8000, 0x1000, CRC(41a72ba8) SHA1(3a8760c78bd8c7bec2dbf26657b930c9a6814803) )
-	ROM_LOAD( "80.column.card.u3",		0xc000, 0x0800, NO_DUMP )
 
-	ROM_REGION( 0x10000, "chargen", 0 ) // MC6845 font
-	ROM_LOAD( "mc6845.font.u",			0x0000, 0x0800, NO_DUMP )
+	ROM_REGION( 0x2000, "printer", 0 )
+	ROM_LOAD( "printer.bin",			0x0000, 0x0800, CRC(3bbc2b2e) SHA1(08bf7ea4174713ab24969c553affd5c1401876b8) )
+
+	ROM_REGION( 0x2000, "printer_fm", 0 )
+	ROM_LOAD( "f&m.printer.1.2.bin",	0x0000, 0x1000, CRC(2feb997d) SHA1(ee9cb91042696c88ff5f2f44d2f702dc93369ba0) )
+
+	ROM_REGION( 0x2000, "rs232", 0 )
+	ROM_LOAD( "rs232.bin",				0x0000, 0x0800, CRC(926ff2d1) SHA1(be02bd388bba0211ea72d4868264a63308e4318d) )
+
+	ROM_REGION( 0x2000, "thermal", 0 )
+	ROM_LOAD( "thermal.bin",			0x0000, 0x1000, CRC(41a72ba8) SHA1(3a8760c78bd8c7bec2dbf26657b930c9a6814803) )
+
+	ROM_REGION( 0x2000, "80column", 0 )
+	ROM_LOAD( "80column.u3",			0x0000, 0x0800, CRC(b417d30a) SHA1(d428b0467945ecb9aec884211d0f4b1d8d56d738) )
+
+	ROM_REGION( 0x800, "chargen", 0 )
+	ROM_LOAD( "chargen.bin",			0x0000, 0x0800, CRC(69dd7b07) SHA1(71d368adbb299103d165eab8359a97769e463e26) )
 ROM_END
 
 #define rom_comx35n rom_comx35p

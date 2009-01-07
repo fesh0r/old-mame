@@ -27,11 +27,13 @@
 */
 
 #include "driver.h"
+#include "cpu/tms9900/tms9900.h"
 #include "deprecat.h"
 #include "video/v9938.h"
 
 #include "machine/ti99_4x.h"
 #include "machine/tms9901.h"
+#include "machine/tms9902.h"
 #include "audio/spchroms.h"
 #include "machine/99_peb.h"
 #include "machine/994x_ser.h"
@@ -72,14 +74,14 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(writecru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x01ff) AM_WRITE(tms9901_0_cru_w)
+	AM_RANGE(0x0000, 0x01ff) AM_DEVWRITE(TMS9901, "tms9901", tms9901_cru_w)
 	AM_RANGE(0x0200, 0x0fff) AM_WRITE(ti99_4p_peb_cru_w)
 
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(readcru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x003f) AM_READ(tms9901_0_cru_r)
+	AM_RANGE(0x0000, 0x003f) AM_DEVREAD(TMS9901, "tms9901", tms9901_cru_r)
 	AM_RANGE(0x0040, 0x01ff) AM_READ(ti99_4p_peb_cru_r)
 
 ADDRESS_MAP_END
@@ -281,9 +283,15 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
-	MDRV_DEVICE_ADD( "ide_harddisk", IDE_HARDDISK )
+	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
 
 	/* MDRV_CASSETTE_ADD( "cassette", default_cassette_config ) */
+	
+	/* tms9901 */
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)	
+	/* tms9902 */
+	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
+	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)	
 MACHINE_DRIVER_END
 
 

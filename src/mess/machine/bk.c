@@ -22,7 +22,7 @@ static UINT16 bk_drive;
 static TIMER_CALLBACK(keyboard_callback)
 {
 	UINT8 code, i, j;
-	static const char *keynames[] = { "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", 
+	static const char *const keynames[] = { "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", 
 										"LINE7", "LINE8", "LINE9", "LINE10", "LINE11" };
 
 	for(i = 1; i < 12; i++) 
@@ -62,7 +62,7 @@ static TIMER_CALLBACK(keyboard_callback)
 			{
 				key_irq_vector = 0xBC;
 			}
-			cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 			break;
 		}
 	}
@@ -76,14 +76,14 @@ DRIVER_INIT(bk0010)
 
 static IRQ_CALLBACK(bk0010_irq_callback)
 {
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(device, 0, CLEAR_LINE);
 	return key_irq_vector;
 }
 
 MACHINE_RESET( bk0010 )
 {
-	cpunum_set_irq_callback(0, bk0010_irq_callback);
-	timer_pulse(ATTOTIME_IN_HZ(2400), NULL, 0, keyboard_callback);
+	cpu_set_irq_callback(machine->cpu[0], bk0010_irq_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(2400), NULL, 0, keyboard_callback);
 
 	kbd_state = 0;
 	bk_scrool = 01330;
@@ -102,7 +102,7 @@ READ16_HANDLER (bk_vid_scrool_r) {
 }
 
 READ16_HANDLER (bk_key_press_r) {
-	double level = cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ));	 									 					
+	double level = cassette_input(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ));	 									 					
 	UINT16 cas;
 	if (level < 0) { 
 	 	cas = 0x00; 

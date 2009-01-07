@@ -56,7 +56,7 @@
 #endif
 
 #define LOG_LEVEL  1
-#define _logerror(level,x)  if (LOG_LEVEL > level) logerror x
+#define _logerror(level,x)  do { if (LOG_LEVEL > level) logerror x; } while (0)
 
 /////////////////////////
 // FUNCTION PROTOTYPES //
@@ -81,9 +81,9 @@ static void cybiko_rs232_reset( void);
 
 static void init_ram_handler(running_machine *machine, offs_t start, offs_t size, offs_t mirror)
 {
-	memory_install_read_handler(machine, 0, ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, mirror - size, STATIC_BANK1);
-	memory_install_write_handler(machine, 0, ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, mirror - size, STATIC_BANK1);
-	memory_set_bankptr( 1, mess_ram);
+	memory_install_read_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), start, start + size - 1, 0, mirror - size, STATIC_BANK1);
+	memory_install_write_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), start, start + size - 1, 0, mirror - size, STATIC_BANK1);
+	memory_set_bankptr( machine, 1, mess_ram);
 }
 
 DRIVER_INIT( cybikov1 )
@@ -151,7 +151,7 @@ static mame_file *nvram_system_fopen( running_machine *machine, UINT32 openflags
 	return (filerr == FILERR_NONE) ? file : NULL;
 }
 
-typedef void (nvram_load_func)( mame_file *file);
+typedef void (nvram_load_func)(running_machine *machine,  mame_file *file);
 
 static int nvram_system_load( running_machine *machine, const char *name, nvram_load_func _nvram_load, int required)
 {
@@ -162,12 +162,12 @@ static int nvram_system_load( running_machine *machine, const char *name, nvram_
 		if (required) mame_printf_error( "nvram load failed (%s)\n", name);
 		return FALSE;
 	}
-	_nvram_load( file);
+	(*_nvram_load)(machine, file);
 	mame_fclose( file);
 	return TRUE;
 }
 
-typedef void (nvram_save_func)( mame_file *file);
+typedef void (nvram_save_func)(running_machine *machine,  mame_file *file);
 
 static int nvram_system_save( running_machine *machine, const char *name, nvram_save_func _nvram_save)
 {
@@ -178,19 +178,30 @@ static int nvram_system_save( running_machine *machine, const char *name, nvram_
 		mame_printf_error( "nvram save failed (%s)\n", name);
 		return FALSE;
 	}
-	_nvram_save( file);
+	(*_nvram_save)(machine, file);
 	mame_fclose( file);
 	return TRUE;
+}
+
+static void cybiko_pcf8593_load(running_machine *machine, mame_file *file)
+{
+	const device_config *device = device_list_find_by_tag(machine->config->devicelist, PCF8593, "rtc");
+	pcf8593_load(device, file);
+}
+
+static void cybiko_pcf8593_save(running_machine *machine, mame_file *file)
+{
+	const device_config *device = device_list_find_by_tag(machine->config->devicelist, PCF8593, "rtc");
+	pcf8593_save(device, file);
 }
 
 MACHINE_START( cybikov1 )
 {
 	_logerror( 0, ("machine_start_cybikov1\n"));
 	// real-time clock
-	pcf8593_init();
-	nvram_system_load( machine, "rtc", pcf8593_load, 0);
+	nvram_system_load( machine, "rtc", cybiko_pcf8593_load, 0);
 	// serial dataflash
-	at45dbxx_init( AT45DB041);
+	at45dbxx_init(machine, AT45DB041);
 	nvram_system_load( machine, "flash1", &at45dbxx_load, 1);
 	// serial port
 	cybiko_rs232_init();
@@ -202,15 +213,14 @@ MACHINE_START( cybikov2 )
 {
 	_logerror( 0, ("machine_start_cybikov2\n"));
 	// real-time clock
-	pcf8593_init();
-	nvram_system_load( machine, "rtc", pcf8593_load, 0);
+	nvram_system_load( machine, "rtc", cybiko_pcf8593_load, 0);
 	// serial dataflash
-	at45dbxx_init( AT45DB041);
+	at45dbxx_init(machine, AT45DB041);
 	nvram_system_load( machine, "flash1", &at45dbxx_load, 1);
 	// multi-purpose flash
-	sst39vfx_init( SST39VF020, 16, CPU_IS_BE);
+	sst39vfx_init(machine, SST39VF020, 16, ENDIANNESS_BIG);
 	nvram_system_load( machine, "flash2", &sst39vfx_load, 1);
-	memory_set_bankptr( 2, sst39vfx_get_base());
+	memory_set_bankptr( machine, 2, sst39vfx_get_base());
 	// serial port
 	cybiko_rs232_init();
 	// other
@@ -221,12 +231,11 @@ MACHINE_START( cybikoxt )
 {
 	_logerror( 0, ("machine_start_cybikoxt\n"));
 	// real-time clock
-	pcf8593_init();
-	nvram_system_load( machine, "rtc", pcf8593_load, 0);
+	nvram_system_load( machine, "rtc", cybiko_pcf8593_load, 0);
 	// multi-purpose flash
-	sst39vfx_init( SST39VF400A, 16, CPU_IS_BE);
+	sst39vfx_init(machine, SST39VF400A, 16, ENDIANNESS_BIG);
 	nvram_system_load( machine, "flash1", &sst39vfx_load, 1);
-	memory_set_bankptr( 2, sst39vfx_get_base());
+	memory_set_bankptr( machine, 2, sst39vfx_get_base());
 	// serial port
 	cybiko_rs232_init();
 	// other
@@ -240,25 +249,18 @@ MACHINE_START( cybikoxt )
 MACHINE_RESET( cybikov1 )
 {
 	_logerror( 0, ("machine_reset_cybikov1\n"));
-	pcf8593_reset();
-	at45dbxx_reset();
 	cybiko_rs232_reset();
 }
 
 MACHINE_RESET( cybikov2 )
 {
 	_logerror( 0, ("machine_reset_cybikov2\n"));
-	pcf8593_reset();
-	at45dbxx_reset();
-	sst39vfx_reset();
 	cybiko_rs232_reset();
 }
 
 MACHINE_RESET( cybikoxt )
 {
 	_logerror( 0, ("machine_reset_cybikoxt\n"));
-	pcf8593_reset();
-	sst39vfx_reset();
 	cybiko_rs232_reset();
 }
 
@@ -270,11 +272,9 @@ MACHINE_STOP( cybikov1 )
 {
 	_logerror( 0, ("machine_stop_cybikov1\n"));
 	// real-time clock
-	nvram_system_save( machine, "rtc", pcf8593_save);
-	pcf8593_exit();
+	nvram_system_save( machine, "rtc", cybiko_pcf8593_save);
 	// serial dataflash
 	nvram_system_save( machine, "flash1", &at45dbxx_save);
-	at45dbxx_exit();
 	// serial port
 	cybiko_rs232_exit();
 }
@@ -283,14 +283,11 @@ MACHINE_STOP( cybikov2 )
 {
 	_logerror( 0, ("machine_stop_cybikov2\n"));
 	// real-time clock
-	nvram_system_save( machine, "rtc", pcf8593_save);
-	pcf8593_exit();
+	nvram_system_save( machine, "rtc", cybiko_pcf8593_save);
 	// serial dataflash
 	nvram_system_save( machine, "flash1", &at45dbxx_save);
-	at45dbxx_exit();
 	// multi-purpose flash
 	nvram_system_save( machine, "flash2", &sst39vfx_save);
-	sst39vfx_exit();
 	// serial port
 	cybiko_rs232_exit();
 }
@@ -299,11 +296,9 @@ MACHINE_STOP( cybikoxt )
 {
 	_logerror( 0, ("machine_stop_cybikoxt\n"));
 	// real-time clock
-	nvram_system_save( machine, "rtc", pcf8593_save);
-	pcf8593_exit();
+	nvram_system_save( machine, "rtc", cybiko_pcf8593_save);
 	// multi-purpose flash
 	nvram_system_save( machine, "flash1", &sst39vfx_save);
-	sst39vfx_exit();
 	// serial port
 	cybiko_rs232_exit();
 }
@@ -331,7 +326,7 @@ static void cybiko_rs232_init( void)
 {
 	_logerror( 0, ("cybiko_rs232_init\n"));
 	memset( &rs232, 0, sizeof( rs232));
-//	timer_pulse( TIME_IN_HZ( 10), NULL, 0, rs232_timer_callback);
+//	timer_pulse(machine,  TIME_IN_HZ( 10), NULL, 0, rs232_timer_callback);
 }
 
 static void cybiko_rs232_exit( void)
@@ -403,22 +398,22 @@ static int cybiko_rs232_rx_queue( void)
 READ16_HANDLER( cybiko_lcd_r )
 {
 	UINT16 data = 0;
-	if ACCESSING_BITS_8_15 data = data | (hd66421_reg_idx_r() << 8);
-	if ACCESSING_BITS_0_7 data = data | (hd66421_reg_dat_r() << 0);
+	if (ACCESSING_BITS_8_15) data = data | (hd66421_reg_idx_r() << 8);
+	if (ACCESSING_BITS_0_7) data = data | (hd66421_reg_dat_r() << 0);
 	return data;
 }
 
 WRITE16_HANDLER( cybiko_lcd_w )
 {
-	if ACCESSING_BITS_8_15 hd66421_reg_idx_w( (data >> 8) & 0xFF);
-	if ACCESSING_BITS_0_7 hd66421_reg_dat_w( (data >> 0) & 0xFF);
+	if (ACCESSING_BITS_8_15) hd66421_reg_idx_w( (data >> 8) & 0xFF);
+	if (ACCESSING_BITS_0_7) hd66421_reg_dat_w( (data >> 0) & 0xFF);
 }
 
 static READ8_HANDLER( cybiko_key_r_byte )
 {
 	UINT8 data = 0xFF;
 	int i;
-	static const char *keynames[] = { "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9" };
+	static const char *const keynames[] = { "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9" };
 	
 	_logerror( 2, ("cybiko_key_r_byte (%08X)\n", offset));
 	// A11
@@ -428,7 +423,7 @@ static READ8_HANDLER( cybiko_key_r_byte )
 	for (i=1; i<10; i++) 
 	{
 		if (!(offset & (1 << i))) 
-			data &= input_port_read(machine, keynames[i-1]);
+			data &= input_port_read(space->machine, keynames[i-1]);
 	}
 	// A0
 	if (!(offset & (1 <<  0))) 
@@ -441,8 +436,8 @@ READ16_HANDLER( cybiko_key_r )
 {
 	UINT16 data = 0;
 	_logerror( 2, ("cybiko_key_r (%08X/%04X)\n", offset, mem_mask));
-	if ACCESSING_BITS_8_15 data = data | (cybiko_key_r_byte(machine, offset * 2 + 0) << 8);
-	if ACCESSING_BITS_0_7 data = data | (cybiko_key_r_byte(machine, offset * 2 + 1) << 0);
+	if (ACCESSING_BITS_8_15) data = data | (cybiko_key_r_byte(space, offset * 2 + 0) << 8);
+	if (ACCESSING_BITS_0_7) data = data | (cybiko_key_r_byte(space, offset * 2 + 1) << 0);
 	_logerror( 2, ("%04X\n", data));
 	return data;
 }
@@ -456,19 +451,20 @@ static READ8_HANDLER( cybiko_io_reg_r )
 		// keyboard
 		case H8S_IO_PORT1 :
 		{
-			//if (input_port_read(machine, "A1") & 0x02) data = data | 0x08; else data = data & (~0x08); // "esc" key
+			//if (input_port_read(space->machine, "A1") & 0x02) data = data | 0x08; else data = data & (~0x08); // "esc" key
 			data = data | 0x08;
 		}
 		break;
 		// serial dataflash
-		case H8S_IO_PORT3 : if (at45dbxx_pin_so()) data = data | H8S_P3_RXD1; break;
+		case H8S_IO_PORT3 : if (at45dbxx_pin_so(space->machine)) data = data | H8S_P3_RXD1; break;
 		// rs232
 		case H8S_IO_PORT5 : if (cybiko_rs232_pin_rxd()) data = data | H8S_P5_RXD2; break;
 		// real-time clock
 		case H8S_IO_PORTF :
 		{
+			const device_config *device = device_list_find_by_tag(space->machine->config->devicelist, PCF8593, "rtc");
 			data = H8S_PF_PF2;
-			if (pcf8593_pin_sda_r()) data |= H8S_PF_PF0;
+			if (pcf8593_pin_sda_r(device)) data |= H8S_PF_PF0;
 		}
 		break;
 		// serial 2
@@ -483,6 +479,8 @@ static READ8_HANDLER( cybiko_io_reg_r )
 
 static WRITE8_HANDLER( cybiko_io_reg_w )
 {
+	const device_config *rtc = device_list_find_by_tag(space->machine->config->devicelist, PCF8593, "rtc");
+
 	_logerror( 2, ("cybiko_io_reg_w (%08X/%02X)\n", offset, data));
 	switch (offset)
 	{
@@ -491,9 +489,9 @@ static WRITE8_HANDLER( cybiko_io_reg_w )
 		// serial dataflash
 		case H8S_IO_P3DR :
 		{
-			at45dbxx_pin_cs ( (data & H8S_P3_SCK0) ? 0 : 1);
-			at45dbxx_pin_si ( (data & H8S_P3_TXD1) ? 1 : 0);
-			at45dbxx_pin_sck( (data & H8S_P3_SCK1) ? 1 : 0);
+			at45dbxx_pin_cs ( space->machine, (data & H8S_P3_SCK0) ? 0 : 1);
+			at45dbxx_pin_si ( space->machine, (data & H8S_P3_TXD1) ? 1 : 0);
+			at45dbxx_pin_sck( space->machine, (data & H8S_P3_SCK1) ? 1 : 0);
 		}
 		break;
 		// rs232
@@ -504,21 +502,21 @@ static WRITE8_HANDLER( cybiko_io_reg_w )
 		}
 		break;
 		// real-time clock
-		case H8S_IO_PFDR  : pcf8593_pin_scl( (data & H8S_PF_PF1) ? 1 : 0); break;
-		case H8S_IO_PFDDR : pcf8593_pin_sda_w( (data & H8S_PF_PF0) ? 0 : 1); break;
+		case H8S_IO_PFDR  : pcf8593_pin_scl(rtc, (data & H8S_PF_PF1) ? 1 : 0); break;
+		case H8S_IO_PFDDR : pcf8593_pin_sda_w(rtc, (data & H8S_PF_PF0) ? 0 : 1); break;
 	}
 }
 
 READ8_HANDLER( cybikov1_io_reg_r )
 {
 	_logerror( 2, ("cybikov1_io_reg_r (%08X)\n", offset));
-	return cybiko_io_reg_r(machine, offset);
+	return cybiko_io_reg_r(space, offset);
 }
 
 READ8_HANDLER( cybikov2_io_reg_r )
 {
 	_logerror( 2, ("cybikov2_io_reg_r (%08X)\n", offset));
-	return cybiko_io_reg_r(machine, offset);
+	return cybiko_io_reg_r(space, offset);
 }
 
 READ8_HANDLER( cybikoxt_io_reg_r )
@@ -530,7 +528,7 @@ READ8_HANDLER( cybikoxt_io_reg_r )
 		// rs232
 		case H8S_IO_PORT3 : if (cybiko_rs232_pin_rxd()) data = data | H8S_P3_RXD1; break;
 		// default
-		default : data = cybiko_io_reg_r(machine, offset);
+		default : data = cybiko_io_reg_r(space, offset);
 	}
 	return data;
 }
@@ -538,13 +536,13 @@ READ8_HANDLER( cybikoxt_io_reg_r )
 WRITE8_HANDLER( cybikov1_io_reg_w )
 {
 	_logerror( 2, ("cybikov1_io_reg_w (%08X/%02X)\n", offset, data));
-	cybiko_io_reg_w(machine, offset, data);
+	cybiko_io_reg_w(space, offset, data);
 }
 
 WRITE8_HANDLER( cybikov2_io_reg_w )
 {
 	_logerror( 2, ("cybikov2_io_reg_w (%08X/%02X)\n", offset, data));
-	cybiko_io_reg_w(machine, offset, data);
+	cybiko_io_reg_w(space, offset, data);
 }
 
 WRITE8_HANDLER( cybikoxt_io_reg_w )
@@ -560,7 +558,7 @@ WRITE8_HANDLER( cybikoxt_io_reg_w )
 		}
 		break;
 		// default
-		default : cybiko_io_reg_w(machine, offset, data);
+		default : cybiko_io_reg_w(space, offset, data);
 	}
 }
 
@@ -570,8 +568,8 @@ WRITE8_HANDLER( cybikoxt_io_reg_w )
 // 20/00, 23/08, 27/01, 2F/08, 2C/02, 2B/08, 28/01, 37/08, 34/04, 33/08, 30/03, 04/80, 05/02, 1B/6C, 00/C8
 WRITE16_HANDLER( cybiko_unk1_w )
 {
-	if ACCESSING_BITS_8_15 logerror( "[%08X] <- %02X\n", 0x200000 + offset * 2 + 0, (data >> 8) & 0xFF);
-	if ACCESSING_BITS_0_7 logerror( "[%08X] <- %02X\n", 0x200000 + offset * 2 + 1, (data >> 0) & 0xFF);
+	if (ACCESSING_BITS_8_15) logerror( "[%08X] <- %02X\n", 0x200000 + offset * 2 + 0, (data >> 8) & 0xFF);
+	if (ACCESSING_BITS_0_7) logerror( "[%08X] <- %02X\n", 0x200000 + offset * 2 + 1, (data >> 0) & 0xFF);
 }
 
 READ16_HANDLER( cybiko_unk2_r )

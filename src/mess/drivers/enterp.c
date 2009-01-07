@@ -16,7 +16,7 @@
  ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 #include "audio/dave.h"
 #include "includes/enterp.h"
 #include "video/epnick.h"
@@ -66,14 +66,14 @@ static unsigned char * Enterprise_Pages_Write[256];
 static int Enterprise_KeyboardLine = 0;
 
 /* set read/write pointers for CPU page */
-static void	Enterprise_SetMemoryPage(int CPU_Page, int EP_Page)
+static void	Enterprise_SetMemoryPage(running_machine *machine, int CPU_Page, int EP_Page)
 {
-	memory_set_bankptr((CPU_Page+1), Enterprise_Pages_Read[EP_Page & 0x0ff]);
-	memory_set_bankptr((CPU_Page+5), Enterprise_Pages_Write[EP_Page & 0x0ff]);
+	memory_set_bankptr(machine, (CPU_Page+1), Enterprise_Pages_Read[EP_Page & 0x0ff]);
+	memory_set_bankptr(machine, (CPU_Page+5), Enterprise_Pages_Write[EP_Page & 0x0ff]);
 }
 
 /* EP specific handling of dave register write */
-static void enterprise_dave_reg_write(int RegIndex, int Data)
+static void enterprise_dave_reg_write(running_machine *machine, int RegIndex, int Data)
 {
 	switch (RegIndex)
 	{
@@ -81,28 +81,28 @@ static void enterprise_dave_reg_write(int RegIndex, int Data)
 	case 0x010:
 		{
 		  /* set CPU memory page 0 */
-			Enterprise_SetMemoryPage(0, Data);
+			Enterprise_SetMemoryPage(machine, 0, Data);
 		}
 		break;
 
 	case 0x011:
 		{
 		  /* set CPU memory page 1 */
-			Enterprise_SetMemoryPage(1, Data);
+			Enterprise_SetMemoryPage(machine, 1, Data);
 		}
 		break;
 
 	case 0x012:
 		{
 		  /* set CPU memory page 2 */
-			Enterprise_SetMemoryPage(2, Data);
+			Enterprise_SetMemoryPage(machine, 2, Data);
 		}
 		break;
 
 	case 0x013:
 		{
 		  /* set CPU memory page 3 */
-			Enterprise_SetMemoryPage(3, Data);
+			Enterprise_SetMemoryPage(machine, 3, Data);
 		}
 		break;
 
@@ -118,18 +118,16 @@ static void enterprise_dave_reg_write(int RegIndex, int Data)
 	}
 }
 
-static void enterprise_dave_reg_read(int RegIndex)
+static void enterprise_dave_reg_read(running_machine *machine, int RegIndex)
 {
-	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", 
+	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", 
 										"LINE5", "LINE6", "LINE7", "LINE8", "LINE9" };
-	running_machine *machine = Machine;
-
 	switch (RegIndex)
 	{
 	case 0x015:
 		{
 		/* read keyboard line */
-		Dave_setreg(machine, 0x015, input_port_read(machine, keynames[Enterprise_KeyboardLine]));
+			Dave_setreg(machine, 0x015, input_port_read(machine, keynames[Enterprise_KeyboardLine]));
 		}
 		break;
 
@@ -156,12 +154,12 @@ static void enterprise_dave_reg_read(int RegIndex)
 	}
 }
 
-static void enterprise_dave_interrupt(int state)
+static void enterprise_dave_interrupt(running_machine *machine, int state)
 {
 	if (state)
-		cpunum_set_input_line(Machine, 0,0,HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0],0,HOLD_LINE);
 	else
-		cpunum_set_input_line(Machine, 0,0,CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0],0,CLEAR_LINE);
 }
 
 /* enterprise interface to dave - ok, so Dave chip is unique
@@ -175,11 +173,11 @@ static const DAVE_INTERFACE enterprise_dave_interface =
 };
 
 
-static void enterp_wd177x_callback(running_machine *machine, wd17xx_state_t event, void *param);
 
 static void enterprise_reset(running_machine *machine)
 {
 	int i;
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 
 	for (i=0; i<256; i++)
 	{
@@ -225,34 +223,34 @@ static void enterprise_reset(running_machine *machine)
 
 	Dave_SetIFace(&enterprise_dave_interface);
 
-	Dave_reg_w(machine, 0x010,0);
-	Dave_reg_w(machine, 0x011,0);
-	Dave_reg_w(machine, 0x012,0);
-	Dave_reg_w(machine, 0x013,0);
+	Dave_reg_w(space, 0x010,0);
+	Dave_reg_w(space, 0x011,0);
+	Dave_reg_w(space, 0x012,0);
+	Dave_reg_w(space, 0x013,0);
 
-	cpunum_set_input_line_vector(0,0,0x0ff);
+	cpu_set_input_line_vector(machine->cpu[0],0,0x0ff);
 
-	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
+	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
 }
 
 static MACHINE_START(enterprise)
 {
-	wd17xx_init(machine, WD_TYPE_177X, enterp_wd177x_callback, NULL);
 	add_reset_callback(machine, enterprise_reset);
 }
 
-static  READ8_HANDLER ( enterprise_wd177x_read )
+static READ8_HANDLER ( enterprise_wd177x_read )
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD177X, "wd177x");
 	switch (offset & 0x03)
 	{
 	case 0:
-		return wd17xx_status_r(machine, offset);
+		return wd17xx_status_r(fdc, offset);
 	case 1:
-		return wd17xx_track_r(machine, offset);
+		return wd17xx_track_r(fdc, offset);
 	case 2:
-		return wd17xx_sector_r(machine, offset);
+		return wd17xx_sector_r(fdc, offset);
 	case 3:
-		return wd17xx_data_r(machine, offset);
+		return wd17xx_data_r(fdc, offset);
 	default:
 		break;
 	}
@@ -262,19 +260,20 @@ static  READ8_HANDLER ( enterprise_wd177x_read )
 
 static WRITE8_HANDLER (	enterprise_wd177x_write )
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD177X, "wd177x");
 	switch (offset & 0x03)
 	{
 	case 0:
-		wd17xx_command_w(machine, offset, data);
+		wd17xx_command_w(fdc, offset, data);
 		return;
 	case 1:
-		wd17xx_track_w(machine, offset, data);
+		wd17xx_track_w(fdc, offset, data);
 		return;
 	case 2:
-		wd17xx_sector_w(machine, offset, data);
+		wd17xx_sector_w(fdc, offset, data);
 		return;
 	case 3:
-		wd17xx_data_w(machine, offset, data);
+		wd17xx_data_w(fdc, offset, data);
 		return;
 	default:
 		break;
@@ -319,40 +318,42 @@ static int EXDOS_GetDriveSelection(int data)
 
 static char EXDOS_CARD_R = 0;
 
-static void enterp_wd177x_callback(running_machine *machine, wd17xx_state_t State, void *param)
+static WD17XX_CALLBACK( enterp_wd177x_callback )
 {
-   if (State==WD17XX_IRQ_CLR)
+   if (state==WD17XX_IRQ_CLR)
    {
 		EXDOS_CARD_R &= ~0x02;
    }
 
-   if (State==WD17XX_IRQ_SET)
+   if (state==WD17XX_IRQ_SET)
    {
 		EXDOS_CARD_R |= 0x02;
    }
 
-   if (State==WD17XX_DRQ_CLR)
+   if (state==WD17XX_DRQ_CLR)
    {
 		EXDOS_CARD_R &= ~0x080;
    }
 
-   if (State==WD17XX_DRQ_SET)
+   if (state==WD17XX_DRQ_SET)
    {
 		EXDOS_CARD_R |= 0x080;
    }
 }
 
+const wd17xx_interface enterp_wd17xx_interface = { enterp_wd177x_callback, NULL };
 
 
 static WRITE8_HANDLER ( exdos_card_w )
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD177X, "wd177x");
 	/* drive side */
 	int head = (data>>4) & 0x01;
 
 	int drive = EXDOS_GetDriveSelection(data);
 
-	wd17xx_set_drive(drive);
-	wd17xx_set_side(head);
+	wd17xx_set_drive(fdc,drive);
+	wd17xx_set_side(fdc,head);
 }
 
 /* bit 0 - ??
@@ -533,14 +534,14 @@ static const custom_sound_interface dave_custom_sound =
 	Dave_sh_start
 };
 
-/* 4Mhz clock, although it can be changed to 8 Mhz! */
+/* 4 MHz clock, although it can be changed to 8 MHz! */
 
 static MACHINE_DRIVER_START( ep128 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(enterprise_mem, 0)
 	MDRV_CPU_IO_MAP(enterprise_io, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( enterprise )
 
@@ -563,6 +564,8 @@ static MACHINE_DRIVER_START( ep128 )
 	MDRV_SOUND_ADD("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(dave_custom_sound)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	
+	MDRV_WD177X_ADD("wd177x", enterp_wd17xx_interface )
 MACHINE_DRIVER_END
 
 ROM_START( ep128 )

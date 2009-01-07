@@ -280,17 +280,15 @@ static const cassette_config radio86_cassette_config =
 
 /* Machine driver */
 static MACHINE_DRIVER_START( radio86 )
-  /* basic machine hardware */
-  MDRV_CPU_ADD("main",8080, XTAL_16MHz / 9)
-  MDRV_CPU_PROGRAM_MAP(radio86_mem, 0)
-  MDRV_CPU_IO_MAP(radio86_io, 0)
-  MDRV_MACHINE_RESET( radio86 )
+	/* basic machine hardware */
+	MDRV_CPU_ADD("main",8080, XTAL_16MHz / 9)
+	MDRV_CPU_PROGRAM_MAP(radio86_mem, 0)
+	MDRV_CPU_IO_MAP(radio86_io, 0)
+	MDRV_MACHINE_RESET( radio86 )
 
-	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( radio86_ppi8255_interface_1 )
+	MDRV_PPI8255_ADD( "ppi8255_1", radio86_ppi8255_interface_1 )
 
-	MDRV_DEVICE_ADD( "i8275", I8275 )
-	MDRV_DEVICE_CONFIG(radio86_i8275_interface)
+	MDRV_I8275_ADD	( "i8275", radio86_i8275_interface)
     /* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
@@ -308,23 +306,22 @@ static MACHINE_DRIVER_START( radio86 )
 	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_DEVICE_ADD("dma8257", DMA8257)
-	MDRV_DEVICE_CONFIG(radio86_dma)
+	MDRV_DMA8257_ADD("dma8257", XTAL_16MHz / 9, radio86_dma)
 
 	MDRV_CASSETTE_ADD( "cassette", radio86_cassette_config )
 MACHINE_DRIVER_END
 
 static UINT8 *radio16_io_mirror = NULL;
 
-static OPBASE_HANDLER( radio16_opbase )
+static DIRECT_UPDATE_HANDLER( radio16_direct )
 {	
 	if (address >= 0x4000 && address <=0x7FFF) {
-			opbase->mask = 0xffff;
-			opbase->ram = radio16_io_mirror;
-			opbase->rom = radio16_io_mirror;
-			opbase->mem_min = 0x4000;
-			opbase->mem_max = 0x7fff;
-			radio16_io_mirror[address] = cpunum_get_reg(0, I8080_STATUS);
+			direct->mask = 0xffff;
+			direct->raw = radio16_io_mirror;
+			direct->decrypted = radio16_io_mirror;
+			direct->min = 0x4000;
+			direct->max = 0x7fff;
+			radio16_io_mirror[address] = cpu_get_reg(space->machine->cpu[0], I8085_STATUS);
 	} 
 	return address;
 }
@@ -332,7 +329,7 @@ static OPBASE_HANDLER( radio16_opbase )
 static MACHINE_START( radio16 )
 {
 	radio16_io_mirror = auto_malloc( 0x8000 );
-	memory_set_opbase_handler( 0, radio16_opbase );
+	memory_set_direct_update_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), radio16_direct );
 }
 
 static MACHINE_DRIVER_START( radio16 )
@@ -349,8 +346,7 @@ static MACHINE_DRIVER_START( radiorom )
   MDRV_CPU_MODIFY("main")
   MDRV_CPU_PROGRAM_MAP(radio86rom_mem, 0)
     
-	MDRV_DEVICE_ADD( "ppi8255_2", PPI8255 )
-	MDRV_DEVICE_CONFIG( radio86_ppi8255_interface_2 )
+	MDRV_PPI8255_ADD( "ppi8255_2", radio86_ppi8255_interface_2 )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( radioram )
@@ -359,8 +355,7 @@ static MACHINE_DRIVER_START( radioram )
   MDRV_CPU_MODIFY("main")
   MDRV_CPU_PROGRAM_MAP(radio86ram_mem, 0)
 
-	MDRV_DEVICE_ADD( "ppi8255_2", PPI8255 )
-	MDRV_DEVICE_CONFIG( radio86_ppi8255_interface_2 )
+	MDRV_PPI8255_ADD( "ppi8255_2", radio86_ppi8255_interface_2 )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( rk7007 )
@@ -369,8 +364,7 @@ static MACHINE_DRIVER_START( rk7007 )
   MDRV_CPU_MODIFY("main")
   MDRV_CPU_IO_MAP(rk7007_io, 0)
 
-	MDRV_DEVICE_ADD( "ms7007", PPI8255 )
-	MDRV_DEVICE_CONFIG( rk7007_ppi8255_interface )
+	MDRV_PPI8255_ADD( "ms7007", rk7007_ppi8255_interface )
 MACHINE_DRIVER_END
   
 static MACHINE_DRIVER_START( rk700716 )
@@ -379,8 +373,7 @@ static MACHINE_DRIVER_START( rk700716 )
   MDRV_CPU_MODIFY("main")
   MDRV_CPU_IO_MAP(rk7007_io, 0)
     
-	MDRV_DEVICE_ADD( "ms7007", PPI8255 )
-	MDRV_DEVICE_CONFIG( rk7007_ppi8255_interface )    
+	MDRV_PPI8255_ADD( "ms7007", rk7007_ppi8255_interface )    
 MACHINE_DRIVER_END
 
 

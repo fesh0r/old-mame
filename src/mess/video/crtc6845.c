@@ -37,17 +37,6 @@
 
 /***************************************************************************
 
-	Constants & macros
-
-***************************************************************************/
-
-#define VERBOSE 0
-
-#define DBG_LOG(N,M,A)      \
-    if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A; }
-
-/***************************************************************************
-
 	Type definitions
 
 ***************************************************************************/
@@ -114,14 +103,14 @@ static const UINT8 pc1512_defaults[] =
 
 ***************************************************************************/
 
-struct mscrtc6845 *mscrtc6845_init(const struct mscrtc6845_config *config)
+struct mscrtc6845 *mscrtc6845_init(running_machine *machine, const struct mscrtc6845_config *config)
 {
 	struct mscrtc6845 *crtc;
 	int idx;
 
 	crtc = auto_malloc(sizeof(struct mscrtc6845));
 	memset(crtc, 0, sizeof(*crtc));
-	crtc->cursor_time = attotime_to_double(timer_get_time());
+	crtc->cursor_time = attotime_to_double(timer_get_time(machine));
 	crtc->config = *config;
 	mscrtc6845 = crtc;
 
@@ -134,8 +123,8 @@ struct mscrtc6845 *mscrtc6845_init(const struct mscrtc6845_config *config)
 		}
 	}
 
-	state_save_register_item_array("mscrtc6845", 0, crtc->reg);
-	state_save_register_item("mscrtc6845", 0, crtc->idx);
+	state_save_register_item_array(machine, "mscrtc6845", NULL, 0, crtc->reg);
+	state_save_register_item(machine, "mscrtc6845", NULL, 0, crtc->idx);
 	return crtc;
 }
 
@@ -159,12 +148,12 @@ void mscrtc6845_set_clock(struct mscrtc6845 *crtc, int freq)
 	crtc->config.freq = freq;
 }
 
-void mscrtc6845_time(struct mscrtc6845 *crtc)
+void mscrtc6845_time(running_machine *machine, struct mscrtc6845 *crtc)
 {
 	double neu, ftime;
 	struct mscrtc6845_cursor cursor;
 
-	neu = attotime_to_double(timer_get_time());
+	neu = attotime_to_double(timer_get_time(machine));
 
 	if (mscrtc6845_clocks_in_frame(crtc) == 0.0)
 		return;

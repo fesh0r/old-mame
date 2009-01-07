@@ -9,12 +9,12 @@
 
 static CDP1861_ON_INT_CHANGED( tmc1800_int_w )
 {
-	cpunum_set_input_line(device->machine, 0, CDP1802_INPUT_LINE_INT, level);
+	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_INT, level);
 }
 
 static CDP1861_ON_DMAO_CHANGED( tmc1800_dmao_w )
 {
-	cpunum_set_input_line(device->machine, 0, CDP1802_INPUT_LINE_DMAOUT, level);
+	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_DMAOUT, level);
 }
 
 static CDP1861_ON_EFX_CHANGED( tmc1800_efx_w )
@@ -27,7 +27,6 @@ static CDP1861_ON_EFX_CHANGED( tmc1800_efx_w )
 static CDP1861_INTERFACE( tmc1800_cdp1861_intf )
 {
 	SCREEN_TAG,
-	XTAL_1_75MHz,
 	tmc1800_int_w,
 	tmc1800_dmao_w,
 	tmc1800_efx_w
@@ -35,9 +34,9 @@ static CDP1861_INTERFACE( tmc1800_cdp1861_intf )
 
 static VIDEO_UPDATE( tmc1800 )
 {
-	const device_config *cdp1861 = device_list_find_by_tag(screen->machine->config->devicelist, CDP1861, CDP1861_TAG);
+	tmc1800_state *state = screen->machine->driver_data;
 
-	cdp1861_update(cdp1861, bitmap, cliprect);
+	cdp1861_update(state->cdp1861, bitmap, cliprect);
 
 	return 0;
 }
@@ -46,12 +45,12 @@ static VIDEO_UPDATE( tmc1800 )
 
 static CDP1864_ON_INT_CHANGED( tmc2000_int_w )
 {
-	cpunum_set_input_line(device->machine, 0, CDP1802_INPUT_LINE_INT, level);
+	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_INT, level);
 }
 
 static CDP1864_ON_DMAO_CHANGED( tmc2000_dmao_w )
 {
-	cpunum_set_input_line(device->machine, 0, CDP1802_INPUT_LINE_DMAOUT, level);
+	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_DMAOUT, level);
 }
 
 static CDP1864_ON_EFX_CHANGED( tmc2000_efx_w )
@@ -64,7 +63,6 @@ static CDP1864_ON_EFX_CHANGED( tmc2000_efx_w )
 static CDP1864_INTERFACE( tmc2000_cdp1864_intf )
 {
 	SCREEN_TAG,
-	XTAL_1_75MHz,
 	CDP1864_INTERLACED,
 	tmc2000_int_w,
 	tmc2000_dmao_w,
@@ -77,9 +75,9 @@ static CDP1864_INTERFACE( tmc2000_cdp1864_intf )
 
 static VIDEO_UPDATE( tmc2000 )
 {
-	const device_config *cdp1864 = device_list_find_by_tag(screen->machine->config->devicelist, CDP1864, CDP1864_TAG);
+	tmc2000_state *state = screen->machine->driver_data;
 
-	cdp1864_update(cdp1864, bitmap, cliprect);
+	cdp1864_update(state->cdp1864, bitmap, cliprect);
 
 	return 0;
 }
@@ -88,12 +86,12 @@ static VIDEO_UPDATE( tmc2000 )
 
 static CDP1864_ON_INT_CHANGED( oscnano_int_w )
 {
-	cpunum_set_input_line(device->machine, 0, CDP1802_INPUT_LINE_INT, level);
+	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_INT, level);
 }
 
 static CDP1864_ON_DMAO_CHANGED( oscnano_dmao_w )
 {
-	cpunum_set_input_line(device->machine, 0, CDP1802_INPUT_LINE_DMAOUT, level);
+	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_DMAOUT, level);
 }
 
 static CDP1864_ON_EFX_CHANGED( oscnano_efx_w )
@@ -106,7 +104,6 @@ static CDP1864_ON_EFX_CHANGED( oscnano_efx_w )
 static CDP1864_INTERFACE( oscnano_cdp1864_intf )
 {
 	SCREEN_TAG,
-	XTAL_1_75MHz,
 	CDP1864_INTERLACED,
 	oscnano_int_w,
 	oscnano_dmao_w,
@@ -119,9 +116,9 @@ static CDP1864_INTERFACE( oscnano_cdp1864_intf )
 
 static VIDEO_UPDATE( oscnano )
 {
-	const device_config *cdp1864 = device_list_find_by_tag(screen->machine->config->devicelist, CDP1864, CDP1864_TAG);
+	oscnano_state *state = screen->machine->driver_data;
 
-	cdp1864_update(cdp1864, bitmap, cliprect);
+	cdp1864_update(state->cdp1864, bitmap, cliprect);
 
 	return 0;
 }
@@ -148,8 +145,7 @@ MACHINE_DRIVER_START( tmc1800_video )
 	MDRV_PALETTE_INIT(black_and_white)
 	MDRV_VIDEO_UPDATE(tmc1800)
 
-	MDRV_DEVICE_ADD(CDP1861_TAG, CDP1861)
-	MDRV_DEVICE_CONFIG(tmc1800_cdp1861_intf)
+	MDRV_CDP1861_ADD(CDP1861_TAG, XTAL_1_75MHz, tmc1800_cdp1861_intf)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( osc1000b_video )
@@ -173,8 +169,7 @@ MACHINE_DRIVER_START( tmc2000_video )
 	MDRV_PALETTE_LENGTH(8+8)
 	MDRV_VIDEO_UPDATE(tmc2000)
 
-	MDRV_DEVICE_ADD(CDP1864_TAG, CDP1864)
-	MDRV_DEVICE_CONFIG(tmc2000_cdp1864_intf)
+	MDRV_CDP1864_ADD(CDP1864_TAG, XTAL_1_75MHz, tmc2000_cdp1864_intf)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( oscnano_video )
@@ -185,6 +180,5 @@ MACHINE_DRIVER_START( oscnano_video )
 	MDRV_PALETTE_LENGTH(8+8)
 	MDRV_VIDEO_UPDATE(oscnano)
 
-	MDRV_DEVICE_ADD(CDP1864_TAG, CDP1864)
-	MDRV_DEVICE_CONFIG(oscnano_cdp1864_intf)
+	MDRV_CDP1864_ADD(CDP1864_TAG, XTAL_1_75MHz, oscnano_cdp1864_intf)
 MACHINE_DRIVER_END

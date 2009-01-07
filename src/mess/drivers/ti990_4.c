@@ -53,22 +53,22 @@ static MACHINE_RESET(ti990_4)
 	ti990_reset_int();
 
 #if !VIDEO_911
-	asr733_reset(0);
+	asr733_reset(machine, 0);
 #endif
 
-	fd800_machine_init(ti990_set_int7);
+	fd800_machine_init(machine, ti990_set_int7);
 }
 
 
 static INTERRUPT_GEN( ti990_4_line_interrupt )
 {
 #if VIDEO_911
-	vdt911_keyboard(machine, 0);
+	vdt911_keyboard(device->machine, 0);
 #else
-	asr733_keyboard(machine, 0);
+	asr733_keyboard(device->machine, 0);
 #endif
 
-	ti990_line_interrupt();
+	ti990_line_interrupt(device->machine);
 }
 
 /*static void idle_callback(int state)
@@ -89,13 +89,14 @@ static WRITE8_HANDLER ( rset_callback )
 
 static WRITE8_HANDLER ( ckon_ckof_callback )
 {
-	ti990_ckon_ckof_callback((offset & 0x1000) ? 1 : 0);
+	const device_config *maincpu = cputag_get_cpu(space->machine, "main");
+	ti990_ckon_ckof_callback(maincpu, (offset & 0x1000) ? 1 : 0);
 }
 
 static WRITE8_HANDLER ( lrex_callback )
 {
 	/* right??? */
-	ti990_hold_load(machine);
+	ti990_hold_load(space->machine);
 }
 
 #if VIDEO_911

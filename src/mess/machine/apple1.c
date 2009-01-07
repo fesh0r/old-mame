@@ -145,14 +145,15 @@ static int apple1_kbd_data = 0;
 
 DRIVER_INIT( apple1 )
 {
+	const address_space* space = cpu_get_address_space(machine->cpu[0],ADDRESS_SPACE_PROGRAM);
 	/* Set up the handlers for MESS's dynamically-sized RAM. */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+	memory_install_read8_handler(space,
 								 0x0000, mess_ram_size - 1, 0, 0, SMH_BANK1);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+	memory_install_write8_handler(space,
 								  0x0000, mess_ram_size - 1, 0, 0, SMH_BANK1);
-	memory_set_bankptr(1, mess_ram);
+	memory_set_bankptr(machine,1, mess_ram);
 
-	pia_config(0, &apple1_pia0);
+	pia_config(machine, 0, &apple1_pia0);
 
 	/* Poll the keyboard input ports periodically.  These include both
 	   ordinary keys and the RESET and CLEAR SCREEN pushbutton
@@ -164,7 +165,7 @@ DRIVER_INIT( apple1 )
 
 	   A 120-Hz poll rate seems to be fast enough to ensure no
 	   keystrokes are missed. */
-	timer_pulse(ATTOTIME_IN_HZ(120), NULL, 0, apple1_kbd_poll);
+	timer_pulse(machine, ATTOTIME_IN_HZ(120), NULL, 0, apple1_kbd_poll);
 }
 
 
@@ -262,7 +263,7 @@ SNAPSHOT_LOAD(apple1)
 	for (addr = start_addr, snapptr = snapbuf + SNAP_HEADER_LEN;
 		 addr <= end_addr;
 		 addr++, snapptr++)
-		program_write_byte(addr, *snapptr);
+		memory_write_byte(cpu_get_address_space(image->machine->cpu[0],ADDRESS_SPACE_PROGRAM), addr, *snapptr);
 
 	return INIT_PASS;
 }
@@ -288,7 +289,7 @@ static TIMER_CALLBACK(apple1_kbd_poll)
 	int port, bit;
 	int key_pressed;
 	UINT32 shiftkeys, ctrlkeys;
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3" };
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3" };
 
 	/* This holds the values of all the input ports for ordinary keys
 	   seen during the last scan. */
@@ -304,14 +305,14 @@ static TIMER_CALLBACK(apple1_kbd_poll)
 		if (!reset_flag) {
 			reset_flag = 1;
 			/* using PULSE_LINE does not allow us to press and hold key */
-			cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[0], INPUT_LINE_RESET, ASSERT_LINE);
 			pia_reset();
 		}
 	}
 	else if (reset_flag) {
 		/* RESET released--allow the processor to continue. */
 		reset_flag = 0;
-		cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], INPUT_LINE_RESET, CLEAR_LINE);
 	}
 
 	/* The CLEAR SCREEN switch clears the video hardware. */
@@ -373,7 +374,7 @@ static TIMER_CALLBACK(apple1_kbd_poll)
 		/* The keyboard will pulse its strobe line when a key is
 		   pressed.  A 10-usec pulse is typical. */
 		pia_set_input_ca1(0, 1);
-		timer_set(ATTOTIME_IN_USEC(10), NULL, 0, apple1_kbd_strobe_end);
+		timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, apple1_kbd_strobe_end);
 	}
 }
 
@@ -416,7 +417,7 @@ static WRITE8_HANDLER( apple1_pia0_dsp_write_signal )
 	   write.  Thus the write delay depends on the cursor position and
 	   where the display is in the refresh cycle. */
 	if (!data)
-		timer_set(apple1_vh_dsp_time_to_ready(machine), NULL, 0, apple1_dsp_ready_start);
+		timer_set(space->machine, apple1_vh_dsp_time_to_ready(space->machine), NULL, 0, apple1_dsp_ready_start);
 }
 
 static TIMER_CALLBACK(apple1_dsp_ready_start)
@@ -426,7 +427,7 @@ static TIMER_CALLBACK(apple1_dsp_ready_start)
 	   input CB1.  The end of this pulse will tell the PIA that the
 	   display is ready for another write. */
 	pia_set_input_cb1(0, 0);
-	timer_set(ATTOTIME_IN_NSEC(3500), NULL, 0, apple1_dsp_ready_end);
+	timer_set(machine, ATTOTIME_IN_NSEC(3500), NULL, 0, apple1_dsp_ready_end);
 }
 
 static TIMER_CALLBACK(apple1_dsp_ready_end)
@@ -509,7 +510,7 @@ static void cassette_toggle_output(running_machine *machine)
 
 READ8_HANDLER( apple1_cassette_r )
 {
-	cassette_toggle_output(machine);
+	cassette_toggle_output(space->machine);
 
 	if (offset <= 0x7f)
 	{
@@ -518,7 +519,7 @@ READ8_HANDLER( apple1_cassette_r )
 		   always comes from the corresponding cassette ROM location
 		   in $C100-$C17F. */
 
-		return program_read_byte(0xc100 + offset);
+		return memory_read_byte(space, 0xc100 + offset);
 	}
     else
 	{
@@ -535,10 +536,10 @@ READ8_HANDLER( apple1_cassette_r )
 		/* (Don't try putting a non-zero "noise threshhold" here,
 		   because it can cause tape header bits on real cassette
 		   images to be misread as data bits.) */
-		if (cassette_input(cassette_device_image(machine)) > 0.0)
-			return program_read_byte(0xc100 + (offset & ~1));
+		if (cassette_input(cassette_device_image(space->machine)) > 0.0)
+			return memory_read_byte(space, 0xc100 + (offset & ~1));
 		else
-			return program_read_byte(0xc100 + offset);
+			return memory_read_byte(space, 0xc100 + offset);
 	}
 }
 
@@ -551,5 +552,5 @@ WRITE8_HANDLER( apple1_cassette_w )
 	   However, we still have to handle writes, since they may be done
 	   by user code. */
 
-	cassette_toggle_output(machine);
+	cassette_toggle_output(space->machine);
 }

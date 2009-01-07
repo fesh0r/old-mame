@@ -4,7 +4,7 @@
 
 WRITE8_HANDLER( tmc600_vismac_register_w )
 {
-	tmc600_state *state = machine->driver_data;
+	tmc600_state *state = space->machine->driver_data;
 
 	state->vismac_reg_latch = data;
 }
@@ -111,9 +111,6 @@ static CDP1869_PCB_READ( tmc600_pcb_r )
 
 static CDP1869_INTERFACE( tmc600_cdp1869_intf )
 {
-	SCREEN_TAG,
-	CDP1869_DOT_CLK_PAL,
-	CDP1869_COLOR_CLK_PAL,
 	CDP1869_PAL,
 	tmc600_page_ram_r,
 	tmc600_page_ram_w,
@@ -142,13 +139,13 @@ static VIDEO_START( tmc600 )
 
 	/* register for state saving */
 
-	state_save_register_global_pointer(state->page_ram, TMC600_PAGE_RAM_SIZE);
-	state_save_register_global_pointer(state->color_ram, TMC600_PAGE_RAM_SIZE);
+	state_save_register_global_pointer(machine, state->page_ram, TMC600_PAGE_RAM_SIZE);
+	state_save_register_global_pointer(machine, state->color_ram, TMC600_PAGE_RAM_SIZE);
 
-	state_save_register_global(state->vismac_reg_latch);
-	state_save_register_global(state->vismac_color_latch);
-	state_save_register_global(state->vismac_bkg_latch);
-	state_save_register_global(state->blink);
+	state_save_register_global(machine, state->vismac_reg_latch);
+	state_save_register_global(machine, state->vismac_color_latch);
+	state_save_register_global(machine, state->vismac_bkg_latch);
+	state_save_register_global(machine, state->blink);
 }
 
 static VIDEO_UPDATE( tmc600 )
@@ -171,6 +168,5 @@ MACHINE_DRIVER_START( tmc600_video )
 	MDRV_VIDEO_UPDATE(tmc600)
 	MDRV_SCREEN_RAW_PARAMS(CDP1869_DOT_CLK_PAL, CDP1869_SCREEN_WIDTH, CDP1869_HBLANK_END, CDP1869_HBLANK_START, CDP1869_TOTAL_SCANLINES_PAL, CDP1869_SCANLINE_VBLANK_END_PAL, CDP1869_SCANLINE_VBLANK_START_PAL)
 
-	MDRV_DEVICE_ADD(CDP1869_TAG, CDP1869_VIDEO)
-	MDRV_DEVICE_CONFIG(tmc600_cdp1869_intf)
+	MDRV_CDP1869_ADD(CDP1869_TAG, SCREEN_TAG, CDP1869_DOT_CLK_PAL, CDP1869_COLOR_CLK_PAL, "main", tmc600_cdp1869_intf)
 MACHINE_DRIVER_END

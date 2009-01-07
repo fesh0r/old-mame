@@ -100,11 +100,13 @@ extern "C" {
 
 /*----------- defined in video/vic6560.c -----------*/
 
+extern UINT8 vic6560[16];
+
 /* call to init videodriver */
 /* pal version */
 /* dma_read: videochip fetched 12 bit data from system bus */
-extern void vic6560_init (int (*dma_read) (int), int (*dma_read_color) (int));
-extern void vic6561_init (int (*dma_read) (int), int (*dma_read_color) (int));
+extern void vic6560_init (int (*dma_read) (running_machine *machine, int), int (*dma_read_color) (running_machine *machine, int));
+extern void vic6561_init (int (*dma_read) (running_machine *machine, int), int (*dma_read_color) (running_machine *machine, int));
 
 /* internal */
 extern int vic6560_pal;
@@ -128,10 +130,8 @@ extern  READ8_HANDLER ( vic6560_port_r );
 /*----------- defined in audio/vic6560.c -----------*/
 
 /* private area */
-void *vic6560_custom_start(int clock, const custom_sound_interface *config);
+CUSTOM_START( vic6560_custom_start );
 void vic6560_soundport_w (running_machine *machine, int mode, int data);
-
-extern UINT8 vic6560[16];
 
 
 #ifdef __cplusplus

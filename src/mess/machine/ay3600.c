@@ -319,7 +319,7 @@ INLINE int a2_no_ctrl_reset(running_machine *machine)
   AY3600_init
 ***************************************************************************/
 
-int AY3600_init()
+int AY3600_init(running_machine *machine)
 {
 	/* Init the key remapping table */
 	ay3600_keys = auto_malloc(AY3600_KEYS_LENGTH * sizeof(*ay3600_keys));
@@ -327,7 +327,7 @@ int AY3600_init()
 
 	/* We poll the keyboard periodically to scan the keys.  This is
 	actually consistent with how the AY-3600 keyboard controller works. */
-	timer_pulse(ATTOTIME_IN_HZ(60), NULL, 0, AY3600_poll);
+	timer_pulse(machine, ATTOTIME_IN_HZ(60), NULL, 0, AY3600_poll);
 
 	/* Set Caps Lock light to ON, since that's how we default it. */
 	set_led_status(1,1);
@@ -367,7 +367,7 @@ static TIMER_CALLBACK(AY3600_poll)
 
 	static unsigned int time_until_repeat = MAGIC_KEY_REPEAT_NUMBER;
 
-	static const char *portnames[] = { "keyb_0", "keyb_1", "keyb_2", "keyb_3", "keyb_4", "keyb_5", "keyb_6", 
+	static const char *const portnames[] = { "keyb_0", "keyb_1", "keyb_2", "keyb_3", "keyb_4", "keyb_5", "keyb_6", 
 										"keypad_1", "keypad_2" };
 
 	/* check for these special cases because they affect the emulated key codes */
@@ -440,14 +440,14 @@ static TIMER_CALLBACK(AY3600_poll)
 			if (!reset_flag) {
 				reset_flag = 1;
 				/* using PULSE_LINE does not allow us to press and hold key */
-				cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, ASSERT_LINE);
+				cpu_set_input_line(machine->cpu[0], INPUT_LINE_RESET, ASSERT_LINE);
 			}
 			return;
 	}
 	if (reset_flag)
 	{
 		reset_flag = 0;
-		cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], INPUT_LINE_RESET, CLEAR_LINE);
 		mame_schedule_soft_reset(machine);
 	}
 

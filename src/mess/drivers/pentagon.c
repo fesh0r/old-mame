@@ -11,35 +11,39 @@
 #include "machine/wd17xx.h"
 #include "machine/beta.h"
 
-static MACHINE_START( pentagon )
-{
-	wd17xx_init(machine, WD_TYPE_179X, betadisk_wd179x_callback, NULL);
-}
 
 static int ROMSelection;
 
-static OPBASE_HANDLER( pentagon_opbase )
+static DIRECT_UPDATE_HANDLER( pentagon_direct )
 {	
+	UINT16 pc = cpu_get_reg(space->machine->cpu[0], REG_GENPCBASE);
 	if (betadisk_is_active()) {
-		if (activecpu_get_pc() >= 0x4000) {
+		if (pc >= 0x4000) {
 			ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) ? 1 : 0;
 			betadisk_disable();
-			memory_set_bankptr(1, memory_region(machine, "main") + 0x010000 + 0x4000*ROMSelection); // Set BASIC ROM
+			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
+			memory_set_bankptr(space->machine, 1, memory_region(space->machine, "main") + 0x010000 + (ROMSelection<<14));
 		} 	
-	} else if (((activecpu_get_pc() & 0xff00) == 0x3d00) && (ROMSelection==1))
+	} else if (((pc & 0xff00) == 0x3d00) && (ROMSelection==1))
 	{
 		ROMSelection = 3;
 		betadisk_enable();
-		memory_set_bankptr(1, memory_region(machine, "main") + 0x01c000); // Set TRDOS ROM			
+		
 	} 
+	if((address>=0x0000) && (address<=0x3fff)) {
+		memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
+		direct->raw = direct->decrypted =  memory_region(space->machine, "main") + 0x010000 + (ROMSelection<<14);
+		memory_set_bankptr(space->machine, 1, direct->raw);
+		return ~0;
+	}
 	return address;
 }
 
 static void pentagon_update_memory(running_machine *machine)
-{
+{	
 	spectrum_128_screen_location = mess_ram + ((spectrum_128_port_7ffd_data & 8) ? (7<<14) : (5<<14));
 
-	memory_set_bankptr(4, mess_ram + ((spectrum_128_port_7ffd_data & 0x07) * 0x4000));
+	memory_set_bankptr(machine, 4, mess_ram + ((spectrum_128_port_7ffd_data & 0x07) * 0x4000));
 
 	if( betadisk_is_active() && !( spectrum_128_port_7ffd_data & 0x10 ) ) {    
 		/* GLUK */
@@ -51,7 +55,7 @@ static void pentagon_update_memory(running_machine *machine)
 		ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) ;
 	}
 	/* rom 0 is 128K rom, rom 1 is 48 BASIC */
-	memory_set_bankptr(1, memory_region(machine, "main") + 0x010000 + (ROMSelection<<14));
+	memory_set_bankptr(machine, 1, memory_region(machine, "main") + 0x010000 + (ROMSelection<<14));
 }
 
 static WRITE8_HANDLER(pentagon_port_7ffd_w)
@@ -64,7 +68,7 @@ static WRITE8_HANDLER(pentagon_port_7ffd_w)
 	spectrum_128_port_7ffd_data = data;
 
 	/* update memory */
-	pentagon_update_memory(machine);
+	pentagon_update_memory(space->machine);
 }
 
 static ADDRESS_MAP_START (pentagon_io, ADDRESS_SPACE_IO, 8)	
@@ -82,35 +86,36 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( pentagon )
 {
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+	memory_install_read8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
+	memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 
 	betadisk_enable();
 	betadisk_clear_status();
 
-	memory_set_opbase_handler( 0, pentagon_opbase ); 
+	memory_set_direct_update_handler( space, pentagon_direct ); 
 	
 	memset(mess_ram,0,128*1024);
 	
 	/* Bank 5 is always in 0x4000 - 0x7fff */
-	memory_set_bankptr(2, mess_ram + (5<<14));
+	memory_set_bankptr(machine, 2, mess_ram + (5<<14));
 
 	/* Bank 2 is always in 0x8000 - 0xbfff */
-	memory_set_bankptr(3, mess_ram + (2<<14));
+	memory_set_bankptr(machine, 3, mess_ram + (2<<14));
 
 	spectrum_128_port_7ffd_data = 0;
 
 	pentagon_update_memory(machine);	
-		
-	wd17xx_reset(machine);	
 }
 
 static MACHINE_DRIVER_START( pentagon )
 	MDRV_IMPORT_FROM( spectrum_128 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(pentagon_io, 0)
-	MDRV_MACHINE_START( pentagon )
 	MDRV_MACHINE_RESET( pentagon )
+		
+	MDRV_WD179X_ADD("wd179x", beta_wd17xx_interface )
 MACHINE_DRIVER_END
 
 
@@ -127,13 +132,12 @@ ROM_START(pentagon)
 	ROM_LOAD("128p-1.rom", 0x014000, 0x4000, CRC(b96a36be) SHA1(80080644289ed93d71a1103992a154cc9802b2fa) )
 	ROM_LOAD("gluck.rom",  0x018000, 0x4000, CRC(ca321d79) SHA1(015eb96dafb273d4f4512c467e9b43c305fd1bc4) )
 	ROM_LOAD("trdos.rom",  0x01c000, 0x4000, CRC(10751aba) SHA1(21695e3f2a8f796386ce66eea8a246b0ac44810c) )	
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 SYSTEM_CONFIG_EXTERN(spectrum)
 
 static SYSTEM_CONFIG_START(pentagon)
-	CONFIG_IMPORT_FROM(spectrum)
 	CONFIG_RAM_DEFAULT(128 * 1024)
 	CONFIG_DEVICE(beta_floppy_getinfo)
 SYSTEM_CONFIG_END

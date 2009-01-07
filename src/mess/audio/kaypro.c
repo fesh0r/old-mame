@@ -9,7 +9,6 @@
 #include "includes/kaypro.h"
 #include "sound/custom.h"
 #include "streams.h"
-#include "deprecat.h"
 
 #ifdef UNUSED_FUNCTION
 static	sound_stream  *channel;
@@ -27,20 +26,20 @@ static	INT32 click_counter;
 #endif
 
 #ifdef UNUSED_FUNCTION
-static void kaypro_sound_update(void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length)
+static STREAM_UPDATE( kaypro_sound_update )
 {
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
-	while (length-- > 0)
+	while (samples-- > 0)
 	{
 		if ((bell_counter -= BELL_FREQ) < 0)
 		{
-			bell_counter += Machine->sample_rate;
+			bell_counter += device->machine->sample_rate;
 			bell_signal = -(bell_signal * 127) / 128;
 		}
 		if ((click_counter -= CLICK_FREQ) < 0)
 		{
-			click_counter += Machine->sample_rate;
+			click_counter += device->machine->sample_rate;
 			click_signal = -(click_signal * 3) / 4;
 		}
 		*buffer++ = bell_signal + click_signal;
@@ -48,9 +47,9 @@ static void kaypro_sound_update(void *param,stream_sample_t **inputs, stream_sam
 }
 
 
-static int kaypro_sh_start(int clock, const custom_sound_interface *config)
+static CUSTOM_START( kaypro_sh_start )
 {
-	channel = stream_create(0, 1, Machine->sample_rate, 0, kaypro_sound_update);
+	channel = stream_create(device, 0, 1, device->machine->sample_rate, 0, kaypro_sound_update);
 	return 0;
 }
 #endif

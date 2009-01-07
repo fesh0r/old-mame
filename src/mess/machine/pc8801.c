@@ -16,7 +16,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/8255ppi.h"
 #include "includes/pc8801.h"
 #include "machine/nec765.h"
@@ -123,11 +122,11 @@ static void pc8801_update_interrupt(running_machine *machine)
 	}
 	if (level >= 0 && level<interrupt_level_reg)
 	{
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE);
 	}
 }
 
-static IRQ_CALLBACK(pc8801_interupt_callback)
+static IRQ_CALLBACK(pc8801_interrupt_callback)
 {
 	int level, i;
 
@@ -144,7 +143,7 @@ static IRQ_CALLBACK(pc8801_interupt_callback)
 WRITE8_HANDLER(pc8801_write_interrupt_level)
 {
 	interrupt_level_reg = data&0x0f;
-	pc8801_update_interrupt(machine);
+	pc8801_update_interrupt(space->machine);
 }
 
 WRITE8_HANDLER(pc8801_write_interrupt_mask)
@@ -161,7 +160,7 @@ static void pc8801_raise_interrupt(running_machine *machine, int level)
 
 INTERRUPT_GEN( pc8801_interrupt )
 {
-	pc8801_raise_interrupt(machine, 1);
+	pc8801_raise_interrupt(device->machine, 1);
 }
 
 static TIMER_CALLBACK(pc8801_timer_interrupt)
@@ -169,19 +168,19 @@ static TIMER_CALLBACK(pc8801_timer_interrupt)
 	pc8801_raise_interrupt(machine, 2);
 }
 
-static void pc8801_init_interrupt(void)
+static void pc8801_init_interrupt(running_machine *machine)
 {
 	interrupt_level_reg=0;
 	interrupt_mask_reg=0xf8;
 	interrupt_trig_reg=0x0;
-	cpunum_set_irq_callback(0,pc8801_interupt_callback);
-	timer_pulse(ATTOTIME_IN_HZ(600),NULL, 0,pc8801_timer_interrupt);
+	cpu_set_irq_callback(machine->cpu[0],pc8801_interrupt_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(600),NULL, 0,pc8801_timer_interrupt);
 }
 
 WRITE8_HANDLER(pc88sr_outport_30)
 {
   /* bit 1-5 not implemented yet */
-  pc88sr_disp_30(machine, offset,data);
+  pc88sr_disp_30(space, offset,data);
 }
 
 WRITE8_HANDLER(pc88sr_outport_40)
@@ -190,11 +189,11 @@ WRITE8_HANDLER(pc88sr_outport_40)
 {
   static int port_save;
 
-  if((port_save&0x02) == 0x00 && (data&0x02) != 0x00) calender_strobe(machine);
+  if((port_save&0x02) == 0x00 && (data&0x02) != 0x00) calender_strobe(space->machine);
   if((port_save&0x04) == 0x00 && (data&0x04) != 0x00) calender_shift();
   port_save=data;
 
-  if((input_port_read(machine, "DSW1") & 0x40) == 0x00) 
+  if((input_port_read(space->machine, "DSW1") & 0x40) == 0x00) 
   {
     data&=0x7f;
   }
@@ -214,7 +213,7 @@ WRITE8_HANDLER(pc88sr_outport_40)
   }
 }
 
- READ8_HANDLER(pc88sr_inport_40)
+READ8_HANDLER(pc88sr_inport_40)
      /* bit0, 2 not implemented */
 {
   int r;
@@ -222,11 +221,11 @@ WRITE8_HANDLER(pc88sr_outport_40)
   r = pc8801_is_24KHz ? 0x00 : 0x02;
   r |= use_5FD ? 0x00 : 0x08;
   r |= calender_data() ? 0x10 : 0x00;
-  if(video_screen_get_vblank(machine->primary_screen)) r|=0x20;
+  if(video_screen_get_vblank(space->machine->primary_screen)) r|=0x20;
   return r|0xc0;
 }
 
- READ8_HANDLER(pc88sr_inport_30)
+READ8_HANDLER(pc88sr_inport_30)
      /* DIP-SW1
 	bit 0: BASIC selection (0 = N-BASIC, 1 = N88-BASIC)
 	bit 1: terminal mode (0 = terminal mode, 1 = BASIC mode)
@@ -242,7 +241,7 @@ WRITE8_HANDLER(pc88sr_outport_40)
   int r;
 
   /* read DIP-SW */
-  r=input_port_read(machine, "DSW1")<<1;
+  r=input_port_read(space->machine, "DSW1")<<1;
   /* change bit 0 according BASIC mode */
   if(is_Nbasic) {
     r&=0xfe;
@@ -254,7 +253,7 @@ WRITE8_HANDLER(pc88sr_outport_40)
   return r;
 }
 
- READ8_HANDLER(pc88sr_inport_31)
+READ8_HANDLER(pc88sr_inport_31)
      /* DIP-SW2
 	bit 0: serial parity (0 = enable, 1 = disable)
 	bit 1: parity type (0 = even parity, 1 = odd parity)
@@ -269,7 +268,7 @@ WRITE8_HANDLER(pc88sr_outport_40)
   int r;
 
   /* read DIP-SW */
-  r=input_port_read(machine, "DSW2")<<1;
+  r=input_port_read(space->machine, "DSW2")<<1;
   /* change bit 6 according speed switch */
   if(pc88sr_is_highspeed) {
     r|=0x40;
@@ -295,7 +294,7 @@ static WRITE8_HANDLER ( pc8801_writemem2 )
   pc8801_mainRAM[offset+0x6000]=data;
 }
 
-static  READ8_HANDLER ( pc8801_read_textwindow )
+static READ8_HANDLER ( pc8801_read_textwindow )
 {
   return pc8801_mainRAM[(offset+text_window*0x100)&0xffff];
 }
@@ -390,19 +389,19 @@ void pc8801_update_bank(running_machine *machine)
 		}
 
 		/* extension memory */
-		memory_set_bankptr(1, ext_r + 0x0000);
-		memory_set_bankptr(2, ext_r + 0x6000);
+		memory_set_bankptr(machine, 1, ext_r + 0x0000);
+		memory_set_bankptr(machine, 2, ext_r + 0x6000);
 		if(ext_w==NULL)
 		{
 			/* read only mode */
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_NOP);
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x5fff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x6000, 0x7fff, 0, 0, SMH_NOP);
 		}
 		else
 		{
 			/* r/w mode */
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_BANK1);
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK2);
+			memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x5fff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x6000, 0x7fff, 0, 0, SMH_BANK2);
 			if(ext_w!=ext_r) logerror("differnt between read and write bank of extension memory.\n");
 		}
 	}
@@ -412,42 +411,42 @@ void pc8801_update_bank(running_machine *machine)
 		if(RAMmode)
 		{
 			/* RAM */
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_BANK1);
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK2);
-			memory_set_bankptr(1, pc8801_mainRAM + 0x0000);
-			memory_set_bankptr(2, pc8801_mainRAM + 0x6000);
+			memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x5fff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x6000, 0x7fff, 0, 0, SMH_BANK2);
+			memory_set_bankptr(machine, 1, pc8801_mainRAM + 0x0000);
+			memory_set_bankptr(machine, 2, pc8801_mainRAM + 0x6000);
 		}
 		else
 		{
 			/* ROM */
 			/* write through to main RAM */
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, pc8801_writemem1);
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, pc8801_writemem2);
+			memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x5fff, 0, 0, pc8801_writemem1);
+			memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x6000, 0x7fff, 0, 0, pc8801_writemem2);
 			if(ROMmode)
 			{
 				/* N-BASIC */
-				memory_set_bankptr(1, mainROM + 0x0000);
-				memory_set_bankptr(2, mainROM + 0x6000);
+				memory_set_bankptr(machine, 1, mainROM + 0x0000);
+				memory_set_bankptr(machine, 2, mainROM + 0x6000);
 			}
 			else
 			{
 				/* N88-BASIC */
-				memory_set_bankptr(1, mainROM + 0x8000);
+				memory_set_bankptr(machine, 1, mainROM + 0x8000);
 				if(no4throm==1) {
 					/* 4th ROM 1 */
-					memory_set_bankptr(2, mainROM + 0x10000 + 0x2000 * no4throm2);
+					memory_set_bankptr(machine, 2, mainROM + 0x10000 + 0x2000 * no4throm2);
 				} else {
-					memory_set_bankptr(2, mainROM + 0xe000);
+					memory_set_bankptr(machine, 2, mainROM + 0xe000);
 				}
 			}
 		}
 	}
 
 	/* 0x8000 to 0xffff */
-	memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK3 : pc8801_read_textwindow);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK3 : pc8801_write_textwindow);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK3 : pc8801_read_textwindow);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK3 : pc8801_write_textwindow);
 
-	memory_set_bankptr(4, pc8801_mainRAM + 0x8400);
+	memory_set_bankptr(machine, 4, pc8801_mainRAM + 0x8400);
 
 	if(is_pc8801_vram_select(machine))
 	{
@@ -456,16 +455,16 @@ void pc8801_update_bank(running_machine *machine)
 	}
 	else
 	{
-		memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0xc000, 0xefff, 0, 0, SMH_BANK5);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xefff, 0, 0, SMH_BANK5);
-		memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, SMH_BANK6);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, SMH_BANK6);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc000, 0xefff, 0, 0, SMH_BANK5);
+		memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc000, 0xefff, 0, 0, SMH_BANK5);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf000, 0xffff, 0, 0, SMH_BANK6);
+		memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf000, 0xffff, 0, 0, SMH_BANK6);
 
-		memory_set_bankptr(5, pc8801_mainRAM + 0xc000);
+		memory_set_bankptr(machine, 5, pc8801_mainRAM + 0xc000);
 		if(maptvram)
-			memory_set_bankptr(6, pc88sr_textRAM);
+			memory_set_bankptr(machine, 6, pc88sr_textRAM);
 		else
-			memory_set_bankptr(6, pc8801_mainRAM + 0xf000);
+			memory_set_bankptr(machine, 6, pc8801_mainRAM + 0xf000);
 	}
 }
 
@@ -479,7 +478,7 @@ READ8_HANDLER(pc8801_read_extmem)
 WRITE8_HANDLER(pc8801_write_extmem)
 {
   extmem_ctrl[offset]=data;
-  pc8801_update_bank(machine);
+  pc8801_update_bank(space->machine);
 }
 
 WRITE8_HANDLER(pc88sr_outport_31)
@@ -487,11 +486,11 @@ WRITE8_HANDLER(pc88sr_outport_31)
   /* bit 5 not implemented */
   RAMmode=((data&0x02)!=0);
   ROMmode=((data&0x04)!=0);
-  pc8801_update_bank(machine);
-  pc88sr_disp_31(machine, offset,data);
+  pc8801_update_bank(space->machine);
+  pc88sr_disp_31(space, offset,data);
 }
 
- READ8_HANDLER(pc88sr_inport_32)
+READ8_HANDLER(pc88sr_inport_32)
 {
   return(port32_save);
 }
@@ -503,12 +502,12 @@ WRITE8_HANDLER(pc88sr_outport_32)
   maptvram=((data&0x10)==0);
   no4throm2=(data&3);
   enable_FM_IRQ=((data & 0x80) == 0x00);
-  if(FM_IRQ_save && enable_FM_IRQ) pc8801_raise_interrupt(machine, FM_IRQ_LEVEL);
-  pc88sr_disp_32(machine, offset,data);
-  pc8801_update_bank(machine);
+  if(FM_IRQ_save && enable_FM_IRQ) pc8801_raise_interrupt(space->machine, FM_IRQ_LEVEL);
+  pc88sr_disp_32(space, offset,data);
+  pc8801_update_bank(space->machine);
 }
 
- READ8_HANDLER(pc8801_inport_70)
+READ8_HANDLER(pc8801_inport_70)
 {
   return text_window;
 }
@@ -516,16 +515,16 @@ WRITE8_HANDLER(pc88sr_outport_32)
 WRITE8_HANDLER(pc8801_outport_70)
 {
   text_window=data;
-  pc8801_update_bank(machine);
+  pc8801_update_bank(space->machine);
 }
 
 WRITE8_HANDLER(pc8801_outport_78)
 {
   text_window=((text_window+1)&0xff);
-  pc8801_update_bank(machine);
+  pc8801_update_bank(space->machine);
 }
 
- READ8_HANDLER(pc88sr_inport_71)
+READ8_HANDLER(pc88sr_inport_71)
 {
   return(port71_save);
 }
@@ -549,7 +548,7 @@ WRITE8_HANDLER(pc88sr_outport_71)
     no4throm=0;
     break;
   }
-  pc8801_update_bank(machine);
+  pc8801_update_bank(space->machine);
 }
 
 static void pc8801_init_bank(running_machine *machine, int hireso)
@@ -704,7 +703,7 @@ static void pc88sr_ch_reset (running_machine *machine, int hireso)
   fix_V1V2();
   pc8801_init_bank(machine, hireso);
   pc8801_init_5fd(machine);
-  pc8801_init_interrupt();
+  pc8801_init_interrupt(machine);
   beep_set_state(0, 0);
   beep_set_frequency(0, 2400);
   pc88sr_init_fmsound();
@@ -796,41 +795,43 @@ const ppi8255_interface pc8801_8255_config_1 =
 
 READ8_HANDLER(pc8801fd_nec765_tc)
 {
-  nec765_set_tc_state(machine, 1);
-  nec765_set_tc_state(machine, 0);
+  device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
+  nec765_set_tc_state(fdc, 1);
+  nec765_set_tc_state(fdc, 0);
   return 0;
 }
 
 /* callback for /INT output from FDC */
-static void pc8801_fdc_interrupt(int state)
+static NEC765_INTERRUPT( pc8801_fdc_interrupt )
 {
-    cpunum_set_input_line(Machine, 1, 0, state ? HOLD_LINE : CLEAR_LINE);
+    cpu_set_input_line(device->machine->cpu[1], 0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 /* callback for /DRQ output from FDC */
-static void pc8801_fdc_dma_drq(int state, int read_)
+static NEC765_DMA_REQUEST( pc8801_fdc_dma_drq )
 {
 }
 
-static const struct nec765_interface pc8801_fdc_interface=
+const nec765_interface pc8801_fdc_interface=
 {
 	pc8801_fdc_interrupt,
-	pc8801_fdc_dma_drq
+	pc8801_fdc_dma_drq,
+	NULL,
+	NEC765_RDY_PIN_CONNECTED
 };
 
 static void pc8801_init_5fd(running_machine *machine)
 {
 	use_5FD = (input_port_read(machine, "DSW2") & 0x80) != 0x00;
 	if (!use_5FD)
-		cpunum_suspend(1, SUSPEND_REASON_DISABLE, 1);
+		cpu_suspend(machine->cpu[1], SUSPEND_REASON_DISABLE, 1);
 	else
-		cpunum_resume(1, SUSPEND_REASON_DISABLE);
-	nec765_init(machine, &pc8801_fdc_interface,NEC765A,NEC765_RDY_PIN_CONNECTED);
-	cpunum_set_input_line_vector(1,0,0);
-	floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1);
-	floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1);
-	floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1,0);
-	floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1,0);
+		cpu_resume(machine->cpu[1], SUSPEND_REASON_DISABLE);
+	cpu_set_input_line_vector(machine->cpu[1],0,0);
+	floppy_drive_set_motor_state(image_from_devtype_and_index(machine, IO_FLOPPY, 0), 1);
+	floppy_drive_set_motor_state(image_from_devtype_and_index(machine, IO_FLOPPY, 1), 1);
+	floppy_drive_set_ready_state(image_from_devtype_and_index(machine, IO_FLOPPY, 0), 1,0);
+	floppy_drive_set_ready_state(image_from_devtype_and_index(machine, IO_FLOPPY, 1), 1,0);
 }
 
 /*
@@ -867,13 +868,13 @@ WRITE8_HANDLER(pc8801_write_kanji1)
   }
 }
 
- READ8_HANDLER(pc8801_read_kanji1)
+READ8_HANDLER(pc8801_read_kanji1)
 {
   switch(offset) {
   case 0:
-    return *(memory_region(machine, "gfx1")+kanji_high*0x200+kanji_low*0x2+1);
+    return *(memory_region(space->machine, "gfx1")+kanji_high*0x200+kanji_low*0x2+1);
   case 1:
-    return *(memory_region(machine, "gfx1")+kanji_high*0x200+kanji_low*0x2+0);
+    return *(memory_region(space->machine, "gfx1")+kanji_high*0x200+kanji_low*0x2+0);
   default:
     return 0xff;
   }
@@ -893,13 +894,13 @@ WRITE8_HANDLER(pc8801_write_kanji2)
   }
 }
 
- READ8_HANDLER(pc8801_read_kanji2)
+READ8_HANDLER(pc8801_read_kanji2)
 {
   switch(offset) {
   case 0:
-    return *(memory_region(machine, "gfx1")+kanji_high2*0x200+kanji_low2*0x2+1+0x20000);
+    return *(memory_region(space->machine, "gfx1")+kanji_high2*0x200+kanji_low2*0x2+1+0x20000);
   case 1:
-    return *(memory_region(machine, "gfx1")+kanji_high2*0x200+kanji_low2*0x2+0+0x20000);
+    return *(memory_region(space->machine, "gfx1")+kanji_high2*0x200+kanji_low2*0x2+0+0x20000);
   default:
     return 0xff;
   }

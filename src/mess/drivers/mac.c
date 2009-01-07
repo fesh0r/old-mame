@@ -38,6 +38,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "includes/mac.h"
 #include "machine/6522via.h"
 #include "machine/ncr5380.h"
@@ -45,6 +46,39 @@
 #include "devices/sonydriv.h"
 #include "devices/harddriv.h"
 
+// LC: boot needs 50f04000 bit 0 to go "1" at a49f00.  SCC.
+
+/*
+	Apple Sound Chip
+
+	Base is normally IOBase + 0x14000
+	First 0x800 bytes is buffer RAM
+
+	Verified to be only 8 bits wide by Apple documentation.
+
+	Registers:
+	0x800: CONTROL
+	0x801: ENABLE
+	0x802: MODE
+	0x806: VOLUME
+	0x807: CHAN
+*/
+
+static UINT8 mac_asc_regs[0x2000];
+
+static READ8_HANDLER(mac_asc_r)
+{
+	logerror("ASC: Read @ %x (PC %x)\n", offset, cpu_get_pc(space->machine->cpu[0]));
+
+	return mac_asc_regs[offset];
+}
+
+static WRITE8_HANDLER(mac_asc_w)
+{
+	logerror("ASC: %02x to %x (PC %x)\n", data, offset, cpu_get_pc(space->machine->cpu[0]));
+
+	mac_asc_regs[offset] = data;
+}
 
 /***************************************************************************
     ADDRESS MAPS
@@ -67,6 +101,18 @@ static ADDRESS_MAP_START(macplus_map, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xfffff0, 0xffffff) AM_READWRITE(mac_autovector_r, mac_autovector_w)
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START(maclc_map, ADDRESS_SPACE_PROGRAM, 32)
+	AM_RANGE(0x00fc0000, 0x00ffffff) AM_RAM	AM_SHARE(1)	// VRAM framebuffer
+	AM_RANGE(0x00a00000, 0x00a7ffff) AM_ROM AM_REGION("user1", 0)	// ROM (in 24-bit mode)
+	AM_RANGE(0x40a00000, 0x40a7ffff) AM_ROM AM_REGION("user1", 0)	// ROM (in 32-bit mode)
+	AM_RANGE(0x50f00000, 0x50f01fff) AM_READ16(mac_via_r, 0xffffffff)
+	AM_RANGE(0x50f00000, 0x50f01fff) AM_WRITE16(mac_via_w, 0xffffffff)
+	AM_RANGE(0x50f04000, 0x50f05fff) AM_READ16(mac_scc_r, 0xffffffff) AM_WRITE16(mac_scc_2_w, 0xffffffff)
+	AM_RANGE(0x50f14000, 0x50f15fff) AM_READ8(mac_asc_r, 0xffffffff) AM_WRITE8(mac_asc_w, 0xffffffff)
+	AM_RANGE(0x50f26000, 0x50f27fff) AM_READ16(mac_via2_r, 0xffffffff)	// VIA2
+	AM_RANGE(0x50f26000, 0x50f27fff) AM_WRITE16(mac_via2_w, 0xffffffff)
+	AM_RANGE(0x50fc0000, 0x50ffffff) AM_RAM	AM_SHARE(1)
+ADDRESS_MAP_END
 
 
 /***************************************************************************
@@ -98,12 +144,12 @@ static const applefdc_interface mac_iwm_interface =
 
 static MACHINE_DRIVER_START( mac512ke )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 7833600)        /* 7.8336 Mhz */
+	MDRV_CPU_ADD("main", M68000, 7833600)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(mac512ke_map, 0)
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60.15)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1260))
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET( mac )
 
@@ -128,10 +174,10 @@ static MACHINE_DRIVER_START( mac512ke )
 	MDRV_NVRAM_HANDLER(mac)
 
 	/* devices */
-	MDRV_DEVICE_ADD("fdc", IWM)
-	MDRV_DEVICE_CONFIG(mac_iwm_interface)
-	MDRV_DEVICE_ADD("scc", SCC8530)
-	MDRV_DEVICE_CONFIG(mac_scc8530_interface)
+	MDRV_IWM_ADD("fdc", mac_iwm_interface)
+	MDRV_SCC8530_ADD("scc")
+	MDRV_SCC8530_ACK(mac_scc_ack)
+	MDRV_VIA6522_ADD("via6522_0", 1000000, mac_via6522_intf)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( macplus )
@@ -141,11 +187,28 @@ static MACHINE_DRIVER_START( macplus )
 
 	MDRV_MACHINE_START(macscsi)
 
-	MDRV_DEVICE_ADD( "harddisk1", HARDDISK )
-	MDRV_DEVICE_ADD( "harddisk2", HARDDISK )
+	MDRV_HARDDISK_ADD( "harddisk1" )
+	MDRV_HARDDISK_ADD( "harddisk2" )
 MACHINE_DRIVER_END
 
 
+static MACHINE_DRIVER_START( macse )
+	MDRV_IMPORT_FROM( macplus )
+
+	MDRV_VIA6522_REMOVE("via6522_0")
+	MDRV_VIA6522_ADD("via6522_0", 1000000, mac_via6522_adb_intf)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( maclc )
+	MDRV_IMPORT_FROM( macplus )
+
+	MDRV_CPU_REPLACE("main", M68020, 7833600*2)
+	MDRV_CPU_PROGRAM_MAP(maclc_map, 0)
+
+	MDRV_VIA6522_REMOVE("via6522_0")
+	MDRV_VIA6522_ADD("via6522_0", 1000000, mac_via6522_adb_intf)
+	MDRV_VIA6522_ADD("via6522_1", 1000000, mac_via6522_2_intf)
+MACHINE_DRIVER_END
 
 static INPUT_PORTS_START( macplus )
 	PORT_START("MOUSE0") /* Mouse - button */
@@ -319,6 +382,11 @@ ROM_START( macclasc )
 	ROM_LOAD16_WORD( "classic.rom",  0x00000, 0x40000, CRC(b14ddcde) SHA1(f710e73e8e0f99d9d0e9e79e71f67a6c3648bf06) )
 ROM_END
 
+ROM_START( maclc )
+	ROM_REGION32_BE(0x100000, "user1", 0)
+        ROM_LOAD("350eacf0.rom", 0x000000, 0x080000, CRC(71681726) SHA1(6bef5853ae736f3f06c2b4e79772f65910c3b7d4))
+ROM_END
+
 static void mac128512_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
@@ -370,90 +438,22 @@ static SYSTEM_CONFIG_START(macse)
 	CONFIG_RAM			(0x400000)
 SYSTEM_CONFIG_END
 
+static SYSTEM_CONFIG_START(maclc)
+	CONFIG_DEVICE(mac_floppy_getinfo)
+	CONFIG_RAM_DEFAULT	(0x200000)	// 2 MB RAM default
+	CONFIG_RAM			(0x400000)
+	CONFIG_RAM			(0x600000)
+	CONFIG_RAM			(0x800000)
+	CONFIG_RAM			(0xa00000)	// up to 10 MB
+SYSTEM_CONFIG_END
 
 
-
-/*    YEAR      NAME      PARENT    COMPAT  MACHINE   INPUT     INIT        CONFIG      COMPANY             FULLNAME */
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT        CONFIG      COMPANY             FULLNAME */
 COMP( 1984,	mac128k,  0, 		0,	mac512ke, macplus,  mac128k512k,	mac128k,	"Apple Computer",	"Macintosh 128k",  GAME_NOT_WORKING )
 COMP( 1984,	mac512k,  mac128k,	0,	mac512ke, macplus,  mac128k512k,	mac512k,	"Apple Computer",	"Macintosh 512k",  GAME_NOT_WORKING )
 COMP( 1986,	mac512ke, macplus,  0,		mac512ke, macplus,  mac512ke,		mac512k,	"Apple Computer",	"Macintosh 512ke", 0 )
 COMP( 1986,	macplus,  0,		0,	macplus,  macplus,  macplus,		macplus,	"Apple Computer",	"Macintosh Plus",  0 )
-COMP( 1987,	macse,    0,		0,	macplus,  macplus,  macse,		    macse,		"Apple Computer",	"Macintosh SE",  0 )
-COMP( 1990,	macclasc, 0,		0,	macplus,  macplus,  macclassic,		    macse,		"Apple Computer",	"Macintosh Classic",  GAME_NOT_WORKING )
-
-
-
-/* ----------------------------------------------------------------------- */
-
-#if 0
-
-/* Early Mac2 driver - does not work at all, but enabled me to disassemble the ROMs */
-
-static ADDRESS_MAP_START (mac2_mem, ADDRESS_SPACE_PROGRAM, 16)
-
-	AM_RANGE( 0x00000000, 0x007fffff) AM_RAM
-	AM_RANGE( 0x00800000, 0x008fffff) AM_ROM
-	AM_RANGE( 0x00900000, 0x00ffffff) AM_NOP
-
-ADDRESS_MAP_END
-
-static void mac2_init_machine( void )
-{
-	memset(memory_region(machine, "main"), 0, 0x800000);
-}
-
-
-static const struct MachineDriver machine_driver_mac2 =
-{
-	/* basic machine hardware */
-	{
-		{
-			CPU_M68020,
-			16000000,			/* +/- 16 Mhz */
-			mac2_mem,0,0,0,
-			0,0,
-		}
-	},
-	60, ATTOSECONDS_IN_USEC(2500) /* not accurate */,		/* frames per second, vblank duration */
-	1,
-	mac2_init_machine,
-	0,
-
-	/* video hardware */
-	640, 480, /* screen width, screen height */
-	{ 0, 640-1, 0, 480-1 }, 		/* visible_area */
-
-	0,					/* graphics decode info */
-	2, 2,						/* number of colors, colortable size */
-	mac_init_palette,				/* convert color prom */
-
-	VIDEO_UPDATE_BEFORE_VBLANK,
-	0,
-	mac_vh_start,
-	mac_vh_stop,
-	mac_vh_screenrefresh,
-
-	/* sound hardware */
-	0,0,0,0,
-	{
-
-	},
-
-	mac_nvram_handler
-};
-
-//#define input_ports_mac2 NULL
-
-static INPUT_PORTS_START( mac2 )
-
-INPUT_PORTS_END
-
-ROM_START( mac2 )
-	ROM_REGION(0x00900000,"main",0) /* for ram, etc */
-	ROM_LOAD_WIDE( "256k.rom",  0x800000, 0x40000, NO_DUMP)
-ROM_END
-
-COMPX( 1987, mac2,	   0,		 mac2,	   mac2,	 0/*mac2*/,  "Apple Computer",    "Macintosh II",  GAME_NOT_WORKING )
-
-#endif
+COMP( 1987,	macse,    0,		0,	macse,  macplus,  macse,		    macse,		"Apple Computer",	"Macintosh SE",  0 )
+COMP( 1990,	macclasc, 0,		0,	macse,  macplus,  macclassic,		    macse,		"Apple Computer",	"Macintosh Classic",  GAME_NOT_WORKING )
+COMP( 1990,	maclc,    0,		0,  maclc,    macplus,  maclc,		maclc,		"Apple Computer",	"Macintosh LC",  GAME_NOT_WORKING )
 

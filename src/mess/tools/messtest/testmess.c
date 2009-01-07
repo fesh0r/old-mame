@@ -526,7 +526,7 @@ static const input_setting_config *find_switch(running_machine *machine, const c
 
 static void command_wait(running_machine *machine)
 {
-	attotime current_time = timer_get_time();
+	attotime current_time = timer_get_time(machine);
 
 	if (state == STATE_READY)
 	{
@@ -569,8 +569,8 @@ static void command_input(running_machine *machine)
 
 static void command_rawinput(running_machine *machine)
 {
-	int parts;
-	attotime current_time = timer_get_time();
+	//int parts;
+	attotime current_time = timer_get_time(machine);
 	static const char *position;
 #if 0
 	int i;
@@ -582,7 +582,7 @@ static void command_rawinput(running_machine *machine)
 	if (state == STATE_READY)
 	{
 		/* beginning of a raw input command */
-		parts = 1;
+		//parts = 1;
 		position = current_command->u.input_args.input_chars;
 		wait_target = current_time;
 		state = STATE_INCOMMAND;
@@ -720,7 +720,7 @@ static const device_config *find_device_by_identity(running_machine *machine, co
 	else
 	{
 		/* perform a legacy lookup by device type */
-		device = image_from_devtype_and_index(ident->type, ident->slot);
+		device = image_from_devtype_and_index(machine, ident->type, ident->slot);
 	}
 
 	/* did the image slot lookup fail? */
@@ -958,9 +958,9 @@ static void command_trace(running_machine *machine)
 	FILE *file;
 	char filename[256];
 
-	for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+	for (cpunum = 0; (cpunum < ARRAY_LENGTH(machine->cpu)) && (machine->cpu[cpunum] != NULL); cpunum++)
 	{
-		if (cpu_gettotalcpu() == 1)
+		if (machine->cpu[1] == NULL)
 			snprintf(filename, sizeof(filename) / sizeof(filename[0]), "_%s.tr", current_testcase.name);
 		else
 			snprintf(filename, sizeof(filename) / sizeof(filename[0]), "_%s.%d.tr", current_testcase.name, cpunum);
@@ -969,7 +969,7 @@ static void command_trace(running_machine *machine)
 		if (file)
 		{
 			report_message(MSG_INFO, "Tracing CPU #%d: %s", cpunum, filename);
-			debug_cpu_trace(cpunum, file, FALSE, NULL);
+			debug_cpu_trace(machine->cpu[cpunum], file, FALSE, NULL);
 			fclose(file);
 		}
 	}
@@ -995,7 +995,7 @@ static void command_end(running_machine *machine)
 {
 	/* at the end of our test */
 	state = STATE_DONE;
-	final_time = timer_get_time();
+	final_time = timer_get_time(machine);
 	mame_schedule_exit(machine);
 }
 
@@ -1054,7 +1054,7 @@ void osd_update(running_machine *machine, int skip_redraw)
 	}
 
 	/* have we hit the time limit? */
-	current_time = timer_get_time();
+	current_time = timer_get_time(machine);
 	time_limit = (attotime_compare(current_testcase.time_limit, attotime_zero) != 0) ? current_testcase.time_limit
 		: ATTOTIME_IN_SEC(600);
 	if (attotime_compare(current_time, time_limit) > 0)
@@ -1067,10 +1067,10 @@ void osd_update(running_machine *machine, int skip_redraw)
 	/* update the runtime hash */
 	if (0)
 	{
-		for (cpunum = 0; cpunum < cpu_gettotalcpu(); cpunum++)
+		for (cpunum = 0; (cpunum < ARRAY_LENGTH(machine->cpu)) && (machine->cpu[cpunum] != NULL); cpunum++)
 		{
 			runtime_hash *= 57;
-			runtime_hash ^= cpunum_get_reg(cpunum, REG_PC);	/* TODO - Add more registers? */
+			runtime_hash ^= cpu_get_reg(machine->cpu[cpunum], REG_GENPC);	/* TODO - Add more registers? */
 		}
 	}
 

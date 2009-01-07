@@ -16,8 +16,8 @@ typedef struct ti99_peb_card_handlers_t
 	cru_read_handler cru_read;		/* card CRU read handler */
 	cru_write_handler cru_write;	/* card CRU handler */
 
-	read8_machine_func mem_read;		/* card mem read handler (8 bits) */
-	write8_machine_func mem_write;	/* card mem write handler (8 bits) */
+	read8_space_func mem_read;		/* card mem read handler (8 bits) */
+	write8_space_func mem_write;	/* card mem write handler (8 bits) */
 } ti99_peb_card_handlers_t;
 
 /*
@@ -30,8 +30,8 @@ typedef struct ti99_peb_16bit_card_handlers_t
 	cru_read_handler cru_read;		/* card CRU read handler */
 	cru_write_handler cru_write;	/* card CRU handler */
 
-	read16_machine_func mem_read;		/* card mem read handler (16 bits) */
-	write16_machine_func mem_write;		/* card mem write handler (16 bits) */
+	read16_space_func mem_read;		/* card mem read handler (16 bits) */
+	write16_space_func mem_write;		/* card mem write handler (16 bits) */
 } ti99_peb_16bit_card_handlers_t;
 
 /* masks for ila and ilb */
@@ -58,8 +58,8 @@ void ti99_peb_reset(int in_has_16bit_peb, void (*in_inta_callback)(running_machi
 
 void ti99_peb_set_card_handlers(int cru_base, const ti99_peb_card_handlers_t *handler);
 void ti99_peb_set_16bit_card_handlers(int cru_base, const ti99_peb_16bit_card_handlers_t *handler);
-void ti99_peb_set_ila_bit(int bit, int state);
-void ti99_peb_set_ilb_bit(int bit, int state);
+void ti99_peb_set_ila_bit(running_machine *machine, int bit, int state);
+void ti99_peb_set_ilb_bit(running_machine *machine, int bit, int state);
 
  READ8_HANDLER ( ti99_4x_peb_cru_r );
 WRITE8_HANDLER ( ti99_4x_peb_cru_w );

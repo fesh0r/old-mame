@@ -10,6 +10,7 @@
  ******************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "includes/kaypro.h"
 
 #include "machine/wd17xx.h"
@@ -236,11 +237,11 @@ static PALETTE_INIT( kaypro )
 
 static MACHINE_DRIVER_START( kaypro )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000)        /* 4 Mhz */
+	MDRV_CPU_ADD("main", Z80, 4000000)        /* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(kaypro_mem, 0)
 	MDRV_CPU_IO_MAP(kaypro_io, 0)
 	MDRV_CPU_VBLANK_INT("main", kaypro_interrupt)
-	MDRV_INTERLEAVE(4)
+	MDRV_QUANTUM_TIME(HZ(240))
 
 	MDRV_MACHINE_RESET( kaypro )
 

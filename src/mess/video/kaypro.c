@@ -125,8 +125,9 @@ static struct terminal *kaypro_terminal;
 
 static void kaypro_putstr(running_machine *machine, const char * src)
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	while (*src)
-		kaypro_conout_w(machine, 0, *src++);
+		kaypro_conout_w(space, 0, *src++);
 }
 
 static int kaypro_getcursorcode(int code)
@@ -461,13 +462,13 @@ static void kaypro_pixel(int x, int y, int set)
 		{	  0x020, 0x010},
 		{AT_REVERSE, 0x040}
 	};
-	int cx, cy, offs, bits;
+	int cx, cy, /*offs,*/ bits;
 	short attr;
 
 	/* The Kaypro 2x font has a 2x4 pattern block graphics */
 	cx = x / 2;
 	cy = y / 4;
-	offs = cy * KAYPRO_SCREEN_W + cx;
+	//offs = cy * KAYPRO_SCREEN_W + cx;
 	attr = terminal_getchar(kaypro_terminal, cx, cy);
 
 	/* if it is a space, we change it to a graphic space */

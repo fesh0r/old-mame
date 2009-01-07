@@ -32,13 +32,13 @@ static TIMER_CALLBACK(pc_turbo_callback)
 	if (val != ti->cur_val)
 	{
 		ti->cur_val = val;
-		cpunum_set_clockscale(machine, ti->cpunum, val ? ti->on_speed : ti->off_speed);
+		cpu_set_clockscale(machine->cpu[ti->cpunum], val ? ti->on_speed : ti->off_speed);
 	}
 }
 
 
 
-int pc_turbo_setup(int cpunum, const char *port, int mask, double off_speed, double on_speed)
+int pc_turbo_setup(running_machine *machine, int cpunum, const char *port, int mask, double off_speed, double on_speed)
 {
 	struct pc_turbo_info *ti;
 
@@ -49,6 +49,6 @@ int pc_turbo_setup(int cpunum, const char *port, int mask, double off_speed, dou
 	ti->cur_val = -1;
 	ti->off_speed = off_speed;
 	ti->on_speed = on_speed;
-	timer_pulse(ATTOTIME_IN_MSEC(100), ti, 0, pc_turbo_callback);
+	timer_pulse(machine, ATTOTIME_IN_MSEC(100), ti, 0, pc_turbo_callback);
 	return 0;
 }

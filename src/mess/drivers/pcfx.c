@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/v810/v810.h"
 #include "video/vdc.h"
 
 static ADDRESS_MAP_START( pcfx_mem, ADDRESS_SPACE_PROGRAM, 32 )
@@ -36,7 +37,7 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( pcfx )
 {
-	memory_set_bankptr( 1, memory_region(machine, "user1") );
+	memory_set_bankptr( machine, 1, memory_region(machine, "user1") );
 }
 
 

@@ -135,7 +135,6 @@ READ8_DEVICE_HANDLER( adc080x_data_r )
 static DEVICE_START( adc080x )
 {
 	adc080x_t *adc080x = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
@@ -145,26 +144,24 @@ static DEVICE_START( adc080x )
 	adc080x->intf = device->static_config;
 
 	assert(adc080x->intf != NULL);
-	assert(adc080x->intf->clock > 0);
+	assert(device->clock > 0);
 
 	/* set initial values */
 	adc080x->eoc = 1;
 
 	/* allocate cycle timer */
-	adc080x->cycle_timer = timer_alloc(cycle_tick, (void *)device);
-	timer_adjust_periodic(adc080x->cycle_timer, attotime_zero, 0, ATTOTIME_IN_HZ(adc080x->intf->clock));
+	adc080x->cycle_timer = timer_alloc(device->machine, cycle_tick, (void *)device);
+	timer_adjust_periodic(adc080x->cycle_timer, attotime_zero, 0, ATTOTIME_IN_HZ(device->clock));
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "adc080x", device->tag);
-
-	state_save_register_item(unique_tag, 0, adc080x->address);
-	state_save_register_item(unique_tag, 0, adc080x->ale);
-	state_save_register_item(unique_tag, 0, adc080x->start);
-	state_save_register_item(unique_tag, 0, adc080x->eoc);
-	state_save_register_item(unique_tag, 0, adc080x->next_eoc);
-	state_save_register_item(unique_tag, 0, adc080x->sar);
-	state_save_register_item(unique_tag, 0, adc080x->cycle);
-	state_save_register_item(unique_tag, 0, adc080x->bit);
+	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->address);
+	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->ale);
+	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->start);
+	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->eoc);
+	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->next_eoc);
+	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->sar);
+	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->cycle);
+	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->bit);
 	return DEVICE_START_OK;
 }
 
@@ -192,11 +189,11 @@ DEVICE_GET_INFO( adc0808 )
 		case DEVINFO_FCT_RESET:							/* Nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "National Semiconductor ADC0808";	break;
-		case DEVINFO_STR_FAMILY:						info->s = "National Semiconductor ADC080";	break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright MESS Team";			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "National Semiconductor ADC0808");	break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "National Semiconductor ADC080");	break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
 	}
 }
 
@@ -205,7 +202,7 @@ DEVICE_GET_INFO( adc0809 )
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "National Semiconductor ADC0809";	break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "National Semiconductor ADC0809");	break;
 
 		default:										DEVICE_GET_INFO_CALL(adc0808);				break;
 	}

@@ -9,11 +9,15 @@
 
 #include "driver.h"
 #include "cpu/i8085/i8085.h"
-#include "devices/cassette.h"
 #include "machine/8255ppi.h"
+#include "machine/wd17xx.h"
+#include "devices/cassette.h"
+#include "devices/basicdsk.h"
+#include "includes/vector06.h"
 
-static int vector06_keyboard_mask;
-static UINT8 vector_color_index;
+UINT8 vector06_keyboard_mask;
+UINT8 vector_color_index;
+UINT8 vector_video_mode;
 
 /* Driver initialization */
 DRIVER_INIT(vector06)
@@ -21,7 +25,7 @@ DRIVER_INIT(vector06)
 	memset(mess_ram,0,64*1024);
 }
 
-READ8_DEVICE_HANDLER (vector06_8255_portb_r )
+static READ8_DEVICE_HANDLER (vector06_8255_portb_r )
 {
 	UINT8 key = 0xff;
 	if ((vector06_keyboard_mask & 0x01)!=0) { key &= input_port_read(device->machine,"LINE0"); }
@@ -35,28 +39,79 @@ READ8_DEVICE_HANDLER (vector06_8255_portb_r )
 	return key;
 }
 
-READ8_DEVICE_HANDLER (vector06_8255_portc_r )
-{
-	return input_port_read(device->machine, "LINE8");
+static READ8_DEVICE_HANDLER (vector06_8255_portc_r )
+{	
+	double level = cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ));
+	UINT8 retVal = input_port_read(device->machine, "LINE8");
+	if (level >  0) { 
+		retVal |= 0x10; 
+ 	}
+	return retVal;
 }
 
-WRITE8_DEVICE_HANDLER (vector06_8255_porta_w )
+static WRITE8_DEVICE_HANDLER (vector06_8255_porta_w )
 {
 	vector06_keyboard_mask = data ^ 0xff;
 }
 
-WRITE8_DEVICE_HANDLER (vector06_8255_portb_w )
+static void vector_set_video_mode(running_machine *machine, int width) {
+	rectangle visarea;
+	
+	visarea.min_x = 0;
+	visarea.min_y = 0;
+	visarea.max_x = width+64-1;
+	visarea.max_y = 256+64-1;
+	video_screen_configure(machine->primary_screen, width+64, 256+64, &visarea, video_screen_get_frame_period(machine->primary_screen).attoseconds);	
+}
+
+static WRITE8_DEVICE_HANDLER (vector06_8255_portb_w )
 {
-	vector_color_index = data;
+	vector_color_index = data & 0x0f;
+	if ((data & 0x10) != vector_video_mode) 
+	{
+		vector_video_mode = data & 0x10;
+		vector_set_video_mode(device->machine,(vector_video_mode==0x10) ? 512 : 256);
+	}	
 }
 
 WRITE8_HANDLER(vector06_color_set)
 {
-	UINT8 r = (data & 7) << 4;
-	UINT8 g = ((data >> 3) & 7) << 4;
-	UINT8 b = ((data >>6) & 3) << 5;
-	palette_set_color( machine, vector_color_index, MAKE_RGB(r,g,b) );
+	UINT8 r = (data & 7) << 5;
+	UINT8 g = ((data >> 3) & 7) << 5;
+	UINT8 b = ((data >>6) & 3) << 6;
+	palette_set_color( space->machine, vector_color_index, MAKE_RGB(r,g,b) );
 }
+
+UINT8 romdisk_msb;
+UINT8 romdisk_lsb;
+
+static READ8_DEVICE_HANDLER (vector06_romdisk_portb_r )
+{
+	UINT8 *romdisk = memory_region(device->machine, "main") + 0x18000;		
+	UINT16 addr = (romdisk_msb*256+romdisk_lsb) & 0x7fff;
+	return romdisk[addr];	
+}
+
+static WRITE8_DEVICE_HANDLER (vector06_romdisk_porta_w )
+{	
+	romdisk_lsb = data;
+}
+
+static WRITE8_DEVICE_HANDLER (vector06_romdisk_portc_w )
+{		
+	romdisk_msb = data;	
+}
+
+const ppi8255_interface vector06_ppi8255_2_interface =
+{
+	NULL,
+	vector06_romdisk_portb_r,
+	NULL,
+	vector06_romdisk_porta_w,
+	NULL,
+	vector06_romdisk_portc_w
+};
+
 
 const ppi8255_interface vector06_ppi8255_interface =
 {
@@ -69,38 +124,108 @@ const ppi8255_interface vector06_ppi8255_interface =
 };
 
 READ8_HANDLER(vector_8255_1_r) {
-	return ppi8255_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), (offset ^ 0x03));
+	return ppi8255_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, PPI8255, "ppi8255" ), (offset ^ 0x03));
 }
 
 WRITE8_HANDLER(vector_8255_1_w) {
-	ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), (offset ^0x03) , data );
+	ppi8255_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, PPI8255, "ppi8255" ), (offset ^0x03) , data );
 
 }
 
+READ8_HANDLER(vector_8255_2_r) {
+	return ppi8255_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, PPI8255, "ppi8255_2" ), (offset ^ 0x03));
+}
 
+WRITE8_HANDLER(vector_8255_2_w) {
+	ppi8255_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, PPI8255, "ppi8255_2" ), (offset ^0x03) , data );
+
+}
+
+UINT8 vblank_state = 0;
 INTERRUPT_GEN( vector06_interrupt )
 {
-	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+	vblank_state++;
+	if (vblank_state>1) vblank_state=0;
+	cpu_set_input_line(device,0,vblank_state ? HOLD_LINE : CLEAR_LINE);		
+	
 }
 
 static IRQ_CALLBACK (  vector06_irq_callback )
 {
 	// Interupt is RST 7
-	return 0xcd0038;
+	return 0xff;
+}
+
+static TIMER_CALLBACK(reset_check_callback)
+{
+	UINT8 val = input_port_read(machine, "RESET");
+	if ((val & 1)==1) {
+		memory_set_bankptr(machine, 1, memory_region(machine, "main") + 0x10000);
+		device_reset(machine->cpu[0]);
+	}
+	if ((val & 2)==2) {
+		memory_set_bankptr(machine, 1, mess_ram + 0x0000);
+		device_reset(machine->cpu[0]);
+	}
+}
+
+WRITE8_HANDLER(vector_disc_w)
+{
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1793, "wd1793");
+	wd17xx_set_side (fdc,((data & 4) >> 2) ^ 1);
+ 	wd17xx_set_drive(fdc,data & 1);					
+}
+
+DEVICE_IMAGE_LOAD( vector_floppy )
+{
+	int size;
+
+	if (! image_has_been_created(image))
+		{
+		size = image_length(image);
+
+		switch (size)
+			{
+			case 820*1024:
+				break;
+			default:
+				return INIT_FAIL;
+			}
+		}
+	else
+		return INIT_FAIL;
+
+	if (device_load_basicdsk_floppy (image) != INIT_PASS)
+		return INIT_FAIL;
+
+	basicdsk_set_geometry (image, 82, 2, 5, 1024, 1, 0, FALSE);	
+	return INIT_PASS;
+}
+
+
+MACHINE_START( vector06 )
+{
+	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD1793, "wd1793");
+	wd17xx_set_density (fdc, DEN_FM_HI);
 }
 
 MACHINE_RESET( vector06 )
 {
-	cpunum_set_irq_callback(0, vector06_irq_callback);
-	memory_install_read8_handler (machine,0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, SMH_BANK1);
-	memory_install_write8_handler(machine,0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, SMH_BANK2);
-	memory_install_read8_handler (machine,0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_BANK3);
-	memory_install_write8_handler(machine,0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_BANK4);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	
+	cpu_set_irq_callback(machine->cpu[0], vector06_irq_callback);
+	memory_install_read8_handler (space, 0x0000, 0x7fff, 0, 0, SMH_BANK1);
+	memory_install_write8_handler(space, 0x0000, 0x7fff, 0, 0, SMH_BANK2);
+	memory_install_read8_handler (space, 0x8000, 0xffff, 0, 0, SMH_BANK3);
+	memory_install_write8_handler(space, 0x8000, 0xffff, 0, 0, SMH_BANK4);
 
-	memory_set_bankptr(1, memory_region(machine, "main") + 0x10000);
-	memory_set_bankptr(2, mess_ram + 0x0000);
-	memory_set_bankptr(3, mess_ram + 0x8000);
-	memory_set_bankptr(4, mess_ram + 0x8000);
+	memory_set_bankptr(machine, 1, memory_region(machine, "main") + 0x10000);
+	memory_set_bankptr(machine, 2, mess_ram + 0x0000);
+	memory_set_bankptr(machine, 3, mess_ram + 0x8000);
+	memory_set_bankptr(machine, 4, mess_ram + 0x8000);
 
 	vector06_keyboard_mask = 0;
+	vector_color_index = 0;
+	vector_video_mode = 0;
+	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, reset_check_callback);
 }

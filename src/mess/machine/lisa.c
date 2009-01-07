@@ -41,7 +41,7 @@
 #include "machine/6522via.h"
 #include "machine/applefdc.h"
 #include "devices/sonydriv.h"
-#include "cpu/m68000/m68k.h"
+#include "cpu/m68000/m68000.h"
 #include "sound/speaker.h"
 
 
@@ -125,35 +125,37 @@ static UINT16 *videoram_ptr;		/* screen bitmap base address (derived from video_
 	a hard disk
 */
 
-static  READ8_HANDLER(COPS_via_in_b);
-static WRITE8_HANDLER(COPS_via_out_a);
-static WRITE8_HANDLER(COPS_via_out_b);
-static WRITE8_HANDLER(COPS_via_out_ca2);
-static WRITE8_HANDLER(COPS_via_out_cb2);
-static void COPS_via_irq_func(running_machine *machine, int val);
-static  READ8_HANDLER(parallel_via_in_b);
+static READ8_DEVICE_HANDLER(COPS_via_in_b);
+static WRITE8_DEVICE_HANDLER(COPS_via_out_a);
+static WRITE8_DEVICE_HANDLER(COPS_via_out_b);
+static WRITE8_DEVICE_HANDLER(COPS_via_out_ca2);
+static WRITE8_DEVICE_HANDLER(COPS_via_out_cb2);
+static void COPS_via_irq_func(const device_config *device, int val);
+static READ8_DEVICE_HANDLER(parallel_via_in_b);
 
 static int KBIR;	/* COPS VIA interrupt pending */
 
-static const struct via6522_interface lisa_via6522_intf[2] =
+const via6522_interface lisa_via6522_0_intf =
 {
-	{	/* COPS via */
-		NULL, COPS_via_in_b,
-		NULL, NULL,
-		NULL, NULL,
-		COPS_via_out_a, COPS_via_out_b,
-		COPS_via_out_ca2, COPS_via_out_cb2,
-		NULL, NULL,
-		COPS_via_irq_func,
-	},
-	{	/* parallel interface via - incomplete */
-		NULL, parallel_via_in_b,
-		NULL, NULL,
-		NULL, NULL,
-		NULL, NULL,
-		NULL, NULL,
-		NULL, NULL,
-	}
+	/* COPS via */
+	NULL, COPS_via_in_b,
+	NULL, NULL,
+	NULL, NULL,
+	COPS_via_out_a, COPS_via_out_b,
+	COPS_via_out_ca2, COPS_via_out_cb2,
+	NULL, NULL,
+	COPS_via_irq_func,
+};
+
+const via6522_interface lisa_via6522_1_intf =
+{
+	/* parallel interface via - incomplete */
+	NULL, parallel_via_in_b,
+	NULL, NULL,
+	NULL, NULL,
+	NULL, NULL,
+	NULL, NULL,
+	NULL, NULL,
 };
 
 /*
@@ -222,46 +224,46 @@ static void lisa_field_interrupts(running_machine *machine)
 
 	/*if (RSIR)
 		// serial interrupt
-		cpunum_set_input_line_and_vector(machine, 0, M68K_IRQ_6, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0], M68K_IRQ_6, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int0)
 		// external interrupt
-		cpunum_set_input_line_and_vector(machine, 0, M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0], M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int1)
 		// external interrupt
-		cpunum_set_input_line_and_vector(machine, 0, M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0], M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (int2)
 		// external interrupt
-		cpunum_set_input_line_and_vector(machine, 0, M68K_IRQ_3, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0], M68K_IRQ_3, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else*/ if (KBIR)
 		/* COPS VIA interrupt */
-		cpunum_set_input_line_and_vector(machine, 0, M68K_IRQ_2, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0], M68K_IRQ_2, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (FDIR || VTIR)
 		/* floppy disk or VBl */
-		cpunum_set_input_line_and_vector(machine, 0, M68K_IRQ_1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0], M68K_IRQ_1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else
 		/* clear all interrupts */
-		cpunum_set_input_line_and_vector(machine, 0, M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0], M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 static void set_parity_error_pending(running_machine *machine, int value)
 {
-#if 0
+#if 1
 	/* does not work well due to bugs in 68k cores */
 	parity_error_pending = value;
 	if (parity_error_pending)
 	{
-		cpunum_set_input_line_and_vector(machine, 0, M68K_IRQ_7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0], M68K_IRQ_7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	}
 	else
 	{
-		cpunum_set_input_line(machine, 0, M68K_IRQ_7, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], M68K_IRQ_7, CLEAR_LINE);
 	}
 #else
 	/* work-around... */
 	if ((! parity_error_pending) && value)
 	{
 		parity_error_pending = 1;
-		cpunum_set_input_line_and_vector(machine, 0, M68K_IRQ_7, PULSE_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0], M68K_IRQ_7, PULSE_LINE, M68K_INT_ACK_AUTOVECTOR);
 	}
 	else if (parity_error_pending && (! value))
 	{
@@ -335,17 +337,19 @@ static struct
 
 INLINE void COPS_send_data_if_possible(running_machine *machine)
 {
+	const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+
 	if ((! hold_COPS_data) && fifo_size && (! COPS_Ready))
 	{
 		logerror("Pushing one byte of data to VIA\n");
 
-		via_set_input_a(0, fifo_data[fifo_head]);	/* output data */
+		via_porta_w(via_0, 0, fifo_data[fifo_head]);	/* output data */
 		if (fifo_head == mouse_data_offset)
 			mouse_data_offset = -1;	/* we just phased out the mouse data in buffer */
 		fifo_head = (fifo_head+1) & 0x7;
 		fifo_size--;
-		via_set_input_ca1(machine, 0, 1);		/* pulse ca1 so that VIA reads it */
-		via_set_input_ca1(machine, 0, 0);		/* BTW, I have no idea how a real COPS does it ! */
+		via_ca1_w(via_0, 0, 1);		/* pulse ca1 so that VIA reads it */
+		via_ca1_w(via_0, 0, 0);		/* BTW, I have no idea how a real COPS does it ! */
 	}
 }
 
@@ -395,7 +399,7 @@ static void scan_keyboard(running_machine *machine)
 	int i, j;
 	int keybuf;
 	UINT8 keycode;
-	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
+	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
 
 	if (! COPS_force_unplug)
 		for (i=0; i<8; i++)
@@ -422,8 +426,8 @@ static void scan_keyboard(running_machine *machine)
 #if 0
 						if (keycode == NMIcode)
 						{	/* generate NMI interrupt */
-							cpunum_set_input_line(machine, 0, M68K_IRQ_7, PULSE_LINE);
-							cpunum_set_input_line_vector(0, M68K_IRQ_7, M68K_INT_ACK_AUTOVECTOR);
+							cpu_set_input_line(machine->cpu[0], M68K_IRQ_7, PULSE_LINE);
+							cpu_set_input_line_vector(machine->cpu[0], M68K_IRQ_7, M68K_INT_ACK_AUTOVECTOR);
 						}
 #endif
 						COPS_queue_data(machine, & keycode, 1);
@@ -519,6 +523,7 @@ static TIMER_CALLBACK(handle_mouse)
 static TIMER_CALLBACK(read_COPS_command)
 {
 	int command;
+	const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
 
 	COPS_Ready = 0;
 
@@ -526,7 +531,7 @@ static TIMER_CALLBACK(read_COPS_command)
 	COPS_send_data_if_possible(machine);
 
 	/* some pull-ups allow the COPS to read 1s when the VIA port is not set as output */
-	command = (COPS_command | (~ via_read(machine, 0, VIA_DDRA))) & 0xff;
+	command = (COPS_command | (~ via_r(via_0, VIA_DDRA))) & 0xff;
 
 	if (command & 0x80)
 		return;	/* NOP */
@@ -691,7 +696,7 @@ static TIMER_CALLBACK(set_COPS_ready)
 	COPS_Ready = 1;
 
 	/* impulsion width : +/- 20us */
-	timer_set(ATTOTIME_IN_USEC(20), NULL, 0, read_COPS_command);
+	timer_set(machine, ATTOTIME_IN_USEC(20), NULL, 0, read_COPS_command);
 }
 
 static void reset_COPS(void)
@@ -750,12 +755,12 @@ static void plug_keyboard(running_machine *machine)
 
 
 /* called at power-up */
-static void init_COPS(void)
+static void init_COPS(running_machine *machine)
 {
 	COPS_Ready = 0;
 
 	/* read command every ms (don't know the real value) */
-	timer_pulse(ATTOTIME_IN_MSEC(1), NULL, 0, set_COPS_ready);
+	timer_pulse(machine, ATTOTIME_IN_MSEC(1), NULL, 0, set_COPS_ready);
 
 	reset_COPS();
 }
@@ -769,19 +774,19 @@ static void init_COPS(void)
 	CA1 (I) : COPS sending valid data
 	CA2 (O) : VIA -> COPS handshake
 */
-static WRITE8_HANDLER(COPS_via_out_a)
+static WRITE8_DEVICE_HANDLER(COPS_via_out_a)
 {
 	COPS_command = data;
 }
 
-static WRITE8_HANDLER(COPS_via_out_ca2)
+static WRITE8_DEVICE_HANDLER(COPS_via_out_ca2)
 {
 	hold_COPS_data = data;
 
 	/*logerror("COPS CA2 line state : %d\n", val);*/
 
 	/*logerror("COPS_via_out_ca2 : trying to send data to VIA\n");*/
-	COPS_send_data_if_possible(machine);
+	COPS_send_data_if_possible(device->machine);
 }
 
 /*
@@ -798,7 +803,7 @@ static WRITE8_HANDLER(COPS_via_out_ca2)
 	CB1 : not used
 	CB2 (O) : sound output
 */
-static  READ8_HANDLER(COPS_via_in_b)
+static READ8_DEVICE_HANDLER(COPS_via_in_b)
 {
 	int val = 0;
 
@@ -811,17 +816,19 @@ static  READ8_HANDLER(COPS_via_in_b)
 	return val;
 }
 
-static WRITE8_HANDLER(COPS_via_out_b)
+static WRITE8_DEVICE_HANDLER(COPS_via_out_b)
 {
+	const device_config *via_0 = device_list_find_by_tag(device->machine->config->devicelist, VIA6522, "via6522_0");
+
 	/* pull-up */
-	data |= (~ via_read(machine, 0, VIA_DDRA)) & 0x01;
+	data |= (~ via_r(via_0, VIA_DDRA)) & 0x01;
 
 	if (data & 0x01)
 	{
 		if (COPS_force_unplug)
 		{
 			COPS_force_unplug = 0;
-			plug_keyboard(machine);
+			plug_keyboard(device->machine);
 		}
 	}
 	else
@@ -829,23 +836,23 @@ static WRITE8_HANDLER(COPS_via_out_b)
 		if (! COPS_force_unplug)
 		{
 			COPS_force_unplug = 1;
-			unplug_keyboard(machine);
+			unplug_keyboard(device->machine);
 			//reset_COPS();
 		}
 	}
 }
 
-static WRITE8_HANDLER(COPS_via_out_cb2)
+static WRITE8_DEVICE_HANDLER(COPS_via_out_cb2)
 {
 	speaker_level_w(0, data);
 }
 
-static void COPS_via_irq_func(running_machine *machine, int val)
+static void COPS_via_irq_func(const device_config *device, int val)
 {
 	if (KBIR != val)
 	{
 		KBIR = val;
-		lisa_field_interrupts(machine);
+		lisa_field_interrupts(device->machine);
 	}
 }
 
@@ -869,7 +876,7 @@ static void COPS_via_irq_func(running_machine *machine, int val)
 	CB1 : not used
 	CB2 (I) : current parity latch value
 */
-static  READ8_HANDLER(parallel_via_in_b)
+static READ8_DEVICE_HANDLER(parallel_via_in_b)
 {
 	int val = 0;
 
@@ -924,7 +931,7 @@ VIDEO_UPDATE( lisa )
 }
 
 
-static OPBASE_HANDLER (lisa_OPbaseoverride)
+static DIRECT_UPDATE_HANDLER (lisa_OPbaseoverride)
 {
 	/* upper 7 bits -> segment # */
 	int segment = (address >> 17) & 0x7f;
@@ -949,10 +956,10 @@ static OPBASE_HANDLER (lisa_OPbaseoverride)
 			}
 			else
 			{	/* system ROMs */
-				opbase->mask = 0xffffff;
-				opbase->rom = opbase->ram = lisa_rom_ptr - (address & 0xffc000);
-				opbase->mem_min = (address & 0xffc000);
-				opbase->mem_max = (address & 0xffc000) + 0x003fff;
+				direct->mask = 0xffffff;
+				direct->raw = direct->decrypted = lisa_rom_ptr - (address & 0xffc000);
+				direct->min = (address & 0xffc000);
+				direct->max = (address & 0xffc000) + 0x003fff;
 				/*logerror("ROM (setup mode)\n");*/
 			}
 
@@ -961,7 +968,7 @@ static OPBASE_HANDLER (lisa_OPbaseoverride)
 
 	}
 
-	if (cpunum_get_reg(0, M68K_SR) & 0x2000)
+	if (cpu_get_reg(space->machine->cpu[0], M68K_SR) & 0x2000)
 		/* supervisor mode -> force register file 0 */
 		the_seg = 0;
 
@@ -981,10 +988,10 @@ static OPBASE_HANDLER (lisa_OPbaseoverride)
 				/* out of segment limits : bus error */
 				logerror("illegal opbase address%lX\n", (long) address);
 			}
-			opbase->mask = 0xffffff;
-			opbase->rom = opbase->ram = lisa_ram_ptr + mapped_address - address;
-			opbase->mem_min = (address & 0xffc000);
-			opbase->mem_max = (address & 0xffc000) + 0x003fff;
+			direct->mask = 0xffffff;
+			direct->raw = direct->decrypted = lisa_ram_ptr + mapped_address - address;
+			direct->min = (address & 0xffc000);
+			direct->max = (address & 0xffc000) + 0x003fff;
 			/*logerror("RAM\n");*/
 			break;
 
@@ -997,10 +1004,10 @@ static OPBASE_HANDLER (lisa_OPbaseoverride)
 			break;
 
 		case special_IO:
-			opbase->mask = 0xffffff;
-			opbase->rom = opbase->ram = lisa_rom_ptr + (mapped_address & 0x003fff) - address;
-			opbase->mem_min = (address & 0xffc000);
-			opbase->mem_max = (address & 0xffc000) + 0x003fff;
+			direct->mask = 0xffffff;
+			direct->raw = direct->decrypted = lisa_rom_ptr + (mapped_address & 0x003fff) - address;
+			direct->min = (address & 0xffc000);
+			direct->max = (address & 0xffc000) + 0x003fff;
 			/*logerror("ROM\n");*/
 			break;
 		}
@@ -1012,7 +1019,7 @@ static OPBASE_HANDLER (lisa_OPbaseoverride)
 	return -1;
 }
 
-static OPBASE_HANDLER (lisa_fdc_OPbaseoverride)
+static DIRECT_UPDATE_HANDLER (lisa_fdc_OPbaseoverride)
 {
 	/* 8kb of address space -> wraparound */
 	return (address & 0x1fff);
@@ -1085,6 +1092,8 @@ NVRAM_HANDLER(lisa)
 
 DRIVER_INIT( lisa2 )
 {
+	lisa_ram_ptr = memory_region(machine, "main") + RAM_OFFSET;
+	lisa_rom_ptr = memory_region(machine, "main") + ROM_OFFSET;
 	lisa_model = lisa2;
 	lisa_features.has_fast_timers = 0;
 	lisa_features.floppy_hardware = sony_lisa2;
@@ -1096,6 +1105,8 @@ DRIVER_INIT( lisa2 )
 
 DRIVER_INIT( lisa210 )
 {
+	lisa_ram_ptr = memory_region(machine, "main") + RAM_OFFSET;
+	lisa_rom_ptr = memory_region(machine, "main") + ROM_OFFSET;
 	lisa_model = lisa210;
 	lisa_features.has_fast_timers = 1;
 	lisa_features.floppy_hardware = sony_lisa210;
@@ -1107,6 +1118,8 @@ DRIVER_INIT( lisa210 )
 
 DRIVER_INIT( mac_xl )
 {
+	lisa_ram_ptr = memory_region(machine, "main") + RAM_OFFSET;
+	lisa_rom_ptr = memory_region(machine, "main") + ROM_OFFSET;
 	lisa_model = mac_xl;
 	lisa_features.has_fast_timers = 1;
 	lisa_features.floppy_hardware = sony_lisa210;
@@ -1118,17 +1131,17 @@ DRIVER_INIT( mac_xl )
 
 MACHINE_RESET( lisa )
 {
-	mouse_timer = timer_alloc(handle_mouse, NULL);
+	mouse_timer = timer_alloc(machine, handle_mouse, NULL);
 
 	lisa_ram_ptr = memory_region(machine, "main") + RAM_OFFSET;
 	lisa_rom_ptr = memory_region(machine, "main") + ROM_OFFSET;
 
 	videoROM_ptr = memory_region(machine, "gfx1");
 
-	memory_set_opbase_handler(0, lisa_OPbaseoverride);
-	memory_set_opbase_handler(1, lisa_fdc_OPbaseoverride);
+	memory_set_direct_update_handler(cpu_get_address_space(machine->cpu[0],ADDRESS_SPACE_PROGRAM), lisa_OPbaseoverride);
+	memory_set_direct_update_handler(cpu_get_address_space(machine->cpu[1],ADDRESS_SPACE_PROGRAM), lisa_fdc_OPbaseoverride);
 
-	cpunum_set_info_fct(0, CPUINFO_PTR_M68K_RESET_CALLBACK, (genf *)/*lisa_reset_instr_callback*/NULL);
+	device_set_info_fct(machine->cpu[0], CPUINFO_FCT_M68K_RESET_CALLBACK, (genf *)/*lisa_reset_instr_callback*/NULL);
 
 	/* init MMU */
 
@@ -1154,21 +1167,17 @@ MACHINE_RESET( lisa )
 	videoram_ptr = (UINT16 *) lisa_ram_ptr;
 
 	/* reset COPS keyboard/mouse controller */
-	init_COPS();
+	init_COPS(machine);
 
-	/* configure vias */
-	via_config(0, & lisa_via6522_intf[0]);
-	via_set_clock(0, lisa_features.has_fast_timers ? 1250000 : 500000);	/* one of these values must be wrong : see note after description of the has_fast_timers field */
-	via_config(1, & lisa_via6522_intf[1]);
-	via_set_clock(1, lisa_features.has_fast_timers ? 1250000 : 500000);	/* one of these values must be wrong : see note after description of the has_fast_timers field */
-
-	via_reset();
-	COPS_via_out_ca2(machine, 0, 0);	/* VIA core forgets to do so */
+	{
+		const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+		COPS_via_out_ca2(via_0, 0, 0);	/* VIA core forgets to do so */
+	}
 
 	/* initialize floppy */
 	{
 		if (lisa_features.floppy_hardware == sony_lisa2)
-			sony_set_enable_lines(1);	/* on lisa2, drive unit 1 is always selected (?) */
+			sony_set_enable_lines((device_config*)device_list_find_by_tag( machine->config->devicelist,APPLEFDC,"fdc"),1);	/* on lisa2, drive unit 1 is always selected (?) */
 	}
 }
 
@@ -1196,7 +1205,7 @@ INTERRUPT_GEN( lisa_interrupt )
 							0x80,	/* RESET code */
 							0xFC	/* timer time-out */
 						};
-						COPS_queue_data(machine, cmd, 2);
+						COPS_queue_data(device->machine, cmd, 2);
 
 						clock_regs.alarm = 0xfffffL;
 					}
@@ -1263,12 +1272,12 @@ INTERRUPT_GEN( lisa_interrupt )
 
 	/* set VBI */
 	if (VTMSK)
-		set_VTIR(machine, 1);
+		set_VTIR(device->machine, 1);
 	else
-		set_VTIR(machine, 0);
+		set_VTIR(device->machine, 0);
 	
 	/* do keyboard scan */
-	scan_keyboard(machine);
+	scan_keyboard(device->machine);
 }
 
 /*
@@ -1319,7 +1328,7 @@ INLINE void lisa_fdc_ttl_glue_access(running_machine *machine, offs_t offset)
 		/*if (lisa_features.floppy_hardware == twiggy)
 			twiggy_set_head_line(offset & 1);
 		else*/ if (lisa_features.floppy_hardware == sony_lisa210)
-			sony_set_sel_line(offset & 1);
+			sony_set_sel_line((device_config*)device_list_find_by_tag( machine->config->devicelist,APPLEFDC,"fdc"), offset & 1);
 		break;
 	case 6:
 		DISK_DIAG = offset & 1;
@@ -1334,7 +1343,7 @@ INLINE void lisa_fdc_ttl_glue_access(running_machine *machine, offs_t offset)
 READ8_HANDLER ( lisa_fdc_io_r )
 {
 	int answer=0;
-	const device_config *fdc = device_list_find_by_tag(machine->config->devicelist,
+	const device_config *fdc = device_list_find_by_tag(space->machine->config->devicelist,
 		IWM,
 		"fdc");
 
@@ -1345,7 +1354,7 @@ READ8_HANDLER ( lisa_fdc_io_r )
 		break;
 
 	case 1:	/* TTL glue */
-		lisa_fdc_ttl_glue_access(machine, offset);
+		lisa_fdc_ttl_glue_access(space->machine, offset);
 		answer = 0;	/* ??? */
 		break;
 
@@ -1363,7 +1372,7 @@ READ8_HANDLER ( lisa_fdc_io_r )
 
 WRITE8_HANDLER ( lisa_fdc_io_w )
 {
-	const device_config *fdc = device_list_find_by_tag(machine->config->devicelist,
+	const device_config *fdc = device_list_find_by_tag(space->machine->config->devicelist,
 		IWM,
 		"fdc");
 
@@ -1374,7 +1383,7 @@ WRITE8_HANDLER ( lisa_fdc_io_w )
 		break;
 
 	case 1:	/* TTL glue */
-		lisa_fdc_ttl_glue_access(machine, offset);
+		lisa_fdc_ttl_glue_access(space->machine, offset);
 		break;
 
 	case 2:	/* writes the PWM register */
@@ -1398,7 +1407,7 @@ READ8_HANDLER ( lisa_fdc_r )
 			if (! (offset & 0x0400))
 				return lisa_fdc_ram[offset & 0x03ff];
 			else
-				return lisa_fdc_io_r(machine, offset & 0x03ff);
+				return lisa_fdc_io_r(space, offset & 0x03ff);
 		else
 			return 0;	/* ??? */
 	}
@@ -1414,7 +1423,7 @@ READ8_HANDLER ( lisa210_fdc_r )
 			if (! (offset & 0x0800))
 				return lisa_fdc_ram[offset & 0x03ff];
 			else
-				return lisa_fdc_io_r(machine, offset & 0x03ff);
+				return lisa_fdc_io_r(space, offset & 0x03ff);
 		else
 			return 0;	/* ??? */
 	}
@@ -1431,7 +1440,7 @@ WRITE8_HANDLER ( lisa_fdc_w )
 			if (! (offset & 0x0400))
 				lisa_fdc_ram[offset & 0x03ff] = data;
 			else
-				lisa_fdc_io_w(machine, offset & 0x03ff, data);
+				lisa_fdc_io_w(space, offset & 0x03ff, data);
 		}
 	}
 }
@@ -1445,7 +1454,7 @@ WRITE8_HANDLER ( lisa210_fdc_w )
 			if (! (offset & 0x0800))
 				lisa_fdc_ram[offset & 0x03ff] = data;
 			else
-				lisa_fdc_io_w(machine, offset & 0x03ff, data);
+				lisa_fdc_io_w(space, offset & 0x03ff, data);
 		}
 	}
 }
@@ -1459,7 +1468,6 @@ READ16_HANDLER ( lisa_r )
 
 	/* upper 7 bits -> segment # */
 	int segment = (offset >> 16) & 0x7f;
-
 
 	/*logerror("read, logical address%lX\n", offset);*/
 
@@ -1496,7 +1504,7 @@ READ16_HANDLER ( lisa_r )
 		}
 	}
 
-	if (cpunum_get_reg(0, M68K_SR) & 0x2000)
+	if (cpu_get_reg(space->machine->cpu[0], M68K_SR) & 0x2000)
 		/* supervisor mode -> force register file 0 */
 		the_seg = 0;
 
@@ -1526,8 +1534,9 @@ READ16_HANDLER ( lisa_r )
 					&& (bad_parity_table[address >> 3] & (0x3 << (address & 0x7))))
 			{
 				mem_err_addr_latch = address >> 5;
-				set_parity_error_pending(machine, 1);
+				set_parity_error_pending(space->machine, 1);
 			}
+
 			break;
 
 		case RAM_r:
@@ -1543,18 +1552,21 @@ READ16_HANDLER ( lisa_r )
 					&& (bad_parity_table[address >> 3] & (0x3 << (address & 0x7))))
 			{
 				mem_err_addr_latch = address >> 5;
-				set_parity_error_pending(machine, 1);
+				set_parity_error_pending(space->machine, 1);
 			}
+
 			break;
 
 		case IO:
-			answer = lisa_IO_r(machine, (address & 0x00ffff) >> 1, mem_mask);
+			answer = lisa_IO_r(space, (address & 0x00ffff) >> 1, mem_mask);
+
 			break;
 
 		case invalid:		/* unmapped segment */
 			/* bus error */
 
 			answer = 0;
+
 			break;
 
 		case special_IO:
@@ -1568,7 +1580,7 @@ READ16_HANDLER ( lisa_r )
 				/* problem : due to collisions with video, timings of the LISA CPU
 				are slightly different from timings of a bare 68k */
 				/* so we use a kludge... */
-				int time_in_frame = video_screen_get_vpos(machine->primary_screen);
+				int time_in_frame = video_screen_get_vpos(space->machine->primary_screen);
 				static int videoROM_address = 0;
 
 				/* the BOOT ROM only reads 56 bits, so there must be some wrap-around for
@@ -1596,12 +1608,12 @@ READ16_HANDLER ( lisa_r )
 					if ((time_in_frame >= 364) && (time_in_frame <= 375))
 					{
 						answer = videoROM_ptr[videoROM_address|0x80] << 8;
-  				logerror("reading1 %06X=%04x PC=%06x time=%d\n", address, answer,safe_activecpu_get_pc(),time_in_frame);
+  				logerror("reading1 %06X=%04x PC=%06x time=%d\n", address, answer, cpu_get_pc(space->machine->cpu[0]), time_in_frame);
 					}
 					else
 					{
 						answer = videoROM_ptr[videoROM_address] << 8;
-  				logerror("reading2 %06X=%04x PC=%06x time=%d\n", address, answer,safe_activecpu_get_pc(),time_in_frame);
+  				logerror("reading2 %06X=%04x PC=%06x time=%d\n", address, answer, cpu_get_pc(space->machine->cpu[0]), time_in_frame);
 					}
 				}
 
@@ -1613,6 +1625,7 @@ READ16_HANDLER ( lisa_r )
 				}
 
 			}
+
 			break;
 		}
 	}
@@ -1699,7 +1712,7 @@ WRITE16_HANDLER ( lisa_w )
 		}
 	}
 
-	if (cpunum_get_reg(0, M68K_SR) & 0x2000)
+	if (cpu_get_reg(space->machine->cpu[0], M68K_SR) & 0x2000)
 		/* supervisor mode -> force register file 0 */
 		the_seg = 0;
 
@@ -1792,7 +1805,7 @@ WRITE16_HANDLER ( lisa_w )
 			break;
 
 		case IO:
-			lisa_IO_w(machine, (address & 0x00ffff) >> 1, data, mem_mask);
+			lisa_IO_w(space, (address & 0x00ffff) >> 1, data, mem_mask);
 			break;
 
 		case RAM_stack_r:	/* read-only */
@@ -1861,19 +1874,19 @@ INLINE void cpu_board_control_access(running_machine *machine, offs_t offset)
 		seg &= ~2;
 		break;
 	case 0x0010:	/* SETUP register SET */
-    	logerror("setup SET PC=%x\n", safe_activecpu_get_pc());
+    	logerror("setup SET PC=%x\n", cpu_get_pc(machine->cpu[0]));
 		setup = 1;
 		break;
 	case 0x0012:	/* SETUP register RESET */
-    	logerror("setup UNSET PC=%x\n", safe_activecpu_get_pc());
+    	logerror("setup UNSET PC=%x\n", cpu_get_pc(machine->cpu[0]));
 		setup = 0;
 		break;
 	case 0x001A:	/* Enable Vertical Retrace Interrupt */
-    	logerror("enable retrace PC=%x\n", safe_activecpu_get_pc());
+    	logerror("enable retrace PC=%x\n", cpu_get_pc(machine->cpu[0]));
 		VTMSK = 1;
 		break;
 	case 0x0018:	/* Disable Vertical Retrace Interrupt */
-    	logerror("disable retrace PC=%x\n", safe_activecpu_get_pc());
+    	logerror("disable retrace PC=%x\n", cpu_get_pc(machine->cpu[0]));
 		VTMSK = 0;
 		set_VTIR(machine, 2);
 		break;
@@ -1892,6 +1905,8 @@ INLINE void cpu_board_control_access(running_machine *machine, offs_t offset)
 
 static READ16_HANDLER ( lisa_IO_r )
 {
+	const device_config *via_0 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via_1 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_1");
 	int answer=0;
 
 	switch ((offset & 0x7000) >> 12)
@@ -1943,13 +1958,13 @@ static READ16_HANDLER ( lisa_IO_r )
 			case 2:	/* parallel port */
 				/* 1 VIA located at 0xD901 */
 				if (ACCESSING_BITS_0_7)
-					return via_read(machine, 1, (offset >> 2) & 0xf);
+					return via_r(via_1, (offset >> 2) & 0xf);
 				break;
 
 			case 3:	/* keyboard/mouse cops via */
 				/* 1 VIA located at 0xDD81 */
 				if (ACCESSING_BITS_0_7)
-					return via_read(machine, 0, offset & 0xf);
+					return via_r(via_0, offset & 0xf);
 				break;
 			}
 		}
@@ -1960,7 +1975,7 @@ static READ16_HANDLER ( lisa_IO_r )
 		switch ((offset & 0x0C00) >> 10)
 		{
 		case 0x0:	/* cpu board control */
-			cpu_board_control_access(machine, offset & 0x03ff);
+			cpu_board_control_access(space->machine, offset & 0x03ff);
 			break;
 
 		case 0x1:	/* Video Address Latch */
@@ -1978,7 +1993,7 @@ static READ16_HANDLER ( lisa_IO_r )
 			if (VTIR<=1)
 // GFE : needs to be in phase with Serial NUM
 			{
-				int time_in_frame = video_screen_get_vpos(machine->primary_screen);
+				int time_in_frame = video_screen_get_vpos(space->machine->primary_screen);
 				if (lisa_features.has_mac_xl_video)
 				{
 					if ((time_in_frame >= 374) && (time_in_frame <= 392))	/* these values have not been tested */
@@ -2007,7 +2022,7 @@ static READ16_HANDLER ( lisa_IO_r )
 			else
 						answer |= 0x04;
 			/* huh... we need to emulate some other bits */
-			 logerror("read status PC=%x val=%x\n", safe_activecpu_get_pc(),answer);
+			 logerror("read status PC=%x val=%x\n", cpu_get_pc(space->machine->cpu[0]),answer);
 
 			break;
 		}
@@ -2019,6 +2034,9 @@ static READ16_HANDLER ( lisa_IO_r )
 
 static WRITE16_HANDLER ( lisa_IO_w )
 {
+	const device_config *via_0 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via_1 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_1");
+
 	switch ((offset & 0x7000) >> 12)
 	{
 	case 0x0:
@@ -2065,12 +2083,12 @@ static WRITE16_HANDLER ( lisa_IO_w )
 
 			case 2:	/* paralel port */
 				if (ACCESSING_BITS_0_7)
-					via_write(machine, 1, (offset >> 2) & 0xf, data & 0xff);
+					via_w(via_1, (offset >> 2) & 0xf, data & 0xff);
 				break;
 
 			case 3:	/* keyboard/mouse cops via */
 				if (ACCESSING_BITS_0_7)
-					via_write(machine, 0, offset & 0xf, data & 0xff);
+					via_w(via_0, offset & 0xf, data & 0xff);
 				break;
 			}
 		}
@@ -2081,7 +2099,7 @@ static WRITE16_HANDLER ( lisa_IO_w )
 		switch ((offset & 0x0C00) >> 10)
 		{
 		case 0x0:	/* cpu board control */
-			cpu_board_control_access(machine, offset & 0x03ff);
+			cpu_board_control_access(space->machine, offset & 0x03ff);
 			break;
 
 		case 0x1:	/* Video Address Latch */

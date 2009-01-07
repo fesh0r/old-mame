@@ -19,13 +19,14 @@
     - Add horizontal mosaic, hi-res. interlaced etc to video emulation.
     - Fix support for Mode 7. (In Progress)
     - Handle interleaved roms (maybe even multi-part roms, but how?)
-    - Add support for running at 3.58Mhz at the appropriate time.
+    - Add support for running at 3.58 MHz at the appropriate time.
     - I'm sure there's lots more ...
 
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/spc700/spc700.h"
+#include "cpu/g65816/g65816.h"
 #include "includes/snes.h"
 #include "machine/snescart.h"
 
@@ -49,12 +50,12 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( spc_ram_100_r )
 {
-	return spc_ram_r(machine, offset + 0x100);
+	return spc_ram_r(space, offset + 0x100);
 }
 
 static WRITE8_HANDLER( spc_ram_100_w )
 {
-	spc_ram_w(machine, offset + 0x100, data);
+	spc_ram_w(space, offset + 0x100, data);
 }
 
 static ADDRESS_MAP_START( spc_map, ADDRESS_SPACE_PROGRAM, 8)
@@ -181,7 +182,9 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 static const custom_sound_interface snes_sound_interface =
-{ snes_sh_start, 0, 0 };
+{
+	snes_sh_start, 0, 0
+};
 
 
 
@@ -193,14 +196,13 @@ static const custom_sound_interface snes_sound_interface =
 
 static MACHINE_DRIVER_START( snes )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", G65816, MCLK_NTSC/6)	/* 2.68Mhz, also 3.58Mhz */
+	MDRV_CPU_ADD("main", G65816, MCLK_NTSC/6)	/* 2.68 MHz, also 3.58 MHz */
 	MDRV_CPU_PROGRAM_MAP(snes_map, 0)
 
-	MDRV_CPU_ADD("sound", SPC700, 1024000)	/* 1.024 Mhz */
+	MDRV_CPU_ADD("sound", SPC700, 1024000)	/* 1.024 MHz */
 	MDRV_CPU_PROGRAM_MAP(spc_map, 0)
-	MDRV_CPU_VBLANK_INT_HACK(NULL, 0)
 
-	MDRV_INTERLEAVE(800)
+	MDRV_QUANTUM_TIME(HZ(48000))
 
 	MDRV_MACHINE_START( snes_mess )
 	MDRV_MACHINE_RESET( snes )
@@ -220,6 +222,8 @@ static MACHINE_DRIVER_START( snes )
 	MDRV_SOUND_CONFIG(snes_sound_interface)
 	MDRV_SOUND_ROUTE(0, "left", 1.00)
 	MDRV_SOUND_ROUTE(1, "right", 1.00)
+	
+	MDRV_IMPORT_FROM(snes_cartslot)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( snespal )
@@ -251,20 +255,6 @@ ROM_START(snespal)
 	ROM_LOAD("dsp1data.bin", 0x000000, 0x000800, CRC(4b02d66d) SHA1(1534f4403d2a0f68ba6e35186fe7595d33de34b1))
 ROM_END
 
-
-
-/***************************************************************************
-
-  System configuration(s)
-
-***************************************************************************/
-
-static SYSTEM_CONFIG_START(snes)
-	CONFIG_DEVICE(snes_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
-
-
 /***************************************************************************
 
   Game driver(s)
@@ -272,5 +262,5 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*     YEAR  NAME     PARENT  COMPAT  MACHINE  INPUT  INIT  CONFIG  COMPANY     FULLNAME                                      FLAGS */
-CONS( 1989, snes,    0,      0,      snes,    snes,  0,    snes,   "Nintendo", "Super Nintendo Entertainment System (NTSC)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-CONS( 1991, snespal, snes,   0,      snespal, snes,  0,    snes,   "Nintendo", "Super Nintendo Entertainment System (PAL)",  GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+CONS( 1989, snes,    0,      0,      snes,    snes,  0,    0,   "Nintendo", "Super Nintendo Entertainment System (NTSC)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+CONS( 1991, snespal, snes,   0,      snespal, snes,  0,    0,   "Nintendo", "Super Nintendo Entertainment System (PAL)",  GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )

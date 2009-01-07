@@ -82,7 +82,7 @@ static ADDRESS_MAP_START( dai_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0xfc00, 0xfcff) AM_DEVREADWRITE( PIT8253, "pit8253", pit8253_r, pit8253_w )
 	AM_RANGE( 0xfd00, 0xfdff) AM_READWRITE( dai_io_discrete_devices_r, dai_io_discrete_devices_w )
 	AM_RANGE( 0xfe00, 0xfeff) AM_DEVREADWRITE( PPI8255, "ppi8255", ppi8255_r, ppi8255_w )
-	AM_RANGE( 0xff00, 0xffff) AM_READWRITE( tms5501_0_r, tms5501_0_w )
+	AM_RANGE( 0xff00, 0xffff) AM_DEVREADWRITE( TMS5501, "tms5501", tms5501_r, tms5501_w )
 ADDRESS_MAP_END
 
 
@@ -186,15 +186,14 @@ static MACHINE_DRIVER_START( dai )
 	MDRV_CPU_ADD("main", 8080, 2000000)
 	MDRV_CPU_PROGRAM_MAP(dai_mem, 0)
 	MDRV_CPU_IO_MAP(dai_io, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( dai )
+	MDRV_MACHINE_RESET( dai )
 
-	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
-	MDRV_DEVICE_CONFIG( dai_pit8253_intf )
+	MDRV_PIT8253_ADD( "pit8253", dai_pit8253_intf )
 
-	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-	MDRV_DEVICE_CONFIG( dai_ppi82555_intf )
+	MDRV_PPI8255_ADD( "ppi8255", dai_ppi82555_intf )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -219,7 +218,11 @@ static MACHINE_DRIVER_START( dai )
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", dai_cassette_config )
+
+	/* tms5501 */
+	MDRV_TMS5501_ADD( "tms5501", dai_tms5501_interface )
 MACHINE_DRIVER_END
 
 #define io_dai		io_NULL

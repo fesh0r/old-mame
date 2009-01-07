@@ -23,7 +23,6 @@ sp_rinter@gmx.de
 ***************************************************************************/
 
 #include "driver.h"
-#include "cpu/m68000/m68k.h"
 #include "cpu/m68000/m68000.h"
 #include "glasgow.lh"
 #include "sound/beep.h"
@@ -190,8 +189,8 @@ static READ16_HANDLER( read_keys ) // Glasgow, Dallas
 {
 	UINT16 data;
 	data = 0x0300;
-	key_low = input_port_read(machine, "LINE0");
-	key_hi = input_port_read(machine, "LINE1");
+	key_low = input_port_read(space->machine, "LINE0");
+	key_hi = input_port_read(space->machine, "LINE1");
 	//logerror("Keyboard Offset = %x Data = %x\n  ",offset,data);
 	if (key_select == key_low)
 		data = data & 0x100;
@@ -206,9 +205,9 @@ static READ16_HANDLER( read_newkeys16 )  //Amsterdam, Roma
 	UINT16 data;
 
 	if (key_selector == 0) 
-		data = input_port_read(machine, "LINE0");
+		data = input_port_read(space->machine, "LINE0");
 	else 
-		data = input_port_read(machine, "LINE1");
+		data = input_port_read(space->machine, "LINE1");
 
 	logerror("read Keyboard Offset = %x Data = %x Select = %x \n", offset, data, key_selector);
 	data = data << 8;
@@ -359,9 +358,9 @@ static READ32_HANDLER( read_newkeys32 ) // Dallas 32, Roma 32
 {
 	UINT32 data;
 	if (key_selector == 0) 
-		data = input_port_read(machine, "LINE0");
+		data = input_port_read(space->machine, "LINE0");
 	else 
-		data = input_port_read(machine, "LINE1");
+		data = input_port_read(space->machine, "LINE1");
 	//if (key_selector==1) data=input_port_read(machine, "LINE0");else data=0;
 	logerror("read Keyboard Offset = %x Data = %x\n", offset, data);
 	data = data << 24;
@@ -402,17 +401,17 @@ static WRITE32_HANDLER ( write_beeper32 )
 
 static TIMER_CALLBACK( update_nmi )
 {
-	//cpunum_set_input_line_and_vector(machine, 0,  MC68000_IRQ_7,irq_edge&0xff ? CLEAR_LINE:ASSERT_LINE, MC68000_INT_ACK_AUTOVECTOR);
-		cpunum_set_input_line_and_vector(machine, 0,  MC68000_IRQ_7,ASSERT_LINE, MC68000_INT_ACK_AUTOVECTOR);
-		cpunum_set_input_line_and_vector(machine, 0,  MC68000_IRQ_7,CLEAR_LINE, MC68000_INT_ACK_AUTOVECTOR);
+	//cpu_set_input_line_and_vector(machine->cpu[0],  M68K_IRQ_7,irq_edge&0xff ? CLEAR_LINE:ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0],  M68K_IRQ_7,ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0],  M68K_IRQ_7,CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
    	irq_edge=~irq_edge;
 }
 
 static TIMER_CALLBACK( update_nmi32 )
 {
-	// cpunum_set_input_line_and_vector(machine, 0,  MC68020_IRQ_7, irq_edge&0xff ? CLEAR_LINE:ASSERT_LINE, MC68020_INT_ACK_AUTOVECTOR);
-		cpunum_set_input_line_and_vector(machine, 0,  MC68020_IRQ_7, ASSERT_LINE, MC68020_INT_ACK_AUTOVECTOR);
-		cpunum_set_input_line_and_vector(machine, 0,  MC68020_IRQ_7, CLEAR_LINE, MC68020_INT_ACK_AUTOVECTOR);
+	// cpu_set_input_line_and_vector(machine->cpu[0],  M68K_IRQ_7, irq_edge&0xff ? CLEAR_LINE:ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0],  M68K_IRQ_7, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0],  M68K_IRQ_7, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
     irq_edge=~irq_edge;
 }
 
@@ -421,7 +420,7 @@ static MACHINE_START( glasgow )
 	key_selector = 0;
 	irq_flag = 0;
 	lcd_shift_counter = 3;
-	timer_pulse(ATTOTIME_IN_HZ(50), NULL, 0, update_nmi);
+	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, update_nmi);
 	beep_set_frequency(0, 44);
 }
 
@@ -429,7 +428,7 @@ static MACHINE_START( glasgow )
 static MACHINE_START( dallas32 )
 {
 	lcd_shift_counter = 3;
-	timer_pulse(ATTOTIME_IN_HZ(50), NULL, 0, update_nmi32);
+	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, update_nmi32);
 	beep_set_frequency(0, 44);
 }
 
@@ -614,11 +613,11 @@ ROM_END
   Game drivers
 ***************************************************************************/
 
-/*     YEAR, NAME,     PARENT,   BIOS, COMPAT MACHINE,INPUT,          INIT,     CONFIG, COMPANY,                      FULLNAME,                 FLAGS */
-CONS(  1984, glasgow,  0,        0,    glasgow,       old_keyboard,   0,		NULL,   "Hegener & Glaser Muenchen",  "Mephisto III S Glasgow", 0)
-CONS(  1984, amsterd,  0,        0,    amsterd,       new_keyboard,   0,		NULL,   "Hegener & Glaser Muenchen",  "Mephisto Amsterdam",     0)
-CONS(  1984, dallas,   0,        0,    glasgow,       old_keyboard,   0,	    NULL,   "Hegener & Glaser Muenchen",  "Mephisto Dallas",        0)
-CONS(  1984, roma,     0,        0,    glasgow,       new_keyboard,   0,	    NULL,   "Hegener & Glaser Muenchen",  "Mephisto Roma",          GAME_NOT_WORKING)
-CONS(  1984, dallas32, 0,        0,    dallas32,      new_keyboard,   0,	    NULL,   "Hegener & Glaser Muenchen",  "Mephisto Dallas 32 Bit", 0)
-CONS(  1984, roma32,   0,        0,    dallas32,      new_keyboard,   0,	    NULL,   "Hegener & Glaser Muenchen",  "Mephisto Roma 32 Bit",   0)
-CONS(  1984, dallas16, 0,        0,    amsterd,       new_keyboard,   0,		NULL,   "Hegener & Glaser Muenchen",  "Mephisto Dallas 16 Bit", 0)
+/*     YEAR, NAME,     PARENT,   COMPAT, MACHINE,     INPUT,          INIT,     CONFIG, COMPANY,                      FULLNAME,                 FLAGS */
+CONS(  1984, glasgow,  0,        0,    glasgow,       old_keyboard,   0,	NULL,   "Hegener & Glaser Muenchen",  "Mephisto III S Glasgow", 0)
+CONS(  1984, amsterd,  glasgow,  0,    amsterd,       new_keyboard,   0,	NULL,   "Hegener & Glaser Muenchen",  "Mephisto Amsterdam",     0)
+CONS(  1984, dallas,   glasgow,  0,    glasgow,       old_keyboard,   0,	NULL,   "Hegener & Glaser Muenchen",  "Mephisto Dallas",        0)
+CONS(  1984, roma,     glasgow,  0,    glasgow,       new_keyboard,   0,	NULL,   "Hegener & Glaser Muenchen",  "Mephisto Roma",          GAME_NOT_WORKING)
+CONS(  1984, dallas32, glasgow,  0,    dallas32,      new_keyboard,   0,	NULL,   "Hegener & Glaser Muenchen",  "Mephisto Dallas 32 Bit", 0)
+CONS(  1984, roma32,   glasgow,  0,    dallas32,      new_keyboard,   0,	NULL,   "Hegener & Glaser Muenchen",  "Mephisto Roma 32 Bit",   0)
+CONS(  1984, dallas16, glasgow,  0,    amsterd,       new_keyboard,   0,	NULL,   "Hegener & Glaser Muenchen",  "Mephisto Dallas 16 Bit", 0)

@@ -119,7 +119,7 @@ void cdp1862_update(const device_config *device, bitmap_t *bitmap, const rectang
 	cdp1862_t *cdp1862 = get_safe_token(device);
 
 	copybitmap(bitmap, cdp1862->bitmap, 0, 0, 0, 0, cliprect);
-	fillbitmap(cdp1862->bitmap, CDP1862_BACKGROUND_COLOR_SEQUENCE[cdp1862->bgcolor] + 8, cliprect);
+	bitmap_fill(cdp1862->bitmap, cliprect, CDP1862_BACKGROUND_COLOR_SEQUENCE[cdp1862->bgcolor] + 8);
 }
 
 /* Device Interface */
@@ -127,17 +127,16 @@ void cdp1862_update(const device_config *device, bitmap_t *bitmap, const rectang
 static DEVICE_START( cdp1862 )
 {
 	cdp1862_t *cdp1862 = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
 	assert(strlen(device->tag) < 20);
+	assert(device->clock > 0);
 
 	cdp1862->intf = device->static_config;
 
 	assert(cdp1862->intf != NULL);
-	assert(cdp1862->intf->clock > 0);
 
 	/* get the screen device */
 	cdp1862->screen = device_list_find_by_tag(device->machine->config->devicelist, VIDEO_SCREEN, cdp1862->intf->screen_tag);
@@ -150,12 +149,9 @@ static DEVICE_START( cdp1862 )
 	cdp1862_init_palette(device);
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "cdp1862", device->tag);
-
-	state_save_register_item(unique_tag, 0, cdp1862->bgcolor);
-	state_save_register_item(unique_tag, 0, cdp1862->con);
-
-	state_save_register_bitmap(unique_tag, 0, "cdp1862->bitmap", cdp1862->bitmap);
+	state_save_register_device_item(device, 0, cdp1862->bgcolor);
+	state_save_register_device_item(device, 0, cdp1862->con);
+	state_save_register_device_item_bitmap(device, 0, cdp1862->bitmap);
 
 	return DEVICE_START_OK;
 }
@@ -192,10 +188,10 @@ DEVICE_GET_INFO( cdp1862 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(cdp1862);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "RCA CDP1862";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "RCA CDP1800";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright MESS Team";			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "RCA CDP1862");					break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "RCA CDP1800");					break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
 	}
 }

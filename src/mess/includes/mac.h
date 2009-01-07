@@ -11,6 +11,7 @@
 
 #include "sound/custom.h"
 #include "machine/8530scc.h"
+#include "machine/6522via.h"
 
 
 // video parameters
@@ -22,7 +23,9 @@
 
 /*----------- defined in machine/mac.c -----------*/
 
-extern const scc8530_interface mac_scc8530_interface;
+extern const via6522_interface mac_via6522_intf;
+extern const via6522_interface mac_via6522_2_intf;
+extern const via6522_interface mac_via6522_adb_intf;
 
 MACHINE_START( macscsi );
 MACHINE_RESET( mac );
@@ -32,20 +35,25 @@ DRIVER_INIT(mac512ke);
 DRIVER_INIT(macplus);
 DRIVER_INIT(macse);
 DRIVER_INIT(macclassic);
+DRIVER_INIT(maclc);
 
 READ16_HANDLER ( mac_via_r );
 WRITE16_HANDLER ( mac_via_w );
+READ16_HANDLER ( mac_via2_r );
+WRITE16_HANDLER ( mac_via2_w );
 READ16_HANDLER ( mac_autovector_r );
 WRITE16_HANDLER ( mac_autovector_w );
 READ16_HANDLER ( mac_iwm_r );
 WRITE16_HANDLER ( mac_iwm_w );
 READ16_HANDLER ( mac_scc_r );
 WRITE16_HANDLER ( mac_scc_w );
+WRITE16_HANDLER ( mac_scc_2_w );
 READ16_HANDLER ( macplus_scsi_r );
 WRITE16_HANDLER ( macplus_scsi_w );
 NVRAM_HANDLER( mac );
+void mac_scc_ack(const device_config *device);
 void mac_scc_mouse_irq( running_machine *machine, int x, int y );
-void mac_fdc_set_enable_lines(int enable_mask);
+void mac_fdc_set_enable_lines(const device_config *device, int enable_mask);
 
 
 /*----------- defined in video/mac.c -----------*/
@@ -59,7 +67,7 @@ void mac_set_screen_buffer( int buffer );
 
 /*----------- defined in audio/mac.c -----------*/
 
-void *mac_sh_start(int clock, const custom_sound_interface *config);
+CUSTOM_START( mac_sh_start );
 
 void mac_enable_sound( int on );
 void mac_set_sound_buffer( int buffer );

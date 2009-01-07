@@ -9,21 +9,20 @@
 
 #include "driver.h"
 #include "streams.h"
-#include "deprecat.h"
 
 #include "video/ted7360.h"
 
 
 #define VERBOSE_LEVEL 0
 #define DBG_LOG(N,M,A) \
-	{ \
+	do { \
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
 			logerror A; \
 		} \
-	}
+	} while (0)
 
 
 /* noise channel: look into vic6560.c */
@@ -105,12 +104,12 @@ void ted7360_soundport_w (running_machine *machine, int offset, int data)
 /************************************/
 /* Sound handler update             */
 /************************************/
-static void ted7360_update (void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length)
+static STREAM_UPDATE( ted7360_update )
 {
 	int i, v, a;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
-	for (i = 0; i < length; i++)
+	for (i = 0; i < samples; i++)
 	{
 		v = 0;
 		if (TONE1_ON)
@@ -153,11 +152,12 @@ static void ted7360_update (void *param,stream_sample_t **inputs, stream_sample_
 /************************************/
 /* Sound handler start              */
 /************************************/
-void *ted7360_custom_start (int clock, const custom_sound_interface *config)
+
+CUSTOM_START( ted7360_custom_start )
 {
 	int i;
 
-	channel = stream_create(0, 1, Machine->sample_rate, 0, ted7360_update);
+	channel = stream_create(device, 0, 1, device->machine->sample_rate, 0, ted7360_update);
 
 	/* buffer for fastest played sample for 5 second
 	 * so we have enough data for min 5 second */
@@ -196,4 +196,3 @@ void *ted7360_custom_start (int clock, const custom_sound_interface *config)
 	}
 	return (void *) ~0;
 }
-

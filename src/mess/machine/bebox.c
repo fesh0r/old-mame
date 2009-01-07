@@ -91,7 +91,6 @@
 #include "driver.h"
 #include "memconv.h"
 #include "includes/bebox.h"
-#include "deprecat.h"
 
 /* Components */
 #include "video/pc_vga.h"
@@ -167,9 +166,9 @@ WRITE64_HANDLER( bebox_cpu0_imask_w )
 		if (LOG_CPUIMASK)
 		{
 			logerror("BeBox CPU #0 pc=0x%08X imask=0x%08x\n",
-				(unsigned) activecpu_get_reg(REG_PC), bebox_cpu_imask[0]);
+				(unsigned) cpu_get_pc( space->cpu), bebox_cpu_imask[0]);
 		}
-		bebox_update_interrupts(machine);
+		bebox_update_interrupts(space->machine);
 	}
 }
 
@@ -184,9 +183,9 @@ WRITE64_HANDLER( bebox_cpu1_imask_w )
 		if (LOG_CPUIMASK)
 		{
 			logerror("BeBox CPU #1 pc=0x%08X imask=0x%08x\n",
-				(unsigned) activecpu_get_reg(REG_PC), bebox_cpu_imask[1]);
+				(unsigned) cpu_get_pc( space->cpu ), bebox_cpu_imask[1]);
 		}
-		bebox_update_interrupts(machine);
+		bebox_update_interrupts(space->machine);
 	}
 }
 
@@ -194,10 +193,13 @@ READ64_HANDLER( bebox_crossproc_interrupts_r )
 {
 	UINT32 result;
 	result = bebox_crossproc_interrupts;
-	if (cpu_getactivecpu())
+
+	/* return a different result depending on which CPU is accessing this handler */
+	if (space != cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM))
 		result |= 0x02000000;
 	else
 		result &= ~0x02000000;
+
 	return ((UINT64) result) << 32;
 }
 
@@ -239,7 +241,7 @@ WRITE64_HANDLER( bebox_crossproc_interrupts_w )
 					*/
 			}
 
-			cpunum_set_input_line(machine, crossproc_map[i].cpunum, crossproc_map[i].inputline, line);
+			cpu_set_input_line(space->machine->cpu[crossproc_map[i].cpunum], crossproc_map[i].inputline, line);
 		}
 	}
 }
@@ -250,7 +252,7 @@ WRITE64_HANDLER( bebox_processor_resets_w )
 
 	if (b & 0x20)
 	{
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (b & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+		cpu_set_input_line( space->machine->cpu[1], INPUT_LINE_RESET, (b & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 	}
 }
 
@@ -270,7 +272,7 @@ static void bebox_update_interrupts(running_machine *machine)
 				bebox_interrupts, bebox_cpu_imask[cpunum], interrupt ? "on" : "off");
 		}
 
-		cpunum_set_input_line(machine, cpunum, INPUT_LINE_IRQ0, interrupt ? ASSERT_LINE : CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[cpunum], INPUT_LINE_IRQ0, interrupt ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -320,8 +322,8 @@ static void bebox_set_irq_bit(running_machine *machine, unsigned int interrupt_b
 		assert_always((interrupt_bit < ARRAY_LENGTH(interrupt_names)) && (interrupt_names[interrupt_bit] != NULL), "Raising invalid interrupt");
 
 		logerror("bebox_set_irq_bit(): pc[0]=0x%08x pc[1]=0x%08x %s interrupt #%u (%s)\n",
-			(unsigned) cpunum_get_reg(0, REG_PC),
-			(unsigned) cpunum_get_reg(1, REG_PC),
+			(unsigned) cpu_get_reg( machine->cpu[0], REG_GENPC),
+			(unsigned) cpu_get_reg( machine->cpu[1], REG_GENPC),
 			val ? "Asserting" : "Clearing",
 			interrupt_bit, interrupt_names[interrupt_bit]);
 	}
@@ -358,36 +360,40 @@ static INS8250_HANDSHAKE_OUT( bebox_uart_handshake )
 }
 
 
-const ins8250_interface bebox_uart_inteface[4] =
+const ins8250_interface bebox_uart_inteface_0 =
 {
-	{
-		0,
-		NULL,
-		NULL,
-		NULL,
-		NULL
-	},
-	{
-		0,
-		NULL,
-		NULL,
-		NULL,
-		NULL
-	},
-	{
-		0,
-		NULL,
-		NULL,
-		NULL,
-		NULL
-	},
-	{
-		0,
-		NULL,
-		bebox_uart_transmit,
-		bebox_uart_handshake,
-		NULL
-	}
+	0,
+	NULL,
+	NULL,
+	NULL,
+	NULL
+};
+
+const ins8250_interface bebox_uart_inteface_1 =
+{
+	0,
+	NULL,
+	NULL,
+	NULL,
+	NULL
+};
+
+const ins8250_interface bebox_uart_inteface_2 =
+{
+	0,
+	NULL,
+	NULL,
+	NULL,
+	NULL
+};
+
+const ins8250_interface bebox_uart_inteface_3 =
+{
+	0,
+	NULL,
+	bebox_uart_transmit,
+	bebox_uart_handshake,
+	NULL
 };
 
 
@@ -399,16 +405,16 @@ const ins8250_interface bebox_uart_inteface[4] =
 
 #define FDC_DMA 2
 
-static void bebox_fdc_interrupt(int state)
+static void bebox_fdc_interrupt(running_machine *machine, int state)
 {
-	bebox_set_irq_bit(Machine, 13, state);
+	bebox_set_irq_bit(machine, 13, state);
 	if ( bebox_devices.pic8259_master ) {
 		pic8259_set_irq_line(bebox_devices.pic8259_master, 6, state);
 	}
 }
 
 
-static void bebox_fdc_dma_drq(int state, int read_)
+static void bebox_fdc_dma_drq(running_machine *machine, int state, int read_)
 {
 	if ( bebox_devices.dma8237_1 ) {
 		dma8237_drq_write(bebox_devices.dma8237_1, FDC_DMA, state);
@@ -416,21 +422,25 @@ static void bebox_fdc_dma_drq(int state, int read_)
 }
 
 
-static const device_config *bebox_fdc_get_image(int floppy_index)
+static const device_config *bebox_fdc_get_image(running_machine *machine, int floppy_index)
 {
 	/* the BeBox boot ROM seems to query for floppy #1 when it should be
 	 * querying for floppy #0 */
-	return image_from_devtype_and_index(IO_FLOPPY, 0);
+	return image_from_devtype_and_index(machine, IO_FLOPPY, 0);
+}
+
+static device_config * bebox_get_device(running_machine *machine )
+{
+	return (device_config*)device_list_find_by_tag( machine->config->devicelist, SMC37C78, "smc37c78");	
 }
 
 
 static const struct pc_fdc_interface bebox_fdc_interface =
 {
-	SMC37C78,
-	NEC765_RDY_PIN_CONNECTED,
 	bebox_fdc_interrupt,
 	bebox_fdc_dma_drq,
-	bebox_fdc_get_image
+	bebox_fdc_get_image,
+	bebox_get_device
 };
 
 
@@ -446,7 +456,7 @@ READ64_HANDLER( bebox_interrupt_ack_r )
 	result = pic8259_acknowledge( bebox_devices.pic8259_master );
 	if (result == 2)
 		result = pic8259_acknowledge( bebox_devices.pic8259_slave );
-	bebox_set_irq_bit(machine, 5, 0);	/* HACK */
+	bebox_set_irq_bit(space->machine, 5, 0);	/* HACK */
 	return ((UINT64) result) << 56;
 }
 
@@ -493,27 +503,27 @@ static const device_config *ide_device(running_machine *machine)
 		"ide_controller");
 }
 
-static READ8_HANDLER( bebox_800001F0_8_r ) { return ide_controller_r(ide_device(machine), offset + 0x1F0); }
-static WRITE8_HANDLER( bebox_800001F0_8_w ) { ide_controller_w(ide_device(machine), offset + 0x1F0, data); }
+static READ8_HANDLER( bebox_800001F0_8_r ) { return ide_controller_r(ide_device(space->machine), offset + 0x1F0); }
+static WRITE8_HANDLER( bebox_800001F0_8_w ) { ide_controller_w(ide_device(space->machine), offset + 0x1F0, data); }
 
-READ64_HANDLER( bebox_800001F0_r ) { return read64be_with_read8_handler(bebox_800001F0_8_r, machine, offset, mem_mask); }
-WRITE64_HANDLER( bebox_800001F0_w ) { write64be_with_write8_handler(bebox_800001F0_8_w, machine, offset, data, mem_mask); }
+READ64_HANDLER( bebox_800001F0_r ) { return read64be_with_read8_handler(bebox_800001F0_8_r, space, offset, mem_mask); }
+WRITE64_HANDLER( bebox_800001F0_w ) { write64be_with_write8_handler(bebox_800001F0_8_w, space, offset, data, mem_mask); }
 
 
 READ64_HANDLER( bebox_800003F0_r )
 {
-	UINT64 result = read64be_with_read8_handler(pc_fdc_r, machine, offset, mem_mask | 0xFFFF);
+	UINT64 result = read64be_with_read8_handler(pc_fdc_r, space, offset, mem_mask | 0xFFFF);
 
 	if (((mem_mask >> 8) & 0xFF) == 0)
 	{
 		result &= ~(0xFF << 8);
-		result |= ide_controller_r(ide_device(machine), 0x3F6) << 8;
+		result |= ide_controller_r(ide_device(space->machine), 0x3F6) << 8;
 	}
 
 	if (((mem_mask >> 0) & 0xFF) == 0)
 	{
 		result &= ~(0xFF << 0);
-		result |= ide_controller_r(ide_device(machine), 0x3F7) << 0;
+		result |= ide_controller_r(ide_device(space->machine), 0x3F7) << 0;
 	}
 	return result;
 }
@@ -521,19 +531,19 @@ READ64_HANDLER( bebox_800003F0_r )
 
 WRITE64_HANDLER( bebox_800003F0_w )
 {
-	write64be_with_write8_handler(pc_fdc_w, machine, offset, data, mem_mask | 0xFFFF);
+	write64be_with_write8_handler(pc_fdc_w, space, offset, data, mem_mask | 0xFFFF);
 
 	if (((mem_mask >> 8) & 0xFF) == 0)
-		ide_controller_w(ide_device(machine), 0x3F6, (data >> 8) & 0xFF);
+		ide_controller_w(ide_device(space->machine), 0x3F6, (data >> 8) & 0xFF);
 
 	if (((mem_mask >> 0) & 0xFF) == 0)
-		ide_controller_w(ide_device(machine), 0x3F7, (data >> 0) & 0xFF);
+		ide_controller_w(ide_device(space->machine), 0x3F7, (data >> 0) & 0xFF);
 }
 
 
-void bebox_ide_interrupt(int state)
+void bebox_ide_interrupt(const device_config *device, int state)
 {
-	bebox_set_irq_bit(Machine, 7, state);
+	bebox_set_irq_bit(device->machine, 7, state);
 	if ( bebox_devices.pic8259_master ) {
 		pic8259_set_irq_line( bebox_devices.pic8259_master, 6, state);
 	}
@@ -546,8 +556,8 @@ void bebox_ide_interrupt(int state)
  *
  *************************************/
 
-static read8_machine_func bebox_vga_memory_rh;
-static write8_machine_func bebox_vga_memory_wh;
+static read8_space_func bebox_vga_memory_rh;
+static write8_space_func bebox_vga_memory_wh;
 
 static READ64_HANDLER( bebox_video_r )
 {
@@ -567,29 +577,31 @@ static WRITE64_HANDLER( bebox_video_w )
 
 static READ64_HANDLER( bebox_vga_memory_r )
 {
-	return read64be_with_read8_handler(bebox_vga_memory_rh, machine, offset, mem_mask);
+	return read64be_with_read8_handler(bebox_vga_memory_rh, space, offset, mem_mask);
 }
 
 
 static WRITE64_HANDLER( bebox_vga_memory_w )
 {
-	write64be_with_write8_handler(bebox_vga_memory_wh, machine, offset, data, mem_mask);
+	write64be_with_write8_handler(bebox_vga_memory_wh, space, offset, data, mem_mask);
 }
 
 
-static void bebox_map_vga_memory(offs_t begin, offs_t end, read8_machine_func rh, write8_machine_func wh)
+static void bebox_map_vga_memory(running_machine *machine, offs_t begin, offs_t end, read8_space_func rh, write8_space_func wh)
 {
-	read64_machine_func rh64 = (rh == SMH_BANK4) ? SMH_BANK4 : bebox_vga_memory_r;
-	write64_machine_func wh64 = (wh == SMH_BANK4) ? SMH_BANK4 : bebox_vga_memory_w;
+	const address_space *space = cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM );
+
+	read64_space_func rh64 = (rh == SMH_BANK4) ? SMH_BANK4 : bebox_vga_memory_r;
+	write64_space_func wh64 = (wh == SMH_BANK4) ? SMH_BANK4 : bebox_vga_memory_w;
 
 	bebox_vga_memory_rh = rh;
 	bebox_vga_memory_wh = wh;
 
-	memory_install_read64_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xC00A0000, 0xC00BFFFF, 0, 0, SMH_NOP);
-	memory_install_write64_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xC00A0000, 0xC00BFFFF, 0, 0, SMH_NOP);
+	memory_install_read64_handler(space, 0xC00A0000, 0xC00BFFFF, 0, 0, SMH_NOP);
+	memory_install_write64_handler(space, 0xC00A0000, 0xC00BFFFF, 0, 0, SMH_NOP);
 
-	memory_install_read64_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xC0000000 + begin, 0xC0000000 + end, 0, 0, rh64);
-	memory_install_write64_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xC0000000 + begin, 0xC0000000 + end, 0, 0, wh64);
+	memory_install_read64_handler(space, 0xC0000000 + begin, 0xC0000000 + end, 0, 0, rh64);
+	memory_install_write64_handler(space, 0xC0000000 + begin, 0xC0000000 + end, 0, 0, wh64);
 }
 
 
@@ -665,13 +677,13 @@ static WRITE8_HANDLER(at_page8_w)
 
 READ64_HANDLER(bebox_page_r)
 {
-	return read64be_with_read8_handler(at_page8_r, machine, offset, mem_mask);
+	return read64be_with_read8_handler(at_page8_r, space, offset, mem_mask);
 }
 
 
 WRITE64_HANDLER(bebox_page_w)
 {
-	write64be_with_write8_handler(at_page8_w, machine, offset, data, mem_mask);
+	write64be_with_write8_handler(at_page8_w, space, offset, data, mem_mask);
 }
 
 
@@ -707,23 +719,25 @@ READ64_HANDLER(bebox_80000480_r)
 
 WRITE64_HANDLER(bebox_80000480_w)
 {
-	write64be_with_write8_handler(at_hipage8_w, machine, offset, data, mem_mask);
+	write64be_with_write8_handler(at_hipage8_w, space, offset, data, mem_mask);
 }
 
 
 static DMA8237_MEM_READ( bebox_dma_read_byte )
 {
+	const address_space *space = cpu_get_address_space( device->machine->cpu[0], ADDRESS_SPACE_PROGRAM );
 	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
 		& 0x7FFF0000;
-	return program_read_byte(page_offset + offset);
+	return memory_read_byte(space, page_offset + offset);
 }
 
 
 static DMA8237_MEM_WRITE( bebox_dma_write_byte )
 {
+	const address_space *space = cpu_get_address_space( device->machine->cpu[0], ADDRESS_SPACE_PROGRAM );
 	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
 		& 0x7FFF0000;
-	program_write_byte(page_offset + offset, data);
+	memory_write_byte(space, page_offset + offset, data);
 }
 
 
@@ -825,13 +839,13 @@ static WRITE8_HANDLER( bebox_flash8_w )
 
 READ64_HANDLER( bebox_flash_r )
 {
-	return read64be_with_read8_handler(bebox_flash8_r, machine, offset, mem_mask);
+	return read64be_with_read8_handler(bebox_flash8_r, space, offset, mem_mask);
 }
 
 
 WRITE64_HANDLER( bebox_flash_w )
 {
-	write64be_with_write8_handler(bebox_flash8_w, machine, offset, data, mem_mask);
+	write64be_with_write8_handler(bebox_flash8_w, space, offset, data, mem_mask);
 }
 
 
@@ -841,9 +855,9 @@ WRITE64_HANDLER( bebox_flash_w )
  *
  *************************************/
 
-static void bebox_keyboard_interrupt(int state)
+static void bebox_keyboard_interrupt(running_machine *machine,int state)
 {
-	bebox_set_irq_bit(Machine, 16, state);
+	bebox_set_irq_bit(machine, 16, state);
 	if ( bebox_devices.pic8259_master ) {
 		pic8259_set_irq_line( bebox_devices.pic8259_master, 1, state);
 	}
@@ -875,28 +889,28 @@ static READ64_HANDLER( scsi53c810_r )
 	int reg = offset*8;
 	UINT64 r = 0;
 	if (!(mem_mask & U64(0xff00000000000000))) {
-		r |= (UINT64)lsi53c810_reg_r(machine, reg+0) << 56;
+		r |= (UINT64)lsi53c810_reg_r(space, reg+0) << 56;
 	}
 	if (!(mem_mask & U64(0x00ff000000000000))) {
-		r |= (UINT64)lsi53c810_reg_r(machine, reg+1) << 48;
+		r |= (UINT64)lsi53c810_reg_r(space, reg+1) << 48;
 	}
 	if (!(mem_mask & U64(0x0000ff0000000000))) {
-		r |= (UINT64)lsi53c810_reg_r(machine, reg+2) << 40;
+		r |= (UINT64)lsi53c810_reg_r(space, reg+2) << 40;
 	}
 	if (!(mem_mask & U64(0x000000ff00000000))) {
-		r |= (UINT64)lsi53c810_reg_r(machine, reg+3) << 32;
+		r |= (UINT64)lsi53c810_reg_r(space, reg+3) << 32;
 	}
 	if (!(mem_mask & U64(0x00000000ff000000))) {
-		r |= (UINT64)lsi53c810_reg_r(machine, reg+4) << 24;
+		r |= (UINT64)lsi53c810_reg_r(space, reg+4) << 24;
 	}
 	if (!(mem_mask & U64(0x0000000000ff0000))) {
-		r |= (UINT64)lsi53c810_reg_r(machine, reg+5) << 16;
+		r |= (UINT64)lsi53c810_reg_r(space, reg+5) << 16;
 	}
 	if (!(mem_mask & U64(0x000000000000ff00))) {
-		r |= (UINT64)lsi53c810_reg_r(machine, reg+6) << 8;
+		r |= (UINT64)lsi53c810_reg_r(space, reg+6) << 8;
 	}
 	if (!(mem_mask & U64(0x00000000000000ff))) {
-		r |= (UINT64)lsi53c810_reg_r(machine, reg+7) << 0;
+		r |= (UINT64)lsi53c810_reg_r(space, reg+7) << 0;
 	}
 
 	return r;
@@ -907,28 +921,28 @@ static WRITE64_HANDLER( scsi53c810_w )
 {
 	int reg = offset*8;
 	if (!(mem_mask & U64(0xff00000000000000))) {
-		lsi53c810_reg_w(machine, reg+0, data >> 56);
+		lsi53c810_reg_w(space, reg+0, data >> 56);
 	}
 	if (!(mem_mask & U64(0x00ff000000000000))) {
-		lsi53c810_reg_w(machine, reg+1, data >> 48);
+		lsi53c810_reg_w(space, reg+1, data >> 48);
 	}
 	if (!(mem_mask & U64(0x0000ff0000000000))) {
-		lsi53c810_reg_w(machine, reg+2, data >> 40);
+		lsi53c810_reg_w(space, reg+2, data >> 40);
 	}
 	if (!(mem_mask & U64(0x000000ff00000000))) {
-		lsi53c810_reg_w(machine, reg+3, data >> 32);
+		lsi53c810_reg_w(space, reg+3, data >> 32);
 	}
 	if (!(mem_mask & U64(0x00000000ff000000))) {
-		lsi53c810_reg_w(machine, reg+4, data >> 24);
+		lsi53c810_reg_w(space, reg+4, data >> 24);
 	}
 	if (!(mem_mask & U64(0x0000000000ff0000))) {
-		lsi53c810_reg_w(machine, reg+5, data >> 16);
+		lsi53c810_reg_w(space, reg+5, data >> 16);
 	}
 	if (!(mem_mask & U64(0x000000000000ff00))) {
-		lsi53c810_reg_w(machine, reg+6, data >> 8);
+		lsi53c810_reg_w(space, reg+6, data >> 8);
 	}
 	if (!(mem_mask & U64(0x00000000000000ff))) {
-		lsi53c810_reg_w(machine, reg+7, data >> 0);
+		lsi53c810_reg_w(space, reg+7, data >> 0);
 	}
 }
 
@@ -938,10 +952,10 @@ static WRITE64_HANDLER( scsi53c810_w )
 								((x << 8) & 0xff0000) | \
 								((x << 24) & 0xff000000))
 
-static UINT32 scsi53c810_fetch(UINT32 dsp)
+static UINT32 scsi53c810_fetch(running_machine *machine, UINT32 dsp)
 {
 	UINT32 result;
-	result = program_read_dword_64be(dsp & 0x7FFFFFFF);
+	result = memory_read_dword_64be( cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM ), dsp & 0x7FFFFFFF);
 	return BYTE_REVERSE32(result);
 }
 
@@ -952,12 +966,12 @@ static void scsi53c810_irq_callback(running_machine *machine, int value)
 }
 
 
-static void scsi53c810_dma_callback(UINT32 src, UINT32 dst, int length, int byteswap)
+static void scsi53c810_dma_callback(running_machine *machine, UINT32 src, UINT32 dst, int length, int byteswap)
 {
 }
 
 
-static UINT32 scsi53c810_pci_read(int function, int offset, UINT32 mem_mask)
+UINT32 scsi53c810_pci_read(const device_config *busdevice, const device_config *device, int function, int offset, UINT32 mem_mask)
 {
 	UINT32 result = 0;
 
@@ -982,7 +996,7 @@ static UINT32 scsi53c810_pci_read(int function, int offset, UINT32 mem_mask)
 }
 
 
-static void scsi53c810_pci_write(int function, int offset, UINT32 data, UINT32 mem_mask)
+void scsi53c810_pci_write(const device_config *busdevice, const device_config *device, int function, int offset, UINT32 data, UINT32 mem_mask)
 {
 	offs_t addr;
 
@@ -1007,9 +1021,11 @@ static void scsi53c810_pci_write(int function, int offset, UINT32 data, UINT32 m
 					/* brutal ugly hack; at some point the PCI code should be handling this stuff */
 					if (scsi53c810_data[5] != 0xFFFFFFF0)
 					{
+						const address_space *space = cpu_get_address_space( device->machine->cpu[0], ADDRESS_SPACE_PROGRAM );
+
 						addr = (scsi53c810_data[5] | 0xC0000000) & ~0xFF;
-						memory_install_read64_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, addr, addr + 0xFF, 0, 0, scsi53c810_r);
-						memory_install_write64_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, addr, addr + 0xFF, 0, 0, scsi53c810_w);
+						memory_install_read64_handler(space, addr, addr + 0xFF, 0, 0, scsi53c810_r);
+						memory_install_write64_handler(space, addr, addr + 0xFF, 0, 0, scsi53c810_w);
 					}
 				}
 				break;
@@ -1017,12 +1033,6 @@ static void scsi53c810_pci_write(int function, int offset, UINT32 data, UINT32 m
 	}
 }
 
-
-static const struct pci_device_info scsi53c810_callbacks =
-{
-	scsi53c810_pci_read,
-	scsi53c810_pci_write
-};
 
 static const SCSIConfigTable dev_table =
 {
@@ -1068,10 +1078,10 @@ MACHINE_RESET( bebox )
 	bebox_devices.dma8237_1 = NULL;
 	bebox_devices.dma8237_2 = NULL;
 
-	timer_set( attotime_zero, NULL, 0, bebox_get_devices );
+	timer_set(machine,  attotime_zero, NULL, 0, bebox_get_devices );
 
-	cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, CLEAR_LINE);
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[0], INPUT_LINE_RESET, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static void bebox_exit(running_machine *machine)
@@ -1083,45 +1093,41 @@ MACHINE_START( bebox )
 {
 	pc_fdc_init(machine, &bebox_fdc_interface);
 	/* SCSI */
-	lsi53c810_init(&scsi53c810_intf);
+	lsi53c810_init(machine, &scsi53c810_intf);
 	add_exit_callback(machine, bebox_exit);
 }
 
 DRIVER_INIT( bebox )
 {
-	int cpu;
+	const address_space *space_0 = cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM );
+	const address_space *space_1 = cpu_get_address_space( machine->cpu[1], ADDRESS_SPACE_PROGRAM );
 	offs_t vram_begin;
 	offs_t vram_end;
 
 	mpc105_init(0);
-	pci_add_device(0, 1, &cirrus5430_callbacks);
-	if (0)
-		pci_add_device(0, 12, &scsi53c810_callbacks);
 
 	/* set up boot and flash ROM */
-	memory_set_bankptr(2, memory_region(machine, "user2"));
-	intelflash_init(0, FLASH_FUJITSU_29F016A, memory_region(machine, "user1"));
+	memory_set_bankptr(machine, 2, memory_region(machine, "user2"));
+	intelflash_init(machine, 0, FLASH_FUJITSU_29F016A, memory_region(machine, "user1"));
 
 	/* install MESS managed RAM */
-	for (cpu = 0; cpu < 2; cpu++)
-	{
-		memory_install_read64_handler(machine, cpu, ADDRESS_SPACE_PROGRAM, 0, mess_ram_size - 1, 0, 0x02000000, SMH_BANK3);
-		memory_install_write64_handler(machine, cpu, ADDRESS_SPACE_PROGRAM, 0, mess_ram_size - 1, 0, 0x02000000, SMH_BANK3);
-	}
-	memory_set_bankptr(3, mess_ram);
+	memory_install_read64_handler(space_0, 0, mess_ram_size - 1, 0, 0x02000000, SMH_BANK3);
+	memory_install_write64_handler(space_0, 0, mess_ram_size - 1, 0, 0x02000000, SMH_BANK3);
+	memory_install_read64_handler(space_1, 0, mess_ram_size - 1, 0, 0x02000000, SMH_BANK3);
+	memory_install_write64_handler(space_1, 0, mess_ram_size - 1, 0, 0x02000000, SMH_BANK3);
+	memory_set_bankptr(machine, 3, mess_ram);
 
 	mc146818_init(machine, MC146818_STANDARD);
 	pc_vga_init(machine, &bebox_vga_interface, &cirrus_svga_interface);
-	kbdc8042_init(&bebox_8042_interface);
+	kbdc8042_init(machine, &bebox_8042_interface);
 
 	/* install VGA memory */
 	vram_begin = 0xC1000000;
 	vram_end = vram_begin + pc_vga_memory_size() - 1;
-	for (cpu = 0; cpu < 2; cpu++)
-	{
-		memory_install_read64_handler(machine, cpu, ADDRESS_SPACE_PROGRAM, vram_begin, vram_end, 0, 0, bebox_video_r);
-		memory_install_write64_handler(machine, cpu, ADDRESS_SPACE_PROGRAM, vram_begin, vram_end, 0, 0, bebox_video_w);
-	}
+	memory_install_read64_handler(space_0, vram_begin, vram_end, 0, 0, bebox_video_r);
+	memory_install_write64_handler(space_0, vram_begin, vram_end, 0, 0, bebox_video_w);
+	memory_install_read64_handler(space_1, vram_begin, vram_end, 0, 0, bebox_video_r);
+	memory_install_write64_handler(space_1, vram_begin, vram_end, 0, 0, bebox_video_w);
 
 	/* The following is a verrrry ugly hack put in to support NetBSD for
 	 * NetBSD.  When NetBSD/bebox it does most of its work on CPU #0 and then
@@ -1141,7 +1147,7 @@ DRIVER_INIT( bebox )
 			/* bcctr 0x14, 0 */
 			U64(0x4E80042000000000)
 		};
-		memory_install_read64_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x9421FFF0, 0x9421FFFF, 0, 0, SMH_BANK1);
-		memory_set_bankptr(1, ops);
+		memory_install_read64_handler(space_1, 0x9421FFF0, 0x9421FFFF, 0, 0, SMH_BANK1);
+		memory_set_bankptr(machine, 1, ops);
 	}
 }

@@ -602,34 +602,35 @@ void InitPropertyPageToPage(HINSTANCE hInst, HWND hWnd, HICON hIcon, OPTIONS_TYP
 /* Build CPU info string */
 static char *GameInfoCPU(UINT nIndex)
 {
-	int chipnum;
 	static char buf[1024] = "";
 	machine_config *config = machine_config_alloc(drivers[nIndex]->machine_config);
+	const device_config *cpu;
 
 	ZeroMemory(buf, sizeof(buf));
 
-	cpuintrf_init(NULL);
-
-	for (chipnum = 0; chipnum < ARRAY_LENGTH(config->cpu); chipnum++)
+	cpu = device_list_class_first(config->devicelist, DEVICE_CLASS_CPU_CHIP);
+	while (cpu != NULL)
 	{
-		if (config->cpu[chipnum].type != CPU_DUMMY)
+		if (cpu->clock >= 1000000)
 		{
-			if (config->cpu[chipnum].clock >= 1000000)
-			{
-				sprintf(&buf[strlen(buf)], "%s %d.%06d MHz",
-					cputype_name(config->cpu[chipnum].type),
-					config->cpu[chipnum].clock / 1000000,
-					config->cpu[chipnum].clock % 1000000);
-			} else {
-				sprintf(&buf[strlen(buf)], "%s %d.%03d kHz",
-					cputype_name(config->cpu[chipnum].type),
-					config->cpu[chipnum].clock / 1000,
-					config->cpu[chipnum].clock % 1000);
-			}
-
-			strcat(buf, "\n");
+			sprintf(&buf[strlen(buf)], "%s %d.%06d MHz",
+				cpu_get_name(cpu),
+				cpu->clock / 1000000,
+				cpu->clock % 1000000);
 		}
+		else
+		{
+			sprintf(&buf[strlen(buf)], "%s %d.%03d kHz",
+				cpu_get_name(cpu),
+				cpu->clock / 1000,
+				cpu->clock % 1000);
+		}
+
+		strcat(buf, "\n");
+
+		cpu = device_list_class_next(cpu, DEVICE_CLASS_CPU_CHIP);
     }
+
 	/* Free the structure */
 	machine_config_free(config);
 
@@ -672,7 +673,7 @@ static char *GameInfoSound(UINT nIndex)
 				sprintf(&buf[strlen(buf)],"%dx",count);
 			}
 
-			sprintf(&buf[strlen(buf)],"%s",sndtype_name(sound_type));
+			sprintf(&buf[strlen(buf)],"%s",sndtype_get_name(sound_type));
 
 			if (clock)
 			{

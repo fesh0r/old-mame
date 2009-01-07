@@ -17,7 +17,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/6821pia.h"
 #include "machine/6883sam.h"
 #include "video/m6847.h"
@@ -47,19 +46,27 @@ ATTR_CONST UINT8 coco_get_attributes(UINT8 c)
 
 
 
-static void coco_horizontal_sync_callback(int data)
+static void coco_horizontal_sync_callback(running_machine *machine, int data)
 {
-	pia_0_ca1_w(Machine, 0, data);
+	const address_space *space = cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM );
+
+	pia_0_ca1_w(space, 0, data);
 }
 
 
 
-static void coco_field_sync_callback(int data)
+static void coco_field_sync_callback(running_machine *machine, int data)
 {
-	pia_0_cb1_w(Machine, 0, data);
+	const address_space *space = cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM );
+
+	pia_0_cb1_w(space, 0, data);
 }
 
-
+const UINT8 *get_video_ram_coco(running_machine *machine,int scanline)
+{
+	device_config *sam = (device_config*)device_list_find_by_tag( machine->config->devicelist, SAM6883, "sam");
+	return sam_m6847_get_video_ram(sam,scanline);
+}
 
 static void internal_video_start_coco(running_machine *machine, m6847_type type)
 {
@@ -74,7 +81,7 @@ static void internal_video_start_coco(running_machine *machine, m6847_type type)
 		cfg.cpu0_timing_factor = 4;
 
 	cfg.get_attributes = coco_get_attributes;
-	cfg.get_video_ram = sam_m6847_get_video_ram;
+	cfg.get_video_ram = get_video_ram_coco;
 	cfg.horizontal_sync_callback = coco_horizontal_sync_callback;
 	cfg.field_sync_callback = coco_field_sync_callback;
 

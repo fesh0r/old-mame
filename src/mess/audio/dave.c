@@ -7,13 +7,12 @@ DAVE SOUND CHIP FOUND IN ENTERPRISE
 
 	- pure tone
 	- sampled sounds
-	- 1khz, 50hz and 1hz ints
+	- 1 kHz, 50 Hz and 1 Hz ints
 	- external ints (int1 and int2) - not correct speed yet
 
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "audio/dave.h"
 
 #define STEP 0x08000
@@ -40,7 +39,7 @@ static void Dave_reset(void)
 }
 
 
-static void dave_refresh_ints(void)
+static void dave_refresh_ints(running_machine *machine)
 {
 	int int_wanted;
 
@@ -50,17 +49,17 @@ static void dave_refresh_ints(void)
 
 	if (dave_iface->int_callback)
 	{
-		dave_iface->int_callback(int_wanted);
+		dave_iface->int_callback(machine, int_wanted);
 	}
 }
 
 
-static void dave_refresh_selectable_int(void)
+static void dave_refresh_selectable_int(running_machine *machine)
 {
-	/* update 1khz/50hz/tg latch and int input */
+	/* update 1kHz/50Hz/tg latch and int input */
 	switch ((dave.Regs[7]>>5) & 0x03)
 	{
-		/* 1khz */
+		/* 1kHz */
 		case 0:
 		{
 			dave.int_latch &=~(1<<1);
@@ -72,7 +71,7 @@ static void dave_refresh_selectable_int(void)
 		}
 		break;
 
-		/* 50hz */
+		/* 50Hz */
 		case 1:
 		{
 			dave.int_latch &=~(1<<1);
@@ -89,12 +88,12 @@ static void dave_refresh_selectable_int(void)
 			break;
 	}
 
-	dave_refresh_ints();
+	dave_refresh_ints(machine);
 }
 
 static TIMER_CALLBACK(dave_1khz_callback)
 {
-//	logerror("1khz int\n");
+//	logerror("1kHz int\n");
 
 	/* time over - want int */
 	dave.one_khz_state^=0x0ffffffff;
@@ -106,14 +105,14 @@ static TIMER_CALLBACK(dave_1khz_callback)
 	}
 
 
-	/* update fifty hz counter */
+	/* update fifty Hz counter */
 	dave.fifty_hz_count--;
 
 	if (dave.fifty_hz_count==0)
 	{
 		/* these two lines are temp here */
 		nick_virq^=0x0ffffffff;
-		Dave_SetExternalIntState(DAVE_INT1_ID, nick_virq);
+		Dave_SetExternalIntState(machine, DAVE_INT1_ID, nick_virq);
 
 
 		dave.fifty_hz_count = DAVE_FIFTY_HZ_COUNTER_RELOAD;
@@ -143,12 +142,12 @@ static TIMER_CALLBACK(dave_1khz_callback)
 		}
 	}
 
-	dave_refresh_selectable_int();
+	dave_refresh_selectable_int(machine);
 }
 
 
 
-void	Dave_Init(running_machine *machine)
+void Dave_Init(running_machine *machine)
 {
 	int i;
 
@@ -159,7 +158,7 @@ void	Dave_Init(running_machine *machine)
 	/* temp! */
 	nick_virq = 0;
 
-	/* initialise 1khz timer */
+	/* initialise 1kHz timer */
 	dave.int_latch = 0;
 	dave.int_input = 0;
 	dave.int_enable = 0;
@@ -168,7 +167,7 @@ void	Dave_Init(running_machine *machine)
 	dave.one_khz_state = 0;
 	dave.fifty_hz_count = DAVE_FIFTY_HZ_COUNTER_RELOAD;
 	dave.one_hz_count = DAVE_ONE_HZ_COUNTER_RELOAD;
-	timer_pulse(ATTOTIME_IN_HZ(1000), NULL, 0, dave_1khz_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(1000), NULL, 0, dave_1khz_callback);
 
 	for (i=0; i<3; i++)
 	{
@@ -178,7 +177,7 @@ void	Dave_Init(running_machine *machine)
 	}
 }
 
-static void dave_update_sound(void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length)
+static STREAM_UPDATE( dave_update_sound )
 {
 	stream_sample_t *buffer1, *buffer2;
 	/* 0 = channel 0 left volume, 1 = channel 0 right volume,
@@ -191,10 +190,10 @@ static void dave_update_sound(void *param,stream_sample_t **inputs, stream_sampl
 
 	//logerror("sound update!\n");
 
-	buffer1 = _buffer[0];
-	buffer2 = _buffer[1];
+	buffer1 = outputs[0];
+	buffer2 = outputs[1];
 
-	while (length)
+	while (samples)
 	{
 		int vol[4];
 		int i;
@@ -257,17 +256,17 @@ static void dave_update_sound(void *param,stream_sample_t **inputs, stream_sampl
 		*(buffer1++) = left_volume;
 		*(buffer2++) = right_volume;
 
-		length--;
+		samples--;
 	}
 }
 
 
 /* dave has 3 tone channels and 1 noise channel.
 the volumes are mixed internally and output as left and right volume */
-void *Dave_sh_start(int clock, const custom_sound_interface *config)
+CUSTOM_START(Dave_sh_start)
 {
 	/* 3 tone channels + 1 noise channel */
-	dave.sound_stream = stream_create( 0, 2, Machine->sample_rate, NULL, dave_update_sound);
+	dave.sound_stream = stream_create(device, 0, 2, device->machine->sample_rate, NULL, dave_update_sound);
 	return (void *) ~0;
 }
 
@@ -298,7 +297,7 @@ static WRITE8_HANDLER(Dave_sound_w)
 			int count = 0;
 			int channel_index = offset>>1;
 
-			/* Fout = 125,000 / (n+1) hz */
+			/* Fout = 125,000 / (n+1) Hz */
 
 			/* sample rate/clock */
 
@@ -323,7 +322,7 @@ static WRITE8_HANDLER(Dave_sound_w)
 			count++;
 
 
-			dave.Period[channel_index] = ((STEP  * machine->sample_rate)/125000) * count;
+			dave.Period[channel_index] = ((STEP  * space->machine->sample_rate)/125000) * count;
 
 		}
 		break;
@@ -366,13 +365,13 @@ static WRITE8_HANDLER(Dave_sound_w)
 			{
 				case 0:
 				{
-					logerror("1khz\n");
+					logerror("1kHz\n");
 				}
 				break;
 
 				case 1:
 				{
-					logerror("50hz\n");
+					logerror("50Hz\n");
 				}
 				break;
 
@@ -484,7 +483,7 @@ WRITE8_HANDLER ( Dave_reg_w )
 {
 	logerror("dave w: %04x %02x\n",offset,data);
 
-	Dave_sound_w(machine, offset, data);
+	Dave_sound_w(space, offset, data);
 
 	dave.Regs[offset & 0x01f] = data;
 
@@ -492,7 +491,7 @@ WRITE8_HANDLER ( Dave_reg_w )
 	{
 		case 0x07:
 		{
-			dave_refresh_selectable_int();
+			dave_refresh_selectable_int(space->machine);
 		}
 		break;
 
@@ -503,14 +502,14 @@ WRITE8_HANDLER ( Dave_reg_w )
 			/* clear latches */
 			dave.int_latch &=~(data & 0x0aa);
 
-			/* reset 1khz, 50hz latch */
+			/* reset 1kHz, 50Hz latch */
 			if (data & (1<<1))
 			{
 				dave.int_irq = 0;
 			}
 
 			/* refresh ints */
-			dave_refresh_ints();
+			dave_refresh_ints(space->machine);
 		}
 		break;
 
@@ -520,12 +519,12 @@ WRITE8_HANDLER ( Dave_reg_w )
 
 	if (dave_iface!=NULL)
 	{
-		dave_iface->reg_w(offset, data);
+		dave_iface->reg_w(space->machine, offset, data);
 	}
 }
 
 
-WRITE8_HANDLER ( Dave_setreg )
+void Dave_setreg(running_machine *machine, offs_t offset, UINT8 data)
 {
 	dave.Regs[offset & 0x01f] = data;
 }
@@ -536,7 +535,7 @@ READ8_HANDLER (	Dave_reg_r )
 
 	if (dave_iface!=NULL)
 	{
-		dave_iface->reg_r(offset);
+		dave_iface->reg_r(space->machine, offset);
 	}
 
 	switch (offset)
@@ -579,7 +578,7 @@ READ8_HANDLER (	Dave_reg_r )
 }
 
 /* negative edge triggered */
-void	Dave_SetExternalIntState(int IntID, int State)
+void	Dave_SetExternalIntState(running_machine *machine, int IntID, int State)
 {
 	switch (IntID)
 	{
@@ -606,7 +605,7 @@ void	Dave_SetExternalIntState(int IntID, int State)
 					/* int request */
 					dave.int_latch |= (1<<5);
 
-					dave_refresh_ints();
+					dave_refresh_ints(machine);
 				}
 			}
 
@@ -635,7 +634,7 @@ void	Dave_SetExternalIntState(int IntID, int State)
 					/* int request */
 					dave.int_latch|=(1<<7);
 
-					dave_refresh_ints();
+					dave_refresh_ints(machine);
 				}
 			}
 		}
@@ -667,9 +666,9 @@ b6 = INT2 input pin
 b5 = 1: INT1 latch set
 b4 = INT1 input pin
 b3 = 1: 1Hz latch set
-b2 = 1hz input pin
-b1 = 1: 1khz/50hz/TG latch set
-b0 = 1khz/50hz/TG input
+b2 = 1Hz input pin
+b1 = 1: 1kHz/50Hz/TG latch set
+b0 = 1kHz/50Hz/TG input
 
 Reg 4 WRITE:
 
@@ -677,10 +676,10 @@ b7 = 1: Reset INT2 latch
 b6 = 1: Enable INT2
 b5 = 1: Reset INT1 latch
 b4 = 1: Enable INT1
-b3 = 1: Reset 1hz interrupt latch
-b2 = 1: Enable 1hz interrupt
-b1 = 1: Reset 1khz/50hz/TG latch
-b0 = 1: Enable 1khz/50Hz/TG latch
+b3 = 1: Reset 1Hz interrupt latch
+b2 = 1: Enable 1Hz interrupt
+b1 = 1: Reset 1kHz/50Hz/TG latch
+b0 = 1: Enable 1kHz/50Hz/TG latch
 */
 
 #if 0

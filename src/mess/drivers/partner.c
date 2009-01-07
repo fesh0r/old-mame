@@ -11,6 +11,7 @@
 #include "cpu/i8085/i8085.h"
 #include "machine/8255ppi.h"
 #include "machine/8257dma.h"
+#include "machine/wd17xx.h"
 #include "video/i8275.h"
 #include "devices/cassette.h"
 #include "devices/basicdsk.h"
@@ -142,11 +143,9 @@ static MACHINE_DRIVER_START( partner )
     MDRV_MACHINE_START( partner )
     MDRV_MACHINE_RESET( partner )
 
-	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( radio86_ppi8255_interface_1 )
+	MDRV_PPI8255_ADD( "ppi8255_1", radio86_ppi8255_interface_1 )
 
-	MDRV_DEVICE_ADD( "i8275", I8275 )
-	MDRV_DEVICE_CONFIG(partner_i8275_interface)
+	MDRV_I8275_ADD	( "i8275", partner_i8275_interface)
     /* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
@@ -164,10 +163,11 @@ static MACHINE_DRIVER_START( partner )
 	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_DEVICE_ADD("dma8257", DMA8257)
-	MDRV_DEVICE_CONFIG(partner_dma)
+	MDRV_DMA8257_ADD("dma8257", XTAL_16MHz / 9, partner_dma)
 
 	MDRV_CASSETTE_ADD( "cassette", partner_cassette_config )
+	
+	MDRV_WD1793_ADD("wd1793", partner_wd17xx_interface )
 MACHINE_DRIVER_END
 
 

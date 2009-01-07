@@ -9,21 +9,20 @@
 
 #include "driver.h"
 #include "streams.h"
-#include "deprecat.h"
 
 #include "video/vic6560.h"
 
 
 #define VERBOSE_LEVEL 0
 #define DBG_LOG(N,M,A) \
-	{ \
+	do { \
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
 			logerror A; \
 		} \
-	}
+	} while (0)
 
 
 /*
@@ -146,12 +145,12 @@ void vic6560_soundport_w (running_machine *machine, int offset, int data)
 /************************************/
 /* Sound handler update             */
 /************************************/
-static void vic6560_update (void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length)
+static STREAM_UPDATE( vic6560_update )
 {
 	int i, v;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
-	for (i = 0; i < length; i++)
+	for (i = 0; i < samples; i++)
 	{
 		v = 0;
 		if (TONE1_ON /*||(tone1pos!=0) */ )
@@ -164,7 +163,7 @@ static void vic6560_update (void *param,stream_sample_t **inputs, stream_sample_
 			if (tone1pos >= tone1samples)
 			{
 				tone1pos = 0;
-				tone1samples = Machine->sample_rate / TONE1_FREQUENCY;
+				tone1samples = device->machine->sample_rate / TONE1_FREQUENCY;
 				if (tone1samples == 0)
 					tone1samples = 1;
 			}
@@ -180,7 +179,7 @@ static void vic6560_update (void *param,stream_sample_t **inputs, stream_sample_
 			if (tone2pos >= tone2samples)
 			{
 				tone2pos = 0;
-				tone2samples = Machine->sample_rate / TONE2_FREQUENCY;
+				tone2samples = device->machine->sample_rate / TONE2_FREQUENCY;
 				if (tone2samples == 0)
 					tone2samples = 1;
 			}
@@ -196,7 +195,7 @@ static void vic6560_update (void *param,stream_sample_t **inputs, stream_sample_
 			if (tone3pos >= tone3samples)
 			{
 				tone3pos = 0;
-				tone3samples = Machine->sample_rate / TONE3_FREQUENCY;
+				tone3samples = device->machine->sample_rate / TONE3_FREQUENCY;
 				if (tone3samples == 0)
 					tone3samples = 1;
 			}
@@ -228,11 +227,11 @@ static void vic6560_update (void *param,stream_sample_t **inputs, stream_sample_
 /* Sound handler start          */
 /************************************/
 
-void *vic6560_custom_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( vic6560_custom_start )
 {
 	int i;
 
-	channel = stream_create(0, 1, Machine->sample_rate, 0, vic6560_update);
+	channel = stream_create(device, 0, 1, device->machine->sample_rate, 0, vic6560_update);
 
 	/* buffer for fastest played sample for 5 second
 	 * so we have enough data for min 5 second */
@@ -268,7 +267,7 @@ void *vic6560_custom_start(int clock, const custom_sound_interface *config)
 				noiseshift <<= 1;
 		}
 	}
-	tonesize = Machine->sample_rate / TONE_FREQUENCY_MIN;
+	tonesize = device->machine->sample_rate / TONE_FREQUENCY_MIN;
 
 	if (tonesize > 0)
 	{

@@ -50,7 +50,7 @@ INLINE scc8530_t *get_token(const device_config *device)
 INLINE scc8530_interface *get_interface(const device_config *device)
 {
 	assert(device->type == SCC8530);
-	return (scc8530_interface *) device->static_config;
+	return (scc8530_interface *) device->inline_config;
 }
 
 
@@ -336,7 +336,7 @@ WRITE8_DEVICE_HANDLER(scc_w)
 
 
 /*-------------------------------------------------
-    DEVICE_GET_INFO( scc8530 )
+    DEVICE_SET_INFO( scc8530 )
 -------------------------------------------------*/
 
 static DEVICE_SET_INFO( scc8530 )
@@ -359,7 +359,7 @@ DEVICE_GET_INFO( scc8530 )
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(scc8530_t);				break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
+		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = sizeof(scc8530_interface);		break;
 		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
@@ -369,10 +369,10 @@ DEVICE_GET_INFO( scc8530 )
 		case DEVINFO_FCT_RESET:							/* Nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Zilog 8530 SCC";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "Zilog 8530 SCC";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Zilog 8530 SCC");			break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Zilog 8530 SCC");			break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
 		case DEVINFO_STR_CREDITS:						/* Nothing */								break;
 	}
 }

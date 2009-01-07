@@ -22,16 +22,16 @@ static ADDRESS_MAP_START(irisha_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( irisha_io , ADDRESS_SPACE_IO, 8)
-  AM_RANGE( 0x04, 0x05) AM_READ(irisha_keyboard_r)
-	AM_RANGE( 0x06, 0x06) AM_READWRITE(msm8251_data_r,msm8251_data_w)
-	AM_RANGE( 0x07, 0x07) AM_READWRITE(msm8251_status_r,msm8251_control_w)
+	AM_RANGE( 0x04, 0x05) AM_READ(irisha_keyboard_r)
+	AM_RANGE( 0x06, 0x06) AM_DEVREADWRITE(MSM8251, "uart", msm8251_data_r, msm8251_data_w)
+	AM_RANGE( 0x07, 0x07) AM_DEVREADWRITE(MSM8251, "uart", msm8251_status_r, msm8251_control_w)
 	AM_RANGE( 0x08, 0x0B) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r, pit8253_w )
 	AM_RANGE( 0x0C, 0x0F) AM_DEVREADWRITE(PIC8259, "pic8259", pic8259_r, pic8259_w ) AM_MASK( 0x01 )
 	AM_RANGE( 0x10, 0x13) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w )
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( irisha )
+static INPUT_PORTS_START( irisha )
 	PORT_START("LINE0")
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("0") PORT_CODE(KEYCODE_0)
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1)
@@ -135,14 +135,11 @@ static MACHINE_DRIVER_START( irisha )
 
    	MDRV_MACHINE_RESET( irisha )
 
-    MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-		MDRV_DEVICE_CONFIG( irisha_ppi8255_interface )
+    MDRV_PPI8255_ADD( "ppi8255", irisha_ppi8255_interface )
 
- 		MDRV_DEVICE_ADD( "pit8253", PIT8253 )
-		MDRV_DEVICE_CONFIG( irisha_pit8253_intf )
+	MDRV_PIT8253_ADD( "pit8253", irisha_pit8253_intf )
 
-		MDRV_DEVICE_ADD( "pic8259", PIC8259 )
-		MDRV_DEVICE_CONFIG( irisha_pic8259_config )
+	MDRV_PIC8259_ADD( "pic8259", irisha_pic8259_config )
 
     /* video hardware */
 		MDRV_SCREEN_ADD("main", RASTER)
@@ -156,6 +153,9 @@ static MACHINE_DRIVER_START( irisha )
 
 		MDRV_VIDEO_START(irisha)
     MDRV_VIDEO_UPDATE(irisha)
+
+	/* uart */
+	MDRV_MSM8251_ADD("uart", default_msm8251_interface)
 MACHINE_DRIVER_END
 
 /* ROM definition */

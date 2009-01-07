@@ -22,9 +22,9 @@
 /* call to init videodriver */
 /* pal version */
 /* dma_read: videochip fetched 1 byte data from system bus */
-extern void ted7360_init (int pal);
-extern void ted7360_set_dma (read8_machine_func dma_read,
-							 read8_machine_func dma_read_rom);
+extern void ted7360_init (running_machine *machine, int pal);
+extern void ted7360_set_dma (read8_space_func dma_read,
+							 read8_space_func dma_read_rom);
 
 #define TED7360NTSC_VRETRACERATE 60
 #define TED7360PAL_VRETRACERATE 50
@@ -40,7 +40,7 @@ extern void ted7360_set_dma (read8_machine_func dma_read,
 /* video timing (these are used in c16/c116/plus4) */
 #define TED7360NTSC_CLOCK	(14318180/4)
 #define TED7360PAL_CLOCK	(17734470/5)
-/* pixel clock 8 mhz */
+/* pixel clock 8 MHz */
 /* accesses to memory with 4 megahertz */
 /* needs 3 memory accesses for 8 pixel */
 /* but system clock 1 megahertz */
@@ -78,7 +78,7 @@ extern int ted7360_rom;
 
 /*----------- defined in audio/ted7360.c -----------*/
 
-void *ted7360_custom_start (int clock, const custom_sound_interface *config);
+CUSTOM_START( ted7360_custom_start );
 void ted7360_soundport_w (running_machine *machine, int mode, int data);
 
 

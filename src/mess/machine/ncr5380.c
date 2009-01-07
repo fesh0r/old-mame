@@ -94,7 +94,7 @@ WRITE8_HANDLER(ncr5380_w)
 	int reg = offset & 7;
 
 	if (VERBOSE)
-		logerror("NCR5380: %02x to %s (reg %d) [PC=%x]\n", data, wnames[reg], reg, activecpu_get_pc());
+		logerror("NCR5380: %02x to %s (reg %d) [PC=%x]\n", data, wnames[reg], reg, cpu_get_pc(space->machine->cpu[0]));
 
 	switch( reg )
 	{
@@ -354,12 +354,12 @@ READ8_HANDLER(ncr5380_r)
 	}
 
 	if (VERBOSE)
-		logerror("NCR5380: read %s (reg %d) = %02x [PC=%x]\n", rnames[reg], reg, rv, activecpu_get_pc());
+		logerror("NCR5380: read %s (reg %d) = %02x [PC=%x]\n", rnames[reg], reg, rv, cpu_get_pc(space->machine->cpu[0]));
 
 	return rv;
 }
 
-void ncr5380_init( const struct NCR5380interface *interface )
+void ncr5380_init( running_machine *machine, const struct NCR5380interface *interface )
 {
 	int i;
 
@@ -372,16 +372,16 @@ void ncr5380_init( const struct NCR5380interface *interface )
 	// try to open the devices
 	for (i = 0; i < interface->scsidevs->devs_present; i++)
 	{
-		SCSIAllocInstance( interface->scsidevs->devices[i].scsiClass, &devices[interface->scsidevs->devices[i].scsiID], interface->scsidevs->devices[i].diskregion );
+		SCSIAllocInstance( machine, interface->scsidevs->devices[i].scsiClass, &devices[interface->scsidevs->devices[i].scsiID], interface->scsidevs->devices[i].diskregion );
 	}
 
-	state_save_register_item_array("ncr5380", 0, n5380_Registers);
-	state_save_register_item_array("ncr5380", 0, n5380_Command);
-	state_save_register_item_array("ncr5380", 0, n5380_Data);
-	state_save_register_item("ncr5380", 0, last_id);
-	state_save_register_item("ncr5380", 0, cmd_ptr);
-	state_save_register_item("ncr5380", 0, d_ptr);
-	state_save_register_item("ncr5380", 0, d_limit);
+	state_save_register_item_array(machine, "ncr5380", NULL, 0, n5380_Registers);
+	state_save_register_item_array(machine, "ncr5380", NULL, 0, n5380_Command);
+	state_save_register_item_array(machine, "ncr5380", NULL, 0, n5380_Data);
+	state_save_register_item(machine, "ncr5380", NULL, 0, last_id);
+	state_save_register_item(machine, "ncr5380", NULL, 0, cmd_ptr);
+	state_save_register_item(machine, "ncr5380", NULL, 0, d_ptr);
+	state_save_register_item(machine, "ncr5380", NULL, 0, d_limit);
 }
 
 void ncr5380_exit( const struct NCR5380interface *interface )
@@ -472,11 +472,11 @@ DEVICE_GET_INFO( ncr5380 ) {
 		case DEVINFO_FCT_RESET:				info->reset = DEVICE_RESET_NAME(ncr5380);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:				info->s = "NCR 5380";		   		break;
-		case DEVINFO_STR_FAMILY:			info->s = "NCR53xx";		   		break;
-		case DEVINFO_STR_VERSION:			info->s = "1.1";		   		break;
-		case DEVINFO_STR_SOURCE_FILE:			info->s = __FILE__;		   		break;
-		case DEVINFO_STR_CREDITS:			info->s = "Copyright the MAME and MESS Teams"; break;
+		case DEVINFO_STR_NAME:				strcpy(info->s, "NCR 5380");		   		break;
+		case DEVINFO_STR_FAMILY:			strcpy(info->s, "NCR53xx");		   		break;
+		case DEVINFO_STR_VERSION:			strcpy(info->s, "1.1");		   		break;
+		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);		   		break;
+		case DEVINFO_STR_CREDITS:			strcpy(info->s, "Copyright the MAME and MESS Teams"); break;
 	}
 }
 #endif

@@ -32,6 +32,7 @@
 #include "machine/z80pio.h"
 #include "machine/z80sio.h"
 #include "sound/dac.h"
+#include "mpf1.lh"
 
 
 #define VERBOSE_LEVEL ( 0 )
@@ -45,7 +46,7 @@ INLINE void ATTR_PRINTF(2,3) verboselog( int n_level, const char *s_fmt, ... )
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%08x: %s", activecpu_get_pc(), buf );
+//		logerror( "%08x: %s", cpu_get_pc(space->cpu), buf );
 	}
 }
 
@@ -62,7 +63,7 @@ static TIMER_CALLBACK( check_halt_callback )
 {
 	// halt-LED; the red one, is turned on when the processor is halted
 	// TODO: processor seems to halt, but restarts(?) at 0x0000 after a while -> fix
-	led_halt = (UINT8) cpunum_get_info_int(0, CPUINFO_INT_REGISTER + Z80_HALT);
+	led_halt = (UINT8) device_get_info_int(machine->cpu[0], CPUINFO_INT_REGISTER + Z80_HALT);
 	set_led_status(1, led_tone);
 }
 
@@ -276,15 +277,13 @@ INPUT_PORTS_END
 
 /* Z80 PIO Interface */
 
-static Z80PIO_ON_INT_CHANGED( mpf1_pio_interrupt )
+static void mpf1_pio_interrupt(const device_config *device, int state)
 {
 	logerror("pio irq state: %02x\n",state);
 }
 
-static Z80PIO_INTERFACE( pio_intf )
+static const z80pio_interface mpf1_pio_intf =
 {
-	"main",
-	0,
 	mpf1_pio_interrupt,
 	NULL,
 	NULL,
@@ -303,7 +302,7 @@ static Z80PIO_INTERFACE( pio_intf )
 
 static READ8_DEVICE_HANDLER( mpf1_porta_r )
 {
-	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5" };
+	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5" };
 
 	UINT8 retval;
 	for(keycol = 0; keycol < 6; keycol++)
@@ -369,7 +368,7 @@ static WRITE8_DEVICE_HANDLER( mpf1_portb_w )
         The next statement converts this to the following assignment: (which is compatible with draw_led())
         bit      7 6 5 4 3 2 1 0
         segment  p g f e d c b a */
-	if( data | ( activecpu_get_pc() != 0x63C ) )
+	if( data | ( cpu_get_pc(device->machine->cpu[0]) != 0x63C ) )
 	{
 		data = ( (data & 0x08) >> 3 ) |
 		       ( (data & 0x10) >> 3 ) |
@@ -434,15 +433,15 @@ static const ppi8255_interface ppi8255_intf =
 
 static TIMER_CALLBACK( irq0_callback )
 {
-	irq0_line_hold( machine, 0 );
+	irq0_line_hold( machine->cpu[0] );
 }
 
 static MACHINE_RESET( mpf1 )
 {
 	lednum = 0;
 
-	timer_pulse( ATTOTIME_IN_HZ(1), NULL, 0, check_halt_callback );
-	timer_pulse( ATTOTIME_IN_HZ(60), NULL, 0, irq0_callback );
+	timer_pulse(machine,  ATTOTIME_IN_HZ(1), NULL, 0, check_halt_callback );
+	timer_pulse(machine,  ATTOTIME_IN_HZ(60), NULL, 0, irq0_callback );
 }
 
 /* Machine Drivers */
@@ -455,16 +454,16 @@ static MACHINE_DRIVER_START( mpf1 )
 
 	MDRV_MACHINE_RESET( mpf1 )
 
-	MDRV_Z80PIO_ADD( "z80pio", pio_intf )
+	MDRV_Z80PIO_ADD( "z80pio", mpf1_pio_intf )
 
-	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-	MDRV_DEVICE_CONFIG( ppi8255_intf )
+	MDRV_PPI8255_ADD( "ppi8255", ppi8255_intf )
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
+	MDRV_DEFAULT_LAYOUT( layout_mpf1 )
 MACHINE_DRIVER_END
 
 /* ROMs */

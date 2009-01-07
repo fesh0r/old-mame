@@ -7,20 +7,20 @@
     TMS9129 VDP Graphics
         16k ram
 
-    Z80 CPU (4Mhz)
+    Z80 CPU (4 MHz)
 
-    Z80 CTC (4Mhz)
+    Z80 CTC (4 MHz)
         channel 0 is serial transmit clock
         channel 1 is serial receive clock
-        trigger for channel 0,1 and 2 is a 2mhz clock
+        trigger for channel 0,1 and 2 is a 2 MHz clock
         trigger for channel 3 is the terminal count of channel 2
 
-    Intel 8251 Serial (2Mhz clock?)
+    Intel 8251 Serial (2 MHz clock?)
 
     WD1770 Floppy Disc controller
         density is fixed, 4 drives and double sided supported
 
-    AY-3-8910 PSG (2Mhz)
+    AY-3-8910 PSG (2 MHz)
         port A and port B are connected to the keyboard. Port A is keyboard
         line select, Port B is data.
 
@@ -79,7 +79,6 @@
 /* 7e = 0, read from fe, 7e = 1, read from fe */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
 #include "machine/z80sio.h"
@@ -133,7 +132,7 @@ static void einstein_dump_ram(void)
     0x049 = crtc data register (w)
 
     0x04c
-        bit 2 = 50/60hz mode?
+        bit 2 = 50/60Hz mode?
         bit 1 = 1
         bit 0 = vsync state?
 
@@ -193,7 +192,7 @@ static int Einstein_scr_y = 0;
 //
 //
 //// called when the 6845 changes the HSync
-//static void Einstein_Set_HSync(int offset, int data)
+//static void Einstein_Set_HSync(running_machine *machine, int offset, int data)
 //{
 //  Einstein_HSync=data;
 //  if(!Einstein_HSync)
@@ -204,7 +203,7 @@ static int Einstein_scr_y = 0;
 //}
 //
 //// called when the 6845 changes the VSync
-//static void Einstein_Set_VSync(int offset, int data)
+//static void Einstein_Set_VSync(running_machine *machine, int offset, int data)
 //{
 //  Einstein_VSync=data;
 //  if (!Einstein_VSync)
@@ -259,7 +258,6 @@ static MC6845_ON_DE_CHANGED( einstein_6845_display_enable_changed )
 
 static const mc6845_interface einstein_crtc6845_interface = {
 	"main",
-	EINSTEIN_SYSTEM_CLOCK /*?*/,
 	8 /*?*/,
 	NULL,
 	einstein_6845_update_row,
@@ -290,9 +288,9 @@ static  READ8_HANDLER(einstein_80col_r)
 		case 5:
 		case 6:
 		case 7:
-			return einstein_80col_ram_r(machine, offset);
+			return einstein_80col_ram_r(space, offset);
 		case 0x0c:
-			return einstein_80col_state_r(machine, offset);
+			return einstein_80col_state_r(space, offset);
 		default:
 			break;
 	}
@@ -302,6 +300,8 @@ static  READ8_HANDLER(einstein_80col_r)
 
 static WRITE8_HANDLER(einstein_80col_w)
 {
+	const device_config *mc6845 = devtag_get_device(space->machine, MC6845, "crtc");
+
 	switch (offset & 0x0f)
 	{
 		case 0:
@@ -312,13 +312,13 @@ static WRITE8_HANDLER(einstein_80col_w)
 		case 5:
 		case 6:
 		case 7:
-			einstein_80col_ram_w(machine, offset,data);
+			einstein_80col_ram_w(space, offset,data);
 			break;
 		case 8:
-			mc6845_address_w( devtag_get_token(machine, MC6845, "crtc"), offset, data );
+			mc6845_address_w( mc6845, offset, data );
 			break;
 		case 9:
-			mc6845_register_w( devtag_get_token(machine, MC6845, "crtc"), offset, data );
+			mc6845_register_w( mc6845, offset, data );
 			break;
 		default:
 			break;
@@ -331,7 +331,7 @@ static TIMER_CALLBACK(einstein_ctc_trigger_callback)
 
 	einstein_ctc_trigger^=1;
 
-	/* channel 0 and 1 have a 2Mhz input clock for triggering */
+	/* channel 0 and 1 have a 2 MHz input clock for triggering */
 	z80ctc_trg0_w(device, 0, einstein_ctc_trigger);
 	z80ctc_trg1_w(device, 0, einstein_ctc_trigger);
 }
@@ -341,7 +341,7 @@ static void einstein_scan_keyboard(running_machine *machine)
 {
 	unsigned char data = 0x0ff;
 	int i;
-	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
+	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
 
 	for (i=0; i<8; i++)
 	{
@@ -359,19 +359,19 @@ static void einstein_update_interrupts(running_machine *machine)
 	/* NPW 21-Jul-2005 - Not sure how to update this for MAME 0.98u2 */
 /*
     if (einstein_int & einstein_int_mask & EINSTEIN_KEY_INT)
-        cpunum_set_input_line(machine, 0, Z80_INT_REQ, PULSE_LINE);
+        cpu_set_input_line(machine->cpu[0], Z80_INT_REQ, PULSE_LINE);
     else
-        cpunum_set_input_line(machine, 0, Z80_INT_IEO, PULSE_LINE);
+        cpu_set_input_line(machine->cpu[0], Z80_INT_IEO, PULSE_LINE);
 
     if (einstein_int & einstein_int_mask & EINSTEIN_ADC_INT)
-        cpunum_set_input_line(machine, 0, Z80_INT_REQ, PULSE_LINE);
+        cpu_set_input_line(machine->cpu[0], Z80_INT_REQ, PULSE_LINE);
     else
-        cpunum_set_input_line(machine, 0, Z80_INT_IEO, PULSE_LINE);
+        cpu_set_input_line(machine->cpu[0], Z80_INT_IEO, PULSE_LINE);
 
     if (einstein_int & einstein_int_mask & EINSTEIN_FIRE_INT)
-        cpunum_set_input_line(machine, 0, Z80_INT_REQ, PULSE_LINE);
+        cpu_set_input_line(machine->cpu[0], Z80_INT_REQ, PULSE_LINE);
     else
-        cpunum_set_input_line(machine, 0, Z80_INT_IEO, PULSE_LINE);
+        cpu_set_input_line(machine->cpu[0], Z80_INT_IEO, PULSE_LINE);
 */
 }
 
@@ -408,37 +408,37 @@ static TIMER_CALLBACK(einstein_keyboard_timer_callback)
 static void einstein_ctc_interrupt(const device_config *device, int state)
 {
 	logerror("ctc irq state: %02x\n",state);
-	cpunum_set_input_line(device->machine, 0, 1, state);
+	cpu_set_input_line(device->machine->cpu[0], 1, state);
 }
 
-static Z80PIO_ON_INT_CHANGED( einstein_pio_interrupt )
+static void einstein_pio_interrupt(const device_config *device, int state)
 {
 	logerror("pio irq state: %02x\n",state);
-	cpunum_set_input_line(device->machine, 0, 3, state);
+	cpu_set_input_line(device->machine->cpu[0], 3, state);
 }
 
 static WRITE8_DEVICE_HANDLER(einstein_serial_transmit_clock)
 {
-	msm8251_transmit_clock();
+	const device_config *uart = device_list_find_by_tag(device->machine->config->devicelist, MSM8251, "uart");
+	msm8251_transmit_clock(uart);
 }
 
 static WRITE8_DEVICE_HANDLER(einstein_serial_receive_clock)
 {
-	msm8251_receive_clock();
+	const device_config *uart = device_list_find_by_tag(device->machine->config->devicelist, MSM8251, "uart");
+	msm8251_receive_clock(uart);
 }
 
-static z80ctc_interface	einstein_ctc_intf =
+static const z80ctc_interface einstein_ctc_intf =
 {
-	"main",
-	EINSTEIN_SYSTEM_CLOCK,
 	0,
 	einstein_ctc_interrupt,
 	einstein_serial_transmit_clock,
 	einstein_serial_receive_clock,
-    z80ctc_trg3_w
+	z80ctc_trg3_w
 };
 
-static Z80PIO_ON_ARDY_CHANGED( einstein_pio_ardy )
+static void einstein_pio_ardy(const device_config *device, int state)
 {
 	int handshake;
 
@@ -449,20 +449,18 @@ static Z80PIO_ON_ARDY_CHANGED( einstein_pio_ardy )
 		handshake = CENTRONICS_STROBE;
 
 	/* ardy is connected to strobe */
-	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
-	centronics_write_handshake(0, handshake, CENTRONICS_STROBE);
+	centronics_write_handshake(device->machine,0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
+	centronics_write_handshake(device->machine,0, handshake, CENTRONICS_STROBE);
 }
 
 static WRITE8_DEVICE_HANDLER( einstein_pio_port_a_w )
 {
-	centronics_write_data(0,data);
+	centronics_write_data(device->machine,0,data);
 }
 
 
-static Z80PIO_INTERFACE( einstein_pio_intf )
+static const z80pio_interface einstein_pio_intf =
 {
-	"main",
-	0,
 	einstein_pio_interrupt,
 	NULL,
 	NULL,
@@ -522,11 +520,11 @@ static DEVICE_GET_INFO( einstein_daisy )
 		case DEVINFO_FCT_IRQ_RETI:						info->f = (genf *)einstein_daisy_irq_reti;				break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Einstein daisy";								break;
-		case DEVINFO_STR_FAMILY:						info->s = "Z80";										break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";										break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;										break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright the MESS Team";					break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Einstein daisy");								break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Z80");										break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");										break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);										break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team");					break;
 	}
 }
 
@@ -573,10 +571,10 @@ static  READ8_HANDLER(einstein_vdp_r)
 
 	if (offset & 0x01)
 	{
-		return TMS9928A_register_r(machine, offset & 0x01);
+		return TMS9928A_register_r(space, offset & 0x01);
 	}
 
-	return TMS9928A_vram_r(machine, offset & 0x01);
+	return TMS9928A_vram_r(space, offset & 0x01);
 }
 
 static WRITE8_HANDLER(einstein_vdp_w)
@@ -585,42 +583,43 @@ static WRITE8_HANDLER(einstein_vdp_w)
 
 	if (offset & 0x01)
 	{
-		TMS9928A_register_w(machine, offset & 0x01,data);
+		TMS9928A_register_w(space, offset & 0x01,data);
 		return;
 	}
 
-	TMS9928A_vram_w(machine, offset & 0x01,data);
+	TMS9928A_vram_w(space, offset & 0x01,data);
 }
 
 static WRITE8_HANDLER(einstein_fdc_w)
 {
 	int reg = offset & 0x03;
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD177X, "wd177x");
 
-	logerror("fdc w: PC: %04x %04x %02x\n",activecpu_get_pc(),offset,data);
+	logerror("fdc w: PC: %04x %04x %02x\n",cpu_get_pc(space->machine->cpu[0]),offset,data);
 
 	switch (reg)
 	{
 		case 0:
 		{
-			wd17xx_command_w(machine, reg, data);
+			wd17xx_command_w(fdc, reg, data);
 		}
 		break;
 
 		case 1:
 		{
-			wd17xx_track_w(machine, reg, data);
+			wd17xx_track_w(fdc, reg, data);
 		}
 		break;
 
 		case 2:
 		{
-			wd17xx_sector_w(machine, reg, data);
+			wd17xx_sector_w(fdc, reg, data);
 		}
 		break;
 
 		case 3:
 		{
-			wd17xx_data_w(machine, reg, data);
+			wd17xx_data_w(fdc, reg, data);
 		}
 		break;
 	}
@@ -630,32 +629,33 @@ static WRITE8_HANDLER(einstein_fdc_w)
 static  READ8_HANDLER(einstein_fdc_r)
 {
 	int reg = offset & 0x03;
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD177X, "wd177x");
 
-	logerror("fdc r: PC: %04x %04x\n",activecpu_get_pc(),offset);
+	logerror("fdc r: PC: %04x %04x\n",cpu_get_pc(space->machine->cpu[0]),offset);
 
 	switch (reg)
 	{
 		case 0:
 		{
-			return wd17xx_status_r(machine, reg);
+			return wd17xx_status_r(fdc, reg);
 		}
 		break;
 
 		case 1:
 		{
-			return wd17xx_track_r(machine, reg);
+			return wd17xx_track_r(fdc, reg);
 		}
 		break;
 
 		case 2:
 		{
-			return wd17xx_sector_r(machine, reg);
+			return wd17xx_sector_r(fdc, reg);
 		}
 		break;
 
 		case 3:
 		{
-			return wd17xx_data_r(machine, reg);
+			return wd17xx_data_r(fdc, reg);
 		}
 		break;
 	}
@@ -693,32 +693,34 @@ static WRITE8_DEVICE_HANDLER(einstein_ctc_w)
 
 static WRITE8_HANDLER(einstein_serial_w)
 {
+	const device_config *uart = device_list_find_by_tag(space->machine->config->devicelist, MSM8251, "uart");
 	int reg = offset & 0x01;
 
 	/* logerror("serial w: %04x %02x\n",offset,data); */
 
 	if ((reg)==0)
 	{
-		msm8251_data_w(machine, reg,data);
+		msm8251_data_w(uart, reg,data);
 		return;
 	}
 
-	msm8251_control_w(machine, reg,data);
+	msm8251_control_w(uart, reg,data);
 }
 
 
-static  READ8_HANDLER(einstein_serial_r)
+static READ8_HANDLER(einstein_serial_r)
 {
+	const device_config *uart = device_list_find_by_tag(space->machine->config->devicelist, MSM8251, "uart");
 	int reg = offset & 0x01;
 
 	/* logerror("serial r: %04x\n",offset); */
 
 	if ((reg)==0)
 	{
-		return msm8251_data_r(machine, reg);
+		return msm8251_data_r(uart, reg);
 	}
 
-	return msm8251_status_r(machine, reg);
+	return msm8251_status_r(uart, reg);
 }
 
 /*
@@ -757,13 +759,13 @@ static WRITE8_HANDLER(einstein_psg_w)
 		/* case 0 and 1 are not handled */
 		case 2:
 		{
-			ay8910_control_port_0_w(machine, 0, data);
+			ay8910_control_port_0_w(space, 0, data);
 		}
 		break;
 
 		case 3:
 		{
-			ay8910_write_port_0_w(machine, 0, data);
+			ay8910_write_port_0_w(space, 0, data);
 		}
 		break;
 
@@ -780,7 +782,7 @@ static  READ8_HANDLER(einstein_psg_r)
 	{
 		/* case 0 and 1 are not handled */
 		case 2:
-			return ay8910_read_port_0_r(machine, 0);
+			return ay8910_read_port_0_r(space, 0);
 
 		default:
 			break;
@@ -805,54 +807,56 @@ static void einstein_page_rom(running_machine *machine)
 {
 	if (einstein_rom_enabled)
 	{
-		memory_set_bankptr(1, memory_region(machine, "main")+0x010000);
+		memory_set_bankptr(machine, 1, memory_region(machine, "main")+0x010000);
 	}
 	else
 	{
 #ifdef EINSTEIN_DUMP_RAM
 		einstein_dump_ram();
 #endif
-		memory_set_bankptr(1, mess_ram);
+		memory_set_bankptr(machine, 1, mess_ram);
 	}
 }
 
 static WRITE8_HANDLER(einstein_drive_w)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD177X, "wd177x");
+
 	/* bit 4: side select */
 	/* bit 3: select drive 3 */
 	/* bit 2: select drive 2 */
 	/* bit 1: select drive 1 */
 	/* bit 0: select drive 0 */
 
-	logerror("drive w: PC: %04x %04x %02x\n",activecpu_get_pc(),offset,data);
+	logerror("drive w: PC: %04x %04x %02x\n",cpu_get_pc(space->machine->cpu[0]),offset,data);
 
-	wd17xx_set_side((data>>4) & 0x01);
+	wd17xx_set_side(fdc,(data>>4) & 0x01);
 
 	if (data & 0x01)
 	{
-		wd17xx_set_drive(0);
+		wd17xx_set_drive(fdc,0);
 	}
 	else
 	if (data & 0x02)
 	{
-		wd17xx_set_drive(1);
+		wd17xx_set_drive(fdc,1);
 	}
 	else
 	if (data & 0x04)
 	{
-		wd17xx_set_drive(2);
+		wd17xx_set_drive(fdc,2);
 	}
 	else
 	if (data & 0x08)
 	{
-		wd17xx_set_drive(3);
+		wd17xx_set_drive(fdc,3);
 	}
 }
 
 static WRITE8_HANDLER(einstein_rom_w)
 {
 	einstein_rom_enabled^=1;
-	einstein_page_rom(machine);
+	einstein_page_rom(space->machine);
 }
 
 static READ8_HANDLER(einstein_key_int_r)
@@ -863,10 +867,10 @@ static READ8_HANDLER(einstein_key_int_r)
 	/* clear key int. a read of this I/O port will do this or a reset */
 	einstein_int &= ~EINSTEIN_KEY_INT;
 
-	einstein_update_interrupts(machine);
+	einstein_update_interrupts(space->machine);
 
-	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
-	centronics_handshake = centronics_read_handshake(0);
+	centronics_write_handshake(space->machine,0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
+	centronics_handshake = centronics_read_handshake(space->machine,0);
 
 	/* bit 7: 0=shift pressed */
 	/* bit 6: 0=control pressed */
@@ -876,7 +880,7 @@ static READ8_HANDLER(einstein_key_int_r)
 	/* bit 2: 1=printer busy */
 	/* bit 1: fire 1 */
 	/* bit 0: fire 0 */
-	data = ((input_port_read(machine, "EXTRA") & 0x07)<<5) | (input_port_read(machine, "BUTTONS") & 0x03) | 0x01c;
+	data = ((input_port_read(space->machine, "EXTRA") & 0x07)<<5) | (input_port_read(space->machine, "BUTTONS") & 0x03) | 0x01c;
 
 	/* error? */
 	if (centronics_handshake & CENTRONICS_NO_ERROR)
@@ -926,7 +930,7 @@ static WRITE8_HANDLER(einstein_key_int_w)
 		einstein_int_mask |= EINSTEIN_KEY_INT;
 	}
 
-	einstein_update_interrupts(machine);
+	einstein_update_interrupts(space->machine);
 }
 
 static WRITE8_HANDLER(einstein_adc_int_w)
@@ -946,7 +950,7 @@ static WRITE8_HANDLER(einstein_adc_int_w)
 		einstein_int_mask |= EINSTEIN_ADC_INT;
 	}
 
-	einstein_update_interrupts(machine);
+	einstein_update_interrupts(space->machine);
 }
 
 static WRITE8_HANDLER(einstein_fire_int_w)
@@ -967,7 +971,7 @@ static WRITE8_HANDLER(einstein_fire_int_w)
 		einstein_int_mask |= EINSTEIN_FIRE_INT;
 	}
 
-	einstein_update_interrupts(machine);
+	einstein_update_interrupts(space->machine);
 }
 
 
@@ -983,7 +987,7 @@ static READ8_HANDLER(einstein2_port_r)
 		case 0x05:
 		case 0x06:
 		case 0x07:
-			return einstein_psg_r(machine, offset);
+			return einstein_psg_r(space, offset);
 		case 0x08:
 		case 0x09:
 		case 0x0a:
@@ -992,7 +996,7 @@ static READ8_HANDLER(einstein2_port_r)
 		case 0x0d:
 		case 0x0e:
 		case 0x0f:
-			return einstein_vdp_r(machine, offset);
+			return einstein_vdp_r(space, offset);
 		case 0x10:
 		case 0x11:
 		case 0x12:
@@ -1001,7 +1005,7 @@ static READ8_HANDLER(einstein2_port_r)
 		case 0x15:
 		case 0x16:
 		case 0x17:
-			return einstein_serial_r(machine, offset);
+			return einstein_serial_r(space, offset);
 		case 0x18:
 		case 0x19:
 		case 0x1a:
@@ -1010,9 +1014,9 @@ static READ8_HANDLER(einstein2_port_r)
 		case 0x1d:
 		case 0x1e:
 		case 0x1f:
-			return einstein_fdc_r(machine, offset);
+			return einstein_fdc_r(space, offset);
 		case 0x20:
-			return einstein_key_int_r(machine, offset);
+			return einstein_key_int_r(space, offset);
 		case 0x28:
 		case 0x29:
 		case 0x2a:
@@ -1021,7 +1025,7 @@ static READ8_HANDLER(einstein2_port_r)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			return einstein_ctc_r( device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), offset);
+			return einstein_ctc_r( device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), offset);
 		case 0x30:
 		case 0x31:
 		case 0x32:
@@ -1030,7 +1034,7 @@ static READ8_HANDLER(einstein2_port_r)
 		case 0x35:
 		case 0x36:
 		case 0x37:
-			return einstein_pio_r(machine, offset);
+			return einstein_pio_r(space, offset);
 		case 0x40:
 		case 0x41:
 		case 0x42:
@@ -1047,7 +1051,7 @@ static READ8_HANDLER(einstein2_port_r)
 		case 0x4d:
 		case 0x4e:
 		case 0x4f:
-			return einstein_80col_r(machine, offset);
+			return einstein_80col_r(space, offset);
 
 		default:
 			break;
@@ -1070,7 +1074,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x05:
 		case 0x06:
 		case 0x07:
-			einstein_psg_w(machine, offset,data);
+			einstein_psg_w(space, offset,data);
 			return;
 		case 0x08:
 		case 0x09:
@@ -1080,7 +1084,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x0d:
 		case 0x0e:
 		case 0x0f:
-			einstein_vdp_w(machine, offset,data);
+			einstein_vdp_w(space, offset,data);
 			return;
 		case 0x10:
 		case 0x11:
@@ -1090,7 +1094,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x15:
 		case 0x16:
 		case 0x17:
-			einstein_serial_w(machine, offset,data);
+			einstein_serial_w(space, offset,data);
 			return;
 		case 0x18:
 		case 0x19:
@@ -1100,22 +1104,22 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x1d:
 		case 0x1e:
 		case 0x1f:
-			einstein_fdc_w(machine, offset,data);
+			einstein_fdc_w(space, offset,data);
 			return;
 		case 0x20:
-			einstein_key_int_w(machine, offset,data);
+			einstein_key_int_w(space, offset,data);
 			return;
 		case 0x21:
-			einstein_adc_int_w(machine, offset,data);
+			einstein_adc_int_w(space, offset,data);
 			return;
 		case 0x23:
-			einstein_drive_w(machine, offset,data);
+			einstein_drive_w(space, offset,data);
 			return;
 		case 0x24:
-			einstein_rom_w(machine, offset,data);
+			einstein_rom_w(space, offset,data);
 			return;
 		case 0x25:
-			einstein_fire_int_w(machine, offset,data);
+			einstein_fire_int_w(space, offset,data);
 			return;
 		case 0x28:
 		case 0x29:
@@ -1125,7 +1129,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			einstein_ctc_w( device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), offset,data);
+			einstein_ctc_w( device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), offset,data);
 			return;
 		case 0x30:
 		case 0x31:
@@ -1135,7 +1139,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x35:
 		case 0x36:
 		case 0x37:
-			einstein_pio_w(machine, offset,data);
+			einstein_pio_w(space, offset,data);
 			return;
 		case 0x40:
 		case 0x41:
@@ -1153,7 +1157,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x4d:
 		case 0x4e:
 		case 0x4f:
-			einstein_80col_w(machine, offset,data);
+			einstein_80col_w(space, offset,data);
 			return;
 
 		default:
@@ -1176,7 +1180,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x05:
 		case 0x06:
 		case 0x07:
-			return einstein_psg_r(machine, offset);
+			return einstein_psg_r(space, offset);
 		case 0x08:
 		case 0x09:
 		case 0x0a:
@@ -1185,7 +1189,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x0d:
 		case 0x0e:
 		case 0x0f:
-			return einstein_vdp_r(machine, offset);
+			return einstein_vdp_r(space, offset);
 		case 0x10:
 		case 0x11:
 		case 0x12:
@@ -1194,7 +1198,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x15:
 		case 0x16:
 		case 0x17:
-			return einstein_serial_r(machine, offset);
+			return einstein_serial_r(space, offset);
 		case 0x18:
 		case 0x19:
 		case 0x1a:
@@ -1203,9 +1207,9 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x1d:
 		case 0x1e:
 		case 0x1f:
-			return einstein_fdc_r(machine, offset);
+			return einstein_fdc_r(space, offset);
 		case 0x20:
-			return einstein_key_int_r(machine, offset);
+			return einstein_key_int_r(space, offset);
 		case 0x28:
 		case 0x29:
 		case 0x2a:
@@ -1214,7 +1218,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			return einstein_ctc_r( device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), offset);
+			return einstein_ctc_r( device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), offset);
 		case 0x30:
 		case 0x31:
 		case 0x32:
@@ -1223,7 +1227,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x35:
 		case 0x36:
 		case 0x37:
-			return einstein_pio_r(machine, offset);
+			return einstein_pio_r(space, offset);
 
 		default:
 			break;
@@ -1246,7 +1250,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x05:
 		case 0x06:
 		case 0x07:
-			einstein_psg_w(machine, offset,data);
+			einstein_psg_w(space, offset,data);
 			return;
 		case 0x08:
 		case 0x09:
@@ -1256,7 +1260,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x0d:
 		case 0x0e:
 		case 0x0f:
-			einstein_vdp_w(machine, offset,data);
+			einstein_vdp_w(space, offset,data);
 			return;
 		case 0x10:
 		case 0x11:
@@ -1266,7 +1270,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x15:
 		case 0x16:
 		case 0x17:
-			einstein_serial_w(machine, offset,data);
+			einstein_serial_w(space, offset,data);
 			return;
 		case 0x18:
 		case 0x19:
@@ -1276,22 +1280,22 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x1d:
 		case 0x1e:
 		case 0x1f:
-			einstein_fdc_w(machine, offset,data);
+			einstein_fdc_w(space, offset,data);
 			return;
 		case 0x20:
-			einstein_key_int_w(machine, offset,data);
+			einstein_key_int_w(space, offset,data);
 			return;
 		case 0x21:
-			einstein_adc_int_w(machine, offset,data);
+			einstein_adc_int_w(space, offset,data);
 			return;
 		case 0x23:
-			einstein_drive_w(machine, offset,data);
+			einstein_drive_w(space, offset,data);
 			return;
 		case 0x24:
-			einstein_rom_w(machine, offset,data);
+			einstein_rom_w(space, offset,data);
 			return;
 		case 0x25:
-			einstein_fire_int_w(machine, offset,data);
+			einstein_fire_int_w(space, offset,data);
 			return;
 		case 0x28:
 		case 0x29:
@@ -1301,7 +1305,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			einstein_ctc_w( device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), offset,data);
+			einstein_ctc_w( device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), offset,data);
 			return;
 		case 0x30:
 		case 0x31:
@@ -1311,7 +1315,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x35:
 		case 0x36:
 		case 0x37:
-			einstein_pio_w(machine, offset,data);
+			einstein_pio_w(space, offset,data);
 			return;
 
 		default:
@@ -1358,15 +1362,7 @@ ADDRESS_MAP_END
 
 
 
-static const struct msm8251_interface einstein_msm8251_intf=
-{
-	NULL,
-	NULL,
-	NULL
-};
-
-
-static void einstein_printer_handshake_in(int number, int data, int mask)
+static void einstein_printer_handshake_in(running_machine *machine,int number, int data, int mask)
 {
 	if (mask & CENTRONICS_ACKNOWLEDGE)
 	{
@@ -1429,18 +1425,15 @@ static const TMS9928a_interface tms9928a_interface =
 static MACHINE_START( einstein )
 {
 	TMS9928A_configure(&tms9928a_interface);
-	wd17xx_init(machine, WD_TYPE_177X, NULL, NULL);
 
 	einstein_z80pio = device_list_find_by_tag( machine->config->devicelist, Z80PIO, "z80pio" );
 }
 
 static MACHINE_RESET( einstein )
 {
-	memory_set_bankptr(2, mess_ram+0x02000);
-	memory_set_bankptr(3, mess_ram);
-	memory_set_bankptr(4, mess_ram+0x02000);
-
-	msm8251_init(&einstein_msm8251_intf);
+	memory_set_bankptr(machine, 2, mess_ram+0x02000);
+	memory_set_bankptr(machine, 3, mess_ram);
+	memory_set_bankptr(machine, 4, mess_ram+0x02000);
 
 	TMS9928A_reset ();
 
@@ -1453,22 +1446,22 @@ static MACHINE_RESET( einstein )
 	/* a reset causes the fire int, adc int, keyboard int mask
     to be set to 1, which causes all these to be DISABLED */
 	einstein_int_mask = 0;
-	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
+	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
 
-	cpunum_set_irq_callback(0, einstein_cpu_acknowledge_int);
+	cpu_set_irq_callback(machine->cpu[0], einstein_cpu_acknowledge_int);
 
 	/* the einstein keyboard can generate a interrupt */
-	/* the int is actually clocked at the system clock 4Mhz, but this would be too fast for our
+	/* the int is actually clocked at the system clock 4 MHz, but this would be too fast for our
     driver. So we update at 50Hz and hope this is good enough. */
-	timer_pulse(ATTOTIME_IN_HZ(50), NULL, 0, einstein_keyboard_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, einstein_keyboard_timer_callback);
 
-	/* the input to channel 0 and 1 of the ctc is a 2mhz clock */
+	/* the input to channel 0 and 1 of the ctc is a 2 MHz clock */
 	einstein_ctc_trigger = 0;
-	timer_pulse(ATTOTIME_IN_HZ(2000000), (void *)device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), 0, einstein_ctc_trigger_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(2000000), (void *)device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), 0, einstein_ctc_trigger_callback);
 
-	centronics_config(0, einstein_cent_config);
+	centronics_config(machine, 0, einstein_cent_config);
 	/* assumption: select is tied low */
-	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
+	centronics_write_handshake(machine, 0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
 
 }
 
@@ -1595,12 +1588,12 @@ static WRITE8_HANDLER(einstein_port_a_write)
 //  logerror("line: %02x\n",einstein_keyboard_line);
 
 	/* re-scan the keyboard */
-	einstein_scan_keyboard(machine);
+	einstein_scan_keyboard(space->machine);
 }
 
 static READ8_HANDLER(einstein_port_b_read)
 {
-	einstein_scan_keyboard(machine);
+	einstein_scan_keyboard(space->machine);
 
 //  logerror("key: %02x\n",einstein_keyboard_data);
 
@@ -1675,7 +1668,7 @@ static const ay8910_interface einstein_ay_interface =
 //  while((Einstein_VSync)&&(c<33274))
 //  {
 //      // Clock the 6845
-//      m6845_clock();
+//      m6845_clock(screen->machine);
 //      c++;
 //  }
 //
@@ -1685,7 +1678,7 @@ static const ay8910_interface einstein_ay_interface =
 //  {
 //      while ((Einstein_HSync)&&(c<33274))
 //      {
-//          m6845_clock();
+//          m6845_clock(screen->machine);
 //          c++;
 //      }
 //      // Do all the clever split mode changes in here before the next while loop
@@ -1701,7 +1694,7 @@ static const ay8910_interface einstein_ay_interface =
 //          Einstein_scr_x+=8;
 //
 //          // Clock the 6845
-//          m6845_clock();
+//          m6845_clock(screen->machine);
 //          c++;
 //      }
 //  }
@@ -1710,7 +1703,7 @@ static const ay8910_interface einstein_ay_interface =
 
 static VIDEO_UPDATE( einstein2 )
 {
-	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+	const device_config *mc6845 = devtag_get_device(screen->machine, MC6845, "crtc");
 
 	VIDEO_UPDATE_CALL(tms9928a);
 	mc6845_update(mc6845, bitmap, cliprect);
@@ -1724,15 +1717,15 @@ static MACHINE_DRIVER_START( einstein )
 	MDRV_CPU_PROGRAM_MAP(einstein_mem, 0)
 	MDRV_CPU_IO_MAP(einstein_io, 0)
 	MDRV_CPU_CONFIG(einstein_daisy_chain)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( einstein )
 	MDRV_MACHINE_RESET( einstein )
 
 	MDRV_Z80PIO_ADD( "z80pio", einstein_pio_intf )
-	MDRV_Z80CTC_ADD( "z80ctc", einstein_ctc_intf )
-	MDRV_DEVICE_ADD( "keyboard_daisy", DEVICE_GET_INFO_NAME( einstein_daisy ) )
-	MDRV_DEVICE_ADD( "adc_daisy", DEVICE_GET_INFO_NAME( einstein_daisy ) )
+	MDRV_Z80CTC_ADD( "z80ctc", EINSTEIN_SYSTEM_CLOCK, einstein_ctc_intf )
+	MDRV_DEVICE_ADD( "keyboard_daisy", DEVICE_GET_INFO_NAME( einstein_daisy ), 0 )
+	MDRV_DEVICE_ADD( "adc_daisy", DEVICE_GET_INFO_NAME( einstein_daisy ), 0 )
 
     /* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
@@ -1747,7 +1740,12 @@ static MACHINE_DRIVER_START( einstein )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
+
+	/* uart */
+	MDRV_MSM8251_ADD("uart", default_msm8251_interface)
+	
+	MDRV_WD177X_ADD("wd177x", default_wd17xx_interface )
 MACHINE_DRIVER_END
 
 
@@ -1763,8 +1761,7 @@ static MACHINE_DRIVER_START( einstei2 )
 	MDRV_SCREEN_SIZE(640, 400)
 	MDRV_SCREEN_VISIBLE_AREA(0,640-1, 0, 400-1)
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
-	MDRV_DEVICE_CONFIG( einstein_crtc6845_interface )
+	MDRV_MC6845_ADD("crtc", MC6845, EINSTEIN_SYSTEM_CLOCK /*?*/, einstein_crtc6845_interface)
 
 	MDRV_VIDEO_UPDATE( einstein2 )
 MACHINE_DRIVER_END

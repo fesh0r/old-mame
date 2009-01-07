@@ -41,11 +41,11 @@
 
 
     These early colour computers have a PROM to create the foreground palette.
-	This PROM (82s123.ic7) is now dumped, but not yet merged into the code.
 
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "machine/z80pio.h"
 #include "cpu/z80/z80daisy.h"
 #include "machine/wd17xx.h"
@@ -60,6 +60,23 @@
 static const device_config *cassette_device_image(running_machine *machine)
 {
 	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+}
+
+static READ8_DEVICE_HANDLER(z80pio_alt_r)
+{
+	int channel = BIT(offset, 1);
+
+	return (offset & 1) ? z80pio_c_r(device, channel) : z80pio_d_r(device, channel);
+}
+
+static WRITE8_DEVICE_HANDLER(z80pio_alt_w)
+{
+	int channel = BIT(offset, 1);
+
+	if (offset & 1)
+		z80pio_c_w(device, channel, data);
+	else
+		z80pio_d_w(device, channel, data);
 }
 
 static QUICKLOAD_LOAD( mbee );
@@ -116,10 +133,10 @@ static ADDRESS_MAP_START(mbeeic_ports, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0b, 0x0b) AM_MIRROR(0x10) AM_READWRITE(mbee_video_bank_r, mbee_video_bank_w)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0x10) AM_READWRITE(m6545_status_r, m6545_index_w)
 	AM_RANGE(0x0d, 0x0d) AM_MIRROR(0x10) AM_READWRITE(m6545_data_r, m6545_data_w)
-	AM_RANGE(0x44, 0x44) AM_READWRITE(wd17xx_status_r, wd17xx_command_w)
-	AM_RANGE(0x45, 0x45) AM_READWRITE(wd17xx_track_r, wd17xx_track_w)
-	AM_RANGE(0x46, 0x46) AM_READWRITE(wd17xx_sector_r, wd17xx_sector_w)
-	AM_RANGE(0x47, 0x47) AM_READWRITE(wd17xx_data_r, wd17xx_data_w)
+	AM_RANGE(0x44, 0x44) AM_DEVREADWRITE(WD179X, "wd179x", wd17xx_status_r, wd17xx_command_w)
+	AM_RANGE(0x45, 0x45) AM_DEVREADWRITE(WD179X, "wd179x", wd17xx_track_r, wd17xx_track_w)
+	AM_RANGE(0x46, 0x46) AM_DEVREADWRITE(WD179X, "wd179x", wd17xx_sector_r, wd17xx_sector_w)
+	AM_RANGE(0x47, 0x47) AM_DEVREADWRITE(WD179X, "wd179x", wd17xx_data_r, wd17xx_data_w)
 	AM_RANGE(0x48, 0x48) AM_READWRITE(mbee_fdc_status_r, mbee_fdc_motor_w)
 ADDRESS_MAP_END
 
@@ -288,9 +305,9 @@ static PALETTE_INIT( mbeeic )
 
 static int mbee_vsync;
 
-static Z80PIO_ON_INT_CHANGED( pio_interrupt )
+static void mbee_pio_interrupt(const device_config *device, int state)
 {
-	cpunum_set_input_line(device->machine, 0, 0, state);
+	cpu_set_input_line(device->machine->cpu[0], 0, state);
 }
 
 static READ8_DEVICE_HANDLER( pio_port_b_r )
@@ -338,9 +355,7 @@ static WRITE8_DEVICE_HANDLER( pio_port_b_w )
 
 static const z80pio_interface mbee_z80pio_intf =
 {
-	"main",
-	0,
-	pio_interrupt,	/* callback when change interrupt status */
+	mbee_pio_interrupt,	/* callback when change interrupt status */
 	NULL,
 	pio_port_b_r,
 	NULL,
@@ -357,13 +372,20 @@ static const z80_daisy_chain mbee_daisy_chain[] =
 
 static INTERRUPT_GEN( mbee_interrupt )
 {
-	/* once per frame, pulse the PIO B bit 7 */
+	/* once per frame, pulse the PIO B bit 7 - only needed for networked bees */
 	mbee_vsync = 1;
 }
 
+static MACHINE_DRIVER_START( mbee_cartslot )
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(mbee_cart)
+MACHINE_DRIVER_END
+
 static MACHINE_DRIVER_START( mbee )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_12MHz / 6)         /* 2 Mhz */
+	MDRV_CPU_ADD("main", Z80, XTAL_12MHz / 6)         /* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(mbee_mem, 0)
 	MDRV_CPU_IO_MAP(mbee_ports, 0)
 	MDRV_CPU_CONFIG(mbee_daisy_chain)
@@ -398,19 +420,21 @@ static MACHINE_DRIVER_START( mbee )
 	MDRV_Z80BIN_QUICKLOAD_ADD(mbee, 2)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
+	
+	/* cartridge */
+	MDRV_IMPORT_FROM(mbee_cartslot)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( mbeeic )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 3375000)         /* 3.37500 Mhz */
+	MDRV_CPU_ADD("main", Z80, 3375000)         /* 3.37500 MHz */
 	MDRV_CPU_PROGRAM_MAP(mbeeic_mem, 0)
 	MDRV_CPU_IO_MAP(mbeeic_ports, 0)
 	MDRV_CPU_CONFIG(mbee_daisy_chain)
 	MDRV_CPU_VBLANK_INT("main", mbee_interrupt)
 
 	MDRV_MACHINE_RESET( mbee )
-	MDRV_MACHINE_START( mbee )
 
 	MDRV_Z80PIO_ADD( "z80pio", mbee_z80pio_intf )
 
@@ -439,6 +463,11 @@ static MACHINE_DRIVER_START( mbeeic )
 	MDRV_Z80BIN_QUICKLOAD_ADD(mbee, 2)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
+	
+	MDRV_WD179X_ADD("wd179x", mbee_wd17xx_interface )
+
+	/* cartridge */
+	MDRV_IMPORT_FROM(mbee_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -451,21 +480,21 @@ MACHINE_DRIVER_END
 static DRIVER_INIT( mbee )
 {
 	UINT8 *RAM = memory_region(machine, "main");
-	memory_configure_bank(1, 0, 2, &RAM[0x0000], 0x8000);
-	memory_configure_bank(2, 0, 2, &RAM[0x11000], 0x4000);
-	memory_configure_bank(3, 0, 2, &RAM[0x11800], 0x4000);
-	memory_set_bank(2, 1);
-	memory_set_bank(3, 0);
+	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000], 0x8000);
+	memory_configure_bank(machine, 2, 0, 2, &RAM[0x11000], 0x4000);
+	memory_configure_bank(machine, 3, 0, 2, &RAM[0x11800], 0x4000);
+	memory_set_bank(machine, 2, 1);
+	memory_set_bank(machine, 3, 0);
 }
 
 static DRIVER_INIT( mbee56 )
 {
 	UINT8 *RAM = memory_region(machine, "main");
-	memory_configure_bank(1, 0, 2, &RAM[0x0000], 0xe000);
-	memory_configure_bank(2, 0, 2, &RAM[0x11000], 0x4000);
-	memory_configure_bank(3, 0, 2, &RAM[0x11800], 0x4000);
-	memory_set_bank(2, 1);
-	memory_set_bank(3, 0);
+	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000], 0xe000);
+	memory_configure_bank(machine, 2, 0, 2, &RAM[0x11000], 0x4000);
+	memory_configure_bank(machine, 3, 0, 2, &RAM[0x11800], 0x4000);
+	memory_set_bank(machine, 2, 1);
+	memory_set_bank(machine, 3, 0);
 }
 
 ROM_START( mbee )
@@ -545,21 +574,26 @@ ROM_END
 
 static Z80BIN_EXECUTE( mbee )
 {
-	program_write_word_16le(0xa6, execute_address);			/* fix the EXEC command */
+	const device_config *cpu = cputag_get_cpu(machine, "main");
+	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+
+	memory_write_word_16le(space, 0xa6, execute_address);			/* fix the EXEC command */
 
 	if (autorun)
 	{
-		program_write_word_16le(0xa2, execute_address);		/* fix warm-start vector to get around some copy-protections */
-		cpunum_set_reg(0, REG_PC, execute_address);
+		memory_write_word_16le(space, 0xa2, execute_address);		/* fix warm-start vector to get around some copy-protections */
+		cpu_set_reg(cpu, REG_GENPC, execute_address);
 	}
 	else
 	{
-		program_write_word_16le(0xa2, 0x8517);
+		memory_write_word_16le(space, 0xa2, 0x8517);
 	}
 }
 
 static QUICKLOAD_LOAD( mbee )
 {
+	const device_config *cpu = cputag_get_cpu(image->machine, "main");
+	const address_space *space = cputag_get_address_space(image->machine, "main", ADDRESS_SPACE_PROGRAM);
 	UINT16 i, j;
 	UINT8 data, sw = input_port_read(image->machine, "CONFIG") & 1;	/* reading the dipswitch: 1 = autorun */
 
@@ -573,18 +607,18 @@ static QUICKLOAD_LOAD( mbee )
 			if (image_fread(image, &data, 1) != 1) return INIT_FAIL;
 
 			if ((j < mbee_size) || (j > 0xefff))
-				program_write_byte(j, data);
+				memory_write_byte(space, j, data);
 			else
 				return INIT_FAIL;
 		}
 
 		if (sw)
 		{
-			program_write_word_16le(0xa2,0x801e);	/* fix warm-start vector to get around some copy-protections */
-			cpunum_set_reg(0, REG_PC, 0x801e);
+			memory_write_word_16le(space, 0xa2,0x801e);	/* fix warm-start vector to get around some copy-protections */
+			cpu_set_reg(cpu, REG_GENPC, 0x801e);
 		}
 		else
-			program_write_word_16le(0xa2,0x8517);
+			memory_write_word_16le(space, 0xa2,0x8517);
 	}
 	else if (!mame_stricmp(image_filetype(image), "com"))
 	{
@@ -596,34 +630,15 @@ static QUICKLOAD_LOAD( mbee )
 			if (image_fread(image, &data, 1) != 1) return INIT_FAIL;
 
 			if ((j < mbee_size) || (j > 0xefff))
-				program_write_byte(j, data);
+				memory_write_byte(space, j, data);
 			else
 				return INIT_FAIL;
 		}
 
-		if (sw) cpunum_set_reg(0, REG_PC, 0x100);
+		if (sw) cpu_set_reg(cpu, REG_GENPC, 0x100);
 	}
 
 	return INIT_PASS;
-}
-
-
-static void mbee_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:		info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:		info->load = DEVICE_IMAGE_LOAD_NAME(mbee_cart); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "rom"); break;
-
-		default:				cartslot_device_getinfo(devclass, state, info); break;
-	}
 }
 
 static void mbee_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
@@ -645,18 +660,14 @@ static void mbee_floppy_getinfo(const mess_device_class *devclass, UINT32 state,
 }
 
 
-static SYSTEM_CONFIG_START(mbee)
-	CONFIG_DEVICE(mbee_cartslot_getinfo)
-SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(mbeeic)
-	CONFIG_DEVICE(mbee_cartslot_getinfo)
 	CONFIG_DEVICE(mbee_floppy_getinfo)
 SYSTEM_CONFIG_END
 
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
-COMP( 1982, mbee,     0,	0,	mbee,     mbee,     mbee,     mbee,		"Applied Technology",  "Microbee 16 Standard" , 0)
+COMP( 1982, mbee,     0,	0,	mbee,     mbee,     mbee,     0,			"Applied Technology",  "Microbee 16 Standard" , 0)
 COMP( 1982, mbeeic,   mbee,	0,	mbeeic,   mbee,     mbee,     mbeeic,		"Applied Technology",  "Microbee 32 IC" , 0)
 COMP( 1982, mbeepc,   mbee,	0,	mbeeic,   mbee,     mbee,     mbeeic,		"Applied Technology",  "Microbee 32 PC" , 0)
 COMP( 1985?,mbeepc85, mbee,	0,	mbeeic,   mbee,     mbee,     mbeeic,		"Applied Technology",  "Microbee 32 PC85" , 0)

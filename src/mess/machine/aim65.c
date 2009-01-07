@@ -35,9 +35,9 @@ static UINT8 riot_port_a;
 ******************************************************************************/
 
 
-static void aim65_via_irq_func(running_machine *machine, int state)
+void aim65_via_irq_func(const device_config *device, int state)
 {
-	cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 /* STEP/RUN
@@ -69,35 +69,35 @@ static void aim65_via_irq_func(running_machine *machine, int state)
  * PB7: CU (Cursor)
  */
 
-static void dl1416_update(dl1416_t *chip, int index)
+static void dl1416_update(const device_config *device, int index)
 {
-	dl1416_set_input_ce(chip, pia_a & (0x04 << index));
-	dl1416_set_input_w(chip, pia_a & 0x80);
-	dl1416_set_input_cu(chip, pia_b & 0x80);
-	dl1416_write(chip, pia_a & 0x03, pia_b & 0x7f);
+	dl1416_set_input_ce(device, pia_a & (0x04 << index));
+	dl1416_set_input_w(device, pia_a & 0x80);
+	dl1416_set_input_cu(device, pia_b & 0x80);
+	dl1416_w(device, pia_a & 0x03, pia_b & 0x7f);
 }
 
 static void aim65_pia(running_machine *machine)
 {
-	dl1416_update(devtag_get_token(machine, DL1416, "ds1"), 0);
-	dl1416_update(devtag_get_token(machine, DL1416, "ds2"), 1);
-	dl1416_update(devtag_get_token(machine, DL1416, "ds3"), 2);
-	dl1416_update(devtag_get_token(machine, DL1416, "ds4"), 3);
-	dl1416_update(devtag_get_token(machine, DL1416, "ds5"), 4);
+	dl1416_update(devtag_get_device(machine, DL1416, "ds1"), 0);
+	dl1416_update(devtag_get_device(machine, DL1416, "ds2"), 1);
+	dl1416_update(devtag_get_device(machine, DL1416, "ds3"), 2);
+	dl1416_update(devtag_get_device(machine, DL1416, "ds4"), 3);
+	dl1416_update(devtag_get_device(machine, DL1416, "ds5"), 4);
 }
 
 
 static WRITE8_HANDLER( aim65_pia_a_w )
 {
 	pia_a = data;
-	aim65_pia(machine);
+	aim65_pia(space->machine);
 }
 
 
 static WRITE8_HANDLER( aim65_pia_b_w )
 {
 	pia_b = data;
-	aim65_pia(machine);
+	aim65_pia(space->machine);
 }
 
 
@@ -118,11 +118,30 @@ static const pia6821_interface pia =
 };
 
 
-void aim65_update_ds1(int digit, int data) { output_set_digit_value( 0 + (digit ^ 3), data); }
-void aim65_update_ds2(int digit, int data) { output_set_digit_value( 4 + (digit ^ 3), data); }
-void aim65_update_ds3(int digit, int data) { output_set_digit_value( 8 + (digit ^ 3), data); }
-void aim65_update_ds4(int digit, int data) { output_set_digit_value(12 + (digit ^ 3), data); }
-void aim65_update_ds5(int digit, int data) { output_set_digit_value(16 + (digit ^ 3), data); }
+void aim65_update_ds1(const device_config *device, int digit, int data)
+{
+	output_set_digit_value(0 + (digit ^ 3), data);
+}
+
+void aim65_update_ds2(const device_config *device, int digit, int data)
+{
+	output_set_digit_value(4 + (digit ^ 3), data);
+}
+
+void aim65_update_ds3(const device_config *device, int digit, int data)
+{
+	output_set_digit_value(8 + (digit ^ 3), data);
+}
+
+void aim65_update_ds4(const device_config *device, int digit, int data)
+{
+	output_set_digit_value(12 + (digit ^ 3), data);
+}
+
+void aim65_update_ds5(const device_config *device, int digit, int data)
+{
+	output_set_digit_value(16 + (digit ^ 3), data);
+}
 
 
 
@@ -133,7 +152,7 @@ void aim65_update_ds5(int digit, int data) { output_set_digit_value(16 + (digit 
 
 UINT8 aim65_riot_b_r(const device_config *device, UINT8 olddata)
 {
-	static const char *keynames[] =
+	static const char *const keynames[] =
 	{
 		"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
 		"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7"
@@ -160,7 +179,7 @@ void aim65_riot_a_w(const device_config *device, UINT8 data, UINT8 olddata)
 
 void aim65_riot_irq(const device_config *device, int state)
 {
-	cpunum_set_input_line(device->machine, 0, M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 
@@ -170,72 +189,44 @@ void aim65_riot_irq(const device_config *device, int state)
 ******************************************************************************/
 
 
-static WRITE8_HANDLER( aim65_via0_a_w )
+WRITE8_DEVICE_HANDLER( aim65_via0_a_w )
 {
 	 aim65_printer_data_a(data);
 }
 
 
-static WRITE8_HANDLER( aim65_via0_b_w )
+WRITE8_DEVICE_HANDLER( aim65_via0_b_w )
 {
 	aim65_printer_data_b(data);
 }
 
 
-static READ8_HANDLER( aim65_via0_b_r )
+READ8_DEVICE_HANDLER( aim65_via0_b_r )
 {
-	return input_port_read(machine, "switches");
+	return input_port_read(device->machine, "switches");
 }
 
 
-static const struct via6522_interface via0 =
+/***************************************************************************
+    DRIVER INIT
+***************************************************************************/
+
+MACHINE_START( aim65 )
 {
-	0, // read8_machine_func in_a_func;
-	aim65_via0_b_r, // read8_machine_func in_b_func;
-	0, // read8_machine_func in_ca1_func;
-	0, // read8_machine_func in_cb1_func;
-	0, // read8_machine_func in_ca2_func;
-	0, // read8_machine_func in_cb2_func;
-	aim65_via0_a_w,	// write8_machine_func out_a_func;
-	aim65_via0_b_w, // write8_machine_func out_b_func;
-	0, // write8_machine_func out_ca1_func;
-	0, // write8_machine_func out_cb1_func;
-	0, // write8_machine_func out_ca2_func;
-	aim65_printer_on, // write8_machine_func out_cb2_func;
-	aim65_via_irq_func // void (*irq_func)(int state);
-};
+	const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 
-static const struct via6522_interface user_via =
-{
-	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
-};
-
-
-
-/******************************************************************************
- Driver init
-******************************************************************************/
-
-
-DRIVER_INIT( aim65 )
-{
 	/* Init RAM */
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
-		0, mess_ram_size - 1, 0, 0, SMH_BANK1, SMH_BANK1);
-	memory_set_bankptr(1, mess_ram);
+	memory_install_readwrite8_handler(space, 0, mess_ram_size - 1, 0, 0, SMH_BANK1, SMH_BANK1);
+	memory_set_bankptr(machine, 1, mess_ram);
 
 	if (mess_ram_size < 4 * 1024)
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
-			mess_ram_size, 0x0fff, 0, 0, SMH_NOP, SMH_NOP);
+		memory_install_readwrite8_handler(space, mess_ram_size, 0x0fff, 0, 0, SMH_NOP, SMH_NOP);
 
-	pia_config(0, &pia);
+	pia_config(machine, 0, &pia);
 
-	via_config(0, &via0);
-	via_0_cb1_w(machine, 1, 1);
-	via_0_ca1_w(machine, 1, 0);
-
-	via_config(1, &user_via);
-	via_reset();
+	via_cb1_w(via_0, 1, 1);
+	via_ca1_w(via_0, 1, 0);
 }
 
 

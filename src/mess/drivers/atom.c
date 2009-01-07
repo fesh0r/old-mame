@@ -34,7 +34,7 @@ Floppy:     FDC8271
 Hardware:   PPIA 8255
 
     output  b000    0 - 3 keyboard row, 4 - 7 graphics mode
-            b002    0 cas output, 1 enable 2.4Khz, 2 buzzer, 3 colour set
+            b002    0 cas output, 1 enable 2.4kHz, 2 buzzer, 3 colour set
 
     input   b001    0 - 5 keyboard column, 6 CTRL key, 7 SHIFT key
             b002    4 2.4kHz input, 5 cas input, 6 REPT key, 7 60 Hz input
@@ -59,6 +59,7 @@ Hardware:   PPIA 8255
 
 /* Core includes */
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 
 /* Components */
 #include "machine/centroni.h"
@@ -90,7 +91,7 @@ static ADDRESS_MAP_START( atom_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE(&videoram) /* VDG 6847 */
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
 	AM_RANGE(0xb000, 0xb003) AM_DEVREADWRITE( PPI8255, "ppi8255", ppi8255_r, ppi8255_w) /* PPIA 8255 */
-	AM_RANGE(0xb800, 0xbbff) AM_READWRITE(via_0_r, via_0_w)			/* VIA 6522 */
+	AM_RANGE(0xb800, 0xbbff) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)			/* VIA 6522 */
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 	AM_RANGE(0xd000, 0xdfff) AM_ROM
 	AM_RANGE(0xe000, 0xefff) AM_ROM
@@ -106,7 +107,7 @@ static ADDRESS_MAP_START( atomeb_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xafff) AM_READ(SMH_BANK1)	/* eprom data from eprom box */
 	AM_RANGE(0xb000, 0xb003) AM_DEVREADWRITE( PPI8255, "ppi8255", ppi8255_r, ppi8255_w) /* PPIA 8255 */
-	AM_RANGE(0xb800, 0xbbff) AM_READWRITE(via_0_r, via_0_w)			/* VIA 6522 */
+	AM_RANGE(0xb800, 0xbbff) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)			/* VIA 6522 */
 	AM_RANGE(0xbfff, 0xbfff) AM_READWRITE(atom_eprom_box_r, atom_eprom_box_w)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 	AM_RANGE(0xd000, 0xdfff) AM_ROM
@@ -251,13 +252,12 @@ INPUT_PORTS_END
 /* machine definition */
 static MACHINE_DRIVER_START( atom )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M65C02, 1000000)        /* 0,894886 Mhz */
+	MDRV_CPU_ADD("main", M65C02, 1000000)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(atom_mem, 0)
 
 	MDRV_MACHINE_RESET( atom )
 
-	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-	MDRV_DEVICE_CONFIG( atom_8255_int )
+	MDRV_PPI8255_ADD( "ppi8255", atom_8255_int )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -275,12 +275,19 @@ static MACHINE_DRIVER_START( atom )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
 
 	/* quickload */
 	MDRV_QUICKLOAD_ADD(atom, "atm", 0)
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
+
+	/* via */
+	MDRV_VIA6522_ADD("via6522_0", 1000000, atom_6522_interface)
+
+	/* i8271 */
+	MDRV_I8271_ADD("i8271", atom_8271_interface)
 MACHINE_DRIVER_END
 
 

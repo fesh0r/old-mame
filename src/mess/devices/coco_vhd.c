@@ -271,7 +271,7 @@ DEVICE_GET_INFO(coco_vhd)
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(vhd_info); break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0; break;
 		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL; break;
-		case DEVINFO_INT_IMAGE_TYPE:					info->i = IO_VHD; break;
+		case DEVINFO_INT_IMAGE_TYPE:					info->i = IO_HARDDISK; break;
 		case DEVINFO_INT_IMAGE_READABLE:				info->i = 1; break;
 		case DEVINFO_INT_IMAGE_WRITEABLE:				info->i = 1; break;
 		case DEVINFO_INT_IMAGE_CREATABLE:				info->i = 1; break;
@@ -281,9 +281,9 @@ DEVICE_GET_INFO(coco_vhd)
 		case DEVINFO_FCT_IMAGE_LOAD:					info->f = (genf *) DEVICE_IMAGE_LOAD_NAME(coco_vhd); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Virtual Hard Disk"; break;
-		case DEVINFO_STR_FAMILY:						info->s = "Virtual Hard Disk"; break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__; break;
-		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:			info->s = "vhd"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Virtual Hard Disk"); break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Virtual Hard Disk"); break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__); break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:			strcpy(info->s, "vhd"); break;
 	}
 }

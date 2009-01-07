@@ -178,15 +178,15 @@ static void applefdc_start(const device_config *device, applefdc_t type)
 
 	memset(fdc, 0, sizeof(*fdc));
 	fdc->type = type;
-	fdc->motor_timer = timer_alloc(iwm_turnmotor_onoff, (void *) device);
+	fdc->motor_timer = timer_alloc(device->machine, iwm_turnmotor_onoff, (void *) device);
 	fdc->lines = 0x00;
 	fdc->mode = 0x1F;	/* default value needed by Lisa 2 - no, I don't know if it is true */
 
 	/* register save states */
-	state_save_register_item("applefdc", 0, fdc->write_byte);
-	state_save_register_item("applefdc", 0, fdc->lines);
-	state_save_register_item("applefdc", 0, fdc->mode);
-	state_save_register_item("applefdc", 0, fdc->handshake_hack);
+	state_save_register_item(device->machine, "applefdc", NULL, 0, fdc->write_byte);
+	state_save_register_item(device->machine, "applefdc", NULL, 0, fdc->lines);
+	state_save_register_item(device->machine, "applefdc", NULL, 0, fdc->mode);
+	state_save_register_item(device->machine, "applefdc", NULL, 0, fdc->handshake_hack);
 }
 
 
@@ -260,7 +260,7 @@ static UINT8 applefdc_statusreg_r(const device_config *device)
 	 * Bits 4-0	Same as IWM mode bits 4-0
 	 */
 
-	status = iwm_enable2(device) ? 1 : (intf->read_status ? intf->read_status() : 0);
+	status = iwm_enable2(device) ? 1 : (intf->read_status ? intf->read_status(device) : 0);
 
 	result = (status ? 0x80 : 0x00);
 
@@ -318,7 +318,7 @@ static UINT8 applefdc_read_reg(const device_config *device, int lines)
 						logerror("applefdc_read_reg(): latch mode off not implemented\n");
 				}
 
-				result = (intf->read_data ? intf->read_data() : 0x00);
+				result = (intf->read_data ? intf->read_data(device) : 0x00);
 			}
 			break;
 
@@ -372,7 +372,7 @@ static void applefdc_write_reg(const device_config *device, UINT8 data)
 				}
 
 				if (intf->write_data != NULL)
-					intf->write_data(data);
+					intf->write_data(device,data);
 			}
 			break;
 	}
@@ -410,7 +410,7 @@ static TIMER_CALLBACK(iwm_turnmotor_onoff)
 
 	/* invoke callback, if present */
 	if (intf->set_enable_lines != NULL)
-		intf->set_enable_lines(enable_lines);
+		intf->set_enable_lines(device,enable_lines);
 
 	if (LOG_APPLEFDC_EXTRA)
 		logerror("iwm_turnmotor_onoff(): Turning motor %s\n", status ? "on" : "off");
@@ -451,7 +451,7 @@ static void iwm_access(const device_config *device, int offset)
 		fdc->lines &= ~(1 << (offset >> 1));
 
 	if ((offset < 0x08) && (intf->set_lines != NULL))
-		intf->set_lines(fdc->lines & 0x0f);
+		intf->set_lines(device,fdc->lines & 0x0f);
 
 	switch(offset)
 	{
@@ -469,13 +469,13 @@ static void iwm_access(const device_config *device, int offset)
 		case 0x0A:
 			/* turn off IWM_DRIVE */
 			if ((fdc->lines & IWM_MOTOR) && (intf->set_enable_lines != NULL))
-				intf->set_enable_lines(1);
+				intf->set_enable_lines(device,1);
 			break;
 
 		case 0x0B:
 			/* turn on IWM_DRIVE */
 			if ((fdc->lines & IWM_MOTOR) && (intf->set_enable_lines != NULL))
-				intf->set_enable_lines(2);
+				intf->set_enable_lines(device,2);
 			break;
 	}
 }
@@ -509,7 +509,7 @@ READ8_DEVICE_HANDLER( applefdc_r )
 					if (fdc->lines & IWM_Q7)
 					{
 						if (intf->write_data != NULL)
-							intf->write_data(fdc->write_byte);
+							intf->write_data(device,fdc->write_byte);
 						result = 0;
 					}
 					else
@@ -568,7 +568,7 @@ WRITE8_DEVICE_HANDLER( applefdc_w )
 					if (fdc->lines & IWM_Q7)
 					{
 						if (intf->write_data != NULL)
-							intf->write_data(fdc->write_byte);
+							intf->write_data(device,fdc->write_byte);
 					}
 					break;
 
@@ -627,9 +627,9 @@ static DEVICE_GET_INFO(applefdc_base)
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(applefdc);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FAMILY:						info->s = "Apple FDC";						break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Apple FDC");						break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
 	}
 }
 
@@ -658,7 +658,7 @@ DEVICE_GET_INFO(applefdc)
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Apple FDC";				break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Apple FDC");				break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(oldfdc);	break;
@@ -692,7 +692,7 @@ DEVICE_GET_INFO(iwm)
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Apple IWM (Integrated Woz Machine)";				break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Apple IWM (Integrated Woz Machine)");				break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(iwm);	break;
@@ -726,7 +726,7 @@ DEVICE_GET_INFO(swim)
 	switch (state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Apple SWIM (Steve Woz Integrated Machine)";				break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Apple SWIM (Steve Woz Integrated Machine)");				break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(swim);	break;

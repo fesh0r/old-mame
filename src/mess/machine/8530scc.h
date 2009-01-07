@@ -11,7 +11,7 @@
 
 
 /***************************************************************************
-    TYPE DEFINITIONS
+    MACROS
 ***************************************************************************/
 
 #define SCC8530			DEVICE_GET_INFO_NAME(scc8530)
@@ -27,6 +27,18 @@ struct _scc8530_interface
 {
 	void (*acknowledge)(const device_config *device);
 };
+
+
+
+/***************************************************************************
+    DEVICE CONFIGURATION MACROS
+***************************************************************************/
+
+#define MDRV_SCC8530_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, SCC8530, 0)
+
+#define MDRV_SCC8530_ACK(_acknowledge) \
+	MDRV_DEVICE_CONFIG_DATAPTR(scc8530_interface, acknowledge, _acknowledge)
 
 
 

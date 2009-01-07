@@ -84,20 +84,24 @@ static void aim65_printer_cr(void) {
 
 TIMER_CALLBACK(aim65_printer_timer)
 {
-	via_0_cb1_w(machine, 0, printer_level);
-	via_0_ca1_w(machine, 0, !printer_level);
+	const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+
+	via_cb1_w(via_0, 0, printer_level);
+	via_ca1_w(via_0, 0, !printer_level);
 	printer_level = !printer_level;
 	aim65_printer_inc();
 }
 
 
-WRITE8_HANDLER( aim65_printer_on )
+WRITE8_DEVICE_HANDLER( aim65_printer_on )
 {
+	const device_config *via_0 = device_list_find_by_tag(device->machine->config->devicelist, VIA6522, "via6522_0");
+
 	if (!data)
 	{
 		aim65_printer_cr();
 		timer_adjust_periodic(print_timer, attotime_zero, 0, ATTOTIME_IN_USEC(10));
-		via_0_cb1_w(machine, 0, 0);
+		via_cb1_w(via_0, 0, 0);
 		printer_level = 1;
 	}
 	else
@@ -123,7 +127,7 @@ void aim65_printer_data_b(UINT8 data) {
 
 VIDEO_START( aim65 )
 {
-	print_timer = timer_alloc(aim65_printer_timer, NULL);
+	print_timer = timer_alloc(machine, aim65_printer_timer, NULL);
 
 	/*
     videoram_size = 600 * 10 * 2;

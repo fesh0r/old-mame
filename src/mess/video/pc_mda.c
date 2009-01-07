@@ -14,7 +14,14 @@
 #define MDA_CLOCK	16257000
 
 #define MDA_LOG(N,M,A) \
-	if(VERBOSE_MDA>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A; }
+	do { \
+		if(VERBOSE_MDA>=N) \
+		{ \
+			if( M ) \
+				logerror("%11.6f: %-24s",attotime_to_double(timer_get_time(machine)),(char*)M ); \
+			logerror A; \
+		} \
+	} while (0)
 
 static const unsigned char mda_palette[4][3] =
 {
@@ -59,7 +66,6 @@ static MC6845_ON_VSYNC_CHANGED( mda_vsync_changed );
 static const mc6845_interface mc6845_mda_intf =
 {
 	MDA_SCREEN_NAME,	/* screen number */
-	MDA_CLOCK/9 /*?*/,	/* clock */
 	9,					/* number of pixels per video memory address */
 	NULL,				/* begin_update */
 	mda_update_row,		/* update_row */
@@ -77,8 +83,7 @@ MACHINE_DRIVER_START( pcvideo_mda )
 
 	MDRV_PALETTE_INIT(pc_mda)
 
-	MDRV_DEVICE_ADD( MDA_MC6845_NAME, MC6845)
-	MDRV_DEVICE_CONFIG( mc6845_mda_intf )
+	MDRV_MC6845_ADD( MDA_MC6845_NAME, MC6845, MDA_CLOCK/9, mc6845_mda_intf)
 
 	MDRV_VIDEO_START( pc_mda )
 	MDRV_VIDEO_UPDATE( mc6845_mda)
@@ -94,15 +99,16 @@ MACHINE_DRIVER_END
 VIDEO_START( pc_mda )
 {
 	int buswidth;
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 
-	buswidth = cputype_databus_width(machine->config->cpu[0].type, ADDRESS_SPACE_PROGRAM);
+	buswidth = cpu_get_databus_width(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	switch(buswidth)
 	{
 		case 8:
-			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0x07000, SMH_BANK11 );
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0x07000, pc_video_videoram_w );
-			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, 0, pc_MDA_r );
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, 0, pc_MDA_w );
+			memory_install_read8_handler(space, 0xb0000, 0xb0fff, 0, 0x07000, SMH_BANK11 );
+			memory_install_write8_handler(space, 0xb0000, 0xb0fff, 0, 0x07000, pc_video_videoram_w );
+			memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x3b0, 0x3bf, 0, 0, pc_MDA_r );
+			memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x3b0, 0x3bf, 0, 0, pc_MDA_w );
 			break;
 
 		default:
@@ -116,7 +122,7 @@ VIDEO_START( pc_mda )
 
 	videoram_size = 0x1000;	/* This is actually 0x1000 in reality */
 	videoram = auto_malloc(videoram_size);
-	memory_set_bankptr(11, videoram);
+	memory_set_bankptr(machine,11, videoram);
 }
 
 
@@ -139,6 +145,7 @@ static MC6845_UPDATE_ROW( mda_text_inten_update_row )
 	UINT16	*p = BITMAP_ADDR16( bitmap, y, 0 );
 	UINT16	chr_base = ( ra & 0x08 ) ? 0x800 | ( ra & 0x07 ) : ra;
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) MDA_LOG(1,"mda_text_inten_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -211,6 +218,7 @@ static MC6845_UPDATE_ROW( mda_text_blink_update_row )
 	UINT16	*p = BITMAP_ADDR16( bitmap, y, 0 );
 	UINT16	chr_base = ( ra & 0x08 ) ? 0x800 | ( ra & 0x07 ) : ra;
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) MDA_LOG(1,"mda_text_blink_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -309,7 +317,7 @@ static MC6845_ON_VSYNC_CHANGED( mda_vsync_changed )
 /*
  *	rW	MDA mode control register (see #P138)
  */
-static void mda_mode_control_w(int data)
+static void mda_mode_control_w(running_machine *machine, int data)
 {
 	MDA_LOG(1,"MDA_mode_control_w",("$%02x: colums %d, gfx %d, enable %d, blink %d\n",
 		data, (data&1)?80:40, (data>>1)&1, (data>>3)&1, (data>>5)&1));
@@ -355,7 +363,7 @@ static int pc_mda_status_r(void)
  *************************************************************************/
 WRITE8_HANDLER ( pc_MDA_w )
 {
-	device_config   *devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, MDA_MC6845_NAME);
+	device_config   *devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, MDA_MC6845_NAME);
 	switch( offset )
 	{
 		case 0: case 2: case 4: case 6:
@@ -365,14 +373,14 @@ WRITE8_HANDLER ( pc_MDA_w )
 			mc6845_register_w( devconf, offset, data );
 			break;
 		case 8:
-			mda_mode_control_w(data);
+			mda_mode_control_w(space->machine, data);
 			break;
 	}
 }
 
  READ8_HANDLER ( pc_MDA_r )
 {
-	device_config   *devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, MDA_MC6845_NAME);
+	device_config   *devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, MDA_MC6845_NAME);
 	int data = 0xff;
 	switch( offset )
 	{
@@ -414,7 +422,6 @@ The divder/pixels per 6845 clock is 9 for text mode and 16 for graphics mode.
 static const mc6845_interface mc6845_hercules_intf =
 {
 	HERCULES_SCREEN_NAME,	/* screen number */
-	MDA_CLOCK/9 /*?*/,		/* clock */
 	9,						/* number of pixels per video memory address */
 	NULL,					/* begin_update */
 	mda_update_row,			/* update_row */
@@ -432,8 +439,7 @@ MACHINE_DRIVER_START( pcvideo_hercules )
 
 	MDRV_PALETTE_INIT(pc_mda)
 
-	MDRV_DEVICE_ADD( HERCULES_MC6845_NAME, MC6845)
-	MDRV_DEVICE_CONFIG( mc6845_hercules_intf )
+	MDRV_MC6845_ADD( HERCULES_MC6845_NAME, MC6845, MDA_CLOCK/9, mc6845_hercules_intf)
 
 	MDRV_VIDEO_START( pc_hercules )
 	MDRV_VIDEO_UPDATE( mc6845_hercules )
@@ -443,15 +449,16 @@ MACHINE_DRIVER_END
 static VIDEO_START( pc_hercules )
 {
 	int buswidth;
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 
-	buswidth = cputype_databus_width(machine->config->cpu[0].type, ADDRESS_SPACE_PROGRAM);
+	buswidth = cpu_get_databus_width(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	switch(buswidth)
 	{
 	case 8:
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xbffff, 0, 0, SMH_BANK11 );
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xbffff, 0, 0, pc_video_videoram_w );
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, 0, pc_hercules_r );
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, 0, pc_hercules_w );
+		memory_install_read8_handler(space, 0xb0000, 0xbffff, 0, 0, SMH_BANK11 );
+		memory_install_write8_handler(space, 0xb0000, 0xbffff, 0, 0, pc_video_videoram_w );
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x3b0, 0x3bf, 0, 0, pc_hercules_r );
+		memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x3b0, 0x3bf, 0, 0, pc_hercules_w );
 		break;
 
 	default:
@@ -465,7 +472,7 @@ static VIDEO_START( pc_hercules )
 
 	videoram_size = 0x10000;
 	videoram = auto_malloc(videoram_size);
-	memory_set_bankptr(11, videoram);
+	memory_set_bankptr(machine,11, videoram);
 }
 
 
@@ -481,6 +488,7 @@ static MC6845_UPDATE_ROW( hercules_gfx_update_row )
 	UINT16	*p = BITMAP_ADDR16( bitmap, y, 0 );
 	UINT16	gfx_base = ( ( mda.mode_control & 0x80 ) ? 0x8000 : 0x0000 ) | ( ( ra & 0x03 ) << 13 );
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) MDA_LOG(1,"hercules_gfx_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -547,7 +555,7 @@ static void hercules_mode_control_w(running_machine *machine, int data)
 }
 
 
-static void hercules_config_w(int data)
+static void hercules_config_w(running_machine *machine, int data)
 {
 	MDA_LOG(1,"HGC_config_w",("$%02x\n", data));
 	mda.configuration_switch = data;
@@ -556,7 +564,7 @@ static void hercules_config_w(int data)
 
 static WRITE8_HANDLER ( pc_hercules_w )
 {
-	device_config   *devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, HERCULES_MC6845_NAME);
+	device_config   *devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, HERCULES_MC6845_NAME);
 
 	switch( offset )
 	{
@@ -567,10 +575,10 @@ static WRITE8_HANDLER ( pc_hercules_w )
 		mc6845_register_w( devconf, offset, data );
 		break;
 	case 8:
-		hercules_mode_control_w(machine, data);
+		hercules_mode_control_w(space->machine, data);
 		break;
 	case 15:
-		hercules_config_w(data);
+		hercules_config_w(space->machine, data);
 		break;
 	}
 }
@@ -596,7 +604,7 @@ static int pc_hercules_status_r(void)
 
 static READ8_HANDLER ( pc_hercules_r )
 {
-	device_config	*devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, HERCULES_MC6845_NAME);
+	device_config	*devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, HERCULES_MC6845_NAME);
 	int data = 0xff;
 
 	switch( offset )

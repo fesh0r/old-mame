@@ -20,7 +20,7 @@
 
 * Commodore 128 (1985)
 
-CPU: CSG 8502 (1 or 2 Mhz), Z80 (~3 Mhz)
+CPU: CSG 8502 (1 or 2 MHz), Z80 (~3 MHz)
 RAM: 128 kilobytes
 ROM: 72 kilobytes expandable
 Video: MOS 8564 "VIC-IIE", MOS 8563 "VDC" CTRC (40/80 columns text; Palette of 16 
@@ -57,7 +57,7 @@ arrays, 8580R5 sid, and 8502R0 processor.
 case, with built-in 1571 disk drive (upgraded with a special software to
 discourage pirating software). Some NTSC prototypes exist.
 
-CPU: CSG 8502 (1 or 2 Mhz), Z80 (~3 Mhz), 6502 (co-processor for disk
+CPU: CSG 8502 (1 or 2 MHz), Z80 (~3 MHz), 6502 (co-processor for disk
 	drive)
 RAM: 128 kilobytes
 ROM: 72 kilobytes expandable
@@ -171,6 +171,8 @@ to use an EEPROM reader, in order to obtain a dump of the whole content.
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
+#include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
 
@@ -251,8 +253,8 @@ static ADDRESS_MAP_START( c128_z80_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0xd400, 0xd4ff) AM_READWRITE(sid6581_0_port_r, sid6581_0_port_w)
 	AM_RANGE(0xd500, 0xd5ff) AM_READWRITE(c128_mmu8722_port_r, c128_mmu8722_port_w)
 	AM_RANGE(0xd600, 0xd7ff) AM_READWRITE(vdc8563_port_r, vdc8563_port_w)
-	AM_RANGE(0xdc00, 0xdcff) AM_READWRITE(cia_0_r, cia_0_w)
-	AM_RANGE(0xdd00, 0xddff) AM_READWRITE(cia_1_r, cia_1_w)
+	AM_RANGE(0xdc00, 0xdcff) AM_DEVREADWRITE(CIA6526R1, "cia_0", cia_r, cia_w)
+	AM_RANGE(0xdd00, 0xddff) AM_DEVREADWRITE(CIA6526R1, "cia_1", cia_r, cia_w)
 /*  AM_RANGE(0xdf00, 0xdfff) AM_READWRITE(dma_port_r, dma_port_w) */
 ADDRESS_MAP_END
 
@@ -587,8 +589,6 @@ static MACHINE_DRIVER_START( c128 )
 	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
 
-	MDRV_INTERLEAVE(0)
-
 	MDRV_MACHINE_RESET( c128 )
 
     /* video hardware */
@@ -614,10 +614,17 @@ static MACHINE_DRIVER_START( c128 )
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	/* devices */
+	/* quickload */
 	MDRV_QUICKLOAD_ADD(cbm_c64, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
+
+	/* cia */
+	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6567_CLOCK, c64_ntsc_cia0)
+	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6567_CLOCK, c64_ntsc_cia1)
+	
+	MDRV_IMPORT_FROM(c64_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -639,6 +646,12 @@ static MACHINE_DRIVER_START( c128pal )
 	/* sound hardware */
 	MDRV_SOUND_REPLACE("sid6581", SID6581, VIC6569_CLOCK)
 	MDRV_SOUND_CONFIG(c128_sound_interface)
+
+	/* cia */
+	MDRV_CIA6526_REMOVE("cia_0", CIA6526R1)
+	MDRV_CIA6526_REMOVE("cia_1", CIA6526R1)
+	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6569_CLOCK, c64_pal_cia0)
+	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6569_CLOCK, c64_pal_cia1)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c128dpal )
@@ -853,12 +866,10 @@ ROM_END
 
 
 static SYSTEM_CONFIG_START(c128)
-	CONFIG_DEVICE(c64_cartslot_getinfo)
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(c128d)
-	CONFIG_DEVICE(c64_cartslot_getinfo)
 	CONFIG_DEVICE(c1571_device_getinfo)
 SYSTEM_CONFIG_END
 

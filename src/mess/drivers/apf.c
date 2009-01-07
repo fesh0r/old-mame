@@ -14,6 +14,7 @@ todo for apf m1000:
 
  ******************************************************************************/
 #include "driver.h"
+#include "cpu/m6800/m6800.h"
 #include "video/m6847.h"
 #include "includes/apf.h"
 
@@ -53,13 +54,13 @@ static  READ8_HANDLER(apf_m1000_pia_in_a_func)
 
   UINT8 data=~0;
   if (!(pad_data & 0x08))
-    data &= input_port_read(machine, "joy3");
+    data &= input_port_read(space->machine, "joy3");
   if (!(pad_data & 0x04))
-    data &= input_port_read(machine, "joy2");
+    data &= input_port_read(space->machine, "joy2");
   if (!(pad_data & 0x02))
-    data &= input_port_read(machine, "joy1");
+    data &= input_port_read(space->machine, "joy1");
   if (!(pad_data & 0x01))
-    data &= input_port_read(machine, "joy0");
+    data &= input_port_read(space->machine, "joy0");
 
 	return data;
 }
@@ -144,7 +145,7 @@ unsigned char apf_ints;
 
 void apf_update_ints(running_machine *machine)
 {
-	cpunum_set_input_line(machine, 0, 0, apf_ints ? HOLD_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, apf_ints ? HOLD_LINE : CLEAR_LINE);
 }
 
 static void	apf_m1000_irq_a_func(running_machine *machine, int state)
@@ -207,7 +208,7 @@ static READ8_HANDLER(apf_imagination_pia_in_b_func)
 
 	data = 0x000;
 
-	if (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0.0038)
+	if (cassette_input(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" )) > 0.0038)
 		data =(1<<7);
 
 	return data;
@@ -248,18 +249,18 @@ static WRITE8_HANDLER(apf_imagination_pia_out_b_func)
 	/* bit 7 = ??? */
 
 	int keyboard_line;
-	static const char *keynames[] = { "key0", "key1", "key2", "key3", "key4", "key5", "key6", "key7" };
+	static const char *const keynames[] = { "key0", "key1", "key2", "key3", "key4", "key5", "key6", "key7" };
 
 	keyboard_line = data & 0x07;
-	keyboard_data = input_port_read(machine, keynames[keyboard_line]);
+	keyboard_data = input_port_read(space->machine, keynames[keyboard_line]);
 
 	/* bit 4: cassette motor control */
-	cassette_change_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ),
+	cassette_change_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ),
 		(data & 0x10) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
 		CASSETTE_MASK_MOTOR);
 
 	/* bit 6: cassette write */
-	cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ),
+	cassette_output(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ),
 		(data & 0x40) ? -1.0 : 1.0);
 }
 
@@ -318,33 +319,33 @@ static const pia6821_interface apf_imagination_pia_interface=
 };
 
 
-static void apf_common_init(void)
+static void apf_common_init(running_machine *machine)
 {
 	apf_ints = 0;
-	pia_config(0,&apf_m1000_pia_interface);
+	pia_config(machine, 0,&apf_m1000_pia_interface);
 	pia_reset();
 }
 
 static MACHINE_START( apf_imagination )
 {
-	pia_config(1,&apf_imagination_pia_interface);
-	apf_common_init();
-	wd17xx_init(machine, WD_TYPE_179X, NULL, NULL);
+	pia_config(machine, 1,&apf_imagination_pia_interface);
+	apf_common_init(machine);
 }
 
 static MACHINE_START( apf_m1000 )
 {
-	apf_common_init();
+	apf_common_init(machine);
 }
 
 static WRITE8_HANDLER(apf_dischw_w)
 {
 	int drive;
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
 
 	/* bit 3 is index of drive to select */
 	drive = (data>>3) & 0x01;
 
-	wd17xx_set_drive(drive);
+	wd17xx_set_drive(fdc, drive);
 
 	logerror("disc w %04x %04x\n",offset,data);
 }
@@ -361,43 +362,43 @@ static WRITE8_HANDLER(serial_w)
 }
 
 static WRITE8_HANDLER(apf_wd179x_command_w)
-{
-	wd17xx_command_w(machine, offset,~data);
+{	
+	wd17xx_command_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x"), offset,~data);
 }
 
 static WRITE8_HANDLER(apf_wd179x_track_w)
 {
-	wd17xx_track_w(machine, offset,~data);
+	wd17xx_track_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x"), offset,~data);
 }
 
 static WRITE8_HANDLER(apf_wd179x_sector_w)
 {
-	wd17xx_sector_w(machine, offset,~data);
+	wd17xx_sector_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x"), offset,~data);
 }
 
 static WRITE8_HANDLER(apf_wd179x_data_w)
 {
-	wd17xx_data_w(machine, offset,~data);
+	wd17xx_data_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x"), offset,~data);
 }
 
 static READ8_HANDLER(apf_wd179x_status_r)
 {
-	return ~wd17xx_status_r(machine, offset);
+	return ~wd17xx_status_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x"), offset);
 }
 
 static READ8_HANDLER(apf_wd179x_track_r)
 {
-	return ~wd17xx_track_r(machine, offset);
+	return ~wd17xx_track_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x"), offset);
 }
 
 static READ8_HANDLER(apf_wd179x_sector_r)
 {
-	return ~wd17xx_sector_r(machine, offset);
+	return ~wd17xx_sector_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x"), offset);
 }
 
 static READ8_HANDLER(apf_wd179x_data_r)
 {
-	return wd17xx_data_r(machine, offset);
+	return wd17xx_data_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x"), offset);
 }
 
 static ADDRESS_MAP_START(apf_imagination_map, ADDRESS_SPACE_PROGRAM, 8)
@@ -635,12 +636,11 @@ static const cassette_config apf_cassette_config =
 
 static MACHINE_DRIVER_START( apf_imagination )
 	/* basic machine hardware */
-	//	MDRV_CPU_ADD("main", M6800, 3750000)        /* 7.8336 Mhz, only 6800p type used 1mhz max*/
+	//	MDRV_CPU_ADD("main", M6800, 3750000)        /* 7.8336 MHz, only 6800p type used 1 MHz max*/
 	MDRV_CPU_ADD("main", M6800, 1000000 )        /* backgammon uses timing from vertical interrupt to switch between video modes during frame */
 	MDRV_CPU_PROGRAM_MAP(apf_imagination_map, 0)
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_NTSC_FRAMES_PER_SECOND)
-	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_START( apf_imagination )
 
@@ -658,8 +658,9 @@ static MACHINE_DRIVER_START( apf_imagination )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", apf_cassette_config )
+	
+	MDRV_WD179X_ADD("wd179x", default_wd17xx_interface )	
 MACHINE_DRIVER_END
-
 
 static MACHINE_DRIVER_START( apf_m1000 )
 	MDRV_IMPORT_FROM( apf_imagination )
@@ -668,6 +669,7 @@ static MACHINE_DRIVER_START( apf_m1000 )
 	MDRV_MACHINE_START( apf_m1000 )
 
 	MDRV_CASSETTE_REMOVE( "cassette" )
+	MDRV_CARTSLOT_ADD("cart")
 MACHINE_DRIVER_END
 
 
@@ -688,7 +690,7 @@ ROM_START(apfm1000)
 	ROM_REGION(0x10000+0x0800,"main",0)
 	ROM_LOAD("apf_4000.rom",0x010000, 0x0800, CRC(2a331a33) SHA1(387b90882cd0b66c192d9cbaa3bec250f897e4f1))
 //	ROM_LOAD("apf-m1000rom.bin",0x010000, 0x0800, CRC(cc6ac840) SHA1(1110a234bcad99bd0894ad44c591389d16376ca4))
-	ROM_CART_LOAD(0, "bin", 0x8000, 0x2000, ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x8000, 0x2000, ROM_OPTIONAL)
 ROM_END
 
 
@@ -715,9 +717,6 @@ static SYSTEM_CONFIG_START( apfimag )
 	CONFIG_DEVICE(apfimag_floppy_getinfo)
 SYSTEM_CONFIG_END
 
-static SYSTEM_CONFIG_START(apfm1000)
-	CONFIG_DEVICE(cartslot_device_getinfo)
-SYSTEM_CONFIG_END
 
 /***************************************************************************
 
@@ -726,5 +725,5 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE             INPUT               INIT    CONFIG      COMPANY               FULLNAME */
-COMP(1977, apfimag,	0,		0,		apf_imagination,	apf_imagination,	0,		apfimag,	"APF Electronics Inc",  "APF Imagination Machine" ,GAME_NOT_WORKING)
-CONS(1978,	apfm1000,	0,		0,		apf_m1000,			apf_m1000,			0,		apfm1000,		"APF Electronics Inc",  "APF M-1000" ,GAME_NOT_WORKING)
+COMP(1977, apfimag,	0,	0,	apf_imagination,	apf_imagination,	0,	apfimag,	"APF Electronics Inc",  "APF Imagination Machine" , 0 )
+CONS(1978, apfm1000,	0,	0,	apf_m1000,		apf_m1000,		0,	0,		"APF Electronics Inc",  "APF M-1000" ,GAME_NOT_WORKING)

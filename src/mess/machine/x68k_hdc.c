@@ -30,10 +30,10 @@ static TIMER_CALLBACK( req_delay )
 
 unsigned char SASIReadByte(const device_config* device)
 {
-	int ret;
+	//int ret;
 	unsigned char val;
 
-	ret = image_fread(device,&val,1);
+	/*ret = */image_fread(device,&val,1);
 	
 	return val;
 }
@@ -123,7 +123,7 @@ WRITE16_DEVICE_HANDLER( x68k_hdc_w )
 
 			sasi->req = 0;
 			sasi->status_port &= ~0x01;
-			timer_set(ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
+			timer_set(device->machine,ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
 			sasi->transfer_byte_count++;
 			if(sasi->transfer_byte_count >= sasi->transfer_byte_total)
 			{
@@ -161,7 +161,7 @@ WRITE16_DEVICE_HANDLER( x68k_hdc_w )
 			// reset REQ temporarily
 			sasi->req = 0;
 			sasi->status_port &= ~0x01;
-			timer_set(ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
+			timer_set(device->machine,ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
 
 			sasi->command_byte_count++;
 			if(sasi->command_byte_count >= sasi->command_byte_total)
@@ -306,7 +306,7 @@ WRITE16_DEVICE_HANDLER( x68k_hdc_w )
 				sasi->status_port |= 0x08;
 				sasi->command_byte_count = 0;
 				sasi->command_byte_total = 0;
-				timer_set(ATTOTIME_IN_NSEC(45),sasi,0,req_delay);
+				timer_set(device->machine,ATTOTIME_IN_NSEC(45),sasi,0,req_delay);
 			}
 		}
 		break;
@@ -357,7 +357,7 @@ READ16_DEVICE_HANDLER( x68k_hdc_r )
 			// reset REQ temporarily
 			sasi->req = 0;
 			sasi->status_port &= ~0x01;
-			timer_set(ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
+			timer_set(device->machine,ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
 
 			return sasi->status;
 		}
@@ -413,7 +413,7 @@ READ16_DEVICE_HANDLER( x68k_hdc_r )
 
 			sasi->req = 0;
 			sasi->status_port &= ~0x01;
-			timer_set(ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
+			timer_set(device->machine,ATTOTIME_IN_NSEC(450),sasi,0,req_delay);
 			sasi->transfer_byte_count++;
 			if(sasi->transfer_byte_count >= sasi->transfer_byte_total)
 			{
@@ -469,14 +469,14 @@ DEVICE_GET_INFO(x68k_hdc)
 		case DEVINFO_FCT_IMAGE_CREATE:					info->f = (genf *)DEVICE_IMAGE_CREATE_NAME(sasihd);	break;
 
 			/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "SASI Hard Disk";	break;
-		case DEVINFO_STR_FAMILY:						info->s = "SASI Hard Disk Controller";			break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright the MESS Team"; 		break;
-		case DEVINFO_STR_IMAGE_INSTANCE_NAME:			info->s = "sasihd"; 			break;
-		case DEVINFO_STR_IMAGE_BRIEF_INSTANCE_NAME:		info->s = "sasi"; 			break;
-		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:			info->s = "hdf"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "SASI Hard Disk");	break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "SASI Hard Disk Controller");			break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); 		break;
+		case DEVINFO_STR_IMAGE_INSTANCE_NAME:			strcpy(info->s, "sasihd"); 			break;
+		case DEVINFO_STR_IMAGE_BRIEF_INSTANCE_NAME:		strcpy(info->s, "sasi"); 			break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:			strcpy(info->s, "hdf"); break;
 	}
 }
 

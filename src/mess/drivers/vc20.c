@@ -25,7 +25,7 @@
   The first model released was the Japanese one. It featured support for the
 Japanese katakana character.
 
-CPU: MOS Technology 6502 (1.01 Mhz)
+CPU: MOS Technology 6502 (1.01 MHz)
 RAM: 5 kilobytes (Expanded to 21k though an external 16k unit)
 ROM: 20 kilobytes
 Video: MOS Technology 6560 "VIC"(Text: 22 columns, 23 rows; Hires: 176x184 
@@ -44,7 +44,7 @@ Keyboard: Full-sized QWERTY 66 key (8 programmable function keys; 2 sets of
 worldwide. It was sold both in Europe and in the US. In Germany the 
 computer was renamed as VC 20 (apparently, it stands for 'VolksComputer'
 
-CPU: MOS Technology 6502A (1.01 Mhz)
+CPU: MOS Technology 6502A (1.01 MHz)
 RAM: 5 kilobytes (Expanded to 32k)
 ROM: 20 kilobytes
 Video: MOS Technology 6560 "VIC"(Text: 22 columns, 23 rows; Hires: 176x184 
@@ -83,6 +83,7 @@ interface; no special expansion modules like ieee488 interface
 
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 
 #include "machine/6522via.h"
 #include "includes/vc1541.h"
@@ -113,8 +114,8 @@ static ADDRESS_MAP_START( vc20_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x8000, 0x8fff) AM_ROM
 	AM_RANGE(0x9000, 0x900f) AM_READWRITE( vic6560_port_r, vic6560_port_w )
 	AM_RANGE(0x9010, 0x910f) AM_NOP
-	AM_RANGE(0x9110, 0x911f) AM_READWRITE( via_0_r, via_0_w )
-	AM_RANGE(0x9120, 0x912f) AM_READWRITE( via_1_r, via_1_w )
+	AM_RANGE(0x9110, 0x911f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
+	AM_RANGE(0x9120, 0x912f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)
 	AM_RANGE(0x9130, 0x93ff) AM_NOP
 	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(SMH_RAM, vc20_write_9400) AM_BASE(&vc20_memory_9400)	/*color ram 4 bit */
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
@@ -132,11 +133,11 @@ static ADDRESS_MAP_START( vc20i_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x8000, 0x8fff) AM_ROM
 	AM_RANGE(0x9000, 0x900f) AM_READWRITE( vic6560_port_r, vic6560_port_w )
 	AM_RANGE(0x9010, 0x910f) AM_NOP
-	AM_RANGE(0x9110, 0x911f) AM_READWRITE( via_0_r, via_0_w )
-	AM_RANGE(0x9120, 0x912f) AM_READWRITE( via_1_r, via_1_w )
+	AM_RANGE(0x9110, 0x911f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
+	AM_RANGE(0x9120, 0x912f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)
 	AM_RANGE(0x9400, 0x97ff) AM_READWRITE( SMH_RAM, vc20_write_9400) AM_BASE(&vc20_memory_9400)	/* color ram 4 bit */
-	AM_RANGE(0x9800, 0x980f) AM_READWRITE( via_4_r, via_4_w )
-	AM_RANGE(0x9810, 0x981f) AM_READWRITE( via_5_r, via_5_w )
+	AM_RANGE(0x9800, 0x980f) AM_DEVREADWRITE(VIA6522, "via6522_4", via_r, via_w)
+	AM_RANGE(0x9810, 0x981f) AM_DEVREADWRITE(VIA6522, "via6522_5", via_r, via_w)
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(5)
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -252,11 +253,10 @@ static PALETTE_INIT( vc20 )
 
 static MACHINE_DRIVER_START( vic20 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, VIC6560_CLOCK)        /* 7.8336 Mhz */
+	MDRV_CPU_ADD("main", M6502, VIC6560_CLOCK)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(vc20_mem, 0)
 	MDRV_CPU_VBLANK_INT("main", vic20_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic656x_raster_interrupt, VIC656X_HRETRACERATE)
-	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_RESET( vic20 )
 
@@ -284,7 +284,18 @@ static MACHINE_DRIVER_START( vic20 )
 	/* devices */
 	MDRV_QUICKLOAD_ADD(cbm_vc20, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
+
+	/* via */
+	MDRV_VIA6522_ADD("via6522_0", 0, vc20_via0)
+	MDRV_VIA6522_ADD("via6522_1", 0, vc20_via1)
+	MDRV_VIA6522_ADD("via6522_2", 0, vc1541_via2)
+	MDRV_VIA6522_ADD("via6522_3", 0, vc1541_via3)
+	MDRV_VIA6522_ADD("via6522_4", 0, vc20_via4)
+	MDRV_VIA6522_ADD("via6522_5", 0, vc20_via5)
+	
+	MDRV_IMPORT_FROM(vic20_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -292,9 +303,9 @@ static MACHINE_DRIVER_START( vic20v )
 	MDRV_IMPORT_FROM( vic20 )
 	MDRV_IMPORT_FROM( cpu_vc1540 )
 #ifdef CPU_SYNC
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 #else
-	MDRV_INTERLEAVE(3000)
+	MDRV_QUANTUM_TIME(HZ(180000))
 #endif
 MACHINE_DRIVER_END
 
@@ -303,9 +314,9 @@ static MACHINE_DRIVER_START( vic20i )
 	MDRV_IMPORT_FROM( vic20 )
 	/*MDRV_IMPORT_FROM( cpu_c2031 )*/
 #if 1 || CPU_SYNC
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 #else
-	MDRV_INTERLEAVE(3000)
+	MDRV_QUANTUM_TIME(HZ(180000))
 #endif
 
 	MDRV_CPU_MODIFY( "main" )
@@ -330,9 +341,9 @@ static MACHINE_DRIVER_START( vc20v )
 	MDRV_IMPORT_FROM( vc20 )
 	MDRV_IMPORT_FROM( cpu_vc1540 )
 #ifdef CPU_SYNC
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 #else
-	MDRV_INTERLEAVE(3000)
+	MDRV_QUANTUM_TIME(HZ(180000))
 #endif
 MACHINE_DRIVER_END
 
@@ -434,7 +445,6 @@ ROM_END
 
 
 static SYSTEM_CONFIG_START(vic20)
-	CONFIG_DEVICE(vic20_cartslot_getinfo)
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 	CONFIG_RAM_DEFAULT(5 * 1024)
 	CONFIG_RAM(8 * 1024)
@@ -444,7 +454,6 @@ static SYSTEM_CONFIG_START(vic20)
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(vic20v)
-	CONFIG_DEVICE(vic20_cartslot_getinfo)
 	CONFIG_DEVICE(vc1541_device_getinfo)
 	CONFIG_RAM_DEFAULT(5 * 1024)
 	CONFIG_RAM(8 * 1024)

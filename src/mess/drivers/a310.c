@@ -89,7 +89,7 @@ static void a310_request_irq_a(running_machine *machine, int mask)
 
 	if (a310_iocregs[6] & mask)
 	{
-		cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], ARM_IRQ_LINE, ASSERT_LINE);
 	}
 }
 
@@ -99,7 +99,7 @@ static void a310_request_irq_b(running_machine *machine, int mask)
 
 	if (a310_iocregs[10] & mask)
 	{
-		cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, PULSE_LINE);
+		cpu_set_input_line(machine->cpu[0], ARM_IRQ_LINE, PULSE_LINE);
 	}
 }
 
@@ -109,7 +109,7 @@ static void a310_request_fiq(running_machine *machine, int mask)
 
 	if (a310_iocregs[14] & mask)
 	{
-		cpunum_set_input_line(machine, 0, ARM_FIRQ_LINE, PULSE_LINE);
+		cpu_set_input_line(machine->cpu[0], ARM_FIRQ_LINE, PULSE_LINE);
 	}
 }
 
@@ -177,16 +177,16 @@ static MACHINE_RESET( a310 )
 	a310_memc_reset();
 }
 
-static void a310_wd177x_callback(running_machine *machine, wd17xx_state_t event, void *param)
+static WD17XX_CALLBACK ( a310_wd177x_callback )
 {
-	switch (event)
+	switch (state)
 	{
 		case WD17XX_IRQ_CLR:
 			a310_iocregs[12] &= ~A310_FIQ_FLOPPY;
 			break;
 
 		case WD17XX_IRQ_SET:
-			a310_request_fiq(machine, A310_FIQ_FLOPPY);
+			a310_request_fiq(device->machine, A310_FIQ_FLOPPY);
 			break;
 
 		case WD17XX_DRQ_CLR:
@@ -194,7 +194,7 @@ static void a310_wd177x_callback(running_machine *machine, wd17xx_state_t event,
 			break;
 
 		case WD17XX_DRQ_SET:
-			a310_request_fiq(machine, A310_FIQ_FLOPPY_DRQ);
+			a310_request_fiq(device->machine, A310_FIQ_FLOPPY_DRQ);
 			break;
 	}
 }
@@ -203,21 +203,20 @@ static void a310_wd177x_callback(running_machine *machine, wd17xx_state_t event,
 static MACHINE_START( a310 )
 {
 	a310_pagesize = 0;
-	wd17xx_init(machine, WD_TYPE_1772, a310_wd177x_callback, NULL);
 
-	vbl_timer = timer_alloc(a310_vblank, NULL);
+	vbl_timer = timer_alloc(machine, a310_vblank, NULL);
 	timer_adjust_oneshot(vbl_timer, attotime_never, 0);
 
-	timer[0] = timer_alloc(a310_timer, NULL);
-	timer[1] = timer_alloc(a310_timer, NULL);
-	timer[2] = timer_alloc(a310_timer, NULL);
-	timer[3] = timer_alloc(a310_timer, NULL);
+	timer[0] = timer_alloc(machine, a310_timer, NULL);
+	timer[1] = timer_alloc(machine, a310_timer, NULL);
+	timer[2] = timer_alloc(machine, a310_timer, NULL);
+	timer[3] = timer_alloc(machine, a310_timer, NULL);
 	timer_adjust_oneshot(timer[0], attotime_never, 0);
 	timer_adjust_oneshot(timer[1], attotime_never, 0);
 	timer_adjust_oneshot(timer[2], attotime_never, 0);
 	timer_adjust_oneshot(timer[3], attotime_never, 0);
 
-	snd_timer = timer_alloc(a310_audio_tick, NULL);
+	snd_timer = timer_alloc(machine, a310_audio_tick, NULL);
 	timer_adjust_oneshot(snd_timer, attotime_never, 0);
 
 	// reset the DAC to centerline
@@ -233,7 +232,7 @@ static READ32_HANDLER(logical_r)
 	{
 		UINT32 *rom;
 
-		rom = (UINT32 *)memory_region(machine, "main");
+		rom = (UINT32 *)memory_region(space->machine, "main");
 
 		return rom[offset & 0x1fffff];
 	}
@@ -286,7 +285,7 @@ static WRITE32_HANDLER(logical_w)
 	}
 }
 
-static OPBASE_HANDLER( a310_setopbase )
+static DIRECT_UPDATE_HANDLER( a310_setopbase )
 {
 	// if we're not in logical memory, MAME can do the right thing
 	if (address > 0x1ffffff)
@@ -297,19 +296,19 @@ static OPBASE_HANDLER( a310_setopbase )
 	// if the boot ROM is mapped in, do some trickery to make it show up
 	if (a310_latchrom)
 	{
-		opbase->mask = 0x1fffff;
-		opbase->mem_min = 0;
-		opbase->mem_max = 0x1fffff;
-		opbase->rom = opbase->ram = memory_region(machine, "main");
+		direct->mask = 0x1fffff;
+		direct->min = 0;
+		direct->max = 0x1fffff;
+		direct->raw = direct->decrypted = memory_region(space->machine, "main");
 	}
 	else	// executing from logical memory
 	{
 		UINT32 page = address / page_sizes[a310_pagesize];
 
-		opbase->mask = page_sizes[a310_pagesize]-1;
-		opbase->mem_min = page * page_sizes[a310_pagesize];
-		opbase->mem_max = opbase->mem_min + opbase->mask;
-		opbase->rom = opbase->ram = (UINT8 *)&a310_physmem[(a310_pages[page] * page_sizes[a310_pagesize])>>2];
+		direct->mask = page_sizes[a310_pagesize]-1;
+		direct->min = page * page_sizes[a310_pagesize];
+		direct->max = direct->min + direct->mask;
+		direct->raw = direct->decrypted = (UINT8 *)&a310_physmem[(a310_pages[page] * page_sizes[a310_pagesize])>>2];
 	}
 
 	return ~0;
@@ -317,7 +316,7 @@ static OPBASE_HANDLER( a310_setopbase )
 
 static DRIVER_INIT(a310)
 {
-	memory_set_opbase_handler(0, a310_setopbase);
+	memory_set_direct_update_handler( cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM ), a310_setopbase);
 }
 
 static const char *const ioc_regnames[] =
@@ -358,21 +357,20 @@ static const char *const ioc_regnames[] =
 
 static void latch_timer_cnt(int tmr)
 {
-	double time;
-
-	time = attotime_to_double(timer_timeelapsed(timer[tmr]));
+	double time = attotime_to_double(timer_timeelapsed(timer[tmr]));
 	time *= 2000000.0;	// find out how many 2 MHz ticks have gone by
 	a310_timerout[tmr] = a310_timercnt[tmr] - (UINT32)time;
 }
 
 static READ32_HANDLER(ioc_r)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1772, "wd1772");	
 	if (offset >= 0x80000 && offset < 0xc0000)
 	{
 		switch (offset & 0x1f)
 		{
 			case 1:	// keyboard read
-				a310_request_irq_b(machine, A310_IRQB_KBD_XMIT_EMPTY);
+				a310_request_irq_b(space->machine, A310_IRQB_KBD_XMIT_EMPTY);
 				break;
 
 			case 16:	// timer 0 read
@@ -401,13 +399,13 @@ static READ32_HANDLER(ioc_r)
 				break;
 		}
 
-		logerror("IOC: R %s = %02x (PC=%x)\n", ioc_regnames[offset&0x1f], a310_iocregs[offset&0x1f], activecpu_get_pc());
+		logerror("IOC: R %s = %02x (PC=%x)\n", ioc_regnames[offset&0x1f], a310_iocregs[offset&0x1f], cpu_get_pc( space->cpu ));
 		return a310_iocregs[offset&0x1f];
 	}
 	else if (offset >= 0xc4000 && offset <= 0xc4010)
 	{
 		logerror("17XX: R @ addr %x mask %08x\n", offset*4, mem_mask);
-		return wd17xx_data_r(machine, offset&0xf);
+		return wd17xx_data_r(fdc, offset&0xf);
 	}
 	else
 	{
@@ -420,9 +418,10 @@ static READ32_HANDLER(ioc_r)
 
 static WRITE32_HANDLER(ioc_w)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1772, "wd1772");	
 	if (offset >= 0x80000 && offset < 0xc0000)
 	{
-//      logerror("IOC: W %02x @ reg %s (PC=%x)\n", data&0xff, ioc_regnames[offset&0x1f], activecpu_get_pc());
+//      logerror("IOC: W %02x @ reg %s (PC=%x)\n", data&0xff, ioc_regnames[offset&0x1f], cpu_get_pc( space->cpu ));
 
 		switch (offset&0x1f)
 		{
@@ -436,7 +435,7 @@ static WRITE32_HANDLER(ioc_w)
 				// if that did it, clear the IRQ
 				if (a310_iocregs[4] == 0)
 				{
-					cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, CLEAR_LINE);
+					cpu_set_input_line(space->machine->cpu[0], ARM_IRQ_LINE, CLEAR_LINE);
 				}
 				break;
 
@@ -504,35 +503,35 @@ static WRITE32_HANDLER(ioc_w)
 	else if (offset >= 0xc4000 && offset <= 0xc4010)
 	{
 		logerror("17XX: %x to addr %x mask %08x\n", data, offset*4, mem_mask);
-		wd17xx_data_w(machine, offset&0xf, data&0xff);
+		wd17xx_data_w(fdc, offset&0xf, data&0xff);
 	}
 	else if (offset == 0xd40006)
 	{
 		// latch A
 		if (data & 1)
 		{
-			wd17xx_set_drive(0);
+			wd17xx_set_drive(fdc,0);
 		}
 		if (data & 2)
 		{
-			wd17xx_set_drive(1);
+			wd17xx_set_drive(fdc,1);
 		}
 		if (data & 4)
 		{
-			wd17xx_set_drive(2);
+			wd17xx_set_drive(fdc,2);
 		}
 		if (data & 8)
 		{
-			wd17xx_set_drive(3);
+			wd17xx_set_drive(fdc,3);
 		}
 
-		wd17xx_set_side((data & 0x10)>>4);
+		wd17xx_set_side(fdc,(data & 0x10)>>4);
 
 	}
 	else if (offset == 0xd40010)
 	{
 		// latch B
-		wd17xx_set_density((data & 2) ? DEN_MFM_LO : DEN_MFM_HI);
+		wd17xx_set_density(fdc,(data & 2) ? DEN_MFM_LO : DEN_MFM_HI);
 	}
 	else
 	{
@@ -586,7 +585,7 @@ static WRITE32_HANDLER(vidc_w)
 				a310_vidregs[0x80], a310_vidregs[0xa0],
 				visarea.max_x, visarea.max_y);
 
-			video_screen_configure(machine->primary_screen, a310_vidregs[0x80], a310_vidregs[0xa0], &visarea, video_screen_get_frame_period(machine->primary_screen).attoseconds);
+			video_screen_configure(space->machine->primary_screen, a310_vidregs[0x80], a310_vidregs[0xa0], &visarea, video_screen_get_frame_period(space->machine->primary_screen).attoseconds);
 
 			// slightly hacky: fire off a VBL right now.  the BIOS doesn't wait long enough otherwise.
 			timer_adjust_oneshot(vbl_timer, attotime_zero, 0);
@@ -856,6 +855,10 @@ static INPUT_PORTS_START( a310 )
 	PORT_BIT (0xf8, 0x80, IPT_UNUSED)
 INPUT_PORTS_END
 
+const wd17xx_interface a310_wd17xx_interface = {
+	a310_wd177x_callback,
+	NULL
+};
 
 static MACHINE_DRIVER_START( a310 )
 	/* basic machine hardware */
@@ -880,8 +883,9 @@ static MACHINE_DRIVER_START( a310 )
 	MDRV_SPEAKER_STANDARD_MONO("a310")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(0, "a310", 1.00)
+	
+	MDRV_WD1772_ADD("wd1772", a310_wd17xx_interface )
 MACHINE_DRIVER_END
-
 
 ROM_START(a310)
 	ROM_REGION(0x800000, "main", 0)
@@ -899,4 +903,5 @@ ROM_END
 
 /*    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT     INIT  CONFIG  COMPANY  FULLNAME */
 COMP( 1988, a310, 0,      0,      a310,    a310,  a310, NULL,   "Acorn", "Archimedes 310 (Risc OS 3.11)", GAME_NOT_WORKING)
+
 

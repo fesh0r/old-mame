@@ -67,7 +67,7 @@ are attached to two switches. The keys appear twice in the keyboard matrix.
 
 #include "driver.h"
 #include "machine/kb_keytro.h"
-#include "cpu/i8051/i8051.h"
+#include "cpu/mcs51/mcs51.h"
 
 #define	LOG		0
 
@@ -78,9 +78,9 @@ static struct {
 	UINT8					p3;
 	UINT8					clock_signal;
 	UINT8					data_signal;
-	write8_machine_func		clock_callback;
-	write8_machine_func		data_callback;
-	int						cpunum;
+	write8_space_func		clock_callback;
+	write8_space_func		data_callback;
+	const device_config *	cpu;
 	UINT16					last_write_addr;
 } kb_keytronic;
 
@@ -119,8 +119,8 @@ INPUT_PORTS_START( kb_keytronic )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_R)			PORT_CHAR('R')						/* 13 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_G)			PORT_CHAR('G')						/* 22 */
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F)			PORT_CHAR('F')						/* 21 */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 41 */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 6a */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F7)			PORT_CHAR(UCHAR_MAMEKEY(F7))		/* 41 */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?6a?")					/* 6a */
 
 	PORT_START( "kb_keytronic_30_0" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_N)			PORT_CHAR('N')						/* 31 */
@@ -132,14 +132,14 @@ INPUT_PORTS_START( kb_keytronic )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START( "kb_keytronic_30_1" )
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F1)			PORT_CHAR(UCHAR_MAMEKEY(F1))		/* 58 */
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F2)			PORT_CHAR(UCHAR_MAMEKEY(F2))		/* 59 */
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F3)			PORT_CHAR(UCHAR_MAMEKEY(F3))		/* 5a */
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F4)			PORT_CHAR(UCHAR_MAMEKEY(F4))		/* 5b */
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F5)			PORT_CHAR(UCHAR_MAMEKEY(F5))		/* 5c */
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F6)			PORT_CHAR(UCHAR_MAMEKEY(F6))		/* 5d */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 6b */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 42 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?58?")					/* 58 */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?59?")					/* 59 */
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?5a?")					/* 5a */
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?5b?")					/* 5b */
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?5c?")					/* 5c */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?5d?")					/* 5d */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?6b?")					/* 6b */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F8)			PORT_CHAR(UCHAR_MAMEKEY(F8))		/* 42 */
 
 	PORT_START( "kb_keytronic_31_0" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_6)			PORT_CHAR('6')						/* 07 */
@@ -151,14 +151,14 @@ INPUT_PORTS_START( kb_keytronic )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START( "kb_keytronic_31_1" )
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F7)			PORT_CHAR(UCHAR_MAMEKEY(F7))		/* 37 */
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F8)			PORT_CHAR(UCHAR_MAMEKEY(F8))		/* 5f */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?37?")					/* 37 */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?5f?")					/* 5f */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_LSHIFT)		PORT_NAME("LShift")					/* 2a */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("<")						/* 70 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_Z)			PORT_CHAR('Z')						/* 2c */
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_X)			PORT_CHAR('X')						/* 2d */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 6c */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 43 */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?6c?")					/* 6c */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F9)			PORT_CHAR(UCHAR_MAMEKEY(F9))		/* 43 */
 
 	PORT_START( "kb_keytronic_32_0" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_9)			PORT_CHAR('9')						/* 0a */
@@ -170,14 +170,14 @@ INPUT_PORTS_START( kb_keytronic )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START( "kb_keytronic_32_1" )
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F9)			PORT_CHAR(UCHAR_MAMEKEY(F9))		/* 57 */
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F10)			PORT_CHAR(UCHAR_MAMEKEY(F10))		/* 1d */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?57?")					/* 57 */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?1d?")					/* 1d */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_LCONTROL)		PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))	/* 71 */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_LALT)			PORT_NAME("LAlt")					/* 38 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_SPACE)		PORT_CHAR(' ')						/* 39 */
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_RALT)			PORT_NAME("RAlt")					/* 38 */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 69 */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 40 */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?69?")					/* 69 */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F6)			PORT_CHAR(UCHAR_MAMEKEY(F6))		/* 40 */
 
 	PORT_START( "kb_keytronic_33_0" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_2_PAD)		PORT_NAME("KP 2")					/* 50 */
@@ -194,8 +194,8 @@ INPUT_PORTS_START( kb_keytronic )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_TAB)			PORT_CHAR(9)						/* 0f */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_A)			PORT_CHAR('A')						/* 1e */
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_CAPSLOCK)		PORT_NAME("Caps")					/* 3a */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 68 */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 3f */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?68?")					/* 68 */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F5)			PORT_CHAR(UCHAR_MAMEKEY(F5))		/* 3f */
 
 	PORT_START( "kb_keytronic_34_0" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -212,8 +212,8 @@ INPUT_PORTS_START( kb_keytronic )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_E)			PORT_CHAR('E')						/* 12 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_S)			PORT_CHAR('S')						/* 1f */
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_D)			PORT_CHAR('D')						/* 20 */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 67 */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 3e */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?67?")					/* 67 */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F4)			PORT_CHAR(UCHAR_MAMEKEY(F4))		/* 3e */
 
 	PORT_START( "kb_keytronic_35_0" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_0)			PORT_CHAR('0')						/* 0b */
@@ -226,8 +226,8 @@ INPUT_PORTS_START( kb_keytronic )
 
 	PORT_START( "kb_keytronic_35_1" )
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 66 */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 3d */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?66?")					/* 66 */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F3)			PORT_CHAR(UCHAR_MAMEKEY(F3))		/* 3d */
 
 	PORT_START( "kb_keytronic_36_0" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_BACKSPACE)	PORT_CHAR(8)						/* 0e */
@@ -246,8 +246,8 @@ INPUT_PORTS_START( kb_keytronic )
 
 	PORT_START( "kb_keytronic_37_1" )
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 64 */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 3b */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?64?")					/* 64 */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F1)			PORT_CHAR(UCHAR_MAMEKEY(F1))		/* 3b */
 
 	PORT_START( "kb_keytronic_38_0" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("SysReq")					/* 54 */
@@ -265,8 +265,8 @@ INPUT_PORTS_START( kb_keytronic )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_8_PAD)		PORT_NAME("KP 8")					/* 48 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_4_PAD)		PORT_NAME("KP 4")					/* 4b */
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_5_PAD)		PORT_NAME("KP 5")					/* 4c */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 76 */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 63 */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?76?")					/* 76 */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?63?")					/* 63 */
 
 	PORT_START( "kb_keytronic_3a_0" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("PrtSc *")				/* 6f */
@@ -275,8 +275,8 @@ INPUT_PORTS_START( kb_keytronic )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("/a")						/* 79 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("Center")					/* 77 */
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 6e */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 62 */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?6e?")					/* 6e */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?62?")					/* 62 */
 
 	PORT_START( "kb_keytronic_3b_0" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_3_PAD)		PORT_NAME("KP 3")					/* 51 */
@@ -284,8 +284,8 @@ INPUT_PORTS_START( kb_keytronic )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_DEL_PAD)		PORT_NAME("KP .")					/* 53 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_UP)			PORT_NAME("Up")						/* 78 */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 6d */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )																		/* 44 */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("?6d?")					/* 6d */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_F10)			PORT_CHAR(UCHAR_MAMEKEY(F10))		/* 44 */
 
 INPUT_PORTS_END
 
@@ -294,7 +294,7 @@ INPUT_PORTS_END
 WRITE8_HANDLER( kb_keytronic_set_clock_signal )
 {
 	kb_keytronic.clock_signal = data;
-	cpunum_set_input_line( machine, kb_keytronic.cpunum, I8051_INT0_LINE, data ? HOLD_LINE : CLEAR_LINE );
+	cpu_set_input_line( kb_keytronic.cpu, MCS51_INT0_LINE, data ? ASSERT_LINE : CLEAR_LINE );
 }
 
 
@@ -302,16 +302,16 @@ WRITE8_HANDLER( kb_keytronic_set_clock_signal )
 WRITE8_HANDLER( kb_keytronic_set_data_signal )
 {
 	kb_keytronic.data_signal = data;
-	cpunum_set_input_line( machine, kb_keytronic.cpunum, I8051_T0_LINE, data ? HOLD_LINE : CLEAR_LINE );
+	cpu_set_input_line( kb_keytronic.cpu, MCS51_T0_LINE, data ? ASSERT_LINE : CLEAR_LINE );
 }
 
 
-void kb_keytronic_set_host_interface( running_machine *machine, write8_machine_func clock_cb, write8_machine_func data_cb )
+void kb_keytronic_set_host_interface( running_machine *machine, write8_space_func clock_cb, write8_space_func data_cb )
 {
 	kb_keytronic.clock_callback = clock_cb;
 	kb_keytronic.data_callback = data_cb;
 	kb_keytronic.p3 = 0xff;
-	kb_keytronic.cpunum = mame_find_cpu_index( machine, KEYTRONIC_KB3270PC_CPU );
+	kb_keytronic.cpu = cputag_get_cpu( machine, KEYTRONIC_KB3270PC_CPU );
 }
 
 
@@ -380,8 +380,8 @@ static READ8_HANDLER( kb_keytronic_data_r )
 	kb_keytronic.data_signal = ( offset & 0x0100 ) ? 1 : 0;
 	kb_keytronic.clock_signal = ( offset & 0x0200 ) ? 1 : 0;
 
-	kb_keytronic.data_callback( machine, 0, kb_keytronic.data_signal );
-	kb_keytronic.clock_callback( machine, 0, kb_keytronic.clock_signal );
+	kb_keytronic.data_callback( space, 0, kb_keytronic.data_signal );
+	kb_keytronic.clock_callback( space, 0, kb_keytronic.clock_signal );
 
 	return 0xFF;
 }
@@ -400,43 +400,43 @@ static WRITE8_HANDLER( kb_keytronic_data_w )
 		case 0x0e:
 			break;
 		case 0x0f:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_0f" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_0f" );
 			break;
 		case 0x30:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_30_0" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_30_0" );
 			break;
 		case 0x31:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_31_0" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_31_0" );
 			break;
 		case 0x32:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_32_0" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_32_0" );
 			break;
 		case 0x33:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_33_0" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_33_0" );
 			break;
 		case 0x34:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_34_0" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_34_0" );
 			break;
 		case 0x35:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_35_0" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_35_0" );
 			break;
 		case 0x36:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_36_0" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_36_0" );
 			break;
 		case 0x37:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_37_0" ) | ( input_port_read( machine, "kb_keytronic_36_0" ) & 0x01 );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_37_0" ) | ( input_port_read( space->machine, "kb_keytronic_36_0" ) & 0x01 );
 			break;
 		case 0x38:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_38_0" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_38_0" );
 			break;
 		case 0x39:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_39_0" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_39_0" );
 			break;
 		case 0x3a:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_3a_0" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_3a_0" );
 			break;
 		case 0x3b:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_3b_0" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_3b_0" );
 			break;
 		}
 	}
@@ -447,31 +447,31 @@ static WRITE8_HANDLER( kb_keytronic_data_w )
 		switch ( kb_keytronic.p1 )
 		{
 		case 0x0b:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_0b" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_0b" );
 			break;
 		case 0x30:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_30_1" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_30_1" );
 			break;
 		case 0x31:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_31_1" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_31_1" );
 			break;
 		case 0x32:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_32_1" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_32_1" );
 			break;
 		case 0x33:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_33_1" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_33_1" );
 			break;
 		case 0x34:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_34_1" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_34_1" );
 			break;
 		case 0x35:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_35_1" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_35_1" );
 			break;
 		case 0x36:
 			kb_keytronic.p1_data = 0xFF;
 			break;
 		case 0x37:
-			kb_keytronic.p1_data = input_port_read( machine, "kb_keytronic_37_1" );
+			kb_keytronic.p1_data = input_port_read( space->machine, "kb_keytronic_37_1" );
 			break;
 		case 0x38:
 			kb_keytronic.p1_data = 0xFF;
@@ -494,22 +494,17 @@ static ADDRESS_MAP_START( kb_keytronic_program, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( kb_keytronic_data, ADDRESS_SPACE_DATA, 8 )
-	AM_RANGE( 0x0000, 0xFFFF ) AM_READWRITE( kb_keytronic_data_r, kb_keytronic_data_w )
-ADDRESS_MAP_END
-
-
 static ADDRESS_MAP_START( kb_keytronic_io, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE( 0x01, 0x01 )	AM_READWRITE( kb_keytronic_p1_r, kb_keytronic_p1_w )
-	AM_RANGE( 0x02, 0x02 )	AM_READWRITE( kb_keytronic_p2_r, kb_keytronic_p2_w )
-	AM_RANGE( 0x03, 0x03 )	AM_READWRITE( kb_keytronic_p3_r, kb_keytronic_p3_w )
+	AM_RANGE( 0x0000, 0xFFFF )					AM_READWRITE( kb_keytronic_data_r, kb_keytronic_data_w )
+	AM_RANGE( MCS51_PORT_P1, MCS51_PORT_P1 )	AM_READWRITE( kb_keytronic_p1_r, kb_keytronic_p1_w )
+	AM_RANGE( MCS51_PORT_P2, MCS51_PORT_P2 )	AM_READWRITE( kb_keytronic_p2_r, kb_keytronic_p2_w )
+	AM_RANGE( MCS51_PORT_P3, MCS51_PORT_P3 )	AM_READWRITE( kb_keytronic_p3_r, kb_keytronic_p3_w )
 ADDRESS_MAP_END
 
 
 MACHINE_DRIVER_START( kb_keytronic )
 	MDRV_CPU_ADD( KEYTRONIC_KB3270PC_CPU, I8051, 11060250 )
 	MDRV_CPU_PROGRAM_MAP( kb_keytronic_program, 0 )
-	MDRV_CPU_DATA_MAP( kb_keytronic_data, 0 )
 	MDRV_CPU_IO_MAP( kb_keytronic_io, 0 )
 MACHINE_DRIVER_END
 

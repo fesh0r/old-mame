@@ -18,7 +18,6 @@
 #include "devices/snapquik.h"
 #include "devices/cassette.h"
 
-
 #define NASCOM1_KEY_RESET	0x02
 #define NASCOM1_KEY_INCR	0x01
 
@@ -56,9 +55,9 @@ static struct
  *
  *************************************/
 
-static void nascom2_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
+static WD17XX_CALLBACK( nascom2_fdc_callback )
 {
-	switch (event)
+	switch (state)
 	{
 	case WD17XX_IRQ_SET: nascom2_fdc.irq = 1; break;
 	case WD17XX_IRQ_CLR: nascom2_fdc.irq = 0; break;
@@ -66,6 +65,9 @@ static void nascom2_fdc_callback(running_machine *machine, wd17xx_state_t event,
 	case WD17XX_DRQ_CLR: nascom2_fdc.drq = 0; break;
 	}
 }
+
+
+const wd17xx_interface nascom2_wd17xx_interface = { nascom2_fdc_callback, NULL };
 
 
 READ8_HANDLER( nascom2_fdc_select_r )
@@ -76,15 +78,16 @@ READ8_HANDLER( nascom2_fdc_select_r )
 
 WRITE8_HANDLER( nascom2_fdc_select_w )
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1793, "wd1793");
 	nascom2_fdc.select = data;
 
 	logerror("nascom2_fdc_select_w: %02x\n", data);
 
-	if (data & 0x01) wd17xx_set_drive(0);
-	if (data & 0x02) wd17xx_set_drive(1);
-	if (data & 0x04) wd17xx_set_drive(2);
-	if (data & 0x08) wd17xx_set_drive(3);
-	if (data & 0x10) wd17xx_set_side((data & 0x10) >> 4);
+	if (data & 0x01) wd17xx_set_drive(fdc,0);
+	if (data & 0x02) wd17xx_set_drive(fdc,1);
+	if (data & 0x04) wd17xx_set_drive(fdc,2);
+	if (data & 0x08) wd17xx_set_drive(fdc,3);
+	if (data & 0x10) wd17xx_set_side(fdc,(data & 0x10) >> 4);
 }
 
 
@@ -104,7 +107,7 @@ READ8_HANDLER( nascom2_fdc_status_r )
 DEVICE_IMAGE_LOAD( nascom2_floppy )
 {
 	int sides, sectors;
-
+	device_config *fdc = (device_config*)device_list_find_by_tag( image->machine->config->devicelist, WD1793, "wd1793");
 	if (!image_has_been_created(image))
 	{
 		switch (image_length(image))
@@ -112,13 +115,13 @@ DEVICE_IMAGE_LOAD( nascom2_floppy )
 		case 80 * 2 * 2 * 8 * 256:
 			sides = 2;
 			sectors = 2 * 8;
-			wd17xx_set_density(DEN_FM_HI);
+			wd17xx_set_density(fdc,DEN_FM_HI);
 			break;
 
 		case 80 * 1 * 2 * 8 * 256:
 			sides = 1;
 			sectors = 2 * 8;
-			wd17xx_set_density(DEN_FM_HI);
+			wd17xx_set_density(fdc,DEN_FM_HI);
 			break;
 
 		default:
@@ -150,10 +153,10 @@ DEVICE_IMAGE_LOAD( nascom2_floppy )
 
 READ8_HANDLER ( nascom1_port_00_r )
 {
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7", "KEY8" };
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7", "KEY8" };
 
 	if (nascom1_portstat.stat_count < 9)
-		return (input_port_read(machine, keynames[nascom1_portstat.stat_count]) | ~0x7f);
+		return (input_port_read(space->machine, keynames[nascom1_portstat.stat_count]) | ~0x7f);
 	
 	return (0xff);
 }
@@ -162,18 +165,24 @@ READ8_HANDLER ( nascom1_port_00_r )
 WRITE8_HANDLER( nascom1_port_00_w )
 {
 
-	cassette_change_state( device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ),
+	cassette_change_state( device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ),
 		( data & 0x10 ) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR );
 
-	if (!(data & NASCOM1_KEY_RESET)) {
+	if (!(data & NASCOM1_KEY_RESET)) 
+	{
 		if (nascom1_portstat.stat_flags & NASCOM1_KEY_RESET)
 			nascom1_portstat.stat_count = 0;
-	} else nascom1_portstat.stat_flags = NASCOM1_KEY_RESET;
+	} 
+	else 
+		nascom1_portstat.stat_flags = NASCOM1_KEY_RESET;
 
-	if (!(data & NASCOM1_KEY_INCR)) {
+	if (!(data & NASCOM1_KEY_INCR)) 
+	{
 		if (nascom1_portstat.stat_flags & NASCOM1_KEY_INCR)
 			nascom1_portstat.stat_count++;
-	} else nascom1_portstat.stat_flags = NASCOM1_KEY_INCR;
+	} 
+	else 
+		nascom1_portstat.stat_flags = NASCOM1_KEY_INCR;
 }
 
 
@@ -263,14 +272,14 @@ SNAPSHOT_LOAD( nascom1 )
 		if (sscanf((char *)line, "%x %x %x %x %x %x %x %x %x %x\010\010\n",
 			&addr, &b0, &b1, &b2, &b3, &b4, &b5, &b6, &b7, &dummy) == 10)
 		{
-			program_write_byte(addr++, b0);
-			program_write_byte(addr++, b1);
-			program_write_byte(addr++, b2);
-			program_write_byte(addr++, b3);
-			program_write_byte(addr++, b4);
-			program_write_byte(addr++, b5);
-			program_write_byte(addr++, b6);
-			program_write_byte(addr++, b7);
+			memory_write_byte(cputag_get_address_space(image->machine,"main",ADDRESS_SPACE_PROGRAM), addr++, b0);
+			memory_write_byte(cputag_get_address_space(image->machine,"main",ADDRESS_SPACE_PROGRAM), addr++, b1);
+			memory_write_byte(cputag_get_address_space(image->machine,"main",ADDRESS_SPACE_PROGRAM), addr++, b2);
+			memory_write_byte(cputag_get_address_space(image->machine,"main",ADDRESS_SPACE_PROGRAM), addr++, b3);
+			memory_write_byte(cputag_get_address_space(image->machine,"main",ADDRESS_SPACE_PROGRAM), addr++, b4);
+			memory_write_byte(cputag_get_address_space(image->machine,"main",ADDRESS_SPACE_PROGRAM), addr++, b5);
+			memory_write_byte(cputag_get_address_space(image->machine,"main",ADDRESS_SPACE_PROGRAM), addr++, b6);
+			memory_write_byte(cputag_get_address_space(image->machine,"main",ADDRESS_SPACE_PROGRAM), addr++, b7);
 		}
 	}
 
@@ -284,12 +293,6 @@ SNAPSHOT_LOAD( nascom1 )
  *  Initialization
  *
  *************************************/
-
-MACHINE_START( nascom2 )
-{
-	wd17xx_init(machine, WD_TYPE_1793, nascom2_fdc_callback, NULL);
-}
-
 
 MACHINE_RESET( nascom1 )
 {
@@ -313,30 +316,30 @@ DRIVER_INIT( nascom1 )
 	switch (mess_ram_size)
 	{
 	case 1 * 1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),
 			0x1400, 0x9000, 0, 0, SMH_NOP, SMH_NOP);
 		break;
 
 	case 16 * 1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),
 			0x1400, 0x4fff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),
 			0x5000, 0xafff, 0, 0, SMH_NOP, SMH_NOP);
-		memory_set_bankptr(1, mess_ram);
+		memory_set_bankptr(machine, 1, mess_ram);
 		break;
 
 	case 32 * 1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),
 			0x1400, 0x8fff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),
 			0x9000, 0xafff, 0, 0, SMH_NOP, SMH_NOP);
-		memory_set_bankptr(1, mess_ram);
+		memory_set_bankptr(machine, 1, mess_ram);
 		break;
 
 	case 40 * 1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),
 			0x1400, 0xafff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_set_bankptr(1, mess_ram);
+		memory_set_bankptr(machine, 1, mess_ram);
 		break;
 	}
 }

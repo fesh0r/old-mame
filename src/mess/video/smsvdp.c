@@ -167,11 +167,11 @@ static void set_display_settings( running_machine *machine )
 }
 
  READ8_HANDLER(sms_vdp_vcount_r) {
-	return ( smsvdp.sms_frame_timing[ INIT_VCOUNT ] + video_screen_get_vpos(machine->primary_screen) ) & 0xFF;
+	return ( smsvdp.sms_frame_timing[ INIT_VCOUNT ] + video_screen_get_vpos(space->machine->primary_screen) ) & 0xFF;
 }
 
 READ8_HANDLER(sms_vdp_hcount_r) {
-	return video_screen_get_hpos(machine->primary_screen) >> 1;
+	return video_screen_get_hpos(space->machine->primary_screen) >> 1;
 }
 
 void sms_set_ggsmsmode( int mode ) {
@@ -216,7 +216,7 @@ int smsvdp_video_init( running_machine *machine, const smsvdp_configuration *con
 
 	set_display_settings( machine );
 
-	smsvdp.smsvdp_display_timer = timer_alloc( smsvdp_display_callback , NULL);
+	smsvdp.smsvdp_display_timer = timer_alloc(machine,  smsvdp_display_callback , NULL);
 	timer_adjust_periodic(smsvdp.smsvdp_display_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0 ), 0, video_screen_get_scan_period( machine->primary_screen ));
 	return 0;
 }
@@ -240,7 +240,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 
 	/* Check if we're on the last line of a frame */
 	if ( vpos == vpos_limit - 1 ) {
-		sms_check_pause_button( machine );
+		sms_check_pause_button( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM) );
 		return;
 	}
 
@@ -261,7 +261,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 				smsvdp.status |= STATUS_HINT;
 				if ( smsvdp.reg[0x00] & 0x10 ) {
 					/* Delay triggering of interrupt to allow software to read the status bit before the irq */
-					timer_set( video_screen_get_time_until_pos(machine->primary_screen, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen) + 1 ), NULL, 0, smsvdp_set_irq );
+					timer_set(machine,  video_screen_get_time_until_pos(machine->primary_screen, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen) + 1 ), NULL, 0, smsvdp_set_irq );
 				}
 			}
 
@@ -270,7 +270,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 			smsvdp.status |= STATUS_VINT;
 			if ( smsvdp.reg[0x01] & 0x20 ) {
 				/* Delay triggering of interrupt to allow software to read the status bit before the irq */
-				timer_set( video_screen_get_time_until_pos(machine->primary_screen, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen) + 1 ), NULL, 0, smsvdp_set_irq );
+				timer_set(machine,  video_screen_get_time_until_pos(machine->primary_screen, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen) + 1 ), NULL, 0, smsvdp_set_irq );
 			}
 		}
 		if ( video_skip_this_frame() ) {
@@ -280,11 +280,11 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 		/* Draw left border */
 		rec.min_x = LBORDER_START;
 		rec.max_x = LBORDER_START + LBORDER_X_PIXELS - 1;
-		fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+		bitmap_fill( tmpbitmap, &rec , machine->pens[smsvdp.current_palette[BACKDROP_COLOR]]);
 		/* Draw right border */
 		rec.min_x = LBORDER_START + LBORDER_X_PIXELS + 256;
 		rec.max_x = rec.min_x + RBORDER_X_PIXELS - 1;
-		fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+		bitmap_fill( tmpbitmap, &rec , machine->pens[smsvdp.current_palette[BACKDROP_COLOR]]);
 		/* Draw middle of the border */
 		/* We need to do this through the regular drawing function so it will */
 		/* be included in the gamegear scaling functions */
@@ -305,7 +305,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 			smsvdp.status |= STATUS_HINT;
 			if ( smsvdp.reg[0x00] & 0x10 ) {
 				/* Delay triggering of interrupt to allow software to read the status bit before the irq */
-				timer_set( video_screen_get_time_until_pos(machine->primary_screen, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen) + 1 ), NULL, 0, smsvdp_set_irq );
+				timer_set(machine,  video_screen_get_time_until_pos(machine->primary_screen, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen) + 1 ), NULL, 0, smsvdp_set_irq );
 			}
 		} else {
 			smsvdp.line_counter -= 1;
@@ -320,16 +320,16 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 			/* set whole line to backdrop color */
 			rec.min_x = LBORDER_START;
 			rec.max_x = LBORDER_START + LBORDER_X_PIXELS + 255 + RBORDER_X_PIXELS;
-			fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+			bitmap_fill( tmpbitmap, &rec , machine->pens[smsvdp.current_palette[BACKDROP_COLOR]]);
 		} else {
 			/* Draw left border */
 			rec.min_x = LBORDER_START;
 			rec.max_x = LBORDER_START + LBORDER_X_PIXELS - 1;
-			fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+			bitmap_fill( tmpbitmap, &rec , machine->pens[smsvdp.current_palette[BACKDROP_COLOR]]);
 			/* Draw right border */
 			rec.min_x = LBORDER_START + LBORDER_X_PIXELS + 256;
 			rec.max_x = rec.min_x + RBORDER_X_PIXELS - 1;
-			fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+			bitmap_fill( tmpbitmap, &rec , machine->pens[smsvdp.current_palette[BACKDROP_COLOR]]);
 			sms_refresh_line( machine, tmpbitmap, LBORDER_START + LBORDER_X_PIXELS, vpos_limit, vpos - vpos_limit );
 		}
 		return;
@@ -346,11 +346,11 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 		/* Draw left border */
 		rec.min_x = LBORDER_START;
 		rec.max_x = LBORDER_START + LBORDER_X_PIXELS - 1;
-		fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+		bitmap_fill( tmpbitmap, &rec , machine->pens[smsvdp.current_palette[BACKDROP_COLOR]]);
 		/* Draw right border */
 		rec.min_x = LBORDER_START + LBORDER_X_PIXELS + 256;
 		rec.max_x = rec.min_x + RBORDER_X_PIXELS - 1;
-		fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
+		bitmap_fill( tmpbitmap, &rec , machine->pens[smsvdp.current_palette[BACKDROP_COLOR]]);
 		/* Draw middle of the border */
 		/* We need to do this through the regular drawing function so it will */
 		/* be included in the gamegear scaling functions */
@@ -390,7 +390,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 	if (smsvdp.irq_state == 1) {
 		smsvdp.irq_state = 0;
 		if ( smsvdp.int_callback ) {
-			smsvdp.int_callback( machine, CLEAR_LINE );
+			smsvdp.int_callback( space->machine, CLEAR_LINE );
 		}
 	}
 
@@ -454,11 +454,11 @@ WRITE8_HANDLER(sms_vdp_ctrl_w) {
 				logerror("overscan enabled.\n");
 			}
 			if ( regNum == 0 || regNum == 1 ) {
-				set_display_settings( machine );
+				set_display_settings( space->machine );
 			}
 			if ( ( regNum == 1 ) && ( smsvdp.reg[0x01] & 0x20 ) && ( smsvdp.status & STATUS_VINT ) ) {
 				smsvdp.irq_state = 1;
-				smsvdp.int_callback( machine, ASSERT_LINE );
+				smsvdp.int_callback( space->machine, ASSERT_LINE );
 			}
 			smsvdp.addrmode = 0;
 			break;

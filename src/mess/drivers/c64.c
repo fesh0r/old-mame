@@ -28,7 +28,7 @@ latter with support for LOAD/SAVE commands as well). The character rom
 is not present either and its content was, again, in the cart. Max Machine
 carts can be run by both C64 and C128.
 
-CPU: MOS Technology 6510 (1Mhz)
+CPU: MOS Technology 6510 (1 MHz)
 RAM: 4 kilobytes (2 kilobytes?)
 ROM: none
 Video: MOS 6566 "VIC-II" (320 x 200 Hi-Resolution, 40 columns text, 16 
@@ -51,7 +51,7 @@ time for business product (letter + memory size: P128 & B256).
 It was also advertised as VC 64 in Germany, and as VIC 64S in Sweden
 (the latter came with a modified character set)
 
-CPU: CSG 6510 (1Mhz)
+CPU: CSG 6510 (1 MHz)
 RAM: 64 kilobytes
 ROM: 20 kilobytes
 Video: MOS 6569 "VIC-II" (320 x 200 Hi-Resolution, 40 columns text, 16 
@@ -140,7 +140,7 @@ built-in speaker. The only differences between the C64 and the SX-64 are in
 the start up colors and in the SX-64 better support for the internal floppy
 drive. The tape drive support was removed in the portable system.
 
-CPU: MOS 6510 (1Mhz)
+CPU: MOS 6510 (1 MHz)
 RAM: 64 kilobytes (68 with the 1541)
 ROM: 20 kilobytes (36 with the 1541)
 Video: MOS 6569 "VIC-II" (320 x 200 Hi-Resolution, 40 columns text, 16 
@@ -177,7 +177,7 @@ larger case (closer to the original C64) is known as Commodore 64G, because
 mainly sold in Germany. Other repackaged versions followed, built around the 
 same kernel and chips.
 
-CPU: CSG 8500 (1 Mhz; 6510 compatible)
+CPU: CSG 8500 (1 MHz; 6510 compatible)
 RAM: 64 kilobytes
 ROM: 20 kilobytes
 Video: MOS 8565 "VIC-II" (320 x 200 Hi-Resolution, 40 columns text, 16 
@@ -200,7 +200,7 @@ BIOS:
   Repackaged C64 with neither keyboard, nor ports. Basically, the
 system came far too late to enter the console market of the 90s.
 
-CPU: CSG 6510 (1 Mhz)
+CPU: CSG 6510 (1 MHz)
 RAM: 64 kilobytes
 ROM: 16 kilobytes
 Video: MOS 8565 "VIC-II" (320 x 200 Hi-Resolution, 40 columns text, 16 
@@ -323,6 +323,7 @@ the Edu64-1 used the full C64 BIOS. Confirmations are needed, anyway.
  */
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
 
@@ -349,7 +350,7 @@ static ADDRESS_MAP_START(ultimax_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(vic2_port_r, vic2_port_w)
 	AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(sid6581_0_port_r, sid6581_0_port_w)
 	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(SMH_RAM, c64_colorram_write) AM_BASE(&c64_colorram) /* colorram  */
-	AM_RANGE(0xdc00, 0xdcff) AM_READWRITE(cia_0_r, cia_0_w)
+	AM_RANGE(0xdc00, 0xdcff) AM_DEVREADWRITE(CIA6526R1, "cia_0", cia_r, cia_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM AM_BASE(&c64_romh)				/* ram or kernel rom */
 ADDRESS_MAP_END
 
@@ -473,14 +474,13 @@ static const sid6581_interface c64_sound_interface =
  *
  *************************************/
 
-
 static MACHINE_DRIVER_START( c64 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", M6510, VIC6567_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(c64_mem, 0)
 	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( c64 )
 
@@ -498,10 +498,21 @@ static MACHINE_DRIVER_START( c64 )
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	/* devices */
+	/* quickload */
 	MDRV_QUICKLOAD_ADD(cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
+
+	/* cia */
+	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6567_CLOCK, c64_ntsc_cia0)
+	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6567_CLOCK, c64_ntsc_cia1)
+
+	/* via */
+	MDRV_VIA6522_ADD("via6522_2", 0, vc1541_via2)
+	MDRV_VIA6522_ADD("via6522_3", 0, vc1541_via3)
+	
+	MDRV_IMPORT_FROM(c64_cartslot)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c64pal )
@@ -509,7 +520,7 @@ static MACHINE_DRIVER_START( c64pal )
 	MDRV_CPU_PROGRAM_MAP(c64_mem, 0)
 	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6569_HRETRACERATE)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(50))
 
 	MDRV_MACHINE_START( c64 )
 
@@ -527,10 +538,17 @@ static MACHINE_DRIVER_START( c64pal )
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	/* devices */
+	/* quickload */
 	MDRV_QUICKLOAD_ADD(cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
+
+	/* cia */
+	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6569_CLOCK, c64_pal_cia0)
+	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6569_CLOCK, c64_pal_cia1)
+	
+	MDRV_IMPORT_FROM(c64_cartslot)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ultimax )
@@ -541,6 +559,10 @@ static MACHINE_DRIVER_START( ultimax )
 	MDRV_SOUND_REPLACE("sid", SID6581, VIC6567_CLOCK)
 	MDRV_SOUND_CONFIG(c64_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	
+	MDRV_CARTSLOT_REMOVE("cart1")
+	MDRV_CARTSLOT_REMOVE("cart2")
+	MDRV_IMPORT_FROM(ultimax_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -563,10 +585,12 @@ static MACHINE_DRIVER_START( sx64 )
 	MDRV_SOUND_REMOVE( "dac" )
 	MDRV_CASSETTE_REMOVE( "cassette" )
 #ifdef CPU_SYNC
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 #else
-	MDRV_INTERLEAVE(3000)
+	MDRV_QUANTUM_TIME(HZ(180000))
 #endif
+	MDRV_VIA6522_ADD("via6522_2", 0, vc1541_via2)
+	MDRV_VIA6522_ADD("via6522_3", 0, vc1541_via3)
 MACHINE_DRIVER_END
 
 
@@ -681,23 +705,12 @@ ROM_END
 
 
 static SYSTEM_CONFIG_START(c64)
-	CONFIG_DEVICE(c64_cartslot_getinfo)
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(sx64)
-	CONFIG_DEVICE(c64_cartslot_getinfo)
 	CONFIG_DEVICE(vc1541_device_getinfo)
 SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(ultimax)
-	CONFIG_DEVICE(ultimax_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(c64gs)
-	CONFIG_DEVICE(c64_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
 
 /***************************************************************************
 
@@ -707,7 +720,7 @@ SYSTEM_CONFIG_END
 
 /*   YEAR  NAME   PARENT COMPAT MACHINE  INPUT    INIT    CONFIG    COMPANY                            FULLNAME */
 
-COMP(1982, max,	    0,    0,    ultimax, c64,     ultimax, ultimax, "Commodore Business Machines Co.", "Commodore Max Machine", 0)
+COMP(1982, max,	    0,    0,    ultimax, c64,     ultimax, 0, "Commodore Business Machines Co.", "Commodore Max Machine", 0)
 
 COMP(1982, c64,     0,    0,    c64,     c64,     c64,     c64,     "Commodore Business Machines Co.", "Commodore 64 (NTSC)", 0)
 COMP(1982, c64pal,  c64,  0,    c64pal,  c64,     c64pal,  c64,     "Commodore Business Machines Co.", "Commodore 64 (PAL)", 0)
@@ -728,4 +741,4 @@ COMP(1986, c64c,    c64,  0,    c64,     c64,     c64,     c64,     "Commodore B
 COMP(1986, c64cpal, c64,  0,    c64pal,  c64,     c64pal,  c64,     "Commodore Business Machines Co.", "Commodore 64C (PAL)", 0)
 COMP(1986, c64g,    c64,  0,    c64pal,  c64,     c64pal,  c64,     "Commodore Business Machines Co.", "Commodore 64G (PAL)", 0)
 
-CONS(1990, c64gs,   c64,  0,    c64gs,   c64gs,   c64gs,   c64gs,   "Commodore Business Machines Co.", "Commodore 64 Games System (PAL)", 0)
+CONS(1990, c64gs,   c64,  0,    c64gs,   c64gs,   c64gs,   0,   "Commodore Business Machines Co.", "Commodore 64 Games System (PAL)", 0)

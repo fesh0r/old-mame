@@ -20,7 +20,6 @@
 #include "machine/74145.h"
 #include "sound/speaker.h"
 
-
 #define LED_REFRESH_DELAY  ATTOTIME_IN_USEC(70)
 
 
@@ -34,37 +33,37 @@ static emu_timer *led_update;
 ******************************************************************************/
 
 
-static void sym1_74145_output_0_w(int state)
+TTL74145_OUTPUT_LINE(sym1_74145_output_0_w)
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 0);
 }
 
 
-static void sym1_74145_output_1_w(int state)
+TTL74145_OUTPUT_LINE(sym1_74145_output_1_w)
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 1);
 }
 
 
-static void sym1_74145_output_2_w(int state)
+TTL74145_OUTPUT_LINE(sym1_74145_output_2_w)
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 2);
 }
 
 
-static void sym1_74145_output_3_w(int state)
+TTL74145_OUTPUT_LINE(sym1_74145_output_3_w)
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 3);
 }
 
 
-static void sym1_74145_output_4_w(int state)
+TTL74145_OUTPUT_LINE(sym1_74145_output_4_w)
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 4);
 }
 
 
-static void sym1_74145_output_5_w(int state)
+TTL74145_OUTPUT_LINE(sym1_74145_output_5_w)
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 5);
 }
@@ -77,7 +76,7 @@ static TIMER_CALLBACK( led_refresh )
 
 
 /* The speaker is connected to output 6 of the 74145 */
-static void sym1_74145_output_6_w(int state)
+TTL74145_OUTPUT_LINE(sym1_74145_output_6_w)
 {
 	speaker_level_w(0, state);
 }
@@ -123,7 +122,7 @@ static UINT8 sym1_riot_b_r(const device_config *device, UINT8 olddata)
 
 static void sym1_riot_a_w(const device_config *device, UINT8 newdata, UINT8 data)
 {
-	logerror("%x: riot_a_w 0x%02x\n", activecpu_get_pc(), data);
+	logerror("%x: riot_a_w 0x%02x\n", cpu_get_pc( device->machine->cpu[0] ), data);
 
 	/* save for later use */
 	riot_port_a = data;
@@ -132,13 +131,13 @@ static void sym1_riot_a_w(const device_config *device, UINT8 newdata, UINT8 data
 
 static void sym1_riot_b_w(const device_config *device, UINT8 newdata, UINT8 data)
 {
-	logerror("%x: riot_b_w 0x%02x\n", activecpu_get_pc(), data);
+	logerror("%x: riot_b_w 0x%02x\n", cpu_get_pc( device->machine->cpu[0] ), data);
 
 	/* save for later use */
 	riot_port_b = data;
 
 	/* first 4 pins are connected to the 74145 */
-	ttl74145_0_w(device->machine, 0, data & 0x0f);
+	ttl74145_w( (device_config*)device_list_find_by_tag( device->machine->config->devicelist, TTL74145, "ttl74145" ), 0, data & 0x0f);
 }
 
 
@@ -151,7 +150,7 @@ const riot6532_interface sym1_r6532_interface =
 };
 
 
-static const ttl74145_interface ttl74145_intf =
+const ttl74145_interface sym1_ttl74145_intf =
 {
 	sym1_74145_output_0_w,  /* connected to DS0 */
 	sym1_74145_output_1_w,  /* connected to DS1 */
@@ -171,21 +170,21 @@ static const ttl74145_interface ttl74145_intf =
 ******************************************************************************/
 
 
-static void sym1_irq(running_machine *machine, int level)
+static void sym1_irq(const device_config *device, int level)
 {
-	cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, level);
+	cpu_set_input_line(device->machine->cpu[0], M6502_IRQ_LINE, level);
 }
 
 
-static READ8_HANDLER( sym1_via0_b_r )
+static READ8_DEVICE_HANDLER( sym1_via0_b_r )
 {
 	return 0xff;
 }
 
 
-static WRITE8_HANDLER( sym1_via0_b_w )
+static WRITE8_DEVICE_HANDLER( sym1_via0_b_w )
 {
-	logerror("%x: via0_b_w 0x%02x\n", activecpu_get_pc(), data);
+	logerror("%s: via0_b_w 0x%02x\n", cpuexec_describe_context(device->machine), data);
 }
 
 
@@ -194,25 +193,27 @@ static WRITE8_HANDLER( sym1_via0_b_w )
  * PA2: Write protect RAM 0x800-0xbff
  * PA3: Write protect RAM 0xc00-0xfff
  */
-static WRITE8_HANDLER( sym1_via2_a_w )
+static WRITE8_DEVICE_HANDLER( sym1_via2_a_w )
 {
+	const address_space *cpu0space = cpu_get_address_space( device->machine->cpu[0], ADDRESS_SPACE_PROGRAM );
+
 	logerror("SYM1 VIA2 W 0x%02x\n", data);
 
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa600, 0xa67f, 0, 0,
-		((input_port_read(machine, "WP") & 0x01) && !(data & 0x01)) ? SMH_NOP : SMH_BANK5);
+	memory_install_write8_handler(cpu0space, 0xa600, 0xa67f, 0, 0,
+		((input_port_read(device->machine, "WP") & 0x01) && !(data & 0x01)) ? SMH_NOP : SMH_BANK5);
 
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0x07ff, 0, 0,
-		((input_port_read(machine, "WP") & 0x02) && !(data & 0x02)) ? SMH_NOP : SMH_BANK2);
+	memory_install_write8_handler(cpu0space, 0x0400, 0x07ff, 0, 0,
+		((input_port_read(device->machine, "WP") & 0x02) && !(data & 0x02)) ? SMH_NOP : SMH_BANK2);
 
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0bff, 0, 0,
-		((input_port_read(machine, "WP") & 0x04) && !(data & 0x04)) ? SMH_NOP : SMH_BANK3);
+	memory_install_write8_handler(cpu0space, 0x0800, 0x0bff, 0, 0,
+		((input_port_read(device->machine, "WP") & 0x04) && !(data & 0x04)) ? SMH_NOP : SMH_BANK3);
 
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0c00, 0x0fff, 0, 0,
-		((input_port_read(machine, "WP") & 0x08) && !(data & 0x08)) ? SMH_NOP : SMH_BANK4);
+	memory_install_write8_handler(cpu0space, 0x0c00, 0x0fff, 0, 0,
+		((input_port_read(device->machine, "WP") & 0x08) && !(data & 0x08)) ? SMH_NOP : SMH_BANK4);
 }
 
 
-static const struct via6522_interface via0 =
+const via6522_interface sym1_via0 =
 {
 	NULL,           /* VIA Port A Input */
 	sym1_via0_b_r,  /* VIA Port B Input */
@@ -230,7 +231,7 @@ static const struct via6522_interface via0 =
 };
 
 
-static const struct via6522_interface via1 =
+const via6522_interface sym1_via1 =
 {
 	NULL,           /* VIA Port A Input */
 	NULL,           /* VIA Port B Input */
@@ -248,7 +249,7 @@ static const struct via6522_interface via1 =
 };
 
 
-static const struct via6522_interface via2 =
+const via6522_interface sym1_via2 =
 {
 	NULL,           /* VIA Port A Input */
 	NULL,           /* VIA Port B Input */
@@ -277,31 +278,21 @@ DRIVER_INIT( sym1 )
 	/* wipe expansion memory banks that are not installed */
 	if (mess_ram_size < 4*1024)
 	{
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+		memory_install_readwrite8_handler(cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM ),
 			mess_ram_size, 0x0fff, 0, 0, SMH_NOP, SMH_NOP);
 	}
 
-	/* configure vias and riot */
-	via_config(0, &via0);
-	via_config(1, &via1);
-	via_config(2, &via2);
-
-	/* configure 74145 */
-	ttl74145_config(machine, 0, &ttl74145_intf);
-
 	/* allocate a timer to refresh the led display */
-	led_update = timer_alloc(led_refresh, NULL);
+	led_update = timer_alloc(machine, led_refresh, NULL);
 }
 
 
 MACHINE_RESET( sym1 )
 {
-	via_reset();
-	ttl74145_reset(0);
-
 	/* make 0xf800 to 0xffff point to the last half of the monitor ROM
 	   so that the CPU can find its reset vectors */
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+	memory_install_readwrite8_handler(cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM ),
 			0xf800, 0xffff, 0, 0, SMH_BANK1, SMH_NOP);
-	memory_set_bankptr(1, sym1_monitor + 0x800);
+	memory_set_bankptr(machine, 1, sym1_monitor + 0x800);
+	device_reset(cputag_get_cpu(machine, "main"));
 }

@@ -132,7 +132,6 @@ static void cdp1863_sound_update(const device_config *device, stream_sample_t **
 static DEVICE_START( cdp1863 )
 {
 	cdp1863_t *cdp1863 = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
@@ -147,12 +146,10 @@ static DEVICE_START( cdp1863 )
 	cdp1863->oe = 1;
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "CDP1863", device->tag);
-
-	state_save_register_item(unique_tag, 0, cdp1863->oe);
-	state_save_register_item(unique_tag, 0, cdp1863->latch);
-	state_save_register_item(unique_tag, 0, cdp1863->signal);
-	state_save_register_item(unique_tag, 0, cdp1863->incr);
+	state_save_register_device_item(device, 0, cdp1863->oe);
+	state_save_register_device_item(device, 0, cdp1863->latch);
+	state_save_register_device_item(device, 0, cdp1863->signal);
+	state_save_register_device_item(device, 0, cdp1863->incr);
 
 	return DEVICE_START_OK;
 }
@@ -188,10 +185,10 @@ DEVICE_GET_INFO( cdp1863 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(cdp1863);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "RCA CDP1863";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "RCA CDP1800";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright MESS Team";			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "RCA CDP1863");					break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "RCA CDP1800");					break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
 	}
 }

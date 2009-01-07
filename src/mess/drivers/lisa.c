@@ -9,9 +9,12 @@
 *********************************************************************/
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
+#include "cpu/m6502/m6502.h"
 #include "includes/lisa.h"
 #include "devices/sonydriv.h"
 #include "machine/applefdc.h"
+#include "machine/6522via.h"
 
 
 /***************************************************************************
@@ -45,17 +48,17 @@ ADDRESS_MAP_END
     DEVICE CONFIG
 ***************************************************************************/
 
-static void lisa2_set_iwm_enable_lines(int enable_mask)
+static void lisa2_set_iwm_enable_lines(const device_config *device,int enable_mask)
 {
 	/* E1 & E2 is connected to the Sony SEL line (?) */
 	/*logerror("new sel line state %d\n", (enable_mask) ? 0 : 1);*/
-	sony_set_sel_line((enable_mask) ? 0 : 1);
+	sony_set_sel_line(device,(enable_mask) ? 0 : 1);
 }
 
-static void lisa210_set_iwm_enable_lines(int enable_mask)
+static void lisa210_set_iwm_enable_lines(const device_config *device,int enable_mask)
 {
 	/* E2 is connected to the Sony enable line (?) */
-	sony_set_enable_lines(enable_mask >> 1);
+	sony_set_enable_lines(device,enable_mask >> 1);
 }
 
 static const applefdc_interface lisa2_fdc_interface =
@@ -87,14 +90,14 @@ static const applefdc_interface lisa210_fdc_interface =
 /* Lisa1 and Lisa 2 machine */
 static MACHINE_DRIVER_START( lisa )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 5093760)        /* 20.37504 Mhz / 4 */
+	MDRV_CPU_ADD("main", M68000, 5093760)        /* 20.37504 MHz / 4 */
 	MDRV_CPU_PROGRAM_MAP(lisa_map, 0)
 	MDRV_CPU_VBLANK_INT("main", lisa_interrupt)
 
-	MDRV_CPU_ADD("fdc", M6502, 2000000)        /* 16.000 Mhz / 8 in when DIS asserted, 16.000 Mhz / 9 otherwise (?) */
+	MDRV_CPU_ADD("fdc", M6502, 2000000)        /* 16.000 MHz / 8 in when DIS asserted, 16.000 MHz / 9 otherwise (?) */
 	MDRV_CPU_PROGRAM_MAP(lisa_fdc_map, 0)
 
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 	MDRV_MACHINE_RESET( lisa )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
@@ -119,8 +122,11 @@ static MACHINE_DRIVER_START( lisa )
 	MDRV_NVRAM_HANDLER(lisa)
 
 	/* devices */
-	MDRV_DEVICE_ADD("fdc", IWM)
-	MDRV_DEVICE_CONFIG(lisa2_fdc_interface)
+	MDRV_IWM_ADD("fdc", lisa2_fdc_interface)
+
+	/* via */
+	MDRV_VIA6522_ADD("via6522_0", 500000, lisa_via6522_0_intf)
+	MDRV_VIA6522_ADD("via6522_1", 500000, lisa_via6522_1_intf)
 MACHINE_DRIVER_END
 
 
@@ -130,8 +136,13 @@ static MACHINE_DRIVER_START( lisa210 )
 	MDRV_CPU_PROGRAM_MAP(lisa210_fdc_map, 0)
 
 	/* Lisa 2/10 and MacXL had a slightly different FDC interface */	
-	MDRV_DEVICE_MODIFY("fdc", IWM)
-	MDRV_DEVICE_CONFIG(lisa210_fdc_interface)
+	MDRV_IWM_MODIFY("fdc", lisa210_fdc_interface)
+
+	/* via */
+	MDRV_VIA6522_REMOVE("via6522_0")
+	MDRV_VIA6522_REMOVE("via6522_1")
+	MDRV_VIA6522_ADD("via6522_0", 1250000, lisa_via6522_0_intf)
+	MDRV_VIA6522_ADD("via6522_1", 1250000, lisa_via6522_1_intf)
 MACHINE_DRIVER_END
 
 
@@ -344,6 +355,6 @@ SYSTEM_CONFIG_END
     the GAME_NOT_WORKING flag...
 */
 /*     YEAR  NAME      PARENT   COMPAT  MACHINE   INPUT  INIT      CONFIG   COMPANY  FULLNAME */
-COMP( 1984, lisa2,    0,		0,		lisa,     lisa,	 lisa2,    lisa,	"Apple Computer",  "Lisa2", GAME_NOT_WORKING )
-COMP( 1984, lisa210,  lisa2,	0,		lisa210,  lisa,	 lisa210,  lisa210,	"Apple Computer",  "Lisa2/10", GAME_NOT_WORKING )
-COMP( 1985, macxl,    lisa2,	0,		macxl,    lisa,	 mac_xl,   lisa210,	"Apple Computer",  "Macintosh XL", /*GAME_NOT_WORKING*/0 )
+COMP( 1984, lisa2,    0,	0,	lisa,     lisa,	 lisa2,    lisa,	"Apple Computer",  "Lisa2", GAME_NOT_WORKING )
+COMP( 1984, lisa210,  lisa2,	0,	lisa210,  lisa,	 lisa210,  lisa210,	"Apple Computer",  "Lisa2/10", GAME_NOT_WORKING )
+COMP( 1985, macxl,    lisa2,	0,	macxl,    lisa,	 mac_xl,   lisa210,	"Apple Computer",  "Macintosh XL", /*GAME_NOT_WORKING*/0 )

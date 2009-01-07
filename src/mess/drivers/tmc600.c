@@ -88,20 +88,9 @@ Notes:
 #include "includes/tmc600.h"
 #include "video/cdp1869.h"
 
-static QUICKLOAD_LOAD( tmc600 );
-
 static const device_config *cassette_device_image(running_machine *machine)
 {
 	return devtag_get_device(machine, CASSETTE, "cassette");
-}
-
-/* Read/Write Handlers */
-
-static WRITE8_HANDLER( keyboard_latch_w )
-{
-	tmc600_state *state = machine->driver_data;
-
-	state->keylatch = data;
 }
 
 static const device_config *printer_device(running_machine *machine)
@@ -109,9 +98,18 @@ static const device_config *printer_device(running_machine *machine)
 	return devtag_get_device(machine, PRINTER, "printer");
 }
 
+/* Read/Write Handlers */
+
+static WRITE8_HANDLER( keyboard_latch_w )
+{
+	tmc600_state *state = space->machine->driver_data;
+
+	state->keylatch = data;
+}
+
 static WRITE8_HANDLER( printer_w )
 {
-	printer_output(printer_device(machine), data);
+	printer_output(printer_device(space->machine), data);
 }
 
 /* Memory Maps */
@@ -228,7 +226,7 @@ INPUT_PORTS_END
 
 static CDP1802_MODE_READ( tmc600_mode_r )
 {
-	if (input_port_read(machine, "RUN") & 0x01)
+	if (input_port_read(device->machine, "RUN") & 0x01)
 	{
 		return CDP1802_MODE_RESET;
 	}
@@ -240,10 +238,10 @@ static CDP1802_MODE_READ( tmc600_mode_r )
 
 static CDP1802_EF_READ( tmc600_ef_r )
 {
-	tmc600_state *state = machine->driver_data;
+	tmc600_state *state = device->machine->driver_data;
 
 	int flags = 0x0f;
-	static const char *keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
+	static const char *const keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
 	/*
         EF1     ?
@@ -254,18 +252,18 @@ static CDP1802_EF_READ( tmc600_ef_r )
 
 	// tape in
 
-	if (cassette_input(cassette_device_image(machine)) < +0.0) flags -= EF2;
+	if (cassette_input(cassette_device_image(device->machine)) < +0.0) flags -= EF2;
 
 	// keyboard
 
-	flags -= (~input_port_read(machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) ? EF3 : 0;
+	flags -= (~input_port_read(device->machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) ? EF3 : 0;
 
 	return flags;
 }
 
 static CDP1802_Q_WRITE( tmc600_q_w )
 {
-	cassette_output(cassette_device_image(machine), level ? +1.0 : -1.0);
+	cassette_output(cassette_device_image(device->machine), level ? +1.0 : -1.0);
 }
 
 static CDP1802_INTERFACE( tmc600_cdp1802_config )
@@ -283,37 +281,38 @@ static CDP1802_INTERFACE( tmc600_cdp1802_config )
 static MACHINE_START( tmc600 )
 {
 	tmc600_state *state = machine->driver_data;
+	const address_space *program = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
 
 	/* configure RAM */
 
-	memory_configure_bank(1, 0, 1, mess_ram, 0);
-	memory_set_bank(1, 0);
+	memory_configure_bank(machine, 1, 0, 1, mess_ram, 0);
+	memory_set_bank(machine, 1, 0);
 
 	switch (mess_ram_size)
 	{
 	case 8*1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case 16*1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x9fff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0x6000, 0x9fff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(program, 0xa000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case 24*1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xbfff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(program, 0x6000, 0xbfff, 0, 0, SMH_BANK1, SMH_BANK1);
 		break;
 	}
 
 	/* register for state saving */
 
-	state_save_register_global(state->keylatch);
+	state_save_register_global(machine, state->keylatch);
 }
 
 static MACHINE_RESET( tmc600 )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
+	cputag_set_input_line(machine, "main", INPUT_LINE_RESET, PULSE_LINE);
 }
 
 /* Machine Drivers */
@@ -350,10 +349,7 @@ static MACHINE_DRIVER_START( tmc600 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
-
-	/* quickload */
-	MDRV_QUICKLOAD_ADD(tmc600, "sbp", 0)
+	MDRV_PRINTER_ADD("printer")
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", tmc600_cassette_config )
@@ -387,15 +383,6 @@ ROM_END
 
 /* System Configuration */
 
-static QUICKLOAD_LOAD( tmc600 )
-{
-	void *ptr = memory_get_write_ptr(0, ADDRESS_SPACE_PROGRAM, 0x6300);
-
-	image_fread(image, ptr, 0x9500);
-
-	return INIT_PASS;
-}
-
 static void tmc600_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
@@ -424,5 +411,5 @@ SYSTEM_CONFIG_END
 /* System Drivers */
 
 //    YEAR  NAME      PARENT    COMPAT   MACHINE   INPUT     INIT    CONFIG    COMPANY        FULLNAME
-COMP( 1982, tmc600s1, 0,		0,	     tmc600,   tmc600,   0, 	tmc600,   "Telercas Oy", "Telmac TMC-600 (Sarja I)",  GAME_NOT_WORKING )
-COMP( 1982, tmc600s2, tmc600s1,	0,	     tmc600,   tmc600,   0, 	tmc600,   "Telercas Oy", "Telmac TMC-600 (Sarja II)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+COMP( 1982, tmc600s1, 0,	0,	     tmc600,   tmc600,   0, 	tmc600,   "Telercas Oy", "Telmac TMC-600 (Sarja I)",  GAME_NOT_WORKING )
+COMP( 1982, tmc600s2, 0,	0,	     tmc600,   tmc600,   0, 	tmc600,   "Telercas Oy", "Telmac TMC-600 (Sarja II)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

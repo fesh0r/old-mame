@@ -402,7 +402,7 @@ static void add_serin(UINT8 data, int with_checksum)
 		make_chksum(&atari_fdc.serin_chksum, data);
 }
 
-static void atari_set_frame_message(running_machine *machine, const char *fmt, ...)
+static void ATTR_PRINTF(2,3) atari_set_frame_message(running_machine *machine, const char *fmt, ...)
 {
 	va_list arg;
 	va_start(arg, fmt);
@@ -710,7 +710,7 @@ WRITE8_HANDLER ( atari_serout_w )
 			atari_fdc.serout_chksum ^= data;
 			/* if the attention line is high, this should be data */
 			if (pia_get_irq_b(0))
-				a800_serial_write(machine);
+				a800_serial_write(space->machine);
 		}
 		else
 		{
@@ -730,6 +730,6 @@ WRITE8_HANDLER(atari_pia_cb2_w)
 	else
 	{
 		atari_fdc.serin_delay = 0;
-		a800_serial_command(machine);
+		a800_serial_command(space->machine);
 	}
 }

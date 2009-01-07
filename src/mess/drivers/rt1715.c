@@ -8,6 +8,7 @@
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/8255ppi.h"
 #include "machine/8257dma.h"
@@ -16,10 +17,10 @@
 #include "formats/rk_cas.h"
 #include "includes/rt1715.h"
 
-WRITE8_HANDLER (rt1717_set_bank )
+static WRITE8_HANDLER (rt1717_set_bank )
 {
-	memory_set_bankptr(1, mess_ram);
-	memory_set_bankptr(3, mess_ram);
+	memory_set_bankptr(space->machine, 1, mess_ram);
+	memory_set_bankptr(space->machine, 3, mess_ram);
 }
 
 /* Address maps */
@@ -35,7 +36,7 @@ static ADDRESS_MAP_START( rt1715_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( rt1715 )
+static INPUT_PORTS_START( rt1715 )
 INPUT_PORTS_END
 
 /* Machine driver */
@@ -76,7 +77,7 @@ ROM_START( rt1715w )
 	ROM_LOAD ("s619.bin", 0x0000, 0x0800, CRC(98647763) SHA1(93fba51ed26392ec3eff1037886576fa12443fe5))
 ROM_END
 
-SYSTEM_CONFIG_START(rt1715)
+static SYSTEM_CONFIG_START(rt1715)
 	CONFIG_RAM_DEFAULT(64 * 1024)
 SYSTEM_CONFIG_END
 

@@ -19,7 +19,7 @@
 
 ***************************************************************************/
 
-static pc_video_update_proc (*pc_choosevideomode)(int *width, int *height, struct mscrtc6845 *crtc);
+static pc_video_update_proc (*pc_choosevideomode)(running_machine *machine, int *width, int *height, struct mscrtc6845 *crtc);
 static struct mscrtc6845 *pc_crtc;
 static int pc_anythingdirty;
 static int pc_current_height;
@@ -40,7 +40,7 @@ static STATE_POSTLOAD( pc_video_postload )
 
 
 struct mscrtc6845 *pc_video_start(running_machine *machine, const struct mscrtc6845_config *config,
-	pc_video_update_proc (*choosevideomode)(int *width, int *height, struct mscrtc6845 *crtc),
+	pc_video_update_proc (*choosevideomode)(running_machine *machine, int *width, int *height, struct mscrtc6845 *crtc),
 	size_t vramsize)
 {
 	pc_choosevideomode = choosevideomode;
@@ -54,7 +54,7 @@ struct mscrtc6845 *pc_video_start(running_machine *machine, const struct mscrtc6
 
 	if (config)
 	{
-		pc_crtc = mscrtc6845_init(config);
+		pc_crtc = mscrtc6845_init(machine, config);
 		if (!pc_crtc)
 			return NULL;
 	}
@@ -82,7 +82,7 @@ VIDEO_UPDATE( pc_video )
 		h = mscrtc6845_get_char_height(pc_crtc) * mscrtc6845_get_char_lines(pc_crtc);
 	}
 
-	video_update = pc_choosevideomode(&w, &h, pc_crtc);
+	video_update = pc_choosevideomode(screen->machine, &w, &h, pc_crtc);
 
 	if (video_update)
 	{
@@ -103,7 +103,7 @@ VIDEO_UPDATE( pc_video )
 			if ((pc_current_width > 100) && (pc_current_height > 100))
 				video_screen_set_visarea(screen, 0, pc_current_width-1, 0, pc_current_height-1);
 
-			fillbitmap(bitmap, 0, cliprect);
+			bitmap_fill(bitmap, cliprect, 0);
 		}
 
 		video_update(tmpbitmap ? tmpbitmap : bitmap, pc_crtc);
@@ -131,7 +131,7 @@ WRITE8_HANDLER ( pc_video_videoram_w )
 }
 
 
-WRITE16_HANDLER( pc_video_videoram16le_w ) { write16le_with_write8_handler(pc_video_videoram_w, machine, offset, data, mem_mask); }
+WRITE16_HANDLER( pc_video_videoram16le_w ) { write16le_with_write8_handler(pc_video_videoram_w, space, offset, data, mem_mask); }
 
 WRITE32_HANDLER( pc_video_videoram32_w )
 {

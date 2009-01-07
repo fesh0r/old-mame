@@ -23,7 +23,7 @@
 #include "harddisk.h"
 #include "devices/harddriv.h"
 
-static void update_interrupt(void);
+static void update_interrupt(running_machine *machine);
 
 /* max disk units per controller: 4 is the protocol limit, but it may be
 overriden if more than one controller is used */
@@ -90,7 +90,7 @@ typedef struct hdc_t
 {
 	UINT16 w[8];
 
-	void (*interrupt_callback)(int state);
+	void (*interrupt_callback)(running_machine *machine, int state);
 
 	hd_unit_t d[MAX_DISK_UNIT];
 } hdc_t;
@@ -193,7 +193,7 @@ static int get_id_from_device( const device_config *device )
 /*
 	Initialize hard disk unit and open a hard disk image
 */
-DEVICE_IMAGE_LOAD( ti990_hd )
+static DEVICE_IMAGE_LOAD( ti990_hd )
 {
 	int id = get_id_from_device( image );
 	hd_unit_t *d;
@@ -270,7 +270,7 @@ DEVICE_IMAGE_LOAD( ti990_hd )
 /*
 	close a hard disk image
 */
-DEVICE_IMAGE_UNLOAD( ti990_hd )
+static DEVICE_IMAGE_UNLOAD( ti990_hd )
 {
 	int id = get_id_from_device( image );
 	hd_unit_t *d;
@@ -326,7 +326,7 @@ MACHINE_START(ti990_hdc)
 }
 
 
-void ti990_hdc_init(running_machine *machine, void (*interrupt_callback)(int state))
+void ti990_hdc_init(running_machine *machine, void (*interrupt_callback)(running_machine *machine, int state))
 {
 	memset(hdc.w, 0, sizeof(hdc.w));
 	hdc.w[7] = w7_idle;
@@ -339,7 +339,7 @@ void ti990_hdc_init(running_machine *machine, void (*interrupt_callback)(int sta
 
 	hdc.interrupt_callback = interrupt_callback;
 
-	update_interrupt();
+	update_interrupt(machine);
 }
 
 
@@ -372,10 +372,10 @@ static int cur_disk_unit(void)
 /*
 	Update interrupt state
 */
-static void update_interrupt(void)
+static void update_interrupt(running_machine *machine)
 {
 	if (hdc.interrupt_callback)
-		(*hdc.interrupt_callback)((hdc.w[7] & w7_idle)
+		(*hdc.interrupt_callback)(machine, (hdc.w[7] & w7_idle)
 									&& (((hdc.w[7] & w7_int_enable) && (hdc.w[7] & (w7_complete | w7_error)))
 										|| ((hdc.w[0] & (hdc.w[0] >> 4)) & w0_attn_mask)));
 }
@@ -385,7 +385,7 @@ static void update_interrupt(void)
 
 	Terminate current command and return non-zero if the address is invalid.
 */
-static int check_sector_address(int unit, unsigned int cylinder, unsigned int head, unsigned int sector)
+static int check_sector_address(running_machine *machine, int unit, unsigned int cylinder, unsigned int head, unsigned int sector)
 {
 	if ((cylinder > hdc.d[unit].cylinders) || (head > hdc.d[unit].heads) || (sector > hdc.d[unit].sectors_per_track))
 	{	/* invalid address */
@@ -401,7 +401,7 @@ static int check_sector_address(int unit, unsigned int cylinder, unsigned int he
 		}
 		else if (sector > hdc.d[unit].sectors_per_track)
 			hdc.w[7] |= w7_idle | w7_error | w7_command_time_out_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return 1;
 	}
 
@@ -411,9 +411,9 @@ static int check_sector_address(int unit, unsigned int cylinder, unsigned int he
 /*
 	Seek to sector whose address is given
 */
-static int sector_to_lba(int unit, unsigned int cylinder, unsigned int head, unsigned int sector, unsigned int *lba)
+static int sector_to_lba(running_machine *machine, int unit, unsigned int cylinder, unsigned int head, unsigned int sector, unsigned int *lba)
 {
-	if (check_sector_address(unit, cylinder, head, sector))
+	if (check_sector_address(machine, unit, cylinder, head, sector))
 		return 1;
 
 	* lba = (cylinder*hdc.d[unit].heads + head)*hdc.d[unit].sectors_per_track + sector;
@@ -484,7 +484,7 @@ static int write_sector(int unit, unsigned int lba, const void *buffer, unsigned
 /*
 	Handle the store registers command: read the drive geometry.
 */
-static void store_registers(void)
+static void store_registers(running_machine *machine)
 {
 	int dma_address;
 	int byte_count;
@@ -499,14 +499,14 @@ static void store_registers(void)
 	{
 		/* No idea what to report... */
 		hdc.w[7] |= w7_idle | w7_error | w7_abnormal_completion;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (! is_unit_loaded(dsk_sel))
 	{	/* offline */
 		hdc.w[0] |= w0_offline | w0_not_ready;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 
@@ -530,12 +530,12 @@ static void store_registers(void)
 	if (! (hdc.w[1] & w1_transfer_inhibit))
 		for (i=0; i<real_word_count; i++)
 		{
-			program_write_word_16be(dma_address, buffer[i]);
+			memory_write_word_16be(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),dma_address, buffer[i]);
 			dma_address = (dma_address + 2) & 0x1ffffe;
 		}
 
 	hdc.w[7] |= w7_idle | w7_complete;
-	update_interrupt();
+	update_interrupt(machine);
 }
 
 /*
@@ -543,7 +543,7 @@ static void store_registers(void)
 
 	The emulation just clears the track data in the disk image.
 */
-static void write_format(void)
+static void write_format(running_machine *machine)
 {
 	unsigned int cylinder, head, sector;
 	unsigned int lba;
@@ -558,35 +558,35 @@ static void write_format(void)
 	{
 		/* No idea what to report... */
 		hdc.w[7] |= w7_idle | w7_error | w7_abnormal_completion;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (! is_unit_loaded(dsk_sel))
 	{	/* offline */
 		hdc.w[0] |= w0_offline | w0_not_ready;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (hdc.d[dsk_sel].unsafe)
 	{	/* disk in unsafe condition */
 		hdc.w[0] |= w0_unsafe | w0_pack_change;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (hdc.d[dsk_sel].wp)
 	{	/* disk write-protected */
 		hdc.w[0] |= w0_write_protect;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 
 	cylinder = hdc.w[3];
 	head = hdc.w[1] & w1_head_address;
 
-	if (sector_to_lba(dsk_sel, cylinder, head, 0, &lba))
+	if (sector_to_lba(machine, dsk_sel, cylinder, head, 0, &lba))
 		return;
 
 	memset(buffer, 0, hdc.d[dsk_sel].bytes_per_sector);
@@ -599,7 +599,7 @@ static void write_format(void)
 		{
 			hdc.w[0] |= w0_offline | w0_not_ready;
 			hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-			update_interrupt();
+			update_interrupt(machine);
 			return;
 		}
 
@@ -607,13 +607,13 @@ static void write_format(void)
 	}
 
 	hdc.w[7] |= w7_idle | w7_complete;
-	update_interrupt();
+	update_interrupt(machine);
 }
 
 /*
 	Handle the read data command: read a variable number of sectors from disk.
 */
-static void read_data(void)
+static void read_data(running_machine *machine)
 {
 	int dma_address;
 	int byte_count;
@@ -633,21 +633,21 @@ static void read_data(void)
 	{
 		/* No idea what to report... */
 		hdc.w[7] |= w7_idle | w7_error | w7_abnormal_completion;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (! is_unit_loaded(dsk_sel))
 	{	/* offline */
 		hdc.w[0] |= w0_offline | w0_not_ready;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (hdc.d[dsk_sel].unsafe)
 	{	/* disk in unsafe condition */
 		hdc.w[0] |= w0_unsafe | w0_pack_change;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 
@@ -658,7 +658,7 @@ static void read_data(void)
 	head = hdc.w[1] & w1_head_address;
 	sector = hdc.w[2] & 0xff;
 
-	if (sector_to_lba(dsk_sel, cylinder, head, sector, &lba))
+	if (sector_to_lba(machine, dsk_sel, cylinder, head, sector, &lba))
 		return;
 
 	while (byte_count)
@@ -667,7 +667,7 @@ static void read_data(void)
 		{
 			hdc.w[0] |= w0_seek_incomplete;
 			hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-			update_interrupt();
+			update_interrupt(machine);
 			return;
 		}
 
@@ -677,7 +677,7 @@ static void read_data(void)
 		if (bytes_read != bytes_to_read)
 		{	/* behave as if the controller could not found the sector ID mark */
 			hdc.w[7] |= w7_idle | w7_error | w7_command_time_out_err;
-			update_interrupt();
+			update_interrupt(machine);
 			return;
 		}
 
@@ -685,7 +685,7 @@ static void read_data(void)
 		if (! (hdc.w[1] & w1_transfer_inhibit))
 			for (i=0; i<bytes_read; i+=2)
 			{
-				program_write_word_16be(dma_address, (((int) buffer[i]) << 8) | buffer[i+1]);
+				memory_write_word_16be(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),dma_address, (((int) buffer[i]) << 8) | buffer[i+1]);
 				dma_address = (dma_address + 2) & 0x1ffffe;
 			}
 
@@ -707,13 +707,13 @@ static void read_data(void)
 	}
 
 	hdc.w[7] |= w7_idle | w7_complete;
-	update_interrupt();
+	update_interrupt(machine);
 }
 
 /*
 	Handle the write data command: write a variable number of sectors from disk.
 */
-static void write_data(void)
+static void write_data(running_machine *machine)
 {
 	int dma_address;
 	int byte_count;
@@ -733,28 +733,28 @@ static void write_data(void)
 	{
 		/* No idea what to report... */
 		hdc.w[7] |= w7_idle | w7_error | w7_abnormal_completion;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (! is_unit_loaded(dsk_sel))
 	{	/* offline */
 		hdc.w[0] |= w0_offline | w0_not_ready;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (hdc.d[dsk_sel].unsafe)
 	{	/* disk in unsafe condition */
 		hdc.w[0] |= w0_unsafe | w0_pack_change;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (hdc.d[dsk_sel].wp)
 	{	/* disk write-protected */
 		hdc.w[0] |= w0_write_protect;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 
@@ -765,7 +765,7 @@ static void write_data(void)
 	head = hdc.w[1] & w1_head_address;
 	sector = hdc.w[2] & 0xff;
 
-	if (sector_to_lba(dsk_sel, cylinder, head, sector, &lba))
+	if (sector_to_lba(machine, dsk_sel, cylinder, head, sector, &lba))
 		return;
 
 	while (byte_count > 0)
@@ -774,14 +774,14 @@ static void write_data(void)
 		{
 			hdc.w[0] |= w0_seek_incomplete;
 			hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-			update_interrupt();
+			update_interrupt(machine);
 			return;
 		}
 
 		/* DMA */
 		for (i=0; (i<byte_count) && (i<hdc.d[dsk_sel].bytes_per_sector); i+=2)
 		{
-			word = program_read_word_16be(dma_address);
+			word = memory_read_word_16be(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),dma_address);
 			buffer[i] = word >> 8;
 			buffer[i+1] = word & 0xff;
 
@@ -797,7 +797,7 @@ static void write_data(void)
 		{
 			hdc.w[0] |= w0_offline | w0_not_ready;
 			hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-			update_interrupt();
+			update_interrupt(machine);
 			return;
 		}
 
@@ -819,13 +819,13 @@ static void write_data(void)
 	}
 
 	hdc.w[7] |= w7_idle | w7_complete;
-	update_interrupt();
+	update_interrupt(machine);
 }
 
 /*
 	Handle the unformatted read command: read drive geometry information.
 */
-static void unformatted_read(void)
+static void unformatted_read(running_machine *machine)
 {
 	int dma_address;
 	int byte_count;
@@ -842,21 +842,21 @@ static void unformatted_read(void)
 	{
 		/* No idea what to report... */
 		hdc.w[7] |= w7_idle | w7_error | w7_abnormal_completion;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (! is_unit_loaded(dsk_sel))
 	{	/* offline */
 		hdc.w[0] |= w0_offline | w0_not_ready;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (hdc.d[dsk_sel].unsafe)
 	{	/* disk in unsafe condition */
 		hdc.w[0] |= w0_unsafe | w0_pack_change;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 
@@ -867,7 +867,7 @@ static void unformatted_read(void)
 	head = hdc.w[1] & w1_head_address;
 	sector = hdc.w[2] & 0xff;
 
-	if (check_sector_address(dsk_sel, cylinder, head, sector))
+	if (check_sector_address(machine, dsk_sel, cylinder, head, sector))
 		return;
 
 	dma_address = ((((int) hdc.w[6]) << 16) | hdc.w[5]) & 0x1ffffe;
@@ -888,18 +888,18 @@ static void unformatted_read(void)
 	if (! (hdc.w[1] & w1_transfer_inhibit))
 		for (i=0; i<real_word_count; i++)
 		{
-			program_write_word_16be(dma_address, buffer[i]);
+			memory_write_word_16be(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM),dma_address, buffer[i]);
 			dma_address = (dma_address + 2) & 0x1ffffe;
 		}
 
 	hdc.w[7] |= w7_idle | w7_complete;
-	update_interrupt();
+	update_interrupt(machine);
 }
 
 /*
 	Handle the restore command: return to track 0.
 */
-static void restore(void)
+static void restore(running_machine *machine)
 {
 	int dsk_sel = cur_disk_unit();
 
@@ -908,14 +908,14 @@ static void restore(void)
 	{
 		/* No idea what to report... */
 		hdc.w[7] |= w7_idle | w7_error | w7_abnormal_completion;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 	else if (! is_unit_loaded(dsk_sel))
 	{	/* offline */
 		hdc.w[0] |= w0_offline | w0_not_ready;
 		hdc.w[7] |= w7_idle | w7_error | w7_unit_err;
-		update_interrupt();
+		update_interrupt(machine);
 		return;
 	}
 
@@ -925,13 +925,13 @@ static void restore(void)
 		return;*/
 
 	hdc.w[7] |= w7_idle | w7_complete;
-	update_interrupt();
+	update_interrupt(machine);
 }
 
 /*
 	Parse command code and execute the command.
 */
-static void execute_command(void)
+static void execute_command(running_machine *machine)
 {
 	/* hack */
 	hdc.w[0] &= 0xff;
@@ -944,46 +944,46 @@ static void execute_command(void)
 	case 0x00: //0b000:
 		/* store registers */
 		logerror("store registers\n");
-		store_registers();
+		store_registers(machine);
 		break;
 	case 0x01: //0b001:
 		/* write format */
 		logerror("write format\n");
-		write_format();
+		write_format(machine);
 		break;
 	case 0x02: //0b010:
 		/* read data */
 		logerror("read data\n");
-		read_data();
+		read_data(machine);
 		break;
 	case 0x03: //0b011:
 		/* write data */
 		logerror("write data\n");
-		write_data();
+		write_data(machine);
 		break;
 	case 0x04: //0b100:
 		/* unformatted read */
 		logerror("unformatted read\n");
-		unformatted_read();
+		unformatted_read(machine);
 		break;
 	case 0x05: //0b101:
 		/* unformatted write */
 		logerror("unformatted write\n");
 		/* ... */
 		hdc.w[7] |= w7_idle | w7_error | w7_abnormal_completion;
-		update_interrupt();
+		update_interrupt(machine);
 		break;
 	case 0x06: //0b110:
 		/* seek */
 		logerror("seek\n");
 		/* This command can (almost) safely be ignored */
 		hdc.w[7] |= w7_idle | w7_complete;
-		update_interrupt();
+		update_interrupt(machine);
 		break;
 	case 0x07: //0b111:
 		/* restore */
 		logerror("restore\n");
-		restore();
+		restore(machine);
 		break;
 	}
 }
@@ -1015,11 +1015,11 @@ WRITE16_HANDLER(ti990_hdc_w)
 			hdc.w[offset] = (hdc.w[offset] & ((~w_mask[offset]) | mem_mask)) | (data & w_mask[offset] & ~mem_mask);
 
 			if ((offset == 0) || (offset == 7))
-				update_interrupt();
+				update_interrupt(space->machine);
 
 			if ((offset == 7) && (old_data & w7_idle) && ! (data & w7_idle))
 			{	/* idle has been cleared: start command execution */
-				execute_command();
+				execute_command(space->machine);
 			}
 		}
 	}
@@ -1033,13 +1033,13 @@ static const struct harddisk_callback_config ti990_harddisk_config =
 };
 
 MACHINE_DRIVER_START( ti990_hdc )
-	MDRV_DEVICE_ADD( "harddisk1", HARDDISK )
+	MDRV_DEVICE_ADD( "harddisk1", HARDDISK, 0 )
 	MDRV_DEVICE_CONFIG( ti990_harddisk_config )
-	MDRV_DEVICE_ADD( "harddisk2", HARDDISK )
+	MDRV_DEVICE_ADD( "harddisk2", HARDDISK, 0 )
 	MDRV_DEVICE_CONFIG( ti990_harddisk_config )
-	MDRV_DEVICE_ADD( "harddisk3", HARDDISK )
+	MDRV_DEVICE_ADD( "harddisk3", HARDDISK, 0 )
 	MDRV_DEVICE_CONFIG( ti990_harddisk_config )
-	MDRV_DEVICE_ADD( "harddisk4", HARDDISK )
+	MDRV_DEVICE_ADD( "harddisk4", HARDDISK, 0 )
 	MDRV_DEVICE_CONFIG( ti990_harddisk_config )
 MACHINE_DRIVER_END
 

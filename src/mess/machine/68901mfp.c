@@ -309,7 +309,7 @@ static void mc68901_check_interrupts(const device_config *device)
 
 	if (mc68901->ipr & mc68901->imr)
 	{
-		mc68901->intf->on_irq_changed(device, ASSERT_LINE);
+		mc68901->intf->on_irq_changed(device, HOLD_LINE);
 	}
 	else
 	{
@@ -1368,7 +1368,7 @@ int mc68901_get_vector(const device_config *device)
 		}
 	}
 
-	return MC68000_INT_ACK_SPURIOUS;
+	return M68K_INT_ACK_SPURIOUS;
 }
 
 /* Device Interface */
@@ -1376,7 +1376,6 @@ int mc68901_get_vector(const device_config *device)
 static DEVICE_START( mc68901 )
 {
 	mc68901_t *mc68901 = device->token;
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device->machine != NULL);
@@ -1388,66 +1387,64 @@ static DEVICE_START( mc68901 )
 	mc68901->tsr = MC68901_TSR_BUFFER_EMPTY;
 
 	/* create the timers */
-	mc68901->timer[MC68901_TIMER_A] = timer_alloc(timer_a, (void *)device);
-	mc68901->timer[MC68901_TIMER_B] = timer_alloc(timer_b, (void *)device);
-	mc68901->timer[MC68901_TIMER_C] = timer_alloc(timer_c, (void *)device);
-	mc68901->timer[MC68901_TIMER_D] = timer_alloc(timer_d, (void *)device);
+	mc68901->timer[MC68901_TIMER_A] = timer_alloc(device->machine, timer_a, (void *)device);
+	mc68901->timer[MC68901_TIMER_B] = timer_alloc(device->machine, timer_b, (void *)device);
+	mc68901->timer[MC68901_TIMER_C] = timer_alloc(device->machine, timer_c, (void *)device);
+	mc68901->timer[MC68901_TIMER_D] = timer_alloc(device->machine, timer_d, (void *)device);
 
 	if (mc68901->intf->rx_clock > 0)
 	{
-		mc68901->rx_timer = timer_alloc(rx_tick, (void *)device);
+		mc68901->rx_timer = timer_alloc(device->machine, rx_tick, (void *)device);
 		timer_adjust_periodic(mc68901->rx_timer, attotime_zero, 0, ATTOTIME_IN_HZ(mc68901->intf->rx_clock));
 	}
 
 	if (mc68901->intf->tx_clock > 0)
 	{
-		mc68901->tx_timer = timer_alloc(tx_tick, (void *)device);
+		mc68901->tx_timer = timer_alloc(device->machine, tx_tick, (void *)device);
 		timer_adjust_periodic(mc68901->tx_timer, attotime_zero, 0, ATTOTIME_IN_HZ(mc68901->intf->tx_clock));
 	}
 
 	if (mc68901->intf->gpio_r)
 	{
-		mc68901->poll_timer = timer_alloc(mc68901_gpio_poll_tick, (void *)device);
+		mc68901->poll_timer = timer_alloc(device->machine, mc68901_gpio_poll_tick, (void *)device);
 		timer_adjust_periodic(mc68901->poll_timer, attotime_zero, 0, ATTOTIME_IN_HZ(mc68901->intf->chip_clock / 4));
 	}
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "MC68901", device->tag);
-
-	state_save_register_item(unique_tag, 0, mc68901->gpip);
-	state_save_register_item(unique_tag, 0, mc68901->aer);
-	state_save_register_item(unique_tag, 0, mc68901->ddr);
-	state_save_register_item(unique_tag, 0, mc68901->ier);
-	state_save_register_item(unique_tag, 0, mc68901->ipr);
-	state_save_register_item(unique_tag, 0, mc68901->isr);
-	state_save_register_item(unique_tag, 0, mc68901->imr);
-	state_save_register_item(unique_tag, 0, mc68901->vr);
-	state_save_register_item(unique_tag, 0, mc68901->tacr);
-	state_save_register_item(unique_tag, 0, mc68901->tbcr);
-	state_save_register_item(unique_tag, 0, mc68901->tcdcr);
-	state_save_register_item_array(unique_tag, 0, mc68901->tdr);
-	state_save_register_item_array(unique_tag, 0, mc68901->tmc);
-	state_save_register_item_array(unique_tag, 0, mc68901->to);
-	state_save_register_item_array(unique_tag, 0, mc68901->ti);
-	state_save_register_item(unique_tag, 0, mc68901->scr);
-	state_save_register_item(unique_tag, 0, mc68901->ucr);
-	state_save_register_item(unique_tag, 0, mc68901->rsr);
-	state_save_register_item(unique_tag, 0, mc68901->tsr);
-	state_save_register_item(unique_tag, 0, mc68901->udr);
-	state_save_register_item(unique_tag, 0, mc68901->rx_bits);
-	state_save_register_item(unique_tag, 0, mc68901->tx_bits);
-	state_save_register_item(unique_tag, 0, mc68901->rx_parity);
-	state_save_register_item(unique_tag, 0, mc68901->tx_parity);
-	state_save_register_item(unique_tag, 0, mc68901->rx_state);
-	state_save_register_item(unique_tag, 0, mc68901->tx_state);
-	state_save_register_item(unique_tag, 0, mc68901->rx_buffer);
-	state_save_register_item(unique_tag, 0, mc68901->tx_buffer);
-	state_save_register_item(unique_tag, 0, mc68901->xmit_state);
-	state_save_register_item(unique_tag, 0, mc68901->rxtx_word);
-	state_save_register_item(unique_tag, 0, mc68901->rxtx_start);
-	state_save_register_item(unique_tag, 0, mc68901->rxtx_stop);
-	state_save_register_item(unique_tag, 0, mc68901->rsr_read);
-	state_save_register_item(unique_tag, 0, mc68901->next_rsr);
+	state_save_register_device_item(device, 0, mc68901->gpip);
+	state_save_register_device_item(device, 0, mc68901->aer);
+	state_save_register_device_item(device, 0, mc68901->ddr);
+	state_save_register_device_item(device, 0, mc68901->ier);
+	state_save_register_device_item(device, 0, mc68901->ipr);
+	state_save_register_device_item(device, 0, mc68901->isr);
+	state_save_register_device_item(device, 0, mc68901->imr);
+	state_save_register_device_item(device, 0, mc68901->vr);
+	state_save_register_device_item(device, 0, mc68901->tacr);
+	state_save_register_device_item(device, 0, mc68901->tbcr);
+	state_save_register_device_item(device, 0, mc68901->tcdcr);
+	state_save_register_device_item_array(device, 0, mc68901->tdr);
+	state_save_register_device_item_array(device, 0, mc68901->tmc);
+	state_save_register_device_item_array(device, 0, mc68901->to);
+	state_save_register_device_item_array(device, 0, mc68901->ti);
+	state_save_register_device_item(device, 0, mc68901->scr);
+	state_save_register_device_item(device, 0, mc68901->ucr);
+	state_save_register_device_item(device, 0, mc68901->rsr);
+	state_save_register_device_item(device, 0, mc68901->tsr);
+	state_save_register_device_item(device, 0, mc68901->udr);
+	state_save_register_device_item(device, 0, mc68901->rx_bits);
+	state_save_register_device_item(device, 0, mc68901->tx_bits);
+	state_save_register_device_item(device, 0, mc68901->rx_parity);
+	state_save_register_device_item(device, 0, mc68901->tx_parity);
+	state_save_register_device_item(device, 0, mc68901->rx_state);
+	state_save_register_device_item(device, 0, mc68901->tx_state);
+	state_save_register_device_item(device, 0, mc68901->rx_buffer);
+	state_save_register_device_item(device, 0, mc68901->tx_buffer);
+	state_save_register_device_item(device, 0, mc68901->xmit_state);
+	state_save_register_device_item(device, 0, mc68901->rxtx_word);
+	state_save_register_device_item(device, 0, mc68901->rxtx_start);
+	state_save_register_device_item(device, 0, mc68901->rxtx_stop);
+	state_save_register_device_item(device, 0, mc68901->rsr_read);
+	state_save_register_device_item(device, 0, mc68901->next_rsr);
 	return DEVICE_START_OK;
 }
 
@@ -1497,11 +1494,11 @@ DEVICE_GET_INFO( mc68901 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(mc68901);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Motorola MC68901";				break;
-		case DEVINFO_STR_FAMILY:						info->s = "MC68901 MFP";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright the MESS Team"; 		break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Motorola MC68901");		break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "MC68901 MFP");				break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team");	break;
 	}
 }
 
@@ -1522,11 +1519,11 @@ DEVICE_GET_INFO( mk68901 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(mc68901);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Mostek MK68901";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "MK68901 MFP";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright the MESS Team"; 		break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Mostek MK68901");			break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "MK68901 MFP");				break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team");	break;
 	}
 }
 #endif

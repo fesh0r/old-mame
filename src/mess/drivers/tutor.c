@@ -102,11 +102,11 @@ enum
 
 static DRIVER_INIT(tutor)
 {
-	tape_interrupt_timer = timer_alloc(tape_interrupt_handler, NULL);
+	tape_interrupt_timer = timer_alloc(machine, tape_interrupt_handler, NULL);
 
-	memory_configure_bank(1, 0, 1, memory_region(machine, "main") + basic_base, 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, "main") + cartridge_base, 0);
-	memory_set_bank(1, 0);
+	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "main") + basic_base, 0);
+	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "main") + cartridge_base, 0);
+	memory_set_bank(machine, 1, 0);
 }
 
 static const TMS9928a_interface tms9929a_interface =
@@ -135,12 +135,12 @@ static MACHINE_RESET(tutor)
 static INTERRUPT_GEN( tutor_vblank_interrupt )
 {
 	/* No vblank interrupt? */
-	TMS9928A_interrupt(machine);
+	TMS9928A_interrupt(device->machine);
 }
 
-static const device_config *printer_fp(void)
+static const device_config *printer_fp(running_machine *machine)
 {
-	return image_from_devtype_and_index(IO_PARALLEL, 0);
+	return image_from_devtype_and_index(machine, IO_PARALLEL, 0);
 }
 
 
@@ -164,13 +164,13 @@ static READ8_HANDLER(read_keyboard)
 	UINT8 value;
 
 	snprintf(port, ARRAY_LENGTH(port), "LINE%d", offset);
-	value = input_port_read(machine, port);
+	value = input_port_read(space->machine, port);
 
 	/* hack for ports overlapping with joystick */
 	if (offset == 4 || offset == 5)
 	{
 		snprintf(port, ARRAY_LENGTH(port), "LINE%d_alt", offset);
-		value |= input_port_read(machine, port);
+		value |= input_port_read(space->machine, port);
 	}
 
 	return value;
@@ -232,13 +232,13 @@ static WRITE8_HANDLER(tutor_mapper_w)
 	case 0x08:
 		/* disable cartridge ROM, enable BASIC ROM at base >8000 */
 		cartridge_enable = 0;
-		memory_set_bank(1, 0);
+		memory_set_bank(space->machine, 1, 0);
 		break;
 
 	case 0x0c:
 		/* enable cartridge ROM, disable BASIC ROM at base >8000 */
 		cartridge_enable = 1;
-		memory_set_bank(1, 1);
+		memory_set_bank(space->machine, 1, 1);
 		break;
 
 	default:
@@ -270,13 +270,13 @@ static WRITE8_HANDLER(tutor_mapper_w)
 static TIMER_CALLBACK(tape_interrupt_handler)
 {
 	//assert(tape_interrupt_enable);
-	cpunum_set_input_line(machine, 0, 1, (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0.0) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 1, (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0.0) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* CRU handler */
 static  READ8_HANDLER(tutor_cassette_r)
 {
-	return (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0.0) ? 1 : 0;
+	return (cassette_input(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" )) > 0.0) ? 1 : 0;
 }
 
 /* memory handler */
@@ -293,7 +293,7 @@ static WRITE8_HANDLER(tutor_cassette_w)
 		{
 		case 0:
 			/* data out */
-			cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), (data) ? +1.0 : -1.0);
+			cassette_output(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ), (data) ? +1.0 : -1.0);
 			break;
 		case 1:
 			/* interrupt control??? */
@@ -306,7 +306,7 @@ static WRITE8_HANDLER(tutor_cassette_w)
 				else
 				{
 					timer_adjust_oneshot(tape_interrupt_timer, attotime_never, 0);
-					cpunum_set_input_line(machine, 0, 1, CLEAR_LINE);
+					cpu_set_input_line(space->machine->cpu[0], 1, CLEAR_LINE);
 				}
 			}
 			break;
@@ -331,7 +331,7 @@ static  READ8_HANDLER(tutor_printer_r)
 	{
 	case 0x20:
 		/* busy */
-		reply = printer_fp() ? 0xff : 0x00;
+		reply = printer_fp(space->machine) ? 0xff : 0x00;
 		break;
 
 	default:
@@ -358,8 +358,8 @@ static WRITE8_HANDLER(tutor_printer_w)
 		if (data && ! printer_strobe)
 		{
 			/* strobe is asserted: output data */
-			if (printer_fp())
-				image_fwrite(printer_fp(), & printer_data, 1);
+			if (printer_fp(space->machine))
+				image_fwrite(printer_fp(space->machine), & printer_data, 1);
 		}
 		printer_strobe = data != 0;
 		break;
@@ -570,7 +570,6 @@ static const struct tms9995reset_param tutor_processor_config =
 	NULL		/* no IDLE callback */
 };
 
-
 static MACHINE_DRIVER_START(tutor)
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 10.7 MHz */
@@ -597,6 +596,12 @@ static MACHINE_DRIVER_START(tutor)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
+
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(tutor_cart)
+	MDRV_CARTSLOT_UNLOAD(tutor_cart)
 MACHINE_DRIVER_END
 
 
@@ -609,25 +614,6 @@ ROM_START(tutor)
 	ROM_LOAD("tutor1.bin", 0x0000, 0x8000, CRC(702c38ba) SHA1(ce60607c3038895e31915d41bb5cf71cb8522d7a))      /* system ROM */
 	ROM_LOAD("tutor2.bin", 0x8000, 0x4000, CRC(05f228f5) SHA1(46a14a45f6f9e2c30663a2b87ce60c42768a78d0))      /* BASIC ROM */
 ROM_END
-
-static void tutor_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(tutor_cart); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(tutor_cart); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static void tutor_parallel_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -649,7 +635,6 @@ static void tutor_parallel_getinfo(const mess_device_class *devclass, UINT32 sta
 static SYSTEM_CONFIG_START(tutor)
 
 	/* cartridge port is not emulated */
-	CONFIG_DEVICE(tutor_cartslot_getinfo)
 	CONFIG_DEVICE(tutor_parallel_getinfo)
 
 SYSTEM_CONFIG_END

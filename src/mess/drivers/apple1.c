@@ -221,7 +221,7 @@ static MACHINE_DRIVER_START( apple1 )
 	/* basic machine hardware */
 	/* Actual CPU speed is 1.023 MHz, but RAM refresh effectively
        slows it to 960 kHz. */
-	MDRV_CPU_ADD("main", M6502, 960000)        /* 1.023 Mhz */
+	MDRV_CPU_ADD("main", M6502, 960000)        /* 1.023 MHz */
 	MDRV_CPU_PROGRAM_MAP(apple1_map, 0)
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -231,7 +231,7 @@ static MACHINE_DRIVER_START( apple1 )
        is 2 cycles of the fundamental 14.31818 MHz oscillator.  The
        total blanking time is about 4450 microseconds. */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC((int) (70 * 65 * 7 * 2 / 14.31818)))
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET( apple1 )
 

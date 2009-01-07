@@ -1,4 +1,4 @@
-/******************************************************************************
+/*****************************************************************************
 
 Video Technology Laser 110-310 computers:
 
@@ -100,6 +100,7 @@ Notes:
 
 /* Core includes */
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "includes/vtech1.h"
 
 /* Components */
@@ -113,7 +114,6 @@ Notes:
 #include "devices/printer.h"
 #include "devices/z80bin.h"
 #include "formats/vt_cas.h"
-
 
 static Z80BIN_EXECUTE(vtech1);
 
@@ -310,12 +310,12 @@ static const cassette_config laser_cassette_config =
 
 static MACHINE_DRIVER_START(laser110)
     /* basic machine hardware */
-    MDRV_CPU_ADD("main", Z80, VTECH1_CLK)  /* 3.57950 Mhz */
+    MDRV_CPU_ADD("main", Z80, VTECH1_CLK)  /* 3.57950 MHz */
     MDRV_CPU_PROGRAM_MAP(laser110_mem, 0)
     MDRV_CPU_IO_MAP(vtech1_io, 0)
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
-    MDRV_INTERLEAVE(1)
+    MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START(laser110)
 
@@ -335,13 +335,17 @@ static MACHINE_DRIVER_START(laser110)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
 
 	/* snapshot/quickload */
 	MDRV_SNAPSHOT_ADD(vtech1, "vz", 1.5)
 	MDRV_Z80BIN_QUICKLOAD_ADD(vtech1, 1.5)
 
 	MDRV_CASSETTE_ADD( "cassette", laser_cassette_config )
+	
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(laser200)
@@ -360,7 +364,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(laser310)
     MDRV_IMPORT_FROM( laser200 )
-    MDRV_CPU_REPLACE( "main", Z80, VZ300_XTAL1_CLK/5)  /* 3.546894 Mhz */
+    MDRV_CPU_REPLACE( "main", Z80, VZ300_XTAL1_CLK/5)  /* 3.546894 MHz */
     MDRV_CPU_PROGRAM_MAP(laser310_mem, 0)
 
     MDRV_MACHINE_START(laser310)
@@ -375,7 +379,7 @@ ROM_START(laser110)
     ROM_REGION(0x6800, "main", 0)
     ROM_LOAD("vtechv12.u09",   0x0000, 0x2000, CRC(99412d43) SHA1(6aed8872a0818be8e1b08ecdfd92acbe57a3c96d))
     ROM_LOAD("vtechv12.u10",   0x2000, 0x2000, CRC(e4c24e8b) SHA1(9d8fb3d24f3d4175b485cf081a2d5b98158ab2fb))
-    ROM_CART_LOAD(0, "rom",  0x4000, 0x27ff, ROM_NOMIRROR | ROM_OPTIONAL)
+    ROM_CART_LOAD("cart",  0x4000, 0x27ff, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 /* The VZ-200 sold in Germany and the Netherlands came with BASIC V1.1, which
@@ -384,7 +388,7 @@ ROM_START(vz200de)
     ROM_REGION(0x6800, "main", 0)
     ROM_LOAD("vtechv11.u09",   0x0000, 0x2000, NO_DUMP)
     ROM_LOAD("vtechv11.u10",   0x2000, 0x2000, NO_DUMP)
-    ROM_CART_LOAD(0, "rom",  0x4000, 0x27ff, ROM_NOMIRROR | ROM_OPTIONAL)
+    ROM_CART_LOAD("cart",  0x4000, 0x27ff, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 #define rom_las110de    rom_laser110
@@ -399,7 +403,7 @@ ROM_START(laser210)
     ROM_REGION(0x6800, "main", 0)
     ROM_LOAD("vtechv20.u09",   0x0000, 0x2000, CRC(cc854fe9) SHA1(6e66a309b8e6dc4f5b0b44e1ba5f680467353d66))
     ROM_LOAD("vtechv20.u10",   0x2000, 0x2000, CRC(7060f91a) SHA1(8f3c8f24f97ebb98f3c88d4e4ba1f91ffd563440))
-    ROM_CART_LOAD(0, "rom",  0x4000, 0x27ff, ROM_NOMIRROR | ROM_OPTIONAL)
+    ROM_CART_LOAD("cart",  0x4000, 0x27ff, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 #define rom_las210de    rom_laser210
@@ -411,7 +415,7 @@ ROM_START(laser310)
     ROMX_LOAD("vtechv20.u12", 0x0000, 0x4000, CRC(613de12c) SHA1(f216c266bc09b0dbdbad720796e5ea9bc7d91e53), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "basic21", "BASIC V2.1 (hack)")
     ROMX_LOAD("vtechv21.u12", 0x0000, 0x4000, CRC(f7df980f) SHA1(5ba14a7a2eedca331b033901080fa5d205e245ea), ROM_BIOS(2))
-    ROM_CART_LOAD(0, "rom", 0x4000, 0x27ff, ROM_NOMIRROR | ROM_OPTIONAL)
+    ROM_CART_LOAD("cart", 0x4000, 0x27ff, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 #define rom_vz300       rom_laser310
@@ -423,6 +427,9 @@ ROM_END
 
 static Z80BIN_EXECUTE( vtech1 )
 {
+	const device_config *cpu = cputag_get_cpu(machine, "main");
+	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+
 	/* A Microsoft Basic program needs some manipulation before it can be run.
 	1. A start address of 7ae9 indicates a basic program which needs its pointers fixed up.
 	2. If autorun is turned off, the pointers still need fixing, but then display READY.
@@ -430,8 +437,8 @@ static Z80BIN_EXECUTE( vtech1 )
 		7ae9 = start (load) address of a conventional basic program
 		791e = custom routine to fix basic pointers */
 
-	program_write_word_16le(0x791c, end_address + 1);
-	program_write_word_16le(0x781e, execute_address);
+	memory_write_word_16le(space, 0x791c, end_address + 1);
+	memory_write_word_16le(space, 0x781e, execute_address);
 
 	if (start_address == 0x7ae9)
 	{
@@ -445,17 +452,17 @@ static Z80BIN_EXECUTE( vtech1 )
 			0xc3, 0xcf, 0x36,};	// JP 36CF	;enter bios at autorun point
 
 		for (i = 0; i < ARRAY_LENGTH(data); i++)
-			program_write_byte(0x791e + i, data[i]);
+			memory_write_byte(space, 0x791e + i, data[i]);
 
 		if (!autorun)
-			program_write_byte(0x7929, 0xb6);	/* turn off autorun */
+			memory_write_byte(space, 0x7929, 0xb6);	/* turn off autorun */
 
-		cpunum_set_reg(0, REG_PC, 0x791e);
+		cpu_set_reg(cpu, REG_GENPC, 0x791e);
 	}
 	else
 	{
 		if (autorun)
-			cpunum_set_reg(0, REG_PC, execute_address);
+			cpu_set_reg(cpu, REG_GENPC, execute_address);
 	}
 }
 
@@ -493,7 +500,6 @@ static void vtech1_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
    easily modified to work on another model. */
 
 static SYSTEM_CONFIG_START(vtech1)
-    CONFIG_DEVICE(cartslot_device_getinfo)
     CONFIG_DEVICE(vtech1_floppy_getinfo)
 	CONFIG_RAM_DEFAULT (66 * 1024)   /* with 64K memory expansion */
 	CONFIG_RAM         (4098 * 1024) /* with 4MB memory expansion */

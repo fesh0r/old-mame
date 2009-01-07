@@ -80,6 +80,7 @@ change from 1 to 0.
 ******************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "machine/6530miot.h"
 #include "devices/cassette.h"
 #include "formats/kim1_cas.h"
@@ -105,8 +106,8 @@ ADDRESS_MAP_END
 
 static INPUT_CHANGED( kim1_reset )
 {
-	if ( newval == 0 )
-		cpunum_reset( 0 );
+	if (newval == 0)
+		device_reset(field->port->machine->cpu[0]);
 }
 
 
@@ -289,9 +290,9 @@ static TIMER_CALLBACK( kim1_update_leds )
 
 static MACHINE_START( kim1 )
 {
-	state_save_register_item( "kim1", 0, kim1_u2_port_b );
-	state_save_register_item( "kim1", 0, kim1_311_output );
-	state_save_register_item( "kim1", 0, kim1_cassette_high_count );
+	state_save_register_item(machine, "kim1", NULL, 0, kim1_u2_port_b );
+	state_save_register_item(machine, "kim1", NULL, 0, kim1_311_output );
+	state_save_register_item(machine, "kim1", NULL, 0, kim1_cassette_high_count );
 }
 
 
@@ -299,8 +300,8 @@ static MACHINE_RESET( kim1 )
 {
 	int i;
 
-	timer_pulse( ATTOTIME_IN_HZ(60), NULL, 0, kim1_update_leds );
-	timer_pulse( ATTOTIME_IN_HZ(44100), NULL, 0, kim1_cassette_input );
+	timer_pulse(machine,  ATTOTIME_IN_HZ(60), NULL, 0, kim1_update_leds );
+	timer_pulse(machine,  ATTOTIME_IN_HZ(44100), NULL, 0, kim1_cassette_input );
 
 	for ( i = 0; i < 6; i++ )
 	{
@@ -324,7 +325,7 @@ static MACHINE_DRIVER_START( kim1 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", M6502, 1000000)        /* 1 MHz */
 	MDRV_CPU_PROGRAM_MAP(kim1_map, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( kim1 )
 	MDRV_MACHINE_RESET( kim1 )

@@ -27,6 +27,7 @@ NMI
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "includes/cgenie.h"
 #include "devices/basicdsk.h"
 #include "devices/cartslot.h"
@@ -396,15 +397,14 @@ static const cassette_config cgenie_cassette_config =
 	CASSETTE_STOPPED
 };
 
-
 static MACHINE_DRIVER_START( cgenie )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 2216800)        /* 2,2168 Mhz */
+	MDRV_CPU_ADD("main", Z80, 2216800)        /* 2,2168 MHz */
 	MDRV_CPU_PROGRAM_MAP(cgenie_mem, 0)
 	MDRV_CPU_IO_MAP(cgenie_io, 0)
 	MDRV_CPU_VBLANK_INT("main", cgenie_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(cgenie_timer_interrupt, 40)
-	MDRV_INTERLEAVE(4)
+	MDRV_QUANTUM_TIME(HZ(240))
 
 	MDRV_MACHINE_START( cgenie )
 	MDRV_MACHINE_RESET( cgenie )
@@ -432,6 +432,13 @@ static MACHINE_DRIVER_START( cgenie )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
 	MDRV_CASSETTE_ADD( "cassette", cgenie_cassette_config )
+
+	MDRV_WD179X_ADD("wd179x", cgenie_wd17xx_interface )
+
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom")
+	MDRV_CARTSLOT_NOT_MANDATORY
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -444,7 +451,7 @@ ROM_START (cgenie)
 	ROM_REGION(0x13000,"main",0)
 	ROM_LOAD ("cgenie.rom",  0x00000, 0x4000, CRC(d359ead7) SHA1(d8c2fc389ad38c45fba0ed556a7d91abac5463f4))
 	ROM_LOAD ("cgdos.rom",   0x10000, 0x2000, CRC(2a96cf74) SHA1(6dcac110f87897e1ee7521aefbb3d77a14815893))
-	ROM_CART_LOAD(0, "rom", 0x12000, 0x1000, ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x12000, 0x1000, ROM_NOMIRROR | ROM_OPTIONAL)
 
 	ROM_REGION(0x0c00,"gfx1",0)
 	ROM_LOAD ("cgenie1.fnt", 0x0000, 0x0800, CRC(4fed774a) SHA1(d53df8212b521892cc56be690db0bb474627d2ff))
@@ -474,7 +481,6 @@ static void cgenie_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 
 
 static SYSTEM_CONFIG_START(cgenie)
-	CONFIG_DEVICE(cartslot_device_getinfo)
 	CONFIG_DEVICE(cgenie_floppy_getinfo)
 	CONFIG_RAM_DEFAULT	(16 * 1024)
 	CONFIG_RAM			(32 * 1024)

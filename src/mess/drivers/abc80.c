@@ -76,6 +76,7 @@ Notes:
 
 /* Core includes */
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "includes/abc80.h"
 
 /* Components */
@@ -84,6 +85,7 @@ Notes:
 #include "machine/z80pio.h"
 #include "sound/sn76477.h"
 #include "machine/abcbus.h"
+#include "machine/conkort.h"
 
 /* Devices */
 #include "devices/basicdsk.h"
@@ -92,7 +94,7 @@ Notes:
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+	return devtag_get_device(machine, CASSETTE, "cassette");
 }
 
 /* Read/Write Handlers */
@@ -172,7 +174,7 @@ static void abc80_keyboard_scan(running_machine *machine)
 {
 	abc80_state *state = machine->driver_data;
 
-	static const char *keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6" };
+	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6" };
 	int table = 0, row, col;
 
 	if (input_port_read(machine, "ROW7") & 0x07)
@@ -214,6 +216,21 @@ static TIMER_DEVICE_CALLBACK( abc80_keyboard_tick )
 	abc80_keyboard_scan(timer->machine);
 }
 
+static READ8_DEVICE_HANDLER(z80pio_alt_r)
+{
+	int channel = BIT(offset, 1);
+	return (offset & 1) ? z80pio_c_r(device, channel) : z80pio_d_r(device, channel);
+}
+
+static WRITE8_DEVICE_HANDLER(z80pio_alt_w)
+{
+	int channel = BIT(offset, 1);
+	if (offset & 1)
+		z80pio_c_w(device, channel, data);
+	else
+		z80pio_d_w(device, channel, data);
+}
+
 /* Memory Maps */
 
 static ADDRESS_MAP_START( abc80_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -230,13 +247,11 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( abc80_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(abcbus_data_r, abcbus_data_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(abcbus_status_r, abcbus_channel_w)
-	AM_RANGE(0x02, 0x05) AM_WRITE(abcbus_command_w)
+	ADDRESS_MAP_GLOBAL_MASK(0x17)
+	AM_RANGE(0x01, 0x01) AM_WRITE(abcbus_channel_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(abc80_sound_w)
 	AM_RANGE(0x07, 0x07) AM_READ(abcbus_reset_r)
-	AM_RANGE(0x38, 0x3b) AM_DEVREADWRITE(Z80PIO, Z80PIO_TAG, z80pio_alt_r, z80pio_alt_w)
+	AM_RANGE(0x10, 0x13) AM_MIRROR(0x04) AM_DEVREADWRITE(Z80PIO, Z80PIO_TAG, z80pio_alt_r, z80pio_alt_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -349,10 +364,10 @@ static const sn76477_interface abc80_sn76477_interface =
 
 static INTERRUPT_GEN( abc80_nmi_interrupt )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+	cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 }
 
-/* Z80 PIO Interface */
+/* Z80 PIO */
 
 static TIMER_DEVICE_CALLBACK( z80pio_astb_tick )
 {
@@ -364,9 +379,9 @@ static TIMER_DEVICE_CALLBACK( z80pio_astb_tick )
 	z80pio_astb_w(state->z80pio, state->z80pio_astb);
 }
 
-static Z80PIO_ON_INT_CHANGED( abc80_pio_interrupt )
+static void abc80_pio_interrupt(const device_config *device, int state)
 {
-	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ0, state);
+	cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_IRQ0, state);
 }
 
 static READ8_DEVICE_HANDLER( abc80_pio_port_a_r )
@@ -440,10 +455,8 @@ static WRITE8_DEVICE_HANDLER( abc80_pio_port_b_w )
 	cassette_output(cassette_device_image(device->machine), BIT(data, 6) ? -1.0 : +1.0);
 };
 
-static Z80PIO_INTERFACE( abc80_pio_intf )
+static const z80pio_interface abc80_pio_intf =
 {
-	Z80_TAG,					/* CPU */
-	0,							/* clock (get from main CPU) */
 	abc80_pio_interrupt,		/* callback when change interrupt status */
 	abc80_pio_port_a_r,			/* port A read callback */
 	abc80_pio_port_b_r,			/* port B read callback */
@@ -459,6 +472,14 @@ static const z80_daisy_chain abc80_daisy_chain[] =
 	{ NULL }
 };
 
+/* ABC BUS */
+
+static ABCBUS_CONFIG( abcbus_config )
+{
+//	{ luxor_55_10828, CONKORT_TAG },
+	{ NULL }
+};
+
 /* Machine Initialization */
 
 static MACHINE_START( abc80 )
@@ -467,17 +488,17 @@ static MACHINE_START( abc80 )
 
 	/* configure RAM expansion */
 
-	memory_configure_bank(1, 0, 1, mess_ram, 0);
-	memory_set_bank(1, 0);
+	memory_configure_bank(machine, 1, 0, 1, mess_ram, 0);
+	memory_set_bank(machine, 1, 0);
 
 	switch (mess_ram_size)
 	{
 	case 16*1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case 32*1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_BANK1, SMH_BANK1);
 		break;
 	}
 
@@ -485,11 +506,15 @@ static MACHINE_START( abc80 )
 
 	state->z80pio = devtag_get_device(machine, Z80PIO, Z80PIO_TAG);
 
+	/* initialize the ABC BUS */
+
+	abcbus_init(machine, Z80_TAG, abcbus_config);
+
 	/* register for state saving */
 
-	state_save_register_global(state->key_data);
-	state_save_register_global(state->key_strobe);
-	state_save_register_global(state->z80pio_astb);
+	state_save_register_global(machine, state->key_data);
+	state_save_register_global(machine, state->key_strobe);
+	state_save_register_global(machine, state->z80pio_astb);
 }
 
 /* Machine Drivers */
@@ -513,6 +538,9 @@ static MACHINE_DRIVER_START( abc80 )
 	MDRV_TIMER_ADD_SCANLINE("pio_astb", z80pio_astb_tick, SCREEN_TAG, 0, 1)
 	MDRV_Z80PIO_ADD(Z80PIO_TAG, abc80_pio_intf)
 
+	/* Luxor Conkort 55-10828 */
+//	MDRV_DEVICE_ADD(CONKORT_TAG, LUXOR_55_10828)
+
 	/* video hardware */
 	MDRV_IMPORT_FROM(abc80_video)
 
@@ -523,7 +551,7 @@ static MACHINE_DRIVER_START( abc80 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette", default_cassette_config)
@@ -550,22 +578,22 @@ ROM_START( abc80 )
 	ROM_REGION( 0x10000, "keyboard", 0 )
 	ROM_LOAD( "keyboard.rom", 0x0000, 0x1000, NO_DUMP )
 
-	ROM_REGION( 0x0a00, "chargen", ROMREGION_DISPOSE )
+	ROM_REGION( 0xa00, "chargen", ROMREGION_DISPOSE )
 	ROM_LOAD( "sn74s263.h2", 0x0000, 0x0a00, BAD_DUMP CRC(9e064e91) SHA1(354783c8f2865f73dc55918c9810c66f3aca751f) ) // created by hand
 
-	ROM_REGION( 0x400, "hsync", 0 )
+	ROM_REGION( 0x80, "hsync", 0 )
 	ROM_LOAD( "abc80_11.k5", 0x0000, 0x0080, NO_DUMP ) // "64 40029-01" 82S129 256x4 horizontal sync
 
-	ROM_REGION( 0x400, "vsync", 0 )
+	ROM_REGION( 0x100, "vsync", 0 )
 	ROM_LOAD( "abc80_21.k2", 0x0000, 0x0100, NO_DUMP ) // "64 40030-01" 82S131 512x4 vertical sync
 
-	ROM_REGION( 0x400, "attr", 0 )
+	ROM_REGION( 0x80, "attr", 0 )
 	ROM_LOAD( "abc80_12.j3", 0x0000, 0x0080, NO_DUMP ) // "64 40056-01" 82S129 256x4 attribute
 
-	ROM_REGION( 0x400, "line", 0 )
+	ROM_REGION( 0x100, "line", 0 )
 	ROM_LOAD( "abc80_22.k1", 0x0000, 0x0100, NO_DUMP ) // "64 40058-01" 82S131 512x4 chargen 74S263 row address
 
-	ROM_REGION( 0x400, "mmu", 0 )
+	ROM_REGION( 0x80, "mmu", 0 )
 	ROM_LOAD( "abc80_13.e7", 0x0000, 0x0080, NO_DUMP ) // "64 40057-01" 82S129 256x4 address decoder
 ROM_END
 
@@ -588,22 +616,22 @@ ROM_START( abc80h )
 	ROM_REGION( 0x10000, "keyboard", 0 )
 	ROM_LOAD( "keyboard.rom", 0x0000, 0x1000, NO_DUMP )
 
-	ROM_REGION( 0x0a00, "chargen", ROMREGION_DISPOSE )
+	ROM_REGION( 0xa00, "chargen", ROMREGION_DISPOSE )
 	ROM_LOAD( "sn74s262.h2", 0x0000, 0x0a00, NO_DUMP ) // UK charset
 
-	ROM_REGION( 0x400, "hsync", 0 )
+	ROM_REGION( 0x80, "hsync", 0 )
 	ROM_LOAD( "abc80_11.k5", 0x0000, 0x0080, NO_DUMP ) // "64 40029-01" 82S129 256x4 horizontal sync
 
-	ROM_REGION( 0x400, "vsync", 0 )
+	ROM_REGION( 0x100, "vsync", 0 )
 	ROM_LOAD( "abc80_21.k2", 0x0000, 0x0100, NO_DUMP ) // "64 40030-01" 82S131 512x4 vertical sync
 
-	ROM_REGION( 0x400, "attr", 0 )
+	ROM_REGION( 0x80, "attr", 0 )
 	ROM_LOAD( "abc80_12.j3", 0x0000, 0x0080, NO_DUMP ) // "64 40056-01" 82S129 256x4 attribute
 
-	ROM_REGION( 0x400, "line", 0 )
-	ROM_LOAD( "abc80_22.k1", 0x0000, 0x0100, NO_DUMP ) // "64 40058-01" 82S131 512x4 chargen row address
+	ROM_REGION( 0x100, "line", 0 )
+	ROM_LOAD( "abc80_22.k1", 0x0000, 0x0100, NO_DUMP ) // "64 40058-01" 82S131 512x4 chargen 74S263 row address
 
-	ROM_REGION( 0x400, "mmu", 0 )
+	ROM_REGION( 0x80, "mmu", 0 )
 	ROM_LOAD( "abc80_13.e7", 0x0000, 0x0080, NO_DUMP ) // "64 40057-01" 82S129 256x4 address decoder
 ROM_END
 

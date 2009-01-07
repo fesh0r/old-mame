@@ -28,7 +28,6 @@ static UINT8 fdc_drv = 0;
 static UINT8 fdc_head = 0;
 static UINT8 fdc_den = 0;
 static UINT8 fdc_status = 0;
-static void mbee_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param);
 
 UINT8 *mbee_workram;
 
@@ -42,30 +41,25 @@ UINT8 *mbee_workram;
 /* after the first 4 bytes have been read from ROM, switch the ram back in */
 static TIMER_CALLBACK( mbee_reset )
 {
-	memory_set_bank(1, 0);
+	memory_set_bank(machine, 1, 0);
 }
 
 MACHINE_RESET( mbee )
 {
-	timer_set(ATTOTIME_IN_USEC(4), NULL, 0, mbee_reset);
-	memory_set_bank(1, 1);
+	timer_set(machine, ATTOTIME_IN_USEC(4), NULL, 0, mbee_reset);
+	memory_set_bank(machine, 1, 1);
 }
 
-MACHINE_START( mbee )
-{
-	wd17xx_init(machine, WD_TYPE_179X,mbee_fdc_callback, NULL);
-}
-
-static void mbee_fdc_callback(running_machine *machine, wd17xx_state_t state, void *param)
+static WD17XX_CALLBACK( mbee_fdc_callback )
 {
 	switch( state )
 	{
 	case WD17XX_IRQ_CLR:
-//		cpunum_set_input_line(machine, 0,0,CLEAR_LINE);
+//		cpu_set_input_line(machine->cpu[0],0,CLEAR_LINE);
 		fdc_status &= ~0x40;
         break;
 	case WD17XX_IRQ_SET:
-//		cpunum_set_input_line(machine, 0,0,HOLD_LINE);
+//		cpu_set_input_line(machine->cpu[0],0,HOLD_LINE);
 		fdc_status |= 0x40;
         break;
 	case WD17XX_DRQ_CLR:
@@ -77,6 +71,8 @@ static void mbee_fdc_callback(running_machine *machine, wd17xx_state_t state, vo
     }
 }
 
+const wd17xx_interface mbee_wd17xx_interface = { mbee_fdc_callback, NULL };
+
  READ8_HANDLER ( mbee_fdc_status_r )
 {
 	logerror("mbee fdc_motor_r $%02X\n", fdc_status);
@@ -85,6 +81,7 @@ static void mbee_fdc_callback(running_machine *machine, wd17xx_state_t state, vo
 
 WRITE8_HANDLER ( mbee_fdc_motor_w )
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
 	logerror("mbee fdc_motor_w $%02X\n", data);
 	/* Controller latch bits
 	 * 0-1	driver select
@@ -95,15 +92,15 @@ WRITE8_HANDLER ( mbee_fdc_motor_w )
 	fdc_drv = data & 3;
 	fdc_head = (data >> 2) & 1;
 	fdc_den = (data >> 3) & 1;
-	wd17xx_set_drive(fdc_drv);
-	wd17xx_set_side(fdc_head);
+	wd17xx_set_drive(fdc,fdc_drv);
+	wd17xx_set_side(fdc,fdc_head);
 	if (data & (1<<3))
 	{
-	   wd17xx_set_density(DEN_FM_HI);
+	   wd17xx_set_density(fdc,DEN_FM_HI);
 	}
 	else
 	{
-	   wd17xx_set_density(DEN_MFM_LO);
+	   wd17xx_set_density(fdc,DEN_MFM_LO);
 	}
 
 }

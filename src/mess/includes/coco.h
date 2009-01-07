@@ -10,7 +10,8 @@
 #define COCO_H_
 
 #include "devices/snapquik.h"
-
+#include "machine/wd17xx.h"
+#include "machine/6883sam.h"
 
 #define COCO_CPU_SPEED_HZ		894886	/* 0.894886 MHz */
 #define COCO_FRAMES_PER_SECOND	(COCO_CPU_SPEED_HZ / 57.0 / 263)
@@ -38,7 +39,11 @@ void coco3_vh_blink(void);
 
 
 /*----------- defined in machine/coco.c -----------*/
-
+extern const wd17xx_interface dragon_wd17xx_interface;
+extern const wd17xx_interface coco_wd17xx_interface;
+extern const wd17xx_interface dgnalpha_wd17xx_interface;
+extern const sam6883_interface coco_sam_intf;
+extern const sam6883_interface coco3_sam_intf;
 extern UINT8 coco3_gimereg[16];
 
 MACHINE_START( dragon32 );
@@ -51,9 +56,7 @@ MACHINE_START( coco3 );
 MACHINE_RESET( coco3 );
 
 DEVICE_IMAGE_LOAD(coco_rom);
-DEVICE_IMAGE_LOAD(coco3_rom);
 DEVICE_IMAGE_UNLOAD(coco_rom);
-DEVICE_IMAGE_UNLOAD(coco3_rom);
 
 INPUT_CHANGED(coco_keyboard_changed);
 INPUT_CHANGED(coco_joystick_mode_changed);
@@ -71,8 +74,8 @@ READ8_HANDLER ( coco3_cartridge_r);
 WRITE8_HANDLER ( coco3_cartridge_w );
 offs_t coco3_mmu_translate(int bank, int offset);
 WRITE8_HANDLER( coco_pia_1_w );
-void coco3_horizontal_sync_callback(int data);
-void coco3_field_sync_callback(int data);
+void coco3_horizontal_sync_callback(running_machine *machine,int data);
+void coco3_field_sync_callback(running_machine *machine,int data);
 void coco3_gime_field_sync_callback(running_machine *machine);
 
 /* Compusense Dragon Plus board */
@@ -96,9 +99,6 @@ WRITE8_HANDLER(alpha_modem_w);
 #ifdef UNUSED_FUNCTION
 void coco_set_halt_line(running_machine *machine, int halt_line);
 #endif
-
-#define IO_BITBANGER IO_PRINTER
-#define IO_VHD IO_HARDDISK
 
 /* CoCo 3 video vars; controlling key aspects of the emulation */
 struct coco3_video_vars

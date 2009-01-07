@@ -1754,7 +1754,7 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 	InitCommonControls();
 
 	// Are we using an Old comctl32.dll?
-	dprintf("common controlversion %i %i",common_control_version >> 16,
+	dprintf("common controlversion %ld %ld",common_control_version >> 16,
 			common_control_version & 0xffff);
 			 
 	oldControl = (common_control_version < PACKVERSION(4,71));
@@ -5170,6 +5170,8 @@ static int GamePicker_Compare(HWND hwndPicker, int index1, int index2, int sort_
 	int value = 0;  /* Default to 0, for unknown case */
 	const char *name1 = NULL;
 	const char *name2 = NULL;
+	char file1[20];
+	char file2[20];
 	int nTemp1, nTemp2;
 
 #ifdef DEBUG
@@ -5267,7 +5269,9 @@ static int GamePicker_Compare(HWND hwndPicker, int index1, int index2, int sort_
 		break;
 
    	case COLUMN_SRCDRIVERS:
-		value = mame_stricmp(drivers[index1]->source_file, drivers[index2]->source_file);
+		strcpy(file1, GetDriverFilename(index1));
+		strcpy(file2, GetDriverFilename(index2));
+		value = mame_stricmp(file1, file2);
 		break;
 
 	case COLUMN_PLAYTIME:
@@ -5646,7 +5650,7 @@ void SetStatusBarTextF(int part_index, const char *fmt, ...)
 	SetStatusBarText(part_index, buf);
 }
 
-static void CLIB_DECL MameMessageBox(const char *fmt, ...)
+static void CLIB_DECL ATTR_PRINTF(1,2) MameMessageBox(const char *fmt, ...)
 {
 	char buf[2048];
 	va_list va;
@@ -5803,7 +5807,7 @@ static void MameLoadState()
 		}
 
 		// call the MAME core function to check the save state file
-		rc = state_save_check_file(pSaveState, selected_filename, TRUE, MameMessageBox);
+		rc = state_save_check_file(NULL, pSaveState, selected_filename, MameMessageBox);
 		mame_fclose(pSaveState);
 		if (rc)
 			return;

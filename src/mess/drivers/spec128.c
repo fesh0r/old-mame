@@ -145,6 +145,7 @@ http://www.z88forever.org.uk/zxplus3e/
 *******************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "includes/spectrum.h"
 #include "eventlst.h"
 #include "devices/snapquik.h"
@@ -182,7 +183,7 @@ static WRITE8_HANDLER(spectrum_128_port_7ffd_w)
 	spectrum_128_port_7ffd_data = data;
 
 	/* update memory */
-	spectrum_128_update_memory(machine);
+	spectrum_128_update_memory(space->machine);
 }
 
 void spectrum_128_update_memory(running_machine *machine)
@@ -209,7 +210,7 @@ void spectrum_128_update_memory(running_machine *machine)
 			ram_page = spectrum_128_port_7ffd_data & 0x07;
 			ram_data = mess_ram + (ram_page<<14);
 
-			memory_set_bankptr(4, ram_data);
+			memory_set_bankptr(machine, 4, ram_data);
 
 			logerror("RAM at 0xc000: %02x\n",ram_page);
 	}
@@ -221,14 +222,14 @@ void spectrum_128_update_memory(running_machine *machine)
 
 	ChosenROM = memory_region(machine, "main") + 0x010000 + (ROMSelection<<14);
 
-	memory_set_bankptr(1, ChosenROM);
+	memory_set_bankptr(machine, 1, ChosenROM);
 
 	logerror("rom switch: %02x\n", ROMSelection);
 }
 
 static  READ8_HANDLER ( spectrum_128_ula_r )
 {
-	return video_screen_get_vpos(machine->primary_screen)<193 ? spectrum_128_screen_location[0x1800|(video_screen_get_vpos(machine->primary_screen)&0xf8)<<2]:0xff;
+	return video_screen_get_vpos(space->machine->primary_screen)<193 ? spectrum_128_screen_location[0x1800|(video_screen_get_vpos(space->machine->primary_screen)&0xf8)<<2]:0xff;
 }
 
 static ADDRESS_MAP_START (spectrum_128_io, ADDRESS_SPACE_IO, 8)
@@ -255,10 +256,10 @@ static MACHINE_RESET( spectrum_128 )
 	/* 0x0000-0x3fff always holds ROM */
 
 	/* Bank 5 is always in 0x4000 - 0x7fff */
-	memory_set_bankptr(2, mess_ram + (5<<14));
+	memory_set_bankptr(machine, 2, mess_ram + (5<<14));
 
 	/* Bank 2 is always in 0x8000 - 0xbfff */
-	memory_set_bankptr(3, mess_ram + (2<<14));
+	memory_set_bankptr(machine, 3, mess_ram + (2<<14));
 
 	/* set initial ram config */
 	spectrum_128_port_7ffd_data = 0;
@@ -270,7 +271,7 @@ static MACHINE_RESET( spectrum_128 )
 MACHINE_DRIVER_START( spectrum_128 )
 	MDRV_IMPORT_FROM( spectrum )
 
-	MDRV_CPU_REPLACE("main", Z80, 3500000)        /* 3.5 Mhz */
+	MDRV_CPU_REPLACE("main", Z80, 3500000)        /* 3.5 MHz */
 	MDRV_CPU_PROGRAM_MAP(spectrum_128_mem, 0)
 	MDRV_CPU_IO_MAP(spectrum_128_io, 0)
 
@@ -308,7 +309,7 @@ ROM_START(spec128)
 	ROM_SYSTEM_BIOS( 1, "sp", "Spanish" )
 	ROMX_LOAD("zx128s0.rom",0x10000,0x4000, CRC(453d86b2) SHA1(968937b1c750f0ef6205f01c6db4148da4cca4e3), ROM_BIOS(2))
 	ROMX_LOAD("zx128s1.rom",0x14000,0x4000, CRC(6010e796) SHA1(bea3f397cc705eafee995ea629f4a82550562f90), ROM_BIOS(2))
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(specpls2)
@@ -327,14 +328,14 @@ ROM_START(specpls2)
 	ROMX_LOAD("plus2c-1.rom",0x14000,0x4000, CRC(fd8552b6) SHA1(5ffcf79f2154ba2cf42cc1d9cb4be93cb5043e73), ROM_BIOS(4))	
 	ROM_SYSTEM_BIOS( 4, "namco", "ZX Spectrum +2c (Namco)" )
 	ROMX_LOAD("pl2namco.rom",0x10000,0x8000, CRC(72a54e75) SHA1(311400157df689450dadc3620f4c4afa960b05ad), ROM_BIOS(5))
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(hc128)
 	ROM_REGION(0x18000,"main",0)
 	ROM_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5))
 	ROM_LOAD("hc128.rom",  0x14000,0x4000, CRC(0241e960) SHA1(cea0d14391b9e571460a816088a1c00ecb24afa3))	
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(hc2000)
@@ -345,11 +346,10 @@ ROM_START(hc2000)
 	ROM_SYSTEM_BIOS( 1, "v2", "Version 2" )
 	ROMX_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5), ROM_BIOS(2))
 	ROMX_LOAD("hc2000.v2",  0x14000,0x4000, CRC(65d90464) SHA1(5e2096e6460ff2120c8ada97579fdf82c1199c09), ROM_BIOS(2))
-	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 static SYSTEM_CONFIG_START(spec128)
-	CONFIG_IMPORT_FROM(spectrum)
 	CONFIG_RAM_DEFAULT(128 * 1024)
 SYSTEM_CONFIG_END
 

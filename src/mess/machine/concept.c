@@ -10,7 +10,7 @@
 #include "machine/mm58274c.h"	/* mm58274 seems to be compatible with mm58174 */
 //#include "machine/6551.h"
 #include "machine/wd17xx.h"
-#include "cpu/m68000/m68k.h"
+#include "cpu/m68000/m68000.h"
 #include "devices/basicdsk.h"
 #include "includes/corvushd.h"
 
@@ -41,15 +41,15 @@ static char clock_address;
 /*static int ready;*/			/* ready line from monochip, role unknown */
 
 /* Via */
-static  READ8_HANDLER(via_in_a);
-static WRITE8_HANDLER(via_out_a);
-static  READ8_HANDLER(via_in_b);
-static WRITE8_HANDLER(via_out_b);
-static WRITE8_HANDLER(via_out_cb2);
-static void via_irq_func(running_machine *machine, int state);
+static READ8_DEVICE_HANDLER(via_in_a);
+static WRITE8_DEVICE_HANDLER(via_out_a);
+static READ8_DEVICE_HANDLER(via_in_b);
+static WRITE8_DEVICE_HANDLER(via_out_b);
+static WRITE8_DEVICE_HANDLER(via_out_cb2);
+static void via_irq_func(const device_config *device, int state);
 
 
-static const struct via6522_interface concept_via6522_intf =
+const via6522_interface concept_via6522_intf =
 {	/* main via */
 	via_in_a, via_in_b,
 	NULL, NULL,
@@ -75,10 +75,10 @@ static UINT32 KeyStateSave[/*4*/3];
 
 static struct
 {
-	read8_machine_func reg_read;
-	write8_machine_func reg_write;
-	read8_machine_func rom_read;
-	write8_machine_func rom_write;
+	read8_space_func reg_read;
+	write8_space_func reg_write;
+	read8_space_func rom_read;
+	write8_space_func rom_write;
 } expansion_slots[4];
 
 static void concept_fdc_init(running_machine *machine, int slot);
@@ -89,14 +89,8 @@ MACHINE_START(concept)
 	/* initialize int state */
 	pending_interrupts = 0;
 
-	/* configure via */
-	via_config(0, & concept_via6522_intf);
-	via_set_clock(0, 1022750);		/* 16.364 MHZ / 16 */
-	via_reset();
-
 	/* initialize clock interface */
 	clock_enable = 0/*1*/;
-	mm58274c_init(machine, 0, 0, 1);
 
 	/* clear keyboard interface state */
 	KeyQueueHead = KeyQueueLen = 0;
@@ -110,8 +104,8 @@ MACHINE_START(concept)
 }
 
 static void install_expansion_slot(int slot,
-									read8_machine_func reg_read, write8_machine_func reg_write,
-									read8_machine_func rom_read, write8_machine_func rom_write)
+									read8_space_func reg_read, write8_space_func reg_write,
+									read8_space_func rom_read, write8_space_func rom_write)
 {
 	expansion_slots[slot].reg_read = reg_read;
 	expansion_slots[slot].reg_write = reg_write;
@@ -156,10 +150,10 @@ static void concept_set_interrupt(running_machine *machine, int level, int state
 
 	if (final_level)
 		/* assert interrupt */
-		cpunum_set_input_line_and_vector(machine, 0, M68K_IRQ_1+final_level-1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0], M68K_IRQ_1+final_level-1, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else
 		/* clear all interrupts */
-		cpunum_set_input_line_and_vector(machine, 0, M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
+		cpu_set_input_line_and_vector(machine->cpu[0], M68K_IRQ_1, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 INLINE void post_in_KeyQueue(int keycode)
@@ -174,7 +168,7 @@ static void poll_keyboard(running_machine *machine)
 	UINT32 key_transitions;
 	int i, j;
 	int keycode;
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5" };
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5" };
 
 	for(i = 0; (i < /*4*/3) && (KeyQueueLen <= (KeyQueueSize-MaxKeyMessageLen)); i++)
 	{
@@ -208,7 +202,7 @@ static void poll_keyboard(running_machine *machine)
 
 INTERRUPT_GEN( concept_interrupt )
 {
-	poll_keyboard(machine);
+	poll_keyboard(device->machine);
 }
 
 /*
@@ -223,13 +217,13 @@ INTERRUPT_GEN( concept_interrupt )
 	6: DCD1 (I)
 	7: IOX (O)
 */
-static  READ8_HANDLER(via_in_a)
+static  READ8_DEVICE_HANDLER(via_in_a)
 {
 	LOG(("via_in_a: VIA port A (Omninet and COMM port status) read\n"));
 	return 1;		/* omninet ready always 1 */
 }
 
-static WRITE8_HANDLER(via_out_a)
+static WRITE8_DEVICE_HANDLER(via_out_a)
 {
 	LOG(("via_out_a: VIA port A status written: data=0x%2.2x\n", data));
 	/*iox = (data & 0x80) != 0;*/
@@ -247,16 +241,16 @@ static WRITE8_HANDLER(via_out_a)
 	6: boot switch 0 (I)
 	7: boot switch 1 (I)
 */
-static  READ8_HANDLER(via_in_b)
+static READ8_DEVICE_HANDLER(via_in_b)
 {
 	UINT8 status;
 
-	status = ((input_port_read(machine, "DSW0") & 0x80) >> 1) | ((input_port_read(machine, "DSW0") & 0x40) << 1);
+	status = ((input_port_read(device->machine, "DSW0") & 0x80) >> 1) | ((input_port_read(device->machine, "DSW0") & 0x40) << 1);
 	LOG(("via_in_b: VIA port B (DIP switches, Video, Comm Rate) - status: 0x%2.2x\n", status));
 	return status;
 }
 
-static WRITE8_HANDLER(via_out_b)
+static WRITE8_DEVICE_HANDLER(via_out_b)
 {
 	VLOG(("via_out_b: VIA port B (Video Control and COMM rate select) written: data=0x%2.2x\n", data));
 }
@@ -264,7 +258,7 @@ static WRITE8_HANDLER(via_out_b)
 /*
 	VIA CB2: used as sound output
 */
-static WRITE8_HANDLER(via_out_cb2)
+static WRITE8_DEVICE_HANDLER(via_out_cb2)
 {
 	LOG(("via_out_cb2: Sound control written: data=0x%2.2x\n", data));
 }
@@ -272,9 +266,9 @@ static WRITE8_HANDLER(via_out_cb2)
 /*
 	VIA irq -> 68k level 5
 */
-static void via_irq_func(running_machine *machine, int state)
+static void via_irq_func(const device_config *device, int state)
 {
-	concept_set_interrupt(machine, TIMINT_level, state);
+	concept_set_interrupt(device->machine, TIMINT_level, state);
 }
 
 READ16_HANDLER(concept_io_r)
@@ -299,7 +293,7 @@ READ16_HANDLER(concept_io_r)
 			{
 				int slot = ((offset >> 4) & 7) - 1;
 				if (expansion_slots[slot].reg_read)
-					return expansion_slots[slot].reg_read(machine, offset & 0xf);
+					return expansion_slots[slot].reg_read(space, offset & 0xf);
 			}
 			break;
 
@@ -322,7 +316,7 @@ READ16_HANDLER(concept_io_r)
 			int slot = ((offset >> 8) & 7) - 1;
 			LOG(("concept_io_r: Slot ROM memory accessed for slot %d at address 0x03%4.4x\n", slot, offset << 1));
 			if (expansion_slots[slot].rom_read)
-				return expansion_slots[slot].rom_read(machine, offset & 0xff);
+				return expansion_slots[slot].rom_read(space, offset & 0xff);
 		}
 		break;
 
@@ -335,7 +329,7 @@ READ16_HANDLER(concept_io_r)
 		/* calendar R/W */
 		VLOG(("concept_io_r: Calendar read at address 0x03%4.4x\n", offset << 1));
 		if (!clock_enable)
-			return mm58274c_r(0, clock_address);
+			return mm58274c_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c"), clock_address);
 		break;
 
 	case 7:
@@ -360,7 +354,7 @@ READ16_HANDLER(concept_io_r)
 				}
 
 				if (!KeyQueueLen)
-					concept_set_interrupt(machine, KEYINT_level, 0);
+					concept_set_interrupt(space->machine, KEYINT_level, 0);
 
 				return reply;
 
@@ -382,7 +376,10 @@ READ16_HANDLER(concept_io_r)
 		case 3:
 			/* NVIA versatile system interface */
 			LOG(("concept_io_r: VIA read at address 0x03%4.4x\n", offset << 1));
-			return via_read(machine, 0, offset & 0xf);
+			{
+				const device_config *via_0 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
+				return via_r(via_0, offset & 0xf);
+			}
 			break;
 
 		case 4:
@@ -438,7 +435,7 @@ WRITE16_HANDLER(concept_io_w)
 				LOG(("concept_io_w: Slot I/O register written for slot %d at address 0x03%4.4x, data: 0x%4.4x\n",
 					slot, offset << 1, data));
 				if (expansion_slots[slot].reg_write)
-					expansion_slots[slot].reg_write(machine, offset & 0xf, data);
+					expansion_slots[slot].reg_write(space, offset & 0xf, data);
 			}
 			break;
 
@@ -461,7 +458,7 @@ WRITE16_HANDLER(concept_io_w)
 			int slot = ((offset >> 8) & 7) - 1;
 			LOG(("concept_io_w: Slot ROM memory written to for slot %d at address 0x03%4.4x, data: 0x%4.4x\n", slot, offset << 1, data));
 			if (expansion_slots[slot].rom_write)
-				expansion_slots[slot].rom_write(machine, offset & 0xff, data);
+				expansion_slots[slot].rom_write(space, offset & 0xff, data);
 		}
 		break;
 
@@ -474,7 +471,7 @@ WRITE16_HANDLER(concept_io_w)
 		/* calendar R/W */
 		LOG(("concept_io_w: Calendar written to at address 0x03%4.4x, data: 0x%4.4x\n", offset << 1, data));
 		if (!clock_enable)
-			mm58274c_w(0, clock_address, data & 0xf);
+			mm58274c_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c"), clock_address, data & 0xf);
 		break;
 
 	case 7:
@@ -492,7 +489,10 @@ WRITE16_HANDLER(concept_io_w)
 
 		case 3:
 			/* NVIA versatile system interface */
-			via_write(machine, 0, offset & 0xf, data);
+			{
+				const device_config *via_0 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
+				via_w(via_0, offset & 0xf, data);
+			}
 			break;
 
 		case 4:
@@ -566,7 +566,6 @@ enum
 	LC_FMMFM_mask	= (1 << LC_FMMFM_bit)
 };
 
-static void fdc_callback(running_machine *machine, wd17xx_state_t event, void *param);
 
 static  READ8_HANDLER(concept_fdc_reg_r);
 static WRITE8_HANDLER(concept_fdc_reg_w);
@@ -577,14 +576,12 @@ static void concept_fdc_init(running_machine *machine, int slot)
 	fdc_local_status = 0;
 	fdc_local_command = 0;
 
-	wd17xx_init(machine, WD_TYPE_179X, fdc_callback, NULL);
-
 	install_expansion_slot(slot, concept_fdc_reg_r, concept_fdc_reg_w, concept_fdc_rom_r, NULL);
 }
 
-static void fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
+static WD17XX_CALLBACK( fdc_callback )
 {
-	switch (event)
+	switch (state)
 	{
 		case WD17XX_IRQ_CLR:
 			fdc_local_status &= ~LS_INT_mask;
@@ -601,8 +598,11 @@ static void fdc_callback(running_machine *machine, wd17xx_state_t event, void *p
 	}
 }
 
+const wd17xx_interface concept_wd17xx_interface = { fdc_callback, NULL };
+
 static  READ8_HANDLER(concept_fdc_reg_r)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
 	switch (offset)
 	{
 	case 0:
@@ -612,22 +612,22 @@ static  READ8_HANDLER(concept_fdc_reg_r)
 
 	case 8:
 		/* FDC STATUS REG */
-		return wd17xx_status_r(machine, offset);
+		return wd17xx_status_r(fdc, offset);
 		break;
 
 	case 9:
 		/* FDC TRACK REG */
-		return wd17xx_track_r(machine, offset);
+		return wd17xx_track_r(fdc, offset);
 		break;
 
 	case 10:
 		/* FDC SECTOR REG */
-		return wd17xx_sector_r(machine, offset);
+		return wd17xx_sector_r(fdc, offset);
 		break;
 
 	case 11:
 		/* FDC DATA REG */
-		return wd17xx_data_r(machine, offset);
+		return wd17xx_data_r(fdc, offset);
 		break;
 	}
 
@@ -637,41 +637,41 @@ static  READ8_HANDLER(concept_fdc_reg_r)
 static WRITE8_HANDLER(concept_fdc_reg_w)
 {
 	int current_drive;
-
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
 	switch (offset)
 	{
 	case 0:
 		/* local command reg */
 		fdc_local_command = data;
 
-		wd17xx_set_side((data & LC_FLPSD1_mask) != 0);
+		wd17xx_set_side(fdc,(data & LC_FLPSD1_mask) != 0);
 		current_drive = ((data >> LC_DE0_bit) & 1) | ((data >> (LC_DE1_bit-1)) & 2);
-		wd17xx_set_drive(current_drive);
+		wd17xx_set_drive(fdc, current_drive);
 		/*motor_on = (data & LC_MOTOROF_mask) == 0;*/
-		// floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, current_drive), (data & LC_MOTOROF_mask) == 0 ? 1 : 0);
+		// floppy_drive_set_motor_state(image_from_devtype_and_index(machine, IO_FLOPPY, current_drive), (data & LC_MOTOROF_mask) == 0 ? 1 : 0);
 		/*flp_8in = (data & LC_FLP8IN_mask) != 0;*/
-		wd17xx_set_density((data & LC_FMMFM_mask) ? DEN_FM_LO : DEN_MFM_LO);
-		floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, current_drive), 1, 0);
+		wd17xx_set_density(fdc, (data & LC_FMMFM_mask) ? DEN_FM_LO : DEN_MFM_LO);
+		floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, current_drive), 1, 0);
 		break;
 
 	case 8:
 		/* FDC COMMAMD REG */
-		wd17xx_command_w(machine, offset, data);
+		wd17xx_command_w(fdc, offset, data);
 		break;
 
 	case 9:
 		/* FDC TRACK REG */
-		wd17xx_track_w(machine, offset, data);
+		wd17xx_track_w(fdc, offset, data);
 		break;
 
 	case 10:
 		/* FDC SECTOR REG */
-		wd17xx_sector_w(machine, offset, data);
+		wd17xx_sector_w(fdc, offset, data);
 		break;
 
 	case 11:
 		/* FDC DATA REG */
-		wd17xx_data_w(machine, offset, data);
+		wd17xx_data_w(fdc, offset, data);
 		break;
 	}
 }
@@ -703,18 +703,18 @@ static void concept_hdc_init(running_machine *machine, int slot)
 /*
  *	Handle reads against the Hard Disk Controller's onboard registers
  */
-static  READ8_HANDLER(concept_hdc_reg_r)
+static READ8_HANDLER(concept_hdc_reg_r)
 {
 	switch (offset)
 	{
 	case 0:
 		/* HDC Data Register */
-		return corvus_hdc_data_r(machine, offset);
+		return corvus_hdc_data_r(space, offset);
 		break;
 
 	case 1:
 		/* HDC Status Register */
-		return corvus_hdc_status_r(machine, offset);
+		return corvus_hdc_status_r(space, offset);
 		break;
 	}
 
@@ -730,7 +730,7 @@ static WRITE8_HANDLER(concept_hdc_reg_w)
 	{
 	case 0:
 		/* HDC Data Register */
-		corvus_hdc_data_w(machine, offset, data);
+		corvus_hdc_data_w(space, offset, data);
 		break;
 	}
 }

@@ -32,7 +32,6 @@ static MC6845_ON_VSYNC_CHANGED( pcjr_vsync_changed );
 
 static const mc6845_interface mc6845_t1000_intf = {
 	T1000_SCREEN_NAME,		/* screen number */
-	XTAL_14_31818MHz/8,		/* clock, needs verification */
 	8,						/* numbers of pixels per video memory address */
 	NULL,					/* begin_update */
 	t1000_update_row,		/* update_row */
@@ -50,8 +49,7 @@ MACHINE_DRIVER_START( pcvideo_t1000 )
 	MDRV_PALETTE_LENGTH( 16 )
 	MDRV_PALETTE_INIT(pcjr)
 
-	MDRV_DEVICE_ADD(T1000_MC6845_NAME, MC6845)
-	MDRV_DEVICE_CONFIG( mc6845_t1000_intf )
+	MDRV_MC6845_ADD(T1000_MC6845_NAME, MC6845, XTAL_14_31818MHz/8, mc6845_t1000_intf)
 
 	MDRV_VIDEO_START(pc_t1t)
 	MDRV_VIDEO_UPDATE( mc6845_t1000 )
@@ -60,7 +58,6 @@ MACHINE_DRIVER_END
 
 static const mc6845_interface mc6845_pcjr_intf = {
 	T1000_SCREEN_NAME,		/* screen number */
-	XTAL_14_31818MHz/16,	/* clock, needs verification */
 	8,						/* numbers of pixels per video memory address */
 	NULL,					/* begin_update */
 	t1000_update_row,		/* update_row */
@@ -78,8 +75,7 @@ MACHINE_DRIVER_START( pcvideo_pcjr )
 	MDRV_PALETTE_LENGTH( 16 )
 	MDRV_PALETTE_INIT(pcjr)
 
-	MDRV_DEVICE_ADD(T1000_MC6845_NAME, MC6845)
-	MDRV_DEVICE_CONFIG( mc6845_pcjr_intf )
+	MDRV_MC6845_ADD(T1000_MC6845_NAME, MC6845, XTAL_14_31818MHz/16, mc6845_pcjr_intf)
 
 	MDRV_VIDEO_START(pc_pcjr)
 	MDRV_VIDEO_UPDATE( mc6845_t1000 )
@@ -743,11 +739,11 @@ WRITE8_HANDLER ( pc_T1T_w )
 	switch( offset )
 	{
 		case 0: case 2: case 4: case 6:
-			devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, T1000_MC6845_NAME);
+			devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, T1000_MC6845_NAME);
 			mc6845_address_w( devconf, offset, data );
 			break;
 		case 1: case 3: case 5: case 7:
-			devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, T1000_MC6845_NAME);
+			devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, T1000_MC6845_NAME);
 			mc6845_register_w( devconf, offset, data );
 			break;
 		case 8:
@@ -770,7 +766,7 @@ WRITE8_HANDLER ( pc_T1T_w )
 			pc_t1t_vga_data_w(data);
 			break;
 		case 15:
-			pc_t1t_bank_w(machine, data);
+			pc_t1t_bank_w(space->machine, data);
 			break;
     }
 }
@@ -783,11 +779,11 @@ WRITE8_HANDLER( pc_pcjr_w )
 	switch( offset )
 	{
 		case 0: case 4: 
-			devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, T1000_MC6845_NAME);
+			devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, T1000_MC6845_NAME);
 			mc6845_address_w( devconf, offset, data );
 			break;
 		case 1: case 5:
-			devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, T1000_MC6845_NAME);
+			devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, T1000_MC6845_NAME);
 			mc6845_register_w( devconf, offset, data );
 			break;
 		case 10:
@@ -807,7 +803,7 @@ WRITE8_HANDLER( pc_pcjr_w )
 		case 12:
 			break;
 		case 15:
-			pc_pcjr_bank_w(machine, data);
+			pc_pcjr_bank_w(space->machine, data);
 			break;
 
 		default:
@@ -828,7 +824,7 @@ WRITE8_HANDLER( pc_pcjr_w )
 			break;
 
 		case 1: case 3: case 5: case 7:
-			devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, T1000_MC6845_NAME);
+			devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, T1000_MC6845_NAME);
 			data = mc6845_register_r( devconf, offset );
 			break;
 

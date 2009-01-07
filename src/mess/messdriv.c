@@ -147,7 +147,7 @@ const game_driver * const drivers[] =
 	DRIVER( pce )		/* PC/Engine NEC 1987-1993							*/
 	DRIVER( tg16 )		/* Turbo Grafix-16  NEC 1989-1993					*/
 	DRIVER( sgx )		/* SuperGrafX NEC 1989								*/
-	DRIVER( pcfx)		/* PC-FX NEC 1994									*/
+	DRIVER( pcfx )		/* PC-FX NEC 1994									*/
 
 	DRIVER( arcadia )	/* Emerson Arcadia 2001								*/
 	DRIVER( vcg )		/* Palladium Video-Computer-Game					*/
@@ -248,11 +248,12 @@ const game_driver * const drivers[] =
 	DRIVER( apple2g1 )	/* Sep 1987 Apple IIgs ROM01						*/
 	DRIVER( apple2gs )	/* Aug 1989 Apple IIgs ROM03						*/
 	DRIVER( apple3 )	/* May 1980 Apple ///								*/
-						/* Dec 1983 Apple ///+								*/
+					/* Dec 1983 Apple ///+								*/
 	DRIVER( ace100 )	/* ??? 1982 Franklin Ace 100						*/
 	DRIVER( laser128 )	/* ??? 1987 Laser 128								*/
 	DRIVER( las128ex )	/* ??? 1987 Laser 128 EX							*/
 	DRIVER( las3000 )	/* ??? 1983 Laser 3000								*/
+	DRIVER( ivelultr )	/* Ivasim Ivel Ultra								*/
 
 /*
  * Lisa 				 January			 1983
@@ -437,8 +438,8 @@ XL/XE 16kB OS roms
 	DRIVER( xtvga )		/* 198? PC-XT (VGA, MF2 Keyboard)					*/
 
 	/* at */
-	DRIVER( ibm5170 )	/* 1984 IBM PC/AT 5170, original 6 Mhz model		*/
-	DRIVER( ibm5170a )	/* 1985	IBM PC/AT 5170, enhanced 8 Mhz model		*/
+	DRIVER( ibm5170 )	/* 1984 IBM PC/AT 5170, original 6 MHz model		*/
+	DRIVER( ibm5170a )	/* 1985	IBM PC/AT 5170, enhanced 8 MHz model		*/
 	DRIVER( i8530286 )	/* 1988 IBM PS2 Model 30 286 (VGA)					*/
 	DRIVER( at )		/* 1987 AMI Bios and Diagnostics					*/
 	DRIVER( atvga )		/* 19?? AT VGA										*/
@@ -467,7 +468,7 @@ XL/XE 16kB OS roms
 	DRIVER( tc2048 )	/* 198? TC2048										*/
 	DRIVER( ts2068 )	/* 1983 TS2068										*/
 	DRIVER( uk2086 )	/* 1986 UK2086										*/  
-
+	
 	DRIVER( spec128 )	  /* 1986 ZX Spectrum 128								*/
 	DRIVER( specpls2 )	/* 1986 ZX Spectrum +2								*/
 	DRIVER( specpl2a )	/* 1987 ZX Spectrum +2a								*/	
@@ -504,6 +505,9 @@ XL/XE 16kB OS roms
 	DRIVER( mz700j )	/* 1982 Sharp MZ700 Japan							*/
 	DRIVER( mz800 )		/* 1982 Sharp MZ800									*/
 
+	DRIVER( mz80kj )	/* 1979 Sharp MZ80K									*/
+	DRIVER( mz80k )		/* 1979 Sharp MZ80K									*/
+
 	DRIVER( x68000 )	/* Sharp X68000 (1987)								*/
 
 	/* SILICON GRAPHICS */
@@ -527,6 +531,7 @@ XL/XE 16kB OS roms
 	DRIVER( ti99_4ev)	/* 1994 TI-99/4A with EVPC video card				*/
 	DRIVER( ti99_8 )	/* 1983 TI-99/8										*/
 	DRIVER( ti99_8e )	/* 1983 TI-99/8 with 50Hz video						*/
+
 	/* TI 99 clones */
 	DRIVER( tutor)		/* 1983? Tomy Tutor									*/
 	DRIVER( geneve )	/* 1987? Myarc Geneve 9640							*/
@@ -547,8 +552,8 @@ XL/XE 16kB OS roms
 //	DRIVER( ti84pse )	/* 2004 TI-84 Plus Silver Edition					*/
 
 	/* NEC */
-	DRIVER( pc88srl )	/* PC-8801mkIISR(Low res display, VSYNC 15KHz)		*/
-	DRIVER( pc88srh )	/* PC-8801mkIISR(High res display, VSYNC 24KHz)		*/
+	DRIVER( pc88srl )	/* PC-8801mkIISR(Low res display, VSYNC 15 kHz)		*/
+	DRIVER( pc88srh )	/* PC-8801mkIISR(High res display, VSYNC 24 kHz)		*/
 
 	/* CANTAB */
 	DRIVER( jupiter )	/* Jupiter Ace										*/
@@ -622,7 +627,7 @@ XL/XE 16kB OS roms
 	DRIVER( laser110 )	/* 1983 Laser 110									*/
 	DRIVER( las110de )	/* 1983 Sanyo Laser 110 (Germany)					*/
 	DRIVER( laser200 )	/* 1983 Laser 200 (color version of 110)			*/
-	DRIVER( vz200de )	/* 1983 VZ-200 (Germany)							*/
+//	DRIVER( vz200de )	/* 1983 VZ-200 (Germany)							*/
 	DRIVER( fellow )	/* 1983 Salora Fellow (Finland) 					*/
 	DRIVER( tx8000 )	/* 1983 Texet TX-8000 (U.K.)						*/
 	DRIVER( laser210 )	/* 1984 Laser 210 (200 with more memory)			*/
@@ -650,10 +655,12 @@ XL/XE 16kB OS roms
 	DRIVER( g7400 )		/* 1983 Videopac Plus G7400							*/
 
 	/* COMPUKIT */
-	DRIVER( uk101 )		/* 1979 UK101										*/
+	DRIVER( uk101 )
 
 	/* OHIO SCIENTIFIC */
-	DRIVER( sb2m600b )	/* 1979 Superboard II								*/
+	DRIVER( sb2m600b )
+	DRIVER( c1p )
+	DRIVER( c1pmf )
 
 	/* ASCII & MICROSOFT */
 	DRIVER( msx )		/* 1983 MSX 										*/
@@ -689,6 +696,8 @@ XL/XE 16kB OS roms
 	DRIVER( hotbi13b )	/* 1985 MSX	Brazil									*/
 	DRIVER( hotbi13p )	/* 1985 MSX	Brazil									*/
 	DRIVER( hotbit20 )	/* 1986 MSX2 Brazil									*/
+	DRIVER( hb10p )
+	DRIVER( hb20p )
 	DRIVER( hb201 )		/* 1985 MSX Japan									*/
 	DRIVER( hb201p )	/* 1985 MSX											*/
 	DRIVER( hb501p )	/* 1984 MSX											*/
@@ -710,10 +719,12 @@ XL/XE 16kB OS roms
 	DRIVER( yis303 )
 	DRIVER( yis503 )
 	DRIVER( yis503ii )
+	DRIVER( y503iir )
+	DRIVER( y503iir2 )
 	DRIVER( yis503m )
 	DRIVER( yc64 )
-	
-	
+
+
 	DRIVER( msx2 )		/* 1985 MSX2										*/
 	DRIVER( ax350 )
 	DRIVER( ax370 )
@@ -766,7 +777,7 @@ XL/XE 16kB OS roms
 	DRIVER( cpc400 )	/* 1986 MSX2 Korea									*/
 	DRIVER( cpc400s )	/* 1986 MSX2 Korea									*/
 	DRIVER( expert20 )/* 1986 MSX2 Korea									*/
-	
+
 	DRIVER( msx2p )		/* 1988 MSX2+ Japan									*/
 	DRIVER( fsa1fx )	/* 1988 MSX2+ Japan									*/
 	DRIVER( fsa1wx )	/* 1988 MSX2+ Japan									*/
@@ -805,7 +816,7 @@ XL/XE 16kB OS roms
 
 	/*EXIDY INC */
 	DRIVER( exidy )		/* Sorcerer											*/
-	DRIVER( exidyd )	/* Sorcerer (diskless)								*/
+	DRIVER( exidyd )	/* Sorcerer (cassette only)								*/
 
 	/* GALAKSIJA */
 	DRIVER( galaxy )
@@ -925,9 +936,9 @@ XL/XE 16kB OS roms
 	DRIVER( pro128 )	/* 1986 Olivetti Prodest PC 128						*/
 
 	/* Cybiko, Inc. */
-	DRIVER( cybikov1 )	/* Cybiko Wireless Intertainment System - Classic V1 */
-	DRIVER( cybikov2 )	/* Cybiko Wireless Intertainment System - Classic V2 */
-	DRIVER( cybikoxt )	/* Cybiko Wireless Intertainment System - Xtreme     */
+//	DRIVER( cybikov1 )	/* Cybiko Wireless Intertainment System - Classic V1 */
+//	DRIVER( cybikov2 )	/* Cybiko Wireless Intertainment System - Classic V2 */
+//	DRIVER( cybikoxt )	/* Cybiko Wireless Intertainment System - Xtreme     */
 
 	/* Dick Smith */
 	DRIVER( super80 )
@@ -990,7 +1001,7 @@ XL/XE 16kB OS roms
 	DRIVER( mikrosha )
 	DRIVER( partner )
 
-  /* Homelab */  
+  	/* Homelab */  
 	DRIVER (homelab2)
 	DRIVER (homelab3)
 	DRIVER (homelab4)
@@ -1021,38 +1032,40 @@ XL/XE 16kB OS roms
   /* Spectrum clones */
   	
   /* ICE-Felix */
-  DRIVER( hc85 )    /* 1985 HC-85										  */
-  DRIVER( hc90 )    /* 1990 HC-90										  */
-  DRIVER( hc91 )    /* 1991 HC-91										  */
-  DRIVER( hc128 )   /* 1991 HC-128									  */
-  DRIVER( hc2000 )  /* 1992 HC-2000									  */
-  
-  DRIVER( cip03 )   /* 1988 CIP-03										  */
-  DRIVER( jet )     /* 1990 JET										  */
+	DRIVER( hc85 )    /* 1985 HC-85										  */
+	DRIVER( hc90 )    /* 1990 HC-90										  */
+	DRIVER( hc91 )    /* 1991 HC-91										  */
+	DRIVER( hc128 )   /* 1991 HC-128									  */
+	DRIVER( hc2000 )  /* 1992 HC-2000									  */
+
+	DRIVER( cip03 )   /* 1988 CIP-03										  */
+	DRIVER( jet )     /* 1990 JET										  */
   
   /* Didaktik Skalica */
-  DRIVER( dgama87)  /* 1987 Didaktik Gama 87          */
-  DRIVER( dgama88)  /* 1988 Didaktik Gama 88          */
-  DRIVER( dgama89)  /* 1989 Didaktik Gama 89          */
-  DRIVER( didakt90) /* 1990 Didaktik Skalica 90       */
-  DRIVER( didakm91) /* 1991 Didaktik M 91             */
-  DRIVER( didaktk)  /* 1992 Didaktik Kompakt          */
-  DRIVER( didakm93) /* 1993 Didaktik M 93             */
-
+	DRIVER( dgama87)  /* 1987 Didaktik Gama 87          */
+	DRIVER( dgama88)  /* 1988 Didaktik Gama 88          */
+	DRIVER( dgama89)  /* 1989 Didaktik Gama 89          */
+	DRIVER( didakt90) /* 1990 Didaktik Skalica 90       */
+	DRIVER( didakm91) /* 1991 Didaktik M 91             */
+	DRIVER( didaktk)  /* 1992 Didaktik Kompakt          */
+	DRIVER( didakm93) /* 1993 Didaktik M 93             */
+	
 	DRIVER( mistrum ) /* 1988 Mistrum										*/
 	
-  /* Russian clones */
-
-  DRIVER( blitz )     /* 1990 Blic                     */
-  DRIVER( byte )      /* 1990 Byte                     */
-  DRIVER( orizon )    /* 199? Orizon-Micro             */
-  DRIVER( quorum48 )  /* 1993 Kvorum 48K               */
-  DRIVER( magic6 )    /* 1993 Magic 6                  */
-  DRIVER( compani1 )  /* 1990 Kompanion 1              */
+	/* Russian clones */
+	DRIVER( blitz )     /* 1990 Blic                     */
+	DRIVER( byte )      /* 1990 Byte                     */
+	DRIVER( orizon )    /* 199? Orizon-Micro             */
+	DRIVER( quorum48 )  /* 1993 Kvorum 48K               */
+	DRIVER( magic6 )    /* 1993 Magic 6                  */
+	DRIVER( compani1 )  /* 1990 Kompanion 1              */
 
 	/* Kramer */
 	DRIVER(kramermc) /* 1987 Kramer MC				*/
-	
+
+	/* Ei Nis */
+	DRIVER(pecom64)
+		
 	/* Bondwell */
 	DRIVER( bw2 )
 
@@ -1080,6 +1093,7 @@ XL/XE 16kB OS roms
 	DRIVER( mk1 )		/* Chess Champion MK I								*/
 	/* Quelle International */
 	DRIVER( mk2 )		/* Chess Champion MK II								*/
+
 	/* Novag */
 	DRIVER( ssystem3 )	/* Chess Champion Super System III / MK III			*/
 
@@ -1099,5 +1113,6 @@ XL/XE 16kB OS roms
 
 /*********** Misc ***********************************************************/
 	DRIVER( ex800 )
+
 
 #endif /* DRIVER_RECURSIVE */

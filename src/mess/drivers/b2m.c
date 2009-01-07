@@ -31,29 +31,29 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( b2m_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1f)
 	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r,pit8253_w)
-	AM_RANGE(0x04, 0x07) AM_READWRITE(b2m_8255_1_r,b2m_8255_1_w)
-  	AM_RANGE(0x08, 0x0b) AM_READWRITE(b2m_8255_0_r,b2m_8255_0_w) 
+	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE(PPI8255, "ppi8255_2", ppi8255_r, ppi8255_w)
+  	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
     AM_RANGE(0x0c, 0x0c) AM_READWRITE(b2m_localmachine_r,b2m_localmachine_w) 
 	AM_RANGE(0x10, 0x13) AM_READWRITE(b2m_palette_r,b2m_palette_w) 	
 	AM_RANGE(0x14, 0x15) AM_DEVREADWRITE(PIC8259, "pic8259", pic8259_r, pic8259_w )
-	AM_RANGE(0x18, 0x18) AM_READWRITE(msm8251_data_r,msm8251_data_w)
-	AM_RANGE(0x19, 0x19) AM_READWRITE(msm8251_status_r,msm8251_control_w)
-  	AM_RANGE(0x1c, 0x1c) AM_READWRITE(wd17xx_status_r,wd17xx_command_w) 
-  	AM_RANGE(0x1d, 0x1d) AM_READWRITE(wd17xx_track_r,wd17xx_track_w) 
-  	AM_RANGE(0x1e, 0x1e) AM_READWRITE(wd17xx_sector_r,wd17xx_sector_w) 
-  	AM_RANGE(0x1f, 0x1f) AM_READWRITE(wd17xx_data_r,wd17xx_data_w) 	
+	AM_RANGE(0x18, 0x18) AM_DEVREADWRITE(MSM8251, "uart", msm8251_data_r,msm8251_data_w)
+	AM_RANGE(0x19, 0x19) AM_DEVREADWRITE(MSM8251, "uart", msm8251_status_r,msm8251_control_w)
+  	AM_RANGE(0x1c, 0x1c) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_status_r,wd17xx_command_w) 
+  	AM_RANGE(0x1d, 0x1d) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_track_r,wd17xx_track_w) 
+  	AM_RANGE(0x1e, 0x1e) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_sector_r,wd17xx_sector_w) 
+  	AM_RANGE(0x1f, 0x1f) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_data_r,wd17xx_data_w) 	
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( b2m_rom_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1f)
 	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r,pit8253_w)
-	AM_RANGE(0x04, 0x07) AM_READWRITE(b2m_8255_2_r,b2m_8255_2_w)
-  	AM_RANGE(0x08, 0x0b) AM_READWRITE(b2m_8255_0_r,b2m_8255_0_w) 
+	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE(PPI8255, "ppi8255_3", ppi8255_r, ppi8255_w)
+  	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
     AM_RANGE(0x0c, 0x0c) AM_READWRITE(b2m_localmachine_r,b2m_localmachine_w) 
 	AM_RANGE(0x10, 0x13) AM_READWRITE(b2m_palette_r,b2m_palette_w) 	
 	AM_RANGE(0x14, 0x15) AM_DEVREADWRITE(PIC8259, "pic8259", pic8259_r, pic8259_w )
-	AM_RANGE(0x18, 0x18) AM_READWRITE(msm8251_data_r,msm8251_data_w)
-	AM_RANGE(0x19, 0x19) AM_READWRITE(msm8251_status_r,msm8251_control_w)
+	AM_RANGE(0x18, 0x18) AM_DEVREADWRITE(MSM8251, "uart", msm8251_data_r, msm8251_data_w)
+	AM_RANGE(0x19, 0x19) AM_DEVREADWRITE(MSM8251, "uart", msm8251_status_r, msm8251_control_w)
 ADDRESS_MAP_END
 
 
@@ -184,28 +184,29 @@ static MACHINE_DRIVER_START( b2m )
 	MDRV_PALETTE_LENGTH(4)
 	MDRV_PALETTE_INIT(b2m)	
 	
-	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
-	MDRV_DEVICE_CONFIG( b2m_pit8253_intf )
+	MDRV_PIT8253_ADD( "pit8253", b2m_pit8253_intf )
 
-	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( b2m_ppi8255_interface_1 )
+	MDRV_PPI8255_ADD( "ppi8255_1", b2m_ppi8255_interface_1 )
 
-	MDRV_DEVICE_ADD( "ppi8255_2", PPI8255 )
-	MDRV_DEVICE_CONFIG( b2m_ppi8255_interface_2 )
+	MDRV_PPI8255_ADD( "ppi8255_2", b2m_ppi8255_interface_2 )
 		    
-	MDRV_DEVICE_ADD( "ppi8255_3", PPI8255 )
-	MDRV_DEVICE_CONFIG( b2m_ppi8255_interface_3 )
+	MDRV_PPI8255_ADD( "ppi8255_3", b2m_ppi8255_interface_3 )
 
-	MDRV_DEVICE_ADD( "pic8259", PIC8259 )
-	MDRV_DEVICE_CONFIG( b2m_pic8259_config )
+	MDRV_PIC8259_ADD( "pic8259", b2m_pic8259_config )
 		
 	MDRV_VIDEO_START(b2m)
     MDRV_VIDEO_UPDATE(b2m)    	
     
+	/* sound */
     MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("custom", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(b2m_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)	
+
+	/* uart */
+	MDRV_MSM8251_ADD("uart", default_msm8251_interface)
+	
+	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( b2mrom )
@@ -252,6 +253,7 @@ SYSTEM_CONFIG_END
 /* Driver */
  
 /*    YEAR  NAME   	PARENT  COMPAT  MACHINE 	INPUT   	INIT  	 CONFIG COMPANY 				 FULLNAME   FLAGS */
-COMP( 1989, b2m, 	0, 	 	0,		b2m, 		b2m, 		b2m, 	 b2m,  	"BNPO",					 "Bashkiria-2M",	 GAME_NOT_WORKING)
-COMP( 1989, b2mrom,	b2m, 	0,		b2mrom,		b2m, 		b2m, 	 b2m,  	"BNPO",					 "Bashkiria-2M ROM-disk",	 GAME_NOT_WORKING)
+COMP( 1989, b2m, 	0, 	 	0,		b2m, 		b2m, 		b2m, 	 b2m,  	"BNPO",					 "Bashkiria-2M",	 0)
+COMP( 1989, b2mrom,	b2m, 	0,		b2mrom,		b2m, 		b2m, 	 b2m,  	"BNPO",					 "Bashkiria-2M ROM-disk",	 0)
+
 

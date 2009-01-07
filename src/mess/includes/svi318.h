@@ -11,11 +11,13 @@
 
 #include "machine/8255ppi.h"
 #include "machine/ins8250.h"
+#include "machine/wd17xx.h"
 
 /*----------- defined in machine/svi318.c -----------*/
 
 extern const ppi8255_interface svi318_ppi8255_interface;
 extern const ins8250_interface svi318_ins8250_interface[2];
+extern const wd17xx_interface svi_wd17xx_interface;
 
 DRIVER_INIT( svi318 );
 MACHINE_START( svi318_pal );
@@ -43,7 +45,7 @@ WRITE8_DEVICE_HANDLER( svi318_ppi_w );
 WRITE8_HANDLER( svi318_psg_port_b_w );
 READ8_HANDLER( svi318_psg_port_a_r );
 
-int svi318_cassette_present(int id);
+int svi318_cassette_present(running_machine *machine, int id);
 
 DEVICE_IMAGE_LOAD( svi318_floppy );
 

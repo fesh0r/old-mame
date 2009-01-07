@@ -16,10 +16,10 @@ Todo:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/gamecom.h"
 #include "cpu/sm8500/sm8500.h"
 #include "devices/cartslot.h"
+#include "gamecom.lh"
 
 static ADDRESS_MAP_START(gamecom_mem_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x03FF )  AM_READWRITE( gamecom_internal_r, gamecom_internal_w ) /* CPU internal register file and RAM */
@@ -93,22 +93,22 @@ static MACHINE_DRIVER_START( gamecom )
 	MDRV_CPU_ADD( "main", SM8500, XTAL_11_0592MHz/2 )   /* actually it's an sm8521 microcontroller containing an sm8500 cpu */
 	MDRV_CPU_PROGRAM_MAP( gamecom_mem_map, 0 )
 	MDRV_CPU_CONFIG( gamecom_cpu_config )
-	MDRV_CPU_VBLANK_INT_HACK(gamecom_scanline, 200)
 
 	MDRV_SCREEN_ADD("main", LCD)
 	MDRV_SCREEN_REFRESH_RATE( 59.732155 )
 	MDRV_SCREEN_VBLANK_TIME(0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET( gamecom )
 
 	/* video hardware */
-	MDRV_VIDEO_START( generic_bitmapped )
+	MDRV_VIDEO_START( gamecom )
 	MDRV_VIDEO_UPDATE( generic_bitmapped )
 
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 200, 200 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 199, 0, 159 )
+	MDRV_DEFAULT_LAYOUT(layout_gamecom)
 	MDRV_GFXDECODE( gamecom )
 	MDRV_PALETTE_LENGTH( GAMECOM_PALETTE_LENGTH )
 	MDRV_PALETTE_INIT( gamecom )
@@ -121,31 +121,14 @@ static MACHINE_DRIVER_START( gamecom )
 	MDRV_SOUND_ROUTE( 0, "left", 0.50 )
 	MDRV_SOUND_ROUTE( 1, "right", 0.50 )
 #endif
+
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin,tgc")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_START(gamecom_cart)
+	MDRV_CARTSLOT_LOAD(gamecom_cart)
 MACHINE_DRIVER_END
-
-static void gamecom_cartslot_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info ) {
-	switch( state ) {
-	case MESS_DEVINFO_INT_COUNT:
-		info->i = 1;
-		break;
-	case MESS_DEVINFO_PTR_START:
-		info->start = DEVICE_START_NAME(gamecom_cart);
-		break;
-	case MESS_DEVINFO_PTR_LOAD:
-		info->load = DEVICE_IMAGE_LOAD_NAME(gamecom_cart);
-		break;
-	case MESS_DEVINFO_STR_FILE_EXTENSIONS:
-		strcpy(info->s = device_temp_str(), "bin,tgc");
-		break;
-	default:
-		cartslot_device_getinfo( devclass, state, info );
-		break;
-	}
-}
-
-static SYSTEM_CONFIG_START( gamecom )
-	CONFIG_DEVICE( gamecom_cartslot_getinfo )
-SYSTEM_CONFIG_END
 
 ROM_START( gamecom )
 	ROM_REGION( 0x2000, "main", 0 )
@@ -155,6 +138,6 @@ ROM_START( gamecom )
 ROM_END
 
 /*    YEAR  NAME     PARENT COMPAT MACHINE  INPUT    INIT CONFIG   COMPANY  FULLNAME */
-CONS( 1997, gamecom, 0,     0,     gamecom, gamecom, 0,   gamecom, "Tiger", "Game.com", GAME_NOT_WORKING )
+CONS( 1997, gamecom, 0,     0,     gamecom, gamecom, 0,   0, "Tiger", "Game.com", GAME_NOT_WORKING )
 
 

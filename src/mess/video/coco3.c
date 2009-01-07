@@ -790,6 +790,11 @@ static STATE_POSTLOAD( coco3_video_postload )
 }
 
 
+const UINT8 *get_video_ram_coco3(running_machine *machine,int scanline)
+{
+	device_config *sam = (device_config*)device_list_find_by_tag( machine->config->devicelist, SAM6883_GIME, "sam");
+	return sam_m6847_get_video_ram(sam,scanline);
+}
 
 static void internal_video_start_coco3(running_machine *machine, m6847_type type)
 {
@@ -811,7 +816,7 @@ static void internal_video_start_coco3(running_machine *machine, m6847_type type
 
 	/* incidentals */
 	paletteram = video->palette_ram;
-	memory_set_bankptr(10, paletteram);
+	memory_set_bankptr(machine, 10, paletteram);
 
 	/* font */
 	rom = memory_region(machine, "main");
@@ -827,14 +832,14 @@ static void internal_video_start_coco3(running_machine *machine, m6847_type type
 	}
 
 	/* GIME field sync timer */
-	video->gime_fs_timer = timer_alloc(gime_fs, NULL);
+	video->gime_fs_timer = timer_alloc(machine, gime_fs, NULL);
 
 	/* initialize the CoCo video code */
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.type = type;
 	cfg.cpu0_timing_factor = 4;
 	cfg.get_attributes = coco_get_attributes;
-	cfg.get_video_ram = sam_m6847_get_video_ram;
+	cfg.get_video_ram = get_video_ram_coco3;
 	cfg.horizontal_sync_callback = coco3_horizontal_sync_callback;
 	cfg.field_sync_callback = coco3_field_sync_callback;
 	cfg.custom_palette = video->palette_colors;
@@ -843,10 +848,10 @@ static void internal_video_start_coco3(running_machine *machine, m6847_type type
 	m6847_init(machine, &cfg);
 
 	/* save state stuff */
-	state_save_register_global_array(video->palette_ram);
-	state_save_register_global(video->legacy_video);
-	state_save_register_global(video->top_border_scanlines);
-	state_save_register_global(video->display_scanlines);
+	state_save_register_global_array(machine, video->palette_ram);
+	state_save_register_global(machine, video->legacy_video);
+	state_save_register_global(machine, video->top_border_scanlines);
+	state_save_register_global(machine, video->display_scanlines);
 	state_save_register_postload(machine, coco3_video_postload, NULL);
 }
 

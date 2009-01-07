@@ -8,6 +8,16 @@
 #define PET_H_
 
 #include "video/mc6845.h"
+#include "machine/6522via.h"
+#include "devices/cartslot.h"
+
+typedef struct _pet_state pet_state;
+struct _pet_state
+{
+	int pet_basic1; /* basic version 1 for quickloader */
+	int superpet;
+	int cbm8096;
+};
 
 /*----------- defined in video/pet.c -----------*/
 
@@ -24,6 +34,7 @@ MC6845_ON_DE_CHANGED( pet_display_enable_changed );
 /*----------- defined in machine/pet.c -----------*/
 
 extern int pet_font;
+extern const via6522_interface pet_via;
 
 extern UINT8 *pet_memory;
 extern UINT8 *pet_videoram;
@@ -42,8 +53,7 @@ DRIVER_INIT( superpet );
 MACHINE_RESET( pet );
 INTERRUPT_GEN( pet_frame_interrupt );
 
-void pet_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
-void pet4_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
-
+MACHINE_DRIVER_EXTERN( pet_cartslot );
+MACHINE_DRIVER_EXTERN( pet4_cartslot );
 
 #endif /* PET_H_ */

@@ -93,7 +93,7 @@ static TIMER_CALLBACK( update_leds )
 
 static MACHINE_START( mk2 )
 {
-	timer_pulse(ATTOTIME_IN_HZ(60), NULL, 0, update_leds);
+	timer_pulse(machine, ATTOTIME_IN_HZ(60), NULL, 0, update_leds);
 }
 
 
@@ -153,7 +153,7 @@ static void mk2_write_b(const device_config *device, UINT8 newdata, UINT8 olddat
 		dac_data_w(0,newdata&1?80:0);
 	mk2_led[4]|=newdata;
 
-	cpunum_set_input_line( device->machine, 0, M6502_IRQ_LINE, (newdata & 0x80) ? CLEAR_LINE : ASSERT_LINE );
+	cpu_set_input_line( device->machine->cpu[0], M6502_IRQ_LINE, (newdata & 0x80) ? CLEAR_LINE : ASSERT_LINE );
 }
 
 
@@ -170,7 +170,7 @@ static MACHINE_DRIVER_START( mk2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", M6502, 1000000)        /* 6504 */
 	MDRV_CPU_PROGRAM_MAP(mk2_mem, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( mk2 )
 

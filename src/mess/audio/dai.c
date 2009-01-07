@@ -14,10 +14,9 @@
 #include "machine/8255ppi.h"
 #include "includes/dai.h"
 #include "streams.h"
-#include "deprecat.h"
 
-static void *dai_sh_start(int clock, const custom_sound_interface *config);
-static void dai_sh_update(void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length);
+static CUSTOM_START( dai_sh_start );
+static STREAM_UPDATE( dai_sh_update );
 
 static sound_stream *mixer_channel;
 
@@ -51,31 +50,31 @@ void dai_set_input(int index, int state)
 }
 
 
-static void *dai_sh_start(int clock, const custom_sound_interface *config)
+static CUSTOM_START( dai_sh_start )
 {
 	dai_input[0] = dai_input[1] = dai_input[2] = 0;
 
-	mixer_channel = stream_create(0, 2, Machine->sample_rate, 0, dai_sh_update);
+	mixer_channel = stream_create(device, 0, 2, device->machine->sample_rate, 0, dai_sh_update);
 	
-	logerror ("sample rate: %d\n", Machine->sample_rate);
+	logerror ("sample rate: %d\n", device->machine->sample_rate);
 
 	return (void *) ~0;
 }
 
-static void dai_sh_update(void *param,stream_sample_t **inputs, stream_sample_t **buffer,int length)
+static STREAM_UPDATE( dai_sh_update )
 {
 	INT16 channel_0_signal;
 	INT16 channel_1_signal;
 	INT16 channel_2_signal;
 
-	stream_sample_t *sample_left = buffer[0];
-	stream_sample_t *sample_right = buffer[1];
+	stream_sample_t *sample_left = outputs[0];
+	stream_sample_t *sample_right = outputs[1];
 
 	channel_0_signal = dai_input[0] ? dai_osc_volume_table[dai_osc_volume[0]] : -dai_osc_volume_table[dai_osc_volume[0]];
 	channel_1_signal = dai_input[1] ? dai_osc_volume_table[dai_osc_volume[1]] : -dai_osc_volume_table[dai_osc_volume[1]];
 	channel_2_signal = dai_input[2] ? dai_osc_volume_table[dai_osc_volume[2]] : -dai_osc_volume_table[dai_osc_volume[2]];
 
-	while (length--)
+	while (samples--)
 	{
 		*sample_left = 0;
 		*sample_right = 0;
@@ -94,7 +93,7 @@ static void dai_sh_update(void *param,stream_sample_t **inputs, stream_sample_t 
 
 		/* noise channel */
 
-		*sample_left += mame_rand(Machine)&0x01 ? dai_noise_volume_table[dai_noise_volume] : -dai_noise_volume_table[dai_noise_volume];
+		*sample_left += mame_rand(device->machine)&0x01 ? dai_noise_volume_table[dai_noise_volume] : -dai_noise_volume_table[dai_noise_volume];
 
 		sample_left++;
 		sample_right++;

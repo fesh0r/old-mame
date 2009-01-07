@@ -6,6 +6,41 @@
 
 #include "machine/hd63450.h"
 
+typedef struct _hd63450_regs hd63450_regs;
+struct _hd63450_regs
+{  // offsets in bytes
+	unsigned char csr;  // [00] Channel status register (R/W)
+	unsigned char cer;  // [01] Channel error register (R)
+	unsigned char dcr;  // [04] Device control register (R/W)
+	unsigned char ocr;  // [05] Operation control register (R/W)
+	unsigned char scr;  // [06] Sequence control register (R/W)
+	unsigned char ccr;  // [07] Channel control register (R/W)
+	unsigned short mtc;  // [0a,0b]  Memory Transfer Counter (R/W)
+	unsigned long mar;  // [0c-0f]  Memory Address Register (R/W)
+	unsigned long dar;  // [14-17]  Device Address Register (R/W)
+	unsigned short btc;  // [1a,1b]  Base Transfer Counter (R/W)
+	unsigned long bar;  // [1c-1f]  Base Address Register (R/W)
+	unsigned char niv;  // [25]  Normal Interrupt Vector (R/W)
+	unsigned char eiv;  // [27]  Error Interrupt Vector (R/W)
+	unsigned char mfc;  // [29]  Memory Function Code (R/W)
+	unsigned char cpr;  // [2d]  Channel Priority Register (R/W)
+	unsigned char dfc;  // [31]  Device Function Code (R/W)
+	unsigned char bfc;  // [39]  Base Function Code (R/W)
+	unsigned char gcr;  // [3f]  General Control Register (R/W)
+};
+
+typedef struct _hd63450_t hd63450_t;
+struct _hd63450_t
+{
+    hd63450_regs reg[4];
+	emu_timer* timer[4];  // for timing data reading/writing each channel
+	attotime clock[4];
+	attotime burst_clock[4];
+	int in_progress[4];  // if a channel is in use
+	int transfer_size[4];
+	int halted[4];  // non-zero if a channel has been halted, and can be continued later.
+	const hd63450_intf* intf;
+};
 
 static TIMER_CALLBACK(dma_transfer_timer);
 static void dma_transfer_abort(const device_config* device, int channel);
@@ -23,9 +58,11 @@ DEVICE_START(hd63450)
 	// Initialise timers and registers
 	for(x=0;x<4;x++)
 	{
-		dmac->timer[x] = timer_alloc(dma_transfer_timer, (void*)device);
+		dmac->timer[x] = timer_alloc(device->machine, dma_transfer_timer, (void*)device);
 		dmac->reg[x].niv = 0x0f;  // defaults?
 		dmac->reg[x].eiv = 0x0f;
+		dmac->clock[x] = dmac->intf->clock[x];
+		dmac->burst_clock[x] = dmac->intf->burst_clock[x];
 	}
 	return DEVICE_START_OK;
 }
@@ -195,32 +232,42 @@ void hd63450_write(const device_config* device, int offset, int data, UINT16 mem
 
 void dma_transfer_start(const device_config* device, int channel, int dir)
 {
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	hd63450_t* dmac = device->token;
 	dmac->in_progress[channel] = 1;
 	dmac->reg[channel].csr &= ~0xe0;
 	dmac->reg[channel].csr |= 0x08;  // Channel active
 	dmac->reg[channel].csr &= ~0x30;  // Reset Error and Normal termination bits
-	if(dmac->reg[channel].btc > 0)
+	if((dmac->reg[channel].ocr & 0x0c) != 0x00)  // Array chain or Link array chain
 	{
-		dmac->reg[channel].mar = program_read_word(dmac->reg[channel].bar) << 16;
-		dmac->reg[channel].mar |= program_read_word(dmac->reg[channel].bar+2);
-		dmac->reg[channel].mtc = program_read_word(dmac->reg[channel].bar+4);
-		dmac->reg[channel].btc--;
+		dmac->reg[channel].mar = memory_read_word(space,dmac->reg[channel].bar) << 16;
+		dmac->reg[channel].mar |= memory_read_word(space,dmac->reg[channel].bar+2);
+		dmac->reg[channel].mtc = memory_read_word(space,dmac->reg[channel].bar+4);
+		if(dmac->reg[channel].btc > 0)
+			dmac->reg[channel].btc--;
 	}
 
 	// Burst transfers will halt the CPU until the transfer is complete
 	if((dmac->reg[channel].dcr & 0xc0) == 0x00)  // Burst transfer
 	{
-		cpunum_set_input_line(device->machine, dmac->intf->cpu,INPUT_LINE_HALT,ASSERT_LINE);
-		timer_adjust_periodic(dmac->timer[channel], attotime_zero, channel, dmac->intf->burst_clock[channel]);
+		cpu_set_input_line(device->machine->cpu[dmac->intf->cpu],INPUT_LINE_HALT,ASSERT_LINE);
+		timer_adjust_periodic(dmac->timer[channel], attotime_zero, channel, dmac->burst_clock[channel]);
 	}
 	else
-		timer_adjust_periodic(dmac->timer[channel], ATTOTIME_IN_USEC(500), channel, dmac->intf->clock[channel]);
-
+		timer_adjust_periodic(dmac->timer[channel], ATTOTIME_IN_USEC(500), channel, dmac->clock[channel]);
 
 	dmac->transfer_size[channel] = dmac->reg[channel].mtc;
 
 	logerror("DMA: Transfer begins: size=0x%08x\n",dmac->transfer_size[channel]);
+}
+
+void hd63450_set_timer(const device_config* device, int channel, attotime tm)
+{
+	hd63450_t* dmac = device->token;
+
+	dmac->clock[channel] = tm;
+	if(dmac->in_progress[channel] != 0)
+		timer_adjust_periodic(dmac->timer[channel], attotime_zero, channel, dmac->clock[channel]);
 }
 
 static TIMER_CALLBACK(dma_transfer_timer)
@@ -255,12 +302,13 @@ static void dma_transfer_continue(const device_config* device, int channel)
 	if(dmac->halted[channel] != 0)
 	{
 		dmac->halted[channel] = 0;
-		timer_adjust_periodic(dmac->timer[channel], attotime_zero, channel, dmac->intf->clock[channel]);
+		timer_adjust_periodic(dmac->timer[channel], attotime_zero, channel, dmac->clock[channel]);
 	}
 }
 
 void hd63450_single_transfer(const device_config* device, int x)
 {
+	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	int data;
 	int datasize = 1;
 	hd63450_t* dmac = device->token;
@@ -271,10 +319,10 @@ void hd63450_single_transfer(const device_config* device, int x)
 			{
 				if(dmac->intf->dma_read[x])
 				{
-					data = dmac->intf->dma_read[x](dmac->reg[x].mar);
+					data = dmac->intf->dma_read[x](device->machine,dmac->reg[x].mar);
 					if(data == -1)
 						return;  // not ready to recieve data
-					program_write_byte(dmac->reg[x].mar,data);
+					memory_write_byte(space,dmac->reg[x].mar,data);
 					datasize = 1;
 				}
 				else
@@ -282,25 +330,25 @@ void hd63450_single_transfer(const device_config* device, int x)
 					switch(dmac->reg[x].ocr & 0x30)  // operation size
 					{
 					case 0x00:  // 8 bit
-						data = program_read_byte(dmac->reg[x].dar);  // read from device address
-						program_write_byte(dmac->reg[x].mar, data);  // write to memory address
+						data = memory_read_byte(space,dmac->reg[x].dar);  // read from device address
+						memory_write_byte(space,dmac->reg[x].mar, data);  // write to memory address
 						datasize = 1;
 						break;
 					case 0x10:  // 16 bit
-						data = program_read_word(dmac->reg[x].dar);  // read from device address
-						program_write_word(dmac->reg[x].mar, data);  // write to memory address
+						data = memory_read_word(space,dmac->reg[x].dar);  // read from device address
+						memory_write_word(space,dmac->reg[x].mar, data);  // write to memory address
 						datasize = 2;
 						break;
 					case 0x20:  // 32 bit
-						data = program_read_word(dmac->reg[x].dar) << 16;  // read from device address
-						data |= program_read_word(dmac->reg[x].dar+2);
-						program_write_word(dmac->reg[x].mar, (data & 0xffff0000) >> 16);  // write to memory address
-						program_write_word(dmac->reg[x].mar+2, data & 0x0000ffff);
+						data = memory_read_word(space,dmac->reg[x].dar) << 16;  // read from device address
+						data |= memory_read_word(space,dmac->reg[x].dar+2);
+						memory_write_word(space,dmac->reg[x].mar, (data & 0xffff0000) >> 16);  // write to memory address
+						memory_write_word(space,dmac->reg[x].mar+2, data & 0x0000ffff);
 						datasize = 4;
 						break;
 					case 0x30:  // 8 bit packed (?)
-						data = program_read_byte(dmac->reg[x].dar);  // read from device address
-						program_write_byte(dmac->reg[x].mar, data);  // write to memory address
+						data = memory_read_byte(space,dmac->reg[x].dar);  // read from device address
+						memory_write_byte(space,dmac->reg[x].mar, data);  // write to memory address
 						datasize = 1;
 						break;
 					}
@@ -311,8 +359,8 @@ void hd63450_single_transfer(const device_config* device, int x)
 			{
 				if(dmac->intf->dma_write[x])
 				{
-					data = program_read_byte(dmac->reg[x].mar);
-					dmac->intf->dma_write[x](dmac->reg[x].mar,data);
+					data = memory_read_byte(space,dmac->reg[x].mar);
+					dmac->intf->dma_write[x](device->machine, dmac->reg[x].mar,data);
 					datasize = 1;
 				}
 				else
@@ -320,25 +368,25 @@ void hd63450_single_transfer(const device_config* device, int x)
 					switch(dmac->reg[x].ocr & 0x30)  // operation size
 					{
 					case 0x00:  // 8 bit
-						data = program_read_byte(dmac->reg[x].mar);  // read from memory address
-						program_write_byte(dmac->reg[x].dar, data);  // write to device address
+						data = memory_read_byte(space,dmac->reg[x].mar);  // read from memory address
+						memory_write_byte(space,dmac->reg[x].dar, data);  // write to device address
 						datasize = 1;
 						break;
 					case 0x10:  // 16 bit
-						data = program_read_word(dmac->reg[x].mar);  // read from memory address
-						program_write_word(dmac->reg[x].dar, data);  // write to device address
+						data = memory_read_word(space,dmac->reg[x].mar);  // read from memory address
+						memory_write_word(space,dmac->reg[x].dar, data);  // write to device address
 						datasize = 2;
 						break;
 					case 0x20:  // 32 bit
-						data = program_read_word(dmac->reg[x].mar) << 16;  // read from memory address
-						data |= program_read_word(dmac->reg[x].mar+2);  // read from memory address
-						program_write_word(dmac->reg[x].dar, (data & 0xffff0000) >> 16);  // write to device address
-						program_write_word(dmac->reg[x].dar+2, data & 0x0000ffff);  // write to device address
+						data = memory_read_word(space,dmac->reg[x].mar) << 16;  // read from memory address
+						data |= memory_read_word(space,dmac->reg[x].mar+2);  // read from memory address
+						memory_write_word(space,dmac->reg[x].dar, (data & 0xffff0000) >> 16);  // write to device address
+						memory_write_word(space,dmac->reg[x].dar+2, data & 0x0000ffff);  // write to device address
 						datasize = 4;
 						break;
 					case 0x30:  // 8 bit packed (?)
-						data = program_read_byte(dmac->reg[x].mar);  // read from memory address
-						program_write_byte(dmac->reg[x].dar, data);  // write to device address
+						data = memory_read_byte(space,dmac->reg[x].mar);  // read from memory address
+						memory_write_byte(space,dmac->reg[x].dar, data);  // write to device address
 						datasize = 1;
 						break;
 					}
@@ -366,25 +414,24 @@ void hd63450_single_transfer(const device_config* device, int x)
 			{
 				// End of transfer
 				logerror("DMA#%i: End of transfer\n",x);
-				if(dmac->reg[x].btc > 0)
+				if((dmac->reg[x].ocr & 0x0c) != 0 && dmac->reg[x].btc > 0)
 				{
 					dmac->reg[x].btc--;
 					dmac->reg[x].bar+=6;
-					dmac->reg[x].mar = program_read_word(dmac->reg[x].bar) << 16;
-					dmac->reg[x].mar |= program_read_word(dmac->reg[x].bar+2);
-					dmac->reg[x].mtc = program_read_word(dmac->reg[x].bar+4);
+					dmac->reg[x].mar = memory_read_word(space,dmac->reg[x].bar) << 16;
+					dmac->reg[x].mar |= memory_read_word(space,dmac->reg[x].bar+2);
+					dmac->reg[x].mtc = memory_read_word(space,dmac->reg[x].bar+4);
 					return;
 				}
 				timer_adjust_oneshot(dmac->timer[x], attotime_zero, 0);
 				dmac->in_progress[x] = 0;
-				dmac->reg[x].mtc = dmac->transfer_size[x];
 				dmac->reg[x].csr |= 0xe0;  // channel operation complete, block transfer complete
 				dmac->reg[x].csr &= ~0x08;  // channel no longer active
 				if((dmac->reg[x].dcr & 0xc0) == 0x00)  // Burst transfer
-					cpunum_set_input_line(device->machine, dmac->intf->cpu,INPUT_LINE_HALT,CLEAR_LINE);
+					cpu_set_input_line(device->machine->cpu[dmac->intf->cpu],INPUT_LINE_HALT,CLEAR_LINE);
 
 				if(dmac->intf->dma_end)
-					dmac->intf->dma_end(x,dmac->reg[x].ccr & 0x08);
+					dmac->intf->dma_end(device->machine,x,dmac->reg[x].ccr & 0x08);
 			}
 		}
 }
@@ -424,11 +471,11 @@ DEVICE_GET_INFO(hd63450)
 		case DEVINFO_FCT_RESET:							/*info->reset = DEVICE_RESET_NAME(hd63450);*/	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Hitachi HD63450";				break;
-		case DEVINFO_STR_FAMILY:						info->s = "DMA Controller";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright the MESS Team"; 		break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Hitachi HD63450");			break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "DMA Controller");			break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team");	break;
 	}
 }
 

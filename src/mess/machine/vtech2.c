@@ -56,13 +56,13 @@ static WRITE8_HANDLER ( mwa_bank4 ) { mwa_bank(3,offset,data); }
 static int mra_bank(running_machine *machine, int bank, int offs);
 
 /* wrappers for bank #1 to #4 */
-static READ8_HANDLER ( mra_bank1) { return mra_bank(machine,0,offset); }
-static READ8_HANDLER ( mra_bank2) { return mra_bank(machine,1,offset); }
-static READ8_HANDLER ( mra_bank3) { return mra_bank(machine,2,offset); }
-static READ8_HANDLER ( mra_bank4) { return mra_bank(machine,3,offset); }
+static READ8_HANDLER ( mra_bank1) { return mra_bank(space->machine,0,offset); }
+static READ8_HANDLER ( mra_bank2) { return mra_bank(space->machine,1,offset); }
+static READ8_HANDLER ( mra_bank3) { return mra_bank(space->machine,2,offset); }
+static READ8_HANDLER ( mra_bank4) { return mra_bank(space->machine,3,offset); }
 
 /* read banked memory (handle memory mapped i/o) */
-static const read8_machine_func mra_bank_soft[4] =
+static const read8_space_func mra_bank_soft[4] =
 {
     mra_bank1,  /* mapped in 0000-3fff */
     mra_bank2,  /* mapped in 4000-7fff */
@@ -71,7 +71,7 @@ static const read8_machine_func mra_bank_soft[4] =
 };
 
 /* write banked memory (handle memory mapped i/o and videoram) */
-static const write8_machine_func mwa_bank_soft[4] =
+static const write8_space_func mwa_bank_soft[4] =
 {
     mwa_bank1,  /* mapped in 0000-3fff */
     mwa_bank2,  /* mapped in 4000-7fff */
@@ -80,7 +80,7 @@ static const write8_machine_func mwa_bank_soft[4] =
 };
 
 /* read banked memory (plain ROM/RAM) */
-static const read8_machine_func mra_bank_hard[4] =
+static const read8_space_func mra_bank_hard[4] =
 {
     SMH_BANK1,  /* mapped in 0000-3fff */
     SMH_BANK2,  /* mapped in 4000-7fff */
@@ -89,7 +89,7 @@ static const read8_machine_func mra_bank_hard[4] =
 };
 
 /* write banked memory (plain ROM/RAM) */
-static const write8_machine_func mwa_bank_hard[4] =
+static const write8_space_func mwa_bank_hard[4] =
 {
     SMH_BANK1,  /* mapped in 0000-3fff */
     SMH_BANK2,  /* mapped in 4000-7fff */
@@ -124,7 +124,7 @@ static void laser_machine_init(running_machine *machine, int bank_mask, int vide
 	logerror("laser_machine_init(): bank mask $%04X, video %d [$%05X]\n", laser_bank_mask, laser_video_bank, laser_video_bank * 0x04000);
 
 	for (i = 0; i < sizeof(laser_bank) / sizeof(laser_bank[0]); i++)
-		laser_bank_select_w(machine, i, 0);
+		laser_bank_select_w(cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), i, 0);
 }
 
 MACHINE_RESET( laser350 )
@@ -153,8 +153,8 @@ WRITE8_HANDLER( laser_bank_select_w )
         "RAM #0","RAM #1","RAM #2","RAM #3",
         "RAM #4","RAM #5","RAM #6","RAM #7/Video RAM hi",
         "ext ROM #0","ext ROM #1","ext ROM #2","ext ROM #3"};
-	read8_machine_func read_handler;
-	write8_machine_func write_handler;
+	read8_space_func read_handler;
+	write8_space_func write_handler;
 
 	offset %= 4;
     data &= 15;
@@ -172,7 +172,7 @@ WRITE8_HANDLER( laser_bank_select_w )
 		}
 		else
 		{
-			memory_set_bankptr(offset+1, &mem[0x4000*laser_bank[offset]]);
+			memory_set_bankptr(space->machine, offset+1, &mem[0x4000*laser_bank[offset]]);
 			if( laser_bank_mask & (1 << data) )
 			{
 				read_handler = mra_bank_hard[offset];
@@ -191,8 +191,8 @@ WRITE8_HANDLER( laser_bank_select_w )
 				write_handler = SMH_NOP;
 			}
 		}
-		memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, offset * 0x4000, offset * 0x4000 + 0x3fff, 0, 0, read_handler);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, offset * 0x4000, offset * 0x4000 + 0x3fff, 0, 0, write_handler);
+		memory_install_read8_handler(cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM), offset * 0x4000, offset * 0x4000 + 0x3fff, 0, 0, read_handler);
+		memory_install_write8_handler(cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM), offset * 0x4000, offset * 0x4000 + 0x3fff, 0, 0, write_handler);
     }
 }
 
@@ -372,38 +372,38 @@ DEVICE_IMAGE_LOAD( laser_floppy )
 	return INIT_PASS;
 }
 
-static const device_config *laser_file(void)
+static const device_config *laser_file(running_machine *machine)
 {
-	return image_from_devtype_and_index(IO_FLOPPY, laser_drive);
+	return image_from_devtype_and_index(machine, IO_FLOPPY, laser_drive);
 }
 
-static void laser_get_track(void)
+static void laser_get_track(running_machine *machine)
 {
     sprintf(laser_frame_message, "#%d get track %02d", laser_drive, laser_track_x2[laser_drive]/2);
     laser_frame_time = 30;
     /* drive selected or and image file ok? */
-    if( laser_drive >= 0 && laser_file() != NULL )
+    if( laser_drive >= 0 && laser_file(machine) != NULL )
     {
         int size, offs;
         size = TRKSIZE_VZ;
         offs = TRKSIZE_VZ * laser_track_x2[laser_drive]/2;
-        image_fseek(laser_file(), offs, SEEK_SET);
-        size = image_fread(laser_file(), laser_fdc_data, size);
+        image_fseek(laser_file(machine), offs, SEEK_SET);
+        size = image_fread(laser_file(machine), laser_fdc_data, size);
         logerror("get track @$%05x $%04x bytes\n", offs, size);
     }
     laser_fdc_offs = 0;
     laser_fdc_write = 0;
 }
 
-static void laser_put_track(void)
+static void laser_put_track(running_machine *machine)
 {
     /* drive selected and image file ok? */
-    if( laser_drive >= 0 && laser_file() != NULL )
+    if( laser_drive >= 0 && laser_file(machine) != NULL )
     {
         int size, offs;
         offs = TRKSIZE_VZ * laser_track_x2[laser_drive]/2;
-        image_fseek(laser_file(), offs + laser_fdc_start, SEEK_SET);
-        size = image_fwrite(laser_file(), &laser_fdc_data[laser_fdc_start], laser_fdc_write);
+        image_fseek(laser_file(machine), offs + laser_fdc_start, SEEK_SET);
+        size = image_fwrite(laser_file(machine), &laser_fdc_data[laser_fdc_start], laser_fdc_write);
         logerror("put track @$%05X+$%X $%04X/$%04X bytes\n", offs, laser_fdc_start, size, laser_fdc_write);
     }
 }
@@ -469,7 +469,7 @@ WRITE8_HANDLER( laser_fdc_w )
         {
             laser_drive = drive;
             if( laser_drive >= 0 )
-                laser_get_track();
+                laser_get_track(space->machine);
         }
         if( laser_drive >= 0 )
         {
@@ -482,7 +482,7 @@ WRITE8_HANDLER( laser_fdc_w )
                     laser_track_x2[laser_drive]--;
                 logerror("laser_fdc_w(%d) $%02X drive %d: stepout track #%2d.%d\n", offset, data, laser_drive, laser_track_x2[laser_drive]/2,5*(laser_track_x2[laser_drive]&1));
                 if( (laser_track_x2[laser_drive] & 1) == 0 )
-                    laser_get_track();
+                    laser_get_track(space->machine);
             }
             else
             if( (PHI0(data) && !(PHI1(data) || PHI2(data) || PHI3(data)) && PHI3(laser_fdc_latch)) ||
@@ -494,7 +494,7 @@ WRITE8_HANDLER( laser_fdc_w )
                     laser_track_x2[laser_drive]++;
                 logerror("laser_fdc_w(%d) $%02X drive %d: stepin track #%2d.%d\n", offset, data, laser_drive, laser_track_x2[laser_drive]/2,5*(laser_track_x2[laser_drive]&1));
                 if( (laser_track_x2[laser_drive] & 1) == 0 )
-                    laser_get_track();
+                    laser_get_track(space->machine);
             }
             if( (data & 0x40) == 0 )
             {
@@ -538,7 +538,7 @@ WRITE8_HANDLER( laser_fdc_w )
                 {
                     /* data written to track before? */
                     if( laser_fdc_write )
-                        laser_put_track();
+                        laser_put_track(space->machine);
                 }
                 laser_fdc_bits = 8;
                 laser_fdc_write = 0;

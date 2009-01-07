@@ -81,6 +81,8 @@ struct _crtc_ega_t
 	emu_timer *hsync_off_timer;
 	emu_timer *vsync_on_timer;
 	emu_timer *vsync_off_timer;
+	emu_timer *vblank_on_timer;
+	emu_timer *vblank_off_timer;
 	emu_timer *light_pen_latch_timer;
 
 	/* computed values - do NOT state save these! */
@@ -104,6 +106,7 @@ static void recompute_parameters(crtc_ega_t *crtc_ega, int postload);
 static void update_de_changed_timer(crtc_ega_t *crtc_ega);
 static void update_hsync_changed_timers(crtc_ega_t *crtc_ega);
 static void update_vsync_changed_timers(crtc_ega_t *crtc_ega);
+static void update_vblank_changed_timers(crtc_ega_t *crtc_ega);
 
 
 /* makes sure that the passed in device is the right type */
@@ -158,7 +161,7 @@ WRITE8_DEVICE_HANDLER( crtc_ega_register_w )
 {
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
-	if (LOG)  logerror("CRTC_EGA PC %04x: reg 0x%02x = 0x%02x\n", activecpu_get_pc(), crtc_ega->register_address_latch, data);
+	if (LOG)  logerror("CRTC_EGA PC %04x: reg 0x%02x = 0x%02x\n", cpu_get_pc(device->machine->cpu[0]), crtc_ega->register_address_latch, data);
 
 	switch (crtc_ega->register_address_latch)
 	{
@@ -306,6 +309,7 @@ static void recompute_parameters(crtc_ega_t *crtc_ega, int postload)
 			update_de_changed_timer(crtc_ega);
 			update_hsync_changed_timers(crtc_ega);
 			update_vsync_changed_timers(crtc_ega);
+			update_vblank_changed_timers(crtc_ega);
 		}
 	}
 }
@@ -401,6 +405,16 @@ static void update_vsync_changed_timers(crtc_ega_t *crtc_ega)
 }
 
 
+static void update_vblank_changed_timers(crtc_ega_t *crtc_ega)
+{
+	if (crtc_ega->has_valid_parameters && (crtc_ega->vblank_on_timer != NULL))
+	{
+		timer_adjust_oneshot(crtc_ega->vblank_on_timer,  video_screen_get_time_until_pos(crtc_ega->screen, crtc_ega->vert_disp_end,  crtc_ega->hsync_on_pos), 0);
+		timer_adjust_oneshot(crtc_ega->vblank_off_timer, video_screen_get_time_until_pos(crtc_ega->screen, 0, crtc_ega->hsync_off_pos), 0);
+	}
+}
+
+
 static TIMER_CALLBACK( de_changed_timer_cb )
 {
 	const device_config *device = ptr;
@@ -454,6 +468,30 @@ static TIMER_CALLBACK( hsync_off_timer_cb )
 	crtc_ega->intf->on_hsync_changed(device, FALSE);
 
 	update_hsync_changed_timers(crtc_ega);
+}
+
+
+static TIMER_CALLBACK( vblank_on_timer_cb )
+{
+	const device_config *device = ptr;
+	crtc_ega_t *crtc_ega = get_safe_token(device);
+
+	/* call the callback function -- we know it exists */
+	crtc_ega->intf->on_vblank_changed(device, TRUE);
+
+	update_vblank_changed_timers(crtc_ega);
+}
+
+
+static TIMER_CALLBACK( vblank_off_timer_cb )
+{
+	const device_config *device = ptr;
+	crtc_ega_t *crtc_ega = get_safe_token(device);
+
+	/* call the callback function -- we know it exists */
+	crtc_ega->intf->on_vblank_changed(device, FALSE);
+
+	update_vblank_changed_timers(crtc_ega);
 }
 
 
@@ -681,23 +719,22 @@ void crtc_ega_update(const device_config *device, bitmap_t *bitmap, const rectan
 static void common_start(const device_config *device, int device_type)
 {
 	crtc_ega_t *crtc_ega = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
 	assert(strlen(device->tag) < 20);
+	assert(device->clock > 0);
 
 	crtc_ega->intf = device->static_config;
 	crtc_ega->device_type = device_type;
 
 	if (crtc_ega->intf != NULL)
 	{
-		assert(crtc_ega->intf->clock > 0);
 		assert(crtc_ega->intf->hpixels_per_column > 0);
 
 		/* copy the initial parameters */
-		crtc_ega->clock = crtc_ega->intf->clock;
+		crtc_ega->clock = device->clock;
 		crtc_ega->hpixels_per_column = crtc_ega->intf->hpixels_per_column;
 
 		/* get the screen device */
@@ -706,66 +743,71 @@ static void common_start(const device_config *device, int device_type)
 
 		/* create the timers */
 		if (crtc_ega->intf->on_de_changed != NULL)
-			crtc_ega->de_changed_timer = timer_alloc(de_changed_timer_cb, (void *)device);
+			crtc_ega->de_changed_timer = timer_alloc(device->machine, de_changed_timer_cb, (void *)device);
 
 		if (crtc_ega->intf->on_hsync_changed != NULL)
 		{
-			crtc_ega->hsync_on_timer = timer_alloc(hsync_on_timer_cb, (void *)device);
-			crtc_ega->hsync_off_timer = timer_alloc(hsync_off_timer_cb, (void *)device);
+			crtc_ega->hsync_on_timer = timer_alloc(device->machine, hsync_on_timer_cb, (void *)device);
+			crtc_ega->hsync_off_timer = timer_alloc(device->machine, hsync_off_timer_cb, (void *)device);
 		}
 
 		if (crtc_ega->intf->on_vsync_changed != NULL)
 		{
-			crtc_ega->vsync_on_timer = timer_alloc(vsync_on_timer_cb, (void *)device);
-			crtc_ega->vsync_off_timer = timer_alloc(vsync_off_timer_cb, (void *)device);
+			crtc_ega->vsync_on_timer = timer_alloc(device->machine, vsync_on_timer_cb, (void *)device);
+			crtc_ega->vsync_off_timer = timer_alloc(device->machine, vsync_off_timer_cb, (void *)device);
+		}
+
+		if (crtc_ega->intf->on_vblank_changed != NULL)
+		{
+			crtc_ega->vblank_on_timer = timer_alloc(device->machine, vblank_on_timer_cb, (void *)device);
+			crtc_ega->vblank_off_timer = timer_alloc(device->machine, vblank_off_timer_cb, (void *)device);
 		}
 	}
 
-	crtc_ega->light_pen_latch_timer = timer_alloc(light_pen_latch_timer_cb, (void *)device);
+	crtc_ega->light_pen_latch_timer = timer_alloc(device->machine, light_pen_latch_timer_cb, (void *)device);
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, device_tags[device_type], device->tag);
 
 	state_save_register_postload(device->machine, crtc_ega_state_save_postload, crtc_ega);
 
-	state_save_register_item(unique_tag, 0, crtc_ega->clock);
-	state_save_register_item(unique_tag, 0, crtc_ega->hpixels_per_column);
-	state_save_register_item(unique_tag, 0, crtc_ega->register_address_latch);
-	state_save_register_item(unique_tag, 0, crtc_ega->horiz_char_total);
-	state_save_register_item(unique_tag, 0, crtc_ega->horiz_disp);
-	state_save_register_item(unique_tag, 0, crtc_ega->horiz_blank_start);
-	state_save_register_item(unique_tag, 0, crtc_ega->mode_control);
-	state_save_register_item(unique_tag, 0, crtc_ega->cursor_start_ras);
-	state_save_register_item(unique_tag, 0, crtc_ega->cursor_end_ras);
-	state_save_register_item(unique_tag, 0, crtc_ega->disp_start_addr);
-	state_save_register_item(unique_tag, 0, crtc_ega->cursor_addr);
-	state_save_register_item(unique_tag, 0, crtc_ega->light_pen_addr);
-	state_save_register_item(unique_tag, 0, crtc_ega->light_pen_latched);
-	state_save_register_item(unique_tag, 0, crtc_ega->cursor_state);
-	state_save_register_item(unique_tag, 0, crtc_ega->cursor_blink_count);
-	state_save_register_item(unique_tag, 0, crtc_ega->horiz_blank_end);
-	state_save_register_item(unique_tag, 0, crtc_ega->ena_vert_access);
-	state_save_register_item(unique_tag, 0, crtc_ega->de_skew);
-	state_save_register_item(unique_tag, 0, crtc_ega->horiz_retr_start);
-	state_save_register_item(unique_tag, 0, crtc_ega->horiz_retr_end);
-	state_save_register_item(unique_tag, 0, crtc_ega->horiz_retr_skew);
-	state_save_register_item(unique_tag, 0, crtc_ega->vert_total);
-	state_save_register_item(unique_tag, 0, crtc_ega->preset_row_scan);
-	state_save_register_item(unique_tag, 0, crtc_ega->byte_panning);
-	state_save_register_item(unique_tag, 0, crtc_ega->max_ras_addr);
-	state_save_register_item(unique_tag, 0, crtc_ega->scan_doubling);
-	state_save_register_item(unique_tag, 0, crtc_ega->cursor_disable);
-	state_save_register_item(unique_tag, 0, crtc_ega->cursor_skew);
-	state_save_register_item(unique_tag, 0, crtc_ega->vert_retr_start);
-	state_save_register_item(unique_tag, 0, crtc_ega->vert_retr_end);
-	state_save_register_item(unique_tag, 0, crtc_ega->protect);
-	state_save_register_item(unique_tag, 0, crtc_ega->bandwidth);
-	state_save_register_item(unique_tag, 0, crtc_ega->vert_disp_end);
-	state_save_register_item(unique_tag, 0, crtc_ega->offset);
-	state_save_register_item(unique_tag, 0, crtc_ega->underline_loc);
-	state_save_register_item(unique_tag, 0, crtc_ega->vert_blank_start);
-	state_save_register_item(unique_tag, 0, crtc_ega->vert_blank_end);
-	state_save_register_item(unique_tag, 0, crtc_ega->line_compare);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->clock);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->hpixels_per_column);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->register_address_latch);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_char_total);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_disp);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_blank_start);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->mode_control);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_start_ras);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_end_ras);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->disp_start_addr);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_addr);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->light_pen_addr);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->light_pen_latched);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_state);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_blink_count);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_blank_end);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->ena_vert_access);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->de_skew);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_retr_start);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_retr_end);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_retr_skew);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_total);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->preset_row_scan);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->byte_panning);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->max_ras_addr);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->scan_doubling);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_disable);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_skew);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_retr_start);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_retr_end);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->protect);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->bandwidth);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_disp_end);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->offset);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->underline_loc);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_blank_start);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_blank_end);
+	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->line_compare);
 }
 
 
@@ -822,11 +864,11 @@ DEVICE_GET_INFO( crtc_ega )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(crtc_ega);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "IBM EGA CRTC";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "EGA CRTC";						break;
-		case DEVINFO_STR_VERSION:						info->s = "1.00";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright the MESS Team"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "IBM EGA CRTC");					break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "EGA CRTC");						break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.00");							break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); break;
 	}
 }
 

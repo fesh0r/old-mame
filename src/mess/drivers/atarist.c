@@ -1,6 +1,5 @@
 #include "driver.h"
 #include "video/atarist.h"
-#include "cpu/m68000/m68k.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/m6800/m6800.h"
 #include "devices/basicdsk.h"
@@ -21,6 +20,7 @@
 
     TODO:
 
+	- move static variables to driver state
     - fix floppy interface
     - fix mouse
     - MSA disk image support
@@ -36,167 +36,171 @@
 
 */
 
+static UINT8 mfp_rx, mfp_tx;
+static UINT8 ikbd_rx, ikbd_tx;
+static UINT8 acia_midi_rx = 1, acia_midi_tx = 1;
+
 /* Floppy Disk Controller */
-
-#define ATARIST_FLOPPY_STATUS_FDC_DATA_REQUEST	0x04
-#define ATARIST_FLOPPY_STATUS_SECTOR_COUNT_ZERO	0x02
-#define ATARIST_FLOPPY_STATUS_DMA_ERROR			0x01
-
-#define ATARIST_FLOPPY_MODE_WRITE				0x0100
-#define ATARIST_FLOPPY_MODE_FDC_ACCESS			0x0080
-#define ATARIST_FLOPPY_MODE_DMA_DISABLE			0x0040
-#define ATARIST_FLOPPY_MODE_SECTOR_COUNT		0x0010
-#define ATARIST_FLOPPY_MODE_HDC					0x0008
-#define ATARIST_FLOPPY_MODE_ADDRESS_MASK		0x0006
-
-#define ATARIST_FLOPPY_BYTES_PER_SECTOR			512
-
-static struct FDC
-{
-	UINT32 dmabase;
-	UINT16 status, mode;
-	UINT8 sectors;
-	int dmabytes;
-	int irq;
-} fdc;
 
 static void atarist_fdc_dma_transfer(running_machine *machine)
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD1772, "wd1772");
+	const address_space *program = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+	atarist_state *state = machine->driver_data;
 
-	if ((fdc.mode & ATARIST_FLOPPY_MODE_DMA_DISABLE) == 0)
+	if ((state->fdc_mode & ATARIST_FLOPPY_MODE_DMA_DISABLE) == 0)
 	{
-		while (fdc.sectors > 0)
+		while (state->fdc_sectors > 0)
 		{
-			if (fdc.mode & ATARIST_FLOPPY_MODE_WRITE)
+			if (state->fdc_mode & ATARIST_FLOPPY_MODE_WRITE)
 			{
-				wd17xx_data_w(machine, 0, RAM[fdc.dmabase]);
+				UINT8 data = memory_read_byte_8be(program, state->fdc_dmabase);
+
+				wd17xx_data_w(fdc, 0, data);
 			}
 			else
 			{
-				RAM[fdc.dmabase] = wd17xx_data_r(machine, 0);
+				UINT8 data = wd17xx_data_r(fdc, 0);
+
+				memory_write_byte_8be(program, state->fdc_dmabase, data);
 			}
 
-			fdc.dmabase++;
-			fdc.dmabytes--;
+			state->fdc_dmabase++;
+			state->fdc_dmabytes--;
 
-			if (fdc.dmabytes == 0)
+			if (state->fdc_dmabytes == 0)
 			{
-				fdc.sectors--;
+				state->fdc_sectors--;
 
-				if (fdc.sectors == 0)
+				if (state->fdc_sectors == 0)
 				{
-					fdc.status &= ~ATARIST_FLOPPY_STATUS_SECTOR_COUNT_ZERO;
+					state->fdc_status &= ~ATARIST_FLOPPY_STATUS_SECTOR_COUNT_ZERO;
 				}
 				else
 				{
-					fdc.dmabytes = ATARIST_FLOPPY_BYTES_PER_SECTOR;
+					state->fdc_dmabytes = ATARIST_FLOPPY_BYTES_PER_SECTOR;
 				}
 			}
 		}
 	}
 }
 
-static void atarist_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
+static WD17XX_CALLBACK( atarist_fdc_callback )
 {
-	switch (event)
+	atarist_state *driver_state = device->machine->driver_data;
+
+	switch (state)
 	{
 	case WD17XX_IRQ_SET:
-		fdc.irq = 1;
+		driver_state->fdc_irq = 1;
 		break;
 
 	case WD17XX_IRQ_CLR:
-		fdc.irq = 0;
+		driver_state->fdc_irq = 0;
 		break;
 
 	case WD17XX_DRQ_SET:
-		fdc.status |= ATARIST_FLOPPY_STATUS_FDC_DATA_REQUEST;
-		atarist_fdc_dma_transfer(machine);
+		driver_state->fdc_status |= ATARIST_FLOPPY_STATUS_FDC_DATA_REQUEST;
+		atarist_fdc_dma_transfer(device->machine);
 		break;
 
 	case WD17XX_DRQ_CLR:
-		fdc.status &= ~ATARIST_FLOPPY_STATUS_FDC_DATA_REQUEST;
+		driver_state->fdc_status &= ~ATARIST_FLOPPY_STATUS_FDC_DATA_REQUEST;
 		break;
 	}
 }
 
+const wd17xx_interface atarist_wd17xx_interface = { atarist_fdc_callback, NULL };
+
 static READ16_HANDLER( atarist_fdc_data_r )
 {
-	if (fdc.mode & ATARIST_FLOPPY_MODE_SECTOR_COUNT)
+	atarist_state *state = space->machine->driver_data;
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1772, "wd1772");
+
+	if (state->fdc_mode & ATARIST_FLOPPY_MODE_SECTOR_COUNT)
 	{
-		return fdc.sectors;
+		return state->fdc_sectors;
 	}
 	else
 	{
-		if (fdc.mode & ATARIST_FLOPPY_MODE_HDC)
+		if (state->fdc_mode & ATARIST_FLOPPY_MODE_HDC)
 		{
 			// HDC not implemented
-			fdc.status &= ~ATARIST_FLOPPY_STATUS_DMA_ERROR;
+			state->fdc_status &= ~ATARIST_FLOPPY_STATUS_DMA_ERROR;
 
 			return 0;
 		}
 		else
 		{
-			return wd17xx_r(machine, (fdc.mode & ATARIST_FLOPPY_MODE_ADDRESS_MASK) >> 1);
+			return wd17xx_r(fdc, (state->fdc_mode & ATARIST_FLOPPY_MODE_ADDRESS_MASK) >> 1);
 		}
 	}
 }
 
 static WRITE16_HANDLER( atarist_fdc_data_w )
 {
-	if (fdc.mode & ATARIST_FLOPPY_MODE_SECTOR_COUNT)
+	atarist_state *state = space->machine->driver_data;
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1772, "wd1772");
+	
+	if (state->fdc_mode & ATARIST_FLOPPY_MODE_SECTOR_COUNT)
 	{
 		if (data == 0)
 		{
-			fdc.status &= ~ATARIST_FLOPPY_STATUS_SECTOR_COUNT_ZERO;
+			state->fdc_status &= ~ATARIST_FLOPPY_STATUS_SECTOR_COUNT_ZERO;
 		}
 		else
 		{
-			fdc.status |= ATARIST_FLOPPY_STATUS_SECTOR_COUNT_ZERO;
+			state->fdc_status |= ATARIST_FLOPPY_STATUS_SECTOR_COUNT_ZERO;
 		}
 
-		fdc.sectors = data;
+		state->fdc_sectors = data;
 	}
 	else
 	{
-		if (fdc.mode & ATARIST_FLOPPY_MODE_HDC)
+		if (state->fdc_mode & ATARIST_FLOPPY_MODE_HDC)
 		{
 			// HDC not implemented
-			fdc.status &= ~ATARIST_FLOPPY_STATUS_DMA_ERROR;
+			state->fdc_status &= ~ATARIST_FLOPPY_STATUS_DMA_ERROR;
 		}
 		else
 		{
-			wd17xx_w(machine, (fdc.mode & ATARIST_FLOPPY_MODE_ADDRESS_MASK) >> 1, data);
+			wd17xx_w(fdc, (state->fdc_mode & ATARIST_FLOPPY_MODE_ADDRESS_MASK) >> 1, data);
 		}
 	}
 }
 
 static READ16_HANDLER( atarist_fdc_dma_status_r )
 {
-	return fdc.status;
+	atarist_state *state = space->machine->driver_data;
+
+	return state->fdc_status;
 }
 
 static WRITE16_HANDLER( atarist_fdc_dma_mode_w )
 {
-	if ((data & ATARIST_FLOPPY_MODE_WRITE) != (fdc.mode & ATARIST_FLOPPY_MODE_WRITE))
+	atarist_state *state = space->machine->driver_data;
+
+	if ((data & ATARIST_FLOPPY_MODE_WRITE) != (state->fdc_mode & ATARIST_FLOPPY_MODE_WRITE))
 	{
-		fdc.status = 0;
-		fdc.sectors = 0;
+		state->fdc_status = 0;
+		state->fdc_sectors = 0;
 	}
 
-	fdc.mode = data;
+	state->fdc_mode = data;
 }
 
 static READ16_HANDLER( atarist_fdc_dma_base_r )
 {
+	atarist_state *state = space->machine->driver_data;
+
 	switch (offset)
 	{
 	case 0:
-		return (fdc.dmabase >> 16) & 0xff;
+		return (state->fdc_dmabase >> 16) & 0xff;
 	case 1:
-		return (fdc.dmabase >> 8) & 0xff;
+		return (state->fdc_dmabase >> 8) & 0xff;
 	case 2:
-		return fdc.dmabase & 0xff;
+		return state->fdc_dmabase & 0xff;
 	}
 
 	return 0;
@@ -204,55 +208,44 @@ static READ16_HANDLER( atarist_fdc_dma_base_r )
 
 static WRITE16_HANDLER( atarist_fdc_dma_base_w )
 {
+	atarist_state *state = space->machine->driver_data;
+
 	switch (offset)
 	{
 	case 0:
-		fdc.dmabase = (fdc.dmabase & 0x00ffff) | ((data & 0xff) << 16);
+		state->fdc_dmabase = (state->fdc_dmabase & 0x00ffff) | ((data & 0xff) << 16);
 		break;
 	case 1:
-		fdc.dmabase = (fdc.dmabase & 0x0000ff) | ((data & 0xff) << 8);
+		state->fdc_dmabase = (state->fdc_dmabase & 0x0000ff) | ((data & 0xff) << 8);
 		break;
 	case 2:
-		fdc.dmabase = data & 0xff;
+		state->fdc_dmabase = data & 0xff;
 		break;
 	}
 
-	fdc.dmabytes = ATARIST_FLOPPY_BYTES_PER_SECTOR;
+	state->fdc_dmabytes = ATARIST_FLOPPY_BYTES_PER_SECTOR;
 }
 
 /* MMU */
 
-static int mmu;
-
 static READ16_HANDLER( atarist_mmu_r )
 {
-	return mmu;
+	atarist_state *state = space->machine->driver_data;
+
+	return state->mmu;
 }
 
 static WRITE16_HANDLER( atarist_mmu_w )
 {
-	mmu = data & 0xff;
+	atarist_state *state = space->machine->driver_data;
+
+	state->mmu = data & 0xff;
 }
 
 /* IKBD */
 
-static struct IKBD
-{
-	UINT8 keylatch;
-	UINT8 mouse_x, mouse_y;
-	UINT8 mouse_px, mouse_py, mouse_pc;
-	UINT8 rx, tx;
-} ikbd;
-
 static const int IKBD_MOUSE_XYA[3][4] = { { 0, 0, 0, 0 }, { 1, 1, 0, 0 }, { 0, 1, 1, 0 } };
 static const int IKBD_MOUSE_XYB[3][4] = { { 0, 0, 0, 0 }, { 0, 1, 1, 0 }, { 1, 1, 0, 0 } };
-
-enum
-{
-	IKBD_MOUSE_PHASE_STATIC = 0,
-	IKBD_MOUSE_PHASE_POSITIVE,
-	IKBD_MOUSE_PHASE_NEGATIVE
-};
 
 static READ8_HANDLER( ikbd_port1_r )
 {
@@ -271,7 +264,9 @@ static READ8_HANDLER( ikbd_port1_r )
 
     */
 
-	return ikbd.keylatch;
+	atarist_state *state = space->machine->driver_data;
+
+	return state->ikbd_keylatch;
 }
 
 static READ8_HANDLER( ikbd_port2_r )
@@ -288,7 +283,9 @@ static READ8_HANDLER( ikbd_port2_r )
 
     */
 
-	return (ikbd.tx << 3) | (input_port_read_safe(machine, "IKBD_JOY1", 0xff) & 0x06);
+//	atarist_state *state = space->machine->driver_data;
+
+	return (ikbd_tx << 3) | (input_port_read_safe(space->machine, "IKBD_JOY1", 0xff) & 0x06);
 }
 
 static WRITE8_HANDLER( ikbd_port2_w )
@@ -305,7 +302,9 @@ static WRITE8_HANDLER( ikbd_port2_w )
 
     */
 
-	ikbd.rx = (data & 0x10) >> 4;
+//	atarist_state *state = space->machine->driver_data;
+
+	ikbd_rx = (data & 0x10) >> 4;
 }
 
 static WRITE8_HANDLER( ikbd_port3_w )
@@ -325,15 +324,17 @@ static WRITE8_HANDLER( ikbd_port3_w )
 
     */
 
+	atarist_state *state = space->machine->driver_data;
+
 	set_led_status(1, data & 0x01);
 
-	if (~data & 0x02) ikbd.keylatch = input_port_read(machine, "P31");
-	if (~data & 0x04) ikbd.keylatch = input_port_read(machine, "P32");
-	if (~data & 0x08) ikbd.keylatch = input_port_read(machine, "P33");
-	if (~data & 0x10) ikbd.keylatch = input_port_read(machine, "P34");
-	if (~data & 0x20) ikbd.keylatch = input_port_read(machine, "P35");
-	if (~data & 0x40) ikbd.keylatch = input_port_read(machine, "P36");
-	if (~data & 0x80) ikbd.keylatch = input_port_read(machine, "P37");
+	if (~data & 0x02) state->ikbd_keylatch = input_port_read(space->machine, "P31");
+	if (~data & 0x04) state->ikbd_keylatch = input_port_read(space->machine, "P32");
+	if (~data & 0x08) state->ikbd_keylatch = input_port_read(space->machine, "P33");
+	if (~data & 0x10) state->ikbd_keylatch = input_port_read(space->machine, "P34");
+	if (~data & 0x20) state->ikbd_keylatch = input_port_read(space->machine, "P35");
+	if (~data & 0x40) state->ikbd_keylatch = input_port_read(space->machine, "P36");
+	if (~data & 0x80) state->ikbd_keylatch = input_port_read(space->machine, "P37");
 }
 
 static READ8_HANDLER( ikbd_port4_r )
@@ -353,7 +354,9 @@ static READ8_HANDLER( ikbd_port4_r )
 
     */
 
-	if (input_port_read(machine, "config") & 0x01)
+	atarist_state *state = space->machine->driver_data;
+
+	if (input_port_read(space->machine, "config") & 0x01)
 	{
 		/*
 
@@ -364,56 +367,56 @@ static READ8_HANDLER( ikbd_port4_r )
 
         */
 
-		UINT8 data = input_port_read_safe(machine, "IKBD_JOY0", 0xff) & 0xf0;
-		UINT8 x = input_port_read_safe(machine, "IKBD_MOUSEX", 0x00);
-		UINT8 y = input_port_read_safe(machine, "IKBD_MOUSEY", 0x00);
+		UINT8 data = input_port_read_safe(space->machine, "IKBD_JOY0", 0xff) & 0xf0;
+		UINT8 x = input_port_read_safe(space->machine, "IKBD_MOUSEX", 0x00);
+		UINT8 y = input_port_read_safe(space->machine, "IKBD_MOUSEY", 0x00);
 
-		if (x == ikbd.mouse_x)
+		if (x == state->ikbd_mouse_x)
 		{
-			ikbd.mouse_px = IKBD_MOUSE_PHASE_STATIC;
+			state->ikbd_mouse_px = IKBD_MOUSE_PHASE_STATIC;
 		}
-		else if (x > ikbd.mouse_x)
+		else if (x > state->ikbd_mouse_x)
 		{
-			ikbd.mouse_px = IKBD_MOUSE_PHASE_POSITIVE;
+			state->ikbd_mouse_px = IKBD_MOUSE_PHASE_POSITIVE;
 		}
-		else if (x < ikbd.mouse_x)
+		else if (x < state->ikbd_mouse_x)
 		{
-			ikbd.mouse_px = IKBD_MOUSE_PHASE_NEGATIVE;
-		}
-
-		if (y == ikbd.mouse_y)
-		{
-			ikbd.mouse_py = IKBD_MOUSE_PHASE_STATIC;
-		}
-		else if (y > ikbd.mouse_y)
-		{
-			ikbd.mouse_py = IKBD_MOUSE_PHASE_POSITIVE;
-		}
-		else if (y < ikbd.mouse_y)
-		{
-			ikbd.mouse_py = IKBD_MOUSE_PHASE_NEGATIVE;
+			state->ikbd_mouse_px = IKBD_MOUSE_PHASE_NEGATIVE;
 		}
 
-		data |= IKBD_MOUSE_XYB[ikbd.mouse_px][ikbd.mouse_pc];	   // XB
-		data |= IKBD_MOUSE_XYA[ikbd.mouse_px][ikbd.mouse_pc] << 1; // XA
-		data |= IKBD_MOUSE_XYA[ikbd.mouse_py][ikbd.mouse_pc] << 2; // YA
-		data |= IKBD_MOUSE_XYB[ikbd.mouse_py][ikbd.mouse_pc] << 3; // YB
-
-		ikbd.mouse_pc++;
-
-		if (ikbd.mouse_pc == 4)
+		if (y == state->ikbd_mouse_y)
 		{
-			ikbd.mouse_pc = 0;
+			state->ikbd_mouse_py = IKBD_MOUSE_PHASE_STATIC;
+		}
+		else if (y > state->ikbd_mouse_y)
+		{
+			state->ikbd_mouse_py = IKBD_MOUSE_PHASE_POSITIVE;
+		}
+		else if (y < state->ikbd_mouse_y)
+		{
+			state->ikbd_mouse_py = IKBD_MOUSE_PHASE_NEGATIVE;
 		}
 
-		ikbd.mouse_x = x;
-		ikbd.mouse_y = y;
+		data |= IKBD_MOUSE_XYB[state->ikbd_mouse_px][state->ikbd_mouse_pc];	   // XB
+		data |= IKBD_MOUSE_XYA[state->ikbd_mouse_px][state->ikbd_mouse_pc] << 1; // XA
+		data |= IKBD_MOUSE_XYA[state->ikbd_mouse_py][state->ikbd_mouse_pc] << 2; // YA
+		data |= IKBD_MOUSE_XYB[state->ikbd_mouse_py][state->ikbd_mouse_pc] << 3; // YB
+
+		state->ikbd_mouse_pc++;
+
+		if (state->ikbd_mouse_pc == 4)
+		{
+			state->ikbd_mouse_pc = 0;
+		}
+
+		state->ikbd_mouse_x = x;
+		state->ikbd_mouse_y = y;
 
 		return data;
 	}
 	else
 	{
-		return input_port_read_safe(machine, "IKBD_JOY0", 0xff);
+		return input_port_read_safe(space->machine, "IKBD_JOY0", 0xff);
 	}
 }
 
@@ -434,64 +437,56 @@ static WRITE8_HANDLER( ikbd_port4_w )
 
     */
 
-	if (~data & 0x01) ikbd.keylatch = input_port_read(machine, "P40");
-	if (~data & 0x02) ikbd.keylatch = input_port_read(machine, "P41");
-	if (~data & 0x04) ikbd.keylatch = input_port_read(machine, "P42");
-	if (~data & 0x08) ikbd.keylatch = input_port_read(machine, "P43");
-	if (~data & 0x10) ikbd.keylatch = input_port_read(machine, "P44");
-	if (~data & 0x20) ikbd.keylatch = input_port_read(machine, "P45");
-	if (~data & 0x40) ikbd.keylatch = input_port_read(machine, "P46");
-	if (~data & 0x80) ikbd.keylatch = input_port_read(machine, "P47");
+	atarist_state *state = space->machine->driver_data;
+
+	if (~data & 0x01) state->ikbd_keylatch = input_port_read(space->machine, "P40");
+	if (~data & 0x02) state->ikbd_keylatch = input_port_read(space->machine, "P41");
+	if (~data & 0x04) state->ikbd_keylatch = input_port_read(space->machine, "P42");
+	if (~data & 0x08) state->ikbd_keylatch = input_port_read(space->machine, "P43");
+	if (~data & 0x10) state->ikbd_keylatch = input_port_read(space->machine, "P44");
+	if (~data & 0x20) state->ikbd_keylatch = input_port_read(space->machine, "P45");
+	if (~data & 0x40) state->ikbd_keylatch = input_port_read(space->machine, "P46");
+	if (~data & 0x80) state->ikbd_keylatch = input_port_read(space->machine, "P47");
 }
 
 /* DMA Sound */
 
-static struct DMASOUND
-{
-	UINT32 base, end, cntr;
-	UINT32 baselatch, endlatch;
-	UINT16 ctrl, mode;
-	UINT8 fifo[8];
-	UINT8 samples;
-	int active;
-} dmasound;
-
 static const int DMASOUND_RATE[] = { Y2/640/8, Y2/640/4, Y2/640/2, Y2/640 };
-
-static emu_timer *dmasound_timer;
 
 static void atariste_dmasound_set_state(running_machine *machine, int level)
 {
-	const device_config *mc68901 = device_list_find_by_tag(machine->config->devicelist, MC68901, MC68901_TAG);
+	atarist_state *state = machine->driver_data;
 
-	dmasound.active = level;
-	mc68901_tai_w(mc68901, level);
+	state->dmasnd_active = level;
+	mc68901_tai_w(state->mc68901, level);
 
 	if (level == 0)
 	{
-		dmasound.baselatch = dmasound.base;
-		dmasound.endlatch = dmasound.end;
+		state->dmasnd_baselatch = state->dmasnd_base;
+		state->dmasnd_endlatch = state->dmasnd_end;
 	}
 	else
 	{
-		dmasound.cntr = dmasound.baselatch;
+		state->dmasnd_cntr = state->dmasnd_baselatch;
 	}
 }
 
 static TIMER_CALLBACK( atariste_dmasound_tick )
 {
-	if (dmasound.samples == 0)
+	atarist_state *state = machine->driver_data;
+
+	if (state->dmasnd_samples == 0)
 	{
 		int i;
 		UINT8 *RAM = memory_region(machine, "main");
 
 		for (i = 0; i < 8; i++)
 		{
-			dmasound.fifo[i] = RAM[dmasound.cntr];
-			dmasound.cntr++;
-			dmasound.samples++;
+			state->dmasnd_fifo[i] = RAM[state->dmasnd_cntr];
+			state->dmasnd_cntr++;
+			state->dmasnd_samples++;
 
-			if (dmasound.cntr == dmasound.endlatch)
+			if (state->dmasnd_cntr == state->dmasnd_endlatch)
 			{
 				atariste_dmasound_set_state(machine, 0);
 				break;
@@ -499,48 +494,52 @@ static TIMER_CALLBACK( atariste_dmasound_tick )
 		}
 	}
 
-	if (dmasound.ctrl & 0x80)
+	if (state->dmasnd_ctrl & 0x80)
 	{
-//      logerror("DMA sound left  %i\n", dmasound.fifo[7 - dmasound.samples]);
-		dmasound.samples--;
+//      logerror("DMA sound left  %i\n", state->dmasnd_fifo[7 - state->dmasnd_samples]);
+		state->dmasnd_samples--;
 
-//      logerror("DMA sound right %i\n", dmasound.fifo[7 - dmasound.samples]);
-		dmasound.samples--;
+//      logerror("DMA sound right %i\n", state->dmasnd_fifo[7 - state->dmasnd_samples]);
+		state->dmasnd_samples--;
 	}
 	else
 	{
-//      logerror("DMA sound mono %i\n", dmasound.fifo[7 - dmasound.samples]);
-		dmasound.samples--;
+//      logerror("DMA sound mono %i\n", state->dmasnd_fifo[7 - state->dmasnd_samples]);
+		state->dmasnd_samples--;
 	}
 
-	if ((dmasound.samples == 0) && (dmasound.active == 0))
+	if ((state->dmasnd_samples == 0) && (state->dmasnd_active == 0))
 	{
-		if ((dmasound.ctrl & 0x03) == 0x03)
+		if ((state->dmasnd_ctrl & 0x03) == 0x03)
 		{
 			atariste_dmasound_set_state(machine, 1);
 		}
 		else
 		{
-			timer_enable(dmasound_timer, 0);
+			timer_enable(state->dmasound_timer, 0);
 		}
 	}
 }
 
 static READ16_HANDLER( atariste_sound_dma_control_r )
 {
-	return dmasound.ctrl;
+	atarist_state *state = space->machine->driver_data;
+
+	return state->dmasnd_ctrl;
 }
 
 static READ16_HANDLER( atariste_sound_dma_base_r )
 {
+	atarist_state *state = space->machine->driver_data;
+
 	switch (offset)
 	{
 	case 0x00:
-		return (dmasound.base >> 16) & 0x3f;
+		return (state->dmasnd_base >> 16) & 0x3f;
 	case 0x01:
-		return (dmasound.base >> 8) & 0xff;
+		return (state->dmasnd_base >> 8) & 0xff;
 	case 0x02:
-		return dmasound.base & 0xff;
+		return state->dmasnd_base & 0xff;
 	}
 
 	return 0;
@@ -548,14 +547,16 @@ static READ16_HANDLER( atariste_sound_dma_base_r )
 
 static READ16_HANDLER( atariste_sound_dma_counter_r )
 {
+	atarist_state *state = space->machine->driver_data;
+
 	switch (offset)
 	{
 	case 0x00:
-		return (dmasound.cntr >> 16) & 0x3f;
+		return (state->dmasnd_cntr >> 16) & 0x3f;
 	case 0x01:
-		return (dmasound.cntr >> 8) & 0xff;
+		return (state->dmasnd_cntr >> 8) & 0xff;
 	case 0x02:
-		return dmasound.cntr & 0xff;
+		return state->dmasnd_cntr & 0xff;
 	}
 
 	return 0;
@@ -563,14 +564,16 @@ static READ16_HANDLER( atariste_sound_dma_counter_r )
 
 static READ16_HANDLER( atariste_sound_dma_end_r )
 {
+	atarist_state *state = space->machine->driver_data;
+
 	switch (offset)
 	{
 	case 0x00:
-		return (dmasound.end >> 16) & 0x3f;
+		return (state->dmasnd_end >> 16) & 0x3f;
 	case 0x01:
-		return (dmasound.end >> 8) & 0xff;
+		return (state->dmasnd_end >> 8) & 0xff;
 	case 0x02:
-		return dmasound.end & 0xff;
+		return state->dmasnd_end & 0xff;
 	}
 
 	return 0;
@@ -578,111 +581,113 @@ static READ16_HANDLER( atariste_sound_dma_end_r )
 
 static READ16_HANDLER( atariste_sound_mode_r )
 {
-	return dmasound.mode;
+	atarist_state *state = space->machine->driver_data;
+
+	return state->dmasnd_mode;
 }
 
 static WRITE16_HANDLER( atariste_sound_dma_control_w )
 {
-	dmasound.ctrl = data & 0x03;
+	atarist_state *state = space->machine->driver_data;
 
-	if (dmasound.ctrl & 0x01)
+	state->dmasnd_ctrl = data & 0x03;
+
+	if (state->dmasnd_ctrl & 0x01)
 	{
-		if (!dmasound.active)
+		if (!state->dmasnd_active)
 		{
-			atariste_dmasound_set_state(machine, 1);
-			timer_adjust_periodic(dmasound_timer, attotime_zero, 0, ATTOTIME_IN_HZ(DMASOUND_RATE[dmasound.mode & 0x03]));
+			atariste_dmasound_set_state(space->machine, 1);
+			timer_adjust_periodic(state->dmasound_timer, attotime_zero, 0, ATTOTIME_IN_HZ(DMASOUND_RATE[state->dmasnd_mode & 0x03]));
 		}
 	}
 	else
 	{
-		atariste_dmasound_set_state(machine, 0);
-		timer_enable(dmasound_timer, 0);
+		atariste_dmasound_set_state(space->machine, 0);
+		timer_enable(state->dmasound_timer, 0);
 	}
 }
 
 static WRITE16_HANDLER( atariste_sound_dma_base_w )
 {
+	atarist_state *state = space->machine->driver_data;
+
 	switch (offset)
 	{
 	case 0x00:
-		dmasound.base = (data << 16) & 0x3f0000;
+		state->dmasnd_base = (data << 16) & 0x3f0000;
 		break;
 	case 0x01:
-		dmasound.base = (dmasound.base & 0x3f00fe) | (data & 0xff) << 8;
+		state->dmasnd_base = (state->dmasnd_base & 0x3f00fe) | (data & 0xff) << 8;
 		break;
 	case 0x02:
-		dmasound.base = (dmasound.base & 0x3fff00) | (data & 0xfe);
+		state->dmasnd_base = (state->dmasnd_base & 0x3fff00) | (data & 0xfe);
 		break;
 	}
 
-	if (!dmasound.active)
+	if (!state->dmasnd_active)
 	{
-		dmasound.baselatch = dmasound.base;
+		state->dmasnd_baselatch = state->dmasnd_base;
 	}
 }
 
 static WRITE16_HANDLER( atariste_sound_dma_end_w )
 {
+	atarist_state *state = space->machine->driver_data;
+
 	switch (offset)
 	{
 	case 0x00:
-		dmasound.end = (data << 16) & 0x3f0000;
+		state->dmasnd_end = (data << 16) & 0x3f0000;
 		break;
 	case 0x01:
-		dmasound.end = (dmasound.end & 0x3f00fe) | (data & 0xff) << 8;
+		state->dmasnd_end = (state->dmasnd_end & 0x3f00fe) | (data & 0xff) << 8;
 		break;
 	case 0x02:
-		dmasound.end = (dmasound.end & 0x3fff00) | (data & 0xfe);
+		state->dmasnd_end = (state->dmasnd_end & 0x3fff00) | (data & 0xfe);
 		break;
 	}
 
-	if (!dmasound.active)
+	if (!state->dmasnd_active)
 	{
-		dmasound.endlatch = dmasound.end;
+		state->dmasnd_endlatch = state->dmasnd_end;
 	}
 }
 
 static WRITE16_HANDLER( atariste_sound_mode_w )
 {
-	dmasound.mode = data & 0x8f;
+	atarist_state *state = space->machine->driver_data;
+
+	state->dmasnd_mode = data & 0x8f;
 }
 
 /* Microwire */
 
-static struct MICROWIRE
-{
-	UINT16 data, mask;
-	int shift;
-} mwire;
-
-static emu_timer *microwire_timer;
-
 static void atariste_microwire_shift(running_machine *machine)
 {
-	const device_config *lmc1992 = device_list_find_by_tag(machine->config->devicelist, LMC1992, LMC1992_TAG);
+	atarist_state *state = machine->driver_data;
 
-	if (BIT(mwire.mask, 15))
+	if (BIT(state->mw_mask, 15))
 	{
-		lmc1992_data_w(lmc1992, BIT(mwire.data, 15));
-		lmc1992_clock_w(lmc1992, 1);
-		lmc1992_clock_w(lmc1992, 0);
+		lmc1992_data_w(state->lmc1992, BIT(state->mw_data, 15));
+		lmc1992_clock_w(state->lmc1992, 1);
+		lmc1992_clock_w(state->lmc1992, 0);
 	}
 
 	// rotate mask and data left
 
-	mwire.mask = (mwire.mask << 1) | BIT(mwire.mask, 15);
-	mwire.data = (mwire.data << 1) | BIT(mwire.data, 15);
-	mwire.shift++;
+	state->mw_mask = (state->mw_mask << 1) | BIT(state->mw_mask, 15);
+	state->mw_data = (state->mw_data << 1) | BIT(state->mw_data, 15);
+	state->mw_shift++;
 }
 
 static TIMER_CALLBACK( atariste_microwire_tick )
 {
-	const device_config *lmc1992 = device_list_find_by_tag(machine->config->devicelist, LMC1992, LMC1992_TAG);
+	atarist_state *state = machine->driver_data;
 
-	switch (mwire.shift)
+	switch (state->mw_shift)
 	{
 	case 0:
-		lmc1992_enable_w(lmc1992, 0);
+		lmc1992_enable_w(state->lmc1992, 0);
 		atariste_microwire_shift(machine);
 		break;
 
@@ -692,53 +697,64 @@ static TIMER_CALLBACK( atariste_microwire_tick )
 
 	case 15:
 		atariste_microwire_shift(machine);
-		lmc1992_enable_w(lmc1992, 1);
-		mwire.shift = 0;
-		timer_enable(microwire_timer, 0);
+		lmc1992_enable_w(state->lmc1992, 1);
+		state->mw_shift = 0;
+		timer_enable(state->microwire_timer, 0);
 		break;
 	}
 }
 
 static READ16_HANDLER( atariste_microwire_data_r )
 {
-	return mwire.data;
+	atarist_state *state = space->machine->driver_data;
+
+	return state->mw_data;
 }
 
 static WRITE16_HANDLER( atariste_microwire_data_w )
 {
-	if (!timer_enabled(microwire_timer))
+	atarist_state *state = space->machine->driver_data;
+
+	if (!timer_enabled(state->microwire_timer))
 	{
-		mwire.data = data;
-		timer_adjust_periodic(microwire_timer, attotime_zero, 0, ATTOTIME_IN_USEC(2));
+		state->mw_data = data;
+		timer_adjust_periodic(state->microwire_timer, attotime_zero, 0, ATTOTIME_IN_USEC(2));
 	}
 }
 
 static READ16_HANDLER( atariste_microwire_mask_r )
 {
-	return mwire.mask;
+	atarist_state *state = space->machine->driver_data;
+
+	return state->mw_mask;
 }
 
 static WRITE16_HANDLER( atariste_microwire_mask_w )
 {
-	if (!timer_enabled(microwire_timer))
+	atarist_state *state = space->machine->driver_data;
+
+	if (!timer_enabled(state->microwire_timer))
 	{
-		mwire.mask = data;
+		state->mw_mask = data;
 	}
 }
 
 /* Mega STe Cache */
 
-static UINT16 megaste_cache;
-
 static READ16_HANDLER( megaste_cache_r )
 {
-	return megaste_cache;
+	atarist_state *state = space->machine->driver_data;
+
+	return state->megaste_cache;
 }
 
 static WRITE16_HANDLER( megaste_cache_w )
 {
-	megaste_cache = data;
-	cpunum_set_clock(machine, 0, (data & 0x01) ? Y2/2 : Y2/4);
+	atarist_state *state = space->machine->driver_data;
+
+	state->megaste_cache = data;
+
+	cpu_set_clock(space->machine->cpu[0], BIT(data, 0) ? Y2/2 : Y2/4);
 }
 
 /* ST Book */
@@ -768,7 +784,7 @@ static READ16_HANDLER( stbook_config_r )
 
     */
 
-	return (input_port_read(machine, "SW400") << 8) | 0xff;
+	return (input_port_read(space->machine, "SW400") << 8) | 0xff;
 }
 
 static WRITE16_HANDLER( stbook_lcd_control_w )
@@ -822,10 +838,10 @@ static ADDRESS_MAP_START( st_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff8800, 0xff8801) AM_READWRITE8(ay8910_read_port_0_r, ay8910_control_port_0_w, 0xff00)
 	AM_RANGE(0xff8802, 0xff8803) AM_WRITE8(ay8910_write_port_0_w, 0xff00)
 	AM_RANGE(0xfffa00, 0xfffa2f) AM_DEVREADWRITE8(MC68901, MC68901_TAG, mc68901_register_r, mc68901_register_w, 0xff)
-	AM_RANGE(0xfffc00, 0xfffc01) AM_READWRITE8(acia6850_0_stat_r, acia6850_0_ctrl_w, 0xff00)
-	AM_RANGE(0xfffc02, 0xfffc03) AM_READWRITE8(acia6850_0_data_r, acia6850_0_data_w, 0xff00)
-	AM_RANGE(0xfffc04, 0xfffc05) AM_READWRITE8(acia6850_1_stat_r, acia6850_1_ctrl_w, 0xff00)
-	AM_RANGE(0xfffc06, 0xfffc07) AM_READWRITE8(acia6850_1_data_r, acia6850_1_data_w, 0xff00)
+	AM_RANGE(0xfffc00, 0xfffc01) AM_DEVREADWRITE8(ACIA6850, "acia_0", acia6850_stat_r, acia6850_ctrl_w, 0xff00)
+	AM_RANGE(0xfffc02, 0xfffc03) AM_DEVREADWRITE8(ACIA6850, "acia_0", acia6850_data_r, acia6850_data_w, 0xff00)
+	AM_RANGE(0xfffc04, 0xfffc05) AM_DEVREADWRITE8(ACIA6850, "acia_1", acia6850_stat_r, acia6850_ctrl_w, 0xff00)
+	AM_RANGE(0xfffc06, 0xfffc07) AM_DEVREADWRITE8(ACIA6850, "acia_1", acia6850_data_r, acia6850_data_w, 0xff00)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( megast_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -860,11 +876,11 @@ static ADDRESS_MAP_START( megast_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff8a3c, 0xff8a3d) AM_READWRITE(atarist_blitter_ctrl_r, atarist_blitter_ctrl_w)
 	AM_RANGE(0xfffa00, 0xfffa3f) AM_DEVREADWRITE8(MC68901, MC68901_TAG, mc68901_register_r, mc68901_register_w, 0xff)
 //  AM_RANGE(0xfffa40, 0xfffa57) AM_READWRITE(megast_fpu_r, megast_fpu_w)
-	AM_RANGE(0xfffc00, 0xfffc01) AM_READWRITE8(acia6850_0_stat_r, acia6850_0_ctrl_w, 0xff00)
-	AM_RANGE(0xfffc02, 0xfffc03) AM_READWRITE8(acia6850_0_data_r, acia6850_0_data_w, 0xff00)
-	AM_RANGE(0xfffc04, 0xfffc05) AM_READWRITE8(acia6850_1_stat_r, acia6850_1_ctrl_w, 0xff00)
-	AM_RANGE(0xfffc06, 0xfffc07) AM_READWRITE8(acia6850_1_data_r, acia6850_1_data_w, 0xff00)
-	AM_RANGE(0xfffc20, 0xfffc3f) AM_READWRITE(rp5c15_r, rp5c15_w)
+	AM_RANGE(0xfffc00, 0xfffc01) AM_DEVREADWRITE8(ACIA6850, "acia_0", acia6850_stat_r, acia6850_ctrl_w, 0xff00)
+	AM_RANGE(0xfffc02, 0xfffc03) AM_DEVREADWRITE8(ACIA6850, "acia_0", acia6850_data_r, acia6850_data_w, 0xff00)
+	AM_RANGE(0xfffc04, 0xfffc05) AM_DEVREADWRITE8(ACIA6850, "acia_1", acia6850_stat_r, acia6850_ctrl_w, 0xff00)
+	AM_RANGE(0xfffc06, 0xfffc07) AM_DEVREADWRITE8(ACIA6850, "acia_1", acia6850_data_r, acia6850_data_w, 0xff00)
+	AM_RANGE(0xfffc20, 0xfffc3f) AM_DEVREADWRITE(RP5C15, "rp5c15", rp5c15_r, rp5c15_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ste_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -916,10 +932,10 @@ static ADDRESS_MAP_START( ste_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff9220, 0xff9221) AM_READ_PORT("GUNX")
 	AM_RANGE(0xff9222, 0xff9223) AM_READ_PORT("GUNY")
 	AM_RANGE(0xfffa00, 0xfffa2f) AM_DEVREADWRITE8(MC68901, MC68901_TAG, mc68901_register_r, mc68901_register_w, 0xff)
-	AM_RANGE(0xfffc00, 0xfffc01) AM_READWRITE8(acia6850_0_stat_r, acia6850_0_ctrl_w, 0xff00)
-	AM_RANGE(0xfffc02, 0xfffc03) AM_READWRITE8(acia6850_0_data_r, acia6850_0_data_w, 0xff00)
-	AM_RANGE(0xfffc04, 0xfffc05) AM_READWRITE8(acia6850_1_stat_r, acia6850_1_ctrl_w, 0xff00)
-	AM_RANGE(0xfffc06, 0xfffc07) AM_READWRITE8(acia6850_1_data_r, acia6850_1_data_w, 0xff00)
+	AM_RANGE(0xfffc00, 0xfffc01) AM_DEVREADWRITE8(ACIA6850, "acia_0", acia6850_stat_r, acia6850_ctrl_w, 0xff00)
+	AM_RANGE(0xfffc02, 0xfffc03) AM_DEVREADWRITE8(ACIA6850, "acia_0", acia6850_data_r, acia6850_data_w, 0xff00)
+	AM_RANGE(0xfffc04, 0xfffc05) AM_DEVREADWRITE8(ACIA6850, "acia_1", acia6850_stat_r, acia6850_ctrl_w, 0xff00)
+	AM_RANGE(0xfffc06, 0xfffc07) AM_DEVREADWRITE8(ACIA6850, "acia_1", acia6850_data_r, acia6850_data_w, 0xff00)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( megaste_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -966,11 +982,11 @@ static ADDRESS_MAP_START( megaste_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xfffa00, 0xfffa3f) AM_DEVREADWRITE8(MC68901, MC68901_TAG, mc68901_register_r, mc68901_register_w, 0xff)
 //  AM_RANGE(0xfffa40, 0xfffa5f) AM_READWRITE(megast_fpu_r, megast_fpu_w)
 	AM_RANGE(0xff8c80, 0xff8c87) AM_DEVREADWRITE8(SCC8530, "scc", scc_r, scc_w, 0xff00)
-	AM_RANGE(0xfffc00, 0xfffc01) AM_READWRITE8(acia6850_0_stat_r, acia6850_0_ctrl_w, 0xff00)
-	AM_RANGE(0xfffc02, 0xfffc03) AM_READWRITE8(acia6850_0_data_r, acia6850_0_data_w, 0xff00)
-	AM_RANGE(0xfffc04, 0xfffc05) AM_READWRITE8(acia6850_1_stat_r, acia6850_1_ctrl_w, 0xff00)
-	AM_RANGE(0xfffc06, 0xfffc07) AM_READWRITE8(acia6850_1_data_r, acia6850_1_data_w, 0xff00)
-	AM_RANGE(0xfffc20, 0xfffc3f) AM_READWRITE(rp5c15_r, rp5c15_w)
+	AM_RANGE(0xfffc00, 0xfffc01) AM_DEVREADWRITE8(ACIA6850, "acia_0", acia6850_stat_r, acia6850_ctrl_w, 0xff00)
+	AM_RANGE(0xfffc02, 0xfffc03) AM_DEVREADWRITE8(ACIA6850, "acia_0", acia6850_data_r, acia6850_data_w, 0xff00)
+	AM_RANGE(0xfffc04, 0xfffc05) AM_DEVREADWRITE8(ACIA6850, "acia_1", acia6850_stat_r, acia6850_ctrl_w, 0xff00)
+	AM_RANGE(0xfffc06, 0xfffc07) AM_DEVREADWRITE8(ACIA6850, "acia_1", acia6850_data_r, acia6850_data_w, 0xff00)
+	AM_RANGE(0xfffc20, 0xfffc3f) AM_DEVREADWRITE(RP5C15, "rp5c15", rp5c15_r, rp5c15_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( stbook_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1022,10 +1038,10 @@ static ADDRESS_MAP_START( stbook_map, ADDRESS_SPACE_PROGRAM, 16 )
     AM_RANGE(0xff9210, 0xff9211) AM_READWRITE(stbook_power_r, stbook_power_w)
     AM_RANGE(0xff9214, 0xff9215) AM_READWRITE(stbook_reference_r, stbook_reference_w)*/
 	AM_RANGE(0xfffa00, 0xfffa2f) AM_DEVREADWRITE8(MC68901, MC68901_TAG, mc68901_register_r, mc68901_register_w, 0xff)
-	AM_RANGE(0xfffc00, 0xfffc01) AM_READWRITE8(acia6850_0_stat_r, acia6850_0_ctrl_w, 0xff00)
-	AM_RANGE(0xfffc02, 0xfffc03) AM_READWRITE8(acia6850_0_data_r, acia6850_0_data_w, 0xff00)
-	AM_RANGE(0xfffc04, 0xfffc05) AM_READWRITE8(acia6850_1_stat_r, acia6850_1_ctrl_w, 0xff00)
-	AM_RANGE(0xfffc06, 0xfffc07) AM_READWRITE8(acia6850_1_data_r, acia6850_1_data_w, 0xff00)
+	AM_RANGE(0xfffc00, 0xfffc01) AM_DEVREADWRITE8(ACIA6850, "acia_0", acia6850_stat_r, acia6850_ctrl_w, 0xff00)
+	AM_RANGE(0xfffc02, 0xfffc03) AM_DEVREADWRITE8(ACIA6850, "acia_0", acia6850_data_r, acia6850_data_w, 0xff00)
+	AM_RANGE(0xfffc04, 0xfffc05) AM_DEVREADWRITE8(ACIA6850, "acia_1", acia6850_stat_r, acia6850_ctrl_w, 0xff00)
+	AM_RANGE(0xfffc06, 0xfffc07) AM_DEVREADWRITE8(ACIA6850, "acia_1", acia6850_data_r, acia6850_data_w, 0xff00)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -1267,22 +1283,23 @@ INPUT_PORTS_END
 
 static WRITE8_HANDLER( ym2149_port_a_w )
 {
-	wd17xx_set_side((data & 0x01) ? 0 : 1);
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1772, "wd1772");
+	wd17xx_set_side(fdc, BIT(data, 0) ? 0 : 1);
 
-	if (!(data & 0x02))
+	if (!BIT(data, 1))
 	{
-		wd17xx_set_drive(0);
+		wd17xx_set_drive(fdc,0);
 	}
 
-	if (!(data & 0x04))
+	if (!BIT(data, 2))
 	{
-		wd17xx_set_drive(1);
+		wd17xx_set_drive(fdc,1);
 	}
 
 	// 0x08 = RTS
 	// 0x10 = DTR
 
-	centronics_write_handshake(0, (data & 0x20) ? 0 : CENTRONICS_STROBE, CENTRONICS_STROBE);
+	centronics_write_handshake(space->machine,0, BIT(data, 5) ? 0 : CENTRONICS_STROBE, CENTRONICS_STROBE);
 
 	// 0x40 = General Purpose Output
 	// 0x80 = Reserved
@@ -1290,7 +1307,7 @@ static WRITE8_HANDLER( ym2149_port_a_w )
 
 static WRITE8_HANDLER( ym2149_port_b_w )
 {
-	centronics_write_data(0, data);
+	centronics_write_data(space->machine,0, data);
 }
 
 static const ay8910_interface ym2149_interface =
@@ -1305,27 +1322,26 @@ static const ay8910_interface ym2149_interface =
 
 /* Machine Drivers */
 
-static int acia_irq;
-static UINT8 acia_midi_rx = 1, acia_midi_tx = 1;
-
-static void acia_interrupt(int state)
+static void acia_interrupt(const device_config *device, int state)
 {
-	acia_irq = state;
+	atarist_state *driver_state = device->machine->driver_data;
+
+	driver_state->acia_irq = state;
 }
 
-static const struct acia6850_interface acia_ikbd_intf =
+static const acia6850_interface acia_ikbd_intf =
 {
 	Y2/64,
 	Y2/64,
-	&ikbd.rx,
-	&ikbd.tx,
+	&ikbd_rx,
+	&ikbd_tx,
 	NULL,
 	NULL,
 	NULL,
 	acia_interrupt
 };
 
-static const struct acia6850_interface acia_midi_intf =
+static const acia6850_interface acia_midi_intf =
 {
 	Y2/64,
 	Y2/64,
@@ -1354,12 +1370,14 @@ static MC68901_GPIO_READ( mfp_gpio_r )
 
     */
 
-	UINT8 data = (centronics_read_handshake(0) & CENTRONICS_NOT_BUSY) >> 7;
+	atarist_state *state = device->machine->driver_data;
+
+	UINT8 data = (centronics_read_handshake(device->machine,0) & CENTRONICS_NOT_BUSY) >> 7;
 
 	mc68901_tai_w(device, data & 0x01);
 
-	data |= (acia_irq << 4);
-	data |= (fdc.irq << 5);
+	data |= (state->acia_irq << 4);
+	data |= (state->fdc_irq << 5);
 	data |= (input_port_read(device->machine, "config") & 0x80);
 
 	return data;
@@ -1367,22 +1385,20 @@ static MC68901_GPIO_READ( mfp_gpio_r )
 
 static IRQ_CALLBACK( atarist_int_ack )
 {
-	const device_config *mc68901 = device_list_find_by_tag(machine->config->devicelist, MC68901, MC68901_TAG);
+	atarist_state *state = device->machine->driver_data;
 
-	if (irqline == MC68000_IRQ_6)
+	if (irqline == M68K_IRQ_6)
 	{
-		return mc68901_get_vector(mc68901);
+		return mc68901_get_vector(state->mc68901);
 	}
 
-	return MC68000_INT_ACK_AUTOVECTOR;
+	return M68K_INT_ACK_AUTOVECTOR;
 }
 
 static MC68901_ON_IRQ_CHANGED( mfp_interrupt )
 {
-	cpunum_set_input_line(device->machine, 0, MC68000_IRQ_6, level);
+	cpu_set_input_line(device->machine->cpu[0], M68K_IRQ_6, level);
 }
-
-static UINT8 mfp_rx, mfp_tx;
 
 static MC68901_INTERFACE( mfp_intf )
 {
@@ -1408,85 +1424,91 @@ static const CENTRONICS_CONFIG atarist_centronics_config[1] =
 
 static void atarist_configure_memory(running_machine *machine)
 {
+	const address_space *program = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	UINT8 *RAM = memory_region(machine, "main");
 
 	switch (mess_ram_size)
 	{
 	case 256 * 1024:
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x03ffff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x040000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite16_handler(program, 0x000008, 0x03ffff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x040000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 	case 512 * 1024:
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x07ffff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x080000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite16_handler(program, 0x000008, 0x07ffff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x080000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 	case 1024 * 1024:
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x0fffff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite16_handler(program, 0x000008, 0x0fffff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x100000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 	case 2048 * 1024:
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x1fffff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite16_handler(program, 0x000008, 0x1fffff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x200000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 	case 4096 * 1024:
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x1fffff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x3fffff, 0, 0, SMH_BANK2, SMH_BANK2);
+		memory_install_readwrite16_handler(program, 0x000008, 0x1fffff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x200000, 0x3fffff, 0, 0, SMH_BANK2, SMH_BANK2);
 		break;
 	}
 
-	memory_configure_bank(1, 0, 1, RAM + 0x000008, 0);
-	memory_set_bank(1, 0);
+	memory_configure_bank(machine, 1, 0, 1, RAM + 0x000008, 0);
+	memory_set_bank(machine, 1, 0);
 
-	memory_configure_bank(2, 0, 1, RAM + 0x200000, 0);
-	memory_set_bank(2, 0);
+	memory_configure_bank(machine, 2, 0, 1, RAM + 0x200000, 0);
+	memory_set_bank(machine, 2, 0);
 
-	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfa0000, 0xfbffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+	memory_install_readwrite16_handler(program, 0xfa0000, 0xfbffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 
-	memory_configure_bank(3, 0, 1, RAM + 0xfa0000, 0);
-	memory_set_bank(3, 0);
+	memory_configure_bank(machine, 3, 0, 1, RAM + 0xfa0000, 0);
+	memory_set_bank(machine, 3, 0);
 }
 
-static void atarist_state_save(void)
+static void atarist_state_save(running_machine *machine)
 {
-	memset(&fdc, 0, sizeof(fdc));
+	atarist_state *state = machine->driver_data;
 
-	fdc.status |= ATARIST_FLOPPY_STATUS_DMA_ERROR;
+	state->fdc_status |= ATARIST_FLOPPY_STATUS_DMA_ERROR;
 
-	memset(&ikbd, 0, sizeof(ikbd));
-
-	state_save_register_global(mmu);
-	state_save_register_global(fdc.dmabase);
-	state_save_register_global(fdc.status);
-	state_save_register_global(fdc.mode);
-	state_save_register_global(fdc.sectors);
-	state_save_register_global(fdc.dmabytes);
-	state_save_register_global(fdc.irq);
-	state_save_register_global(ikbd.keylatch);
-	state_save_register_global(ikbd.mouse_x);
-	state_save_register_global(ikbd.mouse_y);
-	state_save_register_global(ikbd.mouse_px);
-	state_save_register_global(ikbd.mouse_py);
-	state_save_register_global(ikbd.mouse_pc);
-	state_save_register_global(ikbd.rx);
-	state_save_register_global(ikbd.tx);
-	state_save_register_global(acia_irq);
-	state_save_register_global(acia_midi_rx);
-	state_save_register_global(acia_midi_tx);
-	state_save_register_global(mfp_rx);
-	state_save_register_global(mfp_tx);
+	state_save_register_global(machine, state->mmu);
+	state_save_register_global(machine, state->fdc_dmabase);
+	state_save_register_global(machine, state->fdc_status);
+	state_save_register_global(machine, state->fdc_mode);
+	state_save_register_global(machine, state->fdc_sectors);
+	state_save_register_global(machine, state->fdc_dmabytes);
+	state_save_register_global(machine, state->fdc_irq);
+	state_save_register_global(machine, state->ikbd_keylatch);
+	state_save_register_global(machine, state->ikbd_mouse_x);
+	state_save_register_global(machine, state->ikbd_mouse_y);
+	state_save_register_global(machine, state->ikbd_mouse_px);
+	state_save_register_global(machine, state->ikbd_mouse_py);
+	state_save_register_global(machine, state->ikbd_mouse_pc);
+	state_save_register_global(machine, ikbd_rx);
+	state_save_register_global(machine, ikbd_tx);
+	state_save_register_global(machine, state->acia_irq);
+	state_save_register_global(machine, acia_midi_rx);
+	state_save_register_global(machine, acia_midi_tx);
+	state_save_register_global(machine, mfp_rx);
+	state_save_register_global(machine, mfp_tx);
 }
 
 static MACHINE_START( atarist )
 {
+	atarist_state *state = machine->driver_data;
+
+	/* configure RAM banking */
 	atarist_configure_memory(machine);
-	atarist_state_save();
 
-	centronics_config(0, atarist_centronics_config);
-	wd17xx_init(machine, WD_TYPE_1772, atarist_fdc_callback, NULL);
-	acia6850_config(0, &acia_ikbd_intf);
-	acia6850_config(1, &acia_midi_intf);
+	/* configure devices */
+	centronics_config(machine, 0, atarist_centronics_config);
 
-	cpunum_set_irq_callback(0, atarist_int_ack);
+	/* set CPU interrupt callback */
+	cpu_set_irq_callback(machine->cpu[0], atarist_int_ack);
+
+	/* find devices */
+	state->mc68901 = devtag_get_device(machine, MC68901, MC68901_TAG);
+
+	/* register for state saving */
+	atarist_state_save(machine);
 }
 
 static const struct rp5c15_interface rtc_intf =
@@ -1497,7 +1519,6 @@ static const struct rp5c15_interface rtc_intf =
 static MACHINE_START( megast )
 {
 	MACHINE_START_CALL(atarist);
-	rp5c15_init(machine, &rtc_intf);
 }
 
 static MC68901_GPIO_READ( atariste_mfp_gpio_r )
@@ -1517,11 +1538,13 @@ static MC68901_GPIO_READ( atariste_mfp_gpio_r )
 
     */
 
-	UINT8 data = (centronics_read_handshake(0) & CENTRONICS_NOT_BUSY) >> 7;
+	atarist_state *state = device->machine->driver_data;
 
-	data |= (acia_irq << 4);
-	data |= (fdc.irq << 5);
-	data |= (input_port_read(device->machine, "config") & 0x80) ^ (dmasound.active << 7);
+	UINT8 data = (centronics_read_handshake(device->machine,0) & CENTRONICS_NOT_BUSY) >> 7;
+
+	data |= (state->acia_irq << 4);
+	data |= (state->fdc_irq << 5);
+	data |= (input_port_read(device->machine, "config") & 0x80) ^ (state->dmasnd_active << 7);
 
 	return data;
 }
@@ -1540,98 +1563,109 @@ static MC68901_INTERFACE( atariste_mfp_intf )
 	NULL
 };
 
-static void atariste_state_save(void)
+static void atariste_state_save(running_machine *machine)
 {
-	atarist_state_save();
+	atarist_state *state = machine->driver_data;
 
-	memset(&mwire, 0, sizeof(mwire));
-	memset(&dmasound, 0, sizeof(dmasound));
+	atarist_state_save(machine);
 
-	state_save_register_global(dmasound.base);
-	state_save_register_global(dmasound.end);
-	state_save_register_global(dmasound.cntr);
-	state_save_register_global(dmasound.baselatch);
-	state_save_register_global(dmasound.endlatch);
-	state_save_register_global(dmasound.ctrl);
-	state_save_register_global(dmasound.mode);
-	state_save_register_global_array(dmasound.fifo);
-	state_save_register_global(dmasound.samples);
-	state_save_register_global(dmasound.active);
-
-	state_save_register_global(mwire.data);
-	state_save_register_global(mwire.mask);
-	state_save_register_global(mwire.shift);
+	state_save_register_global(machine, state->dmasnd_base);
+	state_save_register_global(machine, state->dmasnd_end);
+	state_save_register_global(machine, state->dmasnd_cntr);
+	state_save_register_global(machine, state->dmasnd_baselatch);
+	state_save_register_global(machine, state->dmasnd_endlatch);
+	state_save_register_global(machine, state->dmasnd_ctrl);
+	state_save_register_global(machine, state->dmasnd_mode);
+	state_save_register_global_array(machine, state->dmasnd_fifo);
+	state_save_register_global(machine, state->dmasnd_samples);
+	state_save_register_global(machine, state->dmasnd_active);
+	state_save_register_global(machine, state->mw_data);
+	state_save_register_global(machine, state->mw_mask);
+	state_save_register_global(machine, state->mw_shift);
 }
 
 static MACHINE_START( atariste )
 {
+	atarist_state *state = machine->driver_data;
+
+	/* configure RAM banking */
 	atarist_configure_memory(machine);
-	atariste_state_save();
 
-	centronics_config(0, atarist_centronics_config);
-	wd17xx_init(machine, WD_TYPE_1772, atarist_fdc_callback, NULL);
-	acia6850_config(0, &acia_ikbd_intf);
-	acia6850_config(1, &acia_midi_intf);
+	/* configure devices */
+	centronics_config(machine, 0, atarist_centronics_config);
+	
+	/* set CPU interrupt callback */
+	cpu_set_irq_callback(machine->cpu[0], atarist_int_ack);
 
-	cpunum_set_irq_callback(0, atarist_int_ack);
+	/* allocate timers */
+	state->dmasound_timer = timer_alloc(machine, atariste_dmasound_tick, NULL);
+	state->microwire_timer = timer_alloc(machine, atariste_microwire_tick, NULL);
 
-	dmasound_timer = timer_alloc(atariste_dmasound_tick, NULL);
-	microwire_timer = timer_alloc(atariste_microwire_tick, NULL);
+	/* find devices */
+	state->mc68901 = devtag_get_device(machine, MC68901, MC68901_TAG);
+	state->lmc1992 = devtag_get_device(machine, LMC1992, LMC1992_TAG);
+
+	/* register for state saving */
+	atariste_state_save(machine);
 }
 
 static MACHINE_START( megaste )
 {
-	machine_start_atariste(machine);
-	state_save_register_global(megaste_cache);
-	rp5c15_init(machine, &rtc_intf);
+	atarist_state *state = machine->driver_data;
+
+	MACHINE_START_CALL(atariste);
+
+	state_save_register_global(machine, state->megaste_cache);
 }
 
 static void stbook_configure_memory(running_machine *machine)
 {
+	const address_space *program = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	UINT8 *RAM = memory_region(machine, "main");
 
 	switch (mess_ram_size)
 	{
 	case 1024 * 1024:
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x07ffff, 0, 0x080000, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite16_handler(program, 0x000008, 0x07ffff, 0, 0x080000, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x100000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 	case 4096 * 1024:
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000008, 0x1fffff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x3fffff, 0, 0, SMH_BANK2, SMH_BANK2);
+		memory_install_readwrite16_handler(program, 0x000008, 0x1fffff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x200000, 0x3fffff, 0, 0, SMH_BANK2, SMH_BANK2);
 		break;
 	}
 
-	memory_configure_bank(1, 0, 1, RAM + 0x000008, 0);
-	memory_set_bank(1, 0);
+	memory_configure_bank(machine, 1, 0, 1, RAM + 0x000008, 0);
+	memory_set_bank(machine, 1, 0);
 
-	memory_configure_bank(2, 0, 1, RAM + 0x200000, 0);
-	memory_set_bank(2, 0);
+	memory_configure_bank(machine, 2, 0, 1, RAM + 0x200000, 0);
+	memory_set_bank(machine, 2, 0);
 
-	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfa0000, 0xfbffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+	memory_install_readwrite16_handler(program, 0xfa0000, 0xfbffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 
-	memory_configure_bank(3, 0, 1, RAM + 0xfa0000, 0);
-	memory_set_bank(3, 0);
+	memory_configure_bank(machine, 3, 0, 1, RAM + 0xfa0000, 0);
+	memory_set_bank(machine, 3, 0);
 }
 
 static WRITE8_HANDLER( stbook_ym2149_port_a_w )
 {
-	wd17xx_set_side((data & 0x01) ? 0 : 1);
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1772, "wd1772");
+	wd17xx_set_side(fdc,(data & 0x01) ? 0 : 1);
 
 	if (!(data & 0x02))
 	{
-		wd17xx_set_drive(0);
+		wd17xx_set_drive(fdc,0);
 	}
 
 	if (!(data & 0x04))
 	{
-		wd17xx_set_drive(1);
+		wd17xx_set_drive(fdc,1);
 	}
 
 	// 0x08 = RTS
 	// 0x10 = DTR
 
-	centronics_write_handshake(0, (data & 0x20) ? 0 : CENTRONICS_STROBE, CENTRONICS_STROBE);
+	centronics_write_handshake(space->machine, 0, (data & 0x20) ? 0 : CENTRONICS_STROBE, CENTRONICS_STROBE);
 
 	// 0x40 = IDE RESET
 	// 0x80 = FDD_DENSE_SEL
@@ -1649,7 +1683,7 @@ static const ay8910_interface stbook_ym2149_interface =
 
 static UINT8 krxd, ktxd;
 
-static const struct acia6850_interface stbook_acia_ikbd_intf =
+static const acia6850_interface stbook_acia_ikbd_intf =
 {
 	U517/2/16, // 500kHz
 	U517/2/2, // 1MHZ
@@ -1678,10 +1712,12 @@ static MC68901_GPIO_READ( stbook_mfp_gpio_r )
 
     */
 
-	UINT8 data = (centronics_read_handshake(0) & CENTRONICS_NOT_BUSY) >> 7;
+	atarist_state *state = device->machine->driver_data;
 
-	data |= (acia_irq << 4);
-	data |= (fdc.irq << 5);
+	UINT8 data = (centronics_read_handshake(device->machine,0) & CENTRONICS_NOT_BUSY) >> 7;
+
+	data |= (state->acia_irq << 4);
+	data |= (state->fdc_irq << 5);
 
 	return data;
 }
@@ -1702,20 +1738,51 @@ static MC68901_INTERFACE( stbook_mfp_intf )
 
 static MACHINE_START( stbook )
 {
+	atarist_state *state = machine->driver_data;
+
+	/* configure RAM banking */
 	stbook_configure_memory(machine);
-	atariste_state_save();
 
-	state_save_register_global(krxd);
-	state_save_register_global(ktxd);
+	/* configure devices */
+	centronics_config(machine, 0, atarist_centronics_config);
 
-	centronics_config(0, atarist_centronics_config);
-	wd17xx_init(machine, WD_TYPE_1772, atarist_fdc_callback, NULL);
-	acia6850_config(0, &stbook_acia_ikbd_intf);
-	acia6850_config(1, &acia_midi_intf);
-	rp5c15_init(machine, &rtc_intf);
+	/* set CPU interrupt callback */
+	cpu_set_irq_callback(machine->cpu[0], atarist_int_ack);
 
-	cpunum_set_irq_callback(0, atarist_int_ack);
+	/* find devices */
+	state->mc68901 = devtag_get_device(machine, MC68901, MC68901_TAG);
+
+	/* register for state saving */
+	atariste_state_save(machine);
+	state_save_register_global(machine, krxd);
+	state_save_register_global(machine, ktxd);
 }
+
+static DEVICE_IMAGE_LOAD( atarist_cart )
+{
+	UINT8 *RAM = memory_region(image->machine, "main");
+	UINT8 *ptr = RAM + 0xfa0000;
+	int	filesize = image_length(image);
+
+	if (filesize <= 128 * 1024)
+	{
+		if (image_fread(image, ptr, filesize) == filesize)
+		{
+			memory_install_readwrite16_handler(cputag_get_address_space(image->machine, "main", ADDRESS_SPACE_PROGRAM), 0xfa0000, 0xfbffff, 0, 0, SMH_BANK3, SMH_BANK3);
+
+			return INIT_PASS;
+		}
+	}
+
+	return INIT_FAIL;
+}
+
+static MACHINE_DRIVER_START( atarist_cartslot )
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("stc")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(atarist_cart)
+MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( atarist )
 	MDRV_DRIVER_DATA(atarist_state)
@@ -1731,9 +1798,8 @@ static MACHINE_DRIVER_START( atarist )
 	MDRV_MACHINE_START(atarist)
 
 	// device hardware
-	MDRV_DEVICE_ADD(MC68901_TAG, MC68901)
-	MDRV_DEVICE_CONFIG(mfp_intf)
-	MDRV_DEVICE_ADD("scc", SCC8530)
+	MDRV_MC68901_ADD(MC68901_TAG, mfp_intf)
+	MDRV_SCC8530_ADD("scc")
 
 	// video hardware
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1751,7 +1817,15 @@ static MACHINE_DRIVER_START( atarist )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
+
+	/* acia */
+	MDRV_ACIA6850_ADD("acia_0", acia_ikbd_intf)
+	MDRV_ACIA6850_ADD("acia_1", acia_midi_intf)
+	
+	MDRV_WD1772_ADD("wd1772", atarist_wd17xx_interface )
+	
+	MDRV_IMPORT_FROM(atarist_cartslot)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( megast )
@@ -1759,6 +1833,7 @@ static MACHINE_DRIVER_START( megast )
 
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(megast_map, 0)
+	MDRV_RP5C15_ADD("rp5c15",rtc_intf)
 
 	MDRV_MACHINE_START(megast)
 MACHINE_DRIVER_END
@@ -1777,9 +1852,8 @@ static MACHINE_DRIVER_START( atariste )
 	MDRV_MACHINE_START(atariste)
 
 	// device hardware
-	MDRV_DEVICE_ADD(MC68901_TAG, MC68901)
-	MDRV_DEVICE_CONFIG(atariste_mfp_intf)
-	MDRV_DEVICE_ADD("scc", SCC8530)
+	MDRV_MC68901_ADD(MC68901_TAG, atariste_mfp_intf)
+	MDRV_SCC8530_ADD("scc")
 
 	// video hardware
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1802,11 +1876,18 @@ static MACHINE_DRIVER_START( atariste )
     MDRV_SOUND_ROUTE(0, "right", 0.50)
     MDRV_SOUND_ROUTE(1, "left", 0.50)
 */
-	MDRV_DEVICE_ADD(LMC1992_TAG, LMC1992)
-//	MDRV_DEVICE_CONFIG(atariste_lmc1992_intf)
+	MDRV_LMC1992_ADD(LMC1992_TAG /* ,atariste_lmc1992_intf */)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
+
+	/* acia */
+	MDRV_ACIA6850_ADD("acia_0", acia_ikbd_intf)
+	MDRV_ACIA6850_ADD("acia_1", acia_midi_intf)
+	
+	MDRV_WD1772_ADD("wd1772", atarist_wd17xx_interface )
+	
+	MDRV_IMPORT_FROM(atarist_cartslot)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( megaste )
@@ -1814,6 +1895,7 @@ static MACHINE_DRIVER_START( megaste )
 
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(megaste_map, 0)
+	MDRV_RP5C15_ADD("rp5c15",rtc_intf)
 
 	MDRV_MACHINE_START(megaste)
 MACHINE_DRIVER_END
@@ -1824,15 +1906,15 @@ static MACHINE_DRIVER_START( stbook )
 	// basic machine hardware
 	MDRV_CPU_ADD("main", M68000, U517/2)
 	MDRV_CPU_PROGRAM_MAP(stbook_map, 0)
+	MDRV_RP5C15_ADD("rp5c15",rtc_intf)
 
 	//MDRV_CPU_ADD("cop888", COP888, Y700)
 
 	MDRV_MACHINE_START(stbook)
 
 	// device hardware
-	MDRV_DEVICE_ADD(MC68901_TAG, MC68901)
-	MDRV_DEVICE_CONFIG(stbook_mfp_intf)
-	MDRV_DEVICE_ADD("scc", SCC8530)
+	MDRV_MC68901_ADD(MC68901_TAG, stbook_mfp_intf)
+	MDRV_SCC8530_ADD("scc")
 
 	// video hardware
 	MDRV_SCREEN_ADD("main", LCD)
@@ -1853,7 +1935,15 @@ static MACHINE_DRIVER_START( stbook )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
+
+	/* acia */
+	MDRV_ACIA6850_ADD("acia_0", stbook_acia_ikbd_intf)
+	MDRV_ACIA6850_ADD("acia_1", acia_midi_intf)
+	
+	MDRV_WD1772_ADD("wd1772", atarist_wd17xx_interface )
+	
+	MDRV_IMPORT_FROM(atarist_cartslot)
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -2027,13 +2117,13 @@ static void atarist_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:					info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(atarist_floppy); break;
+		case MESS_DEVINFO_PTR_LOAD:						info->load = DEVICE_IMAGE_LOAD_NAME(atarist_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "st"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:			strcpy(info->s = device_temp_str(), "st"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}
@@ -2065,10 +2155,10 @@ static void atarist_serial_getinfo(const mess_device_class *devclass, UINT32 sta
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:						info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(serial_device); break;
+		case MESS_DEVINFO_PTR_START:						info->start = DEVICE_START_NAME(serial_device); break;
 		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(atarist_serial); break;
 		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(serial_device); break;
 
@@ -2084,53 +2174,15 @@ static void megaste_serial_getinfo(const mess_device_class *devclass, UINT32 sta
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:						info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(serial_device); break;
+		case MESS_DEVINFO_PTR_START:						info->start = DEVICE_START_NAME(serial_device); break;
 		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(atarist_serial); break;
 		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(serial_device); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
-	}
-}
-
-static DEVICE_IMAGE_LOAD( atarist_cart )
-{
-	UINT8 *RAM = memory_region(image->machine, "main");
-	UINT8 *ptr = RAM + 0xfa0000;
-	int	filesize = image_length(image);
-
-	if (filesize <= 128 * 1024)
-	{
-		if (image_fread(image, ptr, filesize) == filesize)
-		{
-			memory_install_readwrite16_handler(image->machine, 0, ADDRESS_SPACE_PROGRAM, 0xfa0000, 0xfbffff, 0, 0, SMH_BANK3, SMH_BANK3);
-
-			return INIT_PASS;
-		}
-	}
-
-	return INIT_FAIL;
-}
-
-static void atarist_cartslot_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info )
-{
-	switch( state )
-	{
-	case MESS_DEVINFO_INT_COUNT:
-		info->i = 1;
-		break;
-	case MESS_DEVINFO_PTR_LOAD:
-		info->load = DEVICE_IMAGE_LOAD_NAME(atarist_cart);
-		break;
-	case MESS_DEVINFO_STR_FILE_EXTENSIONS:
-		strcpy(info->s = device_temp_str(), "stc");
-		break;
-	default:
-		cartslot_device_getinfo( devclass, state, info );
-		break;
 	}
 }
 
@@ -2140,7 +2192,6 @@ static SYSTEM_CONFIG_START( atarist )
 	CONFIG_RAM		  ( 256 * 1024) //  260ST
 	CONFIG_DEVICE(atarist_floppy_getinfo)
 	CONFIG_DEVICE(atarist_serial_getinfo)
-	CONFIG_DEVICE(atarist_cartslot_getinfo)
 	// MIDI
 SYSTEM_CONFIG_END
 
@@ -2150,7 +2201,6 @@ static SYSTEM_CONFIG_START( megast )
 	CONFIG_RAM		  (1024 * 1024) // Mega ST 1
 	CONFIG_DEVICE(atarist_floppy_getinfo)
 	CONFIG_DEVICE(atarist_serial_getinfo)
-	CONFIG_DEVICE(atarist_cartslot_getinfo)
 	// MIDI
 SYSTEM_CONFIG_END
 
@@ -2159,7 +2209,6 @@ static SYSTEM_CONFIG_START( atariste )
 	CONFIG_RAM		  ( 512 * 1024) //  520STe
 	CONFIG_DEVICE(atarist_floppy_getinfo)
 	CONFIG_DEVICE(atarist_serial_getinfo)
-	CONFIG_DEVICE(atarist_cartslot_getinfo)
 	// MIDI
 SYSTEM_CONFIG_END
 
@@ -2169,7 +2218,6 @@ static SYSTEM_CONFIG_START( megaste )
 	CONFIG_RAM		  (1024 * 1024) // Mega STe 1
 	CONFIG_DEVICE(atarist_floppy_getinfo)
 	CONFIG_DEVICE(megaste_serial_getinfo)
-	CONFIG_DEVICE(atarist_cartslot_getinfo)
 	// MIDI
 	// LAN
 SYSTEM_CONFIG_END
@@ -2179,7 +2227,6 @@ static SYSTEM_CONFIG_START( stbook )
 	CONFIG_RAM		  (1024 * 1024)
 	CONFIG_DEVICE(atarist_floppy_getinfo)
 	CONFIG_DEVICE(megaste_serial_getinfo)
-	CONFIG_DEVICE(atarist_cartslot_getinfo)
 	// MIDI
 	// IDE Hard Disk
 SYSTEM_CONFIG_END

@@ -17,6 +17,7 @@
 /* Components */
 //#include "cpu/h8s2xxx/h8s2xxx.h"
 #include "video/hd66421.h"
+#include "machine/pcf8593.h"
 
 /* Layout */
 #include "cybiko.lh"
@@ -282,6 +283,8 @@ static MACHINE_DRIVER_START( cybikov1 )
 	MDRV_MACHINE_RESET( cybikov1)
 	// non-volatile ram
 //  MDRV_NVRAM_HANDLER( cybikov1)
+	/* rtc */
+	MDRV_PCF8593_ADD("rtc")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( cybikov2 )

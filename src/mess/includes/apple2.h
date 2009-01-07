@@ -57,6 +57,13 @@
     OTHER
 ***************************************************************************/
 
+/*----------- defined in drivers/apple2.c -----------*/
+
+MACHINE_DRIVER_EXTERN( apple2e );
+INPUT_PORTS_EXTERN( apple2ep );
+PALETTE_INIT( apple2 );
+
+
 /*----------- defined in machine/apple2.c -----------*/
 
 extern UINT32 a2;
@@ -68,7 +75,7 @@ UINT8 apple2_iwm_getdiskreg(void);
 
 void apple2_init_common(running_machine *machine);
 MACHINE_START( apple2 );
-UINT8 apple2_getfloatingbusvalue(void);
+UINT8 apple2_getfloatingbusvalue(running_machine *machine);
 READ8_HANDLER( apple2_c0xx_r );
 WRITE8_HANDLER( apple2_c0xx_w );
 
@@ -112,9 +119,9 @@ typedef struct _apple2_meminfo apple2_meminfo;
 struct _apple2_meminfo
 {
 	UINT32 read_mem;
-	read8_machine_func read_handler;
+	read8_space_func read_handler;
 	UINT32 write_mem;
-	write8_machine_func write_handler;
+	write8_space_func write_handler;
 };
 
 typedef struct _apple2_memmap_entry apple2_memmap_entry;
@@ -122,7 +129,7 @@ struct _apple2_memmap_entry
 {
 	offs_t begin;
 	offs_t end;
-	void (*get_meminfo)(offs_t begin, offs_t end, apple2_meminfo *meminfo);
+	void (*get_meminfo)(running_machine *machine, offs_t begin, offs_t end, apple2_meminfo *meminfo);
 	bank_disposition_t bank_disposition;
 };
 

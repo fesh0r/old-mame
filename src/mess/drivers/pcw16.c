@@ -19,7 +19,7 @@
     Hardware:
         - 2mb dram max,
         - 2mb flash-file memory max (in 2 1mb chips),
-        - 16Mhz Z80 (core combined in Anne ASIC),
+        - 16MHz Z80 (core combined in Anne ASIC),
         - Anne ASIC (keyboard interface, video (colours), dram/flash/rom paging,
         real time clock, "glue" logic for Super I/O)
         - Winbond Super I/O chip (PC type hardware - FDC, Serial, LPT, Hard-drive)
@@ -31,7 +31,7 @@
     Primary Purpose:
         - built as a successor to the PCW8526/PCW9512 series
         - wordprocessor system (also contains spreadsheet and other office applications)
-        - 16Mhz processor used so proportional fonts and enhanced wordprocessing features
+        - 16MHz processor used so proportional fonts and enhanced wordprocessing features
           are possible, true WYSIWYG wordprocessing.
         - flash-file can store documents.
 
@@ -89,7 +89,7 @@ TODO:
 
 /* Core includes */
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 #include "includes/pcw16.h"
 
 /* Components */
@@ -133,11 +133,11 @@ static void pcw16_refresh_ints(running_machine *machine)
 	/* any bits set excluding vsync */
 	if ((pcw16_system_status & (~0x04))!=0)
 	{
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 	}
 }
 
@@ -173,7 +173,7 @@ static WRITE8_HANDLER(pcw16_palette_w)
 
 static char *pcw16_mem_ptr[4];
 
-static const write8_machine_func pcw16_write_handler_dram[4] =
+static const write8_space_func pcw16_write_handler_dram[4] =
 {
 	SMH_BANK5,
 	SMH_BANK6,
@@ -181,7 +181,7 @@ static const write8_machine_func pcw16_write_handler_dram[4] =
 	SMH_BANK8
 };
 
-static const read8_machine_func pcw16_read_handler_dram[4] =
+static const read8_space_func pcw16_read_handler_dram[4] =
 {
 	SMH_BANK1,
 	SMH_BANK2,
@@ -258,7 +258,7 @@ static  READ8_HANDLER(pcw16_flash1_bank_handler3_r)
 	return pcw16_flash1_bank_handler_r(3, offset);
 }
 
-static const read8_machine_func pcw16_flash0_bank_handlers_r[4] =
+static const read8_space_func pcw16_flash0_bank_handlers_r[4] =
 {
 	pcw16_flash0_bank_handler0_r,
 	pcw16_flash0_bank_handler1_r,
@@ -266,7 +266,7 @@ static const read8_machine_func pcw16_flash0_bank_handlers_r[4] =
 	pcw16_flash0_bank_handler3_r,
 };
 
-static const read8_machine_func pcw16_flash1_bank_handlers_r[4] =
+static const read8_space_func pcw16_flash1_bank_handlers_r[4] =
 {
 	pcw16_flash1_bank_handler0_r,
 	pcw16_flash1_bank_handler1_r,
@@ -335,7 +335,7 @@ static WRITE8_HANDLER(pcw16_flash1_bank_handler3_w)
 	pcw16_flash1_bank_handler_w(3, offset, data);
 }
 
-static const write8_machine_func pcw16_flash0_bank_handlers_w[4] =
+static const write8_space_func pcw16_flash0_bank_handlers_w[4] =
 {
 	pcw16_flash0_bank_handler0_w,
 	pcw16_flash0_bank_handler1_w,
@@ -343,7 +343,7 @@ static const write8_machine_func pcw16_flash0_bank_handlers_w[4] =
 	pcw16_flash0_bank_handler3_w,
 };
 
-static const write8_machine_func pcw16_flash1_bank_handlers_w[4] =
+static const write8_space_func pcw16_flash1_bank_handlers_w[4] =
 {
 	pcw16_flash1_bank_handler0_w,
 	pcw16_flash1_bank_handler1_w,
@@ -372,8 +372,9 @@ static  READ8_HANDLER(pcw16_no_mem_r)
 
 static void pcw16_set_bank_handlers(running_machine *machine, int bank, PCW16_RAM_TYPE type)
 {
-	read8_machine_func read_handler;
-	write8_machine_func write_handler;
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	read8_space_func read_handler;
+	write8_space_func write_handler;
 
 	switch (type) {
 	case PCW16_MEM_ROM:
@@ -406,9 +407,9 @@ static void pcw16_set_bank_handlers(running_machine *machine, int bank, PCW16_RA
 		break;
 	}
 
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+	memory_install_read8_handler(space,
 		(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, read_handler);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+	memory_install_write8_handler(space,
 		(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, write_handler);
 }
 
@@ -456,8 +457,8 @@ static void pcw16_update_bank(running_machine *machine, int bank)
 
 	mem_ptr = mem_ptr + ((bank_id - bank_offs)<<14);
 	pcw16_mem_ptr[bank] = (char*)mem_ptr;
-	memory_set_bankptr((bank+1), mem_ptr);
-	memory_set_bankptr((bank+5), mem_ptr);
+	memory_set_bankptr(machine, (bank+1), mem_ptr);
+	memory_set_bankptr(machine, (bank+5), mem_ptr);
 
 	if ((bank_id & 0x080)==0)
 	{
@@ -511,7 +512,7 @@ static WRITE8_HANDLER(pcw16_bankhw_w)
 
 	pcw16_banks[offset] = data;
 
-	pcw16_update_memory(machine);
+	pcw16_update_memory(space->machine);
 }
 
 static WRITE8_HANDLER(pcw16_video_control_w)
@@ -633,7 +634,7 @@ static READ8_HANDLER(pcw16_keyboard_data_shift_r)
 	//logerror("keyboard data shift r: %02x\n", pcw16_keyboard_data_shift);
 	pcw16_keyboard_state &= ~(PCW16_KEYBOARD_BUSY_STATUS);
 
-	pcw16_keyboard_int(machine, 0);
+	pcw16_keyboard_int(space->machine, 0);
 	/* reset for reception */
 	pcw16_keyboard_reset();
 
@@ -754,7 +755,7 @@ static WRITE8_HANDLER(pcw16_keyboard_control_w)
 				/* set clock low - no furthur transmissions */
 				pcw16_keyboard_set_clock_state(0);
 				/* set int */
-				pcw16_keyboard_int(machine, 1);
+				pcw16_keyboard_int(space->machine, 1);
 			}
 		}
 
@@ -767,7 +768,7 @@ static WRITE8_HANDLER(pcw16_keyboard_control_w)
 		{
 			if ((pcw16_system_status & (1<<1))!=0)
 			{
-				pcw16_keyboard_int(machine, 0);
+				pcw16_keyboard_int(space->machine, 0);
 			}
 		}
 	}
@@ -1011,7 +1012,7 @@ static void pcw16_trigger_fdc_int(running_machine *machine)
 				{
 					/* I'll pulse it because if I used hold-line I'm not sure
                     it would clear - to be checked */
-					cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+					cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 				}
 			}
 		}
@@ -1036,7 +1037,7 @@ static READ8_HANDLER(pcw16_system_status_r)
 {
 //  logerror("system status r: \n");
 
-	return pcw16_system_status | (input_port_read(machine, "EXTRA") & 0x04);
+	return pcw16_system_status | (input_port_read(space->machine, "EXTRA") & 0x04);
 }
 
 static READ8_HANDLER(pcw16_timer_interrupt_counter_r)
@@ -1049,7 +1050,7 @@ static READ8_HANDLER(pcw16_timer_interrupt_counter_r)
 	/* clear display int */
 	pcw16_system_status &= ~(1<<0);
 
-	pcw16_refresh_ints(machine);
+	pcw16_refresh_ints(space->machine);
 
 	return data;
 }
@@ -1098,14 +1099,14 @@ static WRITE8_HANDLER(pcw16_system_control_w)
 		/* set terminal count */
 		case 0x05:
 		{
-			pc_fdc_set_tc_state(machine, 1);
+			pc_fdc_set_tc_state(space->machine, 1);
 		}
 		break;
 
 		/* clear terminal count */
 		case 0x06:
 		{
-			pc_fdc_set_tc_state(machine, 0);
+			pc_fdc_set_tc_state(space->machine, 0);
 		}
 		break;
 
@@ -1156,39 +1157,39 @@ static WRITE8_HANDLER(pcw16_system_control_w)
 /* write to Super I/O chip. FDC Data Rate. */
 static WRITE8_HANDLER(pcw16_superio_fdc_datarate_w)
 {
-	pc_fdc_w(machine, PC_FDC_DATA_RATE_REGISTER,data);
+	pc_fdc_w(space, PC_FDC_DATA_RATE_REGISTER,data);
 }
 
 /* write to Super I/O chip. FDC Digital output register */
 static WRITE8_HANDLER(pcw16_superio_fdc_digital_output_register_w)
 {
-	pc_fdc_w(machine, PC_FDC_DIGITAL_OUTPUT_REGISTER, data);
+	pc_fdc_w(space, PC_FDC_DIGITAL_OUTPUT_REGISTER, data);
 }
 
 /* write to Super I/O chip. FDC Data Register */
 static WRITE8_HANDLER(pcw16_superio_fdc_data_w)
 {
-	pc_fdc_w(machine, PC_FDC_DATA_REGISTER, data);
+	pc_fdc_w(space, PC_FDC_DATA_REGISTER, data);
 }
 
 /* write to Super I/O chip. FDC Data Register */
 static  READ8_HANDLER(pcw16_superio_fdc_data_r)
 {
-	return pc_fdc_r(machine, PC_FDC_DATA_REGISTER);
+	return pc_fdc_r(space, PC_FDC_DATA_REGISTER);
 }
 
 /* write to Super I/O chip. FDC Main Status Register */
 static  READ8_HANDLER(pcw16_superio_fdc_main_status_register_r)
 {
-	return pc_fdc_r(machine, PC_FDC_MAIN_STATUS_REGISTER);
+	return pc_fdc_r(space, PC_FDC_MAIN_STATUS_REGISTER);
 }
 
 static  READ8_HANDLER(pcw16_superio_fdc_digital_input_register_r)
 {
-	return pc_fdc_r(machine, PC_FDC_DIGITIAL_INPUT_REGISTER);
+	return pc_fdc_r(space, PC_FDC_DIGITIAL_INPUT_REGISTER);
 }
 
-static void	pcw16_fdc_interrupt(int state)
+static void	pcw16_fdc_interrupt(running_machine *machine, int state)
 {
 	/* IRQ6 */
 	/* bit 6 of PCW16 system status indicates floppy ints */
@@ -1199,15 +1200,20 @@ static void	pcw16_fdc_interrupt(int state)
 		pcw16_system_status |= (1<<6);
 	}
 
-	pcw16_trigger_fdc_int(Machine);
+	pcw16_trigger_fdc_int(machine);
+}
+
+static device_config * pcw16_get_device(running_machine *machine )
+{
+	return (device_config*)device_list_find_by_tag( machine->config->devicelist, NEC765A, "nec765");	
 }
 
 static const struct pc_fdc_interface pcw16_fdc_interface=
 {
-	NEC765A,
-	NEC765_RDY_PIN_CONNECTED,
 	pcw16_fdc_interrupt,
-	NULL
+	NULL,
+	NULL,
+	pcw16_get_device
 };
 
 
@@ -1346,21 +1352,21 @@ static MACHINE_RESET( pcw16 )
 	pcw16_interrupt_counter = 0;
 
 	/* video ints */
-	timer_pulse(ATTOTIME_IN_USEC(5830), NULL, 0,pcw16_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_USEC(5830), NULL, 0,pcw16_timer_callback);
 	/* rtc timer */
-	timer_pulse(ATTOTIME_IN_HZ(256), NULL, 0, rtc_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(256), NULL, 0, rtc_timer_callback);
 	/* keyboard timer */
-	timer_pulse(ATTOTIME_IN_HZ(50), NULL, 0, pcw16_keyboard_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, pcw16_keyboard_timer_callback);
 
 
 	pc_fdc_init(machine, &pcw16_fdc_interface);
 
 	pc_lpt_config(0, &lpt_config);
-	centronics_config(0, &cent_config);
+	centronics_config(machine, 0, &cent_config);
 	pc_lpt_set_device(0, &CENTRONICS_PRINTER_DEVICE);
 
 	/* initialise mouse */
-	pc_mouse_initialise();
+	pc_mouse_initialise(machine);
 	pc_mouse_set_serial_port( device_list_find_by_tag( machine->config->devicelist, NS16550, "ns16550_0" ) );
 
 	/* initialise keyboard */
@@ -1394,16 +1400,14 @@ static MACHINE_DRIVER_START( pcw16 )
 	MDRV_CPU_ADD("main", Z80, 16000000)
 	MDRV_CPU_PROGRAM_MAP(pcw16_map, 0)
 	MDRV_CPU_IO_MAP(pcw16_io, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET( pcw16 )
 	MDRV_NVRAM_HANDLER( pcw16 )
 
-	MDRV_DEVICE_ADD( "ns16550_1", NS16550 )				/* TODO: Verify uart model */
-	MDRV_DEVICE_CONFIG( pcw16_com_interface[0] )
+	MDRV_NS16550_ADD( "ns16550_1", pcw16_com_interface[0] )				/* TODO: Verify uart model */
 
-	MDRV_DEVICE_ADD( "ns16550_2", NS16550 )				/* TODO: Verify uart model */
-	MDRV_DEVICE_CONFIG( pcw16_com_interface[1] )
+	MDRV_NS16550_ADD( "ns16550_2", pcw16_com_interface[1] )				/* TODO: Verify uart model */
 
     /* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1424,15 +1428,16 @@ static MACHINE_DRIVER_START( pcw16 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* printer */
-	/* MDRV_DEVICE_ADD("printer", PRINTER) */
+	/* MDRV_PRINTER_ADD("printer") */
+	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_connected_interface)
 MACHINE_DRIVER_END
 
 
 static DRIVER_INIT( pcw16 )
 {
 	/* init flashes */
-	intelflash_init(0, FLASH_INTEL_E28F008SA, NULL);
-	intelflash_init(1, FLASH_INTEL_E28F008SA, NULL);
+	intelflash_init(machine, 0, FLASH_INTEL_E28F008SA, NULL);
+	intelflash_init(machine, 1, FLASH_INTEL_E28F008SA, NULL);
 }
 
 /***************************************************************************

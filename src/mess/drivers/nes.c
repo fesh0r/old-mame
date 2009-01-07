@@ -21,22 +21,22 @@
 
 static READ8_HANDLER( psg_4015_r )
 {
-	return nes_psg_0_r(machine, 0x15);
+	return nes_psg_0_r(space, 0x15);
 }
 
 static WRITE8_HANDLER( psg_4015_w )
 {
-	nes_psg_0_w(machine, 0x15, data);
+	nes_psg_0_w(space, 0x15, data);
 }
 
 static WRITE8_HANDLER( psg_4017_w )
 {
-	nes_psg_0_w(machine, 0x17, data);
+	nes_psg_0_w(space, 0x17, data);
 }
 
 static WRITE8_HANDLER(nes_vh_sprite_dma_w)
 {
-	ppu2c0x_spriteram_dma(0, data);
+	ppu2c0x_spriteram_dma(space, 0, data);
 }
 
 static ADDRESS_MAP_START( nes_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -160,15 +160,11 @@ gfx_layout nes_vram_charlayout =
 };
 #endif
 
-static const nes_interface nesntsc_interface =
+static const nes_interface nes_apu_interface =
 {
-	0
+	"main"
 };
 
-static const nes_interface nespal_interface =
-{
-	0
-};
 
 ROM_START( nes )
     ROM_REGION( 0x10000, "main",0 )  /* Main RAM + program banks */
@@ -216,8 +212,6 @@ ROM_START( famitwin )
 	ROM_FILL( 0x0000, 0x10000, 0x00 )
 ROM_END
 
-
-
 static MACHINE_DRIVER_START( nes )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", N2A03, NTSC_CLOCK)
@@ -245,8 +239,14 @@ static MACHINE_DRIVER_START( nes )
     /* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("nessound", NES, NTSC_CLOCK)
-	MDRV_SOUND_CONFIG(nesntsc_interface)
+	MDRV_SOUND_CONFIG(nes_apu_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("nes")
+	MDRV_CARTSLOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(nes_cart)
+	MDRV_CARTSLOT_PARTIALHASH(nes_partialhash)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( nespal )
@@ -263,52 +263,19 @@ static MACHINE_DRIVER_START( nespal )
 
     /* sound hardware */
 	MDRV_SOUND_REPLACE("nessound", NES, PAL_CLOCK)
-	MDRV_SOUND_CONFIG(nespal_interface)
+	MDRV_SOUND_CONFIG(nes_apu_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
-static void nes_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(nes_cart); break;
-		case MESS_DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = nes_partialhash; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "nes"); break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(nes)
-	CONFIG_DEVICE(nes_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
-static void famicom_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(nes_cart); break;
-		case MESS_DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = nes_partialhash; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "nes"); break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
+static MACHINE_DRIVER_START( famicom )
+	MDRV_IMPORT_FROM( nes )
+	
+	MDRV_CARTSLOT_MODIFY("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("nes")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(nes_cart)
+	MDRV_CARTSLOT_PARTIALHASH(nes_partialhash)
+MACHINE_DRIVER_END
 
 static void famicom_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -332,8 +299,7 @@ static void famicom_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 	}
 }
 
-static SYSTEM_CONFIG_START(famicom)
-	CONFIG_DEVICE(famicom_cartslot_getinfo)
+static SYSTEM_CONFIG_START(famicom)	
 	CONFIG_DEVICE(famicom_floppy_getinfo)
 SYSTEM_CONFIG_END
 
@@ -346,5 +312,5 @@ SYSTEM_CONFIG_END
 /*     YEAR  NAME      PARENT    COMPAT MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
 CONS( 1983, famicom,   0,        0,		nes,      famicom,  0,	      famicom,	"Nintendo", "Famicom" , 0)
 CONS( 1986, famitwin,  famicom,  0,		nes,      famicom,  0,	      famicom,	"Sharp", "Famicom Twin" , 0)
-CONS( 1985, nes,       0,        0,		nes,      nes,      0,        nes,		"Nintendo", "Nintendo Entertainment System (NTSC)" , 0)
-CONS( 1987, nespal,    nes,      0,		nespal,   nes,      0,	      nes,		"Nintendo", "Nintendo Entertainment System (PAL)" , 0)
+CONS( 1985, nes,       0,        0,		nes,      nes,      0,        0,		"Nintendo", "Nintendo Entertainment System (NTSC)" , 0)
+CONS( 1987, nespal,    nes,      0,		nespal,   nes,      0,	      0,		"Nintendo", "Nintendo Entertainment System (PAL)" , 0)

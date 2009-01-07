@@ -7,6 +7,7 @@
 #ifndef DGN_BETA_H_
 #define DGN_BETA_H_
 
+#include "machine/wd17xx.h"
 
 #define DGNBETA_CPU_SPEED_HZ		2000000	/* 2MHz */
 #define DGNBETA_FRAMES_PER_SECOND	50
@@ -63,6 +64,7 @@ typedef enum
 
 /*----------- defined in machine/dgn_beta.c -----------*/
 
+extern const wd17xx_interface dgnbeta_wd17xx_interface;
 MACHINE_START( dgnbeta );
 
 // Page IO at FE00
@@ -102,7 +104,7 @@ void dgn_beta_line_interrupt (int data);
 /* mc6845 video display generator */
 void init_video(running_machine *machine);
 extern VIDEO_UPDATE( dgnbeta );
-void vid_set_gctrl(int data);
+void vid_set_gctrl(running_machine *machine, int data);
 
 /* 74HC670 4x4bit colour ram */
 WRITE8_HANDLER(colour_ram_w);

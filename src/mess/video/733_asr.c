@@ -60,7 +60,7 @@ static struct
 
 	int x;
 
-	void (*int_callback)(int state);
+	void (*int_callback)(running_machine *, int state);
 
 	bitmap_t *bitmap;
 } asr[MAX_ASR];
@@ -167,7 +167,7 @@ void asr733_init(running_machine *machine)
 	memcpy(dst, fontdata6x8, asrfontdata_size);
 }
 
-int asr733_init_term(running_machine *machine, int unit, void (*int_callback)(int state))
+int asr733_init_term(running_machine *machine, int unit, void (*int_callback)(running_machine *, int state))
 {
 	const device_config *screen = video_screen_first(machine->config);
 	int width = video_screen_get_width(screen);
@@ -176,37 +176,37 @@ int asr733_init_term(running_machine *machine, int unit, void (*int_callback)(in
 
 	asr[unit].bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
-	fillbitmap(asr[unit].bitmap, 0, visarea);
+	bitmap_fill(asr[unit].bitmap, visarea, 0);
 
 	asr[unit].int_callback = int_callback;
 
 	return 0;
 }
 
-static void asr_field_interrupt(int unit)
+static void asr_field_interrupt(running_machine *machine, int unit)
 {
 	if ((asr[unit].mode & AM_enint_mask) && (asr[unit].new_status_flag))	/* right??? */
 	{
 		asr[unit].status |= AS_int_mask;
 		if (asr[unit].int_callback)
-			(*asr[unit].int_callback)(1);
+			(*asr[unit].int_callback)(machine, 1);
 	}
 	else
 	{
 		asr[unit].status &= ~AS_int_mask;
 		if (asr[unit].int_callback)
-			(*asr[unit].int_callback)(0);
+			(*asr[unit].int_callback)(machine, 0);
 	}
 }
 
-void asr733_reset(int unit)
+void asr733_reset(running_machine *machine, int unit)
 {
 	/*asr[unit].OutQueueLen = 0;*/
 
 	asr[unit].status = AS_dsr_mask | AS_wrq_mask;
 	asr[unit].mode = 0;
 
-	asr_field_interrupt(unit);
+	asr_field_interrupt(machine, unit);
 }
 
 /* write a single char on screen */
@@ -227,7 +227,7 @@ static void asr_linefeed(running_machine *machine, int unit)
 		draw_scanline8(asr[unit].bitmap, asr_window_offset_x, y, asr_window_width, buf, machine->pens, -1);
 	}
 
-	fillbitmap(asr[unit].bitmap, 0, &asr_scroll_clear_window);
+	bitmap_fill(asr[unit].bitmap, &asr_scroll_clear_window, 0);
 }
 
 static void asr_transmit(running_machine *machine, int unit, UINT8 data)
@@ -295,7 +295,7 @@ static void asr_transmit(running_machine *machine, int unit, UINT8 data)
 
 	asr[unit].status |= AS_wrq_mask;
 	asr[unit].new_status_flag = 1;	/* right??? */
-	asr_field_interrupt(unit);
+	asr_field_interrupt(machine, unit);
 }
 
 #if 0
@@ -309,7 +309,7 @@ static void asr_receive_callback(int dummy)
 
 	ASR.status |= AS_rrq_mask;
 	ASR.new_status_flag = 1;	/* right??? */
-	asr_field_interrupt();
+	asr_field_interrupt(machine, 0);
 }
 #endif
 
@@ -389,18 +389,18 @@ void asr733_cru_w(running_machine *machine, int offset, int data, int unit)
 		else
 			asr[unit].mode &= ~ (1 << (offset - 8));
 		if (offset == 14)
-			asr_field_interrupt(unit);
+			asr_field_interrupt(machine, unit);
 		break;
 
 	case 11:	/* clear write request (write any value to execute) */
 	case 12:	/* clear read request (write any value to execute) */
 		asr[unit].status &= ~ (1 << (offset - 8));
-		asr_field_interrupt(unit);
+		asr_field_interrupt(machine, unit);
 		break;
 
 	case 13:	/* clear new status flag - whatever it means (write any value to execute) */
 		asr[unit].new_status_flag = 0;
-		asr_field_interrupt(unit);
+		asr_field_interrupt(machine, unit);
 		break;
 	}
 }
@@ -412,7 +412,7 @@ void asr733_cru_w(running_machine *machine, int offset, int data, int unit)
 
 WRITE8_HANDLER(asr733_0_cru_w)
 {
-	asr733_cru_w(machine, offset, data, 0);
+	asr733_cru_w(space->machine, offset, data, 0);
 }
 
 
@@ -617,7 +617,7 @@ void asr733_keyboard(running_machine *machine, int unit)
 
 	static unsigned char repeat_timer;
 	enum { repeat_delay = 5 /* approx. 1/10s */ };
-	static char last_key_pressed = -1;
+	static UINT8 last_key_pressed = 0x80;
 	static modifier_state_t last_modifier_state;
 
 	UINT16 key_buf[6];
@@ -625,7 +625,7 @@ void asr733_keyboard(running_machine *machine, int unit)
 	modifier_state_t modifier_state;
 	int repeat_mode;
 
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3" };
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3" };
 
 	/* read current key state */
 	/* 2008-05 FP: in 733_asr.h there are only 4 input ports defined... */
@@ -655,7 +655,7 @@ void asr733_keyboard(running_machine *machine, int unit)
 		/* reset REPEAT timer if the REPEAT key is not pressed */
 		repeat_timer = 0;
 
-	if ((last_key_pressed >= 0) && (key_buf[last_key_pressed >> 4] & (1 << (last_key_pressed & 0xf))))
+	if ( ! (last_key_pressed & 0x80) && (key_buf[last_key_pressed >> 4] & (1 << (last_key_pressed & 0xf))))
 	{
 		/* last key has not been released */
 		if (modifier_state == last_modifier_state)
@@ -671,7 +671,7 @@ void asr733_keyboard(running_machine *machine, int unit)
 				{	/* repeat current key */
 					asr[unit].status |= AS_rrq_mask;
 					asr[unit].new_status_flag = 1;	/* right??? */
-					asr_field_interrupt(unit);
+					asr_field_interrupt(machine, unit);
 					repeat_timer = 0;
 				}
 			}
@@ -684,7 +684,7 @@ void asr733_keyboard(running_machine *machine, int unit)
 	}
 	else
 	{
-		last_key_pressed = -1;
+		last_key_pressed = 0x80;
 
 		if (asr[unit].status & AS_rrq_mask)
 		{	/* keyboard buffer full */
@@ -701,10 +701,10 @@ void asr733_keyboard(running_machine *machine, int unit)
 						last_key_pressed = (i << 4) | j;
 						last_modifier_state = modifier_state;
 
-						asr[unit].recv_buf = (int)key_translate[modifier_state][(int)last_key_pressed];
+						asr[unit].recv_buf = (int)key_translate[modifier_state][last_key_pressed];
 						asr[unit].status |= AS_rrq_mask;
 						asr[unit].new_status_flag = 1;	/* right??? */
-						asr_field_interrupt(unit);
+						asr_field_interrupt(machine, unit);
 						return;
 					}
 				}

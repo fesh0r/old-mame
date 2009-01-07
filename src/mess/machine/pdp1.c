@@ -12,8 +12,6 @@
 #include <stdio.h>
 
 #include "driver.h"
-#include "deprecat.h"
-
 #include "cpu/pdp1/pdp1.h"
 #include "includes/pdp1.h"
 
@@ -149,7 +147,7 @@ static parallel_drum_t parallel_drum;
 #define PARALLEL_DRUM_ROTATION_TIME ATTOTIME_IN_NSEC(8500*4096)
 
 
-static OPBASE_HANDLER(setOPbasefunc)
+static DIRECT_UPDATE_HANDLER(setOPbasefunc)
 {
 	/* just to get rid of the warnings */
 	return -1;
@@ -165,10 +163,10 @@ MACHINE_RESET( pdp1 )
 	pdp1_reset_param.hw_mul_div = (config >> pdp1_config_hw_mul_div_bit) & pdp1_config_hw_mul_div_mask;
 	pdp1_reset_param.type_20_sbs = (config >> pdp1_config_type_20_sbs_bit) & pdp1_config_type_20_sbs_mask;
 
-	tape_reader.timer = timer_alloc(reader_callback, NULL);
-	tape_puncher.timer = timer_alloc(puncher_callback, NULL);
-	typewriter.tyo_timer = timer_alloc(tyo_callback, NULL);
-	dpy_timer = timer_alloc(dpy_callback, NULL);
+	tape_reader.timer = timer_alloc(machine, reader_callback, NULL);
+	tape_puncher.timer = timer_alloc(machine, puncher_callback, NULL);
+	typewriter.tyo_timer = timer_alloc(machine, tyo_callback, NULL);
+	dpy_timer = timer_alloc(machine, dpy_callback, NULL);
 
 	/* reset device state */
 	tape_reader.rcl = tape_reader.rc = 0;
@@ -196,6 +194,7 @@ static void pdp1_machine_stop(running_machine *machine)
 MACHINE_START( pdp1 )
 {
 	UINT8 *dst;
+	const address_space *space = cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM );
 
 	static const unsigned char fontdata6x8[pdp1_fontdata_size] =
 	{	/* ASCII characters */
@@ -329,7 +328,7 @@ MACHINE_START( pdp1 )
 	dst = memory_region(machine, "gfx1");
 	memcpy(dst, fontdata6x8, pdp1_fontdata_size);
 
-	memory_set_opbase_handler(0, setOPbasefunc);
+	memory_set_direct_update_handler(space, setOPbasefunc);
 
 	add_exit_callback(machine, pdp1_machine_stop);
 }
@@ -528,7 +527,7 @@ static TIMER_CALLBACK(reader_callback)
 					tape_reader.rcl = 0;
 					if (tape_reader.rcp)
 					{
-						cpunum_set_reg(0, PDP1_IO, tape_reader.rb);	/* transfer reader buffer to IO */
+						cpu_set_reg(machine->cpu[0], PDP1_IO, tape_reader.rb);	/* transfer reader buffer to IO */
 						pdp1_pulse_iot_done();
 					}
 					else
@@ -561,7 +560,7 @@ static TIMER_CALLBACK(puncher_callback)
 /*
 	Initiate read of a 18-bit word in binary format from tape (used in read-in mode)
 */
-void pdp1_tape_read_binary(void)
+void pdp1_tape_read_binary(const device_config *device)
 {
 	begin_tape_read(1, 1);
 }
@@ -593,10 +592,10 @@ void pdp1_tape_read_binary(void)
  * IO Bits        10 11 12 13 14 15 16 17
  * TAPE CHANNELS  8  7  6  5  4  3  2  1
  */
-void iot_rpa(int op2, int nac, int mb, int *io, int ac)
+void iot_rpa(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	if (LOG_IOT_EXTRA)
-		logerror("Warning, RPA instruction not fully emulated: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+		logerror("Warning, RPA instruction not fully emulated: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 
 	begin_tape_read(0, nac);
 }
@@ -630,10 +629,10 @@ void iot_rpa(int op2, int nac, int mb, int *io, int ac)
  * different (730002 or 724002) the 18-bit word read from tape is automatically
  * transferred to the IO Register via the Reader Buffer.
  */
-void iot_rpb(int op2, int nac, int mb, int *io, int ac)
+void iot_rpb(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	if (LOG_IOT_EXTRA)
-		logerror("Warning, RPB instruction not fully emulated: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+		logerror("Warning, RPB instruction not fully emulated: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 
 	begin_tape_read(1, nac);
 }
@@ -641,10 +640,10 @@ void iot_rpb(int op2, int nac, int mb, int *io, int ac)
 /*
 	rrb iot callback
 */
-void iot_rrb(int op2, int nac, int mb, int *io, int ac)
+void iot_rrb(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	if (LOG_IOT_EXTRA)
-		logerror("RRB instruction: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+		logerror("RRB instruction: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 
 	*io = tape_reader.rb;
 	io_status &= ~io_st_ptr;
@@ -664,10 +663,10 @@ void iot_rrb(int op2, int nac, int mb, int *io, int ac)
  * For each In-Out Transfer instruction one line of tape is punched. In-Out Register
  * Bit 17 conditions Hole 1. Bit 16 conditions Hole 2, etc. Bit 10 conditions Hole 8
  */
-void iot_ppa(int op2, int nac, int mb, int *io, int ac)
+void iot_ppa(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	if (LOG_IOT_EXTRA)
-		logerror("PPA instruction: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+		logerror("PPA instruction: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 
 	tape_write(*io & 0377);
 	io_status &= ~io_st_ptp;
@@ -675,7 +674,7 @@ void iot_ppa(int op2, int nac, int mb, int *io, int ac)
 	if (LOG_IOT_OVERLAP)
 	{
 		if (timer_enable(tape_puncher.timer, 0))
-			logerror("Error: overlapped PPA/PPB instructions: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+			logerror("Error: overlapped PPA/PPB instructions: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 	}
 
 	timer_adjust_oneshot(tape_puncher.timer, ATTOTIME_IN_USEC(15800), nac);
@@ -692,10 +691,10 @@ void iot_ppa(int op2, int nac, int mb, int *io, int ac)
  * Bit 5 conditions Hole 1. Bit 4 conditions Hole 2, etc. Bit 0 conditions Hole 6.
  * Hole 7 is left blank. Hole 8 is always punched in this mode.
  */
-void iot_ppb(int op2, int nac, int mb, int *io, int ac)
+void iot_ppb(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	if (LOG_IOT_EXTRA)
-		logerror("PPB instruction: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+		logerror("PPB instruction: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 
 	tape_write((*io >> 12) | 0200);
 	io_status &= ~io_st_ptp;
@@ -703,7 +702,7 @@ void iot_ppb(int op2, int nac, int mb, int *io, int ac)
 	if (LOG_IOT_OVERLAP)
 	{
 		if (timer_enable(tape_puncher.timer, 0))
-			logerror("Error: overlapped PPA/PPB instructions: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+			logerror("Error: overlapped PPA/PPB instructions: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 	}
 	timer_adjust_oneshot(tape_puncher.timer, ATTOTIME_IN_USEC(15800), nac);
 }
@@ -858,16 +857,16 @@ static TIMER_CALLBACK(tyo_callback)
 /*
 	tyo iot callback
 */
-void iot_tyo(int op2, int nac, int mb, int *io, int ac)
+void iot_tyo(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	int ch, delay;
 
 	if (LOG_IOT_EXTRA)
-		logerror("Warning, TYO instruction not fully emulated: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+		logerror("Warning, TYO instruction not fully emulated: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 
 	ch = (*io) & 077;
 
-	typewriter_out(Machine, ch);
+	typewriter_out(device->machine, ch);
 	io_status &= ~io_st_tyo;
 
 	/* compute completion delay (source: maintainance manual 9-12, 9-13 and 9-14) */
@@ -891,7 +890,7 @@ void iot_tyo(int op2, int nac, int mb, int *io, int ac)
 	if (LOG_IOT_OVERLAP)
 	{
 		if (timer_enable(typewriter.tyo_timer, 0))
-			logerror("Error: overlapped TYO instruction: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+			logerror("Error: overlapped TYO instruction: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 	}
 
 	timer_adjust_oneshot(typewriter.tyo_timer, ATTOTIME_IN_MSEC(delay), nac);
@@ -911,10 +910,10 @@ void iot_tyo(int op2, int nac, int mb, int *io, int ac)
  * clears the In-Out Register before transferring the information and also clears
  * the type-in status bit.
  */
-void iot_tyi(int op2, int nac, int mb, int *io, int ac)
+void iot_tyi(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	if (LOG_IOT_EXTRA)
-		logerror("Warning, TYI instruction not fully emulated: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+		logerror("Warning, TYI instruction not fully emulated: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 
 	*io = typewriter.tb;
 	if (! (io_status & io_st_tyi))
@@ -923,7 +922,7 @@ void iot_tyi(int op2, int nac, int mb, int *io, int ac)
 	{
 		io_status &= ~io_st_tyi;
 		if (USE_SBS)
-			cpunum_set_input_line_and_vector(Machine, 0, 0, CLEAR_LINE, 0);	/* interrupt it, baby */
+			cpu_set_input_line_and_vector(device->machine->cpu[0], 0, CLEAR_LINE, 0);	/* interrupt it, baby */
 	}
 }
 
@@ -976,7 +975,7 @@ static TIMER_CALLBACK(dpy_callback)
 
 	Light on one pixel on CRT
 */
-void iot_dpy(int op2, int nac, int mb, int *io, int ac)
+void iot_dpy(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	int x;
 	int y;
@@ -993,7 +992,7 @@ void iot_dpy(int op2, int nac, int mb, int *io, int ac)
 	{
 		io_status |= io_st_pen;
 
-		cpunum_set_reg(0, PDP1_PF3, 1);
+		cpu_set_reg(device->machine->cpu[0], PDP1_PF3, 1);
 	}
 
 	if (nac)
@@ -1004,7 +1003,7 @@ void iot_dpy(int op2, int nac, int mb, int *io, int ac)
 			/* note that overlap detection is incomplete: it will only work if both DPY
 			instructions require a completion pulse */
 			if (timer_enable(dpy_timer, 0))
-				logerror("Error: overlapped DPY instruction: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+				logerror("Error: overlapped DPY instruction: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 		}
 		timer_adjust_oneshot(dpy_timer, ATTOTIME_IN_USEC(50), 0);
 	}
@@ -1040,10 +1039,10 @@ static TIMER_CALLBACK(il_timer_callback)
 
 static void parallel_drum_init(void)
 {
-	parallel_drum.rotation_timer = timer_alloc(NULL, NULL);
+	parallel_drum.rotation_timer = timer_alloc(machine, NULL, NULL);
 	timer_adjust_periodic(parallel_drum.rotation_timer, PARALLEL_DRUM_ROTATION_TIME, 0, PARALLEL_DRUM_ROTATION_TIME);
 
-	parallel_drum.il_timer = timer_alloc(il_timer_callback, NULL);
+	parallel_drum.il_timer = timer_alloc(machine, il_timer_callback, NULL);
 	parallel_drum_set_il(0);
 }
 #endif
@@ -1064,7 +1063,7 @@ DEVICE_IMAGE_UNLOAD(pdp1_drum)
 	parallel_drum.fd = NULL;
 }
 
-void iot_dia(int op2, int nac, int mb, int *io, int ac)
+void iot_dia(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	parallel_drum.wfb = ((*io) & 0370000) >> 12;
 	parallel_drum_set_il((*io) & 0007777);
@@ -1072,7 +1071,7 @@ void iot_dia(int op2, int nac, int mb, int *io, int ac)
 	parallel_drum.dba = 0;	/* right? */
 }
 
-void iot_dba(int op2, int nac, int mb, int *io, int ac)
+void iot_dba(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	parallel_drum.wfb = ((*io) & 0370000) >> 12;
 	parallel_drum_set_il((*io) & 0007777);
@@ -1113,7 +1112,7 @@ static void drum_write(int field, int position, UINT32 data)
 	}
 }
 
-void iot_dcc(int op2, int nac, int mb, int *io, int ac)
+void iot_dcc(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	attotime delay;
 	int dc;
@@ -1133,12 +1132,12 @@ void iot_dcc(int op2, int nac, int mb, int *io, int ac)
 	{
 		if ((parallel_drum.wfb >= 1) && (parallel_drum.wfb <= 22))
 		{
-			drum_write(parallel_drum.wfb-1, dc, READ_PDP_18BIT(parallel_drum.wcl));
+			drum_write(parallel_drum.wfb-1, dc, (signed)memory_read_dword_32be(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM),parallel_drum.wcl<<2));
 		}
 
 		if ((parallel_drum.rfb >= 1) && (parallel_drum.rfb <= 22))
 		{
-			WRITE_PDP_18BIT(parallel_drum.wcl, drum_read(parallel_drum.rfb-1, dc));
+			memory_write_dword_32be(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM),parallel_drum.wcl<<2, drum_read(parallel_drum.rfb-1, dc));
 		}
 
 		parallel_drum.wc = (parallel_drum.wc+1) & 07777;
@@ -1147,12 +1146,12 @@ void iot_dcc(int op2, int nac, int mb, int *io, int ac)
 		if (parallel_drum.wc)
 			delay = attotime_add(delay, PARALLEL_DRUM_WORD_TIME);
 	} while (parallel_drum.wc);
-	activecpu_adjust_icount(-ATTOTIME_TO_CYCLES(0, delay));
+	cpu_adjust_icount(device->machine->cpu[0],-cpu_attotime_to_clocks(device->machine->cpu[0], delay));
 	/* if no error, skip */
-	cpunum_set_reg(0, PDP1_PC, cpunum_get_reg(0, PDP1_PC)+1);
+	cpu_set_reg(device->machine->cpu[0], PDP1_PC, cpu_get_reg(device->machine->cpu[0], PDP1_PC)+1);
 }
 
-void iot_dra(int op2, int nac, int mb, int *io, int ac)
+void iot_dra(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	(*io) = attotime_mul(
 		timer_timeelapsed(parallel_drum.rotation_timer),
@@ -1174,9 +1173,9 @@ void iot_dra(int op2, int nac, int mb, int *io, int ac)
 		fire rocket, and fire torpedo. low order 4 bits, same for
 		other ship. routine is entered by jsp cwg.
 */
-void iot_011(int op2, int nac, int mb, int *io, int ac)
+void iot_011(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
-	int key_state = input_port_read(Machine, "SPACEWAR");
+	int key_state = input_port_read(device->machine, "SPACEWAR");
 	int reply;
 
 
@@ -1213,10 +1212,10 @@ void iot_011(int op2, int nac, int mb, int *io, int ac)
 
 	check IO status
 */
-void iot_cks(int op2, int nac, int mb, int *io, int ac)
+void iot_cks(const device_config *device, int op2, int nac, int mb, int *io, int ac)
 {
 	if (LOG_IOT_EXTRA)
-		logerror("CKS instruction: mb=0%06o, pc=0%06o\n", (unsigned) mb, (unsigned) cpunum_get_reg(0, PDP1_PC));
+		logerror("CKS instruction: mb=0%06o, (%s)\n", (unsigned) mb, cpuexec_describe_context(device->machine));
 
 	*io = io_status;
 }
@@ -1227,7 +1226,7 @@ void iot_cks(int op2, int nac, int mb, int *io, int ac)
 
 	IO devices should reset
 */
-void pdp1_io_sc_callback(void)
+void pdp1_io_sc_callback(const device_config *device)
 {
 	tape_reader.rcl = tape_reader.rc = 0;
 	if (tape_reader.timer)
@@ -1258,7 +1257,7 @@ static void pdp1_keyboard(running_machine *machine)
 	static int old_typewriter_keys[4];
 
 	int typewriter_transitions;
-	static const char *twrnames[] = { "TWR0", "TWR1", "TWR2", "TWR3" };
+	static const char *const twrnames[] = { "TWR0", "TWR1", "TWR2", "TWR3" };
 
 
 	for (i=0; i<4; i++)
@@ -1276,9 +1275,9 @@ static void pdp1_keyboard(running_machine *machine)
 			typewriter.tb = (i << 4) + j;
 			io_status |= io_st_tyi;
 			#if USE_SBS
-				cpunum_set_input_line_and_vector(machine, 0, 0, ASSERT_LINE, 0);	/* interrupt it, baby */
+				cpu_set_input_line_and_vector(machine->cpu[0], 0, ASSERT_LINE, 0);	/* interrupt it, baby */
 			#endif
-			cpunum_set_reg(0, PDP1_PF1, 1);
+			cpu_set_reg(machine->cpu[0], PDP1_PF1, 1);
 			pdp1_typewriter_drawchar(machine, typewriter.tb);	/* we want to echo input */
 			break;
 		}
@@ -1346,6 +1345,7 @@ static void pdp1_lightpen(running_machine *machine)
 */
 INTERRUPT_GEN( pdp1_interrupt )
 {
+	running_machine *machine = device->machine;
 	int control_keys;
 	int tw_keys;
 	int ta_keys;
@@ -1359,10 +1359,10 @@ INTERRUPT_GEN( pdp1_interrupt )
 	int ta_transitions;
 
 
-	cpunum_set_reg(0, PDP1_SS, input_port_read(machine, "SENSE"));
+	cpu_set_reg(device, PDP1_SS, input_port_read(device->machine, "SENSE"));
 
 	/* read new state of control keys */
-	control_keys = input_port_read(machine, "CSW");
+	control_keys = input_port_read(device->machine, "CSW");
 
 	if (control_keys & pdp1_control)
 	{
@@ -1371,68 +1371,68 @@ INTERRUPT_GEN( pdp1_interrupt )
 
 		if (control_transitions & pdp1_extend)
 		{
-			cpunum_set_reg(0, PDP1_EXTEND_SW, ! cpunum_get_reg(0, PDP1_EXTEND_SW));
+			cpu_set_reg(device, PDP1_EXTEND_SW, ! cpu_get_reg(device, PDP1_EXTEND_SW));
 		}
 		if (control_transitions & pdp1_start_nobrk)
 		{
 			pdp1_pulse_start_clear();	/* pulse Start Clear line */
-			cpunum_set_reg(0, PDP1_EXD, cpunum_get_reg(0, PDP1_EXTEND_SW));
-			cpunum_set_reg(0, PDP1_SBM, 0);
-			cpunum_set_reg(0, PDP1_OV, 0);
-			cpunum_set_reg(0, PDP1_PC, cpunum_get_reg(0, PDP1_TA));
-			cpunum_set_reg(0, PDP1_RUN, 1);
+			cpu_set_reg(device, PDP1_EXD, cpu_get_reg(device, PDP1_EXTEND_SW));
+			cpu_set_reg(device, PDP1_SBM, 0);
+			cpu_set_reg(device, PDP1_OV, 0);
+			cpu_set_reg(device, PDP1_PC, cpu_get_reg(device, PDP1_TA));
+			cpu_set_reg(device, PDP1_RUN, 1);
 		}
 		if (control_transitions & pdp1_start_brk)
 		{
 			pdp1_pulse_start_clear();	/* pulse Start Clear line */
-			cpunum_set_reg(0, PDP1_EXD, cpunum_get_reg(0, PDP1_EXTEND_SW));
-			cpunum_set_reg(0, PDP1_SBM, 1);
-			cpunum_set_reg(0, PDP1_OV, 0);
-			cpunum_set_reg(0, PDP1_PC, cpunum_get_reg(0, PDP1_TA));
-			cpunum_set_reg(0, PDP1_RUN, 1);
+			cpu_set_reg(device, PDP1_EXD, cpu_get_reg(device, PDP1_EXTEND_SW));
+			cpu_set_reg(device, PDP1_SBM, 1);
+			cpu_set_reg(device, PDP1_OV, 0);
+			cpu_set_reg(device, PDP1_PC, cpu_get_reg(device, PDP1_TA));
+			cpu_set_reg(device, PDP1_RUN, 1);
 		}
 		if (control_transitions & pdp1_stop)
 		{
-			cpunum_set_reg(0, PDP1_RUN, 0);
-			cpunum_set_reg(0, PDP1_RIM, 0);	/* bug : we stop after reading an even-numbered word
+			cpu_set_reg(device, PDP1_RUN, 0);
+			cpu_set_reg(device, PDP1_RIM, 0);	/* bug : we stop after reading an even-numbered word
 											(i.e. data), whereas a real pdp-1 stops after reading
 											an odd-numbered word (i.e. dio instruciton) */
 		}
 		if (control_transitions & pdp1_continue)
 		{
-			cpunum_set_reg(0, PDP1_RUN, 1);
+			cpu_set_reg(device, PDP1_RUN, 1);
 		}
 		if (control_transitions & pdp1_examine)
 		{
 			pdp1_pulse_start_clear();	/* pulse Start Clear line */
-			cpunum_set_reg(0, PDP1_PC, cpunum_get_reg(0, PDP1_TA));
-			cpunum_set_reg(0, PDP1_MA, cpunum_get_reg(0, PDP1_PC));
-			cpunum_set_reg(0, PDP1_IR, LAC);	/* this instruction is actually executed */
+			cpu_set_reg(device, PDP1_PC, cpu_get_reg(device, PDP1_TA));
+			cpu_set_reg(device, PDP1_MA, cpu_get_reg(device, PDP1_PC));
+			cpu_set_reg(device, PDP1_IR, LAC);	/* this instruction is actually executed */
 
-			cpunum_set_reg(0, PDP1_MB, READ_PDP_18BIT(cpunum_get_reg(0, PDP1_MA)));
-			cpunum_set_reg(0, PDP1_AC, cpunum_get_reg(0, PDP1_MB));
+			cpu_set_reg(device, PDP1_MB, (signed)memory_read_dword_32be(cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM), PDP1_MA<<2));
+			cpu_set_reg(device, PDP1_AC, cpu_get_reg(device, PDP1_MB));
 		}
 		if (control_transitions & pdp1_deposit)
 		{
 			pdp1_pulse_start_clear();	/* pulse Start Clear line */
-			cpunum_set_reg(0, PDP1_PC, cpunum_get_reg(0, PDP1_TA));
-			cpunum_set_reg(0, PDP1_MA, cpunum_get_reg(0, PDP1_PC));
-			cpunum_set_reg(0, PDP1_AC, cpunum_get_reg(0, PDP1_TW));
-			cpunum_set_reg(0, PDP1_IR, DAC);	/* this instruction is actually executed */
+			cpu_set_reg(device, PDP1_PC, cpu_get_reg(device, PDP1_TA));
+			cpu_set_reg(device, PDP1_MA, cpu_get_reg(device, PDP1_PC));
+			cpu_set_reg(device, PDP1_AC, cpu_get_reg(device, PDP1_TW));
+			cpu_set_reg(device, PDP1_IR, DAC);	/* this instruction is actually executed */
 
-			cpunum_set_reg(0, PDP1_MB, cpunum_get_reg(0, PDP1_AC));
-			WRITE_PDP_18BIT(cpunum_get_reg(0, PDP1_MA), cpunum_get_reg(0, PDP1_MB));
+			cpu_set_reg(device, PDP1_MB, cpu_get_reg(device, PDP1_AC));
+			memory_write_dword_32be(cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM),cpu_get_reg(device, PDP1_MA)<<2, cpu_get_reg(device, PDP1_MB));
 		}
 		if (control_transitions & pdp1_read_in)
 		{	/* set cpu to read instructions from perforated tape */
 			pdp1_pulse_start_clear();	/* pulse Start Clear line */
-			cpunum_set_reg(0, PDP1_PC, (cpunum_get_reg(0, PDP1_TA) & 0170000)
-										|  (cpunum_get_reg(0, PDP1_PC) & 0007777));	/* transfer ETA to EPC */
-			/*cpunum_set_reg(0, PDP1_MA, cpunum_get_reg(0, PDP1_PC));*/
-			cpunum_set_reg(0, PDP1_EXD, cpunum_get_reg(0, PDP1_EXTEND_SW));
-			cpunum_set_reg(0, PDP1_OV, 0);		/* right??? */
-			cpunum_set_reg(0, PDP1_RUN, 0);
-			cpunum_set_reg(0, PDP1_RIM, 1);
+			cpu_set_reg(device, PDP1_PC, (  cpu_get_reg(device, PDP1_TA) & 0170000)
+										|  (cpu_get_reg(device, PDP1_PC) & 0007777));	/* transfer ETA to EPC */
+			/*cpu_set_reg(machine->cpu[0], PDP1_MA, cpu_get_reg(machine->cpu[0], PDP1_PC));*/
+			cpu_set_reg(device, PDP1_EXD, cpu_get_reg(device, PDP1_EXTEND_SW));
+			cpu_set_reg(device, PDP1_OV, 0);		/* right??? */
+			cpu_set_reg(device, PDP1_RUN, 0);
+			cpu_set_reg(device, PDP1_RIM, 1);
 		}
 		if (control_transitions & pdp1_reader)
 		{
@@ -1442,11 +1442,11 @@ INTERRUPT_GEN( pdp1_interrupt )
 		}
 		if (control_transitions & pdp1_single_step)
 		{
-			cpunum_set_reg(0, PDP1_SNGL_STEP, ! cpunum_get_reg(0, PDP1_SNGL_STEP));
+			cpu_set_reg(device, PDP1_SNGL_STEP, ! cpu_get_reg(device, PDP1_SNGL_STEP));
 		}
 		if (control_transitions & pdp1_single_inst)
 		{
-			cpunum_set_reg(0, PDP1_SNGL_INST, ! cpunum_get_reg(0, PDP1_SNGL_INST));
+			cpu_set_reg(device, PDP1_SNGL_INST, ! cpu_get_reg(device, PDP1_SNGL_INST));
 		}
 
 		/* remember new state of control keys */
@@ -1460,7 +1460,7 @@ INTERRUPT_GEN( pdp1_interrupt )
 		tw_transitions = tw_keys & (~ old_tw_keys);
 
 		if (tw_transitions)
-			cpunum_set_reg(0, PDP1_TW, cpunum_get_reg(0, PDP1_TW) ^ tw_transitions);
+			cpu_set_reg(device, PDP1_TW, cpu_get_reg(device, PDP1_TW) ^ tw_transitions);
 
 		/* remember new state of test word keys */
 		old_tw_keys = tw_keys;
@@ -1473,7 +1473,7 @@ INTERRUPT_GEN( pdp1_interrupt )
 		ta_transitions = ta_keys & (~ old_ta_keys);
 
 		if (ta_transitions)
-			cpunum_set_reg(0, PDP1_TA, cpunum_get_reg(0, PDP1_TA) ^ ta_transitions);
+			cpu_set_reg(device, PDP1_TA, cpu_get_reg(device, PDP1_TA) ^ ta_transitions);
 
 		/* remember new state of test word keys */
 		old_ta_keys = ta_keys;

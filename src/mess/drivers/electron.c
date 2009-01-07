@@ -11,7 +11,7 @@ that can be done through BASIC programs seem to behave properly (most of the tim
 Incomplete:
     - Sound (sound is too high?)
     - Graphics (seems to be wrong for several games)
-    - 1MHz bus is not emulated
+    - 1 MHz bus is not emulated
     - Bus claiming by ULA is not implemented
 
 Missing:
@@ -23,10 +23,10 @@ Missing:
 ******************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "includes/electron.h"
 #include "devices/cassette.h"
 #include "formats/uef_cas.h"
-#include "deprecat.h"
 
 static const rgb_t electron_palette[8]=
 {
@@ -50,7 +50,7 @@ static ADDRESS_MAP_START(electron_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(2)								/* Banked ROM pages */
 	AM_RANGE(0xc000, 0xfbff) AM_ROM AM_REGION("user1", 0x40000)	/* OS ROM */
 	AM_RANGE(0xfc00, 0xfcff) AM_READWRITE( electron_jim_r, electron_jim_w )			/* JIM pages */
-	AM_RANGE(0xfd00, 0xfdff) AM_READWRITE( electron_1mhz_r, electron_1mhz_w )		/* 1MHz bus */
+	AM_RANGE(0xfd00, 0xfdff) AM_READWRITE( electron_1mhz_r, electron_1mhz_w )		/* 1 MHz bus */
 	AM_RANGE(0xfe00, 0xfeff) AM_READWRITE( electron_ula_r, electron_ula_w )			/* Electron ULA */
 	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION("user1", 0x43f00)	/* OS ROM continued */
 ADDRESS_MAP_END
@@ -176,7 +176,6 @@ static const cassette_config electron_cassette_config =
 static MACHINE_DRIVER_START( electron )
 	MDRV_CPU_ADD( "main", M6502, 2000000 )
 	MDRV_CPU_PROGRAM_MAP( electron_mem, 0 )
-	MDRV_CPU_VBLANK_INT_HACK(electron_scanline_interrupt, 312) /* scanline interrupt */
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE( 50.08 )
 

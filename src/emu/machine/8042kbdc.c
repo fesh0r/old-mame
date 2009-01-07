@@ -287,7 +287,7 @@ static void at_8042_receive(running_machine *machine, UINT8 data)
 	if (LOG_KEYBOARD)
 		logerror("at_8042_receive Received 0x%02x\n", data);
 
-	kbdc8042.data = (UINT8) data;
+	kbdc8042.data = data;
 	kbdc8042.keyboard.received = 1;
 
 	if (kbdc8042.keyboard_interrupt)
@@ -426,13 +426,6 @@ READ8_HANDLER(kbdc8042_8_r)
 	if (LOG_ACCESSES)
 		logerror("kbdc8042_8_r(): offset=%d data=0x%02x\n", offset, (unsigned) data);
 	return data;
-}
-
-
-
-static TIMER_CALLBACK(at_8042_receive_timer)
-{
-	at_8042_receive(param);
 }
 
 

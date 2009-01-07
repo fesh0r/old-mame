@@ -11,13 +11,14 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "includes/apple3.h"
 #include "includes/apple2.h"
 #include "devices/mflopimg.h"
 #include "formats/ap2_dsk.h"
+#include "machine/6551.h"
 #include "machine/6522via.h"
 #include "devices/appldriv.h"
-
 
 static ADDRESS_MAP_START( apple3_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x00FF) AM_READWRITE(apple3_00xx_r, apple3_00xx_w)
@@ -29,14 +30,12 @@ ADDRESS_MAP_END
 
 
 
-extern PALETTE_INIT( apple2 );
-
 static MACHINE_DRIVER_START( apple3 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 2000000)        /* 2 Mhz */
+	MDRV_CPU_ADD("main", M6502, 2000000)        /* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(apple3_map, 0)
 	MDRV_CPU_PERIODIC_INT(apple3_interrupt, 192)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET( apple3 )
 
@@ -53,8 +52,15 @@ static MACHINE_DRIVER_START( apple3 )
 	MDRV_VIDEO_START( apple3 )
 	MDRV_VIDEO_UPDATE( apple3 )
 
-	MDRV_DEVICE_ADD("fdc", APPLEFDC)
-	MDRV_DEVICE_CONFIG(apple3_fdc_interface)
+	/* fdc */
+	MDRV_APPLEFDC_ADD("fdc", apple3_fdc_interface)
+
+	/* acia */
+	MDRV_ACIA6551_ADD("acia")
+
+	/* via */
+	MDRV_VIA6522_ADD("via6522_0", 1000000, apple3_via_0_intf)
+	MDRV_VIA6522_ADD("via6522_1", 2000000, apple3_via_1_intf)
 MACHINE_DRIVER_END
 
 

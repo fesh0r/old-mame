@@ -26,6 +26,7 @@
 #include "machine/8042kbdc.h"
 #include "machine/pit8253.h"
 #include "machine/idectrl.h"
+#include "machine/mpc105.h"
 
 /* Devices */
 #include "devices/mflopimg.h"
@@ -34,17 +35,17 @@
 #include "formats/pc_dsk.h"
 
 
-static READ8_HANDLER(at_dma8237_1_r)  { return dma8237_r((device_config*)device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237_2" ), offset / 2); }
-static WRITE8_HANDLER(at_dma8237_1_w) { dma8237_w((device_config*)device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237_2" ), offset / 2, data); }
+static READ8_HANDLER(at_dma8237_1_r)  { return dma8237_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, DMA8237, "dma8237_2" ), offset / 2); }
+static WRITE8_HANDLER(at_dma8237_1_w) { dma8237_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, DMA8237, "dma8237_2" ), offset / 2, data); }
 
 static READ64_HANDLER( bebox_dma8237_1_r )
 {
-	return read64be_with_read8_handler(at_dma8237_1_r, machine, offset, mem_mask);
+	return read64be_with_read8_handler(at_dma8237_1_r, space, offset, mem_mask);
 }
 
 static WRITE64_HANDLER( bebox_dma8237_1_w )
 {
-	write64be_with_write8_handler(at_dma8237_1_w, machine, offset, data, mem_mask);
+	write64be_with_write8_handler(at_dma8237_1_w, space, offset, data, mem_mask);
 }
 
 
@@ -70,7 +71,7 @@ static ADDRESS_MAP_START( bebox_mem, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x800003F0, 0x800003F7) AM_READWRITE( bebox_800003F0_r, bebox_800003F0_w )
 	AM_RANGE(0x800003F8, 0x800003FF) AM_DEVREADWRITE8( NS16550, "ns16550_0", ins8250_r, ins8250_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000480, 0x8000048F) AM_READWRITE( bebox_80000480_r, bebox_80000480_w )
-	AM_RANGE(0x80000CF8, 0x80000CFF) AM_READWRITE( pci_64be_r, pci_64be_w )
+	AM_RANGE(0x80000CF8, 0x80000CFF) AM_DEVREADWRITE( PCI_BUS, "pcibus", pci_64be_r, pci_64be_w )
 	AM_RANGE(0x800042E8, 0x800042EF) AM_WRITE( cirrus_64be_42E8_w )
 
 	AM_RANGE(0xBFFFFFF0, 0xBFFFFFFF) AM_READ( bebox_interrupt_ack_r )
@@ -88,34 +89,22 @@ static MACHINE_DRIVER_START( bebox )
 	MDRV_CPU_ADD("ppc2", PPC603, 66000000)	/* 66 MHz */
 	MDRV_CPU_PROGRAM_MAP(bebox_mem, 0)
 
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
-	MDRV_DEVICE_ADD( "pit8254", PIT8254 )
-	MDRV_DEVICE_CONFIG( bebox_pit8254_config )
+	MDRV_PIT8254_ADD( "pit8254", bebox_pit8254_config )
 
-	MDRV_DEVICE_ADD( "dma8237_1", DMA8237 )
-	MDRV_DEVICE_CONFIG( bebox_dma8237_1_config )
+	MDRV_DMA8237_ADD( "dma8237_1", bebox_dma8237_1_config )
 
-	MDRV_DEVICE_ADD( "dma8237_2", DMA8237 )
-	MDRV_DEVICE_CONFIG( bebox_dma8237_2_config )
+	MDRV_DMA8237_ADD( "dma8237_2", bebox_dma8237_2_config )
 
-	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
-	MDRV_DEVICE_CONFIG( bebox_pic8259_master_config )
+	MDRV_PIC8259_ADD( "pic8259_master", bebox_pic8259_master_config )
 
-	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
-	MDRV_DEVICE_CONFIG( bebox_pic8259_slave_config )
+	MDRV_PIC8259_ADD( "pic8259_slave", bebox_pic8259_slave_config )
 
-	MDRV_DEVICE_ADD( "ns16550_0", NS16550 )			/* TODO: Verify model */
-	MDRV_DEVICE_CONFIG( bebox_uart_inteface[0] )
-
-	MDRV_DEVICE_ADD( "ns16550_1", NS16550 )			/* TODO: Verify model */
-	MDRV_DEVICE_CONFIG( bebox_uart_inteface[1] )
-
-	MDRV_DEVICE_ADD( "ns16550_2", NS16550 )			/* TODO: Verify model */
-	MDRV_DEVICE_CONFIG( bebox_uart_inteface[2] )
-
-	MDRV_DEVICE_ADD( "ns16550_3", NS16550 )			/* TODO: Verify model */
-	MDRV_DEVICE_CONFIG( bebox_uart_inteface[3] )
+	MDRV_NS16550_ADD( "ns16550_0", bebox_uart_inteface_0 )			/* TODO: Verify model */
+	MDRV_NS16550_ADD( "ns16550_1", bebox_uart_inteface_1 )			/* TODO: Verify model */
+	MDRV_NS16550_ADD( "ns16550_2", bebox_uart_inteface_2 )			/* TODO: Verify model */
+	MDRV_NS16550_ADD( "ns16550_3", bebox_uart_inteface_3 )			/* TODO: Verify model */
 
 	MDRV_IDE_CONTROLLER_ADD( "ide", bebox_ide_interrupt )	/* FIXME */
 
@@ -134,9 +123,16 @@ static MACHINE_DRIVER_START( bebox )
 
 	MDRV_NVRAM_HANDLER( bebox )
 
-	MDRV_DEVICE_ADD( "cdrom", CDROM )
+	MDRV_CDROM_ADD( "cdrom" )
+	MDRV_HARDDISK_ADD( "harddisk1" )
 
-	MDRV_DEVICE_ADD( "harddisk1", HARDDISK )
+	/* pci */
+	MDRV_PCI_BUS_ADD("pcibus", 0)
+	MDRV_PCI_BUS_DEVICE(1, NULL, NULL, mpc105_pci_read, mpc105_pci_write)
+	MDRV_PCI_BUS_DEVICE(1, NULL, NULL, cirrus5430_pci_read, cirrus5430_pci_write)
+	/*MDRV_PCI_BUS_DEVICE(12, NULL, NULL, scsi53c810_pci_read, scsi53c810_pci_write)*/
+	
+	MDRV_SMC37C78_ADD("smc37c78", pc_fdc_nec765_connected_interface)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( bebox2 )

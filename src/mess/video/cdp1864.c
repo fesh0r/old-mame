@@ -140,7 +140,7 @@ static TIMER_CALLBACK(cdp1864_dma_tick)
 			}
 		}
 
-		timer_adjust_oneshot(cdp1864->dma_timer, ATTOTIME_IN_CYCLES(CDP1864_CYCLES_DMA_WAIT, 0), 0);
+		timer_adjust_oneshot(cdp1864->dma_timer, cpu_clocks_to_attotime(machine->cpu[0], CDP1864_CYCLES_DMA_WAIT), 0);
 
 		cdp1864->dmaout = 0;
 	}
@@ -154,7 +154,7 @@ static TIMER_CALLBACK(cdp1864_dma_tick)
 			}
 		}
 
-		timer_adjust_oneshot(cdp1864->dma_timer, ATTOTIME_IN_CYCLES(CDP1864_CYCLES_DMA_ACTIVE, 0), 0);
+		timer_adjust_oneshot(cdp1864->dma_timer, cpu_clocks_to_attotime(machine->cpu[0], CDP1864_CYCLES_DMA_ACTIVE), 0);
 
 		cdp1864->dmaout = 1;
 	}
@@ -342,11 +342,11 @@ void cdp1864_update(const device_config *device, bitmap_t *bitmap, const rectang
 	if (cdp1864->disp)
 	{
 		copybitmap(bitmap, cdp1864->bitmap, 0, 0, 0, 0, cliprect);
-		fillbitmap(cdp1864->bitmap, CDP1864_BACKGROUND_COLOR_SEQUENCE[cdp1864->bgcolor] + 8, cliprect);
+		bitmap_fill(cdp1864->bitmap, cliprect, CDP1864_BACKGROUND_COLOR_SEQUENCE[cdp1864->bgcolor] + 8);
 	}
 	else
 	{
-		fillbitmap(bitmap, get_black_pen(device->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(device->machine));
 	}
 }
 
@@ -355,17 +355,16 @@ void cdp1864_update(const device_config *device, bitmap_t *bitmap, const rectang
 static DEVICE_START( cdp1864 )
 {
 	cdp1864_t *cdp1864 = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
 	assert(strlen(device->tag) < 20);
+	assert(device->clock > 0);
 
 	cdp1864->intf = device->static_config;
 
 	assert(cdp1864->intf != NULL);
-	assert(cdp1864->intf->clock > 0);
 	assert(cdp1864->intf->on_int_changed != NULL);
 	assert(cdp1864->intf->on_dmao_changed != NULL);
 	assert(cdp1864->intf->on_efx_changed != NULL);
@@ -376,29 +375,27 @@ static DEVICE_START( cdp1864 )
 
 	/* allocate the temporary bitmap */
 	cdp1864->bitmap = auto_bitmap_alloc(video_screen_get_width(cdp1864->screen), video_screen_get_height(cdp1864->screen), video_screen_get_format(cdp1864->screen));
-	fillbitmap(cdp1864->bitmap, CDP1864_BACKGROUND_COLOR_SEQUENCE[cdp1864->bgcolor] + 8, 0);
+	bitmap_fill(cdp1864->bitmap, 0, CDP1864_BACKGROUND_COLOR_SEQUENCE[cdp1864->bgcolor] + 8);
 
 	/* initialize the palette */
 	cdp1864_init_palette(device);
 
 	/* create the timers */
-	cdp1864->int_timer = timer_alloc(cdp1864_int_tick, (void *)device);
-	cdp1864->efx_timer = timer_alloc(cdp1864_efx_tick, (void *)device);
-	cdp1864->dma_timer = timer_alloc(cdp1864_dma_tick, (void *)device);
+	cdp1864->int_timer = timer_alloc(device->machine, cdp1864_int_tick, (void *)device);
+	cdp1864->efx_timer = timer_alloc(device->machine, cdp1864_efx_tick, (void *)device);
+	cdp1864->dma_timer = timer_alloc(device->machine, cdp1864_dma_tick, (void *)device);
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "CDP1864", device->tag);
+	state_save_register_device_item(device, 0, cdp1864->disp);
+	state_save_register_device_item(device, 0, cdp1864->dmaout);
+	state_save_register_device_item(device, 0, cdp1864->bgcolor);
 
-	state_save_register_item(unique_tag, 0, cdp1864->disp);
-	state_save_register_item(unique_tag, 0, cdp1864->dmaout);
-	state_save_register_item(unique_tag, 0, cdp1864->bgcolor);
+	state_save_register_device_item(device, 0, cdp1864->audio);
+	state_save_register_device_item(device, 0, cdp1864->latch);
+	state_save_register_device_item(device, 0, cdp1864->signal);
+	state_save_register_device_item(device, 0, cdp1864->incr);
 
-	state_save_register_item(unique_tag, 0, cdp1864->audio);
-	state_save_register_item(unique_tag, 0, cdp1864->latch);
-	state_save_register_item(unique_tag, 0, cdp1864->signal);
-	state_save_register_item(unique_tag, 0, cdp1864->incr);
-
-	state_save_register_bitmap(unique_tag, 0, "cdp1864->bitmap", cdp1864->bitmap);
+	state_save_register_bitmap(device->machine, "cdp1864", device->tag, 0, "cdp1864->bitmap", cdp1864->bitmap);
 	return DEVICE_START_OK;
 }
 
@@ -408,7 +405,7 @@ static DEVICE_RESET( cdp1864 )
 
 	timer_adjust_oneshot(cdp1864->int_timer, video_screen_get_time_until_pos(cdp1864->screen, CDP1864_SCANLINE_INT_START, 0), 0);
 	timer_adjust_oneshot(cdp1864->efx_timer, video_screen_get_time_until_pos(cdp1864->screen, CDP1864_SCANLINE_EFX_TOP_START, 0), 0);
-	timer_adjust_oneshot(cdp1864->dma_timer, ATTOTIME_IN_CYCLES(CDP1864_CYCLES_DMA_START, 0), 0);
+	timer_adjust_oneshot(cdp1864->dma_timer, cpu_clocks_to_attotime(device->machine->cpu[0], CDP1864_CYCLES_DMA_START), 0);
 	
 	cdp1864->disp = 0;
 	cdp1864->dmaout = 0;
@@ -445,10 +442,10 @@ DEVICE_GET_INFO( cdp1864 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(cdp1864);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "RCA CDP1861";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "RCA CDP1800";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright MESS Team";			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "RCA CDP1861");					break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "RCA CDP1800");					break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
 	}
 }

@@ -4,211 +4,174 @@
  *
  ****************************************************************************/
 
-/*
-
-	TODO:
-
-	- add proper screen parameters to startup
-	- abc802 delay CUR and DEN by 3 CCLK's
-
-*/
-
-/*
-
-	ABC 802 Video
-	*************
-
-	74LS166 @ 8B
-	------------
-
-	A	<-	ATTHAND INV
-	B	<-	ATTHAND INV
-	C	<-	ATTHAND O0
-	D	<-	ATTHAND O1
-	E	<-	CHARGEN A2
-	F	<-	CHARGEN A3
-	G	<-	CHARGEN A4
-	H	<-	CHARGEN A5
-
-	SI	<-	ATTHAND RI
-
-	CHARGEN @ 3G
-	------------
-
-	A0	<-	CRTC RA0
-	A1	<-	CRTC RA1
-	A2	<-	CRTC RA2
-	A3	<-	CRTC RA3
-	A4	<-	TX DATA 0
-	A5	<-	TX DATA 1
-	A6	<-	TX DATA 2
-	A7	<-	TX DATA 3
-	A8	<-	TX DATA 4
-	A9	<-	TX DATA 5
-	A10	<-	TX DATA 6
-	A11	<-	ATTHAND RG
-	A12	<-	TX DATA 7
-
-	D0	->	ATTHAND AT0
-	D1	->	ATTHAND AT1
-	D2	->	74LS166 E
-	D3	->	74LS166 F
-	D4	->	74LS166 G
-	D5	->	74LS166 H
-	D6	->	ATTHAND ATD
-	D7	->	ATTHAND ATE
-
-	Notes:
-
-	- lines A0 thru A3 are pulled high when cursor is enabled
-
-	ATTHAND @ 2G
-	------------
-
-	AT0	<-	CHARGEN D0
-	AT1	<-	CHARGEN D1
-	ATD	<-	CHARGEN D6
-	ATE	<-	CHARGEN D7
-	CUR	<-	CUR-3
-	FC	<-	FLSHCLK
-	IHS	<-	HS
-	LL	<-	74LS166 L
-
-	O0	->	74LS166 C
-	O1	->	74LS166 D
-	RG	->	CHARGEN A11
-	RI	->	74LS166 SI
-	INV	->	74LS166 A, 74LS166 B
-	O	->
-
-	PAL equation:
-
-	IF (VCC)	*OS	  =	FC + RF / RC
-				*RG:  =	HS / *RG + *ATE / *RG + ATD / *RG + LL /
-						*RG + AT1 / *RG + AT0 / ATE + *ATD + *LL +
-						*AT1 + *AT0
-				*RI:  =	*RI + *INV / *RI + LL / *INV + *LL
-				*RF:  =	HS / *RF + *ATE / *RF + ATD / *RF + LL /
-						*RF + AT1 / *RF + AT0 / ATE + *ATD + *LL +
-						*AT1 + AT0
-				*RC:  =	HS / *RC + *ATE / *RC + *ATD / *RC + LL /
-						*RC + *ATI / *RC + AT0 / ATE + *LL + *AT1 +
-						*AT0
-	IF (VCC)	*O0	  =	*CUR + *AT0 / *CUR + ATE
-				*O1   =	*CUR + *AT1 / *CUR + ATE
-
-
-	ATD		Attribute data
-	ATE		Attribute enable
-	AT0,AT1	Attribute address
-	CUR		Cursor
-	FC		FLSH clock
-	HS		Horizontal sync
-	INV		Inverted signal input
-	LL		Load when Low
-	OEL		Output Enable when Low
-	RC
-	RF		Row flash
-	RG		Row graphic
-	RI		Row inverted
-
-*/
-
 #include "driver.h"
 #include "includes/abc80x.h"
 #include "machine/z80dart.h"
 #include "video/mc6845.h"
 
+/* Palette Initialization */
+
+static PALETTE_INIT( abc802 )
+{
+	palette_set_color_rgb(machine, 0, 0x00, 0x00, 0x00); // black
+	palette_set_color_rgb(machine, 1, 0xff, 0x81, 0x00); // amber
+}
+
+/* Character Memory */
+
+READ8_HANDLER( abc802_charram_r )
+{
+	abc802_state *state = space->machine->driver_data;
+
+	return state->charram[offset];
+}
+
+WRITE8_HANDLER( abc802_charram_w )
+{
+	abc802_state *state = space->machine->driver_data;
+
+	state->charram[offset] = data;
+}
+
 /* MC6845 Row Update */
 
 static MC6845_UPDATE_ROW( abc802_update_row )
 {
+	/*
+
+		PAL16R4 equation:
+
+		IF (VCC)	*OS	  =	FC + RF / RC
+					*RG:  =	HS / *RG + *ATE / *RG + ATD / *RG + LL /
+							*RG + AT1 / *RG + AT0 / ATE + *ATD + *LL +
+							*AT1 + *AT0
+					*RI:  =	*RI + *INV / *RI + LL / *INV + *LL
+					*RF:  =	HS / *RF + *ATE / *RF + ATD / *RF + LL /
+							*RF + AT1 / *RF + AT0 / ATE + *ATD + *LL +
+							*AT1 + AT0
+					*RC:  =	HS / *RC + *ATE / *RC + *ATD / *RC + LL /
+							*RC + *ATI / *RC + AT0 / ATE + *LL + *AT1 +
+							*AT0
+		IF (VCC)	*O0	  =	*CUR + *AT0 / *CUR + ATE
+					*O1   =	*CUR + *AT1 / *CUR + ATE
+
+
+		+ = AND
+		/ = OR
+		* = Inverted
+
+		ATD		Attribute data
+		ATE		Attribute enable
+		AT0,AT1	Attribute address
+		CUR		Cursor
+		FC		FLSH clock
+		HS		Horizontal sync
+		INV		Inverted signal input
+		LL		Load when Low
+		OEL		Output Enable when Low
+		RC		Row clear
+		RF		Row flash
+		RG		Row graphic
+		RI		Row inverted
+
+	*/
+
 	abc802_state *state = device->machine->driver_data;
 
 	int column;
+	int rf = 0, rc = 0, rg = 0;
+	
+	/* prevent wraparound */
+	if (y >= 240) return;
+	
+	y += 29;
 
 	for (column = 0; column < x_count; column++)
 	{
 		int bit;
 
-		UINT8 code = videoram[(ma + column) & 0x7ff];
-		UINT16 address = ((code & 0x80) << 5) | ((code & 0x7f) << 4);
+		UINT8 code = state->charram[(ma + column) & 0x7ff];
+		UINT16 address = code << 4;
 		UINT8 ra_latch = ra;
 		UINT8 data;
+
+		int ri = (code & ABC802_INV) ? 1 : 0;
 
 		if (column == cursor_x)
 		{
 			ra_latch = 0x0f;
 		}
 
+		if ((state->flshclk && rf) || rc)
+		{
+			ra_latch = 0x0e;
+		}
+
+		if (rg)
+		{
+			address |= 0x800;
+		}
+
 		data = state->char_rom[(address + ra_latch) & 0x1fff];
 
 		if (data & ABC802_ATE)
 		{
-			int rf = 0, rc = 0;
+			int attr = data & 0x03;
+			int value = (data & ABC802_ATD) ? 1 : 0;
 
-			if (data & ABC802_ATD)
+			switch (attr)
 			{
-				int attr = data & 0x03;
+			case 0x00:
+				/* Row Graphic */
+				rg = value;
+				break;
 
-				switch (attr)
-				{
-				case 0x00:
-					// RG = 1
-					address |= 0x800;
-					break;
+			case 0x01:
+				/* Row Flash */
+				rf = value;
+				break;
 
-				case 0x01:
-					rf = 1;
-					break;
+			case 0x02:
+				/* Row Clear */
+				rc = value;
+				break;
 
-				case 0x02:
-					rc = 1;
-					break;
-
-				case 0x03:
-					// undefined
-					break;
-				}
-
-				if ((state->flshclk && rf) || rc)
-				{
-					ra_latch = 0x0e;
-				}
-			}
-
-			// reload data and mask out two bottom bits
-			data = state->char_rom[(address + ra_latch) & 0x1fff] & 0xfc;
-		}
-		
-		data <<= 2;
-
-		if (state->mux80_40)
-		{
-			for (bit = 0; bit < ABC800_CHAR_WIDTH; bit++)
-			{
-				int x = (column * ABC800_CHAR_WIDTH) + bit;
-				int color = BIT(data, 7) ^ BIT(code, 7);
-
-				*BITMAP_ADDR16(bitmap, y, x) = color;
-
-				data <<= 1;
+			case 0x03:
+				/* undefined */
+				break;
 			}
 		}
 		else
 		{
-			for (bit = 0; bit < ABC800_CHAR_WIDTH; bit++)
+			data <<= 2;
+
+			if (state->mux80_40)
 			{
-				int x = (column * ABC800_CHAR_WIDTH) + (bit << 1);
-				int color = BIT(data, 7) ^ BIT(code, 7);
+				for (bit = 0; bit < ABC800_CHAR_WIDTH; bit++)
+				{
+					int x = 121 + ((column + 3) * ABC800_CHAR_WIDTH) + bit;
+					int color = BIT(data, 7) ^ ri;
 
-				*BITMAP_ADDR16(bitmap, y, x) = color;
-				*BITMAP_ADDR16(bitmap, y, x + 1) = color;
+					*BITMAP_ADDR16(bitmap, y, x) = color;
 
-				data <<= 1;
+					data <<= 1;
+				}
 			}
+			else
+			{
+				for (bit = 0; bit < ABC800_CHAR_WIDTH; bit++)
+				{
+					int x = 121 + ((column + 3) * ABC800_CHAR_WIDTH) + (bit << 1);
+					int color = BIT(data, 7) ^ ri;
 
-			column++;
+					*BITMAP_ADDR16(bitmap, y, x) = color;
+					*BITMAP_ADDR16(bitmap, y, x + 1) = color;
+
+					data <<= 1;
+				}
+
+				column++;
+			}
 		}
 	}
 }
@@ -220,26 +183,25 @@ static MC6845_ON_VSYNC_CHANGED(abc802_vsync_changed)
 	if (!vsync)
 	{
 		/* flash clock */
-		if (state->flshclk_ctr == 31)
+		if (state->flshclk_ctr & 0x20)
 		{
-			state->flshclk = 1;
+			state->flshclk = !state->flshclk;
 			state->flshclk_ctr = 0;
 		}
 		else
 		{
-			state->flshclk = 0;
 			state->flshclk_ctr++;
 		}
 	}
 
-	z80dart_set_ri(state->z80dart, 1, vsync);
+	/* signal _DEW to DART */
+	z80dart_ri_w(state->z80dart, 1, !vsync);
 }
 
 /* MC6845 Interfaces */
 
 static const mc6845_interface abc802_mc6845_interface = {
 	SCREEN_TAG,
-	ABC800_CCLK,
 	ABC800_CHAR_WIDTH,
 	NULL,
 	abc802_update_row,
@@ -254,6 +216,10 @@ static const mc6845_interface abc802_mc6845_interface = {
 static VIDEO_START( abc802 )
 {
 	abc802_state *state = machine->driver_data;
+	
+	/* allocate memory */
+
+	state->charram = auto_malloc(ABC802_CHAR_RAM_SIZE);
 
 	/* find devices */
 
@@ -265,9 +231,11 @@ static VIDEO_START( abc802 )
 
 	/* register for state saving */
 
-	state_save_register_global(state->flshclk_ctr);
-	state_save_register_global(state->flshclk);
-	state_save_register_global(state->mux80_40);
+	state_save_register_global_pointer(machine, state->charram, ABC802_CHAR_RAM_SIZE);
+
+	state_save_register_global(machine, state->flshclk_ctr);
+	state_save_register_global(machine, state->flshclk);
+	state_save_register_global(machine, state->mux80_40);
 }
 
 /* Video Update */
@@ -276,6 +244,10 @@ static VIDEO_UPDATE( abc802 )
 {
 	abc802_state *state = screen->machine->driver_data;
 	
+	/* expand visible area to workaround MC6845 */
+	video_screen_set_visarea(screen, 0, 767, 0, 311);
+
+	/* draw text */
 	mc6845_update(state->mc6845, bitmap, cliprect);
 	
 	return 0;
@@ -285,8 +257,7 @@ static VIDEO_UPDATE( abc802 )
 
 MACHINE_DRIVER_START( abc802_video )
 	// device interface
-	MDRV_DEVICE_ADD(MC6845_TAG, MC6845)
-	MDRV_DEVICE_CONFIG(abc802_mc6845_interface)
+	MDRV_MC6845_ADD(MC6845_TAG, MC6845, ABC800_CCLK, abc802_mc6845_interface)
 
 	// video hardware
 	MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
@@ -299,7 +270,7 @@ MACHINE_DRIVER_START( abc802_video )
 
 	MDRV_PALETTE_LENGTH(2)
 
-	MDRV_PALETTE_INIT(black_and_white)
+	MDRV_PALETTE_INIT(abc802)
 	MDRV_VIDEO_START(abc802)
 	MDRV_VIDEO_UPDATE(abc802)
 MACHINE_DRIVER_END

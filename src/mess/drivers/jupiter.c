@@ -141,39 +141,39 @@ static READ8_HANDLER( jupiter_io_r )
 
 	if ( ! ( offset & 0x0100 ) )
 	{
-		data = ( data & 0xe0 ) | ( data & input_port_read( machine, "KEY0" ) );
+		data = ( data & 0xe0 ) | ( data & input_port_read( space->machine, "KEY0" ) );
 	}
 	if ( ! ( offset & 0x0200 ) )
 	{
-		data = ( data & 0xe0 ) | ( data & input_port_read( machine, "KEY1" ) );
+		data = ( data & 0xe0 ) | ( data & input_port_read( space->machine, "KEY1" ) );
 	}
 	if ( ! ( offset & 0x0400 ) )
 	{
-		data = ( data & 0xe0 ) | ( data & input_port_read( machine, "KEY2" ) );
+		data = ( data & 0xe0 ) | ( data & input_port_read( space->machine, "KEY2" ) );
 	}
 	if ( ! ( offset & 0x0800 ) )
 	{
-		data = ( data & 0xe0 ) | ( data & input_port_read( machine, "KEY3" ) );
+		data = ( data & 0xe0 ) | ( data & input_port_read( space->machine, "KEY3" ) );
 	}
 	if ( ! ( offset & 0x1000 ) )
 	{
-		data = ( data & 0xe0 ) | ( data & input_port_read( machine, "KEY4" ) );
+		data = ( data & 0xe0 ) | ( data & input_port_read( space->machine, "KEY4" ) );
 	}
 	if ( ! ( offset & 0x2000 ) )
 	{
-		data = ( data & 0xe0 ) | ( data & input_port_read( machine, "KEY5" ) );
+		data = ( data & 0xe0 ) | ( data & input_port_read( space->machine, "KEY5" ) );
 	}
 	if ( ! ( offset & 0x4000 ) )
 	{
-		data = ( data & 0xe0 ) | ( data & input_port_read( machine, "KEY6" ) );
+		data = ( data & 0xe0 ) | ( data & input_port_read( space->machine, "KEY6" ) );
 	}
 	if ( ! ( offset & 0x8000 ) )
 	{
-//		cassette_output( device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), -1 );
+//		cassette_output( device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ), -1 );
 		speaker_level_w(0,0);
-		data = ( data & 0xe0 ) | ( data & input_port_read( machine, "KEY7" ) );;
+		data = ( data & 0xe0 ) | ( data & input_port_read( space->machine, "KEY7" ) );;
 	}
-	if ( cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0 )
+	if ( cassette_input(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" )) > 0 )
 	{
 		data &= ~0x20;
 	}
@@ -192,12 +192,12 @@ static WRITE8_HANDLER( jupiter_expram_w )
 {
 	if ( offset > 0x4000 )
 	{
-		if ( input_port_read(machine, "CFG") >= 1 )
+		if ( input_port_read(space->machine, "CFG") >= 1 )
 			jupiter_expram[offset] = data;
 	}
 	else
 	{
-		if ( input_port_read(machine, "CFG") == 2 )
+		if ( input_port_read(space->machine, "CFG") == 2 )
 			jupiter_expram[offset] = data;
 	}
 }
@@ -240,27 +240,27 @@ static WRITE8_HANDLER( jupiter_vh_charram_w )
 	jupiter_charram[offset] = data;
 
 	/* decode character graphics again */
-	decodechar(machine->gfx[0], offset / 8, jupiter_charram);
-	decodechar(machine->gfx[1], offset / 8, jupiter_charram);
+	decodechar(space->machine->gfx[0], offset / 8, jupiter_charram);
+	decodechar(space->machine->gfx[1], offset / 8, jupiter_charram);
 }
 
 
 static TIMER_CALLBACK( jupiter_set_irq_callback )
 {
-	cpunum_set_input_line( machine, 0, 0, ASSERT_LINE );
+	cpu_set_input_line( machine->cpu[0], 0, ASSERT_LINE );
 }
 
 
 static TIMER_CALLBACK( jupiter_clear_irq_callback )
 {
-	cpunum_set_input_line( machine, 0, 0, CLEAR_LINE );
+	cpu_set_input_line( machine->cpu[0], 0, CLEAR_LINE );
 }
 
 
 static VIDEO_START( jupiter )
 {
-	jupiter_set_irq_timer = timer_alloc( jupiter_set_irq_callback, NULL );
-	jupiter_clear_irq_timer = timer_alloc( jupiter_clear_irq_callback, NULL );
+	jupiter_set_irq_timer = timer_alloc(machine,  jupiter_set_irq_callback, NULL );
+	jupiter_clear_irq_timer = timer_alloc(machine,  jupiter_clear_irq_callback, NULL );
 
 	timer_adjust_periodic( jupiter_set_irq_timer,
 		video_screen_get_time_until_pos( machine->primary_screen, 31*8, 0 ),
@@ -292,21 +292,20 @@ static VIDEO_UPDATE( jupiter )
 }
 
 
-static cassette_config jupiter_cassette_config =
+static const cassette_config jupiter_cassette_config =
 {
 	jupiter_cassette_formats,
 	NULL,
 	CASSETTE_STOPPED
 };
 
-
 /* machine definition */
 static MACHINE_DRIVER_START( jupiter )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_6_5MHz/2)        /* 3.25 Mhz */
+	MDRV_CPU_ADD("main", Z80, XTAL_6_5MHz/2)        /* 3.25 MHz */
 	MDRV_CPU_PROGRAM_MAP(jupiter_mem, 0)
 	MDRV_CPU_IO_MAP(jupiter_io, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( jupiter )
 
@@ -328,6 +327,11 @@ static MACHINE_DRIVER_START( jupiter )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", jupiter_cassette_config )
+	
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("ace")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(jupiter_ace)
 MACHINE_DRIVER_END
 
 
@@ -337,30 +341,5 @@ ROM_START (jupiter)
 	ROM_LOAD ("jupiter.hi", 0x1000, 0x1000, CRC(4009f636) SHA1(98c5d4bcd74bcf014268cf4c00b2007ea5cc21f3))
 ROM_END
 
-
-static void jupiter_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(jupiter_ace); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "ace"); break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
-
-
-static SYSTEM_CONFIG_START(jupiter)
-	CONFIG_DEVICE(jupiter_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
-
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
-COMP( 1981, jupiter,  0,		0,		jupiter,  jupiter,	0,		  jupiter,	"Cantab",  "Jupiter Ace" , 0)
+COMP( 1981, jupiter,  0,		0,		jupiter,  jupiter,	0,		  0,		"Cantab",  "Jupiter Ace" , 0)

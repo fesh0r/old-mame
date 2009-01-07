@@ -270,7 +270,7 @@ WRITE8_DEVICE_HANDLER( zx8302_ipc_command_w )
 
 	if (data != 0x01)
 	{
-		timer_set(ATTOTIME_IN_NSEC(480), (void *) device, data, zx8302_delayed_ipc_command);
+		timer_set(device->machine,ATTOTIME_IN_NSEC(480), (void *) device, data, zx8302_delayed_ipc_command);
 	}
 }
 
@@ -568,18 +568,17 @@ void zx8302_vsync_w(const device_config *device, int level)
 static DEVICE_START( zx8302 )
 {
 	zx8302_t *zx8302 = get_safe_token(device);
-	char unique_tag[30];
 	int i;
 
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
 	assert(strlen(device->tag) < 20);
+	assert(device->clock > 0);
 
 	zx8302->intf = device->static_config;
 
 	assert(zx8302->intf != NULL);
-	assert(zx8302->intf->clock > 0);
 	assert(zx8302->intf->rtc_clock > 0);
 	assert(zx8302->intf->comdata_w != NULL);
 
@@ -597,46 +596,45 @@ static DEVICE_START( zx8302 )
 	}
 
 	/* create the timers */
-	zx8302->txd_timer = timer_alloc(zx8302_txd_tick, (void *)device);
-	zx8302->ipc_timer = timer_alloc(zx8302_ipc_tick, (void *)device);
-	zx8302->rtc_timer = timer_alloc(zx8302_rtc_tick, (void *)device);
-	zx8302->gap_timer = timer_alloc(zx8302_gap_tick, (void *)device);
+	zx8302->txd_timer = timer_alloc(device->machine, zx8302_txd_tick, (void *)device);
+	zx8302->ipc_timer = timer_alloc(device->machine, zx8302_ipc_tick, (void *)device);
+	zx8302->rtc_timer = timer_alloc(device->machine, zx8302_rtc_tick, (void *)device);
+	zx8302->gap_timer = timer_alloc(device->machine, zx8302_gap_tick, (void *)device);
 
 	timer_adjust_periodic(zx8302->rtc_timer, attotime_zero, 0, ATTOTIME_IN_HZ(zx8302->intf->rtc_clock/32768));
 	timer_adjust_periodic(zx8302->gap_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(31));
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "zx8302", device->tag);
 
-	state_save_register_item(unique_tag, 0, zx8302->idr);
-	state_save_register_item(unique_tag, 0, zx8302->tcr);
-	state_save_register_item(unique_tag, 0, zx8302->tdr);
-	state_save_register_item(unique_tag, 0, zx8302->irq);
-	state_save_register_item(unique_tag, 0, zx8302->ctr);
-	state_save_register_item(unique_tag, 0, zx8302->status);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->idr);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->tcr);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->tdr);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->irq);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->ctr);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->status);
 
-	state_save_register_item(unique_tag, 0, zx8302->comdata);
-	state_save_register_item(unique_tag, 0, zx8302->comctl);
-	state_save_register_item(unique_tag, 0, zx8302->ipc_state);
-	state_save_register_item(unique_tag, 0, zx8302->ipc_rx);
-	state_save_register_item(unique_tag, 0, zx8302->ipc_busy);
-	state_save_register_item(unique_tag, 0, zx8302->baudx4);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->comdata);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->comctl);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->ipc_state);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->ipc_rx);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->ipc_busy);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->baudx4);
 	
-	state_save_register_item(unique_tag, 0, zx8302->tx_bits);
-	state_save_register_item(unique_tag, 0, zx8302->ser1_rxd);
-	state_save_register_item(unique_tag, 0, zx8302->ser1_cts);
-	state_save_register_item(unique_tag, 0, zx8302->ser2_txd);
-	state_save_register_item(unique_tag, 0, zx8302->ser2_dtr);
-	state_save_register_item(unique_tag, 0, zx8302->netout);
-	state_save_register_item(unique_tag, 0, zx8302->netin);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->tx_bits);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->ser1_rxd);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->ser1_cts);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->ser2_txd);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->ser2_dtr);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->netout);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->netin);
 
-	state_save_register_item(unique_tag, 0, zx8302->mdrdw);
-	state_save_register_item(unique_tag, 0, zx8302->mdselck);
-	state_save_register_item(unique_tag, 0, zx8302->mdseld);
-	state_save_register_item(unique_tag, 0, zx8302->erase);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->mdrdw);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->mdselck);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->mdseld);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->erase);
 	
-	state_save_register_item(unique_tag, 0, zx8302->mdv_motor);
-	state_save_register_item_array(unique_tag, 0, zx8302->mdv_offset);
+	state_save_register_item(device->machine, "zx8302", device->tag, 0, zx8302->mdv_motor);
+	state_save_register_item_array(device->machine, "zx8302", device->tag, 0, zx8302->mdv_offset);
 	return DEVICE_START_OK;
 }
 
@@ -670,10 +668,10 @@ DEVICE_GET_INFO( zx8302 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(zx8302);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Sinclair ZX8302";				break;
-		case DEVINFO_STR_FAMILY:						info->s = "Sinclair ZX83";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright MESS Team";			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Sinclair ZX8302");				break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Sinclair ZX83");					break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
 	}
 }

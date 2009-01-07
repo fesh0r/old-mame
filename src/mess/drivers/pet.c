@@ -12,12 +12,12 @@
 
 /*
 
-2008 - Driver Updates 
+2008 - Driver Updates
 ---------------------
 
 (most of the informations are taken from http://www.zimmers.net/cbmpics/ )
-(also, check 
-	http://www.6502.org/users/andre/petindex/local/cbm-model-list.1.0.txt
+(also, check
+    http://www.6502.org/users/andre/petindex/local/cbm-model-list.1.0.txt
 for a more comprehensive list of models)
 
 [CBM systems which belong to this driver]
@@ -25,67 +25,67 @@ for a more comprehensive list of models)
 * Commodore PET 2001 (1977) - board design 1
 * PET 2001 Series / CBM 20XX Series (1979) - board design 2, upgraded ROMs
 
-  PET 2001, the first of the series came initially with a calculator style 
+  PET 2001, the first of the series came initially with a calculator style
 keyboard, later changed to a larger and better full-stroke one (actually
 it was available in two versions: Businness and Home Computer, the latter
-also containing graphics on the keys). Plenty of models were released in 
+also containing graphics on the keys). Plenty of models were released in
 this series, depending on the RAM size, the keyboard type and the screen
 dimension (see below).
 
-CPU: MOS 6502 (1 Mhz)
+CPU: MOS 6502 (1 MHz)
 RAM: 4K and 8K early models (Expandable to 32k addressable, more banked);
-	8K, 16K, 32K later models (Expandable again to larger RAM config)
+    8K, 16K, 32K later models (Expandable again to larger RAM config)
 ROM: 18 kilobytes early models; 20 kilobytes later ones
-Video: MOS Technology 6545 CRTC (9" Monochrome display; 40 columns x 25 
-	rows )
-Sound: None ine arlier models; Piezo electronic speaker later ones(One 
-	square wave voice; Three octaves)
-Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 edge-connector Port; 2 
-	Commodore Datasette ports; 'EXPANSION' port; CBM parallel 
-	programmable "User" port 
+Video: MOS Technology 6545 CRTC (9" Monochrome display; 40 columns x 25
+    rows )
+Sound: None ine arlier models; Piezo electronic speaker later ones(One
+    square wave voice; Three octaves)
+Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 edge-connector Port; 2
+    Commodore Datasette ports; 'EXPANSION' port; CBM parallel
+    programmable "User" port
 Keyboard: "Calculator" 69 key QWERTY in early models and Full 69 keys QWERTY
-	in later ones (16 key numeric keypad!; 4 direction 2-key cursor-pad )
+    in later ones (16 key numeric keypad!; 4 direction 2-key cursor-pad )
 Additional hardware: Datasette
 
 Model Table (*):
 
-PET 2001-4K		Calculator Keyboard, Black Trim
-PET 2001-8K		Calculator Keyboard, Blue Trim, 9" Screen
-PET 2001-8C		Calculator Keyboard, Blue Trim, 9" Screen B&W (**)
-PET 2001B-8		Business Keyboard, 12" Screen
-PET 2001B-16	Business Keyboard, 12" Screen
-PET 2001B-32	Business Keyboard, 12" Screen (***)
-PET 2001N-8		Home Computer Keyboard, 12" Screen
-PET 2001N-16	Home Computer Keyboard, 9" and 12" Screen
-PET 2001N-32	Home Computer Keyboard, BASIC 4.0
+PET 2001-4K     Calculator Keyboard, Black Trim
+PET 2001-8K     Calculator Keyboard, Blue Trim, 9" Screen
+PET 2001-8C     Calculator Keyboard, Blue Trim, 9" Screen B&W (**)
+PET 2001B-8     Business Keyboard, 12" Screen
+PET 2001B-16    Business Keyboard, 12" Screen
+PET 2001B-32    Business Keyboard, 12" Screen (***)
+PET 2001N-8     Home Computer Keyboard, 12" Screen
+PET 2001N-16    Home Computer Keyboard, 9" and 12" Screen
+PET 2001N-32    Home Computer Keyboard, BASIC 4.0
 
-Notes:	B&W = Black and White Screen
-		G&W = Green and White Screen
-		Calculator Keyboard models also had a built-in datasette
-		Home Computer Keyboard also features graphics on keys
+Notes:  B&W = Black and White Screen
+        G&W = Green and White Screen
+        Calculator Keyboard models also had a built-in datasette
+        Home Computer Keyboard also features graphics on keys
 
-(*) Models 2001B-XX & 2001-XXB are the same. Same applies to 2001N-XX & 
-	2001-XXN
-(**) Also confirmed with Black Trim and 9" Screen G&W 
-(***) Also confirmed with Black Trim and 9" Screen B&W 
+(*) Models 2001B-XX & 2001-XXB are the same. Same applies to 2001N-XX &
+    2001-XXN
+(**) Also confirmed with Black Trim and 9" Screen G&W
+(***) Also confirmed with Black Trim and 9" Screen B&W
 
 
 * Commodore CBM 3008 / 3016 / 3032 (1979) - board design 2, upgraded ROMs
 
-  In Europe, Philips was already selling a machine called PET, so they 
-forced Commodore to change name. The result was the CBM 30XX Series, where 
-XX is equal to the RAM size. These were basically PET models with 9" Screen 
-and upgraded ROMs. There also existed a German CBM 3001, which was a PET 
-2001, B or N. Notice that these systems used to boot 
+  In Europe, Philips was already selling a machine called PET, so they
+forced Commodore to change name. The result was the CBM 30XX Series, where
+XX is equal to the RAM size. These were basically PET models with 9" Screen
+and upgraded ROMs. There also existed a German CBM 3001, which was a PET
+2001, B or N. Notice that these systems used to boot
 
-CPU: MOS 6502 (1Mhz)
+CPU: MOS 6502 (1MHz)
 RAM: 8K, 16k, and 32k models (Expandable to even more banked memory)
 ROM: 20 Kilobytes
 Video: MOS Technology 6545 CRTC (9" Monochrome display; 40 columns x 25 rows)
 Sound: Piezo electronic speaker (One square wave voice; Three octaves)
-Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 edge-connector Port; 2 Commodore 
-	Datasette ports; 'EXPANSION' port; CBM parallel programmable "User" port)
-Keyboard: Full 69 key QWERTY (16 key numeric keypad!; 4 direction 2-key cursor-pad) 
+Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 edge-connector Port; 2 Commodore
+    Datasette ports; 'EXPANSION' port; CBM parallel programmable "User" port)
+Keyboard: Full 69 key QWERTY (16 key numeric keypad!; 4 direction 2-key cursor-pad)
 
 
 * Commodore PET 40XX / CBM 40XX (1980) - board design 2, BASIC 4, 9" Screen
@@ -96,29 +96,29 @@ quite similar to the previous ones (except for the new BASIC version), the
 machines with design 3 were quite different: there was CRTC support, it was
 possible to upgrade to 80 cols and a piezo beeper.
 
-CPU: MOS 6502 (1 Mhz)
+CPU: MOS 6502 (1 MHz)
 RAM: 8K, 16k, and 32k models (Expandable to even more banked memory)
 ROM: 20 Kilobytes
-Video: MOS Technology 6545 CRTC (9" and 12" Monochrome displays; 40 
-	columns x 25 rows)
+Video: MOS Technology 6545 CRTC (9" and 12" Monochrome displays; 40
+    columns x 25 rows)
 Sound: Piezo electronic speaker (One square wave voice; Three octaves)
-Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 edge-connector Port; 2 Commodore 
-	Datasette ports; 'EXPANSION' port; CBM parallel programmable "User" port)
+Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 edge-connector Port; 2 Commodore
+    Datasette ports; 'EXPANSION' port; CBM parallel programmable "User" port)
 Keyboard: Full 69 key QWERTY (16 key numeric keypad!; 4 direction 2-key cursor-pad)
 
 
 * Commodore PET 8032 / CBM 8032 (1981) - board design 3, BASIC 4, 12" Screen
 
-  Again, 80 columns screen and piezo beeper; BASIC 4 has a 80 columns editor 
+  Again, 80 columns screen and piezo beeper; BASIC 4 has a 80 columns editor
 ROM. It was possible to expand it to a 8096.
 
-CPU: MOS 6502 (1 mhz)
+CPU: MOS 6502 (1 MHz)
 RAM: 32k standard (Expandable to even more banked memory)
 ROM: 20 Kilobytes
 Video: MOS Technology 6545 CRTC (12" Monochrome displays; 80 columns x 25 rows)
 Sound: Piezo electronic speaker (One square wave voice; Three octaves)
-Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 edge-connector Port; 2 Commodore 
-	Datasette ports; 'EXPANSION' port; CBM parallel programmable "User" port) 
+Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 edge-connector Port; 2 Commodore
+    Datasette ports; 'EXPANSION' port; CBM parallel programmable "User" port)
 Keyboard: Full 73 key QWERTY (11 key numeric keypad!; 4 direction 2-key cursor-pad)
 
 
@@ -128,14 +128,14 @@ Keyboard: Full 73 key QWERTY (11 key numeric keypad!; 4 direction 2-key cursor-p
 with design 3 didn't fit very well the new case and required extra cables.
 It was possible to expand it to a 8096-SK.
 
-CPU: MOS 6502 (1 Mhz)
+CPU: MOS 6502 (1 MHz)
 RAM: 32k standard (8096 expanded to 96k, 64k is banked memory)
 ROM: 20 Kilobytes
 Video: MOS Technology 6545 CRTC (12" Monochrome display; 80 columns x 25 rows)
 Sound: Piezo electronic speaker (One square wave voice; Three octaves)
-Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 square-connector Port; 2 Commodore 
-	Datasette ports; 'EXPANSION' port; CBM parallel programmable "User" port)
-Keyboard: Full 73 key QWERTY (11 key numeric keypad!; 4 direction 2-key cursor-pad) 
+Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 square-connector Port; 2 Commodore
+    Datasette ports; 'EXPANSION' port; CBM parallel programmable "User" port)
+Keyboard: Full 73 key QWERTY (11 key numeric keypad!; 4 direction 2-key cursor-pad)
 
 
 * Commodore CBM 200 Series (198?)
@@ -146,51 +146,51 @@ CBM 220 was a CBM 8096-SK.
 
 * Commodore Super PET / MMF9000 (1981) - BASIC 4, 12" Screen
 
-  Based on PET 8032. Sold in Germany as MMF (MicroMainFrame) 9000. Machines 
+  Based on PET 8032. Sold in Germany as MMF (MicroMainFrame) 9000. Machines
 sold in Italy had 134kB of RAM.
 
-CPU: MOS Technology 6502 & 6809 (1 Mhz clock speeds)
+CPU: MOS Technology 6502 & 6809 (1 MHz clock speeds)
 RAM: 96 kilobytes (64K was contained on an expansion board above the motherboard;
-	Early SP9000 models had two boards above the motherboard; Some models also 
-	had 3 or more switches)
+    Early SP9000 models had two boards above the motherboard; Some models also
+    had 3 or more switches)
 ROM: 48 kilobytes
-Video: MOS Technology 6545 CRTC (12" Monochrome display; 80 columns x 25 rows; 
-	3+ character sets, 256 characters each) 
+Video: MOS Technology 6545 CRTC (12" Monochrome display; 80 columns x 25 rows;
+    3+ character sets, 256 characters each)
 Sound: Piezo electronic speaker (One square wave voice; Three octaves)
-Ports: 6551 ACIA, MOS 6520 PIA, MOS 6522 VIA (IEEE-488 edge-connector Port; 2 
-	Commodore Datasette ports; 'EXPANSION' port; RS232 Internal port; CBM 
-	parallel programmable "User" port; Memory and Processor selection switches)
-Keyboard: Full-sized 73 key QWERTY (Multi-Font 62 key keyboard; APL Symbols on 
-	the front of the keys; 11 key numeric keypad; Editor functions on the front 
-	of the keys; 2-key 4-direction cursor-pad)
+Ports: 6551 ACIA, MOS 6520 PIA, MOS 6522 VIA (IEEE-488 edge-connector Port; 2
+    Commodore Datasette ports; 'EXPANSION' port; RS232 Internal port; CBM
+    parallel programmable "User" port; Memory and Processor selection switches)
+Keyboard: Full-sized 73 key QWERTY (Multi-Font 62 key keyboard; APL Symbols on
+    the front of the keys; 11 key numeric keypad; Editor functions on the front
+    of the keys; 2-key 4-direction cursor-pad)
 
 
-* Commodore CBM SP9000    
+* Commodore CBM SP9000
 
   Similar to Super PET. Dual uP 6502/6809, 96kB RAM, business keyboard.
 
 
 * Commodore PET 8296 / CBM 8296 (1984) - BASIC 4, 12" Screen
 
-  Shipped with 128k RAM and separate keyboard, it is a complete redesign of the 
-PET universal board. It fits into the separate keyboard case, and directly holds 
-128k RAM, of which 96k can be used as in the 8096. In addition, using "user 
-jumpers" on the motherboard, the ROM can be completely switched off to access 
-the RAM "under the ROM", so that the complete 128k RAM are accessible. The "user 
-jumpers" could be set to connect to the userport, so this could even be done 
+  Shipped with 128k RAM and separate keyboard, it is a complete redesign of the
+PET universal board. It fits into the separate keyboard case, and directly holds
+128k RAM, of which 96k can be used as in the 8096. In addition, using "user
+jumpers" on the motherboard, the ROM can be completely switched off to access
+the RAM "under the ROM", so that the complete 128k RAM are accessible. The "user
+jumpers" could be set to connect to the userport, so this could even be done
 under program control.
 
-CPU: MOS 6502 (1 Mhz)
+CPU: MOS 6502 (1 MHz)
 RAM: 160K (32k standard)
 ROM: 24 Kilobytes
 Video: MOS Technology 6545 CRTC (12" Monochrome displays; 80 columns x 25 rows)
 Sound: Piezo electronic speaker (One square wave voice; Three octaves)
-Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 Port; Commodore Datasette port; 
-	'EXPANSION' port; CBM parallel programmable "User" port)
+Ports: MOS 6520 PIA, MOS 6522 VIA (IEEE-488 Port; Commodore Datasette port;
+    'EXPANSION' port; CBM parallel programmable "User" port)
 Keyboard: Full 73 key QWERTY (11 key numeric keypad!; 4 direction 2-key cursor-pad)
 
-see http://www.6502.org/users/andre/petindex/8x96.html and 
-http://www.sothius.com/hypertxt/welcome.html?./additional/cbm8296addition.html for 
+see http://www.6502.org/users/andre/petindex/8x96.html and
+http://www.sothius.com/hypertxt/welcome.html?./additional/cbm8296addition.html for
 more informations
 
 
@@ -198,7 +198,7 @@ more informations
 
   It was a 8296 with built-in 8250-LP disk drive.
 
-* Commodore CBM 8296GD 
+* Commodore CBM 8296GD
 
   Mentioned at http://www.commodore.ca/products/pet/commodore_pet.htm#Commodore%20PET%20Chronology
 as a 8296 with a high resolution graphics board and drive. No other info available.
@@ -206,15 +206,15 @@ as a 8296 with a high resolution graphics board and drive. No other info availab
 [Other models]
 
 
-* Teacher's PET		Simply a PET 2001-N with a different label, due to a 
-					marketing campaign in US schools
-* MDS 6500			Modified 2001N-32 with matching 2040 drive.  500 made.
-* "CASSIE"			Synergistics Inc. rebadged 8032
+* Teacher's PET     Simply a PET 2001-N with a different label, due to a
+                    marketing campaign in US schools
+* MDS 6500          Modified 2001N-32 with matching 2040 drive.  500 made.
+* "CASSIE"          Synergistics Inc. rebadged 8032
 
 
 [Board Designs]
 
-All these models can be reduced to four board types (source William Levak's 
+All these models can be reduced to four board types (source William Levak's
 doc, layouts from PETFAQ):
 
 Static Board (PET 2001)
@@ -225,7 +225,7 @@ Four variations based on type of RAM(6550 or 2114) and ROM(6540 or 2316B).
 40 column display
 A video interrupt interferes with disk drive operation.
 Display timing not compatible with Basic 4.0.
-ROM sockets:  A2  2K character   	ROM sockets:  A2  2K character
+ROM sockets:  A2  2K character      ROM sockets:  A2  2K character
  (2316B)      H1  C000-CFFF           (6540)       H1  C000-C7FF
               H2  D000-DFFF                        H2  D000-D7FF
               H3  E000-E7FF                        H3  E000-E7FF
@@ -329,7 +329,7 @@ ROM sockets:  UA3   2K or 4K character
      +------####-####--##-+
      !                  # # tape
      !                  # #  #2
-     !  R       exp bus # ! 
+     !  R       exp bus # !
      !  A                #!
      !  M             9  #!
      !                A  #!     4000, 8000 Series
@@ -345,7 +345,7 @@ ROM sockets:  UA3   2K or 4K character
 
 [TO DO]
 
-* Verify if pre-CRTC models had differences between NTSC & PAL systems. 
+* Verify if pre-CRTC models had differences between NTSC & PAL systems.
 If no differences arise we can merge back the following sets:
 + cbm30 (same as pet2001n) & cbm30b (same as pet2001b)
 + cbm40o (same as pet40on) & cbm40ob (same as pet40ob)
@@ -362,25 +362,27 @@ If no differences arise we can merge back the following sets:
 
 * Find out answers to the following details:
 
-+ Did BASIC 2 also come as upgrade ROMs for PET 2001 with Static Board? If 
-this is the case, we need to support the splitted versions of the ROMs as 
++ Did BASIC 2 also come as upgrade ROMs for PET 2001 with Static Board? If
+this is the case, we need to support the splitted versions of the ROMs as
 an alternative BIOS to pet2001.
 + Did final PET 40XX & CBM 40XX with 40 Columns & CRTC support had business or
 normal keyboards?
 
 * Find confirmation about some models (which I don't believe ever existed,
-	but...):
+    but...):
 
-+ were there PET 2001-16k & PET 2001-32k with Calculator type keyboard? 
++ were there PET 2001-16k & PET 2001-32k with Calculator type keyboard?
 + were there CBM 20XX in Europe?
-+ what about the following unrealistic RAM configurations: 4004? 8008? 8016? 
-8064? 
++ what about the following unrealistic RAM configurations: 4004? 8008? 8016?
+8064?
 + did a CBM 210 exist?
 
 */
 
 
 #include "driver.h"
+#include "cpu/m6809/m6809.h"
+#include "cpu/m6502/m6502.h"
 
 #include "machine/6821pia.h"
 #include "machine/6522via.h"
@@ -405,8 +407,8 @@ static ADDRESS_MAP_START(pet_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0xe840, 0xe84f) AM_READWRITE(via_0_r, via_0_w)
-/*	AM_RANGE(0xe900, 0xe91f) AM_READ(cbm_ieee_state)	// for debugging */
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
+/*  AM_RANGE(0xe900, 0xe91f) AM_READ(cbm_ieee_state)    // for debugging */
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -415,7 +417,7 @@ static ADDRESS_MAP_START( pet40_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0xe840, 0xe84f) AM_READWRITE(via_0_r, via_0_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
 	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
 	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
@@ -432,7 +434,7 @@ static ADDRESS_MAP_START( pet80_mem , ADDRESS_SPACE_PROGRAM, 8)
 #else
 	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0xe840, 0xe84f) AM_READWRITE(via_0_r, via_0_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
 	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
 	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 #endif
@@ -463,7 +465,7 @@ static ADDRESS_MAP_START( superpet_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0xe840, 0xe84f) AM_READWRITE(via_0_r, via_0_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
 	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
 	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 	/* 0xefe0, 0xefe3, mos 6702 */
@@ -479,7 +481,7 @@ static ADDRESS_MAP_START( superpet_m6809_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0xe840, 0xe84f) AM_READWRITE(via_0_r, via_0_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
 	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
 	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xeff8, 0xefff) AM_READWRITE(superpet_r, superpet_w)
@@ -497,7 +499,7 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( pet )
 	PORT_INCLUDE( pet_keyboard )	/* ROW0 -> ROW9 */
-	
+
 	PORT_INCLUDE( pet_special )		/* SPECIAL */
 
 	PORT_INCLUDE( pet_config )		/* CFG */
@@ -599,7 +601,6 @@ GFXDECODE_END
 
 static const mc6845_interface crtc_pet40 = {
 	"main",
-	XTAL_17_73447MHz/3,			/* This is a wild guess and mostly likely incorrect */
 	8,
 	NULL,
 	pet40_update_row,
@@ -611,7 +612,6 @@ static const mc6845_interface crtc_pet40 = {
 
 static const mc6845_interface crtc_pet80 = {
 	"main",
-	XTAL_12MHz / 2,			/* This is a wild guess and mostly likely incorrect */
 	16,
 	NULL,
 	pet80_update_row,
@@ -649,11 +649,11 @@ static VIDEO_UPDATE( pet_crtc )
  *************************************/
 
 static MACHINE_DRIVER_START( pet_general )
+	MDRV_DRIVER_DATA(pet_state)
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 7833600)        /* 7.8336 Mhz */
+	MDRV_CPU_ADD("main", M6502, 7833600)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(pet_mem, 0)
 	MDRV_CPU_VBLANK_INT("main", pet_frame_interrupt)
-	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_RESET( pet )
 
@@ -670,20 +670,26 @@ static MACHINE_DRIVER_START( pet_general )
 
 	MDRV_VIDEO_UPDATE( pet )
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
+
+	/* via */
+	MDRV_VIA6522_ADD( "via6522_0", 0, pet_via)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pet )
 	MDRV_IMPORT_FROM( pet_general )
 	MDRV_QUICKLOAD_ADD(cbm_pet, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+	MDRV_IMPORT_FROM(pet_cartslot)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pet2001 )
 	MDRV_IMPORT_FROM( pet_general )
 	MDRV_QUICKLOAD_ADD(cbm_pet1, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+	MDRV_IMPORT_FROM(pet_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -692,11 +698,12 @@ static MACHINE_DRIVER_START( pet40 )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP( pet40_mem, 0 )
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
-	MDRV_DEVICE_CONFIG( crtc_pet40 )
+	MDRV_MC6845_ADD("crtc", MC6845, XTAL_17_73447MHz/3	/* This is a wild guess and mostly likely incorrect */, crtc_pet40)
 
 	MDRV_VIDEO_START( pet_crtc )
 	MDRV_VIDEO_UPDATE( pet_crtc )
+
+	MDRV_IMPORT_FROM(pet4_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -719,12 +726,13 @@ static MACHINE_DRIVER_START( pet80 )
 	MDRV_SCREEN_SIZE(640, 250)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640 - 1, 0, 250 - 1)
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
-	MDRV_DEVICE_CONFIG( crtc_pet80 )
+	MDRV_MC6845_ADD("crtc", MC6845, XTAL_12MHz / 2	/* This is a wild guess and mostly likely incorrect */, crtc_pet80)
 
 	MDRV_GFXDECODE( pet80 )
 	MDRV_VIDEO_START( pet_crtc )
 	MDRV_VIDEO_UPDATE( pet_crtc )
+
+	MDRV_IMPORT_FROM(pet4_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -761,10 +769,10 @@ MACHINE_DRIVER_END
 
 /* PET 2001 - Board type 1 (Static Board) */
 /* BASIC 1 - "*** COMMODORE BASIC ***" at boot */
-/* Four board variations depending on 
-	ROM sockets: either 6540 or 2316B
-	RAM: either 6550 or 2114
-The ROM content is the same in both cases, but the labels differ. Below we use labels 
+/* Four board variations depending on
+    ROM sockets: either 6540 or 2316B
+    RAM: either 6550 or 2114
+The ROM content is the same in both cases, but the labels differ. Below we use labels
 from the 2316B version. For documentation sake, these would have been the labels based on
 the board with 6540 ROMs
 
@@ -777,7 +785,7 @@ the board with 6540 ROMs
 901439-07.h7
 901439-08.a2
 
-Also, in some board with 2316B, the location of the ROMs changes h1 <-> h5, h2 <-> h6 and 
+Also, in some board with 2316B, the location of the ROMs changes h1 <-> h5, h2 <-> h6 and
 h4 <-> h7
 */
 
@@ -960,11 +968,11 @@ ROM_END
 
 
 /* Two different layouts are documented for the m6809 */
-/* The 2532 EEPROM listed below (2516 for the .u21 one) could have been replaced by three 2764 EEPROM. 
+/* The 2532 EEPROM listed below (2516 for the .u21 one) could have been replaced by three 2764 EEPROM.
 In this case the labels would have been as follows
 
 970018-12.u47 (contents: u17+u18 below)
-970019-12.u48 (contents: u19+u20 below) 
+970019-12.u48 (contents: u19+u20 below)
 970020-12.u49 (contents: u21+u22 below)
 
 */
@@ -997,7 +1005,7 @@ ROM_START( cbm8296 )
 	ROM_REGION( 0x20000, "main", 0 )
 	ROM_LOAD( "324746-01.ue7", 0xb000, 0x3000, CRC(7935b528) SHA1(5ab17ee70467152bf2130e3f48a2aa81e9df93c9) )	// BASIC 4 // FIX ME!!
 	ROM_CONTINUE(			   0xf000, 0x1000 )
-	ROM_LOAD( "901474-04.ue8", 0xe000, 0x800,  CRC(c1ffca3a) SHA1(7040b283ba39e9630e3d147f7d076b7abc39bc70) )	// Dated 0384, coincides with 3681 above according to André Fachat's notes
+	ROM_LOAD( "901474-04.ue8", 0xe000, 0x800,  CRC(c1ffca3a) SHA1(7040b283ba39e9630e3d147f7d076b7abc39bc70) )	// Dated 0384, coincides with 3681 above according to Andr? Fachat's notes
 
 	ROM_REGION( 0x4000, "gfx1", 0 )
 	ROM_LOAD( "901447-10.uc5", 0x0000, 0x800, CRC(d8408674) SHA1(0157a2d55b7ac4eaeb38475889ebeea52e2593db) )	// Character Generator
@@ -1089,7 +1097,6 @@ ROM_END
 
 /* Original PET 2001 - Basic 1 - RAM: 4k, 8k */
 static SYSTEM_CONFIG_START( pet2001 )
-	CONFIG_DEVICE(pet_cartslot_getinfo)
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 	CONFIG_RAM(4 * 1024)
 	CONFIG_RAM_DEFAULT(8 * 1024)
@@ -1097,7 +1104,6 @@ SYSTEM_CONFIG_END
 
 /* Later PET 2001 - Basic 2 - RAM: 8k, 16k, 32k */
 static SYSTEM_CONFIG_START( pet2 )
-	CONFIG_DEVICE(pet_cartslot_getinfo)
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 	CONFIG_RAM(8 * 1024)
 	CONFIG_RAM(16 * 1024)
@@ -1106,7 +1112,6 @@ SYSTEM_CONFIG_END
 
 /* Early PET 4000 - Basic 4 - RAM: 8k, 16k, 32k */
 static SYSTEM_CONFIG_START( pet4o )
-	CONFIG_DEVICE(pet4_cartslot_getinfo)
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 	CONFIG_RAM(8 * 1024)
 	CONFIG_RAM(16 * 1024)
@@ -1115,7 +1120,6 @@ SYSTEM_CONFIG_END
 
 /* Later PET 4000 / PET 8000 - Basic 4 - RAM: 32k expandable (expansion through DIPs currently) */
 static SYSTEM_CONFIG_START( pet4 )
-	CONFIG_DEVICE(pet4_cartslot_getinfo)
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 	CONFIG_RAM_DEFAULT(32 * 1024)
 SYSTEM_CONFIG_END
@@ -1128,37 +1132,36 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/* YEAR  NAME     COMPAT  PARENT  MACHINE    INPUT      INIT       CONFIG     COMPANY                             FULLNAME */
+/* YEAR    NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG     COMPANY                             FULLNAME */
 
-COMP(1977, pet2001,   0,   0,         pet2001,   pet,       pet2001,   pet2001,   "Commodore Business Machines Co.",  "PET 2001", GAME_NO_SOUND)
-
-COMP(1979, pet2001n,  0,   pet2001,   pet,       pet,       pet,       pet2,      "Commodore Business Machines Co.",  "PET 2001-N", GAME_NO_SOUND)
-COMP(1979, pet2001b,  0,   pet2001,   pet,       petb,      petb,      pet2,      "Commodore Business Machines Co.",  "PET 2001-B", GAME_NO_SOUND)
-COMP(1979, cbm30,     0,   pet2001,   pet,       pet,       pet,       pet2,      "Commodore Business Machines Co.",  "CBM 30xx", GAME_NO_SOUND)
-COMP(1979, cbm30b,    0,   pet2001,   pet,       petb,      petb,      pet2,      "Commodore Business Machines Co.",  "CBM 30xx (Business keyboard)", GAME_NO_SOUND)
-COMP(1979, cbm30nor,  0,   pet2001,   pet,       petb,      petb,      pet2,      "Commodore Business Machines Co.",  "CBM 30xx (Norway, Business keyboard)", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP(1977, pet2001,  0,        0,        pet2001,  pet,      pet2001,  pet2001,   "Commodore Business Machines Co.",  "PET 2001", GAME_NO_SOUND)
+COMP(1979, pet2001n, pet2001,  0,        pet,      pet,      pet,      pet2,      "Commodore Business Machines Co.",  "PET 2001-N", GAME_NO_SOUND)
+COMP(1979, pet2001b, pet2001,  0,        pet,      petb,     petb,     pet2,      "Commodore Business Machines Co.",  "PET 2001-B", GAME_NO_SOUND)
+COMP(1979, cbm30,    pet2001,  0,        pet,      pet,      pet,      pet2,      "Commodore Business Machines Co.",  "CBM 30xx", GAME_NO_SOUND)
+COMP(1979, cbm30b,   pet2001,  0,        pet,      petb,     petb,     pet2,      "Commodore Business Machines Co.",  "CBM 30xx (Business keyboard)", GAME_NO_SOUND)
+COMP(1979, cbm30nor, pet2001,  0,        pet,      petb,     petb,     pet2,      "Commodore Business Machines Co.",  "CBM 30xx (Norway, Business keyboard)", GAME_NO_SOUND)
 
 /* So called, THIN-40 */
-COMP(1980, pet40on,   0,   pet2001,   pet,       pet,       pet,       pet2,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
-COMP(1980, pet40ob,   0,   pet2001,   pet,       petb,      petb,      pet2,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
-COMP(1980, cbm40o,    0,   pet2001,   pet,       pet,       pet,       pet2,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
-COMP(1980, cbm40ob,   0,   pet2001,   pet,       petb,      petb,      pet2,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
+COMP(1980, pet40on,  pet2001,  0,        pet,      pet,      pet,      pet2,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
+COMP(1980, pet40ob,  pet2001,  0,        pet,      petb,     petb,     pet2,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
+COMP(1980, cbm40o,   pet2001,  0,        pet,      pet,      pet,      pet2,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
+COMP(1980, cbm40ob,  pet2001,  0,        pet,      petb,     petb,     pet2,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
 
-COMP(1981, pet80,     0,   pet2001,   pet80,     cbm8096,   pet80,     pet4,      "Commodore Business Machines Co.",  "PET 80xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm80,     0,   pet2001,   pet80pal,  cbm8096,   pet80,     pet4,      "Commodore Business Machines Co.",  "CBM 80xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm80ger,  0,   pet2001,   pet80pal,  cbm8096,   pet80,     pet4,      "Commodore Business Machines Co.",  "CBM 80xx (Germany, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm80hun,  0,   pet2001,   pet80pal,  cbm8096,   pet80,     pet4,      "Commodore Business Machines Co.",  "CBM 80xx (Hungary, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND | GAME_NOT_WORKING)
-COMP(1981, cbm80swe,  0,   pet2001,   pet80pal,  cbm8096,   pet80,     pet4,      "Commodore Business Machines Co.",  "CBM 80xx (Sweden, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, pet80,    0,        0,        pet80,    cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "PET 80xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80,    pet80,    0,        pet80pal, cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "CBM 80xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80ger, pet80,    0,        pet80pal, cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "CBM 80xx (Germany, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80hun, pet80,    0,        pet80pal, cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "CBM 80xx (Hungary, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80swe, pet80,    0,        pet80pal, cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "CBM 80xx (Sweden, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
 
 /* So called, FAT-40 */
-COMP(1981, pet40b,    0,   pet2001,   pet80,     cbm8096,   pet80,     pet4,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, pet40n,    0,   pet2001,   pet40,     pet,       pet40,     pet4o,     "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 40 columns)", GAME_NO_SOUND)
-COMP(1981, cbm40b,	  0,   pet2001,   pet80pal,  cbm8096,   pet80,     pet4,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm40n,    0,   pet2001,   pet40pal,  pet,       pet40,     pet4o,     "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 40 columns)", GAME_NO_SOUND)
+COMP(1981, pet40b,   pet80,    0,        pet80,    cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, pet40n,   pet2001,  0,        pet40,    pet,      pet40,    pet4o,     "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 40 columns)", GAME_NO_SOUND)
+COMP(1981, cbm40b,   pet80,    0,        pet80pal, cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm40n,   pet2001,  0,        pet40pal, pet,      pet40,    pet4o,     "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 40 columns)", GAME_NO_SOUND)
 
-COMP(1981, superpet,  0,   pet2001,   superpet,  superpet,  superpet,  pet4,      "Commodore Business Machines Co.",  "SuperPET (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
-COMP(1981, sp9000,    0,   pet2001,   superpet,  superpet,  superpet,  pet4,      "Commodore Business Machines Co.",  "CBM SP9000 / MicroMainFrame 9000 (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
-COMP(198?, mmf9000s,  0,   pet2001,   superpet,  superpet,  superpet,  pet4,      "Commodore Business Machines Co.",  "MicroMainFrame 9000 (Sweden, CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP(1981, superpet, 0,        0,        superpet, superpet, superpet, pet4,      "Commodore Business Machines Co.",  "SuperPET (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP(1981, sp9000,   superpet, 0,        superpet, superpet, superpet, pet4,      "Commodore Business Machines Co.",  "CBM SP9000 / MicroMainFrame 9000 (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP(198?, mmf9000s, superpet, 0,        superpet, superpet, superpet, pet4,      "Commodore Business Machines Co.",  "MicroMainFrame 9000 (Sweden, CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
 
-COMP(1984, cbm8296,   0,   pet2001,   pet80pal,  cbm8096,   pet80,     pet4,      "Commodore Business Machines Co.",  "CBM 8296 (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND | GAME_NOT_WORKING)
-COMP(1984, cbm8296d,  0,   pet2001,   pet80pal,  cbm8096,   pet80,     pet4,      "Commodore Business Machines Co.",  "CBM 8296D", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP(1984, cbm8296,  pet80,    0,        pet80pal, cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "CBM 8296 (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1984, cbm8296d, pet80,    0,        pet80pal, cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "CBM 8296D", GAME_NO_SOUND)

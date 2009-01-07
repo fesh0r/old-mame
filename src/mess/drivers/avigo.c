@@ -39,7 +39,7 @@
  ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 #include "includes/avigo.h"
 #include "machine/intelfsh.h"
 #include "machine/tc8521.h"
@@ -94,22 +94,23 @@ static NVRAM_HANDLER( avigo )
 	}
 }
 
-static void avigo_setbank(running_machine *machine, int bank, void *address, read8_machine_func rh, write8_machine_func wh)
+static void avigo_setbank(running_machine *machine, int bank, void *address, read8_space_func rh, write8_space_func wh)
 {
+	const address_space* space = cpu_get_address_space(machine->cpu[0],ADDRESS_SPACE_PROGRAM);
 	if (address)
 	{
-		memory_set_bankptr(1+bank, address);
-		memory_set_bankptr(5+bank, address);
+		memory_set_bankptr(machine, 1+bank, address);
+		memory_set_bankptr(machine, 5+bank, address);
 		avigo_banked_opbase[bank] = ((UINT8 *) address) - (bank * 0x4000);
 	}
 	if (rh)
 	{
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, (bank * 0x4000),
+		memory_install_read8_handler(space, (bank * 0x4000),
 			(bank * 0x4000) + 0x3FFF, 0, 0, rh);
 	}
 	if (wh)
 	{
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, (bank * 0x4000),
+		memory_install_write8_handler(space, (bank * 0x4000),
 			(bank * 0x4000) + 0x3FFF, 0, 0, wh);
 	}
 }
@@ -155,9 +156,9 @@ static WRITE8_HANDLER(avigo_flash_0x8000_write_handler)
 static void avigo_refresh_ints(running_machine *machine)
 {
 	if (avigo_irq!=0)
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE);
 	else
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 }
 
 
@@ -179,7 +180,7 @@ static TIMER_CALLBACK(avigo_dummy_timer_callback)
 	static int ox = 0, oy = 0;
 	int nx,ny;
 	int dx, dy;
-	static const char *linenames[] = { "LINE0", "LINE1", "LINE2", "LINE3" };
+	static const char *const linenames[] = { "LINE0", "LINE1", "LINE2", "LINE3" };
 
 	for (i = 0; i < 4; i++)
 	{
@@ -212,7 +213,7 @@ static TIMER_CALLBACK(avigo_dummy_timer_callback)
 		if ((current_input_port_data[3] & 0x02)!=0)
 		{
 			/* ????? causes a NMI */
-			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+			cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 
@@ -271,7 +272,7 @@ static TIMER_CALLBACK(avigo_dummy_timer_callback)
 }
 
 /* does not do anything yet */
-static void avigo_tc8521_alarm_int(int state)
+static void avigo_tc8521_alarm_int(const device_config *device, int state)
 {
 //#if 0
 	avigo_irq &=~(1<<5);
@@ -281,12 +282,12 @@ static void avigo_tc8521_alarm_int(int state)
 		avigo_irq |= (1<<5);
 	}
 
-	avigo_refresh_ints(Machine);
+	avigo_refresh_ints(device->machine);
 //#endif
 }
 
 
-static const struct tc8521_interface avigo_tc8521_interface =
+static const tc8521_interface avigo_tc8521_interface =
 {
 	avigo_tc8521_alarm_int
 };
@@ -385,14 +386,14 @@ static const ins8250_interface avigo_com_interface =
 };
 
 /* this is needed because this driver uses handlers in memory that gets executed */
-static OPBASE_HANDLER( avigo_opbase_handler )
+static DIRECT_UPDATE_HANDLER( avigo_opbase_handler )
 {
 	void *opbase_ptr;
 
 	opbase_ptr = avigo_banked_opbase[address / 0x4000];
 	if (opbase_ptr != NULL)
 	{
-		opbase->rom = opbase->ram = opbase_ptr;
+		direct->raw = direct->decrypted = opbase_ptr;
 		address = ~0;
 	}
 	return address;
@@ -402,14 +403,14 @@ static MACHINE_RESET( avigo )
 {
 	int i;
 	unsigned char *addr;
-	static const char *linenames[] = { "LINE0", "LINE1", "LINE2", "LINE3" };
+	static const char *const linenames[] = { "LINE0", "LINE1", "LINE2", "LINE3" };
 
 	memset(avigo_banked_opbase, 0, sizeof(avigo_banked_opbase));
 
 	/* initialise flash memory */
-	intelflash_init(0, FLASH_INTEL_E28F008SA, memory_region(machine, "main")+0x10000);
-	intelflash_init(1, FLASH_INTEL_E28F008SA, memory_region(machine, "main")+0x110000);
-	intelflash_init(2, FLASH_INTEL_E28F008SA, NULL);
+	intelflash_init(machine, 0, FLASH_INTEL_E28F008SA, memory_region(machine, "main")+0x10000);
+	intelflash_init(machine, 1, FLASH_INTEL_E28F008SA, memory_region(machine, "main")+0x110000);
+	intelflash_init(machine, 2, FLASH_INTEL_E28F008SA, NULL);
 
 	stylus_marker_x = AVIGO_SCREEN_WIDTH>>1;
 	stylus_marker_y = AVIGO_SCREEN_HEIGHT>>1;
@@ -431,13 +432,10 @@ static MACHINE_RESET( avigo )
 	avigo_flash_at_0x4000 = 0;
 	avigo_flash_at_0x8000 = 0;
 
-	/* real time clock */
-	tc8521_init(&avigo_tc8521_interface);
-
 	/* clear */
 	memset(mess_ram, 0, 128*1024);
 
-	memory_set_opbase_handler(0, avigo_opbase_handler);
+	memory_set_direct_update_handler(cpu_get_address_space(machine->cpu[0],ADDRESS_SPACE_PROGRAM), avigo_opbase_handler);
 
 	addr = (unsigned char *)intelflash_getmemptr(0);
 	avigo_setbank(machine, 0, addr, avigo_flash_0x0000_read_handler, avigo_flash_0x0000_write_handler);
@@ -452,7 +450,7 @@ static MACHINE_START( avigo )
 {
 	/* a timer used to check status of pen */
 	/* an interrupt is generated when the pen is pressed to the screen */
-	timer_pulse(ATTOTIME_IN_HZ(50), NULL, 0, avigo_dummy_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, avigo_dummy_timer_callback);
 }
 
 
@@ -472,17 +470,17 @@ static  READ8_HANDLER(avigo_key_data_read_r)
 
 	if (avigo_key_line & 0x01)
 	{
-		data &= input_port_read(machine, "LINE0");
+		data &= input_port_read(space->machine, "LINE0");
 	}
 
 	if (avigo_key_line & 0x02)
 	{
-		data &= input_port_read(machine, "LINE1");
+		data &= input_port_read(space->machine, "LINE1");
 	}
 
 	if (avigo_key_line & 0x04)
 	{
-		data &= input_port_read(machine, "LINE2");
+		data &= input_port_read(space->machine, "LINE2");
 
 	}
 
@@ -511,7 +509,7 @@ static WRITE8_HANDLER(avigo_irq_w)
 {
 	avigo_irq &= ~data;
 
-	avigo_refresh_ints(machine);
+	avigo_refresh_ints(space->machine);
 }
 
 static  READ8_HANDLER(avigo_rom_bank_l_r)
@@ -542,7 +540,7 @@ static WRITE8_HANDLER(avigo_rom_bank_l_w)
 
         avigo_rom_bank_l = data & 0x03f;
 
-        avigo_refresh_memory(machine);
+        avigo_refresh_memory(space->machine);
 }
 
 static WRITE8_HANDLER(avigo_rom_bank_h_w)
@@ -562,7 +560,7 @@ static WRITE8_HANDLER(avigo_rom_bank_h_w)
 	avigo_rom_bank_h = data;
 
 
-        avigo_refresh_memory(machine);
+        avigo_refresh_memory(space->machine);
 }
 
 static WRITE8_HANDLER(avigo_ram_bank_l_w)
@@ -571,7 +569,7 @@ static WRITE8_HANDLER(avigo_ram_bank_l_w)
 
         avigo_ram_bank_l = data & 0x03f;
 
-        avigo_refresh_memory(machine);
+        avigo_refresh_memory(space->machine);
 }
 
 static WRITE8_HANDLER(avigo_ram_bank_h_w)
@@ -580,7 +578,7 @@ static WRITE8_HANDLER(avigo_ram_bank_h_w)
 
 	avigo_ram_bank_h = data;
 
-        avigo_refresh_memory(machine);
+        avigo_refresh_memory(space->machine);
 }
 
 static  READ8_HANDLER(avigo_ad_control_status_r)
@@ -813,7 +811,7 @@ static ADDRESS_MAP_START( avigo_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x008, 0x008) AM_READWRITE( avigo_ram_bank_h_r, avigo_ram_bank_h_w )
 	AM_RANGE(0x009, 0x009) AM_READWRITE( avigo_ad_control_status_r, avigo_ad_control_status_w )
 	AM_RANGE(0x00a, 0x00f) AM_READ( avigo_unmapped_r)
-	AM_RANGE(0x010, 0x01f) AM_READWRITE( tc8521_r, tc8521_w )
+	AM_RANGE(0x010, 0x01f) AM_DEVREADWRITE( TC8521, "rtc", tc8521_r, tc8521_w )
 	AM_RANGE(0x020, 0x02c) AM_READ( avigo_unmapped_r)
 	AM_RANGE(0x028, 0x028) AM_WRITE( avigo_speaker_w)
 	AM_RANGE(0x02d, 0x02d) AM_READ( avigo_ad_data_r)
@@ -862,14 +860,13 @@ static MACHINE_DRIVER_START( avigo )
 	MDRV_CPU_ADD("main", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(avigo_mem, 0)
 	MDRV_CPU_IO_MAP(avigo_io, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( avigo )
 	MDRV_MACHINE_RESET( avigo )
 	MDRV_NVRAM_HANDLER( avigo )
 
-	MDRV_DEVICE_ADD( "ns16550", NS16550 )
-	MDRV_DEVICE_CONFIG( avigo_com_interface )
+	MDRV_NS16550_ADD( "ns16550", avigo_com_interface )
 
     /* video hardware */
 	MDRV_SCREEN_ADD("main", LCD)
@@ -888,6 +885,9 @@ static MACHINE_DRIVER_START( avigo )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* real time clock */
+	MDRV_TC8521_ADD("rtc", avigo_tc8521_interface)
 MACHINE_DRIVER_END
 
 

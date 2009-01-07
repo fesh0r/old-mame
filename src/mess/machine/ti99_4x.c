@@ -52,7 +52,6 @@ TODO:
 
 #include <math.h>
 #include "driver.h"
-#include "deprecat.h"
 #include "tms9901.h"
 #include "video/v9938.h"
 #include "audio/spchroms.h"
@@ -77,27 +76,9 @@ static READ16_HANDLER ( ti99_rspeech_r );
 static WRITE16_HANDLER ( ti99_wspeech_w );
 
 static void tms9901_set_int1(running_machine *machine, int state);
-static void tms9901_interrupt_callback(int intreq, int ic);
-static int ti99_R9901_0(int offset);
-static int ti99_R9901_1(int offset);
-static int ti99_R9901_2(int offset);
-static int ti99_R9901_3(int offset);
 
-static void ti99_handset_set_ack(int offset, int data);
 static void ti99_handset_task(running_machine *machine);
 static void mecmouse_poll(running_machine *machine);
-static void ti99_KeyC(int offset, int data);
-static void ti99_AlphaW(int offset, int data);
-
-static int ti99_8_R9901_0(int offset);
-static int ti99_8_R9901_1(int offset);
-static void ti99_8_KeyC(int offset, int data);
-static void ti99_8_WCRUS(int offset, int data);
-static void ti99_8_PTGEN(int offset, int data);
-
-static void ti99_CS_motor(int offset, int data);
-static void ti99_audio_gate(int offset, int data);
-static void ti99_CS_output(int offset, int data);
 
 static void ti99_8_internal_dsr_reset(running_machine *machine);
 
@@ -144,82 +125,6 @@ static char has_hsgpl;
 static char has_mecmouse;
 /* TRUE if usb-sm card present */
 static char has_usb_sm;
-
-
-/* tms9901 setup */
-static const tms9901reset_param tms9901reset_param_ti99_4x =
-{
-	TMS9901_INT1 | TMS9901_INT2 | TMS9901_INTC,	/* only input pins whose state is always known */
-
-	{	/* read handlers */
-		ti99_R9901_0,
-		ti99_R9901_1,
-		ti99_R9901_2,
-		ti99_R9901_3
-	},
-
-	{	/* write handlers */
-		ti99_handset_set_ack,
-		NULL,
-		ti99_KeyC,
-		ti99_KeyC,
-		ti99_KeyC,
-		ti99_AlphaW,
-		ti99_CS_motor,
-		ti99_CS_motor,
-		ti99_audio_gate,
-		ti99_CS_output,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL
-	},
-
-	/* interrupt handler */
-	tms9901_interrupt_callback,
-
-	/* clock rate = 3MHz */
-	3000000.
-};
-
-static const tms9901reset_param tms9901reset_param_ti99_8 =
-{
-	TMS9901_INT1 | TMS9901_INT2 | TMS9901_INTC,	/* only input pins whose state is always known */
-
-	{	/* read handlers */
-		ti99_8_R9901_0,
-		ti99_8_R9901_1,
-		ti99_R9901_2,
-		ti99_R9901_3
-	},
-
-	{	/* write handlers */
-		ti99_8_KeyC,
-		ti99_8_KeyC,
-		ti99_8_KeyC,
-		ti99_8_KeyC,
-		ti99_8_WCRUS,
-		ti99_8_PTGEN,
-		ti99_CS_motor,
-		NULL,
-		ti99_audio_gate,
-		ti99_CS_output,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL
-	},
-
-	/* interrupt handler */
-	tms9901_interrupt_callback,
-
-	/* clock rate = 3.58MHz??? 2.68MHz??? */
-	/*3579545.*/2684658.75
-};
 
 /* handset interface */
 static int handset_buf;
@@ -355,7 +260,7 @@ static char cartridge_mbx = FALSE;
 static UINT16 *current_page_ptr;
 static UINT8 *current_page_ptr_8;
 /* keep track of cart file types - required for cleanup... */
-typedef enum slot_type_t { SLOT_EMPTY = -1, SLOT_GROM = 0, SLOT_CROM = 1, SLOT_DROM = 2, SLOT_MINIMEM = 3, SLOT_MBX = 4 } slot_type_t;
+typedef enum _slot_type_t { SLOT_EMPTY = -1, SLOT_GROM = 0, SLOT_CROM = 1, SLOT_DROM = 2, SLOT_MINIMEM = 3, SLOT_MBX = 4 } slot_type_t;
 static slot_type_t slot_type[3] = { SLOT_EMPTY, SLOT_EMPTY, SLOT_EMPTY};
 
 /* true if 99/4p rom6 is enabled */
@@ -385,7 +290,7 @@ static UINT8 *sRAM_ptr_8;
 
 /* tms9900_ICount: used to implement memory waitstates (hack) */
 /* tms9995_ICount: used to implement memory waitstates (hack) */
-/* NPW 23-Feb-2004 - externs no longer needed because we now use activecpu_adjust_icount() */
+/* NPW 23-Feb-2004 - externs no longer needed because we now use cpu_adjust_icount(space->machine->cpu[0],) */
 
 
 
@@ -470,7 +375,17 @@ DRIVER_INIT( ti99_4p )
 
 DEVICE_START( ti99_cart )
 {
-	int id = image_index_in_device(device);
+	int id = 0;
+	if (strcmp(device->tag,"cart1")==0) {
+		id = 0;
+	}
+	if (strcmp(device->tag,"cart2")==0) {
+		id = 1;
+	}
+	if (strcmp(device->tag,"cart3")==0) {
+		id = 2;
+	}
+	
 	cartridge_pages[id] = (UINT16 *) (memory_region(device->machine, "main") + offset_cart + (id * 0x2000));
 	return DEVICE_START_OK;
 }
@@ -492,14 +407,25 @@ DEVICE_IMAGE_LOAD( ti99_cart )
 	/* Original idea by Norberto Bensa */
 	const char *name = image_filename(image);
 	const char *ch, *ch2;
-	int id = image_index_in_device(image);
+	int id = 0;
 	int i;
-	slot_type_t type = (slot_type_t) id;
+	slot_type_t type;
+	
+	if (strcmp(image->tag,"cart1")==0) {
+		id = 0;
+	}
+	if (strcmp(image->tag,"cart2")==0) {
+		id = 1;
+	}
+	if (strcmp(image->tag,"cart3")==0) {
+		id = 2;
+	}	
+	type = (slot_type_t) id;
 
 	/* There is a circuitry in TI99/4(a) that resets the console when a
 	cartridge is inserted or removed.  We emulate this instead of resetting the
 	emulator (which is the default in MESS). */
-	/*cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
+	/*cpu_set_input_line(machine->cpu[0], INPUT_LINE_RESET, PULSE_LINE);
 	tms9901_reset(0);
 	if (! has_evpc)
 		TMS9928A_reset();
@@ -613,12 +539,20 @@ DEVICE_IMAGE_LOAD( ti99_cart )
 DEVICE_IMAGE_UNLOAD( ti99_cart )
 {
 	int i;
-	int id = image_index_in_device(image);
-
+	int id = 0;
+	if (strcmp(image->tag,"cart1")==0) {
+		id = 0;
+	}
+	if (strcmp(image->tag,"cart2")==0) {
+		id = 1;
+	}
+	if (strcmp(image->tag,"cart3")==0) {
+		id = 2;
+	}		
 	/* There is a circuitry in TI99/4(a) that resets the console when a
 	cartridge is inserted or removed.  We emulate this instead of resetting the
 	emulator (which is the default in MESS). */
-	/*cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
+	/*cpu_set_input_line(machine->cpu[0], INPUT_LINE_RESET, PULSE_LINE);
 	tms9901_reset(0);
 	if (! has_evpc)
 		TMS9928A_reset();
@@ -750,12 +684,6 @@ MACHINE_START( ti99_4ev_60hz)
 
 void ti99_common_init(running_machine *machine, const TMS9928a_interface *gfxparm) 
 {
-    if (ti99_model==model_99_8) {
-        tms9901_init(0, &tms9901reset_param_ti99_8);
-    }
-    else {
-	tms9901_init(0,  &tms9901reset_param_ti99_4x);
-    }
 	if (gfxparm!=0) TMS9928A_configure(gfxparm);
 
         /* Initialize all. Actually, at this point, we don't know
@@ -775,6 +703,7 @@ void ti99_common_init(running_machine *machine, const TMS9928a_interface *gfxpar
 */
 MACHINE_RESET( ti99 )
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	/*console_GROMs.data_ptr = memory_region(machine, region_grom);*/
 	console_GROMs.addr = 0;
 
@@ -788,14 +717,14 @@ MACHINE_RESET( ti99 )
 		UINT8* mem = memory_region(machine, "main");
 
 		/* set up system ROM and scratch pad pointers */
-		memory_set_bankptr(1, mem + offset_rom0_4p);	/* system ROM */
-		memory_set_bankptr(2, mem + offset_sram_4p);	/* scratch pad */
-		memory_set_bankptr(11, mem + offset_dram_4p);	/* extra RAM for debugger */
+		memory_set_bankptr(machine, 1, mem + offset_rom0_4p);	/* system ROM */
+		memory_set_bankptr(machine, 2, mem + offset_sram_4p);	/* scratch pad */
+		memory_set_bankptr(machine, 11, mem + offset_dram_4p);	/* extra RAM for debugger */
 	}
 	else
 	{
 		/* set up scratch pad pointer */
-		memory_set_bankptr(1, memory_region(machine, "main") + offset_sram);
+		memory_set_bankptr(machine, 1, memory_region(machine, "main") + offset_sram);
 	}
 
 	if (ti99_model != model_99_4p)
@@ -805,9 +734,6 @@ MACHINE_RESET( ti99 )
 		else
 			current_page_ptr = cartridge_pages[0];
 	}
-
-	/* init tms9901 */
-        tms9901_reset(0);
 
 	if (!has_evpc) TMS9928A_reset();
         else v9938_reset(0);
@@ -821,7 +747,7 @@ MACHINE_RESET( ti99 )
 	handset_buflen = 0;
 	handset_clock = 0;
 	handset_ack = 0;
-	tms9901_set_single_int(0, 12, 0);
+	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 12, 0);
 
 	/* read config */
 	if (ti99_model == model_99_8)
@@ -858,8 +784,8 @@ MACHINE_RESET( ti99 )
 
 		if (ti99_model != model_99_8)
 		{
-			memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x93ff, 0, 0, ti99_rspeech_r);
-			memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9400, 0x97ff, 0, 0, ti99_wspeech_w);
+			memory_install_read16_handler(space, 0x9000, 0x93ff, 0, 0, ti99_rspeech_r);
+			memory_install_write16_handler(space, 0x9400, 0x97ff, 0, 0, ti99_wspeech_w);
 
 			sndti_set_info_int(SOUND_TMS5220, 0, SNDINFO_INT_TMS5220_VARIANT, variant_tmc0285);
 		}
@@ -868,8 +794,8 @@ MACHINE_RESET( ti99 )
 	{
 		if (ti99_model != model_99_8)
 		{
-			memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x93ff, 0, 0, ti99_nop_8_r);
-			memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9400, 0x97ff, 0, 0, ti99_nop_8_w);
+			memory_install_read16_handler(space, 0x9000, 0x93ff, 0, 0, ti99_nop_8_r);
+			memory_install_write16_handler(space, 0x9400, 0x97ff, 0, 0, ti99_nop_8_w);
 		}
 	}
 
@@ -877,10 +803,10 @@ MACHINE_RESET( ti99 )
 	{
 	case xRAM_kind_none:
 	default:
-		memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_nop_8_r);
-		memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_nop_8_w);
-		memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_nop_8_r);
-		memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_nop_8_w);
+		memory_install_read16_handler(space, 0x2000, 0x3fff, 0, 0, ti99_nop_8_r);
+		memory_install_write16_handler(space, 0x2000, 0x3fff, 0, 0, ti99_nop_8_w);
+		memory_install_read16_handler(space, 0xa000, 0xffff, 0, 0, ti99_nop_8_r);
+		memory_install_write16_handler(space, 0xa000, 0xffff, 0, 0, ti99_nop_8_w);
 		break;
 	case xRAM_kind_TI:
 		ti99_TIxram_init(machine);
@@ -981,24 +907,24 @@ VIDEO_START( ti99_4ev )
 */
 INTERRUPT_GEN( ti99_vblank_interrupt )
 {
-	TMS9928A_interrupt(machine);
+	TMS9928A_interrupt(device->machine);
 	if (has_handset)
-		ti99_handset_task(machine);
-	has_mecmouse = (input_port_read(machine, "CFG") >> config_mecmouse_bit) & config_mecmouse_mask;
+		ti99_handset_task(device->machine);
+	has_mecmouse = (input_port_read(device->machine, "CFG") >> config_mecmouse_bit) & config_mecmouse_mask;
 	if (has_mecmouse)
-		mecmouse_poll(machine);
+		mecmouse_poll(device->machine);
 }
 
 INTERRUPT_GEN( ti99_4ev_hblank_interrupt )
 {
 	static int line_count;
-	v9938_interrupt(0);
+	v9938_interrupt(device->machine, 0);
 	if (++line_count == 262)
 	{
 		line_count = 0;
-		has_mecmouse = (input_port_read(machine, "CFG") >> config_mecmouse_bit) & config_mecmouse_mask;
+		has_mecmouse = (input_port_read(device->machine, "CFG") >> config_mecmouse_bit) & config_mecmouse_mask;
 		if (has_mecmouse)
-			mecmouse_poll(machine);
+			mecmouse_poll(device->machine);
 	}
 }
 
@@ -1029,14 +955,14 @@ void set_hsgpl_crdena(int data)
 */
 READ16_HANDLER ( ti99_nop_8_r )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	return (0);
 }
 
 WRITE16_HANDLER ( ti99_nop_8_w )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 }
 
 /*
@@ -1054,11 +980,11 @@ WRITE16_HANDLER ( ti99_nop_8_w )
 */
 READ16_HANDLER ( ti99_cart_r )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	if (hsgpl_crdena)
 		/* hsgpl is enabled */
-		return ti99_hsgpl_rom6_r(machine, offset, mem_mask);
+		return ti99_hsgpl_rom6_r(space, offset, mem_mask);
 
 	if (cartridge_mbx && (offset >= 0x0600) && (offset <= 0x07fe))
 		return (cartridge_pages[0])[offset];
@@ -1068,11 +994,11 @@ READ16_HANDLER ( ti99_cart_r )
 
 WRITE16_HANDLER ( ti99_cart_w )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	if (hsgpl_crdena)
 		/* hsgpl is enabled */
-		ti99_hsgpl_rom6_w(machine, offset, data, mem_mask);
+		ti99_hsgpl_rom6_w(space, offset, data, mem_mask);
 	else if (cartridge_minimemory && offset >= 0x800)
 		/* handle minimem RAM */
 		COMBINE_DATA(current_page_ptr+offset);
@@ -1098,11 +1024,11 @@ READ16_HANDLER ( ti99_4p_cart_r )
 	if (ti99_4p_internal_rom6_enable)
 		return ti99_4p_internal_ROM6[offset];
 
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	if (hsgpl_crdena)
 		/* hsgpl is enabled */
-		return ti99_hsgpl_rom6_r(machine, offset, mem_mask);
+		return ti99_hsgpl_rom6_r(space, offset, mem_mask);
 
 	return 0;
 }
@@ -1111,15 +1037,15 @@ WRITE16_HANDLER ( ti99_4p_cart_w )
 {
 	if (ti99_4p_internal_rom6_enable)
 	{
-		ti99_4p_internal_ROM6 = (UINT16 *) (memory_region(machine, "main") + (FPTR)((offset & 1) ? offset_rom6b_4p : offset_rom6_4p));
+		ti99_4p_internal_ROM6 = (UINT16 *) (memory_region(space->machine, "main") + (FPTR)((offset & 1) ? offset_rom6b_4p : offset_rom6_4p));
 		return;
 	}
 
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	if (hsgpl_crdena)
 		/* hsgpl is enabled */
-		ti99_hsgpl_rom6_w(machine, offset, data, mem_mask);
+		ti99_hsgpl_rom6_w(space, offset, data, mem_mask);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -1157,9 +1083,9 @@ Theory:
 */
 WRITE16_HANDLER ( ti99_wsnd_w )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
-	sn76496_0_w(machine, offset, (data >> 8) & 0xff);
+	sn76496_0_w(space, offset, (data >> 8) & 0xff);
 }
 
 /*
@@ -1167,15 +1093,15 @@ WRITE16_HANDLER ( ti99_wsnd_w )
 */
 READ16_HANDLER ( ti99_rvdp_r )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	if (offset & 1)
 	{	/* read VDP status */
-		return ((int) TMS9928A_register_r(machine, 0)) << 8;
+		return ((int) TMS9928A_register_r(space, 0)) << 8;
 	}
 	else
 	{	/* read VDP RAM */
-		return ((int) TMS9928A_vram_r(machine, 0)) << 8;
+		return ((int) TMS9928A_vram_r(space, 0)) << 8;
 	}
 }
 
@@ -1184,15 +1110,15 @@ READ16_HANDLER ( ti99_rvdp_r )
 */
 WRITE16_HANDLER ( ti99_wvdp_w )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	if (offset & 1)
 	{	/* write VDP address */
-		TMS9928A_register_w(machine, 0, (data >> 8) & 0xff);
+		TMS9928A_register_w(space, 0, (data >> 8) & 0xff);
 	}
 	else
 	{	/* write VDP data */
-		TMS9928A_vram_w(machine, 0, (data >> 8) & 0xff);
+		TMS9928A_vram_w(space, 0, (data >> 8) & 0xff);
 	}
 }
 
@@ -1201,15 +1127,15 @@ WRITE16_HANDLER ( ti99_wvdp_w )
 */
 READ16_HANDLER ( ti99_rv38_r )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	if (offset & 1)
 	{	/* read VDP status */
-		return ((int) v9938_0_status_r(machine, 0)) << 8;
+		return ((int) v9938_0_status_r(space, 0)) << 8;
 	}
 	else
 	{	/* read VDP RAM */
-		return ((int) v9938_0_vram_r(machine, 0)) << 8;
+		return ((int) v9938_0_vram_r(space, 0)) << 8;
 	}
 }
 
@@ -1218,25 +1144,25 @@ READ16_HANDLER ( ti99_rv38_r )
 */
 WRITE16_HANDLER ( ti99_wv38_w )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	switch (offset & 3)
 	{
 	case 0:
 		/* write VDP data */
-		v9938_0_vram_w(machine, 0, (data >> 8) & 0xff);
+		v9938_0_vram_w(space, 0, (data >> 8) & 0xff);
 		break;
 	case 1:
 		/* write VDP address */
-		v9938_0_command_w(machine, 0, (data >> 8) & 0xff);
+		v9938_0_command_w(space, 0, (data >> 8) & 0xff);
 		break;
 	case 2:
 		/* write VDP palette */
-		v9938_0_palette_w(machine, 0, (data >> 8) & 0xff);
+		v9938_0_palette_w(space, 0, (data >> 8) & 0xff);
 		break;
 	case 3:
 		/* write VDP register */
-		v9938_0_register_w(machine, 0, (data >> 8) & 0xff);
+		v9938_0_register_w(space, 0, (data >> 8) & 0xff);
 		break;
 	}
 }
@@ -1246,9 +1172,9 @@ WRITE16_HANDLER ( ti99_wv38_w )
 */
 static READ16_HANDLER ( ti99_rspeech_r )
 {
-	activecpu_adjust_icount(-(18+3));		/* this is just a minimum, it can be more */
+	cpu_adjust_icount(space->machine->cpu[0],-(18+3));		/* this is just a minimum, it can be more */
 
-	return ((int) tms5220_status_r(machine, offset)) << 8;
+	return ((int) tms5220_status_r(space, offset)) << 8;
 }
 
 #if 0
@@ -1272,7 +1198,7 @@ static void speech_kludge_callback(int dummy)
 */
 static WRITE16_HANDLER ( ti99_wspeech_w )
 {
-	activecpu_adjust_icount(-(54+3));		/* this is just an approx. minimum, it can be much more */
+	cpu_adjust_icount(space->machine->cpu[0],-(54+3));		/* this is just an approx. minimum, it can be much more */
 
 #if 1
 	/* the stupid design of the tms5220 core means that ready is cleared when
@@ -1282,16 +1208,16 @@ static WRITE16_HANDLER ( ti99_wspeech_w )
 	if (! tms5220_ready_r())
 	{
 		attotime time_to_ready = double_to_attotime(tms5220_time_to_ready());
-		int cycles_to_ready = ceil(ATTOTIME_TO_CYCLES(0, time_to_ready));
+		int cycles_to_ready = cpu_attotime_to_clocks(space->machine->cpu[0], time_to_ready);
 
 		logerror("time to ready: %f -> %d\n", attotime_to_double(time_to_ready), (int) cycles_to_ready);
 
-		activecpu_adjust_icount(-cycles_to_ready);
-		timer_set(attotime_zero, NULL, 0, /*speech_kludge_callback*/NULL);
+		cpu_adjust_icount(space->machine->cpu[0],-cycles_to_ready);
+		timer_set(space->machine, attotime_zero, NULL, 0, /*speech_kludge_callback*/NULL);
 	}
 #endif
 
-	tms5220_data_w(machine, offset, (data >> 8) & 0xff);
+	tms5220_data_w(space, offset, (data >> 8) & 0xff);
 }
 
 /*
@@ -1302,7 +1228,7 @@ READ16_HANDLER ( ti99_rgpl_r )
 	int reply;
 
 
-	activecpu_adjust_icount(-4 /*20+3*/);		/* from 4 to 23? */
+	cpu_adjust_icount(space->machine->cpu[0],-4 /*20+3*/);		/* from 4 to 23? */
 
 	if (offset & 1)
 	{	/* read GPL address */
@@ -1333,7 +1259,7 @@ READ16_HANDLER ( ti99_rgpl_r )
 
 	if (hsgpl_crdena)
 		/* hsgpl buffers are stronger than console GROM buffers */
-		reply = ti99_hsgpl_gpl_r(machine, offset, mem_mask);
+		reply = ti99_hsgpl_gpl_r(space, offset, mem_mask);
 
 	return reply;
 }
@@ -1343,7 +1269,7 @@ READ16_HANDLER ( ti99_rgpl_r )
 */
 WRITE16_HANDLER ( ti99_wgpl_w )
 {
-	activecpu_adjust_icount(-4/*20+3*/);		/* from 4 to 23? */
+	cpu_adjust_icount(space->machine->cpu[0],-4/*20+3*/);		/* from 4 to 23? */
 
 	if (offset & 1)
 	{	/* write GPL address */
@@ -1381,7 +1307,7 @@ WRITE16_HANDLER ( ti99_wgpl_w )
 	}
 
 	if (hsgpl_crdena)
-		ti99_hsgpl_gpl_w(machine, offset, data, mem_mask);
+		ti99_hsgpl_gpl_w(space, offset, data, mem_mask);
 }
 
 /*
@@ -1389,9 +1315,9 @@ WRITE16_HANDLER ( ti99_wgpl_w )
 */
 READ16_HANDLER ( ti99_4p_rgpl_r )
 {
-	activecpu_adjust_icount(-4);		/* HSGPL is located on 8-bit bus? */
+	cpu_adjust_icount(space->machine->cpu[0],-4);		/* HSGPL is located on 8-bit bus? */
 
-	return /*hsgpl_crdena ?*/ ti99_hsgpl_gpl_r(machine, offset, mem_mask) /*: 0*/;
+	return /*hsgpl_crdena ?*/ ti99_hsgpl_gpl_r(space, offset, mem_mask) /*: 0*/;
 }
 
 /*
@@ -1399,10 +1325,10 @@ READ16_HANDLER ( ti99_4p_rgpl_r )
 */
 WRITE16_HANDLER ( ti99_4p_wgpl_w )
 {
-	activecpu_adjust_icount(-4);		/* HSGPL is located on 8-bit bus? */
+	cpu_adjust_icount(space->machine->cpu[0],-4);		/* HSGPL is located on 8-bit bus? */
 
 	/*if (hsgpl_crdena)*/
-		ti99_hsgpl_gpl_w(machine, offset, data, mem_mask);
+		ti99_hsgpl_gpl_w(space, offset, data, mem_mask);
 }
 
 
@@ -1452,10 +1378,10 @@ WRITE16_HANDLER ( ti99_4p_wgpl_w )
 					{
 						if (offset & 2)
 							/* read VDP status */
-							reply = TMS9928A_register_r(machine, 0);
+							reply = TMS9928A_register_r(space, 0);
 						else
 							/* read VDP RAM */
-							reply = TMS9928A_vram_r(machine, 0);
+							reply = TMS9928A_vram_r(space, 0);
 					}
 				}
 				else
@@ -1470,15 +1396,15 @@ WRITE16_HANDLER ( ti99_4p_wgpl_w )
 				/* speech read */
 				if (! (offset & 1))
 				{
-					activecpu_adjust_icount(-16*4);		/* this is just a minimum, it can be more */
-					reply = tms5220_status_r(machine, 0);
+					cpu_adjust_icount(space->machine->cpu[0],-16*4);		/* this is just a minimum, it can be more */
+					reply = tms5220_status_r(space, 0);
 				}
 				break;
 
 			case 6:
 				/* GPL read */
 				if (! (offset & 1))
-					reply = ti99_rgpl_r(machine, offset >> 1, 0) >> 8;
+					reply = ti99_rgpl_r(space, offset >> 1, 0) >> 8;
 				break;
 
 			default:
@@ -1523,7 +1449,7 @@ WRITE16_HANDLER ( ti99_4p_wgpl_w )
 
 		case 2:
 			/* DSR space */
-			reply = ti99_8_peb_r(machine, offset & 0x1fff);
+			reply = ti99_8_peb_r(space, offset & 0x1fff);
 			break;
 
 		case 3:
@@ -1582,7 +1508,7 @@ WRITE8_HANDLER ( ti99_8_w )
 			case 1:
 				/* sound write + RAM */
 				if (offset < 0x8410)
-					sn76496_0_w(machine, offset, data);
+					sn76496_0_w(space, offset, data);
 				else
 					sRAM_ptr_8[offset & 0x1fff] = data;
 				break;
@@ -1623,10 +1549,10 @@ WRITE8_HANDLER ( ti99_8_w )
 				{
 					if (offset & 2)
 						/* read VDP status */
-						TMS9928A_register_w(machine, 0, data);
+						TMS9928A_register_w(space, 0, data);
 					else
 						/* read VDP RAM */
-						TMS9928A_vram_w(machine, 0, data);
+						TMS9928A_vram_w(space, 0, data);
 				}
 				break;
 
@@ -1634,7 +1560,7 @@ WRITE8_HANDLER ( ti99_8_w )
 				/* speech write */
 				if (! (offset & 1))
 				{
-					activecpu_adjust_icount(-48*4);		/* this is just an approx. minimum, it can be much more */
+					cpu_adjust_icount(space->machine->cpu[0],-48*4);		/* this is just an approx. minimum, it can be much more */
 
 					/* the stupid design of the tms5220 core means that ready is cleared when
 					there are 15 bytes in FIFO.  It should be 16.  Of course, if it were the
@@ -1643,24 +1569,24 @@ WRITE8_HANDLER ( ti99_8_w )
 					if (! tms5220_ready_r())
 					{
 						attotime time_to_ready = double_to_attotime(tms5220_time_to_ready());
-						double d = ceil(ATTOTIME_TO_CYCLES(0, time_to_ready));
+						double d = ceil(cpu_attotime_to_clocks(space->machine->cpu[0], time_to_ready));
 						int cycles_to_ready = ((int) (d + 3)) & ~3;
 
 						logerror("time to ready: %f -> %d\n", attotime_to_double(time_to_ready)
 							, (int) cycles_to_ready);
 
-						activecpu_adjust_icount(-cycles_to_ready);
-						timer_set(attotime_zero, NULL, 0, /*speech_kludge_callback*/NULL);
+						cpu_adjust_icount(space->machine->cpu[0],-cycles_to_ready);
+						timer_set(space->machine, attotime_zero, NULL, 0, /*speech_kludge_callback*/NULL);
 					}
 
-					tms5220_data_w(machine, offset, data);
+					tms5220_data_w(space, offset, data);
 				}
 				break;
 
 			case 7:
 				/* GPL write */
 				if (! (offset & 1))
-					ti99_wgpl_w(machine, offset >> 1, data << 8, 0);
+					ti99_wgpl_w(space, offset >> 1, data << 8, 0);
 				break;
 
 			default:
@@ -1700,7 +1626,7 @@ WRITE8_HANDLER ( ti99_8_w )
 
 		case 2:
 			/* DSR space */
-			ti99_8_peb_w(machine, offset & 0x1fff, data);
+			ti99_8_peb_w(space, offset & 0x1fff, data);
 			break;
 
 		case 3:
@@ -1789,7 +1715,7 @@ static TIMER_CALLBACK(ti99_handset_ack_callback)
 	handset_clock = ! handset_clock;
 	handset_buf >>= 4;
 	handset_buflen--;
-	tms9901_set_single_int(0, 12, 0);
+	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 12, 0);
 
 	if (handset_buflen == 1)
 	{
@@ -1798,7 +1724,7 @@ static TIMER_CALLBACK(ti99_handset_ack_callback)
 		of next message is not requested for either, so we need to decide on
 		our own when we can post a new event.  Currently, we wait for 1000us
 		after the DSR acknowledges the second nybble. */
-		timer_set(ATTOTIME_IN_USEC(1000), NULL, 0, ti99_handset_ack_callback);
+		timer_set(machine, ATTOTIME_IN_USEC(1000), NULL, 0, ti99_handset_ack_callback);
 	}
 
 	if (handset_buflen == 0)
@@ -1811,14 +1737,14 @@ static TIMER_CALLBACK(ti99_handset_ack_callback)
 
 	Handler for tms9901 P0 pin (handset data acknowledge)
 */
-static void ti99_handset_set_ack(int offset, int data)
+WRITE8_DEVICE_HANDLER( ti99_handset_set_ack )
 {
 	if (has_handset && handset_buflen && (data != handset_ack))
 	{
 		handset_ack = data;
 		if (data == handset_clock)
 			/* I don't know what the real delay is, but 30us apears to be enough */
-			timer_set(ATTOTIME_IN_USEC(30), NULL, 0, ti99_handset_ack_callback);
+			timer_set(device->machine, ATTOTIME_IN_USEC(30), NULL, 0, ti99_handset_ack_callback);
 	}
 }
 
@@ -1831,13 +1757,13 @@ static void ti99_handset_set_ack(int offset, int data)
 
 	message: 12-bit message to post (only the 12 LSBits are meaningful)
 */
-static void ti99_handset_post_message(int message)
+static void ti99_handset_post_message(running_machine *machine, int message)
 {
 	/* post message and assert interrupt */
 	handset_clock = 1;
 	handset_buf = ~ message;
 	handset_buflen = 3;
-	tms9901_set_single_int(0, 12, 1);
+	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 12, 1);
 }
 
 /*
@@ -1856,7 +1782,7 @@ static int ti99_handset_poll_keyboard(running_machine *machine, int num)
 	UINT32 key_buf;
 	UINT8 current_key;
 	int i;
-	static const char *keynames[] = { "KP0", "KP1", "KP2", "KP3", "KP4" };
+	static const char *const keynames[] = { "KP0", "KP1", "KP2", "KP3", "KP4" };
 
 	/* read current key state */
 	key_buf = ( input_port_read(machine, keynames[num]) | (input_port_read(machine, keynames[num + 1]) << 16) ) >> (4*num);
@@ -1883,7 +1809,7 @@ static int ti99_handset_poll_keyboard(running_machine *machine, int num)
 				previous_key[num] = current_key = previous_key[num] & ~0x20;
 			}
 			/* post message */
-			ti99_handset_post_message((((unsigned) current_key) << 4) | (num << 1));
+			ti99_handset_post_message(machine, (((unsigned) current_key) << 4) | (num << 1));
 
 			return TRUE;
 		}
@@ -1912,7 +1838,7 @@ static int ti99_handset_poll_keyboard(running_machine *machine, int num)
 		previous_key[num] = current_key;
 
 		/* post message */
-		ti99_handset_post_message((((unsigned) current_key) << 4) | (num << 1));
+		ti99_handset_post_message(machine, (((unsigned) current_key) << 4) | (num << 1));
 
 		return TRUE;
 	}
@@ -1989,7 +1915,7 @@ static int ti99_handset_poll_joystick(running_machine *machine, int num)
 		message |= (num << 1) | 0x1;
 
 		/* post message */
-		ti99_handset_post_message(message);
+		ti99_handset_post_message(machine, message);
 
 		return TRUE;
 	}
@@ -2220,7 +2146,7 @@ nota:
 */
 static void tms9901_set_int1(running_machine *machine, int state)
 {
-	tms9901_set_single_int(0, 1, state);
+	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 1, state);
 }
 
 /*
@@ -2228,23 +2154,23 @@ static void tms9901_set_int1(running_machine *machine, int state)
 */
 void tms9901_set_int2(running_machine *machine, int state)
 {
-	tms9901_set_single_int(0, 2, state);
+	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 2, state);
 }
 
 /*
 	Called by the 9901 core whenever the state of INTREQ and IC0-3 changes
 */
-static void tms9901_interrupt_callback(int intreq, int ic)
+static TMS9901_INT_CALLBACK( tms9901_interrupt_callback )
 {
 	if (intreq)
 	{
 		/* On TI99, TMS9900 IC0-3 lines are not connected to TMS9901,
 		 * but hard-wired to force level 1 interrupts */
-		cpunum_set_input_line_and_vector(Machine, 0, 0, ASSERT_LINE, 1);	/* interrupt it, baby */
+		cpu_set_input_line_and_vector(device->machine->cpu[0], 0, ASSERT_LINE, 1);	/* interrupt it, baby */
 	}
 	else
 	{
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[0], 0, CLEAR_LINE);
 	}
 }
 
@@ -2256,17 +2182,16 @@ static void tms9901_interrupt_callback(int intreq, int ic)
 	 (bit 2: INT2 status)
 	 bit 3-7: keyboard status bits 0 to 4
 */
-static int ti99_R9901_0(int offset)
+static READ8_DEVICE_HANDLER( ti99_R9901_0 )
 {
-	running_machine *machine = Machine;
 	int answer;
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3" };
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3" };
 
 	if ((ti99_model == model_99_4) && (KeyCol == 7))
 		answer = (ti99_handset_poll_bus() << 3) | 0x80;
 	else if (has_mecmouse && (KeyCol == ((ti99_model == model_99_4) ? 6 : 7)))
 	{
-		int buttons = input_port_read(machine, "MOUSE0") & 3;
+		int buttons = input_port_read(device->machine, "MOUSE0") & 3;
 
 		answer = (mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 4;
 
@@ -2279,13 +2204,13 @@ static int ti99_R9901_0(int offset)
 	}
 	else
 	{
-		answer = ((input_port_read(machine, keynames[KeyCol >> 1]) >> ((KeyCol & 1) * 8)) << 3) & 0xF8;
+		answer = ((input_port_read(device->machine, keynames[KeyCol >> 1]) >> ((KeyCol & 1) * 8)) << 3) & 0xF8;
 	}
 	
 	if ((ti99_model == model_99_4a) || (ti99_model == model_99_4p))
 	{
 		if (! AlphaLockLine)
-			answer &= ~ (input_port_read(machine, "ALPHA") << 3);
+			answer &= ~ (input_port_read(device->machine, "ALPHA") << 3);
 	}
 
 	return answer;
@@ -2300,21 +2225,20 @@ static int ti99_R9901_0(int offset)
 	 (bit 4: IR remote handset interrupt)
 	 bit 5-7: weird, not emulated
 */
-static int ti99_R9901_1(int offset)
+static READ8_DEVICE_HANDLER( ti99_R9901_1 )
 {
-	running_machine *machine = Machine;
 	int answer;
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3" };
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3" };
 
 	if (/*(ti99_model == model_99_4) &&*/ (KeyCol == 7))
 		answer = 0x07;
 	else
 	{
-		answer = ((input_port_read(machine, keynames[KeyCol >> 1]) >> ((KeyCol & 1) * 8)) >> 5) & 0x07;
+		answer = ((input_port_read(device->machine, keynames[KeyCol >> 1]) >> ((KeyCol & 1) * 8)) >> 5) & 0x07;
 	}
 	
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
-	/*if (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette1" )) > 0)
+	/*if (cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette1" )) > 0)
 		answer |= 8;*/
 
 	return answer;
@@ -2325,7 +2249,7 @@ static int ti99_R9901_1(int offset)
 
 	 bit 1: handset data clock pin
 */
-static int ti99_R9901_2(int offset)
+static READ8_DEVICE_HANDLER( ti99_R9901_2 )
 {
 	return (has_handset && handset_clock) ? 2 : 0;
 }
@@ -2336,9 +2260,8 @@ static int ti99_R9901_2(int offset)
 	 bit 26: IR handset interrupt
 	 bit 27: tape input
 */
-static int ti99_R9901_3(int offset)
+static READ8_DEVICE_HANDLER( ti99_R9901_3 )
 {
-	running_machine *machine = Machine;
 	int answer;
 
 	if (has_handset && (handset_buflen == 3))
@@ -2349,12 +2272,12 @@ static int ti99_R9901_3(int offset)
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
 	if ( ti99_model != model_99_8 )
 	{
-		if (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette1" )) > 0)
+		if (cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette1" )) > 0)
 			answer |= 8;
 	}
 	else
 	{
-		if (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0)
+		if (cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" )) > 0)
 			answer |= 8;
 	}
 
@@ -2365,7 +2288,7 @@ static int ti99_R9901_3(int offset)
 /*
 	WRITE key column select (P2-P4)
 */
-static void ti99_KeyC(int offset, int data)
+static WRITE8_DEVICE_HANDLER( ti99_KeyC )
 {
 	if (data)
 		KeyCol |= 1 << (offset-2);
@@ -2380,7 +2303,7 @@ static void ti99_KeyC(int offset, int data)
 /*
 	WRITE alpha lock line - TI99/4a only (P5)
 */
-static void ti99_AlphaW(int offset, int data)
+static WRITE8_DEVICE_HANDLER( ti99_AlphaW )
 {
 	if ((ti99_model == model_99_4a) || (ti99_model == model_99_4p))
 		AlphaLockLine = data;
@@ -2396,16 +2319,15 @@ static void ti99_AlphaW(int offset, int data)
 	 bit 5: ???
 	 bit 6-7: keyboard status bits 0 through 1
 */
-static int ti99_8_R9901_0(int offset)
+static READ8_DEVICE_HANDLER( ti99_8_R9901_0 )
 {
-	running_machine *machine = Machine;
 	int answer;
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
 										"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15" };
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
-		int buttons = input_port_read(machine, "MOUSE0") & 3;
+		int buttons = input_port_read(device->machine, "MOUSE0") & 3;
 
 		answer = ((mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 7) & 0x80;
 
@@ -2415,7 +2337,7 @@ static int ti99_8_R9901_0(int offset)
 	}
 	else
 	{
-		answer = (input_port_read(machine, keynames[KeyCol]) << 6) & 0xC0;
+		answer = (input_port_read(device->machine, keynames[KeyCol]) << 6) & 0xC0;
 	}
 	
 	return answer;
@@ -2430,16 +2352,15 @@ static int ti99_8_R9901_0(int offset)
 	 (bit 4: IR remote handset interrupt)
 	 bit 5-7: weird, not emulated
 */
-static int ti99_8_R9901_1(int offset)
+static READ8_DEVICE_HANDLER( ti99_8_R9901_1 )
 {
-	running_machine *machine = Machine;
 	int answer;
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
 										"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15" };
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
-		int buttons = input_port_read(machine, "MOUSE0") & 3;
+		int buttons = input_port_read(device->machine, "MOUSE0") & 3;
 
 		answer = ((mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 1) & 0x03;
 
@@ -2449,7 +2370,7 @@ static int ti99_8_R9901_1(int offset)
 	}
 	else
 	{
-		answer = (input_port_read(machine, keynames[KeyCol]) >> 2) & 0x07;
+		answer = (input_port_read(device->machine, keynames[KeyCol]) >> 2) & 0x07;
 	}
 	
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
@@ -2462,7 +2383,7 @@ static int ti99_8_R9901_1(int offset)
 /*
 	WRITE key column select (P0-P3)
 */
-static void ti99_8_KeyC(int offset, int data)
+static WRITE8_DEVICE_HANDLER( ti99_8_KeyC )
 {
 	if (data)
 		KeyCol |= 1 << offset;
@@ -2473,12 +2394,12 @@ static void ti99_8_KeyC(int offset, int data)
 		mecmouse_select(KeyCol, 14, 15);
 }
 
-static void ti99_8_WCRUS(int offset, int data)
+static WRITE8_DEVICE_HANDLER( ti99_8_WCRUS )
 {
 	ti99_8_CRUS = data;
 }
 
-static void ti99_8_PTGEN(int offset, int data)
+static WRITE8_DEVICE_HANDLER( ti99_8_PTGEN )
 {
 	/* ... */
 }
@@ -2486,18 +2407,17 @@ static void ti99_8_PTGEN(int offset, int data)
 /*
 	command CS1/CS2 tape unit motor (P6-P7)
 */
-static void ti99_CS_motor(int offset, int data)
+static WRITE8_DEVICE_HANDLER( ti99_CS_motor )
 {
-	running_machine *machine = Machine;
 	const device_config *img;
 
 	if ( ti99_model != model_99_8 )
 	{
-		img = device_list_find_by_tag( machine->config->devicelist, CASSETTE, ( offset-6 ) ? "cassette2" :  "cassette1" );
+		img = device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, ( offset-6 ) ? "cassette2" :  "cassette1" );
 	}
 	else
 	{
-		img = device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+		img = device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" );
 	}
 	cassette_change_state(img, data ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 }
@@ -2511,7 +2431,7 @@ static void ti99_CS_motor(int offset, int data)
 	We do not really need to emulate this as the tape recorder generates sound
 	on its own.
 */
-static void ti99_audio_gate(int offset, int data)
+static WRITE8_DEVICE_HANDLER( ti99_audio_gate )
 {
 }
 
@@ -2519,18 +2439,16 @@ static void ti99_audio_gate(int offset, int data)
 	tape output (P9)
 	I think polarity is correct, but don't take my word for it.
 */
-static void ti99_CS_output(int offset, int data)
+static WRITE8_DEVICE_HANDLER( ti99_CS_output )
 {
-	running_machine *machine = Machine;
-
 	if (ti99_model != model_99_8)	/* 99/8 only has one tape port!!! */
 	{
-		cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette1" ), data ? +1 : -1);
-		cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette2" ), data ? +1 : -1);
+		cassette_output(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette1" ), data ? +1 : -1);
+		cassette_output(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette2" ), data ? +1 : -1);
 	}
 	else
 	{
-		cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), data ? +1 : -1);
+		cassette_output(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ), data ? +1 : -1);
 	}
 }
 
@@ -2692,23 +2610,25 @@ static WRITE16_HANDLER ( ti99_TIxramhigh_w );
 
 static void ti99_TIxram_init(running_machine *machine)
 {
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_TIxramlow_r);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_TIxramlow_w);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_TIxramhigh_r);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_TIxramhigh_w);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	
+	memory_install_read16_handler(space, 0x2000, 0x3fff, 0, 0, ti99_TIxramlow_r);
+	memory_install_write16_handler(space, 0x2000, 0x3fff, 0, 0, ti99_TIxramlow_w);
+	memory_install_read16_handler(space, 0xa000, 0xffff, 0, 0, ti99_TIxramhigh_r);
+	memory_install_write16_handler(space, 0xa000, 0xffff, 0, 0, ti99_TIxramhigh_w);
 }
 
 /* low 8 kb: 0x2000-0x3fff */
 static READ16_HANDLER ( ti99_TIxramlow_r )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	return xRAM_ptr[offset];
 }
 
 static WRITE16_HANDLER ( ti99_TIxramlow_w )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	COMBINE_DATA(xRAM_ptr + offset);
 }
@@ -2716,14 +2636,14 @@ static WRITE16_HANDLER ( ti99_TIxramlow_w )
 /* high 24 kb: 0xa000-0xffff */
 static READ16_HANDLER ( ti99_TIxramhigh_r )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	return xRAM_ptr[offset+0x1000];
 }
 
 static WRITE16_HANDLER ( ti99_TIxramhigh_w )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	COMBINE_DATA(xRAM_ptr + offset+0x1000);
 }
@@ -2766,11 +2686,12 @@ static void ti99_sAMSxram_init(running_machine *machine)
 {
 	int i;
 
-
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_sAMSxramlow_r);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_sAMSxramlow_w);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_sAMSxramhigh_r);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_sAMSxramhigh_w);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	
+	memory_install_read16_handler(space, 0x2000, 0x3fff, 0, 0, ti99_sAMSxramlow_r);
+	memory_install_write16_handler(space, 0x2000, 0x3fff, 0, 0, ti99_sAMSxramlow_w);
+	memory_install_read16_handler(space, 0xa000, 0xffff, 0, 0, ti99_sAMSxramhigh_r);
+	memory_install_write16_handler(space, 0xa000, 0xffff, 0, 0, ti99_sAMSxramhigh_w);
 
 	ti99_peb_set_card_handlers(0x1e00, & sAMS_expansion_handlers);
 
@@ -2804,7 +2725,7 @@ static WRITE8_HANDLER(sAMS_mapper_w)
 /* low 8 kb: 0x2000-0x3fff */
 static READ16_HANDLER ( ti99_sAMSxramlow_r )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	if (sAMS_mapper_on)
 		return xRAM_ptr[(offset&0x7ff)+sAMSlookup[(0x1000+offset)>>11]];
@@ -2814,7 +2735,7 @@ static READ16_HANDLER ( ti99_sAMSxramlow_r )
 
 static WRITE16_HANDLER ( ti99_sAMSxramlow_w )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	if (sAMS_mapper_on)
 		COMBINE_DATA(xRAM_ptr + (offset&0x7ff)+sAMSlookup[(0x1000+offset)>>11]);
@@ -2825,7 +2746,7 @@ static WRITE16_HANDLER ( ti99_sAMSxramlow_w )
 /* high 24 kb: 0xa000-0xffff */
 static READ16_HANDLER ( ti99_sAMSxramhigh_r )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	if (sAMS_mapper_on)
 		return xRAM_ptr[(offset&0x7ff)+sAMSlookup[(0x5000+offset)>>11]];
@@ -2835,7 +2756,7 @@ static READ16_HANDLER ( ti99_sAMSxramhigh_r )
 
 static WRITE16_HANDLER ( ti99_sAMSxramhigh_w )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	if (sAMS_mapper_on)
 		COMBINE_DATA(xRAM_ptr + (offset&0x7ff)+sAMSlookup[(0x5000+offset)>>11]);
@@ -2877,22 +2798,22 @@ static void ti99_4p_mapper_init(running_machine *machine)
 	int i;
 
 	/* Not required at run-time */
-	/*memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, SMH_BANK3);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, SMH_BANK3);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, SMH_BANK4);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, SMH_BANK4);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, SMH_BANK5);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, SMH_BANK5);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, SMH_BANK6);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, SMH_BANK6);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, SMH_BANK7);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, SMH_BANK7);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, SMH_BANK8);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, SMH_BANK8);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, SMH_BANK9);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, SMH_BANK9);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, SMH_BANK10);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, SMH_BANK10);*/
+	/*memory_install_read16_handler(space, 0x2000, 0x2fff, SMH_BANK3);
+	memory_install_write16_handler(space, 0x2000, 0x2fff, SMH_BANK3);
+	memory_install_read16_handler(space, 0x3000, 0x3fff, SMH_BANK4);
+	memory_install_write16_handler(space, 0x3000, 0x3fff, SMH_BANK4);
+	memory_install_read16_handler(space, 0xa000, 0xafff, SMH_BANK5);
+	memory_install_write16_handler(space, 0xa000, 0xafff, SMH_BANK5);
+	memory_install_read16_handler(space, 0xb000, 0xbfff, SMH_BANK6);
+	memory_install_write16_handler(space, 0xb000, 0xbfff, SMH_BANK6);
+	memory_install_read16_handler(space, 0xc000, 0xcfff, SMH_BANK7);
+	memory_install_write16_handler(space, 0xc000, 0xcfff, SMH_BANK7);
+	memory_install_read16_handler(space, 0xd000, 0xdfff, SMH_BANK8);
+	memory_install_write16_handler(space, 0xd000, 0xdfff, SMH_BANK8);
+	memory_install_read16_handler(space, 0xe000, 0xefff, SMH_BANK9);
+	memory_install_write16_handler(space, 0xe000, 0xefff, SMH_BANK9);
+	memory_install_read16_handler(space, 0xf000, 0xffff, SMH_BANK10);
+	memory_install_write16_handler(space, 0xf000, 0xffff, SMH_BANK10);*/
 
 	ti99_peb_set_16bit_card_handlers(0x1e00, & ti99_4p_mapper_handlers);
 
@@ -2907,7 +2828,7 @@ static void ti99_4p_mapper_init(running_machine *machine)
 		{
 		case 2:
 		case 3:
-			memory_set_bankptr(3+(i-2), xRAM_ptr + (i<<11));
+			memory_set_bankptr(machine,3+(i-2), xRAM_ptr + (i<<11));
 			break;
 
 		case 10:
@@ -2916,7 +2837,7 @@ static void ti99_4p_mapper_init(running_machine *machine)
 		case 13:
 		case 14:
 		case 15:
-			memory_set_bankptr(5+(i-10), xRAM_ptr + (i<<11));
+			memory_set_bankptr(machine,5+(i-10), xRAM_ptr + (i<<11));
 			break;
 		}
 	}
@@ -2942,7 +2863,7 @@ static void ti99_4p_mapper_cru_w(running_machine *machine, int offset, int data)
 				{
 				case 2:
 				case 3:
-					memory_set_bankptr(3+(i-2), xRAM_ptr + (ti99_4p_mapper_on ? (ti99_4p_mapper_lookup[i]) : (i<<11)));
+					memory_set_bankptr(machine,3+(i-2), xRAM_ptr + (ti99_4p_mapper_on ? (ti99_4p_mapper_lookup[i]) : (i<<11)));
 					break;
 
 				case 10:
@@ -2951,7 +2872,7 @@ static void ti99_4p_mapper_cru_w(running_machine *machine, int offset, int data)
 				case 13:
 				case 14:
 				case 15:
-					memory_set_bankptr(5+(i-10), xRAM_ptr + (ti99_4p_mapper_on ? (ti99_4p_mapper_lookup[i]) : (i<<11)));
+					memory_set_bankptr(machine,5+(i-10), xRAM_ptr + (ti99_4p_mapper_on ? (ti99_4p_mapper_lookup[i]) : (i<<11)));
 					break;
 				}
 			}
@@ -2980,7 +2901,7 @@ static WRITE16_HANDLER(ti99_4p_mapper_w)
 		{
 		case 2:
 		case 3:
-			memory_set_bankptr(3+(page-2), xRAM_ptr+ti99_4p_mapper_lookup[page]);
+			memory_set_bankptr(space->machine,3+(page-2), xRAM_ptr+ti99_4p_mapper_lookup[page]);
 			break;
 
 		case 10:
@@ -2989,7 +2910,7 @@ static WRITE16_HANDLER(ti99_4p_mapper_w)
 		case 13:
 		case 14:
 		case 15:
-			memory_set_bankptr(5+(page-10), xRAM_ptr+ti99_4p_mapper_lookup[page]);
+			memory_set_bankptr(space->machine,5+(page-10), xRAM_ptr+ti99_4p_mapper_lookup[page]);
 			break;
 		}
 	}
@@ -3028,10 +2949,12 @@ static int myarc_page_offset_mask;
 /* set up myarc handlers, and set initial state */
 static void ti99_myarcxram_init(running_machine *machine)
 {
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_myarcxramlow_r);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_myarcxramlow_w);
-	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_myarcxramhigh_r);
-	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_myarcxramhigh_w);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	
+	memory_install_read16_handler(space, 0x2000, 0x3fff, 0, 0, ti99_myarcxramlow_r);
+	memory_install_write16_handler(space, 0x2000, 0x3fff, 0, 0, ti99_myarcxramlow_w);
+	memory_install_read16_handler(space, 0xa000, 0xffff, 0, 0, ti99_myarcxramhigh_r);
+	memory_install_write16_handler(space, 0xa000, 0xffff, 0, 0, ti99_myarcxramhigh_w);
 
 	switch (xRAM_kind)
 	{
@@ -3096,14 +3019,14 @@ static void myarc_cru_w(running_machine *machine, int offset, int data)
 /* low 8 kb: 0x2000-0x3fff */
 static READ16_HANDLER ( ti99_myarcxramlow_r )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	return xRAM_ptr[myarc_cur_page_offset + offset];
 }
 
 static WRITE16_HANDLER ( ti99_myarcxramlow_w )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	COMBINE_DATA(xRAM_ptr + myarc_cur_page_offset + offset);
 }
@@ -3111,14 +3034,14 @@ static WRITE16_HANDLER ( ti99_myarcxramlow_w )
 /* high 24 kb: 0xa000-0xffff */
 static READ16_HANDLER ( ti99_myarcxramhigh_r )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	return xRAM_ptr[myarc_cur_page_offset + offset+0x1000];
 }
 
 static WRITE16_HANDLER ( ti99_myarcxramhigh_w )
 {
-	activecpu_adjust_icount(-4);
+	cpu_adjust_icount(space->machine->cpu[0],-4);
 
 	COMBINE_DATA(xRAM_ptr + myarc_cur_page_offset + offset+0x1000);
 }
@@ -3378,3 +3301,78 @@ static WRITE8_HANDLER(evpc_mem_w)
 		}
 	}
 }
+
+/* tms9901 setup */
+const tms9901_interface tms9901reset_param_ti99_4x =
+{
+	TMS9901_INT1 | TMS9901_INT2 | TMS9901_INTC,	/* only input pins whose state is always known */
+
+	{	/* read handlers */
+		ti99_R9901_0,
+		ti99_R9901_1,
+		ti99_R9901_2,
+		ti99_R9901_3
+	},
+
+	{	/* write handlers */
+		ti99_handset_set_ack,
+		NULL,
+		ti99_KeyC,
+		ti99_KeyC,
+		ti99_KeyC,
+		ti99_AlphaW,
+		ti99_CS_motor,
+		ti99_CS_motor,
+		ti99_audio_gate,
+		ti99_CS_output,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL
+	},
+
+	/* interrupt handler */
+	tms9901_interrupt_callback,
+
+	/* clock rate = 3MHz */
+	3000000.
+};
+
+const tms9901_interface tms9901reset_param_ti99_8 =
+{
+	TMS9901_INT1 | TMS9901_INT2 | TMS9901_INTC,	/* only input pins whose state is always known */
+
+	{	/* read handlers */
+		ti99_8_R9901_0,
+		ti99_8_R9901_1,
+		ti99_R9901_2,
+		ti99_R9901_3
+	},
+
+	{	/* write handlers */
+		ti99_8_KeyC,
+		ti99_8_KeyC,
+		ti99_8_KeyC,
+		ti99_8_KeyC,
+		ti99_8_WCRUS,
+		ti99_8_PTGEN,
+		ti99_CS_motor,
+		NULL,
+		ti99_audio_gate,
+		ti99_CS_output,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL
+	},
+
+	/* interrupt handler */
+	tms9901_interrupt_callback,
+
+	/* clock rate = 3.58MHz??? 2.68MHz??? */
+	/*3579545.*/2684658.75
+};

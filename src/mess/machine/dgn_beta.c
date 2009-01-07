@@ -67,7 +67,6 @@
 #include "machine/6551.h"
 #include "image.h"
 #include "machine/wd17xx.h"
-#include "includes/crtc6845.h"
 
 #include "debug/debugcpu.h"
 #include "debug/debugcon.h"
@@ -89,7 +88,7 @@ static UINT8 *system_rom;
 
 
 /* Debugging commands and handlers. */
-static offs_t dgnbeta_dasm_override(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
+static offs_t dgnbeta_dasm_override(const device_config *device, char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 static void execute_beta_dat_log(running_machine *machine, int ref, int params, const char *param[]);
 static void execute_beta_key_dump(running_machine *machine, int ref, int params, const char *param[]);
 
@@ -170,7 +169,7 @@ static const pia6821_interface dgnbeta_pia_intf[] =
 // Info for bank switcher
 struct bank_info_entry
 {
-	write8_machine_func handler;	// Pointer to write handler
+	write8_space_func handler;	// Pointer to write handler
 	offs_t start;		// Offset of start of block
 	offs_t end;		// offset of end of block
 };
@@ -233,14 +232,16 @@ static int IsIOPage(int	Page)
 
 static void UpdateBanks(running_machine *machine, int first, int last)
 {
+	const address_space *space_0 = cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM );
+	const address_space *space_1 = cpu_get_address_space( machine->cpu[1], ADDRESS_SPACE_PROGRAM );
 	int		Page;
 	UINT8 		*readbank;
-	write8_machine_func 	writebank;
+	write8_space_func 	writebank;
 	int		bank_start;
 	int		bank_end;
 	int		MapPage;
 
-	LOG_BANK_UPDATE(("\n\nUpdating banks %d to %d at PC=$%X\n",first,last,activecpu_get_pc()));
+	LOG_BANK_UPDATE(("\n\nUpdating banks %d to %d at PC=$%X\n",first,last,cpu_get_pc(space_0->cpu)));
 	for(Page=first;Page<=last;Page++)
 	{
 		bank_start	= bank_info[Page].start;
@@ -260,7 +261,7 @@ static void UpdateBanks(running_machine *machine, int first, int last)
 			{
 				readbank = &mess_ram[MapPage*RamPageSize];
 				if(LogDatWrites)
-					debug_console_printf("Mapping page %X, pageno=%X, mess_ram[%X]\n",Page,MapPage,(MapPage*RamPageSize));
+					debug_console_printf(machine, "Mapping page %X, pageno=%X, mess_ram[%X]\n",Page,MapPage,(MapPage*RamPageSize));
 			}
 			else
 			{
@@ -285,9 +286,9 @@ static void UpdateBanks(running_machine *machine, int first, int last)
 		}
 
 		PageRegs[TaskReg][Page].memory=readbank;
-		memory_set_bankptr(Page+1,readbank);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, bank_start, bank_end,0,0,writebank);
-		memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, bank_start, bank_end,0,0,writebank);
+		memory_set_bankptr(machine, Page+1,readbank);
+		memory_install_write8_handler(space_0, bank_start, bank_end,0,0,writebank);
+		memory_install_write8_handler(space_1, bank_start, bank_end,0,0,writebank);
 
 		LOG_BANK_UPDATE(("UpdateBanks:MapPage=$%02X readbank=$%X\n",MapPage,(int)(FPTR)readbank));
 		LOG_BANK_UPDATE(("PageRegsSet Task=%X Page=%x\n",TaskReg,Page));
@@ -303,7 +304,7 @@ static void SetDefaultTask(running_machine *machine)
 	int		Idx;
 
 	LOG_DEFAULT_TASK(("SetDefaultTask()\n"));
-	if (VERBOSE) debug_console_printf("Set Default task\n");
+	if (VERBOSE) debug_console_printf(machine, "Set Default task\n");
 
 	TaskReg=NoPagingTask;
 
@@ -351,9 +352,9 @@ WRITE8_HANDLER( dgn_beta_page_w )
 
 	if (EnableMapRegs)
 	{
-		UpdateBanks(machine, offset,offset);
+		UpdateBanks(space->machine, offset,offset);
 		if (offset==15)
-			UpdateBanks(machine, offset+1,offset+1);
+			UpdateBanks(space->machine, offset+1,offset+1);
 	}
 }
 
@@ -539,7 +540,7 @@ static READ8_HANDLER(d_pia0_pb_r)
 	int RetVal;
 	int Idx;
 	int Selected;
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", 
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", 
 										"KEY5", "KEY6", "KEY7", "KEY8", "KEY9" };
 	
 	LOG_KEYBOARD(("PB Read\n"));
@@ -554,7 +555,7 @@ static READ8_HANDLER(d_pia0_pb_r)
 	{
 		for(Idx=0; Idx<NoKeyrows; Idx++)
 		{
-			Keyboard[Idx] = input_port_read(machine, keynames[Idx]);
+			Keyboard[Idx] = input_port_read(space->machine, keynames[Idx]);
 
 			if(Keyboard[Idx] != 0x7F)
 			{
@@ -580,12 +581,12 @@ static READ8_HANDLER(d_pia0_pb_r)
 static WRITE8_HANDLER(d_pia0_pb_w)
 {
 	int	InClkState;
-	int	OutClkState;
+	//int	OutClkState;
 
 	LOG_KEYBOARD(("PB Write\n"));
 
 	InClkState	= data & KInClk;
-	OutClkState	= data & KOutClk;
+	//OutClkState	= data & KOutClk;
 
 	LOG_KEYBOARD(("InClkState=$%02X OldInClkState=$%02X Keyrow=$%02X ",InClkState,(d_pia0_pb_last & KInClk),Keyrow));
 
@@ -620,7 +621,7 @@ static WRITE8_HANDLER(d_pia0_cb2_w)
 		RowShifter = (RowShifter<<1) | ((d_pia0_pb_last & KOutDat)>>4);
 		RowShifter &= 0x3FF;
 		LOG_KEYBOARD(("Rowshifter=$%02X Keyrow=$%02X\n",RowShifter,Keyrow));
-		if (VERBOSE) debug_console_printf("rowshifter clocked, value=%3X, RowNo=%d, Keyrow=%2X\n",RowShifter,RowNo,Keyrow);
+		if (VERBOSE) debug_console_printf(space->machine, "rowshifter clocked, value=%3X, RowNo=%d, Keyrow=%2X\n",RowShifter,RowNo,Keyrow);
 	}
 
 	d_pia0_cb2_last=data;
@@ -655,7 +656,8 @@ static READ8_HANDLER(d_pia1_pa_r)
 static WRITE8_HANDLER(d_pia1_pa_w)
 {
 	int	HALT_DMA;
-
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	
 	/* Only play with halt line if halt bit changed since last write */
 	if((data & 0x80)!=d_pia1_pa_last)
 	{
@@ -666,27 +668,27 @@ static WRITE8_HANDLER(d_pia1_pa_w)
 			HALT_DMA=CLEAR_LINE;
 
 		LOG_HALT(("DMA_CPU HALT=%d\n",HALT_DMA));
-		cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, HALT_DMA);
+		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, HALT_DMA);
 
 		/* CPU un-halted let it run ! */
 		if (HALT_DMA==CLEAR_LINE)
-			cpu_yield();
+			cpu_yield(space->cpu);
 
 		d_pia1_pa_last=data & 0x80;
 	}
 
 	/* Drive selects are binary encoded on PA0 & PA1 */
-	wd17xx_set_drive(~data & DSMask);
+	wd17xx_set_drive(fdc,~data & DSMask);
 
 	/* Set density of WD2797 */
 	if (data & DDenCtrl)
 	{
-		wd17xx_set_density(DEN_FM_LO);
+		wd17xx_set_density(fdc,DEN_FM_LO);
 		LOG_DISK(("Set density low %d\n",(data & DDenCtrl)));
 	}
 	else
 	{
-		wd17xx_set_density(DEN_MFM_LO);
+		wd17xx_set_density(fdc,DEN_MFM_LO);
 		LOG_DISK(("Set density high %d\n",(data & DDenCtrl)));
 	}
 }
@@ -709,13 +711,13 @@ static WRITE8_HANDLER(d_pia1_pb_w)
 		else
 			HALT_CPU=ASSERT_LINE;
 		LOG_HALT(("MAIN_CPU HALT=%d\n",HALT_CPU));
-		cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, HALT_CPU);
+		cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_HALT, HALT_CPU);
 
 		d_pia1_pb_last=data & 0x02;
 
 		/* CPU un-halted let it run ! */
 		if (HALT_CPU==CLEAR_LINE)
-			cpu_yield();
+			cpu_yield(space->cpu);
 	}
 }
 
@@ -760,13 +762,13 @@ static WRITE8_HANDLER(d_pia2_pa_w)
 		LOG_INTS(("cpu1 NMI : %d\n",NMI));
 		if(!NMI)
 		{
-			cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,ASSERT_LINE);
+			cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,ASSERT_LINE);
 			logerror("cpu_yield()\n");
-			cpu_yield();	/* Let DMA CPU run */
+			cpu_yield(space->cpu);	/* Let DMA CPU run */
 		}
 		else
 		{
-			cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,CLEAR_LINE);
 		}
 
 		DMA_NMI_LAST=NMI;	/* Save it for next time */
@@ -797,7 +799,7 @@ static WRITE8_HANDLER(d_pia2_pa_w)
 		{
 			TaskReg=NoPagingTask;
 		}
-		UpdateBanks(machine, 0,IOPage+1);
+		UpdateBanks(space->machine, 0,IOPage+1);
 	}
 	else
 	{
@@ -805,7 +807,7 @@ static WRITE8_HANDLER(d_pia2_pa_w)
 		if ((PIATaskReg!=OldTask) && (EnableMapRegs))
 		{
 			TaskReg=PIATaskReg;
-			UpdateBanks(machine, 0,IOPage+1);
+			UpdateBanks(space->machine, 0,IOPage+1);
 		}
 	}
 	LOG_TASK(("TaskReg=$%02X PIATaskReg=$%02X\n",TaskReg,PIATaskReg));
@@ -819,7 +821,7 @@ static READ8_HANDLER(d_pia2_pb_r)
 static WRITE8_HANDLER(d_pia2_pb_w)
 {
 	/* Update top video address lines */
-	vid_set_gctrl(data);
+	vid_set_gctrl(space->machine, data);
 }
 
 static void d_pia2_irq_a(running_machine *machine, int state)
@@ -850,7 +852,7 @@ static void cpu0_recalc_irq(running_machine *machine, int state)
 	else
 		IRQ = CLEAR_LINE;
 
-	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, IRQ);
+	cpu_set_input_line(machine->cpu[0], M6809_IRQ_LINE, IRQ);
 	LOG_INTS(("cpu0 IRQ : %d\n",IRQ));
 }
 
@@ -864,7 +866,7 @@ static void cpu0_recalc_firq(running_machine *machine, int state)
 	else
 		FIRQ = CLEAR_LINE;
 
-	cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, FIRQ);
+	cpu_set_input_line(machine->cpu[0], M6809_FIRQ_LINE, FIRQ);
 
 	LOG_INTS(("cpu0 FIRQ : %d\n",FIRQ));
 }
@@ -873,7 +875,7 @@ static void cpu0_recalc_firq(running_machine *machine, int state)
 
 static void cpu1_recalc_firq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 1, M6809_FIRQ_LINE, state);
+	cpu_set_input_line(machine->cpu[1], M6809_FIRQ_LINE, state);
 	LOG_INTS(("cpu1 FIRQ : %d\n",state));
 }
 
@@ -881,50 +883,54 @@ static void cpu1_recalc_firq(running_machine *machine, int state)
 /* Dragon Beta onboard FDC */
 /********************************************************************************************/
 
-static void dgnbeta_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
+static WD17XX_CALLBACK( dgnbeta_fdc_callback )
 {
 	/* The INTRQ line goes through pia2 ca1, in exactly the same way as DRQ from DragonDos does */
 	/* DRQ is routed through various logic to the FIRQ inturrupt line on *BOTH* CPUs */
+	const address_space *space = cpu_get_address_space( device->machine->cpu[0], ADDRESS_SPACE_PROGRAM );
 
-	switch(event)
+	switch(state)
 	{
 		case WD17XX_IRQ_CLR:
-			pia_2_ca1_w(machine, 0, CLEAR_LINE);
+			pia_2_ca1_w(space, 0, CLEAR_LINE);
 			break;
 		case WD17XX_IRQ_SET:
-			pia_2_ca1_w(machine, 0, ASSERT_LINE);
+			pia_2_ca1_w(space, 0, ASSERT_LINE);
 			break;
 		case WD17XX_DRQ_CLR:
 			/*wd2797_drq=CLEAR_LINE;*/
-			cpu1_recalc_firq(machine, CLEAR_LINE);
+			cpu1_recalc_firq(device->machine, CLEAR_LINE);
 			break;
 		case WD17XX_DRQ_SET:
 			/*wd2797_drq=ASSERT_LINE;*/
-			cpu1_recalc_firq(machine, ASSERT_LINE);
+			cpu1_recalc_firq(device->machine, ASSERT_LINE);
 			break;
 	}
 
-	LOG_DISK(("dgnbeta_fdc_callback(%d)\n",event));
+	LOG_DISK(("dgnbeta_fdc_callback(%d)\n",state));
 }
+
+const wd17xx_interface dgnbeta_wd17xx_interface = { dgnbeta_fdc_callback, NULL };
 
  READ8_HANDLER(dgnbeta_wd2797_r)
 {
 	int result = 0;
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
 
 	switch(offset & 0x03)
 	{
 		case 0:
-			result = wd17xx_status_r(machine, 0);
+			result = wd17xx_status_r(fdc, 0);
 			LOG_DISK(("Disk status=%2.2X\n",result));
 			break;
 		case 1:
-			result = wd17xx_track_r(machine, 0);
+			result = wd17xx_track_r(fdc, 0);
 			break;
 		case 2:
-			result = wd17xx_sector_r(machine, 0);
+			result = wd17xx_sector_r(fdc, 0);
 			break;
 		case 3:
-			result = wd17xx_data_r(machine, 0);
+			result = wd17xx_data_r(fdc, 0);
 			break;
 		default:
 			break;
@@ -935,23 +941,25 @@ static void dgnbeta_fdc_callback(running_machine *machine, wd17xx_state_t event,
 
 WRITE8_HANDLER(dgnbeta_wd2797_w)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+
     switch(offset & 0x3)
 	{
 		case 0:
 			/* disk head is encoded in the command byte */
 			/* But only for Type 3/4 commands */
 			if(data & 0x80)
-				wd17xx_set_side((data & 0x02) ? 1 : 0);
-			wd17xx_command_w(machine, 0, data);
+				wd17xx_set_side(fdc,(data & 0x02) ? 1 : 0);
+			wd17xx_command_w(fdc, 0, data);
 			break;
 		case 1:
-			wd17xx_track_w(machine, 0, data);
+			wd17xx_track_w(fdc, 0, data);
 			break;
 		case 2:
-			wd17xx_sector_w(machine, 0, data);
+			wd17xx_sector_w(fdc, 0, data);
 			break;
 		case 3:
-			wd17xx_data_w(machine, 0, data);
+			wd17xx_data_w(fdc, 0, data);
 			break;
 	};
 }
@@ -964,7 +972,7 @@ static void ScanInKeyboard(void)
 #if 0
 	int	Idx;
 	int	Row;
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", 
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", 
 										"KEY5", "KEY6", "KEY7", "KEY8", "KEY9" };
 	
 	LOG_KEYBOARD(("Scanning Host keyboard\n"));
@@ -991,14 +999,16 @@ static void ScanInKeyboard(void)
 /* VBlank inturrupt */
 void dgn_beta_frame_interrupt (running_machine *machine, int data)
 {
+	const address_space *space = cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM );
+
 	/* Set PIA line, so it recognises inturrupt */
 	if (!data)
 	{
-		pia_2_cb2_w(machine, 0, ASSERT_LINE);
+		pia_2_cb2_w(space, 0, ASSERT_LINE);
 	}
 	else
 	{
-		pia_2_cb2_w(machine, 0, CLEAR_LINE);
+		pia_2_cb2_w(space, 0, CLEAR_LINE);
 	}
 	LOG_VIDEO(("Vblank\n"));
 	ScanInKeyboard();
@@ -1022,10 +1032,12 @@ void dgn_beta_line_interrupt (int data)
 
 static void dgnbeta_reset(running_machine *machine)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD179X, "wd179x");
+
 	system_rom = memory_region(machine, "main");
 
 	/* Make sure CPU 1 is started out halted ! */
-	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+	cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
 
 	/* Reset to task 0, and map banks disabled, so standard memory map */
 	/* with ram at $0000-$BFFF, ROM at $C000-FBFF, IO at $FC00-$FEFF */
@@ -1056,9 +1068,8 @@ static void dgnbeta_reset(running_machine *machine)
 	DMA_NMI_LAST=0x80;			/* start with DMA NMI inactive, as pulled up */
 //	DMA_NMI=CLEAR_LINE;			/* start with DMA NMI inactive */
 
-	wd17xx_reset(machine);
-	wd17xx_set_density(DEN_MFM_LO);
-	wd17xx_set_drive(0);
+	wd17xx_set_density(fdc,DEN_MFM_LO);
+	wd17xx_set_drive(fdc,0);
 
 	videoram=mess_ram;			/* Point video ram at the start of physical ram */
 }
@@ -1066,14 +1077,13 @@ static void dgnbeta_reset(running_machine *machine)
 
 MACHINE_START( dgnbeta )
 {
-	pia_config(0, &dgnbeta_pia_intf[0]);
-	pia_config(1, &dgnbeta_pia_intf[1]);
-	pia_config(2, &dgnbeta_pia_intf[2]);
+	pia_config(machine, 0, &dgnbeta_pia_intf[0]);
+	pia_config(machine, 1, &dgnbeta_pia_intf[1]);
+	pia_config(machine, 2, &dgnbeta_pia_intf[2]);
 
 	init_video(machine);
 
-	wd17xx_init(machine, WD_TYPE_179X,dgnbeta_fdc_callback, NULL);
-	cpuintrf_set_dasm_override(0,dgnbeta_dasm_override);
+	debug_cpu_set_dasm_override(machine->cpu[0],dgnbeta_dasm_override);
 
 	add_reset_callback(machine, dgnbeta_reset);
 	dgnbeta_reset(machine);
@@ -1243,7 +1253,7 @@ static const char *const os9syscalls[] =
 };
 
 
-static offs_t dgnbeta_dasm_override(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
+static offs_t dgnbeta_dasm_override(const device_config *device, char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	unsigned call;
 	unsigned result = 0;
@@ -1264,7 +1274,7 @@ static void execute_beta_dat_log(running_machine *machine, int ref, int params, 
 {
 	LogDatWrites=!LogDatWrites;
 
-	debug_console_printf("DAT register write info set : %d\n",LogDatWrites);
+	debug_console_printf(machine, "DAT register write info set : %d\n",LogDatWrites);
 }
 
 static void execute_beta_key_dump(running_machine *machine, int ref, int params, const char *param[])
@@ -1273,6 +1283,6 @@ static void execute_beta_key_dump(running_machine *machine, int ref, int params,
 
 	for(Idx=0;Idx<NoKeyrows;Idx++)
 	{
-		debug_console_printf("KeyRow[%d]=%2X\n",Idx,Keyboard[Idx]);
+		debug_console_printf(machine, "KeyRow[%d]=%2X\n",Idx,Keyboard[Idx]);
 	}
 }

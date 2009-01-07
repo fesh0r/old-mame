@@ -26,7 +26,7 @@
 
 UINT32 a3;
 
-static void apple3_update_drives(void);
+static void apple3_update_drives(const device_config *device);
 
 static UINT8 via_0_a;
 static UINT8 via_0_b;
@@ -118,7 +118,10 @@ static void apple3_profile_w(offs_t offset, UINT8 data)
 
 static READ8_HANDLER( apple3_c0xx_r )
 {
-	const device_config *fdc = device_list_find_by_tag(machine->config->devicelist,
+	const device_config *acia = device_list_find_by_tag(space->machine->config->devicelist,
+		ACIA6551,
+		"acia");
+	const device_config *fdc = device_list_find_by_tag(space->machine->config->devicelist,
 		APPLEFDC,
 		"fdc");
 	UINT8 result = 0xFF;
@@ -175,12 +178,12 @@ static READ8_HANDLER( apple3_c0xx_r )
 				a3 |= VAR_EXTA0 << ((offset - 0xD0) / 2);
 			else
 				a3 &= ~(VAR_EXTA0 << ((offset - 0xD0) / 2));
-			apple3_update_drives();
+			apple3_update_drives((device_config*)device_list_find_by_tag( space->machine->config->devicelist,APPLEFDC,"fdc"));
 			result = 0x00;
 			break;
 
 		case 0xDB:
-			apple3_write_charmem();
+			apple3_write_charmem(space->machine);
 			break;
 
 		case 0xE0: case 0xE1: case 0xE2: case 0xE3:
@@ -194,7 +197,7 @@ static READ8_HANDLER( apple3_c0xx_r )
 		case 0xF1:
 		case 0xF2:
 		case 0xF3:
-			result = acia_6551_r(machine, offset & 0x03);
+			result = acia_6551_r(acia, offset & 0x03);
 			break;
 	}
 	return result;
@@ -204,8 +207,11 @@ static READ8_HANDLER( apple3_c0xx_r )
 
 static WRITE8_HANDLER( apple3_c0xx_w )
 {
-	const device_config *fdc = device_list_find_by_tag(machine->config->devicelist,
-		IWM,
+	const device_config *acia = device_list_find_by_tag(space->machine->config->devicelist,
+		ACIA6551,
+		"acia");
+	const device_config *fdc = device_list_find_by_tag(space->machine->config->devicelist,
+		APPLEFDC,
 		"fdc");
 	switch(offset)
 	{
@@ -240,11 +246,11 @@ static WRITE8_HANDLER( apple3_c0xx_w )
 				a3 |= VAR_EXTA0 << ((offset - 0xD0) / 2);
 			else
 				a3 &= ~(VAR_EXTA0 << ((offset - 0xD0) / 2));
-			apple3_update_drives();
+			apple3_update_drives((device_config*)device_list_find_by_tag( space->machine->config->devicelist,APPLEFDC,"fdc"));
 			break;
 
 		case 0xDB:
-			apple3_write_charmem();
+			apple3_write_charmem(space->machine);
 			break;
 
 		case 0xE0: case 0xE1: case 0xE2: case 0xE3:
@@ -258,16 +264,18 @@ static WRITE8_HANDLER( apple3_c0xx_w )
 		case 0xF1:
 		case 0xF2:
 		case 0xF3:
-			acia_6551_w(machine, offset & 0x03, data);
+			acia_6551_w(acia, offset & 0x03, data);
 			break;
 	}
 }
 
 INTERRUPT_GEN( apple3_interrupt )
 {
-	via_set_input_ca2(machine, 1, (AY3600_keydata_strobe_r() & 0x80) ? 1 : 0);
-	via_set_input_cb1(machine, 1, video_screen_get_vblank(machine->primary_screen));
-	via_set_input_cb2(machine, 1, video_screen_get_vblank(machine->primary_screen));
+	const device_config *via_1 = device_list_find_by_tag(device->machine->config->devicelist, VIA6522, "via6522_1");
+
+	via_ca2_w(via_1, 0, (AY3600_keydata_strobe_r() & 0x80) ? 1 : 0);
+	via_cb1_w(via_1, 0, video_screen_get_vblank(device->machine->primary_screen));
+	via_cb2_w(via_1, 0, video_screen_get_vblank(device->machine->primary_screen));
 }
 
 
@@ -287,12 +295,12 @@ static UINT8 *apple3_bankaddr(UINT16 bank, offs_t offset)
 
 
 
-static void apple3_setbank(int mame_bank, UINT16 bank, offs_t offset)
+static void apple3_setbank(running_machine *machine,int mame_bank, UINT16 bank, offs_t offset)
 {
 	UINT8 *ptr;
 
 	ptr = apple3_bankaddr(bank, offset);
-	memory_set_bankptr(mame_bank, ptr);
+	memory_set_bankptr(machine, mame_bank, ptr);
 
 	if (LOG_MEMORY)
 	{
@@ -338,13 +346,14 @@ static void apple3_update_memory(running_machine *machine)
 {
 	UINT16 bank;
 	UINT8 page;
+	const address_space* space = cpu_get_address_space(machine->cpu[0],ADDRESS_SPACE_PROGRAM);
 
 	if (LOG_MEMORY)
 	{
 		logerror("apple3_update_memory(): via_0_b=0x%02x via_1_a=0x0x%02x\n", via_0_b, via_1_a);
 	}
 
-	cpunum_set_clock(machine, 0, (via_0_a & 0x80) ? 1000000 : 2000000);
+	cpu_set_clock(machine->cpu[0], (via_0_a & 0x80) ? 1000000 : 2000000);
 
 	/* bank 2 (0100-01FF) */
 	if (!(via_0_a & 0x04))
@@ -370,97 +379,101 @@ static void apple3_update_memory(running_machine *machine)
 		bank = ~0;
 		page = 0x01;
 	}
-	apple3_setbank(2, bank, ((offs_t) page) * 0x100);
+	apple3_setbank(machine,2, bank, ((offs_t) page) * 0x100);
 
 	/* bank 3 (0200-1FFF) */
-	apple3_setbank(3, ~0, 0x0200);
+	apple3_setbank(machine,3, ~0, 0x0200);
 
 	/* bank 4 (2000-9FFF) */
-	apple3_setbank(4, via_1_a, 0x0000);
+	apple3_setbank(machine,4, via_1_a, 0x0000);
 
 	/* bank 5 (A000-BFFF) */
-	apple3_setbank(5, ~0, 0x2000);
+	apple3_setbank(machine,5, ~0, 0x2000);
 
 	/* install bank 8 (C000-CFFF) */
 	if (via_0_a & 0x40)
 	{
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xC0FF, 0, 0, apple3_c0xx_r);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xC0FF, 0, 0, apple3_c0xx_w);
+		memory_install_read8_handler(space, 0xC000, 0xC0FF, 0, 0, apple3_c0xx_r);
+		memory_install_write8_handler(space, 0xC000, 0xC0FF, 0, 0, apple3_c0xx_w);
 	}
 	else
 	{
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xC0FF, 0, 0, SMH_BANK8);
+		memory_install_read8_handler(space, 0xC000, 0xC0FF, 0, 0, SMH_BANK8);
 		if (via_0_a & 0x08)
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xC0FF, 0, 0, SMH_UNMAP);
+			memory_install_write8_handler(space, 0xC000, 0xC0FF, 0, 0, SMH_UNMAP);
 		else
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xC0FF, 0, 0, SMH_BANK8);
-		apple3_setbank(8, ~0, 0x4000);
+			memory_install_write8_handler(space, 0xC000, 0xC0FF, 0, 0, SMH_BANK8);
+		apple3_setbank(machine,8, ~0, 0x4000);
 	}
 
 	/* install bank 9 (C100-C4FF) */
 	if (via_0_a & 0x40)
 	{
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC100, 0xC4FF, 0, 0, SMH_NOP);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC100, 0xC4FF, 0, 0, SMH_NOP);
+		memory_install_read8_handler(space, 0xC100, 0xC4FF, 0, 0, SMH_NOP);
+		memory_install_write8_handler(space, 0xC100, 0xC4FF, 0, 0, SMH_NOP);
 	}
 	else
 	{
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC100, 0xC4FF, 0, 0, SMH_BANK9);
+		memory_install_read8_handler(space, 0xC100, 0xC4FF, 0, 0, SMH_BANK9);
 		if (via_0_a & 0x08)
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC100, 0xC4FF, 0, 0, SMH_UNMAP);
+			memory_install_write8_handler(space, 0xC100, 0xC4FF, 0, 0, SMH_UNMAP);
 		else
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC100, 0xC4FF, 0, 0, SMH_BANK9);
-		apple3_setbank(9, ~0, 0x4100);
+			memory_install_write8_handler(space, 0xC100, 0xC4FF, 0, 0, SMH_BANK9);
+		apple3_setbank(machine,9, ~0, 0x4100);
 	}
 
 	/* install bank 10 (C500-C7FF) */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC500, 0xC7FF, 0, 0, SMH_BANK10);
+	memory_install_read8_handler(space, 0xC500, 0xC7FF, 0, 0, SMH_BANK10);
 	if (via_0_a & 0x08)
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC500, 0xC7FF, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(space, 0xC500, 0xC7FF, 0, 0, SMH_UNMAP);
 	else
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC500, 0xC7FF, 0, 0, SMH_BANK10);
-	apple3_setbank(10, ~0, 0x4500);
+		memory_install_write8_handler(space, 0xC500, 0xC7FF, 0, 0, SMH_BANK10);
+	apple3_setbank(machine,10, ~0, 0x4500);
 
 	/* install bank 11 (C800-CFFF) */
 	if (via_0_a & 0x40)
 	{
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC800, 0xCFFF, 0, 0, SMH_NOP);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC800, 0xCFFF, 0, 0, SMH_NOP);
+		memory_install_read8_handler(space, 0xC800, 0xCFFF, 0, 0, SMH_NOP);
+		memory_install_write8_handler(space, 0xC800, 0xCFFF, 0, 0, SMH_NOP);
 	}
 	else
 	{
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC800, 0xCFFF, 0, 0, SMH_BANK11);
+		memory_install_read8_handler(space, 0xC800, 0xCFFF, 0, 0, SMH_BANK11);
 		if (via_0_a & 0x08)
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC800, 0xCFFF, 0, 0, SMH_UNMAP);
+			memory_install_write8_handler(space, 0xC800, 0xCFFF, 0, 0, SMH_UNMAP);
 		else
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC800, 0xCFFF, 0, 0, SMH_BANK11);
-		apple3_setbank(11, ~0, 0x4800);
+			memory_install_write8_handler(space, 0xC800, 0xCFFF, 0, 0, SMH_BANK11);
+		apple3_setbank(machine,11, ~0, 0x4800);
 	}
 
 	/* install bank 6 (D000-EFFF) */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xD000, 0xEFFF, 0, 0, SMH_BANK6);
+	memory_install_read8_handler(space, 0xD000, 0xEFFF, 0, 0, SMH_BANK6);
 	if (via_0_a & 0x08)
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xD000, 0xEFFF, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(space, 0xD000, 0xEFFF, 0, 0, SMH_UNMAP);
 	else
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xD000, 0xEFFF, 0, 0, SMH_BANK6);
-	apple3_setbank(6, ~0, 0x5000);
+		memory_install_write8_handler(space, 0xD000, 0xEFFF, 0, 0, SMH_BANK6);
+	apple3_setbank(machine,6, ~0, 0x5000);
 
 	/* install bank 7 (F000-FFFF) */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xF000, 0xFFFF, 0, 0, SMH_BANK7);
+	memory_install_read8_handler(space, 0xF000, 0xFFFF, 0, 0, SMH_BANK7);
 	if (via_0_a & 0x09)
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xF000, 0xFFFF, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(space, 0xF000, 0xFFFF, 0, 0, SMH_UNMAP);
 	else
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xF000, 0xFFFF, 0, 0, SMH_BANK7);
+		memory_install_write8_handler(space, 0xF000, 0xFFFF, 0, 0, SMH_BANK7);
 	if (via_0_a & 0x01)
-		memory_set_bankptr(7, memory_region(machine, "main"));
+		memory_set_bankptr(machine,7, memory_region(machine, "main"));
 	else
-		apple3_setbank(7, ~0, 0x7000);
+		apple3_setbank(machine,7, ~0, 0x7000);
 
 	/* reinstall VIA handlers */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xFFD0, 0xFFDF, 0, 0, via_0_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xFFD0, 0xFFDF, 0, 0, via_0_w);
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xFFE0, 0xFFEF, 0, 0, via_1_r);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xFFE0, 0xFFEF, 0, 0, via_1_w);
+	{
+		const device_config *via_0 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
+		const device_config *via_1 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_1");
+		memory_install_read8_device_handler(space, via_0, 0xFFD0, 0xFFDF, 0, 0, via_r);
+		memory_install_write8_device_handler(space, via_0, 0xFFD0, 0xFFDF, 0, 0, via_w);
+		memory_install_read8_device_handler(space, via_1, 0xFFE0, 0xFFEF, 0, 0, via_r);
+		memory_install_write8_device_handler(space, via_1, 0xFFE0, 0xFFEF, 0, 0, via_w);
+	}
 }
 
 
@@ -476,22 +489,25 @@ static void apple3_via_out(running_machine *machine, UINT8 *var, UINT8 data)
 
 
 /* these are here to appease the Apple /// confidence tests */
-static READ8_HANDLER(apple3_via_1_in_a) { return ~0; }
-static READ8_HANDLER(apple3_via_1_in_b) { return ~0; }
+static READ8_DEVICE_HANDLER(apple3_via_1_in_a) { return ~0; }
+static READ8_DEVICE_HANDLER(apple3_via_1_in_b) { return ~0; }
 
-static WRITE8_HANDLER(apple3_via_0_out_a) { apple3_via_out(machine, &via_0_a, data); }
-static WRITE8_HANDLER(apple3_via_0_out_b) { apple3_via_out(machine, &via_0_b, data); }
-static WRITE8_HANDLER(apple3_via_1_out_a) { apple3_via_out(machine, &via_1_a, data); }
-static WRITE8_HANDLER(apple3_via_1_out_b) { apple3_via_out(machine, &via_1_b, data); }
+static WRITE8_DEVICE_HANDLER(apple3_via_0_out_a) { apple3_via_out(device->machine, &via_0_a, data); }
+static WRITE8_DEVICE_HANDLER(apple3_via_0_out_b) { apple3_via_out(device->machine, &via_0_b, data); }
+static WRITE8_DEVICE_HANDLER(apple3_via_1_out_a) { apple3_via_out(device->machine, &via_1_a, data); }
+static WRITE8_DEVICE_HANDLER(apple3_via_1_out_b) { apple3_via_out(device->machine, &via_1_b, data); }
 
-static void apple2_via_1_irq_func(running_machine *machine, int state)
+static void apple2_via_1_irq_func(const device_config *device, int state)
 {
 	if (!via_1_irq && state)
-		cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, PULSE_LINE);
+	{
+		cpu_set_input_line(device->machine->cpu[0], M6502_IRQ_LINE, ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[0], M6502_IRQ_LINE, CLEAR_LINE);
+	}
 	via_1_irq = state;
 }
 
-static const struct via6522_interface via_0_intf =
+const via6522_interface apple3_via_0_intf =
 {
 	NULL,					/* in_a_func */
 	NULL,					/* in_b_func */
@@ -508,7 +524,7 @@ static const struct via6522_interface via_0_intf =
 	NULL					/* irq_func */
 };
 
-static const struct via6522_interface via_1_intf =
+const via6522_interface apple3_via_1_intf =
 {
 	apple3_via_1_in_a,		/* in_a_func */
 	apple3_via_1_in_b,		/* in_b_func */
@@ -529,7 +545,6 @@ static const struct via6522_interface via_1_intf =
 
 MACHINE_RESET( apple3 )
 {
-	via_reset();
 }
 
 
@@ -617,11 +632,11 @@ static READ8_HANDLER( apple3_indexed_read )
 
 	addr = apple3_get_indexed_addr(offset);
 	if (!addr)
-		result = program_read_byte(offset);
+		result = memory_read_byte(space, offset);
 	else if (addr != (UINT8 *) ~0)
 		result = *addr;
 	else
-		result = memory_region(machine, "main")[offset % memory_region_length(machine, "main")];
+		result = memory_region(space->machine, "main")[offset % memory_region_length(space->machine, "main")];
 	return result;
 }
 
@@ -633,24 +648,24 @@ static WRITE8_HANDLER( apple3_indexed_write )
 
 	addr = apple3_get_indexed_addr(offset);
 	if (!addr)
-		program_write_byte(offset, data);
+		memory_write_byte(space, offset, data);
 	else if (addr != (UINT8 *) ~0)
 		*addr = data;
 }
 
 
 
-static OPBASE_HANDLER( apple3_opbase )
+static DIRECT_UPDATE_HANDLER( apple3_opbase )
 {
 	UINT8 *opptr;
 
 	if ((address & 0xFF00) == 0x0000)
 	{
 		opptr = apple3_get_zpa_addr(address);
-		opbase->mask = ~0;
-		opbase->rom = opbase->ram = opptr - address;
-		opbase->mem_min = address;
-		opbase->mem_max = address;
+		direct->mask = ~0;
+		direct->raw = direct->decrypted = opptr - address;
+		direct->min = address;
+		direct->max = address;
 		address = ~0;
 	}
 	return address;
@@ -658,7 +673,7 @@ static OPBASE_HANDLER( apple3_opbase )
 
 
 
-static void apple3_update_drives(void)
+static void apple3_update_drives(const device_config *device)
 {
 	int enable_mask = 0x00;
 
@@ -681,15 +696,15 @@ static void apple3_update_drives(void)
 		}
 	}
 
-	apple525_set_enable_lines(enable_mask);
+	apple525_set_enable_lines(device,enable_mask);
 }
 
 
 
-static void apple3_set_enable_lines(int enable_mask)
+static void apple3_set_enable_lines(const device_config *device,int enable_mask)
 {
 	apple3_enable_mask = enable_mask;
-	apple3_update_drives();
+	apple3_update_drives(device);
 }
 
 
@@ -710,16 +725,9 @@ DRIVER_INIT( apple3 )
 	memory_region(machine, "main")[0x0685] = 0x00;
 
 	apple3_enable_mask = 0;
-	apple3_update_drives();
+	apple3_update_drives((device_config*)device_list_find_by_tag( machine->config->devicelist,APPLEFDC,"fdc"));
 
-	acia_6551_init();
-
-	AY3600_init();
-
-	via_config(0, &via_0_intf);
-	via_config(1, &via_1_intf);
-	via_set_clock(0, 1000000);
-	via_set_clock(1, 2000000);
+	AY3600_init(machine);
 
 	apple3_profile_init();
 
@@ -729,11 +737,11 @@ DRIVER_INIT( apple3 )
 	via_1_irq = 0;
 	apple3_update_memory(machine);
 
-	memory_set_opbase_handler(0, apple3_opbase);
+	memory_set_direct_update_handler(cpu_get_address_space(machine->cpu[0],ADDRESS_SPACE_PROGRAM), apple3_opbase);
 
 	/* the Apple /// does some weird tricks whereby it monitors the SYNC pin
 	 * on the CPU to check for indexed instructions and directs them to
 	 * different memory locations */
-	cpunum_set_info_fct(0, CPUINFO_PTR_M6502_READINDEXED_CALLBACK, (genf *) apple3_indexed_read);
-	cpunum_set_info_fct(0, CPUINFO_PTR_M6502_WRITEINDEXED_CALLBACK, (genf *) apple3_indexed_write);
+	device_set_info_fct(machine->cpu[0], CPUINFO_FCT_M6502_READINDEXED_CALLBACK, (genf *) apple3_indexed_read);
+	device_set_info_fct(machine->cpu[0], CPUINFO_FCT_M6502_WRITEINDEXED_CALLBACK, (genf *) apple3_indexed_write);
 }

@@ -74,9 +74,9 @@ static void *motor_on_timer;
 static void fdc_handle_hold(running_machine *machine)
 {
 	if (DSKhold && (!DRQ_IRQ_status) && DVENA)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, ASSERT_LINE);
+		cpu_set_input_line(machine->cpu[0], INPUT_LINE_HALT, ASSERT_LINE);
 	else
-		cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], INPUT_LINE_HALT, CLEAR_LINE);
 }
 
 /*
@@ -352,14 +352,14 @@ FLOPPY_OPTIONS_START( ti99 )
 	FLOPPY_OPTION( ti99, "dsk",	"TI99 disk image",	ti99_floppy_identify,	ti99_floppy_construct, NULL)
 FLOPPY_OPTIONS_END
 
-static void ti99_install_tracktranslate_procs(void)
+static void ti99_install_tracktranslate_procs(running_machine *machine)
 {
 	int id;
 	const device_config *image;
 
 	for (id=0; id<MAX_FLOPPIES; id++)
 	{
-		image = image_from_devtype_and_index(IO_FLOPPY, id);
+		image = image_from_devtype_and_index(machine, IO_FLOPPY, id);
 		floppy_install_tracktranslate_proc(image, ti99_tracktranslate);
 	}
 }
@@ -367,17 +367,17 @@ static void ti99_install_tracktranslate_procs(void)
 /*
 	callback called whenever DRQ/IRQ state change
 */
-static void fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
+static WD17XX_CALLBACK( fdc_callback )
 {
-	switch (event)
+	switch (state)
 	{
 	case WD17XX_IRQ_CLR:
 		DRQ_IRQ_status &= ~fdc_IRQ;
-		ti99_peb_set_ilb_bit(intb_fdc_bit, 0);
+		ti99_peb_set_ilb_bit(device->machine, intb_fdc_bit, 0);
 		break;
 	case WD17XX_IRQ_SET:
 		DRQ_IRQ_status |= fdc_IRQ;
-		ti99_peb_set_ilb_bit(intb_fdc_bit, 1);
+		ti99_peb_set_ilb_bit(device->machine, intb_fdc_bit, 1);
 		break;
 	case WD17XX_DRQ_CLR:
 		DRQ_IRQ_status &= ~fdc_DRQ;
@@ -387,8 +387,11 @@ static void fdc_callback(running_machine *machine, wd17xx_state_t event, void *p
 		break;
 	}
 
-	fdc_handle_hold(machine);
+	fdc_handle_hold(device->machine);
 }
+
+const wd17xx_interface ti99_wd17xx_interface = { fdc_callback, NULL };
+
 
 /*
 	Initializes all available controllers. This routine is only used in the 
@@ -397,18 +400,12 @@ static void fdc_callback(running_machine *machine, wd17xx_state_t event, void *p
 */
 void ti99_floppy_controllers_init_all(running_machine *machine)
 {
-	/* initialize the controller chip for TI FDC, CC, BwG */
-	wd17xx_init(machine, WD_TYPE_179X, fdc_callback, NULL);
-
 	/* initialize the controller chip for HFDC */
 	smc92x4_init(0, & hfdc_intf);
 
-	ti99_install_tracktranslate_procs();
+	ti99_install_tracktranslate_procs(machine);
 
-	motor_on_timer = timer_alloc(motor_on_timer_callback, NULL);
-	
-	/* initialize the RTC for BwG and HFDC */
-	mm58274c_init(machine, 1, 1, 0);
+	motor_on_timer = timer_alloc(machine, motor_on_timer_callback, NULL);
 }
 
 /*===========================================================================*/
@@ -417,7 +414,6 @@ void ti99_floppy_controllers_init_all(running_machine *machine)
 */
 
 /* prototypes */
-static void fdc_callback(running_machine *machine, wd17xx_state_t event, void *param);
 static TIMER_CALLBACK(motor_on_timer_callback);
 static int fdc_cru_r(running_machine *machine, int offset);
 static void fdc_cru_w(running_machine *machine, int offset, int data);
@@ -440,6 +436,7 @@ static const ti99_peb_card_handlers_t fdc_handlers =
 */
 void ti99_fdc_reset(running_machine *machine)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD179X, "wd179x");
 	ti99_disk_DSR = memory_region(machine, region_dsr) + offset_fdc_dsr;
 	DSEL = 0;
 	DSKnum = -1;
@@ -451,8 +448,8 @@ void ti99_fdc_reset(running_machine *machine)
 	use_80_track_drives = FALSE;
 
 	ti99_peb_set_card_handlers(0x1100, & fdc_handlers);
-	wd17xx_reset(machine);		/* resets the fdc */
-	wd17xx_set_density(DEN_FM_LO);
+	wd17xx_reset(fdc);		/* resets the fdc */
+	wd17xx_set_density(fdc,DEN_FM_LO);
 }
 
 /*
@@ -494,6 +491,8 @@ static int fdc_cru_r(running_machine *machine, int offset)
 */
 static void fdc_cru_w(running_machine *machine, int offset, int data)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD179X, "wd179x");
+	
 	switch (offset)
 	{
 	case 0:
@@ -542,7 +541,7 @@ static void fdc_cru_w(running_machine *machine, int offset, int data)
 				{
 					DSKnum = drive;
 
-					wd17xx_set_drive(DSKnum);
+					wd17xx_set_drive(fdc,DSKnum);
 					/*wd17xx_set_side(DSKside);*/
 				}
 			}
@@ -561,7 +560,7 @@ static void fdc_cru_w(running_machine *machine, int offset, int data)
 	case 7:
 		/* Select side of disk (bit 7) */
 		DSKside = data;
-		wd17xx_set_side(DSKside);
+		wd17xx_set_side(fdc,DSKside);
 		break;
 	}
 }
@@ -572,19 +571,21 @@ static void fdc_cru_w(running_machine *machine, int offset, int data)
 */
 static  READ8_HANDLER(fdc_mem_r)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	
 	switch (offset)
 	{
 	case 0x1FF0:					/* Status register */
-		return (wd17xx_status_r(machine, offset) ^ 0xFF);
+		return (wd17xx_status_r(fdc, offset) ^ 0xFF);
 		break;
 	case 0x1FF2:					/* Track register */
-		return wd17xx_track_r(machine, offset) ^ 0xFF;
+		return wd17xx_track_r(fdc, offset) ^ 0xFF;
 		break;
 	case 0x1FF4:					/* Sector register */
-		return wd17xx_sector_r(machine, offset) ^ 0xFF;
+		return wd17xx_sector_r(fdc, offset) ^ 0xFF;
 		break;
 	case 0x1FF6:					/* Data register */
-		return wd17xx_data_r(machine, offset) ^ 0xFF;
+		return wd17xx_data_r(fdc, offset) ^ 0xFF;
 		break;
 	default:						/* DSR ROM */
 		return ti99_disk_DSR[offset];
@@ -597,21 +598,23 @@ static  READ8_HANDLER(fdc_mem_r)
 */
 static WRITE8_HANDLER(fdc_mem_w)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	
 	data ^= 0xFF;	/* inverted data bus */
 
 	switch (offset)
 	{
 	case 0x1FF8:					/* Command register */
-		wd17xx_command_w(machine, offset, data);
+		wd17xx_command_w(fdc, offset, data);
 		break;
 	case 0x1FFA:					/* Track register */
-		wd17xx_track_w(machine, offset, data);
+		wd17xx_track_w(fdc, offset, data);
 		break;
 	case 0x1FFC:					/* Sector register */
-		wd17xx_sector_w(machine, offset, data);
+		wd17xx_sector_w(fdc, offset, data);
 		break;
 	case 0x1FFE:					/* Data register */
-		wd17xx_data_w(machine, offset, data);
+		wd17xx_data_w(fdc, offset, data);
 		break;
 	}
 }
@@ -647,6 +650,8 @@ static const ti99_peb_card_handlers_t ccfdc_handlers =
 #if HAS_99CCFDC
 void ti99_ccfdc_reset(running_machine *machine)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD179X, "wd179x");
+	
 	ti99_disk_DSR = memory_region(machine, region_dsr) + offset_ccfdc_dsr;
 	DSEL = 0;
 	DSKnum = -1;
@@ -659,8 +664,8 @@ void ti99_ccfdc_reset(running_machine *machine)
 
 	ti99_peb_set_card_handlers(0x1100, & ccfdc_handlers);
 
-	wd17xx_reset(machine);		/* initialize the floppy disk controller */
-	wd17xx_set_density(DEN_MFM_LO);
+	wd17xx_reset(fdc);		/* initialize the floppy disk controller */
+	wd17xx_set_density(fdc,DEN_MFM_LO);
 }
 #endif
 
@@ -699,6 +704,8 @@ static int ccfdc_cru_r(int offset)
 */
 static void ccfdc_cru_w(running_machine *machine, int offset, int data)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD179X, "wd179x");
+	
 	switch (offset)
 	{
 	case 0:
@@ -744,8 +751,8 @@ static void ccfdc_cru_w(running_machine *machine, int offset, int data)
 				{
 					DSKnum = drive;
 
-					wd17xx_set_drive(DSKnum);
-					/*wd17xx_set_side(DSKside);*/
+					wd17xx_set_drive(fdc,DSKnum);
+					/*wd17xx_set_side(fdc,DSKside);*/
 				}
 			}
 			else
@@ -763,12 +770,12 @@ static void ccfdc_cru_w(running_machine *machine, int offset, int data)
 	case 7:
 		/* Select side of disk (bit 7) */
 		DSKside = data;
-		wd17xx_set_side(DSKside);
+		wd17xx_set_side(fdc,DSKside);
 		break;
 
 	case 10:
 		/* double density enable (active low) */
-		wd17xx_set_density(data ? DEN_FM_LO : DEN_MFM_LO);
+		wd17xx_set_density(fdc,data ? DEN_FM_LO : DEN_MFM_LO);
 		break;
 
 	case 11:
@@ -858,6 +865,8 @@ static UINT8 *bwg_ram;
 */
 void ti99_bwg_reset(running_machine *machine)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD179X, "wd179x");
+	
 	ti99_disk_DSR = memory_region(machine, region_dsr) + offset_bwg_dsr;
         bwg_ram = memory_region(machine, region_dsr) + offset_bwg_ram;
 	bwg_ram_offset = 0;
@@ -875,8 +884,8 @@ void ti99_bwg_reset(running_machine *machine)
         
 	ti99_peb_set_card_handlers(0x1100, & bwg_handlers);
 
-	wd17xx_reset(machine);		/* initialize the floppy disk controller */
-	wd17xx_set_density(DEN_MFM_LO);
+	wd17xx_reset(fdc);		/* initialize the floppy disk controller */
+	wd17xx_set_density(fdc,DEN_MFM_LO);
 }
 
 /*
@@ -913,6 +922,8 @@ static int bwg_cru_r(running_machine *machine, int offset)
 */
 static void bwg_cru_w(running_machine *machine, int offset, int data)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD179X, "wd179x");
+	
 	switch (offset)
 	{
 	case 0:
@@ -958,8 +969,8 @@ static void bwg_cru_w(running_machine *machine, int offset, int data)
 				{
 					DSKnum = drive;
 
-					wd17xx_set_drive(DSKnum);
-					/*wd17xx_set_side(DSKside);*/
+					wd17xx_set_drive(fdc,DSKnum);
+					/*wd17xx_set_side(fdc,DSKside);*/
 				}
 			}
 			else
@@ -977,12 +988,12 @@ static void bwg_cru_w(running_machine *machine, int offset, int data)
 	case 7:
 		/* Select side of disk (bit 7) */
 		DSKside = data;
-		wd17xx_set_side(DSKside);
+		wd17xx_set_side(fdc,DSKside);
 		break;
 
 	case 10:
 		/* double density enable (active low) */
-		wd17xx_set_density(data ? DEN_FM_LO : DEN_MFM_LO);
+		wd17xx_set_density(fdc,data ? DEN_FM_LO : DEN_MFM_LO);
 		break;
 
 	case 11:
@@ -1028,6 +1039,8 @@ static void bwg_cru_w(running_machine *machine, int offset, int data)
 */
 static  READ8_HANDLER(bwg_mem_r)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	
 	int reply = 0;
 
 	if (offset < 0x1c00)
@@ -1037,7 +1050,7 @@ static  READ8_HANDLER(bwg_mem_r)
 	else if (bwg_rtc_enable)
 	{
 		if (! (offset & 1))
-			reply = mm58274c_r(1, (offset - 0x1FE0) >> 1);
+			reply = mm58274c_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c_floppy"), (offset - 0x1FE0) >> 1);
 	}
 	else
 	{
@@ -1047,16 +1060,16 @@ static  READ8_HANDLER(bwg_mem_r)
 			switch (offset)
 			{
 			case 0x1FF0:					/* Status register */
-				reply = wd17xx_status_r(machine, offset);
+				reply = wd17xx_status_r(fdc, offset);
 				break;
 			case 0x1FF2:					/* Track register */
-				reply = wd17xx_track_r(machine, offset);
+				reply = wd17xx_track_r(fdc, offset);
 				break;
 			case 0x1FF4:					/* Sector register */
-				reply = wd17xx_sector_r(machine, offset);
+				reply = wd17xx_sector_r(fdc, offset);
 				break;
 			case 0x1FF6:					/* Data register */
-				reply = wd17xx_data_r(machine, offset);
+				reply = wd17xx_data_r(fdc, offset);
 				break;
 			default:
 				reply = 0;
@@ -1071,6 +1084,8 @@ static  READ8_HANDLER(bwg_mem_r)
 */
 static WRITE8_HANDLER(bwg_mem_w)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	
 	if (offset < 0x1c00)
 		;
 	else if (offset < 0x1fe0)
@@ -1078,7 +1093,7 @@ static WRITE8_HANDLER(bwg_mem_w)
 	else if (bwg_rtc_enable)
 	{
 		if (! (offset & 1))
-			mm58274c_w(1, (offset - 0x1FE0) >> 1, data);
+			mm58274c_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c_floppy"), (offset - 0x1FE0) >> 1, data);
 	}
 	else
 	{
@@ -1091,16 +1106,16 @@ static WRITE8_HANDLER(bwg_mem_w)
 			switch (offset)
 			{
 			case 0x1FF8:					/* Command register */
-				wd17xx_command_w(machine, offset, data);
+				wd17xx_command_w(fdc, offset, data);
 				break;
 			case 0x1FFA:					/* Track register */
-				wd17xx_track_w(machine, offset, data);
+				wd17xx_track_w(fdc, offset, data);
 				break;
 			case 0x1FFC:					/* Sector register */
-				wd17xx_sector_w(machine, offset, data);
+				wd17xx_sector_w(fdc, offset, data);
 				break;
 			case 0x1FFE:					/* Data register */
-				wd17xx_data_w(machine, offset, data);
+				wd17xx_data_w(fdc, offset, data);
 				break;
 			}
 		}
@@ -1388,12 +1403,12 @@ static  READ8_HANDLER(hfdc_mem_r)
 		switch (offset)
 		{
 		case 0x0fd0:
-			reply = smc92x4_r(0, 0);
+			reply = smc92x4_r(space->machine,0, 0);
 			//logerror("hfdc9234 data read\n");
 			break;
 
 		case 0x0fd4:
-			reply = smc92x4_r(0, 1);
+			reply = smc92x4_r(space->machine,0, 1);
 			//logerror("hfdc9234 status read\n");
 			break;
 		}
@@ -1404,7 +1419,7 @@ static  READ8_HANDLER(hfdc_mem_r)
 	{
 		/* rtc */
 		if (! (offset & 1))
-			reply = mm58274c_r(1, (offset - 0x1FE0) >> 1);
+			reply = mm58274c_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c_floppy"), (offset - 0x1FE0) >> 1);
 	}
 	else if (offset < 0x1400)
 	{
@@ -1438,12 +1453,12 @@ static WRITE8_HANDLER(hfdc_mem_w)
 		switch (offset)
 		{
 		case 0x0fd2:
-			smc92x4_w(0, 0, data);
+			smc92x4_w(space->machine,0, 0, data);
 			//logerror("hfdc9234 data write %d\n", data);
 			break;
 
 		case 0x0fd6:
-			smc92x4_w(0, 1, data);
+			smc92x4_w(space->machine,0, 1, data);
 			//logerror("hfdc9234 command write %d\n", data);
 			break;
 		}
@@ -1454,7 +1469,7 @@ static WRITE8_HANDLER(hfdc_mem_w)
 	{
 		/* rtc */
 		if (! (offset & 1))
-			mm58274c_w(1, (offset - 0x1FE0) >> 1, data);
+			mm58274c_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c_floppy"), (offset - 0x1FE0) >> 1, data);
 	}
 	else if (offset < 0x1400)
 	{

@@ -72,6 +72,7 @@ static TIMER_CALLBACK( cassette_data_callback )
 
 QUICKLOAD_LOAD( trs80_cmd )
 {
+	const address_space *space = cpu_get_address_space(image->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	UINT16 entry = 0, block_ofs = 0, block_len = 0;
 	unsigned offs = 0;
 	UINT8 *cmd_buff;
@@ -100,7 +101,7 @@ QUICKLOAD_LOAD( trs80_cmd )
 			LOG(("trs80_cmd_load block ($%02X) %d at $%04X\n", data, block_len, block_ofs));
 			while( block_len && quickload_size )
 			{
-				program_write_byte(block_ofs, cmd_buff[offs]);
+				memory_write_byte(space, block_ofs, cmd_buff[offs]);
 				offs++;
 				block_ofs++;
 				block_len--;
@@ -129,7 +130,7 @@ QUICKLOAD_LOAD( trs80_cmd )
 			quickload_size--;
 		}
 	}
-	activecpu_set_reg(Z80_PC, entry);
+	cpu_set_reg(image->machine->cpu[0], Z80_PC, entry);
 
 	free(cmd_buff);
 	return INIT_PASS;
@@ -202,13 +203,10 @@ DEVICE_IMAGE_LOAD( trs80_floppy )
     return INIT_PASS;
 }
 
-static void trs80_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param);
-
-
 MACHINE_RESET( trs80 )
 {
 	cassette_data = 0x00;
-	cassette_data_timer = timer_alloc( cassette_data_callback, NULL );
+	cassette_data_timer = timer_alloc(machine,  cassette_data_callback, NULL );
 	timer_adjust_periodic( cassette_data_timer, attotime_zero, 0, ATTOTIME_IN_HZ(11025) );
 }
 
@@ -286,13 +284,6 @@ DRIVER_INIT( ht108064 )
 	}
 }
 
-
-MACHINE_START( trs80 )
-{
-	wd17xx_init(machine, WD_TYPE_179X,trs80_fdc_callback, NULL);
-}
-
-
 /*************************************
  *
  *				Port handlers.
@@ -309,7 +300,7 @@ MACHINE_START( trs80 )
 WRITE8_HANDLER( trs80_port_ff_w )
 {
 	static const double levels[4] = { 0.0, -1.0, 0.0, 1.0 };
-	const device_config *cass = device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+	const device_config *cass = device_list_find_by_tag(space->machine->config->devicelist, CASSETTE, "cassette" );
 
 	cassette_change_state( cass, ( data & 0x04 ) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR );
 
@@ -322,7 +313,7 @@ WRITE8_HANDLER( trs80_port_ff_w )
 
  READ8_HANDLER( trs80_port_ff_r )
 {
-	return cassette_data | 0x7F;
+	return cassette_data;// | 0x7F;
 }
 
 /*************************************
@@ -336,28 +327,33 @@ INTERRUPT_GEN( trs80_timer_interrupt )
 	if( (irq_status & IRQ_TIMER) == 0 )
 	{
 		irq_status |= IRQ_TIMER;
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(device, 0, HOLD_LINE);
+	}
+}
+
+static void trs80_fdc_interrupt_internal(running_machine *machine)
+{
+	if ((irq_status & IRQ_FDC) == 0)
+	{
+		irq_status |= IRQ_FDC;
+		cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE);
 	}
 }
 
 INTERRUPT_GEN( trs80_fdc_interrupt )
 {
-	if ((irq_status & IRQ_FDC) == 0)
-	{
-		irq_status |= IRQ_FDC;
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
-	}
+	trs80_fdc_interrupt_internal(device->machine);
 }
 
-void trs80_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
+static WD17XX_CALLBACK( trs80_fdc_callback )
 {
-	switch (event)
+	switch (state)
 	{
 		case WD17XX_IRQ_CLR:
 			irq_status &= ~IRQ_FDC;
 			break;
 		case WD17XX_IRQ_SET:
-			trs80_fdc_interrupt(machine, 0);
+			trs80_fdc_interrupt_internal(device->machine);
 			break;
 		case WD17XX_DRQ_CLR:
 		case WD17XX_DRQ_SET:
@@ -365,6 +361,9 @@ void trs80_fdc_callback(running_machine *machine, wd17xx_state_t event, void *pa
 			break;
 	}
 }
+
+const wd17xx_interface trs80_wd17xx_interface = { trs80_fdc_callback, NULL };
+
 
 INTERRUPT_GEN( trs80_frame_interrupt )
 {
@@ -402,6 +401,7 @@ WRITE8_HANDLER( trs80_irq_mask_w )
 WRITE8_HANDLER( trs80_motor_w )
 {
 	UINT8 drive = 255;
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
 
 	LOG(("trs80 motor_w $%02X\n", data));
 
@@ -440,34 +440,34 @@ WRITE8_HANDLER( trs80_motor_w )
 	if (drive > 3)
 		return;
 
-    wd17xx_set_drive(drive);
-	wd17xx_set_side(head);
+    wd17xx_set_drive(fdc,drive);
+	wd17xx_set_side(fdc,head);
 
 }
 
 /*************************************
  *		Keyboard					 *
  *************************************/
- READ8_HANDLER( trs80_keyboard_r )
+READ8_HANDLER( trs80_keyboard_r )
 {
 	int result = 0;
 
 	if (offset & 1)
-		result |= input_port_read(machine, "LINE0");
+		result |= input_port_read(space->machine, "LINE0");
 	if (offset & 2)
-		result |= input_port_read(machine, "LINE1");
+		result |= input_port_read(space->machine, "LINE1");
 	if (offset & 4)
-		result |= input_port_read(machine, "LINE2");
+		result |= input_port_read(space->machine, "LINE2");
 	if (offset & 8)
-		result |= input_port_read(machine, "LINE3");
+		result |= input_port_read(space->machine, "LINE3");
 	if (offset & 16)
-		result |= input_port_read(machine, "LINE4");
+		result |= input_port_read(space->machine, "LINE4");
 	if (offset & 32)
-		result |= input_port_read(machine, "LINE5");
+		result |= input_port_read(space->machine, "LINE5");
 	if (offset & 64)
-		result |= input_port_read(machine, "LINE6");
+		result |= input_port_read(space->machine, "LINE6");
 	if (offset & 128)
-		result |= input_port_read(machine, "LINE7");
+		result |= input_port_read(space->machine, "LINE7");
 
 	return result;
 }

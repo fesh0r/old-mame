@@ -7,6 +7,7 @@
 */
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
 #include "machine/6821pia.h"
@@ -196,12 +197,12 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( crvision_int )
 {
-    TMS9928A_interrupt(machine);
+    TMS9928A_interrupt(device->machine);
 }
 
 static void crvision_vdp_interrupt(running_machine *machine, int state)
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, state);
+	cpu_set_input_line(machine->cpu[0], INPUT_LINE_IRQ0, state);
 }
 
 static const TMS9928a_interface tms9918_intf =
@@ -301,19 +302,19 @@ static READ8_HANDLER( pia_portb_r )
 
 	if (keylatch & 0x01)
 	{
-		return read_keyboard(machine, 0);
+		return read_keyboard(space->machine, 0);
 	}
 	else if (keylatch & 0x02)
 	{
-		return read_keyboard(machine, 1);
+		return read_keyboard(space->machine, 1);
 	}
 	else if (keylatch & 0x04)
 	{
-		return read_keyboard(machine, 2);
+		return read_keyboard(space->machine, 2);
 	}
 	else if (keylatch & 0x08)
 	{
-		return read_keyboard(machine, 3);
+		return read_keyboard(space->machine, 3);
 	}
 
 	return 0xff;
@@ -356,12 +357,12 @@ static WRITE8_HANDLER( pia_portb_w )
         PB7     SN76489 data output
     */
 
-	sn76496_0_w(machine, 0, data);
+	sn76496_0_w(space, 0, data);
 
 	sn76489_ready = 0;
 
 	// wait 32 cycles of 2 MHz to synchronize CPU and SN76489
-	timer_set(ATTOTIME_IN_USEC(16), NULL, 0, sn76489_set_ready);
+	timer_set(space->machine, ATTOTIME_IN_USEC(16), NULL, 0, sn76489_set_ready);
 }
 
 static WRITE8_HANDLER( pia_cb2_w )
@@ -387,25 +388,91 @@ static const pia6821_interface crvision_pia_intf =
 
 static MACHINE_START( crvision )
 {
-	state_save_register_global(keylatch);
-	state_save_register_global(sn76489_ready);
+	state_save_register_global(machine, keylatch);
+	state_save_register_global(machine, sn76489_ready);
 
 	TMS9928A_configure(&tms9918_intf);
-	pia_config(0, &crvision_pia_intf);
+	pia_config(machine, 0, &crvision_pia_intf);
 }
 
 static MACHINE_START( fnvision )
 {
-	state_save_register_global(keylatch);
-	state_save_register_global(sn76489_ready);
+	state_save_register_global(machine, keylatch);
+	state_save_register_global(machine, sn76489_ready);
 
 	TMS9928A_configure(&tms9929_intf);
-	pia_config(0, &crvision_pia_intf);
+	pia_config(machine, 0, &crvision_pia_intf);
 }
 
 static MACHINE_RESET( crvision )
 {
 	pia_reset();
+}
+
+
+static DEVICE_IMAGE_LOAD( crvision_cart )
+{
+	int size = image_length(image);
+	running_machine *machine = image->machine;
+	UINT8 *mem = memory_region(machine, "main");
+
+	switch (size)
+	{
+	case 0x1000: // 4K
+		image_fread(image, mem + 0x9000, 0x1000);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
+		break;
+
+	case 0x1800: // 6K
+		image_fread(image, mem + 0x9000, 0x1000);
+		image_fread(image, mem + 0x8800, 0x0800);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
+		break;
+
+	case 0x2000: // 8K
+		image_fread(image, mem + 0x8000, 0x2000);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
+		break;
+
+	case 0x2800: // 10K
+		image_fread(image, mem + 0x8000, 0x2000);
+		image_fread(image, mem + 0x5800, 0x0800);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x4000, 0x5fff, 0, 0x2000, SMH_BANK2);
+		break;
+
+	case 0x3000: // 12K
+		image_fread(image, mem + 0x8000, 0x2000);
+		image_fread(image, mem + 0x5000, 0x1000);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x4000, 0x5fff, 0, 0x2000, SMH_BANK2);
+		break;
+
+	case 0x4000: // 16K
+		image_fread(image, mem + 0xa000, 0x2000);
+		image_fread(image, mem + 0x8000, 0x2000);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_BANK1);
+		break;
+
+	case 0x4800: // 18K
+		image_fread(image, mem + 0xa000, 0x2000);
+		image_fread(image, mem + 0x8000, 0x2000);
+		image_fread(image, mem + 0x4800, 0x0800);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0x8fff, 0, 0, SMH_BANK1);
+		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x4000, 0x4fff, 0, 0x3000, SMH_BANK2);
+		break;
+
+	default:
+		return INIT_FAIL;
+	}
+
+	memory_configure_bank(machine, 1, 0, 1, mem + 0x8000, 0);
+	memory_set_bank(machine, 1, 0);
+
+	memory_configure_bank(machine, 2, 0, 1, mem + 0x4000, 0);
+	memory_set_bank(machine, 2, 0);
+
+	return INIT_PASS;
 }
 
 /* Machine Driver */
@@ -431,6 +498,12 @@ static MACHINE_DRIVER_START( crvision )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
+
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom")
+	MDRV_CARTSLOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(crvision_cart)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( fnvision )
@@ -454,102 +527,8 @@ ROM_START( fnvision )
     ROM_LOAD( "funboot.rom", 0xc000, 0x0800, CRC(05602697) SHA1(c280b20c8074ba9abb4be4338b538361dfae517f) )
 ROM_END
 
-/* System Configuration */
-
-static DEVICE_IMAGE_LOAD( crvision_cart )
-{
-	int size = image_length(image);
-	running_machine *machine = image->machine;
-	UINT8 *mem = memory_region(machine, "main");
-
-	switch (size)
-	{
-	case 0x1000: // 4K
-		image_fread(image, mem + 0x9000, 0x1000);
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
-		break;
-
-	case 0x1800: // 6K
-		image_fread(image, mem + 0x9000, 0x1000);
-		image_fread(image, mem + 0x8800, 0x0800);
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
-		break;
-
-	case 0x2000: // 8K
-		image_fread(image, mem + 0x8000, 0x2000);
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
-		break;
-
-	case 0x2800: // 10K
-		image_fread(image, mem + 0x8000, 0x2000);
-		image_fread(image, mem + 0x5800, 0x0800);
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0x2000, SMH_BANK2);
-		break;
-
-	case 0x3000: // 12K
-		image_fread(image, mem + 0x8000, 0x2000);
-		image_fread(image, mem + 0x5000, 0x1000);
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0x2000, SMH_BANK2);
-		break;
-
-	case 0x4000: // 16K
-		image_fread(image, mem + 0xa000, 0x2000);
-		image_fread(image, mem + 0x8000, 0x2000);
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
-		break;
-
-	case 0x4800: // 18K
-		image_fread(image, mem + 0xa000, 0x2000);
-		image_fread(image, mem + 0x8000, 0x2000);
-		image_fread(image, mem + 0x4800, 0x0800);
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, SMH_BANK1);
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4fff, 0, 0x3000, SMH_BANK2);
-		break;
-
-	default:
-		return INIT_FAIL;
-	}
-
-	memory_configure_bank(1, 0, 1, mem + 0x8000, 0);
-	memory_set_bank(1, 0);
-
-	memory_configure_bank(2, 0, 1, mem + 0x4000, 0);
-	memory_set_bank(2, 0);
-
-	return INIT_PASS;
-}
-
-static void crvision_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(crvision_cart); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( crvision )
-	CONFIG_DEVICE(crvision_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( fnvision )
-	CONFIG_DEVICE(crvision_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
 /* System Drivers */
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY             FULLNAME */
-COMP( 1981, crvision, 0,		0,		crvision,	crvision,	0,		crvision,	"Video Technology", "CreatiVision (NTSC)", GAME_SUPPORTS_SAVE )
-CONS( 1983, fnvision, crvision, 0,		fnvision,	crvision,	0,		fnvision,	"Video Technology", "FunVision Computer Video Games System (PAL)", GAME_SUPPORTS_SAVE )
+COMP( 1981, crvision, 0,		0,		crvision,	crvision,	0,		0,	"Video Technology", "CreatiVision (NTSC)", GAME_SUPPORTS_SAVE )
+CONS( 1983, fnvision, crvision, 0,		fnvision,	crvision,	0,		0,	"Video Technology", "FunVision Computer Video Games System (PAL)", GAME_SUPPORTS_SAVE )

@@ -11,9 +11,18 @@
 #ifndef BBC_H_
 #define BBC_H_
 
+#include "machine/6522via.h"
+#include "machine/6850acia.h"
+#include "machine/i8271.h"
+#include "machine/wd17xx.h"
+#include "machine/upd7002.h"
+
 
 /*----------- defined in machine/bbc.c -----------*/
 
+extern const via6522_interface bbcb_system_via;
+extern const via6522_interface bbcb_user_via;
+extern const wd17xx_interface bbc_wd17xx_interface;
 DRIVER_INIT( bbc );
 DRIVER_INIT( bbcm );
 
@@ -89,6 +98,9 @@ READ8_HANDLER (BBC_6850_r);
 
 WRITE8_HANDLER ( BBC_SerialULA_w );
 
+extern const acia6850_interface bbc_acia6850_interface;
+extern const i8271_interface bbc_i8271_interface;
+extern const uPD7002_interface BBC_uPD7002;
 
 /*----------- defined in video/bbc.c -----------*/
 

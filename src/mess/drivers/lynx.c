@@ -76,7 +76,7 @@ static MACHINE_DRIVER_START( lynx )
 	MDRV_CPU_ADD("main", M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
 	MDRV_CPU_PROGRAM_MAP(lynx_mem, 0)
 	MDRV_CPU_VBLANK_INT("main", lynx_frame_int)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( lynx )
 
@@ -102,6 +102,8 @@ static MACHINE_DRIVER_START( lynx )
 
 	/* devices */
 	MDRV_QUICKLOAD_ADD(lynx, "o,lnx", 0)
+	
+	MDRV_IMPORT_FROM(lynx_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -172,7 +174,7 @@ static QUICKLOAD_LOAD( lynx )
 		return INIT_FAIL;
 
 	for (i = 0; i < length; i++)
-		program_write_byte(start + i, data[i]);
+		memory_write_byte(cputag_get_address_space(image->machine,"main",ADDRESS_SPACE_PROGRAM), start + i, data[i]);
 
 	rom[0x1fc] = start & 0xff;
 	rom[0x1fd] = start >> 8;
@@ -182,10 +184,6 @@ static QUICKLOAD_LOAD( lynx )
 	return INIT_PASS;
 }
 
-static SYSTEM_CONFIG_START(lynx)
-	CONFIG_DEVICE(lynx_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
 /***************************************************************************
 
   Game driver(s)
@@ -193,5 +191,5 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY   FULLNAME      FLAGS */
-CONS( 1989, lynx,   0,      0,      lynx,   lynx,   0,      lynx,   "Atari",  "Lynx",       GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
-CONS( 1991, lynx2,  lynx,   0,      lynx2,  lynx,   0,      lynx,   "Atari",  "Lynx II",    GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
+CONS( 1989, lynx,   0,      0,      lynx,   lynx,   0,      0,  	 "Atari",  "Lynx",       GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
+CONS( 1991, lynx2,  lynx,   0,      lynx2,  lynx,   0,      0,  	 "Atari",  "Lynx II",    GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )

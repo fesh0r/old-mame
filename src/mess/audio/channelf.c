@@ -2,7 +2,6 @@
 
 #include "driver.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "includes/channelf.h"
 
 static sound_stream *channel;
@@ -37,16 +36,16 @@ void channelf_sound_w(int mode)
 
 
 
-static void channelf_sh_update(void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length)
+static STREAM_UPDATE( channelf_sh_update )
 {
 	UINT32 mask = 0, target = 0;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 	stream_sample_t *sample = buffer;
 
 	switch( sound_mode )
 	{
 		case 0: /* sound off */
-			memset(buffer,0,sizeof(*buffer)*length);
+			memset(buffer,0,sizeof(*buffer)*samples);
 			return;
 
 		case 1: /* high tone (2V) - 1000Hz */
@@ -63,7 +62,7 @@ static void channelf_sh_update(void *param,stream_sample_t **inputs, stream_samp
 			break;
 	}
 
-	while (length-- > 0)
+	while (samples-- > 0)
 	{
 		if ((sample_counter & mask) == target)
 			*sample++ = envelope;
@@ -76,12 +75,12 @@ static void channelf_sh_update(void *param,stream_sample_t **inputs, stream_samp
 
 
 
-void *channelf_sh_custom_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( channelf_sh_custom_start )
 {
 	int rate;
 
-	channel = stream_create(0, 1, Machine->sample_rate, 0, channelf_sh_update);
-	rate = Machine->sample_rate;
+	channel = stream_create(device, 0, 1, device->machine->sample_rate, 0, channelf_sh_update);
+	rate = device->machine->sample_rate;
 
 	/*
 	 * 2V = 1000Hz ~= 3579535/224/16

@@ -71,7 +71,7 @@ static MACHINE_RESET( exelv )
 {
 	tms3556_reset();
 	io_reset();
-	memory_set_bankptr( 1, memory_region(machine, "user1") + 0x0200 );
+	memory_set_bankptr( machine, 1, memory_region(machine, "user1") + 0x0200 );
 }
 
 static INTERRUPT_GEN( exelv_hblank_interrupt )
@@ -207,11 +207,12 @@ static void io_iterate(running_machine *machine)
 			break;
 		case IOS_INIT:
 			mailbox_out = 0x08;
-			cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+			cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, CLEAR_LINE);
 			io_state = IOS_NOP;
 			break;
 		case IOS_RESET:
-			timer_set(ATTOTIME_IN_USEC(100), NULL, 0, io_reset_timer);
+			timer_set(machine, ATTOTIME_IN_USEC(100), NULL, 0, io_reset_timer);
 			break;
 		case IOS_STSPEECH1:
 			io_state = IOS_STSPEECH2;
@@ -223,17 +224,20 @@ static void io_iterate(running_machine *machine)
 			break;
 		case IOS_CHARDEF1:
 			mailbox_out = 0x07;
-			cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+			cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, CLEAR_LINE);
 			io_state = IOS_CHARDEF2;
 			break;
 		case IOS_CHARDEF2:
 			mailbox_out = 0x04;
-			cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+			cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, CLEAR_LINE);
 			io_state = IOS_CHARDEF3;
 			break;
 		case IOS_CHARDEF3:
 			mailbox_out = 0xF5;
-			cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+			cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, CLEAR_LINE);
 			io_state = IOS_CHARDEF4;
 			io_counter = 0;
 			break;
@@ -372,7 +376,8 @@ static void io_iterate(running_machine *machine)
 					0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 				};
 				mailbox_out = fontdata[io_counter+9-2*(io_counter%10)] >> 2;
-				cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+				cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, ASSERT_LINE);
+				cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, CLEAR_LINE);
 				io_counter++;
 				if (io_counter == 127*10)
 					io_state = IOS_NOP;
@@ -389,8 +394,10 @@ static void set_io_hsk(running_machine *machine, int state)
 		io_hsk = state;
 		if (io_command_ack)
 		{
-			if (io_hsk)
-				cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+			if (io_hsk) {
+				cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, ASSERT_LINE);
+				cpu_set_input_line(machine->cpu[0], TMS7000_IRQ1_LINE, CLEAR_LINE);
+			}
 			else
 			{
 				io_command_ack = 0;
@@ -417,7 +424,7 @@ static READ8_HANDLER(mailbox_r)
 	mailbox_out = 0x00;
 
 	/* see if there are other messages to post */
-	io_iterate(machine);
+	io_iterate(space->machine);
 
 	return reply;
 }
@@ -480,7 +487,7 @@ static READ8_HANDLER(exelv_porta_r)
 
 static WRITE8_HANDLER(exelv_portb_w)
 {
-	set_io_hsk(machine, (data & 0x1) != 0);
+	set_io_hsk(space->machine, (data & 0x1) != 0);
 	set_io_ack((data & 0x2) != 0);
 }
 
@@ -563,7 +570,7 @@ static MACHINE_DRIVER_START(exelv)
 	MDRV_CPU_PROGRAM_MAP(exelv_tms7040_map, 0)
 	MDRV_CPU_IO_MAP(exelv_tms7040_port, 0)
 
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET( exelv )
 

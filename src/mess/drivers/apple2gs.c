@@ -41,6 +41,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/g65816/g65816.h"
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
 #include "devices/mflopimg.h"
@@ -102,9 +103,6 @@ static const unsigned char apple2gs_palette[] =
 	0x4, 0xF, 0x9,	/* Aquamarine    $E              $04F9 */
 	0xF, 0xF, 0xF	/* White         $F              $0FFF */
 };
-
-MACHINE_DRIVER_EXTERN( apple2e );
-INPUT_PORTS_EXTERN( apple2ep );
 
 static INPUT_PORTS_START( apple2gs )
 	PORT_INCLUDE( apple2ep )
@@ -178,12 +176,10 @@ static MACHINE_DRIVER_START( apple2gs )
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 
 	/* replace the old-style FDC with an IWM */
-	MDRV_DEVICE_REMOVE("fdc", APPLEFDC)
-	MDRV_DEVICE_ADD("fdc", IWM)
-	MDRV_DEVICE_CONFIG(apple2_fdc_interface)
-
+	MDRV_APPLEFDC_REMOVE("fdc")
+	MDRV_IWM_ADD("fdc", apple2_fdc_interface)
 	/* SCC */
-	MDRV_DEVICE_ADD("scc", SCC8530)
+	MDRV_SCC8530_ADD("scc")
 MACHINE_DRIVER_END
 
 
@@ -272,7 +268,7 @@ static void apple2gs_floppy525_getinfo(const mess_device_class *devclass, UINT32
 
 static DRIVER_INIT(apple2gs)
 {
-	state_save_register_global_array(apple2gs_docram);
+	state_save_register_global_array(machine, apple2gs_docram);
 }
 
 /* ----------------------------------------------------------------------- */

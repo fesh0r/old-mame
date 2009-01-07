@@ -2,6 +2,7 @@
 	header file for machine/ti99_4x.c
 */
 #include "video/tms9928a.h"
+#include "machine/tms9901.h"
 
 /* defines */
 
@@ -124,7 +125,9 @@ enum
 	config_mecmouse_bit	= 10,
 	config_mecmouse_mask= 0x1,
 	config_usbsm_bit	= 11,
-	config_usbsm_mask	= 0x1
+	config_usbsm_mask	= 0x1,
+	config_boot_bit		= 13,
+	config_boot_mask	= 0x1
 };
 
 
@@ -178,3 +181,7 @@ extern void tms9901_set_int2(running_machine *machine, int state);
 
 READ8_HANDLER ( ti99_8_r );
 WRITE8_HANDLER ( ti99_8_w );
+
+extern const tms9901_interface tms9901reset_param_ti99_4x;
+extern const tms9901_interface tms9901reset_param_ti99_8;
+

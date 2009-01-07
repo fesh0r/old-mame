@@ -10,7 +10,7 @@
 
 /*
 
-2008 - Driver Updates 
+2008 - Driver Updates
 ---------------------
 
 (most of the informations are taken from http://www.zimmers.net/cbmpics/ )
@@ -27,81 +27,83 @@ miss the routines needed to actually load from a tape
 
   Various models:
 
-U.S. name			EU name		RAM
+U.S. name           EU name     RAM
 
-B500 (*)			-			128k
-B128				CBM 610		128k
-B256				CBM 620		256k
-B128-80HP (**)		CBM 710		128k
-B256-80HP (**)		CBM 720		256k
-BX256-80HP (***)	CBM 730		256k
+B500 (*)            -           128k
+B128                CBM 610     128k
+B256                CBM 620     256k
+B128-80HP (**)      CBM 710     128k
+B256-80HP (**)      CBM 720     256k
+BX256-80HP (***)    CBM 730     256k
 
 (*) Prototype for the B128? As you can read at http://www.zimmers.net/cbmpics/cb500.html
-	the naming of these machines is not clear: either they were B500/128 & 
-	B500/256 or B128 & B256. However, these names always refer to the low 
-	profile models.
+    the naming of these machines is not clear: either they were B500/128 &
+    B500/256 or B128 & B256. However, these names always refer to the low
+    profile models.
 (**) HP stands for High Profile. The other systems were the low profile models.
-	HP machines had a detachable keyboard
+    HP machines had a detachable keyboard
 (***) Additional 8088 CPU present
 
-CPU: MOS 6509 (2 mhz)
+CPU: MOS 6509 (2 MHz)
 RAM: 128 Kilobytes (Expandable to 256k internal, 704k external)
 ROM: 24 Kilobytes
 Video: MOS 6545 CTRC (Text: 80 columns, 25 rows)
 Sound: MOS 6581 SID (3 voice stereo synthesizer/digital sound capabilities)
 Ports: CSG 6551/6525x2/6526 (IEEE-488 port; CBM Datasette port; RS232 port;
-	CBM Monitor port; CBM-II/PET-II expansion port; 1 RCA audio port; Power 
-	and reset switches 
-Keyboard: Full-sized 102 key QWERTY (19 key numeric keypad!; 4 direction 
-	cursor-pad)
+    CBM Monitor port; CBM-II/PET-II expansion port; 1 RCA audio port; Power
+    and reset switches
+Keyboard: Full-sized 102 key QWERTY (19 key numeric keypad!; 4 direction
+    cursor-pad)
 
 
 * Commodore PET-II Series (1983)
 
-  This series only features the P500 machine, which never even reached the 
-market. In this machine, the Datasette port can be used (the BASIC ROMs 
+  This series only features the P500 machine, which never even reached the
+market. In this machine, the Datasette port can be used (the BASIC ROMs
 contain the necessary routines). It is also probably know as C128-40.
-  
-CPU: CSG 6509 (1 Mhz)
+
+CPU: CSG 6509 (1 MHz)
 RAM: 128 kilobytes, expandable to 720k
 ROM: 24 kilobytes
-Video: CSG 6569 "VIC-II" (320 x 200 Hi-Resolution; 40 columns text; Palette 
-	of 16 colors)
+Video: CSG 6569 "VIC-II" (320 x 200 Hi-Resolution; 40 columns text; Palette
+    of 16 colors)
 Sound: CSG 6581 "SID" (3 voice stereo synthesizer/digital sound capabilities)
-Ports: CSG 6551/6522 (2 Joystick/Mouse ports; IEEE-488 port; CBM Datasette 
-	port; RS232 port; CBM Monitor port; CBM-II/PET-II expansion port; 1 RCA 
-	audio port; Power and reset switches)
-Keyboard: Full-sized 102 key QWERTY (19 key numeric keypad!; 4 direction 
-	cursor-pad)
+Ports: CSG 6551/6522 (2 Joystick/Mouse ports; IEEE-488 port; CBM Datasette
+    port; RS232 port; CBM Monitor port; CBM-II/PET-II expansion port; 1 RCA
+    audio port; Power and reset switches)
+Keyboard: Full-sized 102 key QWERTY (19 key numeric keypad!; 4 direction
+    cursor-pad)
 
 [To Do]
 
-* Support is still missing for: Sound, IEEE488, Floppy, internal slots 
+* Support is still missing for: Sound, IEEE488, Floppy, internal slots
 
 * Emulate 8088 co-processor for BX-256HP and eventually add its European
-	counterpart CBM 730
+    counterpart CBM 730
 
-* Add better P500 emulation (almost everything: memory access, inputs, 
-	Datasette, etc.)
+* Add better P500 emulation (almost everything: memory access, inputs,
+    Datasette, etc.)
 
 * Was CBM 710 / 720 monitor at 50Hz? If not remove MACHINE_DRIVER_START(cbm700pal)
-	and use the 60Hz version for the whole High Profile
+    and use the 60Hz version for the whole High Profile
 
 * Find info about the following models (if ever existed):
-	+ BX128-80HP
-	+ CBM 700
-	+ CBM 505, CBM 510 (these seems proto as CBM 500 but with less RAM, 64 
-		& 128)
+    + BX128-80HP
+    + CBM 700
+    + CBM 505, CBM 510 (these seems proto as CBM 500 but with less RAM, 64
+        & 128)
 */
 
 
 #include "driver.h"
+//#include "cpu/i86/i86.h"
 #include "cpu/m6502/m6509.h"
 #include "sound/sid6581.h"
+#include "machine/6525tpi.h"
 #include "machine/6526cia.h"
 
 #include "includes/cbm.h"
-#include "machine/tpi6525.h"
+#include "includes/cbmb.h"
 #include "machine/cbmipt.h"
 #include "video/vic6567.h"
 #include "video/mc6845.h"
@@ -133,10 +135,10 @@ static ADDRESS_MAP_START( cbmb_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	/* disk units */
 	AM_RANGE(0xfda00, 0xfdaff) AM_READ( sid6581_0_port_r )
 	/* db00 coprocessor */
-	AM_RANGE(0xfdc00, 0xfdcff) AM_READ( cia_0_r )
+	AM_RANGE(0xfdc00, 0xfdcff) AM_DEVREAD( CIA6526R1, "cia", cia_r )
 	/* dd00 acia */
-	AM_RANGE(0xfde00, 0xfdeff) AM_READ( tpi6525_0_port_r)
-	AM_RANGE(0xfdf00, 0xfdfff) AM_READ( tpi6525_1_port_r)
+	AM_RANGE(0xfde00, 0xfdeff) AM_DEVREAD(TPI6525, "tpi6525_0", tpi6525_r)
+	AM_RANGE(0xfdf00, 0xfdfff) AM_DEVREAD(TPI6525, "tpi6525_1", tpi6525_r)
 	AM_RANGE(0xfe000, 0xfffff) AM_READ( SMH_ROM )
 ADDRESS_MAP_END
 
@@ -156,10 +158,10 @@ static ADDRESS_MAP_START( cbmb_writemem , ADDRESS_SPACE_PROGRAM, 8)
 	/* disk units */
 	AM_RANGE(0xfda00, 0xfdaff) AM_WRITE( sid6581_0_port_w)
 	/* db00 coprocessor */
-	AM_RANGE(0xfdc00, 0xfdcff) AM_WRITE( cia_0_w)
+	AM_RANGE(0xfdc00, 0xfdcff) AM_DEVWRITE( CIA6526R1, "cia", cia_w)
 	/* dd00 acia */
-	AM_RANGE(0xfde00, 0xfdeff) AM_WRITE( tpi6525_0_port_w)
-	AM_RANGE(0xfdf00, 0xfdfff) AM_WRITE( tpi6525_1_port_w)
+	AM_RANGE(0xfde00, 0xfdeff) AM_DEVWRITE(TPI6525, "tpi6525_0", tpi6525_w)
+	AM_RANGE(0xfdf00, 0xfdfff) AM_DEVWRITE(TPI6525, "tpi6525_1", tpi6525_w)
 	AM_RANGE(0xfe000, 0xfffff) AM_WRITE( SMH_ROM) AM_BASE( &cbmb_kernal )
 ADDRESS_MAP_END
 
@@ -180,10 +182,10 @@ static ADDRESS_MAP_START( p500_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	/* disk units */
 	AM_RANGE(0xfda00, 0xfdaff) AM_READ( sid6581_0_port_r )
 	/* db00 coprocessor */
-	AM_RANGE(0xfdc00, 0xfdcff) AM_READ( cia_0_r )
+	AM_RANGE(0xfdc00, 0xfdcff) AM_DEVREAD( CIA6526R1, "cia", cia_r )
 	/* dd00 acia */
-	AM_RANGE(0xfde00, 0xfdeff) AM_READ( tpi6525_0_port_r)
-	AM_RANGE(0xfdf00, 0xfdfff) AM_READ( tpi6525_1_port_r)
+	AM_RANGE(0xfde00, 0xfdeff) AM_DEVREAD(TPI6525, "tpi6525_0", tpi6525_r)
+	AM_RANGE(0xfdf00, 0xfdfff) AM_DEVREAD(TPI6525, "tpi6525_1", tpi6525_r)
 	AM_RANGE(0xfe000, 0xfffff) AM_READ( SMH_ROM )
 ADDRESS_MAP_END
 
@@ -204,10 +206,10 @@ static ADDRESS_MAP_START( p500_writemem , ADDRESS_SPACE_PROGRAM, 8)
 	/* disk units */
 	AM_RANGE(0xfda00, 0xfdaff) AM_WRITE( sid6581_0_port_w)
 	/* db00 coprocessor */
-	AM_RANGE(0xfdc00, 0xfdcff) AM_WRITE( cia_0_w)
+	AM_RANGE(0xfdc00, 0xfdcff) AM_DEVWRITE( CIA6526R1, "cia", cia_w)
 	/* dd00 acia */
-	AM_RANGE(0xfde00, 0xfdeff) AM_WRITE( tpi6525_0_port_w)
-	AM_RANGE(0xfdf00, 0xfdfff) AM_WRITE( tpi6525_1_port_w)
+	AM_RANGE(0xfde00, 0xfdeff) AM_DEVWRITE(TPI6525, "tpi6525_0", tpi6525_w)
+	AM_RANGE(0xfdf00, 0xfdfff) AM_DEVWRITE(TPI6525, "tpi6525_1", tpi6525_w)
 	AM_RANGE(0xfe000, 0xfffff) AM_WRITE( SMH_ROM) AM_BASE( &cbmb_kernal )
 ADDRESS_MAP_END
 
@@ -223,7 +225,7 @@ static INPUT_PORTS_START( p500 )
 	PORT_INCLUDE( cbmb_keyboard )			/* ROW0 -> ROW11 */
 
 	PORT_INCLUDE( cbmb_special )			/* SPECIAL */
-	
+
 	PORT_INCLUDE( c64_controls )			/* CTRLSEL, JOY0, JOY1, PADDLE0 -> PADDLE3, TRACKX, TRACKY, LIGHTX, LIGHTY, OTHER */
 INPUT_PORTS_END
 
@@ -325,7 +327,6 @@ static PALETTE_INIT( cbm700 )
 
 static const mc6845_interface cbm600_crtc = {
 	"main",
-	XTAL_18MHz / 8 /*?*/,	/*  I do not know if this is correct, please verify */
 	8 /*?*/,
 	NULL,
 	cbm600_update_row,
@@ -337,7 +338,6 @@ static const mc6845_interface cbm600_crtc = {
 
 static const mc6845_interface cbm700_crtc = {
 	"main",
-	XTAL_18MHz / 8 /*?*/,	/* I do not know if this is correct, please verify */
 	9 /*?*/,
 	NULL,
 	cbm700_update_row,
@@ -354,12 +354,38 @@ static const mc6845_interface cbm700_crtc = {
  *
  *************************************/
 
+const tpi6525_interface cbmb_tpi_0_intf =
+{
+	cbmb_tpi0_port_a_r,
+	NULL,
+	NULL,
+	cbmb_tpi0_port_a_w,
+	NULL,
+	NULL,
+	cbmb_change_font,
+	NULL,
+	cbmb_irq
+};
+
+const tpi6525_interface cbmb_tpi_1_intf =
+{
+	cbmb_keyboard_line_a,
+	cbmb_keyboard_line_b,
+	cbmb_keyboard_line_c,
+	cbmb_keyboard_line_select_a,
+	cbmb_keyboard_line_select_b,
+	cbmb_keyboard_line_select_c,
+	NULL,
+	NULL,
+	NULL
+};
+
 
 static MACHINE_DRIVER_START( cbm600 )
+	MDRV_DRIVER_DATA(cbmb_state)
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6509, 7833600)        /* 7.8336 Mhz */
+	MDRV_CPU_ADD("main", M6509, 7833600)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(cbmb_readmem, cbmb_writemem)
-	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_RESET( cbmb )
 
@@ -374,8 +400,7 @@ static MACHINE_DRIVER_START( cbm600 )
 	MDRV_PALETTE_LENGTH(sizeof (cbm700_palette) / sizeof (cbm700_palette[0]) / 3)
 	MDRV_PALETTE_INIT( cbm700 )
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
-	MDRV_DEVICE_CONFIG( cbm600_crtc )
+	MDRV_MC6845_ADD("crtc", MC6845, XTAL_18MHz / 8 /*?*/ /*  I do not know if this is correct, please verify */, cbm600_crtc)
 
 	MDRV_VIDEO_START( cbmb_crtc )
 	MDRV_VIDEO_UPDATE( cbmb_crtc )
@@ -385,8 +410,17 @@ static MACHINE_DRIVER_START( cbm600 )
 	MDRV_SOUND_ADD("sid6581", SID6581, 1000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	/* devices */
+	/* quickload */
 	MDRV_QUICKLOAD_ADD(cbmb, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+
+	/* cia */
+	MDRV_CIA6526_ADD("cia", CIA6526R1, 7833600, cbmb_cia)
+
+	/* tpi */
+	MDRV_TPI6525_ADD("tpi6525_0", cbmb_tpi_0_intf)
+	MDRV_TPI6525_ADD("tpi6525_1", cbmb_tpi_1_intf)
+
+	MDRV_IMPORT_FROM(cbmb_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -404,8 +438,8 @@ static MACHINE_DRIVER_START( cbm700 )
 	MDRV_SCREEN_VISIBLE_AREA(0, 720 - 1, 0, 350 - 1)
 	MDRV_GFXDECODE( cbm700 )
 
-	MDRV_DEVICE_MODIFY("crtc", MC6845)
-	MDRV_DEVICE_CONFIG( cbm700_crtc )
+	MDRV_MC6845_REMOVE("crtc", MC6845)
+	MDRV_MC6845_ADD("crtc", MC6845, XTAL_18MHz / 8 /*? I do not know if this is correct, please verify */, cbm700_crtc)
 
 	MDRV_VIDEO_START( cbm700 )
 MACHINE_DRIVER_END
@@ -421,16 +455,16 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( bx256hp )
 	MDRV_IMPORT_FROM( cbm700 )
 
-//	MDRV_CPU_ADD("8088", I8088, /* ? */)
+//  MDRV_CPU_ADD("8088", I8088, /* ? */)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( p500 )
+	MDRV_DRIVER_DATA(cbmb_state)
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6509, VIC6567_CLOCK)        /* 7.8336 Mhz */
+	MDRV_CPU_ADD("main", M6509, VIC6567_CLOCK)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(p500_readmem, p500_writemem)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
-	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_RESET( cbmb )
 
@@ -447,6 +481,15 @@ static MACHINE_DRIVER_START( p500 )
 
 	/* devices */
 	MDRV_QUICKLOAD_ADD(p500, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+
+	/* cia */
+	MDRV_CIA6526_ADD("cia", CIA6526R1, VIC6567_CLOCK, cbmb_cia)
+
+	/* tpi */
+	MDRV_TPI6525_ADD("tpi6525_0", cbmb_tpi_0_intf)
+	MDRV_TPI6525_ADD("tpi6525_1", cbmb_tpi_1_intf)
+
+	MDRV_IMPORT_FROM(cbmb_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -500,8 +543,8 @@ ROM_START( b256 )
 ROM_END
 
 
-#define rom_cbm610		rom_b128
-#define rom_cbm620		rom_b256
+#define rom_cbm610	rom_b128
+#define rom_cbm620	rom_b256
 
 
 ROM_START( cbm620hu )
@@ -545,8 +588,8 @@ ROM_START( b256hp )
 	ROM_LOAD( "901232-01.u25", 0x0000, 0x1000, CRC(3a350bc3) SHA1(e7f3cbc8e282f79a00c3e95d75c8d725ee3c6287) )
 ROM_END
 
-#define rom_cbm710		rom_b128hp
-#define rom_cbm720		rom_b256hp
+#define rom_cbm710	rom_b128hp
+#define rom_cbm720	rom_b256hp
 
 
 /* BX-256HP - only ROM loading added */
@@ -591,44 +634,26 @@ ROM_START( p500 )
 ROM_END
 
 
-
-/*************************************
- *
- *  System configuration(s)
- *
- *************************************/
-
-
-static SYSTEM_CONFIG_START(cbmb)
-	CONFIG_DEVICE(cbmb_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(p500)
-	CONFIG_DEVICE(cbmb_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
-
 /***************************************************************************
 
   Game driver(s)
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT COMPAT MACHINE     INPUT       INIT        CONFIG  COMPANY                             FULLNAME */
+/*    YEAR  NAME      PARENT  COMPAT  MACHINE    INPUT      INIT       CONFIG  COMPANY                             FULLNAME                                  FLAGS */
+COMP( 1983,	b500,     cbm610, 0,      cbm600,    cbm600,    cbm600,    0,      "Commodore Business Machines Co.",  "B500 (proto, 60Hz)",                     GAME_NOT_WORKING )
+COMP( 1983,	b128,     cbm610, 0,      cbm600pal, cbm600pal, cbm600pal, 0,      "Commodore Business Machines Co.",  "B128 (60Hz)",                            GAME_NOT_WORKING )
+COMP( 1983,	b256,     cbm610, 0,      cbm600pal, cbm600pal, cbm600hu,  0,      "Commodore Business Machines Co.",  "B256 (60Hz)",                            GAME_NOT_WORKING )
+COMP( 1983,	cbm610,   0,      0,      cbm600,    cbm600,    cbm600,    0,      "Commodore Business Machines Co.",  "CBM 610 (50Hz)",                         GAME_NOT_WORKING )
+COMP( 1983,	cbm620,   cbm610, 0,      cbm600pal, cbm600pal, cbm600pal, 0,      "Commodore Business Machines Co.",  "CBM 620 (50Hz)",                         GAME_NOT_WORKING )
+COMP( 1983,	cbm620hu, cbm610, 0,      cbm600pal, cbm600pal, cbm600hu,  0,      "Commodore Business Machines Co.",  "CBM 620 (Hungary, 50Hz)",                GAME_NOT_WORKING )
 
-COMP( 1983,	b500,     cbm610,   0,  cbm600,     cbm600,     cbm600,     cbmb,   "Commodore Business Machines Co.",  "B500 (proto, 60Hz)", GAME_NOT_WORKING)
-COMP( 1983,	b128,     cbm610,   0,  cbm600pal,  cbm600pal,  cbm600pal,  cbmb,   "Commodore Business Machines Co.",	"B128 (60Hz)", GAME_NOT_WORKING)
-COMP( 1983,	b256,     cbm610,   0,  cbm600pal,  cbm600pal,  cbm600hu,   cbmb,   "Commodore Business Machines Co.",	"B256 (60Hz)", GAME_NOT_WORKING)
-COMP( 1983,	cbm610,   0,        0,  cbm600,     cbm600,     cbm600,     cbmb,   "Commodore Business Machines Co.",  "CBM 610 (50Hz)", GAME_NOT_WORKING)
-COMP( 1983,	cbm620,   cbm610,   0,  cbm600pal,  cbm600pal,  cbm600pal,  cbmb,   "Commodore Business Machines Co.",	"CBM 620 (50Hz)", GAME_NOT_WORKING)
-COMP( 1983,	cbm620hu, cbm610,   0,  cbm600pal,  cbm600pal,  cbm600hu,   cbmb,   "Commodore Business Machines Co.",	"CBM 620 (Hungary, 50Hz)", GAME_NOT_WORKING)
+COMP( 1983, b128hp,   cbm610, 0,      cbm700,    cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "B128-80HP (60Hz)",                       GAME_NOT_WORKING )
+COMP( 1983, b256hp,   cbm610, 0,      cbm700,    cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "B256-80HP (60Hz)",                       GAME_NOT_WORKING )
+COMP( 1983, cbm710,   cbm610, 0,      cbm700pal, cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "CBM 710 (50Hz)",                         GAME_NOT_WORKING )
+COMP( 1983, cbm720,   cbm610, 0,      cbm700pal, cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "CBM 720 (50Hz)",                         GAME_NOT_WORKING )
+COMP( 1983, cbm720se, cbm610, 0,      cbm700pal, cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "CBM 720 (Sweden/Finland, 50Hz)",         GAME_NOT_WORKING )
 
-COMP( 1983, b128hp,   cbm610,   0,  cbm700,     cbm700,     cbm700,     cbmb,   "Commodore Business Machines Co.",  "B128-80HP (60Hz)", GAME_NOT_WORKING)
-COMP( 1983, b256hp,   cbm610,   0,  cbm700,     cbm700,     cbm700,     cbmb,   "Commodore Business Machines Co.",	"B256-80HP (60Hz)", GAME_NOT_WORKING)
-COMP( 1983, cbm710,   cbm610,   0,  cbm700pal,  cbm700,     cbm700,     cbmb,   "Commodore Business Machines Co.",  "CBM 710 (50Hz)", GAME_NOT_WORKING)
-COMP( 1983, cbm720,   cbm610,   0,  cbm700pal,  cbm700,     cbm700,     cbmb,   "Commodore Business Machines Co.",	"CBM 720 (50Hz)", GAME_NOT_WORKING)
-COMP( 1983, cbm720se, cbm610,   0,  cbm700pal,  cbm700,     cbm700,     cbmb,   "Commodore Business Machines Co.",	"CBM 720 (Sweden/Finland, 50Hz)", GAME_NOT_WORKING)
+COMP( 1983,	bx256hp,  cbm610, 0,      bx256hp,   cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "BX256-80HP (60Hz)",                      GAME_NOT_WORKING )
 
-COMP( 1983,	bx256hp,  cbm610,   0,  bx256hp,    cbm700,     cbm700,     cbmb,   "Commodore Business Machines Co.",	"BX256-80HP (60Hz)", GAME_NOT_WORKING)
-
-COMP( 1983,	p500,     0,        0,  p500,       p500,       p500,       p500,   "Commodore Business Machines Co.",	"P500 (proto, a.k.a. B128-40 or Pet-II)", GAME_NOT_WORKING)
+COMP( 1983,	p500,     0,      0,      p500,      p500,      p500,      0,      "Commodore Business Machines Co.",  "P500 (proto, a.k.a. B128-40 or Pet-II)", GAME_NOT_WORKING )

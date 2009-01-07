@@ -156,7 +156,7 @@ static void microtan_set_irq_line(running_machine *machine)
     /* The 6502 IRQ line is active low and probably driven
        by open collector outputs (guess). Since MAME/MESS use
        a non-0 value for ASSERT_LINE we OR the signals here */
-    cpunum_set_input_line(machine, 0, 0, via_0_irq_line | via_1_irq_line | kbd_irq_line);
+    cpu_set_input_line(machine->cpu[0], 0, via_0_irq_line | via_1_irq_line | kbd_irq_line);
 }
 
 static const device_config *cassette_device_image(running_machine *machine)
@@ -167,183 +167,186 @@ static const device_config *cassette_device_image(running_machine *machine)
 /**************************************************************
  * VIA callback functions for VIA #0
  **************************************************************/
-static  READ8_HANDLER (via_0_in_a )
+static READ8_DEVICE_HANDLER (via_0_in_a )
 {
-    int data = input_port_read(machine, "JOY");
+    int data = input_port_read(device->machine, "JOY");
     LOG(("microtan_via_0_in_a %02X\n", data));
     return data;
 }
 
-static  READ8_HANDLER ( via_0_in_b )
+static READ8_DEVICE_HANDLER ( via_0_in_b )
 {
     int data = 0xff;
     LOG(("microtan_via_0_in_b %02X\n", data));
     return data;
 }
 
-static  READ8_HANDLER ( via_0_in_ca1 )
+static READ8_DEVICE_HANDLER ( via_0_in_ca1 )
 {
     int data = 1;
     LOG(("microtan_via_0_in_ca1 %d\n", data));
     return data;
 }
 
-static  READ8_HANDLER ( via_0_in_cb1 )
+static READ8_DEVICE_HANDLER ( via_0_in_cb1 )
 {
     int data = 1;
     LOG(("microtan_via_0_in_cb1 %d\n", data));
     return data;
 }
 
-static  READ8_HANDLER ( via_0_in_ca2 )
+static READ8_DEVICE_HANDLER ( via_0_in_ca2 )
 {
     int data = 1;
     LOG(("microtan_via_0_in_ca2 %d\n", data));
     return data;
 }
 
-static  READ8_HANDLER ( via_0_in_cb2 )
+static READ8_DEVICE_HANDLER ( via_0_in_cb2 )
 {
     int data = 1;
     LOG(("microtan_via_0_in_cb2 %d\n", data));
     return data;
 }
 
-static WRITE8_HANDLER ( via_0_out_a )
+static WRITE8_DEVICE_HANDLER ( via_0_out_a )
 {
     LOG(("microtan_via_0_out_a %02X\n", data));
 }
 
-static WRITE8_HANDLER (via_0_out_b )
+static WRITE8_DEVICE_HANDLER (via_0_out_b )
 {
     LOG(("microtan_via_0_out_b %02X\n", data));
     /* bit #7 is the cassette output signal */
-    cassette_output(cassette_device_image(machine), data & 0x80 ? +1.0 : -1.0);
+    cassette_output(cassette_device_image(device->machine), data & 0x80 ? +1.0 : -1.0);
 }
 
-static WRITE8_HANDLER ( via_0_out_ca2 )
+static WRITE8_DEVICE_HANDLER ( via_0_out_ca2 )
 {
     LOG(("microtan_via_0_out_ca2 %d\n", data));
 }
 
-static WRITE8_HANDLER (via_0_out_cb2 )
+static WRITE8_DEVICE_HANDLER (via_0_out_cb2 )
 {
     LOG(("microtan_via_0_out_cb2 %d\n", data));
 }
 
-static void via_0_irq(running_machine *machine, int state)
+static void via_0_irq(const device_config *device, int state)
 {
     LOG(("microtan_via_0_irq %d\n", state));
     via_0_irq_line = state;
-    microtan_set_irq_line(machine);
+    microtan_set_irq_line(device->machine);
 }
 
 /**************************************************************
  * VIA callback functions for VIA #1
  **************************************************************/
-static  READ8_HANDLER ( via_1_in_a )
+static READ8_DEVICE_HANDLER ( via_1_in_a )
 {
     int data = 0xff;
     LOG(("microtan_via_1_in_a %02X\n", data));
     return data;
 }
 
-static  READ8_HANDLER ( via_1_in_b )
+static READ8_DEVICE_HANDLER ( via_1_in_b )
 {
     int data = 0xff;
     LOG(("microtan_via_1_in_b %02X\n", data));
     return data;
 }
 
-static  READ8_HANDLER ( via_1_in_ca1 )
+static READ8_DEVICE_HANDLER ( via_1_in_ca1 )
 {
     int data = 1;
     LOG(("microtan_via_1_in_ca1 %d\n", data));
     return data;
 }
 
-static  READ8_HANDLER ( via_1_in_cb1 )
+static READ8_DEVICE_HANDLER ( via_1_in_cb1 )
 {
     int data = 1;
     LOG(("microtan_via_1_in_cb1 %d\n", data));
     return data;
 }
 
-static  READ8_HANDLER ( via_1_in_ca2 )
+static READ8_DEVICE_HANDLER ( via_1_in_ca2 )
 {
     int data = 1;
     LOG(("microtan_via_1_in_ca2 %d\n", data));
     return data;
 }
 
-static  READ8_HANDLER ( via_1_in_cb2 )
+static READ8_DEVICE_HANDLER ( via_1_in_cb2 )
 {
     int data = 1;
     LOG(("microtan_via_1_in_cb2 %d\n", data));
     return data;
 }
 
-static WRITE8_HANDLER ( via_1_out_a )
+static WRITE8_DEVICE_HANDLER ( via_1_out_a )
 {
     LOG(("microtan_via_1_out_a %02X\n", data));
 }
 
-static WRITE8_HANDLER ( via_1_out_b )
+static WRITE8_DEVICE_HANDLER ( via_1_out_b )
 {
     LOG(("microtan_via_1_out_b %02X\n", data));
 }
 
-static WRITE8_HANDLER (via_1_out_ca2 )
+static WRITE8_DEVICE_HANDLER (via_1_out_ca2 )
 {
     LOG(("microtan_via_1_out_ca2 %d\n", data));
 }
 
-static WRITE8_HANDLER ( via_1_out_cb2 )
+static WRITE8_DEVICE_HANDLER ( via_1_out_cb2 )
 {
     LOG(("microtan_via_1_out_cb2 %d\n", data));
 }
 
-static void via_1_irq(running_machine *machine, int state)
+static void via_1_irq(const device_config *device, int state)
 {
     LOG(("microtan_via_1_irq %d\n", state));
     via_1_irq_line = state;
-    microtan_set_irq_line(machine);
+    microtan_set_irq_line(device->machine);
 }
 
 /**************************************************************
  * VIA interface structure
  **************************************************************/
-static const struct via6522_interface via6522[2] =
+const via6522_interface microtan_via6522_0 =
 {
-    {   /* VIA#1 at bfc0-bfcf*/
-        via_0_in_a,   via_0_in_b,
-        via_0_in_ca1, via_0_in_cb1,
-        via_0_in_ca2, via_0_in_cb2,
-        via_0_out_a,  via_0_out_b,
-		0, 0,
-        via_0_out_ca2,via_0_out_cb2,
-        via_0_irq,
-    },
-    {   /* VIA#1 at bfe0-bfef*/
-        via_1_in_a,   via_1_in_b,
-        via_1_in_ca1, via_1_in_cb1,
-        via_1_in_ca2, via_1_in_cb2,
-        via_1_out_a,  via_1_out_b,
-		0, 0,
-        via_1_out_ca2,via_1_out_cb2,
-        via_1_irq,
-    }
+	/* VIA#1 at bfc0-bfcf*/
+	via_0_in_a,   via_0_in_b,
+	via_0_in_ca1, via_0_in_cb1,
+	via_0_in_ca2, via_0_in_cb2,
+	via_0_out_a,  via_0_out_b,
+	0, 0,
+	via_0_out_ca2,via_0_out_cb2,
+	via_0_irq
+};
+
+const via6522_interface microtan_via6522_1 =
+{
+	/* VIA#1 at bfe0-bfef*/
+	via_1_in_a,   via_1_in_b,
+	via_1_in_ca1, via_1_in_cb1,
+	via_1_in_ca2, via_1_in_cb2,
+	via_1_out_a,  via_1_out_b,
+	0, 0,
+	via_1_out_ca2,via_1_out_cb2,
+	via_1_irq
 };
 
 static TIMER_CALLBACK(microtan_read_cassette)
 {
 	double level = cassette_input(cassette_device_image(machine));
+	const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
 
 	LOG(("microtan_read_cassette: %g\n", level));
 	if (level < -0.07)
-		via_set_input_cb2(machine, 0,0);
+		via_cb2_w(via_0, 0, 0);
 	else if (level > +0.07)
-		via_set_input_cb2(machine, 0,1);
+		via_cb2_w(via_0, 0, 1);
 }
 
 READ8_HANDLER( microtan_sound_r )
@@ -385,7 +388,7 @@ WRITE8_HANDLER( microtan_sound_w )
 /* This callback is called one clock cycle after BFF2 is written (delayed nmi) */
 static TIMER_CALLBACK(microtan_pulse_nmi)
 {
-    cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+    cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 WRITE8_HANDLER ( microtan_bffx_w )
@@ -397,11 +400,11 @@ WRITE8_HANDLER ( microtan_bffx_w )
         LOG(("microtan_bff0_w: %d <- %02x (keyboard IRQ clear )\n", offset, data));
         microtan_keyboard_ascii &= ~0x80;
         kbd_irq_line = CLEAR_LINE;
-        microtan_set_irq_line(machine);
+        microtan_set_irq_line(space->machine);
         break;
     case 1: /* BFF1: write delayed NMI */
         LOG(("microtan_bff1_w: %d <- %02x (delayed NMI)\n", offset, data));
-        timer_set(ATTOTIME_IN_CYCLES(8,0), NULL, 0, microtan_pulse_nmi);
+        timer_set(space->machine, cpu_clocks_to_attotime(space->machine->cpu[0], 8), NULL, 0, microtan_pulse_nmi);
         break;
     case 2: /* BFF2: write keypad column write (what is this meant for?) */
         LOG(("microtan_bff2_w: %d <- %02x (keypad column)\n", offset, data));
@@ -608,7 +611,7 @@ INTERRUPT_GEN( microtan_interrupt )
 {
     int mod, row, col, chg, new;
     static int lastrow = 0, mask = 0x00, key = 0x00, repeat = 0, repeater = 0;
-	static const char *keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8" };
+	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8" };
 
     if( repeat )
     {
@@ -622,12 +625,12 @@ INTERRUPT_GEN( microtan_interrupt )
 
 
     row = 9;
-    new = input_port_read(machine, "ROW8");
+    new = input_port_read(device->machine, "ROW8");
     chg = keyrows[--row] ^ new;
 
 	while ( !chg && row > 0)
 	{
-		new = input_port_read(machine, keynames[row - 1]); 
+		new = input_port_read(device->machine, keynames[row - 1]); 
 		chg = keyrows[--row] ^ new; 
 	}
     if (!chg) 
@@ -674,11 +677,11 @@ INTERRUPT_GEN( microtan_interrupt )
             if( key )   /* normal key */
             {
                 repeater = 30;
-                store_key(machine, key);
+                store_key(device->machine, key);
             }
             else
             if( (row == 0) && (chg == 0x04) ) /* Ctrl-@ (NUL) */
-                store_key(machine, 0);
+                store_key(device->machine, 0);
             keyrows[row] |= new;
         }
         else
@@ -690,27 +693,30 @@ INTERRUPT_GEN( microtan_interrupt )
     else
     if ( key && (keyrows[lastrow] & mask) && repeat == 0 )
     {
-        store_key(machine, key);
+        store_key(device->machine, key);
     }
 }
 
-static void microtan_set_cpu_regs(const UINT8 *snapshot_buff, int base)
+static void microtan_set_cpu_regs(running_machine *machine,const UINT8 *snapshot_buff, int base)
 {
     LOG(("microtan_snapshot_copy: PC:%02X%02X P:%02X A:%02X X:%02X Y:%02X SP:1%02X",
         snapshot_buff[base+1], snapshot_buff[base+0], snapshot_buff[base+2], snapshot_buff[base+3],
         snapshot_buff[base+4], snapshot_buff[base+5], snapshot_buff[base+6]);
-    activecpu_set_reg(M6502_PC, snapshot_buff[base+0] + 256 * snapshot_buff[base+1]));
-    activecpu_set_reg(M6502_P, snapshot_buff[base+2]);
-    activecpu_set_reg(M6502_A, snapshot_buff[base+3]);
-    activecpu_set_reg(M6502_X, snapshot_buff[base+4]);
-    activecpu_set_reg(M6502_Y, snapshot_buff[base+5]);
-    activecpu_set_reg(M6502_S, snapshot_buff[base+6]);
+    cpu_set_reg(machine->cpu[0], M6502_PC, snapshot_buff[base+0] + 256 * snapshot_buff[base+1]));
+    cpu_set_reg(machine->cpu[0], M6502_P, snapshot_buff[base+2]);
+    cpu_set_reg(machine->cpu[0], M6502_A, snapshot_buff[base+3]);
+    cpu_set_reg(machine->cpu[0], M6502_X, snapshot_buff[base+4]);
+    cpu_set_reg(machine->cpu[0], M6502_Y, snapshot_buff[base+5]);
+    cpu_set_reg(machine->cpu[0], M6502_S, snapshot_buff[base+6]);
 }
 
 static void microtan_snapshot_copy(running_machine *machine, UINT8 *snapshot_buff, int snapshot_size)
 {
     UINT8 *RAM = memory_region(machine, "main");
-
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via_1 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_1");
+	
     /* check for .DMP file format */
     if (snapshot_size == 8263)
     {
@@ -732,7 +738,7 @@ static void microtan_snapshot_copy(running_machine *machine, UINT8 *snapshot_buf
             microtan_chunky_buffer[i] = (snapshot_buff[base+i/8] >> (i&7)) & 1;
         }
         base += 64;
-        microtan_set_cpu_regs(snapshot_buff, base);
+        microtan_set_cpu_regs(machine, snapshot_buff, base);
     }
     else
     {
@@ -765,35 +771,35 @@ static void microtan_snapshot_copy(running_machine *machine, UINT8 *snapshot_buf
 
         /* first set of VIA6522 registers */
         for (i = 0; i < 16; i++ )
-            via_0_w(machine, i, snapshot_buff[base++]);
+            via_w(via_0, i, snapshot_buff[base++]);
 
         /* second set of VIA6522 registers */
         for (i = 0; i < 16; i++ )
-            via_1_w(machine, i, snapshot_buff[base++]);
+            via_w(via_1, i, snapshot_buff[base++]);
 
         /* microtan IO bff0-bfff */
         for (i = 0; i < 16; i++ )
         {
             RAM[0xbff0+i] = snapshot_buff[base++];
             if (i < 4)
-                microtan_bffx_w(machine, i, RAM[0xbff0+i]);
+                microtan_bffx_w(space, i, RAM[0xbff0+i]);
         }
 
-        microtan_sound_w(machine, 0, snapshot_buff[base++]);
+        microtan_sound_w(space, 0, snapshot_buff[base++]);
         microtan_chunky_graphics = snapshot_buff[base++];
 
         /* first set of AY8910 registers */
         for (i = 0; i < 16; i++ )
         {
-            ay8910_control_port_0_w(machine, 0, i);
-            ay8910_write_port_0_w(machine, 0, snapshot_buff[base++]);
+            ay8910_control_port_0_w(space, 0, i);
+            ay8910_write_port_0_w(space, 0, snapshot_buff[base++]);
         }
 
         /* second set of AY8910 registers */
         for (i = 0; i < 16; i++ )
         {
-            ay8910_control_port_0_w(machine, 0, i);
-            ay8910_write_port_0_w(machine, 0, snapshot_buff[base++]);
+            ay8910_control_port_0_w(space, 0, i);
+            ay8910_write_port_0_w(space, 0, snapshot_buff[base++]);
         }
 
         for (i = 0; i < 32*16; i++)
@@ -802,7 +808,7 @@ static void microtan_snapshot_copy(running_machine *machine, UINT8 *snapshot_buf
         }
         base += 64;
 
-        microtan_set_cpu_regs(snapshot_buff, base);
+        microtan_set_cpu_regs(machine, snapshot_buff, base);
     }
 }
 
@@ -840,6 +846,7 @@ QUICKLOAD_LOAD( microtan_hexfile )
 	buff = malloc(quickload_size + 1);
 	if (!buff)
 	{
+		free(snapshot_buff);
 		LOG(("microtan_hexfile_load: could not allocate %d bytes of buffer\n", quickload_size));
 		return INIT_FAIL;
 	}
@@ -861,6 +868,7 @@ DRIVER_INIT( microtan )
 {
     UINT8 *dst = memory_region(machine, "gfx2");
     int i;
+    const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 
     for (i = 0; i < 256; i++)
     {
@@ -901,18 +909,18 @@ DRIVER_INIT( microtan )
     switch (read_dsw(machine) & 3)
     {
         case 0:  // 1K only :)
-            memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_NOP);
-            memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_NOP);
+            memory_install_read8_handler(space, 0x0400, 0xbbff, 0, 0, SMH_NOP);
+            memory_install_write8_handler(space, 0x0400, 0xbbff, 0, 0, SMH_NOP);
             break;
         case 1:  // +7K TANEX
-            memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0x1fff, 0, 0, SMH_RAM);
-            memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0x1fff, 0, 0, SMH_RAM);
-            memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0xbbff, 0, 0, SMH_NOP);
-            memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0xbbff, 0, 0, SMH_NOP);
+            memory_install_read8_handler(space, 0x0400, 0x1fff, 0, 0, SMH_RAM);
+            memory_install_write8_handler(space, 0x0400, 0x1fff, 0, 0, SMH_RAM);
+            memory_install_read8_handler(space, 0x2000, 0xbbff, 0, 0, SMH_NOP);
+            memory_install_write8_handler(space, 0x2000, 0xbbff, 0, 0, SMH_NOP);
             break;
         default: // +7K TANEX + 40K TANRAM
-            memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_RAM);
-            memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_RAM);
+            memory_install_read8_handler(space, 0x0400, 0xbbff, 0, 0, SMH_RAM);
+            memory_install_write8_handler(space, 0x0400, 0xbbff, 0, 0, SMH_RAM);
             break;
     }
 
@@ -921,7 +929,7 @@ DRIVER_INIT( microtan )
 MACHINE_RESET( microtan )
 {
     int i;
-	static const char *keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8" };
+	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8" };
 	
 	for (i = 1; i < 10;  i++)
 	{
@@ -929,10 +937,5 @@ MACHINE_RESET( microtan )
 	}
     set_led_status(1, (keyrows[3] & 0x80) ? 0 : 1);
 
-    via_config(0, &via6522[0]);
-    via_config(1, &via6522[1]);
-
-	acia_6551_init();
-
-	microtan_timer = timer_alloc(microtan_read_cassette, NULL);
+	microtan_timer = timer_alloc(machine, microtan_read_cassette, NULL);
 }

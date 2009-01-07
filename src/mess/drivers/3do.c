@@ -42,7 +42,7 @@ Custom 16bit DSP:
 
 Sound:
 - 16bit stereo sound
-- 44.1KHz sound sampling rate
+- 44.1 kHz sound sampling rate
 - Fully support Dolby(tm) Surround Sound
 
 Memory:
@@ -94,6 +94,7 @@ Part list of Goldstar 3DO Interactive Multiplayer
 #include "driver.h"
 #include "includes/3do.h"
 #include "devices/chd_cd.h"
+#include "cpu/arm7/arm7.h"
 
 
 /* The 3DO has an ARM6 core which is a bit different from the current
@@ -125,14 +126,14 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( 3do )
 {
-	memory_set_bankptr(2,memory_region(machine, "user1"));
+	memory_set_bankptr(machine, 2,memory_region(machine, "user1"));
 
 	/* configure overlay */
-	memory_configure_bank(1, 0, 1, dram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, "user1"), 0);
+	memory_configure_bank(machine, 1, 0, 1, dram, 0);
+	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "user1"), 0);
 
 	/* start with overlay enabled */
-	memory_set_bank(1, 1);
+	memory_set_bank(machine, 1, 1);
 
 	madam_init();
 	clio_init();
@@ -155,7 +156,7 @@ static MACHINE_DRIVER_START( 3do )
 	MDRV_SCREEN_VISIBLE_AREA( 0,639,0,479 )
 	MDRV_SCREEN_REFRESH_RATE( 60 )
 
-	MDRV_DEVICE_ADD( "cdrom", CDROM )
+	MDRV_CDROM_ADD( "cdrom" )
 MACHINE_DRIVER_END
 
 
@@ -175,7 +176,7 @@ static MACHINE_DRIVER_START( 3do_pal )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
 	MDRV_SCREEN_REFRESH_RATE( 50 )
 
-	MDRV_DEVICE_ADD( "cdrom", CDROM )
+	MDRV_CDROM_ADD( "cdrom" )
 MACHINE_DRIVER_END
 
 
@@ -186,11 +187,11 @@ ROM_START(3do)
 	ROM_SYSTEM_BIOS( 1, "goldstar", "Goldstar 3DO Interactive Multiplayer v1.01m" )
 	ROMX_LOAD( "goldstar.bin", 0x000000, 0x100000, CRC(b6f5028b) SHA1(c4a2e5336f77fb5f743de1eea2cda43675ee2de7), ROM_BIOS(2) )
 	ROM_SYSTEM_BIOS( 2, "panafz1", "Panasonic FZ-1 R.E.A.L. 3DO Interactive Multiplayer" )
-	ROMX_LOAD( "panafz1.bin", 0x000000, 0x100000, NO_DUMP, ROM_BIOS(3) )
+	ROMX_LOAD( "panafz1.bin", 0x000000, 0x100000, CRC(c8c8ff89) SHA1(34bf189111295f74d7b7dfc1f304d98b8d36325a), ROM_BIOS(3) )
 	ROM_SYSTEM_BIOS( 3, "gsalive2", "Goldstar 3DO Alive II" )
 	ROMX_LOAD( "gsalive2.bin", 0x000000, 0x100000, NO_DUMP, ROM_BIOS(4) )
 	ROM_SYSTEM_BIOS( 4, "sanyotry", "Sanyo TRY 3DO Interactive Multiplayer" )
-	ROMX_LOAD( "sanyotry.bin", 0x000000, 0x100000, NO_DUMP, ROM_BIOS(5) )
+	ROMX_LOAD( "sanyotry.bin", 0x000000, 0x100000, CRC(d5cbc509) SHA1(b01c53da256dde43ffec4ad3fc3adfa8d635e943), ROM_BIOS(5) )
 ROM_END
 
 
@@ -201,7 +202,7 @@ ROM_START(3do_pal)
     ROM_SYSTEM_BIOS( 1, "goldstar", "Goldstar 3DO Interactive Multiplayer v1.01m" )
     ROMX_LOAD( "goldstar.bin", 0x000000, 0x100000, CRC(b6f5028b) SHA1(c4a2e5336f77fb5f743de1eea2cda43675ee2de7), ROM_BIOS(2) )
     ROM_SYSTEM_BIOS( 2, "panafz1", "Panasonic FZ-1 R.E.A.L. 3DO Interactive Multiplayer" )
-    ROMX_LOAD( "panafz1.bin", 0x000000, 0x100000, NO_DUMP, ROM_BIOS(3) )
+    ROMX_LOAD( "panafz1.bin", 0x000000, 0x100000, CRC(c8c8ff89) SHA1(34bf189111295f74d7b7dfc1f304d98b8d36325a), ROM_BIOS(3) )
 ROM_END
 
 

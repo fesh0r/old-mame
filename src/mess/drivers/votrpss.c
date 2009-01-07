@@ -26,7 +26,7 @@
 <kevtris> I drew out the schematic for the analog section
 <LordNLptp> oh that will be useful
 <kevtris> but I didn't draw out the digital part, just made an I/O and memory map but I can't find them
-<LordNLptp> i also see the ay is running at 2mhz
+<LordNLptp> i also see the ay is running at 2 MHz
 <kevtris> sounds about right
 <kevtris> got it
 <kevtris> I drew out the clocking section too
@@ -58,6 +58,7 @@
 
 /* Core includes */
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "votrpss.lh"
 
 /* Components */
@@ -135,23 +136,23 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START(votrpss)
     /* basic machine hardware */
-    MDRV_CPU_ADD("main", Z80, XTAL_8MHz/2)  /* 4.000 Mhz, verified */
+    MDRV_CPU_ADD("main", Z80, XTAL_8MHz/2)  /* 4.000 MHz, verified */
     MDRV_CPU_PROGRAM_MAP(z80_mem, 0)
     MDRV_CPU_IO_MAP(z80_io, 0)
-    MDRV_INTERLEAVE(1)
+    MDRV_QUANTUM_TIME(HZ(60))
 
     /* video hardware */
 	MDRV_DEFAULT_LAYOUT(layout_votrpss)
 
     /* sound hardware */
 	//MDRV_SPEAKER_STANDARD_MONO("mono")
-	//MDRV_SOUND_ADD("ay1", AY8910, XTAL_8MHz/4) /* 2.000 Mhz, verified */
+	//MDRV_SOUND_ADD("ay1", AY8910, XTAL_8MHz/4) /* 2.000 MHz, verified */
 	//MDRV_SOUND_CONFIG(ay8910_config)
 	//MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	//votrax goes here too
 
 	/* printer */
-	//MDRV_DEVICE_ADD("printer", PRINTER)
+	//MDRV_PRINTER_ADD("printer")
 
 MACHINE_DRIVER_END
 

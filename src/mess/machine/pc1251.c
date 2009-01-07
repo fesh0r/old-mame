@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/sc61860/sc61860.h"
 
 #include "includes/pocketc.h"
@@ -11,25 +10,25 @@ static UINT8 outa,outb;
 
 static int power=1; /* simulates pressed cce when mess is started */
 
-void pc1251_outa(int data)
+void pc1251_outa(const device_config *device, int data)
 {
 	outa=data;
 }
 
-void pc1251_outb(int data)
+void pc1251_outb(const device_config *device, int data)
 {
 	outb=data;
 }
 
-void pc1251_outc(int data)
+void pc1251_outc(const device_config *device, int data)
 {
 
 }
 
-int pc1251_ina(void)
+int pc1251_ina(const device_config *device)
 {
 	int data = outa;
-	running_machine *machine = Machine;
+	running_machine *machine = device->machine;
 
 	if (outb & 0x01)
 	{
@@ -70,34 +69,32 @@ int pc1251_ina(void)
 	return data;
 }
 
-int pc1251_inb(void)
+int pc1251_inb(const device_config *device)
 {
 	int data = outb;
-	running_machine *machine = Machine;
 
 	if (outb & 0x08) 
-		data |= (input_port_read(machine, "MODE") & 0x07);
+		data |= (input_port_read(device->machine, "MODE") & 0x07);
 
 	return data;
 }
 
-int pc1251_brk(void)
+int pc1251_brk(const device_config *device)
 {
-	running_machine *machine = Machine;
-	return (input_port_read(machine, "EXTRA") & 0x01);
+	return (input_port_read(device->machine, "EXTRA") & 0x01);
 }
 
-int pc1251_reset(void)
+int pc1251_reset(const device_config *device)
 {
-	running_machine *machine = Machine;
-	return (input_port_read(machine, "EXTRA") & 0x02);
+	return (input_port_read(device->machine, "EXTRA") & 0x02);
 }
 
 /* currently enough to save the external ram */
 NVRAM_HANDLER( pc1251 )
 {
-	UINT8 *ram = memory_region(machine, "main")+0x8000,
-		*cpu = sc61860_internal_ram();
+	const device_config *main_cpu = cputag_get_cpu(machine, "main");
+	UINT8 *ram = memory_region(machine, "main") + 0x8000;
+	UINT8 *cpu = sc61860_internal_ram(main_cpu);
 
 	if (read_or_write)
 	{
@@ -124,42 +121,43 @@ static TIMER_CALLBACK(pc1251_power_up)
 DRIVER_INIT( pc1251 )
 {
 	int i;
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	UINT8 *gfx = memory_region(machine, "gfx1");
 	for (i=0; i<128; i++) gfx[i]=i;
 
-	timer_set(ATTOTIME_IN_SEC(1), NULL, 0, pc1251_power_up);
+	timer_set(machine, ATTOTIME_IN_SEC(1), NULL, 0, pc1251_power_up);
 
 	// c600 b800 b000 a000 8000 tested
 	// 4 kb memory feedback 512 bytes too few???
 	// 11 kb ram: program stored at 8000
 #if 1
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xc7ff, 0, 0, SMH_BANK1);
-	memory_set_bankptr(1, memory_region(machine, "main") + 0x8000);
+	memory_install_write8_handler(space, 0x8000, 0xc7ff, 0, 0, SMH_BANK1);
+	memory_set_bankptr(machine, 1, memory_region(machine, "main") + 0x8000);
 #else
 	if ((input_port_read(machine, "DSW0") & 0xc0) == 0xc0)
 	{
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xafff, 0, 0, SMH_RAM);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xc5ff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc600, 0xc7ff, 0, 0, SMH_RAM);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xf7ff, 0, 0, SMH_RAM);
+		memory_install_write8_handler(space, 0x8000, 0xafff, 0, 0, SMH_RAM);
+		memory_install_write8_handler(space, 0xb000, 0xc5ff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(space, 0xc600, 0xc7ff, 0, 0, SMH_RAM);
+		memory_install_write8_handler(space, 0xc800, 0xf7ff, 0, 0, SMH_RAM);
 	}
 	else if ((input_port_read(machine, "DSW0") & 0xc0) == 0x80)
 	{
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xc7ff, 0, 0, SMH_RAM);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcbff, 0, 0, SMH_RAM);
+		memory_install_write8_handler(space, 0xa000, 0xafff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(space, 0xb000, 0xc7ff, 0, 0, SMH_RAM);
+		memory_install_write8_handler(space, 0xc800, 0xcbff, 0, 0, SMH_RAM);
 	}
 	else if ((input_port_read(machine, "DSW0") & 0xc0) == 0x40)
 	{
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xb7ff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb800, 0xc7ff, 0, 0, SMH_RAM);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcbff, 0, 0, SMH_RAM);
+		memory_install_write8_handler(space, 0xa000, 0xb7ff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(space, 0xb800, 0xc7ff, 0, 0, SMH_RAM);
+		memory_install_write8_handler(space, 0xc800, 0xcbff, 0, 0, SMH_RAM);
 	}
 	else
 	{
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xc5ff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc600, 0xc9ff, 0, 0, SMH_RAM);
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xca00, 0xcbff, 0, 0, SMH_RAM);
+		memory_install_write8_handler(space, 0xa000, 0xc5ff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(space, 0xc600, 0xc9ff, 0, 0, SMH_RAM);
+		memory_install_write8_handler(space, 0xca00, 0xcbff, 0, 0, SMH_RAM);
 	}
 #endif
 }

@@ -10,7 +10,7 @@
 #include "hd66421.h"
 
 #define LOG_LEVEL  1
-#define _logerror(level,x)  if (LOG_LEVEL > level) logerror x
+#define _logerror(level,x)  do { if (LOG_LEVEL > level) logerror x; } while (0)
 
 //#define BRIGHTNESS_DOES_NOT_WORK
 
@@ -113,13 +113,13 @@ PALETTE_INIT( hd66421 )
 	}
 }
 
-static void hd66421_state_save( void)
+static void hd66421_state_save(running_machine *machine)
 {
 	const char *name = "hd66421";
-	state_save_register_item( name, 0, lcd.idx);
-	state_save_register_item_array( name, 0, lcd.dat);
-	state_save_register_item( name, 0, lcd.pos);
-	state_save_register_item_pointer( name, 0, lcd.ram, HD66421_RAM_SIZE);
+	state_save_register_item(machine, name, NULL, 0, lcd.idx);
+	state_save_register_item_array(machine, name, NULL, 0, lcd.dat);
+	state_save_register_item(machine, name, NULL, 0, lcd.pos);
+	state_save_register_item_pointer(machine, name, NULL, 0, lcd.ram, HD66421_RAM_SIZE);
 }
 
 VIDEO_START( hd66421 )
@@ -127,7 +127,7 @@ VIDEO_START( hd66421 )
 	_logerror( 0, ("video_start_hd66421\n"));
 	memset( &lcd, 0, sizeof( lcd));
 	lcd.ram = auto_malloc( HD66421_RAM_SIZE);
-	hd66421_state_save();
+	hd66421_state_save(machine);
 }
 
 VIDEO_UPDATE( hd66421 )
@@ -177,7 +177,7 @@ VIDEO_UPDATE( hd66421 )
 		rect.max_x = HD66421_WIDTH - 1;
 		rect.min_y = 0;
 		rect.max_y = HD66421_HEIGHT - 1;
-		fillbitmap( bitmap, get_white_pen(screen->machine), &rect);
+		bitmap_fill( bitmap, &rect, get_white_pen(screen->machine));
 	}
 	// flags
 	return 0;

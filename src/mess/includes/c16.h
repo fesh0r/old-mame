@@ -7,11 +7,12 @@
 #ifndef C16_H_
 #define C16_H_
 
+#include "devices/cartslot.h"
 
 /*----------- defined in machine/c16.c -----------*/
 
-UINT8 c16_m7501_port_read(void);
-void c16_m7501_port_write(UINT8 data);
+UINT8 c16_m7501_port_read(const device_config *device, UINT8 direction);
+void c16_m7501_port_write(const device_config *device, UINT8 direction, UINT8 data);
 
 extern WRITE8_HANDLER(c16_6551_port_w);
 extern  READ8_HANDLER(c16_6551_port_r);
@@ -46,15 +47,15 @@ extern DRIVER_INIT( c16v );
 extern MACHINE_RESET( c16 );
 extern INTERRUPT_GEN( c16_frame_interrupt );
 
-void c16_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
+MACHINE_DRIVER_EXTERN( c16_cartslot );
 
 
 /*----------- defined in audio/t6721.c -----------*/
 
 extern WRITE8_HANDLER(c364_speech_w);
-extern  READ8_HANDLER(c364_speech_r);
+extern READ8_HANDLER(c364_speech_r);
 
-extern void c364_speech_init(void);
+extern void c364_speech_init(running_machine *machine);
 
 
 #endif /* C16_H_ */

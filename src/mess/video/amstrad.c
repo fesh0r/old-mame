@@ -8,7 +8,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "devices/snapquik.h"
 #include "includes/amstrad.h"
 
@@ -17,7 +16,6 @@
 
 #include "sound/ay8910.h"
 
-static m6845_state amstrad_vidhrdw_6845_state;
 int prev_reg;
 
 static int amstrad_plus_dma_repeat[3];  // marks the location of the channels' last repeat
@@ -873,10 +871,10 @@ static void aleste_draw_screen_enabled_mode_3(void)
 
 
 /* execute crtc_execute_cycles of crtc */
-void amstrad_vh_execute_crtc_cycles(int dummy)
+void amstrad_vh_execute_crtc_cycles(running_machine *machine, int dummy)
 {
 	int scrwidth = AMSTRAD_SCREEN_WIDTH;
-	m6845_clock(); // Clock the 6845
+	m6845_clock(machine); // Clock the 6845
 	if(aleste_mode & 0x02)
 	{
 //		scrwidth = ALESTE_SCREEN_WIDTH;
@@ -974,6 +972,7 @@ DMA commands
 static void amstrad_plus_dma_parse(running_machine *machine, int channel, int *addr)
 {
 	unsigned short command;
+	const address_space* space = cpu_get_address_space(machine->cpu[0],ADDRESS_SPACE_PROGRAM);
 
 	if(*addr & 0x01)
 		(*addr)++;  // align to even address
@@ -993,9 +992,9 @@ static void amstrad_plus_dma_parse(running_machine *machine, int channel, int *a
 	switch(command & 0xf000)
 	{
 	case 0x0000:  // Load PSG register
-		ay8910_control_port_0_w(machine, 0,(command & 0x0f00) >> 8);
-		ay8910_write_port_0_w(machine, 0,command & 0x00ff);
-		ay8910_control_port_0_w(machine, 0,prev_reg);
+		ay8910_control_port_0_w(space, 0,(command & 0x0f00) >> 8);
+		ay8910_write_port_0_w(space, 0,command & 0x00ff);
+		ay8910_control_port_0_w(space, 0,prev_reg);
 		logerror("DMA %i: LOAD %i, %i\n",channel,(command & 0x0f00) >> 8, command & 0x00ff);
 		break;
 	case 0x1000:  // Pause for n HSYNCs (0 - 4095)
@@ -1023,7 +1022,7 @@ static void amstrad_plus_dma_parse(running_machine *machine, int channel, int *a
 		{
 			amstrad_plus_irq_cause = channel * 2;
 			amstrad_plus_asic_ram[0x2c0f] |= (0x40 >> channel);
-			cpunum_set_input_line(machine, 0,0,ASSERT_LINE);
+			cpu_set_input_line(machine->cpu[0],0,ASSERT_LINE);
 			logerror("DMA %i: INT\n",channel);
 		}
 		if(command & 0x20)  // Stop processing on this channel
@@ -1127,10 +1126,8 @@ static void amstrad_Set_DE(int offset, int data)
 }
 
 /* CRTC - Set new Horizontal Sync Status */
-static void amstrad_Set_HS(int offset, int data)
+static void amstrad_Set_HS(running_machine *machine, int offset, int data)
 {
-	running_machine *machine = Machine;
-
 	if (data != 0)
 	{
 		amstrad_render_mode = amstrad_current_mode;
@@ -1158,7 +1155,7 @@ static void amstrad_Set_HS(int offset, int data)
 				{
 					if(amstrad_plus_pri == 0 || amstrad_plus_asic_enabled == 0)
 					{
-						cpunum_set_input_line(machine, 0,0, ASSERT_LINE);
+						cpu_set_input_line(machine->cpu[0],0, ASSERT_LINE);
 					}
 				}
 				amstrad_CRTC_HS_Counter = 0;
@@ -1170,7 +1167,7 @@ static void amstrad_Set_HS(int offset, int data)
 			amstrad_CRTC_HS_Counter = 0;
 			if(amstrad_plus_pri == 0 || amstrad_plus_asic_enabled == 0)
 			{
-				cpunum_set_input_line(machine, 0,0, ASSERT_LINE);
+				cpu_set_input_line(machine->cpu[0],0, ASSERT_LINE);
 			}
 		}
 		if(amstrad_plus_asic_enabled != 0)
@@ -1181,7 +1178,7 @@ static void amstrad_Set_HS(int offset, int data)
 				if(m6845_get_row_counter() == ((amstrad_plus_pri >> 3) & 0x1f) && m6845_get_scanline_counter() == (amstrad_plus_pri & 0x07))
 				{
 //					logerror("PRI: triggered, scanline %i, VSync width = %i\n",amstrad_scanline,vid.vertical_sync_width);
-					cpunum_set_input_line(machine, 0,0,ASSERT_LINE);
+					cpu_set_input_line(machine->cpu[0],0,ASSERT_LINE);
 					amstrad_plus_irq_cause = 0x06;  // raster interrupt vector
 					amstrad_CRTC_HS_Counter &= ~0x20;  // ASIC PRI resets the MSB of the raster counter
 				}
@@ -1191,12 +1188,8 @@ static void amstrad_Set_HS(int offset, int data)
 			{
 				if(m6845_get_row_counter() == ((amstrad_plus_split_scanline >> 3) & 0x1f) && m6845_get_scanline_counter() == (amstrad_plus_split_scanline & 0x07)) // split occurs here (hopefully)
 				{
-					m6845_state vid;
-					m6845_get_state(0,&vid);
+					m6845_set_address(amstrad_plus_split_address);
 //					logerror("SSCR: Split screen occured at scanline %i",amstrad_plus_split_scanline);
-					vid.Memory_Address_of_next_Character_Row = vid.Memory_Address_of_this_Character_Row = amstrad_plus_split_address;
-					vid.Memory_Address = amstrad_plus_split_address;
-					m6845_set_state(0,&vid);
 				}
 			}
 			// CPC+/GX4000 soft scroll register
@@ -1214,7 +1207,7 @@ static void amstrad_Set_HS(int offset, int data)
 }
 
 /* CRTC - Set new Vertical Sync Status*/
-static void amstrad_Set_VS(int offset, int data)
+static void amstrad_Set_VS(running_machine *machine, int offset, int data)
 {
 /* New CRTC_VSync */
 //  if (((amstrad_CRTC_VS^data) != 0)&&(data != 0)) {
@@ -1295,10 +1288,7 @@ VIDEO_START( amstrad )
 {
 	amstrad_init_lookups();
 
-	m6845_start();
 	m6845_config(&amstrad6845);
-	m6845_reset(0);
-	m6845_get_state(0, &amstrad_vidhrdw_6845_state);
 
 	draw_function = amstrad_draw_screen_disabled;
 

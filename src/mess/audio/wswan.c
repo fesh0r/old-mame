@@ -11,7 +11,6 @@
 #include "driver.h"
 #include "includes/wswan.h"
 #include "streams.h"
-#include "deprecat.h"
 
 static sound_stream *channel;
 
@@ -60,28 +59,28 @@ WRITE8_HANDLER( wswan_sound_port_w ) {
 	stream_update( channel);
 	switch( offset ) {
 	case 0x80:				/* Audio 1 freq (lo) */
-		wswan_ch_set_freq( machine, &snd.audio1, ( snd.audio1.freq & 0xFF00 ) | data );
+		wswan_ch_set_freq( space->machine, &snd.audio1, ( snd.audio1.freq & 0xFF00 ) | data );
 		break;
 	case 0x81:				/* Audio 1 freq (hi) */
-		wswan_ch_set_freq( machine, &snd.audio1, ( data << 8 ) | ( snd.audio1.freq & 0x00FF ) );
+		wswan_ch_set_freq( space->machine, &snd.audio1, ( data << 8 ) | ( snd.audio1.freq & 0x00FF ) );
 		break;
 	case 0x82:				/* Audio 2 freq (lo) */
-		wswan_ch_set_freq( machine, &snd.audio2, ( snd.audio2.freq & 0xFF00 ) | data );
+		wswan_ch_set_freq( space->machine, &snd.audio2, ( snd.audio2.freq & 0xFF00 ) | data );
 		break;
 	case 0x83:				/* Audio 2 freq (hi) */
-		wswan_ch_set_freq( machine, &snd.audio2, ( data << 8 ) | ( snd.audio2.freq & 0x00FF ) );
+		wswan_ch_set_freq( space->machine, &snd.audio2, ( data << 8 ) | ( snd.audio2.freq & 0x00FF ) );
 		break;
 	case 0x84:				/* Audio 3 freq (lo) */
-		wswan_ch_set_freq( machine, &snd.audio3, ( snd.audio3.freq & 0xFF00 ) | data );
+		wswan_ch_set_freq( space->machine, &snd.audio3, ( snd.audio3.freq & 0xFF00 ) | data );
 		break;
 	case 0x85:				/* Audio 3 freq (hi) */
-		wswan_ch_set_freq( machine, &snd.audio3, ( data << 8 ) | ( snd.audio3.freq & 0x00FF ) );
+		wswan_ch_set_freq( space->machine, &snd.audio3, ( data << 8 ) | ( snd.audio3.freq & 0x00FF ) );
 		break;
 	case 0x86:				/* Audio 4 freq (lo) */
-		wswan_ch_set_freq( machine, &snd.audio4, ( snd.audio4.freq & 0xFF00 ) | data );
+		wswan_ch_set_freq( space->machine, &snd.audio4, ( snd.audio4.freq & 0xFF00 ) | data );
 		break;
 	case 0x87:				/* Audio 4 freq (hi) */
-		wswan_ch_set_freq( machine, &snd.audio4, ( data << 8 ) | ( snd.audio4.freq & 0x00FF ) );
+		wswan_ch_set_freq( space->machine, &snd.audio4, ( data << 8 ) | ( snd.audio4.freq & 0x00FF ) );
 		break;
 	case 0x88:				/* Audio 1 volume */
 		snd.audio1.vol_left = ( data & 0xF0 ) >> 4;
@@ -104,7 +103,7 @@ WRITE8_HANDLER( wswan_sound_port_w ) {
 		snd.sweep_step = (INT8)data;
 		break;
 	case 0x8D:				/* Sweep time */
-		snd.sweep_time = machine->sample_rate / ( 3072000 / ( 8192 * (data + 1) ) );
+		snd.sweep_time = space->machine->sample_rate / ( 3072000 / ( 8192 * (data + 1) ) );
 		break;
 	case 0x8E:				/* Noise control */
 		snd.noise_type = data & 0x07;
@@ -141,11 +140,11 @@ WRITE8_HANDLER( wswan_sound_port_w ) {
 	}
 }
 
-static void wswan_sh_update(void *param,stream_sample_t **inputs, stream_sample_t **buffer,int length)
+static STREAM_UPDATE( wswan_sh_update )
 {
 	stream_sample_t sample, left, right;
 
-	while( length-- > 0 )
+	while( samples-- > 0 )
 	{
 		left = right = 0;
 
@@ -189,7 +188,7 @@ static void wswan_sh_update(void *param,stream_sample_t **inputs, stream_sample_
 				if ( snd.sweep_count >= snd.sweep_time ) {
 					snd.sweep_count = 0;
 					snd.audio3.freq += snd.sweep_step;
-					snd.audio3.period = Machine->sample_rate / ( 3072000  / ( ( 2048 - snd.audio3.freq ) << 5 ) );
+					snd.audio3.period = device->machine->sample_rate / ( 3072000  / ( ( 2048 - snd.audio3.freq ) << 5 ) );
 				}
 			}
 			left += snd.audio3.vol_left * sample;
@@ -214,14 +213,14 @@ static void wswan_sh_update(void *param,stream_sample_t **inputs, stream_sample_
 		left <<= 5;
 		right <<= 5;
 
-		*(buffer[0]++) = left;
-		*(buffer[1]++) = right;
+		*(outputs[0]++) = left;
+		*(outputs[1]++) = right;
 	}
 }
 
-void *wswan_sh_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( wswan_sh_start )
 {
-	channel = stream_create(0, 2, Machine->sample_rate, 0, wswan_sh_update);
+	channel = stream_create(device, 0, 2, device->machine->sample_rate, 0, wswan_sh_update);
 
 	snd.audio1.on = 0;
 	snd.audio1.signal = 16;

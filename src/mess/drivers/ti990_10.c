@@ -68,7 +68,7 @@ TODO :
 */
 
 #include "driver.h"
-#include "deprecat.h"
+
 #include "cpu/tms9900/tms9900.h"
 #include "machine/ti990.h"
 #include "machine/990_hd.h"
@@ -87,22 +87,22 @@ static MACHINE_RESET( ti990_10 )
 
 	ti990_reset_int();
 
-	ti990_tpc_init(ti990_set_int9);
+	ti990_tpc_init(machine, ti990_set_int9);
 	ti990_hdc_init(machine, ti990_set_int13);
 }
 
 static INTERRUPT_GEN( ti990_10_line_interrupt )
 {
-	vdt911_keyboard(machine, 0);
+	vdt911_keyboard(device->machine, 0);
 
-	ti990_line_interrupt();
+	ti990_line_interrupt(device->machine);
 }
 
 /*static void idle_callback(int state)
 {
 }*/
 
-static void rset_callback(void)
+static void rset_callback(const device_config *device)
 {
 	ti990_cpuboard_reset();
 
@@ -112,10 +112,10 @@ static void rset_callback(void)
 	/* clear controller panel and smi fault LEDs */
 }
 
-static void lrex_callback(void)
+static void lrex_callback(const device_config *device)
 {
 	/* right??? */
-	ti990_hold_load(Machine);
+	ti990_hold_load(device->machine);
 }
 
 /*
@@ -136,7 +136,7 @@ static VIDEO_START( ti990_10 )
 		ti990_set_int10
 	};
 
-	vdt911_init_term(0, & params);
+	vdt911_init_term(machine, 0, & params);
 }
 
 static VIDEO_UPDATE( ti990_10 )

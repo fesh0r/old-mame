@@ -40,7 +40,7 @@ INTERRUPT_GEN( lynx_frame_int );
 int lynx_verify_cart (char *header, int kind);
 void lynx_crc_keyword(const device_config *image);
 
-void lynx_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
+MACHINE_DRIVER_EXTERN( lynx_cartslot );
 
 
 /*----------- defined in audio/lynx.c -----------*/
@@ -49,8 +49,8 @@ void lynx_audio_reset(void);
 void lynx_audio_write(int offset, UINT8 data);
 UINT8 lynx_audio_read(int offset);
 void lynx_audio_count_down(running_machine *machine, int nr);
-void *lynx_custom_start(int clock, const custom_sound_interface *config);
-void *lynx2_custom_start(int clock, const custom_sound_interface *config);
+CUSTOM_START( lynx_custom_start );
+CUSTOM_START( lynx2_custom_start );
 
 
 #endif /* LYNX_H_ */

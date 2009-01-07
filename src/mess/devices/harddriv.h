@@ -16,6 +16,12 @@
 #define HARDDISK		DEVICE_GET_INFO_NAME(mess_hd)
 #define IDE_HARDDISK	DEVICE_GET_INFO_NAME(mess_ide)
 
+#define MDRV_HARDDISK_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, HARDDISK, 0) \
+
+#define MDRV_IDE_HARDDISK_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, IDE_HARDDISK, 0) \
+
 DEVICE_GET_INFO( mess_hd );
 DEVICE_GET_INFO( mess_ide );
 

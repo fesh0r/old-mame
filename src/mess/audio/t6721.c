@@ -17,19 +17,19 @@
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 
-#include "machine/tpi6525.h"
+#include "includes/c16.h"
 
 
 #define VERBOSE_LEVEL 0
 #define DBG_LOG(N,M,A) \
-	{ \
+	do { \
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
 			logerror A; \
 		} \
-	}
+	} while (0)
 
 
 
@@ -58,7 +58,7 @@
  2 0..7 sample data
 
 seems to be a toshiba t6721a build in
-(8 khz 9bit output)
+(8 kHz 9bit output)
 generates output for 20ms (or 10ms) out of 6 byte voice data!
 (P?ARCOR voice synthesizing and analyzing method
  Nippon Telegraph and Telephon Public Corporation)
@@ -108,14 +108,15 @@ static TIMER_CALLBACK(c364_speech_timer)
 	}
 }
 
-void c364_speech_init(void)
+void c364_speech_init(running_machine *machine)
 {
 	memset(&speech, 0, sizeof(speech));
-	speech.timer = timer_alloc(c364_speech_timer, NULL);
+	speech.timer = timer_alloc(machine, c364_speech_timer, NULL);
 }
 
 WRITE8_HANDLER(c364_speech_w)
 {
+	running_machine *machine = space->machine;
 	DBG_LOG (2, "364", ("port write %.2x %.2x\n", offset, data));
 	switch (offset) {
 	case 0:
@@ -180,8 +181,9 @@ WRITE8_HANDLER(c364_speech_w)
 	}
 }
 
- READ8_HANDLER(c364_speech_r)
+READ8_HANDLER(c364_speech_r)
 {
+	running_machine *machine = space->machine;
 	int data=0xff;
 	switch (offset) {
 	case 1:

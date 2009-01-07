@@ -5,11 +5,9 @@
 */
 
 #include "driver.h"
-
 #include "cpu/pdp1/tx0.h"
 #include "includes/tx0.h"
 #include "video/crt.h"
-#include "deprecat.h"
 
 
 static TIMER_CALLBACK(reader_callback);
@@ -141,13 +139,6 @@ enum
 };
 
 
-static OPBASE_HANDLER(setOPbasefunc)
-{
-	/* just to get rid of the warnings */
-	return -1;
-}
-
-
 MACHINE_RESET( tx0 )
 {
 	/* reset device state */
@@ -165,12 +156,10 @@ static void tx0_machine_stop(running_machine *machine)
 
 MACHINE_START( tx0 )
 {
-	memory_set_opbase_handler(0, setOPbasefunc);;
-
-	tape_reader.timer = timer_alloc(reader_callback, NULL);
-	tape_puncher.timer = timer_alloc(puncher_callback, NULL);
-	typewriter.prt_timer = timer_alloc(prt_callback, NULL);
-	dis_timer = timer_alloc(dis_callback, NULL);
+	tape_reader.timer = timer_alloc(machine, reader_callback, NULL);
+	tape_puncher.timer = timer_alloc(machine, puncher_callback, NULL);
+	typewriter.prt_timer = timer_alloc(machine, prt_callback, NULL);
+	dis_timer = timer_alloc(machine, dis_callback, NULL);
 
 	add_exit_callback(machine, tx0_machine_stop);
 }
@@ -335,20 +324,20 @@ static TIMER_CALLBACK(reader_callback)
 			if (data & 0100)
 			{
 				/* read current AC */
-				ac = cpunum_get_reg(0, TX0_AC);
+				ac = cpu_get_reg(machine->cpu[0], TX0_AC);
 				/* cycle right */
 				ac = (ac >> 1) | ((ac & 1) << 17);
 				/* shuffle and insert data into AC */
 				ac = (ac /*& 0333333*/) | ((data & 001) << 17) | ((data & 002) << 13) | ((data & 004) << 9) | ((data & 010) << 5) | ((data & 020) << 1) | ((data & 040) >> 3);
 				/* write modified AC */
-				cpunum_set_reg(0, TX0_AC, ac);
+				cpu_set_reg(machine->cpu[0], TX0_AC, ac);
 
 				tape_reader.rc = (tape_reader.rc+1) & 3;
 
 				if (tape_reader.rc == 0)
 				{	/* IO complete */
 					tape_reader.rcl = 0;
-					tx0_pulse_io_complete();
+					cpu_set_reg(machine->cpu[0], TX0_IO_COMPLETE, 0);
 				}
 			}
 		}
@@ -366,13 +355,13 @@ static TIMER_CALLBACK(reader_callback)
 */
 static TIMER_CALLBACK(puncher_callback)
 {
-	tx0_pulse_io_complete();
+	cpu_set_reg(machine->cpu[0], TX0_IO_COMPLETE, 0);
 }
 
 /*
 	Initiate read of a 6-bit word from tape
 */
-void tx0_io_r1l(void)
+void tx0_io_r1l(const device_config *device)
 {
 	begin_tape_read(0);
 }
@@ -380,7 +369,7 @@ void tx0_io_r1l(void)
 /*
 	Initiate read of a 18-bit word from tape (used in read-in mode)
 */
-void tx0_io_r3l(void)
+void tx0_io_r3l(const device_config *device)
 {
 	begin_tape_read(1);
 }
@@ -388,12 +377,12 @@ void tx0_io_r3l(void)
 /*
 	Write a 7-bit word to tape (7th bit clear)
 */
-void tx0_io_p6h(void)
+void tx0_io_p6h(const device_config *device)
 {
 	int ac;
 
 	/* read current AC */
-	ac = cpunum_get_reg(0, TX0_AC);
+	ac = cpu_get_reg(device, TX0_AC);
 	/* shuffle and punch 6-bit word */
 	tape_write(((ac & 0100000) >> 15) | ((ac & 0010000) >> 11) | ((ac & 0001000) >> 7) | ((ac & 0000100) >> 3) | ((ac & 0000010) << 1) | ((ac & 0000001) << 5));
 
@@ -403,12 +392,12 @@ void tx0_io_p6h(void)
 /*
 	Write a 7-bit word to tape (7th bit set)
 */
-void tx0_io_p7h(void)
+void tx0_io_p7h(const device_config *device)
 {
 	int ac;
 
 	/* read current AC */
-	ac = cpunum_get_reg(0, TX0_AC);
+	ac = cpu_get_reg(device, TX0_AC);
 	/* shuffle and punch 6-bit word */
 	tape_write(((ac & 0100000) >> 15) | ((ac & 0010000) >> 11) | ((ac & 0001000) >> 7) | ((ac & 0000100) >> 3) | ((ac & 0000010) << 1) | ((ac & 0000001) << 5) | 0100);
 
@@ -454,22 +443,22 @@ static void typewriter_out(running_machine *machine, UINT8 data)
 */
 static TIMER_CALLBACK(prt_callback)
 {
-	tx0_pulse_io_complete();
+	cpu_set_reg(machine->cpu[0], TX0_IO_COMPLETE, 0);
 }
 
 /*
 	prt io callback
 */
-void tx0_io_prt(void)
+void tx0_io_prt(const device_config *device)
 {
 	int ac;
 	int ch;
 
 	/* read current AC */
-	ac = cpunum_get_reg(0, TX0_AC);
+	ac = cpu_get_reg(device, TX0_AC);
 	/* shuffle and print 6-bit word */
 	ch = ((ac & 0100000) >> 15) | ((ac & 0010000) >> 11) | ((ac & 0001000) >> 7) | ((ac & 0000100) >> 3) | ((ac & 0000010) << 1) | ((ac & 0000001) << 5);
-	typewriter_out(Machine, ch);
+	typewriter_out(device->machine, ch);
 
 	timer_adjust_oneshot(typewriter.prt_timer, ATTOTIME_IN_MSEC(100), 0);
 }
@@ -480,19 +469,19 @@ void tx0_io_prt(void)
 */
 static TIMER_CALLBACK(dis_callback)
 {
-	tx0_pulse_io_complete();
+	cpu_set_reg(machine->cpu[0], TX0_IO_COMPLETE, 0);
 }
 
 /*
 	Plot one point on crt
 */
-void tx0_io_dis(void)
+void tx0_io_dis(const device_config *device)
 {
 	int ac;
 	int x;
 	int y;
 
-	ac = cpunum_get_reg(0, TX0_AC);
+	ac = cpu_get_reg(device, TX0_AC);
 	x = ac >> 9;
 	y = ac & 0777;
 	tx0_plot(x, y);
@@ -595,18 +584,16 @@ DEVICE_IMAGE_UNLOAD( tx0_magtape )
 		if ((magtape.state == MTS_SELECTED) || ((magtape.state == MTS_SELECTING) && (magtape.command == 2)))
 		{	/* unit has become unavailable */
 			magtape.state = MTS_UNSELECTING;
-			cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_RWC);
+			cpu_set_reg(image->machine->cpu[0], TX0_PF, cpu_get_reg(image->machine->cpu[0], TX0_PF) | PF_RWC);
 			schedule_unselect();
 		}
 	}
 }
 
-static void magtape_callback(int dummy)
+static void magtape_callback(const device_config *device)
 {
 	UINT8 buf = 0;
 	int lr;
-
-	(void) dummy;
 
 	switch (magtape.state)
 	{
@@ -618,12 +605,12 @@ static void magtape_callback(int dummy)
 		{
 			int mar;
 
-			mar = cpunum_get_reg(0, TX0_MAR);
+			mar = cpu_get_reg(device, TX0_MAR);
 
 			if ((mar & 03) != 1)
 			{	/* unimplemented device: remain in unselected state and set rwc
 				flag? */
-				cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_RWC);
+				cpu_set_reg(device, TX0_PF, cpu_get_reg(device, TX0_PF) | PF_RWC);
 			}
 			else
 			{
@@ -638,7 +625,7 @@ static void magtape_callback(int dummy)
 			}
 
 			magtape.sel_pending = FALSE;
-			tx0_pulse_io_complete();
+			cpu_set_reg(device, TX0_IO_COMPLETE, 0);
 		}
 		break;
 
@@ -681,7 +668,7 @@ static void magtape_callback(int dummy)
 			if (image_ftell(magtape.img) == 0)
 			{	/* tape at ldp */
 				magtape.state = MTS_UNSELECTING;
-				cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_RWC);
+				cpu_set_reg(device, TX0_PF, cpu_get_reg(device, TX0_PF) | PF_RWC);
 				schedule_unselect();
 			}
 			else if (image_fseek(magtape.img, -1, SEEK_CUR))
@@ -750,7 +737,7 @@ static void magtape_callback(int dummy)
 							logerror("invalid longitudinal parity\n");
 						/* set EOR and unselect... */
 						magtape.state = MTS_UNSELECTING;
-						cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_EOR);
+						cpu_set_reg(device, TX0_PF, cpu_get_reg(device, TX0_PF) | PF_EOR);
 						schedule_unselect();
 						magtape.irg_pos = MTIRGP_ENDMINUS1;
 					}
@@ -806,7 +793,7 @@ static void magtape_callback(int dummy)
 					/*image_unload(magtape.img);*/
 					/* Or do we stop at EOT mark??? */
 					magtape.state = MTS_UNSELECTING;
-					cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_EOT);
+					cpu_set_reg(device, TX0_PF, cpu_get_reg(device, TX0_PF) | PF_EOT);
 					schedule_unselect();
 				}
 			}
@@ -823,12 +810,12 @@ static void magtape_callback(int dummy)
 						if (magtape.cpy_pending)
 						{	/* read command */
 							magtape.u.read.space_flag = FALSE;
-							tx0_pulse_io_complete();
-							cpunum_set_reg(0, TX0_LR, ((cpunum_get_reg(0, TX0_LR) >> 1) & 0333333)
+							cpu_set_reg(device, TX0_IO_COMPLETE, 0);
+							cpu_set_reg(device, TX0_LR, ((cpu_get_reg(device, TX0_LR) >> 1) & 0333333)
 														| ((buf & 040) << 12) | ((buf & 020) << 10) | ((buf & 010) << 8) | ((buf & 004) << 6) | ((buf & 002) << 4) | ((buf & 001) << 2));
 							/* check parity */
 							if (! (((buf ^ (buf >> 1) ^ (buf >> 2) ^ (buf >> 3) ^ (buf >> 4) ^ (buf >> 5) ^ (buf >> 6) ^ (buf >> 7)) & 1) ^ magtape.binary_flag))
-								cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_PC);
+								cpu_set_reg(device, TX0_PF, cpu_get_reg(device, TX0_PF) | PF_PC);
 						}
 						else
 						{	/* space command */
@@ -847,11 +834,11 @@ static void magtape_callback(int dummy)
 					}
 					if (!magtape.u.read.space_flag)
 					{
-						cpunum_set_reg(0, TX0_LR, ((cpunum_get_reg(0, TX0_LR) >> 1) & 0333333)
+						cpu_set_reg(device, TX0_LR, ((cpu_get_reg(device, TX0_LR) >> 1) & 0333333)
 													| ((buf & 040) << 12) | ((buf & 020) << 10) | ((buf & 010) << 8) | ((buf & 004) << 6) | ((buf & 002) << 4) | ((buf & 001) << 2));
 						/* check parity */
 						if (! (((buf ^ (buf >> 1) ^ (buf >> 2) ^ (buf >> 3) ^ (buf >> 4) ^ (buf >> 5) ^ (buf >> 6) ^ (buf >> 7)) & 1) ^ magtape.binary_flag))
-							cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_PC);
+							cpu_set_reg(device, TX0_PF, cpu_get_reg(device, TX0_PF) | PF_PC);
 					}
 					magtape.u.read.state = MTRDS_STATE2;
 					break;
@@ -865,16 +852,16 @@ static void magtape_callback(int dummy)
 					}
 					if (!magtape.u.read.space_flag)
 					{
-						cpunum_set_reg(0, TX0_LR, ((cpunum_get_reg(0, TX0_LR) >> 1) & 0333333)
+						cpu_set_reg(device, TX0_LR, ((cpu_get_reg(device, TX0_LR) >> 1) & 0333333)
 													| ((buf & 040) << 12) | ((buf & 020) << 10) | ((buf & 010) << 8) | ((buf & 004) << 6) | ((buf & 002) << 4) | ((buf & 001) << 2));
 						/* check parity */
 						if (! (((buf ^ (buf >> 1) ^ (buf >> 2) ^ (buf >> 3) ^ (buf >> 4) ^ (buf >> 5) ^ (buf >> 6) ^ (buf >> 7)) & 1) ^ magtape.binary_flag))
-							cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_PC);
+							cpu_set_reg(device, TX0_PF, cpu_get_reg(device, TX0_PF) | PF_PC);
 						/* synchronize with cpy instruction */
 						if (magtape.cpy_pending)
-							tx0_pulse_io_complete();
+							cpu_set_reg(device, TX0_IO_COMPLETE, 0);
 						else
-							cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_RWC);
+							cpu_set_reg(device, TX0_PF, cpu_get_reg(device, TX0_PF) | PF_RWC);
 					}
 					magtape.u.read.state = MTRDS_STATE3;
 					break;
@@ -886,11 +873,11 @@ static void magtape_callback(int dummy)
 						magtape.u.read.state = MTRDS_STATE1;
 						if (!magtape.u.read.space_flag)
 						{
-							cpunum_set_reg(0, TX0_LR, ((cpunum_get_reg(0, TX0_LR) >> 1) & 0333333)
+							cpu_set_reg(device, TX0_LR, ((cpu_get_reg(device, TX0_LR) >> 1) & 0333333)
 														| ((buf & 040) << 12) | ((buf & 020) << 10) | ((buf & 010) << 8) | ((buf & 004) << 6) | ((buf & 002) << 4) | ((buf & 001) << 2));
 							/* check parity */
 							if (! (((buf ^ (buf >> 1) ^ (buf >> 2) ^ (buf >> 3) ^ (buf >> 4) ^ (buf >> 5) ^ (buf >> 6) ^ (buf >> 7)) & 1) ^ magtape.binary_flag))
-								cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_PC);
+								cpu_set_reg(device, TX0_PF, cpu_get_reg(device, TX0_PF) | PF_PC);
 						}
 					}
 					else
@@ -930,11 +917,11 @@ static void magtape_callback(int dummy)
 						logerror("invalid longitudinal parity\n");
 						/* no idea if the original tx-0 magtape controller
 						checks parity, but can't harm if we do */
-						cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_PC);
+						cpu_set_reg(device, TX0_PF, cpu_get_reg(device, TX0_PF) | PF_PC);
 					}
 					/* set EOR and unselect... */
 					magtape.state = MTS_UNSELECTING;
-					cpunum_set_reg(0, TX0_PF, cpunum_get_reg(0, TX0_PF) | PF_EOR);
+					cpu_set_reg(device, TX0_PF, cpu_get_reg(device, TX0_PF) | PF_EOR);
 					schedule_unselect();
 					magtape.irg_pos = MTIRGP_START;
 					break;
@@ -972,20 +959,20 @@ static void magtape_callback(int dummy)
 				if (magtape.u.write.counter)
 				{
 					magtape.u.write.counter--;
-					lr = cpunum_get_reg(0, TX0_LR);
+					lr = cpu_get_reg(device, TX0_LR);
 					buf = ((lr >> 10) & 040) | ((lr >> 8) & 020) | ((lr >> 6) & 010) | ((lr >> 4) & 004) | ((lr >> 2) & 002) | (lr & 001);
 					buf |= ((buf << 1) ^ (buf << 2) ^ (buf << 3) ^ (buf << 4) ^ (buf << 5) ^ (buf << 6) ^ ((!magtape.binary_flag) << 6)) & 0100;
-					cpunum_set_reg(0, TX0_LR, lr >> 1);
+					cpu_set_reg(device, TX0_LR, lr >> 1);
 				}
 				else
 				{
 					if (magtape.cpy_pending)
 					{
-						tx0_pulse_io_complete();
-						lr = cpunum_get_reg(0, TX0_LR);
+						cpu_set_reg(device, TX0_IO_COMPLETE, 0);
+						lr = cpu_get_reg(device, TX0_LR);
 						buf = ((lr >> 10) & 040) | ((lr >> 8) & 020) | ((lr >> 6) & 010) | ((lr >> 4) & 004) | ((lr >> 2) & 002) | (lr & 001);
 						buf |= ((buf << 1) ^ (buf << 2) ^ (buf << 3) ^ (buf << 4) ^ (buf << 5) ^ (buf << 6) ^ ((!magtape.binary_flag) << 6)) & 0100;
-						cpunum_set_reg(0, TX0_LR, lr >> 1);
+						cpu_set_reg(device, TX0_LR, lr >> 1);
 						magtape.u.write.counter = 2;
 						break;
 					}
@@ -1043,26 +1030,26 @@ static void magtape_callback(int dummy)
 	}
 }
 
-void tx0_sel(void)
+void tx0_sel(const device_config *device)
 {
 	magtape.sel_pending = TRUE;
 
 	if (magtape.state == MTS_UNSELECTED)
 	{
 		if (0)
-			magtape_callback(0);
+			magtape_callback(device);
 		timer_adjust_oneshot(magtape.timer, attotime_zero, 0);
 	}
 }
 
-void tx0_io_cpy(void)
+void tx0_io_cpy(const device_config *device)
 {
 	switch (magtape.state)
 	{
 	case MTS_UNSELECTED:
 	case MTS_UNSELECTING:
 		/* ignore instruction and set rwc flag? */
-		tx0_pulse_io_complete();
+		cpu_set_reg(device, TX0_IO_COMPLETE, 0);
 		break;
 
 	case MTS_SELECTING:
@@ -1072,7 +1059,7 @@ void tx0_io_cpy(void)
 		case 0:	/* backspace */
 		case 2:	/* rewind */
 			/* ignore instruction and set rwc flag? */
-			tx0_pulse_io_complete();
+			cpu_set_reg(device, TX0_IO_COMPLETE, 0);
 			break;
 		case 1:	/* read */
 		case 3:	/* write */
@@ -1089,7 +1076,7 @@ void tx0_io_cpy(void)
 
 	IO devices should reset
 */
-void tx0_io_reset_callback(void)
+void tx0_io_reset_callback(const device_config *device)
 {
 	tape_reader.rcl = tape_reader.rc = 0;
 	if (tape_reader.timer)
@@ -1119,7 +1106,7 @@ static void tx0_keyboard(running_machine *machine)
 
 	int typewriter_transitions;
 	int charcode, lr;
-	static const char *twrnames[] = { "TWR0", "TWR1", "TWR2", "TWR3" };
+	static const char *const twrnames[] = { "TWR0", "TWR1", "TWR2", "TWR3" };
 
 	for (i=0; i<4; i++)
 	{
@@ -1139,7 +1126,7 @@ static void tx0_keyboard(running_machine *machine)
 			previous LR */
 			lr = (1 << 17) | ((charcode & 040) << 10) | ((charcode & 020) << 8) | ((charcode & 010) << 6) | ((charcode & 004) << 4) | ((charcode & 002) << 2) | ((charcode & 001) << 1);
 			/* write modified LR */
-			cpunum_set_reg(0, TX0_LR, lr);
+			cpu_set_reg(machine->cpu[0], TX0_LR, lr);
 			tx0_typewriter_drawchar(machine, charcode);	/* we want to echo input */
 			break;
 		}
@@ -1166,7 +1153,7 @@ INTERRUPT_GEN( tx0_interrupt )
 
 
 	/* read new state of control keys */
-	control_keys = input_port_read(machine, "CSW");
+	control_keys = input_port_read(device->machine, "CSW");
 
 	if (control_keys & tx0_control)
 	{
@@ -1175,31 +1162,31 @@ INTERRUPT_GEN( tx0_interrupt )
 
 		if (control_transitions & tx0_stop_cyc0)
 		{
-			cpunum_set_reg(0, TX0_STOP_CYC0, !cpunum_get_reg(0, TX0_STOP_CYC0));
+			cpu_set_reg(device->machine->cpu[0], TX0_STOP_CYC0, !cpu_get_reg(device->machine->cpu[0], TX0_STOP_CYC0));
 		}
 		if (control_transitions & tx0_stop_cyc1)
 		{
-			cpunum_set_reg(0, TX0_STOP_CYC1, !cpunum_get_reg(0, TX0_STOP_CYC1));
+			cpu_set_reg(device->machine->cpu[0], TX0_STOP_CYC1, !cpu_get_reg(device->machine->cpu[0], TX0_STOP_CYC1));
 		}
 		if (control_transitions & tx0_gbl_cm_sel)
 		{
-			cpunum_set_reg(0, TX0_GBL_CM_SEL, !cpunum_get_reg(0, TX0_GBL_CM_SEL));
+			cpu_set_reg(device->machine->cpu[0], TX0_GBL_CM_SEL, !cpu_get_reg(device->machine->cpu[0], TX0_GBL_CM_SEL));
 		}
 		if (control_transitions & tx0_stop)
 		{
-			cpunum_set_reg(0, TX0_RUN, 0);
-			cpunum_set_reg(0, TX0_RIM, 0);
+			cpu_set_reg(device->machine->cpu[0], TX0_RUN, 0);
+			cpu_set_reg(device->machine->cpu[0], TX0_RIM, 0);
 		}
 		if (control_transitions & tx0_restart)
 		{
-			cpunum_set_reg(0, TX0_RUN, 1);
-			cpunum_set_reg(0, TX0_RIM, 0);
+			cpu_set_reg(device->machine->cpu[0], TX0_RUN, 1);
+			cpu_set_reg(device->machine->cpu[0], TX0_RIM, 0);
 		}
 		if (control_transitions & tx0_read_in)
 		{	/* set cpu to read instructions from perforated tape */
-			tx0_pulse_reset();
-			cpunum_set_reg(0, TX0_RUN, 0);
-			cpunum_set_reg(0, TX0_RIM, 1);
+			cpu_set_reg(device->machine->cpu[0], TX0_RESET, 0);
+			cpu_set_reg(device->machine->cpu[0], TX0_RUN, 0);
+			cpu_set_reg(device->machine->cpu[0], TX0_RIM, 1);
 		}
 		if (control_transitions & tx0_toggle_dn)
 		{
@@ -1217,16 +1204,16 @@ INTERRUPT_GEN( tx0_interrupt )
 		{
 			if (tsr_index >= 2)
 			{
-				UINT32 cm_sel = (UINT32) cpunum_get_reg(0, TX0_CM_SEL);
-				cpunum_set_reg(0, TX0_CM_SEL, cm_sel ^ (1 << (tsr_index - 2)));
+				UINT32 cm_sel = (UINT32) cpu_get_reg(device->machine->cpu[0], TX0_CM_SEL);
+				cpu_set_reg(device->machine->cpu[0], TX0_CM_SEL, cm_sel ^ (1 << (tsr_index - 2)));
 			}
 		}
 		if (control_transitions & tx0_lr_sel)
 		{
 			if (tsr_index >= 2)
 			{
-				UINT32 lr_sel = (UINT32) cpunum_get_reg(0, TX0_LR_SEL);
-				cpunum_set_reg(0, TX0_LR_SEL, (lr_sel ^ (1 << (tsr_index - 2))));
+				UINT32 lr_sel = (UINT32) cpu_get_reg(device->machine->cpu[0], TX0_LR_SEL);
+				cpu_set_reg(device->machine->cpu[0], TX0_LR_SEL, (lr_sel ^ (1 << (tsr_index - 2))));
 			}
 		}
 
@@ -1235,14 +1222,14 @@ INTERRUPT_GEN( tx0_interrupt )
 
 
 		/* handle toggle switch register keys */
-		tsr_keys = (input_port_read(machine, "MSW") << 16) | input_port_read(machine, "LSW");
+		tsr_keys = (input_port_read(device->machine, "MSW") << 16) | input_port_read(device->machine, "LSW");
 
 		/* compute transitions */
 		tsr_transitions = tsr_keys & (~ old_tsr_keys);
 
 		/* update toggle switch register */
 		if (tsr_transitions)
-			cpunum_set_reg(0, TX0_TBR+tsr_index, cpunum_get_reg(0, TX0_TBR+tsr_index) ^ tsr_transitions);
+			cpu_set_reg(device->machine->cpu[0], TX0_TBR+tsr_index, cpu_get_reg(device->machine->cpu[0], TX0_TBR+tsr_index) ^ tsr_transitions);
 
 		/* remember new state of toggle switch register keys */
 		old_tsr_keys = tsr_keys;
@@ -1252,7 +1239,7 @@ INTERRUPT_GEN( tx0_interrupt )
 		old_control_keys = 0;
 		old_tsr_keys = 0;
 
-		tx0_keyboard(machine);
+		tx0_keyboard(device->machine);
 	}
 }
 

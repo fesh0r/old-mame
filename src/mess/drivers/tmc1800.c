@@ -22,7 +22,7 @@ PCB Layout
 |						4011	|--------|	2114	2114	|
 |								|  PROM  |					|
 |						40107	|--------|	2114	2114	|
-|	4050	1.75Mhz											|
+|	4050	1.75MHz											|
 |						|-------------|		2114	2114	|
 |						|   CDP1802   |						|
 |						|-------------|		2114	2114	|
@@ -138,14 +138,14 @@ static MACHINE_RESET( oscnano );
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+	return devtag_get_device(machine, CASSETTE, "cassette");
 }
 
 /* Read/Write Handlers */
 
 static WRITE8_HANDLER( tmc1800_keylatch_w )
 {
-	tmc1800_state *state = machine->driver_data;
+	tmc1800_state *state = space->machine->driver_data;
 
 	state->keylatch = data;
 }
@@ -167,7 +167,7 @@ static WRITE8_HANDLER( tmc2000_keylatch_w )
 
 	*/
 
-	tmc2000_state *state = machine->driver_data;
+	tmc2000_state *state = space->machine->driver_data;
 
 	state->keylatch = data & 0x3f;
 }
@@ -189,7 +189,7 @@ static WRITE8_HANDLER( oscnano_keylatch_w )
 
 	*/
 
-	oscnano_state *state = machine->driver_data;
+	oscnano_state *state = space->machine->driver_data;
 
 	state->keylatch = data & 0x0f;
 }
@@ -200,35 +200,35 @@ static WRITE8_DEVICE_HANDLER( tmc2000_bankswitch_w )
 
 	/* enable RAM */
 
-	memory_set_bank(1, TMC2000_BANK_RAM);
+	memory_set_bank(device->machine, 1, TMC2000_BANK_RAM);
 
 	switch (mess_ram_size)
 	{
 	case 4 * 1024:
-		memory_install_readwrite8_handler(device->machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0x7000, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x0fff, 0, 0x7000, SMH_BANK1, SMH_BANK1);
 		break;
 
 	case 16 * 1024:
-		memory_install_readwrite8_handler(device->machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0x4000, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0x4000, SMH_BANK1, SMH_BANK1);
 		break;
 
 	case 32 * 1024:
-		memory_install_readwrite8_handler(device->machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1);
 		break;
 	}
 
 	/* enable monitor or color RAM */
 
-	memory_set_bank(2, bank);
+	memory_set_bank(device->machine, 2, bank);
 
 	switch (bank)
 	{
 	case TMC2000_BANK_MONITOR:
-		memory_install_readwrite8_handler(device->machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK2, SMH_UNMAP);
+		memory_install_readwrite8_handler(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK2, SMH_UNMAP);
 		break;
 
 	case TMC2000_BANK_COLORRAM: // write-only
-		memory_install_readwrite8_handler(device->machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0x7e00, SMH_UNMAP, SMH_BANK2);
+		memory_install_readwrite8_handler(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, SMH_UNMAP, SMH_BANK2);
 		break;
 	}
 
@@ -241,9 +241,9 @@ static WRITE8_DEVICE_HANDLER( oscnano_bankswitch_w )
 {
 	/* enable RAM */
 
-	memory_set_bank(1, OSCNANO_BANK_RAM);
+	memory_set_bank(device->machine, 1, OSCNANO_BANK_RAM);
 
-	memory_install_readwrite8_handler(device->machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0x7000, SMH_BANK1, SMH_BANK1);
+	memory_install_readwrite8_handler(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x0fff, 0, 0x7000, SMH_BANK1, SMH_BANK1);
 
 	/* write to CDP1864 tone latch */
 
@@ -428,12 +428,13 @@ INPUT_PORTS_END
 
 static CDP1802_MODE_READ( tmc1800_mode_r )
 {
-	tmc1800_state *state = machine->driver_data;
+	tmc1800_state *state = device->machine->driver_data;
 
-	if (input_port_read(machine, "RUN") & 0x01)
+	if (input_port_read(device->machine, "RUN") & 0x01)
 	{
 		if (state->reset)
 		{
+			running_machine *machine = device->machine;
 			MACHINE_RESET_CALL(tmc2000);
 
 			state->reset = 0;
@@ -451,10 +452,10 @@ static CDP1802_MODE_READ( tmc1800_mode_r )
 
 static CDP1802_EF_READ( tmc1800_ef_r )
 {
-	tmc1800_state *state = machine->driver_data;
+	tmc1800_state *state = device->machine->driver_data;
 
 	UINT8 flags = 0x0f;
-	static const char *keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
+	static const char *const keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
 	/*
         EF1     CDP1861
@@ -467,10 +468,10 @@ static CDP1802_EF_READ( tmc1800_ef_r )
 	if (state->cdp1861_efx) flags -= EF1;
 
 	/* tape input */
-	if (cassette_input(cassette_device_image(machine)) < 0) flags -= EF2;
+	if (cassette_input(cassette_device_image(device->machine)) < 0) flags -= EF2;
 
 	/* keyboard */
-	if (~input_port_read(machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
+	if (~input_port_read(device->machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
 
 	return flags;
 }
@@ -478,14 +479,14 @@ static CDP1802_EF_READ( tmc1800_ef_r )
 static CDP1802_Q_WRITE( tmc1800_q_w )
 {
 	/* tape output */
-	cassette_output(cassette_device_image(machine), level ? 1.0 : -1.0);
+	cassette_output(cassette_device_image(device->machine), level ? 1.0 : -1.0);
 }
 
 static CDP1802_DMA_WRITE( tmc1800_dma_w )
 {
-	const device_config *cdp1861 = device_list_find_by_tag(machine->config->devicelist, CDP1861, CDP1861_TAG);
+	tmc1800_state *state = device->machine->driver_data;
 
-	cdp1861_dma_w(cdp1861, data);
+	cdp1861_dma_w(state->cdp1861, data);
 }
 
 static CDP1802_INTERFACE( tmc1800_config )
@@ -512,12 +513,13 @@ static CDP1802_INTERFACE( osc1000b_config )
 
 static CDP1802_MODE_READ( tmc2000_mode_r )
 {
-	tmc2000_state *state = machine->driver_data;
+	tmc2000_state *state = device->machine->driver_data;
 
-	if (input_port_read(machine, "RUN") & 0x01)
+	if (input_port_read(device->machine, "RUN") & 0x01)
 	{
 		if (state->reset)
 		{
+			running_machine *machine = device->machine;
 			MACHINE_RESET_CALL(tmc2000);
 
 			state->reset = 0;
@@ -535,10 +537,10 @@ static CDP1802_MODE_READ( tmc2000_mode_r )
 
 static CDP1802_EF_READ( tmc2000_ef_r )
 {
-	tmc2000_state *state = machine->driver_data;
+	tmc2000_state *state = device->machine->driver_data;
 
 	int flags = 0x0f;
-	static const char *keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
+	static const char *const keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
 	/*
         EF1     CDP1864
@@ -551,33 +553,31 @@ static CDP1802_EF_READ( tmc2000_ef_r )
 	if (state->cdp1864_efx) flags -= EF1;
 
 	/* tape input */
-	if (cassette_input(cassette_device_image(machine)) < 0) flags -= EF2;
+	if (cassette_input(cassette_device_image(device->machine)) < 0) flags -= EF2;
 
 	/* keyboard */
-	if (~input_port_read(machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
+	if (~input_port_read(device->machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
 
 	return flags;
 }
 
 static CDP1802_Q_WRITE( tmc2000_q_w )
 {
-	const device_config *cdp1864 = device_list_find_by_tag(machine->config->devicelist, CDP1864, CDP1864_TAG);
+	tmc2000_state *state = device->machine->driver_data;
 
 	/* CDP1864 audio output enable */
-	cdp1864_aoe_w(cdp1864, level);
+	cdp1864_aoe_w(state->cdp1864, level);
 
 	/* set Q led status */
 	set_led_status(1, level);
 
 	/* tape output */
-	cassette_output(cassette_device_image(machine), level ? 1.0 : -1.0);
+	cassette_output(cassette_device_image(device->machine), level ? 1.0 : -1.0);
 }
 
 static CDP1802_DMA_WRITE( tmc2000_dma_w )
 {
-	tmc2000_state *state = machine->driver_data;
-
-	const device_config *cdp1864 = device_list_find_by_tag(machine->config->devicelist, CDP1864, CDP1864_TAG);
+	tmc2000_state *state = device->machine->driver_data;
 
 	UINT8 color = ~(state->colorram[ma & 0x1ff]) & 0x07;
 	
@@ -585,7 +585,7 @@ static CDP1802_DMA_WRITE( tmc2000_dma_w )
 	int gdata = BIT(color, 0);
 	int bdata = BIT(color, 1);
 
-	cdp1864_dma_w(cdp1864, data, ASSERT_LINE, rdata, gdata, bdata);
+	cdp1864_dma_w(state->cdp1864, data, ASSERT_LINE, rdata, gdata, bdata);
 }
 
 static CDP1802_INTERFACE( tmc2000_config )
@@ -610,15 +610,16 @@ static TIMER_CALLBACK( oscnano_ef4_tick )
 
 static CDP1802_MODE_READ( oscnano_mode_r )
 {
-	oscnano_state *state = machine->driver_data;
+	oscnano_state *state = device->machine->driver_data;
 
-	int run = input_port_read(machine, "RUN") & 0x01;
-	int monitor = input_port_read(machine, "MONITOR") & 0x01;
+	int run = input_port_read(device->machine, "RUN") & 0x01;
+	int monitor = input_port_read(device->machine, "MONITOR") & 0x01;
 
 	if (run && monitor)
 	{
 		if (state->reset)
 		{
+			running_machine *machine = device->machine;
 			MACHINE_RESET_CALL(oscnano);
 
 			state->reset = 0;
@@ -648,9 +649,9 @@ static CDP1802_MODE_READ( oscnano_mode_r )
 
 static CDP1802_EF_READ( oscnano_ef_r )
 {
-	oscnano_state *state = machine->driver_data;
+	oscnano_state *state = device->machine->driver_data;
 
-	static const char *keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
+	static const char *const keynames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
 	int flags = 0x0f;
 
@@ -665,10 +666,10 @@ static CDP1802_EF_READ( oscnano_ef_r )
 	if (state->cdp1864_efx) flags -= EF1;
 
 	/* tape input */
-	if (cassette_input(cassette_device_image(machine)) < 0) flags -= EF2;
+	if (cassette_input(cassette_device_image(device->machine)) < 0) flags -= EF2;
 
 	/* keyboard */
-	if (~input_port_read(machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
+	if (~input_port_read(device->machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
 
 	/* monitor */
 	if (state->monitor_ef4) flags -= EF4;
@@ -678,23 +679,23 @@ static CDP1802_EF_READ( oscnano_ef_r )
 
 static CDP1802_Q_WRITE( oscnano_q_w )
 {
-	const device_config *cdp1864 = device_list_find_by_tag(machine->config->devicelist, CDP1864, CDP1864_TAG);
+	oscnano_state *state = device->machine->driver_data;
 
 	/* CDP1864 audio output enable */
-	cdp1864_aoe_w(cdp1864, level);
+	cdp1864_aoe_w(state->cdp1864, level);
 
 	/* set Q led status */
 	set_led_status(1, level);
 
 	/* tape output */
-	cassette_output(cassette_device_image(machine), level ? 1.0 : -1.0);
+	cassette_output(cassette_device_image(device->machine), level ? 1.0 : -1.0);
 }
 
 static CDP1802_DMA_WRITE( oscnano_dma_w )
 {
-	const device_config *cdp1864 = device_list_find_by_tag(machine->config->devicelist, CDP1864, CDP1864_TAG);
+	oscnano_state *state = device->machine->driver_data;
 
-	cdp1864_dma_w(cdp1864, data, CLEAR_LINE, 1, 1, 1);
+	cdp1864_dma_w(state->cdp1864, data, CLEAR_LINE, 1, 1, 1);
 }
 
 static CDP1802_INTERFACE( oscnano_config )
@@ -715,19 +716,24 @@ static MACHINE_START( tmc1800 )
 {
 	tmc1800_state *state = machine->driver_data;
 
+	/* find devices */
+
+	state->cdp1861 = devtag_get_device(machine, CDP1861, CDP1861_TAG);
+
 	/* register for state saving */
 
-	state_save_register_global(state->cdp1861_efx);
-	state_save_register_global(state->keylatch);
-	state_save_register_global(state->reset);
+	state_save_register_global(machine, state->cdp1861_efx);
+	state_save_register_global(machine, state->keylatch);
+	state_save_register_global(machine, state->reset);
 }
 
 static MACHINE_RESET( tmc1800 )
 {
+	tmc1800_state *state = machine->driver_data;
+
 	/* reset CDP1864 */
 
-	const device_config *cdp1861 = device_list_find_by_tag(machine->config->devicelist, CDP1861, CDP1861_TAG);
-	cdp1861->reset(cdp1861);
+	device_reset(state->cdp1861);
 }
 
 // OSCOM 1000B
@@ -738,9 +744,8 @@ static MACHINE_START( osc1000b )
 
 	/* register for state saving */
 
-	state_save_register_global(state->cdp1861_efx);
-	state_save_register_global(state->keylatch);
-	state_save_register_global(state->reset);
+	state_save_register_global(machine, state->keylatch);
+	state_save_register_global(machine, state->reset);
 }
 
 static MACHINE_RESET( osc1000b )
@@ -757,14 +762,14 @@ static MACHINE_START( tmc2000 )
 
 	/* RAM banking */
 
-	memory_configure_bank(1, 0, 2, memory_region(machine, "main"), 0x8000);
+	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, "main"), 0x8000);
 
 	/* ROM/colorram banking */
 
 	state->colorram = auto_malloc(TMC2000_COLORRAM_SIZE);
 
-	memory_configure_bank(2, TMC2000_BANK_MONITOR, 1, memory_region(machine, "main") + 0x8000, 0);
-	memory_configure_bank(2, TMC2000_BANK_COLORRAM, 1, state->colorram, 0);
+	memory_configure_bank(machine, 2, TMC2000_BANK_MONITOR, 1, memory_region(machine, "main") + 0x8000, 0);
+	memory_configure_bank(machine, 2, TMC2000_BANK_COLORRAM, 1, state->colorram, 0);
 
 	/* randomize color RAM contents */
 
@@ -773,32 +778,37 @@ static MACHINE_START( tmc2000 )
 		state->colorram[addr] = mame_rand(machine) & 0xff;
 	}
 
+	/* find devices */
+
+	state->cdp1864 = devtag_get_device(machine, CDP1864, CDP1864_TAG);
+
 	/* register for state saving */
 
-	state_save_register_global_pointer(state->colorram, TMC2000_COLORRAM_SIZE);
-	state_save_register_global(state->cdp1864_efx);
-	state_save_register_global(state->keylatch);
-	state_save_register_global(state->reset);
+	state_save_register_global_pointer(machine, state->colorram, TMC2000_COLORRAM_SIZE);
+	state_save_register_global(machine, state->cdp1864_efx);
+	state_save_register_global(machine, state->keylatch);
+	state_save_register_global(machine, state->reset);
 }
 
 static MACHINE_RESET( tmc2000 )
 {
+	tmc2000_state *state = machine->driver_data;
+
 	/* reset CDP1864 */
 
-	const device_config *cdp1864 = device_list_find_by_tag(machine->config->devicelist, CDP1864, CDP1864_TAG);
-	cdp1864->reset(cdp1864);
+	device_reset(state->cdp1864);
 
 	/* enable monitor mirror at 0x0000 */
 
-	memory_set_bank(1, TMC2000_BANK_ROM);
+	memory_set_bank(machine, 1, TMC2000_BANK_ROM);
 
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x01ff, 0, 0x7e00, SMH_BANK1, SMH_UNMAP);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x01ff, 0, 0x7e00, SMH_BANK1, SMH_UNMAP);
 
 	/* enable monitor */
 
-	memory_set_bank(2, TMC2000_BANK_MONITOR);
+	memory_set_bank(machine, 2, TMC2000_BANK_MONITOR);
 
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK2, SMH_UNMAP);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK2, SMH_UNMAP);
 }
 
 // OSCOM Nano
@@ -809,36 +819,41 @@ static MACHINE_START( oscnano )
 
 	/* RAM/ROM banking */
 
-	memory_configure_bank(1, 0, 2, memory_region(machine, "main"), 0x8000);
+	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, "main"), 0x8000);
 
 	/* allocate monitor timer */
 	
-	state->ef4_timer = timer_alloc(oscnano_ef4_tick, NULL);
+	state->ef4_timer = timer_alloc(machine, oscnano_ef4_tick, NULL);
 
 	/* initialize variables */
 	
 	state->monitor_ef4 = 1;
 
+	/* find devices */
+
+	state->cdp1864 = devtag_get_device(machine, CDP1864, CDP1864_TAG);
+
 	/* register for state saving */
 
-	state_save_register_global(state->monitor_ef4);
-	state_save_register_global(state->cdp1864_efx);
-	state_save_register_global(state->keylatch);
-	state_save_register_global(state->reset);
+	state_save_register_global(machine, state->monitor_ef4);
+	state_save_register_global(machine, state->cdp1864_efx);
+	state_save_register_global(machine, state->keylatch);
+	state_save_register_global(machine, state->reset);
 }
 
 static MACHINE_RESET( oscnano )
 {
+	oscnano_state *state = machine->driver_data;
+
 	/* reset CDP1864 */
 
-	const device_config *cdp1864 = device_list_find_by_tag(machine->config->devicelist, CDP1864, CDP1864_TAG);
-	cdp1864->reset(cdp1864);
+	device_reset(state->cdp1864);
 
 	/* enable ROM */
 
-	memory_set_bank(1, OSCNANO_BANK_ROM);
+	memory_set_bank(machine, 1, OSCNANO_BANK_ROM);
 
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x01ff, 0, 0x7e00, SMH_BANK1, SMH_BANK1);
+	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x01ff, 0, 0x7e00, SMH_BANK1, SMH_BANK1);
 }
 
 /* Machine Drivers */
@@ -1052,7 +1067,7 @@ static TIMER_CALLBACK(setup_beep)
 
 static DRIVER_INIT( tmc1800 )
 {
-	timer_set(attotime_zero, NULL, 0, setup_beep);
+	timer_set(machine, attotime_zero, NULL, 0, setup_beep);
 }
 
 /* System Drivers */

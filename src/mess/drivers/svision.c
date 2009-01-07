@@ -77,7 +77,7 @@ void svision_irq(running_machine *machine)
 	int irq = svision.timer_shot && (BANK & 2);
 	irq = irq || (svision_dma.finished && (BANK & 4));
 
-	cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], M6502_IRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static TIMER_CALLBACK(svision_timer)
@@ -93,7 +93,7 @@ static READ8_HANDLER(svision_r)
 	switch (offset)
 	{
 		case 0x20:
-			data = input_port_read(machine, "JOY");
+			data = input_port_read(space->machine, "JOY");
 			break;
 		case 0x21:
 			data &= ~0xf;
@@ -115,14 +115,14 @@ static READ8_HANDLER(svision_r)
 			break;
 		case 0x24:
 			svision.timer_shot = FALSE;
-			svision_irq( machine );
+			svision_irq( space->machine );
 			break;
 		case 0x25:
 			svision_dma.finished = FALSE;
-			svision_irq( machine );
+			svision_irq( space->machine );
 			break;
 		default:
-			logerror("%.6f svision read %04x %02x\n", attotime_to_double(timer_get_time()),offset,data);
+			logerror("%.6f svision read %04x %02x\n", attotime_to_double(timer_get_time(space->machine)),offset,data);
 			break;
 	}
 
@@ -142,9 +142,9 @@ static WRITE8_HANDLER(svision_w)
 		case 3:
 			break;
 		case 0x26: /* bits 5,6 memory management for a000? */
-			logerror("%.6f svision write %04x %02x\n", attotime_to_double(timer_get_time()),offset,data);
-			memory_set_bankptr(1, memory_region(machine, "user1") + ((svision_reg[0x26] & 0xe0) << 9));
-			svision_irq( machine );
+			logerror("%.6f svision write %04x %02x\n", attotime_to_double(timer_get_time(space->machine)),offset,data);
+			memory_set_bankptr(space->machine, 1, memory_region(space->machine, "user1") + ((svision_reg[0x26] & 0xe0) << 9));
+			svision_irq( space->machine );
 			break;
 		case 0x23: /* delta hero irq routine write */
 			value = data;
@@ -155,22 +155,22 @@ static WRITE8_HANDLER(svision_w)
 			else
 				delay = 256;
 			timer_enable(svision.timer1, TRUE);
-			timer_reset(svision.timer1, ATTOTIME_IN_CYCLES(value * delay, 0));
+			timer_reset(svision.timer1, cpu_clocks_to_attotime(space->machine->cpu[0], value * delay));
 			break;
 		case 0x10: case 0x11: case 0x12: case 0x13:
-			svision_soundport_w(machine, svision_channel + 0, offset & 3, data);
+			svision_soundport_w(space->machine, svision_channel + 0, offset & 3, data);
 			break;
 		case 0x14: case 0x15: case 0x16: case 0x17:
-			svision_soundport_w(machine, svision_channel + 1, offset & 3, data);
+			svision_soundport_w(space->machine, svision_channel + 1, offset & 3, data);
 			break;
 		case 0x18: case 0x19: case 0x1a: case 0x1b: case 0x1c:
-			svision_sounddma_w(machine, offset - 0x18, data);
+			svision_sounddma_w(space, offset - 0x18, data);
 			break;
 		case 0x28: case 0x29: case 0x2a:
-			svision_noise_w(machine, offset - 0x28, data);
+			svision_noise_w(space, offset - 0x28, data);
 			break;
 		default:
-			logerror("%.6f svision write %04x %02x\n", attotime_to_double(timer_get_time()), offset, data);
+			logerror("%.6f svision write %04x %02x\n", attotime_to_double(timer_get_time(space->machine)), offset, data);
 			break;
 	}
 }
@@ -183,11 +183,11 @@ static READ8_HANDLER(tvlink_r)
 			if (offset >= 0x800 && offset < 0x840)
 			{
 				/* strange effects when modifying palette */
-				return svision_r(machine, offset);
+				return svision_r(space, offset);
 			}
 			else
 			{
-				return svision_r(machine, offset);
+				return svision_r(space, offset);
 			}
 	}
 }
@@ -217,7 +217,7 @@ static WRITE8_HANDLER(tvlink_w)
 			}
 			break;
 		default:
-			svision_w(machine, offset,data);
+			svision_w(space, offset,data);
 			if (offset >= 0x800 && offset < 0x840)
 			{
 				UINT16 c;
@@ -429,7 +429,7 @@ static VIDEO_UPDATE( tvlink )
 static INTERRUPT_GEN( svision_frame_int )
 {
 	if (BANK&1)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
 
 	if (svision_channel->count)
 		svision_channel->count--;
@@ -441,26 +441,26 @@ static INTERRUPT_GEN( svision_frame_int )
 
 static DRIVER_INIT( svision )
 {
-	svision.timer1 = timer_alloc(svision_timer, NULL);
+	svision.timer1 = timer_alloc(machine, svision_timer, NULL);
 	svision_pet.on = FALSE;
-	memory_set_bankptr(2, memory_region(machine, "user1") + 0x1c000);
+	memory_set_bankptr(machine, 2, memory_region(machine, "user1") + 0x1c000);
 }
 
 static DRIVER_INIT( svisions )
 {
-	svision.timer1 = timer_alloc(svision_timer, NULL);
-	memory_set_bankptr(2, memory_region(machine, "user1") + 0x1c000);
-	svision.timer1 = timer_alloc(svision_timer, NULL);
+	svision.timer1 = timer_alloc(machine, svision_timer, NULL);
+	memory_set_bankptr(machine, 2, memory_region(machine, "user1") + 0x1c000);
+	svision.timer1 = timer_alloc(machine, svision_timer, NULL);
 	svision_pet.on = TRUE;
-	svision_pet.timer = timer_alloc(svision_pet_timer, NULL);
-	timer_pulse(attotime_mul(ATTOTIME_IN_SEC(8), 256/cpunum_get_clock(0)), NULL, 0, svision_pet_timer);
+	svision_pet.timer = timer_alloc(machine, svision_pet_timer, NULL);
+	timer_pulse(machine, attotime_mul(ATTOTIME_IN_SEC(8), 256/cpu_get_clock(machine->cpu[0])), NULL, 0, svision_pet_timer);
 }
 
 static MACHINE_RESET( svision )
 {
 	svision.timer_shot = FALSE;
 	svision_dma.finished = FALSE;
-	memory_set_bankptr(1, memory_region(machine, "user1"));
+	memory_set_bankptr(machine, 1, memory_region(machine, "user1"));
 }
 
 
@@ -468,7 +468,7 @@ static MACHINE_RESET( tvlink )
 {
 	svision.timer_shot = FALSE;
 	svision_dma.finished = FALSE;
-	memory_set_bankptr(1, memory_region(machine, "user1"));
+	memory_set_bankptr(machine, 1, memory_region(machine, "user1"));
 	tvlink.palette_on = FALSE;
 
 	memset(svision_reg + 0x800, 0xff, 0x40); // normally done from tvlink microcontroller
@@ -485,10 +485,9 @@ static const custom_sound_interface svision_sound_interface =
 	svision_custom_start
 };
 
-
 static MACHINE_DRIVER_START( svision )
 	/* basic machine hardware */
-	 MDRV_CPU_ADD("main", M65C02, 4000000)        /* ? stz used! speed? */
+	MDRV_CPU_ADD("main", M65C02, 4000000)        /* ? stz used! speed? */
 	MDRV_CPU_PROGRAM_MAP(svision_mem, 0)
 	MDRV_CPU_VBLANK_INT("main", svision_frame_int)
 
@@ -512,6 +511,11 @@ static MACHINE_DRIVER_START( svision )
 	MDRV_SOUND_CONFIG(svision_sound_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
+	
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin,ws,sv")
+	MDRV_CARTSLOT_MANDATORY
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svisionp )
@@ -545,17 +549,14 @@ MACHINE_DRIVER_END
 
 ROM_START(svision)
 	ROM_REGION(0x20000, "user1", 0)
-	ROM_CART_LOAD(0, "bin,ws,sv", 0x0000, 0x20000, ROM_MIRROR)
+	ROM_CART_LOAD("cart", 0x0000, 0x20000, ROM_MIRROR)
 ROM_END
+
 
 #define rom_svisions rom_svision
 #define rom_svisionn rom_svision
 #define rom_svisionp rom_svision
 #define rom_tvlinkp rom_svision
-
-static SYSTEM_CONFIG_START(svision)
-	CONFIG_DEVICE(cartslot_device_getinfo)
-SYSTEM_CONFIG_END
 
 /***************************************************************************
 
@@ -565,12 +566,12 @@ SYSTEM_CONFIG_END
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY     FULLNAME */
 // marketed under a ton of firms and names
-CONS(1992,	svision,	0,	0,	svision,	svision,	svision,	svision,	"Watara",	"Supervision", 0)
+CONS(1992,	svision,	0,	0,	svision,	svision,	svision,	0,	"Watara",	"Supervision", 0)
 // svdual 2 connected via communication port
-CONS( 1992, svisions,      svision,          0,svision,  svisions,    svisions,   svision, "Watara", "Super Vision (PeT Communication Simulation)", 0 )
+CONS( 1992, svisions,      svision,          0,svision,  svisions,    svisions,   0, "Watara", "Super Vision (PeT Communication Simulation)", 0 )
 
-CONS( 1993, svisionp,      svision,          0,svisionp,  svision,    svision,   svision, "Watara", "Super Vision (PAL TV Link Colored)", 0 )
-CONS( 1993, svisionn,      svision,          0,svisionn,  svision,    svision,   svision, "Watara", "Super Vision (NTSC TV Link Colored)", 0 )
+CONS( 1993, svisionp,      svision,          0,svisionp,  svision,    svision,   0, "Watara", "Super Vision (PAL TV Link Colored)", 0 )
+CONS( 1993, svisionn,      svision,          0,svisionn,  svision,    svision,   0, "Watara", "Super Vision (NTSC TV Link Colored)", 0 )
 // svtvlink (2 supervisions)
 // tvlink (pad supervision simulated)
-CONS( 199?, tvlinkp,      svision,          0,tvlinkp,  svision,    svision,   svision, "Watara", "TV Link PAL", 0 )
+CONS( 199?, tvlinkp,      svision,          0,tvlinkp,  svision,    svision,   0, "Watara", "TV Link PAL", 0 )

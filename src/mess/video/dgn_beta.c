@@ -80,7 +80,6 @@ the access to the video memory is unclear to me at the moment.
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/dgn_beta.h"
 #include "video/m6845.h"
 
@@ -133,7 +132,7 @@ static int NoScreen		= 0;
 
 /* Debugging commands and handlers. */
 static void execute_beta_vid_log(running_machine *machine, int ref, int params, const char *param[]);
-static void RegLog(int offset, int data);
+static void RegLog(running_machine *machine, int offset, int data);
 static void execute_beta_vid_fill(running_machine *machine, int ref, int params, const char *param[]);
 static void execute_beta_vid_box(running_machine *machine, int ref, int params, const char *param[]);
 static void execute_beta_vid(running_machine *machine, int ref, int params, const char *param[]);
@@ -151,8 +150,8 @@ static int MaxY	= 0x0000;
 static int VidAddr		= 0;	// Last address reg written
 
 static void beta_Set_RA(int offset, int data);
-static void beta_Set_HSync(int offset, int data);
-static void beta_Set_VSync(int offset, int data);
+static void beta_Set_HSync(running_machine *machine, int offset, int data);
+static void beta_Set_VSync(running_machine *machine, int offset, int data);
 static void beta_Set_DE(int offset, int data);
 
 static const struct m6845_interface beta_m6845_interface = {
@@ -217,11 +216,11 @@ typedef enum {
 /* 6821-I28, this allows the 6845 to access the full 64K address range, however    */
 /* since the ram data is addressed as a 16bit wide unit, this allows the 6845      */
 /* access to the first 128K or ram.                                                */
-void vid_set_gctrl(int data)
+void vid_set_gctrl(running_machine *machine, int data)
 {
 	GCtrl=data;
 	if (LogRegWrites)
-		debug_console_printf("I28-PB=$%2X, %2X-%s-%s-%s-%s-%s-%s PC=%4X\n",
+		debug_console_printf(machine, "I28-PB=$%2X, %2X-%s-%s-%s-%s-%s-%s PC=%4X\n",
 				     data,
 				     data & GCtrlAddrLines,
 				     data & GCtrlFS 		? "FS" : "  ",
@@ -230,7 +229,7 @@ void vid_set_gctrl(int data)
 				     data & GCtrlHiLo		? "Hi" : "Lo",
 				     data & GCtrlSWChar		? "C0" : "C1",
 				     data & GCtrlWI		? "Wi" : "  ",
-				     activecpu_get_pc());
+				     cpu_get_pc( machine->cpu[0] ));
 }
 
 // called when the 6845 changes the character row
@@ -240,7 +239,7 @@ static void beta_Set_RA(int offset, int data)
 }
 
 // called when the 6845 changes the HSync
-static void beta_Set_HSync(int offset, int data)
+static void beta_Set_HSync(running_machine *machine, int offset, int data)
 {
 	int Dots; 	/* Pixels per 16 bits */
 
@@ -261,14 +260,14 @@ static void beta_Set_HSync(int offset, int data)
 //		beta_scr_x=0-(((HT-HS)-HW)*8);	// Number of dots after HS to wait before start of next line
 		beta_scr_x=0-((HT-(HS+HW))*Dots);
 
-//debug_console_printf("HT=%d, HS=%d, HW=%d, (HS+HW)=%d, HT-(HS+HW)=%d\n",HT,HS,HW,(HS+HW),(HT-(HS+HW)));
-//debug_console_printf("Scanline=%d, row=%d\n",m6845_get_scanline_counter(),m6845_get_row_counter());
+//debug_console_printf(machine, "HT=%d, HS=%d, HW=%d, (HS+HW)=%d, HT-(HS+HW)=%d\n",HT,HS,HW,(HS+HW),(HT-(HS+HW)));
+//debug_console_printf(machine, "Scanline=%d, row=%d\n",m6845_get_scanline_counter(),m6845_get_row_counter());
 		HSyncMin=beta_scr_x;
 	}
 }
 
 // called when the 6845 changes the VSync
-static void beta_Set_VSync(int offset, int data)
+static void beta_Set_VSync(running_machine *machine, int offset, int data)
 {
 	beta_VSync=data;
 	if (!beta_VSync)
@@ -289,12 +288,12 @@ static void beta_Set_VSync(int offset, int data)
 		else if (DrawInterlace==INTERLACE_ON)
 		{
 			Field=(Field+1) & 0x01;	/* Invert field */
-//			debug_console_printf("Invert field=%d\n",Field);
+//			debug_console_printf(machine, "Invert field=%d\n",Field);
 		}
 		VSyncMin=beta_scr_y;
 	}
 
-	dgn_beta_frame_interrupt(Machine, data);
+	dgn_beta_frame_interrupt(machine, data);
 }
 
 static void beta_Set_DE(int offset, int data)
@@ -499,7 +498,7 @@ static void plot_gfx_pixel(int x, int y, int Dot, int Colour, bitmap_t *bitmap)
 	{
 		PlotY=(y*2);//+Field;
 		DoubleY=0;
-//		debug_console_printf("Field=%d\n",Field);
+//		debug_console_printf(machine, "Field=%d\n",Field);
 	}
 
 	/* Error check, make sure we're drawing on the actual bitmap ! */
@@ -644,7 +643,7 @@ VIDEO_UPDATE( dgnbeta )
 	while((beta_VSync)&&(c<ClkMax))
 	{
 		// Clock the 6845
-		m6845_clock();
+		m6845_clock(screen->machine);
 		c++;
 	}
 
@@ -654,7 +653,7 @@ VIDEO_UPDATE( dgnbeta )
 	{
 		while ((beta_HSync)&&(c<ClkMax))
 		{
-			m6845_clock();
+			m6845_clock(screen->machine);
 			c++;
 		}
 
@@ -680,7 +679,7 @@ VIDEO_UPDATE( dgnbeta )
 				beta_scr_x+=8;
 
 			// Clock the 6845
-			m6845_clock();
+			m6845_clock(screen->machine);
 			c++;
 		}
 	}
@@ -710,7 +709,7 @@ WRITE8_HANDLER(dgnbeta_6845_w)
 		VidAddr=data;				/* Record reg being written to */
 	}
 	if (LogRegWrites)
-		RegLog(offset,data);
+		RegLog(space->machine, offset,data);
 }
 
 /* Write handler for colour, pallate ram */
@@ -729,11 +728,11 @@ static void execute_beta_vid_log(running_machine *machine, int ref, int params, 
 {
 	LogRegWrites=!LogRegWrites;
 
-	debug_console_printf("6845 register write info set : %d\n",LogRegWrites);
+	debug_console_printf(machine, "6845 register write info set : %d\n",LogRegWrites);
 }
 
 
-static void RegLog(int offset, int data)
+static void RegLog(running_machine *machine, int offset, int data)
 {
 	char	RegName[16];
 
@@ -758,7 +757,7 @@ static void RegLog(int offset, int data)
 	}
 
 	if(offset&0x1)
-		debug_console_printf("6845 write Reg %s Addr=%3d Data=%3d ($%2.2X) \n",RegName,VidAddr,data,data);
+		debug_console_printf(machine, "6845 write Reg %s Addr=%3d Data=%3d ($%2.2X) \n",RegName,VidAddr,data,data);
 }
 
 static void execute_beta_vid_fill(running_machine *machine, int ref, int params, const char *param[])
@@ -793,7 +792,7 @@ static void execute_beta_vid_box(running_machine *machine, int ref, int params, 
 		*BITMAP_ADDR16(bit, y, BoxMinX) = BoxColour;
 		*BITMAP_ADDR16(bit, y, BoxMaxX) = BoxColour;
 	}
-	debug_console_printf("ScreenBox()\n");
+	debug_console_printf(machine, "ScreenBox()\n");
 }
 
 
@@ -804,18 +803,18 @@ static void execute_beta_vid(running_machine *machine, int ref, int params, cons
 
 static void execute_beta_vid_limits(running_machine *machine, int ref, int params, const char *param[])
 {
-	debug_console_printf("Min X     =$%4X, Max X     =$%4X\n",MinX,MaxX);
-	debug_console_printf("Min Y     =$%4X, Max Y     =$%4X\n",MinY,MaxY);
-	debug_console_printf("MinVidAddr=$%5X, MaxVidAddr=$%5X\n",MinAddr,MaxAddr);
-	debug_console_printf("HsyncMin  =%d, VSyncMin=%d\n",HSyncMin, VSyncMin);
-	debug_console_printf("Interlace =%d\n",DrawInterlace);
-	debug_console_printf("DEPos=%d\n",DEPos);
+	debug_console_printf(machine, "Min X     =$%4X, Max X     =$%4X\n",MinX,MaxX);
+	debug_console_printf(machine, "Min Y     =$%4X, Max Y     =$%4X\n",MinY,MaxY);
+	debug_console_printf(machine, "MinVidAddr=$%5X, MaxVidAddr=$%5X\n",MinAddr,MaxAddr);
+	debug_console_printf(machine, "HsyncMin  =%d, VSyncMin=%d\n",HSyncMin, VSyncMin);
+	debug_console_printf(machine, "Interlace =%d\n",DrawInterlace);
+	debug_console_printf(machine, "DEPos=%d\n",DEPos);
 	if (IsGfx16)
-		debug_console_printf("Gfx16\n");
+		debug_console_printf(machine, "Gfx16\n");
 	else if (IsGfx2)
-		debug_console_printf("Gfx2\n");
+		debug_console_printf(machine, "Gfx2\n");
 	else
-		debug_console_printf("Gfx4/Text\n");
+		debug_console_printf(machine, "Gfx4/Text\n");
 }
 
 static void execute_beta_vid_clkmax(running_machine *machine, int ref, int params, const char *param[])

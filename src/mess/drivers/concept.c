@@ -29,10 +29,13 @@
 */
 
 #include "driver.h"
+#include "cpu/m68000/m68000.h"
 #include "includes/concept.h"
 #include "devices/mflopimg.h"
 #include "formats/basicdsk.h"
 #include "devices/harddriv.h"
+#include "machine/mm58274c.h"
+#include "machine/wd17xx.h"
 
 static ADDRESS_MAP_START(concept_memmap, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x000000, 0x000007) AM_ROM AM_REGION("main", 0x010000) 	/* boot ROM mirror */
@@ -52,14 +55,20 @@ static PALETTE_INIT( concept )
 	palette_set_color_rgb(machine, 1, 0x00, 0x00, 0x00);
 }
 
+static const mm58274c_interface concept_mm58274c_interface =
+{
+	0,	/* 	mode 24*/
+	1   /*  first day of week */
+};
+
 /* concept machine */
 static MACHINE_DRIVER_START( concept )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 8182000)        /* 16.364 Mhz / 2 */
+	MDRV_CPU_ADD("main", M68000, 8182000)        /* 16.364 MHz / 2 */
 	MDRV_CPU_PROGRAM_MAP(concept_memmap, 0)
 	MDRV_CPU_VBLANK_INT("main", concept_interrupt)
 
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 	MDRV_MACHINE_START(concept)
 
 	/* video hardware */
@@ -78,7 +87,15 @@ static MACHINE_DRIVER_START( concept )
 
 	/* no sound? */
 
-	MDRV_DEVICE_ADD( "harddisk1", HARDDISK )
+	MDRV_HARDDISK_ADD( "harddisk1" )
+	
+	/* rtc */
+	MDRV_MM58274C_ADD("mm58274c", concept_mm58274c_interface)
+
+	/* via */
+	MDRV_VIA6522_ADD("via6522_0", 1022750, concept_via6522_intf)
+	
+	MDRV_WD179X_ADD("wd179x", concept_wd17xx_interface )
 MACHINE_DRIVER_END
 
 

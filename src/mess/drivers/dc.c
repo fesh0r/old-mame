@@ -19,6 +19,7 @@
 */
 
 #include "driver.h"
+#include "cpu/arm7/arm7.h"
 #include "cpu/sh4/sh4.h"
 #include "cpu/arm7/arm7core.h"
 #include "sound/aica.h"
@@ -30,7 +31,7 @@
 
 static UINT32 *dc_sound_ram;
 
-UINT32 dma_offset;
+//UINT32 dma_offset;
 
 static UINT64 portA = 0x3, PDTRA, latched_PDTRA = 0, w;
 static int state = 0;
@@ -119,7 +120,7 @@ static MACHINE_RESET( dc_console )
 
 static void aica_irq(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(machine, 1, ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[1], ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const aica_interface dc_aica_interface =
@@ -130,7 +131,7 @@ static const aica_interface dc_aica_interface =
 
 static INTERRUPT_GEN( dc_dispatch_vblank )
 {
-	dc_vblank(machine);
+	dc_vblank(device->machine);
 }
 
 static const struct sh4_config sh4cpu_config = {  1,  0,  1,  0,  0,  0,  1,  1,  0, CPU_CLOCK };

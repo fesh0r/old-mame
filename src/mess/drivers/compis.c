@@ -32,6 +32,7 @@
  ******************************************************************************/
 
 #include "driver.h"
+#include "cpu/i86/i86.h"
 #include "machine/8255ppi.h"
 #include "includes/compis.h"
 #include "video/i82720.h"
@@ -39,6 +40,8 @@
 #include "devices/printer.h"
 #include "machine/pit8253.h"
 #include "machine/pic8259.h"
+#include "machine/mm58274c.h"
+#include "machine/nec765.h"
 #include "formats/cpis_dsk.h"
 
 
@@ -223,6 +226,12 @@ INPUT_PORTS_END
 
 static const unsigned i86_address_mask = 0x000fffff;
 
+static const mm58274c_interface compis_mm58274c_interface =
+{
+	0,	/* 	mode 24*/
+	1   /*  first day of week */
+};
+
 static MACHINE_DRIVER_START( compis )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", I80186, 8000000)	/* 8 MHz */
@@ -231,24 +240,19 @@ static MACHINE_DRIVER_START( compis )
 	MDRV_CPU_VBLANK_INT("main", compis_vblank_int)
 	MDRV_CPU_CONFIG(i86_address_mask)
 
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET(compis)
 
-	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
-	MDRV_DEVICE_CONFIG( compis_pit8253_config )
+	MDRV_PIT8253_ADD( "pit8253", compis_pit8253_config )
 
-	MDRV_DEVICE_ADD( "pit8254", PIT8254 )
-	MDRV_DEVICE_CONFIG( compis_pit8254_config )
+	MDRV_PIT8254_ADD( "pit8254", compis_pit8254_config )
 
-	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
-	MDRV_DEVICE_CONFIG( compis_pic8259_master_config )
+	MDRV_PIC8259_ADD( "pic8259_master", compis_pic8259_master_config )
 
-	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
-	MDRV_DEVICE_CONFIG( compis_pic8259_slave_config )
+	MDRV_PIC8259_ADD( "pic8259_slave", compis_pic8259_slave_config )
 
-	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-	MDRV_DEVICE_CONFIG ( compis_ppi_interface )
+	MDRV_PPI8255_ADD( "ppi8255", compis_ppi_interface )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
@@ -265,7 +269,15 @@ static MACHINE_DRIVER_START( compis )
 	MDRV_VIDEO_UPDATE(compis_gdc)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
+
+	/* uart */
+	MDRV_MSM8251_ADD("uart", compis_usart_interface)
+	
+	/* rtc */
+	MDRV_MM58274C_ADD("mm58274c", compis_mm58274c_interface)	
+	
+	MDRV_NEC765A_ADD("nec765", compis_fdc_interface)
 MACHINE_DRIVER_END
 
 /***************************************************************************

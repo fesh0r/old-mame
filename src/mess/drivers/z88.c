@@ -14,6 +14,7 @@
  ******************************************************************************/
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "includes/z88.h"
 #include "sound/speaker.h"
 
@@ -45,13 +46,13 @@ static void z88_interrupt_refresh(running_machine *machine)
 			)
 		{
 			logerror("set int\n");
-			cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+			cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE);
 			return;
 		}
 	}
 
 	logerror("clear int\n");
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 }
 
 static void z88_update_rtc_interrupt(void)
@@ -77,7 +78,7 @@ static void z88_update_rtc_interrupt(void)
 static TIMER_CALLBACK(z88_rtc_timer_callback)
 {
 	int refresh_ints = 0;
-	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
+	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
 
 	/* is z88 in snooze state? */
 	if (blink.z88_state == Z88_SNOOZE)
@@ -101,7 +102,7 @@ static TIMER_CALLBACK(z88_rtc_timer_callback)
 			/* column has gone low in snooze/coma */
 			blink.sta |= STA_KEY;
 
-			cpu_trigger(machine, Z88_SNOOZE_TRIGGER);
+			cpuexec_trigger(machine, Z88_SNOOZE_TRIGGER);
 
 			z88_interrupt_refresh(machine);
 		}
@@ -178,26 +179,26 @@ static TIMER_CALLBACK(z88_rtc_timer_callback)
 
 static void z88_install_memory_handler_pair(running_machine *machine, offs_t start, offs_t size, int bank_base, void *read_addr, void *write_addr)
 {
-	read8_machine_func read_handler;
-	write8_machine_func write_handler;
+	read8_space_func read_handler;
+	write8_space_func write_handler;
 
 	/* special case */
 	if (read_addr == NULL)
 		read_addr = &memory_region(machine, "main")[start];
 
 	/* determine the proper pointers to use */
-	read_handler  = (read_addr != NULL)  ? (read8_machine_func)  (STATIC_BANK1 + (FPTR)(bank_base - 1 + 0)) : SMH_UNMAP;
-	write_handler = (write_addr != NULL) ? (write8_machine_func) (STATIC_BANK1 + (FPTR)(bank_base - 1 + 1)) : SMH_UNMAP;
+	read_handler  = (read_addr != NULL)  ? (read8_space_func)  (STATIC_BANK1 + (FPTR)(bank_base - 1 + 0)) : SMH_UNMAP;
+	write_handler = (write_addr != NULL) ? (write8_space_func) (STATIC_BANK1 + (FPTR)(bank_base - 1 + 1)) : SMH_UNMAP;
 
 	/* install the handlers */
-	memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, 0, read_handler);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, 0, write_handler);
+	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0],  ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0, read_handler);
+	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0, write_handler);
 
 	/* and set the banks */
 	if (read_addr != NULL)
-		memory_set_bankptr(bank_base + 0, read_addr);
+		memory_set_bankptr(machine, bank_base + 0, read_addr);
 	if (write_addr != NULL)
-		memory_set_bankptr(bank_base + 1, write_addr);
+		memory_set_bankptr(machine, bank_base + 1, write_addr);
 }
 
 
@@ -287,7 +288,7 @@ static MACHINE_RESET( z88 )
 {
 	memset(mess_ram, 0x0ff, mess_ram_size);
 
-	timer_pulse(ATTOTIME_IN_MSEC(5), NULL, 0, z88_rtc_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_MSEC(5), NULL, 0, z88_rtc_timer_callback);
 
 	blink_reset();
 
@@ -371,7 +372,7 @@ static WRITE8_HANDLER(blink_srx_w)
 {
 	blink.mem[offset] = data;
 
-	z88_refresh_memory_bank(machine, offset);
+	z88_refresh_memory_bank(space->machine, offset);
 }
 /*
  00b0 00
@@ -414,7 +415,7 @@ static WRITE8_HANDLER(z88_port_w)
 
 			/* refresh ints */
 			z88_update_rtc_interrupt();
-			z88_interrupt_refresh(machine);
+			z88_interrupt_refresh(space->machine);
 		}
 		return;
 
@@ -428,7 +429,7 @@ static WRITE8_HANDLER(z88_port_w)
 
 			/* refresh ints */
 			z88_update_rtc_interrupt();
-			z88_interrupt_refresh(machine);
+			z88_interrupt_refresh(space->machine);
 		}
 		return;
 
@@ -468,7 +469,7 @@ static WRITE8_HANDLER(z88_port_w)
 
 			if ((changed_bits & (1<<2))!=0)
 			{
-				z88_refresh_memory_bank(machine, 0);
+				z88_refresh_memory_bank(space->machine, 0);
 			}
 		}
 		return;
@@ -480,7 +481,7 @@ static WRITE8_HANDLER(z88_port_w)
 
 			blink.ints = data;
 			z88_update_rtc_interrupt();
-			z88_interrupt_refresh(machine);
+			z88_interrupt_refresh(space->machine);
 		}
 		return;
 
@@ -494,7 +495,7 @@ static WRITE8_HANDLER(z88_port_w)
 
 			blink.ints &= ~blink.ack;
 			z88_update_rtc_interrupt();
-			z88_interrupt_refresh(machine);
+			z88_interrupt_refresh(space->machine);
 		}
 		return;
 
@@ -504,7 +505,7 @@ static WRITE8_HANDLER(z88_port_w)
 		case 0x0d1:
 		case 0x0d2:
 		case 0x0d3:
-			blink_srx_w(machine, port & 0x03, data);
+			blink_srx_w(space, port & 0x03, data);
 			return;
 	}
 
@@ -540,35 +541,35 @@ static  READ8_HANDLER(z88_port_r)
 			{
 				blink.z88_state = Z88_SNOOZE;
 				/* spin cycles until rtc timer */
-				cpu_spinuntil_trigger (Z88_SNOOZE_TRIGGER);
+				cpu_spinuntil_trigger( space->machine->cpu[0], Z88_SNOOZE_TRIGGER);
 
 				logerror("z88 entering snooze!\n");
 			}
 
 
 			if ((lines & 0x080)==0)
-				data &=input_port_read(machine, "LINE7");
+				data &=input_port_read(space->machine, "LINE7");
 
 			if ((lines & 0x040)==0)
-				data &=input_port_read(machine, "LINE6");
+				data &=input_port_read(space->machine, "LINE6");
 
 			if ((lines & 0x020)==0)
-				data &=input_port_read(machine, "LINE5");
+				data &=input_port_read(space->machine, "LINE5");
 
 			if ((lines & 0x010)==0)
-				data &=input_port_read(machine, "LINE4");
+				data &=input_port_read(space->machine, "LINE4");
 
 			if ((lines & 0x008)==0)
-				data &=input_port_read(machine, "LINE3");
+				data &=input_port_read(space->machine, "LINE3");
 
 			if ((lines & 0x004)==0)
-				data &=input_port_read(machine, "LINE2");
+				data &=input_port_read(space->machine, "LINE2");
 
 			if ((lines & 0x002)==0)
-				data &=input_port_read(machine, "LINE1");
+				data &=input_port_read(space->machine, "LINE1");
 
 			if ((lines & 0x001)==0)
-				data &=input_port_read(machine, "LINE0");
+				data &=input_port_read(space->machine, "LINE0");
 
 			logerror("lines: %02x\n",lines);
 			logerror("key r: %02x\n",data);
@@ -727,7 +728,7 @@ static MACHINE_DRIVER_START( z88 )
 	MDRV_CPU_ADD("main", Z80, 3276800)
 	MDRV_CPU_PROGRAM_MAP(z88_mem, 0)
 	MDRV_CPU_IO_MAP(z88_io, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET( z88 )
 

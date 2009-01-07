@@ -9,7 +9,6 @@
 #include "driver.h"
 #include "includes/mac.h"
 #include "streams.h"
-#include "deprecat.h"
 
 
 static sound_stream *mac_stream;
@@ -36,29 +35,29 @@ static int snd_cache_tail;
 /* Stream updater                   */
 /************************************/
 
-static void mac_sound_update(void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length)
+static STREAM_UPDATE( mac_sound_update )
 {
 	INT16 last_val = 0;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
 	/* if we're not enabled, just fill with 0 */
-	if (Machine->sample_rate == 0)
+	if (device->machine->sample_rate == 0)
 	{
-		memset(buffer, 0, length * sizeof(*buffer));
+		memset(buffer, 0, samples * sizeof(*buffer));
 		return;
 	}
 
 	/* fill in the sample */
-	while (length && snd_cache_len)
+	while (samples && snd_cache_len)
 	{
 		*buffer++ = last_val = ((snd_cache[snd_cache_head] << 8) ^ 0x8000) & 0xff00;
 		snd_cache_head++;
 		snd_cache_head %= SND_CACHE_SIZE;
 		snd_cache_len--;
-		length--;
+		samples--;
 	}
 
-	while (length--)
+	while (samples--)
 	{	/* should never happen */
 		*buffer++ = last_val;
 	}
@@ -70,10 +69,10 @@ static void mac_sound_update(void *param,stream_sample_t **inputs, stream_sample
 /* Sound handler start              */
 /************************************/
 
-void *mac_sh_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( mac_sh_start )
 {
 	snd_cache = auto_malloc(SND_CACHE_SIZE * sizeof(*snd_cache));
-	mac_stream = stream_create(0, 1, MAC_SAMPLE_RATE, 0, mac_sound_update);
+	mac_stream = stream_create(device, 0, 1, MAC_SAMPLE_RATE, 0, mac_sound_update);
 	snd_cache_head = snd_cache_len = snd_cache_tail = 0;
 	return (void *) ~0;
 }

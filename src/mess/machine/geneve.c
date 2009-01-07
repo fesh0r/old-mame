@@ -5,7 +5,6 @@
 
 #include <math.h>
 #include "driver.h"
-#include "deprecat.h"
 #include "tms9901.h"
 #include "mm58274c.h"
 #include "video/v9938.h"
@@ -27,28 +26,17 @@
 static void inta_callback(running_machine *machine, int state);
 static void intb_callback(running_machine *machine, int state);
 
-static void read_key_if_possible(void);
+static void read_key_if_possible(running_machine *machine);
 static void poll_keyboard(running_machine *machine);
 static void poll_mouse(running_machine *machine);
-
-static void tms9901_interrupt_callback(int intreq, int ic);
-static int R9901_0(int offset);
-static int R9901_1(int offset);
-static int R9901_2(int offset);
-static int R9901_3(int offset);
-
-static void W9901_PE_bus_reset(int offset, int data);
-static void W9901_VDP_reset(int offset, int data);
-static void W9901_JoySel(int offset, int data);
-static void W9901_KeyboardReset(int offset, int data);
-static void W9901_ext_mem_wait_states(int offset, int data);
-static void W9901_VDP_wait_states(int offset, int data);
 
 /*
 	pointers to memory areas
 */
 /* pointer to boot ROM */
 static UINT8 *ROM_ptr;
+/* pointer to alternative boot ROM */
+static UINT8 *AROM_ptr;
 /* pointer to static RAM */
 static UINT8 *SRAM_ptr;
 /* pointer to dynamic RAM */
@@ -70,44 +58,8 @@ static char has_rs232;
 /* TRUE if usb-sm card present */
 static char has_usb_sm;
 
-
-/* tms9901 setup */
-static const tms9901reset_param tms9901reset_param_ti99 =
-{
-	TMS9901_INT1 | TMS9901_INT2 | TMS9901_INT8 | TMS9901_INTB | TMS9901_INTC,	/* only input pins whose state is always known */
-
-	{	/* read handlers */
-		R9901_0,
-		R9901_1,
-		R9901_2,
-		R9901_3
-	},
-
-	{	/* write handlers */
-		W9901_PE_bus_reset,
-		W9901_VDP_reset,
-		W9901_JoySel,
-		NULL,
-		NULL,
-		NULL,
-		W9901_KeyboardReset,
-		W9901_ext_mem_wait_states,
-		NULL,
-		W9901_VDP_wait_states,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL,
-		NULL
-	},
-
-	/* interrupt handler */
-	tms9901_interrupt_callback,
-
-	/* clock rate = 3MHz */
-	3000000.
-};
+/* TRUE if we are using the alternative boot ROM */
+static char has_alt_boot;
 
 /* keyboard interface */
 static int JoySel;
@@ -181,7 +133,7 @@ enum
 };
 
 /* tms9995_ICount: used to implement memory waitstates (hack) */
-/* NPW 23-Feb-2004 - externs no longer needed because we now use activecpu_adjust_icount() */
+/* NPW 23-Feb-2004 - externs no longer needed because we now use cpu_adjust_icount(space->machine->cpu[0],) */
 
 
 
@@ -203,18 +155,21 @@ DRIVER_INIT( genmod )
 
 MACHINE_START( geneve )
 {
-    	tms9901_init(0, & tms9901reset_param_ti99);
-
-        /* Initialize all. Actually, at this point, we don't know
-           how the switches are set. Later we use the configuration switches to
-           determine which one to use. */
+	/* Initialize all. Actually, at this point, we don't know
+	   how the switches are set. Later we use the configuration switches to
+	   determine which one to use. */
 	ti99_peb_init();
-        ti99_floppy_controllers_init_all(machine);
-        ti99_ide_init(machine);
-        ti99_rs232_init(machine);
+	ti99_floppy_controllers_init_all(machine);
+	ti99_ide_init(machine);
+	ti99_rs232_init(machine);
 	ti99_usbsm_init(machine);
-	mm58274c_init(machine, 0, 1, 0);
 	add_exit_callback(machine, machine_stop_geneve);
+
+	/* set up RAM pointers */
+	ROM_ptr = memory_region(machine, "main") + offset_rom_geneve;
+	AROM_ptr = memory_region(machine, "main") + offset_altrom_geneve;
+	SRAM_ptr = memory_region(machine, "main") + offset_sram_geneve;
+	DRAM_ptr = memory_region(machine, "main") + offset_dram_geneve;
 }
 
 MACHINE_RESET( geneve )
@@ -223,19 +178,11 @@ MACHINE_RESET( geneve )
 	/* initialize page lookup */
 	memset(page_lookup, 0, sizeof(page_lookup));
 
-	/* set up RAM pointers */
-	ROM_ptr = memory_region(machine, "main") + offset_rom_geneve;
-	SRAM_ptr = memory_region(machine, "main") + offset_sram_geneve;
-	DRAM_ptr = memory_region(machine, "main") + offset_dram_geneve;
-
 	/* Initialize GROMs */
 	memset(& GPL_port, 0, sizeof(GPL_port));
 
 	/* reset cartridge mapper */
 	cartridge_page = 0;
-
-	/* init tms9901 */
-        tms9901_reset(0);
 
 	v9938_reset(0);
 
@@ -259,6 +206,7 @@ MACHINE_RESET( geneve )
 	has_ide = (input_port_read(machine, "CFG") >> config_ide_bit) & config_ide_mask;
 	has_rs232 = (input_port_read(machine, "CFG") >> config_rs232_bit) & config_rs232_mask;
 	has_usb_sm = (input_port_read(machine, "CFG") >> config_usbsm_bit) & config_usbsm_mask;
+	has_alt_boot = (input_port_read(machine, "CFG") >> config_boot_bit) & config_boot_mask;
 
 	/* set up optional expansion hardware */
 	ti99_peb_reset(0, inta_callback, intb_callback);
@@ -301,14 +249,15 @@ MACHINE_RESET( geneve )
 
 	if (has_usb_sm)
 		ti99_usbsm_reset(machine, TRUE);
+
+	/* reset CPU */
+	cputag_reset(machine, "main");
 }
 
 static void machine_stop_geneve(running_machine *machine)
 {
 	if (has_ide)
 		ti99_ide_save_memcard();
-
-	tms9901_cleanup(0);
 }
 
 
@@ -327,12 +276,12 @@ VIDEO_START(geneve)
 INTERRUPT_GEN( geneve_hblank_interrupt )
 {
 	static int line_count;
-	v9938_interrupt(0);
+	v9938_interrupt(device->machine, 0);
 	if (++line_count == 262)
 	{
 		line_count = 0;
-		poll_keyboard(machine);
-		poll_mouse(machine);
+		poll_keyboard(device->machine);
+		poll_mouse(device->machine);
 	}
 }
 
@@ -341,8 +290,8 @@ INTERRUPT_GEN( geneve_hblank_interrupt )
 */
 static void inta_callback(running_machine *machine, int state)
 {
-	tms9901_set_single_int(0, 1, state);
-	cpunum_set_input_line(machine, 0, 1, state ? ASSERT_LINE : CLEAR_LINE);
+	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 1, state);
+	cpu_set_input_line(machine->cpu[0], 1, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*
@@ -350,7 +299,7 @@ static void inta_callback(running_machine *machine, int state)
 */
 static void intb_callback(running_machine *machine, int state)
 {
-	tms9901_set_single_int(0, 12, state);
+	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 12, state);
 }
 
 
@@ -368,9 +317,9 @@ static void intb_callback(running_machine *machine, int state)
 */
 static  READ8_HANDLER ( geneve_speech_r )
 {
-	activecpu_adjust_icount(-8);		/* this is just a minimum, it can be more */
+	cpu_adjust_icount(space->machine->cpu[0],-8);		/* this is just a minimum, it can be more */
 
-	return tms5220_status_r(machine, offset);
+	return tms5220_status_r(space, offset);
 }
 
 #if 0
@@ -394,7 +343,7 @@ static void speech_kludge_callback(int dummy)
 */
 static WRITE8_HANDLER ( geneve_speech_w )
 {
-	activecpu_adjust_icount(-32*4);		/* this is just an approx. minimum, it can be much more */
+	cpu_adjust_icount(space->machine->cpu[0],-32*4);		/* this is just an approx. minimum, it can be much more */
 
 #if 1
 	/* the stupid design of the tms5220 core means that ready is cleared when
@@ -404,16 +353,16 @@ static WRITE8_HANDLER ( geneve_speech_w )
 	if (! tms5220_ready_r())
 	{
 		attotime time_to_ready = double_to_attotime(tms5220_time_to_ready());
-		int cycles_to_ready = ceil(ATTOTIME_TO_CYCLES(0, time_to_ready));
+		int cycles_to_ready = ceil(cpu_attotime_to_clocks(space->machine->cpu[0], time_to_ready));
 
 		logerror("time to ready: %f -> %d\n", attotime_to_double(time_to_ready), (int) cycles_to_ready);
 
-		activecpu_adjust_icount(-cycles_to_ready);
-		timer_set(attotime_zero, NULL, 0, /*speech_kludge_callback*/NULL);
+		cpu_adjust_icount(space->machine->cpu[0],-cycles_to_ready);
+		timer_set(space->machine, attotime_zero, NULL, 0, /*speech_kludge_callback*/NULL);
 	}
 #endif
 
-	tms5220_data_w(machine, offset, data);
+	tms5220_data_w(space, offset, data);
 }
 
 READ8_HANDLER ( geneve_r )
@@ -435,11 +384,11 @@ READ8_HANDLER ( geneve_r )
 			{
 			case 0xf100:
 			case 0xf108:		/* mirror? */
-				return v9938_0_vram_r(machine, 0);
+				return v9938_0_vram_r(space, 0);
 
 			case 0xf102:
 			case 0xf10a:		/* mirror? */
-				return v9938_0_status_r(machine, 0);
+				return v9938_0_status_r(space, 0);
 
 			case 0xf110:
 			case 0xf111:
@@ -470,7 +419,7 @@ READ8_HANDLER ( geneve_r )
 			case 0xf13d:
 			case 0xf13e:
 			case 0xf13f:
-				return mm58274c_r(0, offset-0xf130);
+				return mm58274c_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c"), offset-0xf130);
 
 			default:
 				logerror("unmapped read offs=%d\n", (int) offset);
@@ -516,7 +465,7 @@ READ8_HANDLER ( geneve_r )
 			case 0x801d:
 			case 0x801e:
 			case 0x801f:
-				return mm58274c_r(0, offset-0xf130);
+				return mm58274c_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c"), offset-0xf130);
 
 			default:
 				logerror("unmapped read offs=%d\n", (int) offset);
@@ -535,11 +484,11 @@ READ8_HANDLER ( geneve_r )
 				{
 					if (offset & 2)
 					{	/* read VDP status */
-						return v9938_0_status_r(machine, 0);
+						return v9938_0_status_r(space, 0);
 					}
 					else
 					{	/* read VDP RAM */
-						return v9938_0_vram_r(machine, 0);
+						return v9938_0_vram_r(space, 0);
 					}
 				}
 				return 0;
@@ -548,7 +497,7 @@ READ8_HANDLER ( geneve_r )
 				/* speech read */
 				if ((! (offset & 1)) && has_speech)
 				{
-					return geneve_speech_r(machine, 0);
+					return geneve_speech_r(space, 0);
 				}
 				return 0;
 
@@ -624,7 +573,8 @@ READ8_HANDLER ( geneve_r )
 	case 0xf0:
 	case 0xf1:
 		/* Boot ROM */
-		return ROM_ptr[(page-0xf0)*0x2000 + offset];
+		if (has_alt_boot) return AROM_ptr[(page-0xf0)*0x2000 + offset];
+		else return ROM_ptr[(page-0xf0)*0x2000 + offset];
 
 	case 0xe8:
 	case 0xe9:
@@ -643,14 +593,14 @@ READ8_HANDLER ( geneve_r )
 #endif
 	case 0xba:
 		/* DSR space */
-		return geneve_peb_r(machine, offset);
+		return geneve_peb_r(space, offset);
 
 	case 0xbc:
 		/* speech space */
 		if (has_speech)
 		{
 			if ((offset >= 0x1000) && (offset < 0x1400) && (! (offset & 1)))
-				return geneve_speech_r(machine, 0);
+				return geneve_speech_r(space, 0);
 			else
 				return 0;
 		}
@@ -679,22 +629,22 @@ WRITE8_HANDLER ( geneve_w )
 			{
 			case 0xf100:
 			case 0xf108:		/* mirror? */
-				v9938_0_vram_w(machine, 0, data);
+				v9938_0_vram_w(space, 0, data);
 				return;
 
 			case 0xf102:
 			case 0xf10a:		/* mirror? */
-				v9938_0_command_w(machine, 0, data);
+				v9938_0_command_w(space, 0, data);
 				return;
 
 			case 0xf104:
 			case 0xf10c:		/* mirror? */
-				v9938_0_palette_w(machine, 0, data);
+				v9938_0_palette_w(space, 0, data);
 				return;
 
 			case 0xf106:
 			case 0xf10e:		/* mirror? */
-				v9938_0_register_w(machine, 0, data);
+				v9938_0_register_w(space, 0, data);
 				return;
 
 			case 0xf110:
@@ -713,7 +663,7 @@ WRITE8_HANDLER ( geneve_w )
 				return*/
 
 			case 0xf120:
-				sn76496_0_w(machine, 0, data);
+				sn76496_0_w(space, 0, data);
 				break;
 
 			case 0xf130:
@@ -732,7 +682,7 @@ WRITE8_HANDLER ( geneve_w )
 			case 0xf13d:
 			case 0xf13e:
 			case 0xf13f:
-				mm58274c_w(0, offset-0xf130, data);
+				mm58274c_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c"), offset-0xf130, data);
 				return;
 
 			default:
@@ -781,7 +731,7 @@ WRITE8_HANDLER ( geneve_w )
 			case 0x801d:
 			case 0x801e:
 			case 0x801f:
-				mm58274c_w(0, offset-0xf130, data);
+				mm58274c_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c"), offset-0xf130, data);
 				return;
 
 			default:
@@ -797,7 +747,7 @@ WRITE8_HANDLER ( geneve_w )
 			{
 			case 1:
 				/* sound write */
-				sn76496_0_w(machine, 0, data);
+				sn76496_0_w(space, 0, data);
 				return;
 
 			case 3:
@@ -809,19 +759,19 @@ WRITE8_HANDLER ( geneve_w )
 					{
 					case 0:
 						/* write VDP RAM */
-						v9938_0_vram_w(machine, 0, data);
+						v9938_0_vram_w(space, 0, data);
 						break;
 					case 1:
 						/* write VDP address */
-						v9938_0_command_w(machine, 0, data);
+						v9938_0_command_w(space, 0, data);
 						break;
 					case 2:
 						/* write palette */
-						v9938_0_palette_w(machine, 0, data);
+						v9938_0_palette_w(space, 0, data);
 						break;
 					case 3:
 						/* write register */
-						v9938_0_register_w(machine, 0, data);
+						v9938_0_register_w(space, 0, data);
 						break;
 					}
 				}
@@ -831,7 +781,7 @@ WRITE8_HANDLER ( geneve_w )
 				/* speech write */
 				if ((! (offset & 1)) && has_speech)
 				{
-					geneve_speech_w(machine, 0, data);
+					geneve_speech_w(space, 0, data);
 				}
 				return;
 
@@ -935,7 +885,7 @@ WRITE8_HANDLER ( geneve_w )
 #endif
 	case 0xba:
 		/* DSR space */
-		geneve_peb_w(machine, offset, data);
+		geneve_peb_w(space, offset, data);
 		return;
 
 	case 0xbc:
@@ -943,7 +893,7 @@ WRITE8_HANDLER ( geneve_w )
 		if (has_speech)
 		{
 			if ((offset >= 0x1400) && (offset < 0x1800) && (! (offset & 1)))
-				geneve_speech_w(machine, 0, data);
+				geneve_speech_w(space, 0, data);
 			return;
 		}
 
@@ -979,7 +929,7 @@ WRITE8_HANDLER ( geneve_peb_mode_cru_w )
 		if ((offset == 0x778) && data && (! (old_flags & mf_keyclock)))
 		{
 			/* set mf_keyclock */
-			read_key_if_possible();
+			read_key_if_possible(space->machine);
 		}
 		if (offset == 0x779)
 		{
@@ -987,7 +937,7 @@ WRITE8_HANDLER ( geneve_peb_mode_cru_w )
 			{
 				/* set mf_keyclear: enable key input */
 				/* shift in new key immediately if possible */
-				read_key_if_possible();
+				read_key_if_possible(space->machine);
 			}
 			else if ((! data) && (old_flags & mf_keyclear))
 			{
@@ -998,13 +948,13 @@ WRITE8_HANDLER ( geneve_peb_mode_cru_w )
 					KeyQueueLen--;
 				}
 				/* clear keyboard interrupt */
-				tms9901_set_single_int(0, 8, 0);
+				tms9901_set_single_int(device_list_find_by_tag(space->machine->config->devicelist, TMS9901, "tms9901"), 8, 0);
 				KeyInBuf = 0;
 			}
 		}
 	}
 
-	geneve_peb_cru_w(machine, offset, data);
+	geneve_peb_cru_w(space, offset, data);
 }
 
 /*===========================================================================*/
@@ -1013,13 +963,13 @@ WRITE8_HANDLER ( geneve_peb_mode_cru_w )
 #pragma mark KEYBOARD INTERFACE
 #endif
 
-static void read_key_if_possible(void)
+static void read_key_if_possible(running_machine *machine)
 {
 	/* if keyboard reset is not asserted, and key clock is enabled, and key
 	buffer clear is disabled, and key queue is not empty. */
 	if ((! KeyReset) && (mode_flags & mf_keyclock) && (mode_flags & mf_keyclear) && KeyQueueLen)
 	{
-		tms9901_set_single_int(0, 8, 1);
+		tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 8, 1);
 		KeyInBuf = 1;
 	}
 }
@@ -1037,7 +987,7 @@ static void poll_keyboard(running_machine *machine)
 	int i, j;
 	int keycode;
 	int pressed;
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7" };
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7" };
 
 	static const UINT8 keyboard_mf1_code[0xe] =
 	{
@@ -1231,7 +1181,7 @@ static void poll_keyboard(running_machine *machine)
 							keycode |= 0x80;
 						post_in_KeyQueue(keycode);
 					}
-					read_key_if_possible();
+					read_key_if_possible(machine);
 				}
 			}
 		}
@@ -1261,7 +1211,7 @@ static void poll_keyboard(running_machine *machine)
 		{
 			post_in_KeyQueue(KeyAutoRepeatKey);
 		}
-		read_key_if_possible();
+		read_key_if_possible(machine);
 		KeyAutoRepeatTimer = KeyAutoRepeatRate;
 	}
 }
@@ -1331,16 +1281,16 @@ static void poll_mouse(running_machine *machine)
 */
 /*void tms9901_set_int2(int state)
 {
-	tms9901_set_single_int(0, 2, state);
+	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 2, state);
 }*/
 
 /*
 	Called by the 9901 core whenever the state of INTREQ and IC0-3 changes
 */
-static void tms9901_interrupt_callback(int intreq, int ic)
+static TMS9901_INT_CALLBACK( tms9901_interrupt_callback )
 {
 	/* INTREQ is connected to INT1 (IC0-3 are not connected) */
-	cpunum_set_input_line(Machine, 0, 0, intreq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], 0, intreq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*
@@ -1351,11 +1301,11 @@ static void tms9901_interrupt_callback(int intreq, int ic)
 	 (bit 2: INT2 status)
 	 bit 3-7: joystick status
 */
-static int R9901_0(int offset)
+static READ8_DEVICE_HANDLER( R9901_0 )
 {
 	int answer;
 
-	answer = input_port_read(Machine, "JOY") >> (JoySel * 8);
+	answer = input_port_read(device->machine, "JOY") >> (JoySel * 8);
 
 	return (answer);
 }
@@ -1372,11 +1322,11 @@ static int R9901_0(int offset)
 	 bit 5 & 7: used as output
 	 bit 6: unused
 */
-static int R9901_1(int offset)
+static READ8_DEVICE_HANDLER( R9901_1 )
 {
 	int answer;
 
-	answer = (input_port_read(Machine, "MOUSE0") & 4) ^ 4;
+	answer = (input_port_read(device->machine, "MOUSE0") & 4) ^ 4;
 
 	return answer;
 }
@@ -1384,7 +1334,7 @@ static int R9901_1(int offset)
 /*
 	Read pins P0-P7 of Geneve 9901.
 */
-static int R9901_2(int offset)
+static READ8_DEVICE_HANDLER( R9901_2 )
 {
 	return 0;
 }
@@ -1393,11 +1343,11 @@ static int R9901_2(int offset)
 	Read pins P8-P15 of Geneve 9901.
 	bit 4: mouse right button
 */
-static int R9901_3(int offset)
+static READ8_DEVICE_HANDLER( R9901_3 )
 {
 	int answer = 0;
 
-	if (! (input_port_read(Machine, "MOUSE0") & 4))
+	if (! (input_port_read(device->machine, "MOUSE0") & 4))
 		answer |= 0x10;
 
 	return answer;
@@ -1407,26 +1357,26 @@ static int R9901_3(int offset)
 /*
 	Write PE bus reset line
 */
-static void W9901_PE_bus_reset(int offset, int data)
+static WRITE8_DEVICE_HANDLER( W9901_PE_bus_reset )
 {
 }
 
 /*
 	Write VDP reset line
 */
-static void W9901_VDP_reset(int offset, int data)
+static WRITE8_DEVICE_HANDLER( W9901_VDP_reset )
 {
 }
 
 /*
 	Write joystick select line
 */
-static void W9901_JoySel(int offset, int data)
+static WRITE8_DEVICE_HANDLER( W9901_JoySel )
 {
 	JoySel = data;
 }
 
-static void W9901_KeyboardReset(int offset, int data)
+static WRITE8_DEVICE_HANDLER( W9901_KeyboardReset )
 {
 	KeyReset = ! data;
 	if (KeyReset)
@@ -1443,22 +1393,59 @@ static void W9901_KeyboardReset(int offset, int data)
 		KeyAutoRepeatKey = 0;
 	}
 	/*else
-		poll_keyboard(Machine);*/
+		poll_keyboard(space->machine);*/
 }
 
 /*
 	Write external mem cycles (0=long, 1=short)
 */
-static void W9901_ext_mem_wait_states(int offset, int data)
+static WRITE8_DEVICE_HANDLER( W9901_ext_mem_wait_states )
 {
 }
 
 /*
 	Write vdp wait cycles (1=add 15 cycles, 0=add none)
 */
-static void W9901_VDP_wait_states(int offset, int data)
+static WRITE8_DEVICE_HANDLER( W9901_VDP_wait_states )
 {
 }
 
+/* tms9901 setup */
+const tms9901_interface tms9901reset_param_ti99 =
+{
+	TMS9901_INT1 | TMS9901_INT2 | TMS9901_INT8 | TMS9901_INTB | TMS9901_INTC,	/* only input pins whose state is always known */
+
+	{	/* read handlers */
+		R9901_0,
+		R9901_1,
+		R9901_2,
+		R9901_3
+	},
+
+	{	/* write handlers */
+		W9901_PE_bus_reset,
+		W9901_VDP_reset,
+		W9901_JoySel,
+		NULL,
+		NULL,
+		NULL,
+		W9901_KeyboardReset,
+		W9901_ext_mem_wait_states,
+		NULL,
+		W9901_VDP_wait_states,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL
+	},
+
+	/* interrupt handler */
+	tms9901_interrupt_callback,
+
+	/* clock rate = 3MHz */
+	3000000.
+};
 
 

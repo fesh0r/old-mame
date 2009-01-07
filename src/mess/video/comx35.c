@@ -5,12 +5,6 @@
 #include "video/cdp1869.h"
 #include "video/mc6845.h"
 
-#define COMX35_PAGERAM_SIZE 0x400
-#define COMX35_CHARRAM_SIZE 0x800
-
-#define COMX35_PAGERAM_MASK 0x3ff
-#define COMX35_CHARRAM_MASK 0x7ff
-
 /* CDP1869 */
 
 static CDP1869_PAGE_RAM_READ( comx35_pageram_r )
@@ -68,7 +62,7 @@ static CDP1869_ON_PRD_CHANGED( comx35_prd_w )
 
 	if (!state->iden && !prd)
 	{
-		cpunum_set_input_line(device->machine, 0, CDP1802_INPUT_LINE_INT, ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_INT, ASSERT_LINE);
 	}
 
 	state->cdp1869_prd = prd;
@@ -76,9 +70,6 @@ static CDP1869_ON_PRD_CHANGED( comx35_prd_w )
 
 static CDP1869_INTERFACE( comx35p_cdp1869_intf )
 {
-	SCREEN_TAG,
-	CDP1869_DOT_CLK_PAL,
-	CDP1869_COLOR_CLK_PAL,
 	CDP1869_PAL,
 	comx35_pageram_r,
 	comx35_pageram_w,
@@ -90,9 +81,6 @@ static CDP1869_INTERFACE( comx35p_cdp1869_intf )
 
 static CDP1869_INTERFACE( comx35n_cdp1869_intf )
 {
-	SCREEN_TAG,
-	CDP1869_DOT_CLK_NTSC,
-	CDP1869_COLOR_CLK_NTSC,
 	CDP1869_NTSC,
 	comx35_pageram_r,
 	comx35_pageram_w,
@@ -110,14 +98,16 @@ static VIDEO_START( comx35 )
 
 	state->pageram = auto_malloc(COMX35_PAGERAM_SIZE);
 	state->charram = auto_malloc(COMX35_CHARRAM_SIZE);
+	state->videoram = auto_malloc(COMX35_VIDEORAM_SIZE);
 
 	// register for save state
 
-	state_save_register_global(state->pal_ntsc);
-	state_save_register_global(state->cdp1869_prd);
+	state_save_register_global(machine, state->pal_ntsc);
+	state_save_register_global(machine, state->cdp1869_prd);
 
-	state_save_register_global_pointer(state->pageram, COMX35_PAGERAM_SIZE);
-	state_save_register_global_pointer(state->charram, COMX35_CHARRAM_SIZE);
+	state_save_register_global_pointer(machine, state->pageram, COMX35_PAGERAM_SIZE);
+	state_save_register_global_pointer(machine, state->charram, COMX35_CHARRAM_SIZE);
+	state_save_register_global_pointer(machine, state->videoram, COMX35_VIDEORAM_SIZE);
 }
 
 static VIDEO_UPDATE( comx35 )
@@ -142,25 +132,43 @@ static VIDEO_UPDATE( comx35 )
 
 /* MC6845 */
 
+READ8_HANDLER( comx35_videoram_r )
+{
+	comx35_state *state = space->machine->driver_data;
+
+	return state->videoram[offset];
+}
+
+WRITE8_HANDLER( comx35_videoram_w )
+{
+	comx35_state *state = space->machine->driver_data;
+
+	state->videoram[offset] = data;
+}
+
 static MC6845_UPDATE_ROW( comx35_update_row )
 {
-	const UINT8 *charrom = memory_region(device->machine, "chargen");
-	const UINT8 *videoram = memory_region(device->machine, "user1") + 0x1000;
+	comx35_state *state = device->machine->driver_data;
 
-	int column;
+	UINT8 *charrom = memory_region(device->machine, "chargen");
+
+	int column, bit;
 
 	for (column = 0; column < x_count; column++)
 	{
-		int bit;
-
-		UINT8 code = videoram[((ma + column) & 0x7ff)];
-		UINT8 addr = (code << 4) | ra;
+		UINT8 code = state->videoram[((ma + column) & 0x7ff)];
+		UINT16 addr = (code << 3) | (ra & 0x07);
 		UINT8 data = charrom[addr & 0x7ff];
+
+		if (BIT(ra, 3) && column == cursor_x)
+		{
+			data = 0xff;
+		}
 
 		for (bit = 0; bit < 8; bit++)
 		{
-			int x = (column * 8) + (bit << 1);
-			int color = BIT(code, 7);
+			int x = (column * 8) + bit;
+			int color = BIT(data, 7) ? 7 : 0;
 
 			*BITMAP_ADDR16(bitmap, y, x) = color;
 
@@ -169,24 +177,23 @@ static MC6845_UPDATE_ROW( comx35_update_row )
 	}
 }
 
-static MC6845_ON_VSYNC_CHANGED( comx35_vsync_changed )
+static MC6845_ON_HSYNC_CHANGED( comx35_hsync_changed )
 {
 	comx35_state *state = device->machine->driver_data;
 
-	state->cdp1802_ef4 = vsync;
+	state->cdp1802_ef4 = hsync;
 }
 
 static const mc6845_interface comx35_mc6845_interface =
 {
 	MC6845_SCREEN_TAG,
-	XTAL_14_31818MHz,
 	8,
 	NULL,
 	comx35_update_row,
 	NULL,
 	NULL,
-	NULL,
-	comx35_vsync_changed
+	comx35_hsync_changed,
+	NULL
 };
 
 /* Machine Drivers */
@@ -199,8 +206,7 @@ static MACHINE_DRIVER_START( comx35_80_video )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
 	MDRV_SCREEN_REFRESH_RATE(50)
 
-	MDRV_DEVICE_ADD(MC6845_TAG, MC6845)
-	MDRV_DEVICE_CONFIG(comx35_mc6845_interface)
+	MDRV_MC6845_ADD(MC6845_TAG, MC6845, XTAL_14_31818MHz, comx35_mc6845_interface)
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( comx35p_video )
@@ -216,8 +222,7 @@ MACHINE_DRIVER_START( comx35p_video )
 	MDRV_VIDEO_START(comx35)
 	MDRV_VIDEO_UPDATE(comx35)
 
-	MDRV_DEVICE_ADD(CDP1869_TAG, CDP1869_VIDEO)
-	MDRV_DEVICE_CONFIG(comx35p_cdp1869_intf)
+	MDRV_CDP1869_ADD(CDP1869_TAG, SCREEN_TAG, CDP1869_DOT_CLK_PAL, CDP1869_COLOR_CLK_PAL, CDP1802_TAG, comx35p_cdp1869_intf)
 
 	MDRV_IMPORT_FROM(comx35_80_video)
 MACHINE_DRIVER_END
@@ -235,8 +240,7 @@ MACHINE_DRIVER_START( comx35n_video )
 	MDRV_VIDEO_START(comx35)
 	MDRV_VIDEO_UPDATE(comx35)
 
-	MDRV_DEVICE_ADD(CDP1869_TAG, CDP1869_VIDEO)
-	MDRV_DEVICE_CONFIG(comx35n_cdp1869_intf)
+	MDRV_CDP1869_ADD(CDP1869_TAG, SCREEN_TAG, CDP1869_DOT_CLK_NTSC, CDP1869_COLOR_CLK_NTSC, CDP1802_TAG, comx35n_cdp1869_intf)
 
 	MDRV_IMPORT_FROM(comx35_80_video)
 MACHINE_DRIVER_END

@@ -12,6 +12,9 @@
 #ifndef COMPIS_H_
 #define COMPIS_H_
 
+#include "driver.h"
+#include "machine/msm8251.h"
+#include "machine/nec765.h"
 
 /*----------- defined in machine/compis.c -----------*/
 
@@ -20,6 +23,8 @@ extern const struct pit8253_config compis_pit8253_config;
 extern const struct pit8253_config compis_pit8254_config;
 extern const struct pic8259_interface compis_pic8259_master_config;
 extern const struct pic8259_interface compis_pic8259_slave_config;
+extern const msm8251_interface compis_usart_interface;
+extern const nec765_interface compis_fdc_interface;
 
 DRIVER_INIT(compis);
 MACHINE_RESET(compis);

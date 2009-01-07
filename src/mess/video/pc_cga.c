@@ -76,7 +76,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-//#include "deprecat.h"
 #include "video/pc_cga.h"
 #include "video/mc6845.h"
 #include "video/pc_video.h"
@@ -87,7 +86,14 @@
 #define	NTSC_FILTER	0
 
 #define CGA_LOG(N,M,A) \
-	if(VERBOSE_CGA>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A; }
+	do { \
+		if(VERBOSE_CGA>=N) \
+		{ \
+			if( M ) \
+				logerror("%11.6f: %-24s",attotime_to_double(timer_get_time(machine)),(char*)M ); \
+			logerror A; \
+		} \
+	} while (0)
 
 /***************************************************************************
 
@@ -188,7 +194,6 @@ static VIDEO_UPDATE( mc6845_pc1512 );
 static const mc6845_interface mc6845_cga_intf =
 {
 	CGA_SCREEN_NAME,	/* screen number */
-	XTAL_14_31818MHz/8,	/* clock */
 	8,					/* numbers of pixels per video memory address */
 	NULL,				/* begin_update */
 	cga_update_row,		/* update_row */
@@ -207,8 +212,7 @@ MACHINE_DRIVER_START( pcvideo_cga )
 
 	MDRV_PALETTE_INIT(pc_cga)
 
-	MDRV_DEVICE_ADD(CGA_MC6845_NAME, MC6845)
-	MDRV_DEVICE_CONFIG( mc6845_cga_intf )
+	MDRV_MC6845_ADD(CGA_MC6845_NAME, MC6845, XTAL_14_31818MHz/8, mc6845_cga_intf)
 
 	MDRV_VIDEO_START( pc_cga )
 	MDRV_VIDEO_UPDATE( mc6845_cga )
@@ -446,10 +450,10 @@ static int internal_pc_cga_video_start(running_machine *machine, int personality
 
 	cga.chr_gen = memory_region( machine, "gfx1" ) + 0x1000;
 
-	state_save_register_item("pccga", 0, cga.mode_control);
-	state_save_register_item("pccga", 0, cga.color_select);
-	state_save_register_item("pccga", 0, cga.status);
-	state_save_register_item("pccga", 0, cga.plantronics);
+	state_save_register_item(machine, "pccga", NULL, 0, cga.mode_control);
+	state_save_register_item(machine, "pccga", NULL, 0, cga.color_select);
+	state_save_register_item(machine, "pccga", NULL, 0, cga.status);
+	state_save_register_item(machine, "pccga", NULL, 0, cga.plantronics);
 
 	cga.config_input_port = input_port_by_tag(machine->portconfig, "pcvideo_cga_config" );
 
@@ -461,33 +465,35 @@ static int internal_pc_cga_video_start(running_machine *machine, int personality
 static VIDEO_START( pc_cga )
 {
 	int buswidth;
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *spaceio = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO);
 
 	/* Changed video RAM size to full 32k, for cards which support the
 	 * Plantronics chipset.
 	 * TODO: Cards which don't support Plantronics should repeat at
 	 * BC000h */
-	buswidth = cputype_databus_width(machine->config->cpu[0].type, ADDRESS_SPACE_PROGRAM);
+	buswidth = cpu_get_databus_width(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	switch(buswidth)
 	{
 		case 8:
-			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbbfff, 0, 0x04000, SMH_BANK11 );
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbbfff, 0, 0x04000, pc_video_videoram_w );
-			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga8_r );
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga8_w );
+			memory_install_read8_handler(space, 0xb8000, 0xbbfff, 0, 0x04000, SMH_BANK11 );
+			memory_install_write8_handler(space, 0xb8000, 0xbbfff, 0, 0x04000, pc_video_videoram_w );
+			memory_install_read8_handler(spaceio, 0x3d0, 0x3df, 0, 0, pc_cga8_r );
+			memory_install_write8_handler(spaceio, 0x3d0, 0x3df, 0, 0, pc_cga8_w );
 			break;
 
 		case 16:
-			memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbbfff, 0, 0x04000, SMH_BANK11 );
-			memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbbfff, 0, 0x04000, pc_video_videoram16le_w );
-			memory_install_read16_handler(machine, 0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga16le_r );
-			memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga16le_w );
+			memory_install_read16_handler(space, 0xb8000, 0xbbfff, 0, 0x04000, SMH_BANK11 );
+			memory_install_write16_handler(space, 0xb8000, 0xbbfff, 0, 0x04000, pc_video_videoram16le_w );
+			memory_install_read16_handler(spaceio, 0x3d0, 0x3df, 0, 0, pc_cga16le_r );
+			memory_install_write16_handler(spaceio, 0x3d0, 0x3df, 0, 0, pc_cga16le_w );
 			break;
 
 		case 32:
-			memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbbfff, 0, 0x04000, SMH_BANK11 );
-			memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbbfff, 0, 0x04000, pc_video_videoram32_w );
-			memory_install_read32_handler(machine, 0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga32le_r );
-			memory_install_write32_handler(machine, 0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc_cga32le_w );
+			memory_install_read32_handler(space, 0xb8000, 0xbbfff, 0, 0x04000, SMH_BANK11 );
+			memory_install_write32_handler(space, 0xb8000, 0xbbfff, 0, 0x04000, pc_video_videoram32_w );
+			memory_install_read32_handler(spaceio, 0x3d0, 0x3df, 0, 0, pc_cga32le_r );
+			memory_install_write32_handler(spaceio, 0x3d0, 0x3df, 0, 0, pc_cga32le_w );
 			break;
 
 		default:
@@ -499,7 +505,7 @@ static VIDEO_START( pc_cga )
 
 	videoram = auto_malloc(videoram_size);
 
-	memory_set_bankptr(11, videoram);
+	memory_set_bankptr(machine,11, videoram);
 
 	internal_pc_cga_video_start(machine, M6845_PERSONALITY_GENUINE);
 
@@ -537,6 +543,7 @@ static MC6845_UPDATE_ROW( cga_text_inten_update_row )
 {
 	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) CGA_LOG(1,"cga_text_inten_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -574,6 +581,7 @@ static MC6845_UPDATE_ROW( cga_text_inten_comp_grey_update_row )
 {
 	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) CGA_LOG(1,"cga_text_inten_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -610,6 +618,7 @@ static MC6845_UPDATE_ROW( cga_text_inten_alt_update_row )
 {
 	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) CGA_LOG(1,"cga_text_inten_alt_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -646,6 +655,7 @@ static MC6845_UPDATE_ROW( cga_text_blink_update_row )
 {
 	UINT16	*p = BITMAP_ADDR16(bitmap, y, 0);
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) CGA_LOG(1,"cga_text_blink_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -693,6 +703,7 @@ static MC6845_UPDATE_ROW( cga_text_blink_alt_update_row )
 {
 	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) CGA_LOG(1,"cga_text_blink_alt_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -738,6 +749,7 @@ static MC6845_UPDATE_ROW( cga_gfx_4bppl_update_row )
 {
 	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) CGA_LOG(1,"cga_gfx_4bppl_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -796,6 +808,7 @@ static MC6845_UPDATE_ROW( cga_gfx_4bpph_update_row )
 	int		samp_index = 0;
 	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) CGA_LOG(1,"cga_gfx_4bpph_update_row",("\n"));
 if ( NTSC_FILTER )
@@ -898,6 +911,7 @@ static MC6845_UPDATE_ROW( cga_gfx_2bpp_update_row )
 {
 	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) CGA_LOG(1,"cga_gfx_2bpp_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -932,6 +946,7 @@ static MC6845_UPDATE_ROW( cga_gfx_1bpp_update_row )
 	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
 	UINT8	fg = cga.color_select & 0x0F;
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) CGA_LOG(1,"cga_gfx_1bpp_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -1147,7 +1162,7 @@ static void pc_cga_mode_control_w(running_machine *machine, int data)
 /*
  *	?W	reserved for color select register on color adapter
  */
-static void pc_cga_color_select_w(int data)
+static void pc_cga_color_select_w(running_machine *machine, int data)
 {
 	CGA_LOG(1,"CGA_color_select_w",("$%02x\n", data));
 	cga.color_select = data;
@@ -1160,7 +1175,7 @@ static void pc_cga_color_select_w(int data)
 /*
  * Select Plantronics modes
  */
-static void pc_cga_plantronics_w(int data)
+static void pc_cga_plantronics_w(running_machine *machine, int data)
 {
 	CGA_LOG(1,"CGA_plantronics_w",("$%02x\n", data));
 
@@ -1182,7 +1197,7 @@ static void pc_cga_plantronics_w(int data)
 
 static READ8_HANDLER( pc_cga8_r )
 {
-	device_config	*devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, CGA_MC6845_NAME);
+	device_config	*devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, CGA_MC6845_NAME);
 	int data = 0xff;
 	switch( offset )
 	{
@@ -1207,31 +1222,31 @@ static WRITE8_HANDLER( pc_cga8_w )
 
 	switch(offset) {
 	case 0: case 2: case 4: case 6:
-		devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, CGA_MC6845_NAME);
+		devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, CGA_MC6845_NAME);
 		mc6845_address_w( devconf, offset, data );
 		break;
 	case 1: case 3: case 5: case 7:
-		devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, CGA_MC6845_NAME);
+		devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, CGA_MC6845_NAME);
 		mc6845_register_w( devconf, offset, data );
 		break;
 	case 8:
-		pc_cga_mode_control_w(machine, data);
+		pc_cga_mode_control_w(space->machine, data);
 		break;
 	case 9:
-		pc_cga_color_select_w(data);
+		pc_cga_color_select_w(space->machine, data);
 		break;
 	case 0x0d:
-		pc_cga_plantronics_w(data);
+		pc_cga_plantronics_w(space->machine, data);
 		break;
 	}
 }
 
 
 
-static READ16_HANDLER( pc_cga16le_r ) { return read16le_with_read8_handler(pc_cga8_r,machine,  offset, mem_mask); }
-static WRITE16_HANDLER( pc_cga16le_w ) { write16le_with_write8_handler(pc_cga8_w, machine, offset, data, mem_mask); }
-static READ32_HANDLER( pc_cga32le_r ) { return read32le_with_read8_handler(pc_cga8_r, machine, offset, mem_mask); }
-static WRITE32_HANDLER( pc_cga32le_w ) { write32le_with_write8_handler(pc_cga8_w, machine, offset, data, mem_mask); }
+static READ16_HANDLER( pc_cga16le_r ) { return read16le_with_read8_handler(pc_cga8_r,space,  offset, mem_mask); }
+static WRITE16_HANDLER( pc_cga16le_w ) { write16le_with_write8_handler(pc_cga8_w, space, offset, data, mem_mask); }
+static READ32_HANDLER( pc_cga32le_r ) { return read32le_with_read8_handler(pc_cga8_r, space, offset, mem_mask); }
+static WRITE32_HANDLER( pc_cga32le_w ) { write32le_with_write8_handler(pc_cga8_w, space, offset, data, mem_mask); }
 
 
 /* Old plantronics rendering code, leaving it uncommented until we have re-implemented it */
@@ -1448,6 +1463,7 @@ static MC6845_UPDATE_ROW( pc1512_gfx_4bpp_update_row )
 	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
 	UINT16	offset_base = ra << 13;
 	int i;
+	running_machine *machine = device->machine;
 
 	if ( y == 0 ) CGA_LOG(1,"pc1512_gfx_4bpp_update_row",("\n"));
 	for ( i = 0; i < x_count; i++ )
@@ -1472,7 +1488,7 @@ static MC6845_UPDATE_ROW( pc1512_gfx_4bpp_update_row )
 
 static WRITE8_HANDLER ( pc1512_w )
 {
-	device_config	*devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, CGA_MC6845_NAME);
+	device_config	*devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, CGA_MC6845_NAME);
 
 	switch (offset)
 	{
@@ -1501,7 +1517,7 @@ static WRITE8_HANDLER ( pc1512_w )
 		}
 		else
 		{
-			memory_set_bankptr(1, videoram + videoram_offset[0]);
+			memory_set_bankptr(space->machine,1, videoram + videoram_offset[0]);
 		}
 		cga.mode_control = data;
 		switch( cga.mode_control & 0x3F )
@@ -1559,12 +1575,12 @@ static WRITE8_HANDLER ( pc1512_w )
 		pc1512.read = data;
 		if ( ( cga.mode_control & 0x12 ) == 0x12 )
 		{
-			memory_set_bankptr(1, videoram + videoram_offset[data & 3]);
+			memory_set_bankptr(space->machine,1, videoram + videoram_offset[data & 3]);
 		}
 		break;
 
 	default:
-		pc_cga8_w(machine, offset,data);
+		pc_cga8_w(space, offset,data);
 		break;
 	}
 }
@@ -1584,7 +1600,7 @@ static READ8_HANDLER ( pc1512_r )
 		break;
 
 	default:
-		data = pc_cga8_r(machine, offset);
+		data = pc_cga8_r(space, offset);
 		break;
 	}
 	return data;
@@ -1612,9 +1628,9 @@ static WRITE8_HANDLER ( pc1512_videoram_w )
 
 
 
-READ16_HANDLER ( pc1512_16le_r ) { return read16le_with_read8_handler(pc1512_r, machine, offset, mem_mask); }
-WRITE16_HANDLER ( pc1512_16le_w ) { write16le_with_write8_handler(pc1512_w, machine, offset, data, mem_mask); }
-WRITE16_HANDLER ( pc1512_videoram16le_w ) { write16le_with_write8_handler(pc1512_videoram_w, machine, offset, data, mem_mask); }
+READ16_HANDLER ( pc1512_16le_r ) { return read16le_with_read8_handler(pc1512_r, space, offset, mem_mask); }
+WRITE16_HANDLER ( pc1512_16le_w ) { write16le_with_write8_handler(pc1512_w, space, offset, data, mem_mask); }
+WRITE16_HANDLER ( pc1512_videoram16le_w ) { write16le_with_write8_handler(pc1512_videoram_w, space, offset, data, mem_mask); }
 
 
 
@@ -1622,7 +1638,7 @@ static VIDEO_START( pc1512 )
 {
 	videoram_size = 0x10000;
 	videoram = auto_malloc( videoram_size );
-	memory_set_bankptr(1,videoram + videoram_offset[0]);
+	memory_set_bankptr(machine,1,videoram + videoram_offset[0]);
 
 	memset( &pc1512, 0, sizeof ( pc1512 ) );
 	pc1512.write = 0xf;

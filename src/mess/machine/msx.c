@@ -91,9 +91,19 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	const char *extra;
 	char *sramfile;
 	slot_state *state;
-	int id;
+	int id = -1;
 
-	id = image_index_in_device (image);
+	if (strcmp(image->tag,"cart1")==0) {
+		id = 0;
+	}
+	if (strcmp(image->tag,"cart2")==0) {
+		id = 1;
+	}
+	
+	if( id == -1 ) {
+		logerror ("error: invalid cart tag '%s'\n", image->tag);
+		return INIT_FAIL;
+	}
 
 	size = image_length (image);
 	if (size < 0x2000) {
@@ -267,9 +277,20 @@ DEVICE_IMAGE_LOAD (msx_cart)
 
 DEVICE_IMAGE_UNLOAD (msx_cart)
 {
-	int id;
+	int id = -1;
 
-	id = image_index_in_device (image);
+	if (strcmp(image->tag,"cart1")==0) {
+		id = 0;
+	}
+	if (strcmp(image->tag,"cart2")==0) {
+		id = 1;
+	}
+	
+	if( id == -1 ) {
+		logerror ("error: invalid cart tag '%s'\n", image->tag);
+		return;
+	}
+	
 	if (msx_slot_list[msx1.cart_state[id]->type].savesram)
 	{
 		msx_slot_list[msx1.cart_state[id]->type].savesram (msx1.cart_state[id]);
@@ -278,7 +299,7 @@ DEVICE_IMAGE_UNLOAD (msx_cart)
 
 void msx_vdp_interrupt(running_machine *machine, int i)
 {
-	cpunum_set_input_line (machine, 0, 0, (i ? HOLD_LINE : CLEAR_LINE));
+	cpu_set_input_line (machine->cpu[0], 0, (i ? HOLD_LINE : CLEAR_LINE));
 }
 
 static void msx_ch_reset_core (running_machine *machine)
@@ -295,7 +316,6 @@ static const TMS9928a_interface tms9928a_interface =
 	msx_vdp_interrupt
 };
 
-static void msx_wd179x_int (running_machine *machine, wd17xx_state_t state, void *param);
 
 MACHINE_START( msx )
 {
@@ -305,8 +325,8 @@ MACHINE_START( msx )
 
 MACHINE_START( msx2 )
 {
-	wd17xx_init (machine, WD_TYPE_179X, msx_wd179x_int, NULL);
-	wd17xx_set_density (DEN_FM_HI);
+	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD179X, "wd179x");
+	wd17xx_set_density (fdc,DEN_FM_HI);
 	msx1.dsk_stat = 0x7f;
 }
 
@@ -336,9 +356,7 @@ const ppi8255_interface msx_ppi8255_interface =
 	msx_ppi_port_c_w
 };
 
-static const struct tc8521_interface tc = { NULL };
-
-static void msx_init(running_machine *machine)
+DRIVER_INIT( msx )
 {
 	int i, n;
 
@@ -355,7 +373,7 @@ static void msx_init(running_machine *machine)
 		msx1.cart_state[i] = cart_state[i];
 	}
 
-	cpunum_set_input_line_vector (0, 0, 0xff);
+	cpu_set_input_line_vector (machine->cpu[0], 0, 0xff);
 
 	msx_memory_init (machine);
 
@@ -365,7 +383,7 @@ static void msx_init(running_machine *machine)
 		UINT8 *table = auto_malloc (0x100);
 		const UINT8 *old_table;
 
-		old_table = cpunum_get_info_ptr (0,
+		old_table = device_get_info_ptr (machine->cpu[0],
 				CPUINFO_PTR_Z80_CYCLE_TABLE + z80_cycle_table[i]);
 		memcpy (table, old_table, 0x100);
 
@@ -383,28 +401,17 @@ static void msx_init(running_machine *machine)
 				}
 			}
 		}
-		cpunum_set_info_ptr (0,
+		device_set_info_ptr (machine->cpu[0],
 					CPUINFO_PTR_Z80_CYCLE_TABLE + z80_cycle_table[i],
 					(void*)table);
 	}
 }
 
-DRIVER_INIT( msx )
-{
-	msx_init(machine);
-}
-
-DRIVER_INIT( msx2 )
-{
-	msx_init(machine);
-	tc8521_init (&tc);
-}
-
 INTERRUPT_GEN( msx2_interrupt )
 {
-	v9938_set_sprite_limit(0, input_port_read(machine, "DSW") & 0x20);
-	v9938_set_resolution(0, input_port_read(machine, "DSW") & 0x03);
-	v9938_interrupt(0);
+	v9938_set_sprite_limit(0, input_port_read(device->machine, "DSW") & 0x20);
+	v9938_set_resolution(0, input_port_read(device->machine, "DSW") & 0x03);
+	v9938_interrupt(device->machine, 0);
 }
 
 INTERRUPT_GEN( msx_interrupt )
@@ -413,12 +420,12 @@ INTERRUPT_GEN( msx_interrupt )
 	
 	for (i=0; i<2; i++)
 	{
-		msx1.mouse[i] = input_port_read(machine, i ? "MOUSE1" : "MOUSE0");
+		msx1.mouse[i] = input_port_read(device->machine, i ? "MOUSE1" : "MOUSE0");
 		msx1.mouse_stat[i] = -1;
 	}
 
-	TMS9928A_set_spriteslimit (input_port_read(machine, "DSW") & 0x20);
-	TMS9928A_interrupt(machine);
+	TMS9928A_set_spriteslimit (input_port_read(device->machine, "DSW") & 0x20);
+	TMS9928A_interrupt(device->machine);
 }
 
 /*
@@ -427,15 +434,15 @@ INTERRUPT_GEN( msx_interrupt )
 
 READ8_HANDLER ( msx_psg_r )
 {
-	return ay8910_read_port_0_r (machine, offset);
+	return ay8910_read_port_0_r (space, offset);
 }
 
 WRITE8_HANDLER ( msx_psg_w )
 {
 	if (offset & 0x01)
-		ay8910_write_port_0_w (machine, offset, data);
+		ay8910_write_port_0_w (space, offset, data);
 	else
-		ay8910_control_port_0_w (machine, offset, data);
+		ay8910_control_port_0_w (space, offset, data);
 }
 
 static const device_config *cassette_device_image(running_machine *machine)
@@ -452,12 +459,12 @@ READ8_HANDLER ( msx_psg_port_a_r )
 {
 	int data, inp;
 
-	data = (cassette_input(cassette_device_image(machine)) > 0.0038 ? 0x80 : 0);
+	data = (cassette_input(cassette_device_image(space->machine)) > 0.0038 ? 0x80 : 0);
 
-	if ( (msx1.psg_b ^ input_port_read(machine, "DSW") ) & 0x40)
+	if ( (msx1.psg_b ^ input_port_read(space->machine, "DSW") ) & 0x40)
 		{
 		/* game port 2 */
-		inp = input_port_read(machine, "JOY1") & 0x7f;
+		inp = input_port_read(space->machine, "JOY1") & 0x7f;
 #if 0
 		if ( !(inp & 0x80) )
 			{
@@ -482,7 +489,7 @@ READ8_HANDLER ( msx_psg_port_a_r )
 	else
 		{
 		/* game port 1 */
-		inp = input_port_read(machine, "JOY0") & 0x7f;
+		inp = input_port_read(space->machine, "JOY0") & 0x7f;
 #if 0
 		if ( !(inp & 0x80) )
 			{
@@ -537,7 +544,7 @@ WRITE8_HANDLER ( msx_psg_port_b_w )
 
 WRITE8_HANDLER ( msx_printer_w )
 {
-	if (input_port_read(machine, "DSW") & 0x80) 
+	if (input_port_read(space->machine, "DSW") & 0x80) 
 	{
 		/* SIMPL emulation */
 		if (offset == 1)
@@ -553,7 +560,7 @@ WRITE8_HANDLER ( msx_printer_w )
 		{
 			if ((msx1.prn_strobe & 2) && !(data & 2))
 			{
-				printer_output(printer_image(machine), msx1.prn_data);
+				printer_output(printer_image(space->machine), msx1.prn_data);
 			}
 
 			msx1.prn_strobe = data;
@@ -563,8 +570,8 @@ WRITE8_HANDLER ( msx_printer_w )
 
 READ8_HANDLER ( msx_printer_r )
 {
-	if (offset == 0 && ! (input_port_read(machine, "DSW") & 0x80) &&
-			printer_is_ready(printer_image(machine)) )
+	if (offset == 0 && ! (input_port_read(space->machine, "DSW") & 0x80) &&
+			printer_is_ready(printer_image(space->machine)) )
 		return 253;
 
 	return 0xff;
@@ -575,10 +582,10 @@ WRITE8_HANDLER (msx_fmpac_w)
 	if (msx1.opll_active) {
 
 		if (offset == 1) {
-			ym2413_data_port_0_w (machine, 0, data);
+			ym2413_data_port_0_w (space, 0, data);
 		}
 		else {
-			ym2413_register_port_0_w (machine, 0, data);
+			ym2413_register_port_0_w (space, 0, data);
 		}
 	}
 }
@@ -594,24 +601,25 @@ WRITE8_HANDLER (msx_rtc_latch_w)
 
 WRITE8_HANDLER (msx_rtc_reg_w)
 {
-	tc8521_w(machine, msx1.rtc_latch, data);
+	const device_config *rtc = device_list_find_by_tag(space->machine->config->devicelist, TC8521, "rtc");
+	tc8521_w(rtc, msx1.rtc_latch, data);
 }
 
 READ8_HANDLER (msx_rtc_reg_r)
 {
-	return tc8521_r(machine, msx1.rtc_latch);
+	const device_config *rtc = device_list_find_by_tag(space->machine->config->devicelist, TC8521, "rtc");
+	return tc8521_r(rtc, msx1.rtc_latch);
 }
 
 NVRAM_HANDLER( msx2 )
 {
-	if (file) {
-
-		if (read_or_write) {
-			tc8521_save_stream (file);
-		}
-		else {
-			tc8521_load_stream (file);
-		}
+	const device_config *rtc = device_list_find_by_tag(machine->config->devicelist, TC8521, "rtc");
+	if (file)
+	{
+		if (read_or_write)
+			tc8521_save_stream (rtc, file);
+		else
+			tc8521_load_stream (rtc, file);
 	}
 }
 
@@ -646,7 +654,7 @@ set on 7FFDH bit 2 always to 0 (some use it as disk change reset)
 
 */
 
-static void msx_wd179x_int (running_machine *machine, wd17xx_state_t state, void *param)
+static WD17XX_CALLBACK( msx_wd179x_int )
 {
 	switch (state)
 	{
@@ -657,6 +665,7 @@ static void msx_wd179x_int (running_machine *machine, wd17xx_state_t state, void
 	}
 }
 
+const wd17xx_interface msx_wd17xx_interface = { msx_wd179x_int, NULL };
 
 DEVICE_IMAGE_LOAD( msx_floppy )
 {
@@ -730,7 +739,7 @@ static READ8_DEVICE_HANDLER( msx_ppi_port_b_r )
 {
 	UINT8 result = 0xff;
 	int row, data;
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5" };
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5" };
 
 	row = ppi8255_r(device, 2) & 0x0f;
 	if (row <= 10)
@@ -967,9 +976,9 @@ WRITE8_HANDLER (msx_superloadrunner_w)
 {
 	msx1.superloadrunner_bank = data;
 	if (msx1.slot[2]->slot_type == SLOT_SUPERLOADRUNNER) {
-		msx1.slot[2]->map (machine, msx1.state[2], 2);
+		msx1.slot[2]->map (space->machine, msx1.state[2], 2);
 	}
-	msx_page0_w(machine, -1, data);
+	msx_page0_w(space, -1, data);
 }
 
 WRITE8_HANDLER (msx_page0_w)
@@ -981,7 +990,7 @@ WRITE8_HANDLER (msx_page0_w)
 		msx1.ram_pages[0][offset] = data;
 		break;
 	case MSX_MEM_HANDLER:
-		msx1.slot[0]->write (machine, msx1.state[0], offset, data);
+		msx1.slot[0]->write (space->machine, msx1.state[0], offset, data);
 	}
 }
 
@@ -992,7 +1001,7 @@ WRITE8_HANDLER (msx_page1_w)
 		msx1.ram_pages[1][offset] = data;
 		break;
 	case MSX_MEM_HANDLER:
-		msx1.slot[1]->write (machine, msx1.state[1], 0x4000 + offset, data);
+		msx1.slot[1]->write (space->machine, msx1.state[1], 0x4000 + offset, data);
 	}
 }
 
@@ -1003,7 +1012,7 @@ WRITE8_HANDLER (msx_page2_w)
 		msx1.ram_pages[2][offset] = data;
 		break;
 	case MSX_MEM_HANDLER:
-		msx1.slot[2]->write (machine, msx1.state[2], 0x8000 + offset, data);
+		msx1.slot[2]->write (space->machine, msx1.state[2], 0x8000 + offset, data);
 	}
 }
 
@@ -1014,7 +1023,7 @@ WRITE8_HANDLER (msx_page3_w)
 		msx1.ram_pages[3][offset] = data;
 		break;
 	case MSX_MEM_HANDLER:
-		msx1.slot[3]->write (machine, msx1.state[3], 0xc000 + offset, data);
+		msx1.slot[3]->write (space->machine, msx1.state[3], 0xc000 + offset, data);
 	}
 }
 
@@ -1027,10 +1036,10 @@ WRITE8_HANDLER (msx_sec_slot_w)
 			logerror ("write to secondary slot %d select: %02x\n", slot, data);
 
 		msx1.secondary_slot[slot] = data;
-		msx_memory_map_all (machine);
+		msx_memory_map_all (space->machine);
 	}
 	else {
-		msx_page3_w(machine, 0x3fff, data);
+		msx_page3_w(space, 0x3fff, data);
 	}
 }
 
@@ -1051,7 +1060,7 @@ WRITE8_HANDLER (msx_ram_mapper_w)
 {
 	msx1.ram_mapper[offset] = data;
 	if (msx1.slot[offset]->slot_type == SLOT_RAM_MM) {
-		msx1.slot[offset]->map (machine, msx1.state[offset], offset);
+		msx1.slot[offset]->map (space->machine, msx1.state[offset], offset);
 	}
 }
 
@@ -1065,11 +1074,11 @@ WRITE8_HANDLER (msx_90in1_w)
 	msx1.korean90in1_bank = data;
 	if (msx1.slot[1]->slot_type == SLOT_KOREAN_90IN1)
 	{
-		msx1.slot[1]->map (machine, msx1.state[1], 1);
+		msx1.slot[1]->map (space->machine, msx1.state[1], 1);
 	}
 	if (msx1.slot[2]->slot_type == SLOT_KOREAN_90IN1)
 	{
-		msx1.slot[2]->map (machine, msx1.state[2], 2);
+		msx1.slot[2]->map (space->machine, msx1.state[2], 2);
 	}
 }
 

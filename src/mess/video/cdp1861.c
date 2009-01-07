@@ -32,7 +32,7 @@ INLINE cdp1861_t *get_safe_token(const device_config *device)
 
 /* Timer Callbacks */
 
-static TIMER_CALLBACK(cdp1861_int_tick)
+static TIMER_CALLBACK( cdp1861_int_tick )
 {
 	const device_config *device = ptr;
 	cdp1861_t *cdp1861 = get_safe_token(device);
@@ -59,7 +59,7 @@ static TIMER_CALLBACK(cdp1861_int_tick)
 	}
 }
 
-static TIMER_CALLBACK(cdp1861_efx_tick)
+static TIMER_CALLBACK( cdp1861_efx_tick )
 {
 	const device_config *device = ptr;
 	cdp1861_t *cdp1861 = get_safe_token(device);
@@ -90,7 +90,7 @@ static TIMER_CALLBACK(cdp1861_efx_tick)
 	}
 }
 
-static TIMER_CALLBACK(cdp1861_dma_tick)
+static TIMER_CALLBACK( cdp1861_dma_tick )
 {
 	const device_config *device = ptr;
 	cdp1861_t *cdp1861 = get_safe_token(device);
@@ -107,7 +107,7 @@ static TIMER_CALLBACK(cdp1861_dma_tick)
 			}
 		}
 
-		timer_adjust_oneshot(cdp1861->dma_timer, ATTOTIME_IN_CYCLES(CDP1861_CYCLES_DMA_WAIT, 0), 0);
+		timer_adjust_oneshot(cdp1861->dma_timer, cpu_clocks_to_attotime(machine->cpu[0], CDP1861_CYCLES_DMA_WAIT), 0);
 
 		cdp1861->dmaout = 0;
 	}
@@ -121,7 +121,7 @@ static TIMER_CALLBACK(cdp1861_dma_tick)
 			}
 		}
 
-		timer_adjust_oneshot(cdp1861->dma_timer, ATTOTIME_IN_CYCLES(CDP1861_CYCLES_DMA_ACTIVE, 0), 0);
+		timer_adjust_oneshot(cdp1861->dma_timer, cpu_clocks_to_attotime(machine->cpu[0], CDP1861_CYCLES_DMA_ACTIVE), 0);
 
 		cdp1861->dmaout = 1;
 	}
@@ -178,7 +178,7 @@ void cdp1861_update(const device_config *device, bitmap_t *bitmap, const rectang
 	}
 	else
 	{
-		fillbitmap(bitmap, get_black_pen(device->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(device->machine));
 	}
 }
 
@@ -187,17 +187,16 @@ void cdp1861_update(const device_config *device, bitmap_t *bitmap, const rectang
 static DEVICE_START( cdp1861 )
 {
 	cdp1861_t *cdp1861 = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
 	assert(strlen(device->tag) < 20);
+	assert(device->clock > 0);
 
 	cdp1861->intf = device->static_config;
 
 	assert(cdp1861->intf != NULL);
-	assert(cdp1861->intf->clock > 0);
 	assert(cdp1861->intf->on_int_changed != NULL);
 	assert(cdp1861->intf->on_dmao_changed != NULL);
 	assert(cdp1861->intf->on_efx_changed != NULL);
@@ -210,16 +209,14 @@ static DEVICE_START( cdp1861 )
 	cdp1861->bitmap = auto_bitmap_alloc(video_screen_get_width(cdp1861->screen), video_screen_get_height(cdp1861->screen), video_screen_get_format(cdp1861->screen));
 
 	/* create the timers */
-	cdp1861->int_timer = timer_alloc(cdp1861_int_tick, (void *)device);
-	cdp1861->efx_timer = timer_alloc(cdp1861_efx_tick, (void *)device);
-	cdp1861->dma_timer = timer_alloc(cdp1861_dma_tick, (void *)device);
+	cdp1861->int_timer = timer_alloc(device->machine, cdp1861_int_tick, (void *)device);
+	cdp1861->efx_timer = timer_alloc(device->machine, cdp1861_efx_tick, (void *)device);
+	cdp1861->dma_timer = timer_alloc(device->machine, cdp1861_dma_tick, (void *)device);
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "CDP1861", device->tag);
-
-	state_save_register_item(unique_tag, 0, cdp1861->disp);
-	state_save_register_item(unique_tag, 0, cdp1861->dmaout);
-	state_save_register_bitmap(unique_tag, 0, "cdp1861->bitmap", cdp1861->bitmap);
+	state_save_register_device_item(device, 0, cdp1861->disp);
+	state_save_register_device_item(device, 0, cdp1861->dmaout);
+	state_save_register_device_item_bitmap(device, 0, cdp1861->bitmap);
 
 	return DEVICE_START_OK;
 }
@@ -230,7 +227,7 @@ static DEVICE_RESET( cdp1861 )
 
 	timer_adjust_oneshot(cdp1861->int_timer, video_screen_get_time_until_pos(cdp1861->screen, CDP1861_SCANLINE_INT_START, 0), 0);
 	timer_adjust_oneshot(cdp1861->efx_timer, video_screen_get_time_until_pos(cdp1861->screen, CDP1861_SCANLINE_EFX_TOP_START, 0), 0);
-	timer_adjust_oneshot(cdp1861->dma_timer, ATTOTIME_IN_CYCLES(CDP1861_CYCLES_DMA_START, 0), 0);
+	timer_adjust_oneshot(cdp1861->dma_timer, cpu_clocks_to_attotime(device->machine->cpu[0], CDP1861_CYCLES_DMA_START), 0);
 	
 	cdp1861->disp = 0;
 	cdp1861->dmaout = 0;
@@ -264,10 +261,10 @@ DEVICE_GET_INFO( cdp1861 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(cdp1861);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "RCA CDP1861";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "RCA CDP1800";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright MESS Team";			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "RCA CDP1861");					break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "RCA CDP1800");					break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
 	}
 }

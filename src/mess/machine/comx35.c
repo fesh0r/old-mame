@@ -1,3 +1,38 @@
+/*
+
+COMX-35 Disk Controller Card
+
+PCB Layout
+----------
+
+xxx-REVx
+
+	|---------------|
+	|      CN1      |
+|---|				|---------------------------|
+|												|
+|	40174				4068	4072		   -|
+|			ROM								   ||
+|	LS04				4072	4050	7438   C|
+|8MHz										   N|
+|						4049	4075	LS08   2|
+|LD1		WD1770							   ||
+|	40174				4503	4075	7438   -|
+|LD2											|
+|-----------------------------------------------|
+
+Notes:
+    All IC's shown.
+
+    ROM     - "D.O.S. V1.2"
+    WD1770	- Western Digital WD1770-xx Floppy Disc Controller @ 8MHz
+    CN1		- COMX-35 bus PCB edge connector
+    CN2		- 34 pin floppy connector
+    LD1		- card selected LED
+    LD2		- floppy motor on LED
+
+*/
+
 #include "driver.h"
 #include "cpu/cdp1802/cdp1802.h"
 #include "machine/wd17xx.h"
@@ -45,7 +80,7 @@ static UINT8 read_expansion(running_machine *machine)
 
 static const device_config *printer_device(running_machine *machine)
 {
-	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
+	return devtag_get_device(machine, PRINTER, "printer");
 }
 
 static int expansion_box_installed(running_machine *machine)
@@ -108,39 +143,42 @@ DEVICE_IMAGE_LOAD( comx35_floppy )
 	return INIT_FAIL;
 }
 
-static void comx35_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
+static WD17XX_CALLBACK( comx35_fdc_callback )
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *driver_state = device->machine->driver_data;
 
-	switch (event)
+	switch (state)
 	{
 	case WD17XX_IRQ_SET:
-		state->fdc_irq = 1;
+		driver_state->fdc_irq = 1;
 		break;
 
 	case WD17XX_IRQ_CLR:
-		state->fdc_irq = 0;
+		driver_state->fdc_irq = 0;
 		break;
 
 	case WD17XX_DRQ_SET:
-		if (state->fdc_drq_enable)
+		if (driver_state->fdc_drq_enable)
 		{
-			state->cdp1802_ef4 = 1;
+			driver_state->cdp1802_ef4 = 1;
 		}
 		break;
 
 	case WD17XX_DRQ_CLR:
-		if (state->fdc_drq_enable)
+		if (driver_state->fdc_drq_enable)
 		{
-			state->cdp1802_ef4 = 0;
+			driver_state->cdp1802_ef4 = 0;
 		}
 		break;
 	}
 }
 
-static UINT8 fdc_r(running_machine *machine)
+const wd17xx_interface comx35_wd17xx_interface = { comx35_fdc_callback, NULL };
+
+static UINT8 fdc_r(const address_space *space)
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = space->machine->driver_data;
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1770, "wd1770");
 
 	UINT8 data;
 
@@ -150,14 +188,15 @@ static UINT8 fdc_r(running_machine *machine)
 	}
 	else
 	{
-		data = wd17xx_r(machine, state->fdc_addr);
+		data = wd17xx_r(fdc, state->fdc_addr);
 	}
 
 	return data;
 }
 
-static void fdc_w(running_machine *machine, UINT8 data)
+static void fdc_w(const address_space *space, UINT8 data)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1770, "wd1770");
 	/*
 
 		bit		description
@@ -171,7 +210,7 @@ static void fdc_w(running_machine *machine, UINT8 data)
 
 	*/
 
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = space->machine->driver_data;
 
 	if (state->cdp1802_q)
 	{
@@ -181,11 +220,11 @@ static void fdc_w(running_machine *machine, UINT8 data)
 
 		if (BIT(data, 2))
 		{
-			wd17xx_set_drive(0);
+			wd17xx_set_drive(fdc,0);
 		}		
 		else if (BIT(data, 3))
 		{
-			wd17xx_set_drive(1);
+			wd17xx_set_drive(fdc,1);
 		}
 
 		state->fdc_drq_enable = BIT(data, 4);
@@ -195,13 +234,13 @@ static void fdc_w(running_machine *machine, UINT8 data)
 			state->cdp1802_ef4 = 1;
 		}
 
-		wd17xx_set_side(BIT(data, 5));
+		wd17xx_set_side(fdc,BIT(data, 5));
 	}
 	else
 	{
 		// write data to WD1770
 
-		wd17xx_w(machine, state->fdc_addr, data);
+		wd17xx_w(fdc, state->fdc_addr, data);
 	}
 }
 
@@ -287,7 +326,7 @@ static void printer_w(running_machine *machine, UINT8 data)
 static void get_active_bank(running_machine *machine, UINT8 data)
 {
 	comx35_state *state = machine->driver_data;
-	static const char *slotnames[] = { "SLOT1", "SLOT2", "SLOT3", "SLOT4" };
+	static const char *const slotnames[] = { "", "SLOT1", "SLOT2", "SLOT3", "SLOT4" };
 
 	if (expansion_box_installed(machine))
 	{
@@ -321,52 +360,53 @@ static void get_active_bank(running_machine *machine, UINT8 data)
 static void set_active_bank(running_machine *machine)
 {
 	comx35_state *state = machine->driver_data;
+	const address_space *program = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	int bank = state->bank;
 
 	switch (state->bank)
 	{
 	case BANK_NONE:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xc000, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case BANK_FLOPPY:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_BANK1, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xc000, 0xdfff, 0, 0, SMH_BANK1, SMH_UNMAP);
 		break;
 
 	case BANK_PRINTER_PARALLEL:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0, SMH_BANK1, SMH_UNMAP);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xc000, 0xc7ff, 0, 0, SMH_BANK1, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xc800, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case BANK_PRINTER_PARALLEL_FM:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_BANK1, SMH_UNMAP);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xc000, 0xcfff, 0, 0, SMH_BANK1, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xd000, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case BANK_PRINTER_SERIAL:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0, SMH_BANK1, SMH_UNMAP);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xc000, 0xc7ff, 0, 0, SMH_BANK1, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xc800, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case BANK_PRINTER_THERMAL:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_BANK1, SMH_UNMAP);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xc000, 0xcfff, 0, 0, SMH_BANK1, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xd000, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case BANK_JOYCARD:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xc000, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case BANK_80_COLUMNS:
 		{
-			const device_config *mc6845 = device_list_find_by_tag(machine->config->devicelist, MC6845, MC6845_TAG);
+			const device_config *mc6845 = devtag_get_device(machine, MC6845, MC6845_TAG);
 
-			memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0, SMH_BANK1, SMH_UNMAP); // ROM
-			memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-			memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xd7ff, 0, 0, SMH_BANK1, SMH_BANK1); // RAM
-			memory_install_readwrite8_device_handler(mc6845, 0, ADDRESS_SPACE_PROGRAM, 0xd800, 0xd800, 0, 0, SMH_UNMAP, mc6845_address_w);
-			memory_install_readwrite8_device_handler(mc6845, 0, ADDRESS_SPACE_PROGRAM, 0xd801, 0xd801, 0, 0, mc6845_register_r, mc6845_register_w);
-			memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd802, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+			memory_install_readwrite8_handler(program, 0xc000, 0xc7ff, 0, 0, SMH_BANK1, SMH_UNMAP); // ROM
+			memory_install_readwrite8_handler(program, 0xc800, 0xcfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+			memory_install_readwrite8_handler(program, 0xd000, 0xd7ff, 0, 0, comx35_videoram_r, comx35_videoram_w);
+			memory_install_readwrite8_device_handler(program, mc6845, 0xd800, 0xd800, 0, 0, SMH_UNMAP, mc6845_address_w);
+			memory_install_readwrite8_device_handler(program, mc6845, 0xd801, 0xd801, 0, 0, mc6845_register_r, mc6845_register_w);
+			memory_install_readwrite8_handler(program, 0xd802, 0xdfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		}
 		break;
 
@@ -374,23 +414,23 @@ static void set_active_bank(running_machine *machine)
 		{
 			bank = BANK_RAMCARD + state->rambank;
 
-			memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_BANK1, SMH_BANK1);
+			memory_install_readwrite8_handler(program, 0xc000, 0xdfff, 0, 0, SMH_BANK1, SMH_BANK1);
 		}
 		break;
 	}
 
-	memory_set_bank(1, bank);
+	memory_set_bank(machine, 1, bank);
 }
 
 WRITE8_HANDLER( comx35_bank_select_w )
 {
-	get_active_bank(machine, data);
-	set_active_bank(machine);
+	get_active_bank(space->machine, data);
+	set_active_bank(space->machine);
 }
 
 READ8_HANDLER( comx35_io_r )
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = space->machine->driver_data;
 
 	UINT8 data = 0xff;
 
@@ -400,18 +440,18 @@ READ8_HANDLER( comx35_io_r )
 		break;
 
 	case BANK_FLOPPY:
-		data = fdc_r(machine);
+		data = fdc_r(space);
 		break;
 
 	case BANK_PRINTER_PARALLEL:
 	case BANK_PRINTER_PARALLEL_FM:
 	case BANK_PRINTER_SERIAL:
 	case BANK_PRINTER_THERMAL:
-		data = printer_r(machine);
+		data = printer_r(space->machine);
 		break;
 
 	case BANK_JOYCARD:
-		data = input_port_read(machine, "JOY1");
+		data = input_port_read(space->machine, "JOY1");
 		break;
 
 	case BANK_80_COLUMNS:
@@ -426,7 +466,7 @@ READ8_HANDLER( comx35_io_r )
 
 READ8_HANDLER( comx35_io2_r )
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = space->machine->driver_data;
 
 	UINT8 data = 0xff;
 
@@ -445,7 +485,7 @@ READ8_HANDLER( comx35_io2_r )
 		break;
 
 	case BANK_JOYCARD:
-		data = input_port_read(machine, "JOY2");
+		data = input_port_read(space->machine, "JOY2");
 		break;
 
 	case BANK_80_COLUMNS:
@@ -460,7 +500,7 @@ READ8_HANDLER( comx35_io2_r )
 
 WRITE8_HANDLER( comx35_io_w )
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = space->machine->driver_data;
 
 	switch (state->bank)
 	{
@@ -468,14 +508,14 @@ WRITE8_HANDLER( comx35_io_w )
 		break;
 
 	case BANK_FLOPPY:
-		fdc_w(machine, data);
+		fdc_w(space, data);
 		break;
 
 	case BANK_PRINTER_PARALLEL:
 	case BANK_PRINTER_PARALLEL_FM:
 	case BANK_PRINTER_SERIAL:
 	case BANK_PRINTER_THERMAL:
-		printer_w(machine, data);
+		printer_w(space->machine, data);
 		break;
 
 	case BANK_JOYCARD:
@@ -498,14 +538,14 @@ static TIMER_CALLBACK( reset_tick )
 	state->cdp1802_mode = CDP1802_MODE_RUN;
 }
 
-static OPBASE_HANDLER( comx35_opbase_handler )
+static DIRECT_UPDATE_HANDLER( comx35_opbase_handler )
 {
 	if (address >= 0x0dd0 && address <= 0x0ddf)
 	{
-		if (dos_card_active(machine))
+		if (dos_card_active(space->machine))
 		{
 			// read opcode from DOS ROM
-			opbase->rom = opbase->ram = memory_region(machine, "user1");
+			direct->raw = direct->decrypted = memory_region(space->machine, "fdc");
 			return ~0;
 		}
 	}
@@ -521,38 +561,45 @@ static STATE_POSTLOAD( comx35_state_save_postload )
 MACHINE_START( comx35p )
 {
 	comx35_state *state = machine->driver_data;
+	const address_space *program = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 
 	/* opbase handling for DOS Card */
 
-	memory_set_opbase_handler(0, comx35_opbase_handler);
+	memory_set_direct_update_handler(program, comx35_opbase_handler);
 
 	/* BASIC ROM banking */
 
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, SMH_BANK2, SMH_UNMAP);
-	memory_configure_bank(2, 0, 1, memory_region(machine, CDP1802_TAG) + 0x1000, 0); // normal ROM
-	memory_configure_bank(2, 1, 1, memory_region(machine, CDP1802_TAG) + 0xe000, 0); // expansion box ROM
+	memory_install_readwrite8_handler(program, 0x1000, 0x17ff, 0, 0, SMH_BANK2, SMH_UNMAP);
+	memory_configure_bank(machine, 2, 0, 1, memory_region(machine, CDP1802_TAG) + 0x1000, 0); // normal ROM
+	memory_configure_bank(machine, 2, 1, 1, memory_region(machine, CDP1802_TAG) + 0xe000, 0); // expansion box ROM
 
-	memory_configure_bank(3, 0, 1, memory_region(machine, CDP1802_TAG) + 0xe000, 0);
-	memory_set_bank(3, 0);
+	memory_configure_bank(machine, 3, 0, 1, memory_region(machine, CDP1802_TAG) + 0xe000, 0);
+	memory_set_bank(machine, 3, 0);
 
 	if (expansion_box_installed(machine))
 	{
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_BANK3, SMH_UNMAP);
-		memory_set_bank(2, 1);
+		memory_install_readwrite8_handler(program, 0xe000, 0xefff, 0, 0, SMH_BANK3, SMH_UNMAP);
+		memory_set_bank(machine, 2, 1);
 	}
 	else
 	{
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-		memory_set_bank(2, 0);
+		memory_install_readwrite8_handler(program, 0xe000, 0xefff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_set_bank(machine, 2, 0);
 	}
 
 	/* card slot banking */
 
-	memory_configure_bank(1, 0, 1, memory_region(machine, CDP1802_TAG) + 0xc000, 0);
-	memory_configure_bank(1, BANK_FLOPPY, 7, memory_region(machine, "user1"), 0x2000);
-	memory_configure_bank(1, BANK_RAMCARD, 4, mess_ram, 0x2000);
+	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, CDP1802_TAG) + 0xc000, 0);
+	memory_configure_bank(machine, 1, BANK_FLOPPY, 1, memory_region(machine, "fdc"), 0);
+	memory_configure_bank(machine, 1, BANK_PRINTER_PARALLEL, 1, memory_region(machine, "printer"), 0);
+	memory_configure_bank(machine, 1, BANK_PRINTER_PARALLEL_FM, 1, memory_region(machine, "printer_fm"), 0);
+	memory_configure_bank(machine, 1, BANK_PRINTER_SERIAL, 1, memory_region(machine, "rs232"), 0);
+	memory_configure_bank(machine, 1, BANK_PRINTER_THERMAL, 1, memory_region(machine, "thermal"), 0);
+	memory_configure_bank(machine, 1, BANK_JOYCARD, 1, memory_region(machine, CDP1802_TAG), 0);
+	memory_configure_bank(machine, 1, BANK_80_COLUMNS, 1, memory_region(machine, "80column"), 0);
+	memory_configure_bank(machine, 1, BANK_RAMCARD, 4, mess_ram, 0x2000);
 
-	memory_set_bank(1, 0);
+	memory_set_bank(machine, 1, 0);
 
 	if (!expansion_box_installed(machine))
 	{
@@ -561,35 +608,31 @@ MACHINE_START( comx35p )
 
 	/* allocate reset timer */
 	
-	state->reset_timer = timer_alloc(reset_tick, NULL);
+	state->reset_timer = timer_alloc(machine, reset_tick, NULL);
 
 	/* screen format */
 
 	state->pal_ntsc = CDP1869_PAL;
 
-	/* initialize floppy disc controller */
-
-	wd17xx_init(machine, WD_TYPE_1770, comx35_fdc_callback, NULL);
-
 	/* register for state saving */
 
 	state_save_register_postload(machine, comx35_state_save_postload, NULL);
 
-	state_save_register_global(state->cdp1802_mode);
-	state_save_register_global(state->cdp1802_q);
-	state_save_register_global(state->cdp1802_ef4);
-	state_save_register_global(state->iden);
-	state_save_register_global(state->slot);
-	state_save_register_global(state->bank);
-	state_save_register_global(state->rambank);
-	state_save_register_global(state->dma);
+	state_save_register_global(machine, state->cdp1802_mode);
+	state_save_register_global(machine, state->cdp1802_q);
+	state_save_register_global(machine, state->cdp1802_ef4);
+	state_save_register_global(machine, state->iden);
+	state_save_register_global(machine, state->slot);
+	state_save_register_global(machine, state->bank);
+	state_save_register_global(machine, state->rambank);
+	state_save_register_global(machine, state->dma);
 
-	state_save_register_global(state->cdp1871_efxa);
-	state_save_register_global(state->cdp1871_efxb);
+	state_save_register_global(machine, state->cdp1871_efxa);
+	state_save_register_global(machine, state->cdp1871_efxb);
 
-	state_save_register_global(state->fdc_addr);
-	state_save_register_global(state->fdc_irq);
-	state_save_register_global(state->fdc_drq_enable);
+	state_save_register_global(machine, state->fdc_addr);
+	state_save_register_global(machine, state->fdc_irq);
+	state_save_register_global(machine, state->fdc_drq_enable);
 }
 
 MACHINE_START( comx35n )
@@ -628,13 +671,15 @@ INPUT_CHANGED( comx35_reset )
 
 static void image_fread_memory(const device_config *image, UINT16 addr, UINT32 count)
 {
-	void *ptr = memory_get_write_ptr(0, ADDRESS_SPACE_PROGRAM, addr);
+	void *ptr = memory_get_write_ptr(cpu_get_address_space(image->machine->cpu[0], ADDRESS_SPACE_PROGRAM), addr);
 
 	image_fread(image, ptr, count);
 }
 
 QUICKLOAD_LOAD( comx35 )
 {
+	const address_space *program = cpu_get_address_space(image->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
 	UINT8 header[16] = {0};
 	int size = image_length(image);
 
@@ -758,16 +803,16 @@ QUICKLOAD_LOAD( comx35 )
 			image_fread(image, header, 2);
 
 			array_length = (header[0] << 8) | header[1];
-			start_array = (program_read_byte(0x4295) << 8) | program_read_byte(0x4296);
+			start_array = (memory_read_byte(program, 0x4295) << 8) | memory_read_byte(program, 0x4296);
 			end_array = start_array + (size - 7);
 
-			program_write_byte(0x4299, end_array >> 8);
-			program_write_byte(0x429a, end_array & 0xff);
+			memory_write_byte(program, 0x4299, end_array >> 8);
+			memory_write_byte(program, 0x429a, end_array & 0xff);
 			
 			start_string = start_array + array_length;
 
-			program_write_byte(0x4292, start_string >> 8);
-			program_write_byte(0x4293, start_string & 0xff);
+			memory_write_byte(program, 0x4292, start_string >> 8);
+			memory_write_byte(program, 0x4293, start_string & 0xff);
 
 			image_fread_memory(image, start_array, size);
 		}

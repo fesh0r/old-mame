@@ -10,10 +10,12 @@
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "video/mc6845.h"
 #include "includes/svi318.h"
 #include "video/tms9928a.h"
 #include "machine/8255ppi.h"
+#include "machine/wd17xx.h"
 #include "devices/basicdsk.h"
 #include "devices/printer.h"
 #include "devices/cartslot.h"
@@ -267,19 +269,27 @@ static const cassette_config svi318_cassette_config =
 	CASSETTE_PLAY
 };
 
+static MACHINE_DRIVER_START( svi318_cartslot )
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_START(svi318_cart)
+	MDRV_CARTSLOT_LOAD(svi318_cart)
+	MDRV_CARTSLOT_UNLOAD(svi318_cart)
+MACHINE_DRIVER_END
+
 static MACHINE_DRIVER_START( svi318 )
 	/* Basic machine hardware */
-	MDRV_CPU_ADD( "main", Z80, 3579545 )	/* 3.579545 Mhz */
+	MDRV_CPU_ADD( "main", Z80, 3579545 )	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP( svi318_mem, 0 )
 	MDRV_CPU_IO_MAP( svi318_io, 0 )
 	MDRV_CPU_VBLANK_INT("main", svi318_interrupt)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( svi318_pal )
 	MDRV_MACHINE_RESET( svi318 )
 
-	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-	MDRV_DEVICE_CONFIG( svi318_ppi8255_interface )
+	MDRV_PPI8255_ADD( "ppi8255", svi318_ppi8255_interface )
 
 	MDRV_INS8250_ADD( "ins8250_0", svi318_ins8250_interface[0] )
 	MDRV_INS8250_ADD( "ins8250_1", svi318_ins8250_interface[1] )
@@ -301,9 +311,13 @@ static MACHINE_DRIVER_START( svi318 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
 
 	MDRV_CASSETTE_ADD( "cassette", svi318_cassette_config )
+		
+	MDRV_WD179X_ADD("wd179x", svi_wd17xx_interface )
+	
+	MDRV_IMPORT_FROM( svi318_cartslot )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svi318n )
@@ -319,7 +333,6 @@ MACHINE_DRIVER_END
 static const mc6845_interface svi806_crtc6845_interface =
 {
 	"svi806",
-	XTAL_12MHz / 8,
 	8 /*?*/,
 	NULL,
 	svi806_crtc6845_update_row,
@@ -331,17 +344,16 @@ static const mc6845_interface svi806_crtc6845_interface =
 
 static MACHINE_DRIVER_START( svi328_806 )
 	/* Basic machine hardware */
-	MDRV_CPU_ADD( "main", Z80, 3579545 )	/* 3.579545 Mhz */
+	MDRV_CPU_ADD( "main", Z80, 3579545 )	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP( svi328_806_mem, 0 )
 	MDRV_CPU_IO_MAP( svi328_806_io, 0 )
 	MDRV_CPU_VBLANK_INT("main", svi318_interrupt)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( svi318_pal )
 	MDRV_MACHINE_RESET( svi328_806 )
 
-	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-	MDRV_DEVICE_CONFIG( svi318_ppi8255_interface )
+	MDRV_PPI8255_ADD( "ppi8255", svi318_ppi8255_interface )
 
 	MDRV_INS8250_ADD( "ins8250_0", svi318_ins8250_interface[0] )
 	MDRV_INS8250_ADD( "ins8250_1", svi318_ins8250_interface[1] )
@@ -362,8 +374,7 @@ static MACHINE_DRIVER_START( svi328_806 )
 	MDRV_SCREEN_SIZE(640, 400)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 400-1)
 
-	MDRV_DEVICE_ADD("crtc", MC6845)
-	MDRV_DEVICE_CONFIG( svi806_crtc6845_interface )
+	MDRV_MC6845_ADD("crtc", MC6845, XTAL_12MHz / 8, svi806_crtc6845_interface)
 
 	MDRV_VIDEO_START( svi328_806 )
 	MDRV_VIDEO_UPDATE( svi328_806 )
@@ -379,9 +390,13 @@ static MACHINE_DRIVER_START( svi328_806 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
 
 	MDRV_CASSETTE_ADD( "cassette", svi318_cassette_config )
+	
+	MDRV_WD179X_ADD("wd179x", svi_wd17xx_interface )
+	
+	MDRV_IMPORT_FROM( svi318_cartslot )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svi328n_806 )
@@ -459,39 +474,6 @@ ROM_START( sv328n80 )
 	ROMX_LOAD ("svi806se.rom", 0x0000, 0x1000, CRC(daea8956) SHA1(3f16d5513ad35692488ae7d864f660e76c6e8ed3), ROM_BIOS(2))
 ROM_END
 
-
-static void svi318_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:
-			info->i = 1;
-			break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:
-			info->start = DEVICE_START_NAME(svi318_cart);
-			break;
-		case MESS_DEVINFO_PTR_LOAD:
-			info->load = DEVICE_IMAGE_LOAD_NAME(svi318_cart);
-			break;
-		case MESS_DEVINFO_PTR_UNLOAD:
-			info->unload = DEVICE_IMAGE_UNLOAD_NAME(svi318_cart);
-			break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:
-			strcpy(info->s = device_temp_str(), "rom");
-			break;
-
-		default:
-			cartslot_device_getinfo(devclass, state, info);
-			break;
-	}
-}
-
 static void svi318_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
@@ -519,7 +501,6 @@ static void svi318_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 }
 
 static SYSTEM_CONFIG_START( svi318_common )
-	CONFIG_DEVICE(svi318_cartslot_getinfo)
 	CONFIG_DEVICE(svi318_floppy_getinfo)
 SYSTEM_CONFIG_END
 

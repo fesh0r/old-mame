@@ -27,7 +27,7 @@ enum
 	MDR_STROBED_OUTPUT_3STATE = 0xe0
 };
 
-
+typedef struct _ins8154_t ins8154_t;
 struct _ins8154_t
 {
 	const ins8154_interface *intf; /* Pointer to our interface */
@@ -45,7 +45,6 @@ struct _ins8154_t
 static DEVICE_START( ins8154 )
 {
 	ins8154_t *ins8154 = device->token;
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device->machine != NULL);
@@ -56,14 +55,13 @@ static DEVICE_START( ins8154 )
 	ins8154->intf = device->static_config;
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "ins8154", device->tag);
-	state_save_register_item(unique_tag, 0, ins8154->in_a);
-	state_save_register_item(unique_tag, 0, ins8154->in_b);
-	state_save_register_item(unique_tag, 0, ins8154->out_a);
-	state_save_register_item(unique_tag, 0, ins8154->out_b);
-	state_save_register_item(unique_tag, 0, ins8154->mdr);
-	state_save_register_item(unique_tag, 0, ins8154->odra);
-	state_save_register_item(unique_tag, 0, ins8154->odrb);
+	state_save_register_item(device->machine, "ins8154", device->tag, 0, ins8154->in_a);
+	state_save_register_item(device->machine, "ins8154", device->tag, 0, ins8154->in_b);
+	state_save_register_item(device->machine, "ins8154", device->tag, 0, ins8154->out_a);
+	state_save_register_item(device->machine, "ins8154", device->tag, 0, ins8154->out_b);
+	state_save_register_item(device->machine, "ins8154", device->tag, 0, ins8154->mdr);
+	state_save_register_item(device->machine, "ins8154", device->tag, 0, ins8154->odra);
+	state_save_register_item(device->machine, "ins8154", device->tag, 0, ins8154->odrb);
 	return DEVICE_START_OK;
 }
 
@@ -90,7 +88,7 @@ READ8_DEVICE_HANDLER( ins8154_r )
 	if (offset > 0x24)
 	{
 		logerror("INS8154 (%08x): Read from unknown offset %02x!\n",
-			safe_activecpu_get_pc(), offset);
+			cpu_get_pc( device->machine->cpu[0] ), offset);
 		return 0xff;
 	}
 	
@@ -140,7 +138,7 @@ WRITE8_DEVICE_HANDLER( ins8154_porta_w )
 			i->intf->out_a_func(device, 0, (data & i->odra) | (i->odra ^ 0xff));
 		else
 			logerror("INS8154 (%08x): Write to port A but no write handler defined!\n",
-				safe_activecpu_get_pc());
+				cpu_get_pc( device->machine->cpu[0] ) );
 	}
 }
 
@@ -158,7 +156,7 @@ WRITE8_DEVICE_HANDLER( ins8154_portb_w )
 			i->intf->out_b_func(device, 0, (data & i->odrb) | (i->odrb ^ 0xff));
 		else
 			logerror("INS8154 (%08x): Write to port B but no write handler defined!\n",
-				safe_activecpu_get_pc());
+				cpu_get_pc( device->machine->cpu[0] ) );
 	}
 }
 
@@ -170,7 +168,7 @@ WRITE8_DEVICE_HANDLER( ins8154_w )
 	if (offset > 0x24)
 	{
 		logerror("INS8154 (%04x): Write %02x to invalid offset %02x!\n",
-			safe_activecpu_get_pc(), data, offset);
+			cpu_get_pc( device->machine->cpu[0] ), data, offset);
 		return;
 	}
 	
@@ -186,19 +184,19 @@ WRITE8_DEVICE_HANDLER( ins8154_w )
 		
 	case 0x22:
 		LOG(("INS8154 (%04x): ODR for port A set to %02x\n",
-			safe_activecpu_get_pc(), data));
+			cpu_get_pc( device->machine->cpu[0] ), data));
 		i->odra = data;
 		break;
 		
 	case 0x23:
 		LOG(("INS8154 (%04x): ODR for port B set to %02x\n",
-			safe_activecpu_get_pc(), data));
+			cpu_get_pc( device->machine->cpu[0] ), data));
 		i->odrb = data;
 		break;
 		
 	case 0x24:
 		LOG(("INS8154 (%04x): MDR set to %02x\n",
-			safe_activecpu_get_pc(), data));
+			cpu_get_pc( device->machine->cpu[0] ), data));
 		i->mdr = data;
 		break;
 		
@@ -258,10 +256,10 @@ DEVICE_GET_INFO( ins8154 )
 		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME(ins8154);		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					info->s = "National Semiconductor INS8154";		break;
-		case DEVINFO_STR_FAMILY:				info->s = "INS8154";							break;
-		case DEVINFO_STR_VERSION:				info->s = "1.0";								break;
-		case DEVINFO_STR_SOURCE_FILE:			info->s = __FILE__;								break;
-		case DEVINFO_STR_CREDITS:				info->s = "Copyright MESS Team";				break;
+		case DEVINFO_STR_NAME:					strcpy(info->s, "National Semiconductor INS8154");		break;
+		case DEVINFO_STR_FAMILY:				strcpy(info->s, "INS8154");						break;
+		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);						break;
+		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright MESS Team");			break;
 	}
 }

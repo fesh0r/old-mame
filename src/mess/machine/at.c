@@ -5,10 +5,9 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 #include "cpu/i386/i386.h"
-#include "cpu/i8x41/i8x41.h"
+#include "cpu/mcs48/mcs48.h"
 
 #include "machine/pic8259.h"
 #include "machine/8237dma.h"
@@ -55,7 +54,7 @@ static const SOUNDBLASTER_CONFIG soundblaster = { 1,5, {1,0} };
  *************************************************************/
 
 static PIC8259_SET_INT_LINE( at_pic8259_master_set_int_line ) {
-	cpunum_set_input_line(device->machine, 0, 0, interrupt ? HOLD_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], 0, interrupt ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -142,10 +141,10 @@ const struct pit8253_config at_pit8254_config =
 };
 
 
-static void at_set_gate_a20(int a20)
+static void at_set_gate_a20(running_machine *machine, int a20)
 {
 	/* set the CPU's A20 line */
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_A20, a20);
+	cpu_set_input_line(machine->cpu[0], INPUT_LINE_A20, a20);
 }
 
 
@@ -154,30 +153,31 @@ static void at_set_irq_line(int irq, int state) {
 }
 
 
-static void at_set_keyb_int(int state) {
+static void at_set_keyb_int(running_machine *machine, int state) {
 	pic8259_set_irq_line(at_devices.pic8259_master, 1, state);
 }
 
 
 static void init_at_common(running_machine *machine, const struct kbdc8042_interface *at8042)
 {
+	const address_space* space = cpu_get_address_space(machine->cpu[0],ADDRESS_SPACE_PROGRAM);
 	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_AT, at_set_keyb_int, at_set_irq_line);
 	mc146818_init(machine, MC146818_STANDARD);
 	soundblaster_config(&soundblaster);
-	kbdc8042_init(at8042);
+	kbdc8042_init(machine, at8042);
 
 	if (mess_ram_size > 0x0a0000)
 	{
 		offs_t ram_limit = 0x100000 + mess_ram_size - 0x0a0000;
-		memory_install_read_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x100000,  ram_limit - 1, 0, 0, 1);
-		memory_install_write_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x100000,  ram_limit - 1, 0, 0, 1);
-		memory_set_bankptr(1, mess_ram + 0xa0000);
+		memory_install_read_handler(space, 0x100000,  ram_limit - 1, 0, 0, 1);
+		memory_install_write_handler(space, 0x100000,  ram_limit - 1, 0, 0, 1);
+		memory_set_bankptr(machine, 1, mess_ram + 0xa0000);
 	}
 }
 
 
 
-static void at_keyboard_interrupt(int state)
+static void at_keyboard_interrupt(running_machine *machine, int state)
 {
 	pic8259_set_irq_line(at_devices.pic8259_master, 1, state);
 }
@@ -222,7 +222,7 @@ WRITE8_HANDLER(at_page8_w)
 
 	if (LOG_PORT80 && (offset == 0))
 	{
-		logerror(" at_page8_w(): Port 80h <== 0x%02x (PC=0x%08x)\n", data, (unsigned) activecpu_get_reg(REG_PC));
+		logerror(" at_page8_w(): Port 80h <== 0x%02x (PC=0x%08x)\n", data, (unsigned) cpu_get_reg(space->machine->cpu[0],REG_GENPC));
 	}
 
 	switch(offset % 8) {
@@ -248,10 +248,7 @@ static DMA8237_MEM_READ( pc_dma_read_byte )
 	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
 		& 0xFF0000;
 
-	cpuintrf_push_context(0);
-	result = program_read_byte(page_offset + offset);
-	cpuintrf_pop_context();
-
+	result = memory_read_byte(cpu_get_address_space(device->machine->cpu[0],ADDRESS_SPACE_PROGRAM), page_offset + offset);
 	return result;
 }
 
@@ -261,9 +258,7 @@ static DMA8237_MEM_WRITE( pc_dma_write_byte )
 	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
 		& 0xFF0000;
 
-	cpuintrf_push_context(0);
-	program_write_byte(page_offset + offset, data);
-	cpuintrf_pop_context();
+	memory_write_byte(cpu_get_address_space(device->machine->cpu[0],ADDRESS_SPACE_PROGRAM), page_offset + offset, data);
 }
 
 
@@ -273,7 +268,7 @@ static DMA8237_CHANNEL_READ( at_dma8237_fdc_dack_r ) {
 
 
 static DMA8237_CHANNEL_READ( at_dma8237_hdc_dack_r ) {
-	return pc_hdc_dack_r();
+	return pc_hdc_dack_r( device->machine );
 }
 
 
@@ -283,7 +278,7 @@ static DMA8237_CHANNEL_WRITE( at_dma8237_fdc_dack_w ) {
 
 
 static DMA8237_CHANNEL_WRITE( at_dma8237_hdc_dack_w ) {
-	pc_hdc_dack_w( data );
+	pc_hdc_dack_w( device->machine, data );
 }
 
 
@@ -395,7 +390,7 @@ const ins8250_interface ibm5170_com_interface[4]=
 
 #define FDC_DMA 2
 
-static void at_fdc_interrupt(int state)
+static void at_fdc_interrupt(running_machine *machine, int state)
 {
 	pic8259_set_irq_line(at_devices.pic8259_master, 6, state);
 //if ( mess_ram[0x0490] == 0x74 )
@@ -403,17 +398,22 @@ static void at_fdc_interrupt(int state)
 }
 
 
-static void at_fdc_dma_drq(int state, int read_)
+static void at_fdc_dma_drq(running_machine *machine, int state, int read_)
 {
 	dma8237_drq_write( at_devices.dma8237_1, FDC_DMA, state);
 }
 
+static device_config * at_get_device(running_machine *machine )
+{
+	return (device_config*)device_list_find_by_tag( machine->config->devicelist, NEC765A, "nec765");	
+}
+
 static const struct pc_fdc_interface fdc_interface =
 {
-	NEC765A,
-	NEC765_RDY_PIN_NOT_CONNECTED,
 	at_fdc_interrupt,
 	at_fdc_dma_drq,
+	NULL,
+	at_get_device
 };
 
 
@@ -462,14 +462,14 @@ static struct {
 	UINT8					offset1;
 	UINT8					clock_signal;
 	UINT8					data_signal;
-	write8_machine_func		clock_callback;
-	write8_machine_func		data_callback;
+	write8_space_func		clock_callback;
+	write8_space_func		data_callback;
 } at_kbdc8042;
 
 
 static READ8_HANDLER( at_kbdc8042_p1_r )
 {
-	logerror("%04x: reading P1\n", activecpu_get_pc() );
+	logerror("%04x: reading P1\n", cpu_get_pc(space->machine->cpu[0]) );
 	return 0xFF;
 }
 
@@ -482,17 +482,17 @@ static READ8_HANDLER( at_kbdc8042_p2_r )
 
 static WRITE8_HANDLER( at_kbdc8042_p2_w )
 {
-	logerror("%04x: writing $%02x to P2\n", activecpu_get_pc(), data );
+	logerror("%04x: writing $%02x to P2\n", cpu_get_pc(space->machine->cpu[0]), data );
 
-	at_set_gate_a20( ( data & 0x02 ) ? 1 : 0 );
+	at_set_gate_a20( space->machine, ( data & 0x02 ) ? 1 : 0 );
 	
-	cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, ( data & 0x01 ) ? CLEAR_LINE : ASSERT_LINE );
+	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_RESET, ( data & 0x01 ) ? CLEAR_LINE : ASSERT_LINE );
 
 	at_kbdc8042.clock_signal = ( data & 0x40 ) ? 1 : 0;
 	at_kbdc8042.data_signal = ( data & 0x80 ) ? 1 : 0;
 
-	at_kbdc8042.data_callback( machine, 0, at_kbdc8042.data_signal );
-	at_kbdc8042.clock_callback( machine, 0, at_kbdc8042.clock_signal );
+	at_kbdc8042.data_callback( space, 0, at_kbdc8042.data_signal );
+	at_kbdc8042.clock_callback( space, 0, at_kbdc8042.clock_signal );
 }
 
 
@@ -520,7 +520,7 @@ static WRITE8_HANDLER( at_kbdc8042_set_data_signal )
 }
 
 
-static void at_kbdc8042_set_keyboard_interface( running_machine *machine, write8_machine_func clock_cb, write8_machine_func data_cb )
+static void at_kbdc8042_set_keyboard_interface( running_machine *machine, write8_space_func clock_cb, write8_space_func data_cb )
 {
 	at_kbdc8042.offset1 = 0xFF;
 	at_kbdc8042.clock_callback = clock_cb;
@@ -528,28 +528,17 @@ static void at_kbdc8042_set_keyboard_interface( running_machine *machine, write8
 }
 
 
-static ADDRESS_MAP_START( kbdc8042_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x07FF )  AM_ROM
-	AM_RANGE( 0x0800, 0x08FF )  AM_RAM
-ADDRESS_MAP_END
-
-
 static ADDRESS_MAP_START( kbdc8042_io, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE( I8X41_t0, I8X41_t0 )	AM_READ( at_kbdc8042_t0_r )
-	AM_RANGE( I8X41_t1, I8X41_t1 )	AM_READ( at_kbdc8042_t1_r )
-	AM_RANGE( I8X41_p1, I8X41_p1 )  AM_READ( at_kbdc8042_p1_r )
-	AM_RANGE( I8X41_p2, I8X41_p2 )  AM_READWRITE( at_kbdc8042_p2_r, at_kbdc8042_p2_w )
+	AM_RANGE( MCS48_PORT_T0, MCS48_PORT_T0 )	AM_READ( at_kbdc8042_t0_r )
+	AM_RANGE( MCS48_PORT_T1, MCS48_PORT_T1 )	AM_READ( at_kbdc8042_t1_r )
+	AM_RANGE( MCS48_PORT_P1, MCS48_PORT_P1 )	AM_READ( at_kbdc8042_p1_r )
+	AM_RANGE( MCS48_PORT_P2, MCS48_PORT_P2 )	AM_READWRITE( at_kbdc8042_p2_r, at_kbdc8042_p2_w )
 ADDRESS_MAP_END
-
-
-static const i8x41_config i8042_config = { TYPE_I8X42 };
 
 
 MACHINE_DRIVER_START( at_kbdc8042 )
-	MDRV_CPU_ADD("kbdc8042", I8X41, 4772720 )   /* Frequency is a wild guess */
-	MDRV_CPU_PROGRAM_MAP( kbdc8042_mem, 0 )
+	MDRV_CPU_ADD("kbdc8042", I8042, 4772720 )   /* Frequency is a wild guess */
 	MDRV_CPU_IO_MAP( kbdc8042_io, 0 )
-	MDRV_CPU_CONFIG( i8042_config )
 MACHINE_DRIVER_END
 
 
@@ -560,8 +549,8 @@ READ8_HANDLER(at_kbdc8042_r)
 
 	switch ( offset )
 	{
-	case 0:
-		data = cpunum_get_reg( 1, I8X41_DATA );
+	case 0:		/* A2 is wired to 8042 A0 */
+		data = upi41_master_r( space->machine->cpu[1], 0 );
 		break;
 
 	case 1:
@@ -583,14 +572,14 @@ READ8_HANDLER(at_kbdc8042_r)
 		break;
 
 	case 2:
-		if (at_get_out2(machine))
+		if (at_get_out2(space->machine))
 			data |= 0x20;
 		else
 			data &= ~0x20;
 		break;
 
-	case 4:
-		data = cpunum_get_reg( 1, I8X41_STAT );
+	case 4:		/* A2 is wired to 8042 A0 */
+		data = upi41_master_r( space->machine->cpu[1], 1 );
 		break;
 	}
 
@@ -606,8 +595,8 @@ WRITE8_HANDLER(at_kbdc8042_w)
 		logerror("kbdc8042_8_w(): ofset=%d data=0x%02x\n", offset, data);
 
 	switch (offset) {
-	case 0:
-		cpunum_set_reg( 1, I8X41_DATA, data );
+	case 0:		/* A2 is wired to 8042 A0 */
+		upi41_master_w( space->machine->cpu[1], 0, data );
 		break;
 
 	case 1:
@@ -616,8 +605,8 @@ WRITE8_HANDLER(at_kbdc8042_w)
 		at_speaker_set_spkrdata( data & 0x02 );
 		break;
 
-	case 4:
-		cpunum_set_reg( 1, I8X41_CMND, data );
+	case 4:		/* A2 is wired to 8042 A0 */
+		upi41_master_w( space->machine->cpu[1], 1, data );
 		break;
     }
 }
@@ -692,18 +681,19 @@ DRIVER_INIT( at586 )
 
 
 
-static void at_map_vga_memory(offs_t begin, offs_t end, read8_machine_func rh, write8_machine_func wh)
+static void at_map_vga_memory(running_machine *machine, offs_t begin, offs_t end, read8_space_func rh, write8_space_func wh)
 {
 	int buswidth;
-	buswidth = cputype_databus_width(Machine->config->cpu[0].type, ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	buswidth = cpu_get_databus_width(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	switch(buswidth)
 	{
 		case 8:
-			memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xA0000, 0xBFFFF, 0, 0, SMH_NOP);
-			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xA0000, 0xBFFFF, 0, 0, SMH_NOP);
+			memory_install_read8_handler(space, 0xA0000, 0xBFFFF, 0, 0, SMH_NOP);
+			memory_install_write8_handler(space, 0xA0000, 0xBFFFF, 0, 0, SMH_NOP);
 
-			memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, rh);
-			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, wh);
+			memory_install_read8_handler(space, begin, end, 0, 0, rh);
+			memory_install_write8_handler(space, begin, end, 0, 0, wh);
 			break;
 	}
 }
@@ -731,7 +721,7 @@ DRIVER_INIT( at_vga )
 	};
 
 	init_at_common(machine, &at8042);
-	pc_turbo_setup(0, "DSW2", 0x02, 4.77/12, 1);
+	pc_turbo_setup(machine, 0, "DSW2", 0x02, 4.77/12, 1);
 	pc_vga_init(machine, &vga_interface, NULL);
 
 	/* Attach keyboard to the keyboard controller */
@@ -748,7 +738,7 @@ DRIVER_INIT( ps2m30286 )
 		KBDC8042_PS2, at_set_gate_a20, at_keyboard_interrupt, at_get_out2
 	};
 	init_at_common(machine, &at8042);
-	pc_turbo_setup(0, "DSW2", 0x02, 4.77/12, 1);
+	pc_turbo_setup(machine, 0, "DSW2", 0x02, 4.77/12, 1);
 	pc_vga_init(machine, &vga_interface, NULL);
 
 	/* Attach keyboard to the keyboard controller */
@@ -767,7 +757,7 @@ static IRQ_CALLBACK(at_irq_callback)
 
 MACHINE_START( at )
 {
-	cpunum_set_irq_callback(0, at_irq_callback);
+	cpu_set_irq_callback(machine->cpu[0], at_irq_callback);
 	pc_fdc_init( machine, &fdc_interface );
 }
 

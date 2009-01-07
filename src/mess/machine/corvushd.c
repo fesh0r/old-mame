@@ -1173,7 +1173,7 @@ static UINT8 corvus_format_drive(running_machine *machine, UINT8 *pattern, UINT1
 //		hard_disk_file object
 //
 static hard_disk_file *corvus_hdc_file(running_machine *machine, int id) {
-	const char *tags[] = {
+	static const char *const tags[] = {
 		"harddisk1"
 	};
 	const device_config *img;
@@ -1355,7 +1355,7 @@ static void corvus_process_command_packet(running_machine *machine, UINT8 invali
 	//
 	// Set up timers for command completion and timeout from host
 	//
-	timer_set(ATTOTIME_IN_USEC(c->delay), NULL, CALLBACK_CTH_MODE, corvus_hdc_callback);
+	timer_set(machine, ATTOTIME_IN_USEC(c->delay), NULL, CALLBACK_CTH_MODE, corvus_hdc_callback);
 	timer_enable(c->timeout_timer, 0);			// We've received enough data, disable the timeout timer
 
 	c->delay = 0;									// Reset delay for next function
@@ -1454,7 +1454,7 @@ UINT8 corvus_hdc_init(running_machine *machine) {
 	c->xmit_bytes = 0;							// We don't have anything to say to the host
 	c->recv_bytes = 0;							// We aren't waiting on additional data from the host
 
-	c->timeout_timer = timer_alloc(corvus_hdc_callback, NULL);	// Set up a timer to handle the four-second host-to-controller timeout
+	c->timeout_timer = timer_alloc(machine, corvus_hdc_callback, NULL);	// Set up a timer to handle the four-second host-to-controller timeout
 	timer_adjust_oneshot(c->timeout_timer, ATTOTIME_IN_SEC(4), CALLBACK_TIMEOUT);
 	timer_enable(c->timeout_timer, 0);		// Start this timer out disabled
 
@@ -1622,14 +1622,14 @@ READ8_HANDLER ( corvus_hdc_data_r ) {
 		c->xmit_bytes = 0;		// We don't have anything more to say
 		c->recv_bytes = 0;		// No active commands
 
-		timer_set((ATTOTIME_IN_USEC(INTERBYTE_DELAY)), NULL, CALLBACK_HTC_MODE, corvus_hdc_callback);
+		timer_set(space->machine, (ATTOTIME_IN_USEC(INTERBYTE_DELAY)), NULL, CALLBACK_HTC_MODE, corvus_hdc_callback);
 
 //		c->status &= ~(CONTROLLER_DIRECTION | CONTROLLER_BUSY);	// Put us in Idle, Host-to-Controller mode
 	} else {
 		//
 		// Not finished with this packet.  Insert an interbyte delay and then let the host continue
 		//
-		timer_set((ATTOTIME_IN_USEC(INTERBYTE_DELAY)), NULL, CALLBACK_SAME_MODE, corvus_hdc_callback);
+		timer_set(space->machine, (ATTOTIME_IN_USEC(INTERBYTE_DELAY)), NULL, CALLBACK_SAME_MODE, corvus_hdc_callback);
 	}
 
 	return result;
@@ -1693,7 +1693,7 @@ WRITE8_HANDLER ( corvus_hdc_data_w ) {
 	// to the user with us Ready for more data and in Host-to-Controller mode.
 	//
 	if(c->offset == c->recv_bytes) {						// We've received enough data to process
-		corvus_process_command_packet(machine, invalid_command_flag);
+		corvus_process_command_packet(space->machine, invalid_command_flag);
 	} else {
 		//
 		// Reset the four-second timer since we received some data
@@ -1704,6 +1704,6 @@ WRITE8_HANDLER ( corvus_hdc_data_w ) {
 		// Make the controller busy for a few microseconds while the command is processed
 		//
 		c->status |= CONTROLLER_BUSY;
-		timer_set((ATTOTIME_IN_USEC(INTERBYTE_DELAY)), NULL, CALLBACK_SAME_MODE, corvus_hdc_callback);
+		timer_set(space->machine, (ATTOTIME_IN_USEC(INTERBYTE_DELAY)), NULL, CALLBACK_SAME_MODE, corvus_hdc_callback);
 	}
 }

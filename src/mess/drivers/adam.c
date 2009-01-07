@@ -185,6 +185,7 @@ TO DO:
 
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/sn76496.h"
 #include "video/tms9928a.h"
 #include "includes/adam.h"
@@ -422,8 +423,8 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( adam_interrupt )
 {
-    TMS9928A_interrupt(machine);
-    adam_explore_keyboard(machine);
+    TMS9928A_interrupt(device->machine);
+    adam_explore_keyboard(device->machine);
 }
 
 static void adam_vdp_interrupt (running_machine *machine, int state)
@@ -433,7 +434,7 @@ static void adam_vdp_interrupt (running_machine *machine, int state)
     /* only if it goes up */
 	if (state && !last_state)
     {
-        cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+        cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
     }
 	last_state = state;
 }
@@ -458,7 +459,7 @@ static TIMER_CALLBACK(adam_paddle_callback)
 		adam_joy_stat[1] = 1;
 
 	if (adam_joy_stat[0] || adam_joy_stat[1])
-		cpunum_set_input_line (machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE);
 }
 
 void adam_set_memory_banks(running_machine *machine)
@@ -485,90 +486,90 @@ Lineal virtual memory map:
 			if (adam_net_data & 0x02)
 			{
 				/* Read */
-				memory_set_bankptr(1, BankBase+0x32000); /* No data here */
-				memory_set_bankptr(2, BankBase+0x34000); /* No data here */
-				memory_set_bankptr(3, BankBase+0x36000); /* No data here */
-				memory_set_bankptr(4, BankBase+0x38000); /* EOS ROM */
+				memory_set_bankptr(machine, 1, BankBase+0x32000); /* No data here */
+				memory_set_bankptr(machine, 2, BankBase+0x34000); /* No data here */
+				memory_set_bankptr(machine, 3, BankBase+0x36000); /* No data here */
+				memory_set_bankptr(machine, 4, BankBase+0x38000); /* EOS ROM */
 
 				/* Write */
-				memory_set_bankptr(6, BankBase+0x3A000); /* Write protecting ROM */
-				memory_set_bankptr(7, BankBase+0x3A000); /* Write protecting ROM */
-				memory_set_bankptr(8, BankBase+0x3A000); /* Write protecting ROM */
-				memory_set_bankptr(9, BankBase+0x3A000); /* Write protecting ROM */
+				memory_set_bankptr(machine, 6, BankBase+0x3A000); /* Write protecting ROM */
+				memory_set_bankptr(machine, 7, BankBase+0x3A000); /* Write protecting ROM */
+				memory_set_bankptr(machine, 8, BankBase+0x3A000); /* Write protecting ROM */
+				memory_set_bankptr(machine, 9, BankBase+0x3A000); /* Write protecting ROM */
 			}
 			else
 			{
 				/* Read */
-				memory_set_bankptr(1, BankBase+0x20000); /* SmartWriter ROM */
-				memory_set_bankptr(2, BankBase+0x22000);
-				memory_set_bankptr(3, BankBase+0x24000);
-				memory_set_bankptr(4, BankBase+0x26000);
+				memory_set_bankptr(machine, 1, BankBase+0x20000); /* SmartWriter ROM */
+				memory_set_bankptr(machine, 2, BankBase+0x22000);
+				memory_set_bankptr(machine, 3, BankBase+0x24000);
+				memory_set_bankptr(machine, 4, BankBase+0x26000);
 
 				/* Write */
-				memory_set_bankptr(6, BankBase+0x3A000); /* Write protecting ROM */
-				memory_set_bankptr(7, BankBase+0x3A000); /* Write protecting ROM */
-				memory_set_bankptr(8, BankBase+0x3A000); /* Write protecting ROM */
-				memory_set_bankptr(9, BankBase+0x3A000); /* Write protecting ROM */
+				memory_set_bankptr(machine, 6, BankBase+0x3A000); /* Write protecting ROM */
+				memory_set_bankptr(machine, 7, BankBase+0x3A000); /* Write protecting ROM */
+				memory_set_bankptr(machine, 8, BankBase+0x3A000); /* Write protecting ROM */
+				memory_set_bankptr(machine, 9, BankBase+0x3A000); /* Write protecting ROM */
 			}
 			break;
 		case 1: /* Internal RAM */
 			/* Read */
-			memory_set_bankptr(1, BankBase);
-			memory_set_bankptr(2, BankBase+0x02000);
-			memory_set_bankptr(3, BankBase+0x04000);
-			memory_set_bankptr(4, BankBase+0x06000);
+			memory_set_bankptr(machine, 1, BankBase);
+			memory_set_bankptr(machine, 2, BankBase+0x02000);
+			memory_set_bankptr(machine, 3, BankBase+0x04000);
+			memory_set_bankptr(machine, 4, BankBase+0x06000);
 
 			/* Write */
-			memory_set_bankptr(6, BankBase);
-			memory_set_bankptr(7, BankBase+0x02000);
-			memory_set_bankptr(8, BankBase+0x04000);
-			memory_set_bankptr(9, BankBase+0x06000);
+			memory_set_bankptr(machine, 6, BankBase);
+			memory_set_bankptr(machine, 7, BankBase+0x02000);
+			memory_set_bankptr(machine, 8, BankBase+0x04000);
+			memory_set_bankptr(machine, 9, BankBase+0x06000);
 			break;
 		case 2: /* RAM Expansion */
 			/* Read */
-			memory_set_bankptr(1, BankBase+0x10000);
-			memory_set_bankptr(2, BankBase+0x12000);
-			memory_set_bankptr(3, BankBase+0x14000);
-			memory_set_bankptr(4, BankBase+0x16000);
+			memory_set_bankptr(machine, 1, BankBase+0x10000);
+			memory_set_bankptr(machine, 2, BankBase+0x12000);
+			memory_set_bankptr(machine, 3, BankBase+0x14000);
+			memory_set_bankptr(machine, 4, BankBase+0x16000);
 
 			/* Write */
-			memory_set_bankptr(6, BankBase+0x10000);
-			memory_set_bankptr(7, BankBase+0x12000);
-			memory_set_bankptr(8, BankBase+0x14000);
-			memory_set_bankptr(9, BankBase+0x16000);
+			memory_set_bankptr(machine, 6, BankBase+0x10000);
+			memory_set_bankptr(machine, 7, BankBase+0x12000);
+			memory_set_bankptr(machine, 8, BankBase+0x14000);
+			memory_set_bankptr(machine, 9, BankBase+0x16000);
 			break;
 		case 3: /* OS7 ROM (8k) + Internal RAM (24k) */
 			/* Read */
-			memory_set_bankptr(1, BankBase+0x30000);
-			memory_set_bankptr(2, BankBase+0x02000);
-			memory_set_bankptr(3, BankBase+0x04000);
-			memory_set_bankptr(4, BankBase+0x06000);
+			memory_set_bankptr(machine, 1, BankBase+0x30000);
+			memory_set_bankptr(machine, 2, BankBase+0x02000);
+			memory_set_bankptr(machine, 3, BankBase+0x04000);
+			memory_set_bankptr(machine, 4, BankBase+0x06000);
 
 			/* Write */
-			memory_set_bankptr(6, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(7, BankBase+0x02000);
-			memory_set_bankptr(8, BankBase+0x04000);
-			memory_set_bankptr(9, BankBase+0x06000);
+			memory_set_bankptr(machine, 6, BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(machine, 7, BankBase+0x02000);
+			memory_set_bankptr(machine, 8, BankBase+0x04000);
+			memory_set_bankptr(machine, 9, BankBase+0x06000);
 	}
 
 	switch (adam_upper_memory)
 	{
 		case 0: /* Internal RAM */
 			/* Read */
-			memory_set_bankptr(5, BankBase+0x08000);
-			/*memory_set_bankptr(10, BankBase+0x08000);*/
+			memory_set_bankptr(machine, 5, BankBase+0x08000);
+			/*memory_set_bankptr(machine, 10, BankBase+0x08000);*/
 			break;
 		case 1: /* ROM Expansion */
 			break;
 		case 2: /* RAM Expansion */
 			/* Read */
-			memory_set_bankptr(5, BankBase+0x18000);
-			/*memory_set_bankptr(10, BankBase+0x18000);*/
+			memory_set_bankptr(machine, 5, BankBase+0x18000);
+			/*memory_set_bankptr(machine, 10, BankBase+0x18000);*/
 			break;
 		case 3: /* Cartridge ROM */
 			/* Read */
-			memory_set_bankptr(5, BankBase+0x28000);
-			/*memory_set_bankptr(10, BankBase+0x3A000); *//* Write protecting ROM */
+			memory_set_bankptr(machine, 5, BankBase+0x28000);
+			/*memory_set_bankptr(machine, 10, BankBase+0x3A000); *//* Write protecting ROM */
 			break;
 	}
 }
@@ -597,7 +598,11 @@ static MACHINE_START( adam )
 
 static MACHINE_RESET( adam )
 {
-	if (image_exists(image_from_devtype_and_index(IO_CARTSLOT, 0)))
+	const device_config *img;
+
+	img = device_list_find_by_tag( machine->config->devicelist, CARTSLOT, "cart" );
+
+	if (image_exists(img))
 	{
 		/* ColecoVision Mode Reset (Cartridge Mounted) */
 		adam_lower_memory = 3; /* OS7 + 24k RAM */
@@ -616,17 +621,17 @@ static MACHINE_RESET( adam )
 	adam_clear_keyboard_buffer();
 
 	memset(&memory_region(machine, "main")[0x0000], 0xFF, 0x20000); /* Initializing RAM */
-	timer_pulse(ATTOTIME_IN_MSEC(20), NULL, 0, adam_paddle_callback);
+	timer_pulse(machine, ATTOTIME_IN_MSEC(20), NULL, 0, adam_paddle_callback);
 }
 
 static MACHINE_DRIVER_START( adam )
 	/* Machine hardware */
-	MDRV_CPU_ADD("main", Z80, 3579545)       /* 3.579545 Mhz */
+	MDRV_CPU_ADD("main", Z80, 3579545)       /* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(adam_mem, 0)
 	MDRV_CPU_IO_MAP(adam_io, 0)
 
     /* Master M6801 AdamNet controller */
-	//MDRV_CPU_ADD("adamnet", M6800, 4000000)       /* 4.0 Mhz */
+	//MDRV_CPU_ADD("adamnet", M6800, 4000000)       /* 4.0 MHz */
 	//MDRV_CPU_PROGRAM_MAP(master6801_mem, 0)
 
 	MDRV_CPU_VBLANK_INT("main", adam_interrupt)
@@ -643,6 +648,11 @@ static MACHINE_DRIVER_START( adam )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("sn76489a", SN76489A, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom,col,bin")
+	MDRV_CARTSLOT_NOT_MANDATORY
 MACHINE_DRIVER_END
 
 
@@ -679,23 +689,11 @@ ROM_START (adam)
 	ROM_LOAD ("os7.rom", 0x30000, 0x2000, CRC(3aa93ef3) SHA1(45bedc4cbdeac66c7df59e9e599195c778d86a92))
 	ROM_LOAD ("eos.rom", 0x38000, 0x2000, CRC(05a37a34) SHA1(ad3c20ef444f10af7ae8eb75c81e500d9b1bba3d))
 
-	ROM_CART_LOAD(0, "rom,col,bin", 0x28000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x28000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 
 	//ROM_REGION( 0x10000, "cpu1", 0)
 	//ROM_LOAD ("master68.rom", 0x0100, 0x0E4, CRC(619a47b8)) /* Replacement 6801 Master ROM */
 ROM_END
-
-static void adam_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_VERIFY:						info->imgverify = adam_cart_verify; break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static void adam_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -713,7 +711,6 @@ static void adam_floppy_getinfo(const mess_device_class *devclass, UINT32 state,
 }
 
 static SYSTEM_CONFIG_START(adam)
-	CONFIG_DEVICE(adam_cartslot_getinfo)
 	CONFIG_DEVICE(adam_floppy_getinfo)
 SYSTEM_CONFIG_END
 

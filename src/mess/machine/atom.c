@@ -6,8 +6,8 @@
 	interrupts, I/O ports)
 
 	Many thanks to Kees van Oss for:
-	1.	Tape input/output circuit diagram. It describes in great detail how the 2.4khz
-		tone, 2.4khz tone enable, tape output and tape input are connected.
+	1.	Tape input/output circuit diagram. It describes in great detail how the 2.4 kHz
+		tone, 2.4 kHz tone enable, tape output and tape input are connected.
 	2.	The DOS rom for the Atom so I could complete the floppy disc emulation.
 	3.	Details of the eprom expansion board for the Atom.
 	4.	His demo programs which I used to test the driver.
@@ -16,7 +16,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/8255ppi.h"
 #include "video/m6847.h"
 #include "machine/i8271.h"
@@ -37,18 +36,18 @@ UINT8 atom_8255_portc;
 /* printer data written */
 static char atom_printer_data = 0x07f;
 
-/* I am not sure if this is correct, the atom appears to have a 2.4Khz timer used for reading tapes?? */
+/* I am not sure if this is correct, the atom appears to have a 2.4 kHz timer used for reading tapes?? */
 static int	timer_state = 0;
 
-static void atom_via_irq_func(running_machine *machine, int state)
+static void atom_via_irq_func(const device_config *device, int state)
 {
 	if (state)
 	{
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(device->machine->cpu[0], 0, HOLD_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[0], 0, CLEAR_LINE);
 	}
 }
 
@@ -63,13 +62,13 @@ static const device_config *printer_image(running_machine *machine)
 }
 
 /* printer status */
-static  READ8_HANDLER(atom_via_in_a_func)
+static READ8_DEVICE_HANDLER(atom_via_in_a_func)
 {
 	unsigned char data;
 
 	data = atom_printer_data;
 
-	if (!printer_is_ready(printer_image(machine)))
+	if (!printer_is_ready(printer_image(device->machine)))
 	{
 		/* offline */
 		data |=0x080;
@@ -79,7 +78,7 @@ static  READ8_HANDLER(atom_via_in_a_func)
 }
 
 /* printer data */
-static WRITE8_HANDLER(atom_via_out_a_func)
+static WRITE8_DEVICE_HANDLER(atom_via_out_a_func)
 {
 	/* data is written to port, this causes a pulse on ca2 (printer /strobe input),
 	and data is written */
@@ -90,7 +89,7 @@ static WRITE8_HANDLER(atom_via_out_a_func)
 static unsigned char previous_ca2_data = 0;
 
 /* one of these is pulsed! */
-static WRITE8_HANDLER(atom_via_out_ca2_func)
+static WRITE8_DEVICE_HANDLER(atom_via_out_ca2_func)
 {
 	/* change in state of ca2 output? */
 	if (((previous_ca2_data^data)&0x01)!=0)
@@ -99,14 +98,14 @@ static WRITE8_HANDLER(atom_via_out_ca2_func)
 		if (data & 0x01)
 		{
 			/* output data to printer */
-			printer_output(printer_image(machine), atom_printer_data);
+			printer_output(printer_image(device->machine), atom_printer_data);
 		}
 	}
 
 	previous_ca2_data = data;
 }
 
-static const struct via6522_interface atom_6522_interface=
+const via6522_interface atom_6522_interface =
 {
 	atom_via_in_a_func,		/* printer status */
 	NULL,
@@ -137,7 +136,7 @@ const ppi8255_interface atom_8255_int =
 
 static int previous_i8271_int_state = 0;
 
-static void atom_8271_interrupt_callback(int state)
+static void atom_8271_interrupt_callback(const device_config *device, int state)
 {
 	/* I'm assuming that the nmi is edge triggered */
 	/* a interrupt from the fdc will cause a change in line state, and
@@ -151,14 +150,14 @@ static void atom_8271_interrupt_callback(int state)
 		{
 			/* I'll pulse it because if I used hold-line I'm not sure
 			it would clear - to be checked */
-			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+			cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 
 	previous_i8271_int_state = state;
 }
 
-static const struct i8271_interface atom_8271_interface=
+const i8271_interface atom_8271_interface=
 {
 	atom_8271_interrupt_callback,
 	NULL
@@ -198,7 +197,7 @@ static TIMER_CALLBACK(atom_timer_callback)
 	/* change timer state */
 	timer_state^=1;
 
-	/* the 2.4khz signal is notted (A), and nand'ed with the 2.4kz enable, resulting
+	/* the 2.4 kHz signal is notted (A), and nand'ed with the 2.4kz enable, resulting
 	in B. The final cassette output is the result of tape output nand'ed with B */
 
 
@@ -207,9 +206,9 @@ static TIMER_CALLBACK(atom_timer_callback)
 		unsigned char B;
 		unsigned char result;
 
-		/* 2.4khz signal - notted */
+		/* 2.4 kHz signal - notted */
 		A = (~timer_state);
-		/* 2.4khz signal notted, and anded with 2.4khz enable */
+		/* 2.4 kHz signal notted, and anded with 2.4 kHz enable */
 		B = (~(A & (atom_8255_portc>>1))) & 0x01;
 
 		result = (~(B & atom_8255_portc)) & 0x01;
@@ -220,22 +219,22 @@ static TIMER_CALLBACK(atom_timer_callback)
 }
 
 
-static OPBASE_HANDLER(atom_opbase_handler)
+static DIRECT_UPDATE_HANDLER(atom_opbase_handler)
 {
 	/* clear op base override */
-	memory_set_opbase_handler(0,0);
+	memory_set_direct_update_handler(space, NULL);
 
 	/* this is temporary */
 	/* Kees van Oss mentions that address 8-b are used for the random number
 	generator. I don't know if this is hardware, or random data because the
 	ram chips are not cleared at start-up. So at this time, these numbers
 	are poked into the memory to simulate it. When I have more details I will fix it */
-	memory_region(machine, "main")[0x08] = mame_rand(machine) & 0x0ff;
-	memory_region(machine, "main")[0x09] = mame_rand(machine) & 0x0ff;
-	memory_region(machine, "main")[0x0a] = mame_rand(machine) & 0x0ff;
-	memory_region(machine, "main")[0x0b] = mame_rand(machine) & 0x0ff;
+	memory_region(space->machine, "main")[0x08] = mame_rand(space->machine) & 0x0ff;
+	memory_region(space->machine, "main")[0x09] = mame_rand(space->machine) & 0x0ff;
+	memory_region(space->machine, "main")[0x0a] = mame_rand(space->machine) & 0x0ff;
+	memory_region(space->machine, "main")[0x0b] = mame_rand(space->machine) & 0x0ff;
 
-	return activecpu_get_pc() & 0x0ffff;
+	return cpu_get_pc( space->cpu ) & 0x0ffff;
 }
 
 MACHINE_RESET( atom )
@@ -244,16 +243,10 @@ MACHINE_RESET( atom )
 	atom_8255_portb = 0xff;
 	atom_8255_portc = 0xff;
 
-	i8271_init(&atom_8271_interface);
-
-	via_config(0, &atom_6522_interface);
-	via_set_clock(0,1000000);
-	via_reset();
-
 	timer_state = 0;
-	timer_pulse(ATTOTIME_IN_HZ(2400*2), NULL, 0, atom_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(2400*2), NULL, 0, atom_timer_callback);
 
-	memory_set_opbase_handler(0,atom_opbase_handler);
+	memory_set_direct_update_handler(cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM ),atom_opbase_handler);
 }
 
 struct atm
@@ -316,14 +309,14 @@ QUICKLOAD_LOAD(atom)
 	/* copy data into memory */
 	for (i=size-1; i>=0; i--)
 	{
-		program_write_byte(addr, data[0]);
+		memory_write_byte( cpu_get_address_space( image->machine->cpu[0], ADDRESS_SPACE_PROGRAM ), addr, data[0]);
 		addr++;
 		data++;
 	}
 
 
 	/* set new pc address */
-	activecpu_set_reg(REG_PC, exec);
+	cpu_set_reg( image->machine->cpu[0], REG_GENPC, exec);
 
 	/* free the data */
 	free(quickload_data);
@@ -356,7 +349,7 @@ READ8_DEVICE_HANDLER (atom_8255_porta_r )
 READ8_DEVICE_HANDLER ( atom_8255_portb_r )
 {
 	int row;
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", 
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", 
 										"KEY6", "KEY7", "KEY8", "KEY9", "KEY10", "KEY11" };
 	
 	row = atom_8255_porta & 0x0f;
@@ -375,13 +368,13 @@ READ8_DEVICE_HANDLER ( atom_8255_portc_r )
 		atom_8255_portc |= (1<<5);
 	}
 
-	/* 2.4khz input */
+	/* 2.4 kHz input */
 	if (timer_state)
 	{
 		atom_8255_portc |= (1<<4);
 	}
 
-	atom_8255_portc |= (m6847_get_field_sync() ? 0x00 : 0x80);
+	atom_8255_portc |= (m6847_get_field_sync(device->machine) ? 0x00 : 0x80);
 	atom_8255_portc |= (input_port_read(device->machine, "KEY11") & 0x40);
 	/* logerror("8255: Read port c (%02X)\n",atom_8255.atom_8255_portc); */
 	return (atom_8255_portc);
@@ -421,6 +414,8 @@ WRITE8_DEVICE_HANDLER (atom_8255_portc_w)
 /* KT- I've assumed that the atom 8271 is linked in exactly the same way as on the bbc */
 READ8_HANDLER(atom_8271_r)
 {
+	device_config *i8271 = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, I8271, "i8271" );
+
 	switch (offset)
 	{
 		case 0:
@@ -428,9 +423,9 @@ READ8_HANDLER(atom_8271_r)
 		case 2:
 		case 3:
 			/* 8271 registers */
-			return i8271_r(machine, offset);
+			return i8271_r(i8271, offset);
 		case 4:
-			return i8271_data_r(machine, offset);
+			return i8271_data_r(i8271, offset);
 		default:
 			break;
 	}
@@ -440,6 +435,8 @@ READ8_HANDLER(atom_8271_r)
 
 WRITE8_HANDLER(atom_8271_w)
 {
+	device_config *i8271 = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, I8271, "i8271" );
+
 	switch (offset)
 	{
 		case 0:
@@ -447,10 +444,10 @@ WRITE8_HANDLER(atom_8271_w)
 		case 2:
 		case 3:
 			/* 8271 registers */
-			i8271_w(machine, offset, data);
+			i8271_w(i8271, offset, data);
 			return;
 		case 4:
-			i8271_data_w(machine, offset, data);
+			i8271_data_w(i8271, offset, data);
 			return;
 		default:
 			break;
@@ -469,7 +466,7 @@ static void atom_eprom_box_refresh(running_machine *machine)
 	/* get address of eprom data */
 	eprom_data = memory_region(machine, "main") + 0x010000 + (selected_eprom<<12);
 	/* set bank address */
-	memory_set_bankptr(1, eprom_data);
+	memory_set_bankptr(machine, 1, eprom_data);
 }
 
 void atom_eprom_box_init(running_machine *machine)
@@ -486,7 +483,7 @@ WRITE8_HANDLER(atom_eprom_box_w)
 {
 	selected_eprom = data & 0x0f;
 
-	atom_eprom_box_refresh(machine);
+	atom_eprom_box_refresh(space->machine);
 }
 
 /* read from eprom box register, can this be done in the real hardware */

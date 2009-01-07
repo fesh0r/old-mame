@@ -29,8 +29,10 @@
 MACHINE_START( advision )
 {
 	/* configure EA banking */
-	memory_configure_bank(1, 0, 1, memory_region(machine, "bios"), 0);
-	memory_configure_bank(1, 1, 1, memory_region(machine, "main"), 0);
+	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "bios"), 0);
+	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "main"), 0);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM), 0x0000, 0x03ff, 0, 0, SMH_BANK1, SMH_BANK1);
+	memory_set_bank(machine, 1, 0);
 }
 
 MACHINE_RESET( advision )
@@ -41,12 +43,11 @@ MACHINE_RESET( advision )
 	state->extram = auto_malloc(0x400);
 
 	/* enable internal ROM */
-	cpunum_set_input_line(machine, 0, MCS48_INPUT_EA, CLEAR_LINE);
-
-	memory_set_bank(1, 0);
+	cputag_set_input_line(machine, "main", MCS48_INPUT_EA, CLEAR_LINE);
+	memory_set_bank(machine, 1, 0);
 
 	/* reset sound CPU */
-	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+	cputag_set_input_line(machine, "sound", INPUT_LINE_RESET, ASSERT_LINE);
 
 	state->rambank = 0x300;
 	state->frame_start = 0;
@@ -58,11 +59,13 @@ MACHINE_RESET( advision )
 
 WRITE8_HANDLER( advision_bankswitch_w )
 {
-	advision_state *state = machine->driver_data;
+	advision_state *state = space->machine->driver_data;
 
-	cpunum_set_input_line(machine, 0, MCS48_INPUT_EA, (data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
+	int ea = BIT(data, 2);
 
-	memory_set_bank(1, BIT(data, 2));
+	cputag_set_input_line(space->machine, "main", MCS48_INPUT_EA, ea ? ASSERT_LINE : CLEAR_LINE);
+
+	memory_set_bank(space->machine, 1, ea);
 
 	state->rambank = (data & 0x03) << 8;
 }
@@ -71,19 +74,19 @@ WRITE8_HANDLER( advision_bankswitch_w )
 
 READ8_HANDLER( advision_extram_r )
 {
-	advision_state *state = machine->driver_data;
+	advision_state *state = space->machine->driver_data;
 
 	UINT8 data = state->extram[state->rambank + offset];
 
 	if (!state->video_enable)
 	{
 		/* the video hardware interprets reads as writes */
-		advision_vh_write(machine, data);
+		advision_vh_write(space->machine, data);
 	}
 
 	if (state->video_bank == 0x06)
 	{
-		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+		cputag_set_input_line(space->machine, "sound", INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 	}
 
 	return data;
@@ -91,7 +94,7 @@ READ8_HANDLER( advision_extram_r )
 
 WRITE8_HANDLER( advision_extram_w )
 {
-	advision_state *state = machine->driver_data;
+	advision_state *state = space->machine->driver_data;
 
 	state->extram[state->rambank + offset] = data;
 }
@@ -100,7 +103,7 @@ WRITE8_HANDLER( advision_extram_w )
 
 READ8_HANDLER( advision_sound_cmd_r )
 {
-	advision_state *state = machine->driver_data;
+	advision_state *state = space->machine->driver_data;
 
 	return state->sound_cmd;
 }
@@ -119,30 +122,30 @@ static void update_dac(running_machine *machine)
 
 WRITE8_HANDLER( advision_sound_g_w )
 {
-	advision_state *state = machine->driver_data;
+	advision_state *state = space->machine->driver_data;
 	state->sound_g = data & 0x01;
-	update_dac(machine);
+	update_dac(space->machine);
 }
 
 
 WRITE8_HANDLER( advision_sound_d_w )
 {
-	advision_state *state = machine->driver_data;
+	advision_state *state = space->machine->driver_data;
 	state->sound_d = data & 0x01;
-	update_dac(machine);
+	update_dac(space->machine);
 }
 
 /* Video */
 
 WRITE8_HANDLER( advision_av_control_w )
 {
-	advision_state *state = machine->driver_data;
+	advision_state *state = space->machine->driver_data;
 
 	state->sound_cmd = data >> 4;
 
 	if ((state->video_enable == 0x00) && (data & 0x10))
 	{
-		advision_vh_update(machine, state->video_hpos);
+		advision_vh_update(space->machine, state->video_hpos);
 		
 		state->video_hpos++;
 		
@@ -159,7 +162,7 @@ WRITE8_HANDLER( advision_av_control_w )
 
 READ8_HANDLER( advision_vsync_r )
 {
-	advision_state *state = machine->driver_data;
+	advision_state *state = space->machine->driver_data;
 
 	if (state->frame_start)
 	{
@@ -178,7 +181,7 @@ READ8_HANDLER( advision_vsync_r )
 READ8_HANDLER( advision_controller_r )
 {
 	// Get joystick switches
-	UINT8 in = input_port_read(machine, "joystick");
+	UINT8 in = input_port_read(space->machine, "joystick");
 	UINT8 data = in | 0x0f;
 
 	// Get buttons

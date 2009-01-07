@@ -20,7 +20,6 @@
 #include "devices/cartslot.h"
 #include "devices/printer.h"
 #include "devices/cassette.h"
-#include "machine/mc6850.h"
 #include "formats/uef_cas.h"
 #include "formats/csw_cas.h"
 
@@ -70,23 +69,23 @@ A= BBC Model A
 
 
 
-&00-&07 6845 CRTC       Video controller                8  ( 2 bytes x  4 ) 1Mhz
-&08-&0F 6850 ACIA       Serial controller               8  ( 2 bytes x  4 ) 1Mhz
-&10-&17 Serial ULA      Serial system chip              8  ( 1 byte  x  8 ) 1Mhz
-&18-&1f INTOFF/STATID   ECONET Interrupt Off / ID No.   8  ( 1 byte  x  8 ) 1Mhz
+&00-&07 6845 CRTC       Video controller                8  ( 2 bytes x  4 ) 1MHz
+&08-&0F 6850 ACIA       Serial controller               8  ( 2 bytes x  4 ) 1MHz
+&10-&17 Serial ULA      Serial system chip              8  ( 1 byte  x  8 ) 1MHz
+&18-&1f INTOFF/STATID   ECONET Interrupt Off / ID No.   8  ( 1 byte  x  8 ) 1MHz
 write:
-&20-&2F Video ULA       Video system chip               16 ( 2 bytes x  8 ) 2Mhz
-&30-&3F 74LS161         Paged ROM selector              16 ( 1 byte  x 16 ) 2Mhz
+&20-&2F Video ULA       Video system chip               16 ( 2 bytes x  8 ) 2MHz
+&30-&3F 74LS161         Paged ROM selector              16 ( 1 byte  x 16 ) 2MHz
 read:
-&20-&2F INTON           ECONET Interrupt On             16 ( 1 bytes x 16 ) 2Mhz
-&30-&3F Not Connected   Not Connected                                       2Mhz
+&20-&2F INTON           ECONET Interrupt On             16 ( 1 bytes x 16 ) 2MHz
+&30-&3F Not Connected   Not Connected                                       2MHz
 
-&40-&5F 6522 VIA        SYSTEM VIA                      32 (16 bytes x  2 ) 1Mhz
-&60-&7F 6522 VIA        USER VIA                        32 (16 bytes x  2 ) 1Mhz
-&80-&9F 8271 FDC        FDC Floppy disc controller      32 ( 8 bytes x  4 ) 2Mhz
-&A0-&BF 68B54 ADLC      ECONET controller               32 ( 4 bytes x  8 ) 2Mhz
-&C0-&DF uPD7002         Analogue to digital converter   32 ( 4 bytes x  8 ) 1Mhz
-&E0-&FF Tube ULA        Tube system interface           32 (32 bytes x  1 ) 2Mhz
+&40-&5F 6522 VIA        SYSTEM VIA                      32 (16 bytes x  2 ) 1MHz
+&60-&7F 6522 VIA        USER VIA                        32 (16 bytes x  2 ) 1MHz
+&80-&9F 8271 FDC        FDC Floppy disc controller      32 ( 8 bytes x  4 ) 2MHz
+&A0-&BF 68B54 ADLC      ECONET controller               32 ( 4 bytes x  8 ) 2MHz
+&C0-&DF uPD7002         Analogue to digital converter   32 ( 4 bytes x  8 ) 1MHz
+&E0-&FF Tube ULA        Tube system interface           32 (32 bytes x  1 ) 2MHz
 ******************************************************************************/
 
 static ADDRESS_MAP_START(bbca_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -110,7 +109,7 @@ static ADDRESS_MAP_START(bbca_mem, ADDRESS_SPACE_PROGRAM, 8)
 																					/* W: fe20-fe2f  Video ULA      Video system chip               */
 	AM_RANGE(0xfe30, 0xfe3f) AM_READWRITE(return8_FE    	, page_selecta_w	)	/* R: fe30-fe3f  NC             Not Connected                   */
 																					/* W: fe30-fe3f  84LS161        Paged ROM selector              */
-	AM_RANGE(0xfe40, 0xfe5f) AM_READWRITE(via_0_r       	, via_0_w       	)	/*    fe40-fe5f  6522 VIA       SYSTEM VIA                      */
+	AM_RANGE(0xfe40, 0xfe5f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)	/*    fe40-fe5f  6522 VIA       SYSTEM VIA                      */
 	AM_RANGE(0xfe60, 0xfe7f) AM_NOP													/*    fe60-fe7f  6522 VIA       1 USER VIA                      */
 	AM_RANGE(0xfe80, 0xfe9f) AM_NOP													/*    fe80-fe9f  8271/1770 FDC  1 Floppy disc controller        */
 	AM_RANGE(0xfea0, 0xfebf) AM_READ     (return8_FE    	                	)	/*    fea0-febf  68B54 ADLC     1 ECONET controller             */
@@ -143,11 +142,11 @@ static ADDRESS_MAP_START(bbcb_mem, ADDRESS_SPACE_PROGRAM, 8)
 																					/* W: fe20-fe2f  Video ULA      Video system chip               */
 	AM_RANGE(0xfe30, 0xfe3f) AM_READWRITE(return8_FE    	, page_selectb_w 	)	/* R: fe30-fe3f  NC             Not Connected                   */
 																					/* W: fe30-fe3f  84LS161        Paged ROM selector              */
-	AM_RANGE(0xfe40, 0xfe5f) AM_READWRITE(via_0_r       	, via_0_w        	)	/*    fe40-fe5f  6522 VIA       SYSTEM VIA                      */
-	AM_RANGE(0xfe60, 0xfe7f) AM_READWRITE(via_1_r       	, via_1_w        	)	/*    fe60-fe7f  6522 VIA       USER VIA                        */
+	AM_RANGE(0xfe40, 0xfe5f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)	/*    fe40-fe5f  6522 VIA       SYSTEM VIA                      */
+	AM_RANGE(0xfe60, 0xfe7f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)	/*    fe60-fe7f  6522 VIA       USER VIA                        */
 	AM_RANGE(0xfe80, 0xfe9f) AM_READWRITE(bbc_disc_r		, bbc_disc_w		)	/*    fe80-fe9f  8271 FDC       Floppy disc controller          */
 	AM_RANGE(0xfea0, 0xfebf) AM_READ	 (return8_FE    	                 	)	/*    fea0-febf  68B54 ADLC     ECONET controller               */
-	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(uPD7002_r			, uPD7002_w		 	)	/*    fec0-fedf  uPD7002        Analogue to digital converter   */
+	AM_RANGE(0xfec0, 0xfedf) AM_DEVREADWRITE(UPD7002, "upd7002",uPD7002_r,uPD7002_w	)	/*    fec0-fedf  uPD7002        Analogue to digital converter   */
 	AM_RANGE(0xfee0, 0xfeff) AM_READ	 (return8_FE						 	)	/*    fee0-feff  Tube ULA       Tube system interface           */
 
 	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION("user1", 0x43f00)				/*    ff00-ffff                 OS Rom (continued)              */
@@ -177,11 +176,11 @@ static ADDRESS_MAP_START(bbcbp_mem, ADDRESS_SPACE_PROGRAM, 8)
 																					/* W: fe20-fe2f  Video ULA      Video system chip               */
 	AM_RANGE(0xfe30, 0xfe3f) AM_READWRITE(return8_FE		, page_selectbp_w	)	/* R: fe30-fe3f  NC             Not Connected                   */
 																					/* W: fe30-fe3f  84LS161        Paged ROM selector              */
-	AM_RANGE(0xfe40, 0xfe5f) AM_READWRITE(via_0_r			, via_0_w			)	/*    fe40-fe5f  6522 VIA       SYSTEM VIA                      */
-	AM_RANGE(0xfe60, 0xfe7f) AM_READWRITE(via_1_r			, via_1_w			)	/*    fe60-fe7f  6522 VIA       USER VIA                        */
+	AM_RANGE(0xfe40, 0xfe5f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)	/*    fe40-fe5f  6522 VIA       SYSTEM VIA                      */
+	AM_RANGE(0xfe60, 0xfe7f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)	/*    fe60-fe7f  6522 VIA       USER VIA                        */
 	AM_RANGE(0xfe80, 0xfe9f) AM_READWRITE(bbc_wd1770_read	, bbc_wd1770_write	)	/*    fe80-fe9f  1770 FDC       Floppy disc controller          */
 	AM_RANGE(0xfea0, 0xfebf) AM_READ     (return8_FE							)	/*    fea0-febf  68B54 ADLC     ECONET controller               */
-	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(uPD7002_r			, uPD7002_w			)	/*    fec0-fedf  uPD7002        Analogue to digital converter   */
+	AM_RANGE(0xfec0, 0xfedf) AM_DEVREADWRITE(UPD7002, "upd7002", uPD7002_r, uPD7002_w)	/*    fec0-fedf  uPD7002        Analogue to digital converter   */
 	AM_RANGE(0xfee0, 0xfeff) AM_READ	 (return8_FE							)	/*    fee0-feff  Tube ULA       Tube system interface           */
 
 	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION("user1", 0x43f00)				/*    ff00-ffff                 OS Rom (continued)              */
@@ -213,11 +212,11 @@ static ADDRESS_MAP_START(bbcbp128_mem, ADDRESS_SPACE_PROGRAM, 8)
 																					/* W: fe20-fe2f  Video ULA      Video system chip               */
 	AM_RANGE(0xfe30, 0xfe3f) AM_READWRITE(return8_FE		, page_selectbp_w	)	/* R: fe30-fe3f  NC             Not Connected                   */
 																					/* W: fe30-fe3f  84LS161        Paged ROM selector              */
-	AM_RANGE(0xfe40, 0xfe5f) AM_READWRITE(via_0_r			, via_0_w			)	/*    fe40-fe5f  6522 VIA       SYSTEM VIA                      */
-	AM_RANGE(0xfe60, 0xfe7f) AM_READWRITE(via_1_r			, via_1_w			)	/*    fe60-fe7f  6522 VIA       USER VIA                        */
+	AM_RANGE(0xfe40, 0xfe5f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)	/*    fe40-fe5f  6522 VIA       SYSTEM VIA                      */
+	AM_RANGE(0xfe60, 0xfe7f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)	/*    fe60-fe7f  6522 VIA       USER VIA                        */
 	AM_RANGE(0xfe80, 0xfe9f) AM_READWRITE(bbc_wd1770_read	, bbc_wd1770_write	)	/*    fe80-fe9f  1770 FDC       Floppy disc controller          */
 	AM_RANGE(0xfea0, 0xfebf) AM_READ     (return8_FE							)	/*    fea0-febf  68B54 ADLC     ECONET controller               */
-	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(uPD7002_r			, uPD7002_w			)	/*    fec0-fedf  uPD7002        Analogue to digital converter   */
+	AM_RANGE(0xfec0, 0xfedf) AM_DEVREADWRITE(UPD7002, "upd7002",uPD7002_r, uPD7002_w	)	/*    fec0-fedf  uPD7002        Analogue to digital converter   */
 	AM_RANGE(0xfee0, 0xfeff) AM_READ	 (return8_FE							)	/*    fee0-feff  Tube ULA       Tube system interface           */
 
 	AM_RANGE(0xff00, 0xffff) AM_ROM AM_REGION("user1", 0x43f00)				/*    ff00-ffff                 OS Rom (continued)              */
@@ -240,12 +239,12 @@ ADDRESS_MAP_END
 &30-&33 ROMSEL          -                       ROM Select               4 ( 1 byte  x  4 )
 &34-&37 ACCCON          ACCCON select reg.      ACCCON select reg        4 ( 1 byte  x  4 )
 &38-&3F NC              -                       -
-&40-&5F 6522 VIA        SYSTEM VIA              SYSTEM VIA              32 (16 bytes x  2 ) 1Mhz
-&60-&7F 6522 VIA        USER VIA                USER VIA                32 (16 bytes x  2 ) 1Mhz
+&40-&5F 6522 VIA        SYSTEM VIA              SYSTEM VIA              32 (16 bytes x  2 ) 1MHz
+&60-&7F 6522 VIA        USER VIA                USER VIA                32 (16 bytes x  2 ) 1MHz
 &80-&9F Int. Modem      Int. Modem              Int Modem
-&A0-&BF 68B54 ADLC      ECONET controller       ECONET controller       32 ( 4 bytes x  8 ) 2Mhz
+&A0-&BF 68B54 ADLC      ECONET controller       ECONET controller       32 ( 4 bytes x  8 ) 2MHz
 &C0-&DF NC              -                       -
-&E0-&FF Tube ULA        Tube system interface   Tube system interface   32 (32 bytes x  1 ) 2Mhz
+&E0-&FF Tube ULA        Tube system interface   Tube system interface   32 (32 bytes x  1 ) 2MHz
 ******************************************************************************/
 
 
@@ -271,15 +270,15 @@ static ADDRESS_MAP_START(bbcm_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(BBC_6845_r        , BBC_6845_w        )         fe00-fe07  6845 CRTC      Video controller
     AM_RANGE(0xfe08, 0xfe0f) AM_READWRITE(BBC_6850_r        , BBC_6850_w        )         fe08-fe0f  6850 ACIA      Serial Controller
     AM_RANGE(0xfe10, 0xfe17) AM_NOP                                                       fe10-fe17  Serial ULA     Serial system chip
-    AM_RANGE(0xfe18, 0xfe1f) AM_READWRITE(uPD7002_r         , uPD7002_w         )         fec0-fedf  uPD7002        Analogue to digital converter
+    AM_RANGE(0xfe18, 0xfe1f) M_DEVREADWRITE(UPD7002, "uPD7002",uPD7002_r, uPD7002_w )         fec0-fedf  uPD7002        Analogue to digital converter
     AM_RANGE(0xfe20, 0xfe23) AM_READWRITE(return8_FE        , videoULA_w        )         fe20-fe23  Video ULA      Video system chip
     AM_RANGE(0xfe24, 0xfe27) AM_READWRITE(bbcm_wd1770l_read , bbcm_wd1770l_write)         fe24-fe27  1770 Latch     1770 Control Latch
     AM_RANGE(0xfe28, 0xfe2f) AM_READWRITE(bbcm_wd1770_read  , bbcm_wd1770_write )         fe28-fe2f  1770 FDC       Floppy disc controller
     AM_RANGE(0xfe30, 0xfe33) AM_READWRITE(return8_FE        , page_selectbp_w   )         fe30-fe33  84LS161        Paged ROM selector
     AM_RANGE(0xfe34, 0xfe37) AM_READWRITE(bbcm_ACCCON_read  , bbcm_ACCCON_write )         fe34-fe37  ACCCON         ACCCON select Latch
     AM_RANGE(0xfe38, 0xfe3f) AM_READ     (return8_FE                            )         fe38-fe3f  NC
-    AM_RANGE(0xfe40, 0xfe5f) AM_READWRITE(via_0_r           , via_0_w           )         fe40-fe5f  6522 VIA       SYSTEM VIA
-    AM_RANGE(0xfe60, 0xfe7f) AM_READWRITE(via_1_r           , via_1_w           )         fe60-fe7f  6522 VIA       USER VIA
+    AM_RANGE(0xfe40, 0xfe5f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)          fe40-fe5f  6522 VIA       SYSTEM VIA
+    AM_RANGE(0xfe60, 0xfe7f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)          fe60-fe7f  6522 VIA       USER VIA
     AM_RANGE(0xfe80, 0xfe9f) AM_READ     (return8_FE                            )         fe80-fe9f  NC
     AM_RANGE(0xfea0, 0xfebf) AM_READ     (return8_FE                            )         fea0-febf  68B54 ADLC     ECONET controller
     AM_RANGE(0xfec0, 0xfedf) AM_READ     (return8_FE                            )         fec0-fedf  NC
@@ -696,8 +695,9 @@ ROM_END
 
 static INTERRUPT_GEN( bbcb_vsync )
 {
-	via_0_ca1_w(machine, 0,1);
-	via_0_ca1_w(machine, 0,0);
+	const device_config *via_0 = device_list_find_by_tag(device->machine->config->devicelist, VIA6522, "via6522_0");
+	via_ca1_w(via_0, 0,1);
+	via_ca1_w(via_0, 0,0);
 	bbc_frameclock();
 }
 
@@ -717,17 +717,38 @@ static const cassette_config bbc_cassette_config =
 	CASSETTE_PLAY
 };
 
+static MACHINE_DRIVER_START( bbc_cartslot )
+	MDRV_CARTSLOT_ADD("cart1")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(bbcb_cart)
+
+	MDRV_CARTSLOT_ADD("cart2")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(bbcb_cart)
+
+	MDRV_CARTSLOT_ADD("cart3")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(bbcb_cart)
+
+	MDRV_CARTSLOT_ADD("cart4")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(bbcb_cart)
+MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( bbca )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 2000000)        /* 2.00Mhz */
+	MDRV_CPU_ADD("main", M6502, 2000000)        /* 2.00 MHz */
 	MDRV_CPU_PROGRAM_MAP( bbca_mem, 0 )
 	MDRV_CPU_VBLANK_INT("main", bbcb_vsync)				/* screen refresh interrupts */
 	MDRV_CPU_PERIODIC_INT(bbcb_keyscan, 1000)		/* scan keyboard */
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(128))
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( bbca )
 	MDRV_MACHINE_RESET( bbca )
@@ -748,7 +769,16 @@ static MACHINE_DRIVER_START( bbca )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 //  MDRV_SOUND_ADD("tms5220", TMS5220, tms5220_interface)
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", bbc_cassette_config )
+
+	/* acia */
+	MDRV_ACIA6850_ADD("acia6850", bbc_acia6850_interface)
+	
+	/* devices */
+	MDRV_UPD7002_ADD("upd7002",BBC_uPD7002)
+	MDRV_VIA6522_ADD("via6522_0", 1000000, bbcb_system_via)
+	MDRV_I8271_ADD("i8271", bbc_i8271_interface)
 MACHINE_DRIVER_END
 
 
@@ -759,6 +789,11 @@ static MACHINE_DRIVER_START( bbcb )
 	MDRV_MACHINE_START( bbcb )
 	MDRV_MACHINE_RESET( bbcb )
 	MDRV_VIDEO_START( bbcb )
+	MDRV_VIA6522_ADD("via6522_1", 1000000, bbcb_user_via)
+
+	MDRV_WD177X_ADD("wd177x", bbc_wd17xx_interface )
+
+	MDRV_IMPORT_FROM(bbc_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -769,6 +804,10 @@ static MACHINE_DRIVER_START( bbcbp )
 	MDRV_MACHINE_START( bbcbp )
 	MDRV_MACHINE_RESET( bbcbp )
 	MDRV_VIDEO_START( bbcbp )
+	MDRV_VIA6522_ADD("via6522_1", 1000000, bbcb_user_via)
+	MDRV_WD177X_ADD("wd177x", bbc_wd17xx_interface )
+	
+	MDRV_IMPORT_FROM(bbc_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -779,17 +818,22 @@ static MACHINE_DRIVER_START( bbcbp128 )
 	MDRV_MACHINE_START( bbcbp )
 	MDRV_MACHINE_RESET( bbcbp )
 	MDRV_VIDEO_START( bbcbp )
+	
+	MDRV_VIA6522_ADD("via6522_1", 1000000, bbcb_user_via)
+	MDRV_WD177X_ADD("wd177x", bbc_wd17xx_interface )
+	
+	MDRV_IMPORT_FROM(bbc_cartslot)
 MACHINE_DRIVER_END
 
 
 /****BBC MASTER */
 static MACHINE_DRIVER_START( bbcm )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M65SC02, 2000000)        /* 2.00Mhz */
+	MDRV_CPU_ADD("main", M65SC02, 2000000)        /* 2.00 MHz */
 	MDRV_CPU_PROGRAM_MAP( bbcm_mem, 0 )
 	MDRV_CPU_VBLANK_INT("main", bbcb_vsync)				/* screen refresh interrupts */
 	MDRV_CPU_PERIODIC_INT(bbcm_keyscan, 1000)		/* scan keyboard */
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( bbcm )
 	MDRV_MACHINE_RESET( bbcm )
@@ -815,28 +859,22 @@ static MACHINE_DRIVER_START( bbcm )
 	MDRV_NVRAM_HANDLER( mc146818 )
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", bbc_cassette_config )
+
+	/* acia */
+	MDRV_ACIA6850_ADD("acia6850", bbc_acia6850_interface)
+	
+	/* devices */
+	MDRV_UPD7002_ADD("upd7002",BBC_uPD7002)
+	MDRV_VIA6522_ADD("via6522_0", 1000000, bbcb_system_via)
+	MDRV_VIA6522_ADD("via6522_1", 1000000, bbcb_user_via)
+	MDRV_WD177X_ADD("wd177x", bbc_wd17xx_interface )
+	
+	MDRV_IMPORT_FROM(bbc_cartslot)
 MACHINE_DRIVER_END
-
-static void bbc_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(bbcb_cart); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static void bbc_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -858,7 +896,6 @@ static void bbc_floppy_getinfo(const mess_device_class *devclass, UINT32 state, 
 
 
 static SYSTEM_CONFIG_START(bbc)
-	CONFIG_DEVICE(bbc_cartslot_getinfo)
 	CONFIG_DEVICE(bbc_floppy_getinfo)
 SYSTEM_CONFIG_END
 

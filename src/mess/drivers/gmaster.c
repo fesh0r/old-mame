@@ -3,7 +3,6 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 //#include "vidhrdw/generic.h"
 #include "cpu/upd7810/upd7810.h"
 #include "devices/cartslot.h"
@@ -31,18 +30,18 @@ static READ8_HANDLER( gmaster_io_r )
 {
     UINT8 data=0;
     if (gmaster.ports[2]&1) {
-	data=memory_region(machine, "main")[0x4000+offset];
-	logerror("%.4x external memory %.4x read %.2x\n",(int)activecpu_get_reg(CPUINFO_INT_PC), 0x4000+offset,data);
+	data=memory_region(space->machine, "main")[0x4000+offset];
+	logerror("%.4x external memory %.4x read %.2x\n",(int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), 0x4000+offset,data);
     } else {
 	switch (offset) {
 	case 1:
 	    data=gmaster_video.pixels[gmaster_video.y][gmaster_video.x];
-	    logerror("%.4x lcd x:%.2x y:%.2x %.4x read %.2x\n",(int)activecpu_get_reg(CPUINFO_INT_PC), gmaster_video.x, gmaster_video.y, 0x4000+offset,data);
+	    logerror("%.4x lcd x:%.2x y:%.2x %.4x read %.2x\n",(int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), gmaster_video.x, gmaster_video.y, 0x4000+offset,data);
 	    if (!(gmaster_video.mode)&&gmaster_video.delayed) gmaster_video.x++;
 	    gmaster_video.delayed=TRUE;
 	    break;
 	default:
-	  logerror("%.4x memory %.4x read %.2x\n",(int)activecpu_get_reg(CPUINFO_INT_PC), 0x4000+offset,data);
+	  logerror("%.4x memory %.4x read %.2x\n",(int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), 0x4000+offset,data);
 	}
     }
     return data;
@@ -53,13 +52,13 @@ static READ8_HANDLER( gmaster_io_r )
 static WRITE8_HANDLER( gmaster_io_w )
 {
     if (gmaster.ports[2]&1) {
-	memory_region(machine, "main")[0x4000+offset]=data;
-	logerror("%.4x external memory %.4x written %.2x\n",(int)activecpu_get_reg(CPUINFO_INT_PC), 0x4000+offset, data);
+	memory_region(space->machine, "main")[0x4000+offset]=data;
+	logerror("%.4x external memory %.4x written %.2x\n",(int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), 0x4000+offset, data);
     } else {
 	switch (offset) {
 	case 0:
 	    gmaster_video.delayed=FALSE;
-	    logerror("%.4x lcd %.4x written %.2x\n",(int)activecpu_get_reg(CPUINFO_INT_PC), 0x4000+offset, data);
+	    logerror("%.4x lcd %.4x written %.2x\n",(int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), 0x4000+offset, data);
 	    // e2 af a4 a0 a9 falling block init for both halves
 	    if ((data&0xfc)==0xb8) {
 		gmaster_video.index=0;
@@ -78,7 +77,7 @@ static WRITE8_HANDLER( gmaster_io_w )
 	    if (gmaster_video.x<ARRAY_LENGTH(gmaster_video.pixels[0])) // continental galaxy flutlicht
 		gmaster_video.pixels[gmaster_video.y][gmaster_video.x]=data;
 	    logerror("%.4x lcd x:%.2x y:%.2x %.4x written %.2x\n",
-		     (int)activecpu_get_reg(CPUINFO_INT_PC), gmaster_video.x, gmaster_video.y, 0x4000+offset, data);
+		     (int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), gmaster_video.x, gmaster_video.y, 0x4000+offset, data);
 	    gmaster_video.x++;
 /* 02 b8 1a
    02 bb 1a
@@ -96,7 +95,7 @@ static WRITE8_HANDLER( gmaster_io_w )
 */
 	    break;
 	default:
-	  logerror("%.4x memory %.4x written %.2x\n",(int)activecpu_get_reg(CPUINFO_INT_PC), 0x4000+offset, data);
+	  logerror("%.4x memory %.4x written %.2x\n",(int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), 0x4000+offset, data);
 	}
     }
 }
@@ -107,10 +106,10 @@ static READ8_HANDLER( gmaster_port_r )
     UINT8 data=0xff;
     switch (offset) {
     case UPD7810_PORTA:
-	data=input_port_read(machine, "JOY");
+	data=input_port_read(space->machine, "JOY");
 	break;
     default:
-      logerror("%.4x port %d read %.2x\n",(int)activecpu_get_reg(CPUINFO_INT_PC),offset,data);
+      logerror("%.4x port %d read %.2x\n",(int)cpu_get_reg(space->cpu, CPUINFO_INT_PC),offset,data);
     }
     return data;
 }
@@ -118,7 +117,7 @@ static READ8_HANDLER( gmaster_port_r )
 static WRITE8_HANDLER( gmaster_port_w )
 {
     gmaster.ports[offset]=data;
-    logerror("%.4x port %d written %.2x\n",(int)activecpu_get_reg(CPUINFO_INT_PC), offset, data);
+    logerror("%.4x port %d written %.2x\n",(int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), offset, data);
     switch (offset) {
     case UPD7810_PORTC:
 	gmaster_video.y=BLITTER_Y;
@@ -153,8 +152,6 @@ INPUT_PORTS_END
 static unsigned char gmaster_palette[2][3] =
 {
 #if 1
-    // ziemlich schwierig den lcd touch rüberzubringen
-    // es ist hauptsächlich die das fleckige grünlich, bläuliche
     { 130, 159, 166 },
     { 45,45,43 }
 #else
@@ -203,7 +200,7 @@ static VIDEO_UPDATE( gmaster )
 
 static INTERRUPT_GEN( gmaster_interrupt )
 {
-  cpunum_set_input_line(machine, 0, UPD7810_INTFE1, PULSE_LINE);
+  cpu_set_input_line(device->machine->cpu[0], UPD7810_INTFE1, ASSERT_LINE);
 }
 
 static UPD7810_CONFIG config={
@@ -238,6 +235,8 @@ MDRV_CPU_VBLANK_INT("main", gmaster_interrupt)
      MDRV_SOUND_ADD("custom", CUSTOM, 0)
      MDRV_SOUND_CONFIG(gmaster_sound_interface)
      MDRV_SOUND_ROUTE(0, "gmaster", 0.50)
+     
+     MDRV_CARTSLOT_ADD("cart")
 MACHINE_DRIVER_END
 
 
@@ -245,7 +244,7 @@ ROM_START(gmaster)
 	ROM_REGION(0x10000,"main", 0)
      ROM_LOAD("gmaster.bin", 0x0000, 0x1000, CRC(05cc45e5) SHA1(05d73638dea9657ccc2791c0202d9074a4782c1e) )
 //     ROM_CART_LOAD(0, "bin", 0x8000, 0x7f00, 0)
-     ROM_CART_LOAD(0, "bin", 0x8000, 0x8000, 0)
+     ROM_CART_LOAD("cart", 0x8000, 0x8000, 0)
 ROM_END
 
 static DRIVER_INIT( gmaster )
@@ -255,7 +254,7 @@ static DRIVER_INIT( gmaster )
 }
 
 #if 0
-static int gmaster_load_rom(int id)
+static int gmaster_load_rom(running_machine *machine, int id)
 {
 	FILE *cartfile;
 	UINT8 *rom = memory_region(machine, "main");
@@ -263,7 +262,7 @@ static int gmaster_load_rom(int id)
 
 	if (device_filename(IO_CARTSLOT, id) == NULL)
 	{
-		printf("%s requires Cartridge!\n", Machine->gamedrv->name);
+		printf("%s requires Cartridge!\n", machine->gamedrv->name);
 		return 0;
 	}
 	
@@ -289,11 +288,7 @@ static int gmaster_load_rom(int id)
 }
 #endif
 
-static SYSTEM_CONFIG_START(gmaster)
-     CONFIG_DEVICE(cartslot_device_getinfo)
-SYSTEM_CONFIG_END
-
 /*    YEAR      NAME            PARENT  MACHINE   INPUT     INIT                
 	  COMPANY                 FULLNAME */
-CONS( 1990, gmaster,       0,          0, gmaster,  gmaster,    gmaster,   gmaster, "Hartung", "Gamemaster", GAME_IMPERFECT_SOUND)
+CONS( 1990, gmaster,       0,          0, gmaster,  gmaster,    gmaster,   0, "Hartung", "Gamemaster", GAME_IMPERFECT_SOUND)
 

@@ -521,7 +521,7 @@ We are going to "simulate" the behaviour of the master 6801, because we does not
 If you have the source listing or the Rom dump, please send us.
 */
 	int DCB_Num, deviceNum, statusDCB;
-	int i, buffer, byteCount, sectorNmbr, sectorCount, currentSector;
+	int i, buffer, /*byteCount,*/ sectorNmbr, /*sectorCount,*/ currentSector;
 	UINT8 kbcode;
 	static const UINT8 interleave[8] = {0,5,2,7,4,1,6,3};
 	const device_config *image;
@@ -556,11 +556,11 @@ If you have the source listing or the Rom dump, please send us.
 			//logerror("Accesing DCB %02Xh\n", DCB_Num);
 			deviceNum = (ram[statusDCB+0x10]&0x0F)+(ram[statusDCB+0x09]<<4);
 			buffer=(ram[statusDCB+0x01])+(ram[statusDCB+0x02]<<8);
-			byteCount=(ram[statusDCB+0x03])+(ram[statusDCB+0x04]<<8);
+			//byteCount=(ram[statusDCB+0x03])+(ram[statusDCB+0x04]<<8);
 
 			if (deviceNum>=4 && deviceNum<=7)
 			{
-				image = image_from_devtype_and_index(IO_FLOPPY, deviceNum - 4);
+				image = image_from_devtype_and_index(machine, IO_FLOPPY, deviceNum - 4);
 				if (image_exists(image))
 					ram[statusDCB+20] = (ram[statusDCB+20]&0xF0); /* Inserted Media */
 				else
@@ -582,7 +582,7 @@ If you have the source listing or the Rom dump, please send us.
 					}
 					else if (deviceNum>=4 && deviceNum<=7)
 					{
-						image = image_from_devtype_and_index(IO_FLOPPY, deviceNum - 4);
+						image = image_from_devtype_and_index(machine, IO_FLOPPY, deviceNum - 4);
 						if (image_exists(image))
 						{
 							ram[statusDCB] = 0x80;
@@ -643,11 +643,11 @@ If you have the source listing or the Rom dump, please send us.
 					}
 					else if (deviceNum>=4 && deviceNum<=7)
 					{
-						image = image_from_devtype_and_index(IO_FLOPPY, deviceNum - 4);
+						image = image_from_devtype_and_index(machine, IO_FLOPPY, deviceNum - 4);
 						if (image_exists(image))
 						{
 							sectorNmbr = ((ram[statusDCB+5])+(ram[statusDCB+6]<<8)+(ram[statusDCB+7]<<16)+(ram[statusDCB+8]<<24))<<1;
-							sectorCount = (byteCount/512)+(byteCount%512==0)? 0:1;
+							/* sectorCount = (byteCount/512)+(byteCount%512==0)? 0:1; */
 							for(i=0;i<=1;i++)
 							{
 								currentSector = floppy_drive_get_current_track(image);
@@ -687,13 +687,13 @@ WRITE8_HANDLER( common_writes_w )
     switch (adam_upper_memory)
     {
         case 0: /* Internal RAM */
-            memory_region(machine, "main")[0x08000+offset] = data;
-            if (offset>=(adam_pcb-0x08000)) master6801_behaviour(machine, offset+0x08000, data);
+            memory_region(space->machine, "main")[0x08000+offset] = data;
+            if (offset>=(adam_pcb-0x08000)) master6801_behaviour(space->machine, offset+0x08000, data);
             break;
         case 1: /* ROM Expansion */
             break;
         case 2: /* RAM Expansion */
-            memory_region(machine, "main")[0x18000+offset] = data;
+            memory_region(space->machine, "main")[0x18000+offset] = data;
         	break;
     	case 3: /* Cartridge ROM */
         	break;
@@ -713,41 +713,41 @@ WRITE8_HANDLER( adamnet_w )
 	if data bit1 is 1 -> Lower 32k = EOS otherwise Lower 32k = SmartWriter
 	*/
 	UINT8 *BankBase;
-	BankBase = &memory_region(machine, "main")[0x00000];
+	BankBase = &memory_region(space->machine, "main")[0x00000];
 
 	if (data==0x0F)
-		adam_reset_pcb(machine);
+		adam_reset_pcb(space->machine);
 	if ( (adam_lower_memory==0) && ((data&0x02)!=(adam_net_data&0x02)) )
 	{
 		if (data&0x02)
 		{
-			memory_set_bankptr(1, BankBase+0x32000); /* No data here */
-			memory_set_bankptr(2, BankBase+0x34000); /* No data here */
-			memory_set_bankptr(3, BankBase+0x36000); /* No data here */
-			memory_set_bankptr(4, BankBase+0x38000); /* EOS ROM */
+			memory_set_bankptr(space->machine, 1, BankBase+0x32000); /* No data here */
+			memory_set_bankptr(space->machine, 2, BankBase+0x34000); /* No data here */
+			memory_set_bankptr(space->machine, 3, BankBase+0x36000); /* No data here */
+			memory_set_bankptr(space->machine, 4, BankBase+0x38000); /* EOS ROM */
 
-			memory_set_bankptr(6, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(7, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(8, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(9, BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, 6, BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, 7, BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, 8, BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, 9, BankBase+0x3A000); /* Write protecting ROM */
 		}
 		else
 		{
-			memory_set_bankptr(1, BankBase+0x20000); /* SmartWriter ROM */
-			memory_set_bankptr(2, BankBase+0x22000);
-			memory_set_bankptr(3, BankBase+0x24000);
-			memory_set_bankptr(4, BankBase+0x26000);
+			memory_set_bankptr(space->machine, 1, BankBase+0x20000); /* SmartWriter ROM */
+			memory_set_bankptr(space->machine, 2, BankBase+0x22000);
+			memory_set_bankptr(space->machine, 3, BankBase+0x24000);
+			memory_set_bankptr(space->machine, 4, BankBase+0x26000);
 
-			memory_set_bankptr(6, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(7, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(8, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(9, BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, 6, BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, 7, BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, 8, BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, 9, BankBase+0x3A000); /* Write protecting ROM */
 		}
 	}
 	adam_net_data = data;
 }
 
- READ8_HANDLER( adam_memory_map_controller_r )
+READ8_HANDLER( adam_memory_map_controller_r )
 {
     return (adam_upper_memory << 2) + adam_lower_memory;
 }
@@ -775,35 +775,35 @@ WRITE8_HANDLER( adam_memory_map_controller_w )
 
     adam_lower_memory = (data & 0x03);
     adam_upper_memory = (data & 0x0C)>>2;
-    adam_set_memory_banks(machine);
+    adam_set_memory_banks(space->machine);
     //logerror("Configurando la memoria, L:%02xh, U:%02xh\n", adam_lower_memory, adam_upper_memory);
 }
 
 READ8_HANDLER(adam_video_r)
 {
-    return ((offset&0x01) ? TMS9928A_register_r(machine, 1) : TMS9928A_vram_r(machine, 0));
+    return ((offset&0x01) ? TMS9928A_register_r(space, 1) : TMS9928A_vram_r(space, 0));
 }
 
 WRITE8_HANDLER(adam_video_w)
 {
-    (offset&0x01) ? TMS9928A_register_w(machine, 1, data) : TMS9928A_vram_w(machine, 0, data);
+    (offset&0x01) ? TMS9928A_register_w(space, 1, data) : TMS9928A_vram_w(space, 0, data);
 }
 
- READ8_HANDLER( master6801_ram_r )
+READ8_HANDLER( master6801_ram_r )
 {
     /*logerror("Offset %04Xh = %02Xh\n",offset ,memory_region(machine, "main")[offset]);*/
-    return memory_region(machine, "main")[offset+0x4000];
+    return memory_region(space->machine, "main")[offset+0x4000];
 }
 
 WRITE8_HANDLER( master6801_ram_w )
 {
-    memory_region(machine, "main")[offset+0x4000] = data;
+    memory_region(space->machine, "main")[offset+0x4000] = data;
 }
 
- READ8_HANDLER ( adam_paddle_r )
+READ8_HANDLER ( adam_paddle_r )
 {
 
-    if (!(input_port_read(machine, "controllers") & 0x0F)) return (0xFF); /* If no controllers enabled */
+    if (!(input_port_read(space->machine, "controllers") & 0x0F)) return (0xFF); /* If no controllers enabled */
 	/* Player 1 */
 	if ((offset & 0x02)==0)
 	{
@@ -812,9 +812,9 @@ WRITE8_HANDLER( master6801_ram_w )
 		{
 			int inport0,inport1,inport6,data;
 
-			inport0 = input_port_read(machine, "controller1_keypad1");
-			inport1 = input_port_read(machine, "controller1_keypad2");
-			inport6 = input_port_read(machine, "controllers");
+			inport0 = input_port_read(space->machine, "controller1_keypad1");
+			inport1 = input_port_read(space->machine, "controller1_keypad2");
+			inport6 = input_port_read(space->machine, "controllers");
 
 			/* Numeric pad buttons are not independent on a real ColecoVision, if you push more
 			than one, a real ColecoVision think that it is a third button, so we are going to emulate
@@ -841,8 +841,8 @@ WRITE8_HANDLER( master6801_ram_w )
 		/* Joystick and fire 2 (SAC Red Button) */
 		else
 		{
-			int data = input_port_read(machine, "controller1_joystick") & 0xCF;
-			int inport6 = input_port_read(machine, "controllers");
+			int data = input_port_read(space->machine, "controller1_joystick") & 0xCF;
+			int inport6 = input_port_read(space->machine, "controllers");
 
 			if (inport6&0x07) /* If Extra Contollers enabled */
 			{
@@ -862,8 +862,8 @@ WRITE8_HANDLER( master6801_ram_w )
 		{
 			int inport3,inport4,data;
 
-			inport3 = input_port_read(machine, "controller2_keypad1");
-			inport4 = input_port_read(machine, "controller2_keypad2");
+			inport3 = input_port_read(space->machine, "controller2_keypad1");
+			inport4 = input_port_read(space->machine, "controller2_keypad2");
 
 			/* Numeric pad buttons are not independent on a real ColecoVision, if you push more
 			than one, a real ColecoVision think that it is a third button, so we are going to emulate
@@ -888,8 +888,8 @@ WRITE8_HANDLER( master6801_ram_w )
 		/* Joystick and fire 2*/
 		else
 		{
-			int data = input_port_read(machine, "controller2_joystick") & 0xCF;
-			int inport6 = input_port_read(machine, "controllers");
+			int data = input_port_read(space->machine, "controller2_joystick") & 0xCF;
+			int inport6 = input_port_read(space->machine, "controllers");
 
 			if (inport6&0x02) /* If Roller Controller enabled */
 			{

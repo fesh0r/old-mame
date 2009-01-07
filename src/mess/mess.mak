@@ -42,8 +42,7 @@ include $(SRC)/mess/messcore.mak
 
 CPUS += Z80
 #CPUS += Z180
-CPUS += 8080
-#CPUS += 8085A
+CPUS += I8085
 CPUS += M6502
 CPUS += M65C02
 CPUS += M65SC02
@@ -74,22 +73,20 @@ CPUS += V30MZ
 #CPUS += V35
 #CPUS += V60
 #CPUS += V70
-CPUS += I8035
-#CPUS += I8041
-CPUS += I8048
-#CPUS += I8648
-#CPUS += I8748
-#CPUS += MB8884
-CPUS += I8039
-#CPUS += I8049
-CPUS += I8749
-#CPUS += N7751
-#CPUS += M58715
-CPUS += I8X41
+CPUS += MCS48
+#CPUS += I8031
+#CPUS += I8032
 CPUS += I8051
 #CPUS += I8052
 #CPUS += I8751
 #CPUS += I8752
+#CPUS += I80C31
+#CPUS += I80C32
+#CPUS += I80C51
+#CPUS += I80C52
+#CPUS += I87C51
+#CPUS += I87C52
+#CPUS += AT89C4051
 #CPUS += DS5002FP
 CPUS += M6800
 #CPUS += M6801
@@ -105,16 +102,10 @@ CPUS += HD6309
 CPUS += M6809
 CPUS += M6809E
 #CPUS += KONAMI
-CPUS += M68000
-CPUS += M68008
-#CPUS += M68010
-CPUS += M68EC020
-CPUS += M68020
-#CPUS += M68040
+CPUS += M680X0
 CPUS += T11
 CPUS += S2650
-#CPUS += TMS34010
-#CPUS += TMS34020
+#CPUS += TMS340X0
 CPUS += TMS9900
 #CPUS += TMS9940
 CPUS += TMS9980
@@ -133,12 +124,7 @@ CPUS += TMS99010
 #CPUS += TMS32032
 #CPUS += TMS32051
 #CPUS += CCPU
-#CPUS += ADSP2100
-#CPUS += ADSP2101
-#CPUS += ADSP2104
-#CPUS += ADSP2105
-#CPUS += ADSP2115
-#CPUS += ADSP2181
+#CPUS += ADSP21XX
 CPUS += PSXCPU
 #CPUS += CXD8661R
 #CPUS += ASAP
@@ -149,6 +135,7 @@ CPUS += ARM
 CPUS += ARM7
 CPUS += JAGUAR
 #CPUS += CUBEQCPU
+#CPUS += ESRIP
 CPUS += R3000
 #CPUS += R3041
 CPUS += R4600
@@ -182,20 +169,14 @@ CPUS += SPC700
 #CPUS += GMS30C2132
 #CPUS += GMS30C2216
 #CPUS += GMS30C2232
+#CPUS += I860
 #CPUS += I960
 #CPUS += H83002
+#CPUS += H83334
 CPUS += V810
 #CPUS += M37702
 #CPUS += M37710
-#CPUS += PPC403GA
-#CPUS += PPC403GCX
-#CPUS += PPC601
-CPUS += PPC602
-CPUS += PPC603
-CPUS += PPC603E
-#CPUS += PPC603R
-#CPUS += PPC604
-#CPUS += MPC8240
+#CPUS += POWERPC
 #CPUS += SE3208
 #CPUS += MC68HC11
 #CPUS += ADSP21062
@@ -204,10 +185,19 @@ CPUS += RSP
 #CPUS += ALPHA8201
 #CPUS += ALPHA8301
 CPUS += CDP1802
+#CPUS += COP401
 #CPUS += COP410
 CPUS += COP411
+#CPUS += COP402
 CPUS += COP420
 #CPUS += COP421
+#CPUS += COP422
+#CPUS += COP404
+#CPUS += COP424
+#CPUS += COP425
+#CPUS += COP426
+#CPUS += COP444
+#CPUS += COP445
 #CPUS += TLCS90
 #CPUS += MB8841
 #CPUS += MB8842
@@ -228,6 +218,48 @@ CPUS += TMS7000
 CPUS += TMS7000_EXL
 CPUS += SM8500
 CPUS += MINX
+CPUS += I8035
+#CPUS += I8041
+CPUS += I8048
+#CPUS += I8648
+CPUS += I8748
+#CPUS += MB8884
+CPUS += I8039
+CPUS += I8049
+CPUS += I8749
+#CPUS += N7751
+#CPUS += M58715
+#CPUS += I8741
+CPUS += I8042
+#CPUS += I8242
+#CPUS += I8742
+CPUS += POWERPC
+#CPUS += PPC403GA
+#CPUS += PPC403GCX
+#CPUS += PPC601
+CPUS += PPC602
+CPUS += PPC603
+CPUS += PPC603E
+#CPUS += PPC603R
+#CPUS += PPC604
+#CPUS += MPC8240
+CPUS += 8080
+CPUS += 8085A
+#CPUS += ADSP2100
+#CPUS += ADSP2101
+#CPUS += ADSP2104
+#CPUS += ADSP2105
+#CPUS += ADSP2115
+#CPUS += ADSP2181
+CPUS += I8X41
+#CPUS += M68000
+#CPUS += M68008
+#CPUS += M68010
+#CPUS += M68EC020
+#CPUS += M68020
+#CPUS += M68040
+#CPUS += TMS34010
+#CPUS += TMS34020
 
 
 
@@ -289,6 +321,7 @@ SOUNDS += TMS5220
 #SOUNDS += ADPCM
 SOUNDS += MSM5205
 #SOUNDS += MSM5232
+SOUNDS += OKIM6258
 SOUNDS += OKIM6295
 #SOUNDS += UPD7759
 #SOUNDS += HC55516
@@ -372,6 +405,7 @@ DRVLIBS = \
 	$(MESSOBJ)/cybiko.a \
 	$(MESSOBJ)/dai.a \
 	$(MESSOBJ)/dgn_beta.a \
+	$(MESSOBJ)/einis.a \
 	$(MESSOBJ)/ep128.a \
 	$(MESSOBJ)/epoch.a \
 	$(MESSOBJ)/epson.a \
@@ -411,6 +445,7 @@ DRVLIBS = \
 	$(MESSOBJ)/ondra.a \
 	$(MESSOBJ)/orion.a \
 	$(MESSOBJ)/osborne.a \
+	$(MESSOBJ)/osi.a \
 	$(MESSOBJ)/p2000.a \
 	$(MESSOBJ)/pasogo.a \
 	$(MESSOBJ)/pc.a \
@@ -466,6 +501,11 @@ DRVLIBS = \
 #-------------------------------------------------
 
 $(MESSOBJ)/shared.a: \
+	$(MESS_MACHINE)/6530miot.o	\
+	$(MESS_DEVICES)/cartslot.o	\
+	$(MESS_DEVICES)/flopdrv.o	\
+	$(MESS_DEVICES)/harddriv.o	\
+	$(MESS_DEVICES)/chd_cd.o	\
 	$(MESS_FORMATS)/ioprocs.o	\
 	$(MESS_FORMATS)/flopimg.o	\
 	$(MESS_FORMATS)/cassimg.o	\
@@ -473,44 +513,40 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_FORMATS)/pc_dsk.o	\
 	$(MESS_DEVICES)/mflopimg.o	\
 	$(MESS_DEVICES)/cassette.o	\
-	$(MESS_DEVICES)/cartslot.o	\
 	$(MESS_DEVICES)/printer.o	\
 	$(MESS_DEVICES)/bitbngr.o	\
 	$(MESS_DEVICES)/snapquik.o	\
 	$(MESS_DEVICES)/basicdsk.o	\
-	$(MESS_DEVICES)/flopdrv.o	\
-	$(MESS_DEVICES)/harddriv.o	\
 	$(MESS_DEVICES)/dsk.o		\
-	$(MESS_DEVICES)/z80bin.o	\
-	$(MESS_DEVICES)/chd_cd.o	\
 	$(MESS_DEVICES)/microdrv.o	\
 	$(MESS_MACHINE)/6551.o		\
 	$(MESS_MACHINE)/smartmed.o	\
 	$(MESS_VIDEO)/m6847.o		\
 	$(MESS_VIDEO)/m6845.o		\
-	$(MESS_VIDEO)/cdp1864.o		\
 	$(MESS_MACHINE)/msm8251.o  \
 	$(MESS_MACHINE)/tc8521.o   \
-	$(MESS_VIDEO)/crtc6845.o	\
 	$(MESS_MACHINE)/74145.o    \
 	$(MESS_MACHINE)/ins8250.o \
 	$(MESS_MACHINE)/pc_mouse.o \
-	$(MESS_MACHINE)/pclpt.o    \
 	$(MESS_MACHINE)/centroni.o \
 	$(MAME_MACHINE)/pckeybrd.o \
 	$(MESS_MACHINE)/d88.o      \
-	$(MESS_MACHINE)/nec765.o   \
-	$(MESS_MACHINE)/wd17xx.o   \
 	$(MESS_MACHINE)/serial.o   \
 	$(MESS_FORMATS)/wavfile.o	\
 	$(MESS_FORMATS)/coco_cas.o	\
 	$(MESS_FORMATS)/coco_dsk.o	\
 	$(MESS_MACHINE)/mm58274c.o \
-	$(MESS_MACHINE)/z80dart.o	\
-	$(MESS_MACHINE)/68901mfp.o \
 	$(MESS_FORMATS)/rk_cas.o	\
+	$(MESS_MACHINE)/nec765.o   \
+	$(MESS_MACHINE)/wd17xx.o   \
+	$(MESS_MACHINE)/68901mfp.o \
+	$(MESS_DEVICES)/z80bin.o	\
+	$(MESS_VIDEO)/cdp1864.o		\
+	$(MESS_VIDEO)/crtc6845.o	\
+	$(MESS_MACHINE)/pclpt.o    \
+	$(MESS_MACHINE)/z80dart.o	\
 	$(MESS_VIDEO)/msm6255.o	\
-	$(MESS_MACHINE)/6530miot.o	\
+	$(MESS_MACHINE)/8530scc.o		\
 
 
 
@@ -550,14 +586,16 @@ $(MESSOBJ)/sega.a:			\
 	$(MESS_DRIVERS)/sg1000.o	\
 	$(MESS_DRIVERS)/dc.o		\
 	$(MAME_MACHINE)/dc.o 		\
+	$(MAME_MACHINE)/naomibd.o	\
+	$(MAME_MACHINE)/gdcrypt.o	\
 	$(MAME_VIDEO)/dc.o		\
 
-$(MESSOBJ)/atari.a:						\
-	$(MAME_VIDEO)/tia.o			\
-	$(MAME_MACHINE)/atari.o			\
-	$(MAME_VIDEO)/atari.o			\
-	$(MAME_VIDEO)/antic.o			\
-	$(MAME_VIDEO)/gtia.o			\
+$(MESSOBJ)/atari.a:			\
+	$(MAME_VIDEO)/tia.o		\
+	$(MAME_MACHINE)/atari.o		\
+	$(MAME_VIDEO)/atari.o		\
+	$(MAME_VIDEO)/antic.o		\
+	$(MAME_VIDEO)/gtia.o		\
 	$(MESS_MACHINE)/atarifdc.o	\
 	$(MESS_DRIVERS)/atari.o		\
 	$(MESS_MACHINE)/a7800.o		\
@@ -565,16 +603,16 @@ $(MESSOBJ)/atari.a:						\
 	$(MESS_VIDEO)/a7800.o		\
 	$(MESS_DRIVERS)/a2600.o		\
 	$(MESS_DRIVERS)/jaguar.o	\
-	$(MAME_AUDIO)/jaguar.o			\
-	$(MAME_VIDEO)/jaguar.o			\
+	$(MAME_AUDIO)/jaguar.o		\
+	$(MAME_VIDEO)/jaguar.o		\
 	$(MESS_FORMATS)/a26_cas.o	\
-	$(MESS_DRIVERS)/atarist.o \
-	$(MESS_VIDEO)/atarist.o \
-	$(MESS_AUDIO)/lmc1992.o
+	$(MESS_DRIVERS)/atarist.o 	\
+	$(MESS_VIDEO)/atarist.o 	\
+	$(MESS_AUDIO)/lmc1992.o		\
 
-$(MESSOBJ)/gce.a:	                     \
+$(MESSOBJ)/gce.a:	           	\
 	$(MESS_DRIVERS)/vectrex.o	\
-	$(MESS_VIDEO)/vectrex.o	\
+	$(MESS_VIDEO)/vectrex.o		\
 	$(MESS_MACHINE)/vectrex.o	\
 
 $(MESSOBJ)/nintendo.a:			\
@@ -599,9 +637,9 @@ $(MESSOBJ)/nintendo.a:			\
 	$(MESS_DRIVERS)/pokemini.o	\
 
 $(MESSOBJ)/amiga.a: \
-	$(MAME_VIDEO)/amiga.o			\
-	$(MAME_MACHINE)/amiga.o			\
-	$(MAME_AUDIO)/amiga.o			\
+	$(MAME_VIDEO)/amiga.o		\
+	$(MAME_MACHINE)/amiga.o		\
+	$(MAME_AUDIO)/amiga.o		\
 	$(MESS_MACHINE)/amigafdc.o	\
 	$(MESS_MACHINE)/amigacrt.o	\
 	$(MESS_MACHINE)/amigacd.o	\
@@ -611,7 +649,7 @@ $(MESSOBJ)/amiga.a: \
 
 $(MESSOBJ)/cbmshare.a: \
 	$(MESS_FORMATS)/cbm_tap.o 	\
-	$(MESS_MACHINE)/tpi6525.o	\
+	$(MESS_MACHINE)/6525tpi.o	\
 	$(MESS_MACHINE)/cbm.o		\
 	$(MESS_MACHINE)/cbmdrive.o	\
 	$(MESS_MACHINE)/vc1541.o	\
@@ -620,6 +658,8 @@ $(MESSOBJ)/cbmshare.a: \
 	$(MESS_MACHINE)/cbmipt.o   	\
 	$(MESS_MACHINE)/c64.o    	\
 	$(MESS_MACHINE)/c65.o		\
+	$(MESS_MACHINE)/c128.o		\
+	$(MESS_VIDEO)/vdc8563.o		\
 	$(MESS_VIDEO)/vic6567.o
 
 $(MESSOBJ)/cbm.a: \
@@ -637,9 +677,7 @@ $(MESSOBJ)/cbm.a: \
 	$(MESS_MACHINE)/cbmb.o		\
 	$(MESS_VIDEO)/cbmb.o		\
 	$(MESS_DRIVERS)/c65.o		\
-	$(MESS_VIDEO)/vdc8563.o		\
 	$(MESS_DRIVERS)/c128.o		\
-	$(MESS_MACHINE)/c128.o		\
 	$(MESS_AUDIO)/vic6560.o		\
 	$(MESS_VIDEO)/ted7360.o		\
 	$(MESS_VIDEO)/vic6560.o  
@@ -713,10 +751,10 @@ $(MESSOBJ)/sinclair.a: \
 	$(MESS_MACHINE)/spectrum.o		\
 	$(MESS_MACHINE)/beta.o		\
 	$(MESS_FORMATS)/zx81_p.o		\
+	$(MESS_FORMATS)/tzx_cas.o		\
 	$(MESS_DRIVERS)/ql.o		\
 	$(MESS_VIDEO)/zx8301.o		\
 	$(MESS_MACHINE)/zx8302.o		\
-	$(MESS_FORMATS)/tzx_cas.o		\
 
 $(MESSOBJ)/apple.a:   \
 	$(MESS_VIDEO)/apple2.o		\
@@ -734,7 +772,6 @@ $(MESSOBJ)/apple.a:   \
 	$(MESS_MACHINE)/lisa.o			\
 	$(MESS_DRIVERS)/lisa.o			\
 	$(MESS_MACHINE)/applefdc.o		\
-	$(MESS_MACHINE)/8530scc.o		\
 	$(MESS_DEVICES)/sonydriv.o		\
 	$(MESS_DEVICES)/appldriv.o		\
 	$(MESS_AUDIO)/mac.o			\
@@ -846,8 +883,10 @@ $(MESSOBJ)/p2000.a:    \
 	$(MESS_VIDEO)/p2000m.o	 \
 	$(MESS_DRIVERS)/p2000t.o	 \
 	$(MESS_MACHINE)/p2000t.o	 \
-	$(MESS_MACHINE)/mc6850.o	 \
+	
+$(MESSOBJ)/osi.a:    \
 	$(MESS_DRIVERS)/osi.o	\
+	$(MESS_VIDEO)/osi.o	\
 
 $(MESSOBJ)/amstrad.a:  \
 	$(MESS_DRIVERS)/amstrad.o  \
@@ -1009,6 +1048,9 @@ $(MESSOBJ)/sharp.a:    \
 	$(MESS_MACHINE)/hd63450.o   \
 	$(MESS_MACHINE)/rp5c15.o	\
 	$(MESS_MACHINE)/x68k_hdc.o	\
+	$(MESS_DRIVERS)/mz80.o		\
+	$(MESS_VIDEO)/mz80.o		\
+	$(MESS_MACHINE)/mz80.o	\
 
 $(MESSOBJ)/hp48.a:     \
 	$(MESS_MACHINE)/hp48.o     \
@@ -1063,7 +1105,6 @@ $(MESSOBJ)/lynx.a:     \
 	$(MESS_MACHINE)/lynx.o
 
 $(MESSOBJ)/mk1.a:      \
-	$(OBJ)/emu/cpu/f8/f3853.o	\
 	$(MESS_DRIVERS)/mk1.o
 
 $(MESSOBJ)/mk2.a:      \
@@ -1167,7 +1208,9 @@ $(MESSOBJ)/luxor.a:					\
 	$(MESS_VIDEO)/abc806.o	\
 	$(MESS_MACHINE)/abcbus.o	\
 	$(MESS_MACHINE)/abc77.o	\
+	$(MESS_MACHINE)/abc99.o	\
 	$(MESS_MACHINE)/e0516.o	\
+	$(MESS_MACHINE)/conkort.o \
 
 $(MESSOBJ)/sgi.a:						\
 	$(MESS_MACHINE)/sgi.o		\
@@ -1339,6 +1382,11 @@ $(MESSOBJ)/kramermc.a:      \
 	$(MESS_MACHINE)/kramermc.o \
 	$(MESS_VIDEO)/kramermc.o \
 
+$(MESSOBJ)/einis.a:      \
+	$(MESS_DRIVERS)/pecom.o \
+	$(MESS_MACHINE)/pecom.o \
+	$(MESS_VIDEO)/pecom.o \
+	
 $(MESSOBJ)/grundy.a: \
 	$(MESS_DRIVERS)/newbrain.o \
 	$(MESS_VIDEO)/newbrain.o \
@@ -1360,6 +1408,7 @@ $(MESS_DRIVERS)/bw2.o:		$(MESS_LAYOUT)/bw2.lh
 $(MESS_DRIVERS)/coco.o:		$(MESS_LAYOUT)/coco3.lh
 $(MESS_DRIVERS)/cybiko.o:	$(MESS_LAYOUT)/cybiko.lh
 $(MESS_DRIVERS)/ex800.o:	$(MESS_LAYOUT)/ex800.lh
+$(MESS_DRIVERS)/gamecom.o:	$(MESS_LAYOUT)/gamecom.lh
 $(MESS_DRIVERS)/gamepock.o:	$(MESS_LAYOUT)/gamepock.lh
 $(MESS_DRIVERS)/gb.o:		$(MESS_LAYOUT)/gb.lh
 $(MESS_DRIVERS)/glasgow.o:	$(MESS_LAYOUT)/glasgow.lh
@@ -1368,6 +1417,7 @@ $(MESS_DRIVERS)/kim1.o:		$(MESS_LAYOUT)/kim1.lh
 $(MESS_DRIVERS)/mephisto.o:	$(MESS_LAYOUT)/mephisto.lh
 $(MESS_DRIVERS)/mk1.o:		$(MESS_LAYOUT)/mk1.lh
 $(MESS_DRIVERS)/mk2.o:		$(MESS_LAYOUT)/mk2.lh
+$(MESS_DRIVERS)/mpf1.o:		$(MESS_LAYOUT)/mpf1.lh
 $(MESS_DRIVERS)/nc.o:		$(MESS_LAYOUT)/nc200.lh
 $(MESS_DRIVERS)/pokemini.o:	$(MESS_LAYOUT)/pokemini.lh
 $(MESS_DRIVERS)/svi318.o:	$(MESS_LAYOUT)/sv328806.lh

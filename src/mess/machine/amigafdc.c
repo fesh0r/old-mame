@@ -75,9 +75,9 @@ static DEVICE_START(amiga_fdc)
 	fdc_status[id].dir = 0;
 	fdc_status[id].wprot = 1;
 	fdc_status[id].cyl = 0;
-	fdc_status[id].rev_timer = timer_alloc(fdc_rev_proc, NULL);
-	fdc_status[id].dma_timer = timer_alloc(fdc_dma_proc, NULL);
-	fdc_status[id].sync_timer = timer_alloc(fdc_sync_proc, NULL);
+	fdc_status[id].rev_timer = timer_alloc(device->machine, fdc_rev_proc, NULL);
+	fdc_status[id].dma_timer = timer_alloc(device->machine, fdc_dma_proc, NULL);
+	fdc_status[id].sync_timer = timer_alloc(device->machine, fdc_sync_proc, NULL);
 	fdc_status[id].rev_timer_started = 0;
 	fdc_status[id].cached = -1;
 	fdc_status[id].pos = 0;
@@ -266,7 +266,9 @@ static TIMER_CALLBACK(fdc_sync_proc)
 	if ( fdc_status[drive].mfm[cur_pos-2] == ( ( sync >> 8 ) & 0xff ) &&
 		 fdc_status[drive].mfm[cur_pos-1] == ( sync & 0xff ) )
 	{
-		amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_DSKSYN, 0xffff);
+		const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+		amiga_custom_w(space, REG_INTREQ, 0x8000 | INTENA_DSKSYN, 0xffff);
 	}
 
 	if ( sector < 10 )
@@ -306,9 +308,11 @@ static TIMER_CALLBACK(fdc_dma_proc)
 	{
 		if ( fdc_status[drive].len > 0 )
 		{
+			const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
 			logerror("Write to disk unsupported yet\n" );
 
-			amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0xffff);
+			amiga_custom_w(space, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0xffff);
 		}
 	}
 	else
@@ -341,7 +345,9 @@ static TIMER_CALLBACK(fdc_dma_proc)
 
 		if ( fdc_status[drive].len <= 0 )
 		{
-			amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0xffff);
+			const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+			amiga_custom_w(space, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0xffff);
 		}
 		else
 		{
@@ -371,8 +377,10 @@ void amiga_fdc_setup_dma( running_machine *machine ) {
 	}
 
 	if ( drive == -1 ) {
+		const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
 		logerror("Disk DMA started with no drive selected!\n" );
-		amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0xffff);
+		amiga_custom_w(space, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0xffff);
 		return;
 	}
 
@@ -595,9 +603,11 @@ static TIMER_CALLBACK(fdc_rev_proc)
 {
 	int drive = param;
 	int time;
+	const device_config *cia;
 
 	/* Issue a index pulse when a disk revolution completes */
-	cia_issue_index(machine, 1);
+	cia = device_list_find_by_tag(machine->config->devicelist, CIA8520, "cia_1");
+	cia_issue_index(cia);
 
 	timer_adjust_oneshot(fdc_status[drive].rev_timer, ATTOTIME_IN_MSEC( ONE_REV_TIME ), drive);
 	fdc_status[drive].rev_timer_started = 1;
@@ -682,7 +692,7 @@ static void fdc_motor( int drive, int off ) {
 	fdc_status[drive].motor_on = on;
 }
 
-void amiga_fdc_control_w( UINT8 data ) {
+void amiga_fdc_control_w( const device_config *device, UINT8 data ) {
 	int step_pulse;
 	int drive;
 

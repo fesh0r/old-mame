@@ -275,8 +275,11 @@ PCB Layouts missing
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "deprecat.h"
 #include "machine/8255ppi.h"
+#include "machine/tc8521.h"
+#include "machine/wd17xx.h"
 #include "video/tms9928a.h"
 #include "video/v9938.h"
 #include "includes/msx_slot.h"
@@ -418,7 +421,7 @@ INPUT_PORTS_END
 
 /* 2008-05 FP: About keyboards
 
-Even if some later Philips (and maybe others) models started to use a layout similar to current 
+Even if some later Philips (and maybe others) models started to use a layout similar to current
 PC keyboards, common MSX keyboards have a couple of keys which do not fit usual mapping
 - the key in the 1st row before 'Backspace', 3rd key from '0', here re-mapped to KEYCODE_BACKSLASH2
 - the last key in the 4th row, 4th key from 'M' (not counting Shift), here re-mapped to KEYCODE_TILDE
@@ -432,18 +435,18 @@ These keys corresponds to the following symbols
 	TILDE		|  DK*	|  DK*	|  _	|  _	|  < >	|  / ?	|
 
 * DK = "Dead Key"
-Notice that 'expert' input_ports covers both versions 1.0 and 1.1. 
+Notice that 'expert' input_ports covers both versions 1.0 and 1.1.
 msx2 input_ports have the same symbols as their msx counterparts.
 
 TO DO:
 - check Expert 1.0 layout with the real thing
 - check Korean layout
 - fix natural support in systems using msx inputs but with different mapping
-(these systems could have different uses for keys mapped at the following 
+(these systems could have different uses for keys mapped at the following
 locations: COLON, QUOTE, BACKSLASH, OPENBRACE, CLOSEBRACE, BACKSLASH2, TILDE.
-The corresponding symbols would not work properly in -natural mode). 
+The corresponding symbols would not work properly in -natural mode).
 
-Additional note about natural keyboard support: currently, 
+Additional note about natural keyboard support: currently,
 - "Keypad ," is not mapped
 - "Graph" is mapped to 'F6' (this key could be labeled "L Graph")
 - "Code" is mapped to 'F7' (this key could be labeled "R Graph", "Kana" or "Hangul")
@@ -642,38 +645,38 @@ Additional note about natural keyboard support: currently,
 	PORT_BIT (0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_DEL_PAD)	PORT_CHAR(UCHAR_MAMEKEY(DEL_PAD))
 
 static INPUT_PORTS_START( msx )
- 	PORT_START("KEY0") 
+ 	PORT_START("KEY0")
 	KEYB_ROW0
 	KEYB_ROW1
 
- 	PORT_START("KEY1") 
+ 	PORT_START("KEY1")
 	KEYB_ROW2
 	KEYB_ROW3
 
- 	PORT_START("KEY2") 
+ 	PORT_START("KEY2")
 	KEYB_ROW4
 	KEYB_ROW5
 
- 	PORT_START("KEY3") 
+ 	PORT_START("KEY3")
 	KEYB_ROW6
 	KEYB_ROW7
 
- 	PORT_START("KEY4") 
+ 	PORT_START("KEY4")
 	KEYB_ROW8
 	PORT_BIT (0xff00, IP_ACTIVE_LOW, IPT_UNUSED)
 
- 	PORT_START("KEY5") 
+ 	PORT_START("KEY5")
 	PORT_BIT (0xffff, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_INCLUDE( msx_dips )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( msxuk )
- 	PORT_START("KEY0") 
+ 	PORT_START("KEY0")
 	KEYB_ROW0
 	KEYB_ROW1
 
- 	PORT_START("KEY1") 
+ 	PORT_START("KEY1")
 	PORT_BIT (0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE)			PORT_CHAR('\'') PORT_CHAR('"')
 	PORT_BIT (0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_BACKSLASH)		PORT_CHAR('\xA3') PORT_CHAR('~')
 	PORT_BIT (0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA)			PORT_CHAR(',') PORT_CHAR('<')
@@ -684,19 +687,19 @@ static INPUT_PORTS_START( msxuk )
 	PORT_BIT (0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_B)				PORT_CHAR('b') PORT_CHAR('B')
 	KEYB_ROW3
 
- 	PORT_START("KEY2") 
+ 	PORT_START("KEY2")
 	KEYB_ROW4
 	KEYB_ROW5
 
- 	PORT_START("KEY3") 
+ 	PORT_START("KEY3")
 	KEYB_ROW6
 	KEYB_ROW7
 
- 	PORT_START("KEY4") 
+ 	PORT_START("KEY4")
 	KEYB_ROW8
 	PORT_BIT (0xff00, IP_ACTIVE_LOW, IPT_UNUSED)
 
- 	PORT_START("KEY5") 
+ 	PORT_START("KEY5")
 	PORT_BIT (0xffff, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_INCLUDE( msx_dips )
@@ -743,19 +746,19 @@ INPUT_PORTS_END
 	PORT_BIT (0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_B)			PORT_CHAR('b') PORT_CHAR('B')
 
 static INPUT_PORTS_START( msxjp )
- 	PORT_START("KEY0") 
+ 	PORT_START("KEY0")
 	KEYB_JAP_ROW0
 	KEYB_JAP_ROW1
 
- 	PORT_START("KEY1") 
+ 	PORT_START("KEY1")
 	KEYB_JAP_ROW2
 	KEYB_ROW3
 
- 	PORT_START("KEY2") 
+ 	PORT_START("KEY2")
 	KEYB_ROW4
 	KEYB_ROW5
 
- 	PORT_START("KEY3") 
+ 	PORT_START("KEY3")
 	PORT_BIT (0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_LSHIFT)						PORT_CHAR(UCHAR_SHIFT_1)
 	PORT_BIT (0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_LCONTROL)						PORT_CHAR(UCHAR_SHIFT_2)
 	PORT_BIT (0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("GRAPH") PORT_CODE(KEYCODE_PGUP)		PORT_CHAR(UCHAR_MAMEKEY(F6))
@@ -766,30 +769,30 @@ static INPUT_PORTS_START( msxjp )
 	PORT_BIT (0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F3  F8") PORT_CODE(KEYCODE_F3)		PORT_CHAR(UCHAR_MAMEKEY(F3))
 	KEYB_ROW7
 
- 	PORT_START("KEY4") 
+ 	PORT_START("KEY4")
 	KEYB_ROW8
 	PORT_BIT (0xff00, IP_ACTIVE_LOW, IPT_UNUSED)
 
- 	PORT_START("KEY5") 
+ 	PORT_START("KEY5")
 	PORT_BIT (0xffff, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_INCLUDE( msx_dips )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( msxkr )
- 	PORT_START("KEY0") 
+ 	PORT_START("KEY0")
 	KEYB_JAP_ROW0
 	KEYB_KOR_ROW1
 
- 	PORT_START("KEY1") 
+ 	PORT_START("KEY1")
 	KEYB_JAP_ROW2
 	KEYB_ROW3
 
- 	PORT_START("KEY2") 
+ 	PORT_START("KEY2")
 	KEYB_ROW4
 	KEYB_ROW5
 
- 	PORT_START("KEY3") 
+ 	PORT_START("KEY3")
 	PORT_BIT (0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_LSHIFT)						PORT_CHAR(UCHAR_SHIFT_1)
 	PORT_BIT (0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_LCONTROL)						PORT_CHAR(UCHAR_SHIFT_2)
 	PORT_BIT (0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("GRAPH") PORT_CODE(KEYCODE_PGUP)		PORT_CHAR(UCHAR_MAMEKEY(F6))
@@ -800,38 +803,38 @@ static INPUT_PORTS_START( msxkr )
 	PORT_BIT (0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F3  F8") PORT_CODE(KEYCODE_F3)		PORT_CHAR(UCHAR_MAMEKEY(F3))
 	KEYB_ROW7
 
- 	PORT_START("KEY4") 
+ 	PORT_START("KEY4")
 	KEYB_ROW8
 	PORT_BIT (0xff00, IP_ACTIVE_LOW, IPT_UNUSED)
 
- 	PORT_START("KEY5") 
+ 	PORT_START("KEY5")
 	PORT_BIT (0xffff, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_INCLUDE( msx_dips )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( hotbit )
- 	PORT_START("KEY0") 
+ 	PORT_START("KEY0")
 	KEYB_HOTBIT_ROW0
 	KEYB_HOTBIT_ROW1
 
- 	PORT_START("KEY1") 
+ 	PORT_START("KEY1")
 	KEYB_HOTBIT_ROW2
 	KEYB_ROW3
 
- 	PORT_START("KEY2") 
+ 	PORT_START("KEY2")
 	KEYB_ROW4
 	KEYB_ROW5
 
- 	PORT_START("KEY3") 
+ 	PORT_START("KEY3")
 	KEYB_ROW6
 	KEYB_ROW7
 
- 	PORT_START("KEY4") 
+ 	PORT_START("KEY4")
 	KEYB_ROW8
 	PORT_BIT (0xff00, IP_ACTIVE_LOW, IPT_UNUSED)
 
- 	PORT_START("KEY5") 
+ 	PORT_START("KEY5")
 	PORT_BIT (0xffff, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_INCLUDE( msx_dips )
@@ -846,100 +849,100 @@ INPUT_PORTS_END
 	PORT_BIT (0xf000, IP_ACTIVE_LOW, IPT_UNUSED)	\
 
 static INPUT_PORTS_START( expert11 )
- 	PORT_START("KEY0") 
+ 	PORT_START("KEY0")
 	KEYB_EXPERT11_ROW0
 	KEYB_EXPERT11_ROW1
 
- 	PORT_START("KEY1") 
+ 	PORT_START("KEY1")
 	KEYB_EXPERT11_ROW2
 	KEYB_ROW3
 
- 	PORT_START("KEY2") 
+ 	PORT_START("KEY2")
 	KEYB_ROW4
 	KEYB_ROW5
 
- 	PORT_START("KEY3") 
+ 	PORT_START("KEY3")
 	KEYB_EXPERT11_ROW6
 	KEYB_ROW7
 
- 	PORT_START("KEY4") 
+ 	PORT_START("KEY4")
 	KEYB_ROW8
 	KEYB_EXPERT11_ROW9
 
- 	PORT_START("KEY5") 
+ 	PORT_START("KEY5")
 	PORT_BIT (0xffff, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_INCLUDE( msx_dips )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( expert10 )
- 	PORT_START("KEY0") 
+ 	PORT_START("KEY0")
 	KEYB_ROW0
 	KEYB_ROW1
 
- 	PORT_START("KEY1") 
+ 	PORT_START("KEY1")
 	KEYB_EXPERT10_ROW2
 	KEYB_ROW3
 
- 	PORT_START("KEY2") 
+ 	PORT_START("KEY2")
 	KEYB_ROW4
 	KEYB_ROW5
 
- 	PORT_START("KEY3") 
+ 	PORT_START("KEY3")
 	KEYB_EXPERT11_ROW6
 	KEYB_ROW7
 
- 	PORT_START("KEY4") 
+ 	PORT_START("KEY4")
 	KEYB_ROW8
 	KEYB_EXPERT11_ROW9
 
- 	PORT_START("KEY5") 
+ 	PORT_START("KEY5")
 	PORT_BIT (0xffff, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_INCLUDE( msx_dips )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( msx2 )
- 	PORT_START("KEY0") 
+ 	PORT_START("KEY0")
 	KEYB_ROW0
 	KEYB_ROW1
 
- 	PORT_START("KEY1") 
+ 	PORT_START("KEY1")
 	KEYB_ROW2
 	KEYB_ROW3
 
- 	PORT_START("KEY2") 
+ 	PORT_START("KEY2")
 	KEYB_ROW4
 	KEYB_ROW5
 
- 	PORT_START("KEY3") 
+ 	PORT_START("KEY3")
 	KEYB_ROW6
 	KEYB_ROW7
 
- 	PORT_START("KEY4") 
+ 	PORT_START("KEY4")
 	KEYB_ROW8
 	KEYB_ROW9
 
- 	PORT_START("KEY5") 
+ 	PORT_START("KEY5")
 	KEYB_ROW10
 
 	PORT_INCLUDE( msx_dips )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( msx2jp )
- 	PORT_START("KEY0") 
+ 	PORT_START("KEY0")
 	KEYB_JAP_ROW0
 	KEYB_JAP_ROW1
 
- 	PORT_START("KEY1") 
+ 	PORT_START("KEY1")
 	KEYB_JAP_ROW2
 	KEYB_ROW3
 
- 	PORT_START("KEY2") 
+ 	PORT_START("KEY2")
 	KEYB_ROW4
 	KEYB_ROW5
 
- 	PORT_START("KEY3") 
+ 	PORT_START("KEY3")
 	PORT_BIT (0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_LSHIFT)						PORT_CHAR(UCHAR_SHIFT_1)
 	PORT_BIT (0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_LCONTROL)						PORT_CHAR(UCHAR_SHIFT_2)
 	PORT_BIT (0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("GRAPH") PORT_CODE(KEYCODE_PGUP)		PORT_CHAR(UCHAR_MAMEKEY(F6))
@@ -950,30 +953,30 @@ static INPUT_PORTS_START( msx2jp )
 	PORT_BIT (0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F3  F8") PORT_CODE(KEYCODE_F3)		PORT_CHAR(UCHAR_MAMEKEY(F3))
 	KEYB_ROW7
 
- 	PORT_START("KEY4") 
+ 	PORT_START("KEY4")
 	KEYB_ROW8
 	KEYB_ROW9
 
- 	PORT_START("KEY5") 
+ 	PORT_START("KEY5")
 	KEYB_ROW10
 
 	PORT_INCLUDE( msx_dips )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( msx2kr )
- 	PORT_START("KEY0") 
+ 	PORT_START("KEY0")
 	KEYB_JAP_ROW0
 	KEYB_KOR_ROW1
 
- 	PORT_START("KEY1") 
+ 	PORT_START("KEY1")
 	KEYB_JAP_ROW2
 	KEYB_ROW3
 
- 	PORT_START("KEY2") 
+ 	PORT_START("KEY2")
 	KEYB_ROW4
 	KEYB_ROW5
 
- 	PORT_START("KEY3") 
+ 	PORT_START("KEY3")
 	PORT_BIT (0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_LSHIFT)						PORT_CHAR(UCHAR_SHIFT_1)
 	PORT_BIT (0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_LCONTROL)						PORT_CHAR(UCHAR_SHIFT_2)
 	PORT_BIT (0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("GRAPH") PORT_CODE(KEYCODE_PGUP)		PORT_CHAR(UCHAR_MAMEKEY(F6))
@@ -984,11 +987,11 @@ static INPUT_PORTS_START( msx2kr )
 	PORT_BIT (0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F3  F8") PORT_CODE(KEYCODE_F3)		PORT_CHAR(UCHAR_MAMEKEY(F3))
 	KEYB_ROW7
 
- 	PORT_START("KEY4") 
+ 	PORT_START("KEY4")
 	KEYB_ROW8
 	PORT_BIT (0xff00, IP_ACTIVE_LOW, IPT_UNUSED)
 
- 	PORT_START("KEY5") 
+ 	PORT_START("KEY5")
 	PORT_BIT (0xffff, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_INCLUDE( msx_dips )
@@ -1024,20 +1027,32 @@ static const cassette_config msx_cassette_config =
 	CASSETTE_PLAY
 };
 
+static MACHINE_DRIVER_START( msx_cartslot )
+	MDRV_CARTSLOT_ADD("cart1")
+	MDRV_CARTSLOT_EXTENSION_LIST("mx1,rom")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(msx_cart)
+	MDRV_CARTSLOT_UNLOAD(msx_cart)
+
+	MDRV_CARTSLOT_ADD("cart2")
+	MDRV_CARTSLOT_EXTENSION_LIST("mx1,rom")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(msx_cart)
+	MDRV_CARTSLOT_UNLOAD(msx_cart)
+MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( msx )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 3579545)		  /* 3.579545 Mhz */
+	MDRV_CPU_ADD("main", Z80, 3579545)		  /* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 	MDRV_CPU_VBLANK_INT("main", msx_interrupt)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( msx )
 	MDRV_MACHINE_RESET( msx )
 
-	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-	MDRV_DEVICE_CONFIG( msx_ppi8255_interface )
+	MDRV_PPI8255_ADD( "ppi8255", msx_ppi8255_interface )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
@@ -1062,9 +1077,13 @@ static MACHINE_DRIVER_START( msx )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
 
 	MDRV_CASSETTE_ADD( "cassette", msx_cassette_config )
+	
+	MDRV_WD179X_ADD("wd179x", msx_wd17xx_interface )	
+	
+	MDRV_IMPORT_FROM(msx_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -1083,17 +1102,16 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( msx2 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 3579545)		  /* 3.579545 Mhz */
+	MDRV_CPU_ADD("main", Z80, 3579545)		  /* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 	MDRV_CPU_IO_MAP(readport2,writeport2)
 	MDRV_CPU_VBLANK_INT_HACK(msx2_interrupt, 262)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( msx2 )
 	MDRV_MACHINE_RESET( msx2 )
 
-	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
-	MDRV_DEVICE_CONFIG( msx_ppi8255_interface )
+	MDRV_PPI8255_ADD( "ppi8255", msx_ppi8255_interface )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
@@ -1126,9 +1144,17 @@ static MACHINE_DRIVER_START( msx2 )
 	MDRV_NVRAM_HANDLER( msx2 )
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", msx_cassette_config )
+
+	/* real time clock */
+	MDRV_TC8521_ADD("rtc", default_tc8521_interface)
+	
+	MDRV_WD179X_ADD("wd179x", msx_wd17xx_interface )	
+	
+	MDRV_IMPORT_FROM(msx_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -1171,7 +1197,7 @@ ROM_END
 
 MSX_LAYOUT_INIT (ax170)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
-	MSX_LAYOUT_SLOT (1, 0, 1, 2, ROM, 0x8000, 0x8000)	
+	MSX_LAYOUT_SLOT (1, 0, 1, 2, ROM, 0x8000, 0x8000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (3, 2, 0, 4, RAM, 0x10000, 0x0000) 	/* 64KB RAM */
@@ -1278,7 +1304,7 @@ MSX_LAYOUT_INIT (expert10)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */
-	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)	
+	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 MSX_LAYOUT_END
 
 /* MSX - Gradiente Expert 1.1 */
@@ -1360,7 +1386,7 @@ ROM_START (mlf80)
 ROM_END
 
 MSX_LAYOUT_INIT (mlf80)
-	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)	
+	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
@@ -1539,7 +1565,7 @@ MSX_LAYOUT_INIT (piopx7)
 	MSX_LAYOUT_SLOT (0, 0, 2, 2, RAM, 0x8000, 0x8000)   /* 32KB RAM */
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 1, 2, ROM, 0x4000, 0x8000)
-	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)	
+	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 MSX_LAYOUT_END
 
 /* MSX - Sanyo MPC-100 */
@@ -1612,6 +1638,34 @@ MSX_LAYOUT_INIT (hotbi13p)
 	MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM_MM, 0x10000, 0x0000)	/* 64KB Mapper RAM */
 MSX_LAYOUT_END
 
+/* MSX - Sony HB-10P */
+
+ROM_START (hb10p)
+	ROM_REGION (0x10000, "main", 0)
+	ROM_LOAD ("10pbios.rom", 0x0000, 0x8000, CRC(0f488dd8) SHA1(5e7c8eab238712d1e18b0219c0f4d4dae180420d))
+ROM_END
+
+MSX_LAYOUT_INIT (hb10p)
+	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
+	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
+	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
+	MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */
+MSX_LAYOUT_END
+
+/* MSX - Sony HB-20P */
+
+ROM_START (hb20p)
+	ROM_REGION (0x10000, "main", 0)
+	ROM_LOAD ("20pbios.rom", 0x0000, 0x8000, CRC(21af423f) SHA1(365c93d7652c9f727221689bcc348652832a7b7a))
+ROM_END
+
+MSX_LAYOUT_INIT (hb20p)
+	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
+	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
+	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
+	MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */
+MSX_LAYOUT_END
+
 /* MSX - Sony HB-201 */
 
 ROM_START (hb201)
@@ -1670,7 +1724,7 @@ ROM_END
 MSX_LAYOUT_INIT (hb55d)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
 	MSX_LAYOUT_SLOT (0, 0, 2, 1, ROM, 0x4000, 0x8000)
-	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)	
+	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 3, 1, RAM, 0x4000, 0xC000)	/* 16KB RAM */
 	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 MSX_LAYOUT_END
@@ -1687,7 +1741,7 @@ ROM_END
 MSX_LAYOUT_INIT (hb55p)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
 	MSX_LAYOUT_SLOT (0, 0, 2, 1, ROM, 0x4000, 0x8000)
-	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)	
+	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 3, 1, RAM, 0x4000, 0xC000)	/* 16KB RAM */
 	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 MSX_LAYOUT_END
@@ -1791,7 +1845,7 @@ MSX_LAYOUT_INIT (tadpc200)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
-	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)	
+	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 MSX_LAYOUT_END
 
 
@@ -1806,7 +1860,7 @@ MSX_LAYOUT_INIT (tadpc20a)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
-	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)	
+	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 MSX_LAYOUT_END
 
 /* MSX - Toshiba HX-10 */
@@ -1848,9 +1902,10 @@ ROM_END
 
 MSX_LAYOUT_INIT (hx20)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
+	MSX_LAYOUT_SLOT (0, 0, 2, 2, RAM, 0x8000, 0x8000)	/* 32KB RAM */
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
-	MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */	
+	MSX_LAYOUT_SLOT (3, 0, 2, 0, RAM, 0x8000, 0x0000)	/* 32KB RAM */
 	MSX_LAYOUT_SLOT (3, 3, 1, 2, ROM, 0x8000, 0x8000)
 MSX_LAYOUT_END
 
@@ -1867,7 +1922,7 @@ MSX_LAYOUT_INIT (cx5m)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (3, 0, 0, 2, ROM, 0x8000, 0x8000)
-	MSX_LAYOUT_SLOT (3, 0, 2, 2, RAM, 0x8000, 0x8000)	/* 32KB RAM */	
+	MSX_LAYOUT_SLOT (3, 0, 2, 2, RAM, 0x8000, 0x8000)	/* 32KB RAM */
 MSX_LAYOUT_END
 
 /* MSX - Yamaha CX5M-128 */
@@ -1902,7 +1957,7 @@ ROM_END
 MSX_LAYOUT_INIT (cx5m2)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
-	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)	
+	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (3, 0, 1, 1, ROM, 0x4000, 0x8000)
 	MSX_LAYOUT_SLOT (3, 2, 0, 4, RAM_MM, 0x10000, 0x0000)	/* 64KB Mapper RAM */
 	MSX_LAYOUT_SLOT (3, 3, 0, 2, ROM, 0x8000, 0xc000)
@@ -1921,7 +1976,7 @@ MSX_LAYOUT_INIT (yis303)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (3, 0, 0, 3, ROM, 0xC000, 0x0000)	/* Fill FF */
-	MSX_LAYOUT_SLOT (3, 0, 3, 1, RAM, 0x4000, 0xC000)	/* 16KB RAM */	
+	MSX_LAYOUT_SLOT (3, 0, 3, 1, RAM, 0x4000, 0xC000)	/* 16KB RAM */
 MSX_LAYOUT_END
 
 /* MSX - Yamaha YIS503 */
@@ -1937,7 +1992,7 @@ MSX_LAYOUT_INIT (yis503)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (3, 0, 0, 2, ROM, 0xC000, 0x0000)	/* Fill FF */
-	MSX_LAYOUT_SLOT (3, 0, 2, 2, RAM, 0x8000, 0x8000)	/* 32KB RAM */		
+	MSX_LAYOUT_SLOT (3, 0, 2, 2, RAM, 0x8000, 0x8000)	/* 32KB RAM */
 MSX_LAYOUT_END
 
 /* MSX - Yamaha YIS503II */
@@ -1951,7 +2006,43 @@ MSX_LAYOUT_INIT (yis503ii)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
-	MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */	
+	MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */
+MSX_LAYOUT_END
+
+/* MSX - Yamaha YIS503IIR Russian */
+	
+ROM_START (y503iir)
+	ROM_REGION (0xe000, "main",0)
+	ROM_LOAD ("yis503iibios.rom",  0x0000, 0x8000, CRC(225a4f9e) SHA1(5173ac403e26c462f904f85c9ef5e7b1e19253e7))
+	ROM_LOAD ("yis503iirdisk.rom", 0x8000, 0x4000, CRC(9eb7e24d) SHA1(3a481c7b7e4f0406a55952bc5b9f8cf9d699376c))
+	ROM_LOAD ("yis503iirnet.rom",  0xc000, 0x2000, CRC(0731db3f) SHA1(264fbb2de69fdb03f87dc5413428f6aa19511a7f))
+ROM_END
+
+MSX_LAYOUT_INIT (y503iir)
+	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)	
+	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
+	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)	
+	MSX_LAYOUT_SLOT (3, 1, 1, 2, DISK_ROM2, 0x4000, 0x8000) /* National disk */
+	MSX_LAYOUT_SLOT (3, 2, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */
+	MSX_LAYOUT_SLOT (3, 3, 1, 1, ROM, 0x2000, 0xc000)	/* Net */
+MSX_LAYOUT_END
+
+/* MSX - Yamaha YIS503IIR Estonian */
+	
+ROM_START (y503iir2)
+	ROM_REGION (0xe000, "main",0)
+	ROM_LOAD ("yis503ii2bios.rom",  0x0000, 0x8000, CRC(1548cee3) SHA1(42c7fff25b1bd90776ac0aea971241aedce8947d))
+	ROM_LOAD ("yis503iirdisk.rom", 0x8000, 0x4000, CRC(9eb7e24d) SHA1(3a481c7b7e4f0406a55952bc5b9f8cf9d699376c))
+	ROM_LOAD ("yis503iirnet.rom",  0xc000, 0x2000, CRC(0731db3f) SHA1(264fbb2de69fdb03f87dc5413428f6aa19511a7f))
+ROM_END
+
+MSX_LAYOUT_INIT (y503iir2)
+	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)	
+	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
+	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)	
+	MSX_LAYOUT_SLOT (3, 1, 1, 2, DISK_ROM2, 0x4000, 0x8000) /* National disk */
+	MSX_LAYOUT_SLOT (3, 2, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */
+	MSX_LAYOUT_SLOT (3, 3, 1, 1, ROM, 0x2000, 0xc000)	/* Net */
 MSX_LAYOUT_END
 
 /* MSX - Yamaha YIS503M */
@@ -1967,7 +2058,7 @@ MSX_LAYOUT_INIT (yis503m)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (3, 0, 0, 2, ROM, 0x8000, 0x8000)
-	MSX_LAYOUT_SLOT (3, 0, 2, 2, RAM, 0x8000, 0x8000)	/* 32KB RAM */	
+	MSX_LAYOUT_SLOT (3, 0, 2, 2, RAM, 0x8000, 0x8000)	/* 32KB RAM */
 MSX_LAYOUT_END
 
 /* MSX - Yashica YC-64 */
@@ -1981,7 +2072,7 @@ MSX_LAYOUT_INIT (yc64)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
-	MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */	
+	MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */
 MSX_LAYOUT_END
 
 /********************************  MSX 2 **********************************/
@@ -2025,11 +2116,11 @@ MSX_LAYOUT_INIT (ax350)
 	MSX_LAYOUT_SLOT (0, 1, 0, 1, ROM, 0x4000,  0x8000)  /* Ext */
 	MSX_LAYOUT_SLOT (0, 1, 1, 2, ROM, 0x8000,  0x20000)  /* Arab */
 	MSX_LAYOUT_SLOT (0, 2, 1, 2, ROM, 0x8000,  0x28000) /* SWP */
-	MSX_LAYOUT_SLOT (0, 3, 0, 4, ROM, 0x10000, 0x30000)  /* Paint */	
+	MSX_LAYOUT_SLOT (0, 3, 0, 4, ROM, 0x10000, 0x30000)  /* Paint */
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (3, 1, 1, 2, DISK_ROM2, 0x4000, 0x40000) /* Disk */
-	MSX_LAYOUT_SLOT (3, 2, 0, 4, RAM_MM, 0x20000, 0x0000)	/* 128KB Mapper RAM */	
+	MSX_LAYOUT_SLOT (3, 2, 0, 4, RAM_MM, 0x20000, 0x0000)	/* 128KB Mapper RAM */
 	MSX_LAYOUT_RAMIO_SET_BITS (0xf8)
 MSX_LAYOUT_END
 
@@ -2052,11 +2143,11 @@ MSX_LAYOUT_INIT (ax370)
 	MSX_LAYOUT_SLOT (0, 2, 1, 2, ROM, 0x8000,  0x28000) /* SWP */
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
-  MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM_MM, 0x20000, 0x0000)	/* 128KB Mapper RAM */		
+  MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM_MM, 0x20000, 0x0000)	/* 128KB Mapper RAM */
 	MSX_LAYOUT_SLOT (3, 1, 0, 1, ROM, 0x4000,  0x8000)  /* Ext */
 	MSX_LAYOUT_SLOT (3, 1, 1, 2, ROM, 0x8000,  0x20000)  /* Arab */
 	//MSX_LAYOUT_SLOT (3, 2, 1, 2, DISK_ROM, 0x4000, 0x40000) /* TC8566AF Disk controller*/
-	MSX_LAYOUT_SLOT (3, 3, 0, 4, ROM, 0x10000, 0x30000)  /* Paint */			
+	MSX_LAYOUT_SLOT (3, 3, 0, 4, ROM, 0x10000, 0x30000)  /* Paint */
 	MSX_LAYOUT_RAMIO_SET_BITS (0xf8)
 MSX_LAYOUT_END
 
@@ -2168,8 +2259,8 @@ MSX_LAYOUT_INIT (expert20)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (1, 1, 0, 1, ROM, 0x4000, 0x8000) /* EXT */
 	MSX_LAYOUT_SLOT (1, 1, 1, 1, ROM, 0x4000, 0x20000) /* BASIC */
-	MSX_LAYOUT_SLOT (1, 3, 1, 1, DISK_ROM, 0x4000, 0x24000) /* Microsol controller */	
-	MSX_LAYOUT_SLOT (2, 0, 0, 4, RAM_MM, 0x20000, 0x0000)	/* 128KB Mapper RAM */	
+	MSX_LAYOUT_SLOT (1, 3, 1, 1, DISK_ROM, 0x4000, 0x24000) /* Microsol controller */
+	MSX_LAYOUT_SLOT (2, 0, 0, 4, RAM_MM, 0x20000, 0x0000)	/* 128KB Mapper RAM */
 	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 	MSX_LAYOUT_RAMIO_SET_BITS (0x80)
 MSX_LAYOUT_END
@@ -2390,7 +2481,7 @@ ROM_START (fsa1f)
 	ROM_REGION (0x50000, "main",0)
 	ROM_LOAD ("a1fbios.rom", 0x0000, 0x8000, CRC(9b3e7b97) SHA1(0081ea0d25bc5cd8d70b60ad8cfdc7307812c0fd))
 	ROM_LOAD ("a1fext.rom", 0x8000, 0x4000, CRC(43e7a7fc) SHA1(0fbd45ef3dd7bb82d4c31f1947884f411f1ca344))
-	ROM_LOAD ("a1fdisk.rom", 0xc000, 0x4000, CRC(d24cd452) SHA1(141e61cc8e0e51382e508fbd77a34b778a4f8444))
+	ROM_LOAD ("a1fdisk.rom", 0xc000, 0x4000, CRC(e25cacca) SHA1(607cfca605eaf82e3efa33459d6583efb7ecc13b))
 	/* 0x10000 - 0x1ffff reserved for optional fmpac roms from msx2 parent set */
 	ROM_FILL (0x10000, 0x10000, 0)
 	ROM_LOAD ("a1fkdr.rom", 0x20000, 0x8000, CRC(2dbea5ec) SHA1(ea35cc2cad9cfdf56cae224d8ee41579de37f000))
@@ -2417,7 +2508,7 @@ ROM_START (fsa1fm)
 	ROM_REGION (0x180000, "main",0)
 	ROM_LOAD ("a1fmbios.rom", 0x0000, 0x8000, CRC(9b3e7b97) SHA1(0081ea0d25bc5cd8d70b60ad8cfdc7307812c0fd))
 	ROM_LOAD ("a1fmext.rom", 0x8000, 0x4000, CRC(ad295b5d) SHA1(d552319a19814494e3016de4b8f010e8f7b97e02))
-	ROM_LOAD ("a1fmdisk.rom", 0xc000, 0x4000, CRC(d24cd452) SHA1(141e61cc8e0e51382e508fbd77a34b778a4f8444))
+	ROM_LOAD ("a1fmdisk.rom", 0xc000, 0x4000, CRC(e25cacca) SHA1(607cfca605eaf82e3efa33459d6583efb7ecc13b))
 	/* 0x10000 - 0x1ffff reserved for optional fmpac roms from msx2 parent set */
 	ROM_FILL (0x10000, 0x10000, 0)
 	ROM_LOAD ("a1fmkfn.rom", 0x40000, 0x20000, CRC(c61ddc5d) SHA1(5e872d5853698731a0ed22fb72dbcdfd59cd19c3))
@@ -2748,8 +2839,8 @@ MSX_LAYOUT_INIT (hotbit20)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (1, 1, 0, 1, ROM, 0x4000, 0x8000) /* EXT */
 	MSX_LAYOUT_SLOT (1, 1, 1, 1, ROM, 0x4000, 0x20000) /* BASIC */
-	MSX_LAYOUT_SLOT (1, 3, 1, 1, DISK_ROM, 0x4000, 0x24000) /* Microsol controller */	
-	MSX_LAYOUT_SLOT (2, 0, 0, 4, RAM_MM, 0x20000, 0x0000)	/* 128KB Mapper RAM */	
+	MSX_LAYOUT_SLOT (1, 3, 1, 1, DISK_ROM, 0x4000, 0x24000) /* Microsol controller */
+	MSX_LAYOUT_SLOT (2, 0, 0, 4, RAM_MM, 0x20000, 0x0000)	/* 128KB Mapper RAM */
 	MSX_LAYOUT_SLOT (3, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
 	MSX_LAYOUT_RAMIO_SET_BITS (0x80)
 MSX_LAYOUT_END
@@ -3157,9 +3248,10 @@ ROM_END
 
 MSX_LAYOUT_INIT (hx23)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
+	MSX_LAYOUT_SLOT (0, 0, 2, 2, RAM, 0x8000, 0x8000)	/* 32KB RAM	*/
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
 	MSX_LAYOUT_SLOT (2, 0, 0, 4, CARTRIDGE2, 0x0000, 0x0000)
-	MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM_MM, 0x10000, 0x0000)	/* 64KB Mapper RAM */
+	MSX_LAYOUT_SLOT (3, 0, 0, 2, RAM, 0x8000, 0x0000)	/* 32KB RAM */
 	MSX_LAYOUT_SLOT (3, 1, 0, 1, ROM, 0x4000, 0x8000)
 	MSX_LAYOUT_SLOT (3, 3, 0, 4, ROM, 0x10000, 0x20000)
 	MSX_LAYOUT_RAMIO_SET_BITS (0x80)
@@ -3263,7 +3355,7 @@ ROM_START (fsa1fx)
 	ROM_REGION (0x50000, "main",0)
 	ROM_LOAD ("a1fxbios.rom", 0x0000, 0x8000, CRC(19771608) SHA1(e90f80a61d94c617850c415e12ad70ac41e66bb7))
 	ROM_LOAD ("a1fxext.rom", 0x8000, 0x4000, CRC(b8ba44d3) SHA1(fe0254cbfc11405b79e7c86c7769bd6322b04995))
-	ROM_LOAD ("a1fxdisk.rom", 0xc000, 0x4000, CRC(905daa1b) SHA1(bb59c849898d46a23fdbd0cc04ab35088e74a18d))
+	ROM_LOAD ("a1fxdisk.rom", 0xc000, 0x4000, CRC(2bda0184) SHA1(2a0d228afde36ac7c5d3c2aac9c7c664dd071a8c))
 	/* 0x10000 - 0x1ffff reserved for optional fmpac roms from msx2p parent set */
 	ROM_FILL (0x10000, 0x10000, 0)
 	ROM_LOAD ("a1fxkdr.rom", 0x20000, 0x8000, CRC(a068cba9) SHA1(1ef3956f7f918873fb9b031339bba45d1e5e5878))
@@ -3290,7 +3382,7 @@ ROM_START (fsa1wsx)
 	ROM_REGION (0x270000, "main",0)
 	ROM_LOAD ("a1wsbios.rom", 0x0000, 0x8000, CRC(358ec547) SHA1(f4433752d3bf876bfefb363c749d4d2e08a218b6))
 	ROM_LOAD ("a1wsext.rom", 0x8000, 0x4000, CRC(b8ba44d3) SHA1(fe0254cbfc11405b79e7c86c7769bd6322b04995))
-	ROM_LOAD ("a1wsdisk.rom", 0xc000, 0x4000, CRC(17fa392b) SHA1(7ed7c55e0359737ac5e68d38cb6903f9e5d7c2b6))
+	ROM_LOAD ("a1wsdisk.rom", 0xc000, 0x4000, CRC(ac7d92b4) SHA1(b7068e2aab02072852ca249596b7550ac632c4c2))
 	/* 0x10000 - 0x1ffff reserved for optional fmpac roms from msx2p parent set */
 	ROM_FILL (0x10000, 0x10000, 0)
 	ROM_LOAD ("a1wskdr.rom", 0x20000, 0x8000, CRC(b4fc574d) SHA1(dcc3a67732aa01c4f2ee8d1ad886444a4dbafe06))
@@ -3320,7 +3412,7 @@ ROM_START (fsa1wx)
 	ROM_REGION (0x270000, "main",0)
 	ROM_LOAD ("a1wxbios.rom", 0x0000, 0x8000, CRC(19771608) SHA1(e90f80a61d94c617850c415e12ad70ac41e66bb7))
 	ROM_LOAD ("a1wxext.rom", 0x8000, 0x4000, CRC(b8ba44d3) SHA1(fe0254cbfc11405b79e7c86c7769bd6322b04995))
-	ROM_LOAD ("a1wxdisk.rom", 0xc000, 0x4000, CRC(905daa1b) SHA1(bb59c849898d46a23fdbd0cc04ab35088e74a18d))
+	ROM_LOAD ("a1wxdisk.rom", 0xc000, 0x4000, CRC(2bda0184) SHA1(2a0d228afde36ac7c5d3c2aac9c7c664dd071a8c))
 	/* 0x10000 - 0x1ffff reserved for optional fmpac roms from msx2p parent set */
 	ROM_FILL (0x10000, 0x10000, 0)
 	ROM_LOAD ("a1wxkdr.rom", 0x20000, 0x8000, CRC(a068cba9) SHA1(1ef3956f7f918873fb9b031339bba45d1e5e5878))
@@ -3349,7 +3441,7 @@ ROM_START (fsa1wxa)
 	ROM_REGION (0x270000, "main",0)
 	ROM_LOAD ("a1wxbios.rom", 0x0000, 0x8000, CRC(19771608) SHA1(e90f80a61d94c617850c415e12ad70ac41e66bb7))
 	ROM_LOAD ("a1wxext.rom", 0x8000, 0x4000, CRC(b8ba44d3) SHA1(fe0254cbfc11405b79e7c86c7769bd6322b04995))
-	ROM_LOAD ("a1wxdisk.rom", 0xc000, 0x4000, CRC(905daa1b) SHA1(bb59c849898d46a23fdbd0cc04ab35088e74a18d))
+	ROM_LOAD ("a1wxdisk.rom", 0xc000, 0x4000, CRC(2bda0184) SHA1(2a0d228afde36ac7c5d3c2aac9c7c664dd071a8c))
 	/* 0x10000 - 0x1ffff reserved for optional fmpac roms from msx2p parent set */
 	ROM_FILL (0x10000, 0x10000, 0)
 	ROM_LOAD ("a1wxkdr.rom", 0x20000, 0x8000, CRC(a068cba9) SHA1(1ef3956f7f918873fb9b031339bba45d1e5e5878))
@@ -3531,29 +3623,9 @@ static void msx_floppy_getinfo(const mess_device_class *devclass, UINT32 state, 
 	}
 }
 
-static void msx_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = MSX_MAX_CARTS; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(msx_cart); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(msx_cart); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "mx1,rom"); break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
-
 
 static SYSTEM_CONFIG_START(msx)
 	CONFIG_DEVICE(msx_floppy_getinfo)
-	CONFIG_DEVICE(msx_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
 MSX_DRIVER_LIST
@@ -3592,15 +3664,17 @@ MSX_DRIVER_LIST
 	MSX_DRIVER (hotbi13b)
 	MSX_DRIVER (hotbi13p)
 	MSX_DRIVER (hotbit20)
+	MSX_DRIVER (hb10p)
+	MSX_DRIVER (hb20p)
 	MSX_DRIVER (hb201)
 	MSX_DRIVER (hb201p)
-	MSX_DRIVER (hb501p)	
+	MSX_DRIVER (hb501p)
 	MSX_DRIVER (hb55d)
-	MSX_DRIVER (hb55p)	
+	MSX_DRIVER (hb55p)
 	MSX_DRIVER (hb75d)
-	MSX_DRIVER (hb75p)		
+	MSX_DRIVER (hb75p)
 	MSX_DRIVER (svi728)
-	MSX_DRIVER (svi738)	
+	MSX_DRIVER (svi738)
 	MSX_DRIVER (svi738sw)
 	MSX_DRIVER (tadpc200)
 	MSX_DRIVER (tadpc20a)
@@ -3613,11 +3687,13 @@ MSX_DRIVER_LIST
 	MSX_DRIVER (yis303)
 	MSX_DRIVER (yis503)
 	MSX_DRIVER (yis503ii)
+	MSX_DRIVER (y503iir)
+	MSX_DRIVER (y503iir2)
 	MSX_DRIVER (yis503m)
 	MSX_DRIVER (yc64)
-	
-	
-	
+
+
+
 	MSX_DRIVER (msx2)
 	MSX_DRIVER (ax350)
 	MSX_DRIVER (ax370)
@@ -3718,7 +3794,9 @@ COMP(1985, hotbit11, msx,	0,	msx,	  hotbit,   msx,     msx, "Sharp / Epcom",	 "H
 COMP(1985, hotbit12, msx,	0,	msx,	  hotbit,   msx,     msx, "Sharp / Epcom",	 "HB-8000 Hotbit 1.2" , 0)
 COMP(1985, hotbi13b, msx,	0,	msx,	  hotbit,   msx,     msx, "Sharp / Epcom",	 "HB-8000 Hotbit 1.3b" , 0)
 COMP(1985, hotbi13p, msx,	0,	msx,	  hotbit,   msx,     msx, "Sharp / Epcom",	 "HB-8000 Hotbit 1.3p" , 0)
-COMP(1985, hb201,    msx,	0,      msx,      msxjp,    msx,     msx, "Sony", "HB-201 (Japan)" , 0)
+COMP(1985, hb10p,    msx,	0,  msx_pal,  msx,    	msx,     msx, "Sony", "HB-10P" , 0)
+COMP(1985, hb20p,    msx,	0,  msx_pal,  msx,    	msx,     msx, "Sony", "HB-20P (Spanish)" , 0)
+COMP(1985, hb201,    msx,	0,  msx,      msxjp,    msx,     msx, "Sony", "HB-201 (Japan)" , 0)
 COMP(1985, hb201p,   msx,	0,	msx_pal,  msx,      msx,     msx, "Sony", "HB-201P" , 0)
 COMP(1984, hb501p,   msx,	0,	msx_pal,  msx,      msx,     msx, "Sony", "HB-501P" , 0)
 COMP(1983, hb55d,    msx,	0,	msx_pal,  msx,      msx,     msx, "Sony", "HB-55D (Germany)" , 0)
@@ -3739,71 +3817,73 @@ COMP(1984, cx5m2,  	msx,	0,	msx_pal,	  msx,      msx,     msx, "Yamaha",	 "CX5MI
 COMP(1984, yis303,  msx,	0,	msx_pal,	  msx,      msx,     msx, "Yamaha",	 "YIS303" , 0)
 COMP(1984, yis503, 	msx,	0,	msx_pal,	  msx,      msx,     msx, "Yamaha",	 "YIS503" , 0)
 COMP(1984, yis503ii,msx,	0,	msx_pal,	  msx,      msx,     msx, "Yamaha",	 "YIS503II" , 0)
+COMP(1986, y503iir, msx,	0,	msx_pal,	  msx,      msx,     msx, "Yamaha",	 "YIS503IIR (Russian)" , 0)
+COMP(1986, y503iir2, msx,	0,	msx_pal,	  msx,      msx,     msx, "Yamaha",	 "YIS503IIR (Estonian)" , 0)
 COMP(1984, yis503m, msx,	0,	msx_pal,	  msx,      msx,     msx, "Yamaha",	 "YIS503M" , GAME_NOT_WORKING)
 COMP(1984, yc64,  	msx,	0,	msx_pal,	  msx,      msx,     msx, "Yashica", "YC-64" , 0)
 
-COMP(1985, msx2,     0,		msx,	msx2_pal, msx2,	    msx2,    msx, "ASCII & Microsoft", "MSX2", 0)
-COMP(1986, ax350,    msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Al Alamiah", "AX-350", 0)
-COMP(1986, ax370,    msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Al Alamiah", "AX-370", 0)
-COMP(1986, expert20, msx2,	0,	msx2_pal, msx2, 		msx2,    msx, "Gradiente", "Expert 2.0 (Brazil)" , GAME_NOT_WORKING)
-COMP(1986, nms8220,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8220 (12-jun-1986)", 0)
-COMP(1986, nms8220a, msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8220 (13-aug-1986)", 0)
-COMP(1986, vg8230,   msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "VG-8230", 0)
-COMP(1986, vg8235,   msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "VG-8235", 0)
-COMP(1986, vg8235f,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "VG-8235F", 0)
-COMP(1986, vg8240,   msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "VG-8240", 0)
-COMP(1986, nms8245,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8245", 0)
-COMP(1986, nms8245f, msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8245F", 0)
-COMP(1986, nms8250,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8250", 0)
-COMP(1986, nms8255,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8255", 0)
-COMP(1986, nms8280,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8280", 0)
-COMP(1986, nms8280g, msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8280G", 0)
-COMP(1985, hbf9p,    msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F9P" , 0)
-COMP(1985, hbf9s,    msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F9S" , 0)
-COMP(1985, hbf500p,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F500P", 0)
-COMP(1985, hbf700d,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F700D (Germany)" , 0)
-COMP(1985, hbf700f,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F700F" , 0)
-COMP(1985, hbf700p,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F700P" , 0)
-COMP(1985, hbf700s,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F700S (Spain)", 0)
-COMP(1986, hbg900ap, msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-G900AP", 0 )
-COMP(1986, hbg900p,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-G900P", 0 )
-COMP(1986, hotbit20, msx2,	0,	msx2_pal, msx2,   	msx2,    msx, "Sharp / Epcom",	 "HB-8000 Hotbit 2.0" , GAME_NOT_WORKING)
-COMP(1986, tpc310,   msx2,	0,  msx2_pal, msx2,     msx2,    msx, "Talent", "TPC-310", 0)
-COMP(1986, hx23,     msx2,	0,  msx2_pal, msx2,     msx2,    msx, "Toshiba", "HX-23", 0)
-COMP(1986, hx23f,    msx2,	0,  msx2_pal, msx2,     msx2,    msx, "Toshiba", "HX-23F", 0)
-COMP(1986, cx7m,     msx2,	0,	msx2_pal,	msx2,     msx2,     msx, "Yamaha",	 "CX7M" , GAME_NOT_WORKING)
-COMP(1986, cx7m128,  msx2,	0,	msx2_pal,	msx2,     msx2,     msx, "Yamaha",	 "CX7M-128" , GAME_NOT_WORKING)
-COMP(1985, fs5500,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "National / Matsushita", "FS-5500F1/F2 (Japan)", 0 )
-COMP(1986, fs4500,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "National / Matsushita", "FS-4500 (Japan)", 0 )
-COMP(1986, fs4700,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "National / Matsushita", "FS-4700 (Japan)", 0 )
-COMP(1986, fs5000,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "National / Matsushita", "FS-5000F2 (Japan)", 0 )
-COMP(1986, fs4600,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "National / Matsushita", "FS-4600 (Japan)", 0 )
-COMP(1986, fsa1,     msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1 / 1st released version (Japan)", 0)
-COMP(1986, fsa1a,    msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1 / 2nd released version (Japan)", 0)
-COMP(1987, fsa1mk2,  msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1MK2 (Japan)", 0)
-COMP(1987, fsa1f,    msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1F (Japan)", 0 )
-COMP(1987, fsa1fm,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1FM (Japan)", 0 )
-COMP(1986, hbf500,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F500 (Japan)", 0)
-COMP(1986, hbf900,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F900 / 1st released version (Japan)", 0)
-COMP(1986, hbf900a,  msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F900 / 2nd released version (Japan)", 0)
-COMP(1986, hbf1,     msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1 (Japan)", GAME_NOT_WORKING )
-COMP(1987, hbf12,    msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1II (Japan)", GAME_NOT_WORKING )
-COMP(1987, hbf1xd,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1XD (Japan)", 0)
-COMP(1988, hbf1xdm2, msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1XDMK2 (Japan)", 0)
-COMP(1988, phc23,    msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sanyo", "WAVY PHC-23 (Japan)", 0)
+COMP(1985, msx2,     0,		msx,	msx2_pal, msx2,	    msx,    msx, "ASCII & Microsoft", "MSX2", 0)
+COMP(1986, ax350,    msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Al Alamiah", "AX-350", 0)
+COMP(1986, ax370,    msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Al Alamiah", "AX-370", 0)
+COMP(1986, expert20, msx2,	0,	msx2_pal, msx2, 		msx,    msx, "Gradiente", "Expert 2.0 (Brazil)" , GAME_NOT_WORKING)
+COMP(1986, nms8220,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "NMS-8220 (12-jun-1986)", 0)
+COMP(1986, nms8220a, msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "NMS-8220 (13-aug-1986)", 0)
+COMP(1986, vg8230,   msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "VG-8230", 0)
+COMP(1986, vg8235,   msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "VG-8235", 0)
+COMP(1986, vg8235f,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "VG-8235F", 0)
+COMP(1986, vg8240,   msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "VG-8240", 0)
+COMP(1986, nms8245,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "NMS-8245", 0)
+COMP(1986, nms8245f, msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "NMS-8245F", 0)
+COMP(1986, nms8250,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "NMS-8250", 0)
+COMP(1986, nms8255,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "NMS-8255", 0)
+COMP(1986, nms8280,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "NMS-8280", 0)
+COMP(1986, nms8280g, msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Philips", "NMS-8280G", 0)
+COMP(1985, hbf9p,    msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Sony", "HB-F9P" , 0)
+COMP(1985, hbf9s,    msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Sony", "HB-F9S" , 0)
+COMP(1985, hbf500p,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Sony", "HB-F500P", 0)
+COMP(1985, hbf700d,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Sony", "HB-F700D (Germany)" , 0)
+COMP(1985, hbf700f,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Sony", "HB-F700F" , 0)
+COMP(1985, hbf700p,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Sony", "HB-F700P" , 0)
+COMP(1985, hbf700s,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Sony", "HB-F700S (Spain)", 0)
+COMP(1986, hbg900ap, msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Sony", "HB-G900AP", 0 )
+COMP(1986, hbg900p,  msx2,	0,	msx2_pal, msx2,	    msx,    msx, "Sony", "HB-G900P", 0 )
+COMP(1986, hotbit20, msx2,	0,	msx2_pal, msx2,   	msx,    msx, "Sharp / Epcom",	 "HB-8000 Hotbit 2.0" , GAME_NOT_WORKING)
+COMP(1986, tpc310,   msx2,	0,  msx2_pal, msx2,     msx,    msx, "Talent", "TPC-310", 0)
+COMP(1986, hx23,     msx2,	0,  msx2_pal, msx2,     msx,    msx, "Toshiba", "HX-23", 0)
+COMP(1986, hx23f,    msx2,	0,  msx2_pal, msx2,     msx,    msx, "Toshiba", "HX-23F", 0)
+COMP(1986, cx7m,     msx2,	0,	msx2_pal,	msx2,     msx,     msx, "Yamaha",	 "CX7M" , GAME_NOT_WORKING)
+COMP(1986, cx7m128,  msx2,	0,	msx2_pal,	msx2,     msx,     msx, "Yamaha",	 "CX7M-128" , GAME_NOT_WORKING)
+COMP(1985, fs5500,   msx2,	0,      msx2,     msx2jp,   msx,    msx, "National / Matsushita", "FS-5500F1/F2 (Japan)", 0 )
+COMP(1986, fs4500,   msx2,	0,      msx2,     msx2jp,   msx,    msx, "National / Matsushita", "FS-4500 (Japan)", 0 )
+COMP(1986, fs4700,   msx2,	0,      msx2,     msx2jp,   msx,    msx, "National / Matsushita", "FS-4700 (Japan)", 0 )
+COMP(1986, fs5000,   msx2,	0,      msx2,     msx2jp,   msx,    msx, "National / Matsushita", "FS-5000F2 (Japan)", 0 )
+COMP(1986, fs4600,   msx2,	0,      msx2,     msx2jp,   msx,    msx, "National / Matsushita", "FS-4600 (Japan)", 0 )
+COMP(1986, fsa1,     msx2,	0,      msx2,     msx2jp,   msx,    msx, "Panasonic / Matsushita", "FS-A1 / 1st released version (Japan)", 0)
+COMP(1986, fsa1a,    msx2,	0,      msx2,     msx2jp,   msx,    msx, "Panasonic / Matsushita", "FS-A1 / 2nd released version (Japan)", 0)
+COMP(1987, fsa1mk2,  msx2,	0,      msx2,     msx2jp,   msx,    msx, "Panasonic / Matsushita", "FS-A1MK2 (Japan)", 0)
+COMP(1987, fsa1f,    msx2,	0,      msx2,     msx2jp,   msx,    msx, "Panasonic / Matsushita", "FS-A1F (Japan)", 0 )
+COMP(1987, fsa1fm,   msx2,	0,      msx2,     msx2jp,   msx,    msx, "Panasonic / Matsushita", "FS-A1FM (Japan)", 0 )
+COMP(1986, hbf500,   msx2,	0,      msx2,     msx2jp,   msx,    msx, "Sony", "HB-F500 (Japan)", 0)
+COMP(1986, hbf900,   msx2,	0,      msx2,     msx2jp,   msx,    msx, "Sony", "HB-F900 / 1st released version (Japan)", 0)
+COMP(1986, hbf900a,  msx2,	0,      msx2,     msx2jp,   msx,    msx, "Sony", "HB-F900 / 2nd released version (Japan)", 0)
+COMP(1986, hbf1,     msx2,	0,      msx2,     msx2jp,   msx,    msx, "Sony", "HB-F1 (Japan)", GAME_NOT_WORKING )
+COMP(1987, hbf12,    msx2,	0,      msx2,     msx2jp,   msx,    msx, "Sony", "HB-F1II (Japan)", GAME_NOT_WORKING )
+COMP(1987, hbf1xd,   msx2,	0,      msx2,     msx2jp,   msx,    msx, "Sony", "HB-F1XD (Japan)", 0)
+COMP(1988, hbf1xdm2, msx2,	0,      msx2,     msx2jp,   msx,    msx, "Sony", "HB-F1XDMK2 (Japan)", 0)
+COMP(1988, phc23,    msx2,	0,      msx2,     msx2jp,   msx,    msx, "Sanyo", "WAVY PHC-23 (Japan)", 0)
 
-COMP(1986, cpc300,   msx2,	0,	msx2,	  msx2kr,   msx2,    msx, "Daewoo", "IQ-2000 CPC-300 (Korea)", 0)
-COMP(1986, cpc300e,  msx2,	0,	msx2,	  msx2kr,   msx2,    msx, "Daewoo", "IQ-2000 CPC-300E (Korea)", 0)
-COMP(1986, cpc400,   msx2,	0,	msx2,	  msx2kr,   msx2,    msx, "Daewoo", "X-II CPC-400 (Korea)", 0 )
-COMP(1986, cpc400s,  msx2,	0,	msx2,	  msx2kr,   msx2,    msx, "Daewoo", "X-II CPC-400S (Korea)", 0 )
-COMP(1988, msx2p,    0,		msx,	msx2,	  msx2jp,   msx2,    msx, "ASCII & Microsoft", "MSX2+", 0)
-COMP(1988, fsa1fx,   msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1FX (Japan)", 0 )
-COMP(1988, fsa1wx,   msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1WX / 1st released version (Japan)", 0 )
-COMP(1988, fsa1wxa,  msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1WX / 2nd released version (Japan)", 0 )
-COMP(1989, fsa1wsx,  msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1WSX (Japan)", 0 )
-COMP(1988, hbf1xdj,  msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1XDJ (Japan)", 0 )
-COMP(1989, hbf1xv,   msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1XV (Japan)", 0 )
-COMP(1988, phc70fd,  msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Sanyo", "WAVY PHC-70FD (Japan)", 0 )
-COMP(1988, phc70fd2, msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Sanyo", "WAVY PHC-70FD2 (Japan)", 0 )
-COMP(1989, phc35j,   msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Sanyo", "WAVY PHC-35J (Japan)", 0)
+COMP(1986, cpc300,   msx2,	0,	msx2,	  msx2kr,   msx,    msx, "Daewoo", "IQ-2000 CPC-300 (Korea)", 0)
+COMP(1986, cpc300e,  msx2,	0,	msx2,	  msx2kr,   msx,    msx, "Daewoo", "IQ-2000 CPC-300E (Korea)", 0)
+COMP(1986, cpc400,   msx2,	0,	msx2,	  msx2kr,   msx,    msx, "Daewoo", "X-II CPC-400 (Korea)", 0 )
+COMP(1986, cpc400s,  msx2,	0,	msx2,	  msx2kr,   msx,    msx, "Daewoo", "X-II CPC-400S (Korea)", 0 )
+COMP(1988, msx2p,    0,		msx,	msx2,	  msx2jp,   msx,    msx, "ASCII & Microsoft", "MSX2+", 0)
+COMP(1988, fsa1fx,   msx2p,	0,      msx2,     msx2jp,   msx,    msx, "Panasonic / Matsushita", "FS-A1FX (Japan)", 0 )
+COMP(1988, fsa1wx,   msx2p,	0,      msx2,     msx2jp,   msx,    msx, "Panasonic / Matsushita", "FS-A1WX / 1st released version (Japan)", 0 )
+COMP(1988, fsa1wxa,  msx2p,	0,      msx2,     msx2jp,   msx,    msx, "Panasonic / Matsushita", "FS-A1WX / 2nd released version (Japan)", 0 )
+COMP(1989, fsa1wsx,  msx2p,	0,      msx2,     msx2jp,   msx,    msx, "Panasonic / Matsushita", "FS-A1WSX (Japan)", 0 )
+COMP(1988, hbf1xdj,  msx2p,	0,      msx2,     msx2jp,   msx,    msx, "Sony", "HB-F1XDJ (Japan)", 0 )
+COMP(1989, hbf1xv,   msx2p,	0,      msx2,     msx2jp,   msx,    msx, "Sony", "HB-F1XV (Japan)", 0 )
+COMP(1988, phc70fd,  msx2p,	0,      msx2,     msx2jp,   msx,    msx, "Sanyo", "WAVY PHC-70FD (Japan)", 0 )
+COMP(1988, phc70fd2, msx2p,	0,      msx2,     msx2jp,   msx,    msx, "Sanyo", "WAVY PHC-70FD2 (Japan)", 0 )
+COMP(1989, phc35j,   msx2p,	0,      msx2,     msx2jp,   msx,    msx, "Sanyo", "WAVY PHC-35J (Japan)", 0)
 

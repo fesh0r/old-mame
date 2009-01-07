@@ -27,7 +27,6 @@
 #include "machine/6526cia.h"
 #include "video/vic6567.h"
 #include "video/vdc8563.h"
-#include "deprecat.h"
 
 #include "includes/cbm.h"
 #include "includes/cbmserb.h"
@@ -42,14 +41,14 @@
 
 #define VERBOSE_LEVEL 0
 #define DBG_LOG(N,M,A) \
-	{ \
+	do { \
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
 			logerror A; \
 		} \
-	}
+	} while (0)
 
 unsigned char c65_keyline = { 0xff };
 UINT8 c65_6511_port=0xff;
@@ -110,26 +109,27 @@ static int is_c128(running_machine *machine)
 static void c64_nmi(running_machine *machine)
 {
 	static int nmilevel = 0;
-	int cia1irq = cia_get_irq(1);
+	const device_config *cia_1 = device_list_find_by_tag(machine->config->devicelist, CIA6526R1, "cia_1");
+	int cia1irq = cia_get_irq(cia_1);
 
 	if (nmilevel != (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq)	/* KEY_RESTORE */
 	{
 		if (is_c128(machine))
 		{
-			if (cpu_getactivecpu() == 0)
+			if (1) // this was never valid, there is no active CPU during a timer firing!  cpu_getactivecpu() == 0)
 			{
 				/* z80 */
-				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
+				cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
 			}
 			else
 			{
-				cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
+				cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
 			}
 		}
 		
 		else
 		{
-			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
+			cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
 		}
 		
 		nmilevel = (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq;
@@ -153,7 +153,7 @@ static void c64_nmi(running_machine *machine)
  * flag cassette read input, serial request in
  * irq to irq connected
  */
-static UINT8 c64_cia0_port_a_r (void)
+static UINT8 c64_cia0_port_a_r (const device_config *device)
 {
 	UINT8 value = 0xff;
 	UINT8 cia0portb = cia_get_output_b(0);
@@ -270,7 +270,7 @@ static UINT8 c64_cia0_port_a_r (void)
 		value &= t;
 	}
 
-	if ( input_port_read(Machine, "CTRLSEL") & 0x80 )
+	if ( input_port_read(device->machine, "CTRLSEL") & 0x80 )
 		value &= c64_keyline[8];
 	else
 		value &= c64_keyline[9];
@@ -278,10 +278,10 @@ static UINT8 c64_cia0_port_a_r (void)
 	return value;
 }
 
-static UINT8 c64_cia0_port_b_r (void)
+static UINT8 c64_cia0_port_b_r (const device_config *device)
 {
     UINT8 value = 0xff;
-	UINT8 cia0porta = cia_get_output_a(0);
+	UINT8 cia0porta = cia_get_output_a(device_list_find_by_tag(device->machine->config->devicelist, CIA6526R1, "cia_0"));
 
     if (!(cia0porta & 0x80)) value &= c64_keyline[7];
     if (!(cia0porta & 0x40)) value &= c64_keyline[6];
@@ -292,12 +292,12 @@ static UINT8 c64_cia0_port_b_r (void)
     if (!(cia0porta & 0x02)) value &= c64_keyline[1];
     if (!(cia0porta & 0x01)) value &= c64_keyline[0];
 
-	if ( input_port_read(Machine, "CTRLSEL") & 0x80 )
+	if ( input_port_read(device->machine, "CTRLSEL") & 0x80 )
 		value &= c64_keyline[9];
     else 
 		value &= c64_keyline[8];
 
-    if (is_c128(Machine))
+    if (is_c128(device->machine))
     {
 		if (!vic2e_k0_r ())
 			value &= c128_keyline[0];
@@ -306,7 +306,7 @@ static UINT8 c64_cia0_port_b_r (void)
 		if (!vic2e_k2_r ())
 			value &= c128_keyline[2];
     }
-    if (is_c65(Machine))
+    if (is_c65(device->machine))
 	{
 		if (!(c65_6511_port & 0x02))
 			value &= c65_keyline;
@@ -315,7 +315,7 @@ static UINT8 c64_cia0_port_b_r (void)
     return value;
 }
 
-static void c64_cia0_port_b_w (UINT8 data)
+static void c64_cia0_port_b_w (const device_config *device, UINT8 data)
 {
     vic2_lightpen_write (data & 0x10);
 }
@@ -329,34 +329,35 @@ static void c64_irq (running_machine *machine, int level)
 		DBG_LOG (3, "mos6510", ("irq %s\n", level ? "start" : "end"));
 		if (is_c128(machine))
 		{
-			if (0 && (cpu_getactivecpu() == 0))
+			if (0) // && (cpu_getactivecpu() == 0))
 			{
-				cpunum_set_input_line(machine, 0, 0, level);
+				cpu_set_input_line(machine->cpu[0], 0, level);
 			}
 			else
 			{
-				cpunum_set_input_line(machine, 1, M6510_IRQ_LINE, level);
+				cpu_set_input_line(machine->cpu[1], M6510_IRQ_LINE, level);
 			}
 		}
 		else
 		{
-			cpunum_set_input_line(machine, 0, M6510_IRQ_LINE, level);
+			cpu_set_input_line(machine->cpu[0], M6510_IRQ_LINE, level);
 		}
 		old_level = level;
 	}
 }
 
-static void c64_cia0_interrupt (running_machine *machine, int level)
+static void c64_cia0_interrupt (const device_config *device, int level)
 {
-	c64_irq (machine, level || vicirq);
+	c64_irq (device->machine, level || vicirq);
 }
 
-void c64_vic_interrupt (int level)
+void c64_vic_interrupt (running_machine *machine, int level)
 {
+	const device_config *cia_0 = device_list_find_by_tag(machine->config->devicelist, CIA6526R1, "cia_0");
 #if 1
 	if (level != vicirq)
 	{
-		c64_irq (Machine, level || cia_get_irq(0));
+		c64_irq (machine, level || cia_get_irq(cia_0));
 		vicirq = level;
 	}
 #endif
@@ -385,43 +386,42 @@ void c64_vic_interrupt (int level)
  * flag restore key or rs232 received data input
  * irq to nmi connected ?
  */
-static UINT8 c64_cia1_port_a_r (void)
+static UINT8 c64_cia1_port_a_r (const device_config *device)
 {
 	UINT8 value = 0xff;
 
-	if (!serial_clock || !cbm_serial_clock_read ())
+	if (!serial_clock || !cbm_serial_clock_read (device->machine))
 		value &= ~0x40;
 
-	if (!serial_data || !cbm_serial_data_read ())
+	if (!serial_data || !cbm_serial_data_read (device->machine))
 		value &= ~0x80;
 
 	return value;
 }
 
-static void c64_cia1_port_a_w (UINT8 data)
+static void c64_cia1_port_a_w (const device_config *device, UINT8 data)
 {
 	static const int helper[4] = {0xc000, 0x8000, 0x4000, 0x0000};
 
-	cbm_serial_clock_write (serial_clock = !(data & 0x10));
-	cbm_serial_data_write (serial_data = !(data & 0x20));
-	cbm_serial_atn_write (serial_atn = !(data & 0x08));
+	cbm_serial_clock_write (device->machine, serial_clock = !(data & 0x10));
+	cbm_serial_data_write (device->machine, serial_data = !(data & 0x20));
+	cbm_serial_atn_write (device->machine, serial_atn = !(data & 0x08));
 	c64_vicaddr = c64_memory + helper[data & 0x03];
-	if (is_c128(Machine))
+	if (is_c128(device->machine))
 	{
 		c128_vicaddr = c64_memory + helper[data & 0x03] + c128_va1617;
 	}
 }
 
-static void c64_cia1_interrupt (running_machine *machine, int level)
+static void c64_cia1_interrupt (const device_config *device, int level)
 {
-	c64_nmi(machine);
+	c64_nmi(device->machine);
 }
 
-const cia6526_interface c64_cia0 =
+const cia6526_interface c64_ntsc_cia0 =
 {
-	CIA6526,
 	c64_cia0_interrupt,
-	0.0, 60,
+	60,
 
 	{
 		{ c64_cia0_port_a_r, NULL },
@@ -429,11 +429,21 @@ const cia6526_interface c64_cia0 =
 	}
 };
 
-const cia6526_interface c64_cia1 =
+const cia6526_interface c64_pal_cia0 =
 {
-	CIA6526,
+	c64_cia0_interrupt,
+	50,
+
+	{
+		{ c64_cia0_port_a_r, NULL },
+		{ c64_cia0_port_b_r, c64_cia0_port_b_w }
+	}
+};
+
+const cia6526_interface c64_ntsc_cia1 =
+{
 	c64_cia1_interrupt,
-	0.0, 60,
+	60,
 
 	{
 		{ c64_cia1_port_a_r, c64_cia1_port_a_w },
@@ -441,25 +451,38 @@ const cia6526_interface c64_cia1 =
 	}
 };
 
+const cia6526_interface c64_pal_cia1 =
+{
+	c64_cia1_interrupt,
+	50,
+
+	{
+		{ c64_cia1_port_a_r, c64_cia1_port_a_w },
+		{ 0, 0 }
+	}
+};
 
 static UINT8 *c64_io_ram_w_ptr;
 static UINT8 *c64_io_ram_r_ptr;
 
 WRITE8_HANDLER( c64_write_io )
 {
+	running_machine *machine = space->machine;
+	const device_config *cia_0 = device_list_find_by_tag(space->machine->config->devicelist, CIA6526R1, "cia_0");
+
 	c64_io_mirror[ offset ] = data;
 	if (offset < 0x400) {
-		vic2_port_w (machine, offset & 0x3ff, data);
+		vic2_port_w (space, offset & 0x3ff, data);
 	} else if (offset < 0x800) {
-		sid6581_0_port_w (machine, offset & 0x3ff, data);
+		sid6581_0_port_w (space, offset & 0x3ff, data);
 	} else if (offset < 0xc00)
 		c64_colorram[offset & 0x3ff] = data | 0xf0;
 	else if (offset < 0xd00)
-		cia_0_w(machine, offset, data);
+		cia_w(cia_0, offset, data);
 	else if (offset < 0xe00)
 	{
 		if (c64_cia1_on)
-			cia_1_w(machine, offset, data);
+			cia_w(cia_0, offset, data);
 		else
 			DBG_LOG (1, "io write", ("%.3x %.2x\n", offset, data));
 	}
@@ -479,7 +502,7 @@ WRITE8_HANDLER(c64_ioarea_w)
 {
 	if (c64_io_enabled) 
 	{
-		c64_write_io(machine, offset, data);
+		c64_write_io(space, offset, data);
 	} 
 	else 
 	{
@@ -489,32 +512,36 @@ WRITE8_HANDLER(c64_ioarea_w)
 
 READ8_HANDLER( c64_read_io )
 {
+	running_machine *machine = space->machine;
+	const device_config *cia_0 = device_list_find_by_tag(space->machine->config->devicelist, CIA6526R1, "cia_0");
+	const device_config *cia_1 = device_list_find_by_tag(space->machine->config->devicelist, CIA6526R1, "cia_1");
+
 	if (offset < 0x400)
-		return vic2_port_r (machine, offset & 0x3ff);
+		return vic2_port_r (space, offset & 0x3ff);
 
 	else if (offset < 0x800)
-		return sid6581_0_port_r (machine, offset & 0x3ff);
+		return sid6581_0_port_r (space, offset & 0x3ff);
 
 	else if (offset < 0xc00)
 		return c64_colorram[offset & 0x3ff];
 
 	else if (offset == 0xc00)
 		{
-			cia_set_port_mask_value(0, 0, input_port_read(machine, "CTRLSEL") & 0x80 ? c64_keyline[8] : c64_keyline[9] );
-			return cia_0_r(machine, offset);
+			cia_set_port_mask_value(cia_0, 0, input_port_read(space->machine, "CTRLSEL") & 0x80 ? c64_keyline[8] : c64_keyline[9] );
+			return cia_r(cia_0, offset);
 		}
 
 	else if (offset == 0xc01)
 		{
-			cia_set_port_mask_value(0, 1, input_port_read(machine, "CTRLSEL") & 0x80 ? c64_keyline[9] : c64_keyline[8] );
-			return cia_0_r(machine, offset);
+			cia_set_port_mask_value(cia_0, 1, input_port_read(space->machine, "CTRLSEL") & 0x80 ? c64_keyline[9] : c64_keyline[8] );
+			return cia_r(cia_0, offset);
 		}
 
 	else if (offset < 0xd00)
-		return cia_0_r(machine, offset);
+		return cia_r(cia_0, offset);
 
 	else if (c64_cia1_on && (offset < 0xe00))
-		return cia_1_r(machine, offset);
+		return cia_r(cia_1, offset);
 
 	DBG_LOG (1, "io read", ("%.3x\n", offset));
 
@@ -523,7 +550,7 @@ READ8_HANDLER( c64_read_io )
 
 READ8_HANDLER(c64_ioarea_r)
 {
-	return c64_io_enabled ? c64_read_io(machine, offset) : c64_io_ram_r_ptr[offset];
+	return c64_io_enabled ? c64_read_io(space, offset) : c64_io_ram_r_ptr[offset];
 }
 
 
@@ -645,7 +672,7 @@ static void c64_bankswitch(running_machine *machine, int reset)
 	static int old = -1, exrom, game;
 	int loram, hiram, charen;
 	int ultimax_mode = 0;
-	int data = (UINT8) cpunum_get_info_int(0, CPUINFO_INT_M6510_PORT) & 0x07;
+	int data = (UINT8) device_get_info_int(machine->cpu[0], CPUINFO_INT_M6510_PORT) & 0x07;
 
 	/* If nothing has changed or reset = 0, don't do anything */
 	if ((data == old) && (exrom == c64_exrom) && (game == c64_game) && !reset) 
@@ -666,35 +693,35 @@ static void c64_bankswitch(running_machine *machine, int reset)
 	{
 			c64_io_enabled = 1;		// charen has no effect in ultimax_mode
 
-			memory_set_bankptr (1, roml);
-			memory_set_bankptr (2, c64_memory + 0x8000);
-			memory_set_bankptr (3, c64_memory + 0xa000);
-			memory_set_bankptr (4, romh);
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, SMH_NOP);
+			memory_set_bankptr (machine, 1, roml);
+			memory_set_bankptr (machine, 2, c64_memory + 0x8000);
+			memory_set_bankptr (machine, 3, c64_memory + 0xa000);
+			memory_set_bankptr (machine, 4, romh);
+			memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0, SMH_NOP);
 	}
 	else
 	{
 		/* 0x8000-0x9000 */
 		if (loram && hiram && !c64_exrom)
 		{
-			memory_set_bankptr (1, roml);
-			memory_set_bankptr (2, c64_memory + 0x8000);
+			memory_set_bankptr (machine, 1, roml);
+			memory_set_bankptr (machine, 2, c64_memory + 0x8000);
 		}
 		else
 		{
-			memory_set_bankptr (1, c64_memory + 0x8000);
-			memory_set_bankptr (2, c64_memory + 0x8000);
+			memory_set_bankptr (machine, 1, c64_memory + 0x8000);
+			memory_set_bankptr (machine, 2, c64_memory + 0x8000);
 		}
 
 		/* 0xa000 */
 		if (hiram && !c64_game && !c64_exrom)
-			memory_set_bankptr (3, romh);
+			memory_set_bankptr (machine, 3, romh);
 
 		else if (loram && hiram && c64_game)
-			memory_set_bankptr (3, c64_basic);
+			memory_set_bankptr (machine, 3, c64_basic);
 
 		else
-			memory_set_bankptr (3, c64_memory + 0xa000);
+			memory_set_bankptr (machine, 3, c64_memory + 0xa000);
 
 		/* 0xd000 */
 		// RAM
@@ -724,8 +751,8 @@ static void c64_bankswitch(running_machine *machine, int reset)
 		}
 
 		/* 0xe000-0xf000 */
-		memory_set_bankptr (4, hiram ? c64_kernal : c64_memory + 0xe000);
-		memory_set_bankptr (5, c64_memory + 0xe000);
+		memory_set_bankptr (machine, 4, hiram ? c64_kernal : c64_memory + 0xe000);
+		memory_set_bankptr (machine, 5, c64_memory + 0xe000);
 	}
 
 	/* make sure the opbase function gets called each time */
@@ -752,10 +779,8 @@ static void c64_bankswitch(running_machine *machine, int reset)
 
 static emu_timer *datasette_timer;
 
-void c64_m6510_port_write(UINT8 direction, UINT8 data)
+void c64_m6510_port_write(const device_config *device, UINT8 direction, UINT8 data)
 {
-	running_machine *machine = Machine;
-
 	/* if line is marked as input then keep current value */
 	data = (c64_port_data & ~direction) | (data & direction);
 
@@ -775,53 +800,52 @@ void c64_m6510_port_write(UINT8 direction, UINT8 data)
 	{
 		if (direction & 0x08) 
 		{
-			cassette_output(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), (data & 0x08) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
+			cassette_output(device_list_find_by_tag(device->machine->config->devicelist, CASSETTE, "cassette" ), (data & 0x08) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
 		}
 
 		if (direction & 0x20)
 		{
 			if(!(data & 0x20))
 			{
-				cassette_change_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+				cassette_change_state(device_list_find_by_tag(device->machine->config->devicelist, CASSETTE, "cassette" ), CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 				timer_adjust_periodic(datasette_timer, attotime_zero, 0, ATTOTIME_IN_HZ(44100));
 			}
 			else
 			{
-				cassette_change_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+				cassette_change_state(device_list_find_by_tag(device->machine->config->devicelist, CASSETTE, "cassette" ), CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 				timer_reset(datasette_timer, attotime_never);
 			}
 		}
 	}
 
-	if (is_c65(Machine))
+	if (is_c65(device->machine))
 	{
 		// NPW 8-Feb-2004 - Don't know why I have to do this
-		//c65_bankswitch(Machine);
+		//c65_bankswitch(machine);
 	}
 
 	else if (!ultimax)
-		c64_bankswitch(Machine, 0);
+		c64_bankswitch(device->machine, 0);
 
-	c64_memory[0x000] = program_read_byte( 0 );
-	c64_memory[0x001] = program_read_byte( 1 );
+	c64_memory[0x000] = memory_read_byte( cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM), 0 );
+	c64_memory[0x001] = memory_read_byte( cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM), 1 );
 }
 
-UINT8 c64_m6510_port_read(UINT8 direction)
+UINT8 c64_m6510_port_read(const device_config *device, UINT8 direction)
 {
-	running_machine *machine = Machine;
 	UINT8 data = c64_port_data;
 
 	if (c64_tape_on)
 	{
-		if ((cassette_get_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
+		if ((cassette_get_state(device_list_find_by_tag(device->machine->config->devicelist, CASSETTE, "cassette" )) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
 			data &= ~0x10;
 		else
 			data |=  0x10;
 	}
 
-	if (is_c65(machine)) 
+	if (is_c65(device->machine)) 
 	{
-		if (input_port_read(machine, "SPECIAL") & 0x20)		/* Check Caps Lock */
+		if (input_port_read(device->machine, "SPECIAL") & 0x20)		/* Check Caps Lock */
 			data &= ~0x40;
 
 		else 
@@ -832,40 +856,41 @@ UINT8 c64_m6510_port_read(UINT8 direction)
 }
 
 
-int c64_paddle_read (int which)
+int c64_paddle_read (const device_config *device, int which)
 {
+	running_machine *machine = device->machine;
 	int pot1 = 0xff, pot2 = 0xff, pot3 = 0xff, pot4 = 0xff, temp;
-	UINT8 cia0porta = cia_get_output_a(0);
-	int controller1 = input_port_read(Machine, "CTRLSEL") & 0x07;
-	int controller2 = input_port_read(Machine, "CTRLSEL") & 0x70;
+	UINT8 cia0porta = cia_get_output_a(device_list_find_by_tag(machine->config->devicelist, CIA6526R1, "cia_0"));
+	int controller1 = input_port_read(machine, "CTRLSEL") & 0x07;
+	int controller2 = input_port_read(machine, "CTRLSEL") & 0x70;
 
 	/* Notice that only a single input is defined for Mouse & Lightpen in both ports */
 	switch (controller1)
 	{
 		case 0x01:
 			if (which)
-				pot2 = input_port_read(Machine, "PADDLE2");
+				pot2 = input_port_read(machine, "PADDLE2");
 			else
-				pot1 = input_port_read(Machine, "PADDLE1");
+				pot1 = input_port_read(machine, "PADDLE1");
 			break;
 
 		case 0x02:
 			if (which)
-				pot2 = input_port_read(Machine, "TRACKY");
+				pot2 = input_port_read(machine, "TRACKY");
 			else
-				pot1 = input_port_read(Machine, "TRACKX");
+				pot1 = input_port_read(machine, "TRACKX");
 			break;
 
 		case 0x03:
-			if (which && (input_port_read(Machine, "JOY1_2B") & 0x20))	/* Joy1 Button 2 */
+			if (which && (input_port_read(machine, "JOY1_2B") & 0x20))	/* Joy1 Button 2 */
 				pot1 = 0x00;
 			break;
 
 		case 0x04:
 			if (which)
-				pot2 = input_port_read(Machine, "LIGHTY");
+				pot2 = input_port_read(machine, "LIGHTY");
 			else
-				pot1 = input_port_read(Machine, "LIGHTX");
+				pot1 = input_port_read(machine, "LIGHTX");
 			break;
 
 		case 0x00:
@@ -881,28 +906,28 @@ int c64_paddle_read (int which)
 	{
 		case 0x10:
 			if (which)
-				pot4 = input_port_read(Machine, "PADDLE4");
+				pot4 = input_port_read(machine, "PADDLE4");
 			else
-				pot3 = input_port_read(Machine, "PADDLE3");
+				pot3 = input_port_read(machine, "PADDLE3");
 			break;
 
 		case 0x20:
 			if (which)
-				pot4 = input_port_read(Machine, "TRACKY");
+				pot4 = input_port_read(machine, "TRACKY");
 			else
-				pot3 = input_port_read(Machine, "TRACKX");
+				pot3 = input_port_read(machine, "TRACKX");
 			break;
 
 		case 0x30:
-			if (which && (input_port_read(Machine, "JOY2_2B") & 0x20))	/* Joy2 Button 2 */
+			if (which && (input_port_read(machine, "JOY2_2B") & 0x20))	/* Joy2 Button 2 */
 				pot4 = 0x00;
 			break;
 
 		case 0x40:
 			if (which)
-				pot4 = input_port_read(Machine, "LIGHTY");
+				pot4 = input_port_read(machine, "LIGHTY");
 			else
-				pot3 = input_port_read(Machine, "LIGHTX");
+				pot3 = input_port_read(machine, "LIGHTX");
 			break;
 
 		case 0x00:
@@ -914,10 +939,10 @@ int c64_paddle_read (int which)
 			break;
 	}
 
-	if (input_port_read(Machine, "CTRLSEL") & 0x80)		/* Swap */
+	if (input_port_read(machine, "CTRLSEL") & 0x80)		/* Swap */
 	{
-		temp = pot1; pot1 = pot2; pot2 = pot1;
-		temp = pot3; pot3 = pot4; pot4 = pot3;
+		temp = pot1; pot1 = pot2; pot2 = temp;
+		temp = pot3; pot3 = pot4; pot4 = temp;
 	}
 
 	switch (cia0porta & 0xc0) 
@@ -948,7 +973,7 @@ WRITE8_HANDLER( c64_colorram_write )
  * a15 and a14 portlines
  * 0x1000-0x1fff, 0x9000-0x9fff char rom
  */
-static int c64_dma_read( int offset )
+static int c64_dma_read(running_machine *machine, int offset)
 {
 	if (!c64_game && c64_exrom)
 	{
@@ -964,7 +989,7 @@ static int c64_dma_read( int offset )
 	return c64_vicaddr[offset];
 }
 
-static int c64_dma_read_ultimax( int offset )
+static int c64_dma_read_ultimax(running_machine *machine, int offset )
 {
 	if (offset < 0x3000)
 		return c64_memory[offset];
@@ -972,7 +997,7 @@ static int c64_dma_read_ultimax( int offset )
 	return c64_romh[offset & 0x1fff];
 }
 
-static int c64_dma_read_color( int offset )
+static int c64_dma_read_color(running_machine *machine, int offset)
 {
 	return c64_colorram[offset & 0x3ff] & 0xf;
 }
@@ -982,20 +1007,19 @@ double last = 0;
 TIMER_CALLBACK( c64_tape_timer )
 {
 	double tmp = cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ));
+	const device_config *cia_0 = device_list_find_by_tag(machine->config->devicelist, CIA6526R1, "cia_0");
 
 	if((last > +0.0) && (tmp < +0.0))
-		cia_issue_index(machine, 0);
+		cia_issue_index(cia_0);
 
 	last = tmp;
 }
 
 static void c64_common_driver_init (running_machine *machine)
 {
-	cia6526_interface cia_intf[2];
-
 	/* configure the M6510 port */
-	cpunum_set_info_fct(0, CPUINFO_PTR_M6510_PORTREAD, (genf *) c64_m6510_port_read);
-	cpunum_set_info_fct(0, CPUINFO_PTR_M6510_PORTWRITE, (genf *) c64_m6510_port_write);
+	device_set_info_fct(machine->cpu[0], CPUINFO_FCT_M6510_PORTREAD, (genf *) c64_m6510_port_read);
+	device_set_info_fct(machine->cpu[0], CPUINFO_FCT_M6510_PORTWRITE, (genf *) c64_m6510_port_write);
 
 	if (!ultimax) 
 	{
@@ -1009,27 +1033,12 @@ static void c64_common_driver_init (running_machine *machine)
 	}
 
 	if (c64_tape_on)
-		datasette_timer = timer_alloc(c64_tape_timer, NULL);
+		datasette_timer = timer_alloc(machine, c64_tape_timer, NULL);
 
-	/* CIA initialization */
-	cia_intf[0] = c64_cia0;
-	cia_intf[0].tod_clock = c64_pal ? 50 : 60;
-	cia_config(machine, 0, &cia_intf[0]);
-	
-	if (c64_cia1_on)
-	{
-		cia_intf[1] = c64_cia1;
-		cia_intf[1].tod_clock = c64_pal ? 50 : 60;
-		cia_config(machine, 1, &cia_intf[1]);
-	}
-	
-	
 	if (ultimax)
 		vic6567_init (0, c64_pal, c64_dma_read_ultimax, c64_dma_read_color, c64_vic_interrupt);
 	else
 		vic6567_init (0, c64_pal, c64_dma_read, c64_dma_read_color, c64_vic_interrupt);
-
-	cia_reset();
 }
 
 DRIVER_INIT( c64 )
@@ -1064,7 +1073,7 @@ DRIVER_INIT( sx64 )
 	c64_tape_on = 0;
 	c64_pal = 1;
 	c64_common_driver_init (machine);
-	drive_config (type_1541, 0, 0, 1, 8);
+	drive_config (machine, type_1541, 0, 0, 1, 8);
 }
 
 void c64_common_init_machine (running_machine *machine)
@@ -1078,7 +1087,7 @@ void c64_common_init_machine (running_machine *machine)
 	else if (c64_cia1_on)
 	{
 		serial_config(machine, &sim_drive_interface);
-		cbm_serial_reset_write (0);
+		cbm_serial_reset_write (machine, 0);
 		cbm_drive_0_config (SERIAL, 8);
 		cbm_drive_1_config (SERIAL, 9);
 		serial_clock = serial_data = serial_atn = 1;
@@ -1088,32 +1097,31 @@ void c64_common_init_machine (running_machine *machine)
 	vicirq = 0;
 }
 
-static OPBASE_HANDLER( c64_opbase ) 
+static DIRECT_UPDATE_HANDLER( c64_direct ) 
 {
 	if ((address & 0xf000) == 0xd000) 
 	{
 		if (c64_io_enabled) 
 		{
-			opbase->mask = 0x0fff;
-			opbase->ram = c64_io_mirror;
-			opbase->rom = c64_io_mirror;
-			opbase->mem_min = 0x0000;
-			opbase->mem_max = 0xcfff;
-			c64_io_mirror[address & 0x0fff] = c64_read_io( machine, address & 0x0fff );
+			direct->mask = 0x0fff;
+			direct->decrypted = c64_io_mirror;
+			direct->raw = c64_io_mirror;
+			direct->min = 0x0000;
+			direct->max = 0xcfff;
+			c64_io_mirror[address & 0x0fff] = c64_read_io( space, address & 0x0fff );
 		} 
 		else 
 		{
-			opbase->mask = 0x0fff;
-			opbase->ram = c64_io_ram_r_ptr;
-			opbase->rom = c64_io_ram_r_ptr;
-			opbase->mem_min = 0x0000;
-			opbase->mem_max = 0xcfff;
+			direct->mask = 0x0fff;
+			direct->decrypted = c64_io_ram_r_ptr;
+			direct->raw = c64_io_ram_r_ptr;
+			direct->min = 0x0000;
+			direct->max = 0xcfff;
 		}
 		return ~0;
 	}
 	return address;
 }
-
 
 MACHINE_START( c64 )
 {
@@ -1128,7 +1136,7 @@ MACHINE_START( c64 )
 	if (!ultimax)
 		c64_bankswitch(machine, 1);
 
-	memory_set_opbase_handler( 0, c64_opbase );
+	memory_set_direct_update_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), c64_direct );
 }
 
 
@@ -1150,33 +1158,33 @@ INTERRUPT_GEN( c64_frame_interrupt )
 {
 	static int monitor = -1;
 	int value, i;
-	int controller1 = input_port_read(machine, "CTRLSEL") & 0x07;
-	int controller2 = input_port_read(machine, "CTRLSEL") & 0x70;
-	static const char *c64ports[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7" };
-	static const char *c128ports[] = { "KP0", "KP1", "KP2" };
+	int controller1 = input_port_read(device->machine, "CTRLSEL") & 0x07;
+	int controller2 = input_port_read(device->machine, "CTRLSEL") & 0x70;
+	static const char *const c64ports[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7" };
+	static const char *const c128ports[] = { "KP0", "KP1", "KP2" };
 
-	c64_nmi(machine);
+	c64_nmi(device->machine);
 
-	 if (is_c128(machine))
+	 if (is_c128(device->machine))
 	 {
-	 	if ((input_port_read(machine, "SPECIAL") & 0x08) != monitor)
+	 	if ((input_port_read(device->machine, "SPECIAL") & 0x08) != monitor)
 		{
-			if (input_port_read(machine, "SPECIAL") & 0x08)
+			if (input_port_read(device->machine, "SPECIAL") & 0x08)
 			{
 				vic2_set_rastering(0);
 				vdc8563_set_rastering(1);
-				video_screen_set_visarea(machine->primary_screen, 0, 655, 0, 215);
+				video_screen_set_visarea(device->machine->primary_screen, 0, 655, 0, 215);
 			}
 			else
 			{
 				vic2_set_rastering(1);
 				vdc8563_set_rastering(0);
 				if (c64_pal)
-					video_screen_set_visarea(machine->primary_screen, VIC6569_STARTVISIBLECOLUMNS, VIC6569_STARTVISIBLECOLUMNS + VIC6569_VISIBLECOLUMNS - 1, VIC6569_STARTVISIBLELINES, VIC6569_STARTVISIBLELINES + VIC6569_VISIBLELINES - 1);
+					video_screen_set_visarea(device->machine->primary_screen, VIC6569_STARTVISIBLECOLUMNS, VIC6569_STARTVISIBLECOLUMNS + VIC6569_VISIBLECOLUMNS - 1, VIC6569_STARTVISIBLELINES, VIC6569_STARTVISIBLELINES + VIC6569_VISIBLELINES - 1);
 				else
-					video_screen_set_visarea(machine->primary_screen, VIC6567_STARTVISIBLECOLUMNS, VIC6567_STARTVISIBLECOLUMNS + VIC6567_VISIBLECOLUMNS - 1, VIC6567_STARTVISIBLELINES, VIC6567_STARTVISIBLELINES + VIC6567_VISIBLELINES - 1);
+					video_screen_set_visarea(device->machine->primary_screen, VIC6567_STARTVISIBLECOLUMNS, VIC6567_STARTVISIBLECOLUMNS + VIC6567_VISIBLECOLUMNS - 1, VIC6567_STARTVISIBLELINES, VIC6567_STARTVISIBLELINES + VIC6567_VISIBLELINES - 1);
 			}
-			monitor = input_port_read(machine, "SPECIAL") & 0x08;
+			monitor = input_port_read(device->machine, "SPECIAL") & 0x08;
 		}
 	}
 
@@ -1184,10 +1192,10 @@ INTERRUPT_GEN( c64_frame_interrupt )
 	for (i = 0; i < 8; i++)
 	{
 		value = 0xff;
-		value &= ~input_port_read(machine, c64ports[i]);
+		value &= ~input_port_read(device->machine, c64ports[i]);
 
 		/* Shift Lock is mapped on Left Shift */
-		if ((i == 1) && (input_port_read(machine, "SPECIAL") & 0x40) && !is_c128(machine))	// Fix Me! Currently, neither left Shift nor Shift Lock works in c128, but reading this in c128 produces a bug!
+		if ((i == 1) && (input_port_read(device->machine, "SPECIAL") & 0x40) && !is_c128(device->machine))	// Fix Me! Currently, neither left Shift nor Shift Lock works in c128, but reading this in c128 produces a bug!
 			value &= ~0x80;			
 
 		c64_keyline[i] = value;
@@ -1198,30 +1206,30 @@ INTERRUPT_GEN( c64_frame_interrupt )
 	switch(controller1)
 	{
 		case 0x00:
-			value &= ~input_port_read(machine, "JOY1_1B");			/* Joy1 Directions + Button 1 */
+			value &= ~input_port_read(device->machine, "JOY1_1B");			/* Joy1 Directions + Button 1 */
 			break;
 		
 		case 0x01:
-			if (input_port_read(machine, "OTHER") & 0x40)			/* Paddle2 Button */
+			if (input_port_read(device->machine, "OTHER") & 0x40)			/* Paddle2 Button */
 				value &= ~0x08;
-			if (input_port_read(machine, "OTHER") & 0x80)			/* Paddle1 Button */
+			if (input_port_read(device->machine, "OTHER") & 0x80)			/* Paddle1 Button */
 				value &= ~0x04;
 			break;
 
 		case 0x02:
-			if (input_port_read(machine, "OTHER") & 0x02)			/* Mouse Button Left */
+			if (input_port_read(device->machine, "OTHER") & 0x02)			/* Mouse Button Left */
 				value &= ~0x10;
-			if (input_port_read(machine, "OTHER") & 0x01)			/* Mouse Button Right */
+			if (input_port_read(device->machine, "OTHER") & 0x01)			/* Mouse Button Right */
 				value &= ~0x01;
 			break;
 			
 		case 0x03:
-			value &= ~(input_port_read(machine, "JOY1_2B") & 0x1f);	/* Joy1 Directions + Button 1 */
+			value &= ~(input_port_read(device->machine, "JOY1_2B") & 0x1f);	/* Joy1 Directions + Button 1 */
 			break;
 		
 		case 0x04:
 /* was there any input on the lightpen? where is it mapped? */
-//			if (input_port_read(machine, "OTHER") & 0x04)			/* Lightpen Signal */
+//			if (input_port_read(device->machine, "OTHER") & 0x04)			/* Lightpen Signal */
 //				value &= ?? ;
 			break;
 
@@ -1240,30 +1248,30 @@ INTERRUPT_GEN( c64_frame_interrupt )
 	switch(controller2)
 	{
 		case 0x00:
-			value &= ~input_port_read(machine, "JOY2_1B");			/* Joy2 Directions + Button 1 */
+			value &= ~input_port_read(device->machine, "JOY2_1B");			/* Joy2 Directions + Button 1 */
 			break;
 		
 		case 0x10:
-			if (input_port_read(machine, "OTHER") & 0x10)			/* Paddle4 Button */
+			if (input_port_read(device->machine, "OTHER") & 0x10)			/* Paddle4 Button */
 				value &= ~0x08;
-			if (input_port_read(machine, "OTHER") & 0x20)			/* Paddle3 Button */
+			if (input_port_read(device->machine, "OTHER") & 0x20)			/* Paddle3 Button */
 				value &= ~0x04;
 			break;
 
 		case 0x20:
-			if (input_port_read(machine, "OTHER") & 0x02)			/* Mouse Button Left */
+			if (input_port_read(device->machine, "OTHER") & 0x02)			/* Mouse Button Left */
 				value &= ~0x10;
-			if (input_port_read(machine, "OTHER") & 0x01)			/* Mouse Button Right */
+			if (input_port_read(device->machine, "OTHER") & 0x01)			/* Mouse Button Right */
 				value &= ~0x01;
 			break;
 		
 		case 0x30:
-			value &= ~(input_port_read(machine, "JOY2_2B") & 0x1f);	/* Joy2 Directions + Button 1 */
+			value &= ~(input_port_read(device->machine, "JOY2_2B") & 0x1f);	/* Joy2 Directions + Button 1 */
 			break;
 
 		case 0x40:
 /* was there any input on the lightpen? where is it mapped? */
-//			if (input_port_read(machine, "OTHER") & 0x04)			/* Lightpen Signal */
+//			if (input_port_read(device->machine, "OTHER") & 0x04)			/* Lightpen Signal */
 //				value &= ?? ;
 			break;
 
@@ -1278,32 +1286,33 @@ INTERRUPT_GEN( c64_frame_interrupt )
 	c64_keyline[9] = value;
 
 	/* C128 only : keypad input ports */
-	if (is_c128(machine)) 
+	if (is_c128(device->machine)) 
 	{
 		for (i = 0; i < 3; i++)
 		{
 			value = 0xff;
-			value &= ~input_port_read(machine, c128ports[i]);
+			value &= ~input_port_read(device->machine, c128ports[i]);
 			c128_keyline[i] = value;
 		}
 	}
 
 	/* C65 only : function keys input ports */
-	if (is_c65(machine)) 
+	if (is_c65(device->machine)) 
 	{
 		value = 0xff;
 
-		value &= ~input_port_read(machine, "FUNCT");
+		value &= ~input_port_read(device->machine, "FUNCT");
 		c65_keyline = value;
 	}
 
-	vic2_frame_interrupt (machine, cpunum);
+// vic2_frame_interrupt does nothing so this is not necessary
+//	vic2_frame_interrupt (device);
 
 	/* check if lightpen has been chosen as input: if so, enable crosshair */
-	timer_set(attotime_zero, NULL, 0, lightpen_tick);
+	timer_set(device->machine, attotime_zero, NULL, 0, lightpen_tick);
 
-	set_led_status (1, input_port_read(machine, "SPECIAL") & 0x40 ? 1 : 0);		/* Shift Lock */
-	set_led_status (0, input_port_read(machine, "CTRLSEL") & 0x80 ? 1 : 0);		/* Joystick Swap */ 
+	set_led_status (1, input_port_read(device->machine, "SPECIAL") & 0x40 ? 1 : 0);		/* Shift Lock */
+	set_led_status (0, input_port_read(device->machine, "CTRLSEL") & 0x80 ? 1 : 0);		/* Joystick Swap */ 
 }
 
 
@@ -1396,14 +1405,26 @@ static INT8 cbm_c64_exrom;
 
 static DEVICE_IMAGE_UNLOAD(c64_cart)
 {
-	int index = image_index_in_device(image);
+	int index = 0;
+	if (strcmp(image->tag,"cart1")==0) {
+		index = 0;
+	}
+	if (strcmp(image->tag,"cart2")==0) {
+		index = 1;
+	}
 	c64_cbm_cart[index].size = 0;
 	c64_cbm_cart[index].chip = 0;
 }
 
 static DEVICE_START(c64_cart)
 {
-	int index = image_index_in_device(device);
+	int index = 0;
+	if (strcmp(device->tag,"cart1")==0) {
+		index = 0;
+	}
+	if (strcmp(device->tag,"cart2")==0) {
+		index = 1;
+	}
 	if (index == 0)
 	{
 		cbm_c64_game = -1;
@@ -1630,41 +1651,28 @@ static DEVICE_IMAGE_LOAD(c64_cart)
 	return INIT_PASS;
 }
 
-void c64_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:				info->i = 2; break;
 
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "crt,80"); break;
+MACHINE_DRIVER_START(c64_cartslot)
+	MDRV_CARTSLOT_ADD("cart1")
+	MDRV_CARTSLOT_EXTENSION_LIST("crt,80")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_START(c64_cart)
+	MDRV_CARTSLOT_LOAD(c64_cart)
+	MDRV_CARTSLOT_UNLOAD(c64_cart)
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:				info->start = DEVICE_START_NAME(c64_cart); break;
-		case MESS_DEVINFO_PTR_LOAD:					info->load = DEVICE_IMAGE_LOAD_NAME(c64_cart); break;
-		case MESS_DEVINFO_PTR_UNLOAD:				info->unload = DEVICE_IMAGE_UNLOAD_NAME(c64_cart); break;
+	MDRV_CARTSLOT_ADD("cart2")
+	MDRV_CARTSLOT_EXTENSION_LIST("crt,80")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_START(c64_cart)
+	MDRV_CARTSLOT_LOAD(c64_cart)
+	MDRV_CARTSLOT_UNLOAD(c64_cart)
+MACHINE_DRIVER_END
 
-		default:									cartslot_device_getinfo(devclass, state, info);
-	}
-}
-
-void ultimax_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:				info->i = 1; break;
-		case MESS_DEVINFO_INT_MUST_BE_LOADED:		info->i = 1; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "crt,e0,f0"); break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:				info->start = DEVICE_START_NAME(c64_cart); break;
-		case MESS_DEVINFO_PTR_LOAD:					info->load = DEVICE_IMAGE_LOAD_NAME(c64_cart); break;
-		case MESS_DEVINFO_PTR_UNLOAD:				info->unload = DEVICE_IMAGE_UNLOAD_NAME(c64_cart); break;
-
-		default:									cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
+MACHINE_DRIVER_START(ultimax_cartslot)
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("crt,e0,f0")
+	MDRV_CARTSLOT_MANDATORY
+	MDRV_CARTSLOT_START(c64_cart)
+	MDRV_CARTSLOT_LOAD(c64_cart)
+	MDRV_CARTSLOT_UNLOAD(c64_cart)
+MACHINE_DRIVER_END

@@ -335,7 +335,7 @@ void msm6255_update(const device_config *device, bitmap_t *bitmap, const rectang
 	}
 	else
 	{
-		fillbitmap(bitmap, get_black_pen(device->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(device->machine));
 	}
 }
 
@@ -344,7 +344,6 @@ void msm6255_update(const device_config *device, bitmap_t *bitmap, const rectang
 static DEVICE_START( msm6255 )
 {
 	msm6255_t *msm6255 = get_safe_token(device);
-	char unique_tag[30];
 
 	// validate arguments
 
@@ -363,22 +362,19 @@ static DEVICE_START( msm6255 )
 	assert(msm6255->screen != NULL);
 
 	// register for state saving
+	state_save_register_device_item(device, 0, msm6255->ir);
+	state_save_register_device_item(device, 0, msm6255->mor);
+	state_save_register_device_item(device, 0, msm6255->pr);
+	state_save_register_device_item(device, 0, msm6255->hnr);
+	state_save_register_device_item(device, 0, msm6255->dvr);
+	state_save_register_device_item(device, 0, msm6255->cpr);
+	state_save_register_device_item(device, 0, msm6255->slr);
+	state_save_register_device_item(device, 0, msm6255->sur);
+	state_save_register_device_item(device, 0, msm6255->clr);
+	state_save_register_device_item(device, 0, msm6255->cur);
 
-	state_save_combine_module_and_tag(unique_tag, "MSM6255", device->tag);
-
-	state_save_register_item(unique_tag, 0, msm6255->ir);
-	state_save_register_item(unique_tag, 0, msm6255->mor);
-	state_save_register_item(unique_tag, 0, msm6255->pr);
-	state_save_register_item(unique_tag, 0, msm6255->hnr);
-	state_save_register_item(unique_tag, 0, msm6255->dvr);
-	state_save_register_item(unique_tag, 0, msm6255->cpr);
-	state_save_register_item(unique_tag, 0, msm6255->slr);
-	state_save_register_item(unique_tag, 0, msm6255->sur);
-	state_save_register_item(unique_tag, 0, msm6255->clr);
-	state_save_register_item(unique_tag, 0, msm6255->cur);
-
-	state_save_register_item(unique_tag, 0, msm6255->cursor);
-	state_save_register_item(unique_tag, 0, msm6255->frame);
+	state_save_register_device_item(device, 0, msm6255->cursor);
+	state_save_register_device_item(device, 0, msm6255->frame);
 	return DEVICE_START_OK;
 }
 
@@ -413,10 +409,10 @@ DEVICE_GET_INFO( msm6255 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(msm6255);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "OKI MSM6255";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "OKI MSM6255";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright MESS Team";			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "OKI MSM6255");				break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "OKI MSM6255");				break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");		break;
 	}
 }

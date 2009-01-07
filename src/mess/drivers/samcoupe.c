@@ -25,15 +25,15 @@ Changes:
                   the future to support others
 
 Note on the bioses:
- SAM Coupé ROM Images
+ SAM Coupe ROM Images
  --------------------
 
- This archive contains many versions of the SAM Coupé 32K ROM image, released
+ This archive contains many versions of the SAM Coupe 32K ROM image, released
  with kind permission from the ROM author, Dr Andy Wright.
 
  Thanks to Simon N Goodwin for supplying the files, which include two dumped
  from pre-production hardware (and which only work with the early hardware!).
-	
+
  Beware - the early ROMs are very buggy, and tend to go mad once BASIC starts
  paging.  ROM 10 (version 1.0) requires the CALL after F9 or BOOT because the
  ROM loads the bootstrap but fails to execute it. The address depends on the
@@ -54,6 +54,7 @@ Note on the bioses:
 
 /* core includes */
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "includes/samcoupe.h"
 
 /* components */
@@ -80,17 +81,19 @@ Note on the bioses:
 
 static READ8_HANDLER( samcoupe_disk_r )
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1772, "wd1772");
+	
 	/* drive and side is encoded into bit 5 and 3 */
-	wd17xx_set_drive((offset >> 4) & 1);
-	wd17xx_set_side((offset >> 2) & 1);
+	wd17xx_set_drive(fdc,(offset >> 4) & 1);
+	wd17xx_set_side(fdc,(offset >> 2) & 1);
 
 	/* bit 1 and 2 select the controller register */
 	switch (offset & 0x03)
 	{
-	case 0: return wd17xx_status_r(machine, 0);
-	case 1: return wd17xx_track_r(machine, 0);
-	case 2: return wd17xx_sector_r(machine, 0);
-	case 3: return wd17xx_data_r(machine, 0);
+	case 0: return wd17xx_status_r(fdc, 0);
+	case 1: return wd17xx_track_r(fdc, 0);
+	case 2: return wd17xx_sector_r(fdc, 0);
+	case 3: return wd17xx_data_r(fdc, 0);
 	}
 
 	return 0xff;
@@ -99,17 +102,19 @@ static READ8_HANDLER( samcoupe_disk_r )
 
 static WRITE8_HANDLER( samcoupe_disk_w )
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1772, "wd1772");
+
 	/* drive and side is encoded into bit 5 and 3 */
-	wd17xx_set_drive((offset >> 4) & 1);
-	wd17xx_set_side((offset >> 2) & 1);
+	wd17xx_set_drive(fdc,(offset >> 4) & 1);
+	wd17xx_set_side(fdc,(offset >> 2) & 1);
 
 	/* bit 1 and 2 select the controller register */
 	switch (offset & 0x03)
 	{
-	case 0: wd17xx_command_w(machine, 0, data); break;
-	case 1: wd17xx_track_w(machine, 0, data);   break;
-	case 2: wd17xx_sector_w(machine, 0, data);  break;
-	case 3: wd17xx_data_w(machine, 0, data);    break;
+	case 0: wd17xx_command_w(fdc, 0, data); break;
+	case 1: wd17xx_track_w(fdc, 0, data);   break;
+	case 2: wd17xx_sector_w(fdc, 0, data);  break;
+	case 3: wd17xx_data_w(fdc, 0, data);    break;
 	}
 }
 
@@ -121,13 +126,12 @@ static READ8_HANDLER( samcoupe_pen_r )
 	if (offset & 0x100)
 	{
 		/* return either the current line or 192 for the vblank area */
-		int line = video_screen_get_vpos(machine->primary_screen); 
-		data = video_screen_get_vblank(machine->primary_screen) ? 192 : line;
+		data = video_screen_get_vblank(space->machine->primary_screen) ? 192 : video_screen_get_vpos(space->machine->primary_screen);
 	}
 	else
 	{
 		/* horizontal position is encoded into bits 3 to 8 */
-		data = video_screen_get_hpos(machine->primary_screen) & 0xfc;
+		data = video_screen_get_hpos(space->machine->primary_screen) & 0xfc;
 	}
 
 	return data;
@@ -135,71 +139,83 @@ static READ8_HANDLER( samcoupe_pen_r )
 
 
 static WRITE8_HANDLER( samcoupe_clut_w )
-{	
-	samcoupe_regs.clut[(offset >> 8) & 0x0f] = data & 0x7f;
+{
+	coupe_asic *asic = space->machine->driver_data;
+	asic->clut[(offset >> 8) & 0x0f] = data & 0x7f;
 }
 
 
 static READ8_HANDLER( samcoupe_status_r )
 {
+	coupe_asic *asic = space->machine->driver_data;
 	UINT8 data = 0xe0;
 	UINT8 row = ~(offset >> 8);
 
-	if (row & 0x80) data &= input_port_read(machine, "keyboard_row_7f") & 0xe0;
-	if (row & 0x40) data &= input_port_read(machine, "keyboard_row_bf") & 0xe0;
-	if (row & 0x20) data &= input_port_read(machine, "keyboard_row_df") & 0xe0;
-	if (row & 0x10) data &= input_port_read(machine, "keyboard_row_ef") & 0xe0;
-	if (row & 0x08) data &= input_port_read(machine, "keyboard_row_f7") & 0xe0;
-	if (row & 0x04) data &= input_port_read(machine, "keyboard_row_fb") & 0xe0;
-	if (row & 0x02) data &= input_port_read(machine, "keyboard_row_fd") & 0xe0;
-	if (row & 0x01) data &= input_port_read(machine, "keyboard_row_fe") & 0xe0;
+	if (row & 0x80) data &= input_port_read(space->machine, "keyboard_row_7f") & 0xe0;
+	if (row & 0x40) data &= input_port_read(space->machine, "keyboard_row_bf") & 0xe0;
+	if (row & 0x20) data &= input_port_read(space->machine, "keyboard_row_df") & 0xe0;
+	if (row & 0x10) data &= input_port_read(space->machine, "keyboard_row_ef") & 0xe0;
+	if (row & 0x08) data &= input_port_read(space->machine, "keyboard_row_f7") & 0xe0;
+	if (row & 0x04) data &= input_port_read(space->machine, "keyboard_row_fb") & 0xe0;
+	if (row & 0x02) data &= input_port_read(space->machine, "keyboard_row_fd") & 0xe0;
+	if (row & 0x01) data &= input_port_read(space->machine, "keyboard_row_fe") & 0xe0;
 
-	return data | samcoupe_regs.status;
+	return data | asic->status;
 }
 
 
 static WRITE8_HANDLER( samcoupe_line_int_w )
 {
-	samcoupe_regs.line_int = data;
+	coupe_asic *asic = space->machine->driver_data;
+	asic->line_int = data;
 }
 
 
 static READ8_HANDLER( samcoupe_lmpr_r )
 {
-	return samcoupe_regs.lmpr;
+	coupe_asic *asic = space->machine->driver_data;
+	return asic->lmpr;
 }
 
 
 static WRITE8_HANDLER( samcoupe_lmpr_w )
 {
-	samcoupe_regs.lmpr = data;
-	samcoupe_update_memory(machine);
+	const address_space *space_program = cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	coupe_asic *asic = space->machine->driver_data;
+	asic->lmpr = data;
+	samcoupe_update_memory(space_program);
 }
 
 
 static READ8_HANDLER( samcoupe_hmpr_r )
 {
-	return samcoupe_regs.hmpr;
+	coupe_asic *asic = space->machine->driver_data;
+	return asic->hmpr;
 }
 
 
 static WRITE8_HANDLER( samcoupe_hmpr_w )
 {
-	samcoupe_regs.hmpr = data;
-	samcoupe_update_memory(machine);
+	const address_space *space_program = cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	coupe_asic *asic = space->machine->driver_data;
+	asic->hmpr = data;
+	samcoupe_update_memory(space_program);
 }
 
 
 static READ8_HANDLER( samcoupe_vmpr_r )
 {
-	return samcoupe_regs.vmpr;
+	coupe_asic *asic = space->machine->driver_data;
+	return asic->vmpr;
 }
 
 
 static WRITE8_HANDLER( samcoupe_vmpr_w )
 {
-	samcoupe_regs.vmpr = data;
-	samcoupe_update_memory(machine);
+	const address_space *space_program = cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	coupe_asic *asic = space->machine->driver_data;
+	asic->vmpr = data;
+	samcoupe_update_memory(space_program);
 }
 
 
@@ -223,18 +239,18 @@ static READ8_HANDLER( samcoupe_keyboard_r )
 
 	if (row == 0)
 	{
-		data &= input_port_read(machine, "keyboard_row_ff") & 0x1f;
+		data &= input_port_read(space->machine, "keyboard_row_ff") & 0x1f;
 	}
 	else
 	{
-		if (row & 0x80) data &= input_port_read(machine, "keyboard_row_7f") & 0x1f;
-		if (row & 0x40) data &= input_port_read(machine, "keyboard_row_bf") & 0x1f;
-		if (row & 0x20) data &= input_port_read(machine, "keyboard_row_df") & 0x1f;
-		if (row & 0x10) data &= input_port_read(machine, "keyboard_row_ef") & 0x1f;
-		if (row & 0x08) data &= input_port_read(machine, "keyboard_row_f7") & 0x1f;
-		if (row & 0x04) data &= input_port_read(machine, "keyboard_row_fb") & 0x1f;
-		if (row & 0x02) data &= input_port_read(machine, "keyboard_row_fd") & 0x1f;
-		if (row & 0x01) data &= input_port_read(machine, "keyboard_row_fe") & 0x1f;
+		if (row & 0x80) data &= input_port_read(space->machine, "keyboard_row_7f") & 0x1f;
+		if (row & 0x40) data &= input_port_read(space->machine, "keyboard_row_bf") & 0x1f;
+		if (row & 0x20) data &= input_port_read(space->machine, "keyboard_row_df") & 0x1f;
+		if (row & 0x10) data &= input_port_read(space->machine, "keyboard_row_ef") & 0x1f;
+		if (row & 0x08) data &= input_port_read(space->machine, "keyboard_row_f7") & 0x1f;
+		if (row & 0x04) data &= input_port_read(space->machine, "keyboard_row_fb") & 0x1f;
+		if (row & 0x02) data &= input_port_read(space->machine, "keyboard_row_fd") & 0x1f;
+		if (row & 0x01) data &= input_port_read(space->machine, "keyboard_row_fe") & 0x1f;
 	}
 
 	return data | 0xe0;
@@ -243,7 +259,8 @@ static READ8_HANDLER( samcoupe_keyboard_r )
 
 static WRITE8_HANDLER( samcoupe_border_w )
 {
-	samcoupe_regs.border = data;
+	coupe_asic *asic = space->machine->driver_data;
+	asic->border = data;
 
 	/* DAC output state */
 	speaker_level_w(0,(data >> 4) & 0x01);
@@ -252,7 +269,7 @@ static WRITE8_HANDLER( samcoupe_border_w )
 
 static READ8_HANDLER( samcoupe_attributes_r )
 {
-	if (video_screen_get_vblank(machine->primary_screen))
+	if (video_screen_get_vblank(space->machine->primary_screen))
 	{
 		/* Border areas return 0xff */
 		return 0xff;
@@ -260,7 +277,7 @@ static READ8_HANDLER( samcoupe_attributes_r )
 	else
 	{
 		/* TODO: This actually needs to return various attributes
-		 * of the currently displayed screen data */
+         * of the currently displayed screen data */
 		return 0x00;
 	}
 }
@@ -269,9 +286,9 @@ static READ8_HANDLER( samcoupe_attributes_r )
 static WRITE8_HANDLER( samcoupe_sound_w )
 {
 	if (offset & 0x100)
-		saa1099_control_port_0_w(machine, 0, data);
+		saa1099_control_port_0_w(space, 0, data);
 	else
-		saa1099_write_port_0_w(machine, 0, data);
+		saa1099_write_port_0_w(space, 0, data);
 }
 
 
@@ -313,29 +330,33 @@ ADDRESS_MAP_END
 
 static TIMER_CALLBACK( irq_off )
 {
+	coupe_asic *asic = machine->driver_data;
+
 	/* clear interrupt */
-	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
-	
+	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
+
 	/* adjust STATUS register */
-	samcoupe_regs.status |= param;
+	asic->status |= param;
 }
 
 
-void samcoupe_irq(running_machine *machine, UINT8 src)
+void samcoupe_irq(const device_config *device, UINT8 src)
 {
+	coupe_asic *asic = device->machine->driver_data;
+
 	/* set irq and a timer to set it off again */
-	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
-	timer_set(ATTOTIME_IN_USEC(20), NULL, src, irq_off);
-	
+	cpu_set_input_line(device, 0, HOLD_LINE);
+	timer_set(device->machine, ATTOTIME_IN_USEC(20), NULL, src, irq_off);
+
 	/* adjust STATUS register */
-	samcoupe_regs.status &= ~src;
+	asic->status &= ~src;
 }
 
 
 static INTERRUPT_GEN( samcoupe_frame_interrupt )
 {
 	/* signal frame interrupt */
-	samcoupe_irq(machine, 0x08);
+	samcoupe_irq(device, 0x08);
 }
 
 
@@ -495,12 +516,11 @@ static PALETTE_INIT( samcoupe )
 
 static MACHINE_DRIVER_START( samcoupe )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, SAMCOUPE_XTAL_X1/4) /* 6 Mhz */
+	MDRV_CPU_ADD("main", Z80, SAMCOUPE_XTAL_X1/4) /* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(samcoupe_mem, 0)
 	MDRV_CPU_IO_MAP(samcoupe_io, 0)
 	MDRV_CPU_VBLANK_INT("main", samcoupe_frame_interrupt)
 
-	MDRV_MACHINE_START(samcoupe)
 	MDRV_MACHINE_RESET(samcoupe)
 
     /* video hardware */
@@ -514,7 +534,8 @@ static MACHINE_DRIVER_START( samcoupe )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_SCANLINE)
 
 	/* devices */
-	MDRV_DEVICE_ADD("sambus_clock", MSM6242)
+	MDRV_DRIVER_DATA(coupe_asic)
+	MDRV_MSM6242_ADD("sambus_clock")
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -522,8 +543,9 @@ static MACHINE_DRIVER_START( samcoupe )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("saa1099", SAA1099, SAMCOUPE_XTAL_X1/3) /* 8 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	
+	MDRV_WD1772_ADD("wd1772", default_wd17xx_interface )	
 MACHINE_DRIVER_END
-
 
 
 /*************************************
@@ -532,10 +554,10 @@ MACHINE_DRIVER_END
  *
  *************************************/
 
-/* 
-	The bios is actually 32K. This is the combined version of the two old 16K MESS roms.
-	It does match the 3.0 one the most, but the first half differs in one byte 
-	and in the second half, the case of the "plc" in the company string differs.
+/*
+    The bios is actually 32K. This is the combined version of the two old 16K MESS roms.
+    It does match the 3.0 one the most, but the first half differs in one byte
+    and in the second half, the case of the "plc" in the company string differs.
 */
 ROM_START( samcoupe )
 	ROM_REGION( 0x8000, "main", 0 )

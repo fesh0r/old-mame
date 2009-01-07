@@ -8,7 +8,7 @@
 #define SPECTRUM_H
 
 #include "devices/snapquik.h"
-
+#include "devices/cartslot.h"
 
 /* Spectrum screen size in pixels */
 #define SPEC_UNSEEN_LINES  16   /* Non-visible scanlines before first border
@@ -53,7 +53,6 @@ typedef enum
 	TIMEX_CART_EXROM,
 	TIMEX_CART_HOME
 } TIMEX_CART_TYPE;
-
 
 /*----------- defined in machine/spectrum.c -----------*/
 

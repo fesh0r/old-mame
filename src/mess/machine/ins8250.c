@@ -26,7 +26,7 @@ the same problems as the original INS8250.
 INS8250A
 An improved version of the INS8250 using XMOS technology with various functional
 flaws corrected. The INS8250A was used initially in PC clone computers by vendors
-who used “clean” BIOS designs. Because of the corrections in the chip, this part
+who used "clean" BIOS designs. Because of the corrections in the chip, this part
 could not be used with a BIOS compatible with the INS8250 or INS8250B.
 
 INS82C50A
@@ -80,7 +80,11 @@ History:
 
 
 #define LOG(LEVEL,N,M,A)  \
-if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A;
+	do { \
+		if( M ) \
+			logerror("%-24s",(char*)M ); \
+		logerror A; \
+	} while (0)
 
 
 /* device types */
@@ -429,7 +433,7 @@ READ8_DEVICE_HANDLER( ins8250_r )
 		case 5:
 
 #if 0
-			if (ins8250->send.active && (timer_get_time()-ins8250->send.time>uart_byte_time(n)))
+			if (ins8250->send.active && (timer_get_time(machine)-ins8250->send.time>uart_byte_time(n)))
 			{
 				// currently polling is enough for pc1512
 				ins8250->lsr |= 0x40; /* set TSRE */
@@ -629,11 +633,11 @@ DEVICE_GET_INFO( ins8250 )
 		case DEVINFO_FCT_RESET:						info->reset = DEVICE_RESET_NAME(ins8250);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:						info->s = "National Semiconductor INS8250/INS8250B";	break;
-		case DEVINFO_STR_FAMILY:					info->s = "INS8250";						break;
-		case DEVINFO_STR_VERSION:					info->s = "1.00";							break;
-		case DEVINFO_STR_SOURCE_FILE:				info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:					info->s = "Copyright the MESS Team";		break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "National Semiconductor INS8250/INS8250B");	break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "INS8250");					break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.00");					break;
+		case DEVINFO_STR_SOURCE_FILE:				strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright the MESS Team");	break;
 	}
 }
 
@@ -643,7 +647,7 @@ DEVICE_GET_INFO( ins8250a )
 	switch ( state )
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_STR_NAME:						info->s = "National Semiconductor INS8250A/INS82C50A";	break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "National Semiconductor INS8250A/INS82C50A");	break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:						info->start = DEVICE_START_NAME(ins8250a);	break;
@@ -658,7 +662,7 @@ DEVICE_GET_INFO( ns16450 )
 	switch ( state )
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_STR_NAME:						info->s = "National Semiconductor NS16450/PC16450";	break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "National Semiconductor NS16450/PC16450");	break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:						info->start = DEVICE_START_NAME(ns16450);	break;
@@ -673,7 +677,7 @@ DEVICE_GET_INFO( ns16550 )
 	switch ( state )
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_STR_NAME:						info->s = "National Semiconductor NS16550/PC16550";	break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "National Semiconductor NS16550/PC16550");	break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:						info->start = DEVICE_START_NAME(ns16550);	break;
@@ -688,7 +692,7 @@ DEVICE_GET_INFO( ns16550a )
 	switch ( state )
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_STR_NAME:						info->s = "National Semiconductor NS16550A/PC16550A";	break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "National Semiconductor NS16550A/PC16550A");	break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:						info->start = DEVICE_START_NAME(ns16550a);	break;
@@ -703,7 +707,7 @@ DEVICE_GET_INFO( pc16550d )
 	switch ( state )
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_STR_NAME:						info->s = "National Semiconductor PC16550D";	break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "National Semiconductor PC16550D");	break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:						info->start = DEVICE_START_NAME(pc16550d);	break;

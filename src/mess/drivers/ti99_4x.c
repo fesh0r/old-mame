@@ -19,10 +19,12 @@ Historical notes: TI made several last minute design changes.
 */
 
 #include "driver.h"
+#include "cpu/tms9900/tms9900.h"
 #include "deprecat.h"
 #include "video/v9938.h"
 #include "machine/ti99_4x.h"
 #include "machine/tms9901.h"
+#include "machine/tms9902.h"
 #include "audio/spchroms.h"
 #include "machine/99_peb.h"
 #include "machine/994x_ser.h"
@@ -32,10 +34,12 @@ Historical notes: TI made several last minute design changes.
 #include "devices/mflopimg.h"
 #include "devices/harddriv.h"
 #include "devices/cassette.h"
+#include "devices/cartslot.h"
 #include "machine/smartmed.h"
 #include "sound/5220intf.h"
 #include "machine/idectrl.h"
 #include "machine/smc92x4.h"
+#include "machine/mm58274c.h"
 
 /*
     memory map
@@ -83,14 +87,14 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(writecru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE(tms9901_0_cru_w)
+	AM_RANGE(0x0000, 0x07ff) AM_DEVWRITE(TMS9901, "tms9901", tms9901_cru_w)
 	AM_RANGE(0x0800, 0x0fff) AM_WRITE(ti99_4x_peb_cru_w)
 
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(readcru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x00ff) AM_READ(tms9901_0_cru_r)
+	AM_RANGE(0x0000, 0x00ff) AM_DEVREAD(TMS9901, "tms9901", tms9901_cru_r)
 	AM_RANGE(0x0100, 0x01ff) AM_READ(ti99_4x_peb_cru_r)
 
 ADDRESS_MAP_END
@@ -498,6 +502,34 @@ static const tms5220_interface ti99_4x_tms5220interface =
 	spchroms_read_and_branch	/* speech ROM read and branch handler */
 };
 
+static const mm58274c_interface floppy_mm58274c_interface =
+{
+	1,	/* 	mode 24*/
+	0   /*  first day of week */
+};
+
+MACHINE_DRIVER_START(ti99_4_cartslot)
+ 	MDRV_CARTSLOT_ADD("cart1")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin,c,d,g,m,crom,drom,grom,mrom")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_START(ti99_cart)
+	MDRV_CARTSLOT_LOAD(ti99_cart)
+	MDRV_CARTSLOT_UNLOAD(ti99_cart)
+
+ 	MDRV_CARTSLOT_ADD("cart2")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin,c,d,g,m,crom,drom,grom,mrom")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_START(ti99_cart)
+	MDRV_CARTSLOT_LOAD(ti99_cart)
+	MDRV_CARTSLOT_UNLOAD(ti99_cart)
+
+ 	MDRV_CARTSLOT_ADD("cart3")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin,c,d,g,m,crom,drom,grom,mrom")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_START(ti99_cart)
+	MDRV_CARTSLOT_LOAD(ti99_cart)
+	MDRV_CARTSLOT_UNLOAD(ti99_cart)
+MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(ti99_4_60hz)
 	/* basic machine hardware */
@@ -533,10 +565,22 @@ static MACHINE_DRIVER_START(ti99_4_60hz)
 
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
-	MDRV_DEVICE_ADD( "ide_harddisk", IDE_HARDDISK )
+	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
+	
+	/* rtc */
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)		
+	/* tms9901 */
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)	
+	/* tms9902 */
+	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
+	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)		
+	
+	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
+	
+	MDRV_IMPORT_FROM(ti99_4_cartslot)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(ti99_4_50hz)
@@ -571,10 +615,22 @@ static MACHINE_DRIVER_START(ti99_4_50hz)
 
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
-	MDRV_DEVICE_ADD( "ide_harddisk", IDE_HARDDISK )
+	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
+
+	/* rtc */
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)	
+	/* tms9901 */
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)	
+	/* tms9902 */
+	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
+	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)		
+	
+	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
+	
+	MDRV_IMPORT_FROM(ti99_4_cartslot)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(ti99_4a_60hz)
@@ -609,10 +665,23 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
-	MDRV_DEVICE_ADD( "ide_harddisk", IDE_HARDDISK )
+	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
+
+	/* rtc */
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)	
+	
+	/* tms9901 */
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)	
+	/* tms9902 */
+	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
+	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)		
+	
+	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )	
+	
+	MDRV_IMPORT_FROM(ti99_4_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -648,10 +717,22 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
-	MDRV_DEVICE_ADD( "ide_harddisk", IDE_HARDDISK )
+	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
+
+	/* rtc */
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)		
+	/* tms9901 */
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)	
+	/* tms9902 */
+	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
+	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)	
+	
+	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
+	
+	MDRV_IMPORT_FROM(ti99_4_cartslot)
 MACHINE_DRIVER_END
 
 
@@ -695,10 +776,22 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
-	MDRV_DEVICE_ADD( "ide_harddisk", IDE_HARDDISK )
+	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
+
+	/* rtc */
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)	
+	/* tms9901 */
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)
+	/* tms9902 */
+	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
+	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)
+	
+	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )	
+	
+	MDRV_IMPORT_FROM(ti99_4_cartslot)	
 MACHINE_DRIVER_END
 
 
@@ -803,29 +896,7 @@ ROM_END
  * and you could plug quite a lot of GROMs in the side port.  Neither of these
  * are emulated.
  */
-
-static void ti99_4_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CARTSLOT; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(ti99_cart); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_cart); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_cart); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,c,d,g,m,crom,drom,grom,mrom"); break;
-	}
-}
-
+	
 static void ti99_4_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
@@ -926,10 +997,9 @@ static void ti99_4_memcard_getinfo(const mess_device_class *devclass, UINT32 sta
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
-}
-
-static SYSTEM_CONFIG_START(ti99_4)
-	CONFIG_DEVICE(ti99_4_cartslot_getinfo)
+}		
+	
+static SYSTEM_CONFIG_START(ti99_4)	
 	CONFIG_DEVICE(ti99_4_floppy_getinfo)
 	CONFIG_DEVICE(ti99_4_parallel_getinfo)
 	CONFIG_DEVICE(ti99_4_serial_getinfo)

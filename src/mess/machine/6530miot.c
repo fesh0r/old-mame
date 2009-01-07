@@ -179,7 +179,7 @@ WRITE8_DEVICE_HANDLER( miot6530_w )
 	if (offset & 0x04)
 	{
 		static const UINT8 timershift[4] = { 0, 3, 6, 10 };
-		attotime curtime = timer_get_time();
+		attotime curtime = timer_get_time(device->machine);
 		INT64 target;
 
 		/* A0-A1 contain the timer divisor */
@@ -227,7 +227,7 @@ WRITE8_DEVICE_HANDLER( miot6530_w )
 			if (port->out_func != NULL)
 				(*port->out_func)(device, data, olddata);
 			else
-				logerror("6530MIOT chip %s: Port %c is being written to but has no handler.  PC: %08X - %02X\n", device->tag, 'A' + (offset & 1), safe_activecpu_get_pc(), data);
+				logerror("6530MIOT chip %s: Port %c is being written to but has no handler.  PC: %08X - %02X\n", device->tag, 'A' + (offset & 1), cpu_get_pc(device->machine->cpu[0]), data);
 		}
 	}
 }
@@ -289,7 +289,7 @@ READ8_DEVICE_HANDLER( miot6530_r )
 				port->in = (*port->in_func)(device, port->in);
 			}
 			else
-				logerror("6530MIOT chip %s: Port %c is being read but has no handler.  PC: %08X\n", device->tag, 'A' + (offset & 1), safe_activecpu_get_pc());
+				logerror("6530MIOT chip %s: Port %c is being read but has no handler.  PC: %08X\n", device->tag, 'A' + (offset & 1), cpu_get_pc(device->machine->cpu[0]));
 
 			/* apply the DDR to the result */
 			val = (out & port->ddr) | (port->in & ~port->ddr);
@@ -377,9 +377,7 @@ UINT8 miot6530_portb_out_get(const device_config *device)
 
 static DEVICE_START( miot6530 )
 {
-	const miot6530_config *config = device->inline_config;
 	miot6530_state *miot = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
@@ -388,7 +386,7 @@ static DEVICE_START( miot6530 )
 
 	/* set static values */
 	miot->intf = device->static_config;
-	miot->clock = config->clock;
+	miot->clock = device->clock;
 
 	/* configure the ports */
 	miot->port[0].in_func = miot->intf->in_a_func;
@@ -397,23 +395,21 @@ static DEVICE_START( miot6530 )
 	miot->port[1].out_func = miot->intf->out_b_func;
 
 	/* allocate timers */
-	miot->timer = timer_alloc(timer_end_callback, (void *)device);
+	miot->timer = timer_alloc(device->machine, timer_end_callback, (void *)device);
 
 	/* register for save states */
-	state_save_combine_module_and_tag(unique_tag, "miot6530", device->tag);
+	state_save_register_device_item(device, 0, miot->port[0].in);
+	state_save_register_device_item(device, 0, miot->port[0].out);
+	state_save_register_device_item(device, 0, miot->port[0].ddr);
+	state_save_register_device_item(device, 0, miot->port[1].in);
+	state_save_register_device_item(device, 0, miot->port[1].out);
+	state_save_register_device_item(device, 0, miot->port[1].ddr);
 
-	state_save_register_item(unique_tag, 0, miot->port[0].in);
-	state_save_register_item(unique_tag, 0, miot->port[0].out);
-	state_save_register_item(unique_tag, 0, miot->port[0].ddr);
-	state_save_register_item(unique_tag, 0, miot->port[1].in);
-	state_save_register_item(unique_tag, 0, miot->port[1].out);
-	state_save_register_item(unique_tag, 0, miot->port[1].ddr);
+	state_save_register_device_item(device, 0, miot->irqstate);
+	state_save_register_device_item(device, 0, miot->irqenable);
 
-	state_save_register_item(unique_tag, 0, miot->irqstate);
-	state_save_register_item(unique_tag, 0, miot->irqenable);
-
-	state_save_register_item(unique_tag, 0, miot->timershift);
-	state_save_register_item(unique_tag, 0, miot->timerstate);
+	state_save_register_device_item(device, 0, miot->timershift);
+	state_save_register_device_item(device, 0, miot->timerstate);
 
 	return DEVICE_START_OK;
 }
@@ -456,7 +452,7 @@ DEVICE_GET_INFO( miot6530 )
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(miot6530_state);		break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = sizeof(miot6530_config);		break;
+		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;							break;
 		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;		break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
@@ -466,10 +462,10 @@ DEVICE_GET_INFO( miot6530 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(miot6530);break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "6530 (MIOT)";				break;
-		case DEVINFO_STR_FAMILY:						info->s = "I/O devices";				break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";						break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;						break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright Nicola Salmoria and the MAME Team"; break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "6530 (MIOT)");				break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "I/O devices");				break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }

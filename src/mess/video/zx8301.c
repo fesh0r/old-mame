@@ -105,7 +105,7 @@ READ8_DEVICE_HANDLER( zx8301_ram_r )
 
 	if (zx8301->vda)
 	{
-		cpu_spinuntil_time(video_screen_get_time_until_pos(zx8301->screen, 256, 0));
+		cpu_spinuntil_time(device->machine->cpu[0], video_screen_get_time_until_pos(zx8301->screen, 256, 0));
 	}
 
 	return zx8301->intf->ram_r(device, offset);
@@ -119,7 +119,7 @@ WRITE8_DEVICE_HANDLER( zx8301_ram_w )
 
 	if (zx8301->vda)
 	{
-		cpu_spinuntil_time(video_screen_get_time_until_pos(zx8301->screen, 256, 0));
+		cpu_spinuntil_time(device->machine->cpu[0], video_screen_get_time_until_pos(zx8301->screen, 256, 0));
 	}
 
 	zx8301->intf->ram_w(device, offset, data);
@@ -222,7 +222,7 @@ void zx8301_update(const device_config *device, bitmap_t *bitmap, const rectangl
 	}
 	else
 	{
-		fillbitmap(bitmap, get_black_pen(zx8301->screen->machine), cliprect);
+		bitmap_fill(bitmap, cliprect, get_black_pen(zx8301->screen->machine));
 	}
 }
 
@@ -231,17 +231,16 @@ void zx8301_update(const device_config *device, bitmap_t *bitmap, const rectangl
 static DEVICE_START( zx8301 )
 {
 	zx8301_t *zx8301 = get_safe_token(device);
-	char unique_tag[30];
 
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
 	assert(strlen(device->tag) < 20);
+	assert(device->clock > 0);
 
 	zx8301->intf = device->static_config;
 
 	assert(zx8301->intf != NULL);
-	assert(zx8301->intf->clock > 0);
 	assert(zx8301->intf->on_vsync_changed != NULL);
 	assert(zx8301->intf->ram_r != NULL);
 	assert(zx8301->intf->ram_w != NULL);
@@ -254,21 +253,20 @@ static DEVICE_START( zx8301 )
 	assert(zx8301->screen != NULL);
 
 	/* create the timers */
-	zx8301->vsync_timer = timer_alloc(zx8301_vsync_tick, (void *)device);
+	zx8301->vsync_timer = timer_alloc(device->machine, zx8301_vsync_tick, (void *)device);
 	timer_adjust_periodic(zx8301->vsync_timer, attotime_zero, 0, ATTOTIME_IN_HZ(50)); // HACK
 
-	zx8301->flash_timer = timer_alloc(zx8301_flash_tick, (void *)device);
+	zx8301->flash_timer = timer_alloc(device->machine, zx8301_flash_tick, (void *)device);
 	timer_adjust_periodic(zx8301->flash_timer, ATTOTIME_IN_HZ(2), 0, ATTOTIME_IN_HZ(2));
 
 	/* register for state saving */
-	state_save_combine_module_and_tag(unique_tag, "zx8301", device->tag);
+	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->dispoff);
+	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->mode8);
+	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->base);
+	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->flash);
+	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->vsync);
+	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->vda);
 
-	state_save_register_item(unique_tag, 0, zx8301->dispoff);
-	state_save_register_item(unique_tag, 0, zx8301->mode8);
-	state_save_register_item(unique_tag, 0, zx8301->base);
-	state_save_register_item(unique_tag, 0, zx8301->flash);
-	state_save_register_item(unique_tag, 0, zx8301->vsync);
-	state_save_register_item(unique_tag, 0, zx8301->vda);
 	return DEVICE_START_OK;
 }
 
@@ -301,10 +299,10 @@ DEVICE_GET_INFO( zx8301 )
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(zx8301);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Sinclair ZX8301";				break;
-		case DEVINFO_STR_FAMILY:						info->s = "Sinclair ZX83";					break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright MESS Team";			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Sinclair ZX8301");				break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Sinclair ZX83");					break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright MESS Team");			break;
 	}
 }

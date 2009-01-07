@@ -50,7 +50,6 @@ void amstrad_setUpperRom(running_machine *machine);
 
 void AmstradCPC_SetUpperRom(running_machine *machine, int);
 void AmstradCPC_PALWrite(running_machine *machine, int);
-void amstrad_init_palette(running_machine* machine);
 
 
 /*----------- defined in machine/amstrad.c -----------*/
@@ -65,6 +64,7 @@ DEVICE_IMAGE_LOAD(amstrad_plus_cartridge);
 
 /*----------- defined in video/amstrad.c -----------*/
 
+void amstrad_init_palette(running_machine* machine);
 void amstrad_plus_setspritecolour(running_machine *machine, unsigned int off, int r, int g, int b);
 void amstrad_plus_setsplitline(unsigned int line, unsigned int address);
 
@@ -98,7 +98,7 @@ This gives a total of 19968 NOPs per frame. */
 
 extern VIDEO_START( amstrad );
 extern VIDEO_UPDATE( amstrad );
-void amstrad_vh_execute_crtc_cycles(int);
+void amstrad_vh_execute_crtc_cycles(running_machine*, int);
 void amstrad_vh_update_colour(int, int);
 void amstrad_vh_update_mode(int);
 
@@ -109,7 +109,7 @@ extern int amstrad_CRTC_CR;
 /*** AMSTRAD CPC SPECIFIC ***/
 
 /* initialise palette for CPC464, CPC664 and CPC6128 */
-extern PALETTE_INIT( amstrad_cpc );
+//extern PALETTE_INIT( amstrad_cpc );
 
 /**** KC COMPACT SPECIFIC ***/
 

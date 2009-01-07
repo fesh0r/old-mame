@@ -17,14 +17,14 @@
 
 #define VERBOSE_LEVEL 0
 #define DBG_LOG(N,M,A) \
-	{ \
+	do { \
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time()), (char*) M ); \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
 			logerror A; \
 		} \
-	}
+	} while (0)
 
 const unsigned char vic6560_palette[] =
 {
@@ -48,9 +48,9 @@ UINT8 vic6560[16];
 
 /* 2008-05 FP: lightpen code needs to read input port from vc20.c */
 
-#define LIGHTPEN_BUTTON		(((input_port_read(machine, "CTRLSEL") & 0xf0) == 0x20) && (input_port_read(machine, "JOY") & 0x40))
-#define LIGHTPEN_X_VALUE	(input_port_read(machine, "LIGHTX") & ~0x01)
-#define LIGHTPEN_Y_VALUE	(input_port_read(machine, "LIGHTY") & ~0x01)
+#define LIGHTPEN_BUTTON		(((input_port_read(space->machine, "CTRLSEL") & 0xf0) == 0x20) && (input_port_read(space->machine, "JOY") & 0x40))
+#define LIGHTPEN_X_VALUE	(input_port_read(space->machine, "LIGHTX") & ~0x01)
+#define LIGHTPEN_Y_VALUE	(input_port_read(space->machine, "LIGHTY") & ~0x01)
 
 /* lightpen delivers values from internal counters
  * they do not start with the visual area or frame area */
@@ -99,10 +99,10 @@ int vic6560_pal;
 
 static bitmap_t *vic6560_bitmap;
 static int rasterline = 0, lastline = 0;
-static void vic6560_drawlines (int start, int last);
+static void vic6560_drawlines (running_machine *machine, int start, int last);
 
-static int (*vic_dma_read) (int);
-static int (*vic_dma_read_color) (int);
+static int (*vic_dma_read) (running_machine *machine, int);
+static int (*vic_dma_read_color) (running_machine *machine, int);
 
 static int vic656x_xsize, vic656x_ysize, vic656x_lines, vic656x_vretracerate;
 static int charheight, matrix8x16, inverted;
@@ -124,7 +124,7 @@ static void vic656x_init (void)
 	vic656x_vretracerate = VIC656X_VRETRACERATE;
 }
 
-void vic6560_init (int (*dma_read) (int), int (*dma_read_color) (int))
+void vic6560_init (int (*dma_read) (running_machine *machine, int), int (*dma_read_color) (running_machine *machine, int))
 {
 	vic6560_pal = FALSE;
 	vic_dma_read = dma_read;
@@ -132,7 +132,7 @@ void vic6560_init (int (*dma_read) (int), int (*dma_read_color) (int))
 	vic656x_init ();
 }
 
-void vic6561_init (int (*dma_read) (int), int (*dma_read_color) (int))
+void vic6561_init (int (*dma_read) (running_machine *machine, int), int (*dma_read_color) (running_machine *machine, int))
 {
 	vic6560_pal = TRUE;
 	vic_dma_read = dma_read;
@@ -152,6 +152,7 @@ VIDEO_START( vic6560 )
 
 WRITE8_HANDLER ( vic6560_port_w )
 {
+	running_machine *machine = space->machine;
 	DBG_LOG (1, "vic6560_port_w", ("%.4x:%.2x\n", offset, data));
 	switch (offset)
 	{
@@ -160,7 +161,7 @@ WRITE8_HANDLER ( vic6560_port_w )
 	case 0xc:
 	case 0xd:
 	case 0xe:
-		vic6560_soundport_w (machine, offset, data);
+		vic6560_soundport_w (space->machine, offset, data);
 		break;
 	}
 	if (vic6560[offset] != data)
@@ -174,7 +175,7 @@ WRITE8_HANDLER ( vic6560_port_w )
 		case 5:
 		case 0xe:
 		case 0xf:
-			vic6560_drawlines (lastline, rasterline);
+			vic6560_drawlines (space->machine, lastline, rasterline);
 			break;
 		}
 		vic6560[offset] = data;
@@ -216,8 +217,9 @@ WRITE8_HANDLER ( vic6560_port_w )
 	}
 }
 
- READ8_HANDLER ( vic6560_port_r )
+READ8_HANDLER ( vic6560_port_r )
 {
+	running_machine *machine = space->machine;
 	static double lightpenreadtime = 0.0;
 	int val;
 
@@ -227,13 +229,13 @@ WRITE8_HANDLER ( vic6560_port_w )
 		val = ((rasterline & 1) << 7) | (vic6560[offset] & 0x7f);
 		break;
 	case 4:						   /*rasterline */
-		vic6560_drawlines (lastline, rasterline);
+		vic6560_drawlines (space->machine, lastline, rasterline);
 		val = (rasterline / 2) & 0xff;
 		break;
 	case 6:						   /*lightpen horizontal */
 	case 7:						   /*lightpen vertical */
 		if (LIGHTPEN_BUTTON
-			&& ((attotime_to_double(timer_get_time ()) - lightpenreadtime) * VIC6560_VRETRACERATE >= 1))
+			&& ((attotime_to_double(timer_get_time(space->machine)) - lightpenreadtime) * VIC6560_VRETRACERATE >= 1))
 		{
 			/* only 1 update each frame */
 			/* and diode must recognize light */
@@ -242,15 +244,15 @@ WRITE8_HANDLER ( vic6560_port_w )
 				vic6560[6] = VIC6560_X_VALUE;
 				vic6560[7] = VIC6560_Y_VALUE;
 			}
-			lightpenreadtime = attotime_to_double(timer_get_time ());
+			lightpenreadtime = attotime_to_double(timer_get_time(space->machine));
 		}
 		val = vic6560[offset];
 		break;
 	case 8:						   /* poti 1 */
-		val = input_port_read(machine, "PADDLE0");
+		val = input_port_read(space->machine, "PADDLE0");
 		break;
 	case 9:						   /* poti 2 */
-		val = input_port_read(machine, "PADDLE1");
+		val = input_port_read(space->machine, "PADDLE1");
 		break;
 	default:
 		val = vic6560[offset];
@@ -260,7 +262,7 @@ WRITE8_HANDLER ( vic6560_port_w )
 	return val;
 }
 
-static void vic6560_draw_character (int ybegin, int yend,
+static void vic6560_draw_character (running_machine *machine, int ybegin, int yend,
 									int ch, int yoff, int xoff,
 									UINT16 *color)
 {
@@ -268,7 +270,7 @@ static void vic6560_draw_character (int ybegin, int yend,
 
 	for (y = ybegin; y <= yend; y++)
 	{
-		code = vic_dma_read ((chargenaddr + ch * charheight + y) & 0x3fff);
+		code = vic_dma_read (machine, (chargenaddr + ch * charheight + y) & 0x3fff);
 		*BITMAP_ADDR16(vic6560_bitmap, y + yoff, xoff + 0) = color[code >> 7];
 		*BITMAP_ADDR16(vic6560_bitmap, y + yoff, xoff + 1) = color[(code >> 6) & 1];
 		*BITMAP_ADDR16(vic6560_bitmap, y + yoff, xoff + 2) = color[(code >> 5) & 1];
@@ -280,14 +282,14 @@ static void vic6560_draw_character (int ybegin, int yend,
 	}
 }
 
-static void vic6560_draw_character_multi (int ybegin, int yend,
+static void vic6560_draw_character_multi (running_machine *machine, int ybegin, int yend,
 										  int ch, int yoff, int xoff, UINT16 *color)
 {
 	int y, code;
 
 	for (y = ybegin; y <= yend; y++)
 	{
-		code = vic_dma_read ((chargenaddr + ch * charheight + y) & 0x3fff);
+		code = vic_dma_read (machine, (chargenaddr + ch * charheight + y) & 0x3fff);
 		*BITMAP_ADDR16(vic6560_bitmap, y + yoff, xoff + 0) =
 			*BITMAP_ADDR16(vic6560_bitmap, y + yoff, xoff + 1) = color[code >> 6];
 		*BITMAP_ADDR16(vic6560_bitmap, y + yoff, xoff + 2) =
@@ -300,7 +302,7 @@ static void vic6560_draw_character_multi (int ybegin, int yend,
 }
 
 
-static void vic6560_drawlines (int first, int last)
+static void vic6560_drawlines (running_machine *machine, int first, int last)
 {
 	int line, vline;
 	int offs, yoff, xoff, ybegin, yend, i;
@@ -339,20 +341,20 @@ static void vic6560_drawlines (int first, int last)
 		}
 		for (xoff = xpos; (xoff < xpos + xsize) && (xoff < vic656x_xsize); xoff += 8, offs++)
 		{
-			ch = vic_dma_read ((videoaddr + offs) & 0x3fff);
-			attr = (vic_dma_read_color ((videoaddr + offs) & 0x3fff)) & 0xf;
+			ch = vic_dma_read (machine, (videoaddr + offs) & 0x3fff);
+			attr = (vic_dma_read_color (machine, (videoaddr + offs) & 0x3fff)) & 0xf;
 			if (inverted)
 			{
 				if (attr & 8)
 				{
 					multiinverted[0] = attr & 7;
-					vic6560_draw_character_multi (ybegin, yend, ch, yoff, xoff,
+					vic6560_draw_character_multi (machine, ybegin, yend, ch, yoff, xoff,
 												  multiinverted);
 				}
 				else
 				{
 					monoinverted[0] = attr;
-					vic6560_draw_character (ybegin, yend, ch, yoff, xoff, monoinverted);
+					vic6560_draw_character (machine, ybegin, yend, ch, yoff, xoff, monoinverted);
 				}
 			}
 			else
@@ -360,12 +362,12 @@ static void vic6560_drawlines (int first, int last)
 				if (attr & 8)
 				{
 					multi[2] = attr & 7;
-					vic6560_draw_character_multi (ybegin, yend, ch, yoff, xoff, multi);
+					vic6560_draw_character_multi (machine, ybegin, yend, ch, yoff, xoff, multi);
 				}
 				else
 				{
 					mono[1] = attr;
-					vic6560_draw_character (ybegin, yend, ch, yoff, xoff, mono);
+					vic6560_draw_character (machine, ybegin, yend, ch, yoff, xoff, mono);
 				}
 			}
 		}
@@ -401,7 +403,7 @@ INTERRUPT_GEN( vic656x_raster_interrupt )
 	if (rasterline >= vic656x_lines)
 	{
 		rasterline = 0;
-		vic6560_drawlines (lastline, vic656x_lines);
+		vic6560_drawlines (device->machine, lastline, vic656x_lines);
 		lastline = 0;
 	}
 }

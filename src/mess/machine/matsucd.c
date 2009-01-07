@@ -47,9 +47,9 @@ typedef struct
 	UINT16	xfer_offset;
 	UINT8	sector_buffer[CD_MAX_SECTOR_DATA];
 	UINT8	cdda_set;
-	void (*sten_cb)( int level );	/* Status enabled callback */
-	void (*stch_cb)( int level );	/* Status changed callback */
-	void (*scor_cb)( int level );	/* Subcode ready callback */
+	void (*sten_cb)( running_machine *machine, int level );	/* Status enabled callback */
+	void (*stch_cb)( running_machine *machine, int level );	/* Status changed callback */
+	void (*scor_cb)( running_machine *machine, int level );	/* Subcode ready callback */
 	cdrom_file *cdrom;
 	emu_timer *frame_timer;
 } matsucd;
@@ -67,24 +67,24 @@ void matsucd_init( const device_config *cdrom_device )
 
 	cd.cdrom = mess_cd_get_cdrom_file( cdrom_device );
 
-	cd.frame_timer = timer_alloc(matsu_subcode_proc, NULL);
+	cd.frame_timer = timer_alloc(cdrom_device->machine, matsu_subcode_proc, NULL);
 
 	cd.stch_signal = 1;
 }
 
-void matsucd_set_status_enabled_callback( void (*sten_cb)( int level ) )
+void matsucd_set_status_enabled_callback( void (*sten_cb)( running_machine *machine, int level ) )
 {
 	/* add the callback for status enabled signal */
 	cd.sten_cb = sten_cb;
 }
 
-void matsucd_set_status_changed_callback( void (*stch_cb)( int level ) )
+void matsucd_set_status_changed_callback( void (*stch_cb)( running_machine *machine, int level ) )
 {
 	/* add the callback for status changed signal */
 	cd.stch_cb = stch_cb;
 }
 
-void matsucd_set_subcode_ready_callback( void (*scor_cb)( int level ) )
+void matsucd_set_subcode_ready_callback( void (*scor_cb)( running_machine *machine, int level ) )
 {
 	/* add the callback for subcode ready signal */
 	cd.scor_cb = scor_cb;
@@ -227,42 +227,42 @@ int matsucd_scor_r( void )
 	return cd.scor_signal ? 0 : 1;
 }
 
-static void update_status_enable( int level )
+static void update_status_enable( running_machine *machine, int level )
 {
 	cd.sten_signal = level;
 
 	if ( cd.sten_cb )
 	{
-		(*cd.sten_cb)(cd.sten_signal);
+		(*cd.sten_cb)(machine, cd.sten_signal);
 	}
 }
 
-static void update_status_changed( int level )
+static void update_status_changed( running_machine *machine, int level )
 {
 	cd.stch_signal = level;
 
 	if ( cd.stch_cb )
 	{
-		(*cd.stch_cb)(cd.stch_signal);
+		(*cd.stch_cb)(machine, cd.stch_signal);
 	}
 }
 
-static void update_subcode_ready( int level )
+static void update_subcode_ready( running_machine *machine, int level )
 {
 	cd.scor_signal = level;
 
 	if ( cd.scor_cb )
 	{
-		(*cd.scor_cb)(cd.scor_signal);
+		(*cd.scor_cb)(machine, cd.scor_signal);
 	}
 }
 
 static TIMER_CALLBACK(matsucd_set_status_end)
 {
-	update_status_changed( 1 );
+	update_status_changed( machine, 1 );
 }
 
-static void matsucd_set_status( UINT8 status )
+static void matsucd_set_status( running_machine *machine, UINT8 status )
 {
 	if ( status != cd.status )
 	{
@@ -270,8 +270,8 @@ static void matsucd_set_status( UINT8 status )
 
 		if ( cd.stch_signal != 0 )
 		{
-			update_status_changed( 0 );
-			timer_set( ATTOTIME_IN_MSEC(1), NULL, 0, matsucd_set_status_end );
+			update_status_changed( machine, 0 );
+			timer_set(machine,  ATTOTIME_IN_MSEC(1), NULL, 0, matsucd_set_status_end );
 		}
 	}
 }
@@ -291,8 +291,8 @@ static TIMER_CALLBACK(matsu_subcode_proc)
 		{
 			if ( s == 0x11 )
 			{
-				update_subcode_ready( 1 );
-				update_subcode_ready( 0 );
+				update_subcode_ready( machine, 1 );
+				update_subcode_ready( machine, 0 );
 			}
 
 			newstatus |= MATSU_STATUS_PLAYING;
@@ -304,21 +304,21 @@ static TIMER_CALLBACK(matsu_subcode_proc)
 			newstatus &= ~MATSU_STATUS_PLAYING;
 		}
 
-		matsucd_set_status( newstatus );
+		matsucd_set_status( machine, newstatus );
 	}
 }
 
-static void matsucd_command_error( void )
+static void matsucd_command_error( running_machine *machine )
 {
 	UINT8	newstatus = cd.status;
 
 	newstatus &= ~MATSU_STATUS_SUCCESS;
 	newstatus |= MATSU_STATUS_ERROR;
 
-	matsucd_set_status( newstatus );
+	matsucd_set_status( machine, newstatus );
 }
 
-static void matsucd_complete_cmd( UINT8 len )
+static void matsucd_complete_cmd( running_machine *machine, UINT8 len )
 {
 	UINT8	newstatus = cd.status;
 
@@ -329,26 +329,26 @@ static void matsucd_complete_cmd( UINT8 len )
 	newstatus &= ~MATSU_STATUS_ERROR;
 	newstatus |= MATSU_STATUS_SUCCESS;
 
-	matsucd_set_status( newstatus );
+	matsucd_set_status( machine, newstatus );
 
-	update_status_enable( 1 );
-	update_status_enable( 0 );
+	update_status_enable( machine, 1 );
+	update_status_enable( machine, 0 );
 }
 
-UINT8 matsucd_response_r( void )
+UINT8 matsucd_response_r( running_machine *machine )
 {
 	UINT8	v = cd.output[cd.output_pos++];
 
 	if ( cd.output_pos < cd.output_len )
 	{
-		update_status_enable( 1 );
-		update_status_enable( 0 );
+		update_status_enable( machine, 1 );
+		update_status_enable( machine, 0 );
 	}
 
 	return v;
 }
 
-void matsucd_command_w( UINT8 data )
+void matsucd_command_w( running_machine *machine, UINT8 data )
 {
 	UINT8	cmd;
 
@@ -385,7 +385,7 @@ void matsucd_command_w( UINT8 data )
 			cd.motor = 1;
 
 			memset( cd.output, 0, 6 );
-			matsucd_complete_cmd( 0 );
+			matsucd_complete_cmd( machine, 0 );
 		}
 		break;
 
@@ -416,14 +416,14 @@ void matsucd_command_w( UINT8 data )
 			if (!cdrom_read_data(cd.cdrom, cd.lba, cd.sector_buffer, matsucd_getsector_type()))
 			{
 				logerror( "MATSUCD - Warning: Read error on CD!\n" );
-				matsucd_command_error();
+				matsucd_command_error( machine );
 				return;
 			}
 
 			cd.motor = 1;
 
 			memset( cd.output, 0, 6 );
-			matsucd_complete_cmd( 0 );
+			matsucd_complete_cmd( machine, 0 );
 		}
 		break;
 
@@ -435,7 +435,7 @@ void matsucd_command_w( UINT8 data )
 			cd.motor = 1;
 
 			memset( cd.output, 0, 6 );
-			matsucd_complete_cmd( 0 );
+			matsucd_complete_cmd( machine, 0 );
 		}
 		break;
 
@@ -450,7 +450,7 @@ void matsucd_command_w( UINT8 data )
 			cd.motor = 0;
 
 			memset( cd.output, 0, 6 );
-			matsucd_complete_cmd( 0 );
+			matsucd_complete_cmd( machine, 0 );
 		}
 		break;
 
@@ -478,7 +478,7 @@ void matsucd_command_w( UINT8 data )
 			cd.motor = 1;
 
 			memset( cd.output, 0, 6 );
-			matsucd_complete_cmd( 0 );
+			matsucd_complete_cmd( machine, 0 );
 		}
 		break;
 
@@ -521,7 +521,7 @@ void matsucd_command_w( UINT8 data )
 			}
 
 			memset( cd.output, 0, 6 );
-			matsucd_complete_cmd( 0 );
+			matsucd_complete_cmd( machine, 0 );
 		}
 		break;
 
@@ -559,7 +559,7 @@ void matsucd_command_w( UINT8 data )
 			}
 
 			memset( cd.output, 0, 6 );
-			matsucd_complete_cmd( 0 );
+			matsucd_complete_cmd( machine, 0 );
 		}
 		break;
 
@@ -580,9 +580,9 @@ void matsucd_command_w( UINT8 data )
 
 			cd.output[0] = newstatus;
 
-			matsucd_set_status( newstatus );
+			matsucd_set_status( machine, newstatus );
 
-			matsucd_complete_cmd( 1 );
+			matsucd_complete_cmd( machine, 1 );
 		}
 		break;
 
@@ -592,7 +592,7 @@ void matsucd_command_w( UINT8 data )
 				return;
 
 			memset( cd.output, 0, 6 );
-			matsucd_complete_cmd( 6 );
+			matsucd_complete_cmd( machine, 6 );
 		}
 		break;
 
@@ -606,7 +606,7 @@ void matsucd_command_w( UINT8 data )
 			cd.sector_size |= cd.input[3];
 
 			memset( cd.output, 0, 6 );
-			matsucd_complete_cmd( 0 );
+			matsucd_complete_cmd( machine, 0 );
 		}
 		break;
 
@@ -656,7 +656,7 @@ void matsucd_command_w( UINT8 data )
 				cd.output[12] = 0;
 			}
 
-			matsucd_complete_cmd( 13 );
+			matsucd_complete_cmd( machine, 13 );
 		}
 		break;
 
@@ -678,7 +678,7 @@ void matsucd_command_w( UINT8 data )
 			cd.output[3] = (end >> 8) & 0xff;
 			cd.output[4] = (end) & 0xff;
 
-			matsucd_complete_cmd( 5 );
+			matsucd_complete_cmd( machine, 5 );
 		}
 		break;
 
@@ -700,14 +700,14 @@ void matsucd_command_w( UINT8 data )
 			if ( cd.cdrom == NULL )
 			{
 				logerror( "MATSUCD - Warning: Reading TOC without a CD!\n" );
-				matsucd_command_error();
+				matsucd_command_error( machine );
 				return;
 			}
 
 			if ( track > cdrom_get_last_track(cd.cdrom) )
 			{
 				logerror( "MATSUCD - Warning: Reading invalid track entry from TOC!\n" );
-				matsucd_command_error();
+				matsucd_command_error( machine );
 				return;
 			}
 
@@ -726,7 +726,7 @@ void matsucd_command_w( UINT8 data )
 
 			cd.motor = 1;
 
-			matsucd_complete_cmd( 8 );
+			matsucd_complete_cmd( machine, 8 );
 		}
 		break;
 
@@ -737,7 +737,7 @@ void matsucd_command_w( UINT8 data )
 
 			matsucd_cdda_pause( (cd.input[1] == 0) ? 1 : 0 );
 			memset( cd.output, 0, 7 );
-			matsucd_complete_cmd( 0 );
+			matsucd_complete_cmd( machine, 0 );
 		}
 		break;
 
@@ -749,7 +749,7 @@ void matsucd_command_w( UINT8 data )
 			/* TODO: ??? */
 
 			memset( cd.output, 0, 7 );
-			matsucd_complete_cmd( 0 );
+			matsucd_complete_cmd( machine, 0 );
 		}
 		break;
 

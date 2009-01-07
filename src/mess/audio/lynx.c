@@ -4,7 +4,6 @@
 
 #include "driver.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "includes/lynx.h"
 
 
@@ -215,7 +214,7 @@ UINT8 lynx_audio_read(int offset)
 
 void lynx_audio_write(int offset, UINT8 data)
 {
-//	logerror("%.6f audio write %.2x %.2x\n", timer_get_time(), offset, data);
+//	logerror("%.6f audio write %.2x %.2x\n", timer_get_time(machine), offset, data);
     LYNX_AUDIO *channel=lynx_audio+((offset>>3)&3);
     stream_update(mixer_channel);
     switch (offset) {
@@ -258,39 +257,39 @@ void lynx_audio_write(int offset, UINT8 data)
 /************************************/
 /* Sound handler update             */
 /************************************/
-static void lynx_update (void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length)
+static STREAM_UPDATE( lynx_update )
 {
 	int i, j;
 	LYNX_AUDIO *channel;
 	int v;
-	stream_sample_t *buffer = _buffer[0];
+	stream_sample_t *buffer = outputs[0];
 
-	for (i = 0; i < length; i++, buffer++)
+	for (i = 0; i < samples; i++, buffer++)
 	{
 		*buffer = 0;
 		for (channel=lynx_audio, j=0; j<ARRAY_LENGTH(lynx_audio); j++, channel++)
 		{
-			lynx_audio_execute(Machine, channel);
+			lynx_audio_execute(device->machine, channel);
 			v=channel->reg.n.output;
 			*buffer+=v*15;
 		}
 	}
 }
 
-static void lynx2_update (void *param,stream_sample_t **inputs, stream_sample_t **buffer,int length)
+static STREAM_UPDATE( lynx2_update )
 {
-	stream_sample_t *left=buffer[0], *right=buffer[1];
+	stream_sample_t *left=outputs[0], *right=outputs[1];
 	int i, j;
 	LYNX_AUDIO *channel;
 	int v;
 
-	for (i = 0; i < length; i++, left++, right++)
+	for (i = 0; i < samples; i++, left++, right++)
 	{
 		*left = 0;
 		*right= 0;
 		for (channel=lynx_audio, j=0; j<ARRAY_LENGTH(lynx_audio); j++, channel++)
 		{
-			lynx_audio_execute(Machine, channel);
+			lynx_audio_execute(device->machine, channel);
 			v=channel->reg.n.output;
 			if (!(master_enable&(0x10<<j)))
 			{
@@ -361,25 +360,23 @@ void lynx_audio_reset(void)
 /* Sound handler start              */
 /************************************/
 
-void *lynx_custom_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( lynx_custom_start )
 {
-	mixer_channel = stream_create(0, 1, Machine->sample_rate, 0, lynx_update);
+	mixer_channel = stream_create(device, 0, 1, device->machine->sample_rate, 0, lynx_update);
 
-	usec_per_sample = 1000000 / Machine->sample_rate;
+	usec_per_sample = 1000000 / device->machine->sample_rate;
 
 	lynx_audio_init();
 	return (void *) ~0;
 }
 
 
-
-void *lynx2_custom_start(int clock, const custom_sound_interface *config)
+CUSTOM_START( lynx2_custom_start )
 {
-    mixer_channel = stream_create(0, 2, Machine->sample_rate, 0, lynx2_update);
+    mixer_channel = stream_create(device, 0, 2, device->machine->sample_rate, 0, lynx2_update);
 
-    usec_per_sample = 1000000 / Machine->sample_rate;
+    usec_per_sample = 1000000 / device->machine->sample_rate;
 
     lynx_audio_init();
 	return (void *) ~0;
 }
-

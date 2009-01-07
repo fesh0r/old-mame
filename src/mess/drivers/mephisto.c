@@ -85,9 +85,9 @@ static READ8_HANDLER(read_keys)
 
 	data = 0xff;
 	if (((led_status & 0x80) == 0x00))
-		data=input_port_read(machine, keynames[0][offset]);
+		data=input_port_read(space->machine, keynames[0][offset]);
 	else
-		data=input_port_read(machine, keynames[1][offset]);
+		data=input_port_read(space->machine, keynames[1][offset]);
 
 	logerror("Keyboard Port = %s Data = %d\n  ", ((led_status & 0x80) == 0x00) ? keynames[0][offset] : keynames[1][offset], data);
 	return data | 0x7f;
@@ -175,7 +175,7 @@ INPUT_PORTS_END
 static TIMER_CALLBACK( update_nmi )
 {
 
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI,PULSE_LINE);
+	cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI,PULSE_LINE);
 	// dac_data_w(0,led_status&64?128:0);
 	beep_set_state(0,led_status&64?1:0);
 
@@ -184,9 +184,9 @@ static TIMER_CALLBACK( update_nmi )
 static MACHINE_START( mephisto )
 {
 	lcd_shift_counter=3;
-	// timer_pulse(ATTOTIME_IN_HZ(60), NULL, 0, update_leds);
-	timer_pulse(ATTOTIME_IN_HZ(600), NULL, 0, update_nmi);
-	// cpunum_set_input_line(machine, 0, M65C02_IRQ_LINE,CLEAR_LINE);
+	// timer_pulse(machine, ATTOTIME_IN_HZ(60), NULL, 0, update_leds);
+	timer_pulse(machine, ATTOTIME_IN_HZ(600), NULL, 0, update_nmi);
+	// cpu_set_input_line(machine->cpu[0], M65C02_IRQ_LINE,CLEAR_LINE);
 	//beep_set_frequency(0, 4000);
 }
 
@@ -201,7 +201,7 @@ static MACHINE_DRIVER_START( mephisto )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main",M65C02,4915200)        /* 65C02 */
 	MDRV_CPU_PROGRAM_MAP(mephisto_mem, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 	MDRV_MACHINE_START( mephisto )
 	MDRV_MACHINE_RESET( mephisto )
 

@@ -39,6 +39,7 @@ documentation still exists.
 ***************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
 #include "includes/coco.h"
 #include "includes/dgn_beta.h"
@@ -315,11 +316,11 @@ static PALETTE_INIT( dgnbeta )
 
 static MACHINE_DRIVER_START( dgnbeta )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809E, DGNBETA_CPU_SPEED_HZ)        /* 2 Mhz */
+	MDRV_CPU_ADD("main", M6809E, DGNBETA_CPU_SPEED_HZ)        /* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(dgnbeta_map,0)
 
 	/* both cpus in the beta share the same address/data busses */
-	MDRV_CPU_ADD("dma", M6809E, DGNBETA_CPU_SPEED_HZ)        /* 2 Mhz */
+	MDRV_CPU_ADD("dma", M6809E, DGNBETA_CPU_SPEED_HZ)        /* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(dgnbeta_map,0)
 
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -338,6 +339,8 @@ static MACHINE_DRIVER_START( dgnbeta )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
 	MDRV_VIDEO_UPDATE( dgnbeta )
+	
+	MDRV_WD179X_ADD("wd179x", dgnbeta_wd17xx_interface )	
 MACHINE_DRIVER_END
 
 ROM_START(dgnbeta)

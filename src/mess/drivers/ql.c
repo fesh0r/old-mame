@@ -38,6 +38,8 @@
 */
 
 #include "driver.h"
+#include "cpu/mcs51/mcs51.h"
+#include "includes/ql.h"
 #include "cpu/mcs48/mcs48.h"
 #include "cpu/m68000/m68000.h"
 #include "devices/basicdsk.h"
@@ -49,39 +51,18 @@
 #include "video/zx8301.h"
 #include "machine/zx8302.h"
 
-#define SCREEN_TAG	"main"
-#define ZX8301_TAG	"ic22"
-#define ZX8302_TAG	"ic23"
-#define MDV1_TAG	"mdv1"
-#define MDV2_TAG	"mdv2"
-
-#define X1 XTAL_15MHz
-#define X2 XTAL_32_768kHz
-#define X3 XTAL_4_436MHz
-#define X4 XTAL_11MHz
-
 static QUICKLOAD_LOAD( ql );
 
 /* Intelligent Peripheral Controller (IPC) */
 
-static struct IPC
-{
-	UINT8 keylatch;
-	int ser1_txd, ser1_dtr;
-	int ser2_rxd, ser2_cts;
-	int ipl;
-	int comctl, comdata;
-	int baudx4;
-} ipc;
-
 static WRITE8_HANDLER( ipc_w )
 {
+	ql_state *state = space->machine->driver_data;
+
 	// pulse COMCTL line
 
-	const device_config *zx8302 = device_list_find_by_tag(machine->config->devicelist, ZX8302, ZX8302_TAG);
-
-	zx8302_comctl_w(zx8302, 0);
-	zx8302_comctl_w(zx8302, 1);
+	zx8302_comctl_w(state->zx8302, 0);
+	zx8302_comctl_w(state->zx8302, 1);
 }
 
 static WRITE8_HANDLER( ipc_port1_w )
@@ -101,7 +82,9 @@ static WRITE8_HANDLER( ipc_port1_w )
 
     */
 
-	ipc.keylatch = data;
+	ql_state *state = space->machine->driver_data;
+
+	state->keylatch = data;
 }
 
 static WRITE8_HANDLER( ipc_port2_w )
@@ -121,51 +104,43 @@ static WRITE8_HANDLER( ipc_port2_w )
 
     */
 
-	const device_config *zx8302 = device_list_find_by_tag(machine->config->devicelist, ZX8302, ZX8302_TAG);
+	ql_state *state = space->machine->driver_data;
 
 	int ipl = (BIT(data, 2) << 1) | BIT(data, 3);
 
-	if (ipl != ipc.ipl)
+	if (ipl != state->ipl)
 	{
 		switch (ipl)
 		{
 		case 0:
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_2, CLEAR_LINE);
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_5, CLEAR_LINE);
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_7, HOLD_LINE);
+			cpu_set_input_line(space->machine->cpu[0], M68K_IRQ_7, ASSERT_LINE);
 			break;
 
 		case 1:
 			// CTRL-ALT-7 pressed
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_2, CLEAR_LINE);
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_5, HOLD_LINE);
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_7, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[0], M68K_IRQ_5, ASSERT_LINE);
 			break;
 
 		case 2:
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_2, HOLD_LINE);
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_5, CLEAR_LINE);
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_7, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[0], M68K_IRQ_2, ASSERT_LINE);
 			break;
 
 		case 3:
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_2, CLEAR_LINE);
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_5, CLEAR_LINE);
-			cpunum_set_input_line(machine, 0, MC68000_IRQ_7, CLEAR_LINE);
+			cpu_set_input_line(space->machine->cpu[0], M68K_IRQ_7, CLEAR_LINE);
 			break;
 		}
 
-		ipc.ipl = ipl;
+		state->ipl = ipl;
 	}
 
 	speaker_level_w(0, BIT(data, 1));
 
-	ipc.ser2_cts = BIT(data, 4);
-	ipc.ser1_dtr = BIT(data, 5);
+	state->ser2_cts = BIT(data, 4);
+	state->ser1_dtr = BIT(data, 5);
 
-	ipc.comdata = BIT(data, 7);
+	state->comdata = BIT(data, 7);
 
-	zx8302_comdata_w(zx8302, BIT(data, 7));
+	zx8302_comdata_w(state->zx8302, BIT(data, 7));
 }
 
 static READ8_HANDLER( ipc_port2_r )
@@ -185,20 +160,26 @@ static READ8_HANDLER( ipc_port2_r )
 
     */
 
-	int irq = (ipc.ser2_rxd | ipc.ser1_txd);
+	ql_state *state = space->machine->driver_data;
 
-	cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ0, irq);
+	int irq = (state->ser2_rxd | state->ser1_txd);
 
-	return (ipc.comdata << 7) | irq;
+	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_IRQ0, irq);
+
+	return (state->comdata << 7) | irq;
 }
 
 static READ8_HANDLER( ipc_t1_r )
 {
-	return ipc.baudx4;
+	ql_state *state = space->machine->driver_data;
+
+	return state->baudx4;
 }
 
 static READ8_HANDLER( ipc_bus_r )
 {
+	ql_state *state = space->machine->driver_data;
+
 	/*
 
         bit     description
@@ -216,14 +197,14 @@ static READ8_HANDLER( ipc_bus_r )
 
 	UINT8 data = 0;
 
-	if (BIT(ipc.keylatch, 0)) data |= input_port_read(machine, "ROW0") | input_port_read(machine, "JOY0");
-	if (BIT(ipc.keylatch, 1)) data |= input_port_read(machine, "ROW1") | input_port_read(machine, "JOY1");
-	if (BIT(ipc.keylatch, 2)) data |= input_port_read(machine, "ROW2");
-	if (BIT(ipc.keylatch, 3)) data |= input_port_read(machine, "ROW3");
-	if (BIT(ipc.keylatch, 4)) data |= input_port_read(machine, "ROW4");
-	if (BIT(ipc.keylatch, 5)) data |= input_port_read(machine, "ROW5");
-	if (BIT(ipc.keylatch, 6)) data |= input_port_read(machine, "ROW6");
-	if (BIT(ipc.keylatch, 7)) data |= input_port_read(machine, "ROW7");
+	if (BIT(state->keylatch, 0)) data |= input_port_read(space->machine, "ROW0") | input_port_read(space->machine, "JOY0");
+	if (BIT(state->keylatch, 1)) data |= input_port_read(space->machine, "ROW1") | input_port_read(space->machine, "JOY1");
+	if (BIT(state->keylatch, 2)) data |= input_port_read(space->machine, "ROW2");
+	if (BIT(state->keylatch, 3)) data |= input_port_read(space->machine, "ROW3");
+	if (BIT(state->keylatch, 4)) data |= input_port_read(space->machine, "ROW4");
+	if (BIT(state->keylatch, 5)) data |= input_port_read(space->machine, "ROW5");
+	if (BIT(state->keylatch, 6)) data |= input_port_read(space->machine, "ROW6");
+	if (BIT(state->keylatch, 7)) data |= input_port_read(space->machine, "ROW7");
 
 	return data;
 }
@@ -489,9 +470,9 @@ INPUT_PORTS_END
 
 static ZX8301_ON_VSYNC_CHANGED( ql_vsync_w )
 {
-	const device_config *zx8302 = device_list_find_by_tag(device->machine->config->devicelist, ZX8302, ZX8302_TAG);
+	ql_state *state = device->machine->driver_data;
 
-	zx8302_vsync_w(zx8302, level);
+	zx8302_vsync_w(state->zx8302, level);
 }
 
 static ZX8301_RAM_READ( ql_ram_r )
@@ -507,7 +488,6 @@ static ZX8301_RAM_WRITE( ql_ram_w )
 static ZX8301_INTERFACE( ql_zx8301_intf )
 {
 	SCREEN_TAG,
-	X1,
 	ql_vsync_w,
 	ql_ram_r,
 	ql_ram_w
@@ -517,22 +497,25 @@ static ZX8301_INTERFACE( ql_zx8301_intf )
 
 static ZX8302_IRQ_CALLBACK( ql_irq_w )
 {
-	cpunum_set_input_line(device->machine, 0, MC68000_IRQ_2, state);
+	cpu_set_input_line(device->machine->cpu[0], M68K_IRQ_2, state);
 }
 
 static ZX8302_ON_BAUDX4_CHANGED( ql_baudx4_w )
 {
-	ipc.baudx4 = level;
+	ql_state *state = device->machine->driver_data;
+
+	state->baudx4 = level;
 }
 
 static ZX8302_COMDATA_WRITE( ql_comdata_w )
 {
-	ipc.comdata = level;
+	ql_state *state = device->machine->driver_data;
+
+	state->comdata = level;
 }
 
 static ZX8302_INTERFACE( ql_zx8302_intf )
 {
-	X1,
 	X2,
 	MDV1_TAG,
 	MDV2_TAG,
@@ -543,9 +526,9 @@ static ZX8302_INTERFACE( ql_zx8302_intf )
 
 static VIDEO_UPDATE( ql )
 {
-	const device_config *zx8301 = device_list_find_by_tag(screen->machine->config->devicelist, ZX8301, ZX8301_TAG);
+	ql_state *state = screen->machine->driver_data;
 
-	zx8301_update(zx8301, bitmap, cliprect);
+	zx8301_update(state->zx8301, bitmap, cliprect);
 
 	return 0;
 }
@@ -554,65 +537,93 @@ static VIDEO_UPDATE( ql )
 
 static MACHINE_START( ql )
 {
+	ql_state *state = machine->driver_data;
+
+	const address_space *program = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
 	/* configure ROM cartridge */
 
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00c000, 0x00ffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-	memory_configure_bank(1, 0, 1, memory_region(machine, "main") + 0x00c000, 0);
-	memory_set_bank(1, 0);
+	memory_install_readwrite8_handler(program, 0x00c000, 0x00ffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "main") + 0x00c000, 0);
+	memory_set_bank(machine, 1, 0);
 
 	/* configure RAM */
 
 	switch (mess_ram_size)
 	{
 	case 128*1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x040000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0x040000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case 192*1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x040000, 0x04ffff, 0, 0, SMH_BANK2, SMH_BANK2);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x050000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0x040000, 0x04ffff, 0, 0, SMH_BANK2, SMH_BANK2);
+		memory_install_readwrite8_handler(program, 0x050000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case 256*1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x040000, 0x05ffff, 0, 0, SMH_BANK2, SMH_BANK2);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x060000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0x040000, 0x05ffff, 0, 0, SMH_BANK2, SMH_BANK2);
+		memory_install_readwrite8_handler(program, 0x060000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case 384*1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x040000, 0x07ffff, 0, 0, SMH_BANK2, SMH_BANK2);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x080000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0x040000, 0x07ffff, 0, 0, SMH_BANK2, SMH_BANK2);
+		memory_install_readwrite8_handler(program, 0x080000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case 640*1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x040000, 0x0bffff, 0, 0, SMH_BANK2, SMH_BANK2);
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0c0000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0x040000, 0x0bffff, 0, 0, SMH_BANK2, SMH_BANK2);
+		memory_install_readwrite8_handler(program, 0x0c0000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case 896*1024:
-		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x040000, 0x0fffff, 0, 0, SMH_BANK2, SMH_BANK2);
+		memory_install_readwrite8_handler(program, 0x040000, 0x0fffff, 0, 0, SMH_BANK2, SMH_BANK2);
 		break;
 	}
 
-	memory_configure_bank(2, 0, 1, memory_region(machine, "main") + 0x050000, 0);
-	memory_set_bank(2, 0);
+	memory_configure_bank(machine, 2, 0, 1, memory_region(machine, "main") + 0x050000, 0);
+	memory_set_bank(machine, 2, 0);
 
-	// IPC
+	// find devices
 
-	state_save_register_global(ipc.keylatch);
-	state_save_register_global(ipc.ser1_txd);
-	state_save_register_global(ipc.ser1_dtr);
-	state_save_register_global(ipc.ser2_rxd);
-	state_save_register_global(ipc.ser2_cts);
-	state_save_register_global(ipc.ipl);
-	state_save_register_global(ipc.comdata);
-	state_save_register_global(ipc.comctl);
-	state_save_register_global(ipc.baudx4);
+	state->zx8301 = devtag_get_device(machine, ZX8301, ZX8301_TAG);
+	state->zx8302 = devtag_get_device(machine, ZX8302, ZX8302_TAG);
 
-	memset(&ipc, 0, sizeof(ipc));
+	// register for state saving
+
+	state_save_register_global(machine, state->keylatch);
+	state_save_register_global(machine, state->ser1_txd);
+	state_save_register_global(machine, state->ser1_dtr);
+	state_save_register_global(machine, state->ser2_rxd);
+	state_save_register_global(machine, state->ser2_cts);
+	state_save_register_global(machine, state->ipl);
+	state_save_register_global(machine, state->comdata);
+	state_save_register_global(machine, state->comctl);
+	state_save_register_global(machine, state->baudx4);
+}
+
+static DEVICE_IMAGE_LOAD( ql_cart )
+{
+	UINT8 *ptr = memory_region(image->machine, "main") + 0x00c000;
+	int	filesize = image_length(image);
+
+	if (filesize <= 16 * 1024)
+	{
+		if (image_fread(image, ptr, filesize) == filesize)
+		{
+			memory_install_readwrite8_handler(cpu_get_address_space(image->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00c000, 0x00ffff, 0, 0, SMH_BANK1, SMH_UNMAP);
+
+			return INIT_PASS;
+		}
+	}
+
+	return INIT_FAIL;
 }
 
 static MACHINE_DRIVER_START( ql )
+	MDRV_DRIVER_DATA(ql_state)
+
 	// basic machine hardware
+
 	MDRV_CPU_ADD("main", M68008, X1/2)
 	MDRV_CPU_PROGRAM_MAP(ql_map, 0)
 
@@ -621,11 +632,10 @@ static MACHINE_DRIVER_START( ql )
 
 	MDRV_MACHINE_START(ql)
 
-	MDRV_DEVICE_ADD(ZX8302_TAG, ZX8302)
-	MDRV_DEVICE_CONFIG(ql_zx8302_intf)
+	MDRV_ZX8302_ADD(ZX8302_TAG, X1, ql_zx8302_intf)
 
-	MDRV_DEVICE_ADD(MDV1_TAG, MICRODRIVE)
-	MDRV_DEVICE_ADD(MDV2_TAG, MICRODRIVE)
+	MDRV_DEVICE_ADD(MDV1_TAG, MICRODRIVE, 0)
+	MDRV_DEVICE_ADD(MDV2_TAG, MICRODRIVE, 0)
 
 	// video hardware
 
@@ -640,8 +650,7 @@ static MACHINE_DRIVER_START( ql )
 	MDRV_PALETTE_INIT(zx8301)
 	MDRV_VIDEO_UPDATE(ql)
 
-	MDRV_DEVICE_ADD(ZX8301_TAG, ZX8301)
-	MDRV_DEVICE_CONFIG(ql_zx8301_intf)
+	MDRV_ZX8301_ADD(ZX8301_TAG, X1, ql_zx8301_intf)
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -650,19 +659,30 @@ static MACHINE_DRIVER_START( ql )
 
 	/* quickload */
 	MDRV_QUICKLOAD_ADD(ql, "bas", 0)
+
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(ql_cart)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( opd )
+	MDRV_DRIVER_DATA(ql_state)
+
 	// basic machine hardware
 	MDRV_CPU_ADD("main", M68008, 7500000)
 	MDRV_CPU_PROGRAM_MAP(ql_map, 0)
 
 	MDRV_CPU_ADD("ipc", I8051, X4)
 	MDRV_CPU_IO_MAP(ipc_io_map, 0)
+	
+	MDRV_CARTSLOT_REMOVE("cart")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ql_ntsc )
 	MDRV_IMPORT_FROM(ql)
+
 	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(960, 262)
@@ -858,41 +878,6 @@ static void ql_serial_getinfo(const mess_device_class *devclass, UINT32 state, u
 	}
 }
 
-static DEVICE_IMAGE_LOAD( ql_cart )
-{
-	UINT8 *ptr = memory_region(image->machine, "main") + 0x00c000;
-	int	filesize = image_length(image);
-
-	if (filesize <= 16 * 1024)
-	{
-		if (image_fread(image, ptr, filesize) == filesize)
-		{
-			memory_install_readwrite8_handler(image->machine, 0, ADDRESS_SPACE_PROGRAM, 0x00c000, 0x00ffff, 0, 0, SMH_BANK1, SMH_UNMAP);
-
-			return INIT_PASS;
-		}
-	}
-
-	return INIT_FAIL;
-}
-
-static void ql_cartslot_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info )
-{
-	switch( state )
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:					info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:						info->load = DEVICE_IMAGE_LOAD_NAME(ql_cart); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:			strcpy(info->s = device_temp_str(), "bin");	break;
-		
-		default:										cartslot_device_getinfo( devclass, state, info ); break;
-	}
-}
-
 static DEVICE_IMAGE_LOAD( ql_floppy )
 {
 	if (image_has_been_created(image))
@@ -949,7 +934,6 @@ static SYSTEM_CONFIG_START( ql )
 	CONFIG_RAM			(640 * 1024) // 512K expansion
 	CONFIG_RAM			(896 * 1024) // Trump Card
 	CONFIG_DEVICE(ql_serial_getinfo)
-	CONFIG_DEVICE(ql_cartslot_getinfo)
 	CONFIG_DEVICE(ql_floppy_getinfo)
 SYSTEM_CONFIG_END
 

@@ -280,14 +280,14 @@ WRITE8_HANDLER ( videoULA_w )
 	video_refresh=1;
 
 	// Make sure vpos is never <0 2008-10-11 PHS.
-	vpos=video_screen_get_vpos(machine->primary_screen);
+	vpos=video_screen_get_vpos(space->machine->primary_screen);
 	if(vpos==0)
-	  video_screen_update_partial(machine->primary_screen, vpos);
+	  video_screen_update_partial(space->machine->primary_screen, vpos);
 	else
-	  video_screen_update_partial(machine->primary_screen, vpos -1 );
+	  video_screen_update_partial(space->machine->primary_screen, vpos -1 );
 
 //	logerror("setting videoULA %s at %.4x size:%.4x\n",image_filename(image), addr, size);
-	logerror("setting videoULA %.4x to:%.4x   at :%d \n",data,offset,video_screen_get_vpos(machine->primary_screen) );
+	logerror("setting videoULA %.4x to:%.4x   at :%d \n",data,offset,video_screen_get_vpos(space->machine->primary_screen) );
 
 
 	switch (offset&0x01)
@@ -460,7 +460,7 @@ static void BBC_Set_Character_Row(int offset, int data)
 }
 
 // called when the 6845 changes the HSync
-static void BBC_Set_HSync(int offset, int data)
+static void BBC_Set_HSync(running_machine *machine, int offset, int data)
 {
 	// catch the falling edge
 	if((!data)&&(BBC_HSync))
@@ -484,7 +484,7 @@ static void BBC_Set_HSync(int offset, int data)
 }
 
 // called when the 6845 changes the VSync
-static void BBC_Set_VSync(int offset, int data)
+static void BBC_Set_VSync(running_machine *machine, int offset, int data)
 {
 	// catch the falling edge
 	if ((!data)&&(BBC_VSync))
@@ -533,8 +533,8 @@ static void BBC_Set_CRE(int offset, int data)
 }
 
 
-static struct m6845_interface
-BBC6845= {
+static const struct m6845_interface BBC6845 =
+{
 	0,// Memory Address register
 	BBC_Set_Character_Row,// Row Address register
 	BBC_Set_HSync,// Horizontal status
@@ -621,7 +621,7 @@ VIDEO_UPDATE( bbc )
 	while((BBC_VSync)&&(c<60000))
 	{
 		// Clock the 6845
-		m6845_clock();
+		m6845_clock(screen->machine);
 		c++;
 	}
 
@@ -636,7 +636,7 @@ VIDEO_UPDATE( bbc )
 		if (VideoULA_CR) BBC_Clock_CR();
 
 		// Clock the 6845
-		m6845_clock();
+		m6845_clock(screen->machine);
 		c++;
 	}
 

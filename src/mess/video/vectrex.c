@@ -50,10 +50,10 @@ typedef struct _vectrex_point
 
 *********************************************************************/
 
-static WRITE8_HANDLER ( v_via_pa_w );
-static WRITE8_HANDLER( v_via_pb_w );
-static WRITE8_HANDLER ( v_via_ca2_w );
-static WRITE8_HANDLER ( v_via_cb2_w );
+static WRITE8_DEVICE_HANDLER (v_via_pa_w);
+static WRITE8_DEVICE_HANDLER(v_via_pb_w);
+static WRITE8_DEVICE_HANDLER (v_via_ca2_w);
+static WRITE8_DEVICE_HANDLER (v_via_cb2_w);
 
 
 /*********************************************************************
@@ -62,7 +62,7 @@ static WRITE8_HANDLER ( v_via_cb2_w );
 
 *********************************************************************/
 
-static const struct via6522_interface vectrex_via6522_interface =
+const via6522_interface vectrex_via6522_interface =
 {
 	v_via_pa_r, v_via_pb_r,         /* read PA/B */
 	0, 0, 0, 0,                     /* read ca1, cb1, ca2, cb2 */
@@ -82,6 +82,8 @@ static INT8 analog[5];
 static int vectrex_point_index;
 static int display_start, display_end;
 static vectrex_point vectrex_points[NVECT];
+static UINT16 via_timer2;
+static attotime vector_start_time;
 
 void (*vector_add_point_function) (int, int, rgb_t, int) = vectrex_add_point;
 
@@ -96,40 +98,17 @@ static TIMER_CALLBACK(lightpen_trigger)
 {
 	if (vectrex_lightpen_port & 1)
 	{
-		via_set_input_ca1(machine, 0, 1);
-		via_set_input_ca1(machine, 0, 0);
+		const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+		via_ca1_w(via_0, 0, 1);
+		via_ca1_w(via_0, 0, 0);
 	}
 
 	if (vectrex_lightpen_port & 2)
 	{
-		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, PULSE_LINE);
+		cpu_set_input_line(machine->cpu[0], M6809_FIRQ_LINE, PULSE_LINE);
 	}
 }
 
-
-static int lightpen_check(running_machine *machine)
-{
-	int dx, dy;
-	if (vectrex_lightpen_port != 0)
-	{
-		lightpen_down = input_port_read(machine, "LPENCONF") & 0x10;
-
-		if (lightpen_down)
-		{
-			pen_x = input_port_read(machine, "LPENX") * (x_max / 0xff);
-			pen_y = input_port_read(machine, "LPENY") * (y_max / 0xff);
-
-			dx = abs(pen_x - x_int);
-			dy = abs(pen_y - y_int);
-			if (dx < 500000 && dy < 500000)
-				return 1;
-		}
-	}
-	else
-		lightpen_down = 0;
-
-	return 0;
-}
 
 /*********************************************************************
 
@@ -150,21 +129,27 @@ static int lightpen_check(running_machine *machine)
 
 *********************************************************************/
 
+READ8_HANDLER(vectrex_via_r)
+{
+	const device_config *via = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
+	return via_r(via, offset);
+}
+
 WRITE8_HANDLER(vectrex_via_w) 
 { 
-	static UINT16 counter;
+	const device_config *via = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
 	attotime period;
 
 	switch (offset)
 	{
 	case 8:
-		counter = (counter & 0xff00) | data;
+		via_timer2 = (via_timer2 & 0xff00) | data;
 		break;
 
 	case 9:
-		counter = (counter & 0x00ff) | (data << 8);
+		via_timer2 = (via_timer2 & 0x00ff) | (data << 8);
 
-		period = attotime_mul(ATTOTIME_IN_HZ(cpunum_get_clock(0)), counter);
+		period = attotime_mul(ATTOTIME_IN_HZ(cpu_get_clock(space->machine->cpu[0])), via_timer2);
 
 		if (vectrex_reset_refresh)
 			timer_adjust_periodic(refresh, period, 0, period);
@@ -175,7 +160,7 @@ WRITE8_HANDLER(vectrex_via_w)
 								  period);
 		break;
 	}
-	via_write(machine, 0, offset, data); 
+	via_w(via, offset, data); 
 }
 
 
@@ -185,7 +170,7 @@ WRITE8_HANDLER(vectrex_via_w)
 
 *********************************************************************/
 
-static TIMER_CALLBACK ( vectrex_refresh )
+static TIMER_CALLBACK(vectrex_refresh)
 {
 	/* Refresh only marks the range of vectors which will be drawn
 	 * during the next VIDEO_UPDATE. */
@@ -193,21 +178,24 @@ static TIMER_CALLBACK ( vectrex_refresh )
 	display_end = vectrex_point_index;
 }
 
-VIDEO_UPDATE( vectrex )
+
+VIDEO_UPDATE(vectrex)
 {
 	int i;
 
 	vectrex_configuration(screen->machine);
 
 	/* start black */
-	vector_add_point(vectrex_points[display_start].x, 
+	vector_add_point(screen->machine,
+					 vectrex_points[display_start].x, 
 					 vectrex_points[display_start].y, 
 					 vectrex_points[display_start].col,
 					 0);
 
 	for (i = display_start; i != display_end; i = (i + 1) % NVECT)
 	{
-		vector_add_point(vectrex_points[i].x,
+		vector_add_point(screen->machine,
+						 vectrex_points[i].x,
 						 vectrex_points[i].y,
 						 vectrex_points[i].col,
 						 vectrex_points[i].intensity);
@@ -225,7 +213,7 @@ VIDEO_UPDATE( vectrex )
 
 *********************************************************************/
 
-void vectrex_add_point (int x, int y, rgb_t color, int intensity)
+void vectrex_add_point(int x, int y, rgb_t color, int intensity)
 {
 	vectrex_point *newpoint;
 
@@ -238,7 +226,8 @@ void vectrex_add_point (int x, int y, rgb_t color, int intensity)
 	newpoint->intensity = intensity;
 }
 
-void vectrex_add_point_stereo (int x, int y, rgb_t color, int intensity)
+
+void vectrex_add_point_stereo(int x, int y, rgb_t color, int intensity)
 {
 	if (vectrex_imager_status == 2) /* left = 1, right = 2 */
 		vectrex_add_point ((int)(y * M_SQRT1_2)+ x_center, 
@@ -252,35 +241,12 @@ void vectrex_add_point_stereo (int x, int y, rgb_t color, int intensity)
 						   intensity);
 }
 
-static TIMER_CALLBACK (vectrex_zero_integrators)
+
+static TIMER_CALLBACK(vectrex_zero_integrators)
 {
 	x_int = x_center + (analog[A_ZR] * INT_PER_CLOCK);
 	y_int = y_center + (analog[A_ZR] * INT_PER_CLOCK);
 	vector_add_point_function (x_int, y_int, vectrex_beam_color, 0);
-}
-
-static void update_vectors (void)
-{
-	static attotime start_time;
-	int length;
-
-	if (!ramp)
-	{
-		length = cpunum_get_clock(0) * INT_PER_CLOCK 
-			* attotime_to_double(attotime_sub(timer_get_time(), start_time));
-
-		x_int += length * (analog[A_X] + analog[A_ZR]);
-		y_int += length * (analog[A_Y] + analog[A_ZR]);
-
-		vector_add_point_function(x_int, y_int, vectrex_beam_color, 2 * analog[A_Z] * blank);
-	}
-	else
-	{
-		if (blank)
-			vector_add_point_function(x_int, y_int, vectrex_beam_color, 2 * analog[A_Z]);
-	}
-
-	start_time = timer_get_time();
 }
 
 
@@ -296,7 +262,25 @@ static void update_vectors (void)
 
 static TIMER_CALLBACK(update_signal)
 {
-	update_vectors();
+	int length;
+
+	if (!ramp)
+	{
+		length = cpu_get_clock(machine->cpu[0]) * INT_PER_CLOCK 
+			* attotime_to_double(attotime_sub(timer_get_time(machine), vector_start_time));
+
+		x_int += length * (analog[A_X] + analog[A_ZR]);
+		y_int += length * (analog[A_Y] + analog[A_ZR]);
+
+		vector_add_point_function(x_int, y_int, vectrex_beam_color, 2 * analog[A_Z] * blank);
+	}
+	else
+	{
+		if (blank)
+			vector_add_point_function(x_int, y_int, vectrex_beam_color, 2 * analog[A_Z]);
+	}
+
+	vector_start_time = timer_get_time(machine);
 
 	if (ptr)
 		* (UINT8 *) ptr = param;
@@ -309,7 +293,7 @@ static TIMER_CALLBACK(update_signal)
 
 *********************************************************************/
 
-VIDEO_START( vectrex )
+VIDEO_START(vectrex)
 {
 	const device_config *screen = video_screen_first(machine->config);
 	const rectangle *visarea = video_screen_get_visible_area(screen);
@@ -319,23 +303,20 @@ VIDEO_START( vectrex )
 	x_max = visarea->max_x << 16;
 	y_max = visarea->max_y << 16;
 
-	via_config(0, &vectrex_via6522_interface);
-	via_reset();
-
 	imager_freq = 1;
 
-	imager_timer = timer_alloc(vectrex_imager_eye, NULL);
+	imager_timer = timer_alloc(machine, vectrex_imager_eye, NULL);
 	timer_adjust_periodic(imager_timer, 
 						  ATTOTIME_IN_HZ(imager_freq),
 						  2,
 						  ATTOTIME_IN_HZ(imager_freq));
 
-	lp_t = timer_alloc(lightpen_trigger, NULL);
+	lp_t = timer_alloc(machine, lightpen_trigger, NULL);
 
 	/* Switch off crosshairs since most games don't use lightpen */
 	crosshair_toggle(machine);
 
-	refresh = timer_alloc(vectrex_refresh, NULL);
+	refresh = timer_alloc(machine, vectrex_refresh, NULL);
 
 	VIDEO_START_CALL(vector);
 }
@@ -347,15 +328,16 @@ VIDEO_START( vectrex )
 
 *********************************************************************/
 
-static void vectrex_multiplexer (int mux)
+static void vectrex_multiplexer(running_machine *machine, int mux)
 {
-	timer_set(ATTOTIME_IN_NSEC(ANALOG_DELAY), &analog[mux], vectrex_via_out[PORTA], update_signal);
+	timer_set(machine, ATTOTIME_IN_NSEC(ANALOG_DELAY), &analog[mux], vectrex_via_out[PORTA], update_signal);
 
 	if (mux == A_AUDIO)
 		dac_data_w(0, vectrex_via_out[PORTA]);
 }
 
-static WRITE8_HANDLER ( v_via_pb_w )
+
+static WRITE8_DEVICE_HANDLER(v_via_pb_w)
 {
 	if (!(data & 0x80))
 	{
@@ -395,7 +377,7 @@ static WRITE8_HANDLER ( v_via_pb_w )
 						+(double)(pen_y - y_int) * (pen_y - y_int);
 					d2 = b2 - ab * ab / a2;
 					if (d2 < 2e10 && analog[A_Z] * blank > 0)
-						timer_adjust_oneshot(lp_t, double_to_attotime(ab / a2 / (cpunum_get_clock(0) * INT_PER_CLOCK)), 0);
+						timer_adjust_oneshot(lp_t, double_to_attotime(ab / a2 / (cpu_get_clock(device->machine->cpu[0]) * INT_PER_CLOCK)), 0);
 				}
 			}
 		}
@@ -403,7 +385,7 @@ static WRITE8_HANDLER ( v_via_pb_w )
 		if (!(data & 0x1) && (vectrex_via_out[PORTB] & 0x1))
 		{
 			/* MUX has been enabled */
-			timer_set(ATTOTIME_IN_NSEC(ANALOG_DELAY), NULL, 0, update_signal);
+			timer_set(device->machine, ATTOTIME_IN_NSEC(ANALOG_DELAY), NULL, 0, update_signal);
 		}
 	}
 	else
@@ -420,45 +402,66 @@ static WRITE8_HANDLER ( v_via_pb_w )
 	/* Sound */
 	if (data & 0x10)
 	{
+		const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
 		if (data & 0x08) /* BC1 (do we select a reg or write it ?) */
-			ay8910_control_port_0_w(machine, 0, vectrex_via_out[PORTA]);
+			ay8910_control_port_0_w(space, 0, vectrex_via_out[PORTA]);
 		else
-			ay8910_write_port_0_w(machine, 0, vectrex_via_out[PORTA]);
+			ay8910_write_port_0_w(space, 0, vectrex_via_out[PORTA]);
 	}
 
 	if (!(data & 0x1) && (vectrex_via_out[PORTB] & 0x1))
-		vectrex_multiplexer ((data >> 1) & 0x3);
+		vectrex_multiplexer (device->machine, (data >> 1) & 0x3);
 
 	vectrex_via_out[PORTB] = data;
-	timer_set(ATTOTIME_IN_NSEC(ANALOG_DELAY), &ramp, data & 0x80, update_signal);
+	timer_set(device->machine, ATTOTIME_IN_NSEC(ANALOG_DELAY), &ramp, data & 0x80, update_signal);
 }
 
-static WRITE8_HANDLER ( v_via_pa_w )
+
+static WRITE8_DEVICE_HANDLER(v_via_pa_w)
 {
 	/* DAC output always goes to Y integrator */
 	vectrex_via_out[PORTA] = data;
-	timer_set(ATTOTIME_IN_NSEC(ANALOG_DELAY), &analog[A_Y], data, update_signal);
+	timer_set(device->machine, ATTOTIME_IN_NSEC(ANALOG_DELAY), &analog[A_Y], data, update_signal);
 
 	if (!(vectrex_via_out[PORTB] & 0x1))
-		vectrex_multiplexer ((vectrex_via_out[PORTB] >> 1) & 0x3);
+		vectrex_multiplexer (device->machine, (vectrex_via_out[PORTB] >> 1) & 0x3);
 }
 
-static WRITE8_HANDLER ( v_via_ca2_w )
+
+static WRITE8_DEVICE_HANDLER(v_via_ca2_w)
 {
-	if (!data)
-		timer_set(ATTOTIME_IN_NSEC(ANALOG_DELAY), NULL, 0, vectrex_zero_integrators);
+	if (data == 0)
+		timer_set(device->machine, ATTOTIME_IN_NSEC(ANALOG_DELAY), NULL, 0, vectrex_zero_integrators);
 }
 
-static WRITE8_HANDLER ( v_via_cb2_w )
+
+static WRITE8_DEVICE_HANDLER(v_via_cb2_w)
 {
+	int dx, dy;
 	static UINT8 cb2 = 0;
 
 	if (cb2 != data)
 	{
-		if (data & lightpen_check(machine))
-			timer_set(attotime_zero, NULL, 0, lightpen_trigger);
 
-		timer_set(attotime_zero, &blank, data, update_signal);
+		/* Check lightpen */
+		if (vectrex_lightpen_port != 0)
+		{
+			lightpen_down = input_port_read(device->machine, "LPENCONF") & 0x10;
+			
+			if (lightpen_down)
+			{
+				pen_x = input_port_read(device->machine, "LPENX") * (x_max / 0xff);
+				pen_y = input_port_read(device->machine, "LPENY") * (y_max / 0xff);
+				
+				dx = abs(pen_x - x_int);
+				dy = abs(pen_y - y_int);
+				if (dx < 500000 && dy < 500000 && data > 0)
+					timer_set(device->machine, attotime_zero, NULL, 0, lightpen_trigger);
+			}
+		}
+
+		timer_set(device->machine, attotime_zero, &blank, data, update_signal);
 		cb2 = data;
 	}
 }
@@ -470,21 +473,23 @@ static WRITE8_HANDLER ( v_via_cb2_w )
 
 *****************************************************************/
 
-static const struct via6522_interface spectrum1_via6522_interface =
+const via6522_interface spectrum1_via6522_interface =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ v_via_pa_r, s1_via_pb_r, 0, 0, 0, 0,
 	/*outputs: A/B,CA/B1,CA/B2 */ v_via_pa_w, v_via_pb_w, 0, 0, v_via_ca2_w, v_via_cb2_w,
 	/*irq                      */ v_via_irq,
 };
 
-WRITE8_HANDLER( raaspec_led_w )
+
+WRITE8_HANDLER(raaspec_led_w)
 {
 	logerror("Spectrum I+ LED: %i%i%i%i%i%i%i%i\n",
 			 (data>>7)&0x1, (data>>6)&0x1, (data>>5)&0x1, (data>>4)&0x1,
 			 (data>>3)&0x1, (data>>2)&0x1, (data>>1)&0x1, data&0x1);
 }
 
-VIDEO_START( raaspec )
+
+VIDEO_START(raaspec)
 {
 	const device_config *screen = video_screen_first(machine->config);
 	const rectangle *visarea = video_screen_get_visible_area(screen);
@@ -494,11 +499,7 @@ VIDEO_START( raaspec )
 	x_max = visarea->max_x << 16;
 	y_max = visarea->max_y << 16;
 
-	via_config(0, &spectrum1_via6522_interface);
-	via_reset();
-	refresh = timer_alloc(vectrex_refresh, NULL);
-
-	raaspec_led_w(machine, 0, 0xff);
+	refresh = timer_alloc(machine, vectrex_refresh, NULL);
 
 	VIDEO_START_CALL(vector);
 }

@@ -23,7 +23,7 @@
         NC100:
 
         Hardware:
-            - Z80 CPU, 6mhz
+            - Z80 CPU, 6 MHz
             - memory powered by lithium batterys!
             - 2 channel tone (programmable frequency beep's)
             - LCD screen
@@ -94,7 +94,7 @@
  ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 #include "includes/nc.h"
 #include "includes/serial.h"	/* for serial data transfers */
 #include "machine/msm8251.h"	/* for NC100 uart */
@@ -122,7 +122,7 @@
 receive clock and transmit clock inputs */
 static emu_timer *nc_serial_timer;
 
-static void nc_printer_update(int);
+static void nc_printer_update(running_machine *machine,int);
 
 UINT8 nc_type;
 
@@ -308,12 +308,12 @@ static void nc_update_interrupts(running_machine *machine)
 	{
 		logerror("int set %02x\n",nc_irq_status & nc_irq_mask);
 		/* set int */
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE);
 	}
 	else
 	{
 		/* clear int */
-		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
 	}
 }
 
@@ -332,18 +332,19 @@ static TIMER_CALLBACK(nc_keyboard_timer_callback)
 }
 
 
-static const read8_machine_func nc_bankhandler_r[]={
+static const read8_space_func nc_bankhandler_r[]={
 SMH_BANK1, SMH_BANK2, SMH_BANK3, SMH_BANK4};
 
-static const write8_machine_func nc_bankhandler_w[]={
+static const write8_space_func nc_bankhandler_w[]={
 SMH_BANK5, SMH_BANK6, SMH_BANK7, SMH_BANK8};
 
 static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 {
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	int mem_type;
 	int mem_bank;
-	read8_machine_func read_handler;
-	write8_machine_func write_handler = NULL;
+	read8_space_func read_handler;
+	write8_space_func write_handler = NULL;
 
 	mem_type = (nc_memory_config[bank]>>6) & 0x03;
 	mem_bank = nc_memory_config[bank] & 0x03f;
@@ -362,7 +363,7 @@ static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 
 			addr = (memory_region(machine, "main")+0x010000) + (mem_bank<<14);
 
-			memory_set_bankptr(bank+1, addr);
+			memory_set_bankptr(machine, bank+1, addr);
 
 			write_handler = SMH_NOP;
 			LOG(("BANK %d: ROM %d\n",bank,mem_bank));
@@ -378,8 +379,8 @@ static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 
 			addr = mess_ram + (mem_bank<<14);
 
-			memory_set_bankptr(bank+1, addr);
-			memory_set_bankptr(bank+5, addr);
+			memory_set_bankptr(machine, bank+1, addr);
+			memory_set_bankptr(machine, bank+5, addr);
 
 			write_handler = nc_bankhandler_w[bank];
 			LOG(("BANK %d: RAM\n",bank));
@@ -397,13 +398,13 @@ static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 				mem_bank = mem_bank & nc_membank_card_ram_mask;
 				addr = nc_card_ram + (mem_bank<<14);
 
-				memory_set_bankptr(bank+1, addr);
+				memory_set_bankptr(machine, bank+1, addr);
 
 				/* write enabled? */
 				if (input_port_read(machine, "EXTRA") & 0x02)
 				{
 					/* yes */
-					memory_set_bankptr(bank+5, addr);
+					memory_set_bankptr(machine, bank+5, addr);
 
 					write_handler = nc_bankhandler_w[bank];
 				}
@@ -425,12 +426,12 @@ static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 		break;
 	}
 
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+	memory_install_read8_handler(space,
 		(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, read_handler);
 
 	if (write_handler)
 	{
-		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+		memory_install_write8_handler(space,
 			(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, write_handler);
 	}
 }
@@ -534,7 +535,7 @@ static TIMER_CALLBACK(dummy_timer_callback)
 				case NC_TYPE_1xx:
 				{
 			        LOG(("nmi triggered\n"));
-				    cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+				    cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 				}
 				break;
 
@@ -592,14 +593,14 @@ static void nc_common_init_machine(running_machine *machine)
 	nc_update_interrupts(machine);
 
 	/* keyboard timer */
-	nc_keyboard_timer = timer_alloc(nc_keyboard_timer_callback, NULL);
+	nc_keyboard_timer = timer_alloc(machine, nc_keyboard_timer_callback, NULL);
 	timer_adjust_oneshot(nc_keyboard_timer, ATTOTIME_IN_MSEC(10), 0);
 
 	/* dummy timer */
-	timer_pulse(ATTOTIME_IN_HZ(50), NULL, 0, dummy_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, dummy_timer_callback);
 
 	/* serial timer */
-	nc_serial_timer = timer_alloc(nc_serial_timer_callback, NULL);
+	nc_serial_timer = timer_alloc(machine, nc_serial_timer_callback, NULL);
 
 	/* at reset set to 0x0ff */
 	nc_uart_control = 0x0ff;
@@ -623,7 +624,7 @@ static WRITE8_HANDLER(nc_memory_management_w)
 	LOG(("Memory management W: %02x %02x\n",offset,data));
         nc_memory_config[offset] = data;
 
-        nc_refresh_memory_config(machine);
+        nc_refresh_memory_config(space->machine);
 }
 
 static WRITE8_HANDLER(nc_irq_mask_w)
@@ -634,7 +635,7 @@ static WRITE8_HANDLER(nc_irq_mask_w)
 	/* writing mask clears ints that are to be masked? */
 	nc_irq_mask = data;
 
-	nc_update_interrupts(machine);
+	nc_update_interrupts(space->machine);
 }
 
 static WRITE8_HANDLER(nc_irq_status_w)
@@ -651,7 +652,7 @@ static WRITE8_HANDLER(nc_irq_status_w)
 			/* set timer to occur again */
 			timer_reset(nc_keyboard_timer, ATTOTIME_IN_MSEC(10));
 
-			nc_update_interrupts(machine);
+			nc_update_interrupts(space->machine);
 		}
 	}
 
@@ -671,7 +672,7 @@ static WRITE8_HANDLER(nc_irq_status_w)
 #endif
         nc_irq_status &=~data;
 
-        nc_update_interrupts(machine);
+        nc_update_interrupts(space->machine);
 }
 
 static READ8_HANDLER(nc_irq_status_r)
@@ -682,7 +683,7 @@ static READ8_HANDLER(nc_irq_status_r)
 
 static READ8_HANDLER(nc_key_data_in_r)
 {
-	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", 
+	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", 
 										"LINE5", "LINE6", "LINE7", "LINE8", "LINE9" };
 
 	if (offset==9)
@@ -693,10 +694,10 @@ static READ8_HANDLER(nc_key_data_in_r)
 		/* set timer to occur again */
 		timer_reset(nc_keyboard_timer, ATTOTIME_IN_MSEC(10));
 
-		nc_update_interrupts(machine);
+		nc_update_interrupts(space->machine);
 	}
 
-	return input_port_read(machine, keynames[offset]);
+	return input_port_read(space->machine, keynames[offset]);
 }
 
 
@@ -783,14 +784,16 @@ static const unsigned long baud_rate_table[]=
 
 static TIMER_CALLBACK(nc_serial_timer_callback)
 {
-	msm8251_transmit_clock();
-	msm8251_receive_clock();
+	const device_config *uart = device_list_find_by_tag(machine->config->devicelist, MSM8251, "uart");
+
+	msm8251_transmit_clock(uart);
+	msm8251_receive_clock(uart);
 }
 
 static WRITE8_HANDLER(nc_uart_control_w)
 {
 	/* update printer state */
-	nc_printer_update(data);
+	nc_printer_update(space->machine, data);
 
 	/* on/off changed state? */
 	if (((nc_uart_control ^ data) & (1<<3))!=0)
@@ -798,7 +801,7 @@ static WRITE8_HANDLER(nc_uart_control_w)
 		/* changed uart from off to on */
 		if ((data & (1<<3))==0)
 		{
-			msm8251_reset();
+			devtag_reset(space->machine, MSM8251, "uart");
 		}
 	}
 
@@ -815,11 +818,11 @@ static WRITE8_HANDLER(nc_uart_control_w)
 static WRITE8_HANDLER(nc_printer_data_w)
 {
 	LOG(("printer write %02x\n",data));
-	centronics_write_data(0,data);
+	centronics_write_data(space->machine, 0,data);
 }
 
 /* same for nc100 and nc200 */
-static void	nc_printer_update(int port0x030)
+static void	nc_printer_update(running_machine *machine,int port0x030)
 {
 	int handshake = 0;
 
@@ -828,8 +831,8 @@ static void	nc_printer_update(int port0x030)
 		handshake = CENTRONICS_STROBE;
 	}
 	/* assumption: select is tied low */
-	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
-	centronics_write_handshake(0, handshake, CENTRONICS_STROBE);
+	centronics_write_handshake(machine, 0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
+	centronics_write_handshake(machine, 0, handshake, CENTRONICS_STROBE);
 }
 
 /********************************************************************************************************/
@@ -853,7 +856,7 @@ static WRITE8_HANDLER(nc100_display_memory_start_w)
 
 static WRITE8_HANDLER(nc100_uart_control_w)
 {
-	nc_uart_control_w(machine, offset,data);
+	nc_uart_control_w(space, offset,data);
 
 //  /* is this correct?? */
 //  if (data & (1<<3))
@@ -865,7 +868,7 @@ static WRITE8_HANDLER(nc100_uart_control_w)
 }
 
 
-static void	nc100_tc8521_alarm_callback(int state)
+static void	nc100_tc8521_alarm_callback(const device_config *device, int state)
 {
 	/* I'm assuming that the nmi is edge triggered */
 	/* a interrupt from the fdc will cause a change in line state, and
@@ -879,14 +882,14 @@ static void	nc100_tc8521_alarm_callback(int state)
 		{
 			/* I'll pulse it because if I used hold-line I'm not sure
             it would clear - to be checked */
-			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+			cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 
 	previous_alarm_state = state;
 }
 
-static void nc100_txrdy_callback(int state)
+static void nc100_txrdy_callback(const device_config *device, int state)
 {
 	nc_irq_latch &= ~(1<<1);
 
@@ -900,10 +903,10 @@ static void nc100_txrdy_callback(int state)
 		}
 	}
 
-	nc_update_interrupts(Machine);
+	nc_update_interrupts(device->machine);
 }
 
-static void nc100_rxrdy_callback(int state)
+static void nc100_rxrdy_callback(const device_config *device, int state)
 {
 	nc_irq_latch &= ~(1<<0);
 
@@ -916,23 +919,23 @@ static void nc100_rxrdy_callback(int state)
 		}
 	}
 
-	nc_update_interrupts(Machine);
+	nc_update_interrupts(device->machine);
 }
 
 
-static const struct tc8521_interface nc100_tc8521_interface=
+static const tc8521_interface nc100_tc8521_interface =
 {
 	nc100_tc8521_alarm_callback,
 };
 
-static const struct msm8251_interface nc100_uart_interface=
+static const msm8251_interface nc100_uart_interface =
 {
 	nc100_txrdy_callback,
 	NULL,
 	nc100_rxrdy_callback
 };
 
-static void nc100_printer_handshake_in(int number, int data, int mask)
+static void nc100_printer_handshake_in(running_machine *machine,int number, int data, int mask)
 {
 	nc_irq_status &= ~(1<<2);
 
@@ -944,7 +947,7 @@ static void nc100_printer_handshake_in(int number, int data, int mask)
 		}
 	}
 	/* trigger an int if the irq is set */
-	nc_update_interrupts(Machine);
+	nc_update_interrupts(machine);
 }
 
 static const CENTRONICS_CONFIG nc100_cent_config[1]={
@@ -965,16 +968,16 @@ static MACHINE_RESET( nc100 )
 
     nc_common_init_machine(machine);
 
-	tc8521_init(&nc100_tc8521_interface);
-
-	msm8251_init(&nc100_uart_interface);
-
-	centronics_config(0, nc100_cent_config);
+	centronics_config(machine, 0, nc100_cent_config);
 	/* assumption: select is tied low */
-	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
+	centronics_write_handshake(machine, 0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
 
 	nc_common_open_stream_for_reading(machine);
-	tc8521_load_stream(file);
+
+	{
+		const device_config *rtc = device_list_find_by_tag(machine->config->devicelist, TC8521, "rtc");
+		tc8521_load_stream(rtc, file);
+	}
 
 	nc_common_restore_memory_from_stream();
 
@@ -987,7 +990,10 @@ static MACHINE_RESET( nc100 )
 static void nc100_machine_stop(running_machine *machine)
 {
 	nc_common_open_stream_for_writing(machine);
-	tc8521_save_stream(file);
+	{
+		const device_config *rtc = device_list_find_by_tag(machine->config->devicelist, TC8521, "rtc");
+		tc8521_save_stream(rtc, file);
+	}
 	nc_common_store_memory_to_stream();
 	nc_common_close_stream();
 }
@@ -1022,7 +1028,7 @@ static  READ8_HANDLER(nc100_card_battery_status_r)
 		nc_card_battery_status &=~(1<<7);
 	}
 
-	if (input_port_read(machine, "EXTRA") & 0x02)
+	if (input_port_read(space->machine, "EXTRA") & 0x02)
 	{
 		/* card write enable */
 		nc_card_battery_status &=~(1<<6);
@@ -1036,9 +1042,9 @@ static  READ8_HANDLER(nc100_card_battery_status_r)
 
 
 	/* assumption: select is tied low */
-	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
+	centronics_write_handshake(space->machine, 0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
 
-	printer_handshake = centronics_read_handshake(0);
+	printer_handshake = centronics_read_handshake(space->machine, 0);
 
 	nc_card_battery_status |=(1<<1);
 
@@ -1079,9 +1085,9 @@ static ADDRESS_MAP_START(nc100_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x91, 0x9f) AM_READ(nc_irq_status_r)
 	AM_RANGE(0xa0, 0xaf) AM_READ(nc100_card_battery_status_r)
 	AM_RANGE(0xb0, 0xb9) AM_READ(nc_key_data_in_r)
-	AM_RANGE(0xc0, 0xc0) AM_READWRITE(msm8251_data_r, msm8251_data_w)
-	AM_RANGE(0xc1, 0xc1) AM_READWRITE(msm8251_status_r, msm8251_control_w)
-	AM_RANGE(0xd0, 0xdf) AM_READWRITE(tc8521_r, tc8521_w)
+	AM_RANGE(0xc0, 0xc0) AM_DEVREADWRITE(MSM8251, "uart", msm8251_data_r, msm8251_data_w)
+	AM_RANGE(0xc1, 0xc1) AM_DEVREADWRITE(MSM8251, "uart", msm8251_status_r, msm8251_control_w)
+	AM_RANGE(0xd0, 0xdf) AM_DEVREADWRITE(TC8521, "rtc", tc8521_r, tc8521_w)
 ADDRESS_MAP_END
 
 
@@ -1213,13 +1219,13 @@ INPUT_PORTS_END
 /* to be completed! */
 
 #if 0
-void nc150_init_machine(void)
+void nc150_init_machine(running_machine *machine)
 {
         nc_membank_internal_ram_mask = 7;
 
         nc_membank_card_ram_mask = 0x03f;
 
-        nc_common_init_machine(Machine);
+        nc_common_init_machine(machine);
 }
 #endif
 
@@ -1241,7 +1247,7 @@ static WRITE8_HANDLER(nc200_display_memory_start_w)
 }
 #endif
 
-static void nc200_printer_handshake_in(int number, int data, int mask)
+static void nc200_printer_handshake_in(running_machine *machine,int number, int data, int mask)
 {
 	nc_irq_status &= ~(1<<0);
 
@@ -1253,7 +1259,7 @@ static void nc200_printer_handshake_in(int number, int data, int mask)
 		}
 	}
 	/* trigger an int if the irq is set */
-	nc_update_interrupts(Machine);
+	nc_update_interrupts(machine);
 }
 
 static const CENTRONICS_CONFIG nc200_cent_config[1]={
@@ -1284,7 +1290,7 @@ static void nc200_refresh_uart_interrupt(running_machine *machine)
 	nc_update_interrupts(machine);
 }
 
-static void nc200_txrdy_callback(int state)
+static void nc200_txrdy_callback(const device_config *device, int state)
 {
 //  nc200_uart_interrupt_irq &=~(1<<0);
 //
@@ -1293,10 +1299,10 @@ static void nc200_txrdy_callback(int state)
 //      nc200_uart_interrupt_irq |=(1<<0);
 //  }
 //
-//  nc200_refresh_uart_interrupt(Machine);
+//  nc200_refresh_uart_interrupt(device->machine);
 }
 
-static void nc200_rxrdy_callback(int state)
+static void nc200_rxrdy_callback(const device_config *device, int state)
 {
 	nc200_uart_interrupt_irq &=~(1<<1);
 
@@ -1305,10 +1311,10 @@ static void nc200_rxrdy_callback(int state)
 		nc200_uart_interrupt_irq |=(1<<1);
 	}
 
-	nc200_refresh_uart_interrupt(Machine);
+	nc200_refresh_uart_interrupt(device->machine);
 }
 
-static const struct msm8251_interface nc200_uart_interface=
+static const msm8251_interface nc200_uart_interface=
 {
 	nc200_rxrdy_callback,
 	NULL,
@@ -1316,7 +1322,7 @@ static const struct msm8251_interface nc200_uart_interface=
 };
 
 
-static void nc200_fdc_interrupt(int state)
+static NEC765_INTERRUPT( nc200_fdc_interrupt )
 {
 #if 0
     nc_irq_latch &=~(1<<5);
@@ -1333,13 +1339,15 @@ static void nc200_fdc_interrupt(int state)
             nc_irq_status |=(1<<5);
     }
 
-    nc_update_interrupts(Machine);
+    nc_update_interrupts(device->machine);
 }
 
-static const struct nec765_interface nc200_nec765_interface=
+static const nec765_interface nc200_nec765_interface=
 {
     nc200_fdc_interrupt,
     NULL,
+    NULL,
+    NEC765_RDY_PIN_CONNECTED
 };
 
 #ifdef UNUSED_FUNCTION
@@ -1363,19 +1371,17 @@ static MACHINE_RESET( nc200 )
 
     nc_common_init_machine(machine);
 
-    nec765_init(machine, &nc200_nec765_interface, NEC765A,NEC765_RDY_PIN_CONNECTED);
     /* double sided, 80 track drive */
-	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
-	//floppy_drive_set_index_pulse_callback(image_from_devtype_and_index(IO_FLOPPY, 0), nc200_floppy_drive_index_callback);
+	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
+	//floppy_drive_set_index_pulse_callback(image_from_devtype_and_index(machine, IO_FLOPPY, 0), nc200_floppy_drive_index_callback);
 
 	mc146818_init(machine, MC146818_STANDARD);
 
 	nc200_uart_interrupt_irq = 0;
-	msm8251_init(&nc200_uart_interface);
 
-	centronics_config(0, nc200_cent_config);
+	centronics_config(machine, 0, nc200_cent_config);
 	/* assumption: select is tied low */
-	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
+	centronics_write_handshake(machine, 0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
 
 	nc_common_open_stream_for_reading(machine);
 	if (file)
@@ -1442,7 +1448,7 @@ static  READ8_HANDLER(nc200_card_battery_status_r)
 		nc_card_battery_status&=~(1<<7);
 	}
 
-	if (input_port_read(machine, "EXTRA") & 0x02)
+	if (input_port_read(space->machine, "EXTRA") & 0x02)
 	{
 		/* card write enable */
 		nc_card_battery_status &=~(1<<6);
@@ -1464,9 +1470,9 @@ static  READ8_HANDLER(nc200_printer_status_r)
 	int printer_handshake;
 
 	/* assumption: select is tied low */
-	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
+	centronics_write_handshake(space->machine, 0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
 
-	printer_handshake = centronics_read_handshake(0);
+	printer_handshake = centronics_read_handshake(space->machine, 0);
 
 	nc200_printer_status |=(1<<0);
 
@@ -1482,21 +1488,19 @@ static  READ8_HANDLER(nc200_printer_status_r)
 
 static WRITE8_HANDLER(nc200_uart_control_w)
 {
-	int reset_fdc;
+	/* int reset_fdc = (nc_uart_control^data) & (1<<5); */
 
-	reset_fdc = (nc_uart_control^data) & (1<<5);
-
-	nc_uart_control_w(machine, offset,data);
+	nc_uart_control_w(space, offset,data);
 
 	if (data & (1<<3))
 	{
 		nc200_uart_interrupt_irq &=~3;
 
-		nc200_refresh_uart_interrupt(machine);
+		nc200_refresh_uart_interrupt(space->machine);
 	}
 
 	/* bit 5 is used in disk interface */
-	LOG_DEBUG(("bit 5: PC: %04x %02x\n",activecpu_get_pc(), data & (1<<5)));
+	LOG_DEBUG(("bit 5: PC: %04x %02x\n",cpu_get_pc(space->machine->cpu[0]), data & (1<<5)));
 }
 
 
@@ -1514,12 +1518,13 @@ static WRITE8_HANDLER(nc200_uart_control_w)
 
 static WRITE8_HANDLER(nc200_memory_card_wait_state_w)
 {
-	LOG_DEBUG(("nc200 memory card wait state: PC: %04x %02x\n",activecpu_get_pc(),data));
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
+	LOG_DEBUG(("nc200 memory card wait state: PC: %04x %02x\n",cpu_get_pc(space->machine->cpu[0]),data));
 #if 0
 	floppy_drive_set_motor_state(0,1);
 	floppy_drive_set_ready_state(0,1,1);
 #endif
-	nec765_set_tc_state(machine, (data & 0x01));
+	nec765_set_tc_state(fdc, (data & 0x01));
 }
 
 /* bit 2: backlight: 1=off, 0=on */
@@ -1527,7 +1532,7 @@ static WRITE8_HANDLER(nc200_memory_card_wait_state_w)
 /* bit 0 seems to be the same as nc100 */
 static WRITE8_HANDLER(nc200_poweroff_control_w)
 {
-	LOG_DEBUG(("nc200 power off: PC: %04x %02x\n", activecpu_get_pc(),data));
+	LOG_DEBUG(("nc200 power off: PC: %04x %02x\n",cpu_get_pc(space->machine->cpu[0]),data));
 
 	nc200_video_set_backlight(((data^(1<<2))>>2) & 0x01);
 }
@@ -1546,11 +1551,11 @@ static ADDRESS_MAP_START(nc200_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x90, 0x90) AM_READWRITE(nc_irq_status_r, nc_irq_status_w)
 	AM_RANGE(0xa0, 0xa0) AM_READ(nc200_card_battery_status_r)
 	AM_RANGE(0xb0, 0xb9) AM_READ(nc_key_data_in_r)
-	AM_RANGE(0xc0, 0xc0) AM_READWRITE(msm8251_data_r, msm8251_data_w)
-	AM_RANGE(0xc1, 0xc1) AM_READWRITE(msm8251_status_r, msm8251_control_w)
+	AM_RANGE(0xc0, 0xc0) AM_DEVREADWRITE(MSM8251, "uart", msm8251_data_r, msm8251_data_w)
+	AM_RANGE(0xc1, 0xc1) AM_DEVREADWRITE(MSM8251, "uart", msm8251_status_r, msm8251_control_w)
 	AM_RANGE(0xd0, 0xd1) AM_READWRITE(mc146818_port_r, mc146818_port_w)
-	AM_RANGE(0xe0, 0xe0) AM_READ(nec765_status_r)
-	AM_RANGE(0xe1, 0xe1) AM_READWRITE(nec765_data_r, nec765_data_w)
+	AM_RANGE(0xe0, 0xe0) AM_DEVREAD(NEC765A, "nec765", nec765_status_r)
+	AM_RANGE(0xe1, 0xe1) AM_DEVREADWRITE(NEC765A, "nec765",nec765_data_r, nec765_data_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START(nc200)
@@ -1666,14 +1671,12 @@ INPUT_PORTS_END
 
 /**********************************************************************************************************/
 
-
-
 static MACHINE_DRIVER_START( nc100 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", Z80, /*6000000*/ 4606000)        /* Russell Marks says this is more accurate */
 	MDRV_CPU_PROGRAM_MAP(nc_map, 0)
 	MDRV_CPU_IO_MAP(nc100_io, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( nc100 )
 	MDRV_MACHINE_RESET( nc100 )
@@ -1699,12 +1702,27 @@ static MACHINE_DRIVER_START( nc100 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
+
+	/* uart */
+	MDRV_MSM8251_ADD("uart", nc100_uart_interface)
+
+	/* rtc */
+	MDRV_TC8521_ADD("rtc", nc100_tc8521_interface)
+
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("crd,card")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_START(nc_pcmcia_card)
+	MDRV_CARTSLOT_LOAD(nc_pcmcia_card)
+	MDRV_CARTSLOT_UNLOAD(nc_pcmcia_card)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( nc200 )
 	MDRV_IMPORT_FROM( nc100 )
+
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_IO_MAP(nc200_io, 0)
 
@@ -1717,6 +1735,15 @@ static MACHINE_DRIVER_START( nc200 )
 	MDRV_SCREEN_VISIBLE_AREA(0, NC200_SCREEN_WIDTH-1, 0, NC200_SCREEN_HEIGHT-1)
 	MDRV_PALETTE_LENGTH(NC200_NUM_COLOURS)
 	MDRV_DEFAULT_LAYOUT(layout_nc200)
+
+	/* uart */
+	MDRV_MSM8251_REMOVE("uart")
+	MDRV_MSM8251_ADD("uart", nc200_uart_interface)
+
+	/* no rtc */
+	MDRV_TC8521_REMOVE("rtc")
+	
+	MDRV_NEC765A_ADD("nec765", nc200_nec765_interface)
 MACHINE_DRIVER_END
 
 
@@ -1729,7 +1756,7 @@ MACHINE_DRIVER_END
 ROM_START(nc100)
 	ROM_REGION(((64*1024)+(256*1024)), "main",0)
 	ROM_SYSTEM_BIOS(0, "106", "ROM v1.06")
-        ROMX_LOAD("nc100a.rom", 0x010000, 0x040000, CRC(849884f9) SHA1(ff030dd334ca867d620ee4a94b142ef0d93b69b6), ROM_BIOS(1))
+    ROMX_LOAD("nc100a.rom", 0x010000, 0x040000, CRC(849884f9) SHA1(ff030dd334ca867d620ee4a94b142ef0d93b69b6), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "100", "ROM v1.00")
 	ROMX_LOAD("nc100.rom",  0x010000, 0x040000, CRC(a699eca3) SHA1(ce217d5a298b959ccc3d7bc5c93b1dba043f1339), ROM_BIOS(2))
 ROM_END
@@ -1738,26 +1765,6 @@ ROM_START(nc200)
         ROM_REGION(((64*1024)+(512*1024)), "main",0)
         ROM_LOAD("nc200.rom", 0x010000, 0x080000, CRC(bb8180e7) SHA1(fb5c93b0a3e199202c6a12548d2617f7a09bae47))
 ROM_END
-
-static void nc_common_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(nc_pcmcia_card); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(nc_pcmcia_card); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(nc_pcmcia_card); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crd,card"); break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static void nc_common_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -1782,7 +1789,6 @@ static void nc_common_serial_getinfo(const mess_device_class *devclass, UINT32 s
 }
 
 static SYSTEM_CONFIG_START(nc_common)
-	CONFIG_DEVICE(nc_common_cartslot_getinfo)
 	CONFIG_DEVICE(nc_common_serial_getinfo)
 SYSTEM_CONFIG_END
 

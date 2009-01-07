@@ -111,7 +111,7 @@ enum
 /* set new blink state - record blink state in event list */
 void kc85_video_set_blink_state(running_machine *machine, int data)
 {
-	EventList_AddItemOffset(machine, KC85_VIDEO_EVENT_SET_BLINK_STATE, ((data & 0x01)<<7), ATTOTIME_TO_CYCLES(0, attotime_mul(video_screen_get_scan_period(machine->primary_screen), video_screen_get_vpos(machine->primary_screen))));
+	EventList_AddItemOffset(machine, KC85_VIDEO_EVENT_SET_BLINK_STATE, ((data & 0x01)<<7), cpu_attotime_to_clocks(machine->cpu[0], attotime_mul(video_screen_get_scan_period(machine->primary_screen), video_screen_get_vpos(machine->primary_screen))));
 }
 
 
@@ -208,7 +208,7 @@ static void kc85_draw_8_pixels(bitmap_t *bitmap,int x,int y, unsigned char colou
 	- The vertical states comprise top border, main display, bottom border and vertical retrace timing.
 
 
-	- if frame rate is 50hz, and there are 312 lines, then the line rate is 15600hz.
+	- if frame rate is 50Hz, and there are 312 lines, then the line rate is 15600Hz.
 	- Each frame takes 0.02 seconds, and each line takes 0.0000064 seconds - approx 64microseconds per line
 
 	- the event list is based on cpu time
@@ -491,7 +491,7 @@ static void kc85_common_vh_process_lines(struct video_update_state *video_update
 
 
 /* the kc85 screen is 320 pixels wide and 256 pixels tall */
-/* if we assume a 50hz display, there are 312 lines for the complete frame, leaving 56 lines not visible */
+/* if we assume a 50Hz display, there are 312 lines for the complete frame, leaving 56 lines not visible */
 static void kc85_common_process_frame(running_machine *machine, bitmap_t *bitmap, void (*pixel_grab_callback)(struct grab_info *,int x,int y,unsigned char *, unsigned char *),struct grab_info *grab_data)
 {
 	int cycles_remaining_in_frame = KC85_CYCLES_PER_FRAME;
@@ -548,7 +548,7 @@ static void kc85_common_process_frame(running_machine *machine, bitmap_t *bitmap
 	/* process remainder */
 	kc85_common_vh_process_lines(&video_update, cycles_remaining_in_frame);
 	EventList_Reset();
-	EventList_SetOffsetStartTime ( ATTOTIME_TO_CYCLES(0, attotime_mul(video_screen_get_scan_period(machine->primary_screen), video_screen_get_vpos(machine->primary_screen))) );
+	EventList_SetOffsetStartTime ( cpu_attotime_to_clocks(machine->cpu[0], attotime_mul(video_screen_get_scan_period(machine->primary_screen), video_screen_get_vpos(machine->primary_screen))) );
 }
 
 
@@ -571,7 +571,7 @@ static void kc85_common_vh_eof_callback(void)
 		{
 			pItem = EventList_GetFirstItem();
 			EventList_Reset();
-			EventList_SetOffsetStartTime ( ATTOTIME_TO_CYCLES(0, attotime_mul(video_screen_get_scan_period(machine->primary_screen), video_screen_get_vpos(machine->primary_screen))) );
+			EventList_SetOffsetStartTime ( cpu_attotime_to_clocks(machine->cpu[0], attotime_mul(video_screen_get_scan_period(machine->primary_screen), video_screen_get_vpos(machine->primary_screen))) );
 			logerror ("Event log reset in callback fn.\n");
 		}
 }

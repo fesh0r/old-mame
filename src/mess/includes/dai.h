@@ -10,6 +10,7 @@
 #include "mame.h"
 #include "sound/custom.h"
 #include "machine/8255ppi.h"
+#include "machine/tms5501.h"
 
 #define DAI_DEBUG	1
 
@@ -18,8 +19,10 @@
 
 extern const struct pit8253_config dai_pit8253_intf;
 extern const ppi8255_interface dai_ppi82555_intf;
+extern const tms5501_interface dai_tms5501_interface;
 
 MACHINE_START( dai );
+MACHINE_RESET( dai );
 READ8_HANDLER( dai_io_discrete_devices_r );
 WRITE8_HANDLER( dai_io_discrete_devices_w );
 WRITE8_HANDLER( dai_stack_interrupt_circuit_w );

@@ -32,6 +32,8 @@
  ************************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
+#include "cpu/cp1610/cp1610.h"
 #include "video/stic.h"
 #include "includes/intv.h"
 #include "devices/cartslot.h"
@@ -374,7 +376,7 @@ ADDRESS_MAP_END
 
 static INTERRUPT_GEN( intv_interrupt2 )
 {
-	cpunum_set_input_line(machine, 1, 0, PULSE_LINE);
+	cpu_set_input_line(device->machine->cpu[1], 0, ASSERT_LINE);
 }
 
 static MACHINE_DRIVER_START( intv )
@@ -382,7 +384,7 @@ static MACHINE_DRIVER_START( intv )
 	MDRV_CPU_ADD("main", CP1610, XTAL_3_579545MHz/4)        /* Colorburst/4 */
 	MDRV_CPU_PROGRAM_MAP(intv_mem, 0)
 	MDRV_CPU_VBLANK_INT("main", intv_interrupt)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET( intv )
 
@@ -405,6 +407,13 @@ static MACHINE_DRIVER_START( intv )
 	MDRV_SOUND_ADD("ay8910", AY8910, XTAL_3_579545MHz/2)
 	MDRV_SOUND_CONFIG(intv_ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("int,rom")
+	MDRV_CARTSLOT_MANDATORY
+	MDRV_CARTSLOT_START(intv_cart)
+	MDRV_CARTSLOT_LOAD(intv_cart)
 MACHINE_DRIVER_END
 
 
@@ -417,11 +426,22 @@ static MACHINE_DRIVER_START( intvkbd )
 	MDRV_CPU_PROGRAM_MAP(intv2_mem, 0)
 	MDRV_CPU_VBLANK_INT("main", intv_interrupt2)
 
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 
     /* video hardware */
 	MDRV_GFXDECODE(intvkbd)
 	MDRV_VIDEO_UPDATE(intvkbd)
+
+	/* cartridge */
+	MDRV_CARTSLOT_REMOVE("cart")
+	MDRV_CARTSLOT_ADD("cart1")
+	MDRV_CARTSLOT_EXTENSION_LIST("int,rom,bin,itv")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(intvkbd_cart)
+	MDRV_CARTSLOT_ADD("cart2")
+	MDRV_CARTSLOT_EXTENSION_LIST("int,rom,bin,itv")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(intvkbd_cart)
 MACHINE_DRIVER_END
 
 ROM_START(intv)
@@ -454,47 +474,6 @@ ROM_START(intvkbd)
 	ROM_LOAD( "4c52.u34",  0x0000, 0x0800, CRC(cbeb2e96) SHA1(f0e17adcd278fb376c9f90833c7fbbb60193dbe3))
 ROM_END
 
-static void intv_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(intv_cart); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(intv_cart); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "int,rom"); break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(intv)
-	CONFIG_DEVICE(intv_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
-static void intvkbd_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(intvkbd_cart); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "int,rom,bin,itv"); break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
 
 #ifdef UNUSED_FUNCTION
 static void intvkbd_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
@@ -516,12 +495,6 @@ static void intvkbd_cassette_getinfo(const mess_device_class *devclass, UINT32 s
 }
 #endif
 
-static SYSTEM_CONFIG_START(intvkbd)
-	CONFIG_DEVICE(intvkbd_cartslot_getinfo)
-#if 0
-	CONFIG_DEVICE(intvkbd_cassette_getinfo)
-#endif
-SYSTEM_CONFIG_END
 
 /***************************************************************************
 
@@ -529,7 +502,7 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE   INPUT     INIT        CONFIG      COMPANY      FULLNAME */
-CONS( 1979, intv,	0,	0,	intv,     intv, 	0,	intv,		"Mattel",    "Intellivision", 0 )
-CONS( 1981, intvsrs,	0,	0,	intv,     intv, 	0,	intv,		"Mattel",    "Intellivision (Sears)", 0 )
-COMP( 1981, intvkbd,	0,	0,	intvkbd,  intvkbd, 	0,	intvkbd,	"Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)
+/*    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT   INIT CONFIG COMPANY      FULLNAME */
+CONS( 1979, intv,		0,	0,	intv,     intv, 	0,	0,	"Mattel",    "Intellivision", 0 )
+CONS( 1981, intvsrs,	intv,	0,	intv,     intv, 	0,	0,	"Mattel",    "Intellivision (Sears)", 0 )
+COMP( 1981, intvkbd,	intv,	0,	intvkbd,  intvkbd, 	0,	0,	"Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)

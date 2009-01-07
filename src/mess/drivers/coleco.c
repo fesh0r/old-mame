@@ -63,6 +63,7 @@
 */
 
 #include "driver.h"
+#include "cpu/z80/z80.h"
 #include "sound/sn76496.h"
 #include "video/tms9928a.h"
 #include "devices/cartslot.h"
@@ -74,13 +75,13 @@ static int joy_status[2];
 
 static READ8_HANDLER( paddle_1_r )
 {
-	UINT8 inport6 = input_port_read_safe(machine, "IN6", 0);
+	UINT8 inport6 = input_port_read_safe(space->machine, "IN6", 0);
 
 	/* Keypad and fire 1 (SAC Yellow Button) */
 	if (joy_mode==0)
 	{
-		UINT8 inport0 = input_port_read(machine, "IN0");
-		UINT8 inport1 = input_port_read(machine, "IN1");
+		UINT8 inport0 = input_port_read(space->machine, "IN0");
+		UINT8 inport1 = input_port_read(space->machine, "IN1");
 
 		/* Numeric pad buttons are not independent on a real ColecoVision, if you push more
 		than one, a real ColecoVision think that it is a third button, so we are going to emulate
@@ -108,7 +109,7 @@ static READ8_HANDLER( paddle_1_r )
 	/* Joystick and fire 2 (SAC Red Button) */
 	else
 	{
-		UINT8 data = input_port_read(machine, "IN2") & 0xCF;
+		UINT8 data = input_port_read(space->machine, "IN2") & 0xCF;
 
 		if (inport6 & 0x07) /* If Extra Contollers enabled */
 		{
@@ -125,8 +126,8 @@ static READ8_HANDLER( paddle_2_r )
 	/* Keypad and fire 1 */
 	if (joy_mode == 0)
 	{
-		UINT8 inport3 = input_port_read(machine, "IN3");
-		UINT8 inport4 = input_port_read(machine, "IN4");
+		UINT8 inport3 = input_port_read(space->machine, "IN3");
+		UINT8 inport4 = input_port_read(space->machine, "IN4");
 
 		/* Numeric pad buttons are not independent on a real ColecoVision, if you push more
 		than one, a real ColecoVision think that it is a third button, so we are going to emulate
@@ -152,8 +153,8 @@ static READ8_HANDLER( paddle_2_r )
 	/* Joystick and fire 2*/
 	else
 	{
-		UINT8 data = input_port_read(machine, "IN5") & 0xCF;
-		UINT8 inport6 = input_port_read_safe(machine, "IN6", 0);
+		UINT8 data = input_port_read(space->machine, "IN5") & 0xCF;
+		UINT8 inport6 = input_port_read_safe(space->machine, "IN6", 0);
 
 		if (inport6 & 0x02) /* If Roller Controller enabled */
 		{
@@ -344,7 +345,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( coleco_interrupt )
 {
-    TMS9928A_interrupt(machine);
+    TMS9928A_interrupt(device->machine);
 }
 
 static void coleco_vdp_interrupt(running_machine *machine, int state)
@@ -352,7 +353,7 @@ static void coleco_vdp_interrupt(running_machine *machine, int state)
 	static int last_state = 0;
 
     // only if it goes up
-	if (state && !last_state) cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+	if (state && !last_state) cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 	last_state = state;
 }
 
@@ -376,7 +377,7 @@ static TIMER_CALLBACK( paddle_callback )
 		joy_status[1] = 1;
 
     if (joy_status[0] || joy_status[1])
-		cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0], INPUT_LINE_IRQ0, HOLD_LINE);
 }
 
 /* Machine Initialization */
@@ -396,9 +397,35 @@ static MACHINE_START( coleco )
 
 static MACHINE_RESET( coleco )
 {
-    cpunum_set_input_line_vector(0, INPUT_LINE_IRQ0, 0xff);
+    cpu_set_input_line_vector(machine->cpu[0], INPUT_LINE_IRQ0, 0xff);
 	memset(&memory_region(machine, "main")[0x6000], 0xff, 0x400);	// initialize RAM
-    timer_pulse(ATTOTIME_IN_MSEC(20), NULL, 0, paddle_callback);
+    timer_pulse(machine, ATTOTIME_IN_MSEC(20), NULL, 0, paddle_callback);
+}
+
+//static int coleco_cart_verify(const UINT8 *cartdata, size_t size)
+//{
+//	int retval = IMAGE_VERIFY_FAIL;
+//
+//	/* Verify the file is in Colecovision format */
+//	if ((cartdata[0] == 0xAA) && (cartdata[1] == 0x55)) /* Production Cartridge */
+//		retval = IMAGE_VERIFY_PASS;
+//	if ((cartdata[0] == 0x55) && (cartdata[1] == 0xAA)) /* "Test" Cartridge. Some games use this method to skip ColecoVision title screen and delay */
+//		retval = IMAGE_VERIFY_PASS;
+//
+//	return retval;
+//}
+
+static DEVICE_IMAGE_LOAD( czz50_cart )
+{
+	int size = image_length(image);
+	UINT8 *ptr = memory_region(image->machine, "main") + 0x8000;
+
+	if (image_fread(image, ptr, size ) != size)
+	{
+		return INIT_FAIL;
+	}
+
+	return INIT_PASS;
 }
 
 /* Machine Drivers */
@@ -423,6 +450,11 @@ static MACHINE_DRIVER_START( coleco )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("sn76489a", SN76489A, XTAL_7_15909MHz/2)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom,col,bin")
+	MDRV_CARTSLOT_NOT_MANDATORY
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( czz50 )
@@ -445,6 +477,12 @@ static MACHINE_DRIVER_START( czz50 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("sn76489a", SN76489A, XTAL_7_15909MHz/2)	// ???
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom,col,bin")
+	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_LOAD(czz50_cart)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( dina )
@@ -458,20 +496,20 @@ MACHINE_DRIVER_END
 ROM_START (coleco)
     ROM_REGION( 0x10000, "main", 0 )
     ROM_LOAD( "coleco.rom", 0x0000, 0x2000, CRC(3aa93ef3) SHA1(45bedc4cbdeac66c7df59e9e599195c778d86a92) )
-	ROM_CART_LOAD(0, "rom,col,bin", 0x8000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x8000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START (colecoa)
     // differences to 0x3aa93ef3 modified characters, added a pad 2 related fix
     ROM_REGION( 0x10000, "main", 0 )
     ROM_LOAD( "colecoa.rom", 0x0000, 0x2000, CRC(39bb16fc) SHA1(99ba9be24ada3e86e5c17aeecb7a2d68c5edfe59) )
-	ROM_CART_LOAD(0, "rom,col,bin", 0x8000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x8000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START (colecob)
     ROM_REGION( 0x10000, "main", 0 )
     ROM_LOAD( "svi603.rom", 0x0000, 0x2000, CRC(19e91b82) SHA1(8a30abe5ffef810b0f99b86db38b1b3c9d259b78) )
-	ROM_CART_LOAD(0, "rom,col,bin", 0x8000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
+	ROM_CART_LOAD("cart", 0x8000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START( czz50 )
@@ -483,72 +521,13 @@ ROM_END
 #define rom_dina rom_czz50
 #define rom_prsarcde rom_czz50
 
-/* System Configuration */
-
-static int coleco_cart_verify(const UINT8 *cartdata, size_t size)
-{
-	int retval = IMAGE_VERIFY_FAIL;
-
-	/* Verify the file is in Colecovision format */
-	if ((cartdata[0] == 0xAA) && (cartdata[1] == 0x55)) /* Production Cartridge */
-		retval = IMAGE_VERIFY_PASS;
-	if ((cartdata[0] == 0x55) && (cartdata[1] == 0xAA)) /* "Test" Cartridge. Some games use this method to skip ColecoVision title screen and delay */
-		retval = IMAGE_VERIFY_PASS;
-
-	return retval;
-}
-
-static void coleco_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* cartslot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_VERIFY:					info->imgverify = coleco_cart_verify; break;
-
-		default:										cartslot_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( coleco )
-	CONFIG_DEVICE(coleco_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
-static DEVICE_IMAGE_LOAD( czz50_cart )
-{
-	int size = image_length(image);
-	UINT8 *ptr = memory_region(image->machine, "main") + 0x8000;
-
-	if (image_fread(image, ptr, size ) != size)
-	{
-		return INIT_FAIL;
-	}
-
-	return INIT_PASS;
-}
-
-static void czz50_cartslot_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info )
-{
-	switch( state )
-	{
-		case MESS_DEVINFO_INT_COUNT:					info->i = 1; break;
-		case MESS_DEVINFO_PTR_LOAD:						info->load = DEVICE_IMAGE_LOAD_NAME(czz50_cart); break;
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:			strcpy(info->s = device_temp_str(), "rom,col,bin"); break;
-
-		default:										cartslot_device_getinfo( devclass, state, info ); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( czz50 )
-	CONFIG_DEVICE(czz50_cartslot_getinfo)
-SYSTEM_CONFIG_END
 
 /* System Drivers */
 
 //    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY				FULLNAME							FLAGS
-CONS( 1982, coleco,   0,		0,		coleco,   coleco,   0,		coleco,	"Coleco",			"ColecoVision",						0 )
-CONS( 1982, colecoa,  coleco,	0,		coleco,   coleco,   0,		coleco,	"Coleco",			"ColecoVision (Thick Characters)",	0 )
-CONS( 1983, colecob,  coleco,	0,		coleco,   coleco,   0,		coleco,	"Spectravideo",		"SVI-603 Coleco Game Adapter",		0 )
-CONS( 1986, czz50,	  0,		0,		czz50,	  czz50,	0,		czz50,	"Bit Corporation",	"Chuang Zao Zhe 50",				0 )
-CONS( 1988, dina,	  czz50,	0,		dina,	  czz50,	0,		czz50,	"Telegames",		"Dina",								0 )
-CONS( 1988, prsarcde, czz50,	0,		czz50,	  czz50,	0,		czz50,	"Telegames",		"Personal Arcade",					0 )
+CONS( 1982, coleco,   0,		0,		coleco,   coleco,   0,		0,	"Coleco",			"ColecoVision",						0 )
+CONS( 1982, colecoa,  coleco,	0,		coleco,   coleco,   0,		0,	"Coleco",			"ColecoVision (Thick Characters)",	0 )
+CONS( 1983, colecob,  coleco,	0,		coleco,   coleco,   0,		0,	"Spectravideo",		"SVI-603 Coleco Game Adapter",		0 )
+CONS( 1986, czz50,	  0,		0,		czz50,	  czz50,	0,		0,	"Bit Corporation",	"Chuang Zao Zhe 50",				0 )
+CONS( 1988, dina,	  czz50,	0,		dina,	  czz50,	0,		0,	"Telegames",		"Dina",								0 )
+CONS( 1988, prsarcde, czz50,	0,		czz50,	  czz50,	0,		0,	"Telegames",		"Personal Arcade",					0 )

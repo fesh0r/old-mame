@@ -204,7 +204,7 @@ static VIDEO_START( abc80 )
 
 	/* create tx_tilemap */
 
-	state->tx_tilemap = tilemap_create(abc80_get_tile_info, abc80_tilemap_scan, 6, 10, 40, 24);
+	state->tx_tilemap = tilemap_create(machine, abc80_get_tile_info, abc80_tilemap_scan, 6, 10, 40, 24);
 
 	tilemap_set_scrolldx(state->tx_tilemap, ABC80_HDSTART, ABC80_HDSTART);
 	tilemap_set_scrolldy(state->tx_tilemap, ABC80_VDSTART, ABC80_VDSTART);
@@ -219,9 +219,9 @@ static VIDEO_START( abc80 )
 
 	/* register for state saving */
 
-	state_save_register_global(state->blink);
-	state_save_register_global(state->char_bank);
-	state_save_register_global(state->char_row);
+	state_save_register_global(machine, state->blink);
+	state_save_register_global(machine, state->char_bank);
+	state_save_register_global(machine, state->char_row);
 }
 
 static VIDEO_UPDATE( abc80 )
@@ -234,7 +234,7 @@ static VIDEO_UPDATE( abc80 )
 	rect.min_y = ABC80_VDSTART;
 	rect.max_y = ABC80_VDSTART + 240 - 1;
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	tilemap_mark_all_tiles_dirty(state->tx_tilemap);
 	tilemap_draw(bitmap, &rect, state->tx_tilemap, 0, 0);

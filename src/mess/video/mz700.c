@@ -19,7 +19,14 @@
 #endif
 
 #define LOG(N,M,A)	\
-	if(VERBOSE>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A; }
+	do { \
+		if(VERBOSE>=N) \
+		{ \
+			if( M ) \
+				logerror("%11.6f: %-24s",attotime_to_double(timer_get_time(machine)),(char*)M ); \
+			logerror A; \
+		} \
+	} while (0)
 
 
 PALETTE_INIT( mz700 )
@@ -43,7 +50,7 @@ VIDEO_UPDATE( mz700 )
 {
 	int offs;
 
-	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
 	for(offs = 0; offs < 40*25; offs++)
 	{

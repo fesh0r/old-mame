@@ -10,11 +10,18 @@
 
 #define VERBOSE_DBG 0       /* general debug messages */
 
-#define DBG_LOG(N,M,A) \
-	if(VERBOSE_DBG>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A; }
+#define LOG(LEVEL,N,M,A) \
+	do { \
+		if(LEVEL>=N) \
+		{ \
+			if( M ) \
+				logerror("%11.6f: %-24s",attotime_to_double(timer_get_time(machine)),(char*)M ); \
+			logerror A; \
+		} \
+	} while (0)
 
-#define PIO_LOG(N,M,A) \
-	if(VERBOSE_PIO>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A; }
+#define DBG_LOG(N,M,A) LOG(VERBOSE_DBG,N,M,A)
+#define PIO_LOG(N,M,A) LOG(VERBOSE_PIO,N,M,A)
 
 /*
 ibm xt bios
@@ -102,10 +109,10 @@ static TIMER_CALLBACK(pc_rtc_timer)
 	}
 }
 
-void pc_rtc_init(void)
+void pc_rtc_init(running_machine *machine)
 {
 	memset(&pc_rtc,0,sizeof(pc_rtc));
-	pc_rtc.timer = timer_alloc(pc_rtc_timer, NULL);
+	pc_rtc.timer = timer_alloc(machine, pc_rtc_timer, NULL);
 	timer_adjust_periodic(pc_rtc.timer, attotime_zero, 0, attotime_make(1, 0));
 }
 
@@ -129,8 +136,8 @@ WRITE8_HANDLER( pc_rtc_w )
 	}
 }
 
-READ16_HANDLER( pc16le_rtc_r ) { return read16le_with_read8_handler(pc_rtc_r, machine, offset, mem_mask); }
-WRITE16_HANDLER( pc16le_rtc_w ) { write16le_with_write8_handler(pc_rtc_w, machine, offset, data, mem_mask); }
+READ16_HANDLER( pc16le_rtc_r ) { return read16le_with_read8_handler(pc_rtc_r, space, offset, mem_mask); }
+WRITE16_HANDLER( pc16le_rtc_w ) { write16le_with_write8_handler(pc_rtc_w, space, offset, data, mem_mask); }
 
 /*************************************************************************
  *
@@ -153,6 +160,8 @@ static struct {
 
 WRITE8_HANDLER ( pc_EXP_w )
 {
+	running_machine *machine = space->machine;
+
 	DBG_LOG(1,"EXP_unit_w",("%.2x $%02x\n", offset, data));
 	switch (offset) {
 	case 4:
@@ -167,6 +176,7 @@ READ8_HANDLER ( pc_EXP_r )
 {
     int data;
 	UINT16 a;
+	running_machine *machine = space->machine;
 
 	switch (offset) {
 	case 6:

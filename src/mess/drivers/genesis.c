@@ -51,7 +51,6 @@ MESS adaptation by R. Belmont
 #include "driver.h"
 #include "sound/2612intf.h"
 #include "../../mame/drivers/megadriv.h"
-#include "deprecat.h"
 
 /* cart device, custom mappers & sram init */
 #include "includes/genesis.h"
@@ -76,20 +75,20 @@ static TIMER_CALLBACK( mess_io_timeout_timer_callback )
 	mess_io_stage[(int)(FPTR)ptr] = -1;
 }
 
-static void mess_init_6buttons_pad(void)
+static void mess_init_6buttons_pad(running_machine *machine)
 {
 	int i;
 
 	for (i = 0; i < 3; i++)
 	{
-		mess_io_timeout[i] = timer_alloc(mess_io_timeout_timer_callback, (void*)(FPTR)i);
+		mess_io_timeout[i] = timer_alloc(machine, mess_io_timeout_timer_callback, (void*)(FPTR)i);
 		mess_io_stage[i] = -1;
 	}
 }
 
 /* These overwrite the MAME ones in DRIVER_INIT */
 /* They're needed to give the users the choice between different controllers */
-static UINT8 mess_md_io_read_data_port(int portnum)
+static UINT8 mess_md_io_read_data_port(running_machine *machine, int portnum)
 {
 	static const char *const pad6names[2][4] = {{ "PAD1_6B", "PAD2_6B", "UNUSED", "UNUSED" }, 
 												{ "EXTRA1", "EXTRA2", "UNUSED", "UNUSED" }};
@@ -103,11 +102,11 @@ static UINT8 mess_md_io_read_data_port(int portnum)
 	switch (portnum)
 	{
 		case 0:
-			controller = (input_port_read(Machine, "CTRLSEL") & 0x0f);
+			controller = (input_port_read(machine, "CTRLSEL") & 0x0f);
 			break;
 
 		case 1:
-			controller = (input_port_read(Machine, "CTRLSEL") & 0xf0);
+			controller = (input_port_read(machine, "CTRLSEL") & 0xf0);
 			break;
 
 		default:
@@ -124,14 +123,14 @@ static UINT8 mess_md_io_read_data_port(int portnum)
 			{
 				/* here we read B, C & the additional buttons */
 				retdata = (megadrive_io_data_regs[portnum] & helper_6b) | 
-							(((input_port_read_safe(Machine, pad6names[0][portnum], 0) & 0x30) | 
-								(input_port_read_safe(Machine, pad6names[1][portnum], 0) & 0x0f)) & ~helper_6b);
+							(((input_port_read_safe(machine, pad6names[0][portnum], 0) & 0x30) | 
+								(input_port_read_safe(machine, pad6names[1][portnum], 0) & 0x0f)) & ~helper_6b);
 			}
 			else
 			{
 				/* here we read B, C & the directional buttons */
 				retdata = (megadrive_io_data_regs[portnum] & helper_6b) | 
-							((input_port_read_safe(Machine, pad6names[0][portnum], 0) & 0x3f) & ~helper_6b);
+							((input_port_read_safe(machine, pad6names[0][portnum], 0) & 0x3f) & ~helper_6b);
 			}
 		}
 		else
@@ -140,20 +139,20 @@ static UINT8 mess_md_io_read_data_port(int portnum)
 			{
 				/* here we read ((Start & A) >> 2) | 0x00 */
 				retdata = (megadrive_io_data_regs[portnum] & helper_6b) | 
-							(((input_port_read_safe(Machine, pad6names[0][portnum], 0) & 0xc0) >> 2) & ~helper_6b);
+							(((input_port_read_safe(machine, pad6names[0][portnum], 0) & 0xc0) >> 2) & ~helper_6b);
 			}
 			else if (mess_io_stage[portnum]==2)
 			{
 				/* here we read ((Start & A) >> 2) | 0x0f */
 				retdata = (megadrive_io_data_regs[portnum] & helper_6b) | 
-							((((input_port_read_safe(Machine, pad6names[0][portnum], 0) & 0xc0) >> 2) | 0x0f) & ~helper_6b);
+							((((input_port_read_safe(machine, pad6names[0][portnum], 0) & 0xc0) >> 2) | 0x0f) & ~helper_6b);
 			}
 			else
 			{
 				/* here we read ((Start & A) >> 2) | Up and Down */
 				retdata = (megadrive_io_data_regs[portnum] & helper_6b) | 
-							((((input_port_read_safe(Machine, pad6names[0][portnum], 0) & 0xc0) >> 2) | 
-								(input_port_read_safe(Machine, pad6names[0][portnum], 0) & 0x03)) & ~helper_6b);
+							((((input_port_read_safe(machine, pad6names[0][portnum], 0) & 0xc0) >> 2) | 
+								(input_port_read_safe(machine, pad6names[0][portnum], 0) & 0x03)) & ~helper_6b);
 			}
 		}
 
@@ -168,14 +167,14 @@ static UINT8 mess_md_io_read_data_port(int portnum)
 		{
 			/* here we read B, C & the directional buttons */
 			retdata = (megadrive_io_data_regs[portnum] & helper_3b) | 
-						(((input_port_read_safe(Machine, pad3names[portnum], 0) & 0x3f) | 0x40) & ~helper_3b);
+						(((input_port_read_safe(machine, pad3names[portnum], 0) & 0x3f) | 0x40) & ~helper_3b);
 		}
 		else
 		{
 			/* here we read ((Start & A) >> 2) | Up and Down */
 			retdata = (megadrive_io_data_regs[portnum] & helper_3b) | 
-						((((input_port_read_safe(Machine, pad3names[portnum], 0) & 0xc0) >> 2) | 
-							(input_port_read_safe(Machine, pad3names[portnum], 0) & 0x03) | 0x40) & ~helper_3b);
+						((((input_port_read_safe(machine, pad3names[portnum], 0) & 0xc0) >> 2) | 
+							(input_port_read_safe(machine, pad3names[portnum], 0) & 0x03) | 0x40) & ~helper_3b);
 		}
 	}
 
@@ -183,18 +182,18 @@ static UINT8 mess_md_io_read_data_port(int portnum)
 }
 
 
-static void mess_md_io_write_data_port(int portnum, UINT16 data)
+static void mess_md_io_write_data_port(running_machine *machine, int portnum, UINT16 data)
 {
 	int controller;
 
 	switch (portnum)
 	{
 		case 0:
-			controller = (input_port_read(Machine, "CTRLSEL") & 0x0f);
+			controller = (input_port_read(machine, "CTRLSEL") & 0x0f);
 			break;
 
 		case 1:
-			controller = (input_port_read(Machine, "CTRLSEL") & 0xf0);
+			controller = (input_port_read(machine, "CTRLSEL") & 0xf0);
 			break;
 
 		default:
@@ -209,7 +208,7 @@ static void mess_md_io_write_data_port(int portnum, UINT16 data)
 			if (((megadrive_io_data_regs[portnum] & 0x40) == 0x00) && ((data & 0x40) == 0x40))
 			{
 				mess_io_stage[portnum]++;
-				timer_adjust_oneshot(mess_io_timeout[portnum], ATTOTIME_IN_CYCLES(8192,0), 0);
+				timer_adjust_oneshot(mess_io_timeout[portnum], cpu_clocks_to_attotime(machine->cpu[0], 8192), 0);
 			}
 
 		}
@@ -226,7 +225,7 @@ static void mess_md_io_write_data_port(int portnum, UINT16 data)
  *************************************/
 
 
-INPUT_PORTS_START( md )
+static INPUT_PORTS_START( md )
 	PORT_START("CTRLSEL")	/* Controller selection */
 	PORT_CATEGORY_CLASS( 0x0f, 0x00, "Player 1 Controller" )
 	PORT_CATEGORY_ITEM( 0x00, "Joystick 3 Buttons", 10 )
@@ -300,7 +299,7 @@ INPUT_PORTS_START( md )
 INPUT_PORTS_END
 
 
-INPUT_PORTS_START( md_svp )
+static INPUT_PORTS_START( md_svp )
 	PORT_INCLUDE( md )
 
 	/* We need this as long as we only have the US version of the SVP add-on,
@@ -317,7 +316,7 @@ INPUT_PORTS_END
 
 /*************************************
  *
- *  Machine driver
+ *  machine driver
  *
  *************************************/
 
@@ -326,19 +325,23 @@ static MACHINE_RESET( ms_megadriv )
 	MACHINE_RESET_CALL( megadriv );
 	MACHINE_RESET_CALL( md_mappers );
 	
-	mess_init_6buttons_pad();
+	mess_init_6buttons_pad(machine);
 }
 
 static MACHINE_DRIVER_START( ms_megadriv )
 	MDRV_IMPORT_FROM(megadriv)
 
 	MDRV_MACHINE_RESET( ms_megadriv )
+	
+	MDRV_IMPORT_FROM( genesis_cartslot )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ms_megdsvp )
 	MDRV_IMPORT_FROM(megdsvp)
 
 	MDRV_MACHINE_RESET( ms_megadriv )
+
+	MDRV_IMPORT_FROM( genesis_cartslot )
 MACHINE_DRIVER_END
 
 
@@ -395,7 +398,7 @@ static DRIVER_INIT( genesis )
 
 static DRIVER_INIT( gensvp )
 {
-	DRIVER_INIT_CALL(megadsvp);
+	DRIVER_INIT_CALL(megadriv);
 	DRIVER_INIT_CALL(mess_md_common);
 }
 
@@ -410,21 +413,6 @@ static DRIVER_INIT( md_jpn )
 	DRIVER_INIT_CALL(megadrij);
 	DRIVER_INIT_CALL(mess_md_common);
 }
-
-
-/*************************************
- *
- *	System configuration(s)
- *
- *************************************/
-
-
-static SYSTEM_CONFIG_START( genesis )
-	CONFIG_DEVICE(genesis_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
-
-
 
 /****************************************** PICO emulation ****************************************/
 
@@ -482,20 +470,20 @@ SYSTEM_CONFIG_END
 #define PICO_PENX	1
 #define PICO_PENY	2
 
-static UINT16 pico_read_penpos(int pen)
+static UINT16 pico_read_penpos(running_machine *machine, int pen)
 {
-  UINT16 penpos;
+  UINT16 penpos = 0;
 
   switch (pen)
     {
     case PICO_PENX:
-      penpos = input_port_read_safe(Machine, "PENX", 0);
+      penpos = input_port_read_safe(machine, "PENX", 0);
       penpos |= 0x6;
       penpos = penpos * 320 / 255;
       penpos += 0x3d;
       break;
     case PICO_PENY:
-      penpos = input_port_read_safe(Machine, "PENY", 0);
+      penpos = input_port_read_safe(machine, "PENY", 0);
       penpos |= 0x6;
       penpos = penpos * 251 / 255;
       penpos += 0x1fc;
@@ -518,7 +506,7 @@ static READ16_HANDLER( pico_68k_io_read )
 		retdata = (megadrive_region_export << 6) | (megadrive_region_pal << 5);
 	    break;
 	  case 1:
-	    retdata = input_port_read_safe(Machine, "PAD", 0);
+	    retdata = input_port_read_safe(space->machine, "PAD", 0);
 	    break;
 
 	    /*
@@ -533,16 +521,16 @@ static READ16_HANDLER( pico_68k_io_read )
 	          0x2f8 - 0x3f3 (storyware)
 	     */
 	  case 2:
-	    retdata = pico_read_penpos(PICO_PENX) >> 8;
+	    retdata = pico_read_penpos(space->machine, PICO_PENX) >> 8;
 	    break;
 	  case 3:
-	    retdata = pico_read_penpos(PICO_PENX) & 0x00ff;
+	    retdata = pico_read_penpos(space->machine, PICO_PENX) & 0x00ff;
 	    break;
 	  case 4:
-	    retdata = pico_read_penpos(PICO_PENY) >> 8;
+	    retdata = pico_read_penpos(space->machine, PICO_PENY) >> 8;
 	    break;
 	  case 5:
-	    retdata = pico_read_penpos(PICO_PENY) & 0x00ff;
+	    retdata = pico_read_penpos(space->machine, PICO_PENY) & 0x00ff;
 	    break;
 	  case 6:
 	    /* Page register :
@@ -553,7 +541,7 @@ static READ16_HANDLER( pico_68k_io_read )
 	    {
 	      UINT8 tmp;
 
-	      tmp = input_port_read_safe(Machine, "PAGE", 0);
+	      tmp = input_port_read_safe(space->machine, "PAGE", 0);
 	      if (tmp == 2 && page_register != 0x3f)
 		{
 		  page_register <<= 1;
@@ -585,26 +573,17 @@ static WRITE16_HANDLER( pico_68k_io_write )
 	  }
 }
 
-static ADDRESS_MAP_START( _pico_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000 , 0x3fffff) AM_READ(SMH_ROM)
+static ADDRESS_MAP_START( _pico_mem, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x3fffff) AM_ROM
 
-	AM_RANGE(0x800000 , 0x80001f) AM_READ(pico_68k_io_read)
+	AM_RANGE(0x800000, 0x80001f) AM_READWRITE(pico_68k_io_read, pico_68k_io_write)
 
-	AM_RANGE(0xc00000 , 0xc0001f) AM_READ(megadriv_vdp_r)
-	AM_RANGE(0xe00000 , 0xe0ffff) AM_READ(SMH_RAM) AM_MIRROR(0x1f0000)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( _pico_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000 , 0x3fffff) AM_WRITE(SMH_ROM)
-
-	AM_RANGE(0x800000 , 0x80001f) AM_WRITE(pico_68k_io_write)
-
-	AM_RANGE(0xc00000 , 0xc0001f) AM_WRITE(megadriv_vdp_w)
-	AM_RANGE(0xe00000 , 0xe0ffff) AM_WRITE(SMH_RAM) AM_MIRROR(0x1f0000) AM_BASE(&megadrive_ram)
+	AM_RANGE(0xc00000, 0xc0001f) AM_READWRITE(megadriv_vdp_r, megadriv_vdp_w)
+	AM_RANGE(0xe00000, 0xe0ffff) AM_RAM AM_MIRROR(0x1f0000) AM_BASE(&megadrive_ram)
 ADDRESS_MAP_END
 
 
-INPUT_PORTS_START( pico )
+static INPUT_PORTS_START( pico )
 	PORT_START("PAD")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -633,12 +612,14 @@ INPUT_PORTS_START( pico )
 INPUT_PORTS_END
 
 
-MACHINE_DRIVER_START( pico )
+static MACHINE_DRIVER_START( pico )
 	MDRV_IMPORT_FROM(megadriv)
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_PROGRAM_MAP(_pico_readmem,_pico_writemem)
+	MDRV_CPU_PROGRAM_MAP(_pico_mem,0)
 
 	MDRV_MACHINE_RESET( ms_megadriv )
+	
+	MDRV_IMPORT_FROM( pico_cartslot )
 MACHINE_DRIVER_END
 
 
@@ -658,13 +639,6 @@ ROM_START( picoj )
 	ROM_REGION( 0x10000, "sound", ROMREGION_ERASEFF)
 ROM_END
 
-
-static SYSTEM_CONFIG_START( pico )
-	CONFIG_DEVICE(pico_cartslot_getinfo)
-SYSTEM_CONFIG_END
-
-
-
 /***************************************************************************
 
   Game driver(s)
@@ -672,10 +646,10 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*    YEAR  NAME		PARENT		COMPAT  MACHINE    	  INPUT     INIT  		CONFIG		COMPANY   FULLNAME */
-CONS( 1989, genesis,	0,			0,      ms_megadriv,  md,		genesis,	genesis,	"Sega",   "Genesis (USA, NTSC)", 0)
-CONS( 1993, gensvp,		genesis,	0,      ms_megdsvp,   md_svp,	gensvp,		genesis,	"Sega",   "Genesis (USA, NTSC, w/SVP)", 0)
-CONS( 1990, megadriv,	genesis,	0,      ms_megadriv,  md,		md_eur,		genesis,	"Sega",   "Mega Drive (Europe, PAL)", 0)
-CONS( 1988, megadrij,	genesis,	0,      ms_megadriv,  md,		md_jpn,		genesis,	"Sega",   "Mega Drive (Japan, NTSC)", 0)
-CONS( 1994, pico,		0,			0,      pico,	      pico,		md_eur,		pico,		"Sega",   "Pico (Europe, PAL)", 0)
-CONS( 1994, picou,		pico,		0,      pico,	      pico,		genesis,	pico,		"Sega",   "Pico (USA, NTSC)", 0)
-CONS( 1993, picoj,		pico,		0,      pico,	      pico,		md_jpn,		pico,		"Sega",   "Pico (Japan, NTSC)", 0)
+CONS( 1989, genesis,	0,			0,      ms_megadriv,  md,		genesis,	0,		"Sega",   "Genesis (USA, NTSC)", 0)
+CONS( 1993, gensvp,		genesis,	0,      ms_megdsvp,   md_svp,	gensvp,		0,		"Sega",   "Genesis (USA, NTSC, w/SVP)", 0)
+CONS( 1990, megadriv,	genesis,	0,      ms_megadriv,  md,		md_eur,		0,		"Sega",   "Mega Drive (Europe, PAL)", 0)
+CONS( 1988, megadrij,	genesis,	0,      ms_megadriv,  md,		md_jpn,		0,		"Sega",   "Mega Drive (Japan, NTSC)", 0)
+CONS( 1994, pico,		0,			0,      pico,	      pico,		md_eur,		0,		"Sega",   "Pico (Europe, PAL)", 0)
+CONS( 1994, picou,		pico,		0,      pico,	      pico,		genesis,	0,		"Sega",   "Pico (USA, NTSC)", 0)
+CONS( 1993, picoj,		pico,		0,      pico,	      pico,		md_jpn,		0,		"Sega",   "Pico (Japan, NTSC)", 0)

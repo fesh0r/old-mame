@@ -82,6 +82,9 @@ enum
 	MESS_DEVINFO_STR_DEV_SPECIFIC = 0x28000,					/* R/W: Device-specific values start here */
 };
 
+#define TEMP_STRING_POOL_ENTRIES 16
+static char temp_string_pool[TEMP_STRING_POOL_ENTRIES][256];
+static int temp_string_pool_index;
 
 typedef void (*device_getdispositions_func)(int id, unsigned int *readable, unsigned int *writeable, unsigned int *creatable);
 
@@ -163,8 +166,9 @@ INLINE const char *mess_device_get_info_string(const mess_device_class *devclass
 
 INLINE char *device_temp_str(void)
 {
-	extern char *cpuintrf_temp_str(void);
-	return cpuintrf_temp_str();
+	char *string = &temp_string_pool[temp_string_pool_index++ % TEMP_STRING_POOL_ENTRIES][0];
+	string[0] = 0;
+	return string;
 }
 
 
@@ -186,7 +190,7 @@ const char *device_brieftypename(iodevice_t type);
 iodevice_t device_typeid(const char *name);
 
 /* device allocation */
-void mess_devices_setup(machine_config *config, const game_driver *gamedrv);
+void mess_devices_setup(running_machine *machine, machine_config *config, const game_driver *gamedrv);
 
 /* device lookup */
 int device_count_tag_from_machine(const running_machine *machine, const char *tag);
@@ -205,7 +209,7 @@ const device_config *image_from_devtag_and_index(running_machine *machine, const
 
 /* deprecated device access functions that assume one device of any given type */
 iodevice_t image_devtype(const device_config *device);
-const device_config *image_from_devtype_and_index(iodevice_t type, int id);
+const device_config *image_from_devtype_and_index(running_machine *machine, iodevice_t type, int id);
 
 /* diagnostics */
 int device_valididtychecks(void);

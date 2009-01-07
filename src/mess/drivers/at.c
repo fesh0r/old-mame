@@ -4,12 +4,21 @@
 
 ***************************************************************************/
 
+/* mingw-gcc defines this */
+#ifdef i386
+#undef i386
+#endif /* i386 */
+
 #include "driver.h"
+#include "cpu/i86/i86.h"
+#include "cpu/i86/i286.h"
+#include "cpu/i386/i386.h"
 #include "sound/3812intf.h"
 #include "machine/8255ppi.h"
 #include "machine/ins8250.h"
 #include "machine/mc146818.h"
 #include "machine/pic8259.h"
+#include "machine/i82439tx.h"
 #include "devices/printer.h"
 
 #include "machine/pit8253.h"
@@ -83,8 +92,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( at386_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_GLOBAL_MASK(0x00ffffff)
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK(10)
-	AM_RANGE(0x000a0000, 0x000b7fff) AM_NOP
-	AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x000a0000, 0x000bffff) AM_NOP
+//	AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x000c0000, 0x000c7fff) AM_ROM
 	AM_RANGE(0x000c8000, 0x000cffff) AM_ROM
 	AM_RANGE(0x000d0000, 0x000effff) AM_ROM
@@ -94,8 +103,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( at586_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK(10)
-	AM_RANGE(0x000a0000, 0x000b7fff) AM_NOP
-	AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x000a0000, 0x000bffff) AM_NOP
+//	AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xfffe0000, 0xffffffff) AM_ROM AM_REGION("user1", 0x20000)
 ADDRESS_MAP_END
 
@@ -118,15 +127,15 @@ static READ8_HANDLER(at_adlib_r)
 	if ( offset )
 		return 0xFF;
 	else
-		return ym3812_status_port_0_r( machine, 0 );
+		return ym3812_status_port_0_r( space, 0 );
 }
 
 static WRITE8_HANDLER(at_adlib_w)
 {
 	if ( offset )
-		ym3812_write_port_0_w( machine, 0, data );
+		ym3812_write_port_0_w( space, 0, data );
 	else
-		ym3812_control_port_0_w( machine, 0, data );
+		ym3812_control_port_0_w( space, 0, data );
 }
 #endif
 
@@ -198,7 +207,7 @@ static ADDRESS_MAP_START(at586_io, ADDRESS_SPACE_IO, 32)
 	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE8(pc_fdc_r,				pc_fdc_w, 0xffffffff)
 	AM_RANGE(0x03bc, 0x03bf) AM_READWRITE(pc32le_parallelport0_r,		pc32le_parallelport0_w)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8(NS16450, "ns16450_0", ins8250_r, ins8250_w, 0xffffffff)
-	AM_RANGE(0x0cf8, 0x0cff) AM_READWRITE(pci_32le_r,				pci_32le_w)
+	AM_RANGE(0x0cf8, 0x0cff) AM_DEVREADWRITE(PCI_BUS, "pcibus", pci_32le_r,				pci_32le_w)
 ADDRESS_MAP_END
 
 
@@ -409,32 +418,24 @@ static const ym3812_interface at_ym3812_interface =
 #endif
 
 
-#define MDRV_CPU_ATPC(mem, port, type, clock)	\
-	MDRV_CPU_ADD("main", type, clock)					\
-	MDRV_CPU_PROGRAM_MAP(mem##_map, 0)				\
-	MDRV_CPU_IO_MAP(port##_io, 0)					\
-	MDRV_CPU_CONFIG(i286_address_mask)
-
 static MACHINE_DRIVER_START( ibm5170 )
 	/* basic machine hardware */
-	MDRV_CPU_ATPC(at16, at16, I80286, 6000000 /*6000000*/)
+	MDRV_CPU_ADD("main", I80286, 6000000 /*6000000*/)
+	MDRV_CPU_PROGRAM_MAP(at16_map, 0)
+	MDRV_CPU_IO_MAP(at16_io, 0)
+	MDRV_CPU_CONFIG(i286_address_mask)
 
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
-	MDRV_DEVICE_ADD( "pit8254", PIT8254 )
-	MDRV_DEVICE_CONFIG( at_pit8254_config )
+	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_DEVICE_ADD( "dma8237_1", DMA8237 )
-	MDRV_DEVICE_CONFIG( at_dma8237_1_config )
+	MDRV_DMA8237_ADD( "dma8237_1", at_dma8237_1_config )
 
-	MDRV_DEVICE_ADD( "dma8237_2", DMA8237 )
-	MDRV_DEVICE_CONFIG( at_dma8237_2_config )
+	MDRV_DMA8237_ADD( "dma8237_2", at_dma8237_2_config )
 
-	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
-	MDRV_DEVICE_CONFIG( at_pic8259_master_config )
+	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
-	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
-	MDRV_DEVICE_CONFIG( at_pic8259_slave_config )
+	MDRV_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
 
 	MDRV_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
 	MDRV_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
@@ -468,12 +469,14 @@ static MACHINE_DRIVER_START( ibm5170 )
 	MDRV_NVRAM_HANDLER( mc146818 )
 
 	/* printers */
-	MDRV_DEVICE_ADD("printer1", PRINTER)
-	MDRV_DEVICE_ADD("printer2", PRINTER)
-	MDRV_DEVICE_ADD("printer3", PRINTER)
+	MDRV_PRINTER_ADD("printer1")
+	MDRV_PRINTER_ADD("printer2")
+	MDRV_PRINTER_ADD("printer3")
 
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
+	
+	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
 MACHINE_DRIVER_END
 
 
@@ -485,24 +488,22 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ibm5162 )
 	/* basic machine hardware */
-	MDRV_CPU_ATPC(at16, at16, I80286, 6000000 /*6000000*/)
+	MDRV_CPU_ADD("main", I80286, 6000000 /*6000000*/)
+	MDRV_CPU_PROGRAM_MAP(at16_map, 0)
+	MDRV_CPU_IO_MAP(at16_io, 0)
+	MDRV_CPU_CONFIG(i286_address_mask)
 
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
-	MDRV_DEVICE_ADD( "pit8254", PIT8254 )
-	MDRV_DEVICE_CONFIG( at_pit8254_config )
+	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_DEVICE_ADD( "dma8237_1", DMA8237 )
-	MDRV_DEVICE_CONFIG( at_dma8237_1_config )
+	MDRV_DMA8237_ADD( "dma8237_1", at_dma8237_1_config )
 
-	MDRV_DEVICE_ADD( "dma8237_2", DMA8237 )
-	MDRV_DEVICE_CONFIG( at_dma8237_2_config )
+	MDRV_DMA8237_ADD( "dma8237_2", at_dma8237_2_config )
 
-	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
-	MDRV_DEVICE_CONFIG( at_pic8259_master_config )
+	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
-	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
-	MDRV_DEVICE_CONFIG( at_pic8259_slave_config )
+	MDRV_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
 
 	MDRV_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
 	MDRV_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
@@ -526,33 +527,33 @@ static MACHINE_DRIVER_START( ibm5162 )
 	MDRV_NVRAM_HANDLER( mc146818 )
 
 	/* printers */
-	MDRV_DEVICE_ADD("printer1", PRINTER)
-	MDRV_DEVICE_ADD("printer2", PRINTER)
-	MDRV_DEVICE_ADD("printer3", PRINTER)
+	MDRV_PRINTER_ADD("printer1")
+	MDRV_PRINTER_ADD("printer2")
+	MDRV_PRINTER_ADD("printer3")
 
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
+	
+	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( ps2m30286 )
 	/* basic machine hardware */
-	MDRV_CPU_ATPC(at16, at16, I80286, 12000000)
+	MDRV_CPU_ADD("main", I80286, 12000000)
+	MDRV_CPU_PROGRAM_MAP(at16_map, 0)
+	MDRV_CPU_IO_MAP(at16_io, 0)
+	MDRV_CPU_CONFIG(i286_address_mask)
 
-	MDRV_DEVICE_ADD( "pit8254", PIT8254 )
-	MDRV_DEVICE_CONFIG( at_pit8254_config )
+	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_DEVICE_ADD( "dma8237_1", DMA8237 )
-	MDRV_DEVICE_CONFIG( at_dma8237_1_config )
+	MDRV_DMA8237_ADD( "dma8237_1", at_dma8237_1_config )
 
-	MDRV_DEVICE_ADD( "dma8237_2", DMA8237 )
-	MDRV_DEVICE_CONFIG( at_dma8237_2_config )
+	MDRV_DMA8237_ADD( "dma8237_2", at_dma8237_2_config )
 
-	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
-	MDRV_DEVICE_CONFIG( at_pic8259_master_config )
+	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
-	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
-	MDRV_DEVICE_CONFIG( at_pic8259_slave_config )
+	MDRV_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
 
 	MDRV_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
 	MDRV_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
@@ -591,33 +592,33 @@ static MACHINE_DRIVER_START( ps2m30286 )
 	MDRV_NVRAM_HANDLER( mc146818 )
 
 	/* printers */
-	MDRV_DEVICE_ADD("printer1", PRINTER)
-	MDRV_DEVICE_ADD("printer2", PRINTER)
-	MDRV_DEVICE_ADD("printer3", PRINTER)
+	MDRV_PRINTER_ADD("printer1")
+	MDRV_PRINTER_ADD("printer2")
+	MDRV_PRINTER_ADD("printer3")
 
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
+	
+	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( atvga )
 	/* basic machine hardware */
-	MDRV_CPU_ATPC(at16, at16, I80286, 12000000)
+	MDRV_CPU_ADD("main", I80286, 12000000)
+	MDRV_CPU_PROGRAM_MAP(at16_map, 0)
+	MDRV_CPU_IO_MAP(at16_io, 0)
+	MDRV_CPU_CONFIG(i286_address_mask)
 
-	MDRV_DEVICE_ADD( "pit8254", PIT8254 )
-	MDRV_DEVICE_CONFIG( at_pit8254_config )
+	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_DEVICE_ADD( "dma8237_1", DMA8237 )
-	MDRV_DEVICE_CONFIG( at_dma8237_1_config )
+	MDRV_DMA8237_ADD( "dma8237_1", at_dma8237_1_config )
 
-	MDRV_DEVICE_ADD( "dma8237_2", DMA8237 )
-	MDRV_DEVICE_CONFIG( at_dma8237_2_config )
+	MDRV_DMA8237_ADD( "dma8237_2", at_dma8237_2_config )
 
-	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
-	MDRV_DEVICE_CONFIG( at_pic8259_master_config )
+	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
-	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
-	MDRV_DEVICE_CONFIG( at_pic8259_slave_config )
+	MDRV_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
 
 	MDRV_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
 	MDRV_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
@@ -658,37 +659,37 @@ static MACHINE_DRIVER_START( atvga )
 	MDRV_NVRAM_HANDLER( mc146818 )
 
 	/* printers */
-	MDRV_DEVICE_ADD("printer1", PRINTER)
-	MDRV_DEVICE_ADD("printer2", PRINTER)
-	MDRV_DEVICE_ADD("printer3", PRINTER)
+	MDRV_PRINTER_ADD("printer1")
+	MDRV_PRINTER_ADD("printer2")
+	MDRV_PRINTER_ADD("printer3")
 
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
+	
+	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( at386 )
     /* basic machine hardware */
-	/* original at 6 mhz, at03 8 megahertz */
-	MDRV_CPU_ATPC(at386, at386, I386, 12000000)
+	/* original at 6 MHz, at03 8 megahertz */
+	MDRV_CPU_ADD("main", I386, 12000000)
+	MDRV_CPU_PROGRAM_MAP(at386_map, 0)
+	MDRV_CPU_IO_MAP(at386_io, 0)
+	MDRV_CPU_CONFIG(i286_address_mask)
 
 	MDRV_MACHINE_START( at )
 	MDRV_MACHINE_RESET( at )
 
-	MDRV_DEVICE_ADD( "pit8254", PIT8254 )
-	MDRV_DEVICE_CONFIG( at_pit8254_config )
+	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_DEVICE_ADD( "dma8237_1", DMA8237 )
-	MDRV_DEVICE_CONFIG( at_dma8237_1_config )
+	MDRV_DMA8237_ADD( "dma8237_1", at_dma8237_1_config )
 
-	MDRV_DEVICE_ADD( "dma8237_2", DMA8237 )
-	MDRV_DEVICE_CONFIG( at_dma8237_2_config )
+	MDRV_DMA8237_ADD( "dma8237_2", at_dma8237_2_config )
 
-	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
-	MDRV_DEVICE_CONFIG( at_pic8259_master_config )
+	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
-	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
-	MDRV_DEVICE_CONFIG( at_pic8259_slave_config )
+	MDRV_PIC8259_ADD( "pic8259_slave", at_pic8259_slave_config )
 
 	MDRV_NS16450_ADD( "ns16450_0", ibm5170_com_interface[0] )			/* TODO: verify model */
 	MDRV_NS16450_ADD( "ns16450_1", ibm5170_com_interface[1] )			/* TODO: verify model */
@@ -722,12 +723,14 @@ static MACHINE_DRIVER_START( at386 )
 	MDRV_NVRAM_HANDLER( mc146818 )
 
 	/* printers */
-	MDRV_DEVICE_ADD("printer1", PRINTER)
-	MDRV_DEVICE_ADD("printer2", PRINTER)
-	MDRV_DEVICE_ADD("printer3", PRINTER)
+	MDRV_PRINTER_ADD("printer1")
+	MDRV_PRINTER_ADD("printer2")
+	MDRV_PRINTER_ADD("printer3")
 
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
+	
+	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
 MACHINE_DRIVER_END
 
 
@@ -743,6 +746,9 @@ static MACHINE_DRIVER_START( at586 )
 	MDRV_CPU_REPLACE("main", PENTIUM, 60000000)
 	MDRV_CPU_PROGRAM_MAP(at586_map, 0)
 	MDRV_CPU_IO_MAP(at586_io, 0)
+
+	MDRV_PCI_BUS_ADD("pcibus", 0)
+	MDRV_PCI_BUS_DEVICE(0, NULL, NULL, intel82439tx_pci_read, intel82439tx_pci_write)
 MACHINE_DRIVER_END
 
 
@@ -910,6 +916,8 @@ ROM_START( at )
 	ROM_REGION(0x08100, "gfx1", 0)
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 
+	ROM_REGION(0x50000, "gfx2", ROMREGION_ERASE00)
+
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
 	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
@@ -948,6 +956,8 @@ ROM_START( neat )
 	ROM_RELOAD(0xff0001,0x8000)
 	ROM_REGION(0x08100, "gfx1", 0)
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+
+	ROM_REGION(0x50000, "gfx2", ROMREGION_ERASE00)
 
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
@@ -1048,13 +1058,13 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*     YEAR  NAME      PARENT   COMPAT   MACHINE    INPUT       INIT        CONFIG   COMPANY     FULLNAME */
-COMP ( 1984, ibm5170,  0,       ibm5160, ibm5170,   atcga,		atega,	    ibmat,   "International Business Machines",  "IBM PC/AT 5170", GAME_NOT_WORKING )
+COMP ( 1984, ibm5170,  0,       ibm5160, ibm5170,   atcga,	atega,	    ibmat,   "International Business Machines",  "IBM PC/AT 5170", GAME_NOT_WORKING )
 COMP ( 1985, ibm5170a, ibm5170, 0,       ibm5170a,  atcga,      atega,      ibmat,   "International Business Machines",  "IBM PC/AT 5170 8MHz", GAME_NOT_WORKING )
 COMP ( 1985, ibm5162,  ibm5170, 0,       ibm5162,   atcga,      atcga,      ibmat,   "International Business Machines",  "IBM PC/XT-286 5162", GAME_NOT_WORKING )
-COMP ( 1988, i8530286, ibm5170, 0,       ps2m30286, atvga,		ps2m30286,	ibmat,   "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
-COMP ( 1987, at,       ibm5170, 0,       ibm5170a,  atcga,		atcga,	    ibmat,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1989, neat,     ibm5170, 0,       ibm5170a,  atcga,		atcga,	    ibmat,   "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1988, at386,    ibm5170, 0,       at386,     atcga,		at386,	    ibmat,   "MITAC INC",  "PC/AT 386(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1990, at486,	   ibm5170, 0,       at486,     atcga,		at386,	    ibmat,   "",  "PC/AT 486(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1990, at586,    ibm5170, 0,       at586,     atcga,		at586,	    ibmat,   "",  "PC/AT 586(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1987, atvga,		0,      0,       atvga,     atvga,		at_vga,     ibmat,   "",  "PC/AT (VGA, MF2 Keyboard)" , 0)
+COMP ( 1988, i8530286, ibm5170, 0,       ps2m30286, atvga,	ps2m30286,  ibmat,   "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
+COMP ( 1987, at,       ibm5170, 0,       ibm5170a,  atcga,	atcga,	    ibmat,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1989, neat,     ibm5170, 0,       ibm5170a,  atcga,	atcga,	    ibmat,   "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1988, at386,    ibm5170, 0,       at386,     atcga,	at386,	    ibmat,   "MITAC INC",  "PC/AT 386(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1990, at486,    ibm5170, 0,       at486,     atcga,	at386,	    ibmat,   "",  "PC/AT 486(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1990, at586,    ibm5170, 0,       at586,     atcga,	at586,	    ibmat,   "",  "PC/AT 586(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1987, atvga,    0,       0,       atvga,     atvga,	at_vga,     ibmat,   "",  "PC/AT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING )

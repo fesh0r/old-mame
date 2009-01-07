@@ -133,15 +133,15 @@ static const cassette_config mikrosha_cassette_config =
 
 static UINT8 *mikrosha_io_mirror = NULL;
 
-static OPBASE_HANDLER( mikrosha_opbase )
-{	
+static DIRECT_UPDATE_HANDLER( mikrosha_direct )
+{		
 	if (address >= 0x8000 && address <=0xFFFF) {
-			opbase->mask = 0xffff;
-			opbase->ram = mikrosha_io_mirror;
-			opbase->rom = mikrosha_io_mirror;
-			opbase->mem_min = 0x8000;
-			opbase->mem_max = 0xffff;
-			mikrosha_io_mirror[address] = cpunum_get_reg(0, I8080_STATUS);
+			direct->mask = 0xffff;
+			direct->raw = mikrosha_io_mirror;
+			direct->decrypted = mikrosha_io_mirror;
+			direct->min = 0x8000;
+			direct->max = 0xffff;
+			mikrosha_io_mirror[address] = cpu_get_reg(space->machine->cpu[0], I8085_STATUS);
 	} 
 	return address;
 }
@@ -149,7 +149,7 @@ static OPBASE_HANDLER( mikrosha_opbase )
 static MACHINE_START( mikrosha )
 {
 	mikrosha_io_mirror = auto_malloc( 0x10000 );
-	memory_set_opbase_handler( 0, mikrosha_opbase );
+	memory_set_direct_update_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), mikrosha_direct );
 }
 
 static PIT8253_OUTPUT_CHANGED(mikrosha_pit_out2)
@@ -157,7 +157,7 @@ static PIT8253_OUTPUT_CHANGED(mikrosha_pit_out2)
 
 }
 
-const struct pit8253_config mikrosha_pit8253_intf =
+static const struct pit8253_config mikrosha_pit8253_intf =
 {
 	{
 		{
@@ -176,24 +176,20 @@ const struct pit8253_config mikrosha_pit8253_intf =
 };
 
 static MACHINE_DRIVER_START( mikrosha )
-  /* basic machine hardware */
-  MDRV_CPU_ADD("main", 8080, XTAL_16MHz / 9)
-  MDRV_CPU_PROGRAM_MAP(mikrosha_mem, 0)
-  MDRV_CPU_IO_MAP(mikrosha_io, 0)
-  MDRV_MACHINE_START( mikrosha )
-  MDRV_MACHINE_RESET( radio86 )
+	/* basic machine hardware */
+	MDRV_CPU_ADD("main", 8080, XTAL_16MHz / 9)
+	MDRV_CPU_PROGRAM_MAP(mikrosha_mem, 0)
+	MDRV_CPU_IO_MAP(mikrosha_io, 0)
+	MDRV_MACHINE_START( mikrosha )
+	MDRV_MACHINE_RESET( radio86 )
 
-	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
-	MDRV_DEVICE_CONFIG( mikrosha_ppi8255_interface_1 )
+	MDRV_PPI8255_ADD( "ppi8255_1", mikrosha_ppi8255_interface_1 )
 
-	MDRV_DEVICE_ADD( "ppi8255_2", PPI8255 )
-	MDRV_DEVICE_CONFIG( mikrosha_ppi8255_interface_2 )
+	MDRV_PPI8255_ADD( "ppi8255_2", mikrosha_ppi8255_interface_2 )
 
-	MDRV_DEVICE_ADD( "i8275", I8275 )
-	MDRV_DEVICE_CONFIG(mikrosha_i8275_interface)
+	MDRV_I8275_ADD  ( "i8275", mikrosha_i8275_interface)
 
-	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
-	MDRV_DEVICE_CONFIG( mikrosha_pit8253_intf )
+	MDRV_PIT8253_ADD( "pit8253", mikrosha_pit8253_intf )
 
   /* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -212,8 +208,7 @@ static MACHINE_DRIVER_START( mikrosha )
 	MDRV_SOUND_ADD("cassette", WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_DEVICE_ADD("dma8257", DMA8257)
-	MDRV_DEVICE_CONFIG(radio86_dma)
+	MDRV_DMA8257_ADD("dma8257", XTAL_16MHz / 9, radio86_dma)
 
 	MDRV_CASSETTE_ADD( "cassette", mikrosha_cassette_config )
 MACHINE_DRIVER_END

@@ -6,7 +6,6 @@
 
 #include "driver.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "includes/svision.h"
 
 
@@ -20,7 +19,7 @@ SVISION_CHANNEL svision_channel[2];
 
 WRITE8_HANDLER( svision_sounddma_w )
 {
-	logerror("%.6f svision snddma write %04x %02x\n", attotime_to_double(timer_get_time()),offset+0x18,data);
+	logerror("%.6f svision snddma write %04x %02x\n", attotime_to_double(timer_get_time(space->machine)),offset+0x18,data);
 	svision_dma.reg[offset] = data;
 	switch (offset)
 	{
@@ -32,7 +31,7 @@ WRITE8_HANDLER( svision_sounddma_w )
 			svision_dma.size = (data ? data : 0x100) * 32;
 			break;
 		case 3:
-			svision_dma.step = cpunum_get_clock(0) / (256.0 * machine->sample_rate * (1 + (data & 3)));
+			svision_dma.step = cpu_get_clock(space->machine->cpu[0]) / (256.0 * space->machine->sample_rate * (1 + (data & 3)));
 			svision_dma.right = data & 4;
 			svision_dma.left = data & 8;
 			svision_dma.ca14to16 = ((data & 0x70) >> 4) << 14;
@@ -49,13 +48,13 @@ WRITE8_HANDLER( svision_sounddma_w )
 
 WRITE8_HANDLER( svision_noise_w )
 {
-	//  logerror("%.6f svision noise write %04x %02x\n",timer_get_time(),offset+0x28,data);
+	//  logerror("%.6f svision noise write %04x %02x\n",timer_get_time(machine),offset+0x28,data);
 	svision_noise.reg[offset]=data;
 	switch (offset)
 	{
 		case 0:
 			svision_noise.volume=data&0xf;
-			svision_noise.step= cpunum_get_clock(0) / (256.0*machine->sample_rate*(1+(data>>4)));
+			svision_noise.step= cpu_get_clock(space->machine->cpu[0]) / (256.0*space->machine->sample_rate*(1+(data>>4)));
 			break;
 		case 1:
 			svision_noise.count = data + 1;
@@ -87,7 +86,7 @@ void svision_soundport_w (running_machine *machine, SVISION_CHANNEL *channel, in
 			if (size)
 			{
 				//	channel->size=(int)(machine->sample_rate*(size<<5)/4e6);
-				channel->size= (int) (machine->sample_rate * (size << 5) / cpunum_get_clock(0));
+				channel->size= (int) (machine->sample_rate * (size << 5) / cpu_get_clock(machine->cpu[0]));
 			}
 			else
 			{
@@ -109,13 +108,13 @@ void svision_soundport_w (running_machine *machine, SVISION_CHANNEL *channel, in
 /************************************/
 /* Sound handler update             */
 /************************************/
-static void svision_update (void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length)
+static STREAM_UPDATE( svision_update )
 {
-	stream_sample_t *left=_buffer[0], *right=_buffer[1];
+	stream_sample_t *left=outputs[0], *right=outputs[1];
 	int i, j;
 	SVISION_CHANNEL *channel;
 
-	for (i = 0; i < length; i++, left++, right++)
+	for (i = 0; i < samples; i++, left++, right++)
 	{
 		*left = 0;
 		*right = 0;
@@ -191,11 +190,11 @@ static void svision_update (void *param,stream_sample_t **inputs, stream_sample_
 			UINT16 addr = svision_dma.start + (unsigned) svision_dma.pos / 2;
 			if (addr >= 0x8000 && addr < 0xc000)
 			{
-				sample = memory_region(Machine, "user1")[(addr & 0x3fff) | svision_dma.ca14to16];
+				sample = memory_region(device->machine, "user1")[(addr & 0x3fff) | svision_dma.ca14to16];
 			}
 			else
 			{
-				sample = program_read_byte(addr);
+				sample = memory_read_byte(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM), addr);
 			}
 			if (((unsigned)svision_dma.pos) & 1)
 				s = (sample & 0xf);
@@ -211,7 +210,7 @@ static void svision_update (void *param,stream_sample_t **inputs, stream_sample_
 			{
 				svision_dma.finished = TRUE;
 				svision_dma.on = FALSE;
-				svision_irq( Machine );
+				svision_irq( device->machine );
 			}
 		}
 	}
@@ -220,12 +219,13 @@ static void svision_update (void *param,stream_sample_t **inputs, stream_sample_
 /************************************/
 /* Sound handler start              */
 /************************************/
-void *svision_custom_start(int clock, const custom_sound_interface *config)
+
+CUSTOM_START( svision_custom_start )
 {
 	memset(&svision_dma, 0, sizeof(svision_dma));
 	memset(&svision_noise, 0, sizeof(svision_noise));
 	memset(svision_channel, 0, sizeof(svision_channel));
 
-	mixer_channel = stream_create(0, 2, Machine->sample_rate, 0, svision_update);
+	mixer_channel = stream_create(device, 0, 2, device->machine->sample_rate, 0, svision_update);
 	return (void *) ~0;
 }

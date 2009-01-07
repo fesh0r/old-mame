@@ -83,7 +83,7 @@ typedef struct vdt_t
 {
 	vdt911_screen_size_t screen_size;	/* char_960 for 960-char, 12-line model; char_1920 for 1920-char, 24-line model */
 	vdt911_model_t model;				/* country code */
-	void (*int_callback)(int state);	/* interrupt callback, called when the state of irq changes */
+	void (*int_callback)(running_machine *machine, int state);	/* interrupt callback, called when the state of irq changes */
 
 	UINT8 data_reg;						/* vdt911 write buffer */
 	UINT8 display_RAM[2048];			/* vdt911 char buffer (1kbyte for 960-char model, 2kbytes for 1920-char model) */
@@ -237,7 +237,7 @@ static TIMER_CALLBACK(setup_beep)
 /*
 	Initialize one 911 vdt controller/terminal
 */
-void vdt911_init_term(int unit, const vdt911_init_params_t *params)
+void vdt911_init_term(running_machine *machine,int unit, const vdt911_init_params_t *params)
 {
 	vdt[unit].screen_size = params->screen_size;
 	vdt[unit].model = params->model;
@@ -248,13 +248,13 @@ void vdt911_init_term(int unit, const vdt911_init_params_t *params)
 	else
 		vdt[unit].cursor_address_mask = 0x7ff;	/* 2 kb of RAM */
 
-	timer_set(attotime_zero, NULL, unit, setup_beep);
+	timer_set(machine, attotime_zero, NULL, unit, setup_beep);
 
 	/* set up cursor blink clock.  2Hz frequency -> .25s half-period. */
-	/*vdt[unit].blink_clock =*/ timer_pulse(ATTOTIME_IN_MSEC(250), NULL, unit, blink_callback);
+	/*vdt[unit].blink_clock =*/ timer_pulse(machine, ATTOTIME_IN_MSEC(250), NULL, unit, blink_callback);
 
 	/* alloc beep timer */
-	vdt[unit].beep_timer = timer_alloc(beep_callback, NULL);
+	vdt[unit].beep_timer = timer_alloc(machine, beep_callback, NULL);
 }
 
 /*
@@ -285,7 +285,7 @@ static TIMER_CALLBACK(beep_callback)
 /*
 	CRU interface read
 */
-int vdt911_cru_r(int offset, int unit)
+static int vdt911_cru_r(int offset, int unit)
 {
 	int reply=0;
 
@@ -336,7 +336,7 @@ int vdt911_cru_r(int offset, int unit)
 /*
 	CRU interface write
 */
-void vdt911_cru_w(int offset, int data, int unit)
+static void vdt911_cru_w(const address_space *space, int offset, int data, int unit)
 {
 	offset &= 0xf;
 
@@ -386,7 +386,7 @@ void vdt911_cru_w(int offset, int data, int unit)
 		case 0xc:
 			/* keyboard interrupt enable */
 			vdt[unit].keyboard_interrupt_enable = data;
-			(*vdt[unit].int_callback)(vdt[unit].keyboard_interrupt_enable && vdt[unit].keyboard_data_ready);
+			(*vdt[unit].int_callback)(space->machine, vdt[unit].keyboard_interrupt_enable && vdt[unit].keyboard_data_ready);
 			break;
 
 		case 0xd:
@@ -444,7 +444,7 @@ void vdt911_cru_w(int offset, int data, int unit)
 			{
 				vdt[unit].keyboard_data_ready = 0;
 				if (vdt[unit].keyboard_interrupt_enable)
-					(*vdt[unit].int_callback)(0);
+					(*vdt[unit].int_callback)(space->machine, 0);
 			}
 			/*vdt[unit].keyboard_parity_error = 0;*/
 			break;
@@ -472,7 +472,7 @@ void vdt911_cru_w(int offset, int data, int unit)
 
 WRITE8_HANDLER(vdt911_0_cru_w)
 {
-	vdt911_cru_w(offset, data, 0);
+	vdt911_cru_w(space, offset, data, 0);
 }
 
 /*
@@ -501,7 +501,7 @@ void vdt911_refresh(running_machine *machine, bitmap_t *bitmap, int unit, int x,
 		my_rect.min_y = y;
 		my_rect.max_y = y + height*10 - 1;
 
-		fillbitmap(bitmap, 0, &my_rect);
+		bitmap_fill(bitmap, &my_rect, 0);
 	}
 	else
 		for (i=0; i<height; i++)
@@ -567,7 +567,7 @@ void vdt911_keyboard(running_machine *machine, int unit)
 
 	static unsigned char repeat_timer;
 	enum { repeat_delay = 5 /* approx. 1/10s */ };
-	static char last_key_pressed = -1;
+	static UINT8 last_key_pressed = 0x80;
 	static modifier_state_t last_modifier_state;
 	static char foreign_mode;
 
@@ -576,7 +576,7 @@ void vdt911_keyboard(running_machine *machine, int unit)
 	modifier_state_t modifier_state;
 	int repeat_mode;
 
-	static const char *keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5" };
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5" };
 
 	/* read current key state */
 	for (i = 0; i < 6; i++)
@@ -634,7 +634,7 @@ void vdt911_keyboard(running_machine *machine, int unit)
 		/* reset REPEAT timer if the REPEAT key is not pressed */
 		repeat_timer = 0;
 
-	if ((last_key_pressed >= 0) && (key_buf[last_key_pressed >> 4] & (1 << (last_key_pressed & 0xf))))
+	if (! (last_key_pressed & 0x80) && (key_buf[last_key_pressed >> 4] & (1 << (last_key_pressed & 0xf))))
 	{
 		/* last key has not been released */
 		if (modifier_state == last_modifier_state)
@@ -661,7 +661,7 @@ void vdt911_keyboard(running_machine *machine, int unit)
 	}
 	else
 	{
-		last_key_pressed = -1;
+		last_key_pressed = 0x80;
 
 		if (vdt[unit].keyboard_data_ready)
 		{	/* keyboard buffer full */
@@ -678,10 +678,10 @@ void vdt911_keyboard(running_machine *machine, int unit)
 						last_key_pressed = (i << 4) | j;
 						last_modifier_state = modifier_state;
 
-						vdt[unit].keyboard_data = (int)key_translate[vdt[unit].model][modifier_state][(int)last_key_pressed];
+						vdt[unit].keyboard_data = (int)key_translate[vdt[unit].model][modifier_state][last_key_pressed];
 						vdt[unit].keyboard_data_ready = 1;
 						if (vdt[unit].keyboard_interrupt_enable)
-							(*vdt[unit].int_callback)(1);
+							(*vdt[unit].int_callback)(machine, 1);
 						return;
 					}
 				}

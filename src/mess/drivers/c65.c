@@ -24,7 +24,7 @@ Also known as C64 DX at early stages of the project. It was cancelled
 around 1990-1991. Only few units survive (they were sold after Commodore 
 liquidation in 1994).
 
-CPU: CSG 4510 (3.54 Mhz)
+CPU: CSG 4510 (3.54 MHz)
 RAM: 128 kilobytes, expandable to 8 megabytes
 ROM: 128 kilobytes
 Video: CSG 4569 "VIC-III" (6 Video modes; Resolutions from 320x200 to 
@@ -51,6 +51,7 @@ bus serial (available in all modes), a Fast and a Burst serial bus
 
 
 #include "driver.h"
+#include "cpu/m6502/m4510.h"
 
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
@@ -214,7 +215,6 @@ static MACHINE_DRIVER_START( c65 )
 	MDRV_CPU_PROGRAM_MAP(c65_mem, 0)
 	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic3_raster_irq, VIC6567_HRETRACERATE)
-	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_START( c65 )
 
@@ -236,8 +236,14 @@ static MACHINE_DRIVER_START( c65 )
 	MDRV_SOUND_ADD("sid_l", SID8580, 985248)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
 
-	/* devices */
+	/* quickload */
 	MDRV_QUICKLOAD_ADD(cbm_c65, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+
+	/* cia */
+	MDRV_CIA6526_ADD("cia_0", CIA6526R1, 3500000, c64_ntsc_cia0)
+	MDRV_CIA6526_ADD("cia_1", CIA6526R1, 3500000, c64_ntsc_cia1)
+	
+	MDRV_IMPORT_FROM(c64_cartslot)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c65pal )
@@ -247,11 +253,18 @@ static MACHINE_DRIVER_START( c65pal )
 	MDRV_SCREEN_SIZE(625 * 2, 520 * 2)
 	MDRV_SCREEN_VISIBLE_AREA(VIC6569_STARTVISIBLECOLUMNS, (VIC6569_STARTVISIBLECOLUMNS + VIC6569_VISIBLECOLUMNS - 1) * 2, VIC6569_STARTVISIBLELINES, VIC6569_STARTVISIBLELINES + VIC6569_VISIBLELINES - 1)
 
+	/* sound hardware */
 	MDRV_SOUND_REPLACE("sid_r", SID8580, 1022727)
 	MDRV_SOUND_CONFIG(c65_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
 	MDRV_SOUND_REPLACE("sid_l", SID8580, 1022727)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
+
+	/* cia */
+	MDRV_DEVICE_REMOVE("cia_0", CIA6526R1)
+	MDRV_DEVICE_REMOVE("cia_1", CIA6526R1)
+	MDRV_CIA6526_ADD("cia_0", CIA6526R1, 3500000, c64_pal_cia0)
+	MDRV_CIA6526_ADD("cia_1", CIA6526R1, 3500000, c64_pal_cia1)
 MACHINE_DRIVER_END
 
 
@@ -291,7 +304,7 @@ ROM_END
 
 
 static SYSTEM_CONFIG_START( c65 )
-	CONFIG_DEVICE(c64_cartslot_getinfo)	// to investigate which carts could work in the c65 expansion port!
+	// to investigate which carts could work in the c65 expansion port!
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 	CONFIG_RAM_DEFAULT(128 * 1024)
 	CONFIG_RAM((128 + 512) * 1024)

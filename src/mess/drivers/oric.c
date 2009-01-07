@@ -17,6 +17,7 @@
 *********************************************************************/
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "includes/oric.h"
 #include "machine/centroni.h"
 #include "devices/printer.h"
@@ -27,7 +28,7 @@
 #include "sound/ay8910.h"
 #include "machine/6522via.h"
 #include "machine/6551.h"
-
+#include "machine/wd17xx.h"
 #include "includes/apple2.h"
 
 /*
@@ -67,10 +68,10 @@ The telestrat has the memory regions split into 16k blocks.
 Memory region &c000-&ffff can be ram or rom. */
 static ADDRESS_MAP_START(telestrat_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x02ff) AM_RAM
-	AM_RANGE( 0x0300, 0x030f) AM_READWRITE( via_0_r, via_0_w )
+	AM_RANGE( 0x0300, 0x030f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
 	AM_RANGE( 0x0310, 0x031b) AM_READWRITE( oric_microdisc_r, oric_microdisc_w )
-	AM_RANGE( 0x031c, 0x031f) AM_READWRITE( acia_6551_r, acia_6551_w )
-	AM_RANGE( 0x0320, 0x032f) AM_READWRITE( via_1_r, via_1_w )
+	AM_RANGE( 0x031c, 0x031f) AM_DEVREADWRITE(ACIA6551, "acia",  acia_6551_r, acia_6551_w )
+	AM_RANGE( 0x0320, 0x032f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)
 	AM_RANGE( 0x0400, 0xbfff) AM_RAM
 	AM_RANGE( 0xc000, 0xffff) AM_READWRITE( SMH_BANK1, SMH_BANK2 )
 ADDRESS_MAP_END
@@ -354,7 +355,7 @@ static MACHINE_DRIVER_START( oric )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main", M6502, 1000000)
 	MDRV_CPU_PROGRAM_MAP(oric_mem, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( oric )
 	MDRV_MACHINE_RESET( oric )
@@ -381,9 +382,15 @@ static MACHINE_DRIVER_START( oric )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* printer */
-	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_PRINTER_ADD("printer")
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", oric_cassette_config )
+
+	/* via */
+	MDRV_VIA6522_ADD( "via6522_0", 1000000, oric_6522_interface )
+	
+	MDRV_WD179X_ADD("wd179x", oric_wd17xx_interface )
 MACHINE_DRIVER_END
 
 
@@ -394,6 +401,12 @@ static MACHINE_DRIVER_START( telstrat)
 
 	MDRV_MACHINE_START( telestrat )
 	MDRV_MACHINE_RESET( NULL )
+
+	/* acia */
+	MDRV_ACIA6551_ADD("acia")
+
+	/* via */
+	MDRV_VIA6522_ADD( "via6522_1", 1000000, telestrat_via2_interface )
 MACHINE_DRIVER_END
 
 

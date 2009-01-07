@@ -13,7 +13,6 @@
 
 #include "includes/hp48.h"
 
-
 /***************************************************************************
     DEBUGGING
 ***************************************************************************/
@@ -30,8 +29,8 @@
 ***************************************************************************/
 
 /* base colors */
-static int hp48_bg_color[3] = { 136, 147, 109 };  /* yellow */
-static int hp48_fg_color[3] = {   0,   0,  64 };  /* dark blue */
+static const int hp48_bg_color[3] = { 136, 147, 109 };  /* yellow */
+static const int hp48_fg_color[3] = {   0,   0,  64 };  /* dark blue */
 
 /* color mixing */
 #define mix(c1,c2,x) (c1)*(1-(x))+(c2)*(x)
@@ -132,12 +131,13 @@ PALETTE_INIT ( hp48 )
 	data >>= 1
 
 #define draw_quart					\
-	UINT8 data = program_read_byte( addr );	\
+	UINT8 data = memory_read_byte( space, addr );	\
 	draw_pixel; draw_pixel; draw_pixel; draw_pixel;
 
 
 VIDEO_UPDATE ( hp48 )
 {
+	const address_space *space = cpu_get_address_space( cputag_get_cpu(screen->machine, "main"), ADDRESS_SPACE_PROGRAM );
 	int x, y, xp, i, addr;
 	int display       = HP48_IO_4(0) >> 3;           /* 1=on, 0=off */
 	int left_margin   = HP48_IO_4(0) & 7;            /* 0..7 pixels for main bitmap */
@@ -147,10 +147,9 @@ VIDEO_UPDATE ( hp48 )
 	int right_margin  = HP48_IO_12(0x25) & ~1;       /* -2048..2046 nibbles for main bitmap */
 	int last_line     = HP48_IO_8(0x28) & 0x3f;      /* 2..63 lines of main bitmap before menu */
 	int menu_start    = HP48_IO_20(0x30) & ~1;       /* menu bitmap address */
-
 	int fg = contrast + 1;
 
-	LOG(( "%f hp48 video_update called: ", attotime_to_double(timer_get_time()) ));
+	LOG(( "%f hp48 video_update called: ", attotime_to_double(timer_get_time(screen->machine)) ));
 
 	if ( !display || refresh ) 
 	{ 

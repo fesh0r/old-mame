@@ -3,20 +3,12 @@
 #include "cpu/mcs48/mcs48.h"
 #include "sound/discrete.h"
 
-/*
-
-	TODO:
-
-	- clock generator 74LS393 @ Z6
-
-*/
-
 typedef struct _abc77_t abc77_t;
 struct _abc77_t
 {
 	const abc77_interface *intf;	/* interface */
 
-	int cpunum;						/* CPU index of the 8035 */
+	const device_config *cpu;		/* CPU of the 8035 */
 
 	int keylatch;					/* keyboard row latch */
 	int clock;						/* transmit clock */
@@ -44,7 +36,7 @@ static const discrete_555_desc abc77_ne556_a =
 	DEFAULT_555_VALUES
 };
 
-DISCRETE_SOUND_START( abc77 )
+static DISCRETE_SOUND_START( abc77 )
 	DISCRETE_INPUT_LOGIC(NODE_01)
 	DISCRETE_555_ASTABLE(NODE_02, NODE_01, RES_K(2.7), RES_K(15), CAP_N(22), &abc77_ne556_a)
 	DISCRETE_OUTPUT(NODE_02, 5000)
@@ -56,7 +48,7 @@ void abc77_rxd_w(const device_config *device, int level)
 {
 	abc77_t *abc77 = get_safe_token(device);
 
-	cpunum_set_input_line(device->machine, abc77->cpunum, MCS48_INPUT_IRQ, level ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(abc77->cpu, MCS48_INPUT_IRQ, level ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static TIMER_DEVICE_CALLBACK( clock_tick )
@@ -72,7 +64,7 @@ static TIMER_CALLBACK( reset_tick )
 	const device_config *device = ptr;
 	abc77_t *abc77 = get_safe_token(device);
 
-	cpunum_set_input_line(device->machine, abc77->cpunum, INPUT_LINE_RESET, CLEAR_LINE);
+	cpu_set_input_line(abc77->cpu, INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 void abc77_reset_w(const device_config *device, int level)
@@ -85,10 +77,10 @@ void abc77_reset_w(const device_config *device, int level)
 		int t = 1.1 * RES_K(100) * CAP_N(100) * 1000; // t = 1.1 * R1 * C1
 		int ea = BIT(input_port_read(device->machine, "ABC77_DSW"), 7);
 
-		cpunum_set_input_line(device->machine, abc77->cpunum, INPUT_LINE_RESET, ASSERT_LINE);
+		cpu_set_input_line(abc77->cpu, INPUT_LINE_RESET, ASSERT_LINE);
 		timer_adjust_oneshot(abc77->reset_timer, ATTOTIME_IN_MSEC(t), 0);
 		
-		cpunum_set_input_line(device->machine, abc77->cpunum, MCS48_INPUT_EA, ea ? CLEAR_LINE : ASSERT_LINE);
+		cpu_set_input_line(abc77->cpu, MCS48_INPUT_EA, ea ? CLEAR_LINE : ASSERT_LINE);
 	}
 
 	abc77->reset = level;
@@ -96,7 +88,7 @@ void abc77_reset_w(const device_config *device, int level)
 
 static READ8_HANDLER( abc77_clock_r )
 {
-	const device_config *device = devtag_get_device(machine, ABC77, ABC77_TAG);
+	const device_config *device = devtag_get_device(space->machine, ABC77, ABC77_TAG);
 	abc77_t *abc77 = get_safe_token(device);
 
 	return abc77->clock;
@@ -104,17 +96,17 @@ static READ8_HANDLER( abc77_clock_r )
 
 static READ8_HANDLER( abc77_data_r )
 {
-	const device_config *device = devtag_get_device(machine, ABC77, ABC77_TAG);
+	const device_config *device = devtag_get_device(space->machine, ABC77, ABC77_TAG);
 	abc77_t *abc77 = get_safe_token(device);
 
-	static const char *keynames[] = { "ABC77_X0", "ABC77_X1", "ABC77_X2", "ABC77_X3", "ABC77_X4", "ABC77_X5", "ABC77_X6", "ABC77_X7", "ABC77_X8", "ABC77_X9", "ABC77_X10", "ABC77_X11" };
+	static const char *const keynames[] = { "ABC77_X0", "ABC77_X1", "ABC77_X2", "ABC77_X3", "ABC77_X4", "ABC77_X5", "ABC77_X6", "ABC77_X7", "ABC77_X8", "ABC77_X9", "ABC77_X10", "ABC77_X11" };
 
 	return input_port_read(device->machine, keynames[abc77->keylatch]);
 }
 
 static WRITE8_HANDLER( abc77_data_w )
 {
-	const device_config *device = devtag_get_device(machine, ABC77, ABC77_TAG);
+	const device_config *device = devtag_get_device(space->machine, ABC77, ABC77_TAG);
 	abc77_t *abc77 = get_safe_token(device);
 
 	abc77->keylatch = data & 0x0f;
@@ -125,7 +117,7 @@ static WRITE8_HANDLER( abc77_data_w )
 	}
 
 	/* beep */
-	discrete_sound_w(device->machine, NODE_01, BIT(data, 4));
+	discrete_sound_w(space, NODE_01, BIT(data, 4));
 
 	/* transmit data */
 	abc77->intf->txd_w(device, BIT(data, 5));
@@ -294,14 +286,17 @@ INPUT_PORTS_END
 
 /* Machine Driver */
 
-MACHINE_DRIVER_START( abc77 )
+static MACHINE_DRIVER_START( abc77 )
 	/* keyboard cpu */
-	MDRV_CPU_ADD(I8035_TAG, I8035, 4608000)
+	MDRV_CPU_ADD(I8035_TAG, I8035, XTAL_4_608MHz)
 	MDRV_CPU_PROGRAM_MAP(abc77_map, 0)
 	MDRV_CPU_IO_MAP(abc77_io_map, 0)
 
+	/* watchdog */
+	MDRV_WATCHDOG_TIME_INIT(HZ(XTAL_4_608MHz/(3*5)))
+
 	/* serial clock timer */
-	MDRV_TIMER_ADD_PERIODIC("clock", clock_tick, HZ(600*2))
+	MDRV_TIMER_ADD_PERIODIC("serial", clock_tick, HZ(XTAL_4_608MHz/(3*5)/16))
 
 	/* discrete sound */
 	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
@@ -323,7 +318,6 @@ ROM_END
 static DEVICE_START( abc77 )
 {
 	abc77_t *abc77 = device->token;
-	char unique_tag[30];
 	astring *tempstring = astring_alloc();
 
 	/* validate arguments */
@@ -339,21 +333,19 @@ static DEVICE_START( abc77 )
 	/* find our CPU */
 
 	astring_printf(tempstring, "%s:%s", device->tag, I8035_TAG);
-	abc77->cpunum = mame_find_cpu_index(device->machine, astring_c(tempstring));
+	abc77->cpu = cputag_get_cpu(device->machine, astring_c(tempstring));
 	astring_free(tempstring);
 
 	/* allocate reset timer */
 
-	abc77->reset_timer = timer_alloc(reset_tick, (FPTR *) device);
+	abc77->reset_timer = timer_alloc(device->machine, reset_tick, (FPTR *) device);
 
 	/* register for state saving */
 
-	state_save_combine_module_and_tag(unique_tag, "ABC77", device->tag);
-
-	state_save_register_item(unique_tag, 0, abc77->keylatch);
-	state_save_register_item(unique_tag, 0, abc77->clock);
-	state_save_register_item(unique_tag, 0, abc77->hys);
-	state_save_register_item(unique_tag, 0, abc77->reset);
+	state_save_register_item(device->machine, "abc77", device->tag, 0, abc77->keylatch);
+	state_save_register_item(device->machine, "abc77", device->tag, 0, abc77->clock);
+	state_save_register_item(device->machine, "abc77", device->tag, 0, abc77->hys);
+	state_save_register_item(device->machine, "abc77", device->tag, 0, abc77->reset);
 
 	return DEVICE_START_OK;
 }
@@ -386,10 +378,10 @@ DEVICE_GET_INFO( abc77 )
 		case DEVINFO_FCT_RESET:							/* Nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							info->s = "Luxor ABC-77";					break;
-		case DEVINFO_STR_FAMILY:						info->s = "Luxor ABC";						break;
-		case DEVINFO_STR_VERSION:						info->s = "1.0";							break;
-		case DEVINFO_STR_SOURCE_FILE:					info->s = __FILE__;							break;
-		case DEVINFO_STR_CREDITS:						info->s = "Copyright the MESS Team"; 		break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Luxor ABC-77");			break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Luxor ABC");				break;
+		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");						break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); break;
 	}
 }

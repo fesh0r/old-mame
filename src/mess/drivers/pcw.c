@@ -52,10 +52,10 @@
     From here CP/M is booted, and the appropiate programs can be run.
 
     The hardware:
-       - Z80 CPU running at 3.4Mhz
+       - Z80 CPU running at 3.4 MHz
        - NEC765 FDC
        - mono display
-       - beep (a fixed hz tone which can be turned on/off)
+       - beep (a fixed Hz tone which can be turned on/off)
        - 720x256 (PAL) bitmapped display, 720x200 (NTSC) bitmapped display
        - Amstrad CPC6128 style keyboard
 
@@ -93,7 +93,7 @@
   - emulation of other hardware...?
  ******************************************************************************/
 #include "driver.h"
-#include "deprecat.h"
+#include "cpu/z80/z80.h"
 // nec765 interface
 #include "machine/nec765.h"
 #include "devices/dsk.h"
@@ -105,7 +105,7 @@
 #define VERBOSE 0
 #define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
-static void pcw_fdc_interrupt(int);
+static NEC765_INTERRUPT( pcw_fdc_interrupt );
 
 // pointer to pcw ram
 unsigned int roller_ram_addr;
@@ -137,7 +137,9 @@ static void pcw_update_interrupt_counter(void)
 static const nec765_interface pcw_nec765_interface =
 {
 	pcw_fdc_interrupt,
-	NULL
+	NULL,
+	NULL,
+	NEC765_RDY_PIN_CONNECTED
 };
 
 /* determines if int line is held or cleared */
@@ -148,11 +150,11 @@ static void pcw_interrupt_handle(running_machine *machine)
 		((fdc_interrupt_code==1) && ((pcw_system_status & (1<<5))!=0))
 		)
 	{
-		cpunum_set_input_line(machine, 0, 0,HOLD_LINE);
+		cpu_set_input_line(machine->cpu[0], 0,HOLD_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(machine, 0, 0,CLEAR_LINE);
+		cpu_set_input_line(machine->cpu[0], 0,CLEAR_LINE);
 	}
 }
 
@@ -192,7 +194,7 @@ static void	pcw_trigger_fdc_int(running_machine *machine)
 				{
 					/* I'll pulse it because if I used hold-line I'm not sure
                     it would clear - to be checked */
-					cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+					cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
 				}
 			}
 		}
@@ -214,7 +216,7 @@ static void	pcw_trigger_fdc_int(running_machine *machine)
 }
 
 /* fdc interrupt callback. set/clear fdc int */
-static void pcw_fdc_interrupt(int state)
+static NEC765_INTERRUPT( pcw_fdc_interrupt )
 {
 	pcw_system_status &= ~(1<<5);
 
@@ -224,7 +226,7 @@ static void pcw_fdc_interrupt(int state)
 		pcw_system_status |= (1<<5);
 	}
 
-	pcw_trigger_fdc_int(Machine);
+	pcw_trigger_fdc_int(device->machine);
 }
 
 
@@ -247,10 +249,10 @@ ADDRESS_MAP_END
 /* PCW keyboard is mapped into memory */
 static  READ8_HANDLER(pcw_keyboard_r)
 {
-	static const char *keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
+	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
 										"LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13", "LINE14", "LINE15" };
 
-	return input_port_read(machine, keynames[offset]);
+	return input_port_read(space->machine, keynames[offset]);
 }
 
 
@@ -260,31 +262,32 @@ static  READ8_HANDLER(pcw_keyboard_r)
 
 static void pcw_update_read_memory_block(running_machine *machine, int block, int bank)
 {
-	memory_set_bankptr(block + 1, mess_ram + ((bank * 0x4000) % mess_ram_size));
+	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	memory_set_bankptr(machine, block + 1, mess_ram + ((bank * 0x4000) % mess_ram_size));
 
 	/* bank 3? */
 	if (bank == 3)
 	{
 		/* when upper 16 bytes are accessed use keyboard read
            handler */
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+		memory_install_read8_handler(space,
 			block * 0x04000 + 0x3ff0, block * 0x04000 + 0x3fff, 0, 0,
 			pcw_keyboard_r);
 	}
 	else
 	{
 		/* restore bank handler across entire block */
-		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
+		memory_install_read8_handler(space,
 			block * 0x04000 + 0x0000, block * 0x04000 + 0x3fff, 0, 0,
-			(read8_machine_func) (STATIC_BANK1 + (FPTR)block));
+			(read8_space_func) (STATIC_BANK1 + (FPTR)block));
 	}
 }
 
 
 
-static void pcw_update_write_memory_block(int block, int bank)
+static void pcw_update_write_memory_block(running_machine *machine, int block, int bank)
 {
-	memory_set_bankptr(block + 5, mess_ram + ((bank * 0x4000) % mess_ram_size));
+	memory_set_bankptr(machine, block + 5, mess_ram + ((bank * 0x4000) % mess_ram_size));
 }
 
 
@@ -306,7 +309,7 @@ static void pcw_update_mem(running_machine *machine, int block, int data)
 		bank = data & 0x7f;
 
 		pcw_update_read_memory_block(machine, block, bank);
-		pcw_update_write_memory_block(block, bank);
+		pcw_update_write_memory_block(machine, block, bank);
 	}
 	else
 	{
@@ -354,7 +357,7 @@ static void pcw_update_mem(running_machine *machine, int block, int data)
 		pcw_update_read_memory_block(machine, block, read_bank);
 
 		write_bank = data & 0x07;
-		pcw_update_write_memory_block(block, write_bank);
+		pcw_update_write_memory_block(machine, block, write_bank);
 	}
 
 	/* if boot is active, page in fake ROM */
@@ -364,7 +367,7 @@ static void pcw_update_mem(running_machine *machine, int block, int data)
 
 		FakeROM = &memory_region(machine, "main")[0x010000];
 
-		memory_set_bankptr(1, FakeROM);
+		memory_set_bankptr(machine, 1, FakeROM);
 	}
 }
 
@@ -381,11 +384,11 @@ static READ8_HANDLER(pcw_interrupt_counter_r)
 	/* from Jacob Nevins docs */
 
 	/* get data */
-	data = pcw_get_sys_status(machine);
+	data = pcw_get_sys_status(space->machine);
 	/* clear int counter */
 	pcw_interrupt_counter = 0;
 	/* update interrupt */
-	pcw_interrupt_handle(machine);
+	pcw_interrupt_handle(space->machine);
 	/* return data */
 	return data;
 }
@@ -396,17 +399,17 @@ static WRITE8_HANDLER(pcw_bank_select_w)
 	LOG(("BANK: %2x %x\n",offset, data));
 	pcw_banks[offset] = data;
 
-	pcw_update_mem(machine, offset, data);
+	pcw_update_mem(space->machine, offset, data);
 }
 
 static WRITE8_HANDLER(pcw_bank_force_selection_w)
 {
 	pcw_bank_force = data;
 
-	pcw_update_mem(machine, 0, pcw_banks[0]);
-	pcw_update_mem(machine, 1, pcw_banks[1]);
-	pcw_update_mem(machine, 2, pcw_banks[2]);
-	pcw_update_mem(machine, 3, pcw_banks[3]);
+	pcw_update_mem(space->machine, 0, pcw_banks[0]);
+	pcw_update_mem(space->machine, 1, pcw_banks[1]);
+	pcw_update_mem(space->machine, 2, pcw_banks[2]);
+	pcw_update_mem(space->machine, 3, pcw_banks[3]);
 }
 
 
@@ -431,6 +434,7 @@ static WRITE8_HANDLER(pcw_vdu_video_control_register_w)
 
 static WRITE8_HANDLER(pcw_system_control_w)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
 	LOG(("SYSTEM CONTROL: %d\n",data));
 
 	switch (data)
@@ -439,7 +443,7 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		case 0:
 		{
 			pcw_boot = 0;
-			pcw_update_mem(machine, 0, pcw_banks[0]);
+			pcw_update_mem(space->machine, 0, pcw_banks[0]);
 		}
 		break;
 
@@ -461,10 +465,10 @@ static WRITE8_HANDLER(pcw_system_control_w)
 			{
 				/* yes */
 
-				pcw_interrupt_handle(machine);
+				pcw_interrupt_handle(space->machine);
 			}
 
-			pcw_trigger_fdc_int(machine);
+			pcw_trigger_fdc_int(space->machine);
 		}
 		break;
 
@@ -483,11 +487,11 @@ static WRITE8_HANDLER(pcw_system_control_w)
 				/* yes */
 
 				/* clear nmi interrupt */
-				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+				cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
 			}
 
 			/* re-issue interrupt */
-			pcw_interrupt_handle(machine);
+			pcw_interrupt_handle(space->machine);
 		}
 		break;
 
@@ -505,25 +509,25 @@ static WRITE8_HANDLER(pcw_system_control_w)
 				/* yes */
 
 				/* Clear NMI */
-				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+				cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
 
 			}
 
-			pcw_interrupt_handle(machine);
+			pcw_interrupt_handle(space->machine);
 		}
 		break;
 
 		/* set fdc terminal count */
 		case 5:
 		{
-			nec765_set_tc_state(machine, 1);
+			nec765_set_tc_state(fdc, 1);
 		}
 		break;
 
 		/* clear fdc terminal count */
 		case 6:
 		{
-			nec765_set_tc_state(machine, 0);
+			nec765_set_tc_state(fdc, 0);
 		}
 		break;
 
@@ -545,20 +549,20 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		/* disc motor on */
 		case 9:
 		{
-			floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1);
-			floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1);
-			floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1,1);
-			floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1,1);
+			floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), 1);
+			floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 1);
+			floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), 1,1);
+			floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 1,1);
 		}
 		break;
 
 		/* disc motor off */
 		case 10:
 		{
-			floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), 0);
-			floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 1), 0);
-			floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1,1);
-			floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1,1);
+			floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), 0);
+			floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 0);
+			floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), 1,1);
+			floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 1,1);
 		}
 		break;
 
@@ -582,7 +586,7 @@ static WRITE8_HANDLER(pcw_system_control_w)
 static READ8_HANDLER(pcw_system_status_r)
 {
 	/* from Jacob Nevins docs */
-	return pcw_get_sys_status(machine);
+	return pcw_get_sys_status(space->machine);
 }
 
 /* read from expansion hardware - additional hardware not part of
@@ -596,9 +600,9 @@ static  READ8_HANDLER(pcw_expansion_r)
 		case 0x0e0:
 		{
 			/* spectravideo joystick */
-			if (input_port_read(machine, "EXTRA") & 0x020)
+			if (input_port_read(space->machine, "EXTRA") & 0x020)
 			{
-				return input_port_read(machine, "SPECTRAVIDEO");
+				return input_port_read(space->machine, "SPECTRAVIDEO");
 			}
 			else
 			{
@@ -610,7 +614,7 @@ static  READ8_HANDLER(pcw_expansion_r)
 		{
 
 			/* kempston joystick */
-			return input_port_read(machine, "KEMPSTON");
+			return input_port_read(space->machine, "KEMPSTON");
 		}
 
 		case 0x0e1:
@@ -650,21 +654,23 @@ static WRITE8_HANDLER(pcw_expansion_w)
 
 static READ8_HANDLER(pcw_fdc_r)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
-		return nec765_data_r(machine, 0);
+		return nec765_data_r(fdc, 0);
 	}
 
-	return nec765_status_r(machine, 0);
+	return nec765_status_r(fdc, 0);
 }
 
 static WRITE8_HANDLER(pcw_fdc_w)
 {
+	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
-		nec765_data_w(machine, 0,data);
+		nec765_data_w(fdc, 0,data);
 	}
 }
 
@@ -744,9 +750,8 @@ static TIMER_CALLBACK(setup_beep)
 
 static MACHINE_START( pcw )
 {
-	nec765_init(machine, &pcw_nec765_interface,NEC765A,NEC765_RDY_PIN_CONNECTED);
 	fdc_interrupt_code = 0;
-	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
+	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
 }
 
 
@@ -754,7 +759,7 @@ static DRIVER_INIT(pcw)
 {
 	pcw_boot = 1;
 
-	cpunum_set_input_line_vector(0, 0,0x0ff);
+	cpu_set_input_line_vector(machine->cpu[0], 0,0x0ff);
 
 
 	/* ram paging is actually undefined at power-on */
@@ -777,9 +782,9 @@ static DRIVER_INIT(pcw)
 	roller_ram_offset = 0;
 
 	/* timer interrupt */
-	timer_pulse(ATTOTIME_IN_HZ(300), NULL, 0, pcw_timer_interrupt);
+	timer_pulse(machine, ATTOTIME_IN_HZ(300), NULL, 0, pcw_timer_interrupt);
 
-	timer_set(attotime_zero, NULL, 0, setup_beep);
+	timer_set(machine, attotime_zero, NULL, 0, setup_beep);
 }
 
 
@@ -942,7 +947,7 @@ static INPUT_PORTS_START(pcw)
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_VBLANK)
 	/* frame rate option */
 	PORT_DIPNAME( 0x10, 0x010, "50/60Hz Frame Rate Option")
-	PORT_DIPSETTING(	0x00, "60hz")
+	PORT_DIPSETTING(	0x00, "60Hz")
 	PORT_DIPSETTING(	0x10, "50Hz" )
 	/* spectravideo joystick enabled */
 	PORT_DIPNAME( 0x20, 0x020, "Spectravideo Joystick Enabled")
@@ -979,10 +984,10 @@ INPUT_PORTS_END
 /* PCW8256, PCW8512, PCW9256 */
 static MACHINE_DRIVER_START( pcw )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000)       /* clock supplied to chip, but in reality it is 3.4Mhz */
+	MDRV_CPU_ADD("main", Z80, 4000000)       /* clock supplied to chip, but in reality it is 3.4 MHz */
 	MDRV_CPU_PROGRAM_MAP(pcw_map, 0)
 	MDRV_CPU_IO_MAP(pcw_io, 0)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START(pcw)
 
@@ -1003,6 +1008,8 @@ static MACHINE_DRIVER_START( pcw )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	
+	MDRV_NEC765A_ADD("nec765", pcw_nec765_interface)
 MACHINE_DRIVER_END
 
 

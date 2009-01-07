@@ -1,3 +1,127 @@
+0.129
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Ivel Ultra [Miodrag Milanovic]
+- Pecom 64 [Miodrag Milanovic]
+- Sharp MZ80K [Miodrag Milanovic]
+- Sony HB-10P/HB-20P [Miodrag Milanovic]
+- Yamaha YIS503IIR Russian/Estonian  [Miodrag Milanovic]
+
+
+
+System Driver Changes:
+----------------------
+- [ABC800M] Added HR graphics. [Curt Coder, Erik Isaksson]
+
+- [ABC802] Added keyboard simulation. [Curt Coder]
+
+- [ABC806] Added keyboard simulation and HR graphics. [Curt Coder, Erik Isaksson]
+
+- [ADVISION] Fixed cartridge ROM banking. (bug #1690) [Curt Coder]
+
+- [B2M] bug #1661 fixed [Miodrag Milanovic]
+
+- [BBC] Changed memory handling for the 0xfc00 to 0xfeff memory region
+  on the Master driver, to allow correct debugging of code in this area
+  when ROM is paged in for read.  [Phill Harvey-Smith]
+
+- [BBC] Added version 3.20 of the Master MOS, selectable as a bios, as this is the 
+  more common version of the bios.  [Phill Harvey-Smith]
+
+- [BBC] Fixed up loading of 8K roms as cartriges so that they mirror correctly
+  and don't cause an error on loading, 16K was already working correctly.
+  [Phill Harvey-Smith]  
+
+- [BBC] Changed to use MAME's 6850 implemenation.  Deleted MESS's private 6850
+  implementation.  [Nathan Woods]
+
+- [COCO] Fixed Dragon Alpha, via MAME update, the NMI enable/disable allowing
+  disks to boot again.  [Phill Harvey-Smith]
+
+- [COCO] Minor cartridge loading code cleanups.  [Nathan Woods]
+
+- [COMX35] Added support for the 80 column card. [Curt Coder, Marcel van Tongeren]
+
+- [GAMECOM] Fixed aspect ratio. [Justin Kerk]
+
+- [GENEVE] Adds dip switch to select boot eprom version (0.9 or 1.0). Default
+  is 1.0, making it behave as before. To use the old eprom, geneve.zip must
+  contain a file genbt090.bin.  Release dates of Geneve and GenMod adjusted.
+  [Michael Zapf]
+
+- [NES] Fixed bug #1672.  [Wilbert Pol]
+
+- [MSX] Update of Panasonic MSX disk ROMs [Miodrag Milanovic]
+
+- [MSX] Update of Toshiba HX-20, HX-23 memory map [Miodrag Milanovic]
+
+- [ONDRA] Both computers now work, cassette supported  [Miodrag Milanovic]
+
+- [TS2068] Fixed CPU and AY clocks based on crystal values from schematics
+  [Justin Kerk, Lord Nightmare]
+
+
+
+User Interface Changes:
+-----------------------
+(none)
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.129.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Changed the 8251 UART implementation to be a device.  [Nathan Woods]
+
+- Changed the 6551 ACIA implementation to be a device.  [Nathan Woods]
+
+- Changed the 8521 RTC implementation to be a device.  [Nathan Woods]
+
+- Changed the 8593 RTC implementation to be a device.  [Nathan Woods]
+
+- Changed the TMS5501 implementation to be a device.  [Nathan Woods]
+
+- Changed the MM58274C implementation to be a device.  [Miodrag Milanovic]
+
+- Changed the TTL74145 implementation to be a device.  [Miodrag Milanovic]
+
+- Changed the UPD7002 implementation to be a device.  [Miodrag Milanovic]
+
+- Changed the TMS9901 implementation to be a device.  [Miodrag Milanovic]
+
+- Changed the TMS9902 implementation to be a device.  [Miodrag Milanovic]
+
+- Changed the I8271 implementation to be a device.  [Miodrag Milanovic]
+
+- Changed the WD17XX implementation to be a device.  [Miodrag Milanovic]
+
+- Changed the NEC765 implementation to be a device.  [Miodrag Milanovic]
+
+- Changed the SAM6883 implementation to be a device.  [Miodrag Milanovic]
+
+- Changed the RP5C15 RTC implementation to be a device.  [Barry Rodewald]
+
+- Changed the 6525 TPI implementation to be a device and added save state
+  support.  [Dirk Best]
+
+- Various code cleanups.  [Atari Ace]
+
+- Fixed regression that could cause hanging when creating an image from the
+  command line or the MESSUI.  (bug #1744) [Nathan Woods]
+
+- Changed cartridges to be MAME devices.  [Miodrag Milanovic, Nathan Woods]
+
+
+
 0.128
 
 New System Drivers Supported (in no particular order):
@@ -42,7 +166,6 @@ New System Drivers Supported (in no particular order):
 
 System Driver Changes:
 ----------------------
-
 - [ABC80] Made keyboard a little less hacky. [Curt Coder]
 
 - [ABC800M] Added keyboard hack to enable system use. [Curt Coder]

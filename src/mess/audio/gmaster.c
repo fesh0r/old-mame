@@ -6,7 +6,6 @@
 #include "osd_cpu.h"
 #include "driver.h"
 #include "streams.h"
-#include "deprecat.h"
 #include "mame.h"
 #include "timer.h"
 //#include "sound/mixer.h"
@@ -17,7 +16,7 @@
 static /*bool*/int level;
 static sound_stream *mixer_channel;
 
-int gmaster_io_callback(int ioline, int state)
+int gmaster_io_callback(const device_config *device, int ioline, int state)
 {
     switch (ioline) {
     case UPD7810_TO:
@@ -34,12 +33,12 @@ int gmaster_io_callback(int ioline, int state)
 /************************************/
 /* Sound handler update             */
 /************************************/
-static void gmaster_update (void* param, stream_sample_t **inputs, stream_sample_t **_buffer, int length)
+static STREAM_UPDATE( gmaster_update )
 {
     int i;
-    stream_sample_t *buffer=_buffer[0];
+    stream_sample_t *buffer=outputs[0];
     
-    for (i = 0; i < length; i++, buffer++)
+    for (i = 0; i < samples; i++, buffer++)
     {
 	*buffer = level?0x4000:0;
     }
@@ -48,22 +47,10 @@ static void gmaster_update (void* param, stream_sample_t **inputs, stream_sample
 /************************************/
 /* Sound handler start              */
 /************************************/
-void* gmaster_custom_start (int clock, const custom_sound_interface *config)
+
+CUSTOM_START( gmaster_custom_start )
 {
-  mixer_channel = stream_create(0, 1, Machine->sample_rate, 0, gmaster_update);
+  mixer_channel = stream_create(device, 0, 1, device->machine->sample_rate, 0, gmaster_update);
 
   return (void*)~0;
 }
-
-#ifdef UNUSED_FUNCTION
-/************************************/
-/* Sound handler stop               */
-/************************************/
-void gmaster_custom_stop (void)
-{
-}
-
-void gmaster_custom_update (void)
-{
-}
-#endif

@@ -24,7 +24,7 @@ DRIVER_INIT(irisha)
 
 
 static UINT8 irisha_keypressed;
-UINT8 irisha_keyboard_cnt = 0;
+static UINT8 irisha_keyboard_cnt = 0;
 
 static TIMER_CALLBACK( irisha_key )
 {
@@ -35,16 +35,16 @@ static TIMER_CALLBACK( irisha_key )
 
 MACHINE_RESET( irisha )
 {
-	timer_pulse(ATTOTIME_IN_MSEC(30), NULL, 0, irisha_key);
+	timer_pulse(machine, ATTOTIME_IN_MSEC(30), NULL, 0, irisha_key);
   irisha_keypressed = 0;
 }
 
-static const char *keynames[] = {
+static const char *const keynames[] = {
 							"LINE0", "LINE1", "LINE2", "LINE3",
 							"LINE4", "LINE5", "LINE6", "LINE7",
 							"LINE8", "LINE9"};
 
-READ8_DEVICE_HANDLER (irisha_8255_portb_r )
+static READ8_DEVICE_HANDLER (irisha_8255_portb_r )
 {
   if (irisha_keypressed==1) {
   	irisha_keypressed =0;
@@ -54,7 +54,7 @@ READ8_DEVICE_HANDLER (irisha_8255_portb_r )
 	return 0x00;
 }
 
-READ8_DEVICE_HANDLER (irisha_8255_portc_r )
+static READ8_DEVICE_HANDLER (irisha_8255_portc_r )
 {
 	logerror("irisha_8255_portc_r\n");
 	return 0;
@@ -64,7 +64,7 @@ READ8_HANDLER (irisha_keyboard_r)
 {
 	UINT8 keycode;
  	if (irisha_keyboard_cnt!=0 && irisha_keyboard_cnt<11) {
-		keycode = input_port_read(machine, keynames[irisha_keyboard_cnt-1]) ^ 0xff;
+		keycode = input_port_read(space->machine, keynames[irisha_keyboard_cnt-1]) ^ 0xff;
 	} else {
 		keycode = 0xff;
 	}
@@ -72,17 +72,17 @@ READ8_HANDLER (irisha_keyboard_r)
 	return keycode;
 }
 
-WRITE8_DEVICE_HANDLER (irisha_8255_porta_w )
+static WRITE8_DEVICE_HANDLER (irisha_8255_porta_w )
 {
 	logerror("irisha_8255_porta_w %02x\n",data);
 }
 
-WRITE8_DEVICE_HANDLER (irisha_8255_portb_w )
+static WRITE8_DEVICE_HANDLER (irisha_8255_portb_w )
 {
 	logerror("irisha_8255_portb_w %02x\n",data);
 }
 
-WRITE8_DEVICE_HANDLER (irisha_8255_portc_w )
+static WRITE8_DEVICE_HANDLER (irisha_8255_portc_w )
 {
 	//logerror("irisha_8255_portc_w %02x\n",data);
 }
@@ -99,7 +99,7 @@ const ppi8255_interface irisha_ppi8255_interface =
 
 static PIC8259_SET_INT_LINE( irisha_pic_set_int_line )
 {
-	cpunum_set_input_line(device->machine, 0, 0,interrupt ?  HOLD_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], 0,interrupt ?  HOLD_LINE : CLEAR_LINE);
 }
 
 const struct pic8259_interface irisha_pic8259_config = {

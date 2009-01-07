@@ -24,7 +24,7 @@
 in Europe. It was impressive for the small size of its case, but it didn't
 meet commercial success
 
-CPU: MOS Technology 7501 (variable clock rate, with max 1.76 Mhz)
+CPU: MOS Technology 7501 (variable clock rate, with max 1.76 MHz)
 RAM: 16 kilobytes (expandable to 64k internally)
 ROM: 32 kilobytes
 Video: MOS Technology 7360 "TED" (5 Video modes; Max. Resolution 320x200;
@@ -42,7 +42,7 @@ Keyboard: QWERTY 62 key "membrane" (8 programmable function keys; 4 direction
   Redesigned version of the C116, with a different case and a different 
 keyboard.
 
-CPU: MOS Technology 7501 (variable clock rate, with max 1.76 Mhz)
+CPU: MOS Technology 7501 (variable clock rate, with max 1.76 MHz)
 RAM: 16 kilobytes (expandable to 64k internally)
 ROM: 32 kilobytes
 Video: MOS Technology 7360 "TED" (5 Video modes; Max. Resolution 320x200;
@@ -62,7 +62,7 @@ the original Commodore 264. The Plus/4 is basically the same as the C264,
 but the name refers to the four built-in programs which came with the 
 machine: Word Processing, Spreadsheet, Database software, Graphing package.
 
-CPU: MOS Technology 7501 (variable clock rate, with max 1.76 Mhz)
+CPU: MOS Technology 7501 (variable clock rate, with max 1.76 MHz)
 RAM: 64 kilobytes (expandable to 64k internally)
 ROM: 64 kilobytes
 Video: MOS Technology 7360 "TED" (5 Video modes; Max. Resolution 320x200;
@@ -118,8 +118,10 @@ printers and other devices; most expansion modules; userport; rs232/v.24 interfa
 
 
 #include "driver.h"
+#include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
 
+#include "machine/6525tpi.h"
 #include "includes/vc1541.h"
 #include "machine/cbmipt.h"
 #include "video/ted7360.h"
@@ -361,14 +363,53 @@ static PALETTE_INIT( c16 )
  *
  *************************************/
 
+const tpi6525_interface c16_tpi6525_tpi_2_intf =
+{
+	c1551_0_read_data,
+	c1551_0_read_status,
+	c1551_0_read_handshake,
+	c1551_0_write_data,
+	NULL,
+	c1551_0_write_handshake,
+	NULL,
+	NULL,
+	NULL	
+};
+
+const tpi6525_interface c16_tpi6525_tpi_2_c1551_intf =
+{
+	c1551x_read_data,
+	c1551x_read_status,
+	c1551x_read_handshake,
+	c1551x_write_data,
+	NULL,
+	c1551x_write_handshake,
+	NULL,
+	NULL,
+	NULL
+};
+
+const tpi6525_interface c16_tpi6525_tpi_3_intf =
+{
+	c1551_1_read_data,
+	c1551_1_read_status,
+	c1551_1_read_handshake,
+	c1551_1_write_data,
+	NULL,
+	c1551_1_write_handshake,
+	NULL,
+	NULL,
+	NULL	
+};
+
 
 static MACHINE_DRIVER_START( c16 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M7501, 1400000)        /* 7.8336 Mhz */
+	MDRV_CPU_ADD("main", M7501, 1400000)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(c16_map, 0)
 	MDRV_CPU_VBLANK_INT("main", c16_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(ted7360_raster_interrupt, TED7360_HRETRACERATE)
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET( c16 )
 
@@ -396,17 +437,32 @@ static MACHINE_DRIVER_START( c16 )
 	/* devices */
 	MDRV_QUICKLOAD_ADD(cbm_c16, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
+	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
+
+	/* via */
+	MDRV_VIA6522_ADD("via6522_2", 0, vc1541_via2)
+	MDRV_VIA6522_ADD("via6522_3", 0, vc1541_via3)
+
+	/* tpi */
+	MDRV_TPI6525_ADD("tpi6535_tpi_2", c16_tpi6525_tpi_2_intf)
+	MDRV_TPI6525_ADD("tpi6535_tpi_3", c16_tpi6525_tpi_3_intf)
+
+	MDRV_IMPORT_FROM(c16_cartslot)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( c16c )
 	MDRV_IMPORT_FROM( c16 )
+
+	MDRV_TPI6525_REMOVE("tpi6535_tpi_2")
+	MDRV_TPI6525_ADD("tpi6535_tpi_2", c16_tpi6525_tpi_2_c1551_intf)
+
 	MDRV_IMPORT_FROM( cpu_c1551 )
 #ifdef CPU_SYNC
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 #else
-	MDRV_INTERLEAVE(100)
+	MDRV_QUANTUM_TIME(HZ(6000))
 #endif
 MACHINE_DRIVER_END
 
@@ -415,9 +471,9 @@ static MACHINE_DRIVER_START( c16v )
 	MDRV_IMPORT_FROM( c16 )
 	MDRV_IMPORT_FROM( cpu_vc1541 )
 #ifdef CPU_SYNC
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 #else
-	MDRV_INTERLEAVE(5000)
+	MDRV_QUANTUM_TIME(HZ(300000))
 #endif
 MACHINE_DRIVER_END
 
@@ -439,9 +495,9 @@ static MACHINE_DRIVER_START( plus4c )
 	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 #ifdef CPU_SYNC
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 #else
-	MDRV_INTERLEAVE(1000)
+	MDRV_QUANTUM_TIME(HZ(60000))
 #endif
 MACHINE_DRIVER_END
 
@@ -453,9 +509,9 @@ static MACHINE_DRIVER_START( plus4v )
 	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 #ifdef CPU_SYNC
-	MDRV_INTERLEAVE(1)
+	MDRV_QUANTUM_TIME(HZ(60))
 #else
-	MDRV_INTERLEAVE(5000)
+	MDRV_QUANTUM_TIME(HZ(300000))
 #endif
 MACHINE_DRIVER_END
 
@@ -596,7 +652,6 @@ ROM_END
 
 
 static SYSTEM_CONFIG_START(c16)
-	CONFIG_DEVICE(c16_cartslot_getinfo)
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 	CONFIG_RAM(16 * 1024)
 	CONFIG_RAM(32 * 1024)
@@ -604,7 +659,6 @@ static SYSTEM_CONFIG_START(c16)
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(c16c)
-	CONFIG_DEVICE(c16_cartslot_getinfo)
 	CONFIG_DEVICE(c1551_device_getinfo)
 	CONFIG_RAM(16 * 1024)
 	CONFIG_RAM(32 * 1024)
@@ -612,7 +666,6 @@ static SYSTEM_CONFIG_START(c16c)
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(c16v)
-	CONFIG_DEVICE(c16_cartslot_getinfo)
 	CONFIG_DEVICE(vc1541_device_getinfo)
 	CONFIG_RAM(16 * 1024)
 	CONFIG_RAM(32 * 1024)
@@ -620,19 +673,16 @@ static SYSTEM_CONFIG_START(c16v)
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(plus)
-	CONFIG_DEVICE(c16_cartslot_getinfo)
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
 	CONFIG_RAM_DEFAULT(64 * 1024)
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(plusc)
-	CONFIG_DEVICE(c16_cartslot_getinfo)
 	CONFIG_DEVICE(c1551_device_getinfo)
 	CONFIG_RAM_DEFAULT(64 * 1024)
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START(plusv)
-	CONFIG_DEVICE(c16_cartslot_getinfo)
 	CONFIG_DEVICE(vc1541_device_getinfo)
 	CONFIG_RAM_DEFAULT(64 * 1024)
 SYSTEM_CONFIG_END
